@@ -1,6 +1,8 @@
 import Project.Attr
 import Project.Axpy.Module
 import Project.Axpy.Verify
+import Project.Binary32.Module
+import Project.Binary32.Verify
 import Project.Bucket.Module
 import Project.Bucket.Verify
 import Project.Calc.Module
@@ -125,6 +127,7 @@ import Project.ProofKit.F32TruncSat
 import Project.ProofKit.F64Add
 import Project.ProofKit.F64AddFinite
 import Project.ProofKit.F64Bits
+import Project.ProofKit.F32Bits
 import Project.ProofKit.F64Compare
 import Project.ProofKit.F64Convert
 import Project.ProofKit.F64Decoded

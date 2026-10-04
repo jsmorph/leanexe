@@ -110,6 +110,9 @@ instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 /-- A float is passed as an `f64` holding its bit pattern. -/
 instance : Scalar Float := ⟨fun x => [.f64 x.toBits]⟩
 
+/-- A binary32 float is passed as an `f32` holding its bit pattern. -/
+instance : Scalar Float32 := ⟨fun x => [.f32 x.toBits]⟩
+
 instance [Scalar α] [Scalar β] : Scalar (α × β) :=
   ⟨fun p => Scalar.values p.1 ++ Scalar.values p.2⟩
 

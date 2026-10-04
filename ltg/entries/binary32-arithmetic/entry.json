@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "binary32-arithmetic",
+  "title": "Binary32 arithmetic",
+  "summary": "Relates Lean's Float32 addition, subtraction, multiplication, division, and square root on bit patterns to Talos's IEEE32 functions, which the IR's f32 expressions evaluate.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["compiler-motifs", "floating-point", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["binary32", "f32", "float", "IEEE-754", "NaN", "rounding"],
+  "annotationKinds": ["float32 variable", "float32 add", "float32 sub", "float32 mul", "float32 div", "float32 sqrt"],
+  "modules": ["Project.ProofKit.F32Bits", "Project.IR.Expr", "Project.Binary32.Verify"],
+  "declarations": ["Project.ProofKit.F32Bits.ofBits_toBits", "Project.ProofKit.F32Bits.toBits_add", "Project.ProofKit.F32Bits.toBits_sub", "Project.ProofKit.F32Bits.toBits_mul", "Project.ProofKit.F32Bits.toBits_div", "Project.ProofKit.F32Bits.toBits_sqrt", "Project.IR.Expr.getF32", "Project.IR.Expr.binF32", "Project.IR.Expr.unF32", "Project.IR.F32Op.apply", "Project.IR.F32UnOp.apply"],
+  "premises": ["Float32 arguments are passed as f32 values holding Float32.toBits"],
+  "result": "The bits of a Lean Float32 expression equal the IEEE32 evaluation of its IR translation, including NaN, infinities, signed zeros, and subnormals.",
+  "consumers": ["Project.Binary32.axpy32_implements", "Project.Binary32.hypot32_implements", "Project.Binary32.ratio32_implements"],
+  "relatedEntries": ["float-arithmetic"],
+  "exclusion": null
+}

@@ -1,0 +1,5 @@
+# Binary32 arithmetic
+
+Use this entry when a hint's rule starts with `float32`.  The compiler translates Lean's `Float32` operations to IR expressions of type `f32`, whose values are 32-bit bit patterns, evaluated with Talos's `IEEE32` functions, the meaning of WebAssembly's `f32` instructions in the deterministic profile.  `+`, `-`, `*`, `/`, and `Float32.sqrt` map to `Expr.binF32` and `Expr.unF32`, one instruction each, and a `Float32` parameter or local is `Expr.getF32`.  Literals, comparisons, conditionals, negation, absolute value, `min`, `max`, conversions, and arrays of `Float32` are not translated yet.
+
+`F32Bits.toBits_add` and its siblings state `(a + b).toBits = IEEE32.add a.toBits b.toBits` for Lean's `Float32`, from the binary32 chain's results for the `LeanExe.Float32` wrappers and `F32Bits.ofBits_toBits`.  For a function without conditionals, `Func.implements` followed by one `simp` call with `F32Op.apply`, `F32UnOp.apply`, and the `toBits` lemmas proves the result, as `Project.Binary32.axpy32_implements`, `hypot32_implements`, and `ratio32_implements` do.
