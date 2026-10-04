@@ -24311,3 +24311,28 @@ binary32 value as its bits and 0).
 The first program, `axpyArray32 a x y := LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]! +
 y[i.toNat]!`, compiles to Wasm and to WGSL, with both theorems from one element lemma.  `u64`
 arithmetic on pairs, loops, and `matVec32` follow in 24c.
+
+### Review of the translation plan
+
+One reviewer compiled `axpyArray32`, checked the simulation statement against `Expr.eval`, and
+proved the general read.  I reran its files: `Shape.lean` confirms the IR below and prints
+`some 5`, `some 41`, and `some 7` for its three probes, and `ReadWord.lean` proves
+`readLow_eval_high` and `readLow_word` with the standard axioms.  `axpyArray32`'s body is
+`.seq (.arraySize 3 1) (.build 4 5 6 (.get 3) element)`, with the element reading the parameters
+0 (`a`), 1 and 2 (the pointers to `x` and `y`), and the index 6.
+
+| Finding | Response |
+|---------|----------|
+| The count comes from an `arraySize` statement before the build, which the plan did not cover | `arraySize s src` becomes the length pair of `src`'s buffer, and the count expression is translated; no count word |
+| Scratch locals have no WGSL counterpart only when every local the expression reads is below the scratch base (`bin add (read 0 (const 5)) (get 2)` gives 5 with scratch 2, where `bin add (const 0) (get 2)` gives 41) | A hypothesis of the evaluation lemma; compiled code satisfies it |
+| A forward simulation from the IR's success breaks for `ite`, `iteF32`, `and`, and `or` if both operands become `let`s, since the untaken branch may read a missing local | Those constructs become a `var` assigned in `if` blocks, in 24c |
+| `readLow_eval` assumed a zero high half | `readLow_word` covers any `u64` index; `readHigh` and a general `lt64` follow it |
+| The size bound rests on `UInt64Array.At`, which gives fewer than 2^29 elements, not on the default binding limit | Taken from `At` |
+| The element fact behind `Stmt.build_spec` mentions the heap, and a kernel theorem has no Talos store | A denotation of the kernel subset over Lean arrays, without memory: `Expr.eval` agrees with it under `UInt64Array.At`, and the WGSL simulation starts from it, so the shared element lemma is a computation over Lean values |
+| WebGPU allows 8 storage buffers by default, so at most 6 array parameters beside the scalar and output buffers, and a binding may not be empty | Recorded; the scalar buffer is left out when a kernel has no scalars |
+| A NaN or infinite `constF32` is a shader-creation error | The translator rejects it |
+
+- [ ] 24b1: `Expr.denote` for the kernel subset and `Expr.eval_denote`.
+- [ ] 24b2: `readHigh`, the general `lt64`, `trExpr`, and its simulation from `Expr.denote`.
+- [ ] 24b3: the kernel from a build with an `arraySize` prefix, the generic dispatch theorem, and
+  `axpyArray32` on Wasm and WGSL with tests.
