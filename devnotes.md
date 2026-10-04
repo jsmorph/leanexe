@@ -23897,3 +23897,75 @@ The module tests passed 9,281 comparisons, 24 of them for each new function, and
 which include 6 allocations and no frees for each new function on a three-node tree.  The 20
 depth cases include chains of 999 and 1,000 nodes for both, and `chunks.py` passed 360 cases.
 Item 11 is complete.
+
+## GPU path: analysis (2026-10-03)
+
+The goal recorded on 2026-10-01 is kernels in WGSL, run by browsers with WebGPU or an equivalent
+runtime, computing in binary32.  The assets are the binary32 chain in ProofKit, which proves
+`LeanExe.Float32.xBits = Wasm.IEEE32.x` for addition, subtraction, multiplication, division, and
+square root, and the compiler's `LeanExe.build n f`, whose elements are independent and so map to
+one GPU invocation each.  The deslop IR has no `f32` type yet, and binary32 has no comparison or
+sign theorems.  `origin/wgsl` (`77f75134`) holds an earlier backend: a WGSL subset parsed back in
+Lean, an invocation and dispatch semantics, and exact word theorems for GEMM under a "binary32
+profile" premise (round to nearest even, subnormals kept, IEEE zero signs, source order, separate
+multiply and add).  Its runs matched exactly on CPU WebGPU, and physical GPUs were not tested.
+
+### What WGSL defines
+
+The [WGSL Candidate Recommendation Draft](https://www.w3.org/TR/WGSL/#floating-point-evaluation),
+section 15.7, leaves binary32 results at shader execution open in six ways.
+
+| Rule | Section | Text |
+|------|---------|------|
+| Rounding | 15.7.2, 15.7.4 | "No rounding mode is specified.  An implementation may round an intermediate result up or down."  `+`, `-`, and `*` are "correctly rounded", which 15.7.4 defines as either neighbor of the exact result |
+| Division and square root | 15.7.4.1 | `x / y`: "2.5 ULP for \|y\| in the range [2^-126, 2^126]".  `sqrt(x)`: "Inherited from 1.0 / inverseSqrt(x)", and `inverseSqrt` is 2 ULP |
+| Subnormals | 15.7.2 | "Any inputs or outputs of operations listed in § 15.7.4 Floating Point Accuracy may be flushed to zero" |
+| Infinity and NaN | 15.7.2, 15.7.3 | "Implementations may assume that overflow, infinities, and NaNs are not present during shader execution", and such a result is then "an indeterminate value of the target type" |
+| Zero sign | 15.7.2 | "Implementations may ignore the sign field of a floating point zero value" |
+| Order and fusion | 15.7.5 | "An implementation may reassociate operations."  "An implementation may fuse operations if the transformed expression is at least as accurate as the original formulation" |
+
+Integer arithmetic on `i32` and `u32` is defined exactly at shader execution.  Section 6.2.3
+states that an overflowing integer expression produces "a result that is modulo 2^bitwidth", and
+sections 8.8 and 8.10 define division by zero to return `e1` and a shift amount modulo the bit
+width.  WGSL has no 64-bit integer or float types.  A runtime out-of-bounds access stays inside
+the buffer but returns or writes an unspecified element (section 6.5.7), so kernels must prove
+their indices in range.
+
+A binary32 kernel therefore has no single result under the specification.  An exact theorem needs
+a premise stronger than WGSL about the device, and a theorem that rests on WGSL alone states a
+bound or uses integer arithmetic.  GPU compilers fuse multiply and add, flush subnormals, and
+compute division and square root approximately, as the rules permit, so a strict premise is likely
+false on many physical GPUs for kernels such as `matVec`.  I could not measure this machine:
+headless Chromium 145 exposes no `navigator.gpu` with the flags I tried, and the machine's GPU is
+a Parallels virtual device with Mesa's Vulkan drivers, including the CPU driver `lavapipe`.
+
+### Approaches for the kernel theorem
+
+| Approach | Theorem | Proof cost | Runtime cost | Assumption beyond the code |
+|----------|---------|------------|--------------|----------------------------|
+| A. Exact under a strict profile | The output words equal the Lean `Float32` function's, bit for bit, as on the Wasm path | Small per kernel: the binary32 chain and the IR proofs carry over | Hardware binary32 | The device rounds to nearest even, keeps subnormals and zero signs, and neither reorders nor fuses; WGSL does not promise this |
+| B. Bounds under WGSL's rules | Every result WGSL allows lies within a stated distance of the real-valued function, or of the Lean `Float32` result, given inputs that keep intermediates finite | Large per kernel: an error analysis over Mathlib's reals, and a semantics for every reordering and fusion WGSL permits | Hardware binary32 | The device conforms to WGSL |
+| C. Exact through integer arithmetic | As A, with binary32 computed by verified integer routines in WGSL | Moderate once: the routines against `IEEE32`, then as A | My estimate: about 100 `u32` operations per multiply and add, roughly 100 times hardware binary32 | The device conforms to WGSL's integer rules |
+
+All three share the remaining design: kernels as `LeanExe.build n f` over binary32 arrays with
+one invocation per element, a WGSL syntax tree with a printer and a parser proved to invert it (as
+the Wasm encoder's round trip does), a translation from a kernel subset of the IR proved once per
+construct, a dispatch semantics of independent invocations, and a runtime for tests.
+
+Recommendation: A, with the profile stated as a hypothesis of each theorem and kernels limited at
+first to addition, subtraction, multiplication, comparisons, and selection.  A reuses the proved
+binary32 chain, reaches bytes and a theorem in the first increment, and keeps the GPU result equal
+to the Wasm result when the device conforms.  B can follow for chosen kernels, since the
+translation and dispatch proofs carry over and only the arithmetic changes.
+
+Critical review.  A's theorem says nothing about a run on a device that fuses or flushes, and such
+devices are common, so A gives exact assurance on conforming implementations (likely CPU ones such
+as SwiftShader and `lavapipe`) and no numerical assurance elsewhere.  Tests detect violations only
+for the cases they run, and no WGSL construct forbids fusion.  B is the only approach whose
+assumption is WGSL itself with hardware arithmetic, at several times A's proof cost per kernel.
+Its semantics must model reassociation and fusion, and the specification does not say whether
+fusion crosses `let` statements.  C rests on the most reliable assumption, but its runtime cost
+removes most of the reason to use a GPU.
+
+Decisions, one at a time: (1) the theorem form; (2) whether binary32 enters the Wasm IR first;
+(3) the runtime for tests, which needs a new tool; and (4) how the host invokes kernels.
