@@ -24332,7 +24332,10 @@ proved the general read.  I reran its files: `Shape.lean` confirms the IR below 
 | WebGPU allows 8 storage buffers by default, so at most 6 array parameters beside the scalar and output buffers, and a binding may not be empty | Recorded; the scalar buffer is left out when a kernel has no scalars |
 | A NaN or infinite `constF32` is a shader-creation error | The translator rejects it |
 
-- [ ] 24b1: `Expr.denote` for the kernel subset and `Expr.eval_denote`.
+- [x] 24b1: `Expr.denote` for the kernel subset and `Expr.eval_denote`.  `Project/IR/Denote.lean`: the denotation reads
+  locals and arrays from two functions, and `Expr.eval_denote` proves that `Expr.eval` gives the
+  same value under `Agrees` (the locals and the arrays' `UInt64Array.At` below the scratch base)
+  and enough scratch locals.
 - [ ] 24b2: `readHigh`, the general `lt64`, `trExpr`, and its simulation from `Expr.denote`.
 - [ ] 24b3: the kernel from a build with an `arraySize` prefix, the generic dispatch theorem, and
   `axpyArray32` on Wasm and WGSL with tests.
