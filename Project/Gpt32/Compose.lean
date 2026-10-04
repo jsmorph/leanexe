@@ -464,7 +464,7 @@ theorem logits_exec (files : String → Option Val) (s : Shape32) (W : Weights32
       (∀ c, c0 ≤ c → c < c0 + n → st (.wte c) = some (.arr W.wte[c]!) ∧
         W.wte[c]!.size < 536870912 ∧ s.rows[c]!.toNat < 536870912) →
       ∃ st', Item.execAll files st
-          ((List.range' c0 n).flatMap fun c => logitsItems s c s.rows[c]!) = some st' ∧
+          ((List.range' c0 n).flatMap fun c => logitsItems c s.rows[c]!) = some st' ∧
         (∀ c, c0 ≤ c → c < c0 + n →
           st' (.z c) = some (.arr (logits32 h W.wte[c]! s.rows[c]! (64 * s.nh)))) ∧
         ∀ b, (∀ c, c0 ≤ c → c < c0 + n → b ≠ .z c) → b ≠ .rowCount → st' b = st b
@@ -571,7 +571,7 @@ theorem step_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
   obtain ⟨st11, he11, hx11, hxs11, hlen11, hc11, hcs11, hf11⟩ :=
     layers_exec files hB W.layers caches 0 x0 st10
       ([.call .layerNorm (64 * s.nh).toNat .hf [.x, .gf, .bf, .width, .nf]] ++
-        (List.range' 0 s.rows.length).flatMap fun c => logitsItems s c s.rows[c]!)
+        (List.range' 0 s.rows.length).flatMap fun c => logitsItems c s.rows[c]!)
       (by rw [hF.layers, hF.cacheCount]) hW10 (by simp [st10, Store.set])
       (by simp only [x0, embed32_size, hd])
       (fun i hi f => by
@@ -678,5 +678,235 @@ theorem step_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
     rw [hz' c (by omega) (by omega), hstep]
     have hcw : c < W.wte.length := by rw [hF.chunks]; exact hc
     simp [hcw, hc]
+
+/-! ### Setup and sequences of steps -/
+
+theorem Item.execAll_load {files : String → Option Val} {st : Store} {b : Buf} {path : String}
+    {v : Val} (h : files path = some v) (is : List Item) :
+    Item.execAll files st (.load b path :: is) = Item.execAll files (st.set b v) is := by
+  simp [Item.execAll, Item.exec, h]
+
+theorem Item.execAll_empty (files : String → Option Val) (st : Store) (b : Buf)
+    (is : List Item) :
+    Item.execAll files st (.empty b :: is) = Item.execAll files (st.set b (.arr #[])) is := rfl
+
+theorem Item.execAll_append (files : String → Option Val) :
+    ∀ (st : Store) (is js : List Item),
+      Item.execAll files st (is ++ js) = (Item.execAll files st is).bind fun st' =>
+        Item.execAll files st' js
+  | st, [], js => rfl
+  | st, i :: is, js => by
+    simp only [List.cons_append, Item.execAll]
+    cases i.exec files st with
+    | none => rfl
+    | some st' => exact Item.execAll_append files st' is js
+
+/-- The files of `dir` hold the weights `W`. -/
+structure Loaded (files : String → Option Val) (dir : String) (W : Weights32) : Prop where
+  wte : ∀ c < W.wte.length, files (weightPath dir s!"wte{c}") = some (.arr W.wte[c]!)
+  wpe : files (weightPath dir "wpe") = some (.arr W.wpe)
+  gf : files (weightPath dir "gf") = some (.arr W.gf)
+  bf : files (weightPath dir "bf") = some (.arr W.bf)
+  layer : ∀ l < W.layers.length, ∀ f : Field,
+    files (weightPath dir s!"l{l}_{f.name}") = some (.arr (f.get W.layers[l]!))
+
+theorem wte_setup (files : String → Option Val) (dir : String) (W : Weights32) :
+    ∀ (n c0 : Nat) (st : Store) (is : List Item),
+      (∀ c, c0 ≤ c → c < c0 + n → files (weightPath dir s!"wte{c}") = some (.arr W.wte[c]!)) →
+      ∃ st', Item.execAll files st (((List.range' c0 n).map fun c =>
+          Item.load (.wte c) (weightPath dir s!"wte{c}")) ++ is) = Item.execAll files st' is ∧
+        (∀ c, c0 ≤ c → c < c0 + n → st' (.wte c) = some (.arr W.wte[c]!)) ∧
+        ∀ b, (∀ c, c0 ≤ c → c < c0 + n → b ≠ .wte c) → st' b = st b
+  | 0, c0, st, is, _ => ⟨st, by simp, fun c h1 h2 => by omega, fun _ _ => rfl⟩
+  | n + 1, c0, st, is, h => by
+    obtain ⟨st', he, hw, hf⟩ := wte_setup files dir W n (c0 + 1)
+      (st.set (.wte c0) (.arr W.wte[c0]!)) is (fun c h1 h2 => h c (by omega) (by omega))
+    refine ⟨st', ?_, ?_, ?_⟩
+    · simp only [List.range'_succ, List.map_cons, List.cons_append]
+      rw [Item.execAll_load (h c0 (le_refl _) (by omega)), he]
+    · intro c h1 h2
+      by_cases hc : c = c0
+      · subst hc
+        rw [hf _ (fun c' h1' _ => by simp; omega)]
+        simp [Store.set]
+      · exact hw c (by omega) (by omega)
+    · intro b hb
+      rw [hf b (fun c h1 h2 => hb c (by omega) (by omega)),
+        Store.set_ne (hb c0 (le_refl _) (by omega))]
+
+theorem layer_setup (files : String → Option Val) (dir : String) (l : Nat) (w : Layer32)
+    (st : Store) (is : List Item)
+    (h : ∀ f : Field, files (weightPath dir s!"l{l}_{f.name}") = some (.arr (f.get w))) :
+    ∃ st', Item.execAll files st (layerSetup dir l ++ is) = Item.execAll files st' is ∧
+      (∀ f : Field, st' (.layer l f) = some (.arr (f.get w))) ∧
+      st' (.kc l 0) = some (.arr #[]) ∧ st' (.vc l 0) = some (.arr #[]) ∧
+      ∀ b, (∀ f, b ≠ .layer l f) → b ≠ .kc l 0 → b ≠ .vc l 0 → st' b = st b := by
+  let L := Buf.layer l
+  let st' := st |>.set (L .g1) (.arr (Field.get w .g1)) |>.set (L .b1) (.arr (Field.get w .b1))
+    |>.set (L .wq) (.arr (Field.get w .wq)) |>.set (L .bq) (.arr (Field.get w .bq))
+    |>.set (L .wk) (.arr (Field.get w .wk)) |>.set (L .bk) (.arr (Field.get w .bk))
+    |>.set (L .wv) (.arr (Field.get w .wv)) |>.set (L .bv) (.arr (Field.get w .bv))
+    |>.set (L .wo) (.arr (Field.get w .wo)) |>.set (L .bo) (.arr (Field.get w .bo))
+    |>.set (L .g2) (.arr (Field.get w .g2)) |>.set (L .b2) (.arr (Field.get w .b2))
+    |>.set (L .wfc) (.arr (Field.get w .wfc)) |>.set (L .bfc) (.arr (Field.get w .bfc))
+    |>.set (L .wproj) (.arr (Field.get w .wproj)) |>.set (L .bproj) (.arr (Field.get w .bproj))
+    |>.set (.kc l 0) (.arr #[]) |>.set (.vc l 0) (.arr #[])
+  refine ⟨st', ?_, ?_, ?_, ?_, ?_⟩
+  · simp only [layerSetup, Field.all, List.map_cons, List.map_nil, List.cons_append,
+      List.nil_append]
+    rw [Item.execAll_load (h .g1), Item.execAll_load (h .b1), Item.execAll_load (h .wq),
+      Item.execAll_load (h .bq), Item.execAll_load (h .wk), Item.execAll_load (h .bk),
+      Item.execAll_load (h .wv), Item.execAll_load (h .bv), Item.execAll_load (h .wo),
+      Item.execAll_load (h .bo), Item.execAll_load (h .g2), Item.execAll_load (h .b2),
+      Item.execAll_load (h .wfc), Item.execAll_load (h .bfc), Item.execAll_load (h .wproj),
+      Item.execAll_load (h .bproj), Item.execAll_empty, Item.execAll_empty]
+  · intro f
+    cases f <;> simp [st', L, Store.set]
+  · simp [st', Store.set]
+  · simp [st', Store.set]
+  · intro b hl hk hv
+    dsimp only [st']
+    rw [Store.set_ne hv, Store.set_ne hk, Store.set_ne (hl _), Store.set_ne (hl _),
+      Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _),
+      Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _),
+      Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _), Store.set_ne (hl _),
+      Store.set_ne (hl _), Store.set_ne (hl _)]
+
+theorem layers_setup (files : String → Option Val) (dir : String) (ws : List Layer32) :
+    ∀ (n l0 : Nat) (st : Store) (is : List Item),
+      (∀ l, l0 ≤ l → l < l0 + n → ∀ f : Field,
+        files (weightPath dir s!"l{l}_{f.name}") = some (.arr (f.get ws[l]!))) →
+      ∃ st', Item.execAll files st ((List.range' l0 n).flatMap (layerSetup dir) ++ is) =
+          Item.execAll files st' is ∧
+        (∀ l, l0 ≤ l → l < l0 + n → (∀ f : Field, st' (.layer l f) = some (.arr (f.get ws[l]!))) ∧
+          st' (.kc l 0) = some (.arr #[]) ∧ st' (.vc l 0) = some (.arr #[])) ∧
+        ∀ b, (∀ l, l0 ≤ l → l < l0 + n → (∀ f, b ≠ .layer l f) ∧ b ≠ .kc l 0 ∧ b ≠ .vc l 0) →
+          st' b = st b
+  | 0, l0, st, is, _ => ⟨st, by simp, fun l h1 h2 => by omega, fun _ _ => rfl⟩
+  | n + 1, l0, st, is, h => by
+    obtain ⟨st1, he1, hw1, hk1, hv1, hf1⟩ := layer_setup files dir l0 ws[l0]! st
+      ((List.range' (l0 + 1) n).flatMap (layerSetup dir) ++ is) (h l0 (le_refl _) (by omega))
+    obtain ⟨st', he, hw, hf⟩ := layers_setup files dir ws n (l0 + 1) st1 is
+      (fun l h1 h2 => h l (by omega) (by omega))
+    refine ⟨st', ?_, ?_, ?_⟩
+    · simp only [List.range'_succ, List.flatMap_cons, List.append_assoc]
+      rw [he1, he]
+    · intro l h1 h2
+      by_cases hl : l = l0
+      · subst hl
+        have hs : ∀ b : Buf, (∀ l', l + 1 ≤ l' → l' < l + 1 + n →
+            (∀ f, b ≠ .layer l' f) ∧ b ≠ .kc l' 0 ∧ b ≠ .vc l' 0) →
+            st' b = st1 b := hf
+        refine ⟨fun f => ?_, ?_, ?_⟩
+        · rw [hs _ (fun l' h1' _ => ⟨fun f' e => by cases e; omega, by simp, by simp⟩)]
+          exact hw1 f
+        · rw [hs _ (fun l' h1' _ => ⟨by simp, fun e => by cases e; omega, by simp⟩)]
+          exact hk1
+        · rw [hs _ (fun l' h1' _ => ⟨by simp, by simp, fun e => by cases e; omega⟩)]
+          exact hv1
+      · exact hw l (by omega) (by omega)
+    · intro b hb
+      rw [hf b (fun l h1 h2 => hb l (by omega) (by omega))]
+      obtain ⟨h1, h2, h3⟩ := hb l0 (le_refl _) (by omega)
+      exact hf1 b h1 h2 h3
+
+/-- The setup program loads the weights and makes the empty caches of position 0. -/
+theorem setup_exec (files : String → Option Val) (dir : String) (s : Shape32) (W : Weights32)
+    (st : Store) (hL : Loaded files dir W) (hlay : W.layers.length = s.layers)
+    (hch : W.wte.length = s.rows.length) :
+    ∃ st', Item.execAll files st (setupItems s dir) = some st' ∧
+      Holds W 0 (List.replicate s.layers (#[], #[])) st' := by
+  obtain ⟨st1, he1, hw1, hf1⟩ := wte_setup files dir W s.rows.length 0 st
+    ([.load .wpe (weightPath dir "wpe"), .load .gf (weightPath dir "gf"),
+      .load .bf (weightPath dir "bf")] ++ (List.range' 0 s.layers).flatMap (layerSetup dir))
+    (fun c _ hc => hL.wte c (by omega))
+  let st2 := st1 |>.set .wpe (.arr W.wpe) |>.set .gf (.arr W.gf) |>.set .bf (.arr W.bf)
+  obtain ⟨st3, he3, hw3, hf3⟩ := layers_setup files dir W.layers s.layers 0 st2 []
+    (fun l _ hl => hL.layer l (by omega))
+  refine ⟨st3, ?_, ⟨fun c hc => ?_, ?_, ?_, ?_, fun l hl f => ?_, fun l hl => ?_⟩⟩
+  · simp only [setupItems, List.append_assoc, List.range_eq_range']
+    rw [he1, List.cons_append, List.cons_append, List.cons_append, List.nil_append,
+      Item.execAll_load hL.wpe, Item.execAll_load hL.gf, Item.execAll_load hL.bf,
+      ← List.append_nil ((List.range' 0 s.layers).flatMap (layerSetup dir)), he3]
+    rfl
+  · rw [hf3 _ (fun l _ _ => ⟨fun f => by simp, by simp, by simp⟩)]
+    dsimp only [st2]
+    rw [Store.set_ne (by simp), Store.set_ne (by simp), Store.set_ne (by simp)]
+    exact hw1 c (by omega) (by omega)
+  · rw [hf3 _ (fun l _ _ => ⟨fun f => by simp, by simp, by simp⟩)]
+    simp [st2, Store.set]
+  · rw [hf3 _ (fun l _ _ => ⟨fun f => by simp, by simp, by simp⟩)]
+    simp [st2, Store.set]
+  · rw [hf3 _ (fun l _ _ => ⟨fun f => by simp, by simp, by simp⟩)]
+    simp [st2, Store.set]
+  · exact (hw3 l (by omega) (by omega)).1 f
+  · simp only [List.length_replicate] at hl
+    obtain ⟨-, hk, hv⟩ := hw3 l (by omega) (by omega)
+    simp [hk, hv, hl]
+
+/-- The caches after the tokens `ts` at positions `p`, `p + 1`, and so on. -/
+def cachesAfter (s : Shape32) (W : Weights32) :
+    List UInt64 → Nat → List (Array Float32 × Array Float32) →
+      List (Array Float32 × Array Float32)
+  | [], _, cs => cs
+  | t :: ts, p, cs => cachesAfter s W ts (p + 1) (step32 s W t (UInt64.ofNat p) cs).1
+
+theorem ofNat_succ {p : Nat} : UInt64.ofNat p + 1 = UInt64.ofNat (p + 1) := by
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
+/-- The steps of `ts` from position `p` carry a store holding the weights and the caches of
+positions below `p` to one holding the caches after `ts`. -/
+theorem steps_exec (files : String → Option Val) (s : Shape32) (W : Weights32)
+    (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) :
+    ∀ (ts : List UInt64) (p : Nat) (cs : List (Array Float32 × Array Float32)) (st : Store),
+      p + ts.length ≤ 1024 → (∀ t ∈ ts, (t / s.chunk).toNat < s.rows.length) →
+      Fits s W cs → Holds W (UInt64.ofNat p) cs st →
+      ∃ st', Item.execAll files st (stepsItems s ts p) = some st' ∧
+        Holds W (UInt64.ofNat (p + ts.length)) (cachesAfter s W ts p cs) st' ∧
+        Fits s W (cachesAfter s W ts p cs)
+  | [], p, cs, st, _, _, hF, hH => ⟨st, rfl, by simpa [cachesAfter] using hH, hF⟩
+  | t :: ts, p, cs, st, hp, hts, hF, hH => by
+    have hB : Bounds s (UInt64.ofNat p) := ⟨hnh, hf, by simp at hp ⊢; omega⟩
+    obtain ⟨st1, he1, hH1, hF1, -⟩ :=
+      step_exec files s W t (UInt64.ofNat p) cs st hB hF (hts t (by simp)) hH
+    rw [ofNat_succ] at hH1
+    obtain ⟨st', he, hH', hF'⟩ := steps_exec files s W hnh hf ts (p + 1) _ st1
+      (by simp at hp; omega) (fun t' ht' => hts t' (by simp [ht'])) hF1 hH1
+    refine ⟨st', ?_, ?_, hF'⟩
+    · simp only [stepsItems]
+      rw [Item.execAll_append, he1, Option.bind_some, he]
+    · simpa [cachesAfter, Nat.add_assoc, Nat.add_comm 1] using hH'
+
+/-- After the setup and the steps of `ts`, the step of `t` at position `ts.length` leaves the
+scores of `step32` in the buffers `z c`, as words on the host, and every dispatch of the
+commands is race-free. -/
+theorem generate_host (files : String → Option Val) (dir : String) (s : Shape32)
+    (W : Weights32) (ts : List UInt64) (t : UInt64) (st : Store)
+    (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) (hlen : ts.length < 1024)
+    (hts : ∀ t' ∈ t :: ts, (t' / s.chunk).toNat < s.rows.length)
+    (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[]))) :
+    let cmds := Item.allCmds (setupItems s dir ++ stepsItems s ts 0 ++
+      stepItems s t (UInt64.ofNat ts.length))
+    let scores := (step32 s W t (UInt64.ofNat ts.length)
+      (cachesAfter s W ts 0 (List.replicate s.layers (#[], #[])))).2
+    ∃ st' : Store, Cmd.execAll (hostFiles files) st.host cmds = some st'.host ∧
+      Cmd.AllRaceFree (hostFiles files) st.host cmds ∧
+      scores.length = s.rows.length ∧
+      ∀ c < s.rows.length, st'.host (.z c) = some (Val.arr scores[c]!).buffer := by
+  intro cmds scores
+  obtain ⟨st1, he1, hH1⟩ := setup_exec files dir s W st hL hF.layers hF.chunks
+  obtain ⟨st2, he2, hH2, hF2⟩ := steps_exec files s W hnh hf ts 0 _ st1 (by omega)
+    (fun t' ht' => hts t' (by simp [ht'])) hF hH1
+  have hB : Bounds s (UInt64.ofNat ts.length) := ⟨hnh, hf, by simp; omega⟩
+  obtain ⟨st3, he3, -, -, hlen3, hz3⟩ := step_exec files s W t _ _ st2 hB hF2
+    (hts t (by simp)) (by simpa using hH2)
+  have he : Item.execAll files st (setupItems s dir ++ stepsItems s ts 0 ++
+      stepItems s t (UInt64.ofNat ts.length)) = some st3 := by
+    rw [Item.execAll_append, Item.execAll_append, he1, Option.bind_some, he2, Option.bind_some,
+      he3]
+  obtain ⟨hc, hr⟩ := Item.execAll_sim files _ st st3 he
+  exact ⟨st3, hc, hr, hlen3, fun c hc' => by simp [Store.host, hz3 c hc', scores]⟩
 
 end Project.Gpt32

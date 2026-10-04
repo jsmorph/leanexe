@@ -115,7 +115,7 @@ def wordItems (s : Shape32) (token p : UInt64) : List Item :=
    .float .nf d.toFloat32]
 
 /-- The scores of chunk `c`, which has `n` rows. -/
-def logitsItems (s : Shape32) (c : Nat) (n : UInt64) : List Item :=
+def logitsItems (c : Nat) (n : UInt64) : List Item :=
   [.word .rowCount n, .call .logits n.toNat (.z c) [.hf, .wte c, .rowCount, .width]]
 
 /-- Layer `l` at position `p`. -/
@@ -151,17 +151,27 @@ def stepItems (s : Shape32) (token p : UInt64) : List Item :=
   [.call .embed d .x [.wte (token / s.chunk).toNat, .wpe, .row, .pos, .width]] ++
   (List.range s.layers).flatMap (layerItems s p) ++
   [.call .layerNorm d .hf [.x, .gf, .bf, .width, .nf]] ++
-  (List.range s.rows.length).flatMap fun c => logitsItems s c s.rows[c]!
+  (List.range s.rows.length).flatMap fun c => logitsItems c s.rows[c]!
 
-/-- The weights from the files of `dir`, as `tests/gpt32/generate.py` writes them, and the empty
-caches of position 0. -/
+/-- The steps of the tokens `ts` at positions `p`, `p + 1`, and so on. -/
+def stepsItems (s : Shape32) : List UInt64 → Nat → List Item
+  | [], _ => []
+  | t :: ts, p => stepItems s t (UInt64.ofNat p) ++ stepsItems s ts (p + 1)
+
+/-- The file of the weight `name` in `dir`, as `tests/gpt32/generate.py` writes it. -/
+def weightPath (dir name : String) : String := s!"{dir}/{name}.bin"
+
+/-- The weights and the empty caches of layer `l`. -/
+def layerSetup (dir : String) (l : Nat) : List Item :=
+  (Field.all.map fun f => .load (.layer l f) (weightPath dir s!"l{l}_{f.name}")) ++
+  [.empty (.kc l 0), .empty (.vc l 0)]
+
+/-- The weights from the files of `dir`, and the empty caches of position 0. -/
 def setupItems (s : Shape32) (dir : String) : List Item :=
-  let file (name : String) := s!"{dir}/{name}.bin"
-  ((List.range s.rows.length).map fun c => .load (.wte c) (file s!"wte{c}")) ++
-  [.load .wpe (file "wpe"), .load .gf (file "gf"), .load .bf (file "bf")] ++
-  (List.range s.layers).flatMap fun l =>
-    (Field.all.map fun f => .load (.layer l f) (file s!"l{l}_{f.name}")) ++
-    [.empty (.kc l 0), .empty (.vc l 0)]
+  ((List.range s.rows.length).map fun c => .load (.wte c) (weightPath dir s!"wte{c}")) ++
+  [.load .wpe (weightPath dir "wpe"), .load .gf (weightPath dir "gf"),
+   .load .bf (weightPath dir "bf")] ++
+  (List.range s.layers).flatMap (layerSetup dir)
 
 def Item.lines (items : List Item) : List String :=
   items.flatMap fun i => i.cmds.map Cmd.line
