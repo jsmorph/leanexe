@@ -3,14 +3,15 @@ import Project.WGSL.RoundTrip
 import Project.Binary32.Verify
 
 /-!
-The kernels of `scale32`, `axpyArray32`, and `matVec32`, translated from their compiled IR.  Each
+The kernels of `scale32`, `axpyArray32`, `matVec32`, and `condMix32`, translated from their
+compiled IR.  Each
 kernel's dispatch theorem comes from `Spec.dispatch_eq` and the element lemma that the function's
 Wasm proof uses, and its text theorem from `Module.parse_print_of_wfb`.
 -/
 
 namespace Project.WGSL
 
-open Project.IR Project.Binary32 LeanExe.Examples.Binary32
+open Project.IR Project.Binary32 Project.ProofKit LeanExe.Examples.Binary32
 
 def scaleSpec : Spec :=
   { kinds := [.float, .array], index := 5, count := .size 2 1, vars := [], width := 6,
@@ -156,6 +157,89 @@ theorem matVecKernel_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m
   rw [show floatWords (matVec32 m v rows cols) = LeanExe.build rows
     (fun r => (row32 m v cols r).toBits.toUInt64) by
       simp [matVec32_eq, floatWords, build_map]]
+  exact h
+
+/-- The element of `condMix32`'s build. -/
+def condMixElement : Project.IR.Expr .u64 :=
+  let xi : Project.IR.Expr .f32 := .ofBits32 (.read 0 (.get 7))
+  let q : Project.IR.Expr .u64 := .bin .divU (.get 7) (.const 4)
+  let r : Project.IR.Expr .u64 := .bin .remU (.get 7) (.const 4)
+  let j : Project.IR.Expr .u64 := .bin .add (.bin .mul q (.const 4)) (.bin .sub (.const 3) r)
+  let mx : Project.IR.Expr .f32 := .iteF32 (.leF32 (.getF32 1) xi) xi (.getF32 1)
+  .toBits32 (.iteF32 (.ltF32 xi (.getF32 1))
+    (.iteF32 (.and (.leU r (.const 3)) (.ltU j (.get 3))) (.ofBits32 (.read 0 j)) mx)
+    (.iteF32 (.leF32 (.getF32 2) xi) (.getF32 2) mx))
+
+def condMixSpec : Spec :=
+  { kinds := [.array, .float, .float, .word], index := 7, count := .size 4 0, vars := [],
+    width := 8, body := .skip, element := condMixElement }
+
+theorem condMixSpec_body : binary32.condMix32.ir.body =
+    .seq (.arraySize 4 0) (.buildWith 5 6 condMixSpec.index (.get 4) condMixSpec.body
+      condMixSpec.element) := rfl
+
+theorem condMixSpec_wf : condMixSpec.WF := condMixSpec.wf_of_wfb (by decide)
+
+def condMixKernel : Module := (condMixSpec.module).getD ⟨0, 0, []⟩
+
+theorem condMixSpec_module : condMixSpec.module = some condMixKernel := rfl
+
+theorem condMixKernel_text : Module.parse condMixKernel.print = some condMixKernel :=
+  Module.parse_print_of_wfb _ (by decide)
+
+/-- Element `i` of `condMix32 x lo hi n`. -/
+def condMixAt (x : Array Float32) (lo hi : Float32) (n i : UInt64) : Float32 :=
+  if x[i.toNat]! < lo then
+    (if i % 4 ≤ 3 ∧ i / 4 * 4 + (3 - i % 4) < n then x[(i / 4 * 4 + (3 - i % 4)).toNat]!
+    else max lo x[i.toNat]!)
+  else if hi ≤ x[i.toNat]! then hi else max lo x[i.toNat]!
+
+theorem condMixElement_denote (x : Array Float32) (lo hi : Float32) (n i : UInt64)
+    (locals : Nat → Option Wasm.Value) (arrays : Nat → Option (Array UInt64))
+    (h1 : locals 1 = some (.f32 lo.toBits)) (h2 : locals 2 = some (.f32 hi.toBits))
+    (h3 : locals 3 = some (.i64 n)) (h7 : locals 7 = some (.i64 i))
+    (h0 : arrays 0 = some (floatWords x)) :
+    condMixElement.denote locals arrays = some (condMixAt x lo hi n i).toBits.toUInt64 := by
+  simp only [condMixElement, condMixAt, Expr.denote, h1, h2, h3, h7, h0, floatWords,
+    getElem!_map_toBits32, Option.bind_eq_bind, Option.bind_some, Option.pure_def,
+    Option.map_some, Option.some.injEq]
+  simp only [U64Op.apply, show (4 : UInt64) ≠ 0 by decide, ↓reduceIte]
+  generalize i / 4 * 4 + (3 - i % 4) = j
+  generalize x[j.toNat]! = xj
+  generalize x[i.toNat]! = xi
+  simp only [F32Bits.lt_iff, F32Bits.le_iff, apply_ite Float32.toBits, F32Bits.toBits_max]
+  cases ha : Wasm.IEEE32.lt xi.toBits lo.toBits <;>
+    cases hb : Wasm.IEEE32.le lo.toBits xi.toBits <;>
+    cases hc : Wasm.IEEE32.le hi.toBits xi.toBits <;>
+    by_cases hd1 : i % 4 ≤ 3 <;> by_cases hd2 : j < n <;>
+    simp [ha, hb, hc, hd1, hd2]
+
+/-- The kernel computes `condMix32 x lo hi n`, under the conditions of `scaleKernel_dispatch`. -/
+theorem condMixKernel_dispatch (x : Array Float32) (lo hi : Float32) (n : UInt64)
+    (hx : x.size < 2 ^ 29) (output : Array UInt32) (hOut : output.size = 2 + 2 * x.size)
+    (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
+    condMixKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.float lo.toBits).buffer,
+        (Arg.float hi.toBits).buffer, (Arg.word n).buffer] output count =
+        some (arrayWords (floatWords (condMix32 x lo hi n))) ∧
+      condMixKernel.RaceFree [(Arg.array (floatWords x)).buffer, (Arg.float lo.toBits).buffer,
+        (Arg.float hi.toBits).buffer, (Arg.word n).buffer] output.size count := by
+  have hfits : condMixSpec.Fits [.array (floatWords x), .float lo.toBits, .float hi.toBits,
+      .word n] (floatWords x).size :=
+    ⟨rfl, by simp; omega, ⟨_, rfl, rfl⟩, by simpa using hx⟩
+  have h := condMixSpec.dispatch_eq condMixSpec_wf condMixKernel condMixSpec_module _ _ hfits
+    (fun i => (condMixAt x lo hi n i).toBits.toUInt64)
+    (fun k _ => ⟨_, rfl, condMixElement_denote x lo hi n _ _ _
+      (by simp [Spec.locals, condMixSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, condMixSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, condMixSpec, Count.sizeLocal?])
+      (by simp [Spec.locals, condMixSpec])
+      (by simp [Spec.arrays])⟩)
+    output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
+  simp only [List.map_cons, List.map_nil] at h
+  rw [show floatWords (condMix32 x lo hi n) = LeanExe.build (UInt64.ofNat (floatWords x).size)
+    (fun i => (condMixAt x lo hi n i).toBits.toUInt64) by
+      simp [condMix32, floatWords, build_map, condMixAt]]
   exact h
 
 end Project.WGSL

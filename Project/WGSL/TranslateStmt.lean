@@ -154,36 +154,6 @@ theorem Env.find_set_ne (env : Env) {w w' : Nat} (v : Value) (hne : w' ≠ w) :
           rw [Env.find_cons_self, Env.find_cons_self]
         · rw [Env.find_cons_ne _ n w' val flag hx', Env.find_cons_ne _ n w' val flag hx', ih]
 
-theorem Env.set_fresh (env : Env) (w : Nat) (v : Value) (h : ∀ b ∈ env, b.1 ≠ w) :
-    env.set w v = env := by
-  induction env with
-  | nil => rfl
-  | cons x env ih =>
-      simp only [Env.set, List.map_cons, List.cons.injEq]
-      exact ⟨by simp [h x (by simp)], ih fun b hb => h b (by simp [hb])⟩
-
-theorem Env.set_append (a b : Env) (w : Nat) (v : Value) :
-    (a ++ b).set w v = a.set w v ++ b.set w v := by
-  simp [Env.set]
-
-/-- The names of an environment that is free from `n` up are below `n`. -/
-theorem names_lt {env : Env} {n : Nat} (h : ∀ k, n ≤ k → env.find k = none) :
-    ∀ b ∈ env, b.1 < n := by
-  intro b hb
-  by_contra hlt
-  have := h b.1 (by omega)
-  simp only [Env.find, Option.map_eq_none_iff, List.find?_eq_none] at this
-  exact this b hb (by simp)
-
-theorem find_none_of_names {env : Env} {n : Nat} (h : ∀ b ∈ env, b.1 < n) :
-    ∀ k, n ≤ k → env.find k = none := by
-  intro k hk
-  simp only [Env.find, Option.map_eq_none_iff, List.find?_eq_none]
-  intro b hb
-  have := h b hb
-  simp only [decide_eq_true_eq]
-  omega
-
 theorem Env.Shape.names {a b : Env} (h : Env.Shape a b) : ∀ x ∈ a, ∃ y ∈ b, y.1 = x.1 := by
   intro x hx
   have : (x.1, x.2.2) ∈ b.map (fun x => (x.1, x.2.2)) := by
@@ -232,89 +202,6 @@ def StmtSim (F : Layout) (L' : Nat → Option Wasm.Value) (arrays : Nat → Opti
   ∃ added E, Stmt.execList ctx ⟨env, writes, false⟩ stmts = some ⟨added ++ E, writes, false⟩ ∧
     Env.Shape E env ∧ (∀ b ∈ added, next ≤ b.1 ∧ b.1 < next') ∧
     F.Agrees L' arrays ctx E ∧ F.Writable E
-
-theorem trExpr_mono (F : Layout) : ∀ {type : Project.IR.ScalarType} (e : Project.IR.Expr type)
-    (next : Nat) (stmts : List Stmt) (res next' : Nat),
-    trExpr F e next = some (stmts, res, next') → next ≤ next' := by
-  intro type e
-  induction e with
-  | get j | getF32 j =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.map_eq_some_iff] at h
-      obtain ⟨_, _, h⟩ := h
-      cases h; omega
-  | const c =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.some.injEq, Prod.mk.injEq] at h
-      omega
-  | constF32 bits =>
-      intro next stmts res next' h
-      simp only [trExpr] at h
-      split at h
-      · cases h
-      · simp only [Option.some.injEq, Prod.mk.injEq] at h; omega
-  | bin op left right ihl ihr =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.bind_eq_bind] at h
-      cases hop : U64Op.wgsl? op with
-      | none => simp [hop] at h
-      | some f =>
-        cases hl : trExpr F left next with
-        | none => simp [hop, hl] at h
-        | some rl =>
-          obtain ⟨sl, vl, n1⟩ := rl
-          cases hr : trExpr F right n1 with
-          | none => simp [hop, hl, hr] at h
-          | some rr =>
-            obtain ⟨sr, vr, n2⟩ := rr
-            simp only [hop, hl, hr, Option.bind_some, Option.pure_def, Option.some.injEq,
-              Prod.mk.injEq] at h
-            have := ihl _ _ _ _ hl
-            have := ihr _ _ _ _ hr
-            omega
-  | ltU left right ihl ihr | binF32 _ left right ihl ihr =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.bind_eq_bind] at h
-      cases hl : trExpr F left next with
-      | none => simp [hl] at h
-      | some rl =>
-        obtain ⟨sl, vl, n1⟩ := rl
-        cases hr : trExpr F right n1 with
-        | none => simp [hl, hr] at h
-        | some rr =>
-          obtain ⟨sr, vr, n2⟩ := rr
-          simp only [hl, hr, Option.bind_some, Option.pure_def, Option.some.injEq,
-            Prod.mk.injEq] at h
-          have := ihl _ _ _ _ hl
-          have := ihr _ _ _ _ hr
-          omega
-  | unF32 _ operand ih | ofBits32 operand ih | toBits32 operand ih =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.bind_eq_bind] at h
-      cases ho : trExpr F operand next with
-      | none => simp [ho] at h
-      | some ro =>
-        obtain ⟨so, vo, n1⟩ := ro
-        simp only [ho, Option.bind_some, Option.pure_def, Option.some.injEq, Prod.mk.injEq] at h
-        have := ih _ _ _ _ ho
-        omega
-  | read array position ih =>
-      intro next stmts res next' h
-      simp only [trExpr, Option.bind_eq_bind] at h
-      cases hF : F.array array with
-      | none => simp [hF] at h
-      | some bl =>
-        cases hp : trExpr F position next with
-        | none => simp [hF, hp] at h
-        | some rp =>
-          obtain ⟨sp, vp, n1⟩ := rp
-          simp only [hF, hp, Option.bind_some, Option.pure_def, Option.some.injEq,
-            Prod.mk.injEq] at h
-          have := ih _ _ _ _ hp
-          omega
-  | _ =>
-      intro next stmts res next' h
-      simp [trExpr] at h
 
 theorem trStmt_mono (F : Layout) :
     ∀ (s : Project.IR.Stmt) (next : Nat) (stmts : List Stmt) (next' : Nat),

@@ -24556,10 +24556,38 @@ I recommend L1 and H1 to reach a working model, then H2, and L2 if bandwidth lim
 The binary32 kernels need no Wasm theorems: a dispatch theorem rests on the element lemma over
 `Expr.denote` and `Stmt.denote` alone.
 
-- [ ] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
+- [x] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
   conditions, with simulation lemmas and GPU tests.
 - [ ] G2: the binary32 `exp` and the cached step's kernels in Lean, compiled, translated, and
   proved, with tests against native Lean on small configurations.
 - [ ] G3: the host session and the Python driver: logits equal native Lean's binary32 step on both
   drivers, a comparison with Hugging Face's float32 model, and greedy generation.
 - [ ] G4: the dispatch program and its composition theorem.
+
+### GPT-2 on WGSL, step G1: conditionals, subtraction, and power-of-two division
+
+`Expr.denote` now covers `bconst`, every `u64` operation, `eq`, `ne`, `leU`, `not`, `and`, `or`,
+`ite`, `iteF32`, and the binary32 comparisons.  `Expr.eval_denote` covers each of them, with
+`divU` and `remU` evaluating their operands in the two scratch locals as `Expr.eval` does.
+`Project/WGSL/Pair.lean` adds `sub64`, `eq64`, `le64`, `divPow2`, and `remPow2`.  Division of a
+pair by `2^s` with `1 ≤ s ≤ 31` divides the high half and moves its remainder into the low half
+with `u32` division and multiplication, and the proofs split `s` into its 31 values where the
+powers must be literals for `omega`.  `U64Op.wgsl?` translates division and remainder only by such a
+constant.
+
+`trExpr` translates a conditional (`ite`, `iteF32`, `and`, `or`) into a `var` declared with a zero
+of its type and an `if` whose taken branch computes its value and assigns it, so only that branch
+runs, and the simulation follows the denotation.  `simulates_cond` and `branch_assign` hold the
+steps the four constructs share.  `trExpr_mono`, `names_lt`, and the `Env.set` lemmas moved into
+`Translate.lean`, which needs them first.
+
+`condMix32` exercises the new constructs: a nested binary32 conditional, a conjunction of `u64`
+comparisons, division and remainder by 4, subtraction, and `max`.  The compiler accepts a Prop
+conjunction in a condition but no Bool `&&`, and no array size inside a branch, so the program
+takes its bound as a parameter.  `condMixKernel_dispatch` proves its kernel from
+`condMixElement_denote`, and `tests/wgsl/run.sh` adds 120 cases, with bounds that make the mirror
+read reach past the array and a bound whose high half is nonzero.  All 420 cases pass on
+SwiftShader and llvmpipe.
+
+- [x] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
+  conditions, with simulation lemmas and GPU tests.
