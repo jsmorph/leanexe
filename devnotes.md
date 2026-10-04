@@ -23802,3 +23802,71 @@ full build passed with no `sorry`, and every other module emits the same bytes a
 listed `Project.Trees.MovesVerify`, where `splitRoot_children` lives, and the entry now lists
 it.
 Item 10 is complete.
+
+### Item 11: a copy for trees, analysis
+
+Under unique ownership a tree that a call consumes and the code uses again needs a copy, and the
+compiler rejects such programs: `(t.incr, t)`, `(t.incr, t.size)`, and `(t.incr, t.incr)` fail
+with "the value t is used after the code moved it".  A copy written in Lean,
+`copyFn : .node l k r => .node (copyFn l) k (copyFn r)`, infers an owned parameter and rebuilds
+its argument in place, so `(copyFn t, t)` fails the same way.  On 2026-10-03 the user decided that
+trees get a copy after arrays, in the form of a function the compiler generates for each recursive
+type, under the depth guard.
+
+The copy of a value of type `T` is an internal function `T.copy` with the pointer and the depth as
+parameters: the guard, then 0 for the null pointer, and for a record the loads of its slots, a call
+of `T.copy` at the depth plus one on each child, and a new record (`Stmt.record`) with the words and
+the copies.  That is the code the translator emits for `.node (copy l) k (copy r)` with a borrowed
+parameter.  The copy has no Lean definition: its theorem is `Rebuilds` for the identity on a
+borrowed `T`, a new value equal to the input in fresh records, and `Func.rebuildRecursion` proves
+it with `Stmt.record_spec` as in `insert_rec`.  A call from a recursive body enters it at the depth
+plus one, as decided for item 6, and other code at depth 0.
+
+### Item 11: approaches
+
+| Approach | What it does | Effect |
+|----------|--------------|--------|
+| A. Generated IR | The compiler builds `T.copy`'s IR from the type's record layout, appends it as an internal function to a module that needs it, and inserts a call where an owned tree position receives a tree the code may not move; one theorem per type, stated for any module that holds the function | `(t.incr, t)` and the other three compile |
+| B. A generated Lean definition | The command adds a Lean definition of the copy and compiles it with its parameter forced to borrowed | The same code, through the translator, with a mode override |
+| C. A with copies only at call positions | As A, but pair parts and other owned positions keep rejecting | `(t.incr, t)` still fails |
+
+Recommendation: A, with copies where item 8 copies arrays: call positions and pair parts.  A keeps
+the mode inference free of overrides, and the copy's IR is a fixed function of the layout, about
+as long as the code that emits a record.  Programs in `treeMoves`: `keepOld t := (t.incr, t)` and
+`incrSize t := (t.incr, t.size)`, with `KeyTree.copy`'s theorem.
+
+- [x] 11a: the copy's IR and its insertion; scratch checks and the byte comparison.
+- [ ] 11b: `KeyTree.copy`'s theorem, the two programs, and their theorems; tests, LTG, journal.
+
+### Review of the item 11 plan
+
+One reviewer prototyped A in a renamed copy of the compiler, ran 360 comparisons in Wasmtime, and
+proved the copy's theorem.  I read its comparison, which reports the same bytes for all 22
+modules and identical `ir` and `hints` definitions, and reran its proof, which depends only on
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+| Finding | Response |
+|---------|----------|
+| A is better than B: B needs a generated declaration, a mode override, and a way around the entry that a recursive definition gets | A |
+| The module command counts the internal functions first and appends each copy function after them in the order of first use, which renumbers nothing | Adopted |
+| Copies go in at owned call positions, at a tree value that is not owned (where the compiler reported "a borrowed value ... may not be returned or stored"), and in pair parts, with `Ctx.before` and the pair rule of `moveSites` extended to trees | Adopted |
+| More than 30 probes found no unsound program: a copy of a value that an earlier part moved, rewrote, or released fails, and copies inside recursive bodies take the depth plus one | No change |
+| `Rebuilds` for the identity on a borrowed `KeyTree` states the copy, and one theorem holds for any module that holds the function, with one new lemma for a record built from two values | `copy_rec`, `Heap.Rebuilt.newNode` |
+| The copy's IR should be defined once, for the compiler and the theorem | `Func.copy` in `Project/IR/Copy.lean` |
+| The copy function needs the frame-limit check, and a child of another recursive type is out of scope | Added |
+| `treeMoves` has no `size` | `addSelf t := addRoot t t` in place of `incrSize` |
+
+### Item 11, step 11a: the compiler
+
+`Func.copy children index`, in `Project/IR/Copy.lean`, is the copy function's IR for a record
+layout (`true` for a child, `false` for a word), and `seqAll` and `recursionDepthLimit` moved there
+and into `Project/IR/Stmt.lean` from the compiler.  `copyLayout` reads a type's layout and checks
+the frame limit, and the module command defines `M.T.copy.ir` as `Func.copy layout index` after
+the internal functions.  `emitCopy` calls it at depth 0, or at the depth plus one in a recursive
+body, where an owned call position or a value position receives a tree the code may not move, and
+`Ctx.before` and the pair rule of `moveSites` restrict trees as they restrict arrays.  Beyond the
+prototype, `moveSites` no longer counts a move at an owned call position when another array or
+tree argument of the call names the value, since that position receives a copy.  Without it,
+`addSelf` owned `t`, copied it, and released it at the end.  `keepOld` and `addSelf` compile with
+one copy each, and the copy function equals `Func.copy [true, false, true] 11` by `rfl`.  The full
+build passed with no `sorry`, and all 22 modules emit the same bytes as before.

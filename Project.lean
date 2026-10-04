@@ -75,6 +75,7 @@ import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.Recursion
 import Project.IR.Record
+import Project.IR.Copy
 import Project.IR.Release
 import Project.IR.Run
 import Project.IR.Stmt

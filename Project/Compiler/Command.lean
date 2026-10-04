@@ -23,7 +23,7 @@ def elabLeanexeCompile : CommandElab
       let funcEntry := mkApp2 (mkConst ``Prod [Level.zero, Level.zero]) (mkConst ``Func)
         (mkConst ``String)
       liftTermElabM do
-        let (func, hints, _, _) ← compileDefinition sourceName
+        let (func, hints, _, _, _, _) ← compileDefinition sourceName
         addDefinition (base ++ `ir) (mkConst ``Func) (funcToExpr func)
         let entry := mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero]) (mkConst ``Func)
           (mkConst ``String) (mkConst (base ++ `ir)) (toExpr exportName)
@@ -58,6 +58,10 @@ def elabLeanexeCompileModule : CommandElab
         let mut internals := []
         let mut owners := []
         let mut nextInternal := 2 + names.size
+        -- The copy functions follow the internal functions, in the order of their first use.
+        let internalCount := (← names.filterM fun name => needsInternal name).size
+        let mut copies : List (Name × Nat) := []
+        let mut nextCopy := 2 + names.size + internalCount
         -- What a recursive body may call: each recursive definition's internal function, and
         -- the leaves.
         let mut recInternals := []
@@ -69,8 +73,11 @@ def elabLeanexeCompileModule : CommandElab
               nextInternal := nextInternal + 1
               pure (some index)
             else pure none
-          let (func, hints, owned, rec_) ←
-            compileDefinition name callees owners internal recInternals leaves
+          let (func, hints, owned, rec_, copies', nextCopy') ←
+            compileDefinition name callees owners internal recInternals leaves copies
+              (some nextCopy)
+          copies := copies'
+          nextCopy := nextCopy'.getD nextCopy
           owners := (name, owned) :: owners
           match internal with
           | some index => recInternals := (name, index) :: recInternals
@@ -87,6 +94,16 @@ def elabLeanexeCompileModule : CommandElab
               (toExpr recHints)
             internals := internals ++ [mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero])
               (mkConst ``Func) (mkConst ``String) (mkConst recName) (toExpr (short ++ ".rec"))]
+        for (type, index) in copies do
+          let (children, copyHints) ← copyLayout type
+          let short := type.getString!
+          let copyName := base ++ Name.mkSimple short ++ `copy ++ `ir
+          addDefinition copyName (mkConst ``Func)
+            (mkApp2 (mkConst ``Func.copy) (toExpr children) (toExpr index))
+          addDefinition (base ++ Name.mkSimple short ++ `copy ++ `hints) (mkConst ``Hints)
+            (toExpr copyHints)
+          internals := internals ++ [mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero])
+            (mkConst ``Func) (mkConst ``String) (mkConst copyName) (toExpr (short ++ ".copy"))]
         entries := entries ++ internals
         let list := entries.foldr (init := mkApp (mkConst ``List.nil [Level.zero]) funcEntry)
           fun entry rest => mkApp3 (mkConst ``List.cons [Level.zero]) funcEntry entry rest
