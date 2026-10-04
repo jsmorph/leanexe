@@ -8,7 +8,8 @@ build/gpt32/gpt32.wasm on the CPU.
 
 Run with `uv run tests/gpt32/serve.py [--host H] [--port P]` and open http://127.0.0.1:8001/.
 The server needs the weight files that tests/gpt32/generate.py writes to build/gpt2-32; it emits
-the kernels and gpt32.wasm and builds the program printer `gpt32-lines` when they are missing.
+the kernels, gpt32.wasm, and the sampler's module gpt.wasm, and builds the program printer
+`gpt32-lines`, when they are missing.
 The page gets each step's host commands from `gpt32-lines`, which prints the programs of
 Project/Gpt32/Program.lean, the commands of `Project.Gpt32.generate_host`.  The server tokenizes
 and decodes with the pinned GPT-2 tokenizer.  Browsers expose WebGPU only to secure contexts, which
@@ -31,6 +32,7 @@ PAGE = ROOT / 'tests/gpt32/browser'
 WEIGHTS = ROOT / 'build/gpt2-32'
 WGSL = ROOT / 'build/wgsl'
 WASM = ROOT / 'build/gpt32/gpt32.wasm'
+SAMPLER = ROOT / 'build/gpt/gpt.wasm'
 LINES = ROOT / '.lake/build/bin/gpt32-lines'
 REPO = 'openai-community/gpt2'
 REVISION = '607a30d783dfa663caf39e06633721c8d4cfcd7e'
@@ -58,6 +60,10 @@ def prepare():
         WASM.parent.mkdir(parents=True, exist_ok=True)
         leanrun('lake', 'env', 'lean', '--run', 'Project/Pipeline/Emit.lean', 'Project.Gpt32.Module',
                 'Project.Gpt32.gpt32.module', str(WASM))
+    if not SAMPLER.is_file():
+        SAMPLER.parent.mkdir(parents=True, exist_ok=True)
+        leanrun('lake', 'env', 'lean', '--run', 'Project/Pipeline/Emit.lean', 'Project.Gpt.Module',
+                'Project.Gpt.gpt.module', str(SAMPLER))
     if not LINES.is_file():
         leanrun('lake', 'build', 'gpt32-lines')
 
@@ -127,6 +133,8 @@ def handler(lines, tokenizer):
                     self.send_file(WGSL / f'{m.group(1)}.wgsl')
                 elif path == '/gpt32.wasm':
                     self.send_file(WASM)
+                elif path == '/sampler.wasm':
+                    self.send_file(SAMPLER)
                 elif m := re.fullmatch(r'/weights/([A-Za-z0-9_]+)\.bin', path):
                     self.send_file(WEIGHTS / f'{m.group(1)}.bin')
                 elif path == '/api/tokenize':

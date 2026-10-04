@@ -33,6 +33,7 @@ section { background: var(--panel); border: 1px solid var(--line); border-radius
 select, button, input { font: inherit; padding: 6px 10px; border-radius: 6px;
   border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
 input[type="number"] { width: 6em; }
+#seed { width: 12em; }
 button { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; }
 button.secondary { background: var(--panel); color: var(--fg); border-color: var(--line); }
 button:disabled { opacity: 0.5; cursor: default; }
@@ -55,7 +56,10 @@ code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
 <body>
 <main>
 <h1>GPT-2 in Binary32</h1>
-<p class="muted">GPT-2 124M, greedy decoding.  Each token runs the host commands of
+<p class="muted">GPT-2 124M.  Without a seed, each token is the largest score's.  With a seed,
+each token is drawn by top-k sampling with <code>sampleTopK</code> of <code>gpt.wasm</code>, whose
+Wasm <code>sampleTopK_implements</code> proves, starting from the seed as the generator's state.
+Each token runs the host commands of
 <code>Project/Gpt32/Program.lean</code>, which <code>generate_host</code> proves compute
 <code>step32</code> on a device with strict binary32 arithmetic.  WGSL lets a device flush
 subnormal values to zero and fuse multiplications with additions, and the comparison shows the
@@ -89,6 +93,12 @@ together run every step on each and compare the scores bit for bit; the tokens f
 <div class="controls">
   <label for="tokens">Tokens</label>
   <input id="tokens" type="number" min="1" max="1000" value="32">
+  <label for="seed">Seed</label>
+  <input id="seed" type="text" inputmode="numeric" placeholder="none: greedy" size="12">
+  <label for="topk">Top-k</label>
+  <input id="topk" type="number" min="1" max="50257" value="50">
+  <label for="temperature">Temperature</label>
+  <input id="temperature" type="number" min="0.01" step="0.1" value="1.0">
   <button id="generate" disabled>Generate</button>
   <button id="stop" class="secondary" disabled>Stop</button>
   <span id="status" role="status" aria-live="polite"></span>
