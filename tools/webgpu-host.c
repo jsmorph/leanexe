@@ -583,8 +583,7 @@ static void session(Gpu *gpu) {
     } else if (strcmp(command, "free") == 0 && count == 2) {
       Entry *buffer = need_buffer(words[1]);
       wgpuBufferRelease(buffer->buffer);
-      buffer->buffer = NULL;
-      buffer->bytes = 0;
+      *buffer = entries_[--entryCount_];
     } else {
       fprintf(stderr, "bad command: %s\n", command);
       exit(1);

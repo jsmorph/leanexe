@@ -198,6 +198,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--driver', choices=DRIVERS, default='llvmpipe')
     parser.add_argument('--tokens', type=int, default=32)
+    parser.add_argument('--save', help='writes the scores of each step to this .npy file')
     parser.add_argument('prompt', nargs='?', default='The meaning of life is')
     args = parser.parse_args()
     tokenizer = GPT2TokenizerFast.from_pretrained(REPO, revision=REVISION)
@@ -213,11 +214,13 @@ def main():
     print(f'loaded in {time.time() - start:.1f} s', flush=True)
     worst = 0.0
     differ = 0
+    saved = []
     start = time.time()
     for p in range(len(ids) + args.tokens - 1):
         scores = step(s, ids[p], p)
         if p + 1 < len(ids):
             continue
+        saved.append(scores)
         with torch.no_grad():
             reference = model(torch.tensor([ids[:p + 1]])).logits[0, -1].numpy()
         rel = float(np.max(np.abs(scores - reference)) / np.max(np.abs(reference)))
@@ -231,6 +234,8 @@ def main():
         ids.append(token)
     elapsed = time.time() - start
     s.close()
+    if args.save:
+        np.save(args.save, np.stack(saved))
     print(tokenizer.decode(ids))
     print(f'{len(ids)} tokens, {elapsed:.1f} s for {len(ids) - 1} steps on {args.driver}; '
           f'largest relative score difference {worst:.3g}; {differ} choices differ from '
