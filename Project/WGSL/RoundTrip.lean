@@ -99,6 +99,7 @@ theorem classify_let : classify "let" = .kw "let" := rfl
 theorem classify_var : classify "var" = .kw "var" := rfl
 theorem classify_if : classify "if" = .kw "if" := rfl
 theorem classify_return : classify "return" = .kw "return" := rfl
+theorem classify_while : classify "while" = .kw "while" := rfl
 theorem classify_brace : classify "}" = .kw "}" := rfl
 
 theorem parseOp_token (op : BinOp) : parseOp op.token = some op := by cases op <;> rfl
@@ -222,6 +223,7 @@ mutual
     | .let_ _ _ e | .var _ _ e | .assign _ e => e.size + 1
     | .store _ p e => p.size + e.size + 1
     | .ite c ts es => c.size + Stmt.listSize ts + Stmt.listSize es + 1
+    | .while_ c body => c.size + Stmt.listSize body + 1
     | .ret => 1
 
   def Stmt.listSize : List Stmt → Nat
@@ -234,6 +236,7 @@ mutual
     | .let_ n _ e | .var n _ e | .assign n e => n < 2 ^ 32 ∧ e.WF
     | .store b p e => b < 2 ^ 32 ∧ p.WF ∧ e.WF
     | .ite c ts es => c.WF ∧ Stmt.ListWF ts ∧ Stmt.ListWF es
+    | .while_ c body => c.WF ∧ Stmt.ListWF body
     | .ret => True
 
   def Stmt.ListWF : List Stmt → Prop
@@ -258,6 +261,7 @@ theorem Stmt.tokens_head (s : Stmt) : ∃ t r, s.tokens = t :: r ∧ t ≠ "}" :
   | assign n e => exact ⟨_, _, rfl, varToken_ne_brace n⟩
   | store b p e => exact ⟨_, _, rfl, bufToken_ne_brace b⟩
   | ite c ts es => exact ⟨_, _, rfl, by decide⟩
+  | while_ c body => exact ⟨_, _, rfl, by decide⟩
   | ret => exact ⟨_, _, rfl, by decide⟩
 
 mutual
@@ -291,6 +295,12 @@ mutual
               (Stmt.listTokens es ++ "}" :: rest))).head? ≠ some "."),
           Stmt.parse_listTokens ts hwf.2.1 fuel (by omega),
           Stmt.parse_listTokens es hwf.2.2 fuel (by omega)]
+    | .while_ c body, hwf, fuel + 1, hf, rest => by
+        simp only [Stmt.WF, Stmt.size] at hwf hf
+        simp [Stmt.tokens, parseStmt, classify_while, expect,
+          Expr.parse_tokens c hwf.1 fuel (by omega) _
+            (by simp : ("{" :: (Stmt.listTokens body ++ "}" :: rest)).head? ≠ some "."),
+          Stmt.parse_listTokens body hwf.2 fuel (by omega)]
     | .ret, _, fuel + 1, _, rest => by
         simp [Stmt.tokens, parseStmt, classify_return]
 
@@ -371,6 +381,11 @@ mutual
         have := c.size_le
         have := Stmt.listSize_le ts
         have := Stmt.listSize_le es
+        simp [Stmt.size, Stmt.tokens]
+        omega
+    | .while_ c body => by
+        have := c.size_le
+        have := Stmt.listSize_le body
         simp [Stmt.size, Stmt.tokens]
         omega
     | .ret => by simp [Stmt.size, Stmt.tokens]
@@ -467,6 +482,9 @@ mutual
     | .ite c ts es => by
         simp (config := { decide := true }) [Stmt.tokens, List.all_append, List.all_cons,
           Expr.good, Stmt.listGood ts, Stmt.listGood es]
+    | .while_ c body => by
+        simp (config := { decide := true }) [Stmt.tokens, List.all_append, List.all_cons,
+          Expr.good, Stmt.listGood body]
     | .ret => by decide
 
   theorem Stmt.listGood : ∀ ss : List Stmt, (Stmt.listTokens ss).all good = true
@@ -542,6 +560,7 @@ mutual
     | .let_ n _ e | .var n _ e | .assign n e => decide (n < 2 ^ 32) && e.wfb
     | .store b p e => decide (b < 2 ^ 32) && p.wfb && e.wfb
     | .ite c ts es => c.wfb && Stmt.listWfb ts && Stmt.listWfb es
+    | .while_ c body => c.wfb && Stmt.listWfb body
     | .ret => true
 
   def Stmt.listWfb : List Stmt → Bool
@@ -560,6 +579,9 @@ mutual
     | .ite c ts es, h => by
         simp only [Stmt.wfb, Bool.and_eq_true] at h
         exact ⟨Expr.wf_of_wfb c h.1.1, Stmt.listWf_of_wfb ts h.1.2, Stmt.listWf_of_wfb es h.2⟩
+    | .while_ c body, h => by
+        simp only [Stmt.wfb, Bool.and_eq_true] at h
+        exact ⟨Expr.wf_of_wfb c h.1, Stmt.listWf_of_wfb body h.2⟩
     | .ret, _ => trivial
 
   theorem Stmt.listWf_of_wfb : ∀ ss : List Stmt, Stmt.listWfb ss = true → Stmt.ListWF ss

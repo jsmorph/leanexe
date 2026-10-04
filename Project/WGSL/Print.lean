@@ -71,6 +71,8 @@ mutual
     | .ite condition thenStmts elseStmts =>
         ["if"] ++ condition.tokens ++ ["{"] ++ Stmt.listTokens thenStmts ++ ["}", "else", "{"] ++
           Stmt.listTokens elseStmts ++ ["}"]
+    | .while_ condition body =>
+        ["while"] ++ condition.tokens ++ ["{"] ++ Stmt.listTokens body ++ ["}"]
     | .ret => ["return", ";"]
 
   def Stmt.listTokens : List Stmt → List String

@@ -9,7 +9,9 @@ on the initial buffers and applies each invocation's stores to the output in ord
 stores of distinct invocations go to distinct words (`Module.RaceFree`), the order does not
 matter, and WGSL's memory model gives the same result for the concurrent execution.  Every error
 here, an ill-typed operation, an access outside a buffer, or a read of the output, makes the
-result `none`.
+result `none`.  So does a `while` loop whose condition still holds after `loopBound` tests.  A run
+that ends within the bound is also a run of WGSL's unbounded loop, so a theorem that a result is
+`some` holds for WGSL.
 -/
 
 namespace Project.WGSL
@@ -126,6 +128,17 @@ structure Run where
   writes : List (Nat × UInt32)
   returned : Bool
 
+/-- The bound on the tests of a loop's condition. -/
+def loopBound : Nat := 2 ^ 64
+
+/-- At most `fuel` tests of a loop's condition, each followed, while the condition holds, by a
+run of the body; a `return` in the body ends the loop. -/
+def loopRuns (test : Run → Option Bool) (body : Run → Option Run) : Nat → Run → Option Run
+  | 0, _ => none
+  | fuel + 1, run =>
+      if run.returned then some run
+      else do if (← test run) then loopRuns test body fuel (← body run) else some run
+
 mutual
   /-- One statement. -/
   def Stmt.exec (ctx : Context) (run : Run) : Stmt → Option Run
@@ -151,6 +164,14 @@ mutual
         let inner ← if cv then Stmt.execList ctx run ts else Stmt.execList ctx run es
         -- Declarations inside the block go out of scope; assignments to outer variables stay.
         some { inner with env := inner.env.drop (inner.env.length - run.env.length) }
+    | .while_ c body =>
+        loopRuns
+          (fun r => match c.eval ctx r.env with
+            | some (.bool b) => some b
+            | _ => none)
+          (fun r => (Stmt.execList ctx r body).map fun inner =>
+            { inner with env := inner.env.drop (inner.env.length - r.env.length) })
+          loopBound run
     | .ret => some { run with returned := true }
 
   /-- Statements in order; those after a `return` do nothing. -/

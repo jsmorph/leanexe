@@ -212,5 +212,6 @@ import Project.WGSL.Semantics
 import Project.WGSL.Kernel
 import Project.WGSL.Pair
 import Project.WGSL.Translate
+import Project.WGSL.TranslateStmt
 import Project.WGSL.Build
 import Project.WGSL.Binary32
