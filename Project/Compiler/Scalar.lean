@@ -35,10 +35,18 @@ def isUInt64 (type : Lean.Expr) : MetaM Bool := do
 def isFloat (type : Lean.Expr) : MetaM Bool := do
   return (← whnfR type).isConstOf ``Float
 
+def isFloat32 (type : Lean.Expr) : MetaM Bool := do
+  return (← whnfR type).isConstOf ``Float32
+
 /-- The source operators on `Float` the compiler translates. -/
 def floatRules : List (Name × F64Op × String) :=
   [(``HAdd.hAdd, .add, "float add"), (``HSub.hSub, .sub, "float sub"),
    (``HMul.hMul, .mul, "float mul"), (``HDiv.hDiv, .div, "float div")]
+
+/-- The source operators on `Float32` the compiler translates. -/
+def float32Rules : List (Name × F32Op × String) :=
+  [(``HAdd.hAdd, .add, "float32 add"), (``HSub.hSub, .sub, "float32 sub"),
+   (``HMul.hMul, .mul, "float32 mul"), (``HDiv.hDiv, .div, "float32 div")]
 
 def isUInt64Array (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
@@ -227,7 +235,7 @@ enumeration, whose constructors have no fields, a structure, or a sum, or a recu
 that is neither nested nor mutual, whose values are records on the heap. -/
 def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
   let .const name _ ← whnfR type | return none
-  if name == ``UInt64 || name == ``Float then return none
+  if name == ``UInt64 || name == ``Float || name == ``Float32 then return none
   let some (.inductInfo info) := (← getEnv).find? name | return none
   unless info.numParams == 0 && info.numIndices == 0 do return none
   let fields ← info.ctors.mapM fun ctor => do
@@ -294,10 +302,11 @@ def enumIndex? (name : Name) : MetaM (Option Nat) := do
   let some (.enum _) ← userType? (.const info.induct []) | return none
   return some info.cidx
 
-/-- The scalar type of a `UInt64`, `Float`, or enumeration type. -/
+/-- The scalar type of a `UInt64`, `Float`, `Float32`, or enumeration type. -/
 def scalarTypeOf (type : Lean.Expr) : MetaM ScalarType := do
   if ← isUInt64 type then return .u64
   if ← isFloat type then return .f64
+  if ← isFloat32 type then return .f32
   if (← userType? type) matches some (.enum _) then return .u64
   throwError "unsupported type {type}"
 
@@ -325,7 +334,7 @@ def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes ty
 /-- The zero of the field type `type`, held in the slots of a sum's inactive constructors:
 0 for a word or float, and the first constructor of an enumeration. -/
 def zeroOf (type : Lean.Expr) : MetaM Lean.Expr := do
-  if (← isUInt64 type) || (← isFloat type) then return ← mkNumeral type 0
+  if (← isUInt64 type) || (← isFloat type) || (← isFloat32 type) then return ← mkNumeral type 0
   if let some (.enum (ctor :: _)) ← userType? type then return mkConst ctor
   throwError "a field of a sum must be a word, a float, or an enumeration: {type}"
 
@@ -441,7 +450,7 @@ def fresh (type : ScalarType) (name : String) : CompileM Nat := do
 /-- Binds `x` to the locals `components`: a variable for one component, a tuple
 otherwise. -/
 def Ctx.bind (ctx : Ctx) (x : Lean.Expr) : List (Nat × ScalarType) → Ctx
-  | [(index, .f64)] => { ctx with floats := (x, index) :: ctx.floats }
+  | [(index, .f64)] | [(index, .f32)] => { ctx with floats := (x, index) :: ctx.floats }
   | [(index, _)] => { ctx with words := (x, index) :: ctx.words }
   | components => { ctx with tuples := (x, components) :: ctx.tuples }
 
@@ -571,11 +580,13 @@ def readLocals : {type : ScalarType} → IRExpr type → List Nat
   | _, .and l r => readLocals l ++ readLocals r
   | _, .or l r => readLocals l ++ readLocals r
   | _, .binF _ l r => readLocals l ++ readLocals r
+  | _, .binF32 _ l r => readLocals l ++ readLocals r
   | _, .eqF l r => readLocals l ++ readLocals r
   | _, .ltF l r => readLocals l ++ readLocals r
   | _, .leF l r => readLocals l ++ readLocals r
   | _, .not c => readLocals c
   | _, .unF _ x => readLocals x
+  | _, .unF32 _ x => readLocals x
   | _, .convertU x => readLocals x
   | _, .truncSatU x => readLocals x
   | _, .ofBits x => readLocals x
@@ -811,6 +822,7 @@ def settleHints (loc : Loc) (source : String) (stmts : List (Project.IR.Stmt × 
 /-- The expression that reads local `local_` of type `type`. -/
 def readLocal : Nat × ScalarType → Σ type, IRExpr type
   | (local_, .f64) => ⟨.f64, .getF local_⟩
+  | (local_, .f32) => ⟨.f32, .getF32 local_⟩
   | (local_, _) => ⟨.u64, .get local_⟩
 
 /-- The index of the copy function of the recursive type `type`, which the module command
@@ -1219,12 +1231,53 @@ mutual
         return (ir, hint ir rule :: lHints ++ rHints)
     | _ => throwError "unsupported float term: {source}"
 
+  /-- Translates a `Float32` term to an IR expression whose code starts at `loc`: variables,
+  fields, call results, the four arithmetic operations, and `Float32.sqrt`. -/
+  partial def translateFloat32 (ctx : Ctx) (loc : Loc) (term : Lean.Expr) :
+      CompileM (IRExpr .f32 × List Hint) := do
+    let term := term.consumeMData
+    let source ← sourceOf term
+    let hint (ir : IRExpr .f32) (rule : String) : Hint :=
+      mkHint loc (exprLength ir) rule source
+    if let some index := ctx.floats.lookup term then
+      let ir : IRExpr .f32 := .getF32 index
+      return (ir, [hint ir "float32 variable"])
+    if let some field ← projectionField? ctx term then
+      match field with
+      | .inl reduced => return ← translateFloat32 ctx loc reduced
+      | .inr [(local_, .f32)] =>
+          let ir : IRExpr .f32 := .getF32 local_
+          return (ir, [hint ir "field"])
+      | .inr _ => throwError "a field used as a Float32 must be one Float32: {source}"
+    if let some index := ctx.callees.lookup term.getAppFn.constName then
+      let [(result, .f32)] ← translateCall ctx term index
+        | throwError "a call used as a Float32 must return one Float32: {source}"
+      let ir : IRExpr .f32 := .getF32 result
+      return (ir, [hint ir "call result"])
+    match term.getAppFnArgs with
+    | (``Float32.sqrt, #[operand]) =>
+        let (x, xHints) ← translateFloat32 ctx loc operand
+        let ir : IRExpr .f32 := .unF32 .sqrt x
+        return (ir, hint ir "float32 sqrt" :: xHints)
+    | (fn, #[left, right, out, _, a, b]) =>
+        let some (_, op, rule) := float32Rules.find? (·.1 == fn)
+          | throwError "unsupported Float32 operation {fn} in {source}"
+        unless (← isFloat32 left) && (← isFloat32 right) && (← isFloat32 out) do
+          throwError "unsupported operand types in {source}"
+        let (l, lHints) ← translateFloat32 ctx loc a
+        let (r, rHints) ← afterReads ctx (readLocals l)
+          (translateFloat32 ctx (loc.skip (exprLength l)) b)
+        let ir : IRExpr .f32 := .binF32 op l r
+        return (ir, hint ir rule :: lHints ++ rHints)
+    | _ => throwError "unsupported Float32 term: {source}"
+
   /-- Translates a term of type `type`, which is `UInt64` or `Float`. -/
   partial def translateAs (ctx : Ctx) (loc : Loc) (type : ScalarType) (term : Lean.Expr) :
       CompileM ((Σ type, IRExpr type) × List Hint) := do
     match type with
     | .u64 => let (ir, hints) ← translateValue ctx loc term; return (⟨.u64, ir⟩, hints)
     | .f64 => let (ir, hints) ← translateFloat ctx loc term; return (⟨.f64, ir⟩, hints)
+    | .f32 => let (ir, hints) ← translateFloat32 ctx loc term; return (⟨.f32, ir⟩, hints)
     | .bool => throwError "a Bool value is not supported: {← sourceOf term}"
 
   /-- The field that `term` projects from a pair or structure: the field term itself when
@@ -1676,6 +1729,7 @@ mutual
           for ((temp, type), (local_, _)) in temps.toList.zip state do
             let stmt : Project.IR.Stmt := match type with
               | .f64 => .assign local_ (.getF temp)
+              | .f32 => .assign local_ (.getF32 temp)
               | _ => .assign local_ (.get temp)
             hints := hints.push (mkHint here (stmtLength stmt) "state copy" "state")
             stmts := stmts.push stmt
@@ -2413,6 +2467,9 @@ mutual
         else if ← isFloat argType then
           let (ir, irHints) ← translateFloat ctx ⟨[], offset⟩ arg
           pure ([⟨.f64, ir⟩], irHints)
+        else if ← isFloat32 argType then
+          let (ir, irHints) ← translateFloat32 ctx ⟨[], offset⟩ arg
+          pure ([⟨.f32, ir⟩], irHints)
         else if (← isWordType argType) || (← isTupleType argType) then
           translateComponents ctx ⟨[], offset⟩ arg argType
         else throwError "a call argument must be a word, a float, an array, or a user type: {source}"
@@ -2764,6 +2821,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       else if ← isFloat type then
         floats := (params[i], index) :: floats
         paramTypes := paramTypes.push .f64
+      else if ← isFloat32 type then
+        floats := (params[i], index) :: floats
+        paramTypes := paramTypes.push .f32
       else if ← isUInt64Array type then
         arrays := (params[i], index) :: arrays
         paramTypes := paramTypes.push .u64
@@ -2788,15 +2848,15 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         paramNames := paramNames.push (s!"{name}.{types.length - 1}", index + types.length - 1)
         continue
       else
-        throwError "parameter {params[i]} of {declName} is not UInt64, Float, an array, a list of words, or a user type"
+        throwError "parameter {params[i]} of {declName} is not UInt64, Float, Float32, an array, a list of words, or a user type"
       paramNames := paramNames.push (name, index)
     let resultType ← inferType body
     let arrayResult ← isArray resultType
-    let floatResult ← isFloat resultType
+    let floatResult := (← isFloat resultType) || (← isFloat32 resultType)
     let pairResult ← isTupleType resultType
     let listResult := (← isUInt64List resultType) || (← isNodeType resultType)
     unless arrayResult || floatResult || pairResult || listResult || (← isWordType resultType) do
-      throwError "the result of {declName} is not UInt64, Float, an array, a list of words, a pair, or a user type"
+      throwError "the result of {declName} is not UInt64, Float, Float32, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
     if recursive && !(← tailOnly declName body) then
       let some index := internal
@@ -2942,6 +3002,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
 deriving instance ToExpr for U64Op
 deriving instance ToExpr for F64Op
 deriving instance ToExpr for F64UnOp
+deriving instance ToExpr for F32Op
+deriving instance ToExpr for F32UnOp
 deriving instance ToExpr for ScalarType
 
 /-- The Lean term for an IR expression, for the definitions the command adds. -/
@@ -2951,6 +3013,10 @@ def irToExpr : {type : ScalarType} → IRExpr type → Lean.Expr
   | _, .binF op left right =>
       mkApp3 (mkConst ``Project.IR.Expr.binF) (toExpr op) (irToExpr left) (irToExpr right)
   | _, .unF op operand => mkApp2 (mkConst ``Project.IR.Expr.unF) (toExpr op) (irToExpr operand)
+  | _, .getF32 index => mkApp (mkConst ``Project.IR.Expr.getF32) (toExpr index)
+  | _, .binF32 op left right =>
+      mkApp3 (mkConst ``Project.IR.Expr.binF32) (toExpr op) (irToExpr left) (irToExpr right)
+  | _, .unF32 op operand => mkApp2 (mkConst ``Project.IR.Expr.unF32) (toExpr op) (irToExpr operand)
   | _, .convertU operand => mkApp (mkConst ``Project.IR.Expr.convertU) (irToExpr operand)
   | _, .truncSatU operand => mkApp (mkConst ``Project.IR.Expr.truncSatU) (irToExpr operand)
   | _, .ofBits operand => mkApp (mkConst ``Project.IR.Expr.ofBits) (irToExpr operand)

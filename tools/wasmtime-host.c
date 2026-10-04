@@ -541,6 +541,17 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     *out_count = 1;
     return true;
   }
+  if (strncmp(spec, "f32:", 4) == 0) {
+    uint64_t wide = parse_u64(spec + 4);
+    if (wide > UINT32_MAX) {
+      die("f32 bits exceed 32 bits");
+    }
+    uint32_t bits = (uint32_t)wide;
+    out[0].kind = WASMTIME_F32;
+    memcpy(&out[0].of.f32, &bits, sizeof bits);
+    *out_count = 1;
+    return true;
+  }
   if (strncmp(spec, "bytes:", 6) == 0) {
     size_t len = 0;
     uint8_t *bytes = parse_hex(spec + 6, &len);
@@ -623,7 +634,7 @@ static void list_result_kind(const char *kind, size_t index, char *out, size_t o
 }
 
 static size_t result_count_from_kind(const char *kind) {
-  if (strcmp(kind, "i64") == 0 || strcmp(kind, "f64") == 0) {
+  if (strcmp(kind, "i64") == 0 || strcmp(kind, "f64") == 0 || strcmp(kind, "f32") == 0) {
     return 1;
   }
   if (strncmp(kind, "list:", 5) == 0) {
@@ -683,7 +694,9 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       list_result_kind(result_kind, i, item, sizeof item);
       kind = item;
     }
-    results[i].kind = strcmp(kind, "f64") == 0 ? WASMTIME_F64 : WASMTIME_I64;
+    results[i].kind = strcmp(kind, "f64") == 0   ? WASMTIME_F64
+                      : strcmp(kind, "f32") == 0 ? WASMTIME_F32
+                                                 : WASMTIME_I64;
   }
   wasm_trap_t *trap = NULL;
   wasmtime_error_t *error =
@@ -707,6 +720,10 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
         uint64_t bits = 0;
         memcpy(&bits, &results[i].of.f64, sizeof bits);
         printf("%" PRIu64 "\n", bits);
+      } else if (strcmp(kind, "f32") == 0) {
+        uint32_t bits = 0;
+        memcpy(&bits, &results[i].of.f32, sizeof bits);
+        printf("%" PRIu32 "\n", bits);
       } else if (strcmp(kind, "i64") == 0) {
         printf("%" PRIu64 "\n", (uint64_t)results[i].of.i64);
       } else if (strcmp(kind, "array-u64") == 0) {
@@ -747,6 +764,16 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
     uint64_t bits = 0;
     memcpy(&bits, &results[0].of.f64, sizeof bits);
     printf("%" PRIu64 "\n", bits);
+    return;
+  }
+
+  if (strcmp(result_kind, "f32") == 0) {
+    if (results[0].kind != WASMTIME_F32) {
+      die("expected f32 result");
+    }
+    uint32_t bits = 0;
+    memcpy(&bits, &results[0].of.f32, sizeof bits);
+    printf("%" PRIu32 "\n", bits);
     return;
   }
 
@@ -1360,8 +1387,8 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|bytes|array-u64|chain-u64|tree-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
-          "[i64:N|f64:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
+          "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
+          "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
           "file-u64:PATH ...]\n");
   exit(1);
 }

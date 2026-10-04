@@ -359,7 +359,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Iteration 20 (2026-10-03): a call that consumes an array the code uses again receives a copy.  `clob` gains `fillKeep`, with its theorem.
 - [x] Iteration 21 (2026-10-03): a match on a tree may have a pair as its value.  `trees` gains `keyPair`, and `treeMoves` gains `splitRoot`, `rootAndRest`, and `splitOr`, with their theorems.
 - [x] Iteration 22 (2026-10-03): a tree that a call consumes and the code uses again, or that a value holds while borrowed, receives a copy from a function the compiler generates for its type.  `treeMoves` gains `keepOld` and `addSelf`, with their theorems and `KeyTree.copy`'s.
-- [ ] Iteration 23: binary32 on the Wasm path: `f32` in the IR, `Float32` arithmetic and comparisons, `Float32` arrays, and one binary32 program with its theorem.
+- [ ] Iteration 23: binary32 on the Wasm path: `f32` in the IR, `Float32` arithmetic and comparisons, `Float32` arrays, and one binary32 program with its theorem.  Step 23a (2026-10-03): `f32` scalars and arithmetic, `binary32.wasm` with `axpy32`, `hypot32`, and `ratio32`, with their theorems.
 - [ ] Iteration 24: WGSL kernels: a WGSL subset with a printer and a parser proved to invert it, a dispatch semantics under the strict binary32 profile (user decision, 2026-10-03), the translation of the kernel subset of the IR, and one kernel with its theorem.
 - [ ] Iteration 25: the host's invocation of kernels and a run in a browser.
 - [ ] Then prove the I/O adapter.

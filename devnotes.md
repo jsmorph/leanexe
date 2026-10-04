@@ -24032,9 +24032,34 @@ and prints `[4, 5]` and `[]`, `F32BitsProto.lean` proves `toBits_add` with `prop
 | The plan omitted the Pipeline instances (`Scalar Float32`, `Represent (Array Float32)`), the compiler's `Float32` recognition, operators, literals, reads, loops, builds, `irToExpr`, and `readLocals`, the host's `f32` kinds, and test helpers | Added |
 | `axpy32` needs no encoder change, `matVec32` needs `f32.const` only, and comparisons, `abs`, and `neg` can follow | The order below |
 
-- [ ] 23a: `F32Bits`, the `f32` type and its arithmetic constructors, `Scalar Float32`, the
+- [x] 23a: `F32Bits`, the `f32` type and its arithmetic constructors, `Scalar Float32`, the
   compiler's `Float32` scalars, the host's `f32` kinds, and `axpy32` with its theorem.
 - [ ] 23b: `f32.const`, `Array Float32` as 8-byte words, `Float32` reads, loops, and builds, and
   `matVec32` with its theorem.
 - [ ] 23c: `F32Compare`, `F32Sign`, the binary32 comparisons, `abs`, and `neg` in the encoder, and
   conditionals, `min`, and `max` on `Float32`.
+
+### Iteration 23, step 23a: binary32 scalars
+
+The IR gained the type `f32`, whose value is a `UInt32` bit pattern held in a Talos `.f32`, and
+three constructors, `getF32`, `binF32` over `F32Op` (addition, subtraction, multiplication, and
+division), and `unF32` over `F32UnOp` (square root), evaluated with `IEEE32`.  Their cases in
+`Expr.eval_preserves_below`, `Expr.program_spec`, and `Expr.eval_frame` follow the binary64 cases
+with Talos's binary32 `wp` lemmas.  `Stmt.load_spec` needed `ofNat_mod_toUInt32`, because
+`i32.wrap_i64` produces `UInt32.ofNat (x.toNat % 4294967296)` where `wrap_toUInt32` states the
+modulus as `2 ^ 32`.  `F32Bits` restates the binary32 chain for Lean's `Float32`, and `Scalar
+Float32` passes a value as an `f32`.
+
+The compiler recognizes `Float32` parameters, results, locals, and call arguments, and
+`translateFloat32` translates variables, fields, call results, the four operations, and
+`Float32.sqrt`.  It is separate from `translateFloat`, which keeps the binary64 output unchanged,
+and the two merge when binary32 gains literals, reads, loops, and conditionals.  `userType?` now
+excludes `Float32`, which Lean declares as a structure, as it excludes `Float`.  The Wasmtime host
+takes `f32:BITS` arguments and `f32` results.
+
+`binary32.wasm` holds `axpy32`, `hypot32`, and `ratio32`, and `binary32_bytes` proves all three
+bit for bit with one `simp` call each, depending on `propext`, `Classical.choice`, and
+`Quot.sound`.  The LTG entry `binary32-arithmetic` covers the `float32` hints.  The full build
+passed with no `sorry`, the 22 earlier modules emit the same bytes as before, and the module tests
+passed 9,521 comparisons, 240 of them binary32 cases over special values, arbitrary bit patterns,
+and moderate values, with 77 count cases, 20 depth cases, and 360 cases of `chunks.py`.

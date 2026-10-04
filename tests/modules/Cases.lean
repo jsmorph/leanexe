@@ -4,6 +4,7 @@ import LeanExe.Examples.SumArray
 import LeanExe.Examples.PairSum
 import LeanExe.Examples.SumCount
 import LeanExe.Examples.Axpy
+import LeanExe.Examples.Binary32
 import LeanExe.Examples.ScaledHypot
 import LeanExe.Examples.Piecewise
 import LeanExe.Examples.SumSquares
@@ -103,6 +104,40 @@ def floatTriples : List (Float × Float × Float) :=
 def axpyCases : IO Unit := do
   for (a, x, y) in floatTriples do
     line "axpy" "axpy" "f64" [fl a, fl x, fl y] (toString (LeanExe.Examples.Axpy.axpy a x y).toBits)
+
+def fl32 (x : Float32) : String := s!"f32:{x.toBits}"
+
+def inf32 : Float32 := 1.0 / 0.0
+def nan32 : Float32 := 0.0 / 0.0
+
+def specialFloat32s : List Float32 :=
+  [0.0, -0.0, 1.0, -1.0, 0.5, inf32, -inf32, nan32, 3.4028235e38, -3.4028235e38, 1.4e-45,
+    1.17549435e-38, 1e30, 1e-30, 3.0, 7.25]
+
+/-- Arbitrary bit patterns as binary32 floats. -/
+def rf32 (i : Nat) : Float32 := Float32.ofBits (rw i).toUInt32
+
+/-- Values from -10 to 10 in steps of 0.01, in binary32. -/
+def small32 (i : Nat) : Float32 := (small i).toFloat32
+
+def float32Triples : List (Float32 × Float32 × Float32) :=
+  let sp := specialFloat32s.toArray
+  let special := (List.range 30).map fun i =>
+    (sp[i % sp.size]!, sp[(i / 3 + 5) % sp.size]!, sp[(7 * i + 1) % sp.size]!)
+  let random := (List.range 30).map fun i =>
+    (rf32 (3 * i + 500), rf32 (3 * i + 501), rf32 (3 * i + 502))
+  let moderate := (List.range 20).map fun i =>
+    (small32 (3 * i), small32 (3 * i + 1), small32 (3 * i + 2))
+  special ++ random ++ moderate
+
+def binary32Cases : IO Unit := do
+  for (a, x, y) in float32Triples do
+    line "binary32" "axpy32" "f32" [fl32 a, fl32 x, fl32 y]
+      (toString (LeanExe.Examples.Binary32.axpy32 a x y).toBits)
+    line "binary32" "hypot32" "f32" [fl32 a, fl32 x]
+      (toString (LeanExe.Examples.Binary32.hypot32 a x).toBits)
+    line "binary32" "ratio32" "f32" [fl32 a, fl32 x, fl32 y]
+      (toString (LeanExe.Examples.Binary32.ratio32 a x y).toBits)
 
 def scaledHypotCases : IO Unit := do
   for (x, y, s) in [(3.0, 4.0, 1.0), (3.0, 4.0, 0.0), (0.0, 0.0, 0.0)] ++ floatTriples do
@@ -462,5 +497,6 @@ def updatesCases : IO Unit := do
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
+  binary32Cases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
   calculatorCases; shapeCases; listCases; wordsCases; treeCases; updatesCases

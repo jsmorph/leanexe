@@ -1,5 +1,6 @@
 import LeanExe.Build
 import LeanExe.Examples.Axpy
+import LeanExe.Examples.Binary32
 import LeanExe.Examples.Bucket
 import LeanExe.Examples.Calc
 import LeanExe.Examples.Clob

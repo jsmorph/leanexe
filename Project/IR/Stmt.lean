@@ -218,7 +218,8 @@ theorem Stmt.load_spec {type : ScalarType} {index scratch : Nat} {address : Expr
     wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero]
   rw [ite_eq_right (by omega)]
   cases type <;>
-    simpa [ScalarType.fromBits] using localSet_spec (values := values) (rest := rest) (Q := Q)
+    simpa [ScalarType.fromBits, ofNat_mod_toUInt32] using localSet_spec (values := values)
+      (rest := rest) (Q := Q)
       (module_ := m) (env := env) (store := store) hSet (hPost store next hNext)
 
 /-- A store writes the value's word at the address's low 32 bits, which must lie
