@@ -25000,3 +25000,42 @@ the kernel page no longer depends on `tests/wgsl/run.sh` and its native host; fr
 four minutes and produced files identical to `run.sh`'s.  `generate.py --export` writes the weight
 files and stops.
 
+
+## 2026-10-04: Bringing main's Euler solver, analysis
+
+The user asked how to bring main's Euler development here, with measurements first.  Main holds
+2,070 Euler Lean files of 418,000 lines.  By file name, about 174,000 lines are byte and decoding
+proofs, 129,000 execution proofs, 76,000 frozen copies kept for historical binaries, 37,000 the
+models, specifications, and numerical theorems, and 2,500 real-number mathematics.  Both branches
+use Lean v4.34.0-rc2 and the same CodeLib revision.  The reconstructed solver's top theorems in
+`EulerReconstructed/Spec.lean` combine one execution theorem, `solve_exact`, with source theorems
+about the Lean model: `Control.run_safe`, `run_terminal`, `run_trace`, `cells_hyperbolic`,
+`Numerics.initial_trace_facts`, `Conservation.run_balance`, and `physical_run_balance`.
+
+The 237 modules of those theorems' import closure, copied with a module prefix into an untracked
+library, built unchanged on this branch in 7.8 minutes.  A declaration closure over the built
+environment, from the seven theorems and `Control.solve`, uses 738 of the closure's 3,145
+declarations: 311 definitions of 1,080 lines, 385 theorems of 4,764 lines, and 16 types.  One of
+them, the definition `EulerReconstruction.Spec.Accuracy`, lies in a module that also holds
+execution proofs; no other comes from the 41 execution and byte modules of the import closure.  So
+the source theorems are about 6,000 lines and depend on none of main's execution proofs.
+
+`solve` needs 107 functions and 12 record types.  Compiled one at a time with their callees by
+`leanexe_compile`, 18 compile and 89 fail; 29 fail on their own and 60 through a callee.  The
+compiler reports one error per function, so these are the first obstacles only.
+
+| Cause | Functions | Example |
+|---|---|---|
+| Bool values: `decide`, `&&`, `\|\|`, `==`, Bool parameters | 12 | `positiveBits`: `decide (0 < bits) && decide (bits < ...)` |
+| binary64 operations on words, `Wasm.IEEE64.*` | 6 | `Reconstruction.difference` |
+| Nat and polymorphic parameters, including fuel | 4 | `Control.retry`, `Control.advance`, `LeanExe.Runtime.release` |
+| equality on Nat or Bool | 3 | `Time.smallNaturalBits`: `n = 0` |
+| recursion over Nat, arrays, or records | 2 | `Reconstruction.limit` |
+| `default` of a record | 1 | `instInhabitedState.default` |
+| an array of records | 1 | `Traversal.accepted` on `Array Cell` |
+
+Beyond these, the model uses `Array.map`, `extract`, and `++` on arrays of records, and records
+that hold arrays (`Attempt`, `Result`).  The execution claims also differ: main proves that `solve`
+terminates within 512 MiB with a defined status, while this branch's `Implements` states that a
+call returns the Lean value or aborts at `unreachable`.  Matching main would need a separate
+result that the solver does not abort for grids up to 800.
