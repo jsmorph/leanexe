@@ -225,8 +225,9 @@ async function run() {
         (r.messages.length ? `\n  compiler: ${r.messages.join("\n  compiler: ")}` : "")),
       `total: passed ${passed}, failed ${failed}, ${seconds} s`,
       ...(uncaptured.length ? ["", "uncaptured errors:", ...uncaptured] : []),
-      ...(failures.length ? ["", `failures (first 100 of ${failures.length}):`,
-                             ...failures.slice(0, 100)] : []),
+      ...(failures.length ? ["", `failures (up to 5 per kernel, ${failures.length} in all):`,
+                             ...kernels.flatMap(k => failures.filter(f => f.startsWith(`${k}, `)).slice(0, 5))]
+                          : []),
     ];
     $("report").value = report.join("\n");
   } catch (e) {
