@@ -25100,3 +25100,37 @@ expression, and `anyEqual` uses `Stmt.loop_spec`.  `tests/modules/Cases.lean` ad
 which match native Lean, including NaN, the signed zeros, and the infinities in `floatSame` and
 `inRange`.
 
+
+### E2 and E3: general arrays, analysis
+
+The runtime already describes more arrays than the compiler builds.  An object's header holds a
+kind, an element width in words, and a child mask over the slots of one element, and `release`
+drops the masked slots of every element of an array (kind 2) and of a record (kind 1)
+(`Project/Runtime/Defs.lean`, `dropChildren`).  The proofs use less of it: `Heap.Owned` fixes
+kind 2, width 1, and mask 0, and the length word counts the words; records with pointer slots
+appear only as the nodes of recursive types (`Encode`, `NodeOwned`).  The IR's `read` checks its
+position against the length word, and `build` and `buildWith` store one word per element.
+
+| Question | Options | Recommendation |
+|---|---|---|
+| (A1) Layout of an array of records of `k` scalar fields | (a) a plain word array of `n · k` words, width 1, whose length word counts words; (b) the header's width `k`, a length word that counts elements, and `n · k` payload words | (b): `size` is the length word as now, a bounds check compares the element index, and the child mask can mark pointer slots in each element, which level 2 needs.  (a) needs a division for `size` and cannot mark pointer slots |
+| (A2) Element types, level 1 | any type with a `Flat` instance into scalars: `UInt64`, `Float`, `Float32`, `Bool`, enumerations, and records of these | One 8-byte word per field, as records and scalar arrays use now |
+| (A3) Reading field `j` of element `i` | an IR `read` of word `i · k + j`, or a new expression that checks `i` against the length and reads word `i · k + j` | The new expression: the existing `read` checks the word position against an element count |
+| (A4) Out-of-bounds reads | the record of zero words, or the type's `default` | `default`, as Lean's `xs[i]!` returns: the compiler evaluates `default` to its fields and reads them as constants when the index is out of bounds, which is the zero word for every field whose default is 0 |
+| (A5) Level 2 elements | arrays of arrays, arrays of trees, and records with array or tree fields | Arrays of arrays and of trees first; records with pointer fields after, if a program needs them |
+| (A6) Reading a pointer element | a deep copy, or a lent reference that the outer array keeps owning | A lent reference, when the use only reads it and the outer array is not changed during the use, as borrowed parameters work now; a copy, with the existing copy rules, where ownership is needed |
+| (A7) Out-of-bounds read of a pointer element | allocate an empty value; a static empty array at a fixed address; reject | For trees, the null pointer, which is the empty constructor; for arrays, a static empty array that every module's initial heap holds, which adds a clause to `Heap.At` |
+| (A8) Replacing a pointer element | `set!` with the old element released, in place when the outer array is owned | As stated, with the existing in-place `set!` and `release` rules |
+
+The proof side generalizes `Heap.Owned` and `Heap.Borrowed` to a width and a mask, with the current
+predicates as width 1 and mask 0, and gives level 2 a nested ownership predicate, as `NodeOwned`
+does for trees: the outer array owns each element's block, and the blocks are pairwise disjoint.
+The representation of an `Array α` for a flat `α` is its elements' words in order; for level 2 it
+is a pointer per element.
+
+- [ ] E2a: width and mask in the heap predicates; `Represent (Array α)` for flat `α`.
+- [ ] E2b: build, field read, size, and fold for arrays of records, each with its rule lemma.
+- [ ] E2c: an example module, tests against native Lean, and `Implements` proofs.
+- [ ] E3a: nested ownership in the heap model, and the static empty array.
+- [ ] E3b: build with owned elements, lent reads, `set!` with release, size, and fold.
+- [ ] E3c: an example module, tests, and proofs.
