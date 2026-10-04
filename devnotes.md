@@ -24336,6 +24336,14 @@ proved the general read.  I reran its files: `Shape.lean` confirms the IR below 
   locals and arrays from two functions, and `Expr.eval_denote` proves that `Expr.eval` gives the
   same value under `Agrees` (the locals and the arrays' `UInt64Array.At` below the scratch base)
   and enough scratch locals.
-- [ ] 24b2: `readHigh`, the general `lt64`, `trExpr`, and its simulation from `Expr.denote`.
+- [x] 24b2: `readHigh`, the general `lt64`, `trExpr`, and its simulation from `Expr.denote`.  `readAt b k len base` generalizes
+  the read, base 2 for an element's low half and base 3 for its high half, and `readAt_word`
+  proves it for any `u64` index held as its halves (`pairOf`), taking the reviewer's
+  `readLow_word`; `lt64_word` proves the comparison of two pairs.  `Project/WGSL/Translate.lean`
+  defines `trExpr`, one `let` per IR node for `get`, `const`, `getF32`, `constF32` (rejecting NaN
+  and infinite bits), `binF32`, `unF32`, `ofBits32`, `toBits32`, and `read`, and `trExpr_sim`
+  proves that from an environment that agrees with a `Layout`, the statements run and leave the
+  denotation in the result variable, with new names only from `next` up.  All with `propext`,
+  `Classical.choice`, and `Quot.sound`.
 - [ ] 24b3: the kernel from a build with an `arraySize` prefix, the generic dispatch theorem, and
   `axpyArray32` on Wasm and WGSL with tests.

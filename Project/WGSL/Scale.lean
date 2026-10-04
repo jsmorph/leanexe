@@ -232,7 +232,7 @@ theorem scaleKernel_dispatch (a : Float32) (x : Array Float32) (output : Array U
     all_goals exact hp.elim <|> exact hq.elim
 
 theorem scaleKernel_wf : scaleKernel.WF := by
-  simp [Module.WF, Stmt.ListWF, Stmt.WF, Expr.WF, scaleKernel, lt64, readLow]
+  simp [Module.WF, Stmt.ListWF, Stmt.WF, Expr.WF, scaleKernel, lt64, readLow, readAt]
 
 /-- The printed text of the kernel parses to the kernel. -/
 theorem scaleKernel_text : Module.parse scaleKernel.print = some scaleKernel :=

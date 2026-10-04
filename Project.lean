@@ -210,3 +210,4 @@ import Project.WGSL.RoundTrip
 import Project.WGSL.Semantics
 import Project.WGSL.Kernel
 import Project.WGSL.Scale
+import Project.WGSL.Translate
