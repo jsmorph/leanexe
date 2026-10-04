@@ -24949,3 +24949,29 @@ same as the meaning of death." with equal scores, bit for bit, at all 16 steps, 
 step with WGSL and 0.163 with Wasm, after loading 949 MiB in 1.3 seconds.  The kernels of
 `gpt32.wasm` have no Wasm-level theorem.
 
+### Apple GPU results and the WGSL floating-point rules
+
+With five failures listed per kernel, the second report shows the same two causes in the GPT-2
+kernels.  `expArray32` loses its subnormal results to flushing.  The 1 to 4 ulp differences of
+`layerNorm32`, `linear32`, `logits32`, `scores32`, and `probs32` come from fused multiply-adds:
+recomputing four `linear` cases and three `layerNorm` cases with each multiply-add fused
+reproduces the Apple words exactly, and with separate rounding reproduces native Lean's
+(`apple2.py` in the scratch directory).  `gelu32`'s differences of about 20 ulp are a difference
+of one ulp in `exp32` amplified by the cancellation in `2 - 2/(e + 1)`.  On the GPT-2 page in its
+compared mode, 32 tokens from "The meaning of life is" chose Wasm's token at all 32 steps, while
+no step had equal scores; the largest difference was 5.2e-5 of the largest score, and most steps
+stayed below 3e-6.  WGSL took 0.081 seconds a step and Wasm 0.157.
+
+The WGSL specification permits both behaviors
+([§15.7.2](https://www.w3.org/TR/WGSL/#differences-from-ieee754),
+[§15.7.5](https://www.w3.org/TR/WGSL/#reassociation-and-fusion)): "Any inputs or outputs of
+operations listed in § 15.7.4 Floating Point Accuracy may be flushed to zero", the intermediate
+results of `bitcast` may also be flushed, and "An implementation may reassociate operations.  An
+implementation may fuse operations if the transformed expression is at least as accurate as the
+original formulation."  The `fma` built-in may itself round twice.  So no WGSL text of `f32`
+operations has one result on every WebGPU device.  The strict profile of the device model is an
+assumption beyond WGSL, which SwiftShader and llvmpipe meet for these kernels and Chrome on the
+Apple GPU does not.  WGSL's `u32` operations are exact, so binary32 emulated with integer
+operations is the one route to equal results on every device; Talos defines `IEEE32` over
+unbounded naturals, so it would need fixed-width algorithms proved against those definitions.
+
