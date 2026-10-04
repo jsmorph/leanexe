@@ -1012,6 +1012,22 @@ mutual
       let (ctx, d, slots, dHints) ← caseDiscriminant ctx loc discriminant alternatives
       let (ir, hints) ← translateWordCases { ctx with foldable := false } loc d 0 (slots.zip alternatives)
       return (ir, hint ir "case split" :: dHints ++ hints)
+    -- The word of a condition: 1 when it holds and 0 otherwise.
+    let boolOf (c : IRExpr .bool) (cHints : List Hint) (rule : String) :
+        CompileM (IRExpr .u64 × List Hint) := do
+      let branch := loc.skip (exprLength c)
+      let inner := { ctx with foldable := false }
+      let (a, aHints) ← translateValue inner (branch.inside (some 0)) (mkConst ``Bool.true)
+      let (b, bHints) ← translateValue inner (branch.inside (some 1)) (mkConst ``Bool.false)
+      let ir : IRExpr .u64 := .ite c a b
+      return (ir, hint ir rule :: cHints ++ aHints ++ bHints)
+    -- `&&` and `||` on the 0-or-1 words of their operands.
+    let boolPair (op : U64Op) (rule : String) (a b : Lean.Expr) :
+        CompileM (IRExpr .u64 × List Hint) := do
+      let (l, lHints) ← translateValue ctx loc a
+      let (r, rHints) ← afterReads ctx (readLocals l) (translateValue ctx (loc.skip (exprLength l)) b)
+      let ir : IRExpr .u64 := .bin op l r
+      return (ir, hint ir rule :: lHints ++ rHints)
     match term.getAppFnArgs with
     | (``OfNat.ofNat, #[type, .lit (.natVal value), _]) =>
         unless ← isUInt64 type do throwError "unsupported literal type: {type}"
@@ -1103,6 +1119,23 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .u64 := .truncSatU x
         return (ir, hint ir "float to word" :: xHints)
+    -- A `Bool` is the word of its constructor index: `false` is 0 and `true` is 1.
+    | (``Decidable.decide, #[prop, _]) =>
+        let (c, cHints) ← translateCondition ctx loc prop
+        boolOf c cHints "decide"
+    | (``BEq.beq, #[type, _, a, b]) =>
+        let (c, cHints) ← translateEquality ctx loc source type a b
+        boolOf c cHints "beq"
+    | (``bne, #[type, _, a, b]) =>
+        let (c, cHints) ← translateEquality ctx loc source type a b
+        boolOf (.not c) cHints "bne"
+    | (``and, #[a, b]) => boolPair .bitAnd "bool and" a b
+    | (``or, #[a, b]) => boolPair .bitOr "bool or" a b
+    | (``not, #[a]) =>
+        let (x, xHints) ← translateValue ctx loc a
+        let one ← translateValue ctx (loc.skip (exprLength x)) (mkConst ``Bool.true)
+        let ir : IRExpr .u64 := .bin .bitXor x one.1
+        return (ir, hint ir "bool not" :: xHints ++ one.2)
     | (``UInt32.toUInt64, #[operand]) =>
         let (``Float32.toBits, #[x]) := operand.consumeMData.getAppFnArgs
           | throwError "a UInt32 word must be the bits of a Float32: {source}"
@@ -1132,6 +1165,23 @@ mutual
         let ir : IRExpr .u64 := .bin op l r
         return (ir, hint ir rule :: lHints ++ rHints)
       | _ => throwError "unsupported term: {source}"
+
+  /-- Translates `a == b` on a float format, by the IEEE comparison, or on a word type, by
+  the equality of the words. -/
+  partial def translateEquality (ctx : Ctx) (loc : Loc) (source : String) (type a b : Lean.Expr) :
+      CompileM (IRExpr .bool × List Hint) := do
+    let hint (ir : IRExpr .bool) (rule : String) : Hint := mkHint loc (exprLength ir) rule source
+    if let some fmt ← floatFormat? type then
+      let (l, lHints) ← translateFloat ctx loc a fmt
+      let (r, rHints) ← afterReads ctx (readLocals l)
+        (translateFloat ctx (loc.skip (exprLength l)) b fmt)
+      let ir := FloatFormat.eq fmt l r
+      return (ir, hint ir (fmt.rule "equal") :: lHints ++ rHints)
+    unless ← isWordType type do throwError "unsupported equality type in {source}"
+    let (l, lHints) ← translateValue ctx loc a
+    let (r, rHints) ← afterReads ctx (readLocals l) (translateValue ctx (loc.skip (exprLength l)) b)
+    let ir : IRExpr .bool := .eq l r
+    return (ir, hint ir "equal" :: lHints ++ rHints)
 
   /-- Translates a decidable proposition about `UInt64` values to an IR
   condition. -/
@@ -1166,19 +1216,17 @@ mutual
       return (ir, hint ir rule :: lHints ++ rHints)
     match prop.getAppFnArgs with
     | (``Eq, #[type, lhs, rhs]) =>
-        -- `a == b` on floats appears as `(a == b) = true`.
+        -- `if b then` appears as `b = true`, and `a == b` as `(a == b) = true`.
         if (← whnfR type).isConstOf ``Bool && rhs.consumeMData.isConstOf ``Bool.true then
           match lhs.consumeMData.getAppFnArgs with
-          | (``BEq.beq, #[floatType, _, a, b]) =>
-              let some fmt ← floatFormat? floatType
-                | throwError "unsupported equality type in {source}"
-              floatPair fmt FloatFormat.eq "equal" a b
-          | _ => throwError "unsupported condition: {source}"
+          | (``BEq.beq, #[eqType, _, a, b]) => translateEquality ctx loc source eqType a b
+          | (``Decidable.decide, #[p, _]) => translateCondition ctx loc p
+          | _ => pair .eq "equal" lhs rhs
         else
-          unless ← isUInt64 type do throwError "unsupported equality type in {source}"
+          unless ← isWordType type do throwError "unsupported equality type in {source}"
           pair .eq "equal" lhs rhs
     | (``Ne, #[type, a, b]) =>
-        unless ← isUInt64 type do throwError "unsupported inequality type in {source}"
+        unless ← isWordType type do throwError "unsupported inequality type in {source}"
         pair .ne "not equal" a b
     | (``LT.lt, #[type, _, a, b]) =>
         if let some fmt ← floatFormat? type then floatPair fmt FloatFormat.lt "less than" a b

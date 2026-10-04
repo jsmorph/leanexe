@@ -25069,7 +25069,7 @@ of the rewrite.  The theorems are proved about the new Lean functions, and `Impl
 them to the bytes; main supplies the numerical design, the real-number mathematics, and proof
 structure where they fit.
 
-- [ ] E1: `Bool` values: parameters, results, record fields, `&&`, `||`, `!`, `==`, `decide`.
+- [x] E1: `Bool` values: parameters, results, record fields, `&&`, `||`, `!`, `==`, `decide`.
 - [ ] E2: arrays whose elements hold no pointers: `Bool`, enumerations, and records of scalars,
   stored inline.
 - [ ] E3: arrays whose elements own memory: arrays of arrays and of records that hold arrays.
@@ -25079,3 +25079,24 @@ structure where they fit.
 - [ ] E7: the reconstructed solver, tests, and its 192 and 800 runs.
 - [ ] E8: the reconstructed solver's theorems.
 - [ ] E9: figures, report, and documentation.
+
+### E1: `Bool` values
+
+The compiler already held a `Bool` as an enumeration, the word of its constructor index, so
+`Bool` parameters, results, and record fields compiled, but no term produced one and `if b then`
+failed.  Every new form compiles to IR that exists: `decide p` is `ite p 1 0`; `a && b`, `a || b`,
+and `!a` are `bitAnd`, `bitOr`, and `bitXor a 1` on the 0-or-1 words; `a == b` and `a != b` on
+words are `ite (a = b) 1 0` and its negation, and on floats use the IEEE comparison; and the
+conditions `b = true` and `b = false` compare the word with the constructor's.  Equality and
+inequality conditions now take any word type, so enumerations compare too.  Evaluating both
+operands of `&&` gives Lean's result, since IR operands neither trap nor have effects.  So no rule
+lemma is new, and `Implements` gains `Flat Bool UInt64`, the constructor index, as for other
+enumerations.
+
+`LeanExe/Examples/Bools.lean` has thirteen functions over these forms, with a `Bool` loop state
+and a record with a `Bool` field.  `Project/Bools/Verify.lean` proves each one's `Implements`
+and `bools_bytes`, which carries them to the encoded bytes; twelve proofs evaluate a result
+expression, and `anyEqual` uses `Stmt.loop_spec`.  `tests/modules/Cases.lean` adds 698 cases,
+which match native Lean, including NaN, the signed zeros, and the infinities in `floatSame` and
+`inRange`.
+

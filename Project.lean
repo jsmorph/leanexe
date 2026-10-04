@@ -223,3 +223,5 @@ import Project.Gpt32.Program
 import Project.Gpt32.Exec
 import Project.Gpt32.Compose
 import Project.Gpt32.Driver
+import Project.Bools.Module
+import Project.Bools.Verify
