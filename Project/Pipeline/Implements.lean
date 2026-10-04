@@ -107,6 +107,9 @@ instance [Flat α β] [Scalar β] : Scalar α := ⟨fun x => Scalar.values (Flat
 
 instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 
+/-- A `Bool` is the word of its constructor index: `false` is 0 and `true` is 1. -/
+instance : Flat Bool UInt64 := ⟨fun b => if b then 1 else 0⟩
+
 /-- A float is passed as an `f64` holding its bit pattern. -/
 instance : Scalar Float := ⟨fun x => [.f64 x.toBits]⟩
 
