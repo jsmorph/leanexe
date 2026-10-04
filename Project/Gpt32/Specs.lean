@@ -1,4 +1,5 @@
 import Project.Gpt32.Module
+import Project.Gpt32.Program
 import Project.WGSL.Build
 
 /-!
@@ -56,5 +57,12 @@ def mixKernel := kernelOf gpt32.mix32.ir [.array, .array, .word, .word]
 def addKernel := kernelOf gpt32.add32.ir [.array, .array]
 def geluKernel := kernelOf gpt32.geluArray32.ir [.array]
 def logitsKernel := kernelOf gpt32.logits32.ir [.array, .array, .word, .word]
+
+/-- The kernel each call of `Project/Gpt32/Program.lean` runs. -/
+def KernelName.module : KernelName → Module
+  | .embed => embedKernel | .layerNorm => layerNormKernel | .linear => linearKernel
+  | .append => appendKernel | .scores => scoresKernel | .headMax => headMaxKernel
+  | .headSum => headSumKernel | .probs => probsKernel | .mix => mixKernel | .add => addKernel
+  | .gelu => geluKernel | .logits => logitsKernel
 
 end Project.Gpt32

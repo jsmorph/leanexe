@@ -197,12 +197,8 @@ def step32 (cfg : Shape32) (W : Weights32) (token p : UInt64)
   (caches', (W.wte.zip cfg.rows).map fun (wte, rows) => logits32 h wte rows d)
 
 /-- The index of the first largest score, over the chunks in order. -/
-def greedy32 (scores : List (Array Float32)) : Nat := Id.run do
+def greedy32 (scores : List (Array Float32)) : Nat :=
   let all := scores.foldl (· ++ ·) #[]
-  let mut best := 0
-  for i in [1:all.size] do
-    if all[best]! < all[i]! then
-      best := i
-  return best
+  (all.foldl (fun (best, i) x => if all[best]! < x then (i, i + 1) else (best, i + 1)) (0, 0)).1
 
 end LeanExe.Examples.Gpt32
