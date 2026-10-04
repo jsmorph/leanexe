@@ -91,6 +91,10 @@ inductive MemArg (maxAlignment : Nat) : Bytes → UInt32 → Prop
 def littleEndian64 (value : UInt64) : Bytes :=
   (List.range 8).map fun i => UInt8.ofNat (value.toNat / 256 ^ i)
 
+/-- A 32-bit word as four bytes, least significant first. -/
+def littleEndian32 (value : UInt32) : Bytes :=
+  (List.range 4).map fun i => UInt8.ofNat (value.toNat / 256 ^ i)
+
 mutual
   inductive Instr : Bytes → Wasm.Instruction → Prop
     | plain (bytes : Bytes) (instr : Wasm.Instruction) (rule : Plain bytes instr) :
@@ -110,6 +114,7 @@ mutual
         (immediate : Signed 64 bytes value.toBitVec.toInt) :
         Instr (0x42 :: bytes) (.constI64 value)
     | constF64 (value : UInt64) : Instr (0x44 :: littleEndian64 value) (.f64Const value)
+    | constF32 (value : UInt32) : Instr (0x43 :: littleEndian32 value) (.f32Const value)
     | block (typeBytes bodyBytes : Bytes) (types : List Wasm.ValueType)
         (body : Wasm.Program) (typeEncoding : BlockType typeBytes types)
         (bodyEncoding : Instrs bodyBytes body) :

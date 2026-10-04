@@ -92,6 +92,10 @@ mutual
         simp only [Produces, instruction]
         refine ⟨_, rfl, ?_⟩
         simp [Spec.littleEndian64, Size.instruction]
+    | constF32 value =>
+        simp only [Produces, instruction]
+        refine ⟨_, rfl, ?_⟩
+        simp [Spec.littleEndian32, Size.instruction]
     | block types body typeForm bodyForm =>
         obtain ⟨typeBytes, ht, hts⟩ := blockType_produces types typeForm
         obtain ⟨bodyBytes, hb, hbs⟩ := program_produces body bodyForm

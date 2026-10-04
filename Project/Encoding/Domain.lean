@@ -80,6 +80,7 @@ mutual
     | const32 (value : UInt32) : InstructionForm (.const value)
     | const64 (value : UInt64) : InstructionForm (.constI64 value)
     | constF64 (value : UInt64) : InstructionForm (.f64Const value)
+    | constF32 (value : UInt32) : InstructionForm (.f32Const value)
     | block (types : List Wasm.ValueType) (body : Wasm.Program)
         (typeForm : BlockForm types) (bodyForm : ProgramForm body) :
         InstructionForm (.block 0 types.length body [] types)
@@ -119,6 +120,7 @@ mutual
     | .const value => 1 + s32 value
     | .constI64 value => 1 + s64 value
     | .f64Const _ => 9
+    | .f32Const _ => 5
     | .br index => 1 + u32 index
     | .br_if index => 1 + u32 index
     | .call index => 1 + u32 index

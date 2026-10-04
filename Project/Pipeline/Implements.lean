@@ -154,6 +154,20 @@ instance : Represent (Array Float) where
   reads store vs xs := Represent.reads store vs (xs.map Float.toBits)
   moves _ _ _ := []
 
+/-- An `Array Float32` is stored as the array of its elements' bit patterns, each in the low
+half of a word. -/
+instance : Represent (Array Float32) where
+  width _ := 1
+  borrowed heap store vs xs :=
+    Represent.borrowed heap store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
+  owned heap store vs xs :=
+    Represent.owned heap store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
+  blocks store vs xs :=
+    Represent.blocks store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
+  reads store vs xs :=
+    Represent.reads store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
+  moves _ _ _ := []
+
 /-- An array that the caller hands over: the call receives it as owned, reads
 nothing else of it, and consumes its block. -/
 instance : Represent (Moved (Array UInt64)) where

@@ -65,4 +65,14 @@ theorem getElem!_map_toBits (xs : Array Float) (k : Nat) :
     rw [F64Convert.toBits_toFloat]
     decide +kernel
 
+/-- An element of an `Array Float32`, read as a word, holds the element's bits in its low half,
+and a missing element reads as 0, the bits of the default. -/
+theorem getElem!_map_toBits32 (xs : Array Float32) (k : Nat) :
+    (xs.map fun x : Float32 => x.toBits.toUInt64)[k]!.toUInt32 = (xs[k]!).toBits := by
+  by_cases h : k < xs.size
+  · rw [getElem!_pos (xs.map _) k (by simpa using h), getElem!_pos xs k h]
+    simp
+  · rw [getElem!_neg (xs.map _) k (by simpa using h), getElem!_neg xs k h]
+    decide +kernel
+
 end Project.IR

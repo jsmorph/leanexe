@@ -56,6 +56,7 @@ binary review.
 | `unreachable` | Any numeric input stack to any numeric output stack. |
 | `drop` | `[t] -> []` for numeric `t`. |
 | Integer constants | `[] -> [i32]` or `[] -> [i64]`. |
+| Float constants | `[] -> [f32]` or `[] -> [f64]`, as the official rule `C \|- CONST nt c_nt : eps -> nt` gives (2026-10-03). |
 | Integer comparisons and `eqz` | Consume the stated integer type and produce `i32`.  Binary comparisons consume two operands. |
 | Integer binary arithmetic | `[iN, iN] -> [iN]`, for the declared width. |
 | Float binary arithmetic | `[fN, fN] -> [fN]`. |

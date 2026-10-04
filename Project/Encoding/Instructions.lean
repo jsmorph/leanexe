@@ -98,6 +98,7 @@ mutual
         let encoded := signed64 value
         .ok ⟨0x42 :: encoded.val, .const64 _ _ encoded.property⟩
     | .f64Const value => .ok ⟨0x44 :: Spec.littleEndian64 value, .constF64 value⟩
+    | .f32Const value => .ok ⟨0x43 :: Spec.littleEndian32 value, .constF32 value⟩
     | .block 0 count body [] types =>
         if arity : count = types.length then do
           let typeBytes ← blockType types

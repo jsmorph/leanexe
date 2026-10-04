@@ -138,6 +138,21 @@ def binary32Cases : IO Unit := do
       (toString (LeanExe.Examples.Binary32.hypot32 a x).toBits)
     line "binary32" "ratio32" "f32" [fl32 a, fl32 x, fl32 y]
       (toString (LeanExe.Examples.Binary32.ratio32 a x y).toBits)
+  -- Matrices stored by rows with the vectors they multiply, including short matrices and vectors,
+  -- whose missing elements count as 0.
+  let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
+  let vals (n start : Nat) : List Float32 :=
+    (List.range n).map fun i => if i % 7 = 3 then rf32 (start + i) else small32 (start + i)
+  let shapes : List (Nat × Nat × Nat × Nat) :=
+    [(0, 0, 0, 0), (1, 1, 1, 1), (2, 3, 6, 3), (3, 2, 6, 2), (4, 4, 16, 4), (3, 3, 7, 2),
+      (5, 1, 5, 1), (1, 5, 5, 5), (2, 2, 4, 0), (6, 4, 24, 4)]
+  for (rows, cols, mLen, vLen) in shapes do
+    let m := vals mLen (rows * 31 + cols)
+    let v := vals vLen (rows * 17 + cols * 5 + 1000)
+    let r := LeanExe.Examples.Binary32.matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64
+    line "binary32" "matVec32" "array-u64"
+      [arrU (words32 m), arrU (words32 v), u rows.toUInt64, u cols.toUInt64]
+      (words (words32 r.toList))
 
 def scaledHypotCases : IO Unit := do
   for (x, y, s) in [(3.0, 4.0, 1.0), (3.0, 4.0, 0.0), (0.0, 0.0, 0.0)] ++ floatTriples do
