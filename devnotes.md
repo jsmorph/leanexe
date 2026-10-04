@@ -24236,3 +24236,22 @@ and each `let` matches one step of `Expr.eval`.
 - [ ] 24b: the translation of straight-line IR with simulation lemmas, and `axpyArray32` compiled
   to Wasm and WGSL with both theorems.
 - [ ] 24c: the loop rule, `mul64`, and `matVec32` as a kernel.
+
+### Iteration 24, step 24a: syntax, printer, parser, and round trip
+
+`Project/WGSL/Syntax.lean` defines the subset: types `u32`, `f32`, `bool`, and `vec2<u32>`;
+expressions with `u32` literals, numbered variables, `gid.x`, components of a `vec2<u32>`
+variable, binary operators overloaded by operand type, `!`, `bitcast` both ways, `sqrt`, `abs`,
+`select`, `min`, `arrayLength`, and buffer indexing; and statements `let`, `var`, assignment,
+store, `if` with `else`, and `return`.  A module is a number of read-only buffers, one read-write
+buffer after them, a workgroup size, and the body of `main`.  `Project/WGSL/Print.lean` prints
+tokens separated by one space, or a newline after `;`, `{`, and `}`, with every number as eight
+hexadecimal digits and every binary expression in parentheses.  A test kernel in this format ran
+on SwiftShader and llvmpipe.  The specification allows blankspace between an identifier and `<`
+(3.9), and the closing `)` of a parenthesized comparison discards its pending template candidate.
+
+`Project/WGSL/Parse.lean` lexes at spaces and newlines and parses with fuel, classifying each
+token first as a literal, variable, buffer, or keyword.  `Module.parse_print` in
+`Project/WGSL/RoundTrip.lean` proves `Module.parse m.print = some m` for every kernel whose
+indices fit in eight hexadecimal digits, with `propext`, `Classical.choice`, and `Quot.sound`.
+The four files have 963 lines, of which the proof is 528.

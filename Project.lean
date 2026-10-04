@@ -202,3 +202,7 @@ import Project.SumSquares.Module
 import Project.SumSquares.Verify
 import Project.TalosCompat
 import Project.TalosPrelude
+import Project.WGSL.Syntax
+import Project.WGSL.Print
+import Project.WGSL.Parse
+import Project.WGSL.RoundTrip
