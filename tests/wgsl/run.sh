@@ -7,11 +7,16 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host
 mkdir -p "$build/wgsl"
-(cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
-  Project.WGSL.Scale Project.WGSL.scaleKernel "$build/wgsl/scale.wgsl")
+for kernel in scale axpyArray; do
+  (cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
+    Project.WGSL.Binary32 "Project.WGSL.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
+done
 cases=$(mktemp)
 trap 'rm -f "$cases"' EXIT
-(cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/wgsl/Cases.lean) >"$cases"
+# Reads past the end of a shorter `y` with `!` print panic messages from native Lean, which then
+# returns the default 0; they are expected.
+(cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/wgsl/Cases.lean) >"$cases" \
+  2>/dev/null
 status=0
 for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/lvp_icd.json; do
   passed=0

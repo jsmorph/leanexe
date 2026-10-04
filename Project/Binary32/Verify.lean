@@ -5,6 +5,7 @@ import Project.IR.Read
 import Project.IR.Build
 import Project.IR.Run
 import Project.ProofKit.F32Bits
+import Project.IR.Denote
 import Project.Encoding.RoundTrip
 
 namespace Project.Binary32
@@ -197,16 +198,200 @@ theorem piecewise32_implements : Implements binary32.module 6 piecewise32Tuple :
           F32Bits.toBits_neg, F32Bits.toBits_abs, F32Bits.toBits_min, F32Bits.toBits_max, h0, h05,
           h15]⟩) fun _ _ h => h
 
+/-- The element of `scale32`'s build. -/
+def scaleElement : Expr .u64 := .toBits32 (.binF32 .mul (.getF32 0) (.ofBits32 (.read 1 (.get 5))))
+
+/-- The element lemma that the Wasm proof and the WGSL kernel proof share. -/
+theorem scaleElement_denote (a : Float32) (x : Array Float32) (k : Nat) (hk : k < 2 ^ 64)
+    (locals : Nat → Option Wasm.Value) (arrays : Nat → Option (Array UInt64))
+    (h0 : locals 0 = some (.f32 a.toBits)) (h5 : locals 5 = some (.i64 (UInt64.ofNat k)))
+    (h1 : arrays 1 = some (x.map fun v : Float32 => v.toBits.toUInt64)) :
+    scaleElement.denote locals arrays = some ((a * x[k]!).toBits.toUInt64) := by
+  have hkn : (UInt64.ofNat k).toNat = k := by simp; omega
+  simp [scaleElement, Expr.denote, h0, h5, h1, hkn, getElem!_map_toBits32, F32Op.apply,
+    F32Bits.toBits_mul]
+
+/-- `scale32` with its two arguments as one pair. -/
+def scale32Pair (v : Float32 × Array Float32) : Array Float32 := scale32 v.1 v.2
+
+theorem scale32_implements : Implements binary32.module 7 scale32Pair := by
+  refine Func.implements_heap binary32.funcs 5 binary32.scale32.ir "scale32" rfl scale32Pair
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, ⟨_, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨a, x⟩ heap initial _ hHeap ⟨_, _, rfl, rfl, ⟨px, rfl, hXs⟩⟩ hCap
+  change heap.Borrowed initial px (x.map fun v : Float32 => v.toBits.toUInt64) at hXs
+  have hMemory32 : binary32.module.memIs64 = false := rfl
+  have hImports : binary32.module.imports = [] := rfl
+  have hAlloc : binary32.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hX := hXs.values
+  have hLength := hX.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  let start : State :=
+    { params := [.f32 a.toBits, .i64 px], locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  let s1 := start.update 2 (.i64 (UInt64.ofNat x.size))
+  show Triple _ (.seq (.arraySize 2 1) (.build 3 4 5 (.get 2) scaleElement)) 6
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hLength, hX.lengthRead, State.set?_eq_update, s1,
+      start, State.get]
+  refine (Stmt.build_spec (n := UInt64.ofNat x.size)
+    (fun i => (a * x[i.toNat]!).toBits.toUInt64) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by simp [s1, start]) hHeap hCap
+    ⟨s1, by simp [Expr.eval, s1, State.get_update_same (by simp [start] :
+      2 < start.params.length + start.locals.length)]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 2 ∧ state.locals.length = 5 :=
+      ⟨by rw [hFrame.params]; simp [s1, start], by rw [hFrame.locals]; simp [s1, start]⟩
+    have hKeep : ∀ j, j < 2 → state.get j = start.get j := fun j hj => by
+      rw [hFrame.get j (by omega) (by simp; omega)]
+      simp only [s1]
+      rw [State.get_update_ne (by omega)]
+    have hk64 : k < 2 ^ 64 := by simp at hk; omega
+    have hkn : (UInt64.ofNat k).toNat = k := by simp; omega
+    let locals : Nat → Option Wasm.Value := fun j =>
+      if j = 0 then some (.f32 a.toBits) else if j = 5 then some (.i64 (UInt64.ofNat k)) else none
+    let arrays : Nat → Option (Array UInt64) := fun j =>
+      if j = 1 then some (x.map fun v : Float32 => v.toBits.toUInt64) else none
+    have hAgree : Agrees locals arrays store 6 state := by
+      refine ⟨fun j v hj => ?_, fun j ys hj => ?_⟩
+      · simp only [locals] at hj
+        split at hj
+        · rename_i h0; subst h0
+          cases hj
+          exact ⟨by decide, (hKeep 0 (by decide)).trans rfl⟩
+        · split at hj
+          · rename_i h5; subst h5
+            cases hj
+            exact ⟨by decide, hIndex⟩
+          · cases hj
+      · simp only [arrays] at hj
+        split at hj
+        · rename_i h1; subst h1
+          cases hj
+          exact ⟨by decide, px, (hKeep 1 (by decide)).trans rfl, hAt px _ hXs⟩
+        · cases hj
+    have hden := scaleElement_denote a x k hk64 locals arrays (by simp [locals])
+      (by simp [locals]) (by simp [arrays])
+    obtain ⟨next, hEval⟩ := Expr.eval_denote scaleElement 6 state _ hAgree
+      (by simp [scaleElement, Expr.scratchWidth, hState.1, hState.2]) hden
+    exact ⟨next, by rw [hEval, hkn]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [binary32.scale32.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
+  rw [scale32Pair, show scale32 a x = LeanExe.build (UInt64.ofNat x.size)
+    (fun i => a * x[i.toNat]!) from rfl, build_map]
+  exact hNew.owned
+
+/-- The element of `axpyArray32`'s build. -/
+def axpyArrayElement : Expr .u64 :=
+  .toBits32 (.binF32 .add (.binF32 .mul (.getF32 0) (.ofBits32 (.read 1 (.get 6))))
+    (.ofBits32 (.read 2 (.get 6))))
+
+/-- The element lemma that the Wasm proof and the WGSL kernel proof share. -/
+theorem axpyArrayElement_denote (a : Float32) (x y : Array Float32) (k : Nat) (hk : k < 2 ^ 64)
+    (locals : Nat → Option Wasm.Value) (arrays : Nat → Option (Array UInt64))
+    (h0 : locals 0 = some (.f32 a.toBits)) (h6 : locals 6 = some (.i64 (UInt64.ofNat k)))
+    (h1 : arrays 1 = some (x.map fun v : Float32 => v.toBits.toUInt64))
+    (h2 : arrays 2 = some (y.map fun v : Float32 => v.toBits.toUInt64)) :
+    axpyArrayElement.denote locals arrays = some ((a * x[k]! + y[k]!).toBits.toUInt64) := by
+  have hkn : (UInt64.ofNat k).toNat = k := by simp; omega
+  simp [axpyArrayElement, Expr.denote, h0, h6, h1, h2, hkn, getElem!_map_toBits32, F32Op.apply,
+    F32Bits.toBits_add, F32Bits.toBits_mul]
+
+/-- `axpyArray32` with its three arguments as one tuple. -/
+def axpyArray32Tuple (v : Float32 × Array Float32 × Array Float32) : Array Float32 :=
+  axpyArray32 v.1 v.2.1 v.2.2
+
+theorem axpyArray32_implements : Implements binary32.module 8 axpyArray32Tuple := by
+  refine Func.implements_heap binary32.funcs 6 binary32.axpyArray32.ir "axpyArray32" rfl
+    axpyArray32Tuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, ⟨_, rfl, -⟩, ⟨_, rfl, -⟩⟩; rfl) ?_
+  rintro ⟨a, x, y⟩ heap initial _ hHeap
+    ⟨_, _, rfl, rfl, _, _, rfl, ⟨px, rfl, hXs⟩, ⟨py, rfl, hYs⟩⟩ hCap
+  change heap.Borrowed initial px (x.map fun v : Float32 => v.toBits.toUInt64) at hXs
+  change heap.Borrowed initial py (y.map fun v : Float32 => v.toBits.toUInt64) at hYs
+  have hMemory32 : binary32.module.memIs64 = false := rfl
+  have hImports : binary32.module.imports = [] := rfl
+  have hAlloc : binary32.module.funcs[0]? = some (allocFunction 0) := rfl
+  have hX := hXs.values
+  have hLength := hX.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength
+  have hxsize := hX.size_lt
+  simp only [Array.size_map] at hxsize
+  let start : State :=
+    { params := [.f32 a.toBits, .i64 px, .i64 py], locals := [.i64 0, .i64 0, .i64 0, .i64 0, .i64 0] }
+  let s1 := start.update 3 (.i64 (UInt64.ofNat x.size))
+  show Triple _ (.seq (.arraySize 3 1) (.build 4 5 6 (.get 3) axpyArrayElement)) 7
+    (fun store state => store = initial ∧ state = start) _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) ?_
+  · simp [Stmt.run, Stmt.arraySize, Expr.eval, hLength, hX.lengthRead, State.set?_eq_update, s1,
+      start, State.get]
+  refine (Stmt.build_spec (n := UInt64.ofNat x.size)
+    (fun i => (a * x[i.toNat]! + y[i.toNat]!).toBits.toUInt64) hMemory32 hImports hAlloc
+    (by decide) (by decide) (by simp [s1, start]) hHeap hCap
+    ⟨s1, by simp [Expr.eval, s1, State.get_update_same (by simp [start] : 3 < start.params.length + start.locals.length)]⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro k store state hk hAt hFrame hIndex
+    have hState : state.params.length = 3 ∧ state.locals.length = 5 :=
+      ⟨by rw [hFrame.params]; simp [s1, start], by rw [hFrame.locals]; simp [s1, start]⟩
+    have hKeep : ∀ j, j < 3 → state.get j = start.get j := fun j hj => by
+      rw [hFrame.get j (by omega) (by simp; omega)]
+      simp only [s1]
+      rw [State.get_update_ne (by omega)]
+    have hk64 : k < 2 ^ 64 := by simp at hk; omega
+    have hkn : (UInt64.ofNat k).toNat = k := by simp; omega
+    let locals : Nat → Option Wasm.Value := fun j =>
+      if j = 0 then some (.f32 a.toBits) else if j = 6 then some (.i64 (UInt64.ofNat k)) else none
+    let arrays : Nat → Option (Array UInt64) := fun j =>
+      if j = 1 then some (x.map fun v : Float32 => v.toBits.toUInt64)
+      else if j = 2 then some (y.map fun v : Float32 => v.toBits.toUInt64) else none
+    have hAgree : Agrees locals arrays store 7 state := by
+      refine ⟨fun j v hj => ?_, fun j ys hj => ?_⟩
+      · simp only [locals] at hj
+        split at hj
+        · rename_i h0; subst h0
+          cases hj
+          exact ⟨by decide, (hKeep 0 (by decide)).trans rfl⟩
+        · split at hj
+          · rename_i h6; subst h6
+            cases hj
+            exact ⟨by decide, hIndex⟩
+          · cases hj
+      · simp only [arrays] at hj
+        split at hj
+        · rename_i h1; subst h1
+          cases hj
+          exact ⟨by decide, px, (hKeep 1 (by decide)).trans rfl, hAt px _ hXs⟩
+        · split at hj
+          · rename_i h2; subst h2
+            cases hj
+            exact ⟨by decide, py, (hKeep 2 (by decide)).trans rfl, hAt py _ hYs⟩
+          · cases hj
+    have hden := axpyArrayElement_denote a x y k hk64 locals arrays (by simp [locals])
+      (by simp [locals]) (by simp [arrays]) (by simp [arrays])
+    obtain ⟨next, hEval⟩ := Expr.eval_denote axpyArrayElement 7 state _ hAgree
+      (by simp [axpyArrayElement, Expr.scratchWidth, hState.1, hState.2]) hden
+    exact ⟨next, by rw [hEval, hkn]⟩
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [binary32.axpyArray32.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
+  rw [axpyArray32Tuple, show axpyArray32 a x y = LeanExe.build (UInt64.ofNat x.size)
+    (fun i => a * x[i.toNat]! + y[i.toNat]!) from rfl, build_map]
+  exact hNew.owned
+
 /-- `encode` succeeds on `binary32.module`, and its bytes decode to a module that computes
-`axpy32`, `hypot32`, `ratio32`, `matVec32`, and `piecewise32` bit for bit. -/
+`axpy32`, `hypot32`, `ratio32`, `matVec32`, `piecewise32`, `scale32`, and `axpyArray32` bit
+for bit. -/
 theorem binary32_bytes : ∃ bytes, Wasm.Encoding.encode binary32.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 axpy32Tuple ∧
       Implements m 3 hypot32Pair ∧ Implements m 4 ratio32Tuple ∧
-      Implements m 5 matVec32Tuple ∧ Implements m 6 piecewise32Tuple := by
+      Implements m 5 matVec32Tuple ∧ Implements m 6 piecewise32Tuple ∧
+      Implements m 7 scale32Pair ∧ Implements m 8 axpyArray32Tuple := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip binary32.module (by decide) (by decide +kernel)
   exact ⟨bytes, success, binary32.module, decoded, axpy32_implements, hypot32_implements,
-    ratio32_implements, matVec32_implements, piecewise32_implements⟩
+    ratio32_implements, matVec32_implements, piecewise32_implements, scale32_implements,
+    axpyArray32_implements⟩
 
 #print axioms binary32_bytes
 

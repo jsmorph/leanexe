@@ -144,6 +144,16 @@ def binary32Cases : IO Unit := do
   for (x, lo, hi) in bounds ++ float32Triples do
     line "binary32" "piecewise32" "f32" [fl32 x, fl32 lo, fl32 hi]
       (toString (LeanExe.Examples.Binary32.piecewise32 x lo hi).toBits)
+  -- Arrays for scale32 and axpyArray32, with some second arrays shorter than the first.
+  for n in [0, 1, 5, 17] do
+    for (a, k) in (specialFloat32s.take 6).zip (List.range 6) do
+      let x := (List.range n).map fun i => if i % 2 = 0 then rf32 (i + 7 * k) else small32 (i + k)
+      let y := (List.range (if k % 3 = 1 then n / 2 else n)).map fun i => small32 (3 * i + k)
+      let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
+      line "binary32" "scale32" "array-u64" [fl32 a, arrU (words32 x)]
+        (words (words32 (LeanExe.Examples.Binary32.scale32 a x.toArray).toList))
+      line "binary32" "axpyArray32" "array-u64" [fl32 a, arrU (words32 x), arrU (words32 y)]
+        (words (words32 (LeanExe.Examples.Binary32.axpyArray32 a x.toArray y.toArray).toList))
   -- Matrices stored by rows with the vectors they multiply, including short matrices and vectors,
   -- whose missing elements count as 0.
   let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64

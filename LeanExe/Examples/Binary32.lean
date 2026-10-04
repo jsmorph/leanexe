@@ -30,4 +30,8 @@ def piecewise32 (x lo hi : Float32) : Float32 :=
 def scale32 (a : Float32) (x : Array Float32) : Array Float32 :=
   LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]!
 
+/-- `a * x + y` for each element in binary32, with 0 for each missing element of `y`. -/
+def axpyArray32 (a : Float32) (x y : Array Float32) : Array Float32 :=
+  LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]! + y[i.toNat]!
+
 end LeanExe.Examples.Binary32
