@@ -44,6 +44,7 @@ import Project.Updates.Verify
 import Project.Trees.Module
 import Project.Trees.Encode
 import Project.Trees.Node
+import Project.Trees.Copy
 import Project.Trees.Verify
 import Project.Trees.Frame
 import Project.Trees.Moves

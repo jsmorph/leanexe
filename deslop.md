@@ -358,7 +358,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Iteration 19 (2026-10-03): the copy that `push` makes of a borrowed array has a proved rule, `Stmt.pushBuild_spec`, and `updates` has its first theorem, for `pushCopy`.
 - [x] Iteration 20 (2026-10-03): a call that consumes an array the code uses again receives a copy.  `clob` gains `fillKeep`, with its theorem.
 - [x] Iteration 21 (2026-10-03): a match on a tree may have a pair as its value.  `trees` gains `keyPair`, and `treeMoves` gains `splitRoot`, `rootAndRest`, and `splitOr`, with their theorems.
-- [ ] Iteration 22: a copy for trees at a consuming use that is not the last (user decision).
+- [x] Iteration 22 (2026-10-03): a tree that a call consumes and the code uses again, or that a value holds while borrowed, receives a copy from a function the compiler generates for its type.  `treeMoves` gains `keepOld` and `addSelf`, with their theorems and `KeyTree.copy`'s.
 - [ ] Then design the GPU kernel path, and prove the I/O adapter.
 
 Unknowns: the cost of a per-program proof over explicit memory; whether rule lemmas compose once memory arrives; how Talos's semantics is tested against the WebAssembly specification; and whether Talos bounds call depth.
