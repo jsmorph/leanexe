@@ -24558,11 +24558,11 @@ The binary32 kernels need no Wasm theorems: a dispatch theorem rests on the elem
 
 - [x] G1: `ite` and `iteF32`, `sub`, division and remainder by powers of two, and the
   conditions, with simulation lemmas and GPU tests.
-- [ ] G2: the binary32 `exp` and the cached step's kernels in Lean, compiled, translated, and
+- [x] G2: the binary32 `exp` and the cached step's kernels in Lean, compiled, translated, and
   proved, with tests against native Lean on small configurations.
-- [ ] G3: the host session and the Python driver: logits equal native Lean's binary32 step on both
+- [x] G3: the host session and the Python driver: logits equal native Lean's binary32 step on both
   drivers, a comparison with Hugging Face's float32 model, and greedy generation.
-- [ ] G4: the dispatch program and its composition theorem.
+- [x] G4: the dispatch program and its composition theorem.
 
 ### GPT-2 on WGSL, step G1: conditionals, subtraction, and power-of-two division
 
@@ -24735,7 +24735,7 @@ other 22 modules emit the same bytes, LTG's check passes, and the 474 WGSL cases
 SwiftShader and llvmpipe.
 
 - [x] G2c: the element lemmas and dispatch theorems of the twelve kernels.
-- [ ] G4: the dispatch program and its composition theorem.
+- [x] G4: the dispatch program and its composition theorem.
 
 ### GPT-2 on WGSL, step G4: the dispatch program, analysis
 
@@ -24828,8 +24828,74 @@ native comparison tests them.  A lemma that the program fits WebGPU's default li
 Iteration 25, where the browser needs it.  The small configurations of the native test keep heads
 of 64 and a capacity of 1,024, which the kernels fix.
 
-- [ ] G4a: `step32`, `greedy32`, the buffer names, the host commands and their semantics, the
+- [x] G4a: `step32`, `greedy32`, the buffer names, the host commands and their semantics, the
   typed items, the printer, and the setup and step programs.
-- [ ] G4b: the call lemmas, the layer lemma, the step theorem, and the sequence theorem.
-- [ ] G4c: the Lean driver, the native `step32` comparison on small configurations, and
+- [x] G4b: the call lemmas, the layer lemma, the step theorem, and the sequence theorem.
+- [x] G4c: the Lean driver, the native `step32` comparison on small configurations, and
   generation on both drivers.
+
+### GPT-2 on WGSL, step G4: the program, its theorem, and the Lean driver
+
+`LeanExe/Examples/Gpt32.lean` adds the binary32 step: `Layer32` and `Weights32` hold the weights,
+`Shape32` the heads, the MLP width, the chunks of the token embedding, and the layers,
+`layerStep32` composes one layer's kernel functions in `generate.py`'s order, `layers32` threads
+the row through the layers, and `step32` returns each layer's caches through position `p` and the
+scores of each chunk.  `greedy32` chooses the first largest score.  `Project/Gpt32/Program.lean`
+gives the programs as typed items over structured buffer names: `wordItems` writes the step's
+words, `layerItems` makes a layer's eighteen calls, `logitsItems` writes a chunk's row count and
+its call, `stepItems` and `stepsItems` make one step and a sequence of steps, and `setupItems`
+loads the weights and makes the empty caches.  Each item becomes one or two host commands, and
+`Cmd.line` prints them.  The chunks' row counts went into one buffer, `rowCount`, written before
+each `logits` call, so that every chunk has the same two items.
+
+`Project/Gpt32/Exec.lean` gives both levels their meaning, as the review proposed.
+`KernelName.apply_dispatch` derives, from the twelve dispatch theorems, that a call's result is
+what its kernel's dispatch leaves in an output of the host's form, with `64 ⌈n/64⌉` invocations.
+`Item.execAll_sim` lifts that to programs: a run of typed items is a run of their host commands on
+the encoded store, ending in the encoded result, with every dispatch race-free.
+`Project/Gpt32/Compose.lean` proves the composition: `layer_exec` follows a layer's eighteen
+calls, `layers_exec` and `logits_exec` the layers and the chunks by induction, `step_exec` a step,
+`setup_exec` the setup, and `steps_exec` a sequence of steps.  `generate_host` states the result
+at the host's level.  After the setup and the steps of the tokens `ts`, the step of `t` at
+position `ts.length` leaves the words of `step32`'s scores in the buffers `z c`, every dispatch is
+race-free, and the run succeeds.  Its hypotheses are at most 64 heads, an MLP width below 2^29,
+fewer than 1,024 tokens, tokens within the chunks, weight files that hold the weights, and weights
+below 2^29 elements.
+
+Two proof techniques recur.  `simp` normalizes `2 ^ 29` to `536870912`, `xs[i]!` to
+`xs[i]?.getD default`, and `UInt64` products to `Nat` products, so the bound facts are stated in
+those forms or closed with `simpa`.  Values bound by `let` share subterms, and a `simp` that
+unfolds them grows the goal until it times out, so frame goals use explicit rewrites with
+`Store.set_ne` after `dsimp only` on the store.
+
+`Project/Gpt32/Driver.lean` runs the programs: it writes each kernel's text with the parser
+check of `Emit.lean`, starts the host, sends the shader commands and the lines of `setupItems` and
+`stepItems`, reads the scores from the last prompt position on, and chooses each token with
+`greedy32`.  `Project/Gpt32/Generate.lean` is its command line, and `generate.py` keeps the
+tokenizer, the export of the weights, and the comparison with Hugging Face on the saved scores.
+`KernelName.module` moved to `Specs.lean`, so the driver prints the modules the theorems name
+without loading the proofs.  The first run took 5.9 seconds a step: `greedy32`'s `for` loop ran
+in the interpreter, 8.6 seconds for 50,257 scores.  As an `Array.foldl`, whose loop is compiled
+and calls the interpreted function per element, it takes 13 milliseconds and makes the same
+comparisons in the same order.
+
+On the second prompt of G3, 48 tokens, the Lean driver's scores equal the Python driver's saved
+scores bit for bit on both drivers, and every choice matches Hugging Face's: 38.0 seconds for 65
+steps on llvmpipe and 60.7 on SwiftShader, including the start of Lean and the host.
+`tests/gpt32/native.sh` runs `tests/gpt32/Native.lean` on both drivers: three random models of
+one to three heads, one to three layers, and two to four chunks, 15 steps in all, each step's
+scores equal to native `step32`'s bit for bit.  From "The meaning of life is", 256 tokens took
+144.9 seconds for 260 steps on llvmpipe, every choice matching Hugging Face's, with a largest
+score difference of 1.38e-4 of the largest score.  The Python driver of G3 took 91.8 seconds for
+255 steps.  The difference is about 0.2 seconds a step beyond the start of Lean and the host, and
+I have not measured its cause.  The Lean driver rewrites thirteen word buffers each step, where
+the Python driver made each word buffer once, and it builds and prints each step's 457 lines in
+the interpreter.
+
+The theorem covers the commands that reach the host.  The printer, the host's parsing and
+bookkeeping, the weight files, the strict binary32 profile of the device model, and the Lean
+driver's loop remain unproved, and the comparisons above test them.  A lemma that the program fits
+WebGPU's default limits remains for Iteration 25.
+The full check passes after G4: the build has no `sorry`, the module tests pass 9,669
+comparisons with the count, depth, and chunk cases, the other 22 modules emit the same bytes,
+LTG's check passes, and the 474 WGSL cases pass on SwiftShader and llvmpipe.
