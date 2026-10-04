@@ -238,6 +238,36 @@ export class WasmHost {
   close() {}
 }
 
+/** Top-k sampling with `sampleTopK` of gpt.wasm, the binary64 model's module, which
+`sampleTopK_implements` proves computes `LeanExe.Examples.Gpt.sampleTopK`: the scores, widened
+to binary64, `k`, the temperature, and a SplitMix64 state give the token and the next state.  It
+borrows the scores, so the caller releases them. */
+export class Sampler {
+  static async open(path) {
+    const { instance } = await WebAssembly.instantiateStreaming(fetch(path, { cache: "no-store" }));
+    return new Sampler(instance.exports);
+  }
+
+  constructor(exports) {
+    this.x = exports;
+  }
+
+  sample(chunks, k, temperature, state) {
+    const n = chunks.reduce((total, chunk) => total + chunk.length, 0);
+    const ptr = this.x.alloc(BigInt(8 + 8 * n));
+    const base = Number(ptr);
+    const view = new DataView(this.x.memory.buffer);
+    view.setBigUint64(base, BigInt(n), true);
+    let i = 0;
+    for (const chunk of chunks) {
+      for (const score of chunk) view.setFloat64(base + 8 + 8 * i++, score, true);
+    }
+    const [token, next] = this.x.sampleTopK(ptr, BigInt(k), temperature, state);
+    this.x.release(ptr);
+    return { token: Number(token), next: BigInt.asUintN(64, next) };
+  }
+}
+
 /** Runs the command lines on each host, fetching each weight file once. */
 export async function runLines(lines, hosts, progress = () => {}) {
   const messages = [];

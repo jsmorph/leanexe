@@ -24980,3 +24980,12 @@ meet it, the kernel page serves as the conformance check, and on other devices t
 the measured deviation and claim nothing more.  Integer emulation of binary32, a fallback to Wasm,
 and error bounds were the alternatives.  The GPT-2 page now states the condition.
 
+The user set aside proofs for devices outside the strict profile on 2026-10-04 after discussing a
+WGSL-faithful device model with error bounds and fused-multiply-add profiles.  The GPT-2 page then
+gained a seed, a top-k, and a temperature.  With a seed, each token comes from `sampleTopK` of
+`gpt.wasm`, the binary64 module whose Wasm `sampleTopK_implements` proves, with the binary32
+scores widened to binary64 and the seed as the first SplitMix64 state; without one, decoding stays
+greedy.  `sampleTopK` borrows the scores, so the page releases them after the call.  In headless
+Chromium, seed 42 gave the same eight tokens twice and seed 7 gave others, with equal WGSL and
+Wasm scores at every step.
+
