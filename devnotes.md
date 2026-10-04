@@ -24131,3 +24131,20 @@ flags, and the binary reports "WebGPU has been disabled via blocklist or the com
 Recommendation: R1.  It follows the existing pattern of a downloaded runtime and a C host, adds
 one library and no package manager, and runs on SwiftShader, which matched the earlier backend's
 exact words.  Chrome's compiler, Tint, gets its test in Iteration 25's browser run.
+
+On 2026-10-03 the user chose R1, wgpu-native with a C harness.  The previous WGSL work used the
+same library, built from source (v27.0.4.0) and called through wgpu-py, with SwiftShader from
+Chrome on the ARM Mac.  `tools/download-wgpu-native.sh` fetches the v29.0.1.1 release archive and
+checks the SHA-256 digest GitHub publishes for it, and `tools/build-webgpu-host.sh` builds
+`tools/webgpu-host.c` into `build/tools/leanexe-webgpu-host`.  The harness runs one entry point
+with read-only input buffers and one output buffer, filled with `0x7fc00001` so an unwritten word
+shows, and it exits on any WebGPU error through the uncaptured-error callback.  `VK_ICD_FILENAMES`
+selects the driver: `/usr/lib/chromium/vk_swiftshader_icd.json` gives SwiftShader (LLVM 16), and
+`/usr/share/vulkan/icd.d/lvp_icd.json` gives llvmpipe (Mesa 25.0.7, LLVM 19.1.7).
+
+A probe kernel compared 4,096 random binary32 cases on each driver with round-to-nearest-even
+results computed in Python: `a * b + c` with `c` the negated rounded product, which is zero
+unless the device fuses, `a / b`, `sqrt(a)`, a subnormal times 1.0, `a * b`, and `a + b`.  Both
+drivers matched every case: neither fused, both rounded division and square root correctly, and
+both kept subnormals.  This is evidence for these cases on these two drivers and says nothing
+about physical GPUs.
