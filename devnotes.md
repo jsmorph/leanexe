@@ -25048,3 +25048,34 @@ program must run as its Wasm does: `UInt64` gives the same values in both, inclu
 while compiled `Nat` would abort where Lean continues.  The only divergence left is the one
 `Implements` permits, an abort when memory or the depth guard runs out.  Sizes, indices, and
 counters are `UInt64`, and proofs carry their bounds.
+
+## 2026-10-04: Reconstituting the Euler development, plan
+
+The user set the goal: reconstitute main's Euler development here with the same results in
+spirit, including runs up to 800 × 800, following the development procedure (critical review;
+for each question, review the options, recommend, and proceed; commit and update often).  Main
+has two production solvers.  The first-order Rusanov solver (`data/euler-riemann-complete-v1`) ran
+the four-quadrant problem to time 0.8 on 192 × 192 in 49.6 seconds and on 800 × 800 in 61.6
+minutes, with theorems for termination, exact output, a 512 MiB bound, the numerical trace,
+admissibility, and hyperbolicity.  The reconstructed solver (`data/euler-reconstructed-v1`), with
+minmod slopes, a positivity check that halves rejected slopes, and outward-rounded speed bounds,
+took 176.7 seconds and 3 hours 58 minutes, with theorems for complete execution, hyperbolicity,
+and physical balance.  Main kept the output words of every run.
+
+The new solvers are written in this dialect: `Float`, `UInt64` for sizes and counters, `Bool`,
+and arrays of records.  They follow main's arithmetic operation for operation, so that the output
+words of both runs can be compared with main's bit for bit, which is the strongest available test
+of the rewrite.  The theorems are proved about the new Lean functions, and `Implements` carries
+them to the bytes; main supplies the numerical design, the real-number mathematics, and proof
+structure where they fit.
+
+- [ ] E1: `Bool` values: parameters, results, record fields, `&&`, `||`, `!`, `==`, `decide`.
+- [ ] E2: arrays whose elements hold no pointers: `Bool`, enumerations, and records of scalars,
+  stored inline.
+- [ ] E3: arrays whose elements own memory: arrays of arrays and of records that hold arrays.
+- [ ] E4: binary64 `toBits`, and whatever else the solvers need.
+- [ ] E5: the first-order solver, tests against main's binary, and the 192 and 800 runs.
+- [ ] E6: the first-order solver's theorems.
+- [ ] E7: the reconstructed solver, tests, and its 192 and 800 runs.
+- [ ] E8: the reconstructed solver's theorems.
+- [ ] E9: figures, report, and documentation.
