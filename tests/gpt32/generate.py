@@ -13,7 +13,8 @@
 """Generates text with GPT-2 124M in binary32, every step in the WGSL kernels of
 Project/Gpt32/Specs.lean, run by build/tools/leanexe-webgpu-host in session mode.
 
-Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe] [--tokens N] [PROMPT]`.
+Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe] [--tokens N] [PROMPT]`,
+or with `--export` to write the weight files and stop.
 The script writes the pinned openai-community/gpt2 checkpoint to build/gpt2-32/ as Wasm arrays
 of binary32 values (8 bytes per value), one file per array: the token embedding in four chunks
 of at most 12,565 rows, the positional embedding, and each layer's arrays, with `c_attn` split
@@ -88,11 +89,15 @@ def main():
     parser.add_argument('--driver', choices=DRIVERS, default='llvmpipe')
     parser.add_argument('--tokens', type=int, default=32)
     parser.add_argument('--save', help='writes the scores of each step to this .npy file')
+    parser.add_argument('--export', action='store_true',
+                        help='writes the weight files to build/gpt2-32 and stops')
     parser.add_argument('prompt', nargs='?', default='The meaning of life is')
     args = parser.parse_args()
     tokenizer = GPT2TokenizerFast.from_pretrained(REPO, revision=REVISION)
     model = GPT2LMHeadModel.from_pretrained(REPO, revision=REVISION, dtype=torch.float32).eval()
     export(model)
+    if args.export:
+        return
     prompt = tokenizer(args.prompt)['input_ids']
     if len(prompt) + args.tokens > CAP:
         sys.exit(f'prompt and completion exceed {CAP} tokens')

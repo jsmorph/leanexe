@@ -29,8 +29,11 @@ journal.
 | `Project/Encoding/` | The encoder, decoder, `decode_encode`, and the testsuite runner. |
 | `Project/ProofKit/` | General lemmas: memory, arrays, allocation, and binary32 and binary64 arithmetic. |
 | `Project/Scale/`, `Project/Gcd/`, `Project/SumArray/`, `Project/PairSum/`, `Project/SumCount/`, `Project/Axpy/`, `Project/ScaledHypot/`, `Project/Piecewise/`, `Project/SumSquares/`, `Project/Mean/`, `Project/Bucket/`, `Project/Clob/` | Compiled programs with their theorems. |
+| `Project/WGSL/` | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
+| `Project/Gpt32/` | GPT-2 in binary32: the kernels' dispatch theorems, the host programs with their theorem `generate_host`, and the Lean driver. |
 | `ltg/` | The LTG knowledge base. |
-| `tools/` | The resource-limited Lean runner and the Wasmtime host builder. |
+| `tools/` | The resource-limited Lean runner and the Wasmtime and WebGPU host builders. |
+| `tests/` | Module, WGSL, and GPT-2 tests, and the WebGPU pages of `tests/web/`. |
 
 ## Commands
 
@@ -50,3 +53,8 @@ tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entri
 
 `tools/build-wasmtime-host.sh` builds the Wasmtime host after
 `tools/download-wasmtime.sh` fetches the pinned C API.
+
+`uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/: one runs
+the WGSL kernel tests on a browser's WebGPU, and one runs GPT-2 with its kernels
+on WebGPU, in WebAssembly, or on both, compared.  `tests/web/README.md` describes
+the pages, their setup, and what is proved about what they run.

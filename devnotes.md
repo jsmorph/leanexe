@@ -24993,3 +24993,10 @@ At the user's direction, one server, `tests/web/serve.py`, now serves both pages
 the kernel tests at `/kernels/` and GPT-2 at `/gpt2/`, with links to both at `/`.  It replaces
 `tests/wgsl/serve.py` and `tests/gpt32/serve.py`.
 
+`tests/web/README.md` documents the two pages: setup, the controls, the address parameters, what is
+proved about what they run, and the results on SwiftShader and on the Apple GPU.  The server now
+writes everything missing at start, including the kernel texts of both pages and `cases.txt`, so
+the kernel page no longer depends on `tests/wgsl/run.sh` and its native host; from nothing this took
+four minutes and produced files identical to `run.sh`'s.  `generate.py --export` writes the weight
+files and stops.
+
