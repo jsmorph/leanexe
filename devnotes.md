@@ -25039,3 +25039,12 @@ that hold arrays (`Attempt`, `Result`).  The execution claims also differ: main 
 terminates within 512 MiB with a defined status, while this branch's `Implements` states that a
 call returns the Lean value or aborts at `unreachable`.  Matching main would need a separate
 result that the solver does not abort for grids up to 800.
+
+The user then set two directions.  Main's Euler development is not authoritative: the goal is
+quality proofs of the solver's behavior, so the solver may be written anew in this dialect, with
+main as a reference for its numerical design and a source of lemmas where they fit, and no proof
+that the new solver equals main's.  `Nat` stays out of the source language, because a Lean
+program must run as its Wasm does: `UInt64` gives the same values in both, including wraparound,
+while compiled `Nat` would abort where Lean continues.  The only divergence left is the one
+`Implements` permits, an abort when memory or the depth guard runs out.  Sizes, indices, and
+counters are `UInt64`, and proofs carry their bounds.
