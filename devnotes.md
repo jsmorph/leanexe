@@ -24659,3 +24659,27 @@ cases pass again with it.
 
 - [x] G2a: `nearest` in the IR, the encoder, and WGSL (`round`); compiler rules for the binary32
   bit conversions; unfolding of `@[inline]` functions; the binary32 `exp` in a kernel with tests.
+
+### GPT-2 on WGSL, step G2b (first part): the kernels and their tests
+
+`LeanExe/Examples/Gpt32.lean` adds the twelve one-row kernels of the step: `embed32`,
+`layerNorm32`, `linear32`, `append32`, `scores32`, `headMax32`, `headSum32`, `probs32`, `mix32`,
+`add32`, `geluArray32`, and `logits32`.  Each layer normalization element computes the row's mean
+and variance itself, which costs 1,536 operations per element at width 768.  Scores lie by head
+with a stride of 1,024 positions, and heads have 64 elements, so the only divisions are by 1,024
+and 64.  The compiler takes no loop and no `let` with statements inside a branch, so `scores32`
+computes every dot product and `probs32` every exponential before choosing.  `Project/Gpt32/Specs.lean`
+reads each kernel's `Spec` from the compiled IR (`specOf`: the count local, the index local, the
+assigned locals with their types, the statements, and the element), and all twelve translate.
+
+`tests/wgsl/run.sh` runs 48 cases of the twelve kernels against native Lean: widths 8, 16, and 64,
+attention with two heads at positions 0, 2, and 9, and inputs with special values.  The first run
+found SwiftShader one ulp off native Lean in two GELU outputs.  A strict-binary32 replay of the
+candidate rewrites matched SwiftShader only when `1 + (1 - q)` is folded into `2 - q`, which WGSL
+allows, so `gelu32` now computes `0.5 x (2 - 2 / (e^(2z) + 1))` directly.  A host argument may not
+exceed 128 KiB, which two `linear` cases exceeded; their sizes are smaller.  All 474 cases pass
+on SwiftShader and llvmpipe.
+
+The element lemmas and dispatch theorems of these kernels remain (G2c).  Until they exist, the
+correspondence between a kernel's IR and its Lean function rests on these tests, while the
+translation of the IR into WGSL is proved.
