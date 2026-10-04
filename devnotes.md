@@ -24185,3 +24185,31 @@ SwiftShader and llvmpipe; 24b, counting loops and `matVec32`.
 
 Decisions D1, D2, and D5 change what a kernel theorem states or assumes, so they go to the user
 one at a time after the review.
+
+### Review of the Iteration 24 plan
+
+One reviewer read the WGSL and WebGPU specifications, ran probes in the harness, and checked the
+analysis.  I reran its NaN probe.  With the non-canonical inputs `0x7f800001` and `0xffc00001`,
+both drivers return the quieted input (`0x7fc00001`, `0xffc00001`), where Talos's `IEEE32` returns
+`0x7fc00000`.  With the canonical NaN, the only NaN a Lean `Float32` has, and with NaNs the device
+creates (0/0, ∞ − ∞, √−1), both drivers return `0x7fc00000` from addition, multiplication,
+division, and square root, as `IEEE32` does.  WGSL's unary minus gives `0xffc00000`, and the
+compiler does not use it, since Lean's `-x` compiles to `-0.0 - x`.
+
+| Finding | Response |
+|---------|----------|
+| Fully parenthesized expressions are always accepted (WGSL 3.9, 8.20), and a parser must handle nested comments, reserved words, the `u` suffix, and template discovery.  A printer, parser, and round trip are about half the encoder, 1,800 to 2,500 lines with a review record, in a restricted format: single spaces, ASCII, fixed-width hex literals, no float literals | D1 (i) in that format |
+| `parse (print k) = k` shows that the Lean parser reads the text as `k`.  That WGSL implementations read it the same way is a review claim with no official test suite behind it | Stated in the review record |
+| Naga accepts text the specification rejects (`x & y \| z`, a NaN constant), so tests on wgpu-native cannot catch such printer errors | The browser run of Iteration 25 checks the text with Tint |
+| A NaN or infinite constant is a shader-creation error (15.7.2), and so is a constant zero divisor (8.8) | Excluded from the subset |
+| `u64` as pairs: add 5, multiply 24, less-than 5, equality 3 `u32` operations, exact on 512 pairs on both drivers.  Division and variable shifts differ more, and WGSL's division by zero is the reverse of the IR's | D2 (a), without division and shifts at first |
+| Reads of a Wasm array bound as `array<u32>` matched `Expr.read` on 196 cases.  An out-of-bounds access is a dynamic error (6.5.7), so each read needs an `arrayLength` guard written with `if` or `&&`, since `select` evaluates both arguments | Guard in every read |
+| WGSL defines memory semantics through the Vulkan Memory Model (14.5).  The dispatch model holds for programs without data races, given that the host writes the output's length word, unwritten words keep their values, invocations at or above the count write nothing, and no dynamic error occurs | Added to D5 |
+| `Stmt.run` covers straight-line code only, and loops are proved with the Wasm `Triple` rule `Stmt.loop_spec` | A WGSL loop rule with `Stmt.loop_spec`'s hypotheses |
+| A dispatch has at most 65,535 workgroups per dimension, and the default storage binding limit gives fewer than 2^24 elements per array | A premise that the invocations cover the count |
+| The profile said nothing about NaN | A clause that every NaN result is `0x7fc00000`; inputs that represent Lean values carry no other NaN |
+| `axpyArray32` does not exist yet | Added to 24a |
+
+The increments become: 24a, the syntax tree, printer, parser, round trip, WGSL and dispatch
+semantics, and one elementwise kernel proved directly; 24b, the translation of straight-line IR
+with simulation lemmas and a compiled `axpyArray32`; 24c, the loop rule, `mul64`, and `matVec32`.
