@@ -24703,6 +24703,14 @@ score; the difference grows along the text, since the two models sum in differen
 
 - [x] G3 (first part): the host session, per-layer weight files, and the Python driver, with
   greedy generation.
-- [ ] Generation to 256 tokens and a second prompt; scores compared across the two drivers.
+- [x] Generation to 256 tokens and a second prompt; scores compared across the two drivers.
+
+The first 256-token run stopped at step 148: the session kept a name slot for every freed buffer,
+and the per-position cache names filled its 4,096 slots.  `free` now removes the entry.  The
+run then generated 256 tokens in 91.8 seconds for 255 steps on llvmpipe, every choice matching
+Hugging Face's, with a largest score difference of 1.4e-4 of the largest score.  A second prompt,
+"WebGPU is a new standard for running programs on the graphics processor of a computer, and",
+generated 48 tokens on both drivers with every choice matching Hugging Face's, and `--save`
+showed that the two drivers' 48 × 50,257 scores are equal bit for bit.
 - [ ] G2c: the element lemmas and dispatch theorems of the twelve kernels.
 - [ ] G4: the dispatch program and its composition theorem.
