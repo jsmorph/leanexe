@@ -24899,3 +24899,23 @@ WebGPU's default limits remains for Iteration 25.
 The full check passes after G4: the build has no `sorry`, the module tests pass 9,669
 comparisons with the count, depth, and chunk cases, the other 22 modules emit the same bytes,
 LTG's check passes, and the 474 WGSL cases pass on SwiftShader and llvmpipe.
+
+### Iteration 25: a browser page for the kernel cases
+
+`tests/wgsl/browser/index.html` and `app.js` run the 474 cases of `tests/wgsl/Cases.lean` on the
+browser's WebGPU, with the kernel text of `Emit.lean`.  They bind and dispatch each case as
+`leanexe-webgpu-host run` does and compare every output word with native Lean's.  The page shows
+the adapter, its limits and features, each kernel's compiler messages (Tint's, in Chrome), a table
+of results by kernel, each failure's first differing word as bits and as a binary32 value, and a
+plain-text report.  `?run=high-performance`, `?run=low-power`, or `?run=fallback` starts the run on
+load.  `tests/wgsl/serve.py`, run with `uv run` and no dependencies, serves the page and
+`build/wgsl`, where `run.sh` now keeps `cases.txt`, on 127.0.0.1.  Browsers expose WebGPU only to
+secure contexts, so a browser on another machine reaches the page through `ssh -L`.  The
+`wgsl` branch has an earlier browser demo with a Node server for the packed GPT-2 bundle of the old
+pipeline, and its kernels and argument format differ from these.
+
+Headless Chromium 145 on this machine, which has no GPU, used its SwiftShader adapter: all 474
+cases passed in 0.8 seconds, and Tint reported no messages.  With one expected word of a `gelu`
+case changed, the page reported that case alone, with the word, both bit patterns, and both
+values.  A run on a hardware adapter remains to do.
+
