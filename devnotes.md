@@ -24919,3 +24919,33 @@ cases passed in 0.8 seconds, and Tint reported no messages.  With one expected w
 case changed, the page reported that case alone, with the word, both bit patterns, and both
 values.  A run on a hardware adapter remains to do.
 
+The first run on a hardware adapter, Chrome 152 on an Apple GPU through Metal, failed 132 of the
+474 cases.  Two causes account for the first failures, and both lie outside the strict binary32
+profile of the device model.  The GPU flushes subnormal values to zero: scale line 49 multiplies
+the subnormal `1e-45` by `1.9e28`, which strict binary32 rounds to `0x23f5d020`, and the GPU
+returns 0.  It also fuses multiplications and additions: axpyArray line 54 returns `0xc0abf6bf`,
+the fused result, where separate rounding gives `0xc0abf6be`.  Comparisons with flushed operands
+explain the condMix failures that choose another branch.  AxpyArray line 80 matches neither cause
+alone and remains unexplained, and the report listed only the first 100 failures, so the failures
+of the GPT-2 kernels remain unexamined.
+
+### Iteration 25: a GPT-2 page with and without WGSL
+
+The user asked for a page that runs GPT-2 with and without WGSL, and chose `gpt32.wasm` for the
+second: the same step program, with each kernel call run by the compiled module on the CPU.  The
+two then compute `step32` and can be compared word for word.  `tests/gpt32/serve.py` serves the
+page of `tests/gpt32/browser`, the kernels, `gpt32.wasm`, and the weight files of `generate.py`,
+and it tokenizes and decodes with the pinned tokenizer of `transformers` 5.18.0, the version
+`generate.py` already pins.  `Project/Gpt32/Lines.lean` prints the setup and each step's command
+lines from `Program.lean` and answers the server's requests.  It imports only the program and
+the model, so it builds as the native executable `gpt32-lines` of `lakefile.toml` and runs without
+`leanrun`, whose lock would otherwise last the server's life.  `hosts.js` runs the lines on
+WebGPU, as the C host does, or on `gpt32.wasm`, whose arrays have the same words as the host's
+buffers.  The kernels take their arrays borrowed and allocate their results, so the page releases
+an array when its name is reused.  The page chooses each token as `greedy32` does.
+
+In headless Chromium with SwiftShader, sixteen tokens from "The meaning of life is" gave "not the
+same as the meaning of death." with equal scores, bit for bit, at all 16 steps, 0.172 seconds a
+step with WGSL and 0.163 with Wasm, after loading 949 MiB in 1.3 seconds.  The kernels of
+`gpt32.wasm` have no Wasm-level theorem.
+

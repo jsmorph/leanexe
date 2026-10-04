@@ -18,3 +18,8 @@ name = "LeanExe"
 
 [[lean_lib]]
 name = "Project"
+
+# The program printer of the GPT-2 browser page (tests/gpt32/serve.py); not a default target.
+[[lean_exe]]
+name = "gpt32-lines"
+root = "Project.Gpt32.Lines"
