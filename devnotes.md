@@ -24290,3 +24290,24 @@ harness now takes the output's initial words, which carry the host's length word
 and extra workgroups, on SwiftShader and llvmpipe, and all 240 runs match native Lean.  The full
 build passed with no `sorry`, the 23 Wasm modules emit the same bytes as before, and the module
 tests, count cases, depth cases, chunks, and LTG check passed.
+
+### Iteration 24, step 24b: the translation, analysis
+
+The Wasm proof of a build takes, through `Stmt.buildWith_spec`, the fact that the element
+expression evaluates to `f k` in a state whose index local holds `k`.  The kernel theorem takes
+the same fact, so a kernel and its Wasm function share one element lemma.  The translation reads
+the element expression of a `buildWith` with an empty body and a description of the IR parameters:
+each array parameter becomes a read-only buffer holding its Wasm array, and the scalar parameters
+and the count become words of one more buffer, two 32-bit words each (a `u64` as its halves, a
+binary32 value as its bits and 0).
+
+| Part | What it is |
+|------|------------|
+| `trExpr` | An IR expression of the kernel subset becomes `let` statements, one per node, and the variable that holds the result: a `u64` as a `vec2<u32>` pair, a binary32 value as an `f32`, a Boolean as a `bool`.  A read becomes the pair of `readLow` and `readHigh` with a general index pair |
+| Simulation | If `e.eval mem scratch σ = some (v, σ')`, the WGSL environment holds the values of the IR locals the expression reads, and each array parameter's buffer holds the array that `UInt64Array.At` gives at its pointer, then the statements run without error and the result variable holds `v`.  Scratch locals, which `read` and `divU` assign, have no WGSL counterpart, since the simulation runs forward from the IR's success |
+| Kernel | The index `vec2(gid.x, 0)`, the count from the scalar buffer, a return when the index is not below the count, the parameters' `let`s, the element's statements, and the two stores of the element's halves |
+| Generic theorem | From the element fact for every `k` below the count, the dispatch leaves the output holding `LeanExe.build n f` as a Wasm array, and invocations store to distinct words |
+
+The first program, `axpyArray32 a x y := LeanExe.build x.size.toUInt64 fun i => a * x[i.toNat]! +
+y[i.toNat]!`, compiles to Wasm and to WGSL, with both theorems from one element lemma.  `u64`
+arithmetic on pairs, loops, and `matVec32` follow in 24c.
