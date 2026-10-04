@@ -136,6 +136,7 @@ structure Layer32 where
   bfc : Array Float32
   wproj : Array Float32
   bproj : Array Float32
+  deriving Inhabited
 
 structure Weights32 where
   wte : List (Array Float32)
