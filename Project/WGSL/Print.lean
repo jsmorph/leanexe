@@ -53,6 +53,7 @@ def Expr.tokens : Expr → List String
   | .toF32 operand => ["bitcast", "<", "f32", ">", "("] ++ operand.tokens ++ [")"]
   | .toU32 operand => ["bitcast", "<", "u32", ">", "("] ++ operand.tokens ++ [")"]
   | .sqrt operand => ["sqrt", "("] ++ operand.tokens ++ [")"]
+  | .round operand => ["round", "("] ++ operand.tokens ++ [")"]
   | .abs operand => ["abs", "("] ++ operand.tokens ++ [")"]
   | .select f t c => ["select", "("] ++ f.tokens ++ [","] ++ t.tokens ++ [","] ++ c.tokens ++ [")"]
   | .min left right => ["min", "("] ++ left.tokens ++ [","] ++ right.tokens ++ [")"]

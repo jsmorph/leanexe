@@ -24616,8 +24616,46 @@ of the device model on such expressions, while every kernel so far, which has no
 
 The revised increments split G2.
 
-- [ ] G2a: `nearest` in the IR, the encoder, and WGSL (`round`); compiler rules for the binary32
+- [x] G2a: `nearest` in the IR, the encoder, and WGSL (`round`); compiler rules for the binary32
   bit conversions; unfolding of `@[inline]` functions; the binary32 `exp` in a kernel with tests.
 - [ ] G2b: the one-row GPT-2 kernels in binary32, with element lemmas, dispatch theorems, and
   tests against native Lean.
 - [ ] G3: the host session, per-layer weight files, and the Python driver, with greedy generation.
+
+### GPT-2 on WGSL, step G2a: `nearest`, bit conversions, inlining, and `exp`
+
+The IR has a binary32 `nearest` (`F32UnOp.nearest`, Wasm `f32.nearest`, which Talos defines as
+`IEEE32.nearest` and the encoder already handles), and the WGSL subset has `round`, with its
+printer, parser, round-trip cases, and semantics `IEEE32.nearest`.  WGSL defines `round` with ties
+to even.  `LeanExe.Float32.nearest` is the Lean function, `ofBits` of `nearestBits`, and
+`F32Nearest.toBits_nearest` proves that its bits are `IEEE32.nearest` of the argument's.  The proof
+needs that rounding never yields a NaN other than the canonical one: `isNaN_roundScaledMagnitude`
+from CodeLib's `roundShift_bounds` and the bounds of `Nat.log2`.
+
+The compiler gained four rules: a `let` of a float or a word inside a float term becomes an
+assignment, as it already did inside a word term; `Float32.ofBits (w.toUInt32)` becomes
+`ofBits32 w`; `(x.toBits).toUInt64` becomes `toBits32 x`; and `LeanExe.Float32.nearest` becomes
+`unF32 .nearest`.  A function marked `@[inline]` that the module does not compile is unfolded at
+its use, so its body lands in each kernel and its `let`s become the build's statements.
+
+`LeanExe/Examples/Gpt32.lean` begins the binary32 model with `exp32`, written as the review
+measured it but with `nearest` in place of the magic-number rounding, and with the clamp
+written as comparisons, which maps a NaN to 89 and so to `+∞`.  Each power of two is built from
+bits whose fraction is zero, so it is never a NaN pattern (`isNaN_pow23`), and the element lemma
+`expElement_denote` needs no reasoning about ranges: it follows the seven assignments one at a
+time.  `expKernel_dispatch` proves the kernel of `expArray32`; its text theorem needs
+`decide +kernel`, since `decide` does not reduce `Module.wfb` on this kernel.  `tests/wgsl/run.sh`
+adds six cases with up to 4,096 elements over `[-120, 120]`, special values, and arbitrary bit
+patterns, and all 426 cases pass on SwiftShader and llvmpipe.
+
+The first full check failed: Lean core marks `Array.foldl` `@[inline]`, so unfolding inline
+functions before the compiler's rules turned the folds of `sumSquares` and `mean` into
+`Array.foldlM`, which no rule covers.  The compiler now unfolds an `@[inline]` function only when
+no rule applies to the term.  With that fix the full build passes with no `sorry`, the module
+tests pass 9,669 comparisons with the count, depth, and chunk cases, and the other 22 modules emit
+the same bytes; `binary32` and `gpt32` differ by their new functions.  The WebGPU host now
+requests the adapter's limits for its device and has a session mode, which G3 uses, and the 426
+cases pass again with it.
+
+- [x] G2a: `nearest` in the IR, the encoder, and WGSL (`round`); compiler rules for the binary32
+  bit conversions; unfolding of `@[inline]` functions; the binary32 `exp` in a kernel with tests.

@@ -12,6 +12,7 @@ import Project.IR.Update
 import Project.IR.ArrayLoop
 import Project.IR.Hint
 import Project.IR.Copy
+import LeanExe.Float32
 
 namespace Project.Compiler
 
@@ -1102,6 +1103,12 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand
         let ir : IRExpr .u64 := .truncSatU x
         return (ir, hint ir "float to word" :: xHints)
+    | (``UInt32.toUInt64, #[operand]) =>
+        let (``Float32.toBits, #[x]) := operand.consumeMData.getAppFnArgs
+          | throwError "a UInt32 word must be the bits of a Float32: {source}"
+        let (f, fHints) ← translateFloat ctx loc x .binary32
+        let ir : IRExpr .u64 := .toBits32 f
+        return (ir, hint ir "float32 bits" :: fHints)
     | (fn, _) =>
       if fn == ctx.self then
         if let some (index, depth) := ctx.selfCall then
@@ -1215,6 +1222,29 @@ mutual
       match fmt with
       | .binary64 => action
       | .binary32 => throwError "unsupported Float32 term: {source}"
+    let only32 (action : CompileM (IRExpr .f32 × List Hint)) :
+        CompileM (IRExpr fmt.type × List Hint) :=
+      match fmt with
+      | .binary32 => action
+      | .binary64 => throwError "unsupported Float term: {source}"
+    -- A `let` of a float or a word: the value is assigned to a fresh local before the body's
+    -- value.  The value is pure, so its statement may run whenever the body's statements run.
+    if let .letE name type value body _ := term then
+      if let some vfmt ← floatFormat? type then
+        let (v, vHints) ← translateFloat (ctx.movableIn body) ⟨[], 0⟩ value vfmt
+        let local_ ← fresh vfmt.type name.eraseMacroScopes.toString
+        let stmt := Project.IR.Stmt.assign local_ v
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+        return ← withLocalDeclD name type fun x =>
+          translateFloat (ctx.bind x [(local_, vfmt.type)]) loc (body.instantiate1 x) fmt
+      unless ← isWordType type do
+        throwError "a `let` in a float value must bind a float or a word: {source}"
+      let (v, vHints) ← translateValue (ctx.movableIn body) ⟨[], 0⟩ value
+      let local_ ← fresh .u64 name.eraseMacroScopes.toString
+      let stmt := Project.IR.Stmt.assign local_ v
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+      return ← withLocalDeclD name type fun x =>
+        translateFloat (ctx.bind x [(local_, .u64)]) loc (body.instantiate1 x) fmt
     if let some index := ctx.floats.lookup term then
       let ir := fmt.get index
       return (ir, [hint ir (fmt.rule "variable")])
@@ -1290,6 +1320,20 @@ mutual
         let (x, xHints) ← translateFloat ctx loc operand fmt
         let ir := fmt.sqrt x
         return (ir, hint ir (fmt.rule "sqrt") :: xHints)
+    | (``LeanExe.Float32.nearest, #[operand]) =>
+        only32 do
+          let (x, xHints) ← translateFloat ctx loc operand .binary32
+          let ir : IRExpr .f32 := .unF32 .nearest x
+          return (ir, mkHint loc (exprLength ir) "float32 nearest" source :: xHints)
+    | (``Float32.ofBits, #[bits]) =>
+        -- The reinterpretation keeps a NaN payload, which Lean's model replaces with the
+        -- canonical NaN, so a proof must show that the bits are not a NaN pattern.
+        only32 do
+          let (``UInt64.toUInt32, #[w]) := bits.consumeMData.getAppFnArgs
+            | throwError "a Float32 of bits must be of `w.toUInt32` for a UInt64 `w`: {source}"
+          let (wi, wHints) ← translateValue ctx loc w
+          let ir : IRExpr .f32 := .ofBits32 wi
+          return (ir, mkHint loc (exprLength ir) "float32 of bits" source :: wHints)
     | (``Array.foldl, _) | (``List.foldl, _) =>
         only64 do
           let ir : IRExpr .f64 := .getF (← translateFold ctx term .f64)
@@ -1331,7 +1375,14 @@ mutual
           (translateFloat ctx (loc.skip (exprLength l)) b fmt)
         let ir := fmt.bin op l r
         return (ir, hint ir (fmt.rule rule) :: lHints ++ rHints)
-    | _ => throwError "unsupported float term: {source}"
+    | _ =>
+      -- A function marked `@[inline]` that no rule above covers, and that the module does not
+      -- compile, is unfolded at its use.
+      if let .const fn _ := term.getAppFn then
+        if Lean.Compiler.hasInlineAttribute (← getEnv) fn then
+          if let some unfolded ← unfoldDefinition? term then
+            return ← translateFloat ctx loc unfolded.headBeta fmt
+      throwError "unsupported float term: {source}"
 
   /-- Translates a term of type `type`, which is `UInt64` or `Float`. -/
   partial def translateAs (ctx : Ctx) (loc : Loc) (type : ScalarType) (term : Lean.Expr) :

@@ -26,6 +26,7 @@ def F32Op.wgsl : Project.IR.F32Op → BinOp
 
 def F32UnOp.wgsl : Project.IR.F32UnOp → Expr → Expr
   | .sqrt, e => .sqrt e
+  | .nearest, e => .round e
   | .abs, e => .abs e
 
 /-- The exponent `s` of a constant `2^s` with `1 ≤ s ≤ 31`. -/

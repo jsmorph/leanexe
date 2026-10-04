@@ -1,11 +1,12 @@
 import LeanExe.Examples.Binary32
+import LeanExe.Examples.Gpt32
 
 /-! Test cases for the WGSL kernels, computed by native Lean.  Each line is
 `kernel|workgroups|initial output|inputs|expected output`, with buffers in the harness's `u64:`
 notation and the expected output as 32-bit words joined by commas.  `tests/wgsl/run.sh` runs each
 case with `build/tools/leanexe-webgpu-host` and compares.  Run with `lake env lean --run`. -/
 
-open LeanExe.Examples.Binary32
+open LeanExe.Examples.Binary32 LeanExe.Examples.Gpt32
 
 def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 
@@ -70,4 +71,14 @@ def main : IO Unit := do
       let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
       let r := (condMix32 x.toArray lo hi bound).toList
       IO.println s!"condMix|{groups}|u64:{words initial}|u64:{words (arrayWords64 x)} {scalarBuffer lo} {scalarBuffer hi} u64:{bound}|{words (arrayWords32 r)}"
+  -- `exp32` over a grid of [-120, 120], special values, and arbitrary bit patterns.
+  for (n, k) in [(0, 0), (1, 1), (64, 2), (65, 3), (1000, 4), (4096, 5)] do
+    let x := (List.range n).map fun i =>
+      if i % 7 = 0 then specials[(i + k) % specials.length]!
+      else if i % 7 = 1 then arbitrary (i + 101 * k)
+      else (-120.0 + 240.0 * (i.toFloat + 0.5) / (max n 1).toFloat).toFloat32
+    let groups := max ((n + 63) / 64 + (if k % 2 = 0 then 0 else 1)) 1
+    let initial := n.toUInt64 :: (List.replicate n 0x7fc000017fc00001)
+    let r := (expArray32 x.toArray).toList
+    IO.println s!"exp|{groups}|u64:{words initial}|u64:{words (arrayWords64 x)}|{words (arrayWords32 r)}"
 

@@ -106,6 +106,9 @@ def Expr.eval (ctx : Context) (env : Env) : Expr → Option Value
   | .sqrt a => match a.eval ctx env with
     | some (.f32 v) => some (.f32 (Wasm.IEEE32.sqrt v))
     | _ => none
+  | .round a => match a.eval ctx env with
+    | some (.f32 v) => some (.f32 (Wasm.IEEE32.nearest v))
+    | _ => none
   | .abs a => match a.eval ctx env with
     | some (.f32 v) => some (.f32 (Wasm.IEEE32.abs v))
     | _ => none
