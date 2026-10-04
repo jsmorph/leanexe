@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Runs every case of tests/wgsl/Cases.lean on SwiftShader and llvmpipe with the kernel text that
-# Project/WGSL/Emit.lean prints, and compares the output words with native Lean's.
+# Project/WGSL/Emit.lean prints, and compares the output words with native Lean's.  The kernels
+# and the cases stay in the build directory's wgsl/, where tests/wgsl/serve.py serves them to the
+# browser page of tests/wgsl/browser.
 # Usage: tests/wgsl/run.sh [build directory]
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -20,8 +22,7 @@ for entry in Project.WGSL.Binary32:Project.WGSL:scale Project.WGSL.Binary32:Proj
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
     "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
 done
-cases=$(mktemp)
-trap 'rm -f "$cases"' EXIT
+cases=$build/wgsl/cases.txt
 # Reads past the end of a shorter array with `!` print panic messages from native Lean, which then
 # returns the default 0; they are expected.
 (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/wgsl/Cases.lean) >"$cases" \

@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WebGPU Kernel Tests</title>
+<style>
+:root {
+  --bg: #fafaf8; --fg: #1d2421; --muted: #5d6762; --line: #d6dbd6; --panel: #ffffff;
+  --pass: #1f6b43; --fail: #a3321f; --accent: #2a5d8f;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #151918; --fg: #e3e8e5; --muted: #98a39d; --line: #333b38; --panel: #1c2120;
+    --pass: #6fcf97; --fail: #f08a75; --accent: #7fb2e5;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #151918; --fg: #e3e8e5; --muted: #98a39d; --line: #333b38; --panel: #1c2120;
+  --pass: #6fcf97; --fail: #f08a75; --accent: #7fb2e5;
+}
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg);
+  font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1040px; margin: 0 auto; padding: 24px 16px 48px; }
+h1 { font-size: 24px; margin: 0 0 6px; font-weight: 600; }
+h2 { font-size: 15px; margin: 0 0 10px; font-weight: 600; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); }
+section { background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+  padding: 16px; margin: 16px 0; overflow-x: auto; }
+.controls { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+select, button { font: inherit; padding: 6px 12px; border-radius: 6px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--fg); }
+button { background: var(--accent); border-color: var(--accent); color: #fff; cursor: pointer; }
+button:disabled { opacity: 0.5; cursor: default; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line);
+  vertical-align: top; }
+th { font-weight: 600; color: var(--muted); font-size: 13px; }
+.pass { color: var(--pass); }
+.fail { color: var(--fail); }
+code, pre, textarea { font: 13px/1.45 ui-monospace, SFMono-Regular, Menlo, monospace; }
+pre { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+textarea { width: 100%; min-height: 220px; background: var(--bg); color: var(--fg);
+  border: 1px solid var(--line); border-radius: 6px; padding: 8px; }
+</style>
+</head>
+<body>
+<main>
+<h1>WebGPU Kernel Tests</h1>
+<p class="muted">Runs each case of <code>tests/wgsl/Cases.lean</code> with the kernel text of
+<code>Project/WGSL/Emit.lean</code> on this browser's WebGPU and compares every output word with
+native Lean's, as <code>tests/wgsl/run.sh</code> does with wgpu-native.</p>
+
+<section>
+<h2>Device</h2>
+<div class="controls">
+  <label for="power">Adapter</label>
+  <select id="power">
+    <option value="high-performance">high-performance</option>
+    <option value="low-power">low-power</option>
+    <option value="fallback">fallback (software)</option>
+  </select>
+  <button id="run" disabled>Run cases</button>
+  <span id="status" role="status" aria-live="polite">Loading cases</span>
+</div>
+<pre id="device" class="muted"></pre>
+</section>
+
+<section>
+<h2>Results</h2>
+<table>
+  <thead><tr><th>Kernel</th><th>Cases</th><th>Passed</th><th>Failed</th><th>Compiler messages</th></tr></thead>
+  <tbody id="summary"></tbody>
+</table>
+</section>
+
+<section>
+<h2>Failures</h2>
+<pre id="failures" class="muted">None yet.</pre>
+</section>
+
+<section>
+<h2>Report</h2>
+<p class="muted">Plain text of the run, for copying.</p>
+<textarea id="report" readonly></textarea>
+</section>
+</main>
+<script type="module" src="app.js"></script>
+</body>
+</html>
