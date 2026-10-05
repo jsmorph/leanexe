@@ -500,4 +500,306 @@ theorem reconstructedAdvanceWith_implements :
           simp [euler.reconstructedAdvanceWith.ir, Expr.evalResults, Expr.eval, final, hLen4,
             Scalar.values]⟩)
 
+def reconstructedAdvanceStepTuple : UInt64 × UInt64 × Float × Moved (Array Cell) →
+    UInt64 × Float × Array Cell :=
+  fun (n, trials, time, grid) => reconstructedAdvanceStep n trials time grid.val
+
+set_option maxHeartbeats 4000000 in
+theorem reconstructedAdvanceStep_implements :
+    Implements euler.module 53 reconstructedAdvanceStepTuple := by
+  refine Func.implements_moves euler.funcs 51 euler.reconstructedAdvanceStep.ir
+    "reconstructedAdvanceStep" rfl reconstructedAdvanceStepTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, rfl, -⟩; rfl) ?_
+  rintro ⟨n, trials, time, ⟨grid⟩⟩ heap initial _ hHeap
+    ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, pGrid, rfl, hGrid⟩ - hCap
+  change heap.Owned initial pGrid (flatWords grid) at hGrid
+  have hLive := Live.start_moved hHeap (temps := [(pGrid, flatWords grid)])
+    (by simpa using hGrid) (List.pairwise_singleton _ _)
+  have hMoves : Represent.moves initial
+      (Scalar.values n ++ (Scalar.values trials ++ (Scalar.values time ++ [.i64 pGrid])))
+      ((n, trials, time, ⟨grid⟩) : UInt64 × UInt64 × Float × Moved (Array Cell)) = [pGrid] :=
+    rfl
+  rw [hMoves]
+  set start := euler.reconstructedAdvanceStep.ir.state
+    (Scalar.values n ++ (Scalar.values trials ++ (Scalar.values time ++ [.i64 pGrid])))
+    with hStartDef
+  have hStart : start.params.length + start.locals.length = 11 := rfl
+  have hGet0 : start.get 0 = some (.i64 n) := rfl
+  have hGet1 : start.get 1 = some (.i64 trials) := rfl
+  have hGet2 : start.get 2 = some (.f64 time.toBits) := rfl
+  have hGet3 : start.get 3 = some (.i64 pGrid) := rfl
+  let stats := gridUpper grid
+  let after := (start.update 5 (.f64 stats.value.toBits)).update 4 (.i64 stats.status)
+  show Triple _ (.seq (.call 48 [⟨.u64, .get 3⟩] [4, 5]) _) 11 _ _
+  refine Live.callScalar_seq gridUpper_implements rfl rfl rfl hLive hCap (x := grid)
+    (before := start) (afterArgs := start) (after := after)
+    (by simp [Expr.evalResults, Expr.eval, hGet3])
+    ⟨pGrid, rfl, (hLive.tempsOwned (pGrid, flatWords grid) (by simp)).borrowed⟩
+    (by simp [State.setAll, State.set?_eq_update, hStart, after, Scalar.values, Flat.flat,
+      stats]) ?_
+  intro heap1 s1 hLive1
+  refine Stmt.ite_test (b := stats.status == 0) (by simp [Expr.eval, after, hStart])
+    (fun hS => ?_) (fun hS => ?_)
+  · let a := 0.4 * spacing n / stats.value
+    let b := endTime - time
+    have hy : reconstructedAdvanceStepTuple (n, trials, time, ⟨grid⟩) =
+        reconstructedAdvanceWithTuple (n, trials, time, proposal n time stats.value, stats.value,
+          ⟨grid⟩) := by
+      simp only [reconstructedAdvanceStepTuple, reconstructedAdvanceStep,
+        reconstructedAdvanceWithTuple, hS, ite_true, stats]
+    rw [hy]
+    let s9 := after.update 9 (.f64 a.toBits)
+    let s10 := s9.update 10 (.f64 b.toBits)
+    refine Stmt.seq_run ⟨s9, by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, after, s9, a, hGet0, F64Op.apply,
+        F64Bits.toBits_div, F64Bits.toBits_mul, one_toBits, twoFifths_toBits,
+        F64Convert.toBits_toFloat], ?_⟩
+    refine Stmt.seq_run ⟨s10, by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, after, s9, s10, b, hGet2,
+        F64Op.apply, F64Bits.toBits_sub, endTime_toBits], ?_⟩
+    refine (Live.callOne reconstructedAdvanceWith_implements rfl rfl rfl
+      (consumed := [(pGrid, _)]) (rest := []) hLive1 hCap
+      (x := (n, trials, time, proposal n time stats.value, stats.value, ⟨grid⟩))
+      (vals := [.i64 n, .i64 trials, .f64 time.toBits, .f64 (proposal n time stats.value).toBits,
+        .f64 stats.value.toBits, .i64 pGrid])
+      (before := s10) (afterArgs := s10)
+      (by
+        by_cases hc : a.toBits ≤ b.toBits
+        · simp [Expr.evalResults, Expr.eval, s10, s9, after, hStart, hGet0, hGet1, hGet2,
+            hGet3, proposal, hc, a, b]
+        · simp [Expr.evalResults, Expr.eval, s10, s9, after, hStart, hGet0, hGet1, hGet2,
+            hGet3, proposal, hc, a, b])
+      ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, pGrid, rfl,
+        hLive1.tempsOwned (pGrid, flatWords grid) (by simp)⟩
+      rfl (fun r hr => by simp [Represent.reads] at hr)
+      (fun q => ⟨((s10.update 8 (.i64 q)).update 7
+          (.f64 (reconstructedAdvanceWithTuple (n, trials, time, proposal n time stats.value,
+            stats.value, ⟨grid⟩)).2.1.toBits)).update 6
+          (.i64 (reconstructedAdvanceWithTuple (n, trials, time, proposal n time stats.value,
+            stats.value, ⟨grid⟩)).1), by
+        simp [State.setAll, State.set?_eq_update, hStart, s10, s9, after, Scalar.values]⟩)).mono
+        (fun _ _ h => h) ?_
+    rintro s st ⟨heap2, ptr2, hLive2, hst2⟩
+    exact Live.finish_results_one hLive2 ⟨st, by
+      simp [State.setAll, State.set?_eq_update, hStart, s10, s9, after, Scalar.values] at hst2
+      simp [euler.reconstructedAdvanceStep.ir, Expr.evalResults, Expr.eval, ← hst2, hStart, Scalar.values]⟩
+  · have hy : reconstructedAdvanceStepTuple (n, trials, time, ⟨grid⟩) = (2, time, grid) := by
+      simp only [reconstructedAdvanceStepTuple, reconstructedAdvanceStep, hS, Bool.false_eq_true,
+        ite_false, stats]
+    rw [hy]
+    let final := ((after.update 6 (.i64 2)).update 7 (.f64 time.toBits)).update 8 (.i64 pGrid)
+    refine Stmt.run_triple ⟨final, by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, after, hGet2, hGet3, final], ?_⟩
+    exact Live.finish_results_one hLive1 ⟨final, by
+      simp [euler.reconstructedAdvanceStep.ir, Expr.evalResults, Expr.eval, final, after, hStart,
+        Scalar.values]⟩
+
+def reconstructedRunFromTuple : UInt64 × UInt64 → UInt64 × Float × Array Cell :=
+  fun (n, trials) => reconstructedRunFrom n trials
+
+def reconstructedRunTuple : UInt64 × UInt64 → UInt64 × Float × Array Cell :=
+  fun (n, trials) => reconstructedRun n trials
+
+def reconstructedSolveTuple : UInt64 × UInt64 → Array UInt64 :=
+  fun (n, trials) => reconstructedSolve n trials
+
+set_option maxHeartbeats 4000000 in
+theorem reconstructedRunFrom_implements :
+    Implements euler.module 54 reconstructedRunFromTuple := by
+  refine Func.implements_heap euler.funcs 52 euler.reconstructedRunFrom.ir "reconstructedRunFrom"
+    rfl reconstructedRunFromTuple (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro ⟨n, trials⟩ heap initial _ hHeap rfl hCap
+  set start := euler.reconstructedRunFrom.ir.state (Scalar.values (n, trials)) with hStartDef
+  have hStart : start.params.length + start.locals.length = 10 := rfl
+  have hGet0 : start.get 0 = some (.i64 n) := rfl
+  have hGet1 : start.get 1 = some (.i64 trials) := rfl
+  let s2 := (start.update 2 (.i64 0)).update 3 (.f64 0)
+  show Triple _ (.seq (.assign 2 (.const 0)) (.seq (.assign 3 (.constF 0))
+    (.seq (.call 10 [⟨.u64, .get 0⟩] [4]) (.seq (Stmt.repeatWhile [2, 3, 4] 5 6
+      (.const 4294967296) _ 53 _) _)))) 10 _ _
+  refine Stmt.seq_run ⟨start.update 2 (.i64 0), by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart], ?_⟩
+  refine Stmt.seq_run ⟨s2, by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, s2], ?_⟩
+  refine Live.callOne_seq initialCells_implements rfl rfl rfl (consumed := []) (Live.start hHeap)
+    hCap (x := n) (vals := [.i64 n]) (before := s2) (afterArgs := s2)
+    (by simp [Expr.evalResults, Expr.eval, s2, hGet0]) rfl rfl
+    (fun _ _ _ h => nomatch h)
+    (fun q => ⟨s2.update 4 (.i64 q), by simp [State.setAll, State.set?_eq_update, s2, hStart]⟩) ?_
+  intro heap1 p1 s3 st3 hLive1 hst3
+  have hst : st3 = s2.update 4 (.i64 p1) := by
+    simp [State.setAll, State.set?_eq_update, s2, hStart] at hst3
+    exact hst3.symm
+  subst hst
+  obtain ⟨cond, step, hCondEq, hStepEq, hDef⟩ := reconstructedRunFrom_loop n trials
+  let F : UInt64 × Float × Array Cell → UInt64 × UInt64 × Float × Moved (Array Cell) :=
+    fun x => (n, trials, x.2.1, ⟨x.2.2⟩)
+  have hS3 : (s2.update 4 (.i64 p1)).params.length + (s2.update 4 (.i64 p1)).locals.length = 10 :=
+    by simp [s2, hStart]
+  refine Stmt.seq_spec (Live.repeatWhileOne reconstructedAdvanceStep_implements rfl rfl rfl
+    (by decide) (by decide) (by omega) (n := 4294967296)
+    ⟨s2.update 4 (.i64 p1), by simp [Expr.eval]⟩
+    cond step F (fun x => (hStepEq x).symm)
+    (x0 := ((0 : UInt64), (0 : Float), initialCells n)) (p0 := p1) hLive1
+    (by simp [State.Holds, s2, hStart, Scalar.values, zero_toBits]) hCap (fun _ => rfl) ?_ ?_) ?_
+  · rintro s st ⟨a, b, c⟩ p hHolds -
+    have hH : st.get 2 = some (.i64 a) ∧ st.get 3 = some (.f64 b.toBits) := by
+      simp [State.Holds, Scalar.values] at hHolds
+      exact ⟨hHolds.1, hHolds.2.1⟩
+    exact ⟨st, by
+      simp [Expr.eval, hH.1, hH.2, hCondEq, word_and_not, word_beq_one, endTime_toBits,
+        U64Op.apply]
+      rw [Bool.eq_iff_iff]
+      simp⟩
+  · rintro heap' s st ⟨a, b, c⟩ p hHolds hL hFrame
+    have hG0 : st.get 0 = some (.i64 n) :=
+      (hFrame.get 0 (by omega) (by simp)).trans (by simp [s2, hGet0])
+    have hG1 : st.get 1 = some (.i64 trials) :=
+      (hFrame.get 1 (by omega) (by simp)).trans (by simp [s2, hGet1])
+    have hH : st.get 2 = some (.i64 a) ∧ st.get 3 = some (.f64 b.toBits) ∧
+        st.get 4 = some (.i64 p) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    have hOld : heap'.Owned s p (flatWords c) := hL.tempsOwned _ (List.mem_singleton_self _)
+    have hF : F (a, b, c) = (n, trials, b, ⟨c⟩) := rfl
+    rw [hF]
+    refine ⟨[.i64 n, .i64 trials, .f64 b.toBits, .i64 p], st, ?_,
+      ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, p, rfl, hOld⟩, rfl,
+      fun q hq => by simp [Represent.reads] at hq⟩
+    simp [Expr.evalResults, Expr.eval, hG0, hG1, hH.2.1, hH.2.2]
+  · apply Triple.of_forall
+    rintro s4 st4 ⟨heap4, p4, hL4, hHolds4, hFrame4⟩
+    generalize hR : LeanExe.repeatWhile 4294967296 ((0 : UInt64), (0 : Float), initialCells n)
+      cond step = R at hL4 hHolds4
+    obtain ⟨a, b, c⟩ := R
+    have hy : reconstructedRunFromTuple (n, trials) =
+        (if a == 0 && b.toBits != endTime.toBits then (5, b, c) else (a, b, c)) := by
+      show reconstructedRunFrom n trials = _
+      rw [hDef, hR]
+    rw [hy]
+    have hLen4 : st4.params.length + st4.locals.length = 10 := by
+      rw [hFrame4.params, hFrame4.locals]; exact hS3
+    have hH : st4.get 2 = some (.i64 a) ∧ st4.get 3 = some (.f64 b.toBits) ∧
+        st4.get 4 = some (.i64 p4) := by
+      simpa [State.Holds, Scalar.values] using hHolds4
+    refine Stmt.ite_test (b := a == 0 && b.toBits != endTime.toBits)
+      (by
+        simp [Expr.eval, hH.1, hH.2.1, word_and_not, word_beq_one, endTime_toBits, U64Op.apply]
+        rw [Bool.eq_iff_iff]
+        simp)
+      (fun hA => ?_) (fun hA => ?_)
+    · simp only [hA, ite_true]
+      let final := ((st4.update 7 (.i64 5)).update 8 (.f64 b.toBits)).update 9 (.i64 p4)
+      refine Stmt.run_triple ⟨final, by
+        simp [Stmt.run, Expr.eval, State.set?_eq_update, hLen4, hH.2.1, hH.2.2, final], ?_⟩
+      exact Live.finish_results_one (y := ((5 : UInt64), b, c)) hL4 ⟨final, by
+        simp [euler.reconstructedRunFrom.ir, Expr.evalResults, Expr.eval, final, hLen4, Scalar.values]⟩
+    · simp only [hA, Bool.false_eq_true, ite_false]
+      let final := ((st4.update 7 (.i64 a)).update 8 (.f64 b.toBits)).update 9 (.i64 p4)
+      refine Stmt.run_triple ⟨final, by
+        simp [Stmt.run, Expr.eval, State.set?_eq_update, hLen4, hH.1, hH.2.1, hH.2.2, final], ?_⟩
+      exact Live.finish_results_one hL4 ⟨final, by
+        simp [euler.reconstructedRunFrom.ir, Expr.evalResults, Expr.eval, final, hLen4, Scalar.values]⟩
+
+set_option maxHeartbeats 2000000 in
+theorem reconstructedRun_implements : Implements euler.module 55 reconstructedRunTuple := by
+  refine Func.implements_heap euler.funcs 53 euler.reconstructedRun.ir "reconstructedRun" rfl
+    reconstructedRunTuple (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro ⟨n, trials⟩ heap initial _ hHeap rfl hCap
+  set start := euler.reconstructedRun.ir.state (Scalar.values (n, trials)) with hStartDef
+  have hStart : start.params.length + start.locals.length = 5 := rfl
+  have hGet0 : start.get 0 = some (.i64 n) := rfl
+  have hGet1 : start.get 1 = some (.i64 trials) := rfl
+  show Triple _ (.ite _ (.call 54 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2, 3, 4])
+    (.seq (.assign 2 (.const 1)) (.seq (.assign 3 (.constF 0)) (Stmt.arrayLiteral 4 [])))) 5 _ _
+  refine Stmt.ite_test (b := 2 ≤ n && n ≤ 800)
+    (by simp [Expr.eval, hGet0, word_and, word_beq_one, U64Op.apply]) (fun hN => ?_)
+    (fun hN => ?_)
+  · have hy : reconstructedRunTuple (n, trials) = reconstructedRunFromTuple (n, trials) := by
+      simp [reconstructedRunTuple, reconstructedRun, reconstructedRunFromTuple, hN]
+    rw [hy]
+    refine (Live.callOne reconstructedRunFrom_implements rfl rfl rfl (consumed := [])
+      (Live.start hHeap) hCap (x := (n, trials)) (vals := [.i64 n, .i64 trials])
+      (before := start) (afterArgs := start)
+      (by simp [Expr.evalResults, Expr.eval, hGet0, hGet1]) rfl rfl (fun _ _ _ h => nomatch h)
+      (fun q => ⟨((start.update 4 (.i64 q)).update 3
+          (.f64 (reconstructedRunFromTuple (n, trials)).2.1.toBits)).update 2
+          (.i64 (reconstructedRunFromTuple (n, trials)).1), by
+        simp [State.setAll, State.set?_eq_update, hStart, Scalar.values]⟩)).mono
+        (fun _ _ h => h) ?_
+    rintro s st ⟨heap2, ptr2, hLive2, hst2⟩
+    exact Live.finish_results_one hLive2 ⟨st, by
+      simp [State.setAll, State.set?_eq_update, hStart, Scalar.values] at hst2
+      simp [euler.reconstructedRun.ir, Expr.evalResults, Expr.eval, ← hst2, hStart,
+        Scalar.values]⟩
+  · have hy : reconstructedRunTuple (n, trials) = (1, 0, #[]) := by
+      simp [reconstructedRunTuple, reconstructedRun, hN]
+    rw [hy]
+    let s2 := (start.update 2 (.i64 1)).update 3 (.f64 0)
+    refine Stmt.seq_run ⟨start.update 2 (.i64 1), by
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart], ?_⟩
+    refine Stmt.seq_run ⟨s2, by simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, s2], ?_⟩
+    refine (Stmt.arrayLiteral_spec (values := []) (words := []) rfl rfl rfl (by decide)
+      (by simp [s2, hStart]) hHeap hCap (by decide) .nil).mono (fun _ _ h => h) ?_
+    rintro s st ⟨p, hFrame, hP, hNew⟩
+    have hLen : st.params.length + st.locals.length = 5 := by
+      rw [hFrame.params, hFrame.locals]; simp [s2, hStart]
+    have hG : ∀ j, j < 4 → st.get j = s2.get j := fun j hj =>
+      hFrame.get j (by omega) (by simp; omega)
+    exact Live.finish_results_one (y := ((1 : UInt64), (0 : Float), (#[] : Array Cell)))
+      (Live.push (Live.start hHeap) hNew) ⟨st, by
+        simp [euler.reconstructedRun.ir, Expr.evalResults, Expr.eval, hP, hG 2 (by decide),
+          hG 3 (by decide), s2, hStart, Scalar.values, zero_toBits]⟩
+
+set_option maxHeartbeats 2000000 in
+theorem reconstructedSolve_implements : Implements euler.module 56 reconstructedSolveTuple := by
+  refine Func.implements_heap euler.funcs 54 euler.reconstructedSolve.ir "reconstructedSolve" rfl
+    reconstructedSolveTuple (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro ⟨n, trials⟩ heap initial _ hHeap rfl hCap
+  set start := euler.reconstructedSolve.ir.state (Scalar.values (n, trials)) with hStartDef
+  have hStart : start.params.length + start.locals.length = 7 := rfl
+  have hGet0 : start.get 0 = some (.i64 n) := rfl
+  have hGet1 : start.get 1 = some (.i64 trials) := rfl
+  obtain ⟨status, time, grid, hRun⟩ : ∃ status time grid,
+      reconstructedRun n trials = (status, time, grid) := ⟨_, _, _, rfl⟩
+  have hy : reconstructedSolveTuple (n, trials) = packTuple (n, status, time, grid) := by
+    simp [reconstructedSolveTuple, reconstructedSolve, hRun, packTuple]
+  rw [hy]
+  show Triple _ (.seq (.call 55 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2, 3, 4])
+    (.seq (.call 22 _ [5]) (.seq (.assign 6 (.get 5)) (.call 1 [⟨.u64, .get 4⟩] [])))) 7 _ _
+  refine Live.callOne_seq reconstructedRun_implements rfl rfl rfl (consumed := [])
+    (Live.start hHeap) hCap (x := (n, trials)) (vals := [.i64 n, .i64 trials]) (before := start)
+    (afterArgs := start) (by simp [Expr.evalResults, Expr.eval, hGet0, hGet1]) rfl rfl
+    (fun _ _ _ h => nomatch h)
+    (fun q => ⟨((start.update 4 (.i64 q)).update 3 (.f64 time.toBits)).update 2 (.i64 status), by
+      simp [State.setAll, State.set?_eq_update, hStart, Scalar.values, reconstructedRunTuple,
+        hRun]⟩) ?_
+  intro heap1 pg s2 st2 hLive1 hst2
+  have hst : st2 = ((start.update 4 (.i64 pg)).update 3 (.f64 time.toBits)).update 2
+      (.i64 status) := by
+    simp [State.setAll, State.set?_eq_update, hStart, Scalar.values, reconstructedRunTuple,
+      hRun] at hst2
+    exact hst2.symm
+  subst hst
+  simp only [reconstructedRunTuple, hRun] at hLive1
+  let s3 := ((start.update 4 (.i64 pg)).update 3 (.f64 time.toBits)).update 2 (.i64 status)
+  refine Live.callOne_seq pack_implements rfl rfl rfl (consumed := []) hLive1 hCap
+    (x := (n, status, time, grid)) (vals := [.i64 n, .i64 status, .f64 time.toBits, .i64 pg])
+    (before := s3) (afterArgs := s3)
+    (by simp [Expr.evalResults, Expr.eval, hGet0, s3, hStart])
+    ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, pg, rfl,
+      (hLive1.tempsOwned (pg, flatWords grid) (by simp)).borrowed⟩ rfl
+    (fun _ _ _ h => nomatch h)
+    (fun q => ⟨s3.update 5 (.i64 q), by simp [State.setAll, State.set?_eq_update, hStart, s3]⟩) ?_
+  intro heap2 pk s4 st4 hLive2 hst4
+  have hst : st4 = s3.update 5 (.i64 pk) := by
+    simp [State.setAll, State.set?_eq_update, hStart, s3] at hst4
+    exact hst4.symm
+  subst hst
+  let final := (s3.update 5 (.i64 pk)).update 6 (.i64 pk)
+  refine Stmt.seq_run ⟨final, by
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, s3, final], ?_⟩
+  exact Live.releaseSecond_last hLive2 rfl rfl (by simp [final, s3, hStart]) fun s hL =>
+    Live.finish_results_one hL ⟨final, by
+      simp [euler.reconstructedSolve.ir, Expr.evalResults, Expr.eval, final, s3, hStart]⟩
+
 end Project.Euler
