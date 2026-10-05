@@ -25079,7 +25079,7 @@ structure where they fit.
 - [x] E7: the reconstructed solver, tests, and its 192 and 800 runs.
 - [x] E8: the reconstructed solver's theorems (execution and run properties; the real-number
   enclosures are listed below as open).
-- [ ] E9: figures, report, and documentation.
+- [x] E9: figures, report, and documentation.
 
 ### E1: `Bool` values
 
@@ -25610,4 +25610,27 @@ of each component equals its initial total, minus the boundary flux summed over 
 a residual bounded by the sum of the step bounds.  The bounds are computed from the words of the
 run, as in main.  Main's `line_flux_reference_bound`, which compares the computed flux with a
 reference flux, has no counterpart here.
+
+### E9: runs of the final binary and the data READMEs
+
+The final `euler.wasm` (23,063 bytes, SHA-256
+`2b9450e4cef7632996a1be0334bc33981002fd32f2d8beafec4e123abbb204e5`) returned main's words
+exactly in all four runs.  `tools/euler-run.py` runs one solve call, checks the status, the word of
+0.8, and the word count, and records the runtime, the peak resident size, and the SHA-256 of the
+words.
+
+| Run | Runtime | Main's runtime | Peak resident size | Words SHA-256 |
+|---|---:|---:|---:|---|
+| First-order, 192 | 16.2 s | 49.6 s | 21 MB | `e097a43d…` |
+| First-order, 800 | 19.7 min | 61.6 min | 134 MB | `d374cc5c…` |
+| Reconstructed, 192 | 59.5 s | 176.7 s | 21 MB | `6304853f…` |
+| Reconstructed, 800 | 83.9 min | 237.96 min | 134 MB | `64ff9d32…` |
+
+The 192 runs and the first-order 800 run ran on an idle machine.  The reconstructed 800 run
+shared the machine with Lean proof checks.  Because the words are main's, main's figures, CSV
+files, and ranges describe these runs, and the two READMEs in `data/euler-riemann-complete-v1`
+and `data/euler-reconstructed-v1` now describe this branch's binary, theorems, runs, and the
+results of main that this branch does not prove: complete execution without an abort and the
+512 MiB memory bound, the wave identities, the reconstruction accuracy theorems, and the
+reference-flux comparison.
 

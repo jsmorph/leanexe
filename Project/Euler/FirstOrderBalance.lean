@@ -89,7 +89,7 @@ theorem firstLineStep_parts {m : Nat} {axisY : Bool} {ratio : Float} {grid : Arr
   simp only [firstLineFace, show min p (m - 1) = p by omega, show p + 1 - 1 = p by omega]
   exact advanceCell_parts h c
 
-theorem sweep_balance' (n : UInt64) (axisY : Bool) (ratio : Float) (grid : Array Cell)
+theorem sweep_balance (n : UInt64) (axisY : Bool) (ratio : Float) (grid : Array Cell)
     (hsize : grid.size = n.toNat * n.toNat) (hlt : grid.size < 2 ^ 64) (c : Fin 4) :
     total (sweep n axisY ratio grid) c =
       total grid c - real ratio * boundary n.toNat axisY (firstLineFace n.toNat axisY grid) c +
@@ -149,8 +149,8 @@ theorem step_balance {n : UInt64} {ratio : Float} {grid : Array Cell}
   split
   · rename_i hM
     rw [ite_eq_left hM] at hA
-    have bx := sweep_balance' n false ratio grid hsize hlt c
-    have by' := sweep_balance' n true ratio (sweep n false ratio grid) (by rw [hmid, hsize])
+    have bx := sweep_balance n false ratio grid hsize hlt c
+    have by' := sweep_balance n true ratio (sweep n false ratio grid) (by rw [hmid, hsize])
       (by rw [hmid]; exact hlt) c
     have rx := sweep_residual_le hsize hlt hM c
     have ry := sweep_residual_le (by rw [hmid, hsize]) (by rw [hmid]; exact hlt) hA c
