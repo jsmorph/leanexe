@@ -11,10 +11,7 @@ namespace Project.Pipeline
 
 open Wasm Project.Runtime Project.ProofKit
 
-/- CodeLib's `Mem.read64_write64_same` is proved with `bv_decide`, which adds an
-axiom for compiled code.  The kernel-checked `Memory.read64_write64` replaces it
-here. -/
-attribute [-simp] Wasm.Mem.read64_write64_same
+/- Use the project's kernel-checked word round-trip rule. -/
 attribute [local simp] Memory.read64_write64
 
 /-- The payload size `alloc` requests for `bytes`: rounded up to a multiple of 8,

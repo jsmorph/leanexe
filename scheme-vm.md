@@ -1,5 +1,8 @@
 # Scheme VM: executable semantics and checked control laws
 
+This document records the abstract-machine milestone. The subsequent concrete
+arena VM, collector, and WASM tests are described in [scheme-runtime.md](scheme-runtime.md).
+
 This development starts with the VM alone, based on `deslop` at
 `8895946bb15c802171fb5e60899a3e8af9eedf6e`. It accepts hand-assembled instructions.
 The executable Lean model and its proofs form a specification for a later LeanExe

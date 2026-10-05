@@ -29,3 +29,7 @@ root = "Project.Gpt32.Lines"
 [[lean_exe]]
 name = "euler-native"
 root = "Project.Euler.Native"
+
+[[lean_exe]]
+name = "scheme-native"
+root = "Project.Scheme.Native"
