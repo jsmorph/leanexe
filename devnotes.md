@@ -26004,7 +26004,6 @@ reconstructed 192 and 800 in 60.2 s and 83.7 min.  The peak resident sizes fell 
 134 MB to 19 MB and 104 MB, since the retry loop no longer holds a fourth grid.  Both 800 runs
 shared the machine with Lean jobs.  The two data READMEs now describe this binary.
 
-
 ### Complete execution and a memory bound
 
 The allocating functions now have one proof each, generic in the abort flag, with budgets in the
