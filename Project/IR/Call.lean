@@ -80,4 +80,20 @@ theorem Stmt.callPure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
   rw [show out = (Scalar.values (g x)).reverse by rw [← hOut, List.reverse_reverse]]
   exact hSet
 
+/-- `Stmt.callPure_spec` followed by `rest` from the state the call leaves. -/
+theorem Stmt.seq_callPure [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
+    (hImpl : ImplementsPure m idx g) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
+    (hParams : args.length = f.numParams) {initial : Store Unit} {before : State}
+    {x : α} {rest : Stmt} {Q : Store Unit → State → Prop}
+    (h : ∃ afterArgs,
+      Expr.evalResults initial.mem scratch args before = some (Scalar.values x, afterArgs) ∧
+      ∃ next, afterArgs.setAll results.reverse (Scalar.values (g x)).reverse = some next ∧
+        Triple m rest scratch (fun store state => store = initial ∧ state = next) Q) :
+    Triple m (.seq (.call idx args results) rest) scratch
+      (fun store state => store = initial ∧ state = before) Q :=
+  let ⟨_, hArgs, _, hSet, hNext⟩ := h
+  Stmt.seq_spec (Stmt.callPure_spec hImpl hImport hFunc hParams hArgs hSet) hNext
+
 end Project.IR

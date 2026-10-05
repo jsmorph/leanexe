@@ -11,7 +11,9 @@ CFL 0.4, and a step whose cells fail a check is retried with half the timestep.
 
 The arithmetic follows main's word-level model operation for operation, so that the output
 words can be compared bit for bit: every float operation here is one binary64 operation, and the
-checks inspect bit patterns as main's do.
+checks inspect bit patterns as main's do.  Where main tests a check before computing the next
+value, these functions compute every value and test the conjunction of the checks once, at the
+end.  The float operations are total, so the returned values and statuses are main's.
 -/
 
 namespace LeanExe.Examples.Euler
@@ -44,7 +46,7 @@ abbrev narrowGuard (rho momentum transverse energy : Float) : Bool :=
     absBits momentum.toBits ≤ rho.toBits && absBits transverse.toBits ≤ rho.toBits &&
     rho.toBits < energy.toBits
 
-abbrev exponentBits (bits : UInt64) : UInt64 := absBits bits / 0x0010000000000000
+abbrev exponentBits (bits : UInt64) : UInt64 := absBits bits >>> 52
 
 abbrev maxWord (a b : UInt64) : UInt64 := if a < b then b else a
 
@@ -57,27 +59,26 @@ abbrev normalizable (x : Float) (top : UInt64) : Bool :=
     (0 < exponentBits x.toBits && top < exponentBits x.toBits + 1021)
 
 /-- `x` scaled by a power of two so that the largest exponent among the four components is
-1021, which keeps the residual below from overflowing. -/
-abbrev normalized (x : Float) (top : UInt64) : Float :=
-  if absBits x.toBits == 0 then 0
-  else Float.ofBits ((exponentBits x.toBits + 1021 - top) * 0x0010000000000000 +
-    absBits x.toBits % 0x0010000000000000)
+1021, which keeps the residual below from overflowing.  For a normalizable `x` the word's
+exponent field lies from 1 to 1021; any other word with an exponent field of all ones gives 0,
+so the value is never built from a NaN pattern. -/
+def normalized (x : Float) (top : UInt64) : Float :=
+  let w := (exponentBits x.toBits + 1021 - top) <<< 52 + (x.toBits &&& 0x000FFFFFFFFFFFFF)
+  if absBits x.toBits == 0 || (w >>> 52) &&& 0x7FF == 0x7FF then 0 else Float.ofBits w
 
 abbrev energyResidual (rho mx my energy : Float) : Float :=
   rho * energy - 0.5 * (mx * mx + my * my)
 
 /-- The internal energy `ρE - |m|²/2`, computed on the normalized components, is positive by a
 margin. -/
-abbrev energyGuard (rho mx my energy : Float) : Bool :=
-  if positive rho && finite mx && finite my && positive energy then
-    let top := topExponent rho mx my energy
-    if normalizable rho top && normalizable mx top && normalizable my top &&
-        normalizable energy top then
-      let result := energyResidual (normalized rho top) (normalized mx top)
-        (normalized my top) (normalized energy top)
-      positive result && 0x3CE0000000000000 < result.toBits
-    else false
-  else false
+def energyGuard (rho mx my energy : Float) : Bool :=
+  let top := topExponent rho mx my energy
+  let result := energyResidual (normalized rho top) (normalized mx top) (normalized my top)
+    (normalized energy top)
+  (positive rho && finite mx && finite my && positive energy) &&
+    (normalizable rho top && normalizable mx top && normalizable my top &&
+      normalizable energy top) &&
+    (positive result && 0x3CE0000000000000 < result.toBits)
 
 abbrev stateGuard (rho momentum transverse energy : Float) : Bool :=
   narrowGuard rho momentum transverse energy || energyGuard rho momentum transverse energy
@@ -98,33 +99,30 @@ structure Side where
 abbrev rejectedSide : Side := ⟨1, 0, 0, 0, 0, 0, 0, 0⟩
 
 def side (rho momentum transverse energy : Float) : Side :=
-  if stateGuard rho momentum transverse energy then
-    let velocity := momentum / rho
-    let transport := momentum * velocity
-    let transverseVelocity := transverse / rho
-    let transverseTransport := transverse * transverseVelocity
-    let kineticSum := transport + transverseTransport
-    let halfKinetic := 0.5 * kineticSum
-    let internal := energy - halfKinetic
-    if finite velocity && finite transport && finite transverseVelocity &&
+  let velocity := momentum / rho
+  let transport := momentum * velocity
+  let transverseVelocity := transverse / rho
+  let transverseTransport := transverse * transverseVelocity
+  let kineticSum := transport + transverseTransport
+  let halfKinetic := 0.5 * kineticSum
+  let internal := energy - halfKinetic
+  let pressure := 0.4 * internal
+  let pressureOverDensity := pressure / rho
+  let radicand := 1.4 * pressureOverDensity
+  let soundSpeed := radicand.sqrt
+  let speed := velocity.abs + soundSpeed
+  let momentumFlux := transport + pressure
+  let transverseFlux := transverse * velocity
+  let enthalpy := energy + pressure
+  let energyFlux := velocity * enthalpy
+  if stateGuard rho momentum transverse energy &&
+      (finite velocity && finite transport && finite transverseVelocity &&
         finite transverseTransport && finite kineticSum && finite halfKinetic &&
-        positive internal then
-      let pressure := 0.4 * internal
-      let pressureOverDensity := pressure / rho
-      let radicand := 1.4 * pressureOverDensity
-      if positive pressure && positive pressureOverDensity && positive radicand then
-        let soundSpeed := radicand.sqrt
-        let speed := velocity.abs + soundSpeed
-        let momentumFlux := transport + pressure
-        let transverseFlux := transverse * velocity
-        let enthalpy := energy + pressure
-        let energyFlux := velocity * enthalpy
-        if positive soundSpeed && positive speed && finite momentumFlux &&
-            finite transverseFlux && finite enthalpy && finite energyFlux then
-          ⟨0, velocity, pressure, speed, momentum, momentumFlux, transverseFlux, energyFlux⟩
-        else rejectedSide
-      else rejectedSide
-    else rejectedSide
+        positive internal) &&
+      (positive pressure && positive pressureOverDensity && positive radicand) &&
+      (positive soundSpeed && positive speed && finite momentumFlux &&
+        finite transverseFlux && finite enthalpy && finite energyFlux) then
+    ⟨0, velocity, pressure, speed, momentum, momentumFlux, transverseFlux, energyFlux⟩
   else rejectedSide
 
 structure Component where
@@ -136,16 +134,15 @@ abbrev rejectedComponent : Component := ⟨1, 0⟩
 
 /-- One Rusanov flux component. -/
 def component (alpha fluxL fluxR stateL stateR : Float) : Component :=
-  if positive alpha && finite fluxL && finite fluxR && finite stateL && finite stateR then
-    let sum := fluxL + fluxR
-    let mean := 0.5 * sum
-    let jump := stateR - stateL
-    let viscosity := alpha * jump
-    let halfViscosity := 0.5 * viscosity
-    let value := mean - halfViscosity
-    if finite sum && finite mean && finite jump && finite viscosity && finite halfViscosity &&
-        finite value then ⟨0, value⟩
-    else rejectedComponent
+  let sum := fluxL + fluxR
+  let mean := 0.5 * sum
+  let jump := stateR - stateL
+  let viscosity := alpha * jump
+  let halfViscosity := 0.5 * viscosity
+  let value := mean - halfViscosity
+  if (positive alpha && finite fluxL && finite fluxR && finite stateL && finite stateR) &&
+      (finite sum && finite mean && finite jump && finite viscosity && finite halfViscosity &&
+        finite value) then ⟨0, value⟩
   else rejectedComponent
 
 structure Flux where
@@ -163,30 +160,24 @@ abbrev rejectedFlux : Flux := ⟨1, 0, 0, 0, 0, 0⟩
 def flux (rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR : Float) :
     Flux :=
   let left := side rhoL momentumL transverseL energyL
-  if left.status == 0 then
-    let right := side rhoR momentumR transverseR energyR
-    if right.status == 0 then
-      let alpha := if left.speed.toBits ≤ right.speed.toBits then right.speed else left.speed
-      let mass := component alpha left.massFlux right.massFlux rhoL rhoR
-      let momentum := component alpha left.momentumFlux right.momentumFlux momentumL momentumR
-      let transverse :=
-        component alpha left.transverseFlux right.transverseFlux transverseL transverseR
-      let energy := component alpha left.energyFlux right.energyFlux energyL energyR
-      if mass.status == 0 && momentum.status == 0 && transverse.status == 0 &&
-          energy.status == 0 then
-        ⟨0, mass.value, momentum.value, transverse.value, energy.value, alpha⟩
-      else rejectedFlux
-    else rejectedFlux
+  let right := side rhoR momentumR transverseR energyR
+  let alpha := if left.speed.toBits ≤ right.speed.toBits then right.speed else left.speed
+  let mass := component alpha left.massFlux right.massFlux rhoL rhoR
+  let momentum := component alpha left.momentumFlux right.momentumFlux momentumL momentumR
+  let transverse := component alpha left.transverseFlux right.transverseFlux transverseL transverseR
+  let energy := component alpha left.energyFlux right.energyFlux energyL energyR
+  if left.status == 0 && right.status == 0 && mass.status == 0 && momentum.status == 0 &&
+      transverse.status == 0 && energy.status == 0 then
+    ⟨0, mass.value, momentum.value, transverse.value, energy.value, alpha⟩
   else rejectedFlux
 
 /-- One conservative update. -/
 def update (ratio state fluxL fluxR : Float) : Component :=
-  if positive ratio && finite state && finite fluxL && finite fluxR then
-    let difference := fluxR - fluxL
-    let increment := ratio * difference
-    let value := state - increment
-    if finite difference && finite increment && finite value then ⟨0, value⟩
-    else rejectedComponent
+  let difference := fluxR - fluxL
+  let increment := ratio * difference
+  let value := state - increment
+  if (positive ratio && finite state && finite fluxL && finite fluxR) &&
+      (finite difference && finite increment && finite value) then ⟨0, value⟩
   else rejectedComponent
 
 structure Updated where
@@ -206,30 +197,21 @@ abbrev rejectedCell : Updated := ⟨1, 0, 0, 0, 0, 0, 0, 0⟩
 1/2. -/
 def advanceCell (ratio rhoL momentumL transverseL energyL rho momentum transverse energy
     rhoR momentumR transverseR energyR : Float) : Updated :=
-  if positive ratio then
-    let left := flux rhoL momentumL transverseL energyL rho momentum transverse energy
-    if left.status == 0 then
-      let right := flux rho momentum transverse energy rhoR momentumR transverseR energyR
-      if right.status == 0 then
-        let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha
-        let courant := ratio * alpha
-        if positive courant && courant.toBits ≤ 0x3FE0000000000000 then
-          let nextDensity := update ratio rho left.mass right.mass
-          let nextMomentum := update ratio momentum left.momentum right.momentum
-          let nextTransverse := update ratio transverse left.transverse right.transverse
-          let nextEnergy := update ratio energy left.energy right.energy
-          if nextDensity.status == 0 && nextMomentum.status == 0 &&
-              nextTransverse.status == 0 && nextEnergy.status == 0 then
-            let nextSide := side nextDensity.value nextMomentum.value nextTransverse.value
-              nextEnergy.value
-            if nextSide.status == 0 then
-              ⟨0, nextDensity.value, nextMomentum.value, nextTransverse.value, nextEnergy.value,
-                nextSide.pressure, alpha, courant⟩
-            else rejectedCell
-          else rejectedCell
-        else rejectedCell
-      else rejectedCell
-    else rejectedCell
+  let left := flux rhoL momentumL transverseL energyL rho momentum transverse energy
+  let right := flux rho momentum transverse energy rhoR momentumR transverseR energyR
+  let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha
+  let courant := ratio * alpha
+  let nextDensity := update ratio rho left.mass right.mass
+  let nextMomentum := update ratio momentum left.momentum right.momentum
+  let nextTransverse := update ratio transverse left.transverse right.transverse
+  let nextEnergy := update ratio energy left.energy right.energy
+  let nextSide := side nextDensity.value nextMomentum.value nextTransverse.value nextEnergy.value
+  if positive ratio && left.status == 0 && right.status == 0 &&
+      (positive courant && courant.toBits ≤ 0x3FE0000000000000) &&
+      (nextDensity.status == 0 && nextMomentum.status == 0 && nextTransverse.status == 0 &&
+        nextEnergy.status == 0) && nextSide.status == 0 then
+    ⟨0, nextDensity.value, nextMomentum.value, nextTransverse.value, nextEnergy.value,
+      nextSide.pressure, alpha, courant⟩
   else rejectedCell
 
 /-! Initial data: the four quadrants, with the cells cut by the interfaces at x = y = 0.8

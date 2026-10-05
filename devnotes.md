@@ -25352,3 +25352,31 @@ unchanged.  The check now builds first.  The first check in the new order failed
 last fallback, after every rule, including the six-argument fallback of floats and the record
 result's fallback.  `euler.wasm` from the corrected compiler has the same bytes as the binary of
 the runs below.
+
+### E6: proofs of the solver's functions, the scalar kernels
+
+`Project/Euler/Verify.lean` proves `ImplementsPure` for the seven functions of scalars:
+`normalized`, `energyGuard`, `side`, `component`, `update`, `flux`, and `advanceCell`.  The first
+attempts showed where symbolic evaluation of a compiled body breaks down, and the source and the
+proofs changed accordingly.
+
+| Problem | Cause | Change |
+|---|---|---|
+| One `simp` over `side` exceeded four million steps | Each nested `if` statement duplicated the whole state | Each kernel computes every value in straight-line code and selects the result once, at the end, by the conjunction of main's checks; the float operations are total, so the results are main's |
+| Evaluation stalled on the energy guard | `divU` and `remU` write two scratch locals, so the arms of a conditional leave different states | Divisions and remainders by `2^52` became shifts and masks, which compute the same words |
+| The energy guard was too large to evaluate with its callers | Terms grow without sharing | `normalized` and `energyGuard` are compiled functions; a callee's results enter the caller's proof as opaque values |
+| `Float.ofBits` keeps a NaN payload that Lean replaces | The reinterpretation copies the bits | `normalized` returns 0 for a word whose exponent field is all ones, which never happens for normalizable components; `not_nan_of_exponent` gives the bits otherwise |
+| Literals such as `0.5` blocked closing | `(0.5 : Float).toBits` unfolds the float model | Bit lemmas for the solver's literals, proved by `decide +kernel` |
+| The Lean side distributed `ratio * (if ...)` | Mathlib's `mul_ite` is a `simp` lemma | The evaluation macro excludes `mul_ite` and its relatives |
+| `split` exceeded the step limit | It runs `simp` over the whole goal | `exists_ite_some` splits the final selection, and `if_pos`/`if_neg` rewrite the Lean side |
+| Two identical tests counted as two | Their `Decidable` instances differed | The same lemma, with the hypothesis rewriting the Lean side |
+
+Two rules make the proofs mechanical.  `Stmt.seq_run` runs a call-free statement and continues
+from the state `Stmt.run` computes, and `Stmt.seq_callPure` runs a pure call and continues from
+the state its results leave.  Each takes one existential hypothesis, so one `simp` call computes
+the next state.  A proof then follows its body: `seq_run` for assignments, `seq_callPure` with
+the callee's theorem and its input for calls, and `Stmt.run_triple` for the final statement and
+the results.  `advanceCell`, with seven calls, takes about a minute.
+
+The binary changed with these source changes.  The current `euler.wasm` passes the 716 cases and
+returned main's 192 words; the 800 run will be repeated with the final binary.

@@ -153,4 +153,13 @@ theorem Stmt.run_triple {s : Stmt} {scratch : Nat} {initial : Store Unit} {state
   let ⟨_, hRun, hPost⟩ := h
   (Stmt.run_spec hRun).mono (fun _ _ h => h) fun _ _ ⟨hStore, hState⟩ => hStore ▸ hState ▸ hPost
 
+/-- A statement that `Stmt.run` completes, followed by `rest` from the state it leaves. -/
+theorem Stmt.seq_run {s rest : Stmt} {scratch : Nat} {initial : Store Unit} {state : State}
+    {Q : Store Unit → State → Prop}
+    (h : ∃ mid, s.run initial.mem scratch state = some mid ∧
+      Triple m rest scratch (fun store st => store = initial ∧ st = mid) Q) :
+    Triple m (.seq s rest) scratch (fun store st => store = initial ∧ st = state) Q :=
+  let ⟨_, hRun, hRest⟩ := h
+  Stmt.seq_spec (Stmt.run_spec hRun) hRest
+
 end Project.IR
