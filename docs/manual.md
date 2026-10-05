@@ -61,7 +61,7 @@ The compiler unfolds a function marked `@[inline]`, which includes every `abbrev
 | `List UInt64` | The null pointer, or a record of two slots: the element and the pointer to the rest | A list parameter is borrowed. |
 | A recursive type | The null pointer, or a record of one slot per field | Exactly two constructors, one without fields.  The compiler builds records whose fields are words or values of a recursive type. |
 
-The compiler classifies a type by its structure, so a user type needs no declaration beyond its `inductive` or `structure` to compile.  Inductive types with parameters or indices, nested and mutual inductive types, `Int`, `String`, `Char`, `Option`, and type variables are outside the dialect.  A parameter whose type the compiler cannot classify, such as `Option UInt64`, gives `parameter … of … is not UInt64, Float, Float32, an array, a list of words, or a user type`, and a structure or sum with a field of an unsupported type gives `unsupported type …`.  `Nat` is an inductive type with one constructor without fields and one with a field, so the compiler classifies it as a recursive type and accepts a `Nat` parameter where it is declared.  The first operation on such a parameter fails, for example `n.toUInt64` with `unsupported term: n.toUInt64`.
+The compiler classifies a type by its structure, so a user type needs no declaration beyond its `inductive` or `structure` to compile.  Inductive types with parameters or indices, nested and mutual inductive types, `Int`, `String`, `Char`, `Option`, and type variables are outside the dialect.  A parameter whose type the compiler cannot classify, such as `Option UInt64`, gives `parameter … of … is not UInt64, Float, Float32, an array, a list of words, or a user type`, and a structure or sum with a field of an unsupported type gives `unsupported type …`.  A `Nat` parameter gives `parameter … of … is a Nat; integers in this dialect are UInt64`, and a `Nat` result gives `the result of … is a Nat; …`.
 
 Arrays of arrays, arrays of trees, and structures with array or tree fields are not supported.  A structure with an array field gives `unsupported type Array UInt64`.  `devnotes.md` records these as the open items E2c and E3.
 
@@ -144,7 +144,7 @@ A call of a definition compiled into the same module compiles to a `call` statem
 
 An array argument at a borrowed position must be an array variable.  At an owned position, an owned variable at its last use that no other array argument names moves into the call, any other array term is evaluated into a new array that the call consumes, and a borrowed array or an array that the code uses again is copied (`Stmt.copy`).  Values of recursive types follow the same rules, with copies made by a copy function that the compiler generates for the type.
 
-`leanexe_compile p := [f, g, …]` infers each definition's owned parameters in list order and gives each caller the owned positions of the callees compiled before it.  A callee listed after its caller therefore counts as borrowing every parameter when the caller compiles, and the compiler gives no error: compiling `[callerG, calleeF]`, where `calleeF` pushes onto its array argument, succeeds and passes a borrowed array to a function that consumes it.  The module's proof then fails, so callees belong before their callers in the list.
+`leanexe_compile p := [f, g, …]` compiles each definition after the listed definitions it calls, and otherwise in list order, so that each caller knows the owned parameters of its callees.  The compiler finds the calls in a definition's body and in the bodies of the `@[inline]` and reducible definitions that the body uses.  Listed definitions that call each other in a cycle give `the definitions … call each other; a module list may not contain mutual recursion`.  The order of compilation leaves the function indices in list order: the `i`-th listed definition is function `2 + i`.
 
 ### Folds
 
@@ -257,6 +257,8 @@ The theorems state the modes through types.  A consumed argument has type `Moved
 | `unsupported term: dite …` | `if h : …` or a `match` on a word with literal patterns | Use `if` with a decidable condition. |
 | `unsupported operation Bind.bind in do …` | `for`, `while`, or `do` notation | Use `LeanExe.loop`, `LeanExe.build`, or `LeanExe.repeatWhile`. |
 | `unsupported type …` | A structure field or tuple component of an unsupported type, such as an array | Pass arrays as separate parameters and return them in a pair. |
+| `parameter … of … is a Nat; integers in this dialect are UInt64`, `the result of … is a Nat; …` | A `Nat` parameter or result | Use `UInt64`. |
+| `the definitions … call each other; a module list may not contain mutual recursion` | Listed definitions that call each other in a cycle | Combine them into one recursive definition. |
 | `unsupported term: …` | A term no rule covers, such as unary minus on `UInt64`, `Nat` arithmetic, or an `Array Float` literal | Rewrite in covered terms: `0 - x`, `UInt64` arithmetic, or `LeanExe.build`. |
 | `a loop state must be a tuple of components: …` | A tuple state that starts from a variable | Write the initial state as a constructor application, such as `(a, b)`. |
 | ``a loop over an array must have an `Array Float` state: …`` | `LeanExe.loop` with an `Array UInt64` state | Use a nest of two or more word arrays, or `LeanExe.repeatWhile` with a counter in its state. |
@@ -309,7 +311,7 @@ The theorems state the modes through types.  A consumed argument has type `Moved
 
 `Project/Compiler/Command.lean` defines the command in two forms.  `leanexe_compile p := f` compiles one definition and adds `p.ir`, the IR function, `p.hints`, and `p.module`, defined as `compile [(p.ir, name)]`, where `name` is the last component of `f`'s name and `f` is function 2.  `leanexe_compile p := [f, g, …]` compiles the listed definitions into one module and adds `p.f.ir` and `p.f.hints` for each, `p.funcs`, and `p.module := compile p.funcs`, in which the `i`-th listed definition is function `2 + i`.
 
-The list form also adds the functions that the listed definitions need.  A definition that calls itself other than in tail position gets an internal function `p.f.rec.ir`, exported as `f.rec`, and the internal functions follow the listed ones in list order.  A recursive type that the code copies gets a copy function `p.T.copy.ir`, exported as `T.copy`, after the internal functions in the order of first use.  The doc comment of the single form says that `f` is function 3, which was true while the runtime also had `retain`.
+The list form also adds the functions that the listed definitions need.  A definition that calls itself other than in tail position gets an internal function `p.f.rec.ir`, exported as `f.rec`, and the internal functions follow the listed ones in list order.  A recursive type that the code copies gets a copy function `p.T.copy.ir`, exported as `T.copy`, after the internal functions in the order of first use.
 
 ```lean
 import LeanExe.Examples.Clob

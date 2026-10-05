@@ -319,7 +319,7 @@ enumeration, whose constructors have no fields, a structure, or a sum, or a recu
 that is neither nested nor mutual, whose values are records on the heap. -/
 def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
   let .const name _ ← whnfR type | return none
-  if name == ``UInt64 || name == ``Float || name == ``Float32 then return none
+  if name == ``UInt64 || name == ``Float || name == ``Float32 || name == ``Nat then return none
   let some (.inductInfo info) := (← getEnv).find? name | return none
   unless info.numParams == 0 && info.numIndices == 0 do return none
   let fields ← info.ctors.mapM fun ctor => do
@@ -2876,6 +2876,10 @@ mutual
   partial def translateCall (ctx : Ctx) (term : Lean.Expr) (index : Nat)
       (dests? : Option (List Nat) := none) : CompileM (List (Nat × ScalarType)) := do
     let source ← sourceOf term
+    -- A call needs its callee's owned parameters, which only a compiled callee has.
+    let callee := term.getAppFn.constName
+    unless callee == ctx.self || (ctx.owners.lookup callee).isSome do
+      throwError "{callee} is called before it is compiled: list it before the definitions that call it: {source}"
     -- Any call may appear at the result level.  Where code must keep the store, only
     -- a call with scalar arguments and results may appear; its proof shows that the
     -- callee keeps the store.
@@ -3359,6 +3363,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         paramNames := paramNames.push (s!"{name}.{types.length - 1}", index + types.length - 1)
         continue
       else
+        if (← whnfR type).isConstOf ``Nat then
+          throwError "parameter {params[i]} of {declName} is a Nat; integers in this dialect are UInt64"
         throwError "parameter {params[i]} of {declName} is not UInt64, Float, Float32, an array, a list of words, or a user type"
       paramNames := paramNames.push (name, index)
     let resultType ← inferType body
@@ -3366,6 +3372,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let floatResult := (← isFloat resultType) || (← isFloat32 resultType)
     let pairResult ← isTupleType resultType
     let listResult := (← isUInt64List resultType) || (← isNodeType resultType)
+    if (← whnfR resultType).isConstOf ``Nat then
+      throwError "the result of {declName} is a Nat; integers in this dialect are UInt64"
     unless arrayResult || floatResult || pairResult || listResult || (← isWordType resultType) do
       throwError "the result of {declName} is not UInt64, Float, Float32, an array, a list of words, a pair, or a user type"
     let recursive := (body.find? fun e => e.isConstOf declName).isSome
