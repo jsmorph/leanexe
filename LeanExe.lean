@@ -4,6 +4,7 @@ import LeanExe.Examples.Binary32
 import LeanExe.Examples.Bucket
 import LeanExe.Examples.Calc
 import LeanExe.Examples.Clob
+import LeanExe.Examples.Drone
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.Mean
 import LeanExe.Examples.PairSum

@@ -273,3 +273,8 @@ import Project.EulerReal.Rotation
 import Project.EulerReal.Eigenvectors
 import Project.EulerReal.Eigenbasis
 import Project.EulerReal.Hyperbolicity
+import Project.Drone.Module
+import Project.Drone.Verify
+import Project.Drone.Motion
+import Project.Drone.Kinematics
+import Project.Drone.Timing
