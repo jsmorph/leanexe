@@ -23,7 +23,7 @@ The theorems are in [the proofs](../../Project/RemoveZero/Verify.lean), and they
 `propext`, `Classical.choice`, and `Quot.sound`.  `compute_eq` connects the loop to
 `Array.findIdx?` and the build to `Array.eraseIdx!` through the core lemmas
 `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_eraseIdx`.  Main's theorem also stated
-termination with a heap reserve; here the trap-tolerant theorem suffices, and the
+termination with a heap reserve.  Here the trap-tolerant theorem suffices, and the
 [increment example](../increment/README.md) shows the total form.
 
 ```sh

@@ -8,6 +8,9 @@ import LeanExe.Examples.Drone
 import LeanExe.Examples.Gcd
 import LeanExe.Examples.Increment
 import LeanExe.Examples.RemoveZero
+import LeanExe.Examples.PrimeFactors
+import LeanExe.Examples.Lookup
+import LeanExe.Examples.Below100
 import LeanExe.Examples.Mean
 import LeanExe.Examples.PairSum
 import LeanExe.Examples.Piecewise

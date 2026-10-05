@@ -461,14 +461,15 @@ Floats enter through equality theorems: ProofKit proves that Lean's binary64 and
 
 ### The bytes theorem
 
-`Wasm.Encoding.round_trip m locals ok` gives `∃ bytes, encode m = .ok bytes ∧ decode bytes = .ok m` from a bound on each function's locals and the evaluation of the encoder to success.  The first premise holds by `decide`, and the second by `decide +kernel`, which evaluates the encoder in the kernel.  A program's bytes theorem combines it with the `Implements` theorems, as `gcd_bytes` does.
+`Wasm.Encoding.round_trip m locals ok` gives `∃ bytes, encode m = .ok bytes ∧ decode bytes = .ok m` from a bound on each function's locals and the evaluation of the encoder to success.  The first premise holds by `decide`, and the second by `decide +kernel`, which evaluates the encoder in the kernel.  A program's bytes theorem combines it with the `Implements` theorems, as `gcd_bytes` does.  `Implements.congr` replaces the function by one equal to it on every represented argument: here `gcd_eq` equates the program with `expected`, the specification by Mathlib's `Nat.gcd`.
 
 ```lean
 theorem gcd_bytes : ∃ bytes, Wasm.Encoding.encode gcd.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 gcdTuple := by
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 expected := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip gcd.module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, gcd.module, decoded, gcd_implements⟩
+  exact ⟨bytes, success, gcd.module, decoded,
+    gcd_implements.congr fun _ _ _ x _ => gcd_eq x.1 x.2⟩
 ```
 
 `decide +kernel` adds no axiom and takes about half a second per module.  Every compiled module has a bytes theorem named `NAME_bytes` except `treeFrame`, a module for the depth test only, and `gpt32`, whose kernels have WGSL theorems and no WebAssembly theorem.  `gcd_bytes`, `clob_bytes`, `euler_bytes`, and `drone_bytes` are typical.  `gpt_file` in `Project/Gpt/File.lean`, checked with `lake env lean` after `Emit.lean` writes `build/gpt/gpt.wasm`, proves that the file holds `encode gpt.module`.

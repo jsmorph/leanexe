@@ -20,7 +20,7 @@ in a branch.  [The module definition](../../Project/Increment/Module.lean) compi
 
 The theorems are in [the proofs](../../Project/Increment/Verify.lean), and they use only
 `propext`, `Classical.choice`, and `Quot.sound`.  Main's theorem concerned one binary of main's
-compiler and was proved by stepping through its instructions, which took 457 lines; here the
+compiler and was proved by stepping through its instructions, which took 457 lines.  Here the
 proof of `Implements` applies the rule of the build template, and `compute_eq` carries it to the
 specification.  The module tests run the request's samples and edge cases in Wasmtime against
 `expected`.
