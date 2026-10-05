@@ -1,5 +1,11 @@
 # LeanExe
 
+The Smalltalk VM and arena GC are compiled through leanexe. Run
+`tests/smalltalk/run.sh` for native/WASM comparisons; see
+[smalltalk-vm.md](smalltalk-vm.md) for the subset, ABI, collector, and proof
+boundaries, and [smalltalk-compilers.md](smalltalk-compilers.md) for the upstream
+compiler options. Reconstruction and validation are currently in progress.
+
 LeanExe compiles Lean functions to WebAssembly and proves, for each compiled
 function, that the bytes compute exactly the Lean function.  A compiler, which
 is not trusted, translates a Lean definition to a small IR during elaboration

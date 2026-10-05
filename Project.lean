@@ -10,6 +10,8 @@ import Project.Calc.Verify
 import Project.Clob.Module
 import Project.Clob.Verify
 import Project.Common
+import Project.Smalltalk.Control
+import Project.Smalltalk.Module
 import Project.Compiler.Command
 import Project.Compiler.Scalar
 import Project.Encoding

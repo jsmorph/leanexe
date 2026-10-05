@@ -1,0 +1,16 @@
+CompilerProbe = (
+  | count |
+  run = (
+    count := 40.
+    (self captured = 42) ifFalse: [system exit: 1].
+    (self escape = 42) ifFalse: [system exit: 2].
+    (self class answer = 42) ifFalse: [system exit: 3].
+    (self escapedOrdinary value = 42) ifFalse: [system exit: 4].
+    'compiler probe: fields, captures, non-local return, class-side methods, escaped ordinary block: 42' println
+  )
+  captured = (| b | b := [count := count + 1]. b value. b value. ^count)
+  escape = ([ [^42] value. ^999 ] value. ^998)
+  escapedOrdinary = (| x | x := 40. ^[x + 2])
+  ----
+  answer = (^42)
+)

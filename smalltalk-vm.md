@@ -5,10 +5,12 @@ The VM and nonmoving GC are Lean functions compiled by leanexe to WebAssembly.
 `tools/smalltalk-compile.mjs` is a temporary source compiler for workspace snippets.
 The host allocates the input and arena arrays; execution stays inside WASM.
 
-Reconstruction is in progress. Native Lean compilation of the VM source has
-passed. The WASM build, behavioral corpus, and control proof checks are pending.
-The branch is being committed and pushed in checkpoints; this document will be
-updated with measured results when the full test driver passes.
+Reconstruction is in progress. The control proofs pass Lean checking, and all
+59 programs pass natively with both ordinary and stress GC: 118 runs. This
+includes a 10,000-iteration VM loop in 24 cells. The compiler rejects 16 invalid
+source inputs. WASM compilation and execution remain pending. The branch is
+committed and pushed in checkpoints; measured WASM results will be added after
+the full driver passes.
 
 ## Run
 
@@ -140,7 +142,7 @@ are absorbing. Collection preserves failures.
 `LeanExe/Smalltalk/Control.lean` specifies first-method lookup, bounded inherited
 lookup, and live-home unwinding. `Project/Smalltalk/Control.lean` relates the
 functions to inductive specifications and states determinism and retirement
-laws. These checks are pending during reconstruction.
+laws. These declarations pass Lean checking.
 
 There is no complete concrete VM/GC refinement theorem or frontend correctness
 theorem. This iteration tests the emitted WASM; it does not prove a WASM artifact

@@ -115,8 +115,8 @@ def elabLeanexeCompileModule : CommandElab
           let short := name.getString!
           let internal := internalIndex.lookup name
           let (func, hints, owned, rec_, copies', nextCopy') ←
-            compileDefinition name callees owners internal recInternals leaves copies
-              (some nextCopy)
+            try compileDefinition name callees owners internal recInternals leaves copies (some nextCopy)
+            catch error => throwError "while compiling {name}: {error.toMessageData}"
           copies := copies'
           nextCopy := nextCopy'.getD nextCopy
           owners := (name, owned) :: owners
