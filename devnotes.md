@@ -25970,3 +25970,28 @@ covers all 15 entries, and `drone_compute` states that the bytes decode to a mod
 16 computes `compute`, with `compute_correct` and `compute_invalid` for its results.  The
 theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  `lake build` succeeds with no
 `sorry`, and `tests/drone/run.sh` again matches main on all 1,975 calls and 116 terrains.
+
+### D5: flight safety
+
+Main's flight-safety files port with few changes, because they use the source theorems only
+through `compute_correct`, `compute_endpoints`, and the edge lemmas of D1.  `Safety.lean` is
+rewritten for word states and the floors `floors terrain k`: `PairAt`, `waypoint`, and `adjacent`
+are stated for any floors, and `floors_first`, `floors_last`, and `interior_clearance` replace
+main's `floorAt` lemmas.  `Gluing.lean` is main's file unchanged.  `Trajectory.lean`,
+`Acceleration.lean`, `Corridor.lean`, and `WholeFlight.lean` differ from main's only in `floors`
+for `floorAt`, in their `open` lines, and in two lemma names.
+
+`WholeFlight.compute_safe` states, for valid nonempty terrain, main's `Safe`: the output has two
+words per station, the flight time is positive when there are two stations or more, the
+trajectory that the words define is differentiable with continuous velocity, it departs and
+arrives on the ground at rest, at every time of the flight it stays within the terrain's extent,
+above the clearance corridor, and within the speed limits, and away from the joins its
+acceleration exists and keeps the limits.  `drone_safe` in `Verify.lean` carries it to the bytes:
+the bytes decode to a module whose entry 16 computes `compute`, and the flight of every valid
+nonempty terrain is safe.  The theorems use only `propext`, `Classical.choice`, and `Quot.sound`,
+and `lake build` succeeds with no `sorry`.  The drone files hold 4,201 lines, against main's
+3,150 lines about the source program; the added lines are the `Implements` proofs, which replace
+main's 7,925-line `Program.lean` and its execution files.
+
+- [x] D2, D3, D4, and D5 (commits `ab039002`, `fa80818b`, `c36b7225`, and this one).
+- [ ] Total execution with a memory bound, as A1 to A5 did for the Euler solvers.

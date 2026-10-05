@@ -1,4 +1,5 @@
 import Project.Drone.Finish
+import Project.Drone.WholeFlight
 import Project.Encoding.RoundTrip
 
 /-! The encoded bytes of the drone module decode to a module whose compiled functions compute
@@ -52,5 +53,16 @@ theorem drone_compute : ∃ bytes, Wasm.Encoding.encode drone.module = .ok bytes
   exact ⟨bytes, success, drone.module, decoded, compute_implements,
     fun terrain h hn => compute_correct terrain h hn,
     fun terrain hs h => compute_invalid terrain hs h⟩
+
+open Output in
+/-- The bytes of `drone.module` decode to a module whose entry 16 computes `compute`, and for
+valid nonempty terrain the flight that `compute` returns is safe: the clearance, speed, and
+acceleration limits hold throughout the point-mass trajectory that its words define. -/
+theorem drone_safe : ∃ bytes, Wasm.Encoding.encode drone.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 16 compute ∧
+      ∀ terrain, terrainBound terrain → 0 < terrain.size → WholeFlight.Safe terrain := by
+  obtain ⟨bytes, success, decoded⟩ := drone_round_trip
+  exact ⟨bytes, success, drone.module, decoded, compute_implements,
+    fun terrain h hn => WholeFlight.compute_safe terrain h hn⟩
 
 end Project.Drone
