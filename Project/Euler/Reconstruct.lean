@@ -1,4 +1,5 @@
 import Project.Euler.Faces
+import Project.IR.OneArray
 
 /-! The compiled reconstruction kernels of the reconstructed Euler solver compute their Lean
 definitions. -/
@@ -11,6 +12,14 @@ instance : Flat Faces (UInt64 × Conserved × Conserved × Float) :=
   ⟨fun f => (f.status, f.left, f.right, f.factor)⟩
 
 instance : Flat Slope (UInt64 × Conserved) := ⟨fun s => (s.status, s.state)⟩
+
+/-- `eval_ir` with a larger step limit, for bodies that test several state guards. -/
+macro "eval_ir_large" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
+  `(tactic| simp (config := { maxSteps := 2000000 }) [Stmt.run, Expr.eval, Func.state,
+    Func.locals, Func.scratch, Func.width, Stmt.scratchWidth, Expr.scratchWidth,
+    State.set?_eq_update, State.get, State.update, State.setAll, U64Op.apply, F64Op.apply,
+    F64UnOp.apply, Scalar.values, ScalarType.valueType, Expr.evalResults, ScalarType.value,
+    Flat.flat, divU_eq, remU_eq, -mul_ite, -ite_mul, $args,*])
 
 /-- Two words of tests are equal when the tests agree. -/
 theorem word_eq_word (p q : Prop) [Decidable p] [Decidable q] :
@@ -147,5 +156,90 @@ theorem limitFactor_implements : ImplementsPure euler.module 40 limitFactorTuple
         simp [State.Holds, Scalar.values] at hHolds
         simp [euler.limitFactor.ir, Expr.evalResults, Expr.eval, hHolds.1, hHolds.2,
           Scalar.values]
+
+def limitTuple : UInt64 × Conserved × Conserved → Faces :=
+  fun (trials, center, delta) => limit trials center delta
+
+set_option maxHeartbeats 2000000 in
+theorem limit_implements : ImplementsPure euler.module 41 limitTuple :=
+  Func.implementsPure euler.funcs 39 euler.limit.ir "limit" rfl limitTuple (fun _ => rfl)
+    fun ⟨trials, center, delta⟩ initial => by
+      let r := limitFactor trials center delta
+      refine Stmt.seq_callPure limitFactor_implements rfl rfl rfl (x := (trials, center, delta)) ?_
+      eval_ir [euler.limit.ir, limitFactorTuple]
+      refine Stmt.ite_test (b := r.1 == 0) (by simp [Expr.eval, State.get, r]) (fun hR => ?_)
+        (fun hR => ?_)
+      · have hR' : (limitFactor trials center delta).1 = 0 := by simpa [r] using hR
+        refine Stmt.callPure_last candidate_implements rfl rfl rfl (x := (center, delta, r.2)) ?_
+        eval_ir [candidateTuple, limitTuple, limit, r, hR']
+      · have hR' : ¬(limitFactor trials center delta).1 = 0 := by simpa [r] using hR
+        refine Stmt.run_triple ?_
+        eval_ir [limitTuple, limit, r, zero_toBits, hR']
+
+def reconstructTuple : UInt64 × Conserved × Conserved × Conserved → Faces :=
+  fun (trials, left, center, right) => reconstruct trials left center right
+
+set_option maxHeartbeats 4000000 in
+theorem reconstruct_implements : ImplementsPure euler.module 42 reconstructTuple :=
+  Func.implementsPure euler.funcs 40 euler.reconstruct.ir "reconstruct" rfl reconstructTuple
+    (fun _ => rfl) fun ⟨trials, left, center, right⟩ initial => by
+      let delta := slope left center right
+      refine Stmt.seq_callPure slope_implements rfl rfl rfl (x := (left, center, right)) ?_
+      eval_ir [euler.reconstruct.ir, slopeTuple]
+      refine Stmt.seq_callPure limit_implements rfl rfl rfl (x := (trials, center, delta.state)) ?_
+      eval_ir [limitTuple, delta]
+      refine Stmt.seq_callPure energyGuard_implements rfl rfl rfl
+        (x := (left.density, left.mx, left.my, left.energy)) ?_
+      eval_ir [energyGuardTuple]
+      refine Stmt.seq_callPure energyGuard_implements rfl rfl rfl
+        (x := (center.density, center.mx, center.my, center.energy)) ?_
+      eval_ir [energyGuardTuple]
+      refine Stmt.seq_callPure energyGuard_implements rfl rfl rfl
+        (x := (right.density, right.mx, right.my, right.energy)) ?_
+      eval_ir [energyGuardTuple]
+      refine Stmt.run_triple ?_
+      eval_ir_large [reconstructTuple, reconstruct, admissibleState, stateGuard, narrowGuard,
+        positive, finite, absBits, rejectedFaces, zeroState, word_and, word_or, word_eq_one,
+        word_beq_one, cond_eq_ite, zero_toBits, delta]
+      simp only [and_assoc]
+      refine exists_ite_some (fun h => ?_) (fun h => ?_)
+      · eval_ir_large [h]
+      · eval_ir_large [h, zero_toBits, and_assoc]
+
+def reconstructedStepTuple : UInt64 × Float × Conserved × Conserved × Conserved × Conserved ×
+    Conserved → Updated :=
+  fun (trials, ratio, farLeft, left, center, right, farRight) =>
+    reconstructedStep trials ratio farLeft left center right farRight
+
+set_option maxHeartbeats 8000000 in
+theorem reconstructedStep_implements : ImplementsPure euler.module 43 reconstructedStepTuple :=
+  Func.implementsPure euler.funcs 41 euler.reconstructedStep.ir "reconstructedStep" rfl
+    reconstructedStepTuple (fun _ => rfl)
+    fun ⟨trials, ratio, farLeft, left, center, right, farRight⟩ initial => by
+      have hR := reconstruct_implements
+      let leftFaces := reconstruct trials farLeft left center
+      let centerFaces := reconstruct trials left center right
+      let rightFaces := reconstruct trials center right farRight
+      refine Stmt.seq_callPure hR rfl rfl rfl (x := (trials, farLeft, left, center)) ?_
+      eval_ir [euler.reconstructedStep.ir, reconstructTuple]
+      refine Stmt.seq_callPure hR rfl rfl rfl (x := (trials, left, center, right)) ?_
+      eval_ir [reconstructTuple]
+      refine Stmt.seq_callPure hR rfl rfl rfl (x := (trials, center, right, farRight)) ?_
+      eval_ir [reconstructTuple]
+      refine Stmt.seq_callPure faceStep_implements rfl rfl rfl
+        (x := (ratio, center.density, center.mx, center.my, center.energy,
+          leftFaces.right.density, leftFaces.right.mx, leftFaces.right.my, leftFaces.right.energy,
+          centerFaces.left.density, centerFaces.left.mx, centerFaces.left.my,
+          centerFaces.left.energy, centerFaces.right.density, centerFaces.right.mx,
+          centerFaces.right.my, centerFaces.right.energy, rightFaces.left.density,
+          rightFaces.left.mx, rightFaces.left.my, rightFaces.left.energy)) ?_
+      eval_ir [faceStepTuple, leftFaces, centerFaces, rightFaces]
+      refine Stmt.run_triple ?_
+      eval_ir [reconstructedStepTuple, reconstructedStep, rejectedCell, word_and, word_eq_one,
+        zero_toBits, faceStepTuple, leftFaces, centerFaces, rightFaces]
+      simp only [and_assoc]
+      refine exists_ite_some (fun h => ?_) (fun h => ?_)
+      · eval_ir [h]
+      · eval_ir [h, zero_toBits, and_assoc]
 
 end Project.Euler
