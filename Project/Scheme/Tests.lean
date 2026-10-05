@@ -88,6 +88,18 @@ def audit (code : Code) : Nat → State → Nat → State × Nat
   | 0, s, peak => (s, max peak s.stack.depth)
   | n + 1, s, peak => audit code n (step code s) (max peak s.stack.depth)
 
+theorem tail_preserves_caller :
+    (run tailUnderCaller 60 tailUnderCallerInitial).control = .done (.word 107) := by rfl
+
+theorem tail_preserves_caller_depth :
+    (audit tailUnderCaller 60 tailUnderCallerInitial 0).2 = 1 := by rfl
+
+theorem continuation_escapes_nested_calls :
+    (run escapeNestedCalls 30 initial).control = .done (.word 107) := by rfl
+
+theorem escape_exercises_nested_frames :
+    (audit escapeNestedCalls 30 initial 0).2 = 3 := by rfl
+
 def largeTailCheck : IO Unit := do
   let (result, peak) := audit (countdown 10000) 100020 countdownInitial 0
   match result.control with
@@ -95,6 +107,6 @@ def largeTailCheck : IO Unit := do
   | other => throw (IO.userError s!"tail loop returned {repr other}")
   unless peak == 0 do
     throw (IO.userError s!"tail loop grew to {peak} return frames")
-  IO.println "10,000 tail calls: result 0, peak active return depth 0"
+  IO.println s!"10,000 recursive tail calls: result 0, peak active return depth 0; retained store cells {result.store.size}"
 
 end LeanExe.Scheme.VM.Tests

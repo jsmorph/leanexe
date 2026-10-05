@@ -8,6 +8,34 @@ describes successful execution without referring to `step`, `execute`, `enter`, 
 
 namespace LeanExe.Scheme.VM
 
+/-- Closed-form binding contract: all parameters and values retain source order. -/
+theorem bind_eq (params : List Symbol) (args : List Value) (captured : Env) (memory : Store) :
+    bind params args captured memory =
+      if params.length = args.length then
+        some (params.zip (List.range' memory.size params.length) ++ captured,
+          memory ++ args.toArray)
+      else none := by
+  induction params generalizing args memory with
+  | nil => cases args <;> simp [bind]
+  | cons name names ih =>
+    cases args with
+    | nil => simp [bind]
+    | cons value values =>
+      by_cases h : names.length = values.length
+      · simp only [bind, ih, List.length_cons, h, ite_true,
+          Array.size_push, List.range'_succ, List.zip_cons_cons, List.cons_append]
+        rw [List.toArray_cons, Array.push_eq_append, Array.append_assoc]
+      · simp [bind, ih, h]
+
+theorem bind_iff {params : List Symbol} {args : List Value} {captured bound : Env}
+    {memory final : Store} :
+    bind params args captured memory = some (bound, final) ↔
+      params.length = args.length ∧
+      bound = params.zip (List.range' memory.size params.length) ++ captured ∧
+      final = memory ++ args.toArray := by
+  rw [bind_eq]
+  split <;> simp_all [eq_comm]
+
 /-- Successful transitions, including absorption at a completed computation. -/
 inductive Transition (code : Code) : State → State → Prop where
   | push {pc env stack memory v} (fetch : code[pc]? = some (.push v)) :
@@ -52,7 +80,9 @@ inductive Transition (code : Code) : State → State → Prop where
     Transition code ⟨.exec pc, env, .value v rest, memory⟩ ⟨.returning v, [], rest, memory⟩
   | closure {env stack memory entry params captured args bound final}
       (frame : stack.isFrame = true)
-      (bindings : bind params args captured memory = some (bound, final)) :
+      (bindings : params.length = args.length ∧
+        bound = params.zip (List.range' memory.size params.length) ++ captured ∧
+        final = memory ++ args.toArray) :
     Transition code ⟨.apply (.closure entry params captured) args, env, stack, memory⟩
       ⟨.exec entry, bound, stack, final⟩
   | continuation {env stack memory saved v} (frame : saved.isFrame = true) :
@@ -75,7 +105,7 @@ theorem Transition.nonError {code : Code} {s t : State} (h : Transition code s t
 /-- Completeness prevents the implementation from satisfying the contract by always failing. -/
 theorem Transition.step_eq {code : Code} {s t : State} (h : Transition code s t) :
     step code s = t := by
-  cases h <;>
+  cases h <;> (try simp_all only [← bind_iff]) <;>
     simp_all [step, execute, enter, VM.binary, applyProc, deliver, State.next, Stack.isFrame]
 
 theorem takeValues_depth {n : Nat} {stack rest : Stack} {values : List Value}
@@ -232,7 +262,7 @@ private theorem apply_sound {code : Code} {proc : Value} {args : List Value} {en
       | none => simp [applyProc, hf, hb, State.NonError, State.fail] at normal
       | some result =>
         rcases result with ⟨bound, final⟩
-        simpa [applyProc, hf, hb] using Transition.closure hf hb
+        simpa [applyProc, hf, hb] using Transition.closure hf (bind_iff.mp hb)
   case continuation saved =>
     cases args with
     | nil => simp [applyProc, State.NonError, State.fail] at normal
@@ -330,47 +360,15 @@ theorem run_iff_trace {code : Code} {n : Nat} {s t : State} (normal : t.NonError
 theorem bind_size {params : List Symbol} {args : List Value} {captured bound : Env}
     {memory final : Store} (h : bind params args captured memory = some (bound, final)) :
     params.length = args.length ∧ final.size = memory.size + args.length := by
-  induction params generalizing args memory bound final with
-  | nil =>
-    cases args with
-    | nil => simp [bind] at h; rcases h with ⟨rfl, rfl⟩; simp
-    | cons _ _ => simp [bind] at h
-  | cons name names ih =>
-    cases args with
-    | nil => simp [bind] at h
-    | cons value values =>
-      cases hb : bind names values captured (memory.push value) with
-      | none => simp [bind, hb] at h
-      | some result =>
-        rcases result with ⟨env, store⟩
-        simp [bind, hb] at h
-        rcases h with ⟨rfl, rfl⟩
-        rcases ih hb with ⟨arity, size⟩
-        constructor
-        · simpa using arity
-        · simp [size, Nat.add_comm, Nat.add_left_comm]
+  rcases bind_iff.mp h with ⟨arity, _, rfl⟩
+  exact ⟨arity, by simp⟩
 
 /-- Applying a closure cannot change any existing mutable location. -/
 theorem bind_preserves {params : List Symbol} {args : List Value} {captured bound : Env}
     {memory final : Store} (h : bind params args captured memory = some (bound, final))
     {i : Nat} (hi : i < memory.size) : final[i]? = memory[i]? := by
-  induction params generalizing args memory bound final with
-  | nil =>
-    cases args with
-    | nil => simp [bind] at h; rcases h with ⟨rfl, rfl⟩; rfl
-    | cons _ _ => simp [bind] at h
-  | cons name names ih =>
-    cases args with
-    | nil => simp [bind] at h
-    | cons value values =>
-      cases hb : bind names values captured (memory.push value) with
-      | none => simp [bind, hb] at h
-      | some result =>
-        rcases result with ⟨env, store⟩
-        simp [bind, hb] at h
-        rcases h with ⟨rfl, rfl⟩
-        have hip : i < (memory.push value).size := by simp; omega
-        exact (ih hb hip).trans (by simp [Array.getElem?_push, Nat.ne_of_lt hi])
+  rcases bind_iff.mp h with ⟨_, _, rfl⟩
+  simp [Array.getElem?_append, hi]
 
 /-- A store instruction changes only the selected location, leaving aliases intact. -/
 theorem store_other (memory : Store) (location i : Nat) (value : Value) (h : i ≠ location) :
