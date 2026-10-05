@@ -25,6 +25,7 @@ journal.
 | `Project/IR/` | The IR, `compile`, the statement rules, and rule lemmas. |
 | `Project/Compiler/` | The compiler and the `leanexe_compile` command. |
 | `Project/Runtime/` | The code of the runtime functions `alloc`, `retain`, and `release`, and the free-list layout. |
+| `LeanExe/Scheme/`, `Project/Scheme/` | Abstract VM control laws, an arena VM and collector, and the emitted WASM module. |
 | `Project/Pipeline/` | `Implements`, the runtime heap invariant, allocation lemmas, and `Emit.lean`. |
 | `Project/Encoding/` | The encoder, decoder, `decode_encode`, and the testsuite runner. |
 | `Project/ProofKit/` | General lemmas: memory, arrays, allocation, and binary32 and binary64 arithmetic. |
@@ -58,3 +59,9 @@ tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entri
 the WGSL kernel tests on a browser's WebGPU, and one runs GPT-2 with its kernels
 on WebGPU, in WebAssembly, or on both, compared.  `tests/web/README.md` describes
 the pages, their setup, and what is proved about what they run.
+
+`SCHEME=chibi-scheme tests/scheme/run.sh` checks the Scheme VM, compiles a small
+Scheme source corpus, and tests the actual VM/GC WASM against native Lean. See
+[scheme-compiler.md](scheme-compiler.md) for the host compiler and commands, and
+[scheme-runtime.md](scheme-runtime.md) for GC and VM design. This emitted Scheme
+module is tested; its WASM artifact proof is deferred.

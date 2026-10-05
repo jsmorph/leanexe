@@ -19,3 +19,5 @@ import LeanExe.Loop
 import LeanExe.Signed32
 import LeanExe.Scheme.VM
 import LeanExe.Scheme.Examples
+import LeanExe.Scheme.Arena
+import LeanExe.Scheme.Runtime

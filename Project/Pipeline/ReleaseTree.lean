@@ -11,9 +11,7 @@ namespace Project.Pipeline
 
 open Wasm Project.Runtime Project.ProofKit
 
-/- As in `RuntimeSpec.lean`: CodeLib's `Mem.read64_write64_same` is proved with
-`bv_decide`, and the kernel-checked `Memory.read64_write64` replaces it. -/
-attribute [-simp] Wasm.Mem.read64_write64_same
+/- Use the same kernel-checked word round-trip rule as `RuntimeSpec.lean`. -/
 attribute [local simp] Memory.read64_write64
 
 /-- A loop rule whose measure is a ghost index in the invariant: each iteration that

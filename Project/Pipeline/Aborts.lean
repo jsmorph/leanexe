@@ -1,4 +1,4 @@
-import CodeLib.Entry
+import Interpreter.Wasm.Wp.Call
 import Project.ProofKit.CallRemainder
 
 /-! `ReturnsOrAborts`: every run with enough fuel either returns values that satisfy the
