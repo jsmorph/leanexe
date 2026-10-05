@@ -25525,5 +25525,48 @@ rounding.  CodeLib here has the binary64 error lemmas, and main's generic outwar
 library (`ProofKit/F64Outward*`, `F64*Enclosure`, and their order lemmas) is about 1,800 lines
 missing from this branch.
 
-- [ ] Port main's outward-enclosure library and prove the speed and CFL enclosures.
-- [ ] Conservation balance and hyperbolicity, if the enclosure port succeeds.
+- [x] Port main's outward-enclosure library and prove the speed and CFL enclosures.
+- [x] Hyperbolicity of admissible states.
+- [ ] Conservation balance.
+
+### E8: real-number enclosures, the CFL bound, and hyperbolicity
+
+Main's outward-enclosure library is now under `Project/ProofKit`: the 21 files
+`F64Outward*`, `F64*Enclosure`, `F64Order*`, `F64Adjacent*`, and their helpers, plus
+`F64InternalEnergy` and `F64Admissibility`.  Main's `F64Normalize` and `F64Packing` are different
+modules from this branch's files of the same names, so main's versions are `F64NormalizeModel`
+and `F64PackingModel`.  The real-number Euler mathematics, from main's
+`Project/Euler2DConservative/Real*.lean`, is in `Project/EulerReal`: states, pressure with
+γ = 7/5, admissibility (positive density and pressure), the directional fluxes and their
+Jacobians, the right eigenvectors, and `admissible_hyperbolic`, which gives a basis of real
+eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c` in every unit direction.
+
+| File | Content |
+|---|---|
+| `Project/Euler/Words.lean` | Bits of the float constants and the NaN lemmas, moved from `Kernels` and `Outward` so that `Spec` can use them |
+| `Project/Euler/RealState.lean` | `stateGuard_admissible`: the state guard implies an admissible real state |
+| `Project/Euler/Enclosure.lean` | The source's outward operations equal main's word-level ones; `speedUpper_ge` and `speedUpper_word` |
+| `Project/Euler/Cfl.lean` | `gridUpper_ge`, `gridRatio_le`, `AcceptedStep`, `reconstructedRun_steps` |
+| `Project/Euler/Hyperbolic.lean` | `solve_hyperbolic` and `reconstructedSolve_hyperbolic` |
+
+`stateGuard_admissible` has two cases.  The narrow guard compares words: `|mx|, |my| ≤ ρ < E`
+gives `E - (mx² + my²)/(2ρ) ≥ E - ρ > 0`.  The energy guard computes, on components scaled by a
+common power of two, the same words as main's `F64Admissibility.checked`, so main's soundness
+proof applies; `normalized_toBits` and `energyGuard_checked` prove the correspondence.  Every
+state that passes `side` or `outwardSide` passes the state guard, so `Admissible` in `Spec.lean`
+now includes admissibility in exact arithmetic, and the run theorems of both solvers carry it
+without new proof chains.  `solve_hyperbolic` and `reconstructedSolve_hyperbolic` state that the
+words of a run with status 0 pack a final grid whose states are admissible and hyperbolic.
+
+`speedUpper_ge` proves that an accepted speed bound is at least `|u| + c` in exact arithmetic.
+The grid maximum in `cellUpper` and `gridUpper` compares words, which follows real order only on
+words with sign bit 0, so `speedUpper_word` proves that an accepted bound is neither negative nor
+negative zero.  `gridRatio_le` uses the exact conversion of `n ≤ 800` to binary64
+(`real_toFloat`), the lower bound on the spacing `1/n`, the upper bound on the ratio, and the
+word test `courant ≤ 0x3FE0000000000000` to give `dt · n ≤ r` and `r · alpha ≤ 1/2`.
+`AcceptedStep n trials (t, g) (t', g')` states that `t' = t + dt` with `dt > 0`, that
+`g' = reconstructedStepGrid n trials r g` with `dt · n ≤ r`, and that every cell of `g` is
+admissible with `r` times its signal speed in either direction at most 1/2.
+`reconstructedRun_steps` proves that a run with status 0 is a chain of such steps from time 0
+and the initial grid to its final time and grid.  All theorems use only Lean's standard
+axioms.
