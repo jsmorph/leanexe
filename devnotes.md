@@ -25679,7 +25679,7 @@ stays at three grids: the current grid, the middle grid of the x sweep, and the 
   with its allocate, release, bump, and page lemmas.
 - [x] A3: total rules for allocation, `build`, the record build, and calls under `Budget`, and a
   total `Implements` with a budget.
-- [ ] A4: the euler functions in total form: the scalar functions through the generic flag, and
+- [x] A4: the euler functions in total form: the scalar functions through the generic flag, and
   the array functions with their budgets.
 - [ ] A5: from a fresh instance with a memory cap of at least the bound, both solve exports return
   their words without a trap, and the page count stays within `4096 + 3·(48 + g)` bytes rounded up
@@ -25717,4 +25717,32 @@ sizes of 19.4 MB and 19.2 MB.  The run lemmas, the CFL and balance theorems, and
 build has no `sorry`, the other 26 modules have unchanged bytes, the 13,809 module cases and the
 release-count, depth-guard, and chunk tests pass, the LTG check passes, and the 474 WGSL cases pass
 on both Vulkan drivers.
+
+### A4: the Euler functions in total form
+
+Every Euler function now has one proof, generic in the abort flag, and its old `Implements` or
+`ImplementsPure` theorem is the `true` case.  The scalar functions are `ImplementsPureA a`, and the
+readers `accepted`, `scan`, and `gridUpper` are `ImplementsA a` with the postcondition that heap
+and store are unchanged.  An allocating function has a contract over a grid size `cells`, its byte
+count `g` (`GridBytes`), a spare count, and a page limit `pages`: under `a = false`, the grid
+argument has `cells` cells and `Heap.Bounded` holds with `spare + k` spares, and afterwards it
+holds with `spare + k - d`.  `Heap.Bounded` is `Heap.Budget` with the limit `pages · 65536`,
+memory of at most `pages` pages, and a cap that allows them.
+
+| Functions | `k` | `d` |
+|---|---:|---:|
+| `sweep`, `reconstructedSweep`, `initialCells`, `pack` | 1 | 1 |
+| `finishStep`, `reconstructedFinish` | 1 | 0 |
+| `step`, `reconstructedStepGrid` | 2 | 1 |
+| `tryStep`, `attempt`, `advanceWith`, `advanceStep`, and the reconstructed four | 2 | 0 |
+| `runFrom`, `run`, and the reconstructed two | 3 | 1 |
+| `solve`, `reconstructedSolve` | 3 | 2 |
+
+Three rule changes made this possible.  The release rules have forms that report the page count
+of the store they leave (`Live.releaseFirst_pages`, `Live.releaseSecond_last_pages`), the final
+rule passes a condition on the final heap (`Live.finish_results_oneP`), and the loop invariant
+`Hold` of `Stmt.repeatWhile_specA` and `Live.repeatWhileOneA` now depends on the loop state, since
+the contract of each step call needs the size of the state's grid.  `ImplementsA.implements_of`
+derives `Implements` from `ImplementsA true` when the precondition holds of every input, which the
+contracts do when `a = true`.  The full build has no `sorry`.
 

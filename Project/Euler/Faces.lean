@@ -11,8 +11,8 @@ def outwardSideTuple : Float × Float × Float × Float → Side :=
   fun (rho, momentum, transverse, energy) => outwardSide rho momentum transverse energy
 
 set_option maxHeartbeats 4000000 in
-theorem outwardSide_implements : ImplementsPure euler.module 34 outwardSideTuple :=
-  Func.implementsPure euler.funcs 32 euler.outwardSide.ir "outwardSide" rfl outwardSideTuple
+theorem outwardSide_implements {a : Bool} : ImplementsPureA a euler.module 34 outwardSideTuple :=
+  Func.implementsPureA euler.funcs 32 euler.outwardSide.ir "outwardSide" rfl outwardSideTuple
     (fun _ => rfl) fun ⟨rho, momentum, transverse, energy⟩ initial => by
       refine Stmt.seq_callPure speedUpper_implements rfl rfl rfl
         (x := (rho, momentum, transverse, energy)) ?_
@@ -35,13 +35,13 @@ def outwardFluxTuple : Float × Float × Float × Float × Float × Float × Flo
     outwardFlux rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR
 
 set_option maxHeartbeats 4000000 in
-theorem outwardFlux_implements : ImplementsPure euler.module 35 outwardFluxTuple :=
-  Func.implementsPure euler.funcs 33 euler.outwardFlux.ir "outwardFlux" rfl outwardFluxTuple
+theorem outwardFlux_implements {a : Bool} : ImplementsPureA a euler.module 35 outwardFluxTuple :=
+  Func.implementsPureA euler.funcs 33 euler.outwardFlux.ir "outwardFlux" rfl outwardFluxTuple
     (fun _ => rfl)
     fun ⟨rhoL, momentumL, transverseL, energyL, rhoR, momentumR, transverseR, energyR⟩
       initial => by
-      have hS := outwardSide_implements
-      have hC := component_implements
+      have hS := outwardSide_implements (a := a)
+      have hC := component_implements (a := a)
       let left := outwardSide rhoL momentumL transverseL energyL
       let right := outwardSide rhoR momentumR transverseR energyR
       let alpha := if left.speed.toBits ≤ right.speed.toBits then right.speed else left.speed
@@ -81,14 +81,14 @@ def faceStepTuple : Float × Float × Float × Float × Float × Float × Float 
     faceStep ratio rho momentum transverse energy a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4 d1 d2 d3 d4
 
 set_option maxHeartbeats 8000000 in
-theorem faceStep_implements : ImplementsPure euler.module 36 faceStepTuple :=
-  Func.implementsPure euler.funcs 34 euler.faceStep.ir "faceStep" rfl faceStepTuple
+theorem faceStep_implements {a : Bool} : ImplementsPureA a euler.module 36 faceStepTuple :=
+  Func.implementsPureA euler.funcs 34 euler.faceStep.ir "faceStep" rfl faceStepTuple
     (fun _ => rfl)
     fun ⟨ratio, rho, momentum, transverse, energy, a1, a2, a3, a4, b1, b2, b3, b4, c1, c2, c3, c4,
       d1, d2, d3, d4⟩ initial => by
-      have hF := outwardFlux_implements
-      have hU := update_implements
-      have hS := outwardSide_implements
+      have hF := outwardFlux_implements (a := a)
+      have hU := update_implements (a := a)
+      have hS := outwardSide_implements (a := a)
       let left := outwardFlux a1 a2 a3 a4 b1 b2 b3 b4
       let right := outwardFlux c1 c2 c3 c4 d1 d2 d3 d4
       let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha

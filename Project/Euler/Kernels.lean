@@ -85,8 +85,8 @@ macro "evaluate_pure" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
 def updateTuple : Float × Float × Float × Float → Component :=
   fun (ratio, state, fluxL, fluxR) => update ratio state fluxL fluxR
 
-theorem update_implements : ImplementsPure euler.module 7 updateTuple :=
-  Func.implementsPure euler.funcs 5 euler.update.ir "update" rfl updateTuple
+theorem update_implements {a : Bool} : ImplementsPureA a euler.module 7 updateTuple :=
+  Func.implementsPureA euler.funcs 5 euler.update.ir "update" rfl updateTuple
     (fun _ => rfl) fun ⟨ratio, state, fluxL, fluxR⟩ initial => by
       evaluate_pure [euler.update.ir, updateTuple, update, positive, finite, absBits,
         rejectedComponent]
@@ -95,8 +95,8 @@ def componentTuple : Float × Float × Float × Float × Float → Component :=
   fun (alpha, fluxL, fluxR, stateL, stateR) => component alpha fluxL fluxR stateL stateR
 
 set_option maxHeartbeats 2000000 in
-theorem component_implements : ImplementsPure euler.module 5 componentTuple :=
-  Func.implementsPure euler.funcs 3 euler.component.ir "component" rfl componentTuple
+theorem component_implements {a : Bool} : ImplementsPureA a euler.module 5 componentTuple :=
+  Func.implementsPureA euler.funcs 3 euler.component.ir "component" rfl componentTuple
     (fun _ => rfl) fun ⟨alpha, fluxL, fluxR, stateL, stateR⟩ initial => by
       evaluate_pure [euler.component.ir, componentTuple, component, positive, finite, absBits,
         rejectedComponent]
@@ -104,8 +104,8 @@ theorem component_implements : ImplementsPure euler.module 5 componentTuple :=
 def normalizedTuple : Float × UInt64 → Float := fun (x, top) => normalized x top
 
 set_option maxHeartbeats 2000000 in
-theorem normalized_implements : ImplementsPure euler.module 2 normalizedTuple :=
-  Func.implementsPure euler.funcs 0 euler.normalized.ir "normalized" rfl normalizedTuple
+theorem normalized_implements {a : Bool} : ImplementsPureA a euler.module 2 normalizedTuple :=
+  Func.implementsPureA euler.funcs 0 euler.normalized.ir "normalized" rfl normalizedTuple
     (fun _ => rfl) fun ⟨x, top⟩ initial => by
       refine Stmt.run_triple ?_
       simp [Stmt.run, Expr.eval, Func.state, Func.locals, Func.scratch, Func.width,
@@ -130,10 +130,10 @@ macro "eval_ir" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
     -sub_ite, -ite_sub, -div_ite, -ite_div, $args,*])
 
 set_option maxHeartbeats 4000000 in
-theorem energyGuard_implements : ImplementsPure euler.module 3 energyGuardTuple :=
-  Func.implementsPure euler.funcs 1 euler.energyGuard.ir "energyGuard" rfl energyGuardTuple
+theorem energyGuard_implements {a : Bool} : ImplementsPureA a euler.module 3 energyGuardTuple :=
+  Func.implementsPureA euler.funcs 1 euler.energyGuard.ir "energyGuard" rfl energyGuardTuple
     (fun _ => rfl) fun ⟨rho, mx, my, energy⟩ initial => by
-      have hN := normalized_implements
+      have hN := normalized_implements (a := a)
       refine Stmt.seq_run ?_
       eval_ir [euler.energyGuard.ir]
       refine Stmt.seq_callPure hN rfl rfl rfl (x := (rho, topExponent rho mx my energy)) ?_
@@ -158,10 +158,10 @@ def sideTuple : Float × Float × Float × Float → Side :=
   fun (rho, momentum, transverse, energy) => side rho momentum transverse energy
 
 set_option maxHeartbeats 8000000 in
-theorem side_implements : ImplementsPure euler.module 4 sideTuple :=
-  Func.implementsPure euler.funcs 2 euler.side.ir "side" rfl sideTuple
+theorem side_implements {a : Bool} : ImplementsPureA a euler.module 4 sideTuple :=
+  Func.implementsPureA euler.funcs 2 euler.side.ir "side" rfl sideTuple
     (fun _ => rfl) fun ⟨rho, momentum, transverse, energy⟩ initial => by
-      have hG := energyGuard_implements
+      have hG := energyGuard_implements (a := a)
       refine Stmt.seq_run ?_
       eval_ir [euler.side.ir]
       iterate 15 (refine Stmt.seq_run ?_; eval_ir [])
@@ -186,12 +186,12 @@ def fluxTuple : Float × Float × Float × Float × Float × Float × Float × F
     flux rhoL momentumL transverseL energyL rhoR momentumR transverseR energyR
 
 set_option maxHeartbeats 8000000 in
-theorem flux_implements : ImplementsPure euler.module 6 fluxTuple :=
-  Func.implementsPure euler.funcs 4 euler.flux.ir "flux" rfl fluxTuple (fun _ => rfl)
+theorem flux_implements {a : Bool} : ImplementsPureA a euler.module 6 fluxTuple :=
+  Func.implementsPureA euler.funcs 4 euler.flux.ir "flux" rfl fluxTuple (fun _ => rfl)
     fun ⟨rhoL, momentumL, transverseL, energyL, rhoR, momentumR, transverseR, energyR⟩
       initial => by
-      have hS := side_implements
-      have hC := component_implements
+      have hS := side_implements (a := a)
+      have hC := component_implements (a := a)
       let left := side rhoL momentumL transverseL energyL
       let right := side rhoR momentumR transverseR energyR
       let alpha := if left.speed.toBits ≤ right.speed.toBits then right.speed else left.speed
@@ -231,14 +231,14 @@ def advanceCellTuple : Float × Float × Float × Float × Float × Float × Flo
       momentumR transverseR energyR
 
 set_option maxHeartbeats 8000000 in
-theorem advanceCell_implements : ImplementsPure euler.module 8 advanceCellTuple :=
-  Func.implementsPure euler.funcs 6 euler.advanceCell.ir "advanceCell" rfl advanceCellTuple
+theorem advanceCell_implements {a : Bool} : ImplementsPureA a euler.module 8 advanceCellTuple :=
+  Func.implementsPureA euler.funcs 6 euler.advanceCell.ir "advanceCell" rfl advanceCellTuple
     (fun _ => rfl)
     fun ⟨ratio, rhoL, momentumL, transverseL, energyL, rho, momentum, transverse, energy, rhoR,
       momentumR, transverseR, energyR⟩ initial => by
-      have hF := flux_implements
-      have hU := update_implements
-      have hS := side_implements
+      have hF := flux_implements (a := a)
+      have hU := update_implements (a := a)
+      have hS := side_implements (a := a)
       let left := flux rhoL momentumL transverseL energyL rho momentum transverse energy
       let right := flux rho momentum transverse energy rhoR momentumR transverseR energyR
       let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha
@@ -283,10 +283,10 @@ theorem advanceCell_implements : ImplementsPure euler.module 8 advanceCellTuple 
 def initialCellTuple : UInt64 × UInt64 → Cell := fun (n, index) => initialCell n index
 
 set_option maxHeartbeats 8000000 in
-theorem initialCell_implements : ImplementsPure euler.module 9 initialCellTuple :=
-  Func.implementsPure euler.funcs 7 euler.initialCell.ir "initialCell" rfl initialCellTuple
+theorem initialCell_implements {a : Bool} : ImplementsPureA a euler.module 9 initialCellTuple :=
+  Func.implementsPureA euler.funcs 7 euler.initialCell.ir "initialCell" rfl initialCellTuple
     (fun _ => rfl) fun ⟨n, index⟩ initial => by
-      have hS := side_implements
+      have hS := side_implements (a := a)
       let x := fifths (lowerFifths n (index % n))
       let y := fifths (lowerFifths n (index / n))
       let q : Conserved :=

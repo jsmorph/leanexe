@@ -32,8 +32,8 @@ theorem toBits_ofBits_abs (x : Float) :
 def endpointTuple : Bool × Float → Checked := fun (up, rounded) => endpoint up rounded
 
 set_option maxHeartbeats 2000000 in
-theorem endpoint_implements : ImplementsPure euler.module 24 endpointTuple :=
-  Func.implementsPure euler.funcs 22 euler.endpoint.ir "endpoint" rfl endpointTuple
+theorem endpoint_implements {a : Bool} : ImplementsPureA a euler.module 24 endpointTuple :=
+  Func.implementsPureA euler.funcs 22 euler.endpoint.ir "endpoint" rfl endpointTuple
     (fun _ => rfl) fun ⟨up, rounded⟩ initial => by
       refine Stmt.run_triple ?_
       eval_ir [euler.endpoint.ir, endpointTuple, endpoint, word_and, word_eq_one, finite, absBits,
@@ -45,8 +45,8 @@ theorem endpoint_implements : ImplementsPure euler.module 24 endpointTuple :=
 def outAddTuple : Bool × Float × Float → Checked := fun (up, a, b) => outAdd up a b
 
 set_option maxHeartbeats 2000000 in
-theorem outAdd_implements : ImplementsPure euler.module 25 outAddTuple :=
-  Func.implementsPure euler.funcs 23 euler.outAdd.ir "outAdd" rfl outAddTuple
+theorem outAdd_implements {a : Bool} : ImplementsPureA a euler.module 25 outAddTuple :=
+  Func.implementsPureA euler.funcs 23 euler.outAdd.ir "outAdd" rfl outAddTuple
     (fun _ => rfl) fun ⟨up, a, b⟩ initial => by
       refine Stmt.seq_callPure endpoint_implements rfl rfl rfl (x := (up, a + b)) ?_
       eval_ir [euler.outAdd.ir, endpointTuple, F64Bits.toBits_add]
@@ -59,8 +59,8 @@ theorem outAdd_implements : ImplementsPure euler.module 25 outAddTuple :=
 def outSubTuple : Bool × Float × Float → Checked := fun (up, a, b) => outSub up a b
 
 set_option maxHeartbeats 2000000 in
-theorem outSub_implements : ImplementsPure euler.module 26 outSubTuple :=
-  Func.implementsPure euler.funcs 24 euler.outSub.ir "outSub" rfl outSubTuple
+theorem outSub_implements {a : Bool} : ImplementsPureA a euler.module 26 outSubTuple :=
+  Func.implementsPureA euler.funcs 24 euler.outSub.ir "outSub" rfl outSubTuple
     (fun _ => rfl) fun ⟨up, a, b⟩ initial => by
       refine Stmt.seq_callPure endpoint_implements rfl rfl rfl (x := (up, a - b)) ?_
       eval_ir [euler.outSub.ir, endpointTuple, F64Bits.toBits_sub]
@@ -73,8 +73,8 @@ theorem outSub_implements : ImplementsPure euler.module 26 outSubTuple :=
 def outMulTuple : Bool × Float × Float → Checked := fun (up, a, b) => outMul up a b
 
 set_option maxHeartbeats 2000000 in
-theorem outMul_implements : ImplementsPure euler.module 27 outMulTuple :=
-  Func.implementsPure euler.funcs 25 euler.outMul.ir "outMul" rfl outMulTuple
+theorem outMul_implements {a : Bool} : ImplementsPureA a euler.module 27 outMulTuple :=
+  Func.implementsPureA euler.funcs 25 euler.outMul.ir "outMul" rfl outMulTuple
     (fun _ => rfl) fun ⟨up, a, b⟩ initial => by
       refine Stmt.seq_callPure endpoint_implements rfl rfl rfl (x := (up, a * b)) ?_
       eval_ir [euler.outMul.ir, endpointTuple, F64Bits.toBits_mul]
@@ -87,8 +87,8 @@ theorem outMul_implements : ImplementsPure euler.module 27 outMulTuple :=
 def outDivTuple : Bool × Float × Float → Checked := fun (up, a, b) => outDiv up a b
 
 set_option maxHeartbeats 2000000 in
-theorem outDiv_implements : ImplementsPure euler.module 28 outDivTuple :=
-  Func.implementsPure euler.funcs 26 euler.outDiv.ir "outDiv" rfl outDivTuple
+theorem outDiv_implements {a : Bool} : ImplementsPureA a euler.module 28 outDivTuple :=
+  Func.implementsPureA euler.funcs 26 euler.outDiv.ir "outDiv" rfl outDivTuple
     (fun _ => rfl) fun ⟨up, a, b⟩ initial => by
       refine Stmt.seq_callPure endpoint_implements rfl rfl rfl (x := (up, a / b)) ?_
       eval_ir [euler.outDiv.ir, endpointTuple, F64Bits.toBits_div]
@@ -101,8 +101,8 @@ theorem outDiv_implements : ImplementsPure euler.module 28 outDivTuple :=
 def outSqrtTuple : Bool × Float → Checked := fun (up, a) => outSqrt up a
 
 set_option maxHeartbeats 2000000 in
-theorem outSqrt_implements : ImplementsPure euler.module 29 outSqrtTuple :=
-  Func.implementsPure euler.funcs 27 euler.outSqrt.ir "outSqrt" rfl outSqrtTuple
+theorem outSqrt_implements {a : Bool} : ImplementsPureA a euler.module 29 outSqrtTuple :=
+  Func.implementsPureA euler.funcs 27 euler.outSqrt.ir "outSqrt" rfl outSqrtTuple
     (fun _ => rfl) fun ⟨up, a⟩ initial => by
       refine Stmt.seq_callPure endpoint_implements rfl rfl rfl (x := (up, a.sqrt)) ?_
       eval_ir [euler.outSqrt.ir, endpointTuple, F64Bits.toBits_sqrt]
@@ -119,8 +119,8 @@ def kineticLowerTuple : Float × Float × Float → Checked :=
   fun (rho, mx, my) => kineticLower rho mx my
 
 set_option maxHeartbeats 4000000 in
-theorem kineticLower_implements : ImplementsPure euler.module 30 kineticLowerTuple :=
-  Func.implementsPure euler.funcs 28 euler.kineticLower.ir "kineticLower" rfl kineticLowerTuple
+theorem kineticLower_implements {a : Bool} : ImplementsPureA a euler.module 30 kineticLowerTuple :=
+  Func.implementsPureA euler.funcs 28 euler.kineticLower.ir "kineticLower" rfl kineticLowerTuple
     (fun _ => rfl) fun ⟨rho, mx, my⟩ initial => by
       let xx := outMul false mx mx
       let yy := outMul false my my
@@ -147,8 +147,8 @@ def pressureUpperTuple : Float × Float × Float × Float → Checked :=
   fun (rho, mx, my, energy) => pressureUpper rho mx my energy
 
 set_option maxHeartbeats 4000000 in
-theorem pressureUpper_implements : ImplementsPure euler.module 31 pressureUpperTuple :=
-  Func.implementsPure euler.funcs 29 euler.pressureUpper.ir "pressureUpper" rfl
+theorem pressureUpper_implements {a : Bool} : ImplementsPureA a euler.module 31 pressureUpperTuple :=
+  Func.implementsPureA euler.funcs 29 euler.pressureUpper.ir "pressureUpper" rfl
     pressureUpperTuple (fun _ => rfl) fun ⟨rho, mx, my, energy⟩ initial => by
       let kinetic := kineticLower rho mx my
       let internal := outSub true energy kinetic.value
@@ -170,8 +170,8 @@ def soundUpperTuple : Float × Float × Float × Float → Checked :=
   fun (rho, mx, my, energy) => soundUpper rho mx my energy
 
 set_option maxHeartbeats 4000000 in
-theorem soundUpper_implements : ImplementsPure euler.module 32 soundUpperTuple :=
-  Func.implementsPure euler.funcs 30 euler.soundUpper.ir "soundUpper" rfl soundUpperTuple
+theorem soundUpper_implements {a : Bool} : ImplementsPureA a euler.module 32 soundUpperTuple :=
+  Func.implementsPureA euler.funcs 30 euler.soundUpper.ir "soundUpper" rfl soundUpperTuple
     (fun _ => rfl) fun ⟨rho, mx, my, energy⟩ initial => by
       let pressure := pressureUpper rho mx my energy
       let ratio := outDiv true pressure.value rho
@@ -196,8 +196,8 @@ def speedUpperTuple : Float × Float × Float × Float → Checked :=
   fun (rho, mx, my, energy) => speedUpper rho mx my energy
 
 set_option maxHeartbeats 4000000 in
-theorem speedUpper_implements : ImplementsPure euler.module 33 speedUpperTuple :=
-  Func.implementsPure euler.funcs 31 euler.speedUpper.ir "speedUpper" rfl speedUpperTuple
+theorem speedUpper_implements {a : Bool} : ImplementsPureA a euler.module 33 speedUpperTuple :=
+  Func.implementsPureA euler.funcs 31 euler.speedUpper.ir "speedUpper" rfl speedUpperTuple
     (fun _ => rfl) fun ⟨rho, mx, my, energy⟩ initial => by
       let velocity := outDiv true (Float.ofBits (absBits mx.toBits)) rho
       let sound := soundUpper rho mx my energy

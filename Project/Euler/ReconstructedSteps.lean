@@ -12,8 +12,8 @@ def cellUpperTuple : Float × Float × Float × Float → Checked :=
   fun (rho, mx, my, energy) => cellUpper rho mx my energy
 
 set_option maxHeartbeats 2000000 in
-theorem cellUpper_implements : ImplementsPure euler.module 47 cellUpperTuple :=
-  Func.implementsPure euler.funcs 45 euler.cellUpper.ir "cellUpper" rfl cellUpperTuple
+theorem cellUpper_implements {a : Bool} : ImplementsPureA a euler.module 47 cellUpperTuple :=
+  Func.implementsPureA euler.funcs 45 euler.cellUpper.ir "cellUpper" rfl cellUpperTuple
     (fun _ => rfl) fun ⟨rho, mx, my, energy⟩ initial => by
       refine Stmt.seq_callPure speedUpper_implements rfl rfl rfl (x := (rho, mx, my, energy)) ?_
       eval_ir [euler.cellUpper.ir, speedUpperTuple]
@@ -30,8 +30,8 @@ def gridRatioTuple : UInt64 × Float × Float → Checked :=
   fun (n, dt, alpha) => gridRatio n dt alpha
 
 set_option maxHeartbeats 2000000 in
-theorem gridRatio_implements : ImplementsPure euler.module 49 gridRatioTuple :=
-  Func.implementsPure euler.funcs 47 euler.gridRatio.ir "gridRatio" rfl gridRatioTuple
+theorem gridRatio_implements {a : Bool} : ImplementsPureA a euler.module 49 gridRatioTuple :=
+  Func.implementsPureA euler.funcs 47 euler.gridRatio.ir "gridRatio" rfl gridRatioTuple
     (fun _ => rfl) fun ⟨n, dt, alpha⟩ initial => by
       let spacing := outDiv false 1 n.toFloat
       let ratio := outDiv true dt spacing.value
@@ -58,10 +58,12 @@ def gridUpperStep (grid : Array Cell) (i : UInt64) (acc : UInt64 × Float) : UIn
     else 0)
 
 set_option maxHeartbeats 4000000 in
-theorem gridUpper_implements : Implements euler.module 48 gridUpper := by
-  refine Func.implements euler.funcs 46 euler.gridUpper.ir "gridUpper" rfl gridUpper
+theorem gridUpper_implementsA {a : Bool} :
+    ImplementsA a euler.module 48 gridUpper (fun _ _ _ => True)
+      (fun _ heap store heap' final => heap' = heap ∧ final = store) := by
+  refine Func.implementsA euler.funcs 46 euler.gridUpper.ir "gridUpper" rfl gridUpper _
     (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
-  rintro grid heap initial _ - ⟨ptr, rfl, hGrid⟩
+  rintro grid heap initial _ - - ⟨ptr, rfl, hGrid⟩
   change heap.Borrowed initial ptr (flatWords grid) at hGrid
   have hW := hGrid.values
   have hLength0 := hW.lengthBound
@@ -75,7 +77,7 @@ theorem gridUpper_implements : Implements euler.module 48 gridUpper := by
   let s1 := start.update 1 (.i64 (UInt64.ofNat (flatWords grid).size))
   let s2 := s1.update 2 (.i64 0)
   let s3 := s2.update 3 (.f64 0)
-  show Triple _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 0))
+  show TripleA _ _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 0))
     (.seq (.assign 3 (.constF 0)) (.loop 4 5 (.bin .divU (.get 1) (.const 6)) _)))) 15 _ _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
     Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
@@ -148,6 +150,9 @@ theorem gridUpper_implements : Implements euler.module 48 gridUpper := by
       simpa [State.Holds, Scalar.values] using hHolds
     simp [euler.gridUpper.ir, Func.scratch, Expr.evalResults, Expr.eval, g.1, g.2, Scalar.values,
       Flat.flat]
+
+theorem gridUpper_implements : Implements euler.module 48 gridUpper :=
+  (gridUpper_implementsA (a := true)).implements
 
 /-- The lower neighbor and the far lower neighbor of a cell lie at or below it. -/
 theorem lower_bounds (axisY : Bool) (i n : UInt64) (hi : i < 536870912) :
@@ -249,13 +254,19 @@ def reconstructedSweepTuple : UInt64 × Bool × UInt64 × Float × Array Cell �
 
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 16000000 in
-theorem reconstructedSweep_implements : Implements euler.module 44 reconstructedSweepTuple := by
-  refine Func.implements_heap euler.funcs 42 euler.reconstructedSweep.ir "reconstructedSweep" rfl
-    reconstructedSweepTuple
+/-- Under `a = false`, the grid has `cells` cells, and the heap has room for one more grid. -/
+theorem reconstructedSweep_implementsA {a : Bool} {cells : Nat} {g : UInt64}
+    (hg : GridBytes cells g) (spare pages : Nat) :
+    ImplementsA a euler.module 44 reconstructedSweepTuple
+      (fun x heap store => a = false → x.2.2.2.2.size = cells ∧
+        heap.Bounded store euler.module g (spare + 1) pages)
+      (fun _ _ _ heap' final => a = false → heap'.Bounded final euler.module g spare pages) := by
+  refine Func.implements_heapA euler.funcs 42 euler.reconstructedSweep.ir "reconstructedSweep" rfl
+    reconstructedSweepTuple _ _
     (by
       rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, rfl, -⟩
       rfl) ?_
-  rintro ⟨n, axisY, trials, ratio, grid⟩ heap initial _ hHeap
+  rintro ⟨n, axisY, trials, ratio, grid⟩ heap initial _ hHeap hPre
     ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, ptr, rfl, hGrid⟩ hCap
   change heap.Borrowed initial ptr (flatWords grid) at hGrid
   have hW := hGrid.values
@@ -263,6 +274,11 @@ theorem reconstructedSweep_implements : Implements euler.module 44 reconstructed
   simp only [UInt64.toNat_toUInt32] at hLength0
   have hCount := flatWords_count cell_length (by decide) (by decide) grid hW.size_lt
   have hSize : (flatWords grid).size < 536870912 := by have := hW.1; omega
+  have hW6 := flatWords_size cell_length grid
+  have hCells : a = false → grid.size.toUInt64.toNat = cells := fun ha => by
+    rw [← (hPre ha).1]
+    simp only [Nat.toUInt64, UInt64.toNat_ofNat']
+    omega
   set start := euler.reconstructedSweep.ir.state (Scalar.values n ++ (Scalar.values axisY ++
     (Scalar.values trials ++ (Scalar.values ratio ++ [.i64 ptr])))) with hStartDef
   let s1 := start.update 5 (.i64 (UInt64.ofNat (flatWords grid).size))
@@ -272,7 +288,7 @@ theorem reconstructedSweep_implements : Implements euler.module 44 reconstructed
   have hGet2 : start.get 2 = some (.i64 trials) := rfl
   have hGet3 : start.get 3 = some (.f64 ratio.toBits) := rfl
   have hGet4 : start.get 4 = some (.i64 ptr) := rfl
-  show Triple _ (.seq (.load .u64 5 (.get 4)) (Stmt.buildRecords 6 7 8
+  show TripleA _ _ (.seq (.load .u64 5 (.get 4)) (Stmt.buildRecords 6 7 8
     (.bin .divU (.get 5) (.const 6)) _
     [.toBits (.getF 72), .toBits (.getF 73), .toBits (.getF 74), .toBits (.getF 75),
       .toBits (.getF 76), .get 77])) _ _ _
@@ -280,13 +296,17 @@ theorem reconstructedSweep_implements : Implements euler.module 44 reconstructed
   · simp [Stmt.run, Expr.eval, hLength0, hW.lengthRead, State.set?_eq_update, hStart, s1, hGet4]
   rw [show reconstructedSweepTuple (n, axisY, trials, ratio, grid) = _ from
     reconstructedSweep_build n axisY trials ratio grid]
-  refine (Stmt.buildRecords_spec (writes := (List.range 69).map (· + 9))
+  refine (Stmt.buildRecords_specA (writes := (List.range 69).map (· + 9))
     (n := grid.size.toUInt64) (scratch := 78)
     (elements := [.toBits (.getF 72), .toBits (.getF 73), .toBits (.getF 74), .toBits (.getF 75),
       .toBits (.getF 76), .get 77])
     (before := s1) (reconstructedSweepCell n axisY trials ratio grid) cell_length (by decide) rfl
     rfl rfl (by decide)
     (by decide) (by decide) (by simp [s1, hStart]) hHeap hCap
+    (fun _ => by
+      simp only [Nat.toUInt64, UInt64.toNat_ofNat', List.length_cons, List.length_nil]
+      omega)
+    (fun ha => (hPre ha).2.room hHeap (by omega) (hg.need_le (hCells ha)) hg.eight hCap)
     ⟨(s1.update 78 (.i64 (UInt64.ofNat (flatWords grid).size))).update 79 (.i64 6),
       by simp [Expr.eval, s1, hStart, U64Op.apply, State.set?_eq_update, ← hCount]⟩ ?_).mono
       (fun _ _ h => h) ?_
@@ -388,10 +408,14 @@ theorem reconstructedSweep_implements : Implements euler.module 44 reconstructed
         rotate_left 5
         exact Expr.yields_get (by simp [hLength])
         all_goals exact Expr.yields_toBits (by simp [hLength])
-  rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+  rintro store state ⟨ptr, -, hPtr, hNew, hPages⟩
+  exact ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [euler.reconstructedSweep.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
-  exact hNew.owned
+    ⟨ptr, rfl, hNew.owned⟩, hNew.keeps,
+    fun ha => (hPre ha).2.allocate hHeap (hg.need_le (hCells ha)) hg.eight hCap hPages hNew.caps⟩
+
+theorem reconstructedSweep_implements : Implements euler.module 44 reconstructedSweepTuple :=
+  (reconstructedSweep_implementsA (a := true) (cells := 0) (g := 8) ⟨rfl, by decide⟩ 0 0
+    ).implements_of fun _ _ _ h => nomatch h
 
 end Project.Euler
