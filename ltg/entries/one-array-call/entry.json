@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "one-array-call",
+  "title": "Calls that return scalars and one array",
+  "summary": "Runs a call whose result is scalars followed by one array, possibly an array of records, that consumes some live temporaries, and ends a composite function that returns such a value.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "calls", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["direct-call", "moved", "owned", "tuple-result", "record-array", "release", "branch"],
+  "annotationKinds": ["call", "array move", "branch"],
+  "modules": ["Project.IR.OneArray", "Project.IR.Live"],
+  "declarations": ["Project.IR.OneArray", "Project.IR.Live.callOne", "Project.IR.Live.callOne_seq", "Project.IR.Live.finish_one", "Project.IR.Live.finish_results_one", "Project.IR.Stmt.ite_test", "Project.IR.Live.start_moved", "Project.IR.Live.callScalar_seq", "Project.IR.Live.releaseFirst", "Project.IR.Live.releaseSecond_last", "Project.IR.Live.push"],
+  "premises": ["An Implements theorem for the callee, whose result type has a OneArray instance", "Live with the consumed temporaries first", "The arguments evaluate to values that represent the callee's input, whose moves are exactly the consumed temporaries' pointers and whose reads lie apart from their blocks", "The result locals can hold the scalars and the pointer"],
+  "result": "Live with the result's array at the head of the temporaries in place of the consumed ones, and the state after setting the result locals; at the end of a body, the postcondition of Func.implements_moves.",
+  "consumers": ["Project.Euler.finishStep_implements", "Project.Euler.step_implements", "Project.Euler.tryStep_implements", "Project.Euler.attempt_implements", "Project.Euler.advanceStep_implements", "Project.Euler.run_implements", "Project.Euler.solve_implements"],
+  "relatedEntries": ["function-call", "release-temporary", "repeat-while", "record-build"],
+  "exclusion": null
+}
