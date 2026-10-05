@@ -521,6 +521,39 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
     (fun h => nomatch h) (fun h => nomatch h) hCount hBody).mono (fun _ _ h => h)
     fun _ _ ⟨ptr, hF, hD, hN, _⟩ => ⟨ptr, hF, hD, hN⟩
 
+/-- `Stmt.build_spec` with the abort flag: under `a = false`, it needs the length bound and room
+for the allocation, and it also gives the page count of the store it leaves. -/
+theorem Stmt.build_specA {typeIdx scratch dst limit index : Nat} {count element : Expr .u64}
+    {initial : Store Unit} {before : State} {heap : Heap} {n : UInt64} (f : UInt64 → UInt64)
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hLocals : [dst, limit, index].Nodup) (hBelow : ∀ j ∈ [dst, limit, index], j < scratch)
+    (hRoom : scratch ≤ before.params.length + before.locals.length)
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hLength : a = false → n.toNat < 536870912)
+    (hSpace : a = false → heap.Room initial m (UInt64.ofNat (8 * (n.toNat + 1))))
+    (hCount : ∃ next, count.eval initial.mem scratch before = some (n, next))
+    (hElement : ∀ (k : Nat) (store : Store Unit) (state : State), k < n.toNat →
+      (∀ p ws, heap.Borrowed initial p ws → UInt64Array.At store p ws) →
+      State.Frame scratch [dst, limit, index] before state →
+      state.get index = some (.i64 (UInt64.ofNat k)) →
+      ∃ next, element.eval store.mem scratch state = some (f (UInt64.ofNat k), next)) :
+    TripleA a m (.build dst limit index count element) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => ∃ ptr, State.Frame scratch [dst, limit, index] before state ∧
+        state.get dst = some (.i64 ptr) ∧
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
+          (LeanExe.build n f) ∧
+        store.mem.pages =
+          (heap.allocateStore initial (UInt64.ofNat (8 * (n.toNat + 1))) 1).mem.pages) := by
+  refine (Stmt.buildWith_specA (writes := []) f hMemory32 hImports hFunc hLocals hBelow
+    (by simp) hRoom hHeap hCap hLength hSpace hCount
+    fun k store state hk hAt hFrame hIndex => ?_).mono (fun _ _ h => h) fun _ _ h => by simpa using h
+  obtain ⟨next, hEval⟩ := hElement k store state hk hAt (by simpa using hFrame) hIndex
+  refine Stmt.skip_spec.mono ?_ fun _ _ h => h
+  rintro s st ⟨rfl, rfl⟩
+  exact ⟨rfl, State.Frame.refl _ _ _, next, hEval⟩
+
 /-- `Stmt.buildWith_spec` for the template with no statement per element: the
 element expression evaluates to `f i` in any state that keeps `dst`, `limit`, and
 `index`. -/
@@ -542,14 +575,10 @@ theorem Stmt.build_spec {typeIdx scratch dst limit index : Nat} {count element :
       (fun store state => ∃ ptr, State.Frame scratch [dst, limit, index] before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
-          (LeanExe.build n f)) := by
-  refine (Stmt.buildWith_spec (writes := []) f hMemory32 hImports hFunc hLocals hBelow
-    (by simp) hRoom hHeap hCap hCount fun k store state hk hAt hFrame hIndex => ?_).mono
-      (fun _ _ h => h) fun _ _ h => by simpa using h
-  obtain ⟨next, hEval⟩ := hElement k store state hk hAt (by simpa using hFrame) hIndex
-  refine Stmt.skip_spec.mono ?_ fun _ _ h => h
-  rintro s st ⟨rfl, rfl⟩
-  exact ⟨rfl, State.Frame.refl _ _ _, next, hEval⟩
+          (LeanExe.build n f)) :=
+  (Stmt.build_specA (a := true) f hMemory32 hImports hFunc hLocals hBelow hRoom hHeap hCap
+    (fun h => nomatch h) (fun h => nomatch h) hCount hElement).mono (fun _ _ h => h)
+    fun _ _ ⟨ptr, hFrame, hPtr, hNew, _⟩ => ⟨ptr, hFrame, hPtr, hNew⟩
 
 /-- Local `dst` receives a copy of the array in local `src`: its size goes into local
 `size`, and the copying template reads each element. -/

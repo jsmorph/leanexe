@@ -1,0 +1,1 @@
+The public interface is `Array UInt64 -> Array UInt64`.  For an input containing at most eight elements, find the first element equal to zero.  If one exists, remove it and preserve the order of every other element.  If no element equals zero, return the input unchanged.  Return the empty array for an input containing more than eight elements.
