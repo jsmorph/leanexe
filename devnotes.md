@@ -25527,7 +25527,7 @@ missing from this branch.
 
 - [x] Port main's outward-enclosure library and prove the speed and CFL enclosures.
 - [x] Hyperbolicity of admissible states.
-- [ ] Conservation balance (plan below).
+- [x] Conservation balance (plan below).
 
 ### E8: real-number enclosures, the CFL bound, and hyperbolicity
 
@@ -25583,10 +25583,31 @@ exact value of the formula on the computed words, and main's enclosure lemmas bo
 rounding by the gap between the neighbors of the rounded word, which gives a bound computed from
 the words of the run.
 
-- [ ] B1: the residual bound of `update`.
-- [ ] B2: `faceFlux` and the decomposition of an accepted `reconstructedStep`.
-- [ ] B3: the indices of a sweep cell's five states as clamped positions in its line.
-- [ ] B4: line telescoping and the balance of an accepted sweep.
-- [ ] B5: the balance of an accepted step, added to `AcceptedStep`.
-- [ ] B6: the first-order solver's sweep and step balance.
+- [x] B1: the residual bound of `update`.
+- [x] B2: `faceFlux` and the decomposition of an accepted `reconstructedStep`.
+- [x] B3: the indices of a sweep cell's five states as clamped positions in its line.
+- [x] B4: line telescoping and the balance of an accepted sweep.
+- [x] B5: the balance of an accepted step and of a run.
+- [x] B6: the first-order solver's sweep, step, and run balance.
+
+`Project/Euler/Balance.lean` holds the parts that do not depend on the solver.  `update_balance`
+bounds the residual of one update by `r·gap(d) + gap(i) + gap(v)`, where `d`, `i`, and `v` are the
+three rounded words and `gap w` is the distance between the neighbors of `w`; main's
+`sub_enclosure` and `mul_enclosure` place each exact result between those neighbors.
+`sweep_index` and the lemmas `step_down` and `step_up` turn the source's clamped `UInt64`
+neighbor indices into positions on a line.  `balance_identity` states, for any face function, that
+the total after a sweep is the total before minus the ratio times the flux through the ends of the
+lines plus the residual, and `residual_le` bounds the residual when every cell is the accepted
+update with the fluxes at its faces.  `Trace.balance` sums per-step balances over a trace of
+steps.
+
+`Project/Euler/ReconstructedBalance.lean` and `Project/Euler/FirstOrderBalance.lean` supply each
+solver's face flux and per-cell decomposition.  For the reconstructed solver the face flux
+between positions `j - 1` and `j` uses the four positions `j - 2` through `j + 1`, and for the
+first-order solver the two positions beside the face.  `reconstructedRun_balance` and
+`run_balance` state that a run with status 0 is a trace of accepted steps along which the total
+of each component equals its initial total, minus the boundary flux summed over the steps, plus
+a residual bounded by the sum of the step bounds.  The bounds are computed from the words of the
+run, as in main.  Main's `line_flux_reference_bound`, which compares the computed flux with a
+reference flux, has no counterpart here.
 

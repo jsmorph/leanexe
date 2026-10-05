@@ -103,6 +103,16 @@ def lineOf (m : Nat) (axisY : Bool) (k : Nat) : Nat := if axisY then k % m else 
 /-- The position of the cell at index `k` on its line. -/
 def positionOf (m : Nat) (axisY : Bool) (k : Nat) : Nat := if axisY then k / m else k % m
 
+/-- The state at position `q` of line `l`, as seen along the axis. -/
+def lineState (m : Nat) (axisY : Bool) (grid : Array Cell) (l q : Nat) : Conserved :=
+  oriented axisY grid[lineIndex m axisY l q]!.state
+
+/-- The cell that a sweep along an axis makes from an update: a y sweep exchanges the momenta
+back. -/
+def cellOf (axisY : Bool) (out : Updated) : Cell :=
+  ⟨⟨out.density, if axisY then out.transverse else out.momentum,
+    if axisY then out.momentum else out.transverse, out.energy⟩, out.pressure, out.status⟩
+
 theorem step_down {X c stride : UInt64} {B q s : Nat} (hX : X.toNat = B + q * s)
     (hc : c.toNat = q) (hs : stride.toNat = s) :
     (if c == 0 then X else X - stride).toNat = B + (q - 1) * s ∧
@@ -210,6 +220,10 @@ theorem stateAt_oriented (axisY : Bool) (q : Conserved) (c : Fin 4) :
     stateAt (oriented axisY q) (axisComponent axisY c) = stateAt q c := by
   cases axisY <;> fin_cases c <;> rfl
 
+theorem stateAt_cellOf (axisY : Bool) (out : Updated) (c : Fin 4) :
+    stateAt (cellOf axisY out).state c = updatedAt out (axisComponent axisY c) := by
+  cases axisY <;> fin_cases c <;> rfl
+
 /-- A sum over the cells of an `m × m` grid as a sum over lines and positions. -/
 theorem sum_rows (m : Nat) (h : ℕ → ℕ → ℝ) (a : Nat) :
     ∑ k ∈ Finset.range (a * m), h (k / m) (k % m) =
@@ -315,5 +329,48 @@ theorem residual_le {m : Nat} {axisY : Bool} {ratio : Float} {face : Nat → Nat
 noncomputable def traceSum (term : Float → Array Cell → ℝ) (steps : List (Float × Array Cell)) :
     ℝ :=
   (steps.map fun s => term s.1 s.2).sum
+
+/-- A chain of steps, each from `b` to `b'` with a ratio `r` for which `S b b' r` holds, with the
+ratio and the starting grid of each step. -/
+inductive Trace (S : Float × Array Cell → Float × Array Cell → Float → Prop) :
+    Float × Array Cell → Float × Array Cell → List (Float × Array Cell) → Prop
+  | refl (a : Float × Array Cell) : Trace S a a []
+  | tail {a b b' : Float × Array Cell} {steps : List (Float × Array Cell)} (r : Float) :
+      Trace S a b steps → S b b' r → Trace S a b' (steps ++ [(r, b.2)])
+
+theorem trace_of_chain {T : Float × Array Cell → Float × Array Cell → Prop}
+    {S : Float × Array Cell → Float × Array Cell → Float → Prop}
+    (hT : ∀ a b, T a b → ∃ r, S a b r) {a b : Float × Array Cell}
+    (h : Relation.ReflTransGen T a b) : ∃ steps, Trace S a b steps := by
+  induction h with
+  | refl => exact ⟨[], .refl _⟩
+  | tail _ hs ih =>
+    obtain ⟨steps, ht⟩ := ih
+    obtain ⟨r, hr⟩ := hT _ _ hs
+    exact ⟨_, .tail r ht hr⟩
+
+/-- When each step changes the total of every component by minus `F` plus a residual `R` of at
+most `E`, a trace changes it by minus the sum of `F` plus the sum of `R`, which is at most the sum
+of `E`. -/
+theorem Trace.balance {S : Float × Array Cell → Float × Array Cell → Float → Prop}
+    {F R E : Float → Array Cell → Fin 4 → ℝ}
+    (hS : ∀ b b' r, S b b' r → ∀ c, total b'.2 c = total b.2 c - F r b.2 c + R r b.2 c ∧
+      |R r b.2 c| ≤ E r b.2 c)
+    {a b : Float × Array Cell} {steps : List (Float × Array Cell)} (h : Trace S a b steps)
+    (c : Fin 4) :
+    total b.2 c = total a.2 c - traceSum (fun r g => F r g c) steps +
+        traceSum (fun r g => R r g c) steps ∧
+      |traceSum (fun r g => R r g c) steps| ≤ traceSum (fun r g => E r g c) steps := by
+  induction h with
+  | refl => simp [traceSum]
+  | tail r _ hs ih =>
+    obtain ⟨hb, hr⟩ := hS _ _ r hs c
+    obtain ⟨ihb, ihr⟩ := ih
+    simp only [traceSum, List.map_append, List.sum_append, List.map_cons, List.map_nil,
+      List.sum_cons, List.sum_nil, add_zero] at ihb ihr ⊢
+    refine ⟨?_, ?_⟩
+    · rw [hb, ihb]
+      ring
+    · exact (abs_add_le _ _).trans (add_le_add ihr hr)
 
 end Project.Euler

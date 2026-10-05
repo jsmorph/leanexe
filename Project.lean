@@ -263,6 +263,7 @@ import Project.Euler.Cfl
 import Project.Euler.Hyperbolic
 import Project.Euler.Balance
 import Project.Euler.ReconstructedBalance
+import Project.Euler.FirstOrderBalance
 import Project.Euler.Words
 import Project.EulerReal.Flux
 import Project.EulerReal.Jacobian
