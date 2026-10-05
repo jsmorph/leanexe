@@ -1903,6 +1903,16 @@ mutual
   partial def componentLocals (ctx : Ctx) (term type : Lean.Expr) :
       CompileM (List (Nat × ScalarType)) :=
     peel ctx term fun ctx term => do
+    -- A `let` of a word or a float: the value goes to a fresh local.
+    if let .letE name letType value body _ := term then
+      unless ← isTupleType letType do
+        let scalar ← scalarTypeOf letType
+        let (⟨_, v⟩, vHints) ← translateAs ctx ⟨[], 0⟩ scalar value
+        let local_ ← fresh scalar name.eraseMacroScopes.toString
+        let stmt := Project.IR.Stmt.assign local_ v
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+        return ← withLocalDeclD name letType fun x =>
+          componentLocals (ctx.bind x [(local_, scalar)]) (body.instantiate1 x) type
     unless ← isTupleType type do
       let (⟨scalar, value⟩, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
       let local_ ← fresh scalar "component"

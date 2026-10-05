@@ -240,8 +240,10 @@ abbrev lowerFifths (n coordinate : UInt64) : UInt64 :=
   if 5 * coordinate ≤ 4 * n then min 5 (4 * n - 5 * coordinate) else 0
 
 def initialCell (n index : UInt64) : Cell :=
-  let x := fifths (lowerFifths n (index % n))
-  let y := fifths (lowerFifths n (index / n))
+  let cx := index % n
+  let cy := index / n
+  let x := fifths (lowerFifths n cx)
+  let y := fifths (lowerFifths n cy)
   let q : Conserved :=
     ⟨weightedComponent x y bottomLeft.density bottomRight.density topLeft.density
         topRight.density,
@@ -256,23 +258,20 @@ def initialCells (n : UInt64) : Array Cell := LeanExe.build (n * n) (initialCell
 
 /-! Sweeps. -/
 
-/-- The neighbor of cell `index` along an axis, clamped at the boundary: x when `axisY` is
-false, y when it is true. -/
-abbrev neighbor (n index : UInt64) (axisY forward : Bool) : UInt64 :=
-  let stride := if axisY then n else 1
-  let coordinate := if axisY then index / n else index % n
-  if forward then
-    if coordinate + 1 < n then index + stride else index
-  else
-    if coordinate == 0 then index else index - stride
-
 /-- One sweep along an axis: each cell advanced by its two interfaces.  A y sweep exchanges
 the momenta on the way in and out. -/
 def sweep (n : UInt64) (axisY : Bool) (ratio : Float) (grid : Array Cell) : Array Cell :=
   LeanExe.build grid.size.toUInt64 fun index =>
-    let l := grid[(neighbor n index axisY false).toNat]!.state
+    -- The neighbors along the axis, clamped at the boundary.
+    let cx := index % n
+    let cy := index / n
+    let coordinate := if axisY then cy else cx
+    let stride := if axisY then n else 1
+    let lower := if coordinate == 0 then index else index - stride
+    let upper := if coordinate + 1 < n then index + stride else index
+    let l := grid[lower.toNat]!.state
     let c := grid[index.toNat]!.state
-    let r := grid[(neighbor n index axisY true).toNat]!.state
+    let r := grid[upper.toNat]!.state
     let out := advanceCell ratio
       l.density (if axisY then l.my else l.mx) (if axisY then l.mx else l.my) l.energy
       c.density (if axisY then c.my else c.mx) (if axisY then c.mx else c.my) c.energy

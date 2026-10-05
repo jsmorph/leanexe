@@ -3,9 +3,9 @@ import Project.IR.Correct
 import Project.IR.Run
 import Project.ProofKit.F64Bits
 
-/-! The compiled functions of the first-order Euler solver compute their Lean definitions.  A
-record is represented as the tuple of its fields, and a `Bool` word is 1 exactly when the Lean
-value is `true`. -/
+/-! The compiled scalar functions of the first-order Euler solver compute their Lean
+definitions.  A record is represented as the tuple of its fields, and a `Bool` word is 1 exactly
+when the Lean value is `true`. -/
 
 namespace Project.Euler
 
@@ -50,12 +50,30 @@ theorem toBits_ite (c : Prop) [Decidable c] (a b : Float) :
     (if c then a else b).toBits = if c then a.toBits else b.toBits := by
   split <;> rfl
 
+/-- The IR's division and remainder test the divisor for 0, where Lean's give 0 and the
+dividend. -/
+theorem divU_eq (a b : UInt64) : (if b = 0 then 0 else a / b) = a / b := by
+  split <;> simp_all
+
+theorem remU_eq (a b : UInt64) : (if b = 0 then a else a % b) = a % b := by
+  split <;> simp_all
+
+theorem min_word (a b : UInt64) : min a b = if a ≤ b then a else b := rfl
+
 theorem zero_toBits : (0 : Float).toBits = 0 := by decide +kernel
 theorem half_toBits : (0.5 : Float).toBits = 0x3FE0000000000000 := by decide +kernel
 theorem twoFifths_toBits : (0.4 : Float).toBits = 0x3FD999999999999A := by decide +kernel
 theorem sevenFifths_toBits : (1.4 : Float).toBits = 0x3FF6666666666666 := by decide +kernel
 theorem one_toBits : (1 : Float).toBits = 0x3FF0000000000000 := by decide +kernel
 theorem endTime_toBits : (0.8 : Float).toBits = 0x3FE999999999999A := by decide +kernel
+theorem fifth_toBits : (0.2 : Float).toBits = 4596373779694328218 := by decide +kernel
+theorem threeFifths_toBits : (0.6 : Float).toBits = 4603579539098121011 := by decide +kernel
+theorem p029_toBits : (0.029 : Float).toBits = 4584015902316823577 := by decide +kernel
+theorem p138_toBits : (0.138 : Float).toBits = 4594139994279152452 := by decide +kernel
+theorem p1206_toBits : (1.206 : Float).toBits = 4608110160323255730 := by decide +kernel
+theorem p3_toBits : (0.3 : Float).toBits = 4599075939470750515 := by decide +kernel
+theorem p5323_toBits : (0.5323 : Float).toBits = 4602969751708575046 := by decide +kernel
+theorem p15_toBits : (1.5 : Float).toBits = 4609434218613702656 := by decide +kernel
 
 /-- Evaluates a compiled body of assignments and conditionals and its results, with the given
 lemmas, then splits on the tests, which both sides now state as the same propositions on bits,
@@ -133,7 +151,7 @@ macro "eval_ir" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
   `(tactic| simp [Stmt.run, Expr.eval, Func.state, Func.locals, Func.scratch, Func.width,
     Stmt.scratchWidth, Expr.scratchWidth, State.set?_eq_update, State.get, State.update,
     State.setAll, U64Op.apply, F64Op.apply, F64UnOp.apply, Scalar.values, ScalarType.valueType,
-    Expr.evalResults, ScalarType.value, Flat.flat, -mul_ite, -ite_mul, -add_ite, -ite_add,
+    Expr.evalResults, ScalarType.value, Flat.flat, divU_eq, remU_eq, -mul_ite, -ite_mul, -add_ite, -ite_add,
     -sub_ite, -ite_sub, -div_ite, -ite_div, $args,*])
 
 set_option maxHeartbeats 4000000 in
@@ -286,5 +304,32 @@ theorem advanceCell_implements : ImplementsPure euler.module 8 advanceCellTuple 
         eval_ir [toBits_ite, F64Bits.toBits_mul]
       · rw [if_neg h]
         eval_ir [zero_toBits]
+
+def initialCellTuple : UInt64 × UInt64 → Cell := fun (n, index) => initialCell n index
+
+set_option maxHeartbeats 8000000 in
+theorem initialCell_implements : ImplementsPure euler.module 9 initialCellTuple :=
+  Func.implementsPure euler.funcs 7 euler.initialCell.ir "initialCell" rfl initialCellTuple
+    (fun _ => rfl) fun ⟨n, index⟩ initial => by
+      have hS := side_implements
+      let x := fifths (lowerFifths n (index % n))
+      let y := fifths (lowerFifths n (index / n))
+      let q : Conserved :=
+        ⟨weightedComponent x y bottomLeft.density bottomRight.density topLeft.density
+            topRight.density,
+          weightedComponent x y bottomLeft.mx bottomRight.mx topLeft.mx topRight.mx,
+          weightedComponent x y bottomLeft.my bottomRight.my topLeft.my topRight.my,
+          weightedComponent x y bottomLeft.energy bottomRight.energy topLeft.energy
+            topRight.energy⟩
+      refine Stmt.seq_run ?_
+      eval_ir [euler.initialCell.ir]
+      iterate 15 (refine Stmt.seq_run ?_; eval_ir [])
+      refine Stmt.callPure_last hS rfl rfl rfl (x := (q.density, q.mx, q.my, q.energy)) ?_
+      eval_ir [sideTuple, q, x, y, initialCellTuple, initialCell, weightedComponent, fifths,
+        lowerFifths, bottomLeft, bottomRight, topLeft, topRight, conservative, toBits_ite,
+        F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_div,
+        zero_toBits, half_toBits, twoFifths_toBits, one_toBits, endTime_toBits, fifth_toBits,
+        threeFifths_toBits, p029_toBits, p138_toBits, p1206_toBits, p3_toBits, p5323_toBits,
+        p15_toBits, min_word]
 
 end Project.Euler
