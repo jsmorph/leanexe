@@ -44,10 +44,6 @@ theorem wordMax_ge {a b : Float} (ha : a.toBits.toNat < 2 ^ 63) (hb : b.toBits.t
     rw [UInt64.le_iff_toNat_le] at hle ⊢
     omega
 
-theorem real_pos_of_positive {x : Float} (h : 0 < x.toBits ∧ x.toBits < 0x7FF0000000000000) :
-    0 < real x :=
-  (F64Order.positiveBits_spec x.toBits (by simpa [F64Order.positiveBits] using h)).2
-
 /-- `q` is admissible in exact arithmetic, and `s` bounds its signal speed in both directions. -/
 def SpeedBound (q : Conserved) (s : ℝ) : Prop :=
   EulerReal.Admissible (vec q) ∧
