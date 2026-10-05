@@ -273,4 +273,30 @@ theorem Heap.Budget.room {heap : Heap} {store : Store Unit} {m : Wasm.Module} {g
     (Nat.div_lt_iff_lt_mul (by norm_num)).mpr (by omega)
   omega
 
+/-- The store an allocation leaves has at most `pages` pages when the store before had at most
+`pages` and a bump stays within them. -/
+theorem Heap.allocateStore_pages_le (heap : Heap) (store : Store Unit) (need : UInt64)
+    {pages : Nat} (hPages : store.mem.pages ≤ pages)
+    (hBump : takeFirstFitFrom 0 need heap.free = none →
+      heap.top.toNat + 48 + need.toNat ≤ pages * 65536) :
+    (heap.allocateStore store need 1).mem.pages ≤ pages :=
+  allocated_pages_le store heap.top need 1 heap.free pages hPages hBump
+
+/-- With a spare left, an allocation of at most `g` bytes keeps the store within `pages` pages
+when `limit` lies within them. -/
+theorem Heap.Budget.allocate_pages {heap : Heap} {store : Store Unit} {g need : UInt64}
+    {spare limit pages : Nat} (h : heap.Budget g spare limit) (hHeap : heap.At store)
+    (hSpare : 0 < spare) (hNeed : need ≤ g) (hg : 8 ≤ g.toNat) (hLimit : limit ≤ pages * 65536)
+    (hPages : store.mem.pages ≤ pages) :
+    (heap.allocateStore store need 1).mem.pages ≤ pages :=
+  heap.allocateStore_pages_le store need hPages fun hNone =>
+    (h.bump hHeap hSpare hNeed hg hNone).trans hLimit
+
+/-- A release of a block of at least `g` bytes returns at least one spare. -/
+theorem Heap.Budget.release_one {heap : Heap} {store : Store Unit} {g : UInt64} {spare limit : Nat}
+    (h : heap.Budget g spare limit) (hHeap : heap.At store) (ptr capacity : UInt64)
+    (hCap : capacity.toNat < 2 ^ 32) (hFit : g.toNat ≤ capacity.toNat) :
+    (heap.release ptr capacity).Budget g (spare + 1) limit :=
+  (h.release hHeap ptr capacity hCap).mono (Nat.add_le_add_left (pieces_pos hFit) _)
+
 end Project.Pipeline

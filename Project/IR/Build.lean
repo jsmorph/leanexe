@@ -342,7 +342,9 @@ theorem Stmt.buildWith_specA {typeIdx scratch dst limit index : Nat} {count elem
       (fun store state => ∃ ptr, State.Frame scratch ([dst, limit, index] ++ writes) before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
-          (LeanExe.build n f)) := by
+          (LeanExe.build n f) ∧
+        store.mem.pages =
+          (heap.allocateStore initial (UInt64.ofNat (8 * (n.toNat + 1))) 1).mem.pages) := by
   have hLocals0 := hLocals
   have hBelow0 := hBelow
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
@@ -487,7 +489,7 @@ theorem Stmt.buildWith_specA {typeIdx scratch dst limit index : Nat} {count elem
     have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hAt (by omega)
       (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
     exact ⟨_, hFrame3.weaken (fun j hj => List.mem_append_left _ hj) |>.trans hFrame, hDstGet,
-      hNew⟩
+      hNew, hWithin.pages⟩
 
 /-- The copying template allocates `8 * (n + 1)` bytes, stores the length `n`, and
 stores `f i` at each index `i`, leaving the pointer in `dst`, with the facts of
@@ -517,8 +519,9 @@ theorem Stmt.buildWith_spec {typeIdx scratch dst limit index : Nat} {count eleme
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (n.toNat + 1)))) store ptr
           (LeanExe.build n f)) :=
-  Stmt.buildWith_specA (a := true) f hMemory32 hImports hFunc hLocals hBelow hApart hRoom hHeap hCap
-    (fun h => nomatch h) (fun h => nomatch h) hCount hBody
+  (Stmt.buildWith_specA (a := true) f hMemory32 hImports hFunc hLocals hBelow hApart hRoom hHeap hCap
+    (fun h => nomatch h) (fun h => nomatch h) hCount hBody).mono (fun _ _ h => h)
+    fun _ _ ⟨ptr, hF, hD, hN, _⟩ => ⟨ptr, hF, hD, hN⟩
 
 /-- `Stmt.buildWith_spec` for the template with no statement per element: the
 element expression evaluates to `f i` in any state that keeps `dst`, `limit`, and
