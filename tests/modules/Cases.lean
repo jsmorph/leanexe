@@ -20,6 +20,7 @@ import LeanExe.Examples.Updates
 import LeanExe.Examples.Bools
 import LeanExe.Examples.Grids
 import LeanExe.Examples.EulerReconstructed
+import LeanExe.Examples.Drone
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -789,9 +790,56 @@ def reconstructedCases : IO Unit := do
       line "euler" "reconstructedSolve" "array-u64" [u n, u trials]
         (words (reconstructedSolve n trials).toList)
 
+/-- The words of a host argument `i64:N` or `array-u64:N,N`. -/
+def argWords (arg : String) : List UInt64 :=
+  match arg.splitOn ":" with
+  | ["i64", w] => [w.toNat!.toUInt64]
+  | ["array-u64", ""] => []
+  | ["array-u64", ws] => (ws.splitOn ",").map (·.toNat!.toUInt64)
+  | _ => []
+
+open LeanExe.Examples.Drone in
+/-- The choices whose words are `ws`, three each. -/
+def choicesOf (ws : List UInt64) : Array Choice :=
+  ((List.range (ws.length / 3)).map fun k => ⟨ws[3 * k]!, ws[3 * k + 1]!, ws[3 * k + 2]!⟩).toArray
+
+open LeanExe.Examples.Drone in
+def choiceWords (c : Choice) : List UInt64 := [c.time, c.excess, c.parent]
+
+open LeanExe.Examples.Drone in
+/-- This branch's result for a call of `tests/drone/cases.txt`. -/
+def droneResult (name : String) (args : List (List UInt64)) : List UInt64 :=
+  match name, args with
+  | "distance", [[a], [b]] => [distance a b]
+  | "altitude", [[floor], [state]] => [altitude floor state]
+  | "speed", [[state]] => [speed state]
+  | "ceilSqrt", [[n]] => [ceilSqrt n]
+  | "restSeconds", [[dh]] => [restSeconds dh]
+  | "edgeTicks", [[r0], [r1], [z0], [z1], [v0], [v1]] => [edgeTicks r0 r1 z0 z1 v0 v1]
+  | "choose", [[t0], [e0], [p0], [t1], [e1], [p1]] => choiceWords (choose ⟨t0, e0, p0⟩ ⟨t1, e1, p1⟩)
+  | "predecessor", [[r0], [r1], [t], [e], [p], [target], [source]] =>
+    choiceWords (predecessor r0 r1 ⟨t, e, p⟩ target source)
+  | "advance", [[r0], [r1], [last], previous, [base]] =>
+    (advance r0 r1 (last == 1) (choicesOf previous) base).toList.flatMap choiceWords
+  | "initial", [] => initial.toList.flatMap choiceWords
+  | _, _ => []
+
+/-- The drone calls of `tests/drone/cases.txt`, whose expected results are main's, and the
+terrains of `tests/drone/corpus.txt`, each with this branch's result. -/
+def droneCases : IO Unit := do
+  for case in (← IO.FS.lines "tests/drone/cases.txt").filter (!·.isEmpty) do
+    let [m, name, kind, args, _] := case.splitOn "|" | throw <| IO.userError s!"bad case: {case}"
+    let argv := if args.isEmpty then [] else args.splitOn " "
+    line m name kind argv (words (droneResult name (argv.map argWords)))
+  for case in (← IO.FS.lines "tests/drone/corpus.txt").filter (!·.isEmpty) do
+    let [terrain, _] := case.splitOn "|" | throw <| IO.userError s!"bad terrain: {case}"
+    let heights := argWords s!"array-u64:{terrain}"
+    line "drone" "compute" "array-u64" [arrU heights]
+      (words (LeanExe.Examples.Drone.compute heights.toArray).toList)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   binary32Cases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
   calculatorCases; shapeCases; listCases; wordsCases; treeCases; updatesCases
-  boolsCases; gridsCases; eulerCases; reconstructedCases
+  boolsCases; gridsCases; eulerCases; reconstructedCases; droneCases

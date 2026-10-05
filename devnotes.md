@@ -25763,3 +25763,111 @@ The fresh state is a hypothesis.  `runtimeGlobals` and the memory declaration in
 interpreter's instantiation of `euler.module` to it.  `Verify.lean` now proves the round trip of
 `euler.module` once, as `euler_round_trip`, and its theorems and the new one use it.
 
+## 2026-10-05: Porting the drone planner
+
+Main's `LeanExe/Examples/Drone.lean` plans a point-mass flight over up to 64 terrain heights by an
+exact dynamic-programming search over 45 states per station.  Main's proofs state its optimality
+(`Output.compute_correct`) and its continuous flight safety (`WholeFlight.compute_safe`).  The
+port rewrites the program in this dialect and proves the theorems about the rewrite, in
+increments that each end in bytes and a theorem.  The caller set the decisions: `UInt64`
+throughout the program; no new dialect features, so every fuel recursion becomes `LeanExe.loop`,
+`LeanExe.build`, or `LeanExe.repeatWhile`; theorems proved against the new source, with main's
+mathematics files ported where they fit; a comparison corpus generated once from main's program
+run natively; and `Implements` before total execution with a memory bound.
+
+- [x] D1: the scalar functions, their `ImplementsPure` proofs, a bytes theorem, module tests, the
+  scalar source lemmas, and `Motion` and `Kinematics`.
+- [ ] D2: `Choice`, `choose`, `predecessor`, `advance`, and `initial`, with `Implements` and the
+  row lemmas.
+- [ ] D3: `validHeights` and the forward pass, with `Implements` through `Live.repeatWhileOne`,
+  and the layer invariant.
+- [ ] D4: `output` and `compute`, with `Implements`, `compute_correct`, and a bytes theorem.
+- [ ] D5: the flight-safety files and `compute_safe`.
+
+### The program
+
+`LeanExe/Examples/Drone.lean` follows main's arithmetic operation for operation.  `ceilSqrt` runs
+main's 17 halvings as a counted loop over the bracket, and a step on a closed bracket leaves it
+unchanged, as main's recursion returns early.  `edgeTicks` is one chain of `if` and `else if`
+whose rejection test is the disjunction of main's five guards.  It computes the rest duration and
+the moving duration before the test, so that the arms of the final selection leave the same
+locals; both values are pure, so the result is main's.  A row is `LeanExe.build 45` of `Choice`
+records, each the result of a 45-step loop over the sources that replaces the incumbent only on
+strict improvement, so ties go to the lowest source as in main.  The forward pass keeps one table
+of all rows, and the output follows the parents back from the last station.  Empty or invalid
+input runs the same code with a station count of 0 and returns `#[]`.
+
+Three limits of the compiler shaped the program.  A call in a loop body or a build element may
+not take an array, but a loop may run in a build element, so the loop over the sources sits in the
+element and reads the previous row itself; `best`, the function that holds it, is `@[inline]` and
+shared by `advance` and `extend`.  The step of `repeatWhile` must be one call that consumes the
+state's array, and the compiler makes an array parameter owned only when the body moves it.  A
+step that builds the extended table and drops the old one moves nothing, and the compiler rejected
+it ("the call in a repeatWhile step must consume every array of the state").  `extend` therefore
+returns status 0 and the extended table while `i < count`, and status 1 with the table itself once
+`i` reaches `count`, and `forward` repeats while the status is 0.  The final call is the move
+that makes the table owned, at the cost of one call per run.  Because that call has `i = count`,
+the floors are computed inside the build element, which runs only on the extending path: computed
+in the body of `extend`, they read one height past the end of the terrain on every run, which
+native Lean reports as an out-of-bounds panic and WebAssembly reads as 0.  `floorAt` is
+`@[inline]` for that reason.
+
+The status form is a choice between this source form and a compiler change that would let a step
+own an array it reads and drops.  The decisions exclude new dialect features, so the source form
+stands unless the user chooses the compiler change.
+
+### Test oracle
+
+`tests/drone/oracle.sh` appends `tests/drone/OracleDriver.lean` to main's `Drone.lean` at commit
+`188ccb4d` and runs it natively.  It writes `tests/drone/corpus.txt`, 116 terrains with main's
+`compute` of each: main's five report terrains, empty, single, and full-length inputs, heights at
+and above 1,000,000, one random terrain of each length from 1 to 64, 16 random walks, and 8
+invalid terrains.  It also writes `tests/drone/cases.txt`, 1,975 calls of main's other functions
+in the format of the module tests: `distance`, `altitude`, `speed`, `ceilSqrt` up to and beyond
+`2^32`, `restSeconds`, 640 calls of `edgeTicks`, `choose`, `predecessor`, `initial`, and 138
+rows of `advance` taken from main's forward passes over 17 terrains.
+
+Three checks use the files.  `tests/drone/run.sh` runs `build/drone/drone.wasm` on both and
+compares with main's results.  `tests/drone/Compare.lean` compares the native rewrite with the
+corpus.  `tests/modules/Cases.lean` emits the same calls and terrains with the rewrite's native
+results, so the module tests compare the binary with the rewrite.  All 116 terrains and all 1,975
+calls match main word for word in WebAssembly, the rows of `advance` included, and the native
+rewrite matches the corpus.  `drone.wasm` is 5,181 bytes, SHA-256
+`c6dc196215e4302d7e1560b36f72c577a9b1984b1173fa4f98487d1078fb7123`.
+
+### D1: the scalar functions
+
+`Project/Drone/Kernels.lean` proves `ImplementsPureA` for `distance`, `altitude`, `speed`,
+`ceilSqrt`, `restSeconds`, and `edgeTicks`, generic in the abort flag, by the method of the Euler
+kernels: `Stmt.seq_callPure` for calls, `Stmt.seq_run` for assignments, and `Stmt.run_triple` for
+the last statement.  `ceilSqrt` uses `Stmt.loop_spec` with the bracket in locals 1 and 2.  The
+final selection of `edgeTicks` needed one more step: the evaluation states the compiled rejection
+test as a chain of implications and the source's as a disjunction, and after every `b ≤ a` is
+rewritten as `¬ a < b` the two are propositional over the same atoms, so `tauto` closes the cases
+where they disagree.  The file checks in about 40 seconds.  `Project/Drone/Verify.lean` proves
+`drone_round_trip` and `drone_bytes`: the bytes of `drone.module` decode to a module whose entries
+2 to 7 compute the six functions.
+
+| File | Theorems |
+|---|---|
+| `Sqrt.lean` | `loop_induction`; `Sqrt.ceilSqrt_correct`, the exact ceiling square root for `n ≤ 2^32` |
+| `Arithmetic.lean` | `distance_nat`, `speed_nat`, `altitude_nat`, `altitude_bounds`, `restSeconds_bounds` |
+| `Edges.lean` | `edgeTicks_eq`, `accepted_guards`, `products_nat`, `clearance_products`, `accepted_forward_clearance`, `state_edge_clearance` |
+| `Dynamics.lean` | `forward_conditions`, `accepted_forward_bounds`, `rest_bounds` |
+| `Timing.lean` | `accepted_ticks`, `rest_ticks`, `rest_admitted`, `state_ticks_exact`, `edge_cost_bound` |
+| `Motion.lean`, `Kinematics.lean` | main's files; `Kinematics` imports `Motion` in place of `Dynamics` |
+
+States are words here, so the lemmas about states take `source.toNat < 45` where main's took
+`source < stateCount` on `Nat`.  Main proves `ceilSqrt_correct` by induction on its fuel; here
+`loop_induction` carries a bracket invariant whose width bound halves at each of the 17 steps.
+`Dynamics.lean` is main's file unchanged, and the others change only where the program changed.
+
+`.lake/build/lib/lean/Project/Drone/` held oleans of main's drone proofs from September 26, with
+the module names of several new files.  `lake env lean` on a file loads its imports' oleans
+without rebuilding them, so a first check of `Arithmetic.lean` that way used main's
+`ceilSqrt_correct` about main's definition.  `lake build` of a target rebuilds its imports from
+source, and every result above comes from it.
+
+The D1 check passes: `lake build` succeeds with no `sorry`, the other 27 modules emit their
+stored bytes, the 15,900 module cases (2,091 of them drone cases) and the release-count and
+depth-guard cases pass, and `tests/drone/run.sh` passes.
