@@ -1,7 +1,11 @@
 import CodeLib.Attrs
 import CodeLib.Basic
 import CodeLib.Entry
-import CodeLib.RustStd.Frame
+
+namespace Wasm
+@[simp] theorem Mem.write64_pages (m : Mem) (a : UInt32) (v : UInt64) :
+    (m.write64 a v).pages = m.pages := rfl
+end Wasm
 
 /-!
 # LeanExe's focused Talos surface
