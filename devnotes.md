@@ -26088,3 +26088,20 @@ pages, the call returns without a trap and memory does not grow.  The modules ha
 bytes, they return main's sample outputs, and their 16 module cases compare the bytes with
 `expected`; all 15,916 module cases pass.
 
+
+### Module order and `Nat` parameters
+
+`leanexe_compile p := [f, g, …]` inferred owned parameters in list order, so a callee listed after
+its caller counted as borrowing every parameter when the caller compiled, and the compiler gave no
+error.  The command now compiles each definition after the listed definitions it calls, found in
+the definition's body and in the bodies of the `@[inline]` and reducible definitions it uses, and
+otherwise in list order.  Function indices stay in list order.  Listed definitions that call each
+other in a cycle give an error, and a call of a definition not yet compiled gives an error in
+`translateCall`, which the order makes unreachable.  A stricter first attempt, which only rejected
+a callee listed after its caller, rejected the GPT module's `linear` and the CLOB module's
+`findLevel`, so the order replaces it.  The compiler classified `Nat` as a recursive user type and
+failed only at the first operation on the parameter; `userType?` now excludes `Nat`, and a `Nat`
+parameter or result gives an error that names `UInt64`.  The doc comment of the single form now
+says that `f` is function 2.  The full check passed: the build with no `sorry`, the same bytes for
+the 30 modules, 15,916 module cases, 77 release-count cases, 20 depth-guard cases, 360 chunk
+cases, LTG, and 474 WGSL cases on each of two drivers.
