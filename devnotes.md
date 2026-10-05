@@ -25527,7 +25527,7 @@ missing from this branch.
 
 - [x] Port main's outward-enclosure library and prove the speed and CFL enclosures.
 - [x] Hyperbolicity of admissible states.
-- [ ] Conservation balance.
+- [ ] Conservation balance (plan below).
 
 ### E8: real-number enclosures, the CFL bound, and hyperbolicity
 
@@ -25570,3 +25570,23 @@ admissible with `r` times its signal speed in either direction at most 1/2.
 `reconstructedRun_steps` proves that a run with status 0 is a chain of such steps from time 0
 and the initial grid to its final time and grid.  All theorems use only Lean's standard
 axioms.
+
+### E8: conservation balance, plan
+
+Main's balance theorems (`Project/EulerReconstructed/*Balance.lean`) rest on about 12,700
+lines of main's models of its WebAssembly solver, so they do not port.  The same statements
+can be proved on this branch's Lean source.  A sweep updates each component of each cell by
+`u' = u - r (F_right - F_left)` with three rounded operations, and the flux at the face between
+two cells of a line is computed by both cells from the same four states, so the computed fluxes
+telescope exactly along a line.  The residual of a cell is the difference between `u'` and the
+exact value of the formula on the computed words, and main's enclosure lemmas bound each
+rounding by the gap between the neighbors of the rounded word, which gives a bound computed from
+the words of the run.
+
+- [ ] B1: the residual bound of `update`.
+- [ ] B2: `faceFlux` and the decomposition of an accepted `reconstructedStep`.
+- [ ] B3: the indices of a sweep cell's five states as clamped positions in its line.
+- [ ] B4: line telescoping and the balance of an accepted sweep.
+- [ ] B5: the balance of an accepted step, added to `AcceptedStep`.
+- [ ] B6: the first-order solver's sweep and step balance.
+
