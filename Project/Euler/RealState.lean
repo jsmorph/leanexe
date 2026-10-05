@@ -19,6 +19,10 @@ noncomputable abbrev real (x : Float) : ℝ := value x.toBits
 noncomputable abbrev vec (q : Conserved) : EulerReal.Vec4 :=
   ![real q.density, real q.mx, real q.my, real q.energy]
 
+theorem real_pos_of_positive {x : Float} (h : 0 < x.toBits ∧ x.toBits < 0x7FF0000000000000) :
+    0 < real x :=
+  (F64Order.positiveBits_spec x.toBits (by simpa [F64Order.positiveBits] using h)).2
+
 theorem admissible_iff (r m t e : ℝ) :
     EulerReal.Admissible ![r, m, t, e] ↔ 0 < r ∧ 0 < e - (m ^ 2 + t ^ 2) / (2 * r) := by
   show (0 < r ∧ 0 < 2 / 5 * (e - (m ^ 2 + t ^ 2) / (2 * r))) ↔ _
