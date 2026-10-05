@@ -67,6 +67,41 @@ theorem Heap.Fits.fit32 {heap : Heap} {need : UInt64} (h : heap.Fits need) :
     takeFirstFitFrom 0 need heap.free = none → heap.top.toNat + 48 + need.toNat ≤ 4294967296 :=
   fun hNone => by have := h hNone; omega
 
+/-- Memory has room for an allocation of `need` bytes that no free block fits: the block ends
+inside the 32-bit address space, and the cap covers the pages it needs. -/
+def Heap.Room (heap : Heap) (store : Store Unit) (m : Wasm.Module) (need : UInt64) : Prop :=
+  takeFirstFitFrom 0 need heap.free = none →
+    heap.top.toNat + 48 + need.toNat ≤ 4294967296 ∧
+      (store.mem.pages < FixedArrayBump.requiredPages heap.top need →
+        FixedArrayBump.requiredPages heap.top need ≤ store.memoryCap m 0)
+
+/-- `FixedArrayAllocate.program` for at most `2 ^ 32` bytes, in a memory whose cap is at
+most 65,535 pages: the program allocates a block that fits, or traps at `unreachable`, which
+the assertion accepts when `aborts`.  When not `aborts`, the room rules out the trap. -/
+theorem array_allocation_spec_runs (aborts : Bool) (m : Wasm.Module)
+    (hMemory32 : m.memIs64 = false) (env : HostEnv Unit) (store : Store Unit) (heap : Heap)
+    (params saved tail : List Wasm.Value) (start : Nat)
+    (hStart : params.length + saved.length = start)
+    (need stride previous current capacity next result : UInt64) (hHeap : heap.At store)
+    (hNeed : need.toNat ≤ 4294967296) (hCap : store.memoryCap m 0 ≤ 65535)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : TrapOK aborts Q)
+    (hRoom : aborts = false → heap.Room store m need)
+    (hNext : heap.Fits need → ∀ previous current capacity next : UInt64,
+      wp m rest Q (heap.allocateStore store need stride)
+        (FixedArraySearch.frame params saved tail need previous current capacity next
+          (FixedArrayAllocate.root heap.top need heap.free)) env) :
+    wp m (FixedArrayAllocate.program start stride ++ rest) Q store
+      (FixedArraySearch.frame params saved tail need previous current capacity next result) env := by
+  have hTop := hHeap.top
+  have hPages := hHeap.pages
+  exact FixedArrayAllocate.program_spec_runs aborts m env store params saved tail start hStart
+    heap.top need stride previous current capacity next result heap.allocs heap.free
+    (by simp [hHeap.globals, Heap.globals])
+    (by simp [hHeap.globals, Heap.globals])
+    (by simp [hHeap.globals, Heap.globals])
+    hHeap.freeList (by omega) hNeed hHeap.pages hMemory32 hCap Q rest
+    (fun h => by subst h; exact hTrap) hRoom hNext
+
 /-- `FixedArrayAllocate.program` for at most `2 ^ 32` bytes, in a memory whose cap is at
 most 65,535 pages: the program traps at `unreachable` or allocates a block that fits. -/
 theorem array_allocation_spec_or_abort (m : Wasm.Module) (hMemory32 : m.memIs64 = false)
