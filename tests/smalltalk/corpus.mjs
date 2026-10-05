@@ -28,7 +28,6 @@ source('ifTrue','true ifTrue: [42]',42);
 source('ifFalse','false ifFalse: [42]',42);
 source('ifTrue-skipped','false ifTrue: [999]',0,{kind:2});
 source('while','| x | x := 0. [x < 1000] whileTrue: [x := x + 1]. x',1000,{capacity:64});
-source('backedge-10000','| x | x := 0. x',0); // Replaced below by a direct VM loop.
 source('int-identity','42 == 42',2,{kind:2});
 source('class-identity','Object == Object',2,{kind:2});
 source('different-object','Object new == Object new',1,{kind:2});
@@ -88,6 +87,26 @@ fixture('bad-slot',()=>[['load',999],['return']],0,{error:2});
 fixture('bad-jump',()=>[['jump',999999]],0,{error:10});
 fixture('wrong-block-owner',(p)=>{const b=p.method(6,0);p.code(b,[['constant',0],['return']]);return [['block',b],['return']];},0,{error:10});
 cases.push({name:'invalid-wire',code:['0'],capacity:32,fuel:20,expected:'0',kind:1,error:10});
+source('nil','nil',0,{kind:2}); source('true','true',2,{kind:2}); source('false','false',1,{kind:2});
+source('empty-block','[] value',0,{kind:2}); source('empty-workspace','',0,{kind:2});
+source('default-local','| x | x',0,{kind:2});
+source('comment','"a workspace comment" 42',42);
+source('same-object','| x | x := Object new. x == x',2,{kind:2});
+source('different-blocks','[] == []',1,{kind:2});
+source('minimum-integer','-9223372036854775808',-(1n<<63n));
+source('mutated-argument','[:x | x := x + 2. x] value: 40',42);
+source('nonlocal-in-loop','| x | x := 0. [true] whileTrue: [x := x + 1. (x = 42) ifTrue: [^x]]. 0',42,{capacity:80});
+fixture('direct-super',(p)=>{
+  const base=p.addClass(),child=p.addClass(base),sel=p.selector('answer');
+  p.code(p.method(base,sel),[['int',41],['return']]);
+  p.code(p.method(child,sel),[['load',0],['super',sel,0],['int',1],['send',S['+'],1],['return']]);
+  return [['class',child],['send',S.new,0],['send',sel,0],['return']];
+},42);
+fixture('two-block-arguments',(p)=>{
+  const selector=p.selector('value:value:');p.code(p.method(5,selector,3,0,7),[['constant',0],['return']]);
+  const block=p.method(7,0,3);p.code(block,[['load',1],['load',2],['send',S['+'],1],['return']]);
+  return [['block',block],['int',40],['int',2],['send',selector,2],['return']];
+},42);
 mkdirSync('build/smalltalk',{recursive:true});
 writeFileSync('build/smalltalk/corpus.json',JSON.stringify(cases));
 console.log(`corpus: ${cases.length} programs`);

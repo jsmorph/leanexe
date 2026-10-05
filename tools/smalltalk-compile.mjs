@@ -53,7 +53,7 @@ export function compile(source) {
       const child=frame(f,args,true); body(child,']'); expect(']');
       p.code(child.method,child.code); emit(f,'block',child.method); depth--;
     } else if(t==='nil'||t==='false'||t==='true') emit(f,'constant',{nil:0,false:1,true:2}[t]);
-    else if(t in CLASSES) emit(f,'class',CLASSES[t]);
+    else if(Object.hasOwn(CLASSES,t)) emit(f,'class',CLASSES[t]);
     else if(/^[0-9]+$/.test(t??'') || (t==='-' && /^[0-9]+$/.test(peek()??''))) {
       const value=BigInt(t==='-'?'-'+take():t);
       if(value<-(1n<<63n)||value>=(1n<<63n)) throw Error('integer outside signed 64-bit range');
