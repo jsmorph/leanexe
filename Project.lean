@@ -272,3 +272,5 @@ import Project.EulerReal.Rotation
 import Project.EulerReal.Eigenvectors
 import Project.EulerReal.Eigenbasis
 import Project.EulerReal.Hyperbolicity
+import Project.Scheme.VM
+import Project.Scheme.Tests
