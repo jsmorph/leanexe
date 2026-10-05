@@ -509,6 +509,16 @@ theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : 
   · exact .inl ⟨values, final, hRun, heap', f x, hAt, hOwned, hf x hP⟩
   · exact .inr hAbort
 
+/-- An entry that implements `f` implements every `g` that agrees with `f` on the inputs that
+arguments in memory represent. -/
+theorem Implements.congr [Represent α] [Represent β] {m : Module} {entry : Nat} {f g : α → β}
+    (h : Implements m entry f)
+    (hfg : ∀ heap store params x, Represent.borrowed heap store params x → f x = g x) :
+    Implements m entry g := by
+  intro env store heap params x hHeap hArgs hSeparate hCap
+  rw [← hfg heap store params x hArgs]
+  exact h env store heap params x hHeap hArgs hSeparate hCap
+
 /-- `Implements` with the abort flag and conditions on the heap: from a heap and store with
 `Pre x heap store`, the call returns, or, when `aborts`, traps at `unreachable`.  On a return,
 some heap `heap'` meets the conditions of `Implements` and `Post x heap store heap' final`. -/

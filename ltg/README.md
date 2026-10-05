@@ -15,12 +15,22 @@ from the repository root:
 tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
 ```
 
-`tail-recursion-loop`, `array-fold-loop`, `index-loop`, `array-read`,
-`array-size`, `array-literal`, `array-build`, `record-read`, `record-build`, `repeat-while`, and `release-temporary` cover compiler rules and
-are proved for every function those rules produce, and `straight-line-run`
-describes how `simp` computes the effect of straight-line statements.  `splitmix64` is a proved library function that any module can compile and call.  `one-array-call` runs calls that move arrays of records and return them with scalars.  `float-arithmetic` connects Lean's `Float` operations to the
-IR's `f64` expressions, and `float-array-fold` connects a fold over an `Array Float` to
-a fold over bit patterns.  The other five entries describe general
-lemmas from the earlier proof library.  `array-fold-prefix` supports
-`array-fold-loop`, and the rest cover memory framing, calls, and raw WASM locals
-for the next iterations.
+The 37 entries fall into four groups.  The compiler-rule entries are proved for every function
+their rules produce; a proof applies the entry's rule lemma where the hint names the rule.  The
+lemma entries hold general facts that rule proofs and hand proofs use, and the library entry is a
+proved function that any module can compile and call.
+
+| Group | Entries |
+|---|---|
+| Words and floats | `straight-line-run`, `float-arithmetic`, `binary32-arithmetic` |
+| Arrays | `array-read`, `array-size`, `array-literal`, `array-build`, `array-fold-loop`, `float-array-fold`, `array-fold-prefix`, `array-state-loop`, `in-place-update`, `release-temporary` |
+| Records | `record-read`, `record-build`, `one-array-call` |
+| Loops and recursion | `index-loop`, `repeat-while`, `tail-recursion-loop`, `tail-recursion-records`, `recursive-calls`, `consumed-recursion` |
+| Calls | `function-call` |
+| Lists and trees | `list-cell`, `list-fold-loop`, `release-list`, `node-match`, `record-reuse`, `partial-release`, `tree-copy` |
+| General lemmas | `array-memory-framing`, `memory-write-range`, `region-frame`, `local-frame-projection`, `direct-call-stack-tail` |
+| Kernels and library | `wgsl-kernel`, `splitmix64` |
+
+No entry yet describes the abort-flag rules and heap budgets of complete execution
+(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`); `Project/Euler/Total.lean`,
+`Project/Drone/Total.lean`, and `Project/Increment/Verify.lean` show their use.

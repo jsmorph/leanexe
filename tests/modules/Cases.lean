@@ -21,6 +21,8 @@ import LeanExe.Examples.Bools
 import LeanExe.Examples.Grids
 import LeanExe.Examples.EulerReconstructed
 import LeanExe.Examples.Drone
+import Project.Increment.Spec
+import Project.RemoveZero.Spec
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -837,9 +839,22 @@ def droneCases : IO Unit := do
     line "drone" "compute" "array-u64" [arrU heights]
       (words (LeanExe.Examples.Drone.compute heights.toArray).toList)
 
+/-- Main's Demo 4 and Demo 12: the bytes against the specification `expected`, on main's sample
+inputs and edge cases. -/
+def demoCases : IO Unit := do
+  let max : UInt64 := 18446744073709551615
+  for xs in [[], [5], [0, 41, max], [1, 2, 3, 4, 5, 6, 7, 8], [1, 2, 3, 4, 5, 6, 7, 8, 9],
+      [max, max, max, max, max, max, max, max]] do
+    line "increment" "compute" "array-u64" [arrU xs]
+      (words (Project.Increment.expected xs.toArray).toList)
+  for xs in [[], [0], [0, 0], [1, 0], [7, 0, 9, 0], [1, 2, 3], [1, 2, 3, 4, 5, 6, 7, 0],
+      [0, 1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 0, 0, 0, 0, 0, 0, 0, 0]] do
+    line "removeZero" "compute" "array-u64" [arrU xs]
+      (words (Project.RemoveZero.expected xs.toArray).toList)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   binary32Cases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
   calculatorCases; shapeCases; listCases; wordsCases; treeCases; updatesCases
-  boolsCases; gridsCases; eulerCases; reconstructedCases; droneCases
+  boolsCases; gridsCases; eulerCases; reconstructedCases; droneCases; demoCases

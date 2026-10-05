@@ -26053,7 +26053,7 @@ smallest worked example of the A-series rules.  The dialect gets no additions fo
 and `Array.filter` are reconsidered after Demo 5.  The tool's decisions, approval of the
 specification and the driver, are taken when the tool work starts.
 
-- [ ] Demos 4 and 12 by hand, one with the total form.
+- [x] Demos 4 and 12 by hand, one with the total form.
 - [ ] Demos 1, 2, and 5; Demo 6 into Gcd; Demos 10 and 11 into SumArray.
 - [ ] The generation tool, run first on Demo 9 and then on Demos 2, 5, 6, and 1.
 
@@ -26071,4 +26071,20 @@ Euler, and GPT files each defined moved to shared files: the word lemmas of Bool
 `Scalar.values` that hygiene resolves where a macro is defined, so `Words.lean` opens
 `Project.Pipeline`.  `data/drone/README.md` describes this branch's program, theorems, and tests,
 and main's drone report stays as the record of main's work.
+
+### Demos 4 and 12 by hand
+
+Demo 4 is `increment` and Demo 12 is `removeZero`, each with its request and README in
+`demos/`, its program in `LeanExe/Examples`, and `Spec.lean`, `Module.lean`, and `Verify.lean` in
+`Project/<Name>`.  Both programs avoid builds in branches by setting the count to 0 for an input
+longer than eight words.  `removeZero` finds the first zero with a loop and builds the result by
+copying the words before it and shifting the rest, so it needs neither `Option` nor `eraseIdx!`.
+`compute_eq` proves each program equal to its specification on arrays of fewer than `2^64` words,
+since `size.toUInt64` wraps beyond that, and the new `Implements.congr` carries `Implements` of
+`compute` to `Implements` of `expected` because a represented array is shorter.  The new rule
+`Stmt.build_specA` gives the build template's abort-flag form, from which `build_spec` now follows,
+and `increment_total` uses it: from an allocator whose `top` leaves 120 bytes in the first 16
+pages, the call returns without a trap and memory does not grow.  The modules have 1,524 and 1,742
+bytes, they return main's sample outputs, and their 16 module cases compare the bytes with
+`expected`; all 15,916 module cases pass.
 

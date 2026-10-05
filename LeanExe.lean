@@ -6,6 +6,8 @@ import LeanExe.Examples.Calc
 import LeanExe.Examples.Clob
 import LeanExe.Examples.Drone
 import LeanExe.Examples.Gcd
+import LeanExe.Examples.Increment
+import LeanExe.Examples.RemoveZero
 import LeanExe.Examples.Mean
 import LeanExe.Examples.PairSum
 import LeanExe.Examples.Piecewise
