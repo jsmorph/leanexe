@@ -25634,3 +25634,13 @@ results of main that this branch does not prove: complete execution without an a
 512 MiB memory bound, the wave identities, the reconstruction accuracy theorems, and the
 reference-flux comparison.
 
+The full check after E9 first failed: `Project.lean` imported `Sweep.lean` and
+`ReconstructedBalance.lean`, which both defined `Project.Euler.sweepCell`, and the checks of
+single files had not imported both.  The balance file's definition is now `lineCell`, and
+`lake build` succeeds with no `sorry`.  The byte comparison also reported `euler` and `binary32`
+as different, because `build/euler/euler.wasm` and `build/binary32/binary32.wasm` were copies
+emitted before later source changes, and the module tests read those copies.  With the emitted
+current modules installed (`euler.wasm` SHA-256 `2b9450e4…`), every module matches, and the
+13,809 module cases, 77 release-count cases, 20 depth-guard cases, and 360 chunk cases pass.  The
+LTG check and the 474 WGSL cases on each of the two Vulkan drivers pass.
+
