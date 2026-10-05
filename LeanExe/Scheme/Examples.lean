@@ -61,4 +61,22 @@ def multiShotInitial : State :=
 /-- Even `call/cc` used as its own callback goes through explicit application states. -/
 def nestedCallcc : Code := #[.push .callcc, .push .callcc, .tailcall 1]
 
+/-- A recursive tail chain must preserve an ordinary caller and its pending operand. -/
+def tailUnderCaller : Code := #[
+  .push (.word 100), .close 5 [], .call 0, .binary .add, .ret,
+  .load 2, .push (.word 3), .tailcall 1,
+  .load 1, .push (.word 0), .binary .equal, .branch 14, .push (.word 7), .ret,
+  .load 2, .load 1, .push (.word 1), .binary .sub, .tailcall 1
+]
+
+def tailUnderCallerInitial : State :=
+  initial [(2, 0)] #[.closure 8 [1] [(2, 0)]]
+
+/-- Invocation discards two nested call frames; instructions after it must not run. -/
+def escapeNestedCalls : Code := #[
+  .push (.word 100), .push .callcc, .close 6 [1], .call 1, .binary .add, .ret,
+  .close 10 [], .call 0, .push (.word 999), .ret,
+  .load 1, .push (.word 7), .call 1, .push (.word 999), .ret
+]
+
 end LeanExe.Scheme.VM.Examples

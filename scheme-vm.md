@@ -79,8 +79,11 @@ model small; their physical representation has not been chosen here.
 `Project/Scheme/VM.lean` states an inductive `Transition` relation separately from
 the implementation. Its rules do not use `step`, `execute`, `enter`, `applyProc`, or
 `deliver`. They specify fetches, operand arrangements, frame creation/restoration,
-and store effects. The rules share the arithmetic, environment lookup, and parameter
-binding functions with the implementation; their storage properties are also proved.
+and store effects. Closure entry specifies the complete new environment by zipping
+parameters with consecutive fresh locations, and the complete new store by appending
+arguments in source order. `bind_eq` proves that the binder implements this direct
+contract. The rules still share the arithmetic and environment lookup functions with
+the implementation.
 
 For every instruction array and states `s`, `t`, the main one-step contract is:
 
@@ -94,7 +97,7 @@ the rules. Completeness rules out implementing a valid instruction by failing.
 successful rule applies. Exact error labels are checked by the regression programs;
 there is no separate inductive specification of the labels.
 
-`Trace code n s t` is a sequence of exactly `n` independent transitions. For every
+`Trace code n s t` is a sequence of exactly `n` transitions of that relation. For every
 fuel budget, including zero and budgets extending beyond completion:
 
 ```lean
@@ -110,7 +113,8 @@ The control and storage laws quantify over arbitrary states and arguments:
 | `tailcall_closure` | Closure entry after the tail call still uses that exact frame. |
 | `capture_continuation` | The callback is applied to the saved stack with the same return frame. |
 | `invoke_continuation`, `resume_frame` | Invocation restores saved control and retains the invoker's current store. The saved continuation is never consumed. |
-| `bind_size`, `bind_head` | Parameters receive fresh locations holding their supplied values; successful binding has the correct arity and exact allocation size. |
+| `bind_eq`, `bind_iff` | The complete environment and store have the specified parameter order, fresh locations, and supplied values. |
+| `bind_size`, `bind_head` | Successful binding has the correct arity and exact allocation size; the first parameter names its fresh location. |
 | `bind_preserves`, `store_other` | Binding keeps every pre-existing location; mutation keeps every other location. |
 | `run_add`, `run_error` | Fuel slices compose exactly; failed states remain failed. |
 | `Transition.deterministic` | A successful semantic step has a unique result. |
@@ -123,8 +127,9 @@ this machine.
 
 Frame reuse proves the control part of proper tail calls. The store currently grows
 on parameter binding and has no collector. The 10,000-call check therefore measures
-active return depth, not bounded total memory. This implementation does not yet
-establish Scheme's full space guarantee.
+active return depth, not bounded total memory. It ends with 10,002 retained store
+cells: the initial recursive closure and 10,001 parameter bindings, including the
+initial call. This implementation does not yet establish Scheme's full space guarantee.
 
 The next VM implementation needs a representation for shared stack roots and store
 locations, plus reclamation of unreachable cells. The current LeanExe owned-tree
@@ -155,10 +160,11 @@ tools/leanrun --timeout 60s lake build LeanExe.Scheme.Examples Project.Scheme.VM
 tools/leanrun --timeout 60s lake env lean --run Project/Scheme/RunTests.lean
 ```
 
-There are 23 kernel-reduced program checks, covering argument order, a pending
+There are 27 kernel-reduced program checks, covering argument order, a pending
 operand across a call, caller environment restoration, captured-location mutation,
-self-recursive tail calls, repeated continuation invocation after the callback
-returns, primitive callbacks, truthiness, and malformed code. The larger native
+self-recursive tail calls, reuse of an existing caller frame, continuation escape
+through nested calls, repeated invocation after the callback returns, primitive
+callbacks, truthiness, and malformed code. The larger native
 check runs 10,000 tail calls, returns 0, and observes peak active return depth 0.
 
 2026-10-05: The first review removed a boolean-only branch check and used Scheme
@@ -176,9 +182,52 @@ produce the checked result 102. Kernel reduction required a local recursion-dept
 limit of 2048 for this example, without increasing the heartbeat limit or using
 native proof evaluation.
 
-The axiom audit for the main execution, tail-call, and continuation theorems reports
-only `propext`. The binding preservation/head lemmas additionally report the usual
-`Classical.choice` and `Quot.sound` axioms through library lemmas. No new axioms,
+The current axiom audit for the tail-call and continuation theorems reports only
+`propext`. The main execution and binding lemmas additionally report the usual
+`Classical.choice` and `Quot.sound` axioms through the closed-form binder's library lemmas. No new axioms,
 `sorry`, `native_decide`, or `bv_decide` are used. The executable step, runner, and
 binder also report only `propext`. Root imports include the model, examples, proofs,
 and program checks.
+
+## Critical review: remaining obligations
+
+The control model passes the review, but it is an executable specification rather
+than the requested WASM VM. The main remaining obstacles are concrete representation
+and reclamation. The return-depth theorem does not account for heap retention, and
+the observed 10,002-cell store makes that distinction measurable. Do not present this
+milestone as a properly tail-recursive Scheme runtime or a verified WASM artifact.
+
+The execution proof establishes agreement with our chosen instruction rules. It is
+not an independent derivation of Scheme semantics. The closure rule formerly called
+the implementation binder, so a shared bug in argument allocation/order could evade
+that rule. The review replaced this premise with the direct environment/store
+contract and proved `bind_eq` for all parameters. The size and preservation proofs
+now reuse that contract rather than repeating inductions.
+
+`State.NonError` says only that a state is not marked failed. We have not established
+a structural invariant saying that every captured environment and saved continuation
+has valid locations and a valid stack shape. Checked accesses catch invalid locations,
+but that does not establish that valid source programs avoid errors. Before the
+concrete representation proof, define and preserve the invariant needed by its
+handles and collector; source-language progress additionally needs a compiler proof.
+
+`push Value` permits runtime closures and continuations in instructions. This is
+convenient for a semantic API but couples code constants to the store and makes code
+a collector root. Before serializing bytecode, decide whether to restrict `push` to
+literals/builtin tokens or give a constant pool an explicit representation and root
+contract. The future Scheme compiler must also reject duplicate formal names and
+preserve the fixed-code-image contract already noted above.
+
+The original tests resumed a continuation after normal return, but never discarded
+an ordinary nested caller; the long tail loop ran only at the halt boundary. Two
+new programs close those gaps. One returns 107 after a tail chain under a caller with
+a pending operand and observes peak depth 1. The other invokes a continuation from
+two nested calls, skips the instructions following invocation, returns 107, and
+observes peak depth 3 before escape. All four new kernel checks pass.
+
+During this review, rewriting both list-to-array cons and array-push-as-append through
+the default simplifier caused a rewrite loop. The closed-form binder proof now uses
+`simp only` followed by explicit append rewrites; it checks without increased proof
+limits or warnings. The instruction soundness/completeness and trace theorems check
+against the stronger closure rule. WASM gates and the full Project build remain
+outside the focused validation reported here.
