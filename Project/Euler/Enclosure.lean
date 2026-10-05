@@ -1,6 +1,7 @@
 import Project.Euler.ReconstructedSpec
 import Project.Euler.Outward
 import Project.ProofKit.F64OutwardAccepted
+import Project.ProofKit.F64AdjacentSigned
 
 /-! Real-number bounds for the reconstructed Euler solver: its outward operations agree with
 the word-level outward operations of `Project.ProofKit.F64Outward`, whose results bound the exact
@@ -309,5 +310,127 @@ theorem speedUpper_ge {rho mx my energy : Float} (h : (speedUpper rho mx my ener
   rw [habs] at bv
   simp only [real, physicalSpeed] at *
   linarith
+
+/-! The sign of an accepted speed bound. -/
+
+/-- Finite words whose scaled values sum to 0 add to a word whose scaled value is 0. -/
+theorem add_zero_sum {a b : UInt64} (ha : Finite a) (hb : Finite b)
+    (hz : Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b = 0) :
+    Wasm.IEEE64.scaledValue (Wasm.IEEE64.add a b) = 0 := by
+  have hna := CodeLib.IEEE64.not_nan_of_finite ha
+  have hnb := CodeLib.IEEE64.not_nan_of_finite hb
+  have hia := CodeLib.IEEE64.not_infinite_of_finite ha
+  have hib := CodeLib.IEEE64.not_infinite_of_finite hb
+  simp [Wasm.IEEE64.add, hna, hnb, hia, hib, hz]
+  split <;> decide
+
+set_option maxRecDepth 8192 in
+/-- A word of nonnegative value other than negative zero has sign bit 0. -/
+theorem word_lt_of_value_nonneg {w : UInt64} (hw : 0 ≤ value w) (hz : w ≠ 0x8000000000000000) :
+    w.toNat < 2 ^ 63 := by
+  by_contra hlt
+  have hge : 2 ^ 63 ≤ w.toNat := by omega
+  have hne : w.toNat ≠ 2 ^ 63 := fun h => hz (UInt64.toNat_inj.mp (by rw [h]; rfl))
+  have hv := F64Adjacent.negative_word_value w hge
+  have hpos : 0 < F64Order.unsignedScaled (w.toNat - 2 ^ 63) := by
+    have hm : 0 < w.toNat - 2 ^ 63 := by omega
+    generalize w.toNat - 2 ^ 63 = m at hm
+    unfold F64Order.unsignedScaled
+    split
+    · rename_i h0
+      have : m < 2 ^ 52 := by
+        rcases Nat.div_eq_zero_iff.mp h0 with h | h
+        · exact absurd h (by positivity)
+        · exact h
+      rw [Nat.mod_eq_of_lt this]
+      exact hm
+    · positivity
+  have : value w < 0 := by
+    rw [hv]
+    apply div_neg_of_neg_of_pos _ (by positivity)
+    simp only [neg_neg_iff_pos]  
+    exact_mod_cast hpos
+  linarith
+
+/-- An accepted upward sum is the successor of the rounded sum, which is finite. -/
+theorem outAdd_up_value {a b : Float} (h : (outAdd true a b).status = 0) :
+    Finite (Wasm.IEEE64.add a.toBits b.toBits) ∧
+      (outAdd true a b).value.toBits = F64Adjacent.nextUp (Wasm.IEEE64.add a.toBits b.toBits) := by
+  have hw := outAdd_word true a b
+  have hs : (F64Outward.add true a.toBits b.toBits).status = 0 := by rw [← hw]; exact h
+  have hv : (outAdd true a b).value.toBits = (F64Outward.add true a.toBits b.toBits).value := by
+    rw [← hw]; rfl
+  rw [hv]
+  unfold F64Outward.add F64Outward.endpoint F64Outward.neighbor at hs ⊢
+  split_ifs at hs ⊢ with h1 h2 h3 <;> simp_all [F64Outward.rejected]
+  refine ⟨(F64Order.finiteBits_iff _).mp h2, ?_⟩
+  by_cases h3 : F64Order.finiteBits (F64Adjacent.nextUp (Wasm.IEEE64.add a.toBits b.toBits)) = true
+  · simp [h3]
+  · simp [h3] at hs
+
+set_option maxRecDepth 8192 in
+/-- An accepted speed bound has sign bit 0. -/
+theorem speedUpper_word {rho mx my energy : Float} (h : (speedUpper rho mx my energy).status = 0) :
+    (speedUpper rho mx my energy).value.toBits.toNat < 2 ^ 63 := by
+  obtain ⟨hrho, hphys⟩ := speedUpper_ge h
+  unfold speedUpper at h hphys ⊢
+  dsimp only at h hphys ⊢
+  have hc := rejectedChecked_status h
+  rw [ite_eq_left hc] at hphys ⊢
+  simp only [Bool.and_eq_true, beq_iff_eq] at hc
+  obtain ⟨⟨⟨-, hv⟩, hs⟩, ha⟩ := hc
+  set v := outDiv true (Float.ofBits (absBits mx.toBits)) rho
+  set c := soundUpper rho mx my energy
+  have bv := sound_upper' (outDiv_accepted hv).2.2.2 rfl
+  rw [toBits_ofBits_abs, show value (mx.toBits &&& 0x7FFFFFFFFFFFFFFF) = |value mx.toBits| from
+    F64Order.absBits_value mx.toBits] at bv
+  have bc := soundUpper_ge hs hrho
+  have hv0 : 0 ≤ value v.value.toBits :=
+    le_trans (div_nonneg (abs_nonneg _) hrho.le) bv
+  have hc0 : 0 ≤ value c.value.toBits := le_trans (Real.sqrt_nonneg _) bc
+  obtain ⟨hfin, hval⟩ := outAdd_up_value ha
+  have hge := sound_upper' (outAdd_accepted ha).2.2 rfl
+  simp only [real] at hge
+  refine word_lt_of_value_nonneg (le_trans (add_nonneg hv0 hc0) hge) fun hz => ?_
+  rw [hval] at hz
+  set r := Wasm.IEEE64.add v.value.toBits c.value.toBits
+  have hr : r = 0x8000000000000001 := by
+    unfold F64Adjacent.nextUp at hz
+    have hrf := hfin
+    rw [← F64Order.finiteBits_iff] at hrf
+    split_ifs at hz with h1 h2
+    · simp at hz
+    · have : r = 0x7FFFFFFFFFFFFFFF := by
+        apply UInt64.toNat_inj.mp
+        have := congrArg UInt64.toNat hz
+        have hlt := UInt64.lt_iff_toNat_lt.mp h2
+        simp at hlt this ⊢
+        omega
+      rw [this] at hrf
+      exact absurd hrf (by decide)
+    · apply UInt64.toNat_inj.mp
+      have := congrArg UInt64.toNat hz
+      have hnl : ¬r.toNat < 2 ^ 63 := fun h' => h2 (UInt64.lt_iff_toNat_lt.mpr (by simpa using h'))
+      have hle : (1 : UInt64) ≤ r := UInt64.le_iff_toNat_le.mpr (by simp; omega)
+      rw [UInt64.toNat_sub_of_le _ _ hle] at this
+      simp at this ⊢
+      omega
+  have henc := (F64Adjacent.add_enclosure v.value.toBits c.value.toBits
+    (outAdd_accepted ha).1 (outAdd_accepted ha).2.1 hfin).2
+  rw [hz, show value 0x8000000000000000 = 0 by
+    simp [value, show Wasm.IEEE64.scaledValue 0x8000000000000000 = 0 by decide +kernel]] at henc
+  have hsum : value v.value.toBits + value c.value.toBits = 0 := by linarith
+  have hscaled : Wasm.IEEE64.scaledValue v.value.toBits +
+      Wasm.IEEE64.scaledValue c.value.toBits = 0 := by
+    have : ((Wasm.IEEE64.scaledValue v.value.toBits + Wasm.IEEE64.scaledValue c.value.toBits : ℤ) : ℝ)
+        = 0 := by
+      simp only [value] at hsum
+      push_cast
+      field_simp at hsum
+      linarith
+    exact_mod_cast this
+  have h0 := add_zero_sum (outAdd_accepted ha).1 (outAdd_accepted ha).2.1 hscaled
+  rw [show Wasm.IEEE64.add v.value.toBits c.value.toBits = r from rfl, hr] at h0
+  exact absurd h0 (by decide)
 
 end Project.Euler
