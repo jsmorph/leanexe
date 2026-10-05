@@ -231,4 +231,4 @@ import Project.Bools.Verify
 import Project.Grids.Module
 import Project.Grids.Verify
 import Project.Euler.Module
-import Project.Euler.Loops
+import Project.Euler.Verify
