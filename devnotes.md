@@ -25134,3 +25134,45 @@ is a pointer per element.
 - [ ] E3a: nested ownership in the heap model, and the static empty array.
 - [ ] E3b: build with owned elements, lent reads, `set!` with release, size, and fold.
 - [ ] E3c: an example module, tests, and proofs.
+
+### Review of the general-array design
+
+An independent reviewer checked the design against the code, and I confirmed its central claims.
+It found eight defects.  `Heap.Borrowed` has no header fields; the layout predicate
+`UInt64Array.At`, used in 16 files, makes the length word count words.  No release proof covers
+the masked loop over array elements, and `setInPlace` neither releases an old element nor drops
+a moved value out of bounds.  `buildWith` requires a store-preserving element body, and the
+compiler forbids allocation in a build element, so arrays of owned elements need a new template.
+`Live` holds temporaries as flat arrays only.  The compiler ignores the `Inhabited` argument of
+`getElem!`.  Arrays of arrays and of trees need width 1 and mask 1, so the argument for a width
+field in the header held only for records with pointer fields.  No module starts with a data
+segment, so a static empty array would need one and a new clause in `Heap.At`.  And structure
+fields may not be arrays, which records like main's `Attempt` need.
+
+The revised design takes the reviewer's recommendations.  Level 1 stores an array of records of
+`k` scalar components as a plain word array of `n · k` words with a width-1 header, so
+`Heap.Owned`, `Heap.Borrowed`, `UInt64Array.At`, `Live`, `NewArray`, and `release_run` apply
+unchanged, as they do for `Array Float` today.  `Represent (Array α)` for `[Flat α β] [Scalar β]`
+is the flattened words.  `xs.size.toUInt64` is the length word divided by `k`.  Field `j` of
+element `i` is `ite (i < 2^29) (read xs (i·k + j)) 0`: below `2^29` the position cannot wrap,
+and `read`'s own check gives 0 exactly when `i ≥ n`, so no IR constructor is new.  An
+out-of-bounds read gives the type's `default`, taken from the instance in the term: the compiler
+unfolds it to a closed constructor of literals and rejects anything else, and a field whose
+default is not 0 reads that constant when the index is out of bounds.  Build and fold store and
+load `k` words per element.  Records whose fields hold arrays follow the pair's representation.
+
+Level 2 keeps its scope, with three changes.  A pointer element is read only under a proof of
+its bound, `xs[i]'h` inside `if h : i.toNat < xs.size`, so Lean has no out-of-bounds path and no
+heap predicate changes.  Replacing an element needs a new template that releases the old one in
+bounds and the new one out of bounds.  And level 2 needs a release proof for the masked loop over
+array elements, a build template that allocates in its element, and a `Live` parameterized by the
+temporaries' ownership.  Its first increment reads a lent row of a borrowed
+`Array (Array UInt64)` and allocates and releases nothing.
+
+- [ ] E2a: `Represent (Array α)` for flat `α`; field reads and `size` on borrowed arrays of
+  records; an example, tests at and beyond the bounds, and proofs.
+- [ ] E2b: build with `k` stores per element and fold with `k` loads; examples, tests, proofs.
+- [ ] E2c: `default` from the instance; records with array fields.
+- [ ] E3a: lent rows of a borrowed `Array (Array UInt64)` under bound proofs (`dite`, `getElem`).
+- [ ] E3b: building arrays of owned elements, the kind-2 release proof, and `Live` generalized.
+- [ ] E3c: replacing an element with release; arrays of trees.
