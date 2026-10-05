@@ -38,6 +38,10 @@ theorem word_or (p q : Prop) [Decidable p] [Decidable q] :
 theorem word_eq_one (p : Prop) [Decidable p] : ((if p then 1 else 0 : UInt64) = 1) ↔ p := by
   by_cases hp : p <;> simp [hp]
 
+/-- The test of a word that the compiler computes from a proposition. -/
+theorem word_beq_one (p : Prop) [Decidable p] : ((if p then 1 else 0 : UInt64) == 1) = decide p := by
+  by_cases hp : p <;> simp [hp]
+
 /-- A run that ends in one of two states by a test: each state, under its outcome. -/
 theorem exists_ite_some {c : Prop} [Decidable c] {a b : State} {P : State → Prop}
     (ha : c → P a) (hb : ¬c → P b) :

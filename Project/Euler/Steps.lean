@@ -9,10 +9,6 @@ namespace Project.Euler
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit LeanExe.Examples.Euler
 
-/-- The test of a word that the compiler computes from a proposition. -/
-theorem word_beq_one (p : Prop) [Decidable p] : ((if p then 1 else 0 : UInt64) == 1) = decide p := by
-  by_cases hp : p <;> simp [hp]
-
 theorem word_and_not (p q : Prop) [Decidable p] [Decidable q] :
     ((if p then 1 else 0 : UInt64) &&& if q then 0 else 1) = if p ∧ ¬q then 1 else 0 := by
   by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
