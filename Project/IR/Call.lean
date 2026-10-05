@@ -96,4 +96,22 @@ theorem Stmt.seq_callPure [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
   let ⟨_, hArgs, _, hSet, hNext⟩ := h
   Stmt.seq_spec (Stmt.callPure_spec hImpl hImport hFunc hParams hArgs hSet) hNext
 
+/-- `Stmt.callPure_spec` as the last statement: the postcondition holds of the state the call
+leaves. -/
+theorem Stmt.callPure_last [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
+    (hImpl : ImplementsPure m idx g) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
+    (hParams : args.length = f.numParams) {initial : Store Unit} {before : State}
+    {x : α} {Q : Store Unit → State → Prop}
+    (h : ∃ afterArgs,
+      Expr.evalResults initial.mem scratch args before = some (Scalar.values x, afterArgs) ∧
+      ∃ next, afterArgs.setAll results.reverse (Scalar.values (g x)).reverse = some next ∧
+        Q initial next) :
+    Triple m (.call idx args results) scratch
+      (fun store state => store = initial ∧ state = before) Q :=
+  let ⟨_, hArgs, _, hSet, hQ⟩ := h
+  (Stmt.callPure_spec hImpl hImport hFunc hParams hArgs hSet).mono (fun _ _ h => h)
+    fun _ _ ⟨hs, hst⟩ => hs ▸ hst ▸ hQ
+
 end Project.IR
