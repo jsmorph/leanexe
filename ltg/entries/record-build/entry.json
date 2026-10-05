@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "record-build",
+  "title": "Record array build",
+  "summary": "Proves the compiler's record template: LeanExe.build n g for a record type stores the k component words of g i at words i * k to i * k + k - 1 of a new array, which is flatWords (LeanExe.build n g).",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["arrays", "compiler-motifs", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["array", "record", "structure", "enumeration", "Bool", "build", "allocation", "store"],
+  "annotationKinds": ["record build", "component"],
+  "modules": ["Project.IR.BuildRecord"],
+  "declarations": ["Project.IR.Stmt.buildRecords", "Project.IR.Stmt.fillRecords", "Project.IR.Stmt.storeWords", "Project.IR.recordAddress", "Project.IR.record_address", "Project.IR.Expr.word", "Project.IR.Expr.Yields", "Project.IR.Expr.yields_get", "Project.IR.Expr.yields_toBits", "Project.IR.Stmt.storeWords_spec", "Project.IR.Stmt.fillRecords_spec", "Project.IR.Stmt.buildRecords_spec", "Project.IR.flatWords_build"],
+  "premises": ["A Flat instance for the element type, with Scalar.values of length k for every element", "heap.At for the store and the memory cap", "For each index, a Triple for the per-element statement that keeps the store and leaves each element expression yielding its word"],
+  "result": "Heap.NewArray for flatWords (LeanExe.build n g), the owned form of the array of records, with the pointer in the destination local.",
+  "consumers": ["Project.Grids.ramp_implements", "Project.Grids.flags_implements", "Project.Grids.scaled_implements"],
+  "relatedEntries": ["array-build", "record-read", "straight-line-run"],
+  "exclusion": null
+}

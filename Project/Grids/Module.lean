@@ -6,6 +6,7 @@ namespace Project.Grids
 open LeanExe.Examples.Grids
 
 leanexe_compile grids := [density, pressure, indexAt, okAt, count, energySum, isGas, flagAt,
-  flagCount, massAt]
+  flagCount, massAt, scaled, ramp, flags,
+  totalDensity]
 
 end Project.Grids

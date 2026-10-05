@@ -597,6 +597,18 @@ def gridsCases : IO Unit := do
       line "grids" "massAt" "f64" [massArg, u i] (toString (massAt masses i).toBits)
       for j in [0, 2, maxU] do
         line "grids" "energySum" "f64" [arg, u i, u j] (toString (energySum grid i j).toBits)
+    let stateWords (s : Conserved) : List UInt64 :=
+      [s.density.toBits, s.mx.toBits, s.my.toBits, s.energy.toBits]
+    let states : Array Conserved := grid.map (·.state)
+    for a in [1.5, -0.0, inf, 0.0 / 0.0] do
+      line "grids" "scaled" "array-u64" [arrU (states.toList.flatMap stateWords), fl a]
+        (words ((scaled states a).toList.flatMap stateWords))
+    line "grids" "totalDensity" "f64" [arrU (states.toList.flatMap stateWords)]
+      (toString (totalDensity states).toBits)
+    line "grids" "ramp" "array-u64" [u (UInt64.ofNat size)]
+      (words ((ramp (UInt64.ofNat size)).toList.flatMap stateWords))
+    line "grids" "flags" "array-u64" [u (UInt64.ofNat size)]
+      (words ((LeanExe.Examples.Grids.flags (UInt64.ofNat size)).toList.map fun x => if x then 1 else 0))
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

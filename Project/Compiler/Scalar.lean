@@ -8,6 +8,7 @@ import Project.IR.Function
 import Project.IR.Loop
 import Project.IR.Append
 import Project.IR.Build
+import Project.IR.BuildRecord
 import Project.IR.Update
 import Project.IR.ArrayLoop
 import Project.IR.Hint
@@ -138,10 +139,6 @@ def isFloatArray (type : Lean.Expr) : MetaM Bool := do
 def isUInt64List (type : Lean.Expr) : MetaM Bool := do
   let type ← whnfR type
   if type.isAppOfArity ``List 1 then isUInt64 type.appArg! else return false
-
-/-- Whether `type` is `Array UInt64`, `Array Float`, or `Array Float32`, each a pointer word. -/
-def isArray (type : Lean.Expr) : MetaM Bool := do
-  return (← isUInt64Array type) || (← isFloatArray type)
 
 /-- The number of instructions in the code of an expression or a statement.  It
 does not depend on the scratch index. -/
@@ -335,6 +332,18 @@ def userType? (type : Lean.Expr) : MetaM (Option UserType) := do
 def isNodeType (type : Lean.Expr) : MetaM Bool :=
   return (← userType? type) matches some (.recursive _)
 
+/-- Whether `type` is an array of a structure, sum, or enumeration, stored as its elements'
+component words. -/
+def isRecordArray (type : Lean.Expr) : MetaM Bool := do
+  let type ← whnfR type
+  unless type.isAppOfArity ``Array 1 do return false
+  return (← userType? type.appArg!) matches some (.struct ..) | some (.sum ..) | some (.enum ..)
+
+/-- Whether `type` is `Array UInt64`, `Array Float`, `Array Float32`, or an array of records,
+each a pointer word. -/
+def isArray (type : Lean.Expr) : MetaM Bool := do
+  return (← isUInt64Array type) || (← isFloatArray type) || (← isRecordArray type)
+
 /-- Whether `type` is `UInt64` or an enumeration, held as one word. -/
 def isWordType (type : Lean.Expr) : MetaM Bool := do
   if ← isUInt64 type then return true
@@ -378,6 +387,19 @@ def isTupleType (type : Lean.Expr) : MetaM Bool := do
   | some (.struct ..) | some (.sum _) => return true
   | _ => return false
 
+/-- Whether every component of `type` is a word or a float: a word, float, or enumeration, or a
+pair, structure, or sum of such. -/
+partial def isFlatType (type : Lean.Expr) : MetaM Bool := do
+  let type ← whnfR type
+  if (← isUInt64 type) || (← isFloat type) || (← isFloat32 type) then return true
+  if type.isAppOfArity ``Prod 2 then
+    return (← isFlatType type.appFn!.appArg!) && (← isFlatType type.appArg!)
+  match ← userType? type with
+  | some (.enum _) => return true
+  | some (.struct _ fields) => fields.allM isFlatType
+  | some (.sum ctors) => ctors.allM fun (_, fields) => fields.allM isFlatType
+  | _ => return false
+
 /-- The index of the enumeration constructor `name`. -/
 def enumIndex? (name : Name) : MetaM (Option Nat) := do
   let some (.ctorInfo info) := (← getEnv).find? name | return none
@@ -413,17 +435,21 @@ partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List Scal
 /-- The components of a loop state: words and floats. -/
 def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type false
 
-/-- The components of one element of `type` when it is an array of a structure, sum, or
-enumeration whose components are words and floats: the array stores each element's components
-in order, one word each. -/
-def recordArrayComponents? (type : Lean.Expr) : MetaM (Option (List ScalarType)) := do
-  let type ← whnfR type
-  unless type.isAppOfArity ``Array 1 do return none
-  let element := type.appArg!
+/-- The components of `element` when it is a structure, sum, or enumeration whose components
+are words and floats: an array of `element` stores each element's components in order, one word
+each. -/
+def recordComponents? (element : Lean.Expr) : MetaM (Option (List ScalarType)) := do
   match ← userType? element with
   | some (.struct ..) | some (.sum ..) | some (.enum ..) =>
       return some (← componentTypes element false)
   | _ => return none
+
+/-- The components of one element of `type` when it is an array of records, as
+`recordComponents?` gives them. -/
+def recordArrayComponents? (type : Lean.Expr) : MetaM (Option (List ScalarType)) := do
+  let type ← whnfR type
+  unless type.isAppOfArity ``Array 1 do return none
+  recordComponents? type.appArg!
 
 /-- Whether every component of `term`, of a word, float, enumeration, structure, or sum type
 `type`, is the word 0: a word 0, a float `UInt64.toFloat 0`, the first constructor of an
@@ -619,8 +645,20 @@ template's code starts at `loc`: inside the block and loop of its `while`, after
 the condition and the exit test. -/
 def buildBodyLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64) : Loc :=
   let before : List Project.IR.Stmt := [.assign limit count,
+    .ite (.ltU (.get limit) (.const 536870912)) .skip .abort,
     .call 0 [⟨.u64, .bin .mul (.bin .add (.get limit) (.const 1)) (.const 8)⟩] [dst],
     .store (.get dst) (.get limit), .assign index (.const 0)]
+  (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
+    (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2)
+
+/-- Where the per-element statement of the record template starts. -/
+def recordBuildBodyLoc (loc : Loc) (dst limit index : Nat) (count : IRExpr .u64)
+    (elements : List (IRExpr .u64)) : Loc :=
+  let k : IRExpr .u64 := .const (UInt64.ofNat elements.length)
+  let before : List Project.IR.Stmt := [.assign limit count,
+    .ite (.ltU (.get limit) (.const (UInt64.ofNat (536870911 / elements.length + 1)))) .skip .abort,
+    .call 0 [⟨.u64, .bin .mul (.bin .add (.bin .mul (.get limit) k) (.const 1)) (.const 8)⟩] [dst],
+    .store (.get dst) (.bin .mul (.get limit) k), .assign index (.const 0)]
   (((loc.skip (before.map stmtLength).sum).inside none).inside none).skip
     (exprLength (.ltU (.get index) (.get limit) : IRExpr .bool) + 2)
 
@@ -1026,6 +1064,8 @@ mutual
     -- A `let` of a word: the value is assigned to a fresh local before the body's value.
     -- The value is pure, so its statement may run whenever the body's statements run.
     if let .letE name type value body _ := term then
+      if (← isTupleType type) && (← isFlatType type) then
+        return ← letRecord ctx name type value body fun ctx body => translateValue ctx loc body
       unless ← isWordType type do throwError "a `let` in a word value must bind a word: {source}"
       let (v, vHints) ← translateValue (ctx.movableIn body) ⟨[], 0⟩ value
       let local_ ← fresh .u64 name.eraseMacroScopes.toString
@@ -1333,6 +1373,9 @@ mutual
         pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
         return ← withLocalDeclD name type fun x =>
           translateFloat (ctx.bind x [(local_, vfmt.type)]) loc (body.instantiate1 x) fmt
+      if (← isTupleType type) && (← isFlatType type) then
+        return ← letRecord ctx name type value body fun ctx body =>
+          translateFloat ctx loc body fmt
       unless ← isWordType type do
         throwError "a `let` in a float value must bind a float or a word: {source}"
       let (v, vHints) ← translateValue (ctx.movableIn body) ⟨[], 0⟩ value
@@ -1662,6 +1705,8 @@ mutual
       | throwError "unsupported fold: {source}"
     let elementType : ScalarType ← if ← isUInt64 element then pure .u64
       else if ← isFloat element then pure .f64
+      else if (← recordComponents? element).isSome then
+        throwError "a fold over an array of records is written as `LeanExe.loop` over its indices, reading `xs[i.toNat]!`: {source}"
       else throwError "unsupported fold element type in {source}"
     unless ← (if accType == .f64 then isFloat acc else isUInt64 acc) do
       throwError "unsupported fold accumulator type in {source}"
@@ -1724,6 +1769,9 @@ mutual
   partial def peel {γ : Type} [Inhabited γ] (ctx : Ctx) (term : Lean.Expr)
       (k : Ctx → Lean.Expr → CompileM γ) : CompileM γ := do
     let term := term.consumeMData
+    if let .letE name type value body _ := term then
+      if (← isTupleType type) && (← isFlatType type) then
+        return ← letRecord ctx name type value body fun ctx body => peel ctx body k
     if let some unfolded ← unfoldMatcher? term then
       return ← peel ctx unfolded k
     let some (value, fields, alternative) ← tupleCases? term | k ctx term
@@ -1805,6 +1853,29 @@ mutual
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "record field read" source]
       locals := locals.push (local_, type)
     return locals.toList
+
+  /-- A `let` of a value whose components are words and floats: the components go to locals,
+  which the variable names in `body`. -/
+  partial def letRecord {γ : Type} (ctx : Ctx) (name : Name) (type value body : Lean.Expr)
+      (k : Ctx → Lean.Expr → CompileM γ) : CompileM γ := do
+    let components ← componentLocals (ctx.movableIn body) value type
+    withLocalDeclD name type fun x => k (ctx.bind x components) (body.instantiate1 x)
+
+  /-- The locals holding the components of `term`, of the pair, structure, or sum type `type`:
+  each scalar part of a constructor application is assigned to a fresh local, and any other
+  term gives the locals of `tupleOf`. -/
+  partial def componentLocals (ctx : Ctx) (term type : Lean.Expr) :
+      CompileM (List (Nat × ScalarType)) :=
+    peel ctx term fun ctx term => do
+    unless ← isTupleType type do
+      let (⟨scalar, value⟩, hints) ← translateAs ctx ⟨[], 0⟩ (← scalarTypeOf type) term
+      let local_ ← fresh scalar "component"
+      let stmt := Project.IR.Stmt.assign local_ value
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "component" (← sourceOf term) :: hints)
+      return [(local_, scalar)]
+    if let some parts ← constructorParts? term type then
+      return (← parts.mapM fun (part, partType) => componentLocals ctx part partType).flatten
+    tupleOf ctx term
 
   /-- The locals holding the components of the pair-valued `term`: a pair
   variable, a loop, a projection of a pair, an element of an array of records, or a call of
@@ -2494,6 +2565,28 @@ mutual
         pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array append" source]
         return dst
     | (``LeanExe.build, #[element, count, f]) =>
+        -- An array of records stores the words of each element's components.
+        if let some components ← recordComponents? element then
+          let (countIR, countHints) ← translateValue ctx ⟨[], 0⟩ count
+          let dst ← match dst? with
+            | some dst => pure dst
+            | none => fresh .u64 "array"
+          let limit ← fresh .u64 "limit"
+          let index ← fresh .u64 "index"
+          let (fields, bodyStmts, bodyHints) ← withBlock do
+            withLocalDeclD `i (mkConst ``UInt64) fun i => do
+              let inner := { ctx with foldable := true, allocating := false, pureCalls := true }.bind
+                i [(index, .u64)]
+              componentLocals inner (mkApp f i).headBeta element
+          unless fields.map (·.2) == components do
+            throwError "the components of a built record do not match its type: {source}"
+          let elements := fields.map fun (c, type) => Project.IR.Expr.word c type
+          let stmt := Stmt.buildRecords dst limit index countIR (seqAll bodyStmts) elements
+          let relocate (loc : Loc) (hint : Hint) : Hint :=
+            Hint.within loc.prefix_ (Hint.shift loc.index hint)
+          pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "record build" source :: countHints ++
+            bodyHints.map (relocate (recordBuildBodyLoc ⟨[], 0⟩ dst limit index countIR elements)))
+          return dst
         let floatElement ← isFloat element
         let float32Element ← isFloat32 element
         unless floatElement || float32Element || (← isUInt64 element) do
