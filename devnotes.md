@@ -26100,8 +26100,48 @@ other in a cycle give an error, and a call of a definition not yet compiled give
 `translateCall`, which the order makes unreachable.  A stricter first attempt, which only rejected
 a callee listed after its caller, rejected the GPT module's `linear` and the CLOB module's
 `findLevel`, so the order replaces it.  The compiler classified `Nat` as a recursive user type and
-failed only at the first operation on the parameter; `userType?` now excludes `Nat`, and a `Nat`
+failed only at the first operation on the parameter.  `userType?` now excludes `Nat`, and a `Nat`
 parameter or result gives an error that names `UInt64`.  The doc comment of the single form now
 says that `f` is function 2.  The full check passed: the build with no `sorry`, the same bytes for
 the 30 modules, 15,916 module cases, 77 release-count cases, 20 depth-guard cases, 360 chunk
 cases, LTG, and 474 WGSL cases on each of two drivers.
+
+### Demos 1, 2, 5, 6, 10, and 11
+
+Demo 1 is `primeFactors`, Demo 2 `lookup`, and Demo 5 `below100`, each with its request, README,
+specification, program, and bytes theorem.  Demo 6 joins the `gcd` example, whose `gcd_bytes` now
+states `Implements m 2 expected` for the specification by `Nat.gcd`, through `gcd_eq` and
+`Implements.congr`.  Demos 10 and 11 join the `sumArray` example as `productArray` and `xorArray`
+in a second module, `folds`, and `demos/folds/` describes the three folds.  The new rule
+`Func.foldl_implements` in `Project/IR/Fold.lean` proves `Implements` for any function whose body
+is the fold template with a word operation other than division and remainder, so each fold's
+theorem has four lines.  `Fold.lean` now imports `Correct.lean`.  The compiler already imported the
+proof library through `Live.lean`.
+
+`countFactors` terminates by the measure `r · 2^64 + (r − d)` of the remaining value `r` and the
+divisor `d`, so it needs no fuel.  `countFactors_eq` proves from Mathlib's `Nat.primeFactorsList`
+lemmas that it adds the number of prime factors, and the tail-recursion rule proves `Implements`
+from `countFactors_step`, one theorem about a run of the loop body in four cases, evaluated with
+`Stmt.run`.  The evaluation of the body needs 1,000,000 heartbeats.  `lookup` runs
+`LeanExe.loop` over the ten pairs with a found flag and a value as its state and returns a two-word
+literal.  `compute_eq` unfolds the ten iterations and splits on the ten key tests.  The loop body
+reads the array after other assignments, so the proof states the read rule for every state whose
+local 0 holds the array's pointer, and `simp` discharges that premise with `State.get_update_ne`.
+`below100` repeats `keep`, which consumes the output array and pushes in place, with
+`LeanExe.repeatWhile`.  The proof combines `Stmt.pushInPlace_spec` with `Live.appendPost`, as the
+CLOB's `stepCommand` does, and `Live.repeatWhileOne`, as the drone's `forward` does.  Core Lean in
+toolchain v4.34.0-rc2 deprecates `if_pos` and `if_neg` in favor of `ite_eq_left` and
+`ite_eq_right`, which the new proofs use.
+
+| Demo | Module | Bytes | Proof lines | Main's proof lines |
+|------|--------|-------|-------------|--------------------|
+| 1 | `primeFactors` | 1,613 | 203 | 329 |
+| 2 | `lookup` | 1,689 | 164 | 1,639 |
+| 5 | `below100` | 1,831 | 255 | 969, then 70 with main's later tools |
+| 6 | `gcd` | 1,445 | 82 | 191 |
+| 10, 11 | `folds` | 1,534 | 4 per function, with the shared rule | 572 and 676 |
+
+The full check passed: the build with no `sorry`, the same bytes for the 34 modules, 16,017 module
+cases, 77 release-count cases, 20 depth-guard cases, 360 chunk cases, and LTG.  The module cases
+include 13 for `primeFactors`, 9 for `lookup`, 9 for `below100`, and 70 for `folds`, and the 49
+`gcd` cases now compare with `expected`.

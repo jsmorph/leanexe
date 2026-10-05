@@ -23,6 +23,10 @@ import LeanExe.Examples.EulerReconstructed
 import LeanExe.Examples.Drone
 import Project.Increment.Spec
 import Project.RemoveZero.Spec
+import Project.PrimeFactors.Spec
+import Project.Lookup.Spec
+import Project.Below100.Spec
+import Project.Gcd.Spec
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -77,7 +81,7 @@ def gcdCases : IO Unit := do
      (12157665459056928801, 7540113804746346429), (1071, 462)]
   let random := (List.range 40).map fun i => (rw (2 * i + 100), if i % 7 = 0 then 0 else rw (2 * i + 101) % 100000)
   for (a, b) in chosen ++ random do
-    line "gcd" "gcd" "i64" [u a, u b] (toString (LeanExe.Examples.Gcd.gcd a b))
+    line "gcd" "gcd" "i64" [u a, u b] (toString (Project.Gcd.expected (a, b)))
 
 def wordArrays : List (List UInt64) :=
   [[], [0], [1, 2, 3], [maxU, 2], [maxU, maxU, maxU]] ++
@@ -86,6 +90,9 @@ def wordArrays : List (List UInt64) :=
 def sumArrayCases : IO Unit := do
   for xs in wordArrays do
     line "sumArray" "sumArray" "i64" [arrU xs] (toString (LeanExe.Examples.SumArray.sumArray xs.toArray))
+    line "folds" "productArray" "i64" [arrU xs]
+      (toString (LeanExe.Examples.SumArray.productArray xs.toArray))
+    line "folds" "xorArray" "i64" [arrU xs] (toString (LeanExe.Examples.SumArray.xorArray xs.toArray))
 
 def pairSumCases : IO Unit := do
   let chosen : List (UInt64 × UInt64) := [(3, 4), (maxU, 2), (0, 0), (maxU, maxU)]
@@ -851,6 +858,17 @@ def demoCases : IO Unit := do
       [0, 1, 2, 3, 4, 5, 6, 7], [1, 2, 3, 4, 5, 6, 7, 8, 9], [0, 0, 0, 0, 0, 0, 0, 0, 0]] do
     line "removeZero" "compute" "array-u64" [arrU xs]
       (words (Project.RemoveZero.expected xs.toArray).toList)
+  for n in [0, 1, 2, 3, 4, 60, 97, 1024, 600851475143, 1000000007, 9223372036854775808, max - 1,
+      max] do
+    line "primeFactors" "compute" "i64" [u n] (toString (Project.PrimeFactors.expected n))
+  let pairs : List UInt64 := [1, 10, 42, 20, 42, 30, 4, 40, 5, 50, 6, 60, 7, 70, 8, 80, 9, 90, 10, 100]
+  for xs in [42 :: pairs, 99 :: pairs, 10 :: pairs, 1 :: pairs, List.replicate 21 0, pairs,
+      42 :: pairs ++ [0], [], [max, 3, 4, max, max, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]] do
+    line "lookup" "compute" "array-u64" [arrU xs] (words (Project.Lookup.expected xs.toArray).toList)
+  for xs in [[], [5], [100], [99, 100, 101], [5, 100, 99, 250, 0, 7], [0, 1, 2, 3, 4, 5, 6, 7],
+      [100, 200, 300, 400, 500, 600, 700, 800], [1, 2, 3, 4, 5, 6, 7, 8, 9], [max, 0, 99, 100]] do
+    line "below100" "compute" "array-u64" [arrU xs]
+      (words (Project.Below100.expected xs.toArray).toList)
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

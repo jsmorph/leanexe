@@ -1,0 +1,2 @@
+Return the greatest common divisor of two UInt64 values a and b, computed with Euclid's
+remainder loop.  The greatest common divisor of a and 0 is a.

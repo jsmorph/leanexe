@@ -1,0 +1,3 @@
+For an Array UInt64, return the wrapping UInt64 sum of the elements starting with zero, the
+wrapping UInt64 product starting with one, and the bitwise XOR starting with zero, each computed
+by one function that folds over the elements from left to right.

@@ -1,0 +1,5 @@
+The public interface is Array UInt64 -> Array UInt64.  A well-formed input has
+exactly 21 elements: #[query, key1, value1, key2, value2, ..., key10,
+value10].  Search the ten pairs from left to right.  Return #[value, 1] for
+the first pair whose key equals query, and return #[0, 0] if no key matches.
+Return #[0, 0] for every input whose length is not 21.

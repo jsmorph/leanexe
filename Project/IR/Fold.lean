@@ -1,4 +1,4 @@
-import Project.IR.Stmt
+import Project.IR.Correct
 import Project.ProofKit.Array
 
 /-!
@@ -196,5 +196,40 @@ theorem Stmt.arraySize_spec {scratch dst src : Nat} {initial : Store Unit} {befo
   refine ⟨ptr, before, next, by simp [Expr.eval, hPtr], ?_, by rw [hSize]; exact hSet, rfl, hSet⟩
   rw [UInt64Array.At.pointerAddress_toNat hArray]
   omega
+
+open Project.Pipeline in
+/-- A function of one word array whose body is the fold template, an accumulator set to `init`
+followed by `Stmt.fold` with `op` applied to the accumulator and the element, computes
+`xs.foldl op.apply init`.  Division and remainder are excluded because they use scratch locals. -/
+theorem Func.foldl_implements (funcs : List (Func × String)) (i : Nat) (func : Func)
+    (name : String) (hFunc : funcs[i]? = some (func, name)) (op : U64Op) (init : UInt64)
+    (hOp : op ≠ .divU ∧ op ≠ .remU) (hParams : func.params = [.u64])
+    (hVars : func.vars = List.replicate 4 .u64) (hWidth : func.width = 0)
+    (hBody : func.body = .seq (.assign 1 (.const init))
+      (.fold .u64 0 1 2 3 4 (.bin op (.get 1) (.get 4))))
+    (hResults : func.results = [⟨.u64, .get 1⟩]) :
+    Implements (compile funcs) (2 + i) fun xs : Array UInt64 => xs.foldl op.apply init := by
+  refine Func.implements funcs i func name hFunc _
+    (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; simp [hParams]) ?_
+  rintro xs heap initial _ - ⟨ptr, rfl, hBorrowed⟩
+  have hScratch : func.scratch = 5 := by simp [Func.scratch, hParams, hVars]
+  have hState : func.state [.i64 ptr] =
+      { params := [.i64 ptr], locals := List.replicate 4 (.i64 0) } := by
+    simp [Func.state, Func.locals, hVars, hWidth, ScalarType.valueType, ValueType.zero]
+  rw [hBody, hScratch, hState, hResults]
+  let start : State := { params := [.i64 ptr], locals := List.replicate 4 (.i64 0) }
+  let first : State := { params := [.i64 ptr], locals := [.i64 init, .i64 0, .i64 0, .i64 0] }
+  refine Stmt.seq_spec (M := fun store state => store = initial ∧ state = first) ?_
+    ((Stmt.fold_spec (initial := initial) (before := first) (ptr := ptr) (start := init) op.apply
+      (by decide) (by decide) (by simp [first]) hBorrowed.values rfl rfl
+      fun state a e _ hA hE => ⟨state, by simp [Expr.eval, hOp.1, hOp.2, hA, hE]⟩).mono
+        (fun _ _ h => h) ?_)
+  · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
+    rintro store state ⟨hStore, hState⟩
+    subst store state
+    exact ⟨init, start, first, rfl, rfl, rfl, rfl⟩
+  · rintro store state ⟨hStore, -, hAcc⟩
+    exact ⟨hStore, [.i64 (xs.foldl op.apply init)], state, by
+      simp [Expr.evalResults, Expr.eval, hAcc], rfl⟩
 
 end Project.IR

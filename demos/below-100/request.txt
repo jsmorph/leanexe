@@ -1,0 +1,1 @@
+The public interface is Array UInt64 -> Array UInt64.  When the input contains at most eight elements, return the elements whose unsigned value is less than 100, preserving their original order.  When the input contains more than eight elements, return the empty array.
