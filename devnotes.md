@@ -25644,3 +25644,44 @@ current modules installed (`euler.wasm` SHA-256 `2b9450e4…`), every module mat
 13,809 module cases, 77 release-count cases, 20 depth-guard cases, and 360 chunk cases pass.  The
 LTG check and the 474 WGSL cases on each of the two Vulkan drivers pass.
 
+## 2026-10-05: No-abort execution and a memory bound, plan
+
+The user asked for proofs of no-abort execution and a memory bound, and chose to add an abort
+flag to the pipeline's specifications.  Today `Triple`, `ReturnsOrAborts`, and `Implements` accept
+a trap at `unreachable` for every postcondition.  In the euler module the traps are memory growth
+past the cap in `alloc`, the array-length guards of `build` and of the record build (lengths below
+`2^29` words), and `Stmt.abort` inside those guards.  `release` already has a termination
+specification under ownership, and the module has no recursion-depth guards.  The interpreter
+grows memory exactly when the new page count is at most the cap, so the proof needs a bound on
+`top` at every allocation that bumps it.
+
+The allocation rules state only that some heap satisfies the allocator invariant afterward.  The
+bound needs the exact step, `heap.allocate need` and `heap.release`, and an invariant that survives
+reuse and merging.  Main's `Heap.Reserved` counts free blocks that fit a grid, and that count drops
+when two fitting blocks merge on release, which this branch's `insertFree` does.  The measure here
+is the number of grid-sized blocks the free list can supply by splitting,
+`units g nodes = Σ (capacity + 48) / (g + 48)`, which merging cannot decrease.  With
+`Budget g spare limit := top + (spare - units g free) · (g + 48) ≤ limit`, an allocation of at most
+`g` bytes consumes one spare, and a release of a block of capacity at least `g` returns one.
+
+Each timestep allocates `#[]` for the retry loop's state and releases it at the end, and a small
+block can split a free grid block.  Counting alone loses one spare per timestep, so the bound
+would grow with the number of steps.  The retry loop will carry the current grid in that slot
+instead: an accepted try returns the new grid and releases the old one, and a rejected try keeps
+the old grid and releases the trial.  The arithmetic and the outputs do not change, and the peak
+stays at three grids: the current grid, the middle grid of the x sweep, and the trial.
+
+- [ ] A0: the retry loops carry the current grid; re-prove their lemmas and `Implements`; rerun
+  the module tests and the 192 runs.
+- [ ] A1: `Runs aborts`, `TripleA aborts`, and `ImplementsA aborts`, with the current names as the
+  `true` case, and the structural rules generic in the flag.
+- [ ] A2: exact heap steps in the allocation and release rules, the `units` measure, and `Budget`
+  with its allocate, release, bump, and page lemmas.
+- [ ] A3: total rules for allocation, `build`, the record build, and calls under `Budget`, and a
+  total `Implements` with a budget.
+- [ ] A4: the euler functions in total form: the scalar functions through the generic flag, and
+  the array functions with their budgets.
+- [ ] A5: from a fresh instance with a memory cap of at least the bound, both solve exports return
+  their words without a trap, and the page count stays within `4096 + 3·(48 + g)` bytes rounded up
+  to pages, which is at most 8,192 pages (512 MiB) for `n ≤ 800`.
+
