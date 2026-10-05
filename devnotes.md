@@ -25907,3 +25907,33 @@ from `initial`, every finite label is the cost of a flight to its state, and no 
 state costs less, for up to 64 stations and floors of at most 1,000,100.  The binary is unchanged
 from D1, so the module tests and the drone corpus results of D1 stand; `lake build` succeeds with
 no `sorry`.
+
+### D3: the forward pass
+
+`Project/Drone/Forward.lean` proves the forward pass at the source level.  `loop_congr` states that
+two loops whose steps agree at every index give the same state, and `Forward.best_congr` uses it:
+`best` reads only the 45 choices from its base, so it gives the same choice on any row that holds
+them.  `Forward.Rows terrain count n table` states that `table` has `45 n` choices and that the
+choices from `45 m` are the row of station `m` that `layers` builds, with the floors and the last
+station of the terrain.  `extend_rows` proves that below `count` `extend` adds the row of station
+`i`, and `go_rows` and `forward_rows` that `forward` ends with status 1 at station
+`max count 1` and the rows of every station below it; the fuel of 64 suffices for up to 64
+stations, since each run makes `count - 1` extending calls and one final call.
+`validHeights_iff` states that `validHeights` holds exactly when every height is at most
+1,000,000.
+
+| File | Function | Method |
+|---|---|---|
+| `Steps.lean` | `validHeights` | `Stmt.loop_spec` over a borrowed `Array UInt64`, as `ImplementsA` generic in the abort flag |
+| `Extend.lean` | `extend` | `Func.implements_moves` with the table moved in; on the final path the result is that table, and on the extending path `Stmt.buildRecords_spec` builds the new table, `Live.step` adds it to the live temporaries, and `Live.releaseSecond_last` releases the old one |
+| `Extend.lean` | `forward` | `Live.callOne_seq` for the call of `initial`, then `Live.repeatWhileOne` with `extend_implements` as the step |
+
+Each element of `extend`'s build computes both floors from the borrowed terrain, the loop over the
+sources, and the copy of the old entry, and its proof follows `advance`'s.  The evaluation leaves
+each floor in the form the compiled test produces, an implication where the source has a
+disjunction; `floor_ir0` and `floor_ir1` rewrite those forms to `floorAt`, and the loop's count
+is matched by cases on its first test.  `word_and_neg` gives the word of `p && !q`; a lemma that
+rewrote `if q then 0 else 1` to `if ¬q then 1 else 0` made `simp` loop with `ite_not`.  The
+step of `forward` passes the borrowed terrain, which `Live.borrowed` keeps borrowed and
+`Live.apartB` keeps apart from the table.  `drone_bytes` now covers entries 2 to 14.  The
+binary is unchanged from D1, and `lake build` succeeds with no `sorry`.
