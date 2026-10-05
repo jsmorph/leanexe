@@ -25070,12 +25070,12 @@ them to the bytes; main supplies the numerical design, the real-number mathemati
 structure where they fit.
 
 - [x] E1: `Bool` values: parameters, results, record fields, `&&`, `||`, `!`, `==`, `decide`.
-- [ ] E2: arrays whose elements hold no pointers: `Bool`, enumerations, and records of scalars,
+- [x] E2: arrays whose elements hold no pointers: `Bool`, enumerations, and records of scalars,
   stored inline.
 - [ ] E3: arrays whose elements own memory: arrays of arrays and of records that hold arrays.
-- [ ] E4: binary64 `toBits`, and whatever else the solvers need.
-- [ ] E5: the first-order solver, tests against main's binary, and the 192 and 800 runs.
-- [ ] E6: the first-order solver's theorems.
+- [x] E4: binary64 `toBits`, and whatever else the solvers need.
+- [x] E5: the first-order solver, tests against main's binary, and the 192 and 800 runs.
+- [x] E6: the first-order solver's theorems.
 - [ ] E7: the reconstructed solver, tests, and its 192 and 800 runs.
 - [ ] E8: the reconstructed solver's theorems.
 - [ ] E9: figures, report, and documentation.
@@ -25355,8 +25355,9 @@ the runs below.
 
 ### E6: proofs of the solver's functions, the scalar kernels
 
-`Project/Euler/Verify.lean` proves `ImplementsPure` for the seven functions of scalars:
-`normalized`, `energyGuard`, `side`, `component`, `update`, `flux`, and `advanceCell`.  The first
+`Project/Euler/Kernels.lean` proves `ImplementsPure` for the eight functions of scalars:
+`normalized`, `energyGuard`, `side`, `component`, `update`, `flux`, `advanceCell`, and
+`initialCell`.  The first
 attempts showed where symbolic evaluation of a compiled body breaks down, and the source and the
 proofs changed accordingly.
 
@@ -25380,3 +25381,74 @@ the results.  `advanceCell`, with seven calls, takes about a minute.
 
 The binary changed with these source changes.  The current `euler.wasm` passes the 716 cases and
 returned main's 192 words; the 800 run will be repeated with the final binary.
+
+### E6: proofs of the array and ownership functions
+
+The other fourteen compiled functions read, build, or move grids.  Their proofs are in four
+files, each importing the one before.
+
+| File | Functions | Method |
+|---|---|---|
+| `Project/Euler/Arrays.lean` | `initialCells` | `Stmt.buildRecords_spec`, with one call of `initialCell` per element |
+| `Project/Euler/Sweep.lean` | `sweep` | `Stmt.buildRecords_spec`; reads of three neighbors, one call of `advanceCell` |
+| `Project/Euler/Loops.lean` | `accepted`, `scan`, `pack` | `Stmt.loop_spec` over a borrowed grid; `Stmt.buildWith_spec` for `pack` |
+| `Project/Euler/Steps.lean` | `finishStep`, `step`, `tryStep`, `attempt`, `advanceWith`, `advanceStep`, `runFrom`, `run`, `solve` | The `Live` invariant, with the rules of `Project/IR/OneArray.lean` |
+
+A guarded read of a record field evaluates its index only when the guard holds, and the
+evaluation writes a scratch local, so the two arms of the guard leave different states.  In
+`sweep` the lower neighbor and the cell itself are always below the guard's bound, which the
+proof shows, but the upper neighbor `index + n` need not be: when the grid is not `n × n`, it
+can exceed `2^29` or wrap.  The proof splits on that guard; in the arm where it fails, the IR
+reads 0 and Lean's `grid[k]!` gives the default cell, whose words `cell_words` shows are 0.
+`pack` reads one density and one pressure for every output word, with indices that wrap below 4
+and below `4 + k`, and its proof splits on both guards.  The sweep proof first restates the
+expected cell in terms of `advanceCell`'s result, `hCell`, because unfolding `sweepCell` inside
+each of the six word goals exceeded eight million steps.
+
+The functions in `Steps.lean` pass grids by moves.  `Project/IR/OneArray.lean` adds what they
+need: an instance `Represent (Moved (Array α))` for arrays of records handed over by the caller,
+the class `OneArray` for results that are scalars followed by one array (`Array UInt64`, arrays
+of records, and tuples such as `UInt64 × Float × Array Cell`), `Live.callOne` for a call with
+such a result that consumes live temporaries, `Live.finish_results_one` for the end of a body,
+`Stmt.ite_test` for a conditional whose test leaves the state, and `Live.repeatWhileOne`, which
+restates `Stmt.repeatWhile_spec` in the `Live` invariant for a state of scalars and one array.
+`Stmt.repeatWhile_spec` gained one premise for its argument hypothesis, the unchanged memory
+caps, which `Live` requires.  Two elaboration costs had to be avoided.  Restating the solver's
+loops with new copies of their test and step lambdas made the definitional check expand
+`LeanExe.repeatWhile` through its fuel, so `advanceWith_loop` and `runFrom_loop` name the
+definition's own lambdas with an existential proved by `refine ⟨_, _, ?_, ?_, rfl⟩`.  A
+membership proof `List.mem_cons_of_mem _ (List.mem_singleton_self _)` for `Live.tempsOwned`
+timed out, and the explicit pair with `by simp` takes no time.
+
+`Project/Euler/Verify.lean` proves `euler_bytes`: `encode` succeeds on `euler.module`, and its
+bytes decode to a module in which each of the 22 compiled functions computes its Lean
+definition.  Each file checks in under 30 seconds except `Arrays.lean`, whose `initialCells`
+proof takes about 90.
+
+### E6: properties of the solver
+
+`Project/Euler/Spec.lean` proves properties of the Lean definitions, and `euler_solve` combines
+them with `euler_bytes`.  A cell is admissible when its status is 0 and its density and
+pressure are positive and finite, by main's `positiveBits` test on their words.
+
+| Theorem | Statement |
+|---|---|
+| `side_ok` | A state that passes `side`'s checks has positive density and pressure |
+| `advanceCell_ok` | A cell that `advanceCell` accepts has positive density and pressure |
+| `sweep_ok` | A cell of a sweep with status 0 is admissible |
+| `accepted_ok` | Every cell of a grid that `accepted` passes has status 0 |
+| `step_ok`, `tryStep_ok`, `attempt_ok` | An accepted step's grid is admissible and keeps the grid's size |
+| `repeatWhile_inv` | A property of the start that every step preserves holds at the end |
+| `advanceWith_ok`, `advanceStep_ok` | A timestep with status 0 returns an admissible grid of the same size |
+| `runFrom_ok`, `run_ok` | A run with status 0 has `2 ≤ n ≤ 800`, ends at time 0.8, and holds `n * n` admissible cells |
+| `solve_ok` | When the first output word is 0, the words are those of a successful run (`Successful`) |
+| `euler_solve` | The bytes decode to a module whose entry 23 computes `solve`, and an output whose first word is 0 is `Successful` |
+
+`Successful n words` states that `n` lies from 2 to 800, the second word holds the bits of 0.8,
+the array has `4 + 2 n²` words, and the `n²` densities and the `n²` pressures after the header
+are positive and finite.  The time-loop invariant is that a state with status 0 is either the
+initial state at time 0 or an admissible grid of `n²` cells; a run that returns status 0 has
+time 0.8, so its grid is admissible.  `Implements` permits an abort, so `euler_solve` says what
+a returned array holds, not that a call returns.  Main's first-order theorems also include a
+512 MiB memory bound and a numerical trace, which have no counterpart here.  The theorems here
+use only Lean's standard axioms.
