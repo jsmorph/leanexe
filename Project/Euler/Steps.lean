@@ -1,5 +1,6 @@
 import Project.Euler.Loops
 import Project.IR.OneArray
+import Project.Euler.Spec
 
 /-! The compiled functions of the first-order Euler solver that pass grids by moves compute
 their Lean definitions. -/
@@ -293,18 +294,6 @@ def advanceWithTuple : UInt64 × Float × Float × Moved (Array Cell) →
     UInt64 × Float × Array Cell :=
   fun (n, time, dt, grid) => advanceWith n time dt grid.val
 
-/-- `advanceWith` with its loop's test and step named. -/
-theorem advanceWith_loop (n : UInt64) (time dt : Float) (grid : Array Cell) :
-    ∃ (cond : UInt64 × Float × Array Cell → Bool)
-      (step : UInt64 × Float × Array Cell → UInt64 × Float × Array Cell),
-      (∀ x, cond x = (x.1 == 9)) ∧ (∀ x, step x = attempt n time grid x.1 x.2.1 x.2.2) ∧
-      advanceWith n time dt grid =
-        match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step with
-        | (status, dt, trial) =>
-          if status == 0 then ((0 : UInt64), time + dt, trial)
-          else (if status == 9 then 4 else status, time, grid) := by
-  refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
-
 set_option maxHeartbeats 4000000 in
 theorem advanceWith_implements : Implements euler.module 18 advanceWithTuple := by
   refine Func.implements_moves euler.funcs 16 euler.advanceWith.ir "advanceWith" rfl
@@ -528,20 +517,6 @@ theorem advanceStep_implements : Implements euler.module 19 advanceStepTuple := 
     exact Live.finish_results_one hLive1 ⟨final, by
       simp [euler.advanceStep.ir, Expr.evalResults, Expr.eval, final, after, hStart,
         Scalar.values]⟩
-
-/-- `runFrom` with its loop's test and step named. -/
-theorem runFrom_loop (n : UInt64) :
-    ∃ (cond : UInt64 × Float × Array Cell → Bool)
-      (step : UInt64 × Float × Array Cell → UInt64 × Float × Array Cell),
-      (∀ x, cond x = (x.1 == 0 && x.2.1.toBits != endTime.toBits)) ∧
-      (∀ x, step x = advanceStep n x.1 x.2.1 x.2.2) ∧
-      runFrom n =
-        match LeanExe.repeatWhile 4294967296 ((0 : UInt64), (0 : Float), initialCells n) cond
-          step with
-        | (status, time, grid) =>
-          if status == 0 && time.toBits != endTime.toBits then (5, time, grid)
-          else (status, time, grid) := by
-  refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
 
 set_option maxHeartbeats 4000000 in
 theorem runFrom_implements : Implements euler.module 20 runFrom := by
