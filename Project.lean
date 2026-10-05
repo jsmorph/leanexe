@@ -164,6 +164,8 @@ import Project.ProofKit.F64RounderEnclosure
 import Project.ProofKit.F64RoundingScale
 import Project.ProofKit.F64SqrtEnclosure
 import Project.ProofKit.F64StrictOrder
+import Project.ProofKit.F64InternalEnergy
+import Project.ProofKit.F64Admissibility
 import Project.ProofKit.F64Mul
 import Project.ProofKit.F64MulFinite
 import Project.ProofKit.F64Normalize
@@ -255,4 +257,12 @@ import Project.Grids.Module
 import Project.Grids.Verify
 import Project.Euler.Module
 import Project.Euler.Verify
+import Project.Euler.RealState
 import Project.Euler.Enclosure
+import Project.Euler.Cfl
+import Project.EulerReal.Flux
+import Project.EulerReal.Jacobian
+import Project.EulerReal.Rotation
+import Project.EulerReal.Eigenvectors
+import Project.EulerReal.Eigenbasis
+import Project.EulerReal.Hyperbolicity
