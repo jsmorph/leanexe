@@ -299,4 +299,77 @@ theorem Heap.Budget.release_one {heap : Heap} {store : Store Unit} {g : UInt64} 
     (heap.release ptr capacity).Budget g (spare + 1) limit :=
   (h.release hHeap ptr capacity hCap).mono (Nat.add_le_add_left (pieces_pos hFit) _)
 
+/-- `heap.Budget g spare` within `pages` pages: memory has at most `pages` pages, which the cap
+allows, and `top` with `spare` more blocks of `g` bytes stays within them. -/
+structure Heap.Bounded (heap : Heap) (store : Store Unit) (m : Wasm.Module) (g : UInt64)
+    (spare pages : Nat) : Prop where
+  budget : heap.Budget g spare (pages * 65536)
+  within : store.mem.pages ≤ pages
+  cap : pages ≤ store.memoryCap m 0
+
+/-- The capacity in the header of an owned array lies below `2 ^ 32`. -/
+theorem Heap.Owned.capacity_lt {heap : Heap} {store : Store Unit} {ptr : UInt64}
+    {words : Array UInt64} (h : heap.Owned store ptr words) :
+    (store.mem.read64 (ptr - 32).toUInt32).toNat < 2 ^ 32 := by
+  have := h.object.address
+  unfold capacityAt at this
+  omega
+
+theorem Store.memoryCap_eq {s store : Store Unit} {m : Wasm.Module}
+    (h : s.memoryCaps = store.memoryCaps) : s.memoryCap m 0 = store.memoryCap m 0 := by
+  simp only [Store.memoryCap, h]
+
+theorem Heap.Bounded.mono {heap : Heap} {store : Store Unit} {m : Wasm.Module} {g : UInt64}
+    {spare smaller pages : Nat} (h : heap.Bounded store m g spare pages)
+    (hSmaller : smaller ≤ spare) : heap.Bounded store m g smaller pages :=
+  ⟨h.budget.mono hSmaller, h.within, h.cap⟩
+
+/-- The bound carries over to a store with the same page count and caps. -/
+theorem Heap.Bounded.store {heap : Heap} {store s : Store Unit} {m : Wasm.Module} {g : UInt64}
+    {spare pages : Nat} (h : heap.Bounded store m g spare pages)
+    (hPages : s.mem.pages = store.mem.pages) (hCaps : s.memoryCaps = store.memoryCaps) :
+    heap.Bounded s m g spare pages :=
+  ⟨h.budget, hPages ▸ h.within, (Store.memoryCap_eq hCaps).symm ▸ h.cap⟩
+
+/-- With a spare left, memory has room for an allocation of at most `g` bytes. -/
+theorem Heap.Bounded.room {heap : Heap} {store : Store Unit} {m : Wasm.Module} {g need : UInt64}
+    {spare pages : Nat} (h : heap.Bounded store m g spare pages) (hHeap : heap.At store)
+    (hSpare : 0 < spare) (hNeed : need ≤ g) (hg : 8 ≤ g.toNat)
+    (hCap : store.memoryCap m 0 ≤ 65535) : heap.Room store m need :=
+  h.budget.room hHeap hSpare hNeed hg le_rfl h.cap (by have := h.cap; omega)
+
+/-- An allocation of at most `g` bytes uses one spare and keeps memory within `pages` pages. -/
+theorem Heap.Bounded.allocate {heap : Heap} {store s : Store Unit} {m : Wasm.Module}
+    {g need : UInt64} {spare pages : Nat} (h : heap.Bounded store m g (spare + 1) pages)
+    (hHeap : heap.At store) (hNeed : need ≤ g) (hg : 8 ≤ g.toNat)
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hPages : s.mem.pages = (heap.allocateStore store need 1).mem.pages)
+    (hCaps : s.memoryCaps = store.memoryCaps) :
+    (heap.allocate need).Bounded s m g spare pages := by
+  have hP := h.cap
+  refine ⟨by simpa using h.budget.allocate hHeap (by omega) hNeed hg (by omega), ?_,
+    (Store.memoryCap_eq hCaps).symm ▸ hP⟩
+  rw [hPages]
+  exact h.budget.allocate_pages hHeap (by omega) hNeed hg le_rfl h.within
+
+/-- A release of an owned array keeps the bound. -/
+theorem Heap.Bounded.release {heap : Heap} {store s : Store Unit} {m : Wasm.Module} {g : UInt64}
+    {spare pages : Nat} {ptr : UInt64} {words : Array UInt64}
+    (h : heap.Bounded store m g spare pages) (hHeap : heap.At store)
+    (hOwned : heap.Owned store ptr words)
+    (hPages : s.mem.pages = store.mem.pages) (hCaps : s.memoryCaps = store.memoryCaps) :
+    (heap.release ptr (store.mem.read64 (ptr - 32).toUInt32)).Bounded s m g spare pages :=
+  ⟨(h.budget.release hHeap ptr _ hOwned.capacity_lt).mono (Nat.le_add_right _ _),
+    hPages ▸ h.within, (Store.memoryCap_eq hCaps).symm ▸ h.cap⟩
+
+/-- A release of an owned array of at least `g` bytes returns one spare. -/
+theorem Heap.Bounded.release_one {heap : Heap} {store s : Store Unit} {m : Wasm.Module}
+    {g : UInt64} {spare pages : Nat} {ptr : UInt64} {words : Array UInt64}
+    (h : heap.Bounded store m g spare pages) (hHeap : heap.At store)
+    (hOwned : heap.Owned store ptr words) (hFit : g.toNat ≤ 8 * (words.size + 1))
+    (hPages : s.mem.pages = store.mem.pages) (hCaps : s.memoryCaps = store.memoryCaps) :
+    (heap.release ptr (store.mem.read64 (ptr - 32).toUInt32)).Bounded s m g (spare + 1) pages :=
+  ⟨h.budget.release_one hHeap ptr _ hOwned.capacity_lt (le_trans hFit hOwned.capacity),
+    hPages ▸ h.within, (Store.memoryCap_eq hCaps).symm ▸ h.cap⟩
+
 end Project.Pipeline

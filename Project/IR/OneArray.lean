@@ -243,6 +243,27 @@ theorem Live.finish_results_one [Represent β] [OneArray β] {heap0 heap : Heap}
   obtain ⟨next, hEval⟩ := hEval
   exact ⟨heap', hAt, hCaps, _, next, hEval, hOwned, hKeeps⟩
 
+/-- `Live.finish_results_one` whose final heap satisfies `P`, a fact of the live heap. -/
+theorem Live.finish_results_oneP [Represent β] [OneArray β] {heap0 heap : Heap}
+    {initial store : Store Unit} {ptr : UInt64} {y : β} {scratch : Nat}
+    {results : List ((type : ScalarType) × Expr type)} {state : State}
+    {P : Heap → Store Unit → Prop}
+    (hLive : Live heap0 initial moved heap store [(ptr, OneArray.words y)])
+    (hEval : ∃ next, Expr.evalResults store.mem scratch results state =
+      some (OneArray.scalars y ++ [Value.i64 ptr], next)) (hP : P heap store) :
+    ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
+      ∃ values next, Expr.evalResults store.mem scratch results state = some (values, next) ∧
+        Represent.owned heap' store values y ∧
+        heap0.Keeps initial (moved.map (block initial)) heap' store
+          (Represent.blocks store values y) ∧ P heap' store := by
+  obtain ⟨next, hEval⟩ := hEval
+  refine ⟨heap, hLive.at_, hLive.caps, _, next, hEval,
+    (OneArray.owned_iff _ _ _ y).mpr ⟨ptr, rfl, hLive.tempsOwned _ (List.mem_singleton_self _)⟩,
+    ?_, hP⟩
+  rw [OneArray.blocks_eq]
+  exact hLive.keeps.mono (fun _ h => h) fun _ hb => hb
+
+
 /-- A conditional whose test leaves the state: each branch runs from that state, under the
 test's outcome. -/
 theorem Stmt.ite_test {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scratch : Nat}
@@ -267,9 +288,7 @@ locals `states`, its scalars and then its array's pointer.  The call of `idx`, w
 regions apart from it; `g (F x)` is `step x`. -/
 theorem Live.repeatWhileOneA [Represent α] [Represent β] [OneArray β] {idx : Nat} {g : α → β}
     {Pre : α → Heap → Store Unit → Prop} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (hImpl : ImplementsA a m idx g Pre Post) (Hold : Heap → Store Unit → Prop)
-    (hHold : ∀ (x : α) (heap heap' : Heap) (s s' : Store Unit), Hold heap s →
-      Post x heap s heap' s' → Hold heap' s') {f : Wasm.Function}
+    (hImpl : ImplementsA a m idx g Pre Post) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {scratch limit counter : Nat} {states : List Nat}
@@ -280,9 +299,12 @@ theorem Live.repeatWhileOneA [Represent α] [Represent β] [OneArray β] {idx : 
     {fuel : Expr .u64} {n : UInt64}
     (hFuel : ∃ after, fuel.eval store.mem scratch before = some (n, after))
     {condition : Expr .bool} (cond : β → Bool) (step : β → β) (F : β → α)
-    (hStep : ∀ x, g (F x) = step x) {x0 : β} {p0 : UInt64}
+    (hStep : ∀ x, g (F x) = step x) (Hold : β → Heap → Store Unit → Prop)
+    (hHold : ∀ (x : β) (heap heap' : Heap) (s s' : Store Unit), Hold x heap s → cond x = true →
+      Post (F x) heap s heap' s' → Hold (step x) heap' s') {x0 : β} {p0 : UInt64}
     (hLive : Live heap0 initial moved heap store ((p0, OneArray.words x0) :: rest))
-    (hHolds0 : before.Holds states (OneArray.scalars x0 ++ [Value.i64 p0])) (hHold0 : Hold heap store)
+    (hHolds0 : before.Holds states (OneArray.scalars x0 ++ [Value.i64 p0]))
+    (hHold0 : Hold x0 heap store)
     (hCap : initial.memoryCap m 0 ≤ 65535)
     (hLen : ∀ x : β, (OneArray.scalars x).length + 1 = states.length)
     (hCond : ∀ (s : Store Unit) (st : State) (x : β) (p : UInt64),
@@ -291,7 +313,7 @@ theorem Live.repeatWhileOneA [Represent α] [Represent β] [OneArray β] {idx : 
       ∃ after, condition.eval s.mem scratch st = some (cond x, after))
     (hArgs : ∀ (heap' : Heap) (s : Store Unit) (st : State) (x : β) (p : UInt64),
       st.Holds states (OneArray.scalars x ++ [Value.i64 p]) →
-      Live heap0 initial moved heap' s ((p, OneArray.words x) :: rest) → Hold heap' s →
+      Live heap0 initial moved heap' s ((p, OneArray.words x) :: rest) → Hold x heap' s →
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
         Represent.borrowed heap' s avals (F x) ∧ Pre (F x) heap' s ∧
@@ -302,7 +324,8 @@ theorem Live.repeatWhileOneA [Represent α] [Represent β] [OneArray β] {idx : 
       (fun s st => ∃ heap' p, Live heap0 initial moved heap' s
         ((p, OneArray.words (LeanExe.repeatWhile n x0 cond step)) :: rest) ∧
         st.Holds states (OneArray.scalars (LeanExe.repeatWhile n x0 cond step) ++ [Value.i64 p]) ∧
-        State.Frame scratch (limit :: counter :: states) before st ∧ Hold heap' s) := by
+        State.Frame scratch (limit :: counter :: states) before st ∧
+        Hold (LeanExe.repeatWhile n x0 cond step) heap' s) := by
   have hBlocks : ∀ s (x : β) (p : UInt64),
       Represent.blocks s (OneArray.scalars x ++ [Value.i64 p]) x = [block s p] :=
     fun s x p => OneArray.blocks_eq s x p
@@ -316,8 +339,8 @@ theorem Live.repeatWhileOneA [Represent α] [Represent β] [OneArray β] {idx : 
         hLive hAt hCaps hKeeps (fun t ht => by rw [List.mem_singleton.mp ht]; exact hOwned)
         (List.pairwise_singleton _ _)
   refine (Stmt.repeatWhile_specA (heap0 := heap) (initial := store) (start := store)
-    (gone := [block store p0]) (x0 := x0) hImpl Hold hHold hImport hFunc hParams hLocals
-    hBelow hRoom hFuel cond step F hStep ?_ ?_ hHolds0 (hLive.cap hCap) ?_ ?_).mono
+    (gone := [block store p0]) (x0 := x0) hImpl hImport hFunc hParams hLocals
+    hBelow hRoom hFuel cond step F hStep Hold hHold ?_ ?_ hHolds0 (hLive.cap hCap) ?_ ?_).mono
       (fun _ _ h => h) ?_
   · intro heap' s vals y hOwned
     obtain ⟨p, rfl, -⟩ := (OneArray.owned_iff heap' s vals y).mp hOwned
@@ -388,9 +411,8 @@ theorem Live.repeatWhileOne [Represent α] [Represent β] [OneArray β] {idx : N
         ((p, OneArray.words (LeanExe.repeatWhile n x0 cond step)) :: rest) ∧
         st.Holds states (OneArray.scalars (LeanExe.repeatWhile n x0 cond step) ++ [Value.i64 p]) ∧
         State.Frame scratch (limit :: counter :: states) before st) := by
-  refine (Live.repeatWhileOneA (a := true) hImpl.toA (fun _ _ => True)
-    (fun _ _ _ _ _ _ _ => trivial) hImport hFunc hParams hLocals hBelow hRoom hFuel cond step F
-    hStep hLive hHolds0 trivial hCap hLen hCond
+  refine (Live.repeatWhileOneA (a := true) hImpl.toA hImport hFunc hParams hLocals hBelow hRoom
+    hFuel cond step F hStep (fun _ _ _ => True) (fun _ _ _ _ _ _ _ _ => trivial) hLive hHolds0 trivial hCap hLen hCond
     (fun heap' s st x p hHolds hL _ hFrame => ?_)).mono (fun _ _ h => h) ?_
   · obtain ⟨avals, after, hEval, hBorrowed, hMoves, hReads⟩ := hArgs heap' s st x p hHolds hL hFrame
     exact ⟨avals, after, hEval, hBorrowed, trivial, hMoves, hReads⟩

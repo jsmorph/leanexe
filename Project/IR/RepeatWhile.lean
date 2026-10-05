@@ -44,9 +44,7 @@ the state `x`, and `g (F x)` is `step x`.  The postcondition gives the final sta
 facts. -/
 theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α → β}
     {Pre : α → Heap → Store Unit → Prop} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (hImpl : ImplementsA a m idx g Pre Post) (Hold : Heap → Store Unit → Prop)
-    (hHold : ∀ (x : α) (heap heap' : Heap) (s s' : Store Unit), Hold heap s →
-      Post x heap s heap' s' → Hold heap' s') {f : Wasm.Function}
+    (hImpl : ImplementsA a m idx g Pre Post) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {scratch limit counter : Nat} {states : List Nat}
@@ -57,13 +55,16 @@ theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α
     {fuel : Expr .u64} {n : UInt64}
     (hFuel : ∃ after, fuel.eval start.mem scratch before = some (n, after))
     {condition : Expr .bool} (cond : β → Bool) (step : β → β) (F : β → α)
-    (hStep : ∀ x, g (F x) = step x)
+    (hStep : ∀ x, g (F x) = step x) (Hold : β → Heap → Store Unit → Prop)
+    (hHold : ∀ (x : β) (heap heap' : Heap) (s s' : Store Unit), Hold x heap s → cond x = true →
+      Post (F x) heap s heap' s' → Hold (step x) heap' s')
     (hWidth : ∀ (heap : Heap) store vals (y : β), Represent.owned heap store vals y →
       vals.length = states.length)
     {x0 : β} {vals0 : List Value}
     (hStart : ∃ heap1 : Heap, heap1.At start ∧ start.memoryCaps = initial.memoryCaps ∧
       Represent.owned heap1 start vals0 x0 ∧
-      heap0.Keeps initial gone heap1 start (Represent.blocks start vals0 x0) ∧ Hold heap1 start)
+      heap0.Keeps initial gone heap1 start (Represent.blocks start vals0 x0) ∧
+      Hold x0 heap1 start)
     (hHolds0 : before.Holds states vals0) (hCap : initial.memoryCap m 0 ≤ 65535)
     (hCond : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
       st.Holds states vals → Represent.owned heap s vals x →
@@ -71,7 +72,7 @@ theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α
       ∃ after, condition.eval s.mem scratch st = some (cond x, after))
     (hArgs : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
       st.Holds states vals → heap.At s → s.memoryCaps = initial.memoryCaps →
-      Represent.owned heap s vals x → Hold heap s →
+      Represent.owned heap s vals x → Hold x heap s →
       heap0.Keeps initial gone heap s (Represent.blocks s vals x) →
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
@@ -86,7 +87,7 @@ theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α
         heap0.Keeps initial gone heap s
           (Represent.blocks s vals (LeanExe.repeatWhile n x0 cond step)) ∧
         st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st ∧
-        Hold heap s) := by
+        Hold (LeanExe.repeatWhile n x0 cond step) heap s) := by
   obtain ⟨hL, hC, hNodup⟩ : limit ∉ counter :: states ∧ counter ∉ states ∧ states.Nodup := by
     simp only [List.nodup_cons] at hLocals
     exact ⟨hLocals.1, hLocals.2.1, hLocals.2.2⟩
@@ -136,7 +137,7 @@ theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α
       heap0.Keeps initial gone heap s (Represent.blocks s vals x) ∧
       st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st ∧
       st.get limit = some (.i64 n) ∧ st.get counter = some (.i64 (UInt64.ofNat j)) ∧
-      Hold heap s
+      Hold x heap s
   let measure : Store Unit → State → Nat := fun _ st =>
     match st.get counter with
     | some (.i64 c) => n.toNat - c.toNat
@@ -218,7 +219,7 @@ theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α
         simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
         have := n.toNat_lt
         omega
-      · exact hHold _ heap heap' s s'' hHoldS hPost
+      · exact hHold x heap heap' s s'' hHoldS hTrue hPost
       · simp only [measure, State.get_set?_same hSet3, UInt64.toNat_add, UInt64.toNat_ofNat',
           UInt64.reduceToNat]
         have := n.toNat_lt
@@ -310,8 +311,8 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
           (Represent.blocks s vals (LeanExe.repeatWhile n x0 cond step)) ∧
         st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st) := by
   obtain ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1⟩ := hStart
-  refine (Stmt.repeatWhile_specA (a := true) hImpl.toA (fun _ _ => True) (fun _ _ _ _ _ _ _ => trivial)
-    hImport hFunc hParams hLocals hBelow hRoom hFuel cond step F hStep hWidth
+  refine (Stmt.repeatWhile_specA (a := true) hImpl.toA hImport hFunc hParams hLocals hBelow hRoom
+    hFuel cond step F hStep (fun _ _ _ => True) (fun _ _ _ _ _ _ _ _ => trivial) hWidth
     ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1, trivial⟩ hHolds0 hCap hCond
     (fun s st x vals heap hHolds hAt hCaps hOwned _ hKeeps hFrame => ?_)).mono
     (fun _ _ h => h) ?_

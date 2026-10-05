@@ -29,8 +29,8 @@ theorem word_eq_word (p q : Prop) [Decidable p] [Decidable q] :
 def slopeTuple : Conserved × Conserved × Conserved → Slope := fun (l, c, r) => slope l c r
 
 set_option maxHeartbeats 4000000 in
-theorem slope_implements : ImplementsPure euler.module 37 slopeTuple :=
-  Func.implementsPure euler.funcs 35 euler.slope.ir "slope" rfl slopeTuple (fun _ => rfl)
+theorem slope_implements {a : Bool} : ImplementsPureA a euler.module 37 slopeTuple :=
+  Func.implementsPureA euler.funcs 35 euler.slope.ir "slope" rfl slopeTuple (fun _ => rfl)
     fun ⟨l, c, r⟩ initial => by
       refine Stmt.seq_run ?_
       eval_ir [euler.slope.ir]
@@ -49,8 +49,8 @@ def candidateTuple : Conserved × Conserved × Float → Faces :=
   fun (center, delta, factor) => candidate center delta factor
 
 set_option maxHeartbeats 4000000 in
-theorem candidate_implements : ImplementsPure euler.module 38 candidateTuple :=
-  Func.implementsPure euler.funcs 36 euler.candidate.ir "candidate" rfl candidateTuple
+theorem candidate_implements {a : Bool} : ImplementsPureA a euler.module 38 candidateTuple :=
+  Func.implementsPureA euler.funcs 36 euler.candidate.ir "candidate" rfl candidateTuple
     (fun _ => rfl) fun ⟨center, delta, factor⟩ initial => by
       let offset : Conserved := ⟨factor * delta.density, factor * delta.mx, factor * delta.my,
         factor * delta.energy⟩
@@ -80,8 +80,8 @@ def tryFactorTuple : Conserved × Conserved × Float → UInt64 × Float :=
   fun (center, delta, factor) => tryFactor center delta factor
 
 set_option maxHeartbeats 2000000 in
-theorem tryFactor_implements : ImplementsPure euler.module 39 tryFactorTuple :=
-  Func.implementsPure euler.funcs 37 euler.tryFactor.ir "tryFactor" rfl tryFactorTuple
+theorem tryFactor_implements {a : Bool} : ImplementsPureA a euler.module 39 tryFactorTuple :=
+  Func.implementsPureA euler.funcs 37 euler.tryFactor.ir "tryFactor" rfl tryFactorTuple
     (fun _ => rfl) fun ⟨center, delta, factor⟩ initial => by
       refine Stmt.seq_callPure candidate_implements rfl rfl rfl (x := (center, delta, factor)) ?_
       eval_ir [euler.tryFactor.ir, candidateTuple]
@@ -103,8 +103,8 @@ def limitFactorTuple : UInt64 × Conserved × Conserved → UInt64 × Float :=
   fun (trials, center, delta) => limitFactor trials center delta
 
 set_option maxHeartbeats 2000000 in
-theorem limitFactor_implements : ImplementsPure euler.module 40 limitFactorTuple :=
-  Func.implementsPure euler.funcs 38 euler.limitFactor.ir "limitFactor" rfl limitFactorTuple
+theorem limitFactor_implements {a : Bool} : ImplementsPureA a euler.module 40 limitFactorTuple :=
+  Func.implementsPureA euler.funcs 38 euler.limitFactor.ir "limitFactor" rfl limitFactorTuple
     (fun _ => rfl) fun ⟨trials, center, delta⟩ initial => by
       obtain ⟨cond, step, hCondEq, hStepEq, hDef⟩ := limitFactor_loop trials center delta
       set start := euler.limitFactor.ir.state (Scalar.values (trials, center, delta))
@@ -119,7 +119,7 @@ theorem limitFactor_implements : ImplementsPure euler.module 40 limitFactorTuple
       have hGet7 : start.get 7 = some (.f64 delta.my.toBits) := rfl
       have hGet8 : start.get 8 = some (.f64 delta.energy.toBits) := rfl
       let s2 := (start.update 9 (.i64 1)).update 10 (.f64 (0.5 : Float).toBits)
-      show Triple _ (.seq (.assign 9 (.const 1)) (.seq (.assign 10 _)
+      show TripleA _ _ (.seq (.assign 9 (.const 1)) (.seq (.assign 10 _)
         (Stmt.repeatWhile [9, 10] 11 12 (.get 0) _ 39 _))) 13 _ _
       refine Stmt.seq_run ⟨start.update 9 (.i64 1), by
         simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart], ?_⟩
@@ -161,8 +161,8 @@ def limitTuple : UInt64 × Conserved × Conserved → Faces :=
   fun (trials, center, delta) => limit trials center delta
 
 set_option maxHeartbeats 2000000 in
-theorem limit_implements : ImplementsPure euler.module 41 limitTuple :=
-  Func.implementsPure euler.funcs 39 euler.limit.ir "limit" rfl limitTuple (fun _ => rfl)
+theorem limit_implements {a : Bool} : ImplementsPureA a euler.module 41 limitTuple :=
+  Func.implementsPureA euler.funcs 39 euler.limit.ir "limit" rfl limitTuple (fun _ => rfl)
     fun ⟨trials, center, delta⟩ initial => by
       let r := limitFactor trials center delta
       refine Stmt.seq_callPure limitFactor_implements rfl rfl rfl (x := (trials, center, delta)) ?_
@@ -180,8 +180,8 @@ def reconstructTuple : UInt64 × Conserved × Conserved × Conserved → Faces :
   fun (trials, left, center, right) => reconstruct trials left center right
 
 set_option maxHeartbeats 4000000 in
-theorem reconstruct_implements : ImplementsPure euler.module 42 reconstructTuple :=
-  Func.implementsPure euler.funcs 40 euler.reconstruct.ir "reconstruct" rfl reconstructTuple
+theorem reconstruct_implements {a : Bool} : ImplementsPureA a euler.module 42 reconstructTuple :=
+  Func.implementsPureA euler.funcs 40 euler.reconstruct.ir "reconstruct" rfl reconstructTuple
     (fun _ => rfl) fun ⟨trials, left, center, right⟩ initial => by
       let delta := slope left center right
       refine Stmt.seq_callPure slope_implements rfl rfl rfl (x := (left, center, right)) ?_
@@ -212,11 +212,11 @@ def reconstructedStepTuple : UInt64 × Float × Conserved × Conserved × Conser
     reconstructedStep trials ratio farLeft left center right farRight
 
 set_option maxHeartbeats 8000000 in
-theorem reconstructedStep_implements : ImplementsPure euler.module 43 reconstructedStepTuple :=
-  Func.implementsPure euler.funcs 41 euler.reconstructedStep.ir "reconstructedStep" rfl
+theorem reconstructedStep_implements {a : Bool} : ImplementsPureA a euler.module 43 reconstructedStepTuple :=
+  Func.implementsPureA euler.funcs 41 euler.reconstructedStep.ir "reconstructedStep" rfl
     reconstructedStepTuple (fun _ => rfl)
     fun ⟨trials, ratio, farLeft, left, center, right, farRight⟩ initial => by
-      have hR := reconstruct_implements
+      have hR := reconstruct_implements (a := a)
       let leftFaces := reconstruct trials farLeft left center
       let centerFaces := reconstruct trials left center right
       let rightFaces := reconstruct trials center right farRight

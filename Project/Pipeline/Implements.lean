@@ -531,12 +531,20 @@ theorem Implements.toA [Represent α] [Represent β] {m : Module} {entry : Nat} 
   exact (h env store heap params x hHeap hArgs hSeparate hCap).mono
     fun _ _ ⟨heap', hAt, hOwned, hCaps, hRegions⟩ => ⟨heap', hAt, hOwned, hCaps, hRegions, trivial⟩
 
+/-- `ImplementsA true` gives `Implements` when `Pre` holds of every input, heap, and store. -/
+theorem ImplementsA.implements_of [Represent α] [Represent β] {m : Module} {entry : Nat}
+    {f : α → β} {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA true m entry f Pre Post) (hPre : ∀ x heap store, Pre x heap store) :
+    Implements m entry f := by
+  intro env store heap params x hHeap hArgs hSeparate hCap
+  exact (h env store heap params x hHeap (hPre x heap store) hArgs hSeparate hCap).mono
+    fun _ _ ⟨heap', hAt, hOwned, hCaps, hRegions, _⟩ => ⟨heap', hAt, hOwned, hCaps, hRegions⟩
+
 theorem ImplementsA.implements [Represent α] [Represent β] {m : Module} {entry : Nat}
     {f : α → β} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
-    (h : ImplementsA true m entry f (fun _ _ _ => True) Post) : Implements m entry f := by
-  intro env store heap params x hHeap hArgs hSeparate hCap
-  exact (h env store heap params x hHeap trivial hArgs hSeparate hCap).mono
-    fun _ _ ⟨heap', hAt, hOwned, hCaps, hRegions, _⟩ => ⟨heap', hAt, hOwned, hCaps, hRegions⟩
+    (h : ImplementsA true m entry f (fun _ _ _ => True) Post) : Implements m entry f :=
+  h.implements_of fun _ _ _ => trivial
 
 /-- An entry that keeps the store implements its function without allocating, from any heap,
 and leaves the heap and the store as they were. -/

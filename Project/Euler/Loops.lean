@@ -12,10 +12,12 @@ def acceptedStep (grid : Array Cell) (i : UInt64) (ok : Bool) : Bool :=
   ok && grid[i.toNat]!.status == 0
 
 set_option maxHeartbeats 4000000 in
-theorem accepted_implements : Implements euler.module 12 accepted := by
-  refine Func.implements euler.funcs 10 euler.accepted.ir "accepted" rfl accepted
+theorem accepted_implementsA {a : Bool} :
+    ImplementsA a euler.module 12 accepted (fun _ _ _ => True)
+      (fun _ heap store heap' final => heap' = heap ∧ final = store) := by
+  refine Func.implementsA euler.funcs 10 euler.accepted.ir "accepted" rfl accepted _
     (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
-  rintro grid heap initial _ - ⟨ptr, rfl, hGrid⟩
+  rintro grid heap initial _ - - ⟨ptr, rfl, hGrid⟩
   change heap.Borrowed initial ptr (flatWords grid) at hGrid
   have hW := hGrid.values
   have hLength0 := hW.lengthBound
@@ -28,7 +30,7 @@ theorem accepted_implements : Implements euler.module 12 accepted := by
   have hGet0 : start.get 0 = some (.i64 ptr) := rfl
   let s1 := start.update 1 (.i64 (UInt64.ofNat (flatWords grid).size))
   let s2 := s1.update 2 (.i64 1)
-  show Triple _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 1))
+  show TripleA _ _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 1))
     (.loop 3 4 (.bin .divU (.get 1) (.const 6)) _))) 8 _ _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
     Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
@@ -76,6 +78,9 @@ theorem accepted_implements : Implements euler.module 12 accepted := by
     simp [euler.accepted.ir, Func.scratch, Expr.evalResults, Expr.eval, g2, Scalar.values,
       Flat.flat]
 
+theorem accepted_implements : Implements euler.module 12 accepted :=
+  (accepted_implementsA (a := true)).implements
+
 /-- One step of `scan`'s loop. -/
 def scanStep (grid : Array Cell) (i : UInt64) (acc : UInt64 × Float) : UInt64 × Float :=
   let q := grid[i.toNat]!.state
@@ -85,10 +90,12 @@ def scanStep (grid : Array Cell) (i : UInt64) (acc : UInt64 × Float) : UInt64 �
   (acc.1 ||| x.status ||| y.status, if acc.2.toBits < speed.toBits then speed else acc.2)
 
 set_option maxHeartbeats 4000000 in
-theorem scan_implements : Implements euler.module 15 scan := by
-  refine Func.implements euler.funcs 13 euler.scan.ir "scan" rfl scan
+theorem scan_implementsA {a : Bool} :
+    ImplementsA a euler.module 15 scan (fun _ _ _ => True)
+      (fun _ heap store heap' final => heap' = heap ∧ final = store) := by
+  refine Func.implementsA euler.funcs 13 euler.scan.ir "scan" rfl scan _
     (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
-  rintro grid heap initial _ - ⟨ptr, rfl, hGrid⟩
+  rintro grid heap initial _ - - ⟨ptr, rfl, hGrid⟩
   change heap.Borrowed initial ptr (flatWords grid) at hGrid
   have hW := hGrid.values
   have hLength0 := hW.lengthBound
@@ -96,14 +103,14 @@ theorem scan_implements : Implements euler.module 15 scan := by
   have hCount := flatWords_count cell_length (by decide) (by decide) grid hW.size_lt
   have hSize : (flatWords grid).size < 536870912 := by have := hW.1; omega
   have hWords := flatWords_size cell_length grid
-  have hS := side_implements
+  have hS := side_implements (a := a)
   set start := euler.scan.ir.state [.i64 ptr] with hStartDef
   have hStart : start.params.length + start.locals.length = 32 := rfl
   have hGet0 : start.get 0 = some (.i64 ptr) := rfl
   let s1 := start.update 1 (.i64 (UInt64.ofNat (flatWords grid).size))
   let s2 := s1.update 2 (.i64 0)
   let s3 := s2.update 3 (.f64 0)
-  show Triple _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 0))
+  show TripleA _ _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.const 0))
     (.seq (.assign 3 (.constF 0)) (.loop 4 5 (.bin .divU (.get 1) (.const 6)) _)))) 30 _ _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
     Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) <|
@@ -173,6 +180,9 @@ theorem scan_implements : Implements euler.module 15 scan := by
       simpa [State.Holds, Scalar.values] using hHolds
     simp [euler.scan.ir, Func.scratch, Expr.evalResults, Expr.eval, g.1, g.2, Scalar.values]
 
+theorem scan_implements : Implements euler.module 15 scan :=
+  (scan_implementsA (a := true)).implements
+
 def packTuple : UInt64 × UInt64 × Float × Array Cell → Array UInt64 :=
   fun (n, status, time, grid) => pack n status time grid
 
@@ -184,10 +194,16 @@ def packWord (n status : UInt64) (time : Float) (grid : Array Cell) (i : UInt64)
 
 set_option maxRecDepth 10000 in
 set_option maxHeartbeats 4000000 in
-theorem pack_implements : Implements euler.module 22 packTuple := by
-  refine Func.implements_heap euler.funcs 20 euler.pack.ir "pack" rfl packTuple
+/-- Under `a = false`, the words of the result fit in `g` bytes, and the heap has room for one
+more block of `g` bytes. -/
+theorem pack_implementsA {a : Bool} {g : UInt64} (spare pages : Nat) :
+    ImplementsA a euler.module 22 packTuple
+      (fun x heap store => a = false → 8 * (2 * x.2.2.2.size + 5) ≤ g.toNat ∧ 8 ≤ g.toNat ∧
+        heap.Bounded store euler.module g (spare + 1) pages)
+      (fun _ _ _ heap' final => a = false → heap'.Bounded final euler.module g spare pages) := by
+  refine Func.implements_heapA euler.funcs 20 euler.pack.ir "pack" rfl packTuple _ _
     (by rintro _ _ _ _ ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, _, rfl, -⟩; rfl) ?_
-  rintro ⟨n, status, time, grid⟩ heap initial _ hHeap
+  rintro ⟨n, status, time, grid⟩ heap initial _ hHeap hPre
     ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, ptr, rfl, hGrid⟩ hCap
   change heap.Borrowed initial ptr (flatWords grid) at hGrid
   have hW := hGrid.values
@@ -207,7 +223,7 @@ theorem pack_implements : Implements euler.module 22 packTuple := by
   let s1 := start.update 4 (.i64 (UInt64.ofNat (flatWords grid).size))
   let s2 := (((s1.update 13 (.i64 (UInt64.ofNat (flatWords grid).size))).update 14 (.i64 6)).update
     5 (.i64 k))
-  show Triple _ (.seq (.load .u64 4 (.get 3)) (.seq (.assign 5 (.bin .divU (.get 4) (.const 6)))
+  show TripleA _ _ (.seq (.load .u64 4 (.get 3)) (.seq (.assign 5 (.bin .divU (.get 4) (.const 6)))
     (Stmt.buildWith 6 7 8 (.bin .add (.const 4) (.bin .mul (.const 2) (.get 5))) _ _))) 13 _ _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
     Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
@@ -217,9 +233,15 @@ theorem pack_implements : Implements euler.module 22 packTuple := by
   have hS2 : s2.params.length + s2.locals.length = 15 := by simp [s2, s1, hStart]
   rw [show packTuple (n, status, time, grid) = LeanExe.build (4 + 2 * k)
     (packWord n status time grid) from rfl]
-  refine (Stmt.buildWith_spec (writes := [9, 10, 11, 12]) (n := 4 + 2 * k) (scratch := 13)
+  have hWords := flatWords_size cell_length grid
+  have hK2 : (4 + 2 * k).toNat = 4 + 2 * grid.size := by
+    have hk : k.toNat = grid.size := by simp only [k, Nat.toUInt64, UInt64.toNat_ofNat']; omega
+    rw [UInt64.toNat_add, UInt64.toNat_mul, hk]; simp; omega
+  refine (Stmt.buildWith_specA (writes := [9, 10, 11, 12]) (n := 4 + 2 * k) (scratch := 13)
     (packWord n status time grid) rfl rfl rfl (by decide) (by decide) (by decide)
-    (by omega) hHeap hCap
+    (by omega) hHeap hCap (fun _ => by rw [hK2]; omega)
+    (fun ha => (hPre ha).2.2.room hHeap (by omega) (pack_need (hPre ha).1 (by omega))
+      (hPre ha).2.1 hCap)
     (by simp [Expr.eval, s2, s1, hStart, U64Op.apply]) ?_).mono
       (fun _ _ h => h) ?_
   · intro i store state hi hAt hFrame hIndex
@@ -267,10 +289,14 @@ theorem pack_implements : Implements euler.module 22 packTuple := by
       · repeat refine State.Frame.update ?_ (by decide)
         exact State.Frame.refl _ _ _
       · simp [packWord, k, hZ0, hZ4, hD, hP]
-  rintro store state ⟨ptr, -, hPtr, hNew⟩
-  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
-    by simp [euler.pack.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
-    hNew.keeps⟩
-  exact hNew.owned
+  rintro store state ⟨ptr, -, hPtr, hNew, hPages⟩
+  exact ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [euler.pack.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
+    ⟨ptr, rfl, hNew.owned⟩, hNew.keeps,
+    fun ha => (hPre ha).2.2.allocate hHeap (pack_need (hPre ha).1 (by omega)) (hPre ha).2.1 hCap
+      hPages hNew.caps⟩
+
+theorem pack_implements : Implements euler.module 22 packTuple :=
+  (pack_implementsA (a := true) (g := 0) 0 0).implements_of fun _ _ _ h => nomatch h
 
 end Project.Euler

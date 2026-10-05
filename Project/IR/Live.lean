@@ -198,6 +198,23 @@ theorem Live.perm {heap0 heap : Heap} {initial store : Store Unit}
     fun t ht => hLive.tempsOwned t (hPerm.mem_iff.mpr ht),
     (hPerm.pairwise_iff fun h => regionsDisjoint_symm h).mp hLive.pairwise⟩
 
+/-- Releasing the newest temporary keeps the rest live and the page count. -/
+theorem Live.releaseFirst_pages {heap0 heap : Heap} {initial store : Store Unit}
+    {t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial moved heap store (t :: rest)) {typeIdx scratch src : Nat}
+    {before : State} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 t.1)) :
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before)
+      (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
+        s rest ∧ st = before ∧ s.mem.pages = store.mem.pages) := by
+  have hT : heap.Owned store t.1 t.2 := hLive.tempsOwned t (by simp)
+  refine (Stmt.release_spec hImports hFunc hPtr hLive.at_ hT).mono (fun _ _ h => h) ?_
+  rintro s st ⟨rfl, rfl⟩
+  exact ⟨Live.step (consumed := [t]) (news := []) hLive (hLive.at_.release hT.object) rfl
+    ((Heap.Keeps.release hLive.at_ hT.object).mono (fun b hb => hb) fun _ hb => nomatch hb)
+    (fun _ h => nomatch h) .nil, rfl, Heap.releaseStore_pages _ _ _⟩
+
 /-- Releasing the newest temporary keeps the rest live. -/
 theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
     {t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
@@ -207,13 +224,9 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
     (hPtr : before.get src = some (.i64 t.1)) :
     TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
-        s rest ∧ st = before) := by
-  have hT : heap.Owned store t.1 t.2 := hLive.tempsOwned t (by simp)
-  refine (Stmt.release_spec hImports hFunc hPtr hLive.at_ hT).mono (fun _ _ h => h) ?_
-  rintro s st ⟨rfl, rfl⟩
-  exact ⟨Live.step (consumed := [t]) (news := []) hLive (hLive.at_.release hT.object) rfl
-    ((Heap.Keeps.release hLive.at_ hT.object).mono (fun b hb => hb) fun _ hb => nomatch hb)
-    (fun _ h => nomatch h) .nil, rfl⟩
+        s rest ∧ st = before) :=
+  (hLive.releaseFirst_pages hImports hFunc hPtr).mono (fun _ _ h => h)
+    fun _ _ ⟨hL, hst, _⟩ => ⟨hL, hst⟩
 
 /-- Releasing the temporary `t` at any position keeps the rest live. -/
 theorem Live.releaseAt {heap0 heap : Heap} {initial store : Store Unit}
@@ -379,6 +392,19 @@ theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit}
     TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
   (hLive.releaseSecond hImports hFunc hPtr).mono (fun _ _ h => h) fun s _ ⟨hL, hst⟩ =>
     hst ▸ hNext s hL
+
+/-- `Live.releaseSecond_last` with the page count of the store the release leaves. -/
+theorem Live.releaseSecond_last_pages {heap0 heap : Heap} {initial store : Store Unit}
+    {r t : UInt64 × Array UInt64} {rest : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial moved heap store (r :: t :: rest)) {typeIdx scratch src : Nat}
+    {before : State} {Q : Store Unit → State → Prop} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
+    (hPtr : before.get src = some (.i64 t.1))
+    (hNext : ∀ s, Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
+      s (r :: rest) → s.mem.pages = store.mem.pages → Q s before) :
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
+  ((hLive.perm (List.perm_middle (l₁ := [r]))).releaseFirst_pages hImports hFunc hPtr).mono
+    (fun _ _ h => h) fun s _ ⟨hL, hst, hPages⟩ => hst ▸ hNext s hL hPages
 
 /-- A call to entry `idx`, which implements `g` with a scalar result under the heap conditions
 `Pre` and `Post`, followed by `next`: the call needs `Pre x heap store`, the result goes to the
