@@ -109,7 +109,9 @@ theorem Stmt.arrayLiteral_specA {typeIdx scratch dst : Nat} {values : List (Expr
       (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))) store ptr
-          words.toArray) := by
+          words.toArray ∧
+        store.mem.pages =
+          (heap.allocateStore initial (UInt64.ofNat (8 * (values.length + 1))) 1).mem.pages) := by
   have hLength : values.length = words.length := hValues.length_eq
   have hNeed : (UInt64.ofNat (8 * (values.length + 1))).toNat = 8 * (values.length + 1) :=
     UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
@@ -180,7 +182,7 @@ theorem Stmt.arrayLiteral_specA {typeIdx scratch dst : Nat} {values : List (Expr
     have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hComplete.complete
       (by simp only [List.size_toArray]; omega)
       (by rw [hAll.1]; exact heap.allocateStore_memoryCaps initial need 1)
-    exact ⟨_, hFrame, hPtr, hNew⟩
+    exact ⟨_, hFrame, hPtr, hNew, hWithin.pages⟩
 
 /-- An array literal allocates a block for its elements, stores the length and
 the elements, and leaves its pointer in `dst`, with the facts of
@@ -200,7 +202,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))) store ptr
           words.toArray) :=
-  Stmt.arrayLiteral_specA (a := true) hMemory32 hImports hFunc hDst hRoom hHeap hCap
-    (fun h => nomatch h) hShort hValues
+  (Stmt.arrayLiteral_specA (a := true) hMemory32 hImports hFunc hDst hRoom hHeap hCap
+    (fun h => nomatch h) hShort hValues).mono (fun _ _ h => h)
+    fun _ _ ⟨ptr, hF, hD, hN, _⟩ => ⟨ptr, hF, hD, hN⟩
 
 end Project.IR

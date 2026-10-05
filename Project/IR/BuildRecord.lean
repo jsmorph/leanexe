@@ -299,7 +299,9 @@ theorem Stmt.buildRecords_specA [Scalar α] [Inhabited α] {typeIdx scratch dst 
         state.get dst = some (.i64 ptr) ∧
         heap.NewArray initial
           (heap.allocate (UInt64.ofNat (8 * (n.toNat * elements.length + 1)))) store ptr
-          (flatWords (LeanExe.build n g))) := by
+          (flatWords (LeanExe.build n g)) ∧
+        store.mem.pages = (heap.allocateStore initial
+          (UInt64.ofNat (8 * (n.toNat * elements.length + 1))) 1).mem.pages) := by
   have hLocals0 := hLocals
   have hBelow0 := hBelow
   simp only [List.nodup_cons, List.mem_cons, List.not_mem_nil, or_false, not_or,
@@ -462,7 +464,7 @@ theorem Stmt.buildRecords_specA [Scalar α] [Inhabited α] {typeIdx scratch dst 
     have hNew := Heap.newArray_of_writes hHeap hFitsNeed hWithin hAt (by omega)
       (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps initial need 1)
     exact ⟨_, hFrame3.weaken (fun j hj => List.mem_append_left _ hj) |>.trans hFrame, hDstGet,
-      hNew⟩
+      hNew, hWithin.pages⟩
 
 /-- The record template allocates `8 · (n · k + 1)` bytes, stores the length `n · k`, and
 stores the `k` words of `g i` for each index `i`, leaving the pointer in `dst`, with the facts
@@ -496,7 +498,8 @@ theorem Stmt.buildRecords_spec [Scalar α] [Inhabited α] {typeIdx scratch dst l
         heap.NewArray initial
           (heap.allocate (UInt64.ofNat (8 * (n.toNat * elements.length + 1)))) store ptr
           (flatWords (LeanExe.build n g))) :=
-  Stmt.buildRecords_specA (a := true) g hk hK hMemory32 hImports hFunc hLocals hBelow hApart hRoom
-    hHeap hCap (fun h => nomatch h) (fun h => nomatch h) hCount hBody
+  (Stmt.buildRecords_specA (a := true) g hk hK hMemory32 hImports hFunc hLocals hBelow hApart hRoom
+    hHeap hCap (fun h => nomatch h) (fun h => nomatch h) hCount hBody).mono (fun _ _ h => h)
+    fun _ _ ⟨ptr, hF, hD, hN, _⟩ => ⟨ptr, hF, hD, hN⟩
 
 end Project.IR
