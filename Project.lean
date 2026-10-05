@@ -258,6 +258,7 @@ import Project.Grids.Module
 import Project.Grids.Verify
 import Project.Euler.Module
 import Project.Euler.Verify
+import Project.Euler.Total
 import Project.Euler.RealState
 import Project.Euler.Enclosure
 import Project.Euler.Cfl

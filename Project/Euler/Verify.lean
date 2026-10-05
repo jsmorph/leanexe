@@ -9,6 +9,11 @@ namespace Project.Euler
 
 open Wasm Project.Pipeline Project.IR LeanExe.Examples.Euler
 
+/-- `encode` succeeds on `euler.module`, and its bytes decode to `euler.module`. -/
+theorem euler_round_trip : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧
+    Wasm.Encoding.decode bytes = .ok euler.module :=
+  Wasm.Encoding.round_trip euler.module (by decide +kernel) (by decide +kernel)
+
 /-- `encode` succeeds on `euler.module`, and its bytes decode to a module that computes each
 function exactly. -/
 theorem euler_bytes : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧
@@ -23,8 +28,7 @@ theorem euler_bytes : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes �
       Implements m 18 advanceWithTuple ∧ Implements m 19 advanceStepTuple ∧
       Implements m 20 runFrom ∧ Implements m 21 LeanExe.Examples.Euler.run ∧
       Implements m 22 packTuple ∧ Implements m 23 solve := by
-  obtain ⟨bytes, success, decoded⟩ :=
-    Wasm.Encoding.round_trip euler.module (by decide +kernel) (by decide +kernel)
+  obtain ⟨bytes, success, decoded⟩ := euler_round_trip
   exact ⟨bytes, success, euler.module, decoded, normalized_implements, energyGuard_implements,
     side_implements, component_implements, flux_implements, update_implements,
     advanceCell_implements, initialCell_implements, initialCells_implements, sweep_implements,
@@ -63,8 +67,7 @@ theorem euler_reconstructed_bytes : ∃ bytes, Wasm.Encoding.encode euler.module
       Implements m 52 reconstructedAdvanceWithTuple ∧
       Implements m 53 reconstructedAdvanceStepTuple ∧ Implements m 54 reconstructedRunFromTuple ∧
       Implements m 55 reconstructedRunTuple ∧ Implements m 56 reconstructedSolveTuple := by
-  obtain ⟨bytes, success, decoded⟩ :=
-    Wasm.Encoding.round_trip euler.module (by decide +kernel) (by decide +kernel)
+  obtain ⟨bytes, success, decoded⟩ := euler_round_trip
   exact ⟨bytes, success, euler.module, decoded, endpoint_implements, outAdd_implements,
     outSub_implements, outMul_implements, outDiv_implements, outSqrt_implements,
     kineticLower_implements, pressureUpper_implements, soundUpper_implements,
