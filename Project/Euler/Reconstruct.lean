@@ -40,9 +40,9 @@ theorem slope_implements : ImplementsPure euler.module 37 slopeTuple :=
         zero_toBits]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [minmod, absBits, toBits_ite, F64Bits.toBits_sub, zero_toBits, word_eq_word]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def candidateTuple : Conserved × Conserved × Float → Faces :=

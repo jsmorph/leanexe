@@ -203,11 +203,11 @@ theorem side_implements : ImplementsPure euler.module 4 sideTuple :=
         half_toBits, twoFifths_toBits, sevenFifths_toBits, zero_toBits, cond_eq_ite]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_div,
           F64Bits.toBits_sqrt, F64Bits.toBits_abs, half_toBits, twoFifths_toBits,
           sevenFifths_toBits]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def fluxTuple : Float × Float × Float × Float × Float × Float × Float × Float → Flux :=
@@ -247,9 +247,9 @@ theorem flux_implements : ImplementsPure euler.module 6 fluxTuple :=
         componentTuple, alpha, left, right]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [toBits_ite]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def advanceCellTuple : Float × Float × Float × Float × Float × Float × Float × Float × Float ×
@@ -304,9 +304,9 @@ theorem advanceCell_implements : ImplementsPure euler.module 8 advanceCellTuple 
         nextMomentum, nextTransverse, nextEnergy]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [toBits_ite, F64Bits.toBits_mul]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def initialCellTuple : UInt64 × UInt64 → Cell := fun (n, index) => initialCell n index
