@@ -19,6 +19,7 @@ import LeanExe.Examples.Trees
 import LeanExe.Examples.Updates
 import LeanExe.Examples.Bools
 import LeanExe.Examples.Grids
+import LeanExe.Examples.Euler
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -610,9 +611,79 @@ def gridsCases : IO Unit := do
     line "grids" "flags" "array-u64" [u (UInt64.ofNat size)]
       (words ((LeanExe.Examples.Grids.flags (UInt64.ofNat size)).toList.map fun x => if x then 1 else 0))
 
+open LeanExe.Examples.Euler in
+def eulerCases : IO Unit := do
+  let cellWords (c : Cell) : List UInt64 :=
+    [c.state.density.toBits, c.state.mx.toBits, c.state.my.toBits, c.state.energy.toBits,
+     c.pressure.toBits, c.status]
+  let gridArg (g : Array Cell) : String := arrU (g.toList.flatMap cellWords)
+  let gridWords (g : Array Cell) : String := words (g.toList.flatMap cellWords)
+  let sp := specialFloats.toArray
+  -- A physical state for most indices, and special values in one component for the others.
+  let state (i : Nat) : Float × Float × Float × Float :=
+    let rho := 0.1 + (small i).abs / 10
+    let m := small (i + 1) / 20
+    let t := small (i + 2) / 20
+    let e := rho + 0.5 + (small (i + 3)).abs / 5
+    match i % 7 with
+    | 0 => (sp[i % sp.size]!, m, t, e)
+    | 1 => (rho, sp[i % sp.size]!, t, e)
+    | 2 => (rho, m, t, sp[i % sp.size]!)
+    | 3 => (rho, 2 * rho, t, e)
+    | _ => (rho, m, t, e)
+  for i in [:120] do
+    let (rho, m, t, e) := state i
+    let q := side rho m t e
+    line "euler" "side" "list:i64,f64,f64,f64,f64,f64,f64,f64" [fl rho, fl m, fl t, fl e]
+      (words [q.status, q.velocity.toBits, q.pressure.toBits, q.speed.toBits, q.massFlux.toBits,
+        q.momentumFlux.toBits, q.transverseFlux.toBits, q.energyFlux.toBits])
+    let alpha := if i % 5 == 0 then sp[i % sp.size]! else (small (i + 4)).abs
+    let c := component alpha m t rho e
+    line "euler" "component" "list:i64,f64" [fl alpha, fl m, fl t, fl rho, fl e]
+      (words [c.status, c.value.toBits])
+    let u := update (alpha / 10) rho m t
+    line "euler" "update" "list:i64,f64" [fl (alpha / 10), fl rho, fl m, fl t]
+      (words [u.status, u.value.toBits])
+    let (rho2, m2, t2, e2) := state (i + 3)
+    let f := flux rho m t e rho2 m2 t2 e2
+    line "euler" "flux" "list:i64,f64,f64,f64,f64,f64"
+      [fl rho, fl m, fl t, fl e, fl rho2, fl m2, fl t2, fl e2]
+      (words [f.status, f.mass.toBits, f.momentum.toBits, f.transverse.toBits, f.energy.toBits,
+        f.alpha.toBits])
+    let (rho3, m3, t3, e3) := state (i + 5)
+    let ratio := if i % 6 == 0 then sp[i % sp.size]! else (small (i + 6)).abs / 50
+    let a := advanceCell ratio rho m t e rho2 m2 t2 e2 rho3 m3 t3 e3
+    line "euler" "advanceCell" "list:i64,f64,f64,f64,f64,f64,f64,f64"
+      [fl ratio, fl rho, fl m, fl t, fl e, fl rho2, fl m2, fl t2, fl e2, fl rho3, fl m3, fl t3,
+        fl e3]
+      (words [a.status, a.density.toBits, a.momentum.toBits, a.transverse.toBits,
+        a.energy.toBits, a.pressure.toBits, a.alpha.toBits, a.courant.toBits])
+  for n in [2, 3, 5, 8] do
+    let n : UInt64 := n
+    let g := initialCells n
+    line "euler" "initialCells" "array-u64" [u n] (gridWords g)
+    line "euler" "accepted" "i64" [gridArg g] (if accepted g then "1" else "0")
+    let sc := scan g
+    line "euler" "scan" "list:i64,f64" [gridArg g] (words [sc.1, sc.2.toBits])
+    for ratio in [0.05, 0.3, 2.0, 0.0, -0.1, nan] do
+      for axisY in [false, true] do
+        line "euler" "sweep" "array-u64" [u n, u (if axisY then 1 else 0), fl ratio, gridArg g]
+          (gridWords (sweep n axisY ratio g))
+      line "euler" "step" "array-u64" [u n, fl ratio, gridArg g] (gridWords (step n ratio g))
+    for (time, dt) in [(0.0, 0.01), (0.0, 0.9), (0.7, 0.2), (0.0, -0.01), (0.0, 1e-30)] do
+      let r := advanceWith n time dt g
+      line "euler" "advanceWith" "list:i64,f64,array-u64" [u n, fl time, fl dt, gridArg g]
+        (words ([r.1, r.2.1.toBits] ++ r.2.2.toList.flatMap cellWords))
+    let r := advanceStep n 0 0 g
+    line "euler" "advanceStep" "list:i64,f64,array-u64" [u n, u 0, fl 0, gridArg g]
+      (words ([r.1, r.2.1.toBits] ++ r.2.2.toList.flatMap cellWords))
+  for n in [0, 1, 2, 3, 4, 7, 16, 801] do
+    let n : UInt64 := n
+    line "euler" "solve" "array-u64" [u n] (words (solve n).toList)
+
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases
   binary32Cases
   piecewiseCases; sumSquaresCases; meanCases; bucketCases; clobCases; runCases
   calculatorCases; shapeCases; listCases; wordsCases; treeCases; updatesCases
-  boolsCases; gridsCases
+  boolsCases; gridsCases; eulerCases

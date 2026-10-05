@@ -11,6 +11,7 @@ import Project.IR.Build
 import Project.IR.BuildRecord
 import Project.IR.Update
 import Project.IR.ArrayLoop
+import Project.IR.RepeatWhile
 import Project.IR.Hint
 import Project.IR.Copy
 import LeanExe.Float32
@@ -205,6 +206,10 @@ structure Ctx where
   /-- Whether calls with scalar arguments and results may appear where code must
   keep the store: true in loop bodies and elements of `LeanExe.build`. -/
   pureCalls : Bool := false
+  /-- Whether `peel` binds a `let` of a record by pushing its statements to the prelude.  A
+  translation that builds its statement list itself, such as a loop body's, binds such a `let`
+  in its own list. -/
+  peelLets : Bool := true
   /-- Whether such a call may also lend a value of a recursive type: true in loop bodies. -/
   lendsTrees : Bool := false
   /-- Whether a `let` may bind an array: true at the top of a function body, false
@@ -267,7 +272,7 @@ def sourceOf (term : Lean.Expr) : MetaM String := return toString (← ppExpr te
 `List.toArray [e₀, …]`. -/
 def arrayLiteral? (term : Lean.Expr) : Option (List Lean.Expr) :=
   match term.consumeMData.getAppFnArgs with
-  | (``List.toArray, #[_, list]) => list.consumeMData.listLit?.map (·.2)
+  | (``List.toArray, #[_, list]) | (``Array.mk, #[_, list]) => list.consumeMData.listLit?.map (·.2)
   | _ => none
 
 /-- Statements that run before the value being translated and become the start
@@ -386,6 +391,13 @@ def isTupleType (type : Lean.Expr) : MetaM Bool := do
   match ← userType? type with
   | some (.struct ..) | some (.sum _) => return true
   | _ => return false
+
+/-- `term` unfolded at its head, when its head is a function marked `@[inline]`: such a
+function, when no rule covers it and the module does not compile it, is inlined at its use. -/
+def unfoldInline? (term : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let .const fn _ := term.getAppFn | return none
+  unless Lean.Compiler.hasInlineAttribute (← getEnv) fn do return none
+  return (← unfoldDefinition? term).map (·.headBeta)
 
 /-- Whether every component of `type` is a word or a float: a word, float, or enumeration, or a
 pair, structure, or sum of such. -/
@@ -517,6 +529,8 @@ partial def stateTerms (term type : Lean.Expr) : MetaM (List (Lean.Expr × Scala
 
 instance : Inhabited (Σ type, IRExpr type) := ⟨⟨.u64, .const 0⟩⟩
 
+instance : Inhabited (IRExpr .bool) := ⟨.ltU (.const 0) (.const 0)⟩
+
 /-- The WebAssembly value types of a result's components, array pointers included. -/
 def resultTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type true
 
@@ -595,6 +609,10 @@ def Ctx.bind (ctx : Ctx) (x : Lean.Expr) : List (Nat × ScalarType) → Ctx
   | [(index, _)] => { ctx with words := (x, index) :: ctx.words }
   | components => { ctx with tuples := (x, components) :: ctx.tuples }
 
+/-- The array variables in scope and their locals: word, float, and record arrays. -/
+def Ctx.arrayVars (ctx : Ctx) : List (Lean.Expr × Nat) :=
+  ctx.arrays ++ ctx.floatArrays ++ ctx.recordArrays.map fun (x, local_, _) => (x, local_)
+
 /-- Binds `x`, of type `type`, to the locals `components`: an array to its one local, and
 any other value as `Ctx.bind` does. -/
 def Ctx.bindTyped (ctx : Ctx) (x type : Lean.Expr) (components : List (Nat × ScalarType)) :
@@ -605,6 +623,9 @@ def Ctx.bindTyped (ctx : Ctx) (x type : Lean.Expr) (components : List (Nat × Sc
   if ← isFloatArray type then
     let [(index, _)] := components | throwError "an array takes one local"
     return { ctx with floatArrays := (x, index) :: ctx.floatArrays }
+  if let some elementComponents ← recordArrayComponents? type then
+    let [(index, _)] := components | throwError "an array takes one local"
+    return { ctx with recordArrays := (x, index, elementComponents) :: ctx.recordArrays }
   if (← isNodeType type) || (← isUInt64List type) then
     let [(index, _)] := components | throwError "a value with records takes one local"
     return { ctx with nodes := (x, index) :: ctx.nodes }
@@ -758,7 +779,7 @@ def readLocals : {type : ScalarType} → IRExpr type → List Nat
 recursive types at the locals `reads`, which earlier parts read, count as pending reads: the
 earlier parts run after `action`'s statements, so `action` may not move them. -/
 def afterReads {γ : Type} (ctx : Ctx) (reads : List Nat) (action : CompileM γ) : CompileM γ := do
-  let arrays := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).filterMap fun (x, local_) =>
+  let arrays := (ctx.arrayVars ++ ctx.nodes).filterMap fun (x, local_) =>
     if reads.contains local_ then some x else none
   let saved := (← get).pendingReads
   modify fun p => { p with pendingReads := arrays ++ p.pendingReads }
@@ -784,7 +805,7 @@ def Ctx.movableIn (ctx : Ctx) (body : Lean.Expr) : Ctx :=
 arrays and values of recursive types that no later part mentions, since the later parts use
 them. -/
 def Ctx.before (ctx : Ctx) (later : List Lean.Expr) : Ctx :=
-  let arrays := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).map (·.1)
+  let arrays := (ctx.arrayVars ++ ctx.nodes).map (·.1)
   { ctx with owned := ctx.owned.filter fun x =>
       !arrays.contains x || later.all fun t => occurrences x.fvarId! t == 0 }
 
@@ -900,7 +921,7 @@ partial def selfArgs (self : Name) (i : Nat) (term : Lean.Expr) : MetaM (List Le
 def releaseUnmoved (ctx : Ctx) : CompileM Unit := do
   for param in ctx.owned do
     unless (← get).consumed.contains param do
-      let some local_ := (ctx.nodes ++ ctx.arrays ++ ctx.floatArrays).lookup param
+      let some local_ := (ctx.nodes ++ ctx.arrayVars).lookup param
         | throwError "an owned parameter has no local"
       let stmt := Project.IR.Stmt.release local_
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "release owned parameter" (← sourceOf param)]
@@ -916,7 +937,7 @@ def ownComponents (ctx : Ctx) (source : String) (xs : List (Lean.Expr × Lean.Ex
     if (← isArray type) || (← isUInt64List type) || (← isNodeType type) then
       unless ctx.temporaries && ctx.foldable && ctx.allocating do
         throwError "an array, a list, or a value of a recursive type may be bound from a call's result only at the top of a function body: {source}"
-      let some local_ := (ctx.arrays ++ ctx.floatArrays ++ ctx.nodes).lookup x
+      let some local_ := (ctx.arrayVars ++ ctx.nodes).lookup x
         | throwError "a heap component has no local: {source}"
       modify fun p => { p with temporaries := p.temporaries.push (x, local_, source) }
       ctx := { ctx with owned := x :: ctx.owned }
@@ -1027,7 +1048,7 @@ mutual
     if let some index := ctx.words.lookup term then
       let ir : IRExpr .u64 := .get index
       return (ir, [hint ir "variable"])
-    if (ctx.arrays.lookup term).isSome || (ctx.floatArrays.lookup term).isSome then
+    if (ctx.arrayVars.lookup term).isSome then
       throwError "the array {source} is used as a value"
     -- An owned value of a recursive type moves into the value that uses it.
     if let some local_ ← lookupNode ctx term then
@@ -1066,7 +1087,15 @@ mutual
     if let .letE name type value body _ := term then
       if (← isTupleType type) && (← isFlatType type) then
         return ← letRecord ctx name type value body fun ctx body => translateValue ctx loc body
-      unless ← isWordType type do throwError "a `let` in a word value must bind a word: {source}"
+      if let some vfmt ← floatFormat? type then
+        let (v, vHints) ← translateFloat (ctx.movableIn body) ⟨[], 0⟩ value vfmt
+        let local_ ← fresh vfmt.type name.eraseMacroScopes.toString
+        let stmt := Project.IR.Stmt.assign local_ v
+        pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "let" (← sourceOf value) :: vHints)
+        return ← withLocalDeclD name type fun x =>
+          translateValue (ctx.bind x [(local_, vfmt.type)]) loc (body.instantiate1 x)
+      unless ← isWordType type do
+        throwError "a `let` in a word value must bind a word, a float, or a record: {source}"
       let (v, vHints) ← translateValue (ctx.movableIn body) ⟨[], 0⟩ value
       let local_ ← fresh .u64 name.eraseMacroScopes.toString
       let stmt := Project.IR.Stmt.assign local_ v
@@ -1224,6 +1253,10 @@ mutual
         let one ← translateValue ctx (loc.skip (exprLength x)) (mkConst ``Bool.true)
         let ir : IRExpr .u64 := .bin .bitXor x one.1
         return (ir, hint ir "bool not" :: xHints ++ one.2)
+    | (``Float.toBits, #[x]) =>
+        let (f, fHints) ← translateFloat ctx loc x .binary64
+        let ir : IRExpr .u64 := .toBits f
+        return (ir, hint ir "float bits" :: fHints)
     | (``UInt32.toUInt64, #[operand]) =>
         let (``Float32.toBits, #[x]) := operand.consumeMData.getAppFnArgs
           | throwError "a UInt32 word must be the bits of a Float32: {source}"
@@ -1241,6 +1274,8 @@ mutual
           | throwError "a call used as a word must return one word: {source}"
         let ir : IRExpr .u64 := .get result
         return (ir, [hint ir "call result"])
+      if let some unfolded ← unfoldInline? term then
+        return ← translateValue ctx loc unfolded
       match term.getAppFnArgs with
       | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := binaryRules.find? (·.1 == fn)
@@ -1342,7 +1377,10 @@ mutual
         return (ir, hint ir "not" :: cHints)
     | (``And, #[a, b]) => connective .and "and" a b
     | (``Or, #[a, b]) => connective .or "or" a b
-    | _ => throwError "unsupported condition: {source}"
+    | _ =>
+      if let some unfolded ← unfoldInline? prop then
+        return ← translateCondition ctx loc unfolded
+      throwError "unsupported condition: {source}"
 
   /-- Translates a `Float` or `Float32` term, of format `fmt`, to an IR expression whose code
   starts at `loc`.  Case splits, folds, `UInt64.toFloat`, and `Float.ofBits` are binary64 only. -/
@@ -1506,7 +1544,9 @@ mutual
         return (ir, hint ir (fmt.rule "array read") :: iHints)
     | (fn, #[left, right, out, _, a, b]) =>
         let some (_, op, rule) := floatRules.find? (·.1 == fn)
-          | throwError "unsupported float operation {fn} in {source}"
+          | if let some unfolded ← unfoldInline? term then
+              return ← translateFloat ctx loc unfolded fmt
+            throwError "unsupported float operation {fn} in {source}"
         unless (← isFormat left) && (← isFormat right) && (← isFormat out) do
           throwError "unsupported operand types in {source}"
         let (l, lHints) ← translateFloat ctx loc a fmt
@@ -1515,12 +1555,8 @@ mutual
         let ir := fmt.bin op l r
         return (ir, hint ir (fmt.rule rule) :: lHints ++ rHints)
     | _ =>
-      -- A function marked `@[inline]` that no rule above covers, and that the module does not
-      -- compile, is unfolded at its use.
-      if let .const fn _ := term.getAppFn then
-        if Lean.Compiler.hasInlineAttribute (← getEnv) fn then
-          if let some unfolded ← unfoldDefinition? term then
-            return ← translateFloat ctx loc unfolded.headBeta fmt
+      if let some unfolded ← unfoldInline? term then
+        return ← translateFloat ctx loc unfolded fmt
       throwError "unsupported float term: {source}"
 
   /-- Translates a term of type `type`, which is `UInt64` or `Float`. -/
@@ -1770,7 +1806,7 @@ mutual
       (k : Ctx → Lean.Expr → CompileM γ) : CompileM γ := do
     let term := term.consumeMData
     if let .letE name type value body _ := term then
-      if (← isTupleType type) && (← isFlatType type) then
+      if ctx.peelLets && (← isTupleType type) && (← isFlatType type) then
         return ← letRecord ctx name type value body fun ctx body => peel ctx body k
     if let some unfolded ← unfoldMatcher? term then
       return ← peel ctx unfolded k
@@ -1884,6 +1920,7 @@ mutual
     let term := term.consumeMData
     if let some components := ctx.tuples.lookup term then return components
     if term.isAppOf ``LeanExe.loop then return ← translateLoop ctx term
+    if term.isAppOf ``LeanExe.repeatWhile then return ← translateRepeatWhile ctx term
     if let some (arrayLocal, position, components, start, count) ← recordSlice? ctx term then
       return ← readRecord ctx term arrayLocal components position start count
     match ← projectionField? ctx term with
@@ -1892,6 +1929,8 @@ mutual
     | none => pure ()
     if let some fn := term.getAppFn.constName? then
       if let some index := ctx.callees.lookup fn then return ← translateCall ctx term index
+    if let some unfolded ← unfoldInline? term then
+      return ← componentLocals ctx unfolded (← inferType term)
     throwError "unsupported pair: {← sourceOf term}"
 
   /-- Translates `LeanExe.loop n init f` to assignments of `init`'s components to
@@ -1999,7 +2038,7 @@ mutual
       withLocalDeclD `x stateType fun x => do
         let bodyCtx := { ctx.bind i [(index, .u64)] with
           tuples := (x, states.map (·, .u64)) :: ctx.tuples, owned := [] }
-        peel bodyCtx (mkApp2 f i x).headBeta fun inner body => do
+        peel { bodyCtx with peelLets := false } (mkApp2 f i x).headBeta fun inner body => do
           let known := ctx.arrays ++ ctx.floatArrays
           let state := (inner.arrays ++ inner.floatArrays).filterMap fun (e, _) =>
             if known.any (·.1 == e) then none else some e
@@ -2022,6 +2061,62 @@ mutual
       callHints.map fun hint => Hint.within callLoc.prefix_ (Hint.shift callLoc.index hint))
     return states
 
+  /-- The number of arrays among the components of `type`. -/
+  partial def arrayCount (type : Lean.Expr) : MetaM Nat := do
+    let type ← whnfR type
+    if type.isAppOfArity ``Prod 2 then
+      return (← arrayCount type.appFn!.appArg!) + (← arrayCount type.appArg!)
+    return if ← isArray type then 1 else 0
+
+  /-- Translates `LeanExe.repeatWhile fuel init cond step`, whose state is a tuple of words,
+  floats, and arrays, to `Stmt.repeatWhile`, and returns the locals of the final state.  The
+  initial state's components go to the state locals.  `cond` must translate to a condition that
+  needs no statements, and `step`, after it destructures the state, must be one call of a
+  function compiled into the same module that consumes every array of the state. -/
+  partial def translateRepeatWhile (ctx : Ctx) (term : Lean.Expr) :
+      CompileM (List (Nat × ScalarType)) := do
+    let source ← sourceOf term
+    let (``LeanExe.repeatWhile, #[stateType, fuel, init, cond, step]) := term.getAppFnArgs
+      | throwError "unsupported loop: {source}"
+    unless ctx.foldable && ctx.allocating do
+      throwError "a loop may not appear in a branch, a fold or loop body, or a recursive definition: {source}"
+    let types ← resultTypes stateType
+    let states ← types.mapM fun type => fresh type "state"
+    let _ ← translateResults ctx init stateType (some states)
+    let (count, countHints) ← translateValue ctx ⟨[], 0⟩ fuel
+    let limit ← fresh .u64 "limit"
+    let counter ← fresh .u64 "counter"
+    let stateCtx (x : Lean.Expr) : Ctx :=
+      { ctx with tuples := (x, states.zip types) :: ctx.tuples, owned := [], peelLets := false }
+    let (condition, _) ← withLocalDeclD `s stateType fun x => do
+      let ((c, hints), stmts, _) ← withBlock <|
+        peel { stateCtx x with foldable := false } (mkApp cond x).headBeta fun inner body => do
+          translateCondition inner ⟨[], 0⟩ (← mkEq body (mkConst ``Bool.true))
+      unless stmts.isEmpty do
+        throwError "the condition of a repeatWhile must need no statements: {source}"
+      return (c, hints)
+    let arrays ← arrayCount stateType
+    let ((idx, args), outer, _) ← withBlock <| withLocalDeclD `s stateType fun x => do
+      peel (stateCtx x) (mkApp step x).headBeta fun inner body => do
+        let known := ctx.arrayVars
+        let state := inner.arrayVars.filterMap fun (e, _) =>
+          if known.any (·.1 == e) then none else some e
+        let some idx := ctx.callees.lookup body.getAppFn.constName
+          | throwError "the step of a repeatWhile must be one call: {source}"
+        let (_, stmts, _) ← withBlock
+          (translateCall { inner with owned := state } body idx (some states))
+        let [.call _ args _] := stmts
+          | throwError "the call in a repeatWhile step must need no statements before it: {source}"
+        let consumed := (← get).consumed
+        unless state.length == arrays && state.all consumed.contains do
+          throwError "the call in a repeatWhile step must consume every array of the state: {source}"
+        return (idx, args)
+    unless outer.isEmpty do
+      throwError "the step of a repeatWhile must be one call that needs no statements: {source}"
+    let stmt := Stmt.repeatWhile states limit counter count condition idx args
+    pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "repeat while" source :: countHints)
+    return states.zip types
+
   /-- Translates `term` as a value of `type` whose code starts at `loc`, in a block
   of its own: the statements its calls need come first, then the value.  Returns
   those statements, the value, the hints at their places, and the value's place. -/
@@ -2040,9 +2135,16 @@ mutual
   assignment. -/
   partial def translateLoopBody (ctx : Ctx) (loc : Loc) (term : Lean.Expr)
       (state : List (Nat × ScalarType)) : CompileM (List Project.IR.Stmt × List Hint) :=
-    peel ctx term fun ctx term => do
+    peel { ctx with peelLets := false } term fun ctx term => do
       match term with
       | .letE name type value body _ =>
+          if (← isTupleType type) && (← isFlatType type) then
+            let (components, pre, preHints) ← withBlock (componentLocals ctx value type)
+            let relocate (hint : Hint) : Hint := Hint.within loc.prefix_ (Hint.shift loc.index hint)
+            return ← withLocalDeclD name type fun x => do
+              let (rest, restHints) ← translateLoopBody (ctx.bind x components)
+                (loc.skip (pre.map stmtLength).sum) (body.instantiate1 x) state
+              return (pre ++ rest, preHints.map relocate ++ restHints)
           let scalar ← scalarTypeOf type
           let (pre, ⟨_, v⟩, vHints, at_) ← translatePrefixed ctx loc scalar value
           let local_ ← fresh scalar name.toString
@@ -2393,7 +2495,13 @@ mutual
       let stmt := Stmt.arraySize size arrayLocal
       pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "array-size" source]
       return size
-    if let some arrayLocal ← lookupArray (ctx.arrays ++ ctx.floatArrays) term then
+    -- A call's array is new, and the caller owns it.
+    if let some fn := term.getAppFn.constName? then
+      if let some index := ctx.callees.lookup fn then
+        let [(result, .u64)] ← translateCall ctx term index (dst?.map ([·]))
+          | throwError "a call used as an array must return one array: {source}"
+        return result
+    if let some arrayLocal ← lookupArray ctx.arrayVars term then
       -- An owned parameter is returned as it is; any other array variable is copied.
       if ctx.owned.contains term then
         markMoved term
@@ -2689,6 +2797,8 @@ mutual
       if let (``ite, #[_, condition, _, thenTerm, elseTerm]) := term.getAppFnArgs then
         if branching then
           return ← translateResultBranch ctx term condition thenTerm elseTerm type dests?
+      if term.isAppOf ``LeanExe.repeatWhile then
+        return ← resultsIn (← translateRepeatWhile ctx term) dests? (← sourceOf term)
       if term.isAppOf ``LeanExe.loop then
         if ← isArrayNest type then
           let states ← translateTupleLoop ctx term dests?
@@ -2714,7 +2824,9 @@ mutual
             return ((dests.zip types).map readLocal, dests.map fun _ => [])
           return ← translateCases ctx term discriminant alternatives type dests?
         let some parts ← constructorParts? term type
-          | throwError "a pair or structure result must be a constructor, a variable, a call, a loop, or a case split: {← sourceOf term}"
+          | if let some unfolded ← unfoldInline? term then
+              return ← translateResults ctx unfolded type dests?
+            throwError "a pair or structure result must be a constructor, a variable, a call, a loop, or a case split: {← sourceOf term}"
         let mut results := []
         let mut hints := []
         let mut remaining := dests?
@@ -2809,7 +2921,7 @@ mutual
       let earlier := args.toList.flatMap fun value => readLocals value.2
       let (values, argHints) ← afterReads ctx earlier do
         if ← isArray argType then
-          let local_ ← match ← lookupArray (ctx.arrays ++ ctx.floatArrays) arg.consumeMData with
+          let local_ ← match ← lookupArray ctx.arrayVars arg.consumeMData with
             | some local_ =>
                 if copies.contains position then
                   translateArray { ctx with owned := ctx.owned.erase arg.consumeMData }
@@ -3345,7 +3457,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       return (func, { locals := names, nodes := loopHint :: stepHints ++ [resultHint] }, [], none,
         copies, nextCopy)
     else
-      let movable := (arrays ++ floatArrays ++ nodes).map (·.1)
+      let movable := (arrays ++ floatArrays ++ nodes).map (·.1) ++ recordArrays.map (·.1)
       let sites ← moveSites owners movable body
       let owned := movable.filter sites.contains
       let ctx : Ctx :=

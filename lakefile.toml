@@ -19,7 +19,13 @@ name = "LeanExe"
 [[lean_lib]]
 name = "Project"
 
-# The program printer of the GPT-2 browser page (tests/gpt32/serve.py); not a default target.
+# The program printer of the GPT-2 browser page (tests/web/serve.py); not a default target.
 [[lean_exe]]
 name = "gpt32-lines"
 root = "Project.Gpt32.Lines"
+
+# The first-order Euler solver run natively, for comparison with its WebAssembly; not a default
+# target.
+[[lean_exe]]
+name = "euler-native"
+root = "Project.Euler.Native"
