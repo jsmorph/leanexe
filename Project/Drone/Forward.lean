@@ -7,20 +7,7 @@ terrain. -/
 namespace Project.Drone
 
 open LeanExe.Examples.Drone Optimality Selection Costs Planner
-
-/-- Two loops whose steps agree at every index give the same state. -/
-theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α → α}
-    (h : ∀ k, k < n.toNat → ∀ s, f (UInt64.ofNat k) s = g (UInt64.ofNat k) s) :
-    LeanExe.loop n init f = LeanExe.loop n init g := by
-  unfold LeanExe.loop
-  suffices hm : ∀ m, m ≤ n.toNat → Nat.fold m (fun i _ s => f (UInt64.ofNat i) s) init =
-      Nat.fold m (fun i _ s => g (UInt64.ofNat i) s) init from hm _ le_rfl
-  intro m
-  induction m with
-  | zero => intro _; rfl
-  | succ m ih =>
-    intro hm
-    rw [Nat.fold_succ, Nat.fold_succ, ih (by omega), h m (by omega)]
+open Project.IR (loop_induction loop_congr build_size build_get)
 
 namespace Forward
 
@@ -86,7 +73,7 @@ theorem extend_rows (terrain : Array UInt64) (count i : UInt64) (table : Array C
   case hs => rw [build_size, hcountU]; omega
   case hr =>
     intro m hm s hs
-    rw [build_get _ _ _ (by rw [hcountU]; omega)]
+    rw [build_get (by rw [hcountU]; omega)]
     by_cases hmi : m < i.toNat
     · have hj : UInt64.ofNat (45 * m + s.toNat) < table.size.toUInt64 := by
         rw [UInt64.lt_iff_toNat_lt, hsizeU, UInt64.toNat_ofNat_of_lt' (by omega)]; omega

@@ -1,6 +1,7 @@
 import Project.Euler.Module
 import Project.IR.Correct
 import Project.IR.Run
+import Project.IR.Words
 import Project.ProofKit.F64Bits
 import Project.Euler.Words
 
@@ -25,24 +26,6 @@ instance : Flat Updated (UInt64 × Float × Float × Float × Float × Float × 
   ⟨fun u => (u.status, u.density, u.momentum, u.transverse, u.energy, u.pressure, u.alpha,
     u.courant)⟩
 
-/-! Words of Bool tests: the compiler computes `a && b` as the bitwise and of two words that
-are 0 or 1, and tests the result against 1. -/
-
-theorem word_and (p q : Prop) [Decidable p] [Decidable q] :
-    ((if p then 1 else 0 : UInt64) &&& if q then 1 else 0) = if p ∧ q then 1 else 0 := by
-  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
-
-theorem word_or (p q : Prop) [Decidable p] [Decidable q] :
-    ((if p then 1 else 0 : UInt64) ||| if q then 1 else 0) = if p ∨ q then 1 else 0 := by
-  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
-
-theorem word_eq_one (p : Prop) [Decidable p] : ((if p then 1 else 0 : UInt64) = 1) ↔ p := by
-  by_cases hp : p <;> simp [hp]
-
-/-- The test of a word that the compiler computes from a proposition. -/
-theorem word_beq_one (p : Prop) [Decidable p] : ((if p then 1 else 0 : UInt64) == 1) = decide p := by
-  by_cases hp : p <;> simp [hp]
-
 /-- A run that ends in one of two states by a test: each state, under its outcome. -/
 theorem exists_ite_some {c : Prop} [Decidable c] {a b : State} {P : State → Prop}
     (ha : c → P a) (hb : ¬c → P b) :
@@ -54,16 +37,6 @@ theorem exists_ite_some {c : Prop} [Decidable c] {a b : State} {P : State → Pr
 theorem toBits_ite (c : Prop) [Decidable c] (a b : Float) :
     (if c then a else b).toBits = if c then a.toBits else b.toBits := by
   split <;> rfl
-
-/-- The IR's division and remainder test the divisor for 0, where Lean's give 0 and the
-dividend. -/
-theorem divU_eq (a b : UInt64) : (if b = 0 then 0 else a / b) = a / b := by
-  split <;> simp_all
-
-theorem remU_eq (a b : UInt64) : (if b = 0 then a else a % b) = a % b := by
-  split <;> simp_all
-
-theorem min_word (a b : UInt64) : min a b = if a ≤ b then a else b := rfl
 
 /-- Evaluates a compiled body of assignments and conditionals and its results, with the given
 lemmas, then splits on the tests, which both sides now state as the same propositions on bits,

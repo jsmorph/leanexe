@@ -14,12 +14,6 @@ open Wasm Project.Pipeline Project.IR Project.Runtime LeanExe.Examples.Drone
 
 instance : Flat Choice (UInt64 × UInt64 × UInt64) := ⟨fun c => (c.time, c.excess, c.parent)⟩
 
-/-- The lemmas that evaluate statements on a state known through its locals. -/
-macro "eval_state" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
-  `(tactic| simp [Stmt.run, Expr.eval, State.set?_eq_update, State.setAll, U64Op.apply,
-    Scalar.values, ScalarType.valueType, Expr.evalResults, ScalarType.value, Flat.flat, divU_eq,
-    remU_eq, word_and, word_or, word_eq_one, $args,*])
-
 def chooseTuple : Choice × Choice → Choice := fun (a, b) => choose a b
 
 set_option maxHeartbeats 4000000 in
@@ -28,8 +22,8 @@ theorem choose_implements {a : Bool} : ImplementsPureA a drone.module 8 chooseTu
     (fun _ => rfl) fun ⟨⟨t0, e0, p0⟩, ⟨t1, e1, p1⟩⟩ initial => by
       refine Stmt.run_triple ?_
       by_cases h : t1 < t0 ∨ t1 = t0 ∧ e1 < e0
-      · eval_drone [drone.choose.ir, chooseTuple, choose, h]
-      · eval_drone [drone.choose.ir, chooseTuple, choose, h]
+      · eval_body [drone.choose.ir, chooseTuple, choose, h]
+      · eval_body [drone.choose.ir, chooseTuple, choose, h]
 
 def predecessorTuple : UInt64 × UInt64 × Choice × UInt64 × UInt64 → Choice :=
   fun (r0, r1, old, target, source) => predecessor r0 r1 old target source
@@ -42,37 +36,34 @@ theorem predecessor_implements {a : Bool} : ImplementsPureA a drone.module 9 pre
       have hS := speed_implements (a := a)
       have hE := edgeTicks_implements (a := a)
       refine Stmt.seq_callPure hA rfl rfl rfl (x := (r0, source)) ?_
-      eval_drone [drone.predecessor.ir]
+      eval_body [drone.predecessor.ir]
       refine Stmt.seq_run ?_
-      eval_drone []
+      eval_body []
       refine Stmt.seq_callPure hA rfl rfl rfl (x := (r1, target)) ?_
-      eval_drone [altitudeTuple]
+      eval_body [altitudeTuple]
       refine Stmt.seq_run ?_
-      eval_drone []
+      eval_body []
       refine Stmt.seq_callPure hS rfl rfl rfl (x := source) ?_
-      eval_drone [altitudeTuple]
+      eval_body [altitudeTuple]
       refine Stmt.seq_run ?_
-      eval_drone []
+      eval_body []
       refine Stmt.seq_callPure hS rfl rfl rfl (x := target) ?_
-      eval_drone [altitudeTuple]
+      eval_body [altitudeTuple]
       refine Stmt.seq_run ?_
-      eval_drone []
+      eval_body []
       refine Stmt.seq_callPure hE rfl rfl rfl
         (x := (r0, r1, altitude r0 source, altitude r1 target, speed source, speed target)) ?_
-      eval_drone [altitudeTuple]
+      eval_body [altitudeTuple]
       refine Stmt.seq_run ?_
-      eval_drone []
+      eval_body []
       refine Stmt.run_triple ?_
-      eval_drone [edgeTicksTuple, predecessorTuple, predecessor]
+      eval_body [edgeTicksTuple, predecessorTuple, predecessor]
       split_ifs <;> simp_all
 
 theorem choice_length (c : Choice) : (Scalar.values c).length = 3 := rfl
 
 theorem choice_default :
     (Scalar.values (default : Choice)).map Value.word = List.replicate 3 0 := rfl
-
-/-- A function without parameters takes the empty tuple. -/
-instance : Scalar Unit := ⟨fun _ => []⟩
 
 def initialUnit : Unit → Array Choice := fun _ => initial
 
@@ -127,11 +118,6 @@ theorem initial_implements : Implements drone.module 11 initialUnit :=
 
 def advanceTuple : UInt64 × UInt64 × Bool × Array Choice × UInt64 → Array Choice :=
   fun (r0, r1, last, table, base) => advance r0 r1 last table base
-
-/-- The compiler computes `!b` as the exclusive or of `b`'s word with 1. -/
-theorem word_not (b : Bool) : ((if b = true then 1 else 0 : UInt64) ^^^ 1) =
-    if b = false then 1 else 0 := by
-  cases b <;> rfl
 
 set_option maxHeartbeats 8000000 in
 theorem advance_implements : Implements drone.module 10 advanceTuple := by

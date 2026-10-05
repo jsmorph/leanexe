@@ -8,6 +8,7 @@ a bounded row are bounded. -/
 namespace Project.Drone
 
 open LeanExe.Examples.Drone Arithmetic Selection Timing Optimality
+open Project.IR (build_get)
 
 /-- Element `state` of the first row. -/
 def initialChoice (state : UInt64) : Choice :=
@@ -100,7 +101,7 @@ theorem advance_bound (layer : Nat) (row : Array Choice) (hbound : rowBound laye
 
 theorem initial_get (state : UInt64) (hs : state.toNat < 45) :
     initial[state.toNat]! = initialChoice state := by
-  rw [initial_build, build_get _ _ _ hs, UInt64.ofNat_toNat]
+  rw [initial_build, build_get hs, UInt64.ofNat_toNat]
 
 theorem initial_finite (state : UInt64) (hs : state.toNat < 45) :
     initial[state.toNat]!.time < infinity ↔ state = 0 := by

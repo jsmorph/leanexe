@@ -249,9 +249,6 @@ theorem Stmt.fillRecords_spec {scratch dst limit index : Nat} {elements : List (
     rw [← hAllSize] at hPrefixI
     exact ⟨hPrefixI.complete, hWritesI, hFrame, hDstGet⟩
 
-theorem build_size' (n : UInt64) (g : UInt64 → α) : (LeanExe.build n g).size = n.toNat := by
-  simp [LeanExe.build]
-
 /-- Word `i · k + j` of the built array of records is component `j` of element `i`. -/
 theorem flatWords_build [Scalar α] [Inhabited α] {k : Nat}
     (hk : ∀ x : α, (Scalar.values x).length = k) (n : UInt64) (g : UInt64 → α) {i j : Nat}
@@ -260,9 +257,9 @@ theorem flatWords_build [Scalar α] [Inhabited α] {k : Nat}
       ((Scalar.values (g (UInt64.ofNat i))).map Value.word)[j]! := by
   rw [getElem!_def, flatWords, List.getElem?_toArray,
     flatMap_getElem? (by simp [hk]) hj, Array.getElem?_toList,
-    Array.getElem?_eq_getElem (by rw [build_size']; exact hi)]
+    Array.getElem?_eq_getElem (by rw [build_size]; exact hi)]
   simp only [Option.bind_some]
-  rw [show (LeanExe.build n g)[i]'(by rw [build_size']; exact hi) = g (UInt64.ofNat i) by
+  rw [show (LeanExe.build n g)[i]'(by rw [build_size]; exact hi) = g (UInt64.ofNat i) by
     simp [LeanExe.build], getElem!_def]
 
 /-- The record template allocates `8 · (n · k + 1)` bytes, stores the length `n · k`, and
@@ -311,7 +308,7 @@ theorem Stmt.buildRecords_specA [Scalar α] [Inhabited α] {typeIdx scratch dst 
   obtain ⟨hDstBelow, hLimitBelow, hIndexBelow⟩ := hBelow
   set k := elements.length with hkDef
   have hAllSize : (flatWords (LeanExe.build n g)).size = n.toNat * k := by
-    rw [flatWords_size hk, build_size']
+    rw [flatWords_size hk, build_size]
   have hValue : ∀ i j, i < n.toNat → j < k → (flatWords (LeanExe.build n g))[i * k + j]! =
       ((Scalar.values (g (UInt64.ofNat i))).map Value.word)[j]! :=
     fun i j hi hj => flatWords_build hk n g hi hj

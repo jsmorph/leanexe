@@ -1,5 +1,6 @@
 import Project.Gpt32.Program
 import Project.Gpt32.Proofs
+import Project.IR.Combinators
 
 /-!
 The meaning of the programs of `Project/Gpt32/Program.lean`.
@@ -21,6 +22,7 @@ its inputs.
 namespace Project.Gpt32
 
 open Project.WGSL LeanExe.Examples.Gpt32
+open Project.IR (build_size)
 
 abbrev HostStore := Buf → Option (Array UInt32)
 
@@ -172,10 +174,6 @@ theorem size_toUInt64 {xs : Array Float32} (h : xs.size < 2 ^ 29) :
   simp only [Nat.toUInt64, UInt64.toNat_ofNat']
   omega
 
-theorem build_size' {α : Type} (n : UInt64) (f : UInt64 → α) :
-    (LeanExe.build n f).size = n.toNat := by
-  simp [LeanExe.build]
-
 /-- A call's result is what its kernel's dispatch leaves in an output of the host's form. -/
 theorem KernelName.apply_dispatch {k : KernelName} {vs : List Val} {ys : Array Float32}
     (h : k.apply vs = some ys) :
@@ -186,7 +184,7 @@ theorem KernelName.apply_dispatch {k : KernelName} {vs : List Val} {ys : Array F
         (64 * ((ys.size + 63) / 64)) := by
   unfold KernelName.apply at h
   split at h <;> (try split at h) <;> simp only [Option.some.injEq, reduceCtorEq] at h <;>
-    subst h <;> rename_i hb <;> simp only [build_size', embed32, layerNorm32, linear32,
+    subst h <;> rename_i hb <;> simp only [build_size, embed32, layerNorm32, linear32,
       append32, scores32, headMax32, headSum32, probs32, mix32, add32, geluArray32,
       logits32]
   · obtain ⟨h1, h2, h3⟩ := hb

@@ -1,28 +1,13 @@
 import LeanExe.Examples.Drone
 import Mathlib.Tactic.Linarith
+import Project.IR.Combinators
 
 /-! `ceilSqrt` is the exact ceiling square root for inputs up to `2^32`. -/
 
 namespace Project.Drone
 
 open LeanExe.Examples.Drone
-
-/-- A property of the state after `k` steps of `LeanExe.loop` that each step preserves holds at
-the end. -/
-theorem loop_induction {α : Type} {n : UInt64} {init : α} {f : UInt64 → α → α}
-    (P : Nat → α → Prop) (h0 : P 0 init)
-    (hStep : ∀ k s, k < n.toNat → P k s → P (k + 1) (f (UInt64.ofNat k) s)) :
-    P n.toNat (LeanExe.loop n init f) := by
-  unfold LeanExe.loop
-  suffices h : ∀ m, m ≤ n.toNat →
-      P m (Nat.fold m (fun i _ s => f (UInt64.ofNat i) s) init) from h _ le_rfl
-  intro m
-  induction m with
-  | zero => intro _; simpa using h0
-  | succ m ih =>
-    intro hm
-    rw [Nat.fold_succ]
-    exact hStep m _ (by omega) (ih (by omega))
+open Project.IR (loop_induction)
 
 /-- One halving of `ceilSqrt`'s bracket. -/
 def sqrtStep (n : UInt64) (_ : UInt64) (bracket : UInt64 × UInt64) : UInt64 × UInt64 :=

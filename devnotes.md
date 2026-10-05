@@ -26033,3 +26033,42 @@ The full build succeeds with no `sorry`, and the theorems use only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
 - [x] Total execution with a memory bound.
+
+## 2026-10-05: Main's demos, plan
+
+A read-only review of main's twelve `leanexegen` demos found that their proofs step through the
+instructions of one binary of main's compiler and have no use here, while their requests and
+specifications do.  The user adopted the review's plan.  Demos 1, 2, 4, 5, and 12 become
+stand-alone examples whose specification differs from the program; Demo 6 merges into Gcd and
+Demos 10 and 11 into SumArray; Demos 3, 7, 8, and 9 stay on main as records.  Demos 4 and 12 are
+ported by hand first, to fix the form a generation tool will reproduce, and then the tool, "from
+English to verified executable", is built against that form.
+
+The user also chose the form of a port.  Its request and README live in `demos/<name>/`, the
+program in `LeanExe/Examples`, and the specification, module, and proofs in `Project/<Name>`.  The
+final theorem is `Implements m k expected` over the decoded bytes, with `Implements m k compute`
+and a property for relational specifications, so a reader judges it from the specification
+alone.  One of Demos 4 and 12 also carries a total-execution theorem with a memory budget, the
+smallest worked example of the A-series rules.  The dialect gets no additions for now; `Array.map`
+and `Array.filter` are reconsidered after Demo 5.  The tool's decisions, approval of the
+specification and the driver, are taken when the tool work starts.
+
+- [ ] Demos 4 and 12 by hand, one with the total form.
+- [ ] Demos 1, 2, and 5; Demo 6 into Gcd; Demos 10 and 11 into SumArray.
+- [ ] The generation tool, run first on Demo 9 and then on Demos 2, 5, 6, and 1.
+
+### Drone follow-ups: the forward pass, shared helpers, and the README
+
+The user confirmed the form of the drone's forward pass: `extend` returns status 0 with the
+extended table while rows remain and status 1 with the old table at the end, so the parameter is
+owned and `repeatWhile` consumes it, with no compiler change.  The generic helpers that the drone,
+Euler, and GPT files each defined moved to shared files: the word lemmas of Bool tests, `divU_eq`,
+`remU_eq`, `min_word`, `max_word`, and the macros `eval_body` and `eval_state` to
+`Project/IR/Words.lean`; `loop_induction`, `loop_congr`, `build_size`, `build_get`, and
+`build_get_out` to `Project/IR/Combinators.lean`; and `instance : Scalar Unit` to
+`Project/Pipeline/Implements.lean`.  `build_size` replaces the word-only `build_size` of
+`Project/IR/Build.lean` and the two copies of `build_size'`.  The macros name constants such as
+`Scalar.values` that hygiene resolves where a macro is defined, so `Words.lean` opens
+`Project.Pipeline`.  `data/drone/README.md` describes this branch's program, theorems, and tests,
+and main's drone report stays as the record of main's work.
+

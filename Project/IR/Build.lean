@@ -2,6 +2,7 @@ import Project.IR.ArrayLiteral
 import Project.IR.Loop
 import Project.IR.Read
 import LeanExe.Build
+import Project.IR.Combinators
 
 /-!
 The rule lemma for the compiler's copying template.  The compiler implements
@@ -43,9 +44,6 @@ def Stmt.buildWith (dst limit index : Nat) (count : Expr .u64) (body : Stmt)
 `.skip`, which emits nothing. -/
 def Stmt.build (dst limit index : Nat) (count element : Expr .u64) : Stmt :=
   .buildWith dst limit index count .skip element
-
-theorem build_size (n : UInt64) (f : UInt64 → UInt64) : (LeanExe.build n f).size = n.toNat := by
-  simp [LeanExe.build]
 
 theorem build_getElem (n : UInt64) (f : UInt64 → UInt64) (k : Nat)
     (hk : k < (LeanExe.build n f).size) :
