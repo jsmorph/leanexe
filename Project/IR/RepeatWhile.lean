@@ -67,7 +67,8 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ after, condition.eval s.mem scratch st = some (cond x, after))
     (hArgs : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
-      st.Holds states vals → heap.At s → Represent.owned heap s vals x →
+      st.Holds states vals → heap.At s → s.memoryCaps = initial.memoryCaps →
+      Represent.owned heap s vals x →
       heap0.Keeps initial gone heap s (Represent.blocks s vals x) →
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
@@ -161,7 +162,7 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       rintro s' st' ⟨hs', hst', hTrue⟩
       subst s' st'
       obtain ⟨avals, after, hEval, hBorrowed, hSep, hMovesIn⟩ :=
-        hArgs s c1 x vals heap hHoldsC hAt hOwned hKeeps hFrameBC
+        hArgs s c1 x vals heap hHoldsC hAt hCaps hOwned hKeeps hFrameBC
       have hFrameE := Expr.evalResults_frame [] hEval
       refine Stmt.seq_spec (Stmt.callImplements_spec (results := states) hImpl hImport hFunc
         hParams hEval hAt hBorrowed hSep (memoryCap_le_of_caps hCaps hCap)

@@ -1,4 +1,4 @@
-import Project.IR.Live
+import Project.IR.RepeatWhile
 
 /-!
 Calls whose results are scalars followed by one array of records.  `OneArray` describes such a
@@ -55,6 +55,16 @@ instance [Scalar σ] [Represent β] [OneArray β] : OneArray (σ × β) where
     rw [show Represent.width y.1 = (Scalar.values y.1).length from rfl, List.append_assoc,
       List.take_left, List.drop_left, OneArray.blocks_eq]
     rfl
+
+instance : OneArray (Array UInt64) where
+  scalars _ := []
+  words xs := xs
+  owned_iff _ _ _ _ := by simp [Represent.owned]
+  blocks_eq _ _ _ := rfl
+
+@[simp] theorem OneArray.scalars_words (xs : Array UInt64) : OneArray.scalars xs = [] := rfl
+
+@[simp] theorem OneArray.words_words (xs : Array UInt64) : OneArray.words xs = xs := rfl
 
 @[simp] theorem OneArray.scalars_array [Flat α γ] [Scalar γ] (xs : Array α) :
     OneArray.scalars xs = [] := rfl
@@ -189,5 +199,90 @@ theorem Stmt.ite_test {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scrat
       (hElse hb).mono (fun _ _ ⟨h1, h2⟩ => ⟨h1.trans hs, h2.trans hst⟩) fun _ _ h => h)).mono
     (fun _ _ ⟨hs, hst⟩ => ⟨b, state, hs ▸ hst ▸ hCond, by cases b <;> simp [hs]⟩)
     fun _ _ h => h
+
+/-- The loop of `LeanExe.repeatWhile` over a state of scalars and one array, the newest live
+temporary: the final state's array takes its place, or the loop aborts.  The state lives in the
+locals `states`, its scalars and then its array's pointer.  The call of `idx`, which implements
+`g`, receives arguments that represent `F x`, consumes exactly the state's array, and reads
+regions apart from it; `g (F x)` is `step x`. -/
+theorem Live.repeatWhileOne [Represent α] [Represent β] [OneArray β] {idx : Nat} {g : α → β}
+    (hImpl : Implements m idx g) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
+    {scratch limit counter : Nat} {states : List Nat}
+    (hLocals : (limit :: counter :: states).Nodup)
+    (hBelow : ∀ j ∈ limit :: counter :: states, j < scratch)
+    {before : State} (hRoom : scratch ≤ before.params.length + before.locals.length)
+    {heap0 heap : Heap} {initial store : Store Unit} {rest : List (UInt64 × Array UInt64)}
+    {fuel : Expr .u64} {n : UInt64}
+    (hFuel : ∃ after, fuel.eval store.mem scratch before = some (n, after))
+    {condition : Expr .bool} (cond : β → Bool) (step : β → β) (F : β → α)
+    (hStep : ∀ x, g (F x) = step x) {x0 : β} {p0 : UInt64}
+    (hLive : Live heap0 initial moved heap store ((p0, OneArray.words x0) :: rest))
+    (hHolds0 : before.Holds states (OneArray.scalars x0 ++ [Value.i64 p0]))
+    (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hLen : ∀ x : β, (OneArray.scalars x).length + 1 = states.length)
+    (hCond : ∀ (s : Store Unit) (st : State) (x : β) (p : UInt64),
+      st.Holds states (OneArray.scalars x ++ [Value.i64 p]) →
+      State.Frame scratch (limit :: counter :: states) before st →
+      ∃ after, condition.eval s.mem scratch st = some (cond x, after))
+    (hArgs : ∀ (heap' : Heap) (s : Store Unit) (st : State) (x : β) (p : UInt64),
+      st.Holds states (OneArray.scalars x ++ [Value.i64 p]) →
+      Live heap0 initial moved heap' s ((p, OneArray.words x) :: rest) →
+      State.Frame scratch (limit :: counter :: states) before st →
+      ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
+        Represent.borrowed heap' s avals (F x) ∧ Represent.moves s avals (F x) = [p] ∧
+        ∀ q ∈ Represent.reads s avals (F x), regionsDisjoint q (block s p)) :
+    Triple m (.repeatWhile states limit counter fuel condition idx args) scratch
+      (fun s st => s = store ∧ st = before)
+      (fun s st => ∃ heap' p, Live heap0 initial moved heap' s
+        ((p, OneArray.words (LeanExe.repeatWhile n x0 cond step)) :: rest) ∧
+        st.Holds states (OneArray.scalars (LeanExe.repeatWhile n x0 cond step) ++ [Value.i64 p]) ∧
+        State.Frame scratch (limit :: counter :: states) before st) := by
+  have hBlocks : ∀ s (x : β) (p : UInt64),
+      Represent.blocks s (OneArray.scalars x ++ [Value.i64 p]) x = [block s p] :=
+    fun s x p => OneArray.blocks_eq s x p
+  -- The live facts at any state of the loop, from the loop's facts.
+  have hLiveAt : ∀ (heap' : Heap) (s : Store Unit) (x : β) (p : UInt64), heap'.At s →
+      s.memoryCaps = store.memoryCaps → heap'.Owned s p (OneArray.words x) →
+      heap.Keeps store [block store p0] heap' s [block s p] →
+      Live heap0 initial moved heap' s ((p, OneArray.words x) :: rest) :=
+    fun heap' s x p hAt hCaps hOwned hKeeps =>
+      Live.step (consumed := [(p0, OneArray.words x0)]) (news := [(p, OneArray.words x)])
+        hLive hAt hCaps hKeeps (fun t ht => by rw [List.mem_singleton.mp ht]; exact hOwned)
+        (List.pairwise_singleton _ _)
+  refine (Stmt.repeatWhile_spec (heap0 := heap) (initial := store) (start := store)
+    (gone := [block store p0]) (x0 := x0) hImpl hImport hFunc hParams hLocals
+    hBelow hRoom hFuel cond step F hStep ?_ ?_ hHolds0 (hLive.cap hCap) ?_ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro heap' s vals y hOwned
+    obtain ⟨p, rfl, -⟩ := (OneArray.owned_iff heap' s vals y).mp hOwned
+    have := hHolds0.length_eq
+    simp only [List.length_append, List.length_singleton] at this ⊢
+    rw [hLen y]
+  · refine ⟨heap, hLive.at_, rfl, (OneArray.owned_iff heap store _ x0).mpr
+      ⟨p0, rfl, hLive.tempsOwned _ (List.mem_cons_self ..)⟩, ?_⟩
+    rw [hBlocks]
+    exact fun r hr _ hApart => ⟨fun _ _ _ => rfl, hr, hApart⟩
+  · intro s st x vals heap' hHolds hOwned hFrame
+    obtain ⟨p, rfl, -⟩ := (OneArray.owned_iff heap' s vals x).mp hOwned
+    exact hCond s st x p hHolds hFrame
+  · intro s st x vals heap' hHolds hAt hCapsX hOwned hKeeps hFrame
+    obtain ⟨p, rfl, hP⟩ := (OneArray.owned_iff heap' s vals x).mp hOwned
+    rw [hBlocks] at hKeeps ⊢
+    obtain ⟨avals, after, hEval, hBorrowed, hMoves, hReads⟩ :=
+      hArgs heap' s st x p hHolds (hLiveAt heap' s x p hAt hCapsX hP hKeeps) hFrame
+    refine ⟨avals, after, hEval, hBorrowed, ⟨?_, fun r hr q hq => ?_⟩, fun b hb => ?_⟩
+    · rw [hMoves]; exact List.pairwise_singleton _ _
+    · rw [hMoves, List.mem_singleton] at hq
+      subst hq
+      exact hReads r hr
+    · rw [hMoves] at hb
+      simpa using hb
+  · rintro s st ⟨heap', vals, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame⟩
+    obtain ⟨p, rfl, hP⟩ := (OneArray.owned_iff heap' s vals _).mp hOwned
+    rw [hBlocks] at hKeeps
+    exact ⟨heap', p, hLiveAt heap' s _ p hAt hCaps hP hKeeps,
+      hHolds, hFrame⟩
 
 end Project.IR
