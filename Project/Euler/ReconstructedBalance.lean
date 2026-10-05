@@ -46,10 +46,6 @@ theorem reconstructedStep_parts {trials : UInt64} {ratio : Float} {a b c d e : C
   · exact ⟨beq_iff_eq.mp ht, rfl⟩
   · exact ⟨beq_iff_eq.mp he, rfl⟩
 
-/-- The state at position `q` of line `l`, as seen along the axis. -/
-def lineState (m : Nat) (axisY : Bool) (grid : Array Cell) (l q : Nat) : Conserved :=
-  oriented axisY grid[lineIndex m axisY l q]!.state
-
 /-- The update of position `p` of line `l` from the five positions around it, clamped at the
 ends of the line. -/
 def lineStep (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : Array Cell)
@@ -61,9 +57,7 @@ def lineStep (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : 
 /-- The cell at position `p` of line `l` after a sweep. -/
 def sweepCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : Array Cell)
     (l p : Nat) : Cell :=
-  let out := lineStep m axisY trials ratio grid l p
-  ⟨⟨out.density, if axisY then out.transverse else out.momentum,
-    if axisY then out.momentum else out.transverse, out.energy⟩, out.pressure, out.status⟩
+  cellOf axisY (lineStep m axisY trials ratio grid l p)
 
 /-- The cell at index `k` of a sweep is the cell at its position on its line. -/
 theorem reconstructedSweep_cell {n : UInt64} {axisY : Bool} {trials : UInt64} {ratio : Float}
@@ -107,8 +101,8 @@ def lineFace (m : Nat) (axisY : Bool) (trials : UInt64) (grid : Array Cell) (l j
 theorem stateAt_sweepCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float)
     (grid : Array Cell) (l p : Nat) (c : Fin 4) :
     stateAt (sweepCell m axisY trials ratio grid l p).state c =
-      updatedAt (lineStep m axisY trials ratio grid l p) (axisComponent axisY c) := by
-  cases axisY <;> fin_cases c <;> rfl
+      updatedAt (lineStep m axisY trials ratio grid l p) (axisComponent axisY c) :=
+  stateAt_cellOf axisY _ c
 
 /-- An accepted update of a position updates each component with the fluxes at the two faces
 of the position. -/
@@ -224,59 +218,28 @@ theorem stepGrid_balance {n trials : UInt64} {ratio : Float} {grid : Array Cell}
     rw [ite_eq_right hM] at hA
     exact absurd hA hM
 
-/-- The steps of a run with their ratios and the grids they start from. -/
-inductive StepTrace (n trials : UInt64) :
-    Float × Array Cell → Float × Array Cell → List (Float × Array Cell) → Prop
-  | refl (a : Float × Array Cell) : StepTrace n trials a a []
-  | tail {a b b' : Float × Array Cell} {steps : List (Float × Array Cell)} (r : Float) :
-      StepTrace n trials a b steps → AcceptedStep n trials b b' →
-      b'.2 = reconstructedStepGrid n trials r b.2 →
-      StepTrace n trials a b' (steps ++ [(r, b.2)])
+/-- An accepted step from `b` to `b'` with ratio `r`. -/
+def ReconstructedStep (n trials : UInt64) (b b' : Float × Array Cell) (r : Float) : Prop :=
+  AcceptedStep n trials b b' ∧ b'.2 = reconstructedStepGrid n trials r b.2
 
-theorem stepTrace_of_steps {n trials : UInt64} {a b : Float × Array Cell}
-    (h : Relation.ReflTransGen (AcceptedStep n trials) a b) :
-    ∃ steps, StepTrace n trials a b steps := by
-  induction h with
-  | refl => exact ⟨[], .refl _⟩
-  | tail _ hs ih =>
-    obtain ⟨steps, ht⟩ := ih
-    have hs' := hs
-    obtain ⟨-, r, -, -, hg, -⟩ := hs'
-    exact ⟨_, .tail r ht hs hg⟩
-
-/-- Over a trace of accepted steps, the total of a component changes by minus the flux through
-the boundary, summed over the steps, plus a rounding residual of at most the sum of the step
-bounds. -/
-theorem StepTrace.balance {n trials : UInt64} {a b : Float × Array Cell}
-    {steps : List (Float × Array Cell)} (h : StepTrace n trials a b steps) (c : Fin 4) :
-    total b.2 c = total a.2 c - traceSum (fun r g => stepFlux n trials r g c) steps +
-        traceSum (fun r g => stepResidual n trials r g c) steps ∧
-      |traceSum (fun r g => stepResidual n trials r g c) steps| ≤
-        traceSum (fun r g => stepBound n trials r g c) steps := by
-  induction h with
-  | refl => simp [traceSum]
-  | @tail b0 b1 _ r _ hs hg ih =>
-    obtain ⟨-, -, -, -, hg', hA, -, h800, hsize, -⟩ := hs
-    rw [hg] at hA
-    have hlt : b0.2.size < 2 ^ 64 := by
-      rw [hsize]
-      have : _ ≤ 800 * 800 := Nat.mul_le_mul h800 h800
-      omega
-    obtain ⟨hb, hr⟩ := stepGrid_balance hsize hlt hA c
-    obtain ⟨ihb, ihr⟩ := ih
-    simp only [traceSum, List.map_append, List.sum_append, List.map_cons, List.map_nil,
-      List.sum_cons, List.sum_nil, add_zero] at ihb ihr ⊢
-    refine ⟨?_, ?_⟩
-    · rw [hg, hb, ihb]
-      ring
-    · exact (abs_add_le _ _).trans (add_le_add ihr hr)
+theorem reconstructedStep_balance {n trials : UInt64} {b b' : Float × Array Cell} {r : Float}
+    (h : ReconstructedStep n trials b b' r) (c : Fin 4) :
+    total b'.2 c = total b.2 c - stepFlux n trials r b.2 c + stepResidual n trials r b.2 c ∧
+      |stepResidual n trials r b.2 c| ≤ stepBound n trials r b.2 c := by
+  obtain ⟨⟨-, -, -, -, -, hA, -, h800, hsize, -⟩, hg⟩ := h
+  rw [hg] at hA ⊢
+  have hlt : b.2.size < 2 ^ 64 := by
+    rw [hsize]
+    have : n.toNat * n.toNat ≤ 800 * 800 := Nat.mul_le_mul h800 h800
+    omega
+  exact stepGrid_balance hsize hlt hA c
 
 /-- A reconstructed run that returns status 0 is a trace of accepted steps from time 0 and the
 initial grid, over which every component balances: its final total is its initial total, minus
 the flux through the boundary summed over the steps, plus a rounding residual of at most the
 sum of the step bounds. -/
 theorem reconstructedRun_balance {n trials : UInt64} (h : (reconstructedRun n trials).1 = 0) :
-    ∃ steps, StepTrace n trials (0, initialCells n)
+    ∃ steps, Trace (ReconstructedStep n trials) (0, initialCells n)
         ((reconstructedRun n trials).2.1, (reconstructedRun n trials).2.2) steps ∧
       ∀ c : Fin 4,
         total (reconstructedRun n trials).2.2 c = total (initialCells n) c -
@@ -284,7 +247,12 @@ theorem reconstructedRun_balance {n trials : UInt64} (h : (reconstructedRun n tr
             traceSum (fun r g => stepResidual n trials r g c) steps ∧
           |traceSum (fun r g => stepResidual n trials r g c) steps| ≤
             traceSum (fun r g => stepBound n trials r g c) steps := by
-  obtain ⟨steps, ht⟩ := stepTrace_of_steps (reconstructedRun_steps h)
-  exact ⟨steps, ht, ht.balance⟩
+  obtain ⟨steps, ht⟩ := trace_of_chain (S := ReconstructedStep n trials)
+    (fun a b hs => by
+      have hs' := hs
+      obtain ⟨-, r, -, -, hg, -⟩ := hs'
+      exact ⟨r, hs, hg⟩)
+    (reconstructedRun_steps h)
+  exact ⟨steps, ht, ht.balance (fun _ _ _ hs => reconstructedStep_balance hs)⟩
 
 end Project.Euler
