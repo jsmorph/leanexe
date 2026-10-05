@@ -37,17 +37,19 @@ theorem allocSize_le {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
   · omega
 
 /-- `alloc bytes` for at most `2 ^ 32` bytes, in a memory whose cap is at most 65,535
-pages, traps at `unreachable` or returns the new block's payload pointer, and the block
-fits. -/
-theorem alloc_spec_or_abort {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 = false)
+pages, returns the new block's payload pointer, and the block fits, or, when `aborts`, traps at
+`unreachable`.  When not `aborts`, the room rules out the trap. -/
+theorem alloc_spec_runs (aborts : Bool) {m : Module} {typeIdx : Nat}
+    (hMemory32 : m.memIs64 = false)
     (hImports : m.imports = []) (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (bytes : UInt64)
     (hHeap : heap.At store) (hBytes : bytes.toNat ≤ 4294967296)
-    (hCap : store.memoryCap m 0 ≤ 65535) :
-    ReturnsOrAborts env m 0 store [.i64 bytes] fun final out =>
+    (hCap : store.memoryCap m 0 ≤ 65535)
+    (hRoom : aborts = false → heap.Room store m (allocSize bytes)) :
+    Runs aborts env m 0 store [.i64 bytes] fun final out =>
       heap.Fits (allocSize bytes) ∧ final = heap.allocateStore store (allocSize bytes) 1 ∧
       out = [.i64 (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)] := by
-  refine ReturnsOrAborts.of_wp_entry_for (f := allocFunction typeIdx)
+  refine Runs.of_wp_entry_for (f := allocFunction typeIdx)
     (by simpa [hImports] using hFunc) ?_ (by simp [hImports])
   have hSizeBound := allocSize_le hBytes
   simp [allocFunction, allocBody, Function.toLocals, Function.numParams, wp_simp]
@@ -57,17 +59,30 @@ theorem alloc_spec_or_abort {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 
     simp [hSmall, wp_simp]
     show wp m _ _ store (FixedArraySearch.frame [.i64 bytes] [] [] 8 0 0 0 0 0) env
     rw [← hSize]
-    exact array_allocation_spec_or_abort m hMemory32 env store heap [.i64 bytes] [] [] 1 rfl
-      (allocSize bytes) 1 0 0 0 0 0 hHeap hSizeBound hCap _ _ (fun _ => by simp)
+    exact array_allocation_spec_runs aborts m hMemory32 env store heap [.i64 bytes] [] [] 1 rfl
+      (allocSize bytes) 1 0 0 0 0 0 hHeap hSizeBound hCap _ _
+      (by cases aborts <;> simp [TrapOK, TrapMsg]) hRoom
       fun hFits _ _ _ _ => by simp [FixedArraySearch.frame, wp_simp, hFits]
   · have hSize : allocSize bytes = (bytes + 7) / 8 * 8 := by simp [allocSize, hSmall]
     simp [hSmall, wp_simp]
     show wp m _ _ store (FixedArraySearch.frame [.i64 bytes] [] [] ((bytes + 7) / 8 * 8) 0 0 0 0 0)
       env
     rw [← hSize]
-    exact array_allocation_spec_or_abort m hMemory32 env store heap [.i64 bytes] [] [] 1 rfl
-      (allocSize bytes) 1 0 0 0 0 0 hHeap hSizeBound hCap _ _ (fun _ => by simp)
+    exact array_allocation_spec_runs aborts m hMemory32 env store heap [.i64 bytes] [] [] 1 rfl
+      (allocSize bytes) 1 0 0 0 0 0 hHeap hSizeBound hCap _ _
+      (by cases aborts <;> simp [TrapOK, TrapMsg]) hRoom
       fun hFits _ _ _ _ => by simp [FixedArraySearch.frame, wp_simp, hFits]
+
+theorem alloc_spec_or_abort {m : Module} {typeIdx : Nat} (hMemory32 : m.memIs64 = false)
+    (hImports : m.imports = []) (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (bytes : UInt64)
+    (hHeap : heap.At store) (hBytes : bytes.toNat ≤ 4294967296)
+    (hCap : store.memoryCap m 0 ≤ 65535) :
+    ReturnsOrAborts env m 0 store [.i64 bytes] fun final out =>
+      heap.Fits (allocSize bytes) ∧ final = heap.allocateStore store (allocSize bytes) 1 ∧
+      out = [.i64 (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free)] :=
+  alloc_spec_runs true hMemory32 hImports hFunc env heap store bytes hHeap hBytes hCap
+    (fun h => nomatch h)
 
 /-- The heap after `release` frees the object at `ptr`, whose header records
 payload capacity `capacity`: the block joins the free list in address order. -/

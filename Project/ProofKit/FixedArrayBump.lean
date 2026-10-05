@@ -167,8 +167,9 @@ theorem requiredPages_word_of_lt (base need : UInt64)
 
 /-- The bump allocation of at most `2 ^ 32` bytes from a `top` inside 32-bit memory, in a
 memory of at most 65,535 pages whose cap is at most 65,535 pages: the program traps at
-`unreachable`, or the block ends within `65535 * 65536` and the program allocates it. -/
-theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
+`unreachable`, which `hTrap` accepts when `aborts`, or the block ends within `65535 * 65536` and
+the program allocates it.  When not `aborts`, `hRoom` gives the room that rules out the trap. -/
+theorem program_spec_runs (aborts : Bool) (needLocal topLocal pagesLocal resultLocal : Nat)
     (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
     (base need stride : UInt64) (hValues : frame.values = [])
     (hNeed : frame.get needLocal = some (.i64 need))
@@ -178,7 +179,11 @@ theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
     (hBase : base.toNat ≤ 4294967296) (hNeedBound : need.toNat ≤ 4294967296)
     (hPages : store.mem.pages ≤ 65535) (hMemory32 : module_.memIs64 = false)
     (hCapBound : store.memoryCap module_ 0 ≤ 65535)
-    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable"))
+    (Q : Assertion Unit) (rest : Wasm.Program)
+    (hTrap : aborts = true → ∀ st, Q (.Trap st "unreachable"))
+    (hRoom : aborts = false → base.toNat + 48 + need.toNat ≤ 4294967296 ∧
+      (store.mem.pages < requiredPages base need →
+        requiredPages base need ≤ store.memoryCap module_ 0))
     (hNext : base.toNat + 48 + need.toNat ≤ 4294901760 →
       wp module_ rest Q (allocated store base need stride)
         (result frame topLocal pagesLocal resultLocal base need) env) :
@@ -196,6 +201,9 @@ theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
     exact program_spec_of_grow needLocal topLocal pagesLocal resultLocal module_ env store frame
       base need stride hValues hNeed hOrder hGlobal hOk.1 (by omega) hMemory32 hOk.2 Q rest
       (hNext hTight)
+  cases aborts
+  · exact absurd (hRoom rfl) hOk
+  have hTrap := hTrap rfl
   have hAbort : store.mem.pages < requiredPages base need ∧
       store.memoryCap module_ 0 < requiredPages base need := by
     by_cases hFit : base.toNat + 48 + need.toNat ≤ 4294967296
@@ -221,6 +229,26 @@ theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
   exact ensureProgram_abort module_ env store prepared pagesLocal (requiredPages base need)
     hMemory32 rfl hPreparedPages (by omega) (by unfold requiredPages; omega) hAbort.1 hAbort.2
     _ _ hTrap
+
+/-- `program_spec_runs` with the trap allowed. -/
+theorem program_spec_or_abort (needLocal topLocal pagesLocal resultLocal : Nat)
+    (module_ : Wasm.Module) (env : HostEnv Unit) (store : Store Unit) (frame : Locals)
+    (base need stride : UInt64) (hValues : frame.values = [])
+    (hNeed : frame.get needLocal = some (.i64 need))
+    (hOrder : frame.params.length ≤ needLocal ∧ needLocal < topLocal ∧
+      topLocal < pagesLocal ∧ pagesLocal < resultLocal ∧ frame.validIndex resultLocal)
+    (hGlobal : store.globals.globals[0]? = some (.i64 base))
+    (hBase : base.toNat ≤ 4294967296) (hNeedBound : need.toNat ≤ 4294967296)
+    (hPages : store.mem.pages ≤ 65535) (hMemory32 : module_.memIs64 = false)
+    (hCapBound : store.memoryCap module_ 0 ≤ 65535)
+    (Q : Assertion Unit) (rest : Wasm.Program) (hTrap : ∀ st, Q (.Trap st "unreachable"))
+    (hNext : base.toNat + 48 + need.toNat ≤ 4294901760 →
+      wp module_ rest Q (allocated store base need stride)
+        (result frame topLocal pagesLocal resultLocal base need) env) :
+    wp module_ (program needLocal topLocal pagesLocal resultLocal stride ++ rest) Q store frame env :=
+  program_spec_runs true needLocal topLocal pagesLocal resultLocal module_ env store frame base need
+    stride hValues hNeed hOrder hGlobal hBase hNeedBound hPages hMemory32 hCapBound Q rest
+    (fun _ => hTrap) (fun h => nomatch h) hNext
 
 #print axioms requiredPages_word
 #print axioms program_spec_or_abort

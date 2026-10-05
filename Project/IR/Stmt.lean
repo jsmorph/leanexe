@@ -6,7 +6,7 @@ namespace Project.IR
 
 open Wasm
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- IR statements.  `while` is the only loop; its body runs while the condition
 holds. -/
@@ -59,34 +59,56 @@ def Stmt.scratchWidth : Stmt → Nat
   | .abort => 0
 
 /-- From any store and IR state satisfying `P`, the compiled code of `s` ends
-normally in a store and state satisfying `R`.  This is a statement about the
-compiled code under Talos's semantics; the IR has no semantics of its own. -/
-def Triple (m : Module) (s : Stmt) (scratch : Nat) (P R : Store Unit → State → Prop) : Prop :=
+normally in a store and state satisfying `R`, or, when `aborts`, traps at `unreachable`.
+This is a statement about the compiled code under Talos's semantics; the IR has no semantics
+of its own. -/
+def TripleA (aborts : Bool) (m : Module) (s : Stmt) (scratch : Nat)
+    (P R : Store Unit → State → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (state : State)
     (values : List Value) (rest : Program) (Q : Assertion Unit),
-    (∀ st, Q (.Trap st "unreachable")) → P store state →
+    TrapOK aborts Q → P store state →
     (∀ store' state', R store' state' → wp m rest Q store' (state'.toLocals values) env) →
     wp m (s.program scratch ++ rest) Q store (state.toLocals values) env
 
-theorem Triple.mono {s : Stmt} {scratch : Nat} {P P' R R' : Store Unit → State → Prop}
-    (h : Triple m s scratch P R) (hP : ∀ store state, P' store state → P store state)
-    (hR : ∀ store state, R store state → R' store state) : Triple m s scratch P' R' :=
+/-- `TripleA` that allows the trap at `unreachable`. -/
+abbrev Triple (m : Module) (s : Stmt) (scratch : Nat) (P R : Store Unit → State → Prop) :
+    Prop :=
+  TripleA true m s scratch P R
+
+theorem TripleA.mono {s : Stmt} {scratch : Nat} {P P' R R' : Store Unit → State → Prop}
+    (h : TripleA a m s scratch P R) (hP : ∀ store state, P' store state → P store state)
+    (hR : ∀ store state, R store state → R' store state) : TripleA a m s scratch P' R' :=
   fun env store state values rest Q hTrap hPre hPost =>
     h env store state values rest Q hTrap (hP _ _ hPre) fun store' state' hR' =>
       hPost store' state' (hR _ _ hR')
 
 /-- A specification for every start in `P` separately gives one for `P`. -/
-theorem Triple.of_forall {s : Stmt} {scratch : Nat} {P R : Store Unit → State → Prop}
+theorem TripleA.of_forall {s : Stmt} {scratch : Nat} {P R : Store Unit → State → Prop}
     (h : ∀ store₀ state₀, P store₀ state₀ →
-      Triple m s scratch (fun store state => store = store₀ ∧ state = state₀) R) :
-    Triple m s scratch P R :=
+      TripleA a m s scratch (fun store state => store = store₀ ∧ state = state₀) R) :
+    TripleA a m s scratch P R :=
   fun env store state values rest Q hTrap hPre hPost =>
     h store state hPre env store state values rest Q hTrap ⟨rfl, rfl⟩ hPost
 
 /-- A specification from an unsatisfiable start. -/
+theorem TripleA.of_false {s : Stmt} {scratch : Nat} {R : Store Unit → State → Prop} :
+    TripleA a m s scratch (fun _ _ => False) R :=
+  fun _ _ _ _ _ _ _ hPre _ => hPre.elim
+
+theorem Triple.mono {s : Stmt} {scratch : Nat} {P P' R R' : Store Unit → State → Prop}
+    (h : Triple m s scratch P R) (hP : ∀ store state, P' store state → P store state)
+    (hR : ∀ store state, R store state → R' store state) : Triple m s scratch P' R' :=
+  TripleA.mono h hP hR
+
+theorem Triple.of_forall {s : Stmt} {scratch : Nat} {P R : Store Unit → State → Prop}
+    (h : ∀ store₀ state₀, P store₀ state₀ →
+      Triple m s scratch (fun store state => store = store₀ ∧ state = state₀) R) :
+    Triple m s scratch P R :=
+  TripleA.of_forall h
+
 theorem Triple.of_false {s : Stmt} {scratch : Nat} {R : Store Unit → State → Prop} :
     Triple m s scratch (fun _ _ => False) R :=
-  fun _ _ _ _ _ _ _ hPre _ => hPre.elim
+  TripleA.of_false
 
 /-- `abort` traps at `unreachable`, which every assertion of a `Triple` accepts. -/
 theorem Stmt.abort_spec {scratch : Nat} {P R : Store Unit → State → Prop} :
@@ -96,13 +118,13 @@ theorem Stmt.abort_spec {scratch : Nat} {P R : Store Unit → State → Prop} :
   exact hTrap store
 
 theorem Stmt.skip_spec {scratch : Nat} {R : Store Unit → State → Prop} :
-    Triple m .skip scratch R R :=
+    TripleA a m .skip scratch R R :=
   fun _ store state _ _ _ _ hPre hPost => by
     simpa [Stmt.program] using hPost store state hPre
 
 theorem Stmt.assign_spec {type : ScalarType} {index scratch : Nat} {value : Expr type}
     {R : Store Unit → State → Prop} :
-    Triple m (.assign index value) scratch
+    TripleA a m (.assign index value) scratch
       (fun store state => ∃ result afterValue next,
         value.eval store.mem scratch state = some (result, afterValue) ∧
         afterValue.set? index (type.value result) = some next ∧ R store next) R := by
@@ -115,8 +137,8 @@ theorem Stmt.assign_spec {type : ScalarType} {index scratch : Nat} {value : Expr
 
 theorem Stmt.seq_spec {first second : Stmt} {scratch : Nat}
     {P M R : Store Unit → State → Prop}
-    (hFirst : Triple m first scratch P M) (hSecond : Triple m second scratch M R) :
-    Triple m (.seq first second) scratch P R := by
+    (hFirst : TripleA a m first scratch P M) (hSecond : TripleA a m second scratch M R) :
+    TripleA a m (.seq first second) scratch P R := by
   intro env store state values rest Q hTrap hPre hPost
   simp only [Stmt.program, List.append_assoc]
   exact hFirst env store state values (second.program scratch ++ rest) Q hTrap hPre
@@ -124,8 +146,8 @@ theorem Stmt.seq_spec {first second : Stmt} {scratch : Nat}
 
 theorem Stmt.ite_spec {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scratch : Nat}
     {PThen PElse R : Store Unit → State → Prop}
-    (hThen : Triple m thenStmt scratch PThen R) (hElse : Triple m elseStmt scratch PElse R) :
-    Triple m (.ite condition thenStmt elseStmt) scratch
+    (hThen : TripleA a m thenStmt scratch PThen R) (hElse : TripleA a m elseStmt scratch PElse R) :
+    TripleA a m (.ite condition thenStmt elseStmt) scratch
       (fun store state => ∃ result afterCondition,
         condition.eval store.mem scratch state = some (result, afterCondition) ∧
         if result then PThen store afterCondition else PElse store afterCondition) R := by
@@ -140,13 +162,13 @@ theorem Stmt.ite_spec {condition : Expr .bool} {thenStmt elseStmt : Stmt} {scrat
   · rw [ite_eq_right (by simp)]
     rw [← List.append_nil (elseStmt.program scratch)]
     apply hElse env store afterCondition values [] _ ?trap (by simpa using hBranch)
-    case trap => exact fun st => hTrap st
+    case trap => exact hTrap.imp fun _ h => h
     intro store' state' hR
     simpa [wp_simp, State.toLocals] using hPost store' state' hR
   · rw [ite_eq_left (by simp)]
     rw [← List.append_nil (thenStmt.program scratch)]
     apply hThen env store afterCondition values [] _ ?trap (by simpa using hBranch)
-    case trap => exact fun st => hTrap st
+    case trap => exact hTrap.imp fun _ h => h
     intro store' state' hR
     simpa [wp_simp, State.toLocals] using hPost store' state' hR
 
@@ -158,11 +180,11 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
     (Inv : Store Unit → State → Prop) (measure : Store Unit → State → Nat)
     (hCondition : ∀ store state, Inv store state →
       ∃ result afterCondition, condition.eval store.mem scratch state = some (result, afterCondition))
-    (hBody : ∀ n, Triple m body scratch
+    (hBody : ∀ n, TripleA a m body scratch
       (fun store state => ∃ before, Inv store before ∧ measure store before = n ∧
         condition.eval store.mem scratch before = some (true, state))
       (fun store state => Inv store state ∧ measure store state < n)) :
-    Triple m (.while condition body) scratch Inv
+    TripleA a m (.while condition body) scratch Inv
       (fun store state => ∃ before, Inv store before ∧
         condition.eval store.mem scratch before = some (false, state)) := by
   intro env store state values rest Q hTrap hPre hPost
@@ -192,7 +214,7 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
         Wasm.wp_br_if_cons, ScalarType.value]
       apply hBody (measure currentStore current) env currentStore afterCondition values
         [.br 0] _ ?trap ⟨current, hCurrent, rfl, hEval⟩
-      case trap => exact fun st => hTrap st
+      case trap => exact hTrap.imp fun _ h => h
       intro store' state' ⟨hInv', hDecrease⟩
       simp only [Wasm.wp_br_cons]
       constructor
@@ -203,7 +225,7 @@ theorem Stmt.while_spec {condition : Expr .bool} {body : Stmt} {scratch : Nat}
 memory. -/
 theorem Stmt.load_spec {type : ScalarType} {index scratch : Nat} {address : Expr .u64}
     {R : Store Unit → State → Prop} :
-    Triple m (.load type index address) scratch
+    TripleA a m (.load type index address) scratch
       (fun store state => ∃ word afterAddress next,
         address.eval store.mem scratch state = some (word, afterAddress) ∧
         word.toUInt32.toNat + 8 ≤ store.mem.pages * 65536 ∧
@@ -226,7 +248,7 @@ theorem Stmt.load_spec {type : ScalarType} {index scratch : Nat} {address : Expr
 inside memory. -/
 theorem Stmt.store_spec {scratch : Nat} {address value : Expr .u64}
     {R : Store Unit → State → Prop} :
-    Triple m (.store address value) scratch
+    TripleA a m (.store address value) scratch
       (fun store state => ∃ word afterAddress result afterValue,
         address.eval store.mem scratch state = some (word, afterAddress) ∧
         value.eval store.mem scratch afterAddress = some (result, afterValue) ∧
@@ -326,10 +348,10 @@ theorem Stmt.call_spec {scratch func : Nat} {args : List ((type : ScalarType) ×
     (hImport : m.imports[func]? = none)
     (hFunc : m.funcs[func - m.imports.length]? = some f)
     (hParams : args.length = f.numParams) :
-    Triple m (.call func args results) scratch
+    TripleA a m (.call func args results) scratch
       (fun store state => ∃ vals afterArgs, ∃ Post : Store Unit → List Value → Prop,
         Expr.evalResults store.mem scratch args state = some (vals, afterArgs) ∧
-        (∀ env, ReturnsOrAborts env m func store vals.reverse Post) ∧
+        (∀ env, Runs a env m func store vals.reverse Post) ∧
         ∀ store' out, Post store' out →
           ∃ next, afterArgs.setAll results.reverse out = some next ∧ R store' next)
       R := by
@@ -339,7 +361,7 @@ theorem Stmt.call_spec {scratch func : Nat} {args : List ((type : ScalarType) ×
   apply Expr.evalResults_program_spec hArgs
   have hLength : vals.reverse.length = f.numParams := by
     simp [Expr.evalResults_length hArgs, hParams]
-  refine wp_call_returnsOrAborts ((hRun env).append_args hImport hFunc hLength values) hTrap ?_
+  refine wp_call_runs ((hRun env).append_args hImport hFunc hLength values) hTrap ?_
   rintro store' _ ⟨out, rfl, hOut⟩
   obtain ⟨next, hSet, hR⟩ := hResult store' out hOut
   exact State.setAll_spec hSet (hPost store' next hR)

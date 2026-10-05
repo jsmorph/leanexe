@@ -95,6 +95,7 @@ import Project.PairSum.Verify
 import Project.Piecewise.Module
 import Project.Piecewise.Verify
 import Project.Pipeline.Allocation
+import Project.Pipeline.Budget
 import Project.Pipeline.Implements
 import Project.Pipeline.Records
 import Project.Pipeline.Slotted
