@@ -25871,3 +25871,39 @@ source, and every result above comes from it.
 The D1 check passes: `lake build` succeeds with no `sorry`, the other 27 modules emit their
 stored bytes, the 15,900 module cases (2,091 of them drone cases) and the release-count and
 depth-guard cases pass, and `tests/drone/run.sh` passes.
+
+### D2: the rows
+
+`Project/Drone/Rows.lean` proves the row functions.  `choose` and `predecessor` are
+`ImplementsPureA`; both select their record with a statement-level conditional, so the proof of
+`choose` splits on the source's test before evaluating, and `predecessor` closes its cases with
+`simp_all`.  `initial` takes no arguments, so the file gives `Unit` the `Scalar` instance with no
+values, and `initial_implements` is `Implements` of `fun () => initial` by
+`Stmt.buildRecords_spec`.  `advance_implements` is the first proof with a loop inside a record
+build: each element runs three assignments, the 45-step loop over the sources, and three more,
+and the loop body reads a choice of the borrowed table, calls `predecessor` and `choose`, and
+writes the accumulator.  The read of `table[base + source]` is guarded by `base + source < 2^29`,
+so the body is proved in both arms; in the arm where the guard fails, `flatWords_read` shows that
+the choice is `⟨0, 0, 0⟩`, which the compiled code passes.  The proof checks in about 25
+seconds, and `drone_bytes` now covers entries 2 to 11.
+
+The source lemmas follow main's `Selection`, `Rows`, `Costs`, `Initial`, and `Planner`, with
+three changes.  Rows are arrays of `Choice` built by `LeanExe.build`, so main's lemmas about
+pushes and packed words become `advance_get`: element `target` of a row is `best` of that target.
+The scan over the sources is a loop, so `Selection.scanned` proves by `loop_induction` that after
+`k` sources the accumulator is no worse than unreachable and than every candidate below `k`, and
+is unreachable or one of them.  States are words, so `Flight` is indexed by `UInt64` states below
+45.
+
+| File | Theorems |
+|---|---|
+| `Optimality.lean` | main's file: `Cost`, its order, and the certificate theorems |
+| `Selection.lean` | `advance_get`, `advance_size`, `best_loop`, `Selection.scanned`, `scan_minimum`, `finite_best` |
+| `Costs.lean` | `initial_get`, `initial_finite`, `initial_bound`, `predecessor_exact`, `best_parent`, `advance_bound` |
+| `Planner.lean` | `Flight`, `correct`, `initial_correct`, `advance_correct`, `layers`, `layers_correct`, `layers_optimal` |
+
+`layers_optimal` is the optimality of the rows: in the row of station `n`, built by `advance`
+from `initial`, every finite label is the cost of a flight to its state, and no flight to that
+state costs less, for up to 64 stations and floors of at most 1,000,100.  The binary is unchanged
+from D1, so the module tests and the drone corpus results of D1 stand; `lake build` succeeds with
+no `sorry`.
