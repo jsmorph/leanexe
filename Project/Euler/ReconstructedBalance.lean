@@ -55,7 +55,7 @@ def lineStep (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : 
     (lineState m axisY grid l (min (p + 1) (m - 1))) (lineState m axisY grid l (min (p + 2) (m - 1)))
 
 /-- The cell at position `p` of line `l` after a sweep. -/
-def sweepCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : Array Cell)
+def lineCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float) (grid : Array Cell)
     (l p : Nat) : Cell :=
   cellOf axisY (lineStep m axisY trials ratio grid l p)
 
@@ -64,7 +64,7 @@ theorem reconstructedSweep_cell {n : UInt64} {axisY : Bool} {trials : UInt64} {r
     {grid : Array Cell} (hsize : grid.size = n.toNat * n.toNat) (hlt : grid.size < 2 ^ 64)
     {k : Nat} (hk : k < grid.size) :
     (reconstructedSweep n axisY trials ratio grid)[k]! =
-      sweepCell n.toNat axisY trials ratio grid (lineOf n.toNat axisY k)
+      lineCell n.toNat axisY trials ratio grid (lineOf n.toNat axisY k)
         (positionOf n.toNat axisY k) := by
   have hsz := reconstructedSweep_size n axisY trials ratio grid hlt
   rw [getElem!_pos _ k (by omega)]
@@ -98,9 +98,9 @@ def lineFace (m : Nat) (axisY : Bool) (trials : UInt64) (grid : Array Cell) (l j
   faceFlux trials (lineState m axisY grid l (j - 2)) (lineState m axisY grid l (j - 1))
     (lineState m axisY grid l (min j (m - 1))) (lineState m axisY grid l (min (j + 1) (m - 1)))
 
-theorem stateAt_sweepCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float)
+theorem stateAt_lineCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float)
     (grid : Array Cell) (l p : Nat) (c : Fin 4) :
-    stateAt (sweepCell m axisY trials ratio grid l p).state c =
+    stateAt (lineCell m axisY trials ratio grid l p).state c =
       updatedAt (lineStep m axisY trials ratio grid l p) (axisComponent axisY c) :=
   stateAt_cellOf axisY _ c
 
@@ -151,7 +151,7 @@ theorem reconstructedSweep_residual_le {n : UInt64} {axisY : Bool} {trials : UIn
   refine residual_le (fun k hk c => ?_) c
   have hcell := reconstructedSweep_cell (axisY := axisY) (trials := trials) (ratio := ratio)
     hsize hlt hk
-  have h0 : (sweepCell n.toNat axisY trials ratio grid (lineOf n.toNat axisY k)
+  have h0 : (lineCell n.toNat axisY trials ratio grid (lineOf n.toNat axisY k)
       (positionOf n.toNat axisY k)).status = 0 := by
     rw [← hcell, getElem!_pos _ k (by omega)]
     exact accepted_ok hA (by omega) _ (Array.getElem_mem _)
@@ -162,7 +162,7 @@ theorem reconstructedSweep_residual_le {n : UInt64} {axisY : Bool} {trials : UIn
       (positionOf n.toNat axisY k)) (axisComponent axisY c) = stateAt grid[k]!.state c := by
     rw [lineState, stateAt_oriented, lineIndex_of]
   rw [hold] at hs hv
-  rw [hcell, stateAt_sweepCell]
+  rw [hcell, stateAt_lineCell]
   exact ⟨hs, hv⟩
 
 /-! The balance of steps and runs. -/
