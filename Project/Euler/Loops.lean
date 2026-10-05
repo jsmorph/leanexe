@@ -220,7 +220,7 @@ theorem pack_implements : Implements euler.module 22 packTuple := by
   refine (Stmt.buildWith_spec (writes := [9, 10, 11, 12]) (n := 4 + 2 * k) (scratch := 13)
     (packWord n status time grid) rfl rfl rfl (by decide) (by decide) (by decide)
     (by omega) hHeap hCap
-    (by simp [Expr.eval, s2, s1, hStart, U64Op.apply, State.set?_eq_update]) ?_).mono
+    (by simp [Expr.eval, s2, s1, hStart, U64Op.apply]) ?_).mono
       (fun _ _ h => h) ?_
   · intro i store state hi hAt hFrame hIndex
     have hLength : state.params.length + state.locals.length = 15 := by
@@ -266,7 +266,7 @@ theorem pack_implements : Implements euler.module 22 packTuple := by
       refine ⟨?_, ?_⟩
       · repeat refine State.Frame.update ?_ (by decide)
         exact State.Frame.refl _ _ _
-      · simp [hLength, packWord, k, hZ0, hZ4, hD, hP]
+      · simp [packWord, k, hZ0, hZ4, hD, hP]
   rintro store state ⟨ptr, -, hPtr, hNew⟩
   refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [euler.pack.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
