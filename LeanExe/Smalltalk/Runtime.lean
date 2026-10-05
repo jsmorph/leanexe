@@ -61,9 +61,11 @@ def programTablesValid (p : Array UInt64) : Bool :=
   let validClasses := LeanExe.loop classes true fun i ok =>
     let c := i + 1
     let parent := classAt p c 0
+    let inherited := if parent == 0 then true else if parent < c then
+      classAt p parent 2 ≤ classAt p c 2 else false
     ok && parent < c && classAt p c 1 > 0 && classAt p c 1 ≤ classes &&
       classAt p c 2 ≤ 1048576 && classAt p c 3 == 0 &&
-      (parent == 0 || classAt p parent 2 ≤ classAt p c 2)
+      inherited
   let validMethods := LeanExe.loop methods true fun i ok =>
     let m := i + 1
     ok && methodAt p m 0 > 0 && methodAt p m 0 ≤ classes &&
@@ -71,13 +73,31 @@ def programTablesValid (p : Array UInt64) : Bool :=
       methodAt p m 4 < read p 2 && methodAt p m 5 ≤ 8
   validClasses && validMethods && methodAt p (read p 3) 2 == 1 && methodAt p (read p 3) 1 != 0
 def programValid (p : Array UInt64) : Bool :=
-  if p.size < 8 then false else
-  if read p 0 == 0 || read p 0 > 1048576 || read p 1 == 0 || read p 1 > 1048576 ||
-    read p 2 == 0 || read p 2 > 1048576 || read p 3 == 0 || read p 3 > read p 1 ||
-    read p 4 == 0 || read p 4 > read p 0 || read p 5 == 0 || read p 5 > read p 0 ||
-    read p 6 == 0 || read p 6 > read p 0 || read p 7 == 0 || read p 7 > read p 0 ||
-    p.size.toUInt64 != 8 + 4 * read p 0 + 6 * read p 1 + 4 * read p 2 then false
-  else programTablesValid p
+  let n := if p.size ≥ 8 then read p 0 else 0
+  let m := if p.size ≥ 8 then read p 1 else 0
+  let count := if p.size ≥ 8 then read p 2 else 0
+  let entry := if p.size ≥ 8 then read p 3 else 0
+  let shape := n > 0 && n ≤ 1048576 && m > 0 && m ≤ 1048576 &&
+    count > 0 && count ≤ 1048576 && entry > 0 && entry ≤ m &&
+    p.size.toUInt64 == 8 + 4 * n + 6 * m + 4 * count
+  let classes := if shape then read p 4 > 0 && read p 4 ≤ n && read p 5 > 0 &&
+    read p 5 ≤ n && read p 6 > 0 && read p 6 ≤ n && read p 7 > 0 && read p 7 ≤ n else false
+  let valid := LeanExe.loop (if shape then n + m else 0) true fun i ok =>
+    if i < n then
+      let c := i + 1
+      let parent := classAt p c 0
+      let inherited := if parent == 0 then true else if parent < c then
+        classAt p parent 2 ≤ classAt p c 2 else false
+      ok && parent < c && classAt p c 1 > 0 && classAt p c 1 ≤ n &&
+        classAt p c 2 ≤ 1048576 && classAt p c 3 == 0 &&
+        inherited
+    else
+      let id := i - n + 1
+      ok && methodAt p id 0 > 0 && methodAt p id 0 ≤ n && methodAt p id 2 > 0 &&
+        methodAt p id 2 ≤ 1048576 && methodAt p id 3 ≤ 1048576 &&
+        methodAt p id 4 < count && methodAt p id 5 ≤ 8
+  let entryOK := if shape then methodAt p entry 2 == 1 && methodAt p entry 1 != 0 else false
+  shape && classes && valid && entryOK
 
 def advance (s : Array UInt64) (stack : UInt64) : Array UInt64 :=
   let act := read s 2
@@ -103,11 +123,14 @@ def pop (s : Array UInt64) : Array UInt64 :=
   let stack := field s (read s 2) 7
   if kind s stack != 7 then fail s 4 else advance s (field s stack 3)
 def loadSlot (s : Array UInt64) (slot : UInt64) : Array UInt64 :=
-  if slot == 0 then fail s 2 else push s (field s slot 2)
+  let value := field s slot 2
+  if slot == 0 then fail s 2 else push s value
 def storeSlot (s : Array UInt64) (slot : UInt64) : Array UInt64 :=
   let stack := field s (read s 2) 7
+  let value := field s stack 2
+  let rest := field s stack 3
   if slot == 0 then fail s 2 else if kind s stack != 7 then fail s 4
-  else advance (write s (address slot + 2) (field s stack 2)) (field s stack 3)
+  else advance (write s (address slot + 2) value) rest
 def fieldSlot (s : Array UInt64) (index : UInt64) : UInt64 :=
   let receiver := self s (read s 2)
   let head := if kind s receiver == 4 then field s receiver 3 else 0
@@ -193,9 +216,11 @@ def ret (p s : Array UInt64) (nonlocal : UInt64) : Array UInt64 :=
   let lexicalHome := home p s current
   let stop := if nonlocal == 0 then current else lexicalHome
   let active := onChain s stop
+  let caller := field s stop 4
+  let value := field s stack 2
   if kind s stack != 7 then fail s 4 else
   if kind s stop != 5 || field s stop 3 == dead || !active then fail s 7
-  else returnReserved s stop (field s stop 4) (field s stack 2)
+  else returnReserved s stop caller value
 
 def sendMethodReady (p s : Array UInt64) (method arity receiver lex : UInt64) : Array UInt64 :=
   let current := read s 2
@@ -302,6 +327,7 @@ def accessField (s : Array UInt64) (op index : UInt64) : Array UInt64 :=
 def execute (p s : Array UInt64) (op a b : UInt64) : Array UInt64 :=
   let act := read s 2
   let stack := field s act 7
+  let top := field s stack 2
   if op == 0 then literal s 1 a 0
   else if op == 1 then if a ≤ 2 then push s (a + 1) else fail s 10
   else if op == 2 || op == 3 then accessLocal s op a b
@@ -312,7 +338,7 @@ def execute (p s : Array UInt64) (op a b : UInt64) : Array UInt64 :=
     else literal s 6 a act
   else if op == 7 then
     if a == 0 || a > read p 0 then fail s 10 else literal s 8 a (classAt p a 1)
-  else if op == 8 then if kind s stack != 7 then fail s 4 else push s (field s stack 2)
+  else if op == 8 then if kind s stack != 7 then fail s 4 else push s top
   else if op == 9 then pop s
   else if op == 10 || op == 11 then send p s a b (op - 10)
   else if op == 12 || op == 13 then ret p s (op - 12)
