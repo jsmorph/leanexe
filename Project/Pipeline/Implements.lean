@@ -107,8 +107,9 @@ instance [Flat α β] [Scalar β] : Scalar α := ⟨fun x => Scalar.values (Flat
 
 instance : Scalar UInt64 := ⟨fun x => [.i64 x]⟩
 
-/-- A `Bool` is the word of its constructor index: `false` is 0 and `true` is 1. -/
-instance : Flat Bool UInt64 := ⟨fun b => if b then 1 else 0⟩
+/-- A `Bool` is the word of its constructor index: `false` is 0 and `true` is 1.  `cond` keeps
+the Bool out of a `Decidable` instance argument, which `simp` does not rewrite. -/
+instance : Flat Bool UInt64 := ⟨fun b => cond b 1 0⟩
 
 /-- A float is passed as an `f64` holding its bit pattern. -/
 instance : Scalar Float := ⟨fun x => [.f64 x.toBits]⟩
@@ -169,6 +170,29 @@ instance : Represent (Array Float32) where
     Represent.blocks store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
   reads store vs xs :=
     Represent.reads store vs (xs.map fun x : Float32 => x.toBits.toUInt64)
+  moves _ _ _ := []
+
+/-- The word that a scalar value occupies in an array: an integer's value, or a float's bit
+pattern in the low bits. -/
+def Value.word : Value → UInt64
+  | .i64 x => x
+  | .f64 x => x
+  | .f32 x => x.toUInt64
+  | .i32 x => x.toUInt64
+  | _ => 0
+
+/-- The words of an array of a flat type: each element's components in order. -/
+def flatWords [Scalar α] (xs : Array α) : Array UInt64 :=
+  (xs.toList.flatMap fun x => (Scalar.values x).map Value.word).toArray
+
+/-- An array of a structure, sum, or enumeration is stored as its elements' components in
+order, one word each. -/
+instance [Flat α β] [Scalar β] : Represent (Array α) where
+  width _ := 1
+  borrowed heap store vs xs := Represent.borrowed heap store vs (flatWords xs)
+  owned heap store vs xs := Represent.owned heap store vs (flatWords xs)
+  blocks store vs xs := Represent.blocks store vs (flatWords xs)
+  reads store vs xs := Represent.reads store vs (flatWords xs)
   moves _ _ _ := []
 
 /-- An array that the caller hands over: the call receives it as owned, reads

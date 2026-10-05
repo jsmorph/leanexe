@@ -16,7 +16,7 @@ tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entri
 ```
 
 `tail-recursion-loop`, `array-fold-loop`, `index-loop`, `array-read`,
-`array-size`, `array-literal`, `array-build`, and `release-temporary` cover compiler rules and
+`array-size`, `array-literal`, `array-build`, `record-read`, and `release-temporary` cover compiler rules and
 are proved for every function those rules produce, and `straight-line-run`
 describes how `simp` computes the effect of straight-line statements.  `splitmix64` is a proved library function that any module can compile and call.  `float-arithmetic` connects Lean's `Float` operations to the
 IR's `f64` expressions, and `float-array-fold` connects a fold over an `Array Float` to

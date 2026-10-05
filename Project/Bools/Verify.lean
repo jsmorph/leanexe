@@ -162,7 +162,7 @@ theorem anyEqual_implements : Implements bools.module 12 anyEqualTuple :=
         · refine .cons ?_ .nil
           have h2 : 2 < t1.params.length + t1.locals.length := by
             simp [t1, State.update_params_length, State.update_locals_length]; omega
-          simp only [t2, State.get_update_same h2, Flat.flat, v]
+          simp only [t2, State.get_update_same h2, Flat.flat, v, cond_eq_ite]
           cases acc <;> by_cases h : UInt64.ofNat i = k <;> simp [h]
       · rintro store state ⟨rfl, -, hHolds⟩
         refine ⟨rfl, _, state, ?_, rfl⟩
@@ -171,8 +171,7 @@ theorem anyEqual_implements : Implements bools.module 12 anyEqualTuple :=
           simpa [State.Holds, Scalar.values, Flat.flat] using hHolds
         simp only [bools.anyEqual.ir, Func.scratch, Expr.evalResults, Expr.eval, g2, Scalar.values,
           Flat.flat, anyEqualTuple, anyEqual, Option.bind_eq_bind, Option.bind_some, Option.pure_def,
-          ScalarType.value]
-        rfl).implements
+          ScalarType.value, cond_eq_ite]).implements
 
 /-- `encode` succeeds on `bools.module`, and its bytes decode to a module that computes each
 function exactly. -/

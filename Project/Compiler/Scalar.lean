@@ -184,6 +184,9 @@ structure Ctx where
   floats : List (Lean.Expr × Nat)
   arrays : List (Lean.Expr × Nat)
   floatArrays : List (Lean.Expr × Nat)
+  /-- Each array of records in scope: its local and the components of one element, which the
+  array stores in order, one word each. -/
+  recordArrays : List (Lean.Expr × Nat × List ScalarType) := []
   lists : List (Lean.Expr × Nat) := []
   /-- The local of each variable of a recursive user type in scope, a borrowed pointer. -/
   nodes : List (Lean.Expr × Nat) := []
@@ -409,6 +412,39 @@ partial def componentTypes (type : Lean.Expr) (arrays : Bool) : MetaM (List Scal
 
 /-- The components of a loop state: words and floats. -/
 def stateTypes (type : Lean.Expr) : MetaM (List ScalarType) := componentTypes type false
+
+/-- The components of one element of `type` when it is an array of a structure, sum, or
+enumeration whose components are words and floats: the array stores each element's components
+in order, one word each. -/
+def recordArrayComponents? (type : Lean.Expr) : MetaM (Option (List ScalarType)) := do
+  let type ← whnfR type
+  unless type.isAppOfArity ``Array 1 do return none
+  let element := type.appArg!
+  match ← userType? element with
+  | some (.struct ..) | some (.sum ..) | some (.enum ..) =>
+      return some (← componentTypes element false)
+  | _ => return none
+
+/-- Whether every component of `term`, of a word, float, enumeration, structure, or sum type
+`type`, is the word 0: a word 0, a float `UInt64.toFloat 0`, the first constructor of an
+enumeration, or the first constructor of a structure or sum with such fields. -/
+partial def isZeroValue (term type : Lean.Expr) : MetaM Bool := do
+  if ← isUInt64 type then return ← isDefEq term (← mkNumeral type 0)
+  let zero ← mkNumeral (mkConst ``UInt64) 0
+  if ← isFloat type then
+    return ← withTransparency .instances <| isDefEq term (mkApp (mkConst ``UInt64.toFloat) zero)
+  if ← isFloat32 type then
+    return ← withTransparency .instances <|
+      isDefEq term (mkApp (mkConst ``UInt64.toFloat32) zero)
+  let first ← match ← userType? type with
+    | some (.enum (ctor :: _)) => return ← isDefEq term (mkConst ctor)
+    | some (.struct ctor fields) => pure (ctor, fields)
+    | some (.sum (first :: _)) => pure first
+    | _ => return false
+  let (ctor, fields) := first
+  let term ← whnfD term
+  unless term.isAppOfArity ctor fields.length do return false
+  (term.getAppArgs.toList.zip fields).allM fun (field, fieldType) => isZeroValue field fieldType
 
 /-- The zero of the field type `type`, held in the slots of a sum's inactive constructors:
 0 for a word or float, and the first constructor of an enumeration. -/
@@ -1050,8 +1086,12 @@ mutual
           | throwError "unsupported term: {source}"
         unless ctx.foldable do
           throwError "an array size may not appear in a branch, a fold body, or a recursive definition: {source}"
-        let some arrayLocal ← lookupArray (ctx.arrays ++ ctx.floatArrays) array.consumeMData
+        let records := ctx.recordArrays.map fun (x, local_, _) => (x, local_)
+        let some arrayLocal ← lookupArray (ctx.arrays ++ ctx.floatArrays ++ records)
+            array.consumeMData
           | throwError "the size must be of an array variable: {source}"
+        -- An array of records stores `k` words per element.
+        let width := (ctx.recordArrays.lookup array.consumeMData).map (·.2.length) |>.getD 1
         let before ← get
         let temp := before.next
         let stmt := Stmt.arraySize temp arrayLocal
@@ -1062,7 +1102,8 @@ mutual
           length := before.length + stmtLength stmt
           vars := before.vars.push .u64
           names := before.names.push ("size", temp) }
-        let ir : IRExpr .u64 := .get temp
+        let ir : IRExpr .u64 :=
+          if width = 1 then .get temp else .bin .divU (.get temp) (.const (UInt64.ofNat width))
         return (ir, [hint ir "size result"])
     | (``Array.foldl, _) | (``List.foldl, _) =>
         let ir : IRExpr .u64 := .get (← translateFold ctx term .u64)
@@ -1106,10 +1147,17 @@ mutual
         let ir : IRExpr .u64 := .ite (.leU (.get x) (.get y)) (.get y) (.get x)
         return (ir, [hint ir "max"])
     | (``GetElem?.getElem!, #[collection, _, element, _, _, _, array, position]) =>
-        unless (← isUInt64Array collection) && (← isUInt64 element) do
-          throwError "unsupported array read in {source}"
-        let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
-          | throwError "a read must be of an array variable: {source}"
+        -- An element of an array of `Bool` or of an enumeration is one word, read as an
+        -- element of an `Array UInt64`.
+        let arrayLocal ← match ← recordSlice? ctx term with
+          | some (arrayLocal, _, [.u64], _, _) => pure arrayLocal
+          | some _ => throwError "unsupported array read in {source}"
+          | none =>
+            unless (← isUInt64Array collection) && (← isUInt64 element) do
+              throwError "unsupported array read in {source}"
+            let some arrayLocal ← lookupArray ctx.arrays array.consumeMData
+              | throwError "a read must be of an array variable: {source}"
+            pure arrayLocal
         let (``UInt64.toNat, #[k]) := position.consumeMData.getAppFnArgs
           | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
         let (i, iHints) ← translateValue ctx loc k
@@ -1451,6 +1499,8 @@ mutual
       | .proj .. => pure true
       | _ => pure false
     unless projection do return none
+    if let some (arrayLocal, position, components, start, count) ← recordSlice? ctx term then
+      return some (.inr (← readRecord ctx term arrayLocal components position start count))
     let reduced ← whnfR term
     let .proj _ index value := reduced | return some (.inl reduced)
     let some fields ← tupleFields? (← inferType value)
@@ -1689,13 +1739,86 @@ mutual
         peel ctx (← Core.betaReduce (mkAppN alternative xs.toArray)) k)
       fields widths components []
 
+  /-- When `term` is an element of an array of records, or a chain of projections of one: the
+  array's local, the position, the components of one element, and the first and the number of
+  the components that `term` selects. -/
+  partial def recordSlice? (ctx : Ctx) (term : Lean.Expr) :
+      CompileM (Option (Nat × Lean.Expr × List ScalarType × Nat × Nat)) := do
+    let term := term.consumeMData
+    if let (``GetElem?.getElem!, #[_, _, element, _, _, _, array, position]) :=
+        term.getAppFnArgs then
+      let some (arrayLocal, components) := ctx.recordArrays.lookup array.consumeMData
+        | return none
+      if (← get).consumed.contains array.consumeMData then
+        throwError "the array {← sourceOf term} is used after the code moved it"
+      unless ← isZeroValue (← mkAppOptM ``Inhabited.default #[element, none]) element do
+        throwError "a read of an array of records needs an element type whose default has every component 0: {← sourceOf term}"
+      return some (arrayLocal, position, components, 0, components.length)
+    let projection ← match term.getAppFn with
+      | .const fn _ => pure ((← getProjectionFnInfo? fn).any (!·.fromClass))
+      | .proj .. => pure true
+      | _ => pure false
+    unless projection do return none
+    let .proj _ index value ← whnfR term | return none
+    let some (arrayLocal, position, components, start, _) ← recordSlice? ctx value
+      | return none
+    let some fields ← tupleFields? (← inferType value) | return none
+    let widths ← fields.mapM fun field => return (← componentTypes field false).length
+    return some (arrayLocal, position, components, start + (widths.take index).sum,
+      widths[index]!)
+
+  /-- Reads element `position` of the array of records at `arrayLocal`, whose elements have
+  the components `components`, into fresh locals.  Component `j` of element `i` is word
+  `i · k + j`, read only when `i < 2^29`: every stored array has fewer than `2^29` words, so the
+  position does not wrap, and `read` gives 0 exactly when the element is out of bounds.  An
+  element of one component is word `i`, which `read` alone bounds. -/
+  partial def readRecord (ctx : Ctx) (term : Lean.Expr) (arrayLocal : Nat)
+      (components : List ScalarType) (position : Lean.Expr) (start : Nat := 0)
+      (count : Nat := components.length) : CompileM (List (Nat × ScalarType)) := do
+    let source ← sourceOf term
+    let (``UInt64.toNat, #[i]) := position.consumeMData.getAppFnArgs
+      | throwError "a read position must be `i.toNat` for a UInt64 `i`: {source}"
+    let (iv, iHints) ← translateValue ctx ⟨[], 0⟩ i
+    let assign (local_ : Nat) (type : ScalarType) (word : IRExpr .u64) : Project.IR.Stmt :=
+      match type with
+      | .f64 => .assign local_ (.ofBits word)
+      | .f32 => .assign local_ (.ofBits32 word)
+      | _ => .assign local_ word
+    if let [type] := components then
+      let local_ ← fresh type "field 0"
+      let stmt := assign local_ type (.read arrayLocal iv)
+      pushStmt stmt (mkHint ⟨[], 0⟩ (stmtLength stmt) "record field read" source :: iHints)
+      return [(local_, type)]
+    let index ← fresh .u64 "element index"
+    let indexStmt := Project.IR.Stmt.assign index iv
+    pushStmt indexStmt (mkHint ⟨[], 0⟩ (stmtLength indexStmt) "element index" source :: iHints)
+    let width := components.length
+    let mut locals := #[]
+    for j in [start:start + count] do
+      let type := components.getD j .u64
+      let position : IRExpr .u64 :=
+        .bin .add (.bin .mul (.get index) (.const (UInt64.ofNat width))) (.const (UInt64.ofNat j))
+      let word : IRExpr .u64 :=
+        .ite (.ltU (.get index) (.const 536870912)) (.read arrayLocal position) (.const 0)
+      let local_ ← fresh type s!"field {j}"
+      let stmt := assign local_ type word
+      pushStmt stmt [mkHint ⟨[], 0⟩ (stmtLength stmt) "record field read" source]
+      locals := locals.push (local_, type)
+    return locals.toList
+
   /-- The locals holding the components of the pair-valued `term`: a pair
-  variable, a loop, or a call of a function compiled into the same module, whose
-  statements join the prelude. -/
+  variable, a loop, a projection of a pair, an element of an array of records, or a call of
+  a function compiled into the same module, whose statements join the prelude. -/
   partial def tupleOf (ctx : Ctx) (term : Lean.Expr) : CompileM (List (Nat × ScalarType)) := do
     let term := term.consumeMData
     if let some components := ctx.tuples.lookup term then return components
     if term.isAppOf ``LeanExe.loop then return ← translateLoop ctx term
+    if let some (arrayLocal, position, components, start, count) ← recordSlice? ctx term then
+      return ← readRecord ctx term arrayLocal components position start count
+    match ← projectionField? ctx term with
+    | some (.inr components) => return components
+    | some (.inl field) => return ← tupleOf ctx field
+    | none => pure ()
     if let some fn := term.getAppFn.constName? then
       if let some index := ctx.callees.lookup fn then return ← translateCall ctx term index
     throwError "unsupported pair: {← sourceOf term}"
@@ -2969,6 +3092,7 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
     let mut floats := []
     let mut arrays := []
     let mut floatArrays := []
+    let mut recordArrays := []
     let mut lists := []
     let mut nodes := []
     let mut tuples := []
@@ -2994,6 +3118,9 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
         paramTypes := paramTypes.push .u64
       else if ← isFloatArray type then
         floatArrays := (params[i], index) :: floatArrays
+        paramTypes := paramTypes.push .u64
+      else if let some components ← recordArrayComponents? type then
+        recordArrays := (params[i], index, components) :: recordArrays
         paramTypes := paramTypes.push .u64
       else if ← isUInt64List type then
         lists := (params[i], index) :: lists
@@ -3057,7 +3184,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       -- The internal function: the parameters and the depth, a guard, and the body.
       let depth := paramTypes.size
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := true,
+        { self := declName, params, words, floats, arrays, floatArrays, recordArrays, nodes,
+          foldable := true,
           selfCall := some (index, depth), owned, callees := callees.filter (·.1 != declName),
           internals, leaves, owners := (declName, positionsOf owned) :: owners }
       let guard : Project.IR.Stmt :=
@@ -3100,7 +3228,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
           !arrayResult && !floatResult && !pairResult && !listResult do
         throwError "a recursive definition may take only UInt64 and values of recursive types, and return only UInt64: {declName}"
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, nodes, foldable := false }
+        { self := declName, params, words, floats, arrays, floatArrays, recordArrays, nodes,
+          foldable := false }
       -- The loop is the first instruction of the body: a block holding a loop.
       let loopBody := ((({ prefix_ := [], index := 0 } : Loc).inside none).inside none)
       let condition : IRExpr .bool := .eq (.get ctx.done) (.const 0)
@@ -3127,7 +3256,8 @@ def compileDefinition (declName : Name) (callees : List (Name × Nat) := [])
       let sites ← moveSites owners movable body
       let owned := movable.filter sites.contains
       let ctx : Ctx :=
-        { self := declName, params, words, floats, arrays, floatArrays, lists, nodes, tuples,
+        { self := declName, params, words, floats, arrays, floatArrays, recordArrays, lists, nodes,
+          tuples,
           callees, owners, owned, foldable := true }
       let ((results, resultHints), prelude) ←
         (do

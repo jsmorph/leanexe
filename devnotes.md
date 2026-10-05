@@ -25169,10 +25169,53 @@ array elements, a build template that allocates in its element, and a `Live` par
 temporaries' ownership.  Its first increment reads a lent row of a borrowed
 `Array (Array UInt64)` and allocates and releases nothing.
 
-- [ ] E2a: `Represent (Array α)` for flat `α`; field reads and `size` on borrowed arrays of
+- [x] E2a: `Represent (Array α)` for flat `α`; field reads and `size` on borrowed arrays of
   records; an example, tests at and beyond the bounds, and proofs.
 - [ ] E2b: build with `k` stores per element and fold with `k` loads; examples, tests, proofs.
 - [ ] E2c: `default` from the instance; records with array fields.
 - [ ] E3a: lent rows of a borrowed `Array (Array UInt64)` under bound proofs (`dite`, `getElem`).
 - [ ] E3b: building arrays of owned elements, the kind-2 release proof, and `Live` generalized.
 - [ ] E3c: replacing an element with release; arrays of trees.
+
+### E2a: reads of arrays of records
+
+A parameter of type `Array α`, for a structure, sum, or enumeration `α` whose components are
+words and floats, now compiles, and so do `xs[i.toNat]!` followed by projections and
+`xs.size.toUInt64`.  `Bool` counts as an enumeration.  For `k > 1` components, the compiler
+assigns `i` to an index local and reads each component the term needs as
+`ite (idx < 2^29) (read xs (idx · k + j)) 0`, as the review proposed.  An element of one
+component, such as a `Bool` or a one-field structure, is the plain `read xs i` of an
+`Array UInt64`, with no guard and no index local.  The size is the length word divided by `k`.
+`Represent (Array α)` for `[Flat α β] [Scalar β]` is the `Array UInt64` of `flatWords xs`, each
+element's `Scalar.values` as words, so the heap predicates apply unchanged.
+
+A read past the end yields zero words, which equal `xs[i]!` only when every component of the
+element type's default is 0.  The compiler checks this at each read (`isZeroValue`): it unfolds
+`Inhabited.default` to a constructor and compares each field with 0, `UInt64.toFloat 0` (Lean's
+default float), or the first constructor of an enumeration, and rejects the read otherwise.  A
+record type with a nonzero default still compiles when only its size is used; reading it waits
+for E2c.  A scratch module confirmed both behaviors.
+
+`Project/IR/RecordRead.lean` holds the general lemmas.  `flatWords_read` states that the guarded
+read of word `i · k + j` is component `j` of `xs[i.toNat]!`, given the component count, the
+default's zero words, and the size bound of `UInt64Array.At`.  `flatWords_getElem!_one` covers
+`k = 1`, and `flatWords_count` the size.  `Stmt.run_triple`, added to `Project/IR/Run.lean`,
+turns `∃ final, s.run … = some final ∧ post initial final` into a `Triple`, so a straight-line
+body takes one `simp` call.  `Project/Grids/Verify.lean` proves `Implements` for the ten
+functions of `LeanExe/Examples/Grids.lean`, which read fields of an array of a nine-component
+`Cell` (a nested structure, a `Bool`, and an enumeration), the size, an `Array Bool`, and an
+array of a one-field structure, plus `grids_bytes`.  Each proof splits on the guard of each read
+and closes with the `flatWords_read` fact.  `ltg/entries/record-read` describes the rule and
+the proof method.
+
+Two changes outside the new files came from the proofs.  The `Flat Bool UInt64` instance was
+`if b then 1 else 0`, whose `Decidable` instance argument holds the Bool term, and `simp` does
+not rewrite instance arguments; after `simp` unfolded a definition in the proposition, the
+instance kept the old term and `simpa` could not match two terms that printed identically.  The
+instance is now `cond b 1 0`, which `simp` rewrites to an `ite` built from the simplified Bool
+(`cond_eq_ite`), and `anyEqual`'s proof adds that lemma.  The example's `State` structure,
+whose name clashed with `Project.IR.State` in proofs, is now `Conserved`.
+
+`tests/modules/Cases.lean` has 318 grid cases, on arrays of 0, 1, 3, and 7 elements and indices
+from 0 to one past the end, `2^29 - 1`, `2^29`, `2^63`, and `2^64 - 1`, with special floats in
+the fields; all match native Lean.  `grids.wasm` is 2,178 bytes.

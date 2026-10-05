@@ -144,4 +144,13 @@ theorem Stmt.run_spec {s : Stmt} {scratch : Nat} {initial : Store Unit} :
       intro state final hRun
       simp [Stmt.run] at hRun
 
+/-- A statement that `Stmt.run` completes meets every postcondition that holds of its final
+state. -/
+theorem Stmt.run_triple {s : Stmt} {scratch : Nat} {initial : Store Unit} {state : State}
+    {post : Store Unit → State → Prop}
+    (h : ∃ final, s.run initial.mem scratch state = some final ∧ post initial final) :
+    Triple m s scratch (fun store st => store = initial ∧ st = state) post :=
+  let ⟨_, hRun, hPost⟩ := h
+  (Stmt.run_spec hRun).mono (fun _ _ h => h) fun _ _ ⟨hStore, hState⟩ => hStore ▸ hState ▸ hPost
+
 end Project.IR
