@@ -25076,8 +25076,9 @@ structure where they fit.
 - [x] E4: binary64 `toBits`, and whatever else the solvers need.
 - [x] E5: the first-order solver, tests against main's binary, and the 192 and 800 runs.
 - [x] E6: the first-order solver's theorems.
-- [ ] E7: the reconstructed solver, tests, and its 192 and 800 runs.
-- [ ] E8: the reconstructed solver's theorems.
+- [x] E7: the reconstructed solver, tests, and its 192 and 800 runs.
+- [x] E8: the reconstructed solver's theorems (execution and run properties; the real-number
+  enclosures are listed below as open).
 - [ ] E9: figures, report, and documentation.
 
 ### E1: `Bool` values
@@ -25452,3 +25453,77 @@ time 0.8, so its grid is admissible.  `Implements` permits an abort, so `euler_s
 a returned array holds, not that a call returns.  Main's first-order theorems also include a
 512 MiB memory bound and a numerical trace, which have no counterpart here.  The theorems here
 use only Lean's standard axioms.
+
+### E7: the reconstructed solver
+
+`LeanExe/Examples/EulerReconstructed.lean` writes main's reconstructed solver in this dialect,
+following `EulerRiemann/Reconstruction`, `OutwardSpeed`, `OutwardSide`, `OutwardFlux`,
+`OutwardAdvance`, `OutwardMaximum`, `OutwardCfl`, `OutwardMesh`, and `EulerReconstructed/Control`
+and `Traversal` operation for operation.  It shares the first-order solver's initial cells,
+conservative update, flux components, acceptance test, timestep proposal, and output.  Outward
+rounding moves a binary64 result one step up or down with main's `nextUp` and `nextDown` on
+words, so `endpoint` builds the float with `Float.ofBits` only from a finite word.  Each checked
+function computes every value and tests the conjunction of main's checks once, as in the
+first-order solver.  The limiter's retries are `limitFactor`, a `LeanExe.repeatWhile` over the
+status and the factor whose step is `tryFactor`; the accepted faces are recomputed from the
+accepted factor, which gives the same faces.  Main's fuels `dt.toNat + 1` and
+`endTime.toNat + 1` become 2,048 halvings and `2^32` steps; a halved timestep fails
+`validAdvance` after about 1,075 halvings, before either bound.
+
+The reconstructed functions are appended to the `euler` module after `solve`, so the first-order
+functions keep their indices and proofs.  Three compiler limits shaped the source: a call may not
+appear inside a branch of an expression, so `cellUpper` binds its two speed bounds with `let`; a
+counted loop's state must be a tuple of components, so `gridUpper` loops over a word and a float
+and builds its record after the loop; and a sweep that read each oriented component separately
+compiled to 108 locals, so the sweep binds the five neighbor states once.  The last change kept
+every value and the outputs; the module tests and the runs below confirm it.
+
+`tests/modules/Cases.lean` adds 2,380 cases for the reconstructed functions, with special values
+in the outward operations, and all 3,096 euler cases pass.  The binary of the final source is
+23,063 bytes, SHA-256 `2b9450e4cef7632996a1be0334bc33981002fd32f2d8beafec4e123abbb204e5`.
+`reconstructedSolve 192 8` returned main's words exactly, SHA-256
+`6304853f58507013eca1eef730c0081de271233694f5b122d03539175ccb6b3c`, in 62.1 seconds against
+main's 176.7, with the binary before the sweep change.  `reconstructedSolve 800 8` with that
+binary returned main's 1,280,004 words exactly, SHA-256
+`64ff9d32fe0f7db442211b1c160726962d7742e92a3e7336d96199232a87dd4c`, in 82.5 minutes against
+main's 3 hours 58 minutes, with a peak resident size of 134 MB.
+
+### E8: proofs of the reconstructed solver
+
+The proofs follow the first-order ones, in five files.
+
+| File | Functions |
+|---|---|
+| `Project/Euler/Outward.lean` | `endpoint`, the five outward operations, `kineticLower`, `pressureUpper`, `soundUpper`, `speedUpper` |
+| `Project/Euler/Faces.lean` | `outwardSide`, `outwardFlux`, `faceStep` |
+| `Project/Euler/Reconstruct.lean` | `slope`, `candidate`, `tryFactor`, `limitFactor`, `limit`, `reconstruct`, `reconstructedStep` |
+| `Project/Euler/ReconstructedSteps.lean` | `cellUpper`, `gridRatio`, `gridUpper`, `reconstructedSweep` |
+| `Project/Euler/ReconstructedLoops.lean` | `reconstructedFinish`, `reconstructedStepGrid`, `reconstructedTry`, `reconstructedAttempt`, `reconstructedAdvanceWith`, `reconstructedAdvanceStep`, `reconstructedRunFrom`, `reconstructedRun`, `reconstructedSolve` |
+
+Four points needed new arguments.  `speedUpper` passes `Float.ofBits (absBits mx.toBits)` to
+`outDiv`; a Lean float's NaN is the canonical NaN, whose magnitude bits are again canonical, so
+`toBits_ofBits_abs` gives the argument's bits for every Lean float.  `limitFactor`'s loop has a
+pure step, and `Stmt.repeatWhile_pure_spec` in `Project/IR/RepeatWhile.lean` proves such a loop
+keeps the store and leaves the loop's value in its locals.  `reconstruct` tests three state guards,
+whose evaluation exceeded `simp`'s default step limit, so its proof uses `eval_ir_large`.  The
+sweep's two lower neighbors lie at or below the cell, which `lower_bounds` proves, and its proof
+splits on the guards of the two upper neighbors, which can exceed the bound when the grid is not
+`n × n`.
+
+`Project/Euler/ReconstructedSpec.lean` proves the run properties: `outwardSide_ok`,
+`faceStep_ok`, and `reconstructedStep_ok` give positive density and pressure for an accepted
+cell, and `reconstructedRun_ok` and `reconstructedSolve_ok` state, as for the first-order solver,
+that a run with status 0 ends at time 0.8 with `n²` admissible cells and that its output words are
+`Successful`.  `Project/Euler/Verify.lean` proves `euler_reconstructed_bytes`, with the 33
+reconstructed functions, and `euler_reconstructed_solve`.  All theorems use only Lean's standard
+axioms.
+
+Main's reconstructed theorems also state that the outward bounds enclose the real signal speeds,
+that accepted stages satisfy the CFL inequality on the reals, conservation with bounded rounding
+residuals, and hyperbolicity as a real eigenbasis.  These need real-number facts about binary64
+rounding.  CodeLib here has the binary64 error lemmas, and main's generic outward-enclosure
+library (`ProofKit/F64Outward*`, `F64*Enclosure`, and their order lemmas) is about 1,800 lines
+missing from this branch.
+
+- [ ] Port main's outward-enclosure library and prove the speed and CFL enclosures.
+- [ ] Conservation balance and hyperbolicity, if the enclosure port succeeds.

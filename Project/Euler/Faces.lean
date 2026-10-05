@@ -24,10 +24,10 @@ theorem outwardSide_implements : ImplementsPure euler.module 34 outwardSideTuple
         F64Bits.toBits_div, half_toBits, twoFifths_toBits, zero_toBits]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_div,
           half_toBits, twoFifths_toBits]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def outwardFluxTuple : Float × Float × Float × Float × Float × Float × Float × Float → Flux :=
@@ -68,9 +68,9 @@ theorem outwardFlux_implements : ImplementsPure euler.module 35 outwardFluxTuple
         toBits_ite, componentTuple, alpha, left, right]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [toBits_ite]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 def faceStepTuple : Float × Float × Float × Float × Float × Float × Float × Float × Float ×
@@ -124,9 +124,9 @@ theorem faceStep_implements : ImplementsPure euler.module 36 faceStepTuple :=
         nextMomentum, nextTransverse, nextEnergy]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
-      · rw [if_pos h]
+      · rw [ite_eq_left h]
         eval_ir [toBits_ite]
-      · rw [if_neg h]
+      · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
 end Project.Euler
