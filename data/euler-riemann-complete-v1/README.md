@@ -37,14 +37,17 @@ ranges below, which main computed from those words, describe this program's resu
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
 | Execution | The module's bytes decode to a module whose `solve` export, called with any `n` from a store that meets the entry conditions of `Implements`, terminates and either returns the words of the Lean function `solve n` or stops at `unreachable`. | `euler_solve` in [the bytes theorems](../../Project/Euler/Verify.lean) |
+| Complete execution and memory | The module's bytes decode to a module whose `solve` export, called with any `n` from the allocator state of a fresh instance (`top` at the heap base 4096, no free block, 16 pages) under a memory cap of at least 1,407 pages, returns the words of `solve n` without stopping at `unreachable` and ends with at most 1,407 pages (88 MiB) of linear memory. | `euler_solve_total` in [the total-execution theorems](../../Project/Euler/Total.lean) |
 | Output | Words with status 0 hold the bits of 0.8, `2 ≤ n ≤ 800`, and `n²` positive, finite densities and pressures. | `solve_ok` in [the run properties](../../Project/Euler/Spec.lean) |
 | Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `solve_hyperbolic` in [the hyperbolicity theorems](../../Project/Euler/Hyperbolic.lean) |
 | Conservation | A run with status 0 is a chain of accepted steps along which the total of mass, of each momentum, and of energy equals its initial total, minus the boundary fluxes summed over the steps, plus a rounding residual.  The residual is at most a sum of per-update bounds computed from the words of the run. | `run_balance` in [the balance theorems](../../Project/Euler/FirstOrderBalance.lean) |
 
 The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on
 Wasmtime and the hardware implementing the WebAssembly semantics that the proofs model.  Main
-proved complete execution without an abort, with at most 512 MiB of linear memory, which this
-branch does not prove.  Main's speed audit found that this solver's rounded signal speed can
+proved complete execution with at most 512 MiB of linear memory.  This branch proves it with at
+most 1,407 pages: the heap base and three grids of 640,000 cells with their block headers.  The
+theorem takes the allocator state of a fresh instance as a hypothesis, and no theorem connects
+that state to the module's instantiation.  Main's speed audit found that this solver's rounded signal speed can
 underestimate the physical characteristic speed for an admissible input, so no CFL bound in exact
 arithmetic is stated for it.  [The reconstructed solver](../euler-reconstructed-v1/README.md) uses
 outward speed bounds and has one.  Convergence to a weak solution of the continuous Euler

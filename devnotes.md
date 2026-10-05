@@ -25681,7 +25681,7 @@ stays at three grids: the current grid, the middle grid of the x sweep, and the 
   total `Implements` with a budget.
 - [x] A4: the euler functions in total form: the scalar functions through the generic flag, and
   the array functions with their budgets.
-- [ ] A5: from a fresh instance with a memory cap of at least the bound, both solve exports return
+- [x] A5: from a fresh instance with a memory cap of at least the bound, both solve exports return
   their words without a trap, and the page count stays within `4096 + 3·(48 + g)` bytes rounded up
   to pages, which is at most 8,192 pages (512 MiB) for `n ≤ 800`.
 
@@ -25745,4 +25745,21 @@ rule passes a condition on the final heap (`Live.finish_results_oneP`), and the 
 the contract of each step call needs the size of the state's grid.  `ImplementsA.implements_of`
 derives `Implements` from `ImplementsA true` when the precondition holds of every input, which the
 contracts do when `a = true`.  The full build has no `sorry`.
+
+### A5: complete execution and the page bound
+
+`euler_solve_total` in `Project/Euler/Total.lean` states that the bytes of `euler.module` decode to
+a module whose `solve` and `reconstructedSolve` exports, called from the allocator state of a
+fresh instance (`top` at 4096, an empty free list, 16 pages) with a memory cap of at least 1,407
+pages, return the words of the Lean functions without a trap and end with at most 1,407 pages.
+The page count comes from `runPages n`, the larger of 16 and the heap base plus three grids of
+`runCells n` cells with their 48-byte headers, rounded up; at `n = 800` that is 92,164,264 bytes,
+or 1,407 pages (88 MiB), against main's 8,192.  The proof instantiates the contracts of A4 with
+`spare = 0` and derives `Heap.Bounded` with three spares from the empty free list.  It uses only
+`propext`, `Classical.choice`, and `Quot.sound`.
+
+The fresh state is a hypothesis.  `runtimeGlobals` and the memory declaration in
+`Project/IR/Function.lean` give a fresh instance exactly that state, but no theorem connects the
+interpreter's instantiation of `euler.module` to it.  `Verify.lean` now proves the round trip of
+`euler.module` once, as `euler_round_trip`, and its theorems and the new one use it.
 

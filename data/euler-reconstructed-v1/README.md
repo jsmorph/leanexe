@@ -45,6 +45,7 @@ concern this module and the Lean function `reconstructedSolve`, which packs the 
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
 | Execution | The module's bytes decode to a module whose `reconstructedSolve` export, called with any `n` and trial count from a store that meets the entry conditions of `Implements`, terminates and either returns the words of `reconstructedSolve n trials` or stops at `unreachable`. | `euler_reconstructed_solve` in [the bytes theorems](../../Project/Euler/Verify.lean) |
+| Complete execution and memory | The module's bytes decode to a module whose `reconstructedSolve` export, called with any `n` and trial count from the allocator state of a fresh instance (`top` at the heap base 4096, no free block, 16 pages) under a memory cap of at least 1,407 pages, returns the words of `reconstructedSolve n trials` without stopping at `unreachable` and ends with at most 1,407 pages (88 MiB) of linear memory. | `euler_solve_total` in [the total-execution theorems](../../Project/Euler/Total.lean) |
 | Output | Words with status 0 hold the bits of 0.8, `2 ≤ n ≤ 800`, and `n²` positive, finite densities and pressures. | `reconstructedSolve_ok` in [the run properties](../../Project/Euler/ReconstructedSpec.lean) |
 | Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `reconstructedSolve_hyperbolic` in [the hyperbolicity theorems](../../Project/Euler/Hyperbolic.lean) |
 | Speeds and CFL | An accepted outward speed bound is at least the exact `\|u\| + c`.  A run with status 0 is a chain of accepted steps.  Each step advances the time by `dt > 0` with a ratio `r ≥ dt · n`, every state of the grid it starts from is admissible, and `r` times the signal speed of every cell in either direction is at most 1/2. | `speedUpper_ge` in [the enclosures](../../Project/Euler/Enclosure.lean), `reconstructedRun_steps` in [the step theorems](../../Project/Euler/Cfl.lean) |
@@ -52,8 +53,9 @@ concern this module and the Lean function `reconstructedSolve`, which packs the 
 
 The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on
 Wasmtime and the hardware implementing the WebAssembly semantics that the proofs model.  Main
-proved results that this branch does not: complete execution without an abort, with at most
-512 MiB of linear memory; the real Rusanov wave identities; error bounds and a linear-profile
+proved complete execution with at most 512 MiB of linear memory, and this branch proves it with
+at most 1,407 pages, from the allocator state of a fresh instance taken as a hypothesis.  Main
+also proved results that this branch does not: the real Rusanov wave identities; error bounds and a linear-profile
 theorem for rounded reconstruction; and a comparison of the computed fluxes with reference
 fluxes.  Convergence to a solution of the continuous Euler equations remains unproved.
 
