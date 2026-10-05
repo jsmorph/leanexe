@@ -25263,3 +25263,92 @@ past ten minutes; rewriting the expected words first with a lemma such as `rampE
 avoids it.  The LTG entry `record-build` records the method.  `buildBodyLoc`, the hint location
 of a build's body, omitted the length check, so build-body hints pointed at the wrong
 instructions.  It now includes the check.
+
+### E5: the first-order solver, natively and in WebAssembly
+
+`LeanExe/Examples/Euler.lean` writes main's first-order solver in this dialect.  I read main's
+model (`EulerRiemann/Control`, `Time`, `Traversal`, `Output`, `InitialModel`,
+`Euler2DConservative/Model`, `EulerDynamicFlux/Model`, `EulerCellStep/Model`, and
+`Euler2DCellStep/Model`) and followed it operation for operation.  Values are `Float`, and each
+float operation is one binary64 operation, as each of main's `Wasm.IEEE64` operations on words
+is.  Where main compares or masks words, the solver compares or masks `x.toBits`, so its checks
+are main's: `positive` is main's `positiveBits`, the energy guard's normalization builds words
+with `Float.ofBits`, and every comparison of positive floats that main makes on words is made on
+their bits.  Natural numbers become `UInt64`.  `Nat` subtraction in `initialCell` saturates at 0,
+so `lowerFifths` tests the operands first.  Main's fuel arguments become explicit `UInt64`
+bounds: at most `2^32` timesteps and at most 2,048 halvings of a rejected timestep, after which
+the timestep is 0 and fails `validAdvance`.  Main's grid-doubling construction of the initial
+cells is `LeanExe.build`.
+
+The solver run natively (`lake build euler-native`, `Project/Euler/Native.lean`) returned
+status 0 at time 0.8 on the 192 grid in 63 seconds, and its 73,732 output words are main's
+`192-run/words.u64le` exactly: both have SHA-256
+`e097a43d82541eceaebc6169aa9d263b5c02c8b3bf140292bb010bcc0a6a6ae5`, the hash in main's
+`summary.json`.
+
+Compiling the solver needed six compiler changes, each tested on the solver and the existing
+modules, whose bytes did not change.
+
+| Change | Reason |
+|---|---|
+| `Float.toBits` as a word, the IR's `toBits` | The checks inspect bit patterns |
+| A `let` of a float inside a word value | `energyGuard` binds the residual |
+| `@[inline]` functions inlined in words, conditions, and records, as they were in floats | The small checks and constants stay in the source and out of the call graph |
+| `#[]` (`Array.mk []`) as an array literal, and a call of a compiled function as a new array | `attempt` starts from an empty grid, and `step` passes a sweep's result |
+| `LeanExe.repeatWhile fuel init cond step` (`LeanExe/RepeatWhile.lean`), compiled to `Stmt.repeatWhile` (`Project/IR/RepeatWhile.lean`) | The time loop and the retry loop must stop early and carry the grid |
+| Arrays of records in ownership, moves, copies, and calls | The step functions consume and return grids |
+
+`LeanExe.repeatWhile` applies `step` while `cond` holds, at most `fuel` times.  `LeanExe.loop`
+runs a fixed count, and its array-state form copies or releases the state each iteration, which
+for a time loop with an unknown number of steps would cost a grid per idle iteration.
+Non-tail recursion stops at the 1,000-frame depth guard, which a time loop of more than 1,000
+steps reaches.  General tail recursion with owned arrays would need the compiler to analyze ownership in
+arbitrary bodies.  The combinator restricts the loop to a condition that compiles to an
+expression over the state and a step that is one call of a compiled function consuming every
+array of the state, so ownership passes by moves and the template allocates and releases
+nothing, as `Stmt.tupleLoop` does for counted loops over arrays.  The state is a tuple of words,
+floats, and arrays.
+
+Compiling exposed a defect in the E2b change that binds record `let`s.  `peel` binds such a
+`let` by pushing statements to the prelude, but `translateLoopBody` builds its statement list
+itself, so a record `let` at the top of a loop body, such as `let q := grid[i]!.state` in `scan`,
+was computed once before the loop.  The 16-grid run in WebAssembly differed from the native run
+in every field, and testing the functions one by one found `scan`'s maximum speed wrong.  A
+`Ctx` flag now stops `peel` from binding record `let`s where the caller builds its own list, and
+`translateLoopBody` binds them in its list.  The tuple loop's and `repeatWhile`'s step bodies
+reject such a `let`.
+
+`tests/modules/Cases.lean` adds 716 cases for the solver's functions, with special values in
+every check: `side`, `component`, `update`, `flux`, and `advanceCell` on 120 inputs each, the
+initial cells, sweeps, steps, scans, and advances on grids of 2 to 8, and `solve` for n of 0, 1,
+2, 3, 4, 7, 16, and 801.  All pass.  `euler.wasm` is 15,417 bytes.  In Wasmtime, `solve 192`
+took 15.2 seconds, against main's 49.6, and returned main's words exactly, with the same
+SHA-256.  `solve 800` took 21.0 minutes, against main's 61.6, and returned main's 1,280,004
+words exactly, with SHA-256 `d374cc5cd852d9cebad8eac1b440e431a6a89e8c4416d940abbeeb9bfd51dd17`.
+Both runs returned status 0 at time 0.8, used one Wasmtime process each, and kept a resident
+size near 134 MB on the 800 grid, so released grids are reused.  That binary was 15,417 bytes,
+with SHA-256 `b1848662366cbc84cd9efc0c6f0e032a2a679c543fa092523e16529ee174b34a`.
+
+The first proofs required one change to the source.  With the helpers declared
+`@[inline] def`, `simp` unfolded `absBits` inside `decide (absBits x.toBits < c)` but not inside
+its `Decidable` instance, the same mismatch as the `Bool` instance in E2a, and the test stayed
+in a form `decide_eq_true_eq` could not rewrite.  The helpers are now `abbrev`, reducible as
+well as inline, and the tests normalize to propositions on bits.  The compiler's `whnfR` now
+also reduces projections of the reducible constants, such as `bottomLeft.density`, so the
+binary changed: 13,617 bytes, SHA-256
+`1379a7a009d13ba7cc2e485f806a6826d4203f90d5dc8c0824129756f8a683ff`.  The 716 cases pass, and
+`solve 192` from this binary returned main's words again in 15.4 seconds.
+
+The full check had a defect of its own.  It emitted every module and compared the bytes with
+`build/NAME/NAME.wasm` before rebuilding, so after a compiler change it emitted from the old
+module files, and the comparison could not show a change.  The module tests run the stored
+`build/NAME/NAME.wasm` files, so they test the current compiler only when the comparison is
+made after the build.  The E2a and E2b checks reported "same" for every module under this
+order, so those results did not establish that the compiler changes left the modules' bytes
+unchanged.  The check now builds first.  The first check in the new order failed: the
+`@[inline]` unfolding that E5 had added to `peel` also unfolded core functions such as
+`Array.foldl` and `Nat.toUInt64` before their rules matched, and `grids`, `sumSquares`,
+`sumArray`, and `pairSum` stopped compiling.  Unfolding now happens only at each translator's
+last fallback, after every rule, including the six-argument fallback of floats and the record
+result's fallback.  `euler.wasm` from the corrected compiler has the same bytes as the binary of
+the runs below.

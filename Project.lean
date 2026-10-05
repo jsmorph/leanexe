@@ -78,6 +78,7 @@ import Project.IR.Loop
 import Project.IR.Read
 import Project.IR.RecordRead
 import Project.IR.BuildRecord
+import Project.IR.RepeatWhile
 import Project.IR.Denote
 import Project.IR.DenoteStmt
 import Project.IR.Recursion
@@ -229,3 +230,4 @@ import Project.Bools.Module
 import Project.Bools.Verify
 import Project.Grids.Module
 import Project.Grids.Verify
+import Project.Euler.Module
