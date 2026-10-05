@@ -25671,17 +25671,50 @@ instead: an accepted try returns the new grid and releases the old one, and a re
 the old grid and releases the trial.  The arithmetic and the outputs do not change, and the peak
 stays at three grids: the current grid, the middle grid of the x sweep, and the trial.
 
-- [ ] A0: the retry loops carry the current grid; re-prove their lemmas and `Implements`; rerun
+- [x] A0: the retry loops carry the current grid; re-prove their lemmas and `Implements`; rerun
   the module tests and the 192 runs.
-- [ ] A1: `Runs aborts`, `TripleA aborts`, and `ImplementsA aborts`, with the current names as the
+- [x] A1: `Runs aborts`, `TripleA aborts`, and `ImplementsA aborts`, with the current names as the
   `true` case, and the structural rules generic in the flag.
-- [ ] A2: exact heap steps in the allocation and release rules, the `units` measure, and `Budget`
+- [x] A2: exact heap steps in the allocation and release rules, the `units` measure, and `Budget`
   with its allocate, release, bump, and page lemmas.
-- [ ] A3: total rules for allocation, `build`, the record build, and calls under `Budget`, and a
+- [x] A3: total rules for allocation, `build`, the record build, and calls under `Budget`, and a
   total `Implements` with a budget.
 - [ ] A4: the euler functions in total form: the scalar functions through the generic flag, and
   the array functions with their budgets.
 - [ ] A5: from a fresh instance with a memory cap of at least the bound, both solve exports return
   their words without a trap, and the page count stays within `4096 + 3·(48 + g)` bytes rounded up
   to pages, which is at most 8,192 pages (512 MiB) for `n ≤ 800`.
+
+### A1 to A3: the abort flag, the budget, and the total allocation rules
+
+`Runs aborts` replaces `ReturnsOrAborts`, which is now `Runs true`: a run returns, or, when
+`aborts`, traps at `unreachable`.  `TripleA aborts` and `ImplementsA aborts Pre Post` follow the
+same pattern, and `Triple`, `Implements`, and `ImplementsPure` are their `true` cases, so every
+existing proof checks unchanged.  The structural rules are generic in the flag.  The allocation
+rules take their room premise only under `aborts = false`: `alloc_spec_runs`,
+`array_allocation_spec_runs`, `buildWith_specA`, `buildRecords_specA`, and `arrayLiteral_specA`
+need `heap.Room` there, and their postconditions name the exact heap, `heap.allocate need`, and
+the page count of `heap.allocateStore`.  `Project/Pipeline/Budget.lean` defines `units` and
+`Heap.Budget` and proves the allocation, release, bump, room, and page lemmas of the plan.
+
+### A0: the retry loops carry the current grid
+
+`tryStep`, `attempt`, and the reconstructed `reconstructedTry` and `reconstructedAttempt` now
+take the current grid as a moved argument, and the loops of `advanceWith` and
+`reconstructedAdvanceWith` start from `(9, dt, grid)` instead of `(9, dt, #[])`.  An accepted try
+returns the new grid and releases the old one, and a rejected try returns the old grid and
+releases the trial.  The first emitted binary copied the grid into the loop's initial state,
+because `moveSites` did not count that state as a moving position, and the peak rose to four
+grids.  `moveSites` now treats the initial state of `repeatWhile` like the initial state of
+`loop`, the copy is gone, and the peak is three grids: the current grid, the x sweep's result,
+and the trial.
+
+The binary has 23,012 bytes, SHA-256
+`87efa8a8e63a1e6eda1f6d8a8c668c57e2aeafeaadd4e73c06ac28266b8c794b`.  Both 192 runs return the
+same words as before (`e097a43d…` and `6304853f…`), in 16.6 s and 60.2 s, with peak resident
+sizes of 19.4 MB and 19.2 MB.  The run lemmas, the CFL and balance theorems, and the
+`Implements` proofs of the six changed functions are re-proved.  The full check passes: the
+build has no `sorry`, the other 26 modules have unchanged bytes, the 13,809 module cases and the
+release-count, depth-guard, and chunk tests pass, the LTG check passes, and the 474 WGSL cases pass
+on both Vulkan drivers.
 

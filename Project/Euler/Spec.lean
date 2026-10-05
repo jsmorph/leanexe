@@ -132,10 +132,18 @@ theorem step_ok {n : UInt64} {ratio : Float} {grid : Array Cell}
     rw [ite_eq_right hA] at h
     exact absurd h hA
 
-theorem tryStep_ok {n : UInt64} {grid : Array Cell} {dt : Float} {old : Array Cell}
-    (h : (tryStep n grid dt old).1 = 0) (hSize : grid.size < 2 ^ 64) :
-    (∀ c ∈ (tryStep n grid dt old).2.2, Admissible c) ∧
-      (tryStep n grid dt old).2.2.size = grid.size := by
+theorem step_size (n : UInt64) (ratio : Float) (grid : Array Cell) (hSize : grid.size < 2 ^ 64) :
+    (step n ratio grid).size = grid.size := by
+  have hMiddle := sweep_size n false ratio grid hSize
+  unfold step finishStep
+  split
+  · rw [sweep_size n true ratio _ (by omega), hMiddle]
+  · exact hMiddle
+
+theorem tryStep_ok {n : UInt64} {grid : Array Cell} {dt : Float}
+    (h : (tryStep n grid dt).1 = 0) (hSize : grid.size < 2 ^ 64) :
+    (∀ c ∈ (tryStep n grid dt).2.2, Admissible c) ∧
+      (tryStep n grid dt).2.2.size = grid.size := by
   unfold tryStep at h ⊢
   dsimp only at h ⊢
   split
@@ -144,11 +152,18 @@ theorem tryStep_ok {n : UInt64} {grid : Array Cell} {dt : Float} {old : Array Ce
     rw [ite_eq_right hA] at h
     simp at h
 
-theorem attempt_ok {n : UInt64} {time : Float} {grid : Array Cell} {status : UInt64} {dt : Float}
-    {old : Array Cell} (h : (attempt n time grid status dt old).1 = 0)
-    (hSize : grid.size < 2 ^ 64) :
-    (∀ c ∈ (attempt n time grid status dt old).2.2, Admissible c) ∧
-      (attempt n time grid status dt old).2.2.size = grid.size := by
+theorem tryStep_size (n : UInt64) (grid : Array Cell) (dt : Float) (hSize : grid.size < 2 ^ 64) :
+    (tryStep n grid dt).2.2.size = grid.size := by
+  unfold tryStep
+  dsimp only
+  split
+  · exact step_size n _ grid hSize
+  · rfl
+
+theorem attempt_ok {n : UInt64} {time dt : Float} {grid : Array Cell}
+    (h : (attempt n time dt grid).1 = 0) (hSize : grid.size < 2 ^ 64) :
+    (∀ c ∈ (attempt n time dt grid).2.2, Admissible c) ∧
+      (attempt n time dt grid).2.2.size = grid.size := by
   unfold attempt at h ⊢
   split
   · rename_i hV
@@ -157,6 +172,13 @@ theorem attempt_ok {n : UInt64} {time : Float} {grid : Array Cell} {status : UIn
   · rename_i hV
     rw [ite_eq_right hV] at h
     simp at h
+
+theorem attempt_size (n : UInt64) (time dt : Float) (grid : Array Cell)
+    (hSize : grid.size < 2 ^ 64) : (attempt n time dt grid).2.2.size = grid.size := by
+  unfold attempt
+  split
+  · exact tryStep_size n grid dt hSize
+  · rfl
 
 /-- A property that the start of a `LeanExe.repeatWhile` has and every step preserves holds at
 its end. -/
@@ -177,12 +199,12 @@ theorem repeatWhile_inv {P : α → Prop} {cond : α → Bool} {step : α → α
 theorem advanceWith_loop (n : UInt64) (time dt : Float) (grid : Array Cell) :
     ∃ (cond : UInt64 × Float × Array Cell → Bool)
       (step : UInt64 × Float × Array Cell → UInt64 × Float × Array Cell),
-      (∀ x, cond x = (x.1 == 9)) ∧ (∀ x, step x = attempt n time grid x.1 x.2.1 x.2.2) ∧
+      (∀ x, cond x = (x.1 == 9)) ∧ (∀ x, step x = attempt n time x.2.1 x.2.2) ∧
       advanceWith n time dt grid =
-        match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step with
-        | (status, dt, trial) =>
-          if status == 0 then ((0 : UInt64), time + dt, trial)
-          else (if status == 9 then 4 else status, time, grid) := by
+        match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step with
+        | (status, dt, g) =>
+          if status == 0 then ((0 : UInt64), time + dt, g)
+          else (if status == 9 then 4 else status, time, g) := by
   refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
 
 /-- `runFrom` with its loop's test and step named. -/
@@ -204,23 +226,26 @@ theorem advanceWith_ok {n : UInt64} {time dt : Float} {grid : Array Cell}
     (∀ c ∈ (advanceWith n time dt grid).2.2, Admissible c) ∧
       (advanceWith n time dt grid).2.2.size = grid.size := by
   obtain ⟨cond, step, -, hStepEq, hDef⟩ := advanceWith_loop n time dt grid
-  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
-      (∀ c ∈ s.2.2, Admissible c) ∧ s.2.2.size = grid.size) (cond := cond) (step := step)
-    (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
-    (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact attempt_ok hx hSize)
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      s.2.2.size = grid.size ∧ (s.1 = 0 → ∀ c ∈ s.2.2, Admissible c)) (cond := cond)
+    (step := step) (x0 := ((9 : UInt64), dt, grid)) 2048 ⟨rfl, by simp⟩
+    (fun x _ hx => by
+      rw [hStepEq]
+      have hs := hx.1
+      exact ⟨(attempt_size n time x.2.1 x.2.2 (by omega)).trans hs,
+        fun h0 => (attempt_ok h0 (by omega)).1⟩)
   rw [hDef] at h ⊢
-  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step = R at h hInv ⊢
-  obtain ⟨status, dt', trial⟩ := R
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step = R at h hInv ⊢
+  obtain ⟨status, dt', g⟩ := R
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    exact hInv (by simpa using hS)
+    exact ⟨hInv.2 (by simpa using hS), hInv.1⟩
   · rename_i hS
     rw [ite_eq_right hS] at h
     split at h
     · simp at h
-    · rename_i h9
-      simp only at h
+    · simp only at h
       exact absurd (by simp [h]) hS
 
 theorem advanceStep_ok {n status : UInt64} {time : Float} {grid : Array Cell}
@@ -282,19 +307,15 @@ theorem runFrom_ok {n : UInt64} (h : (runFrom n).1 = 0) :
 
 theorem advanceWith_size {n : UInt64} {time dt : Float} {grid : Array Cell}
     (hSize : grid.size < 2 ^ 64) : (advanceWith n time dt grid).2.2.size = grid.size := by
-  by_cases h : (advanceWith n time dt grid).1 = 0
-  · exact (advanceWith_ok h hSize).2
-  · obtain ⟨cond, step, -, -, hDef⟩ := advanceWith_loop n time dt grid
-    rw [hDef] at h ⊢
-    generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step = R
-      at h ⊢
-    obtain ⟨status, dt', trial⟩ := R
-    dsimp only at h ⊢
-    split
-    · rename_i hS
-      rw [ite_eq_left hS] at h
-      exact absurd rfl h
-    · rfl
+  obtain ⟨cond, step, -, hStepEq, hDef⟩ := advanceWith_loop n time dt grid
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      s.2.2.size = grid.size) (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, grid)) 2048
+    rfl (fun x _ hx => by rw [hStepEq]; exact (attempt_size n time x.2.1 x.2.2 (by omega)).trans hx)
+  rw [hDef]
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step = R at hInv ⊢
+  obtain ⟨status, dt', g⟩ := R
+  dsimp only at hInv ⊢
+  split <;> exact hInv
 
 theorem advanceStep_size {n status : UInt64} {time : Float} {grid : Array Cell}
     (hSize : grid.size < 2 ^ 64) : (advanceStep n status time grid).2.2.size = grid.size := by

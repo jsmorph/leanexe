@@ -313,29 +313,27 @@ abbrev proposal (n : UInt64) (time alpha : Float) : Float :=
 abbrev validAdvance (time dt : Float) : Bool :=
   positive dt && time.toBits < (time + dt).toBits && (time + dt).toBits ≤ endTime.toBits
 
-/-- One try of a timestep: status 0 with the new grid, 9 to retry with half the timestep, or 3
-when the timestep is not a valid advance.  `old` is the previous try's grid, which only an
-accepted try replaces. -/
-def tryStep (n : UInt64) (grid : Array Cell) (dt : Float) (old : Array Cell) :
-    UInt64 × Float × Array Cell :=
+/-- One try of a timestep: status 0 with the new grid, which replaces `grid`, or 9 to retry with
+half the timestep, keeping `grid`. -/
+def tryStep (n : UInt64) (grid : Array Cell) (dt : Float) : UInt64 × Float × Array Cell :=
   let trial := step n (dt / spacing n) grid
-  if accepted trial then (0, dt, trial) else (9, 0.5 * dt, old)
+  if accepted trial then (0, dt, trial) else (9, 0.5 * dt, grid)
 
-def attempt (n : UInt64) (time : Float) (grid : Array Cell) (status : UInt64) (dt : Float)
-    (old : Array Cell) : UInt64 × Float × Array Cell :=
-  if validAdvance time dt then tryStep n grid dt old else (3, dt, old)
+/-- `tryStep`, or status 3 and `grid` when the timestep is not a valid advance. -/
+def attempt (n : UInt64) (time dt : Float) (grid : Array Cell) : UInt64 × Float × Array Cell :=
+  if validAdvance time dt then tryStep n grid dt else (3, dt, grid)
 
 /-- Tries `dt` from `time`, halving it after each rejected try, at most 2048 times, and then
 advances, or returns `grid` with the status of the failure: 3 for an invalid timestep and 4 when
-the tries run out. -/
+the tries run out.  The loop state holds `grid` until a try replaces it. -/
 def advanceWith (n : UInt64) (time dt : Float) (grid : Array Cell) :
     UInt64 × Float × Array Cell :=
-  match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell))
+  match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid)
       (fun (status, _, _) => status == 9)
-      (fun (status, dt, old) => attempt n time grid status dt old) with
-  | (status, dt, trial) =>
-    if status == 0 then (0, time + dt, trial)
-    else (if status == 9 then 4 else status, time, grid)
+      (fun (_, dt, g) => attempt n time dt g) with
+  | (status, dt, g) =>
+    if status == 0 then (0, time + dt, g)
+    else (if status == 9 then 4 else status, time, g)
 
 /-- One accepted timestep, or the state with a nonzero status. -/
 def advanceStep (n status : UInt64) (time : Float) (grid : Array Cell) :
