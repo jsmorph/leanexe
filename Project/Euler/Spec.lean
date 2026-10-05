@@ -1,16 +1,19 @@
 import LeanExe.Examples.Euler
+import Project.Euler.RealState
 
 /-! Properties of the first-order Euler solver's Lean definitions.  A run that returns status 0
-ends at time 0.8 with every cell admissible: status 0, and density and pressure positive and
-finite. -/
+ends at time 0.8 with every cell admissible: status 0, density and pressure positive and finite,
+and positive density and pressure in exact arithmetic. -/
 
 namespace Project.Euler
 
 open LeanExe.Examples.Euler
 
-/-- A cell that passed every check: status 0, and positive, finite density and pressure. -/
+/-- A cell that passed every check: status 0, positive and finite density and pressure, and a
+state that is admissible in exact arithmetic. -/
 def Admissible (c : Cell) : Prop :=
-  c.status = 0 ∧ positive c.state.density = true ∧ positive c.pressure = true
+  c.status = 0 ∧ positive c.state.density = true ∧ positive c.pressure = true ∧
+    EulerReal.Admissible (vec c.state)
 
 /-- A state that passes `side`'s checks has positive density and positive pressure. -/
 theorem side_ok {rho momentum transverse energy : Float}
@@ -49,6 +52,31 @@ theorem advanceCell_ok {ratio rhoL momentumL transverseL energyL rho momentum tr
   simp only [Bool.and_eq_true, beq_iff_eq] at hc
   exact side_ok hc.2
 
+theorem side_guard {rho momentum transverse energy : Float}
+    (h : (side rho momentum transverse energy).status = 0) :
+    stateGuard rho momentum transverse energy = true := by
+  unfold side at h
+  dsimp only at h
+  split at h
+  · rename_i hc
+    obtain ⟨h1, -⟩ := Bool.and_eq_true_iff.mp hc
+    obtain ⟨h2, -⟩ := Bool.and_eq_true_iff.mp h1
+    exact (Bool.and_eq_true_iff.mp h2).1
+  · simp at h
+
+theorem advanceCell_guard {ratio rhoL momentumL transverseL energyL rho momentum transverse energy
+    rhoR momentumR transverseR energyR : Float} {u : Updated}
+    (hu : advanceCell ratio rhoL momentumL transverseL energyL rho momentum transverse energy rhoR
+      momentumR transverseR energyR = u) (h : u.status = 0) :
+    stateGuard u.density u.momentum u.transverse u.energy = true := by
+  subst hu
+  unfold advanceCell at h ⊢
+  dsimp only at h ⊢
+  have hc := rejectedCell_status h
+  rw [ite_eq_left hc]
+  simp only [Bool.and_eq_true, beq_iff_eq] at hc
+  exact side_guard hc.2
+
 theorem sweep_size (n : UInt64) (axisY : Bool) (ratio : Float) (grid : Array Cell)
     (h : grid.size < 2 ^ 64) : (sweep n axisY ratio grid).size = grid.size := by
   simp [sweep, LeanExe.build, Nat.toUInt64, UInt64.toNat_ofNat_of_lt' h]
@@ -59,7 +87,11 @@ theorem sweep_ok {n : UInt64} {axisY : Bool} {ratio : Float} {grid : Array Cell}
   unfold sweep LeanExe.build at hc
   obtain ⟨i, rfl⟩ := Array.mem_ofFn.mp hc
   dsimp only at h0 ⊢
-  exact ⟨h0, advanceCell_ok h0⟩
+  have ha := stateGuard_admissible (advanceCell_guard rfl h0)
+  refine ⟨h0, (advanceCell_ok h0).1, (advanceCell_ok h0).2, ?_⟩
+  cases axisY
+  · exact ha
+  · exact admissible_swap ha
 
 theorem fold_and (k : Nat) (g : Nat → Bool) :
     Nat.fold k (fun i _ ok => ok && g i) true = true → ∀ i < k, g i = true := by
@@ -205,8 +237,6 @@ theorem advanceStep_ok {n status : UInt64} {time : Float} {grid : Array Cell}
     rw [ite_eq_right hS] at h
     simp at h
 
-theorem zero_bits : (0 : Float).toBits = 0 := by decide +kernel
-
 theorem initialCells_size (n : UInt64) : (initialCells n).size = (n * n).toNat := by
   simp [initialCells, LeanExe.build]
 
@@ -220,7 +250,7 @@ theorem runFrom_ok {n : UInt64} (h : (runFrom n).1 = 0) :
       (s.2.1.toBits = 0 ∧ s.2.2 = initialCells n) ∨
         ((∀ c ∈ s.2.2, Admissible c) ∧ s.2.2.size = (n * n).toNat))
     (cond := cond) (step := step) (x0 := ((0 : UInt64), (0 : Float), initialCells n))
-    4294967296 (fun _ => .inl ⟨zero_bits, rfl⟩)
+    4294967296 (fun _ => .inl ⟨zero_toBits, rfl⟩)
     (fun x hc hx hs => by
       rw [hStepEq] at hs ⊢
       have hc' : x.1 = 0 := by
@@ -351,11 +381,11 @@ theorem pack_word {n status : UInt64} {time : Float} {grid : Array Cell} {j : Na
     rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by simp [hJ]; omega)), hJ]
     rfl
   by_cases hD : j < 4 + grid.size
-  · simp [h0, h1, h4, Nat.mod_eq_of_lt (show 4 + grid.size < 2 ^ 64 by omega), hD, hSub]
+  · simp [h0, h1, h4, Nat.mod_eq_of_lt (show 4 + grid.size < 18446744073709551616 by omega), hD, hSub]
   · have hSub2 : (UInt64.ofNat j - 4 - grid.size.toUInt64).toNat = j - 4 - grid.size := by
       rw [UInt64.toNat_sub_of_le _ _ (UInt64.le_iff_toNat_le.mpr (by rw [hSub, hk]; omega)),
         hSub, hk]
-    simp [h0, h1, h4, Nat.mod_eq_of_lt (show 4 + grid.size < 2 ^ 64 by omega), hD, hSub2]
+    simp [h0, h1, h4, Nat.mod_eq_of_lt (show 4 + grid.size < 18446744073709551616 by omega), hD, hSub2]
 
 /-- The words of a run that succeeds on an `n × n` grid: `n` lies from 2 to 800, the second word
 holds the bits of 0.8, and after the four header words come `n * n` densities and then `n * n`
@@ -381,7 +411,7 @@ theorem solve_ok {n : UInt64} (h : (solve n)[0]! = 0) : Successful n (solve n) :
   refine ⟨h2, h800, by rw [pack_word hGrid (by omega)]; simpa using hTime, ?_, fun i hi => ?_⟩
   · rw [pack_size hGrid, hSize]
   · have hc := hAll grid[i]! (by rw [getElem!_pos grid i (by omega)]; exact Array.getElem_mem _)
-    obtain ⟨-, hD, hP⟩ := hc
+    obtain ⟨-, hD, hP, -⟩ := hc
     simp only [positive, Bool.and_eq_true, decide_eq_true_eq] at hD hP
     rw [pack_word hGrid (by omega), pack_word hGrid (by omega)]
     rw [← hSize] at hi ⊢

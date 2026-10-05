@@ -1,4 +1,5 @@
-import Project.Euler.Outward
+import LeanExe.Examples.Euler
+import Project.Euler.Words
 import Project.ProofKit.F64Admissibility
 import Project.EulerReal.Flux
 

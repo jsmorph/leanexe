@@ -9,29 +9,6 @@ open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit LeanExe.E
 
 instance : Flat Checked (UInt64 × Float) := ⟨fun c => (c.status, c.value)⟩
 
-/-- A word below the infinities in magnitude is not a NaN pattern. -/
-theorem not_nan_of_finite {w : UInt64} (h : w &&& 0x7FFFFFFFFFFFFFFF < 0x7FF0000000000000) :
-    Wasm.IEEE64.isNaN w = false := by
-  refine not_nan_of_exponent fun he => ?_
-  have hAbs : (w &&& 0x7FFFFFFFFFFFFFFF).toNat = w.toNat % 2 ^ 63 := by
-    rw [UInt64.toNat_and]
-    exact Nat.and_two_pow_sub_one_eq_mod _ 63
-  have hExp : ((w >>> 52) &&& 0x7FF).toNat = w.toNat / 2 ^ 52 % 2 ^ 11 := by
-    rw [UInt64.toNat_and, UInt64.toNat_shiftRight]
-    simp only [UInt64.reduceToNat, Nat.reduceMod, Nat.shiftRight_eq_div_pow]
-    exact Nat.and_two_pow_sub_one_eq_mod _ 11
-  have h1 := congrArg UInt64.toNat he
-  rw [hExp] at h1
-  have h2 := UInt64.lt_iff_toNat_lt.mp h
-  rw [hAbs] at h2
-  simp only [UInt64.reduceToNat] at h1 h2
-  omega
-
-theorem toBits_ofBits_of_finite {w : UInt64}
-    (h : w &&& 0x7FFFFFFFFFFFFFFF < 0x7FF0000000000000) : (Float.ofBits w).toBits = w := by
-  rw [F64Bits.toBits_ofBits, not_nan_of_finite h]
-  rfl
-
 /-- The magnitude bits of a Lean float are the bits of a Lean float: a NaN's are the canonical
 NaN's. -/
 theorem toBits_ofBits_abs (x : Float) :

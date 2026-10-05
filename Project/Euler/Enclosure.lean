@@ -170,14 +170,6 @@ theorem real_gammaUp : 7 / 5 ≤ real 1.4000000000000001 := by
   push_cast
   norm_num
 
-/-- A selection between a checked value and `rejectedChecked` with status 0 selects the value. -/
-theorem rejectedChecked_status {c : Prop} [Decidable c] {u : Checked}
-    (h : (if c then u else rejectedChecked).status = 0) : c := by
-  by_cases hc : c
-  · exact hc
-  · rw [ite_eq_right hc] at h
-    simp at h
-
 theorem sound_upper' {up : Bool} {c : Checked} {x : ℝ}
     (h : Project.ProofKit.F64Outward.Sound up (checkedWord c) x) (hu : up = true) :
     x ≤ real c.value := by

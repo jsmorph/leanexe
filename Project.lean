@@ -260,6 +260,8 @@ import Project.Euler.Verify
 import Project.Euler.RealState
 import Project.Euler.Enclosure
 import Project.Euler.Cfl
+import Project.Euler.Hyperbolic
+import Project.Euler.Words
 import Project.EulerReal.Flux
 import Project.EulerReal.Jacobian
 import Project.EulerReal.Rotation
