@@ -183,7 +183,8 @@ theorem real_toFloat {n : UInt64} (hn : n.toNat < 2 ^ 53) : real n.toFloat = n.t
 
 /-- An accepted ratio bounds `dt · n` from above, and its product with `alpha` is at most 1/2. -/
 theorem gridRatio_le {n : UInt64} {dt alpha : Float} (h : (gridRatio n dt alpha).status = 0) :
-    0 < real dt ∧ 0 < real alpha ∧ real dt * n.toNat ≤ real (gridRatio n dt alpha).value ∧
+    2 ≤ n.toNat ∧ n.toNat ≤ 800 ∧ 0 < real dt ∧ 0 < real alpha ∧
+      real dt * n.toNat ≤ real (gridRatio n dt alpha).value ∧
       real (gridRatio n dt alpha).value * real alpha ≤ 1 / 2 := by
   unfold gridRatio at h ⊢
   dsimp only at h ⊢
@@ -209,22 +210,23 @@ theorem gridRatio_le {n : UInt64} {dt alpha : Float} (h : (gridRatio n dt alpha)
   simp only [real] at *
   rw [hone, hnreal] at bsp
   have hnpos : (0 : ℝ) < n.toNat := by exact_mod_cast (by omega : 0 < n.toNat)
-  refine ⟨hdt', hal', ?_, le_trans bco hcourant⟩
+  refine ⟨hn2, hn800, hdt', hal', ?_, le_trans bco hcourant⟩
   refine le_trans ?_ br
   rw [le_div_iff₀ hsp']
   have : value (outDiv false 1 n.toFloat).value.toBits * n.toNat ≤ 1 := by
     rwa [le_div_iff₀ hnpos] at bsp
   nlinarith
 
-/-- `reconstructedAttempt` returns status 0 only with the grid that `reconstructedStepGrid`
-computes with an accepted ratio for its timestep. -/
+/-- `reconstructedAttempt` returns status 0 only with an accepted grid that
+`reconstructedStepGrid` computes with an accepted ratio for its timestep. -/
 theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {grid : Array Cell}
     {dt : Float} {old : Array Cell}
     (h : (reconstructedAttempt n trials time alpha grid dt old).1 = 0) :
     (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).status = 0 ∧
       (reconstructedAttempt n trials time alpha grid dt old).2.2 = reconstructedStepGrid n trials
         (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).value
-        grid := by
+        grid ∧
+      accepted (reconstructedAttempt n trials time alpha grid dt old).2.2 = true := by
   unfold reconstructedAttempt at h ⊢
   dsimp only at h ⊢
   split
@@ -236,7 +238,8 @@ theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {gri
       unfold reconstructedTry at h ⊢
       dsimp only at h ⊢
       split
-      · exact ⟨by simpa using hR, rfl⟩
+      · rename_i hA
+        exact ⟨by simpa using hR, rfl, hA⟩
       · rename_i hA
         rw [ite_eq_right hA] at h
         simp at h
@@ -252,12 +255,14 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
     ∃ dt' : Float, (gridRatio n dt' alpha).status = 0 ∧
       (reconstructedAdvanceWith n trials time dt alpha grid).2.1 = time + dt' ∧
       (reconstructedAdvanceWith n trials time dt alpha grid).2.2 =
-        reconstructedStepGrid n trials (gridRatio n dt' alpha).value grid := by
+        reconstructedStepGrid n trials (gridRatio n dt' alpha).value grid ∧
+      accepted (reconstructedAdvanceWith n trials time dt alpha grid).2.2 = true := by
   obtain ⟨cond, step, -, hStepEq, hDef⟩ :=
     reconstructedAdvanceWith_loop n trials time dt alpha grid
   have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
       (gridRatio n s.2.1 alpha).status = 0 ∧
-        s.2.2 = reconstructedStepGrid n trials (gridRatio n s.2.1 alpha).value grid)
+        s.2.2 = reconstructedStepGrid n trials (gridRatio n s.2.1 alpha).value grid ∧
+        accepted s.2.2 = true)
     (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
     (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact reconstructedAttempt_ratio hx)
   rw [hDef] at h ⊢
@@ -267,8 +272,8 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    obtain ⟨hr, ht⟩ := hInv (by simpa using hS)
-    exact ⟨dt', hr, rfl, ht⟩
+    obtain ⟨hr, ht, ha⟩ := hInv (by simpa using hS)
+    exact ⟨dt', hr, rfl, ht, ha⟩
   · rename_i hS
     rw [ite_eq_right hS] at h
     split at h
@@ -276,12 +281,13 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
     · simp only at h
       exact absurd (by simp [h]) hS
 
-/-- A timestep that the solver accepted.  It advances the time by some `dt > 0` and updates the
-grid with a ratio `r ≥ dt · n`, where `n` is the number of cells per side.  Every cell of the grid
-it starts from is admissible in exact arithmetic, and `r` times its signal speed in either
-direction is at most 1/2. -/
+/-- A timestep that the solver accepted on an `n × n` grid with `2 ≤ n ≤ 800`.  It advances the
+time by some `dt > 0` and replaces the grid with the accepted grid that `reconstructedStepGrid`
+computes with a ratio `r ≥ dt · n`.  Every cell of the grid it starts from is admissible in exact
+arithmetic, and `r` times its signal speed in either direction is at most 1/2. -/
 def AcceptedStep (n trials : UInt64) (a b : Float × Array Cell) : Prop :=
   ∃ dt r : Float, 0 < real dt ∧ b.1 = a.1 + dt ∧ b.2 = reconstructedStepGrid n trials r a.2 ∧
+    accepted b.2 = true ∧ 2 ≤ n.toNat ∧ n.toNat ≤ 800 ∧ a.2.size = n.toNat * n.toNat ∧
     real dt * n.toNat ≤ real r ∧
     ∀ i (hi : i < a.2.size), EulerReal.Admissible (vec a.2[i].state) ∧
       real r * physicalSpeed (real a.2[i].state.density) (real a.2[i].state.mx)
@@ -291,7 +297,8 @@ def AcceptedStep (n trials : UInt64) (a b : Float × Array Cell) : Prop :=
 
 /-- An accepted reconstructed timestep is an `AcceptedStep`. -/
 theorem reconstructedAdvanceStep_accepted {n trials : UInt64} {time : Float} {grid : Array Cell}
-    (h : (reconstructedAdvanceStep n trials time grid).1 = 0) (hSize : grid.size < 2 ^ 64) :
+    (h : (reconstructedAdvanceStep n trials time grid).1 = 0)
+    (hSize : grid.size = (n * n).toNat) :
     AcceptedStep n trials (time, grid) ((reconstructedAdvanceStep n trials time grid).2.1,
       (reconstructedAdvanceStep n trials time grid).2.2) := by
   unfold AcceptedStep
@@ -300,10 +307,15 @@ theorem reconstructedAdvanceStep_accepted {n trials : UInt64} {time : Float} {gr
   split
   · rename_i hS
     rw [ite_eq_left hS] at h
-    obtain ⟨-, hB⟩ := gridUpper_ge (by simpa using hS) hSize
-    obtain ⟨dt, hR, ht, hg⟩ := reconstructedAdvanceWith_ratio h
-    obtain ⟨hdt, -, hdn, hra⟩ := gridRatio_le hR
-    refine ⟨dt, _, hdt, ht, hg, hdn, fun i hi => ?_⟩
+    obtain ⟨-, hB⟩ := gridUpper_ge (by simpa using hS) (by rw [hSize]; exact (n * n).toNat_lt)
+    obtain ⟨dt, hR, ht, hg, hA⟩ := reconstructedAdvanceWith_ratio h
+    obtain ⟨h2, h800, hdt, -, hdn, hra⟩ := gridRatio_le hR
+    have hnn : (n * n).toNat = n.toNat * n.toNat := by
+      rw [UInt64.toNat_mul]
+      exact Nat.mod_eq_of_lt (by
+        have : n.toNat * n.toNat ≤ 800 * 800 := Nat.mul_le_mul h800 h800
+        omega)
+    refine ⟨dt, _, hdt, ht, hg, hA, h2, h800, hSize.trans hnn, hdn, fun i hi => ?_⟩
     obtain ⟨hadm, bx, byy⟩ := hB i hi
     have hr0 := le_trans (mul_nonneg hdt.le (Nat.cast_nonneg _)) hdn
     exact ⟨hadm, le_trans (mul_le_mul_of_nonneg_left bx hr0) hra,
@@ -334,7 +346,7 @@ theorem reconstructedRunFrom_steps {n trials : UInt64}
         exact hc.1
       have hs1 := hx.1
       refine ⟨(reconstructedAdvanceStep_size (by omega)).trans hs1, fun hs => ?_⟩
-      exact (hx.2 hc').tail (reconstructedAdvanceStep_accepted hs (by omega)))
+      exact (hx.2 hc').tail (reconstructedAdvanceStep_accepted hs hs1))
   rw [hDef] at h ⊢
   generalize LeanExe.repeatWhile 4294967296 ((0 : UInt64), (0 : Float), initialCells n) cond
     step = R at h hInv ⊢
