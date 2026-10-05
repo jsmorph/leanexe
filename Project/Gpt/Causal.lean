@@ -1,5 +1,6 @@
 import LeanExe.Examples.Gpt
 import Mathlib.Tactic
+import Project.IR.Combinators
 
 /-! Row `i` of `forward`'s scores, and of each layer's input inside it, depends only on
 tokens `0` to `i`, whatever the number of tokens.  The lemmas compare a run on `t` tokens
@@ -9,6 +10,8 @@ The bounds on the dimensions (`t`, `nh`, and `dh` below `2 ^ 16`; `f` and `vocab
 `2 ^ 32`) exclude overflow in the `UInt64` index arithmetic. -/
 
 namespace Project.Gpt.Causal
+
+open Project.IR (loop_congr build_get build_get_out)
 
 open LeanExe.Examples.Gpt
 
@@ -29,14 +32,6 @@ structure Lengths (i : Nat) (t t' : UInt64) : Prop where
   small : t.toNat < 2 ^ 16
   small' : t'.toNat < 2 ^ 16
 
-theorem loop_congr {α : Type} {n : UInt64} {init : α} {f g : UInt64 → α → α}
-    (h : ∀ k, k < n.toNat → ∀ acc, f (UInt64.ofNat k) acc = g (UInt64.ofNat k) acc) :
-    LeanExe.loop n init f = LeanExe.loop n init g := by
-  unfold LeanExe.loop
-  congr 1
-  funext k hk acc
-  exact h k hk acc
-
 /-- A loop whose steps keep the sizes `S` and `S'` and rows `0` to `i` in agreement keeps
 them after any number of steps. -/
 theorem fold_rows {s s' : Array Float} {step step' : UInt64 → Array Float → Array Float}
@@ -53,14 +48,6 @@ theorem fold_rows {s s' : Array Float} {step step' : UInt64 → Array Float → 
   | succ k ih =>
       simp only [Nat.fold_succ]
       exact hStep _ _ _ ih.1 ih.2.1 ih.2.2
-
-theorem build_get {α : Type} [Inhabited α] {n : UInt64} {f : UInt64 → α} {m : Nat}
-    (h : m < n.toNat) : (LeanExe.build n f)[m]! = f (UInt64.ofNat m) := by
-  simp [LeanExe.build, h]
-
-theorem build_get_out {α : Type} [Inhabited α] {n : UInt64} {f : UInt64 → α} {m : Nat}
-    (h : ¬ m < n.toNat) : (LeanExe.build n f)[m]! = default := by
-  simp [LeanExe.build, h]
 
 theorem rows_of_build {α : Type} [Inhabited α] {n n' : UInt64} {f g : UInt64 → α} {w i : Nat}
     (hn : (i + 1) * w ≤ n.toNat) (hn' : (i + 1) * w ≤ n'.toNat)

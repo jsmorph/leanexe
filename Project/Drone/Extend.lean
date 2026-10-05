@@ -22,11 +22,6 @@ def extendChoice (terrain : Array UInt64) (count i : UInt64) (table : Array Choi
     if j < size then table[j.toNat]!.excess else c.excess,
     if j < size then table[j.toNat]!.parent else c.parent⟩
 
-/-- The compiler computes `x != y` as the negation of the equality test. -/
-theorem word_and_neg (p q : Prop) [Decidable p] [Decidable q] :
-    ((if p then 1 else 0 : UInt64) &&& if q then 0 else 1) = if p ∧ ¬q then 1 else 0 := by
-  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
-
 /-- The floors as the compiled code computes them. -/
 theorem floor_ir0 (terrain : Array UInt64) (i : UInt64) :
     (terrain[(i - 1).toNat]! + if (¬i - 1 = 0 → i = UInt64.ofNat terrain.size) then 0 else 100) =
@@ -222,7 +217,7 @@ theorem extend_implementsA {a : Bool} (pages : Nat) :
         (by decide) (by decide) (by decide) (by decide) (by decide) (by simp [hLength])
         ⟨_, by
           simp [Expr.eval, U64Op.apply, hIndex, hT1, hT2, hT5, sources, target, hLength,
-            word_and_neg, word_or, word_eq_one]
+            word_and_not, word_or, word_eq_one]
           refine ⟨?_, rfl⟩
           by_cases h1 : J < UInt64.ofNat table.size
           · simp [h1, UInt64.not_le.mpr h1]

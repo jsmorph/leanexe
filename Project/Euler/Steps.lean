@@ -9,10 +9,6 @@ namespace Project.Euler
 
 open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit LeanExe.Examples.Euler
 
-theorem word_and_not (p q : Prop) [Decidable p] [Decidable q] :
-    ((if p then 1 else 0 : UInt64) &&& if q then 0 else 1) = if p ∧ ¬q then 1 else 0 := by
-  by_cases hp : p <;> by_cases hq : q <;> simp [hp, hq]
-
 def finishStepTuple : UInt64 × Float × Moved (Array Cell) → Array Cell :=
   fun (n, ratio, middle) => finishStep n ratio middle.val
 

@@ -8,33 +8,34 @@ the step theorem the words, the embedding, the layers, and the scores.
 namespace Project.Gpt32
 
 open Project.WGSL LeanExe.Examples.Gpt32
+open Project.IR (build_size)
 
 theorem embed32_size (wte wpe : Array Float32) (row p d : UInt64) :
-    (embed32 wte wpe row p d).size = d.toNat := build_size' _ _
+    (embed32 wte wpe row p d).size = d.toNat := build_size _ _
 theorem layerNorm32_size (x g b : Array Float32) (d : UInt64) (nf : Float32) :
-    (layerNorm32 x g b d nf).size = d.toNat := build_size' _ _
+    (layerNorm32 x g b d nf).size = d.toNat := build_size _ _
 theorem linear32_size (x w b : Array Float32) (k m : UInt64) :
-    (linear32 x w b k m).size = m.toNat := build_size' _ _
+    (linear32 x w b k m).size = m.toNat := build_size _ _
 theorem append32_size (cache row : Array Float32) (base n : UInt64) :
-    (append32 cache row base n).size = n.toNat := build_size' _ _
+    (append32 cache row base n).size = n.toNat := build_size _ _
 theorem scores32_size (q kc : Array Float32) (p d n : UInt64) :
-    (scores32 q kc p d n).size = n.toNat := build_size' _ _
+    (scores32 q kc p d n).size = n.toNat := build_size _ _
 theorem headMax32_size (s : Array Float32) (p nh : UInt64) :
-    (headMax32 s p nh).size = nh.toNat := build_size' _ _
+    (headMax32 s p nh).size = nh.toNat := build_size _ _
 theorem headSum32_size (s mx : Array Float32) (p nh : UInt64) :
-    (headSum32 s mx p nh).size = nh.toNat := build_size' _ _
+    (headSum32 s mx p nh).size = nh.toNat := build_size _ _
 theorem probs32_size (s mx sm : Array Float32) (p n : UInt64) :
-    (probs32 s mx sm p n).size = n.toNat := build_size' _ _
+    (probs32 s mx sm p n).size = n.toNat := build_size _ _
 theorem mix32_size (pw vc : Array Float32) (p d : UInt64) :
-    (mix32 pw vc p d).size = d.toNat := build_size' _ _
+    (mix32 pw vc p d).size = d.toNat := build_size _ _
 theorem add32_size {a : Array Float32} (b : Array Float32) (h : a.size < 2 ^ 29) :
     (add32 a b).size = a.size := by
-  rw [add32, build_size', size_toUInt64 h]
+  rw [add32, build_size, size_toUInt64 h]
 theorem geluArray32_size {x : Array Float32} (h : x.size < 2 ^ 29) :
     (geluArray32 x).size = x.size := by
-  rw [geluArray32, build_size', size_toUInt64 h]
+  rw [geluArray32, build_size, size_toUInt64 h]
 theorem logits32_size (h wte : Array Float32) (rows d : UInt64) :
-    (logits32 h wte rows d).size = rows.toNat := build_size' _ _
+    (logits32 h wte rows d).size = rows.toNat := build_size _ _
 
 theorem Item.execAll_call {files : String → Option Val} {st : Store} {k : KernelName} {n : Nat}
     {out : Buf} {ins : List Buf} (is : List Item) (ys : Array Float32) (hout : out ∉ ins)

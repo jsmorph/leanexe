@@ -117,6 +117,9 @@ instance : Scalar Float := ⟨fun x => [.f64 x.toBits]⟩
 /-- A binary32 float is passed as an `f32` holding its bit pattern. -/
 instance : Scalar Float32 := ⟨fun x => [.f32 x.toBits]⟩
 
+/-- A function without parameters takes the empty tuple. -/
+instance : Scalar Unit := ⟨fun _ => []⟩
+
 instance [Scalar α] [Scalar β] : Scalar (α × β) :=
   ⟨fun p => Scalar.values p.1 ++ Scalar.values p.2⟩
 

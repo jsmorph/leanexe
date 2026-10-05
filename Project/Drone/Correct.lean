@@ -7,6 +7,7 @@ ground, and no admitted flight costs less. -/
 namespace Project.Drone.Output
 
 open LeanExe.Examples.Drone Arithmetic Optimality Selection Costs Planner Forward
+open Project.IR (loop_induction build_size build_get)
 
 /-- The inner loop of `output` follows the parents back from the stopped state of the last
 station to station `k`. -/
@@ -65,7 +66,7 @@ theorem output_toList (terrain : Array UInt64) (count : UInt64) (table : Array C
     rw [Array.length_toList, output_size _ _ _ h64] at he
     rw [Array.getElem_toList, ← getElem!_pos _ _ (by rw [output_size _ _ _ h64]; omega)]
     simp only [output]
-    rw [build_get _ _ _ (by rw [UInt64.toNat_mul]; rw [Nat.mod_eq_of_lt (by simp; omega)]; simpa)]
+    rw [build_get (by rw [UInt64.toNat_mul]; rw [Nat.mod_eq_of_lt (by simp; omega)]; simpa)]
     have heN : (UInt64.ofNat e).toNat = e := UInt64.toNat_ofNat_of_lt' (by omega)
     have hk : UInt64.ofNat e / 2 = UInt64.ofNat (e / 2) := by
       apply UInt64.toNat_inj.mp

@@ -7,14 +7,7 @@ equals, and a row built by `LeanExe.build` holds `best` of each target. -/
 namespace Project.Drone
 
 open LeanExe.Examples.Drone Optimality
-
-theorem build_size {α : Type} (n : UInt64) (f : UInt64 → α) :
-    (LeanExe.build n f).size = n.toNat := by
-  simp [LeanExe.build]
-
-theorem build_get {α : Type} [Inhabited α] (n : UInt64) (f : UInt64 → α) (i : Nat)
-    (h : i < n.toNat) : (LeanExe.build n f)[i]! = f (UInt64.ofNat i) := by
-  simp [LeanExe.build, getElem!_pos, h]
+open Project.IR (loop_induction build_size build_get)
 
 /-- One step of the loop over the sources in `best`. -/
 def bestStep (r0 r1 : UInt64) (table : Array Choice) (base target source : UInt64)
@@ -50,7 +43,7 @@ theorem advance_get (r0 r1 : UInt64) (last : Bool) (table : Array Choice) (base 
     (ht : target.toNat < 45) :
     (advance r0 r1 last table base)[target.toNat]! =
       best r0 r1 table base target (sourceCount last target) := by
-  rw [advance_build, build_get _ _ _ ht, UInt64.ofNat_toNat]
+  rw [advance_build, build_get ht, UInt64.ofNat_toNat]
 
 namespace Selection
 
