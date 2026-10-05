@@ -12,7 +12,7 @@ namespace Project.IR
 
 open Wasm Project.ProofKit Project.Pipeline Project.Runtime
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- Stores `values` as the elements from `index` on of the array at local `dst`. -/
 def Stmt.storeElements (dst : Nat) : Nat → List (Expr .u64) → Stmt
@@ -51,7 +51,7 @@ theorem Stmt.storeElements_spec {scratch dst : Nat} {before : State} {ptr : UInt
         ∃ next, value.eval mem scratch st = some (word, next)) values (all.toList.drop index) →
       UInt64Array.PrefixAt start ptr all index →
       State.Frame scratch [dst] before state → state.get dst = some (.i64 ptr) →
-      Triple m (Stmt.storeElements dst index values) scratch
+      TripleA a m (Stmt.storeElements dst index values) scratch
         (fun s t => s = start ∧ t = state)
         (fun s t => UInt64Array.PrefixAt s ptr all all.size ∧ State.Frame scratch [dst] before t ∧
           t.get dst = some (.i64 ptr) ∧
@@ -94,16 +94,17 @@ theorem Stmt.storeElements_spec {scratch dst : Nat} {before : State} {ptr : UInt
 /-- An array literal allocates a block for its elements, stores the length and
 the elements, and leaves its pointer in `dst`, with the facts of
 `Heap.NewArray` for `heap.allocate`. -/
-theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
+theorem Stmt.arrayLiteral_specA {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
     {initial : Store Unit} {before : State} {heap : Heap} {words : List UInt64}
     (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
     (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
     (hDst : dst < scratch) (hRoom : scratch ≤ before.params.length + before.locals.length)
     (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hSpace : a = false → heap.Room initial m (UInt64.ofNat (8 * (values.length + 1))))
     (hShort : 8 * (values.length + 1) ≤ 4294967296)
     (hValues : List.Forall₂ (fun value word => ∀ mem state, State.Frame scratch [dst] before state →
       ∃ next, value.eval mem scratch state = some (word, next)) values words) :
-    Triple m (.arrayLiteral dst values) scratch
+    TripleA a m (.arrayLiteral dst values) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧
         state.get dst = some (.i64 ptr) ∧
@@ -113,18 +114,18 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
   have hNeed : (UInt64.ofNat (8 * (values.length + 1))).toNat = 8 * (values.length + 1) :=
     UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)
   have hSize := allocSize_words values.length (by omega)
-  generalize hNeedDef : UInt64.ofNat (8 * (values.length + 1)) = need at hNeed hSize ⊢
+  generalize hNeedDef : UInt64.ofNat (8 * (values.length + 1)) = need at hNeed hSize hSpace ⊢
   by_cases hFitsNeed : heap.Fits need
   swap
   · -- The block does not fit, so `alloc` traps.
-    refine Stmt.seq_spec (M := fun _ _ => False) ?_ Triple.of_false
+    refine Stmt.seq_spec (M := fun _ _ => False) ?_ TripleA.of_false
     refine (Stmt.call_spec (f := allocFunction typeIdx) (by simp [hImports])
       (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
     rintro s t ⟨hs, ht⟩
     subst s t
     refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
-      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
-        (by omega) hCap, ?_⟩
+      fun env => alloc_spec_runs a hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap (fun h => by rw [hSize]; exact hSpace h), ?_⟩
     rintro store' out ⟨hFits', -, -⟩
     rw [hSize] at hFits'
     exact absurd hFits' hFitsNeed
@@ -154,8 +155,8 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
     rintro s t ⟨hs, ht⟩
     subst s t
     refine ⟨[.i64 need], before, _, by rw [← hNeedDef]; rfl,
-      fun env => alloc_spec_or_abort hMemory32 hImports hFunc env heap initial need hHeap
-        (by omega) hCap, ?_⟩
+      fun env => alloc_spec_runs a hMemory32 hImports hFunc env heap initial need hHeap
+        (by omega) hCap (fun h => by rw [hSize]; exact hSpace h), ?_⟩
     rintro store' out ⟨-, hStore', hOut⟩
     rw [hSize] at hStore' hOut
     exact ⟨s1, by simp [hOut, hPtrDef, State.setAll, hSet1], hStore', rfl⟩
@@ -180,5 +181,26 @@ theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr 
       (by simp only [List.size_toArray]; omega)
       (by rw [hAll.1]; exact heap.allocateStore_memoryCaps initial need 1)
     exact ⟨_, hFrame, hPtr, hNew⟩
+
+/-- An array literal allocates a block for its elements, stores the length and
+the elements, and leaves its pointer in `dst`, with the facts of
+`Heap.NewArray` for `heap.allocate`. -/
+theorem Stmt.arrayLiteral_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
+    {initial : Store Unit} {before : State} {heap : Heap} {words : List UInt64}
+    (hMemory32 : m.memIs64 = false) (hImports : m.imports = [])
+    (hFunc : m.funcs[0]? = some (allocFunction typeIdx))
+    (hDst : dst < scratch) (hRoom : scratch ≤ before.params.length + before.locals.length)
+    (hHeap : heap.At initial) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hShort : 8 * (values.length + 1) ≤ 4294967296)
+    (hValues : List.Forall₂ (fun value word => ∀ mem state, State.Frame scratch [dst] before state →
+      ∃ next, value.eval mem scratch state = some (word, next)) values words) :
+    Triple m (.arrayLiteral dst values) scratch
+      (fun store state => store = initial ∧ state = before)
+      (fun store state => ∃ ptr, State.Frame scratch [dst] before state ∧
+        state.get dst = some (.i64 ptr) ∧
+        heap.NewArray initial (heap.allocate (UInt64.ofNat (8 * (values.length + 1)))) store ptr
+          words.toArray) :=
+  Stmt.arrayLiteral_specA (a := true) hMemory32 hImports hFunc hDst hRoom hHeap hCap
+    (fun h => nomatch h) hShort hValues
 
 end Project.IR

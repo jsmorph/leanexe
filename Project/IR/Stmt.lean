@@ -117,6 +117,14 @@ theorem Stmt.abort_spec {scratch : Nat} {P R : Store Unit → State → Prop} :
   simp only [Stmt.program, List.singleton_append, wp_unreachable_cons]
   exact hTrap store
 
+/-- `abort` traps at `unreachable`, which a `TripleA` allows only when `aborts`. -/
+theorem Stmt.abort_specA {scratch : Nat} {R : Store Unit → State → Prop} :
+    TripleA a m .abort scratch (fun _ _ => a = true) R := by
+  intro env store state values rest Q hTrap hPre hPost
+  subst hPre
+  simp only [Stmt.program, List.singleton_append, wp_unreachable_cons]
+  exact hTrap store
+
 theorem Stmt.skip_spec {scratch : Nat} {R : Store Unit → State → Prop} :
     TripleA a m .skip scratch R R :=
   fun _ store state _ _ _ _ hPre hPost => by

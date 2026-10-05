@@ -11,7 +11,7 @@ namespace Project.IR
 
 open Wasm
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- Local `index` receives `value`; an index beyond the locals changes nothing. -/
 def State.update (state : State) (index : Nat) (value : Value) : State :=
@@ -96,7 +96,7 @@ def Stmt.run (mem : Mem) (scratch : Nat) : Stmt → State → Option State
 keeps the store. -/
 theorem Stmt.run_spec {s : Stmt} {scratch : Nat} {initial : Store Unit} :
     ∀ {state final : State}, s.run initial.mem scratch state = some final →
-      Triple m s scratch (fun store st => store = initial ∧ st = state)
+      TripleA a m s scratch (fun store st => store = initial ∧ st = state)
         (fun store st => store = initial ∧ st = final) := by
   induction s with
   | skip =>
@@ -149,7 +149,7 @@ state. -/
 theorem Stmt.run_triple {s : Stmt} {scratch : Nat} {initial : Store Unit} {state : State}
     {post : Store Unit → State → Prop}
     (h : ∃ final, s.run initial.mem scratch state = some final ∧ post initial final) :
-    Triple m s scratch (fun store st => store = initial ∧ st = state) post :=
+    TripleA a m s scratch (fun store st => store = initial ∧ st = state) post :=
   let ⟨_, hRun, hPost⟩ := h
   (Stmt.run_spec hRun).mono (fun _ _ h => h) fun _ _ ⟨hStore, hState⟩ => hStore ▸ hState ▸ hPost
 
@@ -157,8 +157,8 @@ theorem Stmt.run_triple {s : Stmt} {scratch : Nat} {initial : Store Unit} {state
 theorem Stmt.seq_run {s rest : Stmt} {scratch : Nat} {initial : Store Unit} {state : State}
     {Q : Store Unit → State → Prop}
     (h : ∃ mid, s.run initial.mem scratch state = some mid ∧
-      Triple m rest scratch (fun store st => store = initial ∧ st = mid) Q) :
-    Triple m (.seq s rest) scratch (fun store st => store = initial ∧ st = state) Q :=
+      TripleA a m rest scratch (fun store st => store = initial ∧ st = mid) Q) :
+    TripleA a m (.seq s rest) scratch (fun store st => store = initial ∧ st = state) Q :=
   let ⟨_, hRun, hRest⟩ := h
   Stmt.seq_spec (Stmt.run_spec hRun) hRest
 

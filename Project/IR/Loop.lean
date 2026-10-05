@@ -12,7 +12,7 @@ namespace Project.IR
 
 open Wasm Project.ProofKit Project.Pipeline
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- Locals `vars` hold `values`. -/
 def State.Holds (state : State) (vars : List Nat) (values : List Value) : Prop :=
@@ -82,10 +82,10 @@ theorem Stmt.loop_inv {scratch limit index : Nat} {count : Expr .u64} {body : St
       Inv k store vals → State.Frame scratch (limit :: index :: writes) before state →
       state.Holds vars vals →
       state.get index = some (.i64 (UInt64.ofNat k)) → state.get limit = some (.i64 n) →
-      Triple m body scratch (fun s st => s = store ∧ st = state)
+      TripleA a m body scratch (fun s st => s = store ∧ st = state)
         (fun s st => State.Frame scratch writes state st ∧
           ∃ vals', st.Holds vars vals' ∧ Inv (k + 1) s vals')) :
-    Triple m (.loop limit index count body) scratch
+    TripleA a m (.loop limit index count body) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => State.Frame scratch (limit :: index :: writes) before state ∧
         ∃ vals, state.Holds vars vals ∧ Inv n.toNat store vals) := by
@@ -130,7 +130,7 @@ theorem Stmt.loop_inv {scratch limit index : Nat} {count : Expr .u64} {body : St
     exact ⟨0, s1, s2, rfl, hSet2, rfl, rfl⟩
   · rintro store state ⟨-, k, -, hIndexGet, hLimitGet, -⟩
     exact ⟨decide (UInt64.ofNat k < n), state, by simp [Expr.eval, hIndexGet, hLimitGet]⟩
-  · apply Triple.of_forall
+  · apply TripleA.of_forall
     rintro store state ⟨current, ⟨hFrame, k, hk, hIndexGet, hLimitGet, vals, hHolds, hInvK⟩, rfl,
       hCondition⟩
     simp only [Expr.eval, hIndexGet, hLimitGet, Option.pure_def, Option.bind_eq_bind,
@@ -139,7 +139,7 @@ theorem Stmt.loop_inv {scratch limit index : Nat} {count : Expr .u64} {body : St
     rw [ofNat_lt_iff hk] at hLess
     refine Stmt.seq_spec (hBody k store vals current hLess hInvK hFrame hHolds hIndexGet
       hLimitGet) ?_
-    apply Triple.of_forall
+    apply TripleA.of_forall
     rintro s1' t1 ⟨hFrameBody, vals', hHoldsT1, hInvT1⟩
     have hIndexT1 : t1.get index = some (.i64 (UInt64.ofNat k)) :=
       (hFrameBody.get index hIndex hIndexOut).trans hIndexGet
@@ -197,10 +197,10 @@ theorem Stmt.loop_spec [Scalar α] {scratch limit index : Nat} {count : Expr .u6
       State.Frame scratch (limit :: index :: writes) before state →
       state.Holds vars (Scalar.values s) →
       state.get index = some (.i64 (UInt64.ofNat k)) → state.get limit = some (.i64 n) →
-      Triple m body scratch (fun store st => store = initial ∧ st = state)
+      TripleA a m body scratch (fun store st => store = initial ∧ st = state)
         (fun store st => store = initial ∧ State.Frame scratch writes state st ∧
           st.Holds vars (Scalar.values (f (UInt64.ofNat k) s)))) :
-    Triple m (.loop limit index count body) scratch
+    TripleA a m (.loop limit index count body) scratch
       (fun store state => store = initial ∧ state = before)
       (fun store state => store = initial ∧
         State.Frame scratch (limit :: index :: writes) before state ∧

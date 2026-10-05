@@ -470,13 +470,18 @@ def Satisfies [Represent α] [Represent β] (m : Module) (entry : Nat)
         Q x y
 
 /-- Entry `entry` of `m` computes `f` on scalars and keeps the store: from any
-store, with arguments representing `x`, the call aborts at `unreachable` or leaves the
-store unchanged and returns the values of `f x`.  A call to such an entry may run where
+store, with arguments representing `x`, the call leaves the store unchanged and returns the
+values of `f x`, or, when `aborts`, traps at `unreachable`.  A call to such an entry may run where
 the store must not change, as in a loop body. -/
-def ImplementsPure [Scalar α] [Scalar β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
+def ImplementsPureA [Scalar α] [Scalar β] (aborts : Bool) (m : Module) (entry : Nat)
+    (f : α → β) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (x : α),
-    ReturnsOrAborts env m entry store (Scalar.values x).reverse fun final values =>
+    Runs aborts env m entry store (Scalar.values x).reverse fun final values =>
       final = store ∧ values.reverse = Scalar.values (f x)
+
+/-- `ImplementsPureA` that allows the trap at `unreachable`. -/
+abbrev ImplementsPure [Scalar α] [Scalar β] (m : Module) (entry : Nat) (f : α → β) : Prop :=
+  ImplementsPureA true m entry f
 
 /-- An entry that keeps the store implements its function without allocating. -/
 theorem ImplementsPure.implements [Scalar α] [Scalar β] {m : Module} {entry : Nat} {f : α → β}
@@ -500,5 +505,51 @@ theorem Implements.transfer [Represent α] [Represent β] {m : Module} {entry : 
   rcases hN fuel hFuel with ⟨values, final, hRun, heap', hAt, hOwned, -⟩ | hAbort
   · exact .inl ⟨values, final, hRun, heap', f x, hAt, hOwned, hf x hP⟩
   · exact .inr hAbort
+
+/-- `Implements` with the abort flag and conditions on the heap: from a heap and store with
+`Pre x heap store`, the call returns, or, when `aborts`, traps at `unreachable`.  On a return,
+some heap `heap'` meets the conditions of `Implements` and `Post x heap store heap' final`. -/
+def ImplementsA [Represent α] [Represent β] (aborts : Bool) (m : Module) (entry : Nat)
+    (f : α → β) (Pre : α → Heap → Store Unit → Prop)
+    (Post : α → Heap → Store Unit → Heap → Store Unit → Prop) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
+    heap.At store → Pre x heap store → Represent.borrowed heap store params x →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
+    store.memoryCap m 0 ≤ 65535 →
+    Runs aborts env m entry store params.reverse fun final values =>
+      ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r ∧ Represent.outside final values.reverse (f x) r) ∧
+        Post x heap store heap' final
+
+theorem Implements.toA [Represent α] [Represent β] {m : Module} {entry : Nat} {f : α → β}
+    (h : Implements m entry f) :
+    ImplementsA true m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
+  intro env store heap params x hHeap _ hArgs hSeparate hCap
+  exact (h env store heap params x hHeap hArgs hSeparate hCap).mono
+    fun _ _ ⟨heap', hAt, hOwned, hCaps, hRegions⟩ => ⟨heap', hAt, hOwned, hCaps, hRegions, trivial⟩
+
+theorem ImplementsA.implements [Represent α] [Represent β] {m : Module} {entry : Nat}
+    {f : α → β} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA true m entry f (fun _ _ _ => True) Post) : Implements m entry f := by
+  intro env store heap params x hHeap hArgs hSeparate hCap
+  exact (h env store heap params x hHeap trivial hArgs hSeparate hCap).mono
+    fun _ _ ⟨heap', hAt, hOwned, hCaps, hRegions, _⟩ => ⟨heap', hAt, hOwned, hCaps, hRegions⟩
+
+/-- An entry that keeps the store implements its function without allocating, from any heap,
+and leaves the heap and the store as they were. -/
+theorem ImplementsPureA.implementsA [Scalar α] [Scalar β] {aborts : Bool} {m : Module}
+    {entry : Nat} {f : α → β} (h : ImplementsPureA aborts m entry f)
+    (Pre : α → Heap → Store Unit → Prop) :
+    ImplementsA aborts m entry f Pre
+      (fun _ heap store heap' final => heap' = heap ∧ final = store) := by
+  intro env store heap params x hHeap _ hArgs _ _
+  rw [Scalar.borrowed.mp hArgs]
+  exact (h env store x).mono fun final values ⟨hFinal, hValues⟩ => by
+    subst hFinal
+    exact ⟨heap, hHeap, hValues, rfl, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr,
+      Represent.outside_scalar⟩, rfl, rfl⟩
 
 end Project.Pipeline

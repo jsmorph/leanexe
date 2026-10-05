@@ -16,7 +16,7 @@ namespace Project.IR
 
 open Wasm Project.Pipeline Project.Runtime
 
-variable {m : Module} {moved : List UInt64}
+variable {m : Module} {a : Bool} {moved : List UInt64}
 
 /-- The facts a body keeps while it runs calls, with the live temporaries `temps`, the
 newest first.  The body consumes the caller's objects at `moved`.  Every region of the
@@ -205,7 +205,7 @@ theorem Live.releaseFirst {heap0 heap : Heap} {initial store : Store Unit}
     {before : State} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1)) :
-    Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
         s rest ∧ st = before) := by
   have hT : heap.Owned store t.1 t.2 := hLive.tempsOwned t (by simp)
@@ -222,7 +222,7 @@ theorem Live.releaseAt {heap0 heap : Heap} {initial store : Store Unit}
     {before : State} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1)) :
-    Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
         s (pre ++ post) ∧ st = before) :=
   (hLive.perm List.perm_middle).releaseFirst hImports hFunc hPtr
@@ -234,7 +234,7 @@ theorem Live.releaseSecond {heap0 heap : Heap} {initial store : Store Unit}
     {before : State} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1)) :
-    Triple m (.release src) scratch (fun s st => s = store ∧ st = before)
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before)
       (fun s st => Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
         s (r :: rest) ∧ st = before) :=
   Live.releaseAt (pre := [r]) hLive hImports hFunc hPtr
@@ -362,10 +362,10 @@ theorem Live.releaseSecond_seq {heap0 heap : Heap} {initial store : Store Unit}
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 t.1))
     (hNext : ∀ s, Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
-      s (r :: rest) → Triple m next scratch (fun s' st => s' = s ∧ st = before) Q) :
-    Triple m (.seq (.release src) next) scratch (fun s st => s = store ∧ st = before) Q :=
+      s (r :: rest) → TripleA a m next scratch (fun s' st => s' = s ∧ st = before) Q) :
+    TripleA a m (.seq (.release src) next) scratch (fun s st => s = store ∧ st = before) Q :=
   Stmt.seq_spec (hLive.releaseSecond hImports hFunc hPtr)
-    (Triple.of_forall fun s _ ⟨hL, hst⟩ => hst ▸ hNext s hL)
+    (TripleA.of_forall fun s _ ⟨hL, hst⟩ => hst ▸ hNext s hL)
 
 /-- The last release of a body. -/
 theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit}
@@ -376,9 +376,44 @@ theorem Live.releaseSecond_last {heap0 heap : Heap} {initial store : Store Unit}
     (hPtr : before.get src = some (.i64 t.1))
     (hNext : ∀ s, Live heap0 initial moved (heap.release t.1 (store.mem.read64 (t.1 - 32).toUInt32))
       s (r :: rest) → Q s before) :
-    Triple m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
+    TripleA a m (.release src) scratch (fun s st => s = store ∧ st = before) Q :=
   (hLive.releaseSecond hImports hFunc hPtr).mono (fun _ _ h => h) fun s _ ⟨hL, hst⟩ =>
     hst ▸ hNext s hL
+
+/-- A call to entry `idx`, which implements `g` with a scalar result under the heap conditions
+`Pre` and `Post`, followed by `next`: the call needs `Pre x heap store`, the result goes to the
+locals `results`, the temporaries stay live, and `next` receives `Post`. -/
+theorem Live.callScalar_seqA [Represent α] [Scalar β] {idx : Nat} {g : α → β}
+    {Pre : α → Heap → Store Unit → Prop} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (hImpl : ImplementsA a m idx g Pre Post) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {scratch : Nat} {args : List ((type : ScalarType) × Expr type)} {results : List Nat}
+    (hParams : args.length = f.numParams) {heap0 heap : Heap} {initial store : Store Unit}
+    {temps : List (UInt64 × Array UInt64)}
+    (hLive : Live heap0 initial moved heap store temps) (hCap : initial.memoryCap m 0 ≤ 65535)
+    {x : α} {before afterArgs after : State} {vals : List Value}
+    (hArgs : Expr.evalResults store.mem scratch args before = some (vals, afterArgs))
+    (hBorrowed : Represent.borrowed heap store vals x) (hPre : Pre x heap store)
+    (hSet : afterArgs.setAll results.reverse (Scalar.values (g x)).reverse = some after)
+    {next : Stmt} {Q : Store Unit → State → Prop}
+    (hNext : ∀ heap' s, Live heap0 initial moved heap' s temps → Post x heap store heap' s →
+      TripleA a m next scratch (fun s' st => s' = s ∧ st = after) Q)
+    (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
+      intro _ _ _; rfl) :
+    TripleA a m (.seq (.call idx args results) next) scratch (fun s st => s = store ∧ st = before)
+      Q := by
+  have hNone : ∀ region, Apart store (Represent.moves store vals x) region := fun _ => by
+    rw [hNoMoves]; exact Apart.nil
+  refine Stmt.seq_spec (Stmt.callImplementsA_spec hImpl hImport hFunc hParams hArgs hLive.at_
+    hPre hBorrowed ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩ (hLive.cap hCap)
+    fun _ _ values h => ⟨after, (show values = Scalar.values (g x) from h) ▸ hSet⟩)
+    (TripleA.of_forall fun s st h => ?_)
+  obtain ⟨heap', values, hAt', hOwned', hCaps', hKeeps, hSet', hPost⟩ := h
+  rw [show values = Scalar.values (g x) from hOwned', hSet, Option.some.injEq] at hSet'
+  subst hSet'
+  exact hNext heap' s (Live.step (consumed := []) (news := []) hLive hAt' hCaps'
+    (hKeeps.mono (fun b hb => by rw [hNoMoves] at hb; exact nomatch hb) fun _ hb => nomatch hb)
+    (fun _ h => nomatch h) .nil) hPost
 
 /-- A call to entry `idx`, which implements `g` with a scalar result, followed by `next`:
 the result goes to the locals `results`, and the temporaries stay live. -/
@@ -398,19 +433,9 @@ theorem Live.callScalar_seq [Represent α] [Scalar β] {idx : Nat} {g : α → �
       Triple m next scratch (fun s' st => s' = s ∧ st = after) Q)
     (hNoMoves : ∀ (s : Store Unit) (vs : List Value) (y : α), Represent.moves s vs y = [] := by
       intro _ _ _; rfl) :
-    Triple m (.seq (.call idx args results) next) scratch (fun s st => s = store ∧ st = before) Q := by
-  have hNone : ∀ region, Apart store (Represent.moves store vals x) region := fun _ => by
-    rw [hNoMoves]; exact Apart.nil
-  refine Stmt.seq_spec (Stmt.callImplements_spec hImpl hImport hFunc hParams hArgs hLive.at_
-    hBorrowed ⟨by rw [hNoMoves]; exact .nil, fun r _ => hNone r⟩ (hLive.cap hCap)
-    fun _ _ values h => ⟨after, (show values = Scalar.values (g x) from h) ▸ hSet⟩)
-    (Triple.of_forall fun s st h => ?_)
-  obtain ⟨heap', values, hAt', hOwned', hCaps', hKeeps, hSet'⟩ := h
-  rw [show values = Scalar.values (g x) from hOwned', hSet, Option.some.injEq] at hSet'
-  subst hSet'
-  exact hNext heap' s (Live.step (consumed := []) (news := []) hLive hAt' hCaps'
-    (hKeeps.mono (fun b hb => by rw [hNoMoves] at hb; exact nomatch hb) fun _ hb => nomatch hb)
-    (fun _ h => nomatch h) .nil)
+    Triple m (.seq (.call idx args results) next) scratch (fun s st => s = store ∧ st = before) Q :=
+  Live.callScalar_seqA (a := true) hImpl.toA hImport hFunc hParams hLive hCap hArgs hBorrowed
+    trivial hSet (fun heap' s hL _ => hNext heap' s hL) hNoMoves
 
 theorem Expr.evalResults_nil {mem : Mem} {scratch : Nat} {state : State} :
     Expr.evalResults mem scratch [] state = some ([], state) := rfl

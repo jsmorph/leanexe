@@ -11,7 +11,7 @@ namespace Project.IR
 
 open Wasm Project.Pipeline Project.Runtime
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- Calls `release` on the array in local `src`. -/
 def Stmt.release (src : Nat) : Stmt := .call 1 [⟨.u64, .get src⟩] []
@@ -23,14 +23,14 @@ theorem Stmt.release_spec {typeIdx scratch src : Nat} {initial : Store Unit} {be
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx))
     (hPtr : before.get src = some (.i64 ptr)) (hHeap : heap.At initial)
     (hOwned : heap.Owned initial ptr words) :
-    Triple m (.release src) scratch (fun store state => store = initial ∧ state = before)
+    TripleA a m (.release src) scratch (fun store state => store = initial ∧ state = before)
       (fun store state => store = heap.releaseStore initial ptr ∧ state = before) := by
   refine (Stmt.call_spec (f := releaseFunction typeIdx) (by simp [hImports])
     (by simpa [hImports] using hFunc) rfl).mono ?_ fun _ _ h => h
   rintro store state ⟨hStore, hState⟩
   subst store state
   exact ⟨[.i64 ptr], before, _, by simp [Expr.evalResults, Expr.eval, hPtr],
-    fun env => (release_run hImports hFunc env heap initial ptr words hHeap hOwned).returnsOrAborts,
+    fun env => (release_run hImports hFunc env heap initial ptr words hHeap hOwned).runs,
     fun store' out ⟨hOut, hStore'⟩ => ⟨before, by simp [hOut, State.setAll], hStore', rfl⟩⟩
 
 /-- Releasing an owned value of a recursive type keeps the state, and frees its records: the

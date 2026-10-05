@@ -13,7 +13,7 @@ namespace Project.IR
 
 open Wasm Project.Pipeline Project.Runtime
 
-variable {m : Module}
+variable {m : Module} {a : Bool}
 
 /-- The loop of `LeanExe.repeatWhile`, with the fuel in `limit` and the number of steps in
 `counter`. -/
@@ -42,8 +42,11 @@ that keeps every region of `heap0` apart from the blocks `gone`.  While `cond` h
 `idx`, which implements `g`, receives arguments that represent `F x` and consumes only blocks of
 the state `x`, and `g (F x)` is `step x`.  The postcondition gives the final state the same
 facts. -/
-theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α → β}
-    (hImpl : Implements m idx g) {f : Wasm.Function}
+theorem Stmt.repeatWhile_specA [Represent α] [Represent β] {idx : Nat} {g : α → β}
+    {Pre : α → Heap → Store Unit → Prop} {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (hImpl : ImplementsA a m idx g Pre Post) (Hold : Heap → Store Unit → Prop)
+    (hHold : ∀ (x : α) (heap heap' : Heap) (s s' : Store Unit), Hold heap s →
+      Post x heap s heap' s' → Hold heap' s') {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {scratch limit counter : Nat} {states : List Nat}
@@ -60,7 +63,7 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
     {x0 : β} {vals0 : List Value}
     (hStart : ∃ heap1 : Heap, heap1.At start ∧ start.memoryCaps = initial.memoryCaps ∧
       Represent.owned heap1 start vals0 x0 ∧
-      heap0.Keeps initial gone heap1 start (Represent.blocks start vals0 x0))
+      heap0.Keeps initial gone heap1 start (Represent.blocks start vals0 x0) ∧ Hold heap1 start)
     (hHolds0 : before.Holds states vals0) (hCap : initial.memoryCap m 0 ≤ 65535)
     (hCond : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
       st.Holds states vals → Represent.owned heap s vals x →
@@ -68,21 +71,22 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       ∃ after, condition.eval s.mem scratch st = some (cond x, after))
     (hArgs : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
       st.Holds states vals → heap.At s → s.memoryCaps = initial.memoryCaps →
-      Represent.owned heap s vals x →
+      Represent.owned heap s vals x → Hold heap s →
       heap0.Keeps initial gone heap s (Represent.blocks s vals x) →
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
-        Represent.borrowed heap s avals (F x) ∧
+        Represent.borrowed heap s avals (F x) ∧ Pre (F x) heap s ∧
         Separate s (Represent.moves s avals (F x)) (Represent.reads s avals (F x)) ∧
         ∀ b ∈ (Represent.moves s avals (F x)).map (block s), b ∈ Represent.blocks s vals x) :
-    Triple m (.repeatWhile states limit counter fuel condition idx args) scratch
+    TripleA a m (.repeatWhile states limit counter fuel condition idx args) scratch
       (fun s st => s = start ∧ st = before)
       (fun s st => ∃ (heap : Heap) (vals : List Value), heap.At s ∧
         s.memoryCaps = initial.memoryCaps ∧
         Represent.owned heap s vals (LeanExe.repeatWhile n x0 cond step) ∧
         heap0.Keeps initial gone heap s
           (Represent.blocks s vals (LeanExe.repeatWhile n x0 cond step)) ∧
-        st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st) := by
+        st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st ∧
+        Hold heap s) := by
   obtain ⟨hL, hC, hNodup⟩ : limit ∉ counter :: states ∧ counter ∉ states ∧ states.Nodup := by
     simp only [List.nodup_cons] at hLocals
     exact ⟨hLocals.1, hLocals.2.1, hLocals.2.2⟩
@@ -131,17 +135,18 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       heap.At s ∧ s.memoryCaps = initial.memoryCaps ∧ Represent.owned heap s vals x ∧
       heap0.Keeps initial gone heap s (Represent.blocks s vals x) ∧
       st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st ∧
-      st.get limit = some (.i64 n) ∧ st.get counter = some (.i64 (UInt64.ofNat j))
+      st.get limit = some (.i64 n) ∧ st.get counter = some (.i64 (UInt64.ofNat j)) ∧
+      Hold heap s
   let measure : Store Unit → State → Nat := fun _ st =>
     match st.get counter with
     | some (.i64 c) => n.toNat - c.toNat
     | _ => 0
   refine (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
-  · rintro s st ⟨j, -, -, -, -, -, -, -, -, -, -, -, hLimitGet, hCounterGet⟩
+  · rintro s st ⟨j, -, -, -, -, -, -, -, -, -, -, -, hLimitGet, hCounterGet, -⟩
     exact ⟨decide (UInt64.ofNat j < n), st, by simp [Expr.eval, hLimitGet, hCounterGet]⟩
-  · apply Triple.of_forall
+  · apply TripleA.of_forall
     rintro s st ⟨cur, ⟨j, x, vals, heap, hj, hGo, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame,
-      hLimitGet, hCounterGet⟩, hMeasure, hCondition⟩
+      hLimitGet, hCounterGet, hHoldS⟩, hMeasure, hCondition⟩
     simp only [Expr.eval, hLimitGet, hCounterGet, Option.pure_def, Option.bind_eq_bind,
       Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_true_eq] at hCondition
     obtain ⟨hLess, rfl⟩ := hCondition
@@ -158,14 +163,14 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       (PThen := fun s' st' => s' = s ∧ st' = c1 ∧ cond x = true)
       (PElse := fun s' st' => s' = s ∧ st' = c1 ∧ cond x = false) ?_ ?_).mono ?_
         fun _ _ h => h
-    · apply Triple.of_forall
+    · apply TripleA.of_forall
       rintro s' st' ⟨hs', hst', hTrue⟩
       subst s' st'
-      obtain ⟨avals, after, hEval, hBorrowed, hSep, hMovesIn⟩ :=
-        hArgs s c1 x vals heap hHoldsC hAt hCaps hOwned hKeeps hFrameBC
+      obtain ⟨avals, after, hEval, hBorrowed, hPre, hSep, hMovesIn⟩ :=
+        hArgs s c1 x vals heap hHoldsC hAt hCaps hOwned hHoldS hKeeps hFrameBC
       have hFrameE := Expr.evalResults_frame [] hEval
-      refine Stmt.seq_spec (Stmt.callImplements_spec (results := states) hImpl hImport hFunc
-        hParams hEval hAt hBorrowed hSep (memoryCap_le_of_caps hCaps hCap)
+      refine Stmt.seq_spec (Stmt.callImplementsA_spec (results := states) hImpl hImport hFunc
+        hParams hEval hAt hPre hBorrowed hSep (memoryCap_le_of_caps hCaps hCap)
         fun heap' store values hOwned' => ?_) ?_
       · refine State.setAll_exists (by simp [hWidth _ _ _ _ hOwned']) fun r hr => ?_
         have := hBS r (List.mem_reverse.mp hr)
@@ -173,8 +178,8 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
           hFrameBC.locals.symm] at *
         rw [← hFrameC.params, ← hFrameC.locals]
         omega
-      apply Triple.of_forall
-      rintro s'' st'' ⟨heap', values, hAt', hOwned', hCaps', hKeeps', hSetAll⟩
+      apply TripleA.of_forall
+      rintro s'' st'' ⟨heap', values, hAt', hOwned', hCaps', hKeeps', hSetAll, hPost⟩
       have hFrameS := (hFrameE.weaken (writes' := states) fun _ h => nomatch h).setAll
         (fun r hr => .inl (List.mem_reverse.mp hr)) hSetAll
       have hHoldsS : st''.Holds states values :=
@@ -193,7 +198,7 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
       refine ⟨UInt64.ofNat j + 1, st'', st3,
         by simp [Expr.eval, hCounterS, U64Op.apply], hSet3,
         ⟨j + 1, step x, values, heap', by omega, ?_, hAt', hCaps'.trans hCaps,
-          by rw [← hStep]; exact hOwned', ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
+          by rw [← hStep]; exact hOwned', ?_, ?_, ?_, ?_, ?_, ?_⟩, ?_⟩
       · rw [← hGo, show n.toNat - j = (n.toNat - (j + 1)) + 1 by omega,
           repeatWhile_go_continue hTrue]
       · rw [← hStep]
@@ -213,12 +218,13 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
         simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
         have := n.toNat_lt
         omega
+      · exact hHold _ heap heap' s s'' hHoldS hPost
       · simp only [measure, State.get_set?_same hSet3, UInt64.toNat_add, UInt64.toNat_ofNat',
           UInt64.reduceToNat]
         have := n.toNat_lt
         rw [Nat.mod_eq_of_lt (a := j) (by omega), Nat.mod_eq_of_lt (by omega)]
         omega
-    · apply Triple.of_forall
+    · apply TripleA.of_forall
       rintro s' st' ⟨hs', hst', hFalse⟩
       subst s' st'
       obtain ⟨st3, hSet3⟩ := State.exists_set? (state := c1) (index := counter) (.i64 n)
@@ -232,7 +238,7 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
         ⟨n.toNat, x, vals, heap, le_rfl, by rw [hStop]; exact hGo, hAt, hCaps, hOwned, hKeeps,
           ?_, hFrameBC.set? hSet3 (.inl (List.mem_cons_of_mem _ List.mem_cons_self)),
           by rw [State.get_set?_ne hLC hSet3, hKeepC limit hBL, hLimitGet],
-          by rw [State.get_set?_same hSet3, UInt64.ofNat_toNat]⟩, ?_⟩
+          by rw [State.get_set?_same hSet3, UInt64.ofNat_toNat], hHoldS⟩, ?_⟩
       · exact hHoldsC.frame (((State.Frame.refl _ _ _).set? hSet3
           (.inl List.mem_cons_self)).weaken (writes' := [counter]) fun _ h => h)
           fun r hr => ⟨hBS r hr, by simp only [List.mem_singleton]; exact fun h => hC (h ▸ hr)⟩
@@ -241,11 +247,11 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
     · rintro s' st' ⟨rfl, rfl⟩
       exact ⟨cond x, c1, hCondEval, by cases cond x <;> simp⟩
   · rintro s st ⟨rfl, rfl⟩
-    obtain ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1⟩ := hStart
+    obtain ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1, hHold1⟩ := hStart
     exact ⟨0, x0, vals0, heap1, Nat.zero_le _, by simp [final, LeanExe.repeatWhile], hAt1,
-      hCaps1, hOwned1, hKeeps1, hHolds2, hFrame2, hLimit2, hCounter2⟩
+      hCaps1, hOwned1, hKeeps1, hHolds2, hFrame2, hLimit2, hCounter2, hHold1⟩
   · rintro s st ⟨cur, ⟨j, x, vals, heap, hj, hGo, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame,
-      hLimitGet, hCounterGet⟩, hCondition⟩
+      hLimitGet, hCounterGet, hHoldS⟩, hCondition⟩
     simp only [Expr.eval, hLimitGet, hCounterGet, Option.pure_def, Option.bind_eq_bind,
       Option.bind_some, Option.some.injEq, Prod.mk.injEq, decide_eq_false_iff_not] at hCondition
     obtain ⟨hNotLess, rfl⟩ := hCondition
@@ -254,6 +260,65 @@ theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α 
     rw [Nat.sub_self] at hGo
     simp only [LeanExe.repeatWhile.go] at hGo
     subst hGo
+    exact ⟨heap, vals, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame, hHoldS⟩
+
+/-- The loop leaves `LeanExe.repeatWhile n x0 cond step` in the state locals, or aborts.  It
+starts with the fuel `n` at `fuel`, and with the locals `states` holding `x0`, owned, in a heap
+that keeps every region of `heap0` apart from the blocks `gone`.  While `cond` holds, the call of
+`idx`, which implements `g`, receives arguments that represent `F x` and consumes only blocks of
+the state `x`, and `g (F x)` is `step x`.  The postcondition gives the final state the same
+facts. -/
+theorem Stmt.repeatWhile_spec [Represent α] [Represent β] {idx : Nat} {g : α → β}
+    (hImpl : Implements m idx g) {f : Wasm.Function}
+    (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
+    {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
+    {scratch limit counter : Nat} {states : List Nat}
+    (hLocals : (limit :: counter :: states).Nodup)
+    (hBelow : ∀ j ∈ limit :: counter :: states, j < scratch)
+    {before : State} (hRoom : scratch ≤ before.params.length + before.locals.length)
+    {heap0 : Heap} {initial start : Store Unit} {gone : List (Nat × Nat)}
+    {fuel : Expr .u64} {n : UInt64}
+    (hFuel : ∃ after, fuel.eval start.mem scratch before = some (n, after))
+    {condition : Expr .bool} (cond : β → Bool) (step : β → β) (F : β → α)
+    (hStep : ∀ x, g (F x) = step x)
+    (hWidth : ∀ (heap : Heap) store vals (y : β), Represent.owned heap store vals y →
+      vals.length = states.length)
+    {x0 : β} {vals0 : List Value}
+    (hStart : ∃ heap1 : Heap, heap1.At start ∧ start.memoryCaps = initial.memoryCaps ∧
+      Represent.owned heap1 start vals0 x0 ∧
+      heap0.Keeps initial gone heap1 start (Represent.blocks start vals0 x0))
+    (hHolds0 : before.Holds states vals0) (hCap : initial.memoryCap m 0 ≤ 65535)
+    (hCond : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
+      st.Holds states vals → Represent.owned heap s vals x →
+      State.Frame scratch (limit :: counter :: states) before st →
+      ∃ after, condition.eval s.mem scratch st = some (cond x, after))
+    (hArgs : ∀ (s : Store Unit) (st : State) (x : β) (vals : List Value) (heap : Heap),
+      st.Holds states vals → heap.At s → s.memoryCaps = initial.memoryCaps →
+      Represent.owned heap s vals x →
+      heap0.Keeps initial gone heap s (Represent.blocks s vals x) →
+      State.Frame scratch (limit :: counter :: states) before st →
+      ∃ avals after, Expr.evalResults s.mem scratch args st = some (avals, after) ∧
+        Represent.borrowed heap s avals (F x) ∧
+        Separate s (Represent.moves s avals (F x)) (Represent.reads s avals (F x)) ∧
+        ∀ b ∈ (Represent.moves s avals (F x)).map (block s), b ∈ Represent.blocks s vals x) :
+    Triple m (.repeatWhile states limit counter fuel condition idx args) scratch
+      (fun s st => s = start ∧ st = before)
+      (fun s st => ∃ (heap : Heap) (vals : List Value), heap.At s ∧
+        s.memoryCaps = initial.memoryCaps ∧
+        Represent.owned heap s vals (LeanExe.repeatWhile n x0 cond step) ∧
+        heap0.Keeps initial gone heap s
+          (Represent.blocks s vals (LeanExe.repeatWhile n x0 cond step)) ∧
+        st.Holds states vals ∧ State.Frame scratch (limit :: counter :: states) before st) := by
+  obtain ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1⟩ := hStart
+  refine (Stmt.repeatWhile_specA (a := true) hImpl.toA (fun _ _ => True) (fun _ _ _ _ _ _ _ => trivial)
+    hImport hFunc hParams hLocals hBelow hRoom hFuel cond step F hStep hWidth
+    ⟨heap1, hAt1, hCaps1, hOwned1, hKeeps1, trivial⟩ hHolds0 hCap hCond
+    (fun s st x vals heap hHolds hAt hCaps hOwned _ hKeeps hFrame => ?_)).mono
+    (fun _ _ h => h) ?_
+  · obtain ⟨avals, after, hEval, hBorrowed, hSep, hMovesIn⟩ :=
+      hArgs s st x vals heap hHolds hAt hCaps hOwned hKeeps hFrame
+    exact ⟨avals, after, hEval, hBorrowed, trivial, hSep, hMovesIn⟩
+  · rintro s st ⟨heap, vals, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame, -⟩
     exact ⟨heap, vals, hAt, hCaps, hOwned, hKeeps, hHolds, hFrame⟩
 
 /-- The loop of `LeanExe.repeatWhile` over a state of scalars, with a pure step: it keeps the
@@ -261,7 +326,7 @@ store and leaves `LeanExe.repeatWhile n x0 cond step` in the state locals.  Whil
 the call of `idx`, which computes `g` on scalars, receives the values of `F x`, and `g (F x)` is
 `step x`. -/
 theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α → β}
-    (hImpl : ImplementsPure m idx g) {f : Wasm.Function}
+    (hImpl : ImplementsPureA a m idx g) {f : Wasm.Function}
     (hImport : m.imports[idx]? = none) (hFunc : m.funcs[idx - m.imports.length]? = some f)
     {args : List ((type : ScalarType) × Expr type)} (hParams : args.length = f.numParams)
     {scratch limit counter : Nat} {states : List Nat}
@@ -280,7 +345,7 @@ theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α �
     (hArgs : ∀ (st : State) (x : β), st.Holds states (Scalar.values x) →
       State.Frame scratch (limit :: counter :: states) before st →
       ∃ after, Expr.evalResults initial.mem scratch args st = some (Scalar.values (F x), after)) :
-    Triple m (.repeatWhile states limit counter fuel condition idx args) scratch
+    TripleA a m (.repeatWhile states limit counter fuel condition idx args) scratch
       (fun s st => s = initial ∧ st = before)
       (fun s st => s = initial ∧
         st.Holds states (Scalar.values (LeanExe.repeatWhile n x0 cond step)) ∧
@@ -337,7 +402,7 @@ theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α �
   refine (Stmt.while_spec Inv measure ?_ fun bound => ?_).mono ?_ ?_
   · rintro s st ⟨j, -, -, -, -, -, -, hLimitGet, hCounterGet⟩
     exact ⟨decide (UInt64.ofNat j < n), st, by simp [Expr.eval, hLimitGet, hCounterGet]⟩
-  · apply Triple.of_forall
+  · apply TripleA.of_forall
     rintro s st ⟨cur, ⟨j, x, hj, hGo, hs, hHolds, hFrame, hLimitGet, hCounterGet⟩, hMeasure,
       hCondition⟩
     simp only [Expr.eval, hLimitGet, hCounterGet, Option.pure_def, Option.bind_eq_bind,
@@ -357,7 +422,7 @@ theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α �
       (PThen := fun s' st' => s' = initial ∧ st' = c1 ∧ cond x = true)
       (PElse := fun s' st' => s' = initial ∧ st' = c1 ∧ cond x = false) ?_ ?_).mono ?_
         fun _ _ h => h
-    · apply Triple.of_forall
+    · apply TripleA.of_forall
       rintro s' st' ⟨hs', hst', hTrue⟩
       subst s' st'
       obtain ⟨after, hEval⟩ := hArgs c1 x hHoldsC hFrameBC
@@ -370,7 +435,7 @@ theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α �
           rw [← hFrameC.params, ← hFrameC.locals]
           omega
       refine Stmt.seq_spec (Stmt.callPure_spec hImpl hImport hFunc hParams hEval hSetAll) ?_
-      apply Triple.of_forall
+      apply TripleA.of_forall
       rintro s'' st'' ⟨hs'', hst''⟩
       subst s'' st''
       have hFrameS := (hFrameE.weaken (writes' := states) fun _ h => nomatch h).setAll
@@ -413,7 +478,7 @@ theorem Stmt.repeatWhile_pure_spec [Scalar α] [Scalar β] {idx : Nat} {g : α �
         have := n.toNat_lt
         rw [Nat.mod_eq_of_lt (a := j) (by omega), Nat.mod_eq_of_lt (by omega)]
         omega
-    · apply Triple.of_forall
+    · apply TripleA.of_forall
       rintro s' st' ⟨hs', hst', hFalse⟩
       subst s' st'
       obtain ⟨st3, hSet3⟩ := State.exists_set? (state := c1) (index := counter) (.i64 n)

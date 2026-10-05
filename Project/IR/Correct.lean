@@ -5,25 +5,24 @@ namespace Project.IR
 
 open Wasm Project.Pipeline
 
-/-- A body's triple gives `ReturnsOrAborts` with any postcondition on the final store and the
-results. -/
-theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
+/-- A body's triple gives `Runs` with any postcondition on the final store and the results. -/
+theorem Func.runs {aborts : Bool} (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
     (hFunc : funcs[i]? = some (func, name)) {initial : Store Unit} {params : List Value}
     {P : Store Unit → List Value → Prop}
     (hLength : params.length = func.params.length)
-    (correct : Triple (compile funcs) func.body func.scratch
+    (correct : TripleA aborts (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state params)
         (fun store state => ∃ out next,
           Expr.evalResults store.mem func.scratch func.results state = some (out, next) ∧
             P store out))
     (env : HostEnv Unit) :
-    ReturnsOrAborts env (compile funcs) (2 + i) initial params.reverse
+    Runs aborts env (compile funcs) (2 + i) initial params.reverse
       (fun final values => P final values.reverse) := by
   have hArgsBack : (params.reverse.take func.params.length).reverse = params := by
     rw [List.take_of_length_le (by simp [hLength])]
     simp
   have hNoImports : (compile funcs).imports = [] := rfl
-  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
+  apply Runs.of_wp_entry_for (f := func.function (2 + i))
     (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
   have hLocals :
       (func.function (2 + i)).toLocals
@@ -35,7 +34,9 @@ theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (na
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
   refine correct env initial _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
-  · exact fun _ => rfl
+  · cases aborts
+    · trivial
+    · exact fun _ => rfl
   rintro store' state ⟨out, next, hEval, hP⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
   rw [wp_nil]
@@ -48,6 +49,57 @@ theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (na
   rw [List.append_nil] at hTake
   rw [hTake, List.reverse_reverse]
   exact hP
+
+theorem Func.returns (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
+    (hFunc : funcs[i]? = some (func, name)) {initial : Store Unit} {params : List Value}
+    {P : Store Unit → List Value → Prop}
+    (hLength : params.length = func.params.length)
+    (correct : Triple (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => ∃ out next,
+          Expr.evalResults store.mem func.scratch func.results state = some (out, next) ∧
+            P store out))
+    (env : HostEnv Unit) :
+    ReturnsOrAborts env (compile funcs) (2 + i) initial params.reverse
+      (fun final values => P final values.reverse) :=
+  Func.runs funcs i func name hFunc hLength correct env
+
+/-- `Func.implements_moves` with the abort flag and conditions `Pre` and `Post` on the heap. -/
+theorem Func.implements_movesA {aborts : Bool} [Represent α] [Represent β]
+    (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
+    (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (Pre : α → Heap → Store Unit → Prop)
+    (Post : α → Heap → Store Unit → Heap → Store Unit → Prop)
+    (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      params.length = func.params.length)
+    (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
+      heap.At initial → Pre x heap initial → Represent.borrowed heap initial params x →
+      Separate initial (Represent.moves initial params x) (Represent.reads initial params x) →
+      initial.memoryCap (compile funcs) 0 ≤ 65535 →
+      TripleA aborts (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => ∃ heap' : Heap, heap'.At store ∧
+          store.memoryCaps = initial.memoryCaps ∧
+          ∃ values next,
+            Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
+            Represent.owned heap' store values (f x) ∧
+            heap.Keeps initial ((Represent.moves initial params x).map (block initial)) heap'
+              store (Represent.blocks store values (f x)) ∧
+            Post x heap initial heap' store)) :
+    ImplementsA aborts (compile funcs) (2 + i) f Pre Post := by
+  intro env store heap params x hHeap hPre hArgs hSeparate hCap
+  let moves := Represent.moves store params x
+  exact Func.runs funcs i func name hFunc (arity heap store params x hArgs)
+    (P := fun final out => ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final out (f x) ∧
+      final.memoryCaps = store.memoryCaps ∧
+      (∀ r, heap.Region r → 0 < r.2 → Apart store moves r →
+        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧ Represent.outside final out (f x) r) ∧
+      Post x heap store heap' final)
+    ((correct x heap store params hHeap hPre hArgs hSeparate hCap).mono (fun _ _ h => h)
+      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hResult, hKeeps, hPost⟩ =>
+        ⟨values, next, hEval, heap', hAt, hResult, hCaps, Heap.Keeps.implements.mp hKeeps,
+          hPost⟩) env
 
 /-- A compiled function implements `f` when, for every `x`, every argument list that
 represents it with separate consumed blocks, and every memory whose cap is at most 65,535
@@ -73,18 +125,40 @@ theorem Func.implements_moves [Represent α] [Represent β] (funcs : List (Func 
             Represent.owned heap' store values (f x) ∧
             heap.Keeps initial ((Represent.moves initial params x).map (block initial)) heap'
               store (Represent.blocks store values (f x)))) :
-    Implements (compile funcs) (2 + i) f := by
-  intro env store heap params x hHeap hArgs hSeparate hCap
-  let moves := Represent.moves store params x
-  exact Func.returns funcs i func name hFunc (arity heap store params x hArgs)
-    (P := fun final out => ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final out (f x) ∧
-      final.memoryCaps = store.memoryCaps ∧
-      ∀ r, heap.Region r → 0 < r.2 → Apart store moves r →
-        (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-          heap'.Region r ∧ Represent.outside final out (f x) r)
-    ((correct x heap store params hHeap hArgs hSeparate hCap).mono (fun _ _ h => h)
-      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hResult, hKeeps⟩ =>
-        ⟨values, next, hEval, heap', hAt, hResult, hCaps, Heap.Keeps.implements.mp hKeeps⟩) env
+    Implements (compile funcs) (2 + i) f :=
+  ImplementsA.implements (Func.implements_movesA (aborts := true) funcs i func name hFunc f
+    (fun _ _ _ => True) (fun _ _ _ _ _ => True) arity
+    fun x heap initial params hHeap _ hArgs hSeparate hCap =>
+    (correct x heap initial params hHeap hArgs hSeparate hCap).mono (fun _ _ h => h)
+      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hOwned, hKeeps⟩ =>
+        ⟨heap', hAt, hCaps, values, next, hEval, hOwned, hKeeps, trivial⟩)
+
+/-- `Func.implements_movesA` for a function that consumes no argument. -/
+theorem Func.implements_heapA {aborts : Bool} [Represent α] [Represent β]
+    (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
+    (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (Pre : α → Heap → Store Unit → Prop)
+    (Post : α → Heap → Store Unit → Heap → Store Unit → Prop)
+    (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      params.length = func.params.length)
+    (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
+      heap.At initial → Pre x heap initial → Represent.borrowed heap initial params x →
+      initial.memoryCap (compile funcs) 0 ≤ 65535 →
+      TripleA aborts (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => ∃ heap' : Heap, heap'.At store ∧ store.memoryCaps = initial.memoryCaps ∧
+          ∃ values next,
+            Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
+            Represent.owned heap' store values (f x) ∧
+            heap.Keeps initial [] heap' store (Represent.blocks store values (f x)) ∧
+            Post x heap initial heap' store)) :
+    ImplementsA aborts (compile funcs) (2 + i) f Pre Post :=
+  Func.implements_movesA funcs i func name hFunc f Pre Post arity
+    fun x heap initial params hHeap hPre hArgs _ hCap =>
+    (correct x heap initial params hHeap hPre hArgs hCap).mono (fun _ _ h => h)
+      fun _ _ ⟨heap', hAt, hCaps, values, next, hEval, hOwned, hKeeps, hPost⟩ =>
+        ⟨heap', hAt, hCaps, values, next, hEval, hOwned,
+          hKeeps.mono (fun _ hb => nomatch hb) fun _ hb => hb, hPost⟩
 
 /-- `Func.implements_moves` for a function that consumes no argument. -/
 theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func × String))
@@ -110,6 +184,32 @@ theorem Func.implements_heap [Represent α] [Represent β] (funcs : List (Func �
         ⟨heap', hAt, hCaps, values, next, hEval, hOwned,
           hKeeps.mono (fun _ hb => nomatch hb) fun _ hb => hb⟩
 
+/-- A compiled function whose body keeps the store implements `f` without allocating, and
+leaves the heap and the store as they were. -/
+theorem Func.implementsA {aborts : Bool} [Represent α] [Scalar β] (funcs : List (Func × String))
+    (i : Nat) (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (Pre : α → Heap → Store Unit → Prop)
+    (arity : ∀ heap store params (x : α), Represent.borrowed heap store params x →
+      params.length = func.params.length)
+    (correct : ∀ (x : α) (heap : Heap) (initial : Store Unit) (params : List Value),
+      heap.At initial → Pre x heap initial → Represent.borrowed heap initial params x →
+      TripleA aborts (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state params)
+        (fun store state => store = initial ∧
+          ∃ values next,
+            Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
+            values = Scalar.values (f x))) :
+    ImplementsA aborts (compile funcs) (2 + i) f Pre
+      (fun _ heap store heap' final => heap' = heap ∧ final = store) :=
+  Func.implements_movesA funcs i func name hFunc f Pre _ arity
+    fun x heap initial params hHeap hPre hArgs _ _ =>
+    (correct x heap initial params hHeap hPre hArgs).mono (fun _ _ h => h)
+      fun _ _ ⟨hStore, hResult⟩ => by
+        subst hStore
+        obtain ⟨values, next, hEval, hValues⟩ := hResult
+        exact ⟨heap, hHeap, rfl, values, next, hEval, hValues,
+          fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, Represent.outside_scalar⟩, rfl, rfl⟩
+
 /-- A compiled function whose body keeps the store implements `f` without
 allocating. -/
 theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String)) (i : Nat)
@@ -125,27 +225,22 @@ theorem Func.implements [Represent α] [Scalar β] (funcs : List (Func × String
             Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
             values = Scalar.values (f x))) :
     Implements (compile funcs) (2 + i) f :=
-  Func.implements_moves funcs i func name hFunc f arity
-    fun x heap initial params hHeap hArgs _ _ =>
-    (correct x heap initial params hHeap hArgs).mono (fun _ _ h => h)
-      fun _ _ ⟨hStore, hResult⟩ => by
-        subst hStore
-        obtain ⟨values, next, hEval, hValues⟩ := hResult
-        exact ⟨heap, hHeap, rfl, values, next, hEval, hValues,
-          fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, Represent.outside_scalar⟩⟩
+  ImplementsA.implements (Func.implementsA (aborts := true) funcs i func name hFunc f
+    (fun _ _ _ => True) arity fun x heap initial params hHeap _ hArgs =>
+      correct x heap initial params hHeap hArgs)
 
 /-- A compiled function of scalars whose body keeps the store, for every store,
 computes `f` and keeps the store. -/
-theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × String)) (i : Nat)
+theorem Func.implementsPureA {aborts : Bool} [Scalar α] [Scalar β] (funcs : List (Func × String)) (i : Nat)
     (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
     (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
     (correct : ∀ (x : α) (initial : Store Unit),
-      Triple (compile funcs) func.body func.scratch
+      TripleA aborts (compile funcs) func.body func.scratch
         (fun store state => store = initial ∧ state = func.state (Scalar.values x))
         (fun store state => store = initial ∧ ∃ values next,
           Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
           values = Scalar.values (f x))) :
-    ImplementsPure (compile funcs) (2 + i) f := by
+    ImplementsPureA aborts (compile funcs) (2 + i) f := by
   intro env store x
   have hLength := arity x
   have hArgsBack : ((Scalar.values x).reverse.take func.params.length).reverse =
@@ -153,7 +248,7 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
     rw [List.take_of_length_le (by simp [hLength])]
     simp
   have hNoImports : (compile funcs).imports = [] := rfl
-  apply ReturnsOrAborts.of_wp_entry_for (f := func.function (2 + i))
+  apply Runs.of_wp_entry_for (f := func.function (2 + i))
     (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
   have hLocals :
       (func.function (2 + i)).toLocals
@@ -165,7 +260,9 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
     func.body.program func.scratch ++ (func.results.flatMap (·.2.program func.scratch) ++ []) by
       simp [Func.function]]
   refine correct x store env store _ [] _ _ ?_ ⟨rfl, rfl⟩ ?_
-  · exact fun _ => rfl
+  · cases aborts
+    · trivial
+    · exact fun _ => rfl
   rintro store' state ⟨hStore, values, next, hEval, hResult⟩
   refine Expr.evalResults_program_spec (out := []) hEval ?_
   rw [wp_nil]
@@ -178,5 +275,19 @@ theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × Strin
   rw [List.append_nil] at hTake
   rw [hTake, List.reverse_reverse]
   exact ⟨hStore, hResult⟩
+
+/-- A compiled function of scalars whose body keeps the store, for every store,
+computes `f` and keeps the store. -/
+theorem Func.implementsPure [Scalar α] [Scalar β] (funcs : List (Func × String)) (i : Nat)
+    (func : Func) (name : String) (hFunc : funcs[i]? = some (func, name)) (f : α → β)
+    (arity : ∀ x : α, (Scalar.values x).length = func.params.length)
+    (correct : ∀ (x : α) (initial : Store Unit),
+      Triple (compile funcs) func.body func.scratch
+        (fun store state => store = initial ∧ state = func.state (Scalar.values x))
+        (fun store state => store = initial ∧ ∃ values next,
+          Expr.evalResults store.mem func.scratch func.results state = some (values, next) ∧
+          values = Scalar.values (f x))) :
+    ImplementsPure (compile funcs) (2 + i) f :=
+  Func.implementsPureA funcs i func name hFunc f arity correct
 
 end Project.IR
