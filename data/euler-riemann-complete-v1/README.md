@@ -29,8 +29,8 @@ Each cell stores density, both momenta, and total energy.  Cells cut by an initi
 [The solver](../../LeanExe/Examples/Euler.lean) states the method in Lean and follows main's model
 of its earlier binary operation for operation.  [The module
 definition](../../Project/Euler/Module.lean) compiles it, with [the reconstructed
-solver](../euler-reconstructed-v1/README.md), into one 23,063-byte module, `euler.wasm`, with
-SHA-256 `2b9450e4cef7632996a1be0334bc33981002fd32f2d8beafec4e123abbb204e5`.  On both grids the
+solver](../euler-reconstructed-v1/README.md), into one 23,012-byte module, `euler.wasm`, with
+SHA-256 `87efa8a8e63a1e6eda1f6d8a8c668c57e2aeafeaadd4e73c06ac28266b8c794b`.  On both grids the
 program returned, bit for bit, the words of main's earlier binary, so the figures, CSV files, and
 ranges below, which main computed from those words, describe this program's results.
 
@@ -57,12 +57,12 @@ equations remains unproved.
 
 | Grid and summary | Runtime | Main's runtime | Density range | Pressure range | Words SHA-256 | Data | Export figures |
 |------------------|--------:|---------------:|--------------:|---------------:|---------------|------|----------------|
-| [192 × 192](192-run/summary.json) | 16.2 s | 49.6 s | 0.138–1.490131234 | 0.029–1.476780108 | `e097a43d…` | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
-| [800 × 800](800-run/summary.json) | 19.7 min | 61.6 min | 0.138–1.671084032 | 0.029–1.632146140 | `d374cc5c…` | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
+| [192 × 192](192-run/summary.json) | 16.6 s | 49.6 s | 0.138–1.490131234 | 0.029–1.476780108 | `e097a43d…` | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
+| [800 × 800](800-run/summary.json) | 20.1 min | 61.6 min | 0.138–1.671084032 | 0.029–1.632146140 | `d374cc5c…` | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine,
-with peak resident sizes of 21 MB and 134 MB.  The summary files, words, CSV files, and figures
-are main's.  The words of this program's runs have the SHA-256 recorded in main's summaries.
+with peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean
+proof checks.  The summary files, words, CSV files, and figures are main's.  The words of this program's runs have the SHA-256 recorded in main's summaries.
 
 Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh
 directory.  The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and

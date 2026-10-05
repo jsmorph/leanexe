@@ -25995,3 +25995,12 @@ main's 7,925-line `Program.lean` and its execution files.
 
 - [x] D2, D3, D4, and D5 (commits `ab039002`, `fa80818b`, `c36b7225`, and this one).
 - [ ] Total execution with a memory bound, as A1 to A5 did for the Euler solvers.
+
+### Runs of the A0 binary
+
+The 23,012-byte binary of A0 (SHA-256 `87efa8a8…`), the module the A4 and A5 theorems concern,
+returned main's words on all four grids: first-order 192 and 800 in 16.6 s and 20.1 min, and
+reconstructed 192 and 800 in 60.2 s and 83.7 min.  The peak resident sizes fell from 21 MB and
+134 MB to 19 MB and 104 MB, since the retry loop no longer holds a fourth grid.  Both 800 runs
+shared the machine with Lean jobs.  The two data READMEs now describe this binary.
+
