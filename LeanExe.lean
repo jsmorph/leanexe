@@ -17,3 +17,5 @@ import LeanExe.Examples.SumSquares
 import LeanExe.Float32
 import LeanExe.Loop
 import LeanExe.Signed32
+import LeanExe.Scheme.VM
+import LeanExe.Scheme.Examples
