@@ -287,3 +287,4 @@ import Project.Drone.Trajectory
 import Project.Drone.Acceleration
 import Project.Drone.Corridor
 import Project.Drone.WholeFlight
+import Project.Drone.Total
