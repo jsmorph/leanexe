@@ -1,8 +1,9 @@
 import Project.Euler.Steps
+import Project.Euler.ReconstructedLoops
 import Project.Encoding.RoundTrip
 
-/-! The encoded bytes of the first-order Euler module decode to a module whose every compiled
-function computes its Lean definition. -/
+/-! The encoded bytes of the Euler module decode to a module whose every compiled function, of
+both solvers, computes its Lean definition. -/
 
 namespace Project.Euler
 
@@ -40,5 +41,51 @@ theorem euler_solve : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes �
   obtain ⟨bytes, success, m, decoded, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -,
     -, hSolve⟩ := euler_bytes
   exact ⟨bytes, success, m, decoded, hSolve, fun _ h => solve_ok h⟩
+
+/-- `encode` succeeds on `euler.module`, and its bytes decode to a module that computes each
+function of the reconstructed solver exactly. -/
+theorem euler_reconstructed_bytes : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
+      ImplementsPure m 24 endpointTuple ∧ ImplementsPure m 25 outAddTuple ∧
+      ImplementsPure m 26 outSubTuple ∧ ImplementsPure m 27 outMulTuple ∧
+      ImplementsPure m 28 outDivTuple ∧ ImplementsPure m 29 outSqrtTuple ∧
+      ImplementsPure m 30 kineticLowerTuple ∧ ImplementsPure m 31 pressureUpperTuple ∧
+      ImplementsPure m 32 soundUpperTuple ∧ ImplementsPure m 33 speedUpperTuple ∧
+      ImplementsPure m 34 outwardSideTuple ∧ ImplementsPure m 35 outwardFluxTuple ∧
+      ImplementsPure m 36 faceStepTuple ∧ ImplementsPure m 37 slopeTuple ∧
+      ImplementsPure m 38 candidateTuple ∧ ImplementsPure m 39 tryFactorTuple ∧
+      ImplementsPure m 40 limitFactorTuple ∧ ImplementsPure m 41 limitTuple ∧
+      ImplementsPure m 42 reconstructTuple ∧ ImplementsPure m 43 reconstructedStepTuple ∧
+      Implements m 44 reconstructedSweepTuple ∧ Implements m 45 reconstructedFinishTuple ∧
+      Implements m 46 reconstructedStepGridTuple ∧ ImplementsPure m 47 cellUpperTuple ∧
+      Implements m 48 gridUpper ∧ ImplementsPure m 49 gridRatioTuple ∧
+      Implements m 50 reconstructedTryTuple ∧ Implements m 51 reconstructedAttemptTuple ∧
+      Implements m 52 reconstructedAdvanceWithTuple ∧
+      Implements m 53 reconstructedAdvanceStepTuple ∧ Implements m 54 reconstructedRunFromTuple ∧
+      Implements m 55 reconstructedRunTuple ∧ Implements m 56 reconstructedSolveTuple := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip euler.module (by decide +kernel) (by decide +kernel)
+  exact ⟨bytes, success, euler.module, decoded, endpoint_implements, outAdd_implements,
+    outSub_implements, outMul_implements, outDiv_implements, outSqrt_implements,
+    kineticLower_implements, pressureUpper_implements, soundUpper_implements,
+    speedUpper_implements, outwardSide_implements, outwardFlux_implements, faceStep_implements,
+    slope_implements, candidate_implements, tryFactor_implements, limitFactor_implements,
+    limit_implements, reconstruct_implements, reconstructedStep_implements,
+    reconstructedSweep_implements, reconstructedFinish_implements,
+    reconstructedStepGrid_implements, cellUpper_implements, gridUpper_implements,
+    gridRatio_implements, reconstructedTry_implements, reconstructedAttempt_implements,
+    reconstructedAdvanceWith_implements, reconstructedAdvanceStep_implements,
+    reconstructedRunFrom_implements, reconstructedRun_implements, reconstructedSolve_implements⟩
+
+/-- The bytes of `euler.module` decode to a module whose entry 56 computes `reconstructedSolve`:
+a call with `n` and `trials` returns the words of `reconstructedSolve n trials` or aborts at
+`unreachable`.  Returned words whose first word is 0 are those of a successful run. -/
+theorem euler_reconstructed_solve : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 56 reconstructedSolveTuple ∧
+      ∀ n trials, (reconstructedSolve n trials)[0]! = 0 →
+        Successful n (reconstructedSolve n trials) := by
+  obtain ⟨bytes, success, m, decoded, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -, -,
+    -, -, -, -, -, -, -, -, -, -, -, -, hSolve⟩ := euler_reconstructed_bytes
+  exact ⟨bytes, success, m, decoded, hSolve, fun _ _ h => reconstructedSolve_ok h⟩
 
 end Project.Euler
