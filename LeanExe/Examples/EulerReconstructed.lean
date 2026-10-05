@@ -285,9 +285,13 @@ def reconstructedSweep (n : UInt64) (axisY : Bool) (trials : UInt64) (ratio : Fl
     let upper := if coordinate + 1 < n then index + stride else index
     let upperCoordinate := if coordinate + 1 < n then coordinate + 1 else coordinate
     let farUpper := if upperCoordinate + 1 < n then upper + stride else upper
-    let out := reconstructedStep trials ratio (oriented axisY grid[farLower.toNat]!.state)
-      (oriented axisY grid[lower.toNat]!.state) (oriented axisY grid[index.toNat]!.state)
-      (oriented axisY grid[upper.toNat]!.state) (oriented axisY grid[farUpper.toNat]!.state)
+    let a := grid[farLower.toNat]!.state
+    let b := grid[lower.toNat]!.state
+    let c := grid[index.toNat]!.state
+    let d := grid[upper.toNat]!.state
+    let e := grid[farUpper.toNat]!.state
+    let out := reconstructedStep trials ratio (oriented axisY a) (oriented axisY b)
+      (oriented axisY c) (oriented axisY d) (oriented axisY e)
     ⟨⟨out.density, if axisY then out.transverse else out.momentum,
       if axisY then out.momentum else out.transverse, out.energy⟩, out.pressure, out.status⟩
 
