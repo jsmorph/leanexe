@@ -2,6 +2,7 @@ import Project.Drone.Kernels
 import Project.IR.BuildRecord
 import Project.IR.RecordRead
 import Project.Drone.Costs
+import Project.Pipeline.Budget
 
 /-! The compiled functions of the drone planner's rows compute their Lean definitions.  A
 `Choice` is represented as its three words, and an array of choices as `flatWords`, three words
@@ -78,15 +79,29 @@ def initialUnit : Unit → Array Choice := fun _ => initial
 theorem initialUnit_build : initialUnit () = LeanExe.build 45 initialChoice := rfl
 
 set_option maxHeartbeats 4000000 in
-theorem initial_implements : Implements drone.module 11 initialUnit := by
-  refine Func.implements_heap drone.funcs 9 drone.initial.ir "initial" rfl initialUnit
+/-- The bytes of the largest block the planner allocates: a table of 64 rows of 45 choices. -/
+def tableBytes : UInt64 := 69128
+
+theorem tableBytes_eight : 8 ≤ tableBytes.toNat := by decide
+
+set_option maxHeartbeats 4000000 in
+/-- Under `a = false`, the heap has room for one more block of `tableBytes` bytes. -/
+theorem initial_implementsA {a : Bool} (spare pages : Nat) :
+    ImplementsA a drone.module 11 initialUnit
+      (fun _ heap store => a = false →
+        heap.Bounded store drone.module tableBytes (spare + 1) pages)
+      (fun _ _ _ heap' final => a = false →
+        heap'.Bounded final drone.module tableBytes spare pages) := by
+  refine Func.implements_heapA drone.funcs 9 drone.initial.ir "initial" rfl initialUnit _ _
     (by rintro _ _ _ _ rfl; rfl) ?_
-  rintro ⟨⟩ heap initial params hHeap rfl hCap
+  rintro ⟨⟩ heap initial params hHeap hPre rfl hCap
   rw [show initialUnit () = _ from initialUnit_build]
-  refine (Stmt.buildRecords_spec (writes := [3, 4, 5]) (n := 45) (scratch := 6)
+  refine (Stmt.buildRecords_specA (writes := [3, 4, 5]) (n := 45) (scratch := 6)
     (elements := [.get 3, .get 4, .get 5]) (before := drone.initial.ir.state (Scalar.values ()))
     initialChoice choice_length (by decide) rfl rfl rfl (by decide) (by decide) (by decide)
-    (Nat.le_of_eq rfl) hHeap hCap ⟨_, rfl⟩ ?_).mono (fun _ _ h => h) ?_
+    (Nat.le_of_eq rfl) hHeap hCap (fun _ => by decide)
+    (fun ha => (hPre ha).room hHeap (by omega) (by decide) tableBytes_eight hCap) ⟨_, rfl⟩
+    ?_).mono (fun _ _ h => h) ?_
   · intro i store state hi hAt hFrame hIndex
     have hLength : state.params.length + state.locals.length = 6 := by
       rw [hFrame.params, hFrame.locals]; rfl
@@ -101,10 +116,14 @@ theorem initial_implements : Implements drone.module 11 initialUnit := by
         simp only [List.getElem_cons_zero, List.getElem_cons_succ, List.getElem?_cons_zero,
           List.getElem?_cons_succ, Option.getD_some, Value.word]
         exact Expr.yields_get (by simp [hLength])
-  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  rintro store state ⟨ptr, -, hPtr, hNew, hPages⟩
   exact ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [drone.initial.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
-    ⟨ptr, rfl, hNew.owned⟩, hNew.keeps⟩
+    ⟨ptr, rfl, hNew.owned⟩, hNew.keeps,
+    fun ha => (hPre ha).allocate hHeap (by decide) tableBytes_eight hCap hPages hNew.caps⟩
+
+theorem initial_implements : Implements drone.module 11 initialUnit :=
+  (initial_implementsA (a := true) 0 0).implements_of fun _ _ _ h => nomatch h
 
 def advanceTuple : UInt64 × UInt64 × Bool × Array Choice × UInt64 → Array Choice :=
   fun (r0, r1, last, table, base) => advance r0 r1 last table base

@@ -26004,3 +26004,33 @@ reconstructed 192 and 800 in 60.2 s and 83.7 min.  The peak resident sizes fell 
 134 MB to 19 MB and 104 MB, since the retry loop no longer holds a fourth grid.  Both 800 runs
 shared the machine with Lean jobs.  The two data READMEs now describe this binary.
 
+
+### Complete execution and a memory bound
+
+The allocating functions now have one proof each, generic in the abort flag, with budgets in the
+form of A1 to A5: `initial_implementsA`, `extend_implementsA`, `forward_implementsA`,
+`output_implementsA`, and `compute_implementsA`, and their `Implements` theorems are the `true`
+cases.  The scalar functions and `validHeights` were generic already.  The budget counts blocks
+of `tableBytes`, 69,128 bytes, the size of a table of 64 rows, which bounds every allocation of
+the planner: the first row, each table that `extend` builds, and the output.  A released table
+is smaller than `tableBytes` except at 64 rows, so releases return no spare, and each call uses
+spares in sequence: one for `initial`, one for each table that `extend` builds, and one for
+`output`.
+
+The forward loop uses a different number of spares at each step, while `Live.repeatWhileOneA`
+takes one contract for the step.  `extend`'s postcondition therefore quantifies the budget: from
+any bound with `k + extendCost count i` spares it gives a bound with `k` spares, where
+`extendCost` is 1 when `i < count` and 0 otherwise.  `forward`'s loop invariant holds
+`spare + (count - i)` spares at station `i`, so a run of `count` stations uses `count + 1`
+spares with `initial`, and `compute` needs at most 66.  `advance`, which `compute` does not
+call, keeps its `Implements` proof only.
+
+`Project/Drone/Total.lean` proves `compute_runs` and `drone_compute_total`.  From an allocator
+with no free block and `top` at most 8192, which holds the terrain, and with 70 pages allowed,
+entry 16 returns the words of `compute` without a trap and ends with at most 70 pages (4.375
+MiB): `8192 + 66 · (69,128 + 48)` bytes round up to 70 pages.  Main's bound for its drone binary
+was 1,024 pages (64 MiB).  As for the Euler solvers, the state of the allocator is a hypothesis.
+The full build succeeds with no `sorry`, and the theorems use only `propext`,
+`Classical.choice`, and `Quot.sound`.
+
+- [x] Total execution with a memory bound.
