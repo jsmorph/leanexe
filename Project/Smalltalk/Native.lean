@@ -5,7 +5,9 @@ open Lean LeanExe.Smalltalk.Arena LeanExe.Smalltalk.Runtime
 private def member (j : Json) (key : String) : IO Json := IO.ofExcept (j.getObjVal? key)
 private def number (j : Json) : IO UInt64 := do
   let n ← match j with
-    | .str text => IO.ofExcept <| text.toNat?.toExcept s!"invalid word {text}"
+    | .str text => match text.toNat? with
+      | some n => pure n
+      | none => throw <| IO.userError s!"invalid word {text}"
     | _ => IO.ofExcept j.getNat?
   if n ≥ 2^64 then throw <| IO.userError "word exceeds UInt64"
   return n.toUInt64
