@@ -214,15 +214,14 @@ theorem gridRatio_le {n : UInt64} {dt alpha : Float} (h : (gridRatio n dt alpha)
   nlinarith
 
 /-- `reconstructedAttempt` returns status 0 only with an accepted grid that
-`reconstructedStepGrid` computes with an accepted ratio for its timestep. -/
-theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {grid : Array Cell}
-    {dt : Float} {old : Array Cell}
-    (h : (reconstructedAttempt n trials time alpha grid dt old).1 = 0) :
-    (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).status = 0 ∧
-      (reconstructedAttempt n trials time alpha grid dt old).2.2 = reconstructedStepGrid n trials
-        (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).value
+`reconstructedStepGrid` computes from its grid with an accepted ratio for its timestep. -/
+theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha dt : Float} {grid : Array Cell}
+    (h : (reconstructedAttempt n trials time alpha dt grid).1 = 0) :
+    (gridRatio n (reconstructedAttempt n trials time alpha dt grid).2.1 alpha).status = 0 ∧
+      (reconstructedAttempt n trials time alpha dt grid).2.2 = reconstructedStepGrid n trials
+        (gridRatio n (reconstructedAttempt n trials time alpha dt grid).2.1 alpha).value
         grid ∧
-      accepted (reconstructedAttempt n trials time alpha grid dt old).2.2 = true := by
+      accepted (reconstructedAttempt n trials time alpha dt grid).2.2 = true := by
   unfold reconstructedAttempt at h ⊢
   dsimp only at h ⊢
   split
@@ -246,6 +245,28 @@ theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {gri
     rw [ite_eq_right hV] at h
     simp at h
 
+/-- `reconstructedAttempt` with a status other than 0 returns its grid. -/
+theorem reconstructedAttempt_keep {n trials : UInt64} {time alpha dt : Float} {grid : Array Cell}
+    (h : (reconstructedAttempt n trials time alpha dt grid).1 ≠ 0) :
+    (reconstructedAttempt n trials time alpha dt grid).2.2 = grid := by
+  unfold reconstructedAttempt at h ⊢
+  dsimp only at h ⊢
+  split
+  · rename_i hV
+    rw [ite_eq_left hV] at h
+    split
+    · rename_i hR
+      rw [ite_eq_left hR] at h
+      unfold reconstructedTry at h ⊢
+      dsimp only at h ⊢
+      split
+      · rename_i hA
+        rw [ite_eq_left hA] at h
+        exact absurd rfl h
+      · rfl
+    · rfl
+  · rfl
+
 theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Float}
     {grid : Array Cell} (h : (reconstructedAdvanceWith n trials time dt alpha grid).1 = 0) :
     ∃ dt' : Float, (gridRatio n dt' alpha).status = 0 ∧
@@ -253,22 +274,33 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
       (reconstructedAdvanceWith n trials time dt alpha grid).2.2 =
         reconstructedStepGrid n trials (gridRatio n dt' alpha).value grid ∧
       accepted (reconstructedAdvanceWith n trials time dt alpha grid).2.2 = true := by
-  obtain ⟨cond, step, -, hStepEq, hDef⟩ :=
+  obtain ⟨cond, step, hCondEq, hStepEq, hDef⟩ :=
     reconstructedAdvanceWith_loop n trials time dt alpha grid
-  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      (s.1 ≠ 0 → s.2.2 = grid) ∧ (s.1 = 0 →
       (gridRatio n s.2.1 alpha).status = 0 ∧
         s.2.2 = reconstructedStepGrid n trials (gridRatio n s.2.1 alpha).value grid ∧
-        accepted s.2.2 = true)
-    (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
-    (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact reconstructedAttempt_ratio hx)
+        accepted s.2.2 = true))
+    (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, grid)) 2048
+    ⟨fun _ => rfl, by simp⟩
+    (fun x hc hx => by
+      rw [hStepEq]
+      have h9 : x.1 ≠ 0 := by
+        rw [hCondEq] at hc
+        intro h0
+        simp [h0] at hc
+      have hGrid := hx.1 h9
+      refine ⟨fun hs => (reconstructedAttempt_keep hs).trans hGrid, fun hs => ?_⟩
+      obtain ⟨h1, h2, h3⟩ := reconstructedAttempt_ratio hs
+      exact ⟨h1, by rw [h2, hGrid], h3⟩)
   rw [hDef] at h ⊢
-  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step = R
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step = R
     at h hInv ⊢
-  obtain ⟨status, dt', trial⟩ := R
+  obtain ⟨status, dt', g⟩ := R
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    obtain ⟨hr, ht, ha⟩ := hInv (by simpa using hS)
+    obtain ⟨hr, ht, ha⟩ := hInv.2 (by simpa using hS)
     exact ⟨dt', hr, rfl, ht, ha⟩
   · rename_i hS
     rw [ite_eq_right hS] at h

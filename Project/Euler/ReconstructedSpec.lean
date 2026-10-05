@@ -13,12 +13,12 @@ theorem reconstructedAdvanceWith_loop (n trials : UInt64) (time dt alpha : Float
     ∃ (cond : UInt64 × Float × Array Cell → Bool)
       (step : UInt64 × Float × Array Cell → UInt64 × Float × Array Cell),
       (∀ x, cond x = (x.1 == 9)) ∧
-      (∀ x, step x = reconstructedAttempt n trials time alpha grid x.2.1 x.2.2) ∧
+      (∀ x, step x = reconstructedAttempt n trials time alpha x.2.1 x.2.2) ∧
       reconstructedAdvanceWith n trials time dt alpha grid =
-        match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step with
-        | (status, dt, trial) =>
-          if status == 0 then ((0 : UInt64), time + dt, trial)
-          else (if status == 9 then 4 else status, time, grid) := by
+        match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step with
+        | (status, dt, g) =>
+          if status == 0 then ((0 : UInt64), time + dt, g)
+          else (if status == 9 then 4 else status, time, g) := by
   refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
 
 /-- `reconstructedRunFrom` with its loop's test and step named. -/
@@ -173,11 +173,19 @@ theorem reconstructedStepGrid_ok {n trials : UInt64} {ratio : Float} {grid : Arr
     rw [ite_eq_right hA] at h
     exact absurd h hA
 
-theorem reconstructedTry_ok {n trials : UInt64} {grid : Array Cell} {ratio dt : Float}
-    {old : Array Cell} (h : (reconstructedTry n trials grid ratio dt old).1 = 0)
+theorem reconstructedStepGrid_size (n trials : UInt64) (ratio : Float) (grid : Array Cell)
     (hSize : grid.size < 2 ^ 64) :
-    (∀ c ∈ (reconstructedTry n trials grid ratio dt old).2.2, Admissible c) ∧
-      (reconstructedTry n trials grid ratio dt old).2.2.size = grid.size := by
+    (reconstructedStepGrid n trials ratio grid).size = grid.size := by
+  have hMiddle := reconstructedSweep_size n false trials ratio grid hSize
+  unfold reconstructedStepGrid reconstructedFinish
+  split
+  · rw [reconstructedSweep_size n true trials ratio _ (by omega), hMiddle]
+  · exact hMiddle
+
+theorem reconstructedTry_ok {n trials : UInt64} {grid : Array Cell} {ratio dt : Float}
+    (h : (reconstructedTry n trials grid ratio dt).1 = 0) (hSize : grid.size < 2 ^ 64) :
+    (∀ c ∈ (reconstructedTry n trials grid ratio dt).2.2, Admissible c) ∧
+      (reconstructedTry n trials grid ratio dt).2.2.size = grid.size := by
   unfold reconstructedTry at h ⊢
   dsimp only at h ⊢
   split
@@ -186,12 +194,19 @@ theorem reconstructedTry_ok {n trials : UInt64} {grid : Array Cell} {ratio dt : 
     rw [ite_eq_right hA] at h
     simp at h
 
-theorem reconstructedAttempt_ok {n trials : UInt64} {time alpha : Float} {grid : Array Cell}
-    {dt : Float} {old : Array Cell}
-    (h : (reconstructedAttempt n trials time alpha grid dt old).1 = 0)
+theorem reconstructedTry_size (n trials : UInt64) (grid : Array Cell) (ratio dt : Float)
+    (hSize : grid.size < 2 ^ 64) : (reconstructedTry n trials grid ratio dt).2.2.size = grid.size := by
+  unfold reconstructedTry
+  dsimp only
+  split
+  · exact reconstructedStepGrid_size n trials ratio grid hSize
+  · rfl
+
+theorem reconstructedAttempt_ok {n trials : UInt64} {time alpha dt : Float} {grid : Array Cell}
+    (h : (reconstructedAttempt n trials time alpha dt grid).1 = 0)
     (hSize : grid.size < 2 ^ 64) :
-    (∀ c ∈ (reconstructedAttempt n trials time alpha grid dt old).2.2, Admissible c) ∧
-      (reconstructedAttempt n trials time alpha grid dt old).2.2.size = grid.size := by
+    (∀ c ∈ (reconstructedAttempt n trials time alpha dt grid).2.2, Admissible c) ∧
+      (reconstructedAttempt n trials time alpha dt grid).2.2.size = grid.size := by
   unfold reconstructedAttempt at h ⊢
   dsimp only at h ⊢
   split
@@ -208,6 +223,17 @@ theorem reconstructedAttempt_ok {n trials : UInt64} {time alpha : Float} {grid :
     rw [ite_eq_right hV] at h
     simp at h
 
+theorem reconstructedAttempt_size (n trials : UInt64) (time alpha dt : Float) (grid : Array Cell)
+    (hSize : grid.size < 2 ^ 64) :
+    (reconstructedAttempt n trials time alpha dt grid).2.2.size = grid.size := by
+  unfold reconstructedAttempt
+  dsimp only
+  split
+  · split
+    · exact reconstructedTry_size n trials grid _ dt hSize
+    · rfl
+  · rfl
+
 theorem reconstructedAdvanceWith_ok {n trials : UInt64} {time dt alpha : Float}
     {grid : Array Cell} (h : (reconstructedAdvanceWith n trials time dt alpha grid).1 = 0)
     (hSize : grid.size < 2 ^ 64) :
@@ -215,18 +241,21 @@ theorem reconstructedAdvanceWith_ok {n trials : UInt64} {time dt alpha : Float}
       (reconstructedAdvanceWith n trials time dt alpha grid).2.2.size = grid.size := by
   obtain ⟨cond, step, -, hStepEq, hDef⟩ :=
     reconstructedAdvanceWith_loop n trials time dt alpha grid
-  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
-      (∀ c ∈ s.2.2, Admissible c) ∧ s.2.2.size = grid.size) (cond := cond) (step := step)
-    (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
-    (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact reconstructedAttempt_ok hx hSize)
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      s.2.2.size = grid.size ∧ (s.1 = 0 → ∀ c ∈ s.2.2, Admissible c)) (cond := cond)
+    (step := step) (x0 := ((9 : UInt64), dt, grid)) 2048 ⟨rfl, by simp⟩
+    (fun x _ hx => by
+      rw [hStepEq]
+      have hs := hx.1
+      exact ⟨(reconstructedAttempt_size n trials time alpha x.2.1 x.2.2 (by omega)).trans hs,
+        fun h0 => (reconstructedAttempt_ok h0 (by omega)).1⟩)
   rw [hDef] at h ⊢
-  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step = R
-    at h hInv ⊢
-  obtain ⟨status, dt', trial⟩ := R
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step = R at h hInv ⊢
+  obtain ⟨status, dt', g⟩ := R
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    exact hInv (by simpa using hS)
+    exact ⟨hInv.2 (by simpa using hS), hInv.1⟩
   · rename_i hS
     rw [ite_eq_right hS] at h
     split at h
@@ -237,19 +266,18 @@ theorem reconstructedAdvanceWith_ok {n trials : UInt64} {time dt alpha : Float}
 theorem reconstructedAdvanceWith_size {n trials : UInt64} {time dt alpha : Float}
     {grid : Array Cell} (hSize : grid.size < 2 ^ 64) :
     (reconstructedAdvanceWith n trials time dt alpha grid).2.2.size = grid.size := by
-  by_cases h : (reconstructedAdvanceWith n trials time dt alpha grid).1 = 0
-  · exact (reconstructedAdvanceWith_ok h hSize).2
-  · obtain ⟨cond, step, -, -, hDef⟩ := reconstructedAdvanceWith_loop n trials time dt alpha grid
-    rw [hDef] at h ⊢
-    generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step = R
-      at h ⊢
-    obtain ⟨status, dt', trial⟩ := R
-    dsimp only at h ⊢
-    split
-    · rename_i hS
-      rw [ite_eq_left hS] at h
-      exact absurd rfl h
-    · rfl
+  obtain ⟨cond, step, -, hStepEq, hDef⟩ :=
+    reconstructedAdvanceWith_loop n trials time dt alpha grid
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      s.2.2.size = grid.size) (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, grid)) 2048
+    rfl (fun x _ hx => by
+      rw [hStepEq]
+      exact (reconstructedAttempt_size n trials time alpha x.2.1 x.2.2 (by omega)).trans hx)
+  rw [hDef]
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step = R at hInv ⊢
+  obtain ⟨status, dt', g⟩ := R
+  dsimp only at hInv ⊢
+  split <;> exact hInv
 
 theorem reconstructedAdvanceStep_ok {n trials : UInt64} {time : Float} {grid : Array Cell}
     (h : (reconstructedAdvanceStep n trials time grid).1 = 0) (hSize : grid.size < 2 ^ 64) :

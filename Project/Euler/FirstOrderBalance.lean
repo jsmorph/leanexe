@@ -173,12 +173,11 @@ def FirstStep (n : UInt64) (b b' : Float × Array Cell) (r : Float) : Prop :=
   ∃ dt : Float, positive dt = true ∧ b'.1 = b.1 + dt ∧ r = dt / spacing n ∧
     b'.2 = step n r b.2 ∧ accepted b'.2 = true ∧ b.2.size = n.toNat * n.toNat ∧ n.toNat ≤ 800
 
-theorem attempt_step {n : UInt64} {time : Float} {grid : Array Cell} {status : UInt64}
-    {dt : Float} {old : Array Cell} (h : (attempt n time grid status dt old).1 = 0) :
-    positive (attempt n time grid status dt old).2.1 = true ∧
-      (attempt n time grid status dt old).2.2 =
-        step n ((attempt n time grid status dt old).2.1 / spacing n) grid ∧
-      accepted (attempt n time grid status dt old).2.2 = true := by
+theorem attempt_step {n : UInt64} {time dt : Float} {grid : Array Cell}
+    (h : (attempt n time dt grid).1 = 0) :
+    positive (attempt n time dt grid).2.1 = true ∧
+      (attempt n time dt grid).2.2 = step n ((attempt n time dt grid).2.1 / spacing n) grid ∧
+      accepted (attempt n time dt grid).2.2 = true := by
   unfold attempt at h ⊢
   split
   · rename_i hV
@@ -195,24 +194,49 @@ theorem attempt_step {n : UInt64} {time : Float} {grid : Array Cell} {status : U
     rw [ite_eq_right hV] at h
     simp at h
 
+/-- `attempt` with a status other than 0 returns its grid. -/
+theorem attempt_keep {n : UInt64} {time dt : Float} {grid : Array Cell}
+    (h : (attempt n time dt grid).1 ≠ 0) : (attempt n time dt grid).2.2 = grid := by
+  unfold attempt at h ⊢
+  split
+  · rename_i hV
+    rw [ite_eq_left hV] at h
+    unfold tryStep at h ⊢
+    dsimp only at h ⊢
+    split
+    · rename_i hA
+      rw [ite_eq_left hA] at h
+      exact absurd rfl h
+    · rfl
+  · rfl
+
 theorem advanceWith_step {n : UInt64} {time dt : Float} {grid : Array Cell}
     (h : (advanceWith n time dt grid).1 = 0) :
     ∃ dt' : Float, positive dt' = true ∧ (advanceWith n time dt grid).2.1 = time + dt' ∧
       (advanceWith n time dt grid).2.2 = step n (dt' / spacing n) grid ∧
       accepted (advanceWith n time dt grid).2.2 = true := by
-  obtain ⟨cond, step', -, hStepEq, hDef⟩ := advanceWith_loop n time dt grid
-  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
-      positive s.2.1 = true ∧ s.2.2 = step n (s.2.1 / spacing n) grid ∧ accepted s.2.2 = true)
-    (cond := cond) (step := step') (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
-    (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact attempt_step hx)
+  obtain ⟨cond, step', hCondEq, hStepEq, hDef⟩ := advanceWith_loop n time dt grid
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      (s.1 ≠ 0 → s.2.2 = grid) ∧ (s.1 = 0 →
+      positive s.2.1 = true ∧ s.2.2 = step n (s.2.1 / spacing n) grid ∧ accepted s.2.2 = true))
+    (cond := cond) (step := step') (x0 := ((9 : UInt64), dt, grid)) 2048 ⟨fun _ => rfl, by simp⟩
+    (fun x hc hx => by
+      rw [hStepEq]
+      have h9 : x.1 ≠ 0 := by
+        rw [hCondEq] at hc
+        intro h0
+        simp [h0] at hc
+      have hGrid := hx.1 h9
+      refine ⟨fun hs => (attempt_keep hs).trans hGrid, fun hs => ?_⟩
+      obtain ⟨h1, h2, h3⟩ := attempt_step hs
+      exact ⟨h1, by rw [h2, hGrid], h3⟩)
   rw [hDef] at h ⊢
-  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell)) cond step' = R
-    at h hInv ⊢
-  obtain ⟨status, dt', trial⟩ := R
+  generalize LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid) cond step' = R at h hInv ⊢
+  obtain ⟨status, dt', g⟩ := R
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    obtain ⟨hp, ht, ha⟩ := hInv (by simpa using hS)
+    obtain ⟨hp, ht, ha⟩ := hInv.2 (by simpa using hS)
     exact ⟨dt', hp, rfl, ht, ha⟩
   · rename_i hS
     rw [ite_eq_right hS] at h

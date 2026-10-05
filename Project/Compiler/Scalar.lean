@@ -826,7 +826,8 @@ partial def heapComponents (type : Lean.Expr) : MetaM (List Bool) := do
 /-- The array parameters and parameters of recursive types among `params` that the result
 term `term` moves on some path, through its `let`s, matches, branches, and pairs: those it
 returns, passes as the left operand of `++`, passes at an owned position of a callee in
-`owners`, or places in a constructor of a recursive type.  A match on a value of a recursive
+`owners`, places in the initial state of a loop, or places in a constructor of a recursive
+type.  A match on a value of a recursive
 type moves the value when its record branch moves one of the record's children. -/
 partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Expr)
     (term : Lean.Expr) : MetaM (List Lean.Expr) := do
@@ -879,6 +880,9 @@ partial def moveSites (owners : List (Name × List Nat)) (params : List Lean.Exp
       unless ← isArrayNest stateType do return []
       let some terms ← nestTerms? init stateType | return []
       return terms.filter params.contains
+  | (``LeanExe.repeatWhile, #[_, _, init, _, _]) =>
+      -- A `repeatWhile` moves the arrays of its initial state.
+      moveSites owners params init
   | (``HAppend.hAppend, #[_, _, _, _, left, _]) =>
       return if params.contains left.consumeMData then [left.consumeMData] else []
   | (``Array.set!, #[_, array, _, _]) | (``Array.setIfInBounds, #[_, array, _, _])

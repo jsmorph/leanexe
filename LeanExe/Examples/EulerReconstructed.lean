@@ -338,31 +338,32 @@ def gridRatio (n : UInt64) (dt alpha : Float) : Checked :=
       courant.value.toBits ≤ 0x3FE0000000000000 then ratio
   else rejectedChecked
 
-/-- One try of a timestep with the given ratio: status 0 with the new grid, or 9 to retry with
-half the timestep.  `old` is the previous try's grid, which only an accepted try replaces. -/
-def reconstructedTry (n trials : UInt64) (grid : Array Cell) (ratio dt : Float)
-    (old : Array Cell) : UInt64 × Float × Array Cell :=
+/-- One try of a timestep with the given ratio: status 0 with the new grid, which replaces
+`grid`, or 9 to retry with half the timestep, keeping `grid`. -/
+def reconstructedTry (n trials : UInt64) (grid : Array Cell) (ratio dt : Float) :
+    UInt64 × Float × Array Cell :=
   let trial := reconstructedStepGrid n trials ratio grid
-  if accepted trial then (0, dt, trial) else (9, 0.5 * dt, old)
+  if accepted trial then (0, dt, trial) else (9, 0.5 * dt, grid)
 
-def reconstructedAttempt (n trials : UInt64) (time alpha : Float) (grid : Array Cell)
-    (dt : Float) (old : Array Cell) : UInt64 × Float × Array Cell :=
+def reconstructedAttempt (n trials : UInt64) (time alpha dt : Float) (grid : Array Cell) :
+    UInt64 × Float × Array Cell :=
   let ratio := gridRatio n dt alpha
   if validAdvance time dt then
-    if ratio.status == 0 then reconstructedTry n trials grid ratio.value dt old
-    else (9, 0.5 * dt, old)
-  else (3, dt, old)
+    if ratio.status == 0 then reconstructedTry n trials grid ratio.value dt
+    else (9, 0.5 * dt, grid)
+  else (3, dt, grid)
 
 /-- Tries `dt` from `time`, halving it after each rejected try, at most 2048 times, and then
-advances, or returns `grid` with the status of the failure. -/
+advances, or returns `grid` with the status of the failure.  The loop state holds `grid` until a
+try replaces it. -/
 def reconstructedAdvanceWith (n trials : UInt64) (time dt alpha : Float) (grid : Array Cell) :
     UInt64 × Float × Array Cell :=
-  match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, (#[] : Array Cell))
+  match LeanExe.repeatWhile 2048 ((9 : UInt64), dt, grid)
       (fun (status, _, _) => status == 9)
-      (fun (_, dt, old) => reconstructedAttempt n trials time alpha grid dt old) with
-  | (status, dt, trial) =>
-    if status == 0 then (0, time + dt, trial)
-    else (if status == 9 then 4 else status, time, grid)
+      (fun (_, dt, g) => reconstructedAttempt n trials time alpha dt g) with
+  | (status, dt, g) =>
+    if status == 0 then (0, time + dt, g)
+    else (if status == 9 then 4 else status, time, g)
 
 /-- One accepted timestep, or the state with a nonzero status. -/
 def reconstructedAdvanceStep (n trials : UInt64) (time : Float) (grid : Array Cell) :
