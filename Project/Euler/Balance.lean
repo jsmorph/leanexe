@@ -275,4 +275,173 @@ theorem reconstructedSweep_cell {n : UInt64} {axisY : Bool} {trials : UInt64} {r
     show min (min (p + 1) (m - 1) + 1) (m - 1) = min (p + 2) (m - 1) by omega]
   rfl
 
+/-! The balance of a sweep. -/
+
+/-- The flux at face `j` of line `l`, between positions `j - 1` and `j`, from the four positions
+around it, clamped at the ends of the line. -/
+def lineFace (m : Nat) (axisY : Bool) (trials : UInt64) (grid : Array Cell) (l j : Nat) : Flux :=
+  faceFlux trials (lineState m axisY grid l (j - 2)) (lineState m axisY grid l (j - 1))
+    (lineState m axisY grid l (min j (m - 1))) (lineState m axisY grid l (min (j + 1) (m - 1)))
+
+/-- The component along the axis that holds component `c` of a state: a y sweep exchanges the
+momenta. -/
+def axisComponent (axisY : Bool) (c : Fin 4) : Fin 4 := if axisY then ![0, 2, 1, 3] c else c
+
+theorem stateAt_oriented (axisY : Bool) (q : Conserved) (c : Fin 4) :
+    stateAt (oriented axisY q) (axisComponent axisY c) = stateAt q c := by
+  cases axisY <;> fin_cases c <;> rfl
+
+theorem stateAt_sweepCell (m : Nat) (axisY : Bool) (trials : UInt64) (ratio : Float)
+    (grid : Array Cell) (l p : Nat) (c : Fin 4) :
+    stateAt (sweepCell m axisY trials ratio grid l p).state c =
+      updatedAt (lineStep m axisY trials ratio grid l p) (axisComponent axisY c) := by
+  cases axisY <;> fin_cases c <;> rfl
+
+/-- An accepted update of a position updates each component with the fluxes at the two faces
+of the position. -/
+theorem lineStep_parts {m : Nat} {axisY : Bool} {trials : UInt64} {ratio : Float}
+    {grid : Array Cell} {l p : Nat} (hp : p < m)
+    (h : (lineStep m axisY trials ratio grid l p).status = 0) (c : Fin 4) :
+    (update ratio (stateAt (lineState m axisY grid l p) c)
+        (fluxAt (lineFace m axisY trials grid l p) c)
+        (fluxAt (lineFace m axisY trials grid l (p + 1)) c)).status = 0 ∧
+      updatedAt (lineStep m axisY trials ratio grid l p) c =
+        (update ratio (stateAt (lineState m axisY grid l p) c)
+          (fluxAt (lineFace m axisY trials grid l p) c)
+          (fluxAt (lineFace m axisY trials grid l (p + 1)) c)).value := by
+  have hface : lineFace m axisY trials grid l p = faceFlux trials (lineState m axisY grid l (p - 2))
+      (lineState m axisY grid l (p - 1)) (lineState m axisY grid l p)
+      (lineState m axisY grid l (min (p + 1) (m - 1))) := by
+    simp only [lineFace, show min p (m - 1) = p by omega]
+  have hface' : lineFace m axisY trials grid l (p + 1) = faceFlux trials
+      (lineState m axisY grid l (p - 1)) (lineState m axisY grid l p)
+      (lineState m axisY grid l (min (p + 1) (m - 1)))
+      (lineState m axisY grid l (min (p + 2) (m - 1))) := by
+    simp only [lineFace, show p + 1 - 2 = p - 1 by omega, show p + 1 - 1 = p by omega,
+      show p + 1 + 1 = p + 2 by omega]
+  rw [hface, hface']
+  exact reconstructedStep_parts h c
+
+/-- A sum over the cells of an `m × m` grid as a sum over lines and positions. -/
+theorem sum_rows (m : Nat) (h : ℕ → ℕ → ℝ) (a : Nat) :
+    ∑ k ∈ Finset.range (a * m), h (k / m) (k % m) =
+      ∑ l ∈ Finset.range a, ∑ q ∈ Finset.range m, h l q := by
+  induction a with
+  | zero => simp
+  | succ a ih =>
+    rw [Nat.succ_mul, Finset.sum_range_add, ih, Finset.sum_range_succ]
+    congr 1
+    apply Finset.sum_congr rfl
+    intro q hq
+    have hq' := Finset.mem_range.mp hq
+    have hm : 0 < m := by omega
+    rw [show (a * m + q) / m = a by
+        rw [Nat.add_comm, Nat.add_mul_div_right _ _ hm, Nat.div_eq_of_lt hq', Nat.zero_add],
+      show (a * m + q) % m = q by
+        rw [Nat.add_comm, Nat.add_mul_mod_self_right, Nat.mod_eq_of_lt hq']]
+
+theorem sum_lines (m : Nat) (axisY : Bool) (h : ℕ → ℕ → ℝ) :
+    ∑ k ∈ Finset.range (m * m), h (lineOf m axisY k) (positionOf m axisY k) =
+      ∑ l ∈ Finset.range m, ∑ q ∈ Finset.range m, h l q := by
+  cases axisY
+  · exact sum_rows m h m
+  · rw [Finset.sum_comm]
+    exact sum_rows m (fun a b => h b a) m
+
+/-- The total of component `c` over the cells of a grid. -/
+noncomputable def total (grid : Array Cell) (c : Fin 4) : ℝ :=
+  ∑ k ∈ Finset.range grid.size, real (stateAt grid[k]!.state c)
+
+/-- The flux of component `c` at face `j` of line `l`. -/
+noncomputable def faceValue (m : Nat) (axisY : Bool) (trials : UInt64) (grid : Array Cell)
+    (c : Fin 4) (l j : Nat) : ℝ :=
+  real (fluxAt (lineFace m axisY trials grid l j) (axisComponent axisY c))
+
+/-- The flux through the last face of each line minus the flux through its first face, summed
+over the lines. -/
+noncomputable def sweepBoundary (m : Nat) (axisY : Bool) (trials : UInt64) (grid : Array Cell)
+    (c : Fin 4) : ℝ :=
+  ∑ l ∈ Finset.range m, (faceValue m axisY trials grid c l m - faceValue m axisY trials grid c l 0)
+
+/-- The rounding residual of a sweep: over the cells, the new component minus the exact value
+of `u - r (F_right - F_left)` on the computed words. -/
+noncomputable def sweepResidual (n : UInt64) (axisY : Bool) (trials : UInt64) (ratio : Float)
+    (grid : Array Cell) (c : Fin 4) : ℝ :=
+  ∑ k ∈ Finset.range grid.size,
+    (real (stateAt (reconstructedSweep n axisY trials ratio grid)[k]!.state c) -
+      (real (stateAt grid[k]!.state c) - real ratio *
+        (faceValue n.toNat axisY trials grid c (lineOf n.toNat axisY k)
+            (positionOf n.toNat axisY k + 1) -
+          faceValue n.toNat axisY trials grid c (lineOf n.toNat axisY k)
+            (positionOf n.toNat axisY k))))
+
+/-- The bound on the rounding residual of a sweep. -/
+noncomputable def sweepBound (n : UInt64) (axisY : Bool) (trials : UInt64) (ratio : Float)
+    (grid : Array Cell) (c : Fin 4) : ℝ :=
+  ∑ k ∈ Finset.range grid.size,
+    updateBound ratio
+      (stateAt (lineState n.toNat axisY grid (lineOf n.toNat axisY k) (positionOf n.toNat axisY k))
+        (axisComponent axisY c))
+      (fluxAt (lineFace n.toNat axisY trials grid (lineOf n.toNat axisY k)
+        (positionOf n.toNat axisY k)) (axisComponent axisY c))
+      (fluxAt (lineFace n.toNat axisY trials grid (lineOf n.toNat axisY k)
+        (positionOf n.toNat axisY k + 1)) (axisComponent axisY c))
+
+/-- The total of a component after a sweep is the total before, minus the ratio times the flux
+through the ends of the lines, plus the rounding residual. -/
+theorem sweep_balance (n : UInt64) (axisY : Bool) (trials : UInt64) (ratio : Float)
+    (grid : Array Cell) (hsize : grid.size = n.toNat * n.toNat) (hlt : grid.size < 2 ^ 64)
+    (c : Fin 4) :
+    total (reconstructedSweep n axisY trials ratio grid) c =
+      total grid c - real ratio * sweepBoundary n.toNat axisY trials grid c +
+        sweepResidual n axisY trials ratio grid c := by
+  have hsz := reconstructedSweep_size n axisY trials ratio grid hlt
+  have htel : ∑ k ∈ Finset.range grid.size,
+      (faceValue n.toNat axisY trials grid c (lineOf n.toNat axisY k)
+          (positionOf n.toNat axisY k + 1) -
+        faceValue n.toNat axisY trials grid c (lineOf n.toNat axisY k)
+          (positionOf n.toNat axisY k)) = sweepBoundary n.toNat axisY trials grid c := by
+    rw [hsize, sum_lines n.toNat axisY
+      (fun l q => faceValue n.toNat axisY trials grid c l (q + 1) -
+        faceValue n.toNat axisY trials grid c l q)]
+    unfold sweepBoundary
+    apply Finset.sum_congr rfl
+    intro l _
+    exact Finset.sum_range_sub (fun q => faceValue n.toNat axisY trials grid c l q) n.toNat
+  unfold total sweepResidual
+  rw [hsz, ← htel, Finset.mul_sum]
+  simp only [Finset.sum_sub_distrib]
+  ring
+
+/-- The rounding residual of an accepted sweep is at most `sweepBound` in magnitude. -/
+theorem sweep_residual_le {n : UInt64} {axisY : Bool} {trials : UInt64} {ratio : Float}
+    {grid : Array Cell} (hsize : grid.size = n.toNat * n.toNat) (hlt : grid.size < 2 ^ 64)
+    (hA : accepted (reconstructedSweep n axisY trials ratio grid) = true) (c : Fin 4) :
+    |sweepResidual n axisY trials ratio grid c| ≤ sweepBound n axisY trials ratio grid c := by
+  have hsz := reconstructedSweep_size n axisY trials ratio grid hlt
+  unfold sweepResidual sweepBound
+  refine (Finset.abs_sum_le_sum_abs _ _).trans (Finset.sum_le_sum fun k hk => ?_)
+  have hk' := Finset.mem_range.mp hk
+  have hcell := reconstructedSweep_cell (axisY := axisY) (trials := trials) (ratio := ratio)
+    hsize hlt hk'
+  have h0 : (sweepCell n.toNat axisY trials ratio grid (lineOf n.toNat axisY k)
+      (positionOf n.toNat axisY k)).status = 0 := by
+    rw [← hcell, getElem!_pos _ k (by omega)]
+    exact accepted_ok hA (by omega) _ (Array.getElem_mem _)
+  have hm : 0 < n.toNat := by
+    rcases Nat.eq_zero_or_pos n.toNat with h | h
+    · rw [hsize, h] at hk'; simp at hk'
+    · exact h
+  have hp : positionOf n.toNat axisY k < n.toNat := by
+    simp only [positionOf]
+    split
+    · exact Nat.div_lt_of_lt_mul (by rw [← hsize]; exact hk')
+    · exact Nat.mod_lt _ hm
+  obtain ⟨hs, hv⟩ := lineStep_parts hp h0 (axisComponent axisY c)
+  have hold : stateAt grid[k]!.state c = stateAt (lineState n.toNat axisY grid
+      (lineOf n.toNat axisY k) (positionOf n.toNat axisY k)) (axisComponent axisY c) := by
+    rw [lineState, stateAt_oriented, lineIndex_of]
+  rw [hcell, stateAt_sweepCell, hv, hold]
+  exact update_balance hs
+
 end Project.Euler
