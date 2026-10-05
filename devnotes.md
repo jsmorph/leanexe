@@ -25937,3 +25937,36 @@ rewrote `if q then 0 else 1` to `if ¬q then 1 else 0` made `simp` loop with `it
 step of `forward` passes the borrowed terrain, which `Live.borrowed` keeps borrowed and
 `Live.apartB` keeps apart from the table.  `drone_bytes` now covers entries 2 to 14.  The
 binary is unchanged from D1, and `lake build` succeeds with no `sorry`.
+
+### D4: the output and `compute_correct`
+
+`Project/Drone/Output.lean` and `Project/Drone/Correct.lean` prove the output at the source level,
+following main's `Feasibility`, `Reconstruction`, `History`, and `Output`.  `all_stop_flight`,
+`terminal_finite`, and `terminal_optimal` show that the stopped final state is reachable and that
+its label is optimal.  `layers_parent` bounds every parent by 45, and `parent_step` gives the
+admitted edge and the cost recurrence of a finite label.  `words` lists the altitude and speed of
+each station on the flight that follows the parents back, `words_encoded` shows that this flight
+is admitted and attains the label, and `words_get` names word `2k` and word `2k + 1` through
+`chain`, the state reached after following `j` parents.  `output_state` proves that the inner loop
+of `output` computes `chain` from the table, by `loop_induction` and `Forward.Rows`, and
+`output_toList` that `output` returns `words`.
+
+| Theorem | Statement |
+|---|---|
+| `compute_valid` | For valid terrain, `compute` returns `words` of the stopped final state |
+| `compute_correct` | For valid terrain, `compute` has `2 n` words that encode an admitted flight attaining the label of the stopped final state, and no admitted flight to that state costs less |
+| `compute_invalid` | For empty or invalid terrain of fewer than `2^64` heights, `compute` returns `#[]` |
+| `compute_endpoints` | For valid terrain, the first pair is the first height at rest and the last pair is the last height at rest |
+
+Valid terrain is `terrainBound`: at most 64 heights, each at most 1,000,000, as in main.  The
+statements index stations by `Nat`, with floors `floors terrain k = floorAt terrain k` and
+`stops count k = (k + 1 == count)`.  `compute_invalid` needs fewer than `2^64` heights because
+the source converts the size to a word; main compares the size as a natural number.
+
+`Project/Drone/Finish.lean` proves `output_implements`, a word build whose elements run the loop
+over the parents and call `altitude` and `speed`, and `compute_implements`, which calls
+`validHeights`, `forward`, and `output` under `Live` and releases the table.  `drone_bytes` now
+covers all 15 entries, and `drone_compute` states that the bytes decode to a module whose entry
+16 computes `compute`, with `compute_correct` and `compute_invalid` for its results.  The
+theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  `lake build` succeeds with no
+`sorry`, and `tests/drone/run.sh` again matches main on all 1,975 calls and 116 terrains.
