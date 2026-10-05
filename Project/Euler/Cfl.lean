@@ -1,12 +1,11 @@
 import Project.Euler.Enclosure
-import Project.EulerReal.Hyperbolicity
 import Project.ProofKit.F64DyadicBounds
 import Project.ProofKit.F64Convert
 
 /-! Accepted timesteps of the reconstructed solver.  Every cell of the grid that a step starts
-from and of the grid it produces is admissible in exact arithmetic, hence hyperbolic, and the
-step satisfies the CFL bound: the ratio of the timestep to the cell width, bounded above, times
-the signal speed of every cell is at most 1/2. -/
+from is admissible in exact arithmetic, and the step satisfies the CFL bound: the ratio of the
+timestep to the cell width, bounded above, times the signal speed of every cell is at most
+1/2. -/
 
 namespace Project.Euler
 
@@ -58,78 +57,6 @@ def SpeedBound (q : Conserved) (s : ℝ) : Prop :=
 theorem SpeedBound.mono {q : Conserved} {s t : ℝ} (h : SpeedBound q s) (hst : s ≤ t) :
     SpeedBound q t :=
   ⟨h.1, h.2.1.trans hst, h.2.2.trans hst⟩
-
-theorem speedUpper_guard {rho mx my energy : Float}
-    (h : (speedUpper rho mx my energy).status = 0) : stateGuard rho mx my energy = true := by
-  unfold speedUpper at h
-  dsimp only at h
-  obtain ⟨h1, -⟩ := Bool.and_eq_true_iff.mp (rejectedChecked_status h)
-  obtain ⟨h2, -⟩ := Bool.and_eq_true_iff.mp h1
-  exact (Bool.and_eq_true_iff.mp h2).1
-
-theorem outwardSide_guard {rho momentum transverse energy : Float}
-    (h : (outwardSide rho momentum transverse energy).status = 0) :
-    stateGuard rho momentum transverse energy = true := by
-  unfold outwardSide at h
-  dsimp only at h
-  split at h
-  · rename_i hc
-    simp only [Bool.and_eq_true, beq_iff_eq] at hc
-    exact speedUpper_guard hc.1.1
-  · simp at h
-
-theorem faceStep_guard {ratio rho momentum transverse energy a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4
-    d1 d2 d3 d4 : Float} {u : Updated}
-    (hu : faceStep ratio rho momentum transverse energy a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4 d1 d2
-      d3 d4 = u) (h : u.status = 0) :
-    stateGuard u.density u.momentum u.transverse u.energy = true := by
-  subst hu
-  unfold faceStep at h ⊢
-  dsimp only at h ⊢
-  have hc := rejectedCell_status h
-  rw [ite_eq_left hc]
-  simp only [Bool.and_eq_true, beq_iff_eq] at hc
-  exact outwardSide_guard hc.2
-
-theorem reconstructedStep_guard {trials : UInt64} {ratio : Float} {a b c d e : Conserved}
-    (h : (reconstructedStep trials ratio a b c d e).status = 0) :
-    stateGuard (reconstructedStep trials ratio a b c d e).density
-      (reconstructedStep trials ratio a b c d e).momentum
-      (reconstructedStep trials ratio a b c d e).transverse
-      (reconstructedStep trials ratio a b c d e).energy = true := by
-  unfold reconstructedStep at h ⊢
-  dsimp only at h ⊢
-  have hc := rejectedCell_status h
-  rw [ite_eq_left hc] at h ⊢
-  exact faceStep_guard rfl h
-
-/-- A cell of a reconstructed sweep with status 0 is admissible in exact arithmetic. -/
-theorem reconstructedSweep_admissible {n : UInt64} {axisY : Bool} {trials : UInt64}
-    {ratio : Float} {grid : Array Cell} {c : Cell}
-    (hc : c ∈ reconstructedSweep n axisY trials ratio grid) (h0 : c.status = 0) :
-    EulerReal.Admissible (vec c.state) := by
-  unfold reconstructedSweep LeanExe.build at hc
-  obtain ⟨i, rfl⟩ := Array.mem_ofFn.mp hc
-  dsimp only at h0 ⊢
-  have ha := stateGuard_admissible (reconstructedStep_guard h0)
-  cases axisY
-  · exact ha
-  · exact admissible_swap ha
-
-theorem reconstructedStepGrid_admissible {n trials : UInt64} {ratio : Float} {grid : Array Cell}
-    (h : accepted (reconstructedStepGrid n trials ratio grid) = true)
-    (hSize : grid.size < 2 ^ 64) :
-    ∀ c ∈ reconstructedStepGrid n trials ratio grid, EulerReal.Admissible (vec c.state) := by
-  have hMiddle := reconstructedSweep_size n false trials ratio grid hSize
-  unfold reconstructedStepGrid reconstructedFinish at h ⊢
-  split
-  · have hTrial := reconstructedSweep_size n true trials ratio
-      (reconstructedSweep n false trials ratio grid) (by omega)
-    rw [ite_eq_left (by assumption)] at h
-    exact fun c hc => reconstructedSweep_admissible hc (accepted_ok h (by omega) c hc)
-  · rename_i hA
-    rw [ite_eq_right hA] at h
-    exact absurd h hA
 
 /-- An accepted cell bound has sign bit 0 and bounds the signal speed in both directions. -/
 theorem cellUpper_ge {q : Conserved} (h : (cellUpper q.density q.mx q.my q.energy).status = 0) :
@@ -186,7 +113,7 @@ theorem gridUpper_ge {grid : Array Cell} (h : (gridUpper grid).status = 0)
       acc.2.toBits.toNat < 2 ^ 63 ∧
         ∀ i (hi : i < grid.size), i < m → SpeedBound grid[i].state (real acc.2))
     (f := f) (init := ((0 : UInt64), (0 : Float))) (k := grid.size.toUInt64.toNat)
-    (fun _ => ⟨by rw [zero_bits]; decide, fun _ _ hm => absurd hm (Nat.not_lt_zero _)⟩)
+    (fun _ => ⟨by rw [zero_toBits]; decide, fun _ _ hm => absurd hm (Nat.not_lt_zero _)⟩)
     (fun i hi acc hacc => by
       rw [hf]
       have hig : i < grid.size := by omega
@@ -289,16 +216,15 @@ theorem gridRatio_le {n : UInt64} {dt alpha : Float} (h : (gridRatio n dt alpha)
     rwa [le_div_iff₀ hnpos] at bsp
   nlinarith
 
-/-- `reconstructedAttempt` returns status 0 only with an accepted grid that
-`reconstructedStepGrid` computes with an accepted ratio for its timestep. -/
+/-- `reconstructedAttempt` returns status 0 only with the grid that `reconstructedStepGrid`
+computes with an accepted ratio for its timestep. -/
 theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {grid : Array Cell}
     {dt : Float} {old : Array Cell}
     (h : (reconstructedAttempt n trials time alpha grid dt old).1 = 0) :
     (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).status = 0 ∧
       (reconstructedAttempt n trials time alpha grid dt old).2.2 = reconstructedStepGrid n trials
         (gridRatio n (reconstructedAttempt n trials time alpha grid dt old).2.1 alpha).value
-        grid ∧
-      accepted (reconstructedAttempt n trials time alpha grid dt old).2.2 = true := by
+        grid := by
   unfold reconstructedAttempt at h ⊢
   dsimp only at h ⊢
   split
@@ -310,8 +236,7 @@ theorem reconstructedAttempt_ratio {n trials : UInt64} {time alpha : Float} {gri
       unfold reconstructedTry at h ⊢
       dsimp only at h ⊢
       split
-      · rename_i hA
-        exact ⟨by simpa using hR, rfl, hA⟩
+      · exact ⟨by simpa using hR, rfl⟩
       · rename_i hA
         rw [ite_eq_right hA] at h
         simp at h
@@ -327,14 +252,12 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
     ∃ dt' : Float, (gridRatio n dt' alpha).status = 0 ∧
       (reconstructedAdvanceWith n trials time dt alpha grid).2.1 = time + dt' ∧
       (reconstructedAdvanceWith n trials time dt alpha grid).2.2 =
-        reconstructedStepGrid n trials (gridRatio n dt' alpha).value grid ∧
-      accepted (reconstructedAdvanceWith n trials time dt alpha grid).2.2 = true := by
+        reconstructedStepGrid n trials (gridRatio n dt' alpha).value grid := by
   obtain ⟨cond, step, -, hStepEq, hDef⟩ :=
     reconstructedAdvanceWith_loop n trials time dt alpha grid
   have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell => s.1 = 0 →
       (gridRatio n s.2.1 alpha).status = 0 ∧
-        s.2.2 = reconstructedStepGrid n trials (gridRatio n s.2.1 alpha).value grid ∧
-        accepted s.2.2 = true)
+        s.2.2 = reconstructedStepGrid n trials (gridRatio n s.2.1 alpha).value grid)
     (cond := cond) (step := step) (x0 := ((9 : UInt64), dt, (#[] : Array Cell))) 2048 (by simp)
     (fun x _ _ hx => by rw [hStepEq] at hx ⊢; exact reconstructedAttempt_ratio hx)
   rw [hDef] at h ⊢
@@ -344,8 +267,8 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
   dsimp only at h hInv ⊢
   split
   · rename_i hS
-    obtain ⟨hr, ht, ha⟩ := hInv (by simpa using hS)
-    exact ⟨dt', hr, rfl, ht, ha⟩
+    obtain ⟨hr, ht⟩ := hInv (by simpa using hS)
+    exact ⟨dt', hr, rfl, ht⟩
   · rename_i hS
     rw [ite_eq_right hS] at h
     split at h
@@ -356,16 +279,15 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
 /-- A timestep that the solver accepted.  It advances the time by some `dt > 0` and updates the
 grid with a ratio `r ≥ dt · n`, where `n` is the number of cells per side.  Every cell of the grid
 it starts from is admissible in exact arithmetic, and `r` times its signal speed in either
-direction is at most 1/2.  Every cell of the grid it produces is admissible. -/
+direction is at most 1/2. -/
 def AcceptedStep (n trials : UInt64) (a b : Float × Array Cell) : Prop :=
   ∃ dt r : Float, 0 < real dt ∧ b.1 = a.1 + dt ∧ b.2 = reconstructedStepGrid n trials r a.2 ∧
     real dt * n.toNat ≤ real r ∧
-    (∀ i (hi : i < a.2.size), EulerReal.Admissible (vec a.2[i].state) ∧
+    ∀ i (hi : i < a.2.size), EulerReal.Admissible (vec a.2[i].state) ∧
       real r * physicalSpeed (real a.2[i].state.density) (real a.2[i].state.mx)
         (real a.2[i].state.my) (real a.2[i].state.energy) ≤ 1 / 2 ∧
       real r * physicalSpeed (real a.2[i].state.density) (real a.2[i].state.my)
-        (real a.2[i].state.mx) (real a.2[i].state.energy) ≤ 1 / 2) ∧
-    ∀ c ∈ b.2, EulerReal.Admissible (vec c.state)
+        (real a.2[i].state.mx) (real a.2[i].state.energy) ≤ 1 / 2
 
 /-- An accepted reconstructed timestep is an `AcceptedStep`. -/
 theorem reconstructedAdvanceStep_accepted {n trials : UInt64} {time : Float} {grid : Array Cell}
@@ -379,15 +301,13 @@ theorem reconstructedAdvanceStep_accepted {n trials : UInt64} {time : Float} {gr
   · rename_i hS
     rw [ite_eq_left hS] at h
     obtain ⟨-, hB⟩ := gridUpper_ge (by simpa using hS) hSize
-    obtain ⟨dt, hR, ht, hg, hA⟩ := reconstructedAdvanceWith_ratio h
+    obtain ⟨dt, hR, ht, hg⟩ := reconstructedAdvanceWith_ratio h
     obtain ⟨hdt, -, hdn, hra⟩ := gridRatio_le hR
-    refine ⟨dt, _, hdt, ht, hg, hdn, fun i hi => ?_, ?_⟩
-    · obtain ⟨hadm, bx, byy⟩ := hB i hi
-      have hr0 := le_trans (mul_nonneg hdt.le (Nat.cast_nonneg _)) hdn
-      exact ⟨hadm, le_trans (mul_le_mul_of_nonneg_left bx hr0) hra,
-        le_trans (mul_le_mul_of_nonneg_left byy hr0) hra⟩
-    · rw [hg] at hA ⊢
-      exact reconstructedStepGrid_admissible hA hSize
+    refine ⟨dt, _, hdt, ht, hg, hdn, fun i hi => ?_⟩
+    obtain ⟨hadm, bx, byy⟩ := hB i hi
+    have hr0 := le_trans (mul_nonneg hdt.le (Nat.cast_nonneg _)) hdn
+    exact ⟨hadm, le_trans (mul_le_mul_of_nonneg_left bx hr0) hra,
+      le_trans (mul_le_mul_of_nonneg_left byy hr0) hra⟩
   · rename_i hS
     rw [ite_eq_right hS] at h
     simp at h
@@ -436,19 +356,5 @@ theorem reconstructedRun_steps {n trials : UInt64} (h : (reconstructedRun n tria
     rw [ite_eq_left hn]
     exact reconstructedRunFrom_steps h
   · simp at h
-
-/-- The final grid of a reconstructed run that returns status 0 is admissible in exact
-arithmetic, and the Euler flux is hyperbolic at each of its states. -/
-theorem reconstructedRun_hyperbolic {n trials : UInt64} (h : (reconstructedRun n trials).1 = 0) :
-    ∀ c ∈ (reconstructedRun n trials).2.2,
-      EulerReal.Admissible (vec c.state) ∧ EulerReal.Hyperbolic (vec c.state) := by
-  have hTime := (reconstructedRun_ok h).2.2.1
-  rcases Relation.ReflTransGen.cases_tail (reconstructedRun_steps h) with hEq | ⟨a, -, hStep⟩
-  · have h0 := congrArg Prod.fst hEq
-    dsimp only at h0
-    rw [h0] at hTime
-    exact absurd hTime (by decide +kernel)
-  · obtain ⟨-, -, -, -, -, -, -, hFinal⟩ := hStep
-    exact fun c hc => ⟨hFinal c hc, EulerReal.admissible_hyperbolic _ (hFinal c hc)⟩
 
 end Project.Euler

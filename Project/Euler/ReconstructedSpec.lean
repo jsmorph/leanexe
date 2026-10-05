@@ -35,6 +35,58 @@ theorem reconstructedRunFrom_loop (n trials : UInt64) :
           else (status, time, grid) := by
   refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
 
+/-- A selection between a checked value and `rejectedChecked` with status 0 selects the value. -/
+theorem rejectedChecked_status {c : Prop} [Decidable c] {u : Checked}
+    (h : (if c then u else rejectedChecked).status = 0) : c := by
+  by_cases hc : c
+  · exact hc
+  · rw [ite_eq_right hc] at h
+    simp at h
+
+theorem speedUpper_guard {rho mx my energy : Float}
+    (h : (speedUpper rho mx my energy).status = 0) : stateGuard rho mx my energy = true := by
+  unfold speedUpper at h
+  dsimp only at h
+  obtain ⟨h1, -⟩ := Bool.and_eq_true_iff.mp (rejectedChecked_status h)
+  obtain ⟨h2, -⟩ := Bool.and_eq_true_iff.mp h1
+  exact (Bool.and_eq_true_iff.mp h2).1
+
+theorem outwardSide_guard {rho momentum transverse energy : Float}
+    (h : (outwardSide rho momentum transverse energy).status = 0) :
+    stateGuard rho momentum transverse energy = true := by
+  unfold outwardSide at h
+  dsimp only at h
+  split at h
+  · rename_i hc
+    simp only [Bool.and_eq_true, beq_iff_eq] at hc
+    exact speedUpper_guard hc.1.1
+  · simp at h
+
+theorem faceStep_guard {ratio rho momentum transverse energy a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4
+    d1 d2 d3 d4 : Float} {u : Updated}
+    (hu : faceStep ratio rho momentum transverse energy a1 a2 a3 a4 b1 b2 b3 b4 c1 c2 c3 c4 d1 d2
+      d3 d4 = u) (h : u.status = 0) :
+    stateGuard u.density u.momentum u.transverse u.energy = true := by
+  subst hu
+  unfold faceStep at h ⊢
+  dsimp only at h ⊢
+  have hc := rejectedCell_status h
+  rw [ite_eq_left hc]
+  simp only [Bool.and_eq_true, beq_iff_eq] at hc
+  exact outwardSide_guard hc.2
+
+theorem reconstructedStep_guard {trials : UInt64} {ratio : Float} {a b c d e : Conserved}
+    (h : (reconstructedStep trials ratio a b c d e).status = 0) :
+    stateGuard (reconstructedStep trials ratio a b c d e).density
+      (reconstructedStep trials ratio a b c d e).momentum
+      (reconstructedStep trials ratio a b c d e).transverse
+      (reconstructedStep trials ratio a b c d e).energy = true := by
+  unfold reconstructedStep at h ⊢
+  dsimp only at h ⊢
+  have hc := rejectedCell_status h
+  rw [ite_eq_left hc] at h ⊢
+  exact faceStep_guard rfl h
+
 /-- A state whose outward speed bound passes has positive density. -/
 theorem speedUpper_ok {rho mx my energy : Float} (h : (speedUpper rho mx my energy).status = 0) :
     positive rho = true := by
@@ -45,7 +97,7 @@ theorem speedUpper_ok {rho mx my energy : Float} (h : (speedUpper rho mx my ener
     simp only [stateGuard, narrowGuard, energyGuard, positive, Bool.and_eq_true,
       Bool.or_eq_true] at hc ⊢
     grind
-  · simp [rejectedChecked] at h
+  · simp at h
 
 /-- A state that passes `outwardSide`'s checks has positive density and pressure. -/
 theorem outwardSide_ok {rho momentum transverse energy : Float}
@@ -99,7 +151,11 @@ theorem reconstructedSweep_ok {n : UInt64} {axisY : Bool} {trials : UInt64} {rat
   unfold reconstructedSweep LeanExe.build at hc
   obtain ⟨i, rfl⟩ := Array.mem_ofFn.mp hc
   dsimp only at h0 ⊢
-  exact ⟨h0, reconstructedStep_ok h0⟩
+  have ha := stateGuard_admissible (reconstructedStep_guard h0)
+  refine ⟨h0, (reconstructedStep_ok h0).1, (reconstructedStep_ok h0).2, ?_⟩
+  cases axisY
+  · exact ha
+  · exact admissible_swap ha
 
 theorem reconstructedStepGrid_ok {n trials : UInt64} {ratio : Float} {grid : Array Cell}
     (h : accepted (reconstructedStepGrid n trials ratio grid) = true)
@@ -230,7 +286,7 @@ theorem reconstructedRunFrom_ok {n trials : UInt64} (h : (reconstructedRunFrom n
       (s.2.1.toBits = 0 ∧ s.2.2 = initialCells n) ∨
         ((∀ c ∈ s.2.2, Admissible c) ∧ s.2.2.size = (n * n).toNat))
     (cond := cond) (step := step) (x0 := ((0 : UInt64), (0 : Float), initialCells n))
-    4294967296 (fun _ => .inl ⟨zero_bits, rfl⟩)
+    4294967296 (fun _ => .inl ⟨zero_toBits, rfl⟩)
     (fun x hc hx hs => by
       rw [hStepEq] at hs ⊢
       have hc' : x.1 = 0 := by
@@ -321,7 +377,7 @@ theorem reconstructedSolve_ok {n trials : UInt64} (h : (reconstructedSolve n tri
   refine ⟨h2, h800, by rw [pack_word hGrid (by omega)]; simpa using hTime, ?_, fun i hi => ?_⟩
   · rw [pack_size hGrid, hSize]
   · have hc := hAll grid[i]! (by rw [getElem!_pos grid i (by omega)]; exact Array.getElem_mem _)
-    obtain ⟨-, hD, hP⟩ := hc
+    obtain ⟨-, hD, hP, -⟩ := hc
     simp only [positive, Bool.and_eq_true, decide_eq_true_eq] at hD hP
     rw [pack_word hGrid (by omega), pack_word hGrid (by omega)]
     rw [← hSize] at hi ⊢
