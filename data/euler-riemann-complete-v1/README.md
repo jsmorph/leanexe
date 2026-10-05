@@ -1,6 +1,9 @@
 # A four-state Euler calculation in proved WebAssembly
 
-A single LeanExe-compiled WebAssembly program evolves the four-quadrant problem from the [Lanyon Euler article](https://lanyon.ai/research/euler-equations/).  Initialization, timestep selection, both directional sweeps, retries, allocation, and final output execute inside that program.
+A WebAssembly program, compiled from Lean by the verified LeanExe pipeline, evolves the
+four-quadrant problem from the [Lanyon Euler article](https://lanyon.ai/research/euler-equations/).
+Initialization, timestep selection, both directional sweeps, retries, allocation, and final output
+execute inside one call of the program.
 
 ![Density and pressure at time 0.8 on the 192-grid](192-run/density-pressure.png)
 
@@ -21,24 +24,51 @@ The domain is the unit square, the initial interfaces are x = y = 0.8, the final
 
 Each cell stores density, both momenta, and total energy.  Cells cut by an initial interface receive conservative area averages.  The first-order finite-volume method uses Rusanov fluxes, an x sweep followed by a y sweep, and transmissive boundaries implemented by clamping neighbor indices.  Timestep selection targets CFL 0.4.  Each accepted cell update checks a rounded ceiling of 0.5.
 
-## Proof and data
+## Program and proofs
 
-Lean checks the exact 21,767-byte binary through decoding, validation, and translation into Talos execution semantics.  The [artifact theorems](../../proofs/talos/lean/Project/EulerRiemann/ArtifactTranslation.lean) prove termination, exact output, and a 512 MiB linear-memory bound for every runtime grid size from two through eight hundred.  They cover explicit failure returns.  Status zero establishes the specified numerical trace through time 0.8 and final-state admissibility.  Their transitive audits use only `propext`, `Classical.choice`, and `Quot.sound`.  The independent package check passed before execution.  Convergence to a weak solution of the continuous Euler equations remains unproved.
+[The solver](../../LeanExe/Examples/Euler.lean) states the method in Lean and follows main's model
+of its earlier binary operation for operation.  [The module
+definition](../../Project/Euler/Module.lean) compiles it, with [the reconstructed
+solver](../euler-reconstructed-v1/README.md), into one 23,063-byte module, `euler.wasm`, with
+SHA-256 `2b9450e4cef7632996a1be0334bc33981002fd32f2d8beafec4e123abbb204e5`.  On both grids the
+program returned, bit for bit, the words of main's earlier binary, so the figures, CSV files, and
+ranges below, which main computed from those words, describe this program's results.
 
-Both runs returned status zero at the exact binary64 encoding of 0.8, using the same binary and one complete solve call per grid.  Host code decodes the returned words and plots the fields.  Runtimes use the run script's monotonic timer and exclude CSV generation and plotting.
+| Claim | Statement | Theorem |
+|-------|-----------|---------|
+| Execution | The module's bytes decode to a module whose `solve` export, called with any `n` from a store that meets the entry conditions of `Implements`, terminates and either returns the words of the Lean function `solve n` or stops at `unreachable`. | `euler_solve` in [the bytes theorems](../../Project/Euler/Verify.lean) |
+| Output | Words with status 0 hold the bits of 0.8, `2 ≤ n ≤ 800`, and `n²` positive, finite densities and pressures. | `solve_ok` in [the run properties](../../Project/Euler/Spec.lean) |
+| Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `solve_hyperbolic` in [the hyperbolicity theorems](../../Project/Euler/Hyperbolic.lean) |
+| Conservation | A run with status 0 is a chain of accepted steps along which the total of mass, of each momentum, and of energy equals its initial total, minus the boundary fluxes summed over the steps, plus a rounding residual.  The residual is at most a sum of per-update bounds computed from the words of the run. | `run_balance` in [the balance theorems](../../Project/Euler/FirstOrderBalance.lean) |
 
-The [hyperbolicity extension](../../proofs/talos/README.md#two-dimensional-euler-hyperbolicity), checked on 2026-09-14, proves a complete real eigenbasis of the physical Euler flux derivative in every unit direction at the accepted conservative states.  Its exact-binary theorem applies to both production calculations, including accepted intermediate sweep grids.  A subsequent [speed audit](../../plans/euler-mathematical-parity.md#1-characteristic-speeds-and-the-existing-binary) proved that the rounded signal speed can underestimate the physical characteristic speed for an admissible helper input.  Reachability of that input from these production quadrants remains unproved.  The revised solver uses certified outward speed bounds.
+The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on
+Wasmtime and the hardware implementing the WebAssembly semantics that the proofs model.  Main
+proved complete execution without an abort, with at most 512 MiB of linear memory, which this
+branch does not prove.  Main's speed audit found that this solver's rounded signal speed can
+underestimate the physical characteristic speed for an admissible input, so no CFL bound in exact
+arithmetic is stated for it.  [The reconstructed solver](../euler-reconstructed-v1/README.md) uses
+outward speed bounds and has one.  Convergence to a weak solution of the continuous Euler
+equations remains unproved.
 
-| Grid and summary | Runtime | Density range | Pressure range | Data | Export figures |
-|------------------|--------:|--------------:|---------------:|------|----------------|
-| [192 × 192](192-run/summary.json) | 49.6 s | 0.138–1.490131234 | 0.029–1.476780108 | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
-| [800 × 800](800-run/summary.json) | 61.6 min | 0.138–1.671084032 | 0.029–1.632146140 | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
+## Data
 
-The [run script](../../tools/euler-riemann-complete.js) invokes the complete solve export once under the standard runner limits.  Reproduction uses fresh output directories and the existing pinned plotting environment:
+| Grid and summary | Runtime | Main's runtime | Density range | Pressure range | Words SHA-256 | Data | Export figures |
+|------------------|--------:|---------------:|--------------:|---------------:|---------------|------|----------------|
+| [192 × 192](192-run/summary.json) | 16.2 s | 49.6 s | 0.138–1.490131234 | 0.029–1.476780108 | `e097a43d…` | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
+| [800 × 800](800-run/summary.json) | 19.7 min | 61.6 min | 0.138–1.671084032 | 0.029–1.632146140 | `d374cc5c…` | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
+
+The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine,
+with peak resident sizes of 21 MB and 134 MB.  The summary files, words, CSV files, and figures
+are main's.  The words of this program's runs have the SHA-256 recorded in main's summaries.
+
+Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh
+directory.  The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and
+records the runtime, the peak resident size, and the SHA-256 of the words.
 
 ```sh
-node tools/euler-riemann-complete.js run 192 new-192-directory
-tools/leanrun --timeout 2m build/tools/riemann-figures-venv/bin/python tools/euler-riemann-plot.py new-192-directory
-node tools/euler-riemann-complete.js run 800 new-800-directory
-tools/leanrun --timeout 2m build/tools/riemann-figures-venv/bin/python tools/euler-riemann-plot.py new-800-directory
+tools/build-wasmtime-host.sh
+tools/leanrun --lock-timeout 1200 lake env lean --run Project/Pipeline/Emit.lean \
+  Project.Euler.Module Project.Euler.euler.module euler.wasm
+~/.local/bin/uv run tools/euler-run.py euler.wasm first 192 new-192-directory
+~/.local/bin/uv run tools/euler-run.py euler.wasm first 800 new-800-directory
 ```
