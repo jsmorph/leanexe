@@ -2,16 +2,17 @@ import Project.Grids.Module
 import Project.IR.Correct
 import Project.IR.Run
 import Project.IR.RecordRead
+import Project.IR.BuildRecord
 import Project.ProofKit.F64Bits
 import Project.Encoding.RoundTrip
 
-/-! The compiled reads of arrays of records compute their Lean definitions.  An array of `Cell`
-is stored as `flatWords`, nine words for each cell, and `flatWords_read` gives each word the
-compiled code reads. -/
+/-! The compiled reads and builds of arrays of records compute their Lean definitions.  An array
+of `Cell` is stored as `flatWords`, nine words for each cell; `flatWords_read` gives each word
+the compiled code reads, and `Stmt.buildRecords_spec` gives the array a record build stores. -/
 
 namespace Project.Grids
 
-open Project.Pipeline Project.IR Project.ProofKit LeanExe.Examples.Grids
+open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit LeanExe.Examples.Grids
 
 instance : Flat Phase UInt64 := ⟨fun | .solid => 0 | .liquid => 1 | .gas => 2⟩
 instance : Flat Conserved (Float × Float × Float × Float) :=
@@ -184,17 +185,261 @@ theorem massAt_implements : Implements grids.module 11 massAtTuple := by
   evaluate [grids.massAt.ir, Expr.readValue_at hW, massAtTuple, massAt,
     flatWords_getElem!_one mass_length mass_default]
 
+theorem conserved_length (c : Conserved) : (Scalar.values c).length = 4 := rfl
+
+/-- Element `i` of `ramp`. -/
+def rampElement (i : UInt64) : Conserved := ⟨i.toFloat, 0, 0, 1⟩
+
+theorem rampElement_words (i : UInt64) : (Scalar.values (rampElement i)).map Value.word =
+    [IEEE64.convertI64U i, 0, 0, 4607182418800017408] := by
+  have hZero : (0 : Float).toBits = 0 := by decide +kernel
+  have hOne : (1 : Float).toBits = 4607182418800017408 := by decide +kernel
+  simp only [rampElement, Scalar.values, Flat.flat, List.map, List.cons_append, List.nil_append,
+    Value.word, F64Convert.toBits_toFloat, hZero, hOne]
+
+theorem ramp_implements : Implements grids.module 13 ramp := by
+  refine Func.implements_heap grids.funcs 11 grids.ramp.ir "ramp" rfl ramp
+    (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro n heap initial _ hHeap rfl hCap
+  show Triple _ (Stmt.buildRecords 1 2 3 (.get 0) _
+    [.toBits (.getF 4), .toBits (.getF 5), .toBits (.getF 6), .toBits (.getF 7)]) _ _ _
+  refine (Stmt.buildRecords_spec (writes := [4, 5, 6, 7]) (n := n) (scratch := 8)
+    (elements := [.toBits (.getF 4), .toBits (.getF 5), .toBits (.getF 6), .toBits (.getF 7)])
+    rampElement conserved_length (by decide) rfl rfl rfl (by decide) (by decide) (by decide)
+    (Nat.le_of_eq rfl) hHeap hCap ⟨_, rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro i store state hi hAt hFrame hIndex
+    have hLength : state.params.length + state.locals.length = 8 := by
+      rw [hFrame.params, hFrame.locals]; rfl
+    let final := (((state.update 4 (.f64 (IEEE64.convertI64U (UInt64.ofNat i)))).update 5
+      (.f64 0)).update 6 (.f64 0)).update 7 (.f64 4607182418800017408)
+    refine Stmt.run_triple ⟨final, ?_, rfl, ?_, fun j hj => ?_⟩
+    · set_option maxHeartbeats 100000 in
+      simp [Stmt.run, Expr.eval, State.set?_eq_update, hLength, hIndex, final]
+    · set_option maxHeartbeats 100000 in
+      (repeat refine State.Frame.update ?_ (by simp)
+       exact State.Frame.refl _ _ _)
+    · rw [rampElement_words]
+      simp only [List.length_cons, List.length_nil] at hj
+      obtain rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 := by omega
+      all_goals
+        simp only [List.getElem_cons_zero, List.getElem_cons_succ, List.getElem!_cons_zero,
+          List.getElem!_cons_succ]
+        exact Expr.yields_toBits (by simp [final, hLength])
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [grids.ramp.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    hNew.keeps⟩
+  exact hNew.owned
+
+theorem flags_implements : Implements grids.module 14 LeanExe.Examples.Grids.flags := by
+  refine Func.implements_heap grids.funcs 12 grids.flags.ir "flags" rfl
+    LeanExe.Examples.Grids.flags (by rintro _ _ _ _ rfl; rfl) ?_
+  rintro n heap initial _ hHeap rfl hCap
+  show Triple _ (Stmt.buildRecords 1 2 3 (.get 0) _ [.get 4]) _ _ _
+  refine (Stmt.buildRecords_spec (writes := [4]) (n := n) (scratch := 5) (elements := [.get 4])
+    (before := grids.flags.ir.state (Scalar.values n))
+    (fun i : UInt64 => i % 3 == 1) bool_length (by decide) rfl rfl rfl (by decide) (by decide)
+    (by decide) (Nat.le_add_right 5 2) hHeap hCap ⟨_, rfl⟩ ?_).mono (fun _ _ h => h) ?_
+  · intro i store state hi hAt hFrame hIndex
+    have hLength : state.params.length + state.locals.length = 7 := by
+      rw [hFrame.params, hFrame.locals]; rfl
+    let final := ((state.update 5 (.i64 (UInt64.ofNat i))).update 6 (.i64 3)).update 4
+      (.i64 (if UInt64.ofNat i % 3 = 1 then 1 else 0))
+    refine Stmt.run_triple ⟨final, ?_, rfl, ?_, fun j hj => ?_⟩
+    · simp [Stmt.run, Expr.eval, State.set?_eq_update, hLength, hIndex, final, U64Op.apply]
+    · repeat refine State.Frame.update ?_ (by simp)
+      exact State.Frame.refl _ _ _
+    · obtain rfl : j = 0 := by simpa using hj
+      exact Expr.yields_get (by simp [final, hLength, Scalar.values, Flat.flat, Value.word])
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [grids.flags.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    hNew.keeps⟩
+  exact hNew.owned
+
+def scaledTuple : Array Conserved × Float → Array Conserved := fun (xs, a) => scaled xs a
+
+/-- Element `i` of `scaled xs a`. -/
+def scaledElement (xs : Array Conserved) (a : Float) (i : UInt64) : Conserved :=
+  let c := xs[i.toNat]!
+  { c with density := a * c.density, energy := a * c.energy }
+
+theorem conserved_default :
+    (Scalar.values (default : Conserved)).map Value.word = List.replicate 4 0 := by
+  simp only [Scalar.values, Flat.flat, Value.word, List.map, List.cons_append, List.nil_append]
+  rw [show (default : Conserved) = ⟨default, default, default, default⟩ from rfl]
+  simp [zero_toBits]
+
+theorem scaledElement_words (xs : Array Conserved) (a : Float) (i : UInt64) :
+    (Scalar.values (scaledElement xs a i)).map Value.word =
+      [IEEE64.mul a.toBits xs[i.toNat]!.density.toBits, xs[i.toNat]!.mx.toBits,
+        xs[i.toNat]!.my.toBits, IEEE64.mul a.toBits xs[i.toNat]!.energy.toBits] := by
+  simp only [scaledElement, Scalar.values, Flat.flat, List.map, List.cons_append,
+    List.nil_append, Value.word, F64Bits.toBits_mul]
+
+theorem scaled_implements : Implements grids.module 12 scaledTuple := by
+  refine Func.implements_heap grids.funcs 10 grids.scaled.ir "scaled" rfl scaledTuple
+    (by rintro _ _ _ _ ⟨_, _, rfl, ⟨_, rfl, -⟩, rfl⟩; rfl) ?_
+  rintro ⟨xs, a⟩ heap initial _ hHeap ⟨_, _, rfl, ⟨ptr, rfl, hXs⟩, rfl⟩ hCap
+  change heap.Borrowed initial ptr (flatWords xs) at hXs
+  have hW := hXs.values
+  have hLength0 := hW.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength0
+  have hCount := flatWords_count conserved_length (by decide) (by decide) xs hW.size_lt
+  have hSize : (flatWords xs).size < 536870912 := by have := hW.1; omega
+  have hWords := flatWords_size conserved_length xs
+  set start := grids.scaled.ir.state ([.i64 ptr] ++ Scalar.values a) with hStartDef
+  let s1 := start.update 2 (.i64 (UInt64.ofNat (flatWords xs).size))
+  have hStart : start.params.length + start.locals.length = 17 := rfl
+  have hGet0 : start.get 0 = some (.i64 ptr) := rfl
+  have hGet1 : start.get 1 = some (.f64 a.toBits) := rfl
+  show Triple _ (.seq (.load .u64 2 (.get 0)) (Stmt.buildRecords 3 4 5
+    (.bin .divU (.get 2) (.const 4)) _
+    [.toBits (.getF 11), .toBits (.getF 12), .toBits (.getF 13), .toBits (.getF 14)])) _ _ _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) ?_
+  · simp [Stmt.run, Expr.eval, hLength0, hW.lengthRead, State.set?_eq_update, hStart, s1, hGet0]
+  refine (Stmt.buildRecords_spec (writes := [6, 7, 8, 9, 10, 11, 12, 13, 14])
+    (n := xs.size.toUInt64) (scratch := 15)
+    (elements := [.toBits (.getF 11), .toBits (.getF 12), .toBits (.getF 13), .toBits (.getF 14)])
+    (before := s1) (scaledElement xs a) conserved_length (by decide) rfl rfl rfl (by decide)
+    (by decide) (by decide) (by simp [s1, hStart]) hHeap hCap
+    ⟨(s1.update 15 (.i64 (UInt64.ofNat (flatWords xs).size))).update 16 (.i64 4),
+      by simp [Expr.eval, s1, hStart, U64Op.apply, State.set?_eq_update, ← hCount]⟩ ?_).mono
+      (fun _ _ h => h) ?_
+  · intro i store state hi hAt hFrame hIndex
+    have hLength : state.params.length + state.locals.length = 17 := by
+      rw [hFrame.params, hFrame.locals]; simpa [s1] using hStart
+    have hS0 : state.get 0 = some (.i64 ptr) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s1, hGet0])
+    have hS1 : state.get 1 = some (.f64 a.toBits) :=
+      (hFrame.get 1 (by decide) (by decide)).trans (by simp [s1, hGet1])
+    have hX := hAt ptr _ hXs
+    have hi' : i < xs.size := by
+      have : xs.size < 2 ^ 64 := by omega
+      simpa [Nat.toUInt64, UInt64.toNat_ofNat_of_lt' this] using hi
+    have hGuard : UInt64.ofNat i < 536870912 := by
+      rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)]
+      simp; omega
+    set c := xs[(UInt64.ofNat i).toNat]! with hc
+    have hR : ∀ j, j < 4 → ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue store.mem 0 (UInt64.ofNat i * UInt64.ofNat 4 + UInt64.ofNat j) st =
+          some (((Scalar.values c).map Value.word)[j]!, st) := fun j hj st h0 =>
+      Expr.readValue_record conserved_length hj (by decide) conserved_default hX hGuard h0
+    have hR0 : ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue store.mem 0 (UInt64.ofNat i * 4) st = some (c.density.toBits, st) :=
+      fun st h0 => by simpa [Scalar.values, Flat.flat, Value.word] using hR 0 (by decide) st h0
+    have hR1 : ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue store.mem 0 (UInt64.ofNat i * 4 + 1) st = some (c.mx.toBits, st) :=
+      fun st h0 => by simpa [Scalar.values, Flat.flat, Value.word] using hR 1 (by decide) st h0
+    have hR2 : ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue store.mem 0 (UInt64.ofNat i * 4 + 2) st = some (c.my.toBits, st) :=
+      fun st h0 => by simpa [Scalar.values, Flat.flat, Value.word] using hR 2 (by decide) st h0
+    have hR3 : ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue store.mem 0 (UInt64.ofNat i * 4 + 3) st = some (c.energy.toBits, st) :=
+      fun st h0 => by simpa [Scalar.values, Flat.flat, Value.word] using hR 3 (by decide) st h0
+    simp only [scaledElement_words, ← hc]
+    refine Stmt.run_triple ?_
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, hLength, hIndex, hS0, hS1, hGuard, hR0, hR1,
+      hR2, hR3, U64Op.apply, F64Op.apply]
+    refine ⟨?_, fun j hj => ?_⟩
+    · repeat refine State.Frame.update ?_ (by simp)
+      exact State.Frame.refl _ _ _
+    · obtain rfl | rfl | rfl | rfl : j = 0 ∨ j = 1 ∨ j = 2 ∨ j = 3 := by omega
+      all_goals
+        simp only [List.getElem_cons_zero, List.getElem_cons_succ, List.getElem?_cons_zero,
+          List.getElem?_cons_succ, Option.getD_some]
+        exact Expr.yields_toBits (by simp [hLength])
+  rintro store state ⟨ptr, -, hPtr, hNew⟩
+  refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
+    by simp [grids.scaled.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr], ⟨ptr, rfl, ?_⟩,
+    hNew.keeps⟩
+  exact hNew.owned
+
+/-- One step of `totalDensity`'s loop. -/
+def totalDensityStep (xs : Array Conserved) (i : UInt64) (acc : Float) : Float :=
+  acc + xs[i.toNat]!.density
+
+theorem totalDensity_implements : Implements grids.module 15 totalDensity := by
+  refine Func.implements grids.funcs 13 grids.totalDensity.ir "totalDensity" rfl totalDensity
+    (by rintro _ _ _ _ ⟨_, rfl, -⟩; rfl) ?_
+  rintro xs heap initial _ - ⟨ptr, rfl, hXs⟩
+  change heap.Borrowed initial ptr (flatWords xs) at hXs
+  have hW := hXs.values
+  have hLength0 := hW.lengthBound
+  simp only [UInt64.toNat_toUInt32] at hLength0
+  have hCount := flatWords_count conserved_length (by decide) (by decide) xs hW.size_lt
+  have hSize : (flatWords xs).size < 536870912 := by have := hW.1; omega
+  have hWords := flatWords_size conserved_length xs
+  have hZero : (0 : Float).toBits = 0 := by decide +kernel
+  set start := grids.totalDensity.ir.state [.i64 ptr] with hStartDef
+  have hStart : start.params.length + start.locals.length = 10 := rfl
+  have hGet0 : start.get 0 = some (.i64 ptr) := rfl
+  let s1 := start.update 1 (.i64 (UInt64.ofNat (flatWords xs).size))
+  let s2 := s1.update 2 (.f64 0)
+  show Triple _ (.seq (.load .u64 1 (.get 0)) (.seq (.assign 2 (.constF 0))
+    (.loop 3 4 (.bin .divU (.get 1) (.const 4)) _))) 8 _ _
+  refine Stmt.seq_spec (Stmt.run_spec (final := s1) ?_) <|
+    Stmt.seq_spec (Stmt.run_spec (final := s2) ?_) ?_
+  · simp [Stmt.run, Expr.eval, hLength0, hW.lengthRead, State.set?_eq_update, hStart, s1, hGet0]
+  · simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, s1, s2]
+  have hS2 : s2.params.length + s2.locals.length = 10 := by simp [s2, s1, hStart]
+  refine (Stmt.loop_spec (vars := [2]) (writes := [2, 5, 6, 7]) (init := (0 : Float))
+    (n := xs.size.toUInt64) (totalDensityStep xs) (by decide) (by decide) (by decide)
+    (by decide) (by decide) (by omega)
+    ⟨(s2.update 8 (.i64 (UInt64.ofNat (flatWords xs).size))).update 9 (.i64 4),
+      by simp [Expr.eval, s2, s1, hStart, U64Op.apply, State.set?_eq_update, ← hCount]⟩
+    (by simp [State.Holds, Scalar.values, s2, s1, hStart, hZero]) ?_).mono
+      (fun _ _ h => h) ?_
+  · intro i acc state hi hFrame hHolds hIndex hLimit
+    have hLength : state.params.length + state.locals.length = 10 := by
+      rw [hFrame.params, hFrame.locals]; exact hS2
+    have hS0 : state.get 0 = some (.i64 ptr) :=
+      (hFrame.get 0 (by decide) (by decide)).trans (by simp [s2, s1, hGet0])
+    have hAcc : state.get 2 = some (.f64 acc.toBits) := by
+      simpa [State.Holds, Scalar.values] using hHolds
+    have hi' : i < xs.size := by
+      have : xs.size < 2 ^ 64 := by omega
+      simpa [Nat.toUInt64, UInt64.toNat_ofNat_of_lt' this] using hi
+    have hGuard : UInt64.ofNat i < 536870912 := by
+      rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' (by simp [UInt64.size]; omega)]
+      simp; omega
+    set c := xs[(UInt64.ofNat i).toNat]! with hc
+    have hR0 : ∀ st : State, st.get 0 = some (.i64 ptr) →
+        Expr.readValue initial.mem 0 (UInt64.ofNat i * 4) st = some (c.density.toBits, st) :=
+      fun st h0 => by
+        have := Expr.readValue_record (j := 0) conserved_length (by decide) (by decide)
+          conserved_default hW hGuard h0
+        rw [← hc] at this
+        simpa [Scalar.values, Flat.flat, Value.word] using this
+    refine Stmt.run_triple ?_
+    simp [Stmt.run, Expr.eval, State.set?_eq_update, hLength, hIndex, hS0, hAcc, hGuard, hR0,
+      U64Op.apply, F64Op.apply]
+    refine ⟨?_, ?_⟩
+    · repeat refine State.Frame.update ?_ (by simp)
+      exact State.Frame.refl _ _ _
+    · simp only [totalDensityStep, ← hc]
+      simp [State.Holds, Scalar.values, F64Bits.toBits_add, hLength]
+  · rintro store state ⟨rfl, -, hHolds⟩
+    refine ⟨rfl, _, state, ?_, rfl⟩
+    have g2 : state.get 2 = some (.f64 (totalDensity xs).toBits) := by
+      rw [show totalDensity xs = LeanExe.loop xs.size.toUInt64 0 (totalDensityStep xs) from rfl]
+      simpa [State.Holds, Scalar.values] using hHolds
+    simp [grids.totalDensity.ir, Func.scratch, Expr.evalResults, Expr.eval, g2, Scalar.values]
+
 /-- `encode` succeeds on `grids.module`, and its bytes decode to a module that computes each
 function exactly. -/
 theorem grids_bytes : ∃ bytes, Wasm.Encoding.encode grids.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 densityTuple ∧
       Implements m 3 pressureTuple ∧ Implements m 4 indexAtTuple ∧ Implements m 5 okAtTuple ∧
       Implements m 6 count ∧ Implements m 7 energySumTuple ∧ Implements m 8 isGasTuple ∧
-      Implements m 9 flagAtTuple ∧ Implements m 10 flagCount ∧ Implements m 11 massAtTuple := by
+      Implements m 9 flagAtTuple ∧ Implements m 10 flagCount ∧ Implements m 11 massAtTuple ∧
+      Implements m 12 scaledTuple ∧ Implements m 13 ramp ∧
+      Implements m 14 LeanExe.Examples.Grids.flags ∧ Implements m 15 totalDensity := by
   obtain ⟨bytes, success, decoded⟩ :=
     Wasm.Encoding.round_trip grids.module (by decide +kernel) (by decide +kernel)
   exact ⟨bytes, success, grids.module, decoded, density_implements, pressure_implements,
     indexAt_implements, okAt_implements, count_implements, energySum_implements,
-    isGas_implements, flagAt_implements, flagCount_implements, massAt_implements⟩
+    isGas_implements, flagAt_implements, flagCount_implements, massAt_implements,
+    scaled_implements, ramp_implements, flags_implements, totalDensity_implements⟩
 
 end Project.Grids

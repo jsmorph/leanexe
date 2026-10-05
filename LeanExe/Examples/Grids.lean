@@ -1,8 +1,12 @@
+import LeanExe.Build
+import LeanExe.Loop
+
 /-!
 Arrays of records.  An array of a structure, sum, or enumeration is stored as its elements'
 components in order, one word each, so element `i` of an array of records of `k` components
 occupies words `i · k` to `i · k + k - 1`.  Reading an element out of bounds gives the record of
-the fields' defaults, as `xs[i]!` does in Lean.
+the fields' defaults, as `xs[i]!` does in Lean.  `LeanExe.build` makes an array of records, and a
+fold over one is a `LeanExe.loop` over its indices.
 -/
 
 namespace LeanExe.Examples.Grids
@@ -55,5 +59,20 @@ def flagAt (xs : Array Bool) (i : UInt64) : Bool := xs[i.toNat]!
 def flagCount (xs : Array Bool) : UInt64 := xs.size.toUInt64
 
 def massAt (xs : Array Mass) (i : UInt64) : Float := xs[i.toNat]!.value
+
+/-- Each state with its density and energy scaled by `a`. -/
+def scaled (xs : Array Conserved) (a : Float) : Array Conserved :=
+  LeanExe.build xs.size.toUInt64 fun i =>
+    let c := xs[i.toNat]!
+    { c with density := a * c.density, energy := a * c.energy }
+
+def ramp (n : UInt64) : Array Conserved :=
+  LeanExe.build n fun i => ⟨i.toFloat, 0, 0, 1⟩
+
+def flags (n : UInt64) : Array Bool := LeanExe.build n fun i => i % 3 == 1
+
+/-- The total density. -/
+def totalDensity (xs : Array Conserved) : Float :=
+  LeanExe.loop xs.size.toUInt64 0 fun i acc => acc + xs[i.toNat]!.density
 
 end LeanExe.Examples.Grids

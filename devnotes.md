@@ -25171,7 +25171,8 @@ temporaries' ownership.  Its first increment reads a lent row of a borrowed
 
 - [x] E2a: `Represent (Array α)` for flat `α`; field reads and `size` on borrowed arrays of
   records; an example, tests at and beyond the bounds, and proofs.
-- [ ] E2b: build with `k` stores per element and fold with `k` loads; examples, tests, proofs.
+- [x] E2b: build with `k` stores per element; folds as loops over indices; examples, tests,
+  proofs.
 - [ ] E2c: `default` from the instance; records with array fields.
 - [ ] E3a: lent rows of a borrowed `Array (Array UInt64)` under bound proofs (`dite`, `getElem`).
 - [ ] E3b: building arrays of owned elements, the kind-2 release proof, and `Live` generalized.
@@ -25219,3 +25220,46 @@ whose name clashed with `Project.IR.State` in proofs, is now `Conserved`.
 `tests/modules/Cases.lean` has 318 grid cases, on arrays of 0, 1, 3, and 7 elements and indices
 from 0 to one past the end, `2^29 - 1`, `2^29`, `2^63`, and `2^64 - 1`, with special floats in
 the fields; all match native Lean.  `grids.wasm` is 2,178 bytes.
+
+### E2b: building arrays of records
+
+`LeanExe.build n g` with a structure, sum, enumeration, or `Bool` element type now compiles to a
+new template, `Stmt.buildRecords` in `Project/IR/BuildRecord.lean`.  It checks that the `n · k`
+words fit below `2^29`, which also keeps `n · k` from wrapping, allocates, stores the length
+word `n · k`, and for each index runs a statement that leaves the components of `g i` in locals,
+then stores the `k` words.  `Stmt.buildRecords_spec` concludes `Heap.NewArray` for
+`flatWords (LeanExe.build n g)`, the owned form that `Represent (Array α)` uses.  The template is
+a definition over existing statements, so no IR constructor or code generator changed.  It is
+separate from `Stmt.buildWith` because its stores read only locals (`Expr.Yields`), which keeps
+the proof of `k` stores per element simple, and the existing template stays unchanged for word
+and float arrays.
+
+I considered reusing `buildWith` over the `n · k` words, with the element computed at each
+record's first word and the other words read from locals.  `buildWith_spec` gives the body no
+invariant across words, so the locals' values could not be carried from one word to the next,
+and computing the record at every word costs `k` times as much.  The new template costs one
+proof of about 300 lines.
+
+Three compiler changes support it.  `isArray` now includes arrays of records, so results, `let`,
+and calls treat them as arrays.  `componentLocals` leaves a record term's components in locals: a
+constructor application part by part, and any other term through `tupleOf`.  And a `let` of a
+value whose components are all words and floats now compiles in results, words, floats, and
+record builds (`letRecord`); before, only words, floats, arrays, and trees could be bound, and
+the solver needs `let c := grid[i]!` and `let` of a call's record.
+
+Folds over arrays of records have no template.  `LeanExe.loop` over the indices with
+`xs[i.toNat]!` reads already compiles and proves with `Stmt.loop_spec` and the new
+`Expr.readValue_record`, so the compiler rejects `Array.foldl` over an array of records with a
+message that names the loop form, and programs have one way to write such a fold.
+
+`LeanExe/Examples/Grids.lean` adds `scaled` (a build that reads a borrowed array of records),
+`ramp` (a build from the index), `flags` (an `Array Bool` build), and `totalDensity` (a loop
+over records).  `Project/Grids/Verify.lean` proves all four, and `grids_bytes` now covers
+fourteen functions.  Calling `ramp` with `2^62` or `2^27` records traps at `unreachable`, the
+first because `n · 4` would wrap and the second because `2^29` words do not fit.  The proofs
+exposed a slow pattern: when `simp` left an expected word as an unreduced list lookup, closing
+the goal by `rfl` unfolded `IEEE64.convertI64U` into binary64 arithmetic with `2^1074` and ran
+past ten minutes; rewriting the expected words first with a lemma such as `rampElement_words`
+avoids it.  The LTG entry `record-build` records the method.  `buildBodyLoc`, the hint location
+of a build's body, omitted the length check, so build-body hints pointed at the wrong
+instructions.  It now includes the check.

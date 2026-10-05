@@ -11,7 +11,7 @@ otherwise, and it accepts a read only when every component of the element type's
 
 namespace Project.IR
 
-open Project.Pipeline
+open Project.Pipeline Project.ProofKit
 
 theorem flatMap_getElem? {f : α → List β} {k j : Nat} (hk : ∀ x, (f x).length = k)
     (hj : j < k) : ∀ (xs : List α) (i : Nat),
@@ -91,5 +91,19 @@ theorem flatWords_count [Scalar α] {k : Nat} (hk : ∀ x : α, (Scalar.values x
   simp only [UInt64.toNat_div, UInt64.toNat_ofNat', Nat.toUInt64_eq]
   rw [Nat.mod_eq_of_lt hSize, Nat.mod_eq_of_lt (show k < 2 ^ 64 by omega), Nat.mul_div_cancel _ hkPos,
     Nat.mod_eq_of_lt (by omega)]
+
+/-- Below the guard, the compiled read of word `i · k + j` of an array of records laid out at
+`ptr` gives component `j` of `xs[i.toNat]!`. -/
+theorem Expr.readValue_record [Scalar α] [Inhabited α] {k j : Nat}
+    (hk : ∀ x : α, (Scalar.values x).length = k) (hj : j < k) (hkBound : k < 2 ^ 32)
+    (hDefault : (Scalar.values (default : α)).map Value.word = List.replicate k 0)
+    {store : Wasm.Store Unit} {ptr : UInt64} {xs : Array α}
+    (hArray : UInt64Array.At store ptr (flatWords xs)) {array : Nat} {i : UInt64}
+    (hi : i < 536870912) {state : State} (hPtr : state.get array = some (.i64 ptr)) :
+    Expr.readValue store.mem array (i * UInt64.ofNat k + UInt64.ofNat j) state =
+      some (((Scalar.values xs[i.toNat]!).map Value.word)[j]!, state) := by
+  have h := flatWords_read hk hj hkBound hDefault (xs := xs) (by have := hArray.1; omega) i
+  simp only [hi, ite_true] at h
+  rw [Expr.readValue_at hArray hPtr, h]
 
 end Project.IR

@@ -10,10 +10,10 @@
   "features": ["array", "record", "structure", "enumeration", "Bool", "bounds", "getElem!", "read", "size"],
   "annotationKinds": ["element index", "record field read", "array read", "size result"],
   "modules": ["Project.IR.RecordRead"],
-  "declarations": ["Project.Pipeline.flatWords", "Project.Pipeline.Value.word", "Project.IR.flatMap_getElem?", "Project.IR.flatWords_size", "Project.IR.flatWords_read", "Project.IR.flatWords_getElem!_one", "Project.IR.flatWords_count", "Project.IR.Stmt.run_triple"],
+  "declarations": ["Project.Pipeline.flatWords", "Project.Pipeline.Value.word", "Project.IR.flatMap_getElem?", "Project.IR.flatWords_size", "Project.IR.flatWords_read", "Project.IR.flatWords_getElem!_one", "Project.IR.flatWords_count", "Project.IR.Expr.readValue_record", "Project.IR.Stmt.run_triple"],
   "premises": ["A Flat instance for the element type, with Scalar.values of length k for every element", "The words of the element type's default are all 0", "UInt64Array.At for flatWords xs in the store"],
   "result": "The guarded read of word i * k + j equals component j of xs[i.toNat]!, as a word; for k = 1 the plain read does; the length word divided by k is xs.size.toUInt64.",
-  "consumers": ["Project.Grids.density_implements", "Project.Grids.energySum_implements", "Project.Grids.isGas_implements", "Project.Grids.count_implements", "Project.Grids.flagAt_implements", "Project.Grids.massAt_implements"],
+  "consumers": ["Project.Grids.density_implements", "Project.Grids.energySum_implements", "Project.Grids.isGas_implements", "Project.Grids.count_implements", "Project.Grids.flagAt_implements", "Project.Grids.massAt_implements", "Project.Grids.totalDensity_implements"],
   "relatedEntries": ["array-read", "array-size", "straight-line-run"],
   "exclusion": null
 }
