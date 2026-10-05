@@ -699,20 +699,24 @@ theorem reconstructedAdvanceWith_ratio {n trials : UInt64} {time dt alpha : Floa
     · simp only at h
       exact absurd (by simp [h]) hS
 
-/-- An accepted reconstructed timestep advances the time by some `dt > 0` and updates the grid
-with a ratio `r ≥ dt · n`, where `n` is the number of cells per side, such that `r` times the
-signal speed of every cell in either direction is at most 1/2. -/
+/-- A timestep that advances the time by some `dt > 0` and updates the grid with a ratio
+`r ≥ dt · n`, where `n` is the number of cells per side, such that `r` times the signal speed of
+every cell in either direction is at most 1/2. -/
+def CflStep (n trials : UInt64) (a b : Float × Array Cell) : Prop :=
+  ∃ dt r : Float, 0 < real dt ∧ b.1 = a.1 + dt ∧ b.2 = reconstructedStepGrid n trials r a.2 ∧
+    real dt * n.toNat ≤ real r ∧
+    ∀ i (hi : i < a.2.size), 0 < real a.2[i].state.density ∧
+      real r * physicalSpeed (real a.2[i].state.density) (real a.2[i].state.mx)
+        (real a.2[i].state.my) (real a.2[i].state.energy) ≤ 1 / 2 ∧
+      real r * physicalSpeed (real a.2[i].state.density) (real a.2[i].state.my)
+        (real a.2[i].state.mx) (real a.2[i].state.energy) ≤ 1 / 2
+
+/-- An accepted reconstructed timestep is a `CflStep`. -/
 theorem reconstructedAdvanceStep_cfl {n trials : UInt64} {time : Float} {grid : Array Cell}
     (h : (reconstructedAdvanceStep n trials time grid).1 = 0) (hSize : grid.size < 2 ^ 64) :
-    ∃ dt r : Float, 0 < real dt ∧
-      (reconstructedAdvanceStep n trials time grid).2.1 = time + dt ∧
-      (reconstructedAdvanceStep n trials time grid).2.2 = reconstructedStepGrid n trials r grid ∧
-      real dt * n.toNat ≤ real r ∧
-      ∀ i (hi : i < grid.size), 0 < real grid[i].state.density ∧
-        real r * physicalSpeed (real grid[i].state.density) (real grid[i].state.mx)
-          (real grid[i].state.my) (real grid[i].state.energy) ≤ 1 / 2 ∧
-        real r * physicalSpeed (real grid[i].state.density) (real grid[i].state.my)
-          (real grid[i].state.mx) (real grid[i].state.energy) ≤ 1 / 2 := by
+    CflStep n trials (time, grid) ((reconstructedAdvanceStep n trials time grid).2.1,
+      (reconstructedAdvanceStep n trials time grid).2.2) := by
+  unfold CflStep
   unfold reconstructedAdvanceStep at h ⊢
   dsimp only at h ⊢
   split
@@ -729,5 +733,48 @@ theorem reconstructedAdvanceStep_cfl {n trials : UInt64} {time : Float} {grid : 
   · rename_i hS
     rw [ite_eq_right hS] at h
     simp at h
+
+/-- Every timestep of a reconstructed run that returns status 0 is a `CflStep`: a chain of them
+leads from time 0 and the initial grid to the run's final time and grid. -/
+theorem reconstructedRunFrom_cfl {n trials : UInt64} (h : (reconstructedRunFrom n trials).1 = 0) :
+    Relation.ReflTransGen (CflStep n trials) (0, initialCells n)
+      ((reconstructedRunFrom n trials).2.1, (reconstructedRunFrom n trials).2.2) := by
+  obtain ⟨cond, step, hCondEq, hStepEq, hDef⟩ := reconstructedRunFrom_loop n trials
+  have hN : (n * n).toNat < 2 ^ 64 := (n * n).toNat_lt
+  have hInv := repeatWhile_inv (P := fun s : UInt64 × Float × Array Cell =>
+      s.2.2.size = (n * n).toNat ∧
+        (s.1 = 0 → Relation.ReflTransGen (CflStep n trials) (0, initialCells n) (s.2.1, s.2.2)))
+    (cond := cond) (step := step) (x0 := ((0 : UInt64), (0 : Float), initialCells n))
+    4294967296 ⟨initialCells_size n, fun _ => .refl⟩
+    (fun x hc hx => by
+      rw [hStepEq]
+      have hc' : x.1 = 0 := by
+        rw [hCondEq] at hc
+        simp only [Bool.and_eq_true, beq_iff_eq] at hc
+        exact hc.1
+      have hs1 := hx.1
+      refine ⟨(reconstructedAdvanceStep_size (by omega)).trans hs1, fun hs => ?_⟩
+      exact (hx.2 hc').tail (reconstructedAdvanceStep_cfl hs (by omega)))
+  rw [hDef] at h ⊢
+  generalize LeanExe.repeatWhile 4294967296 ((0 : UInt64), (0 : Float), initialCells n) cond
+    step = R at h hInv ⊢
+  obtain ⟨status, time, grid⟩ := R
+  dsimp only at h hInv ⊢
+  split at h
+  · simp at h
+  · rename_i hT
+    rw [ite_eq_right hT]
+    subst h
+    exact hInv.2 rfl
+
+theorem reconstructedRun_cfl {n trials : UInt64} (h : (reconstructedRun n trials).1 = 0) :
+    Relation.ReflTransGen (CflStep n trials) (0, initialCells n)
+      ((reconstructedRun n trials).2.1, (reconstructedRun n trials).2.2) := by
+  unfold reconstructedRun at h ⊢
+  split at h
+  · rename_i hn
+    rw [ite_eq_left hn]
+    exact reconstructedRunFrom_cfl h
+  · simp at h
 
 end Project.Euler
