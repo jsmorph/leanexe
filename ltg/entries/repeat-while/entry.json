@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 1,
+  "id": "repeat-while",
+  "title": "Loop with a test and a step call",
+  "summary": "Proves the compiler's LeanExe.repeatWhile loop: a state of scalars and one array, a test that compiles to an expression over the state, and one call per step that consumes the state's array, inside the Live invariant of a composite function.",
+  "roles": ["checked-proof-asset", "guidance"],
+  "categories": ["allocation", "compiler-motifs", "loops", "proof-construction"],
+  "scope": "compiler-rule",
+  "evidenceStatus": "promoted",
+  "features": ["repeatWhile", "fuel", "loop", "direct-call", "owned", "moved", "tuple-state"],
+  "annotationKinds": ["repeat while"],
+  "modules": ["Project.IR.RepeatWhile", "Project.IR.OneArray", "LeanExe.RepeatWhile"],
+  "declarations": ["Project.IR.Stmt.repeatWhile", "Project.IR.Stmt.repeatWhile_spec", "Project.IR.Live.repeatWhileOne", "Project.IR.repeatWhile_go_continue", "Project.IR.repeatWhile_go_stop"],
+  "premises": ["An Implements theorem for the step function, whose result has a OneArray instance", "The loop locals are distinct and below scratch, and scratch is below the number of locals", "Live before the loop with the initial state's array at the head of the temporaries, and the state locals holding its scalars and pointer", "The fuel evaluates to n", "In every state that frames the one before the loop, the test evaluates to cond x and the arguments represent F x, consume exactly the state's array, and read regions apart from it"],
+  "result": "Live with the array of LeanExe.repeatWhile n x0 cond step at the head of the live temporaries, the state locals holding its scalars and pointer, in a state that frames the one before the loop.",
+  "consumers": ["Project.Euler.advanceWith_implements", "Project.Euler.runFrom_implements"],
+  "relatedEntries": ["one-array-call", "array-state-loop", "function-call"],
+  "exclusion": null
+}
