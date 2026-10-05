@@ -51,7 +51,7 @@ theorem finishStep_implements : Implements euler.module 13 finishStepTuple := by
   · refine Live.callOne_seq sweep_implements rfl rfl rfl (consumed := []) hLive1 hCap
       (x := (n, true, ratio, middle)) (vals := [.i64 n, .i64 1, .f64 ratio.toBits, .i64 p])
       (before := after) (afterArgs := after)
-      (by simp [Expr.evalResults, Expr.eval, after, hStart, hGet0, hGet1, hGet2])
+      (by simp [Expr.evalResults, Expr.eval, after, hGet0, hGet1, hGet2])
       ⟨_, _, rfl, rfl, _, _, rfl, rfl, _, _, rfl, rfl, p, rfl,
         (hLive1.tempsOwned _ (List.mem_singleton_self _)).borrowed⟩ rfl (fun _ _ _ h => nomatch h)
       (fun q => ⟨after.update 3 (.i64 q), by simp [State.setAll, State.set?_eq_update, after, hStart]⟩)
@@ -64,7 +64,7 @@ theorem finishStep_implements : Implements euler.module 13 finishStepTuple := by
     have hy : finishStepTuple (n, ratio, ⟨middle⟩) = sweepTuple (n, true, ratio, middle) := by
       simp [finishStepTuple, finishStep, hA, sweepTuple]
     rw [hy]
-    exact Live.releaseSecond_last hLive2 rfl rfl (by simp [after, hStart, hGet2]) fun s hL =>
+    exact Live.releaseSecond_last hLive2 rfl rfl (by simp [after, hGet2]) fun s hL =>
       Live.finish_results_one hL ⟨after.update 3 (.i64 ptr), by
         simp [euler.finishStep.ir, Expr.evalResults, Expr.eval, after, hStart]⟩
   · have hy : finishStepTuple (n, ratio, ⟨middle⟩) = middle := by
@@ -189,7 +189,7 @@ theorem tryStep_implements : Implements euler.module 16 tryStepTuple := by
       simp [Stmt.run, Expr.eval, State.set?_eq_update, after, hStart, hGet2], ?_⟩
     refine Stmt.seq_run ⟨final, by
       simp [Stmt.run, Expr.eval, State.set?_eq_update, after, hStart, final], ?_⟩
-    exact Live.releaseSecond_last hLive2 rfl rfl (by simp [final, after, hStart, hGet3])
+    exact Live.releaseSecond_last hLive2 rfl rfl (by simp [final, after, hGet3])
       fun s hL => Live.finish_results_one hL ⟨final, by
         simp [euler.tryStep.ir, Expr.evalResults, Expr.eval, final, after, hStart,
           Scalar.values]⟩
@@ -342,7 +342,7 @@ theorem advanceWith_implements : Implements euler.module 18 advanceWithTuple := 
     (by
       refine List.Forall₂.cons ?_ (List.Forall₂.cons ?_ (List.Forall₂.cons ?_ .nil))
       · rw [hT 4 (by decide)]; simp [s2, hStart]
-      · rw [hT 5 (by decide)]; simp [s2, hStart, Scalar.values]
+      · rw [hT 5 (by decide)]; simp [s2, hStart]
       · exact hPE)
     hCap (fun _ => rfl) ?_ ?_) ?_
   · rintro s st ⟨a, b, c⟩ p hHolds -
@@ -415,7 +415,7 @@ theorem advanceWith_implements : Implements euler.module 18 advanceWithTuple := 
       refine Stmt.seq_run ⟨final, by
         simp [Stmt.run, Expr.eval, State.set?_eq_update, hLen4, hH.2.2, final], ?_⟩
       exact Live.releaseSecond_last hL4 rfl rfl
-        (by simp [final, hLen4, hG 3 (by decide), hGet3]) fun s hL =>
+        (by simp [final, hG 3 (by decide), hGet3]) fun s hL =>
         Live.finish_results_one hL ⟨final, by
           simp [euler.advanceWith.ir, Expr.evalResults, Expr.eval, final, hLen4, Scalar.values]⟩
     · simp only [hA, Bool.false_eq_true, ite_false]
@@ -429,7 +429,7 @@ theorem advanceWith_implements : Implements euler.module 18 advanceWithTuple := 
       refine Stmt.seq_run ⟨final, by
         simp [Stmt.run, Expr.eval, State.set?_eq_update, hLen4, hG 3 (by decide), hGet3,
           final], ?_⟩
-      exact ((hL4.releaseFirst rfl rfl (by simp [final, hLen4, hH.2.2])).mono (fun _ _ h => h)
+      exact ((hL4.releaseFirst rfl rfl (by simp [final, hH.2.2])).mono (fun _ _ h => h)
         fun s st ⟨hL, hst⟩ => hst ▸ Live.finish_results_one hL ⟨final, by
           simp [euler.advanceWith.ir, Expr.evalResults, Expr.eval, final, hLen4,
             Scalar.values]⟩)
@@ -536,7 +536,7 @@ theorem runFrom_implements : Implements euler.module 20 runFrom := by
     simp [Stmt.run, Expr.eval, State.set?_eq_update, hStart, s2], ?_⟩
   refine Live.callOne_seq initialCells_implements rfl rfl rfl (consumed := []) (Live.start hHeap)
     hCap (x := n) (vals := [.i64 n]) (before := s2) (afterArgs := s2)
-    (by simp [Expr.evalResults, Expr.eval, s2, hStart, hGet0]) rfl rfl
+    (by simp [Expr.evalResults, Expr.eval, s2, hGet0]) rfl rfl
     (fun _ _ _ h => nomatch h)
     (fun q => ⟨s2.update 3 (.i64 q), by simp [State.setAll, State.set?_eq_update, s2, hStart]⟩) ?_
   intro heap1 p1 s3 st3 hLive1 hst3
@@ -565,7 +565,7 @@ theorem runFrom_implements : Implements euler.module 20 runFrom := by
       simp⟩
   · rintro heap' s st ⟨a, b, c⟩ p hHolds hL hFrame
     have hG0 : st.get 0 = some (.i64 n) :=
-      (hFrame.get 0 (by omega) (by simp)).trans (by simp [s2, hStart, hGet0])
+      (hFrame.get 0 (by omega) (by simp)).trans (by simp [s2, hGet0])
     have hH : st.get 1 = some (.i64 a) ∧ st.get 2 = some (.f64 b.toBits) ∧
         st.get 3 = some (.i64 p) := by
       simpa [State.Holds, Scalar.values] using hHolds
