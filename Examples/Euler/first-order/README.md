@@ -55,15 +55,14 @@ The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution 
 and the hardware implementing the WebAssembly semantics that the proofs model.  The bound of 1,407
 pages covers the heap base and three grids of 640,000 cells with their block headers.  The
 complete-execution theorem takes the allocator state of a fresh instance as a hypothesis, and no
-theorem connects that state to the module's instantiation.  For density 1, zero momenta, and
-energy 1, an admissible state, `side` accepts the state and returns a signal speed with the bits
-`0x3FE7F254DAB9CC3A`, which is below the exact sound speed √(14/25).
-[`SpeedCounterexample.lean`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/SpeedCounterexample.lean)
-at commit `eef07963` proves this for the model's `sideCheckedBits`, which performs the same binary64
-operations.  The theorems therefore state no CFL bound in exact arithmetic for this solver, and
-whether a run from the four quadrants reaches such a state is unproved.  [The reconstructed
-solver](../reconstructed/README.md) uses outward speed bounds and has one.  Convergence to a weak
-solution of the continuous Euler equations remains unproved.
+theorem connects that state to the module's instantiation.  For density 1, zero momenta, and energy
+1, an admissible state, `side` accepts the state and returns a signal speed with the bits
+`0x3FE7F254DAB9CC3A`, which is below the exact sound speed √(14/25): `speed_below_sound` in [the
+counterexample](../SpeedCounterexample.lean) proves this, and `module_side` states that the module's
+`side` export returns these words.  The theorems therefore state no CFL bound in exact arithmetic
+for this solver, and whether a run from the four quadrants reaches such a state is unproved.  [The
+reconstructed solver](../reconstructed/README.md) uses outward speed bounds and has one.
+Convergence to a weak solution of the continuous Euler equations remains unproved.
 
 ## Data
 
@@ -74,17 +73,16 @@ solution of the continuous Euler equations remains unproved.
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine, with
 peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean proof
-checks.  The files of each run directory come from
-[the run record at commit `eef07963`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-complete-v1/README.md),
+checks.  The files of each run directory come from [the run record at commit
+`eef07963`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-complete-v1/README.md),
 where `tools/euler-riemann-complete.js` wrote the words, the CSV file, and the summary of each run,
 and `tools/euler-riemann-plot.py` drew the figures from the CSV file.  Each summary file therefore
-gives the runtime and SHA-256 of that commit's binary and the names of that commit's theorems, with
-their prefix `Project` renamed to `LeanExe`.  The words of this program's runs have the SHA-256
-recorded in those summaries.
+gives the runtime and SHA-256 of that commit's binary and the names of that commit's theorems.  The
+words of this program's runs have the SHA-256 recorded in those summaries.
 
-Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh
-directory.  The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and
-records the runtime, the peak resident size, and the SHA-256 of the words.
+Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh directory.
+The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and records the runtime,
+the peak resident size, and the SHA-256 of the words.
 
 ```sh
 tools/build-wasmtime-host.sh
