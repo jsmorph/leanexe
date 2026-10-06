@@ -314,8 +314,9 @@ composes it with the binding loop to prove the complete actual `enterReady`.
 The operation preserves heap validity, pointer types, original allocated cells,
 and other registers, and consumes exactly `arity + locals + 1` cells. Its
 assumptions include the natural free-cell budget, valid binding inputs, and
-zero-or-activation caller and lexical pointers. Public calls and boot still need
-to establish these assumptions across reservation and caller updates.
+zero-or-activation caller and lexical pointers. Public calls still need
+to establish these assumptions across reservation and caller updates; boot is
+checked below.
 
 `ProgramBounds` derives class, method, and entry bounds from the actual
 `programValid` result. `ValidationLoop` proves that every visited check must
@@ -325,6 +326,22 @@ inherited field counts, method owner/arity/local/PC/primitive bounds, and entry
 arity 1. The header theorem records the word-size equation checked by the
 validator. Converting that equation to an array-size equation also requires
 the array size to fit in a word; that is not assumed implicitly here.
+
+`BootBudget` derives the actual boot request's natural count from successful
+validation, so the request cannot wrap. `BootConstruction.bootReady_effect`
+checks receiver-object construction followed by entry activation construction:
+receiver class and metadata, exact nil-valued field list, entry method and PC,
+zero caller and lexical parent, empty operand stack, and receiver followed by
+nil-valued locals. It accounts for every allocated cell and preserves old cells
+and other registers under the stated budget.
+
+`BootHeap.boot_valid` proves actual public boot preserves heap validity and
+pointer types, including rejected input. `boot_init_correct` starts from actual
+`Arena.init` and a successful actual validator result. Boot either reports
+allocation error 9 or reaches phase zero with the specified receiver and entry
+activation. It includes reservation and any collection before construction.
+These results establish the initial heap and frame; the complete invariant
+needed to compose every instruction remains unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
@@ -339,7 +356,7 @@ a non-error phase, and an activation in the current register.
 operand-format guards for those opcodes. It requires heap validity and the
 covered opcode; rejected instructions and stopped states preserve the heap.
 These are heap-preservation results. They do not prove the complete instruction
-semantics. Opcodes 10 through 13, VM boot, method lookup, and the invariant
+semantics. Opcodes 10 through 13, method lookup, and the invariant
 needed to compose all instructions remain unfinished.
 
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
@@ -414,8 +431,8 @@ with tag 2 and no outgoing edges. `InitializationFree.lean` proves that the
 actual free list contains handles 4 through capacity, in increasing order,
 without duplicates, with exact next words and count. `init_valid` establishes
 the full `Heap.Valid` condition for `Arena.init`; `collect_init_valid` applies
-the collector theorem directly to that initialized arena. VM boot and
-instruction preservation of the heap conditions remain unfinished.
+the collector theorem directly to that initialized arena. VM boot is checked
+by `BootHeap`; preservation through all instructions remains unfinished.
 
 `Project/Smalltalk/Frame.lean` checks the concrete frame writes. Retirement
 sets the PC to dead, clears caller and operands, and preserves the remaining

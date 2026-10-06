@@ -127,5 +127,11 @@ run_cmd do
 #print axioms Project.Smalltalk.ProgramBounds.class_bounds
 #print axioms Project.Smalltalk.ProgramBounds.method_bounds
 #print axioms Project.Smalltalk.ProgramBounds.entry_arity
+#print axioms Project.Smalltalk.BootBudget.need_toNat
+#print axioms Project.Smalltalk.BootBudget.entry_values
+#print axioms Project.Smalltalk.BootConstruction.bootReady_effect
+#print axioms Project.Smalltalk.BootHeap.bootValid_correct
+#print axioms Project.Smalltalk.BootHeap.boot_valid
+#print axioms Project.Smalltalk.BootHeap.boot_init_correct
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
