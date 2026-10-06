@@ -64,12 +64,12 @@ import Examples.Euler.Module
 import Examples.Euler.RealState
 import Examples.Euler.ReconstructedBalance
 import Examples.Euler.ReconstructionAccuracy
-import Examples.Euler.Reference.Constants
 import Examples.Euler.Reference.Component
+import Examples.Euler.Reference.Constants
 import Examples.Euler.Reference.FluxTerms
+import Examples.Euler.Reference.Interface
 import Examples.Euler.Reference.Internal
 import Examples.Euler.Reference.InternalGuard
-import Examples.Euler.Reference.Interface
 import Examples.Euler.Reference.Pressure
 import Examples.Euler.Reference.PressureReference
 import Examples.Euler.Reference.Radicand
@@ -78,6 +78,7 @@ import Examples.Euler.Reference.Sound
 import Examples.Euler.Reference.SoundRatio
 import Examples.Euler.Reference.Speed
 import Examples.Euler.Reference.Transport
+import Examples.Euler.Reference.Update
 import Examples.Euler.SpeedCounterexample
 import Examples.Euler.Total
 import Examples.Euler.Verify
