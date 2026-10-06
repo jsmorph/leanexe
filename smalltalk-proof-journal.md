@@ -413,3 +413,28 @@ handle inside the runtime definition; changing the goal to that named handle
 connected the guard fact. Both modules pass the combined build and axiom audit.
 No executable definitions changed. Collection before pushing and the full
 instruction-preservation result remain unfinished.
+
+## Allocation effects and push across collection (2026-10-06)
+
+`AllocationEffect` collects the already checked allocation results: valid
+result heap, new handle, last-allocation register, new cell words, unchanged
+allocated cells, and unchanged registers outside the allocation counters.
+Its value lemmas retain old allocated values and establish the new value.
+`StackPush` checks that the actual `pushReady` preserves heap validity and
+creates a link with exactly the requested value and old operand head. It also
+checks the unchanged activation handle and incremented PC word.
+
+`PushReservation.push_correct` proves the public push operation preserves
+heap validity and either reports error 9 or installs that link. The value must
+be zero or reachable before reservation; allocation alone is insufficient
+because reservation can collect. The result includes stress and space-triggered
+collection through `reserve_correct`. Slot loading uses the reachable selected
+link to establish this condition for its stored value.
+
+An initial composition rewrote an expanded conditional and reached the
+200,000-heartbeat limit. `PushDispatch` separately checks the two actual guard
+branches, and rewriting the complete push call with those lemmas resolves the
+composition. The limit was not increased. Closed word comparisons also needed
+ordinary simplification after `simp only` left conditional comparisons behind.
+The combined build and axiom audit pass. No executable definitions changed;
+global VM invariants and the remaining instructions still need proofs.

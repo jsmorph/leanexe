@@ -232,8 +232,17 @@ a reachable cell when started at zero or a reachable cell. Repeated links and
 cycles are allowed. It applies this result to local slots, the receiver, and
 object field slots. `StackWrite.lean` proves heap preservation for `pop` and
 `storeSlot`, including their failure branches. The current cell must be an
-activation; a store target must be zero or a link cell. These theorems do not
-yet establish the instruction decoder or collection before a load or push.
+activation; a store target must be zero or a link cell.
+
+`StackPush.lean` proves that successful stack insertion preserves heap validity,
+creates one link containing the value and previous stack, and increments the
+activation's PC word. `PushReservation.push_correct` connects those results to
+the public `push`, including collection and error 9. The value must be zero or
+reachable before reservation, the heap must be valid, and the current cell must
+be an activation. A successful push preserves the activation handle and puts
+the new link in its operand field. `loadSlot_valid` establishes heap preservation
+for a zero slot or a reachable link slot. The decoder and remaining instructions
+are still unproved.
 
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
 preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`

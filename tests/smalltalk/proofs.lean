@@ -73,5 +73,16 @@ run_cmd do
 #print axioms Project.Smalltalk.HeapAllocation.allocate_valid
 #print axioms Project.Smalltalk.HeapAllocation.allocateCell_reachable
 #print axioms Project.Smalltalk.HeapAllocation.allocate_empty_valid
+#print axioms Project.Smalltalk.HeapWrite.write_cell_valid
+#print axioms Project.Smalltalk.HeapWrite.write_register_valid
+#print axioms Project.Smalltalk.FrameHeap.advance_valid
+#print axioms Project.Smalltalk.FrameHeap.retire_valid
+#print axioms Project.Smalltalk.Reachability.localSlot_live
+#print axioms Project.Smalltalk.Reachability.fieldSlot_live
+#print axioms Project.Smalltalk.StackWrite.pop_valid
+#print axioms Project.Smalltalk.StackWrite.storeSlot_valid
+#print axioms Project.Smalltalk.StackPush.pushReady_delivers
+#print axioms Project.Smalltalk.PushReservation.push_correct
+#print axioms Project.Smalltalk.PushReservation.loadSlot_valid
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
