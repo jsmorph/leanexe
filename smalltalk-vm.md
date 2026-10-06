@@ -273,8 +273,14 @@ still uses the separately stated caller-prefix conditions.
 actual `fillOne`: exact head, value and next words, pointer types, unchanged
 existing allocated cells, specified register changes, and one-cell free-count
 decrement. `ConstructionValues` relates concrete links to a list of values and
-proves this operation prepends the specified value. The complete construction
-loops and activation argument ordering remain unfinished.
+proves this operation prepends the specified value.
+
+`FillLoop` proves the complete field-building loop visits every requested
+index and produces exactly that many links containing handle 1. It preserves
+old allocated cells and pointer types, and its final free count plus the visit
+count equals the original free count. The input budget must leave one cell for
+the final object. A checked equality connects this loop to the actual expression
+in `newReady`. Final object allocation and activation binding remain unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and

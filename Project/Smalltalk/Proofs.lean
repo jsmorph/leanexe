@@ -36,3 +36,4 @@ import Project.Smalltalk.UnwindHeap
 import Project.Smalltalk.TypedAllocation
 import Project.Smalltalk.PublicReturnHeap
 import Project.Smalltalk.ConstructionValues
+import Project.Smalltalk.FillLoop

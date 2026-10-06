@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`98ba259a0e736e9570bafba8245927672632f382`.
+`8111e36d537a68bedd5bb384de74f218e27b5da4`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -67,6 +67,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Typed allocation | Allocation preserves pointer cell types when new typed pointers match their required cell types | `TypedAllocation.lean` |
 | Public return preservation | Actual local and nonlocal returns preserve heap validity and pointer types; successful caller membership establishes target reachability across reservation | `ReturnCallerHeap.lean`, `ReturnHeap.lean`, `CallChainReachability.lean`, `PublicReturnHeap.lean` |
 | Construction links | A construction prepend creates the specified link, preserves existing cells and types, changes the specified registers, consumes exactly one free cell, and prepends the specified logical value; applies to actual `fillOne` | `Construction.lean`, `ConstructionValues.lean` |
+| Field-building loop | The complete loop finishes all requested visits, builds exactly the requested handle-1 list, preserves old allocated cells and types, and accounts for all consumed cells; connected to the actual pair-pattern loop | `FillLoop.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -89,20 +90,22 @@ Recent pushed checkpoints:
 | `e7ffde84` | Pointer cell types through initialization and collection |
 | `0a3b36fd` | Typed retirement and bounded unwind |
 | `98ba259a` | Typed allocation and public return preservation |
+| `8111e36d` | Construction link effects and value order |
 
 ## Current increment
 
-Construction-link effects and logical value-list preservation pass the combined
-build and axiom audit. The concrete `fillOne` performs this prepend with value
-handle 1. The complete object-field loop and activation construction are not
-yet proved. Argument binding needs an existing selected operand link; the send
-guard must establish that condition. A read through handle zero is an array
-read and is not assumed to produce a valid language value.
+The complete field-building loop passes the combined build and axiom audit.
+Given a budget for the fields and one final object cell, it visits every field
+index, builds exactly that many links containing handle 1, preserves old
+allocated cells and pointer types, and consumes exactly that many cells.
+`filling_eq_pair` connects it to the pair-pattern loop used by `newReady`.
 
-Next are the complete construction loops, dispatcher composition of return
-cases, and the execution invariant. Exact return delivery still has caller-path
-conditions to establish. No full VM correctness claim is made. All checked
-proof files are included in this increment.
+Next are allocating the final object and checking its field contents and
+construction-register clearing, then activation slot binding and argument
+ordering. The send guard must establish that selected argument links exist.
+Dispatcher composition of returns, exact return path conditions, boot, lookup,
+and the complete execution invariant remain unfinished. All checked proof
+files are included in this increment; no full VM correctness claim is made.
 
 ## Next work, in order
 
@@ -119,7 +122,9 @@ proof files are included in this increment.
    the allocation counts, temporary register 19, constructed field/slot order,
    caller and lexical captures, and the final current activation. The original
    reservation must supply every allocation in the construction.
-   The one-link construction and value-list transfer are now checked. Derive
+   The one-link construction, value-list transfer, and complete field-building
+   loop are now checked. Final object allocation and activation binding remain.
+   Derive
    argument-link validity from the actual send guard. Preserve canonical value
    contents as part of the complete state invariant, not just their allocation.
 5. Prove VM boot from the actual initialized arena and a validated program.
@@ -211,7 +216,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-construction-link-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-fill-loop-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,
