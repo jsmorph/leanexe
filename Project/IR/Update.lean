@@ -24,7 +24,7 @@ theorem arrayAt_set {store : Store Unit} {p v : UInt64} {xs : Array UInt64} {k :
   have hSize : (xs.set! k v).size = xs.size := by simp
   have hAddr := h.elementAddress_toNat k hk
   have hPtr := h.pointerAddress_toNat
-  refine ⟨by rw [hSize]; exact h.1, by rw [hSize, Wasm.Mem.write64_pages]; exact h.2.1, ?_, ?_⟩
+  refine ⟨by rw [hSize]; exact h.1, by rw [hSize, Project.TalosPrelude.write64_pages]; exact h.2.1, ?_, ?_⟩
   · rw [hSize, Memory.read64_write64_disjoint _ _ _ _ (by rw [hAddr, hPtr]; omega)]
     exact h.lengthRead
   · intro i hi
@@ -305,7 +305,7 @@ theorem arrayAt_shrink {store : Store Unit} {p : UInt64} {ys : Array UInt64} {m 
       (ys.take m) := by
   have hSize : (ys.take m).size = m := by simp; omega
   have hPtr := h.pointerAddress_toNat
-  refine ⟨by rw [hSize]; have := h.1; omega, by rw [hSize, Wasm.Mem.write64_pages]; have := h.2.1; omega,
+  refine ⟨by rw [hSize]; have := h.1; omega, by rw [hSize, Project.TalosPrelude.write64_pages]; have := h.2.1; omega,
     by rw [hSize, Memory.read64_write64], ?_⟩
   intro i hi
   rw [hSize] at hi
@@ -685,7 +685,7 @@ theorem arrayAt_grow {store : Store Unit} {p w : UInt64} {ys : Array UInt64}
       p (ys.push w) := by
   have hSize : (ys.push w).size = ys.size + 1 := by simp
   have hPtr := h.pointerAddress_toNat
-  refine ⟨by rw [hSize]; omega, by rw [hSize, Wasm.Mem.write64_pages]; omega,
+  refine ⟨by rw [hSize]; omega, by rw [hSize, Project.TalosPrelude.write64_pages]; omega,
     by rw [hSize, Memory.read64_write64], ?_⟩
   intro i hi
   rw [hSize] at hi
@@ -860,7 +860,7 @@ theorem Stmt.insertShift_spec {scratch src size k v index : Nat} {initial : Stor
     rw [← hSizeYs] at hTop3
     have hPages3 : s3.mem.pages = initial.mem.pages := by
       show (Wasm.Mem.write64 _ _ _).pages = _
-      rw [Wasm.Mem.write64_pages, hPages2]
+      rw [Project.TalosPrelude.write64_pages, hPages2]
     have hFinal := arrayAt_grow hYs hTop3 (by rw [hSizeYs]; omega)
       (by rw [hSizeYs, hPages3]; omega)
     rw [hSizeYs, hResult] at hFinal
@@ -882,7 +882,7 @@ theorem Stmt.insertShift_spec {scratch src size k v index : Nat} {initial : Stor
       refine ⟨p, st2, UInt64.ofNat (n + 1), st2, by simp [Expr.eval, hSrc2],
         by rw [← hLen]; simp [Expr.eval, hSize2, U64Op.apply], ?_, ?_⟩
       · rw [hPtr32]; show _ ≤ (Wasm.Mem.write64 _ _ _).pages * 65536
-        rw [Wasm.Mem.write64_pages, hPages2]; omega
+        rw [Project.TalosPrelude.write64_pages, hPages2]; omega
       · refine Stmt.AppendPost.inPlace hHeap hOwned
           (((hW2.trans hWrite3).trans hWrite4).mono le_rfl (by omega)) hFinal
           (by rw [← hResult, Array.size_push, hSizeYs]; omega) hFrame2 hSrc2
@@ -1260,7 +1260,7 @@ theorem Stmt.pushStores_spec {scratch src size v : Nat} {initial : Store Unit} {
     Memory.read64_write64 _ _ _
   have hPages3 : s3.mem.pages = initial.mem.pages := by
     show (Wasm.Mem.write64 _ _ _).pages = _
-    rw [Wasm.Mem.write64_pages]
+    rw [Project.TalosPrelude.write64_pages]
   have hFinal := arrayAt_grow hYs hTop3 (by omega) (by rw [hPages3]; omega)
   have hWrite4 : Memory.WritesRange s3
       { s3 with mem := s3.mem.write64 p.toUInt32 (UInt64.ofNat (n + 1)) } p.toNat
@@ -1280,7 +1280,7 @@ theorem Stmt.pushStores_spec {scratch src size v : Nat} {initial : Store Unit} {
     refine ⟨p, before, UInt64.ofNat (n + 1), before, by simp [Expr.eval, hSrc],
       by rw [← hLen]; simp [Expr.eval, hSize, U64Op.apply], ?_, ?_⟩
     · rw [hPtr32]; show _ ≤ (Wasm.Mem.write64 _ _ _).pages * 65536
-      rw [Wasm.Mem.write64_pages]; omega
+      rw [Project.TalosPrelude.write64_pages]; omega
     · exact Stmt.AppendPost.inPlace hHeap hOwned ((hWrite3.trans hWrite4).mono le_rfl (by omega))
         hFinal (by rw [Array.size_push]; omega) (State.Frame.refl _ _ before) hSrc
 

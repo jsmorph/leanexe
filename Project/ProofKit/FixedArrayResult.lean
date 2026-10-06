@@ -88,19 +88,19 @@ def pairStore (st : Store Unit) (root first second : UInt64) : Store Unit :=
 
 theorem writeLength_pages (st : Store Unit) (root length : UInt64) :
     (writeLength st root length).mem.pages = st.mem.pages := by
-  simp [writeLength, Mem.write64_pages]
+  simp [writeLength, Project.TalosPrelude.write64_pages]
 
 theorem writePayload_pages (st : Store Unit) (root : UInt64) (index : Nat)
     (value : UInt64) :
     (writePayload st root index value).mem.pages = st.mem.pages := by
-  simp [writePayload, Mem.write64_pages]
+  simp [writePayload, Project.TalosPrelude.write64_pages]
 
 theorem emptyStore_at (st : Store Unit) (root : UInt64)
     (hFit32 : root.toNat + 8 ≤ 4294967296)
     (hFitMemory : root.toNat + 8 ≤ st.mem.pages * 65536) :
     UInt64Array.At (writeLength st root 0) root #[] := by
   refine ⟨by simpa using hFit32, ?_, ?_, ?_⟩
-  · simpa [writeLength, Mem.write64_pages] using hFitMemory
+  · simpa [writeLength, Project.TalosPrelude.write64_pages] using hFitMemory
   · change (st.mem.write64 root.toUInt32 0).read64 root.toUInt32 = 0
     exact Memory.read64_write64 ..
   · intro i hi
@@ -121,7 +121,7 @@ theorem singletonStore_at (st : Store Unit) (root value : UInt64)
         (word := 1) (by simpa using hFit32) (by decide))
   apply UInt64Array.singleton
   · exact hFit32
-  · simpa [singletonStore, writePayload, writeLength, Mem.write64_pages] using
+  · simpa [singletonStore, writePayload, writeLength, Project.TalosPrelude.write64_pages] using
       hFitMemory
   · change
       ((st.mem.write64 root.toUInt32 1).write64
@@ -163,7 +163,7 @@ theorem pairStore_at (st : Store Unit) (root first second : UInt64)
     simp [payloadAddress]
   apply UInt64Array.pair
   · exact hFit32
-  · simpa [pairStore, writePayload, writeLength, Mem.write64_pages] using
+  · simpa [pairStore, writePayload, writeLength, Project.TalosPrelude.write64_pages] using
       hFitMemory
   · change
       (((st.mem.write64 root.toUInt32 2).write64

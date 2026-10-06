@@ -239,7 +239,7 @@ theorem joinProgram_spec {m : Module} (env : HostEnv Unit) (store : Store Unit) 
           exact hnLink
         simp [-Locals.get, wp_simp, hAdj, hPtr, hNextLocal, freeHead,
           hb32, hm32, hc32, hb8, hm8, hc8, hCap, hn32', hnm32, hnc32, hn8, hnm8, hnc8, hnCap, hnLink',
-          Wasm.Mem.write64_pages]
+          Project.TalosPrelude.write64_pages]
         simpa [joinMem, hAdj, hAb32, hAb8, hEmpty, freeHead] using hNext
       · simp [-Locals.get, wp_simp, hAdj, hPtr, hNextLocal, freeHead, hb8, hm8, hc8]
         simpa [joinMem, hAdj, hAb8, hEmpty] using hNext
@@ -378,11 +378,11 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
     simp only [regionsDisjoint, FreeNode.region] at this
     omega
   have hList1 : FreeListAt mem1 heap.free :=
-    FreeListMemory.frame_headers hHeap.freeList (by simp [hMem1, Wasm.Mem.write64_pages])
+    FreeListMemory.frame_headers hHeap.freeList (by simp [hMem1, Project.TalosPrelude.write64_pages])
       fun n hn a hLow hHigh => hBytes1 a (hFree n hn a hLow hHigh)
   have hCapacity1 : mem1.read64 (ptr - 32).toUInt32 = capacity := by
     rw [hA32, hMem1, Memory.read64_write64_disjoint _ _ _ _ (by rw [hw40, hw32]; omega), ← hA32]
-  have hPages1 : mem1.pages = store.mem.pages := by simp [hMem1, Wasm.Mem.write64_pages]
+  have hPages1 : mem1.pages = store.mem.pages := by simp [hMem1, Project.TalosPrelude.write64_pages]
   have hSplit := nodes_split ptr heap.free
   have hAboveMem : ∀ n ∈ aboveNodes ptr heap.free, n ∈ heap.free := fun n hn => by
     rw [hSplit]
@@ -405,7 +405,7 @@ theorem freeObject_spec {m : Module} (env : HostEnv Unit) (heap : Heap) (store :
   refine joinProgram_spec env _ _ releaseObject releaseCurrent { root := ptr, capacity }
     (aboveNodes ptr heap.free) rfl (by simp [ReleaseVars.toLocals, releaseObject])
     (by simp [ReleaseVars.toLocals, releaseCurrent]) (by simpa [hMem1] using hAbove1) (by simp; omega)
-    (by simp; omega) (by simp [Wasm.Mem.write64_pages]; omega)
+    (by simp; omega) (by simp [Project.TalosPrelude.write64_pages]; omega)
     (by simpa [hMem1] using hCapacity1) hApartQ _ _ ?_
   set mem2 := joinMem mem1 { root := ptr, capacity } (aboveNodes ptr heap.free) with hMem2
   have hBlock : FreeListAt mem2 (joinNodes { root := ptr, capacity } (aboveNodes ptr heap.free)) :=
@@ -516,7 +516,7 @@ theorem Heap.Object.clearCount {heap : Heap} {store : Store Unit} {ptr : UInt64}
     simp only [capacityAt, releaseEntry, hw]
     rw [Memory.read64_write64_disjoint _ _ _ _ (by rw [h40, h32]; omega)]
   have hPages : (releaseEntry store ptr).mem.pages = store.mem.pages := by
-    simp [releaseEntry, Wasm.Mem.write64_pages]
+    simp [releaseEntry, Project.TalosPrelude.write64_pages]
   refine ⟨⟨hHeap.globals, ?_, hHeap.base, by rw [hPages]; exact hHeap.top,
       by rw [hPages]; exact hHeap.pages, hHeap.above, hHeap.below⟩,
     ⟨hBase, by rw [hCapacity]; exact h.address, by rw [hCapacity]; exact h.below,
@@ -637,7 +637,7 @@ theorem Heap.releaseStore_bytes {heap : Heap} {store : Store Unit} {ptr : UInt64
 
 theorem Heap.releaseStore_pages (heap : Heap) (store : Store Unit) (ptr : UInt64) :
     (heap.releaseStore store ptr).mem.pages = store.mem.pages := by
-  simp only [Heap.releaseStore, releaseMem_pages, Wasm.Mem.write64_pages]
+  simp only [Heap.releaseStore, releaseMem_pages, Project.TalosPrelude.write64_pages]
 
 theorem Heap.At.free_bounds {heap : Heap} {store : Store Unit} (hHeap : heap.At store) :
     ∀ n ∈ heap.free, 48 ≤ n.root.toNat ∧ n.root.toNat + n.capacity.toNat < 4294967296 :=
@@ -717,10 +717,10 @@ theorem Heap.At.release {heap : Heap} {store : Store Unit} {ptr : UInt64}
     by rw [Heap.releaseStore_pages]; exact hPagesMax, ?_, ?_⟩
   · simp only [Heap.releaseStore, Heap.release]
     refine FreeListAt.release ?_ (by omega) (by omega)
-      (by simp only [Wasm.Mem.write64_pages]; omega)
+      (by simp only [Project.TalosPrelude.write64_pages]; omega)
       (by rw [Memory.read64_write64_disjoint _ _ _ _ (by omega)]) fun n hn =>
         regionsDisjoint_symm (hSeparate n hn)
-    refine FreeListMemory.frame_headers hHeap.freeList (by simp [Wasm.Mem.write64_pages])
+    refine FreeListMemory.frame_headers hHeap.freeList (by simp [Project.TalosPrelude.write64_pages])
       fun node hNode address hLow hHigh => Memory.write64_bytes_outside _ _ _ ?_
     have hNodeSeparate := hSeparate node hNode
     have := hHeap.above node hNode

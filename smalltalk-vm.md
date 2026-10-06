@@ -154,7 +154,7 @@ A cell contains kind, mark, and six payload words a through f:
 |---|---|---|
 | 1 | Integer value | None |
 | 2 | Nil or boolean value | None |
-| 4 | Class ID, field list | b |
+| 4 | Class ID, field list, metaclass ID | b |
 | 5 | Method ID, PC, caller, enclosing activation, slots, operands | c, d, e, f |
 | 6 | Block method ID, captured activation | b |
 | 7 | Variable or operand value, next link | a, b |

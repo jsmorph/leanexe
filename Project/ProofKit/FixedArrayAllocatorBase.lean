@@ -251,7 +251,7 @@ def allocFrame (base : Locals) (heapTop capacity : UInt64) : Locals :=
 
 theorem allocStore_pages (st : Store Unit) (base capacity stride allocs : UInt64) :
     (allocStore st base capacity stride allocs).mem.pages = st.mem.pages := by
-  simp [allocStore, headerMem, Mem.write64_pages]
+  simp [allocStore, headerMem, Project.TalosPrelude.write64_pages]
 
 
 end Project.ProofKit.FixedArrayAllocator

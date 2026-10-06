@@ -60,7 +60,7 @@ theorem fixedArrayAllocBumpStore_pages (st : Store Unit)
     (base capacity stride : UInt64) :
     (fixedArrayAllocBumpStore st base capacity stride).mem.pages =
       st.mem.pages := by
-  simp [fixedArrayAllocBumpStore, fixedArrayHeaderMem, Mem.write64_pages]
+  simp [fixedArrayAllocBumpStore, fixedArrayHeaderMem, Project.TalosPrelude.write64_pages]
 
 end Project.ProofKit
 
