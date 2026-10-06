@@ -27,3 +27,22 @@ membership or count, collector reachability, VM instruction semantics, or WASM
 correctness. The Smalltalk driver now builds the proof imports and reports
 axioms for the main concrete theorems before running the existing execution
 checks.
+
+## Free-list allocation (2026-10-06)
+
+`FreeList.Chain` records the concrete next word of each free cell, valid
+handles, and distinct membership. `FreeList.Valid` additionally requires the
+actual count and exact agreement between zero tags and list membership.
+`allocate_valid` now proves that the checked allocator preserves shape and
+this complete free-list invariant while removing one head. Allocating a zero
+tag is excluded explicitly; otherwise completeness would be false.
+`allocate_empty_preserves_cells` checks the error path and proves that all
+cell words remain unchanged when the valid list is empty.
+
+Direct case analysis on a chain indexed by `read s 8` failed because dependent
+elimination attempted to resolve the array read against zero. The generic
+`chain_cons` and `chain_nil` inversion lemmas avoid that problem. The previously
+checked cell-preservation and register-effect lemmas then suffice for the
+allocation proof; no executable definition changed. These theorems assume
+free-list validity before allocation. Initialization and collection still
+need proofs that establish it.

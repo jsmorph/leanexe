@@ -127,4 +127,14 @@ theorem field_write_cell {s : Array UInt64} {cap : Nat} {h g k j v : UInt64}
     simp [eq, field, read_write_other _ _ _ _
       (cell_indices_distinct hs.2.1 hh hg hk hj ne)]
 
+@[simp] theorem fail_size (s : Array UInt64) (reason : UInt64) :
+    (fail s reason).size = s.size := by simp only [fail, write_size]
+
+theorem fail_read {s : Array UInt64} {cap : Nat} (hs : Shape s cap)
+    (reason j : UInt64) :
+    read (fail s reason) j = if j = 15 then reason else if j = 0 then 4 else read s j := by
+  have h0 := register_bound hs (show (0 : UInt64).toNat < 24 by decide)
+  have h15 := register_bound hs (show (15 : UInt64).toNat < 24 by decide)
+  simp only [fail, read_write, write_size, h0, h15]
+
 end Project.Smalltalk.Memory
