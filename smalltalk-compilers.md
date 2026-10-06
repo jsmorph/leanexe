@@ -1,59 +1,58 @@
-# Smalltalk compilers
+# Smalltalk compiler options
 
-The VM currently uses `tools/smalltalk-compile.mjs`, a small temporary compiler
-for workspace snippets. It does not compile SOM class files. The next compiler
-integration remains an adapter for CSOM's compiled methods and bytecodes.
+The compiler used by `tests/smalltalk/run.sh` is `tools/smalltalk-compile.mjs`.
+It accepts workspace snippets, not class files. Its output runs in the native
+Lean VM and the compiled WASM VM. There is no CSOM or PySOM adapter.
 
-Two real SOM implementations were tested before workspace cleanup. Those
-checkouts and logs were removed. The pins and results below record that earlier
-work; they are not new tests of the reconstructed Lean/WASM VM.
+## Earlier upstream runs
 
-| Implementation | Revision | Core library revision | Earlier result |
+CSOM and PySOM were tested before the workspace cleanup. Their checkouts and
+logs were removed. This table records the earlier reported results; none of
+these results establishes that our VM can run their compiled output.
+
+| Implementation | Revision | Core library revision | Earlier reported result |
 |---|---|---|---|
 | [CSOM](https://github.com/SOM-st/CSOM) | `70c19092ac71bdd863e2e8ed76498e1ab314fb14` | `5eac3287df98d54a72e4f04e0f8b5f53077da9a2` | HelloWorld, compiler probe, 100 tests / 445 assertions |
 | [PySOM](https://github.com/SOM-st/PySOM) | `50f0cee5684b11163243e39372b6d4617204bae2` | `a721b4ff6ecb1ade54e0afe0bd15a8e80e41af17` | HelloWorld, compiler probe, 221 tests / 1,197 assertions |
 
-Both projects have MIT licenses. The earlier CSOM run had five unsupported
-optional checks for large shifts, unsigned shifts, and Unicode; PySOM had two
-optional unsigned-shift checks. These are useful compiler references, not claims
-of complete Smalltalk compatibility.
+The earlier CSOM run reported five unsupported optional checks for shifts and
+Unicode; PySOM reported two optional unsigned-shift checks. These runs have not
+been repeated in the current checkout.
 
-Build CSOM with serial `make` from inside its checkout. Its generated platform
-header dependency caused an earlier parallel build to fail. Run PySOM with
-`PYTHON=python3 SOM_INTERP=BC ./som.sh`; the bytecode interpreter ran unchanged
-under Python 3.12.14. Its `-d` bootstrap disassembly failed, while normal
-compilation and execution worked.
+The recorded commands were serial `make` inside CSOM's checkout and
+`PYTHON=python3 SOM_INTERP=BC ./som.sh` for PySOM. The earlier CSOM parallel build
+failed on a generated-header dependency. PySOM ran with Python 3.12.14; its `-d`
+bootstrap disassembly failed. These are records of past runs, not current build
+instructions verified by this branch.
 
-The probe in `tests/smalltalk/examples/CompilerProbe.som` exercises fields,
-captured mutation, nested non-local returns, class-side methods, and an ordinary
-escaped block. It belongs to the upstream compiler tests; the temporary JS
-frontend deliberately rejects SOM class syntax.
+`tests/smalltalk/examples/CompilerProbe.som` tests fields, captured mutation,
+nested non-local returns, class-side methods, and an ordinary block called after
+its enclosing method returns. Our source compiler rejects this class syntax.
 
-## CSOM adapter plan
+## Proposed CSOM adapter
 
-CSOM's recursive-descent compiler emits sixteen classic SOM bytecodes. Export
-its instance/class-side methods, nested block methods, selector literals,
-argument/local counts, fields, and class relationships, then translate them to
-our immutable wordcode. CSOM has separate lexical argument and local indices;
-our VM combines them in slots with self at index zero.
+Export CSOM's compiled instance methods, class-side methods, nested block
+methods, selectors, argument/local counts, fields, and class relationships.
+Translate supported operations to the VM's UInt64 instruction array. CSOM uses
+separate argument and local indices; our VM places self, arguments, and locals
+in one slot list.
 
-| SOM bytecode | VM translation |
+| SOM operation | VM operation |
 |---|---|
 | DUP, POP | Duplicate, pop |
-| PUSH_LOCAL, PUSH_ARGUMENT | Load combined slot with lexical depth |
-| POP_LOCAL, POP_ARGUMENT | Store combined slot with lexical depth |
-| PUSH_FIELD, POP_FIELD | Receiver-field load/store |
-| PUSH_BLOCK | Anonymous method descriptor plus captured activation |
-| PUSH_CONSTANT, PUSH_GLOBAL | Supported literal or class-global reference |
-| SEND, SUPER_SEND | Selector ID, argument count, lexical defining owner |
-| RETURN_LOCAL, RETURN_NON_LOCAL | Local return, checked home return |
-| HALT | Controlled entry termination; specify before translating |
+| PUSH_LOCAL, PUSH_ARGUMENT | Load combined slot at the given enclosing depth |
+| POP_LOCAL, POP_ARGUMENT | Store combined slot at the given enclosing depth |
+| PUSH_FIELD, POP_FIELD | Load/store receiver field |
+| PUSH_BLOCK | Block method ID and captured activation |
+| PUSH_CONSTANT, PUSH_GLOBAL | Supported value or class ID |
+| SEND, SUPER_SEND | Selector ID, argument count, defining class |
+| RETURN_LOCAL, RETURN_NON_LOCAL | Local return, checked enclosing-method return |
 
-Reject unsupported string/symbol values, arrays, and large integers explicitly.
-Compare adapted examples between upstream CSOM, native Lean, and actual WASM
-with normal and stress GC. No adapter is implemented yet.
+Define entry termination before translating HALT. Reject strings, symbols,
+arrays, large integers, and other unsupported values explicitly. Compare each
+translated example with upstream CSOM, native Lean, and WASM, using ordinary
+and stress collection. This adapter has not been written or tested.
 
-Existing Squeak/Pharo image compatibility is outside this development: it would
-require their object formats, mutable classes/methods, contexts, processes,
-primitive contracts, and image loading. Our own heap snapshots could be added
-later if persistence becomes useful.
+Loading an existing Squeak or Pharo image is a separate task. It requires that
+system's object format, classes, methods, contexts, processes, primitives, and
+image loader. None is implemented by this VM.

@@ -1,28 +1,9 @@
 # Smalltalk VM
 
-This branch reconstructs the Smalltalk development lost during workspace cleanup.
-The VM and nonmoving GC are Lean functions compiled by leanexe to WebAssembly.
-`tools/smalltalk-compile.mjs` is a temporary source compiler for workspace snippets.
-The host allocates the input and arena arrays; execution stays inside WASM.
-
-The reconstruction passes the full `tests/smalltalk/run.sh` driver on Lean
-4.34.0-rc2 and Node 24.19.0:
-
-- 68 programs with ordinary and stress GC: 136 native executions.
-- 181 WASM checks, including 136 comparisons of every final arena word against
-  native Lean, 14 malformed programs, four atomic allocation failures, fuel resumption in both
-  GC modes, and 25 mixed
-  heap graphs checked against an independent reachability oracle.
-- 19 invalid source inputs rejected by the compiler.
-- CLI examples return 1000 for `count.st` and 42 for `escape.st` under stress GC;
-  eight invalid-option cases and zero-fuel rejection pass.
-
-The emitted module is 25,208 bytes and has no imports. Boot, execution, and
-collection keep the arena address stable and allocate no additional host arrays;
-execution and collection do not grow WASM memory in the tested corpus. The
-10,000-iteration loop completes in an arena of 24 cells with both GC modes.
-The module SHA-256 is
-`423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
+The VM and garbage collector are written in Lean and compiled to WebAssembly
+by leanexe. JavaScript compiles workspace source, copies the instruction array
+into WASM memory, calls the VM, and reads the result. It does not execute the
+Smalltalk instructions.
 
 ## Run
 
@@ -32,149 +13,199 @@ node tools/smalltalk-run.mjs build/smalltalk/smalltalk.wasm tests/smalltalk/exam
 node tools/smalltalk-run.mjs build/smalltalk/smalltalk.wasm tests/smalltalk/examples/escape.st --stress
 ```
 
-Every Lean/Lake process runs through `tools/leanrun`, serially. Local mode may be
-used only with the user's explicit authorization, as specified in `AGENTS.md`.
-The host requires Node with WebAssembly support. There is no Rust implementation.
+The driver uses the pinned Lean toolchain through `tools/leanrun`, one process
+at a time. Follow `AGENTS.md` for local execution. Node must support WebAssembly.
 
-The driver creates the corpus, checks compiler rejection cases, builds the Lean
-proofs and native runner, emits and decodes the WASM, and compares every resulting
-arena word with native Lean. Each program runs with ordinary and stress GC.
-The JS test also checks collection against an independent graph reachability
-oracle, exact free-list membership and reuse, stable arena addresses, host allocation accounting, and absorbing error
-and finished states.
+The CLI accepts `--stress`, `--capacity N`, and `--fuel N`. Capacity and fuel
+must be integers from 0 through 18,446,744,073,709,551,615. Unknown options,
+missing values, negative values, and values above that range are rejected before
+allocation. Capacity
+is clamped by the VM to 8 through 1,048,576 cells. Zero fuel executes no
+instructions; the CLI reports an unfinished run as `instruction fuel exhausted`.
 
-## Supported language and VM
+## Checked results
 
-The VM supports class and metaclass tables, inherited lookup, receiver fields,
-ordinary sends, lexical super sends, local variables, captured mutable slots,
-blocks with arguments, local returns, and non-local returns. Anonymous block
-descriptors retain their lexical defining class, including for super sends.
+The full driver passes with Lean 4.34.0-rc2 and Node 24.19.0:
 
-An ordinary escaped block can execute after its home returns. A non-local return
-requires its home activation to be live on the current dynamic chain; otherwise
-it reports error 7. Retiring an activation clears its dynamic caller and operand
-stack but preserves its lexical parent and slots. Blocks retain the home object
-itself, preventing a reused heap handle from reviving an expired home.
+| Check | Result |
+|---|---|
+| 68 programs with ordinary and stress GC | 136 native executions |
+| The same executions in WASM | 136 exact comparisons of the final arena |
+| Invalid program headers and method/class records | 14 rejections |
+| Failed literal, object, activation, and boot allocation | 4 failures without partial construction |
+| Zero fuel followed by split execution | 2 checks, one for each GC mode |
+| Mixed heap graphs | 25 checks of reachable cells, free-list membership, and reuse |
+| Invalid source | 19 compiler rejections |
+| CLI | 2 examples, 8 invalid options, and zero-fuel rejection |
 
-Integer primitives use signed 64-bit values. Overflow and wrong operand types
-execute the primitive method's bytecode fallback; the minimal library returns
-nil. Identity compares integer values and represented class IDs, and otherwise
-uses stable object handles. Nil and booleans are canonical objects.
+There are 181 WASM checks in total. The CLI examples return 1000 and 42.
+A 10,000-iteration loop completes in 24 cells with both GC modes. The comparison
+regressions complete in 11 cells; they previously failed because the VM reserved
+two cells for an operation that allocated one.
 
-The temporary compiler supports integers, nil/booleans, self, core class globals,
-local declarations, assignment, parentheses, message precedence, blocks,
-arguments, captured locals, comments, and `^`. Assignments leave their value.
-Workspaces and blocks return their last expression; an empty body returns nil.
-The library provides zero- and one-argument block calls, allocation, arithmetic,
-identity, explicit collection, conditionals, and `whileTrue:`. Control methods
-are ordinary VM bytecode. CLI fuel and capacity options must be unsigned
-64-bit integers; invalid or unknown options are rejected before allocation.
+The emitted module is 25,208 bytes and has no imports. Its SHA-256 is
+`423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
+The tests check that `boot`, `run`, and `collect` keep the arena address unchanged,
+allocate no additional WASM arrays after initialization, and do not grow memory.
 
-Source class/method files, cascades, strings, symbols, arrays, large integers,
-reflection, processes, images, and graphics are outside this first subset.
-The assembler exercises classes, fields, metaclasses, inheritance, and super
-sends directly. There is no tail-call optimization.
+## Source compiler and VM support
 
-## Immutable program format
+`tools/smalltalk-compile.mjs` compiles workspace snippets. It accepts signed
+64-bit integers, nil, booleans, self, core class names, local declarations,
+assignment, parentheses, comments, blocks, block arguments, captured variables,
+and `^`. Unary messages are evaluated before binary messages, and binary
+messages before keyword messages. Binary messages are evaluated left to right.
+Assignment leaves its value. A workspace or block returns its last expression;
+an empty body returns nil.
 
-The borrowed program is an array of UInt64 words. IDs start at 1; PCs start at 0.
-Its eight-word header is:
+Inside a block, `^` returns from the enclosing method where the block was
+written. That method must still be active on the current call chain; otherwise
+the VM reports error 7. A block that uses an ordinary return can run after its
+enclosing method has returned. Captured variables remain mutable. A block
+keeps the activation it captured, so collecting and reusing other cells cannot
+turn a completed enclosing method into an active one.
+
+The supplied library implements `new`, `+`, `-`, `<`, `=`, `==`, `value`,
+`value:`, `collect`, `ifTrue:`, `ifFalse:`, and `whileTrue:`. The conditional and
+loop methods are VM instructions, not host operations. Integer overflow and
+wrong arithmetic operand types run the primitive method's instruction fallback;
+the supplied fallbacks return nil. Integer identity compares values, class
+identity compares represented class IDs, and other identity compares handles.
+
+The VM also supports classes, metaclasses, inherited methods, instance fields,
+super sends, and blocks with multiple arguments. These are tested with the
+instruction builder in `tools/smalltalk-program.mjs`. The source compiler does
+not accept class or method definitions. Its library supplies block calls with
+zero or one argument.
+
+Strings, symbols, arrays, arbitrary-size integers, reflection, processes,
+Smalltalk images, and graphics are not implemented. There is no tail-call
+optimization. No CSOM or PySOM compiler adapter is implemented; see
+[smalltalk-compilers.md](smalltalk-compilers.md).
+
+## Program and entry points
+
+Use `init`, `boot`, `run`, `step`, `collect`, and `resultWord`. The other exported
+functions are implementation helpers with unchecked preconditions. Forged
+pointers and arbitrary arena contents are not supported inputs.
+
+Keep the program unchanged during execution, and use the same program for every
+call on an arena. `boot` requires a fresh arena. `run` executes at most its fuel
+count of instructions and returns the arena even if execution is unfinished.
+It can be called again to continue. `step` and `run` leave finished and failed
+states unchanged. Collection leaves failed states unchanged.
+
+The program is an array of UInt64 words. Class and method IDs start at 1.
+Instruction positions (PCs) start at 0. The eight-word header is:
 
 | Word | Meaning |
 |---|---|
-| 0–2 | Class, method, instruction counts |
+| 0, 1, 2 | Class, method, instruction counts |
 | 3 | Entry method ID |
-| 4–7 | Nil, boolean, integer, block class IDs |
+| 4, 5, 6, 7 | Nil, boolean, integer, block class IDs |
 
-Each class has four words: parent ID, metaclass ID, total inherited field count,
-and zero. Parent IDs are smaller than child IDs; metaclass links may cycle.
-Each method has six: lexical owner class, selector ID, arity including self,
-local count, entry PC, primitive ID. A block has selector 0. Each instruction
-has four: opcode, operands a and b, and zero.
+A class record has four words: parent ID, metaclass ID, total field count, zero.
+A parent ID is zero or smaller than its child's ID. Field counts include
+inherited fields and cannot decrease from parent to child. Metaclass IDs must
+name classes; metaclass links may cycle.
 
-| Opcode | Operation |
-|---|---|
-| 0 | Integer literal |
-| 1 | Nil/false/true, operand 0/1/2 |
-| 2, 3 | Load/store slot: index and lexical depth |
-| 4, 5 | Load/store receiver field |
-| 6, 7 | Block descriptor/class literal |
-| 8, 9 | Duplicate/pop |
-| 10, 11 | Send/super send: selector and argument count excluding self |
-| 12, 13 | Local/non-local return |
-| 14, 15 | Jump/branch on false to absolute PC |
+A method record has six words: defining class ID, selector ID, argument count
+including self, local count, entry PC, primitive ID. Blocks have selector zero.
+The entry method has a nonzero selector and argument count one. Counts and field
+or local sizes are bounded by 1,048,576; class, method, instruction, and argument
+counts must be positive. `boot` checks these records and the exact array length:
+`8 + 4 * classes + 6 * methods + 4 * instructions`.
 
-`boot` validates the exact program size, count bounds, hierarchy, metaclasses,
-method descriptors, and entry arity. Execution validates instruction operands.
-The host must keep the program immutable and pair an arena with the same program.
-Internal helpers are exported by leanexe and are trusted implementation entry
-points; arbitrary forged pointers and arenas are not a supported FFI.
+Each instruction has four words: opcode, operand a, operand b, zero. Unused
+operands must be zero. `step` checks the current instruction; `boot` does not
+validate all instructions. Methods record an entry PC, not a body length.
+Jumps use the global instruction table. The compiler or builder must emit
+returns to end methods.
 
-## Heap and GC
-
-The arena contains 24 register words, eight words per cell, and one mark-worklist
-word per cell: `24 + 9 * capacity`. Capacity is clamped to 8…1,048,576. Handles
-1, 2, and 3 are permanent nil, false, and true. Handle 0 means absent.
-
-Each cell contains kind, mark, and six payload words a…f.
-
-| Kind | Payload | Traced fields |
+| Opcode | Operation | Operands |
 |---|---|---|
-| 1 | Integer word | None |
-| 2 | Nil/bool value | None |
+| 0 | Integer literal | a: 64-bit value |
+| 1 | Nil, false, true | a: 0, 1, 2 |
+| 2, 3 | Load, store variable | a: slot index; b: enclosing-block depth |
+| 4, 5 | Load, store instance field | a: field index |
+| 6, 7 | Create block, class value | a: method ID, class ID |
+| 8, 9 | Duplicate, pop | None |
+| 10, 11 | Send, super send | a: selector ID; b: argument count excluding self |
+| 12, 13 | Local, non-local return | None |
+| 14, 15 | Jump, branch on false | a: absolute PC |
+
+Slot zero is self; arguments and locals follow. A super send starts at the
+parent of the method's defining class. A block retains that defining class.
+Primitive IDs are: 0 instruction body; 1 new; 2 add; 3 subtract; 4 less-than;
+5 numeric equality; 6 identity; 7 block call; 8 collect.
+
+A JavaScript call returns an `i64` as a signed BigInt. Use `BigInt.asUintN(64, x)`
+for a UInt64 comparison or `BigInt.asIntN(64, x)` to display an integer result.
+
+## Heap and collection
+
+One arena array contains 24 register words, eight words per cell, and one
+worklist word per cell: `24 + 9 * capacity` words. Handles are cell indices.
+Handle zero means absent. Handles 1, 2, and 3 are permanent nil, false, and true.
+
+A cell contains kind, mark, and six payload words a through f:
+
+| Kind | Payload | Fields holding handles |
+|---|---|---|
+| 1 | Integer value | None |
+| 2 | Nil or boolean value | None |
 | 4 | Class ID, field list | b |
-| 5 | Method, PC, caller, lexical parent, slots, operands | c, d, e, f |
-| 6 | Block method, captured activation | b |
-| 7 | Slot/operand value, next link | a, b |
-| 8 | Represented class, metaclass | None |
+| 5 | Method ID, PC, caller, enclosing activation, slots, operands | c, d, e, f |
+| 6 | Block method ID, captured activation | b |
+| 7 | Variable or operand value, next link | a, b |
+| 8 | Represented class ID, metaclass ID | None |
 
-The roots are the three canonical objects, current activation, final result,
-and external-root register 16. Registers 19–23 are construction scratch and are
-empty at collection safepoints. The collector marks before enqueueing, so each
-cell is queued and scanned at most once. Sweep rebuilds the free list and
-reclaims dead cycles. It does not move cells or allocate a second heap.
+Collection starts from nil, false, true, the current activation, the result,
+and external-root register 16. It follows only the handle fields in the table;
+class IDs, method IDs, PCs, and integer values are not references. A cell is
+marked before entering the worklist, so it enters at most once. Sweep clears
+unmarked cells and rebuilds the free list. It reclaims unreachable cycles,
+keeps live cells at their existing indices, and allocates no second heap.
 
-Every allocating transition reserves its whole allocation before changing roots.
-No GC occurs during construction. Out of memory installs no partial object or
-activation. Reservation is conservative: it may fail even when retiring a frame
-first would release enough space.
+Each allocating instruction reserves all the cells it needs before changing
+roots. Collection can happen during reservation, but not during construction.
+Register 19 holds a temporary list during construction and is cleared before
+the instruction returns. No partially constructed object or activation is
+installed when reservation fails. Reservation is conservative: cells made
+unreachable later in the instruction are still considered live during its check.
 
-Registers include phase (0), current activation (2), result (7), free-list head
-and count (8–9), last allocation (10), GC count (11), stress flag (12), peak live
-cells (13), capacity (14), error (15), external root (16), allocation count (17),
-and worklist count (18). Phase 0 runs, 3 finishes, and 4 fails. Fuel exhaustion
-leaves a resumable running state; the CLI reports it as an error.
+Retiring an activation clears its caller and operands and marks its PC as
+completed. It retains its enclosing activation and variable slots for blocks
+that captured it.
 
-Errors: 1 bad PC/activation; 2 bad slot; 3 corrupt heap/GC; 4 stack underflow;
-5 missing selector; 6 arity; 7 invalid non-local return; 8 non-boolean branch;
-9 out of memory; 10 invalid program/instruction. `step` and `run` preserve finished and failed states. Collection preserves failed
-states. `boot` accepts only a fresh, running arena.
+Registers: 0 phase; 2 current activation; 7 result; 8 free-list head; 9 free count;
+10 last allocation; 11 collection count; 12 stress flag; 13 peak cell use;
+14 capacity; 15 error; 16 external root; 17 allocation count; 18 worklist count;
+19 construction list. Other registers are unused. Phase 0 runs, 3 finishes,
+and 4 fails. Stress mode collects before each allocating instruction and during
+boot.
 
-## Proof boundary
+Errors: 1 invalid PC or activation; 2 invalid variable/field slot; 3 corrupt
+heap during collection; 4 operand stack underflow; 5 missing method; 6 wrong
+argument count; 7 invalid non-local return; 8 non-boolean condition; 9 out of
+memory; 10 invalid program or instruction.
 
-`LeanExe/Smalltalk/Control.lean` specifies first-method lookup, bounded inherited
-lookup, and live-home unwinding. `Project/Smalltalk/Control.lean` relates the
-functions to inductive specifications and states determinism and retirement
-laws, including the exact retired prefix through the live home activation.
-These declarations concern separate list-model functions. No theorem yet links
-them to concrete `Runtime.lookup`, `Runtime.ret`, or the arena collector. They
-pass Lean checking. An axiom audit of the lookup and unwind
-correctness laws reports only `propext`; the finished-home rejection law uses no
-axioms.
+## Proofs and remaining limits
 
-There is no complete concrete VM/GC refinement theorem or frontend correctness
-theorem. This iteration tests the emitted WASM; it does not prove a WASM artifact
-theorem. Existing Smalltalk image compatibility remains outside scope.
+`LeanExe/Smalltalk/Control.lean` defines separate list models for first-method
+lookup, inherited lookup with a limit, and return through a live method
+activation. `Project/Smalltalk/Control.lean` proves that those functions match
+their stated rules, give only one result for the same input, and retire exactly
+the calls through the return target. An axiom audit of the main lookup and return
+laws reports only `propext`; the completed-first-frame rejection law uses none.
 
-## Review limits
+Those proofs do not refer to `Runtime.lookup`, `Runtime.ret`, or the arena
+collector. There is no theorem connecting the concrete VM to those models,
+no collector correctness theorem, no source compiler correctness theorem, and
+no proof of the emitted WASM module. The checks above are execution tests.
 
-Method lookup currently runs its full `classes * (methods + 1)` loop, even after
-finding a method. Home and dynamic-chain searches similarly run their full arena
-bound. This is simple and adequate for the small test programs; instruction fuel
-does not separately budget these internal scans. Before scaling to large class
-tables, stop these scans when they finish and measure send cost.
-
-The temporary compiler is exercised by expected-result and precedence cases,
-but there is no frontend correctness proof or real-compiler adapter. The SOM
-results in `smalltalk-compilers.md` are historical upstream runs, not tests of
-the current VM.
+Lookup runs its full `classes * (methods + 1)` loop even after finding a method.
+Home and call-chain searches run their full capacity bound. Fuel counts VM
+instructions and does not separately limit these scans; one instruction can
+perform a large scan. These searches need early stopping before scaling to
+large programs.
