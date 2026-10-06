@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`52e6549811bbad606bc1c7df2764d08bd4dec680`.
+`e0f7810708a273802f4f06d148030526cfe1cf57`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -71,6 +71,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Complete object construction | Actual `newReady` stores the class and metadata words, produces the exact requested field-value list, clears scratch register 19, preserves old allocated cells and types, and consumes exactly `fields + 1` cells | `ObjectConstruction.lean` |
 | Argument selection and single binding | Accepted receiver depth establishes every preceding argument link and value; send and receiver-only entry select valid values; actual `bindOne` has the checked one-cell prepend effects | `ArgumentLinks.lean`, `ArgumentBinding.lean` |
 | Complete binding loop | Argument walks and selected values are preserved; every slot is built in increasing index order; exact free count, old cells, pointer types, and non-construction registers are preserved | `BindingPreservation.lean`, `BindingLoop.lean` |
+| Complete activation construction | Actual `enterReady` stores method, entry PC, caller, lexical parent, slots, empty operand stack, and current root; exact natural budget, old cells, types, and registers are checked | `ActivationAllocation.lean`, `ActivationConstruction.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -97,18 +98,19 @@ Recent pushed checkpoints:
 | `cb1f5bc9` | Complete field-building loop |
 | `1a905957` | Complete actual object construction |
 | `52e65498` | Actual argument guards and single binding |
+| `e0f78107` | Complete binding loop and slot order |
 
 ## Current increment
 
-The complete actual binding loop passes the combined build and axiom audit.
-Argument walks and selected values stay unchanged through construction. The
-loop visits every slot, builds the exact increasing-index slot-value list,
-preserves old allocated cells and pointer types, and consumes exactly
-`arity + locals` cells. Its natural-number budget prevents word wrap and leaves
-one free cell for final activation allocation. Send and entry inputs are
-derived from the already checked argument guard and receiver-only cases.
+Complete actual `enterReady` passes the combined build and axiom audit.
+The checked binding loop and a separate one-cell activation allocation establish
+the method, entry PC, caller, lexical parent, exact slot-value list, empty operand
+stack, current root, cleared register 19, and consumption of exactly
+`arity + locals + 1` cells. Original allocated cells and pointer types are
+preserved. The theorem states a natural budget, binding inputs, and typed caller
+and lexical pointers. Public calls and boot must establish these assumptions.
 
-Next is final activation allocation. Dispatcher composition of returns,
+Next is boot and public call construction across reservation. Dispatcher composition of returns,
 exact return path conditions, boot, lookup, and the complete execution invariant
 remain unfinished. All checked proof files are included in this increment; no
 full VM correctness claim is made.
@@ -128,8 +130,7 @@ full VM correctness claim is made.
    the allocation counts, temporary register 19, constructed field/slot order,
    caller and lexical captures, and the final current activation. The original
    reservation must supply every allocation in the construction.
-   Complete object construction and the activation binding loop are checked.
-   Final activation allocation remains.
+   Complete object and activation construction are checked.
    Argument-link validity from the actual receiver-depth guard is now checked.
    Preserve canonical value
    contents as part of the complete state invariant, not just their allocation.
@@ -222,7 +223,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-binding-loop-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-activation-construction-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

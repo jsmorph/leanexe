@@ -118,5 +118,8 @@ run_cmd do
 #print axioms Project.Smalltalk.BindingLoop.binding_index
 #print axioms Project.Smalltalk.BindingLoop.binding_values
 #print axioms Project.Smalltalk.BindingLoop.binding_eq_pair
+#print axioms Project.Smalltalk.ActivationAllocation.publish_valid
+#print axioms Project.Smalltalk.ActivationAllocation.allocate_effect
+#print axioms Project.Smalltalk.ActivationConstruction.enterReady_effect
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

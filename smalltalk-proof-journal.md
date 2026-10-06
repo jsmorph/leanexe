@@ -629,3 +629,28 @@ lemma required rewriting the natural index before word conversion rather than
 asking arithmetic to prove a word equality. Subsequent focused checks passed.
 No limits or executable definitions changed. The
 combined build and axiom audit pass. Final activation allocation is next.
+
+## Complete activation construction (2026-10-06)
+
+`ActivationAllocation` checks typed frame references and the final publication
+of the current root. Its effect specifies every frame payload word, exact
+slot values, zero operand stack, cleared register 19, unchanged old allocated
+cells and other registers, and consumption of one cell. The slot list survives
+allocation and both register writes. The new current root is allocated before
+publication.
+
+`ActivationConstruction.enterReady_effect` connects the actual constructor
+to the checked binding loop and this allocation. It establishes exact method,
+PC, caller, lexical parent, slots, and current activation, together with heap
+and pointer-type preservation and arity plus locals plus one consumed cells.
+Public call and boot assumptions remain separate obligations.
+
+The first combined proof had an unresolved implicit argument and a count
+fact whose let-bound arity and locals were opaque to arithmetic; elaboration
+also reached the default heartbeat limit. Splitting publication and one-cell
+allocation into checked reusable lemmas removed the large elaboration boundary.
+The composition uses explicit method-count facts and allocation effects.
+A structure field was renamed to avoid shadowing the method word, and a
+register-write proof needed its written value supplied explicitly. The final
+focused checks, combined build, and axiom audit pass. Limits and executable
+definitions are unchanged.
