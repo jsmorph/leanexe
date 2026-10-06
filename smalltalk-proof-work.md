@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`e7ffde84202b5d3948e035335245f520daefd170`.
+`5ecdaa6e7f91b91395362f7b867c3b61108026fd`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -63,6 +63,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Literals | Actual two-cell integer, class, and captured-block construction preserves heap validity | `LiteralHeap.lean` |
 | Twelve instruction cases | Heap preservation through actual `execute` and `step` for opcodes 0–9, 14, and 15, including validation and stopped-state branches | `InstructionHeap.lean`, `ExecuteHeap.lean` |
 | Pointer cell types | Caller/lexical/capture pointers name activations; field/slot/operand/next pointers name links; initialization, collection, reservation, and checked writes preserve these requirements | `PointerTypes.lean`, `TypedCollection.lean` |
+| Typed unwind | Retirement and the bounded unwind loop preserve heap validity, pointer types, caller and value validity, and registers under the stated cursor/caller assumptions | `FrameTypes.lean`, `UnwindHeap.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -84,10 +85,10 @@ Recent pushed checkpoints:
 | `0af581f3` | Literal construction and twelve actual instruction/step cases |
 | `e7ffde84` | Pointer cell types through initialization and collection |
 
-## Current uncommitted work
+## Current increment
 
-Two files are written and have passed focused Lean checks. They are not yet
-imported by the proof umbrella, audited as an increment, committed, or pushed:
+This increment adds both previously pending files to the proof umbrella and
+axiom audit:
 
 - `Project/Smalltalk/FrameTypes.lean`: retirement preserves pointer cell types
   and the validity of previously allocated values and typed handles.
@@ -95,14 +96,15 @@ imported by the proof umbrella, audited as an increment, committed, or pushed:
   heap validity, pointer cell types, the caller's type, the returned value,
   and all registers. Its initial cursor and nonzero caller must be activations.
 
-The immediate instruction is to commit and push this document before starting
-another proof. These two proof files remain a separate pending increment.
+Their combined build and axiom audit pass. They are included in this checked
+increment with this document. Next is allocation typing and complete return
+preservation; no full VM correctness claim is made.
 
 ## Next work, in order
 
-1. Add the two pending files to `Proofs.lean`, run the combined build and axiom
-   audit, add their results and assumptions to the journal and VM document,
-   then commit and push them.
+1. Frame retirement typing and bounded unwind preservation are checked and
+   included in this increment. Keep the work document current with every
+   subsequent proof commit.
 2. Prove allocation preserves `PointerTypes.Valid` when new typed pointers
    match their required types. Use the existing exact allocation effects;
    do not introduce a second allocator or change collection during construction.
@@ -204,7 +206,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-pointer-types-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-unwind-types-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

@@ -482,3 +482,18 @@ failure rule also needed the intermediate write's shape rather than the final
 failure array's shape. Initialization uses the existing checked `init_tag`
 result instead of repeating the seeding arithmetic. The combined build and
 axiom audit pass. No executable definitions changed.
+
+## Typed retirement and bounded unwind (2026-10-06)
+
+`FrameTypes` checks retirement preserves every cell tag, typed pointers, and
+allocated values. `UnwindHeap.Holds` states heap validity, pointer types,
+activation type of the cursor and caller, validity of the returned value, and
+unchanged registers. The actual unwind step preserves this invariant by taking
+the typed caller pointer before retiring the cursor. The bounded loop preserves
+it for any fuel. This does not assume an acyclic caller chain and does not
+replace the represented-prefix theorem for exact retirement.
+
+Both focused checks passed without revisions. They are now imported in the
+proof umbrella, and the combined build and axiom audit pass. The work document
+records this increment and the remaining return and allocation obligations.
+No executable definitions changed.

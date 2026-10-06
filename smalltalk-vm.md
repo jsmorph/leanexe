@@ -253,6 +253,13 @@ the required type. `TypedCollection` proves initialization establishes them
 and actual collection, reservation, and failure preserve them. The VM has not
 yet been proved to preserve them through every construction and instruction.
 
+`FrameTypes.lean` checks that retirement preserves pointer cell types and
+previously allocated values. `UnwindHeap.unwind_preserves` checks the actual
+bounded unwind loop. It preserves heap validity, pointer types, caller type,
+the returned value, and registers when its initial cursor and nonzero caller
+are activations. This preservation theorem permits repeated caller links;
+the separate represented-prefix theorem establishes exact return retirement.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the
