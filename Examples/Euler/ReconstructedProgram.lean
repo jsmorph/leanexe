@@ -8,11 +8,14 @@ center cell's faces.  A reconstruction whose faces fail the state checks halves 
 `trials` times, and then uses the cell average.  Signal speeds and the Courant number are bounded by
 outward rounding: each operation's binary64 result is moved one step toward the bound.
 
-The arithmetic follows the earlier system's word-level model operation for operation, as the
-first-order solver does, and shares its initial cells, conservative update, flux components,
-acceptance test, timestep proposal, and output.  Each checked function computes every value and
-tests the conjunction of the earlier system's checks once, at the end; the float operations are
-total, so the returned values and statuses are the earlier system's.
+The solver shares the first-order solver's initial cells, state guard, conservative update, flux
+components, acceptance test, timestep proposal, and output.  Its float arithmetic performs, in the
+same order, the binary64 operations of the solver model at commit `eef07963`,
+`proofs/talos/lean/Project/EulerReconstructed/Control.lean` with the files it imports.  Where that
+model tests a check before computing the next value, each checked function here computes every
+value and tests the conjunction of the checks once, at the end, which changes no result because the
+float operations are total.  The state guard differs from the model's in its energy test, as
+`Examples/Euler/Program.lean` describes.
 -/
 
 namespace Examples.Euler
