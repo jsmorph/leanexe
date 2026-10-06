@@ -20,7 +20,7 @@ for(const test of cases) for(const stress of [0,1]) {
   if(!test.error) {
     assert.equal(words[0],3n,`${test.name}: did not finish`);
     assert.equal(cell(words,words[7])[0],BigInt(test.kind));
-    assert.equal(x.resultWord(state),BigInt(test.expected));
+    assert.equal(BigInt.asUintN(64,x.resultWord(state)),BigInt(test.expected));
   }
   state=x.collect(state); words=h.words(state);
   assert.equal(state,pointer,`${test.name}: arena moved`);
