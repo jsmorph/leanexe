@@ -23,3 +23,9 @@ run_cmd do
 #print axioms Project.Smalltalk.FreeList.allocate_empty_preserves_cells
 #print axioms Project.Smalltalk.Sweep.finishCollection_preserves_marked
 #print axioms Project.Smalltalk.SweepList.finishCollection_freeList
+#print axioms Project.Smalltalk.MarkMemory.markReady_preserves_payload
+#print axioms Project.Smalltalk.MarkMemory.markReady_work
+#print axioms Project.Smalltalk.MarkMemory.mark_new
+#print axioms Project.Smalltalk.Clear.cleared_marks
+#print axioms Project.Smalltalk.Clear.cleared_payload
+#print axioms Project.Smalltalk.Graph.sweep_correct

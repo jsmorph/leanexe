@@ -69,3 +69,28 @@ audit now permits these three standard Lean axioms and still rejects every
 other axiom, including `sorryAx`. This is recorded in the public proof limits;
 the executable implementation and its tests are unchanged. The sweep theorem
 does not establish reachability or correctness of the full `collect` call.
+
+## Clearing, enqueue, and reachability specification (2026-10-06)
+
+`cleared` is the exact first loop of `collectReady`, without a new executable
+implementation. Its checked results establish zero marks, unchanged payloads
+and registers, and preserved shape. The same counted-loop lemma used for
+sweeping proves that clearing reaches every handle. One failed arithmetic
+goal treated a pair projection as a separate number; reducing the projection
+before `omega` resolved it.
+
+The worklist address lemmas establish bounds, distinct indices, and separation
+from all registers and cell words. `markReady_read` checks the three concrete
+writes. Its payload and worklist results prove that enqueue marks the selected
+cell, stores its handle at the old count, increments that count, and preserves
+existing worklist entries and every payload. `mark_new` and `mark_old` connect
+these facts to the checked `mark` entry point. Implicit worklist-index arguments
+had to be supplied before arithmetic tactics could discharge their bounds.
+
+`Graph.Reachable` is an independent path definition from the six actual roots.
+Its edges include only the pointer fields, not scalar identifiers or integer
+payloads. `sweep_correct` composes exact marking with the concrete sweep to
+preserve reachable payloads and free exactly the unreachable handles. The
+remaining marking proof must establish exact marking, bounded queue use, and
+termination of the actual scan loop. The conditional theorem does not prove
+those obligations. All new theorems pass the axiom audit.

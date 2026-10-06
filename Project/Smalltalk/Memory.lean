@@ -149,4 +149,73 @@ theorem successor_handle {cap : Nat} {i : UInt64}
   simp only [Handle, successor_toNat bound]
   omega
 
+theorem kind_eq_field {s : Array UInt64} {cap : Nat} {h : UInt64}
+    (hs : Shape s cap) (hh : Handle cap h) : kind s h = field s h 0 := by
+  have nonzero : h ≠ 0 := by
+    intro zero
+    have positive := hh.1
+    rw [zero] at positive
+    exact (by decide : ¬ 1 ≤ (0 : UInt64).toNat) positive
+  have within : ¬ read s 14 < h := by
+    simp only [UInt64.lt_iff_toNat_lt, hs.2.2.2]
+    have := hh.2
+    omega
+  simp only [kind, Bool.or_eq_true, beq_iff_eq, decide_eq_true_eq, nonzero, within,
+    false_or, ite_false]
+
+theorem work_index_toNat {s : Array UInt64} {cap : Nat} {n : UInt64}
+    (hs : Shape s cap) (hn : n.toNat ≤ cap) :
+    (24 + 8 * read s 14 + n).toNat = 24 + 8 * cap + n.toNat := by
+  have mult : (8 * read s 14).toNat = 8 * cap := by
+    rw [UInt64.toNat_mul, hs.2.2.2]
+    simp only [UInt64.reduceToNat]
+    apply Nat.mod_eq_of_lt
+    have := hs.2.1
+    omega
+  have base : (24 + 8 * read s 14).toNat = 24 + 8 * cap := by
+    rw [UInt64.toNat_add, mult]
+    simp only [UInt64.reduceToNat]
+    apply Nat.mod_eq_of_lt
+    have := hs.2.1
+    omega
+  rw [UInt64.toNat_add, base]
+  apply Nat.mod_eq_of_lt
+  have := hs.2.1
+  omega
+
+theorem work_index_bound {s : Array UInt64} {cap : Nat} {n : UInt64}
+    (hs : Shape s cap) (hn : n.toNat < cap) :
+    (24 + 8 * read s 14 + n).toNat < s.size := by
+  rw [work_index_toNat hs (by omega), hs.2.2.1]
+  omega
+
+theorem work_index_not_register {s : Array UInt64} {cap : Nat} {n r : UInt64}
+    (hs : Shape s cap) (hn : n.toNat ≤ cap) (hr : r.toNat < 24) :
+    24 + 8 * read s 14 + n ≠ r := by
+  intro eq
+  have same := congrArg UInt64.toNat eq
+  rw [work_index_toNat hs hn] at same
+  omega
+
+theorem work_index_not_cell {s : Array UInt64} {cap : Nat} {n h k : UInt64}
+    (hs : Shape s cap) (hn : n.toNat ≤ cap) (hh : Handle cap h) (hk : k.toNat < 8) :
+    24 + 8 * read s 14 + n ≠ address h + k := by
+  intro eq
+  have same := congrArg UInt64.toNat eq
+  rw [work_index_toNat hs hn, cell_index_toNat hs.2.1 hh hk] at same
+  have := hh.1
+  have := hh.2
+  omega
+
+theorem work_index_eq_iff {s : Array UInt64} {cap : Nat} {n m : UInt64}
+    (hs : Shape s cap) (hn : n.toNat ≤ cap) (hm : m.toNat ≤ cap) :
+    24 + 8 * read s 14 + n = 24 + 8 * read s 14 + m ↔ n = m := by
+  constructor
+  · intro eq
+    have same := congrArg UInt64.toNat eq
+    rw [work_index_toNat hs hn, work_index_toNat hs hm] at same
+    apply UInt64.toNat_inj.mp
+    omega
+  · intro eq; rw [eq]
+
 end Project.Smalltalk.Memory

@@ -219,6 +219,18 @@ the list result also requires nonzero tags on marked cells. They allow any
 contents in unmarked cells and any old free-list order. They do not yet prove
 that marking identifies exactly the reachable cells.
 
+`Project/Smalltalk/Clear.lean` proves that the actual clearing loop zeroes every
+mark and preserves payloads, registers, and arena shape. `MarkMemory.lean`
+checks enqueue's exact writes, worklist bounds, unchanged payloads, and the
+existing-mark and new-mark branches. The new-mark result assumes worklist space.
+
+`Project/Smalltalk/Graph.lean` defines reachability from the six roots through
+the pointer fields listed above. `sweep_correct` connects the concrete sweep
+to that definition: given exact marking, it preserves reachable payloads and
+builds a valid free list containing exactly the unreachable handles. This is
+conditional; there is no proof yet that the complete marking loop supplies
+exact marking or always has worklist space.
+
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
 including its dependencies, and permits only Lean's standard axioms
 `propext`, `Quot.sound`, and `Classical.choice`. It rejects admitted proofs and
