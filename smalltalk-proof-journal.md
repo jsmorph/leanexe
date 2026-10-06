@@ -298,3 +298,18 @@ lemma derives a nonempty free list from one available cell and removes that
 elaboration boundary. The parameter name `prefix` also failed because it is
 a Lean keyword; the declarations use `unwindPath`. No limits were raised and
 no executable definitions changed.
+
+## Full control-proof driver check (2026-10-06)
+
+The full Smalltalk driver passed with the accumulated collector, reservation,
+and concrete return proofs: 136 native executions, 181 WASM checks including
+136 exact array comparisons, 19 rejected compiler inputs, and all CLI checks.
+The emitted module remains 25,208 bytes with SHA-256
+`423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
+The build and axiom audit pass. This is execution evidence for emitted WASM,
+not a proof that compilation preserves the Lean semantics.
+
+The README still described the collector as only tested. It now states the
+concrete collector theorem and the checked allocation, reservation, return,
+and fuel properties, and names the unfinished initialization, method lookup,
+and instruction obligations. The task is not complete.
