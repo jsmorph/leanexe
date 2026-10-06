@@ -2,11 +2,12 @@
 
 ## Interface
 
-`LeanExe.Encoding` defines the encoder.  `Wasm.Encoding.encode` accepts a `Wasm.Module` and returns
-`Except String ByteArray`, and `Wasm.Encoding.writeModule path module` writes a successful result
-and raises an I/O error if encoding fails.  [`Decode.lean`](Decode.lean) defines the decoder,
-`Wasm.Encoding.decode`, which the trusted base uses to give the bytes their meaning, and
-[`RoundTrip.lean`](RoundTrip.lean) connects the two.
+`LeanExe.Encoding` defines the encoder.  `Wasm.Encoding.encode` accepts a
+`Wasm.Module` and returns `Except String ByteArray`, and
+`Wasm.Encoding.writeModule path module` writes a successful result and raises an
+I/O error if encoding fails.  [`Decode.lean`](Decode.lean) defines the decoder,
+`Wasm.Encoding.decode`, which the trusted base uses to give the bytes their
+meaning, and [`RoundTrip.lean`](RoundTrip.lean) connects the two.
 
 | Theorem | Statement |
 | --- | --- |
@@ -34,8 +35,8 @@ existing behavioral theorem about that module.
 
 The grammar in [the specification directory](Spec/) imports Talos syntax and
 Lean's core library.  It defines binary relations without calling the encoder.
-These definitions and their correspondence with the published WASM rules
-form the trusted specification.  Lean checks proofs relative to those definitions.
+These definitions and their correspondence with the published WASM rules form
+the trusted specification.  Lean checks proofs relative to those definitions.
 
 The [binary specification review](BinaryReview.md) and
 [typing specification review](ValidityReview.md) record the rule comparisons,
@@ -73,17 +74,19 @@ those bytes also depends on the external runtime and host environment.
 
 ## Tests
 
-[`DecodeTest.lean`](../../tests/decoder/DecodeTest.lean) runs the decoder over the modules that `wasm-tools
-json-from-wast` extracts from the official WebAssembly testsuite.  Each module in the decoder's
-subset must decode to the module that Talos reads from the text of the same file, and `decode
-(encode m)` must return `m` when `encode m` succeeds.  Each malformed binary must be rejected.  The
-test expects `build/decode-test` to hold the extracted modules of the testsuite scripts in the
-CodeLib checkout.
+[`DecodeTest.lean`](../../tests/decoder/DecodeTest.lean) runs the decoder over
+the modules that `wasm-tools json-from-wast` extracts from the official
+WebAssembly testsuite.  Each module in the decoder's subset must decode to the
+module that Talos reads from the text of the same file, and `decode (encode m)`
+must return `m` when `encode m` succeeds.  Each malformed binary must be
+rejected.  The test expects `build/decode-test` to hold the extracted modules of
+the testsuite scripts in the CodeLib checkout.
 
 ```sh
 tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean \
   "$(command -v wasm-tools)" build/decode-test
 ```
 
-[`tools/Emit.lean`](../../tools/Emit.lean) also checks, for each module it writes, that the decoder
-reads the bytes back as the module, and the module tests run the written files in Wasmtime.
+[`tools/Emit.lean`](../../tools/Emit.lean) also checks, for each module it
+writes, that the decoder reads the bytes back as the module, and the module
+tests run the written files in Wasmtime.

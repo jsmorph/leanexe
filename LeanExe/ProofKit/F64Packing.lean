@@ -117,7 +117,7 @@ theorem unpack_ofBits (x : UInt64) : (Float.Model.ofBits x).unpack = decode x :=
   · simp [hx, unpack_eq]
 
 theorem add_unpacked (a b : UInt64) :
-    LeanExe.Float64.addBits a b =
+    LeanExe.ProofKit.Float64.addBits a b =
       UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
         (UnpackedFloat.add Format.binary64 (decode a) (decode b))) := by
   change (Float.Model.pack (UnpackedFloat.add Format.binary64
@@ -126,7 +126,7 @@ theorem add_unpacked (a b : UInt64) :
   rfl
 
 theorem sub_unpacked (a b : UInt64) :
-    LeanExe.Float64.subBits a b =
+    LeanExe.ProofKit.Float64.subBits a b =
       UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
         (UnpackedFloat.sub Format.binary64 (decode a) (decode b))) := by
   change (Float.Model.pack (UnpackedFloat.sub Format.binary64
@@ -135,7 +135,7 @@ theorem sub_unpacked (a b : UInt64) :
   rfl
 
 theorem mul_unpacked (a b : UInt64) :
-    LeanExe.Float64.mulBits a b =
+    LeanExe.ProofKit.Float64.mulBits a b =
       UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
         (UnpackedFloat.mul Format.binary64 (decode a) (decode b))) := by
   change (Float.Model.pack (UnpackedFloat.mul Format.binary64
@@ -144,7 +144,7 @@ theorem mul_unpacked (a b : UInt64) :
   rfl
 
 theorem div_unpacked (a b : UInt64) :
-    LeanExe.Float64.divBits a b =
+    LeanExe.ProofKit.Float64.divBits a b =
       UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
         (UnpackedFloat.div Format.binary64 (decode a) (decode b))) := by
   change (Float.Model.pack (UnpackedFloat.div Format.binary64
@@ -153,7 +153,7 @@ theorem div_unpacked (a b : UInt64) :
   rfl
 
 theorem sqrt_unpacked (x : UInt64) :
-    LeanExe.Float64.sqrtBits x =
+    LeanExe.ProofKit.Float64.sqrtBits x =
       UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
         (UnpackedFloat.sqrt Format.binary64 (decode x))) := by
   change (Float.Model.pack (UnpackedFloat.sqrt Format.binary64

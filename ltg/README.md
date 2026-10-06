@@ -31,6 +31,7 @@ function that any module can compile and call.  The table groups the entries by 
 | General lemmas | `array-memory-framing`, `memory-write-range`, `region-frame`, `local-frame-projection`, `direct-call-stack-tail` |
 | Kernels and library | `wgsl-kernel`, `splitmix64` |
 
-No entry yet describes the abort-flag rules and heap budgets of complete execution
-(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`).  [`Examples/Euler/Total.lean`](../Examples/Euler/Total.lean),
-[`Examples/Drone/Total.lean`](../Examples/Drone/Total.lean), and [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) show their use.
+No entry yet describes the abort-flag rules and heap budgets of complete execution (`ImplementsA`,
+`Heap.Budget`, and `Heap.Bounded`).  [`Examples/Euler/Total.lean`](../Examples/Euler/Total.lean),
+[`Examples/Drone/Total.lean`](../Examples/Drone/Total.lean), and
+[`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) show their use.

@@ -1,7 +1,8 @@
 # Tree lookup: review of the specification
 
-Two fresh agents reviewed [`Examples/TreeLookup/Spec.lean`](Spec.lean) and `Samples.lean` against the request.
-Each saw only the request, the two files, and the samples with the outputs of `expected`.
+Two fresh agents reviewed [`Examples/TreeLookup/Spec.lean`](Spec.lean) and `Samples.lean` against
+the request.  Each saw only the request, the two files, and the samples with the outputs of
+`expected`.
 
 The first review found no disagreement between `expected` and the request.  It checked the index
 arithmetic of every node, the order of the tests, where the search stops, unsigned comparison,
@@ -23,6 +24,5 @@ to 100 columns with no other change, and the specification was frozen.
 
 On 2026-10-05 the reorganization of the branch moved the specification and samples to
 `Examples/TreeLookup/` and renamed their namespace from `LeanExe.TreeLookup` to
-`Examples.TreeLookup`, and changed the request's path in the specification's comment, with no
-other change.  `tools/demo-check --freeze` then recorded the hashes
-of the renamed files.
+`Examples.TreeLookup`, and changed the request's path in the specification's comment, with no other
+change.  `tools/demo-check --freeze` then recorded the hashes of the renamed files.

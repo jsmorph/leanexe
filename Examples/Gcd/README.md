@@ -1,16 +1,16 @@
 # Gcd: Euclid's algorithm
 
-This example stands for [main's Demo 6](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-6/README.md), which maps a
-one-word array `[x]` to `[gcd(x, 42)]` and returns an array of any other length unchanged.  [The
-request](request.txt) here asks for the greatest common divisor of any two words, by Euclid's
-remainder loop, with `gcd a 0 = a`.  Main's function is this one with the second argument fixed at
-42 and an array wrapper.  [The specification](Spec.lean) states it with Mathlib's `Nat.gcd`, as main's
-did.
+This example stands for [main's Demo
+6](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-6/README.md),
+which maps a one-word array `[x]` to `[gcd(x, 42)]` and returns an array of any other length
+unchanged.  [The request](request.txt) here asks for the greatest common divisor of any two words,
+by Euclid's remainder loop, with `gcd a 0 = a`.  Main's function is this one with the second
+argument fixed at 42 and an array wrapper.  [The specification](Spec.lean) states it with Mathlib's
+`Nat.gcd`, as main's did.
 
-[The program](Program.lean) is tail recursive: `gcd a b` is `a` when `b = 0`
-and `gcd b (a % b)` otherwise, and it terminates because `a % b < b`.  [The module
-definition](Module.lean) compiles it into a 1,445-byte `gcd.wasm` that exports
-`gcd`.
+[The program](Program.lean) is tail recursive: `gcd a b` is `a` when `b = 0` and `gcd b (a % b)`
+otherwise, and it terminates because `a % b < b`.  [The module definition](Module.lean) compiles it
+into a 1,445-byte `gcd.wasm` that exports `gcd`.
 
 | Theorem | Statement |
 |---------|-----------|

@@ -24,7 +24,7 @@ theorem decode_negate (x : UInt64) : decode (Wasm.IEEE64.negate x) = (decode x).
     by_cases hf0 : Wasm.IEEE64.fraction x = 0 <;>
     simp [decode, he, hf, hs, he255, he0, hf0, UnpackedFloat.neg]
 
-theorem sub_eq (a b : UInt64) : LeanExe.Float64.subBits a b = Wasm.IEEE64.sub a b := by
+theorem sub_eq (a b : UInt64) : LeanExe.ProofKit.Float64.subBits a b = Wasm.IEEE64.sub a b := by
   rw [sub_unpacked, unpacked_sub, ← decode_negate, ← add_unpacked, F64Add.add_eq]
   rfl
 

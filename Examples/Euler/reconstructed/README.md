@@ -1,9 +1,10 @@
 # A reconstructed Euler calculation in proved WebAssembly
 
-A WebAssembly program, compiled from Lean by LeanExe and proved to compute its Lean definition, evaluates the
-four-state Euler problem from the [Lanyon article](https://lanyon.ai/research/euler-equations/).
-Initialization, reconstruction, timestep selection, both directional sweeps, retries, allocation,
-and final output execute inside one call of the program.
+A WebAssembly program, compiled from Lean by LeanExe and proved to compute its Lean definition,
+evaluates the four-state Euler problem from the [Lanyon
+article](https://lanyon.ai/research/euler-equations/).  Initialization, reconstruction, timestep
+selection, both directional sweeps, retries, allocation, and final output execute inside one call of
+the program.
 
 ![Density and pressure at time 0.8 on the 192-grid](192-run/density-pressure.png)
 
@@ -17,7 +18,8 @@ process.
 
 ## Problem and method
 
-The domain is the unit square, the initial interfaces are x = y = 0.8, the target time is 0.8, and the physical ideal-gas parameter is γ = 7/5.
+The domain is the unit square, the initial interfaces are x = y = 0.8, the target time is 0.8, and
+the physical ideal-gas parameter is γ = 7/5.
 
 | Quadrant | Pressure | Density | x velocity | y velocity |
 |----------|---------:|--------:|-----------:|-----------:|
@@ -26,11 +28,25 @@ The domain is the unit square, the initial interfaces are x = y = 0.8, the targe
 | Bottom left | 0.029 | 0.138 | 1.206 | 1.206 |
 | Bottom right | 0.3 | 0.5323 | 0 | 1.206 |
 
-Each cell stores density, both momenta, and total energy.  Initialization uses conservative area averages for cells cut by an interface.  Each directional update reads five cells, reconstructs three of them, and evaluates Rusanov fluxes at the center cell's two faces.  Neighbor indices clamp at the domain boundaries.  An x sweep precedes a y sweep.
+Each cell stores density, both momenta, and total energy.  Initialization uses conservative area
+averages for cells cut by an interface.  Each directional update reads five cells, reconstructs
+three of them, and evaluates Rusanov fluxes at the center cell's two faces.  Neighbor indices clamp
+at the domain boundaries.  An x sweep precedes a y sweep.
 
-Reconstruction uses componentwise minmod slopes with a common scale factor.  The program tests both reconstructed faces for positive density and pressure, halves all four slopes after rejection, and uses the cell average if eight attempts fail.  Outward-rounded speed bounds and executable CFL checks establish dt times grid size times each physical characteristic-speed magnitude ≤ 1/2 at accepted stages.
+Reconstruction uses componentwise minmod slopes with a common scale factor.  The program tests both
+reconstructed faces for positive density and pressure, halves all four slopes after rejection, and
+uses the cell average if eight attempts fail.  Outward-rounded speed bounds and executable CFL
+checks establish dt times grid size times each physical characteristic-speed magnitude ≤ 1/2 at
+accepted stages.
 
-The finer grid resolves thinner fronts and more internal structure.  The large-scale front positions and the high-density region near (0.6, 0.6) resemble the [Lanyon density figure](https://lanyon.ai/figs/euler-equations/2d-riem-density-final.png).  The new 800-grid image shows finer curved layers than the [preserved first-order calculation](../first-order/800-run/density-pressure.png).  Its density maximum rises from 1.6711 to 1.7392, and its pressure maximum from 1.6321 to 1.6635.  Reconstruction and speed arithmetic both changed.  These are visual and numerical comparisons of the discrete fields.  Each panel uses its own linear color range.  White curves show interpolated isolines.
+The finer grid resolves thinner fronts and more internal structure.  The large-scale front positions
+and the high-density region near (0.6, 0.6) resemble the [Lanyon density
+figure](https://lanyon.ai/figs/euler-equations/2d-riem-density-final.png).  The new 800-grid image
+shows finer curved layers than the [preserved first-order
+calculation](../first-order/800-run/density-pressure.png).  Its density maximum rises from 1.6711 to
+1.7392, and its pressure maximum from 1.6321 to 1.6635.  Reconstruction and speed arithmetic both
+changed.  These are visual and numerical comparisons of the discrete fields.  Each panel uses its
+own linear color range.  White curves show interpolated isolines.
 
 ## Program and proofs
 
@@ -51,13 +67,13 @@ concern this module and the Lean function `reconstructedSolve`, which packs the 
 | Speeds and CFL | An accepted outward speed bound is at least the exact `\|u\| + c`.  A run with status 0 is a chain of accepted steps.  Each step advances the time by `dt > 0` with a ratio `r ≥ dt · n`, every state of the grid it starts from is admissible, and `r` times the signal speed of every cell in either direction is at most 1/2. | `speedUpper_ge` in [the enclosures](../Enclosure.lean), `reconstructedRun_steps` in [the step theorems](../Cfl.lean) |
 | Conservation | Along that chain, the total of mass, of each momentum, and of energy equals its initial total, minus the boundary fluxes summed over the steps, plus a rounding residual.  The residual is at most a sum of per-update bounds computed from the words of the run. | `reconstructedRun_balance` in [the balance theorems](../ReconstructedBalance.lean) |
 
-The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on
-Wasmtime and the hardware implementing the WebAssembly semantics that the proofs model.  Main
-proved complete execution with at most 512 MiB of linear memory, and this branch proves it with
-at most 1,407 pages, from the allocator state of a fresh instance taken as a hypothesis.  Main
-also proved results that this branch does not: the real Rusanov wave identities; error bounds and a linear-profile
-theorem for rounded reconstruction; and a comparison of the computed fluxes with reference
-fluxes.  Convergence to a solution of the continuous Euler equations remains unproved.
+The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime
+and the hardware implementing the WebAssembly semantics that the proofs model.  Main proved complete
+execution with at most 512 MiB of linear memory, and this branch proves it with at most 1,407 pages,
+from the allocator state of a fresh instance taken as a hypothesis.  Main also proved results that
+this branch does not: the real Rusanov wave identities; error bounds and a linear-profile theorem
+for rounded reconstruction; and a comparison of the computed fluxes with reference fluxes.
+Convergence to a solution of the continuous Euler equations remains unproved.
 
 ## Data
 

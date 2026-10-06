@@ -1,4 +1,4 @@
-namespace LeanExe.Float64
+namespace LeanExe.ProofKit.Float64
 
 def addBits (left right : UInt64) : UInt64 :=
   (Float.ofBits left + Float.ofBits right).toBits
@@ -15,4 +15,4 @@ def divBits (left right : UInt64) : UInt64 :=
 def sqrtBits (value : UInt64) : UInt64 :=
   (Float.ofBits value).sqrt.toBits
 
-end LeanExe.Float64
+end LeanExe.ProofKit.Float64

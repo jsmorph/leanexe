@@ -13,12 +13,13 @@ the theorem `NAME_bytes`:
   ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m K expected
 ```
 
-[`tools/demo-check`](../../../tools/demo-check) writes this statement itself and accepts the run only if `NAME_bytes` proves it
-with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`, the specification is the one
-the review accepted, and the module returns `expected` on every sample in Wasmtime.  `Implements`
-allows a trap, which occurs when memory runs out.  The theorem says nothing about the request
-beyond what `expected` says, so the independent review of `expected` against the request is the
-only check that the theorem states what the request asks.  The run does not ask the user to approve the specification.
+[`tools/demo-check`](../../../tools/demo-check) writes this statement itself and accepts the run
+only if `NAME_bytes` proves it with no axioms beyond `propext`, `Classical.choice`, and
+`Quot.sound`, the specification is the one the review accepted, and the module returns `expected` on
+every sample in Wasmtime.  `Implements` allows a trap, which occurs when memory runs out.  The
+theorem says nothing about the request beyond what `expected` says, so the independent review of
+`expected` against the request is the only check that the theorem states what the request asks.  The
+run does not ask the user to approve the specification.
 
 ## Names and files
 
@@ -72,14 +73,14 @@ are outside this skill.  If the request needs one, say so and stop.
 
 ## Stage 2: the program
 
-Write the program in the dialect that [the manual](../../../docs/manual.md#the-dialect) describes, in
-the sections from "The dialect" through "Summary of constructs": integers are `UInt64`, recursion is tail recursion with a termination proof or a
-combinator (`LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`), and arrays are built at the
-top of a function.  The program must not import the specification.  Bound any loop by the input,
-as the examples bound arrays to eight words where the request does.  Compile with
-`tools/leanrun --timeout 60m lake build Examples.Name.Module`, then run `tools/demo-check --run NAME`,
-which emits the module and runs the samples without proofs.  Fix the program until every sample
-passes.
+Write the program in the dialect that [the manual](../../../docs/manual.md#the-dialect) describes,
+in the sections from "The dialect" through "Summary of constructs": integers are `UInt64`, recursion
+is tail recursion with a termination proof or a combinator (`LeanExe.loop`, `LeanExe.build`,
+`LeanExe.repeatWhile`), and arrays are built at the top of a function.  The program must not import
+the specification.  Bound any loop by the input, as the examples bound arrays to eight words where
+the request does.  Compile with `tools/leanrun --timeout 60m lake build Examples.Name.Module`, then
+run `tools/demo-check --run NAME`, which emits the module and runs the samples without proofs.  Fix
+the program until every sample passes.
 
 ## Stage 3: the proofs
 
@@ -99,18 +100,18 @@ example whose program has the same shape.
 | Calls between listed functions | [`Examples/PrimeFactors/Verify.lean`](../../../Examples/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
 
 Print the IR of each function first, as `#eval NAME.f.ir.body`, and write the proof against it.
-[The manual's section on proving](../../../docs/manual.md#proving) describes the rules, `eval_body`, and
-`eval_state`, and [the LTG entries](../../../ltg/README.md) describe each compiler template's rule.  A `simp` call that evaluates a large body
-may need `set_option maxHeartbeats 1000000 in`.  Build with
-`tools/leanrun --timeout 60m lake build Examples.Name.Verify`.
+[The manual's section on proving](../../../docs/manual.md#proving) describes the rules, `eval_body`,
+and `eval_state`, and [the LTG entries](../../../ltg/README.md) describe each compiler template's
+rule.  A `simp` call that evaluates a large body may need `set_option maxHeartbeats 1000000 in`.
+Build with `tools/leanrun --timeout 60m lake build Examples.Name.Verify`.
 
 ## Stage 4: acceptance and records
 
 1. Run `tools/demo-check NAME`.  It must print the theorem line, the module, and
    `samples: N passed, 0 failed`.
-2. Write `README.md` in the form of [the prime-factor example's README](../../../Examples/PrimeFactors/README.md): the request, the
-   specification and its decisions, the program, a table of the theorems, the axioms, the tests,
-   and the commands.
+2. Write `README.md` in the form of [the prime-factor example's
+   README](../../../Examples/PrimeFactors/README.md): the request, the specification and its
+   decisions, the program, a table of the theorems, the axioms, the tests, and the commands.
 3. Write `Cases.lean`, which prints the samples in the format of the module tests:
 
    ```lean
@@ -127,11 +128,13 @@ may need `set_option maxHeartbeats 1000000 in`.  Build with
    end Examples.Name
    ```
 
-   Add `import Examples.Name.Program`, `import Examples.Name.Verify`, and `import Examples.Name.Cases`
-   to [`Examples.lean`](../../../Examples.lean), and add `import Examples.Name.Cases` and the call
-   `Examples.Name.cases` to [`tests/modules/Cases.lean`](../../../tests/modules/Cases.lean).
-4. Report the result to the user with the theorem line and the sample count.  Commit only when
-   the user's instructions call for it, after [the manual's full check](../../../docs/manual.md#the-full-check).
+   Add `import Examples.Name.Program`, `import Examples.Name.Verify`, and `import
+   Examples.Name.Cases` to [`Examples.lean`](../../../Examples.lean), and add `import
+   Examples.Name.Cases` and the call `Examples.Name.cases` to
+   [`tests/modules/Cases.lean`](../../../tests/modules/Cases.lean).
+4. Report the result to the user with the theorem line and the sample count.  Commit only when the
+   user's instructions call for it, after [the manual's full
+   check](../../../docs/manual.md#the-full-check).
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the examples and rules that

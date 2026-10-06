@@ -9,10 +9,10 @@ WASM domain.  The integer, opcode, control, section, and field checks below
 support that conclusion.  The reference snapshot contains the discrepancies
 recorded under [Reference discrepancies](#reference-discrepancies).
 
-The comparison uses WebAssembly 3.0, dated 2026-09-21, and its
-[specification source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].
-The [dated Core 2 specification][core2], Unicode 17.0, and the official
-reference interpreter resolve the stated discrepancies.  Talos is pinned to
+The comparison uses WebAssembly 3.0, dated 2026-09-21, and its [specification
+source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].  The [dated
+Core 2 specification][core2], Unicode 17.0, and the official reference
+interpreter resolve the stated discrepancies.  Talos is pinned to
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  Lean is pinned to
 `6a10ac8c22beadecabdbb0919c2b50214762f91d`.
 
@@ -60,8 +60,7 @@ These agree with [Unicode's UTF-8 tables][unicode].
 
 ### Types and declarations
 
-The [type rules](Spec/Types.lean) were compared with
-[binary types][types].
+The [type rules](Spec/Types.lean) were compared with [binary types][types].
 
 | Rule | Correspondence |
 | --- | --- |
@@ -113,13 +112,14 @@ WASM instruction names, with a common type prefix shown once per group.
 | Constants | `i32.const=41` with signed 32-bit immediate.  `i64.const=42` with signed 64-bit immediate.  `f32.const=43` with four bytes and `f64.const=44` with eight bytes, least significant first. |
 | Structured control | `block=02`, `loop=03`, `if=04`, `else=05`, `end=0b` |
 
-The counts above date from the first review.  On 2026-10-03 the rules numbered 58 `Plain`
-rules, eight indexed rules, six memory rules, four constants, and three structured controls,
-and then 62 `Plain` rules after the binary32 comparisons and `f32.abs`.
-That day `f32.const` was added and compared, with `f64.const`, which the encoder already had,
-against lines 194 and 195 of the [instruction grammar][instructions], `0x43 p:Bf32` and
-`0x44 p:Bf64`, and `BfN` in the [binary values][values], N/8 bytes through `$inv_fbytes_`.
-The `Plain` rules added after the first review have not been compared in this record.
+The counts above date from the first review.  On 2026-10-03 the rules numbered
+58 `Plain` rules, eight indexed rules, six memory rules, four constants, and
+three structured controls, and then 62 `Plain` rules after the binary32
+comparisons and `f32.abs`.  That day `f32.const` was added and compared, with
+`f64.const`, which the encoder already had, against lines 194 and 195 of the
+[instruction grammar][instructions], `0x43 p:Bf32` and `0x44 p:Bf64`, and `BfN`
+in the [binary values][values], N/8 bytes through `$inv_fbytes_`.  The `Plain`
+rules added after the first review have not been compared in this record.
 
 Indexed immediates use `u32`.  In `fc 00`, the second byte encodes unsigned
 subopcode zero.  The trailing zero in `memory.size` and `memory.grow` encodes
@@ -178,13 +178,13 @@ The [pinned Core 3 value source][values] contains three inconsistencies:
 | Four-byte UTF-8 range | Upper bound `U+11000` | Unicode's upper bound is `U+110000`.  For example, U+1F600 encodes as `f0 9f 98 80`. |
 | `Bi32` and `Bi64` source aliases | Aliases of `BuN` | The same source defines general `BiN` through signed LEB.  The official decoder reads constants with `s32` and `s64`. |
 
-The UTF-8 discrepancies also occur in the rendered Core 3 value formulas.
-The [dated Core 2 value rules][core2] give the intended signed-constant
-interpretation and Unicode range.  The official
-[reference decoder][decoder] confirms signed constant immediates.  For example,
-`41 7f` denotes the 32-bit word `ffffffff`, which the Lean rule preserves.
-The Lean definitions agree with these resolved meanings.  A claim of literal
-agreement with every formula in the Core 3 snapshot would exceed this review.
+The UTF-8 discrepancies also occur in the rendered Core 3 value formulas.  The
+[dated Core 2 value rules][core2] give the intended signed-constant
+interpretation and Unicode range.  The official [reference decoder][decoder]
+confirms signed constant immediates.  For example, `41 7f` denotes the 32-bit
+word `ffffffff`, which the Lean rule preserves.  The Lean definitions agree with
+these resolved meanings.  A claim of literal agreement with every formula in the
+Core 3 snapshot would exceed this review.
 
 ## Reviewed source identity
 
@@ -197,12 +197,19 @@ The SHA-256 digests of the reviewed files are:
 8e7f6a904ff2c4edd8697cc5fb839c701f2f67f9959d17e065fd111eb04258db  Spec/Modules.lean
 ```
 
-[spec]: https://github.com/WebAssembly/spec/tree/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0
-[values]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.1-binary.values.spectec
+[spec]:
+https://github.com/WebAssembly/spec/tree/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0
+[values]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.1-binary.values.spectec
 [lists]: https://webassembly.github.io/spec/core/binary/conventions.html#lists
-[types]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.2-binary.types.spectec
-[instructions]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.3-binary.instructions.spectec
-[modules]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.4-binary.modules.spectec
-[decoder]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/interpreter/binary/decode.ml
+[types]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.2-binary.types.spectec
+[instructions]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.3-binary.instructions.spectec
+[modules]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.4-binary.modules.spectec
+[decoder]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/interpreter/binary/decode.ml
 [core2]: https://www.w3.org/TR/2025/CRD-wasm-core-2-20250616/#binary-value
-[unicode]: https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G7404
+[unicode]:
+https://www.unicode.org/versions/Unicode17.0.0/core-spec/chapter-3/#G7404

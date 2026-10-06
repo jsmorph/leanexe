@@ -12,8 +12,8 @@ inputs of 0, 1, 14, and 16 words.  The user approved the specification and the 1
 The user then replaced approval by an independent review.  A fresh agent, given only the request,
 the specification, and the samples with their outputs, found no disagreement and named five
 uncovered input classes, and the run added one sample for each.  A second fresh agent found no
-disagreement in the 22 samples and named further classes, recorded in [`review.md`](review.md), and the
-specification was frozen.  The skill now ends the review at the first review that finds no
+disagreement in the 22 samples and named further classes, recorded in [`review.md`](review.md), and
+the specification was frozen.  The skill now ends the review at the first review that finds no
 disagreement, after the samples for the named classes are added once.
 
 The program follows the lookup example: a loop of one step per level whose state carries the node

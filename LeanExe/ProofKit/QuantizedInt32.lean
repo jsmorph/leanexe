@@ -3,7 +3,7 @@ import Interpreter.Wasm.IEEE32
 import Mathlib.Tactic
 
 namespace LeanExe.ProofKit.QuantizedInt32
-open LeanExe.Signed32
+open LeanExe.ProofKit.Signed32
 
 theorem decode_toInt (value : UInt32) :
     decode value = (Int32.ofUInt32 value).toInt := by

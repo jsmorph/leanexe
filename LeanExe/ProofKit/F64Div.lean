@@ -8,18 +8,18 @@ open F64Add (decode_infinite decode_zero exponent_ne)
 theorem div_eq_talos_finite (a b : UInt64)
     (hea : Wasm.IEEE64.exponent a ≠ 2047) (heb : Wasm.IEEE64.exponent b ≠ 2047)
     (ha : Wasm.IEEE64.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE64.scaledMagnitude b ≠ 0) :
-    LeanExe.Float64.divBits a b = Wasm.IEEE64.div a b := by
+    LeanExe.ProofKit.Float64.divBits a b = Wasm.IEEE64.div a b := by
   rw [div_unpacked, decode_finite a hea ha, decode_finite b heb hb,
     pack_div_finite _ _ _ _ _ _ _ _ (exponent_ge a) (exponent_ge b),
     scaled_mantissa, scaled_mantissa, negative_div, negative_sourceSign, negative_sourceSign]
   simp [Wasm.IEEE64.div, Wasm.IEEE64.isNaN, Wasm.IEEE64.isInfinite, hea, heb, ha, hb]
 
 theorem source_nan_right (a b : UInt64) (hb : Wasm.IEEE64.isNaN b = true) :
-    LeanExe.Float64.divBits a b = Wasm.IEEE64.canonicalNaN := by
+    LeanExe.ProofKit.Float64.divBits a b = Wasm.IEEE64.canonicalNaN := by
   rw [div_unpacked, decode_nan b hb]
   cases decode a <;> exact pack_nan
 
-theorem div_eq (a b : UInt64) : LeanExe.Float64.divBits a b = Wasm.IEEE64.div a b := by
+theorem div_eq (a b : UInt64) : LeanExe.ProofKit.Float64.divBits a b = Wasm.IEEE64.div a b := by
   by_cases hna : Wasm.IEEE64.isNaN a = true
   · rw [div_unpacked, decode_nan a hna]
     simp [UnpackedFloat.div, pack_nan, Wasm.IEEE64.div, hna]

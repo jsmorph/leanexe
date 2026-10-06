@@ -40,7 +40,7 @@ theorem product_scaled (a b : UInt64) :
 theorem mul_eq_talos_finite (a b : UInt64)
     (hea : Wasm.IEEE64.exponent a ≠ 2047) (heb : Wasm.IEEE64.exponent b ≠ 2047)
     (ha : Wasm.IEEE64.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE64.scaledMagnitude b ≠ 0) :
-    LeanExe.Float64.mulBits a b = Wasm.IEEE64.mul a b := by
+    LeanExe.ProofKit.Float64.mulBits a b = Wasm.IEEE64.mul a b := by
   rw [mul_unpacked, decode_finite a hea ha, decode_finite b heb hb]
   have ht := product_target a b ha hb
   have hd : (exponent a + exponent b - Format.binary64.targetExponent
