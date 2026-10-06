@@ -545,3 +545,24 @@ lemma. Changing the goal to the actual writes and taking the symmetric
 inequality resolved both. The combined build and axiom audit pass. No executable
 code or limits changed. The work document records the remaining loop and global
 canonical-value obligations.
+
+## Complete field-building loop (2026-10-06)
+
+`FillLoop.Progress` records a valid typed heap, current index, exact handle-1
+value list, free count plus visited count, preserved old allocated cells, and
+unchanged non-construction registers. Initialization clears register 19. Actual
+`fillOne` preserves this invariant and decrements the count once per visit.
+The valid free list bounds the request by capacity, so index increments cannot
+wrap. The counted-loop theorem proves all requested visits complete.
+
+`filling_values` gives the exact final value list. `filling_eq_pair` connects
+this proof's projection functions to the actual pair-pattern loop used by
+`newReady`; no executable loop is replaced. The budget includes one cell for
+final object allocation, which remains the next obligation.
+
+The first arithmetic checks retained tuple projections in count facts, so the
+arithmetic tactic did not connect them with the explicit state variables.
+Concrete types for the count facts and construction effect, and explicit goals
+for the new index and count, removed those projections. No limits or executable
+code changed. The combined build and axiom audit pass. The work document is
+updated with final-object and activation-construction work.
