@@ -36,3 +36,6 @@ run_cmd do
 #print axioms Project.Smalltalk.Worklist.pop_represents
 #print axioms Project.Smalltalk.ScanMemory.scanCell_eq
 #print axioms Project.Smalltalk.ScanInvariant.scan_holds
+#print axioms Project.Smalltalk.Marking.marking_correct
+#print axioms Project.Smalltalk.Collector.collect_correct
+#print axioms Project.Smalltalk.Collector.collect_register

@@ -159,4 +159,56 @@ theorem finishCollection_preserves_marked {s : Array UInt64} {cap : Nat} {g k : 
   rw [field_write_register final.2.1 hg hk (show (11 : UInt64).toNat < 24 by decide)]
   exact final.2.2.2
 
+theorem sweepNext_register {s : Array UInt64} {cap : Nat} {i r : UInt64}
+    (hs : Shape s cap) (hh : Handle cap (i + 1)) (hr : r.toNat < 24)
+    (notHead : r ≠ 8) (notCount : r ≠ 9) : read (sweepNext s i).2 r = read s r := by
+  simp only [sweepNext]
+  split
+  · rfl
+  · rw [reclaim_register hs hh hr]
+    simp only [notHead, notCount, ite_false]
+
+theorem finishCollection_shape {s : Array UInt64} {cap : Nat} (hs : Shape s cap) (count : UInt64) :
+    Shape (finishCollection s (read s 14) count) cap := by
+  let start := write (write (write s 8 0) 9 0) 10 0
+  have ht : Shape start cap :=
+    write_shape (write_shape (write_shape hs (by decide)) (by decide)) (by decide)
+  let P := fun st : UInt64 × Array UInt64 => st.1.toNat ≤ cap ∧ Shape st.2 cap
+  have step : ∀ st, P st → decide (st.1 < read s 14) = true → P (sweepNext st.2 st.1) := by
+    rintro ⟨i, t⟩ ⟨_, ht⟩ test
+    have hi : i.toNat < cap := by
+      have hi := of_decide_eq_true test
+      simpa only [UInt64.lt_iff_toNat_lt, hs.2.2.2] using hi
+    have hh := successor_handle hs.2.1 hi
+    exact ⟨hh.2, sweepNext_shape ht hh⟩
+  have final := Project.Smalltalk.Loops.repeat_invariant P _ _ step (read s 14) (0, start)
+    ⟨Nat.zero_le _, ht⟩
+  exact write_shape final.2 (by decide)
+
+theorem finishCollection_register {s : Array UInt64} {cap : Nat} {r : UInt64}
+    (hs : Shape s cap) (hr : r.toNat < 24)
+    (notHead : r ≠ 8) (notCount : r ≠ 9) (notLast : r ≠ 10) (notStats : r ≠ 11) (count : UInt64) :
+    read (finishCollection s (read s 14) count) r = read s r := by
+  let start := write (write (write s 8 0) 9 0) 10 0
+  have ht : Shape start cap :=
+    write_shape (write_shape (write_shape hs (by decide)) (by decide)) (by decide)
+  have initialRead : read start r = read s r := by
+    dsimp [start]
+    rw [read_write_other _ _ _ _ (Ne.symm notLast), read_write_other _ _ _ _ (Ne.symm notCount),
+      read_write_other _ _ _ _ (Ne.symm notHead)]
+  let P := fun st : UInt64 × Array UInt64 => st.1.toNat ≤ cap ∧ Shape st.2 cap ∧ read st.2 r = read s r
+  have step : ∀ st, P st → decide (st.1 < read s 14) = true → P (sweepNext st.2 st.1) := by
+    rintro ⟨i, t⟩ ⟨_, ht, same⟩ test
+    have hi : i.toNat < cap := by
+      have hi := of_decide_eq_true test
+      simpa only [UInt64.lt_iff_toNat_lt, hs.2.2.2] using hi
+    have hh := successor_handle hs.2.1 hi
+    exact ⟨hh.2, sweepNext_shape ht hh, (sweepNext_register ht hh hr notHead notCount).trans same⟩
+  have final := Project.Smalltalk.Loops.repeat_invariant P _ _ step (read s 14) (0, start)
+    ⟨Nat.zero_le _, ht, initialRead⟩
+  rw [finishCollection]
+  change read (write (LeanExe.repeatWhile (read s 14) (0, start) _ _).2 11 count) r = _
+  rw [read_write_other _ _ _ _ (Ne.symm notStats)]
+  exact final.2.2
+
 end Project.Smalltalk.Sweep

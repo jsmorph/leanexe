@@ -139,3 +139,29 @@ The complete scan-loop termination and reachability proof remains to be done.
 The full driver passed with the accumulated proof gate: 136 native executions,
 181 WASM checks, and all CLI checks. The WASM hash remains
 `423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
+
+## Complete concrete collector (2026-10-06)
+
+`go_finish` proves that the actual scan loop drains its queue within capacity.
+Each scan moves one distinct pending handle to the scanned list. The number
+of distinct valid handles is at most capacity, so exhausting capacity with a
+nonempty queue is impossible. Root coverage and closure at an empty queue
+give reachability completeness; the invariant already gives soundness.
+`marking_correct` consequently establishes exact marks, an empty worklist,
+unchanged payloads, and unchanged non-worklist registers for the actual
+clearing, root-marking, and scan passes.
+
+`collectReady_eq_finish` and `collect_eq_finish` connect those passes to the
+actual collector definitions, including their error checks and final sweep.
+`collect_correct` proves unchanged reachable handles, tags, and payloads;
+preserved arena shape; and a complete distinct free list containing exactly
+the unreachable handles, with its correct count. `collect_register` checks
+the unaffected registers, and `collect_error_unchanged` checks error-phase
+behavior. The assumptions are a well-formed typed heap and a phase other than
+4. Cycles, repeated pointers, arbitrary initial marks, and any old free list
+are permitted. Exact marking and queue space are conclusions, not assumptions.
+
+The proofs remain about the Lean implementation. They do not prove that VM
+instructions establish the heap assumptions, that the compiler is correct,
+or that the emitted WASM preserves Lean semantics. Those obligations are
+distinct from the collector theorem.
