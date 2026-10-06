@@ -263,6 +263,16 @@ the supported tags. It also assumes phase is not 4. It allows cycles, repeated
 pointers, arbitrary initial marks, and any old free-list order. It does not
 assume marking is correct, spare worklist space, or a valid old free list.
 
+`Heap.Valid` adds a complete valid free list to `Graph.Valid`.
+`Reservation.lean` proves that `reserve` preserves this stronger heap
+condition, original reachable payloads, and reachability. It either retains
+the original phase with at least the requested number of free cells, or
+sets phase 4 and error 9. The proof covers both stress and space-triggered
+collection and derives their phase and payload effects from the collector
+theorems. Registers other than 0, 8, 9, 10, 11, 15, and 18 are preserved;
+an already-error state is unchanged. This result requires `Heap.Valid` and
+phase other than 4 for the success/error guarantee.
+
 `Project/Smalltalk/Frame.lean` checks the concrete frame writes. Retirement
 sets the PC to dead, clears caller and operands, and preserves the remaining
 fields, other cells, registers, and arena shape. Advance increments the PC,

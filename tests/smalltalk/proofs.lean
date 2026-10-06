@@ -57,5 +57,8 @@ run_cmd do
 #print axioms Project.Smalltalk.ReturnValue.returnCallerReady_delivers
 #print axioms Project.Smalltalk.ReturnValue.returnReady_delivers
 #print axioms Project.Smalltalk.ReturnValue.returnReady_finished
+#print axioms Project.Smalltalk.Heap.fail_valid
+#print axioms Project.Smalltalk.Reservation.reserve_correct
+#print axioms Project.Smalltalk.Reservation.reserve_register
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

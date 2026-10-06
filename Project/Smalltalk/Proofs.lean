@@ -14,3 +14,4 @@ import Project.Smalltalk.Home
 import Project.Smalltalk.ReturnChecks
 import Project.Smalltalk.Unwind
 import Project.Smalltalk.ReturnValue
+import Project.Smalltalk.Reservation
