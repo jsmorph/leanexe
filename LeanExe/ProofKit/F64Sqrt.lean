@@ -13,7 +13,7 @@ theorem mantissa_log_le (x : UInt64) (hx : Wasm.IEEE64.scaledMagnitude x ≠ 0) 
   have := (Nat.log2_lt (Nat.ne_of_gt hm)).mpr hu
   omega
 
-theorem sqrt_eq (a : UInt64) : LeanExe.Float64.sqrtBits a = Wasm.IEEE64.sqrt a := by
+theorem sqrt_eq (a : UInt64) : LeanExe.ProofKit.Float64.sqrtBits a = Wasm.IEEE64.sqrt a := by
   by_cases hna : Wasm.IEEE64.isNaN a = true
   · rw [sqrt_unpacked, decode_nan a hna]
     simp [UnpackedFloat.sqrt, pack_nan, Wasm.IEEE64.sqrt, hna]

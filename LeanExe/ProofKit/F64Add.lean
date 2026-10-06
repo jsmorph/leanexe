@@ -9,7 +9,7 @@ theorem unpacked_comm (a b : UnpackedFloat) :
   all_goals rename_i s t
   all_goals cases s <;> cases t <;> rfl
 
-theorem source_comm (a b : UInt64) : LeanExe.Float64.addBits a b = LeanExe.Float64.addBits b a := by
+theorem source_comm (a b : UInt64) : LeanExe.ProofKit.Float64.addBits a b = LeanExe.ProofKit.Float64.addBits b a := by
   rw [add_unpacked, add_unpacked, unpacked_comm]
 
 theorem decode_infinite (x : UInt64) (hx : Wasm.IEEE64.isInfinite x = true) :
@@ -47,7 +47,7 @@ theorem zero_value (x : UInt64) (hx : Wasm.IEEE64.scaledMagnitude x = 0) :
 
 theorem source_zero_nonzero (a b : UInt64) (ha : Wasm.IEEE64.scaledMagnitude a = 0)
     (he : Wasm.IEEE64.exponent b ≠ 2047) (hb : Wasm.IEEE64.scaledMagnitude b ≠ 0) :
-    LeanExe.Float64.addBits a b = b := by
+    LeanExe.ProofKit.Float64.addBits a b = b := by
   rw [add_unpacked, decode_zero a ha, decode_finite b he hb]
   change UInt64.ofBitVec (UnpackedFloat.pack Format.binary64
     (.finite (sourceSign b) (mantissa b) (exponent b) (mantissa_pos b hb))) = b
@@ -67,7 +67,7 @@ theorem talos_zero_nonzero (a b : UInt64) (ha : Wasm.IEEE64.scaledMagnitude a = 
     hea, he, zero_value a ha, hz] using And.intro hv hv
 
 theorem source_infinite_finite (a b : UInt64) (ha : Wasm.IEEE64.isInfinite a = true)
-    (heb : Wasm.IEEE64.exponent b ≠ 2047) : LeanExe.Float64.addBits a b = a := by
+    (heb : Wasm.IEEE64.exponent b ≠ 2047) : LeanExe.ProofKit.Float64.addBits a b = a := by
   rw [add_unpacked, decode_infinite a ha]
   by_cases hb : Wasm.IEEE64.scaledMagnitude b = 0
   · rw [decode_zero b hb]
@@ -76,11 +76,11 @@ theorem source_infinite_finite (a b : UInt64) (ha : Wasm.IEEE64.isInfinite a = t
     simpa [UnpackedFloat.add, pack_infinity, negative_sourceSign] using infinite_word a ha
 
 theorem source_nan_left (a b : UInt64) (ha : Wasm.IEEE64.isNaN a = true) :
-    LeanExe.Float64.addBits a b = Wasm.IEEE64.canonicalNaN := by
+    LeanExe.ProofKit.Float64.addBits a b = Wasm.IEEE64.canonicalNaN := by
   rw [add_unpacked, decode_nan a ha]
   exact pack_nan
 
-theorem add_eq (a b : UInt64) : LeanExe.Float64.addBits a b = Wasm.IEEE64.add a b := by
+theorem add_eq (a b : UInt64) : LeanExe.ProofKit.Float64.addBits a b = Wasm.IEEE64.add a b := by
   by_cases hna : Wasm.IEEE64.isNaN a = true
   · rw [source_nan_left a b hna]
     simp [Wasm.IEEE64.add, hna]

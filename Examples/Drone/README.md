@@ -1,23 +1,23 @@
 # Terrain-following drone flight plans
 
-The drone planner computes a flight over up to 64 stations of terrain, 100 units apart, with
-heights from 0 to 1,000,000.  At each station the drone is in one of 45 states, 9 altitudes 25
-apart above the station's floor and 5 horizontal speeds from 0 to 20, and the planner finds the
-admitted flight of least duration, with the altitude above the floors as the second criterion.
-The output is the altitude and speed at each station, from rest on the ground at the first
-station to rest on the ground at the last.  This branch rewrites main's program in its dialect,
-compiles it, proves that the bytes compute the rewrite, and proves main's optimality and flight-safety theorems
-about the rewrite.
+The drone planner computes a flight over up to 64 stations of terrain, 100 units apart, with heights
+from 0 to 1,000,000.  At each station the drone is in one of 45 states, 9 altitudes 25 apart above
+the station's floor and 5 horizontal speeds from 0 to 20, and the planner finds the admitted flight
+of least duration, with the altitude above the floors as the second criterion.  The output is the
+altitude and speed at each station, from rest on the ground at the first station to rest on the
+ground at the last.  This branch rewrites main's program in its dialect, compiles it, proves that
+the bytes compute the rewrite, and proves main's optimality and flight-safety theorems about the
+rewrite.
 
 ## Program and proofs
 
-[The planner](Program.lean) uses `UInt64` words throughout and replaces
-main's recursions on fuel with counted loops: the square root takes 17 halvings, a row is a build
-over the 45 targets of loops over the 45 sources, the forward pass carries one table of all rows,
-and the output follows the parents back from the last station.  [The module
-definition](Module.lean) compiles it into a 5,181-byte module, `drone.wasm`,
-with SHA-256 `c6dc196215e4302d7e1560b36f72c577a9b1984b1173fa4f98487d1078fb7123`.  The proofs are
-in [`Examples/Drone`](./), and they use only `propext`, `Classical.choice`, and `Quot.sound`.
+[The planner](Program.lean) uses `UInt64` words throughout and replaces main's recursions on fuel
+with counted loops: the square root takes 17 halvings, a row is a build over the 45 targets of loops
+over the 45 sources, the forward pass carries one table of all rows, and the output follows the
+parents back from the last station.  [The module definition](Module.lean) compiles it into a
+5,181-byte module, `drone.wasm`, with SHA-256
+`c6dc196215e4302d7e1560b36f72c577a9b1984b1173fa4f98487d1078fb7123`.  The proofs are the other Lean
+files of this directory, and they use only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
@@ -34,12 +34,16 @@ module's instantiation.
 
 ## Tests
 
-[`tests/drone/oracle.sh`](../../tests/drone/oracle.sh) ran main's program (commit `188ccb4d`) natively once and saved 116
-terrains with main's output in [`tests/drone/corpus.txt`](../../tests/drone/corpus.txt) and 1,975 calls of main's other functions,
-including 138 rows of main's forward passes, in [`tests/drone/cases.txt`](../../tests/drone/cases.txt).  [`tests/drone/run.sh`](../../tests/drone/run.sh)
-runs `drone.wasm` in the Wasmtime host on all of them, and every output matches main's word for
-word.  The five terrains of the figures in [main's report](../../paper/drone-verification-report/README.md),
-whose outputs main saved in [`evidence/runs.json`](../../paper/drone-verification-report/evidence/runs.json), return the same words from `drone.wasm`.
+[`tests/drone/oracle.sh`](../../tests/drone/oracle.sh) ran main's program (commit `188ccb4d`)
+natively once and saved 116 terrains with main's output in
+[`tests/drone/corpus.txt`](../../tests/drone/corpus.txt) and 1,975 calls of main's other functions,
+including 138 rows of main's forward passes, in
+[`tests/drone/cases.txt`](../../tests/drone/cases.txt).
+[`tests/drone/run.sh`](../../tests/drone/run.sh) runs `drone.wasm` in the Wasmtime host on all of
+them, and every output matches main's word for word.  The five terrains of the figures in [main's
+report](../../paper/drone-verification-report/README.md), whose outputs main saved in
+[`evidence/runs.json`](../../paper/drone-verification-report/evidence/runs.json), return the same
+words from `drone.wasm`.
 
 ```sh
 tests/drone/oracle.sh      # once: the corpus from main's program

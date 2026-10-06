@@ -52,7 +52,7 @@ theorem decode_finite (x : UInt64) (he : Wasm.IEEE64.exponent x ≠ 2047)
 theorem finite_add (a b : UInt64)
     (hea : Wasm.IEEE64.exponent a ≠ 2047) (heb : Wasm.IEEE64.exponent b ≠ 2047)
     (ha : Wasm.IEEE64.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE64.scaledMagnitude b ≠ 0) :
-    LeanExe.Float64.addBits a b =
+    LeanExe.ProofKit.Float64.addBits a b =
       roundedSigned (Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b) := by
   rw [add_unpacked, decode_finite a hea ha, decode_finite b heb hb,
     pack_add_finite _ _ _ _ _ _ _ _ (exponent_ge a) (exponent_ge b), scaled_value, scaled_value]
@@ -109,7 +109,7 @@ theorem roundedSigned_value (x : UInt64) (he : Wasm.IEEE64.exponent x ≠ 2047)
 theorem add_eq_talos_finite (a b : UInt64)
     (hea : Wasm.IEEE64.exponent a ≠ 2047) (heb : Wasm.IEEE64.exponent b ≠ 2047)
     (ha : Wasm.IEEE64.scaledMagnitude a ≠ 0) (hb : Wasm.IEEE64.scaledMagnitude b ≠ 0) :
-    LeanExe.Float64.addBits a b = Wasm.IEEE64.add a b := by
+    LeanExe.ProofKit.Float64.addBits a b = Wasm.IEEE64.add a b := by
   rw [finite_add a b hea heb ha hb]
   by_cases hz : Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b = 0
   · have hs : (Wasm.IEEE64.sign a && Wasm.IEEE64.sign b) = false := by

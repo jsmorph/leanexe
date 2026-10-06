@@ -590,7 +590,7 @@ The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder
 
 ## Worked examples
 
-An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, `Verify.lean` the theorems, and `Cases.lean` the module cases.  A program imports only the modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) and, where it builds on another example, that example's program, as the reconstructed Euler solver builds on the first-order one.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
+An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, `Verify.lean` the theorems, and `Cases.lean` the module cases, except in `Gpt`, `Gpt32`, and `Prng`, whose tests are under [`tests/`](../tests/).  A program imports only the modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) and the programs it builds on, as `gpt` builds on `prng` and the reconstructed Euler solver on the first-order one.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
 
 | Example | Module | Demonstrates |
 |---|---|---|
@@ -612,9 +612,9 @@ An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, 
 | `Binary32` | `binary32` | `Float32` scalars, arrays, comparisons, and conditionals, and kernels translated to WGSL. |
 | `Gpt` | `gpt` | GPT-2 in binary64: calls of `ImplementsPure` functions in loops, temporaries under `Live`, a loop over layers with an array state, `++` in place, the cached step, top-k sampling, and the causal and exactness theorems. |
 | `Gpt32` | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
-| `Euler`, `EulerReconstructed` | `euler` | Arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
+| `Euler` | `euler` | The first-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
 | `Drone` | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
-| `PrimeFactors`, `Lookup`, `TreeLookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill. |
+| `PrimeFactors`, `Lookup`, `TreeLookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` carry the requests and READMEs of main's demos 6, 10, and 11. |
 
 ## From an English request
 

@@ -6,11 +6,11 @@ open Float.Model Float.Model.UnpackedFloat F64Encoding F64Packing F64Decoded F64
 open F64Add (decode_infinite decode_zero exponent_ne)
 
 theorem source_nan_right (a b : UInt64) (hb : Wasm.IEEE64.isNaN b = true) :
-    LeanExe.Float64.mulBits a b = Wasm.IEEE64.canonicalNaN := by
+    LeanExe.ProofKit.Float64.mulBits a b = Wasm.IEEE64.canonicalNaN := by
   rw [mul_unpacked, decode_nan b hb]
   cases decode a <;> exact pack_nan
 
-theorem mul_eq (a b : UInt64) : LeanExe.Float64.mulBits a b = Wasm.IEEE64.mul a b := by
+theorem mul_eq (a b : UInt64) : LeanExe.ProofKit.Float64.mulBits a b = Wasm.IEEE64.mul a b := by
   by_cases hna : Wasm.IEEE64.isNaN a = true
   · rw [mul_unpacked, decode_nan a hna]
     simp [UnpackedFloat.mul, pack_nan, Wasm.IEEE64.mul, hna]

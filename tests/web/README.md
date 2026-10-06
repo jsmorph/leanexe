@@ -1,12 +1,12 @@
 # WebGPU Pages
 
-[`tests/web/serve.py`](serve.py) serves two pages that run this project's WGSL kernels on a browser's
-WebGPU.  The kernel test page runs the cases of [`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and compares every output
-word with native Lean's.  The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU,
-in `gpt32.wasm` on the CPU, or on both with their scores compared.  The pages use only standard
-WebGPU and WebAssembly and have been run in Chromium 145 and Chrome 152.  The server needs `uv` and
-this repository's Lean toolchain, and its first start downloads `transformers` and the GPT-2
-tokenizer.
+[`tests/web/serve.py`](serve.py) serves two pages that run this project's WGSL kernels on a
+browser's WebGPU.  The kernel test page runs the cases of
+[`tests/wgsl/Cases.lean`](../wgsl/Cases.lean) and compares every output word with native Lean's.
+The GPT-2 page runs GPT-2 124M in binary32, with each kernel on WebGPU, in `gpt32.wasm` on the CPU,
+or on both with their scores compared.  The pages use only standard WebGPU and WebAssembly and have
+been run in Chromium 145 and Chrome 152.  The server needs `uv` and this repository's Lean
+toolchain, and its first start downloads `transformers` and the GPT-2 tokenizer.
 
 ## Running
 
@@ -20,11 +20,11 @@ uv run tests/gpt32/generate.py --export
 uv run tests/web/serve.py
 ```
 
-The address http://127.0.0.1:8000/ links to both pages.  At start, the server writes what is
-missing from `build/`: the seventeen kernel texts and `cases.txt` in `build/wgsl`, `gpt32.wasm`,
-the sampler's module `gpt.wasm`, and the program printer `gpt32-lines`.  From nothing this took
-about four minutes on the development machine.  The server writes only missing files, so after a
-change to a kernel, to the cases, or to the GPT-2 programs, run [`tests/wgsl/run.sh`](../wgsl/run.sh) (which
+The address http://127.0.0.1:8000/ links to both pages.  At start, the server writes what is missing
+from `build/`: the seventeen kernel texts and `cases.txt` in `build/wgsl`, `gpt32.wasm`, the
+sampler's module `gpt.wasm`, and the program printer `gpt32-lines`.  From nothing this took about
+four minutes on the development machine.  The server writes only missing files, so after a change to
+a kernel, to the cases, or to the GPT-2 programs, run [`tests/wgsl/run.sh`](../wgsl/run.sh) (which
 rewrites `build/wgsl`) or delete the affected files before starting it.
 
 Browsers expose WebGPU only to secure contexts, which include http://127.0.0.1 and
@@ -37,10 +37,12 @@ as `http://10.211.55.3:8000`, to `chrome://flags/#unsafely-treat-insecure-origin
 ## Kernel tests: `/kernels/`
 
 The page runs 474 cases of seventeen kernels: `scale`, `axpyArray`, `matVec`, and `condMix` of
-[`Examples/Binary32/Wgsl.lean`](../../Examples/Binary32/Wgsl.lean), `exp` of [`Examples/Gpt32/Kernels.lean`](../../Examples/Gpt32/Kernels.lean), and the twelve GPT-2 kernels
-of [`Examples/Gpt32/Specs.lean`](../../Examples/Gpt32/Specs.lean).  It binds and dispatches each case as `leanexe-webgpu-host run`
-does for [`tests/wgsl/run.sh`](../wgsl/run.sh), reads the output buffer, and compares each word with native Lean's.
-The cases include subnormal values, infinities, NaNs, and arrays of up to 4,096 elements.
+[`Examples/Binary32/Wgsl.lean`](../../Examples/Binary32/Wgsl.lean), `exp` of
+[`Examples/Gpt32/Kernels.lean`](../../Examples/Gpt32/Kernels.lean), and the twelve GPT-2 kernels of
+[`Examples/Gpt32/Specs.lean`](../../Examples/Gpt32/Specs.lean).  It binds and dispatches each case
+as `leanexe-webgpu-host run` does for [`tests/wgsl/run.sh`](../wgsl/run.sh), reads the output
+buffer, and compares each word with native Lean's.  The cases include subnormal values, infinities,
+NaNs, and arrays of up to 4,096 elements.
 
 | Control or section | Contents |
 |---|---|
@@ -59,10 +61,11 @@ both of which WGSL permits (sections 15.7.2 and 15.7.5).  `?run=high-performance
 
 ## GPT-2: `/gpt2/`
 
-The page tokenizes the prompt on the server and runs one step of GPT-2 for each position.  For
-each step it fetches the host commands that `gpt32-lines` prints from [`Examples/Gpt32/HostProgram.lean`](../../Examples/Gpt32/HostProgram.lean)
-and runs them, after loading the weights with the setup commands.  The commands are those of the
-theorem `Examples.Gpt32.generate_host`.  `hosts.js` runs them on WebGPU, as the C host does, or in
+The page tokenizes the prompt on the server and runs one step of GPT-2 for each position.  For each
+step it fetches the host commands that `gpt32-lines` prints from
+[`Examples/Gpt32/HostProgram.lean`](../../Examples/Gpt32/HostProgram.lean) and runs them, after
+loading the weights with the setup commands.  The commands are those of the theorem
+`Examples.Gpt32.generate_host`.  `hosts.js` runs them on WebGPU, as the C host does, or in
 `gpt32.wasm`, the same kernels compiled to WebAssembly, whose arrays have the words of the host's
 buffers.
 
@@ -88,12 +91,12 @@ without clicks.
 ## What Is Proved
 
 `generate_host` proves that, on a device with strict binary32 arithmetic, the commands of the setup
-and of each step leave in the score buffers exactly the bits of `step32`, the binary32 GPT-2 step
-of [`Examples/Gpt32/Program.lean`](../../Examples/Gpt32/Program.lean).  `sampleTopK_implements` proves that `sampleTopK` in `gpt.wasm`
-computes the Lean function of the same name.  The JavaScript hosts, the generation loop, the
-server, the tokenizer, and the browser's WebGPU implementation are unproved, and the kernels of
-`gpt32.wasm` have no WebAssembly theorem.  On a device outside the strict profile, no theorem
-applies, and the compared mode measures the difference.
+and of each step leave in the score buffers exactly the bits of `step32`, the binary32 GPT-2 step of
+[`Examples/Gpt32/Program.lean`](../../Examples/Gpt32/Program.lean).  `sampleTopK_implements` proves
+that `sampleTopK` in `gpt.wasm` computes the Lean function of the same name.  The JavaScript hosts,
+the generation loop, the server, the tokenizer, and the browser's WebGPU implementation are
+unproved, and the kernels of `gpt32.wasm` have no WebAssembly theorem.  On a device outside the
+strict profile, no theorem applies, and the compared mode measures the difference.
 
 | Device | Kernel tests | GPT-2, compared mode |
 |---|---|---|

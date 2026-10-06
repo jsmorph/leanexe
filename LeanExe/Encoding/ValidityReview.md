@@ -9,13 +9,12 @@ typing constructor has a derivation under the official scalar WASM rules.
 The module conditions supply the required context, declaration, and export
 checks.  The conditions are sufficient for the selected binary forms.
 
-The comparison uses the official
-[instruction rules][instructions], [type rules][types], and
-[module rules][modules] at revision
-`608711107b7f1edb13efd57b7d79b49477462d36`.  The
-[binary review](BinaryReview.md) records the reference versions, resolved
-reference discrepancies, Talos pin, and binary source identities.
-The derivation arguments below are a manual review of the formal definitions.
+The comparison uses the official [instruction rules][instructions], [type
+rules][types], and [module rules][modules] at revision
+`608711107b7f1edb13efd57b7d79b49477462d36`.  The [binary
+review](BinaryReview.md) records the reference versions, resolved reference
+discrepancies, Talos pin, and binary source identities.  The derivation
+arguments below are a manual review of the formal definitions.
 
 ## Instruction typing
 
@@ -162,9 +161,9 @@ requires its `Ready`, validity, and behavioral proofs.  The current concrete
 premise proofs cover the constant example.
 
 The proof target and six public axiom reports were checked again during this
-review through [`tools/leanrun`](../../tools/leanrun).  All six reports contain only `propext`,
-`Classical.choice`, and `Quot.sound`.  The specification and theorem sources
-retain their reviewed contents.
+review through [`tools/leanrun`](../../tools/leanrun).  All six reports contain
+only `propext`, `Classical.choice`, and `Quot.sound`.  The specification and
+theorem sources retain their reviewed contents.
 
 The reviewed validity source has SHA-256:
 
@@ -172,6 +171,9 @@ The reviewed validity source has SHA-256:
 f37db1d2be31008d85698c1c983509259d590edadc55b956f354c0aad589527e  Spec/Validity.lean
 ```
 
-[instructions]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.3-validation.instructions.spectec
-[types]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.1-validation.types.spectec
-[modules]: https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.4-validation.modules.spectec
+[instructions]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.3-validation.instructions.spectec
+[types]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.1-validation.types.spectec
+[modules]:
+https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.4-validation.modules.spectec

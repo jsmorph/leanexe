@@ -44,19 +44,19 @@ theorem ofBits_toBits (x : Float) : Float.ofBits x.toBits = x := by
       rfl
 
 theorem toBits_add (a b : Float) : (a + b).toBits = Wasm.IEEE64.add a.toBits b.toBits := by
-  rw [← F64Add.add_eq, LeanExe.Float64.addBits, ofBits_toBits, ofBits_toBits]
+  rw [← F64Add.add_eq, LeanExe.ProofKit.Float64.addBits, ofBits_toBits, ofBits_toBits]
 
 theorem toBits_sub (a b : Float) : (a - b).toBits = Wasm.IEEE64.sub a.toBits b.toBits := by
-  rw [← F64Sub.sub_eq, LeanExe.Float64.subBits, ofBits_toBits, ofBits_toBits]
+  rw [← F64Sub.sub_eq, LeanExe.ProofKit.Float64.subBits, ofBits_toBits, ofBits_toBits]
 
 theorem toBits_mul (a b : Float) : (a * b).toBits = Wasm.IEEE64.mul a.toBits b.toBits := by
-  rw [← F64Mul.mul_eq, LeanExe.Float64.mulBits, ofBits_toBits, ofBits_toBits]
+  rw [← F64Mul.mul_eq, LeanExe.ProofKit.Float64.mulBits, ofBits_toBits, ofBits_toBits]
 
 theorem toBits_div (a b : Float) : (a / b).toBits = Wasm.IEEE64.div a.toBits b.toBits := by
-  rw [← F64Div.div_eq, LeanExe.Float64.divBits, ofBits_toBits, ofBits_toBits]
+  rw [← F64Div.div_eq, LeanExe.ProofKit.Float64.divBits, ofBits_toBits, ofBits_toBits]
 
 theorem toBits_sqrt (a : Float) : a.sqrt.toBits = Wasm.IEEE64.sqrt a.toBits := by
-  rw [← F64Sqrt.sqrt_eq, LeanExe.Float64.sqrtBits, ofBits_toBits]
+  rw [← F64Sqrt.sqrt_eq, LeanExe.ProofKit.Float64.sqrtBits, ofBits_toBits]
 
 theorem toModel_eq (x : Float) : x.toModel = Float.Model.ofBits x.toBits := by
   conv_lhs => rw [← ofBits_toBits x]

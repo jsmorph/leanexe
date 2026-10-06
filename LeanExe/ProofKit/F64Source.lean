@@ -50,11 +50,11 @@ theorem sign_encodeFinite (negative : Bool) (e f : Nat)
     simp [Wasm.IEEE64.sign, Wasm.IEEE64.encodeFinite, UInt64.toNat_ofNat, Nat.mod_eq_of_lt] <;>
     omega
 
-theorem add_source (left right : UInt64) : LeanExe.Float64.addBits left right = add left right := rfl
-theorem sub_source (left right : UInt64) : LeanExe.Float64.subBits left right = sub left right := rfl
-theorem mul_source (left right : UInt64) : LeanExe.Float64.mulBits left right = mul left right := rfl
-theorem div_source (left right : UInt64) : LeanExe.Float64.divBits left right = div left right := rfl
-theorem sqrt_source (value : UInt64) : LeanExe.Float64.sqrtBits value = sqrt value := rfl
+theorem add_source (left right : UInt64) : LeanExe.ProofKit.Float64.addBits left right = add left right := rfl
+theorem sub_source (left right : UInt64) : LeanExe.ProofKit.Float64.subBits left right = sub left right := rfl
+theorem mul_source (left right : UInt64) : LeanExe.ProofKit.Float64.mulBits left right = mul left right := rfl
+theorem div_source (left right : UInt64) : LeanExe.ProofKit.Float64.divBits left right = div left right := rfl
+theorem sqrt_source (value : UInt64) : LeanExe.ProofKit.Float64.sqrtBits value = sqrt value := rfl
 
 #print axioms add_source
 #print axioms sub_source

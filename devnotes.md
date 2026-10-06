@@ -70,8 +70,8 @@ previous running-sum execution tests still describe this binary.
 
 ## 2026-09-25: Running-sum byte-I/O demo
 
-The [running-sum example](LeanExe/Examples/RunningSum.lean) uses the existing
-`io` compiler and [byte-I/O API](docs/manual.md#byte-input-and-output).  Signed
+The [running-sum example](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Examples/RunningSum.lean) uses the existing
+`io` compiler and [byte-I/O API](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/manual.md#byte-input-and-output).  Signed
 decimal arithmetic uses byte arrays because the accepted source language has
 bounded scalar integers.  The program writes after each input newline,
 retains partial lines across reads, processes a final unterminated line, and
@@ -84,7 +84,7 @@ values beyond 64 bits, 5,000-digit inputs spanning reads, and 1,000 successive
 additions.  The interactive test sends each subsequent line only after
 receiving the previous sum.  Empty input, CRLF, final input without a
 newline, malformed lines, and a broken output pipe pass.  The test joins
-the execution suite.  [Usage](docs/manual.md#running-sum) is documented.
+the execution suite.  [Usage](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/manual.md#running-sum) is documented.
 
 The first extraction rejected `Nat.toUInt8`.  Digit arithmetic now uses
 supported `UInt64` conversions, with intermediate digit values at most 19.
@@ -429,7 +429,7 @@ The full refreshed source-proof build reached its twenty-minute limit while buil
 ## 2026-09-24: Type-safety working record
 
 The user requested a comprehensive current working record in `task.md`.
-The branch had no such file.  The new [working state](task.md) consolidates
+The branch had no such file.  The new [working state](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/task.md) consolidates
 the proof checkpoint, completed inventory, continuation and derived-sum agenda,
 Option/Except policy question, remaining language families, and current notes.
 The repository plan and documentation indexes now assign that branch's active
@@ -451,7 +451,7 @@ checked file list.
 
 - [x] Check whitespace and documentation-checker syntax.
 - [x] Review the new record against the source, plan, and proof journal.
-- [ ] Complete the repository documentation check.  Its only reported failure is an existing absolute temporary-workspace path in the [WGSL review](paper/wgsl-verification-report/review.md), present at `HEAD` before this update.  The new record's links pass.
+- [ ] Complete the repository documentation check.  Its only reported failure is an existing absolute temporary-workspace path in the [WGSL review](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/wgsl-verification-report/review.md), present at `HEAD` before this update.  The new record's links pass.
 
 ## 2026-09-24: Nested-loop byte-buffer cleanup
 
@@ -651,7 +651,7 @@ follow separately.
 Fetched `origin/io` and checked out the local tracking branch at
 `fb19b5efdd6cc171033adf888667764203c14f14`.  The working tree was clean.
 The user deferred release-identity work and requested a current continuation
-document.  [Byte I/O completion](task.md) now records the API, implementation,
+document.  [Byte I/O completion](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/task.md) now records the API, implementation,
 prior test reports, open ownership defects, setup requirements, commands,
 documentation gaps, and completion agenda.
 
@@ -823,7 +823,7 @@ The user authorized implementation of the tiny GPT-2-style model, beginning
 with a runnable verified softmax, and requested frequent commits and pushes.
 The agreed completion boundary for early components is generated-WAT execution,
 success, and numerical error.  Frozen exact-byte packages move to later
-releases.  The [component plan](plans/tiny-transformer.md) records the scope.
+releases.  The [component plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/tiny-transformer.md) records the scope.
 
 Implementation starts at revision 0eeb992d896a90b63848ca578567c8d3f7a30942,
 Lean 4.34.0-rc2, and Talos 87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47.
@@ -879,7 +879,7 @@ The explicit shared-library target completed 3,001 jobs under its 60-minute boun
 
 ## 2026-08-11: Fold-composition work begins
 
-The current [artifact-proving reference](docs/artifact-proving.md) and root [development plan](plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
+The current [artifact-proving reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/artifact-proving.md) and root [development plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plan.md) retain the unresolved obligations identified across the addition, multiplication, and XOR fold journals.  The first experiment added a general equality interface for `Wasm.Locals`, including operand-stack replacement projections.  The second experiment added a generic arbitrary-postcondition singleton-result theorem and an exact annotation-generated adapter after the frame interface passed fixed-proof checks.
 
 A focused Lean probe confirmed that the pinned Talos `Wasm.Locals` structure exposes `Wasm.Locals.mk.injEq` but no named `Wasm.Locals.ext` theorem.  Demo 11's journal records failed attempts to use record syntax and the `ext` tactic before `convert` and reflexivity closed an exit-frame equality.  This evidence justifies a small generic theorem whose statement depends only on the three fields of `Wasm.Locals`.
 
@@ -980,7 +980,7 @@ Checks run:
 
 ## 2026-08-07: Bounded Filter Composition
 
-The [Demo 5 baseline](demos/demo-5/README.md) took 1,635.679 seconds in Stage 5 and produced a 969-line direct proof after fourteen edited checks.  Its only checked compiler region was the bounded-length dispatch, leaving Codex to derive the input-capacity allocator, filtered-prefix loop invariant, conditional output store, dynamic result length, and empty branch.  The proof journal supplied the exact emitted program decomposition and invariant used to define the shared theorem.
+The [Demo 5 baseline](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-5/README.md) took 1,635.679 seconds in Stage 5 and produced a 969-line direct proof after fourteen edited checks.  Its only checked compiler region was the bounded-length dispatch, leaving Codex to derive the input-capacity allocator, filtered-prefix loop invariant, conditional output store, dynamic result length, and empty branch.  The proof journal supplied the exact emitted program decomposition and invariant used to define the shared theorem.
 
 `Project.ProofKit.FixedArrayFilterLt.wrapperProgram_spec` proves the canonical bounded stable filter for arbitrary maximum size and `UInt64` threshold.  The compiler recognizes the corresponding extracted IR and emits `leanexe.array.filter-lt.v1` over the complete function while preserving the nested length-dispatch region.  The JavaScript consumer validates the parameters and function boundary, constructs a checked equality with `wrapperProgram`, selects the semantic theorem, and generates the complete schema-6 artifact starter.
 
@@ -988,7 +988,7 @@ Three controlled reproofs retained the formal specification, source, 1,975-byte 
 
 ## 2026-08-07: Artifact Heap-Reserve Precondition
 
-The bounded filter in [Demo 5](demos/demo-5/README.md) exposed a counterexample to the former `RuntimeReady` precondition.  For input `[100]`, the final output is empty, but the compiled `Array.filter` reserves input-sized capacity before testing the element.  At a bump pointer of `2^32 - 56` with 65,536 memory pages, the former final-output bound held while the allocator failed and the artifact trapped.
+The bounded filter in [Demo 5](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-5/README.md) exposed a counterexample to the former `RuntimeReady` precondition.  For input `[100]`, the final output is empty, but the compiled `Array.filter` reserves input-sized capacity before testing the element.  At a bump pointer of `2^32 - 56` with 65,536 memory pages, the former final-output bound held while the allocator failed and the artifact trapped.
 
 The formal task now defines `heapReserveBytes : Array UInt64 → Nat` beside `expected`.  `RuntimeReady` retains its final-output representation bounds and adds separate address-space and existing-memory bounds for the stated heap reserve.  The direct artifact proof must establish each allocation premise from this reserve, which keeps the resource assumption reviewable and tied to exact emitted behavior.
 
@@ -996,7 +996,7 @@ Proof-package schema 6 records the expanded formal interface, while verification
 
 ## 2026-08-03: Reusable WASM Proof Library Plan
 
-The current [artifact-proving reference](docs/artifact-proving.md) and [ProofKit reference](proofs/talos/lean/Project/ProofKit/README.md) describe the shared arithmetic, memory, control-flow, runtime, and function-portability support used by artifact proofs.  The original plan recorded that generated proof sessions could not import repository-owned shared modules and received no checked declaration catalog.  The completed work added an allowed ProofKit, dependency and identity audits, a checked catalog, feature-directed context, scalar-loop and memory-runtime pilots, and continuing evidence-based distillation.
+The current [artifact-proving reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/artifact-proving.md) and [ProofKit reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/README.md) describe the shared arithmetic, memory, control-flow, runtime, and function-portability support used by artifact proofs.  The original plan recorded that generated proof sessions could not import repository-owned shared modules and received no checked declaration catalog.  The completed work added an allowed ProofKit, dependency and identity audits, a checked catalog, feature-directed context, scalar-loop and memory-runtime pilots, and continuing evidence-based distillation.
 
 ## 2026-08-03: `leanexegen` Headless Codex Orchestration
 
@@ -5579,7 +5579,7 @@ element-copy loops follow the `append_bang` and LEB templates.
 
 ## 2026-07-13: Repository review and replacement development plan
 
-The repository review covered the tracked source, extraction pipeline, IR interpreter, structured WASM backend, CLI, execution tests, ownership diagnostics, documentation, recent history, and the Talos proof workspace.  The untracked `leanclob/` directory is a separate nested Git repository, so the review excluded it except as background already recorded in the journal.  The old [Development Plan](plan.md) described an early compiler roadmap whose principal language, memory, WASI, comparison, and artifact-proof milestones now exist.
+The repository review covered the tracked source, extraction pipeline, IR interpreter, structured WASM backend, CLI, execution tests, ownership diagnostics, documentation, recent history, and the Talos proof workspace.  The untracked `leanclob/` directory is a separate nested Git repository, so the review excluded it except as background already recorded in the journal.  The old [Development Plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plan.md) described an early compiler roadmap whose principal language, memory, WASI, comparison, and artifact-proof milestones now exist.
 
 The replacement plan starts with two concrete compiler issues.  Source-level `LeanExe.Runtime.release` still relies on an unchecked ownership precondition, and CLOB `cancel` repeats one `findIdx?` scan three times while flattening its result.  The work order checks explicit-release ownership, evaluates matched values once, regenerates and proves complete `cancel`, then proves `postOnly`, `limit`, and `market` while extracting shared proof lemmas only from repeated cases.
 
@@ -5589,7 +5589,7 @@ The ordinary execution gate passed.  `node test/run_all.js` reported 114 classif
 
 The artifact gate also passed.  `tools/check-talos.sh` compared all fourteen regenerated WASM and WAT artifacts with their checked-in proof inputs and rebuilt the aggregate `Project` library.  The cold proof workspace first built 3,003 dependency jobs, and the final aggregate build completed 3,048 jobs; Lean reported unused `simp` arguments and variables in handwritten source and proof files, but no artifact mismatch, proof error, `sorry`, or new axiom.
 
-Review references are [Language Specification](docs/spec.md), [User Manual](docs/manual.md), [Verifying a Program](docs/verifying.md), [Talos Proofs](proofs/talos/README.md), [Core IR](LeanExe/IR/Core.lean), [Structured WASM Instructions](LeanExe/Wasm/Instr.lean), [Compiler CLI](LeanExe/CLI.lean), and [CLOB Source](LeanExe/Examples/Clob.lean).  These repository files define the current implementation and claimed behavior.  The replacement plan keeps their roles separate and schedules a factual consistency pass.
+Review references are [Language Specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/spec.md), [User Manual](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/manual.md), [Verifying a Program](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/verifying.md), [Talos Proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/README.md), [Core IR](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/IR/Core.lean), [Structured WASM Instructions](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Wasm/Instr.lean), [Compiler CLI](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/CLI.lean), and [CLOB Source](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Examples/Clob.lean).  These repository files define the current implementation and claimed behavior.  The replacement plan keeps their roles separate and schedules a factual consistency pass.
 
 - [x] Review the tracked repository and recent development history.
 - [x] Run the complete execution suite.
@@ -5601,7 +5601,7 @@ Review references are [Language Specification](docs/spec.md), [User Manual](docs
 
 ## 2026-07-13: Developer guide and documentation consolidation
 
-[Developing LeanExe](DEVELOPING.md) now defines the developer entry path.  It records the Lean 4.29.1 compiler workspace, the Lean 4.31.0 proof workspace, Wasmtime 44.0.0, the unpinned Node and `wasm-tools` gaps, system prerequisites, environment overrides, first-build commands, diagnostic commands, test gates, tracked proof artifacts, update transactions, dependency rules, and failure diagnostics.  The guide also assigns one responsibility to each maintained document so current facts do not require parallel edits in several roadmaps.
+[Developing LeanExe](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/DEVELOPING.md) now defines the developer entry path.  It records the Lean 4.29.1 compiler workspace, the Lean 4.31.0 proof workspace, Wasmtime 44.0.0, the unpinned Node and `wasm-tools` gaps, system prerequisites, environment overrides, first-build commands, diagnostic commands, test gates, tracked proof artifacts, update transactions, dependency rules, and failure diagnostics.  The guide also assigns one responsibility to each maintained document so current facts do not require parallel edits in several roadmaps.
 
 The current-state documents now agree with the aggregate proof script.  The repository overview and technical summary report fourteen artifacts, and the Talos README lists the unsigned LEB128, CLOB quote, and CLOB cancel theorems with the exact limitation that cancel covers only an absent identifier.  The technical summary no longer records volatile file sizes or test totals, `agenda.md` is an archived pointer to the development plan, the two early Talos documents identify themselves as historical experiments, and the string document identifies itself as an unimplemented proposal.
 
@@ -7300,7 +7300,7 @@ A controlled `leanexegen reprove` held the formal specification, Source, WASM, e
 
 One reproof demonstrates that the interface can reduce generation time but does not estimate a stable distribution.  The accepted proof grew by twelve lines while generation became faster, confirming that proof length serves only as a diagnostic measure.  Repeated fixed-artifact runs need internal telemetry for candidate writes, Lean commands, diagnostics, and outer checks before attributing the reduction among model search, proof organization, and elaboration.
 
-The current [artifact-proving reference](docs/artifact-proving.md) records the structural work distilled from the earlier direct-WASM proof plan.  That work prioritized an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host could add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remained on one declared machine profile.
+The current [artifact-proving reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/artifact-proving.md) records the structural work distilled from the earlier direct-WASM proof plan.  That work prioritized an artifact-derived structural map, split proof checkpoints, complete allocator and array-wrapper theorems, source-derived semantic hints and capsules, and a proof-producing target verification-condition generator.  The `dev` host could add a concurrent Lean-checking lane after installation of Lean 4.31.0 and a semaphore-aware leanexe checkout, while fixed timing comparisons remained on one declared machine profile.
 
 ## 2026-08-05: Fixed-Artifact Timing Distributions
 
@@ -7796,7 +7796,7 @@ A synthetic scale test placed the real scalar-loop and Euclidean entries among 9
 
 ## 2026-08-09: LTG metrics
 
-`tools/ltg metrics` now measures the validated catalog, generated indexes, and supplied proof-kit source under explicit counting rules documented in [LTG metrics](docs/ltg-metrics.md).  The initial snapshot contains 7 categories, 15 retrieval entries, 31 unique advertised declaration names, 22 distinct tactic commands, 39,642 canonical catalog bytes, and 430,185 bytes across the physical catalog and supplied proof kit.  Entries index 25 of 284 public named proof-kit declarations and have no structured tactic-name field, establishing declaration and tactic discoverability as measurable catalog-development work.
+`tools/ltg metrics` now measures the validated catalog, generated indexes, and supplied proof-kit source under explicit counting rules documented in [LTG metrics](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/ltg-metrics.md).  The initial snapshot contains 7 categories, 15 retrieval entries, 31 unique advertised declaration names, 22 distinct tactic commands, 39,642 canonical catalog bytes, and 430,185 bytes across the physical catalog and supplied proof kit.  Entries index 25 of 284 public named proof-kit declarations and have no structured tactic-name field, establishing declaration and tactic discoverability as measurable catalog-development work.
 
 ## 2026-08-09: Nested fixed-array fold annotation
 
@@ -7868,7 +7868,7 @@ The journal confirms that the capacity theorem removed both local capacity deriv
 
 ## 2026-08-10: Artifact-proof opacity investigation
 
-The VQ note on opacity boundaries prompted a controlled investigation of compact theorem interfaces, retained in the [Demo 9 experiments](demos/demo-9/README.md).  During the fixed Demo 9 run, direct simplification of the continuing fold edge exhausted one million heartbeats because the full outer loop continuation remained in every weakest-precondition reduction.  A continuation-generic local theorem with a compact frame endpoint checked after projecting combined-local hypotheses through the shared `Frame` declarations.
+The VQ note on opacity boundaries prompted a controlled investigation of compact theorem interfaces, retained in the [Demo 9 experiments](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-9/README.md).  During the fixed Demo 9 run, direct simplification of the continuing fold edge exhausted one million heartbeats because the full outer loop continuation remained in every weakest-precondition reduction.  A continuation-generic local theorem with a compact frame endpoint checked after projecting combined-local hypotheses through the shared `Frame` declarations.
 
 The accepted proof completed Stage 5 in 2,297.877 seconds and passed independent package verification.  This is 10.3 percent slower than the retained fold-structure proof, 25.2 percent faster than the capacity-and-frame screen, and 33.0 percent faster than baseline; its 655 lines are 28.9 percent more than the retained proof.  The compact theorem removed the heartbeat failure and enabled completion, but these measurements do not establish a time or size improvement.
 
@@ -7912,13 +7912,13 @@ The annotation generator now emits a continuing frame, its item-local validity t
 
 A fresh fixed-artifact reproof found the adapter through structured LTG, applied it at the continuing edge, completed the artifact theorem, and passed separate package verification.  Stage 5 took 1,906.536 seconds against the primary run's 1,596.295 seconds, while the proof grew to 669 lines, 2,435 words, and 35,871 bytes.  The run therefore establishes retrieval and applicability but supplies negative time and size evidence.
 
-The fresh agent rebuilt its loop invariant around the generated 21-value frame and referred to that frame seventeen times.  The smaller manual proof kept its existing semantic fold frame and let the adapter infer the generated local values at one boundary.  Traversal LTG guidance now recommends that form, while the [Demo 9 experiment packages](demos/demo-9/README.md) preserve the artifact identity, proof forms, telemetry, journal observations, and separate named-postcondition experiment.
+The fresh agent rebuilt its loop invariant around the generated 21-value frame and referred to that frame seventeen times.  The smaller manual proof kept its existing semantic fold frame and let the adapter infer the generated local values at one boundary.  Traversal LTG guidance now recommends that form, while the [Demo 9 experiment packages](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-9/README.md) preserve the artifact identity, proof forms, telemetry, journal observations, and separate named-postcondition experiment.
 
 ## 2026-08-10: Local-irreducibility screen
 
 The first focused screen marked Demo 10's `func0Def` locally irreducible in the unchanged primary proof.  The `Behavior` target failed after 4.3 seconds at the first length-dispatch tactic because its `change` still needed the function body, parameter count, result count, and initial locals.  Marking only `func0` produced the same diagnostic after 5.2 seconds because the tactic still needed to reduce that program to `leProgram`.
 
-These source diagnostics reject local irreducibility as a standalone setting for the present artifact-proof API.  The proof needs a checked entry/dispatch package that names the complete body, valid branch, and invalid branch, with accessor equalities for the existing capacity and fold regions.  [The experiment record](demos/demo-10/experiments/irreducibility-screen.md) preserves the commands, timings, reduced diagnostic, and fixed inputs.
+These source diagnostics reject local irreducibility as a standalone setting for the present artifact-proof API.  The proof needs a checked entry/dispatch package that names the complete body, valid branch, and invalid branch, with accessor equalities for the existing capacity and fold regions.  [The experiment record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-10/experiments/irreducibility-screen.md) preserves the commands, timings, reduced diagnostic, and fixed inputs.
 
 ## 2026-08-10: Entry-dispatch opacity package
 
@@ -8769,7 +8769,7 @@ canonical Sod states.  It does not use the experimental self-hosted emitter,
 componentwise reconstruction, native floating point as proof evidence, or
 release bookkeeping.  Division, square root, a checked conservative-state
 step, and the 100-cell run remain ordered follow-ons after the fixed artifact
-passes.  [Verified Euler Rusanov Data](plans/euler-rusanov.md) records the full
+passes.  [Verified Euler Rusanov Data](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-rusanov.md) records the full
 scope, gates, feasibility assessment, and nonclaims.
 
 ## 2026-09-04: Guarded quadratic Horner completed
@@ -10546,7 +10546,7 @@ experiment.  No final dataset or figure exists at this checkpoint.
 
 ### 2026-09-11: completed four-state Riemann experiment
 
-The [Riemann article and dataset](data/euler-riemann-v1/README.md) contain
+The [Riemann article and dataset](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-v1/README.md) contain
 the 192 × 192 result at time 0.8, 21 raw snapshots, all final conservative
 values, the 808-step history, and inspected density/pressure PNG, SVG, and
 PDF figures.  Native Wasmtime and independent binary64 replay agree on
@@ -10564,7 +10564,7 @@ delegated to the type-theory agent.
 
 ### 2026-09-11: accepted language specification report
 
-[The LeanExe Fragment: Types, Extraction, and Execution](paper/leanexe-type-theory-specification/README.md)
+[The LeanExe Fragment: Types, Extraction, and Execution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/leanexe-type-theory-specification/README.md)
 is accepted as [marXiv:2609.00005v2](http://127.0.0.1:8405/abs/2609.00005).
 The 13-page report defines runtime typing, layouts, extraction acceptance,
 and execution relative to documentation checkpoint
@@ -10585,7 +10585,7 @@ No new dependency, Lean process, or implementation change was required.
 ### 2026-09-11: streamed records for the 800-grid run
 
 The user authorized the additional calculation on dev.  The
-[run record](plans/euler-riemann-dev.md) identifies its host, current runner,
+[run record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-riemann-dev.md) identifies its host, current runner,
 data format, commands, and tests.  The fresh runner copy passed checksum,
 syntax, and executable-mode checks.  Pinned Node and Wasmtime installation
 approval remains pending.  The remote benchmark and 800-grid run have
@@ -10638,7 +10638,7 @@ Persistent job leanexe-riemann-800-20260911-1 started at 17:44:58 UTC,
 with 4G high, 6G maximum, zero swap, 100% CPU, 512 tasks, and a six-hour
 limit.  The benchmark predicts about 3.5 hours for native execution and
 replay, followed by roughly 0.9 hours for the compressed-data check.
-The [dev run record](plans/euler-riemann-dev.md) identifies source, tools,
+The [dev run record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-riemann-dev.md) identifies source, tools,
 jobs, and evidence paths.  The 800-grid result is pending.
 
 Added a comparison renderer with common field ranges and contour levels.
@@ -10665,7 +10665,7 @@ free.  The active plans record cancellation.
 
 ### 2026-09-11: complete Riemann solver authorized
 
-The user approved the [complete solver plan](plans/euler-riemann-complete.md):
+The user approved the [complete solver plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-riemann-complete.md):
 runtime grid size, one local process and thread, complete Lean-source and
 exact-WASM proofs, followed by the 192 run, its figure, the 800 run, and
 its figure.  Existing data remain preserved.
@@ -11424,8 +11424,8 @@ axioms.  Complete extraction input and execution, the new search-window
 draft, and the updated LTG declaration inventory remain unchecked.
 
 The review identified an unresolved numerical premise in the current
-strategy.  [Retry execution](proofs/talos/lean/Project/EulerRiemann/ExecutionRetry.lean)
-and [time-loop execution](proofs/talos/lean/Project/EulerRiemann/ExecutionAdvance.lean)
+strategy.  [Retry execution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/ExecutionRetry.lean)
+and [time-loop execution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/ExecutionAdvance.lean)
 assume source success.  The source fuel theorem excludes status 5, while
 scan failure, invalid time advancement, and retry exhaustion remain
 possible under its conclusion.  The safety theorem preserves the last
@@ -11461,21 +11461,21 @@ with tree 8b588c21a1fb9f7fbed189acd8fedda96991d49b.  The user
 approved the six-gate strategy recorded in the complete-solver plan.
 Numerical completion now precedes further initializer compositions.
 
-[Rusanov decomposition](proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
+[Rusanov decomposition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/RealRusanov.lean)
 proves the exact-real three-state decomposition, internal-energy
 concavity, the split-state quadratic margin identity, and the
 six-sevenths internal-energy factor under the physical sound-speed
 bound.  The final check took 33 seconds.
-[Complete cell positivity](proofs/talos/lean/Project/EulerRiemann/RealStep.lean)
+[Complete cell positivity](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/RealStep.lean)
 composes these results under both CFL bounds, retaining the sharp center
 coefficient and deriving positive density and internal energy.  It
 checked in 95 seconds.  All requested audits contain only propext,
 Classical.choice, and Quot.sound.
 
-[Binary64 ordering converses](proofs/talos/lean/Project/ProofKit/F64OrderComplete.lean)
+[Binary64 ordering converses](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64OrderComplete.lean)
 derive positive-word classification and ordering from decoded finite
 values.  They checked in 31 seconds.
-[Energy-guard acceptance](proofs/talos/lean/Project/ProofKit/F64AdmissibilityComplete.lean)
+[Energy-guard acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64AdmissibilityComplete.lean)
 uses the existing normalized residual error bound of 5 epsilon to prove
 acceptance above an exact normalized margin of 13 epsilon, where epsilon
 is 2^-52.  Input classification and normalizability remain explicit
@@ -11490,7 +11490,7 @@ descriptors and LTG execution support retain their separate role in the
 full execution proof.  No numerical source, frozen artifact, or
 production dataset changed.
 
-[Normalization-range counterexample](proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
+[Normalization-range counterexample](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/GuardRangeBoundary.lean)
 now checks in Lean.  The three states have density 1, main momentum 1.25,
 and energy 2.  Only the right neighbor has transverse momentum 2^-1019.
 Both distinct states and both interfaces pass their guards.  At ratio
@@ -11512,18 +11512,18 @@ approved, and it would require new exact-byte proof inputs.
 ## 2026-09-12: Approved guard extension
 
 The user approved extending the normalization guard to account for tiny
-momentum terms.  [Magnitude bounds](proofs/talos/lean/Project/ProofKit/F64NormalizeTiny.lean)
+momentum terms.  [Magnitude bounds](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64NormalizeTiny.lean)
 prove that the omitted normalized square is at most epsilon squared.
-[The extended guard](proofs/talos/lean/Project/ProofKit/F64AdmissibilityTiny.lean)
+[The extended guard](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64AdmissibilityTiny.lean)
 accounts for both omitted terms, retains the eight-epsilon threshold,
 proves accepted-state admissibility and acceptance above thirteen
 epsilon, and preserves every old accepted input.  Their final checks
 took 63 and 39 seconds, with standard-only axiom audits.
 
-[Solver numerics](proofs/talos/lean/Project/EulerRiemann/Numerics.lean)
+[Solver numerics](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/Numerics.lean)
 apply the guard to the existing side, interface, and cell arithmetic.
-[Safety and preservation](proofs/talos/lean/Project/EulerRiemann/NumericsSafety.lean)
-checked in 90 seconds.  [The boundary repair](proofs/talos/lean/Project/EulerRiemann/GuardRangeRepair.lean)
+[Safety and preservation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSafety.lean)
+checked in 90 seconds.  [The boundary repair](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/GuardRangeRepair.lean)
 checked in 49 seconds: both rejected trials now pass and the returned
 conserved values equal the computed update words.  The tiny-term
 substitution affects only the guard's scratch calculation.
@@ -11543,17 +11543,17 @@ regions.  Output.pack still has no region description.  The previous
 six artifact files remain in `tmp/euler-riemann-before-tinyguard-XhHZqf`.
 Execution proofs require revision for the changed guard and indices.
 
-[Guard-range acceptance](proofs/talos/lean/Project/ProofKit/F64AdmissibilityRange.lean)
+[Guard-range acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64AdmissibilityRange.lean)
 removes the momentum-normalization premises when the common biased
-exponent is at least 1021.  [Product perturbation](proofs/talos/lean/Project/ProofKit/RealProductError.lean)
-and [Euler margin perturbation](proofs/talos/lean/Project/EulerRiemann/RealPerturbation.lean)
+exponent is at least 1021.  [Product perturbation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/RealProductError.lean)
+and [Euler margin perturbation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/RealPerturbation.lean)
 bound the change in the energy margin by 8 M delta + 4 delta squared.
 The final checks passed in 42, 1.5, and 7.2 seconds.  Their audits use
 only the three permitted axioms.  Bounds over reachable rounded grids,
 successful final-time completion, and the complete WASM proof remain
 open.  No production run has started.
 
-[Perturbation-to-guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsMargin.lean)
+[Perturbation-to-guard acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsMargin.lean)
 connects that component-error bound to the executable normalized-margin
 threshold.  It passed in 1.8 seconds with standard-only audits.  Its
 finiteness, normalization, and quantitative reference-state premises
@@ -11568,16 +11568,16 @@ unchanged.  This aggregate mismatch remains unresolved.
 
 ## 2026-09-12: Initial bounds and arithmetic range
 
-[Initial quantitative bounds](proofs/talos/lean/Project/EulerRiemann/InitialQuantitative.lean)
+[Initial quantitative bounds](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/InitialQuantitative.lean)
 check all 36 rounded conservative averages and transfer the results to
 every initialized grid: density at least 1/8, energy at least 1/4,
 component magnitudes at most 4, and energy margin at least 1/100.
 The final check took 18 seconds with three standard-only audits.
 
-[Finite packing](proofs/talos/lean/Project/ProofKit/F64Packing.lean),
-[addition and subtraction](proofs/talos/lean/Project/ProofKit/F64AddBounds.lean),
-[dyadic rounding](proofs/talos/lean/Project/ProofKit/F64DyadicBounds.lean), and
-[multiplication](proofs/talos/lean/Project/ProofKit/F64MulBounds.lean)
+[Finite packing](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64Packing.lean),
+[addition and subtraction](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64AddBounds.lean),
+[dyadic rounding](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64DyadicBounds.lean), and
+[multiplication](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64MulBounds.lean)
 extend the pinned CodeLib arithmetic bounds beyond unit-size operands.
 Addition and subtraction allow exact result magnitude below 2^1023.
 Multiplication allows exact product magnitude below 2^1022 and accounts
@@ -11589,22 +11589,22 @@ recurrence remains open.
 
 ## 2026-09-12: Thermodynamic arithmetic bounds
 
-[Rational rounding](proofs/talos/lean/Project/ProofKit/F64RationalBounds.lean)
-and [division](proofs/talos/lean/Project/ProofKit/F64DivBounds.lean)
+[Rational rounding](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64RationalBounds.lean)
+and [division](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64DivBounds.lean)
 now retain relative and subnormal error terms for exact quotient
-magnitudes below 2^1022.  [Square-root rounding](proofs/talos/lean/Project/ProofKit/F64SqrtRounding.lean)
-and [its operation theorem](proofs/talos/lean/Project/ProofKit/F64SqrtBounds.lean)
+magnitudes below 2^1022.  [Square-root rounding](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64SqrtRounding.lean)
+and [its operation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64SqrtBounds.lean)
 prove relative error at most 2^-53 for every positive finite input.
 Their final checks took 1.5, 2.4, 1.2, and 1.1 seconds.
 
-[Arithmetic bound adapters](proofs/talos/lean/Project/ProofKit/F64ArithmeticBounds.lean)
-and [half-sum propagation](proofs/talos/lean/Project/ProofKit/RealHalfSumError.lean)
-support the solver's [transport](proofs/talos/lean/Project/EulerRiemann/NumericsTransport.lean)
-and [internal-energy](proofs/talos/lean/Project/EulerRiemann/NumericsInternal.lean)
+[Arithmetic bound adapters](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64ArithmeticBounds.lean)
+and [half-sum propagation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/RealHalfSumError.lean)
+support the solver's [transport](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsTransport.lean)
+and [internal-energy](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsInternal.lean)
 proofs.  For finite inputs, density at least 1/M, component magnitudes
 at most M, and 1 ≤ M ≤ 2^100, the latter proves every intermediate finite
 and internal-energy error at most 12 times 2^-52 M cubed.
-[Intermediate guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsInternalGuard.lean)
+[Intermediate guard acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsInternalGuard.lean)
 follows when exact internal energy exceeds that error budget.
 
 The five final checks took 1.2, 1.1, 1.8, 1.7, and 1.1 seconds.
@@ -11617,15 +11617,15 @@ recurrence, source success, and complete artifact execution remain open.
 
 ## 2026-09-12: Pressure and wave-speed bounds
 
-[Positive arithmetic](proofs/talos/lean/Project/ProofKit/F64PositiveArithmetic.lean)
-and [sign-cleared values](proofs/talos/lean/Project/ProofKit/F64Absolute.lean)
+[Positive arithmetic](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64PositiveArithmetic.lean)
+and [sign-cleared values](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64Absolute.lean)
 connect the rounded-operation error bounds to the executable Boolean
 guards.  The pressure proof includes the stored 0.4 coefficient error.
-[Sound-speed composition](proofs/talos/lean/Project/EulerRiemann/NumericsSound.lean)
+[Sound-speed composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSound.lean)
 proves positive ratio, radicand, and sound-speed words, with relative
 error at most nine times 2^-52 against sqrt((7/5) pressure/density).
 The pressure in that reference is the decoded computed pressure.
-[Wave-speed addition](proofs/talos/lean/Project/EulerRiemann/NumericsSpeed.lean)
+[Wave-speed addition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSpeed.lean)
 proves positivity, a 32 M squared upper bound, and its rounding error.
 
 The sound and speed checks passed in 1.4 and 1.1 seconds.  All audits
@@ -11637,19 +11637,19 @@ execution remain open.  No production run has started.
 
 ## 2026-09-12: Complete interface acceptance bounds
 
-[Side flux bounds](proofs/talos/lean/Project/EulerRiemann/NumericsFluxTerms.lean)
-and [complete side acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsSideBounds.lean)
+[Side flux bounds](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsFluxTerms.lean)
+and [complete side acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSideBounds.lean)
 compose the thermodynamic calculations with finite momentum,
 transverse-momentum, enthalpy, and energy fluxes.  The proofs retain
 density at least 1/M, all conserved magnitudes at most M, internal
 energy at least 24 times 2^-52 M cubed, and state-guard acceptance.
 
-[Rusanov component error](proofs/talos/lean/Project/EulerRiemann/NumericsComponent.lean)
+[Rusanov component error](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsComponent.lean)
 includes all six rounded stages, proves status zero, and bounds error
 by 256 times 2^-52 M to the fifth power against the exact expression
-on its decoded inputs.  [Complete interface acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsFluxBounds.lean)
+on its decoded inputs.  [Complete interface acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsFluxBounds.lean)
 combines both sides and all four components.  The StateBounds predicate
-collects its quantitative cell premises.  [Initial numerical bounds](proofs/talos/lean/Project/EulerRiemann/InitialNumericalBounds.lean)
+collects its quantitative cell premises.  [Initial numerical bounds](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/InitialNumericalBounds.lean)
 prove that every initialized cell satisfies those premises with M = 8,
 including exact internal energy at least 1/800.
 
@@ -11660,10 +11660,10 @@ final-time completion, and complete artifact execution remain open.
 
 ## 2026-09-12: Timestep-dependent update error
 
-[Binary64 affine update](proofs/talos/lean/Project/ProofKit/F64AffineUpdate.lean)
+[Binary64 affine update](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64AffineUpdate.lean)
 proves finiteness of the subtraction, multiplication, and final
 subtraction under explicit range bounds.  Its error bound retains the
-timestep factor.  [The solver update](proofs/talos/lean/Project/EulerRiemann/NumericsUpdate.lean)
+timestep factor.  [The solver update](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsUpdate.lean)
 then returns status zero for a positive ratio at most one, a state
 magnitude at most M, and input flux magnitudes at most 66 M to the
 fifth power.  Its error is at most epsilon M plus 396 epsilon times
@@ -11683,23 +11683,23 @@ argument remains open.
 
 ## 2026-09-13: Computed wave-speed adequacy
 
-[Pressure comparison](proofs/talos/lean/Project/EulerRiemann/NumericsPressureReference.lean)
+[Pressure comparison](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsPressureReference.lean)
 relates computed pressure to exact internal energy under StateBounds.
-[Sound-speed comparison](proofs/talos/lean/Project/EulerRiemann/NumericsSoundReference.lean)
+[Sound-speed comparison](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSoundReference.lean)
 bounds computed sound speed between two thirds and twice exact sound
 speed.  The cell margin bounds velocity-rounding error by one
 sixteenth of exact sound speed.  Composing these bounds with the
 final addition proves the returned side speed is at least absolute
 exact velocity plus half exact sound speed.
 
-[Interface speed adequacy](proofs/talos/lean/Project/EulerRiemann/NumericsFluxWave.lean)
+[Interface speed adequacy](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsFluxWave.lean)
 transfers both side bounds through the positive raw-word maximum.
-The shared [maximum theorem](proofs/talos/lean/Project/ProofKit/F64Maximum.lean)
+The shared [maximum theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64Maximum.lean)
 identifies its exact real value.  Both checks passed in 1.4 and
 1.2 seconds, respectively.  All requested audits contain only
 the permitted standard axioms.
 
-[The corresponding real cell proof](proofs/talos/lean/Project/EulerRiemann/RealStepHalfSound.lean)
+[The corresponding real cell proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/RealStepHalfSound.lean)
 uses a three-sevenths split internal-energy bound and shares the
 existing convex-combination argument.  Its check passed in 1.4
 seconds.  Rounded CFL transfer, physical-flux error composition,
@@ -11709,18 +11709,18 @@ compiler, WASM bytes, or LTG catalog changed in this checkpoint.
 
 ## 2026-09-13: Rounded CFL and reference-step positivity
 
-[The rounded product bound](proofs/talos/lean/Project/ProofKit/F64ProductBound.lean)
+[The rounded product bound](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64ProductBound.lean)
 proves an exact product at most 51/100 from an accepted positive
 rounded product at most 1/2, including underflow error.  Its check
-passed in 1.5 seconds.  [The CFL adapter](proofs/talos/lean/Project/EulerRiemann/NumericsCfl.lean)
+passed in 1.5 seconds.  [The CFL adapter](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCfl.lean)
 derives the product range and transfers the selected maximum to both
 interface contributions for a positive ratio at most one.
 
-[Reference-step positivity](proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
+[Reference-step positivity](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
 now combines the computed interface speeds, accepted rounded CFL
 comparison, and exact physical fluxes.  Under the three StateBounds
 premises, reference density and internal energy retain at least
-49/100 of their center values.  [The real weight theorem](proofs/talos/lean/Project/EulerRiemann/RealCflStep.lean)
+49/100 of their center values.  [The real weight theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/RealCflStep.lean)
 keeps the center coefficient explicit.  These three checks each
 passed in 1.3 seconds, with standard-only audits.
 
@@ -11731,21 +11731,21 @@ and both production calculations remain open.
 
 ## 2026-09-13: Full physical-flux and update error
 
-[Physical-flux comparison](proofs/talos/lean/Project/EulerRiemann/NumericsFluxReference.lean)
+[Physical-flux comparison](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsFluxReference.lean)
 proves exact mass flux and bounds momentum, transverse-momentum,
 and energy-flux errors by 20 epsilon M cubed, 3 epsilon M cubed,
 and 48 epsilon M to the fifth power.  It includes pressure error
 against exact internal energy and its contribution to enthalpy.
-[Interface comparison](proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceReference.lean)
+[Interface comparison](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceReference.lean)
 then bounds every returned Rusanov component by 304 epsilon M to
 the fifth power against exact physical fluxes with computed alpha.
 Their first checks passed in 1.9 and 1.4 seconds, respectively.
 
-[The conservative-update comparison](proofs/talos/lean/Project/EulerRiemann/NumericsUpdateReference.lean)
+[The conservative-update comparison](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsUpdateReference.lean)
 retains error at most epsilon M plus 1004 epsilon times the ratio
 times M to the fifth power, plus twice the half-subnormal unit.
 Here epsilon is 2^-52 and the half-subnormal unit is 2^-1075.
-[The four-component composition](proofs/talos/lean/Project/EulerRiemann/NumericsCellReference.lean)
+[The four-component composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCellReference.lean)
 proves each scalar update succeeds, stays finite, and satisfies that
 error bound relative to the exact reference step.  These checks
 passed in 1.1 seconds each, with standard-only audits.
@@ -11758,16 +11758,16 @@ memory and artifact proofs, and both calculations remain open.
 
 ## 2026-09-13: Candidate density and energy margin
 
-[The reference-step theorem](proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
+[The reference-step theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsRealStep.lean)
 now retains the center weight w = 1 - ratio (alphaL + alphaR) / 2.
-[The candidate bounds](proofs/talos/lean/Project/EulerRiemann/NumericsCandidateBounds.lean)
+[The candidate bounds](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCandidateBounds.lean)
 give density at least w times center density minus delta, and energy
 margin at least w squared times center margin minus (8 B delta +
 4 delta squared).  Here B = M + 134 ratio M to the fifth power and
 delta = epsilon M + 1004 epsilon ratio M to the fifth power +
 2 eta, with epsilon = 2^-52 and eta = 2^-1075.
 
-[Candidate guard acceptance](proofs/talos/lean/Project/EulerRiemann/NumericsCandidateGuard.lean)
+[Candidate guard acceptance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCandidateGuard.lean)
 follows when these lower bounds exceed zero and the normalized guard
 budget, and the explicit normalization conditions hold.  The six
 changed proof modules passed focused checks in 1.1 to 1.3 seconds,
@@ -11778,7 +11778,7 @@ the complete memory and artifact proofs, and both runs remain open.
 
 ## 2026-09-13: Failure of fixed state-bound preservation
 
-[The checked three-cell example](proofs/talos/lean/Project/EulerRiemann/StateBoundsBoundary.lean)
+[The checked three-cell example](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/StateBoundsBoundary.lean)
 has density 1/8, energy one, zero transverse momentum, and longitudinal
 momenta -1/8, zero, and 1/8.  Every input satisfies StateBounds 8.
 At ratio 1/16, the current binary64 cell evaluator returns status zero
@@ -12334,7 +12334,7 @@ audits contain only the three accepted logical axioms.
 
 ## 2026-09-13: First complete WASM production dataset
 
-The [192-grid calculation](data/euler-riemann-complete-v1/README.md)
+The [192-grid calculation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-complete-v1/README.md)
 returned status zero at time 0.8 in 49.557 seconds.  Its final density
 range is 0.138–1.490131234 and pressure range is 0.029–1.476780108.
 The raw words, compressed cell CSV, and inspected PNG/SVG/PDF figures
@@ -12345,7 +12345,7 @@ Both calls use the standard local runner limits and the same frozen
 
 ## 2026-09-14: Complete 800-grid WASM dataset and figures
 
-The [800-grid calculation](data/euler-riemann-complete-v1/README.md)
+The [800-grid calculation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-complete-v1/README.md)
 returned status zero at the exact binary64 encoding of time 0.8.
 Its recorded monotonic runtime is 3698.412 seconds.  Density ranges
 from 0.138 to 1.671084032, and pressure from 0.029 to 1.632146140.
@@ -12366,7 +12366,7 @@ without assigning an unverified cause.
 
 ## 2026-09-14: Two-dimensional hyperbolicity development
 
-The user approved the [hyperbolicity plan](plans/euler-hyperbolicity.md).
+The user approved the [hyperbolicity plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-hyperbolicity.md).
 The proof will use the existing four-component pressure and admissibility
 definitions, prove the physical flux derivative and a complete eigenbasis,
 extend the result to every unit direction, and apply it to the exact WASM
@@ -12389,7 +12389,7 @@ logical axioms.
 ## 2026-09-14: Euler mathematical parity plan
 
 The user authorized review, detailed planning, and implementation of
-[mathematical parity](plans/euler-mathematical-parity.md) for the current
+[mathematical parity](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-mathematical-parity.md) for the current
 2D ideal-gas solver.  GitHub main for the reviewed Lanyon source remains
 a736aa5f8b17efd225c4692404e2442361d06729.  The plan distinguishes real
 identities, rounded numerical statements, and complete exact-WASM claims.
@@ -12405,7 +12405,7 @@ telescoping, and minmod properties also pass.  A second checked example
 shows minmod reconstructing pressure -1/10 from three admissible cells.
 The exact-byte function-22 counterexample also passes, composing the
 existing execution and translation proofs.  The
-[proof inventory](proofs/talos/README.md) records each boundary.
+[proof inventory](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/README.md) records each boundary.
 Outward arithmetic and a common-factor positivity limiter await design
 review.  Standard local runner limits remain in force.
 
@@ -12443,8 +12443,8 @@ calculation, followed by exact-WASM execution composition.
 
 ## 2026-09-14: Certified outward Euler speed
 
-The separate [speed implementation](proofs/talos/lean/Project/EulerRiemann/OutwardSpeed.lean)
-now has a [complete source behavior proof](proofs/talos/lean/Project/EulerRiemann/OutwardSpeedSpec.lean):
+The separate [speed implementation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardSpeed.lean)
+now has a [complete source behavior proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardSpeedSpec.lean):
 it rejects or returns a positive finite bound on every characteristic speed
 of the accepted physical state.  Acceptance supplies the required density
 and internal-energy positivity.  The calculation accounts for exact gamma
@@ -12461,7 +12461,7 @@ solver binary and production data remain preserved.
 
 ## 2026-09-14: Exact mesh CFL bound
 
-The [CFL and mesh proof](proofs/talos/lean/Project/EulerRiemann/OutwardMeshSpec.lean)
+The [CFL and mesh proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardMeshSpec.lean)
 now establishes dt*n*alpha at most one half from acceptance.  The
 implementation computes a downward spacing bound for 1/n, an upward
 ratio, and an upward Courant product.  Its complete source behavior
@@ -12531,11 +12531,11 @@ solver integration remain open.  The earlier binary and datasets are preserved.
 
 ## 2026-09-14: Directional maxima and cellwise CFL
 
-The [maximum source proofs](proofs/talos/lean/Project/EulerRiemann/OutwardMaximumGrid.lean)
+The [maximum source proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardMaximumGrid.lean)
 establish exact rejection behavior and finite upper bounds on every member
 cell's four characteristic speeds in both directions.  Interface selection
 bounds both states, and a shared nonnegative-word fold theorem handles the
-grid's zero seed.  The [CFL composition](proofs/talos/lean/Project/EulerRiemann/OutwardMaximumCfl.lean)
+grid's zero seed.  The [CFL composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardMaximumCfl.lean)
 gives dt*n*abs(lambda_i) at most one half after both checks accept.
 All focused checks and public axiom audits pass.
 
@@ -12548,10 +12548,10 @@ controller integration remain open.  No production calculation changed.
 
 ## 2026-09-14: Rounded positivity-limited reconstruction
 
-The [reconstruction source](proofs/talos/lean/Project/EulerRiemann/Reconstruction.lean)
+The [reconstruction source](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/Reconstruction.lean)
 now has checked physical safety, complete rejection behavior, limiter
 selection, rounding residuals, and accuracy bounds against exact-real minmod.
-Its [linear-profile theorem](proofs/talos/lean/Project/EulerRiemann/ReconstructionLinear.lean)
+Its [linear-profile theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/ReconstructionLinear.lean)
 requires exact represented differences, scaling, and face arithmetic,
 together with acceptance of the unrestricted candidate.  The proof uses
 each conserved component's own increment.
@@ -12575,7 +12575,7 @@ remain open.  The old binary and both datasets remain preserved.
 
 Reconstruction scalar execution covers subtraction, addition, scaling,
 finite-state and admissibility checks, minmod, the slope, rejected records,
-and [candidate faces](proofs/talos/lean/Project/EulerReconstruction/Candidate.lean).  These exact-word
+and [candidate faces](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstruction/Candidate.lean).  These exact-word
 theorems preserve the store and cover all short-circuit branches.  Focused
 checks and standard-axiom audits pass.  The slope and candidate checks
 took 5 and 10 seconds.
@@ -12583,7 +12583,7 @@ took 5 and 10 seconds.
 Guard transfer reuses the nineteen-function outward-speed region.  Minmod
 reuses the LTG direct-call stack-tail theorem.  The generated loop-guard
 equality matches fuel local zero and completion local twenty, and the
-[loop frame and measure](proofs/talos/lean/Project/EulerReconstruction/LoopShape.lean)
+[loop frame and measure](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstruction/LoopShape.lean)
 check.  The bounded loop and public wrapper remain open.  The reconstruction
 registration remains incomplete, giving forty generated caches and
 thirty-nine completed source cases.  Exact-byte closure and revised-solver
@@ -12591,7 +12591,7 @@ integration remain open.
 
 ## 2026-09-14: Complete reconstruction WASM specification
 
-The [reconstruction specification](proofs/talos/lean/Project/EulerReconstruction/Spec.lean)
+The [reconstruction specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstruction/Spec.lean)
 proves total generated-WASM execution, exact output words, rejection,
 accepted-face admissibility, and componentwise accuracy against real minmod.
 The bounded-halving loop composes the compiler-generated guard equality,
@@ -12609,7 +12609,7 @@ closure is next.  The frozen-package count remains thirty-five.
 
 ## 2026-09-14: Exact-byte reconstruction proof
 
-The [frozen reconstruction proof](proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
+The [frozen reconstruction proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
 now connects exact words, total termination, rejection, face admissibility,
 and real-minmod accuracy to SHA-256
 0fd762b3c1596a995438259ea909dc30fc0eca4137c79d1d8cf6bbb3678ed6f9.
@@ -12627,26 +12627,26 @@ registry.  The exact-artifact inventory now contains thirty-six packages.
 
 ## 2026-09-14: Accepted Euler rounding residuals
 
-The [conservative update certificate](proofs/talos/lean/Project/ProofKit/F64ConservativeUpdate.lean)
-and [Rusanov arithmetic certificate](proofs/talos/lean/Project/ProofKit/F64RusanovResidual.lean)
+The [conservative update certificate](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64ConservativeUpdate.lean)
+and [Rusanov arithmetic certificate](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64RusanovResidual.lean)
 give exact signed-error equations and operationwise bounds.  Their accepted
 source proofs derive finite inputs and intermediate results from the guards.
-The [physical side-flux bound](proofs/talos/lean/Project/EulerRiemann/NumericsSideResidual.lean)
+The [physical side-flux bound](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsSideResidual.lean)
 propagates rounding radii through division, transport, kinetic energy,
 pressure, and flux.  It includes the binary64 pressure coefficient's error
 relative to exact 2/5 and requires no extra quantitative M premise.
 
 All three results have checked generated-execution and exact-byte theorems
 for functions 58, 46, and 22 of the preserved solver.  The shared
-[error propagation lemmas](proofs/talos/lean/Project/ProofKit/F64ErrorPropagation.lean)
+[error propagation lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F64ErrorPropagation.lean)
 reuse existing neighboring-value enclosures and product-error algebra.
-The new [row theorem](proofs/talos/lean/Project/EulerRiemann/NumericsRowBalance.lean)
+The new [row theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsRowBalance.lean)
 cancels a shared flux sequence and bounds accumulated update residuals.
 The scalar reference composition adds half the sum of both side-flux errors.
 Full interface, grid, and time instantiation remain open.
 
 Binary decoding and module equality now reside in
-[Artifact module identity](proofs/talos/lean/Project/EulerRiemann/ArtifactModule.lean).
+[Artifact module identity](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/ArtifactModule.lean).
 This lets local numerical theorems check without rebuilding complete solver
 behavior.  The original complete-solver wrappers also pass after the split.
 All checked public audits use standard logical axioms.  No numerical source,
@@ -12654,15 +12654,15 @@ generated Program, frozen bytes, or dataset changed.
 
 ## 2026-09-14: Interface and complete-cell balance
 
-The [four-component interface bound](proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceResidual.lean)
+The [four-component interface bound](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsInterfaceResidual.lean)
 combines accepted physical side-flux errors with the Rusanov arithmetic
 bound.  Its generated-execution and exact-byte theorems cover function 54
-of the preserved binary.  The [complete-cell theorem](proofs/talos/lean/Project/EulerRiemann/NumericsCellResidual.lean)
+of the preserved binary.  The [complete-cell theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCellResidual.lean)
 derives four conservative-update certificates, balance equations, and
 residual bounds from accepted cell status.  Its exact-byte transfer covers
 function 65.  All new public audits contain only standard logical axioms.
 
-The [cell-row proof](proofs/talos/lean/Project/EulerRiemann/NumericsCellRowBalance.lean)
+The [cell-row proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsCellRowBalance.lean)
 proves equality of the two recomputed versions of a shared interface flux.
 It derives row balance and the accumulated residual bound from accepted
 complete-cell outputs.  The row source theorem and the interface/cell
@@ -12673,13 +12673,13 @@ and revised-solver integration remain open.
 
 ## 2026-09-14: Complete grid and accepted-time balance
 
-The [line geometry](proofs/talos/lean/Project/EulerRiemann/NumericsLineGeometry.lean)
+The [line geometry](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsLineGeometry.lean)
 identifies clamped source stencils and output words with the row theorem.
-The [grid balance](proofs/talos/lean/Project/EulerRiemann/NumericsGridBalance.lean)
+The [grid balance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsGridBalance.lean)
 sums those rows or columns and restores physical momentum component order.
-The [step balance](proofs/talos/lean/Project/EulerRiemann/NumericsStepBalance.lean)
+The [step balance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsStepBalance.lean)
 uses the x-sweep result as the y-sweep input.  The
-[accepted-trace theorem](proofs/talos/lean/Project/EulerRiemann/NumericsTraceBalance.lean)
+[accepted-trace theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsTraceBalance.lean)
 then proves final-grid balance and bounds the accumulated update residuals.
 The computed ratio remains the exact decoded IEEE division of dt by the
 stored spacing.  Rejected trials contribute no accepted-grid update.
@@ -12694,7 +12694,7 @@ fluxes remains open, along with revised-solver integration.
 
 ## 2026-09-14: Physical conservation through exact WASM
 
-The [physical trace balance](proofs/talos/lean/Project/EulerRiemann/NumericsPhysicalTrace.lean)
+The [physical trace balance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/NumericsPhysicalTrace.lean)
 uses exact unit-domain cell area 1/n squared and face-length/time factor
 dt/n.  It accounts for both directional sweeps, their intermediate grid,
 and every accepted timestep.  Its residual bound combines cell-update
@@ -12714,10 +12714,10 @@ remain open.
 
 ## 2026-09-14: Generated maximum and CFL execution
 
-The [interface maximum specification](proofs/talos/lean/Project/EulerOutwardMaximum/Spec.lean)
+The [interface maximum specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardMaximum/Spec.lean)
 proves termination, exact source output, rejection, store preservation,
 and a positive finite bound on both input states' characteristic speeds.
-The [mesh CFL specification](proofs/talos/lean/Project/EulerOutwardCfl/Spec.lean)
+The [mesh CFL specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardCfl/Spec.lean)
 covers every UInt64 grid-size input.  Acceptance implies size 2..800,
 positive finite timestep, speed, and ratio, dt*n at most the returned
 ratio, and ratio*alpha at most one half.
@@ -12739,7 +12739,7 @@ closure for both helpers and complete revised-solver integration follow.
 
 ## 2026-09-14: Exact-byte interface maximum
 
-The [binary execution and speed theorems](proofs/talos/lean/Project/EulerOutwardMaximum/ArtifactTranslation.lean)
+The [binary execution and speed theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardMaximum/ArtifactTranslation.lean)
 now cover the 5,260-byte maximum artifact with digest
 63902a54ddbc36a344593b580ee406ee7ddfc8e0b7766bdc80b99cf223f0d2ba.
 They prove decoding, validation, terminating exact output, complete store
@@ -12762,7 +12762,7 @@ complete solver and its 192/800 data remain preserved.
 
 ## 2026-09-14: Exact-byte mesh CFL
 
-The [CFL binary theorems](proofs/talos/lean/Project/EulerOutwardCfl/ArtifactTranslation.lean)
+The [CFL binary theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardCfl/ArtifactTranslation.lean)
 now cover digest
 c962bdf32363deba87e2cf0a54ba969bda572b15b0bc4b4e619bb57b345ef456
 at 2,557 bytes.  Every raw grid-size, timestep, and speed input has
@@ -12785,7 +12785,7 @@ theorems therefore require a different checked shape for this scan.
 
 ## 2026-09-14: Generated outward grid-fold execution
 
-The [grid specification](proofs/talos/lean/Project/EulerOutwardGrid/Spec.lean)
+The [grid specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardGrid/Spec.lean)
 proves terminating exact output and complete store preservation for every
 represented input grid.  Acceptance bounds each cell's characteristic
 speeds in both directions.  The compiler emits 5,728 bytes with 50 functions,
@@ -12804,7 +12804,7 @@ Grid-fold exact-byte closure and revised-solver integration remain open.
 
 ## 2026-09-14: Exact-byte outward grid scan
 
-The [grid binary theorems](proofs/talos/lean/Project/EulerOutwardGrid/ArtifactTranslation.lean)
+The [grid binary theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardGrid/ArtifactTranslation.lean)
 prove complete decoding, validation, terminating exact output, and full
 store preservation for digest
 d258ea65e71e77cf7dc6075208948fdd2948287f678f8a4ef15e507748187f4c.
@@ -12822,12 +12822,12 @@ packages.  Complete revised-solver integration remains open.
 
 ## 2026-09-14: Reconstruction factor bounds
 
-The [factor proof](proofs/talos/lean/Project/EulerRiemann/ReconstructionFactor.lean)
+The [factor proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/ReconstructionFactor.lean)
 now bounds every returned factor in [0, 1/2].  Its shared halving lemma
 handles subnormal rounding and zero, preserves finiteness and sign, and
 proves nonincreasing magnitude.  The iteration proof uses the existing
 selected-candidate certificate.  Rejected and fallback outputs have factor
-zero.  The [exact-byte theorem](proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
+zero.  The [exact-byte theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstruction/ArtifactTranslation.lean)
 transfers the bound to the unchanged 5,619-byte reconstruction binary.
 
 The first shared proof failed on three ambiguous unfold targets and one
@@ -12839,7 +12839,7 @@ use standard axioms.  The source and artifact counts remain 43 and 39.
 
 ## 2026-09-14: Revised side-flux source
 
-The [revised side computation](proofs/talos/lean/Project/EulerRiemann/OutwardSide.lean)
+The [revised side computation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardSide.lean)
 combines the certified outward speed with the physical flux arithmetic.
 Acceptance proves positive pressure and speed, finite intermediates, and
 a bound on all four physical characteristic speeds.  The source safety
@@ -12857,7 +12857,7 @@ stencil or production limiter budget.
 
 ## 2026-09-14: Revised interface execution
 
-The [interface specification](proofs/talos/lean/Project/EulerOutwardFlux/Spec.lean)
+The [interface specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardFlux/Spec.lean)
 now proves exact generated-WASM output, termination, store preservation,
 rejection-or-safe behavior, and physical-flux residual bounds.  Acceptance
 establishes four finite flux components and a positive finite speed bounding
@@ -12883,7 +12883,7 @@ while the revised interface's binary proof is in progress.
 
 ## 2026-09-14: Exact-byte revised Euler interface
 
-The [interface binary theorems](proofs/talos/lean/Project/EulerOutwardFlux/ArtifactTranslation.lean)
+The [interface binary theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardFlux/ArtifactTranslation.lean)
 prove complete decoding, validation, translation equality, terminating
 exact output, accepted physical-speed bounds, and componentwise physical-flux
 residual bounds for digest
@@ -12901,7 +12901,7 @@ packages.  Complete revised-solver integration remains open.
 
 ## 2026-09-14: Revised scalar face-step source
 
-The [face-step source](proofs/talos/lean/Project/EulerRiemann/OutwardFaceStep.lean)
+The [face-step source](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardFaceStep.lean)
 computes two certified interface fluxes and advances the center average.
 Acceptance proves output-state admissibility, positive pressure, bounds on
 all four faces' characteristic speeds, exact-real Courant bounds, and
@@ -12922,7 +12922,7 @@ checkpoint makes no grid-storage or production-limiter-budget choice.
 
 ## 2026-09-14: Generated Euler face-step execution
 
-The [face-step specification](proofs/talos/lean/Project/EulerOutwardFaceStep/Spec.lean)
+The [face-step specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardFaceStep/Spec.lean)
 proves termination, exact output, store preservation, exhaustive rejection
 or accepted-state safety, characteristic Courant numbers at most one half,
 and four physical-reference residual bounds.  The mesh-ratio implication
@@ -12945,7 +12945,7 @@ cases and caches, 24 floating-point helper cases, and 40 exact-byte packages.
 
 ## 2026-09-14: Exact-byte Euler face-step
 
-The [face-step binary theorems](proofs/talos/lean/Project/EulerOutwardFaceStep/ArtifactTranslation.lean)
+The [face-step binary theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerOutwardFaceStep/ArtifactTranslation.lean)
 prove exact output, accepted safety and characteristic CFL bounds, and
 physical-reference residual bounds for the frozen 9,077-byte module with
 digest 1d3669cccd9018671aa98e61eb138bfda3a879023fb88b12fd998e7057ea4b01.
@@ -12960,17 +12960,17 @@ extends related Euler evidence.  Held-out measurement remains open.
 Monolithic validation exhausted both 200,000 and 400,000 heartbeats.
 Separate export-name encoding and descriptor proofs resolved the failure.
 The accepted validator uses the default heartbeat budget and the shared
-[validation composition lemmas](proofs/talos/lean/Project/Artifact/Binary/ValidationParts.lean).
+[validation composition lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Artifact/Binary/ValidationParts.lean).
 Export checks took 2.2 seconds, metadata 1.1 seconds, complete validation
 14 seconds, and behavioral transfer 5.0 seconds.  The journal preserves
 the failed attempts.  Complete revised-solver integration remains open.
 
 ## 2026-09-14: Revised face-row conservation
 
-The [row balance](proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowBalance.lean)
+The [row balance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowBalance.lean)
 proves exact cancellation of shared computed interface fluxes for every
 accepted row and bounds the sum of update-rounding residuals.  The
-[reference balance](proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowReference.lean)
+[reference balance](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/OutwardFaceRowReference.lean)
 expresses the row change through the physical Rusanov boundary fluxes.
 Its error bound contains the two boundary-flux errors and the sum of
 update errors.  Interface acceptance follows from accepted cell results.
@@ -13165,14 +13165,14 @@ checks.  Each run used one Wasmtime solve under the standard one-CPU,
 memory stayed near 309 MiB.  Both runs produced PNG, SVG, and PDF figures,
 and both PNGs passed visual review.  All earlier datasets remain preserved.
 
-The [short article](data/euler-reconstructed-v1/README.md) includes both
+The [short article](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-reconstructed-v1/README.md) includes both
 datasets, figures, numerical comparisons, and the claim-to-theorem table.
 The authorized mathematical parity plan and ordered production sequence
 are complete.  Convergence to a continuous entropy solution remains open.
 
 ## Comprehensive reconstructed Euler report
 
-The [15-page report](paper/euler-reconstructed-report/v6/pass-02/main.pdf)
+The [15-page report](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/euler-reconstructed-report/v6/pass-02/main.pdf)
 documents the completed proof and both production runs at checkpoint
 73e5b54ee6ba398cdd4d42feadc42e2c6ec5a33a.  It includes the 800-grid image.
 Section 5.2 gives the end-to-end proof composition from exact executable
@@ -13185,7 +13185,7 @@ marXiv accepted the final report as
 remarks.  Submission 661f900da98f contains the accepted final PDF.
 All changed PDF pages passed visual review.  The final build has no
 warnings, extracted metadata matches, and the archive PDF digest agrees
-with the submitted file.  The [review record](paper/euler-reconstructed-report/review.md)
+with the submitted file.  The [review record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/euler-reconstructed-report/review.md)
 preserves the technical checks, editorial remarks, and corrections.
 
 ## Euler certificates on main
@@ -13193,7 +13193,7 @@ preserves the technical checks, editorial remarks, and corrections.
 The completed Euler branch was fast-forwarded into main and pushed.
 The fetched main and local HEAD agree at
 d942e3cbd91a78cefa8be7e45617b05110bf955d.  Preexisting untracked files
-remain preserved.  The [continuation plan](plans/euler-certificates-and-convergence.md)
+remain preserved.  The [continuation plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-certificates-and-convergence.md)
 pursues numerical certificates, successful completion, and continuum
 convergence in that order.
 
@@ -13211,14 +13211,14 @@ proof remain open.  The solver and its completed artifact remain unchanged.
 
 The scalar certificate layer now has checked interval arithmetic, real
 pressure and Rusanov flux inclusion, and complete generated-WASM execution
-theorems.  The [interface specification](proofs/talos/lean/Project/EulerCertificateFlux/Spec.lean)
+theorems.  The [interface specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerCertificateFlux/Spec.lean)
 states exact returned words, unchanged store, and componentwise real flux
 enclosure when the corresponding status is zero.  Its focused source-artifact
 gate passes for 5,741 bytes with SHA-256
 c36ce83eb401ec6d31e161583e1902957bb034b50cb425bdc411c0b1b1ff461a.
 Every audit uses standard axioms.  Compiler annotations identified the
 outward helpers reused through a checked function-region renaming.
-The [journal](journal.md) records proof failures, corrections, and the
+The [journal](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/journal.md) records proof failures, corrections, and the
 compiler's repeated component calls.  Grid totals, boundary accumulation,
 the observer recurrence, and its exact-byte proof are next.
 
@@ -13229,7 +13229,7 @@ to enumerate boundary lines, avoiding a temporary array.  The x-sweep grid
 remains available for the y-boundary evaluation before its existing release.
 Projection theorems prove the observer preserves numerical grids, timestep
 choices, status, and time.  Its output appends four status/lower/upper triples
-to the previous solver words.  The [source enclosure theorem](proofs/talos/lean/Project/EulerCertificate/SolveSpec.lean)
+to the previous solver words.  The [source enclosure theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerCertificate/SolveSpec.lean)
 uses the same accepted NumericalTrace as the physical conservation theorem.
 All audits use standard axioms.  The complete generated execution,
 allocation, and exact-byte proofs remain open.
@@ -13338,7 +13338,7 @@ bound accumulated numerical error, and close exact-byte execution.
 Tensor-parallel and attention equalities use rational arithmetic laws.
 Their binary64 counterparts need explicit operation-order or error claims.
 
-The existing [dot-product specification](proofs/talos/lean/Project/F64DotCheckedBits/README.md)
+The existing [dot-product specification](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/F64DotCheckedBits/README.md)
 provides loop execution and numerical-error proofs.  The arithmetic and
 error-propagation lemmas in ProofKit provide scalar support under stated
 bounds.  The dot-product case still needs exact-byte closure.  The review
@@ -13346,7 +13346,7 @@ proposed the experiment for discussion and made no implementation changes.
 
 ## 2026-09-16: Euler pause checkpoint
 
-The [resume record](plans/euler-certificate-resume.md) preserves the current
+The [resume record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/euler-certificate-resume.md) preserves the current
 proof boundary and commands.  All 195 bodies, signatures, and function
 indices pass, as do the complete type, function, memory, and global
 sections.  Eleven export-entry proofs failed at maxRecDepth 131072 in a
@@ -13379,7 +13379,7 @@ through one multiply-add stage.  Six applications give 211 times 2^-52
 evaluation error, including underflow.  The source calls Talos's executable
 bit model, which the compiler recognizes as binary64 operations.  Each
 generated function has a terminating execution proof with store preservation.
-The [demonstration reference](data/numerical/README.md) records the theorem
+The [demonstration reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/numerical/README.md) records the theorem
 boundary and reproducible commands.
 
 Initial proof attempts exposed UInt64 order coercions and insufficient
@@ -13479,7 +13479,7 @@ numerical implementations, proofs, tests, command-line tool, and records.
 
 ## 2026-09-16: LayerNorm derivation before implementation
 
-The [LayerNorm analysis](plans/layernorm-analysis.md) records the source audit
+The [LayerNorm analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/layernorm-analysis.md) records the source audit
 and a squared-distance identity for normalized rows.  The identity gives an
 endpoint-variance bound without differentiating the normalization map or
 assuming a positive variance along an interpolating segment.  Centering
@@ -13516,7 +13516,7 @@ The width-four LayerNorm implementation now has total generated-WAT execution
 and successful finite output for all twelve binary64 arguments in [-4, 4].
 Its real reference uses population variance, epsilon 1/100000, four scales,
 and four biases.  Every output differs from that reference by at most
-1/1000000.  The [analysis](plans/layernorm-analysis.md) records the arithmetic
+1/1000000.  The [analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/layernorm-analysis.md) records the arithmetic
 tree and budgets derived before the binary64 proofs.  The operation tree
 centers once and uses pairwise sums.  The theorem concerns its own execution
 and the stated real formula.
@@ -13579,7 +13579,7 @@ model implements the agreed 2,488-parameter architecture in binary64.
 The corpus and all-logits compiled interface await the user's requested
 design confirmation.  No training run has occurred.
 
-The [GELU analysis](plans/gelu-analysis.md) derives a logistic evaluation
+The [GELU analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gelu-analysis.md) derives a logistic evaluation
 from the pinned tanh formula.  On [-3, 3], its negative exponential
 argument fits the existing interval [-8, 0].  Lean checks the identity,
 coefficient interval, argument range, and magnitude bound.  A shared
@@ -13646,7 +13646,7 @@ the successful focused GELU gate or runtime tests.
 
 ## 2026-09-16: Global GELU bounds and affine arithmetic
 
-The GELU tail estimate in the [analysis](plans/gelu-analysis.md) now checks.
+The GELU tail estimate in the [analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gelu-analysis.md) now checks.
 For a at least three, exp(z(a)) is at least 100a.  Replacing the positive
 tail by a and the negative tail by zero therefore preserves the 1/100
 absolute error against tanh GELU.  evaluateAll combines that estimate with
@@ -13662,7 +13662,7 @@ unapplied function definitions and additive-module instance differences.
 Explicit function conversion and ring normalization resolved the remaining
 equality goals.  The global module checks in two seconds.
 
-The [affine analysis](plans/affine-analysis.md) derives balanced dot-product
+The [affine analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/affine-analysis.md) derives balanced dot-product
 budgets before their numerical proofs.  Widths two, four, and eight now
 have checked binary64 calculations for input magnitudes up to 64 and
 coefficient magnitudes up to sixteen.  Four- and eight-input affine outputs
@@ -13789,7 +13789,7 @@ theorem passes.
 ## 2026-09-16: First trained checkpoint
 
 The user approved Tiny Shakespeare and all 256 next-byte logits per
-inference call.  The [checkpoint record](data/tiny-gpt2-v1/README.md) pins
+inference call.  The [checkpoint record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/tiny-gpt2-v1/README.md) pins
 the corpus revision and SHA-256.  Training completed 4,000 Adam steps with
 the recorded seed and settings.  Training loss fell from 5.5716 to 2.6941,
 and validation loss from 5.5688 to 2.7068.
@@ -13814,7 +13814,7 @@ for selected logits.  The focused incomplete-case gate regenerates the
 15,423-byte hidden-state module without a cache difference and checks its
 completed component proofs.  The enclosing theorem remains open.
 
-The [exponential tail analysis](plans/exponential-tail-analysis.md) derives
+The [exponential tail analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/exponential-tail-analysis.md) derives
 the required domain extension before its Lean implementation.  It bounds
 both the computed value and exact exponential on [-16, -8], retaining
 the existing 1/400 error budget.  The arithmetic and compiled component
@@ -13844,7 +13844,7 @@ absolute error and proves a positive lower bound of 1/1000000000 on
 endpoint bounds.  The first tail check caught a tactic attempting to
 interpret a conjunction as an inequality.  Explicit scalar goals fixed it.
 
-The [model range analysis](plans/tiny-model-range-analysis.md) derives an
+The [model range analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/tiny-model-range-analysis.md) derives an
 attention spread bound using the centered query-key matrix product.
 Preliminary checkpoint calculations give bounds below 9.57 and 14.31 for
 the two heads.  Normalized-row norm bounds apply to every real embedding,
@@ -13921,7 +13921,7 @@ exponential estimate.  Bounding t*P6(-t) in the Bernstein basis retains
 the dependence between Taylor error and the eighth power.  Exact rational
 coefficient arithmetic gives a 64/24609375 exact-real error bound on
 [-16, 0], before floating-point errors.  The
-[exponential analysis](plans/exponential-tail-analysis.md) records the
+[exponential analysis](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/exponential-tail-analysis.md) records the
 derivation and remaining formal checks.
 
 The aggregate source-artifact gate was run after the shared tactic change.
@@ -14293,7 +14293,7 @@ assoc_list cache mismatch still blocks the aggregate source-artifact gate.
 
 The user requested a separate agent to implement a Lean PRNG, compile it
 to WASM, and expose a seed, count, and modulus command without proof work.
-The [example](docs/prng.md) follows
+The [example](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/prng.md) follows
 [Vigna's SplitMix64 reference](https://prng.di.unimi.it/splitmix64.c).
 The generator advances its 64-bit state independently of the output modulus.
 Each output is the mixed word modulo the supplied positive modulus.
@@ -14568,8 +14568,8 @@ Review of this proposal found an error in the preceding discussion of
 GELU.  The model calls evaluateAll, whose existing theorem covers every
 finite input with absolute error at most 1/100.  Magnitude three selects
 its sharper 1/80000 bound.  The
-[all-finite GELU proof](proofs/talos/lean/Project/Gelu/AllFinite.lean)
-and [model body](proofs/talos/lean/Project/TinyGpt2/Model.lean) establish
+[all-finite GELU proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gelu/AllFinite.lean)
+and [model body](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2/Model.lean) establish
 that distinction.  Softmax still evaluates its polynomial beyond the
 proved shifted-score range when arbitrary bounded weights produce a
 larger score spread.  LayerNorm's current numerical theorem accepts input
@@ -15966,7 +15966,7 @@ problem.  The source module builds in 2.7 seconds and the memory module in
 
 ### Generated packed construction loop
 
-The shared [packed loop proof](proofs/talos/lean/Project/ProofKit/PackedGenerateLoop.lean)
+The shared [packed loop proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedGenerateLoop.lean)
 now proves termination and exact source bytes for arbitrary word counts
 and word functions.  Its word-computation premise permits scratch-local
 changes while preserving the counter, length, pointer, and a caller-selected
@@ -15982,7 +15982,7 @@ measure.  Reducing the branch, qualifying the lemma, and exposing the
 definitionally equal frame discharged them.  The shared module checks in
 3.5 seconds after removing unused simplification arguments.
 
-The [generated example proof](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+The [generated example proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/PackedGenerate/Spec.lean)
 checks that instruction 42 of the emitted `makeWords` entry is this loop,
 then proves its output equals the Lean source bytes for every count and
 offset.  The word proof uses the core mask and narrowing-conversion
@@ -16005,7 +16005,7 @@ The documentation checker accepts 137 maintained Markdown files, and
 
 ### Packed-buffer allocation
 
-The [allocation preparation theorem](proofs/talos/lean/Project/ProofKit/FixedArrayBump.lean)
+The [allocation preparation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/FixedArrayBump.lean)
 now separates heap growth and pointer assignment from object-header writes.
 The existing fixed-array theorem composes this preparation with its header
 proof and retains its statement.  The first refactoring attempt exposed
@@ -16014,11 +16014,11 @@ a local variable that shadowed the new store definition.  Naming the store
 the mismatch.  The refactored module checks in 2.1 seconds, and its existing
 no-fit allocator consumer rebuilds in 3.2 seconds.
 
-The [packed header theorem](proofs/talos/lean/Project/ProofKit/PackedHeader.lean)
+The [packed header theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedHeader.lean)
 uses the existing checked constant/local word stores.  It establishes the
 raw-buffer kind, reference count, capacity, exact metadata reads, and
 preservation outside the 48-byte header.  The
-[packed allocator theorem](proofs/talos/lean/Project/ProofKit/PackedAllocate.lean)
+[packed allocator theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocate.lean)
 composes initialization, traversal of a represented free list with no
 sufficient block, conditional growth, raw-header writes, and allocation
 counting.  It supports arbitrary saved parameters and locals.  The header
@@ -16028,7 +16028,7 @@ capacity calculations.  Free-block reuse remains a separate obligation.
 
 ### Complete packed constructor on the no-fit path
 
-The [constructor theorem](proofs/talos/lean/Project/PackedGenerate/Spec.lean)
+The [constructor theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/PackedGenerate/Spec.lean)
 now proves generated-entry termination, its pointer/length return, every
 source byte, and preservation outside the output writes relative to the
 specified allocation effects.  It quantifies over counts, offsets, stores,
@@ -16076,15 +16076,15 @@ rounding must be checked as part of the equivalence proof.
 
 ### Source-model rounding correspondence
 
-The [source arithmetic adapters](proofs/talos/lean/Project/ProofKit/F32Source.lean)
+The [source arithmetic adapters](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Source.lean)
 prove that the five GPT-2 intrinsics reduce to explicit `Float32.Model`
-operations.  The [comparison test](proofs/talos/lean/Project/F32Source/Checks.lean)
+operations.  The [comparison test](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/F32Source/Checks.lean)
 evaluates those pure operations against Talos, avoiding native floating-point
 extern calls.  All 8,000 results agree across an edge-word matrix and 1,024
 deterministic word pairs.  The edge words include subnormal boundaries,
 signed zeros, infinities, and noncanonical NaN payloads.
 
-The [rounding proof](proofs/talos/lean/Project/ProofKit/F32Rounding.lean)
+The [rounding proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Rounding.lean)
 establishes the mantissa, round bit, and sticky bit after arbitrary shifts,
 including initial residual bits.  Its `round_exact_shift` theorem proves
 that Lean's nearest-even rounding of an exact mantissa agrees with Talos's
@@ -16101,10 +16101,10 @@ standard axioms.  The source adapters and comparison test check in 1.3 and
 
 ### FP32 encoding and source input conversion
 
-The [encoding lemmas](proofs/talos/lean/Project/ProofKit/F32Encoding.lean)
+The [encoding lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Encoding.lean)
 relate Lean's unpacked sign, exponent, and significand to Talos's raw-word
 fields for every input.  They also relate field concatenation to Talos's
-encoder.  The [packing lemmas](proofs/talos/lean/Project/ProofKit/F32Packing.lean)
+encoder.  The [packing lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Packing.lean)
 prove that packing a decoded word preserves it except for the specified
 canonicalization of NaNs.  Consequently, decoding `Float32.Model.ofBits`
 agrees with direct decoding of the supplied word.  All five source
@@ -16120,7 +16120,7 @@ in 1.5 seconds.  Axiom reports contain only standard axioms.
 
 ### Exact scaled-magnitude rounding
 
-The [scaled rounding proof](proofs/talos/lean/Project/ProofKit/F32RoundScaled.lean)
+The [scaled rounding proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RoundScaled.lean)
 proves that Lean's `round`, followed by packing, equals Talos's
 `roundScaledMagnitude` for either sign and every natural mantissa at
 exponent -149.  It includes zero, subnormal and normal encodings, a carry
@@ -16139,10 +16139,10 @@ the arithmetic-operation theorems remain open.
 
 ### Exponent alignment and signed normalization
 
-The [shift lemmas](proofs/talos/lean/Project/ProofKit/F32Shift.lean) prove
+The [shift lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Shift.lean) prove
 exact cancellation of powers of two through the extended mantissa,
 including its rounding and sticky bits.  The
-[normalization proof](proofs/talos/lean/Project/ProofKit/F32Normalize.lean)
+[normalization proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Normalize.lean)
 uses those lemmas to prove that multiplying a nonzero mantissa by a power
 of two and decreasing its exponent preserves Lean's rounded result.
 It then transfers packing to Talos's scaled-magnitude rounder for any
@@ -16160,10 +16160,10 @@ two aligned signed operands to the exact sum used by Talos.
 
 ### Exact source addition for finite nonzero inputs
 
-The [finite-addition proof](proofs/talos/lean/Project/ProofKit/F32AddFinite.lean)
+The [finite-addition proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32AddFinite.lean)
 establishes the scaled value of each aligned operand and then composes
 signed normalization with their exact sum.  The
-[decoded-input proof](proofs/talos/lean/Project/ProofKit/F32Decoded.lean)
+[decoded-input proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Decoded.lean)
 applies it to source words.  `add_eq_talos_finite` proves exact equality
 between `LeanExe.Float32.addBits` and `Wasm.IEEE32.add` for arbitrary finite
 nonzero operands.  The result includes cancellation, subnormal outputs,
@@ -16180,7 +16180,7 @@ and the complete GPT-2 composition remain open.
 
 ### Complete source FP32 addition
 
-The [addition correspondence](proofs/talos/lean/Project/ProofKit/F32Add.lean)
+The [addition correspondence](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Add.lean)
 now proves `LeanExe.Float32.addBits a b = Wasm.IEEE32.add a b` for every
 pair of input words.  It composes the finite-input result with signed-zero,
 infinity, and NaN branches.  The proof includes both NaN operands,
@@ -16196,7 +16196,7 @@ multiplication, division, and square root.
 
 ### Complete source FP32 subtraction
 
-The [subtraction correspondence](proofs/talos/lean/Project/ProofKit/F32Sub.lean)
+The [subtraction correspondence](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Sub.lean)
 proves exact source/Talos equality for every pair of input words.  It
 reuses addition after proving that Talos's sign-bit change agrees with
 negating Lean's decoded value.  The proof covers NaNs through the same
@@ -16206,9 +16206,9 @@ algebraic interface.  The module checks in 1.2 seconds with standard axioms.
 
 ### Exact dyadic rounding for products
 
-The [final-rounding lemmas](proofs/talos/lean/Project/ProofKit/F32RoundFinish.lean)
+The [final-rounding lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RoundFinish.lean)
 separate the rounded significand from its exponent adjustment and packing.
-The [dyadic correspondence](proofs/talos/lean/Project/ProofKit/F32RoundDyadic.lean)
+The [dyadic correspondence](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RoundDyadic.lean)
 proves exact agreement with Talos's `roundDyadicMagnitude` for any nonzero
 mantissa and any number of fractional bits.  It includes gradual underflow
 and rounding to zero.  An exponent-shifting corollary permits direct use
@@ -16224,11 +16224,11 @@ nonzero proof.  The final-rounding and dyadic modules check in 1.3 and
 
 ### Complete source FP32 multiplication
 
-The [finite-product proof](proofs/talos/lean/Project/ProofKit/F32MulFinite.lean)
+The [finite-product proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32MulFinite.lean)
 relates the decoded product to Talos's numerator over `2^149`.  It proves
 that Lean's product rounder needs no initial left shift and applies the
 general dyadic theorem.  The
-[complete multiplication theorem](proofs/talos/lean/Project/ProofKit/F32Mul.lean)
+[complete multiplication theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Mul.lean)
 then establishes `LeanExe.Float32.mulBits a b = Wasm.IEEE32.mul a b` for
 every pair of input words.  Exceptional branches include zero times
 infinity, NaN operands, and signed-zero results.
@@ -16241,10 +16241,10 @@ square root remain open before the tensor-loop composition.
 
 ### Exact rounding of rational magnitudes
 
-The [rational shift lemmas](proofs/talos/lean/Project/ProofKit/F32RationalRounding.lean)
+The [rational shift lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RationalRounding.lean)
 prove that shifting a quotient and its rounding state preserves the
 remainder represented by the scaled denominator.  The
-[rational rounder correspondence](proofs/talos/lean/Project/ProofKit/F32RoundRational.lean)
+[rational rounder correspondence](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RoundRational.lean)
 then proves exact agreement with Talos's `roundRationalMagnitude` at the
 minimum source exponent, for every numerator and positive denominator.
 The result includes ties, underflow, rounding carry, and overflow.
@@ -16256,14 +16256,14 @@ core to this common rational representation.
 
 ### Complete source FP32 division
 
-The [rational scaling lemmas](proofs/talos/lean/Project/ProofKit/F32RationalScale.lean)
-and [normalization proof](proofs/talos/lean/Project/ProofKit/F32RationalNormalize.lean)
+The [rational scaling lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RationalScale.lean)
+and [normalization proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RationalNormalize.lean)
 establish rounding invariance under exponent changes and equivalent
 numerator/denominator representations.  The
-[division-core proof](proofs/talos/lean/Project/ProofKit/F32DivCore.lean)
+[division-core proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32DivCore.lean)
 shows that Lean's selected exponent retains enough quotient bits, then
 uses equality of cross products to match Talos's scaled rational.
-The [complete division theorem](proofs/talos/lean/Project/ProofKit/F32Div.lean)
+The [complete division theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Div.lean)
 proves `LeanExe.Float32.divBits a b = Wasm.IEEE32.div a b` for every pair
 of input words, including all exceptional cases.
 
@@ -16275,14 +16275,14 @@ source correspondences.  Square root remains before tensor composition.
 
 ### Complete source FP32 square root
 
-The [square-root rounding lemmas](proofs/talos/lean/Project/ProofKit/F32SqrtRounding.lean)
+The [square-root rounding lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32SqrtRounding.lean)
 prove that Lean's remainder test agrees with Talos's exact midpoint test.
-The [core proof](proofs/talos/lean/Project/ProofKit/F32SqrtCore.lean)
+The [core proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32SqrtCore.lean)
 shows that decoded FP32 inputs produce a 24-bit integer root and relates
 the source radicand to Talos's radicand by power-of-four scaling.  The
-[finite-input composition](proofs/talos/lean/Project/ProofKit/F32SqrtFinite.lean)
+[finite-input composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32SqrtFinite.lean)
 reuses the checked final packing stage.  The
-[complete theorem](proofs/talos/lean/Project/ProofKit/F32Sqrt.lean)
+[complete theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Sqrt.lean)
 proves source/Talos equality for every input word, including negative
 values, signed zeros, infinities, and NaNs.
 
@@ -16296,16 +16296,16 @@ tensor loops and full GPT-2 composition remain open.
 
 ### Packed constructor with free-block reuse
 
-The [free-list search proof](proofs/talos/lean/Project/ProofKit/FixedArraySearchFit.lean)
+The [free-list search proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/FixedArraySearchFit.lean)
 now accepts a checked block-initialization program.  Its original fixed-array
 theorem remains a specialization and checks against the existing allocator.
-The [packed reuse proof](proofs/talos/lean/Project/ProofKit/PackedReuse.lean)
+The [packed reuse proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReuse.lean)
 composes unlinking, packed-header initialization, and the returned pointer.
-The [complete packed allocator](proofs/talos/lean/Project/ProofKit/PackedAllocation.lean)
+The [complete packed allocator](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocation.lean)
 covers either reuse or bump allocation and proves the output region fits
 memory and the 32-bit address range.
 
-The [generated constructor proof](proofs/talos/lean/Project/PackedGenerate/EntryAll.lean)
+The [generated constructor proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/PackedGenerate/EntryAll.lean)
 composes the allocator with the checked construction loop and return.
 `makeWords_with_reuse_exact` removes the previous no-fit assumption and
 requires bump capacity only when the search finds no sufficient free block.
@@ -16316,13 +16316,13 @@ became parametric in its initialization program.
 
 ### Packed allocation preserves tensor inputs
 
-The [reuse memory proof](proofs/talos/lean/Project/ProofKit/PackedReuseMemory.lean)
+The [reuse memory proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReuseMemory.lean)
 preserves the remaining free list and byte regions disjoint from the free
-blocks.  The [allocation memory proof](proofs/talos/lean/Project/ProofKit/PackedAllocationMemory.lean)
+blocks.  The [allocation memory proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocationMemory.lean)
 combines that result with bump allocation and memory growth.  Its final
 theorems preserve represented input byte arrays and remaining free-list
 headers after writes anywhere in the allocated output region.  The
-[byte-array framing lemmas](proofs/talos/lean/Project/ProofKit/PackedMemory.lean)
+[byte-array framing lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedMemory.lean)
 also apply to individual tensor-loop steps.
 
 These results assume input/free-region separation and, for bump allocation,
@@ -16341,7 +16341,7 @@ The GPT-2 row-mean proof now has a checked source prefix recurrence using the es
 
 ### Generated GPT-2 row mean
 
-[The row-mean theorem](proofs/talos/lean/Project/Gpt2RowMean/Spec.lean) proves the generated `rowMean` entry terminates, preserves its complete store, and returns the Lean function's result for every represented input and valid 768-word row.  The arithmetic statement uses Talos's binary32 model.  The proof requires no finite-value or weight assumptions.
+[The row-mean theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2RowMean/Spec.lean) proves the generated `rowMean` entry terminates, preserves its complete store, and returns the Lean function's result for every represented input and valid 768-word row.  The arithmetic statement uses Talos's binary32 model.  The proof requires no finite-value or weight assumptions.
 
 The source recurrence follows the ordered 768-element fold.  A definitionally checked decomposition identifies the emitted loop.  Its invariant records only the input parameters, accumulator, range bounds, stride, and frame size.  One iteration composes checked address arithmetic, the shared packed-word call, and FP32 addition.  The entry composes that result with the generic range rule and FP32 division.  The iteration checks in 2.6 seconds and the entry in 1.5 seconds, with standard axioms.
 
@@ -16349,25 +16349,25 @@ A broad final simplification cycled between natural-number injection and UInt64 
 
 ### Generated GPT-2 inverse standard deviation
 
-[The inverse-standard-deviation theorem](proofs/talos/lean/Project/Gpt2RowInvStd/Spec.lean) proves the generated entry against `rowInvStd` for every represented valid row and arbitrary supplied FP32 mean.  It covers the ordered squared-deviation sum, division by 768, epsilon, square root, and reciprocal, with complete store preservation.  All five previously checked arithmetic correspondences now occur in generated GPT-2 kernel proofs.  The iteration checks in 2.9 seconds and the entry in 1.5 seconds with standard axioms.
+[The inverse-standard-deviation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2RowInvStd/Spec.lean) proves the generated entry against `rowInvStd` for every represented valid row and arbitrary supplied FP32 mean.  It covers the ordered squared-deviation sum, division by 768, epsilon, square root, and reciprocal, with complete store preservation.  All five previously checked arithmetic correspondences now occur in generated GPT-2 kernel proofs.  The iteration checks in 2.9 seconds and the entry in 1.5 seconds with standard axioms.
 
-[The packed-frame tactic](proofs/talos/lean/Project/ProofKit/PackedFloatFrame.lean) collects repeated local-list, bit-conversion, and arithmetic-operation rewrites.  Both row-kernel proofs use it.  The second kernel reused the first kernel's invariant structure and checked range rule.  General tensor allocation and lifetime composition, the remaining kernels, and full inference remain open.
+[The packed-frame tactic](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedFloatFrame.lean) collects repeated local-list, bit-conversion, and arithmetic-operation rewrites.  Both row-kernel proofs use it.  The second kernel reused the first kernel's invariant structure and checked range rule.  General tensor allocation and lifetime composition, the remaining kernels, and full inference remain open.
 
 ### Generated GPT-2 attention score
 
-[The attention-score theorem](proofs/talos/lean/Project/Gpt2AttentionScore/Spec.lean) proves the generated query/key dot product and final scaling against the Lean source for every head below 12 and any two represented QKV rows.  It preserves the store.  The 64-element fold composes two packed reads and separate FP32 multiplication and addition.  No associativity or reassociation is assumed.  The step checks in 5.5 seconds and the entry in 1.3 seconds with standard axioms.
+[The attention-score theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2AttentionScore/Spec.lean) proves the generated query/key dot product and final scaling against the Lean source for every head below 12 and any two represented QKV rows.  It preserves the store.  The 64-element fold composes two packed reads and separate FP32 multiplication and addition.  No associativity or reassociation is assumed.  The step checks in 5.5 seconds and the entry in 1.3 seconds with standard axioms.
 
-The range-loop and packed-frame abstractions carried over from the normalization kernels.  Automatic arithmetic failed to eliminate some nested UInt64 moduli.  The new [checked-add lemma](proofs/talos/lean/Project/ProofKit/CheckedNatAddArithmetic.lean) derives the overflow guard from a natural-number sum bound before exposing modulo arithmetic.  Explicit constant-injection equalities let kernel proofs apply it without broad rewriting.  The larger emitted loop required a larger reduction-depth setting for its definitional decomposition.  The instruction proof retained its existing depth setting and default heartbeat limit.
+The range-loop and packed-frame abstractions carried over from the normalization kernels.  Automatic arithmetic failed to eliminate some nested UInt64 moduli.  The new [checked-add lemma](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/CheckedNatAddArithmetic.lean) derives the overflow guard from a natural-number sum bound before exposing modulo arithmetic.  Explicit constant-injection equalities let kernel proofs apply it without broad rewriting.  The larger emitted loop required a larger reduction-depth setting for its definitional decomposition.  The instruction proof retained its existing depth setting and default heartbeat limit.
 
 ### Nested reductions inside packed construction
 
 The linear-row compiler keeps the destination address on the operand stack during its inner dot-product loop.  `RangeFoldLoop.program_spec_with_stack` now proves the range loop for arbitrary preserved operand-stack contents.  The original empty-stack theorem is a specialization.  The generalized proof checks in 1.6 seconds, and the three completed GPT-2 kernel proofs still check against it.
 
-[The linear-row source decomposition](proofs/talos/lean/Project/Gpt2LinearRows/Source.lean) expresses each output word as the ordered dot-product fold followed by bias addition.  It proves that packed generation of these values is the existing `linearRows` source function.  Its variable loop length required explicit normalization of the range-size expression.  The source proof checks in 1.1 seconds.  Generated weighted reductions and allocation composition remain in progress.
+[The linear-row source decomposition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2LinearRows/Source.lean) expresses each output word as the ordered dot-product fold followed by bias addition.  It proves that packed generation of these values is the existing `linearRows` source function.  Its variable loop length required explicit normalization of the range-size expression.  The source proof checks in 1.1 seconds.  Generated weighted reductions and allocation composition remain in progress.
 
 ### Generated linear-row construction loop
 
-The [linear-row step](proofs/talos/lean/Project/Gpt2LinearRows/DotStep.lean) composes two packed reads, checked matrix indexing, and FP32 multiplication followed by addition.  The [output-word proof](proofs/talos/lean/Project/Gpt2LinearRows/Word.lean) composes that step into the variable-length dot product and adds the bias.  The [construction-loop proof](proofs/talos/lean/Project/Gpt2LinearRows/Loop.lean) writes every output word and preserves both represented input tensors through disjoint output writes.  Their checks take 5.2, 2.8, and 1.8 seconds, respectively, with standard axioms.  The proof applies to variable matrix dimensions and arbitrary FP32 bit patterns.  Allocation and entry composition remain open.
+The [linear-row step](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2LinearRows/DotStep.lean) composes two packed reads, checked matrix indexing, and FP32 multiplication followed by addition.  The [output-word proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2LinearRows/Word.lean) composes that step into the variable-length dot product and adds the bias.  The [construction-loop proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2LinearRows/Loop.lean) writes every output word and preserves both represented input tensors through disjoint output writes.  Their checks take 5.2, 2.8, and 1.8 seconds, respectively, with standard axioms.  The proof applies to variable matrix dimensions and arbitrary FP32 bit patterns.  Allocation and entry composition remain open.
 
 The shared checked-multiplication lemma now accepts natural operands.  A frame lemma transfers a continuation through an explicit operand-stack replacement, avoiding repetition of generated local updates.  Initial elaboration exposed an unsimplified divide-by-zero branch and an underdetermined frame projection.  Supplying the established nonzero fact to the instruction simplifier and applying the frame lemma resolved those failures.  Restricted simplification keeps local-list observations in the form used by the invariant.
 
@@ -16375,7 +16375,7 @@ The entry-frame lemmas prove both checked output-size multiplications, capacity 
 
 ### Complete generated linear-row entry
 
-[The linear-row entry theorem](proofs/talos/lean/Project/Gpt2LinearRows/Spec.lean) now proves termination and exact packed output from the generated function.  It covers both free-block reuse and bump allocation, preserves both input tensors, and proves that the remaining free list stays valid.  Its hypotheses describe tensor extents, machine-sized dimensions, memory capacity, and separation from free regions.  It accepts arbitrary FP32 input and weight words.  The body composition checks in 2.7 seconds and the public theorem in 2.2 seconds, with standard axioms.
+[The linear-row entry theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2LinearRows/Spec.lean) now proves termination and exact packed output from the generated function.  It covers both free-block reuse and bump allocation, preserves both input tensors, and proves that the remaining free list stays valid.  Its hypotheses describe tensor extents, machine-sized dimensions, memory capacity, and separation from free regions.  It accepts arbitrary FP32 input and weight words.  The body composition checks in 2.7 seconds and the public theorem in 2.2 seconds, with standard axioms.
 
 The proof combines the existing allocator, memory-preservation, and construction rules without changing model or compiler code.  The final postcondition initially encountered inconsistent simplification of natural-number injection inside a nested conjunction.  Constructing the conjunction before simplifying its surrounding return statement resolved the elaboration failure.  Full-module call transfer, the remaining kernels, and complete inference composition remain open.
 
@@ -16385,199 +16385,199 @@ The `gpt2_linear_rows` source-driven artifact gate regenerated the model and pas
 
 The complete `cachedStep` module is now registered and regenerated as `gpt2_cached_step`.  The registration remains incomplete.  Inspection of its emitted instructions confirms that internal byte-array arguments include ownership handles omitted by exported standalone entries.  Internal constructors return an owner, pointer, and length.  Function-index renaming alone therefore cannot transfer the standalone exported-entry proofs.
 
-[The internal row-mean proof](proofs/talos/lean/Project/Gpt2CachedStep/RowMean.lean) and [inverse-standard-deviation proof](proofs/talos/lean/Project/Gpt2CachedStep/RowInvStd.lean) check directly against functions 18 and 19 of this full artifact, with arbitrary ownership arguments.  They reuse the source recurrences, arithmetic correspondences, indexed reader, and range-loop rule.  Their instruction and entry proofs account for the additional parameter.  They check in 3.6 and 2.9 seconds with standard axioms.  The internal matrix projection is next.
+[The internal row-mean proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/RowMean.lean) and [inverse-standard-deviation proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/RowInvStd.lean) check directly against functions 18 and 19 of this full artifact, with arbitrary ownership arguments.  They reuse the source recurrences, arithmetic correspondences, indexed reader, and range-loop rule.  Their instruction and entry proofs account for the additional parameter.  They check in 3.6 and 2.9 seconds with standard axioms.  The internal matrix projection is next.
 
 The shared function-region transport rule now covers binary32 arithmetic, reinterpretation, and 32-bit memory loads and stores.  Its first no-tail-call check exhausted 200,000 heartbeats.  Separating arithmetic cases did not eliminate that failure.  Restricting the atomic simplifier to the no-tail-call predicate removed the excessive simplification.  The rule still requires checked function-body correspondence, matching parameter and return layouts, and equal memory declarations.
 
-The [internal linear-row theorem](proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Spec.lean) now checks function 21 of the complete artifact.  It accepts both ownership arguments and proves the three-word return, exact packed output, input preservation, and remaining free-list validity.  Its body and entry checks take 2.7 and 2.3 seconds with standard axioms.  The source decomposition, tensor-index lemmas, arithmetic, allocator, memory-framing, and loop rules are shared with the exported-entry proof.  Concrete instruction/frame proofs remain specific to each calling interface.
+The [internal linear-row theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Spec.lean) now checks function 21 of the complete artifact.  It accepts both ownership arguments and proves the three-word return, exact packed output, input preservation, and remaining free-list validity.  Its body and entry checks take 2.7 and 2.3 seconds with standard axioms.  The source decomposition, tensor-index lemmas, arithmetic, allocator, memory-framing, and loop rules are shared with the exported-entry proof.  Concrete instruction/frame proofs remain specific to each calling interface.
 
 The narrowed no-tail-call simplifier also checks after removing the temporary per-operation helper lemmas.  Its module takes 3.1 seconds, and function-region execution transport takes 0.6 seconds.  The registry now contains 69 generated cases and 67 completed specifications.  The complete cached-inference theorem remains open.  The next composition is normalization, including temporary packed-buffer ownership and release.
 
 ### Packed-buffer release and live headers
 
-The shared raw-buffer release theorem now specifies the complete resulting store.  The original theorem remains available as a weaker specialization.  [Packed release](proofs/talos/lean/Project/ProofKit/PackedRelease.lean) reuses the established release-store representation and its memory/free-list lemmas.  [The cached-module release theorem](proofs/talos/lean/Project/Gpt2CachedStep/Release.lean) checks the emitted runtime function at index 42 and proves that exact effect for a uniquely owned packed buffer.  Both modules check in 1.5 seconds with standard axioms.
+The shared raw-buffer release theorem now specifies the complete resulting store.  The original theorem remains available as a weaker specialization.  [Packed release](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedRelease.lean) reuses the established release-store representation and its memory/free-list lemmas.  [The cached-module release theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Release.lean) checks the emitted runtime function at index 42 and proves that exact effect for a uniquely owned packed buffer.  Both modules check in 1.5 seconds with standard axioms.
 
 The packed-header library now records the four header words needed for release and free-list reinsertion.  Its construction theorem and region-preservation theorem check in 1.8 seconds.  An unsupported tactic suffix in the first construction proof caused a parse error and excessive simplification.  Explicit field proofs resolved both diagnostics.  The next obligation is to preserve these live headers through successive tensor allocations and output writes, then compose normalization's temporary-buffer releases.
 
 ### Packed tensor ownership across kernel calls
 
-[Packed heap transitions](proofs/talos/lean/Project/ProofKit/PackedHeap.lean) reuse the heap state and protected-region relation developed for the Euler proofs.  These definitions still reside in the Euler namespace.  Packed allocation has the same global and page transitions, while its distinct header construction has a separate checked theorem.  Both allocation paths preserve protected bytes.  Writing the output preserves the heap state and all protected regions.
+[Packed heap transitions](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedHeap.lean) reuse the heap state and protected-region relation developed for the Euler proofs.  These definitions still reside in the Euler namespace.  Packed allocation has the same global and page transitions, while its distinct header construction has a separate checked theorem.  Both allocation paths preserve protected bytes.  Writing the output preserves the heap state and all protected regions.
 
-[Packed ownership](proofs/talos/lean/Project/ProofKit/OwnedPacked.lean) combines tensor contents, allocation bounds, live headers, and separation from free blocks.  The lemmas establish ownership after construction and preserve it through another allocation, disjoint writes, and release of a separate buffer.  The release rule consumes that ownership and proves exact execution and free-list reinsertion.  The two shared modules check in 1.4 seconds each with standard axioms.
+[Packed ownership](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/OwnedPacked.lean) combines tensor contents, allocation bounds, live headers, and separation from free blocks.  The lemmas establish ownership after construction and preserve it through another allocation, disjoint writes, and release of a separate buffer.  The release rule consumes that ownership and proves exact execution and free-list reinsertion.  The two shared modules check in 1.4 seconds each with standard axioms.
 
-The [internal linear-row theorem with ownership](proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Heap.lean) now returns the represented Lean result, ownership of its complete allocation, the updated heap state, preservation of all protected regions, and page/capacity facts.  Its proof composes the previously checked execution theorem with the shared memory lemmas and checks in 1.2 seconds.  The complete cached-module proof import checks, including the ownership-based release theorem.  Normalization's three construction loops and their composition remain open.
+The [internal linear-row theorem with ownership](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LinearRows/Heap.lean) now returns the represented Lean result, ownership of its complete allocation, the updated heap state, preservation of all protected regions, and page/capacity facts.  Its proof composes the previously checked execution theorem with the shared memory lemmas and checks in 1.2 seconds.  The complete cached-module proof import checks, including the ownership-based release theorem.  Normalization's three construction loops and their composition remain open.
 
 ### Normalization temporary-buffer loops
 
-The [mean-buffer loop](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/MeansLoop.lean) proves exact construction of all row means.  It composes the internal row-mean theorem with the packed-generation rule and preserves the input through disjoint writes.  The source decomposition checks in 1.0 second, and the loop checks in 1.8 seconds.
+The [mean-buffer loop](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/MeansLoop.lean) proves exact construction of all row means.  It composes the internal row-mean theorem with the packed-generation rule and preserves the input through disjoint writes.  The source decomposition checks in 1.0 second, and the loop checks in 1.8 seconds.
 
-Inspection of function 20 shows that the compiler inlines the variance fold into the inverse-buffer generator.  The emitted loop does not call function 19.  [The inlined step](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/VarianceStep.lean) therefore checks that instruction sequence directly, reusing the variance-prefix recurrence, packed reads, and arithmetic correspondences.  It checks in 4.6 seconds.  [The inverse-buffer loop](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/InversesLoop.lean) composes the step, division, epsilon addition, square root, and reciprocal.  It checks in 1.9 seconds.  All axiom reports contain only the standard axioms.
+Inspection of function 20 shows that the compiler inlines the variance fold into the inverse-buffer generator.  The emitted loop does not call function 19.  [The inlined step](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/VarianceStep.lean) therefore checks that instruction sequence directly, reusing the variance-prefix recurrence, packed reads, and arithmetic correspondences.  It checks in 4.6 seconds.  [The inverse-buffer loop](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/InversesLoop.lean) composes the step, division, epsilon addition, square root, and reciprocal.  It checks in 1.9 seconds.  All axiom reports contain only the standard axioms.
 
 The source equality needed explicit reduction of local bindings before function extensionality.  A broad frame simplification changed optional local reads into indexed reads and prevented hypothesis matching.  Restricted list-update simplification resolved that failure.  The mean-loop composition also required a larger reduction-depth limit for the full generated instruction term.  The final normalization loop and allocation/release composition remain open.
 
-[The final normalization word proof](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputWord.lean) composes five packed reads, checked parameter indexing, and the exact subtraction, multiplication, and addition sequence.  It checks in 5.2 seconds.  [The output-loop proof](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputLoop.lean) constructs the complete Lean `layerNorm` result and checks in 1.4 seconds.  Both use standard axioms.  All three construction loops now have checked proofs.  Their allocation and release composition remains open.
+[The final normalization word proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputWord.lean) composes five packed reads, checked parameter indexing, and the exact subtraction, multiplication, and addition sequence.  It checks in 5.2 seconds.  [The output-loop proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/OutputLoop.lean) constructs the complete Lean `layerNorm` result and checks in 1.4 seconds.  Both use standard axioms.  All three construction loops now have checked proofs.  Their allocation and release composition remains open.
 
-The existing allocator rule describes its six working locals as scalar words.  Composing a second allocation after a tensor loop therefore needs preservation of those local types.  [Scalar-frame lemmas](proofs/talos/lean/Project/ProofKit/I64Frame.lean) extract the allocator's working region from an arbitrary scalar frame.  [The allocator frame rule](proofs/talos/lean/Project/ProofKit/PackedAllocationFrame.lean) applies the established execution theorem to that frame and preserves the remaining locals.  These modules check in 1.9 and 1.6 seconds.  The three normalization loop invariants now preserve scalar local types, and the complete cached-module import checks.  Conditional simplification needed a discharge depth of 64 to follow the nested local updates.  The execution proofs retain the default heartbeat limit.
+The existing allocator rule describes its six working locals as scalar words.  Composing a second allocation after a tensor loop therefore needs preservation of those local types.  [Scalar-frame lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/I64Frame.lean) extract the allocator's working region from an arbitrary scalar frame.  [The allocator frame rule](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocationFrame.lean) applies the established execution theorem to that frame and preserves the remaining locals.  These modules check in 1.9 and 1.6 seconds.  The three normalization loop invariants now preserve scalar local types, and the complete cached-module import checks.  Conditional simplification needed a discharge depth of 64 to follow the nested local updates.  The execution proofs retain the default heartbeat limit.
 
-[The mean-buffer constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Means.lean) now composes checked byte sizing, capacity rounding, both allocation paths, the mean loop, and its returned local bindings.  It proves exact source bytes, ownership, the updated heap, and preservation of protected regions.  The constructor checks in 2.6 seconds with standard axioms.  The shared packed-output record collects these established postconditions for successive constructors.  The shared size-prefix proof checks in 2.0 seconds.  Initial composition left a definitional equality between the two existing allocator-root names and concrete local-index inequalities.  Explicit definitional reduction and restricted arithmetic simplification resolved them.  The inverse and final-output constructors and cleanup remain open.
+[The mean-buffer constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Means.lean) now composes checked byte sizing, capacity rounding, both allocation paths, the mean loop, and its returned local bindings.  It proves exact source bytes, ownership, the updated heap, and preservation of protected regions.  The constructor checks in 2.6 seconds with standard axioms.  The shared packed-output record collects these established postconditions for successive constructors.  The shared size-prefix proof checks in 2.0 seconds.  Initial composition left a definitional equality between the two existing allocator-root names and concrete local-index inequalities.  Explicit definitional reduction and restricted arithmetic simplification resolved them.  The inverse and final-output constructors and cleanup remain open.
 
-[The inverse-buffer constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Inverses.lean) composes allocation, the inlined variance calculation, packed output construction, and returned bindings.  It preserves the input and means through allocation and writes, and returns exact inverse-standard-deviation bytes with heap ownership.  The proof checks in 2.8 seconds with standard axioms.  Simplification of the preserved mean bindings required converting their optional reads to the same indexed form as the generated frame.  The final-output constructor and cleanup remain open.
+[The inverse-buffer constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Inverses.lean) composes allocation, the inlined variance calculation, packed output construction, and returned bindings.  It preserves the input and means through allocation and writes, and returns exact inverse-standard-deviation bytes with heap ownership.  The proof checks in 2.8 seconds with standard axioms.  Simplification of the preserved mean bindings required converting their optional reads to the same indexed form as the generated frame.  The final-output constructor and cleanup remain open.
 
-[The final-output constructor](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Output.lean) now proves allocation and exact construction of the Lean normalization result, preserving weights, input, means, and inverses.  It checks in 3.3 seconds with standard axioms.  The two checked size multiplications needed restricted natural-to-UInt64 rewriting and an explicit element-count bound to avoid exposing nested modular products.  Their proof checks in 2.7 seconds.  All three constructors are complete.  The next step composes them with temporary-buffer release.
+[The final-output constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Output.lean) now proves allocation and exact construction of the Lean normalization result, preserving weights, input, means, and inverses.  It checks in 3.3 seconds with standard axioms.  The two checked size multiplications needed restricted natural-to-UInt64 rewriting and an explicit element-count bound to avoid exposing nested modular products.  Their proof checks in 2.7 seconds.  All three constructors are complete.  The next step composes them with temporary-buffer release.
 
-[Normalization cleanup](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Cleanup.lean) now proves both guarded releases, free-list reinsertion, preservation of the output allocation, and the three-word return.  It checks in 1.5 seconds.  The reusable [guarded packed release rule](proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) checks in 1.4 seconds for arbitrary local indices and a checked release-function definition.  Packed ownership now supplies payload protection, separation from a subsequent allocation, and distinct-root lemmas.  All checks use standard axioms.  The guarded-release proof required expanding local-read hypotheses to match the instruction tactic and restoring the empty operand stack after the conditional block.
+[Normalization cleanup](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Cleanup.lean) now proves both guarded releases, free-list reinsertion, preservation of the output allocation, and the three-word return.  It checks in 1.5 seconds.  The reusable [guarded packed release rule](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) checks in 1.4 seconds for arbitrary local indices and a checked release-function definition.  Packed ownership now supplies payload protection, separation from a subsequent allocation, and distinct-root lemmas.  All checks use standard axioms.  The guarded-release proof required expanding local-read hypotheses to match the instruction tactic and restoring the empty operand stack after the conditional block.
 
 ### Complete cached-module normalization
 
-[The normalization body](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Body.lean) composes the three constructors and cleanup without further instruction-level reasoning.  It carries the updated heap, ownership, protected-region preservation, and memory-cap facts through every stage.  It checks in 1.4 seconds.  [The public theorem](proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Spec.lean) proves termination and exact source output from function 20 of the complete cached-inference artifact and checks in 1.2 seconds.  Both use standard axioms.  The theorem accepts variable row counts and arbitrary FP32 words, with represented input extents, protected regions, and conditional capacity assumptions for all three allocations.
+[The normalization body](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Body.lean) composes the three constructors and cleanup without further instruction-level reasoning.  It carries the updated heap, ownership, protected-region preservation, and memory-cap facts through every stage.  It checks in 1.4 seconds.  [The public theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/LayerNorm/Spec.lean) proves termination and exact source output from function 20 of the complete cached-inference artifact and checks in 1.2 seconds.  Both use standard axioms.  The theorem accepts variable row counts and arbitrary FP32 words, with represented input extents, protected regions, and conditional capacity assumptions for all three allocations.
 
 The full cached-module proof import and all 144 maintained documentation checks pass.  Attention, activation, block composition, and complete inference remain open.  The cached-inference registry entry remains incomplete, and exact-byte packaging remains deferred.
 
 ### Cached attention lookup and scores
 
-[The cached key/value theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedKv.lean) proves function 22 selects the Lean-specified word from either an earlier cache position or the current QKV tensor, preserving the complete store.  It checks in 3.2 seconds.  [The cached-score theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedScore/Spec.lean) composes that lookup with the query read, the ordered 64-element FP32 dot product, and final scaling.  Its step and entry check in 4.6 and 1.5 seconds with standard axioms.  The proofs reuse packed reads, checked index arithmetic, and the range-loop rule.  The lookup guards required normalizing natural-number injections in their hypotheses before instruction simplification.  The complete cached-module import passes with both additions.
+[The cached key/value theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedKv.lean) proves function 22 selects the Lean-specified word from either an earlier cache position or the current QKV tensor, preserving the complete store.  It checks in 3.2 seconds.  [The cached-score theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedScore/Spec.lean) composes that lookup with the query read, the ordered 64-element FP32 dot product, and final scaling.  Its step and entry check in 4.6 and 1.5 seconds with standard axioms.  The proofs reuse packed reads, checked index arithmetic, and the range-loop rule.  The lookup guards required normalizing natural-number injections in their hypotheses before instruction simplification.  The complete cached-module import passes with both additions.
 
 ### Attention comparison, polynomial, and row sum
 
-[The comparison theorem](proofs/talos/lean/Project/Gpt2CachedStep/FiniteLt.lean) proves function 24 implements the source bit-pattern comparison for arbitrary UInt32 inputs.  It checks in 7.3 seconds.  [The polynomial theorem](proofs/talos/lean/Project/Gpt2CachedStep/ExpPolynomial.lean) proves function 26 follows the source's eighteen FP32 Horner stages and checks in 2.4 seconds.  Both preserve the complete store.  These are exact source-agreement statements.
+[The comparison theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/FiniteLt.lean) proves function 24 implements the source bit-pattern comparison for arbitrary UInt32 inputs.  It checks in 7.3 seconds.  [The polynomial theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/ExpPolynomial.lean) proves function 26 follows the source's eighteen FP32 Horner stages and checks in 2.4 seconds.  Both preserve the complete store.  These are exact source-agreement statements.
 
-[The row-sum theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedRowSum/Spec.lean) proves function 28 computes the ordered source fold for every represented nonempty row, preserving the store.  Its step and entry check in 3.1 and 1.7 seconds.  All three public theorems use standard axioms.  The comparison's first proof exhausted the default heartbeat limit by splitting conditionals throughout the execution goal.  Splitting only the current guard and reducing constant conditions resolved that failure.  The row fold reused the existing range and packed-read rules.  Its variable stride divisor required supplying the established nonzero fact to the instruction simplifier.  The maximum, range-reduced exponential, attention construction, and complete inference remain open.
+[The row-sum theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedRowSum/Spec.lean) proves function 28 computes the ordered source fold for every represented nonempty row, preserving the store.  Its step and entry check in 3.1 and 1.7 seconds.  All three public theorems use standard axioms.  The comparison's first proof exhausted the default heartbeat limit by splitting conditionals throughout the execution goal.  Splitting only the current guard and reducing constant conditions resolved that failure.  The row fold reused the existing range and packed-read rules.  Its variable stride divisor required supplying the established nonzero fact to the instruction simplifier.  The maximum, range-reduced exponential, attention construction, and complete inference remain open.
 
-[The row-maximum theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean) now proves function 25 against the source fold for arbitrary FP32 words in a represented nonempty row.  It preserves the complete store.  The generated loop repeats its packed read and comparison while constructing the loop-control result.  The step proof checks both emitted occurrences through the same reader and comparison theorems.  It takes 9.4 seconds, and the entry takes 2.1 seconds, with standard axioms.  The source proof factors its conditional yield before applying the shared fold correspondence.  Final frame simplification needed to retain the source word expression until the comparison hypothesis rewrote it.  The range-reduced exponential is next.
+[The row-maximum theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedRowMaximum/Spec.lean) now proves function 25 against the source fold for arbitrary FP32 words in a represented nonempty row.  It preserves the complete store.  The generated loop repeats its packed read and comparison while constructing the loop-control result.  The step proof checks both emitted occurrences through the same reader and comparison theorems.  It takes 9.4 seconds, and the entry takes 2.1 seconds, with standard axioms.  The source proof factors its conditional yield before applying the shared fold correspondence.  Final frame simplification needed to retain the source word expression until the comparison hypothesis rewrote it.  The range-reduced exponential is next.
 
 ### Exact exponential and scalar activation
 
-[The exponential theorem](proofs/talos/lean/Project/Gpt2CachedStep/ExpNeg/Spec.lean) proves function 27 implements `expNeg` for arbitrary UInt32 inputs, with termination and complete store preservation.  The source decomposition gives separate folds for conditional halving and repeated squaring, and proves that the squaring count is at most six.  The emitted halving step checks in 4.5 seconds, the squaring step in 2.3 seconds, and the complete entry in 2.2 seconds.  Both loops use the shared range rule and compose with the checked polynomial call.
+[The exponential theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/ExpNeg/Spec.lean) proves function 27 implements `expNeg` for arbitrary UInt32 inputs, with termination and complete store preservation.  The source decomposition gives separate folds for conditional halving and repeated squaring, and proves that the squaring count is at most six.  The emitted halving step checks in 4.5 seconds, the squaring step in 2.3 seconds, and the complete entry in 2.2 seconds.  Both loops use the shared range rule and compose with the checked polynomial call.
 
 The initial source proof exhausted the default heartbeat limit while reducing the unfactored six-iteration loop.  Factoring the conditional yield before applying the fold theorem removed that reduction.  Entry composition also required restoring the named instruction suffix after setup simplification expanded it.  These changes affect the proofs only.
 
-[The scalar GELU theorem](proofs/talos/lean/Project/Gpt2CachedStep/Gelu.lean) composes the exponential theorem, bit operations, and the existing FP32 arithmetic correspondences.  It covers both tail branches and both signs, accepts arbitrary UInt32 inputs, and preserves the complete store.  It checks in 2.6 seconds.  All new public theorems use standard axioms.  Tensor activation, residual addition, attention construction, block composition, and complete inference remain open.
+[The scalar GELU theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Gelu.lean) composes the exponential theorem, bit operations, and the existing FP32 arithmetic correspondences.  It covers both tail branches and both signs, accepts arbitrary UInt32 inputs, and preserves the complete store.  It checks in 2.6 seconds.  All new public theorems use standard axioms.  Tensor activation, residual addition, attention construction, block composition, and complete inference remain open.
 
 ### Complete tensor activation
 
-[The activation theorem](proofs/talos/lean/Project/Gpt2CachedStep/Activate/Spec.lean) proves function 32 terminates and returns the exact packed result of the Lean `activate` function.  It covers checked byte sizing, capacity rounding, free-block reuse or bump allocation, every packed read and GELU call, and the three-word internal return.  Its postcondition supplies output ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  Input lengths need not be multiples of four: the result contains the source-specified number of complete words.
+[The activation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Activate/Spec.lean) proves function 32 terminates and returns the exact packed result of the Lean `activate` function.  It covers checked byte sizing, capacity rounding, free-block reuse or bump allocation, every packed read and GELU call, and the three-word internal return.  Its postcondition supplies output ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  Input lengths need not be multiples of four: the result contains the source-specified number of complete words.
 
 The construction loop checks in 3.6 seconds, the allocation/body composition in 3.7 seconds, and the public entry in 3.3 seconds, with standard axioms.  The proof reuses packed generation, frame typing, capacity, allocation, and ownership lemmas from normalization.  The size proof needed an explicit natural-number multiplication order before rewriting its UInt64 representation.  The public return required the definitional equality between the allocator-root and allocated-node projections.  Residual addition, attention construction, block composition, and complete inference remain open.
 
-[The residual-addition theorem](proofs/talos/lean/Project/Gpt2CachedStep/AddRows/Spec.lean) proves function 30 computes the Lean `addRows` output, with termination, allocation, ownership, and preservation of both protected inputs.  The right input must supply every complete word of the left input.  The construction loop composes two packed reads and exact FP32 addition.  It checks in 3.5 seconds, sizing in 1.8 seconds, the body in 2.0 seconds, and the public entry in 1.5 seconds.  These proofs reuse the same shared construction and heap rules as activation and pass with standard axioms.  Attention's six tensor constructors and temporary-buffer cleanup are next.
+[The residual-addition theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/AddRows/Spec.lean) proves function 30 computes the Lean `addRows` output, with termination, allocation, ownership, and preservation of both protected inputs.  The right input must supply every complete word of the left input.  The construction loop composes two packed reads and exact FP32 addition.  It checks in 3.5 seconds, sizing in 1.8 seconds, the body in 2.0 seconds, and the public entry in 1.5 seconds.  These proofs reuse the same shared construction and heap rules as activation and pass with standard axioms.  Attention's six tensor constructors and temporary-buffer cleanup are next.
 
 ### Cached attention tensor construction
 
-[The attention source decomposition](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Source.lean) names scores, maxima, exponentials, sums, probabilities, and the final weighted-value fold, and proves their composition equals `cachedAttention`.  It checks in 1.0 second.  [The score constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Scores.lean) proves the first emitted tensor allocation and construction, including exact bytes, output ownership, and preservation of cache and QKV inputs.  It accepts all twelve layers and positions below 128.  Its construction loop checks in 3.7 seconds, checked sizing in 3.2 seconds, and allocation composition in 3.8 seconds, with standard axioms.
+[The attention source decomposition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Source.lean) names scores, maxima, exponentials, sums, probabilities, and the final weighted-value fold, and proves their composition equals `cachedAttention`.  It checks in 1.0 second.  [The score constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Scores.lean) proves the first emitted tensor allocation and construction, including exact bytes, output ownership, and preservation of cache and QKV inputs.  It accepts all twelve layers and positions below 128.  Its construction loop checks in 3.7 seconds, checked sizing in 3.2 seconds, and allocation composition in 3.8 seconds, with standard axioms.
 
 The flattened score index uses natural quotient and remainder bounds before conversion to UInt64.  Automatic linear arithmetic treated the variable-divisor expressions as independent terms.  Applying the natural division and remainder lemmas resolved those obligations.  Size-guard simplification required expressing the established increment bound after the increment rewrite.  The remaining five constructors and cleanup remain open.
 
-[The maxima constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Maxima.lean) proves allocation and construction of all twelve row maxima, with exact bytes, output ownership, and preservation of the score tensor.  The loop checks in 2.8 seconds, the fixed-size prefix in 2.1 seconds, and the constructor in 3.1 seconds with standard axioms.  The fixed-size proof also matches the later sum and weighted-output prefixes.  The first constructor check reported two redundant closing tactics.  Removing them resolved both diagnostics.
+[The maxima constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Maxima.lean) proves allocation and construction of all twelve row maxima, with exact bytes, output ownership, and preservation of the score tensor.  The loop checks in 2.8 seconds, the fixed-size prefix in 2.1 seconds, and the constructor in 3.1 seconds with standard axioms.  The fixed-size proof also matches the later sum and weighted-output prefixes.  The first constructor check reported two redundant closing tactics.  Removing them resolved both diagnostics.
 
 Inspection of the complete attention function identified a frame-size error in the early proof assumptions: its declaration has 114 locals, while the score proofs assumed 109.  Those theorems checked for the shorter frame but could not instantiate the complete entry.  The score and maxima proofs now use the declared 114-local frame, and a checked signature equality records that count.  The score constructor checks again in 3.6 seconds.  Exponentials, sums, probabilities, weighted values, and cleanup remain open.
 
-[The exponential constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Exponentials.lean) now proves exact packed output, allocation, ownership, and preservation of both score and maximum tensors.  Its loop composes the two packed reads, source-index division, FP32 subtraction, and checked exponential call, and checks in 5.0 seconds.  The shared matrix-size prefix checks in 4.2 seconds and also matches probability construction.  Allocation composition checks in 5.0 seconds with standard axioms.  Initial loop composition required the explicit emitted division guard before the second call.  The final local-state proof needed explicit normalization of the constant UInt64 byte count.  Sums, probabilities, weighted values, and cleanup remain open.
+[The exponential constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Exponentials.lean) now proves exact packed output, allocation, ownership, and preservation of both score and maximum tensors.  Its loop composes the two packed reads, source-index division, FP32 subtraction, and checked exponential call, and checks in 5.0 seconds.  The shared matrix-size prefix checks in 4.2 seconds and also matches probability construction.  Allocation composition checks in 5.0 seconds with standard axioms.  Initial loop composition required the explicit emitted division guard before the second call.  The final local-state proof needed explicit normalization of the constant UInt64 byte count.  Sums, probabilities, weighted values, and cleanup remain open.
 
-[Row-sum construction](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Sums.lean) and [probability construction](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Probabilities.lean) now have complete allocation and exact-output proofs.  The sum loop and constructor check in 3.4 and 3.2 seconds.  The probability loop and constructor check in 4.0 and 3.4 seconds.  Both preserve ownership bindings for earlier tensors through a single local-prefix equality.  A shared prefix-read lemma transfers those bindings back to the constructor postcondition, avoiding a growing list of unused tensor bindings in each loop invariant.
+[Row-sum construction](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Sums.lean) and [probability construction](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Probabilities.lean) now have complete allocation and exact-output proofs.  The sum loop and constructor check in 3.4 and 3.2 seconds.  The probability loop and constructor check in 4.0 and 3.4 seconds.  Both preserve ownership bindings for earlier tensors through a single local-prefix equality.  A shared prefix-read lemma transfers those bindings back to the constructor postcondition, avoiding a growing list of unused tensor bindings in each loop invariant.
 
 The prefix proof initially used a reserved identifier and then an incorrect simplifier name.  The corrected proof uses the library's list-prefix preservation theorem and natural-order simplifier.  Probability composition needed an explicit import for the packed instruction tactic after removing the exponential dependency.  All accepted proofs use standard axioms and retain the default heartbeat limit.  The weighted-value constructor and cleanup remain open.
 
-[The weighted-value constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Mixed.lean) proves the final 768-word attention tensor.  Its inner fold checks the probability index, cached value selection, and ordered FP32 multiplication and addition.  The outer loop applies that fold to every output coordinate.  The inner step checks in 8.6 seconds, the loop composition in 2.6 seconds, and the complete constructor in 4.3 seconds with standard axioms.  The proof preserves the cache, QKV tensor, probabilities, and earlier ownership bindings.
+[The weighted-value constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Mixed.lean) proves the final 768-word attention tensor.  Its inner fold checks the probability index, cached value selection, and ordered FP32 multiplication and addition.  The outer loop applies that fold to every output coordinate.  The inner step checks in 8.6 seconds, the loop composition in 2.6 seconds, and the complete constructor in 4.3 seconds with standard axioms.  The proof preserves the cache, QKV tensor, probabilities, and earlier ownership bindings.
 
 The variable-divisor guard needed its nonzero hypothesis in the instruction simplifier before multiplication-overflow branch composition.  Guard hypotheses also needed the same natural-to-UInt64 normalization as the emitted arithmetic.  A temporary state trace identified that boundary and was removed after the proof passed.  All six attention constructors are complete.  Temporary-buffer release and their final composition remain open.
 
 ### Complete cached attention
 
-[Attention cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Cleanup.lean) proves all five guarded temporary-buffer releases, the resulting free list, output ownership, and the three-word return.  It checks in 3.2 seconds.  [The body composition](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Body.lean) carries allocation resources, ownership, region separation, and input preservation through the six constructors and cleanup, and checks in 4.6 seconds.  Its source transfer needed explicit expansion of the named intermediate byte arrays.  The first composition also exposed a tactic subgoal-order mismatch, resolved with explicit proof holes.
+[Attention cleanup](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Cleanup.lean) proves all five guarded temporary-buffer releases, the resulting free list, output ownership, and the three-word return.  It checks in 3.2 seconds.  [The body composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Body.lean) carries allocation resources, ownership, region separation, and input preservation through the six constructors and cleanup, and checks in 4.6 seconds.  Its source transfer needed explicit expansion of the named intermediate byte arrays.  The first composition also exposed a tactic subgoal-order mismatch, resolved with explicit proof holes.
 
-[The public cached-attention theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Spec.lean) checks function 29 of the complete artifact against `cachedAttention` for all twelve layers and positions below 128.  It proves termination, the exact 768-word packed output, ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  It assumes represented cache and QKV extents and sufficient capacity for each allocation when reuse fails.  The theorem checks in 1.3 seconds with standard axioms.  Transformer-block composition, cache assembly, hidden traversal, vocabulary projection, and the complete exported entry remain open.
+[The public cached-attention theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedAttention/Spec.lean) checks function 29 of the complete artifact against `cachedAttention` for all twelve layers and positions below 128.  It proves termination, the exact 768-word packed output, ownership, the updated heap, preservation of all protected regions, and unchanged memory capacity.  It assumes represented cache and QKV extents and sufficient capacity for each allocation when reuse fails.  The theorem checks in 1.3 seconds with standard axioms.  Transformer-block composition, cache assembly, hidden traversal, vocabulary projection, and the complete exported entry remain open.
 
 ### Transformer-block cache update
 
-[The block cache constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cache.lean) proves exact construction of the 1,536 key/value words copied from QKV, including checked sizing, both allocation paths, ownership, and preservation of protected tensors.  The loop preserves earlier temporary-owner bindings and the hidden-output bindings needed by cleanup.  Its complete allocation proof checks in 5.0 seconds with standard axioms.  [The shared guarded-release rule](proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) now covers two retained outputs and checks in 2.0 seconds.
+[The block cache constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cache.lean) proves exact construction of the 1,536 key/value words copied from QKV, including checked sizing, both allocation paths, ownership, and preservation of protected tensors.  The loop preserves earlier temporary-owner bindings and the hidden-output bindings needed by cleanup.  Its complete allocation proof checks in 5.0 seconds with standard axioms.  [The shared guarded-release rule](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReleaseGuard.lean) now covers two retained outputs and checks in 2.0 seconds.
 
 The first loop check exposed an incorrect import name.  The next exceeded reduction depth while expanding the full block instruction list.  Naming the short emitted word body and proving its equality to the generated loop resolved that boundary without increasing limits.  Constructor composition then reported a redundant closing tactic, which was removed.  The complete block still needs kernel-call composition and nine temporary releases before its six-word return.
 
-[The block cleanup proof](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cleanup.lean) now checks all nine temporary releases and the six-word return, preserving both output buffers and every original protected region.  It applies a shared [list-based release theorem](proofs/talos/lean/Project/ProofKit/PackedReleaseMany.lean), which proves ownership and frame preservation by induction over separated temporary allocations.  This replaces repeated pairwise ownership transport with one reusable argument.  The block theorem checks in 2.6 seconds with standard axioms.  The initial generic check needed explicit reduction of its empty store fold.  The instruction-list equality then needed the library's map/flat-map theorem.  Kernel-call composition remains open.
+[The block cleanup proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Cleanup.lean) now checks all nine temporary releases and the six-word return, preserving both output buffers and every original protected region.  It applies a shared [list-based release theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReleaseMany.lean), which proves ownership and frame preservation by induction over separated temporary allocations.  This replaces repeated pairwise ownership transport with one reusable argument.  The block theorem checks in 2.6 seconds with standard axioms.  The initial generic check needed explicit reduction of its empty store fold.  The instruction-list equality then needed the library's map/flat-map theorem.  Kernel-call composition remains open.
 
-[The layout theorems](proofs/talos/lean/Project/Gpt2CachedStep/Layout.lean) prove all seventeen emitted constant functions return their Lean source values and preserve the store.  This covers vocabulary size, every tensor offset, block stride, total parameter count, and cache-position stride.  They check together in 5.6 seconds.  [The block-base prefix](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Base.lean) composes two layout calls with checked multiplication and addition for all twelve layers, and checks in 3.1 seconds.  All proofs use standard axioms.
+[The layout theorems](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Layout.lean) prove all seventeen emitted constant functions return their Lean source values and preserve the store.  This covers vocabulary size, every tensor offset, block stride, total parameter count, and cache-position stride.  They check together in 5.6 seconds.  [The block-base prefix](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Base.lean) composes two layout calls with checked multiplication and addition for all twelve layers, and checks in 3.1 seconds.  All proofs use standard axioms.
 
 Broad final simplification in the first layout proofs exceeded reduction depth.  A temporary trace located the failure after instruction execution, at a return equality that holds by definitional reduction.  Replacing that simplification with reflexivity resolved the failure.  The traces and temporary depth increases were removed.  All seventeen layout proofs pass with default limits.
 
 ### Transformer-block kernel calls
 
-[The first normalization call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized.lean), [QKV projection call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Qkv.lean), and [attention call](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Attention.lean) now have checked proofs within function 33.  Each theorem verifies the emitted argument preparation and returned local bindings, reuses the existing kernel theorem, and carries output ownership, the resulting heap, protected-region preservation, page limits, and unchanged memory capacity.  They check in 6.1, 3.9, and 4.1 seconds with standard axioms.
+[The first normalization call](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized.lean), [QKV projection call](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Qkv.lean), and [attention call](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Attention.lean) now have checked proofs within function 33.  Each theorem verifies the emitted argument preparation and returned local bindings, reuses the existing kernel theorem, and carries output ownership, the resulting heap, protected-region preservation, page limits, and unchanged memory capacity.  They check in 6.1, 3.9, and 4.1 seconds with standard axioms.
 
 Arithmetic automation exceeded reduction depth on normalization's adjacent scale/bias extents and QKV's matrix/bias boundary.  Direct addition-associativity and multiplication-monotonicity lemmas resolved those obligations.  Return-state simplification needed explicit byte-count equalities and the named QKV allocation capacity.  The remaining seven calls, complete block composition, and outer inference traversal remain open.
 
-The remaining seven block calls now have checked proofs: [attention projection](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projection.lean), [first residual addition](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Residual.lean), [second normalization](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized2.lean), [feed-forward expansion](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Expanded.lean), [activation](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Activated.lean), [feed-forward projection](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projected2.lean), and [final residual addition](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Hidden.lean).  Checks took 3.1, 3.6, 3.7, 3.0, 2.7, 2.8, and 2.9 seconds respectively, with standard axioms.  Every call proves its emitted argument preparation, exact source result, returned bindings, ownership, and memory postconditions.
+The remaining seven block calls now have checked proofs: [attention projection](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projection.lean), [first residual addition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Residual.lean), [second normalization](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Normalized2.lean), [feed-forward expansion](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Expanded.lean), [activation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Activated.lean), [feed-forward projection](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Projected2.lean), and [final residual addition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Hidden.lean).  Checks took 3.1, 3.6, 3.7, 3.0, 2.7, 2.8, and 2.9 seconds respectively, with standard axioms.  Every call proves its emitted argument preparation, exact source result, returned bindings, ownership, and memory postconditions.
 
 The shared block state records the unchanged prefix of locals, avoiding repeated lists of all earlier owner bindings.  Source review caught stale tensor names and an incorrect expansion width before their checks.  The first residual check required the known input size when reconstructing the unchanged parameter list.  A redundant simplifier argument was removed from the projection proof.  All ten calls, base calculation, cache construction, and cleanup are checked individually.  Their complete block composition remains open.
 
 ### Transformer-block composition
 
-[The first block section](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Front.lean) now composes base calculation, normalization, QKV projection, and cached attention.  It checks in 3.2 seconds and returns ownership, separation, and local bindings for all three temporary buffers, with protected-input preservation.  [Shared ownership-list lemmas](proofs/talos/lean/Project/ProofKit/PackedOwners.lean) carry these facts across subsequent calls and establish separation from each new allocation.  Separate checked freshness lemmas cover the internal allocations of normalization and attention.  Tensor-size and complete-block weight-extent lemmas also pass.
+[The first block section](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Front.lean) now composes base calculation, normalization, QKV projection, and cached attention.  It checks in 3.2 seconds and returns ownership, separation, and local bindings for all three temporary buffers, with protected-input preservation.  [Shared ownership-list lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedOwners.lean) carry these facts across subsequent calls and establish separation from each new allocation.  Separate checked freshness lemmas cover the internal allocations of normalization and attention.  Tensor-size and complete-block weight-extent lemmas also pass.
 
 The first separation proof required the allocated node's header bound to convert between region length and end-address representations.  Supplying the established ownership bound resolved it.  The first composition check needed deeper simplifier discharge for six typed local updates and explicit elimination of empty-list membership.  All accepted proofs use standard axioms.  The remaining seven calls and final cache/cleanup composition remain open.
 
-[The complete block body](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Body.lean) composes all ten kernel calls, cache construction, and nine temporary releases.  It checks in 2.4 seconds.  [The function-entry theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Spec.lean) proves function 33 computes both fields of the Lean `cachedBlock` result, with termination, exact bytes, ownership, output separation, and preservation of protected input memory.  It covers all twelve layers and positions below 128, assumes represented tensor extents and sufficient allocation capacity, and checks in 2.1 seconds with standard axioms.
+[The complete block body](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Body.lean) composes all ten kernel calls, cache construction, and nine temporary releases.  It checks in 2.4 seconds.  [The function-entry theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedBlock/Spec.lean) proves function 33 computes both fields of the Lean `cachedBlock` result, with termination, exact bytes, ownership, output separation, and preservation of protected input memory.  It covers all twelve layers and positions below 128, assumes represented tensor extents and sufficient allocation capacity, and checks in 2.1 seconds with standard axioms.
 
 The composition uses the shared ownership list for pairwise separation and release obligations.  Each kernel's preserved local prefix carries earlier owner bindings.  Initial checks found local aliases that the restricted simplifier did not unfold and a natural-number injection in a cached byte count.  Explicit equalities resolved those diagnostics.  The entry proof's broad simplification of the initialized local count exceeded reduction depth.  Applying the list-length theorem directly resolved it.  No instruction-level proof had to be repeated.  Cache assembly, hidden traversal, vocabulary projection, and exported inference remain open.
 
 ### Hidden traversal and byte copying
 
-[The hidden-state source decomposition](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Source.lean) expresses embedding construction and the twelve-layer loop as a prefix fold and proves that fold equals `cachedHidden`.  It proves each prefix retains a 3,072-byte hidden vector and adds 6,144 cache bytes per layer.  The source proof checks in 2.6 seconds.  Inspection of the generated function identified byte-wise copying in both per-layer update concatenation and final cache extension.  Functions 34 and 35 are unused record-field projections.
+[The hidden-state source decomposition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Source.lean) expresses embedding construction and the twelve-layer loop as a prefix fold and proves that fold equals `cachedHidden`.  It proves each prefix retains a 3,072-byte hidden vector and adds 6,144 cache bytes per layer.  The source proof checks in 2.6 seconds.  Inspection of the generated function identified byte-wise copying in both per-layer update concatenation and final cache extension.  Functions 34 and 35 are unused record-field projections.
 
-[The shared packed-byte copy theorem](proofs/talos/lean/Project/ProofKit/PackedCopy.lean) proves termination, exact copied bytes, and the written memory range, with arbitrary local indices and an optional destination offset.  It checks in 2.5 seconds.  [The concatenation theorem](proofs/talos/lean/Project/ProofKit/PackedAppendCopy.lean) composes two copies and proves their output represents the Lean byte-array append, checking in 2.2 seconds.  Both emitted copy regions match these programs through checked instruction equalities.  Allocation and traversal composition remain open.
+[The shared packed-byte copy theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedCopy.lean) proves termination, exact copied bytes, and the written memory range, with arbitrary local indices and an optional destination offset.  It checks in 2.5 seconds.  [The concatenation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAppendCopy.lean) composes two copies and proves their output represents the Lean byte-array append, checking in 2.2 seconds.  Both emitted copy regions match these programs through checked instruction equalities.  Allocation and traversal composition remain open.
 
 The first copy check exposed an unavailable conversion lemma in the selected imports and the projected frame at the loop's termination measure.  Using the existing memory conversion lemma and restoring the named counter frame resolved both.  Concatenation's indexed-byte rewrite required explicit container arguments.  All accepted proofs use standard axioms and retain default heartbeat limits.
 
-[The packed append theorem](proofs/talos/lean/Project/ProofKit/PackedAppend.lean) composes checked capacity calculation, free-list reuse or heap growth, and both byte copies.  It proves exact concatenation, output ownership, preservation of protected memory and earlier locals, and termination under the allocation-capacity hypotheses.  The theorem accepts arbitrary modules and scratch-local indices, and checks in 3.4 seconds.  Both complete append regions in function 36 match its instruction program through checked equalities.  The complete GPT-2 proof import passes with 3,642 jobs.
+[The packed append theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAppend.lean) composes checked capacity calculation, free-list reuse or heap growth, and both byte copies.  It proves exact concatenation, output ownership, preservation of protected memory and earlier locals, and termination under the allocation-capacity hypotheses.  The theorem accepts arbitrary modules and scratch-local indices, and checks in 3.4 seconds.  Both complete append regions in function 36 match its instruction program through checked equalities.  The complete GPT-2 proof import passes with 3,642 jobs.
 
-[Allocator frame lemmas](proofs/talos/lean/Project/ProofKit/PackedAllocationState.lean) expose preserved prefixes, returned fields, local lengths, and types for this composition.  Initial checks required explicit frame arguments and allocation-root aliases before arithmetic reasoning.  All accepted proofs use standard axioms.  Embedding construction and the layer traversal remain open.
+[Allocator frame lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocationState.lean) expose preserved prefixes, returned fields, local lengths, and types for this composition.  Initial checks required explicit frame arguments and allocation-root aliases before arithmetic reasoning.  All accepted proofs use standard axioms.  Embedding construction and the layer traversal remain open.
 
 ### Token and position embedding
 
-[The embedding constructor](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Embedding.lean) proves the first 49 instructions of function 36 produce the Lean token-plus-position embedding.  It covers all vocabulary tokens and positions below 128, exact FP32 addition for all 768 words, checked index arithmetic, both allocation paths, ownership, and protected-memory preservation.  The word proof checks in 13 seconds, its loop in 1.5 seconds, sizing in 3.4 seconds, and complete allocation composition in 3.0 seconds.  All use standard axioms and default heartbeat limits.
+[The embedding constructor](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Embedding.lean) proves the first 49 instructions of function 36 produce the Lean token-plus-position embedding.  It covers all vocabulary tokens and positions below 128, exact FP32 addition for all 768 words, checked index arithmetic, both allocation paths, ownership, and protected-memory preservation.  The word proof checks in 13 seconds, its loop in 1.5 seconds, sizing in 3.4 seconds, and complete allocation composition in 3.0 seconds.  All use standard axioms and default heartbeat limits.
 
 The instruction simplifier converted the token's natural-number injection to `UInt32.toUInt64` and retained literal multipliers.  Explicit index equalities connected these expressions to the packed-reader theorem.  The same conversion lemma closed the final parameter-preservation obligation.  The constructor's first check also required an explicit proof of the allocator's scratch-local bound.  The twelve-layer execution loop, vocabulary projection, and exported entry remain open.
 
 ### Hidden-loop body
 
-[The layer-call theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCall.lean) verifies argument preparation, the complete transformer-block call, and both returned tensors inside function 36.  It checks in 14 seconds.  [The layer append theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerAppend.lean) extends the accumulated cache updates and prepares the next iteration's result buffers, checking in 5.9 seconds.  Both preserve the current loop state and use standard axioms.
+[The layer-call theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCall.lean) verifies argument preparation, the complete transformer-block call, and both returned tensors inside function 36.  It checks in 14 seconds.  [The layer append theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerAppend.lean) extends the accumulated cache updates and prepares the next iteration's result buffers, checking in 5.9 seconds.  Both preserve the current loop state and use standard axioms.
 
 The loop's cleanup flag occupies a local after the append allocator's scratch region.  The shared allocator and append theorems now preserve locals on both sides of that region.  Their checks took 2.6 and 3.5 seconds.  This supplies the flag needed by the pending release and iteration proofs without repeating allocation reasoning.
 
-[Cache cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCacheRelease.lean) checks the three release guards after concatenation.  The guards retain the new hidden and update buffers and release the copied block-cache buffer.  [Previous-iteration cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerOldRelease.lean) proves the first iteration retains its input and later iterations release both previous buffers.  The proofs check in 1.9 and 1.8 seconds.  [Loop-control proofs](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerControl.lean) cover initialization, result transfer, and checked counter advancement, and check together in 3.7 seconds.
+[Cache cleanup](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerCacheRelease.lean) checks the three release guards after concatenation.  The guards retain the new hidden and update buffers and release the copied block-cache buffer.  [Previous-iteration cleanup](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerOldRelease.lean) proves the first iteration retains its input and later iterations release both previous buffers.  The proofs check in 1.9 and 1.8 seconds.  [Loop-control proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerControl.lean) cover initialization, result transfer, and checked counter advancement, and check together in 3.7 seconds.
 
-The shared [retained-buffer filter](proofs/talos/lean/Project/ProofKit/PackedReleaseFilter.lean) supports arbitrary lists of retained owners and both outcomes of the emitted guard.  Its first action specification omitted the enclosing conditional's stack and branch behavior.  The corrected specification passes the conditional's continuation to the action proof.  Continuation case analysis connects the two match expressions.  Other diagnostics required Boolean-expression association, explicit branch selection, empty-list membership simplification, and the release theorem's import.  All accepted proofs use standard axioms.  Complete iteration composition, final cache extension, vocabulary projection, and the exported inference theorem remain open.
+The shared [retained-buffer filter](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedReleaseFilter.lean) supports arbitrary lists of retained owners and both outcomes of the emitted guard.  Its first action specification omitted the enclosing conditional's stack and branch behavior.  The corrected specification passes the conditional's continuation to the action proof.  Continuation case analysis connects the two match expressions.  Other diagnostics required Boolean-expression association, explicit branch selection, empty-list membership simplification, and the release theorem's import.  All accepted proofs use standard axioms.  Complete iteration composition, final cache extension, vocabulary projection, and the exported inference theorem remain open.
 
-[The complete layer step](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerStep.lean) composes the block call, cache append, temporary releases, previous-iteration releases, and counter advance.  It proves the new hidden vector and accumulated cache updates agree exactly with the Lean algorithm, preserving their ownership, separation, protected memory, and memory capacity.  It checks in 3.1 seconds with standard axioms.  Its resource assumptions describe each allocation along the checked heap sequence.
+[The complete layer step](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerStep.lean) composes the block call, cache append, temporary releases, previous-iteration releases, and counter advance.  It proves the new hidden vector and accumulated cache updates agree exactly with the Lean algorithm, preserving their ownership, separation, protected memory, and memory capacity.  It checks in 3.1 seconds with standard axioms.  Its resource assumptions describe each allocation along the checked heap sequence.
 
 The composition needed explicit names for the final store and heap aliases, and an explicit split between the first iteration and later iterations for release-store preservation.  The next proof uses the heap after embedding construction as its preserved baseline.  This keeps the embedding available through all twelve iterations while allowing each later iteration to release its predecessor's buffers.  Loop induction, final cache extension, vocabulary projection, and exported inference remain open.
 
-[The twelve-layer loop](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerLoop.lean) now proves termination and exact agreement with the source prefix fold after all twelve transformer blocks.  Its [invariant](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/TraversalState.lean) preserves the embedding baseline and represented inputs while tracking output ownership, separation, allocation resources, and memory capacity.  The invariant and loop check in 1.5 and 1.9 seconds with standard axioms.  Initial checks needed constant addition in the local-read simplifier and reduction of the taken branch's encoded Boolean.  The loop composes the checked step without repeating its memory proof.  Final cache extension, hidden-function entry composition, vocabulary projection, and exported inference remain open.
+[The twelve-layer loop](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/LayerLoop.lean) now proves termination and exact agreement with the source prefix fold after all twelve transformer blocks.  Its [invariant](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/TraversalState.lean) preserves the embedding baseline and represented inputs while tracking output ownership, separation, allocation resources, and memory capacity.  The invariant and loop check in 1.5 and 1.9 seconds with standard axioms.  Initial checks needed constant addition in the local-read simplifier and reduction of the taken branch's encoded Boolean.  The loop composes the checked step without repeating its memory proof.  Final cache extension, hidden-function entry composition, vocabulary projection, and exported inference remain open.
 
 ### Complete hidden-state function
 
-[Final cache preparation](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CachePrepare.lean) and [concatenation](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CacheAppend.lean) check in 5.9 and 3.4 seconds.  [Cleanup](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Cleanup.lean) reuses the list-based release theorem to free the accumulated updates and initial embedding while retaining both returned buffers.  The [body composition](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Body.lean) checks in 2.9 seconds.  The [public theorem](proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Spec.lean) checks in 2.2 seconds and proves function 36 computes the Lean `cachedHidden` result for every vocabulary token and position below 128, under its represented-input and allocation-capacity assumptions.  It includes termination, exact hidden and cache bytes, ownership, separation, and preservation of protected input memory.
+[Final cache preparation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CachePrepare.lean) and [concatenation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/CacheAppend.lean) check in 5.9 and 3.4 seconds.  [Cleanup](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Cleanup.lean) reuses the list-based release theorem to free the accumulated updates and initial embedding while retaining both returned buffers.  The [body composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Body.lean) checks in 2.9 seconds.  The [public theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/CachedHidden/Spec.lean) checks in 2.2 seconds and proves function 36 computes the Lean `cachedHidden` result for every vocabulary token and position below 128, under its represented-input and allocation-capacity assumptions.  It includes termination, exact hidden and cache bytes, ownership, separation, and preservation of protected input memory.
 
 Composition diagnostics required the explicit parameter list, unfolding the allocated-node root, reducing the empty continuation, and expanding freshness in the release-list premise.  Entry composition needed the same UInt64 injection as the parameter definition and explicit source-prefix sizes after source decomposition.  All accepted proofs use standard axioms and default heartbeat limits.  Vocabulary projection and the exported cached-step composition remain open.
 
 ### Vocabulary projection
 
-[The vocabulary theorem](proofs/talos/lean/Project/Gpt2CachedStep/Vocabulary/Spec.lean) proves function 37 computes the Lean `vocabularyHead` result for represented runtime weights and inputs with sufficient extents.  Each of the 50,257 scores uses the source's ordered 768-term FP32 sum.  The theorem includes termination, both allocation paths, exact output bytes, ownership, and preservation of protected inputs.  The arithmetic step checks in 6.4 seconds, the inner loop in 3.3 seconds, the outer loop in 1.4 seconds, allocation composition in 4.5 seconds, and the public entry in 2.9 seconds.  The main proof import passes with 3,670 jobs.
+[The vocabulary theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Vocabulary/Spec.lean) proves function 37 computes the Lean `vocabularyHead` result for represented runtime weights and inputs with sufficient extents.  Each of the 50,257 scores uses the source's ordered 768-term FP32 sum.  The theorem includes termination, both allocation paths, exact output bytes, ownership, and preservation of protected inputs.  The arithmetic step checks in 6.4 seconds, the inner loop in 3.3 seconds, the outer loop in 1.4 seconds, allocation composition in 4.5 seconds, and the public entry in 2.9 seconds.  The main proof import passes with 3,670 jobs.
 
 The proof reuses the range-fold and packed-generation rules.  The first checks needed the typed-local import, an explicit numeral injection, and restricted local-state simplification with enough discharge depth for the nested updates.  A misplaced record-field indentation was corrected in the sizing helper.  All accepted proofs use standard axioms.  The exported cached step's validation, three calls, final releases, and return remain open.
 
 ### Exported accepted-input branch
 
-[The accepted-input body](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Body.lean) composes hidden-state execution, final normalization, vocabulary projection, and release of the hidden and normalized temporary buffers.  It proves both owned outputs equal the fields of the Lean `cachedStep` result and preserves protected inputs and memory capacity.  The normalization call checks in 2.0 seconds, the vocabulary call in 3.3 seconds, cleanup in 1.7 seconds, and complete branch composition in 1.6 seconds.  The main proof import passes with 3,677 jobs.
+[The accepted-input body](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Entry/Body.lean) composes hidden-state execution, final normalization, vocabulary projection, and release of the hidden and normalized temporary buffers.  It proves both owned outputs equal the fields of the Lean `cachedStep` result and preserves protected inputs and memory capacity.  The normalization call checks in 2.0 seconds, the vocabulary call in 3.3 seconds, cleanup in 1.7 seconds, and complete branch composition in 1.6 seconds.  The main proof import passes with 3,677 jobs.
 
 The hidden-call check initially left parameter-list reads unreduced before the token mask.  A state trace identified those reads.  Explicit list-read simplification followed by the existing mask lemma resolved the call, and the trace was removed.  Cache sizing needed multiplication association, and final ownership transfer needed the named final heap unfolded.  All accepted proofs use standard axioms.  Input validation, rejected-input branches, and the public function-return theorem remain open.
 
-[Accepted-input validation](proofs/talos/lean/Project/Gpt2CachedStep/Entry/GuardValid.lean) checks the weight length, masked token, position limit, and cache length before the inference branch.  The [accepted public entry](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Accepted.lean) then proves termination and exact source cache and logits, including returned pointers and lengths, ownership, output separation, protected-memory preservation, and temporary cleanup.  The proofs check in 3.5 and 2.1 seconds with standard axioms.  The cache-size multiplication uses the shared checked-natural multiplication lemma after direct modular arithmetic automation failed.  Invalid inputs and the combined public theorem remain open.
+[Accepted-input validation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Entry/GuardValid.lean) checks the weight length, masked token, position limit, and cache length before the inference branch.  The [accepted public entry](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Entry/Accepted.lean) then proves termination and exact source cache and logits, including returned pointers and lengths, ownership, output separation, protected-memory preservation, and temporary cleanup.  The proofs check in 3.5 and 2.1 seconds with standard axioms.  The cache-size multiplication uses the shared checked-natural multiplication lemma after direct modular arithmetic automation failed.  Invalid inputs and the combined public theorem remain open.
 
 ### Complete cached inference
 
-[Rejected-input execution](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Rejected.lean) covers invalid weight length, token, position, and cache length.  Every case returns zero pointers and lengths and preserves the entire store.  The proof relates represented natural sizes to their UInt64 encodings and checks the cache-length multiplication guards.  It checks in 5.1 seconds.  Initial diagnostics exposed a nonexistent namespaced injection lemma, a closed multiplication that needed explicit reduction, and completed branch goals that still required conjunction introduction.  A temporary goal trace located the last issue and was removed.  The source-rejection lemma required reassociation of the four guard conditions.
+[Rejected-input execution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Entry/Rejected.lean) covers invalid weight length, token, position, and cache length.  Every case returns zero pointers and lengths and preserves the entire store.  The proof relates represented natural sizes to their UInt64 encodings and checks the cache-length multiplication guards.  It checks in 5.1 seconds.  Initial diagnostics exposed a nonexistent namespaced injection lemma, a closed multiplication that needed explicit reduction, and completed branch goals that still required conjunction introduction.  A temporary goal trace located the last issue and was removed.  The source-rejection lemma required reassociation of the four guard conditions.
 
-The [combined public theorem](proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean) checks in 1.4 seconds, and the complete proof import passes with 3,682 jobs.  It proves termination, exact source cache and logit bytes, represented output buffers, final heap validity, protected-region preservation, and unchanged memory capacity.  Its memory premises require represented protected inputs, a valid heap, a UInt64-representable position, at most 65,536 initial pages, and sufficient capacity for accepted-input allocations.  The theorem accepts arbitrary runtime weight words.  Both public execution theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  Cached/full-prefix source equivalence, numerical error bounds, and exact-byte packaging remain separate tasks.
+The [combined public theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean) checks in 1.4 seconds, and the complete proof import passes with 3,682 jobs.  It proves termination, exact source cache and logit bytes, represented output buffers, final heap validity, protected-region preservation, and unchanged memory capacity.  Its memory premises require represented protected inputs, a valid heap, a UInt64-representable position, at most 65,536 initial pages, and sufficient capacity for accepted-input allocations.  The theorem accepts arbitrary runtime weight words.  Both public execution theorems use only `propext`, `Classical.choice`, and `Quot.sound`.  Cached/full-prefix source equivalence, numerical error bounds, and exact-byte packaging remain separate tasks.
 
 `tools/talos-proof.js check gpt2_cached_step` passed after regenerating the artifact from the current source and compiler, comparing the decoded model with the tracked cache, and checking the full proof import.  The registry now marks the cached entry complete and includes it in the aggregate import: sixty-eight of sixty-nine source-driven cases are complete.  The runtime implementation did not change during this proof work.  The recorded 128-context PyTorch comparisons remain its execution evidence.
 
@@ -16589,15 +16589,15 @@ The user requires complete emitted-WASM agreement with its corresponding Lean so
 
 The memory proof will first bound heap growth by the sum of requested allocations, without credit for free-block reuse.  Released blocks preserve the heap top, and reuse also preserves it.  This permits a uniform bound over the existing allocator and arbitrary runtime weight values.  The exact bound and its sufficiency remain to be proved.
 
-[The shared heap-growth lemma](proofs/talos/lean/Project/ProofKit/HeapGrowth.lean) and [cached-step budget](proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean) now check.  For a valid position and cache size, a heap top with 16 MiB of room below the 32-bit address limit supplies every allocation premise when memory capacity is 65,536 pages.  The resulting heap top grows by at most 16 MiB.  The proof composes normalization, attention, transformer-block, twelve-layer traversal, cache append, and vocabulary allocation bounds.  It gives no credit for reuse.  The hidden-state and entry budget modules check in 1.5 and 1.4 seconds, with `propext` and `Quot.sound` as their only axioms.
+[The shared heap-growth lemma](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/HeapGrowth.lean) and [cached-step budget](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Entry/Budget.lean) now check.  For a valid position and cache size, a heap top with 16 MiB of room below the 32-bit address limit supplies every allocation premise when memory capacity is 65,536 pages.  The resulting heap top grows by at most 16 MiB.  The proof composes normalization, attention, transformer-block, twelve-layer traversal, cache append, and vocabulary allocation bounds.  It gives no credit for reuse.  The hidden-state and entry budget modules check in 1.5 and 1.4 seconds, with `propext` and `Quot.sound` as their only axioms.
 
 Initial checks required explicit refolding of heap definitions, correct branch order for allocator reuse, and case analysis of the previous-layer release flag.  Arithmetic sufficiency then used the named intermediate heap bounds.  Initial input encoding and composition of calls with host-requested releases remain open.  The 16 MiB theorem alone does not discharge those obligations.
 
 ### GPT-2 initialization and 128-position invocation
 
-[Packed input encoding](proofs/talos/lean/Project/ProofKit/PackedInput.lean) proves that copying an arbitrary byte array into its allocated payload establishes ownership and preserves the heap.  [The exported allocator theorem](proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean) reuses the checked capacity, free-list search, allocation, and counter rules.  [GPT-2 initialization](proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean) applies it to the 497,759,232-byte weight allocation and proves that the host's initial reset preserves the module's initial store.  The input theorem derives heap validity, ownership, memory capacity, and a heap top below 512 MiB.
+[Packed input encoding](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedInput.lean) proves that copying an arbitrary byte array into its allocated payload establishes ownership and preserves the heap.  [The exported allocator theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedAllocExport.lean) reuses the checked capacity, free-list search, allocation, and counter rules.  [GPT-2 initialization](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Initialize.lean) applies it to the 497,759,232-byte weight allocation and proves that the host's initial reset preserves the module's initial store.  The input theorem derives heap validity, ownership, memory capacity, and a heap top below 512 MiB.
 
-The accepted entry now exposes both output buffers' freshness relative to the initial heap.  [Session composition](proofs/talos/lean/Project/Gpt2CachedStep/Session/Step.lean) uses that result to release the old cache, retain weights and new outputs, read all logits, and release the logits.  [The public invocation theorem](proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean), `Project.Gpt2CachedStep.Spec.gpt2_128_exact`, composes reset, allocation, byte input encoding, and up to 128 token calls.  Each returned cache and logit vector equals the Lean `cachedStep` recurrence.  Its input conditions specify only weight length, vocabulary token IDs, and the token-count limit.  Allocation sufficiency follows from the 16 MiB per-token budget.  The proof permits arbitrary weight words and uses only `propext`, `Classical.choice`, and `Quot.sound`.
+The accepted entry now exposes both output buffers' freshness relative to the initial heap.  [Session composition](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Session/Step.lean) uses that result to release the old cache, retain weights and new outputs, read all logits, and release the logits.  [The public invocation theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean), `Project.Gpt2CachedStep.Spec.gpt2_128_exact`, composes reset, allocation, byte input encoding, and up to 128 token calls.  Each returned cache and logit vector equals the Lean `cachedStep` recurrence.  Its input conditions specify only weight length, vocabulary token IDs, and the token-count limit.  Allocation sufficiency follows from the 16 MiB per-token budget.  The proof permits arbitrary weight words and uses only `propext`, `Classical.choice`, and `Quot.sound`.
 
 The initialization, session state, session step, session theorem, and main proof module check in 2.7, 1.4, 1.6, 1.4, and 1.4 seconds.  Early checks found a record-field name that shadowed the weight parameter, an unresolved final-heap argument, and unreduced addition by zero.  Explicit heap arguments also avoided unfolding the entire transformer heap while checking release preservation.  No increased recursion or heartbeat limit was needed.  The public theorem is registered and imported by the source-artifact gate.  `tools/talos-proof.js check gpt2_cached_step` regenerated the compiler output, matched the tracked decoded module, and passed all 3,694 proof jobs.
 
@@ -16607,7 +16607,7 @@ The boundary review found that the C host used Wasmtime's default engine configu
 
 The host builds with `-Wall -Wextra -Werror`.  `node test/f32_bits.js` passes 86 cases and an array map.  The tests require exact canonical words from Wasmtime, including signaling NaNs, negative NaNs, noncanonical payloads, invalid arithmetic, and precision conversions.  Native Lean and IR checks retain NaN-class comparison.  The 128-position GPT-2 and completion tests are running after the host change.  The formal boundary covers the WASM call sequence and byte input/output encoding.  Tokenization, token selection, the native host implementation, and Wasmtime remain outside the Lean proof.
 
-The [canonical-mode runtime tests](data/gpt2-124m/canonical-mode-test.json) passed.  `node test/packed.js --gpt2-cached --gpt2-completions` compared 6,432,896 logits across contexts one through 128 against PyTorch, with maximum absolute difference 0.0014495849609375 under the existing test tolerance.  The 128-context run took 100.2 seconds and used 1,107,361,792 bytes of WASM memory.  It left two live allocations: weights and cache.  All four rejected-input cases, cache reset, and the nine-token cached/full-prefix comparison passed.  Three completions of 64, 32, and 16 tokens passed.  The greedy 16-token completion matched PyTorch's tokens exactly.  These comparisons are execution tests.  The formal equality is between the generated module and its Lean source.
+The [canonical-mode runtime tests](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-124m/canonical-mode-test.json) passed.  `node test/packed.js --gpt2-cached --gpt2-completions` compared 6,432,896 logits across contexts one through 128 against PyTorch, with maximum absolute difference 0.0014495849609375 under the existing test tolerance.  The 128-context run took 100.2 seconds and used 1,107,361,792 bytes of WASM memory.  It left two live allocations: weights and cache.  All four rejected-input cases, cache reset, and the nine-token cached/full-prefix comparison passed.  Three completions of 64, 32, and 16 tokens passed.  The greedy 16-token completion matched PyTorch's tokens exactly.  These comparisons are execution tests.  The formal equality is between the generated module and its Lean source.
 
 The runtime module and the source-artifact gate's generated module both have SHA-256 `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.  The final interface audit adds a reflexive check that the host's export names select the four proved function indices.  The initialization module checks in 2.4 seconds, and the complete proof import passes with 3,694 jobs.  The public theorem still uses only the three standard axioms listed above.  The documentation check passes for 144 maintained files, and whitespace checks pass.
 
@@ -16621,7 +16621,7 @@ The review reran `tools/talos-proof.js check gpt2_cached_step`.  Regeneration ma
 
 ### GPT-2 commands through uv
 
-The user requested uv-runnable Python and an equivalent PyTorch generation command.  The [shared Python project](training/gpt2/pyproject.toml) preserves the approved package versions, selects Python 3.13, and uses PyTorch's explicit CPU index on Linux and Windows.  Its lockfile supplies the environment for both generation programs and the existing comparison tests.  This follows uv's [project execution](https://docs.astral.sh/uv/concepts/projects/run/) and [PyTorch index](https://docs.astral.sh/uv/guides/integration/pytorch/) documentation.  `tools/gpt2` now invokes uv, and `tools/gpt2-pytorch` invokes the reference generator through the same project.  The reference accepts `--generate`, retains `--max-new-tokens`, and defaults to 32 new tokens to match the WASM client.
+The user requested uv-runnable Python and an equivalent PyTorch generation command.  The [shared Python project](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/gpt2/pyproject.toml) preserves the approved package versions, selects Python 3.13, and uses PyTorch's explicit CPU index on Linux and Windows.  Its lockfile supplies the environment for both generation programs and the existing comparison tests.  This follows uv's [project execution](https://docs.astral.sh/uv/concepts/projects/run/) and [PyTorch index](https://docs.astral.sh/uv/guides/integration/pytorch/) documentation.  `tools/gpt2` now invokes uv, and `tools/gpt2-pytorch` invokes the reference generator through the same project.  The reference accepts `--generate`, retains `--max-new-tokens`, and defaults to 32 new tokens to match the WASM client.
 
 The initial lock and PyTorch runs encountered the sandbox's read-only uv cache.  Running those commands with the required sandbox approval resolved the cache access.  uv 0.10.2 resolved the lock and installed 25 packages into `training/gpt2/.venv`, including PyTorch 2.9.1+cpu and Transformers 4.57.6.  Comparing installed package metadata confirmed that all 25 versions match the previous environment.  The PyTorch one-liner generated 32 tokens from the documented story prompt.
 
@@ -16629,11 +16629,11 @@ The initial lock and PyTorch runs encountered the sandbox's read-only uv cache. 
 
 ### GPT-2 verification report
 
-The user requested a reviewed marXiv technical report.  [The nine-page manuscript](paper/gpt2-verification-report/main.pdf) describes the exact cached GPT-2/128 invocation theorem at revision `f4d412b709a13bb2649fe23be267ec9928838064`.  The draft follows the archive's current [standards](http://127.0.0.1:8405/standards.md) and [style manual](http://127.0.0.1:8405/style.md).  It cites the public theorem and component proofs, the [original GPT-2 model source](https://github.com/openai/gpt-2/blob/master/src/model.py), the [WASM numeric semantics](https://webassembly.github.io/spec/core/exec/numerics.html), and the [Wasmtime configuration API](https://docs.wasmtime.dev/c-api/config_8h.html).
+The user requested a reviewed marXiv technical report.  [The nine-page manuscript](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-verification-report/main.pdf) describes the exact cached GPT-2/128 invocation theorem at revision `f4d412b709a13bb2649fe23be267ec9928838064`.  The draft follows the archive's current [standards](http://127.0.0.1:8405/standards.md) and [style manual](http://127.0.0.1:8405/style.md).  It cites the public theorem and component proofs, the [original GPT-2 model source](https://github.com/openai/gpt-2/blob/master/src/model.py), the [WASM numeric semantics](https://webassembly.github.io/spec/core/exec/numerics.html), and the [Wasmtime configuration API](https://docs.wasmtime.dev/c-api/config_8h.html).
 
 The technical review checked the theorem's three input restrictions, mathematical byte I/O, complete token recurrence, output ownership, and allocation sufficiency.  The report distinguishes the heap-top budget, formal page-count bound, and measured runtime memory.  It states the trusted translation and native runtime and preserves the agreed exact-byte and numerical-bound deferrals.  The runtime observations come from the existing canonical-mode test record.  The source-driven proof gate passed after the sandbox rejected the initial dependency-revision inspection.  The successful run regenerated the artifact, matched the tracked model, and accepted the full proof import using cached objects.  Both command logs and cited source identities are retained.
 
-Two editorial passes and a nine-page visual review corrected unnecessary contrastive wording and command-line hyphen typesetting.  The PDF extracts all five commands with ASCII syntax and builds without reference or layout warnings.  Submission metadata comes from its extracted title, authors, and abstract.  [The review record](paper/gpt2-verification-report/review.md) records the technical and editorial checks.
+Two editorial passes and a nine-page visual review corrected unnecessary contrastive wording and command-line hyphen typesetting.  The PDF extracts all five commands with ASCII syntax and builds without reference or layout warnings.  Submission metadata comes from its extracted title, authors, and abstract.  [The review record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-verification-report/review.md) records the technical and editorial checks.
 
 marXiv accepted the first submission as [2609.00011](http://127.0.0.1:8405/abs/2609.00011), with five editorial remarks.  The revised abstract explains the deferred correspondence between binary bytes and the Talos model.  The revised body gives the formal memory bound in pages, rounds the empirical memory observation to 1.03 GiB, and corrects two wording issues.  The source checkpoint and theorem statement remain unchanged.  The second submission contains those corrections, and both PDFs and their metadata are retained.
 
@@ -16641,13 +16641,13 @@ The second version was accepted with one remark about repetition in the memory-b
 
 The third review accepted the report but found an imprecise sentence describing quantified parameters.  The fourth submission states the fixed architecture and context limit separately from the universally quantified weight arrays and valid token lists.  This wording agrees with the unchanged Theorem 1 and checked Lean declaration.
 
-marXiv accepted [version 4](http://127.0.0.1:8405/abs/2609.00011v4) with “No remarks.”  The archive copy matches the submitted PDF with SHA-256 `d997209253ce76d7995a079ec05c7563509397cc9d7f199c3df043044fa30cfd`.  The report directory retains every submitted version and editorial decision.  [The publication record](paper/gpt2-verification-report/publication.json) identifies the accepted version and source checkpoint.
+marXiv accepted [version 4](http://127.0.0.1:8405/abs/2609.00011v4) with “No remarks.”  The archive copy matches the submitted PDF with SHA-256 `d997209253ce76d7995a079ec05c7563509397cc9d7f199c3df043044fa30cfd`.  The report directory retains every submitted version and editorial decision.  [The publication record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-verification-report/publication.json) identifies the accepted version and source checkpoint.
 
 ### Talos floating-point account in the GPT-2 report
 
 The user requested an account of our floating-point extensions and definitions of Talos and Wasmtime before first use, including in the abstract.  The ten-page revision defines Talos as a WebAssembly interpreter and proof library written in Lean and Wasmtime as a standalone WebAssembly runtime.  The latter follows the [Wasmtime introduction](https://docs.wasmtime.dev/introduction.html).  A new subsection describes the integer definitions of binary32 and binary64 arithmetic, explicit rounding, exceptional values, interpreter rules, operation and execution theorems, replacement of compatibility axioms, and available numerical bounds.
 
-The review compared Talos's earlier evaluator at `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` with the pinned `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` source.  It inspected the cited definitions and theorem statements and preserved their identities in [the Talos review record](paper/gpt2-verification-report/evidence/talos-fp-review.json).  The text distinguishes the Talos extensions from the later LeanExe correspondence proofs.  The source checkpoint and GPT-2 theorem remain unchanged, so the report retains the previous proof-check evidence.  The updated PDF builds without reference or layout warnings and defines both names at first use in the abstract and body.
+The review compared Talos's earlier evaluator at `fda69ca67a81ea4f1fa4e376bdc5861d9fe5479a` with the pinned `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` source.  It inspected the cited definitions and theorem statements and preserved their identities in [the Talos review record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-verification-report/evidence/talos-fp-review.json).  The text distinguishes the Talos extensions from the later LeanExe correspondence proofs.  The source checkpoint and GPT-2 theorem remain unchanged, so the report retains the previous proof-check evidence.  The updated PDF builds without reference or layout warnings and defines both names at first use in the abstract and body.
 
 marXiv accepted [version 5](http://127.0.0.1:8405/abs/2609.00011v5) with “No remarks.”  The archive copy matches the submitted PDF with SHA-256 `ef90808b58b923d220da4d7a655b59f6f348ef21930f5f18572948c3c38bbb52`.  The publication record and review history identify the accepted ten-page version.
 
@@ -16841,7 +16841,7 @@ output byte.  Inspection also covered the cached attention and block source,
 the FP32 source correspondence, export indices, ABI argument and result
 order, and the host's cache and logit release sequence.
 
-[The checked review lemmas](proofs/talos/reviews/gpt2-2026-09-19.lean)
+[The checked review lemmas](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/reviews/gpt2-2026-09-19.lean)
 establish seven consequences of the existing definitions and theorems:
 
 - The public input premises admit a 128-token input.
@@ -16870,7 +16870,7 @@ The seven corollaries are retained as statement-level checks for this model.
 
 Two enforcement findings remain:
 
-1. [CLI compilation](training/gpt2/wasm.py#L38) runs the current compiler and
+1. [CLI compilation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/gpt2/wasm.py#L38) runs the current compiler and
    source, then executes the resulting binary without comparing it with the
    registered proved artifact.  A later compiler or source edit can therefore
    change the executed bytes without requiring a new certificate.  The
@@ -16879,7 +16879,7 @@ Two enforcement findings remain:
    `e93de126e00d7f5c5b9b30ca014a13b1385e9f91e3cb6b4e56a4aacf7a2b4ade`.
    A verified CLI mode needs to enforce that identity or execute the frozen
    artifact.
-2. [The declaration gate](tools/artifact-proof.js#L236) checks the manifest's
+2. [The declaration gate](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/tools/artifact-proof.js#L236) checks the manifest's
    registered artifact and behavior declarations.  The combined
    `artifact_gpt2_128_exact` theorem is compiled but omitted from that
    manifest audit set.  The generic axiom policy also accepts
@@ -16968,11 +16968,11 @@ marXiv accepted GPT-2 version 8, submission `c3bded6415ea`.  Its sole remark ask
 
 ## Comprehensive GPT-2 report: 19 September 2026
 
-The user requested a standalone report combining the CPU and WGSL work, a detailed literature comparison, the structure of the verification theorems and proofs, a LeanExe account, and the two supplied web-demo images.  The new draft is in [Comprehensive GPT-2 report](paper/gpt2-comprehensive-report/README.md).  It uses the established CPU proof checkpoint and fetched WGSL revision `9c7c7898ecae5f636cf1047142c8a68c1936e041`, whose two latest commits add the comparison page and worker tests.
+The user requested a standalone report combining the CPU and WGSL work, a detailed literature comparison, the structure of the verification theorems and proofs, a LeanExe account, and the two supplied web-demo images.  The new draft is in [Comprehensive GPT-2 report](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-comprehensive-report/README.md).  It uses the established CPU proof checkpoint and fetched WGSL revision `9c7c7898ecae5f636cf1047142c8a68c1936e041`, whose two latest commits add the comparison page and worker tests.
 
 The source review checked the complete-session predicates, the artifact theorem, shader invocation semantics, the external host premise, and the proof-composition generator.  The manuscript keeps the CPU exact-binary guarantee separate from the hybrid's external parser and strict host-execution premises.  The user images add a browser observation: matching 32-token greedy completions, fourteen prompt calls, thirty-one decode calls, and a displayed 15.72-fold decode-throughput ratio.  The source explains the timing and memory counters, including 2,250 shader dispatches.  The original PNG bytes and provenance are retained.
 
-The literature comparison covers TorchLean, HLS transformation verification, trained-transformer accuracy proofs, algebraic Lean transformer proofs, Rocq shapes, SMT task properties, zkLLM, zkGPT, DeepProve, and LAProof.  The qualified priority claim concerns complete executable-to-source functional correctness.  The [literature-search record](paper/gpt2-comprehensive-report/evidence/literature-search.md) supplies primary sources and comparison boundaries.
+The literature comparison covers TorchLean, HLS transformation verification, trained-transformer accuracy proofs, algebraic Lean transformer proofs, Rocq shapes, SMT task properties, zkLLM, zkGPT, DeepProve, and LAProof.  The qualified priority claim concerns complete executable-to-source functional correctness.  The [literature-search record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/gpt2-comprehensive-report/evidence/literature-search.md) supplies primary sources and comparison boundaries.
 
 - [x] Draft all requested sections and include both images.
 - [x] Check cited repository paths and preserve source identities.
@@ -16997,7 +16997,7 @@ The refreshed AppendBang proof passed in 12 seconds after adding the compiler’
 
 ## 2026-09-22: Quantized GPT-2 plan
 
-The user requested a plan for eight-bit weights and linear-layer activations, integer accumulation, FP32 surrounding computation, exact-binary cached inference, evaluation, and subsequent error bounds.  The [draft plan](plans/gpt2-quantized.md) records proposals requiring design approval and expands phase 15 of the root queue.  It uses the completed [cached-session and binary proofs](proofs/talos/lean/Project/Gpt2CachedStep/README.md) as its baseline and corrects the root overview's stale statement that exact-byte packaging remained deferred.
+The user requested a plan for eight-bit weights and linear-layer activations, integer accumulation, FP32 surrounding computation, exact-binary cached inference, evaluation, and subsequent error bounds.  The [draft plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gpt2-quantized.md) records proposals requiring design approval and expands phase 15 of the root queue.  It uses the completed [cached-session and binary proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/README.md) as its baseline and corrects the root overview's stale statement that exact-byte packaging remained deferred.
 
 Source review found two implementation requirements: the language lacks signed integer and FP32/integer conversion operations, and the binary checker needs the selected added instruction forms and their soundness proofs.  The shared token embedding must enter the storage design because it also supplies the vocabulary projection.  The proposed symmetric range gives a maximum prefix-sum magnitude of 49,548,288 at reduction length 3,072, within signed 32-bit range.  The proposed weight payload is 127,695,940 bytes before headers and alignment.  These are calculations for the draft design.  Execution measurements remain future work.
 
@@ -17007,25 +17007,25 @@ The [ONNX quantization definition](https://onnx.ai/onnx/operators/onnx__Quantize
 - [x] Draft the plan and add its root-queue and plan-index entries.
 - [x] Obtain design approval before implementation.
 
-Two review passes checked the arithmetic, storage calculation, proof scope, prose, and links.  A focused test passed all 47 local links, including heading targets, and whitespace in the three changed planning documents.  `git diff --check` passed.  The repository documentation test failed on a pre-existing absolute workspace path in the [WGSL review record](paper/wgsl-verification-report/review.md).  The same path is present at `HEAD`.
+Two review passes checked the arithmetic, storage calculation, proof scope, prose, and links.  A focused test passed all 47 local links, including heading targets, and whitespace in the three changed planning documents.  `git diff --check` passed.  The repository documentation test failed on a pre-existing absolute workspace path in the [WGSL review record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/wgsl-verification-report/review.md).  The same path is present at `HEAD`.
 
 ## 2026-09-22: Quantized projection implementation
 
-The user approved the plan.  Implementation runs on `gpt2-quantized`.  The [evaluation inputs](data/gpt2-quantized-v1/evaluation.json) retain the checkpoint, tokenizer, FP32 binary, 128-token prefix sequence, three completion configurations, and six additional prompts with token IDs.  The adoption criterion remains pending.  The initial implementation uses the approved scalar instructions and the existing dependencies.
+The user approved the plan.  Implementation runs on `gpt2-quantized`.  The [evaluation inputs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/evaluation.json) retain the checkpoint, tokenizer, FP32 binary, 128-token prefix sequence, three completion configurations, and six additional prompts with token IDs.  The adoption criterion remains pending.  The initial implementation uses the approved scalar instructions and the existing dependencies.
 
 The compiler now recognizes nearest-even integral FP32 rounding, saturating FP32-to-signed-word conversion, signed-word-to-FP32 conversion, and signed-byte extension.  Lean's native `Float32.round` uses halfway-away-from-zero rounding, so the nearest-even source definition uses the logical binary32 model.  The FP32 test passed 126 cases across native Lean, the IR evaluator, and Wasmtime.  Packed generation now accepts byte and word elements through one width-indexed IR node.  The packed-array test passed its existing cases and byte-generation allocation checks.
 
-The [quantized kernel](LeanExe/Models/Gpt2/Quantized/Kernel.lean) computes row scales, stores quantized input bytes once per row, accumulates signed products, and applies the specified FP32 rescaling and optional bias.  Its checked entry rejects invalid dimensions, reserved coefficients, invalid scales, nonfinite input, and nonfinite output.  All 34 initial kernel cases passed in Lean and Wasmtime, including maximum-length endpoint sums, rounding ties, scale boundaries, and allocation counts.  These tests establish measured agreement.  Source/Talos correspondence, exact accumulation, and exact-binary proofs remain in progress.
+The [quantized kernel](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Models/Gpt2/Quantized/Kernel.lean) computes row scales, stores quantized input bytes once per row, accumulates signed products, and applies the specified FP32 rescaling and optional bias.  Its checked entry rejects invalid dimensions, reserved coefficients, invalid scales, nonfinite input, and nonfinite output.  All 34 initial kernel cases passed in Lean and Wasmtime, including maximum-length endpoint sums, rounding ties, scale boundaries, and allocation counts.  These tests establish measured agreement.  Source/Talos correspondence, exact accumulation, and exact-binary proofs remain in progress.
 
 The nonfinite-output case exposed a compiler leak.  Result materialization preserved an owned helper result whenever either branch returned it, including the branch that discarded it.  Result materialization now tracks preceding owned locals and releases an unreturned owner in the appropriate branch, excluding returned and transferred owners.  The rejection test now leaves only the two borrowed input buffers allocated.  Broader ownership tests remain pending.
 
-The arithmetic proof established the prefix bound and exact signed-word addition and multiplication under representability assumptions.  Its first axiom audit found that `bv_decide` introduced a native-evaluation axiom into byte decoding.  Natural-number masks and arithmetic replaced that step.  The checked [word-accumulation proof](proofs/talos/lean/Project/ProofKit/QuantizedInt32.lean) and [source dot-product proof](proofs/talos/lean/Project/ProofKit/QuantizedDot.lean) now use only `propext`, `Classical.choice`, and `Quot.sound`.  They prove exact accumulation for every prefix of at most 3,072 valid signed bytes and the bound `length * 16129`.
+The arithmetic proof established the prefix bound and exact signed-word addition and multiplication under representability assumptions.  Its first axiom audit found that `bv_decide` introduced a native-evaluation axiom into byte decoding.  Natural-number masks and arithmetic replaced that step.  The checked [word-accumulation proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/QuantizedInt32.lean) and [source dot-product proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/QuantizedDot.lean) now use only `propext`, `Classical.choice`, and `Quot.sound`.  They prove exact accumulation for every prefix of at most 3,072 valid signed bytes and the bound `length * 16129`.
 
 The ownership-report test exposed three additional guarded release sites in optional byte-array results.  The runtime result and allocation/free counts for the inspected successful case remained correct.  The expected statement counts now include those guarded releases.  All 28 ownership-report and array-call cases passed.  Broader execution tests remain pending.
 
-The [integer-to-FP32 conversion proof](proofs/talos/lean/Project/ProofKit/F32Convert.lean) and [nearest-even proof](proofs/talos/lean/Project/ProofKit/F32Nearest.lean) establish source/Talos agreement for all raw input words.  Nearest-even rounding now constructs the signed integral result through the logical `ofInt` operation, with an explicit signed-zero case.  The revised source passed all 126 FP32 cases.  Saturating conversion remains in progress.
+The [integer-to-FP32 conversion proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Convert.lean) and [nearest-even proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32Nearest.lean) establish source/Talos agreement for all raw input words.  Nearest-even rounding now constructs the signed integral result through the logical `ofInt` operation, with an explicit signed-zero case.  The revised source passed all 126 FP32 cases.  Saturating conversion remains in progress.
 
-The [projection measurements](data/gpt2-quantized-v1/README.md#scalar-projection-measurements) retain four checkpoint shapes and both FP32 storage orientations.  Across seven resident-session repetitions, quantized medians were 2.544 ms for QKV, 3.355 ms for expansion, 3.330 ms for reduction, and 53.356 ms for the vocabulary projection.  The output-major FP32 ratios were 4.09, 4.08, 4.15, and 4.26.  Each case matched its specified reference byte for byte and released every temporary.  The measurements include activation quantization and output release, while loading and validation remain separate.  They use FP32 inputs from one retained token and do not establish complete-model timing or quality.  The binary proof remains pending.
+The [projection measurements](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/README.md#scalar-projection-measurements) retain four checkpoint shapes and both FP32 storage orientations.  Across seven resident-session repetitions, quantized medians were 2.544 ms for QKV, 3.355 ms for expansion, 3.330 ms for reduction, and 53.356 ms for the vocabulary projection.  The output-major FP32 ratios were 4.09, 4.08, 4.15, and 4.26.  Each case matched its specified reference byte for byte and released every temporary.  The measurements include activation quantization and output release, while loading and validation remain separate.  They use FP32 inputs from one retained token and do not establish complete-model timing or quality.  The binary proof remains pending.
 
 - [x] Implement and test scalar operations and packed-byte construction.
 - [x] Implement and test the checked quantized projection.
@@ -17039,23 +17039,23 @@ The byte generator now has checked source size/read lemmas and a reusable Talos 
 
 The broader core test stopped at `arraySetIfInBoundsSkipsValueTrap`.  Its IR releases both the original array and a conditional result that aliases it on the out-of-bounds branch.  Rebuilding with the original `materializeResultValue` produced the identical failing binary, SHA-256 `0dd850af132112b6bde0a76bbd66507d4a427a5a8b36866df9cd0f672eb96866`.  The quantization changes were restored after that comparison.  This existing alias-release failure remains an aggregate-test blocker.
 
-The refcount test passed 41 cases and seven leak-accounting cases, including its one expected retained-block case.  The packed-array test passed reads, unaligned accesses, bounds failures, binary files, byte and word generation, mapping, and temporary release.  The [scalar quantizer range proof](proofs/talos/lean/Project/ProofKit/QuantizedValue.lean) proves that every quantized byte excludes `0x80`, for arbitrary raw value and scale words.  It proves a scaled-magnitude bound after clipping and checks the 128 possible integral magnitudes and both signs through kernel reduction.  The resulting declarations use only the standard logical axioms.
+The refcount test passed 41 cases and seven leak-accounting cases, including its one expected retained-block case.  The packed-array test passed reads, unaligned accesses, bounds failures, binary files, byte and word generation, mapping, and temporary release.  The [scalar quantizer range proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/QuantizedValue.lean) proves that every quantized byte excludes `0x80`, for arbitrary raw value and scale words.  It proves a scaled-magnitude bound after clipping and checks the 128 possible integral magnitudes and both signs through kernel reduction.  The resulting declarations use only the standard logical axioms.
 
 The source-driven projection case now has a generated model and checked annotation matches.  Its registration remains incomplete.  Exact generated execution and store preservation pass for the scalar quantizer and FP32 rescaling helpers.  The source projection lemmas connect each generated activation to its row scale and establish exact, bounded accumulation for every prefix using the quantizer's byte-range theorem.  The scale-scan loop and allocation composition remain in progress.
 
-The complete [row-scale execution theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/RowScale.lean) now passes.  It composes packed reads with a maximum-prefix invariant through the existing range-loop theorem, then proves the zero-row and minimum-scale branches.  The generated code reads each coefficient twice because the compiler extracts the loop's value and control result separately.  Both reads preserve the store.  Shared masked-addition and multiplication lemmas connect the compiler's widened arithmetic to `UInt32` operations.  Dot-product execution and packed allocation composition remain in progress.
+The complete [row-scale execution theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/RowScale.lean) now passes.  It composes packed reads with a maximum-prefix invariant through the existing range-loop theorem, then proves the zero-row and minimum-scale branches.  The generated code reads each coefficient twice because the compiler extracts the loop's value and control result separately.  Both reads preserve the store.  Shared masked-addition and multiplication lemmas connect the compiler's widened arithmetic to `UInt32` operations.  Dot-product execution and packed allocation composition remain in progress.
 
-The generated [dot-product execution theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Dot.lean) now passes for bounded represented buffers.  It proves each bounds-checked byte read, signed extension, masked multiply/add, and loop increment, with complete store preservation.  The field selectors and shared runtime equalities also pass.  The [row-scale buffer loop](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ScaleLoop.lean) composes the row-scale helper with packed generation and confines writes to its output.  All 34 quantized execution and allocation tests passed again.  Activation-byte generation, allocation composition, complete projection packaging, and model integration remain open.
+The generated [dot-product execution theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Dot.lean) now passes for bounded represented buffers.  It proves each bounds-checked byte read, signed extension, masked multiply/add, and loop increment, with complete store preservation.  The field selectors and shared runtime equalities also pass.  The [row-scale buffer loop](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ScaleLoop.lean) composes the row-scale helper with packed generation and confines writes to its output.  All 34 quantized execution and allocation tests passed again.  Activation-byte generation, allocation composition, complete projection packaging, and model integration remain open.
 
-The [complete row-quantizer theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Rows.lean) now passes with the standard logical axioms.  It includes both allocation branches, exact scale and byte construction, result packing, ownership and separation of both buffers, and preservation of protected input.  Entry composition exposed an incorrect 44-local assumption in the helper invariants.  The generated function has 43 locals.  Those invariants and their checked compositions now use that frame size.  The proof reuses the existing heap allocation, memory framing, and packed ownership library.  Complete projection generation and temporary release remain open.
+The [complete row-quantizer theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Rows.lean) now passes with the standard logical axioms.  It includes both allocation branches, exact scale and byte construction, result packing, ownership and separation of both buffers, and preservation of protected input.  Entry composition exposed an incorrect 44-local assumption in the helper invariants.  The generated function has 43 locals.  Those invariants and their checked compositions now use that frame size.  The proof reuses the existing heap allocation, memory framing, and packed ownership library.  Complete projection generation and temporary release remain open.
 
-The [projection output loop](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionLoop.lean), [output allocation](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionAllocate.lean), and [temporary release path](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionRelease.lean) now pass with the standard logical axioms.  The per-cell proof covers the dot-product call, scale reads, FP32 rescaling, bias selection, and branch result packing.  A shared [bounded word-access theorem](proofs/talos/lean/Project/ProofKit/PackedWordAccess.lean) handles the compiler's inline scale and bias loads.  Output construction preserves the represented weights, activation bytes, and scales.  The return path releases both distinct temporary owners and preserves ownership of the output.  The complete entry theorem and binary packaging remain in progress.
+The [projection output loop](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionLoop.lean), [output allocation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionAllocate.lean), and [temporary release path](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/ProjectionRelease.lean) now pass with the standard logical axioms.  The per-cell proof covers the dot-product call, scale reads, FP32 rescaling, bias selection, and branch result packing.  A shared [bounded word-access theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/PackedWordAccess.lean) handles the compiler's inline scale and bias loads.  Output construction preserves the represented weights, activation bytes, and scales.  The return path releases both distinct temporary owners and preserves ownership of the output.  The complete entry theorem and binary packaging remain in progress.
 
-The complete [projection entry theorem](proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Linear.lean) now passes.  It specifies exact bytes, output ownership, protected-input preservation, memory capacity, and heap counters: three allocations, two releases, two frees, and no retains.  The focused source gate and independent exact-artifact checker passed for the 4,757-byte binary used in the measurements, SHA-256 `de0f34ec5a1c97a54f39c7664071278301923aebc663100fcc1002182ef9ab7a`.  The composed decoded-binary theorem uses only the standard logical axioms.  A module-parametric specification permits transfer through the checked model equality.  The proof reuses heap allocation and release, packed construction, and bounded loads.  No LTG retrieval or separate proof agent ran in this iteration.  The checked wrapper, cached model, and full evaluation remain open.
+The complete [projection entry theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2QuantizedLinearRows/Linear.lean) now passes.  It specifies exact bytes, output ownership, protected-input preservation, memory capacity, and heap counters: three allocations, two releases, two frees, and no retains.  The focused source gate and independent exact-artifact checker passed for the 4,757-byte binary used in the measurements, SHA-256 `de0f34ec5a1c97a54f39c7664071278301923aebc663100fcc1002182ef9ab7a`.  The composed decoded-binary theorem uses only the standard logical axioms.  A module-parametric specification permits transfer through the checked model equality.  The proof reuses heap allocation and release, packed construction, and bounded loads.  No LTG retrieval or separate proof agent ran in this iteration.  The checked wrapper, cached model, and full evaluation remain open.
 
 Function-region transport now supports the four added scalar operations and byte loads and stores.  Its syntax, one-step transport, no-tail property, and execution transport passed.  This permits reuse of unchanged internal helper bodies when model integration changes function indices.  The public projection entry has fewer parameters than its internal calling form, so that entry still needs a separate composition proof.
 
-The [file and session API proposal](plans/gpt2-quantized-format.md) fixes the binary header, offsets, validation lifecycle, and status codes.  Approval is pending before implementation of those interfaces.  The existing core-test failure was traced to cleanup of a conditional array result that can alias an enclosing owned array.  Both slots receive releases in separate materialization scopes.  The retained failing binary and IR identify that double release.  No change to this path has been made.
+The [file and session API proposal](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gpt2-quantized-format.md) fixes the binary header, offsets, validation lifecycle, and status codes.  Approval is pending before implementation of those interfaces.  The existing core-test failure was traced to cleanup of a conditional array result that can alias an enclosing owned array.  Both slots receive releases in separate materialization scopes.  The retained failing binary and IR identify that double release.  No change to this path has been made.
 
 The earlier forty-three artifact manifests now record the extended verifier digest.  Migration preserved each binary, its embedded bytes, generated certificates, and handwritten theorems.  It changed only the verifier identity, using the migration tool's transactional file writer, and checked all forty-four manifest and binary identities.  The renewed aggregate Lean check remains pending.
 
@@ -17087,7 +17087,7 @@ Both function-region proofs now pass and use only `propext`.  They prove portabi
 
 All nine retained and held-out completion cases finished.  Their first differing generated token occurs at positions 1, 2, 2, 1, 3, 2, 1, 1, and 1.  Several quantized continuations repeat words or produce broken fragments.  The two sampled cases use the existing compiled Lean PRNG and preserve every shared draw.  The data record includes all FP32 continuations as well, including repetitive greedy results.  The six previously held-out prompts have now been evaluated and must be identified as such in subsequent comparisons.
 
-The [projection diagnostic](data/gpt2-quantized-v1/projection-errors.json) checks a serial FP32 reference against the frozen binary at nine prefixes and evaluates 441 projections using their original FP32 inputs.  The FP32 logits match bit for bit.  The final vocabulary projection rounds 79.2–95.6% of its activation coordinates to zero under the approved per-row scale.  At prefix seven, activation-only reconstruction produces RMS logit error 1.812, compared with 0.318 for weight-only reconstruction.  At the first prefix, block two's feed-forward expansion rounds 97.3% of its input to zero.  These local comparisons identify substantial activation error without attributing the complete model's error to one layer.  A revised scale scheme or precision exception requires a design decision.  The approved algorithm and measured candidates remain unchanged.
+The [projection diagnostic](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/projection-errors.json) checks a serial FP32 reference against the frozen binary at nine prefixes and evaluates 441 projections using their original FP32 inputs.  The FP32 logits match bit for bit.  The final vocabulary projection rounds 79.2–95.6% of its activation coordinates to zero under the approved per-row scale.  At prefix seven, activation-only reconstruction produces RMS logit error 1.812, compared with 0.318 for weight-only reconstruction.  At the first prefix, block two's feed-forward expansion rounds 97.3% of its input to zero.  These local comparisons identify substantial activation error without attributing the complete model's error to one layer.  A revised scale scheme or precision exception requires a design decision.  The approved algorithm and measured candidates remain unchanged.
 
 The user approved an experiment with activation groups of 64 and prioritized accuracy investigation over the complete-model proof.  The reference experiment computes independent scales and integer partial sums, rescales each partial in FP32, accumulates in increasing group order from positive zero, and adds bias once.  It retains the existing per-output weight scales and quantized embeddings.  A control retains the original transformer projections and uses FP32 vocabulary activations with serial FP32 products of reconstructed quantized weights.  The fixed-prefix comparison is running before generated-text evaluation.
 
@@ -17155,7 +17155,7 @@ Block validation uses a shared short-circuit Boolean composition lemma.  The dra
 
 The pinned conformance interpreter is still building cold Mathlib dependencies through the serialized runner.  Manifest binding and input-identity tests pass.  The current edits pass the whitespace check.
 
-The numerical proof needs a wider scaled domain than `CodeLib.IEEE32.roundScaledMagnitude_spec`, whose premise is `n < 2^151`.  A draft [FP32 rounding bound](proofs/talos/lean/Project/ProofKit/F32RoundBounds.lean) generalizes that premise to `n < 2^bound`, with `bound ≤ 276`, while deriving the half-unit error from the selected shift.  Its magnitude and sign theorems now pass with the standard logical axioms.  It preserves the pinned integer arithmetic model.  The rational-rounding and division bounds remain in progress.
+The numerical proof needs a wider scaled domain than `CodeLib.IEEE32.roundScaledMagnitude_spec`, whose premise is `n < 2^151`.  A draft [FP32 rounding bound](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/ProofKit/F32RoundBounds.lean) generalizes that premise to `n < 2^bound`, with `bound ≤ 276`, while deriving the half-unit error from the selected shift.  Its magnitude and sign theorems now pass with the standard logical axioms.  It preserves the pinned integer arithmetic model.  The rational-rounding and division bounds remain in progress.
 
 The coefficient scan and model-representation lemmas pass.  The shared header-field lemma and regenerated association-list source specification also pass.  Embedding word execution reached the 200,000-heartbeat limit.  Its replacement separates token decoding/rescaling from position lookup/addition, with a shared loop-state predicate.  The header proof has local rewrite diagnostics and remains in progress.
 
@@ -17221,9 +17221,9 @@ The generator also divides function-body certificates into modules containing at
 
 Pushed `b8ad9ae8` with bounded certificate generation.  The group reconstruction, ordered FP32 sum, bias addition, and returned projection-word lemmas now pass, along with the first-index greedy rule and the raw-word margin checker's soundness theorem.  Six kernel-checked examples cover strict margins, ties, equality at the threshold, changed winners, common offsets, and nonfinite inputs.  The first check exposed a reserved identifier, ambiguous references to `Finite`, and an integer absolute-value cast.  Explicit names and a separate integer range lemma resolved those errors.  Each numerical module checks in roughly one second with only standard logical axioms.
 
-The Lean checker completed all 229 logit pairs and reproduced the precheck's 119 raw and 183 common-offset certificates.  [Certificate coverage](data/gpt2-quantized-v1/certificates/README.md) records the exact scope and runtime trust boundary.  Every captured group64 hash matches its retained experiment, as do all 128 FP32 fixed-prefix hashes.  These a posteriori certificates do not discharge the forward-propagation obligation.  The checkpoint-export checker and its scalar reconstruction theorem also pass as Lean declarations.  Checking all 123,532,032 coefficients, 133,201 scales, and 907,776 retained FP32 values is queued through the serial runner.  The square-root bound required for general FP32 normalization is under development.
+The Lean checker completed all 229 logit pairs and reproduced the precheck's 119 raw and 183 common-offset certificates.  [Certificate coverage](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/certificates/README.md) records the exact scope and runtime trust boundary.  Every captured group64 hash matches its retained experiment, as do all 128 FP32 fixed-prefix hashes.  These a posteriori certificates do not discharge the forward-propagation obligation.  The checkpoint-export checker and its scalar reconstruction theorem also pass as Lean declarations.  Checking all 123,532,032 coefficients, 133,201 scales, and 907,776 retained FP32 values is queued through the serial runner.  The square-root bound required for general FP32 normalization is under development.
 
-Pushed `66120d07` with the grouped numerical bounds and logit certificates.  The interpreted checkpoint checker reached its 1,200-second limit before finishing its first matrix.  Separating executable definitions from proof imports and compiling a native Lean checker reduced the complete run to within its 600-second limit.  It passed every coefficient, scale, retained FP32 word, and specified quotient-range check.  The [export record](data/gpt2-quantized-v1/certificates/export-check.json) preserves identities, counts, the successful command, and the interpreted timeout.  The soundness declarations remain kernel checked.  Whole-file execution trusts the pinned Lean native compiler and runtime.
+Pushed `66120d07` with the grouped numerical bounds and logit certificates.  The interpreted checkpoint checker reached its 1,200-second limit before finishing its first matrix.  Separating executable definitions from proof imports and compiling a native Lean checker reduced the complete run to within its 600-second limit.  It passed every coefficient, scale, retained FP32 word, and specified quotient-range check.  The [export record](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/certificates/export-check.json) preserves identities, counts, the successful command, and the interpreted timeout.  The soundness declarations remain kernel checked.  Whole-file execution trusts the pinned Lean native compiler and runtime.
 
 The generalized FP32 square-root theorem passes with an explicit raw-magnitude bound.  It accounts for rounding the integer square root and packing the result.  The exact-significand lemma now includes the endpoint `2^24`.  Arithmetic perturbation lemmas cover addition, multiplication, division, and square root.  The ordered FP32 dot-product theorem and grouped projection theorem compose component errors through every product, integer partial dot, rescaling, and ordered addition.  A dimension-independent real LayerNorm theorem supplies the centering and denominator perturbation result for width 768.  The initial drafts needed explicit Boolean reduction, cast normalization, and sum-factor extraction.  The accepted modules check in roughly one to two seconds with standard logical axioms.
 
@@ -17265,7 +17265,7 @@ The normalization outward-bound theorem now passes through its complete affine o
 
 The projection range checker passed all forty-nine weight matrices and 22,442 captured input/output records across 229 prefixes in 126.862 seconds.  Its first run failed at the first activation reconstruction check after completing the weight checks.  The scale profiler passed a group index instead of the word offset expected by `rowScale`.  Multiplying by 64 fixed that diagnostic.  The failure tail, successful output, source identities, and compressed profiles are retained.  The learned-projection and vocabulary soundness conversions now pass with standard logical axioms.  They compose the checked export relation, packed-slice word equality, activation reconstruction, exact integer accumulation, FP32 rescaling, ordered sums, and bias equality.  The uniform exported-coefficient bound includes a conservative saturation contribution.  Its factor is `3/2 + 1/65536`, compared with `1/2 + 1/65536` for checked activation groups.  Initial proof drafts needed explicit source aliases and arithmetic equalities before elaboration.  The complete specification rebuild passed all 4,163 targets with standard logical axioms.
 
-Six fresh prompts are fixed in [the group64 holdout fixture](data/gpt2-quantized-v1/heldout-group64.json) before evaluation.  They cover narrative, exposition, dialogue, code, numeric prose, and a technical explanation.  The previous nine prompts remain explicitly identified as previously evaluated.  Embedding/residual range evidence, full outward evaluation, and release reproduction remain open.
+Six fresh prompts are fixed in [the group64 holdout fixture](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/gpt2-quantized-v1/heldout-group64.json) before evaluation.  They cover narrative, exposition, dialogue, code, numeric prose, and a technical explanation.  The previous nine prompts remain explicitly identified as previously evaluated.  Embedding/residual range evidence, full outward evaluation, and release reproduction remain open.
 
 Pushed `739f4f4f` with the projection proofs, complete range evidence, and frozen holdout inputs.  The pointwise native checker then passed all 229 embeddings and 5,496 paired residual additions in 6.521 seconds.  It recomputed all captured embedding and residual outputs bit for bit.  Checked conditions cover finite operands, valid signed embedding coefficients, positional-word equality, and every multiplication/addition bound.  The embedding and residual soundness conversions pass with standard logical axioms.  Separating embedding computations from their proof module keeps the native executable dependency graph small.  The complete specification rebuild passed all 4,166 targets with standard logical axioms.
 
@@ -17501,7 +17501,7 @@ and unrelated proof archives were not rebuilt. Main remains unchanged.
 
 The user requested a detailed marXiv report on the drone work, with a stand-alone LeanExe section covering goals, capabilities, status, and the compiler-correctness results now on main.  The report uses drone revision `820b3958` for the planner and generated-model execution theorem and main revision `8dbb8e8a` for the general scalar/bounded-loop source-to-byte compiler theorem.  The two proof subjects remain distinct.  The report states the finite graph, point-mass assumptions, continuous-time guarantees, borrowed input, and allocation budget.  Historical execution comparisons are attributed to the committed development record because their original drivers and logs were excluded from that branch's commit scope.
 
-The marXiv standards and style manual were read before drafting.  The focused local check builds `Project.Drone.Spec` and `Project.Drone.SourceChecks` through the standard resource-limited runner.  Drafting, source review, PDF review, and submission are recorded in [the report review](paper/drone-verification-report/review-notes.md).
+The marXiv standards and style manual were read before drafting.  The focused local check builds `Project.Drone.Spec` and `Project.Drone.SourceChecks` through the standard resource-limited runner.  Drafting, source review, PDF review, and submission are recorded in [the report review](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/paper/drone-verification-report/review-notes.md).
 
 The focused proof build and seven principal axiom audits passed.  Five fresh Wasmtime runs match native Lean word for word.  Their terrain and returned waypoint arrays produce five vector plots with continuous interpolation, retained CSV samples, and PNG copies.  The 16-page report passed technical and prose review, PDF text and layout checks, and metadata comparison.  The repository-wide documentation check still reports the inherited temporary-path reference in the older WGSL review.
 
@@ -17607,7 +17607,7 @@ Lean builds and axiom audits remain pending.
 
 The proof dependency checkout is absent.  The interpreter field inventory
 comes from `Interpreter/Wasm/Syntax.lean` in the retained
-[arithmetic proof package](proofs/compiler/arithmetic-2026-09-24/arithmetic-proof.tar.gz).
+[arithmetic proof package](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/compiler/arithmetic-2026-09-24/arithmetic-proof.tar.gz).
 Its manifest records the same Talos revision as the current Lake configuration,
 `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47`.  The inspected source matches its
 manifest SHA-256, `117ca006b734e328a8458e15a14a23f094e369a9bdb8fa7a0ceebedd599e9133`.
@@ -17615,7 +17615,7 @@ manifest SHA-256, `117ca006b734e328a8458e15a14a23f094e369a9bdb8fa7a0ceebedd599e9
 ### Theorem domain
 
 Numeric field bounds alone are insufficient for exact module equality.
-The [binary translation](proofs/talos/lean/Project/Artifact/Binary/Translate.lean)
+The [binary translation](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Artifact/Binary/Translate.lean)
 reconstructs eight fields and leaves thirteen at their defaults:
 
 | Fields | Required representation |
@@ -17628,7 +17628,7 @@ reconstructs eight fields and leaves thirteen at their defaults:
 | `importedGlobals`, `importedTables`, `importedMemories`, `importedTags`, `tableExports`, `tagExports` | Empty lists. |
 | `dataWithoutMemory`, `startFunc` | `false` and `none`. |
 
-The [decoder](proofs/talos/lean/Project/Artifact/Binary/Decode.lean) accepts the
+The [decoder](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Artifact/Binary/Decode.lean) accepts the
 six sections already handled by `ModulePayloads`: type, function, memory,
 global, export, and code.  Adding the plan's import section requires a decoder
 extension.  Its accepted value types are `i32`, `i64`, and `f32`.  Structured
@@ -17644,7 +17644,7 @@ signatures alone can change indices and whole-module equality.
 
 Validation needs separate typing and structural premises.  For example, a
 bounded, encodable function containing `drop` on an empty operand stack fails
-validation.  The [validator](proofs/talos/lean/Project/Artifact/Binary/Validate.lean)
+validation.  The [validator](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Artifact/Binary/Validate.lean)
 also requires one memory, valid limits and indices, and unique export names.
 The existing arithmetic theorem obtains validity from successful restricted
 source extraction and the export-name condition as well as numeric bounds.
@@ -17652,19 +17652,19 @@ source extraction and the export-name condition as well as numeric bounds.
 ### Reuse and Drone application
 
 The reusable parser statement is
-[`Parsing.Parses`](proofs/talos/lean/Project/Compiler/Parsing.lean): it quantifies
+[`Parsing.Parses`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Compiler/Parsing.lean): it quantifies
 over preceding bytes, following bytes, and the enclosing cursor limit.
-[`ContainerParsing`](proofs/talos/lean/Project/Compiler/ContainerParsing.lean)
+[`ContainerParsing`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Compiler/ContainerParsing.lean)
 already proves bounded payloads, length prefixes, and vectors.
-[`LebParsing`](proofs/talos/lean/Project/Compiler/LebParsing.lean) supplies
+[`LebParsing`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Compiler/LebParsing.lean) supplies
 unsigned 32-bit and signed 64-bit encoding proofs.
-[`ModulePayloads.decode`](proofs/talos/lean/Project/Compiler/ModuleSections.lean)
+[`ModulePayloads.decode`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Compiler/ModuleSections.lean)
 composes arbitrary payloads for all six sections.  Structured instruction
 proofs also track parser fuel.  The arithmetic translation theorem uses
 `ControlAnnotations.ProgramEq` for control annotations, so its conclusion
 requires attention when reusing it for exact equality.
 
-The [Drone module](proofs/talos/lean/Project/Drone/Program.lean) has thirty
+The [Drone module](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Drone/Program.lean) has thirty
 functions, type indices zero through twenty-nine, six globals, function,
 global, and memory exports, and one memory with minimum sixteen pages.
 Several functions return two or three values.  Its structured controls have
@@ -17673,12 +17673,12 @@ instruction constructors, each represented in the current binary translator.
 This inspection supports using Drone as the first application.  A checked
 representability proof remains necessary.
 
-[`Spec.compute_correct`](proofs/talos/lean/Project/Drone/Spec.lean) proves
+[`Spec.compute_correct`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Drone/Spec.lean) proves
 `ExactSpecFor` at function 25, including input preservation and the 64 MiB
 memory bound under its caller-heap and allocation premises.  Exact module
 equality permits transfer of that statement.  The source definition of
 `encode` also needs a connection to the distributed byte file: the
-[artifact format](docs/artifact-format.md) specifies file comparison against
+[artifact format](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/artifact-format.md) specifies file comparison against
 the Lean byte value.  Committing generated bytes alone supplies no checked
 identity between that file and the theorem's subject.
 
@@ -17698,7 +17698,7 @@ passes.  The supplied plan retains SHA-256
 The user rejected the preceding decoder-based proposal, the application-driven
 scope, and a separate file-identity requirement.  During implementation the
 user clarified the required domain: WASM emitted by LeanExe.  The
-[encoding plan](encoding.md) now records that scope.  The compiler emits scalar
+[encoding plan](https://github.com/jsmorph/leanexe/blob/6b153b55de524508b137dc0e0e4333e7ec027a0a/encoding.md) now records that scope.  The compiler emits scalar
 integer and floating-point operations, structured control, direct calls,
 globals, exports, 32-bit memory, and function imports for WASI and ByteIO.
 Its heap uses reference counting.  Talos's additional instruction families
@@ -17796,10 +17796,10 @@ changed, and no Wasmtime installation was performed.
 
 The user requested detailed reviews of the binary grammar and validity
 predicate before external review.  The
-[binary review](proofs/talos/lean/Project/Encoding/BinaryReview.md) checks the
+[binary review](LeanExe/Encoding/BinaryReview.md) checks the
 integer rules, UTF-8 representation, all 71 instruction forms, section
 composition, and all 21 Talos module fields.  The
-[typing review](proofs/talos/lean/Project/Encoding/ValidityReview.md) checks
+[typing review](LeanExe/Encoding/ValidityReview.md) checks
 context construction, every instruction-typing constructor, stack order,
 control labels, numeric local initialization, declarations, and exports.
 Both identify the premises needed for the combined theorem and record hashes
@@ -26246,3 +26246,31 @@ native comparison, and `tools/demo-check treeLookup`.  Four LTG entries listed t
 module names, which a stale build of those modules still satisfied until the check imported both
 the old and the new module.  The stale builds of the old module names were then deleted, and every
 import in the repository names an existing source file.
+
+### Review of the organization
+
+The 343 relative links in main's part of this journal, lines 1 to 17,599, named files that exist
+only on `main`, and they now point at `main` at commit `eef07963` on GitHub.  Fourteen links in
+this branch's entries named files that had moved: the two encoding reviews now resolve under
+`LeanExe/Encoding/`, `encoding.md` at the last commit that held it, and the rest on `main`.  The
+quantized GPT-2 report linked main's `docs/status.md`, which this branch does not have, and now
+links main's copy.
+
+The manual listed `EulerReconstructed` as an example, though it is part of `Examples/Euler/`, said
+that every example has a `Cases.lean`, which `Gpt`, `Gpt32`, and `Prng` do not, and did not say
+that `gpt` imports the program of `prng`.  The design record listed `LeanExe/` twice in place of
+`Examples/` and counted 114 ProofKit modules, which are 111 after the deletions of the first step.
+The path substitutions had left ragged and overlong lines in the hard-wrapped READMEs and reviews,
+and those paragraphs are now rewrapped at the width of their files, 100 or 80 columns, with no
+change to their words.
+
+`LeanExe/ProofKit/Float64.lean` and `Signed32.lean` kept the namespaces `LeanExe.Float64` and
+`LeanExe.Signed32` after the move, while every other ProofKit module uses `LeanExe.ProofKit`.  They
+are now `LeanExe.ProofKit.Float64` and `LeanExe.ProofKit.Signed32`, and only ProofKit modules refer
+to them.  After the rename the build passed with no `sorry`, the 35 modules kept their bytes, the
+16,039 module cases, 77 release-count cases, and 20 depth-guard cases passed, and so did the LTG
+check.
+
+- [ ] `tests/modules/run.sh` sends the standard error of native Lean to `/dev/null` to hide the
+  panic messages of out-of-bounds reads, which also hides any error that Lean reports.  The script
+  still stops when Lean fails, through `set -e`, but without the diagnostic.
