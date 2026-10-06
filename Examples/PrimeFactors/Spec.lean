@@ -1,6 +1,6 @@
 import Mathlib.Data.Nat.Factors
 
-/-! The specification of the earlier system's Demo 1, as its request states it: the number of prime
+/-! The specification, as the request in `request.txt` states it: the number of prime
 factors of a word, counted with multiplicity, which is 0 for 0 and 1. -/
 
 namespace Examples.PrimeFactors

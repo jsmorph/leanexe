@@ -9,15 +9,9 @@ step is an x sweep followed by a y sweep, each cell updated from Rusanov fluxes 
 interfaces, with transmissive boundaries by clamped neighbor indices.  The timestep targets CFL 0.4,
 and a step whose cells fail a check is retried with half the timestep.
 
-The float arithmetic performs, in the same order, the binary64 operations of the solver model at
-commit `eef07963`, `proofs/talos/lean/Project/EulerRiemann/Control.lean` with the files it imports,
-so that the output words can be compared bit for bit with the words of the runs recorded at that
-commit.  Each float operation here is one binary64 operation, and the checks inspect bit patterns.
-Where that model tests a check before computing the next value, these functions compute every value
-and test the conjunction of the checks once, at the end, which changes no result because the float
-operations are total.  `energyGuard` computes `F64Admissibility.checked`.  The model's state guard
-uses `F64AdmissibilityTiny.checked`, which accepts every state that `F64Admissibility.checked`
-accepts and also some states with momenta below the normalization range.
+Each float operation is one binary64 operation, and the checks inspect bit patterns.  A checked
+function computes every value and tests the conjunction of its checks once, at the end, which the
+totality of the float operations allows.  `energyGuard` computes `F64Admissibility.checked`.
 -/
 
 namespace Examples.Euler

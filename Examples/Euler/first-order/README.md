@@ -34,14 +34,10 @@ Timestep selection targets CFL 0.4.  Each accepted cell update checks a rounded 
 
 ## Program and proofs
 
-[The solver](../Program.lean) states the method in Lean.  Its arithmetic performs, in the same
-order, the binary64 operations of the solver at commit `eef07963`, whose Lean model is
-[`EulerRiemann/Control.lean`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRiemann/Control.lean)
-with the files it imports.  [The module definition](../Module.lean) compiles it, with [the
-reconstructed solver](../reconstructed/README.md), into one 23,012-byte module, `euler.wasm`, with
-SHA-256 `87efa8a8e63a1e6eda1f6d8a8c668c57e2aeafeaadd4e73c06ac28266b8c794b`.  On both grids the
-module returned, bit for bit, the words recorded at that commit, so the figures, CSV files, and
-ranges below, computed at that commit from those words, describe this program's results.
+[The solver](../Program.lean) states the method in Lean.  [The module definition](../Module.lean)
+compiles it, with [the reconstructed solver](../reconstructed/README.md), into one 23,012-byte
+module, `euler.wasm`.  The figures, CSV files, and ranges below come from the module's output words
+on each grid.
 
 | Claim | Statement | Theorem |
 |-------|-----------|---------|
@@ -68,23 +64,19 @@ Convergence to a weak solution of the continuous Euler equations remains unprove
 
 ## Data
 
-| Grid and summary | Runtime | Density range | Pressure range | Words SHA-256 | Data | Export figures |
-|------------------|--------:|--------------:|---------------:|---------------|------|----------------|
-| [192 × 192](192-run/summary.json) | 16.6 s | 0.138–1.490131234 | 0.029–1.476780108 | `e097a43d…` | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
-| [800 × 800](800-run/summary.json) | 20.1 min | 0.138–1.671084032 | 0.029–1.632146140 | `d374cc5c…` | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
+| Grid | Runtime | Density range | Pressure range | Data | Export figures |
+|------|--------:|--------------:|---------------:|------|----------------|
+| 192 × 192 | 16.6 s | 0.138–1.490131234 | 0.029–1.476780108 | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
+| 800 × 800 | 20.1 min | 0.138–1.671084032 | 0.029–1.632146140 | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine, with
 peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean proof
-checks.  The files of each run directory come from [the run record at commit
-`eef07963`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-riemann-complete-v1/README.md),
-where `tools/euler-riemann-complete.js` wrote the words, the CSV file, and the summary of each run,
-and `tools/euler-riemann-plot.py` drew the figures from the CSV file.  Each summary file therefore
-gives the runtime and SHA-256 of that commit's binary and the names of that commit's theorems.  The
-words of this program's runs have the SHA-256 recorded in those summaries.
+checks.  Each run directory holds the output words, a CSV file of the cells, and the figures drawn
+from it.
 
 Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh directory.
-The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and records the runtime,
-the peak resident size, and the SHA-256 of the words.
+The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and records the runtime
+and the peak resident size.
 
 ```sh
 tools/build-wasmtime-host.sh

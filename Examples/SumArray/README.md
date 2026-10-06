@@ -2,15 +2,10 @@
 
 ## What it is
 
-This example stands for [the earlier system's Demo
-10](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-10/README.md)
-and [Demo
-11](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-11/README.md),
-which return the wrapping product and the bitwise exclusive or of an array of at most eight words as
-a one-word array, and the empty array for a longer input.  [The request](request.txt) here asks for
-the three folds over an array of any length, with scalar results, and adds the sum of Iteration 3a.
-Each request defines its result as a left fold, so each program is its own specification and the
-example has no `Spec.lean`.
+This example computes three folds of an array of words: the wrapping sum, the wrapping product, and
+the bitwise exclusive or.  [The request](request.txt) asks for the three folds over an array of any
+length, with scalar results.  The request defines each result as a left fold, so each program is its
+own specification and the example has no `Spec.lean`.
 
 [The programs](Program.lean) are `xs.foldl (· + ·) 0`, `xs.foldl (· * ·) 1`, and `xs.foldl (· ^^^ ·)
 0`.  The compiler translates each to the fold template: an assignment of the initial value to an
@@ -28,8 +23,7 @@ definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `pr
 
 `Func.foldl_implements` is in [the fold rule](../../LeanExe/IR/Fold.lean), and each program's
 theorem applies it with its operation and initial value.  The theorems are in [the
-proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.  The earlier
-system's proofs concerned one 1,979-byte binary each and took 572 and 676 lines.
+proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## Running it
 

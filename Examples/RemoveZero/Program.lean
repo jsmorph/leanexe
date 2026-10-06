@@ -2,7 +2,7 @@ import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 
 /-!
-The earlier system's Demo 12 in this dialect: an array of at most eight words without its first
+An array of at most eight words without its first
 zero, in order, or the input when it has no zero, or the empty array for a longer input.
 `firstZero` is the index of the first zero among the first `count` elements, or `count` when there
 is none, and the result copies the elements before that index and shifts the rest down by one.

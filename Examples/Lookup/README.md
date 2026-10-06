@@ -2,12 +2,11 @@
 
 ## What it is
 
-This example is [the earlier system's Demo
-2](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-2/README.md),
-carried to the current system's pipeline.  [The request](request.txt) asks, for 21 words `[query,
-key1, value1, …, key10, value10]`, for `[value, 1]` from the first pair whose key equals the query,
-and for `[0, 0]` when no key matches or the input has another length.  [The
-specification](Spec.lean) states it as the earlier system's did, with ten ordered comparisons.
+This example takes a request in English to a specification, a program, and a theorem that the
+module's bytes compute the specification.  [The request](request.txt) asks, for 21 words
+`[query, key1, value1, …, key10, value10]`, for `[value, 1]` from the first pair whose key equals
+the query, and for `[0, 0]` when no key matches or the input has another length.  [The
+specification](Spec.lean) states it with ten ordered comparisons.
 
 [The program](Program.lean) runs a loop over the ten pairs with a found flag and the value of the
 first match as its state, and it returns a two-word array literal.  The reads past the end of a
@@ -23,8 +22,7 @@ that exports `compute`.
 | `lookup_bytes` | The module's bytes decode to a module whose `compute` export implements `expected`: from any store that satisfies the runtime invariant, a call with an array in memory returns the words of `expected` or stops at `unreachable`. |
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
-`Quot.sound`.  The earlier system's proof concerned one 7,336-byte binary and took 1,639 lines.
-Here the loop rule and the array-literal rule prove `Implements` for the program, and with
+`Quot.sound`.  The loop rule and the array-literal rule prove `Implements` for the program.  With
 `compute_eq`, proved by ten case splits, `Implements.congr` states it for the specification.
 
 ## Running it
@@ -40,7 +38,7 @@ build/tools/leanexe-wasmtime-host call build/lookup/lookup.wasm compute array-u6
 The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
 [the repository README](../../README.md#commands).  The query 42 first matches the second pair, and
 the call prints `[20, 1]`.  [The module tests](../../tests/modules/run.sh) of
-[`Cases.lean`](Cases.lean) run the earlier system's sample, a missing key, a match at the first and
+[`Cases.lean`](Cases.lean) run the request's sample, a missing key, a match at the first and
 last pairs, repeated keys, and inputs of 0, 20, and 22 words in Wasmtime against `expected`.
 
 ## Related examples

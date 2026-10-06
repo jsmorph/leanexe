@@ -1,5 +1,5 @@
-/-! The specification of the request in `Examples/TreeLookup/request.txt` (the earlier system's
-Demo 3).  Nodes are numbered 0 to 6 in breadth-first order: node `j` has its key at `2j + 1` and its
+/-! The specification of the request in `Examples/TreeLookup/request.txt`.
+Nodes are numbered 0 to 6 in breadth-first order: node `j` has its key at `2j + 1` and its
 value at `2j + 2`, nodes `2j + 1` and `2j + 2` are its left and right children, and nodes 3 to 6 are
 leaves.  Decisions the request leaves to the specification: none.  The request fixes the result for
 every input, including keys that are not in search-tree order. -/

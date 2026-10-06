@@ -1,5 +1,5 @@
 /-!
-The earlier system's Demo 1 in this dialect: the number of prime factors of a word, counted with
+The number of prime factors of a word, counted with
 multiplicity, with 0 for 0 and 1.  `countFactors` divides out each divisor in increasing order while
 `divisor ≤ remaining / divisor`, and then counts what remains, which is 1 or a prime.
 -/

@@ -1,7 +1,7 @@
 import LeanExe.Dialect.Loop
 
 /-!
-The earlier system's Demo 2 in this dialect: the input `#[query, key1, value1, …, key10, value10]`
+The input `#[query, key1, value1, …, key10, value10]`
 of 21 words gives `#[value, 1]` for the first pair whose key equals the query, and `#[0, 0]` when no
 key matches or the input does not have 21 words.  A loop over the ten pairs keeps a found flag and
 the value of the first match.

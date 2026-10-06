@@ -39,7 +39,7 @@ compile and run a program, the theorems and the rules that prove them, the tests
 | [`.claude/skills/verified-executable/`](.claude/skills/verified-executable/SKILL.md) | The skill that takes a request in English to a program and a theorem about its bytes. |
 | [`tools/`](tools/) | The resource-limited Lean runner, `Emit.lean` and `EmitWgsl.lean`, which write modules and kernels, the Wasmtime and WebGPU hosts and their build scripts, the checker `demo-check`, and the Euler and GPT-2 command-line tools. |
 | [`tests/`](tests/) | Module, decoder, GPT, drone, PRNG, WGSL, and GPT-2 tests, and the WebGPU pages of [`tests/web/`](tests/web/). |
-| [`data/`](data/), [`paper/`](paper/) | The earlier system's records of runs and its reports. |
+| [`data/`](data/), [`paper/`](paper/) | Records of runs, and reports. |
 
 ## Commands
 

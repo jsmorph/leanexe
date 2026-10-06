@@ -2,16 +2,15 @@
 
 ## What it is
 
-This example is [the earlier system's Demo
-1](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-1/README.md),
-carried to the current system's pipeline.  [The request](request.txt) asks for the number of prime
-factors of a word, counted with multiplicity, with 0 for 0 and 1.  [The specification](Spec.lean)
-states that count with Mathlib's `Nat.primeFactorsList`, as the earlier system's did.
+This example takes a request in English to a specification, a program, and a theorem that the
+module's bytes compute the specification.  [The request](request.txt) asks for the number of
+prime factors of a word, counted with multiplicity, with 0 for 0 and 1.  [The
+specification](Spec.lean) states that count with Mathlib's `Nat.primeFactorsList`.
 
 [The program](Program.lean) divides out each divisor in increasing order while the divisor is at
 most the remaining value divided by it, and then counts what remains, which is 1 or a prime.
 `countFactors` is tail recursive and terminates by a measure of the remaining value and the distance
-from the divisor to it, so it needs no fuel parameter, where the earlier system's program took one.
+from the divisor to it, so it needs no fuel parameter.
 [The module definition](Module.lean) compiles `countFactors` and `compute` into a 1,613-byte
 `primeFactors.wasm` that exports both.
 
@@ -25,10 +24,9 @@ from the divisor to it, so it needs no fuel parameter, where the earlier system'
 | `primeFactors_bytes` | The module's bytes decode to a module whose `compute` export implements `expected`: from any store that satisfies the runtime invariant, a call returns `expected n` or stops at `unreachable`. |
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
-`Quot.sound`.  The earlier system's proof concerned one binary and took 329 lines.  Here the loop
-rule of the tail-recursion template proves `countFactors_implements` from one theorem about a run of
-the loop body, and the number theory stays in `countFactors_eq`, which concerns the Lean program
-alone.
+`Quot.sound`.  The loop rule of the tail-recursion template proves `countFactors_implements` from
+one theorem about a run of the loop body, and the number theory stays in `countFactors_eq`, which
+concerns the Lean program alone.
 
 ## Running it
 

@@ -22,7 +22,7 @@ def choicesOf (ws : List UInt64) : Array Choice :=
 
 def choiceWords (c : Choice) : List UInt64 := [c.time, c.excess, c.parent]
 
-/-- The current system's result for a call of `tests/drone/cases.txt`. -/
+/-- The planner's result for a call of `tests/drone/cases.txt`. -/
 def droneResult (name : String) (args : List (List UInt64)) : List UInt64 :=
   match name, args with
   | "distance", [[a], [b]] => [distance a b]
@@ -39,8 +39,8 @@ def droneResult (name : String) (args : List (List UInt64)) : List UInt64 :=
   | "initial", [] => initial.toList.flatMap choiceWords
   | _, _ => []
 
-/-- The drone calls of `tests/drone/cases.txt`, whose expected results are the earlier system's, and
-the terrains of `tests/drone/corpus.txt`, each with the current system's result. -/
+/-- The drone calls of `tests/drone/cases.txt`, whose expected results are the reference
+implementation's, and the terrains of `tests/drone/corpus.txt`, each with the planner's result. -/
 def droneCases : IO Unit := do
   for case in (← IO.FS.lines "tests/drone/cases.txt").filter (!·.isEmpty) do
     let [m, name, kind, args, _] := case.splitOn "|" | throw <| IO.userError s!"bad case: {case}"

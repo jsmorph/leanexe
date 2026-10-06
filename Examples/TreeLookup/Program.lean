@@ -1,7 +1,7 @@
 import LeanExe.Dialect.Loop
 
 /-!
-The earlier system's Demo 3 in this dialect: lookup in a complete binary search tree of seven nodes,
+Lookup in a complete binary search tree of seven nodes,
 stored in breadth-first order after the query.  A loop of three steps, one per level, carries the
 node index, a found flag, and the value of the node found; the node index advances at every step,
 and the flag and value change only at the first match.

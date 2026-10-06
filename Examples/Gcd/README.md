@@ -2,13 +2,10 @@
 
 ## What it is
 
-This example stands for [the earlier system's Demo
-6](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-6/README.md),
-which maps a one-word array `[x]` to `[gcd(x, 42)]` and returns an array of any other length
-unchanged.  [The request](request.txt) here asks for the greatest common divisor of any two words,
-by Euclid's remainder loop, with `gcd a 0 = a`.  The earlier system's function is this one with the
-second argument fixed at 42 and an array wrapper.  [The specification](Spec.lean) states it with
-Lean's `Nat.gcd`, as the earlier system's did.
+This example takes a request in English to a specification, a program, and a theorem that the
+module's bytes compute the specification.  [The request](request.txt) asks for the greatest
+common divisor of any two words, by Euclid's remainder loop, with `gcd a 0 = a`.  [The
+specification](Spec.lean) states it with Lean's `Nat.gcd`.
 
 [The program](Program.lean) is tail recursive: `gcd a b` is `a` when `b = 0` and `gcd b (a % b)`
 otherwise, and it terminates because `a % b < b`.  The compiler translates the tail recursion into a
@@ -25,9 +22,8 @@ loop, so a call makes no further calls.  [The module definition](Module.lean) co
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
 `Quot.sound`.  `gcd_implements` follows from `gcd_step`, one theorem about a run of the loop body,
-by the rule of the tail-recursion template, and `gcd_eq` follows from `Nat.gcd_rec` by induction on
-the second argument.  The earlier system's annotation-free proof took 191 lines for one 1,770-byte
-binary.
+by the rule of the tail-recursion template.  `gcd_eq` follows from `Nat.gcd_rec` by induction on the
+second argument.
 
 ## Running it
 
