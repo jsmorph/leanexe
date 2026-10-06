@@ -165,3 +165,22 @@ The proofs remain about the Lean implementation. They do not prove that VM
 instructions establish the heap assumptions, that the compiler is correct,
 or that the emitted WASM preserves Lean semantics. Those obligations are
 distinct from the collector theorem.
+
+## Concrete frames, traversal, and fuel (2026-10-06)
+
+`Frame.lean` checks the exact retirement and advance write sequences, cell
+effects, unchanged registers, and preserved shape. Retirement preserves the
+method, enclosing activation, and slots while setting the PC to dead and
+clearing caller and operands. These results refer to the concrete array
+operations, not the earlier separate activation model.
+
+`Traversal.Path` represents actual tagged cells and next words. `walk_path`
+and `lexical_path` prove selection from those paths, with zero after the end
+and the actual capacity clamp. The path proof requires a nonzero tag so a
+zero handle terminates traversal; the VM's tags 7 and 5 satisfy that condition.
+
+`run_eq_iterate` proves equivalence between the fuelled loop and repeated VM
+steps, since finished and error states are absorbing. `run_resume` proves
+exact state equality under fuel splitting, with an explicit no-wrap bound on
+the fuel sum. These are control and fuel facts, not a proof of instruction
+semantics or of the VM establishing the collector's heap assumptions.

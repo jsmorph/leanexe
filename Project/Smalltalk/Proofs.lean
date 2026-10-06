@@ -7,3 +7,5 @@ import Project.Smalltalk.Graph
 import Project.Smalltalk.MarkInvariant
 import Project.Smalltalk.ScanInvariant
 import Project.Smalltalk.Collector
+import Project.Smalltalk.Execution
+import Project.Smalltalk.Traversal

@@ -259,6 +259,19 @@ the supported tags. It also assumes phase is not 4. It allows cycles, repeated
 pointers, arbitrary initial marks, and any old free-list order. It does not
 assume marking is correct, spare worklist space, or a valid old free list.
 
+`Project/Smalltalk/Frame.lean` checks the concrete frame writes. Retirement
+sets the PC to dead, clears caller and operands, and preserves the remaining
+fields, other cells, registers, and arena shape. Advance increments the PC,
+replaces operands, and preserves all other cell words and registers.
+`Traversal.lean` proves that concrete `walk` and `lexical` return the selected
+handle from a represented path, or zero after its end, using the actual
+capacity-clamped traversal count.
+
+`Project/Smalltalk/Execution.lean` proves that `run` performs the stated number
+of steps with finished and error states absorbing. `run_resume` proves that
+two successive runs agree with their combined fuel when the sum is below
+2^64. This is a fuel theorem; it does not specify individual instructions.
+
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
 including its dependencies, and permits only Lean's standard axioms
 `propext`, `Quot.sound`, and `Classical.choice`. It rejects admitted proofs and
