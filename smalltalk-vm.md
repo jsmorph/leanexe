@@ -201,8 +201,20 @@ a cell index from 1 through capacity.
 `Project/Smalltalk/Allocation.lean` proves the complete word-level effect of
 the concrete `Arena.allocateCell`, the contents of its new cell, preservation
 of every other cell, and preservation of arena shape. These theorems require
-`Shape` and a valid free-head handle. They do not yet prove that the head is
-free, that the free list is complete, or that its count is correct.
+`Shape` and a valid free-head handle.
+
+`Project/Smalltalk/FreeList.lean` defines a valid free list using the array's
+actual head, count, cell tags, and next words. Its handles are distinct, within
+capacity, and contain exactly the zero-tagged cells. `allocate_valid` proves
+that allocating a nonzero tag from a nonempty valid list removes exactly its
+head, preserves the remaining order, decrements the count once, and preserves
+arena shape and list validity. `allocate_empty_preserves_cells` proves that
+an empty valid list produces error 9 without changing any cell.
+
+`tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
+including its dependencies, and rejects all axioms except `propext` and
+`Quot.sound`. The test driver runs this check. The proof journal is
+`smalltalk-proof-journal.md`.
 
 `LeanExe/Smalltalk/Control.lean` defines separate list models for first-method
 lookup, inherited lookup with a limit, and return through a live method

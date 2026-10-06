@@ -19,3 +19,5 @@ run_cmd do
 #print axioms Project.Smalltalk.Allocation.allocateCell_preserves_other
 #print axioms Project.Smalltalk.Allocation.allocateCell_register
 #print axioms Project.Smalltalk.Allocation.allocateCell_shape
+#print axioms Project.Smalltalk.FreeList.allocate_valid
+#print axioms Project.Smalltalk.FreeList.allocate_empty_preserves_cells
