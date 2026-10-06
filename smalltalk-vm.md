@@ -305,7 +305,17 @@ then handle 1 for locals. It preserves existing allocated cells, pointer types,
 and non-construction registers, and consumes exactly one cell per slot. The
 natural-number budget prevents count wrap and leaves one cell for activation
 allocation. Its inputs are derived from accepted sends or receiver-only entry;
-the final activation allocation remains unfinished.
+the final activation allocation is checked separately.
+
+`ActivationAllocation` proves a one-cell activation allocation stores the method,
+entry PC, caller, lexical parent, slot list, and empty operand stack, then updates
+the current root and clears register 19. `ActivationConstruction.enterReady_effect`
+composes it with the binding loop to prove the complete actual `enterReady`.
+The operation preserves heap validity, pointer types, original allocated cells,
+and other registers, and consumes exactly `arity + locals + 1` cells. Its
+assumptions include the natural free-cell budget, valid binding inputs, and
+zero-or-activation caller and lexical pointers. Public calls and boot still need
+to establish these assumptions across reservation and caller updates.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
