@@ -228,8 +228,8 @@ existing-mark and new-mark branches. The new-mark result assumes worklist space.
 the pointer fields listed above. `sweep_correct` connects the concrete sweep
 to that definition: given exact marking, it preserves reachable payloads and
 builds a valid free list containing exactly the unreachable handles. This is
-conditional; there is no proof yet that the complete marking loop supplies
-exact marking.
+conditional on exact marking; the complete marking theorem supplies that
+condition under the valid-heap assumptions below.
 
 `Project/Smalltalk/Worklist.lean` relates the actual worklist words and count
 to a list of handles. `MarkInvariant.lean` proves that checked `mark` either
@@ -242,8 +242,22 @@ handle and marks exactly its pointer fields. `ScanInvariant.lean` proves that
 a scan preserves the basic invariant, moves one distinct handle to the scanned
 list, and closes its outgoing edges. Closure is stated separately because
 the edges are still being marked between pop and the end of a scan. Cycles and
-repeated pointers are allowed. The complete scan loop still needs a proof
-that it finishes within capacity and marks every reachable handle.
+repeated pointers are allowed. `Marking.lean` proves that the actual bounded
+scan loop finishes within capacity and marks exactly the reachable handles.
+
+`Project/Smalltalk/Collector.lean` proves `collect_correct` for the actual
+`Arena.collect`: arena shape is preserved, every reachable cell keeps its
+handle, tag, and payload words, and the rebuilt free list contains exactly
+the unreachable handles, without duplicates, with the correct count.
+`collect_register` proves that registers other than 8, 9, 10, 11, and 18 are
+unchanged. `collect_error_unchanged` checks the already-error case.
+
+The collector theorem assumes `Graph.Valid`: valid arena shape; every nonzero
+root names an allocated valid handle; every pointer from an allocated cell
+names an allocated valid handle or zero; and every allocated cell has one of
+the supported tags. It also assumes phase is not 4. It allows cycles, repeated
+pointers, arbitrary initial marks, and any old free-list order. It does not
+assume marking is correct, spare worklist space, or a valid old free list.
 
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
 including its dependencies, and permits only Lean's standard axioms
@@ -260,7 +274,7 @@ laws reports only `propext`; the completed-first-frame rejection law uses none.
 
 The list-model proofs do not refer to `Runtime.lookup` or `Runtime.ret`.
 There is no theorem connecting the concrete VM to those models,
-no collector correctness theorem, no source compiler correctness theorem, and
+no complete VM instruction correctness theorem, no source compiler correctness theorem, and
 no proof of the emitted WASM module. The checks above are execution tests.
 
 Lookup runs its full `classes * (methods + 1)` loop even after finding a method.
