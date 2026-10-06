@@ -26427,4 +26427,4 @@ system".
 - [x] A priori side, interface, and update bounds
 - [x] A posteriori flux bounds and the balance with exact boundary fluxes
 - [x] READMEs list the new theorems
-- [ ] Merge `euler` into `main`
+- [x] Merge `euler` into `main` (fast-forward)
