@@ -81,4 +81,13 @@ theorem unwind_deterministic {target chain ra ta rb tb}
     (ha : Unwinds target chain ra ta) (hb : Unwinds target chain rb tb) : (ra, ta) = (rb, tb) :=
   Option.some.inj ((unwind_complete ha).symm.trans (unwind_complete hb))
 
+theorem unwind_prefix {target chain retired tail} (h : Unwinds target chain retired tail) :
+    ∃ frames home, chain = frames ++ home :: tail ∧ home.id = target ∧ home.live = true ∧
+      retired = (frames ++ [home]).map retire := by
+  induction h with
+  | here live same => exact ⟨[], _, rfl, same, live, rfl⟩
+  | @next _ _ _ a live different _ ih =>
+    rcases ih with ⟨frames, home, chain, same, homeLive, retired⟩
+    exact ⟨a :: frames, home, by simp [chain], same, homeLive, by simp [retired]⟩
+
 end Project.Smalltalk.Control

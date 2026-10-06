@@ -7,7 +7,7 @@ The host allocates the input and arena arrays; execution stays inside WASM.
 
 Reconstruction is in progress. The control proofs pass Lean checking, and all
 59 programs pass natively with both ordinary and stress GC: 118 runs. This
-includes a 10,000-iteration VM loop in 24 cells. The compiler rejects 16 invalid
+includes a 10,000-iteration VM loop in 24 cells. The compiler rejects 19 invalid
 source inputs. WASM compilation and execution remain pending. The branch is
 committed and pushed in checkpoints; measured WASM results will be added after
 the full driver passes.
