@@ -438,3 +438,26 @@ composition. The limit was not increased. Closed word comparisons also needed
 ordinary simplification after `simp only` left conditional comparisons behind.
 The combined build and axiom audit pass. No executable definitions changed;
 global VM invariants and the remaining instructions still need proofs.
+
+## Literal construction and twelve instruction cases (2026-10-06)
+
+`LiteralHeap` proves the actual two-cell literal construction preserves heap
+validity. The first allocation leaves at least one cell for the operand link.
+Integer and class literals have no pointer fields. Block construction requires
+a valid captured pointer; public block literals capture the rooted current
+activation and preserve it across reservation. There is no collection between
+the two allocations.
+
+`InstructionHeap` checks local and field loads and stores, jump writes, and
+boolean branches. Selected slots are zero or reachable links. Duplication's
+top value and canonical literals satisfy the live-value condition for push.
+`ExecuteHeap` composes these results for actual opcodes 0 through 9, 14, and 15.
+`step_covered_valid` includes the actual step guards and stopped-state branch.
+The opcode condition remains explicit, and these results establish heap
+preservation rather than complete instruction semantics.
+
+The initial capacity-count arithmetic check retained the opaque natural value
+of the literal UInt64 word 2. Explicitly changing that bound to natural 2 lets
+the arithmetic tactic use the free-list lengths. No limits or executable
+definitions changed. The combined build and axiom audit pass. Opcodes 10 through
+13, boot, method lookup, and a preserved complete VM invariant remain unfinished.

@@ -151,4 +151,19 @@ theorem fieldSlot_live {s : Array UInt64} {cap : Nat}
   · simp only [rejected, ite_true]; exact Or.inl rfl
   · simp only [rejected]; exact slot
 
+theorem fieldSlot_tag {s : Array UInt64} {index : UInt64}
+    (nonzero : fieldSlot s index ≠ 0) : kind s (fieldSlot s index) = 7 := by
+  let h := walk s (if kind s (self s (read s 2)) == 4 then field s (self s (read s 2)) 3 else 0) index
+  change (if index ≥ read s 14 || kind s h != 7 then 0 else h) ≠ 0 at nonzero
+  change kind s (if index ≥ read s 14 || kind s h != 7 then 0 else h) = 7
+  by_cases rejected : (decide (index ≥ read s 14) || kind s h != 7) = true
+  · simp only [rejected, ite_true] at nonzero; exact False.elim (nonzero rfl)
+  · simp only [rejected]
+    change kind s h = 7
+    apply Classical.byContradiction
+    intro different
+    have test : (kind s h != 7) = true := bne_iff_ne.mpr different
+    simp only [test, Bool.or_true] at rejected
+    exact rejected True.intro
+
 end Project.Smalltalk.Reachability

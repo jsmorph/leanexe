@@ -26,3 +26,6 @@ import Project.Smalltalk.StackWrite
 import Project.Smalltalk.AllocationEffect
 import Project.Smalltalk.StackPush
 import Project.Smalltalk.PushReservation
+import Project.Smalltalk.LiteralHeap
+import Project.Smalltalk.InstructionHeap
+import Project.Smalltalk.ExecuteHeap
