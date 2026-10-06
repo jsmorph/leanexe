@@ -26,7 +26,10 @@ import Project.RemoveZero.Spec
 import Project.PrimeFactors.Spec
 import Project.Lookup.Spec
 import Project.Below100.Spec
+import Project.TreeLookup.Spec
+import Project.TreeLookup.Samples
 import Project.Gcd.Spec
+import Project.Demo.Host
 
 /-! Test cases for the modules other than `gpt.wasm` and `prng.wasm`, computed by native
 Lean.  Each line is `module|export|result kind|host arguments|expected result`, with
@@ -869,6 +872,9 @@ def demoCases : IO Unit := do
       [100, 200, 300, 400, 500, 600, 700, 800], [1, 2, 3, 4, 5, 6, 7, 8, 9], [max, 0, 99, 100]] do
     line "below100" "compute" "array-u64" [arrU xs]
       (words (Project.Below100.expected xs.toArray).toList)
+  for l in Project.Demo.lines "treeLookup" "compute" Project.TreeLookup.expected
+      Project.TreeLookup.samples do
+    IO.println l
 
 def main : IO Unit := do
   scaleCases; gcdCases; sumArrayCases; pairSumCases; sumCountCases; axpyCases; scaledHypotCases

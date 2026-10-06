@@ -266,6 +266,8 @@ import Project.RemoveZero.Verify
 import Project.PrimeFactors.Verify
 import Project.Lookup.Verify
 import Project.Below100.Verify
+import Project.Demo.Host
+import Project.TreeLookup.Verify
 import Project.Euler.RealState
 import Project.Euler.Enclosure
 import Project.Euler.Cfl
