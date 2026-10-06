@@ -114,4 +114,10 @@ theorem reserve_register {s : Array UInt64} {cap : Nat} {r : UInt64}
     exact effect.registers r bound h8 h9 h10 h11 h18
   · exact effect.registers r bound h8 h9 h10 h11 h18
 
+theorem reserve_zero (s : Array UInt64) : reserve s 0 = s := by
+  have short : ¬ read s 9 < (0 : UInt64) := by
+    simp [UInt64.lt_iff_toNat_lt]
+  simp only [reserve, stressCollection, spaceCollection, bne_self_eq_false, Bool.and_false,
+    Bool.false_eq_true, ite_false, short, decide_false, ite_self]
+
 end Project.Smalltalk.Reservation

@@ -60,5 +60,9 @@ run_cmd do
 #print axioms Project.Smalltalk.Heap.fail_valid
 #print axioms Project.Smalltalk.Reservation.reserve_correct
 #print axioms Project.Smalltalk.Reservation.reserve_register
+#print axioms Project.Smalltalk.ReturnReservation.reserve_prefix
+#print axioms Project.Smalltalk.ReturnReservation.returnReserved_delivers
+#print axioms Project.Smalltalk.ReturnReservation.ret_delivers
+#print axioms Project.Smalltalk.ReturnReservation.ret_finished
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
