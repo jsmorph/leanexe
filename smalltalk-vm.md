@@ -236,9 +236,14 @@ to a list of handles. `MarkInvariant.lean` proves that checked `mark` either
 keeps that list or appends one reachable handle. Its invariant relates actual
 mark words to the scanned and pending handles and excludes duplicates. From
 distinct valid handles, `mark_holds` derives worklist space for a new handle.
-The clearing and root-marking results establish this invariant and cover all
-six roots. The actual scan loop still needs a proof that it preserves the
-invariant, finishes within capacity, and marks every reachable handle.
+The clearing and root-marking results establish the basic invariant and cover
+all six roots. `ScanMemory.lean` proves that `scanCell` pops the represented top
+handle and marks exactly its pointer fields. `ScanInvariant.lean` proves that
+a scan preserves the basic invariant, moves one distinct handle to the scanned
+list, and closes its outgoing edges. Closure is stated separately because
+the edges are still being marked between pop and the end of a scan. Cycles and
+repeated pointers are allowed. The complete scan loop still needs a proof
+that it finishes within capacity and marks every reachable handle.
 
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
 including its dependencies, and permits only Lean's standard axioms

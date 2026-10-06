@@ -19,6 +19,27 @@ def Edge (s : Array UInt64) (parent child : UInt64) : Prop :=
 def ValidTag (tag : UInt64) : Prop :=
   tag = 1 ∨ tag = 2 ∨ tag = 4 ∨ tag = 5 ∨ tag = 6 ∨ tag = 7 ∨ tag = 8
 
+def pointers (s : Array UInt64) (h : UInt64) : List UInt64 :=
+  let tag := field s h 0
+  if tag = 4 ∨ tag = 6 then [field s h 3]
+  else if tag = 5 then [field s h 4, field s h 5, field s h 6, field s h 7]
+  else if tag = 7 then [field s h 2, field s h 3] else []
+
+theorem pointer_witness (s : Array UInt64) (h child k : UInt64) (hk : k.toNat < 8) :
+    (∃ j, j.toNat < 8 ∧ j = k ∧ field s h j = child) ↔ child = field s h k := by
+  constructor
+  · rintro ⟨j, _, rfl, eq⟩; exact eq.symm
+  · intro eq; exact ⟨k, hk, rfl, eq.symm⟩
+
+theorem edge_pointers {s : Array UInt64} {h child : UInt64}
+    (tag : ValidTag (field s h 0)) :
+    Edge s h child ↔ child ≠ 0 ∧ child ∈ pointers s h := by
+  rcases tag with t | t | t | t | t | t | t <;>
+    simp [Edge, PointerField, pointers, t, and_or_left, or_and_right, exists_or,
+      pointer_witness s h child 2 (by decide), pointer_witness s h child 3 (by decide),
+      pointer_witness s h child 4 (by decide), pointer_witness s h child 5 (by decide),
+      pointer_witness s h child 6 (by decide), pointer_witness s h child 7 (by decide)]
+
 inductive Reachable (s : Array UInt64) : UInt64 → Prop
   | root {h} : Root s h → Reachable s h
   | next {parent child} : Reachable s parent → Edge s parent child → Reachable s child

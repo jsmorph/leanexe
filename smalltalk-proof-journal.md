@@ -118,3 +118,24 @@ their list arguments explicitly, and rewriting the proposition inside an `if`
 required `simp only` so its dependent decision instance was transported too.
 These are proof changes; no executable definition changed. The main results
 and all their dependencies pass the axiom audit.
+
+## Concrete scan step (2026-10-06)
+
+`top_word` and `pop_represents` check the actual worklist read and decrement,
+including subtraction and address bounds. `scanCell_eq` relates the concrete
+scan to marking the exact pointer-field list. `edge_pointers` connects that
+list to the independent graph-edge definition for every valid cell tag.
+
+The original combined invariant required closure for every scanned cell at
+every intermediate point. That condition is premature immediately after pop,
+before marking its children. Closure is now a separate `Closed` predicate;
+the basic `Holds` facts still cover payloads, registers, worklist contents,
+distinct membership, mark words, and reachability. `scan_holds` proves that a
+whole scan preserves those facts, moves exactly one distinct pending handle
+to the scanned list, preserves prior marked membership, and establishes
+closure for the new scanned cell. It permits cycles and repeated pointers.
+The complete scan-loop termination and reachability proof remains to be done.
+
+The full driver passed with the accumulated proof gate: 136 native executions,
+181 WASM checks, and all CLI checks. The WASM hash remains
+`423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
