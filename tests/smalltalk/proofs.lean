@@ -70,5 +70,8 @@ run_cmd do
 #print axioms Project.Smalltalk.InitializationFree.init_free_list
 #print axioms Project.Smalltalk.InitializationFree.init_valid
 #print axioms Project.Smalltalk.InitializationFree.collect_init_valid
+#print axioms Project.Smalltalk.HeapAllocation.allocate_valid
+#print axioms Project.Smalltalk.HeapAllocation.allocateCell_reachable
+#print axioms Project.Smalltalk.HeapAllocation.allocate_empty_valid
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
