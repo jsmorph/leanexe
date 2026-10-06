@@ -1,5 +1,7 @@
 # Prime factors: a count with multiplicity
 
+## What it is
+
 This example is [main's Demo
 1](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-1/README.md),
 carried to this branch's pipeline.  [The request](request.txt) asks for the number of prime factors
@@ -13,6 +15,8 @@ from the divisor to it, so it needs no fuel parameter, where main's program took
 definition](Module.lean) compiles `countFactors` and `compute` into a 1,613-byte `primeFactors.wasm`
 that exports both.
 
+## What it shows
+
 | Theorem | Statement |
 |---------|-----------|
 | `countFactors_eq` | When every prime factor of `remaining` is at least `divisor`, which is at least 2, `countFactors` adds the number of prime factors of `remaining` to `count`. |
@@ -23,8 +27,9 @@ that exports both.
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
 `Quot.sound`.  Main's proof concerned one binary and took 329 lines.  Here the loop rule of the
 tail-recursion template proves `countFactors_implements` from one theorem about a run of the loop
-body, and the number theory stays in `countFactors_eq`, which concerns the Lean program alone.  The
-module tests run 13 inputs in Wasmtime against `expected`, including 0, 1, 2^63, and 2^64 − 1.
+body, and the number theory stays in `countFactors_eq`, which concerns the Lean program alone.
+
+## Running it
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.PrimeFactors.Verify
@@ -33,3 +38,23 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   build/primeFactors/primeFactors.wasm
 build/tools/leanexe-wasmtime-host call build/primeFactors/primeFactors.wasm compute i64 i64:60
 ```
+
+The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
+[the repository README](../../README.md#commands).  The call prints 4, since 60 = 2 · 2 · 3 · 5.
+[The module tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run 13 inputs in
+Wasmtime against `expected`, including 0, 1, 2^63, and 2^64 − 1.
+
+## Related examples
+
+[`Gcd`](../Gcd/README.md) is tail recursion with a one-word measure.
+[`Lookup`](../Lookup/README.md) and [`TreeLookup`](../TreeLookup/README.md) are the other demos that
+return a value computed by a loop.  The LTG entry
+[`tail-recursion-loop`](../../ltg/entries/tail-recursion-loop/README.md) describes the rule.
+
+## References
+
+- D. E. Knuth, *The Art of Computer Programming*, Vol. 2, *Seminumerical Algorithms*, 3rd ed.,
+  Addison-Wesley, 1997, section 4.5.4, on factoring by trial division.
+- Mathlib's
+  [`Nat.primeFactorsList`](https://leanprover-community.github.io/mathlib4_docs/Mathlib/Data/Nat/Factors.html),
+  which the specification uses.

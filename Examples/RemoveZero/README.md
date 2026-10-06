@@ -1,5 +1,7 @@
 # Remove the first zero
 
+## What it is
+
 This example is [main's Demo
 12](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-12/README.md),
 carried to this branch's pipeline.  [The request](request.txt) asks for an array of at most eight
@@ -14,6 +16,8 @@ first `count` words that keeps the index of the first zero, or `count` when ther
 one.  [The module definition](Module.lean) compiles both functions into a 1,742-byte
 `removeZero.wasm` that exports `firstZero` and `compute`.
 
+## What it shows
+
 | Theorem | Statement |
 |---------|-----------|
 | `firstZero_cases` | `firstZero` gives `count` when the first `count` words hold no zero, and otherwise the index of the first zero. |
@@ -26,6 +30,8 @@ through the core lemmas `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_
 theorem also stated termination with a heap reserve.  Here the theorem allows a trap, and the
 [increment example](../Increment/README.md) shows the total form.
 
+## Running it
+
 ```sh
 tools/leanrun --timeout 60m lake build Examples.RemoveZero.Verify
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
@@ -33,3 +39,24 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
 build/tools/leanexe-wasmtime-host call build/removeZero/removeZero.wasm compute array-u64 \
   array-u64:7,0,9,0
 ```
+
+The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
+[the repository README](../../README.md#commands).  The call prints `[7, 9, 0]`.  [The module
+tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run 10 inputs in Wasmtime against
+`expected`, including the empty array, arrays of zeros, a zero first and last, and nine words.
+
+## Related examples
+
+[`Increment`](../Increment/README.md) builds its result in the same way and has a complete-execution
+theorem.  [`Updates`](../Updates/README.md) removes an element with `eraseIdxIfInBounds`, in place
+when the array is owned.  The LTG entries [`index-loop`](../../ltg/entries/index-loop/README.md) and
+[`array-build`](../../ltg/entries/array-build/README.md) describe the rules.
+
+## References
+
+- [The Lean 4 reference on
+  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.findIdx?`
+  and `Array.eraseIdx!`.
+- [The manual's section on
+  restrictions](../../docs/manual.md#restrictions-and-how-to-write-around-them), on writing around
+  constructs the dialect lacks.
