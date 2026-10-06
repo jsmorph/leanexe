@@ -295,8 +295,17 @@ a valid link with a valid value. It uses the actual bounded walk and typed
 next pointers; it does not assume an acyclic operand list. `ArgumentBinding`
 proves selected argument values valid for accepted sends and receiver-only
 entry. Its `bindOne_effect` connects the actual binding operation to the checked
-one-cell prepend, including its exact effects. The complete binding loop and
-final activation remain unfinished.
+one-cell prepend, including its exact effects.
+
+`BindingPreservation` proves argument walks and selected values remain unchanged
+when existing allocated cells are preserved. `BindingLoop` checks the complete
+actual binding loop. It builds exactly `arity + locals` slots in increasing
+index order: receiver at index 0, arguments selected from the operand stack,
+then handle 1 for locals. It preserves existing allocated cells, pointer types,
+and non-construction registers, and consumes exactly one cell per slot. The
+natural-number budget prevents count wrap and leaves one cell for activation
+allocation. Its inputs are derived from accepted sends or receiver-only entry;
+the final activation allocation remains unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and

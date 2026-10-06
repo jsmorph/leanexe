@@ -39,3 +39,4 @@ import Project.Smalltalk.ConstructionValues
 import Project.Smalltalk.FillLoop
 import Project.Smalltalk.ObjectConstruction
 import Project.Smalltalk.ArgumentBinding
+import Project.Smalltalk.BindingLoop

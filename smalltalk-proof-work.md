@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`1a905957115331af63b5a62cdd93c103fb12412e`.
+`52e6549811bbad606bc1c7df2764d08bd4dec680`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -70,6 +70,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Field-building loop | The complete loop finishes all requested visits, builds exactly the requested handle-1 list, preserves old allocated cells and types, and accounts for all consumed cells; connected to the actual pair-pattern loop | `FillLoop.lean` |
 | Complete object construction | Actual `newReady` stores the class and metadata words, produces the exact requested field-value list, clears scratch register 19, preserves old allocated cells and types, and consumes exactly `fields + 1` cells | `ObjectConstruction.lean` |
 | Argument selection and single binding | Accepted receiver depth establishes every preceding argument link and value; send and receiver-only entry select valid values; actual `bindOne` has the checked one-cell prepend effects | `ArgumentLinks.lean`, `ArgumentBinding.lean` |
+| Complete binding loop | Argument walks and selected values are preserved; every slot is built in increasing index order; exact free count, old cells, pointer types, and non-construction registers are preserved | `BindingPreservation.lean`, `BindingLoop.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -95,18 +96,19 @@ Recent pushed checkpoints:
 | `8111e36d` | Construction link effects and value order |
 | `cb1f5bc9` | Complete field-building loop |
 | `1a905957` | Complete actual object construction |
+| `52e65498` | Actual argument guards and single binding |
 
 ## Current increment
 
-Argument selection and the actual single binding operation pass the combined
-build and axiom audit. An accepted receiver link at depth `nargs` establishes
-valid links and values at every earlier depth. This follows from typed next
-pointers and zero absorption, without an acyclic-list assumption. Selected slot
-values are valid for accepted sends and for receiver-only entry. Actual
-`bindOne` is connected to the checked prepend and its exact effects.
+The complete actual binding loop passes the combined build and axiom audit.
+Argument walks and selected values stay unchanged through construction. The
+loop visits every slot, builds the exact increasing-index slot-value list,
+preserves old allocated cells and pointer types, and consumes exactly
+`arity + locals` cells. Its natural-number budget prevents word wrap and leaves
+one free cell for final activation allocation. Send and entry inputs are
+derived from the already checked argument guard and receiver-only cases.
 
-Next are the complete activation binding loop and slot ordering, followed by
-final activation allocation. Dispatcher composition of returns,
+Next is final activation allocation. Dispatcher composition of returns,
 exact return path conditions, boot, lookup, and the complete execution invariant
 remain unfinished. All checked proof files are included in this increment; no
 full VM correctness claim is made.
@@ -126,7 +128,8 @@ full VM correctness claim is made.
    the allocation counts, temporary register 19, constructed field/slot order,
    caller and lexical captures, and the final current activation. The original
    reservation must supply every allocation in the construction.
-   Complete object construction is now checked. Activation binding remains.
+   Complete object construction and the activation binding loop are checked.
+   Final activation allocation remains.
    Argument-link validity from the actual receiver-depth guard is now checked.
    Preserve canonical value
    contents as part of the complete state invariant, not just their allocation.
@@ -219,7 +222,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-argument-binding-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-binding-loop-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

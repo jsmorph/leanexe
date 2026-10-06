@@ -605,3 +605,27 @@ bindOne reached the default heartbeat limit. A separate checked value-selection
 equality, applied through congruence of the opaque prepend, avoided that
 expansion. The subsequent focused check passed. No proof limits or executable
 code changed. The combined build and axiom audit pass.
+
+## Complete activation binding loop (2026-10-06)
+
+`BindingPreservation` checks unchanged argument walks through preserved
+allocated cells and unchanged capacity. Its inputs specify exactly the
+argument links needed for non-receiver slots; accepted sends and receiver-only
+entry establish these inputs. Selected values transfer unchanged to the
+current construction heap and remain valid there.
+
+`BindingLoop.Progress` tracks the exact ordered slot list, visited count,
+remaining free count, old cell contents, types, and registers. The natural
+budget bounds arity plus locals by capacity, prevents word wrap, and leaves
+one cell after all slot allocations. The actual index arithmetic selects
+total minus one minus the visit index. Prepending gives the final increasing
+slot order. Length and indexing lemmas make the logical order explicit.
+The projection loop is equated with the actual pair-pattern loop.
+
+The first preservation check exposed a structure field shadowing the args
+word; renaming that field fixed it. The first loop check needed an explicit
+UInt64.size bound for conversion and the zero-replicate lemma. The indexing
+lemma required rewriting the natural index before word conversion rather than
+asking arithmetic to prove a word equality. Subsequent focused checks passed.
+No limits or executable definitions changed. The
+combined build and axiom audit pass. Final activation allocation is next.
