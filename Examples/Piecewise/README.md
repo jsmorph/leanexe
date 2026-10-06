@@ -25,7 +25,7 @@ and order `-0` below `+0`.  The compiler translates negation to `-0.0 - x`, `abs
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  The comparisons rest on `F64Bits.lt_iff`, `le_iff`, and
 `beq_eq`, which equate Lean's comparisons with IEEE comparisons of the bits.  [The design
-record](../../docs/design.md#floating-point) lists the three differences and their compiled forms.
+document](../../docs/design.md#floating-point) lists the three differences and their compiled forms.
 
 ## Running it
 

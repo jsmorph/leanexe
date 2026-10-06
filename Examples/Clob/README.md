@@ -72,5 +72,5 @@ worked examples.
 - M. D. Gould, M. A. Porter, S. Williams, M. McDonald, D. J. Fenn, and S. D. Howison, "Limit Order
   Books," *Quantitative Finance* 13(11):1709–1742, 2013,
   [arXiv:1012.0349](https://arxiv.org/abs/1012.0349).
-- [The design record](../../docs/design.md#decisions), which records the choice of the CLOB as the
-  first program.
+- [The design document](../../docs/design.md#decisions), which gives the reasons for the array
+  operations and in-place updates that the CLOB uses.

@@ -24,7 +24,7 @@ Cranelift's NaN canonicalization.
 | `axpy_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `axpy`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The design record](../../docs/design.md#floating-point)
+`Classical.choice`, and `Quot.sound`.  [The design document](../../docs/design.md#floating-point)
 describes the binary64 equality proofs and the three places where Lean's and WebAssembly's float
 operations differ.  None of the three occurs in this program.
 

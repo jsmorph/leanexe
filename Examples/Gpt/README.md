@@ -36,8 +36,8 @@ The proofs are in [`Verify.lean`](Verify.lean), [`Composites.lean`](Composites.l
 [`Causal.lean`](Causal.lean), [`Exact.lean`](Exact.lean), [`Generation.lean`](Generation.lean), and
 [`Bytes.lean`](Bytes.lean), and they use only the axioms `propext`, `Classical.choice`, and
 `Quot.sound`.  `Implements` allows a stop at `unreachable`, and no theorem bounds the memory of a
-generation.  [The design record](../../docs/design.md#proved) gives the construction of each
-function and the history of the work.
+generation.  [The design document](../../docs/design.md#proved) gives the construction of each
+function.
 
 ## Running it
 
