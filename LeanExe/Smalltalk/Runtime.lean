@@ -55,23 +55,6 @@ def lookup (p : Array UInt64) (owner selector : UInt64) : UInt64 :=
       if i == count then 0 else i + 1,
       if result != 0 then result else if found then i + 1 else 0)).2.2
 
-def programTablesValid (p : Array UInt64) : Bool :=
-  let classes := read p 0
-  let methods := read p 1
-  let validClasses := LeanExe.loop classes true fun i ok =>
-    let c := i + 1
-    let parent := classAt p c 0
-    let inherited := if parent == 0 then true else if parent < c then
-      classAt p parent 2 ≤ classAt p c 2 else false
-    ok && parent < c && classAt p c 1 > 0 && classAt p c 1 ≤ classes &&
-      classAt p c 2 ≤ 1048576 && classAt p c 3 == 0 &&
-      inherited
-  let validMethods := LeanExe.loop methods true fun i ok =>
-    let m := i + 1
-    ok && methodAt p m 0 > 0 && methodAt p m 0 ≤ classes &&
-      methodAt p m 2 > 0 && methodAt p m 2 ≤ 1048576 && methodAt p m 3 ≤ 1048576 &&
-      methodAt p m 4 < read p 2 && methodAt p m 5 ≤ 8
-  validClasses && validMethods && methodAt p (read p 3) 2 == 1 && methodAt p (read p 3) 1 != 0
 def programValid (p : Array UInt64) : Bool :=
   let n := if p.size ≥ 8 then read p 0 else 0
   let m := if p.size ≥ 8 then read p 1 else 0
