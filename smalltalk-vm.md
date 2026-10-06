@@ -244,6 +244,22 @@ the new link in its operand field. `loadSlot_valid` establishes heap preservatio
 for a zero slot or a reachable link slot. The decoder and remaining instructions
 are still unproved.
 
+`LiteralHeap.lean` checks the two-cell construction budget for integer, class,
+and block literals. No collection occurs between constructing the value and
+its operand link. A block's captured activation remains reachable through the
+reservation. `InstructionHeap.lean` checks heap preservation for actual local
+and field access, jump writes, and boolean branches, including rejected inputs.
+
+`ExecuteHeap.execute_covered_valid` connects these results to the actual
+dispatcher for opcodes 0 through 9, 14, and 15. It requires a valid heap,
+a non-error phase, and an activation in the current register.
+`step_covered_valid` includes the actual phase, activation, method, PC, and
+operand-format guards for those opcodes. It requires heap validity and the
+covered opcode; rejected instructions and stopped states preserve the heap.
+These are heap-preservation results. They do not prove the complete instruction
+semantics. Opcodes 10 through 13, VM boot, method lookup, and the invariant
+needed to compose all instructions remain unfinished.
+
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
 preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`
 proves that its rebuilt free list contains exactly the unmarked handles,

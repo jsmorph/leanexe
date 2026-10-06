@@ -84,5 +84,10 @@ run_cmd do
 #print axioms Project.Smalltalk.StackPush.pushReady_delivers
 #print axioms Project.Smalltalk.PushReservation.push_correct
 #print axioms Project.Smalltalk.PushReservation.loadSlot_valid
+#print axioms Project.Smalltalk.LiteralHeap.literalReady_valid
+#print axioms Project.Smalltalk.LiteralHeap.literal_block_valid
+#print axioms Project.Smalltalk.InstructionHeap.branch_valid
+#print axioms Project.Smalltalk.ExecuteHeap.execute_covered_valid
+#print axioms Project.Smalltalk.ExecuteHeap.step_covered_valid
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
