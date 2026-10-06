@@ -26326,3 +26326,47 @@ paper/gpt2-quantized-report/check-evidence.py` starts under uv and then fails be
 `proofs/artifacts/…/program.wasm`, which exists only on main, and `paper/drone-verification-report/build.py`
 was not run, since it rewrites the published PDF.
 
+
+### Compiler correctness: analysis
+
+On 2026-10-06 the user asked an agent how to prove the compiler correct.  Its read-only report
+separates the two steps.  `compile` is a Lean function with a rule per IR statement and template,
+proved as a program logic over Talos, and the IR has no semantics of its own, as the design record
+decided.  The Lean-to-IR step is meta code over `Lean.Expr`, so no Lean theorem quantifies over its
+runs, and each program's proof ties the IR to the source: it picks the rules, discharges index and
+frame side conditions, supplies loop bodies and termination measures, and carries heap facts across
+calls.
+
+| Option | Proved once | Per program | Fit with the design commitments |
+|---|---|---|---|
+| (a) Translation validation by a tactic | One judgment, the rules restated in it, and an untrusted tactic | Measures, `Float.ofBits` premises, budgets, and source theorems | Fits all; the compiler stays untrusted and unchanged |
+| (b) Deep embedding, verified compiler, reflection | A source syntax, its denotation, and one compiler theorem | `denote = f` by `rfl`, or `eq_def` and induction | Grows the system and delays the first bytes theorem |
+| (c) An IR semantics and `compile_simulates` | The semantics and a simulation proof | Unchanged | Reverses the one-semantics decision and gains nothing alone |
+| (d) Relational compilation by proof search | As (a), plus a search that emits IR | As (a) | Fits most commitments, but replaces the compiler |
+
+The report recommends (a), which the user named on 2026-09-28: when every rule a program uses has a
+proved lemma, a tactic assembles the proof.  Its sketch of the judgment, `Computes`, carries a
+context that maps each Lean variable to its locals and a mode (scalar, borrowed, owned, or
+temporary) and generalizes `Live` and `State.Frame`.  The proposed increments are scalars, loops,
+and tail recursion; owned and temporary arrays, which would retire `tools/gpt_composites.py`; and
+trees with `TripleA` forms of the recursion and update rules, which have none today.  The report
+names elaboration cost, the hand techniques of the Euler proofs, and the form of the judgment as
+the main risks.
+
+Open questions for the user:
+
+- [ ] The goal: an automatic proof for every accepted program (a), or one theorem over a reflected
+  source language (b).
+- [ ] The form of the judgment, in particular temporaries of mixed types and moves.
+- [ ] Whether to add an IR semantics, against the current decision.
+- [ ] Whether rule-directed search should eventually replace `LeanExe/Compiler/Scalar.lean`.
+- [ ] Whether the tactic covers `ImplementsA false`, with budgets as hints or hand proofs.
+- [ ] Whether to drop constructs whose rules need per-program premises, such as `Float.ofBits`.
+- [ ] Whether hints should now carry modes and termination measures.
+
+References: Pnueli, Siegel, and Singerman, "Translation Validation," TACAS 1998; Necula,
+"Translation Validation for an Optimizing Compiler," PLDI 2000; Tristan and Leroy, "Formal
+Verification of Translation Validators," POPL 2008; Mullen et al., "Œuf: Minimizing the Coq
+Extraction TCB," CPP 2018; Myreen and Owens, "Proof-Producing Synthesis of ML from Higher-Order
+Logic," ICFP 2012; Pit-Claudel et al., "Relational Compilation for Performance-Critical
+Applications," PLDI 2022.
