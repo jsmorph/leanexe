@@ -300,7 +300,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 18) incrMoved 
         refine ⟨p + 8, s5 a b, k + 1, s5 a b, rfl, rfl, ?_, ?_⟩
         · rw [h1, hs1]
           have := node_bound hArg hR1 hR2
-          simp only [w0, Wasm.Mem.write64_pages]
+          simp only [w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h1]
           exact ⟨rfl, rfl⟩
@@ -309,7 +309,7 @@ theorem incr_rec : ∀ t, Rebuilds (compile treeMoves.funcs) (2 + 18) incrMoved 
         refine ⟨p + 16, s5 a b, b, s5 a b, rfl, rfl, ?_, ?_⟩
         · rw [h2, hs2]
           have := node_bound hArg hR1 hR2
-          simp only [w1, w0, Wasm.Mem.write64_pages]
+          simp only [w1, w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h2]
           exact ⟨rfl, rfl⟩
@@ -1616,7 +1616,7 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 20) addAllMo
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 8, sv, k + rootKeyOf a, sv, rfl, rfl, ?_, ?_⟩
         · rw [h1, hs1]
-          simp only [w0, Wasm.Mem.write64_pages]
+          simp only [w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h1]
           exact ⟨rfl, rfl⟩
@@ -1624,7 +1624,7 @@ theorem addAll_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 20) addAllMo
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 16, sv, q2, sv, rfl, rfl, ?_, ?_⟩
         · rw [h2, hs2]
-          simp only [w1, w0, Wasm.Mem.write64_pages]
+          simp only [w1, w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h2]
           exact ⟨rfl, rfl⟩
@@ -2023,7 +2023,7 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 21) leftS
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 8, sv, k + rootKeyOf g, sv, rfl, rfl, ?_, ?_⟩
         · rw [h1, hs1]
-          simp only [w0, Wasm.Mem.write64_pages]
+          simp only [w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h1]
           exact ⟨rfl, rfl⟩
@@ -2031,7 +2031,7 @@ theorem leftSpine_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 21) leftS
         rintro s st ⟨rfl, rfl⟩
         refine ⟨p + 16, sv, 0, sv, rfl, rfl, ?_, ?_⟩
         · rw [h2, hs2]
-          simp only [w1, w0, Wasm.Mem.write64_pages]
+          simp only [w1, w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h2]
           exact ⟨rfl, rfl⟩

@@ -9,10 +9,10 @@ See [smalltalk-vm.md](smalltalk-vm.md) for commands, formats, collection, tests,
 and proof limits, and [smalltalk-compilers.md](smalltalk-compilers.md) for compiler
 options and the unimplemented CSOM adapter.
 
-LeanExe compiles Lean functions to WebAssembly and proves, for each compiled
-function, that the bytes compute exactly the Lean function.  A compiler, which
-is not trusted, translates a Lean definition to a small IR during elaboration
-and records hints for the prover.  `compile` translates the IR to a module of
+LeanExe compiles Lean functions to WebAssembly. Correctness proofs are checked
+separately; compilation alone does not establish correctness. The compiler
+translates a Lean definition to an intermediate instruction form (IR) during
+elaboration and records hints for the prover. `compile` translates the IR to a module of
 Talos, a WebAssembly interpreter written in Lean, and `encode` produces the
 bytes.  A proof per function establishes `Implements`: from any store that
 satisfies the runtime invariant, the exported function either traps at

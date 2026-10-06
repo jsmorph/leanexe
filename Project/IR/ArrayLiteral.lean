@@ -147,7 +147,7 @@ theorem Stmt.arrayLiteral_specA {typeIdx scratch dst : Nat} {values : List (Expr
   have hPrefix : UInt64Array.PrefixAt store2 ptr words.toArray 0 := by
     refine UInt64Array.PrefixAt.empty _ _ _ ?_ ?_ (Memory.read64_write64 ..)
     · simp only [List.size_toArray]; subst hPtrDef; omega
-    · simp only [store2, Wasm.Mem.write64_pages, List.size_toArray]; subst hPtrDef; omega
+    · simp only [store2, Project.TalosPrelude.write64_pages, List.size_toArray]; subst hPtrDef; omega
   refine Stmt.seq_spec (M := fun s t => s = heap.allocateStore initial need 1 ∧ t = s1) ?_
     (Stmt.seq_spec (M := fun s t => s = store2 ∧ t = s1) ?_
       ((Stmt.storeElements_spec hDst values 0 store2 s1 (by simp [hLength])

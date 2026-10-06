@@ -164,13 +164,13 @@ theorem applyEvents_pages (start : Mem × UInt64) (events : List RelEvent) :
             applyEvents (start.1.write64 ((p - 40).toUInt32) (rc - 1), start.2)
               rest from rfl]
           rw [ih]
-          exact Mem.write64_pages ..
+          exact Project.TalosPrelude.write64_pages ..
       | free p =>
           rw [show applyEvents start (.free p :: rest) =
             applyEvents ((start.1.write64 ((p - 40).toUInt32) 0).write64
               ((p - 8).toUInt32) start.2, p) rest from rfl]
           rw [ih]
-          rw [Mem.write64_pages, Mem.write64_pages]
+          rw [Project.TalosPrelude.write64_pages, Project.TalosPrelude.write64_pages]
 
 theorem read64_applyEvents_ne (start : Mem × UInt64) (events : List RelEvent)
     (b : UInt32) (_hb : b.toNat + 8 ≤ 4294967296)

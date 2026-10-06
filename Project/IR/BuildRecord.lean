@@ -414,7 +414,7 @@ theorem Stmt.buildRecords_specA [Scalar α] [Inhabited α] {typeIdx scratch dst 
   have hPrefix2 : UInt64Array.PrefixAt store2 ptr all 0 := by
     refine UInt64Array.PrefixAt.empty _ _ _ ?_ ?_ ?_
     · rw [hAllSize]; omega
-    · simp only [store2, Wasm.Mem.write64_pages, hAllSize]; omega
+    · simp only [store2, Project.TalosPrelude.write64_pages, hAllSize]; omega
     · rw [hAllSize, ← hWords]; exact Memory.read64_write64 ..
   have hWrites2 : Memory.WritesRange storeA store2 ptr.toNat (ptr.toNat + 8 * (all.size + 1)) :=
     Memory.WritesRange.write64 _ ptr.toUInt32 _ _ _ (by omega) (by omega)

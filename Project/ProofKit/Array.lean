@@ -201,7 +201,7 @@ theorem At.write64After {store : Store Unit} {ptr : UInt64}
     (h : At store ptr values) :
     At { store with mem := store.mem.write64 address value } ptr values := by
   apply h.frameBefore hAfter
-  · exact Mem.write64_pages ..
+  · exact Project.TalosPrelude.write64_pages ..
   · intro index hIndex
     exact write64_bytes_before store.mem address value hIndex
 

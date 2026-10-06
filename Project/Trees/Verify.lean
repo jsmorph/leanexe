@@ -957,7 +957,7 @@ theorem leftSizes_rec : ∀ t, Rebuilds (compile trees.funcs) (2 + 20) leftSizes
         refine ⟨p + 8, s7 a b, c, s7 a b, rfl, rfl, ?_, ?_⟩
         · rw [h1, hs1]
           have := node_bound hArg hR1 hR2
-          simp only [w0, Wasm.Mem.write64_pages]
+          simp only [w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h1]
           exact ⟨rfl, rfl⟩
@@ -966,7 +966,7 @@ theorem leftSizes_rec : ∀ t, Rebuilds (compile trees.funcs) (2 + 20) leftSizes
         refine ⟨p + 16, s7 a b, b, s7 a b, rfl, rfl, ?_, ?_⟩
         · rw [h2, hs2]
           have := node_bound hArg hR1 hR2
-          simp only [w1, w0, Wasm.Mem.write64_pages]
+          simp only [w1, w0, Project.TalosPrelude.write64_pages]
           omega
         · rw [h2]
           exact ⟨rfl, rfl⟩

@@ -75,7 +75,7 @@ theorem Stmt.storeSlots_spec {scratch dst : Nat} {before : State} {ptr : UInt64}
         Memory.WritesRange.write64 _ _ _ _ _ (by omega) (by omega)
       refine Stmt.seq_spec (M := fun s t => s = written ∧ t = next) ?_
         ((ih (index + 1) written next (by omega)
-          (by simpa only [written, Wasm.Mem.write64_pages] using hMemory) hRest
+          (by simpa only [written, Project.TalosPrelude.write64_pages] using hMemory) hRest
           (fun i hi hw => ?_) hNextFrame hNextPtr).mono
             (fun _ _ h => h) ?_)
       · refine Stmt.store_spec.mono ?_ fun _ _ h => h
@@ -168,7 +168,7 @@ theorem Stmt.record_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
   have hW4 : Memory.WritesRange store3 store4 (ptr.toNat - 24) (ptr.toNat + 8 * words.length) :=
     Memory.WritesRange.write64 _ _ _ _ _ (by rw [h8]; simp; omega) (by rw [h8]; simp; omega)
   have hPages4 : store4.mem.pages = store1.mem.pages := by
-    simp only [store4, store3, store2, Wasm.Mem.write64_pages]
+    simp only [store4, store3, store2, Project.TalosPrelude.write64_pages]
   have hSlotsFit : ptr.toNat + 8 * words.length ≤ cap.toNat + ptr.toNat := by omega
   have hMem4 : ptr.toNat + 8 * words.length ≤ store4.mem.pages * 65536 := by
     rw [hPages4]; exact le_trans (by omega) hBlockMemory'
@@ -197,11 +197,11 @@ theorem Stmt.record_spec {typeIdx scratch dst : Nat} {values : List (Expr .u64)}
     rw [hs, ht]
     refine ⟨ptr - 16, s1, UInt64.ofNat values.length, s1, by simp [Expr.eval, hPtr1, U64Op.apply],
       rfl, ?_, rfl, rfl⟩
-    rw [h16]; simp only [store2, Wasm.Mem.write64_pages]; simp; omega
+    rw [h16]; simp only [store2, Project.TalosPrelude.write64_pages]; simp; omega
   · refine Stmt.store_spec.mono (fun s t ⟨hs, ht⟩ => ?_) fun _ _ h => h
     rw [hs, ht]
     refine ⟨ptr - 8, s1, mask, s1, by simp [Expr.eval, hPtr1, U64Op.apply], rfl, ?_, rfl, rfl⟩
-    rw [h8]; simp only [store3, store2, Wasm.Mem.write64_pages]; simp; omega
+    rw [h8]; simp only [store3, store2, Project.TalosPrelude.write64_pages]; simp; omega
   rintro s t ⟨hSlots, hFrame, hPtr, hWrites⟩
   have hKind : Memory.WritesRange store2 s (ptr.toNat - 16) (ptr.toNat + 8 * words.length) :=
     (Memory.WritesRange.write64 _ _ _ _ _ (by rw [h16]; rfl) (by rw [h16]; simp; omega)).trans

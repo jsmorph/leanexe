@@ -31,7 +31,7 @@ theorem WritesRange.mono {initial final : Store α} {start stop lower upper : Na
 theorem WritesRange.write64 (store : Store α) (address : UInt32) (value : UInt64)
     (start stop : Nat) (hStart : start ≤ address.toNat) (hStop : address.toNat + 8 ≤ stop) :
     WritesRange store { store with mem := store.mem.write64 address value } start stop :=
-  ⟨rfl, Mem.write64_pages .., fun _ hOutside => write64_bytes_outside _ _ _ (by omega)⟩
+  ⟨rfl, Project.TalosPrelude.write64_pages .., fun _ hOutside => write64_bytes_outside _ _ _ (by omega)⟩
 
 theorem WritesRange.read64 {initial final : Store α} {start stop : Nat}
     (h : WritesRange initial final start stop) (address : UInt32)

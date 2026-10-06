@@ -158,7 +158,7 @@ theorem splitProgram_spec (module_ : Wasm.Module) (env : HostEnv Unit) (store : 
   simp [wp_simp, frame, Nat.add_assoc]
   rw [if_neg hBound, ← toUInt32_eq_ofNat]
   refine FixedArrayHeader.program_spec module_ env _ _ _ _ (splitBase need choice) need stride
-    rfl ?_ ?_ (by omega) (by simp only [Wasm.Mem.write64_pages]; omega) _ _ ?_
+    rfl ?_ ?_ (by omega) (by simp only [Project.TalosPrelude.write64_pages]; omega) _ _ ?_
   · simp [frame, Locals.get, Nat.add_assoc, splitBase]
   · simp [frame, Locals.get, Nat.add_assoc]
   · simpa [fixedArraySplitMem, frame, Nat.add_assoc] using hNext

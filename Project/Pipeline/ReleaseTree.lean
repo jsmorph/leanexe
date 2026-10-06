@@ -210,7 +210,7 @@ theorem linkChildren_pages (mem : Mem) (pending : UInt64) :
     ∀ (ks : List (UInt64 × List Slot)), (linkChildren mem pending ks).1.pages = mem.pages
   | [] => rfl
   | (c, _) :: ks => by
-      rw [linkChildren, linkChildren_pages _ c ks, Wasm.Mem.write64_pages]
+      rw [linkChildren, linkChildren_pages _ c ks, Project.TalosPrelude.write64_pages]
 
 /-- Linking children changes only their count words. -/
 theorem linkChildren_bytes (mem : Mem) (pending : UInt64) (a : Nat) :

@@ -184,7 +184,7 @@ theorem Stmt.appendInPlace_spec {scratch dst size1 size2 limit index cap src1 sr
     ⟨_, rfl⟩
   have hPrefix1 : UInt64Array.PrefixAt store1 p1 all xs.size := by
     subst hStore1
-    refine ⟨by omega, by simp only [Wasm.Mem.write64_pages]; omega,
+    refine ⟨by omega, by simp only [Project.TalosPrelude.write64_pages]; omega,
       Memory.read64_write64 .., fun i hi hix => ?_⟩
     rw [Memory.read64_write64_disjoint _ _ _ _ (by
       rw [UInt64Array.wordAddress_toNat (words := all.size + 1) (by omega) (by omega)]; omega)]
@@ -304,7 +304,7 @@ theorem Stmt.growFill_spec {releaseType scratch dst limit index src1 : Nat} {loc
   have hPrefix1 : UInt64Array.PrefixAt store1 ptr all 0 := by
     subst hStore1
     refine UInt64Array.PrefixAt.empty _ _ _ (by omega) ?_ (Memory.read64_write64 ..)
-    simp only [Wasm.Mem.write64_pages]
+    simp only [Project.TalosPrelude.write64_pages]
     omega
   have hWrites1 : Memory.WritesRange storeA store1 ptr.toNat (ptr.toNat + 8 * (all.size + 1)) := by
     subst hStore1

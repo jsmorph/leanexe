@@ -83,10 +83,10 @@ theorem freeHead_joinNodes (block : FreeNode) (rest : List FreeNode) :
 theorem joinMem_pages (mem : Mem) (block : FreeNode) (rest : List FreeNode) :
     (joinMem mem block rest).pages = mem.pages := by
   cases rest with
-  | nil => simp [joinMem, Wasm.Mem.write64_pages]
+  | nil => simp [joinMem, Project.TalosPrelude.write64_pages]
   | cons next rest =>
     simp only [joinMem]
-    split <;> simp [Wasm.Mem.write64_pages]
+    split <;> simp [Project.TalosPrelude.write64_pages]
 
 /-- `joinMem` writes only inside the header of `block`. -/
 theorem joinMem_bytes (mem : Mem) {block : FreeNode} (rest : List FreeNode)
@@ -224,7 +224,7 @@ theorem FreeListAt.join {mem : Mem} {block : FreeNode} {rest : List FreeNode}
         have hEndFit : block.root.toNat + (block.capacity + 48 + next.capacity).toNat ≤
             ((mem.write64 (block.root - 32).toUInt32 (block.capacity + 48 + next.capacity)).write64
               (block.root - 8).toUInt32 (freeHead tail)).pages * 65536 := by
-          simp only [Wasm.Mem.write64_pages]
+          simp only [Project.TalosPrelude.write64_pages]
           rw [hCap]
           omega
         rw [hList]
@@ -252,7 +252,7 @@ theorem FreeListAt.join {mem : Mem} {block : FreeNode} {rest : List FreeNode}
           hnTail) hApart
         rw [hList]
         rw [hMem] at hNext ⊢
-        refine .cons h48 h32 (by simp [Wasm.Mem.write64_pages]; omega) ?_ ?_ ?_ hApart hNext
+        refine .cons h48 h32 (by simp [Project.TalosPrelude.write64_pages]; omega) ?_ ?_ ?_ hApart hNext
         · rw [read64_write64_ne _ _ _ _ (by omega)]
           exact hCount
         · rw [read64_write64_ne _ _ _ _ (by omega)]
@@ -292,7 +292,7 @@ def releaseMem (mem : Mem) (root capacity : UInt64) (nodes : List FreeNode) : Me
 theorem releaseMem_pages (mem : Mem) (root capacity : UInt64) (nodes : List FreeNode) :
     (releaseMem mem root capacity nodes).pages = mem.pages := by
   unfold releaseMem
-  split <;> simp [joinMem_pages, Wasm.Mem.write64_pages]
+  split <;> simp [joinMem_pages, Project.TalosPrelude.write64_pages]
 
 theorem freeHead_insertFree (root capacity : UInt64) (nodes : List FreeNode) :
     freeHead (insertFree root capacity nodes) =
@@ -365,13 +365,13 @@ theorem FreeListAt.release {mem : Mem} {nodes : List FreeNode} {root capacity : 
   have hA32 := headerWord_toNat (r := root) (k := 32) (by decide) h48 (by omega)
   simp only [UInt64.reduceToNat] at hA40 hA32
   have hAbove1 : FreeListAt (mem.write64 (root - 40).toUInt32 0) (aboveNodes root nodes) :=
-    Project.ProofKit.FreeListMemory.frame_headers hAbove (by simp [Wasm.Mem.write64_pages]) fun n hn a hLow hHigh => by
+    Project.ProofKit.FreeListMemory.frame_headers hAbove (by simp [Project.TalosPrelude.write64_pages]) fun n hn a hLow hHigh => by
       have hq := hApart n (hAboveMem n hn)
       have := (hAbove.mem_bounds hn).1
       simp only [regionsDisjoint, FreeNode.region] at hq
       exact Project.ProofKit.Memory.write64_bytes_outside _ _ _ (by omega)
   have hBlock := FreeListAt.join (block := { root, capacity }) hAbove1 h48 h32
-    (by simp [Wasm.Mem.write64_pages]; omega) (Project.ProofKit.Memory.read64_write64 _ _ _)
+    (by simp [Project.TalosPrelude.write64_pages]; omega) (Project.ProofKit.Memory.read64_write64 _ _ _)
     (by dsimp only; rw [read64_write64_ne _ _ _ _ (by omega)]; exact hCapacity)
     (fun n hn => hApart n (hAboveMem n hn))
   unfold insertFree releaseMem
@@ -404,7 +404,7 @@ theorem FreeListAt.release {mem : Mem} {nodes : List FreeNode} {root capacity : 
     have hpBytes : ∀ a, p.root.toNat - 48 ≤ a → a < p.root.toNat → mem2.bytes a = mem.bytes a :=
       fun a hLow hHigh => hBytes2 a (by omega)
     have hJoin := FreeListAt.join (mem := mem2) (block := p) hBlock hp48 hp32
-      (by rw [hMem2, joinMem_pages]; simp [Wasm.Mem.write64_pages]; omega)
+      (by rw [hMem2, joinMem_pages]; simp [Project.TalosPrelude.write64_pages]; omega)
       ((read64_header (by decide) (by decide) hp48 (by omega) hpBytes).trans hpHeader.1)
       ((read64_header (by decide) (by decide) hp48 (by omega) hpBytes).trans hpHeader.2)
       (joinNodes_apart h48 h32 (fun n hn => hBounds n (hAboveMem n hn))
@@ -443,7 +443,7 @@ theorem FreeListAt.release {mem : Mem} {nodes : List FreeNode} {root capacity : 
       rcases hOffset with rfl | rfl | rfl <;>
         exact read64_header (by decide) (by decide) hx48 (by omega) hxBytes
     · rw [joinMem_pages, hMem2, joinMem_pages]
-      simp [Wasm.Mem.write64_pages]
+      simp [Project.TalosPrelude.write64_pages]
 
 /-- The walk that stops at the first block above `root` splits the list there. -/
 theorem belowNodes_append {root : UInt64} {visited remaining : List FreeNode}

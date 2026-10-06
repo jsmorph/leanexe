@@ -39,7 +39,7 @@ theorem generatedElementAddress (ptr : UInt64) (index : Nat) :
 
 @[simp] theorem writeElement_pages (store : Store Unit) (ptr : UInt64)
     (index : Nat) (value : UInt64) :
-    (writeElement store ptr index value).mem.pages = store.mem.pages := Mem.write64_pages ..
+    (writeElement store ptr index value).mem.pages = store.mem.pages := Project.TalosPrelude.write64_pages ..
 
 theorem PrefixAt.elementBound {store : Store Unit} {ptr : UInt64}
     {values : Array UInt64} {count : Nat} (h : PrefixAt store ptr values count)

@@ -136,7 +136,7 @@ theorem reuseStore_pages (store : Store Unit) (choice : FreeChoice) (need stride
     (fixedArrayReuseStore store choice need stride).mem.pages = store.mem.pages := by
   unfold fixedArrayReuseStore
   split
-  · simp [fixedArraySplitMem, fixedArrayHeaderMem, Wasm.Mem.write64_pages]
+  · simp [fixedArraySplitMem, fixedArrayHeaderMem, Project.TalosPrelude.write64_pages]
   · exact fitStore_pages store choice stride
 
 theorem bumpStore_pages (store : Store Unit) (base need stride : UInt64) :

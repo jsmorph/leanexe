@@ -456,7 +456,7 @@ theorem region_spec_withTail
       hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header40ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
-      Mem.write64_pages]
+      Project.TalosPrelude.write64_pages]
     rw [if_neg (Nat.not_lt.mpr hBase8Bound32)]
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
@@ -464,7 +464,7 @@ theorem region_spec_withTail
       hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header32ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
-      Mem.write64_pages]
+      Project.TalosPrelude.write64_pages]
     rw [if_neg (Nat.not_lt.mpr hBase16Bound32)]
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
@@ -472,7 +472,7 @@ theorem region_spec_withTail
       hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header24ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
-      Mem.write64_pages]
+      Project.TalosPrelude.write64_pages]
     rw [if_neg (Nat.not_lt.mpr hBase24Bound32)]
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
@@ -480,7 +480,7 @@ theorem region_spec_withTail
       hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header16ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
-      Mem.write64_pages]
+      Project.TalosPrelude.write64_pages]
     rw [if_neg (Nat.not_lt.mpr hBase32Bound32)]
     wp_alloc_to_store [hParams, hLocals, hValues, hCapacityLocal, hCapacityGet,
       hNot5, hNot9, hNot10, hNot11, hNot12, hNot13, hNot14,
@@ -488,7 +488,7 @@ theorem region_spec_withTail
       hLocal4, hLocal8, hLocal9, hLocal10, hLocal11, hLocal12, hLocal13,
       hFacts.header8ToNat]
     simp only [wp_store64_cons, hTwo32, UInt32.toNat_zero, Nat.add_zero,
-      Mem.write64_pages]
+      Project.TalosPrelude.write64_pages]
     rw [if_neg (Nat.not_lt.mpr hBase40Bound32)]
     rw [wp_nil]
     wp_alloc_window [hAllocs, hParams, hLocals, hValues, hCapacityGet,
