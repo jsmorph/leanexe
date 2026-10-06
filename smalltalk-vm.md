@@ -192,6 +192,18 @@ memory; 10 invalid program or instruction.
 
 ## Proofs and remaining limits
 
+`Project/Smalltalk/Memory.lean` proves read-after-write, unchanged reads at other
+indices, cell address bounds without integer wraparound, and separation between
+registers and cells. `Shape` requires capacity 8 through 1,048,576, exactly
+`24 + 9 * capacity` words, and register 14 equal to capacity. `Handle` requires
+a cell index from 1 through capacity.
+
+`Project/Smalltalk/Allocation.lean` proves the complete word-level effect of
+the concrete `Arena.allocateCell`, the contents of its new cell, preservation
+of every other cell, and preservation of arena shape. These theorems require
+`Shape` and a valid free-head handle. They do not yet prove that the head is
+free, that the free list is complete, or that its count is correct.
+
 `LeanExe/Smalltalk/Control.lean` defines separate list models for first-method
 lookup, inherited lookup with a limit, and return through a live method
 activation. `Project/Smalltalk/Control.lean` proves that those functions match
@@ -199,8 +211,8 @@ their stated rules, give only one result for the same input, and retire exactly
 the calls through the return target. An axiom audit of the main lookup and return
 laws reports only `propext`; the completed-first-frame rejection law uses none.
 
-Those proofs do not refer to `Runtime.lookup`, `Runtime.ret`, or the arena
-collector. There is no theorem connecting the concrete VM to those models,
+The list-model proofs do not refer to `Runtime.lookup` or `Runtime.ret`.
+There is no theorem connecting the concrete VM to those models,
 no collector correctness theorem, no source compiler correctness theorem, and
 no proof of the emitted WASM module. The checks above are execution tests.
 
