@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`6e8fae85e857ec6e637237e9f4707be17d4d72f9`.
+`655757a54173c10c374dc80af4a69885e52ac3a6`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -73,6 +73,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Complete binding loop | Argument walks and selected values are preserved; every slot is built in increasing index order; exact free count, old cells, pointer types, and non-construction registers are preserved | `BindingPreservation.lean`, `BindingLoop.lean` |
 | Complete activation construction | Actual `enterReady` stores method, entry PC, caller, lexical parent, slots, empty operand stack, and current root; exact natural budget, old cells, types, and registers are checked | `ActivationAllocation.lean`, `ActivationConstruction.lean` |
 | Concrete program validation | Actual successful validation supplies all visited class and method checks, header bounds, parent order, metadata/field bounds, inherited fields, method owner/arity/locals/PC/primitive bounds, and entry arity | `ValidationLoop.lean`, `ProgramChecks.lean`, `ProgramBounds.lean` |
+| Complete boot | Actual validator supplies a non-wrapping budget; actual init and boot either report allocation error 9 or establish phase zero, the specified receiver and fields, and exact entry frame; rejected boot preserves heap and pointer types | `BootBudget.lean`, `BootConstruction.lean`, `BootGuard.lean`, `BootDispatch.lean`, `BootHeap.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -101,18 +102,20 @@ Recent pushed checkpoints:
 | `52e65498` | Actual argument guards and single binding |
 | `e0f78107` | Complete binding loop and slot order |
 | `6e8fae85` | Complete actual activation construction |
+| `655757a5` | Actual validator and metadata bounds |
 
 ## Current increment
 
-Concrete program validation passes the combined build and axiom audit.
-A true actual validator result establishes header bounds, every visited class
-and method check, class parent order, metadata and field bounds, inherited field
-counts, method owner/arity/locals/PC/primitive bounds, and entry arity 1.
-Scan-index and count arithmetic are checked. The header records the actual word
-size equation; an array-size equation needs an explicit word-size bound.
+Actual boot passes the combined build and axiom audit. Validation supplies a
+non-wrapping allocation request. Receiver-object and entry-activation construction
+establish exact fields, slots, method, PC, zero caller and lexical parent, empty
+operand stack, and total allocation count. Public boot preserves heap validity
+and pointer types, including rejected input. Starting from actual initialization
+and a validated program, boot either reports allocation error 9 or reaches phase
+zero with the specified receiver and entry frame, including any collection.
 
-Next is boot and public call construction across reservation. Dispatcher composition of returns,
-exact return path conditions, boot, lookup, and the complete execution invariant
+Next is public call construction across reservation. Dispatcher composition of returns,
+exact return path conditions, lookup, and the complete execution invariant
 remain unfinished. All checked proof files are included in this increment; no
 full VM correctness claim is made.
 
@@ -137,7 +140,8 @@ full VM correctness claim is made.
    contents as part of the complete state invariant, not just their allocation.
 5. Prove VM boot from the actual initialized arena and a validated program.
    Connect entry method, receiver construction, slots, initial PC, and roots.
-   Arena initialization is already proved; VM boot is not.
+   Actual boot from initialized arenas is checked, including exact entry state
+   and allocation failure. The complete later execution invariant remains.
 6. Prove concrete method lookup against a separate first-match and superclass
    search specification. Account for the flat method scan, owner/selector
    comparisons, inherited lookup, finite search budget, and word arithmetic.
@@ -224,7 +228,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-program-validation-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-boot-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

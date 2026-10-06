@@ -676,3 +676,31 @@ projection. The normalization equality needed an explicit reflexivity step
 after rewriting. Entry checks likewise needed conversion before projection.
 The final focused checks, combined build, and axiom audit pass. No executable
 definitions or proof limits changed. Boot construction is next.
+
+## Actual boot and exact entry state (2026-10-06)
+
+`BootBudget` derives the actual boot request's natural allocation count from
+the validator's class and method bounds. The request cannot wrap. It also
+proves receiver-only entry slots contain the receiver followed by nil handles.
+`BootConstruction` composes actual object and activation construction, checking
+receiver class, metadata and fields, entry method and PC, zero caller and
+lexical parent, empty operand stack, exact slots and total consumed cells.
+
+`BootGuard` checks accepted public boot requires successful program validation,
+current register zero and phase zero. `BootDispatch` connects each guard result
+to the actual branch. `BootHeap` proves public boot preserves heap validity and
+pointer types, including rejected input. From actual initialization and a
+validated program, boot either reports allocation error 9 or reaches phase
+zero with the specified receiver and entry frame. Reservation and collection
+are included before construction.
+
+The slot proof needed an explicit zero word instead of a nonexistent conversion
+lemma, and a simplification procedure could not be used as a rewrite theorem.
+The first combined public guard proof reached the default heartbeat limit.
+Separating guard facts from dispatch, rewriting the raw guard before expanding
+either branch, and accounting for the validator's let binding removed that
+elaboration boundary. A simplified true branch required True.intro. The
+initialization register lemma needed its actual InitializationGraph namespace.
+Final focused checks, the combined build and axiom audit pass. No limits or
+executable definitions changed. Calls, concrete lookup, and the complete
+instruction invariant remain unfinished.

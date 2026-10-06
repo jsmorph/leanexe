@@ -7,7 +7,9 @@ For a valid heap, Lean proves that the concrete collector preserves reachable
 payloads and frees exactly the unreachable cells. Arena initialization,
 allocation, pointer writes, frame updates, reservation, return control with
 possible collection, and fuel properties are also checked.
-Full VM correctness remains unproved: VM boot, method lookup, and the
+Actual program validation, object and activation construction, and VM boot
+are checked, including exact entry state and allocation failure.
+Full VM correctness remains unproved: method lookup and the
 remaining instruction properties still need proofs. The source compiler and
 emitted WASM are tested but not proved correct.
 See [smalltalk-vm.md](smalltalk-vm.md) for commands, formats, collection, tests,
