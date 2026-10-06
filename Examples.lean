@@ -46,12 +46,17 @@ import Examples.Euler.Balance
 import Examples.Euler.Cases
 import Examples.Euler.Cfl
 import Examples.Euler.Enclosure
+import Examples.Euler.Equations.CharacteristicSpeed
 import Examples.Euler.Equations.Eigenbasis
 import Examples.Euler.Equations.Eigenvectors
 import Examples.Euler.Equations.Flux
 import Examples.Euler.Equations.Hyperbolicity
 import Examples.Euler.Equations.Jacobian
+import Examples.Euler.Equations.LaxFriedrichs
+import Examples.Euler.Equations.LeftEigenvectors
+import Examples.Euler.Equations.Minmod
 import Examples.Euler.Equations.Rotation
+import Examples.Euler.Equations.Rusanov
 import Examples.Euler.FirstOrderBalance
 import Examples.Euler.Hyperbolic
 import Examples.Euler.Module
