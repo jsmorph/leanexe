@@ -64,6 +64,7 @@ import Examples.Euler.Module
 import Examples.Euler.RealState
 import Examples.Euler.ReconstructedBalance
 import Examples.Euler.ReconstructionAccuracy
+import Examples.Euler.Reference.Accepted
 import Examples.Euler.Reference.Component
 import Examples.Euler.Reference.Constants
 import Examples.Euler.Reference.FluxTerms

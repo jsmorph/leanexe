@@ -19,10 +19,6 @@ open LeanExe.ProofKit.F64Order
 
 set_option exponentiation.threshold 4096
 
-/-- The four conserved outputs of `advanceCell`. -/
-def updatedComponents (u : Updated) : Fin 4 → Float :=
-  ![u.density, u.momentum, u.transverse, u.energy]
-
 /-- For a positive ratio at most 1, a state at most `M`, and fluxes at most `66 M⁵`, `update`
 accepts, and its value is within `ε M + 396 ε r M⁵ + 2 μ` of the exact update of the inputs'
 values. -/
@@ -110,8 +106,8 @@ theorem cell_component_error
     (hR : StateBounds M rhoR mxR myR energyR) (i : Fin 4) :
     let left := flux rhoL mxL myL energyL rho mx my energy
     let right := flux rho mx my energy rhoR mxR myR energyR
-    let c := update ratio (stateComponents rho mx my energy i) (fluxComponents left i)
-      (fluxComponents right i)
+    let c := update ratio (stateAt ⟨rho, mx, my, energy⟩ i) (fluxAt left i)
+      (fluxAt right i)
     c.status = 0 ∧ Finite c.value.toBits ∧
       |real c.value - Equations.Rusanov.update (real ratio) (real left.alpha) (real right.alpha)
         (vec ⟨rhoL, mxL, myL, energyL⟩) (vec ⟨rho, mx, my, energy⟩)
@@ -129,7 +125,7 @@ theorem cell_component_error
   have eh := interface_reference_error rho mx my energy rhoR mxR myR energyR M hM hMmax hC hR i
   dsimp only at el eh
   have er := update_reference_error ratio _ _ _ hr hs hl hh br _ _ M hM hMmax bs bl bh el eh
-  simpa only [real_stateComponents, Equations.Rusanov.update] using er
+  simpa only [real_stateAt, Equations.Rusanov.update] using er
 
 /-- When `advanceCell` accepts, its ratio is positive and its four conserved outputs are the
 component updates of the center state. -/
@@ -138,11 +134,11 @@ theorem advanceCell_accepted
     (h : (advanceCell ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR).status =
       0) :
     positive ratio = true ∧ ∀ i,
-      updatedComponents
+      updatedAt
         (advanceCell ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR) i =
-      (update ratio (stateComponents rho mx my energy i)
-        (fluxComponents (flux rhoL mxL myL energyL rho mx my energy) i)
-        (fluxComponents (flux rho mx my energy rhoR mxR myR energyR) i)).value := by
+      (update ratio (stateAt ⟨rho, mx, my, energy⟩ i)
+        (fluxAt (flux rhoL mxL myL energyL rho mx my energy) i)
+        (fluxAt (flux rho mx my energy rhoR mxR myR energyR) i)).value := by
   have hpos : positive ratio = true := by
     cases hp : positive ratio
     · unfold advanceCell at h
@@ -166,7 +162,7 @@ theorem advanceCell_reference_error
     (hR : StateBounds M rhoR mxR myR energyR)
     (h : (advanceCell ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR).status =
       0) (i : Fin 4) :
-    |real (updatedComponents
+    |real (updatedAt
         (advanceCell ratio rhoL mxL myL energyL rho mx my energy rhoR mxR myR energyR) i) -
       Equations.Rusanov.update (real ratio) (real (flux rhoL mxL myL energyL rho mx my energy).alpha)
         (real (flux rho mx my energy rhoR mxR myR energyR).alpha)
