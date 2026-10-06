@@ -112,5 +112,11 @@ run_cmd do
 #print axioms Project.Smalltalk.ArgumentBinding.slotValue_valid_send
 #print axioms Project.Smalltalk.ArgumentBinding.slotValue_valid_entry
 #print axioms Project.Smalltalk.ArgumentBinding.bindOne_effect
+#print axioms Project.Smalltalk.BindingPreservation.slotValue_transfer
+#print axioms Project.Smalltalk.BindingLoop.slotValues_index
+#print axioms Project.Smalltalk.BindingLoop.binding_progress
+#print axioms Project.Smalltalk.BindingLoop.binding_index
+#print axioms Project.Smalltalk.BindingLoop.binding_values
+#print axioms Project.Smalltalk.BindingLoop.binding_eq_pair
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
