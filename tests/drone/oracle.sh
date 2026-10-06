@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Writes tests/drone/corpus.txt, the terrains of tests/drone/OracleDriver.lean and the earlier
-# system's `compute` of each, and tests/drone/cases.txt, calls of the earlier system's other
-# functions and their results, run natively from the earlier system's Examples/Drone/Program.lean at
-# commit 188ccb4d.
+# Writes tests/drone/corpus.txt, the terrains of tests/drone/OracleDriver.lean and the reference
+# `compute` of each, and tests/drone/cases.txt, calls of the reference implementation's other
+# functions and their results, run natively from the reference implementation,
+# Examples/Drone/Program.lean at commit 188ccb4d.
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 mkdir -p "$root/tmp"

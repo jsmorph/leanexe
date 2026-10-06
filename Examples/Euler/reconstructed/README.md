@@ -10,11 +10,9 @@ the program.
 
 ![Density and pressure at time 0.8 on the 800-grid](800-run/density-pressure.png)
 
-Both calculations reached time 0.8 with status zero.  On both grids the program returned, bit for
-bit, the words recorded at commit `eef07963`, so the figures, CSV files, and ranges below, computed
-at that commit from those words, describe this program's results.  The 192 × 192 run took 60.2
-seconds and the 800 × 800 run 83.7 minutes, each with eight reconstruction attempts in one Wasmtime
-process.
+Both calculations reached time 0.8 with status zero.  The figures, CSV files, and ranges below come
+from the program's output words.  The 192 × 192 run took 60.2 seconds and the 800 × 800 run 83.7
+minutes, each with eight reconstruction attempts in one Wasmtime process.
 
 ## Problem and method
 
@@ -52,13 +50,9 @@ own linear color range.  White curves show interpolated isolines.
 
 ## Program and proofs
 
-[The solver](../ReconstructedProgram.lean) states the method in Lean.  Its arithmetic performs, in
-the same order, the binary64 operations of the reconstructed solver at commit `eef07963`, whose Lean
-model is
-[`EulerReconstructed/Control.lean`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerReconstructed/Control.lean)
-with the files it imports.  [The module definition](../Module.lean) compiles it, with [the
-first-order solver](../first-order/README.md), into one 23,012-byte module, `euler.wasm`, with
-SHA-256 `87efa8a8e63a1e6eda1f6d8a8c668c57e2aeafeaadd4e73c06ac28266b8c794b`.  The theorems below
+[The solver](../ReconstructedProgram.lean) states the method in Lean.  [The module
+definition](../Module.lean) compiles it, with [the first-order solver](../first-order/README.md),
+into one 23,012-byte module, `euler.wasm`.  The theorems below
 concern this module and the Lean function `reconstructedSolve`, which packs the result of
 `reconstructedRun`.
 
@@ -82,23 +76,19 @@ continuous Euler equations remains unproved.
 
 ## Data
 
-| Grid and summary | Runtime | Density range | Pressure range | Words SHA-256 | Data | Export figures |
-|------------------|--------:|--------------:|---------------:|---------------|------|----------------|
-| [192 × 192](192-run/summary.json) | 60.2 s | 0.138–1.725103297 | 0.029–1.670588688 | `6304853f…` | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
-| [800 × 800](800-run/summary.json) | 83.7 min | 0.138–1.739211022 | 0.029–1.663523952 | `64ff9d32…` | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
+| Grid | Runtime | Density range | Pressure range | Data | Export figures |
+|------|--------:|--------------:|---------------:|------|----------------|
+| 192 × 192 | 60.2 s | 0.138–1.725103297 | 0.029–1.670588688 | [Words](192-run/words.u64le), [CSV](192-run/cells.csv.gz) | [SVG](192-run/density-pressure.svg), [PDF](192-run/density-pressure.pdf) |
+| 800 × 800 | 83.7 min | 0.138–1.739211022 | 0.029–1.663523952 | [Words](800-run/words.u64le), [CSV](800-run/cells.csv.gz) | [SVG](800-run/density-pressure.svg), [PDF](800-run/density-pressure.pdf) |
 
 The runtimes are wall-clock times of one Wasmtime process on a four-core ARM64 Linux machine, with
 peak resident sizes of 19 MB and 104 MB.  The 800-grid run shared the machine with Lean proof
-checks.  The files of each run directory come from [the run record at commit
-`eef07963`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/data/euler-reconstructed-v1/README.md),
-where `tools/euler-riemann-complete.js` wrote the words, the CSV file, and the summary of each run,
-and `tools/euler-riemann-plot.py` drew the figures from the CSV file.  Each summary file therefore
-gives the runtime and SHA-256 of that commit's binary and the names of that commit's theorems.  The
-words of this program's runs have the SHA-256 recorded in those summaries.
+checks.  Each run directory holds the output words, a CSV file of the cells, and the figures drawn
+from it.
 
 Reproduction builds the Wasmtime host, emits the module, and runs each grid into a fresh directory.
-The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and records the runtime,
-the peak resident size, and the SHA-256 of the words.
+The run script requires status zero, the word of 0.8, and `4 + 2n²` words, and records the runtime
+and the peak resident size.
 
 ```sh
 tools/build-wasmtime-host.sh

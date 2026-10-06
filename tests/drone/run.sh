@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Runs build/drone/drone.wasm in the Wasmtime host on every call of tests/drone/cases.txt and on
-# `compute` of every terrain of tests/drone/corpus.txt, and compares the results with the earlier
-# system's.  Usage: tests/drone/run.sh
+# `compute` of every terrain of tests/drone/corpus.txt, and compares the results with the reference
+# implementation's.  Usage: tests/drone/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host

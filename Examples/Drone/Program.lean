@@ -4,18 +4,17 @@ import LeanExe.Dialect.RepeatWhile
 
 /-!
 An ideal point-mass autopilot with an exact shortest-path search over a finite graph of motion
-primitives, rewritten from the earlier system's `Examples/Drone/Program.lean` in this dialect.  A
-flight passes up to 64 stations with terrain heights from 0 to 1,000,000.  At each station the drone
-is in one of 45 states: 9 altitudes 25 apart above the station's floor, and 5 horizontal speeds from
-0 to 20.  An edge between states at adjacent stations is admitted when its segment keeps the speed,
-acceleration, and clearance limits, and it costs its duration in ticks of 1/840 second, with the
-altitude above the floor as the second criterion.
+primitives.  A flight passes up to 64 stations with terrain heights from 0 to 1,000,000.  At each
+station the drone is in one of 45 states: 9 altitudes 25 apart above the station's floor, and 5
+horizontal speeds from 0 to 20.  An edge between states at adjacent stations is admitted when its
+segment keeps the speed, acceleration, and clearance limits, and it costs its duration in ticks of
+1/840 second, with the altitude above the floor as the second criterion.
 
-The words are `UInt64` throughout, and the earlier system's recursions on fuel are counted loops.
-The square root takes 17 halvings.  A row is a build over the 45 targets, each a loop over the 45
-sources that replaces its incumbent only on strict improvement, so ties go to the lowest source.
-The forward pass carries one table of all rows, and the output follows the parents back from the
-last station.  Invalid input runs the same code with no stations, which returns `#[]`.
+The words are `UInt64` throughout, and the loops are counted.  The square root takes 17 halvings.  A
+row is a build over the 45 targets, each a loop over the 45 sources that replaces its incumbent only
+on strict improvement, so ties go to the lowest source.  The forward pass carries one table of all
+rows, and the output follows the parents back from the last station.  Invalid input runs the same
+code with no stations, which returns `#[]`.
 -/
 
 namespace Examples.Drone

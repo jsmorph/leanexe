@@ -1,10 +1,9 @@
 
-/-! The cases of the drone corpus.  `tests/drone/oracle.sh` appends this file to the earlier
-system's `Examples/Drone/Program.lean` and runs the result natively.  With the argument `corpus`,
-each output line is a terrain and the earlier system's `compute` of it, as comma-separated words
-joined by `|`.  With `cases`, each line is a call of one of the earlier system's functions in the
-format of `tests/modules/Cases.lean`: `drone|export|result kind|host arguments|the earlier system's
-result`. -/
+/-! The cases of the drone corpus.  `tests/drone/oracle.sh` appends this file to the reference
+implementation's `Examples/Drone/Program.lean` and runs the result natively.  With the argument
+`corpus`, each output line is a terrain and the reference `compute` of it, as comma-separated words
+joined by `|`.  With `cases`, each line is a call of one of the reference functions in the format of
+`tests/modules/Cases.lean`: `drone|export|result kind|host arguments|the reference result`. -/
 
 open Examples.Drone
 
@@ -112,7 +111,7 @@ def scalarCases : IO Unit := do
 
 def choiceWords (c : Choice) : String := words [c.time, c.excess, c.parent]
 
-/-- The rows of the earlier system's forward pass over `terrain`, each with the arguments of
+/-- The rows of the reference forward pass over `terrain`, each with the arguments of
 `advance`. -/
 def rows (terrain : Array UInt64) : List (UInt64 × UInt64 × Bool × Array UInt64 × Array UInt64) :=
   ((List.range (terrain.size - 1)).foldl (fun (acc : List _ × Array UInt64) k =>

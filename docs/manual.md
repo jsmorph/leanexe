@@ -1,6 +1,6 @@
 # LeanExe Manual
 
-This manual describes the `main` branch as of 2026-10-06: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../LeanExe/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The design record](design.md) holds the design, the decisions, and the plan, and [the development journal](../devnotes.md) explains why each part has its present form.
+This manual describes the repository as of 2026-10-06: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../LeanExe/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The design record](design.md) holds the design, the decisions, and the plan, and [the development journal](../devnotes.md) explains why each part has its present form.
 
 ## Overview
 
@@ -397,7 +397,7 @@ A host releases an object it owns by calling the export `release` with the point
 
 ### Native runs and tools
 
-A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Examples/Euler/Native.lean`](../Examples/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime, peak resident size, and the SHA-256 of its words.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
+A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Examples/Euler/Native.lean`](../Examples/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime and peak resident size.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
 
 ### WGSL kernels and the browser pages
 
@@ -566,10 +566,10 @@ uv run tests/modules/chunks.py
 | `uv run tests/gpt/hf_compare.py`, `uv run tests/gpt/gpt2_compare.py` | GPT's `forward` against Hugging Face's model in float64, on random weights and on the GPT-2 124M weights. |
 | `uv run tests/gpt/sample_frequencies.py` | Top-k sampling frequencies against their probabilities. |
 | `uv run tests/prng/compare.py` | `prng.wasm` against the reference SplitMix64. |
-| [`tests/drone/run.sh`](../tests/drone/run.sh) | `drone.wasm` against the results of the earlier system's planner, run natively by [`tests/drone/oracle.sh`](../tests/drone/oracle.sh), on 1,975 calls and 116 terrains. |
-| `uv run tools/euler-run.py …` | One Euler solve, with the SHA-256 of its words, which the data READMEs compare with the earlier system's. |
+| [`tests/drone/run.sh`](../tests/drone/run.sh) | `drone.wasm` against the results of a reference implementation of the planner, run natively by [`tests/drone/oracle.sh`](../tests/drone/oracle.sh), on 1,975 calls and 116 terrains. |
+| `uv run tools/euler-run.py …` | One Euler solve, with its runtime and peak resident size. |
 
-[The record of the four-state run](../Examples/Euler/first-order/README.md) and [the record of the reconstructed run](../Examples/Euler/reconstructed/README.md) describe the current system's Euler binary, its theorems, and its runs on the 192 and 800 grids.  The output words of every run equal the earlier system's, with the same SHA-256.  The records also list the results of the earlier system that the current system does not prove, such as the reconstruction accuracy theorems.  [The drone record](../Examples/Drone/README.md) describes the drone planner's program, theorems, and tests in the same way.
+[The record of the four-state run](../Examples/Euler/first-order/README.md) and [the record of the reconstructed run](../Examples/Euler/reconstructed/README.md) describe the Euler module, its theorems, and its runs on the 192 and 800 grids.  Each record gives the problem, the method, the theorems with their statements, and the data of each run.  [The drone record](../Examples/Drone/README.md) describes the drone planner's program, theorems, and tests in the same way.
 
 ### WGSL tests
 
@@ -614,7 +614,7 @@ An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, 
 | [`Gpt32`](../Examples/Gpt32/README.md) | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
 | [`Euler`](../Examples/Euler/README.md) | `euler` | The first-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
 | [`Drone`](../Examples/Drone/README.md) | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
-| [`PrimeFactors`](../Examples/PrimeFactors/README.md), [`Lookup`](../Examples/Lookup/README.md), [`TreeLookup`](../Examples/TreeLookup/README.md), [`Below100`](../Examples/Below100/README.md), [`Increment`](../Examples/Increment/README.md), [`RemoveZero`](../Examples/RemoveZero/README.md) | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | The earlier system's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` carry the requests and READMEs of the earlier system's demos 6, 10, and 11. |
+| [`PrimeFactors`](../Examples/PrimeFactors/README.md), [`Lookup`](../Examples/Lookup/README.md), [`TreeLookup`](../Examples/TreeLookup/README.md), [`Below100`](../Examples/Below100/README.md), [`Increment`](../Examples/Increment/README.md), [`RemoveZero`](../Examples/RemoveZero/README.md) | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Small programs, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` also carry requests and READMEs. |
 
 ## From an English request
 
@@ -635,7 +635,7 @@ tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
 
 After a target reaches its timeout without a diagnostic, [the repository instructions](../AGENTS.md) require dividing it, or adding a reusable lemma that reduces its elaboration, before running it again.  `LEANRUN_LOCAL=1` runs without the cgroup limits and only with the user's explicit authorization.  [`tools/leanrun-dev`](../tools/leanrun-dev) runs Lean on the remote development machine (`sync`, `check`, or a command).
 
-`lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of the earlier system's drone proofs, with the same module names, made such a check use the earlier system's theorems.
+`lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
 
 ### Procedures
 

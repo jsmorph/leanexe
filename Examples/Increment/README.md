@@ -2,12 +2,11 @@
 
 ## What it is
 
-This example is [the earlier system's Demo
-4](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-4/README.md),
-carried to the current system's pipeline.  [The request](request.txt) asks for each element of an
-array of at most eight words plus one, with wrapping arithmetic, and for the empty array when the
-input is longer.  [The specification](Spec.lean) states that behavior in ordinary Lean, with
-`Array.map`, as the earlier system's did.
+This example takes a request in English to a specification, a program, and a theorem that the
+module's bytes compute the specification.  [The request](request.txt) asks for each element
+of an array of at most eight words plus one, with wrapping arithmetic, and for the empty array when
+the input is longer.  [The specification](Spec.lean) states that behavior in ordinary Lean, with
+`Array.map`.
 
 [The program](Program.lean) sets the count to the input's size when it is at most eight and to 0
 otherwise, and builds that many words, each the input's word plus one.  One build serves both cases,
@@ -23,10 +22,8 @@ definition](Module.lean) compiles it into a 1,524-byte `increment.wasm` that exp
 | `increment_total` | From an allocator whose `top` leaves 120 bytes within the first 16 pages, with 16 pages and a cap that allows them, the call returns the words of `expected` without stopping at `unreachable` and leaves memory at 16 pages. |
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
-`Quot.sound`.  The earlier system's theorem concerned one binary of its compiler and was proved by
-stepping through its instructions, which took 457 lines.  Here the proof of `Implements` applies the
-rule of the build template, and with `compute_eq`, `Implements.congr` states it for the
-specification.
+`Quot.sound`.  The proof of `Implements` applies the rule of the build template.  With
+`compute_eq`, `Implements.congr` states it for the specification.
 
 ## Running it
 

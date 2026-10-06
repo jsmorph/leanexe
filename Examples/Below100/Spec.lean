@@ -1,4 +1,4 @@
-/-! The specification of the earlier system's Demo 5, as its request states it: for an input of at
+/-! The specification, as the request in `request.txt` states it: for an input of at
 most eight words, the elements less than 100 in their original order; for a longer input, the empty
 array. -/
 

@@ -1,4 +1,4 @@
-/-! The specification of the earlier system's Demo 4, as its request states it: for an input of at
+/-! The specification, as the request in `request.txt` states it: for an input of at
 most eight words, each word plus one with wrapping arithmetic; for a longer input, the empty array.
 -/
 

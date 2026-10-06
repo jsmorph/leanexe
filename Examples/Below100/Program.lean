@@ -1,7 +1,7 @@
 import LeanExe.Dialect.RepeatWhile
 
 /-!
-The earlier system's Demo 5 in this dialect: the elements of an array of at most eight words that
+The elements of an array of at most eight words that
 are less than 100, in order, or the empty array for a longer input.  `keep` takes one element: it
 appends the element to the owned output when it is less than 100.  `compute` repeats `keep` over the
 first `count` elements, with `count` 0 for a longer input.
