@@ -14,10 +14,10 @@ def mix (a b c : UInt64) : UInt64 := ((a / b + a % c) ^^^ ((a &&& b) ||| (c <<< 
 
 /-- `mix` in the source language. -/
 def mixFunc : Func :=
-  ⟨3, .bin .sub
-    (.bin .xor (.bin .add (.bin .div (.var 0) (.var 1)) (.bin .rem (.var 0) (.var 2)))
-      (.bin .or (.bin .and (.var 0) (.var 1)) (.bin .shl (.var 2) (.var 1))))
-    (.bin .shr (.var 0) (.var 2))⟩
+  ⟨[.word, .word, .word], .word, .bin .sub
+    (.bin .xor (.bin .add (.bin .div (.v 0) (.v 1)) (.bin .rem (.v 0) (.v 2)))
+      (.bin .or (.bin .and (.v 0) (.v 1)) (.bin .shl (.v 2) (.v 1))))
+    (.bin .shr (.v 0) (.v 2))⟩
 
 def module : Wasm.Module := compile [(mixFunc, "mix")]
 
@@ -25,14 +25,16 @@ def module : Wasm.Module := compile [(mixFunc, "mix")]
 def mixTuple (x : UInt64 × UInt64 × UInt64) : UInt64 := mix x.1 x.2.1 x.2.2
 
 /-- The source function means `mix`. -/
-theorem mixFunc_denote (a b c : UInt64) : mixFunc.denote #v[a, b, c] = mix a b c := rfl
+theorem mixFunc_denote (a b c : UInt64) :
+    mixFunc.denote (.cons a (.cons b (.cons c .nil))) = mix a b c := rfl
 
 /-- The arguments of `mixFunc` from a tuple. -/
-def args (x : UInt64 × UInt64 × UInt64) : Vector UInt64 mixFunc.arity := #v[x.1, x.2.1, x.2.2]
+def args (x : UInt64 × UInt64 × UInt64) : Env mixFunc.params :=
+  .cons x.1 (.cons x.2.1 (.cons x.2.2 .nil))
 
 theorem mix_implements : ImplementsPureA false module 2 mixTuple := by
   have h : ImplementsPureA false module 2 mixFunc.denote :=
-    Func.correct [(mixFunc, "mix")] 0 mixFunc "mix" rfl rfl
+    Func.correct [(mixFunc, "mix")] 0 mixFunc "mix" rfl
   have hComp : mixFunc.denote ∘ args = mixTuple := by
     funext x
     exact mixFunc_denote x.1 x.2.1 x.2.2

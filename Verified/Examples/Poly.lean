@@ -14,8 +14,8 @@ def poly (a b c : UInt64) : UInt64 := a * b + c * c - 7
 
 /-- `poly` in the source language. -/
 def polyFunc : Func :=
-  ⟨3, .bin .sub (.bin .add (.bin .mul (.var 0) (.var 1)) (.bin .mul (.var 2) (.var 2)))
-    (.const 7)⟩
+  ⟨[.word, .word, .word], .word,
+    .bin .sub (.bin .add (.bin .mul (.v 0) (.v 1)) (.bin .mul (.v 2) (.v 2))) (.word 7)⟩
 
 def module : Wasm.Module := compile [(polyFunc, "poly")]
 
@@ -23,14 +23,16 @@ def module : Wasm.Module := compile [(polyFunc, "poly")]
 def polyTuple (x : UInt64 × UInt64 × UInt64) : UInt64 := poly x.1 x.2.1 x.2.2
 
 /-- The source function means `poly`. -/
-theorem polyFunc_denote (a b c : UInt64) : polyFunc.denote #v[a, b, c] = poly a b c := rfl
+theorem polyFunc_denote (a b c : UInt64) :
+    polyFunc.denote (.cons a (.cons b (.cons c .nil))) = poly a b c := rfl
 
 /-- The arguments of `polyFunc` from a tuple. -/
-def args (x : UInt64 × UInt64 × UInt64) : Vector UInt64 polyFunc.arity := #v[x.1, x.2.1, x.2.2]
+def args (x : UInt64 × UInt64 × UInt64) : Env polyFunc.params :=
+  .cons x.1 (.cons x.2.1 (.cons x.2.2 .nil))
 
 theorem poly_implements : ImplementsPureA false module 2 polyTuple := by
   have h : ImplementsPureA false module 2 polyFunc.denote :=
-    Func.correct [(polyFunc, "poly")] 0 polyFunc "poly" rfl rfl
+    Func.correct [(polyFunc, "poly")] 0 polyFunc "poly" rfl
   have hComp : polyFunc.denote ∘ args = polyTuple := by
     funext x
     exact polyFunc_denote x.1 x.2.1 x.2.2
