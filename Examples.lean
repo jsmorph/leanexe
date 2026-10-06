@@ -55,6 +55,7 @@ import Examples.Euler.Equations.Jacobian
 import Examples.Euler.Equations.LaxFriedrichs
 import Examples.Euler.Equations.LeftEigenvectors
 import Examples.Euler.Equations.Minmod
+import Examples.Euler.Equations.ReconstructionCounterexample
 import Examples.Euler.Equations.Rotation
 import Examples.Euler.Equations.Rusanov
 import Examples.Euler.FirstOrderBalance
@@ -62,6 +63,7 @@ import Examples.Euler.Hyperbolic
 import Examples.Euler.Module
 import Examples.Euler.RealState
 import Examples.Euler.ReconstructedBalance
+import Examples.Euler.ReconstructionAccuracy
 import Examples.Euler.Total
 import Examples.Euler.Verify
 import Examples.Euler.Words

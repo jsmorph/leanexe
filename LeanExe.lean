@@ -114,6 +114,7 @@ import LeanExe.ProofKit.F64DivEnclosure
 import LeanExe.ProofKit.F64DyadicBounds
 import LeanExe.ProofKit.F64Enclosure
 import LeanExe.ProofKit.F64Encoding
+import LeanExe.ProofKit.F64Halving
 import LeanExe.ProofKit.F64InternalEnergy
 import LeanExe.ProofKit.F64MagnitudeEnclosure
 import LeanExe.ProofKit.F64MagnitudeGaps
@@ -137,6 +138,7 @@ import LeanExe.ProofKit.F64RoundFinish
 import LeanExe.ProofKit.F64RoundRational
 import LeanExe.ProofKit.F64RoundScaled
 import LeanExe.ProofKit.F64RounderEnclosure
+import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
 import LeanExe.ProofKit.F64Sign
 import LeanExe.ProofKit.F64Source
@@ -146,6 +148,7 @@ import LeanExe.ProofKit.F64SqrtEnclosure
 import LeanExe.ProofKit.F64SqrtFinite
 import LeanExe.ProofKit.F64StrictOrder
 import LeanExe.ProofKit.F64Sub
+import LeanExe.ProofKit.F64SymmetricFaces
 import LeanExe.ProofKit.FixedArrayAllocate
 import LeanExe.ProofKit.FixedArrayAllocateNone
 import LeanExe.ProofKit.FixedArrayAllocator
