@@ -26370,3 +26370,14 @@ Verification of Translation Validators," POPL 2008; Mullen et al., "Œuf: Minimi
 Extraction TCB," CPP 2018; Myreen and Owens, "Proof-Producing Synthesis of ML from Higher-Order
 Logic," ICFP 2012; Pit-Claudel et al., "Relational Compilation for Performance-Critical
 Applications," PLDI 2022.
+
+## 2026-10-06: Merge into main
+
+`main` had no commits after `eef07963`, where `deslop` began, so the merge is a fast-forward and
+`main` becomes this branch's history.  Before it, the docs, comments, and record headers that
+called the old system "main" and this one "this branch" were reworded, since after the merge both
+phrases would point at the wrong system.  The old system is now "the earlier system", whose last
+commit is `eef07963`, and links to it keep that commit, so they stay valid.  The journal above, the
+reports in `paper/`, and the text of the `data/` records written on the earlier system keep their
+wording, as records of their time.  The tree-lookup specification's comment changed with the
+rest, so its hashes were frozen again after a diff showed a comment-only change.

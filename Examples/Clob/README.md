@@ -12,8 +12,8 @@ definition](Module.lean) compiles the fifteen functions into the 4,957-byte `clo
 
 ## What it shows
 
-The CLOB was the first program of this branch, built in increments that each reached bytes and a
-theorem, and it uses most of the array rules.  `fillLevel`, `insertLevel`, `setLevel`, and
+The CLOB was the first program of the current system, built in increments that each reached bytes
+and a theorem, and it uses most of the array rules.  `fillLevel`, `insertLevel`, `setLevel`, and
 `removeLevel` update arrays with `set!`, `insertIdx!`, and `eraseIdxIfInBounds`, in place when the
 array is owned and at its last use.  `addBid` and `cancelBid` call those functions with consumed
 arguments, typed `Moved (Array UInt64)` in their theorems, and `stepCommand` pushes onto an output

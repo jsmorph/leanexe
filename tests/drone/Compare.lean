@@ -1,7 +1,7 @@
 import Examples.Drone.Program
 
-/-! Compares this branch's `compute` with main's on every case of `tests/drone/corpus.txt`.
-Run with `lake env lean --run tests/drone/Compare.lean`. -/
+/-! Compares the current system's `compute` with the earlier system's on every case of
+`tests/drone/corpus.txt`.  Run with `lake env lean --run tests/drone/Compare.lean`. -/
 
 def parse (text : String) : Array UInt64 :=
   if text.isEmpty then #[] else (text.splitOn ",").toArray.map fun w => w.toNat!.toUInt64

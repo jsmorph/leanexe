@@ -1,6 +1,6 @@
 # A four-state Euler Riemann problem
 
-This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe this branch's Euler solvers and their runs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
 This calculation evolves the four-quadrant problem from the [Lanyon Euler article](https://lanyon.ai/research/euler-equations/) to time 0.8 on a 192 × 192 grid.  LeanExe compiles the numerical kernels from Lean to WebAssembly.  The final density and pressure fields show the interaction of shocks launched by the initial discontinuities.
 

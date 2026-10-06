@@ -3,7 +3,8 @@
 ## What it is
 
 This example is the first run of [the verified-executable
-skill](../../.claude/skills/verified-executable/SKILL.md), on the request of [main's Demo
+skill](../../.claude/skills/verified-executable/SKILL.md), on the request of [the earlier system's
+Demo
 3](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-3/README.md).
 [The request](request.txt) gives a complete binary search tree of seven nodes in breadth-first
 order after a query, in 15 words, and asks for `[value, 1]` from the node whose key the search
@@ -30,8 +31,9 @@ definition](Module.lean) compiles it into a 1,734-byte `treeLookup.wasm` that ex
 The theorems are in [the proofs](Verify.lean), 189 lines, and they use only `propext`,
 `Classical.choice`, and `Quot.sound`.  `compute_eq` unfolds the three steps and splits on the
 comparisons along each of the eleven paths through the tree.  The `Implements` proof follows the
-lookup example's: `Stmt.loop_spec` for the loop and `Stmt.arrayLiteral_spec` for the result.  Main's
-proof of its 7,186-byte binary took 1,398 lines.  [The journal](journal.md) records the run.
+lookup example's: `Stmt.loop_spec` for the loop and `Stmt.arrayLiteral_spec` for the result.  The
+earlier system's proof of its 7,186-byte binary took 1,398 lines.  [The journal](journal.md) records
+the run.
 
 ## Running it
 

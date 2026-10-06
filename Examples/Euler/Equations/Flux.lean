@@ -3,9 +3,10 @@ import Mathlib.LinearAlgebra.Matrix.Notation
 import Mathlib.Tactic.FieldSimp
 import Mathlib.Tactic.Ring
 
-/-! The two-dimensional Euler equations in conservative variables with γ = 7/5: states,
-pressure, admissibility, the physical fluxes, and the reduced x-flux Jacobian.  The definitions and
-proofs in `Examples/Euler/Equations` come from main's `LeanExe/Euler2DConservative/Real*.lean`. -/
+/-! The two-dimensional Euler equations in conservative variables with γ = 7/5: states, pressure,
+admissibility, the physical fluxes, and the reduced x-flux Jacobian.  The definitions and proofs in
+`Examples/Euler/Equations` come from the earlier system's `LeanExe/Euler2DConservative/Real*.lean`.
+-/
 
 namespace Examples.Euler.Equations
 

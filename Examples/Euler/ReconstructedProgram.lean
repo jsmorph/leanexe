@@ -1,19 +1,18 @@
 import Examples.Euler.Program
 
 /-!
-The reconstructed solver for the two-dimensional Euler equations, on the same four-quadrant
-problem as the first-order solver.  Each directional update reads five cells, reconstructs three
-of them with componentwise minmod slopes and a common scale factor, and evaluates Rusanov fluxes
-at the center cell's faces.  A reconstruction whose faces fail the state checks halves the
-factor, at most `trials` times, and then uses the cell average.  Signal speeds and the Courant
-number are bounded by outward rounding: each operation's binary64 result is moved one step
-toward the bound.
+The reconstructed solver for the two-dimensional Euler equations, on the same four-quadrant problem
+as the first-order solver.  Each directional update reads five cells, reconstructs three of them
+with componentwise minmod slopes and a common scale factor, and evaluates Rusanov fluxes at the
+center cell's faces.  A reconstruction whose faces fail the state checks halves the factor, at most
+`trials` times, and then uses the cell average.  Signal speeds and the Courant number are bounded by
+outward rounding: each operation's binary64 result is moved one step toward the bound.
 
-The arithmetic follows main's word-level model operation for operation, as the first-order
-solver does, and shares its initial cells, conservative update, flux components, acceptance
-test, timestep proposal, and output.  Each checked function computes every value and tests the
-conjunction of main's checks once, at the end; the float operations are total, so the returned
-values and statuses are main's.
+The arithmetic follows the earlier system's word-level model operation for operation, as the
+first-order solver does, and shares its initial cells, conservative update, flux components,
+acceptance test, timestep proposal, and output.  Each checked function computes every value and
+tests the conjunction of the earlier system's checks once, at the end; the float operations are
+total, so the returned values and statuses are the earlier system's.
 -/
 
 namespace Examples.Euler

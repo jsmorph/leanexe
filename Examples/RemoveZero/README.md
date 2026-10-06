@@ -2,12 +2,12 @@
 
 ## What it is
 
-This example is [main's Demo
+This example is [the earlier system's Demo
 12](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-12/README.md),
-carried to this branch's pipeline.  [The request](request.txt) asks for an array of at most eight
-words without its first zero, with the other words in order, for the input itself when it has no
-zero, and for the empty array when the input is longer.  [The specification](Spec.lean) states that
-behavior with `Array.findIdx?` and `Array.eraseIdx!`, as main's did.
+carried to the current system's pipeline.  [The request](request.txt) asks for an array of at most
+eight words without its first zero, with the other words in order, for the input itself when it has
+no zero, and for the empty array when the input is longer.  [The specification](Spec.lean) states
+that behavior with `Array.findIdx?` and `Array.eraseIdx!`, as the earlier system's did.
 
 The dialect compiles neither `Array.findIdx?`, which returns an `Option`, nor `Array.eraseIdx!`, so
 [the program](Program.lean) computes the same array another way.  `firstZero` is a loop over the
@@ -26,9 +26,9 @@ one.  [The module definition](Module.lean) compiles both functions into a 1,742-
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
 `Quot.sound`.  `compute_eq` connects the loop to `Array.findIdx?` and the build to `Array.eraseIdx!`
-through the core lemmas `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_eraseIdx`.  Main's
-theorem also stated termination with a heap reserve.  Here the theorem allows a trap, and the
-[increment example](../Increment/README.md) shows the total form.
+through the core lemmas `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_eraseIdx`.  The
+earlier system's theorem also stated termination with a heap reserve.  Here the theorem allows a
+trap, and the [increment example](../Increment/README.md) shows the total form.
 
 ## Running it
 

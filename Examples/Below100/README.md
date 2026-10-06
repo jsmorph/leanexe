@@ -2,11 +2,12 @@
 
 ## What it is
 
-This example is [main's Demo
+This example is [the earlier system's Demo
 5](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-5/README.md),
-carried to this branch's pipeline.  [The request](request.txt) asks for the elements of an array of
-at most eight words that are less than 100, in their original order, and for the empty array when
-the input is longer.  [The specification](Spec.lean) states it with `Array.filter`, as main's did.
+carried to the current system's pipeline.  [The request](request.txt) asks for the elements of an
+array of at most eight words that are less than 100, in their original order, and for the empty
+array when the input is longer.  [The specification](Spec.lean) states it with `Array.filter`, as
+the earlier system's did.
 
 [The program](Program.lean) repeats `keep` with `LeanExe.repeatWhile` over the first `count`
 elements, where `count` is the input's size when it is at most eight and 0 otherwise.  `keep` takes
@@ -26,9 +27,10 @@ that exports both.
 | `below100_bytes` | The module's bytes decode to a module whose `compute` export implements `expected`: from any store that satisfies the runtime invariant, a call with an array in memory returns the words of `expected` or stops at `unreachable`. |
 
 The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Classical.choice`, and
-`Quot.sound`.  Main's generated proof concerned one 1,975-byte binary and took 969 lines, reduced to
-70 by main's later proof tools.  Here the rules of the in-place push and of `repeatWhile` over one
-array prove `Implements`, and with `compute_eq`, `Implements.congr` states it for the specification.
+`Quot.sound`.  The earlier system's generated proof concerned one 1,975-byte binary and took 969
+lines, reduced to 70 by the earlier system's later proof tools.  Here the rules of the in-place push
+and of `repeatWhile` over one array prove `Implements`, and with `compute_eq`, `Implements.congr`
+states it for the specification.
 
 ## Running it
 

@@ -1,6 +1,6 @@
 # Verified two-cell Euler step data
 
-This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe this branch's Euler solvers and their runs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
 This dataset records one first-order Rusanov update of the two-cell Sod state
 on `[0, 1]`.  The cells have width `1/2`; the time step is `1/8`, so
