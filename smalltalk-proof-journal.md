@@ -251,3 +251,24 @@ preservation of the initial assumptions remain separate obligations.
 The checks needed explicit arguments for the returned value and an explicit
 lambda for the field theorem's handle and offset. A bare partially applied
 theorem did not infer those implicit parameters. No execution code changed.
+
+## Reservation preserves live data (2026-10-06)
+
+`Heap.Valid` pairs graph validity with existence of a complete free list.
+Error writes preserve graph validity, free-list validity, payloads, and
+reachability; only phase and error registers change. `Reservation.Effect`
+states the collector's live-payload, reachability, register, and heap effects.
+Its composition lemma handles both possible collections in reservation.
+
+`reserve_correct` proves the actual reservation either preserves the original
+phase and provides at least the requested free cells, or reports phase 4
+with reason 9. Both outcomes preserve heap and free-list validity, every
+original reachable payload, and the reachability relation. `reserve_register`
+checks the unaffected registers; already-error inputs are unchanged.
+No spare-space assumption is needed for this result. The complete free list
+is an input assumption because reservation can leave the heap unchanged.
+
+The first heap proof needed an explicit type on an unused non-mark parameter;
+after that annotation, heap and reservation checked without further changes.
+Initialization and instruction preservation of `Heap.Valid`, and the
+composition of reservation with the return and allocation proofs, remain.
