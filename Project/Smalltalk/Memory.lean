@@ -137,4 +137,16 @@ theorem fail_read {s : Array UInt64} {cap : Nat} (hs : Shape s cap)
   have h15 := register_bound hs (show (15 : UInt64).toNat < 24 by decide)
   simp only [fail, read_write, write_size, h0, h15]
 
+theorem successor_toNat {i : UInt64} (hi : i.toNat < 1048576) :
+    (i + 1).toNat = i.toNat + 1 := by
+  rw [UInt64.toNat_add]
+  simp only [UInt64.reduceToNat]
+  exact Nat.mod_eq_of_lt (by omega)
+
+theorem successor_handle {cap : Nat} {i : UInt64}
+    (hc : cap ≤ 1048576) (hi : i.toNat < cap) : Handle cap (i + 1) := by
+  have bound : i.toNat < 1048576 := by omega
+  simp only [Handle, successor_toNat bound]
+  omega
+
 end Project.Smalltalk.Memory

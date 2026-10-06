@@ -27,6 +27,15 @@ theorem chain_nodup {s cap head nodes} (hc : Chain s cap head nodes) : nodes.Nod
   | nil => exact List.nodup_nil
   | cons _ _ _ absent _ ih => exact List.nodup_cons.mpr ⟨absent, ih⟩
 
+theorem chain_tag {s cap head nodes} (hc : Chain s cap head nodes)
+    {h} (hm : h ∈ nodes) : field s h 0 = 0 := by
+  induction hc with
+  | nil => simp at hm
+  | cons _ zero _ _ _ ih =>
+    rcases List.mem_cons.mp hm with eq | tailMem
+    · subst h; exact zero
+    · exact ih tailMem
+
 theorem chain_transfer {s t cap head nodes} (hc : Chain s cap head nodes)
     (same : ∀ h ∈ nodes, field t h 0 = field s h 0 ∧ field t h 2 = field s h 2) :
     Chain t cap head nodes := by
@@ -131,5 +140,17 @@ theorem allocate_empty_preserves_cells {s : Array UInt64} {cap : Nat}
   rw [allocate_empty valid, field, fail_read hs]
   simp only [cell_index_not_register hs.2.1 hg hk (show (15 : UInt64).toNat < 24 by decide),
     cell_index_not_register hs.2.1 hg hk (show (0 : UInt64).toNat < 24 by decide), ite_false, field]
+
+theorem valid_transfer {s t : Array UInt64} {cap : Nat} {nodes : List UInt64}
+    (valid : Valid s cap nodes) (head : read t 8 = read s 8) (count : read t 9 = read s 9)
+    (same : ∀ g, Handle cap g → field t g 0 = field s g 0 ∧ field t g 2 = field s g 2) :
+    Valid t cap nodes := by
+  refine ⟨?_, ?_, ?_⟩
+  · rw [head]
+    exact chain_transfer valid.1 (fun g mem => same g (chain_handle valid.1 mem))
+  · rw [count]; exact valid.2.1
+  · intro g hg
+    rw [(same g hg).1]
+    exact valid.2.2 g hg
 
 end Project.Smalltalk.FreeList

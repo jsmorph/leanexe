@@ -211,9 +211,18 @@ head, preserves the remaining order, decrements the count once, and preserves
 arena shape and list validity. `allocate_empty_preserves_cells` proves that
 an empty valid list produces error 9 without changing any cell.
 
+`Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
+preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`
+proves that its rebuilt free list contains exactly the unmarked handles,
+without duplicates, with the correct count. These results require `Shape`;
+the list result also requires nonzero tags on marked cells. They allow any
+contents in unmarked cells and any old free-list order. They do not yet prove
+that marking identifies exactly the reachable cells.
+
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
-including its dependencies, and rejects all axioms except `propext` and
-`Quot.sound`. The test driver runs this check. The proof journal is
+including its dependencies, and permits only Lean's standard axioms
+`propext`, `Quot.sound`, and `Classical.choice`. It rejects admitted proofs and
+additional axioms. The test driver runs this check. The proof journal is
 `smalltalk-proof-journal.md`.
 
 `LeanExe/Smalltalk/Control.lean` defines separate list models for first-method

@@ -46,3 +46,26 @@ checked cell-preservation and register-effect lemmas then suffice for the
 allocation proof; no executable definition changed. These theorems assume
 free-list validity before allocation. Initialization and collection still
 need proofs that establish it.
+
+## Complete sweep (2026-10-06)
+
+`reclaim_read`, `reclaim_field`, and `reclaim_register` check the actual writes
+made by reclamation. The collector's sweep preserves mark words and arena
+shape. `finishCollection_preserves_marked` applies an invariant through the
+actual bounded loop and proves that all eight words of each marked cell remain
+unchanged, including after the final statistics write.
+
+`SweepList.Prefix` records precisely which unmarked handles have been visited,
+the concrete linked list, its count, unchanged mark words, and a count bound
+that rules out integer wraparound. `counted_index` establishes that the loop
+visits all handles through capacity. `finishCollection_freeList` then proves
+that the result has a complete free list containing exactly the original
+unmarked handles, each once. It assumes marked cells have nonzero tags; this
+is the condition the marking proof must supply.
+
+The initial audit permitted only `propext` and `Quot.sound`. The new arithmetic
+proofs also use `Classical.choice` through generated `omega` proof terms. The
+audit now permits these three standard Lean axioms and still rejects every
+other axiom, including `sorryAx`. This is recorded in the public proof limits;
+the executable implementation and its tests are unchanged. The sweep theorem
+does not establish reachability or correctness of the full `collect` call.

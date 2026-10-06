@@ -8,7 +8,7 @@ run_cmd do
   for (name, info) in env.constants.toList do
     if (`Project.Smalltalk).isPrefixOf name && info.isTheorem then
       for axiomName in ← Lean.collectAxioms name do
-        unless axiomName == `propext || axiomName == `Quot.sound do
+        unless axiomName == `propext || axiomName == `Quot.sound || axiomName == `Classical.choice do
           throwError "{name} depends on forbidden axiom {axiomName}"
 
 #print axioms Project.Smalltalk.Memory.address_toNat
@@ -21,3 +21,5 @@ run_cmd do
 #print axioms Project.Smalltalk.Allocation.allocateCell_shape
 #print axioms Project.Smalltalk.FreeList.allocate_valid
 #print axioms Project.Smalltalk.FreeList.allocate_empty_preserves_cells
+#print axioms Project.Smalltalk.Sweep.finishCollection_preserves_marked
+#print axioms Project.Smalltalk.SweepList.finishCollection_freeList
