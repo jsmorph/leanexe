@@ -16,6 +16,10 @@ The standard command form is:
 tools/leanrun --timeout <duration> <lean-or-lake-command>
 ```
 
+## Python Programs
+
+- Run every Python program in this repository with `uv run PATH`, never with `python3` or a hand-made virtual environment.  Each program declares `requires-python = ">=3.12"` and its pinned dependencies in a PEP 723 `# /// script` block, and a new program must do the same.
+
 ## Approval Boundaries
 
 - Keep the repository driver as the first command token for verification runs: [`tests/modules/run.sh`](tests/modules/run.sh), [`tests/gpt/run.sh`](tests/gpt/run.sh), [`tests/wgsl/run.sh`](tests/wgsl/run.sh), [`tests/gpt32/native.sh`](tests/gpt32/native.sh), [`tests/drone/oracle.sh`](tests/drone/oracle.sh), or [`tools/demo-check`](tools/demo-check), each of which calls [`tools/leanrun`](tools/leanrun) itself.  Request approval for that driver prefix rather than one case, module, corpus file, temporary path, or internal child command.

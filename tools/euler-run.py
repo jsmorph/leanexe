@@ -1,5 +1,6 @@
 # /// script
-# requires-python = ">=3.10"
+# requires-python = ">=3.12"
+# dependencies = []
 # ///
 """Run one solve export of euler.wasm in the Wasmtime host and record the result.
 

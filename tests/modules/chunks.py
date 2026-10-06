@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.11"
+# requires-python = ">=3.12"
 # dependencies = []
 # ///
 """Runs a stream of CLOB commands through `clob.wasm` three ways in host sessions: one call of

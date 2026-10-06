@@ -16,7 +16,7 @@ The drone proof subject is revision `820b3958`.  The LeanExe overview and compil
 Build from this directory with the installed TeX tools:
 
 ```sh
-python3 build.py
+uv run build.py
 ```
 
 The proof check uses the current drone checkout:
@@ -31,7 +31,7 @@ The five figures use fresh Wasmtime results, each compared with native Lean.  Th
 tools/leanrun --timeout 15m lake -q build lean-wasm LeanExe.Examples.Drone
 tools/leanrun --timeout 2m .lake/build/bin/lean-wasm compile --module LeanExe.Examples.Drone --entry LeanExe.Examples.Drone.compute --out build/drone-report/program.wasm
 node paper/drone-verification-report/run-figures.js
-python3 paper/drone-verification-report/build.py
+uv run paper/drone-verification-report/build.py
 ```
 
 Individual vector figures: [five-station example](figures/example.pdf), [flat terrain](figures/flat.pdf), [broad plateau](figures/plateau.pdf), [rounded hill](figures/hill.pdf), and [repeated ridges](figures/ridges.pdf).
