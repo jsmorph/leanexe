@@ -33,3 +33,5 @@ import Project.Smalltalk.PointerTypes
 import Project.Smalltalk.TypedCollection
 import Project.Smalltalk.FrameTypes
 import Project.Smalltalk.UnwindHeap
+import Project.Smalltalk.TypedAllocation
+import Project.Smalltalk.PublicReturnHeap

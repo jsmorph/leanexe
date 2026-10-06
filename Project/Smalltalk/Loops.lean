@@ -32,6 +32,12 @@ theorem applyN_add {α : Type} (f : α → α) (a b : Nat) (s : α) :
     rw [Nat.succ_add, applyN, ih]
     rfl
 
+theorem applyN_invariant {α : Type} (P : α → Prop) (f : α → α)
+    (preserve : ∀ s, P s → P (f s)) (n : Nat) (s : α) (initial : P s) : P (applyN f n s) := by
+  induction n generalizing s with
+  | zero => exact initial
+  | succ n ih => exact ih (f s) (preserve s initial)
+
 theorem go_invariant {α : Type} (P : α → Prop) (cond : α → Bool) (step : α → α)
     (preserve : ∀ s, P s → cond s = true → P (step s))
     (fuel : Nat) (s : α) (initial : P s) : P (LeanExe.repeatWhile.go cond step fuel s) := by

@@ -497,3 +497,28 @@ Both focused checks passed without revisions. They are now imported in the
 proof umbrella, and the combined build and axiom audit pass. The work document
 records this increment and the remaining return and allocation obligations.
 No executable definitions changed.
+
+## Typed allocation and public returns (2026-10-06)
+
+`TypedAllocation` uses the checked allocation effects to retain old pointer
+types and check the new cell's typed fields. It supplies link, scalar, and
+captured-block construction rules. `ReturnCallerHeap` checks the new operand
+link, caller root, and final result root. `ReturnHeap` combines these results
+with actual reservation and bounded unwind. The caller and returned value must
+be live before reservation, so the collector retains them.
+
+`CallChainReachability` proves a successful actual membership scan identifies
+a reachable target, allowing repeated links. `PublicReturnHeap.ret_valid` uses
+that fact and the actual guards to establish complete heap and pointer-type
+preservation for local and nonlocal returns. It assumes a valid typed heap,
+non-error phase, and current activation. Exact delivery remains a separate
+theorem with explicit caller-prefix conditions; these are not silently removed.
+
+The first reservation composition shadowed runtime argument names with proof
+facts and reached a heartbeat limit. Explicit names and a checked guard
+equivalence resolved it. Public-return composition also hit the 200,000-heartbeat
+limit. A selected-target lemma passed, and a diagnostic showed the accepted
+branch still contained `if false = true`. Explicit `Bool.false_eq_true` and
+`ite_false` simplification removed that conditional. No limits were increased.
+All results pass the combined build and axiom audit; no executable definitions
+changed. The work document records construction and global-invariant obligations.
