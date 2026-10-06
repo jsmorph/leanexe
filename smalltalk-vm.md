@@ -287,8 +287,16 @@ constructor stores its class and metadata words, retains the exact field-value
 list, clears register 19, preserves old allocated cells and pointer types, and
 consumes exactly `fields + 1` cells. The valid typed input heap must have that
 many free cells. Class and metadata IDs are scalar data in this theorem; their
-program-table validity is a separate obligation. Activation binding remains
-unfinished.
+program-table validity is a separate obligation.
+
+`ArgumentLinks.send_argument` proves that accepting the receiver link at
+operand depth `nargs` also establishes that every earlier operand position is
+a valid link with a valid value. It uses the actual bounded walk and typed
+next pointers; it does not assume an acyclic operand list. `ArgumentBinding`
+proves selected argument values valid for accepted sends and receiver-only
+entry. Its `bindOne_effect` connects the actual binding operation to the checked
+one-cell prepend, including its exact effects. The complete binding loop and
+final activation remain unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
