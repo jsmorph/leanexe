@@ -94,3 +94,27 @@ preserve reachable payloads and free exactly the unreachable handles. The
 remaining marking proof must establish exact marking, bounded queue use, and
 termination of the actual scan loop. The conditional theorem does not prove
 those obligations. All new theorems pass the axiom audit.
+
+## Concrete worklist and root-marking invariant (2026-10-06)
+
+`Worklist.Represents` relates the actual count and every used worklist word to
+the pending list. `enqueue_represents` checks append at the old count and
+preservation of every existing entry. `handles_length` uses a finite list of
+valid handles to bound the number of distinct handles by capacity. Consequently
+`enqueue_room` proves that a new unmarked handle cannot encounter a full
+pending list. It does not assume spare space.
+
+`MarkInvariant.Holds` connects array payloads, registers, mark words, distinct
+scanned and pending handles, reachability, and closure of scanned edges.
+`mark_holds` checks the actual `mark`, including zero, existing-mark, and new
+mark cases. The new case derives space from the worklist bound and preserves
+all graph facts. `initial_holds` establishes the invariant after clearing and
+resetting the count; `roots_holds` checks the actual `markRoots` and shows that
+every root is in the pending list. The scan loop and its capacity bound remain
+unproved.
+
+Two elaboration failures were resolved locally: generic indexing lemmas needed
+their list arguments explicitly, and rewriting the proposition inside an `if`
+required `simp only` so its dependent decision instance was transported too.
+These are proof changes; no executable definition changed. The main results
+and all their dependencies pass the axiom audit.

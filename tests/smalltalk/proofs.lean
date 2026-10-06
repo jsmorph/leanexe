@@ -29,3 +29,6 @@ run_cmd do
 #print axioms Project.Smalltalk.Clear.cleared_marks
 #print axioms Project.Smalltalk.Clear.cleared_payload
 #print axioms Project.Smalltalk.Graph.sweep_correct
+#print axioms Project.Smalltalk.Worklist.enqueue_room
+#print axioms Project.Smalltalk.MarkInvariant.mark_holds
+#print axioms Project.Smalltalk.MarkInvariant.roots_holds

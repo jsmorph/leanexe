@@ -229,7 +229,16 @@ the pointer fields listed above. `sweep_correct` connects the concrete sweep
 to that definition: given exact marking, it preserves reachable payloads and
 builds a valid free list containing exactly the unreachable handles. This is
 conditional; there is no proof yet that the complete marking loop supplies
-exact marking or always has worklist space.
+exact marking.
+
+`Project/Smalltalk/Worklist.lean` relates the actual worklist words and count
+to a list of handles. `MarkInvariant.lean` proves that checked `mark` either
+keeps that list or appends one reachable handle. Its invariant relates actual
+mark words to the scanned and pending handles and excludes duplicates. From
+distinct valid handles, `mark_holds` derives worklist space for a new handle.
+The clearing and root-marking results establish this invariant and cover all
+six roots. The actual scan loop still needs a proof that it preserves the
+invariant, finishes within capacity, and marks every reachable handle.
 
 `tests/smalltalk/proofs.lean` checks every theorem in `Project.Smalltalk`,
 including its dependencies, and permits only Lean's standard axioms
