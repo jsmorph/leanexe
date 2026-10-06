@@ -8,7 +8,8 @@ host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
-for entry in Verified.Examples.Poly:poly Verified.Examples.Mix:mix; do
+for entry in Verified.Examples.Poly:poly Verified.Examples.Mix:mix \
+    Verified.Examples.Lets:lets; do
   IFS=: read -r module name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.module" \
     "$out/$name.wasm"

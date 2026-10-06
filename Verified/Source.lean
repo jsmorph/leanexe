@@ -1,9 +1,9 @@
 import LeanExe.Pipeline.Implements
 
 /-! The source language of the verified compiler: functions whose body is an expression on
-64-bit words over the function's arguments.  Each operation means Lean's operation on `UInt64`:
-arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero is the dividend,
-and a shift uses its amount modulo 64. -/
+64-bit words over the function's arguments and `let`-bound values.  Each operation means Lean's
+operation on `UInt64`: arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by
+zero is the dividend, and a shift uses its amount modulo 64. -/
 
 namespace Verified
 
@@ -27,25 +27,30 @@ def BinOp.apply : BinOp → UInt64 → UInt64 → UInt64
   | .shl, a, b => a <<< b
   | .shr, a, b => a >>> b
 
-/-- An expression over the arguments of a function. -/
+/-- An expression over the variables of a function.  Variable `i` is argument `i` for `i` below
+the function's arity, and above it the value of the enclosing `letE`s, outermost first. -/
 inductive Expr where
   | const (value : UInt64)
-  | arg (index : Nat)
+  | var (index : Nat)
   | bin (op : BinOp) (left right : Expr)
+  | letE (value body : Expr)
   deriving Repr
 
-/-- The value of an expression for the arguments `args`.  An argument past the end reads 0, and
-`Expr.argsBelow` excludes such reads from compiled functions. -/
-def Expr.denote (args : List UInt64) : Expr → UInt64
+/-- The value of an expression for the variable values `vals`.  `letE value body` gives `body`
+the value of `value` as the next variable.  A variable past the end reads 0, and `Expr.scoped`
+excludes such reads from compiled functions. -/
+def Expr.denote (vals : List UInt64) : Expr → UInt64
   | .const value => value
-  | .arg index => args.getD index 0
-  | .bin op left right => op.apply (left.denote args) (right.denote args)
+  | .var index => vals.getD index 0
+  | .bin op left right => op.apply (left.denote vals) (right.denote vals)
+  | .letE value body => body.denote (vals ++ [value.denote vals])
 
-/-- Every argument that the expression reads is below `arity`. -/
-def Expr.argsBelow (arity : Nat) : Expr → Bool
+/-- Every variable that the expression reads is in scope when `count` variables are. -/
+def Expr.scoped (count : Nat) : Expr → Bool
   | .const _ => true
-  | .arg index => index < arity
-  | .bin _ left right => left.argsBelow arity && right.argsBelow arity
+  | .var index => index < count
+  | .bin _ left right => left.scoped count && right.scoped count
+  | .letE value body => value.scoped count && body.scoped (count + 1)
 
 /-- A function of `arity` word arguments that returns the value of `body`. -/
 structure Func where

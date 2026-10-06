@@ -15,9 +15,9 @@ def mix (a b c : UInt64) : UInt64 := ((a / b + a % c) ^^^ ((a &&& b) ||| (c <<< 
 /-- `mix` in the source language. -/
 def mixFunc : Func :=
   ⟨3, .bin .sub
-    (.bin .xor (.bin .add (.bin .div (.arg 0) (.arg 1)) (.bin .rem (.arg 0) (.arg 2)))
-      (.bin .or (.bin .and (.arg 0) (.arg 1)) (.bin .shl (.arg 2) (.arg 1))))
-    (.bin .shr (.arg 0) (.arg 2))⟩
+    (.bin .xor (.bin .add (.bin .div (.var 0) (.var 1)) (.bin .rem (.var 0) (.var 2)))
+      (.bin .or (.bin .and (.var 0) (.var 1)) (.bin .shl (.var 2) (.var 1))))
+    (.bin .shr (.var 0) (.var 2))⟩
 
 def module : Wasm.Module := compile [(mixFunc, "mix")]
 
