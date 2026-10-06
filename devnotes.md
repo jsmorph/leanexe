@@ -26445,7 +26445,7 @@ For V4 the user chose typed values over a separate condition syntax (2026-10-06)
 now intrinsically typed: `Expr Γ t` over a context `Γ : List Ty` of the types `word` and `bool`,
 with variables `Var Γ t` as de Bruijn indices from the front of the context and values `Env Γ` as
 a list indexed by the context.  A binding puts its value at the front, so parameter `i` is
-variable `i` and a binding's value is variable 0 of its body; `Expr.v i` builds a variable from
+variable `i` and a binding's value is variable 0 of its body.  `Expr.v i` builds a variable from
 its index with a proof by `rfl` of its type.  Typing removes the `scoped` check from
 `Func.correct`.  Every value is one word, a `Bool` being 1 or 0, which is how `Implements` already
 passes a `Bool` through `Flat Bool UInt64`.  The option offered i32 locals for `Bool`s, but one
@@ -26455,7 +26455,7 @@ widen their i32 result with `i64.extend_i32_u`, `!` is `i64.eqz` and a widening,
 runs the else branch first.  `Expr.denote` gives `if` as Lean's `if c then`, so a Lean function
 written with `Bool` bindings and `if` on them equals its source function by `rfl`.  The example
 `Select.lean` has `median`, with three `Bool` bindings and nested conditionals, and `inBand`,
-which returns a `Bool`; `select_bytes` covers both functions of the 1,487-byte module, and the
+which returns a `Bool`.  `select_bytes` covers both functions of the 1,487-byte module, and the
 test passes all 900 cases of the four examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
