@@ -18,3 +18,4 @@ import Project.Smalltalk.Reservation
 import Project.Smalltalk.ReturnReservation
 import Project.Smalltalk.InitializationGraph
 import Project.Smalltalk.InitializationFree
+import Project.Smalltalk.HeapAllocation

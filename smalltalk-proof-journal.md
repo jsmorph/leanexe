@@ -356,3 +356,20 @@ tactic, a named natural argument for `small_toNat`, and conversion of the
 closed `UInt64.ofNat 4` head to the literal word. The range-membership lemma
 did not need its handle-validity assumption; that assumption was removed.
 No executable definitions changed.
+
+## Allocation preserves the heap graph (2026-10-06)
+
+`References` requires every nonzero pointer stored in the new cell to name
+an existing allocated handle. `allocateCell_graph_valid` checks new-cell
+edges separately from unchanged old-cell edges and retains valid roots and
+tags. `allocate_valid` combines that theorem with the complete free-list
+allocation result to preserve `Heap.Valid`. The empty-list case preserves
+the same invariant while reporting error 9.
+
+`allocateCell_reachable` proves that allocation alone does not alter root
+reachability. The free head is not any original allocated cell, so all
+reachable payloads and edges stay unchanged. The new cell is not rooted until
+a subsequent VM write connects it. That fact also states why construction
+must not trigger collection between allocating a value and linking it.
+The first allocation-preservation check passed without revisions. No
+executable definitions changed; VM writes and instruction composition remain.

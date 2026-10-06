@@ -211,6 +211,14 @@ head, preserves the remaining order, decrements the count once, and preserves
 arena shape and list validity. `allocate_empty_preserves_cells` proves that
 an empty valid list produces error 9 without changing any cell.
 
+`HeapAllocation.lean` proves that allocation also preserves graph validity
+when the tag is supported and every new nonzero pointer names an already
+allocated valid handle. Combined with the free-list theorem, `allocate_valid`
+preserves `Heap.Valid`. Allocation alone preserves reachability from the VM
+roots; the fresh cell becomes reachable only after a VM write links it from
+a root or a reachable cell. Allocation from an empty list preserves heap
+validity and reports error 9.
+
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
 preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`
 proves that its rebuilt free list contains exactly the unmarked handles,
