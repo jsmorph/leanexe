@@ -6,9 +6,29 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-wasmtime-host
 cases=$(mktemp)
-trap 'rm -f "$cases"' EXIT
-# Out-of-bounds reads with `!` print panic messages from native Lean; they are expected.
-(cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/modules/Cases.lean) >"$cases" 2>/dev/null
+errors=$(mktemp)
+trap 'rm -f "$cases" "$errors"' EXIT
+# Native Lean panics on the reads past the end of an array and the `insertIdx!` past the end that
+# the cases exercise: it writes a message and a backtrace to standard error and returns Lean's
+# default value.  The run fails when Lean exits with an error or writes any other message.
+if ! (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/modules/Cases.lean) \
+    >"$cases" 2>"$errors"; then
+  cat "$errors" >&2
+  echo "fail: native Lean exited with an error" >&2
+  exit 1
+fi
+counts=$(awk '
+  $0 == "Error: index out of bounds" { reads++; next }
+  /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
+  $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
+  { others++; print > "/dev/stderr" }
+  END { print reads + 0, inserts + 0, others + 0 }' "$errors")
+read -r reads inserts others <<<"$counts"
+if [ "$others" -ne 0 ]; then
+  echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
+  exit 1
+fi
+echo "native Lean: $reads reads past the end and $inserts insertIdx! past the end, as the cases expect"
 declare -A passed
 failed=0
 while IFS='|' read -r module name result args expected; do
