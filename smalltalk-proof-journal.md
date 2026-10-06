@@ -200,3 +200,34 @@ imports (`not_not` and `by_contra`). An explicit `Classical.byContradiction`
 proof checked successfully. No executable definitions changed. These lemmas
 support repeated collection; VM initialization and instructions still need
 to establish the initial heap assumptions.
+
+## Concrete call-chain and return control (2026-10-06)
+
+`Loops.applyN` and `loop_constant` connect the actual constant-step `loop` to
+forward iteration. `onChain_correct` proves exact membership in a represented
+caller chain within capacity. `home_correct` proves first eligible lexical
+home selection, including retired homes: liveness belongs to the return
+check, not the home search. `ReturnChecks` proves underflow, dead-target and
+absent-target rejection, and acceptance of a live activation in the caller
+chain, using the concrete fields and decisions.
+
+An initial return proof exceeded the elaboration heartbeat limit while
+converting a large unfolded expression. The checked `ret_eq` lemma divides
+that boundary and makes each branch a direct Boolean rewrite. Broad
+simplification with `eq_comm` also recursed; explicit Boolean equalities and
+`Bool.decide_or` avoided that problem. No limit was raised. The journal keeps
+these failures because the small helpers, rather than more unfolding, made
+the proofs check.
+
+`Unwind.Prefix` describes actual caller links through the return target, with
+valid distinct handles. `unwind_go_prefix` proves exact retirement and a zero
+cursor within its explicit fuel bound. `returnReady_prefix` connects the
+result to the actual return function. `retireMany_field` checks all cell
+effects, including preserved lexical links and slots; companion results
+preserve registers and shape. Pair-pattern lambdas initially differed from
+projection lambdas during rewriting. Stating the loop theorem with the
+executable function's pair patterns removed that mismatch.
+
+Remaining obligations include returned-value delivery, method lookup,
+instruction semantics, and initialization and step preservation of the heap
+and chain assumptions. No executable definitions changed in this increment.

@@ -3,6 +3,35 @@ import Project.Smalltalk.Memory
 
 namespace Project.Smalltalk.Loops
 
+def applyN {α : Type} (f : α → α) : Nat → α → α
+  | 0, s => s
+  | n + 1, s => applyN f n (f s)
+
+theorem applyN_commute {α : Type} (f : α → α) (n : Nat) (s : α) :
+    applyN f n (f s) = f (applyN f n s) := by
+  induction n generalizing s with
+  | zero => rfl
+  | succ n ih => exact ih (f s)
+
+theorem loop_constant {α : Type} (f : α → α) (count : UInt64) (s : α) :
+    LeanExe.loop count s (fun _ => f) = applyN f count.toNat s := by
+  have fold : ∀ n, Nat.fold n (fun _ _ => f) s = applyN f n s := by
+    intro n
+    induction n with
+    | zero => rfl
+    | succ n ih =>
+      simp only [Nat.fold_succ, ih, applyN]
+      exact (applyN_commute f n s).symm
+  exact fold count.toNat
+
+theorem applyN_add {α : Type} (f : α → α) (a b : Nat) (s : α) :
+    applyN f (a + b) s = applyN f b (applyN f a s) := by
+  induction a generalizing s with
+  | zero => simp only [Nat.zero_add, applyN]
+  | succ a ih =>
+    rw [Nat.succ_add, applyN, ih]
+    rfl
+
 theorem go_invariant {α : Type} (P : α → Prop) (cond : α → Bool) (step : α → α)
     (preserve : ∀ s, P s → cond s = true → P (step s))
     (fuel : Nat) (s : α) (initial : P s) : P (LeanExe.repeatWhile.go cond step fuel s) := by

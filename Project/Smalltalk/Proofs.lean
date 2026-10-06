@@ -10,3 +10,6 @@ import Project.Smalltalk.Collector
 import Project.Smalltalk.CollectorPreservation
 import Project.Smalltalk.Execution
 import Project.Smalltalk.Traversal
+import Project.Smalltalk.Home
+import Project.Smalltalk.ReturnChecks
+import Project.Smalltalk.Unwind
