@@ -60,7 +60,7 @@ EOF
 
 emit() {
   mkdir -p "build/$name"
-  lean env lean --run Project/Pipeline/Emit.lean "$ns.Module" "$ns.$name.module" \
+  lean env lean --run tools/Emit.lean "$ns.Module" "$ns.$name.module" \
     "build/$name/$name.wasm" >/dev/null 2>"$work/emit.err" || fail "emit: $(cat "$work/emit.err")"
   echo "module: build/$name/$name.wasm, $(stat -c %s "build/$name/$name.wasm") bytes"
 }

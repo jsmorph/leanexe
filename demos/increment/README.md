@@ -27,7 +27,7 @@ proof of `Implements` applies the rule of the build template, and with `compute_
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.Increment.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Increment.Module Project.Increment.increment.module build/increment/increment.wasm
 build/tools/leanexe-wasmtime-host call build/increment/increment.wasm compute array-u64 \
   array-u64:0,41,18446744073709551615

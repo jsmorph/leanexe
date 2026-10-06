@@ -27,7 +27,7 @@ sample, a missing key, a match at the first and last pairs, repeated keys, and i
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.Lookup.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Lookup.Module Project.Lookup.lookup.module build/lookup/lookup.wasm
 build/tools/leanexe-wasmtime-host call build/lookup/lookup.wasm compute array-u64 \
   array-u64:42,1,10,42,20,42,30,4,40,5,50,6,60,7,70,8,80,9,90,10,100

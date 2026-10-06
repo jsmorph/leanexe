@@ -28,7 +28,7 @@ example](../increment/README.md) shows the total form.
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.RemoveZero.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.RemoveZero.Module Project.RemoveZero.removeZero.module build/removeZero/removeZero.wasm
 build/tools/leanexe-wasmtime-host call build/removeZero/removeZero.wasm compute array-u64 \
   array-u64:7,0,9,0

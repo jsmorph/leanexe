@@ -73,7 +73,7 @@ those bytes also depends on the external runtime and host environment.
 
 ## Tests
 
-[`DecodeTest.lean`](DecodeTest.lean) runs the decoder over the modules that `wasm-tools
+[`DecodeTest.lean`](../../tests/decoder/DecodeTest.lean) runs the decoder over the modules that `wasm-tools
 json-from-wast` extracts from the official WebAssembly testsuite.  Each module in the decoder's
 subset must decode to the module that Talos reads from the text of the same file, and `decode
 (encode m)` must return `m` when `encode m` succeeds.  Each malformed binary must be rejected.  The
@@ -81,9 +81,9 @@ test expects `build/decode-test` to hold the extracted modules of the testsuite 
 CodeLib checkout.
 
 ```sh
-tools/leanrun --timeout 60m lake env lean --run Project/Encoding/DecodeTest.lean \
+tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean \
   "$(command -v wasm-tools)" build/decode-test
 ```
 
-[`Emit.lean`](../Pipeline/Emit.lean) also checks, for each module it writes, that the decoder
+[`tools/Emit.lean`](../../tools/Emit.lean) also checks, for each module it writes, that the decoder
 reads the bytes back as the module, and the module tests run the written files in Wasmtime.

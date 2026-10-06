@@ -12,7 +12,7 @@ entries list and reports each listed declaration that does not exist.  Run it
 from the repository root:
 
 ```sh
-tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
+tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 ```
 
 The 37 entries are of three kinds.  A compiler-rule entry is proved for every function its rule

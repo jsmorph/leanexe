@@ -27,7 +27,7 @@ including `(0, 0)`, `(1, 2^64 − 1)`, and consecutive Fibonacci numbers.
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.Gcd.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:60 i64:42
 ```

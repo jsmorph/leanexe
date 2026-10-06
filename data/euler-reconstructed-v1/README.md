@@ -77,7 +77,7 @@ records the runtime, the peak resident size, and the SHA-256 of the words.
 
 ```sh
 tools/build-wasmtime-host.sh
-tools/leanrun --lock-timeout 1200 lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --lock-timeout 1200 lake env lean --run tools/Emit.lean \
   Project.Euler.Module Project.Euler.euler.module euler.wasm
 uv run tools/euler-run.py euler.wasm reconstructed 192 new-192-directory
 uv run tools/euler-run.py euler.wasm reconstructed 800 new-800-directory

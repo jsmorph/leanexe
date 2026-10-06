@@ -17,7 +17,7 @@ semantics, and the binary decoder, which the official WebAssembly testsuite test
 
 [The user manual](docs/manual.md) describes the dialect the compiler accepts, the commands that
 compile and run a program, the theorems and the rules that prove them, the tests, and the examples.
-[The status record](deslop.md) holds the design, the decisions, the status, and the plan, and
+[The design record](docs/design.md) holds the design, the decisions, the status, and the plan, and
 [the development journal](devnotes.md) records the work.
 
 ## Layout
@@ -54,11 +54,11 @@ full check.
 ```sh
 export PATH="$HOME/.elan/bin:$PATH"
 tools/leanrun --timeout 60m lake build
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:48 i64:18
-tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
+tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 ```
 
 [`tools/build-wasmtime-host.sh`](tools/build-wasmtime-host.sh) builds the Wasmtime host after
