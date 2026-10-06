@@ -251,6 +251,9 @@ handle, tag, and payload words, and the rebuilt free list contains exactly
 the unreachable handles, without duplicates, with the correct count.
 `collect_register` proves that registers other than 8, 9, 10, 11, and 18 are
 unchanged. `collect_error_unchanged` checks the already-error case.
+`CollectorPreservation.lean` proves that collection leaves a valid typed heap
+with exactly the same reachability relation and phase. A second collection
+therefore satisfies the same assumptions and preserves the same live payloads.
 
 The collector theorem assumes `Graph.Valid`: valid arena shape; every nonzero
 root names an allocated valid handle; every pointer from an allocated cell
