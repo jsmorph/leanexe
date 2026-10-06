@@ -37,3 +37,4 @@ import Project.Smalltalk.TypedAllocation
 import Project.Smalltalk.PublicReturnHeap
 import Project.Smalltalk.ConstructionValues
 import Project.Smalltalk.FillLoop
+import Project.Smalltalk.ObjectConstruction

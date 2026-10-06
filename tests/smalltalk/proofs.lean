@@ -107,5 +107,6 @@ run_cmd do
 #print axioms Project.Smalltalk.FillLoop.filling_index
 #print axioms Project.Smalltalk.FillLoop.filling_values
 #print axioms Project.Smalltalk.FillLoop.filling_eq_pair
+#print axioms Project.Smalltalk.ObjectConstruction.newReady_effect
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

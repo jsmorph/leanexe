@@ -566,3 +566,22 @@ Concrete types for the count facts and construction effect, and explicit goals
 for the new index and count, removed those projections. No limits or executable
 code changed. The combined build and axiom audit pass. The work document is
 updated with final-object and activation-construction work.
+
+## Complete object construction (2026-10-06)
+
+`ObjectConstruction.newReady_eq` connects the actual object constructor to the
+checked field-building loop and final allocation. Typed object references name
+the completed link list. The field budget leaves one free cell, derived from
+the loop's exact natural-number count rather than assumed separately.
+
+`newReady_effect` checks the complete actual operation: a valid typed heap,
+valid new object handle, object tag 4, specified class and metadata words,
+exact handle-1 field-value list, cleared register 19, and total consumption of
+fields plus one cell. Every original allocated cell and every register outside
+the specified construction/allocation registers is preserved. Class and metadata
+IDs are scalar words here; program-table validity remains a separate obligation.
+
+The focused checks passed without revisions. The combined build and axiom audit
+pass. No executable code or limits changed. The work document now marks object
+construction complete and retains activation binding, boot, lookup, calls, and
+the full execution invariant as unfinished work.
