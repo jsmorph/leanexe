@@ -35,6 +35,7 @@ and the open work, and
 | [`LeanExe/ProofKit/`](LeanExe/ProofKit/) | General lemmas: memory, arrays, allocation, binary32 and binary64 arithmetic and enclosures, and the raw-bit float wrappers that the float proofs state their results about. |
 | [`LeanExe/WGSL/`](LeanExe/WGSL/) | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
 | [`Examples/`](Examples/) | The library `Examples`: one directory per example, with a README, the program, the specification where there is one, the module, the proofs, the module cases, and the request and run records where there are any.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
+| [`Verified/`](Verified/) | The library `Verified`: a second compiler, written as a Lean function with one correctness theorem for every program it accepts.  [Its README](Verified/README.md) describes it.  It is not a default target. |
 | [`docs/`](docs/) | [The user manual](docs/manual.md) and [the design document](docs/design.md). |
 | [`ltg/`](ltg/) | The LTG knowledge base and its checker, `Check.lean`. |
 | [`.claude/skills/verified-executable/`](.claude/skills/verified-executable/SKILL.md) | The skill that takes a request in English to a program and a theorem about its bytes. |

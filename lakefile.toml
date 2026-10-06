@@ -19,6 +19,10 @@ name = "LeanExe"
 [[lean_lib]]
 name = "Examples"
 
+# The verified compiler; not a default target.
+[[lean_lib]]
+name = "Verified"
+
 # The program printer of the GPT-2 browser page (tests/web/serve.py); not a default target.
 [[lean_exe]]
 name = "gpt32-lines"

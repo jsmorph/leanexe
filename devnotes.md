@@ -26382,6 +26382,42 @@ reports in `paper/`, and the text of the `data/` records written on the earlier 
 wording, as records of their time.  The tree-lookup specification's comment changed with the
 rest, so its hashes were frozen again after a diff showed a comment-only change.
 
+## 2026-10-06: The verified compiler
+
+The user asked for a proof that a compiler is correct, as one theorem over every program it
+accepts.  The `LeanExe` compiler is meta code over `Lean.Expr` and cannot be the subject of such a
+theorem, so a second compiler grows in the top-level library `Verified`, written as an ordinary
+Lean function from a source syntax with a `denote` to a module.  Decisions (user, 2026-10-06): the
+library is separate, not a default target, and on the branch `verified`; it copies the parts of
+the IR it needs instead of importing them; each iteration is small and ends with bytes, a theorem,
+and a test in Wasmtime.
+
+`Verified` imports the parts that define correctness: Talos, the encoder and decoder with
+`round_trip`, `Implements` and its relatives, and the runtime.  The runtime is imported, where the
+discussion had listed it among the copied parts, because `Implements`'s heap invariant `Heap.At`
+is stated over the runtime's free-list layout, so a copy would need its own invariant.  The module
+layout follows `LeanExe`'s, with `alloc` and `release` at functions 0 and 1, so that the heap
+iterations keep the function indices.
+
+V1 compiles functions whose body is an expression of constants, arguments, `+`, `-`, and `*` on
+`UInt64`, which for these operations has the same bits as `Int64`.  `Func.correct` states, for
+every list of functions and every function in it whose body reads only its arguments, that the
+compiled function returns `func.denote args` from any store without a trap and leaves the store
+unchanged (`ImplementsPureA false`).  The proof is an induction over the expression,
+`Expr.code_spec`, on Talos's `wp`.  The example `a * b + c * c - 7` has `poly_bytes`, whose
+1,376-byte module `tests/verified/run.sh` validates with `wasm-tools` and runs on 184 cases in
+Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+- [x] V1: word expressions with `+`, `-`, and `*` over the arguments.
+- [ ] V2: division, remainder, bitwise operations, and shifts, with Lean's results for a zero
+  divisor and for shift amounts of 64 or more.
+- [ ] V3: `let` bindings in locals.
+- [ ] V4: `Bool`, comparisons, and conditionals.
+- [ ] V5: several functions and calls between them.
+- [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
+- [ ] Later: loops, floats, arrays, and ownership.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
