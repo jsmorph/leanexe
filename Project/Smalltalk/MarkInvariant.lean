@@ -16,7 +16,9 @@ structure Holds (original t : Array UInt64) (cap : Nat) (done queue : List UInt6
   distinct : (done ++ queue).Nodup
   marks : ∀ h, Handle cap h → (field t h 1 ≠ 0 ↔ h ∈ done ++ queue)
   sound : ∀ h ∈ done ++ queue, Reachable original h
-  closed : ∀ parent ∈ done, ∀ child, Edge original parent child → child ∈ done ++ queue
+
+def Closed (original : Array UInt64) (done queue : List UInt64) : Prop :=
+  ∀ parent ∈ done, ∀ child, Edge original parent child → child ∈ done ++ queue
 
 theorem bounds {original t cap done queue} (st : Holds original t cap done queue)
     (valid : Graph.Valid original cap) : ∀ h ∈ done ++ queue, Handle cap h :=
@@ -78,9 +80,6 @@ theorem mark_holds {original t : Array UInt64} {cap : Nat} {done queue : List UI
         · exact st.sound g old
         · have same : g = h := by simpa using last
           subst g; exact reached
-      · intro parent visited child edge
-        rw [← List.append_assoc]
-        exact List.mem_append.mpr (Or.inl (st.closed parent visited child edge))
     · intro _
       simp
   · rw [mark_old st.shape hh allocated emptyMark]
@@ -117,7 +116,6 @@ theorem initial_holds {original : Array UInt64} {cap : Nat} (valid : Graph.Valid
       (show (18 : UInt64).toNat < 24 by decide), Project.Smalltalk.Clear.cleared_marks valid.1 hg]
     simp
   · intro h impossible; simp at impossible
-  · intro parent impossible; simp at impossible
 
 theorem markList_holds {original t : Array UInt64} {cap : Nat} {done queue : List UInt64}
     (valid : Graph.Valid original cap) (st : Holds original t cap done queue) (refs : List UInt64)

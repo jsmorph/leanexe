@@ -5,3 +5,4 @@ import Project.Smalltalk.SweepList
 import Project.Smalltalk.Clear
 import Project.Smalltalk.Graph
 import Project.Smalltalk.MarkInvariant
+import Project.Smalltalk.ScanInvariant

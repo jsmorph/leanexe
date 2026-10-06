@@ -32,3 +32,7 @@ run_cmd do
 #print axioms Project.Smalltalk.Worklist.enqueue_room
 #print axioms Project.Smalltalk.MarkInvariant.mark_holds
 #print axioms Project.Smalltalk.MarkInvariant.roots_holds
+#print axioms Project.Smalltalk.Worklist.top_word
+#print axioms Project.Smalltalk.Worklist.pop_represents
+#print axioms Project.Smalltalk.ScanMemory.scanCell_eq
+#print axioms Project.Smalltalk.ScanInvariant.scan_holds
