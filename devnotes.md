@@ -26339,7 +26339,7 @@ calls.
 
 | Option | Proved once | Per program | Fit with the design commitments |
 |---|---|---|---|
-| (a) Translation validation by a tactic | One judgment, the rules restated in it, and an untrusted tactic | Measures, `Float.ofBits` premises, budgets, and source theorems | Fits all; the compiler stays untrusted and unchanged |
+| (a) Translation validation by a tactic | One judgment, the rules restated in it, and an untrusted tactic | Measures, `Float.ofBits` premises, budgets, and source theorems | Fits all, and the compiler stays untrusted and unchanged |
 | (b) Deep embedding, verified compiler, reflection | A source syntax, its denotation, and one compiler theorem | `denote = f` by `rfl`, or `eq_def` and induction | Grows the system and delays the first bytes theorem |
 | (c) An IR semantics and `compile_simulates` | The semantics and a simulation proof | Unchanged | Reverses the one-semantics decision and gains nothing alone |
 | (d) Relational compilation by proof search | As (a), plus a search that emits IR | As (a) | Fits most commitments, but replaces the compiler |
