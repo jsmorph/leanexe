@@ -5,7 +5,8 @@ import Mathlib.Tactic.Ring
 
 /-! The two-dimensional Euler equations in conservative variables with γ = 7/5: states, pressure,
 admissibility, the physical fluxes, and the reduced x-flux Jacobian.  The definitions and proofs in
-`Examples/Euler/Equations` come from the earlier system's `LeanExe/Euler2DConservative/Real*.lean`.
+`Examples/Euler/Equations` come from `Guard.lean` and the `Real*.lean` files of
+`proofs/talos/lean/Project/Euler2DConservative` at commit `eef07963`.
 -/
 
 namespace Examples.Euler.Equations
