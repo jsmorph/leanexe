@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`655757a54173c10c374dc80af4a69885e52ac3a6`.
+`f81f5d0954ddd99a22a146f01192a20f8100765e`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -74,6 +74,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Complete activation construction | Actual `enterReady` stores method, entry PC, caller, lexical parent, slots, empty operand stack, and current root; exact natural budget, old cells, types, and registers are checked | `ActivationAllocation.lean`, `ActivationConstruction.lean` |
 | Concrete program validation | Actual successful validation supplies all visited class and method checks, header bounds, parent order, metadata/field bounds, inherited fields, method owner/arity/locals/PC/primitive bounds, and entry arity | `ValidationLoop.lean`, `ProgramChecks.lean`, `ProgramBounds.lean` |
 | Complete boot | Actual validator supplies a non-wrapping budget; actual init and boot either report allocation error 9 or establish phase zero, the specified receiver and fields, and exact entry frame; rejected boot preserves heap and pointer types | `BootBudget.lean`, `BootConstruction.lean`, `BootGuard.lean`, `BootDispatch.lean`, `BootHeap.lean` |
+| Actual method-call construction | Typed advance, reachable argument walks/values/inputs across collection, exact method entry and caller PC/stack update, and public reservation/error-9 cases are checked under method and call-input assumptions | `AdvanceTypes.lean`, `ArgumentTransfer.lean`, `CallInputs.lean`, `CallConstruction.lean`, `CallBudget.lean`, `CallReservation.lean`, `CallHeap.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -103,18 +104,24 @@ Recent pushed checkpoints:
 | `e0f78107` | Complete binding loop and slot order |
 | `6e8fae85` | Complete actual activation construction |
 | `655757a5` | Actual validator and metadata bounds |
+| `f81f5d09` | Actual boot and exact initialized entry state |
 
 ## Current increment
 
-Actual boot passes the combined build and axiom audit. Validation supplies a
-non-wrapping allocation request. Receiver-object and entry-activation construction
-establish exact fields, slots, method, PC, zero caller and lexical parent, empty
-operand stack, and total allocation count. Public boot preserves heap validity
-and pointer types, including rejected input. Starting from actual initialization
-and a validated program, boot either reports allocation error 9 or reaches phase
-zero with the specified receiver and entry frame, including any collection.
+Actual method-call construction passes the combined build and axiom audit.
+Typed advancement preserves argument links. Reachable link payload preservation
+establishes unchanged walks, selected values, and binding inputs across
+collection. Ready calls establish exact method entry and caller PC/stack
+updates. Public calls preserve heap and pointer types and either report error 9
+or enter with the original phase. Method bounds and caller/input/receiver/lexical
+conditions remain explicit; send and dispatch must establish them.
 
-Next is public call construction across reservation. Dispatcher composition of returns,
+The standalone audit initially loaded stale local artifacts and rejected the
+new theorem references. Lake now restores cached artifacts to `.lake/build`,
+as required by the repository drivers. The failed run is retained. The restored-artifact audit and full driver pass
+before this configuration change is committed.
+
+Next are concrete lookup, dispatch, block calls, and primitives. Dispatcher composition of returns,
 exact return path conditions, lookup, and the complete execution invariant
 remain unfinished. All checked proof files are included in this increment; no
 full VM correctness claim is made.
@@ -180,7 +187,9 @@ and `Classical.choice`. It rejects admitted proofs, `native_decide` dependencies
 and additional axioms. The driver runs this audit before execution tests.
 
 For a proof-only increment, run a focused check, build the proof umbrella,
-run the axiom audit, and run `git diff --check`. Record useful failures and
+run the axiom audit, and run `git diff --check`. The package sets
+`restoreAllArtifacts = true` because standalone Lean and native commands consume
+`.lake/build` outputs after cached builds. Record useful failures and
 their resolution in `smalltalk-proof-journal.md`; do not discard the failures
 or raise proof limits. Do not rerun unchanged WASM for every proof-only edit.
 Run the full driver after executable changes and at the final review.
@@ -215,7 +224,8 @@ repository, not a separate artifact store.
 
 ## Latest complete execution evidence
 
-The most recent full driver passed after the concrete return-control proofs:
+The most recent full driver passed after method-call construction and the
+artifact-restoration fix:
 
 - 136 native executions: 68 programs in normal and stress-collection modes.
 - 181 WASM checks, including 136 exact arena comparisons with native results.
@@ -225,10 +235,11 @@ The most recent full driver passed after the concrete return-control proofs:
 - WASM SHA-256:
   `423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
 
-The local full-driver log is `build/smalltalk/proof-control-review.log`.
-Subsequent increments changed proofs and documentation only. Their combined
-Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-boot-audit.log`. Build logs and emitted artifacts
+The local full-driver log is `build/smalltalk/proof-call-driver-review.log`.
+Executable VM and GC definitions are unchanged. The call increment also
+changes Lake configuration so external artifact consumers receive current
+build outputs. Its combined Lean build and axiom audit pass. The latest audit log is
+`build/smalltalk/proof-call-construction-restored-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

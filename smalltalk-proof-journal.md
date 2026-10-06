@@ -704,3 +704,52 @@ initialization register lemma needed its actual InitializationGraph namespace.
 Final focused checks, the combined build and axiom audit pass. No limits or
 executable definitions changed. Calls, concrete lookup, and the complete
 instruction invariant remain unfinished.
+
+## Actual method-call construction (2026-10-06)
+
+`AdvanceTypes` proves that advancing a typed activation preserves pointer
+types, cell tags, typed references, and values. `ArgumentTransfer` checks
+walks, selected slot values, and binding inputs under preservation of reachable
+link payloads. Mark words are excluded because collection may change them.
+`CallInputs` establishes the current activation's typed and reachable operand
+head and checks that advancing the caller preserves its argument links.
+
+`CallConstruction` connects actual ready calls to complete activation entry.
+It checks the caller's PC increment and remaining operand stack, and unchanged
+phase. `CallBudget` derives a non-wrapping request from validated method bounds.
+`CallReservation` proves binding inputs and the operand head survive actual
+reservation and collection. `CallHeap.callMethod_correct` composes them to
+prove heap and type preservation, allocation error 9 or exact method entry
+with the original phase. Send/dispatch must still establish its method, binding,
+receiver and lexical input conditions.
+
+The advance proof needed rewriting the cell tag before simplifying required
+types. The ready-call stack result needed the rest definition made explicit.
+The public-call branch rewrite likewise needed the actual request expression
+in the guard hypothesis rather than its let-bound alias. Final focused checks,
+the combined build and axiom audit pass. No executable definitions or proof
+limits changed. Lookup, dispatch, block calls, and primitives are next.
+
+## Build artifact restoration for the audit (2026-10-06)
+
+The call proof build passed, but the subsequent standalone audit could not
+see any new call declarations through the umbrella import. No commit was
+made from that result. The pinned Lake source documents that artifact caching
+need not copy current outputs to .lake/build, while this repository's drivers
+use those paths for standalone Lean imports and native executables. The build
+trace had current call imports but the local umbrella artifact was stale.
+
+The package now sets Lake's documented restoreAllArtifacts option to true.
+Regenerable stale Smalltalk olean files were moved aside before rebuilding,
+so restoration supplies current artifacts. The audit is unchanged and remains
+mandatory. The original failed audit log is retained as
+build/smalltalk/proof-call-construction-audit.log; the corrected run is
+build/smalltalk/proof-call-construction-restored-audit.log. The full driver
+will also run before this build-configuration change is committed.
+
+The artifact-restoration rebuild and unchanged audit pass, including every new
+call declaration. The full driver also passes: 136 native executions, 181 WASM
+checks with 136 exact native comparisons, compiler rejection cases, and CLI
+checks. The module remains 25,208 bytes; executable VM and GC definitions are
+unchanged. The package setting makes these external artifact consumers receive
+current build outputs on future cached builds.

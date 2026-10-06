@@ -133,5 +133,11 @@ run_cmd do
 #print axioms Project.Smalltalk.BootHeap.bootValid_correct
 #print axioms Project.Smalltalk.BootHeap.boot_valid
 #print axioms Project.Smalltalk.BootHeap.boot_init_correct
+#print axioms Project.Smalltalk.AdvanceTypes.advance_typed
+#print axioms Project.Smalltalk.ArgumentTransfer.inputs_transfer
+#print axioms Project.Smalltalk.ArgumentTransfer.slotValue_transfer
+#print axioms Project.Smalltalk.CallConstruction.sendMethodReady_effect
+#print axioms Project.Smalltalk.CallReservation.reserve_inputs
+#print axioms Project.Smalltalk.CallHeap.callMethod_correct
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
