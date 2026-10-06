@@ -654,3 +654,25 @@ A structure field was renamed to avoid shadowing the method word, and a
 register-write proof needed its written value supplied explicitly. The final
 focused checks, combined build, and axiom audit pass. Limits and executable
 definitions are unchanged.
+
+## Concrete program validation (2026-10-06)
+
+`ValidationLoop` proves that a true boolean accumulation establishes every
+visited predicate. `ProgramChecks` connects the actual program validator to
+separate shape, canonical-class, class, method, and entry checks. It proves
+that successful validation necessarily takes the header-present branch.
+
+`ProgramBounds` derives natural bounds for header counts and entry, checks
+that the class-plus-method scan count does not wrap, and maps each class and
+method ID to its actual visited index. It derives parent ordering, metadata
+and field bounds, inherited field counts, method owner/arity/locals/PC/primitive
+bounds, and entry arity 1. The header records the actual word-size equation;
+a real array-size equation requires an explicit array-size word bound.
+
+The initial boolean equalities needed parentheses around their entire right
+sides because of boolean operator precedence. Boolean truth was converted to
+conjunctions with the available equality rewrite rather than a nonexistent iff
+projection. The normalization equality needed an explicit reflexivity step
+after rewriting. Entry checks likewise needed conversion before projection.
+The final focused checks, combined build, and axiom audit pass. No executable
+definitions or proof limits changed. Boot construction is next.

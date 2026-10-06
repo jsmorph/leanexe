@@ -121,5 +121,11 @@ run_cmd do
 #print axioms Project.Smalltalk.ActivationAllocation.publish_valid
 #print axioms Project.Smalltalk.ActivationAllocation.allocate_effect
 #print axioms Project.Smalltalk.ActivationConstruction.enterReady_effect
+#print axioms Project.Smalltalk.ValidationLoop.loop_checks
+#print axioms Project.Smalltalk.ProgramChecks.checks
+#print axioms Project.Smalltalk.ProgramBounds.header
+#print axioms Project.Smalltalk.ProgramBounds.class_bounds
+#print axioms Project.Smalltalk.ProgramBounds.method_bounds
+#print axioms Project.Smalltalk.ProgramBounds.entry_arity
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

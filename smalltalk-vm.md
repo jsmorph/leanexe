@@ -317,6 +317,15 @@ assumptions include the natural free-cell budget, valid binding inputs, and
 zero-or-activation caller and lexical pointers. Public calls and boot still need
 to establish these assumptions across reservation and caller updates.
 
+`ProgramBounds` derives class, method, and entry bounds from the actual
+`programValid` result. `ValidationLoop` proves that every visited check must
+succeed; `ProgramChecks` connects it to the actual class/method scan. The proofs
+check scan-index arithmetic, class parent ordering, metadata and field bounds,
+inherited field counts, method owner/arity/local/PC/primitive bounds, and entry
+arity 1. The header theorem records the word-size equation checked by the
+validator. Converting that equation to an array-size equation also requires
+the array size to fit in a word; that is not assumed implicitly here.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the

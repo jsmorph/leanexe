@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`e0f7810708a273802f4f06d148030526cfe1cf57`.
+`6e8fae85e857ec6e637237e9f4707be17d4d72f9`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -72,6 +72,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Argument selection and single binding | Accepted receiver depth establishes every preceding argument link and value; send and receiver-only entry select valid values; actual `bindOne` has the checked one-cell prepend effects | `ArgumentLinks.lean`, `ArgumentBinding.lean` |
 | Complete binding loop | Argument walks and selected values are preserved; every slot is built in increasing index order; exact free count, old cells, pointer types, and non-construction registers are preserved | `BindingPreservation.lean`, `BindingLoop.lean` |
 | Complete activation construction | Actual `enterReady` stores method, entry PC, caller, lexical parent, slots, empty operand stack, and current root; exact natural budget, old cells, types, and registers are checked | `ActivationAllocation.lean`, `ActivationConstruction.lean` |
+| Concrete program validation | Actual successful validation supplies all visited class and method checks, header bounds, parent order, metadata/field bounds, inherited fields, method owner/arity/locals/PC/primitive bounds, and entry arity | `ValidationLoop.lean`, `ProgramChecks.lean`, `ProgramBounds.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -99,16 +100,16 @@ Recent pushed checkpoints:
 | `1a905957` | Complete actual object construction |
 | `52e65498` | Actual argument guards and single binding |
 | `e0f78107` | Complete binding loop and slot order |
+| `6e8fae85` | Complete actual activation construction |
 
 ## Current increment
 
-Complete actual `enterReady` passes the combined build and axiom audit.
-The checked binding loop and a separate one-cell activation allocation establish
-the method, entry PC, caller, lexical parent, exact slot-value list, empty operand
-stack, current root, cleared register 19, and consumption of exactly
-`arity + locals + 1` cells. Original allocated cells and pointer types are
-preserved. The theorem states a natural budget, binding inputs, and typed caller
-and lexical pointers. Public calls and boot must establish these assumptions.
+Concrete program validation passes the combined build and axiom audit.
+A true actual validator result establishes header bounds, every visited class
+and method check, class parent order, metadata and field bounds, inherited field
+counts, method owner/arity/locals/PC/primitive bounds, and entry arity 1.
+Scan-index and count arithmetic are checked. The header records the actual word
+size equation; an array-size equation needs an explicit word-size bound.
 
 Next is boot and public call construction across reservation. Dispatcher composition of returns,
 exact return path conditions, boot, lookup, and the complete execution invariant
@@ -223,7 +224,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-activation-construction-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-program-validation-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

@@ -41,3 +41,4 @@ import Project.Smalltalk.ObjectConstruction
 import Project.Smalltalk.ArgumentBinding
 import Project.Smalltalk.BindingLoop
 import Project.Smalltalk.ActivationConstruction
+import Project.Smalltalk.ProgramBounds
