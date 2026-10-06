@@ -1,6 +1,7 @@
 import Examples.Euler.Reference.Side
 import Examples.Euler.Reference.Component
 import Examples.Euler.Equations.Rusanov
+import Examples.Euler.Balance
 
 /-! The first-order solver's Rusanov interface flux against the exact Rusanov flux.  For two
 states that satisfy the state bounds, `flux` accepts, its speed `alpha` is positive and at most
@@ -15,15 +16,9 @@ open LeanExe.ProofKit.F64ArithmeticBounds
 
 set_option exponentiation.threshold 4096
 
-/-- A state's components. -/
-def stateComponents (rho mx my energy : Float) : Fin 4 → Float := ![rho, mx, my, energy]
-
 /-- The four fluxes that `side` returns. -/
 def sideComponents (s : Side) : Fin 4 → Float :=
   ![s.massFlux, s.momentumFlux, s.transverseFlux, s.energyFlux]
-
-/-- The four components that `flux` returns. -/
-def fluxComponents (f : Flux) : Fin 4 → Float := ![f.mass, f.momentum, f.transverse, f.energy]
 
 /-- The speed that `flux` selects: the larger of the two side speeds. -/
 def interfaceSpeed (left right : Side) : Float :=
@@ -34,18 +29,17 @@ def interfaceComponent (rhoL mxL myL energyL rhoR mxR myR energyR : Float) (i : 
     Component :=
   component (interfaceSpeed (side rhoL mxL myL energyL) (side rhoR mxR myR energyR))
     (sideComponents (side rhoL mxL myL energyL) i) (sideComponents (side rhoR mxR myR energyR) i)
-    (stateComponents rhoL mxL myL energyL i) (stateComponents rhoR mxR myR energyR i)
+    (stateAt ⟨rhoL, mxL, myL, energyL⟩ i) (stateAt ⟨rhoR, mxR, myR, energyR⟩ i)
 
-theorem real_stateComponents (rho mx my energy : Float) (i : Fin 4) :
-    real (stateComponents rho mx my energy i) = vec ⟨rho, mx, my, energy⟩ i := by
+theorem real_stateAt (q : Conserved) (i : Fin 4) : real (stateAt q i) = vec q i := by
   fin_cases i <;> rfl
 
 theorem real_sideComponents (s : Side) (i : Fin 4) :
     real (sideComponents s i) = sideFluxes s i := by
   fin_cases i <;> rfl
 
-theorem fluxComponents_mk (g : Fin 4 → Component) (s : UInt64) (a : Float) (i : Fin 4) :
-    fluxComponents ⟨s, (g 0).value, (g 1).value, (g 2).value, (g 3).value, a⟩ i = (g i).value := by
+theorem fluxAt_mk (g : Fin 4 → Component) (s : UInt64) (a : Float) (i : Fin 4) :
+    fluxAt ⟨s, (g 0).value, (g 1).value, (g 2).value, (g 3).value, a⟩ i = (g i).value := by
   fin_cases i <;> rfl
 
 theorem sideFluxBound_le (M : ℝ) (hM : 1 ≤ M) (i : Fin 4) :
@@ -67,8 +61,8 @@ theorem sideFluxBound_le (M : ℝ) (hM : 1 ≤ M) (i : Fin 4) :
 
 theorem state_components_bounds (rho mx my energy : Float) (M : ℝ) (hM : 1 ≤ M)
     (h : StateBounds M rho mx my energy) (i : Fin 4) :
-    Finite (stateComponents rho mx my energy i).toBits ∧
-      |real (stateComponents rho mx my energy i)| ≤ M := by
+    Finite (stateAt ⟨rho, mx, my, energy⟩ i).toBits ∧
+      |real (stateAt ⟨rho, mx, my, energy⟩ i)| ≤ M := by
   have hMpos : 0 < M := lt_of_lt_of_le (by norm_num) hM
   have hr : 0 < real rho := lt_of_lt_of_le (by positivity) h.densityLower
   have br : |real rho| ≤ M := by rw [abs_of_pos hr]; exact h.densityUpper
@@ -157,7 +151,7 @@ theorem interface_component_error (rhoL mxL myL energyL rhoR mxR myR energyR : F
   obtain ⟨h1, h2, h3, h4⟩ := component_error _ _ _ _ _ ha.1 hfL hfR hsL hsR M hM hMmax ha.2 bfL
     bfR bsL bsR
   have h5 := RealRusanovError.reference_flux _ _ _ _ _ _ _ _ _ efL efR h4
-  rw [real_stateComponents, real_stateComponents] at h5
+  rw [real_stateAt, real_stateAt] at h5
   exact ⟨h1, h2, h3, h5.trans_eq (by ring)⟩
 
 /-- Under the state bounds on both states, `flux` accepts, with a positive speed at most `32 M²`
@@ -167,14 +161,14 @@ theorem flux_accepted_of_bounds (rhoL mxL myL energyL rhoR mxR myR energyR : Flo
     (hR : StateBounds M rhoR mxR myR energyR) :
     let f := flux rhoL mxL myL energyL rhoR mxR myR energyR
     f.status = 0 ∧ positive f.alpha = true ∧ real f.alpha ≤ 32 * M^2 ∧
-      ∀ i, Finite (fluxComponents f i).toBits ∧ |real (fluxComponents f i)| ≤ 66 * M^5 := by
+      ∀ i, Finite (fluxAt f i).toBits ∧ |real (fluxAt f i)| ≤ 66 * M^5 := by
   obtain ⟨hl, -⟩ := side_accepted_of_bounds rhoL mxL myL energyL M hM hMmax hL
   obtain ⟨hr, -⟩ := side_accepted_of_bounds rhoR mxR myR energyR M hM hMmax hR
   obtain ⟨ha, ba, hc⟩ :=
     interface_component_error rhoL mxL myL energyL rhoR mxR myR energyR M hM hMmax hL hR
   rw [flux_of_accepted rhoL mxL myL energyL rhoR mxR myR energyR hl hr (fun i => (hc i).1)]
   refine ⟨rfl, ha, ba, fun i => ?_⟩
-  rw [fluxComponents_mk (interfaceComponent rhoL mxL myL energyL rhoR mxR myR energyR)]
+  rw [fluxAt_mk (interfaceComponent rhoL mxL myL energyL rhoR mxR myR energyR)]
   exact ⟨(hc i).2.1, (hc i).2.2.1⟩
 
 /-- Under the state bounds on both states, each component of `flux` is within `304 ε M⁵` of the
@@ -183,7 +177,7 @@ theorem interface_reference_error (rhoL mxL myL energyL rhoR mxR myR energyR : F
     (hM : 1 ≤ M) (hMmax : M ≤ (2 : ℝ)^100) (hL : StateBounds M rhoL mxL myL energyL)
     (hR : StateBounds M rhoR mxR myR energyR) (i : Fin 4) :
     let f := flux rhoL mxL myL energyL rhoR mxR myR energyR
-    |real (fluxComponents f i) - Equations.Rusanov.interfaceFlux (real f.alpha)
+    |real (fluxAt f i) - Equations.Rusanov.interfaceFlux (real f.alpha)
       (vec ⟨rhoL, mxL, myL, energyL⟩) (vec ⟨rhoR, mxR, myR, energyR⟩) i| ≤
       304 * arithmeticEpsilon * M^5 := by
   obtain ⟨hl, -⟩ := side_accepted_of_bounds rhoL mxL myL energyL M hM hMmax hL
@@ -192,7 +186,7 @@ theorem interface_reference_error (rhoL mxL myL energyL rhoR mxR myR energyR : F
     interface_component_error rhoL mxL myL energyL rhoR mxR myR energyR M hM hMmax hL hR
   rw [flux_of_accepted rhoL mxL myL energyL rhoR mxR myR energyR hl hr (fun i => (hc i).1)]
   dsimp only
-  rw [fluxComponents_mk (interfaceComponent rhoL mxL myL energyL rhoR mxR myR energyR)]
+  rw [fluxAt_mk (interfaceComponent rhoL mxL myL energyL rhoR mxR myR energyR)]
   exact (hc i).2.2.2
 
 end Examples.Euler.Reference
