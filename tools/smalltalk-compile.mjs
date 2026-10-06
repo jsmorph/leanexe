@@ -20,6 +20,7 @@ function tokenize(source) {
 const identifier=x=>typeof x==='string' && /^[A-Za-z_][A-Za-z_0-9]*$/.test(x);
 const keyword=x=>typeof x==='string' && /^[A-Za-z_][A-Za-z_0-9]*:$/.test(x);
 const binary=x=>typeof x==='string' && /^[-+<>=*/~@%&,?!]+$/.test(x);
+const reserved=name=>['self','super','nil','true','false'].includes(name)||Object.hasOwn(CLASSES,name);
 
 export function compile(source) {
   const tokens=tokenize(source), p=core(new Program()); let cursor=0, depth=0;
@@ -31,10 +32,10 @@ export function compile(source) {
   };
   function frame(outer,args=[],isBlock=false) {
     const names=new Map([['self',0]]);
-    for(const a of args) { if(names.has(a)) throw Error(`duplicate binding ${a}`); names.set(a,names.size); }
+    for(const a of args) { if(names.has(a)||reserved(a)) throw Error(`invalid binding ${a}`); names.set(a,names.size); }
     if(peek()==='|') {
       take(); while(peek()!=='|') {
-        const name=take(); if(!identifier(name)||names.has(name)) throw Error('invalid local declaration');
+        const name=take(); if(!identifier(name)||names.has(name)||reserved(name)) throw Error('invalid local declaration');
         names.set(name,names.size);
       } expect('|');
     }
