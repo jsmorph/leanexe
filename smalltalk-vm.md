@@ -219,13 +219,21 @@ roots; the fresh cell becomes reachable only after a VM write links it from
 a root or a reachable cell. Allocation from an empty list preserves heap
 validity and reports error 9.
 
+`HeapWrite.lean` proves that changing a non-tag field of an allocated cell
+preserves heap validity when a new pointer is zero or names an allocated valid
+handle. Register writes preserve validity when a new root satisfies that same
+condition and the capacity and free-list registers are unchanged.
+`FrameHeap.lean` applies these rules to the actual `advance` and `retire`:
+the current or retired cell must be a valid activation, and the new operand
+stack for `advance` must be zero or an allocated valid handle.
+
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
 preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`
 proves that its rebuilt free list contains exactly the unmarked handles,
 without duplicates, with the correct count. These results require `Shape`;
 the list result also requires nonzero tags on marked cells. They allow any
-contents in unmarked cells and any old free-list order. They do not yet prove
-Those sweep results take marks as input; the complete marking theorem below
+contents in unmarked cells and any old free-list order. These sweep results
+take marks as input; the complete marking theorem below
 proves that the marks identify exactly the reachable cells.
 
 `Project/Smalltalk/Clear.lean` proves that the actual clearing loop zeroes every

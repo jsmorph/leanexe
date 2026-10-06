@@ -373,3 +373,20 @@ a subsequent VM write connects it. That fact also states why construction
 must not trigger collection between allocating a value and linking it.
 The first allocation-preservation check passed without revisions. No
 executable definitions changed; VM writes and instruction composition remain.
+
+## Heap writes and frame updates (2026-10-06)
+
+`HeapWrite` checks changes to non-tag fields of allocated cells. A new pointer
+must be zero or an allocated handle; scalar writes need no value condition.
+The proof preserves valid roots, all edge targets, supported tags, and the
+complete free list. Register writes have the same condition for new roots and
+must leave the capacity and free-list registers unchanged.
+
+`FrameHeap` applies these rules to the actual `advance` and `retire`. Advancing
+requires a valid activation and a valid new stack value. Retiring requires a
+valid activation and checks the dead PC and cleared caller and operand fields.
+Both preserve `Heap.Valid`. A changed-edge equality simplified to a condition
+containing `True`; `simp only [true_and, ite_true]` removed that condition before
+substitution. Both modules pass the combined build and theorem axiom audit.
+No executable definitions changed. The VM has not yet been proved to establish
+the activation and new-pointer conditions for every instruction.

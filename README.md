@@ -4,9 +4,10 @@ The Smalltalk VM and collector are written in Lean and compiled to WASM.
 `tests/smalltalk/run.sh` passes 136 native executions and 181 WASM checks,
 including 136 exact arena comparisons. The emitted module is 25,208 bytes.
 For a valid heap, Lean proves that the concrete collector preserves reachable
-payloads and frees exactly the unreachable cells. Allocation, reservation,
-return control with possible collection, and fuel properties are also checked.
-Full VM correctness remains unproved: initialization, method lookup, and the
+payloads and frees exactly the unreachable cells. Arena initialization,
+allocation, pointer writes, frame updates, reservation, return control with
+possible collection, and fuel properties are also checked.
+Full VM correctness remains unproved: VM boot, method lookup, and the
 remaining instruction properties still need proofs. The source compiler and
 emitted WASM are tested but not proved correct.
 See [smalltalk-vm.md](smalltalk-vm.md) for commands, formats, collection, tests,
