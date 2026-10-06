@@ -26405,10 +26405,10 @@ proofs, which had to be rewritten, at about 3,700.
 | `Reference/Boundary.lean` | Sweep, step, and run balance of both solvers with the exact boundary flux |
 
 The flux comparison exists in two forms.  The a priori form assumes the state bounds and gives
-constants such as `304 ε M⁵`, as the earlier `NumericsInterfaceReference.lean` did.  The a
+constants such as `304 ε M⁵`, as `NumericsInterfaceReference.lean` at `eef07963` did.  The a
 posteriori form assumes only acceptance and bounds each error by the rounding radii of the
-computed words, as the earlier `line_flux_reference_bound` did and as the current balance theorems
-do.  The earlier system stated the a posteriori comparison for the boundary faces of one line of
+computed words, as `line_flux_reference_bound` at that commit did and as the current balance
+theorems do.  That commit stated the a posteriori comparison for the boundary faces of one line of
 the reconstructed solver.  `Reference/Boundary.lean` states it for both solvers and carries it
 through sweeps, steps, and runs, so that `run_reference_balance` and
 `reconstructedRun_reference_balance` replace the computed boundary flux of the run balance with the
@@ -26416,7 +26416,7 @@ exact Rusanov flux at the computed face states and speeds.
 
 Two restored ProofKit files took new names, `F64PackRelative` and `F64NormalizedMagnitude`, because
 the current `F64Packing` and `F64Normalize` hold different lemmas.  `F64AdmissibilityTiny`, which
-served the earlier wider guard, did not come back.  The four `summary.json` files of the run
+served the wider guard of `eef07963`, did not come back.  The four `summary.json` files of the run
 records were restored byte for byte from `eef07963` after a rename script had rewritten theorem
 names inside them, and the Euler docs now cite that commit where they had said "the earlier
 system".
