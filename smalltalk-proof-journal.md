@@ -231,3 +231,23 @@ executable function's pair patterns removed that mismatch.
 Remaining obligations include returned-value delivery, method lookup,
 instruction semantics, and initialization and step preservation of the heap
 and chain assumptions. No executable definitions changed in this increment.
+
+## Returned-value delivery (2026-10-06)
+
+`returnCallerReady_field` and `returnCallerReady_register` prove all cell
+and register effects of the concrete allocation and delivery writes.
+`returnCallerReady_delivers` proves a fresh operand link containing the value
+and the old stack, current set to caller, and unchanged caller PC. Freshness
+follows from the valid free list and the caller's nonzero activation tag.
+`returnCaller_finished` checks phase 3, current zero, and the result register.
+
+`retireMany_free` proves that retirement preserves the free list.
+`returnReady_delivers` combines the actual unwind loop with delivery, assuming
+a nonempty free list and a caller outside the retired prefix.
+`returnReady_finished` combines unwind with the no-caller result. These are
+theorems about actual array operations. Reservation before return and VM
+preservation of the initial assumptions remain separate obligations.
+
+The checks needed explicit arguments for the returned value and an explicit
+lambda for the field theorem's handle and offset. A bare partially applied
+theorem did not infer those implicit parameters. No execution code changed.

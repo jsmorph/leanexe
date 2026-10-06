@@ -285,8 +285,13 @@ represented distinct prefix through its target and finishes with cursor zero,
 when the prefix fits within capacity. It sets each retired PC to dead and clears
 caller and operands, preserves other fields and cells, and preserves registers
 and arena shape. `returnReady_prefix` connects this result to `returnReady`.
-These results do not yet prove that caller allocation delivers the value or
-that VM instructions establish the represented chains and heap assumptions.
+`ReturnValue.lean` proves returned-value delivery after that unwind. If a
+caller exists, a nonempty valid free list supplies one fresh operand link
+containing the value above the caller's old stack. Current becomes the caller,
+and its PC stays unchanged. The caller must lie outside the retired prefix.
+If there is no caller, phase becomes 3, current becomes zero, and the result
+register receives the value. These results do not yet connect reservation to
+the return proof or show that instructions establish the chains and heap assumptions.
 
 `Project/Smalltalk/Execution.lean` proves that `run` performs the stated number
 of steps with finished and error states absorbing. `run_resume` proves that
