@@ -6,14 +6,15 @@ import LeanExe.Dialect.RepeatWhile
 A first-order finite-volume solver for the two-dimensional Euler equations, on the four-quadrant
 Riemann problem of the unit square.  Each cell holds density, both momenta, and total energy.  A
 step is an x sweep followed by a y sweep, each cell updated from Rusanov fluxes at its two
-interfaces, with transmissive boundaries by clamped neighbor indices.  The timestep targets
-CFL 0.4, and a step whose cells fail a check is retried with half the timestep.
+interfaces, with transmissive boundaries by clamped neighbor indices.  The timestep targets CFL 0.4,
+and a step whose cells fail a check is retried with half the timestep.
 
-The arithmetic follows main's word-level model operation for operation, so that the output
-words can be compared bit for bit: every float operation here is one binary64 operation, and the
-checks inspect bit patterns as main's do.  Where main tests a check before computing the next
-value, these functions compute every value and test the conjunction of the checks once, at the
-end.  The float operations are total, so the returned values and statuses are main's.
+The arithmetic follows the earlier system's word-level model operation for operation, so that the
+output words can be compared bit for bit: every float operation here is one binary64 operation, and
+the checks inspect bit patterns as the earlier system's do.  Where the earlier system tests a check
+before computing the next value, these functions compute every value and test the conjunction of the
+checks once, at the end.  The float operations are total, so the returned values and statuses are
+the earlier system's.
 -/
 
 namespace Examples.Euler

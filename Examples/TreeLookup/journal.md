@@ -1,6 +1,7 @@
 # Tree lookup: journal
 
-This is the first run of the verified-executable skill, on main's Demo 3 request (2026-10-05).
+This is the first run of the verified-executable skill, on the earlier system's Demo 3 request
+(2026-10-05).
 
 The specification states the request's traversal as a recursive `search` over breadth-first node
 numbers, with node `j`'s key at `2j + 1`, its value at `2j + 2`, its children at `2j + 1` and

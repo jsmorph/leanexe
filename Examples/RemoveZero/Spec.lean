@@ -1,6 +1,6 @@
-/-! The specification of main's Demo 12, as its request states it: for an input of at most eight
-words, the input without its first zero, in order, or the input when it has no zero; for a longer
-input, the empty array. -/
+/-! The specification of the earlier system's Demo 12, as its request states it: for an input of at
+most eight words, the input without its first zero, in order, or the input when it has no zero; for
+a longer input, the empty array. -/
 
 namespace Examples.RemoveZero
 

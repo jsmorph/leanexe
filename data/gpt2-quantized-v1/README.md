@@ -1,6 +1,6 @@
 # Quantized GPT-2 evaluation
 
-This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes this branch's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes the current system's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
 
 The [evaluation manifest](evaluation.json) fixes the pretrained checkpoint, FP32 binary, 128-prefix sequence, three retained completion cases, and six held-out prompts.  It records the approved quantization rules from the [implementation plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gpt2-quantized.md).  The first quantized candidate has now been evaluated on all nine completion cases.  Subsequent designs must identify those prompts as previously evaluated.
 

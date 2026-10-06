@@ -5,7 +5,8 @@ import Examples.Euler.Equations.Flux
 
 /-! The solvers' state guard implies an admissible real state: positive density and positive
 pressure in exact arithmetic with γ = 7/5.  The narrow guard compares words.  The energy guard
-computes main's word-level check `F64Admissibility.checked`, whose soundness proof applies. -/
+computes the earlier system's word-level check `F64Admissibility.checked`, whose soundness proof
+applies. -/
 
 namespace Examples.Euler
 
@@ -141,7 +142,7 @@ theorem energyResidual_toBits (rho mx my energy : Float) :
   simp only [energyResidual, F64InternalEnergy.residual, F64Bits.toBits_sub, F64Bits.toBits_mul,
     F64Bits.toBits_add, half_toBits]
 
-/-- The energy guard computes main's word-level admissibility check. -/
+/-- The energy guard computes the earlier system's word-level admissibility check. -/
 theorem energyGuard_checked {rho mx my energy : Float} (h : energyGuard rho mx my energy = true) :
     F64Admissibility.checked rho.toBits mx.toBits my.toBits energy.toBits = true := by
   unfold energyGuard at h

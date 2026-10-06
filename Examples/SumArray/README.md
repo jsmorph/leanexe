@@ -2,7 +2,7 @@
 
 ## What it is
 
-This example stands for [main's Demo
+This example stands for [the earlier system's Demo
 10](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-10/README.md)
 and [Demo
 11](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-11/README.md),
@@ -28,8 +28,8 @@ definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `pr
 
 `Func.foldl_implements` is in [the fold rule](../../LeanExe/IR/Fold.lean), and each program's
 theorem applies it with its operation and initial value.  The theorems are in [the
-proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.  Main's proofs
-concerned one 1,979-byte binary each and took 572 and 676 lines.
+proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.  The earlier
+system's proofs concerned one 1,979-byte binary each and took 572 and 676 lines.
 
 ## Running it
 
