@@ -19,3 +19,5 @@ import Project.Smalltalk.ReturnReservation
 import Project.Smalltalk.InitializationGraph
 import Project.Smalltalk.InitializationFree
 import Project.Smalltalk.HeapAllocation
+import Project.Smalltalk.HeapWrite
+import Project.Smalltalk.FrameHeap
