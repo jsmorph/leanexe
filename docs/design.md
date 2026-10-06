@@ -1,6 +1,6 @@
 # Design
 
-The repository is one Lake package at its root, with the libraries `LeanExe` (the dialect, the compiler, the IR, the runtime, the pipeline, the encoding, and the general lemmas), `Examples` (one directory per example), and `Verified` (a second compiler with a correctness theorem, outside the default target).  [The README](../README.md) gives the layout and commands, [the user manual](manual.md) describes the dialect, the commands, the proofs, and the tests, and [the development journal](../devnotes.md) records the work.
+The repository is one Lake package at its root, with the libraries `LeanExe` (the dialect, the compiler, the IR, the runtime, the pipeline, the encoding, and the general lemmas) and `Examples` (one directory per example).  [The README](../README.md) gives the layout and commands, [the user manual](manual.md) describes the dialect, the commands, the proofs, and the tests, and [the development journal](../devnotes.md) records the work.
 
 ## Goal
 
@@ -8,7 +8,7 @@ A compiler translates a Lean function to an IR, `compile` translates the IR to a
 
 ## Design
 
-The `LeanExe` compiler is not verified as a whole.  Each of its rules gets its own theorem and an entry in the LTG knowledge base, so per-program proofs shrink while the trusted base stays the same.  Per-program proofs, using the LTG entries, cover what the rules do not.  [The `Verified` library](../Verified/README.md) is a second compiler, written as a Lean function over a typed source language, whose one theorem covers every program it accepts.
+The compiler is not verified as a whole.  Each of its rules gets its own theorem and an entry in the LTG knowledge base, so per-program proofs shrink while the trusted base stays the same.  Per-program proofs, using the LTG entries, cover what the rules do not.
 
 | Component | Design |
 |---|---|
@@ -63,7 +63,6 @@ The `LeanExe` compiler is not verified as a whole.  Each of its rules gets its o
 | [`LeanExe/Encoding/`](../LeanExe/Encoding/) | The encoder, the decoder, and `decode_encode`.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs the decoder over the testsuite. |
 | [`LeanExe/ProofKit/`](../LeanExe/ProofKit/) | General lemmas: memory, arrays, allocation, frames, the binary32 and binary64 equality chain, and the binary64 error bounds that the Euler proofs use. |
 | [`LeanExe/WGSL/`](../LeanExe/WGSL/), [`Examples/Gpt32/`](../Examples/Gpt32/), [`tests/wgsl/`](../tests/wgsl/), [`tests/gpt32/`](../tests/gpt32/), [`tests/web/`](../tests/web/) | The WGSL path: the WGSL subset, its printer, parser, and semantics, the translation of IR kernels, GPT-2's binary32 kernels and host program with their theorems, and their tests on two Vulkan drivers and in a browser. |
-| [`Verified/`](../Verified/), [`tests/verified/`](../tests/verified/) | The verified compiler: its source language, the compiler, the correctness theorem `Func.correct`, examples with bytes theorems, and the comparison of their modules with native Lean. |
 | [`tools/Emit.lean`](../tools/Emit.lean) | Script: evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | [`ltg/`](../ltg/), [`ltg/Check.lean`](../ltg/Check.lean) | The LTG knowledge base, each entry an `entry.json` and a `README.md`, and the script that imports every module the entries list and reports declarations that do not exist. |
 | [`Examples/Scale/`](../Examples/Scale/), [`Examples/Gcd/`](../Examples/Gcd/), [`Examples/Clob/`](../Examples/Clob/), [`Examples/Gpt/`](../Examples/Gpt/), and the other directories named after an example | Each program's `leanexe_compile` and theorems.  [The manual's list of examples](manual.md#worked-examples) names them all. |
@@ -158,7 +157,7 @@ On the GPT-2 124M weights, `forward` matches Hugging Face's model in float64.  `
 
 `lists.wasm` holds `listSum`, `listRange`, and `sumRange`, and `words.wasm` holds `Words.first`, `Words.sumAcc`, and `Words.range` over a user list type whose `Encode` instance gives the layout of `List UInt64`.  They match native Lean on lists whose sums wrap, long lists, and counts up to 1,000, and a `sumRange` call shows as many frees as allocations.  The host's `chain-u64:` argument kind allocates the records and writes their headers, and its result kind of the same name walks the records and checks each header.
 
-The decoder test runs the official testsuite: every valid module in the decoder's subset decodes to the reference and round-trips, and every malformed module in the subset is rejected.  [`tests/drone/run.sh`](../tests/drone/run.sh), [`tests/verified/run.sh`](../tests/verified/run.sh), and the WGSL tests are described in the drone README, the verified compiler's README, and [the manual](manual.md).
+The decoder test runs the official testsuite: every valid module in the decoder's subset decodes to the reference and round-trips, and every malformed module in the subset is rejected.  [`tests/drone/run.sh`](../tests/drone/run.sh) and the WGSL tests are described in the drone README and [the manual](manual.md).
 
 ## Decisions
 
@@ -222,7 +221,6 @@ The decoder test runs the official testsuite: every valid module in the decoder'
 | `Heap.At` requires at most 65,536 pages, and `Heap.Borrowed` requires only that the input lies below `top` and outside every free block. | A 32-bit memory has at most 65,536 pages. |
 | `alloc` follows Knuth's first fit and `release` his liberation with a sorted list (TAOCP vol. 1, §2.5, Algorithms A and B).  `alloc` places the object at the upper end of the first free block that fits and shrinks the block when at least 56 bytes remain.  `release` inserts the block in address order, merges it with free neighbors, and leaves `top` unchanged. | First fit without splitting or merging leaks memory whenever allocation sizes change between calls: the growing cache would need 5.05 GB for 256 positions.  A simulation of the run peaks at 100 MB with splitting and merging. |
 | Top-k sampling runs in `gpt.wasm` as proved Lean code: `sampleTopK scores k temperature state` returns a token and the next generator state.  It keeps every token whose score is at least the k-th largest score counted with repeats, as Hugging Face's `TopKLogitsWarper` does, and draws from weights `exp ((s − max) / temperature)`.  The generator is SplitMix64, in its own module `prng.wasm` with proofs and tests and also compiled into `gpt.wasm`.  The CLI stays greedy unless `--top-k` is given.  Without `--seed` it takes a seed from the operating system and prints it to stderr. | Sampling in Lean keeps the whole generation step proved, and the CLI only passes the generator state along.  Hugging Face's rule is the reference users know.  A printed seed makes every run repeatable. |
-| The verified compiler is a separate library, `Verified`, written as a Lean function from a typed source language with a `denote` to a module.  It shares the trusted base and `Implements` with `LeanExe` and copies the parts of the IR it needs. | The `LeanExe` compiler is meta code over `Lean.Expr`, so no theorem can cover it as a whole.  A compiler over a source syntax can have one theorem for every program it accepts. |
 
 ## Floating point
 
@@ -258,7 +256,6 @@ No work on items 2 and 3 is planned.
 - [ ] The host's invocation of kernels and a run in a browser.
 - [ ] A proof of the I/O adapter.
 - [ ] `Array Float` literals.
-- [ ] The verified compiler: calls between functions, a reflector from Lean definitions to its source language, then loops, floats, arrays, and ownership.
 
 Unknowns: how Talos's semantics is tested against the WebAssembly specification, and whether Talos bounds call depth.
 
@@ -292,8 +289,6 @@ uv run tests/gpt/sample_frequencies.py     # top-k sampling probabilities
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Prng.Module Examples.Prng.prng.module build/prng/prng.wasm
 uv run tests/prng/compare.py              # SplitMix64 against the reference
-tools/leanrun --timeout 60m lake build Verified
-tests/verified/run.sh                     # the verified compiler's examples against native Lean
 ```
 
 The decoder test expects `build/decode-test` to hold `wasm-tools json-from-wast` output for the testsuite scripts in the CodeLib checkout.  The axiom audit is a Lean file that imports a program's `Verify` module and runs `#print axioms` on its theorems.
