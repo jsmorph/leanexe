@@ -26271,9 +26271,11 @@ to them.  After the rename the build passed with no `sorry`, the 35 modules kept
 16,039 module cases, 77 release-count cases, and 20 depth-guard cases passed, and so did the LTG
 check.
 
-- [ ] `tests/modules/run.sh` sends the standard error of native Lean to `/dev/null` to hide the
+- [x] `tests/modules/run.sh` sends the standard error of native Lean to `/dev/null` to hide the
   panic messages of out-of-bounds reads, which also hides any error that Lean reports.  The script
-  still stops when Lean fails, through `set -e`, but without the diagnostic.
+  still stops when Lean fails, through `set -e`, but without the diagnostic.  Fixed 2026-10-06: the
+  script keeps the standard error, prints it when Lean fails, accepts only the two panic messages
+  that the cases exercise with their backtraces, and prints their counts.
 
 ### Example READMEs
 
@@ -26296,3 +26298,31 @@ Writing them exposed errors elsewhere.  The Gcd specification and the manual att
 to Mathlib, which Lean core defines.  The earlier rewrap had started a line of the tree-lookup README
 with `+ 1`, which Markdown reads as a list item, and the rewrap script now avoids line starts that
 Markdown treats as list markers.
+
+### Native Lean's standard error in the module tests
+
+The case generator writes 2,074 panic messages to standard error: 1,870 `Error: index out of
+bounds` from reads past the end of an array and 204 `PANIC at Array.insertIdx! … invalid index` from
+inserts past the end, each followed by a backtrace.  Both are the behavior the cases test, since
+Lean returns the default value after the message and the compiled code returns the same value.
+`tests/modules/run.sh` now keeps the standard error in a file, prints it and fails when Lean exits
+with an error, and fails on any line other than those two messages and their backtrace frames.
+Lean's runtime has `lean_set_panic_messages`, but turning messages off would also hide panics that
+the cases do not expect.  The run printed `native Lean: 1870 reads past the end and 204 insertIdx!
+past the end, as the cases expect` and passed its 16,039 cases, and an injected extra line failed
+the check.
+
+### Python programs under uv
+
+Every Python program in the repository now declares `requires-python = ">=3.12"` and pinned
+dependencies in a PEP 723 block, and the docs run each with `uv run`.  The review found five
+departures: `tools/euler-run.py` and `tests/modules/chunks.py` declared older Python versions,
+`tests/gpt32/generate.py` left `numpy` unpinned, now `numpy==2.5.3`, the version uv had resolved,
+and the two report scripts in `paper/` had no metadata and READMEs that ran them with `python3`.
+`AGENTS.md` now states the rule.  The commands in `data/` READMEs that run
+`training/gpt2/.venv/bin/python` and `.venv-tiny-gpt2/bin/python` stay as written, since they
+record main's runs of scripts that exist only on main.  `uv run
+paper/gpt2-quantized-report/check-evidence.py` starts under uv and then fails because it reads
+`proofs/artifacts/…/program.wasm`, which exists only on main, and `paper/drone-verification-report/build.py`
+was not run, since it rewrites the published PDF.
+

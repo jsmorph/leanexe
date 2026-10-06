@@ -13,7 +13,7 @@ The [publication record](publication.json) identifies both accepted submissions.
 The [evidence inventory](evidence/inventory.json) contains 67 file identities at the cited source revision.  The checker reads those committed objects, so unrelated working-tree edits do not change the report's input set.  Run it from the repository root:
 
 ```sh
-python3 paper/gpt2-quantized-report/check-evidence.py
+uv run paper/gpt2-quantized-report/check-evidence.py
 ```
 
 The current archive [acceptance requirements](evidence/marxiv-standards.md) and [style manual](evidence/marxiv-style.md) were fetched and read before drafting.  The [cited-source record](evidence/cited-sources.json) identifies the primary literature used.
