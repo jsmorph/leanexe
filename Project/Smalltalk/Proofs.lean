@@ -29,3 +29,5 @@ import Project.Smalltalk.PushReservation
 import Project.Smalltalk.LiteralHeap
 import Project.Smalltalk.InstructionHeap
 import Project.Smalltalk.ExecuteHeap
+import Project.Smalltalk.PointerTypes
+import Project.Smalltalk.TypedCollection

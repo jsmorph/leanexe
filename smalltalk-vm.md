@@ -244,6 +244,15 @@ the new link in its operand field. `loadSlot_valid` establishes heap preservatio
 for a zero slot or a reachable link slot. The decoder and remaining instructions
 are still unproved.
 
+`PointerTypes.Valid` adds cell-type requirements to heap validity. Nonzero
+activation caller and lexical pointers, and block captures, must name
+activations. Nonzero object-field, activation-slot, activation-operand, and
+link-next pointers must name links. Link values may name any allocated value.
+The pointer-write rules preserve these requirements when the new pointer has
+the required type. `TypedCollection` proves initialization establishes them
+and actual collection, reservation, and failure preserve them. The VM has not
+yet been proved to preserve them through every construction and instruction.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the
