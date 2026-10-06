@@ -5,3 +5,4 @@ import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
 import Verified.Examples.Select
+import Verified.Examples.Calls

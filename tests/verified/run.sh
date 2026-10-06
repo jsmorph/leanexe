@@ -9,7 +9,7 @@ out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
 for entry in Verified.Examples.Poly:poly Verified.Examples.Mix:mix \
-    Verified.Examples.Lets:lets Verified.Examples.Select:select; do
+    Verified.Examples.Lets:lets Verified.Examples.Select:select Verified.Examples.Calls:calls; do
   IFS=: read -r module name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.module" \
     "$out/$name.wasm"

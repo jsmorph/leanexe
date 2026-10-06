@@ -13,27 +13,29 @@ open LeanExe.Pipeline Verified
 def poly (a b c : UInt64) : UInt64 := a * b + c * c - 7
 
 /-- `poly` in the source language. -/
-def polyFunc : Func :=
-  ⟨[.word, .word, .word], .word,
+def polyFunc : Func S :=
+  ⟨"poly", [.word, .word, .word], .word,
     .bin .sub (.bin .add (.bin .mul (.v 0) (.v 1)) (.bin .mul (.v 2) (.v 2))) (.word 7)⟩
 
-def module : Wasm.Module := compile [(polyFunc, "poly")]
+def prog : Prog [([.word, .word, .word], .word)] := .cons polyFunc .nil
+
+def module : Wasm.Module := compile prog
 
 /-- `poly` with its three arguments as one tuple. -/
 def polyTuple (x : UInt64 × UInt64 × UInt64) : UInt64 := poly x.1 x.2.1 x.2.2
 
 /-- The source function means `poly`. -/
 theorem polyFunc_denote (a b c : UInt64) :
-    polyFunc.denote (.cons a (.cons b (.cons c .nil))) = poly a b c := rfl
+    (polyFunc (S := [])).denote .nil (.cons a (.cons b (.cons c .nil))) = poly a b c := rfl
 
 /-- The arguments of `polyFunc` from a tuple. -/
-def args (x : UInt64 × UInt64 × UInt64) : Env polyFunc.params :=
+def args (x : UInt64 × UInt64 × UInt64) : Env [.word, .word, .word] :=
   .cons x.1 (.cons x.2.1 (.cons x.2.2 .nil))
 
 theorem poly_implements : ImplementsPureA false module 2 polyTuple := by
-  have h : ImplementsPureA false module 2 polyFunc.denote :=
-    Func.correct [(polyFunc, "poly")] 0 polyFunc "poly" rfl
-  have hComp : polyFunc.denote ∘ args = polyTuple := by
+  have h : ImplementsPureA false module 2 ((polyFunc (S := [])).denote .nil) :=
+    (Prog.correct prog .here).1
+  have hComp : (polyFunc (S := [])).denote .nil ∘ args = polyTuple := by
     funext x
     exact polyFunc_denote x.1 x.2.1 x.2.2
   rw [← hComp]

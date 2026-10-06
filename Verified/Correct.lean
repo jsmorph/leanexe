@@ -109,16 +109,81 @@ theorem Ty.encode_not (x : Bool) :
       Ty.encode .bool (!x) := by
   cases x <;> decide
 
+/-- The functions that `funs` gives are the module's functions at their call indices, each
+returning its value without a trap and keeping the store. -/
+def Calls {S : List Sig} (m : Module) (funs : Funs S) : Prop :=
+  ∀ {ps : List Ty} {r : Ty} (g : FVar S ps r),
+    ImplementsPureA false m g.callIndex (funs.get g) ∧
+      ∃ fn, m.funcs[g.callIndex]? = some fn ∧ fn.numParams = ps.length
+
+theorem le_argsMax : {ps : List Ty} → (w : (i : Fin ps.length) → Nat) →
+    (i : Fin ps.length) → w i ≤ argsMax w
+  | _ :: _, w, ⟨0, _⟩ => Nat.le_max_left _ _
+  | _ :: _, w, ⟨i + 1, h⟩ =>
+    (le_argsMax (fun j => w j.succ) ⟨i, by simpa using h⟩).trans (Nat.le_max_right _ _)
+
+theorem Env.words_length {Γ : List Ty} (env : Env Γ) : env.words.length = Γ.length := by
+  induction env with
+  | nil => rfl
+  | cons v rest ih => simp [Env.words, ih]
+
+/-- The code of an expression pushes the word of its value, in the frames that `Expr.code_spec`
+describes. -/
+def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
+    (host : HostEnv Unit) (store : Store Unit) (e : Expr S Γ t) (env : Env Γ) (locs : List Nat) :
+    Prop :=
+  ∀ (base : Nat) (s : Locals), Holds env locs base s → s.params.length ≤ base →
+    base + e.width ≤ s.params.length + s.locals.length →
+    ∀ (rest : Program) (Q : Assertion Unit),
+    (∀ s', Frame base s s' →
+      wp m rest Q store { s' with values := .i64 (t.encode (e.denote funs env)) :: s.values }
+        host) →
+    wp m (e.code locs base ++ rest) Q store s host
+
+/-- The code of a call's arguments pushes the words of their values, in order, when the code of
+each argument does. -/
+theorem args_spec {S : List Sig} {Γ : List Ty} (m : Module) (funs : Funs S) (host : HostEnv Unit)
+    (store : Store Unit) {ps : List Ty} (args : (i : Fin ps.length) → Expr S Γ (ps.get i))
+    (env : Env Γ) (locs : List Nat) (base : Nat) (s : Locals) (hVars : Holds env locs base s)
+    (hBase : s.params.length ≤ base)
+    (hRoom : ∀ i, base + (args i).width ≤ s.params.length + s.locals.length)
+    (hSpec : ∀ i, CodeSpec m funs host store (args i) env locs) (rest : Program)
+    (Q : Assertion Unit)
+    (hNext : ∀ s', Frame base s s' →
+      wp m rest Q store
+        { s' with values := ((Env.ofFn fun i => (args i).denote funs env).words.map
+            Value.i64).reverse ++ s.values } host) :
+    wp m (argsCode (fun i => (args i).code locs base) ++ rest) Q store s host := by
+  induction ps generalizing s rest Q with
+  | nil => simpa [argsCode, Env.ofFn, Env.words] using hNext s (Frame.refl base s)
+  | cons p ps ih =>
+    simp only [argsCode, List.append_assoc]
+    refine hSpec ⟨0, by simp⟩ base s hVars hBase (hRoom _) _ _ fun s1 h1 => ?_
+    have hp1 : s1.params = s.params := h1.params
+    have hl1 : s1.locals.length = s.locals.length := h1.length
+    refine ih (fun i => args i.succ)
+      { s1 with values := .i64 (Ty.encode p ((args ⟨0, by simp⟩).denote funs env)) :: s.values }
+      (hVars.frame h1 le_rfl : Holds env locs base s1)
+      (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
+      (fun i => by
+        show base + (args i.succ).width ≤ s1.params.length + s1.locals.length
+        rw [hp1, hl1]; exact hRoom _)
+      (fun i => hSpec i.succ) _ _ fun s2 h2 => ?_
+    simpa [Env.ofFn, Env.words, List.append_assoc, List.getElem_cons_zero] using
+      hNext s2 (h1.trans h2.values)
+
 /-- The code of an expression pushes the word of the expression's value from any frame in which
 every variable is in its local below `base` and the locals from `base` on are free.  It changes
 no parameter and no local below `base`. -/
-theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ) (locs : List Nat)
-    (base : Nat) (m : Module) (host : HostEnv α) (store : Store α) (s : Locals)
+theorem Expr.code_spec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
+    (hImports : m.imports = []) (hCalls : Calls m funs) (expr : Expr S Γ t) (env : Env Γ)
+    (locs : List Nat) (base : Nat) (host : HostEnv Unit) (store : Store Unit) (s : Locals)
     (hVars : Holds env locs base s) (hBase : s.params.length ≤ base)
     (hRoom : base + expr.width ≤ s.params.length + s.locals.length) (rest : Program)
-    (Q : Assertion α)
+    (Q : Assertion Unit)
     (hNext : ∀ s', Frame base s s' →
-      wp m rest Q store { s' with values := .i64 (t.encode (expr.denote env)) :: s.values } host) :
+      wp m rest Q store
+        { s' with values := .i64 (t.encode (expr.denote funs env)) :: s.values } host) :
     wp m (expr.code locs base ++ rest) Q store s host := by
   induction expr generalizing locs base s rest Q with
   | word value =>
@@ -143,7 +208,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
         have hp1 : s1.params = s.params := h1.params
         have hl1 : s1.locals.length = s.locals.length := h1.length
         refine wp_localSet_local (by rw [hp1]; omega) (by rw [hp1, hl1]; omega) ?_
-        let s1a := setLocal { s1 with values := s.values } base (.i64 (left.denote env))
+        let s1a := setLocal { s1 with values := s.values } base (.i64 (left.denote funs env))
         have hp1a : s1a.params = s.params := hp1
         have hl1a : s1a.locals.length = s.locals.length := by simp [s1a, setLocal, hl1]
         have hVars1a : Holds env locs (base + 2) s1a :=
@@ -154,17 +219,17 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
         have hp2 : s2.params = s.params := h2.params.trans hp1a
         have hl2 : s2.locals.length = s.locals.length := h2.length.trans hl1a
         refine wp_localSet_local (by rw [hp2]; omega) (by rw [hp2, hl2]; omega) ?_
-        let s2b := setLocal { s2 with values := s.values } (base + 1) (.i64 (right.denote env))
+        let s2b := setLocal { s2 with values := s.values } (base + 1) (.i64 (right.denote funs env))
         show wp m _ Q store s2b host
-        have hRightSlot : s2b.get (base + 1) = some (.i64 (right.denote env)) :=
+        have hRightSlot : s2b.get (base + 1) = some (.i64 (right.denote funs env)) :=
           Locals.get_setLocal_same (by show s2.params.length ≤ base + 1; rw [hp2]; omega)
             (by show base + 1 < s2.params.length + s2.locals.length; rw [hp2, hl2]; omega)
-        have hLeftSlot : s2b.get base = some (.i64 (left.denote env)) := by
+        have hLeftSlot : s2b.get base = some (.i64 (left.denote funs env)) := by
           calc s2b.get base = s2.get base :=
                 Locals.get_setLocal_ne (by show s2.params.length ≤ base + 1; rw [hp2]; omega)
                   (by omega)
             _ = s1a.get base := h2.below base (by omega)
-            _ = some (.i64 (left.denote env)) :=
+            _ = some (.i64 (left.denote funs env)) :=
               Locals.get_setLocal_same (by show s1.params.length ≤ base; rw [hp1]; omega)
                 (by show base < s1.params.length + s1.locals.length; rw [hp1, hl1]; omega)
         have hFrame : Frame base s s2b := by
@@ -181,7 +246,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
         simp only [wp_localGet_cons, hRightSlot, wp_eqzI64_cons]
         rw [wp_iff_control_types]
         refine wp_iff_cons rfl ?_
-        by_cases hZero : right.denote env = 0
+        by_cases hZero : right.denote funs env = 0
         · simp only [hZero, ite_true, ne_eq]
           simpa [-Locals.get, hLeftSlot, hZero, Expr.denote, BinOp.apply, hs2b, Ty.encode] using
             hNext s2b hFrame
@@ -195,7 +260,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
         have hp1 : s1.params = s.params := h1.params
         have hl1 : s1.locals.length = s.locals.length := h1.length
         refine rightSpec env locs base
-          { s1 with values := .i64 (Ty.encode .word (left.denote env)) :: s.values }
+          { s1 with values := .i64 (Ty.encode .word (left.denote funs env)) :: s.values }
           (hVars.frame h1 le_rfl : Holds env locs base s1)
           (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
           (by show base + right.width ≤ s1.params.length + s1.locals.length
@@ -213,7 +278,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
       have hp1 : s1.params = s.params := h1.params
       have hl1 : s1.locals.length = s.locals.length := h1.length
       refine rightSpec env locs base
-        { s1 with values := .i64 (Ty.encode .word (left.denote env)) :: s.values }
+        { s1 with values := .i64 (Ty.encode .word (left.denote funs env)) :: s.values }
         (hVars.frame h1 le_rfl : Holds env locs base s1)
         (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
         (by show base + right.width ≤ s1.params.length + s1.locals.length
@@ -223,13 +288,13 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
       cases op <;>
         simp only [CmpOp.instr, wp_eqI64_cons, wp_neI64_cons, wp_ltUI64_cons, wp_leUI64_cons,
           wp_extendUI32_cons]
-      · by_cases hab : left.denote env = right.denote env <;>
+      · by_cases hab : left.denote funs env = right.denote funs env <;>
           simpa [hab, Expr.denote, CmpOp.apply, Ty.encode] using hv
-      · by_cases hab : left.denote env = right.denote env <;>
+      · by_cases hab : left.denote funs env = right.denote funs env <;>
           simpa [hab, Expr.denote, CmpOp.apply, Ty.encode] using hv
-      · by_cases hab : left.denote env < right.denote env <;>
+      · by_cases hab : left.denote funs env < right.denote funs env <;>
           simpa [hab, Expr.denote, CmpOp.apply, Ty.encode] using hv
-      · by_cases hab : left.denote env ≤ right.denote env <;>
+      · by_cases hab : left.denote funs env ≤ right.denote funs env <;>
           simpa [hab, Expr.denote, CmpOp.apply, Ty.encode] using hv
   | not e eSpec =>
       have hWidth := hRoom
@@ -248,7 +313,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
       have hp1 : s1.params = s.params := h1.params
       have hl1 : s1.locals.length = s.locals.length := h1.length
       refine rightSpec env locs base
-        { s1 with values := .i64 (Ty.encode .bool (left.denote env)) :: s.values }
+        { s1 with values := .i64 (Ty.encode .bool (left.denote funs env)) :: s.values }
         (hVars.frame h1 le_rfl : Holds env locs base s1)
         (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
         (by show base + right.width ≤ s1.params.length + s1.locals.length
@@ -265,7 +330,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
       have hp1 : s1.params = s.params := h1.params
       have hl1 : s1.locals.length = s.locals.length := h1.length
       refine rightSpec env locs base
-        { s1 with values := .i64 (Ty.encode .bool (left.denote env)) :: s.values }
+        { s1 with values := .i64 (Ty.encode .bool (left.denote funs env)) :: s.values }
         (hVars.frame h1 le_rfl : Holds env locs base s1)
         (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
         (by show base + right.width ≤ s1.params.length + s1.locals.length
@@ -291,7 +356,7 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
         (hVars.frame h1 le_rfl : Holds env locs base s1)
       have hBase1 : ({ s1 with values := s.values } : Locals).params.length ≤ base := by
         show s1.params.length ≤ base; rw [hp1]; exact hBase
-      cases hcv : c.denote env
+      cases hcv : c.denote funs env
       · simp only [Ty.encode, Bool.cond_false, ite_true, ne_eq]
         rw [← List.append_nil (elseE.code locs base)]
         refine elseSpec env locs base _ hVars1 hBase1
@@ -316,17 +381,17 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
       have hl1 : s1.locals.length = s.locals.length := h1.length
       refine wp_localSet_local (by rw [hp1]; omega) (by rw [hp1, hl1]; omega) ?_
       let s1a := setLocal { s1 with values := s.values } base
-        (.i64 (Ty.encode _ (value.denote env)))
+        (.i64 (Ty.encode _ (value.denote funs env)))
       show wp m _ Q store s1a host
       have hp1a : s1a.params = s.params := hp1
       have hl1a : s1a.locals.length = s.locals.length := by simp [s1a, setLocal, hl1]
-      have hSlot : s1a.get base = some (.i64 (Ty.encode _ (value.denote env))) :=
+      have hSlot : s1a.get base = some (.i64 (Ty.encode _ (value.denote funs env))) :=
         Locals.get_setLocal_same (by show s1.params.length ≤ base; rw [hp1]; omega)
           (by show base < s1.params.length + s1.locals.length; rw [hp1, hl1]; omega)
-      have hVars1a : Holds (Env.cons (value.denote env) env) (base :: locs) (base + 1) s1a :=
+      have hVars1a : Holds (Env.cons (value.denote funs env) env) (base :: locs) (base + 1) s1a :=
         ((hVars.frame h1 (by omega)).setLocal (le_refl _)
           (by show s1.params.length ≤ base; rw [hp1]; exact hBase)).push hSlot
-      refine bodySpec (Env.cons (value.denote env) env) (base :: locs) (base + 1) s1a hVars1a
+      refine bodySpec (Env.cons (value.denote funs env) env) (base :: locs) (base + 1) s1a hVars1a
         (by rw [hp1a]; omega) (by rw [hp1a, hl1a]; omega) _ _ fun s2 h2 => ?_
       have hFrame : Frame base s s2 := by
         refine ⟨h2.params.trans hp1a, h2.length.trans hl1a, fun j hj => ?_⟩
@@ -337,6 +402,25 @@ theorem Expr.code_spec {Γ : List Ty} {t : Ty} (expr : Expr Γ t) (env : Env Γ)
           _ = s.get j := h1.below j (by omega)
       have hs1a : s1a.values = s.values := rfl
       simpa [Expr.denote, hs1a] using hNext s2 hFrame
+  | call g args argsSpec =>
+      have hRoom' : ∀ i, base + (args i).width ≤ s.params.length + s.locals.length := fun i =>
+        (Nat.add_le_add_left (le_argsMax (fun i => (args i).width) i) base).trans hRoom
+      simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+      refine args_spec m funs host store args env locs base s hVars hBase hRoom'
+        (fun i base' s' hV hB hR rest' Q' hN => argsSpec i env locs base' s' hV hB hR rest' Q' hN)
+        _ _ fun s1 h1 => ?_
+      obtain ⟨hImpl, fn, hfn, hnum⟩ := hCalls g
+      have hRun := (hImpl host store (Env.ofFn fun i => (args i).denote funs env)).append_args
+        (by simp [hImports]) (by simpa [hImports] using hfn)
+        (by simp [Scalar.values, Env.words_length, hnum]) s.values
+      refine wp_call_runs (aborts := false) hRun trivial fun st' vs hPost => ?_
+      obtain ⟨out, hvs, hst, hout⟩ := hPost
+      have hout' : out = [.i64 (Ty.encode _ (funs.get g
+          (Env.ofFn fun i => (args i).denote funs env)))] := by
+        have := congrArg List.reverse hout
+        simpa [Scalar.values] using this
+      subst hvs hst hout'
+      simpa [Expr.denote] using hNext s1 h1
 
 theorem Var.index_lt {Γ : List Ty} {t : Ty} (x : Var Γ t) : x.index < Γ.length := by
   induction x with
@@ -349,31 +433,33 @@ theorem Env.words_get {Γ : List Ty} {t : Ty} (env : Env Γ) (x : Var Γ t) :
   | here => cases env with | cons v rest => simp [Env.words, Env.get, Var.index]
   | there y ih => cases env with | cons v rest => simp [Env.words, Env.get, Var.index, ih]
 
-theorem Env.words_length {Γ : List Ty} (env : Env Γ) : env.words.length = Γ.length := by
-  induction env with
-  | nil => rfl
-  | cons v rest ih => simp [Env.words, ih]
+theorem FVar.index_lt {S : List Sig} {ps : List Ty} {r : Ty} (f : FVar S ps r) :
+    f.index < S.length := by
+  induction f with
+  | here => simp [FVar.index]
+  | there g ih => simp [FVar.index]; omega
 
-/-- The correctness theorem.  Function `2 + i` of the compiled module returns
-`func.denote args`, without a trap, from any store, and leaves the store unchanged. -/
-theorem Func.correct (funcs : List (Func × String)) (i : Nat) (func : Func) (name : String)
-    (hFunc : funcs[i]? = some (func, name)) :
-    ImplementsPureA false (compile funcs) (2 + i) func.denote := by
+/-- A function at position `pos` of a module whose functions at the call indices compute the
+functions it calls returns `func.denote funs args`, without a trap, from any store, and leaves
+the store unchanged. -/
+theorem Func.correct {S : List Sig} (func : Func S) (funs : Funs S) (m : Module) (pos : Nat)
+    (hImports : m.imports = []) (hFunc : m.funcs[pos]? = some (func.function pos))
+    (hCalls : Calls m funs) :
+    ImplementsPureA false m pos (func.denote funs) := by
   intro host store args
   have hLength : (Scalar.values args).length = func.params.length := by
     simp [Scalar.values, Env.words_length]
-  have hNoImports : (compile funcs).imports = [] := rfl
-  apply Runs.of_wp_entry_for (f := func.function (2 + i))
-    (by rw [hNoImports, List.length_nil, Nat.sub_zero]; exact compile_funcs hFunc)
-  have hTake : ((Scalar.values args).reverse.take (func.function (2 + i)).numParams).reverse =
+  apply Runs.of_wp_entry_for (f := func.function pos)
+    (by rw [hImports, List.length_nil, Nat.sub_zero]; exact hFunc) (hImp := by simp [hImports])
+  have hTake : ((Scalar.values args).reverse.take (func.function pos).numParams).reverse =
       Scalar.values args := by
     rw [List.take_of_length_le (by simp [Func.function, Func.type, Function.numParams, hLength])]
     simp
-  rw [hTake, show (func.function (2 + i)).body =
+  rw [hTake, show (func.function pos).body =
     func.body.code (List.range func.params.length) func.params.length ++ [] by
       simp [Func.function]]
-  refine Expr.code_spec func.body args (List.range func.params.length) func.params.length _ host
-    store _ (fun _ x => ?_) (by simp [Function.toLocals, hLength])
+  refine Expr.code_spec m funs hImports hCalls func.body args (List.range func.params.length)
+    func.params.length host store _ (fun _ x => ?_) (by simp [Function.toLocals, hLength])
     (by simp [Function.toLocals, Func.function, hLength]) [] _ fun s' _ => ?_
   · have hx := x.index_lt
     have hw := args.words_get x
@@ -383,6 +469,43 @@ theorem Func.correct (funcs : List (Func × String)) (i : Nat) (func : Func) (na
       List.getElem?_map, hw, Option.map_some]
   · simp [Func.function, Func.type, Function.numParams, Func.denote, Scalar.values,
       Env.words_length]
+
+/-- Every function of a program, placed from position 2 of a module without imports, computes
+its meaning. -/
+theorem Prog.calls {S : List Sig} (prog : Prog S) (m : Module) (hImports : m.imports = [])
+    (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = prog.functions[k]?) : Calls m prog.funs := by
+  induction prog with
+  | nil => intro ps r g; cases g
+  | @cons S' f rest ih =>
+    have hRest : Calls m rest.funs := ih fun k hk => by
+      rw [hFuncs k (by simp; omega)]
+      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    intro ps r g
+    cases g with
+    | here =>
+      have hpos : m.funcs[2 + S'.length]? = some (f.function (2 + S'.length)) := by
+        rw [hFuncs _ (by simp)]
+        simp [Prog.functions, rest.functions_length]
+      refine ⟨?_, f.function (2 + S'.length), ?_, ?_⟩
+      · simpa [FVar.callIndex, FVar.index, Funs.get, Prog.funs] using
+          Func.correct f rest.funs m _ hImports hpos hRest
+      · simpa [FVar.callIndex, FVar.index] using hpos
+      · simp [Func.function, Func.type, Function.numParams]
+    | there g' =>
+      obtain ⟨h1, fn, h2, h3⟩ := hRest g'
+      have hidx : (FVar.there g' : FVar ((f.params, f.result) :: S') ps r).callIndex =
+          g'.callIndex := by
+        have := g'.index_lt
+        simp only [FVar.callIndex, FVar.index, List.length_cons]
+        omega
+      rw [hidx]
+      exact ⟨by simpa [Funs.get, Prog.funs] using h1, fn, h2, h3⟩
+
+/-- The correctness theorem.  Every function of a program's module returns, at its call index,
+the value that the program gives it, without a trap, from any store, and leaves the store
+unchanged. -/
+theorem Prog.correct {S : List Sig} (prog : Prog S) : Calls (compile prog) prog.funs :=
+  prog.calls _ rfl fun k _ => compile_funcs prog k
 
 /-- A function's theorem holds for any argument type whose values are those of the function's
 arguments. -/
