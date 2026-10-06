@@ -9,8 +9,9 @@ allocation, pointer writes, frame updates, reservation, return control with
 possible collection, and fuel properties are also checked.
 Actual program validation, object and activation construction, and VM boot
 are checked, including exact entry state and allocation failure.
-Full VM correctness remains unproved: method lookup and the
-remaining instruction properties still need proofs. The source compiler and
+Concrete method lookup is checked against a separate ordered-search specification.
+Full VM correctness remains unproved: the remaining instruction properties and
+the invariant connecting all steps still need proofs. The source compiler and
 emitted WASM are tested but not proved correct.
 See [smalltalk-vm.md](smalltalk-vm.md) for commands, formats, collection, tests,
 and proof limits, and [smalltalk-compilers.md](smalltalk-compilers.md) for compiler

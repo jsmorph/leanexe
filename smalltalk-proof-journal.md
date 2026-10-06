@@ -753,3 +753,28 @@ checks with 136 exact native comparisons, compiler rejection cases, and CLI
 checks. The module remains 25,208 bytes; executable VM and GC definitions are
 unchanged. The package setting makes these external artifact consumers receive
 current build outputs on future cached builds.
+
+## Concrete lookup semantics (2026-10-06)
+
+`LookupStep` connects the actual flat lookup loop to its state transition and
+proves the result is zero or a valid method ID. `LookupSpec` independently
+checks methods in increasing ID order, then searches the parent, with an
+explicit class-visit count. `LookupScan` checks retained results, zero owner,
+in-class steps and the final parent-transition step. `LookupRound` proves an
+entire class scan returns the first matching method and completes the method
+index.
+
+`LookupCorrect` composes rounds to prove the actual runtime lookup agrees with
+the separate specification. Header count bounds prove the UInt64 multiplication
+does not wrap. `LookupHierarchy` proves decreasing validated parent IDs reach
+zero within the header class count for a valid starting class. Once the parent
+chain ends, additional visits cannot change the search result. The earlier
+list-model lookup theorem is not substituted for these runtime proofs.
+
+The specification identifier matches was reserved by Lean and was renamed
+candidate. A simplified true conjunction needed normal simplification rather
+than a reflexivity term. The absent-candidate branch needed explicit boolean
+false reduction before the scan induction applied. Final focused checks,
+the combined build and axiom audit pass. No executable code or proof limits
+changed. Dispatch, block calls, primitives and the complete execution invariant
+remain unfinished.

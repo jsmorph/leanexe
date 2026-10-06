@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`f81f5d0954ddd99a22a146f01192a20f8100765e`.
+`62586f3a6bc56e27baca18a911538ab191db9572`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -75,6 +75,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Concrete program validation | Actual successful validation supplies all visited class and method checks, header bounds, parent order, metadata/field bounds, inherited fields, method owner/arity/locals/PC/primitive bounds, and entry arity | `ValidationLoop.lean`, `ProgramChecks.lean`, `ProgramBounds.lean` |
 | Complete boot | Actual validator supplies a non-wrapping budget; actual init and boot either report allocation error 9 or establish phase zero, the specified receiver and fields, and exact entry frame; rejected boot preserves heap and pointer types | `BootBudget.lean`, `BootConstruction.lean`, `BootGuard.lean`, `BootDispatch.lean`, `BootHeap.lean` |
 | Actual method-call construction | Typed advance, reachable argument walks/values/inputs across collection, exact method entry and caller PC/stack update, and public reservation/error-9 cases are checked under method and call-input assumptions | `AdvanceTypes.lean`, `ArgumentTransfer.lean`, `CallInputs.lean`, `CallConstruction.lean`, `CallBudget.lean`, `CallReservation.lean`, `CallHeap.lean` |
+| Concrete lookup semantics | Actual flat loop agrees with a separate method-ID-order and parent-search specification; result range, first match, round composition, word budget, and sufficiency for valid class hierarchies are checked | `LookupStep.lean`, `LookupSpec.lean`, `LookupScan.lean`, `LookupRound.lean`, `LookupCorrect.lean`, `LookupHierarchy.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -105,24 +106,20 @@ Recent pushed checkpoints:
 | `6e8fae85` | Complete actual activation construction |
 | `655757a5` | Actual validator and metadata bounds |
 | `f81f5d09` | Actual boot and exact initialized entry state |
+| `62586f3a` | Method calls across collection and current build artifacts |
 
 ## Current increment
 
-Actual method-call construction passes the combined build and axiom audit.
-Typed advancement preserves argument links. Reachable link payload preservation
-establishes unchanged walks, selected values, and binding inputs across
-collection. Ready calls establish exact method entry and caller PC/stack
-updates. Public calls preserve heap and pointer types and either report error 9
-or enter with the original phase. Method bounds and caller/input/receiver/lexical
-conditions remain explicit; send and dispatch must establish them.
+Actual concrete lookup passes the combined build and axiom audit. A separate
+specification checks method IDs in increasing order and then visits parents.
+The actual flat loop implements it, including first-match retention, class
+rounds, parent transitions, and non-wrapping budget multiplication. The result
+is zero or a valid method ID. For a validated starting class, decreasing parent
+IDs ensure the header class count is enough; further visits cannot change
+the result. The earlier list-model theorem is not used as a substitute.
 
-The standalone audit initially loaded stale local artifacts and rejected the
-new theorem references. Lake now restores cached artifacts to `.lake/build`,
-as required by the repository drivers. The failed run is retained. The restored-artifact audit and full driver pass
-before this configuration change is committed.
-
-Next are concrete lookup, dispatch, block calls, and primitives. Dispatcher composition of returns,
-exact return path conditions, lookup, and the complete execution invariant
+Next are dispatch, block calls, and primitives. Dispatcher composition of returns,
+exact return path conditions and the complete execution invariant
 remain unfinished. All checked proof files are included in this increment; no
 full VM correctness claim is made.
 
@@ -152,7 +149,8 @@ full VM correctness claim is made.
 6. Prove concrete method lookup against a separate first-match and superclass
    search specification. Account for the flat method scan, owner/selector
    comparisons, inherited lookup, finite search budget, and word arithmetic.
-   The existing list-model lookup theorem does not prove `Runtime.lookup`.
+   This is now checked for the actual flat loop, including a separate ordered
+   search specification and sufficiency of the header budget for valid classes.
 7. Prove sends, superclass sends, block calls, and primitives. Check receiver
    and argument selection, arity, fallback methods, construction budgets,
    numeric results and overflow fallback, identity, explicit collection, and
@@ -239,7 +237,7 @@ The local full-driver log is `build/smalltalk/proof-call-driver-review.log`.
 Executable VM and GC definitions are unchanged. The call increment also
 changes Lake configuration so external artifact consumers receive current
 build outputs. Its combined Lean build and axiom audit pass. The latest audit log is
-`build/smalltalk/proof-call-construction-restored-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-lookup-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,

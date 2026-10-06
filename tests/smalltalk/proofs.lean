@@ -139,5 +139,9 @@ run_cmd do
 #print axioms Project.Smalltalk.CallConstruction.sendMethodReady_effect
 #print axioms Project.Smalltalk.CallReservation.reserve_inputs
 #print axioms Project.Smalltalk.CallHeap.callMethod_correct
+#print axioms Project.Smalltalk.LookupStep.lookup_range
+#print axioms Project.Smalltalk.LookupRound.fresh_scan
+#print axioms Project.Smalltalk.LookupCorrect.validated_lookup
+#print axioms Project.Smalltalk.LookupHierarchy.class_budget_sufficient
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
