@@ -1,10 +1,10 @@
 # Remove the first zero
 
-This example is main's Demo 12 (`git show main:demos/demo-12/README.md`), carried to this
+This example is [main's Demo 12](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-12/README.md), carried to this
 branch's pipeline.  [The request](request.txt) asks for an array of at most eight words without
 its first zero, with the other words in order, for the input itself when it has no zero, and for
 the empty array when the input is longer.  [The specification](../../Project/RemoveZero/Spec.lean)
-states that behavior with `Array.findIdx?` and `Array.eraseIdx!`, exactly as main's did.
+states that behavior with `Array.findIdx?` and `Array.eraseIdx!`, as main's did.
 
 The dialect compiles neither `Array.findIdx?`, which returns an `Option`, nor `Array.eraseIdx!`,
 so [the program](../../LeanExe/Examples/RemoveZero.lean) computes the same array another way.
@@ -23,8 +23,8 @@ The theorems are in [the proofs](../../Project/RemoveZero/Verify.lean), and they
 `propext`, `Classical.choice`, and `Quot.sound`.  `compute_eq` connects the loop to
 `Array.findIdx?` and the build to `Array.eraseIdx!` through the core lemmas
 `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_eraseIdx`.  Main's theorem also stated
-termination with a heap reserve.  Here the trap-tolerant theorem suffices, and the
-[increment example](../increment/README.md) shows the total form.
+termination with a heap reserve.  Here the theorem allows a trap, and the [increment
+example](../increment/README.md) shows the total form.
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.RemoveZero.Verify

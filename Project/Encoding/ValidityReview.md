@@ -162,7 +162,7 @@ requires its `Ready`, validity, and behavioral proofs.  The current concrete
 premise proofs cover the constant example.
 
 The proof target and six public axiom reports were checked again during this
-review through `tools/leanrun`.  All six reports contain only `propext`,
+review through [`tools/leanrun`](../../tools/leanrun).  All six reports contain only `propext`,
 `Classical.choice`, and `Quot.sound`.  The specification and theorem sources
 retain their reviewed contents.
 

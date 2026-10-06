@@ -1,5 +1,7 @@
 # A four-state Euler Riemann problem
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../euler-riemann-complete-v1/README.md) and [the reconstructed record](../euler-reconstructed-v1/README.md) describe this branch's Euler solvers and their runs.
+
 This calculation evolves the four-quadrant problem from the [Lanyon Euler article](https://lanyon.ai/research/euler-equations/) to time 0.8 on a 192 × 192 grid.  LeanExe compiles the numerical kernels from Lean to WebAssembly.  The final density and pressure fields show the interaction of shocks launched by the initial discontinuities.
 
 ![Final density and pressure on the unit square](density-pressure.png)
@@ -45,7 +47,7 @@ The large oblique fronts and their junctions resemble the [published density fig
 
 The y sweep uses the x-updated state, so its signal speeds can raise the CFL above the timestep target.  The balance residual accounts for flux through the open boundaries for all four conserved quantities.  Total mass and energy can change as fluid crosses those boundaries.  The independent JavaScript calculation agrees with every saved density/pressure word, final conservative word, timestep, diagnostic, and boundary integral from Wasmtime.
 
-Lean checks exact-byte execution and accepted-state safety for all three numerical kernels, plus axis exchange, clamped sweeps, and successful finite-run call traces.  The [cell artifact theorem](../../proofs/talos/lean/Project/Euler2DCellStep/ArtifactRunner.lean) connects those traces to the frozen binary.  Generated decoder and validator cache witnesses retain the repository's native-decide trust boundary.  Native orchestration, initialization, diagnostics, and plotting receive executable tests.  PDE convergence is an open proof obligation.
+Lean checks exact-byte execution and accepted-state safety for all three numerical kernels, plus axis exchange, clamped sweeps, and successful finite-run call traces.  The [cell artifact theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DCellStep/ArtifactRunner.lean) connects those traces to the frozen binary.  Generated decoder and validator cache witnesses retain the repository's native-decide trust boundary.  Native orchestration, initialization, diagnostics, and plotting receive executable tests.  PDE convergence is an open proof obligation.
 
 ## Reproduction
 
@@ -64,4 +66,4 @@ tools/leanrun --timeout 35m node --input-type=module -e \
   "import {run2D} from './tools/euler-2d-runtime.mjs'; console.log(run2D(192,21,'riemann').evidenceDirectory)"
 ```
 
-The returned directory retains `run.ndjson`.  Passing that file as the final argument to the data check also compares the fresh run with this dataset.  The [plot script](../../tools/euler-riemann-plot.py) and [pinned plotting requirements](../../tools/riemann-plot-requirements.txt) reproduce the figures in a fresh directory containing `cells.csv`.  Both generators preserve existing outputs.
+The returned directory retains `run.ndjson`.  Passing that file as the final argument to the data check also compares the fresh run with this dataset.  The [plot script](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/tools/euler-riemann-plot.py) and [pinned plotting requirements](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/tools/riemann-plot-requirements.txt) reproduce the figures in a fresh directory containing `cells.csv`.  Both generators preserve existing outputs.

@@ -1,6 +1,6 @@
 # Prime factors: a count with multiplicity
 
-This example is main's Demo 1 (`git show main:demos/demo-1/README.md`), carried to this branch's
+This example is [main's Demo 1](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-1/README.md), carried to this branch's
 pipeline.  [The request](request.txt) asks for the number of prime factors of a word, counted with
 multiplicity, with 0 for 0 and 1.  [The specification](../../Project/PrimeFactors/Spec.lean)
 states that count with Mathlib's `Nat.primeFactorsList`, as main's did.

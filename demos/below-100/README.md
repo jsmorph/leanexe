@@ -1,6 +1,6 @@
 # Below 100: a filter of at most eight words
 
-This example is main's Demo 5 (`git show main:demos/demo-5/README.md`), carried to this branch's
+This example is [main's Demo 5](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-5/README.md), carried to this branch's
 pipeline.  [The request](request.txt) asks for the elements of an array of at most eight words
 that are less than 100, in their original order, and for the empty array when the input is
 longer.  [The specification](../../Project/Below100/Spec.lean) states it with `Array.filter`, as
@@ -24,8 +24,8 @@ compiles `keep` and `compute` into a 1,831-byte `below100.wasm` that exports bot
 The theorems are in [the proofs](../../Project/Below100/Verify.lean), and they use only
 `propext`, `Classical.choice`, and `Quot.sound`.  Main's generated proof concerned one 1,975-byte
 binary and took 969 lines, reduced to 70 by main's later proof tools.  Here the rules of the
-in-place push and of `repeatWhile` over one array prove `Implements`, and `compute_eq` carries it
-to the specification.  The module tests run nine inputs in Wasmtime against `expected`, including
+in-place push and of `repeatWhile` over one array prove `Implements`, and with `compute_eq`,
+`Implements.congr` states it for the specification.  The module tests run nine inputs in Wasmtime against `expected`, including
 the empty array, eight words, and nine words.
 
 ```sh

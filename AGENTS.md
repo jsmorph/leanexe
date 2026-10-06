@@ -2,7 +2,7 @@
 
 ## Lean Process Limits
 
-- Run every `lean`, `lake`, and Lean compiler command through `tools/leanrun`.  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
+- Run every `lean`, `lake`, and Lean compiler command through [`tools/leanrun`](tools/leanrun).  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
 - The runner acquires the same machine-wide lock as `../vq/tools/leanrun` and sets `LEAN_NUM_THREADS=1`.  Never bypass the runner or run Lean or Lake processes concurrently.
 - Add a reasonable `timeout` to diagnostic commands whose runtime is not intrinsically bounded.
 - After a target reaches its timeout without a diagnostic, do not run the unchanged target again.  First divide the proof or module, or add a verified reusable lemma that reduces the elaboration boundary.
@@ -18,13 +18,13 @@ tools/leanrun --timeout <duration> <lean-or-lake-command>
 
 ## Approval Boundaries
 
-- Keep the repository driver as the first command token for verification runs: `tests/modules/run.sh`, `tests/gpt/run.sh`, `tests/wgsl/run.sh`, `tests/gpt32/native.sh`, `tests/drone/oracle.sh`, or `tools/demo-check`, each of which calls `tools/leanrun` itself.  Request approval for that driver prefix rather than one case, module, corpus file, temporary path, or internal child command.
-- Put repeatable corpus membership and expected results in the driver's checked files, such as `tests/modules/Cases.lean`.  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
+- Keep the repository driver as the first command token for verification runs: [`tests/modules/run.sh`](tests/modules/run.sh), [`tests/gpt/run.sh`](tests/gpt/run.sh), [`tests/wgsl/run.sh`](tests/wgsl/run.sh), [`tests/gpt32/native.sh`](tests/gpt32/native.sh), [`tests/drone/oracle.sh`](tests/drone/oracle.sh), or [`tools/demo-check`](tools/demo-check), each of which calls [`tools/leanrun`](tools/leanrun) itself.  Request approval for that driver prefix rather than one case, module, corpus file, temporary path, or internal child command.
+- Put repeatable corpus membership and expected results in the driver's checked files, such as [`tests/modules/Cases.lean`](tests/modules/Cases.lean).  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
 - Use direct `tools/leanrun` commands only for focused diagnostics that do not belong in an existing repository gate.  Keep `tools/leanrun` as the first token and pass file paths as ordinary arguments without shell expansion.
 
 ## Proof Iteration
 
-Treat accepted theorems and the full check of `docs/manual.md` as gates.  Evaluate each iteration across proof-generation time, successful LTG retrieval, agent revisions, proof structure and size, shared abstraction use, compiler hint use, and applicability beyond the measured program.  No single measurement determines retention or promotion.  Do not treat raw source bytes, word length, or identifier length as proof complexity.  Longer declaration names often record useful shared theorem use.  Consider lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem or tactic use.  After every proof run, review the journal and the accepted proof together.  Use that evidence to consider changes to compiler hints, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
+Treat accepted theorems and [the manual's full check](docs/manual.md#the-full-check) as gates.  Evaluate each iteration across proof-generation time, successful LTG retrieval, agent revisions, proof structure and size, shared abstraction use, compiler hint use, and applicability beyond the measured program.  No single measurement determines retention or promotion.  Do not treat raw source bytes, word length, or identifier length as proof complexity.  Longer declaration names often record useful shared theorem use.  Consider lines, explicit syntax, local scaffolding, repeated derivations, and shared theorem or tactic use.  After every proof run, review the journal and the accepted proof together.  Use that evidence to consider changes to compiler hints, shared lemmas, tactics, and guidance, as well as the instructions that govern proof generation and journaling.
 
 Keep journals as frequent, natural prose.  They should identify supplied help that worked or failed, explain changes of approach, and note missing general abstractions.  Test changes on fixed modules, preserve failures, and use diverse or held-out demos to avoid problem-specific optimization.
 

@@ -1,6 +1,6 @@
 # Lookup: the first of ten pairs
 
-This example is main's Demo 2 (`git show main:demos/demo-2/README.md`), carried to this branch's
+This example is [main's Demo 2](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-2/README.md), carried to this branch's
 pipeline.  [The request](request.txt) asks, for 21 words `[query, key1, value1, …, key10,
 value10]`, for `[value, 1]` from the first pair whose key equals the query, and for `[0, 0]` when
 no key matches or the input has another length.  [The
@@ -21,7 +21,7 @@ compiles it into a 1,689-byte `lookup.wasm` that exports `compute`.
 The theorems are in [the proofs](../../Project/Lookup/Verify.lean), and they use only `propext`,
 `Classical.choice`, and `Quot.sound`.  Main's proof concerned one 7,336-byte binary and took 1,639
 lines.  Here the loop rule and the array-literal rule prove `Implements` for the program, and
-`compute_eq` carries it to the specification by ten case splits.  The module tests run main's
+with `compute_eq`, proved by ten case splits, `Implements.congr` states it for the specification.  The module tests run main's
 sample, a missing key, a match at the first and last pairs, repeated keys, and inputs of 0, 20, and
 22 words in Wasmtime against `expected`.
 

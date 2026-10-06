@@ -1,10 +1,12 @@
 # Tiny GPT-2 with 128 positions
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes this branch's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+
 This checkpoint has 128 byte-token positions, 2,984 binary64 parameters,
 model width four, two attention heads, feed-forward width eight, and one
 block.  The WASM implementation produces text completions.  Its complete
 source-equivalence proof is paused.  The
-[GPT guide](../../docs/gpt/README.md) explains how this byte-token model
+[GPT guide](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/gpt/README.md) explains how this byte-token model
 relates to four-byte numerical verification and pretrained GPT-2 execution.
 
 ## Command-line generation
@@ -50,7 +52,7 @@ corpus has SHA-256
 
 ## Reproduction and verification scope
 
-The [training instructions](../../training/tiny-gpt2/README.md) describe
+The [training instructions](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/tiny-gpt2/README.md) describe
 the approved environment.  From the repository root:
 
 ```sh
@@ -59,7 +61,7 @@ the approved environment.  From the repository root:
   --output build/tiny-gpt2/context128-checkpoint.json
 ```
 
-The [inference plan](../../plans/tiny-transformer.md) requires a checked
+The [inference plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/tiny-transformer.md) requires a checked
 proof that the generated module computes its Lean source, including
 termination and memory guarantees.  The proof will accept runtime weights.
 Further real-arithmetic error bounds are deferred.  The checkpoint's

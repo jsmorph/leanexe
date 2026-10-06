@@ -1,5 +1,7 @@
 # Pretrained GPT-2 124M
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes this branch's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+
 This directory records the pretrained GPT-2 124M checkpoint, WASM and
 PyTorch execution results, and the formal proof of cached inference.
 The model generates text using 124,439,808 binary32 parameters and a
@@ -8,10 +10,10 @@ heads, a 3,072-wide feed-forward layer, and 50,257 vocabulary entries.
 The implementation limits the prompt and completion together to 128 tokens.
 The checkpoint retains its original 1,024 positional rows.
 
-The [GPT guide](../../docs/gpt/README.md) explains the goals and data flow.
-The [Lean model](../../LeanExe/Models/Gpt2/README.md),
-[host and reference](../../training/gpt2/README.md), and
-[cached-inference proofs](../../proofs/talos/lean/Project/Gpt2CachedStep/README.md)
+The [GPT guide](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/gpt/README.md) explains the goals and data flow.
+The [Lean model](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Models/Gpt2/README.md),
+[host and reference](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/gpt2/README.md), and
+[cached-inference proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/README.md)
 describe the implementation and its verification boundaries.
 
 ## Run WASM inference
@@ -55,7 +57,7 @@ completion matches PyTorch's token sequence exactly.
 
 ## Run the reference
 
-The [uv project](../../training/gpt2/pyproject.toml) and its lockfile pin
+The [uv project](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/gpt2/pyproject.toml) and its lockfile pin
 PyTorch 2.9.1, Transformers 4.57.6, and their dependencies.  Linux and Windows
 use PyTorch's CPU wheel index.  `uv` creates `training/gpt2/.venv` on the
 first invocation.  The project selects Python 3.13.  Download the pinned
@@ -96,7 +98,7 @@ runs.  The first prompt continued:
 That run generated 64 tokens in 3.8 seconds using one CPU thread.
 LeanExe/WASM execution now generates text from the same checkpoint.
 The user approved FP32 arithmetic and packed binary tensors.
-The [development plan](../../plans/gpt2-124m.md) records the completed
+The [development plan](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/gpt2-124m.md) records the completed
 implementation and the resumed exact execution proofs.
 
 The first attention projection runs through LeanExe/WASM with the
@@ -157,20 +159,20 @@ node test/packed.js --gpt2-cached
 node test/packed.js --gpt2-completions
 ```
 
-The [cached Lean model](../../LeanExe/Models/Gpt2/Cached.lean) defines the
-token step.  The [command-line client](../../training/gpt2/wasm.py) keeps the
+The [cached Lean model](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/LeanExe/Models/Gpt2/Cached.lean) defines the
+token step.  The [command-line client](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/gpt2/wasm.py) keeps the
 WASM instance resident and releases each superseded cache and logit buffer.
 
 ## Formal execution proof
 
-The [public cached-step theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean)
+The [public cached-step theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Spec.lean)
 proves that the generated module terminates and returns the exact cache and
 logit bytes specified by the Lean token step.  It covers embedding, all twelve
 transformer blocks, final normalization, all 50,257 scores, allocation, and
 temporary-buffer cleanup.  Invalid weight length, token, position, or cache
 length returns empty outputs with the store unchanged.
 
-The [128-position theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean)
+The [128-position theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/Session/Spec.lean)
 derives the initial heap, input representation, and allocation conditions.
 It starts with module initialization, reset, weight allocation, and the byte
 copy that encodes the input.  It then composes up to 128 token calls, releases
@@ -188,7 +190,7 @@ specifies and proves the host's WASM call sequence and byte input/output
 boundary.  Numerical error bounds and comparison with the separate
 full-prefix Lean algorithm remain outside this proof target.
 
-The [exact-binary theorem](../../proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean)
+The [exact-binary theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Gpt2CachedStep/ArtifactTranslation.lean)
 `artifact_gpt2_128_exact` proves that the 19,083 embedded WASM bytes decode,
 satisfy the binary grammar, validate, and execute according to the complete
 session specification.  The proof establishes equality with the Talos

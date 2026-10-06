@@ -1,6 +1,6 @@
 # Gcd: Euclid's algorithm
 
-This example stands for main's Demo 6 (`git show main:demos/demo-6/README.md`), which maps a
+This example stands for [main's Demo 6](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-6/README.md), which maps a
 one-word array `[x]` to `[gcd(x, 42)]` and returns an array of any other length unchanged.  [The
 request](request.txt) here asks for the greatest common divisor of any two words, by Euclid's
 remainder loop, with `gcd a 0 = a`.  Main's function is this one with the second argument fixed at

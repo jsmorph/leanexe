@@ -13,12 +13,12 @@ the theorem `NAME_bytes`:
   ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m K expected
 ```
 
-`tools/demo-check` writes this statement itself and accepts the run only if `NAME_bytes` proves it
+[`tools/demo-check`](../../../tools/demo-check) writes this statement itself and accepts the run only if `NAME_bytes` proves it
 with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`, the specification is the one
 the review accepted, and the module returns `expected` on every sample in Wasmtime.  `Implements`
 allows a trap, which occurs when memory runs out.  The theorem says nothing about the request
-beyond what `expected` says, so the independent review of `expected` against the request carries
-the meaning of the request.  The run does not ask the user to approve the specification.
+beyond what `expected` says, so the independent review of `expected` against the request is the
+only check that the theorem states what the request asks.  The run does not ask the user to approve the specification.
 
 ## Names and files
 
@@ -28,7 +28,7 @@ capitalized, and `KEBAB` is `NAME` in kebab case, such as `prime-factors`.
 | File | Contents |
 |------|----------|
 | `demos/KEBAB/request.txt` | The request, as the user wrote it. |
-| `Project/Name/Spec.lean` | `Project.Name.expected` in ordinary Lean; Mathlib is allowed. |
+| `Project/Name/Spec.lean` | `Project.Name.expected` in ordinary Lean.  Mathlib is allowed. |
 | `Project/Name/Samples.lean` | `Project.Name.samples : List α`, core Lean only. |
 | `LeanExe/Examples/Name.lean` | The program in `LeanExe.Examples.Name`, with entry `compute`. |
 | `Project/Name/Module.lean` | `leanexe_compile NAME := [f, …, compute]` or `leanexe_compile NAME := compute`. |
@@ -71,8 +71,8 @@ are outside this skill.  If the request needs one, say so and stop.
 
 ## Stage 2: the program
 
-Write the program in the dialect of `docs/manual.md` (sections "The dialect" through "Summary of
-constructs"): integers are `UInt64`, recursion is tail recursion with a termination proof or a
+Write the program in the dialect that [the manual](../../../docs/manual.md#the-dialect) describes, in
+the sections from "The dialect" through "Summary of constructs": integers are `UInt64`, recursion is tail recursion with a termination proof or a
 combinator (`LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`), and arrays are built at the
 top of a function.  The program must not import the specification.  Bound any loop by the input,
 as the demos bound arrays to eight words where the request does.  Compile with
@@ -90,16 +90,16 @@ example whose program has the same shape.
 
 | Program shape | Example |
 |---------------|---------|
-| Tail recursion on words | `Project/PrimeFactors/Verify.lean`, `Project/Gcd/Verify.lean` (`Func.tail_implements`, one theorem per run of the loop body) |
-| Fold over an array | `Project/SumArray/Verify.lean` (`Func.foldl_implements`) |
-| `LeanExe.loop` with a tuple state, then an array literal | `Project/Lookup/Verify.lean` (`Stmt.loop_spec`, `Stmt.arrayLiteral_spec`) |
-| `LeanExe.build` | `Project/Increment/Verify.lean`, `Project/RemoveZero/Verify.lean` (`Stmt.build_spec`) |
-| `LeanExe.repeatWhile` over a function that pushes | `Project/Below100/Verify.lean` (`Live.repeatWhileOne`, `Stmt.pushInPlace_spec`) |
-| Calls between listed functions | `Project/PrimeFactors/Verify.lean` (`Stmt.callImplements_spec`), `Project/RemoveZero/Verify.lean` (`Live.callScalar_seq`) |
+| Tail recursion on words | [`Project/PrimeFactors/Verify.lean`](../../../Project/PrimeFactors/Verify.lean), [`Project/Gcd/Verify.lean`](../../../Project/Gcd/Verify.lean) (`Func.tail_implements`, one theorem per run of the loop body) |
+| Fold over an array | [`Project/SumArray/Verify.lean`](../../../Project/SumArray/Verify.lean) (`Func.foldl_implements`) |
+| `LeanExe.loop` with a tuple state, then an array literal | [`Project/Lookup/Verify.lean`](../../../Project/Lookup/Verify.lean) (`Stmt.loop_spec`, `Stmt.arrayLiteral_spec`) |
+| `LeanExe.build` | [`Project/Increment/Verify.lean`](../../../Project/Increment/Verify.lean), [`Project/RemoveZero/Verify.lean`](../../../Project/RemoveZero/Verify.lean) (`Stmt.build_spec`) |
+| `LeanExe.repeatWhile` over a function that pushes | [`Project/Below100/Verify.lean`](../../../Project/Below100/Verify.lean) (`Live.repeatWhileOne`, `Stmt.pushInPlace_spec`) |
+| Calls between listed functions | [`Project/PrimeFactors/Verify.lean`](../../../Project/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Project/RemoveZero/Verify.lean`](../../../Project/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
 
 Print the IR of each function first, as `#eval NAME.f.ir.body`, and write the proof against it.
-`docs/manual.md` (section "Proving") describes the rules, `eval_body`, and `eval_state`, and
-`ltg/entries/` describes each compiler template's rule.  A `simp` call that evaluates a large body
+[The manual's section on proving](../../../docs/manual.md#proving) describes the rules, `eval_body`, and
+`eval_state`, and [the LTG entries](../../../ltg/README.md) describe each compiler template's rule.  A `simp` call that evaluates a large body
 may need `set_option maxHeartbeats 1000000 in`.  Build with
 `tools/leanrun --timeout 60m lake build Project.Name.Verify`.
 
@@ -107,19 +107,19 @@ may need `set_option maxHeartbeats 1000000 in`.  Build with
 
 1. Run `tools/demo-check NAME`.  It must print the theorem line, the module, and
    `samples: N passed, 0 failed`.
-2. Write `README.md` in the form of `demos/prime-factors/README.md`: the request, the
+2. Write `README.md` in the form of [the prime-factor example's README](../../../demos/prime-factors/README.md): the request, the
    specification and its decisions, the program, a table of the theorems, the axioms, the tests,
    and the commands.
-3. Add `import LeanExe.Examples.Name` to `LeanExe.lean` and `import Project.Name.Verify` to
-   `Project.lean`.  Add imports of `Project.Name.Spec` and `Project.Name.Samples` to
-   `tests/modules/Cases.lean`, and add the samples to `demoCases`:
+3. Add `import LeanExe.Examples.Name` to [`LeanExe.lean`](../../../LeanExe.lean) and `import Project.Name.Verify` to
+   [`Project.lean`](../../../Project.lean).  Add imports of `Project.Name.Spec` and `Project.Name.Samples` to
+   [`tests/modules/Cases.lean`](../../../tests/modules/Cases.lean), and add the samples to `demoCases`:
 
    ```lean
    for l in Project.Demo.lines "NAME" "compute" Project.Name.expected Project.Name.samples do
      IO.println l
    ```
 4. Report the result to the user with the theorem line and the sample count.  Commit only when
-   the user's instructions call for it, after the full check of `docs/manual.md`.
+   the user's instructions call for it, after [the manual's full check](../../../docs/manual.md#the-full-check).
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the examples and rules that
