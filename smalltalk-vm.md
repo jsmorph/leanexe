@@ -8,19 +8,21 @@ The host allocates the input and arena arrays; execution stays inside WASM.
 The reconstruction passes the full `tests/smalltalk/run.sh` driver on Lean
 4.34.0-rc2 and Node 24.19.0:
 
-- 59 programs with ordinary and stress GC: 118 native executions.
-- 158 WASM checks, including 118 comparisons of every final arena word against
-  native Lean, 14 malformed programs, atomic allocation failure, and 25 mixed
+- 68 programs with ordinary and stress GC: 136 native executions.
+- 181 WASM checks, including 136 comparisons of every final arena word against
+  native Lean, 14 malformed programs, four atomic allocation failures, fuel resumption in both
+  GC modes, and 25 mixed
   heap graphs checked against an independent reachability oracle.
 - 19 invalid source inputs rejected by the compiler.
-- CLI examples return 1000 for `count.st` and 42 for `escape.st` under stress GC.
+- CLI examples return 1000 for `count.st` and 42 for `escape.st` under stress GC;
+  eight invalid-option cases and zero-fuel rejection pass.
 
-The emitted module is 25,172 bytes and has no imports. Boot, execution, and
+The emitted module is 25,208 bytes and has no imports. Boot, execution, and
 collection keep the arena address stable and allocate no additional host arrays;
 execution and collection do not grow WASM memory in the tested corpus. The
 10,000-iteration loop completes in an arena of 24 cells with both GC modes.
 The module SHA-256 is
-`bb4d8282dc0034ee92062a5468c20c608abb9dc2ade3c55a8353170e555a5a63`.
+`423aaec2687c65c9993160400cad47efe89f62cfb42d6e2d3095cef90b76b19e`.
 
 ## Run
 
@@ -38,7 +40,7 @@ The driver creates the corpus, checks compiler rejection cases, builds the Lean
 proofs and native runner, emits and decodes the WASM, and compares every resulting
 arena word with native Lean. Each program runs with ordinary and stress GC.
 The JS test also checks collection against an independent graph reachability
-oracle, stable arena addresses, host allocation accounting, and absorbing error
+oracle, exact free-list membership and reuse, stable arena addresses, host allocation accounting, and absorbing error
 and finished states.
 
 ## Supported language and VM
@@ -65,12 +67,13 @@ arguments, captured locals, comments, and `^`. Assignments leave their value.
 Workspaces and blocks return their last expression; an empty body returns nil.
 The library provides zero- and one-argument block calls, allocation, arithmetic,
 identity, explicit collection, conditionals, and `whileTrue:`. Control methods
-are ordinary VM bytecode.
+are ordinary VM bytecode. CLI fuel and capacity options must be unsigned
+64-bit integers; invalid or unknown options are rejected before allocation.
 
 Source class/method files, cascades, strings, symbols, arrays, large integers,
 reflection, processes, images, and graphics are outside this first subset.
 The assembler exercises classes, fields, metaclasses, inheritance, and super
-sends directly. There is no tail-call optimization: block home identity matters.
+sends directly. There is no tail-call optimization.
 
 ## Immutable program format
 
@@ -144,8 +147,8 @@ leaves a resumable running state; the CLI reports it as an error.
 
 Errors: 1 bad PC/activation; 2 bad slot; 3 corrupt heap/GC; 4 stack underflow;
 5 missing selector; 6 arity; 7 invalid non-local return; 8 non-boolean branch;
-9 out of memory; 10 invalid program/instruction. Finished and failed VM states
-are absorbing. Collection preserves failures.
+9 out of memory; 10 invalid program/instruction. `step` and `run` preserve finished and failed states. Collection preserves failed
+states. `boot` accepts only a fresh, running arena.
 
 ## Proof boundary
 
@@ -153,10 +156,25 @@ are absorbing. Collection preserves failures.
 lookup, and live-home unwinding. `Project/Smalltalk/Control.lean` relates the
 functions to inductive specifications and states determinism and retirement
 laws, including the exact retired prefix through the live home activation.
-These declarations pass Lean checking. An axiom audit of the lookup and unwind
+These declarations concern separate list-model functions. No theorem yet links
+them to concrete `Runtime.lookup`, `Runtime.ret`, or the arena collector. They
+pass Lean checking. An axiom audit of the lookup and unwind
 correctness laws reports only `propext`; the finished-home rejection law uses no
 axioms.
 
 There is no complete concrete VM/GC refinement theorem or frontend correctness
 theorem. This iteration tests the emitted WASM; it does not prove a WASM artifact
 theorem. Existing Smalltalk image compatibility remains outside scope.
+
+## Review limits
+
+Method lookup currently runs its full `classes * (methods + 1)` loop, even after
+finding a method. Home and dynamic-chain searches similarly run their full arena
+bound. This is simple and adequate for the small test programs; instruction fuel
+does not separately budget these internal scans. Before scaling to large class
+tables, stop these scans when they finish and measure send cost.
+
+The temporary compiler is exercised by expected-result and precedence cases,
+but there is no frontend correctness proof or real-compiler adapter. The SOM
+results in `smalltalk-compilers.md` are historical upstream runs, not tests of
+the current VM.

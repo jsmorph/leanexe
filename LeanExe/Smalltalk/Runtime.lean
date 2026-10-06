@@ -247,7 +247,7 @@ def primitiveBinaryReady (s : Array UInt64) (op a b : UInt64) : Array UInt64 :=
   let value := primitiveValue op s a b
   if op == 2 || op == 3 then binaryReady s op a b else finishPrimitive s 2 value
 def primitiveBinary (s : Array UInt64) (op a b : UInt64) : Array UInt64 :=
-  let s := reserve s 2
+  let s := reserve s (if op == 2 || op == 3 then 2 else 1)
   if read s 0 == 4 then s else primitiveBinaryReady s op a b
 
 def primitiveNewReady (p s : Array UInt64) (receiver : UInt64) : Array UInt64 :=
