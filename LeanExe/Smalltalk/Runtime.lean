@@ -56,10 +56,10 @@ def lookup (p : Array UInt64) (owner selector : UInt64) : UInt64 :=
       if result != 0 then result else if found then i + 1 else 0)).2.2
 
 def programValid (p : Array UInt64) : Bool :=
-  let n := if p.size ≥ 8 then read p 0 else 0
-  let m := if p.size ≥ 8 then read p 1 else 0
-  let count := if p.size ≥ 8 then read p 2 else 0
-  let entry := if p.size ≥ 8 then read p 3 else 0
+  let n := if p.size.toUInt64 ≥ 8 then read p 0 else 0
+  let m := if p.size.toUInt64 ≥ 8 then read p 1 else 0
+  let count := if p.size.toUInt64 ≥ 8 then read p 2 else 0
+  let entry := if p.size.toUInt64 ≥ 8 then read p 3 else 0
   let shape := n > 0 && n ≤ 1048576 && m > 0 && m ≤ 1048576 &&
     count > 0 && count ≤ 1048576 && entry > 0 && entry ≤ m &&
     p.size.toUInt64 == 8 + 4 * n + 6 * m + 4 * count

@@ -5,12 +5,22 @@ The VM and nonmoving GC are Lean functions compiled by leanexe to WebAssembly.
 `tools/smalltalk-compile.mjs` is a temporary source compiler for workspace snippets.
 The host allocates the input and arena arrays; execution stays inside WASM.
 
-Reconstruction is in progress. The control proofs pass Lean checking, and all
-59 programs pass natively with both ordinary and stress GC: 118 runs. This
-includes a 10,000-iteration VM loop in 24 cells. The compiler rejects 19 invalid
-source inputs. WASM compilation and execution remain pending. The branch is
-committed and pushed in checkpoints; measured WASM results will be added after
-the full driver passes.
+The reconstruction passes the full `tests/smalltalk/run.sh` driver on Lean
+4.34.0-rc2 and Node 24.19.0:
+
+- 59 programs with ordinary and stress GC: 118 native executions.
+- 158 WASM checks, including 118 comparisons of every final arena word against
+  native Lean, 14 malformed programs, atomic allocation failure, and 25 mixed
+  heap graphs checked against an independent reachability oracle.
+- 19 invalid source inputs rejected by the compiler.
+- CLI examples return 1000 for `count.st` and 42 for `escape.st` under stress GC.
+
+The emitted module is 25,172 bytes and has no imports. Boot, execution, and
+collection keep the arena address stable and allocate no additional host arrays;
+execution and collection do not grow WASM memory in the tested corpus. The
+10,000-iteration loop completes in an arena of 24 cells with both GC modes.
+The module SHA-256 is
+`bb4d8282dc0034ee92062a5468c20c608abb9dc2ade3c55a8353170e555a5a63`.
 
 ## Run
 
@@ -142,7 +152,10 @@ are absorbing. Collection preserves failures.
 `LeanExe/Smalltalk/Control.lean` specifies first-method lookup, bounded inherited
 lookup, and live-home unwinding. `Project/Smalltalk/Control.lean` relates the
 functions to inductive specifications and states determinism and retirement
-laws. These declarations pass Lean checking.
+laws, including the exact retired prefix through the live home activation.
+These declarations pass Lean checking. An axiom audit of the lookup and unwind
+correctness laws reports only `propext`; the finished-home rejection law uses no
+axioms.
 
 There is no complete concrete VM/GC refinement theorem or frontend correctness
 theorem. This iteration tests the emitted WASM; it does not prove a WASM artifact
