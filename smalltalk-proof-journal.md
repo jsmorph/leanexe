@@ -585,3 +585,23 @@ The focused checks passed without revisions. The combined build and axiom audit
 pass. No executable code or limits changed. The work document now marks object
 construction complete and retains activation binding, boot, lookup, calls, and
 the full execution invariant as unfinished work.
+
+## Argument selection and one binding (2026-10-06)
+
+`ArgumentLinks` proves typed walks, zero absorption, and composition. If the
+actual receiver walk at depth nargs has tag 7, every earlier walk is nonzero
+and has tag 7, and its value word is valid. This uses typed next pointers and
+does not assume list acyclicity. Word bounds remove the actual walk clamp.
+
+`ArgumentBinding` states slot selection independently of the allocation. It
+checks argument depth arithmetic and selected value validity for accepted sends
+and receiver-only entry. `bindOne_effect` gives the actual binding operation
+the existing checked prepend effects, including exact cell and count changes.
+The complete binding loop and activation allocation remain to be proved.
+
+The first walk check required an explicit congruence for natural-number loop
+composition and the UInt minimum definition. Expanding the allocator to connect
+bindOne reached the default heartbeat limit. A separate checked value-selection
+equality, applied through congruence of the opaque prepend, avoided that
+expansion. The subsequent focused check passed. No proof limits or executable
+code changed. The combined build and axiom audit pass.
