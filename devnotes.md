@@ -26414,7 +26414,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
   divisor and for shift amounts of 64 or more.
 - [x] V3: `let` bindings in locals.
 - [x] V4: `Bool`, comparisons, and conditionals, with typed expressions.
-- [ ] V5: several functions and calls between them.
+- [x] V5: several functions and calls between them, each function calling only earlier ones.
 - [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
 - [ ] Later: loops, floats, arrays, and ownership.
 
@@ -26457,6 +26457,23 @@ written with `Bool` bindings and `if` on them equals its source function by `rfl
 `Select.lean` has `median`, with three `Bool` bindings and nested conditionals, and `inBand`,
 which returns a `Bool`.  `select_bytes` covers both functions of the 1,487-byte module, and the
 test passes all 900 cases of the four examples.
+
+For V5 the user chose calls to earlier functions over recursion (2026-10-06).  A program,
+`Prog S`, is a list of functions in which each may call the functions after it in the list, which
+the module places before it, so the calls have no cycles and `denote` stays a structural
+recursion.  Expressions are indexed by the signatures `S` of the functions they may call, and
+`call f args` takes its arguments as a function from parameter positions to expressions of the
+parameter types, which keeps `Expr` one inductive type with a reflexive constructor instead of a
+mutual pair with an argument list.  `Args` and `Expr.app` give a list syntax for writing calls.
+`Calls m funs` states that each callee is the module's function at its call index, returning its
+value without a trap.  `Expr.code_spec` assumes it, and its call case uses `args_spec`, the
+arguments' code pushing their words in order, and `wp_call_runs` with the callee's
+`ImplementsPureA`.  `Func.correct` proves one function from its callees' theorems, and
+`Prog.calls` proves every function of a program by induction over the list.  The theorem is
+stated for `HostEnv Unit` and `Store Unit`, the types `ImplementsPureA` fixes.  The example
+`Calls.lean` has four functions, `sq`, `sumSq`, `small`, and `pick`, with a call as an argument of
+a call and a `Bool`-valued call as the test of an `if`.  `calls_bytes` covers all four functions of
+the 1,458-byte module, and the test passes all 1,272 cases of the five examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

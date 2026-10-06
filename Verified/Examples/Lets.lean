@@ -17,8 +17,8 @@ def scramble (a b : UInt64) : UInt64 :=
 
 /-- `scramble` in the source language.  Each `letE` puts its value at variable 0: inside the
 innermost binding, variables 0 to 5 are `w`, `z`, `y`, `x`, `a`, and `b`. -/
-def scrambleFunc : Func :=
-  ⟨[.word, .word], .word,
+def scrambleFunc : Func S :=
+  ⟨"scramble", [.word, .word], .word,
     .letE (.bin .xor (.v 0) (.bin .shl (.v 1) (.word 13)))
       (.letE (.bin .mul (.v 0) (.word 0x9e3779b97f4a7c15))
         (.letE (.bin .xor (.v 0) (.bin .shr (.v 0) (.word 29)))
@@ -26,22 +26,24 @@ def scrambleFunc : Func :=
             (.letE (.bin .or (.v 4) (.word 1)) (.bin .div (.v 1) (.bin .mul (.v 0) (.v 0))))
             (.bin .rem (.v 0) (.bin .add (.v 3) (.word 7))))))⟩
 
-def module : Wasm.Module := compile [(scrambleFunc, "scramble")]
+def prog : Prog [([.word, .word], .word)] := .cons scrambleFunc .nil
+
+def module : Wasm.Module := compile prog
 
 /-- `scramble` with its two arguments as one pair. -/
 def scramblePair (x : UInt64 × UInt64) : UInt64 := scramble x.1 x.2
 
 /-- The source function means `scramble`. -/
 theorem scrambleFunc_denote (a b : UInt64) :
-    scrambleFunc.denote (.cons a (.cons b .nil)) = scramble a b := rfl
+    (scrambleFunc (S := [])).denote .nil (.cons a (.cons b .nil)) = scramble a b := rfl
 
 /-- The arguments of `scrambleFunc` from a pair. -/
-def args (x : UInt64 × UInt64) : Env scrambleFunc.params := .cons x.1 (.cons x.2 .nil)
+def args (x : UInt64 × UInt64) : Env [.word, .word] := .cons x.1 (.cons x.2 .nil)
 
 theorem scramble_implements : ImplementsPureA false module 2 scramblePair := by
-  have h : ImplementsPureA false module 2 scrambleFunc.denote :=
-    Func.correct [(scrambleFunc, "scramble")] 0 scrambleFunc "scramble" rfl
-  have hComp : scrambleFunc.denote ∘ args = scramblePair := by
+  have h : ImplementsPureA false module 2 ((scrambleFunc (S := [])).denote .nil) :=
+    (Prog.correct prog .here).1
+  have hComp : (scrambleFunc (S := [])).denote .nil ∘ args = scramblePair := by
     funext x
     exact scrambleFunc_denote x.1 x.2
   rw [← hComp]

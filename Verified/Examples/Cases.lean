@@ -2,6 +2,7 @@ import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
 import Verified.Examples.Select
+import Verified.Examples.Calls
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -53,6 +54,12 @@ def main : IO Unit := do
     IO.println s!"mix|mix|i64|i64:{a} i64:{b} i64:{c}|{Mix.mix a b c}"
   for (a, b) in letsCases do
     IO.println s!"lets|scramble|i64|i64:{a} i64:{b}|{Lets.scramble a b}"
+  for x in words ++ [99, 100, 101] do
+    IO.println s!"calls|sq|i64|i64:{x}|{Calls.sq x}"
+    IO.println s!"calls|small|i64|i64:{x}|{if Calls.small x then 1 else 0}"
+  for (a, b, c) in selectCases ++ [(99, 7, 3), (100, 7, 3), (5, 3, 7)] do
+    IO.println s!"calls|sumSq|i64|i64:{a} i64:{b}|{Calls.sumSq a b}"
+    IO.println s!"calls|pick|i64|i64:{a} i64:{b} i64:{c}|{Calls.pick a b c}"
   for (a, b, c) in selectCases do
     IO.println s!"select|median|i64|i64:{a} i64:{b} i64:{c}|{Select.median a b c}"
     IO.println s!"select|inBand|i64|i64:{a} i64:{b} i64:{c}|{if Select.inBand a b c then 1 else 0}"
