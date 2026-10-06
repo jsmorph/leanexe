@@ -31,3 +31,5 @@ import Project.Smalltalk.InstructionHeap
 import Project.Smalltalk.ExecuteHeap
 import Project.Smalltalk.PointerTypes
 import Project.Smalltalk.TypedCollection
+import Project.Smalltalk.FrameTypes
+import Project.Smalltalk.UnwindHeap

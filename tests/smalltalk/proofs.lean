@@ -93,5 +93,7 @@ run_cmd do
 #print axioms Project.Smalltalk.TypedCollection.collect_typed
 #print axioms Project.Smalltalk.TypedCollection.init_typed
 #print axioms Project.Smalltalk.TypedCollection.reserve_typed
+#print axioms Project.Smalltalk.FrameTypes.retire_typed
+#print axioms Project.Smalltalk.UnwindHeap.unwind_preserves
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
