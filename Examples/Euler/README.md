@@ -22,7 +22,10 @@ Beyond the bytes theorem, the proofs establish complete execution: from a fresh 
 memory cap of at least 1,407 pages, both exports return without a trap and end within 1,407 pages,
 or 88 MiB.  They also prove properties of the Lean programs: positive density and pressure of the
 final states in exact arithmetic, hyperbolicity of the flux at those states, conservation up to a
-bounded rounding residual, and, for the reconstructed solver, a CFL bound in exact arithmetic.
+bounded rounding residual, and, for the reconstructed solver, a CFL bound in exact arithmetic.  The
+rounding analysis compares the computed fluxes, updates, and reconstructions with their
+exact-arithmetic counterparts, and the conservation theorems also hold with the exact Rusanov flux
+through the boundary in place of the computed one.
 
 | Theorem | Statement |
 |---------|-----------|
@@ -32,10 +35,16 @@ bounded rounding residual, and, for the reconstructed solver, a CFL bound in exa
 | `solve_hyperbolic`, `reconstructedSolve_hyperbolic` | Words with status 0 pack a final grid of admissible states, at which the flux in every direction has real eigenvalues and a basis of eigenvectors. |
 | `run_balance`, `reconstructedRun_balance` | Along the accepted steps, each conserved total equals its initial value minus the boundary fluxes, plus a rounding residual with a computed bound. |
 | `reconstructedRun_steps` | Each accepted step of the reconstructed solver starts from admissible states and has a Courant number of at most 1/2 in exact arithmetic. |
+| `run_reference_balance`, `reconstructedRun_reference_balance` | Along the accepted steps, each conserved total equals its initial value minus the exact Rusanov flux through the boundary, plus a residual whose bound, computed from the words of the run, covers the rounding of the updates and the error of the computed boundary flux. |
+| `interface_reference_error`, `advanceCell_reference_error` | For states within the state bounds of parameter `M`, which [the first-order record](first-order/README.md#program-and-proofs) states, each first-order interface flux component is within `304 ε M⁵` of the exact Rusanov flux, and each output of an accepted first-order cell update is within `ε M + 1004 ε r M⁵ + 2⁻¹⁰⁷⁴` of the exact update, where `ε = 2⁻⁵²` and `r` is the ratio of time step to cell width. |
+| `reconstruct_accuracy`, `reconstruct_linear` | Each reconstructed face is within a bound computed from its words of `center ∓ factor · slope` with the exact minmod slope, and a linear stencil with exact arithmetic gives the exact faces `center ∓ delta / 2`. |
+| `directional_wave_identities`, `directional_speed_bound_iff` | In exact arithmetic, the Rusanov flux splits a jump into two waves that sum to the jump, and `\|un\| + c` is the least bound on the absolute eigenvalues of the flux derivative in direction `n`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), [`Total.lean`](Total.lean), and the other Lean files
-of this directory, with the eigenvector algebra in [`Equations/`](Equations/), and they use only the
-axioms `propext`, `Classical.choice`, and `Quot.sound`.  The fresh instance is a hypothesis, since
+of this directory, with the exact-arithmetic theory of the equations, the Rusanov flux, and minmod
+reconstruction in [`Equations/`](Equations/) and the rounding analysis of the fluxes and updates in
+[`Reference/`](Reference/), and they use only the axioms `propext`, `Classical.choice`, and
+`Quot.sound`.  The fresh instance is a hypothesis, since
 no theorem connects instantiation to it, and convergence to a solution of the continuous equations
 is unproved.  The two run records, [the first-order record](first-order/README.md) and [the
 reconstructed record](reconstructed/README.md), give the full statements, the figures, and the runs

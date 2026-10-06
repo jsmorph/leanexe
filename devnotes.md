@@ -26381,3 +26381,50 @@ commit is `eef07963`, and links to it keep that commit, so they stay valid.  The
 reports in `paper/`, and the text of the `data/` records written on the earlier system keep their
 wording, as records of their time.  The tree-lookup specification's comment changed with the
 rest, so its hashes were frozen again after a diff showed a comment-only change.
+
+## 2026-10-06: Euler results of commit `eef07963` ported
+
+The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
+did not: the Rusanov wave identities, error bounds and a linear-profile theorem for the rounded
+reconstruction, and a comparison of the computed fluxes with reference fluxes.  The port restates
+each result about the current `Float` solver functions instead of restoring that commit's
+bit-level models as a second description of the solvers.  Only lemmas that do not mention a solver
+came back verbatim, into `LeanExe/ProofKit`, and the narrower state guard of `Program.lean` stays.
+A measurement before the port put the general lemmas at about 1,400 lines and the model-specific
+proofs, which had to be rewritten, at about 3,700.
+
+| File | Content |
+|------|---------|
+| `Equations/LaxFriedrichs.lean`, `Equations/Rusanov.lean` | The two-wave form of the Rusanov flux, the convex decomposition of an update, and the split-state energy bounds |
+| `Equations/Minmod.lean`, `Equations/ReconstructionCounterexample.lean` | Exact minmod reconstruction, and three admissible states whose minmod face has negative pressure |
+| `Equations/CharacteristicSpeed.lean`, `Equations/LeftEigenvectors.lean` | `\|un\| + c` as the least eigenvalue bound, and the characteristic decomposition of a jump |
+| `ReconstructionAccuracy.lean` | The rounded slope, faces, factor, and linear-stencil theorems |
+| `SpeedCounterexample.lean` | An admissible state at which the first-order `side` speed is below the sound speed |
+| `Reference/Side.lean` through `Reference/Update.lean` | A priori bounds: for states within the state bounds of parameter `M`, the side fluxes, the interface flux, and the cell update against their exact values |
+| `Reference/Accepted.lean` | Bounds computed from the words of an accepted side, component, `flux`, and `outwardFlux` |
+| `Reference/Boundary.lean` | Sweep, step, and run balance of both solvers with the exact boundary flux |
+
+The flux comparison exists in two forms.  The a priori form assumes the state bounds and gives
+constants such as `304 ε M⁵`, as the earlier `NumericsInterfaceReference.lean` did.  The a
+posteriori form assumes only acceptance and bounds each error by the rounding radii of the
+computed words, as the earlier `line_flux_reference_bound` did and as the current balance theorems
+do.  The earlier system stated the a posteriori comparison for the boundary faces of one line of
+the reconstructed solver.  `Reference/Boundary.lean` states it for both solvers and carries it
+through sweeps, steps, and runs, so that `run_reference_balance` and
+`reconstructedRun_reference_balance` replace the computed boundary flux of the run balance with the
+exact Rusanov flux at the computed face states and speeds.
+
+Two restored ProofKit files took new names, `F64PackRelative` and `F64NormalizedMagnitude`, because
+the current `F64Packing` and `F64Normalize` hold different lemmas.  `F64AdmissibilityTiny`, which
+served the earlier wider guard, did not come back.  The four `summary.json` files of the run
+records were restored byte for byte from `eef07963` after a rename script had rewritten theorem
+names inside them, and the Euler docs now cite that commit where they had said "the earlier
+system".
+
+- [x] Wave, minmod, characteristic-speed, and eigenvector theory
+- [x] Reconstruction accuracy, factor, and linearity, with the counterexample
+- [x] First-order speed counterexample
+- [x] A priori side, interface, and update bounds
+- [x] A posteriori flux bounds and the balance with exact boundary fluxes
+- [x] READMEs list the new theorems
+- [ ] Merge `euler` into `main`
