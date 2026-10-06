@@ -14,7 +14,8 @@ def poly (a b c : UInt64) : UInt64 := a * b + c * c - 7
 
 /-- `poly` in the source language. -/
 def polyFunc : Func :=
-  ⟨3, .sub (.add (.mul (.arg 0) (.arg 1)) (.mul (.arg 2) (.arg 2))) (.const 7)⟩
+  ⟨3, .bin .sub (.bin .add (.bin .mul (.arg 0) (.arg 1)) (.bin .mul (.arg 2) (.arg 2)))
+    (.const 7)⟩
 
 def module : Wasm.Module := compile [(polyFunc, "poly")]
 

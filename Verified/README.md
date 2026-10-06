@@ -18,7 +18,11 @@ parts of the IR it needs, so ordinary development of `LeanExe` does not affect i
 ## What it covers
 
 The source language has one construct: a function of `n` word arguments whose body is an
-expression of constants, arguments, `+`, `-`, and `*` on `UInt64`, wrapping modulo 2^64.
+expression of constants, arguments, and the binary operations `+`, `-`, `*`, `/`, `%`, `&&&`,
+`|||`, `^^^`, `<<<`, and `>>>` on `UInt64`, each with Lean's meaning.  Arithmetic wraps modulo
+2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount
+modulo 64.  WebAssembly traps on a zero divisor, so the compiled division and remainder save their
+operands in scratch locals, test the divisor, and return Lean's result for zero.
 [`Source.lean`](Source.lean) defines the syntax and `Func.denote`, [`Compile.lean`](Compile.lean)
 the compiler, and [`Correct.lean`](Correct.lean) the theorem.  The compiled module has the layout
 of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions 0 and 1.
@@ -26,11 +30,13 @@ of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions 0 
 | Theorem | Statement |
 |---------|-----------|
 | `Func.correct` | For every list of functions and every function in it whose body reads only its arguments, function `2 + i` of the compiled module returns `func.denote args` from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
-| `Expr.code_spec` | The code of every expression pushes the expression's value. |
+| `Expr.code_spec` | The code of every expression pushes the expression's value and changes no parameter and no local below its scratch locals. |
 | `poly_bytes` | The example [`Poly.lean`](Examples/Poly.lean): the bytes of the module for `a * b + c * c - 7` decode to a module that computes the Lean function `poly`. |
+| `mix_bytes` | The example [`Mix.lean`](Examples/Mix.lean): the bytes of the module for `((a / b + a % c) ^^^ ((a &&& b) \|\|\| (c <<< b))) - (a >>> c)` decode to a module that computes the Lean function `mix`. |
 
-The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The example's
-source function is written by hand, and `polyFunc_denote` proves by `rfl` that it means `poly`.
+The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The examples'
+source functions are written by hand, and `polyFunc_denote` and `mixFunc_denote` prove by `rfl`
+that they mean `poly` and `mix`.
 
 ## Running it
 
@@ -43,7 +49,7 @@ The commands build the library and its theorems, write each example's module to
 `build/verified/`, validate it with `wasm-tools`, and compare every case of
 [`Cases.lean`](Examples/Cases.lean) between the Wasmtime host and native Lean.  The setup is that
 of [the repository README](../README.md#commands).  The cases cover words near 0, 2^32, 2^63, and
-2^64, where the arithmetic wraps.
+2^64, where the arithmetic wraps, zero divisors, and shift amounts of 64 or more.
 
 ## Related work
 

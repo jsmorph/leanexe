@@ -1,0 +1,50 @@
+import Verified.Correct
+import LeanExe.Encoding.RoundTrip
+
+/-! The second program of the verified compiler: division, remainder, the bitwise operations, and
+both shifts on 64-bit words, with Lean's results for a zero divisor and for shift amounts of 64
+or more. -/
+
+namespace Verified.Examples.Mix
+
+open LeanExe.Pipeline Verified
+
+/-- The Lean function. -/
+def mix (a b c : UInt64) : UInt64 := ((a / b + a % c) ^^^ ((a &&& b) ||| (c <<< b))) - (a >>> c)
+
+/-- `mix` in the source language. -/
+def mixFunc : Func :=
+  ⟨3, .bin .sub
+    (.bin .xor (.bin .add (.bin .div (.arg 0) (.arg 1)) (.bin .rem (.arg 0) (.arg 2)))
+      (.bin .or (.bin .and (.arg 0) (.arg 1)) (.bin .shl (.arg 2) (.arg 1))))
+    (.bin .shr (.arg 0) (.arg 2))⟩
+
+def module : Wasm.Module := compile [(mixFunc, "mix")]
+
+/-- `mix` with its three arguments as one tuple. -/
+def mixTuple (x : UInt64 × UInt64 × UInt64) : UInt64 := mix x.1 x.2.1 x.2.2
+
+/-- The source function means `mix`. -/
+theorem mixFunc_denote (a b c : UInt64) : mixFunc.denote #v[a, b, c] = mix a b c := rfl
+
+/-- The arguments of `mixFunc` from a tuple. -/
+def args (x : UInt64 × UInt64 × UInt64) : Vector UInt64 mixFunc.arity := #v[x.1, x.2.1, x.2.2]
+
+theorem mix_implements : ImplementsPureA false module 2 mixTuple := by
+  have h : ImplementsPureA false module 2 mixFunc.denote :=
+    Func.correct [(mixFunc, "mix")] 0 mixFunc "mix" rfl rfl
+  have hComp : mixFunc.denote ∘ args = mixTuple := by
+    funext x
+    exact mixFunc_denote x.1 x.2.1 x.2.2
+  rw [← hComp]
+  exact ImplementsPureA.comap h args fun _ => rfl
+
+/-- `encode` succeeds on `module`, and the module that `decode` reads from the bytes computes
+`mix` on every input, without a trap. -/
+theorem mix_bytes : ∃ bytes, Wasm.Encoding.encode module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ ImplementsPureA false m 2 mixTuple := by
+  obtain ⟨bytes, success, decoded⟩ :=
+    Wasm.Encoding.round_trip module (by decide) (by decide +kernel)
+  exact ⟨bytes, success, module, decoded, mix_implements⟩
+
+end Verified.Examples.Mix
