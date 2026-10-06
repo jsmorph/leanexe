@@ -10,3 +10,4 @@ tools/leanrun --timeout 120s lake env .lake/build/bin/smalltalk-native
 tools/leanrun --timeout 120s lake env lean --run Project/Pipeline/Emit.lean \
   Project.Smalltalk.Module Project.Smalltalk.smalltalk.module build/smalltalk/smalltalk.wasm
 node tests/smalltalk/wasm.mjs
+node tests/smalltalk/cli.mjs

@@ -7,6 +7,19 @@ assert.deepEqual(WebAssembly.Module.imports(module),[]);
 const x=new WebAssembly.Instance(module).exports,h=new Host(x);
 const cases=JSON.parse(readFileSync('build/smalltalk/corpus.json'));
 const native=new Map(JSON.parse(readFileSync(nativePath)).map(r=>[`${r.name}:${r.stress}`,r.state]));
+function freeList(words,live) {
+  const cap=Number(words[14]),free=new Set();let cursor=Number(words[8]);
+  while(cursor) {
+    assert.ok(cursor>0&&cursor<=cap,'free-list handle outside arena');
+    assert.ok(!free.has(cursor),'free-list cycle');
+    assert.ok(!live.has(cursor),'live cell on free list');
+    const c=cell(words,cursor);assert.equal(c[0],0n);assert.equal(c[1],0n);
+    free.add(cursor);cursor=Number(c[2]);
+  }
+  assert.equal(BigInt(free.size),words[9]);
+  for(let id=1;id<=cap;id++) assert.equal(free.has(id),!live.has(id));
+  return free;
+}
 let checks=0;
 for(const test of cases) for(const stress of [0,1]) {
   const code=h.array(test.code); let state=x.init(BigInt(test.capacity),BigInt(stress));
@@ -23,6 +36,8 @@ for(const test of cases) for(const stress of [0,1]) {
     assert.equal(BigInt.asUintN(64,x.resultWord(state)),BigInt(test.expected));
   }
   state=x.collect(state); words=h.words(state);
+  assert.equal(x.allocCount.value,allocated,`${test.name}: collector allocated another host array`);
+  assert.equal(x.memory.buffer,buffer,`${test.name}: collector grew memory`);
   assert.equal(state,pointer,`${test.name}: arena moved`);
   assert.deepEqual(words.map(String),native.get(`${test.name}:${stress}`),`${test.name}: native/WASM heap differs`);
   if(test.error || words[0]===3n) {
@@ -53,6 +68,28 @@ for(const bad of invalid) {
   assert.equal(after[15],9n);assert.equal(after[17],before[17]);assert.equal(after[19],0n);
   h.release(state);h.release(code);assert.equal(h.outstanding(),0n);checks++;
 }
+// Whole object/activation transitions fail before installing partial state.
+for(const name of ['out-of-memory-call','out-of-memory-fields','out-of-memory-boot']) {
+  const test=cases.find(t=>t.name===name),code=h.array(test.code);
+  let state=x.init(BigInt(test.capacity),0n);
+  if(name!=='out-of-memory-boot') {state=x.boot(code,state);state=x.step(code,state);}
+  const before=h.words(state),act=before[2];
+  state=name==='out-of-memory-boot'?x.boot(code,state):x.step(code,state);
+  const after=h.words(state);assert.equal(after[15],9n);
+  assert.equal(after[17],before[17]);assert.equal(after[2],act);assert.equal(after[19],0n);
+  if(act) assert.deepEqual(cell(after,act).slice(2),cell(before,act).slice(2));
+  h.release(state);h.release(code);assert.equal(h.outstanding(),0n);checks++;
+}
+// Fuel stops at a resumable instruction boundary; split execution is identical.
+for(const stress of [0,1]) {
+  const test=cases.find(t=>t.name==='nonlocal-in-loop'),code=h.array(test.code);
+  let state=x.boot(code,x.init(BigInt(test.capacity),BigInt(stress)));
+  const before=h.words(state);state=x.run(code,state,0n);assert.deepEqual(h.words(state),before);
+  state=x.run(code,state,17n);assert.equal(h.words(state)[0],0n);
+  state=x.run(code,state,BigInt(test.fuel));state=x.collect(state);
+  assert.deepEqual(h.words(state).map(String),native.get(`${test.name}:${stress}`));
+  h.release(state);h.release(code);assert.equal(h.outstanding(),0n);checks++;
+}
 // Independent reachability oracle for mixed object graphs, including dead cycles.
 let random=123456789;
 const rand=()=>{random=(Math.imul(random,1664525)+1013904223)>>>0;return random;};
@@ -79,8 +116,20 @@ for(let trial=0;trial<25;trial++) {
     else assert.equal(a[0],0n);
   }
   assert.equal(after[9],48n-BigInt(reachable.size));
+  const free=freeList(after,reachable);
   const allocated=x.allocCount.value,buffer=x.memory.buffer;state=x.collect(state);
   assert.equal(x.allocCount.value,allocated,'collector allocated'); assert.equal(x.memory.buffer,buffer,'collector grew memory');
+  assert.deepEqual(freeList(h.words(state),reachable),free);
+  // Reuse every free cell once; survivors must keep their identities and payloads.
+  const reused=new Set();
+  for(let i=0;i<free.size;i++) {
+    state=x.allocate(state,1n,BigInt(i),0n,0n,0n,0n,0n);const words=h.words(state),id=Number(words[10]);
+    assert.equal(words[15],0n);assert.ok(free.has(id));assert.ok(!reused.has(id));reused.add(id);
+  }
+  const full=h.words(state);assert.equal(full[9],0n);assert.deepEqual(reused,free);
+  for(const id of reachable) assert.deepEqual(cell(full,id),cell(after,id));
+  state=x.allocate(state,1n,0n,0n,0n,0n,0n,0n);
+  assert.equal(h.words(state)[15],9n);assert.equal(h.words(state)[17],full[17]);
   h.release(state);assert.equal(h.outstanding(),0n);checks++;
 }
 console.log(`WASM: ${checks} checks; ${cases.length*2} exact native comparisons; ${bytes.length} bytes`);

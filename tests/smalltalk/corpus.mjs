@@ -13,6 +13,9 @@ function fixture(name,build,expected,options={}) {
 source('literal','42',42); source('negative','-42',-42);
 source('arithmetic','40 + 2',42); source('subtraction','50 - 8',42);
 source('precedence','1 + 2 + 3',6);
+source('binary-associativity','10 - 3 - 2',5);
+source('unary-before-binary','[40] value + 2',42);
+source('binary-before-keyword','[:x | x + x] value: 10 - 3',14);
 source('assignment','| a b | a := b := 42. a + b',84);
 source('assignment-value','| x | (x := 40) + 2',42);
 source('capture-mutate','| x b | x := 40. b := [x := x + 1]. b value. b value. x',42);
@@ -33,11 +36,16 @@ source('class-identity','Object == Object',2,{kind:2});
 source('different-object','Object new == Object new',1,{kind:2});
 source('signed-less','-1 < 0',2,{kind:2});
 source('equality','40 = 42',1,{kind:2});
+source('tight-less','1 < 2',2,{kind:2,capacity:11});
+source('tight-equality','1 = 2',1,{kind:2,capacity:11});
+source('tight-identity','1 == 2',1,{kind:2,capacity:11});
 source('overflow-fallback','9223372036854775807 + 1',0,{kind:2});
 source('underflow-fallback','-9223372036854775808 - 1',0,{kind:2});
 source('type-fallback','1 + nil',0,{kind:2});
 source('collect-capture','| x b | x := 40. b := [x + 2]. self collect. b value',42);
 source('out-of-memory','40 + 2',0,{capacity:8,error:9});
+source('out-of-memory-call','[42] value',0,{capacity:9,error:9});
+source('out-of-memory-boot','| a b c d | 42',0,{capacity:8,error:9});
 source('missing-selector','self unknownMessage',0,{error:5});
 fixture('direct-loop',()=>[
   ['int',0],['store',1],'loop',['load',1],['int',10000],['send',S['<'],1],['false','done'],
@@ -64,6 +72,10 @@ fixture('fields-and-inheritance',(p)=>{
   p.code(getter,[['field',0],['return']]);
   return [['class',child],['send',S.new,0],['int',42],['send',p.selector('set:'),1],['send',p.selector('get'),0],['return']];
 },42);
+fixture('out-of-memory-fields',(p)=>{
+  const owner=p.addClass(1,2);
+  return [['class',owner],['send',S.new,0],['return']];
+},0,{capacity:11,error:9});
 fixture('super-in-block',(p)=>{
   const base=p.addClass(),child=p.addClass(base),sel=p.selector('answer');
   p.code(p.method(base,sel),[['int',42],['return']]);
