@@ -13,7 +13,7 @@
   "declarations": ["Array.foldl_map", "Array.foldl_hom", "Project.Pipeline.Represent", "Project.ProofKit.F64Bits.toBits_add", "Project.ProofKit.F64Bits.toBits_mul"],
   "premises": ["A borrowed Array Float, represented as the Array UInt64 of its elements' Float.toBits", "Each step of the source fold maps under h to the step g on bit patterns"],
   "result": "(xs.map Float.toBits).foldl g (h init) = h (xs.foldl f init), which turns the accumulator word from Stmt.fold_spec into the bits of the source fold's result.",
-  "consumers": ["Project.SumSquares.sumSquares_implements"],
+  "consumers": ["Examples.SumSquares.sumSquares_implements"],
   "relatedEntries": ["array-fold-loop", "float-arithmetic"],
   "exclusion": null
 }

@@ -11,15 +11,15 @@
 # explicit = true
 # ///
 """Generates text with GPT-2 124M in binary32, every step in the WGSL kernels of
-Project/Gpt32/Specs.lean, run by build/tools/leanexe-webgpu-host in session mode.
+Examples/Gpt32/Specs.lean, run by build/tools/leanexe-webgpu-host in session mode.
 
 Run with `uv run tests/gpt32/generate.py [--driver swiftshader|llvmpipe] [--tokens N] [PROMPT]`,
 or with `--export` to write the weight files and stop.
 The script writes the pinned openai-community/gpt2 checkpoint to build/gpt2-32/ as Wasm arrays
 of binary32 values (8 bytes per value), one file per array: the token embedding in four chunks
 of at most 12,565 rows, the positional embedding, and each layer's arrays, with `c_attn` split
-into its `q`, `k`, and `v` columns.  It runs Project/Gpt32/Generate.lean, which writes the kernels,
-sends the host the commands of `Project.Gpt32.generate_host`, chooses each token with `greedy32`,
+into its `q`, `k`, and `v` columns.  It runs Examples/Gpt32/Generate.lean, which writes the kernels,
+sends the host the commands of `Examples.Gpt32.generate_host`, chooses each token with `greedy32`,
 and saves the scores of each step.  For each step the script runs Hugging Face's float32 model on
 the same prefix and reports the largest score difference relative to the largest score and
 whether the two models choose the same token."""
@@ -106,7 +106,7 @@ def main():
     start = time.time()
     run = subprocess.run(
         [str(ROOT / 'tools/leanrun'), '--timeout', '6h', 'lake', 'env', 'lean', '--run',
-         'Project/Gpt32/Generate.lean', str(HOST), str(OUT), str(WGSL), str(scores_path),
+         'Examples/Gpt32/Generate.lean', str(HOST), str(OUT), str(WGSL), str(scores_path),
          str(NH), str(F), str(CHUNK), str(VOCAB), str(LAYERS), str(args.tokens)] +
         [str(i) for i in prompt],
         cwd=ROOT, env=env, check=True, stdout=subprocess.PIPE, text=True)

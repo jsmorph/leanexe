@@ -41,7 +41,7 @@ The dialect is the set of Lean definitions that the compiler translates.  Intege
 
 The compiler accepts a `def` whose unfolding equation exists (`getUnfoldEqnFor?`), so a recursive call appears as a call of the definition, whatever form of recursion Lean generated.  The compiler rejects a definition marked `@[implemented_by]` or `@[extern]` (`… has an implementation other than its definition`), and a constant that is not a definition gives `… is not a definition`.  A definition may take no parameters, as the drone's `initial` does.
 
-The compiler unfolds a function marked `@[inline]`, which includes every `abbrev`, at its use when no compiler rule covers the term and the module does not compile the function.  The examples use this for small tests and constants, which stay in the source and out of the call graph: `floorAt` and `best` in [`LeanExe/Examples/Drone.lean`](../LeanExe/Examples/Drone.lean), and `finite`, `positive`, and `fifths` in [`LeanExe/Examples/Euler.lean`](../LeanExe/Examples/Euler.lean).  The Euler helpers are `abbrev`, reducible as well as inline, because with `@[inline] def` the proofs' `simp` calls unfolded a helper inside a `decide` but not inside its `Decidable` instance ([the journal](../devnotes.md), E5).
+The compiler unfolds a function marked `@[inline]`, which includes every `abbrev`, at its use when no compiler rule covers the term and the module does not compile the function.  The examples use this for small tests and constants, which stay in the source and out of the call graph: `floorAt` and `best` in [`Examples/Drone/Program.lean`](../Examples/Drone/Program.lean), and `finite`, `positive`, and `fifths` in [`Examples/Euler/Program.lean`](../Examples/Euler/Program.lean).  The Euler helpers are `abbrev`, reducible as well as inline, because with `@[inline] def` the proofs' `simp` calls unfolded a helper inside a `decide` but not inside its `Decidable` instance ([the journal](../devnotes.md), E5).
 
 ### Types
 
@@ -223,9 +223,9 @@ An array construction, meaning a literal, a build, an update, an append, a copy,
 
 ### Records and user types
 
-An enumeration is a word, and a structure or a sum is a tuple of components that the compiler keeps in locals, passes as several arguments, and returns as several results.  A `let` binds a record to locals, a projection reads its component locals, and `{ c with value := v }` elaborates to a constructor application, which the compiler translates part by part.  `Calc` and `Shape` in [`LeanExe/Examples`](../LeanExe/Examples/) show enumerations, structures, and sums, and `Grids` shows arrays of records.
+An enumeration is a word, and a structure or a sum is a tuple of components that the compiler keeps in locals, passes as several arguments, and returns as several results.  A `let` binds a record to locals, a projection reads its component locals, and `{ c with value := v }` elaborates to a constructor application, which the compiler translates part by part.  `Calc` and `Shape` in [`Examples`](../Examples/) show enumerations, structures, and sums, and `Grids` shows arrays of records.
 
-A recursive type has exactly two constructors, one without fields, which is the null pointer, and one with fields, which is a record with one slot per field and a child mask that marks the slots holding children.  The compiler builds records whose fields are words or values of a recursive type, and a constructor may allocate a record at the top of a body, in a branch of a match or an `if` on values of a recursive type, or as the next state of a loop.  `List UInt64` has the same layout as `Words` in [`LeanExe/Examples/Words.lean`](../LeanExe/Examples/Words.lean), and a list cell may appear only as the next state of a loop.
+A recursive type has exactly two constructors, one without fields, which is the null pointer, and one with fields, which is a record with one slot per field and a child mask that marks the slots holding children.  The compiler builds records whose fields are words or values of a recursive type, and a constructor may allocate a record at the top of a body, in a branch of a match or an `if` on values of a recursive type, or as the next state of a loop.  `List UInt64` has the same layout as `Words` in [`Examples/Words/Program.lean`](../Examples/Words/Program.lean), and a list cell may appear only as the next state of a loop.
 
 A value of a recursive type that a call consumes and the code uses again, or that a value holds while it is borrowed, is copied by the copy function `T.copy`, which the module command appends.  Copying needs the module-list form of `leanexe_compile`, the children must have the record's own type, and the copy runs under the same depth limit as recursive definitions.  A copy may appear only at the top of a body or in a branch of a match or an `if` on values of a recursive type.
 
@@ -239,7 +239,7 @@ A recursive definition that returns a tree owns the parameters of the greatest f
 
 At the end of each path, the compiler releases the owned parameters that the path has not moved and the temporaries that the code has not moved.  A temporary is an array or tree bound by `let` at the top of the body, or a heap component of a call's result that a match takes apart, and a projection of a call's result releases the other heap components right after the call.  In a result-level conditional each branch releases the owned parameters that it does not move, and in a conditional on a recursive type each branch releases the owned values that the other branch moves, so both branches leave the same objects owned.
 
-The theorems state the modes through types.  A consumed argument has type `Moved α` in the function's argument tuple, as in `fillTuple (x : Moved (Array UInt64) × UInt64 × UInt64)` of [`Project/Clob/Verify.lean`](../Project/Clob/Verify.lean), and a borrowed argument has its plain type.  A host must not use or release an argument that a call consumed, and it owns every result.
+The theorems state the modes through types.  A consumed argument has type `Moved α` in the function's argument tuple, as in `fillTuple (x : Moved (Array UInt64) × UInt64 × UInt64)` of [`Examples/Clob/Verify.lean`](../Examples/Clob/Verify.lean), and a borrowed argument has its plain type.  A host must not use or release an argument that a call consumed, and it owns every result.
 
 ### Restrictions and how to write around them
 
@@ -314,17 +314,17 @@ The theorems state the modes through types.  A consumed argument has type `Moved
 The list form also adds the functions that the listed definitions need.  A definition that calls itself other than in tail position gets an internal function `p.f.rec.ir`, exported as `f.rec`, and the internal functions follow the listed ones in list order.  A recursive type that the code copies gets a copy function `p.T.copy.ir`, exported as `T.copy`, after the internal functions in the order of first use.
 
 ```lean
-import LeanExe.Examples.Clob
+import Examples.Clob.Program
 import Project.Compiler.Command
 
-namespace Project.Clob
+namespace Examples.Clob
 
-open LeanExe.Examples.Clob in
+open Examples.Clob in
 leanexe_compile clob := [marketBuy, fillLevel, insertLevel, setLevel, addBid, depth,
   findLevel, removeLevel, cancelBid, applyCommand, runCommands, stepCommand, runOut,
   fillTwice, fillKeep]
 
-end Project.Clob
+end Examples.Clob
 ```
 
 Every module has the same layout.  Function 0 is the runtime's `alloc` and function 1 its `release`, both exported, and the module exports the compiled functions by name, the memory as `memory`, and the allocation and free counters as the globals `allocCount` and `freeCount`.  The memory starts at 16 pages with a maximum of 65,535, and the allocator's globals start with `top` at the heap base 4096 and an empty free list.  `alloc` takes the first free block that fits (Knuth's Algorithm A), and `release` inserts a block in address order and merges it with free neighbors (Algorithm B).
@@ -337,14 +337,14 @@ The IR and hints are ordinary Lean definitions.  `#eval p.f.ir.body` prints the 
 
 ```sh
 export PATH="$HOME/.elan/bin:$PATH"
-tools/leanrun --timeout 60m lake build Project.Gcd.Module
+tools/leanrun --timeout 60m lake build Examples.Gcd.Module
 mkdir -p build/gcd
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-  Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
+  Examples.Gcd.Module Examples.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 ```
 
-The convention is `build/NAME/NAME.wasm`, where `NAME` is the name given to `leanexe_compile`, and the module tests read the files there.  The constant is `Project.<Dir>.<name>.module`, defined in `Project.<Dir>.Module`, except for `treeMoves` and `treeFrame`, which `Project.Trees.Moves` and `Project.Trees.Frame` define.  The repository pins `wasm-tools` 1.251.0 in [`.wasm-tools-version`](../.wasm-tools-version), and [`tools/check-wasm-tools-version.sh`](../tools/check-wasm-tools-version.sh) checks the installed version.
+The convention is `build/NAME/NAME.wasm`, where `NAME` is the name given to `leanexe_compile`, and the module tests read the files there.  The constant is `Project.<Dir>.<name>.module`, defined in `Project.<Dir>.Module`, except for `treeMoves` and `treeFrame`, which `Examples.Trees.Moves` and `Examples.Trees.Frame` define.  The repository pins `wasm-tools` 1.251.0 in [`.wasm-tools-version`](../.wasm-tools-version), and [`tools/check-wasm-tools-version.sh`](../tools/check-wasm-tools-version.sh) checks the installed version.
 
 ### The Wasmtime host
 
@@ -397,11 +397,11 @@ A host releases an object it owns by calling the export `release` with the point
 
 ### Native runs and tools
 
-A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Project/Euler/Native.lean`](../Project/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime, peak resident size, and the SHA-256 of its words.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
+A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake env lean --run FILE ARGS`, which is how the test-case generators produce their expected results.  `tools/leanrun --timeout 60m lake build euler-native` builds [`Examples/Euler/Native.lean`](../Examples/Euler/Native.lean), which runs either Euler solver natively and writes its output words, and `uv run tools/euler-run.py WASM first|reconstructed N OUTDIR` runs one solve export in the Wasmtime host and records its runtime, peak resident size, and the SHA-256 of its words.  `uv run tools/gpt2.py --output-tokens 32 --prompt "…"` generates text with `gpt.wasm`, greedily or with `--top-k`, `--temperature`, and `--seed`, from the weight files that [`tests/gpt/gpt2_compare.py`](../tests/gpt/gpt2_compare.py) writes.
 
 ### WGSL kernels and the browser pages
 
-Iteration 24 added a GPU path for binary32 kernels.  [`Project/WGSL/`](../Project/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Project/Gpt32/`](../Project/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
+Iteration 24 added a GPU path for binary32 kernels.  [`Project/WGSL/`](../Project/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Examples/Gpt32/`](../Examples/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
 
 `uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/.  The kernel page runs the WGSL kernel cases on the browser's WebGPU and compares every word with native Lean's, and the GPT-2 page runs GPT-2 124M in binary32 with its kernels on WebGPU, in `gpt32.wasm`, or on both with their scores compared.  The GPT-2 page needs the weights that `uv run tests/gpt32/generate.py --export` writes, and [the description of the pages](../tests/web/README.md) covers the setup, the controls, and what is proved about the pages.
 
@@ -418,13 +418,13 @@ Iteration 24 added a GPU path for binary32 kernels.  [`Project/WGSL/`](../Projec
 | `ImplementsA aborts m k f Pre Post` | `Implements` with the abort flag, a precondition `Pre x heap store`, and a postcondition `Post x heap store heap' final`.  `ImplementsA.implements_of` derives `Implements` from `ImplementsA true` when `Pre` always holds. |
 | `Satisfies m k P Q` | For inputs satisfying `P`, the call traps or returns an owned `y` with `Q x y`.  `Implements.transfer` derives it from `Implements` and `∀ x, P x → Q x (f x)`. |
 
-A function's theorem takes its parameters as one tuple in declaration order, such as `gcdTuple (x : UInt64 × UInt64)` in [`Project/Gcd/Verify.lean`](../Project/Gcd/Verify.lean), and the entry index is the function's position in the module.  The arguments are reversed in `Runs` because Talos lists them with the top of the stack first.  The examples define each tuple function beside its theorem, such as `fillTuple` for `fillLevel` in [`Project/Clob/Verify.lean`](../Project/Clob/Verify.lean).
+A function's theorem takes its parameters as one tuple in declaration order, such as `gcdTuple (x : UInt64 × UInt64)` in [`Examples/Gcd/Verify.lean`](../Examples/Gcd/Verify.lean), and the entry index is the function's position in the module.  The arguments are reversed in `Runs` because Talos lists them with the top of the stack first.  The examples define each tuple function beside its theorem, such as `fillTuple` for `fillLevel` in [`Examples/Clob/Verify.lean`](../Examples/Clob/Verify.lean).
 
 ### Representations
 
-`Represent α` says how a value appears to a compiled function: its WebAssembly values, the heap data they point to when borrowed and when owned, the blocks its owned objects occupy, the regions a call reads, and the pointers a call consumes.  `Scalar` covers values without heap data: `UInt64`, `Float`, `Float32`, `Unit` for a function without parameters, pairs, and any type with a `Flat α β` instance, which represents `α` as the scalar `β`.  `Bool` has the instance `cond b 1 0` built in, and a user enumeration, structure, or sum needs its own `Flat` instance, such as `Flat Calc (UInt64 × UInt64 × Op)` in [`Project/Calc/Flat.lean`](../Project/Calc/Flat.lean).  The instances are part of what the theorem states.
+`Represent α` says how a value appears to a compiled function: its WebAssembly values, the heap data they point to when borrowed and when owned, the blocks its owned objects occupy, the regions a call reads, and the pointers a call consumes.  `Scalar` covers values without heap data: `UInt64`, `Float`, `Float32`, `Unit` for a function without parameters, pairs, and any type with a `Flat α β` instance, which represents `α` as the scalar `β`.  `Bool` has the instance `cond b 1 0` built in, and a user enumeration, structure, or sum needs its own `Flat` instance, such as `Flat Calc (UInt64 × UInt64 × Op)` in [`Examples/Calc/Flat.lean`](../Examples/Calc/Flat.lean).  The instances are part of what the theorem states.
 
-Arrays have instances for `Array UInt64`, `Array Float`, `Array Float32`, and `Array α` for a flat `α`, which is stored as `flatWords xs`.  A type with an `Encode` instance is represented by the records that `encode` gives, a `Node` tree of words and children, and `List UInt64` has one built in.  A user recursive type needs an `Encode` instance, and some rules also need `EncodeSlotted`, as in [`Project/Words/Encode.lean`](../Project/Words/Encode.lean).  `Moved α` represents a consumed argument for `Array UInt64`, `Array Float`, arrays of records, and types with `Encode`.
+Arrays have instances for `Array UInt64`, `Array Float`, `Array Float32`, and `Array α` for a flat `α`, which is stored as `flatWords xs`.  A type with an `Encode` instance is represented by the records that `encode` gives, a `Node` tree of words and children, and `List UInt64` has one built in.  A user recursive type needs an `Encode` instance, and some rules also need `EncodeSlotted`, as in [`Examples/Words/Encode.lean`](../Examples/Words/Encode.lean).  `Moved α` represents a consumed argument for `Array UInt64`, `Array Float`, arrays of records, and types with `Encode`.
 
 ### Structure of a proof
 
@@ -453,11 +453,11 @@ The body's triple follows the IR.  [`Project/IR/Stmt.lean`](../Project/IR/Stmt.l
 | Calls | `Stmt.callImplements_spec`, `Stmt.callPure_spec`, `Stmt.callKeeps_spec` |
 | `LeanExe.repeatWhile` | `Stmt.repeatWhile_spec`, `Stmt.repeatWhile_pure_spec` for a step that keeps the store |
 
-A body that calls allocating functions and releases temporaries is proved under `Live` ([`Project/IR/Live.lean`](../Project/IR/Live.lean)), an invariant that records the allocator invariant, the unchanged caps, the frame of the caller's heap, and the live temporaries, each owned and apart from the others.  `Live.start` begins a body, `Live.call`, `Live.call_seq`, `Live.callMove`, and `Live.callScalar_seq` run calls, `Live.callOne` and `Live.callOne_seq` run a call whose result is scalars followed by one array (`OneArray`), and `Live.releaseFirst`, `Live.releaseSecond`, and `Live.releaseAt` release temporaries.  `Live.arrayLoop`, `Live.tupleLoop`, and `Live.repeatWhileOne` cover the loops over arrays, and `Live.finish`, `Live.finish_moved`, and `Live.finish_results_one` give the rule's postcondition.  [`tools/gpt_composites.py`](../tools/gpt_composites.py) generates the GPT composites' proofs in [`Project/Gpt/Composites.lean`](../Project/Gpt/Composites.lean) from a description of each function's calls.
+A body that calls allocating functions and releases temporaries is proved under `Live` ([`Project/IR/Live.lean`](../Project/IR/Live.lean)), an invariant that records the allocator invariant, the unchanged caps, the frame of the caller's heap, and the live temporaries, each owned and apart from the others.  `Live.start` begins a body, `Live.call`, `Live.call_seq`, `Live.callMove`, and `Live.callScalar_seq` run calls, `Live.callOne` and `Live.callOne_seq` run a call whose result is scalars followed by one array (`OneArray`), and `Live.releaseFirst`, `Live.releaseSecond`, and `Live.releaseAt` release temporaries.  `Live.arrayLoop`, `Live.tupleLoop`, and `Live.repeatWhileOne` cover the loops over arrays, and `Live.finish`, `Live.finish_moved`, and `Live.finish_results_one` give the rule's postcondition.  [`tools/gpt_composites.py`](../tools/gpt_composites.py) generates the GPT composites' proofs in [`Examples/Gpt/Composites.lean`](../Examples/Gpt/Composites.lean) from a description of each function's calls.
 
 Two files hold lemmas that recur across programs.  [`Project/IR/Combinators.lean`](../Project/IR/Combinators.lean) states facts about the combinators' Lean definitions: `loop_induction` carries an invariant through `LeanExe.loop`, `loop_congr` equates loops whose steps agree, and `build_size`, `build_get`, and `build_get_out` give the size and the elements of `LeanExe.build`.  [`Project/IR/Words.lean`](../Project/IR/Words.lean) holds lemmas about the words that the compiler computes from tests, such as `word_and` and `word_or` for `&&` and `||` on 0-or-1 words and `divU_eq` and `remU_eq` for the IR's tested division, and the tactics `eval_body` and `eval_state`, which evaluate a compiled body or a run of statements with one `simp` call.
 
-Proofs about floats use equality theorems: ProofKit proves that Lean's binary64 and binary32 operations equal Talos's `IEEE64` and `IEEE32` functions on bit patterns for all inputs, and `F64Bits.toBits_add` and its siblings state them as `simp` lemmas.  Large proofs close float literals with bit lemmas proved by `decide +kernel`, as in [`Project/Euler/Words.lean`](../Project/Euler/Words.lean).  [The journal](../devnotes.md) (E6) records the proof patterns that keep symbolic evaluation of large bodies tractable, such as computing every value in straight-line code and selecting the result once at the end.
+Proofs about floats use equality theorems: ProofKit proves that Lean's binary64 and binary32 operations equal Talos's `IEEE64` and `IEEE32` functions on bit patterns for all inputs, and `F64Bits.toBits_add` and its siblings state them as `simp` lemmas.  Large proofs close float literals with bit lemmas proved by `decide +kernel`, as in [`Examples/Euler/Words.lean`](../Examples/Euler/Words.lean).  [The journal](../devnotes.md) (E6) records the proof patterns that keep symbolic evaluation of large bodies tractable, such as computing every value in straight-line code and selecting the result once at the end.
 
 ### The bytes theorem
 
@@ -472,11 +472,11 @@ theorem gcd_bytes : ∃ bytes, Wasm.Encoding.encode gcd.module = .ok bytes ∧
     gcd_implements.congr fun _ _ _ x _ => gcd_eq x.1 x.2⟩
 ```
 
-`decide +kernel` adds no axiom and takes about half a second per module.  Every compiled module has a bytes theorem named `NAME_bytes` except `treeFrame`, a module for the depth test only, and `gpt32`, whose kernels have WGSL theorems and no WebAssembly theorem.  `gcd_bytes`, `clob_bytes`, `euler_bytes`, and `drone_bytes` are typical.  `gpt_file` in [`Project/Gpt/File.lean`](../Project/Gpt/File.lean), checked with `lake env lean` after `Emit.lean` writes `build/gpt/gpt.wasm`, proves that the file holds `encode gpt.module`.
+`decide +kernel` adds no axiom and takes about half a second per module.  Every compiled module has a bytes theorem named `NAME_bytes` except `treeFrame`, a module for the depth test only, and `gpt32`, whose kernels have WGSL theorems and no WebAssembly theorem.  `gcd_bytes`, `clob_bytes`, `euler_bytes`, and `drone_bytes` are typical.  `gpt_file` in [`Examples/Gpt/File.lean`](../Examples/Gpt/File.lean), checked with `lake env lean` after `Emit.lean` writes `build/gpt/gpt.wasm`, proves that the file holds `encode gpt.module`.
 
 ### Source-level theorems
 
-A property of the Lean function becomes a property of the bytes through `Implements`: `Implements.transfer` turns a proof of `∀ x, P x → Q x (f x)` into `Satisfies`, and a bytes theorem may conjoin the property directly.  The source theorems are ordinary Lean proofs about the definitions in [`LeanExe/Examples`](../LeanExe/Examples/), with no reference to WebAssembly.  The examples prove the following.
+A property of the Lean function becomes a property of the bytes through `Implements`: `Implements.transfer` turns a proof of `∀ x, P x → Q x (f x)` into `Satisfies`, and a bytes theorem may conjoin the property directly.  The source theorems are ordinary Lean proofs about the definitions in [`Examples`](../Examples/), with no reference to WebAssembly.  The examples prove the following.
 
 | Theorem | Statement |
 |---|---|
@@ -484,7 +484,7 @@ A property of the Lean function becomes a property of the bytes through `Impleme
 | `solve_hyperbolic`, `reconstructedSolve_hyperbolic`, `reconstructedRun_steps`, `run_balance`, `reconstructedRun_balance` | Hyperbolicity of the final states, the CFL bound of accepted steps in exact arithmetic, and conservation with rounding residuals bounded from the run's words. |
 | `drone_compute` | The bytes compute `compute`, whose output for valid terrain encodes an admitted flight of least cost (`compute_correct`) and is `#[]` for invalid terrain. |
 | `drone_safe` | The flight of every valid nonempty terrain is safe in continuous time (`WholeFlight.compute_safe`). |
-| `compute_eq` in each demo of [`demos/`](../demos/) | The program equals its specification `expected`, which is written apart from it. |
+| `compute_eq` in each example with a `Spec.lean` | The program equals its specification `expected`, which is written apart from it. |
 | `forward_prefix`, `steps_exact` | Row `i` of GPT's `forward` depends only on tokens 0 to `i`, and the cached `step` and `scores` give `forward`'s rows bit for bit. |
 
 ### Total execution and memory bounds
@@ -513,11 +513,11 @@ theorem sweep_implementsA {a : Bool} {cells : Nat} {g : UInt64} (hg : GridBytes 
 | `runFrom`, `run`, and their reconstructed counterparts | 3 | 1 |
 | `solve`, `reconstructedSolve` | 3 | 2 |
 
-`euler_solve_total` in [`Project/Euler/Total.lean`](../Project/Euler/Total.lean) applies these theorems with `spare = 0`.  From the allocator state of a fresh instance (`top` at 4096, no free block, 16 pages) and a memory cap of at least 1,407 pages, both solve exports return the words of the Lean functions without a trap and end with at most 1,407 pages (88 MiB): the heap base and three grids of 800 × 800 cells with their headers, rounded up to pages.  The fresh state is a hypothesis, since no theorem connects instantiation to it.
+`euler_solve_total` in [`Examples/Euler/Total.lean`](../Examples/Euler/Total.lean) applies these theorems with `spare = 0`.  From the allocator state of a fresh instance (`top` at 4096, no free block, 16 pages) and a memory cap of at least 1,407 pages, both solve exports return the words of the Lean functions without a trap and end with at most 1,407 pages (88 MiB): the heap base and three grids of 800 × 800 cells with their headers, rounded up to pages.  The fresh state is a hypothesis, since no theorem connects instantiation to it.
 
-`drone_compute_total` in [`Project/Drone/Total.lean`](../Project/Drone/Total.lean) counts blocks of `tableBytes`, 69,128 bytes, which bounds every allocation of the planner.  The forward loop uses a different number of spares at each step, so `extend`'s theorem quantifies its budget, and the loop invariant holds `spare + (count - i)` spares at station `i`.  From an allocator with no free block and `top` at most 8192, below which the host has placed the terrain, and a cap of at least 70 pages, `compute` returns its words without a trap and ends with at most 70 pages (4.375 MiB).
+`drone_compute_total` in [`Examples/Drone/Total.lean`](../Examples/Drone/Total.lean) counts blocks of `tableBytes`, 69,128 bytes, which bounds every allocation of the planner.  The forward loop uses a different number of spares at each step, so `extend`'s theorem quantifies its budget, and the loop invariant holds `spare + (count - i)` spares at station `i`.  From an allocator with no free block and `top` at most 8192, below which the host has placed the terrain, and a cap of at least 70 pages, `compute` returns its words without a trap and ends with at most 70 pages (4.375 MiB).
 
-`increment_total` in [`Project/Increment/Verify.lean`](../Project/Increment/Verify.lean) is the smallest example.  From an allocator whose `top` leaves 120 bytes within the first 16 pages, a call of `compute` returns the words of `expected` without a trap and leaves memory at 16 pages.  Its proof uses one spare block of 72 bytes, the size of the largest result.
+`increment_total` in [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) is the smallest example.  From an allocator whose `top` leaves 120 bytes within the first 16 pages, a call of `compute` returns the words of `expected` without a trap and leaves memory at 16 pages.  Its proof uses one spare block of 72 bytes, the size of the largest result.
 
 ### LTG entries
 
@@ -534,19 +534,19 @@ tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 A theorem may depend only on `propext`, `Classical.choice`, and `Quot.sound`.  The check is a Lean file outside the repository that imports a program's `Verify` module and prints the axioms of its theorems, run through [`tools/leanrun`](../tools/leanrun).  Any further axiom, such as `sorryAx` from an incomplete proof or the axiom that `native_decide` adds, is a failure.
 
 ```lean
-import Project.Gcd.Verify
-#print axioms Project.Gcd.gcd_bytes
+import Examples.Gcd.Verify
+#print axioms Examples.Gcd.gcd_bytes
 ```
 
 ```text
-'Project.Gcd.gcd_bytes' depends on axioms: [propext, Classical.choice, Quot.sound]
+'Examples.Gcd.gcd_bytes' depends on axioms: [propext, Classical.choice, Quot.sound]
 ```
 
 ## Testing
 
 ### Module tests
 
-[`tests/modules/Cases.lean`](../tests/modules/Cases.lean) computes test cases with native Lean for every module other than `gpt`, `gpt32`, and `prng`, one line each: the module, the export, the result kind, the host arguments, and the expected result.  [`tests/modules/run.sh`](../tests/modules/run.sh) runs each case in the Wasmtime host on `build/MODULE/MODULE.wasm` and compares the output.  The cases include special floats, indices at and past the ends of arrays, and values that wrap.
+Each example's `Cases.lean` computes its test cases with native Lean, one line each: the module, the export, the result kind, the host arguments, and the expected result.  [`tests/modules/Cases.lean`](../tests/modules/Cases.lean) prints the cases of every example other than `gpt`, `gpt32`, and `prng`, and [`Examples/Host.lean`](../Examples/Host.lean) holds the helpers that format arguments and results.  [`tests/modules/run.sh`](../tests/modules/run.sh) runs each case in the Wasmtime host on `build/MODULE/MODULE.wasm` and compares the output.  The cases include special floats, indices at and past the ends of arrays, and values that wrap.
 
 The same script checks the allocation counters.  The release-count cases call CLOB, list, and tree functions through `call-stats` and compare the allocations and frees with the counts that ownership predicts, such as in-place updates that allocate nothing and consumed trees whose records are freed.  The depth-guard cases call recursive functions, the 24-value frame of `treeFrame`, and the copy function on chains of 999 and 1,000 nodes, and they check that the first call returns and the second traps at `unreachable`.
 
@@ -569,11 +569,11 @@ uv run tests/modules/chunks.py
 | [`tests/drone/run.sh`](../tests/drone/run.sh) | `drone.wasm` against the results of main's planner, run natively by [`tests/drone/oracle.sh`](../tests/drone/oracle.sh), on 1,975 calls and 116 terrains. |
 | `uv run tools/euler-run.py …` | One Euler solve, with the SHA-256 of its words, which the data READMEs compare with main's. |
 
-[The record of the four-state run](../data/euler-riemann-complete-v1/README.md) and [the record of the reconstructed run](../data/euler-reconstructed-v1/README.md) describe this branch's Euler binary, its theorems, and its runs on the 192 and 800 grids.  The output words of every run equal main's, with the same SHA-256.  The records also list the results of main that this branch does not prove, such as the reconstruction accuracy theorems.  [The drone record](../data/drone/README.md) describes the drone planner's program, theorems, and tests in the same way.
+[The record of the four-state run](../Examples/Euler/first-order/README.md) and [the record of the reconstructed run](../Examples/Euler/reconstructed/README.md) describe this branch's Euler binary, its theorems, and its runs on the 192 and 800 grids.  The output words of every run equal main's, with the same SHA-256.  The records also list the results of main that this branch does not prove, such as the reconstruction accuracy theorems.  [The drone record](../Examples/Drone/README.md) describes the drone planner's program, theorems, and tests in the same way.
 
 ### WGSL tests
 
-[`tests/wgsl/run.sh`](../tests/wgsl/run.sh) emits the seventeen kernels with [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean), computes the cases of [`tests/wgsl/Cases.lean`](../tests/wgsl/Cases.lean) with native Lean, and runs every case on the SwiftShader and llvmpipe Vulkan drivers with `leanexe-webgpu-host`, comparing each output word.  [`tests/gpt32/native.sh`](../tests/gpt32/native.sh) runs small random GPT-2 models through the Lean driver of [`Project/Gpt32/Generate.lean`](../Project/Gpt32/Generate.lean) on both drivers and compares each step's scores with native Lean's `step32`.  `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on the kernels and compares each step with Hugging Face's float32 model.
+[`tests/wgsl/run.sh`](../tests/wgsl/run.sh) emits the seventeen kernels with [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean), computes the cases of [`tests/wgsl/Cases.lean`](../tests/wgsl/Cases.lean) with native Lean, and runs every case on the SwiftShader and llvmpipe Vulkan drivers with `leanexe-webgpu-host`, comparing each output word.  [`tests/gpt32/native.sh`](../tests/gpt32/native.sh) runs small random GPT-2 models through the Lean driver of [`Examples/Gpt32/Generate.lean`](../Examples/Gpt32/Generate.lean) on both drivers and compares each step's scores with native Lean's `step32`.  `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on the kernels and compares each step with Hugging Face's float32 model.
 
 ### The full check
 
@@ -590,7 +590,7 @@ The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder
 
 ## Worked examples
 
-The program of an example is `LeanExe/Examples/<Name>.lean`, and its module and proofs are in `Project/<Name>/`, where `Module.lean` usually holds `leanexe_compile` and `Verify.lean` the theorems.  Larger examples split their proofs over more files, such as `Total.lean` in [`Project/Euler`](../Project/Euler/) and [`Project/Drone`](../Project/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
+An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, and `Verify.lean` the theorems.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
 
 | Example | Module | Demonstrates |
 |---|---|---|
@@ -614,13 +614,13 @@ The program of an example is `LeanExe/Examples/<Name>.lean`, and its module and 
 | `Gpt32` | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
 | `Euler`, `EulerReconstructed` | `euler` | Arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
 | `Drone` | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
-| `PrimeFactors`, `Lookup`, `TreeLookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos with specifications written apart from the programs ([`demos/`](../demos/)): a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill. |
+| `PrimeFactors`, `Lookup`, `TreeLookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill. |
 
 ## From an English request
 
 [The verified-executable skill](../.claude/skills/verified-executable/SKILL.md) directs an agent from a request in English to a program, a module, and a theorem that the module's bytes compute a specification reviewed against the request.  The agent writes the specification `expected` and samples, and a fresh agent that sees only the request, the specification, and the samples reviews them.  After the review the agent writes the program in the dialect and the proofs, following the worked example of the same shape.  The skill covers parameters of `UInt64`, `Array UInt64`, or tuples of these, and results of `UInt64` or `Array UInt64`.
 
-[`tools/demo-check`](../tools/demo-check) accepts or rejects the result.  `--spec NAME` prints each sample with the specification's output, `--freeze NAME` records the hashes of the reviewed `Spec.lean` and `Samples.lean` in `demos/<name>/spec.sha256`, as in [the tree-lookup record](../demos/tree-lookup/spec.sha256), and `--run NAME` emits the module and runs the samples without proofs.  Without a flag, it checks the hashes, writes the statement `∃ bytes, encode NAME.module = .ok bytes ∧ ∃ m, decode bytes = .ok m ∧ Implements m K expected` for the export's index `K`, and requires `NAME_bytes` to prove it with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`.  It then emits `build/NAME/NAME.wasm` and runs the samples in Wasmtime against `expected`.  [`Project/Demo/Host.lean`](../Project/Demo/Host.lean) gives the host's argument and result kinds for these types.  The theorem allows a trap, and its meaning for the request rests on the review of `expected`.
+[`tools/demo-check`](../tools/demo-check) accepts or rejects the result.  `--spec NAME` prints each sample with the specification's output, `--freeze NAME` records the hashes of the reviewed `Spec.lean` and `Samples.lean` in `Examples/<Name>/spec.sha256`, as in [the tree-lookup record](../Examples/TreeLookup/spec.sha256), and `--run NAME` emits the module and runs the samples without proofs.  Without a flag, it checks the hashes, writes the statement `∃ bytes, encode NAME.module = .ok bytes ∧ ∃ m, decode bytes = .ok m ∧ Implements m K expected` for the export's index `K`, and requires `NAME_bytes` to prove it with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`.  It then emits `build/NAME/NAME.wasm` and runs the samples in Wasmtime against `expected`.  [`Examples/Host.lean`](../Examples/Host.lean) gives the host's argument and result kinds for these types.  The theorem allows a trap, and its meaning for the request rests on the review of `expected`.
 
 ## Development practice
 

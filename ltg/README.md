@@ -32,5 +32,5 @@ function that any module can compile and call.  The table groups the entries by 
 | Kernels and library | `wgsl-kernel`, `splitmix64` |
 
 No entry yet describes the abort-flag rules and heap budgets of complete execution
-(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`).  [`Project/Euler/Total.lean`](../Project/Euler/Total.lean),
-[`Project/Drone/Total.lean`](../Project/Drone/Total.lean), and [`Project/Increment/Verify.lean`](../Project/Increment/Verify.lean) show their use.
+(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`).  [`Examples/Euler/Total.lean`](../Examples/Euler/Total.lean),
+[`Examples/Drone/Total.lean`](../Examples/Drone/Total.lean), and [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) show their use.

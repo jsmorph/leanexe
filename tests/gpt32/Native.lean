@@ -1,15 +1,15 @@
-import Project.Gpt32.Driver
+import Examples.Gpt32.Driver
 
 /-!
 `lean --run tests/gpt32/Native.lean HOST DIR` runs small random models through
-`Project.Gpt32.generate`, the driver of `Project/Gpt32/Generate.lean`, on the device the Vulkan
+`Examples.Gpt32.generate`, the driver of `Examples/Gpt32/Generate.lean`, on the device the Vulkan
 loader chooses, and compares every step's scores with native Lean's `step32` bit for bit.  The
 models keep heads of 64 elements and the scores' stride of 1,024 positions, which the kernels
 fix, and vary the heads, the MLP width, the layers, and the chunks of the vocabulary.  `DIR`
 receives the weight files and the kernels.
 -/
 
-open Project.Gpt32 LeanExe.Examples.Gpt32
+open Examples.Gpt32 Examples.Gpt32
 
 /-- A value in `[center - scale, center + scale)` from a hash of `seed` and `i`. -/
 def randomValue (seed : UInt64) (i : Nat) (center scale : Float) : Float32 :=

@@ -47,7 +47,7 @@
     "Project.IR.Expr",
     "Project.IR.Read",
     "Project.IR.Build",
-    "Project.Binary32.Verify",
+    "Examples.Binary32.Verify",
     "Project.ProofKit.F32Compare",
     "Project.ProofKit.F32Sign"
   ],
@@ -93,11 +93,11 @@
   ],
   "result": "The bits of a Lean Float32 expression equal the IEEE32 evaluation of its IR translation, including NaN, infinities, signed zeros, and subnormals.",
   "consumers": [
-    "Project.Binary32.axpy32_implements",
-    "Project.Binary32.hypot32_implements",
-    "Project.Binary32.ratio32_implements",
-    "Project.Binary32.matVec32_implements",
-    "Project.Binary32.piecewise32_implements"
+    "Examples.Binary32.axpy32_implements",
+    "Examples.Binary32.hypot32_implements",
+    "Examples.Binary32.ratio32_implements",
+    "Examples.Binary32.matVec32_implements",
+    "Examples.Binary32.piecewise32_implements"
   ],
   "relatedEntries": [
     "float-arithmetic",

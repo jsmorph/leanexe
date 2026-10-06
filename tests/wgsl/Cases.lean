@@ -1,12 +1,12 @@
-import LeanExe.Examples.Binary32
-import LeanExe.Examples.Gpt32
+import Examples.Binary32.Program
+import Examples.Gpt32.Program
 
 /-! Test cases for the WGSL kernels, computed by native Lean.  Each line is
 `kernel|workgroups|initial output|inputs|expected output`, with buffers in the harness's `u64:`
 notation and the expected output as 32-bit words joined by commas.  `tests/wgsl/run.sh` runs each
 case with `build/tools/leanexe-webgpu-host` and compares.  Run with `lake env lean --run`. -/
 
-open LeanExe.Examples.Binary32 LeanExe.Examples.Gpt32
+open Examples.Binary32 Examples.Gpt32
 
 def words (xs : List UInt64) : String := ",".intercalate (xs.map toString)
 

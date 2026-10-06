@@ -1,11 +1,11 @@
-// Two hosts for the commands of Project/Gpt32/Program.lean, as leanexe-webgpu-host's session mode
+// Two hosts for the commands of Examples/Gpt32/HostProgram.lean, as leanexe-webgpu-host's session mode
 // runs them: `load NAME PATH`, `words NAME u32:W,...`, `output NAME N`, `shader NAME PATH`, and
 // `run SHADER WORKGROUPS OUT IN...`.  GpuHost dispatches each `run` on WebGPU with the kernel's
 // WGSL text.  WasmHost calls the same kernel in gpt32.wasm, where a buffer is an array in the
 // module's memory with the same words: the length, then each element's binary32 bits in the low
 // half of an 8-byte word.
 
-// The argument kinds of each kernel, from `kernelOf` in Project/Gpt32/Specs.lean, and the
+// The argument kinds of each kernel, from `kernelOf` in Examples/Gpt32/Specs.lean, and the
 // function of gpt32.wasm that computes it.
 const KINDS = {
   embed: ["array", "array", "word", "word", "word"],
@@ -239,7 +239,7 @@ export class WasmHost {
 }
 
 /** Top-k sampling with `sampleTopK` of gpt.wasm, the binary64 model's module, which
-`sampleTopK_implements` proves computes `LeanExe.Examples.Gpt.sampleTopK`: the scores, widened
+`sampleTopK_implements` proves computes `Examples.Gpt.sampleTopK`: the scores, widened
 to binary64, `k`, the temperature, and a SplitMix64 state give the token and the next state.  It
 borrows the scores, so the caller releases them. */
 export class Sampler {

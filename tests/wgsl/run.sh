@@ -9,15 +9,15 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host
 mkdir -p "$build/wgsl"
-for entry in Project.WGSL.Binary32:Project.WGSL:scale Project.WGSL.Binary32:Project.WGSL:axpyArray \
-    Project.WGSL.Binary32:Project.WGSL:matVec Project.WGSL.Binary32:Project.WGSL:condMix \
-    Project.Gpt32.Kernels:Project.Gpt32:exp Project.Gpt32.Specs:Project.Gpt32:embed \
-    Project.Gpt32.Specs:Project.Gpt32:layerNorm Project.Gpt32.Specs:Project.Gpt32:linear \
-    Project.Gpt32.Specs:Project.Gpt32:append Project.Gpt32.Specs:Project.Gpt32:scores \
-    Project.Gpt32.Specs:Project.Gpt32:headMax Project.Gpt32.Specs:Project.Gpt32:headSum \
-    Project.Gpt32.Specs:Project.Gpt32:probs Project.Gpt32.Specs:Project.Gpt32:mix \
-    Project.Gpt32.Specs:Project.Gpt32:add Project.Gpt32.Specs:Project.Gpt32:gelu \
-    Project.Gpt32.Specs:Project.Gpt32:logits; do
+for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wgsl:Examples.Binary32:axpyArray \
+    Examples.Binary32.Wgsl:Examples.Binary32:matVec Examples.Binary32.Wgsl:Examples.Binary32:condMix \
+    Examples.Gpt32.Kernels:Examples.Gpt32:exp Examples.Gpt32.Specs:Examples.Gpt32:embed \
+    Examples.Gpt32.Specs:Examples.Gpt32:layerNorm Examples.Gpt32.Specs:Examples.Gpt32:linear \
+    Examples.Gpt32.Specs:Examples.Gpt32:append Examples.Gpt32.Specs:Examples.Gpt32:scores \
+    Examples.Gpt32.Specs:Examples.Gpt32:headMax Examples.Gpt32.Specs:Examples.Gpt32:headSum \
+    Examples.Gpt32.Specs:Examples.Gpt32:probs Examples.Gpt32.Specs:Examples.Gpt32:mix \
+    Examples.Gpt32.Specs:Examples.Gpt32:add Examples.Gpt32.Specs:Examples.Gpt32:gelu \
+    Examples.Gpt32.Specs:Examples.Gpt32:logits; do
   IFS=: read -r module namespace kernel <<<"$entry"
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
     "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")

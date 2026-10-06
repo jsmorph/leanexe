@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs tests/gpt32/Native.lean on SwiftShader and llvmpipe: small random models through the Lean
-# driver of Project/Gpt32/Generate.lean, with every step's scores compared bit for bit with
+# driver of Examples/Gpt32/Generate.lean, with every step's scores compared bit for bit with
 # native Lean's step32.
 # Usage: tests/gpt32/native.sh [build directory]
 set -euo pipefail

@@ -152,7 +152,7 @@ def main():
         state = int.from_bytes(os.urandom(8), 'little')
         print(f'seed {state}', file=sys.stderr)
     for path, how in [(HOST, 'tools/build-wasmtime-host.sh'),
-                      (WASM, 'the Emit.lean command for Project.Gpt.Module in docs/design.md'),
+                      (WASM, 'the Emit.lean command for Examples.Gpt.Module in docs/design.md'),
                       (WEIGHTS / 'revision', 'uv run tests/gpt/gpt2_compare.py')]:
         if not path.exists():
             raise SystemExit(f'gpt2: missing {path.relative_to(ROOT)}; create it with {how}')

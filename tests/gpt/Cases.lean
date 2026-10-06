@@ -1,11 +1,11 @@
-import LeanExe.Examples.Gpt
+import Examples.Gpt.Program
 
 /-! Test cases for `gpt.wasm`, computed by native Lean.  Each line is
 `export|result type|host arguments|expected result`, with arrays and floats given as
 bit patterns; `tests/gpt/run.sh` passes the arguments to the Wasmtime host and compares
 its output with the expected result.  Run with `lake env lean --run`. -/
 
-open LeanExe.Examples.Gpt
+open Examples.Gpt
 
 def bitsOf (xs : List Float) : String := ",".intercalate (xs.map fun x => toString x.toBits)
 def arr (xs : List Float) : String := s!"array-u64:{bitsOf xs}"
@@ -381,10 +381,10 @@ def sampleCases : IO Unit := do
   let seeds : List Nat := [0, 1, 42, 2 ^ 64 - 1, 0x9E3779B97F4A7C15, 2 ^ 64 - 0x9E3779B97F4A7C15,
     123456789]
   for seed in seeds do
-    emitPair "splitMix" [u seed] (LeanExe.Examples.Prng.splitMix (UInt64.ofNat seed))
+    emitPair "splitMix" [u seed] (Examples.Prng.splitMix (UInt64.ofNat seed))
   for i in List.range 20 do
     let x := (i * 0x9E3779B97F4A7C15 + 7) % 2 ^ 64
-    emitF "unitFloat" [u x] (LeanExe.Examples.Prng.unitFloat (UInt64.ofNat x))
+    emitF "unitFloat" [u x] (Examples.Prng.unitFloat (UInt64.ofNat x))
   for k in List.range 5 do
     emit "negInfs" [u k] (negInfs (UInt64.ofNat k))
   let bufs : List (List Float) := [[], [3.0], [3.0, 1.0], [3.0, 2.0, 2.0, -inf], [inf, 0.0, -0.0],

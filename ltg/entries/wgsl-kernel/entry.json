@@ -31,7 +31,7 @@
     "Project.WGSL.Translate",
     "Project.WGSL.TranslateStmt",
     "Project.WGSL.Build",
-    "Project.WGSL.Binary32",
+    "Examples.Binary32.Wgsl",
     "Project.IR.Denote",
     "Project.IR.DenoteStmt"
   ],
@@ -61,10 +61,10 @@
     "Project.WGSL.Spec.Fits",
     "Project.WGSL.Spec.invoke_eq",
     "Project.WGSL.Spec.dispatch_eq",
-    "Project.WGSL.scaleKernel_dispatch",
-    "Project.WGSL.axpyArrayKernel_dispatch",
-    "Project.Binary32.axpyArrayElement_denote",
-    "Project.Binary32.axpyArray32_implements",
+    "Examples.Binary32.scaleKernel_dispatch",
+    "Examples.Binary32.axpyArrayKernel_dispatch",
+    "Examples.Binary32.axpyArrayElement_denote",
+    "Examples.Binary32.axpyArray32_implements",
     "Project.WGSL.add64_word",
     "Project.WGSL.mul64_word",
     "Project.WGSL.trStmt",
@@ -73,9 +73,9 @@
     "Project.IR.Stmt.denote_spec",
     "Project.IR.Stmt.denote_loop",
     "Project.WGSL.Spec.wfb",
-    "Project.WGSL.matVecKernel_dispatch",
-    "Project.Binary32.matVecRow_denote",
-    "Project.Binary32.matVec32_implements"
+    "Examples.Binary32.matVecKernel_dispatch",
+    "Examples.Binary32.matVecRow_denote",
+    "Examples.Binary32.matVec32_implements"
   ],
   "premises": [
     "The device model of 2026-10-04: IEEE32 binary32 results with the canonical NaN, race-free dispatch, the host's length word, a dispatch that covers the count, and no dynamic errors",
@@ -84,15 +84,15 @@
   ],
   "result": "The dispatch leaves the output holding the Lean function's build as a Wasm array, distinct invocations store to distinct words, and the printed text parses to the kernel; the Wasm theorem of the same function follows from the same element lemma.",
   "consumers": [
-    "Project.WGSL.scaleKernel_dispatch",
-    "Project.WGSL.axpyArrayKernel_dispatch",
-    "Project.WGSL.scaleKernel_text",
-    "Project.WGSL.axpyArrayKernel_text",
-    "Project.Binary32.scale32_implements",
-    "Project.Binary32.axpyArray32_implements",
-    "Project.WGSL.matVecKernel_dispatch",
-    "Project.WGSL.matVecKernel_text",
-    "Project.Binary32.matVec32_implements"
+    "Examples.Binary32.scaleKernel_dispatch",
+    "Examples.Binary32.axpyArrayKernel_dispatch",
+    "Examples.Binary32.scaleKernel_text",
+    "Examples.Binary32.axpyArrayKernel_text",
+    "Examples.Binary32.scale32_implements",
+    "Examples.Binary32.axpyArray32_implements",
+    "Examples.Binary32.matVecKernel_dispatch",
+    "Examples.Binary32.matVecKernel_text",
+    "Examples.Binary32.matVec32_implements"
   ],
   "relatedEntries": [
     "binary32-arithmetic",

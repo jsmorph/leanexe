@@ -9,11 +9,11 @@
   "evidenceStatus": "promoted",
   "features": ["match", "record", "load", "branch"],
   "annotationKinds": ["node match", "field load", "match value", "match result", "null constructor"],
-  "modules": ["Project.IR.Stmt", "Project.Pipeline.Records", "Project.Trees.MovesVerify"],
-  "declarations": ["Project.Pipeline.NodeOwned.clearRight", "Project.Trees.splitRoot_children", "Project.Trees.Heap.Rebuilt.wordPair", "Project.IR.Stmt.ite_spec", "Project.IR.Stmt.load_spec", "Project.IR.Stmt.assign_spec", "Project.Pipeline.NodeBorrowed", "Project.Pipeline.RecordSlots", "Project.Pipeline.slotAddress_toNat"],
+  "modules": ["Project.IR.Stmt", "Project.Pipeline.Records", "Examples.Trees.MovesVerify"],
+  "declarations": ["Project.Pipeline.NodeOwned.clearRight", "Examples.Trees.splitRoot_children", "Examples.Trees.Heap.Rebuilt.wordPair", "Project.IR.Stmt.ite_spec", "Project.IR.Stmt.load_spec", "Project.IR.Stmt.assign_spec", "Project.Pipeline.NodeBorrowed", "Project.Pipeline.RecordSlots", "Project.Pipeline.slotAddress_toNat"],
   "premises": ["NodeBorrowed for the argument, which Represent.borrowed gives", "Heap.At, whose top bounds the record's slots inside memory"],
   "result": "The conditional assigns the value of the alternative that the value's constructor selects.",
-  "consumers": ["Project.Words.first_implements", "Project.Words.sumAcc_step", "Project.Trees.keyPair_implements", "Project.Trees.splitRoot_implements", "Project.Trees.rootAndRest_implements", "Project.Trees.splitOr_implements"],
+  "consumers": ["Examples.Words.first_implements", "Examples.Words.sumAcc_step", "Examples.Trees.keyPair_implements", "Examples.Trees.splitRoot_implements", "Examples.Trees.rootAndRest_implements", "Examples.Trees.splitOr_implements"],
   "relatedEntries": ["tail-recursion-records", "list-cell"],
   "exclusion": null
 }

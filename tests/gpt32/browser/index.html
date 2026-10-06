@@ -60,7 +60,7 @@ code { font: 13px ui-monospace, SFMono-Regular, Menlo, monospace; }
 each token is drawn by top-k sampling with <code>sampleTopK</code> of <code>gpt.wasm</code>, whose
 Wasm <code>sampleTopK_implements</code> proves, starting from the seed as the generator's state.
 Each token runs the host commands of
-<code>Project/Gpt32/Program.lean</code>, which <code>generate_host</code> proves compute
+<code>Examples/Gpt32/HostProgram.lean</code>, which <code>generate_host</code> proves compute
 <code>step32</code> on a device with strict binary32 arithmetic.  WGSL lets a device flush
 subnormal values to zero and fuse multiplications with additions, and the comparison shows the
 effect on this one.  With WGSL, each kernel call is a WebGPU dispatch of its translated kernel.

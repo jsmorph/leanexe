@@ -1,4 +1,4 @@
-import LeanExe.Examples.Drone
+import Examples.Drone.Program
 
 /-! Compares this branch's `compute` with main's on every case of `tests/drone/corpus.txt`.
 Run with `lake env lean --run tests/drone/Compare.lean`. -/
@@ -11,7 +11,7 @@ def main : IO UInt32 := do
   let mut failed := 0
   for line in lines do
     let [terrain, expected] := line.splitOn "|" | throw <| IO.userError s!"bad line: {line}"
-    let got := LeanExe.Examples.Drone.compute (parse terrain)
+    let got := Examples.Drone.compute (parse terrain)
     if got != parse expected then
       failed := failed + 1
       IO.println s!"fail: {terrain}"

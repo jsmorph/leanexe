@@ -19,7 +19,7 @@ tools/leanrun --timeout <duration> <lean-or-lake-command>
 ## Approval Boundaries
 
 - Keep the repository driver as the first command token for verification runs: [`tests/modules/run.sh`](tests/modules/run.sh), [`tests/gpt/run.sh`](tests/gpt/run.sh), [`tests/wgsl/run.sh`](tests/wgsl/run.sh), [`tests/gpt32/native.sh`](tests/gpt32/native.sh), [`tests/drone/oracle.sh`](tests/drone/oracle.sh), or [`tools/demo-check`](tools/demo-check), each of which calls [`tools/leanrun`](tools/leanrun) itself.  Request approval for that driver prefix rather than one case, module, corpus file, temporary path, or internal child command.
-- Put repeatable corpus membership and expected results in the driver's checked files, such as [`tests/modules/Cases.lean`](tests/modules/Cases.lean).  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
+- Put repeatable corpus membership and expected results in the driver's checked files, such as an example's `Cases.lean` under [`Examples/`](Examples/).  Do not place globs, brace expansions, generated file lists, pipes, or shell wrappers around a repository verification command.
 - Use direct `tools/leanrun` commands only for focused diagnostics that do not belong in an existing repository gate.  Keep `tools/leanrun` as the first token and pass file paths as ordinary arguments without shell expansion.
 
 ## Proof Iteration

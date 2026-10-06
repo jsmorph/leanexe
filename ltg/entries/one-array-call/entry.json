@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.OneArray", "Project.IR.Live.callOne", "Project.IR.Live.callOne_seq", "Project.IR.Live.finish_one", "Project.IR.Live.finish_results_one", "Project.IR.Stmt.ite_test", "Project.IR.Live.start_moved", "Project.IR.Live.callScalar_seq", "Project.IR.Live.releaseFirst", "Project.IR.Live.releaseSecond_last", "Project.IR.Live.push"],
   "premises": ["An Implements theorem for the callee, whose result type has a OneArray instance", "Live with the consumed temporaries first", "The arguments evaluate to values that represent the callee's input, whose moves are exactly the consumed temporaries' pointers and whose reads lie apart from their blocks", "The result locals can hold the scalars and the pointer"],
   "result": "Live with the result's array at the head of the temporaries in place of the consumed ones, and the state after setting the result locals; at the end of a body, the postcondition of Func.implements_moves.",
-  "consumers": ["Project.Euler.finishStep_implements", "Project.Euler.step_implements", "Project.Euler.tryStep_implements", "Project.Euler.attempt_implements", "Project.Euler.advanceStep_implements", "Project.Euler.run_implements", "Project.Euler.solve_implements"],
+  "consumers": ["Examples.Euler.finishStep_implements", "Examples.Euler.step_implements", "Examples.Euler.tryStep_implements", "Examples.Euler.attempt_implements", "Examples.Euler.advanceStep_implements", "Examples.Euler.run_implements", "Examples.Euler.solve_implements"],
   "relatedEntries": ["function-call", "release-temporary", "repeat-while", "record-build"],
   "exclusion": null
 }

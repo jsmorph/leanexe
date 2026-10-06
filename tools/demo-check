@@ -7,9 +7,9 @@
 #   tools/demo-check --run NAME [EXPORT]    emit the module and run the samples, without proofs
 #   tools/demo-check NAME [EXPORT]          check the hashes, the theorem, and the samples
 #
-# NAME is the module name, such as primeFactors.  Its files are Project/<Name>/Spec.lean,
-# Samples.lean, Module.lean, and Verify.lean, with <Name> the capitalized NAME, and its request,
-# review, README, and hash record are in demos/<name-in-kebab-case>/.  EXPORT, compute by default, is
+# NAME is the module name, such as primeFactors.  Its files are in Examples/<Name>/, with <Name>
+# the capitalized NAME: Program.lean, Spec.lean, Samples.lean, Module.lean, Verify.lean, and the
+# request, review, README, and hash record.  EXPORT, compute by default, is
 # the export whose function index K the theorem names.  The check states
 #
 #   ∃ bytes, Wasm.Encoding.encode <name>.module = .ok bytes ∧
@@ -34,9 +34,8 @@ name=${1:-}
 [ -n "$name" ] || fail "usage: tools/demo-check [--spec|--freeze|--run] NAME [EXPORT]"
 export_name=${2:-compute}
 Name=${name^}
-ns=Project.$Name
-kebab=$(echo "$name" | sed 's/\([A-Z]\)/-\L\1/g')
-demo=demos/$kebab
+ns=Examples.$Name
+demo=Examples/$Name
 work=tmp/demo-check/$name
 host=build/tools/leanexe-wasmtime-host
 mkdir -p "$work"
@@ -46,12 +45,12 @@ lean() { tools/leanrun --timeout 60m --lock-timeout 3600 lake "$@"; }
 # The samples with the specification's outputs, in the format of tests/modules/run.sh.
 lines() {
   cat >"$work/Lines.lean" <<EOF
-import Project.Demo.Host
+import Examples.Host
 import $ns.Spec
 import $ns.Samples
 
 def main : IO Unit := do
-  for line in Project.Demo.lines "$name" "$export_name" $ns.expected $ns.samples do
+  for line in Examples.Host.lines "$name" "$export_name" $ns.expected $ns.samples do
     IO.println line
 EOF
   lean env lean --run "$work/Lines.lean" >"$work/lines.txt" 2>"$work/lines.err" ||
@@ -86,7 +85,7 @@ run_samples() {
 
 case $mode in
   spec)
-    lean build "$ns.Spec" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+    lean build "$ns.Spec" "$ns.Samples" Examples.Host >"$work/build.log" 2>&1 ||
       fail "build: $(grep -m5 error "$work/build.log")"
     lines
     while IFS='|' read -r _ _ _ args expected; do
@@ -95,14 +94,14 @@ case $mode in
     ;;
   freeze)
     [ -d "$demo" ] || fail "$demo does not exist"
-    sha256sum "Project/$Name/Spec.lean" "Project/$Name/Samples.lean" >"$demo/spec.sha256"
+    sha256sum "$demo/Spec.lean" "$demo/Samples.lean" >"$demo/spec.sha256"
     cat "$demo/spec.sha256"
     ;;
   check)
     [ -f "$demo/spec.sha256" ] || fail "no review: $demo/spec.sha256 does not exist"
     sha256sum --quiet -c "$demo/spec.sha256" ||
       fail "Spec.lean or Samples.lean changed after the review"
-    lean build "$ns.Verify" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+    lean build "$ns.Verify" "$ns.Samples" Examples.Host >"$work/build.log" 2>&1 ||
       fail "build: $(grep -m5 error "$work/build.log")"
     ! grep -q "declaration uses 'sorry'" "$work/build.log" || fail "build: a proof uses sorry"
     cat >"$work/Entry.lean" <<EOF
@@ -137,7 +136,7 @@ EOF
     run_samples
     ;;
   run)
-    lean build "$ns.Module" "$ns.Spec" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+    lean build "$ns.Module" "$ns.Spec" "$ns.Samples" Examples.Host >"$work/build.log" 2>&1 ||
       fail "build: $(grep -m5 error "$work/build.log")"
     emit
     run_samples
