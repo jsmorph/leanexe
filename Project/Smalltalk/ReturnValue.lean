@@ -54,7 +54,7 @@ theorem returnCallerReady_register {s : Array UInt64} {cap : Nat} {h caller valu
       (show (7 : UInt64).toNat < 8 by decide) bound),
     read_write _ _ _ _ (register_bound allocated (show (2 : UInt64).toNat < 24 by decide))]
 
-/-- Delivery resumes the caller without advancing its PC, and adds exactly
+/-- Delivery sets current to the caller without advancing its PC, and adds exactly
 one fresh operand link containing the returned value above its old stack. -/
 theorem returnCallerReady_delivers {s : Array UInt64} {cap : Nat} {h caller value : UInt64}
     {rest : List UInt64} (shape : Shape s cap) (free : FreeList.Valid s cap (h :: rest))

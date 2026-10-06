@@ -272,3 +272,29 @@ The first heap proof needed an explicit type on an unused non-mark parameter;
 after that annotation, heap and reservation checked without further changes.
 Initialization and instruction preservation of `Heap.Valid`, and the
 composition of reservation with the return and allocation proofs, remain.
+
+## Returns with possible collection (2026-10-06)
+
+`prefix_reachable` proves reachability of each frame in the represented
+unwind prefix. Its target's caller is reachable through field 4 when nonzero.
+`reserve_prefix` therefore transfers the same prefix through actual
+reservation, including a possible collection or out-of-memory result.
+`returnReserved_delivers` combines that transfer with concrete unwind and
+delivery. It either reports error 9 before unwinding or delivers the value
+in a valid new operand link above the caller's original stack, with unchanged
+caller PC. The complete free list and the requested count supply the new link.
+
+`reserve_zero` proves that a zero-cell request leaves the array unchanged.
+`returnReserved_finished` consequently needs no free-cell assumption.
+`ret_delivers` and `ret_finished` connect these results to the actual public
+return function and its live-target, caller-chain, and stack checks. They
+cover the same selected-target operation for local and nonlocal returns.
+The represented-chain and valid-heap hypotheses remain explicit; the VM has
+not yet been proved to establish them for every execution.
+
+The first composition check hit a heartbeat limit in a broad contradiction
+search over the expanded runtime state. A separately checked `free_head`
+lemma derives a nonempty free list from one available cell and removes that
+elaboration boundary. The parameter name `prefix` also failed because it is
+a Lean keyword; the declarations use `unwindPath`. No limits were raised and
+no executable definitions changed.
