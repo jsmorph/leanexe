@@ -8,7 +8,7 @@ a bounded row are bounded. -/
 namespace Examples.Drone
 
 open Examples.Drone Arithmetic Selection Timing Optimality
-open Project.IR (build_get)
+open LeanExe.IR (build_get)
 
 /-- Element `state` of the first row. -/
 def initialChoice (state : UInt64) : Choice :=

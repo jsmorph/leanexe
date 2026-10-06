@@ -26199,7 +26199,7 @@ branch's Euler and drone records move into their examples, and `deslop.md` becom
   to `docs/design.md`.
 - [x] Step 2: move each example into `Examples/<Name>/`, with its cases in its own module and
   its run records beside it.
-- [ ] Step 3: move the system into `LeanExe/`, rename the `Project` namespace to `LeanExe`, and
+- [x] Step 3: move the system into `LeanExe/`, rename the `Project` namespace to `LeanExe`, and
   move the dialect's modules into `LeanExe/Dialect/`.
 
 Each step ends with a full check whose byte comparison must find every module unchanged.
@@ -26229,3 +26229,20 @@ Step 2 passed the full check: the build with no `sorry`, the same bytes for the 
 module cases, the release-count, depth-guard, and chunk cases, LTG, 474 WGSL cases on each of two
 drivers, the GPT driver's 2,733 cases, the drone driver's 1,975 calls and 116 terrains, the GPT-2
 native comparison of 15 steps, and `tools/demo-check treeLookup`.
+
+Step 3 moved the system from `Project/` into `LeanExe/` and renamed the namespace `Project` to
+`LeanExe`, so that `Project.IR.Stmt.fold_spec` is now `LeanExe.IR.Stmt.fold_spec`.  The modules a
+program may import, `Loop`, `Build`, `RepeatWhile`, and `Float32` with `nearest`, are now in
+`LeanExe/Dialect/`, and the raw-bit wrappers `Float64` and `Signed32`, which only the float proofs
+use, are in `LeanExe/ProofKit/`.  `Project.lean` merged into `LeanExe.lean`, the library `Project`
+is gone, and the package is named `leanexe`, in the lakefile and the manifest.  The two
+sub-namespaces of the old `Project` and of `LeanExe` did not overlap, and the rename needed no
+change to any proof.
+
+Step 3 passed the full check: the build with no `sorry`, the same bytes for the 35 modules, 16,039
+module cases, the release-count, depth-guard, and chunk cases, LTG, 474 WGSL cases on each of two
+drivers, the GPT driver's 2,733 cases, the drone driver's 1,975 calls and 116 terrains, the GPT-2
+native comparison, and `tools/demo-check treeLookup`.  Four LTG entries listed the dialect's old
+module names, which a stale build of those modules still satisfied until the check imported both
+the old and the new module.  The stale builds of the old module names were then deleted, and every
+import in the repository names an existing source file.

@@ -6,7 +6,7 @@ import Examples.Prng.Verify
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 theorem negInfs_implements :
     Implements gpt.module 45 Examples.Gpt.negInfs := by

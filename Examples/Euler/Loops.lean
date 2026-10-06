@@ -5,7 +5,7 @@ definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 /-- One step of `accepted`'s loop. -/
 def acceptedStep (grid : Array Cell) (i : UInt64) (ok : Bool) : Bool :=

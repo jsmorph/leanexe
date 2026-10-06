@@ -1,5 +1,5 @@
-import LeanExe.Build
-import LeanExe.Loop
+import LeanExe.Dialect.Build
+import LeanExe.Dialect.Loop
 
 /-!
 Main's Demo 12 in this dialect: an array of at most eight words without its first zero, in order,

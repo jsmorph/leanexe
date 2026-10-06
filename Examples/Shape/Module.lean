@@ -1,5 +1,5 @@
 import Examples.Shape.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Shape
 

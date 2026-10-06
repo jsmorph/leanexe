@@ -1,11 +1,11 @@
 import Examples.ScaledHypot.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.ScaledHypot
 
-open Project.Pipeline Project.IR Project.ProofKit
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 /-- `scaledHypot` with its three arguments as one tuple. -/
 def scaledHypotTuple (x : Float × Float × Float) : Float :=
@@ -20,7 +20,7 @@ theorem scaledHypot_implements :
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [scaledHypot.ir, Expr.evalResults, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
-        Project.IR.Stmt.scratchWidth, State.get, F64Op.apply, F64UnOp.apply, Scalar.values,
+        LeanExe.IR.Stmt.scratchWidth, State.get, F64Op.apply, F64UnOp.apply, Scalar.values,
         scaledHypotTuple, Examples.ScaledHypot.scaledHypot, F64Bits.toBits_add,
         F64Bits.toBits_mul, F64Bits.toBits_div, F64Bits.toBits_sqrt]⟩) fun _ _ h => h
 

@@ -7,8 +7,8 @@ the step theorem the words, the embedding, the layers, and the scores.
 
 namespace Examples.Gpt32
 
-open Project.WGSL Examples.Gpt32
-open Project.IR (build_size)
+open LeanExe.WGSL Examples.Gpt32
+open LeanExe.IR (build_size)
 
 theorem embed32_size (wte wpe : Array Float32) (row p d : UInt64) :
     (embed32 wte wpe row p d).size = d.toNat := build_size _ _

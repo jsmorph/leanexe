@@ -1,5 +1,5 @@
-import LeanExe.Build
-import LeanExe.Loop
+import LeanExe.Dialect.Build
+import LeanExe.Dialect.Loop
 
 /-!
 Arrays of records.  An array of a structure, sum, or enumeration is stored as its elements'

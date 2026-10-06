@@ -1,5 +1,5 @@
 import Examples.Gpt32.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Gpt32
 

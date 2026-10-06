@@ -1,12 +1,12 @@
 import Examples.Euler.Faces
-import Project.IR.OneArray
+import LeanExe.IR.OneArray
 
 /-! The compiled reconstruction kernels of the reconstructed Euler solver compute their Lean
 definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 instance : Flat Faces (UInt64 × Conserved × Conserved × Float) :=
   ⟨fun f => (f.status, f.left, f.right, f.factor)⟩

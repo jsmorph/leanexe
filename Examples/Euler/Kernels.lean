@@ -1,8 +1,8 @@
 import Examples.Euler.Module
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.Words
-import Project.ProofKit.F64Bits
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.Words
+import LeanExe.ProofKit.F64Bits
 import Examples.Euler.Words
 
 /-! The compiled scalar functions of the first-order Euler solver compute their Lean
@@ -11,7 +11,7 @@ when the Lean value is `true`. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit Examples.Euler
 
 instance : Flat Conserved (Float × Float × Float × Float) :=
   ⟨fun q => (q.density, q.mx, q.my, q.energy)⟩

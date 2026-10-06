@@ -1,9 +1,9 @@
 import Examples.Bools.Module
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.Loop
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.Loop
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 /-! The compiled `Bool` functions compute their Lean definitions.  A `Bool` is the word of its
 constructor index (`Flat Bool UInt64`), so each theorem states that the result word is 1 exactly
@@ -11,7 +11,7 @@ when the Lean function returns `true`. -/
 
 namespace Examples.Bools
 
-open Project.Pipeline Project.IR Project.ProofKit Examples.Bools
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit Examples.Bools
 
 def bothTuple : Bool × Bool → Bool := fun (a, b) => both a b
 def eitherTuple : Bool × Bool → Bool := fun (a, b) => either a b

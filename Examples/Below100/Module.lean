@@ -1,5 +1,5 @@
 import Examples.Below100.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Below100
 

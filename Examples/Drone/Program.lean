@@ -1,6 +1,6 @@
-import LeanExe.Build
-import LeanExe.Loop
-import LeanExe.RepeatWhile
+import LeanExe.Dialect.Build
+import LeanExe.Dialect.Loop
+import LeanExe.Dialect.RepeatWhile
 
 /-!
 An ideal point-mass autopilot with an exact shortest-path search over a finite graph of motion

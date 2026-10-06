@@ -1,5 +1,5 @@
 import Examples.Gpt.Bytes
-import Project.Pipeline.FileBytes
+import LeanExe.Pipeline.FileBytes
 
 /-! Checked after `Emit.lean` writes `build/gpt/gpt.wasm`, with
 `lake env lean Examples/Gpt/File.lean`: the file holds the bytes of `gpt_bytes`.  The

@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 namespace Examples.Clob
 

@@ -1,5 +1,5 @@
 import Examples.Gpt32.Specs
-import Project.WGSL.Parse
+import LeanExe.WGSL.Parse
 
 /-!
 Runs the programs of `Examples/Gpt32/HostProgram.lean` on `leanexe-webgpu-host session`.  The driver
@@ -11,7 +11,7 @@ on.  It chooses each token with `greedy32`.
 
 namespace Examples.Gpt32
 
-open Examples.Gpt32 Project.WGSL
+open Examples.Gpt32 LeanExe.WGSL
 
 /-- The WGSL text of kernel `k`, after checking that the parser reads it back as the kernel, as
 `tools/EmitWgsl.lean` does. -/

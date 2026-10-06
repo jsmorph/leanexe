@@ -6,7 +6,7 @@ temporaries, proved with the `Live` invariant. -/
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 /-- `mlp` with its nine arguments as one tuple. -/
 def mlpTuple (x : Array Float × Array Float × Array Float × Array Float × Array Float × UInt64 × UInt64 ×

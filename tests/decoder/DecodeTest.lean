@@ -1,7 +1,7 @@
 import Lean.Data.Json
 import Interpreter.Wasm.Decoder.Wat
-import Project.Encoding
-import Project.Encoding.Decode
+import LeanExe.Encoding
+import LeanExe.Encoding.Decode
 
 /-!
 Runs `Wasm.Encoding.decode` over the modules that `wasm-tools json-from-wast`

@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Main's Demo 2 in this dialect: the input `#[query, key1, value1, …, key10, value10]` of 21 words

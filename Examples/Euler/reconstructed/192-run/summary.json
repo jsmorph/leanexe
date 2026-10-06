@@ -21,10 +21,10 @@
   "reconstructionTrials": "8",
   "format": "Little-endian UInt64 words: status, time bits, nx, ny, density bits, pressure bits",
   "execution": "One call to the complete solve export in one local Wasmtime process",
-  "specification": "Project.EulerReconstructed.Spec.solve_exact",
-  "successTheorem": "Project.EulerReconstructed.Spec.solve_success",
-  "artifactExactTheorem": "Project.EulerReconstructed.Artifact.artifact_solve_exact",
-  "artifactSuccessTheorem": "Project.EulerReconstructed.Artifact.artifact_solve_success",
+  "specification": "LeanExe.EulerReconstructed.Spec.solve_exact",
+  "successTheorem": "LeanExe.EulerReconstructed.Spec.solve_success",
+  "artifactExactTheorem": "LeanExe.EulerReconstructed.Artifact.artifact_solve_exact",
+  "artifactSuccessTheorem": "LeanExe.EulerReconstructed.Artifact.artifact_solve_success",
   "extrema": {
     "density": [
       0.138,

@@ -4,7 +4,7 @@ import Examples.Gpt.Verify
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 /-- `firstRow` with its two arguments as one tuple. -/
 def firstRowTuple (x : Array Float × UInt64) : Array Float :=
@@ -905,7 +905,7 @@ theorem appendBlock_implements : Implements gpt.module 38 appendBlockTuple := by
     hCap
   change heap.Owned initial pc (cache.map Float.toBits) at hCs
   change heap.Borrowed initial ps (s.map Float.toBits) at hSs
-  have hMoves : ∀ r, Apart initial [pc] r → regionsDisjoint r (Project.Pipeline.block initial pc) :=
+  have hMoves : ∀ r, Apart initial [pc] r → regionsDisjoint r (LeanExe.Pipeline.block initial pc) :=
     fun r h => h pc (List.mem_singleton_self _)
   have hApart := hMoves _ (hSep _ (List.mem_singleton_self _))
   have hMemory32 : gpt.module.memIs64 = false := rfl

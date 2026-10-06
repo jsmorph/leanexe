@@ -1,5 +1,5 @@
 import Examples.Binary32.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Binary32
 

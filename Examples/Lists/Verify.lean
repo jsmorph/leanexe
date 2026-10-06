@@ -1,15 +1,15 @@
 import Examples.Lists.Module
-import Project.IR.Correct
-import Project.IR.ListFold
-import Project.IR.Loop
-import Project.IR.Record
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.ListFold
+import LeanExe.IR.Loop
+import LeanExe.IR.Record
+import LeanExe.Encoding.RoundTrip
 
 /-! The list module's compiled functions compute their Lean definitions exactly. -/
 
 namespace Examples.Lists
 
-open Wasm Project.Pipeline Project.IR Project.Runtime
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime
 
 theorem listSum_implements :
     Implements lists.module 2 Examples.Lists.listSum := by

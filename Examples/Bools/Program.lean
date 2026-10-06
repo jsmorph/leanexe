@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Truth values as data: `Bool` parameters, results, record fields, and loop states, built with

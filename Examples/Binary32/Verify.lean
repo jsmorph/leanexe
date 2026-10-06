@@ -1,16 +1,16 @@
 import Examples.Binary32.Module
-import Project.IR.Correct
-import Project.IR.Loop
-import Project.IR.Read
-import Project.IR.Build
-import Project.IR.Run
-import Project.ProofKit.F32Bits
-import Project.IR.DenoteStmt
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Loop
+import LeanExe.IR.Read
+import LeanExe.IR.Build
+import LeanExe.IR.Run
+import LeanExe.ProofKit.F32Bits
+import LeanExe.IR.DenoteStmt
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Binary32
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Binary32
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Binary32
 
 /-- `axpy32` with its three arguments as one tuple. -/
 def axpy32Tuple (x : Float32 × Float32 × Float32) : Float32 := axpy32 x.1 x.2.1 x.2.2
@@ -29,7 +29,7 @@ theorem axpy32_implements : Implements binary32.module 2 axpy32Tuple :=
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [binary32.axpy32.ir, Expr.evalResults, Func.state, Func.locals, Func.width,
-        Func.scratch, Expr.eval, Expr.scratchWidth, Project.IR.Stmt.scratchWidth, State.get, F32Op.apply,
+        Func.scratch, Expr.eval, Expr.scratchWidth, LeanExe.IR.Stmt.scratchWidth, State.get, F32Op.apply,
         Scalar.values, axpy32Tuple, axpy32, F32Bits.toBits_add, F32Bits.toBits_mul]⟩)
       fun _ _ h => h
 
@@ -41,7 +41,7 @@ theorem hypot32_implements : Implements binary32.module 3 hypot32Pair :=
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [binary32.hypot32.ir, Expr.evalResults, Func.state, Func.locals, Func.width,
-        Func.scratch, Expr.eval, Expr.scratchWidth, Project.IR.Stmt.scratchWidth, State.get, F32Op.apply,
+        Func.scratch, Expr.eval, Expr.scratchWidth, LeanExe.IR.Stmt.scratchWidth, State.get, F32Op.apply,
         F32UnOp.apply, Scalar.values, hypot32Pair, hypot32, F32Bits.toBits_add,
         F32Bits.toBits_mul, F32Bits.toBits_sqrt]⟩)
       fun _ _ h => h
@@ -54,7 +54,7 @@ theorem ratio32_implements : Implements binary32.module 4 ratio32Tuple :=
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [binary32.ratio32.ir, Expr.evalResults, Func.state, Func.locals, Func.width,
-        Func.scratch, Expr.eval, Expr.scratchWidth, Project.IR.Stmt.scratchWidth, State.get, F32Op.apply,
+        Func.scratch, Expr.eval, Expr.scratchWidth, LeanExe.IR.Stmt.scratchWidth, State.get, F32Op.apply,
         Scalar.values, ratio32Tuple, ratio32, F32Bits.toBits_sub, F32Bits.toBits_div]⟩)
       fun _ _ h => h
 

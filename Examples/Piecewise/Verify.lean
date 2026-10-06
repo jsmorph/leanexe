@@ -1,11 +1,11 @@
 import Examples.Piecewise.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Piecewise
 
-open Project.Pipeline Project.IR Project.ProofKit
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 /-- `piecewise` with its three arguments as one tuple. -/
 def piecewiseTuple (x : Float × Float × Float) : Float :=

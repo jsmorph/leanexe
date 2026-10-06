@@ -1,6 +1,6 @@
 import Lean
-import Project.Encoding
-import Project.Encoding.Decode
+import LeanExe.Encoding
+import LeanExe.Encoding.Decode
 
 open Lean
 

@@ -4,7 +4,7 @@ import Examples.Euler.Arrays
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 /-- `eval_ir` over an abstract state: the facts about its locals stay as hypotheses. -/
 macro "eval_frame" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>

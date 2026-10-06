@@ -1,16 +1,16 @@
 import Examples.Lookup.Module
 import Examples.Lookup.Spec
-import Project.IR.ArrayLiteral
-import Project.IR.Correct
-import Project.IR.Loop
-import Project.IR.Words
-import Project.Encoding.RoundTrip
+import LeanExe.IR.ArrayLiteral
+import LeanExe.IR.Correct
+import LeanExe.IR.Loop
+import LeanExe.IR.Words
+import LeanExe.Encoding.RoundTrip
 
 /-! The bytes of `lookup.module` compute the specification `expected`. -/
 
 namespace Examples.Lookup
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Lookup
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Lookup
 
 /-- One step of the program's loop over the ten pairs. -/
 def lookupStep (xs : Array UInt64) (query k : UInt64) (s : UInt64 × UInt64) : UInt64 × UInt64 :=

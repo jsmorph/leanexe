@@ -1,16 +1,16 @@
 import Examples.Gpt.Module
-import Project.IR.Correct
-import Project.IR.Loop
-import Project.IR.Read
-import Project.IR.Build
-import Project.IR.Run
-import Project.IR.Call
-import Project.IR.Release
-import Project.IR.Live
+import LeanExe.IR.Correct
+import LeanExe.IR.Loop
+import LeanExe.IR.Read
+import LeanExe.IR.Build
+import LeanExe.IR.Run
+import LeanExe.IR.Call
+import LeanExe.IR.Release
+import LeanExe.IR.Live
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 /-- `dot` with its two arguments as one pair. -/
 def dotTuple (x : Array Float × Array Float) : Float :=

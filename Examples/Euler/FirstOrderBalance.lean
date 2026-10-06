@@ -6,7 +6,7 @@ that returns status 0. -/
 
 namespace Examples.Euler
 
-open Examples.Euler Project.ProofKit
+open Examples.Euler LeanExe.ProofKit
 
 /-- The Rusanov flux between two states. -/
 def stateFlux (a b : Conserved) : Flux :=

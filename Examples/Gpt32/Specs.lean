@@ -1,6 +1,6 @@
 import Examples.Gpt32.Module
 import Examples.Gpt32.HostProgram
-import Project.WGSL.Build
+import LeanExe.WGSL.Build
 
 /-!
 The WGSL kernel of each binary32 GPT-2 function, read from its compiled IR: `specOf` takes the
@@ -9,19 +9,19 @@ build apart into the parts a `Spec` names, and `Spec.module` translates it.
 
 namespace Examples.Gpt32
 
-open Project.IR Project.WGSL
+open LeanExe.IR LeanExe.WGSL
 
 /-- The destination, limit, and index locals, the count, the per-element statements, and the
 element of a compiled build. -/
-def buildParts? : Project.IR.Stmt →
-    Option (Nat × Nat × Nat × Project.IR.Expr .u64 × Project.IR.Stmt × Project.IR.Expr .u64)
+def buildParts? : LeanExe.IR.Stmt →
+    Option (Nat × Nat × Nat × LeanExe.IR.Expr .u64 × LeanExe.IR.Stmt × LeanExe.IR.Expr .u64)
   | .seq (.assign (type := .u64) limit count) (.seq (.ite _ .skip .abort) (.seq (.call 0 _ [dst])
       (.seq (.store _ _) (.seq (.assign index _) (.while _ (.seq body (.seq (.store _ element) _))))))) =>
       some (dst, limit, index, count, body, element)
   | _ => none
 
 /-- The locals that `body` assigns, with their types in `f`. -/
-def assignedVars (f : Func) (body : Project.IR.Stmt) : List (Nat × ScalarType) :=
+def assignedVars (f : Func) (body : LeanExe.IR.Stmt) : List (Nat × ScalarType) :=
   body.writes.eraseDups.map fun j => (j, (f.vars[j - f.params.length]?).getD .u64)
 
 /-- The kernel specification of a compiled build whose count is a parameter or the size of an

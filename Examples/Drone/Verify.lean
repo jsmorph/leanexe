@@ -1,13 +1,13 @@
 import Examples.Drone.Finish
 import Examples.Drone.WholeFlight
-import Project.Encoding.RoundTrip
+import LeanExe.Encoding.RoundTrip
 
 /-! The encoded bytes of the drone module decode to a module whose compiled functions compute
 their Lean definitions. -/
 
 namespace Examples.Drone
 
-open Wasm Project.Pipeline Project.IR Examples.Drone
+open Wasm LeanExe.Pipeline LeanExe.IR Examples.Drone
 
 /-- `encode` succeeds on `drone.module`, and its bytes decode to `drone.module`. -/
 theorem drone_round_trip : ∃ bytes, Wasm.Encoding.encode drone.module = .ok bytes ∧

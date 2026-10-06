@@ -6,7 +6,7 @@ definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 def cellUpperTuple : Float × Float × Float × Float → Checked :=
   fun (rho, mx, my, energy) => cellUpper rho mx my energy

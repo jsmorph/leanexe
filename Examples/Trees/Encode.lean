@@ -1,9 +1,9 @@
 import Examples.Trees.Program
-import Project.Pipeline.Slotted
+import LeanExe.Pipeline.Slotted
 
 namespace Examples.Trees
 
-open Wasm Examples.Trees Project.Pipeline
+open Wasm Examples.Trees LeanExe.Pipeline
 
 /-- `KeyTree` as records: `leaf` is the null pointer, and `node l k r` a record of three slots,
 the pointer to `l`, the word `k`, and the pointer to `r`. -/

@@ -1,21 +1,21 @@
 import Examples.Shape.Module
 import Examples.Shape.Flat
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.Call
-import Project.IR.Live
-import Project.IR.Loop
-import Project.IR.Read
-import Project.ProofKit.F64Bits
-import Project.ProofKit.F64Convert
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.Call
+import LeanExe.IR.Live
+import LeanExe.IR.Loop
+import LeanExe.IR.Read
+import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Convert
+import LeanExe.Encoding.RoundTrip
 
 /-! The shape module's compiled functions compute their Lean definitions exactly.  The six
 functions of words and floats keep the store; `totalArea` reads its array of shapes. -/
 
 namespace Examples.Shape
 
-open Wasm Project.Pipeline Project.IR Project.ProofKit Examples.Shape
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit Examples.Shape
 
 theorem zero_toBits : (0 : Float).toBits = 0 := by decide +kernel
 theorem zero_toBits' : (0.0 : Float).toBits = 0 := by decide +kernel

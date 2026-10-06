@@ -7,7 +7,7 @@ equals, and a row built by `LeanExe.build` holds `best` of each target. -/
 namespace Examples.Drone
 
 open Examples.Drone Optimality
-open Project.IR (loop_induction build_size build_get)
+open LeanExe.IR (loop_induction build_size build_get)
 
 /-- One step of the loop over the sources in `best`. -/
 def bestStep (r0 r1 : UInt64) (table : Array Choice) (base target source : UInt64)

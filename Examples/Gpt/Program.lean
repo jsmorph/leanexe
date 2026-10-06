@@ -1,5 +1,5 @@
-import LeanExe.Loop
-import LeanExe.Build
+import LeanExe.Dialect.Loop
+import LeanExe.Dialect.Build
 import Examples.Prng.Program
 
 namespace Examples.Gpt

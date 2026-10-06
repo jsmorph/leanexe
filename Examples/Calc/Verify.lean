@@ -1,19 +1,19 @@
 import Examples.Calc.Module
 import Examples.Calc.Flat
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.Call
-import Project.IR.Live
-import Project.IR.Loop
-import Project.IR.Read
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.Call
+import LeanExe.IR.Live
+import LeanExe.IR.Loop
+import LeanExe.IR.Read
+import LeanExe.Encoding.RoundTrip
 
 /-! The calculator's compiled functions compute their Lean definitions exactly.  The five
 functions of words keep the store; `calcRun` reads its array of instructions. -/
 
 namespace Examples.Calc
 
-open Wasm Project.Pipeline Project.IR Examples.Calc
+open Wasm LeanExe.Pipeline LeanExe.IR Examples.Calc
 
 /-- `Op.apply` with its three arguments as one tuple. -/
 def applyTuple (x : Op × UInt64 × UInt64) : UInt64 := x.1.apply x.2.1 x.2.2

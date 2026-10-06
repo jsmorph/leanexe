@@ -1,6 +1,6 @@
-import LeanExe.Build
-import LeanExe.Loop
-import LeanExe.RepeatWhile
+import LeanExe.Dialect.Build
+import LeanExe.Dialect.Loop
+import LeanExe.Dialect.RepeatWhile
 
 /-!
 A first-order finite-volume solver for the two-dimensional Euler equations, on the four-quadrant

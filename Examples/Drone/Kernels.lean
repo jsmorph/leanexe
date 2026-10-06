@@ -1,15 +1,15 @@
 import Examples.Drone.Module
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.Words
-import Project.IR.Loop
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.Words
+import LeanExe.IR.Loop
 import Examples.Drone.Sqrt
 
 /-! The compiled scalar functions of the drone planner compute their Lean definitions. -/
 
 namespace Examples.Drone
 
-open Wasm Project.Pipeline Project.IR Examples.Drone
+open Wasm LeanExe.Pipeline LeanExe.IR Examples.Drone
 
 def distanceTuple : UInt64 × UInt64 → UInt64 := fun (a, b) => distance a b
 

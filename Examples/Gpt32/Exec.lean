@@ -1,6 +1,6 @@
 import Examples.Gpt32.HostProgram
 import Examples.Gpt32.Proofs
-import Project.IR.Combinators
+import LeanExe.IR.Combinators
 
 /-!
 The meaning of the programs of `Examples/Gpt32/HostProgram.lean`.
@@ -21,8 +21,8 @@ its inputs.
 
 namespace Examples.Gpt32
 
-open Project.WGSL Examples.Gpt32
-open Project.IR (build_size)
+open LeanExe.WGSL Examples.Gpt32
+open LeanExe.IR (build_size)
 
 abbrev HostStore := Buf → Option (Array UInt32)
 

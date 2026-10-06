@@ -24,20 +24,22 @@ compile and run a program, the theorems and the rules that prove them, the tests
 
 | Path | Contents |
 |---|---|
-| [`LeanExe/`](LeanExe/) | The dialect's library: the combinators `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`, and the binary32 and binary64 wrappers the float proofs use. |
-| [`Project/Compiler/`](Project/Compiler/) | The compiler and the `leanexe_compile` command. |
-| [`Project/IR/`](Project/IR/) | The IR, `compile`, the statement and template rules, and the `Live` invariant of composite bodies. |
-| [`Project/Runtime/`](Project/Runtime/) | The code of the runtime functions `alloc` and `release`, and the free-list layout. |
-| [`Project/Pipeline/`](Project/Pipeline/) | `Implements` and `ImplementsA`, the runtime heap invariant, the allocation and release specifications, the memory budget, and `Emit.lean`. |
-| [`Project/Encoding/`](Project/Encoding/) | The encoder, the decoder, `decode_encode`, and the testsuite runner. |
-| [`Project/ProofKit/`](Project/ProofKit/) | General lemmas: memory, arrays, allocation, and binary32 and binary64 arithmetic and enclosures. |
-| [`Examples/`](Examples/) | One directory per example: the program, the specification where there is one, the module, the proofs, the module cases, and the request, README, and run records where there are any.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
-| [`Project/WGSL/`](Project/WGSL/) | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
+| [`LeanExe/`](LeanExe/) | The system, the library `LeanExe`. |
+| [`LeanExe/Dialect/`](LeanExe/Dialect/) | The modules a program may import: the combinators `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`, and `LeanExe.Float32.nearest`. |
+| [`LeanExe/Compiler/`](LeanExe/Compiler/) | The compiler and the `leanexe_compile` command. |
+| [`LeanExe/IR/`](LeanExe/IR/) | The IR, `compile`, the statement and template rules, and the `Live` invariant of composite bodies. |
+| [`LeanExe/Runtime/`](LeanExe/Runtime/) | The code of the runtime functions `alloc` and `release`, and the free-list layout. |
+| [`LeanExe/Pipeline/`](LeanExe/Pipeline/) | `Implements` and `ImplementsA`, the runtime heap invariant, the allocation and release specifications, and the memory budget. |
+| [`LeanExe/Encoding/`](LeanExe/Encoding/) | The encoder, the decoder, and `decode_encode`. |
+| [`LeanExe/ProofKit/`](LeanExe/ProofKit/) | General lemmas: memory, arrays, allocation, binary32 and binary64 arithmetic and enclosures, and the raw-bit float wrappers that the float proofs state their results about. |
+| [`LeanExe/WGSL/`](LeanExe/WGSL/) | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
+| [`Examples/`](Examples/) | The library `Examples`: one directory per example, with the program, the specification where there is one, the module, the proofs, the module cases, and the request, README, and run records where there are any.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
+| [`docs/`](docs/) | [The user manual](docs/manual.md) and [the design record](docs/design.md). |
 | [`ltg/`](ltg/) | The LTG knowledge base and its checker, `Check.lean`. |
 | [`.claude/skills/verified-executable/`](.claude/skills/verified-executable/SKILL.md) | The skill that takes a request in English to a program and a theorem about its bytes. |
-| [`tools/`](tools/) | The resource-limited Lean runner, the Wasmtime and WebGPU hosts and their build scripts, the checker `demo-check`, and the Euler and GPT-2 command-line tools. |
-| [`tests/`](tests/) | Module, GPT, drone, PRNG, WGSL, and GPT-2 tests, and the WebGPU pages of [`tests/web/`](tests/web/). |
-| [`data/`](data/), [`paper/`](paper/) | Records of runs and reports. |
+| [`tools/`](tools/) | The resource-limited Lean runner, `Emit.lean` and `EmitWgsl.lean`, which write modules and kernels, the Wasmtime and WebGPU hosts and their build scripts, the checker `demo-check`, and the Euler and GPT-2 command-line tools. |
+| [`tests/`](tests/) | Module, decoder, GPT, drone, PRNG, WGSL, and GPT-2 tests, and the WebGPU pages of [`tests/web/`](tests/web/). |
+| [`data/`](data/), [`paper/`](paper/) | Main's records of runs, and the reports. |
 
 ## Commands
 

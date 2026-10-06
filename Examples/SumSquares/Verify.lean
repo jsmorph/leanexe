@@ -1,11 +1,11 @@
 import Examples.SumSquares.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.SumSquares
 
-open Project.Pipeline Project.IR Project.ProofKit
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 /-- One step of the compiled fold on bit patterns. -/
 def step (a e : UInt64) : UInt64 := Wasm.IEEE64.add a (Wasm.IEEE64.mul e e)

@@ -1,7 +1,7 @@
 import Examples.Prng.Module
-import Project.IR.Correct
-import Project.IR.Run
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.Encoding.RoundTrip
 
 /-! The compiled SplitMix64 step and the conversion to `[0, 1)` compute their Lean
 definitions exactly and keep the store.  The theorems hold in any module whose function
@@ -10,7 +10,7 @@ the same proofs. -/
 
 namespace Examples.Prng
 
-open Project.Pipeline Project.IR Project.ProofKit Examples.Prng
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit Examples.Prng
 
 /-- `splitMix` keeps the store and returns its state and word in any module whose
 function `i` is its compiled form. -/

@@ -30,7 +30,7 @@ capitalized, and every file of the run is in `Examples/Name/`.
 | `request.txt` | The request, as the user wrote it. |
 | `Spec.lean` | `Examples.Name.expected` in ordinary Lean.  Mathlib is allowed. |
 | `Samples.lean` | `Examples.Name.samples : List α`, core Lean only. |
-| `Program.lean` | The program in `Examples.Name`, with entry `compute`.  It imports only the dialect's modules. |
+| `Program.lean` | The program in `Examples.Name`, with entry `compute`.  It imports only the modules of `LeanExe/Dialect/`. |
 | `Module.lean` | `leanexe_compile NAME := [f, …, compute]` or `leanexe_compile NAME := compute`. |
 | `Verify.lean` | `compute_eq`, the `Implements` theorems, and `NAME_bytes`. |
 | `Cases.lean` | The module cases, printed from the samples. |

@@ -1,17 +1,17 @@
 import Examples.Clob.Module
-import Project.IR.Correct
-import Project.IR.Loop
-import Project.IR.Read
-import Project.IR.Build
-import Project.IR.Update
-import Project.IR.Call
-import Project.IR.ArrayLoop
-import Project.IR.Tuple
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Loop
+import LeanExe.IR.Read
+import LeanExe.IR.Build
+import LeanExe.IR.Update
+import LeanExe.IR.Call
+import LeanExe.IR.ArrayLoop
+import LeanExe.IR.Tuple
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Clob
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 /-- `marketBuy` with its three arguments as one tuple. -/
 def marketBuyTuple (x : Array UInt64 × Array UInt64 × UInt64) : Array UInt64 :=

@@ -1,10 +1,10 @@
-import Project.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Bits
 
 /-! The bits of the Euler solvers' float constants, and words that are not NaN patterns. -/
 
 namespace Examples.Euler
 
-open Project.ProofKit
+open LeanExe.ProofKit
 
 theorem zero_toBits : (0 : Float).toBits = 0 := by decide +kernel
 theorem half_toBits : (0.5 : Float).toBits = 0x3FE0000000000000 := by decide +kernel

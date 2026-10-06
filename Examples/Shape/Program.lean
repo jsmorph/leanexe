@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Shapes as a sum: a type whose constructors carry different fields, words and a float.

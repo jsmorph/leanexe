@@ -1,5 +1,5 @@
 import Examples.Euler.Loops
-import Project.IR.OneArray
+import LeanExe.IR.OneArray
 import Examples.Euler.Spec
 
 /-! The compiled functions of the first-order Euler solver that pass grids by moves compute
@@ -7,7 +7,7 @@ their Lean definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 def finishStepTuple : UInt64 × Float × Moved (Array Cell) → Array Cell :=
   fun (n, ratio, middle) => finishStep n ratio middle.val

@@ -1,6 +1,6 @@
 import Examples.Euler.Program
 import Examples.Euler.Words
-import Project.ProofKit.F64Admissibility
+import LeanExe.ProofKit.F64Admissibility
 import Examples.Euler.Equations.Flux
 
 /-! The solvers' state guard implies an admissible real state: positive density and positive
@@ -9,7 +9,7 @@ computes main's word-level check `F64Admissibility.checked`, whose soundness pro
 
 namespace Examples.Euler
 
-open Examples.Euler Project.ProofKit
+open Examples.Euler LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 
 /-- The real value of a float's bits. -/

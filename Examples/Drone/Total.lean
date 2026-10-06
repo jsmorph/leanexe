@@ -7,7 +7,7 @@ words without a trap and ends with at most `pages` pages.  With the terrain belo
 
 namespace Examples.Drone
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Drone
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Drone
 
 /-- An allocator with no free block and room above `top` for 66 blocks of `tableBytes` bytes,
 with their headers, within `pages` pages. -/

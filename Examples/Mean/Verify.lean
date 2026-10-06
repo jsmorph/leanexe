@@ -1,11 +1,11 @@
 import Examples.Mean.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Convert
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Convert
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Mean
 
-open Wasm Project.Pipeline Project.IR Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 theorem sum_bits (xs : Array Float) :
     (xs.map Float.toBits).foldl IEEE64.add 0 = (xs.foldl (· + ·) 0.0).toBits := by

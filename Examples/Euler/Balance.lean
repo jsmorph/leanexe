@@ -1,8 +1,8 @@
 import Examples.Euler.ReconstructedProgram
 import Examples.Euler.RealState
-import Project.ProofKit.F64AddEnclosure
-import Project.ProofKit.F64MulEnclosure
-import Project.ProofKit.F64AdjacentSigned
+import LeanExe.ProofKit.F64AddEnclosure
+import LeanExe.ProofKit.F64MulEnclosure
+import LeanExe.ProofKit.F64AdjacentSigned
 
 /-! Conservation balance of a sweep.  A sweep updates each component of a cell by
 `u' = u - r (F_right - F_left)` in three rounded operations, and the two cells beside a face
@@ -12,7 +12,7 @@ computed words, is bounded by the gaps between the neighbors of the three rounde
 
 namespace Examples.Euler
 
-open Examples.Euler Project.ProofKit
+open Examples.Euler LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 
 /-- The distance between the neighbors of a word, which bounds the rounding error of an

@@ -1,10 +1,10 @@
 import Examples.Grids.Module
-import Project.IR.Correct
-import Project.IR.Run
-import Project.IR.RecordRead
-import Project.IR.BuildRecord
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Run
+import LeanExe.IR.RecordRead
+import LeanExe.IR.BuildRecord
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 /-! The compiled reads and builds of arrays of records compute their Lean definitions.  An array
 of `Cell` is stored as `flatWords`, nine words for each cell; `flatWords_read` gives each word
@@ -12,7 +12,7 @@ the compiled code reads, and `Stmt.buildRecords_spec` gives the array a record b
 
 namespace Examples.Grids
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Grids
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Grids
 
 instance : Flat Phase UInt64 := ⟨fun | .solid => 0 | .liquid => 1 | .gas => 2⟩
 instance : Flat Conserved (Float × Float × Float × Float) :=

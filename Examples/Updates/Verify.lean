@@ -1,15 +1,15 @@
 import Examples.Updates.Module
-import Project.IR.Correct
-import Project.IR.Build
-import Project.IR.Fold
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.Build
+import LeanExe.IR.Fold
+import LeanExe.Encoding.RoundTrip
 
 /-! The `updates` function `pushCopy` computes its Lean definition exactly: its `push` onto an
 array that is used again copies the array. -/
 
 namespace Examples.Updates
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 /-- A new array and a handed-over array returned together: an owned pair in disjoint blocks,
 and every region apart from the handed-over block keeps its bytes and lies apart from both. -/
