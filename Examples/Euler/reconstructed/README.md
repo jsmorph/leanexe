@@ -35,7 +35,9 @@ at the domain boundaries.  An x sweep precedes a y sweep.
 
 Reconstruction uses componentwise minmod slopes with a common scale factor.  The program tests both
 reconstructed faces for positive density and pressure, halves all four slopes after rejection, and
-uses the cell average if eight attempts fail.  Outward-rounded speed bounds and executable CFL
+uses the cell average if eight attempts fail.  Componentwise minmod alone does not preserve positive
+pressure: `negative_pressure` in [the counterexample](../Equations/ReconstructionCounterexample.lean)
+gives three admissible states whose exact minmod right face has pressure -1/10.  Outward-rounded speed bounds and executable CFL
 checks establish dt times grid size times each physical characteristic-speed magnitude ≤ 1/2 at
 accepted stages.
 
@@ -68,6 +70,8 @@ concern this module and the Lean function `reconstructedSolve`, which packs the 
 | Admissibility and hyperbolicity | Words with status 0 pack a final grid whose states have positive density and pressure in exact arithmetic with γ = 7/5.  At each such state the derivative of the flux in every unit direction has a basis of real eigenvectors with eigenvalues `un - c`, `un`, `un`, and `un + c`. | `reconstructedSolve_hyperbolic` in [the hyperbolicity theorems](../Hyperbolic.lean) |
 | Speeds and CFL | An accepted outward speed bound is at least the exact `\|u\| + c`.  A run with status 0 is a chain of accepted steps.  Each step advances the time by `dt > 0` with a ratio `r ≥ dt · n`, every state of the grid it starts from is admissible, and `r` times the signal speed of every cell in either direction is at most 1/2. | `speedUpper_ge` in [the enclosures](../Enclosure.lean), `reconstructedRun_steps` in [the step theorems](../Cfl.lean) |
 | Conservation | Along that chain, the total of mass, of each momentum, and of energy equals its initial total, minus the boundary fluxes summed over the steps, plus a rounding residual.  The residual is at most a sum of per-update bounds computed from the words of the run. | `reconstructedRun_balance` in [the balance theorems](../ReconstructedBalance.lean) |
+| Conservation with exact boundary fluxes | Along the same chain, each total equals its initial total minus the exact Rusanov flux through the boundary, evaluated at the values of the reconstructed boundary face states with the computed speeds, plus a residual.  The residual is at most the sum of the per-update bounds and of bounds on the computed boundary fluxes, all computed from the words of the run. | `reconstructedRun_reference_balance` in [the boundary theorems](../Reference/Boundary.lean) |
+| Reconstruction accuracy | An accepted reconstruction returns the cell average or the faces of the factor after some number of halvings of 1/2.  Each face differs from `center ∓ factor · slope`, with the exact minmod slope of the three input states, by at most the rounding radii of the offset and of the face plus the factor times the slope's error, and the faces average to the center up to half the sum of their rounding radii.  When the stencil is linear, its subtractions are exact, the limiter accepts 1/2, and the face arithmetic is exact, the faces are exactly `center ∓ delta / 2`. | `reconstruct_accuracy` and `reconstruct_linear` in [the reconstruction theorems](../ReconstructionAccuracy.lean) |
 
 The proofs use only `propext`, `Classical.choice`, and `Quot.sound`.  Execution relies on Wasmtime
 and the hardware implementing the WebAssembly semantics that the proofs model.  The bound of 1,407
