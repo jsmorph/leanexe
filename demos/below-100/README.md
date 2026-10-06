@@ -30,7 +30,7 @@ the empty array, eight words, and nine words.
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.Below100.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Below100.Module Project.Below100.below100.module build/below100/below100.wasm
 build/tools/leanexe-wasmtime-host call build/below100/below100.wasm compute array-u64 \
   array-u64:5,100,99,250,0,7

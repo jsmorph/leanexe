@@ -1,6 +1,6 @@
 # LeanExe Manual
 
-This manual describes the `deslop` branch as of 2026-10-05: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../Project/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The status record](../deslop.md) holds the design, the decisions, and the plan, and [the development journal](../devnotes.md) explains why each part has its present form.
+This manual describes the `deslop` branch as of 2026-10-05: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../Project/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The design record](design.md) holds the design, the decisions, and the plan, and [the development journal](../devnotes.md) explains why each part has its present form.
 
 ## Overview
 
@@ -22,8 +22,8 @@ The compiler is untrusted.  It emits the IR as a Lean definition and the module 
 |---|---|
 | Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound` | Checks every proof.  Proofs may not use `bv_decide` or `native_decide`, which add an axiom that trusts compiled code. |
 | Talos's semantics (`CodeLib`, revision `87e3aa5e` of `github.com/jsmorph/talos`) | Defines what a module does.  `Triple` and `Implements` are statements about Talos runs, and the IR has no semantics of its own. |
-| The binary decoder, `Wasm.Encoding.decode` | Defines what the bytes mean.  [`Project/Encoding/DecodeTest.lean`](../Project/Encoding/DecodeTest.lean) runs it over the official WebAssembly testsuite. |
-| The step from a constant to a file | [`Project/Pipeline/Emit.lean`](../Project/Pipeline/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  Only `gpt_file` proves the contents of a file, and it trusts the elaborator `binary_file%`, which reads the file. |
+| The binary decoder, `Wasm.Encoding.decode` | Defines what the bytes mean.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs it over the official WebAssembly testsuite. |
+| The step from a constant to a file | [`tools/Emit.lean`](../tools/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  Only `gpt_file` proves the contents of a file, and it trusts the elaborator `binary_file%`, which reads the file. |
 
 ### Outside the proofs
 
@@ -108,7 +108,7 @@ A condition is the proposition of an `if` or of `decide`.  The compiler translat
 | A fold accumulator | Yes | No | See [Folds](#folds). |
 | A loop state, array element, or argument | Yes | Yes | |
 
-Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, in which every NaN is the positive quiet NaN `0x7FF8000000000000` or `0x7FC00000`, and Talos's `IEEE64` and `IEEE32` return the same constants.  The compiled forms of negation, absolute value, `min`, and `max` remove the three places where Lean and WebAssembly instructions differ, which [the status record lists](../deslop.md#floating-point).  `Float.ofBits` and `Float32.ofBits` keep a NaN payload in WebAssembly while Lean's model replaces it, so a proof that uses them shows that the argument is not a NaN pattern, as `F64Bits.shiftLeft_52_not_nan` does for `exp`.  Conversions between `Float` and `Float32`, Lean's opaque `Float.exp` and its relatives, and `Float.floor` have no rule.
+Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, in which every NaN is the positive quiet NaN `0x7FF8000000000000` or `0x7FC00000`, and Talos's `IEEE64` and `IEEE32` return the same constants.  The compiled forms of negation, absolute value, `min`, and `max` remove the three places where Lean and WebAssembly instructions differ, which [the design record lists](design.md#floating-point).  `Float.ofBits` and `Float32.ofBits` keep a NaN payload in WebAssembly while Lean's model replaces it, so a proof that uses them shows that the argument is not a NaN pattern, as `F64Bits.shiftLeft_52_not_nan` does for `exp`.  Conversions between `Float` and `Float32`, Lean's opaque `Float.exp` and its relatives, and `Float.floor` have no rule.
 
 ### Bindings
 
@@ -128,7 +128,7 @@ The compiler translates a conditional in one of three ways, according to the typ
 
 A match on an enumeration or a sum compiles to a chain of tests of the constructor index, with the last alternative unguarded.  A match on a pair or a structure binds its fields to their components and needs no test.  A `match` on a word with literal patterns elaborates to a dependent `if`, which the compiler rejects (`unsupported term: dite …`), and `if k = 0 then … else …` replaces it.
 
-In the body of a tail-recursive definition, an `if` or a `match` in tail position becomes a statement-level branch of the loop body.  [The status record](../deslop.md) gives the reason for the restrictions on value-level branches: the compiler never hoists a value's statements out of an `if`, since hoisting a load out of a guarding branch could trap where Lean returns a value.  The calls of scalars that loop bodies and build elements accept are the exception, and a proof covers them through callee theorems that keep the store.
+In the body of a tail-recursive definition, an `if` or a `match` in tail position becomes a statement-level branch of the loop body.  [The design record](design.md) gives the reason for the restrictions on value-level branches: the compiler never hoists a value's statements out of an `if`, since hoisting a load out of a guarding branch could trap where Lean returns a value.  The calls of scalars that loop bodies and build elements accept are the exception, and a proof covers them through callee theorems that keep the store.
 
 ### Calls
 
@@ -333,13 +333,13 @@ The IR and hints are ordinary Lean definitions.  `#eval p.f.ir.body` prints the 
 
 ### Emitting and validating bytes
 
-[`Project/Pipeline/Emit.lean`](../Project/Pipeline/Emit.lean) evaluates a module constant, encodes it, checks that the decoder reads the bytes back as the same module, and writes the file.  Its arguments are the Lean module that defines the constant, the constant, and the output path, whose directory must exist.  The Lean module must be built first, since `lake env lean --run` loads the existing build of every import.
+[`tools/Emit.lean`](../tools/Emit.lean) evaluates a module constant, encodes it, checks that the decoder reads the bytes back as the same module, and writes the file.  Its arguments are the Lean module that defines the constant, the constant, and the output path, whose directory must exist.  The Lean module must be built first, since `lake env lean --run` loads the existing build of every import.
 
 ```sh
 export PATH="$HOME/.elan/bin:$PATH"
 tools/leanrun --timeout 60m lake build Project.Gcd.Module
 mkdir -p build/gcd
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 ```
@@ -401,7 +401,7 @@ A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake e
 
 ### WGSL kernels and the browser pages
 
-Iteration 24 added a GPU path for binary32 kernels.  [`Project/WGSL/`](../Project/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Project/Gpt32/`](../Project/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`Project/WGSL/Emit.lean`](../Project/WGSL/Emit.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
+Iteration 24 added a GPU path for binary32 kernels.  [`Project/WGSL/`](../Project/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Project/Gpt32/`](../Project/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
 
 `uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/.  The kernel page runs the WGSL kernel cases on the browser's WebGPU and compares every word with native Lean's, and the GPT-2 page runs GPT-2 124M in binary32 with its kernels on WebGPU, in `gpt32.wasm`, or on both with their scores compared.  The GPT-2 page needs the weights that `uv run tests/gpt32/generate.py --export` writes, and [the description of the pages](../tests/web/README.md) covers the setup, the controls, and what is proved about the pages.
 
@@ -523,10 +523,10 @@ theorem sweep_implementsA {a : Bool} {cells : Nat} {g : UInt64} (hg : GridBytes 
 
 [`ltg/entries/`](../ltg/entries/) holds 37 entries, each a directory with an `entry.json` and a `README.md`.  `entry.json` names the modules, declarations, premises, and result of a rule or method, and its `annotationKinds` list the hint rules that select it, such as `repeat while` or `tail-recursion-loop`.  A prover finds an entry by searching for a hint's rule name or for a declaration, and the README explains how to apply the entry, with the consumers that serve as worked examples.
 
-[`Project/LTG/Check.lean`](../Project/LTG/Check.lean) imports every module the entries list and reports each listed declaration that does not exist, so a renamed declaration fails the check until its entry changes.  A new rule lemma gets an entry when it is proved.  An entry that is narrow or specific to one program stays as a worked example unless it is invalid, stale, unsafe to disclose to a measured proof task, or a duplicate without a distinct lesson, as [the repository instructions](../AGENTS.md) require.
+[`ltg/Check.lean`](../ltg/Check.lean) imports every module the entries list and reports each listed declaration that does not exist, so a renamed declaration fails the check until its entry changes.  A new rule lemma gets an entry when it is proved.  An entry that is narrow or specific to one program stays as a worked example unless it is invalid, stale, unsafe to disclose to a measured proof task, or a duplicate without a distinct lesson, as [the repository instructions](../AGENTS.md) require.
 
 ```sh
-tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
+tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 ```
 
 ### Axiom checks
@@ -573,7 +573,7 @@ uv run tests/modules/chunks.py
 
 ### WGSL tests
 
-[`tests/wgsl/run.sh`](../tests/wgsl/run.sh) emits the seventeen kernels with [`Project/WGSL/Emit.lean`](../Project/WGSL/Emit.lean), computes the cases of [`tests/wgsl/Cases.lean`](../tests/wgsl/Cases.lean) with native Lean, and runs every case on the SwiftShader and llvmpipe Vulkan drivers with `leanexe-webgpu-host`, comparing each output word.  [`tests/gpt32/native.sh`](../tests/gpt32/native.sh) runs small random GPT-2 models through the Lean driver of [`Project/Gpt32/Generate.lean`](../Project/Gpt32/Generate.lean) on both drivers and compares each step's scores with native Lean's `step32`.  `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on the kernels and compares each step with Hugging Face's float32 model.
+[`tests/wgsl/run.sh`](../tests/wgsl/run.sh) emits the seventeen kernels with [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean), computes the cases of [`tests/wgsl/Cases.lean`](../tests/wgsl/Cases.lean) with native Lean, and runs every case on the SwiftShader and llvmpipe Vulkan drivers with `leanexe-webgpu-host`, comparing each output word.  [`tests/gpt32/native.sh`](../tests/gpt32/native.sh) runs small random GPT-2 models through the Lean driver of [`Project/Gpt32/Generate.lean`](../Project/Gpt32/Generate.lean) on both drivers and compares each step's scores with native Lean's `step32`.  `uv run tests/gpt32/generate.py` generates text with GPT-2 124M on the kernels and compares each step with Hugging Face's float32 model.
 
 ### The full check
 
@@ -586,7 +586,7 @@ uv run tests/modules/chunks.py
 5. The LTG check.
 6. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh) on both Vulkan drivers.
 
-The decoder test, `tools/leanrun --timeout 60m lake env lean --run Project/Encoding/DecodeTest.lean "$(command -v wasm-tools)" build/decode-test`, runs the decoder over the WebAssembly testsuite: each valid module in the supported subset must decode to the reference module and round-trip, and each malformed module must be rejected.  It expects `build/decode-test` to hold the `wasm-tools json-from-wast` output of the testsuite scripts in the CodeLib checkout.  [The encoding notes](../Project/Encoding/README.md) describe the encoder's theorems and the review of its specification against the published WebAssembly rules.
+The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean "$(command -v wasm-tools)" build/decode-test`, runs the decoder over the WebAssembly testsuite: each valid module in the supported subset must decode to the reference module and round-trip, and each malformed module must be rejected.  It expects `build/decode-test` to hold the `wasm-tools json-from-wast` output of the testsuite scripts in the CodeLib checkout.  [The encoding notes](../Project/Encoding/README.md) describe the encoder's theorems and the review of its specification against the published WebAssembly rules.
 
 ## Worked examples
 
@@ -641,4 +641,4 @@ After a target reaches its timeout without a diagnostic, [the repository instruc
 
 [The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, and the handling of LTG entries.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools carry their dependencies as PEP 723 metadata and run with `uv run`.
 
-[The status record](../deslop.md) holds the design, the decisions with their reasons, what is proved and tested, and the plan with its checkboxes.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
+[The design record](design.md) holds the design, the decisions with their reasons, what is proved and tested, and the plan with its checkboxes.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.

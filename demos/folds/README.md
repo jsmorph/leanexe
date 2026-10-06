@@ -28,7 +28,7 @@ in Wasmtime against native Lean for each export, including the empty array and w
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.SumArray.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.SumArray.Module Project.SumArray.folds.module build/folds/folds.wasm
 build/tools/leanexe-wasmtime-host call build/folds/folds.wasm productArray i64 array-u64:2,3,7
 ```

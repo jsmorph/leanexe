@@ -61,7 +61,7 @@ def prepare():
     WGSL.mkdir(parents=True, exist_ok=True)
     for module, namespace, k in KERNELS:
         if not (WGSL / f'{k}.wgsl').is_file():
-            leanrun('lake', 'env', 'lean', '--run', 'Project/WGSL/Emit.lean', module,
+            leanrun('lake', 'env', 'lean', '--run', 'tools/EmitWgsl.lean', module,
                     f'{namespace}.{k}Kernel', str(WGSL / f'{k}.wgsl'))
     if not (WGSL / 'cases.txt').is_file():
         # Reads past the end of a shorter array print panic messages from native Lean, which
@@ -74,7 +74,7 @@ def prepare():
                          (SAMPLER, 'Project.Gpt.Module:Project.Gpt.gpt.module')]:
         if not path.is_file():
             path.parent.mkdir(parents=True, exist_ok=True)
-            leanrun('lake', 'env', 'lean', '--run', 'Project/Pipeline/Emit.lean',
+            leanrun('lake', 'env', 'lean', '--run', 'tools/Emit.lean',
                     *module.split(':'), str(path))
     if not LINES.is_file():
         leanrun('lake', 'build', 'gpt32-lines')

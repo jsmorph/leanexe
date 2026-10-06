@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs every case of tests/wgsl/Cases.lean on SwiftShader and llvmpipe with the kernel text that
-# Project/WGSL/Emit.lean prints, and compares the output words with native Lean's.  The kernels
+# tools/EmitWgsl.lean prints, and compares the output words with native Lean's.  The kernels
 # and the cases stay in the build directory's wgsl/, where tests/web/serve.py serves them to the
 # browser page of tests/wgsl/browser.
 # Usage: tests/wgsl/run.sh [build directory]
@@ -19,7 +19,7 @@ for entry in Project.WGSL.Binary32:Project.WGSL:scale Project.WGSL.Binary32:Proj
     Project.Gpt32.Specs:Project.Gpt32:add Project.Gpt32.Specs:Project.Gpt32:gelu \
     Project.Gpt32.Specs:Project.Gpt32:logits; do
   IFS=: read -r module namespace kernel <<<"$entry"
-  (cd "$root" && tools/leanrun --timeout 10m lake env lean --run Project/WGSL/Emit.lean \
+  (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
     "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
 done
 cases=$build/wgsl/cases.txt

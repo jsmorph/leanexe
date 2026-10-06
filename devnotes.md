@@ -26179,3 +26179,31 @@ followed by an array literal.
 The full check passed: the build with no `sorry`, the same bytes for the 35 modules, 16,039
 module cases, including the 22 of `treeLookup`, 77 release-count cases, 20 depth-guard cases, 360
 chunk cases, and LTG.
+
+## 2026-10-05: Organization of the branch
+
+An example was spread over five places: its program in `LeanExe/Examples/`, its specification,
+module, and proofs in `Project/<Name>/`, its request and README in `demos/` or `data/`, and its
+cases in `tests/modules/Cases.lean`.  The program's separation from its proofs is a rule about
+its imports, which a directory does not enforce and does not need.  `Project`, the name of main's
+old proof workspace, prefixed every declaration of the system.  The user chose (2026-10-05) a
+layout of two libraries by dependency: `LeanExe`, the system, with `LeanExe/Dialect/` as the
+only modules a program may import, and `Examples`, one directory per example with its program,
+specification, module, proofs, cases, request, README, and run records.  The `Project`
+namespace becomes `LeanExe`.  Main's `paper/` and `data/` records stay, except that this
+branch's Euler and drone records move into their examples, and `deslop.md` becomes
+`docs/design.md`.
+
+- [x] Step 1: delete the five unused ProofKit modules, move the scripts (`Emit.lean`,
+  `WGSL/Emit.lean`, `DecodeTest.lean`, the LTG check) out of the library, and move `deslop.md`
+  to `docs/design.md`.
+- [ ] Step 2: move each example into `Examples/<Name>/`, with its cases in its own module and
+  its run records beside it.
+- [ ] Step 3: move the system into `LeanExe/`, rename the `Project` namespace to `LeanExe`, and
+  move the dialect's modules into `LeanExe/Dialect/`.
+
+Each step ends with a full check whose byte comparison must find every module unchanged.
+
+Step 1 passed the full check: the build with no `sorry`, the same bytes for the 35 modules, 16,039
+module cases, the release-count, depth-guard, and chunk cases, LTG, and 474 WGSL cases on each of
+two drivers.

@@ -189,17 +189,12 @@ import Project.ProofKit.FixedArrayAllocate
 import Project.ProofKit.FixedArrayAllocateNone
 import Project.ProofKit.FixedArrayAllocator
 import Project.ProofKit.FixedArrayAllocatorBase
-import Project.ProofKit.FixedArrayAllocatorWindow
 import Project.ProofKit.FixedArrayBump
 import Project.ProofKit.FixedArrayBumpInstall
 import Project.ProofKit.FixedArrayBumpPrefix
-import Project.ProofKit.FixedArrayCapacity
 import Project.ProofKit.FixedArrayFold
-import Project.ProofKit.FixedArrayFrame
 import Project.ProofKit.FixedArrayHeader
 import Project.ProofKit.FixedArrayHeaderExec
-import Project.ProofKit.FixedArrayInput
-import Project.ProofKit.FixedArrayPairResult
 import Project.ProofKit.FixedArrayResult
 import Project.ProofKit.FixedArrayReuse
 import Project.ProofKit.FixedArraySearchFit

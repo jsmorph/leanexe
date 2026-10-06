@@ -14,7 +14,7 @@ namespace Project.Gpt32
 open LeanExe.Examples.Gpt32 Project.WGSL
 
 /-- The WGSL text of kernel `k`, after checking that the parser reads it back as the kernel, as
-`Project/WGSL/Emit.lean` does. -/
+`tools/EmitWgsl.lean` does. -/
 def kernelText (k : KernelName) : Except String String :=
   let text := k.module.print
   match Module.parse text with

@@ -28,7 +28,7 @@ including 0, 1, 2^63, and 2^64 − 1.
 
 ```sh
 tools/leanrun --timeout 60m lake build Project.PrimeFactors.Verify
-tools/leanrun --timeout 10m lake env lean --run Project/Pipeline/Emit.lean \
+tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Project.PrimeFactors.Module Project.PrimeFactors.primeFactors.module \
   build/primeFactors/primeFactors.wasm
 build/tools/leanexe-wasmtime-host call build/primeFactors/primeFactors.wasm compute i64 i64:60
