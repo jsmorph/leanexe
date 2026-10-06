@@ -522,3 +522,26 @@ branch still contained `if false = true`. Explicit `Bool.false_eq_true` and
 `ite_false` simplification removed that conditional. No limits were increased.
 All results pass the combined build and axiom audit; no executable definitions
 changed. The work document records construction and global-invariant obligations.
+
+## Construction links and value lists (2026-10-06)
+
+`Construction.prepend_effect` checks the allocation and register-19 write used
+by actual `fillOne`. It preserves heap validity and pointer types, establishes
+the new head and its value and next words, preserves existing allocated cells,
+and decrements the free count by exactly one. The value must be valid and the
+old construction head must be zero or a link. `fillOne_effect` derives validity
+of handle 1 from the actual canonical root and applies these rules.
+
+`ConstructionValues.Values` specifies a concrete finite link list's values.
+The transfer result preserves that list when its cell words are unchanged;
+`prepend_values` establishes exact value order after constructing one link.
+The complete filling loop and activation argument ordering remain unfinished.
+Binding arguments will require proving the selected operand link exists; reads
+through handle zero are array reads and are not assumed to be language values.
+
+The first check did not expand the named prepend operation before rewriting,
+and passed a register inequality in the opposite direction from the read/write
+lemma. Changing the goal to the actual writes and taking the symmetric
+inequality resolved both. The combined build and axiom audit pass. No executable
+code or limits changed. The work document records the remaining loop and global
+canonical-value obligations.

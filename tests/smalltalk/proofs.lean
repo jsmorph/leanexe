@@ -100,5 +100,8 @@ run_cmd do
 #print axioms Project.Smalltalk.ReturnHeap.returnReserved_valid
 #print axioms Project.Smalltalk.CallChainReachability.onChain_reachable
 #print axioms Project.Smalltalk.PublicReturnHeap.ret_valid
+#print axioms Project.Smalltalk.Construction.prepend_effect
+#print axioms Project.Smalltalk.Construction.fillOne_effect
+#print axioms Project.Smalltalk.ConstructionValues.prepend_values
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

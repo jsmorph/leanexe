@@ -269,6 +269,13 @@ the returned stack value and caller remain valid across reservation and unwind.
 This preservation theorem needs no represented-path assumption. Exact delivery
 still uses the separately stated caller-prefix conditions.
 
+`Construction.prepend_effect` checks the list-link construction used by the
+actual `fillOne`: exact head, value and next words, pointer types, unchanged
+existing allocated cells, specified register changes, and one-cell free-count
+decrement. `ConstructionValues` relates concrete links to a list of values and
+proves this operation prepends the specified value. The complete construction
+loops and activation argument ordering remain unfinished.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the
