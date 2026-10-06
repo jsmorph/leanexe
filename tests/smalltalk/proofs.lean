@@ -54,5 +54,8 @@ run_cmd do
 #print axioms Project.Smalltalk.Unwind.unwind_go_prefix
 #print axioms Project.Smalltalk.Unwind.returnReady_prefix
 #print axioms Project.Smalltalk.Unwind.retireMany_field
+#print axioms Project.Smalltalk.ReturnValue.returnCallerReady_delivers
+#print axioms Project.Smalltalk.ReturnValue.returnReady_delivers
+#print axioms Project.Smalltalk.ReturnValue.returnReady_finished
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
