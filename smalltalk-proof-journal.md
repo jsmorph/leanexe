@@ -313,3 +313,26 @@ The README still described the collector as only tested. It now states the
 concrete collector theorem and the checked allocation, reservation, return,
 and fuel properties, and names the unfinished initialization, method lookup,
 and instruction obligations. The task is not complete.
+
+## Fresh arena graph (2026-10-06)
+
+`InitializationBase` checks the actual capacity clamp, exact array size, zero
+reads including out-of-bounds default reads, and the five header writes.
+The capacity is between 8 and 1,048,576; address-size arithmetic cannot wrap.
+`SeedMemory` checks each seeding write, unchanged registers, and preserved
+shape. `Seeding.Progress` states that visited cells have the specified values
+and unvisited cells are zero. The loop preserves that invariant and completes
+all capacity visits. `init_eq_seeding` connects this loop to actual initialization.
+
+`init_cells` states all final cell words and registers. `init_graph_valid`
+uses those facts to establish the complete graph assumptions of the collector:
+only handles 1, 2, and 3 are allocated, all roots name those canonical values,
+their tag is 2, and there are no outgoing edges. The initial free-list proof
+and the VM's boot and instruction invariants remain unfinished.
+
+Minimal imports did not simplify zero-array reads automatically. Explicit
+`getElem!_pos`, `getElem!_neg`, and `Array.getElem_ofFn` checked both branches.
+Rewriting a condition under an `if` failed because of the dependent Decidable
+argument; simplifying with the proved equivalence handled that dependency.
+Explicit equalities between pair-pattern and projection lambdas connected
+the loop to `Arena.init`. No executable definitions or proof limits changed.
