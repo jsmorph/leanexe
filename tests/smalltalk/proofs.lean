@@ -89,5 +89,9 @@ run_cmd do
 #print axioms Project.Smalltalk.InstructionHeap.branch_valid
 #print axioms Project.Smalltalk.ExecuteHeap.execute_covered_valid
 #print axioms Project.Smalltalk.ExecuteHeap.step_covered_valid
+#print axioms Project.Smalltalk.PointerTypes.write_cell_valid
+#print axioms Project.Smalltalk.TypedCollection.collect_typed
+#print axioms Project.Smalltalk.TypedCollection.init_typed
+#print axioms Project.Smalltalk.TypedCollection.reserve_typed
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

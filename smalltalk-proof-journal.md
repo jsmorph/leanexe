@@ -461,3 +461,24 @@ of the literal UInt64 word 2. Explicitly changing that bound to natural 2 lets
 the arithmetic tactic use the free-list lengths. No limits or executable
 definitions changed. The combined build and axiom audit pass. Opcodes 10 through
 13, boot, method lookup, and a preserved complete VM invariant remain unfinished.
+
+## Pointer cell types and collection (2026-10-06)
+
+`PointerTypes.Valid` specifies the cell types needed by frame and list
+operations. Callers and lexical frames, including captured block frames, are
+zero or activations. Object fields, activation slots and operands, and list
+next pointers are zero or links. The link's value remains unrestricted except
+for the allocated-handle condition already checked by `Heap.Valid`.
+
+Checked write rules preserve these types when a replacement pointer matches
+its required type. `TypedCollection` proves the actual fresh arena establishes
+the requirements, and collection, reservation, and failure preserve them.
+For a retained parent's nonzero typed pointer, the collector's reachability
+theorem retains the child and preserves its tag. No separate typed-GC
+assumption is used. The complete VM preservation theorem remains unfinished.
+
+The first check used `match` as a parameter name; it is a Lean keyword. The
+failure rule also needed the intermediate write's shape rather than the final
+failure array's shape. Initialization uses the existing checked `init_tag`
+result instead of repeating the seeding arithmetic. The combined build and
+axiom audit pass. No executable definitions changed.
