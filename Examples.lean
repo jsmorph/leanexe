@@ -64,6 +64,7 @@ import Examples.Euler.Module
 import Examples.Euler.RealState
 import Examples.Euler.ReconstructedBalance
 import Examples.Euler.ReconstructionAccuracy
+import Examples.Euler.SpeedCounterexample
 import Examples.Euler.Total
 import Examples.Euler.Verify
 import Examples.Euler.Words
