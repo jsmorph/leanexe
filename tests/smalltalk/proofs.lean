@@ -67,5 +67,8 @@ run_cmd do
 #print axioms Project.Smalltalk.InitializationBase.capacity_bounds
 #print axioms Project.Smalltalk.Seeding.init_cells
 #print axioms Project.Smalltalk.InitializationGraph.init_graph_valid
+#print axioms Project.Smalltalk.InitializationFree.init_free_list
+#print axioms Project.Smalltalk.InitializationFree.init_valid
+#print axioms Project.Smalltalk.InitializationFree.collect_init_valid
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

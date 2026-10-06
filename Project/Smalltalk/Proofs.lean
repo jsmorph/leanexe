@@ -17,3 +17,4 @@ import Project.Smalltalk.ReturnValue
 import Project.Smalltalk.Reservation
 import Project.Smalltalk.ReturnReservation
 import Project.Smalltalk.InitializationGraph
+import Project.Smalltalk.InitializationFree
