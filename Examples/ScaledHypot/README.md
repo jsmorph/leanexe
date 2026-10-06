@@ -20,7 +20,7 @@ the same form as that of [`Axpy`](../Axpy/README.md).
 | `scaledHypot_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `scaledHypot`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The design record](../../docs/design.md#floating-point)
+`Classical.choice`, and `Quot.sound`.  [The design document](../../docs/design.md#floating-point)
 describes the binary64 equality proofs.  The theorem concerns the rounded computation, with no
 statement about its error relative to the exact length.
 

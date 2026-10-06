@@ -34,9 +34,9 @@ differed by up to 5.2e-5 of the largest score, while greedy generation chose the
 The proofs are in [`Proofs.lean`](Proofs.lean), [`Kernels.lean`](Kernels.lean),
 [`Exec.lean`](Exec.lean), and [`Compose.lean`](Compose.lean), and they use only the axioms
 `propext`, `Classical.choice`, and `Quot.sound`.  `gpt32.wasm` has no WebAssembly theorem.  [The
-design record](../../docs/design.md#gpu) states what the device model adds to the trusted base, and
-[the description of the pages](../../tests/web/README.md) states what is proved about the browser
-page.
+design document](../../docs/design.md#gpu) states what the device model adds to the trusted base,
+and [the description of the pages](../../tests/web/README.md) states what is proved about the
+browser page.
 
 ## Running it
 

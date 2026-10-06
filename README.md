@@ -17,7 +17,8 @@ semantics, and the binary decoder, which the official WebAssembly testsuite test
 
 [The user manual](docs/manual.md) describes the dialect the compiler accepts, the commands that
 compile and run a program, the theorems and the rules that prove them, the tests, and the examples.
-[The design record](docs/design.md) holds the design, the decisions, the status, and the plan, and
+[The design document](docs/design.md) gives the design, its decisions, what is proved and tested,
+and the open work, and
 [the development journal](devnotes.md) records the work.
 
 ## Layout
@@ -34,7 +35,7 @@ compile and run a program, the theorems and the rules that prove them, the tests
 | [`LeanExe/ProofKit/`](LeanExe/ProofKit/) | General lemmas: memory, arrays, allocation, binary32 and binary64 arithmetic and enclosures, and the raw-bit float wrappers that the float proofs state their results about. |
 | [`LeanExe/WGSL/`](LeanExe/WGSL/) | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
 | [`Examples/`](Examples/) | The library `Examples`: one directory per example, with a README, the program, the specification where there is one, the module, the proofs, the module cases, and the request and run records where there are any.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
-| [`docs/`](docs/) | [The user manual](docs/manual.md) and [the design record](docs/design.md). |
+| [`docs/`](docs/) | [The user manual](docs/manual.md) and [the design document](docs/design.md). |
 | [`ltg/`](ltg/) | The LTG knowledge base and its checker, `Check.lean`. |
 | [`.claude/skills/verified-executable/`](.claude/skills/verified-executable/SKILL.md) | The skill that takes a request in English to a program and a theorem about its bytes. |
 | [`tools/`](tools/) | The resource-limited Lean runner, `Emit.lean` and `EmitWgsl.lean`, which write modules and kernels, the Wasmtime and WebGPU hosts and their build scripts, the checker `demo-check`, and the Euler and GPT-2 command-line tools. |

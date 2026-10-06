@@ -1,6 +1,6 @@
 # LeanExe Manual
 
-This manual describes the repository as of 2026-10-06: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../LeanExe/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The design record](design.md) holds the design, the decisions, and the plan, and [the development journal](../devnotes.md) explains why each part has its present form.
+This manual describes the repository as of 2026-10-06: the Lean dialect that the compiler accepts, the commands that compile and run a program, the theorems a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../LeanExe/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The design document](design.md) gives the design, its decisions, and the open work, and [the development journal](../devnotes.md) explains why each part has its present form.
 
 ## Overview
 
@@ -108,7 +108,7 @@ A condition is the proposition of an `if` or of `decide`.  The compiler translat
 | A fold accumulator | Yes | No | See [Folds](#folds). |
 | A loop state, array element, or argument | Yes | Yes | |
 
-Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, in which every NaN is the positive quiet NaN `0x7FF8000000000000` or `0x7FC00000`, and Talos's `IEEE64` and `IEEE32` return the same constants.  The compiled forms of negation, absolute value, `min`, and `max` remove the three places where Lean and WebAssembly instructions differ, which [the design record lists](design.md#floating-point).  `Float.ofBits` and `Float32.ofBits` keep a NaN payload in WebAssembly while Lean's model replaces it, so a proof that uses them shows that the argument is not a NaN pattern, as `F64Bits.shiftLeft_52_not_nan` does for `exp`.  Conversions between `Float` and `Float32`, Lean's opaque `Float.exp` and its relatives, and `Float.floor` have no rule.
+Lean 4.34 defines `Float` and `Float32` through `Float.Model` and `Float32.Model`, in which every NaN is the positive quiet NaN `0x7FF8000000000000` or `0x7FC00000`, and Talos's `IEEE64` and `IEEE32` return the same constants.  The compiled forms of negation, absolute value, `min`, and `max` remove the three places where Lean and WebAssembly instructions differ, which [the design document lists](design.md#floating-point).  `Float.ofBits` and `Float32.ofBits` keep a NaN payload in WebAssembly while Lean's model replaces it, so a proof that uses them shows that the argument is not a NaN pattern, as `F64Bits.shiftLeft_52_not_nan` does for `exp`.  Conversions between `Float` and `Float32`, Lean's opaque `Float.exp` and its relatives, and `Float.floor` have no rule.
 
 ### Bindings
 
@@ -128,7 +128,7 @@ The compiler translates a conditional in one of three ways, according to the typ
 
 A match on an enumeration or a sum compiles to a chain of tests of the constructor index, with the last alternative unguarded.  A match on a pair or a structure binds its fields to their components and needs no test.  A `match` on a word with literal patterns elaborates to a dependent `if`, which the compiler rejects (`unsupported term: dite …`), and `if k = 0 then … else …` replaces it.
 
-In the body of a tail-recursive definition, an `if` or a `match` in tail position becomes a statement-level branch of the loop body.  [The design record](design.md) gives the reason for the restrictions on value-level branches: the compiler never hoists a value's statements out of an `if`, since hoisting a load out of a guarding branch could trap where Lean returns a value.  The calls of scalars that loop bodies and build elements accept are the exception, and a proof covers them through callee theorems that keep the store.
+In the body of a tail-recursive definition, an `if` or a `match` in tail position becomes a statement-level branch of the loop body.  [The design document](design.md) gives the reason for the restrictions on value-level branches: the compiler never hoists a value's statements out of an `if`, since hoisting a load out of a guarding branch could trap where Lean returns a value.  The calls of scalars that loop bodies and build elements accept are the exception, and a proof covers them through callee theorems that keep the store.
 
 ### Calls
 
@@ -641,4 +641,4 @@ After a target reaches its timeout without a diagnostic, [the repository instruc
 
 [The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, and the handling of LTG entries.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools carry their dependencies as PEP 723 metadata and run with `uv run`.
 
-[The design record](design.md) holds the design, the decisions with their reasons, what is proved and tested, and the plan with its checkboxes.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
+[The design document](design.md) gives the design, the decisions with their reasons, what is proved and tested, and the open work.  One of its decisions makes development iterative: each iteration takes one program from source to bytes, a theorem, a comparison with native Lean, an axiom check, and a commit, adding only what that program needs.  [The journal](../devnotes.md) records each step in dated prose: the analysis, the options, the decision, what was built, and the measurements.
