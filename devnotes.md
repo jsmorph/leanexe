@@ -26274,3 +26274,25 @@ check.
 - [ ] `tests/modules/run.sh` sends the standard error of native Lean to `/dev/null` to hide the
   panic messages of out-of-bounds reads, which also hides any error that Lean reports.  The script
   still stops when Lean fails, through `set -e`, but without the diagnostic.
+
+### Example READMEs
+
+Every example directory now has a README with five sections: what the example is, what it shows
+with a table of its theorems, the commands that build, write, and run it with their output, the
+related examples and LTG entries, and outside references.  Twenty-three READMEs are new, including a
+top-level one for `Euler` that links its two run records, and the nine existing ones gained the same
+sections.  The manual's table of examples links each README, and the skill asks for the same five
+sections.
+
+The case counts come from the module test run, and every command in the READMEs ran as written: the
+32 `lake build` lines, the emit and host calls, `tests/prng/compare.py`, `tests/drone/run.sh`, a
+192-grid Euler solve, the `gpt_file` check, one WGSL kernel emit, and an eight-token generation with
+`tests/gpt32/generate.py`.  The heavier commands that the READMEs list and this check did not run
+are `tests/gpt/gpt2_compare.py`, `tests/gpt32/native.sh`, `tests/wgsl/run.sh`, and the browser
+server, which earlier full checks ran.  One `#print axioms` audit covered the 126 theorems the
+READMEs name, and each uses at most `propext`, `Classical.choice`, and `Quot.sound`.
+
+Writing them exposed errors elsewhere.  The Gcd specification and the manual attributed `Nat.gcd`
+to Mathlib, which Lean core defines.  The earlier rewrap had started a line of the tree-lookup README
+with `+ 1`, which Markdown reads as a list item, and the rewrap script now avoids line starts that
+Markdown treats as list markers.

@@ -1,5 +1,7 @@
 # Folds: sum, product, and exclusive or
 
+## What it is
+
 This example stands for [main's Demo
 10](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-10/README.md)
 and [Demo
@@ -16,6 +18,8 @@ accumulator, then a loop that loads each element and applies the operation.  [Th
 definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `productArray` and
 `xorArray` into a 1,534-byte `folds.wasm` that exports both.
 
+## What it shows
+
 | Theorem | Statement |
 |---------|-----------|
 | `Func.foldl_implements` | A function whose body is the fold template with any operation other than division and remainder computes `xs.foldl op.apply init`. |
@@ -25,8 +29,9 @@ definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `pr
 `Func.foldl_implements` is in [the fold rule](../../LeanExe/IR/Fold.lean), and each program's
 theorem applies it with its operation and initial value.  The theorems are in [the
 proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.  Main's proofs
-concerned one 1,979-byte binary each and took 572 and 676 lines.  The module tests run 35 arrays in
-Wasmtime against native Lean for each export, including the empty array and words near 2^64.
+concerned one 1,979-byte binary each and took 572 and 676 lines.
+
+## Running it
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumArray.Verify
@@ -34,3 +39,21 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.SumArray.Module Examples.SumArray.folds.module build/folds/folds.wasm
 build/tools/leanexe-wasmtime-host call build/folds/folds.wasm productArray i64 array-u64:2,3,7
 ```
+
+The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
+[the repository README](../../README.md#commands).  The call prints 42, the product of 2, 3, and 7.
+[The module tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run 35 arrays in
+Wasmtime against native Lean for each export, including the empty array and words near 2^64.
+
+## Related examples
+
+[`SumSquares`](../SumSquares/README.md) and [`Mean`](../Mean/README.md) fold over arrays of floats.
+[`PairSum`](../PairSum/README.md) folds over a temporary array, and [`Lists`](../Lists/README.md)
+folds over a list.  The LTG entry [`array-fold-loop`](../../ltg/entries/array-fold-loop/README.md)
+describes the rule.
+
+## References
+
+- [The Lean 4 reference on
+  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.foldl`.
+- [The manual's section on folds](../../docs/manual.md#folds).

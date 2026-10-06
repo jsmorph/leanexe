@@ -110,8 +110,10 @@ Build with `tools/leanrun --timeout 60m lake build Examples.Name.Verify`.
 1. Run `tools/demo-check NAME`.  It must print the theorem line, the module, and
    `samples: N passed, 0 failed`.
 2. Write `README.md` in the form of [the prime-factor example's
-   README](../../../Examples/PrimeFactors/README.md): the request, the specification and its
-   decisions, the program, a table of the theorems, the axioms, the tests, and the commands.
+   README](../../../Examples/PrimeFactors/README.md), with its five sections: "What it is" (the
+   request, the specification and its decisions, and the program), "What it shows" (a table of the
+   theorems and the axioms), "Running it" (the commands, their output, and the tests), "Related
+   examples", and "References".
 3. Write `Cases.lean`, which prints the samples in the format of the module tests:
 
    ```lean

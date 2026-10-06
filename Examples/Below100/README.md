@@ -1,5 +1,7 @@
 # Below 100: a filter of at most eight words
 
+## What it is
+
 This example is [main's Demo
 5](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-5/README.md),
 carried to this branch's pipeline.  [The request](request.txt) asks for the elements of an array of
@@ -14,6 +16,8 @@ builds the output with `push`, which moves the output to a larger block when the
 [The module definition](Module.lean) compiles `keep` and `compute` into a 1,831-byte `below100.wasm`
 that exports both.
 
+## What it shows
+
 | Theorem | Statement |
 |---------|-----------|
 | `keep_go` | `keep` repeated from index `i` with the filtered prefix up to `i` gives the filtered prefix up to `count`. |
@@ -25,8 +29,8 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 `Quot.sound`.  Main's generated proof concerned one 1,975-byte binary and took 969 lines, reduced to
 70 by main's later proof tools.  Here the rules of the in-place push and of `repeatWhile` over one
 array prove `Implements`, and with `compute_eq`, `Implements.congr` states it for the specification.
-The module tests run nine inputs in Wasmtime against `expected`, including the empty array, eight
-words, and nine words.
+
+## Running it
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Below100.Verify
@@ -35,3 +39,23 @@ tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
 build/tools/leanexe-wasmtime-host call build/below100/below100.wasm compute array-u64 \
   array-u64:5,100,99,250,0,7
 ```
+
+The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
+[the repository README](../../README.md#commands).  The call prints `[5, 99, 0, 7]`.  [The module
+tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run nine inputs in Wasmtime against
+`expected`, including the empty array, eight words, and nine words.
+
+## Related examples
+
+[`Updates`](../Updates/README.md) has chains of pushes and other in-place updates.
+[`Euler`](../Euler/README.md) and [`Drone`](../Drone/README.md) use `LeanExe.repeatWhile` for their
+main loops.  The LTG entries [`repeat-while`](../../ltg/entries/repeat-while/README.md) and
+[`in-place-update`](../../ltg/entries/in-place-update/README.md) describe the rules.
+
+## References
+
+- [The manual's section on loops and builds](../../docs/manual.md#loops-and-builds), which describes
+  `LeanExe.repeatWhile`.
+- [The Lean 4 reference on
+  arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.filter`
+  and `Array.push`.

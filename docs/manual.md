@@ -590,31 +590,31 @@ The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder
 
 ## Worked examples
 
-An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, `Verify.lean` the theorems, and `Cases.lean` the module cases, except in `Gpt`, `Gpt32`, and `Prng`, whose tests are under [`tests/`](../tests/).  A program imports only the modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) and the programs it builds on, as `gpt` builds on `prng` and the reconstructed Euler solver on the first-order one.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
+An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, `Verify.lean` the theorems, and `Cases.lean` the module cases, except in `Gpt`, `Gpt32`, and `Prng`, whose tests are under [`tests/`](../tests/).  Each example's `README.md` says what the example is and what it shows, gives the commands that build, write, and run it, and links related examples and outside references.  A program imports only the modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) and the programs it builds on, as `gpt` builds on `prng` and the reconstructed Euler solver on the first-order one.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for complete execution.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
 
 | Example | Module | Demonstrates |
 |---|---|---|
-| `Scale` | `scale` | Word arithmetic and Lean's division by zero, proved with `Func.implements` and one `simp` call. |
-| `Gcd` | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Mathlib's `Nat.gcd`. |
-| `SumArray` | `sumArray`, `folds` | Folds over a borrowed array: sum, product, and exclusive or, proved with `Func.foldl_implements`. |
-| `PairSum` | `pairSum` | An array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
-| `SumCount` | `sumCount` | An array result that the caller owns, and the array size. |
-| `Axpy`, `ScaledHypot`, `Piecewise` | `axpy`, `scaledHypot`, `piecewise` | Binary64 arithmetic, square root, comparisons, `==`, negation, `abs`, `min`, `max`, and nested `if`. |
-| `SumSquares`, `Mean`, `Bucket` | `sumSquares`, `mean`, `bucket` | Folds over `Array Float` and the conversions between `UInt64` and `Float`. |
-| `Prng` | `prng` | SplitMix64 with a pair result, and `ImplementsPure` theorems that hold in any module containing the functions. |
-| `Bools` | `bools` | `Bool` parameters, results, record fields, and loop states. |
-| `Calc`, `Shape` | `calculator`, `shapes` | Enumerations, structures, and sums, with their `Flat` instances, and a loop whose state is a structure. |
-| `Lists`, `Words` | `lists`, `words` | `List UInt64` and a user list type: folds, matches, tail recursion over records, and loops that build lists. |
-| `Trees` | `trees`, `treeMoves`, `treeFrame` | Non-tail recursion with the depth guard, record reuse, moves, copies, lending, and pair results with trees. |
-| `Updates` | `updates` | Chains of in-place updates and a `push` that copies a borrowed array. |
-| `Clob` | `clob` | Loops over arrays, `set!`, `insertIdx!`, `eraseIdxIfInBounds`, calls with `Moved` arguments, pair results, a loop over two arrays, and a `push` in place. |
-| `Grids` | `grids` | Reads, sizes, builds, and loops over arrays of records. |
-| `Binary32` | `binary32` | `Float32` scalars, arrays, comparisons, and conditionals, and kernels translated to WGSL. |
-| `Gpt` | `gpt` | GPT-2 in binary64: calls of `ImplementsPure` functions in loops, temporaries under `Live`, a loop over layers with an array state, `++` in place, the cached step, top-k sampling, and the causal and exactness theorems. |
-| `Gpt32` | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
-| `Euler` | `euler` | The first-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
-| `Drone` | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
-| `PrimeFactors`, `Lookup`, `TreeLookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` carry the requests and READMEs of main's demos 6, 10, and 11. |
+| [`Scale`](../Examples/Scale/README.md) | `scale` | Word arithmetic and Lean's division by zero, proved with `Func.implements` and one `simp` call. |
+| [`Gcd`](../Examples/Gcd/README.md) | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Lean's `Nat.gcd`. |
+| [`SumArray`](../Examples/SumArray/README.md) | `sumArray`, `folds` | Folds over a borrowed array: sum, product, and exclusive or, proved with `Func.foldl_implements`. |
+| [`PairSum`](../Examples/PairSum/README.md) | `pairSum` | An array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
+| [`SumCount`](../Examples/SumCount/README.md) | `sumCount` | An array result that the caller owns, and the array size. |
+| [`Axpy`](../Examples/Axpy/README.md), [`ScaledHypot`](../Examples/ScaledHypot/README.md), [`Piecewise`](../Examples/Piecewise/README.md) | `axpy`, `scaledHypot`, `piecewise` | Binary64 arithmetic, square root, comparisons, `==`, negation, `abs`, `min`, `max`, and nested `if`. |
+| [`SumSquares`](../Examples/SumSquares/README.md), [`Mean`](../Examples/Mean/README.md), [`Bucket`](../Examples/Bucket/README.md) | `sumSquares`, `mean`, `bucket` | Folds over `Array Float` and the conversions between `UInt64` and `Float`. |
+| [`Prng`](../Examples/Prng/README.md) | `prng` | SplitMix64 with a pair result, and `ImplementsPure` theorems that hold in any module containing the functions. |
+| [`Bools`](../Examples/Bools/README.md) | `bools` | `Bool` parameters, results, record fields, and loop states. |
+| [`Calc`](../Examples/Calc/README.md), [`Shape`](../Examples/Shape/README.md) | `calculator`, `shapes` | Enumerations, structures, and sums, with their `Flat` instances, and a loop whose state is a structure. |
+| [`Lists`](../Examples/Lists/README.md), [`Words`](../Examples/Words/README.md) | `lists`, `words` | `List UInt64` and a user list type: folds, matches, tail recursion over records, and loops that build lists. |
+| [`Trees`](../Examples/Trees/README.md) | `trees`, `treeMoves`, `treeFrame` | Non-tail recursion with the depth guard, record reuse, moves, copies, lending, and pair results with trees. |
+| [`Updates`](../Examples/Updates/README.md) | `updates` | Chains of in-place updates and a `push` that copies a borrowed array. |
+| [`Clob`](../Examples/Clob/README.md) | `clob` | Loops over arrays, `set!`, `insertIdx!`, `eraseIdxIfInBounds`, calls with `Moved` arguments, pair results, a loop over two arrays, and a `push` in place. |
+| [`Grids`](../Examples/Grids/README.md) | `grids` | Reads, sizes, builds, and loops over arrays of records. |
+| [`Binary32`](../Examples/Binary32/README.md) | `binary32` | `Float32` scalars, arrays, comparisons, and conditionals, and kernels translated to WGSL. |
+| [`Gpt`](../Examples/Gpt/README.md) | `gpt` | GPT-2 in binary64: calls of `ImplementsPure` functions in loops, temporaries under `Live`, a loop over layers with an array state, `++` in place, the cached step, top-k sampling, and the causal and exactness theorems. |
+| [`Gpt32`](../Examples/Gpt32/README.md) | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
+| [`Euler`](../Examples/Euler/README.md) | `euler` | The first-order and reconstructed solvers: arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
+| [`Drone`](../Examples/Drone/README.md) | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
+| [`PrimeFactors`](../Examples/PrimeFactors/README.md), [`Lookup`](../Examples/Lookup/README.md), [`TreeLookup`](../Examples/TreeLookup/README.md), [`Below100`](../Examples/Below100/README.md), [`Increment`](../Examples/Increment/README.md), [`RemoveZero`](../Examples/RemoveZero/README.md) | `primeFactors`, `lookup`, `treeLookup`, `below100`, `increment`, `removeZero` | Main's demos, each with its request and README, and with specifications written apart from the programs: a tail-recursive count with a measure, loops with tuple states, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`.  `TreeLookup` is the first run of the verified-executable skill, and `Gcd` and `SumArray` carry the requests and READMEs of main's demos 6, 10, and 11. |
 
 ## From an English request
 
