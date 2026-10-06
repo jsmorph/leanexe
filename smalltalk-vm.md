@@ -273,6 +273,15 @@ theorems. Registers other than 0, 8, 9, 10, 11, 15, and 18 are preserved;
 an already-error state is unchanged. This result requires `Heap.Valid` and
 phase other than 4 for the success/error guarantee.
 
+`InitializationBase.lean` proves the capacity clamp, arena size, zero-array
+reads, and header writes. `SeedMemory.lean` checks each seeding write's bounds
+and effects. `Seeding.lean` proves every valid cell receives its specified
+fields and registers remain unchanged, and connects that loop to `Arena.init`.
+`InitializationGraph.lean` proves that the fresh arena satisfies `Graph.Valid`:
+its only allocated cells and nonzero roots are the three canonical values,
+with tag 2 and no outgoing edges. The initial free list has not yet been proved
+to satisfy the stronger `Heap.Valid` condition.
+
 `Project/Smalltalk/Frame.lean` checks the concrete frame writes. Retirement
 sets the PC to dead, clears caller and operands, and preserves the remaining
 fields, other cells, registers, and arena shape. Advance increments the PC,
