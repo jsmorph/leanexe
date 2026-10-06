@@ -7,11 +7,12 @@ square, run on the four-quadrant Riemann problem with interfaces at x = y = 0.8 
 configuration that Lax and Liu number 3.  [The first-order solver](Program.lean) uses Rusanov fluxes
 and an x sweep followed by a y sweep, with time steps chosen for CFL 0.4.  [The reconstructed
 solver](ReconstructedProgram.lean) builds on it with minmod slopes, positivity checks on the
-reconstructed faces, and outward-rounded bounds on the signal speeds.  Both follow the earlier
-system's programs operation for operation and use `UInt64` and `Float` only.  [The module
-definition](Module.lean) compiles both into one 23,012-byte module, `euler.wasm`, whose `solve` and
-`reconstructedSolve` exports run a whole calculation, from the initial grid to the final one, in one
-call.
+reconstructed faces, and outward-rounded bounds on the signal speeds.  Both use `UInt64` and `Float`
+only.  Their arithmetic performs the binary64 operations of the two solvers at commit `eef07963` in
+the same order, and on the 192 and 800 grids they return, bit for bit, the output words recorded at
+that commit.  [The module definition](Module.lean) compiles both into one 23,012-byte module,
+`euler.wasm`, whose `solve` and `reconstructedSolve` exports run a whole calculation, from the
+initial grid to the final one, in one call.
 
 ## What it shows
 
@@ -37,8 +38,8 @@ of this directory, with the eigenvector algebra in [`Equations/`](Equations/), a
 axioms `propext`, `Classical.choice`, and `Quot.sound`.  The fresh instance is a hypothesis, since
 no theorem connects instantiation to it, and convergence to a solution of the continuous equations
 is unproved.  The two run records, [the first-order record](first-order/README.md) and [the
-reconstructed record](reconstructed/README.md), give the full statements, the figures, the runs on
-the 192 and 800 grids, and the results of the earlier system that the current system does not prove.
+reconstructed record](reconstructed/README.md), give the full statements, the figures, and the runs
+on the 192 and 800 grids.
 
 ## Running it
 
@@ -56,11 +57,11 @@ the native runner, with the setup of [the repository README](../../README.md#com
 solve prints twelve words: the status 0, the bits of 0.8, the grid size twice, the four densities,
 and the four pressures.  [`tools/euler-run.py`](../../tools/euler-run.py) checks the status, the
 final time, and the word count, and records the runtime, the peak resident size, and the SHA-256 of
-the words.  The 192 × 192 run took 16.5 seconds, and its SHA-256, `e097a43d…`, matches the earlier
-system's.  `euler-native N FILE` runs the same solver as native Lean.
-[`tests/modules/run.sh`](../../tests/modules/run.sh) compares 3,096 cases of
-[`Cases.lean`](Cases.lean) with native Lean, from single flux evaluations to whole solves on small
-grids.
+the words.  The 192 × 192 run took 16.5 seconds, and the SHA-256 of its words, `e097a43d…`, equals
+the value in [the first-order record](first-order/README.md#data).  `euler-native N FILE` runs the
+same solver as native Lean.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 3,096
+cases of [`Cases.lean`](Cases.lean) with native Lean, from single flux evaluations to whole solves
+on small grids.
 
 ## Related examples
 
