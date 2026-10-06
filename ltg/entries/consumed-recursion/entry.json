@@ -72,14 +72,14 @@
   ],
   "result": "Rebuilds: at any depth the internal function aborts or returns one pointer q with Heap.Rebuilt over the consumed blocks, and Func.entry_rebuilds turns it into the entry's Implements.",
   "consumers": [
-    "Project.Trees.incr_rec",
-    "Project.Trees.incr_implements",
-    "Project.Trees.insert_rec",
-    "Project.Trees.insert_implements",
-    "Project.Trees.addAll_rec",
-    "Project.Trees.addAll_implements",
-    "Project.Trees.leftSpine_rec",
-    "Project.Trees.leftSpine_implements"
+    "Examples.Trees.incr_rec",
+    "Examples.Trees.incr_implements",
+    "Examples.Trees.insert_rec",
+    "Examples.Trees.insert_implements",
+    "Examples.Trees.addAll_rec",
+    "Examples.Trees.addAll_implements",
+    "Examples.Trees.leftSpine_rec",
+    "Examples.Trees.leftSpine_implements"
   ],
   "relatedEntries": [
     "record-reuse",

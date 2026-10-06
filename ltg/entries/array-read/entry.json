@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Expr.read", "Project.IR.Expr.readValue", "Project.IR.Expr.readValue_at", "Project.IR.Expr.read_spec", "Project.IR.element_offset", "Project.IR.Expr.ofBits", "Project.IR.getElem!_map_toBits"],
   "premises": ["UInt64Array.At for the array in the store", "The array local holds the array's pointer"],
   "result": "The read evaluates to xs[k.toNat]! and leaves the state with the position saved in the read's scratch local.",
-  "consumers": ["Project.Clob.marketBuy_implements", "Project.Clob.depth_implements", "Project.Clob.findLevel_implements", "Project.Clob.bid_spec", "Project.Gpt.dot_implements"],
+  "consumers": ["Examples.Clob.marketBuy_implements", "Examples.Clob.depth_implements", "Examples.Clob.findLevel_implements", "Examples.Clob.bid_spec", "Examples.Gpt.dot_implements"],
   "relatedEntries": ["index-loop", "straight-line-run"],
   "exclusion": null
 }

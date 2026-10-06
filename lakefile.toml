@@ -1,6 +1,6 @@
 name = "Project"
 version = "0.1.0"
-defaultTargets = ["LeanExe", "Project"]
+defaultTargets = ["LeanExe", "Project", "Examples"]
 
 [[require]]
 name = "Verifier"
@@ -19,13 +19,16 @@ name = "LeanExe"
 [[lean_lib]]
 name = "Project"
 
+[[lean_lib]]
+name = "Examples"
+
 # The program printer of the GPT-2 browser page (tests/web/serve.py); not a default target.
 [[lean_exe]]
 name = "gpt32-lines"
-root = "Project.Gpt32.Lines"
+root = "Examples.Gpt32.Lines"
 
 # The first-order Euler solver run natively, for comparison with its WebAssembly; not a default
 # target.
 [[lean_exe]]
 name = "euler-native"
-root = "Project.Euler.Native"
+root = "Examples.Euler.Native"

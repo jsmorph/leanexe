@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Stmt.listFold", "Project.IR.Stmt.listFold_spec", "Project.Pipeline.ListAt", "Project.Pipeline.NodeBorrowed.listAt", "Project.Pipeline.listLength", "Project.IR.State.Frame", "Project.IR.Expr.eval_frame"],
   "premises": ["Four distinct fold locals below the scratch index", "ListAt for the list in the initial memory, which NodeBorrowed.listAt gives for a borrowed argument", "The body evaluates to g a e whenever the accumulator holds accType.value a and the element local holds .i64 e"],
   "result": "A Triple whose postcondition keeps the store, frames every other local below scratch, and puts accType.value (xs.foldl g start) in the accumulator.",
-  "consumers": ["Project.Lists.listSum_implements"],
+  "consumers": ["Examples.Lists.listSum_implements"],
   "relatedEntries": ["array-fold-loop"],
   "exclusion": null
 }

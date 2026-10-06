@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Func.tail_implements", "Project.IR.TailStep", "Project.IR.tailState"],
   "premises": ["The compiler's loop shape, checked by rfl", "Injective argument values", "TailStep for the loop body with a measure on the arguments"],
   "result": "Implements for the compiled module and the source function, with no allocation.",
-  "consumers": ["Project.Gcd.gcd_implements", "Project.PrimeFactors.countFactors_implements"],
+  "consumers": ["Examples.Gcd.gcd_implements", "Examples.PrimeFactors.countFactors_implements"],
   "relatedEntries": [],
   "exclusion": null
 }

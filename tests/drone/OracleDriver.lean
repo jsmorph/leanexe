@@ -1,11 +1,11 @@
 
 /-! The cases of the drone corpus.  `tests/drone/oracle.sh` appends this file to main's
-`LeanExe/Examples/Drone.lean` and runs the result natively.  With the argument `corpus`, each
+`Examples/Drone/Program.lean` and runs the result natively.  With the argument `corpus`, each
 output line is a terrain and main's `compute` of it, as comma-separated words joined by `|`.
 With `cases`, each line is a call of one of main's functions in the format of
 `tests/modules/Cases.lean`: `drone|export|result kind|host arguments|main's result`. -/
 
-open LeanExe.Examples.Drone
+open Examples.Drone
 
 def mix (i : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + 12345) % 2 ^ 64
 

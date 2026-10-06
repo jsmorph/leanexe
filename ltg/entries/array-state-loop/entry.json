@@ -13,7 +13,7 @@
   "declarations": ["Project.IR.Stmt.arrayLoop", "Project.IR.Live.arrayLoop", "Project.IR.Live.copy", "Project.IR.Live.push", "Project.IR.Expr.evalResults_frame", "Project.IR.Live.call_seq", "Project.IR.Live.releaseSecond_seq"],
   "premises": ["An Implements theorem for the callee, which returns an Array Float", "The five loop locals are distinct, below scratch, and apart from the source local, and scratch is below the number of locals", "Live before the loop, with the initial array borrowed at the source local's pointer", "The count evaluates to n in every state that frames the state before the loop", "At each index, the arguments evaluate to values that represent F l x, given the Live invariant with the state at its head"],
   "result": "Live with LeanExe.loop n init (fun l x => g (F l x)) at the head of the live temporaries, whose pointer the state local holds, in a state that frames the one before the loop.",
-  "consumers": ["Project.Gpt.forward_implements"],
+  "consumers": ["Examples.Gpt.forward_implements"],
   "relatedEntries": ["index-loop", "function-call", "release-temporary", "array-build"],
   "exclusion": null
 }

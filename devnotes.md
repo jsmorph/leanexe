@@ -26197,7 +26197,7 @@ branch's Euler and drone records move into their examples, and `deslop.md` becom
 - [x] Step 1: delete the five unused ProofKit modules, move the scripts (`Emit.lean`,
   `WGSL/Emit.lean`, `DecodeTest.lean`, the LTG check) out of the library, and move `deslop.md`
   to `docs/design.md`.
-- [ ] Step 2: move each example into `Examples/<Name>/`, with its cases in its own module and
+- [x] Step 2: move each example into `Examples/<Name>/`, with its cases in its own module and
   its run records beside it.
 - [ ] Step 3: move the system into `LeanExe/`, rename the `Project` namespace to `LeanExe`, and
   move the dialect's modules into `LeanExe/Dialect/`.
@@ -26207,3 +26207,25 @@ Each step ends with a full check whose byte comparison must find every module un
 Step 1 passed the full check: the build with no `sorry`, the same bytes for the 35 modules, 16,039
 module cases, the release-count, depth-guard, and chunk cases, LTG, and 474 WGSL cases on each of
 two drivers.
+
+Step 2 moved 240 files into `Examples/<Name>/` and renamed each example's namespaces,
+`Project.<Name>` and `LeanExe.Examples.<Name>`, to `Examples.<Name>`, so that module names and
+declaration names share one prefix.  The program of `<Name>` is `Program.lean`, and the
+reconstructed Euler solver is `ReconstructedProgram.lean` in `Examples.Euler.Reconstructed`.
+Several problems came up.  The host programs of the GPT-2 WGSL example, `Project/Gpt32/Program.lean`,
+collided with the example's program and became `HostProgram.lean`.  Fifteen references such as
+`IR.Stmt.scratchWidth` had resolved only inside the `Project` namespace and now name `Project.IR`
+in full.  In `Examples.Gpt.StepVerify`, `block` came to mean the transformer block of the program,
+which is now in the current namespace, instead of `Project.Pipeline.block`.  `EulerReal` became
+`Examples/Euler/Equations/`, since a namespace `Examples.Euler.Real` would shadow Mathlib's `Real`.
+The module cases moved from one file into each example's `Cases.lean`, with the shared helpers in
+`Examples/Host.lean`.  The script that split them left the increment cases outside `cases`, which
+Lean accepted, and the count of 16,033 cases against 16,039 exposed it.  The LTG entries listed a
+program module as `Examples.Prng`, which is `Examples.Prng.Program`, and the WGSL scripts named the
+binary32 kernels by their old namespace.  The renamed specification of `treeLookup` was frozen again
+with its new hashes.
+
+Step 2 passed the full check: the build with no `sorry`, the same bytes for the 35 modules, 16,039
+module cases, the release-count, depth-guard, and chunk cases, LTG, 474 WGSL cases on each of two
+drivers, the GPT driver's 2,733 cases, the drone driver's 1,975 calls and 116 terrains, the GPT-2
+native comparison of 15 steps, and `tools/demo-check treeLookup`.

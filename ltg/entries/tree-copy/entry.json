@@ -9,11 +9,11 @@
   "evidenceStatus": "promoted",
   "features": ["allocation", "copy", "depth", "move", "ownership", "record", "recursion"],
   "annotationKinds": ["tree copy", "copy", "tree copy function", "depth guard"],
-  "modules": ["Project.IR.Copy", "Project.Trees.Copy", "Project.Pipeline.Rebuilt", "Project.Trees.MovesVerify"],
-  "declarations": ["Project.IR.Func.copy", "Project.IR.recursionDepthLimit", "Project.Trees.copy_rec", "Project.Pipeline.Heap.Rebuilt.newNode", "Project.IR.Func.rebuildRecursion", "Project.IR.Stmt.selfCall_rebuilds", "Project.IR.Stmt.record_spec", "Project.Pipeline.NodeOwned.borrowed", "Project.Pipeline.Heap.Rebuilt.keepNode", "Project.Pipeline.Heap.Keeps.node", "Project.Pipeline.Heap.Keeps.nodeBorrowed", "Project.Pipeline.Heap.Keeps.trans", "Project.Trees.treePair_args", "Project.Trees.treePair_owned"],
+  "modules": ["Project.IR.Copy", "Examples.Trees.Copy", "Project.Pipeline.Rebuilt", "Examples.Trees.MovesVerify"],
+  "declarations": ["Project.IR.Func.copy", "Project.IR.recursionDepthLimit", "Examples.Trees.copy_rec", "Project.Pipeline.Heap.Rebuilt.newNode", "Project.IR.Func.rebuildRecursion", "Project.IR.Stmt.selfCall_rebuilds", "Project.IR.Stmt.record_spec", "Project.Pipeline.NodeOwned.borrowed", "Project.Pipeline.Heap.Rebuilt.keepNode", "Project.Pipeline.Heap.Keeps.node", "Project.Pipeline.Heap.Keeps.nodeBorrowed", "Project.Pipeline.Heap.Keeps.trans", "Examples.Trees.treePair_args", "Examples.Trees.treePair_owned"],
   "premises": ["The module holds Func.copy layout (2 + i) at function index i", "Heap.At, a memory cap of at most 65,535 pages, and a borrowed tree"],
   "result": "Rebuilds for the identity: at any depth the copy aborts or returns a pointer q with Heap.Rebuilt from no consumed blocks, a tree equal to the input in new records with every region of the heap kept and apart from them.",
-  "consumers": ["Project.Trees.keepOld_implements", "Project.Trees.addSelf_implements"],
+  "consumers": ["Examples.Trees.keepOld_implements", "Examples.Trees.addSelf_implements"],
   "relatedEntries": ["consumed-recursion", "function-call", "array-build"],
   "exclusion": null
 }

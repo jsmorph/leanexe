@@ -37,8 +37,8 @@ as `http://10.211.55.3:8000`, to `chrome://flags/#unsafely-treat-insecure-origin
 ## Kernel tests: `/kernels/`
 
 The page runs 474 cases of seventeen kernels: `scale`, `axpyArray`, `matVec`, and `condMix` of
-[`Project/WGSL/Binary32.lean`](../../Project/WGSL/Binary32.lean), `exp` of [`Project/Gpt32/Kernels.lean`](../../Project/Gpt32/Kernels.lean), and the twelve GPT-2 kernels
-of [`Project/Gpt32/Specs.lean`](../../Project/Gpt32/Specs.lean).  It binds and dispatches each case as `leanexe-webgpu-host run`
+[`Examples/Binary32/Wgsl.lean`](../../Examples/Binary32/Wgsl.lean), `exp` of [`Examples/Gpt32/Kernels.lean`](../../Examples/Gpt32/Kernels.lean), and the twelve GPT-2 kernels
+of [`Examples/Gpt32/Specs.lean`](../../Examples/Gpt32/Specs.lean).  It binds and dispatches each case as `leanexe-webgpu-host run`
 does for [`tests/wgsl/run.sh`](../wgsl/run.sh), reads the output buffer, and compares each word with native Lean's.
 The cases include subnormal values, infinities, NaNs, and arrays of up to 4,096 elements.
 
@@ -60,9 +60,9 @@ both of which WGSL permits (sections 15.7.2 and 15.7.5).  `?run=high-performance
 ## GPT-2: `/gpt2/`
 
 The page tokenizes the prompt on the server and runs one step of GPT-2 for each position.  For
-each step it fetches the host commands that `gpt32-lines` prints from [`Project/Gpt32/Program.lean`](../../Project/Gpt32/Program.lean)
+each step it fetches the host commands that `gpt32-lines` prints from [`Examples/Gpt32/HostProgram.lean`](../../Examples/Gpt32/HostProgram.lean)
 and runs them, after loading the weights with the setup commands.  The commands are those of the
-theorem `Project.Gpt32.generate_host`.  `hosts.js` runs them on WebGPU, as the C host does, or in
+theorem `Examples.Gpt32.generate_host`.  `hosts.js` runs them on WebGPU, as the C host does, or in
 `gpt32.wasm`, the same kernels compiled to WebAssembly, whose arrays have the words of the host's
 buffers.
 
@@ -89,7 +89,7 @@ without clicks.
 
 `generate_host` proves that, on a device with strict binary32 arithmetic, the commands of the setup
 and of each step leave in the score buffers exactly the bits of `step32`, the binary32 GPT-2 step
-of [`LeanExe/Examples/Gpt32.lean`](../../LeanExe/Examples/Gpt32.lean).  `sampleTopK_implements` proves that `sampleTopK` in `gpt.wasm`
+of [`Examples/Gpt32/Program.lean`](../../Examples/Gpt32/Program.lean).  `sampleTopK_implements` proves that `sampleTopK` in `gpt.wasm`
 computes the Lean function of the same name.  The JavaScript hosts, the generation loop, the
 server, the tokenizer, and the browser's WebGPU implementation are unproved, and the kernels of
 `gpt32.wasm` have no WebAssembly theorem.  On a device outside the strict profile, no theorem
@@ -108,7 +108,7 @@ applies, and the compared mode measures the difference.
 | [`tests/web/index.html`](index.html) | The page that links to both pages |
 | [`tests/wgsl/browser/`](../wgsl/browser/) | The kernel test page |
 | [`tests/gpt32/browser/`](../gpt32/browser/) | The GPT-2 page: `app.js` for the controls and the generation loop, `hosts.js` for the WebGPU and Wasm hosts and the sampler |
-| [`Project/Gpt32/Lines.lean`](../../Project/Gpt32/Lines.lean) | `gpt32-lines`, the native program that prints the setup and step commands |
+| [`Examples/Gpt32/Lines.lean`](../../Examples/Gpt32/Lines.lean) | `gpt32-lines`, the native program that prints the setup and step commands |
 
 | Request | Answer |
 |---|---|

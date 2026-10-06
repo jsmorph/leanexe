@@ -9,11 +9,11 @@
   "evidenceStatus": "promoted",
   "features": ["bitwise", "pure-call", "straight-line", "word-to-float"],
   "annotationKinds": [],
-  "modules": ["Project.Prng.Verify", "LeanExe.Examples.Prng"],
-  "declarations": ["LeanExe.Examples.Prng.splitMix", "LeanExe.Examples.Prng.unitFloat", "Project.Prng.splitMix_pure", "Project.Prng.unitFloat_pure", "Project.Prng.prng_bytes"],
+  "modules": ["Examples.Prng.Verify", "Examples.Prng.Program"],
+  "declarations": ["Examples.Prng.splitMix", "Examples.Prng.unitFloat", "Examples.Prng.splitMix_pure", "Examples.Prng.unitFloat_pure", "Examples.Prng.prng_bytes"],
   "premises": ["The module's function list holds the compiled splitMix or unitFloat at index i, as prng.splitMix.ir or prng.unitFloat.ir with its name"],
   "result": "ImplementsPure at entry 2 + i, which Stmt.callPure_spec turns into a Triple for a call from a loop body or any other code that must keep the store.",
-  "consumers": ["Project.Prng.splitMix_implements", "Project.Prng.unitFloat_implements"],
+  "consumers": ["Examples.Prng.splitMix_implements", "Examples.Prng.unitFloat_implements"],
   "relatedEntries": ["straight-line-run", "float-arithmetic", "function-call"],
   "exclusion": null
 }

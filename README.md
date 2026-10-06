@@ -24,21 +24,16 @@ compile and run a program, the theorems and the rules that prove them, the tests
 
 | Path | Contents |
 |---|---|
-| [`LeanExe/`](LeanExe/) | The example programs in [`Examples/`](LeanExe/Examples/), the combinators `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`, and the binary32 and binary64 wrappers the float proofs use. |
+| [`LeanExe/`](LeanExe/) | The dialect's library: the combinators `LeanExe.loop`, `LeanExe.build`, and `LeanExe.repeatWhile`, and the binary32 and binary64 wrappers the float proofs use. |
 | [`Project/Compiler/`](Project/Compiler/) | The compiler and the `leanexe_compile` command. |
 | [`Project/IR/`](Project/IR/) | The IR, `compile`, the statement and template rules, and the `Live` invariant of composite bodies. |
 | [`Project/Runtime/`](Project/Runtime/) | The code of the runtime functions `alloc` and `release`, and the free-list layout. |
 | [`Project/Pipeline/`](Project/Pipeline/) | `Implements` and `ImplementsA`, the runtime heap invariant, the allocation and release specifications, the memory budget, and `Emit.lean`. |
 | [`Project/Encoding/`](Project/Encoding/) | The encoder, the decoder, `decode_encode`, and the testsuite runner. |
 | [`Project/ProofKit/`](Project/ProofKit/) | General lemmas: memory, arrays, allocation, and binary32 and binary64 arithmetic and enclosures. |
-| [`Project/Gcd/`](Project/Gcd/), [`SumArray/`](Project/SumArray/), [`Clob/`](Project/Clob/), [`Euler/`](Project/Euler/), [`Drone/`](Project/Drone/), and the other directories named after an example | Each example's module and theorems.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
-| [`Project/EulerReal/`](Project/EulerReal/) | The real-number Euler mathematics that the solvers' hyperbolicity theorems use. |
+| [`Examples/`](Examples/) | One directory per example: the program, the specification where there is one, the module, the proofs, the module cases, and the request, README, and run records where there are any.  [The manual's list of examples](docs/manual.md#worked-examples) names them all. |
 | [`Project/WGSL/`](Project/WGSL/) | The WGSL subset, its printer, parser, and semantics, and the proved translation of IR kernels into WGSL. |
-| [`Project/Gpt32/`](Project/Gpt32/) | GPT-2 in binary32: the kernels' dispatch theorems, the host programs with their theorem `generate_host`, and the Lean driver. |
-| [`Project/Demo/`](Project/Demo/) | The host argument and result kinds of the samples that [`tools/demo-check`](tools/demo-check) runs. |
-| [`Project/LTG/`](Project/LTG/) | The checker of the LTG entries. |
-| [`ltg/`](ltg/) | The LTG knowledge base. |
-| [`demos/`](demos/) | Main's demos as examples: for each, a request in English, a README, and, for the runs of the verified-executable skill, the review and the journal. |
+| [`ltg/`](ltg/) | The LTG knowledge base and its checker, `Check.lean`. |
 | [`.claude/skills/verified-executable/`](.claude/skills/verified-executable/SKILL.md) | The skill that takes a request in English to a program and a theorem about its bytes. |
 | [`tools/`](tools/) | The resource-limited Lean runner, the Wasmtime and WebGPU hosts and their build scripts, the checker `demo-check`, and the Euler and GPT-2 command-line tools. |
 | [`tests/`](tests/) | Module, GPT, drone, PRNG, WGSL, and GPT-2 tests, and the WebGPU pages of [`tests/web/`](tests/web/). |
@@ -55,7 +50,7 @@ full check.
 export PATH="$HOME/.elan/bin:$PATH"
 tools/leanrun --timeout 60m lake build
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-  Project.Gcd.Module Project.Gcd.gcd.module build/gcd/gcd.wasm
+  Examples.Gcd.Module Examples.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:48 i64:18
 tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
