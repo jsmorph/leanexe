@@ -1,13 +1,13 @@
 # LeanExe
 
-The Smalltalk VM and arena GC are compiled through leanexe. Run
-`tests/smalltalk/run.sh` for native/WASM comparisons; see
-[smalltalk-vm.md](smalltalk-vm.md) for the subset, ABI, collector, and proof
-boundaries, and [smalltalk-compilers.md](smalltalk-compilers.md) for the upstream
-compiler options. The full driver passes 136 native executions and 181 WASM
-checks, including 136 exact arena comparisons. The emitted module is 25,208
-bytes. This Smalltalk milestone has control proofs and execution tests; it does
-not yet have a concrete VM/GC refinement or WASM artifact proof.
+The Smalltalk VM and collector are written in Lean and compiled to WASM.
+`tests/smalltalk/run.sh` passes 136 native executions and 181 WASM checks,
+including 136 exact arena comparisons. The emitted module is 25,208 bytes.
+The checked control proofs concern separate list models; the concrete VM,
+collector, source compiler, and emitted WASM are tested but not proved correct.
+See [smalltalk-vm.md](smalltalk-vm.md) for commands, formats, collection, tests,
+and proof limits, and [smalltalk-compilers.md](smalltalk-compilers.md) for compiler
+options and the unimplemented CSOM adapter.
 
 LeanExe compiles Lean functions to WebAssembly and proves, for each compiled
 function, that the bytes compute exactly the Lean function.  A compiler, which
