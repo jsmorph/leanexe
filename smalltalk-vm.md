@@ -217,7 +217,8 @@ proves that its rebuilt free list contains exactly the unmarked handles,
 without duplicates, with the correct count. These results require `Shape`;
 the list result also requires nonzero tags on marked cells. They allow any
 contents in unmarked cells and any old free-list order. They do not yet prove
-that marking identifies exactly the reachable cells.
+Those sweep results take marks as input; the complete marking theorem below
+proves that the marks identify exactly the reachable cells.
 
 `Project/Smalltalk/Clear.lean` proves that the actual clearing loop zeroes every
 mark and preserves payloads, registers, and arena shape. `MarkMemory.lean`
@@ -269,6 +270,23 @@ replaces operands, and preserves all other cell words and registers.
 `Traversal.lean` proves that concrete `walk` and `lexical` return the selected
 handle from a represented path, or zero after its end, using the actual
 capacity-clamped traversal count.
+
+`CallChain.lean` proves that `onChain` reports exactly membership in a
+represented caller chain that fits within capacity. `Home.lean` proves that
+`home` selects the first enclosing activation with a nonzero method identifier
+and selector, from a represented lexical chain within capacity. Home selection
+does not require the frame to be live. `ReturnChecks.lean` checks the actual
+return decisions: underflow gives error 4; a dead target or a target outside
+the caller chain gives error 7; a live activation in that chain reaches
+`returnReserved` with the caller and value from the specified fields.
+
+`Unwind.lean` proves that the concrete bounded unwind loop retires exactly the
+represented distinct prefix through its target and finishes with cursor zero,
+when the prefix fits within capacity. It sets each retired PC to dead and clears
+caller and operands, preserves other fields and cells, and preserves registers
+and arena shape. `returnReady_prefix` connects this result to `returnReady`.
+These results do not yet prove that caller allocation delivers the value or
+that VM instructions establish the represented chains and heap assumptions.
 
 `Project/Smalltalk/Execution.lean` proves that `run` performs the stated number
 of steps with finished and error states absorbing. `run_resume` proves that

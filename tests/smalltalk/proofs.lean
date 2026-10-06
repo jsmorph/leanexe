@@ -46,5 +46,13 @@ run_cmd do
 #print axioms Project.Smalltalk.Frame.advance_field
 #print axioms Project.Smalltalk.Traversal.walk_path
 #print axioms Project.Smalltalk.Traversal.lexical_path
+#print axioms Project.Smalltalk.CallChain.onChain_correct
+#print axioms Project.Smalltalk.Home.home_correct
+#print axioms Project.Smalltalk.ReturnChecks.ret_dead
+#print axioms Project.Smalltalk.ReturnChecks.ret_absent
+#print axioms Project.Smalltalk.ReturnChecks.ret_accepted
+#print axioms Project.Smalltalk.Unwind.unwind_go_prefix
+#print axioms Project.Smalltalk.Unwind.returnReady_prefix
+#print axioms Project.Smalltalk.Unwind.retireMany_field
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped
