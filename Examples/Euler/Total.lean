@@ -6,7 +6,7 @@ fixes: at most 1,407 pages (88 MiB), for every `n`. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Euler
 
 /-- The cells of a grid of a run: `n * n` for `n` in range, and 1 otherwise. -/
 def runCells (n : UInt64) : Nat := if (2 ≤ n && n ≤ 800) = true then (n * n).toNat else 1

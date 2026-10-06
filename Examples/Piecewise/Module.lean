@@ -1,5 +1,5 @@
 import Examples.Piecewise.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Piecewise
 

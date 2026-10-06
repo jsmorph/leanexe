@@ -7,7 +7,7 @@ terrain. -/
 namespace Examples.Drone
 
 open Examples.Drone Optimality Selection Costs Planner
-open Project.IR (loop_induction loop_congr build_size build_get)
+open LeanExe.IR (loop_induction loop_congr build_size build_get)
 
 namespace Forward
 

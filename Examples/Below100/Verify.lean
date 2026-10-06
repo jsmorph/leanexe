@@ -1,18 +1,18 @@
 import Examples.Below100.Module
 import Examples.Below100.Spec
-import Project.IR.ArrayLiteral
-import Project.IR.Correct
-import Project.IR.OneArray
-import Project.IR.Append
-import Project.IR.Update
-import Project.IR.Words
-import Project.Encoding.RoundTrip
+import LeanExe.IR.ArrayLiteral
+import LeanExe.IR.Correct
+import LeanExe.IR.OneArray
+import LeanExe.IR.Append
+import LeanExe.IR.Update
+import LeanExe.IR.Words
+import LeanExe.Encoding.RoundTrip
 
 /-! The bytes of `below100.module` compute the specification `expected`. -/
 
 namespace Examples.Below100
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Below100
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Below100
 
 theorem keep_eq (xs : Array UInt64) (i : UInt64) (out : Array UInt64) :
     keep xs i out = (i + 1, if xs[i.toNat]! < 100 then out.push xs[i.toNat]! else out) := by

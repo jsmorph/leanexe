@@ -1,5 +1,5 @@
 import Examples.Lists.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Lists
 

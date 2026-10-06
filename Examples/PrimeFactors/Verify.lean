@@ -1,9 +1,9 @@
 import Examples.PrimeFactors.Module
 import Examples.PrimeFactors.Spec
-import Project.IR.TailLoop
-import Project.IR.Live
-import Project.IR.Words
-import Project.Encoding.RoundTrip
+import LeanExe.IR.TailLoop
+import LeanExe.IR.Live
+import LeanExe.IR.Words
+import LeanExe.Encoding.RoundTrip
 import Mathlib.Data.Nat.Factors
 
 /-! The bytes of `primeFactors.module` compute the specification `expected`: the number of prime
@@ -11,7 +11,7 @@ factors of a word, counted with multiplicity. -/
 
 namespace Examples.PrimeFactors
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.PrimeFactors
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.PrimeFactors
 
 theorem primeFactorsList_small {n : Nat} (h : n ≤ 1) : n.primeFactorsList = [] := by
   interval_cases n <;> simp

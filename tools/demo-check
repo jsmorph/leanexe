@@ -115,7 +115,7 @@ EOF
 import $ns.Verify
 import $ns.Spec
 
-open Project.Pipeline in
+open LeanExe.Pipeline in
 theorem check : ∃ bytes, Wasm.Encoding.encode $ns.$name.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m $k $ns.expected :=
   $ns.${name}_bytes

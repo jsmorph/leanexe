@@ -9,11 +9,11 @@
   "evidenceStatus": "provisional",
   "features": ["accumulator", "array", "fold", "invariant", "prefix", "traversal"],
   "annotationKinds": [],
-  "modules": ["Project.ProofKit.Array"],
-  "declarations": ["Project.ProofKit.ArrayFold.foldPrefix", "Project.ProofKit.ArrayFold.foldPrefix_size", "Project.ProofKit.ArrayFold.foldPrefix_succ"],
+  "modules": ["LeanExe.ProofKit.Array"],
+  "declarations": ["LeanExe.ProofKit.ArrayFold.foldPrefix", "LeanExe.ProofKit.ArrayFold.foldPrefix_size", "LeanExe.ProofKit.ArrayFold.foldPrefix_succ"],
   "premises": ["An array element type", "An accumulator type and step function", "A traversal index below the input size for the successor equation"],
   "result": "The next accumulator equals one fold step over the indexed element, and the completed prefix equals Array.foldl over the input.",
-  "consumers": ["Project.IR.Stmt.fold_spec"],
+  "consumers": ["LeanExe.IR.Stmt.fold_spec"],
   "relatedEntries": ["array-fold-loop"],
   "exclusion": null
 }

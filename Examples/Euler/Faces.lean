@@ -5,7 +5,7 @@ Lean definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 def outwardSideTuple : Float × Float × Float × Float → Side :=
   fun (rho, momentum, transverse, energy) => outwardSide rho momentum transverse energy

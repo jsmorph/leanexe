@@ -767,7 +767,7 @@ temporaries, proved with the `Live` invariant. -/
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit
 
 """ + mlp_section + att_section + blk_section + fwd_section + ls_section + sc_section + st_section + "end Examples.Gpt\n"
     if sys.argv[1:] == ['--check']:

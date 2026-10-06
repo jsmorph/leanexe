@@ -5,7 +5,7 @@ import Examples.Drone.Correct
 
 namespace Examples.Drone
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Drone
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Drone
 
 def outputTuple : Array UInt64 × Array Choice × UInt64 → Array UInt64 :=
   fun (terrain, table, count) => output terrain table count

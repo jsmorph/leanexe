@@ -20,10 +20,10 @@
   "wordsSha256": "e097a43d82541eceaebc6169aa9d263b5c02c8b3bf140292bb010bcc0a6a6ae5",
   "format": "Little-endian UInt64 words: status, time bits, nx, ny, density bits, pressure bits",
   "execution": "One call to the complete solve export in one local Wasmtime process",
-  "specification": "Project.EulerRiemann.Spec.solve_exact",
-  "successTheorem": "Project.EulerRiemann.Spec.solve_success",
-  "artifactExactTheorem": "Project.EulerRiemann.Artifact.artifact_solve_exact",
-  "artifactSuccessTheorem": "Project.EulerRiemann.Artifact.artifact_solve_success",
+  "specification": "LeanExe.EulerRiemann.Spec.solve_exact",
+  "successTheorem": "LeanExe.EulerRiemann.Spec.solve_success",
+  "artifactExactTheorem": "LeanExe.EulerRiemann.Artifact.artifact_solve_exact",
+  "artifactSuccessTheorem": "LeanExe.EulerRiemann.Artifact.artifact_solve_success",
   "extrema": {
     "density": [
       0.138,

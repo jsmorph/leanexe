@@ -1,11 +1,11 @@
 import Examples.Bucket.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Convert
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Convert
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Bucket
 
-open Project.Pipeline Project.IR Project.ProofKit
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 /-- `bucket` with its three arguments as one tuple. -/
 def bucketTuple (x : Float × Float × Float) : UInt64 :=
@@ -19,7 +19,7 @@ theorem bucket_implements : Implements bucket.module 2 bucketTuple :=
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [bucket.ir, Expr.evalResults, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval,
-        Expr.scratchWidth, Project.IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values,
+        Expr.scratchWidth, LeanExe.IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values,
         bucketTuple, Examples.Bucket.bucket, F64Bits.toBits_sub, F64Bits.toBits_div,
         F64Convert.toUInt64_eq]⟩) fun _ _ h => h
 

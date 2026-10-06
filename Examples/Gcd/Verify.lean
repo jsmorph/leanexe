@@ -1,11 +1,11 @@
 import Examples.Gcd.Module
 import Examples.Gcd.Spec
-import Project.IR.TailLoop
-import Project.Encoding.RoundTrip
+import LeanExe.IR.TailLoop
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Gcd
 
-open Wasm Project.Pipeline Project.IR
+open Wasm LeanExe.Pipeline LeanExe.IR
 
 /-- `gcd` with its two arguments as one pair. -/
 def gcdTuple (x : UInt64 × UInt64) : UInt64 := Examples.Gcd.gcd x.1 x.2

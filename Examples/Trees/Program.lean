@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Binary trees of words declared by the program, held on the heap as records: a leaf is the

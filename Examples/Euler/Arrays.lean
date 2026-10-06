@@ -1,6 +1,6 @@
 import Examples.Euler.Kernels
-import Project.IR.BuildRecord
-import Project.Pipeline.Budget
+import LeanExe.IR.BuildRecord
+import LeanExe.Pipeline.Budget
 
 /-! The compiled functions of the first-order Euler solver that build and read arrays of cells
 compute their Lean definitions.  An array of cells is stored as `flatWords`, six words for each
@@ -8,7 +8,7 @@ cell: the four conserved components, the pressure, and the status. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 theorem cell_length (c : Cell) : (Scalar.values c).length = 6 := rfl
 

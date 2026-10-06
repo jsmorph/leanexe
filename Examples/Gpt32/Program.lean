@@ -1,6 +1,6 @@
-import LeanExe.Build
-import LeanExe.Loop
-import LeanExe.Float32
+import LeanExe.Dialect.Build
+import LeanExe.Dialect.Loop
+import LeanExe.Dialect.Float32
 
 /-!
 GPT-2 124M in binary32, written for WGSL kernels: every array is built element by element, and

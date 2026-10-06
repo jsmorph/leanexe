@@ -1,13 +1,13 @@
 import Examples.Drone.Rows
 import Examples.Drone.Forward
-import Project.IR.Read
-import Project.IR.OneArray
+import LeanExe.IR.Read
+import LeanExe.IR.OneArray
 
 /-! The compiled functions of the drone planner's forward pass compute their Lean definitions. -/
 
 namespace Examples.Drone
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Drone
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Drone
 
 /-- One step of `validHeights`'s loop. -/
 def validStep (terrain : Array UInt64) (i : UInt64) (ok : Bool) : Bool :=

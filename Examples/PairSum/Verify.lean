@@ -1,10 +1,10 @@
 import Examples.PairSum.Module
-import Project.IR.Correct
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.PairSum
 
-open Wasm Project.Pipeline Project.IR Project.Runtime
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime
 
 /-- `pairSum` with its two arguments as one pair. -/
 def pairTuple (x : UInt64 × UInt64) : UInt64 := Examples.PairSum.pairSum x.1 x.2

@@ -1,13 +1,13 @@
 import Examples.Euler.Steps
 import Examples.Euler.ReconstructedLoops
-import Project.Encoding.RoundTrip
+import LeanExe.Encoding.RoundTrip
 
 /-! The encoded bytes of the Euler module decode to a module whose every compiled function, of
 both solvers, computes its Lean definition. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR Examples.Euler
 
 /-- `encode` succeeds on `euler.module`, and its bytes decode to `euler.module`. -/
 theorem euler_round_trip : ∃ bytes, Wasm.Encoding.encode euler.module = .ok bytes ∧

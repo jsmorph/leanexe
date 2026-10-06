@@ -1,10 +1,10 @@
 import Examples.SumArray.Module
-import Project.IR.Fold
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Fold
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.SumArray
 
-open Project.Pipeline Project.IR
+open LeanExe.Pipeline LeanExe.IR
 
 theorem sumArray_implements :
     Implements sumArray.module 2 Examples.SumArray.sumArray :=

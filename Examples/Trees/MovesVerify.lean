@@ -2,10 +2,10 @@ import Examples.Trees.Moves
 import Examples.Trees.Encode
 import Examples.Trees.Node
 import Examples.Trees.Copy
-import Project.IR.Recursion
-import Project.IR.Release
-import Project.Pipeline.Records
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Recursion
+import LeanExe.IR.Release
+import LeanExe.Pipeline.Records
+import LeanExe.Encoding.RoundTrip
 
 /-! The functions in `treeMoves.module` consume their tree and compute their Lean definitions
 exactly.  `KeyTree.setKey` writes the new key into the root's record and returns the record;
@@ -14,7 +14,7 @@ rewrites every record in place. -/
 
 namespace Examples.Trees
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Trees
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Trees
 
 /-- `setKey` with its two arguments as one pair, the tree consumed. -/
 def setKeyMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.setKey x.1 x.2.val

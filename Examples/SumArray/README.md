@@ -20,7 +20,7 @@ and applies the operation.  [The module definitions](Module.lean) compile
 | `sumArray_bytes` | The bytes of `sumArray.module` decode to a module whose export implements `sumArray`. |
 | `folds_bytes` | The bytes of `folds.module` decode to a module whose functions 2 and 3 implement `productArray` and `xorArray`. |
 
-`Func.foldl_implements` is in [the fold rule](../../Project/IR/Fold.lean), and each program's
+`Func.foldl_implements` is in [the fold rule](../../LeanExe/IR/Fold.lean), and each program's
 theorem applies it with its operation and initial value.  The theorems are in [the
 proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and
 `Quot.sound`.  Main's proofs concerned one 1,979-byte binary each and took 572 and 676 lines.  The module tests run 35 arrays

@@ -1,6 +1,6 @@
-name = "Project"
+name = "leanexe"
 version = "0.1.0"
-defaultTargets = ["LeanExe", "Project", "Examples"]
+defaultTargets = ["LeanExe", "Examples"]
 
 [[require]]
 name = "Verifier"
@@ -15,9 +15,6 @@ rev = "87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47"
 
 [[lean_lib]]
 name = "LeanExe"
-
-[[lean_lib]]
-name = "Project"
 
 [[lean_lib]]
 name = "Examples"

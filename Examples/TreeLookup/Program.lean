@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Main's Demo 3 in this dialect: lookup in a complete binary search tree of seven nodes, stored in

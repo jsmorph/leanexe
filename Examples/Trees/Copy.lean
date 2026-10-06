@@ -1,14 +1,14 @@
 import Examples.Trees.Encode
-import Project.IR.Copy
-import Project.IR.Recursion
-import Project.IR.Record
+import LeanExe.IR.Copy
+import LeanExe.IR.Recursion
+import LeanExe.IR.Record
 
 /-! `KeyTree`'s copy function, which the compiler generates as `Func.copy [true, false, true]`
 for a module that copies a tree, rebuilds a borrowed tree in new records. -/
 
 namespace Examples.Trees
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Trees
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Trees
 
 /-- `KeyTree`'s copy function, at any index of any module: at any depth, a call on a borrowed
 tree aborts or returns a pointer to an equal tree in new records, and keeps every region of the

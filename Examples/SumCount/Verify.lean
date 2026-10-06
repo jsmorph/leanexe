@@ -1,10 +1,10 @@
 import Examples.SumCount.Module
-import Project.IR.Correct
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.SumCount
 
-open Wasm Project.Pipeline Project.IR Project.Runtime
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime
 
 theorem sumCount_implements :
     Implements sumCount.module 2 Examples.SumCount.sumCount := by

@@ -1,5 +1,5 @@
-import Project.WGSL.Build
-import Project.WGSL.RoundTrip
+import LeanExe.WGSL.Build
+import LeanExe.WGSL.RoundTrip
 import Examples.Binary32.Verify
 
 /-!
@@ -11,7 +11,7 @@ Wasm proof uses, and its text theorem from `Module.parse_print_of_wfb`.
 
 namespace Examples.Binary32
 
-open Project.IR Project.WGSL Project.ProofKit Examples.Binary32
+open LeanExe.IR LeanExe.WGSL LeanExe.ProofKit Examples.Binary32
 
 def scaleSpec : Spec :=
   { kinds := [.float, .array], index := 5, count := .size 2 1, vars := [], width := 6,
@@ -160,12 +160,12 @@ theorem matVecKernel_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m
   exact h
 
 /-- The element of `condMix32`'s build. -/
-def condMixElement : Project.IR.Expr .u64 :=
-  let xi : Project.IR.Expr .f32 := .ofBits32 (.read 0 (.get 7))
-  let q : Project.IR.Expr .u64 := .bin .divU (.get 7) (.const 4)
-  let r : Project.IR.Expr .u64 := .bin .remU (.get 7) (.const 4)
-  let j : Project.IR.Expr .u64 := .bin .add (.bin .mul q (.const 4)) (.bin .sub (.const 3) r)
-  let mx : Project.IR.Expr .f32 := .iteF32 (.leF32 (.getF32 1) xi) xi (.getF32 1)
+def condMixElement : LeanExe.IR.Expr .u64 :=
+  let xi : LeanExe.IR.Expr .f32 := .ofBits32 (.read 0 (.get 7))
+  let q : LeanExe.IR.Expr .u64 := .bin .divU (.get 7) (.const 4)
+  let r : LeanExe.IR.Expr .u64 := .bin .remU (.get 7) (.const 4)
+  let j : LeanExe.IR.Expr .u64 := .bin .add (.bin .mul q (.const 4)) (.bin .sub (.const 3) r)
+  let mx : LeanExe.IR.Expr .f32 := .iteF32 (.leF32 (.getF32 1) xi) xi (.getF32 1)
   .toBits32 (.iteF32 (.ltF32 xi (.getF32 1))
     (.iteF32 (.and (.leU r (.const 3)) (.ltU j (.get 3))) (.ofBits32 (.read 0 j)) mx)
     (.iteF32 (.leF32 (.getF32 2) xi) (.getF32 2) mx))

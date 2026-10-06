@@ -1,4 +1,4 @@
-import LeanExe.RepeatWhile
+import LeanExe.Dialect.RepeatWhile
 
 /-!
 Main's Demo 5 in this dialect: the elements of an array of at most eight words that are less than

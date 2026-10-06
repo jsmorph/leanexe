@@ -6,7 +6,7 @@ their Lean definitions. -/
 
 namespace Examples.Euler
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Euler
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
 def reconstructedFinishTuple : UInt64 × UInt64 × Float × Moved (Array Cell) → Array Cell :=
   fun (n, trials, ratio, middle) => reconstructedFinish n trials ratio middle.val

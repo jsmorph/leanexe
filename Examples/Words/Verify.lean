@@ -1,17 +1,17 @@
 import Examples.Words.Module
 import Examples.Words.Encode
-import Project.IR.Correct
-import Project.IR.TailLoop
-import Project.IR.Loop
-import Project.IR.Record
-import Project.Pipeline.Records
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.IR.TailLoop
+import LeanExe.IR.Loop
+import LeanExe.IR.Record
+import LeanExe.Pipeline.Records
+import LeanExe.Encoding.RoundTrip
 
 /-! The compiled functions over `Words` compute their Lean definitions exactly. -/
 
 namespace Examples.Words
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Words
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Words
 
 theorem first_implements : Implements words.module 2 Words.first := by
   refine Func.implements words.funcs 0 words.first.ir "first" rfl _

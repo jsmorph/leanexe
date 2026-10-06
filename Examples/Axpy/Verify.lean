@@ -1,11 +1,11 @@
 import Examples.Axpy.Module
-import Project.IR.Correct
-import Project.ProofKit.F64Bits
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.ProofKit.F64Bits
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Axpy
 
-open Project.Pipeline Project.IR Project.ProofKit
+open LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit
 
 /-- `axpy` with its three arguments as one tuple. -/
 def axpyTuple (x : Float × Float × Float) : Float := Examples.Axpy.axpy x.1 x.2.1 x.2.2
@@ -18,7 +18,7 @@ theorem axpy_implements : Implements axpy.module 2 axpyTuple :=
       subst hState
       refine ⟨_, _, rfl, ?_⟩
       simp [axpy.ir, Expr.evalResults, Func.state, Func.locals, Func.width, Func.scratch, Expr.eval, Expr.scratchWidth,
-        Project.IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values, axpyTuple,
+        LeanExe.IR.Stmt.scratchWidth, State.get, F64Op.apply, Scalar.values, axpyTuple,
         Examples.Axpy.axpy, F64Bits.toBits_add, F64Bits.toBits_mul]⟩) fun _ _ h => h
 
 /-- `encode` succeeds on `axpy.module`, and its bytes decode to a module that

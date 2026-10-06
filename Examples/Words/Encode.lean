@@ -1,9 +1,9 @@
 import Examples.Words.Program
-import Project.Pipeline.Slotted
+import LeanExe.Pipeline.Slotted
 
 namespace Examples.Words
 
-open Examples.Words Project.Pipeline
+open Examples.Words LeanExe.Pipeline
 
 /-- `Words` as records, the layout of `List UInt64`: `nil` is the null pointer, and `cons x w`
 a record of two slots, the word `x` and the pointer to `w`. -/

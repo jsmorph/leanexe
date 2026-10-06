@@ -11,7 +11,7 @@ nothing bounds the memory the generation uses. -/
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Gpt.Exact
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Gpt.Exact
 
 /-- The weight arrays of GPT-2, in the order the host passes them. -/
 structure Weights where

@@ -1,10 +1,10 @@
 import Examples.Increment.Module
 import Examples.Increment.Spec
-import Project.IR.Build
-import Project.IR.Correct
-import Project.IR.Combinators
-import Project.Pipeline.Budget
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Build
+import LeanExe.IR.Correct
+import LeanExe.IR.Combinators
+import LeanExe.Pipeline.Budget
+import LeanExe.Encoding.RoundTrip
 
 /-! The bytes of `increment.module` compute the specification `expected`, and from an allocator
 whose `top` leaves room for one block of 72 bytes, the call returns without a trap and leaves the
@@ -12,7 +12,7 @@ whose `top` leaves room for one block of 72 bytes, the call returns without a tr
 
 namespace Examples.Increment
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.Increment
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Increment
 
 /-- The program computes the specification on every input that memory can hold. -/
 theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = expected xs := by

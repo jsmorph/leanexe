@@ -1,5 +1,5 @@
 import Examples.Calc.Program
-import Project.Pipeline.Implements
+import LeanExe.Pipeline.Implements
 
 /-! How the calculator's theorems represent its types: an operation as the word of its
 constructor index, and a state as its value, its step count, and its last operation, in
@@ -7,7 +7,7 @@ declaration order.  These instances are part of what the theorems in `Verify.lea
 
 namespace Examples.Calc
 
-open Project.Pipeline Examples.Calc
+open LeanExe.Pipeline Examples.Calc
 
 instance : Flat Op UInt64 := ⟨fun op => op.ctorIdx.toUInt64⟩
 

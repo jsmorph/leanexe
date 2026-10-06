@@ -1,17 +1,17 @@
 import Examples.RemoveZero.Module
 import Examples.RemoveZero.Spec
-import Project.IR.Build
-import Project.IR.Correct
-import Project.IR.OneArray
-import Project.IR.Words
-import Project.IR.Combinators
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Build
+import LeanExe.IR.Correct
+import LeanExe.IR.OneArray
+import LeanExe.IR.Words
+import LeanExe.IR.Combinators
+import LeanExe.Encoding.RoundTrip
 
 /-! The bytes of `removeZero.module` compute the specification `expected`. -/
 
 namespace Examples.RemoveZero
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.RemoveZero
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.RemoveZero
 
 /-- One step of `firstZero`'s loop. -/
 def firstZeroStep (xs : Array UInt64) (count i k : UInt64) : UInt64 :=

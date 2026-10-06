@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 Lists of words, held on the heap as chains of records of two slots: the element and the

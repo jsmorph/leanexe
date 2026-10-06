@@ -1,10 +1,10 @@
 import Examples.Gpt.Composites
 import Examples.Gpt.SampleVerify
-import Project.Encoding.RoundTrip
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Gpt
 
-open Wasm Project.Pipeline Project.IR
+open Wasm LeanExe.Pipeline LeanExe.IR
 
 /-- `encode` succeeds on `gpt.module`, and its bytes decode to a module whose
 exports compute the kernels exactly. -/

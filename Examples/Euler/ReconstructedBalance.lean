@@ -6,7 +6,7 @@ run that returns status 0. -/
 
 namespace Examples.Euler
 
-open Examples.Euler Project.ProofKit
+open Examples.Euler LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 
 /-- The flux at the face between `b` and `c`: the Rusanov flux between the reconstructed state of

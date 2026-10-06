@@ -1,19 +1,19 @@
 import Examples.Trees.Module
 import Examples.Trees.Encode
 import Examples.Trees.Node
-import Project.IR.Recursion
-import Project.IR.Call
-import Project.IR.Update
-import Project.IR.Live
-import Project.Pipeline.Records
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Recursion
+import LeanExe.IR.Call
+import LeanExe.IR.Update
+import LeanExe.IR.Live
+import LeanExe.Pipeline.Records
+import LeanExe.Encoding.RoundTrip
 
 /-! The compiled functions over `KeyTree` compute their Lean definitions exactly.  Each is an
 entry function and an internal function that recurses with a depth parameter. -/
 
 namespace Examples.Trees
 
-open Wasm Project.Pipeline Project.IR Project.ProofKit Project.Runtime Examples.Trees
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.ProofKit LeanExe.Runtime Examples.Trees
 
 /-- The internal function of a recursion over `KeyTree` whose body is the depth guard and a
 match: a leaf assigns `c` to the result, and a node loads its fields, calls the function on

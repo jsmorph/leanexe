@@ -22,7 +22,7 @@ disagreement with the request.  After the second review, one line of `Samples.le
 to 100 columns with no other change, and the specification was frozen.
 
 On 2026-10-05 the reorganization of the branch moved the specification and samples to
-`Examples/TreeLookup/` and renamed their namespace from `Project.TreeLookup` to
+`Examples/TreeLookup/` and renamed their namespace from `LeanExe.TreeLookup` to
 `Examples.TreeLookup`, and changed the request's path in the specification's comment, with no
 other change.  `tools/demo-check --freeze` then recorded the hashes
 of the renamed files.

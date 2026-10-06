@@ -1,16 +1,16 @@
 import Examples.TreeLookup.Module
 import Examples.TreeLookup.Spec
-import Project.IR.ArrayLiteral
-import Project.IR.Correct
-import Project.IR.Loop
-import Project.IR.Words
-import Project.Encoding.RoundTrip
+import LeanExe.IR.ArrayLiteral
+import LeanExe.IR.Correct
+import LeanExe.IR.Loop
+import LeanExe.IR.Words
+import LeanExe.Encoding.RoundTrip
 
 /-! The bytes of `treeLookup.module` compute the specification `expected`. -/
 
 namespace Examples.TreeLookup
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Examples.TreeLookup
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.TreeLookup
 
 theorem search_inner (input : Array UInt64) (query : UInt64) {j : Nat} (hj : j < 3) :
     search input query j =

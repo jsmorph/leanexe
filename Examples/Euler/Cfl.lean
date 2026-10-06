@@ -1,6 +1,6 @@
 import Examples.Euler.Enclosure
-import Project.ProofKit.F64DyadicBounds
-import Project.ProofKit.F64Convert
+import LeanExe.ProofKit.F64DyadicBounds
+import LeanExe.ProofKit.F64Convert
 
 /-! Accepted timesteps of the reconstructed solver.  Every cell of the grid that a step starts
 from is admissible in exact arithmetic, and the step satisfies the CFL bound: the ratio of the
@@ -9,7 +9,7 @@ timestep to the cell width, bounded above, times the signal speed of every cell 
 
 namespace Examples.Euler
 
-open Examples.Euler Project.ProofKit
+open Examples.Euler LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 
 set_option exponentiation.threshold 4096

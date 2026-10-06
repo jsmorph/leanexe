@@ -1,10 +1,10 @@
 import Examples.Scale.Module
-import Project.IR.Correct
-import Project.Encoding.RoundTrip
+import LeanExe.IR.Correct
+import LeanExe.Encoding.RoundTrip
 
 namespace Examples.Scale
 
-open Project.Pipeline Project.IR
+open LeanExe.Pipeline LeanExe.IR
 
 /-- `scale` with its three arguments as one tuple. -/
 def scaleTuple (x : UInt64 × UInt64 × UInt64) : UInt64 :=

@@ -1,5 +1,5 @@
 import Examples.Gcd.Program
-import Project.Compiler.Command
+import LeanExe.Compiler.Command
 
 namespace Examples.Gcd
 

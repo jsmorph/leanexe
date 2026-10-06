@@ -1,4 +1,4 @@
-import LeanExe.Loop
+import LeanExe.Dialect.Loop
 
 /-!
 A list of words declared by the program, held on the heap as records: the empty list is the

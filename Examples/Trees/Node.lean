@@ -1,13 +1,13 @@
 import Examples.Trees.Encode
-import Project.IR.Recursion
-import Project.Pipeline.Records
+import LeanExe.IR.Recursion
+import LeanExe.Pipeline.Records
 
 /-! Facts about a node of a `KeyTree` that code consumes: its blocks, the premises of calls on its
 children, and the record rebuilt from the children's results by three slot stores. -/
 
 namespace Examples.Trees
 
-open Wasm Project.Pipeline Project.IR Project.Runtime Project.ProofKit Examples.Trees
+open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Trees
 
 /-- The blocks of a node: its record's, then its subtrees'. -/
 theorem blocks_node (store : Store Unit) (p k : UInt64) (l r : KeyTree) :

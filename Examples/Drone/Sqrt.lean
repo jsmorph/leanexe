@@ -1,13 +1,13 @@
 import Examples.Drone.Program
 import Mathlib.Tactic.Linarith
-import Project.IR.Combinators
+import LeanExe.IR.Combinators
 
 /-! `ceilSqrt` is the exact ceiling square root for inputs up to `2^32`. -/
 
 namespace Examples.Drone
 
 open Examples.Drone
-open Project.IR (loop_induction)
+open LeanExe.IR (loop_induction)
 
 /-- One halving of `ceilSqrt`'s bracket. -/
 def sqrtStep (n : UInt64) (_ : UInt64) (bracket : UInt64 × UInt64) : UInt64 × UInt64 :=

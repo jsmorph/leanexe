@@ -1,6 +1,6 @@
 import Examples.Gpt.Program
 import Mathlib.Tactic
-import Project.IR.Combinators
+import LeanExe.IR.Combinators
 
 /-! Row `i` of `forward`'s scores, and of each layer's input inside it, depends only on
 tokens `0` to `i`, whatever the number of tokens.  The lemmas compare a run on `t` tokens
@@ -11,7 +11,7 @@ The bounds on the dimensions (`t`, `nh`, and `dh` below `2 ^ 16`; `f` and `vocab
 
 namespace Examples.Gpt.Causal
 
-open Project.IR (loop_congr build_get build_get_out)
+open LeanExe.IR (loop_congr build_get build_get_out)
 
 open Examples.Gpt
 

@@ -1,5 +1,5 @@
 import Lean
-import Project.WGSL.Parse
+import LeanExe.WGSL.Parse
 
 open Lean
 
@@ -9,9 +9,9 @@ unsafe def emit (moduleName constName : Name) (path : System.FilePath) : IO Unit
   initSearchPath (← findSysroot)
   let env ← importModules
     #[{ module := moduleName, importAll := false, isExported := true, isMeta := false }] {}
-  let kernel ← IO.ofExcept <| env.evalConst Project.WGSL.Module {} constName
+  let kernel ← IO.ofExcept <| env.evalConst LeanExe.WGSL.Module {} constName
   let text := kernel.print
-  match Project.WGSL.Module.parse text with
+  match LeanExe.WGSL.Module.parse text with
   | some parsed =>
       if toString (repr parsed) != toString (repr kernel) then
         throw <| IO.userError s!"{constName}: the text parses to a different kernel"
