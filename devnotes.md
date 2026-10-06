@@ -26145,3 +26145,37 @@ The full check passed: the build with no `sorry`, the same bytes for the 34 modu
 cases, 77 release-count cases, 20 depth-guard cases, 360 chunk cases, and LTG.  The module cases
 include 13 for `primeFactors`, 9 for `lookup`, 9 for `below100`, and 70 for `folds`, and the 49
 `gcd` cases now compare with `expected`.
+
+### From an English request to a verified executable
+
+The user's decisions (2026-10-05): the tool is a Claude Code skill and a checker, rather than a
+headless orchestrator like main's `leanexegen`; it covers parameters of `UInt64`, `Array UInt64`,
+and tuples of these, and results of `UInt64` or `Array UInt64`; and the required theorem is
+`Implements`, which allows a trap.  The user first chose to approve each specification and then
+replaced the approval by an independent review: a fresh agent sees only the request, the
+specification, and the samples with their outputs, and the run proceeds without the user.
+
+`tools/demo-check` holds the parts that must not depend on the agent.  It writes the statement
+`∃ bytes, encode NAME.module = .ok bytes ∧ ∃ m, decode bytes = .ok m ∧ Implements m K expected`,
+with `K` the index of the export that it reads from the module, and requires `NAME_bytes` to prove
+it.  It rejects axioms beyond `propext`, `Classical.choice`, and `Quot.sound`, rejects a
+specification or samples changed after `--freeze` recorded their hashes, and runs the samples in
+Wasmtime against `expected`.  `--spec` prints the samples with the outputs of `expected` for the
+review, and `--run` runs the samples before any proof exists.  Tests of the checker on Demo 1
+rejected a theorem for the wrong export, by a type mismatch, and an edit after the freeze.
+`Project/Demo/Host.lean` gives the host's argument and result kinds for the covered types and
+writes the samples in the format of `tests/modules/run.sh`, so `Cases.lean` runs them too.
+
+The first run took main's Demo 3 request, lookup in a search tree of seven nodes, as `treeLookup`.
+The first review found no disagreement and five uncovered input classes, among them a key of 2^63
+that separates unsigned from signed comparison and a matched value of 0.  The second review, of
+the 22 samples with one for each class, found no disagreement.  The program is a loop of one step
+per level with a tuple state, and its proof follows `lookup`'s, 189 lines against main's 1,398.
+`demos/tree-lookup/journal.md` records the run, including a `simp_all` loop that came from opposite
+orientations of one equality in the program and the specification.  The proof of `lookup` served
+as a template with only its indices changed, which suggests a rule for a loop with a tuple state
+followed by an array literal.
+
+The full check passed: the build with no `sorry`, the same bytes for the 35 modules, 16,039
+module cases, including the 22 of `treeLookup`, 77 release-count cases, 20 depth-guard cases, 360
+chunk cases, and LTG.

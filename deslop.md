@@ -75,6 +75,7 @@ The trusted base is Lean's kernel, Talos's semantics, the decoder, and any I/O a
 | `LeanExe/Examples/Euler.lean`, `EulerReconstructed.lean`, `Project/Euler/`, `Project/EulerReal/` | The two Euler solvers, their `Implements` and total-execution proofs, run properties, real-number admissibility, hyperbolicity, CFL bounds, and conservation balance; `data/euler-*/README.md` describe the runs. |
 | `LeanExe/Examples/Drone.lean`, `Project/Drone/`, `tests/drone/` | The drone planner, its optimality and flight-safety theorems, complete execution within 70 pages, and the comparison with main's program; `data/drone/README.md` describes it. |
 | `demos/`, `Project/PrimeFactors/`, `Project/Lookup/`, `Project/Below100/`, `Project/Increment/`, `Project/RemoveZero/` | Main's demos 1, 2, 4, 5, and 12 as stand-alone examples, and demos 6, 10, and 11 as the `gcd` and `folds` examples: a request, a specification, a program, and a theorem that the bytes compute the specification. |
+| `.claude/skills/verified-executable/`, `tools/demo-check`, `Project/Demo/Host.lean` | From an English request to a verified executable: the skill an agent follows, the checker that writes the required theorem and accepts or rejects a run, and the host kinds of the samples.  `Project/TreeLookup/` and `demos/tree-lookup/` are its first run. |
 | `docs/manual.md` | The user manual: the dialect, compiling and running, proving, and testing. |
 
 ## Proved
@@ -152,7 +153,8 @@ without a trap and end within 1,407 pages.  `drone_compute` and `drone_safe` sta
 of `drone.module` compute the planner, whose flight is optimal among admitted flights and safe in
 the point-mass model, and `drone_compute_total` states complete execution within 70 pages.
 `primeFactors_bytes`, `lookup_bytes`, `below100_bytes`, `increment_bytes`, `removeZero_bytes`,
-and `gcd_bytes` state that the bytes of the demo modules compute their specifications, written apart from the programs, and `increment_total` states complete
+`gcd_bytes`, and `treeLookup_bytes` state that the bytes of the demo modules compute their
+specifications, written apart from the programs, and `increment_total` states complete
 execution without memory growth.
 
 ## Tested
@@ -382,7 +384,7 @@ The user doubted that items 2 and 3 need work, and no work on them is planned.
 - [x] Drone (2026-10-05): main's planner rewritten in the dialect, with `compute_correct`, `compute_safe`, and `drone_compute_total` within 70 pages.
 - [x] Demos 4 and 12 by hand (2026-10-05), with `increment_total` as the smallest complete-execution example.
 - [x] Demos 1, 2, and 5; Demo 6 into `gcd`; Demos 10 and 11 into `sumArray` (2026-10-05).
-- [ ] The English-to-verified-executable tool.
+- [x] The English-to-verified-executable tool (2026-10-05): the skill, `tools/demo-check`, and `treeLookup`, its first run, on main's Demo 3 request.
 - [ ] E2c and E3: defaults from instances, records with array fields, and arrays whose elements own memory.
 - [ ] Iteration 25: the host's invocation of kernels and a run in a browser.
 - [ ] Then prove the I/O adapter.

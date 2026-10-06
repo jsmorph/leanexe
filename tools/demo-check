@@ -1,0 +1,145 @@
+#!/usr/bin/env bash
+# Checks a program made from an English request by the verified-executable skill.
+#
+#   tools/demo-check --spec NAME [EXPORT]   print each sample with the specification's output
+#   tools/demo-check --freeze NAME          record the hashes of the reviewed Spec.lean and
+#                                           Samples.lean
+#   tools/demo-check --run NAME [EXPORT]    emit the module and run the samples, without proofs
+#   tools/demo-check NAME [EXPORT]          check the hashes, the theorem, and the samples
+#
+# NAME is the module name, such as primeFactors.  Its files are Project/<Name>/Spec.lean,
+# Samples.lean, Module.lean, and Verify.lean, with <Name> the capitalized NAME, and its request,
+# review, README, and hash record are in demos/<name-in-kebab-case>/.  EXPORT, compute by default, is
+# the export whose function index K the theorem names.  The check states
+#
+#   ∃ bytes, Wasm.Encoding.encode <name>.module = .ok bytes ∧
+#     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m K expected
+#
+# itself, requires <name>_bytes to prove it with no axioms beyond propext, Classical.choice, and
+# Quot.sound, emits build/<name>/<name>.wasm, and runs the samples in Wasmtime against expected.
+set -euo pipefail
+root=$(cd "$(dirname "$0")/.." && pwd)
+cd "$root"
+export PATH="$HOME/.elan/bin:$PATH"
+
+fail() { echo "demo-check: $*" >&2; exit 1; }
+
+mode=check
+case ${1:-} in
+  --spec) mode=spec; shift ;;
+  --freeze) mode=freeze; shift ;;
+  --run) mode=run; shift ;;
+esac
+name=${1:-}
+[ -n "$name" ] || fail "usage: tools/demo-check [--spec|--freeze|--run] NAME [EXPORT]"
+export_name=${2:-compute}
+Name=${name^}
+ns=Project.$Name
+kebab=$(echo "$name" | sed 's/\([A-Z]\)/-\L\1/g')
+demo=demos/$kebab
+work=tmp/demo-check/$name
+host=build/tools/leanexe-wasmtime-host
+mkdir -p "$work"
+
+lean() { tools/leanrun --timeout 60m --lock-timeout 3600 lake "$@"; }
+
+# The samples with the specification's outputs, in the format of tests/modules/run.sh.
+lines() {
+  cat >"$work/Lines.lean" <<EOF
+import Project.Demo.Host
+import $ns.Spec
+import $ns.Samples
+
+def main : IO Unit := do
+  for line in Project.Demo.lines "$name" "$export_name" $ns.expected $ns.samples do
+    IO.println line
+EOF
+  lean env lean --run "$work/Lines.lean" >"$work/lines.txt" 2>"$work/lines.err" ||
+    fail "samples: $(cat "$work/lines.err")"
+}
+
+emit() {
+  mkdir -p "build/$name"
+  lean env lean --run Project/Pipeline/Emit.lean "$ns.Module" "$ns.$name.module" \
+    "build/$name/$name.wasm" >/dev/null 2>"$work/emit.err" || fail "emit: $(cat "$work/emit.err")"
+  echo "module: build/$name/$name.wasm, $(stat -c %s "build/$name/$name.wasm") bytes"
+}
+
+# Runs the samples in Wasmtime and compares each result with the specification's.
+run_samples() {
+  lines
+  local passed=0 failed=0 module fn kind args expected out argv
+  while IFS='|' read -r module fn kind args expected; do
+    read -ra argv <<<"$args"
+    out=$("$host" call "build/$module/$module.wasm" "$fn" "$kind" "${argv[@]}" |
+      tr -d '[] ' | paste -sd, -)
+    if [ "$out" = "$expected" ]; then
+      passed=$((passed + 1))
+    else
+      failed=$((failed + 1))
+      echo "fail: $args: $out, expected $expected"
+    fi
+  done <"$work/lines.txt"
+  echo "samples: $passed passed, $failed failed"
+  [ "$failed" -eq 0 ] || exit 1
+}
+
+case $mode in
+  spec)
+    lean build "$ns.Spec" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+      fail "build: $(grep -m5 error "$work/build.log")"
+    lines
+    while IFS='|' read -r _ _ _ args expected; do
+      echo "$args -> $expected"
+    done <"$work/lines.txt"
+    ;;
+  freeze)
+    [ -d "$demo" ] || fail "$demo does not exist"
+    sha256sum "Project/$Name/Spec.lean" "Project/$Name/Samples.lean" >"$demo/spec.sha256"
+    cat "$demo/spec.sha256"
+    ;;
+  check)
+    [ -f "$demo/spec.sha256" ] || fail "no review: $demo/spec.sha256 does not exist"
+    sha256sum --quiet -c "$demo/spec.sha256" ||
+      fail "Spec.lean or Samples.lean changed after the review"
+    lean build "$ns.Verify" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+      fail "build: $(grep -m5 error "$work/build.log")"
+    ! grep -q "declaration uses 'sorry'" "$work/build.log" || fail "build: a proof uses sorry"
+    cat >"$work/Entry.lean" <<EOF
+import $ns.Module
+#eval ($ns.$name.module.exports.find? (·.name == "$export_name")).map (·.funcIdx)
+EOF
+    entry=$(lean env lean "$work/Entry.lean" 2>&1) || fail "entry: $entry"
+    [[ $entry =~ ^some\ ([0-9]+)$ ]] || fail "entry: no export $export_name: $entry"
+    k=${BASH_REMATCH[1]}
+    cat >"$work/Check.lean" <<EOF
+import $ns.Verify
+import $ns.Spec
+
+open Project.Pipeline in
+theorem check : ∃ bytes, Wasm.Encoding.encode $ns.$name.module = .ok bytes ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m $k $ns.expected :=
+  $ns.${name}_bytes
+
+#print axioms check
+EOF
+    out=$(lean env lean "$work/Check.lean" 2>&1) || fail "theorem: $out"
+    axioms=$(echo "$out" | grep "depends on axioms" || true)
+    [ -n "$axioms" ] || fail "theorem: $out"
+    for a in $(echo "$axioms" | sed 's/.*\[\(.*\)\].*/\1/' | tr -d ','); do
+      case $a in
+        propext | Classical.choice | Quot.sound) ;;
+        *) fail "theorem: axiom $a" ;;
+      esac
+    done
+    echo "theorem: ${name}_bytes proves Implements m $k expected for export $export_name; $axioms"
+    emit
+    run_samples
+    ;;
+  run)
+    lean build "$ns.Module" "$ns.Spec" "$ns.Samples" Project.Demo.Host >"$work/build.log" 2>&1 ||
+      fail "build: $(grep -m5 error "$work/build.log")"
+    emit
+    run_samples
+    ;;
+esac

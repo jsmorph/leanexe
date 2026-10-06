@@ -592,8 +592,8 @@ The program of an example is `LeanExe/Examples/<Name>.lean`, and its module and 
 | Example | Module | Demonstrates |
 |---|---|---|
 | `Scale` | `scale` | Word arithmetic and Lean's division by zero, proved with `Func.implements` and one `simp` call. |
-| `Gcd` | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation. |
-| `SumArray` | `sumArray` | A fold over a borrowed array, proved with `Stmt.fold_spec`. |
+| `Gcd` | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Mathlib's `Nat.gcd`. |
+| `SumArray` | `sumArray`, `folds` | Folds over a borrowed array: sum, product, and exclusive or, proved with `Func.foldl_implements`. |
 | `PairSum` | `pairSum` | An array literal as a temporary released after its fold, proved with `Func.implements_heap`. |
 | `SumCount` | `sumCount` | An array result that the caller owns, and the array size. |
 | `Axpy`, `ScaledHypot`, `Piecewise` | `axpy`, `scaledHypot`, `piecewise` | Binary64 arithmetic, square root, comparisons, `==`, negation, `abs`, `min`, `max`, and nested `if`. |
@@ -611,6 +611,13 @@ The program of an example is `LeanExe/Examples/<Name>.lean`, and its module and 
 | `Gpt32` | `gpt32` | GPT-2 in binary32 on WGSL, with the theorem of the host program. |
 | `Euler`, `EulerReconstructed` | `euler` | Arrays of records, `repeatWhile` with moved grids, `ImplementsA` budgets, complete execution within 1,407 pages, and the admissibility, CFL, balance, and hyperbolicity theorems. |
 | `Drone` | `drone` | `UInt64` throughout, loops inside build elements, `@[inline]` helpers, `repeatWhile` with a status, optimality and flight safety, and complete execution within 70 pages. |
+| `PrimeFactors`, `Lookup`, `Below100`, `Increment`, `RemoveZero` | `primeFactors`, `lookup`, `below100`, `increment`, `removeZero` | Main's demos with specifications written apart from the programs (`demos/`): a tail-recursive count with a measure, a loop with a tuple state, `repeatWhile` over a function that pushes, and builds, each with `compute_eq` and a bytes theorem for `expected`. |
+
+## From an English request
+
+The skill `.claude/skills/verified-executable/SKILL.md` directs an agent from a request in English to a program, a module, and a theorem that the module's bytes compute a specification reviewed against the request.  The agent writes the specification `expected` and samples, and a fresh agent that sees only the request, the specification, and the samples reviews them.  After the review the agent writes the program in the dialect and the proofs, following the worked example of the same shape.  The skill covers parameters of `UInt64`, `Array UInt64`, or tuples of these, and results of `UInt64` or `Array UInt64`.
+
+`tools/demo-check` accepts or rejects the result.  `--spec NAME` prints each sample with the specification's output, `--freeze NAME` records the hashes of the reviewed `Spec.lean` and `Samples.lean` in `demos/<name>/spec.sha256`, and `--run NAME` emits the module and runs the samples without proofs.  Without a flag, it checks the hashes, writes the statement `∃ bytes, encode NAME.module = .ok bytes ∧ ∃ m, decode bytes = .ok m ∧ Implements m K expected` for the export's index `K`, and requires `NAME_bytes` to prove it with no axioms beyond `propext`, `Classical.choice`, and `Quot.sound`.  It then emits `build/NAME/NAME.wasm` and runs the samples in Wasmtime against `expected`.  `Project/Demo/Host.lean` gives the host's argument and result kinds for these types.  The theorem allows a trap, and its meaning for the request rests on the review of `expected`.
 
 ## Development practice
 
