@@ -26410,13 +26410,25 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 `Quot.sound`.
 
 - [x] V1: word expressions with `+`, `-`, and `*` over the arguments.
-- [ ] V2: division, remainder, bitwise operations, and shifts, with Lean's results for a zero
+- [x] V2: division, remainder, bitwise operations, and shifts, with Lean's results for a zero
   divisor and for shift amounts of 64 or more.
 - [ ] V3: `let` bindings in locals.
 - [ ] V4: `Bool`, comparisons, and conditionals.
 - [ ] V5: several functions and calls between them.
 - [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
 - [ ] Later: loops, floats, arrays, and ownership.
+
+V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
+Lean's operation on `UInt64`.  The WebAssembly shifts already use their amount modulo 64, as
+Lean's do, but `i64.div_u` and `i64.rem_u` trap on a zero divisor where Lean returns 0 and the
+dividend.  The compiled division therefore stores both operands in scratch locals, tests the
+divisor with `i64.eqz`, and selects Lean's result with `if`.  Scratch locals follow the arguments,
+and an expression needs `Expr.width` of them: two for each division or remainder on its path,
+with the two operands of an operation sharing the locals above that operation's own.
+`Expr.code_spec` now takes the first scratch local `base` and states that the code changes no
+parameter and no local below `base`, through the predicate `Frame`, so that a division's saved
+left operand survives the code of its right operand.  The example `mix` has `mix_bytes`, a
+1,428-byte module, and `tests/verified/run.sh` passes all 368 cases of both examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

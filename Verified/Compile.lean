@@ -9,23 +9,55 @@ namespace Verified
 
 open Wasm
 
-/-- The instructions that push the value of an expression, reading argument `i` from local `i`. -/
-def Expr.code : Expr → Program
+/-- The scratch locals that an operation needs for itself: two for division and remainder, which
+save their operands to test the divisor. -/
+def BinOp.scratch : BinOp → Nat
+  | .div | .rem => 2
+  | _ => 0
+
+/-- The instructions of an operation, given the code of its operands and the first scratch local
+`base`.  WebAssembly traps on a zero divisor, so division and remainder save their operands in
+locals `base` and `base + 1`, test the divisor, and give Lean's result for zero: 0 for division
+and the dividend for the remainder. -/
+def BinOp.code (op : BinOp) (base : Nat) (left right : Program) : Program :=
+  match op with
+  | .add => left ++ right ++ [.addI64]
+  | .sub => left ++ right ++ [.subI64]
+  | .mul => left ++ right ++ [.mulI64]
+  | .div => left ++ [.localSet base] ++ right ++
+      [.localSet (base + 1), .localGet (base + 1), .eqzI64,
+        .iff 0 1 [.constI64 0] [.localGet base, .localGet (base + 1), .divUI64] [] [.i64]]
+  | .rem => left ++ [.localSet base] ++ right ++
+      [.localSet (base + 1), .localGet (base + 1), .eqzI64,
+        .iff 0 1 [.localGet base] [.localGet base, .localGet (base + 1), .remUI64] [] [.i64]]
+  | .and => left ++ right ++ [.andI64]
+  | .or => left ++ right ++ [.orI64]
+  | .xor => left ++ right ++ [.xorI64]
+  | .shl => left ++ right ++ [.shlI64]
+  | .shr => left ++ right ++ [.shrUI64]
+
+/-- The scratch locals that an expression needs, from its first scratch local on. -/
+def Expr.width : Expr → Nat
+  | .const _ | .arg _ => 0
+  | .bin op left right => op.scratch + max left.width right.width
+
+/-- The instructions that push the value of an expression, reading argument `i` from local `i`
+and using the locals from `base` on as scratch. -/
+def Expr.code (base : Nat) : Expr → Program
   | .const value => [.constI64 value]
   | .arg index => [.localGet index]
-  | .add left right => left.code ++ right.code ++ [.addI64]
-  | .sub left right => left.code ++ right.code ++ [.subI64]
-  | .mul left right => left.code ++ right.code ++ [.mulI64]
+  | .bin op left right =>
+    op.code base (left.code (base + op.scratch)) (right.code (base + op.scratch))
 
 def Func.type (func : Func) : FuncType :=
   { params := List.replicate func.arity .i64, results := [.i64] }
 
-/-- The function's code: its arguments are its only locals, and its body leaves the result on the
-stack. -/
+/-- The function's code: the arguments are locals 0 to `arity - 1`, the scratch locals follow
+them, and the body leaves the result on the stack. -/
 def Func.function (func : Func) (typeIdx : Nat) : Wasm.Function :=
   { params := func.type.params
-    locals := []
-    body := func.body.code
+    locals := List.replicate func.body.width .i64
+    body := func.body.code func.arity
     results := func.type.results
     typeIdx := some typeIdx }
 
