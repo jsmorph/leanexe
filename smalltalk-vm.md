@@ -227,6 +227,14 @@ condition and the capacity and free-list registers are unchanged.
 the current or retired cell must be a valid activation, and the new operand
 stack for `advance` must be zero or an allocated valid handle.
 
+`Reachability.lean` proves that operand and lexical traversal return zero or
+a reachable cell when started at zero or a reachable cell. Repeated links and
+cycles are allowed. It applies this result to local slots, the receiver, and
+object field slots. `StackWrite.lean` proves heap preservation for `pop` and
+`storeSlot`, including their failure branches. The current cell must be an
+activation; a store target must be zero or a link cell. These theorems do not
+yet establish the instruction decoder or collection before a load or push.
+
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
 preserves every word of every marked cell. `Project/Smalltalk/SweepList.lean`
 proves that its rebuilt free list contains exactly the unmarked handles,

@@ -21,3 +21,5 @@ import Project.Smalltalk.InitializationFree
 import Project.Smalltalk.HeapAllocation
 import Project.Smalltalk.HeapWrite
 import Project.Smalltalk.FrameHeap
+import Project.Smalltalk.Reachability
+import Project.Smalltalk.StackWrite

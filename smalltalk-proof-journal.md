@@ -390,3 +390,26 @@ containing `True`; `simp only [true_and, ite_true]` removed that condition befor
 substitution. Both modules pass the combined build and theorem axiom audit.
 No executable definitions changed. The VM has not yet been proved to establish
 the activation and new-pointer conditions for every instruction.
+
+## Reachable traversal and stack writes (2026-10-06)
+
+`Reachability.Live` means zero or reachable from an actual VM root. Following
+a pointer from a reachable cell preserves this condition. The concrete
+operand and lexical loops therefore preserve it without requiring acyclic
+links. The same proof checks local slots, receiver selection, and object field
+slots. Nonzero accepted local slots have tag 7. Valid graph assumptions then
+give valid allocated handles for all nonzero selected values.
+
+`StackWrite` checks the actual `pop` and `storeSlot`. Both preserve heap
+validity when the current cell is an activation. Store additionally requires
+a zero target or a link cell. The accepted store obtains its value and rest
+from the checked operand link, updates the target, and advances; both error
+branches preserve the heap. These conditions are still explicit assumptions.
+
+Initial checks tried to split an outer guard but selected an inner conditional
+instead. Naming the selected handle and changing to the outer expression
+removed that ambiguity. Simplification also did not unfold a named stack
+handle inside the runtime definition; changing the goal to that named handle
+connected the guard fact. Both modules pass the combined build and axiom audit.
+No executable definitions changed. Collection before pushing and the full
+instruction-preservation result remain unfinished.
