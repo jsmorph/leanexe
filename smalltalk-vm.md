@@ -279,8 +279,12 @@ and effects. `Seeding.lean` proves every valid cell receives its specified
 fields and registers remain unchanged, and connects that loop to `Arena.init`.
 `InitializationGraph.lean` proves that the fresh arena satisfies `Graph.Valid`:
 its only allocated cells and nonzero roots are the three canonical values,
-with tag 2 and no outgoing edges. The initial free list has not yet been proved
-to satisfy the stronger `Heap.Valid` condition.
+with tag 2 and no outgoing edges. `InitializationFree.lean` proves that the
+actual free list contains handles 4 through capacity, in increasing order,
+without duplicates, with exact next words and count. `init_valid` establishes
+the full `Heap.Valid` condition for `Arena.init`; `collect_init_valid` applies
+the collector theorem directly to that initialized arena. VM boot and
+instruction preservation of the heap conditions remain unfinished.
 
 `Project/Smalltalk/Frame.lean` checks the concrete frame writes. Retirement
 sets the PC to dead, clears caller and operands, and preserves the remaining

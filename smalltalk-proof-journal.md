@@ -336,3 +336,23 @@ Rewriting a condition under an `if` failed because of the dependent Decidable
 argument; simplifying with the proved equivalence handled that dependency.
 Explicit equalities between pair-pattern and projection lambdas connected
 the loop to `Arena.init`. No executable definitions or proof limits changed.
+
+## Fresh arena free list (2026-10-06)
+
+`chain_range` proves the initial next words form the finite increasing chain
+from handle 4 to capacity. The mapped natural-number range cannot wrap because
+every entry is at most capacity. That fact gives exact membership and excludes
+the head from the tail. `init_free_list` checks the actual head register,
+count register, tags, next words, distinctness, and completeness.
+
+`init_valid` combines this result with graph validity, establishing all
+`Heap.Valid` assumptions directly for the actual `Arena.init`, for any
+requested capacity and stress setting. `init_phase` checks phase zero.
+`collect_init_valid` applies the collector theorem to that arena without an
+assumed input heap invariant. VM boot and instruction preservation remain.
+
+The checks needed an explicit expansion of `UInt64.size` for the arithmetic
+tactic, a named natural argument for `small_toNat`, and conversion of the
+closed `UInt64.ofNat 4` head to the literal word. The range-membership lemma
+did not need its handle-validity assumption; that assumption was removed.
+No executable definitions changed.
