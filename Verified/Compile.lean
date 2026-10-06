@@ -36,28 +36,33 @@ def BinOp.code (op : BinOp) (base : Nat) (left right : Program) : Program :=
   | .shl => left ++ right ++ [.shlI64]
   | .shr => left ++ right ++ [.shrUI64]
 
-/-- The scratch locals that an expression needs, from its first scratch local on. -/
+/-- The locals that an expression needs from its first free local on: one for each `letE` and
+two for each division or remainder on a path of the expression. -/
 def Expr.width : Expr → Nat
-  | .const _ | .arg _ => 0
+  | .const _ | .var _ => 0
   | .bin op left right => op.scratch + max left.width right.width
+  | .letE value body => 1 + max value.width body.width
 
-/-- The instructions that push the value of an expression, reading argument `i` from local `i`
-and using the locals from `base` on as scratch. -/
-def Expr.code (base : Nat) : Expr → Program
+/-- The instructions that push the value of an expression.  Variable `i` is in local
+`vars.getD i 0`, and the locals from `base` on are free.  `letE` stores its value in local
+`base` and gives its body the locals above it. -/
+def Expr.code (vars : List Nat) (base : Nat) : Expr → Program
   | .const value => [.constI64 value]
-  | .arg index => [.localGet index]
+  | .var index => [.localGet (vars.getD index 0)]
   | .bin op left right =>
-    op.code base (left.code (base + op.scratch)) (right.code (base + op.scratch))
+    op.code base (left.code vars (base + op.scratch)) (right.code vars (base + op.scratch))
+  | .letE value body =>
+    value.code vars (base + 1) ++ [.localSet base] ++ body.code (vars ++ [base]) (base + 1)
 
 def Func.type (func : Func) : FuncType :=
   { params := List.replicate func.arity .i64, results := [.i64] }
 
-/-- The function's code: the arguments are locals 0 to `arity - 1`, the scratch locals follow
-them, and the body leaves the result on the stack. -/
+/-- The function's code: the arguments are locals 0 to `arity - 1`, the locals that the body
+needs follow them, and the body leaves the result on the stack. -/
 def Func.function (func : Func) (typeIdx : Nat) : Wasm.Function :=
   { params := func.type.params
     locals := List.replicate func.body.width .i64
-    body := func.body.code func.arity
+    body := func.body.code (List.range func.arity) func.arity
     results := func.type.results
     typeIdx := some typeIdx }
 

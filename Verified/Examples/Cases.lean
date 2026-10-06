@@ -1,5 +1,6 @@
 import Verified.Examples.Poly
 import Verified.Examples.Mix
+import Verified.Examples.Lets
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -25,6 +26,14 @@ def mixCases : List (UInt64 × UInt64 × UInt64) :=
       let k := UInt64.ofNat i
       (k * 0xd6e8feb86659fd93, (k + 3) * 0xa0761d6478bd642f, k % 70)
 
+/-- `a = 2^64 - 7` makes the remainder's divisor `a + 7` zero. -/
+def letsCases : List (UInt64 × UInt64) :=
+  (words.flatMap fun a => words.map fun b => (a, b)) ++
+    (words.map fun b => (18446744073709551609, b)) ++
+    (List.range 40).map fun i =>
+      let k := UInt64.ofNat i
+      (k * 0xc2b2ae3d27d4eb4f, (k + 5) * 0x165667b19e3779f9)
+
 end Verified.Examples
 
 open Verified.Examples in
@@ -33,3 +42,5 @@ def main : IO Unit := do
     IO.println s!"poly|poly|i64|i64:{a} i64:{b} i64:{c}|{Poly.poly a b c}"
   for (a, b, c) in mixCases do
     IO.println s!"mix|mix|i64|i64:{a} i64:{b} i64:{c}|{Mix.mix a b c}"
+  for (a, b) in letsCases do
+    IO.println s!"lets|scramble|i64|i64:{a} i64:{b}|{Lets.scramble a b}"

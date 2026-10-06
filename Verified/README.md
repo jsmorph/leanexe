@@ -18,8 +18,10 @@ parts of the IR it needs, so ordinary development of `LeanExe` does not affect i
 ## What it covers
 
 The source language has one construct: a function of `n` word arguments whose body is an
-expression of constants, arguments, and the binary operations `+`, `-`, `*`, `/`, `%`, `&&&`,
-`|||`, `^^^`, `<<<`, and `>>>` on `UInt64`, each with Lean's meaning.  Arithmetic wraps modulo
+expression of constants, variables, `let` bindings, and the binary operations `+`, `-`, `*`, `/`,
+`%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>` on `UInt64`, each with Lean's meaning.  Variables are
+numbered from the first argument through the enclosing `let` bindings, outermost first, and each
+binding's value is stored in a local of its own.  Arithmetic wraps modulo
 2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount
 modulo 64.  WebAssembly traps on a zero divisor, so the compiled division and remainder save their
 operands in scratch locals, test the divisor, and return Lean's result for zero.
@@ -30,13 +32,14 @@ of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions 0 
 | Theorem | Statement |
 |---------|-----------|
 | `Func.correct` | For every list of functions and every function in it whose body reads only its arguments, function `2 + i` of the compiled module returns `func.denote args` from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
-| `Expr.code_spec` | The code of every expression pushes the expression's value and changes no parameter and no local below its scratch locals. |
+| `Expr.code_spec` | From any frame in which every variable in scope holds its value in its local, the code of an expression pushes the expression's value and changes no parameter and no local below the locals it uses. |
 | `poly_bytes` | The example [`Poly.lean`](Examples/Poly.lean): the bytes of the module for `a * b + c * c - 7` decode to a module that computes the Lean function `poly`. |
+| `scramble_bytes` | The example [`Lets.lean`](Examples/Lets.lean): the bytes of the module for a function of four nested `let` bindings, one inside the operand of a division, decode to a module that computes the Lean function `scramble`. |
 | `mix_bytes` | The example [`Mix.lean`](Examples/Mix.lean): the bytes of the module for `((a / b + a % c) ^^^ ((a &&& b) \|\|\| (c <<< b))) - (a >>> c)` decode to a module that computes the Lean function `mix`. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The examples'
-source functions are written by hand, and `polyFunc_denote` and `mixFunc_denote` prove by `rfl`
-that they mean `poly` and `mix`.
+source functions are written by hand, and `polyFunc_denote`, `mixFunc_denote`, and
+`scrambleFunc_denote` prove by `rfl` that they mean `poly`, `mix`, and `scramble`.
 
 ## Running it
 

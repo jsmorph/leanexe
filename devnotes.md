@@ -26412,7 +26412,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V1: word expressions with `+`, `-`, and `*` over the arguments.
 - [x] V2: division, remainder, bitwise operations, and shifts, with Lean's results for a zero
   divisor and for shift amounts of 64 or more.
-- [ ] V3: `let` bindings in locals.
+- [x] V3: `let` bindings in locals.
 - [ ] V4: `Bool`, comparisons, and conditionals.
 - [ ] V5: several functions and calls between them.
 - [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
@@ -26429,6 +26429,17 @@ with the two operands of an operation sharing the locals above that operation's 
 parameter and no local below `base`, through the predicate `Frame`, so that a division's saved
 left operand survives the code of its right operand.  The example `mix` has `mix_bytes`, a
 1,428-byte module, and `tests/verified/run.sh` passes all 368 cases of both examples.
+
+V3 adds `letE value body` and renames `arg` to `var`.  Variables are de Bruijn levels: the
+arguments first, then the enclosing bindings, outermost first, and `denote` extends its list of
+values at each binding.  The compiler carries a list `vars` that maps each variable to its local,
+because a binding inside a division's operand lives above that division's scratch locals, so a
+variable's level and its local differ.  `letE` stores its value in the first free local and
+compiles its body with that local appended to `vars`.  `Expr.code_spec` replaces the hypothesis
+that the parameters are the arguments with `Holds`: each variable in scope is in its local, below
+the first free local, with its value.  `Frame` preserves `Holds`, and `Holds.push` extends it at a
+binding.  The example `scramble` has `scramble_bytes`, a 1,471-byte module, and the test passes
+all 564 cases of the three examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
