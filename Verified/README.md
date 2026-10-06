@@ -17,29 +17,37 @@ parts of the IR it needs, so ordinary development of `LeanExe` does not affect i
 
 ## What it covers
 
-The source language has one construct: a function of `n` word arguments whose body is an
-expression of constants, variables, `let` bindings, and the binary operations `+`, `-`, `*`, `/`,
-`%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>` on `UInt64`, each with Lean's meaning.  Variables are
-numbered from the first argument through the enclosing `let` bindings, outermost first, and each
-binding's value is stored in a local of its own.  Arithmetic wraps modulo
-2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount
-modulo 64.  WebAssembly traps on a zero divisor, so the compiled division and remainder save their
-operands in scratch locals, test the divisor, and return Lean's result for zero.
-[`Source.lean`](Source.lean) defines the syntax and `Func.denote`, [`Compile.lean`](Compile.lean)
-the compiler, and [`Correct.lean`](Correct.lean) the theorem.  The compiled module has the layout
-of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions 0 and 1.
+The source language has one construct: a function whose parameters and result are 64-bit words
+or `Bool`s and whose body is a typed expression.  An expression of type `t` over a context `Γ` of
+types has type `Expr Γ t`, so every expression is well typed and reads only variables in scope.
+Expressions are constants, variables, `let` bindings, the operations `+`, `-`, `*`, `/`, `%`,
+`&&&`, `|||`, `^^^`, `<<<`, and `>>>` on words, the unsigned comparisons `==`, `!=`, `<`, and `≤`,
+the `Bool` operations `!`, `&&`, and `||`, and `if`, each with Lean's meaning.  Arithmetic wraps
+modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its
+amount modulo 64.  A variable is numbered by its distance from the front of the context: a
+binding's value is variable 0 of its body, and parameter `i` is variable `i` of the function's
+body.
+
+Every value is one word: a `Bool` is 1 or 0, as `Implements` passes a `Bool`.  Each binding's
+value is stored in a local of its own.  WebAssembly traps on a zero divisor, so the compiled
+division and remainder save their operands in scratch locals, test the divisor, and return Lean's
+result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.denote`,
+[`Compile.lean`](Compile.lean) the compiler, and [`Correct.lean`](Correct.lean) the theorem.  The
+compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release`
+at functions 0 and 1.
 
 | Theorem | Statement |
 |---------|-----------|
-| `Func.correct` | For every list of functions and every function in it whose body reads only its arguments, function `2 + i` of the compiled module returns `func.denote args` from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
-| `Expr.code_spec` | From any frame in which every variable in scope holds its value in its local, the code of an expression pushes the expression's value and changes no parameter and no local below the locals it uses. |
+| `Func.correct` | For every list of functions and every function in it, function `2 + i` of the compiled module returns the word of `func.denote args` from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
+| `Expr.code_spec` | From any frame in which every variable holds the word of its value in its local, the code of an expression pushes the word of the expression's value and changes no parameter and no local below the locals it uses. |
 | `poly_bytes` | The example [`Poly.lean`](Examples/Poly.lean): the bytes of the module for `a * b + c * c - 7` decode to a module that computes the Lean function `poly`. |
 | `scramble_bytes` | The example [`Lets.lean`](Examples/Lets.lean): the bytes of the module for a function of four nested `let` bindings, one inside the operand of a division, decode to a module that computes the Lean function `scramble`. |
+| `select_bytes` | The example [`Select.lean`](Examples/Select.lean): the bytes of the module for `median`, with three `Bool` bindings and nested conditionals, and `inBand`, which returns a `Bool`, decode to a module that computes both Lean functions. |
 | `mix_bytes` | The example [`Mix.lean`](Examples/Mix.lean): the bytes of the module for `((a / b + a % c) ^^^ ((a &&& b) \|\|\| (c <<< b))) - (a >>> c)` decode to a module that computes the Lean function `mix`. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The examples'
-source functions are written by hand, and `polyFunc_denote`, `mixFunc_denote`, and
-`scrambleFunc_denote` prove by `rfl` that they mean `poly`, `mix`, and `scramble`.
+source functions are written by hand, and a theorem for each, such as `medianFunc_denote`, proves
+by `rfl` that it means its Lean function.
 
 ## Running it
 
@@ -52,7 +60,8 @@ The commands build the library and its theorems, write each example's module to
 `build/verified/`, validate it with `wasm-tools`, and compare every case of
 [`Cases.lean`](Examples/Cases.lean) between the Wasmtime host and native Lean.  The setup is that
 of [the repository README](../README.md#commands).  The cases cover words near 0, 2^32, 2^63, and
-2^64, where the arithmetic wraps, zero divisors, and shift amounts of 64 or more.
+2^64, where the arithmetic wraps, zero divisors, shift amounts of 64 or more, and equal words in
+comparisons.
 
 ## Related work
 

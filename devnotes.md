@@ -26413,7 +26413,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V2: division, remainder, bitwise operations, and shifts, with Lean's results for a zero
   divisor and for shift amounts of 64 or more.
 - [x] V3: `let` bindings in locals.
-- [ ] V4: `Bool`, comparisons, and conditionals.
+- [x] V4: `Bool`, comparisons, and conditionals, with typed expressions.
 - [ ] V5: several functions and calls between them.
 - [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
 - [ ] Later: loops, floats, arrays, and ownership.
@@ -26440,6 +26440,23 @@ that the parameters are the arguments with `Holds`: each variable in scope is in
 the first free local, with its value.  `Frame` preserves `Holds`, and `Holds.push` extends it at a
 binding.  The example `scramble` has `scramble_bytes`, a 1,471-byte module, and the test passes
 all 564 cases of the three examples.
+
+For V4 the user chose typed values over a separate condition syntax (2026-10-06).  Expressions are
+now intrinsically typed: `Expr Γ t` over a context `Γ : List Ty` of the types `word` and `bool`,
+with variables `Var Γ t` as de Bruijn indices from the front of the context and values `Env Γ` as
+a list indexed by the context.  A binding puts its value at the front, so parameter `i` is
+variable `i` and a binding's value is variable 0 of its body; `Expr.v i` builds a variable from
+its index with a proof by `rfl` of its type.  Typing removes the `scoped` check from
+`Func.correct`.  Every value is one word, a `Bool` being 1 or 0, which is how `Implements` already
+passes a `Bool` through `Flat Bool UInt64`.  The option offered i32 locals for `Bool`s, but one
+value type keeps every local i64 and needs no conversion at the function boundary.  Comparisons
+widen their i32 result with `i64.extend_i32_u`, `!` is `i64.eqz` and a widening, `&&` and `||` are
+`i64.and` and `i64.or` on 0 and 1, and `if` tests its condition with `i64.eqz`, so its `if` block
+runs the else branch first.  `Expr.denote` gives `if` as Lean's `if c then`, so a Lean function
+written with `Bool` bindings and `if` on them equals its source function by `rfl`.  The example
+`Select.lean` has `median`, with three `Bool` bindings and nested conditionals, and `inBand`,
+which returns a `Bool`; `select_bytes` covers both functions of the 1,487-byte module, and the
+test passes all 900 cases of the four examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

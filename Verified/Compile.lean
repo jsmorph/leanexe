@@ -36,33 +36,54 @@ def BinOp.code (op : BinOp) (base : Nat) (left right : Program) : Program :=
   | .shl => left ++ right ++ [.shlI64]
   | .shr => left ++ right ++ [.shrUI64]
 
+/-- The WebAssembly comparison of a comparison. -/
+def CmpOp.instr : CmpOp → Instruction
+  | .eq => .eqI64
+  | .ne => .neI64
+  | .lt => .ltUI64
+  | .le => .leUI64
+
 /-- The locals that an expression needs from its first free local on: one for each `letE` and
 two for each division or remainder on a path of the expression. -/
-def Expr.width : Expr → Nat
-  | .const _ | .var _ => 0
-  | .bin op left right => op.scratch + max left.width right.width
-  | .letE value body => 1 + max value.width body.width
+def Expr.width : {Γ : List Ty} → {t : Ty} → Expr Γ t → Nat
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ => 0
+  | _, _, .bin op left right => op.scratch + max left.width right.width
+  | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right =>
+    max left.width right.width
+  | _, _, .not e => e.width
+  | _, _, .ite c thenE elseE => max c.width (max thenE.width elseE.width)
+  | _, _, .letE value body => 1 + max value.width body.width
 
-/-- The instructions that push the value of an expression.  Variable `i` is in local
-`vars.getD i 0`, and the locals from `base` on are free.  `letE` stores its value in local
-`base` and gives its body the locals above it. -/
-def Expr.code (vars : List Nat) (base : Nat) : Expr → Program
-  | .const value => [.constI64 value]
-  | .var index => [.localGet (vars.getD index 0)]
-  | .bin op left right =>
-    op.code base (left.code vars (base + op.scratch)) (right.code vars (base + op.scratch))
-  | .letE value body =>
-    value.code vars (base + 1) ++ [.localSet base] ++ body.code (vars ++ [base]) (base + 1)
+/-- The instructions that push the word that holds the value of an expression.  Variable `x` is
+in local `locs.getD x.index 0`, and the locals from `base` on are free.  A comparison widens its
+32-bit result to a word, and `ite` tests its condition with `i64.eqz`, so its `if` runs the else
+branch first.  `letE` stores its value in local `base` and gives its body the locals above it. -/
+def Expr.code (locs : List Nat) (base : Nat) : {Γ : List Ty} → {t : Ty} → Expr Γ t → Program
+  | _, _, .word value => [.constI64 value]
+  | _, _, .bool value => [.constI64 (Ty.encode .bool value)]
+  | _, _, .var x => [.localGet (locs.getD x.index 0)]
+  | _, _, .bin op left right =>
+    op.code base (left.code locs (base + op.scratch)) (right.code locs (base + op.scratch))
+  | _, _, .cmp op left right =>
+    left.code locs base ++ right.code locs base ++ [op.instr, .extendUI32]
+  | _, _, .not e => e.code locs base ++ [.eqzI64, .extendUI32]
+  | _, _, .and left right => left.code locs base ++ right.code locs base ++ [.andI64]
+  | _, _, .or left right => left.code locs base ++ right.code locs base ++ [.orI64]
+  | _, _, .ite c thenE elseE =>
+    c.code locs base ++
+      [.eqzI64, .iff 0 1 (elseE.code locs base) (thenE.code locs base) [] [.i64]]
+  | _, _, .letE value body =>
+    value.code locs (base + 1) ++ [.localSet base] ++ body.code (base :: locs) (base + 1)
 
 def Func.type (func : Func) : FuncType :=
-  { params := List.replicate func.arity .i64, results := [.i64] }
+  { params := List.replicate func.params.length .i64, results := [.i64] }
 
 /-- The function's code: the arguments are locals 0 to `arity - 1`, the locals that the body
 needs follow them, and the body leaves the result on the stack. -/
 def Func.function (func : Func) (typeIdx : Nat) : Wasm.Function :=
   { params := func.type.params
     locals := List.replicate func.body.width .i64
-    body := func.body.code (List.range func.arity) func.arity
+    body := func.body.code (List.range func.params.length) func.params.length
     results := func.type.results
     typeIdx := some typeIdx }
 

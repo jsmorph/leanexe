@@ -15,15 +15,16 @@ def scramble (a b : UInt64) : UInt64 :=
   let z := y ^^^ (y >>> 29)
   (let w := b ||| 1; z / (w * w)) + z % (a + 7)
 
-/-- `scramble` in the source language: variables 0 and 1 are `a` and `b`, and 2 to 5 are `x`,
-`y`, `z`, and `w`. -/
+/-- `scramble` in the source language.  Each `letE` puts its value at variable 0: inside the
+innermost binding, variables 0 to 5 are `w`, `z`, `y`, `x`, `a`, and `b`. -/
 def scrambleFunc : Func :=
-  ⟨2, .letE (.bin .xor (.var 0) (.bin .shl (.var 1) (.const 13)))
-    (.letE (.bin .mul (.var 2) (.const 0x9e3779b97f4a7c15))
-      (.letE (.bin .xor (.var 3) (.bin .shr (.var 3) (.const 29)))
-        (.bin .add
-          (.letE (.bin .or (.var 1) (.const 1)) (.bin .div (.var 4) (.bin .mul (.var 5) (.var 5))))
-          (.bin .rem (.var 4) (.bin .add (.var 0) (.const 7))))))⟩
+  ⟨[.word, .word], .word,
+    .letE (.bin .xor (.v 0) (.bin .shl (.v 1) (.word 13)))
+      (.letE (.bin .mul (.v 0) (.word 0x9e3779b97f4a7c15))
+        (.letE (.bin .xor (.v 0) (.bin .shr (.v 0) (.word 29)))
+          (.bin .add
+            (.letE (.bin .or (.v 4) (.word 1)) (.bin .div (.v 1) (.bin .mul (.v 0) (.v 0))))
+            (.bin .rem (.v 0) (.bin .add (.v 3) (.word 7))))))⟩
 
 def module : Wasm.Module := compile [(scrambleFunc, "scramble")]
 
@@ -31,14 +32,15 @@ def module : Wasm.Module := compile [(scrambleFunc, "scramble")]
 def scramblePair (x : UInt64 × UInt64) : UInt64 := scramble x.1 x.2
 
 /-- The source function means `scramble`. -/
-theorem scrambleFunc_denote (a b : UInt64) : scrambleFunc.denote #v[a, b] = scramble a b := rfl
+theorem scrambleFunc_denote (a b : UInt64) :
+    scrambleFunc.denote (.cons a (.cons b .nil)) = scramble a b := rfl
 
 /-- The arguments of `scrambleFunc` from a pair. -/
-def args (x : UInt64 × UInt64) : Vector UInt64 scrambleFunc.arity := #v[x.1, x.2]
+def args (x : UInt64 × UInt64) : Env scrambleFunc.params := .cons x.1 (.cons x.2 .nil)
 
 theorem scramble_implements : ImplementsPureA false module 2 scramblePair := by
   have h : ImplementsPureA false module 2 scrambleFunc.denote :=
-    Func.correct [(scrambleFunc, "scramble")] 0 scrambleFunc "scramble" rfl rfl
+    Func.correct [(scrambleFunc, "scramble")] 0 scrambleFunc "scramble" rfl
   have hComp : scrambleFunc.denote ∘ args = scramblePair := by
     funext x
     exact scrambleFunc_denote x.1 x.2
