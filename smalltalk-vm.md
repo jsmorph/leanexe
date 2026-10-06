@@ -280,7 +280,15 @@ index and produces exactly that many links containing handle 1. It preserves
 old allocated cells and pointer types, and its final free count plus the visit
 count equals the original free count. The input budget must leave one cell for
 the final object. A checked equality connects this loop to the actual expression
-in `newReady`. Final object allocation and activation binding remain unfinished.
+in `newReady`.
+
+`ObjectConstruction.newReady_effect` proves the actual complete object
+constructor stores its class and metadata words, retains the exact field-value
+list, clears register 19, preserves old allocated cells and pointer types, and
+consumes exactly `fields + 1` cells. The valid typed input heap must have that
+many free cells. Class and metadata IDs are scalar data in this theorem; their
+program-table validity is a separate obligation. Activation binding remains
+unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
