@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`0a3b36fda68de68315ddb0fd962dd9cf7b3fd3e0`.
+`98ba259a0e736e9570bafba8245927672632f382`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -66,6 +66,7 @@ identified as a list model. Their assumptions remain part of the claims.
 | Typed unwind | Retirement and the bounded unwind loop preserve heap validity, pointer types, caller and value validity, and registers under the stated cursor/caller assumptions | `FrameTypes.lean`, `UnwindHeap.lean` |
 | Typed allocation | Allocation preserves pointer cell types when new typed pointers match their required cell types | `TypedAllocation.lean` |
 | Public return preservation | Actual local and nonlocal returns preserve heap validity and pointer types; successful caller membership establishes target reachability across reservation | `ReturnCallerHeap.lean`, `ReturnHeap.lean`, `CallChainReachability.lean`, `PublicReturnHeap.lean` |
+| Construction links | A construction prepend creates the specified link, preserves existing cells and types, changes the specified registers, consumes exactly one free cell, and prepends the specified logical value; applies to actual `fillOne` | `Construction.lean`, `ConstructionValues.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -87,19 +88,21 @@ Recent pushed checkpoints:
 | `0af581f3` | Literal construction and twelve actual instruction/step cases |
 | `e7ffde84` | Pointer cell types through initialization and collection |
 | `0a3b36fd` | Typed retirement and bounded unwind |
+| `98ba259a` | Typed allocation and public return preservation |
 
 ## Current increment
 
-Typed allocation, return-to-caller, final return, reservation before unwind,
-and public local/nonlocal return preservation pass the combined build and
-axiom audit. The public return theorem assumes a valid typed heap, a non-error
-phase, and a current activation. It derives target reachability from actual
-caller membership rather than assuming a represented path. Exact return
-delivery still has path conditions to connect to reachable VM states.
+Construction-link effects and logical value-list preservation pass the combined
+build and axiom audit. The concrete `fillOne` performs this prepend with value
+handle 1. The complete object-field loop and activation construction are not
+yet proved. Argument binding needs an existing selected operand link; the send
+guard must establish that condition. A read through handle zero is an array
+read and is not assumed to produce a valid language value.
 
-Next are object and activation construction, dispatcher composition of the
-return cases, and preservation of the complete execution invariant. No full
-VM correctness claim is made. All checked proof files are in this increment.
+Next are the complete construction loops, dispatcher composition of return
+cases, and the execution invariant. Exact return delivery still has caller-path
+conditions to establish. No full VM correctness claim is made. All checked
+proof files are included in this increment.
 
 ## Next work, in order
 
@@ -116,6 +119,9 @@ VM correctness claim is made. All checked proof files are in this increment.
    the allocation counts, temporary register 19, constructed field/slot order,
    caller and lexical captures, and the final current activation. The original
    reservation must supply every allocation in the construction.
+   The one-link construction and value-list transfer are now checked. Derive
+   argument-link validity from the actual send guard. Preserve canonical value
+   contents as part of the complete state invariant, not just their allocation.
 5. Prove VM boot from the actual initialized arena and a validated program.
    Connect entry method, receiver construction, slots, initial PC, and roots.
    Arena initialization is already proved; VM boot is not.
@@ -205,7 +211,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-public-return-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-construction-link-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,
