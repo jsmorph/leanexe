@@ -44,3 +44,4 @@ import Project.Smalltalk.ActivationConstruction
 import Project.Smalltalk.ProgramBounds
 import Project.Smalltalk.BootHeap
 import Project.Smalltalk.CallHeap
+import Project.Smalltalk.LookupHierarchy

@@ -354,6 +354,17 @@ and lexical capture, and a zero-or-activation lexical pointer. `CallReservation`
 checks that these binding inputs survive collection. Dispatch and send
 composition, block calls, and primitives remain unfinished.
 
+`LookupSpec` checks method IDs in increasing order, then searches each parent,
+with an explicit class-visit count. `LookupCorrect.validated_lookup` proves
+actual `Runtime.lookup` implements that specification. The proofs cover each
+scan step, first-match retention, a complete class scan, parent transitions,
+composition of rounds, and non-wrapping loop-budget multiplication.
+`LookupStep.lookup_range` establishes that a result is zero or a valid method ID.
+`LookupHierarchy.class_budget_sufficient` proves that validated decreasing parent
+IDs make the header class-count budget sufficient for any valid starting class;
+additional visits cannot change the result. These results refer to the actual
+flat runtime loop, independently of the earlier list-model proofs.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the
@@ -367,7 +378,7 @@ a non-error phase, and an activation in the current register.
 operand-format guards for those opcodes. It requires heap validity and the
 covered opcode; rejected instructions and stopped states preserve the heap.
 These are heap-preservation results. They do not prove the complete instruction
-semantics. Opcodes 10 through 13, method lookup, and the invariant
+semantics. Opcodes 10 through 13 and the invariant
 needed to compose all instructions remain unfinished.
 
 `Project/Smalltalk/Sweep.lean` proves that the concrete `finishCollection`
