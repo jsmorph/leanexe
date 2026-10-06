@@ -1,5 +1,7 @@
 # Verified two-cell Euler step data
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../euler-riemann-complete-v1/README.md) and [the reconstructed record](../euler-reconstructed-v1/README.md) describe this branch's Euler solvers and their runs.
+
 This dataset records one first-order Rusanov update of the two-cell Sod state
 on `[0, 1]`.  The cells have width `1/2`; the time step is `1/8`, so
 `dt/dx = 1/4`.  The ideal-gas ratio is `7/5`, the fixed dissipation speed is
@@ -22,7 +24,7 @@ host floating-point computation determines these words.
 | [manifest.json](manifest.json) | Artifact and generator identities, output digests, theorem reference, and exact balance residuals. |
 
 The theorem
-[`Project.EulerRusanovStep.StepData.artifact_stepV1`](../../proofs/talos/lean/Project/EulerRusanovStep/StepData.lean)
+[`Project.EulerRusanovStep.StepData.artifact_stepV1`](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerRusanovStep/StepData.lean)
 starts from the exact frozen bytes.  It establishes decoding, validation,
 `CoreValid`, fuel-independent termination, complete store preservation, the
 seven published words, and the existing decoded-real numerical certificate.

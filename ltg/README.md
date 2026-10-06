@@ -2,7 +2,7 @@
 
 This directory holds proof knowledge for the pipeline: lemmas, tactics, and
 guidelines that a prover can use on a compiled program.  Each entry is a
-directory under `entries/` with two files.  `entry.json` names the entry's
+directory under [`entries/`](entries/) with two files.  `entry.json` names the entry's
 modules, declarations, premises, result, and the hint rules (`annotationKinds`)
 that select it, and `README.md` explains when and how to apply it.
 
@@ -15,10 +15,10 @@ from the repository root:
 tools/leanrun --timeout 10m lake env lean --run Project/LTG/Check.lean ltg/entries
 ```
 
-The 37 entries fall into four groups.  The compiler-rule entries are proved for every function
-their rules produce; a proof applies the entry's rule lemma where the hint names the rule.  The
-lemma entries hold general facts that rule proofs and hand proofs use, and the library entry is a
-proved function that any module can compile and call.
+The 37 entries are of three kinds.  A compiler-rule entry is proved for every function its rule
+produces, and a proof applies the entry's rule lemma where a hint names the rule.  A lemma entry
+holds general facts that rule proofs and hand proofs use, and the library entry is a proved
+function that any module can compile and call.  The table groups the entries by subject.
 
 | Group | Entries |
 |---|---|
@@ -32,5 +32,5 @@ proved function that any module can compile and call.
 | Kernels and library | `wgsl-kernel`, `splitmix64` |
 
 No entry yet describes the abort-flag rules and heap budgets of complete execution
-(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`); `Project/Euler/Total.lean`,
-`Project/Drone/Total.lean`, and `Project/Increment/Verify.lean` show their use.
+(`ImplementsA`, `Heap.Budget`, and `Heap.Bounded`).  [`Project/Euler/Total.lean`](../Project/Euler/Total.lean),
+[`Project/Drone/Total.lean`](../Project/Drone/Total.lean), and [`Project/Increment/Verify.lean`](../Project/Increment/Verify.lean) show their use.

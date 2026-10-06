@@ -1,7 +1,7 @@
 # Folds: sum, product, and exclusive or
 
-This example stands for main's Demos 10 and 11 (`git show main:demos/demo-10/README.md` and
-`demo-11`), which return the wrapping product and the bitwise exclusive or of an array of at most
+This example stands for [main's Demo 10](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-10/README.md) and
+[Demo 11](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-11/README.md), which return the wrapping product and the bitwise exclusive or of an array of at most
 eight words as a one-word array, and the empty array for a longer input.  [The
 request](request.txt) here asks for the three folds over an array of any length, with scalar
 results, and adds the sum of Iteration 3a.  Each request defines its result as a left fold, so

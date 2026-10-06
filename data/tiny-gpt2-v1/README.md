@@ -1,13 +1,15 @@
 # Four-byte GPT-2 checkpoint and inference
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes this branch's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+
 This directory contains a trained GPT-2-style model, its WASM inference
 modules, and numerical evidence.  The model takes four byte tokens and
 returns 256 next-byte logits.  Its 2,488 binary64 parameters define one
 width-four transformer block with two attention heads and a width-eight
 feed-forward layer.  Training uses Tiny Shakespeare.
 
-The [GPT guide](../../docs/gpt/README.md) explains the development goals and
-related models.  The [model and numerical proofs](../../proofs/talos/lean/Project/TinyGpt2/README.md)
+The [GPT guide](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/gpt/README.md) explains the development goals and
+related models.  The [model and numerical proofs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2/README.md)
 define the computation and its real-arithmetic comparison.  The complete
 generated-WAT execution proof passes.
 Checkpoint certificates establish finite outputs for every four-byte input.
@@ -40,7 +42,7 @@ checkpoint hash, and reports the hash of every supplied checkpoint.
 
 The 19,397-byte [checked module](checked-inference.wasm) runs through the
 existing Wasmtime C host.  Its
-[execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Entry.lean)
+[execution theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2Checked/Entry.lean)
 proves termination, exact output, input preservation, and a fixed page
 count for both acceptance and rejection.  It assumes represented input,
 an empty initial free list, input below the allocation top, and enough
@@ -49,13 +51,13 @@ reserved memory.  For n supplied words, the conservative reservation is
 of 321,576, within the module's sixteen initial pages.  Temporary clipped
 weights remain in the arena until its reset.
 
-The [numerical execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
+The [numerical execution theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
 adds finite logits of magnitude at most 1,260 and the composed error bound
 for every accepted weight array and four-byte context.  It retains B and
 three normalization lower bounds as parameters.  The host and exact-byte
 package remain outside this theorem.  The earlier 17,371-byte
 [raw inference module](inference.wasm) remains available for arithmetic
-comparisons, with its [execution proof](../../proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean).
+comparisons, with its [execution proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2Infer/Inference.lean).
 
 ## Training record
 
@@ -85,7 +87,7 @@ context attaining each reported maximum.  Bytes `[0, 0, 36, 82]` give a
 spread of 12.117768731550278 in the second head at the final position.
 The wider softmax theorem covers every finite row whose active score
 differences are below 2^1023.  The
-checkpoint's [range proof](../../plans/tiny-model-range-analysis.md)
+checkpoint's [range proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/plans/tiny-model-range-analysis.md)
 now establishes real score spread at most 103/7 for every accepted context.
 The binary64 certificate adds normalization, projection, and score errors
 and proves computed spread at most sixteen.  Every byte embedding satisfies
@@ -93,7 +95,7 @@ the first normalization domain.  Lean also proves that all 2,488 weights
 are finite with real magnitude at most four.  The real first residual has
 component magnitude at most 18/5, and the computed residual is bounded by
 37/10.  The feed-forward and final-normalization domains are proved.
-The [output certificate](../../proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
+The [output certificate](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2/CheckpointLogits.lean)
 proves finite hidden coordinates of magnitude at most seven and finite
 logits of magnitude at most 117 for every four-byte input.
 
@@ -110,13 +112,13 @@ wider GELU.  The [cancellation audit](numerical-audit.json) now measures
 absolute logit error 9.325 × 10^-11 against its 80-digit reference, down
 from 383.216 with the previous arithmetic.
 
-The [composed source theorem](../../proofs/talos/lean/Project/TinyGpt2/NumericalLogits.lean)
+The [composed source theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2/NumericalLogits.lean)
 compares all 256 logits with the existing real model.  It accepts weight
 cap B in [0, 10] and positive lower bounds for the three normalization
 stages, covering both decoded computed inputs and real inputs.  The square
 root of the epsilon floor always qualifies.  With B = 10 and those floors,
 the composed error formula evaluates to approximately 2.934 × 10^14.
-The [checked execution theorem](../../proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
+The [checked execution theorem](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2Checked/Numerical.lean)
 takes the minimum of that formula and the magnitude bound
 1,260 + 12B² + B.  At B = 10, this proves absolute error at most 2,470
 for each logit.  This bound is too coarse to certify precision.  Larger
@@ -135,7 +137,7 @@ tools/leanrun --timeout 3m lake -d proofs/talos/lean build \
   Project.TinyGpt2.CheckpointLogits
 ```
 
-The [training environment](../../training/tiny-gpt2/README.md) records the
+The [training environment](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/tiny-gpt2/README.md) records the
 approved dependencies.  From the repository root:
 
 ```sh
@@ -152,7 +154,7 @@ node test/tiny_gpt2_body.js --checkpoint data/tiny-gpt2-v1/checkpoint.json
 node test/tiny_gpt2_checked.js
 ```
 
-The [inference source](../../proofs/talos/lean/Project/TinyGpt2/Inference.lean)
+The [inference source](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/TinyGpt2/Inference.lean)
 computes the final hidden row and appends one logit per vocabulary token.
 The checked wrapper validates and clips weights before calling that body.
 To reproduce the CLI module:

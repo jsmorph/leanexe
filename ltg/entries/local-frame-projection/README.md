@@ -1,6 +1,6 @@
 # Local-frame equality and projection
 
-These lemmas are about raw `Wasm.Locals`, which the IR hides behind `State.toLocals` and `State.get`.  They apply to proofs about hand-written WASM code, such as the runtime functions `alloc`, `retain`, and `release`.  A compiled program's proof uses `State.get`, `State.set?`, and their lemmas instead.
+These lemmas are about raw `Wasm.Locals`, which the IR hides behind `State.toLocals` and `State.get`.  They apply to proofs about hand-written WASM code, such as the runtime functions `alloc` and `release`.  A compiled program's proof uses `State.get`, `State.set?`, and their lemmas instead.
 
 Use `Frame.ext` when two `Wasm.Locals` values have equal parameter, internal-local, and operand-stack lists.  Apply it directly when the three equalities have names, or use `ext <;> simp_all` when they follow from the context.  Use `Frame.withValues_get` when a block, branch, or control theorem replaces only `frame.values` and a later premise needs `frame.get index`.  `withValues_params`, `withValues_locals`, and `withValues_values` give the other fields.  Prefer these lemmas to `simp only [Wasm.Locals.get]`, which expands the combined parameter-and-local indexing.
 

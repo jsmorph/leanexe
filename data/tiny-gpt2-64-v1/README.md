@@ -1,11 +1,13 @@
 # Tiny GPT-2 with 64 positions
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes this branch's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+
 This checkpoint extends the [four-byte model](../tiny-gpt2-v1/README.md)
 to 64 byte-token positions.  It has 2,728 binary64 parameters, model width
 four, two attention heads, feed-forward width eight, and one block.
 The inference implementation and its proofs remain in progress.
-The [GPT guide](../../docs/gpt/README.md) explains the model families and
-verification goals.  The [training programs](../../training/tiny-gpt2/README.md)
+The [GPT guide](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/gpt/README.md) explains the model families and
+verification goals.  The [training programs](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/tiny-gpt2/README.md)
 produce this checkpoint and its CPU measurements.
 
 ## Training record
@@ -33,7 +35,7 @@ checker and proved numerical components.
 
 ## Reproduction
 
-The [training instructions](../../training/tiny-gpt2/README.md) describe
+The [training instructions](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/training/tiny-gpt2/README.md) describe
 the approved environment.  From the repository root:
 
 ```sh

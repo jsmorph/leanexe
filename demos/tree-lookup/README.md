@@ -1,8 +1,7 @@
 # Tree lookup: a search tree of seven nodes
 
-This example is the first run of the verified-executable skill
-(`.claude/skills/verified-executable/SKILL.md`), on the request of main's Demo 3
-(`git show main:demos/demo-3/README.md`).  [The request](request.txt) gives a complete binary
+This example is the first run of [the verified-executable
+skill](../../.claude/skills/verified-executable/SKILL.md), on the request of [main's Demo 3](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/demos/demo-3/README.md).  [The request](request.txt) gives a complete binary
 search tree of seven nodes in breadth-first order after a query, in 15 words, and asks for
 `[value, 1]` from the node whose key the search finds, `[0, 0]` after a miss at a leaf, and
 `[0, 0]` for any other length.  [The specification](../../Project/TreeLookup/Spec.lean) states the

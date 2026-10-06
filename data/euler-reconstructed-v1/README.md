@@ -1,6 +1,6 @@
 # A reconstructed Euler calculation in proved WebAssembly
 
-A WebAssembly program, compiled from Lean by the verified LeanExe pipeline, evaluates the
+A WebAssembly program, compiled from Lean by LeanExe and proved to compute its Lean definition, evaluates the
 four-state Euler problem from the [Lanyon article](https://lanyon.ai/research/euler-equations/).
 Initialization, reconstruction, timestep selection, both directional sweeps, retries, allocation,
 and final output execute inside one call of the program.
@@ -79,6 +79,6 @@ records the runtime, the peak resident size, and the SHA-256 of the words.
 tools/build-wasmtime-host.sh
 tools/leanrun --lock-timeout 1200 lake env lean --run Project/Pipeline/Emit.lean \
   Project.Euler.Module Project.Euler.euler.module euler.wasm
-~/.local/bin/uv run tools/euler-run.py euler.wasm reconstructed 192 new-192-directory
-~/.local/bin/uv run tools/euler-run.py euler.wasm reconstructed 800 new-800-directory
+uv run tools/euler-run.py euler.wasm reconstructed 192 new-192-directory
+uv run tools/euler-run.py euler.wasm reconstructed 800 new-800-directory
 ```

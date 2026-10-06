@@ -1,6 +1,6 @@
 # Tree lookup: review of the specification
 
-Two fresh agents reviewed `Project/TreeLookup/Spec.lean` and `Samples.lean` against the request.
+Two fresh agents reviewed [`Project/TreeLookup/Spec.lean`](../../Project/TreeLookup/Spec.lean) and `Samples.lean` against the request.
 Each saw only the request, the two files, and the samples with the outputs of `expected`.
 
 The first review found no disagreement between `expected` and the request.  It checked the index
@@ -14,7 +14,7 @@ sample for each class was added.
 The second review, of the 22 samples, again found no disagreement and computed every output by
 hand with the same results.  It noted that the comment of the second tree out of search order
 names the key 40 in the right subtree but not the key 40 at the left subtree's left leaf, where
-the search finds it; the comment is correct but incomplete.  It named further classes without
+the search finds it.  The comment is correct but incomplete.  It named further classes without
 samples: a matched key or value of 0 below the root, a repeated key at node 1 or 2 with a match
 below it, out-of-order keys on a right-subtree path that ends in a match, values of 2^63 or more,
 and lengths far from 15.  The stage ends with these notes, since neither review found a

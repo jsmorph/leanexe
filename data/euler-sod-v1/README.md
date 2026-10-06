@@ -1,5 +1,7 @@
 # Checked Sod shock tube
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../euler-riemann-complete-v1/README.md) and [the reconstructed record](../euler-reconstructed-v1/README.md) describe this branch's Euler solvers and their runs.
+
 Stationary Sod initial data on [0,1], discontinuity at0.5, gamma1.4,
 transmissive boundaries, first-order Rusanov flux, no reconstruction,
 100 cells to t=0.2 in93 accepted steps.
@@ -32,9 +34,9 @@ positive density/pressure/speed, and rounded CFL in(0,0.5]. Every final raw word
 for all four resolutions agrees with the independent IEEE host implementation.
 Raw100-cell outputs and per-step raw time/ratio/speed words are retained.
 
-[RunnerExecution](../../proofs/talos/lean/Project/EulerGridStep/RunnerExecution.lean)
+[RunnerExecution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/RunnerExecution.lean)
 proves the generic actual-call trace and intermediate-grid safety under the
-explicit host-preparation preconditions; [ArtifactRunner](../../proofs/talos/lean/Project/EulerGridStep/ArtifactRunner.lean)
+explicit host-preparation preconditions; [ArtifactRunner](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/ArtifactRunner.lean)
 attaches that contract to the frozen bytes. Host time selection, memory growth,
 copying, diagnostic accumulation, scientific reference and rendering remain
 outside the formal theorem. The runtime assertions check the host obligations;

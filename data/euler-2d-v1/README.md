@@ -1,5 +1,7 @@
 # Two-dimensional Euler flow from verified WASM
 
+This record describes a run on the `main` branch, made with main's compiler and proofs.  Its links to source files point to `main` at commit `eef07963`, and its commands run only on that branch.  [The four-state record](../euler-riemann-complete-v1/README.md) and [the reconstructed record](../euler-reconstructed-v1/README.md) describe this branch's Euler solvers and their runs.
+
 ![Circular pressure pulse](pulse.png)
 
 Two 192 × 192 finite-volume runs show a circular pressure pulse and a
@@ -25,22 +27,22 @@ independent artifact verification.
 
 | Module | Bytes | Only called export | Proof |
 | --- | ---: | --- | --- |
-| Conservative side | 2,212 | sideCheckedBits (5) | [Spec](../../proofs/talos/lean/Project/Euler2DConservative/Spec.lean) |
-| Directional flux | 3,514 | fluxCheckedBits (17) | [Spec](../../proofs/talos/lean/Project/Euler2DDynamicFlux/Spec.lean) |
-| Directional cell | 5,190 | cellCheckedBits (27) | [Spec](../../proofs/talos/lean/Project/Euler2DCellStep/Spec.lean) |
+| Conservative side | 2,212 | sideCheckedBits (5) | [Spec](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DConservative/Spec.lean) |
+| Directional flux | 3,514 | fluxCheckedBits (17) | [Spec](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DDynamicFlux/Spec.lean) |
+| Directional cell | 5,190 | cellCheckedBits (27) | [Spec](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DCellStep/Spec.lean) |
 
 [summary.json](summary.json) records exact artifact/source digests and full
 numerical diagnostics. Public behavior audits use only propext,
 Classical.choice and Quot.sound. Exact artifact transfer also uses the
 project's existing generated decoder/validator cache witnesses.
 
-The [sweep proof](../../proofs/talos/lean/Project/Euler2DCellStep/Sweep.lean)
+The [sweep proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DCellStep/Sweep.lean)
 proves momentum exchange for the y direction, clamped neighbors, accepted
 state safety and actual pointwise cell calls. The
-[runner proof](../../proofs/talos/lean/Project/Euler2DCellStep/Runner.lean)
+[runner proof](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DCellStep/Runner.lean)
 proves successful x/y transitions and arbitrary finite ratio-list call
 traces, and certifies both initial grids. Its
-[exact-byte transfer](../../proofs/talos/lean/Project/Euler2DCellStep/ArtifactRunner.lean)
+[exact-byte transfer](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/Euler2DCellStep/ArtifactRunner.lean)
 applies to the frozen cell module.
 
 Native C/JavaScript grid and timestep orchestration is outside formal proof.

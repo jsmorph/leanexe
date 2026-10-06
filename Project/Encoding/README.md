@@ -2,10 +2,11 @@
 
 ## Interface
 
-Import `Project.Encoding` in the Talos proof workspace.  `Wasm.Encoding.encode`
-accepts a `Wasm.Module` and returns `Except String ByteArray`.
-`Wasm.Encoding.writeModule path module` writes a successful result and raises
-an I/O error if encoding fails.
+`Project.Encoding` defines the encoder.  `Wasm.Encoding.encode` accepts a `Wasm.Module` and returns
+`Except String ByteArray`, and `Wasm.Encoding.writeModule path module` writes a successful result
+and raises an I/O error if encoding fails.  [`Decode.lean`](Decode.lean) defines the decoder,
+`Wasm.Encoding.decode`, which the trusted base uses to give the bytes their meaning, and
+[`RoundTrip.lean`](RoundTrip.lean) connects the two.
 
 | Theorem | Statement |
 | --- | --- |
@@ -13,6 +14,8 @@ an I/O error if encoding fails.
 | `encode_complete` | Every input satisfying `Ready` succeeds and satisfies `Encodes`. |
 | `encode_valid_complete` | `Ready` and `Spec.Validity.Module` imply success, representation, and `ValidBinary`. |
 | `encode_behavior` | The same premises and any property of the input module imply an encoding representing a module with that property. |
+| `decode_encode` | The decoder reads every successful encoding of a module whose functions have at most `Decoder.maxLocals` locals back as that module. |
+| `round_trip` | For such a module whose encoding evaluates to success, `encode` succeeds and the decoder returns the module.  Every bytes theorem of the examples uses it. |
 
 `Ready` states the representable shapes and the format's size bounds.  It
 checks function type indices against the preserved type table, numeric value
@@ -29,7 +32,7 @@ existing behavioral theorem about that module.
 
 ## Representation and specification
 
-The grammar in [the specification directory](Spec) imports Talos syntax and
+The grammar in [the specification directory](Spec/) imports Talos syntax and
 Lean's core library.  It defines binary relations without calling the encoder.
 These definitions and their correspondence with the published WASM rules
 form the trusted specification.  Lean checks proofs relative to those definitions.
@@ -70,19 +73,17 @@ those bytes also depends on the external runtime and host environment.
 
 ## Tests
 
-From the repository root, with `WASMTIME` and `WASM_TOOLS` configured as in
-[Developing LeanExe](../../../../../DEVELOPING.md), run:
+[`DecodeTest.lean`](DecodeTest.lean) runs the decoder over the modules that `wasm-tools
+json-from-wast` extracts from the official WebAssembly testsuite.  Each module in the decoder's
+subset must decode to the module that Talos reads from the text of the same file, and `decode
+(encode m)` must return `m` when `encode m` succeeds.  Each malformed binary must be rejected.  The
+test expects `build/decode-test` to hold the extracted modules of the testsuite scripts in the
+CodeLib checkout.
 
 ```sh
-node test/encoding.js
+tools/leanrun --timeout 60m lake env lean --run Project/Encoding/DecodeTest.lean \
+  "$(command -v wasm-tools)" build/decode-test
 ```
 
-The driver builds the proof and test modules through `tools/leanrun`, audits
-six public theorem axiom sets, writes seven modules into a fresh directory
-under `tmp`, validates them with wasm-tools, and runs Wasmtime checks.
-Three inputs are the existing generated GCD, floating-point multiplication,
-and ASCII-validator models.  The remaining inputs exercise integer boundaries,
-UTF-8 export names, duplicate and unused types, mixed locals, multiple results,
-WASI imports, memory, globals, and scalar operations.  Lean guards also check
-rejection of oversized indices and inconsistent metadata.  Test output stays
-in its temporary directory for inspection.
+[`Emit.lean`](../Pipeline/Emit.lean) also checks, for each module it writes, that the decoder
+reads the bytes back as the module, and the module tests run the written files in Wasmtime.
