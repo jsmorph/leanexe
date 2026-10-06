@@ -314,9 +314,8 @@ composes it with the binding loop to prove the complete actual `enterReady`.
 The operation preserves heap validity, pointer types, original allocated cells,
 and other registers, and consumes exactly `arity + locals + 1` cells. Its
 assumptions include the natural free-cell budget, valid binding inputs, and
-zero-or-activation caller and lexical pointers. Public calls still need
-to establish these assumptions across reservation and caller updates; boot is
-checked below.
+zero-or-activation caller and lexical pointers. Boot and method-call construction
+are checked below; dispatch and send must establish their input conditions.
 
 `ProgramBounds` derives class, method, and entry bounds from the actual
 `programValid` result. `ValidationLoop` proves that every visited check must
@@ -342,6 +341,18 @@ allocation error 9 or reaches phase zero with the specified receiver and entry
 activation. It includes reservation and any collection before construction.
 These results establish the initial heap and frame; the complete invariant
 needed to compose every instruction remains unfinished.
+
+`AdvanceTypes` proves typed frame advancement. `ArgumentTransfer` checks walks,
+binding inputs, and selected values under preservation of reachable link
+payloads; mark words may change. `CallConstruction.sendMethodReady_effect`
+checks actual method entry and the caller's PC increment and remaining operand
+stack. `CallHeap.callMethod_correct` includes reservation and collection and
+proves either allocation error 9 or exact entry with the original phase.
+The heap and pointer types are preserved. Its assumptions include a current
+activation, validated method bounds, valid binding inputs, reachable receiver
+and lexical capture, and a zero-or-activation lexical pointer. `CallReservation`
+checks that these binding inputs survive collection. Dispatch and send
+composition, block calls, and primitives remain unfinished.
 
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and

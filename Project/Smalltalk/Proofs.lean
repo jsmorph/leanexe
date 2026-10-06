@@ -43,3 +43,4 @@ import Project.Smalltalk.BindingLoop
 import Project.Smalltalk.ActivationConstruction
 import Project.Smalltalk.ProgramBounds
 import Project.Smalltalk.BootHeap
+import Project.Smalltalk.CallHeap

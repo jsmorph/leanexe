@@ -1,6 +1,8 @@
 name = "Project"
 version = "0.1.0"
 defaultTargets = ["LeanExe", "Project"]
+# Repository drivers run Lean and native programs from .lake/build after building.
+restoreAllArtifacts = true
 
 [[require]]
 name = "Verifier"
