@@ -139,4 +139,13 @@ theorem write_register_valid {s : Array UInt64} {cap : Nat} {r v : UInt64}
     · exact read_write_other _ _ _ _ notHead
     · exact read_write_other _ _ _ _ notCount
 
+theorem value_after_register {s : Array UInt64} {cap : Nat} {r v value : UInt64}
+    (shape : Shape s cap) (bound : r.toNat < 24) (original : Value s cap value) :
+    Value (write s r v) cap value := by
+  rcases original with zero | allocated
+  · exact Or.inl zero
+  · exact Or.inr ⟨allocated.1, by
+      rw [field_write_register shape allocated.1 (show (0 : UInt64).toNat < 8 by decide) bound]
+      exact allocated.2⟩
+
 end Project.Smalltalk.HeapWrite

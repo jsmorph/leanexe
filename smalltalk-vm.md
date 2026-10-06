@@ -260,6 +260,15 @@ the returned value, and registers when its initial cursor and nonzero caller
 are activations. This preservation theorem permits repeated caller links;
 the separate represented-prefix theorem establishes exact return retirement.
 
+`TypedAllocation` proves allocation preserves pointer cell types when its new
+typed pointers match their required types. `PublicReturnHeap.ret_valid` proves
+the actual local and nonlocal return operations preserve both heap validity and
+pointer types. It assumes a valid typed heap, a non-error phase, and a current
+activation. Successful actual caller membership supplies target reachability;
+the returned stack value and caller remain valid across reservation and unwind.
+This preservation theorem needs no represented-path assumption. Exact delivery
+still uses the separately stated caller-prefix conditions.
+
 `LiteralHeap.lean` checks the two-cell construction budget for integer, class,
 and block literals. No collection occurs between constructing the value and
 its operand link. A block's captured activation remains reachable through the

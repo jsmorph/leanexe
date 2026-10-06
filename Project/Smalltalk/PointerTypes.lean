@@ -71,4 +71,13 @@ theorem write_register_valid {s : Array UInt64} {cap : Nat} {r v : UInt64}
   · exact Or.inl zero
   · exact Or.inr ⟨child.1, by rw [same child.1 0 (by decide)]; exact child.2⟩
 
+theorem matches_after_register {s : Array UInt64} {cap : Nat} {r v tag value : UInt64}
+    (shape : Shape s cap) (bound : r.toNat < 24) (original : Matches s cap tag value) :
+    Matches (write s r v) cap tag value := by
+  rcases original with zero | allocated
+  · exact Or.inl zero
+  · exact Or.inr ⟨allocated.1, by
+      rw [field_write_register shape allocated.1 (show (0 : UInt64).toNat < 8 by decide) bound]
+      exact allocated.2⟩
+
 end Project.Smalltalk.PointerTypes

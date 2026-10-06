@@ -95,5 +95,10 @@ run_cmd do
 #print axioms Project.Smalltalk.TypedCollection.reserve_typed
 #print axioms Project.Smalltalk.FrameTypes.retire_typed
 #print axioms Project.Smalltalk.UnwindHeap.unwind_preserves
+#print axioms Project.Smalltalk.TypedAllocation.allocate_typed
+#print axioms Project.Smalltalk.ReturnCallerHeap.returnCaller_valid
+#print axioms Project.Smalltalk.ReturnHeap.returnReserved_valid
+#print axioms Project.Smalltalk.CallChainReachability.onChain_reachable
+#print axioms Project.Smalltalk.PublicReturnHeap.ret_valid
 #print axioms Project.Smalltalk.Execution.run_resume
 #print axioms Project.Smalltalk.Execution.run_stopped

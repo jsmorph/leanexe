@@ -3,7 +3,7 @@
 Status recorded on 2026-10-06 UTC, before committing this document.
 Repository: `jsmorph/leanexe`. Branch: `smalltalk-vm`, based on `deslop`.
 The local and remote heads at this checkpoint are
-`5ecdaa6e7f91b91395362f7b867c3b61108026fd`.
+`0a3b36fda68de68315ddb0fd962dd9cf7b3fd3e0`.
 
 The task is to prove the actual Lean VM and collector correct, keep the
 implementation simple, run the compiled WASM, and commit and push checked
@@ -64,6 +64,8 @@ identified as a list model. Their assumptions remain part of the claims.
 | Twelve instruction cases | Heap preservation through actual `execute` and `step` for opcodes 0–9, 14, and 15, including validation and stopped-state branches | `InstructionHeap.lean`, `ExecuteHeap.lean` |
 | Pointer cell types | Caller/lexical/capture pointers name activations; field/slot/operand/next pointers name links; initialization, collection, reservation, and checked writes preserve these requirements | `PointerTypes.lean`, `TypedCollection.lean` |
 | Typed unwind | Retirement and the bounded unwind loop preserve heap validity, pointer types, caller and value validity, and registers under the stated cursor/caller assumptions | `FrameTypes.lean`, `UnwindHeap.lean` |
+| Typed allocation | Allocation preserves pointer cell types when new typed pointers match their required cell types | `TypedAllocation.lean` |
+| Public return preservation | Actual local and nonlocal returns preserve heap validity and pointer types; successful caller membership establishes target reachability across reservation | `ReturnCallerHeap.lean`, `ReturnHeap.lean`, `CallChainReachability.lean`, `PublicReturnHeap.lean` |
 | Fuel | Actual run composes across fuel segments under the stated word-bound assumption; stopped execution stays stopped | `Execution.lean` |
 
 `Heap.Valid` combines valid graph roots, pointers and tags with the complete
@@ -84,35 +86,32 @@ Recent pushed checkpoints:
 | `256521af` | Push across reservation and collection |
 | `0af581f3` | Literal construction and twelve actual instruction/step cases |
 | `e7ffde84` | Pointer cell types through initialization and collection |
+| `0a3b36fd` | Typed retirement and bounded unwind |
 
 ## Current increment
 
-This increment adds both previously pending files to the proof umbrella and
-axiom audit:
+Typed allocation, return-to-caller, final return, reservation before unwind,
+and public local/nonlocal return preservation pass the combined build and
+axiom audit. The public return theorem assumes a valid typed heap, a non-error
+phase, and a current activation. It derives target reachability from actual
+caller membership rather than assuming a represented path. Exact return
+delivery still has path conditions to connect to reachable VM states.
 
-- `Project/Smalltalk/FrameTypes.lean`: retirement preserves pointer cell types
-  and the validity of previously allocated values and typed handles.
-- `Project/Smalltalk/UnwindHeap.lean`: the actual bounded unwind loop preserves
-  heap validity, pointer cell types, the caller's type, the returned value,
-  and all registers. Its initial cursor and nonzero caller must be activations.
-
-Their combined build and axiom audit pass. They are included in this checked
-increment with this document. Next is allocation typing and complete return
-preservation; no full VM correctness claim is made.
+Next are object and activation construction, dispatcher composition of the
+return cases, and preservation of the complete execution invariant. No full
+VM correctness claim is made. All checked proof files are in this increment.
 
 ## Next work, in order
 
 1. Frame retirement typing and bounded unwind preservation are checked and
-   included in this increment. Keep the work document current with every
+   pushed as `0a3b36fd`. Keep the work document current with every
    subsequent proof commit.
-2. Prove allocation preserves `PointerTypes.Valid` when new typed pointers
-   match their required types. Use the existing exact allocation effects;
-   do not introduce a second allocator or change collection during construction.
-3. Finish return heap preservation. Check both return-to-caller and final
-   return, then combine typed unwind, reservation, stack-value reachability,
-   and the actual public return guards. Retain the existing exact delivery
-   theorem. Establish how actual caller membership supplies its path conditions
-   rather than silently assuming them for every VM state.
+2. Allocation typing is checked in this increment using the existing exact
+   allocation effects. The allocator and collection points are unchanged.
+3. Public return heap preservation is checked in this increment, including
+   return-to-caller, final return, typed unwind, reservation, and actual guards.
+   Connect the exact delivery theorem's caller-path conditions to reachable
+   VM states and compose the return opcode cases with the dispatcher.
 4. Prove object and activation construction. Check each list-building iteration,
    the allocation counts, temporary register 19, constructed field/slot order,
    caller and lexical captures, and the final current activation. The original
@@ -206,7 +205,7 @@ The most recent full driver passed after the concrete return-control proofs:
 The local full-driver log is `build/smalltalk/proof-control-review.log`.
 Subsequent increments changed proofs and documentation only. Their combined
 Lean builds and axiom audits passed. The latest audit log is
-`build/smalltalk/proof-unwind-types-audit.log`. Build logs and emitted artifacts
+`build/smalltalk/proof-public-return-audit.log`. Build logs and emitted artifacts
 can be regenerated with the driver.
 
 See `smalltalk-vm.md` for executable formats and proof limits,
