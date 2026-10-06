@@ -184,3 +184,19 @@ steps, since finished and error states are absorbing. `run_resume` proves
 exact state equality under fuel splitting, with an explicit no-wrap bound on
 the fuel sum. These are control and fuel facts, not a proof of instruction
 semantics or of the VM establishing the collector's heap assumptions.
+
+## Heap validity after collection (2026-10-06)
+
+`collect_allocated` connects nonzero tags after collection to original
+reachability. `collect_valid` proves that the resulting heap meets all the
+typed-heap assumptions: its roots are retained, every outgoing pointer names
+a retained allocated cell, and retained tags remain valid. `collect_reachable`
+proves equality of reachability before and after collection. The phase is
+unchanged, so another collection is justified and preserves the same live
+payloads. Free-list order and statistics are not claimed to be identical.
+
+The first check exposed two unavailable convenience names in the minimal
+imports (`not_not` and `by_contra`). An explicit `Classical.byContradiction`
+proof checked successfully. No executable definitions changed. These lemmas
+support repeated collection; VM initialization and instructions still need
+to establish the initial heap assumptions.

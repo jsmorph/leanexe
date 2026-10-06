@@ -39,6 +39,9 @@ run_cmd do
 #print axioms Project.Smalltalk.Marking.marking_correct
 #print axioms Project.Smalltalk.Collector.collect_correct
 #print axioms Project.Smalltalk.Collector.collect_register
+#print axioms Project.Smalltalk.CollectorPreservation.collect_valid
+#print axioms Project.Smalltalk.CollectorPreservation.collect_reachable
+#print axioms Project.Smalltalk.CollectorPreservation.collect_twice_payload
 #print axioms Project.Smalltalk.Frame.retire_field
 #print axioms Project.Smalltalk.Frame.advance_field
 #print axioms Project.Smalltalk.Traversal.walk_path
