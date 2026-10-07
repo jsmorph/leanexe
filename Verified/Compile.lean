@@ -476,6 +476,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | Γ, _, .call (g := g) f args =>
     let all := fun i => live i || argsAny fun j => (args j).uses i
     let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).uses i)
+    (if g.depth then [.localGet 0, .constI64 1, .addI64] else []) ++
     argsCode (fun i =>
       if (g.params.get i).scalar then (args i).code h slots base all
       else if g.mode i = .owned then (args i).ownedCode h slots base kept
@@ -580,8 +581,17 @@ def paramSlots : List Ty → List Mode → Nat → List Slot
   | t :: ts, ms, loc =>
     ⟨loc, t.paramMode (ms.headD .borrowed)⟩ :: paramSlots ts ms.tail (loc + t.width)
 
+/-- The parameter types of a function's code: its parameters' words, after the call depth when
+the code takes it. -/
+def codeParams (params : List Ty) (depth : Bool) : List ValueType :=
+  (if depth then [.i64] else []) ++ params.flatMap Ty.types
+
 def Func.type (func : Func S) : FuncType :=
-  { params := func.params.flatMap Ty.types
+  { params := codeParams func.params func.depth
+    results := func.result.types }
+
+def RecFunc.type (func : RecFunc S) : FuncType :=
+  { params := codeParams func.params true
     results := func.result.types }
 
 /-- The instructions that copy each parameter word of type f64, at position `p` on among words of
@@ -591,27 +601,56 @@ def paramCopyCode (h : Nat) : Nat → List ValueType → Program
   | p, .f64 :: tys => [.localGet p, .localSet (p + h)] ++ paramCopyCode h (p + 1) tys
   | p, _ :: tys => paramCopyCode h (p + 1) tys
 
-/-- The positions of a function: its parameters' words and the locals that the body needs. -/
-def Func.positions (func : Func S) : Nat :=
-  widthSum func.params + func.body.width + copyWidth func.result
+/-- The call depth at which the code of a function that takes the depth traps at `unreachable`. -/
+def depthLimit : UInt64 := 1000
 
-/-- The function's code: the words of the arguments are its first positions, and the positions
-that the body needs follow them; an i64 local for each of those and an f64 local for every
-position follow the parameters.  The code copies the f64 parameter words to their positions'
-f64 locals, releases the owned parameters that the body does not use, and runs the body, which
-leaves the words of the result on the stack. -/
+/-- The test of a function that takes the call depth, at local 0: a trap at `unreachable` when it
+has reached the limit. -/
+def guardCode : Program :=
+  [.localGet 0, .constI64 depthLimit, .geUI64, .iff 0 0 [.unreachable] [] [] []]
+
+/-- The positions of a function with parameters `params` and body `body`: the call depth when the
+code takes it, the parameters' words, and the locals that the body needs. -/
+def positions {S : List Sig} {params : List Ty} {result : Ty} (body : Expr S params result)
+    (depth : Bool) : Nat :=
+  (if depth then 1 else 0) + widthSum params + body.width + copyWidth result
+
+/-- The code of a function with parameters `params`, whose modes `modes` chose, and body `body`:
+the call depth when `depth` holds, then the words of the arguments, are its first positions, and
+the positions that the body needs follow them; an i64 local for each of those and an f64 local for
+every position follow the parameters.  The code tests the depth, copies the f64 parameter words to
+their positions' f64 locals, releases the owned parameters that the body does not use, and runs
+the body, which leaves the words of the result on the stack. -/
+def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
+    (body : Expr S params result) (depth : Bool) (typeIdx : Nat) : Wasm.Function :=
+  let p0 := if depth then 1 else 0
+  let slots := paramSlots params modes p0
+  let h := positions body depth
+  { params := codeParams params depth
+    locals := List.replicate (body.width + copyWidth result) .i64 ++ List.replicate h .f64
+    body := (if depth then guardCode else []) ++
+      paramCopyCode h p0 (params.flatMap Ty.types) ++
+      releaseWhere params slots (fun i => !body.uses i) ++
+      body.code h slots (p0 + widthSum params) (fun _ => false) ++
+      coerceCode h result (body.mode (slots.map Slot.mode)) .owned
+        (p0 + widthSum params + body.width)
+    results := result.types
+    typeIdx := some typeIdx }
+
 def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
-  let slots := paramSlots func.params func.modes 0
-  let h := func.positions
-  { params := func.type.params
-    locals := List.replicate (func.body.width + copyWidth func.result) .i64 ++
-      List.replicate h .f64
-    body := paramCopyCode h 0 (func.params.flatMap Ty.types) ++
-      releaseWhere func.params slots (fun i => !func.body.uses i) ++
-      func.body.code h slots (widthSum func.params) (fun _ => false) ++
-      coerceCode h func.result (func.body.mode (slots.map Slot.mode)) .owned
-        (widthSum func.params + func.body.width)
-    results := func.type.results
+  bodyFunction func.modes func.body func.depth typeIdx
+
+def RecFunc.function (func : RecFunc S) (typeIdx : Nat) : Wasm.Function :=
+  bodyFunction func.modes func.body true typeIdx
+
+/-- The entry of a function whose code takes the call depth, exported under its name: it calls
+the function at `idx` with depth 0 and its own arguments. -/
+def entryFunction (params : List Ty) (result : Ty) (idx typeIdx : Nat) : Wasm.Function :=
+  let tys := params.flatMap Ty.types
+  { params := tys
+    locals := []
+    body := [.constI64 0] ++ (List.range tys.length).map Instruction.localGet ++ [.call idx]
+    results := result.types
     typeIdx := some typeIdx }
 
 /-- Globals 0 through 3 hold the allocator state: the bump pointer, which starts at the heap base
@@ -629,24 +668,46 @@ def wordToNone : FuncType := { params := [.i64], results := [] }
 def Prog.functions : {S : List Sig} → Prog S → List Wasm.Function
   | _, .nil => []
   | _, .cons (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
+  | _, .consRec (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
 
 def Prog.types : {S : List Sig} → Prog S → List FuncType
   | _, .nil => []
   | _, .cons f rest => rest.types ++ [f.type]
+  | _, .consRec f rest => rest.types ++ [f.type]
 
-def Prog.exports : {S : List Sig} → Prog S → List Export
+/-- The functions whose code takes the call depth, in module order: each one's index, parameter
+types, and result type. -/
+def Prog.depthFuns : {S : List Sig} → Prog S → List (Nat × List Ty × Ty)
   | _, .nil => []
-  | _, .cons (S := S) f rest => rest.exports ++ [{ name := f.name, funcIdx := 2 + S.length }]
+  | _, .cons (S := S) f rest =>
+    rest.depthFuns ++ (if f.depth then [(2 + S.length, f.params, f.result)] else [])
+  | _, .consRec (S := S) f rest => rest.depthFuns ++ [(2 + S.length, f.params, f.result)]
+
+/-- The entries of the functions that take the call depth, after the `n` functions of the program,
+each with the type of its own index. -/
+def Prog.entries (prog : Prog S) (n : Nat) : List Wasm.Function :=
+  prog.depthFuns.mapIdx fun j (idx, params, result) => entryFunction params result idx (2 + n + j)
+
+def Prog.entryTypes (prog : Prog S) : List FuncType :=
+  prog.depthFuns.map fun (_, params, result) =>
+    { params := params.flatMap Ty.types, results := result.types }
+
+def Prog.exports (n : Nat) : {S : List Sig} → Prog S → List Export
+  | _, .nil => []
+  | _, .cons (S := S) f rest => rest.exports n ++
+    [{ name := f.name, funcIdx := if f.depth then 2 + n + rest.depthFuns.length else 2 + S.length }]
+  | _, .consRec f rest => rest.exports n ++
+    [{ name := f.name, funcIdx := 2 + n + rest.depthFuns.length }]
 
 /-- The module of a program, each function exported under its name.  Functions 0 and 1 are the
 runtime's `alloc` and `release`, and the program's functions follow them, each with the type of
 its own index. -/
 def compile (prog : Prog S) : Module :=
-  let types := [wordToWord, wordToNone] ++ prog.types
+  let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes
   { funcs := [LeanExe.Runtime.allocFunction 0, LeanExe.Runtime.releaseFunction 1] ++
-      prog.functions
+      prog.functions ++ prog.entries S.length
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
-      prog.exports
+      prog.exports S.length
     memory := some { pagesMin := 16, pagesMax := some 65535 }
     globals := runtimeGlobals
     types
@@ -658,10 +719,25 @@ theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length
   induction prog with
   | nil => rfl
   | cons f rest ih => simp [Prog.functions, ih]
+  | consRec f rest ih => simp [Prog.functions, ih]
 
-theorem compile_funcs (prog : Prog S) (k : Nat) :
+theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length) :
     (compile prog).funcs[2 + k]? = prog.functions[k]? := by
   conv_lhs => rw [show 2 + k = k + 1 + 1 by omega]
-  simp [compile]
+  simp only [compile, List.cons_append, List.nil_append, List.getElem?_cons_succ]
+  rw [List.getElem?_append_left (by rw [prog.functions_length]; exact hk)]
+
+/-- The entry of the `j`-th function whose code takes the call depth follows the program's
+functions. -/
+theorem compile_entries (prog : Prog S) {j idx : Nat} {params : List Ty} {result : Ty}
+    (hj : prog.depthFuns[j]? = some (idx, params, result)) :
+    (compile prog).funcs[2 + S.length + j]? =
+      some (entryFunction params result idx (2 + S.length + j)) := by
+  simp only [compile, List.cons_append, List.nil_append]
+  rw [show 2 + S.length + j = (S.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
+    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length]; omega),
+    prog.functions_length, Nat.add_sub_cancel_left, Prog.entries, List.getElem?_mapIdx, hj,
+    show S.length + j + 1 + 1 = 2 + S.length + j by omega]
+  rfl
 
 end Verified

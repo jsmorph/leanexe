@@ -137,6 +137,6 @@ def prog := Prog.cons (pointsF _) <| Prog.cons (sumFirstF _) <| Prog.cons (bumpF
 def module : Wasm.Module := compile prog
 
 /-- Every function of the module computes its meaning, by the compiler's theorem. -/
-theorem correct : Calls module prog.funs := Prog.correct prog
+theorem correct : Calls module prog.funs := Prog.correct_funs prog rfl
 
 end Verified.Examples.Tuples

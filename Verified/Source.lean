@@ -236,13 +236,16 @@ def paramMode (ts : List Ty) (ms : List Mode) (i : Nat) : Mode :=
   (paramModes ts ms).getD i .borrowed
 
 /-- The signature of a function: its parameter types, its result type, whether a call may trap
-at `unreachable`, which only a function that allocates, directly or through a call, does, and the
-modes chosen for its parameters.  The call consumes the arrays of its owned parameters. -/
+at `unreachable`, which a function that allocates, directly or through a call, does, the modes
+chosen for its parameters, and whether its code takes the call depth as a further first argument,
+as a recursive function and a function that calls one do.  The call consumes the arrays of its
+owned parameters. -/
 structure Sig where
   params : List Ty
   result : Ty
   aborts : Bool
   modes : List Mode
+  depth : Bool
   deriving DecidableEq
 
 /-- The modes of the parameters of the signature `g`, by index. -/
@@ -392,8 +395,9 @@ def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
   | _ + 1, b => b 0 || argsAny fun i => b i.succ
 
 /-- Whether the code of an expression may trap: whether it builds, updates, or extends an array,
-which may allocate, or calls a function that may trap, that returns arrays, or that owns a
-parameter, whose argument the call may copy, since only these allocate. -/
+which may allocate, or calls a function that may trap, whose code takes the call depth, which traps
+at the depth limit, that returns arrays, or that owns a parameter, whose argument the call may
+copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
@@ -408,13 +412,40 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
   | _, _, .letE value body => value.aborts || body.aborts
   | _, _, .call (g := g) _ args =>
-    g.aborts || !g.result.scalar || argsAny fun i => (args i).aborts || g.mode i == .owned
+    g.aborts || g.depth || !g.result.scalar ||
+      argsAny fun i => (args i).aborts || g.mode i == .owned
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
   | _, _, .size _ => false
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _ => true
+
+/-- Whether an expression calls a function whose code takes the call depth. -/
+def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
+  | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
+  | _, _, .fcmp _ left right => left.depthCalls || right.depthCalls
+  | _, _, .toFloat _ e => e.depthCalls
+  | _, _, .toWord _ e => e.depthCalls
+  | _, _, .mk first second => first.depthCalls || second.depthCalls
+  | _, _, .proj _ _ => false
+  | _, _, .funary _ e => e.depthCalls
+  | _, _, .not e => e.depthCalls
+  | _, _, .and left right | _, _, .or left right => left.depthCalls || right.depthCalls
+  | _, _, .ite c thenE elseE => c.depthCalls || thenE.depthCalls || elseE.depthCalls
+  | _, _, .letE value body => value.depthCalls || body.depthCalls
+  | _, _, .call (g := g) _ args => g.depth || argsAny fun i => (args i).depthCalls
+  | _, _, .pair first second => first.depthCalls || second.depthCalls
+  | _, _, .letPair e body => e.depthCalls || body.depthCalls
+  | _, _, .loop count init cond body =>
+    count.depthCalls || init.depthCalls || cond.depthCalls || body.depthCalls
+  | _, _, .size _ => false
+  | _, _, .get _ i => i.depthCalls
+  | _, _, .build count elem => count.depthCalls || elem.depthCalls
+  | _, _, .set _ i v => i.depthCalls || v.depthCalls
+  | _, _, .push _ v => v.depthCalls
+  | _, _, .append _ _ => false
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
@@ -502,26 +533,90 @@ a borrowed result's copy allocates, or a parameter is owned, whose variable the 
 def Func.aborts (func : Func S) : Bool :=
   func.body.aborts || !func.result.scalar || (paramModes func.params func.modes).any (· == .owned)
 
+/-- Whether the function's code takes the call depth: whether its body calls a function whose
+code does. -/
+def Func.depth (func : Func S) : Bool := func.body.depthCalls
+
 /-- The Lean function that `func` means, given the Lean functions that it calls. -/
 def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.result.denote :=
   func.body.denote funs args
 
+/-- The signature of a function of a program. -/
+def Func.sig (func : Func S) : Sig :=
+  ⟨func.params, func.result, func.aborts, func.modes, func.depth⟩
+
+/-- A recursive function: its body may call the functions `S` and, as the function before them,
+itself.  Its code takes the call depth and may trap at `unreachable` when the depth reaches the
+limit, so its signature, `sig`, has both flags. -/
+structure RecFunc (S : List Sig) where
+  name : String
+  params : List Ty
+  result : Ty
+  modes : List Mode
+  body : Expr (⟨params, result, true, modes, true⟩ :: S) params result
+  placeArgs : body.placeArgs = true
+
+def RecFunc.sig (func : RecFunc S) : Sig := ⟨func.params, func.result, true, func.modes, true⟩
+
 /-- A program: functions in which each may call the functions after it in the list, which come
-before it in the module. -/
+before it in the module, and a recursive function itself. -/
 inductive Prog : List Sig → Type where
   | nil : Prog []
-  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.aborts, f.modes⟩ :: S)
+  | cons (f : Func S) (rest : Prog S) : Prog (f.sig :: S)
+  | consRec (f : RecFunc S) (rest : Prog S) : Prog (f.sig :: S)
 
-/-- The Lean functions that a program's functions mean. -/
+instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
+  | .elem e => e.instInhabited
+  | .pair a b => ⟨(@default _ (Ty.instInhabited a), @default _ (Ty.instInhabited b))⟩
+  | .array _ => ⟨#[]⟩
+
+/-- Whether a program has no recursive function. -/
+def Prog.recFree : {S : List Sig} → Prog S → Bool
+  | _, .nil => true
+  | _, .cons _ rest => rest.recFree
+  | _, .consRec _ _ => false
+
+/-- The Lean functions that a program's functions mean, for a program without recursion.  A
+recursive function has no meaning by its body alone, and gets the default value here; its meaning
+is a solution of its equation, which `Prog.Meaning` states. -/
 def Prog.funs : {S : List Sig} → Prog S → Funs S
   | _, .nil => .nil
   | _, .cons f rest => .cons (f.denote rest.funs) rest.funs
+  | _, .consRec f rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
+
+/-- `funs` are the Lean functions that a program's functions mean: a function's meaning is its
+body's at the meanings of the functions after it, and a recursive function's meaning is any `M`
+whose value is its body's at `M` and those meanings, which the reflector gives as the Lean
+definition. -/
+inductive Prog.Meaning : {S : List Sig} → Prog S → Funs S → Prop
+  | nil : Prog.Meaning .nil .nil
+  | cons {S : List Sig} {f : Func S} {rest : Prog S} {funs : Funs S} :
+    Prog.Meaning rest funs → Prog.Meaning (Prog.cons f rest) (.cons (f.denote funs) funs)
+  | consRec {S : List Sig} {f : RecFunc S} {rest : Prog S} {funs : Funs S}
+    (M : Env f.params → f.result.denote) : Prog.Meaning rest funs →
+    (∀ env, M env = f.body.denote (.cons (g := f.sig) M funs) env) →
+    Prog.Meaning (Prog.consRec f rest) (.cons M funs)
+
+theorem Prog.meaning_funs : {S : List Sig} → (prog : Prog S) → prog.recFree = true →
+    prog.Meaning prog.funs
+  | _, .nil, _ => .nil
+  | _, .cons _ rest, h => .cons (rest.meaning_funs h)
+  | _, .consRec _ _, h => nomatch h
 
 theorem Prog.get_here {S : List Sig} (f : Func S) (rest : Prog S) (env : Env f.params) :
     (Prog.cons f rest).funs.get .here env = f.denote rest.funs env := rfl
 
 theorem Prog.get_there {S : List Sig} {g : Sig} (f : Func S) (rest : Prog S) (v : FVar S g)
     (env : Env g.params) : (Prog.cons f rest).funs.get (.there v) env = rest.funs.get v env :=
+  rfl
+
+theorem Funs.get_here {S : List Sig} {g : Sig} (F : Env g.params → g.result.denote)
+    (rest : Funs S) (env : Env g.params) : (Funs.cons F rest).get .here env = F env :=
+  rfl
+
+theorem Funs.get_there {S : List Sig} {g h : Sig} (F : Env h.params → h.result.denote)
+    (rest : Funs S) (v : FVar S g) (env : Env g.params) :
+    (Funs.cons F rest).get (.there v) env = rest.get v env :=
   rfl
 
 end Verified
