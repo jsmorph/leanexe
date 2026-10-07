@@ -40,16 +40,16 @@ def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
 
 def ctxExpr (Γ : List Ty) : Lean.Expr := listExpr (mkConst ``Ty) (Γ.map tyExpr)
 
-def sigExpr (params : List Ty) (result : Ty) : Lean.Expr :=
-  mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero]) (mkApp (mkConst ``List [Level.zero])
-    (mkConst ``Ty)) (mkConst ``Ty) (ctxExpr params) (tyExpr result)
+def sigExpr (params : List Ty) (result : Ty) (aborts : Bool) : Lean.Expr :=
+  mkApp3 (mkConst ``Sig.mk) (ctxExpr params) (tyExpr result) (toExpr aborts)
 
-/-- A listed definition that a later one may call: its name, its signature, and its equation
-`∀ args, Func.denote … = name args`. -/
+/-- A listed definition that a later one may call: its name, its signature, whether a call may
+trap, and its equation `∀ args, Func.denote … = name args`. -/
 structure Callee where
   name : Name
   params : List Ty
   result : Ty
+  aborts : Bool
   denoteEq : Name
 
 /-- The functions an expression may call, the Lean functions they mean, the definitions behind
@@ -244,10 +244,9 @@ where
     let nilEq ← mkAppOptM ``ofFn_nil_eq #[some c.sigs, some c.ctx, some c.funs, some c.env]
     let hargs ← reflected.foldrM (fun (_, h, _) acc => mkAppM ``ofFn_cons_eq #[h, acc]) nilEq
     let values ← envExpr (args.toList.zip callee.params)
-    let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Sig) |>.app
-      (sigExpr callee.params callee.result))
-    let f ← mkAppOptM ``FVar.ofIndex #[some (ctxExpr callee.params), some (tyExpr callee.result),
-      some c.sigs, some (toExpr j), some proof]
+    let sig := sigExpr callee.params callee.result callee.aborts
+    let proof ← mkEqRefl (mkApp2 (mkConst ``Option.some [Level.zero]) (mkConst ``Sig) sig)
+    let f ← mkAppOptM ``FVar.ofIndex #[some sig, some c.sigs, some (toExpr j), some proof]
     let hf ← mkExpectedTypeHint (mkAppN (mkConst callee.denoteEq) args)
       (← mkEq (← mkAppM ``Funs.get #[c.funs, f, values]) e)
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
@@ -258,11 +257,12 @@ where
     return (← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs], ← mkAppM ``cmp_eq #[cmpExpr op, hl, hr],
       .bool)
 
-/-- What the reflector learns from one definition. -/
+/-- What the reflector learns from one definition: its signature, and whether a call may trap. -/
 structure Reflected where
   name : Name
   params : List Ty
   result : Ty
+  aborts : Bool
   deriving Inhabited
 
 def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
@@ -292,7 +292,10 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let lhs ← mkAppM ``Func.denote #[mkConst (base ++ `func), funs, env]
     let eqType ← mkForallFVars params (← mkEq lhs (mkAppN (mkConst name) params))
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params proof)
-    return ⟨name, types, result⟩
+    let aborts ← reduce (← mkAppM ``Expr.aborts #[src])
+    unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
+      throwError "verified_compile: cannot evaluate whether {name} may trap"
+    return ⟨name, types, result, aborts.isConstOf ``Bool.true⟩
 
 def tyStx : Ty → CommandElabM Term
   | .word => `(UInt64)
@@ -312,10 +315,6 @@ def argProjs (x : Term) : Nat → CommandElabM (List Term)
   | 1 => return [x]
   | n + 2 => do return (← `($x.1)) :: (← argProjs (← `($x.2)) (n + 1))
 
-def envStx : List Term → CommandElabM Term
-  | [] => `(Verified.Env.nil)
-  | x :: xs => do `(Verified.Env.cons $x $(← envStx xs))
-
 /-- `FVar.there (… (FVar.there FVar.here))` with `k` applications of `there`. -/
 def fvarStx : Nat → CommandElabM Term
   | 0 => `(Verified.FVar.here)
@@ -329,20 +328,20 @@ def elabVerifiedCompile : CommandElab
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
     let reflected ← liftTermElabM do
-      let mut sigs : List (List Ty × Ty) := []
+      let mut sigs : List (List Ty × Ty × Bool) := []
       let mut prog := Lean.mkConst ``Prog.nil
       let mut out : Array Reflected := #[]
       let mut callees : List Callee := []
       for name in names do
-        let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r) => sigExpr p r)
+        let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r, a) => sigExpr p r a)
         let funs ← mkAppM ``Prog.funs #[prog]
         let fbase := base ++ Name.mkSimple name.getString!
         let r ← reflectDefinition fbase name sigsExpr funs callees
         prog ← mkAppM ``Prog.cons #[Lean.mkConst (fbase ++ `func), prog]
-        sigs := (r.params, r.result) :: sigs
-        callees := ⟨name, r.params, r.result, fbase ++ `denote_eq⟩ :: callees
+        sigs := (r.params, r.result, r.aborts) :: sigs
+        callees := ⟨name, r.params, r.result, r.aborts, fbase ++ `denote_eq⟩ :: callees
         out := out.push r
-      let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r) => sigExpr p r)
+      let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r, a) => sigExpr p r a)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
       addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
         (← mkAppM ``compile #[Lean.mkConst (base ++ `program)])
@@ -364,17 +363,20 @@ def elabVerifiedCompile : CommandElab
       let fvar ← fvarStx (n - 1 - k)
       let index := Syntax.mkNumLit (toString (2 + k))
       let lean ← `(fun ($x : $α) => $fnId $(projs.toArray)*)
-      let envFn ← `(fun ($x : $α) => $(← envStx projs))
+      let aborts := mkIdent (if r.aborts then ``Bool.true else ``Bool.false)
       elabCommand (← `(theorem $implId :
-          LeanExe.Pipeline.ImplementsPureA false $moduleId $index $lean := by
-          have h := (Verified.Prog.correct $progId $fvar).1
-          have hComp : Verified.Funs.get (Verified.Prog.funs $progId) $fvar ∘ $envFn = $lean := by
+          LeanExe.Pipeline.ImplementsA $aborts $moduleId $index $lean (fun _ _ _ => True)
+            (fun _ _ _ _ _ => True) := by
+          have h := Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1
+          have hComp : (fun $x => Verified.Funs.get (Verified.Prog.funs $progId) $fvar
+              (Verified.Env.ofArgs _ $x)) = $lean := by
             funext $x
             exact $eqId $(projs.toArray)*
           rw [← hComp]
-          exact Verified.ImplementsPureA.comap h _ fun _ => rfl))
+          exact h))
       claims := claims.push
-        (← `(LeanExe.Pipeline.ImplementsPureA false $(mkIdent `m) $index $lean))
+        (← `(LeanExe.Pipeline.ImplementsA $aborts $(mkIdent `m) $index $lean (fun _ _ _ => True)
+          (fun _ _ _ _ _ => True)))
       proofs := proofs.push implId
     let bytesId := mkIdent (target.getId ++ `bytes)
     let m := mkIdent `m

@@ -26611,6 +26611,36 @@ allocations and the largest block, since `Heap.Budget` counts blocks of one size
 not list them, and the factoring through step lemmas confines a later change to those lemmas, the
 allocation cases, and the cost function.
 
+### V8a, first part: the heap statement
+
+Each function's theorem is now `ImplementsA aborts m (callIndex g) f (fun _ _ _ => True)
+(fun _ _ _ _ _ => True)`.  The flag `aborts` is part of each signature, `Sig`, computed by
+`Prog.cons` from the body, and `FVar` is indexed by the whole signature, so a call's type carries
+its callee's flag.  A first version looked the flag up through `FVar.ofIndex`, which blocked both
+`reduce` and the kernel's evaluation of calls, since `FVar.ofIndex` matched on a pair of the
+parameters and the result.  No construct allocates yet, so every flag is false and every function
+returns without a trap.
+
+`Verified/State.lean` holds the representation and the states.  A value is represented by the
+relation `Ty.Rep mode heap store ws v`, a variable has a slot with its first local and its mode,
+and `Holds` states, for the variables in a live set, that their locals hold words that represent
+their values in the current heap and store.  `Step` is a step of the heap and store with
+`Heap.At`, equal memory caps, and `Heap.Keeps`.  `Expr.code` takes the set of variables live
+after the expression, and `Expr.code_spec` assumes `Holds` for the variables live before it,
+`Heap.At`, the memory cap, and `TrapOK aborts Q`, and ends after a `Step` with words that
+represent the value.  The function's theorem for Lean's types comes from `ImplementsA.lean`:
+`Ty.leanInst` and `argsInst` rebuild, by recursion over the types, the instances that Lean
+synthesizes, and lemmas by induction show that they agree with `Ty.Rep`, so no signature needs its
+own proof.
+
+`Expr.code_spec` is now proved by one lemma per construct, `spec_word` through `spec_loop`.  As
+one induction it exceeded Lean's default limit of 200,000 heartbeats for a declaration, though it
+elaborated in 18 seconds with the limit raised; separate lemmas keep each declaration within the
+default.  `Verified.lean` now imports `Verified.Examples.Loops`, which V7b left out, so
+`lake build Verified` had not rebuilt the loops example; the first test run after the change
+crashed with a segmentation fault while evaluating that stale module.  The test passes all 3,608
+cases.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

@@ -48,14 +48,19 @@ def argsMax : {ps : List Ty} → ((i : Fin ps.length) → Nat) → Nat
   | [], _ => 0
   | _ :: _, w => max (w ⟨0, by simp⟩) (argsMax fun i => w i.succ)
 
-/-- The instructions of the arguments, in order. -/
-def argsCode : {ps : List Ty} → ((i : Fin ps.length) → Program) → Program
-  | [], _ => []
-  | _ :: _, c => c ⟨0, by simp⟩ ++ argsCode fun i => c i.succ
+/-- The instructions of the arguments, in order: argument `i`'s code `c i live` for the variables
+`live` live after it, which are those live after the call and those that later arguments read,
+given by `uses`. -/
+def argsCode : {ps : List Ty} → ((i : Fin ps.length) → (Nat → Bool) → Program) →
+    ((i : Fin ps.length) → Nat → Bool) → (Nat → Bool) → Program
+  | [], _, _, _ => []
+  | _ :: _, c, uses, live =>
+    c ⟨0, by simp⟩ (fun k => live k || argsAny fun i => uses i.succ k) ++
+      argsCode (fun i => c i.succ) (fun i => uses i.succ) live
 
 /-- The module index of a function that an expression calls: the functions `S` occupy the module
 positions from 2, the last of `S` first. -/
-def FVar.callIndex {S : List Sig} {ps : List Ty} {r : Ty} (f : FVar S ps r) : Nat :=
+def FVar.callIndex {S : List Sig} {g : Sig} (f : FVar S g) : Nat :=
   2 + (S.length - 1 - f.index)
 
 /-- The instructions that push the words in locals `loc` to `loc + w - 1`, in order. -/
@@ -69,11 +74,21 @@ def storeCode (loc : Nat) : Nat → Program
   | 0 => []
   | w + 1 => storeCode (loc + 1) w ++ [.localSet loc]
 
-/-- The locals of a function's parameters: parameter `i` starts after the words of the parameters
-before it. -/
-def paramLocs : List Ty → Nat → List Nat
-  | [], _ => []
-  | t :: ts, loc => loc :: paramLocs ts (loc + t.width)
+/-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
+which its holder must consume. -/
+inductive Mode where
+  | borrowed | owned
+  deriving DecidableEq, Repr, Inhabited
+
+/-- Where a variable's words start, and its mode. -/
+structure Slot where
+  loc : Nat
+  mode : Mode
+  deriving Inhabited
+
+/-- The variables live in a body that binds `k` new variables, given those live after the
+binder: the new variables are dead after the body. -/
+def shift (k : Nat) (live : Nat → Bool) (i : Nat) : Bool := if i < k then false else live (i - k)
 
 /-- The number of words that hold the values of the types. -/
 def widthSum (ts : List Ty) : Nat := (ts.map Ty.width).sum
@@ -97,49 +112,70 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
     max count.width (max (1 + init.width) (2 + t.width + body.width))
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
-starts at local `locs.getD x.index 0`, and the locals from `base` on are free.  A comparison
-widens its 32-bit result to a word.  `ite` tests its condition with `i64.eqz`, so its `if` runs
-the else branch first, and each branch stores its words in the locals from `base` on, which the
-code loads after the `if`: the encoder writes block types of at most one result.  `letE` stores
-its value from local `base` on and gives its body the locals above it, and `letPair` stores its
-first component from `base` on and its second after it.  A call pushes its arguments in order and
-calls the function.  A loop keeps its count in local `base`, its index in local `base + 1`, and
-its state from local `base + 2` on, and leaves the block when the index reaches the count. -/
-def Expr.code (locs : List Nat) (base : Nat) :
+starts at local `(slots.getD x.index default).loc`, the locals from `base` on are free, and
+`live` gives the variables live after the expression, which each subexpression receives together
+with those that the rest of the expression reads.  A comparison widens its 32-bit result to a
+word.  `ite` tests its condition with `i64.eqz`, so its `if` runs the else branch first, and each
+branch stores its words in the locals from `base` on, which the code loads after the `if`: the
+encoder writes block types of at most one result.  `letE` stores its value from local `base` on
+and gives its body the locals above it, and `letPair` stores its first component from `base` on
+and its second after it.  A call pushes its arguments in order and calls the function.  A loop
+keeps its count in local `base`, its index in local `base + 1`, and its state from local
+`base + 2` on, and leaves the block when the index reaches the count. -/
+def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
-  | _, _, .var (t := t) x => loadCode (locs.getD x.index 0) t.width
+  | _, _, .var (t := t) x => loadCode (slots.getD x.index default).loc t.width
   | _, _, .bin op left right =>
-    op.code base (left.code locs (base + op.scratch)) (right.code locs (base + op.scratch))
+    op.code base (left.code slots (base + op.scratch) fun i => live i || right.uses i)
+      (right.code slots (base + op.scratch) live)
   | _, _, .cmp op left right =>
-    left.code locs base ++ right.code locs base ++ [op.instr, .extendUI32]
-  | _, _, .not e => e.code locs base ++ [.eqzI64, .extendUI32]
-  | _, _, .and left right => left.code locs base ++ right.code locs base ++ [.andI64]
-  | _, _, .or left right => left.code locs base ++ right.code locs base ++ [.orI64]
+    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+      [op.instr, .extendUI32]
+  | _, _, .not e => e.code slots base live ++ [.eqzI64, .extendUI32]
+  | _, _, .and left right =>
+    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+      [.andI64]
+  | _, _, .or left right =>
+    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+      [.orI64]
   | _, _, .ite (t := t) c thenE elseE =>
-    c.code locs base ++
-      [.eqzI64, .iff 0 0 (elseE.code locs (base + t.width) ++ storeCode base t.width)
-        (thenE.code locs (base + t.width) ++ storeCode base t.width) [] []] ++
+    c.code slots base (fun i => live i || thenE.uses i || elseE.uses i) ++
+      [.eqzI64, .iff 0 0 (elseE.code slots (base + t.width) live ++ storeCode base t.width)
+        (thenE.code slots (base + t.width) live ++ storeCode base t.width) [] []] ++
       loadCode base t.width
   | _, _, .letE (s := s) value body =>
-    value.code locs (base + s.width) ++ storeCode base s.width ++
-      body.code (base :: locs) (base + s.width)
-  | _, _, .call f args => argsCode (fun i => (args i).code locs base) ++ [.call f.callIndex]
-  | _, _, .pair first second => first.code locs base ++ second.code locs base
-  | _, _, .letPair (s := s) (t := t) e body =>
-    e.code locs (base + s.width + t.width) ++ storeCode (base + s.width) t.width ++
+    value.code slots (base + s.width) (fun i => live i || body.uses (i + 1)) ++
       storeCode base s.width ++
-      body.code ((base + s.width) :: base :: locs) (base + s.width + t.width)
+      body.code (⟨base, .borrowed⟩ :: slots) (base + s.width) (shift 1 live)
+  | _, _, .call f args =>
+    argsCode (fun i live => (args i).code slots base live) (fun i => (args i).uses) live ++
+      [.call f.callIndex]
+  | _, _, .pair first second =>
+    first.code slots base (fun i => live i || second.uses i) ++ second.code slots base live
+  | _, _, .letPair (s := s) (t := t) e body =>
+    e.code slots (base + s.width + t.width) (fun i => live i || body.uses (i + 2)) ++
+      storeCode (base + s.width) t.width ++ storeCode base s.width ++
+      body.code (⟨base + s.width, .borrowed⟩ :: ⟨base, .borrowed⟩ :: slots)
+        (base + s.width + t.width) (shift 2 live)
   | _, _, .loop (t := t) count init body =>
-    count.code locs base ++ [.localSet base] ++ init.code locs (base + 1) ++
+    count.code slots base (fun i => live i || init.uses i || body.uses (i + 2)) ++
+      [.localSet base] ++ init.code slots (base + 1) (fun i => live i || body.uses (i + 2)) ++
       storeCode (base + 2) t.width ++ [.constI64 0, .localSet (base + 1),
         .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
-          body.code ((base + 2) :: (base + 1) :: locs) (base + 2 + t.width) ++
+          body.code (⟨base + 2, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
+            (base + 2 + t.width) (shift 2 fun i => live i || body.uses (i + 2)) ++
           storeCode (base + 2) t.width ++
           [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
           [] []] ++
       loadCode (base + 2) t.width
+
+/-- The slots of a function's parameters, all borrowed: parameter `i` starts after the words of
+the parameters before it. -/
+def paramSlots : List Ty → Nat → List Slot
+  | [], _ => []
+  | t :: ts, loc => ⟨loc, .borrowed⟩ :: paramSlots ts (loc + t.width)
 
 def Func.type (func : Func S) : FuncType :=
   { params := List.replicate (widthSum func.params) .i64
@@ -150,7 +186,7 @@ body needs follow them, and the body leaves the words of the result on the stack
 def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
   { params := func.type.params
     locals := List.replicate func.body.width .i64
-    body := func.body.code (paramLocs func.params 0) (widthSum func.params)
+    body := func.body.code (paramSlots func.params 0) (widthSum func.params) fun _ => false
     results := func.type.results
     typeIdx := some typeIdx }
 
