@@ -17,6 +17,7 @@ import Verified.Examples.Records
 import Verified.Examples.Grids
 import Verified.Examples.Repeat
 import Verified.Examples.Enums
+import Verified.Examples.Recursion
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -597,3 +598,45 @@ def main : IO Unit := do
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"
+  for a in words do
+    for b in words do
+      IO.println s!"recursion|gcd|i64|i64:{a} i64:{b}|{Recursion.gcd a b}"
+      IO.println s!"recursion|pow|i64|i64:{a} i64:{b}|{Recursion.pow a b}"
+      IO.println s!"recursion|powGcd|i64|i64:{a} i64:{b}|{Recursion.powGcd a b}"
+  -- Consecutive Fibonacci numbers make Euclid's algorithm take the most steps.
+  for (a, b) in [((12200160415121876738 : UInt64), (7540113804746346429 : UInt64)),
+      (7540113804746346429, 12200160415121876738)] do
+    IO.println s!"recursion|gcd|i64|i64:{a} i64:{b}|{Recursion.gcd a b}"
+  for xs in floatArrays do
+    for (lo, hi) in [((0 : UInt64), xs.size.toUInt64), (1, 3), (2, 5), (3, 3), (0, 0),
+        (18446744073709551615, 1)] do
+      let r := (Recursion.sumRange xs lo hi).toBits
+      IO.println s!"recursion|sumRange|f64|{floatArrayArg xs} i64:{lo} i64:{hi}|{r}|1"
+  for xs in arrays.take 4 do
+    for (i, n) in [((0 : UInt64), (0 : UInt64)), (0, 5), (3, 10), (7, 2), (0, 300)] do
+      let r := arrayOut (Recursion.fill xs i n)
+      IO.println s!"recursion|fill|array-u64|{arrayArg xs} i64:{i} i64:{n}|{r}|1"
+  for n in [0, 1, 2, 500, 999] do
+    IO.println s!"recursion|chain|i64|i64:{n}|{Recursion.chain n}"
+  for n in [1000, 1001, 18446744073709551615] do
+    IO.println s!"recursion|chain|i64|i64:{n}|trap"
+  for (a, b) in [((0 : UInt64), (1 : UInt64)), (5, 8), (18446744073709551615, 2)] do
+    for k in [0, 1, 2, 10, 93, 200, 999] do
+      let (x, y) := Recursion.fibPair (a, b) k
+      IO.println s!"recursion|fibPair|list:i64,i64|i64:{a} i64:{b} i64:{k}|{x} {y}"
+      let p := Recursion.walk ⟨a, b⟩ k
+      IO.println s!"recursion|walk|list:i64,i64|i64:{a} i64:{b} i64:{k}|{p.x} {p.y}"
+  for (a, b) in [((0 : UInt64), (1 : UInt64)), (5, 8)] do
+    IO.println s!"recursion|fibPair|list:i64,i64|i64:{a} i64:{b} i64:1000|trap"
+  let pointArrays : List (Array Recursion.Point) :=
+    [#[], #[⟨3, 4⟩], #[⟨1, 2⟩, ⟨18446744073709551615, 0⟩, ⟨5, 5⟩],
+      (Array.range 60).map fun i => ⟨i.toUInt64 * 7, i.toUInt64⟩]
+  for ps in pointArrays do
+    let a := arrayArg (ps.flatMap fun p => #[p.x, p.y])
+    for i in [0, 1, 2, 59, 60, 18446744073709551615] do
+      IO.println s!"recursion|sumXs|i64|{a} i64:{i}|{Recursion.sumXs ps i}|1"
+  for (a, b) in [((1 : UInt64), (2 : UInt64)), (18446744073709551615, 3)] do
+    IO.println s!"recursion|top1|i64|i64:{a} i64:{b}|{Recursion.top1 a b}"
+    for n in [0, 1, 998, 999] do
+      IO.println s!"recursion|deep|i64|i64:{n} i64:{a} i64:{b}|{Recursion.deep n a b}"
+    IO.println s!"recursion|deep|i64|i64:1000 i64:{a} i64:{b}|trap"

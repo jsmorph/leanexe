@@ -63,7 +63,7 @@ The `LeanExe` compiler is not verified as a whole.  Each of its rules gets its o
 | [`LeanExe/Encoding/`](../LeanExe/Encoding/) | The encoder, the decoder, and `decode_encode`.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs the decoder over the testsuite. |
 | [`LeanExe/ProofKit/`](../LeanExe/ProofKit/) | General lemmas: memory, arrays, allocation, frames, the binary32 and binary64 equality chain, and the binary64 error bounds that the Euler proofs use. |
 | [`LeanExe/WGSL/`](../LeanExe/WGSL/), [`Examples/Gpt32/`](../Examples/Gpt32/), [`tests/wgsl/`](../tests/wgsl/), [`tests/gpt32/`](../tests/gpt32/), [`tests/web/`](../tests/web/) | The WGSL path: the WGSL subset, its printer, parser, and semantics, the translation of IR kernels, GPT-2's binary32 kernels and host program with their theorems, and their tests on two Vulkan drivers and in a browser. |
-| [`Verified/`](../Verified/), [`tests/verified/`](../tests/verified/) | The verified compiler: its source language, the compiler, the correctness theorem `Func.correct`, examples with bytes theorems, and the comparison of their modules with native Lean. |
+| [`Verified/`](../Verified/), [`tests/verified/`](../tests/verified/) | The verified compiler: its source language, the compiler, the correctness theorem `Prog.correct`, examples with bytes theorems, and the comparison of their modules with native Lean. |
 | [`tools/Emit.lean`](../tools/Emit.lean) | Script: evaluates a module constant, encodes it, checks that `decode` returns it, and writes the file. |
 | [`ltg/`](../ltg/), [`ltg/Check.lean`](../ltg/Check.lean) | The LTG knowledge base, each entry an `entry.json` and a `README.md`, and the script that imports every module the entries list and reports declarations that do not exist. |
 | [`Examples/Scale/`](../Examples/Scale/), [`Examples/Gcd/`](../Examples/Gcd/), [`Examples/Clob/`](../Examples/Clob/), [`Examples/Gpt/`](../Examples/Gpt/), and the other directories named after an example | Each program's `leanexe_compile` and theorems.  [The manual's list of examples](manual.md#worked-examples) names them all. |
@@ -258,7 +258,7 @@ No work on items 2 and 3 is planned.
 - [ ] The host's invocation of kernels and a run in a browser.
 - [ ] A proof of the I/O adapter.
 - [ ] `Array Float` literals.
-- [ ] The verified compiler: recursion and records with array fields.
+- [ ] The verified compiler: records with array fields.
 
 Unknowns: how Talos's semantics is tested against the WebAssembly specification, and whether Talos bounds call depth.
 
