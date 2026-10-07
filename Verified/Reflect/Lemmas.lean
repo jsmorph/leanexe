@@ -80,8 +80,9 @@ theorem ofFn_cons_eq {t : Ty} {ts : List Ty} {e : Expr S Γ t} {rest : Args S Γ
   subst he hrest; rfl
 
 /-- A call means its callee's value at its arguments' values. -/
-theorem call_eq {ps : List Ty} {r : Ty} (f : FVar S ps r)
-    {args : (i : Fin ps.length) → Expr S Γ (ps.get i)} {A : Env ps} {R : r.denote}
+theorem call_eq {g : Sig} (f : FVar S g)
+    {args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)} {A : Env g.params}
+    {R : g.result.denote}
     (hargs : Env.ofFn (fun i => (args i).denote funs env) = A) (hf : funs.get f A = R) :
     (Expr.call f args).denote funs env = R := by
   subst hargs; exact hf

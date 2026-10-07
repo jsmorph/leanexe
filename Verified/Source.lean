@@ -104,34 +104,39 @@ def Env.ofFn : {Γ : List Ty} → ((i : Fin Γ.length) → (Γ.get i).denote) �
   | [], _ => .nil
   | _ :: _, f => .cons (f ⟨0, by simp⟩) (Env.ofFn fun i => f i.succ)
 
-/-- The signature of a function: its parameter types and its result type. -/
-abbrev Sig := List Ty × Ty
+/-- The signature of a function: its parameter types, its result type, and whether a call may
+trap at `unreachable`, which only a function that allocates, directly or through a call, does. -/
+structure Sig where
+  params : List Ty
+  result : Ty
+  aborts : Bool
+  deriving DecidableEq
 
-/-- A function of signature `(ps, r)` among the functions `S` that an expression may call, by
-its distance from the front of `S`. -/
-inductive FVar : List Sig → List Ty → Ty → Type where
-  | here : FVar ((ps, r) :: S) ps r
-  | there : FVar S ps r → FVar (g :: S) ps r
+/-- A function with signature `g` among the functions `S` that an expression may call, by its
+distance from the front of `S`. -/
+inductive FVar : List Sig → Sig → Type where
+  | here : FVar (g :: S) g
+  | there : FVar S g → FVar (h :: S) g
 
-def FVar.index : FVar S ps r → Nat
+def FVar.index : FVar S g → Nat
   | .here => 0
   | .there f => f.index + 1
 
-/-- The function at index `i`, given that `S` has signature `(ps, r)` there. -/
-def FVar.ofIndex : (S : List Sig) → (i : Nat) → S[i]? = some (ps, r) → FVar S ps r
-  | _ :: _, 0, h => by simp at h; obtain ⟨rfl, rfl⟩ := h; exact .here
+/-- The function at index `i`, given that `S` has signature `g` there. -/
+def FVar.ofIndex : (S : List Sig) → (i : Nat) → S[i]? = some g → FVar S g
+  | _ :: _, 0, h => by simp at h; subst h; exact .here
   | _ :: S, i + 1, h => .there (FVar.ofIndex S i (by simpa using h))
   | [], _, h => by simp at h
 
 /-- Lean functions with the signatures `S`. -/
 inductive Funs : List Sig → Type where
   | nil : Funs []
-  | cons (f : Env ps → r.denote) (rest : Funs S) : Funs ((ps, r) :: S)
+  | cons (f : Env g.params → g.result.denote) (rest : Funs S) : Funs (g :: S)
 
-def Funs.get : {S : List Sig} → {ps : List Ty} → {r : Ty} →
-    Funs S → FVar S ps r → Env ps → r.denote
-  | _, _, _, .cons f _, .here => f
-  | _, _, _, .cons _ rest, .there g => rest.get g
+def Funs.get : {S : List Sig} → {g : Sig} → Funs S → FVar S g → Env g.params →
+    g.result.denote
+  | _, _, .cons f _, .here => f
+  | _, _, .cons _ rest, .there h => rest.get h
 
 /-- An expression of type `t` over the variables of `Γ` that may call the functions `S`.
 `letE value body` gives `body` the value of `value` as variable 0, ahead of the variables of `Γ`.
@@ -151,7 +156,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | or (left right : Expr S Γ .bool) : Expr S Γ .bool
   | ite (c : Expr S Γ .bool) (thenE elseE : Expr S Γ t) : Expr S Γ t
   | letE (value : Expr S Γ s) (body : Expr S (s :: Γ) t) : Expr S Γ t
-  | call (f : FVar S ps r) (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) : Expr S Γ r
+  | call (f : FVar S g) (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) :
+      Expr S Γ g.result
   | pair (first : Expr S Γ s) (second : Expr S Γ t) : Expr S Γ (.pair s t)
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
   | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
@@ -172,8 +178,8 @@ def Args.get : {ps : List Ty} → Args S Γ ps → (i : Fin ps.length) → Expr 
   | _ :: _, .cons _ rest, ⟨i + 1, h⟩ => rest.get ⟨i, by simpa using h⟩
 
 /-- A call of function `i` of a list of functions known when the expression is written. -/
-abbrev Expr.app {S : List Sig} {Γ ps : List Ty} {r : Ty} (i : Nat) (args : Args S Γ ps)
-    (h : S[i]? = some (ps, r) := by rfl) : Expr S Γ r :=
+abbrev Expr.app {S : List Sig} {Γ : List Ty} {g : Sig} (i : Nat) (args : Args S Γ g.params)
+    (h : S[i]? = some g := by rfl) : Expr S Γ g.result :=
   .call (FVar.ofIndex S i h) args.get
 
 /-- The value of an expression for the functions `funs` and the values `env` of its
@@ -200,6 +206,38 @@ def Expr.denote (funs : Funs S) :
     LeanExe.loop (count.denote funs env) (init.denote funs env)
       fun i acc => body.denote funs (.cons acc (.cons i env))
 
+/-- Whether any of the values `b i` is true. -/
+def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
+  | 0, _ => false
+  | _ + 1, b => b 0 || argsAny fun i => b i.succ
+
+/-- Whether the code of an expression may trap: whether it calls a function that may. -/
+def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ => false
+  | _, _, .bin _ left right | _, _, .cmp _ left right => left.aborts || right.aborts
+  | _, _, .not e => e.aborts
+  | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
+  | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
+  | _, _, .letE value body => value.aborts || body.aborts
+  | _, _, .call (g := g) _ args => g.aborts || argsAny fun i => (args i).aborts
+  | _, _, .pair first second => first.aborts || second.aborts
+  | _, _, .letPair e body => e.aborts || body.aborts
+  | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
+
+/-- The variables that an expression reads, by index. -/
+def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
+  | _, _, .word _, _ | _, _, .bool _, _ => false
+  | _, _, .var x, i => i == x.index
+  | _, _, .bin _ left right, i | _, _, .cmp _ left right, i => left.uses i || right.uses i
+  | _, _, .not e, i => e.uses i
+  | _, _, .and left right, i | _, _, .or left right, i => left.uses i || right.uses i
+  | _, _, .ite c thenE elseE, i => c.uses i || thenE.uses i || elseE.uses i
+  | _, _, .letE value body, i => value.uses i || body.uses (i + 1)
+  | _, _, .call _ args, i => argsAny fun j => (args j).uses i
+  | _, _, .pair first second, i => first.uses i || second.uses i
+  | _, _, .letPair e body, i => e.uses i || body.uses (i + 2)
+  | _, _, .loop count init body, i => count.uses i || init.uses i || body.uses (i + 2)
+
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body. -/
 structure Func (S : List Sig) where
@@ -222,7 +260,7 @@ def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.
 before it in the module. -/
 inductive Prog : List Sig → Type where
   | nil : Prog []
-  | cons (f : Func S) (rest : Prog S) : Prog ((f.params, f.result) :: S)
+  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.body.aborts⟩ :: S)
 
 /-- The Lean functions that a program's functions mean. -/
 def Prog.funs : {S : List Sig} → Prog S → Funs S

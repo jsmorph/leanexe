@@ -1,5 +1,6 @@
 import Verified.Source
 import Verified.Compile
+import Verified.State
 import Verified.Correct
 import Verified.Reflect.Lemmas
 import Verified.Reflect.Command
@@ -9,3 +10,4 @@ import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Pairs
+import Verified.Examples.Loops
