@@ -4583,6 +4583,54 @@ heap and store changed only as `ImplementsA` allows, and it traps only when it m
 theorem Prog.correct {S : List Sig} (prog : Prog S) : Calls (compile prog) prog.funs :=
   prog.calls _ ⟨rfl, rfl, by simp [compile], by simp [compile]⟩ fun k _ => compile_funcs prog k
 
+/-- A function's theorem for the verified compiler's representation gives the theorem for a Lean
+function `F` on types whose representations agree with it: each argument `y` is represented as
+`g y` is, and the result of `f` at `g y` represents `F y`. -/
+theorem ImplementsA.transfer {α β γ δ : Type} {_ : Represent α} [Represent β] {_ : Represent γ}
+    [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
+    (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
+    (g : β → α) (F : β → δ)
+    (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.borrowed heap store vs (g y))
+    (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Separate store (Represent.moves store vs y) (Represent.reads store vs y) →
+        Separate store (Represent.moves store vs (g y)) (Represent.reads store vs (g y)))
+    (hMoves : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.moves store vs (g y) = Represent.moves store vs y)
+    (hResult : ∀ heap store vs y, Represent.owned heap store vs (f (g y)) →
+      Represent.owned heap store vs (F y))
+    (hBlocks : ∀ store vs y,
+      Represent.blocks store vs (F y) = Represent.blocks store vs (f (g y))) :
+    ImplementsA aborts m entry F (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
+  intro env store heap vs y hAt _ hY hSep' hCap
+  exact (h env store heap vs (g y) hAt trivial (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
+    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+      ⟨heap', hAt', hResult _ _ _ _ hOwned, hCaps, fun r hr hpos hA => by
+        obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos (by rw [hMoves _ _ _ _ hY]; exact hA)
+        refine ⟨hb, hreg, ?_⟩
+        simp only [Represent.outside, hBlocks]
+        exact hout, trivial⟩
+
+/-- `transfer` for a Lean function `F` whose result `F y` the compiled function gives as `r (F y)`:
+an argument `y` represented as `g y` is, and a value `r z` that represents `z`. -/
+theorem ImplementsA.transferFlat {α β γ δ : Type} {_ : Represent α} [Represent β]
+    {_ : Represent γ} [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
+    (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
+    (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y))
+    (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.borrowed heap store vs (g y))
+    (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Separate store (Represent.moves store vs y) (Represent.reads store vs y) →
+        Separate store (Represent.moves store vs (g y)) (Represent.reads store vs (g y)))
+    (hMoves : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.moves store vs (g y) = Represent.moves store vs y)
+    (hResult : ∀ heap store vs z, Represent.owned heap store vs (r z) →
+      Represent.owned heap store vs z)
+    (hBlocks : ∀ store vs z, Represent.blocks store vs z = Represent.blocks store vs (r z)) :
+    ImplementsA aborts m entry F (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+  ImplementsA.transfer h g F hArgs hSep hMoves
+    (fun _ _ _ y hy => hResult _ _ _ _ (hF y ▸ hy)) (fun _ _ y => by rw [hBlocks, hF])
+
 /-- A function's theorem for the verified compiler's representation gives the theorem for Lean
 types whose representations agree with it. -/
 theorem ImplementsA.comap {α β γ δ : Type} [Represent α] [Represent β] [Represent γ]
@@ -4599,15 +4647,9 @@ theorem ImplementsA.comap {α β γ δ : Type} [Represent α] [Represent β] [Re
     (hResult : ∀ heap store vs z, Represent.owned heap store vs z →
       Represent.owned heap store vs (k z))
     (hBlocks : ∀ store vs z, Represent.blocks store vs (k z) = Represent.blocks store vs z) :
-    ImplementsA aborts m entry (k ∘ f ∘ g) (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
-  intro env store heap vs y hAt _ hY hSep' hCap
-  exact (h env store heap vs (g y) hAt trivial (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
-    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
-      ⟨heap', hAt', hResult _ _ _ _ hOwned, hCaps, fun r hr hpos hA => by
-        obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos (by rw [hMoves _ _ _ _ hY]; exact hA)
-        refine ⟨hb, hreg, ?_⟩
-        simp only [Represent.outside, Function.comp_apply, hBlocks]
-        exact hout, trivial⟩
+    ImplementsA aborts m entry (k ∘ f ∘ g) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+  ImplementsA.transfer h g (k ∘ f ∘ g) hArgs hSep hMoves (fun _ _ _ _ hz => hResult _ _ _ _ hz)
+    (fun _ _ _ => hBlocks _ _ _)
 
 /-- A function's theorem in the form of Lean's instances: for the Lean tuple of its arguments and
 its result type, with the instances Lean synthesizes for them. -/
