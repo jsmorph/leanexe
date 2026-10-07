@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
 # compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
+# A case with a sixth field also checks the allocation counters: the blocks allocated less those
+# released must equal the field, the host's array arguments and the result's arrays.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -12,7 +14,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
     Verified.Examples.Loops:compiled.module:loops \
-    Verified.Examples.Arrays:compiled.module:arrays; do
+    Verified.Examples.Arrays:compiled.module:arrays \
+    Verified.Examples.Owned:compiled.module:owned; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -43,14 +46,22 @@ fi
 echo "native Lean: $reads reads past the end, as the cases expect"
 passed=0
 failed=0
-while IFS='|' read -r name export result args expected; do
+while IFS='|' read -r name export result args expected live; do
   read -ra argv <<<"$args"
-  got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
-  if [ "$got" = "$expected" ]; then
+  if [ -z "$live" ]; then
+    got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
+    held=""
+  else
+    output=$("$host" call-stats "$out/$name.wasm" "$export" "$result" "${argv[@]}")
+    got=$(sed '$d' <<<"$output" | paste -sd' ')
+    read -r _ allocs frees < <(tail -n 1 <<<"$output")
+    held=$((allocs - frees))
+  fi
+  if [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
     passed=$((passed + 1))
   else
     failed=$((failed + 1))
-    echo "fail: $name $export $args: $got, expected $expected"
+    echo "fail: $name $export $args: $got, expected $expected; live blocks $held, expected $live"
   fi
 done <"$cases"
 echo "verified: passed $passed failed $failed"

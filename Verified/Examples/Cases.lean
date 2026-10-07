@@ -6,10 +6,13 @@ import Verified.Examples.Calls
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
+import Verified.Examples.Owned
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
-them.  Run with `lake env lean --run`. -/
+them, with a sixth field for the cases that check the allocation counters: the number of blocks
+live after the call, the host's array arguments and the arrays of the result.  Run with
+`lake env lean --run`. -/
 
 namespace Verified.Examples
 
@@ -58,6 +61,12 @@ def arrays : List (Array UInt64) :=
 /-- The host's argument for an array. -/
 def arrayArg (xs : Array UInt64) : String :=
   "array-u64:" ++ ",".intercalate (xs.toList.map toString)
+
+/-- The host's output for an array result. -/
+def arrayOut (xs : Array UInt64) : String :=
+  "[" ++ ", ".intercalate (xs.toList.map toString) ++ "]"
+
+def boolArg (b : Bool) : String := if b then "i64:1" else "i64:0"
 
 end Verified.Examples
 
@@ -126,3 +135,27 @@ def main : IO Unit := do
       IO.println s!"arrays|dot|i64|{arrayArg xs} {arrayArg ys}|{Arrays.dot xs ys}"
       IO.println s!"arrays|sumBoth|i64|{arrayArg xs} {arrayArg ys}|{Arrays.sumBoth (xs, ys)}"
       IO.println s!"arrays|larger|i64|{arrayArg xs} {arrayArg ys}|{Arrays.larger xs ys}"
+  for xs in arrays do
+    let a := arrayArg xs
+    IO.println s!"owned|copy|array-u64|{a}|{arrayOut (Owned.copy xs)}|2"
+    let (t1, t2) := Owned.twice xs
+    IO.println s!"owned|twice|list:array-u64,array-u64|{a}|{arrayOut t1} {arrayOut t2}|3"
+    let (w, n) := Owned.withSize xs
+    IO.println s!"owned|withSize|list:array-u64,i64|{a}|{arrayOut w} {n}|2"
+    IO.println s!"owned|sizeOfCopy|i64|{a}|{Owned.sizeOfCopy xs}|1"
+    IO.println s!"owned|sumCopy|i64|{a}|{Owned.sumCopy xs}|1"
+    IO.println s!"owned|unused|i64|{a}|{Owned.unused xs}|1"
+    IO.println s!"owned|moved|array-u64|{a}|{arrayOut (Owned.moved xs)}|2"
+    for b in [false, true] do
+      IO.println s!"owned|branch|i64|{boolArg b} {a}|{Owned.branch b xs}|1"
+    for n in [0, 1, 2, 3, 10] do
+      IO.println s!"owned|grow|array-u64|{a} i64:{n}|{arrayOut (Owned.grow xs n)}|2"
+    for ys in arrays do
+      let c := arrayArg ys
+      for b in [false, true] do
+        IO.println s!"owned|pick|array-u64|{boolArg b} {a} {c}|{arrayOut (Owned.pick b xs ys)}|3"
+      let (s1, s2) := Owned.swap xs ys
+      IO.println s!"owned|swap|list:array-u64,array-u64|{a} {c}|{arrayOut s1} {arrayOut s2}|4"
+  -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
+  for xs in arrays.filter (·.size > 0) do
+    IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|1"
