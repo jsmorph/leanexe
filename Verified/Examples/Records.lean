@@ -15,12 +15,14 @@ structure Conserved where
   density : Float
   momentum : Float
   energy : Float
+  deriving Inhabited
 
 structure Cell where
   index : UInt64
   state : Conserved
   pressure : Float
   ok : Bool
+  deriving Inhabited
 
 instance : Flat Conserved (Float × Float × Float) := ⟨fun c => (c.density, c.momentum, c.energy)⟩
 

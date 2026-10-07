@@ -14,16 +14,19 @@ to a module that computes every listed definition.
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
 definition's parameters and result are `UInt64`, `Bool`, `Float`, structures with a `Flat` instance
-whose tuple is their fields, arrays of `UInt64`, `Bool`, or `Float`, or pairs.  A structure's source
-value is its flattening `φ`, the source value of its `Flat` tuple, and each equation states that the
-source expression means `φ` of the Lean term, with `φ` the identity for the other types.  Its body
+whose tuple is their fields, arrays of these, and pairs; its body may also hold arrays of tuples,
+which have no `Represent` instance.  A structure's source value is its flattening `φ`, the source
+value of its `Flat` tuple, an array's is the array of its elements' flattenings, and each equation
+states that the source expression means `φ` of the Lean term, with `φ` the identity for the types
+without structures.  The theorem follows from the equation by `ImplementsA.transferAgree`, with
+proofs that Lean's instances agree with the source instances along `φ`.  Its body
 may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
 `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
 pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, structures built with their
 constructor or `{ s with … }` and taken apart with their fields or `match`, `LeanExe.loop`,
-`xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`, `xs ++ ys`, `LeanExe.build`
-of words, and calls of the listed definitions before it. -/
+`xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`, `xs ++ ys`, `LeanExe.build`,
+and calls of the listed definitions before it. -/
 
 namespace Verified.Reflect
 
@@ -35,12 +38,6 @@ def elemOf? (type : Lean.Expr) : MetaM (Option Elem) := do
   if type.isConstOf ``Bool then return some .bool
   if type.isConstOf ``Float then return some .float
   return none
-
-/-- The element type of an array's elements of type `type`. -/
-def elemOf (type : Lean.Expr) : MetaM Elem := do
-  let some e ← elemOf? type
-    | throwError "verified_compile: arrays hold UInt64, Bool, or Float, not {type}"
-  return e
 
 def elemExpr : Elem → Lean.Expr
   | .word => mkConst ``Elem.word
@@ -113,9 +110,10 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let (``Array, #[el]) := type.getAppFnArgs then
     let se ← shapeOf el
     let .elem e := se.ty | throwError "verified_compile: an array holds elements, not {el}"
-    unless se.flat.isNone do
-      throwError "verified_compile: arrays of structures are not supported yet: {type}"
-    return ⟨.array e, none⟩
+    if se.flat.isNone then return ⟨.array e, none⟩
+    let φ ← se.fn el
+    let f ← withLocalDeclD `xs type fun xs => do mkLambdaFVars #[xs] (← mkAppM ``Array.map #[φ, xs])
+    return ⟨.array e, some f⟩
   if let some (β, inst) ← flatInstance? type then
     let sβ ← shapeOf β
     let .elem _ := sβ.ty | throwError "verified_compile: the structure {type} holds arrays"
@@ -529,7 +527,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     return (← mkAppM ``Expr.loop #[ns, is, bs],
       ← mkAppM ``loop_flat_eq #[← sa.fn α, init, f, hn, hi, hb], t)
   | ``Array.set!, setArgs@#[α, xs, k, v] =>
-    let el ← elemOf α
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
     let xs := projReduce xs
@@ -540,10 +539,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let (is, hi, _) ← reflect c i
     let (vs, hv, _) ← reflect c v
-    return (← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, none, some x, some is, some vs],
-      ← mkAppM ``set_eq #[x, hi, hv], .array el)
+    let src ← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, none, some x, some is, some vs]
+    if se.flat.isNone then return (src, ← mkAppM ``set_eq #[x, hi, hv], .array el)
+    return (src, ← mkAppM ``set_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, hi, hv], .array el)
   | ``Array.push, pushArgs@#[α, xs, v] =>
-    let el ← elemOf α
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
     let xs := projReduce xs
     unless xs.isFVar do
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
@@ -551,8 +552,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (x, t) ← varOf c xs
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let (vs, hv, _) ← reflect c v
-    return (← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some vs],
-      ← mkAppM ``push_eq #[x, hv], .array el)
+    let src ← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some vs]
+    if se.flat.isNone then return (src, ← mkAppM ``push_eq #[x, hv], .array el)
+    return (src, ← mkAppM ``push_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, hv], .array el)
   | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
     let .array el ← tyOf α | throwError "verified_compile: unsupported term {e}"
     let xs := projReduce xs
@@ -566,9 +568,16 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (x, _) ← varOf c xs
     let (y, _) ← varOf c ys
     let src ← mkAppOptM ``Expr.append #[some c.sigs, some c.ctx, none, some x, some y]
-    return (src, ← rflProof c src e, .array el)
+    let (``Array, #[β]) := (← whnfR α).getAppFnArgs
+      | throwError "verified_compile: unsupported term {e}"
+    let se ← shapeOf β
+    if se.flat.isNone then return (src, ← rflProof c src e, .array el)
+    return (src, ← mkAppOptM ``append_map_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
+      none, none, some (← se.fn β), some x, some y, some xs, some ys, some (← arrayEq x xs),
+      some (← arrayEq y ys)], .array el)
   | ``LeanExe.build, #[α, n, f] =>
-    let el ← elemOf α
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
     let (ns, hn, _) ← reflect c n
     let (fs, hf) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
@@ -576,7 +585,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       let (fs, hf, t) ← reflect c' (f.beta #[i])
       unless t == .elem el do throwError "verified_compile: an element of {e} is not a {α}"
       return (fs, ← mkLambdaFVars #[i] hf)
-    return (← mkAppM ``Expr.build #[ns, fs], ← mkAppM ``build_eq #[hn, hf], .array el)
+    let src ← mkAppM ``Expr.build #[ns, fs]
+    if se.flat.isNone then return (src, ← mkAppM ``build_eq #[hn, hf], .array el)
+    return (src, ← mkAppM ``build_map_eq #[← se.fn α, f, hn, hf], .array el)
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
@@ -587,8 +598,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (x, t) ← varOf c xs
     let .array _ := t | throwError "verified_compile: {xs} is not an array variable"
     let src ← mkAppOptM ``Expr.size #[some c.sigs, some c.ctx, none, some x]
-    return (src, ← rflProof c src e, .word)
-  | ``getElem!, getArgs@#[_, _, _, _, _, _, xs, k] =>
+    let (``Array, #[β]) := (← whnfR (← inferType xs)).getAppFnArgs
+      | throwError "verified_compile: {xs} is not an array"
+    let se ← shapeOf β
+    if se.flat.isNone then return (src, ← rflProof c src e, .word)
+    return (src, ← mkAppOptM ``size_map_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
+      none, none, some (← se.fn β), some x, some xs, some (← arrayEq x xs)], .word)
+  | ``getElem!, getArgs@#[_, _, β, _, _, inh, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: an index must be `i.toNat` for a word `i`, in {e}"
     let xs := projReduce xs
@@ -598,10 +614,28 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (x, t) ← varOf c xs
     let .array el := t | throwError "verified_compile: {xs} is not an array variable"
     let (is, hi, _) ← reflect c i
-    return (← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, none, some x, some is],
-      ← mkAppM ``get_eq #[x, hi], .elem el)
+    let src ← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, none, some x, some is]
+    let se ← shapeOf β
+    if se.flat.isNone then return (src, ← mkAppM ``get_eq #[x, hi], .elem el)
+    -- A read past the end gives the flattening of Lean's default element, which must be the
+    -- element type's default.
+    let lhs := se.apply (mkApp2 (mkConst ``Inhabited.default [levelOne]) β inh)
+    let rhs := mkApp2 (mkConst ``Inhabited.default [levelOne])
+      (mkApp (mkConst ``Elem.denote) (elemExpr el))
+      (mkApp (mkConst ``Elem.instInhabited) (elemExpr el))
+    unless ← isDefEq lhs rhs do
+      throwError "verified_compile: the flattening of the default {β} is not the default element; \
+        the default must take each field's default"
+    let hd ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs)
+    let proof ← mkAppOptM ``get_map_eq #[none, none, none, none, none, some β, some inh,
+      some (← se.fn β), some hd, some x, some xs, none, none, some (← arrayEq x xs), some hi]
+    return (src, proof, .elem el)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- The proof by `rfl` that the source value of the array variable `xs` is its flattening. -/
+  arrayEq (x xs : Lean.Expr) : MetaM Lean.Expr := do
+    let v ← flatValue xs
+    mkExpectedTypeHint (← mkEqRefl v) (← mkEq (← mkAppM ``Env.get #[c.env, x]) v)
   /-- A structure built with its constructor: the tuple that its `Flat` instance makes of the
   fields, reflected as a tuple, whose meaning is the structure's flattening. -/
   reflectStruct? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
@@ -675,21 +709,30 @@ where
       let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
       let (bs, hb, u) ← reflectSplit c' (b :: a :: rest) (← body a b)
       return (bs, ← mkLambdaFVars #[a, b] hb, u)
-  /-- A component of a tuple, `e`, a chain of `Prod.fst` and `Prod.snd`: the projection of a tuple
-  variable along a path, with a tuple that is not a variable bound with `let` first. -/
+  /-- A component of a tuple or a field of a structure, `e`, a chain of `Prod.fst`, `Prod.snd`,
+  and structure projections: the projection of a variable along a path, with a value that is not
+  a variable bound with `let` first.  Besides the base and the path, the walk returns the chain as
+  a function of the base. -/
   reflectProj (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
-    let rec walk (e : Lean.Expr) (steps : List Bool) : MetaM (Lean.Expr × List Bool) := do
+    let rec walk (e : Lean.Expr) (steps : List Bool) :
+        MetaM (Lean.Expr × List Bool × (Lean.Expr → MetaM Lean.Expr)) := do
       let e := projReduce e
+      let down (p : Lean.Expr) (path : List Bool) (step : Lean.Expr → MetaM Lean.Expr) := do
+        let (base, steps, chain) ← walk p (path ++ steps)
+        return (base, steps, fun y => do step (← chain y))
       match e.getAppFnArgs with
       | (``Prod.fst, #[_, _, p]) =>
-        if let .elem _ ← tyOf (← inferType p) then walk p (false :: steps) else return (e, steps)
+        if let .elem _ ← tyOf (← inferType p) then down p [false] (mkAppM ``Prod.fst #[·])
+        else return (e, steps, pure)
       | (``Prod.snd, #[_, _, p]) =>
-        if let .elem _ ← tyOf (← inferType p) then walk p (true :: steps) else return (e, steps)
+        if let .elem _ ← tyOf (← inferType p) then down p [true] (mkAppM ``Prod.snd #[·])
+        else return (e, steps, pure)
       | _ =>
-        let some (i, p) ← structProj? e | return (e, steps)
-        let some path ← fieldPath? (← inferType p) i | return (e, steps)
-        walk p (path ++ steps)
-    let (base, steps) ← walk e []
+        let some (i, p) ← structProj? e | return (e, steps, pure)
+        let some path ← fieldPath? (← inferType p) i | return (e, steps, pure)
+        let some (_, fields) ← structOf? (← inferType p) | return (e, steps, pure)
+        down p path (mkProjection · fields[i]!)
+    let (base, steps, chain) ← walk e []
     if base.isFVar then
       let (x, t) ← varOf c base
       let .elem be := t | throwError "verified_compile: {base} is not a tuple"
@@ -698,9 +741,7 @@ where
         some (elemExpr target), some x, some path]
       return (src, ← rflProof c src (← flatValue e), .elem target)
     reflect c (← withLetDecl `t (← inferType base) base fun y => do
-      let chain ← steps.foldlM (fun acc step =>
-        mkAppM (if step then ``Prod.snd else ``Prod.fst) #[acc]) y
-      mkLetFVars #[y] chain)
+      mkLetFVars #[y] (← chain y))
   /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
   of the body `body a b`, in which the variables `rest` are split. -/
   destructure (c : Ctx) (rest : List Lean.Expr) (p : Lean.Expr)
@@ -760,6 +801,130 @@ where
       MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (s, h, _) ← reflect c x
     return (← mkAppM ctor #[op, s], ← mkAppM thm #[op, h], t)
+
+/-- The instance that Lean synthesizes for `userT`, which the theorem's statement uses. -/
+def userInst (userT : Lean.Expr) : MetaM Lean.Expr := do
+  let some inst ← synthInstance? (mkApp (mkConst ``LeanExe.Pipeline.Represent) userT)
+    | throwError "verified_compile: Lean has no `Represent` instance for {userT}, so no theorem \
+        can be stated for it"
+  return inst
+
+/-- `proof` as a proof of `Agree inst src.2 φ`, for Lean's instance `inst` for `userT`; the kernel
+checks that the two types are equal by unfolding. -/
+def agreeAs (userT inst : Lean.Expr) (src : Lean.Expr × Lean.Expr) (φ proof : Lean.Expr) :
+    MetaM (Lean.Expr × Lean.Expr) := do
+  return (φ, ← mkExpectedTypeHint proof (mkAppN (mkConst ``Agree) #[userT, src.1, inst, src.2, φ]))
+
+/-- The proof by `rfl` of `prop`, of the form `∀ xs, a = b`, after a check that `a` and `b` are
+equal by unfolding. -/
+def eqByUnfolding (prop userT : Lean.Expr) : MetaM Lean.Expr :=
+  forallTelescope prop fun xs eq => do
+    let some (_, a, b) := eq.eq? | throwError "verified_compile: {eq} is not an equation"
+    unless ← withTransparency .all (isDefEq a b) do
+      throwError "verified_compile: the words of {userT} and of its flattening differ: {a} and {b}"
+    mkLambdaFVars xs (← mkExpectedTypeHint (← mkEqRefl a) eq)
+
+/-- The proof of `b = true` by evaluation, which the kernel checks. -/
+def trueByEval (b : Lean.Expr) : MetaM Lean.Expr := do
+  mkExpectedTypeHint (mkApp2 (mkConst ``Eq.refl [levelOne]) (mkConst ``Bool) (mkConst ``Bool.true))
+    (← mkEq b (mkConst ``Bool.true))
+
+/-- `Agree.refl` for a type that the reflector does not flatten, after a check that Lean's instance
+unfolds to the source instance. -/
+def agreeRefl (userT inst : Lean.Expr) (src : Lean.Expr × Lean.Expr) :
+    MetaM (Lean.Expr × Lean.Expr) := do
+  unless ← withTransparency .all (isDefEq inst src.2) do
+    throwError "verified_compile: Lean's instance for {userT} does not unfold to the source instance"
+  agreeAs userT inst src (← mkAppOptM ``id #[some userT]) (← mkAppM ``Agree.refl #[inst])
+
+/-- `Agree.scalar` for a type without arrays, whose source instance comes from `srcScalar`, along
+the flattening `φ`. -/
+def agreeScalar (userT inst : Lean.Expr) (src : Lean.Expr × Lean.Expr) (srcScalar φ : Lean.Expr) :
+    MetaM (Lean.Expr × Lean.Expr) := do
+  let some userScalar ← synthInstance? (mkApp (mkConst ``LeanExe.Pipeline.Scalar) userT)
+    | throwError "verified_compile: Lean has no `Scalar` instance for {userT}"
+  let app ← mkAppOptM ``Agree.scalar #[some userT, some src.1, some userScalar, some srcScalar,
+    some φ]
+  let .forallE _ hTy _ _ ← inferType app | throwError "verified_compile: `Agree.scalar`"
+  agreeAs userT inst src φ (mkApp app (← eqByUnfolding hTy userT))
+
+/-- The flattening of an array of the structure type `el`, inside `Moved` for `Agree.flatMoved`,
+and the proof of agreement by `thm`, `Agree.flatArray` or `Agree.flatMoved`. -/
+def agreeArray (thm : Name) (el : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
+  let se ← shapeOf el
+  let .elem e := se.ty | throwError "verified_compile: an array holds elements, not {el}"
+  let app ← mkAppOptM thm #[some el, none, none, none, some (elemExpr e), some (← se.fn el)]
+  let .forallE _ hφTy concl _ ← inferType app
+    | throwError "verified_compile: the hypothesis of {thm}"
+  return (concl.appArg!, mkApp app (← eqByUnfolding hφTy el))
+
+/-- The flattening of pairs from the flattenings of their components and the agreement by
+`Agree.prod` from the components' agreements. -/
+def agreeProd (a b : Lean.Expr × Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
+  let proof ← mkAppM ``Agree.prod #[a.2, b.2]
+  return (← Core.betaReduce (← inferType proof).appArg!, proof)
+
+/-- The flattening of Lean's values of type `userT` to the meaning of `t`, and the proof that the
+instance Lean synthesizes for `userT` agrees with `Ty.leanInst t` along it: `Agree.scalar` for a
+type without arrays, `Agree.flatArray` for an array of structures, `Agree.refl` for another array,
+and `Agree.prod` for a pair that holds arrays. -/
+partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr) := do
+  let inst ← userInst userT
+  let src := (mkApp (mkConst ``Ty.denote) (tyExpr t), mkApp (mkConst ``Ty.leanInst) (tyExpr t))
+  if t.scalar then
+    let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
+    return ← agreeScalar userT inst src (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h)
+      (← (← shapeOf userT).fn userT)
+  match t, (← whnfR userT).getAppFnArgs with
+  | .array _, (``Array, #[el]) =>
+    if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
+    let (φ, proof) ← agreeArray ``Agree.flatArray el
+    agreeAs userT inst src φ proof
+  | .pair a b, (``Prod, #[ua, ub]) =>
+    let (φ, proof) ← agreeProd (← agreeTy ua a) (← agreeTy ub b)
+    agreeAs userT inst src φ proof
+  | _, _ => throwError "verified_compile: the type {userT} does not have the shape of {tyExpr t}"
+
+/-- The flattening of an argument of type `userT`, a value of `t.argTy m`, and the proof of
+agreement with `t.argInst m`. -/
+def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.Expr) := do
+  let inst ← userInst userT
+  let src := (mkApp2 (mkConst ``Ty.argTy) (tyExpr t) (modeExpr m),
+    mkApp2 (mkConst ``Ty.argInst) (tyExpr t) (modeExpr m))
+  match t, m, (← whnfR userT).getAppFnArgs with
+  | .array _, .owned, (``LeanExe.Pipeline.Moved, #[a]) =>
+    let (``Array, #[el]) := (← whnfR a).getAppFnArgs
+      | throwError "verified_compile: {a} is not an array"
+    if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
+    let (φ, proof) ← agreeArray ``Agree.flatMoved el
+    agreeAs userT inst src φ proof
+  | _, _, _ =>
+    let (φ, proof) ← agreeTy userT t
+    agreeAs userT inst src φ proof
+
+/-- The flattening of the tuple of a definition's arguments, of type `userT`, a value of
+`argsTy ps ms`, and the proof of agreement with `argsInst ps ms`, by the cases of `argsInst`. -/
+partial def agreeArgs (userT : Lean.Expr) (ps : List Ty) (ms : List Mode) :
+    MetaM (Lean.Expr × Lean.Expr) := do
+  let inst ← userInst userT
+  let src := (mkApp2 (mkConst ``argsTy) (ctxExpr ps) (modesExpr ms),
+    mkApp2 (mkConst ``argsInst) (ctxExpr ps) (modesExpr ms))
+  if ps.all Ty.scalar then
+    let h ← trueByEval (← mkAppM ``List.all #[ctxExpr ps, mkConst ``Ty.scalar])
+    let φ ← if ps.isEmpty then withLocalDeclD `x userT fun x => mkLambdaFVars #[x] x
+      else (← shapeOf userT).fn userT
+    return ← agreeScalar userT inst src
+      (mkApp3 (mkConst ``argsScalarInst) (ctxExpr ps) (modesExpr ms) h) φ
+  match ps, (← whnfR userT).getAppFnArgs with
+  | [t], _ =>
+    let (φ, proof) ← agreeArg userT t (ms.headD .borrowed)
+    agreeAs userT inst src φ proof
+  | t :: u :: ts, (``Prod, #[ua, ub]) =>
+    let (φ, proof) ← agreeProd (← agreeArg ua t (ms.headD .borrowed))
+      (← agreeArgs ub (u :: ts) ms.tail)
+    agreeAs userT inst src φ proof
+  | _, _ => throwError "verified_compile: the arguments {userT} do not have the shape of the \
+    parameters"
 
 /-- What the reflector learns from one definition: its signature, whether a call may trap, and the
 modes of its parameters. -/
@@ -821,20 +986,25 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let aborts ← reduce (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
     unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
       throwError "verified_compile: cannot evaluate whether {name} may trap"
-    -- The flattenings of the tuple of the arguments and of the result, which the theorem uses.
-    let pModes := paramModes types modes
-    let argTys ← (params.toList.zip pModes).mapM fun (p, m) => do
+    -- Lean's tuple of the arguments, in which an owned array has type `Moved`, the flattenings
+    -- of the arguments and of the result, and the agreement of Lean's instances with the source
+    -- instances along them.
+    let argTys ← (params.toList.zip (paramModes types modes)).mapM fun (p, m) => do
       let ty ← inferType p
-      return (p, if m == .owned then mkApp (mkConst ``LeanExe.Pipeline.Moved) ty else ty)
-    let argsType ← tupleType (argTys.map (·.2))
-    let plain ← params.toList.allM fun p => do return (← shapeOf (← inferType p)).flat.isNone
-    let flatArgs ← withLocalDeclD `x argsType fun x => do
-      mkLambdaFVars #[x] (← if plain then pure x else flatTuple x (argTys.map (·.1)))
+      return if m == .owned then mkApp (mkConst ``LeanExe.Pipeline.Moved) ty else ty
+    let argsType ← tupleType argTys
+    let (flatArgs, argsAgree) ← agreeArgs argsType types modes
     addDefinition (base ++ `flatArgs)
       (← mkArrow argsType (← mkAppM ``argsTy #[ctxExpr types, modesExpr modes])) flatArgs
+    let resultType ← inferType body
+    let (flatResult, resultAgree) ← agreeTy resultType result
     addDefinition (base ++ `flatResult)
-      (← mkArrow (← inferType body) (← mkAppM ``Ty.denote #[tyExpr result]))
-      (← resultShape.fn (← inferType body))
+      (← mkArrow resultType (← mkAppM ``Ty.denote #[tyExpr result])) flatResult
+    let retarget (proof : Lean.Expr) (φ : Name) : MetaM Lean.Expr := do
+      let ty ← inferType proof
+      return ty.updateApp! ty.appFn! (mkConst (base ++ φ))
+    addTheorem (base ++ `argsAgree) (← retarget argsAgree `flatArgs) argsAgree
+    addTheorem (base ++ `resultAgree) (← retarget resultAgree `flatResult) resultAgree
     return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes, argsType⟩
 where
   /-- The right-nested product of `tys`, `Unit` for none. -/
@@ -842,17 +1012,6 @@ where
     | [] => return mkConst ``Unit
     | [t] => return t
     | t :: ts => do mkAppM ``Prod #[t, ← tupleType ts]
-  /-- The tuple of the flattenings of the components of `x`, a value of `tupleType` of the
-  parameters' types; an owned array's component is its own flattening, the identity. -/
-  flatTuple (x : Lean.Expr) : List Lean.Expr → MetaM Lean.Expr
-    | [] => return mkConst ``Unit.unit
-    | [p] => do
-      if (← inferType x) == (← inferType p) then flatValue x else return x
-    | p :: ps => do
-      let first ← mkAppM ``Prod.fst #[x]
-      let rest ← mkAppM ``Prod.snd #[x]
-      let f ← if (← inferType first) == (← inferType p) then flatValue first else pure first
-      mkAppM ``Prod.mk #[f, ← flatTuple rest ps]
 
 /-- The value of the argument `x` in mode `m`. -/
 def argVal (x : Term) : Mode → CommandElabM Term
@@ -921,19 +1080,17 @@ def elabVerifiedCompile : CommandElab
       let aborts := mkIdent (if r.aborts then ``Bool.true else ``Bool.false)
       let flatArgs := mkIdent (base ++ simple ++ `flatArgs)
       let flatResult := mkIdent (base ++ simple ++ `flatResult)
+      let argsAgree := mkIdent (base ++ simple ++ `argsAgree)
+      let resultAgree := mkIdent (base ++ simple ++ `resultAgree)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       elabCommand (← `(theorem $implId :
           LeanExe.Pipeline.ImplementsA $aborts $moduleId $index $lean (fun _ _ _ => True)
             (fun _ _ _ _ _ => True) := by
           have h := Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1
-          refine Verified.ImplementsA.transferFlat h $flatArgs $flatResult $lean ?_ ?_ ?_ ?_ ?_ ?_
-          · intro $x:ident; exact $eqId $(projs.toArray)*
-          · intro _ _ _ _ hy; exact hy
-          · intro _ _ _ _ _ hs; exact hs
-          · intro _ _ _ _ _; rfl
-          · intro _ _ _ _ hz; exact hz
-          · intro _ _ _; rfl))
+          refine Verified.ImplementsA.transferAgree h $flatArgs $flatResult $lean ?_ $argsAgree
+            $resultAgree
+          intro $x:ident; exact $eqId $(projs.toArray)*))
       claims := claims.push
         (← `(LeanExe.Pipeline.ImplementsA $aborts $(mkIdent `m) $index $lean (fun _ _ _ => True)
           (fun _ _ _ _ _ => True)))
