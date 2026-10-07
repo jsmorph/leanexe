@@ -137,8 +137,9 @@ def Funs.get : {S : List Sig} → {g : Sig} → Funs S → FVar S g → Env g.pa
 parameter `i`.  `letPair e body` gives `body` the second component of `e` as variable 0 and the
 first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from the value of
 `init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
-index as variable 1.  `size a` is the number of elements of `a` as a word, and `get a i` is
-element `i` of `a`, or 0 when `i` is not below the size, as Lean's `a[i.toNat]!` gives. -/
+index as variable 1.  `size x` is the number of elements of the array variable `x` as a word,
+and `get x i` is element `i` of `x`, or 0 when `i` is not below the size, as Lean's
+`x[i.toNat]!` gives. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -156,8 +157,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
   | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
       Expr S Γ t
-  | size (a : Expr S Γ .array) : Expr S Γ .word
-  | get (a : Expr S Γ .array) (i : Expr S Γ .word) : Expr S Γ .word
+  | size (x : Var Γ .array) : Expr S Γ .word
+  | get (x : Var Γ .array) (i : Expr S Γ .word) : Expr S Γ .word
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -201,15 +202,16 @@ def Expr.denote (funs : Funs S) :
   | _, _, .loop count init body, env =>
     LeanExe.loop (count.denote funs env) (init.denote funs env)
       fun i acc => body.denote funs (.cons acc (.cons i env))
-  | _, _, .size a, env => (a.denote funs env).size.toUInt64
-  | _, _, .get a i, env => (a.denote funs env)[(i.denote funs env).toNat]!
+  | _, _, .size x, env => (env.get x).size.toUInt64
+  | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
   | 0, _ => false
   | _ + 1, b => b 0 || argsAny fun i => b i.succ
 
-/-- Whether the code of an expression may trap: whether it calls a function that may. -/
+/-- Whether the code of an expression may trap: whether it calls a function that may trap or
+that returns arrays, since only owned arrays are copied. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right => left.aborts || right.aborts
@@ -217,12 +219,13 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
   | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
   | _, _, .letE value body => value.aborts || body.aborts
-  | _, _, .call (g := g) _ args => g.aborts || argsAny fun i => (args i).aborts
+  | _, _, .call (g := g) _ args =>
+    g.aborts || !g.result.scalar || argsAny fun i => (args i).aborts
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
-  | _, _, .size a => a.aborts
-  | _, _, .get a i => a.aborts || i.aborts
+  | _, _, .size _ => false
+  | _, _, .get _ i => i.aborts
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
@@ -237,19 +240,46 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .pair first second, i => first.uses i || second.uses i
   | _, _, .letPair e body, i => e.uses i || body.uses (i + 2)
   | _, _, .loop count init body, i => count.uses i || init.uses i || body.uses (i + 2)
-  | _, _, .size a, i => a.uses i
-  | _, _, .get a k, i => a.uses i || k.uses i
+  | _, _, .size x, i => i == x.index
+  | _, _, .get x k, i => i == x.index || k.uses i
+
+/-- Whether an expression is a variable or a pair of such expressions, which a call reads in
+place. -/
+def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .var _ => true
+  | _, _, .pair first second => first.isPlace && second.isPlace
+  | _, _, _ => false
+
+/-- Whether every argument of every call in an expression that holds arrays is a variable or a
+pair of such arguments.  The reflector binds any other such argument with `let`. -/
+def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ => true
+  | _, _, .bin _ left right | _, _, .cmp _ left right => left.placeArgs && right.placeArgs
+  | _, _, .not e => e.placeArgs
+  | _, _, .and left right | _, _, .or left right => left.placeArgs && right.placeArgs
+  | _, _, .ite c thenE elseE => c.placeArgs && thenE.placeArgs && elseE.placeArgs
+  | _, _, .letE value body => value.placeArgs && body.placeArgs
+  | _, _, .call (g := g) _ args =>
+    argsAny (fun i => !(g.params.get i).scalar && !(args i).isPlace) == false &&
+      !(argsAny fun i => !(args i).placeArgs)
+  | _, _, .pair first second => first.placeArgs && second.placeArgs
+  | _, _, .letPair e body => e.placeArgs && body.placeArgs
+  | _, _, .loop count init body => count.placeArgs && init.placeArgs && body.placeArgs
+  | _, _, .get _ i => i.placeArgs
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body.  The
-result holds no arrays: a returned array must be owned by the caller, which the compiler does not
-yet arrange. -/
+arguments of the body's calls that hold arrays are variables or pairs of variables. -/
 structure Func (S : List Sig) where
   name : String
   params : List Ty
   result : Ty
   body : Expr S params result
-  result_scalar : result.scalar = true
+  placeArgs : body.placeArgs = true
+
+/-- Whether a call of the function may trap: whether its body may, or its result holds arrays,
+which a borrowed result's copy allocates. -/
+def Func.aborts (func : Func S) : Bool := func.body.aborts || !func.result.scalar
 
 /-- The Lean function that `func` means, given the Lean functions that it calls. -/
 def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.result.denote :=
@@ -259,7 +289,7 @@ def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.
 before it in the module. -/
 inductive Prog : List Sig → Type where
   | nil : Prog []
-  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.body.aborts⟩ :: S)
+  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.aborts⟩ :: S)
 
 /-- The Lean functions that a program's functions mean. -/
 def Prog.funs : {S : List Sig} → Prog S → Funs S

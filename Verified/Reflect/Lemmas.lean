@@ -112,15 +112,9 @@ theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     funext fun i => funext (hb i)
   rfl
 
-/-- The size of an array, as a word. -/
-theorem size_eq {a : Expr S Γ .array} {A : Array UInt64} (ha : a.denote funs env = A) :
-    (Expr.size a).denote funs env = A.size.toUInt64 := by
-  subst ha; rfl
-
-/-- A read of an array, 0 past its end. -/
-theorem get_eq {a : Expr S Γ .array} {i : Expr S Γ .word} {A : Array UInt64} {I : UInt64}
-    (ha : a.denote funs env = A) (hi : i.denote funs env = I) :
-    (Expr.get a i).denote funs env = A[I.toNat]! := by
-  subst ha hi; rfl
+/-- A read of an array variable, 0 past its end. -/
+theorem get_eq (x : Var Γ .array) {i : Expr S Γ .word} {I : UInt64}
+    (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by
+  subst hi; rfl
 
 end Verified.Reflect
