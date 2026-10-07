@@ -19,7 +19,9 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Arrays:compiled.module:arrays \
     Verified.Examples.Owned:compiled.module:owned \
     Verified.Examples.Updates:compiled.module:updates \
-    Verified.Examples.Grow:compiled.module:grow; do
+    Verified.Examples.Grow:compiled.module:grow \
+    Verified.Examples.Modes:compiled.module:modes \
+    Verified.Examples.Modes:byHandModule:byhand; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"

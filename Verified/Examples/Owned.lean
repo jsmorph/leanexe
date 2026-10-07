@@ -1,12 +1,13 @@
 import Verified.Reflect.Command
 
-/-! The ninth program of the verified compiler: values that own arrays.  A function returns an
-owned array, so a function that returns a parameter copies it.  A caller owns a call's array
-result: it moves the result where the result's variable dies, copies it where the variable stays
-live, and releases it where the variable dies without a use.  A call's array argument that is not
-a variable is bound with `let` first and released after the call.  `LeanExe.build` creates an
-owned array; its element may allocate and release arrays of its own, and an owned variable that
-only the element reads is released after the array is complete. -/
+/-! The ninth program of the verified compiler: values that own arrays.  A function returns an owned
+array, so a function that returns a parameter takes it owned, as `copy` does, and copies it where
+the parameter is used again, as `twice` does.  A caller owns a call's array result: it moves the
+result where the result's variable dies, copies it where the variable stays live, and releases it
+where the variable dies without a use.  A call's array argument that is not a variable is bound with
+`let` first and released after the call.  `LeanExe.build` creates an owned array; its element may
+allocate and release arrays of its own, and an owned variable that only the element reads is
+released after the array is complete. -/
 
 namespace Verified.Examples.Owned
 

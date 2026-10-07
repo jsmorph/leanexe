@@ -9,6 +9,7 @@ import Verified.Examples.Arrays
 import Verified.Examples.Owned
 import Verified.Examples.Updates
 import Verified.Examples.Grow
+import Verified.Examples.Modes
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -140,25 +141,25 @@ def main : IO Unit := do
       IO.println s!"arrays|larger|i64|{arrayArg xs} {arrayArg ys}|{Arrays.larger xs ys}"
   for xs in arrays do
     let a := arrayArg xs
-    IO.println s!"owned|copy|array-u64|{a}|{arrayOut (Owned.copy xs)}|2"
+    IO.println s!"owned|copy|array-u64|{a}|{arrayOut (Owned.copy xs)}|1"
     let (t1, t2) := Owned.twice xs
-    IO.println s!"owned|twice|list:array-u64,array-u64|{a}|{arrayOut t1} {arrayOut t2}|3"
+    IO.println s!"owned|twice|list:array-u64,array-u64|{a}|{arrayOut t1} {arrayOut t2}|2"
     let (w, n) := Owned.withSize xs
     IO.println s!"owned|withSize|list:array-u64,i64|{a}|{arrayOut w} {n}|2"
-    IO.println s!"owned|sizeOfCopy|i64|{a}|{Owned.sizeOfCopy xs}|1"
-    IO.println s!"owned|sumCopy|i64|{a}|{Owned.sumCopy xs}|1"
-    IO.println s!"owned|unused|i64|{a}|{Owned.unused xs}|1"
-    IO.println s!"owned|moved|array-u64|{a}|{arrayOut (Owned.moved xs)}|2"
+    IO.println s!"owned|sizeOfCopy|i64|{a}|{Owned.sizeOfCopy xs}|0"
+    IO.println s!"owned|sumCopy|i64|{a}|{Owned.sumCopy xs}|0"
+    IO.println s!"owned|unused|i64|{a}|{Owned.unused xs}|0"
+    IO.println s!"owned|moved|array-u64|{a}|{arrayOut (Owned.moved xs)}|1"
     for b in [false, true] do
-      IO.println s!"owned|branch|i64|{boolArg b} {a}|{Owned.branch b xs}|1"
+      IO.println s!"owned|branch|i64|{boolArg b} {a}|{Owned.branch b xs}|0"
     for n in [0, 1, 2, 3, 10] do
-      IO.println s!"owned|grow|array-u64|{a} i64:{n}|{arrayOut (Owned.grow xs n)}|2"
+      IO.println s!"owned|grow|array-u64|{a} i64:{n}|{arrayOut (Owned.grow xs n)}|1"
     for ys in arrays do
       let c := arrayArg ys
       for b in [false, true] do
-        IO.println s!"owned|pick|array-u64|{boolArg b} {a} {c}|{arrayOut (Owned.pick b xs ys)}|3"
+        IO.println s!"owned|pick|array-u64|{boolArg b} {a} {c}|{arrayOut (Owned.pick b xs ys)}|1"
       let (s1, s2) := Owned.swap xs ys
-      IO.println s!"owned|swap|list:array-u64,array-u64|{a} {c}|{arrayOut s1} {arrayOut s2}|4"
+      IO.println s!"owned|swap|list:array-u64,array-u64|{a} {c}|{arrayOut s1} {arrayOut s2}|2"
   for n in [0, 1, 5, 100] do
     IO.println s!"owned|squares|array-u64|i64:{n}|{arrayOut (Owned.squares n)}|1"
     IO.println s!"owned|sumSquares|i64|i64:{n}|{Owned.sumSquares n}|0"
@@ -169,11 +170,11 @@ def main : IO Unit := do
   IO.println "owned|squares|array-u64|i64:536870912|trap"
   for xs in arrays do
     let a := arrayArg xs
-    IO.println s!"owned|bothSides|array-u64|{a}|{arrayOut (Owned.bothSides xs)}|2"
+    IO.println s!"owned|bothSides|array-u64|{a}|{arrayOut (Owned.bothSides xs)}|1"
     for k in [0, 3] do
       IO.println s!"owned|scaled|array-u64|{a} i64:{k}|{arrayOut (Owned.scaled xs k)}|2"
     for n in [0, 3] do
-      IO.println s!"owned|onlyInside|array-u64|{a} i64:{n}|{arrayOut (Owned.onlyInside xs n)}|2"
+      IO.println s!"owned|onlyInside|array-u64|{a} i64:{n}|{arrayOut (Owned.onlyInside xs n)}|1"
   let positions : List UInt64 := [0, 1, 2, 4, 100, 9223372036854775808, 18446744073709551615]
   for xs in arrays do
     let a := arrayArg xs
@@ -183,7 +184,7 @@ def main : IO Unit := do
       IO.println s!"updates|histogram|array-u64|{a} i64:{b}|{h}|2|2"
     for i in positions do
       let u := arrayOut (Updates.setParam xs i 77)
-      IO.println s!"updates|setParam|array-u64|{a} i64:{i} i64:77|{u}|2|2"
+      IO.println s!"updates|setParam|array-u64|{a} i64:{i} i64:77|{u}|1|1"
   for n in [0, 1, 3, 10] do
     for i in positions do
       let u := arrayOut (Updates.setBuilt n i 5)
@@ -206,11 +207,11 @@ def main : IO Unit := do
     IO.println s!"grow|appendSelfOwned|array-u64|i64:{n}|{arrayOut (Grow.appendSelfOwned n)}|1|2"
   for xs in arrays do
     let a := arrayArg xs
-    IO.println s!"grow|pushParam|array-u64|{a} i64:3|{arrayOut (Grow.pushParam xs 3)}|2|2"
+    IO.println s!"grow|pushParam|array-u64|{a} i64:3|{arrayOut (Grow.pushParam xs 3)}|1|2"
     IO.println s!"grow|appendSelf|array-u64|{a}|{arrayOut (Grow.appendSelf xs)}|2|2"
     for n in [0, 1, 5] do
       let r := arrayOut (Grow.appendOwnedRight xs n)
-      IO.println s!"grow|appendOwnedRight|array-u64|{a} i64:{n}|{r}|2|3"
+      IO.println s!"grow|appendOwnedRight|array-u64|{a} i64:{n}|{r}|1|3"
       let b := arrayOut (Grow.appendBuilt n xs)
       IO.println s!"grow|appendBuilt|array-u64|i64:{n} {a}|{b}|2|3"
       let room := arrayOut (Grow.appendRoom n xs)
@@ -221,7 +222,34 @@ def main : IO Unit := do
       IO.println s!"grow|repeated|array-u64|{a} i64:{n}|{r}|2|{bound}"
     for ys in arrays do
       let r := arrayOut (Grow.appendParams xs ys)
-      IO.println s!"grow|appendParams|array-u64|{a} {arrayArg ys}|{r}|3|3"
+      IO.println s!"grow|appendParams|array-u64|{a} {arrayArg ys}|{r}|2|3"
+  for xs in arrays do
+    let a := arrayArg xs
+    IO.println s!"modes|same|array-u64|{a}|{arrayOut (Modes.same xs)}|1|1"
+    let (c, w) := Modes.withCount xs
+    IO.println s!"modes|withCount|list:i64,array-u64|{a}|{c} {arrayOut w}|1|1"
+    for i in [0, 1, 5, 18446744073709551615] do
+      IO.println s!"modes|bump|array-u64|{a} i64:{i}|{arrayOut (Modes.bump xs i)}|1|1"
+    IO.println s!"modes|bumpFirst|array-u64|{a}|{arrayOut (Modes.bumpFirst xs)}|1|1"
+    IO.println s!"modes|bumpTwice|array-u64|{a}|{arrayOut (Modes.bumpTwice xs)}|1|1"
+    IO.println s!"modes|bumpLast|array-u64|{a}|{arrayOut (Modes.bumpLast xs)}|1|1"
+    IO.println s!"modes|bumpAll|array-u64|{a}|{arrayOut (Modes.bumpAll xs)}|1|1"
+    IO.println s!"modes|addSelf|array-u64|{a}|{arrayOut (Modes.addSelf xs)}|2|2"
+    let (s, p) := Modes.pairArg xs
+    IO.println s!"modes|pairArg|list:i64,array-u64|{a}|{s} {arrayOut p}|1|1"
+    let (t1, t2) := Modes.twoSame xs
+    let kinds := "list:array-u64,array-u64"
+    IO.println s!"modes|twoSame|{kinds}|{a}|{arrayOut t1} {arrayOut t2}|3|3"
+    let (k1, k2) := Modes.bumpKeep xs
+    IO.println s!"modes|bumpKeep|{kinds}|{a}|{arrayOut k1} {arrayOut k2}|2|2"
+    IO.println s!"byhand|dropArg|i64|{a} i64:7|7|0|1"
+    IO.println s!"byhand|sizeOwned|i64|{a}|{xs.size}|0|1"
+    for ys in arrays do
+      let c := arrayArg ys
+      let (s1, s2) := Modes.swapPair (xs, ys)
+      IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|4|4"
+      let (b1, b2) := Modes.both xs ys
+      IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
-    IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|1"
+    IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"

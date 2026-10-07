@@ -15,3 +15,4 @@ import Verified.Examples.Arrays
 import Verified.Examples.Owned
 import Verified.Examples.Updates
 import Verified.Examples.Grow
+import Verified.Examples.Modes

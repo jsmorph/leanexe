@@ -26858,7 +26858,7 @@ copy.  All 4,081 cases pass, and the theorems use only `propext`, `Classical.cho
 - [x] `push` and `++` with capacity growth.
 - [x] Parameter modes in signatures, owned arguments moved or copied, `Moved` argument types, and
   release at entry of unused owned parameters.
-- [ ] Mode inference in the reflector.
+- [x] Mode inference in the reflector.
 
 ### V8c, second part: `push` and `++`
 
@@ -26924,6 +26924,33 @@ callee owns a parameter, since the call may copy the argument.  The reflector gi
 parameter the borrowed mode in this step, so the modules and the 4,235 cases are unchanged, and
 the theorem covers every choice of modes.  The theorems use only `propext`, `Classical.choice`,
 and `Quot.sound`.
+
+### V8c, fourth part: mode inference
+
+`Expr.paramChoice` in [`Reflect/Modes.lean`](Verified/Reflect/Modes.lean) chooses the modes, and the
+reflector evaluates it on the reflected body with `reduce`, as it evaluates `Func.aborts`.  An array
+parameter is owned when `Expr.demands` finds a use that consumes it where it dies: the array of
+`set!`, `push`, or the left operand of `++` other than `xs ++ xs`, an argument that `callMoves`
+would move into an owned parameter, or the function's result.  A binding passes the demand on its
+variable to its value, and a `letPair` the demand on either component.  A branch or a pair passes
+the demand to its parts when its value is consumed or when another part is owned whatever the
+variables' modes, since the join of the modes then copies a borrowed part.  A loop passes a demand
+to its initial value when the loop's value is consumed, the body consumes the state, or the body
+returns an owned value.  The live sets follow `Expr.code`, so a variable that a scalar argument
+reads stays live there, and a variable used again later is not demanded.
+
+The rule makes a parameter owned only where a borrowed one would be copied, so a function that only
+reads an array keeps it borrowed and its callers copy nothing.  A parameter consumed on one branch
+only is owned, and a caller that keeps the array then copies it once.
+[`Modes.lean`](Verified/Examples/Modes.lean) holds the review's cases: `same`, `withCount`, `bump`
+with `bumpFirst`, `bumpTwice`, `bumpLast`, which moves the array before its size argument reads it,
+and `bumpAll`, whose loop state moves into `bump`.  `addSelf` and `twoSame` keep their parameters
+borrowed, `pairArg` passes a pair place and returns the array, `swapPair` copies the components of a
+borrowed pair, and `bumpKeep` copies for the update and moves for the result.  `byHand` checks the
+release at entry and a reader's release of an owned parameter.  An `example` states the theorem for
+`same` with a `Moved (Array UInt64)` argument.  The inference changes the counters of the earlier
+examples whose parameters became owned, by the host blocks that those functions now consume.  All
+4,365 cases pass, and the theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

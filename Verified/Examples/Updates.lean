@@ -2,9 +2,9 @@ import Verified.Reflect.Command
 
 /-! The tenth program of the verified compiler: in-place updates with `xs.set! i.toNat v`.  The
 array operand is owned and dies at the update when it comes from a `build`, a `let` of an owned
-value, or a loop's state, and the update then writes into its block.  An array parameter is
-borrowed, and an array that stays live after the update is copied first.  A position past the end
-leaves the array unchanged, as Lean's `set!` does. -/
+value, a loop's state, or an owned parameter, and the update then writes into its block.  An array
+that stays live after the update is copied first.  A position past the end leaves the array
+unchanged, as Lean's `set!` does. -/
 
 namespace Verified.Examples.Updates
 

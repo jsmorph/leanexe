@@ -1,5 +1,6 @@
 import Verified.Correct
 import Verified.Reflect.Lemmas
+import Verified.Reflect.Modes
 import LeanExe.Encoding.RoundTrip
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
@@ -10,7 +11,8 @@ definition `f` the source function `p.f.func`, the equation `p.f.denote_eq`, and
 `p.f.implements` that the module computes `f`.  `p.bytes` states that the module's bytes decode
 to a module that computes every listed definition.
 
-The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds.  A
+The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
+the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
 definition's parameters and result are `UInt64`, `Bool`, `Array UInt64`, or pairs of them.  Its
 body may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
@@ -420,10 +422,23 @@ def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
 
+/-- The modes of a literal list of modes. -/
+partial def modesOf (e : Lean.Expr) : Option (List Mode) :=
+  match e.getAppFnArgs with
+  | (``List.nil, _) => some []
+  | (``List.cons, #[_, m, rest]) =>
+    let m? := if m.isConstOf ``Mode.owned then some Mode.owned
+      else if m.isConstOf ``Mode.borrowed then some Mode.borrowed else none
+    match m?, modesOf rest with
+    | some m, some ms => some (m :: ms)
+    | _, _ => none
+  | _ => none
+
 /-- Reflects definition `name` as a function that may call the functions `sigs`, meaning
-`funs`, with its parameters in the modes `modes`, and adds `base.func` and `base.denote_eq`. -/
-def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List Callee)
-    (modes : List Mode) : MetaM Reflected := do
+`funs`, with the parameter modes that `Expr.paramChoice` gives, and adds `base.func` and
+`base.denote_eq`. -/
+def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List Callee) :
+    MetaM Reflected := do
   let info ← getConstInfoDefn name
   unless info.levelParams.isEmpty do
     throwError "verified_compile: {name} has universe parameters"
@@ -433,6 +448,8 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let vars := params.toList.zip types
     let env ← envExpr vars
     let (src, proof, _) ← reflect.reflectSplit ⟨sigs, funs, callees, vars, env⟩ params.toList body
+    let some modes := modesOf (← reduce (← mkAppM ``Expr.paramChoice #[src]))
+      | throwError "verified_compile: cannot evaluate the parameter modes of {name}"
     let funcType := mkApp (mkConst ``Func) sigs
     let func ← mkAppOptM ``Func.mk #[some sigs, some (toExpr name.getString!),
       some (ctxExpr types), some (tyExpr result), some src, some (← mkEqRefl (toExpr true)),
@@ -504,7 +521,7 @@ def elabVerifiedCompile : CommandElab
           listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r, a, ms) => sigExpr p r a ms)
         let funs ← mkAppM ``Prog.funs #[prog]
         let fbase := base ++ Name.mkSimple name.getString!
-        let r ← reflectDefinition fbase name sigsExpr funs callees []
+        let r ← reflectDefinition fbase name sigsExpr funs callees
         prog ← mkAppM ``Prog.cons #[Lean.mkConst (fbase ++ `func), prog]
         sigs := (r.params, r.result, r.aborts, r.modes) :: sigs
         callees := ⟨name, r.params, r.result, r.aborts, r.modes, fbase ++ `denote_eq⟩ :: callees
