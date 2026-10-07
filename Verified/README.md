@@ -39,20 +39,28 @@ result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.deno
 compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release`
 at functions 0 and 1.
 
+The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
+writes ordinary Lean definitions as a source program.  For each definition `f` it adds the source
+function `p.f.func`, the equation `p.f.denote_eq` that it means `f`, and `p.f.implements`, which
+states that function `2 + k` of the module `p.module` computes `f` on the tuple of its arguments.
+`p.bytes` states that the module's bytes decode to a module that computes every listed definition.
+The reflector is meta code and is not trusted: it builds each equation from the lemmas of
+[`Reflect/Lemmas.lean`](Reflect/Lemmas.lean), one per Lean form, and Lean's kernel checks it.  An
+`if` on a `Prop` comparison needs a lemma, because Lean elaborates it with `UInt64`'s `Decidable`
+instance, which is not definitionally the source's test of a `Bool`.  The reflector does not yet
+write calls between the listed definitions.
+
 | Theorem | Statement |
 |---------|-----------|
 | `Prog.correct` | For every program and every function in it, the function's index in the compiled module returns the word of the function's meaning from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
 | `Func.correct` | A function in a module whose functions at the call indices compute the functions it calls computes its own meaning. |
 | `Expr.code_spec` | From any frame in which every variable holds the word of its value in its local, the code of an expression pushes the word of the expression's value and changes no parameter and no local below the locals it uses. |
-| `poly_bytes` | The example [`Poly.lean`](Examples/Poly.lean): the bytes of the module for `a * b + c * c - 7` decode to a module that computes the Lean function `poly`. |
-| `scramble_bytes` | The example [`Lets.lean`](Examples/Lets.lean): the bytes of the module for a function of four nested `let` bindings, one inside the operand of a division, decode to a module that computes the Lean function `scramble`. |
-| `select_bytes` | The example [`Select.lean`](Examples/Select.lean): the bytes of the module for `median`, with three `Bool` bindings and nested conditionals, and `inBand`, which returns a `Bool`, decode to a module that computes both Lean functions. |
+| `compiled.bytes` | In each of the reflected examples, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; and [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | `calls_bytes` | The example [`Calls.lean`](Examples/Calls.lean): the bytes of the module for `sq`, `sumSq`, which calls `sq`, `small`, which returns a `Bool`, and `pick`, which calls the other three, with a call as an argument of a call, decode to a module that computes the four Lean functions. |
-| `mix_bytes` | The example [`Mix.lean`](Examples/Mix.lean): the bytes of the module for `((a / b + a % c) ^^^ ((a &&& b) \|\|\| (c <<< b))) - (a >>> c)` decode to a module that computes the Lean function `mix`. |
 
-The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The examples'
-source functions are written by hand, and a theorem for each, such as `pick_denote`, proves by
-`rfl` that it means its Lean function.
+The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The source
+functions of `Calls.lean` are written by hand, and a theorem for each, such as `pick_denote`,
+proves by `rfl` that it means its Lean function.
 
 ## Running it
 

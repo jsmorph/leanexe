@@ -63,3 +63,7 @@ def main : IO Unit := do
   for (a, b, c) in selectCases do
     IO.println s!"select|median|i64|i64:{a} i64:{b} i64:{c}|{Select.median a b c}"
     IO.println s!"select|inBand|i64|i64:{a} i64:{b} i64:{c}|{if Select.inBand a b c then 1 else 0}"
+    IO.println s!"select|clamp|i64|i64:{a} i64:{b} i64:{c}|{Select.clamp a b c}"
+    for flag in [false, true] do
+      let f := if flag then 1 else 0
+      IO.println s!"select|pickNe|i64|i64:{a} i64:{b} i64:{f}|{Select.pickNe a b flag}"

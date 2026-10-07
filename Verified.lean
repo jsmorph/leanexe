@@ -1,6 +1,8 @@
 import Verified.Source
 import Verified.Compile
 import Verified.Correct
+import Verified.Reflect.Lemmas
+import Verified.Reflect.Command
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets

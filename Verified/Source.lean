@@ -44,7 +44,7 @@ def CmpOp.apply : CmpOp → UInt64 → UInt64 → Bool
 /-- The types of values. -/
 inductive Ty where
   | word | bool
-  deriving Repr, DecidableEq
+  deriving Repr, DecidableEq, Inhabited
 
 /-- The Lean type of a value. -/
 abbrev Ty.denote : Ty → Type

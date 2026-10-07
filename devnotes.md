@@ -26415,7 +26415,8 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V3: `let` bindings in locals.
 - [x] V4: `Bool`, comparisons, and conditionals, with typed expressions.
 - [x] V5: several functions and calls between them, each function calling only earlier ones.
-- [ ] V6: a reflector from Lean definitions to the source syntax, with `denote (reflect f) = f`.
+- [x] V6a: a reflector from single Lean definitions to the source syntax, with `denote (reflect f) = f`.
+- [ ] V6b: calls between reflected definitions.
 - [ ] Later: loops, floats, arrays, and ownership.
 
 V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
@@ -26474,6 +26475,24 @@ stated for `HostEnv Unit` and `Store Unit`, the types `ImplementsPureA` fixes.  
 `Calls.lean` has four functions, `sq`, `sumSq`, `small`, and `pick`, with a call as an argument of
 a call and a `Bool`-valued call as the test of an `if`.  `calls_bytes` covers all four functions of
 the 1,458-byte module, and the test passes all 1,272 cases of the five examples.
+
+For V6 the user chose a reflector that builds each equation `denote (reflect f) = f` from one
+lemma per Lean form (2026-10-06), after a test showed that `if a < b then x else y` and
+`if decide (a < b) = true then x else y` are not definitionally equal for `UInt64`: Lean
+elaborates the first with `UInt64`'s `Decidable` instance.  The same test showed that `if c` on a
+`Bool`, `decide (a = b)` against `a == b`, and `if a > b` against `if b < a` agree by `rfl`.  The
+alternatives were source forms that mirror Lean's elaboration, checked by `rfl`, a `simp` proof,
+and no reflector.  `Reflect/Lemmas.lean` holds the lemmas: one per construct, each taking proofs
+that the parts mean given Lean terms, and four for `if` on `<`, `≤`, `=`, and `≠` as a `Prop`,
+which `simp` proves once.  `Reflect/Command.lean` defines `verified_compile`, which walks a
+definition's body in `MetaM`, writes the source term with `mkAppM`, and composes the proof from
+the lemmas, with `rfl` at variables and closed terms.  A closed term of type `UInt64` or `Bool`
+becomes a constant.  The kernel checks each equation when the reflector adds it, so the reflector
+is not trusted.  The implements and bytes theorems are elaborated from syntax, from the equations
+and `Prog.correct`.  The examples `Poly`, `Mix`, `Lets`, and `Select` are now reflected, and the
+first three give modules of the same sizes as their hand-written versions.  `Select` gains
+`clamp`, with `if` on `<` and `>`, and `pickNe`, with `if` on `≠` and a `Bool` parameter, and the
+test passes all 1,776 cases.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
