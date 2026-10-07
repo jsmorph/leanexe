@@ -154,8 +154,8 @@ theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
   rfl
 
 /-- `LeanExe.build` with the meanings of its count and its element function. -/
-theorem build_eq {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word} {N : UInt64}
-    {F : UInt64 → UInt64} (hn : count.denote funs env = N)
+theorem build_eq {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)}
+    {N : UInt64} {F : UInt64 → e.denote} (hn : count.denote funs env = N)
     (hf : ∀ i, elem.denote funs (.cons i env) = F i) :
     (Expr.build count elem).denote funs env = LeanExe.build N F := by
   subst hn
@@ -163,19 +163,19 @@ theorem build_eq {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word} {
   rfl
 
 /-- An update of an array variable, which leaves it unchanged past its end. -/
-theorem set_eq (x : Var Γ .array) {i v : Expr S Γ .word} {I V : UInt64}
-    (hi : i.denote funs env = I) (hv : v.denote funs env = V) :
+theorem set_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {v : Expr S Γ (.elem e)}
+    {I : UInt64} {V : e.denote} (hi : i.denote funs env = I) (hv : v.denote funs env = V) :
     (Expr.set x i v).denote funs env = (env.get x).set! I.toNat V := by
   subst hi hv; rfl
 
 /-- An array variable with one more element. -/
-theorem push_eq (x : Var Γ .array) {v : Expr S Γ .word} {V : UInt64}
+theorem push_eq {e : Elem} (x : Var Γ (.array e)) {v : Expr S Γ (.elem e)} {V : e.denote}
     (hv : v.denote funs env = V) :
     (Expr.push x v).denote funs env = (env.get x).push V := by
   subst hv; rfl
 
-/-- A read of an array variable, 0 past its end. -/
-theorem get_eq (x : Var Γ .array) {i : Expr S Γ .word} {I : UInt64}
+/-- A read of an array variable, the element type's default value past its end. -/
+theorem get_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : UInt64}
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by
   subst hi; rfl
 

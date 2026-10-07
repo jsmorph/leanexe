@@ -51,7 +51,7 @@ example : LeanExe.Pipeline.ImplementsA true compiled.module 2
 /-- `dropArg xs n = n`, with `xs` owned and never read. -/
 def dropArg (S : List Sig) : Func S where
   name := "dropArg"
-  params := [.array, .word]
+  params := [.array .word, .word]
   result := .word
   body := .var (.there .here)
   placeArgs := rfl
@@ -60,7 +60,7 @@ def dropArg (S : List Sig) : Func S where
 /-- `sizeOwned xs = xs.size`, with `xs` owned. -/
 def sizeOwned (S : List Sig) : Func S where
   name := "sizeOwned"
-  params := [.array]
+  params := [.array .word]
   result := .word
   body := .size .here
   placeArgs := rfl

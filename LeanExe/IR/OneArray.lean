@@ -14,16 +14,6 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 variable {m : Module} {a : Bool} {moved : List UInt64}
 
-/-- An array of records that the caller hands over: the call receives its words as owned and
-consumes its block. -/
-instance [Flat α γ] [Scalar γ] : Represent (Moved (Array α)) where
-  width _ := 1
-  borrowed heap store vs xs := Represent.borrowed heap store vs (Moved.mk (flatWords xs.val))
-  owned heap store vs xs := Represent.owned heap store vs (Moved.mk (flatWords xs.val))
-  blocks store vs xs := Represent.blocks store vs (Moved.mk (flatWords xs.val))
-  reads _ _ _ := []
-  moves store vs xs := Represent.moves store vs (Moved.mk (flatWords xs.val))
-
 /-- A value represented by scalars followed by the pointer of one array of words.  An owned
 value is those scalars and an owned array, whose block is the value's only block. -/
 class OneArray (β : Type) [Represent β] where

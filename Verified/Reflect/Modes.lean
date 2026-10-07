@@ -72,7 +72,7 @@ def Expr.paramChoice {params : List Ty} {result : Ty} (body : Expr S params resu
     List Mode :=
   (List.range params.length).map fun i =>
     match params[i]? with
-    | some Ty.array => if body.demands (fun _ => false) true i then .owned else .borrowed
+    | some (Ty.array _) => if body.demands (fun _ => false) true i then .owned else .borrowed
     | _ => .borrowed
 
 end Verified

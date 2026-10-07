@@ -13,7 +13,7 @@ to a module that computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
-definition's parameters and result are `UInt64`, `Bool`, `Array UInt64`, or pairs of them.  Its
+definition's parameters and result are `UInt64`, `Bool`, `Float`, arrays of these, or pairs.  Its
 body may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
 `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
@@ -25,22 +25,37 @@ namespace Verified.Reflect
 
 open Lean Meta Elab Command Term
 
-partial def tyOf (type : Lean.Expr) : MetaM Ty := do
+def elemOf? (type : Lean.Expr) : MetaM (Option Elem) := do
   let type ← whnfR type
-  if type.isConstOf ``UInt64 then return .word
-  if type.isConstOf ``Bool then return .bool
-  if type.isConstOf ``Float then return .float
+  if type.isConstOf ``UInt64 then return some .word
+  if type.isConstOf ``Bool then return some .bool
+  if type.isConstOf ``Float then return some .float
+  return none
+
+/-- The element type of an array's elements of type `type`. -/
+def elemOf (type : Lean.Expr) : MetaM Elem := do
+  let some e ← elemOf? type
+    | throwError "verified_compile: arrays hold UInt64, Bool, or Float, not {type}"
+  return e
+
+partial def tyOf (type : Lean.Expr) : MetaM Ty := do
+  if let some e ← elemOf? type then return .elem e
+  let type ← whnfR type
   if let (``Prod, #[a, b]) := type.getAppFnArgs then return .pair (← tyOf a) (← tyOf b)
-  if let (``Array, #[e]) := type.getAppFnArgs then
-    if (← whnfR e).isConstOf ``UInt64 then return .array
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Array UInt64, or a pair"
+  if let (``Array, #[e]) := type.getAppFnArgs then return .array (← elemOf e)
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, an array, or a pair"
+
+def elemExpr : Elem → Lean.Expr
+  | .word => mkConst ``Elem.word
+  | .bool => mkConst ``Elem.bool
+  | .float => mkConst ``Elem.float
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
   | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
   | .float => mkConst ``Ty.float
-  | .array => mkConst ``Ty.array
+  | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
   | [] => mkApp (mkConst ``List.nil [Level.zero]) α
@@ -262,7 +277,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         let proof ← mkAppOptM ``float_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
           some (toExpr bits), some e, some h]
         return (src, proof, .float)
-    | .pair _ _ | .array => pure ()
+    | .pair _ _ | .array _ => pure ()
   if let .letE _ type value body _ := e then
     if isPlace value then return ← reflect c (body.instantiate1 value)
     let s ← tyOf type
@@ -378,8 +393,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
   | ``Array.set!, setArgs@#[α, xs, k, v] =>
-    unless (← whnfR α).isConstOf ``UInt64 do
-      throwError "verified_compile: only arrays of UInt64 are updated, in {e}"
+    let el ← elemOf α
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
     let xs := projReduce xs
@@ -387,25 +401,24 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (setArgs.set! 1 a)))
     let (x, t) ← varOf c xs
-    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let (is, hi, _) ← reflect c i
     let (vs, hv, _) ← reflect c v
-    return (← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, some x, some is, some vs],
-      ← mkAppM ``set_eq #[x, hi, hv], .array)
+    return (← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, none, some x, some is, some vs],
+      ← mkAppM ``set_eq #[x, hi, hv], .array el)
   | ``Array.push, pushArgs@#[α, xs, v] =>
-    unless (← whnfR α).isConstOf ``UInt64 do
-      throwError "verified_compile: only arrays of UInt64 are extended, in {e}"
+    let el ← elemOf α
     let xs := projReduce xs
     unless xs.isFVar do
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (pushArgs.set! 1 a)))
     let (x, t) ← varOf c xs
-    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let (vs, hv, _) ← reflect c v
-    return (← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, some x, some vs],
-      ← mkAppM ``push_eq #[x, hv], .array)
+    return (← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some vs],
+      ← mkAppM ``push_eq #[x, hv], .array el)
   | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
-    unless (← tyOf α) == .array do throwError "verified_compile: unsupported term {e}"
+    let .array el ← tyOf α | throwError "verified_compile: unsupported term {e}"
     let xs := projReduce xs
     let ys := projReduce ys
     unless xs.isFVar do
@@ -416,19 +429,18 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         mkLetFVars #[a] (mkAppN e.getAppFn (appendArgs.set! 5 a)))
     let (x, _) ← varOf c xs
     let (y, _) ← varOf c ys
-    let src ← mkAppOptM ``Expr.append #[some c.sigs, some c.ctx, some x, some y]
-    return (src, ← rflProof c src e, .array)
+    let src ← mkAppOptM ``Expr.append #[some c.sigs, some c.ctx, none, some x, some y]
+    return (src, ← rflProof c src e, .array el)
   | ``LeanExe.build, #[α, n, f] =>
-    unless (← whnfR α).isConstOf ``UInt64 do
-      throwError "verified_compile: only arrays of UInt64 are built, in {e}"
+    let el ← elemOf α
     let (ns, hn, _) ← reflect c n
     let (fs, hf) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
       let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env' }
       let (fs, hf, t) ← reflect c' (f.beta #[i])
-      unless t == .word do throwError "verified_compile: an element of {e} is not a UInt64"
+      unless t == .elem el do throwError "verified_compile: an element of {e} is not a {α}"
       return (fs, ← mkLambdaFVars #[i] hf)
-    return (← mkAppM ``Expr.build #[ns, fs], ← mkAppM ``build_eq #[hn, hf], .array)
+    return (← mkAppM ``Expr.build #[ns, fs], ← mkAppM ``build_eq #[hn, hf], .array el)
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
@@ -437,8 +449,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn #[mkAppN n.consumeMData.getAppFn (sizeArgs.set! 1 a)]))
     let (x, t) ← varOf c xs
-    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
-    let src ← mkAppOptM ``Expr.size #[some c.sigs, some c.ctx, some x]
+    let .array _ := t | throwError "verified_compile: {xs} is not an array variable"
+    let src ← mkAppOptM ``Expr.size #[some c.sigs, some c.ctx, none, some x]
     return (src, ← rflProof c src e, .word)
   | ``getElem!, getArgs@#[_, _, _, _, _, _, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
@@ -448,10 +460,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (getArgs.set! 6 a)))
     let (x, t) ← varOf c xs
-    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    let .array el := t | throwError "verified_compile: {xs} is not an array variable"
     let (is, hi, _) ← reflect c i
-    return (← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, some x, some is],
-      ← mkAppM ``get_eq #[x, hi], .word)
+    return (← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, none, some x, some is],
+      ← mkAppM ``get_eq #[x, hi], .elem el)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
   /-- The reflection of `body` in the context `c`, with each variable of `xs` that has a pair
@@ -593,7 +605,9 @@ def tyStx : Ty → CommandElabM Term
   | .word => `(UInt64)
   | .bool => `(Bool)
   | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
-  | .array => `(Array UInt64)
+  | .array .word => `(Array UInt64)
+  | .array .bool => `(Array Bool)
+  | .array .float => `(Array Float)
   | .float => `(Float)
 
 /-- The type of an argument in mode `m`: `Moved` for an owned array. -/

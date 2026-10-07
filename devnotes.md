@@ -27027,7 +27027,7 @@ and `UInt64.toFloat` of a word literal and of a negated literal with integer ope
 kernel checks them.  The 182 new cases include NaN patterns of both signs, a signaling NaN, and
 truncations that saturate, and all 5,506 cases pass.
 
-### V9b design: arrays of floats
+### V9b: arrays of floats and `Bool`s
 
 The same review found that an element type `Elem` with `Elem.denote` defined by cases is not
 definitionally `(Elem.ty e).denote` for a variable `e`, so `get`, `set`, `push`, and `build` would
@@ -27043,11 +27043,24 @@ converts a float with `i64.reinterpret_f64` before the store.  Arrays of `Bool` 
 (Moved (Array α))` instance for `Flat` types in `LeanExe/Pipeline/Implements.lean`, which arrays
 of records also need.
 
+That instance existed in `LeanExe/IR/OneArray.lean`, which `Verified` does not import, and it now
+lives in `LeanExe/Pipeline/Implements.lean` beside the other `Moved` instances, unchanged.  An
+array that a build fills or that an extension grows holds words that need not be the words of any
+element, a non-canonical NaN pattern for instance, so the proofs keep such arrays at
+`.array .word` and move between an array of element type `e` and its words with `After.ofWords`
+and `After.toWords`.  `After` is a structure, so these lemmas rebuild it from the same fields,
+which agree by definition.  `Ty.rep_elem` states an element's words as `[e.value x]`, and
+`wp_valueCode`, `wp_wordCode`, and `After.storeElem` give the conversions.  The size, read,
+update, push, append, and build proofs take the element type as a parameter and otherwise keep
+their structure.  `Elements.lean` adds 158 cases.  Its leak checks count the host's borrowed
+array arguments, which stay allocated, and its bounds on allocations show that `axpy` on an owned
+array of floats and `flip` on an owned array of `Bool`s update in place.  All 5,664 cases pass.
+
 - [x] Typed locals.
 - [x] `Float`: literals, `+ - * /`, `sqrt`, `abs`, negation, comparisons, `min`, `max`, and float
   parameters, results, bindings, pairs, and loop states.
 - [x] `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, and computed `Float.ofBits`.
-- [ ] `Ty.elem` and `Ty.array (e : Elem)`: arrays of words, floats, and `Bool`.
+- [x] `Ty.elem` and `Ty.array (e : Elem)`: arrays of words, floats, and `Bool`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
