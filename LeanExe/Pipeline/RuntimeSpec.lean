@@ -36,6 +36,20 @@ theorem allocSize_le {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
   · decide
   · omega
 
+theorem le_allocSize {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
+    bytes.toNat ≤ (allocSize bytes).toNat := by
+  have hRound : ((bytes + 7) / 8 * 8).toNat = (bytes.toNat + 7) / 8 * 8 := by
+    simp only [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, UInt64.reduceToNat]
+    omega
+  unfold allocSize
+  split
+  · rename_i hSmall
+    rw [UInt64.lt_iff_toNat_lt, hRound] at hSmall
+    simp only [UInt64.reduceToNat] at hSmall ⊢
+    omega
+  · rw [hRound]
+    omega
+
 /-- `alloc bytes` for at most `2 ^ 32` bytes, in a memory whose cap is at most 65,535
 pages, returns the new block's payload pointer, and the block fits, or, when `aborts`, traps at
 `unreachable`.  When not `aborts`, the room rules out the trap. -/
