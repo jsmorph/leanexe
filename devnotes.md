@@ -26668,6 +26668,46 @@ backtrace for each read past the end, 472 in the cases, so `tests/verified/run.s
 standard error in a file and fails on anything else, as `tests/modules/run.sh` does.  The test
 passes all 3,778 cases of the eight examples.
 
+### V8b: owned values, researched
+
+V8b adds arrays that the program creates: `LeanExe.build n f`, owned array results and
+temporaries, the copies and releases that the ownership model of 2026-10-01 requires, and the trap
+at `unreachable` when memory runs out.  The other compiler implements that model in meta code
+(`moveSites`, `releaseUnmoved`, and `Ctx.before` in `LeanExe/Compiler/Scalar.lean`): a value moves
+at its last use, a part that later code still uses is copied, an alias `let y := x` of an array is
+the variable itself, and owned values that a path does not consume are released.  This compiler
+must place moves, copies, and releases inside `Expr.code` and prove the placement once.
+
+The rule that keeps the proof local is that each expression consumes exactly the owned variables
+that die in it: those live before it, `live ∪ e.uses`, and not live after it, `live`.  The code
+of each construct meets the rule as follows.
+
+| Construct | Ownership |
+|---|---|
+| `var x`, borrowed | A view: the words of `x`, no consumption.  A borrowed variable always holds an array of a parameter, which no code in the function consumes. |
+| `var x`, owned, dead after | A move: the result owns `x`'s block. |
+| `var x`, owned, live after | A copy into a new block, which the result owns. |
+| `size a`, `get a i`, a call's argument | A reader.  A variable operand is read in place as a view and stays live while the reader's other operands run; the reader releases it afterward when it is owned and dies there.  Any other operand that yields an owned value is released after the read. |
+| `let x := v; body` | `x` takes `v`'s mode.  An owned `x` that `body` never reads is released before `body`. |
+| `if c then a else b` | Each branch releases the owned variables that die at its entry: live before the branches, not read by the branch, and not live after.  When one branch yields an owned value and the other a borrowed one, the borrowed one is copied. |
+| `(a, b)`, `letPair` | A pair has one mode; a borrowed component of an owned pair is copied.  An unread owned component is released at the start of the body. |
+| `LeanExe.loop` | The state is owned when the initial value or the body's value is owned; a borrowed initial value or body value is then copied.  An owned state that the body never reads is released at the start of each iteration. |
+| `LeanExe.build n f` | Allocates the array, traps when memory runs out or the count is `2 ^ 29` or more, and stores `f i` for each index `i`. |
+| The function's result | Owned: a borrowed result is copied. |
+
+`Holds` gains the invariant that the blocks of the live owned variables are pairwise disjoint;
+borrowed variables need nothing more, since their arrays belong to the caller.  `Step` gains the
+blocks a step consumes, `gone`, and the blocks of an owned result, `fresh`, as in `Heap.Keeps` and
+`Live`; a move puts the variable's block in both.  `Expr.code_spec` states that the step consumes
+the blocks of the owned variables that die in the expression, that the variables live after it
+still hold their values, and that an owned result's blocks lie apart from theirs.  The trap flag
+is true for `build`, a copy, and a call of a function that may trap.  `Ty.blocks` gives an owned
+value's blocks, `Ty.Rep` for an owned pair requires its components' blocks to be disjoint, as the
+pair instance of `Implements.lean` does, and results may then hold arrays.  The reflector writes
+`let y := x` for an array variable `x` as the body with `x` for `y`, so no variable aliases
+another.  Release at death, rather than at the end of a variable's scope, keeps `Holds` about live
+variables only, with no set of dead variables awaiting release.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
