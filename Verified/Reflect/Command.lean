@@ -11,11 +11,12 @@ definition `f` the source function `p.f.func`, the equation `p.f.denote_eq`, and
 to a module that computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds.  A
-definition's parameters and result are `UInt64`, `Bool`, or pairs of them.  Its body may use
-literals and other closed terms, its parameters, `let`, the word operations `+`, `-`, `*`, `/`,
-`%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`, `=`,
-and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, pairs built
-with `(a, b)` and taken apart with `.1`, `.2`, or `match`, and calls of the listed definitions
+definition's parameters and result are `UInt64`, `Bool`, `Array UInt64`, or pairs of them.  Its
+body may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
+`*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
+`≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
+pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, `LeanExe.loop`,
+`xs.size.toUInt64`, `xs[i.toNat]!`, `LeanExe.build` of words, and calls of the listed definitions
 before it. -/
 
 namespace Verified.Reflect
@@ -253,6 +254,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (bs, hb, _) ← reflectUnder c [] (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
+  | ``LeanExe.build, #[α, n, f] =>
+    unless (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: only arrays of UInt64 are built, in {e}"
+    let (ns, hn, _) ← reflect c n
+    let (fs, hf) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
+      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
+      let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env' }
+      let (fs, hf, t) ← reflect c' (f.beta #[i])
+      unless t == .word do throwError "verified_compile: an element of {e} is not a UInt64"
+      return (fs, ← mkLambdaFVars #[i] hf)
+    return (← mkAppM ``Expr.build #[ns, fs], ← mkAppM ``build_eq #[hn, hf], .array)
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"

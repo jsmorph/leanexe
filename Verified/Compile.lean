@@ -86,14 +86,18 @@ def shift (k : Nat) (live : Nat → Bool) (i : Nat) : Bool := if i < k then fals
 /-- The number of words that hold the values of the types. -/
 def widthSum (ts : List Ty) : Nat := (ts.map Ty.width).sum
 
+/-- The instructions that allocate an array of as many words as local `count` holds, put its
+address in local `ptr`, and write its length word. -/
+def allocArrayCode (count ptr : Nat) : Program :=
+  [.localGet count, .constI64 1, .addI64, .constI64 8, .mulI64, .call 0, .localSet ptr,
+    .localGet ptr, .wrapI64, .localGet count, .store64 0]
+
 /-- The instructions that copy the array whose address local `src` holds into a new array and
 push the new array's address.  Local `base` holds the length, `base + 1` the new address, and
 `base + 2` the index of the element being copied. -/
 def copyArrayCode (src base : Nat) : Program :=
-  [.localGet src, .wrapI64, .load64 0, .localSet base,
-    .localGet base, .constI64 1, .addI64, .constI64 8, .mulI64, .call 0, .localSet (base + 1),
-    .localGet (base + 1), .wrapI64, .localGet base, .store64 0,
-    .constI64 0, .localSet (base + 2),
+  [.localGet src, .wrapI64, .load64 0, .localSet base] ++ allocArrayCode base (base + 1) ++
+    [.constI64 0, .localSet (base + 2),
     .block 0 0 [.loop 0 0 [.localGet (base + 2), .localGet base, .geUI64, .br_if 1,
       .localGet (base + 1), .localGet (base + 2), .constI64 1, .addI64, .constI64 8, .mulI64,
       .addI64, .wrapI64,
@@ -151,13 +155,14 @@ def Mode.join : Mode → Mode → Mode
   | _, _ => .owned
 
 /-- The mode of an expression's value, given the modes of the variables: owned when it holds
-arrays that its holder must consume, which a call's result, a moved or copied variable, and a
-join of an owned value do. -/
+arrays that its holder must consume, which a call's result, a built array, a moved or copied
+variable, and a join of an owned value do. -/
 def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Mode
   | _, _, .var x => modes.getD x.index .borrowed
   | _, _, .ite _ thenE elseE => (thenE.mode modes).join (elseE.mode modes)
   | _, _, .letE value body => body.mode (value.mode modes :: modes)
   | _, _, .call (g := g) _ _ => if g.result.scalar then .borrowed else .owned
+  | _, _, .build _ _ => .owned
   | _, _, .pair first second => (first.mode modes).join (second.mode modes)
   | _, _, .letPair e body => body.mode (e.mode modes :: e.mode modes :: modes)
   | _, _, .loop _ init body =>
@@ -173,9 +178,9 @@ def Expr.placeCode (slots : List Slot) : {Γ : List Ty} → {t : Ty} → Expr S 
 
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
 and `letPair` value and of each `ite` result, two for each division or remainder, the count, the
-index, and the state of each loop, the position of each read, and the locals of each copy, on a
-path of the expression.  A call's arguments and a pair's components leave their words on the
-stack, so they share their locals. -/
+index, and the state of each loop, the position of each read, the count, the address, and the
+index of each `build`, and the locals of each copy, on a path of the expression.  A call's
+arguments and a pair's components leave their words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .size _ => 0
   | _, _, .var (t := t) _ => t.copyScratch
@@ -194,6 +199,7 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
     max count.width (max (1 + max init.width (copyWidth t))
       (2 + t.width + max body.width (copyWidth t)))
   | _, _, .get _ i => max i.width 1
+  | _, _, .build count elem => max count.width (3 + elem.width)
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at local `(slots.getD x.index default).loc`, the locals from `base` on are free, and
@@ -210,7 +216,12 @@ it.  A call pushes its arguments in order, its arrays read in place, and calls t
 loop keeps its count in local `base`, its index in local `base + 1`, and its state from local
 `base + 2` on, and leaves the block when the index reaches the count.  `size` loads the length
 word at the array's address.  `get` keeps the position in local `base`, compares it with the
-length word, and loads the element or yields 0. -/
+length word, and loads the element or yields 0.  `build` keeps its count in local `base`, traps
+at `unreachable` when the count is `2 ^ 29` or more, since the array would not fit in 32-bit
+memory, allocates the array into local `base + 1`, and keeps the index in local `base + 2`.  For
+each index it pushes the element's address, runs the element's code, and stores the element; the
+outer variables that only the element reads stay live through the loop and are released after
+it. -/
 def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
@@ -302,6 +313,20 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           .addI64, .constI64 8, .mulI64, .addI64, .wrapI64, .load64 0] [.constI64 0] [] [.i64]] ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode .array (slots.getD x.index default).loc else [])
+  | Γ, _, .build count elem =>
+    let all := fun i => live i || elem.uses (i + 1)
+    count.code slots base all ++
+      [.localSet base, .localGet base, .constI64 536870912, .geUI64,
+        .iff 0 0 [.unreachable] [] [] []] ++
+      allocArrayCode base (base + 1) ++
+      [.constI64 0, .localSet (base + 2),
+        .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1,
+          .localGet (base + 1), .localGet (base + 2), .constI64 1, .addI64, .constI64 8, .mulI64,
+          .addI64, .wrapI64] ++
+          elem.code (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
+          [.store64 0, .localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
+          [] []] [] []] ++
+      releaseWhere Γ slots (fun i => elem.uses (i + 1) && !live i) ++ [.localGet (base + 1)]
 
 /-- The slots of a function's parameters, all borrowed: parameter `i` starts after the words of
 the parameters before it. -/
