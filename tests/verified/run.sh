@@ -2,8 +2,9 @@
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
 # compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
-# released must equal the field, the host's array arguments and the result's arrays.  A case whose
-# expected result is `trap` must trap at `unreachable`.
+# released must equal the field, the host's array arguments and the result's arrays.  A seventh
+# field bounds the number of allocations, the host's included.  A case whose expected result is
+# `trap` must trap at `unreachable`.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -17,7 +18,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
     Verified.Examples.Owned:compiled.module:owned \
-    Verified.Examples.Updates:compiled.module:updates; do
+    Verified.Examples.Updates:compiled.module:updates \
+    Verified.Examples.Grow:compiled.module:grow; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -49,7 +51,7 @@ fi
 echo "native Lean: $reads accesses past the end, as the cases expect"
 passed=0
 failed=0
-while IFS='|' read -r name export result args expected live; do
+while IFS='|' read -r name export result args expected live allocsMax; do
   read -ra argv <<<"$args"
   if [ "$expected" = "trap" ]; then
     if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
@@ -72,7 +74,10 @@ while IFS='|' read -r name export result args expected live; do
     read -r _ allocs frees < <(tail -n 1 <<<"$output")
     held=$((allocs - frees))
   fi
-  if [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
+  if [ -n "$allocsMax" ] && [ "$allocs" -gt "$allocsMax" ]; then
+    failed=$((failed + 1))
+    echo "fail: $name $export $args: $allocs allocations, at most $allocsMax expected"
+  elif [ "$got" = "$expected" ] && [ "$held" = "$live" ]; then
     passed=$((passed + 1))
   else
     failed=$((failed + 1))

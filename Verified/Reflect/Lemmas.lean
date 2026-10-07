@@ -127,6 +127,12 @@ theorem set_eq (x : Var Γ .array) {i v : Expr S Γ .word} {I V : UInt64}
     (Expr.set x i v).denote funs env = (env.get x).set! I.toNat V := by
   subst hi hv; rfl
 
+/-- An array variable with one more element. -/
+theorem push_eq (x : Var Γ .array) {v : Expr S Γ .word} {V : UInt64}
+    (hv : v.denote funs env = V) :
+    (Expr.push x v).denote funs env = (env.get x).push V := by
+  subst hv; rfl
+
 /-- A read of an array variable, 0 past its end. -/
 theorem get_eq (x : Var Γ .array) {i : Expr S Γ .word} {I : UInt64}
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by

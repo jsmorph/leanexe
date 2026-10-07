@@ -26855,9 +26855,42 @@ copy.  All 4,081 cases pass, and the theorems use only `propext`, `Classical.cho
 `Quot.sound`.
 
 - [x] In-place `set!` with the owner rule.
-- [ ] `push` and `++` with capacity growth.
+- [x] `push` and `++` with capacity growth.
 - [ ] Inferred parameter modes, `Moved` argument types, and release at entry of unread owned
   parameters.
+
+### V8c, second part: `push` and `++`
+
+`Expr.push x v` is `x.push v` and `Expr.append x y` is `x ++ y`, both with variable operands.  A
+review (2026-10-07) found the first design correct and proposed changes that the implementation
+adopts.  One copy loop with a destination offset, `copyIntoCode` with `wp_copyInto`, serves the
+copy of a value, the copy into a larger block, and the fill of `++`.  `wp_allocBlock` allocates a
+requested byte count, and `wp_allocCopy` combines it with the loop; `wp_copyArray` is now that
+combination.  The choice at the operand is made at compile time, as for `set!`, so that an array
+that is not consumed is copied once, with room for the result, instead of being copied by
+`Var.ownedCode` and then grown.  The length is written once, before the new elements, and
+`After.rewrite` states any writes inside an owned block, with `After.writeElement` as its special
+case.
+
+`Var.roomCode` takes the array with room for its length plus a word in a local: an owned array that
+dies there keeps its block when the capacity word allows, and otherwise moves to a block of
+`min (max need (2 * capacity)) (2 ^ 32)` bytes, `LeanExe`'s growth, and the old block is released;
+any other array is copied into a block of the bytes the result needs.  It traps at `unreachable`
+when the new length is `2 ^ 29` or more, which only `++` of an array with itself, or of two
+borrowed operands that are one array, can reach.  `spec_room` proves the three paths, with
+`After.move` for the consumed operand and `After.replace` for the move to a new block.  `push`
+writes the new element after the room step; `++` copies `y`'s elements after `x`'s and releases
+`y` when it is owned and dies there.  `x` runs in `++`'s owned position with `y` live, so
+`xs ++ xs` copies, as the owner rule requires.  `le_allocSize` moves from `LeanExe/IR/Append.lean`
+to `LeanExe/Pipeline/RuntimeSpec.lean` beside `allocSize_le`.
+
+The review also found that the live-block count cannot show an in-place update, since a copy
+followed by a release leaves it unchanged.  Cases now carry a bound on the allocations: `setBuilt`
+allocates once, `histogram` twice, and a loop of `n` pushes at most `2 + log₂ (n + 1)` times; 1,000
+pushes allocate 11 blocks.  [`Grow.lean`](Verified/Examples/Grow.lean) covers `push` and `++` on
+parameters, built arrays, and loop states, an array that stays live, an array appended to itself,
+and an owned right operand.  All 4,235 cases pass, and the theorems use only `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
