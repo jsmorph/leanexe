@@ -85,7 +85,10 @@ elaborates it with `UInt64`'s `Decidable` instance, which is not definitionally 
 of a `Bool`.  A call of an earlier listed definition becomes a source call, proved from the
 callee's equation, and `LeanExe.loop` becomes a loop whose body is the reflection of the loop
 function's body.  The reflector binds with `let` an array that a size or a read reads and a call's
-argument with arrays that is not a place, which leaves the meaning unchanged.
+argument with arrays that is not a place.  It replaces a `let` of a place by its body with the
+place for the variable, and splits every variable of a pair type into variables for its
+components, so that a projection reads a component without a copy of the pair.  Each of these
+rewritings leaves the meaning unchanged.
 
 | Theorem | Statement |
 |---------|-----------|
