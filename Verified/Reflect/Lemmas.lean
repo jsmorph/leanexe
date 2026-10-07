@@ -86,4 +86,16 @@ theorem call_eq {ps : List Ty} {r : Ty} (f : FVar S ps r)
     (Expr.call f args).denote funs env = R := by
   subst hargs; exact hf
 
+theorem pair_eq {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {A : s.denote} {B : t.denote}
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
+    (Expr.pair a b).denote funs env = (A, B) := by
+  subst ha hb; rfl
+
+/-- A destructuring of a pair, which `Prod.fst`, `Prod.snd`, and `match` on a pair become. -/
+theorem letPair_eq {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
+    {E : s.denote × t.denote} {B : s.denote → t.denote → u.denote}
+    (he : e.denote funs env = E) (hb : ∀ a b, body.denote funs (.cons b (.cons a env)) = B a b) :
+    (Expr.letPair e body).denote funs env = B E.1 E.2 := by
+  subst he; exact hb _ _
+
 end Verified.Reflect

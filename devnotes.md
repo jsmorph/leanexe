@@ -26417,7 +26417,9 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V5: several functions and calls between them, each function calling only earlier ones.
 - [x] V6a: a reflector from single Lean definitions to the source syntax, with `denote (reflect f) = f`.
 - [x] V6b: calls between reflected definitions.
-- [ ] Later: loops, floats, arrays, and ownership.
+- [x] V7a: pairs, with values of several words.
+- [ ] V7b: `LeanExe.loop` over a state of any type.
+- [ ] Later: arrays, floats, recursion, and ownership.
 
 V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
 Lean's operation on `UInt64`.  The WebAssembly shifts already use their amount modulo 64, as
@@ -26501,6 +26503,24 @@ proved first.  A call is reflected before the closed-term rule, so `g 3` compile
 instead of a constant.  `Calls.lean` is now four definitions and one `verified_compile`, and its
 module has the same size as the hand-written one.  Every example is now reflected, and the test
 passes all 1,776 cases.
+
+For V7 the user asked for the cleanest and most effective step rather than the smallest
+(2026-10-06), and the step chosen is pairs followed by loops over a state of any type.  Pairs
+come first so that the loop proof is written once.  V7a makes a value a list of words,
+`Ty.values`, as `Implements` passes it: a pair is its first component's words followed by its
+second's, so its `Scalar` instance agrees with `Implements`'s instance for pairs by `rfl`.  A
+variable occupies `t.width` consecutive locals, `loadCode` and `storeCode` move the words of a
+value between the stack and locals, and `Holds` and `LocalsHold` state per word what the locals
+hold.  `pair` pushes both components, and `letPair` stores the components in two runs of locals
+and binds them as variables 1 and 0.  The reflector writes `Prod.fst`, `Prod.snd`, and `match` on
+a pair, which Lean elaborates to a matcher, as `letPair`; a test showed that the matcher on a
+variable equals the projections by `rfl`, so the lemma `letPair_eq` closes each case.  The
+encoder writes block types of at most one result, so an `if` with a pair value could not be
+encoded as a multi-value block.  Changing the encoder would change the shared trusted base, so
+every `if` now stores its value's words in locals in each branch and loads them after the
+block, as `LeanExe` does for pair-valued branches.  `Pairs.lean` has seven definitions with pair
+parameters, pair results, nested pairs, and calls that pass pairs, and the test passes all 3,120
+cases of the six examples, comparing multi-value results with `list:` result kinds.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

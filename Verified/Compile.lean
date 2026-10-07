@@ -58,29 +58,56 @@ positions from 2, the last of `S` first. -/
 def FVar.callIndex {S : List Sig} {ps : List Ty} {r : Ty} (f : FVar S ps r) : Nat :=
   2 + (S.length - 1 - f.index)
 
-/-- The locals that an expression needs from its first free local on: one for each `letE` and
-two for each division or remainder on a path of the expression.  A call's arguments leave their
-values on the stack, so they share their locals. -/
+/-- The instructions that push the words in locals `loc` to `loc + w - 1`, in order. -/
+def loadCode (loc : Nat) : Nat → Program
+  | 0 => []
+  | w + 1 => .localGet loc :: loadCode (loc + 1) w
+
+/-- The instructions that store the top `w` words of the stack in locals `loc` to `loc + w - 1`,
+the top word in the last of them. -/
+def storeCode (loc : Nat) : Nat → Program
+  | 0 => []
+  | w + 1 => storeCode (loc + 1) w ++ [.localSet loc]
+
+/-- The locals of a function's parameters: parameter `i` starts after the words of the parameters
+before it. -/
+def paramLocs : List Ty → Nat → List Nat
+  | [], _ => []
+  | t :: ts, loc => loc :: paramLocs ts (loc + t.width)
+
+/-- The number of words that hold the values of the types. -/
+def widthSum (ts : List Ty) : Nat := (ts.map Ty.width).sum
+
+/-- The locals that an expression needs from its first free local on: the words of each `letE`
+and `letPair` value and of each `ite` result, and two for each division or remainder, on a path
+of the expression.  A
+call's arguments and a pair's components leave their words on the stack, so they share their
+locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ => 0
   | _, _, .bin op left right => op.scratch + max left.width right.width
   | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right =>
     max left.width right.width
   | _, _, .not e => e.width
-  | _, _, .ite c thenE elseE => max c.width (max thenE.width elseE.width)
-  | _, _, .letE value body => 1 + max value.width body.width
+  | _, _, .ite (t := t) c thenE elseE => max c.width (t.width + max thenE.width elseE.width)
+  | _, _, .letE (s := s) value body => s.width + max value.width body.width
   | _, _, .call _ args => argsMax fun i => (args i).width
+  | _, _, .pair first second => max first.width second.width
+  | _, _, .letPair (s := s) (t := t) e body => s.width + t.width + max e.width body.width
 
-/-- The instructions that push the word that holds the value of an expression.  Variable `x` is
-in local `locs.getD x.index 0`, and the locals from `base` on are free.  A comparison widens its
-32-bit result to a word, and `ite` tests its condition with `i64.eqz`, so its `if` runs the else
-branch first.  `letE` stores its value in local `base` and gives its body the locals above it.
-A call pushes its arguments in order and calls the function. -/
+/-- The instructions that push the words that hold the value of an expression.  Variable `x`
+starts at local `locs.getD x.index 0`, and the locals from `base` on are free.  A comparison
+widens its 32-bit result to a word.  `ite` tests its condition with `i64.eqz`, so its `if` runs
+the else branch first, and each branch stores its words in the locals from `base` on, which the
+code loads after the `if`: the encoder writes block types of at most one result.  `letE` stores
+its value from local `base` on and gives its body the locals above it, and `letPair` stores its
+first component from `base` on and its second after it.  A call pushes its arguments in order and
+calls the function. -/
 def Expr.code (locs : List Nat) (base : Nat) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
-  | _, _, .bool value => [.constI64 (Ty.encode .bool value)]
-  | _, _, .var x => [.localGet (locs.getD x.index 0)]
+  | _, _, .bool value => [.constI64 (boolWord value)]
+  | _, _, .var (t := t) x => loadCode (locs.getD x.index 0) t.width
   | _, _, .bin op left right =>
     op.code base (left.code locs (base + op.scratch)) (right.code locs (base + op.scratch))
   | _, _, .cmp op left right =>
@@ -88,22 +115,31 @@ def Expr.code (locs : List Nat) (base : Nat) :
   | _, _, .not e => e.code locs base ++ [.eqzI64, .extendUI32]
   | _, _, .and left right => left.code locs base ++ right.code locs base ++ [.andI64]
   | _, _, .or left right => left.code locs base ++ right.code locs base ++ [.orI64]
-  | _, _, .ite c thenE elseE =>
+  | _, _, .ite (t := t) c thenE elseE =>
     c.code locs base ++
-      [.eqzI64, .iff 0 1 (elseE.code locs base) (thenE.code locs base) [] [.i64]]
-  | _, _, .letE value body =>
-    value.code locs (base + 1) ++ [.localSet base] ++ body.code (base :: locs) (base + 1)
+      [.eqzI64, .iff 0 0 (elseE.code locs (base + t.width) ++ storeCode base t.width)
+        (thenE.code locs (base + t.width) ++ storeCode base t.width) [] []] ++
+      loadCode base t.width
+  | _, _, .letE (s := s) value body =>
+    value.code locs (base + s.width) ++ storeCode base s.width ++
+      body.code (base :: locs) (base + s.width)
   | _, _, .call f args => argsCode (fun i => (args i).code locs base) ++ [.call f.callIndex]
+  | _, _, .pair first second => first.code locs base ++ second.code locs base
+  | _, _, .letPair (s := s) (t := t) e body =>
+    e.code locs (base + s.width + t.width) ++ storeCode (base + s.width) t.width ++
+      storeCode base s.width ++
+      body.code ((base + s.width) :: base :: locs) (base + s.width + t.width)
 
 def Func.type (func : Func S) : FuncType :=
-  { params := List.replicate func.params.length .i64, results := [.i64] }
+  { params := List.replicate (widthSum func.params) .i64
+    results := List.replicate func.result.width .i64 }
 
-/-- The function's code: the arguments are locals 0 to `arity - 1`, the locals that the body
-needs follow them, and the body leaves the result on the stack. -/
+/-- The function's code: the words of the arguments are its first locals, the locals that the
+body needs follow them, and the body leaves the words of the result on the stack. -/
 def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
   { params := func.type.params
     locals := List.replicate func.body.width .i64
-    body := func.body.code (List.range func.params.length) func.params.length
+    body := func.body.code (paramLocs func.params 0) (widthSum func.params)
     results := func.type.results
     typeIdx := some typeIdx }
 

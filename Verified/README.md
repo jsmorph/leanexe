@@ -18,11 +18,12 @@ parts of the IR it needs, so ordinary development of `LeanExe` does not affect i
 ## What it covers
 
 A program is a list of functions in which each function may call the functions after it in the
-list, so the calls have no cycles.  A function's parameters and result are 64-bit words or
-`Bool`s, and its body is a typed expression.  An expression of type `t` over a context `Γ` of
+list, so the calls have no cycles.  A function's parameters and result are 64-bit words,
+`Bool`s, or pairs of these, and its body is a typed expression.  An expression of type `t` over a context `Γ` of
 types that may call functions with the signatures `S` has type `Expr S Γ t`, so every expression
 is well typed, reads only variables in scope, and calls only functions that exist.  Expressions
-are constants, variables, `let` bindings, calls, the operations `+`, `-`, `*`, `/`, `%`,
+are constants, variables, `let` bindings, calls, pairs and their destructuring, the operations
+`+`, `-`, `*`, `/`, `%`,
 `&&&`, `|||`, `^^^`, `<<<`, and `>>>` on words, the unsigned comparisons `==`, `!=`, `<`, and `≤`,
 the `Bool` operations `!`, `&&`, and `||`, and `if`, each with Lean's meaning.  Arithmetic wraps
 modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its
@@ -30,11 +31,14 @@ amount modulo 64.  A variable is numbered by its distance from the front of the 
 binding's value is variable 0 of its body, and parameter `i` is variable `i` of the function's
 body.
 
-Every value is one word: a `Bool` is 1 or 0, as `Implements` passes a `Bool`.  Each binding's
-value is stored in a local of its own, and a call pushes its arguments in order and calls the
-function, which the module places before its callers.  WebAssembly traps on a zero divisor, so the compiled
-division and remainder save their operands in scratch locals, test the divisor, and return Lean's
-result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.denote`,
+A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0,
+and a pair as its first component's words followed by its second's.  A function with a pair
+result returns several WebAssembly results.  Each binding's value is stored in locals of its own,
+and a call pushes its arguments' words in order and calls the function, which the module places
+before its callers.  An `if` stores the words of its value in locals in each branch and loads them
+after it, because the encoder writes block types of at most one result.  WebAssembly traps on a
+zero divisor, so the compiled division and remainder save their operands in scratch locals, test
+the divisor, and return Lean's result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.denote`,
 [`Compile.lean`](Compile.lean) the compiler, and [`Correct.lean`](Correct.lean) the theorem.  The
 compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release`
 at functions 0 and 1.
@@ -55,7 +59,7 @@ listed definition becomes a source call, proved from the callee's equation.
 | `Prog.correct` | For every program and every function in it, the function's index in the compiled module returns the word of the function's meaning from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
 | `Func.correct` | A function in a module whose functions at the call indices compute the functions it calls computes its own meaning. |
 | `Expr.code_spec` | From any frame in which every variable holds the word of its value in its local, the code of an expression pushes the word of the expression's value and changes no parameter and no local below the locals it uses. |
-| `compiled.bytes` | In each example, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; and [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
+| `compiled.bytes` | In each example, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; [`Pairs.lean`](Examples/Pairs.lean), pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, and calls that pass and return pairs; and [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Every example is
 an ordinary Lean file: its definitions and one `verified_compile` command.

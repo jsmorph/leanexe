@@ -3,6 +3,7 @@ import Verified.Examples.Mix
 import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
+import Verified.Examples.Pairs
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -60,6 +61,21 @@ def main : IO Unit := do
   for (a, b, c) in selectCases ++ [(99, 7, 3), (100, 7, 3), (5, 3, 7)] do
     IO.println s!"calls|sumSq|i64|i64:{a} i64:{b}|{Calls.sumSq a b}"
     IO.println s!"calls|pick|i64|i64:{a} i64:{b} i64:{c}|{Calls.pick a b c}"
+  for (a, b, c) in selectCases do
+    let (q, r) := Pairs.divMod a b
+    IO.println s!"pairs|divMod|list:i64,i64|i64:{a} i64:{b}|{q} {r}"
+    let (x, y) := Pairs.swapAdd (a, b)
+    IO.println s!"pairs|swapAdd|list:i64,i64|i64:{a} i64:{b}|{x} {y}"
+    IO.println s!"pairs|sumPair|i64|i64:{a} i64:{b}|{Pairs.sumPair (a, b)}"
+    let (lo, hi) := Pairs.minMax a b
+    IO.println s!"pairs|minMax|list:i64,i64|i64:{a} i64:{b}|{lo} {hi}"
+    IO.println s!"pairs|spread|i64|i64:{a} i64:{b} i64:{c}|{Pairs.spread a b c}"
+    let ((n1, n2), n3) := Pairs.nested a b
+    let n2w := if n2 then 1 else 0
+    IO.println s!"pairs|nested|list:i64,i64,i64|i64:{a} i64:{b}|{n1} {n2w} {n3}"
+    for flag in [false, true] do
+      let f := if flag then 1 else 0
+      IO.println s!"pairs|unnest|i64|i64:{a} i64:{f} i64:{b}|{Pairs.unnest ((a, flag), b)}"
   for (a, b, c) in selectCases do
     IO.println s!"select|median|i64|i64:{a} i64:{b} i64:{c}|{Select.median a b c}"
     IO.println s!"select|inBand|i64|i64:{a} i64:{b} i64:{c}|{if Select.inBand a b c then 1 else 0}"
