@@ -26420,7 +26420,8 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V7a: pairs, with values of several words.
 - [x] V7b: `LeanExe.loop` over a state of any type.
 - [x] V8a: the heap statement, and borrowed arrays of words with their size and reads.
-- [ ] V8b: allocation, owned array results and temporaries, and releases.
+- [ ] V8b: allocation, owned array results and temporaries, and releases (owned values done
+  2026-10-07; `build` and the reflector's splits remain).
 - [ ] V8c: inferred parameter modes, moves, and in-place updates.
 - [ ] Later: floats, records, and recursion.
 
@@ -26742,6 +26743,53 @@ operand at an owned position consumed after all operands run, copied only when a
 the same operation views it, as the other compiler's owner rule does; owned parameters that the
 body never reads released at entry; and `Moved` argument types in the external theorem, following
 the decision of 2026-10-01 that exported functions keep their inferred modes.
+
+### V8b, first part: owned values
+
+The compiler now carries every array in a mode and follows the ownership table above for every
+construct except `LeanExe.build`.  `Expr.mode` gives each expression's mode, `copyCode` copies a
+borrowed value into new blocks, `releaseCode` releases an owned one, and `releaseWhere` releases the
+owned variables that a predicate selects.  A function's result is coerced to owned after its body,
+results may hold arrays, and `ImplementsA.lean` transfers the theorem to Lean's instances for every
+result type through `Ty.leanInst_owned`, `Ty.leanInst_blocks`, and `Ty.leanInst_width`.  The
+theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The implementation departs from the reviewed design in three places.  Readers take a variable,
+`size x` and `get x i`, and a call's argument with arrays must be a place, a variable or a pair of
+places; `Expr.placeArgs`, a field of `Func` that the reflector proves by `rfl`, states the rule, and
+the reflector binds any other operand with `let`, which is equal by `zeta`.  The design kept such
+operands in scratch locals and released them after the read or the call; the `let` gives the same
+code without a second release mechanism, and the proof reuses the binding's case.  `Step` has no
+`gone` list: a step keeps the regions that a predicate `keep` selects, and an expression's step
+keeps the regions apart from the blocks of the owned variables that die in it
+(`Holds.KeepDying`).  `Holds` has one invariant for owned variables, that a live owned variable's
+blocks lie apart from every other live variable's regions, which covers both invariants of the
+design.
+
+The proof states the facts that an expression's code leaves as the structure `After`: the step,
+the frame, `Holds` for the variables live after, the value's representation, and the value's
+separation from those variables.  `After.seq` combines two codes in a row, `After.bind` and
+`After.bind2` a binding of one or two variables with its body, `After.release` a release after a
+code, and `After.coerce` a copy.  The loop's invariant is an `After` for the state after `i`
+iterations, and an iteration is an `After.bind2` of the state and the index.  The first proof of
+the `if` case ran out of heartbeats: each `tauto` that closed an inclusion of live sets ran
+`contradiction` over every hypothesis of a large context, 23 seconds in all.  Small lemmas over
+`Bool`, proved by `decide`, replace those calls, and the file builds in 20 seconds at the default
+limit.
+
+[`Owned.lean`](Verified/Examples/Owned.lean) has array results, copies, owned temporaries that a
+reader, a call, a branch, or an unused binding releases, a moved result, a loop over an owned
+array, and a pair of owned arrays taken apart.  `tests/verified/run.sh` runs its cases with the
+host's `call-stats` and requires the blocks still allocated after each call to be the host's
+arguments and the result's arrays; all 3,927 cases pass.  The counters of `swap` show two copies
+beyond the ones the program asks for: each projection of the owned pair `p`, which stays live for
+the other projection, copies the whole pair.  The split of pair binders that the design assigns to
+the reflector removes them.
+
+- [x] Modes, copies, moves, and releases, with array results, proved and tested.
+- [ ] `LeanExe.build`, with the trap at `unreachable` when memory runs out.
+- [ ] The reflector's substitution of `let y := x` and split of pair binders.
+- [ ] Docs: the design document's open work.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
