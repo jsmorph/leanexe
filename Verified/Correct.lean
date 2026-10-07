@@ -720,7 +720,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact nomatch h1
       · exact Or.inr h1
-  | build _ _ _ _ | set _ _ _ _ _ => intro _ _; simp [Expr.aborts]
+  | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ => intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
 theorem Slot.any_map (slots : List Slot) :
@@ -901,33 +901,24 @@ theorem After.bind2 {Γ : List Ty} {env : Env Γ} {slots : List Slot}
       fun i h => hL1 _ (hLive _ h)
   · exact aB.apart.pop.pop.live_mono fun i h => by simpa [Nat.add_assoc] using h
 
-/-- The write of element `k` of an owned array value: the array with that element replaced, in
-the same block.  The write keeps every region apart from the block, and the variables' regions
-lie apart from it. -/
-theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
-    {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals}
-    {words : Array UInt64} {root : UInt64}
+/-- Writes inside the block of an owned array value that leave it holding `words'`, within its
+capacity: the value becomes `words'`, in the same block.  The writes keep every region apart from
+the block, and the variables' regions lie apart from it. -/
+theorem After.rewrite {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store store1 store2 : Store Unit} {s s1 : Locals}
+    {words words' : Array UInt64} {root : UInt64}
     (a : After env slots L0 L base heap store s .array .owned words heap1 store1 s1 [.i64 root])
-    {k : Nat} (hk : k < words.size) (v : UInt64) :
-    After env slots L0 L base heap store s .array .owned (words.set k v hk) heap1
-      (UInt64Array.writeElement store1 root k v) s1 [.i64 root] := by
+    (hWithin : WritesWithin store1 store2 root.toNat (capacityAt store1 root))
+    (hCaps : store2.memoryCaps = store1.memoryCaps) (hValues : UInt64Array.At store2 root words')
+    (hFit : 8 * (words'.size + 1) ≤ capacityAt store1 root) :
+    After env slots L0 L base heap store s .array .owned words' heap1 store2 s1 [.i64 root] := by
   obtain ⟨p, hp, hOwned⟩ := a.rep
   obtain rfl : p = root := by simp only [List.cons.injEq, Value.i64.injEq] at hp; exact hp.1.symm
-  have hA := hOwned.values
-  have hFit := hA.1
   have hBase := hOwned.base
-  have hCapacity := hOwned.capacity
-  have hFrame := UInt64Array.writeElement_frame store1 p words.size k v hFit hk
-  have hWithin : WritesWithin store1 (UInt64Array.writeElement store1 p k v) p.toNat
-      (capacityAt store1 p) :=
-    ⟨by rw [hFrame.1], hFrame.2.1, fun a ha => hFrame.2.2 a (by omega)⟩
-  obtain ⟨hOwned', hCapSame⟩ := hOwned.rewrite hWithin (hA.writeElement hk v)
-    (by rw [Array.size_set]; exact hCapacity)
-  have hBlock : block (UInt64Array.writeElement store1 p k v) p = block store1 p :=
-    block_eq hCapSame
-  have hW : Step heap1 store1 (fun r => regionsDisjoint r (block store1 p)) heap1
-      (UInt64Array.writeElement store1 p k v) [] :=
-    ⟨Heap.At.writesOwned a.step.at_ hOwned hWithin, rfl, fun r hr _ hd =>
+  obtain ⟨hOwned', hCapSame⟩ := hOwned.rewrite hWithin hValues hFit
+  have hBlock : block store2 p = block store1 p := block_eq hCapSame
+  have hW : Step heap1 store1 (fun r => regionsDisjoint r (block store1 p)) heap1 store2 [] :=
+    ⟨Heap.At.writesOwned a.step.at_ hOwned hWithin, hCaps, fun r hr _ hd =>
       ⟨fun x hl hh => hWithin.bytes x (by simp only [block, regionsDisjoint] at hd; omega), hr,
         nofun⟩⟩
   -- The variables' regions lie apart from the block.
@@ -939,7 +930,7 @@ theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0
       (List.mem_singleton_self _) c hc)
   have hStep := a.step.transBoth (keep := Holds.KeepDying env slots L0 L store s) hW
     fun _ hr => ⟨hr, fun hf => hf _ (List.mem_singleton_self _)⟩
-  have hSame : Ty.array.regions .owned (UInt64Array.writeElement store1 p k v) [.i64 p] words =
+  have hSame : Ty.array.regions .owned store2 [.i64 p] words =
       Ty.array.regions .owned store1 [.i64 p] words := by
     show [block _ p] = [block _ p]
     rw [hBlock]
@@ -950,6 +941,68 @@ theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0
     exact List.mem_append_left _ (hb' ▸ List.mem_singleton_self _)
   · exact Holds.Apart.transfer (t := .array) (mode := .owned) (ws := [.i64 p]) (v := words)
       a.holds a.apart hW (fun _ _ => rfl) hKeep hSame
+
+/-- The write of element `k` of an owned array value: the array with that element replaced, in
+the same block. -/
+theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals}
+    {words : Array UInt64} {root : UInt64}
+    (a : After env slots L0 L base heap store s .array .owned words heap1 store1 s1 [.i64 root])
+    {k : Nat} (hk : k < words.size) (v : UInt64) :
+    After env slots L0 L base heap store s .array .owned (words.set k v hk) heap1
+      (UInt64Array.writeElement store1 root k v) s1 [.i64 root] := by
+  obtain ⟨p, hp, hOwned⟩ := a.rep
+  obtain rfl : p = root := by simp only [List.cons.injEq, Value.i64.injEq] at hp; exact hp.1.symm
+  have hA := hOwned.values
+  have hCapacity := hOwned.capacity
+  have hFrame := UInt64Array.writeElement_frame store1 p words.size k v hA.1 hk
+  exact a.rewrite ⟨by rw [hFrame.1], hFrame.2.1, fun x hx => hFrame.2.2 x (by omega)⟩ rfl
+    (hA.writeElement hk v) (by rw [Array.size_set]; exact hCapacity)
+
+/-- An owned variable that dies: its words as an owned value, which consumes its blocks. -/
+theorem After.move {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool}
+    {base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} {t : Ty} (x : Var Γ t)
+    (hVars : Holds env slots (fun i => live i || i == x.index) base heap store s)
+    (hAt : heap.At store) (hOwned : (slots.getD x.index default).mode = .owned)
+    (hDead : live x.index = false) {ws : List Value}
+    (hold : LocalsHold s (slots.getD x.index default).loc ws) (hl : ws.length = t.width) :
+    After env slots (fun i => live i || i == x.index) live base heap store s t .owned (env.get x)
+      heap store s ws := by
+  have hx : (fun i => live i || i == x.index) x.index = true := by simp
+  obtain ⟨-, ws', hold', hRep⟩ := hVars.get x hx
+  obtain rfl := LocalsHold.unique hold' hold (hRep.length.trans hl.symm)
+  rw [hOwned] at hRep
+  refine ⟨⟨hAt, rfl, fun r hr _ hk => ⟨fun _ _ _ => rfl, hr,
+    fun b hb => hk t x hx hDead hOwned ws' hold' hRep.length b hb⟩⟩, Frame.refl base s,
+    hVars.live_mono fun i h => by simp [h], hRep, ?_⟩
+  intro u y hy _ wy hwy hly b hb c hc
+  have hne : x.index ≠ y.index := fun he => by rw [he, hy] at hDead; exact nomatch hDead
+  exact hVars.2 t u x y hx (by simp [hy]) hne hOwned ws' wy hold' hRep.length hwy hly b hb c hc
+
+/-- A step that consumes the block of an owned array value and whose fresh block holds `v'`:
+the value becomes `v'`, at the new address. -/
+theorem After.replace {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 : Locals}
+    {v v' : Array UInt64} {p q : UInt64}
+    (a : After env slots L0 L base heap store s .array .owned v heap1 store1 s1 [.i64 p])
+    (hStep : Step heap1 store1 (fun r => regionsDisjoint r (block store1 p)) heap2 store2
+      [block store2 q])
+    (hOwned : heap2.Owned store2 q v') :
+    After env slots L0 L base heap store s .array .owned v' heap2 store2 s1 [.i64 q] := by
+  have hKeep : ∀ (u : Ty) (y : Var Γ u), L y.index = true → ∀ wy,
+      LocalsHold s1 (slots.getD y.index default).loc wy → wy.length = u.width →
+      ∀ c ∈ u.regions (slots.getD y.index default).mode store1 wy (env.get y),
+        regionsDisjoint c (block store1 p) := fun u y hy wy hwy hly c hc =>
+    regionsDisjoint_symm (a.apart u y hy (Or.inl rfl) wy hwy hly (block store1 p)
+      (List.mem_singleton_self _) c hc)
+  have hStep2 := a.step.transBoth (keep := Holds.KeepDying env slots L0 L store s) hStep
+    fun _ hr => ⟨hr, fun hf => hf _ (List.mem_singleton_self _)⟩
+  refine ⟨hStep2.mono (fun _ h => h) fun b hb => List.mem_append_right _ hb, a.frame,
+    a.holds.step hStep hKeep, ⟨q, rfl, hOwned⟩, ?_⟩
+  intro u y hy _ wy hwy hly b hb c hc
+  obtain ⟨hSame, hFresh⟩ := a.holds.regions_after hStep hy hwy hly (hKeep u y hy wy hwy hly)
+  rw [hSame] at hc
+  exact regionsDisjoint_symm (hFresh c hc b hb)
 
 /-- The store of a word value into local `loc`, at or above `base`: the facts of `After` as an
 evolution to the locals with the word. -/
@@ -1006,6 +1059,9 @@ theorem let_trap_body : ∀ v b m o : Bool, (m = true → (v || o) = true) →
     (b || (m || o)) = true → (v || b || o) = true := by decide
 
 theorem live_build : ∀ a b c : Bool, (a || b) = true → (a || (c || b)) = true := by decide
+
+theorem append_live : ∀ a xb yb : Bool,
+    (a || yb || xb) = true → (a || (xb || yb)) = true := by decide
 
 theorem live_dup : ∀ a b : Bool, (a || b || b) = true → (a || b) = true := by decide
 
@@ -2490,6 +2546,513 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .array) {i v : Ex
     simp only [List.take_zero, List.drop_zero, List.nil_append, wp_localGet_cons, hP4]
     exact hFinish _ (env.get x) (by simp [Array.set!, Array.setIfInBounds, hk]) a4
 
+/-- `Var.roomCode`: an owned array, at the address in local `b + 4`, whose first elements are
+those of `x`, whose length is `x`'s length plus the word `e` in local `ext`, and whose block has
+room for that length.  An owned `x` that dies is consumed; any other `x` is read. -/
+theorem spec_room (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .array) {env : Env Γ'}
+    {slots : List Slot} {live : Nat → Bool} {b ext : Nat} {e : UInt64} {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
+    (hVars : Holds env slots (fun i => live i || i == x.index) b heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ b)
+    (hRoom : b + 6 ≤ s.params.length + s.locals.length) (hExt : s.get ext = some (.i64 e))
+    (hExtB : ext < b) (he : e.toNat < 536870912) (hTrap : TrapOK true Q)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (q : UInt64)
+      (words : Array UInt64), words.size = (env.get x).size + e.toNat →
+      (∀ j (hj : j < (env.get x).size), words[j]! = (env.get x)[j]) →
+      After env slots (fun i => live i || i == x.index) live b heap store s .array .owned words
+        heap' store' s' [.i64 q] →
+      s'.get (b + 1) = some (.i64 (UInt64.ofNat (env.get x).size)) →
+      s'.get (b + 4) = some (.i64 q) → s'.values = s.values → wp m rest Q store' s' host) :
+    wp m (x.roomCode slots b live ext ++ rest) Q store s host := by
+  obtain ⟨hBelowX, ws, hold, hRep⟩ := hVars.get x (by simp)
+  obtain ⟨p, rfl, hArr⟩ := hRep
+  have hB := hArr.borrow
+  have hA := hB.values
+  have hLenB := hA.lengthBound
+  have hFitA := hA.1
+  have hn : (env.get x).size < 536870912 := by omega
+  have hN : (UInt64.ofNat (env.get x).size).toNat = (env.get x).size :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  have hP : s.get (slots.getD x.index default).loc = some (.i64 p) := by
+    simpa using hold 0 (by simp)
+  simp only [Var.roomCode, List.append_assoc, List.cons_append, List.nil_append]
+  -- The address, in local `b`.
+  simp only [wp_localGet_cons, hP]
+  refine wp_localSet_local hBase (by omega) ?_
+  have hLow0 : ({ s with values := s.values } : Locals).params.length ≤ b := hBase
+  let s1 := setLocal { s with values := s.values } b (.i64 p)
+  have hP1 : s1.get b = some (.i64 p) := Locals.get_setLocal_same hLow0 (by omega)
+  have hExt1 : s1.get ext = some (.i64 e) := by
+    rw [Locals.get_setLocal_ne hLow0 (by omega)]; exact hExt
+  -- The length, in local `b + 1`.
+  show wp m _ Q store s1 host
+  simp only [wp_localGet_cons, hP1, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
+    UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead]
+  have hLow1 : ({ s1 with values := s.values } : Locals).params.length ≤ b + 1 := by
+    show s.params.length ≤ b + 1; omega
+  have hHigh1 : b + 1 < ({ s1 with values := s.values } : Locals).params.length +
+      ({ s1 with values := s.values } : Locals).locals.length := by
+    show b + 1 < s.params.length + (setLocal _ _ _).locals.length; simp [setLocal]; omega
+  refine wp_localSet_local hLow1 hHigh1 ?_
+  let s2 := setLocal { s1 with values := s.values } (b + 1)
+    (.i64 (UInt64.ofNat (env.get x).size))
+  have hN2 : s2.get (b + 1) = some (.i64 (UInt64.ofNat (env.get x).size)) :=
+    Locals.get_setLocal_same hLow1 hHigh1
+  have hP2 : s2.get b = some (.i64 p) := by
+    rw [Locals.get_setLocal_ne hLow1 (by omega)]; exact hP1
+  have hExt2 : s2.get ext = some (.i64 e) := by
+    rw [Locals.get_setLocal_ne hLow1 (by omega)]; exact hExt1
+  -- The new length, in local `b + 2`.
+  show wp m _ Q store s2 host
+  simp only [wp_localGet_cons, Locals.get_values, hN2, hExt2, wp_addI64_cons]
+  have hLow2 : ({ s2 with values := s.values } : Locals).params.length ≤ b + 2 := by
+    show s.params.length ≤ b + 2; omega
+  have hHigh2 : b + 2 < ({ s2 with values := s.values } : Locals).params.length +
+      ({ s2 with values := s.values } : Locals).locals.length := by
+    show b + 2 < s.params.length + (setLocal _ _ _).locals.length; simp [s1, setLocal]; omega
+  refine wp_localSet_local hLow2 hHigh2 ?_
+  let s3 := setLocal { s2 with values := s.values } (b + 2)
+    (.i64 (UInt64.ofNat (env.get x).size + e))
+  have hT3 : s3.get (b + 2) = some (.i64 (UInt64.ofNat (env.get x).size + e)) :=
+    Locals.get_setLocal_same hLow2 hHigh2
+  have hN3 : s3.get (b + 1) = some (.i64 (UInt64.ofNat (env.get x).size)) := by
+    rw [Locals.get_setLocal_ne hLow2 (by omega)]; exact hN2
+  have hP3 : s3.get b = some (.i64 p) := by
+    rw [Locals.get_setLocal_ne hLow2 (by omega)]; exact hP2
+  have hTotal : (UInt64.ofNat (env.get x).size + e).toNat = (env.get x).size + e.toNat := by
+    rw [UInt64.toNat_add, hN]; omega
+  -- The trap when the new length is `2 ^ 29` or more.
+  show wp m _ Q store s3 host
+  simp only [wp_localGet_cons, hT3, wp_constI64_cons, wp_geUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  by_cases hBig : (536870912 : UInt64) ≤ UInt64.ofNat (env.get x).size + e
+  · simp (config := { decide := true }) only [ge_iff_le, hBig, ↓reduceIte]
+    rw [wp_unreachable_cons]
+    exact hTrap _
+  simp (config := { decide := true }) only [ge_iff_le, hBig, ↓reduceIte]
+  rw [wp_nil]
+  dsimp only
+  simp only [List.take_zero, List.drop_zero, List.nil_append]
+  have hTotalLt : (env.get x).size + e.toNat < 536870912 := by
+    have := UInt64.not_le.mp hBig
+    rw [UInt64.lt_iff_toNat_lt, hTotal] at this
+    exact this
+  have hT3' : ({ s3 with values := s3.values } : Locals).get (b + 2) =
+      some (.i64 (UInt64.ofNat (env.get x).size + e)) := hT3
+  have hFrame3 : ∀ j < b, s3.get j = s.get j := fun j hj => by
+    rw [Locals.get_setLocal_ne hLow2 (by omega), Locals.get_values,
+      Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values,
+      Locals.get_setLocal_ne hLow0 (by omega), Locals.get_values]
+  have hp3 : s3.params = s.params := rfl
+  have hl3 : s3.locals.length = s.locals.length := by simp [s3, s2, s1, setLocal]
+  have hv3 : s3.values = s.values := rfl
+  by_cases hMove : (slots.getD x.index default).mode = .owned ∧ live x.index = false
+  swap
+  · -- A copy into a block with room.
+    rw [ite_eq_right hMove]
+    simp only [List.cons_append, List.append_assoc, wp_localGet_cons, hT3', wp_constI64_cons,
+      wp_addI64_cons, wp_mulI64_cons]
+    have hBytes : ((UInt64.ofNat (env.get x).size + e + 1) * 8).toNat =
+        8 * ((UInt64.ofNat (env.get x).size + e).toNat + 1) := by
+      simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.reduceToNat] at hTotal ⊢
+      omega
+    refine wp_allocCopy hm hAt hCap hTrap hB (by rw [hTotal]; exact hTotalLt) (by omega)
+      (by rw [hBytes]) (by rw [hBytes, hTotal]; omega) hP3 hT3 hN3
+      (by show s.params.length ≤ b + 4; omega) (by rw [hp3, hl3]; omega)
+      (by show s.params.length ≤ b + 5; omega) (by rw [hp3, hl3]; omega)
+      (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
+      fun heap1 store1 s4 q words hSize hPrefix hStep hOwnedQ _ hp4 hl4 hOther4 hQ4 hv4 => ?_
+    have hF4 : Frame b s s4 := ⟨hp4.trans hp3, hl4.trans hl3, fun j hj => by
+      rw [hOther4 j (by omega) (by omega), hFrame3 j hj]⟩
+    have hVarsL := hVars.live_mono (live' := live) fun i h => by simp [h]
+    refine hNext heap1 store1 s4 q words (by rw [hSize, hTotal]) hPrefix ⟨?_, hF4, ?_,
+      ⟨q, rfl, hOwnedQ⟩, ?_⟩ (by rw [hOther4 _ (by omega) (by omega)]; exact hN3) hQ4
+      (by rw [hv4, hv3])
+    · exact hStep.mono (fun _ _ => trivial) fun _ h => h
+    · exact (hVarsL.step hStep fun _ _ _ _ _ _ _ _ => trivial).frame hF4 le_rfl
+    · intro u y hy _ wy hwy hly c hc d hd
+      have hwy' := (hVarsL.hold_agree (fun j hj => hF4.below j hj) hy hly).mp hwy
+      obtain ⟨hSame, hFresh⟩ := hVarsL.regions_after hStep hy hwy' hly fun _ _ => trivial
+      rw [hSame] at hd
+      exact regionsDisjoint_symm (hFresh d hd c hc)
+  -- An owned `x` that dies: its block, extended in place or replaced by a larger one.
+  obtain ⟨hOwnedX, hDead⟩ := hMove
+  rw [ite_eq_left (show (slots.getD x.index default).mode = .owned ∧ live x.index = false from
+    ⟨hOwnedX, hDead⟩)]
+  have hOwned : heap.Owned store p (env.get x) := by rw [hOwnedX] at hArr; exact hArr
+  have hBaseP := hOwned.base
+  have hAddrP := hOwned.address
+  have hBelowP := hOwned.below
+  have hTop := hAt.top
+  have hCapacityP := hOwned.capacity
+  have a0 := (After.move x hVars hAt hOwnedX hDead hold rfl).reframe
+    ⟨hp3, hl3, fun j hj => hFrame3 j hj⟩
+  have hP3' : ({ s3 with values := s3.values } : Locals).get b = some (.i64 p) := hP3
+  have hCapAddr : (p - 32).toUInt32.toNat = p.toNat - 32 :=
+    headerAddress_toNat (by simp only [UInt64.reduceToNat]; omega) (by omega)
+  -- The capacity, in local `b + 3`.
+  simp only [List.cons_append, List.nil_append, wp_localGet_cons, hP3', wp_constI64_cons,
+    wp_subI64_cons, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
+    UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by rw [hCapAddr]; omega)]
+  have hLow3 : ({ s3 with values := s3.values } : Locals).params.length ≤ b + 3 := by
+    show s.params.length ≤ b + 3; omega
+  have hHigh3 : b + 3 < ({ s3 with values := s3.values } : Locals).params.length +
+      ({ s3 with values := s3.values } : Locals).locals.length := by
+    show b + 3 < s3.params.length + s3.locals.length; rw [hp3, hl3]; omega
+  refine wp_localSet_local hLow3 hHigh3 ?_
+  let s4 := setLocal { s3 with values := s3.values } (b + 3)
+    (.i64 (store.mem.read64 (p - 32).toUInt32))
+  have hC4 : s4.get (b + 3) = some (.i64 (store.mem.read64 (p - 32).toUInt32)) :=
+    Locals.get_setLocal_same hLow3 hHigh3
+  have hT4 : s4.get (b + 2) = some (.i64 (UInt64.ofNat (env.get x).size + e)) := by
+    rw [Locals.get_setLocal_ne hLow3 (by omega), Locals.get_values]; exact hT3
+  have hN4 : s4.get (b + 1) = some (.i64 (UInt64.ofNat (env.get x).size)) := by
+    rw [Locals.get_setLocal_ne hLow3 (by omega), Locals.get_values]; exact hN3
+  have hP4 : s4.get b = some (.i64 p) := by
+    rw [Locals.get_setLocal_ne hLow3 (by omega), Locals.get_values]; exact hP3
+  have hp4 : s4.params = s.params := rfl
+  have hl4 : s4.locals.length = s.locals.length := by simp [s4, setLocal, hl3]
+  have hF4 : Frame b s3 s4 := ⟨rfl, by simp [s4, setLocal], fun j hj => by
+    rw [Locals.get_setLocal_ne hLow3 (by omega), Locals.get_values]⟩
+  have hcN : (store.mem.read64 (p - 32).toUInt32).toNat = capacityAt store p := rfl
+  -- The room test.
+  show wp m _ Q store s4 host
+  simp only [wp_localGet_cons, Locals.get_values, hT4, hC4, wp_constI64_cons, wp_addI64_cons,
+    wp_mulI64_cons, wp_leUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hNeed : ((UInt64.ofNat (env.get x).size + e + 1) * 8).toNat =
+      8 * ((env.get x).size + e.toNat + 1) := by
+    simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.reduceToNat] at hTotal ⊢
+    omega
+  by_cases hFits : (UInt64.ofNat (env.get x).size + e + 1) * 8 ≤
+    store.mem.read64 (p - 32).toUInt32
+  · -- Room in the block: the new length, in place.
+    simp (config := { decide := true }) only [hFits, ↓reduceIte]
+    rw [UInt64.le_iff_toNat_le, hNeed, hcN] at hFits
+    have hP4' : ({ s4 with values := s4.values } : Locals).get b = some (.i64 p) := hP4
+    simp only [wp_localGet_cons, hP4']
+    have hLow4 : ({ s4 with values := s4.values } : Locals).params.length ≤ b + 4 := by
+      show s.params.length ≤ b + 4; omega
+    have hHigh4 : b + 4 < ({ s4 with values := s4.values } : Locals).params.length +
+        ({ s4 with values := s4.values } : Locals).locals.length := by
+      show b + 4 < s4.params.length + s4.locals.length; rw [hp4, hl4]; omega
+    refine wp_localSet_local hLow4 hHigh4 ?_
+    let s5 := setLocal { s4 with values := s4.values } (b + 4) (.i64 p)
+    have hQ5 : s5.get (b + 4) = some (.i64 p) := Locals.get_setLocal_same hLow4 hHigh4
+    have hT5 : s5.get (b + 2) = some (.i64 (UInt64.ofNat (env.get x).size + e)) := by
+      rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values]; exact hT4
+    have hN5 : s5.get (b + 1) = some (.i64 (UInt64.ofNat (env.get x).size)) := by
+      rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values]; exact hN4
+    have hF5 : Frame b s4 s5 := ⟨rfl, by simp [s5, setLocal], fun j hj => by
+      rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values]⟩
+    show wp m _ _ store s5 host
+    have hP32 : p.toUInt32.toNat = p.toNat := by rw [Memory.toUInt32_toNat]; omega
+    simp only [wp_localGet_cons, Locals.get_values, hQ5, hT5, wp_wrapI64_cons, wrap_toUInt32,
+      wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    rw [ite_eq_right (by rw [hP32]; omega), wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append]
+    -- The block holds the new length, the elements of `x`, and what memory held after them.
+    let store' : Store Unit :=
+      { store with mem := store.mem.write64 p.toUInt32 (UInt64.ofNat (env.get x).size + e) }
+    let words : Array UInt64 :=
+      Array.ofFn (n := (UInt64.ofNat (env.get x).size + e).toNat) fun j =>
+        if j.val < (env.get x).size then (env.get x)[j.val]!
+        else store'.mem.read64 (UInt64Array.wordAddress p (j.val + 1))
+    have hSize : words.size = (UInt64.ofNat (env.get x).size + e).toNat := Array.size_ofFn
+    have hValues : UInt64Array.At store' p words := by
+      refine ⟨by rw [hSize, hTotal]; omega, ?_, ?_, fun j hj => ?_⟩
+      · rw [hSize, hTotal]; simp only [store', Wasm.Mem.write64_pages]; omega
+      · rw [hSize, UInt64.ofNat_toNat]; exact Memory.read64_write64 ..
+      · simp only [words, Array.getElem_ofFn]
+        rw [hSize, hTotal] at hj
+        split
+        · next hjn =>
+          rw [getElem!_pos _ j hjn, ← hA.elementRead j hjn]
+          refine Memory.read64_write64_disjoint _ _ _ _ (Or.inr ?_)
+          rw [hP32, ← UInt64Array.wordAddress, UInt64Array.wordAddress_toNat hFitA (by omega)]
+          omega
+        · rfl
+    have hWrites : Memory.WritesRange store store' p.toNat (p.toNat + 8) :=
+      Memory.WritesRange.write64 _ p.toUInt32 _ _ _ (by omega) (by omega)
+    have hWithin : WritesWithin store store' p.toNat (capacityAt store p) :=
+      ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
+    have aW := ((a0.reframe hF4).reframe hF5).rewrite hWithin (by rw [hWrites.1]) hValues
+      (by rw [hSize, hTotal]; omega)
+    refine hNext heap store' _ p words (by rw [hSize, hTotal]) (fun j hj => ?_) aW hN5 hQ5 rfl
+    rw [getElem!_pos words j (by rw [hSize, hTotal]; omega)]
+    simp only [words, Array.getElem_ofFn]
+    rw [ite_eq_left hj, getElem!_pos _ j hj]
+  · -- No room: a block of at least twice the capacity, then the release of the old one.
+    simp (config := { decide := true }) only [hFits, ↓reduceIte]
+    have hT4' : ({ s4 with values := s4.values } : Locals).get (b + 2) =
+        some (.i64 (UInt64.ofNat (env.get x).size + e)) := hT4
+    have hC4' : ({ s4 with values := s4.values } : Locals).get (b + 3) =
+        some (.i64 (store.mem.read64 (p - 32).toUInt32)) := hC4
+    refine wp_requestCode hT4' hC4' (by rw [hTotal]; exact hTotalLt) (by rw [hcN]; omega)
+      fun r hr1 hr2 => ?_
+    refine wp_allocCopy hm hAt hCap (hTrap.imp fun _ h => h) hOwned.borrowed
+      (by rw [hTotal]; exact hTotalLt) (by rw [hTotal]; omega) hr1 hr2 hP4 hT4 hN4
+      (by show s.params.length ≤ b + 4; omega) (by rw [hp4, hl4]; omega)
+      (by show s.params.length ≤ b + 5; omega) (by rw [hp4, hl4]; omega)
+      (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
+      fun heap1 store1 s5 q words hSize hPrefix hStep1 hOwnedQ _ hp5 hl5 hOther5 hQ5 hv5 => ?_
+    have hP5 : s5.get b = some (.i64 p) := by rw [hOther5 b (by omega) (by omega)]; exact hP4
+    simp only [wp_localGet_cons, hP5]
+    obtain ⟨⟨hOwnedP1, hCapP1⟩, hApartPQ⟩ := hStep1.owned hOwned trivial
+    refine wp_release hm hStep1.at_ hOwnedP1 ?_
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append]
+    have hRel := releaseStep hStep1.at_ hOwnedP1
+    have hPQ : regionsDisjoint (block store1 q) (block store1 p) := by
+      rw [block_eq hCapP1]
+      exact regionsDisjoint_symm (hApartPQ _ (List.mem_singleton_self _))
+    obtain ⟨⟨hOwnedQ2, hCapQ2⟩, -⟩ := hRel.owned hOwnedQ hPQ
+    have hStepG := hStep1.transBoth hRel (keep := fun r => regionsDisjoint r (block store p))
+      fun _ hr => ⟨trivial, fun _ => by rw [block_eq hCapP1]; exact hr⟩
+    have aG := (a0.reframe hF4).replace (hStepG.mono (fun _ h => h) fun c hc => by
+      rw [List.mem_singleton.mp hc, block_eq hCapQ2]
+      exact List.mem_append_left _ (List.mem_singleton_self _)) hOwnedQ2
+    have hF5 : Frame b s4 { s5 with values := s4.values } := ⟨hp5, hl5, fun j hj => by
+      show s5.get j = s4.get j
+      exact hOther5 j (by omega) (by omega)⟩
+    exact hNext _ _ _ q words (by rw [hSize, hTotal]) hPrefix (aG.reframe hF5)
+      (by show s5.get (b + 1) = _; rw [hOther5 _ (by omega) (by omega)]; exact hN4) hQ5 rfl
+
+/-- `x.push v`: the value in local `base`, the array taken with room for one more element by
+`Var.roomCode` from local `base + 2` on, and the store of the value after its elements. -/
+theorem spec_push (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .array) {v : Expr S Γ' .word}
+    (vSpec : ∀ env slots live, CodeSpec m funs host v env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.push x v) env slots live := by
+  intro env slots live base heap store s hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hv := Nat.le_max_left v.width 8
+  have h8 := Nat.le_max_right v.width 8
+  simp only [Expr.placeArgs] at hPlace
+  have hTrapT : TrapOK true Q := hTrap.of_imp fun _ => by simp [Expr.aborts]
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The value, in local `base`.
+  have hIn : ∀ k, ((live k || k == x.index) || v.uses k) = true →
+      (live k || (Expr.push x v).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact live_assoc _ _ _ h
+  refine vSpec env slots (fun k => live k || k == x.index) base heap store s
+    (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap1 store1 s1 ws1 a1 => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_word] at hR1
+  subst hR1
+  refine After.storeWord a1 le_rfl hBase (by omega) fun e1 hV1 => ?_
+  have hp1 := a1.frame.params
+  have hl1 := a1.frame.length
+  -- The count of new elements, 1, in local `base + 1`.
+  simp only [wp_constI64_cons]
+  have hLow1 : ({ setLocal { s1 with values := s.values } base (.i64 (v.denote funs env)) with
+      values := s.values } : Locals).params.length ≤ base + 1 := by
+    show s1.params.length ≤ base + 1; rw [hp1]; omega
+  have hHigh1 : base + 1 < ({ setLocal { s1 with values := s.values } base
+      (.i64 (v.denote funs env)) with values := s.values } : Locals).params.length +
+      ({ setLocal { s1 with values := s.values } base (.i64 (v.denote funs env)) with
+      values := s.values } : Locals).locals.length := by
+    show base + 1 < s1.params.length + (setLocal _ _ _).locals.length
+    simp only [setLocal, List.length_set]; rw [hp1, hl1]; omega
+  refine wp_localSet_local hLow1 hHigh1 ?_
+  set s2 := setLocal { setLocal { s1 with values := s.values } base (.i64 (v.denote funs env))
+    with values := s.values } (base + 1) (.i64 1) with hs2
+  have hOne2 : s2.get (base + 1) = some (.i64 1) := Locals.get_setLocal_same hLow1 hHigh1
+  have hV2 : s2.get base = some (.i64 (v.denote funs env)) := by
+    rw [hs2, Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]; exact hV1
+  have hF2 : Frame base (setLocal { s1 with values := s.values } base (.i64 (v.denote funs env)))
+      s2 := ⟨rfl, by simp [s2, setLocal], fun j hj => by
+    rw [hs2, Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]⟩
+  have e2 : Evolves env slots (fun k => (live k || k == x.index) || v.uses k)
+      (fun k => live k || k == x.index) base heap store s heap1 store1 s2 :=
+    ⟨e1.step, e1.frame.trans hF2, e1.holds.agree fun j hj => hF2.below j hj⟩
+  have hp2 : s2.params = s.params := e2.frame.params
+  have hl2 : s2.locals.length = s.locals.length := e2.frame.length
+  -- The array, with room for one more element, from local `base + 2` on.
+  refine spec_room hm x (b := base + 2) (ext := base + 1) (e := 1) (s := s2)
+    (e2.holds.mono (by omega))
+    e2.step.at_ (by rw [e2.step.cap m]; exact hCap) (by rw [hp2]; omega)
+    (by rw [hp2, hl2]; omega) hOne2 (by omega) (by decide) hTrapT
+    fun heap2 store2 s3 q words hSize hPrefix aR hN3 hQ3 hv3 => ?_
+  have hV3 : s3.get base = some (.i64 (v.denote funs env)) :=
+    (aR.frame.below base (by omega)).trans hV2
+  obtain ⟨p, hp, hOwnedQ⟩ := aR.rep
+  obtain rfl : p = q := by simp only [List.cons.injEq, Value.i64.injEq] at hp; exact hp.1.symm
+  have hn : (env.get x).size < words.size := by rw [hSize]; simp
+  have hElement := hOwnedQ.values.elementBound _ hn
+  -- The store of the value as element `n`.
+  simp only [wp_localGet_cons, Locals.get_values, hQ3, hN3, hV3, wp_constI64_cons,
+    wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wrap_toUInt32, element_address,
+    wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (show ¬((UInt64Array.wordAddress p ((env.get x).size + 1)).toNat + 8 >
+    store2.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega)]
+  have aW := aR.writeElement hn (v.denote funs env)
+  have hWords : words.set (env.get x).size (v.denote funs env) hn =
+      (env.get x).push (v.denote funs env) := by
+    apply Array.ext (by simp [hSize]) fun j h1 h2 => ?_
+    rw [Array.getElem_set]
+    split
+    · next he => subst he; simp
+    · next he =>
+      rw [Array.getElem_push_lt (by simp at h2; omega), ← hPrefix j (by simp at h2; omega),
+        getElem!_pos words j (by simpa using h1)]
+  rw [hWords] at aW
+  have aFin := After.prepend (hVars.live_mono hIn) e2 (aW.lower e2.holds (by omega)
+    fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
+  have hv2 : s2.values = s.values := rfl
+  simpa [hv3, hv2, UInt64Array.writeElement] using hNext heap2 _ s3 [.i64 p] (aFin.liveIn hIn)
+
+/-- `x ++ y`: the length of `y` in local `base`, the array `x` taken with room for `y`'s elements
+by `Var.roomCode` from local `base + 1` on, with `y` live, the copy of `y`'s elements after `x`'s,
+and the release of `y` when it is owned and dies there. -/
+theorem spec_append (hm : Runtime m) {Γ' : List Ty} (x y : Var Γ' .array) :
+    ∀ env slots live, CodeSpec m funs host (Expr.append (S := S) x y) env slots live := by
+  intro env slots live base heap store s hVars hAt hCap hBase hRoom _ rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hTrapT : TrapOK true Q := hTrap.of_imp fun _ => by simp [Expr.aborts]
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The length of `y`, in local `base`.
+  obtain ⟨hBelowY, wy, holdy, hRepY⟩ := hVars.get y (by simp [Expr.uses])
+  obtain ⟨py, rfl, hArrY⟩ := hRepY
+  have hYB : (slots.getD y.index default).loc < base := by
+    have := hBelowY; simp only [Ty.width] at this; omega
+  have hBY := hArrY.borrow
+  have hAY := hBY.values
+  have hLenY := hAY.lengthBound
+  have hFitY := hAY.1
+  have hmY : (env.get y).size < 536870912 := by omega
+  have hMY : (UInt64.ofNat (env.get y).size).toNat = (env.get y).size :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  have hPY : s.get (slots.getD y.index default).loc = some (.i64 py) := by
+    simpa using holdy 0 (by simp)
+  simp only [wp_localGet_cons, hPY, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
+    UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hAY.lengthRead]
+  refine wp_localSet_local hBase (by omega) ?_
+  have hLow0 : ({ s with values := s.values } : Locals).params.length ≤ base := hBase
+  set s1 := setLocal { s with values := s.values } base (.i64 (UInt64.ofNat (env.get y).size))
+    with hs1
+  have hM1 : s1.get base = some (.i64 (UInt64.ofNat (env.get y).size)) :=
+    Locals.get_setLocal_same hLow0 (by omega)
+  have hF1 : Frame base s s1 := ⟨rfl, by simp [s1, setLocal], fun j hj => by
+    rw [hs1, Locals.get_setLocal_ne hLow0 (by omega), Locals.get_values]⟩
+  -- The array `x` with room, from local `base + 1` on, with `y` live.
+  have hIn : ∀ k, ((live k || k == y.index) || k == x.index) = true →
+      (live k || (Expr.append (S := S) x y).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact append_live _ _ _ h
+  have hVars1 : Holds env slots (fun k => (live k || k == y.index) || k == x.index) (base + 1)
+      heap store s1 :=
+    ((hVars.live_mono hIn).agree fun j hj => hF1.below j hj).mono (by omega)
+  refine spec_room hm x (b := base + 1) (ext := base) (e := UInt64.ofNat (env.get y).size)
+    (s := s1) hVars1 hAt hCap (by show s.params.length ≤ base + 1; omega)
+    (by show base + 1 + 6 ≤ s1.params.length + s1.locals.length; simp [s1, setLocal]; omega)
+    hM1 (by omega) (by rw [hMY]; exact hmY) hTrapT
+    fun heap1 store1 s2 q words hSize hPrefix aR hN2 hQ2 hv2 => ?_
+  rw [hMY] at hSize
+  have hp2 : s2.params = s.params := aR.frame.params
+  have hl2 : s2.locals.length = s.locals.length := by rw [aR.frame.length]; simp [s1, setLocal]
+  have hM2 : s2.get base = some (.i64 (UInt64.ofNat (env.get y).size)) :=
+    (aR.frame.below base (by omega)).trans hM1
+  -- `y` stays readable, apart from the new array.
+  obtain ⟨-, wy', holdy', hRepY'⟩ := aR.holds.get y (by simp)
+  have hAgree2 : ∀ j < base, s2.get j = s.get j := fun j hj =>
+    (aR.frame.below j (by omega)).trans (hF1.below j hj)
+  have holdy2 : LocalsHold s2 (slots.getD y.index default).loc [.i64 py] := fun k hk => by
+    rw [hAgree2 ((slots.getD y.index default).loc + k)
+      (by simp at hk; omega)]
+    exact holdy k hk
+  obtain rfl := LocalsHold.unique holdy' holdy2 (by rw [hRepY'.length]; rfl)
+  obtain ⟨py', hpy, hArrY1⟩ := hRepY'
+  obtain rfl : py = py' := by simp only [List.cons.injEq, Value.i64.injEq] at hpy; exact hpy.1
+  have hBY1 := hArrY1.borrow
+  obtain ⟨p, hp, hOwnedQ⟩ := aR.rep
+  obtain rfl : p = q := by simp only [List.cons.injEq, Value.i64.injEq] at hp; exact hp.1.symm
+  have hCapQ := hOwnedQ.capacity
+  have hBaseQ := hOwnedQ.base
+  have hApartQY : py.toNat + 8 * ((env.get y).size + 1) ≤ p.toNat ∨
+      p.toNat + 8 * (words.size + 1) ≤ py.toNat := by
+    have hD := aR.apart _ y (by simp) (Or.inl rfl) [.i64 py] holdy2 rfl (block store1 p)
+      (List.mem_singleton_self _)
+    cases hmy : (slots.getD y.index default).mode
+    · rw [hmy] at hD
+      have := hD _ (List.mem_singleton_self _)
+      simp only [block, regionsDisjoint] at this
+      omega
+    · rw [hmy] at hD hArrY1
+      have hOwnedY : heap1.Owned store1 py (env.get y) := hArrY1
+      have := hD (block store1 py) (List.mem_singleton_self _)
+      have := hOwnedY.capacity
+      have := hOwnedY.base
+      simp only [block, regionsDisjoint] at *
+      omega
+  -- The address of element `n` of the new array, in local `base + 4`.
+  have h8n : UInt64.ofNat (env.get x).size * 8 = UInt64.ofNat (8 * (env.get x).size) := by
+    apply UInt64.toNat_inj.mp
+    simp only [UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+    omega
+  simp only [wp_localGet_cons, Locals.get_values, hQ2, hN2, wp_constI64_cons, wp_mulI64_cons,
+    wp_addI64_cons, h8n]
+  have hLow2 : ({ s2 with values := s2.values } : Locals).params.length ≤ base + 4 := by
+    show s2.params.length ≤ base + 4; rw [hp2]; omega
+  have hHigh2 : base + 4 < ({ s2 with values := s2.values } : Locals).params.length +
+      ({ s2 with values := s2.values } : Locals).locals.length := by
+    show base + 4 < s2.params.length + s2.locals.length; rw [hp2, hl2]; omega
+  refine wp_localSet_local hLow2 hHigh2 ?_
+  set s3 := setLocal { s2 with values := s2.values } (base + 4)
+    (.i64 (p + UInt64.ofNat (8 * (env.get x).size))) with hs3
+  have hD3 : s3.get (base + 4) = some (.i64 (p + UInt64.ofNat (8 * (env.get x).size))) :=
+    Locals.get_setLocal_same hLow2 hHigh2
+  have hGet3 : ∀ j, j ≠ base + 4 → s3.get j = s2.get j := fun j hj => by
+    rw [hs3, Locals.get_setLocal_ne hLow2 hj, Locals.get_values]
+  have hp3 : s3.params = s.params := hp2
+  have hl3 : s3.locals.length = s.locals.length := by simp [s3, setLocal, hl2]
+  -- The copy of `y`'s elements after `x`'s.
+  refine wp_copyInto (k := (env.get x).size) hBY1.values hOwnedQ.values (by omega) hApartQY
+    (by rw [hGet3 _ (by omega), hAgree2 _ hYB]; exact hPY) hD3
+    (by rw [hGet3 _ (by omega)]; exact hM2) (by omega) (by omega)
+    (by omega) (by rw [hp3]; omega) (by rw [hp3, hl3]; omega)
+    fun store2 s4 hW hA2 hp4 hl4 hOther4 hv4 => ?_
+  have hWords : overlay words (env.get y) (env.get x).size (env.get y).size =
+      env.get x ++ env.get y := by
+    apply Array.ext (by simp [overlay_size, hSize]) fun j h1 h2 => ?_
+    simp only [overlay, Array.getElem_ofFn]
+    rw [overlay_size] at h1
+    by_cases hj : j < (env.get x).size
+    · rw [ite_eq_right (by omega), Array.getElem_append_left hj, ← hPrefix j hj,
+        getElem!_pos words j h1]
+    · rw [ite_eq_left (by omega), Array.getElem_append_right (by omega),
+        getElem!_pos _ _ (by omega)]
+  rw [hWords] at hA2
+  have hWithin : WritesWithin store1 store2 p.toNat (capacityAt store1 p) :=
+    ⟨by rw [hW.1], hW.2.1, fun a ha => hW.2.2 a (by omega)⟩
+  have aW := aR.rewrite hWithin (by rw [hW.1]) hA2 (by simp; omega)
+  have hF4 : Frame (base + 1) s2 s4 := ⟨hp4.trans rfl, by rw [hl4]; simp [s3, setLocal],
+    fun j hj => by rw [hOther4 j (by omega), hGet3 j (by omega)]⟩
+  -- The release of `y` when it is owned and dies here.
+  refine After.release hm (s1 := s4) (live := live)
+    (sel := fun k => k == y.index && !live k) hVars1 (aW.reframe hF4)
+    (fun k h => by simp [h]) (fun k h => by
+      simp only [Bool.and_eq_true, beq_iff_eq] at h; simp [h.1])
+    (fun k h => by simp [h]) fun heap2 store3 a' => ?_
+  have hQ4 : s4.get (base + 5) = some (.i64 p) := by
+    rw [hOther4 _ (by omega), hGet3 _ (by omega)]; exact hQ2
+  simp only [wp_localGet_cons, hQ4]
+  have e0 : Evolves env slots (fun i => live i || (Expr.append (S := S) x y).uses i)
+      (fun k => (live k || k == y.index) || k == x.index) base heap store s heap store s1 :=
+    ⟨Step.refl hAt _, hF1, (hVars.live_mono hIn).agree fun j hj => hF1.below j hj⟩
+  have aFin := After.prepend hVars e0 (a'.lower ((hVars.live_mono hIn).agree
+    fun j hj => hF1.below j hj) (by omega) fun k h => by simp [h]) hIn fun k h => by simp [h]
+  have hv3 : s3.values = s.values := by rw [hs3]; exact hv2
+  simpa [hv4, hv3] using hNext heap2 store3 s4 [.i64 p] aFin
+
 end Cases
 
 /-- The code of every expression meets its specification. -/
@@ -2516,6 +3079,8 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | get x i iSpec => exact spec_get hm x iSpec
   | build count elem countSpec elemSpec => exact spec_build hm countSpec elemSpec
   | set x i v iSpec vSpec => exact spec_set hm x iSpec vSpec
+  | push x v vSpec => exact spec_push hm x vSpec
+  | append x y => exact spec_append hm x y
 
 /-- The position of a variable's first word among the words of the context's values. -/
 def Var.offset : {Γ : List Ty} → {t : Ty} → Var Γ t → Nat

@@ -16,8 +16,8 @@ body may use literals and other closed terms, its parameters, `let`, the word op
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
 `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
 pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, `LeanExe.loop`,
-`xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `LeanExe.build` of words, and calls of
-the listed definitions before it. -/
+`xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`, `xs ++ ys`, `LeanExe.build`
+of words, and calls of the listed definitions before it. -/
 
 namespace Verified.Reflect
 
@@ -269,6 +269,32 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (vs, hv, _) ← reflect c v
     return (← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, some x, some is, some vs],
       ← mkAppM ``set_eq #[x, hi, hv], .array)
+  | ``Array.push, pushArgs@#[α, xs, v] =>
+    unless (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: only arrays of UInt64 are extended, in {e}"
+    let xs := projReduce xs
+    unless xs.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (pushArgs.set! 1 a)))
+    let (x, t) ← varOf c xs
+    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    let (vs, hv, _) ← reflect c v
+    return (← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, some x, some vs],
+      ← mkAppM ``push_eq #[x, hv], .array)
+  | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
+    unless (← tyOf α) == .array do throwError "verified_compile: unsupported term {e}"
+    let xs := projReduce xs
+    let ys := projReduce ys
+    unless xs.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (appendArgs.set! 4 a)))
+    unless ys.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType ys) ys fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (appendArgs.set! 5 a)))
+    let (x, _) ← varOf c xs
+    let (y, _) ← varOf c ys
+    let src ← mkAppOptM ``Expr.append #[some c.sigs, some c.ctx, some x, some y]
+    return (src, ← rflProof c src e, .array)
   | ``LeanExe.build, #[α, n, f] =>
     unless (← whnfR α).isConstOf ``UInt64 do
       throwError "verified_compile: only arrays of UInt64 are built, in {e}"

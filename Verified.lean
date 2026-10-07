@@ -14,3 +14,4 @@ import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
 import Verified.Examples.Updates
+import Verified.Examples.Grow

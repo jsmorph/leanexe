@@ -8,12 +8,14 @@ import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
 import Verified.Examples.Updates
+import Verified.Examples.Grow
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
 them, with a sixth field for the cases that check the allocation counters: the number of blocks
-live after the call, the host's array arguments and the arrays of the result.  The expected
-result `trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
+live after the call, the host's array arguments and the arrays of the result, and a seventh field
+for the cases that bound the number of allocations, the host's included.  The expected result
+`trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples
 
@@ -175,20 +177,51 @@ def main : IO Unit := do
   let positions : List UInt64 := [0, 1, 2, 4, 100, 9223372036854775808, 18446744073709551615]
   for xs in arrays do
     let a := arrayArg xs
-    IO.println s!"updates|swapEnds|array-u64|{a}|{arrayOut (Updates.swapEnds xs)}|2"
+    IO.println s!"updates|swapEnds|array-u64|{a}|{arrayOut (Updates.swapEnds xs)}|2|3"
     for b in [0, 1, 3, 16] do
       let h := arrayOut (Updates.histogram xs b)
-      IO.println s!"updates|histogram|array-u64|{a} i64:{b}|{h}|2"
+      IO.println s!"updates|histogram|array-u64|{a} i64:{b}|{h}|2|2"
     for i in positions do
       let u := arrayOut (Updates.setParam xs i 77)
-      IO.println s!"updates|setParam|array-u64|{a} i64:{i} i64:77|{u}|2"
+      IO.println s!"updates|setParam|array-u64|{a} i64:{i} i64:77|{u}|2|2"
   for n in [0, 1, 3, 10] do
     for i in positions do
       let u := arrayOut (Updates.setBuilt n i 5)
-      IO.println s!"updates|setBuilt|array-u64|i64:{n} i64:{i} i64:5|{u}|1"
+      IO.println s!"updates|setBuilt|array-u64|i64:{n} i64:{i} i64:5|{u}|1|1"
       let (k1, k2) := Updates.keepBoth n i 5
       let kinds := "list:array-u64,array-u64"
-      IO.println s!"updates|keepBoth|{kinds}|i64:{n} i64:{i} i64:5|{arrayOut k1} {arrayOut k2}|2"
+      IO.println s!"updates|keepBoth|{kinds}|i64:{n} i64:{i} i64:5|{arrayOut k1} {arrayOut k2}|2|2"
+  -- Growth by doubling: a loop of `n` pushes allocates at most `2 + log₂ (n + 1)` blocks.
+  let counts : List UInt64 := [0, 1, 2, 3, 7, 8, 64, 65, 1000]
+  for n in counts do
+    let bound := 2 + Nat.log2 (n.toNat + 1)
+    IO.println s!"grow|evens|array-u64|i64:{n}|{arrayOut (Grow.evens n)}|1|{bound}"
+    IO.println s!"grow|pushBuilt|array-u64|i64:{n} i64:9|{arrayOut (Grow.pushBuilt n 9)}|1|2"
+    let two := arrayOut (Grow.pushTwo n 5 6)
+    IO.println s!"grow|pushTwo|array-u64|i64:{n} i64:5 i64:6|{two}|1|3"
+    IO.println s!"grow|pushSize|array-u64|i64:{n}|{arrayOut (Grow.pushSize n)}|1|2"
+    let (k1, k2) := Grow.pushKeep n 4
+    let kinds := "list:array-u64,array-u64"
+    IO.println s!"grow|pushKeep|{kinds}|i64:{n} i64:4|{arrayOut k1} {arrayOut k2}|2|2"
+    IO.println s!"grow|appendSelfOwned|array-u64|i64:{n}|{arrayOut (Grow.appendSelfOwned n)}|1|2"
+  for xs in arrays do
+    let a := arrayArg xs
+    IO.println s!"grow|pushParam|array-u64|{a} i64:3|{arrayOut (Grow.pushParam xs 3)}|2|2"
+    IO.println s!"grow|appendSelf|array-u64|{a}|{arrayOut (Grow.appendSelf xs)}|2|2"
+    for n in [0, 1, 5] do
+      let r := arrayOut (Grow.appendOwnedRight xs n)
+      IO.println s!"grow|appendOwnedRight|array-u64|{a} i64:{n}|{r}|2|3"
+      let b := arrayOut (Grow.appendBuilt n xs)
+      IO.println s!"grow|appendBuilt|array-u64|i64:{n} {a}|{b}|2|3"
+      let room := arrayOut (Grow.appendRoom n xs)
+      IO.println s!"grow|appendRoom|array-u64|i64:{n} {a}|{room}|2|4"
+    for n in [0, 1, 3, 20] do
+      let bound := 4 + Nat.log2 (n.toNat * xs.size + 1)
+      let r := arrayOut (Grow.repeated xs n)
+      IO.println s!"grow|repeated|array-u64|{a} i64:{n}|{r}|2|{bound}"
+    for ys in arrays do
+      let r := arrayOut (Grow.appendParams xs ys)
+      IO.println s!"grow|appendParams|array-u64|{a} {arrayArg ys}|{r}|3|3"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|1"
