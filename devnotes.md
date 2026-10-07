@@ -26786,9 +26786,17 @@ beyond the ones the program asks for: each projection of the owned pair `p`, whi
 the other projection, copies the whole pair.  The split of pair binders that the design assigns to
 the reflector removes them.
 
+The reflector now replaces a `let` whose value is a place by its body with the place for the
+variable, and splits each variable of a pair type, at its binder, into variables for its
+components: a function's parameter, a `let`, a loop's state, and a component of a destructured
+pair.  It writes the binder's body with `(a, b)` for the variable, reduces a projection of
+`(a, b)` to the component and a `match` on `(a, b)` to its alternative, and binds the components
+with `letPair`; the equations hold by `zeta`, `iota`, and the eta rule of pairs.  After the
+change, `swap` allocates only the two copies of its arguments.
+
 - [x] Modes, copies, moves, and releases, with array results, proved and tested.
 - [ ] `LeanExe.build`, with the trap at `unreachable` when memory runs out.
-- [ ] The reflector's substitution of `let y := x` and split of pair binders.
+- [x] The reflector's substitution of `let y := x` and split of pair binders.
 - [ ] Docs: the design document's open work.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported

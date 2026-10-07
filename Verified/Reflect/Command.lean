@@ -121,9 +121,21 @@ def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
     mkAppOptM ``Env.cons
       #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some x, some (← envExpr rest)]
 
+/-- `e` with each projection of a pair `(a, b)` at its head replaced by the component. -/
+partial def projReduce (e : Lean.Expr) : Lean.Expr :=
+  let e := e.consumeMData.headBeta
+  match e.getAppFnArgs with
+  | (``Prod.fst, #[_, _, p]) => match (projReduce p).getAppFnArgs with
+    | (``Prod.mk, #[_, _, a, _]) => projReduce a
+    | _ => e
+  | (``Prod.snd, #[_, _, p]) => match (projReduce p).getAppFnArgs with
+    | (``Prod.mk, #[_, _, _, b]) => projReduce b
+    | _ => e
+  | _ => e
+
 /-- Whether a Lean term reflects to a place: a variable or a pair of places. -/
 partial def isPlace (e : Lean.Expr) : Bool :=
-  let e := e.consumeMData
+  let e := projReduce e
   e.isFVar || match e.getAppFnArgs with
     | (``Prod.mk, #[_, _, a, b]) => isPlace a && isPlace b
     | _ => false
@@ -151,9 +163,11 @@ def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
 
 /-- The source expression for the Lean term `e`, with the proof that it means `e`, and its
 type.  An array that a reader reads and an argument with arrays that is not a place are bound
-with `let` first. -/
+with `let` first.  A `let` of a place is replaced by its body with the place for the variable,
+and every variable of a pair type is split into variables for its components, so that a
+projection reads a component and a use of the whole is the pair of the components. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
-  let e := e.consumeMData.headBeta
+  let e := projReduce e
   if e.isFVar then
     let (x, t) ← varOf c e
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
@@ -169,7 +183,11 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return (src, ← rflProof c src e, .bool)
     | .pair _ _ | .array => pure ()
   if let .letE _ type value body _ := e then
+    if isPlace value then return ← reflect c (body.instantiate1 value)
     let s ← tyOf type
+    if let .pair _ _ := s then
+      return ← destructure c [] value fun a b => do
+        return body.instantiate1 (← mkAppM ``Prod.mk #[a, b])
     let (vs, hv, _) ← reflect c value
     return ← withLocalDeclD `x type fun x => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some x, some c.env]
@@ -181,7 +199,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   if let some app ← matchMatcherApp? e then
     if app.discrs.size == 1 && app.alts.size == 1 then
       let alt := app.alts[0]!
-      return ← destructure app.discrs[0]! fun a b => return alt.beta #[a, b]
+      if let (``Prod.mk, #[_, _, a, b]) := (projReduce app.discrs[0]!).getAppFnArgs then
+        return ← reflect c (alt.beta #[a, b])
+      return ← destructure c [] app.discrs[0]! fun a b => return alt.beta #[a, b]
   let (fn, args) := e.getAppFnArgs
   if let some op := binOp? fn then
     if args.size == 6 then
@@ -210,8 +230,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (as, ha, s) ← reflect c a
     let (bs, hb, t) ← reflect c b
     return (← mkAppM ``Expr.pair #[as, bs], ← mkAppM ``pair_eq #[ha, hb], .pair s t)
-  | ``Prod.fst, #[_, _, p] => destructure p fun a _ => return a
-  | ``Prod.snd, #[_, _, p] => destructure p fun _ b => return b
+  | ``Prod.fst, #[_, _, p] => destructure c [] p fun a _ => return a
+  | ``Prod.snd, #[_, _, p] => destructure c [] p fun _ b => return b
   | ``ite, #[_, p, _, a, b] =>
     let (as, ha, t) ← reflect c a
     let (bs, hb, _) ← reflect c b
@@ -230,13 +250,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``LeanExe.loop, #[α, n, init, f] =>
     let (ns, hn, _) ← reflect c n
     let (is, hi, t) ← reflect c init
-    let (bs, hb, _) ← reflectUnder (mkConst ``UInt64) α .word t fun i acc =>
+    let (bs, hb, _) ← reflectUnder c [] (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
-    let xs := xs.consumeMData
+    let xs := projReduce xs
     unless xs.isFVar do
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn #[mkAppN n.consumeMData.getAppFn (sizeArgs.set! 1 a)]))
@@ -247,7 +267,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``getElem!, getArgs@#[_, _, _, _, _, _, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: an index must be `i.toNat` for a word `i`, in {e}"
-    let xs := xs.consumeMData
+    let xs := projReduce xs
     unless xs.isFVar do
       return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (getArgs.set! 6 a)))
@@ -258,26 +278,37 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       ← mkAppM ``get_eq #[x, hi], .word)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- The reflection of `body` in the context `c`, with each variable of `xs` that has a pair
+  type split first into its components. -/
+  reflectSplit (c : Ctx) : List Lean.Expr → Lean.Expr → MetaM (Lean.Expr × Lean.Expr × Ty)
+    | [], body => reflect c body
+    | x :: rest, body => do
+      match ← tyOf (← inferType x) with
+      | .pair _ _ =>
+        destructure c rest x fun a b => do
+          return body.replaceFVar x (← mkAppM ``Prod.mk #[a, b])
+      | _ => reflectSplit c rest body
   /-- The reflection of `body a b` with `a : α` of type `s` as variable 1 and `b : β` of type `t`
-  as variable 0, with its proof abstracted over `a` and `b`. -/
-  reflectUnder (α β : Lean.Expr) (s t : Ty) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
-      MetaM (Lean.Expr × Lean.Expr × Ty) :=
+  as variable 0, with its proof abstracted over `a` and `b`.  The variables `a`, `b`, and
+  `rest` that have pair types are split. -/
+  reflectUnder (c : Ctx) (rest : List Lean.Expr) (α β : Lean.Expr) (s t : Ty)
+      (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) :=
     withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
       let envA ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some a, some c.env]
       let ctxA := ctxExpr (s :: c.vars.map (·.2))
       let envB ← mkAppOptM ``Env.cons #[some ctxA, some (tyExpr t), some b, some envA]
       let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
-      let (bs, hb, u) ← reflect c' (← body a b)
+      let (bs, hb, u) ← reflectSplit c' (b :: a :: rest) (← body a b)
       return (bs, ← mkLambdaFVars #[a, b] hb, u)
   /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
-  of the body `body a b`. -/
-  destructure (p : Lean.Expr) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
-      MetaM (Lean.Expr × Lean.Expr × Ty) := do
+  of the body `body a b`, in which the variables `rest` are split. -/
+  destructure (c : Ctx) (rest : List Lean.Expr) (p : Lean.Expr)
+      (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (ps, hp, pt) ← reflect c p
     let .pair s t := pt | throwError "verified_compile: {p} is not a pair"
     let (``Prod, #[α, β]) := (← whnfR (← inferType p)).getAppFnArgs
       | throwError "verified_compile: {p} is not a pair"
-    let (bs, hb, u) ← reflectUnder α β s t body
+    let (bs, hb, u) ← reflectUnder c rest α β s t body
     return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
@@ -337,7 +368,7 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let result ← tyOf (← inferType body)
     let vars := params.toList.zip types
     let env ← envExpr vars
-    let (src, proof, _) ← reflect ⟨sigs, funs, callees, vars, env⟩ body
+    let (src, proof, _) ← reflect.reflectSplit ⟨sigs, funs, callees, vars, env⟩ params.toList body
     let funcType := mkApp (mkConst ``Func) sigs
     let func ← mkAppOptM ``Func.mk #[some sigs, some (toExpr name.getString!),
       some (ctxExpr types), some (tyExpr result), some src, some (← mkEqRefl (toExpr true))]
