@@ -51,35 +51,38 @@ moves into the value where it dies and is copied where it stays live, a reader o
 owned variable that dies there, and a branch, a binding, and a loop release the owned variables that
 die without a use.  A pair has one mode, and a loop's state is owned when its initial value or its
 body's value is owned, so a borrowed component or state is copied.  A copy allocates through the
-runtime's `alloc` and writes the length word and the elements.  Each binding's value is stored in
-locals of its own, and a call pushes its arguments' words in order and calls the function, which the
-module places before its callers.  An argument at an owned parameter moves its variable into the
-call when the variable is owned, dies at the call, and no other argument with arrays reads it, and
-is copied otherwise.  Every argument's variables stay live until the call, so a later argument may
-read a moved array, and the call then releases the owned variables that die there and that it does
-not consume.  An `if` stores the words of its value in locals in each branch and loads them after
-it, because the encoder writes block types of at most one result.  A loop keeps its count, its
-index, and its state in locals, compares the index with the count at the top of a WebAssembly `loop`
-inside a `block`, and branches out of the block when the index reaches the count.  A build keeps its
-count, the array's address, and the index in locals, traps at `unreachable` when the count is `2^29`
-or more, since the array would not fit in 32-bit memory, allocates the array and writes its length
-word, and stores each element after the element's code runs.  The outer variables that only the
-element reads stay live through the loop and are released after it.  An update runs its position's
-and value's code first and then takes the array in an owned position: an owned array that dies there
-is updated in its own block, and any other array is copied first.  An extension takes the array with
-room for the result: an owned array that dies there grows in its own block when the block has room
-and otherwise moves to a block of at least twice its capacity, which releases the old block, and any
-other array is copied once into a block with room.  `push` then writes the new element, and `++`
-copies the other array's elements after the first's and releases the other array when it is owned
-and dies there.  A read keeps the array's address and the position in locals, compares the position
-with the length word, and loads the element or yields 0.  WebAssembly traps on a zero divisor, so
-the compiled division and remainder save their operands in scratch locals, test the divisor, and
-return Lean's result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.denote`,
-[`Compile.lean`](Compile.lean) the compiler, [`State.lean`](State.lean) the representation of values
-in the heap and the facts about variables, [`Heap.lean`](Heap.lean) the specifications of the
-allocation, copy, and release code, and [`Correct.lean`](Correct.lean) the theorem.  The compiled
-module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions
-0 and 1.
+runtime's `alloc` and writes the length word and the elements.  A function's locals are its
+parameters, an i64 local for each further position, and an f64 local for every position.  A word of
+type f64 occupies its position's f64 local and any other word its i64 local, and a function copies
+its f64 parameter words to their positions' f64 locals at entry.  No source type has f64 words yet.
+Each binding's value is stored in positions of its own, and a call pushes its arguments' words in
+order and calls the function, which the module places before its callers.  An argument at an owned
+parameter moves its variable into the call when the variable is owned, dies at the call, and no
+other argument with arrays reads it, and is copied otherwise.  Every argument's variables stay live
+until the call, so a later argument may read a moved array, and the call then releases the owned
+variables that die there and that it does not consume.  An `if` stores the words of its value in
+locals in each branch and loads them after it, because the encoder writes block types of at most one
+result.  A loop keeps its count, its index, and its state in locals, compares the index with the
+count at the top of a WebAssembly `loop` inside a `block`, and branches out of the block when the
+index reaches the count.  A build keeps its count, the array's address, and the index in locals,
+traps at `unreachable` when the count is `2^29` or more, since the array would not fit in 32-bit
+memory, allocates the array and writes its length word, and stores each element after the element's
+code runs.  The outer variables that only the element reads stay live through the loop and are
+released after it.  An update runs its position's and value's code first and then takes the array in
+an owned position: an owned array that dies there is updated in its own block, and any other array
+is copied first.  An extension takes the array with room for the result: an owned array that dies
+there grows in its own block when the block has room and otherwise moves to a block of at least
+twice its capacity, which releases the old block, and any other array is copied once into a block
+with room.  `push` then writes the new element, and `++` copies the other array's elements after the
+first's and releases the other array when it is owned and dies there.  A read keeps the array's
+address and the position in locals, compares the position with the length word, and loads the
+element or yields 0.  WebAssembly traps on a zero divisor, so the compiled division and remainder
+save their operands in scratch locals, test the divisor, and return Lean's result for zero.
+[`Source.lean`](Source.lean) defines the syntax and `Func.denote`, [`Compile.lean`](Compile.lean)
+the compiler, [`State.lean`](State.lean) the representation of values in the heap and the facts
+about variables, [`Heap.lean`](Heap.lean) the specifications of the allocation, copy, and release
+code, and [`Correct.lean`](Correct.lean) the theorem.  The compiled module has the layout of
+`LeanExe`'s modules, with the runtime's `alloc` and `release` at functions 0 and 1.
 
 The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
 [`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean).  From any heap and store
