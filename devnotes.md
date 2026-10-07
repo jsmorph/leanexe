@@ -26572,7 +26572,7 @@ V8a:
 | Iteration | Content |
 |---|---|
 | V8a | The heap statement in its final form, proved for every existing construct.  `Ty.array`, an `Array UInt64` held as a pointer, as a borrowed parameter, call argument, and `let` value; `xs.size.toUInt64` and the bounds-checked read `xs[i.toNat]!`.  Results contain no arrays. |
-| V8b | Allocation: `LeanExe.build`, owned array results and temporaries, releases where an owned value dies unconsumed, and the trap at `unreachable` when memory runs out.  A flow of a borrowed parameter into a result is rejected until V8c. |
+| V8b | Allocation: `LeanExe.build`, owned array results and temporaries, moves, copies, releases where an owned value dies unconsumed, and the trap at `unreachable` when memory runs out. |
 | V8c | Inferred parameter modes (owned when a path returns the parameter, passes it at its last use to an owned parameter, or updates it in place), moves at last uses, copies at earlier uses into owned positions, and the in-place `set!`, `push`, and `++`. |
 
 The V8a statement:
@@ -26668,45 +26668,80 @@ backtrace for each read past the end, 472 in the cases, so `tests/verified/run.s
 standard error in a file and fails on anything else, as `tests/modules/run.sh` does.  The test
 passes all 3,778 cases of the eight examples.
 
-### V8b: owned values, researched
+### V8b: owned values, researched and reviewed
 
 V8b adds arrays that the program creates: `LeanExe.build n f`, owned array results and
 temporaries, the copies and releases that the ownership model of 2026-10-01 requires, and the trap
-at `unreachable` when memory runs out.  The other compiler implements that model in meta code
-(`moveSites`, `releaseUnmoved`, and `Ctx.before` in `LeanExe/Compiler/Scalar.lean`): a value moves
-at its last use, a part that later code still uses is copied, an alias `let y := x` of an array is
-the variable itself, and owned values that a path does not consume are released.  This compiler
-must place moves, copies, and releases inside `Expr.code` and prove the placement once.
+at `unreachable` when memory runs out.  The other compiler implements that model in meta code: it
+moves an owned value at a consuming site, such as a returned value or the left operand of `++`,
+when no later part names it (`moveSites`, `Ctx.before`, and `Ctx.movableIn` in
+`LeanExe/Compiler/Scalar.lean`); it allows an array `let` only at the top of a body; and it releases
+temporaries and unmoved owned parameters at the end of the function or of a branch.  This compiler
+must place moves, copies, and releases inside `Expr.code` and prove the placement once, for every
+expression.
 
-The rule that keeps the proof local is that each expression consumes exactly the owned variables
-that die in it: those live before it, `live ∪ e.uses`, and not live after it, `live`.  The code
-of each construct meets the rule as follows.
+An independent review (2026-10-06) compared three placements of releases.  Releasing at the end of
+a variable's scope needs the set of values moved on each path and a `Holds` that also describes
+dead variables awaiting release.  Annotations inferred by the reflector and checked by a decidable
+function reach the same placement with more syntax and a checker.  Release where a variable dies,
+computed from the live sets that V8a already passes down, needs neither, and is the placement of
+Lean 4's own reference-count insertion (Ullrich and de Moura, "Counting Immutable Beans," IFL 2019):
+release a dead owned variable at the entry of each branch that does not read it, and after a call
+that borrows it.  The rule is that each expression consumes exactly the owned variables that die
+in it, those in `live ∪ e.uses` and not in `live`.  The review found a leak, a missing invariant,
+and costly copies in the first draft; the table below includes the fixes.
 
 | Construct | Ownership |
 |---|---|
-| `var x`, borrowed | A view: the words of `x`, no consumption.  A borrowed variable always holds an array of a parameter, which no code in the function consumes. |
-| `var x`, owned, dead after | A move: the result owns `x`'s block. |
-| `var x`, owned, live after | A copy into a new block, which the result owns. |
-| `size a`, `get a i`, a call's argument | A reader.  A variable operand is read in place as a view and stays live while the reader's other operands run; the reader releases it afterward when it is owned and dies there.  Any other operand that yields an owned value is released after the read. |
+| `var x`, borrowed | A view: the words of `x`.  A borrowed variable holds an array of a parameter, which no code in the function consumes. |
+| `var x`, owned, dead after | A move: the result owns `x`'s blocks. |
+| `var x`, owned, live after | A copy into new blocks, which the result owns. |
+| Readers: `size a`, `get a i`, and a call's arguments | An operand that is a variable, or a pair of such operands, is read in place as views; its variables stay live while the reader's other operands run, and the reader releases, once each, those that are owned and die there.  Any other operand that yields owned blocks is kept in scratch locals and released after the read or the call. |
 | `let x := v; body` | `x` takes `v`'s mode.  An owned `x` that `body` never reads is released before `body`. |
-| `if c then a else b` | Each branch releases the owned variables that die at its entry: live before the branches, not read by the branch, and not live after.  When one branch yields an owned value and the other a borrowed one, the borrowed one is copied. |
-| `(a, b)`, `letPair` | A pair has one mode; a borrowed component of an owned pair is copied.  An unread owned component is released at the start of the body. |
-| `LeanExe.loop` | The state is owned when the initial value or the body's value is owned; a borrowed initial value or body value is then copied.  An owned state that the body never reads is released at the start of each iteration. |
-| `LeanExe.build n f` | Allocates the array, traps when memory runs out or the count is `2 ^ 29` or more, and stores `f i` for each index `i`. |
+| `if c then a else b` | Each branch releases at its entry the owned variables that are live before the branches, that it does not read, and that are not live after.  When one branch is owned and the other borrowed, the borrowed one is copied. |
+| `(a, b)`, `letPair` | A pair has one mode: a borrowed component of an owned pair is copied.  A component that the body never reads is released at the start of the body. |
+| `LeanExe.loop`, `LeanExe.build` | The owned outer variables that the body reads stay live through every iteration and are released after the exit when they are not live after it.  A loop's state is owned when the initial value is owned or when the body's value is owned with a borrowed state; a borrowed initial or body value is then copied.  An owned state that the body never reads is released at the start of the iteration. |
+| `LeanExe.build n f` | Traps at `unreachable` when `n` is `2 ^ 29` or more, as the `LeanExe` template does, and when memory runs out; otherwise allocates the block, writes the length, and stores `f i` for each index.  The element function may allocate: the partly filled block is owned with its current contents, and the steps of the element function keep its bytes. |
 | The function's result | Owned: a borrowed result is copied. |
 
-`Holds` gains the invariant that the blocks of the live owned variables are pairwise disjoint;
-borrowed variables need nothing more, since their arrays belong to the caller.  `Step` gains the
-blocks a step consumes, `gone`, and the blocks of an owned result, `fresh`, as in `Heap.Keeps` and
-`Live`; a move puts the variable's block in both.  `Expr.code_spec` states that the step consumes
-the blocks of the owned variables that die in the expression, that the variables live after it
-still hold their values, and that an owned result's blocks lie apart from theirs.  The trap flag
-is true for `build`, a copy, and a call of a function that may trap.  `Ty.blocks` gives an owned
-value's blocks, `Ty.Rep` for an owned pair requires its components' blocks to be disjoint, as the
-pair instance of `Implements.lean` does, and results may then hold arrays.  The reflector writes
-`let y := x` for an array variable `x` as the body with `x` for `y`, so no variable aliases
-another.  Release at death, rather than at the end of a variable's scope, keeps `Holds` about live
-variables only, with no set of dead variables awaiting release.
+`Expr.mode` computes the mode of each expression from the slots and the live set by these rules.
+`Holds` gains two invariants: the blocks of the live owned variables are pairwise disjoint, and
+they lie apart from the arrays of the live borrowed variables, which `Heap.Keeps.borrowed` needs
+after a release.  `Step` gains the blocks a step consumes, `gone`, and the blocks of an owned
+result, `fresh`; a move puts the variable's blocks in both.  `Expr.code_spec` states that the step
+consumes the blocks of the owned variables that die in the expression, that the variables live
+after it still hold their values, that an owned result's blocks lie apart from the owned and
+borrowed variables live after it, and that a borrowed result's arrays lie apart from the owned
+variables live after it.  `Ty.blocks` gives an owned value's blocks, `Ty.represent.blocks` uses
+it, `spec_call` takes the result's blocks from the callee's frame clause through
+`Heap.Keeps.implements`, `Ty.Rep` for an owned pair requires its components' blocks to be disjoint
+as the pair instance of `Implements.lean` does, and results may hold arrays.  The proofs use
+`Heap.Keeps.trans`, `transBoth`, and `mono`, `Heap.Keeps.release` with `Heap.Owned.object`,
+`Heap.At.release`, `Heap.Keeps.owned`, `Heap.Keeps.borrowed`, `Heap.newArray_of_writes`,
+`alloc_spec_or_abort`, and `release_run`.
+
+The trap flag of an expression is true when it contains `build` or a call of a function that may
+trap or returns arrays, and a function's flag is also true when its result holds arrays.  The flag
+of `Expr.code_spec` is the expression's flag or the presence of an owned variable in scope, since
+only owned values can be copied.  The reader-only functions of `Arrays.lean` keep their flag
+false.
+
+The reflector writes `let y := x` as the body with `x` for `y`, for every type, which saves a copy,
+and splits every variable of pair type into its components at its binder, so that `p.1` reads the
+component variable and a use of the whole `p` becomes `(a, b)`.  Without the split, a projection of
+an owned pair that is live afterward copies the whole pair; with it, a loop whose state is a pair
+of arrays moves the components and V8c can update them in place.  A copy remains where an `if`
+chooses between two owned arrays that are both live afterward, as in
+`(if c then xs else ys)[i]!`.
+
+`ImplementsA` states nothing about leaks, and `Heap.Keeps` holds for any larger `gone`, so the
+theorem does not show that every owned block is released.  The review suggested a clause on the
+allocation counters, `allocs - frees`, in the post-condition; it is recorded as open, and the test
+checks the counters that the host reports after each call.  V8c needs, beyond this design: an
+operand at an owned position consumed after all operands run, copied only when another operand of
+the same operation views it, as the other compiler's owner rule does; owned parameters that the
+body never reads released at entry; and `Moved` argument types in the external theorem, following
+the decision of 2026-10-01 that exported functions keep their inferred modes.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
