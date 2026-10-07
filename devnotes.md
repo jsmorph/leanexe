@@ -26979,8 +26979,34 @@ Talos does not check local types, so the theorem does not imply that a module va
 step, so the code differs only in its declared locals.  All 4,365 cases pass, and the theorems use
 only `propext`, `Classical.choice`, and `Quot.sound`.
 
+### V9a, second part: floats
+
+`Ty.float` means `Float` and has one f64 word, the float's bit pattern.  The source adds literals,
+`Expr.float bits` meaning `Float.ofBits bits`, the operations `FBinOp` (`+ - * /`) and `FUnOp`
+(`sqrt`, `abs`, negation), and the comparisons `FCmpOp` (`<`, `≤`, `==`), each with Lean's
+meaning.  Each case of the proof rewrites Lean's operation with a lemma of
+`LeanExe/ProofKit/F64Bits.lean` into Talos's `IEEE64` function on bit patterns, which is the
+instruction's meaning.  Lean's model defines `-x` by the bits of `-0 - x`, and `f64.neg` sets the
+sign bit of the canonical NaN, so negation compiles to `f64.const -0`, the operand, and
+`f64.sub`.  `f64.abs` agrees with `Float.abs` on every float, since every NaN of Lean's model is
+canonical (`toBits_abs`).
+
+The reflector computes a literal's bit pattern natively and proves `x.toBits = bits` by `decide`,
+which the kernel checks through Lean's software model of `Float`.  Lean defines `min a b` on floats
+as `if a ≤ b then a else b`, which differs from `f64.min` when an operand is NaN and on zeros of
+opposite sign, so the reflector rewrites `min` and `max` into that `if` and binds operands that are
+not variables with `let`, so that each runs once.  `>` and `≥` become `<` and `≤` on swapped
+operands.  The reflector rejects `=` and `≠` on floats: they compare bit patterns, under which
+`0.0 ≠ -0.0`, and no f64 instruction computes them, while `==` and `!=` compare values as IEEE
+754 does.
+
+`Verified/Examples/Floats.lean` adds 959 cases with zeros of both signs, infinities, NaN, and the
+smallest subnormal.  Native Lean returns the canonical NaN for every NaN result, and the host
+enables Cranelift's NaN canonicalization, so the cases compare results bit for bit.  All 5,324
+cases pass, and the theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
+
 - [x] Typed locals.
-- [ ] `Float`: literals, `+ - * /`, `sqrt`, `abs`, negation, comparisons, `min`, `max`, and float
+- [x] `Float`: literals, `+ - * /`, `sqrt`, `abs`, negation, comparisons, `min`, `max`, and float
   parameters, results, bindings, pairs, and loop states.
 - [ ] Arrays of a scalar element type stored as consecutive words, `Array Float` first.
 - [ ] `UInt64.toFloat`, `Float.toUInt64`, and computed `Float.ofBits`.

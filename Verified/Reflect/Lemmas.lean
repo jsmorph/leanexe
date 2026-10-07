@@ -1,4 +1,5 @@
 import Verified.Source
+import LeanExe.ProofKit.F64Bits
 
 /-! The lemmas from which the reflector builds the equation `denote (reflect f) = f` of a Lean
 definition: one lemma per Lean form.  Each states the meaning of a source expression whose parts
@@ -63,6 +64,38 @@ theorem ite_ne_eq {t : Ty} {l r : Expr S Γ .word} {a b : Expr S Γ t} {L R : UI
     (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
     (Expr.ite (.cmp .ne l r) a b).denote funs env = if L ≠ R then A else B := by
   subst hl hr ha hb; simp [Expr.denote, CmpOp.apply]
+
+theorem fbin_eq (op : FBinOp) {l r : Expr S Γ .float} {L R : Float}
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R) :
+    (Expr.fbin op l r).denote funs env = op.apply L R := by
+  subst hl hr; rfl
+
+theorem funary_eq (op : FUnOp) {e : Expr S Γ .float} {E : Float} (h : e.denote funs env = E) :
+    (Expr.funary op e).denote funs env = op.apply E := by
+  subst h; rfl
+
+theorem fcmp_eq (op : FCmpOp) {l r : Expr S Γ .float} {L R : Float}
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R) :
+    (Expr.fcmp op l r).denote funs env = op.apply L R := by
+  subst hl hr; rfl
+
+/-- A float literal, from bits that the kernel checks. -/
+theorem float_eq {bits : UInt64} {x : Float} (h : x.toBits = bits) :
+    (Expr.float bits : Expr S Γ .float).denote funs env = x := by
+  show Float.ofBits bits = x
+  rw [← h, LeanExe.ProofKit.F64Bits.ofBits_toBits]
+
+theorem ite_flt_eq {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
+    {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
+    (Expr.ite (.fcmp .lt l r) a b).denote funs env = if L < R then A else B := by
+  subst hl hr ha hb; simp [Expr.denote, FCmpOp.apply]
+
+theorem ite_fle_eq {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
+    {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
+    (Expr.ite (.fcmp .le l r) a b).denote funs env = if L ≤ R then A else B := by
+  subst hl hr ha hb; simp [Expr.denote, FCmpOp.apply]
 
 theorem letE_eq {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {V : s.denote}
     {B : s.denote → t.denote} (hv : v.denote funs env = V)

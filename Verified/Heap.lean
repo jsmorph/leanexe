@@ -557,6 +557,16 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     have h0 : s.get src = some (.i64 (boolWord v)) := LocalsHold.word hold
     simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
     simpa using hNext heap store s [.i64 (boolWord v)] (Step.refl hAt _) rfl (Frame.refl base s)
+  | .float, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, hh, hRep, hold, _, _,
+      _, hNext => by
+    have hRep' : ws = [.f64 v.toBits] := hRep
+    subst hRep'
+    have h0 : s.get (src + h) = some (.f64 v.toBits) := by
+      have := hold 0 (by simp)
+      rw [hh] at this
+      simpa [Ty.types, slotIndex] using this
+    simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
+    simpa using hNext heap store s [.f64 v.toBits] (Step.refl hAt _) rfl (Frame.refl base s)
   | .array, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
       hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, ha⟩ := hRep
@@ -617,6 +627,8 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
   | .word, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
     simpa [releaseCode] using hNext heap store (Step.refl hAt _)
   | .bool, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
+    simpa [releaseCode] using hNext heap store (Step.refl hAt _)
+  | .float, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
     simpa [releaseCode] using hNext heap store (Step.refl hAt _)
   | .array, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨ptr, rfl, hOwned⟩ := hRep
