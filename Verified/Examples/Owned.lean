@@ -4,7 +4,9 @@ import Verified.Reflect.Command
 owned array, so a function that returns a parameter copies it.  A caller owns a call's array
 result: it moves the result where the result's variable dies, copies it where the variable stays
 live, and releases it where the variable dies without a use.  A call's array argument that is not
-a variable is bound with `let` first and released after the call. -/
+a variable is bound with `let` first and released after the call.  `LeanExe.build` creates an
+owned array; its element may allocate and release arrays of its own, and an owned variable that
+only the element reads is released after the array is complete. -/
 
 namespace Verified.Examples.Owned
 
@@ -48,7 +50,25 @@ def swap (xs ys : Array UInt64) : Array UInt64 × Array UInt64 :=
   let p := (copy xs, copy ys)
   (p.2, p.1)
 
+def squares (n : UInt64) : Array UInt64 := LeanExe.build n fun i => i * i
+
+def scaled (xs : Array UInt64) (k : UInt64) : Array UInt64 :=
+  LeanExe.build xs.size.toUInt64 fun i => xs[i.toNat]! * k
+
+def sumSquares (n : UInt64) : UInt64 := sum (squares n)
+
+def rowSums (n : UInt64) : Array UInt64 :=
+  LeanExe.build n fun i => sum (LeanExe.build i fun j => j + i)
+
+def onlyInside (xs : Array UInt64) (n : UInt64) : Array UInt64 :=
+  let ys := copy xs
+  LeanExe.build n fun i => ys[i.toNat]! + ys.size.toUInt64
+
+def bothSides (xs : Array UInt64) : Array UInt64 :=
+  let ys := copy xs
+  LeanExe.build ys.size.toUInt64 fun i => ys[i.toNat]! + 1
+
 verified_compile compiled := [sum, copy, pick, twice, withSize, sizeOfCopy, sumCopy, firstOfCopy,
-  unused, branch, moved, grow, swap]
+  unused, branch, moved, grow, swap, squares, scaled, sumSquares, rowSums, onlyInside, bothSides]
 
 end Verified.Examples.Owned

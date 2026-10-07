@@ -2,7 +2,8 @@
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
 # compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
-# released must equal the field, the host's array arguments and the result's arrays.
+# released must equal the field, the host's array arguments and the result's arrays.  A case whose
+# expected result is `trap` must trap at `unreachable`.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -48,6 +49,18 @@ passed=0
 failed=0
 while IFS='|' read -r name export result args expected live; do
   read -ra argv <<<"$args"
+  if [ "$expected" = "trap" ]; then
+    if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
+      failed=$((failed + 1))
+      echo "fail: $name $export $args: returned, expected a trap at unreachable"
+    elif grep -q 'wasm `unreachable` instruction executed' "$errors"; then
+      passed=$((passed + 1))
+    else
+      failed=$((failed + 1))
+      echo "fail: $name $export $args: $(cat "$errors"), expected a trap at unreachable"
+    fi
+    continue
+  fi
   if [ -z "$live" ]; then
     got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
     held=""

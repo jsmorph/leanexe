@@ -1,4 +1,5 @@
 import LeanExe.Dialect.Loop
+import LeanExe.Dialect.Build
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
@@ -139,7 +140,8 @@ first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from th
 `init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
 index as variable 1.  `size x` is the number of elements of the array variable `x` as a word,
 and `get x i` is element `i` of `x`, or 0 when `i` is not below the size, as Lean's
-`x[i.toNat]!` gives. -/
+`x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of `count` words whose
+element `i` is the value of `elem` with `i` as variable 0. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -159,6 +161,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       Expr S Γ t
   | size (x : Var Γ .array) : Expr S Γ .word
   | get (x : Var Γ .array) (i : Expr S Γ .word) : Expr S Γ .word
+  | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) .word) : Expr S Γ .array
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -204,14 +207,16 @@ def Expr.denote (funs : Funs S) :
       fun i acc => body.denote funs (.cons acc (.cons i env))
   | _, _, .size x, env => (env.get x).size.toUInt64
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
+  | _, _, .build count elem, env =>
+    LeanExe.build (count.denote funs env) fun i => elem.denote funs (.cons i env)
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
   | 0, _ => false
   | _ + 1, b => b 0 || argsAny fun i => b i.succ
 
-/-- Whether the code of an expression may trap: whether it calls a function that may trap or
-that returns arrays, since only owned arrays are copied. -/
+/-- Whether the code of an expression may trap: whether it builds an array or calls a function
+that may trap or that returns arrays, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right => left.aborts || right.aborts
@@ -226,6 +231,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
   | _, _, .size _ => false
   | _, _, .get _ i => i.aborts
+  | _, _, .build _ _ => true
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
@@ -242,6 +248,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .loop count init body, i => count.uses i || init.uses i || body.uses (i + 2)
   | _, _, .size x, i => i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
+  | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
 
 /-- Whether an expression is a variable or a pair of such expressions, which a call reads in
 place. -/
@@ -266,6 +273,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letPair e body => e.placeArgs && body.placeArgs
   | _, _, .loop count init body => count.placeArgs && init.placeArgs && body.placeArgs
   | _, _, .get _ i => i.placeArgs
+  | _, _, .build count elem => count.placeArgs && elem.placeArgs
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body.  The

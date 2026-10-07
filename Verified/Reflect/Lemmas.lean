@@ -112,6 +112,15 @@ theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     funext fun i => funext (hb i)
   rfl
 
+/-- `LeanExe.build` with the meanings of its count and its element function. -/
+theorem build_eq {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word} {N : UInt64}
+    {F : UInt64 → UInt64} (hn : count.denote funs env = N)
+    (hf : ∀ i, elem.denote funs (.cons i env) = F i) :
+    (Expr.build count elem).denote funs env = LeanExe.build N F := by
+  subst hn
+  obtain rfl : (fun i => elem.denote funs (.cons i env)) = F := funext hf
+  rfl
+
 /-- A read of an array variable, 0 past its end. -/
 theorem get_eq (x : Var Γ .array) {i : Expr S Γ .word} {I : UInt64}
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by

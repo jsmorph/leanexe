@@ -11,8 +11,8 @@ import Verified.Examples.Owned
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
 them, with a sixth field for the cases that check the allocation counters: the number of blocks
-live after the call, the host's array arguments and the arrays of the result.  Run with
-`lake env lean --run`. -/
+live after the call, the host's array arguments and the arrays of the result.  The expected
+result `trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples
 
@@ -156,6 +156,21 @@ def main : IO Unit := do
         IO.println s!"owned|pick|array-u64|{boolArg b} {a} {c}|{arrayOut (Owned.pick b xs ys)}|3"
       let (s1, s2) := Owned.swap xs ys
       IO.println s!"owned|swap|list:array-u64,array-u64|{a} {c}|{arrayOut s1} {arrayOut s2}|4"
+  for n in [0, 1, 5, 100] do
+    IO.println s!"owned|squares|array-u64|i64:{n}|{arrayOut (Owned.squares n)}|1"
+    IO.println s!"owned|sumSquares|i64|i64:{n}|{Owned.sumSquares n}|0"
+  for n in [0, 1, 4, 20] do
+    IO.println s!"owned|rowSums|array-u64|i64:{n}|{arrayOut (Owned.rowSums n)}|1"
+  -- An array of `2 ^ 29` words does not fit in 32-bit memory, so the module traps; native Lean
+  -- does not compute it.
+  IO.println "owned|squares|array-u64|i64:536870912|trap"
+  for xs in arrays do
+    let a := arrayArg xs
+    IO.println s!"owned|bothSides|array-u64|{a}|{arrayOut (Owned.bothSides xs)}|2"
+    for k in [0, 3] do
+      IO.println s!"owned|scaled|array-u64|{a} i64:{k}|{arrayOut (Owned.scaled xs k)}|2"
+    for n in [0, 3] do
+      IO.println s!"owned|onlyInside|array-u64|{a} i64:{n}|{arrayOut (Owned.onlyInside xs n)}|2"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|1"

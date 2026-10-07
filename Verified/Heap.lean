@@ -109,6 +109,95 @@ theorem allocSize_words {size : Nat} (h : size < 536870912) :
   · apply UInt64.toNat_inj.mp
     rw [hRound, hBytes]
 
+/-- An array after a write of element `k`: the array with that element replaced. -/
+theorem _root_.LeanExe.ProofKit.UInt64Array.At.writeElement {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : UInt64Array.At store ptr values) {k : Nat} (hk : k < values.size) (v : UInt64) :
+    UInt64Array.At (UInt64Array.writeElement store ptr k v) ptr (values.set k v hk) := by
+  have hFit := h.1
+  refine ⟨by simpa using h.1, by simpa using h.2.1, ?_, fun j hj => ?_⟩
+  · rw [Array.size_set]
+    refine (Memory.read64_write64_disjoint store.mem _ _ ptr.toUInt32 (Or.inl ?_)).trans
+      h.lengthRead
+    rw [UInt64Array.wordAddress_toNat hFit (by omega), Memory.toUInt32_toNat,
+      Nat.mod_eq_of_lt (by omega)]
+    omega
+  · rw [Array.size_set] at hj
+    rw [Array.getElem_set]
+    show (store.mem.write64 (UInt64Array.wordAddress ptr (k + 1)) v).read64
+      (UInt64Array.wordAddress ptr (j + 1)) = _
+    split
+    · subst k
+      exact Memory.read64_write64 ..
+    · rw [Memory.read64_write64_disjoint _ _ _ _ (by
+        rw [UInt64Array.wordAddress_toNat hFit (by omega),
+          UInt64Array.wordAddress_toNat hFit (by omega)]
+        omega)]
+      exact h.elementRead j hj
+
+/-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
+length word is `n` and whose elements are what memory held, with its address in local `ptr`.  The
+allocation may trap at `unreachable` when memory runs out. -/
+theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
+    {Q : Assertion Unit} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK true Q) (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
+    (hLow : s.params.length ≤ ptr) (hHigh : ptr < s.params.length + s.locals.length)
+    (hne : count ≠ ptr)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
+      words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
+      heap'.Owned store' root words →
+      wp m rest Q store' (setLocal { s with values := s.values } ptr (.i64 root)) host) :
+    wp m (allocArrayCode count ptr ++ rest) Q store s host := by
+  have hn' : UInt64.ofNat n.toNat = n := UInt64.ofNat_toNat
+  obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hn
+  rw [hn'] at hBytes hAllocSize
+  simp only [allocArrayCode, List.cons_append, List.nil_append, wp_localGet_cons, hN,
+    wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
+  refine wp_alloc hm hAt (by rw [hBytes]; omega) hCap hTrap fun hFits => ?_
+  rw [hAllocSize] at hFits ⊢
+  generalize hNeed : (n + 1) * 8 = need at hFits hBytes ⊢
+  have hBlock := hAt.allocate_block 1 hFits
+  have hCapacity := allocated_capacity need heap.free
+  generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock ⊢
+  generalize hCapDef : allocatedCapacity need heap.free = cap at hBlock hCapacity
+  have hRootBase := hBlock.base
+  have hRootAddress := hBlock.address
+  have hRootMemory := hBlock.memory
+  have hRoot32 : root.toUInt32.toNat = root.toNat := by
+    rw [Memory.toUInt32_toNat]; omega
+  set store1 := heap.allocateStore store need 1 with hStore1
+  refine wp_localSet_local (s := s) (vs := s.values) hLow hHigh ?_
+  let s1 := setLocal { s with values := s.values } ptr (.i64 root)
+  have hLow1 : ({ s with values := s.values } : Locals).params.length ≤ ptr := hLow
+  have hRoot1 : s1.get ptr = some (.i64 root) := Locals.get_setLocal_same hLow1 hHigh
+  have hN1 : s1.get count = some (.i64 n) := by
+    rw [Locals.get_setLocal_ne hLow1 hne]; exact hN
+  -- The length word.
+  show wp m _ Q store1 s1 host
+  simp only [wp_localGet_cons, Locals.get_values, hRoot1, wp_wrapI64_cons, hN1, wp_store64_cons,
+    wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega)]
+  set store2 : Store Unit :=
+    { store1 with mem := (store1.mem.write64 root.toUInt32 n) } with hStore2
+  -- The block, owned, with the elements that memory holds.
+  let words : Array UInt64 :=
+    Array.ofFn (n := n.toNat) fun j => store2.mem.read64 (UInt64Array.wordAddress root (j + 1))
+  have hSize : words.size = n.toNat := Array.size_ofFn
+  have hValues : UInt64Array.At store2 root words := by
+    refine ⟨by rw [hSize]; omega, ?_, ?_, fun i hi => ?_⟩
+    · rw [hSize]; simp only [store2, Wasm.Mem.write64_pages]; omega
+    · rw [hSize, hn']; exact Memory.read64_write64 ..
+    · simp [words, UInt64Array.wordAddress]
+  have hWrites : Memory.WritesRange store1 store2 root.toNat (root.toNat + 8) :=
+    Memory.WritesRange.write64 _ root.toUInt32 _ _ _ (by omega) (by omega)
+  have hWithin : WritesWithin store1 store2 root.toNat cap.toNat :=
+    ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
+  subst hRoot hCapDef
+  have hNew := Heap.newArray_of_writes hAt hFits hWithin hValues (by rw [hSize]; omega)
+    (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
+  exact hNext _ store2 _ words hSize
+    ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩ hNew.owned
+
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
 owned array, with the locals from `base` to `base + 2` as scratch.  The copy allocates, so it may
 trap at `unreachable`. -/
@@ -130,7 +219,7 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
   obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hSizeLt
   have hN : (UInt64.ofNat xs.size).toNat = xs.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  simp only [copyArrayCode, List.cons_append, List.nil_append]
+  simp only [copyArrayCode, allocArrayCode, List.cons_append, List.nil_append]
   -- The length, in local `base`.
   simp only [wp_localGet_cons, hSrc, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
     UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]

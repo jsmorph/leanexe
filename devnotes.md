@@ -26420,8 +26420,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V7a: pairs, with values of several words.
 - [x] V7b: `LeanExe.loop` over a state of any type.
 - [x] V8a: the heap statement, and borrowed arrays of words with their size and reads.
-- [ ] V8b: allocation, owned array results and temporaries, and releases (owned values done
-  2026-10-07; `build` and the reflector's splits remain).
+- [x] V8b: allocation, owned array results and temporaries, and releases (2026-10-07).
 - [ ] V8c: inferred parameter modes, moves, and in-place updates.
 - [ ] Later: floats, records, and recursion.
 
@@ -26795,9 +26794,39 @@ with `letPair`; the equations hold by `zeta`, `iota`, and the eta rule of pairs.
 change, `swap` allocates only the two copies of its arguments.
 
 - [x] Modes, copies, moves, and releases, with array results, proved and tested.
-- [ ] `LeanExe.build`, with the trap at `unreachable` when memory runs out.
+- [x] `LeanExe.build`, with the trap at `unreachable` when memory runs out.
 - [x] The reflector's substitution of `let y := x` and split of pair binders.
-- [ ] Docs: the design document's open work.
+- [x] Docs: the design document's open work.
+
+### V8b, second part: `LeanExe.build`
+
+`Expr.build count elem` builds an array of words; `elem` has the index as variable 0.  Its code
+keeps the count in local `base`, traps at `unreachable` when the count is `2^29` or more, the
+bound of `LeanExe`'s template, allocates the array into local `base + 1` with `allocArrayCode`,
+which the copy shares, keeps the index in local `base + 2`, and for each index pushes the
+element's address, runs the element's code, and stores the element.  The outer variables that
+only the element reads are live through the loop and released after it.  The `LeanExe` template's
+theorem requires an element that leaves the store unchanged, so it does not apply: this element
+may allocate and release arrays of its own.
+
+The design was reviewed before the proof (2026-10-07).  The review found no defect and checked the
+trap bound against `wp_alloc`, the element's stack, that no variable dies inside the element, that
+each outer variable is released once, and that the element's steps keep the partly built block.
+It proposed three simplifications, all adopted: compose the array's facts with the element's by
+`After.seq` instead of a new lemma, state the store of one element as `After.writeElement`, which
+V8c's in-place `set!` needs as well, and state the allocation as `wp_allocArray` in `Heap.lean`.
+The invariant of `spec_build` holds an owned array of the count's length whose elements below the
+index are built, as an `After` from the start of the build.  The block is owned from its
+allocation, with the elements that memory holds, so `Ty.Rep.step`, `Holds.Apart.transfer`,
+`After.seq`, and `After.release` carry it through the element's steps unchanged.  The element's
+facts reach the outer context by `After.bind` with `After.refl` for the index.
+
+`Owned.lean` gains six functions built with `LeanExe.build`: `squares`, `scaled`, `sumSquares`,
+`rowSums`, whose element builds an array and passes it to `sum`, which releases it, `onlyInside`,
+whose element reads an owned array that dies after the build, and `bothSides`, whose count and
+element read the same owned array.  A case of the form `…|trap` must trap at `unreachable`, and
+`squares` with a count of `2^29` does.  All 3,965 cases pass, and the theorems use only `propext`,
+`Classical.choice`, and `Quot.sound`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
