@@ -258,7 +258,7 @@ No work on items 2 and 3 is planned.
 - [ ] The host's invocation of kernels and a run in a browser.
 - [ ] A proof of the I/O adapter.
 - [ ] `Array Float` literals.
-- [ ] The verified compiler: recursion, enumerations, and records with array fields.
+- [ ] The verified compiler: recursion and records with array fields.
 
 Unknowns: how Talos's semantics is tested against the WebAssembly specification, and whether Talos bounds call depth.
 

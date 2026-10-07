@@ -1,5 +1,6 @@
 import Verified.Source
 import LeanExe.Dialect.RepeatWhile
+import LeanExe.Pipeline.Implements
 import LeanExe.ProofKit.F64Bits
 
 /-! The lemmas from which the reflector builds the equation `denote (reflect f) = f` of a Lean
@@ -332,5 +333,41 @@ theorem build_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (F : UInt64 �
   show LeanExe.build _ (fun i => elem.denote funs (.cons i env)) = _
   simp only [LeanExe.build, hf, Array.map_ofFn]
   rfl
+
+/-- A function of a pair at the pair of its components is the function at the pair, by eta for
+pairs on a variable. -/
+theorem pair_eta {α β γ : Type} (B : α × β → γ) (v : α × β) : B (v.1, v.2) = B v := rfl
+
+/-! An enumeration is the word of its `Flat` instance.  A comparison of enumerations is the
+comparison of their words, given that the flattening is injective. -/
+
+open LeanExe.Pipeline in
+theorem flat_decide {E : Type} [Flat E UInt64] (h : Function.Injective (Flat.flat : E → UInt64))
+    (a b : E) [Decidable (a = b)] : decide (a = b) = decide (Flat.flat a = Flat.flat b) :=
+  decide_eq_decide.mpr h.eq_iff.symm
+
+open LeanExe.Pipeline in
+theorem flat_beq {E : Type} [Flat E UInt64] [BEq E] [LawfulBEq E]
+    (h : Function.Injective (Flat.flat : E → UInt64)) (a b : E) :
+    (a == b) = (Flat.flat a == Flat.flat b) := by
+  rw [Bool.eq_iff_iff, beq_iff_eq, beq_iff_eq, h.eq_iff]
+
+open LeanExe.Pipeline in
+theorem flat_bne {E : Type} [Flat E UInt64] [BEq E] [LawfulBEq E]
+    (h : Function.Injective (Flat.flat : E → UInt64)) (a b : E) :
+    (a != b) = (Flat.flat a != Flat.flat b) := by
+  rw [bne, bne, flat_beq h]
+
+open LeanExe.Pipeline in
+theorem flat_ite {E α : Type} [Flat E UInt64] (h : Function.Injective (Flat.flat : E → UInt64))
+    (a b : E) [Decidable (a = b)] (x y : α) :
+    (if a = b then x else y) = (if Flat.flat a = Flat.flat b then x else y) := by
+  by_cases hab : a = b <;> simp [hab, h.eq_iff]
+
+open LeanExe.Pipeline in
+theorem flat_ite_ne {E α : Type} [Flat E UInt64]
+    (h : Function.Injective (Flat.flat : E → UInt64)) (a b : E) [Decidable (a ≠ b)] (x y : α) :
+    (if a ≠ b then x else y) = (if Flat.flat a ≠ Flat.flat b then x else y) := by
+  by_cases hab : a = b <;> simp [hab, h.eq_iff]
 
 end Verified.Reflect

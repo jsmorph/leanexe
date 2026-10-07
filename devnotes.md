@@ -27211,7 +27211,7 @@ not `LeanExe.loop`, and no construct of the dialect needs one.
 
 - [x] V11: `LeanExe.repeatWhile`.
 - [ ] V12: recursion.
-- [ ] V13: enumerations and `match` on them.
+- [x] V13: enumerations and `match` on them.
 - [ ] V14: records with array fields.
 
 ### V11: `LeanExe.repeatWhile`
@@ -27261,6 +27261,37 @@ the same, nine seconds for a loop of 30,000 passes against half a second for thr
 stays as a documented limit.  Equations compose with `transHint`, which keeps the first proof's
 middle term, so the elaborator does not unify the two middle terms by reduction.  `Repeat.lean`
 adds 115 cases, and all 6,138 cases pass.
+
+### V13: enumerations and `match`
+
+An enumeration with a `Flat` instance to words is that word, so neither `Ty` nor `Elem` gains a
+case.  `LeanExe` uses the constructor index whatever the instance says, while the verified
+compiler uses the instance, which the theorem states.  The agreement lemmas `Agree.scalar` and
+`Agree.flatArray` already cover enumerations, structures with enumeration fields, and arrays of
+either.  The design review replaced per-pair comparison theorems, which made the kernel evaluate
+the user's `BEq` and `Decidable` instances at every pair of constructors, with one theorem per
+type that the flattening is injective, proved from a decoder in one case per constructor, and
+generic lemmas in `Lemmas.lean`.  The kernel never evaluates the user's equality instances:
+`decide_eq_decide` covers any `Decidable` instance, and `==` needs `LawfulBEq`.  The match equation
+is stated over variables for the alternatives, so the kernel never unfolds an alternative's body.
+The decoder, the match chain, and the default of an array's element are checked with
+`Kernel.isDefEq`, because Meta's `isDefEq` may not reduce the words, and each constructor is
+checked separately so that a failure names it.  `Bool` is an enumeration with a `Flat` instance
+but keeps its own source type, so the rules exclude it.
+
+The code review found two failures, which new definitions now cover.  `decide (a ≠ b)`, on words
+as on enumerations, reflected to `CmpOp.apply .ne`, which the kernel cannot identify with the
+`Decidable` instance of `≠`.  It now becomes `!decide (a = b)` by `decide_not`.  And wherever the
+reflector reflected a term in place of the one given, a `let` it substituted, a match on a pair it
+took apart, or arguments it bound, the proof ended at `φ T` where the equation states `φ e`.  Under
+a `Flat` instance that is a `match`, as for `Phase`, the kernel unfolds both sides into the
+instance's matcher and evaluates `T`, so `cool`, with a loop of 30,000 passes in an alternative,
+would have made it run the loop.  Each such point now closes the gap with `bareEq`, the equation
+`T = e` by `rfl`, which the kernel checks by `let`, beta, and constructor reductions before the
+flattening applies.  A single-alternative match on a variable uses `casesEq` as one on a value
+does, and a `let` of a pair uses `pair_eta`.  `kernelDefEq` rethrows kernel exceptions, and a
+constructor's word is computed by the kernel.  `Enums.lean` adds 214 cases, and all 6,352 cases
+pass.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
