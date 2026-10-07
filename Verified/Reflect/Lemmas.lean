@@ -1,4 +1,5 @@
 import Verified.Source
+import LeanExe.Dialect.RepeatWhile
 import LeanExe.ProofKit.F64Bits
 
 /-! The lemmas from which the reflector builds the equation `denote (reflect f) = f` of a Lean
@@ -174,30 +175,85 @@ theorem loop_map {α β : Type} (φ : α → β) (n : UInt64) (init : α) (F : U
   | zero => rfl
   | succ k ih => simp only [Nat.fold_succ, ih, h]
 
-/-- A loop means `LeanExe.loop` with the meanings of its count, its initial state, and its
-body. -/
+/-- A loop whose condition is `true` means `LeanExe.loop` with the meanings of its count, its
+initial state, and its body. -/
 theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     {body : Expr S (t :: .word :: Γ) t} {N : UInt64} {I : t.denote}
     {B : UInt64 → t.denote → t.denote} (hn : count.denote funs env = N)
     (hi : init.denote funs env = I)
     (hb : ∀ i acc, body.denote funs (.cons acc (.cons i env)) = B i acc) :
-    (Expr.loop count init body).denote funs env = LeanExe.loop N I B := by
+    (Expr.loop count init (.bool true) body).denote funs env = LeanExe.loop N I B := by
   subst hn hi
   obtain rfl : (fun i acc => body.denote funs (.cons acc (.cons i env))) = B :=
     funext fun i => funext (hb i)
   rfl
 
-/-- A loop whose state is a structure: the source state is the flattening of the Lean state. -/
+/-- A loop whose condition is `true` and whose state is a structure: the source state is the
+flattening of the Lean state. -/
 theorem loop_flat_eq {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (F : UInt64 → α → α)
     {count : Expr S Γ .word} {init : Expr S Γ t} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
     (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
     (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s)) :
-    (Expr.loop count init body).denote funs env = φ (LeanExe.loop N I F) := by
+    (Expr.loop count init (.bool true) body).denote funs env = φ (LeanExe.loop N I F) := by
   subst hn
   show LeanExe.loop _ (init.denote funs env)
     (fun i acc => body.denote funs (.cons acc (.cons i env))) = _
   rw [hi]
   exact loop_map φ _ I F _ hb
+
+/-- `LeanExe.repeatWhile` is the loop over its fuel whose function applies `step` to a state
+that satisfies `cond` and keeps any other. -/
+theorem repeatWhile_eq_loop {α : Type} (fuel : UInt64) (init : α) (cond : α → Bool)
+    (step : α → α) :
+    LeanExe.repeatWhile fuel init cond step =
+      LeanExe.loop fuel init (fun _ s => bif cond s then step s else s) := by
+  unfold LeanExe.repeatWhile LeanExe.loop
+  suffices h : ∀ k s, LeanExe.repeatWhile.go cond step k s =
+      (fun s => bif cond s then step s else s)^[k] s by
+    rw [h]
+    induction fuel.toNat with
+    | zero => rfl
+    | succ k ih => rw [Function.iterate_succ_apply', ih, Nat.fold_succ]
+  intro k
+  induction k with
+  | zero => intro s; rfl
+  | succ k ih =>
+    intro s
+    rw [Function.iterate_succ_apply]
+    cases hc : cond s
+    · simp only [LeanExe.repeatWhile.go, hc, Bool.cond_false]
+      exact (Function.iterate_fixed (by simp [hc]) k).symm
+    · simp [LeanExe.repeatWhile.go, hc, ih]
+
+/-- A loop whose body ignores the index means `LeanExe.repeatWhile` with the meanings of its
+count, its initial state, its condition, and its body. -/
+theorem repeatWhile_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
+    {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
+    {I : t.denote} (hn : count.denote funs env = N) (hi : init.denote funs env = I)
+    (C : t.denote → Bool) (B : t.denote → t.denote)
+    (hc : ∀ acc, cond.denote funs (.cons acc env) = C acc)
+    (hb : ∀ i acc, body.denote funs (.cons acc (.cons i env)) = B acc) :
+    (Expr.loop count init cond body).denote funs env = LeanExe.repeatWhile N I C B := by
+  rw [repeatWhile_eq_loop]
+  subst hn hi
+  show LeanExe.loop _ _ (fun i acc => bif cond.denote funs (.cons acc env) then
+    body.denote funs (.cons acc (.cons i env)) else acc) = _
+  simp only [hc, hb]
+
+/-- `repeatWhile_eq` for a state that is a structure. -/
+theorem repeatWhile_flat_eq {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C : α → Bool)
+    (B : α → α) {count : Expr S Γ .word} {init : Expr S Γ t} {cond : Expr S (t :: Γ) .bool}
+    {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
+    (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
+    (hc : ∀ s, cond.denote funs (.cons (φ s) env) = C s)
+    (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (B s)) :
+    (Expr.loop count init cond body).denote funs env = φ (LeanExe.repeatWhile N I C B) := by
+  rw [repeatWhile_eq_loop]
+  subst hn
+  show LeanExe.loop _ (init.denote funs env) (fun i acc => bif cond.denote funs (.cons acc env)
+    then body.denote funs (.cons acc (.cons i env)) else acc) = _
+  rw [hi]
+  exact loop_map φ _ I _ _ fun i s => by simp only [hc, hb]; cases C s <;> rfl
 
 /-- `LeanExe.build` with the meanings of its count and its element function. -/
 theorem build_eq {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)}

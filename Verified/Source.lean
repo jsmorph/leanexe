@@ -278,18 +278,21 @@ def Funs.get : {S : List Sig} → {g : Sig} → Funs S → FVar S g → Env g.pa
 `letE value body` gives `body` the value of `value` as variable 0, ahead of the variables of `Γ`.
 `call f args` applies function `f` to the values of `args`, argument `i` having the type of
 parameter `i`.  `letPair e body` gives `body` the second component of `e` as variable 0 and the
-first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from the value of
-`init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
-index as variable 1.  `size x` is the number of elements of the array variable `x` as a word,
-and `get x i` is element `i` of `x`, or the element type's default value when `i` is not below
-the size, as Lean's `x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of
-`count` elements whose element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is
-`x.set! i.toNat v`:
-the array of `x` with element `i` replaced by `v`, or `x` when `i` is not below the size.
-`push x v` is `x.push v`, and `append x y` is `x ++ y`.  `float bits` is the float with the bit
-pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats, and
-`toFloat` and `toWord` convert between words and floats.  `mk first second` is the tuple of two
-elements, and `proj x p` is the component at path `p` of the tuple variable `x`. -/
+first as variable 1.  `loop count init cond body` is `LeanExe.loop` with a test: starting from
+the value of `init`, for each index 0 to `count - 1` it applies `body` to a state that satisfies
+`cond` and keeps any other, with the state as variable 0 of `cond`, and the state as variable 0
+and the index as variable 1 of `body`.  `cond` does not see the index, so a state that fails it
+stays for the remaining indices.  `LeanExe.loop` is the loop whose `cond` is `true`, and
+`LeanExe.repeatWhile` is the one whose `body` ignores the index.  `size x` is the number of
+elements of the array variable `x` as a word, and `get x i` is element `i` of `x`, or the element
+type's default value when `i` is not below the size, as Lean's `x[i.toNat]!` gives.
+`build count elem` is `LeanExe.build`: the array of `count` elements whose element `i` is the
+value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
+element `i` replaced by `v`, or `x` when `i` is not below the size.  `push x v` is `x.push v`, and
+`append x y` is `x ++ y`.  `float bits` is the float with the bit pattern `bits`, `fbin`,
+`funary`, and `fcmp` are the operations and comparisons of floats, and `toFloat` and `toWord`
+convert between words and floats.  `mk first second` is the tuple of two elements, and
+`proj x p` is the component at path `p` of the tuple variable `x`. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -305,8 +308,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       Expr S Γ g.result
   | pair (first : Expr S Γ s) (second : Expr S Γ t) : Expr S Γ (.pair s t)
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
-  | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
-      Expr S Γ t
+  | loop (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+      (body : Expr S (t :: .word :: Γ) t) : Expr S Γ t
   | size (x : Var Γ (.array e)) : Expr S Γ .word
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
   | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
@@ -362,9 +365,11 @@ def Expr.denote (funs : Funs S) :
   | _, _, .letPair e body, env =>
     let p := e.denote funs env
     body.denote funs (.cons p.2 (.cons p.1 env))
-  | _, _, .loop count init body, env =>
+  | _, _, .loop count init cond body, env =>
     LeanExe.loop (count.denote funs env) (init.denote funs env)
-      fun i acc => body.denote funs (.cons acc (.cons i env))
+      fun i acc =>
+        bif cond.denote funs (.cons acc env) then body.denote funs (.cons acc (.cons i env))
+        else acc
   | _, _, .size x, env => (env.get x).size.toUInt64
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
   | _, _, .build count elem, env =>
@@ -406,7 +411,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
     g.aborts || !g.result.scalar || argsAny fun i => (args i).aborts || g.mode i == .owned
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
-  | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
+  | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
   | _, _, .size _ => false
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _ => true
@@ -429,7 +434,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .call _ args, i => argsAny fun j => (args j).uses i
   | _, _, .pair first second, i => first.uses i || second.uses i
   | _, _, .letPair e body, i => e.uses i || body.uses (i + 2)
-  | _, _, .loop count init body, i => count.uses i || init.uses i || body.uses (i + 2)
+  | _, _, .loop count init cond body, i =>
+    count.uses i || init.uses i || cond.uses (i + 1) || body.uses (i + 2)
   | _, _, .size x, i => i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
@@ -471,7 +477,8 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
       !(argsAny fun i => !(args i).placeArgs)
   | _, _, .pair first second => first.placeArgs && second.placeArgs
   | _, _, .letPair e body => e.placeArgs && body.placeArgs
-  | _, _, .loop count init body => count.placeArgs && init.placeArgs && body.placeArgs
+  | _, _, .loop count init cond body =>
+    count.placeArgs && init.placeArgs && cond.placeArgs && body.placeArgs
   | _, _, .get _ i => i.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
   | _, _, .set _ i v => i.placeArgs && v.placeArgs
@@ -509,5 +516,12 @@ inductive Prog : List Sig → Type where
 def Prog.funs : {S : List Sig} → Prog S → Funs S
   | _, .nil => .nil
   | _, .cons f rest => .cons (f.denote rest.funs) rest.funs
+
+theorem Prog.get_here {S : List Sig} (f : Func S) (rest : Prog S) (env : Env f.params) :
+    (Prog.cons f rest).funs.get .here env = f.denote rest.funs env := rfl
+
+theorem Prog.get_there {S : List Sig} {g : Sig} (f : Func S) (rest : Prog S) (v : FVar S g)
+    (env : Env g.params) : (Prog.cons f rest).funs.get (.there v) env = rest.funs.get v env :=
+  rfl
 
 end Verified

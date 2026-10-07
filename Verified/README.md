@@ -32,22 +32,26 @@ a tuple variable along a path of first and second steps, the operations `+`, `-`
 float literals, the operations `+`, `-`, `*`, `/`, `Float.sqrt`, `Float.abs`, negation, `min`, and
 `max` on floats, the comparisons `==`, `!=`, `<`, and `≤` on floats, the conversions
 `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, and `Float.ofBits`, the `Bool` operations `!`,
-`&&`, and `||`, `if`, `LeanExe.loop`, an array's size `xs.size.toUInt64`, the read `xs[i.toNat]!`,
-the update `xs.set! i.toNat v`, the extensions `xs.push v` and `xs ++ ys`, and `LeanExe.build`, each
-with Lean's meaning.  Arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero
-is the dividend, a shift uses its amount modulo 64, a read past the end of an array gives Lean's
-default element, 0, `false`, or `0.0`, and an update past the end leaves the array unchanged.  A
-float operation has the meaning of Lean's `Float`, which
+`&&`, and `||`, `if`, `LeanExe.loop`, `LeanExe.repeatWhile`, an array's size `xs.size.toUInt64`, the
+read `xs[i.toNat]!`, the update `xs.set! i.toNat v`, the extensions `xs.push v` and `xs ++ ys`, and
+`LeanExe.build`, each with Lean's meaning.  Arithmetic wraps modulo 2^64, division by zero gives 0,
+the remainder by zero is the dividend, a shift uses its amount modulo 64, a read past the end of an
+array gives Lean's default element, 0, `false`, or `0.0`, and an update past the end leaves the
+array unchanged.  A float operation has the meaning of Lean's `Float`, which
 [`F64Bits.lean`](../LeanExe/ProofKit/F64Bits.lean) proves equal on bit patterns to Talos's `IEEE64`
 functions, the semantics of WebAssembly's f64 instructions in the deterministic profile, in which
 every NaN result is the canonical NaN.  `LeanExe.loop n init f` applies `f` to the indices 0 to
 `n - 1` in order, starting from the state `init`, and the state may have any of the types.
-`LeanExe.build n f` is the array of `n` elements whose element `i` is `f i`.  A variable is numbered
-by its distance from the front of the context: a binding's value is variable 0 of its body,
-parameter `i` is variable `i` of the function's body, a loop's body has the state as variable 0 and
-the index as variable 1, and a build's element has the index as variable 0.  The size, the read, the
-update, and the extensions take array variables, and a call's argument that holds arrays is a place,
-a variable or a pair of places, and a variable at an owned parameter.
+`LeanExe.repeatWhile fuel init cond step` applies `step` while `cond` holds, at most `fuel` times.
+The source expresses both with one loop that tests a condition on the state before each pass and
+leaves when it fails: `LeanExe.loop` is the loop whose condition is `true`, and
+`LeanExe.repeatWhile` the one whose body ignores the index.  `LeanExe.build n f` is the array of `n`
+elements whose element `i` is `f i`.  A variable is numbered by its distance from the front of the
+context: a binding's value is variable 0 of its body, parameter `i` is variable `i` of the
+function's body, a loop's condition has the state as variable 0, its body has the state as variable
+0 and the index as variable 1, and a build's element has the index as variable 0.  The size, the
+read, the update, and the extensions take array variables, and a call's argument that holds arrays
+is a place, a variable or a pair of places, and a variable at an owned parameter.
 
 A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
 float as its bit pattern in an f64 word, a tuple or a pair as its first component's words followed
@@ -127,60 +131,74 @@ writes ordinary Lean definitions as a source program.  For each definition `f` i
 function `p.f.func`, the equation `p.f.denote_eq` that it means `f`, and `p.f.implements`, which
 states that function `2 + k` of the module `p.module` computes `f` on the tuple of its arguments,
 with the `Represent` instances that Lean synthesizes for the tuple and the result.  `p.bytes` states
-that the module's bytes decode to a module that computes every listed definition.  The reflector is
-meta code and is not trusted: it builds each equation from the lemmas of
+that the module's bytes decode to the module, which computes every listed definition.  The reflector
+is meta code and is not trusted: it builds each equation from the lemmas of
 [`Reflect/Lemmas.lean`](Reflect/Lemmas.lean), one per Lean form, and Lean's kernel checks it.  An
 `if` on a `Prop` comparison needs a lemma, because Lean elaborates it with `UInt64`'s `Decidable`
 instance, which is not definitionally the source's test of a `Bool`.  A call of an earlier listed
-definition becomes a source call, proved from the callee's equation, and `LeanExe.loop` becomes a
-loop whose body is the reflection of the loop function's body.  The reflector chooses the parameter
-modes with `Expr.paramChoice` in [`Reflect/Modes.lean`](Reflect/Modes.lean): an array parameter is
-owned when the body consumes it where it dies, as the array of an update or an extension, at a call
-that moves it into an owned parameter, or as the result, directly or through a binding, a branch, a
-pair, or a loop's state, and borrowed otherwise.  The choice is not trusted, since the theorem holds
-for every choice of modes.  The reflector binds with `let` an array that a size or a read reads, a
-call's argument with arrays that is not a place, and an argument at an owned parameter that is not a
-variable.  It replaces a `let` of a place by its body with the place for the variable, and splits
-every variable of a pair type that holds arrays into variables for its components, so that a
-projection reads a component without a copy of the pair.  A Lean pair without arrays becomes a
-tuple: `(a, b)` becomes `Expr.mk`, a chain of `.1` and `.2` on a tuple variable becomes one
-`Expr.proj`, and a projection of another tuple, or a `match` on it, binds the tuple with `let`
-first.  A structure with a `Flat` instance whose tuple is its fields becomes the tuple of its
+definition becomes a source call, proved from the callee's equation, `LeanExe.loop` becomes a loop
+whose condition is `true` and whose body is the reflection of the loop function's body, and
+`LeanExe.repeatWhile` becomes a loop with the reflections of its condition and its step.
+`repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose function applies the
+step to a state that satisfies the condition and keeps any other.  The reflector chooses the
+parameter modes with `Expr.paramChoice` in [`Reflect/Modes.lean`](Reflect/Modes.lean): an array
+parameter is owned when the body consumes it where it dies, as the array of an update or an
+extension, at a call that moves it into an owned parameter, or as the result, directly or through a
+binding, a branch, a pair, or a loop's state, and borrowed otherwise.  The choice is not trusted,
+since the theorem holds for every choice of modes.  The reflector binds with `let` an array that a
+size or a read reads, a call's argument with arrays that is not a place, and an argument at an owned
+parameter that is not a variable.  It replaces a `let` of a place by its body with the place for the
+variable, and splits every variable of a pair type that holds arrays into variables for its
+components, so that a projection reads a component without a copy of the pair.  A Lean pair without
+arrays becomes a tuple: `(a, b)` becomes `Expr.mk`, a chain of `.1` and `.2` on a tuple variable
+becomes one `Expr.proj`, and a projection of another tuple, or a `match` on it, binds the tuple with
+`let` first.  A structure with a `Flat` instance whose tuple is its fields becomes the tuple of its
 fields' source values, its flattening `φ`, so that a nested structure is flattened in turn.  The
 environment of each equation holds `φ x` for each variable `x`, and each equation states that the
 source expression means `φ` of the Lean term, with `φ` the identity for the other types.  A
 constructor or `{ s with … }` becomes the tuple of the fields in the instance's order, a chain of
 field reads, `.1`, and `.2` on a structure variable becomes one `Expr.proj`, and a `match` on a
-structure binds its fields.  `letE_flat_eq`, `letPair_flat_eq`, `loop_flat_eq` with `loop_map`, and
-`apply_ite` carry `φ` through bindings, pairs, loops, and `if`.  An array of structures is the
-array of its elements' flattenings, `Array.map φ`, and `size_map_eq` through `build_map_eq` move
-the map through a size, a read, an update, an extension, and a build.  A read past the end gives
-the flattening of Lean's default structure, which the reflector checks by unfolding to be the
-default element, as it is when the default takes each field's default, as `deriving Inhabited`
-gives.  The theorem for a definition on structures follows from the theorem for its flattened
-function by `ImplementsA.transferAgree`, from proofs of `Agree` that Lean's instances for the
-argument tuple and the result represent each value as the source instances represent its
-flattening.  The reflector builds these proofs by recursion over the source types, as `argsInst`
-and `Ty.leanInst` build the source instances: `Agree.scalar` for a type without arrays, whose
-words are the words of its flattening, `Agree.flatArray` and `Agree.flatMoved` for an array of
-structures, borrowed or owned, whose elements Lean's instance stores as the words of their `Flat`
-tuples, `Agree.refl` for another array, and `Agree.prod` for a pair that holds arrays.  The kernel
-checks each step by unfolding, and the reflector checks it first to name the type that fails.  The
-reflector writes `min a b` and `max a b` on floats as `if a ≤ b`, which is Lean's
-definition and differs from `f64.min` and `f64.max` on NaN and on zeros of opposite sign, after
-binding with `let` an operand that is not a variable.  Each of these rewritings leaves the meaning
-unchanged.  The reflector computes the bit pattern of a float literal, of `Float.ofBits` or
-`UInt64.toFloat` of a word literal, and of a negated literal, and the kernel checks by `decide` that
-the literal has it.  It rejects `=` and `≠` on floats, which compare bit patterns, so that
-`0.0 ≠ -0.0`, and which no f64 instruction computes.
+structure binds its fields.  `letE_flat_eq`, `letPair_flat_eq`, `loop_flat_eq` and
+`repeatWhile_flat_eq` with `loop_map`, and `apply_ite` carry `φ` through bindings, pairs, loops, and
+`if`.  An array of structures is the array of its elements' flattenings, `Array.map φ`, and
+`size_map_eq` through `build_map_eq` move the map through a size, a read, an update, an extension,
+and a build.  A read past the end gives the flattening of Lean's default structure, which the
+reflector checks by unfolding to be the default element, as it is when the default takes each
+field's default, as `deriving Inhabited` gives.  The theorem for a definition on structures follows
+from the theorem for its flattened function by `ImplementsA.transferAgree`, from proofs of `Agree`
+that Lean's instances for the argument tuple and the result represent each value as the source
+instances represent its flattening.  The reflector builds these proofs by recursion over the source
+types, as `argsInst` and `Ty.leanInst` build the source instances: `Agree.scalar` for a type without
+arrays, whose words are the words of its flattening, `Agree.flatArray` and `Agree.flatMoved` for an
+array of structures, borrowed or owned, whose elements Lean's instance stores as the words of their
+`Flat` tuples, `Agree.refl` for another array, and `Agree.prod` for a pair that holds arrays, each
+restated along the flattening of the equation's right side.  The kernel checks each step by
+unfolding, and the reflector checks it first to name the type that fails.  The reflector builds the
+equations and the theorems as terms so that the kernel never unfolds a definition, because it would
+evaluate a loop over literal data pass by pass.  `p.f.denote_eq` relates `f` to its body through
+`f = fun params => body`, which the kernel checks by unfolding `f` against the lambda.  A call and
+`p.f.implements` reach a function's meaning through `Prog.get_there` and `Prog.get_here`, which take
+the program's `funs.get` to the function's `Func.denote`.  A `match` on a value that is not a
+variable meets its alternative through an equation proved by `cases` on a variable, the flattenings
+enter as lambdas, and equations compose with explicit middle terms.  A definition without parameters
+is the exception: the kernel relates the constant to a body that is a `match` by unfolding the
+matcher first, as for Lean's own equation lemmas, so it evaluates a discriminant that computes over
+literals.  Only literals become constants: any other closed term is compiled as written.  The
+reflector writes `min a b` and `max a b` on floats as `if a ≤ b`, which is Lean's definition and
+differs from `f64.min` and `f64.max` on NaN and on zeros of opposite sign, after binding with `let`
+an operand that is not a variable.  Each of these rewritings leaves the meaning unchanged.  The
+reflector computes the bit pattern of a float literal, of `Float.ofBits` or `UInt64.toFloat` of a
+word literal, and of a negated literal, and the kernel checks by `decide` that the literal has it.
+It rejects `=` and `≠` on floats, which compare bit patterns, so that `0.0 ≠ -0.0`, and which no f64
+instruction computes.
 
 | Theorem | Statement |
 |---------|-----------|
 | `Prog.correct` | For every program and every function in it, the function's index in the compiled module computes the function's meaning in the sense of `ImplementsA`, and returns without a trap when its signature's `aborts` is false. |
 | `Func.correct` | A function in a module whose functions at the call indices compute the functions it calls computes its own meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
-| `Expr.code_spec` | From any heap and store with the allocator invariant, in which the variables live before an expression hold words that represent their values in their modes and the blocks of the owned ones lie apart from the other variables' arrays, the code of the expression ends with words that represent the expression's value in its mode.  The step of the heap and store consumes only the blocks of the owned variables that die in the expression, the variables live after it hold their values, an owned value's blocks are new, and the value lies apart from the variables live after it.  The code changes no parameter and no local below the locals it uses.  One lemma per construct proves it, `spec_word` through `spec_append`; `After.seq`, `After.bind`, `After.bind2`, and `After.release` combine the facts of consecutive codes, of a binding and its body, and of a release.  The loop case uses `wp_loop_cons` with an invariant: the index `i` is at most the count, and the state locals hold the state after `i` iterations with the facts of `After` for the variables live in the loop.  The build case's invariant is an owned array of the count's length whose elements below the index are built, with the facts of `After`; `wp_allocArray` gives the array, and `After.writeElement` stores each element in place.  The update case takes the array with `spec_ownedVar`, which moves an owned variable that dies and copies any other, and writes the element with `After.writeElement`.  The extension cases take the array with `spec_room`, which proves the growth in place, the move to a larger block with `After.replace`, and the copy; `wp_allocCopy` and `wp_copyInto` give the allocation and the copy loop that the copy of a value also uses, and `After.rewrite` the writes inside an owned block.  The call case takes the arguments with `args_spec`, which proves that the owned arguments' blocks lie apart from one another and from the borrowed arguments' arrays, as the callee's `Separate` requires, and that the caller's live variables lie apart from the blocks that the call consumes. |
+| `Expr.code_spec` | From any heap and store with the allocator invariant, in which the variables live before an expression hold words that represent their values in their modes and the blocks of the owned ones lie apart from the other variables' arrays, the code of the expression ends with words that represent the expression's value in its mode.  The step of the heap and store consumes only the blocks of the owned variables that die in the expression, the variables live after it hold their values, an owned value's blocks are new, and the value lies apart from the variables live after it.  The code changes no parameter and no local below the locals it uses.  One lemma per construct proves it, `spec_word` through `spec_append`; `After.seq`, `After.bind`, `After.bind2`, and `After.release` combine the facts of consecutive codes, of a binding and its body, and of a release.  The loop case uses `wp_loop_cons` with an invariant: the index `i` is at most the count, and the state locals hold the state after `i` passes with the facts of `After` for the variables live in the loop.  Each pass runs the condition with the state as a borrowed variable, in which no variable dies, so `After.test` keeps the invariant at the condition's heap, and a false condition leaves with the state, which `loopState_stop` shows is the loop's value.  The build case's invariant is an owned array of the count's length whose elements below the index are built, with the facts of `After`; `wp_allocArray` gives the array, and `After.writeElement` stores each element in place.  The update case takes the array with `spec_ownedVar`, which moves an owned variable that dies and copies any other, and writes the element with `After.writeElement`.  The extension cases take the array with `spec_room`, which proves the growth in place, the move to a larger block with `After.replace`, and the copy; `wp_allocCopy` and `wp_copyInto` give the allocation and the copy loop that the copy of a value also uses, and `After.rewrite` the writes inside an owned block.  The call case takes the arguments with `args_spec`, which proves that the owned arguments' blocks lie apart from one another and from the borrowed arguments' arrays, as the callee's `Separate` requires, and that the caller's live variables lie apart from the blocks that the call consumes. |
 | `ImplementsA.lean` | A function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
-| `compiled.bytes` | In each example, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; [`Pairs.lean`](Examples/Pairs.lean), pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, and calls that pass and return pairs; [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`; [`Loops.lean`](Examples/Loops.lean), loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition; [`Arrays.lean`](Examples/Arrays.lean), sums, a dot product, a count, and a search over arrays in loops, reads at computed positions, a pair of arrays passed to calls, and an array chosen by an `if` and bound with `let`; and [`Owned.lean`](Examples/Owned.lean), array results, copies of parameters, owned call results that a reader, a call, a branch, or an unused binding releases, a moved result, a loop whose state is an owned array, a pair of owned arrays taken apart, and arrays built with `LeanExe.build`, one whose element builds and releases an array of its own and one whose element reads an owned array that dies after the build; and [`Updates.lean`](Examples/Updates.lean), updates of a parameter, of a built array, of a loop's state, two updates in a row, and an update of an array that stays live; and [`Grow.lean`](Examples/Grow.lean), `push` and `++` on parameters, built arrays, and loop states, onto an array that stays live, an array appended to itself, and an owned right operand; and [`Modes.lean`](Examples/Modes.lean), parameters that a function returns, updates, or moves into an owned parameter, also from a loop's state and before a later argument reads the array, and parameters that stay borrowed because the body uses them again.  Its `byHand`, written without the reflector, has an owned parameter that the body never reads and one that it reads last; and [`Floats.lean`](Examples/Floats.lean), a piecewise function, a scaled hypotenuse, float comparisons as conditions and as `Bool` values, `min`, `max`, negation, a loop over a pair of floats, a function with parameters of every kind and a pair result with a float, a call of float functions, the conversions between words and floats, a power of two built from its exponent field, and literal NaN patterns; [`Records.lean`](Examples/Records.lean), structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and carried as a loop's state, with theorems stated for the structures; [`Tuples.lean`](Examples/Tuples.lean), written without the reflector, arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, with an `example` per function stating by `rfl` that it means a Lean function; [`Grids.lean`](Examples/Grids.lean), arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs; and [`Elements.lean`](Examples/Elements.lean), sums, a dot product, and a maximum over arrays of floats, a grid built from converted indices, an `axpy` that updates an owned array of floats in place, an extension, flags of negative elements, a count and a selection by flags, an update and a push of an owned array of `Bool`s, and a sieve of Eratosthenes. |
+| `compiled.bytes` | In each example, the bytes of the module decode to the module, which computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; [`Pairs.lean`](Examples/Pairs.lean), pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, and calls that pass and return pairs; [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`; [`Loops.lean`](Examples/Loops.lean), loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition; [`Arrays.lean`](Examples/Arrays.lean), sums, a dot product, a count, and a search over arrays in loops, reads at computed positions, a pair of arrays passed to calls, and an array chosen by an `if` and bound with `let`; and [`Owned.lean`](Examples/Owned.lean), array results, copies of parameters, owned call results that a reader, a call, a branch, or an unused binding releases, a moved result, a loop whose state is an owned array, a pair of owned arrays taken apart, and arrays built with `LeanExe.build`, one whose element builds and releases an array of its own and one whose element reads an owned array that dies after the build; and [`Updates.lean`](Examples/Updates.lean), updates of a parameter, of a built array, of a loop's state, two updates in a row, and an update of an array that stays live; and [`Grow.lean`](Examples/Grow.lean), `push` and `++` on parameters, built arrays, and loop states, onto an array that stays live, an array appended to itself, and an owned right operand; and [`Modes.lean`](Examples/Modes.lean), parameters that a function returns, updates, or moves into an owned parameter, also from a loop's state and before a later argument reads the array, and parameters that stay borrowed because the body uses them again.  Its `byHand`, written without the reflector, has an owned parameter that the body never reads and one that it reads last; and [`Floats.lean`](Examples/Floats.lean), a piecewise function, a scaled hypotenuse, float comparisons as conditions and as `Bool` values, `min`, `max`, negation, a loop over a pair of floats, a function with parameters of every kind and a pair result with a float, a call of float functions, the conversions between words and floats, a power of two built from its exponent field, and literal NaN patterns; [`Records.lean`](Examples/Records.lean), structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and carried as a loop's state, with theorems stated for the structures; [`Tuples.lean`](Examples/Tuples.lean), written without the reflector, arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, with an `example` per function stating by `rfl` that it means a Lean function; [`Grids.lean`](Examples/Grids.lean), arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs; [`Repeat.lean`](Examples/Repeat.lean), `LeanExe.repeatWhile` over words, a float, pairs that hold arrays, and a structure, stopping early under fuels up to `2 ^ 64 - 1`, with a condition that reads an owned array of the state and a step that updates it in place, and loops over literal data inside a pair result, under a `match`, behind a call with literal arguments, and in a closed term; and [`Elements.lean`](Examples/Elements.lean), sums, a dot product, and a maximum over arrays of floats, a grid built from converted indices, an `axpy` that updates an owned array of floats in place, an extension, flags of negative elements, a count and a selection by flags, an update and a push of an owned array of `Bool`s, and a sieve of Eratosthenes. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Every example is
 an ordinary Lean file: its definitions and one `verified_compile` command.

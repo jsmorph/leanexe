@@ -26,7 +26,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Elements:compiled.module:elements \
     Verified.Examples.Tuples:module:tuples \
     Verified.Examples.Records:compiled.module:records \
-    Verified.Examples.Grids:compiled.module:grids; do
+    Verified.Examples.Grids:compiled.module:grids \
+    Verified.Examples.Repeat:compiled.module:repeat; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"

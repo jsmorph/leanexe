@@ -319,7 +319,7 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _ => .owned
   | _, _, .pair first second => (first.mode modes).join (second.mode modes)
   | _, _, .letPair e body => body.mode (e.mode modes :: e.mode modes :: modes)
-  | _, _, .loop _ init body =>
+  | _, _, .loop _ init _ body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
   | _, _, _ => .borrowed
 
@@ -376,9 +376,9 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .pair (s := s) (t := t) first second =>
     max (max first.width second.width) (max (copyWidth s) (copyWidth t))
   | _, _, .letPair (s := s) (t := t) e body => s.width + t.width + max e.width body.width
-  | _, _, .loop (t := t) count init body =>
+  | _, _, .loop (t := t) count init cond body =>
     max count.width (max (1 + max init.width (copyWidth t))
-      (2 + t.width + max body.width (copyWidth t)))
+      (2 + t.width + max (max cond.width body.width) (copyWidth t)))
   | _, _, .get _ i => max i.width 2
   | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
   | _, _, .set (e := e) _ i v =>
@@ -402,9 +402,12 @@ types of at most one result.  `letE` stores its value from local `base` on and g
 locals above it, and `letPair` stores its first component from `base` on and its second after
 it.  A call pushes its arguments in order, its arrays read in place, and calls the function.  A
 loop keeps its count in local `base`, its index in local `base + 1`, and its state from local
-`base + 2` on, and leaves the block when the index reaches the count.  `size` loads the length
-word at the array's address and divides it by the element's word count `k`.  `get` keeps the
-position in local `base`, compares it with the size, keeps the result as a flag in local
+`base + 2` on.  Each pass leaves the block when the index reaches the count or when the
+condition, which reads the state as a borrowed variable, is false.  The outer variables that the
+condition or the body uses stay live through the loop, and the owned ones not live after it are
+released there.  `size` loads
+the length word at the array's address and divides it by the element's word count `k`.  `get`
+keeps the position in local `base`, compares it with the size, keeps the result as a flag in local
 `base + 1`, puts the position of the element's first word in local `base`, and loads each of the
 element's words under the flag, 0 past the end, turning a float's word into an f64.  `build` keeps
 its count in local `base`, traps at `unreachable` when the count's words would be `2 ^ 29` or
@@ -493,22 +496,25 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + s.width) else []) ++
       body.code h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
         (shift 2 live)
-  | Γ, _, .loop (t := t) count init body =>
+  | Γ, _, .loop (t := t) count init cond body =>
     let modes := slots.map Slot.mode
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-    count.code h slots base (fun i => live i || init.uses i || body.uses (i + 2)) ++
-      [.localSet base] ++ init.code h slots (base + 1) (fun i => live i || body.uses (i + 2)) ++
+    let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
+    count.code h slots base (fun i => all i || init.uses i) ++
+      [.localSet base] ++ init.code h slots (base + 1) all ++
       coerceCode h t (init.mode modes) mode (base + 1) ++
       storeCode h (base + 2) t.types ++ [.constI64 0, .localSet (base + 1),
         .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
+          cond.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 2 + t.width)
+            (fun j => j == 0 || shift 1 all j) ++ [.eqzI64, .br_if 1] ++
           (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + 2) else []) ++
           body.code h (⟨base + 2, mode⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
-            (base + 2 + t.width) (shift 2 fun i => live i || body.uses (i + 2)) ++
+            (base + 2 + t.width) (shift 2 all) ++
           coerceCode h t (body.mode (mode :: .borrowed :: modes)) mode (base + 2 + t.width) ++
           storeCode h (base + 2) t.types ++
           [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
           [] []] ++
-      releaseWhere Γ slots (fun i => body.uses (i + 2) && !live i) ++
+      releaseWhere Γ slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
       loadCode h (base + 2) t.types
   | _, _, .size (e := e) x =>
     [.localGet (slots.getD x.index default).loc, .wrapI64, .load64 0] ++ divCode e.width ++
