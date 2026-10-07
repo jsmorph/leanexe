@@ -149,20 +149,34 @@ variables of types `Γ` in the slots `slots`. -/
 def releaseWhere (Γ : List Ty) (slots : List Slot) (sel : Nat → Bool) : Program :=
   ((List.range Γ.length).filter sel).flatMap (releaseVar Γ slots)
 
+/-- The instructions that push the words of variable `x`: a copy when it is owned and stays live
+in `live`, and its own words otherwise, which move it when it is owned. -/
+def Var.code (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty} {t : Ty}
+    (x : Var Γ t) : Program :=
+  if (slots.getD x.index default).mode = .owned ∧ live x.index = true then
+    copyCode t (slots.getD x.index default).loc base
+  else loadCode (slots.getD x.index default).loc t.width
+
+/-- The instructions that push the words of variable `x` as an owned value: its own words when it
+is owned and dies, and a copy otherwise. -/
+def Var.ownedCode (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty} {t : Ty}
+    (x : Var Γ t) : Program :=
+  x.code slots base live ++ coerceCode t (slots.getD x.index default).mode .owned base
+
 /-- The mode that holds both of two values' arrays: owned when either is owned. -/
 def Mode.join : Mode → Mode → Mode
   | .borrowed, .borrowed => .borrowed
   | _, _ => .owned
 
 /-- The mode of an expression's value, given the modes of the variables: owned when it holds
-arrays that its holder must consume, which a call's result, a built array, a moved or copied
-variable, and a join of an owned value do. -/
+arrays that its holder must consume, which a call's result, a built or updated array, a moved or
+copied variable, and a join of an owned value do. -/
 def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Mode
   | _, _, .var x => modes.getD x.index .borrowed
   | _, _, .ite _ thenE elseE => (thenE.mode modes).join (elseE.mode modes)
   | _, _, .letE value body => body.mode (value.mode modes :: modes)
   | _, _, .call (g := g) _ _ => if g.result.scalar then .borrowed else .owned
-  | _, _, .build _ _ => .owned
+  | _, _, .build _ _ | _, _, .set _ _ _ => .owned
   | _, _, .pair first second => (first.mode modes).join (second.mode modes)
   | _, _, .letPair e body => body.mode (e.mode modes :: e.mode modes :: modes)
   | _, _, .loop _ init body =>
@@ -179,7 +193,8 @@ def Expr.placeCode (slots : List Slot) : {Γ : List Ty} → {t : Ty} → Expr S 
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
 and `letPair` value and of each `ite` result, two for each division or remainder, the count, the
 index, and the state of each loop, the position of each read, the count, the address, and the
-index of each `build`, and the locals of each copy, on a path of the expression.  A call's
+index of each `build`, the position, the value, and the address of each `set`, and the locals of
+each copy, on a path of the expression.  A call's
 arguments and a pair's components leave their words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .size _ => 0
@@ -200,6 +215,7 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
       (2 + t.width + max body.width (copyWidth t)))
   | _, _, .get _ i => max i.width 1
   | _, _, .build count elem => max count.width (3 + elem.width)
+  | _, _, .set _ i v => max i.width (max (1 + v.width) (2 + copyWidth .array))
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at local `(slots.getD x.index default).loc`, the locals from `base` on are free, and
@@ -221,15 +237,15 @@ at `unreachable` when the count is `2 ^ 29` or more, since the array would not f
 memory, allocates the array into local `base + 1`, and keeps the index in local `base + 2`.  For
 each index it pushes the element's address, runs the element's code, and stores the element; the
 outer variables that only the element reads stay live through the loop and are released after
-it. -/
+it.  `set` keeps the position in local `base` and the value in local `base + 1`, then takes the
+array as owned, in local `base + 2`, and writes the element when the position is below the
+length: an owned array that dies there is updated in its own block, and any other is copied
+first. -/
 def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
-  | _, _, .var (t := t) x =>
-    if (slots.getD x.index default).mode = .owned ∧ live x.index = true then
-      copyCode t (slots.getD x.index default).loc base
-    else loadCode (slots.getD x.index default).loc t.width
+  | _, _, .var x => x.code slots base live
   | _, _, .bin op left right =>
     left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
       op.code base
@@ -313,6 +329,14 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           .addI64, .constI64 8, .mulI64, .addI64, .wrapI64, .load64 0] [.constI64 0] [] [.i64]] ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode .array (slots.getD x.index default).loc else [])
+  | _, _, .set x i v =>
+    i.code slots base (fun k => live k || k == x.index || v.uses k) ++ [.localSet base] ++
+      v.code slots (base + 1) (fun k => live k || k == x.index) ++ [.localSet (base + 1)] ++
+      x.ownedCode slots (base + 2) live ++
+      [.localSet (base + 2), .localGet base, .localGet (base + 2), .wrapI64, .load64 0, .ltUI64,
+        .iff 0 0 [.localGet (base + 2), .localGet base, .constI64 1, .addI64, .constI64 8,
+          .mulI64, .addI64, .wrapI64, .localGet (base + 1), .store64 0] [] [] [],
+        .localGet (base + 2)]
   | Γ, _, .build count elem =>
     let all := fun i => live i || elem.uses (i + 1)
     count.code slots base all ++

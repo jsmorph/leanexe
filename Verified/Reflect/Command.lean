@@ -16,8 +16,8 @@ body may use literals and other closed terms, its parameters, `let`, the word op
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
 `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
 pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, `LeanExe.loop`,
-`xs.size.toUInt64`, `xs[i.toNat]!`, `LeanExe.build` of words, and calls of the listed definitions
-before it. -/
+`xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `LeanExe.build` of words, and calls of
+the listed definitions before it. -/
 
 namespace Verified.Reflect
 
@@ -254,6 +254,21 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (bs, hb, _) ← reflectUnder c [] (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
+  | ``Array.set!, setArgs@#[α, xs, k, v] =>
+    unless (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: only arrays of UInt64 are updated, in {e}"
+    let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
+      | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
+    let xs := projReduce xs
+    unless xs.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (setArgs.set! 1 a)))
+    let (x, t) ← varOf c xs
+    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    let (is, hi, _) ← reflect c i
+    let (vs, hv, _) ← reflect c v
+    return (← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, some x, some is, some vs],
+      ← mkAppM ``set_eq #[x, hi, hv], .array)
   | ``LeanExe.build, #[α, n, f] =>
     unless (← whnfR α).isConstOf ``UInt64 do
       throwError "verified_compile: only arrays of UInt64 are built, in {e}"

@@ -7,6 +7,7 @@ import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
+import Verified.Examples.Updates
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -171,6 +172,23 @@ def main : IO Unit := do
       IO.println s!"owned|scaled|array-u64|{a} i64:{k}|{arrayOut (Owned.scaled xs k)}|2"
     for n in [0, 3] do
       IO.println s!"owned|onlyInside|array-u64|{a} i64:{n}|{arrayOut (Owned.onlyInside xs n)}|2"
+  let positions : List UInt64 := [0, 1, 2, 4, 100, 9223372036854775808, 18446744073709551615]
+  for xs in arrays do
+    let a := arrayArg xs
+    IO.println s!"updates|swapEnds|array-u64|{a}|{arrayOut (Updates.swapEnds xs)}|2"
+    for b in [0, 1, 3, 16] do
+      let h := arrayOut (Updates.histogram xs b)
+      IO.println s!"updates|histogram|array-u64|{a} i64:{b}|{h}|2"
+    for i in positions do
+      let u := arrayOut (Updates.setParam xs i 77)
+      IO.println s!"updates|setParam|array-u64|{a} i64:{i} i64:77|{u}|2"
+  for n in [0, 1, 3, 10] do
+    for i in positions do
+      let u := arrayOut (Updates.setBuilt n i 5)
+      IO.println s!"updates|setBuilt|array-u64|i64:{n} i64:{i} i64:5|{u}|1"
+      let (k1, k2) := Updates.keepBoth n i 5
+      let kinds := "list:array-u64,array-u64"
+      IO.println s!"updates|keepBoth|{kinds}|i64:{n} i64:{i} i64:5|{arrayOut k1} {arrayOut k2}|2"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|1"

@@ -203,7 +203,7 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
   by_cases hCopy : (slots.getD x.index default).mode = .owned ∧ live x.index = true
   · -- A copy into new blocks.
     obtain ⟨hOwned, hLiveX⟩ := hCopy
-    simp only [Expr.code, hOwned, hLiveX, and_self, ↓reduceIte]
+    simp only [Expr.code, Var.code, hOwned, hLiveX, and_self, ↓reduceIte]
     refine wp_copyCode hm tTy hAt hCap
       (hTrap.of_imp fun _ => by simp [Slot.any_owned hOwned]) hRep hold hBelow hBase
       (by simpa [Expr.width] using hRoom) fun heap' store' s' ws' hStep hRep' hF => ?_
@@ -220,7 +220,7 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
         fun _ _ => trivial
       rw [hSame] at hc
       exact regionsDisjoint_symm (hFresh c hc b hb)
-  · simp only [Expr.code, hCopy, ↓reduceIte]
+  · simp only [Expr.code, Var.code, hCopy, ↓reduceIte]
     by_cases hOwned : (slots.getD x.index default).mode = .owned
     · -- A move: the variable dies here, and the value owns its blocks.
       have hDead : live x.index = false := by
@@ -720,7 +720,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact nomatch h1
       · exact Or.inr h1
-  | build _ _ _ _ => intro _ _; simp [Expr.aborts]
+  | build _ _ _ _ | set _ _ _ _ _ => intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
 theorem Slot.any_map (slots : List Slot) :
@@ -951,6 +951,32 @@ theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0
   · exact Holds.Apart.transfer (t := .array) (mode := .owned) (ws := [.i64 p]) (v := words)
       a.holds a.apart hW (fun _ _ => rfl) hKeep hSame
 
+/-- The store of a word value into local `loc`, at or above `base`: the facts of `After` as an
+evolution to the locals with the word. -/
+theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals} {mode : Mode}
+    {v : UInt64} {vs : List Value} {loc : Nat} {rest : Program} {Q : Assertion Unit}
+    (a : After env slots L0 L base heap store s .word mode v heap1 store1 s1 [.i64 v])
+    (hLoc : base ≤ loc) (hLow : s.params.length ≤ loc)
+    (hHigh : loc < s.params.length + s.locals.length)
+    (hNext : Evolves env slots L0 L base heap store s heap1 store1
+        (setLocal { s1 with values := vs } loc (.i64 v)) →
+      (setLocal { s1 with values := vs } loc (.i64 v)).get loc = some (.i64 v) →
+      wp m rest Q store1 (setLocal { s1 with values := vs } loc (.i64 v)) host) :
+    wp m (.localSet loc :: rest) Q store1 { s1 with values := [.i64 v].reverse ++ vs } host := by
+  have hLow1 : ({ s1 with values := vs } : Locals).params.length ≤ loc := by
+    show s1.params.length ≤ loc; rw [a.frame.params]; exact hLow
+  have hHigh1 : loc < ({ s1 with values := vs } : Locals).params.length +
+      ({ s1 with values := vs } : Locals).locals.length := by
+    show loc < s1.params.length + s1.locals.length; rw [a.frame.params, a.frame.length]
+    exact hHigh
+  refine wp_localSet_local hLow1 hHigh1 ?_
+  have e := a.toEvolves rfl
+  exact hNext ⟨e.step, ⟨e.frame.params, by simp [setLocal, e.frame.length], fun j hj => by
+      rw [Locals.get_setLocal_ne hLow1 (by omega)]; exact e.frame.below j hj⟩,
+    (e.holds.agree (s' := { s1 with values := vs }) fun _ _ => rfl).setLocal hLoc hLow1⟩
+    (Locals.get_setLocal_same hLow1 hHigh1)
+
 /-- The facts of `After` for other locals that agree below `base`. -/
 theorem After.reframe {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
     {base : Nat} {heap heap' : Heap} {store store' : Store Unit} {s s' s'' : Locals} {t : Ty}
@@ -1015,6 +1041,9 @@ theorem loop_mode {a : Mode} {f : Mode → Mode} (h : f (a.join (f .borrowed)) =
     rw [hj] at h
     rw [h] at hj
     cases a <;> exact nomatch hj
+
+theorem set_live_index : ∀ a b c d : Bool,
+    (a || b || c || d) = true → (a || (b || d || c)) = true := by decide
 
 /-- The trap flag of the body of a binding of a pair's components. -/
 theorem let_trap_body2 : ∀ v b m o : Bool, (m = true → (v || o) = true) →
@@ -2305,6 +2334,162 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {count : Expr S Γ' .word}
         simp only [hSucc, hSucc64]
         omega
 
+theorem Ty.copyScratch_le (t : Ty) : t.copyScratch ≤ copyWidth t := by
+  unfold Ty.copyScratch copyWidth
+  split <;> omega
+
+/-- A variable in an owned position: its words as an owned value, which move it when it is owned
+and dies, and a copy otherwise.  The copy may trap at `unreachable`. -/
+theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy)
+    {env : Env Γ'} {slots : List Slot} {live : Nat → Bool} {base : Nat} {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
+    (hVars : Holds env slots (fun i => live i || i == x.index) base heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
+    (hRoom : base + copyWidth tTy ≤ s.params.length + s.locals.length) (hTrap : TrapOK true Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || i == x.index) live base heap store s tTy .owned
+        (env.get x) heap' store' s' ws →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (x.ownedCode slots base live ++ rest) Q store s host := by
+  simp only [Var.ownedCode, List.append_assoc]
+  have hScratch := tTy.copyScratch_le
+  refine spec_var (S := []) (funs := .nil) hm x env slots live base heap store s hVars hAt hCap
+    hBase (by simp only [Expr.width]; omega) rfl _ _ (hTrap.of_imp fun _ => rfl)
+    fun heap1 store1 s1 ws1 a1 => ?_
+  rw [show (Expr.var (S := []) x).mode (slots.map Slot.mode) = (slots.getD x.index default).mode
+    from Slot.modes_getD slots x.index] at a1
+  exact After.coerce hm a1 (fun _ => rfl) le_rfl (by rw [a1.frame.params]; exact hBase)
+    (by rw [a1.frame.params, a1.frame.length]; omega) (by rw [a1.step.cap m]; exact hCap)
+    (fun _ _ _ => hTrap) hNext
+
+/-- `x.set! i.toNat v`: the position in local `base`, the value in local `base + 1`, the array as
+owned in local `base + 2`, which is `x`'s own block when `x` is owned and dies, and the write of
+the element when the position is below the length. -/
+theorem spec_set (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .array) {i v : Expr S Γ' .word}
+    (iSpec : ∀ env slots live, CodeSpec m funs host i env slots live)
+    (vSpec : ∀ env slots live, CodeSpec m funs host v env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.set x i v) env slots live := by
+  intro env slots live base heap store s hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hi := Nat.le_max_left i.width (max (1 + v.width) (2 + copyWidth .array))
+  have hv := (Nat.le_max_left (1 + v.width) (2 + copyWidth .array)).trans
+    (Nat.le_max_right i.width _)
+  have hx := (Nat.le_max_right (1 + v.width) (2 + copyWidth .array)).trans
+    (Nat.le_max_right i.width _)
+  have hcw : copyWidth Ty.array = 4 := rfl
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  have hTrapT : TrapOK true Q := hTrap.of_imp fun _ => by simp [Expr.aborts]
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The position, in local `base`.
+  have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
+      (live k || (Expr.set x i v).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact set_live_index _ _ _ _ h
+  refine iSpec env slots (fun k => live k || k == x.index || v.uses k) base heap store s
+    (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace.1 _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap1 store1 s1 ws1 a1 => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_word] at hR1
+  subst hR1
+  refine After.storeWord a1 le_rfl hBase (by omega) fun e1 hI1 => ?_
+  have hp1 := e1.frame.params
+  have hl1 := e1.frame.length
+  -- The value, in local `base + 1`.
+  refine vSpec env slots (fun k => live k || k == x.index) (base + 1) heap1 store1 _
+    (e1.holds.mono (Nat.le_succ base)) e1.step.at_ (by rw [e1.step.cap m]; exact hCap)
+    (by rw [hp1]; omega) (by rw [hp1, hl1]; omega) hPlace.2 _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap2 store2 s2 ws2 a2 => ?_
+  have hR2 := a2.rep
+  simp only [Ty.rep_word] at hR2
+  subst hR2
+  refine After.storeWord a2 le_rfl (by rw [hp1]; omega) (by rw [hp1, hl1]; omega)
+    fun e2 hV2 => ?_
+  have hp2 := e2.frame.params.trans hp1
+  have hl2 := e2.frame.length.trans hl1
+  have hI2 := (e2.frame.below base (by omega)).trans hI1
+  -- The array as owned, in local `base + 2`.
+  refine spec_ownedVar hm x ((e2.holds.mono (Nat.le_succ _)) : Holds env slots
+      (fun k => live k || k == x.index) (base + 2) heap2 store2 _) e2.step.at_
+    (by rw [e2.step.cap m, e1.step.cap m]; exact hCap) (by rw [hp2]; omega)
+    (by rw [hp2, hl2]; omega) hTrapT fun heap3 store3 s3 ws3 a3 => ?_
+  obtain ⟨p, hws, hOwned⟩ := a3.rep
+  subst hws
+  have hp3 := a3.frame.params.trans hp2
+  have hl3 := a3.frame.length.trans hl2
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
+  have hLow3 : ({ s3 with values := (setLocal { s2 with values := (setLocal { s1 with
+      values := s.values } base (.i64 (i.denote funs env))).values } (base + 1)
+      (.i64 (v.denote funs env))).values } : Locals).params.length ≤ base + 2 := by
+    show s3.params.length ≤ base + 2; rw [hp3]; omega
+  have hHigh3 : base + 2 < ({ s3 with values := (setLocal { s2 with values := (setLocal
+      { s1 with values := s.values } base (.i64 (i.denote funs env))).values } (base + 1)
+      (.i64 (v.denote funs env))).values } : Locals).params.length +
+      ({ s3 with values := (setLocal { s2 with values := (setLocal { s1 with
+      values := s.values } base (.i64 (i.denote funs env))).values } (base + 1)
+      (.i64 (v.denote funs env))).values } : Locals).locals.length := by
+    show base + 2 < s3.params.length + s3.locals.length; rw [hp3, hl3]; omega
+  refine wp_localSet_local hLow3 hHigh3 ?_
+  set s4 : Locals := setLocal { s3 with values := (setLocal { s2 with values := (setLocal
+    { s1 with values := s.values } base (.i64 (i.denote funs env))).values } (base + 1)
+    (.i64 (v.denote funs env))).values } (base + 2) (.i64 p) with hs4
+  have hP4 : s4.get (base + 2) = some (.i64 p) := Locals.get_setLocal_same hLow3 hHigh3
+  have hI4 : s4.get base = some (.i64 (i.denote funs env)) :=
+    (Locals.get_setLocal_ne (v := .i64 p) hLow3 (by omega : base ≠ base + 2)).trans
+      ((a3.frame.below base (by omega)).trans hI2)
+  have hV4 : s4.get (base + 1) = some (.i64 (v.denote funs env)) :=
+    (Locals.get_setLocal_ne (v := .i64 p) hLow3 (by omega : base + 1 ≠ base + 2)).trans
+      ((a3.frame.below (base + 1) (by omega)).trans hV2)
+  have hValues4 : s4.values = s.values := rfl
+  have hF4 : Frame (base + 2) s3 s4 := ⟨rfl, by simp [s4, setLocal], fun j hj => by
+    rw [hs4, Locals.get_setLocal_ne (v := .i64 p) hLow3 (by omega), Locals.get_values]⟩
+  have a4 := a3.reframe hF4
+  -- The rest of the code, from the array after the write or without it.
+  have hFinish : ∀ (store4 : Store Unit) (xs : Array UInt64),
+      xs = (env.get x).set! (i.denote funs env).toNat (v.denote funs env) →
+      After env slots (fun k => live k || k == x.index) live (base + 2) heap2 store2
+        (setLocal { s2 with values := (setLocal { s1 with values := s.values } base
+          (.i64 (i.denote funs env))).values } (base + 1) (.i64 (v.denote funs env))) .array
+        .owned xs heap3 store4 s4 [.i64 p] →
+      wp m rest Q store4 { s4 with values := .i64 p :: s4.values } host := by
+    rintro store4 xs rfl aX
+    have aX1 := (aX.lower e2.holds (Nat.le_succ _) fun k h => by simp [h])
+    have aX2 := After.prepend (e1.holds.mono (Nat.le_succ base)) e2 aX1 (fun k h => by simp [h])
+      fun k h => by simp [h]
+    have aX3 := After.prepend (hVars.live_mono hIn) e1 (aX2.lower e1.holds (Nat.le_succ base)
+      fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
+    simpa [hValues4] using hNext heap3 store4 _ [.i64 p] (aX3.liveIn hIn)
+  have hA := hOwned.values
+  have hLength := hA.lengthBound
+  have hSize := hA.size_lt
+  simp only [wp_localGet_cons, Locals.get_values, hI4, hP4, wp_wrapI64_cons, wp_load64_cons,
+    wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead]
+  simp only [wp_ltUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hLess : i.denote funs env < UInt64.ofNat (env.get x).size ↔
+      (i.denote funs env).toNat < (env.get x).size := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' hSize]
+  by_cases hk : (i.denote funs env).toNat < (env.get x).size
+  · -- The write of the element.
+    rw [ite_eq_left (by simp [hLess.mpr hk])]
+    have hOffset := element_offset hk (by have := hA.1; omega)
+    have hElement := hA.elementBound _ hk
+    simp only [wp_localGet_cons, Locals.get_values, hI4, hP4, hV4, wp_constI64_cons,
+      wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wrap_toUInt32, hOffset,
+      wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    rw [ite_eq_right (by omega), wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, hP4]
+    exact hFinish (UInt64Array.writeElement store3 p _ (v.denote funs env))
+      ((env.get x).set _ (v.denote funs env) hk) (by simp [Array.set!, Array.setIfInBounds, hk])
+      (a4.writeElement hk (v.denote funs env))
+  · rw [ite_eq_right (by simp [hLess, hk])]
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, wp_localGet_cons, hP4]
+    exact hFinish _ (env.get x) (by simp [Array.set!, Array.setIfInBounds, hk]) a4
+
 end Cases
 
 /-- The code of every expression meets its specification. -/
@@ -2330,6 +2515,7 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | size x => exact spec_size hm x
   | get x i iSpec => exact spec_get hm x iSpec
   | build count elem countSpec elemSpec => exact spec_build hm countSpec elemSpec
+  | set x i v iSpec vSpec => exact spec_set hm x iSpec vSpec
 
 /-- The position of a variable's first word among the words of the context's values. -/
 def Var.offset : {Γ : List Ty} → {t : Ty} → Var Γ t → Nat
