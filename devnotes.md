@@ -26952,6 +26952,39 @@ release at entry and a reader's release of an owned parameter.  An `example` sta
 examples whose parameters became owned, by the host blocks that those functions now consume.  All
 4,365 cases pass, and the theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
 
+### V9a, first part: typed locals
+
+Floats come next.  They appear in 14 of the 32 example programs, and records are mostly records of
+floats.  `LeanExe/ProofKit/F64Bits.lean` already proves that Lean's `Float` operations equal
+Talos's `IEEE64` functions on bit patterns.  A float word needs an f64 local, and two reviews
+compared three layouts: an f64 local at a second index for each position, a second position
+counter, and i64 locals that hold float bit patterns through reinterprets.  A measurement in the
+Wasmtime host settled the choice.  Over 400 million iterations, a float accumulator carried across
+a loop took 2.52 s with f64 locals and 3.44 s with reinterprets, and five float `let` values per
+iteration took 8.78 s and 13.38 s, with identical results.
+
+Each position `p` has an i64 local `p` and an f64 local `p + h`, where `h` is the function's number
+of positions.  The declared locals are the parameters, an i64 local for each further position, and
+an f64 local for every position, so `Locals.half` recovers `h` as half the local count.
+`slotIndex h p ty` gives a word's local, `loadCode` and `storeCode` take the words' types, and
+`LocalsHold s loc tys ws` reads each word from the local of its static type, which makes
+`LocalsHold.unique` hold without a typing premise.  `Frame` keeps both locals of every position
+below `base`, and the agreement lemmas take a `Frame`.  `CodeSpec` assumes `s.half = h` and bounds
+an expression's positions by `h`, which turns most room proofs into arithmetic.  A function copies
+its f64 parameter words to their positions' f64 locals at entry, before the release of unused
+owned parameters (`paramCopyCode`, `wp_paramCopyCode`).
+
+Talos does not check local types, so the theorem does not imply that a module validates, and
+`wasm-tools validate` in the tests checks the declared types.  No source type has f64 words in this
+step, so the code differs only in its declared locals.  All 4,365 cases pass, and the theorems use
+only `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Typed locals.
+- [ ] `Float`: literals, `+ - * /`, `sqrt`, `abs`, negation, comparisons, `min`, `max`, and float
+  parameters, results, bindings, pairs, and loop states.
+- [ ] Arrays of a scalar element type stored as consecutive words, `Array Float` first.
+- [ ] `UInt64.toFloat`, `Float.toUInt64`, and computed `Float.ofBits`.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

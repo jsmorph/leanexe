@@ -10,24 +10,41 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
-/-- `after` agrees with `before` on the parameters, the number of locals, and every local below
-`base`: the code of an expression with scratch from `base` on changes nothing else. -/
+/-- Half the locals of `s`, the number of positions: a function's locals are its parameters, an
+i64 local for each further position, and an f64 local for every position. -/
+def _root_.Wasm.Locals.half (s : Locals) : Nat := (s.params.length + s.locals.length) / 2
+
+/-- `after` agrees with `before` on the parameters, the number of locals, and both locals of every
+position below `base`: the code of an expression with scratch from `base` on changes nothing
+else. -/
 structure Frame (base : Nat) (before after : Locals) : Prop where
   params : after.params = before.params
   length : after.locals.length = before.locals.length
-  below : ∀ j < base, after.get j = before.get j
+  below : ∀ j < base,
+    after.get j = before.get j ∧ after.get (j + before.half) = before.get (j + before.half)
 
-theorem Frame.refl (base : Nat) (s : Locals) : Frame base s s := ⟨rfl, rfl, fun _ _ => rfl⟩
+theorem Frame.half {base : Nat} {s s' : Locals} (h : Frame base s s') : s'.half = s.half := by
+  simp [Locals.half, h.params, h.length]
+
+theorem Frame.refl (base : Nat) (s : Locals) : Frame base s s :=
+  ⟨rfl, rfl, fun _ _ => ⟨rfl, rfl⟩⟩
 
 theorem Frame.trans {base : Nat} {s1 s2 s3 : Locals} (h1 : Frame base s1 s2)
     (h2 : Frame base s2 s3) : Frame base s1 s3 :=
-  ⟨h2.params.trans h1.params, h2.length.trans h1.length,
-    fun j hj => (h2.below j hj).trans (h1.below j hj)⟩
+  ⟨h2.params.trans h1.params, h2.length.trans h1.length, fun j hj =>
+    ⟨(h2.below j hj).1.trans (h1.below j hj).1, by
+      have := (h2.below j hj).2
+      rw [h1.half] at this
+      exact this.trans (h1.below j hj).2⟩⟩
 
 /-- The operand stack plays no part in a frame. -/
 theorem Frame.values {base : Nat} {s s' : Locals} {values : List Value}
     (h : Frame base { s with values } s') : Frame base s s' :=
   ⟨h.params, h.length, h.below⟩
+
+theorem Frame.ofValues {base : Nat} {s : Locals} {values : List Value} :
+    Frame base s { s with values } :=
+  ⟨rfl, rfl, fun _ _ => ⟨rfl, rfl⟩⟩
 
 theorem Frame.mono {base base' : Nat} {s s' : Locals} (h : Frame base' s s') (hb : base ≤ base') :
     Frame base s s' :=
@@ -36,9 +53,16 @@ theorem Frame.mono {base base' : Nat} {s s' : Locals} (h : Frame base' s s') (hb
 @[simp] theorem Locals.get_values (s : Locals) (vs : List Value) (i : Nat) :
     ({ s with values := vs } : Locals).get i = s.get i := rfl
 
+@[simp] theorem Locals.half_values (s : Locals) (vs : List Value) :
+    ({ s with values := vs } : Locals).half = s.half := rfl
+
 /-- Local `i`, past the parameters, after a store of `v`. -/
 def setLocal (s : Locals) (i : Nat) (v : Value) : Locals :=
   { s with locals := s.locals.set (i - s.params.length) v }
+
+@[simp] theorem Locals.half_setLocal (s : Locals) (i : Nat) (v : Value) :
+    (setLocal s i v).half = s.half := by
+  simp [Locals.half, setLocal]
 
 theorem Locals.set?_local {s : Locals} {i : Nat} (v : Value) (hLow : s.params.length ≤ i)
     (hHigh : i < s.params.length + s.locals.length) :
@@ -60,6 +84,34 @@ theorem Locals.get_setLocal_ne {s : Locals} {i j : Nat} {v : Value}
     · rw [List.getElem?_set_ne (by omega)]
     · rfl
 
+/-- A store to an i64 local of a position at or above `base` keeps the frame below `base`. -/
+theorem Frame.set {base : Nat} {s : Locals} {i : Nat} {v : Value}
+    (hLow : s.params.length ≤ i) (hBase : base ≤ i) (hHigh : i < s.half) :
+    Frame base s (setLocal s i v) :=
+  ⟨rfl, by simp [Verified.setLocal], fun j hj =>
+    ⟨Locals.get_setLocal_ne hLow (by omega), Locals.get_setLocal_ne hLow (by omega)⟩⟩
+
+/-- A store, with a new operand stack, to an i64 local of a position at or above `base`. -/
+theorem Frame.setValues {base : Nat} {s : Locals} {vs : List Value} {i : Nat} {v : Value}
+    (hLow : s.params.length ≤ i) (hBase : base ≤ i) (hHigh : i < s.half) :
+    Frame base s (setLocal { s with values := vs } i v) :=
+  Frame.ofValues.trans (@Frame.set base { s with values := vs } i v hLow hBase hHigh)
+
+/-- A position below the half has its i64 local among the locals. -/
+theorem Locals.lt_total {s : Locals} {i : Nat} (h : i < s.half) :
+    i < s.params.length + s.locals.length := by
+  simp only [Locals.half] at h; omega
+
+/-- The local of position `p` for a word of type `ty` lies past the parameters and among the
+locals when the position does. -/
+theorem slotIndex_bounds {s : Locals} {p : Nat} (ty : ValueType) (hLow : s.params.length ≤ p)
+    (hHigh : p < s.half) :
+    s.params.length ≤ slotIndex s.half p ty ∧
+      slotIndex s.half p ty < s.params.length + s.locals.length := by
+  have : 2 * s.half ≤ s.params.length + s.locals.length := by
+    simp only [Locals.half]; omega
+  cases ty <;> simp only [slotIndex] <;> omega
+
 /-- A store of `v` to local `i`, past the parameters. -/
 theorem wp_localSet_local {m : Module} {rest : Program} {Q : Assertion α} {store : Store α}
     {env : HostEnv α} {s : Locals} {i : Nat} {v : Value} {vs : List Value}
@@ -71,69 +123,163 @@ theorem wp_localSet_local {m : Module} {rest : Program} {Q : Assertion α} {stor
   rw [Locals.set?_local (s := { s with values := v :: vs }) v hLow hHigh]
   exact h
 
-/-- Locals `loc` to `loc + vals.length - 1` hold `vals`. -/
-def LocalsHold (s : Locals) (loc : Nat) (vals : List Value) : Prop :=
-  ∀ k (hk : k < vals.length), s.get (loc + k) = some vals[k]
+/-- Positions `loc` to `loc + vals.length - 1` hold `vals`, word `k` in the local of its type
+`tys[k]`. -/
+def LocalsHold (s : Locals) (loc : Nat) (tys : List ValueType) (vals : List Value) : Prop :=
+  ∀ k (hk : k < vals.length), s.get (slotIndex s.half (loc + k) (tys.getD k .i64)) = some vals[k]
 
-/-- Loading locals that hold `vals` pushes `vals` in order. -/
+/-- Loading positions that hold `vals` pushes `vals` in order. -/
 theorem wp_loadCode {m : Module} {Q : Assertion α} {store : Store α} {host : HostEnv α}
-    (vals : List Value) {loc w : Nat} {s : Locals} {rest : Program} (hw : vals.length = w)
-    (hold : LocalsHold s loc vals)
-    (h : wp m rest Q store { s with values := vals.reverse ++ s.values } host) :
-    wp m (loadCode loc w ++ rest) Q store s host := by
-  induction vals generalizing loc w s with
-  | nil => subst hw; simpa [loadCode] using h
-  | cons v vs ih =>
-    subst hw
-    have h0 : s.get loc = some v := by
-      have := hold 0 (by simp)
-      rw [Nat.add_zero] at this
-      exact this
-    simp only [loadCode, List.length_cons, List.cons_append, wp_localGet_cons, h0]
-    refine ih rfl (fun k hk => ?_) ?_
-    · have := hold (k + 1) (by simp; omega)
-      rw [show loc + (k + 1) = loc + 1 + k by omega] at this
-      simpa [-Locals.get] using this
-    · simpa [List.append_assoc] using h
-
-/-- Storing the top words `vals` of the stack in locals from `loc` on leaves them there and
-changes no other local. -/
-theorem wp_storeCode {m : Module} {Q : Assertion α} {store : Store α} {host : HostEnv α}
-    {rest : Program} (vals : List Value) (loc w : Nat) (s : Locals) (vs : List Value)
-    (hw : vals.length = w) (hLow : s.params.length ≤ loc)
-    (hHigh : loc + w ≤ s.params.length + s.locals.length)
-    (hNext : ∀ s', s'.params = s.params → s'.locals.length = s.locals.length →
-      LocalsHold s' loc vals → (∀ j, j < loc ∨ loc + w ≤ j → s'.get j = s.get j) →
-      wp m rest Q store { s' with values := vs } host) :
-    wp m (storeCode loc w ++ rest) Q store { s with values := vals.reverse ++ vs } host := by
-  induction vals generalizing loc w s vs rest with
+    (vals : List Value) {h loc : Nat} {tys : List ValueType} {s : Locals} {rest : Program}
+    (hw : vals.length = tys.length) (hh : s.half = h) (hold : LocalsHold s loc tys vals)
+    (hk : wp m rest Q store { s with values := vals.reverse ++ s.values } host) :
+    wp m (loadCode h loc tys ++ rest) Q store s host := by
+  induction vals generalizing loc tys s with
   | nil =>
-    subst hw
-    exact hNext s rfl rfl (fun k hk => absurd hk (by simp)) fun _ _ => rfl
-  | cons v vals ih =>
-    subst hw
-    simp only [storeCode, List.length_cons, List.append_assoc, List.reverse_cons,
-      List.cons_append, List.nil_append]
-    refine ih (loc + 1) _ s (v :: vs) rfl (by omega) (by simp at hHigh ⊢; omega)
-      fun s1 hp1 hl1 hold1 hout1 => ?_
-    refine wp_localSet_local (by rw [hp1]; omega) (by rw [hp1, hl1]; simp at hHigh; omega) ?_
-    refine hNext (setLocal { s1 with values := vs } loc v) hp1 (by simp [setLocal, hl1])
-      (fun k hk => ?_) fun j hj => ?_
-    · cases k with
-      | zero =>
-        simpa [-Locals.get] using Locals.get_setLocal_same (s := { s1 with values := vs }) (v := v)
-          (by show s1.params.length ≤ loc; rw [hp1]; omega)
-          (by show loc < s1.params.length + s1.locals.length
-              rw [hp1, hl1]; simp at hHigh; omega)
-      | succ k =>
-        rw [Locals.get_setLocal_ne (by show s1.params.length ≤ loc; rw [hp1]; omega) (by omega)]
-        have := hold1 k (by simp at hk; omega)
-        rw [show loc + 1 + k = loc + (k + 1) by omega] at this
+    cases tys with
+    | nil => simpa [loadCode] using hk
+    | cons _ _ => exact absurd hw (by simp)
+  | cons v vs ih =>
+    cases tys with
+    | nil => exact absurd hw (by simp)
+    | cons ty tys =>
+      have h0 : s.get (slotIndex h loc ty) = some v := by
+        have := hold 0 (by simp)
+        rw [hh] at this
+        simpa using this
+      simp only [loadCode, List.cons_append, wp_localGet_cons, h0]
+      refine ih (s := { s with values := v :: s.values }) (by simpa using hw) (by simpa using hh)
+        (fun k hk => ?_) ?_
+      · have := hold (k + 1) (by simp; omega)
+        rw [show loc + (k + 1) = loc + 1 + k by omega] at this
         simpa [-Locals.get] using this
-    · rw [Locals.get_setLocal_ne (by show s1.params.length ≤ loc; rw [hp1]; omega)
-        (by simp at hj; omega)]
-      exact hout1 j (by simp at hj; omega)
+      · simpa [List.append_assoc] using hk
 
+/-- Storing the top words `vals` of the stack, of types `tys`, at positions `loc` on leaves them
+there, keeps the frame below `loc`, and changes no position above them below the half. -/
+theorem wp_storeCode {m : Module} {Q : Assertion α} {store : Store α} {host : HostEnv α}
+    {rest : Program} (vals : List Value) (h loc : Nat) (tys : List ValueType) (s : Locals)
+    (vs : List Value) (hw : vals.length = tys.length) (hh : s.half = h)
+    (hLow : s.params.length ≤ loc) (hHigh : loc + tys.length ≤ s.half)
+    (hNext : ∀ s', Frame loc s s' → LocalsHold s' loc tys vals →
+      (∀ j, loc + tys.length ≤ j → j < s.half →
+        s'.get j = s.get j ∧ s'.get (j + s.half) = s.get (j + s.half)) →
+      wp m rest Q store { s' with values := vs } host) :
+    wp m (storeCode h loc tys ++ rest) Q store { s with values := vals.reverse ++ vs } host := by
+  induction vals generalizing loc tys s vs rest with
+  | nil =>
+    cases tys with
+    | nil =>
+      exact hNext s (Frame.refl loc s) (fun k hk => absurd hk (by simp)) fun _ _ _ => ⟨rfl, rfl⟩
+    | cons _ _ => exact absurd hw (by simp)
+  | cons v vals ih =>
+    cases tys with
+    | nil => exact absurd hw (by simp)
+    | cons ty tys =>
+      simp only [storeCode, List.append_assoc, List.reverse_cons, List.cons_append,
+        List.nil_append, List.length_cons] at hHigh ⊢
+      have hw' : vals.length = tys.length := by simpa using hw
+      refine ih (loc + 1) tys s (v :: vs) hw' hh (by omega) (by omega)
+        fun s1 hF1 hold1 habove1 => ?_
+      have hh1 : s1.half = s.half := hF1.half
+      have hb := slotIndex_bounds (s := s) ty hLow (by omega)
+      rw [← hh]
+      have hp1 : s1.params.length = s.params.length := by rw [hF1.params]
+      have hl1 : s1.locals.length = s.locals.length := hF1.length
+      have hLow1 : s1.params.length ≤ slotIndex s.half loc ty := by rw [hp1]; exact hb.1
+      have hHigh1 : slotIndex s.half loc ty < s1.params.length + s1.locals.length := by
+        rw [hp1, hl1]; exact hb.2
+      refine wp_localSet_local hLow1 hHigh1 ?_
+      have hne : ∀ j, j < loc ∨ loc + 1 + tys.length ≤ j → j < s.half →
+          j ≠ slotIndex s.half loc ty ∧ j + s.half ≠ slotIndex s.half loc ty := by
+        intro j hj hjh
+        cases ty <;> simp only [slotIndex] <;> omega
+      refine hNext (setLocal { s1 with values := vs } (slotIndex s.half loc ty) v)
+        ⟨hF1.params, by simp [setLocal, hl1], fun j hj => ?_⟩ (fun k hk => ?_)
+        fun j hj hjh => ?_
+      · have hn := hne j (Or.inl hj) (by omega)
+        rw [Locals.get_setLocal_ne (s := { s1 with values := vs }) hLow1 hn.1,
+          Locals.get_setLocal_ne (s := { s1 with values := vs }) hLow1 hn.2]
+        exact hF1.below j (by omega)
+      · simp only [Locals.half_setLocal, Locals.half_values, hh1]
+        cases k with
+        | zero =>
+          simpa [-Locals.get] using Locals.get_setLocal_same (s := { s1 with values := vs })
+            (v := v) (i := slotIndex s.half loc ty) hLow1 hHigh1
+        | succ k =>
+          have hk' : k < vals.length := by simp at hk; omega
+          simp only [List.getD_cons_succ, List.getElem_cons_succ]
+          have hold := hold1 k hk'
+          rw [show loc + 1 + k = loc + (k + 1) by omega, hh1] at hold
+          have hne' : slotIndex s.half (loc + (k + 1)) (tys.getD k .i64) ≠
+              slotIndex s.half loc ty := by
+            have : loc + (k + 1) < s.half := by simp at hk; omega
+            cases ty <;> cases tys.getD k .i64 <;> simp only [slotIndex] <;> omega
+          rw [Locals.get_setLocal_ne (s := { s1 with values := vs }) hLow1 hne']
+          simpa [-Locals.get] using hold
+      · simp only [List.length_cons] at hj
+        have hn := hne j (Or.inr (by omega)) hjh
+        rw [Locals.get_setLocal_ne (s := { s1 with values := vs }) hLow1 hn.1,
+          Locals.get_setLocal_ne (s := { s1 with values := vs }) hLow1 hn.2]
+        exact habove1 j (by omega) hjh
+
+
+/-- The copy of the f64 parameter words, of types `tys` at positions `p` on, to the f64 locals of
+their positions: each such local then holds its parameter, and no local below `h + p`
+changes. -/
+theorem wp_paramCopyCode {m : Module} {Q : Assertion α} {store : Store α} {host : HostEnv α}
+    {h : Nat} : (tys : List ValueType) → (p : Nat) → ∀ {s : Locals} {rest : Program},
+    p + tys.length ≤ s.params.length → s.params.length ≤ h →
+    h + h ≤ s.params.length + s.locals.length →
+    (∀ s', s'.params = s.params → s'.locals.length = s.locals.length →
+      s'.values = s.values → (∀ j < h + p, s'.get j = s.get j) →
+      (∀ q, p ≤ q → q < p + tys.length → tys.getD (q - p) .i64 = .f64 →
+        s'.get (q + h) = s.get q) →
+      wp m rest Q store s' host) →
+    wp m (paramCopyCode h p tys ++ rest) Q store s host
+  | [], _, s, _, _, _, _, hNext => by
+    simpa [paramCopyCode] using
+      hNext s rfl rfl rfl (fun _ _ => rfl) fun q h1 h2 => by simp at h2; omega
+  | ty :: tys, p, s, rest, hP, hH, hT, hNext => by
+    simp only [List.length_cons] at hP
+    by_cases hty : ty = .f64
+    · subst hty
+      obtain ⟨v, hv⟩ : ∃ v, s.get p = some v :=
+        ⟨s.params[p], by simp [Locals.get, show p < s.params.length by omega]⟩
+      simp only [paramCopyCode, List.cons_append, List.nil_append, wp_localGet_cons, hv]
+      refine wp_localSet_local (s := s) (vs := s.values) (by omega) (by omega) ?_
+      have hLowS : ({ s with values := s.values } : Locals).params.length ≤ p + h := by
+        show s.params.length ≤ p + h; omega
+      refine wp_paramCopyCode tys (p + 1)
+        (s := setLocal { s with values := s.values } (p + h) v)
+        (by simp [setLocal]; omega) (by simp [setLocal]; omega)
+        (by simp [setLocal]; omega) fun s' hp' hl' hv' hlow hcopy => ?_
+      refine hNext s' (by rw [hp']; rfl) (by rw [hl']; simp [setLocal]) (by rw [hv']; rfl)
+        (fun j hj => ?_) fun q h1 h2 hq => ?_
+      · rw [hlow j (by omega)]
+        exact Locals.get_setLocal_ne hLowS (by omega)
+      · have h2' : q < p + 1 + tys.length := by simp only [List.length_cons] at h2; omega
+        by_cases hqp : q = p
+        · subst hqp
+          have hHigh : q + h < s.params.length + s.locals.length := by omega
+          rw [hlow (q + h) (by omega), Locals.get_setLocal_same hLowS hHigh]
+          exact hv.symm
+        · have hq' : tys.getD (q - (p + 1)) .i64 = .f64 := by
+            rw [show q - p = (q - (p + 1)) + 1 by omega] at hq; simpa using hq
+          rw [hcopy q (by omega) h2' hq']
+          exact Locals.get_setLocal_ne hLowS (by omega)
+    · have hCode : paramCopyCode h p (ty :: tys) = paramCopyCode h (p + 1) tys := by
+        cases ty <;> first | rfl | exact absurd rfl hty
+      rw [hCode]
+      refine wp_paramCopyCode tys (p + 1) (by omega) hH hT
+        fun s' hp' hl' hv' hlow hcopy => hNext s' hp' hl' hv' (fun j hj => hlow j (by omega))
+          fun q h1 h2 hq => ?_
+      have h2' : q < p + 1 + tys.length := by simp only [List.length_cons] at h2; omega
+      by_cases hqp : q = p
+      · subst hqp; simp at hq; exact absurd hq hty
+      · have hq' : tys.getD (q - (p + 1)) .i64 = .f64 := by
+          rw [show q - p = (q - (p + 1)) + 1 by omega] at hq; simpa using hq
+        exact hcopy q (by omega) h2' hq'
 
 theorem Ty.scalar_pair {a b : Ty} (h : (Ty.pair a b).scalar = true) :
     a.scalar = true ∧ b.scalar = true := by
@@ -532,32 +678,82 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
     obtain ⟨h1, h2, h3⟩ := ha.step hStep hKeep
     exact ⟨⟨ptr, rfl, h1⟩, h2, h3⟩
 
-/-- Locals that hold two lists in a row hold each. -/
-theorem LocalsHold.append {s : Locals} {loc : Nat} {first second : List Value} :
-    LocalsHold s loc (first ++ second) ↔
-      LocalsHold s loc first ∧ LocalsHold s (loc + first.length) second := by
+theorem Ty.types_length : (t : Ty) → t.types.length = t.width
+  | .word | .bool | .array => rfl
+  | .pair a b => by simp [Ty.types, Ty.width, a.types_length, b.types_length]
+
+theorem Ty.Rep.typed {mode : Mode} {heap : Heap} {store : Store Unit} {t : Ty} {ws : List Value}
+    {v : t.denote} (h : t.Rep mode heap store ws v) : ws.length = t.types.length := by
+  rw [Ty.types_length]; exact h.length
+
+/-- Positions that hold two lists in a row hold each. -/
+theorem LocalsHold.append {s : Locals} {loc : Nat} {tys1 tys2 : List ValueType}
+    {first second : List Value} (hl : first.length = tys1.length) :
+    LocalsHold s loc (tys1 ++ tys2) (first ++ second) ↔
+      LocalsHold s loc tys1 first ∧ LocalsHold s (loc + first.length) tys2 second := by
   constructor
   · intro h
     refine ⟨fun k hk => ?_, fun k hk => ?_⟩
     · have := h k (by simp; omega)
-      rwa [List.getElem_append_left hk] at this
+      rwa [List.getElem_append_left hk, List.getD_eq_getElem?_getD,
+        List.getElem?_append_left (by omega), ← List.getD_eq_getElem?_getD] at this
     · have := h (first.length + k) (by simp; omega)
-      rw [List.getElem_append_right (by omega)] at this
+      rw [List.getElem_append_right (by omega), List.getD_eq_getElem?_getD,
+        List.getElem?_append_right (by omega), ← List.getD_eq_getElem?_getD] at this
       rw [Nat.add_assoc]
-      simpa using this
+      simpa [hl] using this
   · rintro ⟨h1, h2⟩ k hk
     by_cases hk1 : k < first.length
-    · rw [List.getElem_append_left hk1]
+    · rw [List.getElem_append_left hk1, List.getD_eq_getElem?_getD,
+        List.getElem?_append_left (by omega), ← List.getD_eq_getElem?_getD]
       exact h1 k hk1
-    · rw [List.getElem_append_right (by omega)]
+    · rw [List.getElem_append_right (by omega), List.getD_eq_getElem?_getD,
+        List.getElem?_append_right (by omega), ← hl, ← List.getD_eq_getElem?_getD]
       have := h2 (k - first.length) (by simp at hk; omega)
       rw [show loc + first.length + (k - first.length) = loc + k by omega] at this
       exact this
 
-/-- Locals that hold words of a given length determine them. -/
-theorem LocalsHold.unique {s : Locals} {loc : Nat} {ws1 ws2 : List Value}
-    (h1 : LocalsHold s loc ws1) (h2 : LocalsHold s loc ws2) (hl : ws1.length = ws2.length) :
-    ws1 = ws2 := by
+/-- A position that holds one i64 word holds it in its own local. -/
+theorem LocalsHold.word {s : Locals} {loc : Nat} {w : Value} (h : LocalsHold s loc [.i64] [w]) :
+    s.get loc = some w := by
+  simpa [slotIndex] using h 0 (by simp)
+
+/-- Locals that agree below `base` hold the same words at positions below `base`. -/
+theorem LocalsHold.frame {base : Nat} {s s' : Locals} (hF : Frame base s s') {loc : Nat}
+    {tys : List ValueType} {ws : List Value} (hl : ws.length = tys.length)
+    (hb : loc + tys.length ≤ base) : LocalsHold s' loc tys ws ↔ LocalsHold s loc tys ws := by
+  have hSame : ∀ k < ws.length, ∀ ty,
+      s'.get (slotIndex s'.half (loc + k) ty) = s.get (slotIndex s.half (loc + k) ty) := by
+    intro k hk ty
+    rw [hF.half]
+    have := hF.below (loc + k) (by omega)
+    cases ty <;> simp only [slotIndex] <;> first | exact this.1 | exact this.2
+  constructor
+  · intro hold k hk
+    rw [← hSame k hk]
+    exact hold k hk
+  · intro hold k hk
+    rw [hSame k hk]
+    exact hold k hk
+
+/-- Words at positions that a change of locals keeps stay held. -/
+theorem LocalsHold.keep {s s' : Locals} {lo loc : Nat} {tys : List ValueType} {ws : List Value}
+    (hold : LocalsHold s loc tys ws) (hHalf : s'.half = s.half)
+    (hKeep : ∀ j, lo ≤ j → j < s.half →
+      s'.get j = s.get j ∧ s'.get (j + s.half) = s.get (j + s.half))
+    (hLo : lo ≤ loc) (hHi : loc + ws.length ≤ s.half) : LocalsHold s' loc tys ws := by
+  intro k hk
+  have ha := hKeep (loc + k) (by omega) (by omega)
+  have hk' := hold k hk
+  rw [hHalf]
+  revert hk'
+  cases tys.getD k .i64 <;> simp only [slotIndex] <;> intro hk' <;>
+    first | (rw [ha.1]; exact hk') | (rw [ha.2]; exact hk')
+
+/-- Positions that hold words of given types and length determine them. -/
+theorem LocalsHold.unique {s : Locals} {loc : Nat} {tys : List ValueType} {ws1 ws2 : List Value}
+    (h1 : LocalsHold s loc tys ws1) (h2 : LocalsHold s loc tys ws2)
+    (hl : ws1.length = ws2.length) : ws1 = ws2 := by
   apply List.ext_getElem hl
   intro k hk1 hk2
   have := (h1 k hk1).symm.trans (h2 k hk2)
@@ -588,12 +784,12 @@ def Holds {Γ : List Ty} (env : Env Γ) (slots : List Slot) (live : Nat → Bool
     (heap : Heap) (store : Store Unit) (s : Locals) : Prop :=
   (∀ (t : Ty) (x : Var Γ t), live x.index = true →
     (slots.getD x.index default).loc + t.width ≤ base ∧
-    ∃ ws, LocalsHold s (slots.getD x.index default).loc ws ∧
+    ∃ ws, LocalsHold s (slots.getD x.index default).loc t.types ws ∧
       t.Rep (slots.getD x.index default).mode heap store ws (env.get x)) ∧
   ∀ (t u : Ty) (x : Var Γ t) (y : Var Γ u), live x.index = true → live y.index = true →
     x.index ≠ y.index → (slots.getD x.index default).mode = .owned →
-    ∀ wx wy, LocalsHold s (slots.getD x.index default).loc wx → wx.length = t.width →
-      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+    ∀ wx wy, LocalsHold s (slots.getD x.index default).loc t.types wx → wx.length = t.width →
+      LocalsHold s (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ b ∈ t.blocks store wx (env.get x),
         ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), regionsDisjoint b c
 
@@ -604,7 +800,7 @@ def Holds.Apart {Γ : List Ty} (env : Env Γ) (slots : List Slot) (live : Nat �
     Prop :=
   ∀ (u : Ty) (y : Var Γ u), live y.index = true →
     (mode = .owned ∨ (slots.getD y.index default).mode = .owned) →
-    ∀ wy, LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+    ∀ wy, LocalsHold s (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ b ∈ t.regions mode store ws v,
         ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), regionsDisjoint b c
 
@@ -614,7 +810,7 @@ def Holds.KeepDying {Γ : List Ty} (env : Env Γ) (slots : List Slot) (liveIn li
     (store : Store Unit) (s : Locals) (r : Nat × Nat) : Prop :=
   ∀ (t : Ty) (x : Var Γ t), liveIn x.index = true → liveOut x.index = false →
     (slots.getD x.index default).mode = .owned →
-    ∀ wx, LocalsHold s (slots.getD x.index default).loc wx → wx.length = t.width →
+    ∀ wx, LocalsHold s (slots.getD x.index default).loc t.types wx → wx.length = t.width →
       ∀ b ∈ t.blocks store wx (env.get x), regionsDisjoint r b
 
 namespace Holds
@@ -626,7 +822,7 @@ variable {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool}
 theorem get (h : Holds env slots live base heap store s) {t : Ty} (x : Var Γ t)
     (hx : live x.index = true) :
     (slots.getD x.index default).loc + t.width ≤ base ∧
-    ∃ ws, LocalsHold s (slots.getD x.index default).loc ws ∧
+    ∃ ws, LocalsHold s (slots.getD x.index default).loc t.types ws ∧
       t.Rep (slots.getD x.index default).mode heap store ws (env.get x) :=
   h.1 t x hx
 
@@ -649,17 +845,24 @@ theorem mono (h : Holds env slots live base heap store s) {base' : Nat} (hb : ba
 
 /-- Locals that agree below `base` hold the same words for a live variable. -/
 theorem hold_agree (h : Holds env slots live base heap store s) {s' : Locals}
-    (hs : ∀ j < base, s'.get j = s.get j) {t : Ty} {x : Var Γ t} (hx : live x.index = true)
+    (hF : Frame base s s') {t : Ty} {x : Var Γ t} (hx : live x.index = true)
     {ws : List Value} (hl : ws.length = t.width) :
-    LocalsHold s' (slots.getD x.index default).loc ws ↔
-      LocalsHold s (slots.getD x.index default).loc ws := by
+    LocalsHold s' (slots.getD x.index default).loc t.types ws ↔
+      LocalsHold s (slots.getD x.index default).loc t.types ws := by
   have hBelow := (h.1 t x hx).1
+  have hSame : ∀ k < ws.length, ∀ ty,
+      s'.get (slotIndex s'.half ((slots.getD x.index default).loc + k) ty) =
+        s.get (slotIndex s.half ((slots.getD x.index default).loc + k) ty) := by
+    intro k hk ty
+    rw [hF.half]
+    have := hF.below _ (show (slots.getD x.index default).loc + k < base by omega)
+    cases ty <;> simp only [slotIndex] <;> first | exact this.1 | exact this.2
   constructor
   · intro hold k hk
-    rw [← hs _ (by omega)]
+    rw [← hSame k hk]
     exact hold k hk
   · intro hold k hk
-    rw [hs _ (by omega)]
+    rw [hSame k hk]
     exact hold k hk
 
 /-- `Holds` with a lower bound for the variables' locals, which another `Holds` gives. -/
@@ -671,7 +874,7 @@ theorem lower {base' : Nat} (h : Holds env slots live base' heap store s) {live0
 
 /-- `Holds` depends only on the locals below `base`. -/
 theorem agree (h : Holds env slots live base heap store s) {s' : Locals}
-    (hs : ∀ j < base, s'.get j = s.get j) : Holds env slots live base heap store s' := by
+    (hs : Frame base s s') : Holds env slots live base heap store s' := by
   refine ⟨fun t x hx => ?_, fun t u x y hx hy hxy hm wx wy hwx hlx hwy hly => ?_⟩
   · obtain ⟨hBelow, ws, hold, hRep⟩ := h.1 t x hx
     exact ⟨hBelow, ws, (h.hold_agree hs hx hRep.length).mpr hold, hRep⟩
@@ -680,19 +883,19 @@ theorem agree (h : Holds env slots live base heap store s) {s' : Locals}
 
 theorem frame (h : Holds env slots live base heap store s) {base' : Nat} {s' : Locals}
     (hf : Frame base' s s') (hb : base ≤ base') : Holds env slots live base heap store s' :=
-  h.agree fun j hj => hf.below j (by omega)
+  h.agree (hf.mono hb)
 
 theorem setLocal (h : Holds env slots live base heap store s) {i : Nat} {v : Value}
-    (hi : base ≤ i) (hLow : s.params.length ≤ i) :
+    (hi : base ≤ i) (hLow : s.params.length ≤ i) (hHigh : i < s.half) :
     Holds env slots live base heap store (Verified.setLocal s i v) :=
-  h.agree fun j hj => Locals.get_setLocal_ne hLow (by omega)
+  h.agree (Frame.set hLow hi hHigh)
 
 /-- The regions of each variable live in `live` lie apart from the blocks of the owned variables
 that die between `liveIn` and `live`. -/
 theorem keepDying {liveIn : Nat → Bool} (h : Holds env slots liveIn base heap store s)
     (hLive : ∀ i, live i = true → liveIn i = true) {u : Ty} {y : Var Γ u}
     (hy : live y.index = true) {wy : List Value}
-    (hwy : LocalsHold s (slots.getD y.index default).loc wy) (hly : wy.length = u.width) :
+    (hwy : LocalsHold s (slots.getD y.index default).loc u.types wy) (hly : wy.length = u.width) :
     ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y),
       KeepDying env slots liveIn live store s c := by
   intro c hc t x hx hxOut hm wx hwx hlx b hb
@@ -704,12 +907,12 @@ theorem step (h : Holds env slots live base heap store s) {keep : Nat × Nat →
     {heap' : Heap} {store' : Store Unit} {fresh : List (Nat × Nat)}
     (hStep : Step heap store keep heap' store' fresh)
     (hKeep : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
-      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      LocalsHold s (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c) :
     Holds env slots live base heap' store' s := by
   -- The regions of each live variable are the same after the step.
   have hSame : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
-      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      LocalsHold s (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       u.regions (slots.getD y.index default).mode store' wy (env.get y) =
         u.regions (slots.getD y.index default).mode store wy (env.get y) := by
     intro u y hy wy hwy hly
@@ -730,7 +933,7 @@ theorem step (h : Holds env slots live base heap store s) {keep : Nat × Nat →
 the value lies apart from the variables live in the body. -/
 theorem push {t : Ty} {v : t.denote} {mode : Mode} {live' : Nat → Bool}
     (h : Holds env slots (fun i => live' (i + 1)) base heap store s) {ws : List Value}
-    (hold : LocalsHold s base ws) (hRep : t.Rep mode heap store ws v)
+    (hold : LocalsHold s base t.types ws) (hRep : t.Rep mode heap store ws v)
     (hApart : Holds.Apart env slots (fun i => live' (i + 1)) store s t mode ws v) :
     Holds (Env.cons v env) (⟨base, mode⟩ :: slots) live' (base + t.width) heap store s := by
   refine ⟨fun t' x hx => ?_, fun t1 t2 x y hx hy hxy hm wx wy hwx hlx hwy hly => ?_⟩
@@ -747,8 +950,8 @@ theorem push {t : Ty} {v : t.denote} {mode : Mode} {live' : Nat → Bool}
       | here => exact absurd rfl hxy
       | there y =>
         change mode = .owned at hm
-        change LocalsHold s base wx at hwx
-        change LocalsHold s (slots.getD y.index default).loc wy at hwy
+        change LocalsHold s base t.types wx at hwx
+        change LocalsHold s (slots.getD y.index default).loc t2.types wy at hwy
         obtain rfl := LocalsHold.unique hwx hold (hlx.trans hRep.length.symm)
         subst hm
         exact hApart _ y hy (Or.inl rfl) wy hwy hly
@@ -756,8 +959,8 @@ theorem push {t : Ty} {v : t.denote} {mode : Mode} {live' : Nat → Bool}
       cases y with
       | here =>
         change (slots.getD x.index default).mode = .owned at hm
-        change LocalsHold s (slots.getD x.index default).loc wx at hwx
-        change LocalsHold s base wy at hwy
+        change LocalsHold s (slots.getD x.index default).loc t1.types wx at hwx
+        change LocalsHold s base t.types wy at hwy
         obtain rfl := LocalsHold.unique hwy hold (hly.trans hRep.length.symm)
         intro b hb c hc
         have hRegions : t1.regions (slots.getD x.index default).mode store wx (env.get x) =
@@ -766,8 +969,8 @@ theorem push {t : Ty} {v : t.denote} {mode : Mode} {live' : Nat → Bool}
           (hRegions ▸ hb))
       | there y =>
         change (slots.getD x.index default).mode = .owned at hm
-        change LocalsHold s (slots.getD x.index default).loc wx at hwx
-        change LocalsHold s (slots.getD y.index default).loc wy at hwy
+        change LocalsHold s (slots.getD x.index default).loc t1.types wx at hwx
+        change LocalsHold s (slots.getD y.index default).loc t2.types wy at hwy
         exact h.2 t1 t2 x y hx hy (fun he => hxy (by simp [Var.index, he])) hm wx wy hwx hlx hwy
           hly
 
@@ -785,7 +988,7 @@ theorem regions_after (h : Holds env slots live base heap store s) {keep : Nat �
     {heap' : Heap} {store' : Store Unit} {fresh : List (Nat × Nat)}
     (hStep : Step heap store keep heap' store' fresh) {u : Ty} {y : Var Γ u}
     (hy : live y.index = true) {wy : List Value}
-    (hwy : LocalsHold s (slots.getD y.index default).loc wy) (hly : wy.length = u.width)
+    (hwy : LocalsHold s (slots.getD y.index default).loc u.types wy) (hly : wy.length = u.width)
     (hKeep : ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c) :
     u.regions (slots.getD y.index default).mode store' wy (env.get y) =
         u.regions (slots.getD y.index default).mode store wy (env.get y) ∧
@@ -862,14 +1065,14 @@ theorem Apart.snd {a b : Ty} {mode : Mode} {first second : List Value}
 theorem Apart.push {t u : Ty} {v : u.denote} {loc : Nat} {mv mode : Mode} {live' : Nat → Bool}
     {ws wv : List Value} {w : t.denote}
     (h : Holds.Apart env slots (fun i => live' (i + 1)) store s t mode ws w)
-    (hold : LocalsHold s loc wv) (hl : wv.length = u.width)
+    (hold : LocalsHold s loc u.types wv) (hl : wv.length = u.width)
     (hHere : mode = .owned ∨ mv = .owned →
       ∀ b ∈ t.regions mode store ws w, ∀ c ∈ u.regions mv store wv v, regionsDisjoint b c) :
     Holds.Apart (Env.cons v env) (⟨loc, mv⟩ :: slots) live' store s t mode ws w := by
   intro u' y hy hm wy hwy hly
   cases y with
   | here =>
-    change LocalsHold s loc wy at hwy
+    change LocalsHold s loc u.types wy at hwy
     obtain rfl := LocalsHold.unique hwy hold (hly.trans hl.symm)
     exact hHere hm
   | there y => exact h u' y hy hm wy hwy hly
@@ -877,7 +1080,7 @@ theorem Apart.push {t u : Ty} {v : u.denote} {loc : Nat} {mv mode : Mode} {live'
 /-- A value apart from the live variables stays apart in locals that agree below `base`. -/
 theorem Apart.agree (h : Holds env slots live base heap store s) {t : Ty} {mode : Mode}
     {ws : List Value} {v : t.denote} (hApart : Holds.Apart env slots live store s t mode ws v)
-    {s' : Locals} (hs : ∀ j < base, s'.get j = s.get j) :
+    {s' : Locals} (hs : Frame base s s') :
     Holds.Apart env slots live store s' t mode ws v :=
   fun u y hy hm wy hwy hly => hApart u y hy hm wy ((h.hold_agree hs hy hly).mp hwy) hly
 
@@ -899,7 +1102,7 @@ theorem KeepDying.transfer (h : Holds env slots live base heap store s)
     {liveIn liveOut liveMid : Nat → Bool} {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
     {fresh : List (Nat × Nat)}
     (hStep : Step heap store (KeepDying env slots live liveMid store s) heap1 store1 fresh)
-    (hFrame : ∀ j < base, s1.get j = s.get j) (hMid : ∀ i, liveMid i = true → live i = true)
+    (hFrame : Frame base s s1) (hMid : ∀ i, liveMid i = true → live i = true)
     (hSub : ∀ i, liveIn i = true → liveOut i = false → liveMid i = true) {r : Nat × Nat}
     (hr : KeepDying env slots liveIn liveOut store s r) :
     KeepDying env slots liveIn liveOut store1 s1 r := by
@@ -918,9 +1121,9 @@ theorem Apart.transfer (h : Holds env slots live base heap store s) {t : Ty} {mo
     {ws : List Value} {v : t.denote} (hApart : Holds.Apart env slots live store s t mode ws v)
     {keep : Nat × Nat → Prop} {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
     {fresh : List (Nat × Nat)} (hStep : Step heap store keep heap1 store1 fresh)
-    (hFrame : ∀ j < base, s1.get j = s.get j)
+    (hFrame : Frame base s s1)
     (hKeep : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
-      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      LocalsHold s (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c)
     (hSame : t.regions mode store1 ws v = t.regions mode store ws v) :
     Holds.Apart env slots live store1 s1 t mode ws v := by

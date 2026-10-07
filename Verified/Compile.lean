@@ -9,6 +9,11 @@ namespace Verified
 
 open Wasm
 
+/-- The WebAssembly types of the words that hold a value of type `t`, in order. -/
+def Ty.types : Ty → List ValueType
+  | .word | .bool | .array => [.i64]
+  | .pair a b => a.types ++ b.types
+
 /-- The scratch locals that an operation needs for itself: two for division and remainder, which
 save their operands to test the divisor. -/
 def BinOp.scratch : BinOp → Nat
@@ -56,16 +61,23 @@ positions from 2, the last of `S` first. -/
 def FVar.callIndex {S : List Sig} {g : Sig} (f : FVar S g) : Nat :=
   2 + (S.length - 1 - f.index)
 
-/-- The instructions that push the words in locals `loc` to `loc + w - 1`, in order. -/
-def loadCode (loc : Nat) : Nat → Program
-  | 0 => []
-  | w + 1 => .localGet loc :: loadCode (loc + 1) w
+/-- The local that holds a word of type `ty` at position `p` of a function with `h` positions:
+local `p` for an i64, and local `p + h` for an f64.  A function's locals are its parameters, an
+i64 local for each further position, and an f64 local for every position. -/
+def slotIndex (h p : Nat) : ValueType → Nat
+  | .f64 => p + h
+  | _ => p
 
-/-- The instructions that store the top `w` words of the stack in locals `loc` to `loc + w - 1`,
-the top word in the last of them. -/
-def storeCode (loc : Nat) : Nat → Program
-  | 0 => []
-  | w + 1 => storeCode (loc + 1) w ++ [.localSet loc]
+/-- The instructions that push the words of types `tys` at positions `loc` on, in order. -/
+def loadCode (h loc : Nat) : List ValueType → Program
+  | [] => []
+  | ty :: tys => .localGet (slotIndex h loc ty) :: loadCode h (loc + 1) tys
+
+/-- The instructions that store the top words of the stack, of types `tys`, at positions `loc`
+on, the top word at the last of them. -/
+def storeCode (h loc : Nat) : List ValueType → Program
+  | [] => []
+  | ty :: tys => storeCode h (loc + 1) tys ++ [.localSet (slotIndex h loc ty)]
 
 /-- Where a variable's words start, and its mode. -/
 structure Slot where
@@ -109,11 +121,11 @@ def copyArrayCode (src base : Nat) : Program :=
   [.localGet src, .wrapI64, .load64 0, .localSet base] ++ allocArrayCode base (base + 1) ++
     copyIntoCode src (base + 1) base (base + 2) ++ [.localGet (base + 1)]
 
-/-- The instructions that push a copy of the value of type `t` whose words locals `src` on hold:
-each array copied into a new array, and the other words as they are. -/
-def copyCode : Ty → Nat → Nat → Program
+/-- The instructions that push a copy of the value of type `t` whose words positions `src` on
+hold: each array copied into a new array, and the other words as they are. -/
+def copyCode (h : Nat) : Ty → Nat → Nat → Program
   | .word, src, _ | .bool, src, _ => [.localGet src]
-  | .pair a b, src, base => copyCode a src base ++ copyCode b (src + a.width) base
+  | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array, src, base => copyArrayCode src base
 
 /-- The instructions that release the arrays of the owned value of type `t` whose words locals
@@ -134,9 +146,9 @@ def copyWidth (t : Ty) : Nat := if t.scalar then 0 else t.width + 3
 /-- The instructions that turn the value of type `t` on top of the stack, held in mode `source`,
 into one held in mode `target`: a borrowed value that must be owned is stored in the locals from
 `base` on and copied. -/
-def coerceCode (t : Ty) (source target : Mode) (base : Nat) : Program :=
+def coerceCode (h : Nat) (t : Ty) (source target : Mode) (base : Nat) : Program :=
   if source = .borrowed ∧ target = .owned ∧ t.scalar = false then
-    storeCode base t.width ++ copyCode t base (base + t.width)
+    storeCode h base t.types ++ copyCode h t base (base + t.width)
   else []
 
 /-- The instructions that release variable `i` among the variables of types `Γ` in the slots
@@ -154,17 +166,17 @@ def releaseWhere (Γ : List Ty) (slots : List Slot) (sel : Nat → Bool) : Progr
 
 /-- The instructions that push the words of variable `x`: a copy when it is owned and stays live
 in `live`, and its own words otherwise, which move it when it is owned. -/
-def Var.code (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty} {t : Ty}
-    (x : Var Γ t) : Program :=
+def Var.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty}
+    {t : Ty} (x : Var Γ t) : Program :=
   if (slots.getD x.index default).mode = .owned ∧ live x.index = true then
-    copyCode t (slots.getD x.index default).loc base
-  else loadCode (slots.getD x.index default).loc t.width
+    copyCode h t (slots.getD x.index default).loc base
+  else loadCode h (slots.getD x.index default).loc t.types
 
 /-- The instructions that push the words of variable `x` as an owned value: its own words when it
 is owned and dies, and a copy otherwise. -/
-def Var.ownedCode (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty} {t : Ty}
-    (x : Var Γ t) : Program :=
-  x.code slots base live ++ coerceCode t (slots.getD x.index default).mode .owned base
+def Var.ownedCode (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) {Γ : List Ty}
+    {t : Ty} (x : Var Γ t) : Program :=
+  x.code h slots base live ++ coerceCode h t (slots.getD x.index default).mode .owned base
 
 /-- The instructions that push the byte count of a block for the length in local `total`: the bytes
 that the length needs, or twice the capacity in local `cap` when that is more, and at most
@@ -222,9 +234,9 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
 
 /-- The instructions that push the words of an argument at an owned parameter, a variable, as an
 owned value. -/
-def Expr.ownedCode (slots : List Slot) (base : Nat) (live : Nat → Bool) :
+def Expr.ownedCode (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
-  | _, _, .var x => x.ownedCode slots base live
+  | _, _, .var x => x.ownedCode h slots base live
   | _, _, _ => []
 
 /-- Whether argument `i` of a call moves its variable into the call: the parameter is owned, and
@@ -241,9 +253,10 @@ def callMoves (slots : List Slot) (live : Nat → Bool) {Γ : List Ty} {g : Sig}
 
 /-- The instructions that push the words of a variable or a pair of such expressions, read in
 place. -/
-def Expr.placeCode (slots : List Slot) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
-  | _, _, .var (t := t) x => loadCode (slots.getD x.index default).loc t.width
-  | _, _, .pair first second => first.placeCode slots ++ second.placeCode slots
+def Expr.placeCode (h : Nat) (slots : List Slot) :
+    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
+  | _, _, .var (t := t) x => loadCode h (slots.getD x.index default).loc t.types
+  | _, _, .pair first second => first.placeCode h slots ++ second.placeCode h slots
   | _, _, _ => []
 
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
@@ -278,9 +291,10 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .append _ _ => 7
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
-starts at local `(slots.getD x.index default).loc`, the locals from `base` on are free, and
-`live` gives the variables live after the expression, which each subexpression receives together
-with those that the rest of the expression reads.  Each expression consumes the owned variables
+starts at position `(slots.getD x.index default).loc`, the positions from `base` on are free, `h`
+is the number of positions, which places each position's f64 local, and `live` gives the
+variables live after the expression, which each subexpression receives together with those that
+the rest of the expression reads.  Each expression consumes the owned variables
 that die in it: a variable moves where it dies and is copied where it stays live, a reader
 releases a dying variable it reads, and a branch, a binding, and a loop release the owned
 variables that die without a use.  A comparison widens its 32-bit result to a word.  `ite` tests
@@ -304,90 +318,90 @@ first.  `push` keeps the value in local `base` and `append` the length of `y` th
 the array `x` with `Var.roomCode`, which gives a block with room for the result, write the new
 elements, and push the block's address.  `append` releases `y` after the copy when `y` is owned
 and dies there. -/
-def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
+def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
-  | _, _, .var x => x.code slots base live
+  | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
-    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       op.code base
   | _, _, .cmp op left right =>
-    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       [op.instr, .extendUI32]
-  | _, _, .not e => e.code slots base live ++ [.eqzI64, .extendUI32]
+  | _, _, .not e => e.code h slots base live ++ [.eqzI64, .extendUI32]
   | _, _, .and left right =>
-    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       [.andI64]
   | _, _, .or left right =>
-    left.code slots base (fun i => live i || right.uses i) ++ right.code slots base live ++
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       [.orI64]
   | Γ, _, .ite (t := t) c thenE elseE =>
     let modes := slots.map Slot.mode
     let mode := (thenE.mode modes).join (elseE.mode modes)
     let mid := fun i => live i || thenE.uses i || elseE.uses i
-    c.code slots base mid ++
+    c.code h slots base mid ++
       [.eqzI64, .iff 0 0
         (releaseWhere Γ slots (fun i => mid i && !(live i || elseE.uses i)) ++
-          elseE.code slots (base + t.width) live ++
-          coerceCode t (elseE.mode modes) mode (base + t.width) ++ storeCode base t.width)
+          elseE.code h slots (base + t.width) live ++
+          coerceCode h t (elseE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
         (releaseWhere Γ slots (fun i => mid i && !(live i || thenE.uses i)) ++
-          thenE.code slots (base + t.width) live ++
-          coerceCode t (thenE.mode modes) mode (base + t.width) ++ storeCode base t.width)
+          thenE.code h slots (base + t.width) live ++
+          coerceCode h t (thenE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
         [] []] ++
-      loadCode base t.width
+      loadCode h base t.types
   | _, _, .letE (s := s) value body =>
     let mode := value.mode (slots.map Slot.mode)
-    value.code slots (base + s.width) (fun i => live i || body.uses (i + 1)) ++
-      storeCode base s.width ++
+    value.code h slots (base + s.width) (fun i => live i || body.uses (i + 1)) ++
+      storeCode h base s.types ++
       (if mode = .owned ∧ body.uses 0 = false then releaseCode s base else []) ++
-      body.code (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
+      body.code h (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
   | Γ, _, .call (g := g) f args =>
     let all := fun i => live i || argsAny fun j => (args j).uses i
     let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).uses i)
     argsCode (fun i =>
-      if (g.params.get i).scalar then (args i).code slots base all
-      else if g.mode i = .owned then (args i).ownedCode slots base kept
-      else (args i).placeCode slots) ++
+      if (g.params.get i).scalar then (args i).code h slots base all
+      else if g.mode i = .owned then (args i).ownedCode h slots base kept
+      else (args i).placeCode h slots) ++
       [.call f.callIndex] ++
       releaseWhere Γ slots (fun i => kept i && !live i)
   | _, _, .pair (s := s) (t := t) first second =>
     let modes := slots.map Slot.mode
     let mode := (first.mode modes).join (second.mode modes)
-    first.code slots base (fun i => live i || second.uses i) ++
-      coerceCode s (first.mode modes) mode base ++
-      second.code slots base live ++ coerceCode t (second.mode modes) mode base
+    first.code h slots base (fun i => live i || second.uses i) ++
+      coerceCode h s (first.mode modes) mode base ++
+      second.code h slots base live ++ coerceCode h t (second.mode modes) mode base
   | _, _, .letPair (s := s) (t := t) e body =>
     let mode := e.mode (slots.map Slot.mode)
-    e.code slots (base + s.width + t.width) (fun i => live i || body.uses (i + 2)) ++
-      storeCode (base + s.width) t.width ++ storeCode base s.width ++
+    e.code h slots (base + s.width + t.width) (fun i => live i || body.uses (i + 2)) ++
+      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
       (if mode = .owned ∧ body.uses 1 = false then releaseCode s base else []) ++
       (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + s.width) else []) ++
-      body.code (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
+      body.code h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
         (shift 2 live)
   | Γ, _, .loop (t := t) count init body =>
     let modes := slots.map Slot.mode
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-    count.code slots base (fun i => live i || init.uses i || body.uses (i + 2)) ++
-      [.localSet base] ++ init.code slots (base + 1) (fun i => live i || body.uses (i + 2)) ++
-      coerceCode t (init.mode modes) mode (base + 1) ++
-      storeCode (base + 2) t.width ++ [.constI64 0, .localSet (base + 1),
+    count.code h slots base (fun i => live i || init.uses i || body.uses (i + 2)) ++
+      [.localSet base] ++ init.code h slots (base + 1) (fun i => live i || body.uses (i + 2)) ++
+      coerceCode h t (init.mode modes) mode (base + 1) ++
+      storeCode h (base + 2) t.types ++ [.constI64 0, .localSet (base + 1),
         .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
           (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + 2) else []) ++
-          body.code (⟨base + 2, mode⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
+          body.code h (⟨base + 2, mode⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
             (base + 2 + t.width) (shift 2 fun i => live i || body.uses (i + 2)) ++
-          coerceCode t (body.mode (mode :: .borrowed :: modes)) mode (base + 2 + t.width) ++
-          storeCode (base + 2) t.width ++
+          coerceCode h t (body.mode (mode :: .borrowed :: modes)) mode (base + 2 + t.width) ++
+          storeCode h (base + 2) t.types ++
           [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
           [] []] ++
       releaseWhere Γ slots (fun i => body.uses (i + 2) && !live i) ++
-      loadCode (base + 2) t.width
+      loadCode h (base + 2) t.types
   | _, _, .size x =>
     [.localGet (slots.getD x.index default).loc, .wrapI64, .load64 0] ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode .array (slots.getD x.index default).loc else [])
   | _, _, .get x i =>
-    i.code slots base (fun k => live k || k == x.index) ++
+    i.code h slots base (fun k => live k || k == x.index) ++
       [.localSet base, .localGet base, .localGet (slots.getD x.index default).loc, .wrapI64,
         .load64 0, .ltUI64,
         .iff 0 1 [.localGet (slots.getD x.index default).loc, .localGet base, .constI64 1,
@@ -395,15 +409,15 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode .array (slots.getD x.index default).loc else [])
   | _, _, .set x i v =>
-    i.code slots base (fun k => live k || k == x.index || v.uses k) ++ [.localSet base] ++
-      v.code slots (base + 1) (fun k => live k || k == x.index) ++ [.localSet (base + 1)] ++
-      x.ownedCode slots (base + 2) live ++
+    i.code h slots base (fun k => live k || k == x.index || v.uses k) ++ [.localSet base] ++
+      v.code h slots (base + 1) (fun k => live k || k == x.index) ++ [.localSet (base + 1)] ++
+      x.ownedCode h slots (base + 2) live ++
       [.localSet (base + 2), .localGet base, .localGet (base + 2), .wrapI64, .load64 0, .ltUI64,
         .iff 0 0 [.localGet (base + 2), .localGet base, .constI64 1, .addI64, .constI64 8,
           .mulI64, .addI64, .wrapI64, .localGet (base + 1), .store64 0] [] [] [],
         .localGet (base + 2)]
   | _, _, .push x v =>
-    v.code slots base (fun k => live k || k == x.index) ++
+    v.code h slots base (fun k => live k || k == x.index) ++
       [.localSet base, .constI64 1, .localSet (base + 1)] ++
       x.roomCode slots (base + 2) live (base + 1) ++
       [.localGet (base + 6), .localGet (base + 3), .constI64 1, .addI64, .constI64 8, .mulI64,
@@ -417,7 +431,7 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       releaseWhere Γ slots (fun k => k == y.index && !live k) ++ [.localGet (base + 5)]
   | Γ, _, .build count elem =>
     let all := fun i => live i || elem.uses (i + 1)
-    count.code slots base all ++
+    count.code h slots base all ++
       [.localSet base, .localGet base, .constI64 536870912, .geUI64,
         .iff 0 0 [.unreachable] [] [] []] ++
       allocArrayCode base (base + 1) ++
@@ -425,7 +439,7 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
         .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1,
           .localGet (base + 1), .localGet (base + 2), .constI64 1, .addI64, .constI64 8, .mulI64,
           .addI64, .wrapI64] ++
-          elem.code (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
+          elem.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
           [.store64 0, .localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
           [] []] [] []] ++
       releaseWhere Γ slots (fun i => elem.uses (i + 1) && !live i) ++ [.localGet (base + 1)]
@@ -438,19 +452,35 @@ def paramSlots : List Ty → List Mode → Nat → List Slot
     ⟨loc, t.paramMode (ms.headD .borrowed)⟩ :: paramSlots ts ms.tail (loc + t.width)
 
 def Func.type (func : Func S) : FuncType :=
-  { params := List.replicate (widthSum func.params) .i64
-    results := List.replicate func.result.width .i64 }
+  { params := func.params.flatMap Ty.types
+    results := func.result.types }
 
-/-- The function's code: the words of the arguments are its first locals, and the locals that the
-body needs follow them.  The code releases the owned parameters that the body does not use, and
-the body leaves the words of the result on the stack. -/
+/-- The instructions that copy each parameter word of type f64, at position `p` on among words of
+types `tys`, from its parameter local to the f64 local of its position. -/
+def paramCopyCode (h : Nat) : Nat → List ValueType → Program
+  | _, [] => []
+  | p, .f64 :: tys => [.localGet p, .localSet (p + h)] ++ paramCopyCode h (p + 1) tys
+  | p, _ :: tys => paramCopyCode h (p + 1) tys
+
+/-- The positions of a function: its parameters' words and the locals that the body needs. -/
+def Func.positions (func : Func S) : Nat :=
+  widthSum func.params + func.body.width + copyWidth func.result
+
+/-- The function's code: the words of the arguments are its first positions, and the positions
+that the body needs follow them; an i64 local for each of those and an f64 local for every
+position follow the parameters.  The code copies the f64 parameter words to their positions'
+f64 locals, releases the owned parameters that the body does not use, and runs the body, which
+leaves the words of the result on the stack. -/
 def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
   let slots := paramSlots func.params func.modes 0
+  let h := func.positions
   { params := func.type.params
-    locals := List.replicate (func.body.width + copyWidth func.result) .i64
-    body := releaseWhere func.params slots (fun i => !func.body.uses i) ++
-      func.body.code slots (widthSum func.params) (fun _ => false) ++
-      coerceCode func.result (func.body.mode (slots.map Slot.mode)) .owned
+    locals := List.replicate (func.body.width + copyWidth func.result) .i64 ++
+      List.replicate h .f64
+    body := paramCopyCode h 0 (func.params.flatMap Ty.types) ++
+      releaseWhere func.params slots (fun i => !func.body.uses i) ++
+      func.body.code h slots (widthSum func.params) (fun _ => false) ++
+      coerceCode h func.result (func.body.mode (slots.map Slot.mode)) .owned
         (widthSum func.params + func.body.width)
     results := func.type.results
     typeIdx := some typeIdx }

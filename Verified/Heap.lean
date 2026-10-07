@@ -418,7 +418,8 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     fun _ _ => ⟨trivial, fun hf => hf _ (List.mem_singleton_self _)⟩
   refine hNext heap1 store2 s2 q (overlay words0 xs 0 xs.size) (by rw [overlay_size, hSize0])
     (fun j hj => ?_) (hStep.mono (fun _ h => h) fun b hb => ?_) hOwned2
-    (by rw [hCapSame]; exact hCapQ) hp2 (by rw [hl2]; simp [setLocal]) (fun j hj hji => by rw [hOther2 j hji, hGet1 j hj])
+    (by rw [hCapSame]; exact hCapQ) hp2 (by rw [hl2]; simp [setLocal])
+    (fun j hj hji => by rw [hOther2 j hji, hGet1 j hj])
     (by rw [hOther2 dst hDstIndex]; exact hQ1) hv2
   · rw [getElem!_pos _ j (by rw [overlay_size]; omega)]
     simp only [overlay, Array.getElem_ofFn]
@@ -472,12 +473,14 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     {rest : Program} {Q : Assertion Unit}
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q)
     (hB : heap.Borrowed store ptr xs) (hSrc : s.get src = some (.i64 ptr)) (hSrcBase : src < base)
-    (hBase : s.params.length ≤ base) (hRoom : base + 3 ≤ s.params.length + s.locals.length)
+    (hBase : s.params.length ≤ base) (hRoom : base + 3 ≤ s.half)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ptr' : UInt64),
       Step heap store (fun _ => True) heap' store' [block store' ptr'] →
       heap'.Owned store' ptr' xs → Frame base s s' →
       wp m rest Q store' { s' with values := .i64 ptr' :: s.values } host) :
     wp m (copyArrayCode src base ++ rest) Q store s host := by
+  have hTot : 2 * s.half ≤ s.params.length + s.locals.length := by
+    simp only [Locals.half]; omega
   have hA := hB.values
   have hLen := hA.lengthBound
   have hFitA := hA.1
@@ -515,10 +518,13 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     exact hPrefix j h2
   subst hWords
   have hF : Frame base s s2 := by
-    refine ⟨hp2, by rw [hl2]; simp [s1, setLocal], fun j hj => ?_⟩
-    rw [hOther2 j (by omega) (by omega)]
-    show s1.get j = s.get j
-    rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
+    refine ⟨hp2, by rw [hl2]; simp [s1, setLocal], fun j hj => ⟨?_, ?_⟩⟩
+    · rw [hOther2 j (by omega) (by omega)]
+      show s1.get j = s.get j
+      rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
+    · rw [hOther2 _ (by omega) (by omega)]
+      show s1.get _ = s.get _
+      rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
   simp only [wp_localGet_cons, hQ2]
   have hv1 : s1.values = s.values := rfl
   simpa [hv2, hv1] using hNext heap1 store1 s2 q hStep hOwned hF
@@ -527,43 +533,44 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
 in `heap` at `store`: each of its arrays goes to a new owned block, and the other words stay as
 they are.  The copy consumes nothing. -/
 theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
-    (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {src base : Nat} {mode : Mode}
+    (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {h src base : Nat} {mode : Mode}
       {ws : List Value} {v : t.denote} {rest : Program} {Q : Assertion Unit},
-    heap.At store → store.memoryCap m 0 ≤ 65535 → TrapOK true Q →
-    t.Rep mode heap store ws v → LocalsHold s src ws → src + t.width ≤ base →
-    s.params.length ≤ base → base + t.copyScratch ≤ s.params.length + s.locals.length →
+    heap.At store → store.memoryCap m 0 ≤ 65535 → TrapOK true Q → s.half = h →
+    t.Rep mode heap store ws v → LocalsHold s src t.types ws → src + t.width ≤ base →
+    s.params.length ≤ base → base + t.copyScratch ≤ s.half →
     (∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ws' : List Value),
       Step heap store (fun _ => True) heap' store' (t.blocks store' ws' v) →
       t.Rep .owned heap' store' ws' v → Frame base s s' →
       wp m rest Q store' { s' with values := ws'.reverse ++ s.values } host) →
-    wp m (copyCode t src base ++ rest) Q store s host
-  | .word, heap, store, s, src, base, mode, ws, v, rest, Q, hAt, _, _, hRep, hold, _, _, _,
+    wp m (copyCode h t src base ++ rest) Q store s host
+  | .word, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, _, hRep, hold, _, _, _,
       hNext => by
     simp only [Ty.rep_word] at hRep
     subst hRep
-    have h0 : s.get src = some (.i64 v) := by simpa using hold 0 (by simp)
+    have h0 : s.get src = some (.i64 v) := LocalsHold.word hold
     simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
     simpa using hNext heap store s [.i64 v] (Step.refl hAt _) rfl (Frame.refl base s)
-  | .bool, heap, store, s, src, base, mode, ws, v, rest, Q, hAt, _, _, hRep, hold, _, _, _,
+  | .bool, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, _, hRep, hold, _, _, _,
       hNext => by
     simp only [Ty.rep_bool] at hRep
     subst hRep
-    have h0 : s.get src = some (.i64 (boolWord v)) := by simpa using hold 0 (by simp)
+    have h0 : s.get src = some (.i64 (boolWord v)) := LocalsHold.word hold
     simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
     simpa using hNext heap store s [.i64 (boolWord v)] (Step.refl hAt _) rfl (Frame.refl base s)
-  | .array, heap, store, s, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, hRep, hold, hSrc,
-      hBase, hRoom, hNext => by
+  | .array, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
+      hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, ha⟩ := hRep
-    have h0 : s.get src = some (.i64 ptr) := by simpa using hold 0 (by simp)
+    have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
     simp only [copyCode]
     exact wp_copyArray hm hAt hCap hTrap ha.borrow h0 (by simp [Ty.width] at hSrc; omega) hBase
       (by simpa [Ty.copyScratch, Ty.scalar] using hRoom) fun heap' store' s' ptr' hStep hOwned hF =>
         hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned⟩ hF
-  | .pair a b, heap, store, s, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, hRep, hold,
-      hSrc, hBase, hRoom, hNext => by
+  | .pair a b, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, hh, hRep,
+      hold, hSrc, hBase, hRoom, hNext => by
     obtain ⟨first, second, rfl, h1, h2, -⟩ := hRep
     have hl1 := h1.length
-    obtain ⟨hold1, hold2⟩ := LocalsHold.append.mp hold
+    obtain ⟨hold1, hold2⟩ :=
+      (LocalsHold.append (hl1.trans a.types_length.symm)).mp hold
     rw [hl1] at hold2
     simp only [copyCode, List.append_assoc]
     have hScratch : ∀ c : Ty, (c = a ∨ c = b) → c.copyScratch ≤ (Ty.pair a b).copyScratch := by
@@ -573,20 +580,17 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       · have := Ty.scalar_pair hp
         rcases hc with rfl | rfl <;> simp_all
       · rw [ite_eq_right hp]; split <;> omega
-    refine wp_copyCode hm a hAt hCap hTrap h1 hold1 (by simp [Ty.width] at hSrc; omega) hBase
+    refine wp_copyCode hm a hAt hCap hTrap hh h1 hold1 (by simp [Ty.width] at hSrc; omega) hBase
       (by have := hScratch a (Or.inl rfl); omega) fun heap1 store1 s1 ws1 hStep1 hRep1 hF1 => ?_
     have hR2 := (h2.step hStep1 fun _ _ => trivial).1
-    refine wp_copyCode hm b hStep1.at_ (by rw [hStep1.cap m]; exact hCap) hTrap hR2
-      (s := { s1 with values := ws1.reverse ++ s.values })
-      (fun k hk => by
-        show s1.get (src + a.width + k) = _
-        have := h2.length
-        rw [hF1.below _ (by simp [Ty.width] at hSrc; omega)]
-        exact hold2 k hk)
+    refine wp_copyCode hm b hStep1.at_ (by rw [hStep1.cap m]; exact hCap) hTrap
+      (s := { s1 with values := ws1.reverse ++ s.values }) (by simp [hF1.half, hh]) hR2
+      ((LocalsHold.frame (s' := { s1 with values := ws1.reverse ++ s.values })
+        (hF1.trans Frame.ofValues) (h2.length.trans b.types_length.symm)
+        (by rw [Ty.types_length]; simp [Ty.width] at hSrc; omega)).mpr hold2)
       (by simp [Ty.width] at hSrc; omega)
       (by show s1.params.length ≤ base; rw [hF1.params]; exact hBase)
-      (by show base + b.copyScratch ≤ s1.params.length + s1.locals.length
-          rw [hF1.params, hF1.length]; have := hScratch b (Or.inr rfl); omega)
+      (by simp only [Locals.half_values, hF1.half]; have := hScratch b (Or.inr rfl); omega)
       fun heap2 store2 s2 ws2 hStep2 hRep2 hF2 => ?_
     obtain ⟨hRep1', hSame1, hFresh1⟩ := hRep1.step hStep2 fun _ _ => trivial
     have hBlocks1 : a.blocks store2 ws1 v.1 = a.blocks store1 ws1 v.1 := hSame1
@@ -605,7 +609,7 @@ consumes the value's blocks. -/
 theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {src : Nat} {ws : List Value}
       {v : t.denote} {rest : Program} {Q : Assertion Unit},
-    heap.At store → t.Rep .owned heap store ws v → LocalsHold s src ws →
+    heap.At store → t.Rep .owned heap store ws v → LocalsHold s src t.types ws →
     (∀ (heap' : Heap) (store' : Store Unit),
       Step heap store (fun r => ∀ b ∈ t.blocks store ws v, regionsDisjoint r b) heap' store' [] →
       wp m rest Q store' s host) →
@@ -616,7 +620,7 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     simpa [releaseCode] using hNext heap store (Step.refl hAt _)
   | .array, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨ptr, rfl, hOwned⟩ := hRep
-    have h0 : s.get src = some (.i64 ptr) := by simpa using hold 0 (by simp)
+    have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
     simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
     refine wp_release hm hAt hOwned ?_
     have := hNext _ _ ((releaseStep hAt hOwned).mono (fun r hr => hr _ (List.mem_singleton_self _))
@@ -625,7 +629,8 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
   | .pair a b, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨first, second, rfl, h1, h2, hd⟩ := hRep
     have hl1 := h1.length
-    obtain ⟨hold1, hold2⟩ := LocalsHold.append.mp hold
+    obtain ⟨hold1, hold2⟩ :=
+      (LocalsHold.append (hl1.trans a.types_length.symm)).mp hold
     rw [hl1] at hold2
     simp only [releaseCode, List.append_assoc]
     refine wp_releaseCode hm a hAt h1 hold1 fun heap1 store1 hStep1 => ?_
@@ -675,7 +680,7 @@ theorem trans {L0 L1 L2 : Nat → Bool} {heap heap1 heap2 : Heap}
           cases h : L2 i with
           | false => rfl
           | true => rw [h21 i h] at h2; exact nomatch h2⟩,
-        fun _ => Holds.KeepDying.transfer h0 e1.step (fun j hj => e1.frame.below j hj) h10
+        fun _ => Holds.KeepDying.transfer h0 e1.step e1.frame h10
           (fun i h1 _ => h1) (hr.mono fun i h1 h2 => ⟨h10 _ h1, h2⟩)⟩,
     e1.frame.trans e2.frame, e2.holds⟩
 
