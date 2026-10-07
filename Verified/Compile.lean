@@ -67,12 +67,6 @@ def storeCode (loc : Nat) : Nat → Program
   | 0 => []
   | w + 1 => storeCode (loc + 1) w ++ [.localSet loc]
 
-/-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
-which its holder must consume. -/
-inductive Mode where
-  | borrowed | owned
-  deriving DecidableEq, Repr, Inhabited
-
 /-- Where a variable's words start, and its mode. -/
 structure Slot where
   loc : Nat
@@ -226,6 +220,25 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
   | _, _, _ => .borrowed
 
+/-- The instructions that push the words of an argument at an owned parameter, a variable, as an
+owned value. -/
+def Expr.ownedCode (slots : List Slot) (base : Nat) (live : Nat → Bool) :
+    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
+  | _, _, .var x => x.ownedCode slots base live
+  | _, _, _ => []
+
+/-- Whether argument `i` of a call moves its variable into the call: the parameter is owned, and
+the argument is an owned variable that is dead after the call and that no other argument with
+arrays reads. -/
+def callMoves (slots : List Slot) (live : Nat → Bool) {Γ : List Ty} {g : Sig}
+    (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) (i : Fin g.params.length) :
+    Bool :=
+  g.mode i == .owned &&
+    match (args i).varIndex? with
+    | some k => (slots.getD k default).mode == .owned && !live k &&
+        !(argsAny fun j => j != i && !(g.params.get j).scalar && (args j).uses k)
+    | none => false
+
 /-- The instructions that push the words of a variable or a pair of such expressions, read in
 place. -/
 def Expr.placeCode (slots : List Slot) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
@@ -250,7 +263,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .ite (t := t) c thenE elseE =>
     max c.width (t.width + max (max thenE.width elseE.width) (copyWidth t))
   | _, _, .letE (s := s) value body => s.width + max value.width body.width
-  | _, _, .call _ args => argsMax fun i => (args i).width
+  | _, _, .call (g := g) _ args =>
+    argsMax fun i => if g.mode i = .owned then copyWidth (g.params.get i) else (args i).width
   | _, _, .pair (s := s) (t := t) first second =>
     max (max first.width second.width) (max (copyWidth s) (copyWidth t))
   | _, _, .letPair (s := s) (t := t) e body => s.width + t.width + max e.width body.width
@@ -330,11 +344,13 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       body.code (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
   | Γ, _, .call (g := g) f args =>
     let all := fun i => live i || argsAny fun j => (args j).uses i
+    let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).uses i)
     argsCode (fun i =>
       if (g.params.get i).scalar then (args i).code slots base all
+      else if g.mode i = .owned then (args i).ownedCode slots base kept
       else (args i).placeCode slots) ++
       [.call f.callIndex] ++
-      releaseWhere Γ slots (fun i => (argsAny fun j => (args j).uses i) && !live i)
+      releaseWhere Γ slots (fun i => kept i && !live i)
   | _, _, .pair (s := s) (t := t) first second =>
     let modes := slots.map Slot.mode
     let mode := (first.mode modes).join (second.mode modes)
@@ -414,23 +430,27 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           [] []] [] []] ++
       releaseWhere Γ slots (fun i => elem.uses (i + 1) && !live i) ++ [.localGet (base + 1)]
 
-/-- The slots of a function's parameters, all borrowed: parameter `i` starts after the words of
-the parameters before it. -/
-def paramSlots : List Ty → Nat → List Slot
-  | [], _ => []
-  | t :: ts, loc => ⟨loc, .borrowed⟩ :: paramSlots ts (loc + t.width)
+/-- The slots of parameters of types `ts` for which the modes `ms` were chosen: parameter `i` starts
+after the words of the parameters before it. -/
+def paramSlots : List Ty → List Mode → Nat → List Slot
+  | [], _, _ => []
+  | t :: ts, ms, loc =>
+    ⟨loc, t.paramMode (ms.headD .borrowed)⟩ :: paramSlots ts ms.tail (loc + t.width)
 
 def Func.type (func : Func S) : FuncType :=
   { params := List.replicate (widthSum func.params) .i64
     results := List.replicate func.result.width .i64 }
 
-/-- The function's code: the words of the arguments are its first locals, the locals that the
-body needs follow them, and the body leaves the words of the result on the stack. -/
+/-- The function's code: the words of the arguments are its first locals, and the locals that the
+body needs follow them.  The code releases the owned parameters that the body does not use, and
+the body leaves the words of the result on the stack. -/
 def Func.function (func : Func S) (typeIdx : Nat) : Wasm.Function :=
+  let slots := paramSlots func.params func.modes 0
   { params := func.type.params
     locals := List.replicate (func.body.width + copyWidth func.result) .i64
-    body := func.body.code (paramSlots func.params 0) (widthSum func.params) (fun _ => false) ++
-      coerceCode func.result (func.body.mode ((paramSlots func.params 0).map Slot.mode)) .owned
+    body := releaseWhere func.params slots (fun i => !func.body.uses i) ++
+      func.body.code slots (widthSum func.params) (fun _ => false) ++
+      coerceCode func.result (func.body.mode (slots.map Slot.mode)) .owned
         (widthSum func.params + func.body.width)
     results := func.type.results
     typeIdx := some typeIdx }

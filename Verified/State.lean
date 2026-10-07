@@ -154,6 +154,14 @@ def Ty.blocks (store : Store Unit) : (t : Ty) → List Value → t.denote → Li
     | [.i64 ptr] => [block store ptr]
     | _ => []
 
+/-- The addresses of a value's arrays. -/
+def Ty.pointers : (t : Ty) → List Value → List UInt64
+  | .word, _ | .bool, _ => []
+  | .pair a b, ws => a.pointers (ws.take a.width) ++ b.pointers (ws.drop a.width)
+  | .array, ws => match ws with
+    | [.i64 ptr] => [ptr]
+    | _ => []
+
 /-- The regions of a borrowed value's arrays: each array's length word and elements. -/
 def Ty.reads : (t : Ty) → List Value → t.denote → List (Nat × Nat)
   | .word, _, _ | .bool, _, _ => []
@@ -247,6 +255,65 @@ theorem Ty.regions_scalar {mode : Mode} {store : Store Unit} :
     · exact Ty.blocks_scalar _ h ws p
   | .array, h, _, _ => absurd h (by decide)
 
+theorem Ty.reads_scalar :
+    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.reads ws v = []
+  | .word, _, _, _ | .bool, _, _, _ => rfl
+  | .pair a b, h, ws, p => by
+    simp only [Ty.reads, a.reads_scalar (Ty.scalar_pair h).1 _ p.1,
+      b.reads_scalar (Ty.scalar_pair h).2 _ p.2, List.append_nil]
+  | .array, h, _, _ => absurd h (by decide)
+
+theorem Ty.pointers_scalar : (t : Ty) → t.scalar = true → (ws : List Value) → t.pointers ws = []
+  | .word, _, _ | .bool, _, _ => rfl
+  | .pair a b, h, ws => by
+    simp only [Ty.pointers, a.pointers_scalar (Ty.scalar_pair h).1,
+      b.pointers_scalar (Ty.scalar_pair h).2, List.append_nil]
+  | .array, h, _ => absurd h (by decide)
+
+/-- A value's blocks are those at its arrays' addresses. -/
+theorem Ty.blocks_pointers {store : Store Unit} :
+    (t : Ty) → (ws : List Value) → (v : t.denote) →
+      t.blocks store ws v = (t.pointers ws).map (block store)
+  | .word, _, _ | .bool, _, _ => rfl
+  | .pair a b, ws, p => by
+    simp only [Ty.blocks, Ty.pointers, List.map_append, a.blocks_pointers, b.blocks_pointers]
+  | .array, ws, _ => by
+    simp only [Ty.blocks, Ty.pointers]
+    split <;> rfl
+
+/-- The blocks of an owned value are pairwise disjoint. -/
+theorem Ty.Rep.pairwise {heap : Heap} {store : Store Unit} :
+    {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep .owned heap store ws v →
+      (t.blocks store ws v).Pairwise regionsDisjoint
+  | .word, _, _, _ | .bool, _, _, _ => List.Pairwise.nil
+  | .pair _ _, _, _, ⟨first, second, h, h1, h2, hd⟩ => by
+    subst h
+    rw [Ty.blocks_append h1.length]
+    exact List.pairwise_append.mpr ⟨h1.pairwise, h2.pairwise, hd rfl⟩
+  | .array, _, _, ⟨_, h, _⟩ => by subst h; simp [Ty.blocks]
+
+/-- A region apart from a value's regions lies apart from its arrays' words. -/
+theorem Ty.Rep.reads_apart {mode : Mode} {heap : Heap} {store : Store Unit} :
+    {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
+      ∀ r, (∀ c ∈ t.regions mode store ws v, regionsDisjoint r c) →
+      ∀ c ∈ t.reads ws v, regionsDisjoint r c
+  | .word, _, _, _, _, _, _, hc | .bool, _, _, _, _, _, _, hc => by simp [Ty.reads] at hc
+  | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩, r, hr, c, hc => by
+    subst h
+    rw [Ty.reads_append h1.length] at hc
+    rw [Ty.regions_append h1.length] at hr
+    rcases List.mem_append.mp hc with hc | hc
+    · exact h1.reads_apart r (fun c' h' => hr c' (List.mem_append_left _ h')) c hc
+    · exact h2.reads_apart r (fun c' h' => hr c' (List.mem_append_right _ h')) c hc
+  | .array, _, _, ⟨ptr, h, ha⟩, r, hr, c, hc => by
+    subst h
+    simp only [Ty.reads, List.mem_singleton] at hc
+    subst hc
+    cases mode
+    · exact hr _ (by simp [Ty.regions, Ty.reads])
+    · have := hr (block store ptr) (by simp [Ty.regions, Ty.blocks])
+      exact regionsDisjoint_symm (Heap.Owned.region_apart ha (regionsDisjoint_symm this))
+
 /-- A value read where a borrowed one suffices. -/
 theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
@@ -266,33 +333,71 @@ theorem Ty.Rep.owned {mode : Mode} {heap : Heap} {store : Store Unit} :
       fun _ x hx => by rw [a.blocks_scalar (Ty.scalar_pair hs).1] at hx; exact nomatch hx⟩
   | .array, hs, _, _, _ => absurd hs (by decide)
 
-/-- The words of the values of a context, in order. -/
-def Env.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
+/-- The words of the values of a context, in order, the value of variable `i` held in mode
+`modes i`. -/
+def Env.Rep (modes : Nat → Mode) (heap : Heap) (store : Store Unit) :
     {Γ : List Ty} → List Value → Env Γ → Prop
   | _, ws, .nil => ws = []
   | _, ws, .cons (t := t) v env =>
-    ∃ first rest, ws = first ++ rest ∧ t.Rep mode heap store first v ∧
-      Env.Rep mode heap store rest env
+    ∃ first rest, ws = first ++ rest ∧ t.Rep (modes 0) heap store first v ∧
+      Env.Rep (fun i => modes (i + 1)) heap store rest env
+
+/-- The addresses of the arrays of the owned values among the words `ws` of a context's values,
+in order. -/
+def Env.moves (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List UInt64
+  | _, _, .nil => []
+  | _, ws, .cons (t := t) _ env =>
+    (match modes 0 with
+      | .owned => t.pointers (ws.take t.width)
+      | .borrowed => []) ++ Env.moves (fun i => modes (i + 1)) (ws.drop t.width) env
+
+/-- The regions of the arrays of the borrowed values among the words `ws` of a context's values,
+in order. -/
+def Env.reads (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List (Nat × Nat)
+  | _, _, .nil => []
+  | _, ws, .cons (t := t) v env =>
+    (match modes 0 with
+      | .owned => []
+      | .borrowed => t.reads (ws.take t.width) v) ++
+      Env.reads (fun i => modes (i + 1)) (ws.drop t.width) env
+
+theorem Env.moves_cons {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
+    {first rest : List Value} (h : first.length = t.width) :
+    Env.moves modes (first ++ rest) (.cons v env) =
+      (match modes 0 with
+        | .owned => t.pointers first
+        | .borrowed => []) ++ Env.moves (fun i => modes (i + 1)) rest env := by
+  simp [Env.moves, ← h]
+
+theorem Env.reads_cons {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
+    {first rest : List Value} (h : first.length = t.width) :
+    Env.reads modes (first ++ rest) (.cons v env) =
+      (match modes 0 with
+        | .owned => []
+        | .borrowed => t.reads first v) ++ Env.reads (fun i => modes (i + 1)) rest env := by
+  simp [Env.reads, ← h]
 
 theorem widthSum_cons (t : Ty) (ts : List Ty) : widthSum (t :: ts) = t.width + widthSum ts := by
   simp [widthSum]
 
-theorem Env.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
-    {Γ : List Ty} → {ws : List Value} → {env : Env Γ} → Env.Rep mode heap store ws env →
+theorem Env.Rep.length {modes : Nat → Mode} {heap : Heap} {store : Store Unit} :
+    {Γ : List Ty} → {ws : List Value} → {env : Env Γ} → Env.Rep modes heap store ws env →
       ws.length = widthSum Γ
   | _, _, .nil, h => by subst h; rfl
   | _, _, .cons _ _, h => by
     obtain ⟨_, _, h, h1, h2⟩ := h
     subst h; simp [widthSum_cons, h1.length, h2.length]
 
-/-- How the verified compiler passes arguments: borrowed, as the words of their values. -/
-@[instance_reducible] def Env.represent (Γ : List Ty) : Represent (Env Γ) where
+/-- How the verified compiler passes arguments: as the words of their values, each held in the
+mode that `paramMode Γ ms` gives.  The call reads the borrowed values' arrays and consumes the
+owned values' arrays. -/
+@[instance_reducible] def Env.represent (Γ : List Ty) (ms : List Mode) : Represent (Env Γ) where
   width _ := widthSum Γ
-  borrowed heap store vs env := Env.Rep .borrowed heap store vs env
-  owned heap store vs env := Env.Rep .owned heap store vs env
+  borrowed heap store vs env := Env.Rep (paramMode Γ ms) heap store vs env
+  owned heap store vs env := Env.Rep (paramMode Γ ms) heap store vs env
   blocks _ _ _ := []
-  reads _ _ _ := []
-  moves _ _ _ := []
+  reads _ vs env := Env.reads (paramMode Γ ms) vs env
+  moves _ vs env := Env.moves (paramMode Γ ms) vs env
 
 /-- How the verified compiler returns a value: as its words, owned by the caller. -/
 @[instance_reducible] def Ty.represent (t : Ty) : Represent t.denote where
@@ -965,99 +1070,248 @@ theorem Ty.leanInst_moves {store : Store Unit} :
       rw [a.leanInst_moves, b.leanInst_moves]
       rfl
 
-/-- The Lean type of a function's arguments: `Unit` for none, the parameter's type for one, and
-the right-nested product of the parameters' types for more. -/
-abbrev argsTy : List Ty → Type
-  | [] => Unit
-  | [t] => t.denote
-  | t :: u :: ts => t.denote × argsTy (u :: ts)
-
-/-- The `Scalar` instance that Lean synthesizes for arguments without arrays. -/
-@[instance_reducible] def argsScalarInst : (ps : List Ty) → ps.all Ty.scalar = true →
-    Scalar (argsTy ps)
-  | [], _ => instScalarUnit
-  | [t], h => t.scalarInst (by simpa using h)
-  | t :: u :: ts, h => @instScalarProd t.denote (argsTy (u :: ts))
-      (t.scalarInst (by simp at h; exact h.1))
-      (argsScalarInst (u :: ts) (by simp at h ⊢; exact h.2))
-
-/-- The `Represent` instance that Lean synthesizes for a function's arguments. -/
-@[instance_reducible] def argsInst : (ps : List Ty) → Represent (argsTy ps)
-  | [] => @instRepresentOfScalar Unit instScalarUnit
-  | [t] => t.leanInst
-  | t :: u :: ts =>
-    if h : (t :: u :: ts).all Ty.scalar = true then
-      @instRepresentOfScalar _ (argsScalarInst (t :: u :: ts) h)
-    else @instRepresentProd _ _ t.leanInst (argsInst (u :: ts))
-
-/-- The values of a function's arguments, from Lean's argument tuple. -/
-def Env.ofArgs : (ps : List Ty) → argsTy ps → Env ps
-  | [], _ => .nil
-  | [_], x => .cons x .nil
-  | _ :: u :: ts, x => .cons x.1 (Env.ofArgs (u :: ts) x.2)
-
-theorem argsScalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
-    (ps : List Ty) → (h : ps.all Ty.scalar = true) → {ws : List Value} → {y : argsTy ps} →
-      (ws = @Scalar.values _ (argsScalarInst ps h) y ↔
-        Env.Rep mode heap store ws (Env.ofArgs ps y))
-  | [], _, _, _ => Iff.rfl
-  | [t], h, ws, y => by
-    rw [show (@Scalar.values _ (argsScalarInst [t] h) y) =
-      @Scalar.values _ (t.scalarInst (by simpa using h)) y from rfl, t.scalar_rep]
-    constructor
-    · intro hy; exact ⟨ws, [], by simp, hy, rfl⟩
-    · rintro ⟨first, rest, rfl, h1, rfl⟩; simpa using h1
-  | t :: u :: ts, h, ws, y => by
-    constructor
-    · rintro rfl
-      exact ⟨_, _, rfl, (t.scalar_rep _).mp rfl, (argsScalar_rep (u :: ts) _).mp rfl⟩
-    · rintro ⟨first, rest, rfl, h1, h2⟩
-      rw [(t.scalar_rep _).mpr h1, (argsScalar_rep (u :: ts) _).mpr h2]
+theorem Ty.leanInst_reads {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {v : t.denote} →
+      @Represent.reads _ t.leanInst store ws v = t.reads ws v
+  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h, Ty.reads_scalar _ h]
+      rfl
+    · rw [Ty.leanInst, dite_eq_right h]
+      show @Represent.reads _ a.leanInst store (ws.take (@Represent.width _ a.leanInst p.1)) p.1 ++
+        @Represent.reads _ b.leanInst store (ws.drop (@Represent.width _ a.leanInst p.1)) p.2 = _
+      rw [a.leanInst_width, a.leanInst_reads, b.leanInst_reads]
       rfl
 
-theorem argsInst_scalar : (ps : List Ty) → (h : ps.all Ty.scalar = true) →
-    argsInst ps = @instRepresentOfScalar _ (argsScalarInst ps h)
-  | [], _ => rfl
-  | [t], h => t.leanInst_scalar (by simpa using h)
-  | _ :: _ :: _, h => by rw [argsInst, dite_eq_left h]
+theorem Ty.paramMode_scalar : (t : Ty) → t.scalar = true → (m : Mode) → t.paramMode m = .borrowed
+  | .word, _, _ | .bool, _, _ | .pair _ _, _, _ => rfl
+  | .array, h, _ => absurd h (by decide)
+
+/-- The Lean type of an argument of type `t` at a parameter for which the mode `m` was chosen:
+`Moved` for an owned array. -/
+abbrev Ty.argTy : Ty → Mode → Type
+  | .array, .owned => Moved (Array UInt64)
+  | t, _ => t.denote
+
+/-- The value of an argument. -/
+def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
+  | .array, .owned, x => x.val
+  | .array, .borrowed, x => x
+  | .word, _, x | .bool, _, x | .pair _ _, _, x => x
+
+/-- The `Represent` instance that Lean synthesizes for an argument. -/
+@[instance_reducible] def Ty.argInst : (t : Ty) → (m : Mode) → Represent (t.argTy m)
+  | .array, .owned => instRepresentMovedArrayUInt64
+  | .array, .borrowed => Ty.leanInst .array
+  | .word, _ => Ty.leanInst .word
+  | .bool, _ => Ty.leanInst .bool
+  | .pair a b, _ => Ty.leanInst (.pair a b)
+
+/-- The `Scalar` instance that Lean synthesizes for an argument without arrays. -/
+@[instance_reducible] def Ty.argScalarInst : (t : Ty) → (m : Mode) → t.scalar = true →
+    Scalar (t.argTy m)
+  | .word, _, h => Ty.scalarInst .word h
+  | .bool, _, h => Ty.scalarInst .bool h
+  | .pair a b, _, h => Ty.scalarInst (.pair a b) h
+  | .array, _, h => absurd h (by decide)
+
+theorem Ty.argScalar_values : (t : Ty) → (m : Mode) → (h : t.scalar = true) → (x : t.argTy m) →
+    @Scalar.values _ (t.argScalarInst m h) x = @Scalar.values _ (t.scalarInst h) (t.argVal m x)
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => rfl
+  | .array, _, h, _ => absurd h (by decide)
+
+theorem Ty.argInst_scalar : (t : Ty) → (m : Mode) → (h : t.scalar = true) →
+    t.argInst m = @instRepresentOfScalar _ (t.argScalarInst m h)
+  | .word, _, h | .bool, _, h | .pair _ _, _, h => Ty.leanInst_scalar _ h
+  | .array, _, h => absurd h (by decide)
+
+theorem Ty.argInst_width : (t : Ty) → (m : Mode) → (x : t.argTy m) →
+    @Represent.width _ (t.argInst m) x = t.width
+  | .array, .owned, _ | .array, .borrowed, _ => rfl
+  | .word, _, x | .bool, _, x | .pair _ _, _, x => Ty.leanInst_width _ x
+
+/-- Lean's instance for an argument agrees with the verified compiler's representation. -/
+theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
+    (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
+      (@Represent.borrowed _ (t.argInst m) heap store ws x ↔
+        t.Rep (t.paramMode m) heap store ws (t.argVal m x))
+  | .array, .owned, _, _ | .array, .borrowed, _, _ => Iff.rfl
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_borrowed _
+
+theorem Ty.argInst_moves {store : Store Unit} :
+    (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
+      @Represent.moves _ (t.argInst m) store ws x =
+        match t.paramMode m with
+        | .owned => t.pointers ws
+        | .borrowed => []
+  | .array, .owned, _, _ | .array, .borrowed, _, _ => rfl
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_moves _
+
+theorem Ty.argInst_reads {store : Store Unit} :
+    (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
+      @Represent.reads _ (t.argInst m) store ws x =
+        match t.paramMode m with
+        | .owned => []
+        | .borrowed => t.reads ws (t.argVal m x)
+  | .array, .owned, _, _ | .array, .borrowed, _, _ => rfl
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_reads _
+
+/-- The Lean type of a function's arguments, for parameters of types `ps` for which the modes `ms`
+were chosen: `Unit` for none, the argument's type for one, and the right-nested product of the
+arguments' types for more. -/
+abbrev argsTy : List Ty → List Mode → Type
+  | [], _ => Unit
+  | [t], ms => t.argTy (ms.headD .borrowed)
+  | t :: u :: ts, ms => t.argTy (ms.headD .borrowed) × argsTy (u :: ts) ms.tail
+
+/-- The `Scalar` instance that Lean synthesizes for arguments without arrays. -/
+@[instance_reducible] def argsScalarInst : (ps : List Ty) → (ms : List Mode) →
+    ps.all Ty.scalar = true → Scalar (argsTy ps ms)
+  | [], _, _ => instScalarUnit
+  | [t], _, h => t.argScalarInst _ (by simpa using h)
+  | t :: u :: ts, ms, h =>
+    @instScalarProd (t.argTy (ms.headD .borrowed)) (argsTy (u :: ts) ms.tail)
+      (t.argScalarInst _ (by simp at h; exact h.1))
+      (argsScalarInst (u :: ts) ms.tail (by simp at h ⊢; exact h.2))
+
+/-- The `Represent` instance that Lean synthesizes for a function's arguments. -/
+@[instance_reducible] def argsInst : (ps : List Ty) → (ms : List Mode) → Represent (argsTy ps ms)
+  | [], _ => @instRepresentOfScalar Unit instScalarUnit
+  | [t], ms => t.argInst (ms.headD .borrowed)
+  | t :: u :: ts, ms =>
+    if h : (t :: u :: ts).all Ty.scalar = true then
+      @instRepresentOfScalar _ (argsScalarInst (t :: u :: ts) ms h)
+    else @instRepresentProd _ _ (t.argInst (ms.headD .borrowed)) (argsInst (u :: ts) ms.tail)
+
+/-- The values of a function's arguments, from Lean's argument tuple. -/
+def Env.ofArgs : (ps : List Ty) → (ms : List Mode) → argsTy ps ms → Env ps
+  | [], _, _ => .nil
+  | [t], _, x => .cons (t.argVal _ x) .nil
+  | t :: _ :: _, ms, x => .cons (t.argVal _ x.1) (Env.ofArgs _ ms.tail x.2)
+
+theorem argsScalar_rep {heap : Heap} {store : Store Unit} :
+    (ps : List Ty) → (ms : List Mode) → (h : ps.all Ty.scalar = true) → {ws : List Value} →
+      {y : argsTy ps ms} →
+      (ws = @Scalar.values _ (argsScalarInst ps ms h) y ↔
+        Env.Rep (paramMode ps ms) heap store ws (Env.ofArgs ps ms y))
+  | [], _, _, _, _ => Iff.rfl
+  | [t], ms, h, ws, y => by
+    have ht : t.scalar = true := by simpa using h
+    rw [show (@Scalar.values _ (argsScalarInst [t] ms h) y) =
+      @Scalar.values _ (t.argScalarInst _ ht) y from rfl, t.argScalar_values, t.scalar_rep ht]
+    constructor
+    · intro hy; exact ⟨ws, [], by simp, hy, rfl⟩
+    · rintro ⟨first, rest, rfl, h1, rfl⟩; rw [List.append_nil]; exact h1
+  | t :: u :: ts, ms, h, ws, y => by
+    have ht : t.scalar = true := by simp at h; exact h.1
+    have hv : @Scalar.values _ (argsScalarInst (t :: u :: ts) ms h) y =
+        @Scalar.values _ (t.scalarInst ht) (t.argVal _ y.1) ++
+          @Scalar.values _ (argsScalarInst (u :: ts) ms.tail (by simp at h ⊢; exact h.2)) y.2 := by
+      rw [← t.argScalar_values _ ht]
+      rfl
+    rw [hv]
+    constructor
+    · rintro rfl
+      exact ⟨_, _, rfl, (t.scalar_rep ht).mp rfl, (argsScalar_rep (u :: ts) ms.tail _).mp rfl⟩
+    · rintro ⟨first, rest, rfl, h1, h2⟩
+      rw [(t.scalar_rep ht).mpr h1, (argsScalar_rep (u :: ts) ms.tail _).mpr h2]
+
+theorem argsInst_scalar : (ps : List Ty) → (ms : List Mode) → (h : ps.all Ty.scalar = true) →
+    argsInst ps ms = @instRepresentOfScalar _ (argsScalarInst ps ms h)
+  | [], _, _ => rfl
+  | [t], _, h => t.argInst_scalar _ (by simpa using h)
+  | _ :: _ :: _, _, h => by rw [argsInst, dite_eq_left h]
 
 /-- Lean's instance for the arguments agrees with the verified compiler's representation. -/
 theorem argsInst_borrowed {heap : Heap} {store : Store Unit} :
-    (ps : List Ty) → {ws : List Value} → {y : argsTy ps} →
-      (@Represent.borrowed _ (argsInst ps) heap store ws y ↔
-        Env.Rep .borrowed heap store ws (Env.ofArgs ps y))
-  | [], _, _ => Iff.rfl
-  | [t], ws, y => by
-    rw [show (@Represent.borrowed _ (argsInst [t]) heap store ws y) =
-      @Represent.borrowed _ t.leanInst heap store ws y from rfl, t.leanInst_borrowed]
+    (ps : List Ty) → (ms : List Mode) → {ws : List Value} → {y : argsTy ps ms} →
+      (@Represent.borrowed _ (argsInst ps ms) heap store ws y ↔
+        Env.Rep (paramMode ps ms) heap store ws (Env.ofArgs ps ms y))
+  | [], _, _, _ => Iff.rfl
+  | [t], ms, ws, y => by
+    rw [show (@Represent.borrowed _ (argsInst [t] ms) heap store ws y) =
+      @Represent.borrowed _ (t.argInst _) heap store ws y from rfl, t.argInst_borrowed]
     constructor
     · intro hy; exact ⟨ws, [], by simp, hy, rfl⟩
-    · rintro ⟨first, rest, rfl, h1, rfl⟩; simpa using h1
-  | t :: u :: ts, ws, y => by
+    · rintro ⟨first, rest, rfl, h1, rfl⟩; rw [List.append_nil]; exact h1
+  | t :: u :: ts, ms, ws, y => by
     by_cases h : (t :: u :: ts).all Ty.scalar = true
-    · rw [argsInst_scalar _ h]
-      exact argsScalar_rep _ h
+    · rw [argsInst_scalar _ _ h]
+      exact argsScalar_rep _ _ h
     · rw [argsInst, dite_eq_right h]
       constructor
       · rintro ⟨first, rest, rfl, h1, h2⟩
-        exact ⟨first, rest, rfl, t.leanInst_borrowed.mp h1, (argsInst_borrowed (u :: ts)).mp h2⟩
+        exact ⟨first, rest, rfl, (t.argInst_borrowed _).mp h1,
+          (argsInst_borrowed (u :: ts) ms.tail).mp h2⟩
       · rintro ⟨first, rest, rfl, h1, h2⟩
-        exact ⟨first, rest, rfl, t.leanInst_borrowed.mpr h1,
-          (argsInst_borrowed (u :: ts)).mpr h2⟩
+        exact ⟨first, rest, rfl, (t.argInst_borrowed _).mpr h1,
+          (argsInst_borrowed (u :: ts) ms.tail).mpr h2⟩
+
+theorem Env.moves_scalar : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
+    (ws : List Value) → (env : Env ps) → Env.moves (paramMode ps ms) ws env = []
+  | [], _, _, _, .nil => rfl
+  | t :: _, ms, h, ws, .cons _ env => by
+    simp only [List.all_cons, Bool.and_eq_true] at h
+    simp only [Env.moves, paramMode, paramModes, List.getD_cons_zero,
+      t.paramMode_scalar h.1, List.nil_append]
+    exact Env.moves_scalar ms.tail h.2 _ env
+
+theorem Env.reads_scalar : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
+    (ws : List Value) → (env : Env ps) → Env.reads (paramMode ps ms) ws env = []
+  | [], _, _, _, .nil => rfl
+  | t :: _, ms, h, ws, .cons v env => by
+    simp only [List.all_cons, Bool.and_eq_true] at h
+    simp only [Env.reads, paramMode, paramModes, List.getD_cons_zero,
+      t.paramMode_scalar h.1, t.reads_scalar h.1, List.nil_append]
+    exact Env.reads_scalar ms.tail h.2 _ env
 
 theorem argsInst_moves {store : Store Unit} :
-    (ps : List Ty) → {ws : List Value} → {y : argsTy ps} →
-      @Represent.moves _ (argsInst ps) store ws y = []
-  | [], _, _ => rfl
-  | [t], _, _ => t.leanInst_moves
-  | t :: u :: ts, ws, y => by
+    (ps : List Ty) → (ms : List Mode) → {ws : List Value} → {y : argsTy ps ms} →
+      ws.length = widthSum ps →
+      @Represent.moves _ (argsInst ps ms) store ws y =
+        Env.moves (paramMode ps ms) ws (Env.ofArgs ps ms y)
+  | [], _, _, _, _ => rfl
+  | [t], ms, ws, y, hl => by
+    rw [show (@Represent.moves _ (argsInst [t] ms) store ws y) =
+      @Represent.moves _ (t.argInst _) store ws y from rfl, t.argInst_moves]
+    simp only [Env.ofArgs, Env.moves, paramMode, paramModes, List.getD_cons_zero, List.append_nil]
+    rw [List.take_of_length_le (show ws.length ≤ t.width by simp [widthSum] at hl; omega)]
+  | t :: u :: ts, ms, ws, y, hl => by
     by_cases h : (t :: u :: ts).all Ty.scalar = true
-    · rw [argsInst_scalar _ h]
+    · rw [argsInst_scalar _ _ h, Env.moves_scalar _ h]
       rfl
     · rw [argsInst, dite_eq_right h]
-      show @Represent.moves _ t.leanInst store _ y.1 ++
-        @Represent.moves _ (argsInst (u :: ts)) store _ y.2 = []
-      rw [t.leanInst_moves, argsInst_moves (u :: ts)]
+      show @Represent.moves _ (t.argInst _) store
+          (ws.take (@Represent.width _ (t.argInst _) y.1)) y.1 ++
+        @Represent.moves _ (argsInst (u :: ts) ms.tail) store
+          (ws.drop (@Represent.width _ (t.argInst _) y.1)) y.2 = _
+      rw [t.argInst_width, t.argInst_moves, argsInst_moves (u :: ts) ms.tail
+        (by rw [List.length_drop, hl, widthSum_cons]; omega)]
+      rfl
+
+theorem argsInst_reads {store : Store Unit} :
+    (ps : List Ty) → (ms : List Mode) → {ws : List Value} → {y : argsTy ps ms} →
+      ws.length = widthSum ps →
+      @Represent.reads _ (argsInst ps ms) store ws y =
+        Env.reads (paramMode ps ms) ws (Env.ofArgs ps ms y)
+  | [], _, _, _, _ => rfl
+  | [t], ms, ws, y, hl => by
+    rw [show (@Represent.reads _ (argsInst [t] ms) store ws y) =
+      @Represent.reads _ (t.argInst _) store ws y from rfl, t.argInst_reads]
+    simp only [Env.ofArgs, Env.reads, paramMode, paramModes, List.getD_cons_zero, List.append_nil]
+    rw [List.take_of_length_le (show ws.length ≤ t.width by simp [widthSum] at hl; omega)]
+  | t :: u :: ts, ms, ws, y, hl => by
+    by_cases h : (t :: u :: ts).all Ty.scalar = true
+    · rw [argsInst_scalar _ _ h, Env.reads_scalar _ h]
+      rfl
+    · rw [argsInst, dite_eq_right h]
+      show @Represent.reads _ (t.argInst _) store
+          (ws.take (@Represent.width _ (t.argInst _) y.1)) y.1 ++
+        @Represent.reads _ (argsInst (u :: ts) ms.tail) store
+          (ws.drop (@Represent.width _ (t.argInst _) y.1)) y.2 = _
+      rw [t.argInst_width, t.argInst_reads, argsInst_reads (u :: ts) ms.tail
+        (by rw [List.length_drop, hl, widthSum_cons]; omega)]
       rfl
 
 end Verified
