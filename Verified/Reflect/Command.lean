@@ -192,17 +192,15 @@ def modeExpr : Mode → Lean.Expr
 
 def modesExpr (modes : List Mode) : Lean.Expr := listExpr (mkConst ``Mode) (modes.map modeExpr)
 
-def sigExpr (params : List Ty) (result : Ty) (aborts : Bool) (modes : List Mode) : Lean.Expr :=
-  mkApp4 (mkConst ``Sig.mk) (ctxExpr params) (tyExpr result) (toExpr aborts) (modesExpr modes)
+def sigExpr (g : Sig) : Lean.Expr :=
+  mkApp5 (mkConst ``Sig.mk) (ctxExpr g.params) (tyExpr g.result) (toExpr g.aborts)
+    (modesExpr g.modes) (toExpr g.depth)
 
-/-- A listed definition that a later one may call: its name, its signature, whether a call may
-trap, the modes of its parameters, and its equation `∀ args, Func.denote … = name args`. -/
+/-- A listed definition that a later one may call: its name, its signature, and its equation
+`∀ args, Func.denote … = name args`. -/
 structure Callee where
   name : Name
-  params : List Ty
-  result : Ty
-  aborts : Bool
-  modes : List Mode
+  sig : Sig
   denoteEq : Name
 
 /-- The functions an expression may call, the Lean functions they mean, the definitions behind
@@ -1087,10 +1085,11 @@ where
     let some j := c.callees.findIdx? (·.name == fn) | return none
     let some callee := c.callees[j]? | return none
     let args := e.getAppArgs
-    unless args.size == callee.params.length do
-      throwError "verified_compile: {fn} must be applied to all {callee.params.length} arguments"
-    let bind := (args.toList.zip callee.params).zipIdx.map fun ((a, t), i) =>
-      !t.scalar && if paramMode callee.params callee.modes i = .owned then !(projReduce a).isFVar
+    unless args.size == callee.sig.params.length do
+      throwError "verified_compile: {fn} must be applied to all {callee.sig.params.length} \
+        arguments"
+    let bind := (args.toList.zip callee.sig.params).zipIdx.map fun ((a, t), i) =>
+      !t.scalar && if callee.sig.mode i = .owned then !(projReduce a).isFVar
         else !isPlace a
     if bind.any id then
       return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
@@ -1099,14 +1098,14 @@ where
     let argList ← reflected.foldrM (fun (s, _, _) acc => mkAppM ``Args.cons #[s, acc]) nilArgs
     let nilEq ← mkAppOptM ``ofFn_nil_eq #[some c.sigs, some c.ctx, some c.funs, some c.env]
     let hargs ← reflected.foldrM (fun (_, h, _) acc => mkAppM ``ofFn_cons_eq #[h, acc]) nilEq
-    let values ← envExpr (args.toList.zip callee.params)
+    let values ← envExpr (args.toList.zip callee.sig.params)
     let f ← fvarAt c.sigs j
     -- `funs.get f values` is the callee's meaning by `getChain`, and the callee's equation gives
     -- its value, with no unfolding of the callee's definition.
     let hf ← transHint (← getChain c.funs.appArg! f values)
       (mkAppN (mkConst callee.denoteEq) args)
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
-    return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.result)
+    return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.sig.result)
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (ls, hl, _) ← reflect c a
     let (rs, hr, _) ← reflect c b
@@ -1259,14 +1258,15 @@ partial def agreeArgs (userT : Lean.Expr) (ps : List Ty) (ms : List Mode) :
   | _, _ => throwError "verified_compile: the arguments {userT} do not have the shape of the \
     parameters"
 
-/-- What the reflector learns from one definition: its signature, whether a call may trap, and the
-modes of its parameters. -/
+/-- What the reflector learns from one definition: its signature, whether a call may trap, the
+modes of its parameters, and whether its code takes the call depth. -/
 structure Reflected where
   name : Name
   params : List Ty
   result : Ty
   aborts : Bool
   modes : List Mode
+  depth : Bool
   /-- The Lean type of the tuple of the definition's arguments, with `Moved` for an owned array. -/
   argsType : Lean.Expr
   /-- The Lean type of the definition's result. -/
@@ -1327,6 +1327,9 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let aborts ← reduce (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
     unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
       throwError "verified_compile: cannot evaluate whether {name} may trap"
+    let depth ← reduce (← mkAppM ``Func.depth #[mkConst (base ++ `func)])
+    unless depth.isConstOf ``Bool.true || depth.isConstOf ``Bool.false do
+      throwError "verified_compile: cannot evaluate whether the code of {name} takes the depth"
     -- Lean's tuple of the arguments, in which an owned array has type `Moved`, the flattenings
     -- of the arguments and of the result, and the agreement of Lean's instances with the source
     -- instances along them.
@@ -1339,7 +1342,8 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let (flatResult, resultAgree) ← agreeTy resultType result
     addTheorem (base ++ `argsAgree) (← inferType argsAgree) argsAgree
     addTheorem (base ++ `resultAgree) (← inferType resultAgree) resultAgree
-    return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes, argsType, resultType,
+    return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes, depth.isConstOf ``Bool.true,
+      argsType, resultType,
       flatArgs, flatResult⟩
 where
   /-- The right-nested product of `tys`, `Unit` for none. -/
@@ -1406,22 +1410,21 @@ def elabVerifiedCompile : CommandElab
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
     let (reflected, prog) ← liftTermElabM do
-      let mut sigs : List (List Ty × Ty × Bool × List Mode) := []
+      let mut sigs : List Sig := []
       let mut prog := Lean.mkConst ``Prog.nil
       let mut out : Array Reflected := #[]
       let mut callees : List Callee := []
       for name in names do
-        let sigsExpr :=
-          listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r, a, ms) => sigExpr p r a ms)
+        let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
         let funs ← mkAppM ``Prog.funs #[prog]
         let fbase := base ++ Name.mkSimple name.getString!
         let r ← reflectDefinition fbase name sigsExpr funs callees
         prog ← mkAppM ``Prog.cons #[Lean.mkConst (fbase ++ `func), prog]
-        sigs := (r.params, r.result, r.aborts, r.modes) :: sigs
-        callees := ⟨name, r.params, r.result, r.aborts, r.modes, fbase ++ `denote_eq⟩ :: callees
+        let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+        sigs := sig :: sigs
+        callees := ⟨name, sig, fbase ++ `denote_eq⟩ :: callees
         out := out.push r
-      let sigsExpr :=
-        listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r, a, ms) => sigExpr p r a ms)
+      let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
       addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
         (← mkAppM ``compile #[Lean.mkConst (base ++ `program)])
@@ -1440,7 +1443,8 @@ def elabVerifiedCompile : CommandElab
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
         let h ← Term.elabTerm
-          (← `(Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1)) none
+          (← `(Verified.ImplementsA.lean
+            ((Verified.Prog.correct_funs $progId rfl $fvar).1 rfl))) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
         let F ← withLocalDeclD `x r.argsType fun x => do

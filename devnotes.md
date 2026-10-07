@@ -27307,15 +27307,21 @@ is `ImplementsA true`: the call returns the definition's value or traps.  Talos 
 depth, and Wasmtime ends deep recursion with a stack-overflow trap, which `Trapped` does not
 admit, so the guard turns that gap into one fact that tests establish: `L` frames fit the stack.
 
-- [ ] `Sig.depth`; `Expr.depthCalls`; `RecFunc` with the body over its own signature; `Prog.rec`;
-  `Prog.Meaning`, with `Prog.funs` for programs without recursion and a corollary for them.
-- [ ] `CodeSpec` gains the frame's parameter values `ps`, with `s.params = ps`, and `Calls`
-  becomes `CallsAt m funs ps`: a recursive callee's internal specification holds at every depth,
-  and the call reads the caller's depth from the head of `ps`.
-- [ ] The internal function: the depth at local 0, the parameters from position 1, the guard, and
-  the flagged call sequence; entries and their exports and types.
-- [ ] `Func.correct` over the slot shift; `Prog.calls` with four cases (plain, flagged without
-  recursion, recursive, nil), the recursive one by induction on `L - d`.
+- [x] `Sig.depth`; `Expr.depthCalls`; `RecFunc` with the body over its own signature;
+  `Prog.consRec` (`Prog.rec` would clash with the recursor); `Prog.Meaning`, with `Prog.funs` for
+  programs without recursion and the corollary `Prog.correct_funs`.
+- [x] `CodeSpec` gains the frame's parameter values `pv`, with `s.params = pv`.  `Calls` becomes
+  `FunSpec` per function, and code takes `CallsAt m funs d0`, in which a flagged callee need only
+  meet its internal specification at depth `d0 + 1`.  `Expr.code_spec` takes the premise that
+  `pv` starts with `d0` when the expression calls a flagged function.
+- [x] The internal function: the depth at local 0, the parameters from position 1, the guard, and
+  the flagged call sequence; entries and their exports and types.  `Expr.aborts` of a call
+  includes the callee's depth flag, since the callee may trap at the guard.
+- [x] `bodyFunction_runs` over the slot shift, with `bodyFunction_implements` and
+  `bodyFunction_depth`; `FunSpec.runs`, shared by both branches of `spec_call`; `Prog.calls` with
+  four cases (nil, plain or flagged `cons`, `consRec`), the recursive one by strong induction on
+  `depthLimit.toNat - d.toNat`; `entry_correct` and `Prog.correct_entry` for the exported
+  entries.
 - [ ] The reflector: recursion through `eq_def`, a self callee, the mode rounds, the inverse of
   the flattening, terms only, rejection of `sorry` in termination proofs.
 - [ ] `Recursion.lean`: exponentiation by squaring, `gcd`, a pairwise float sum with two
