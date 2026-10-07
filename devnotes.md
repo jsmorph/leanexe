@@ -27122,6 +27122,15 @@ update of an owned array of two-word elements.
 - [ ] Later: enumerations and `match` on them, and a read of one field of an array element that
   loads only that field's words.
 
+After records, `LeanExe.repeatWhile`, then recursion.  `repeatWhile fuel init cond step` is
+`LeanExe.loop` with an exit when `cond` fails: a source constructor with `cond` and `step` over the
+state, code like the loop's with a second exit, and a proof modeled on `spec_loop` whose invariant
+says that the result is `go (fuel.toNat - k) s` for the state `s` after `k` passes.  A rewrite into
+`loop` over a state and a flag would run every pass of the fuel, which programs often set near
+`2^64`.
+
+- [ ] V11: `LeanExe.repeatWhile`.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
