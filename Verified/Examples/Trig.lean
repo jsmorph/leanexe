@@ -10,11 +10,11 @@ gives beside its decimal value.  Lean's `Float.sin` is `@[extern "sin"]`, the C 
 with no definition in Lean, so the compiler's theorem is about these definitions, and the tests
 compare them with the C library.
 
-The reduction covers `|x| < 2 ^ 20 · π/2`, by fdlibm's special cases up to `9π/4` and its
-three-step Cody–Waite reduction above.  A larger argument gives NaN until the program gains
-fdlibm's Payne–Hanek reduction.  The reduction takes `|x|`, by `sin (-x) = -sin x` and
-`cos (-x) = cos x`, so its quadrant count is a word; fdlibm reduces `x` itself, with a signed
-count. -/
+The reduction is fdlibm's special cases up to `9π/4` and its three-step Cody–Waite reduction
+below `2 ^ 20 · π/2`, and above that a Payne–Hanek reduction in word arithmetic, which reads the
+bits of `2/π` from a lookup function, so that no call allocates.  The reduction takes `|x|`, by
+`sin (-x) = -sin x` and `cos (-x) = cos x`, so its quadrant count is a word, where fdlibm reduces
+`x` itself with a signed count. -/
 
 namespace Verified.Examples.Trig
 
@@ -95,10 +95,125 @@ def remMedium (x : Float) (ix : UInt64) : UInt64 × Float × Float :=
     else (n, y0, (r - y0) - w)
   else (n, y0, (r - y0) - w)
 
+/-- Word `k` of the binary digits of `2/π`, `2/π = Σ (invPiWord k) · 2 ^ (-64 k)`: word 0 is the
+integer part, 0, and words 1 to 19, 1216 bits, are fdlibm's table `ipio2` (`k_rem_pio2.c`) regrouped
+from 24-bit chunks, which an independent computation of `2/π` from Machin's formula confirms.  A
+lookup function, where a table in memory would allocate. -/
+def invPiWord (k : UInt64) : UInt64 :=
+  if k == 1 then 0xA2F9836E4E441529 else if k == 2 then 0xFC2757D1F534DDC0
+  else if k == 3 then 0xDB6295993C439041 else if k == 4 then 0xFE5163ABDEBBC561
+  else if k == 5 then 0xB7246E3A424DD2E0 else if k == 6 then 0x06492EEA09D1921C
+  else if k == 7 then 0xFE1DEB1CB129A73E else if k == 8 then 0xE88235F52EBB4484
+  else if k == 9 then 0xE99C7026B45F7E41 else if k == 10 then 0x3991D639835339F4
+  else if k == 11 then 0x9C845F8BBDF9283B else if k == 12 then 0x1FF897FFDE05980F
+  else if k == 13 then 0xEF2F118B5A0A6D1F else if k == 14 then 0x6D367ECF27CB09B7
+  else if k == 15 then 0x4F463F669E5FEA2D else if k == 16 then 0x7527BAC7EBE5F17B
+  else if k == 17 then 0x3D0739F78A5292EA else if k == 18 then 0x6BFB5FB11F8D5D08
+  else if k == 19 then 0x56033046FC7B6BAB else 0
+
+/-- The 128-bit product of two words, as its high and low words, from the products of their
+32-bit halves. -/
+def mul64 (a b : UInt64) : UInt64 × UInt64 :=
+  let a1 := a >>> 32
+  let a0 := a &&& 0xFFFFFFFF
+  let b1 := b >>> 32
+  let b0 := b &&& 0xFFFFFFFF
+  let p00 := a0 * b0
+  let p01 := a0 * b1
+  let p10 := a1 * b0
+  let mid := (p00 >>> 32) + (p01 &&& 0xFFFFFFFF) + (p10 &&& 0xFFFFFFFF)
+  (a1 * b1 + (p01 >>> 32) + (p10 >>> 32) + (mid >>> 32), a * b)
+
+/-- The number of leading zero bits of a word, 64 for 0, by halving the range. -/
+def clz64 (x : UInt64) : UInt64 :=
+  if x == 0 then 64
+  else
+    let (n1, x1) := if x >>> 32 == 0 then ((32 : UInt64), x <<< 32) else (0, x)
+    let (n2, x2) := if x1 >>> 48 == 0 then (n1 + 16, x1 <<< 16) else (n1, x1)
+    let (n3, x3) := if x2 >>> 56 == 0 then (n2 + 8, x2 <<< 8) else (n2, x2)
+    let (n4, x4) := if x3 >>> 60 == 0 then (n3 + 4, x3 <<< 4) else (n3, x3)
+    let (n5, x5) := if x4 >>> 62 == 0 then (n4 + 2, x4 <<< 2) else (n4, x4)
+    if x5 >>> 63 == 0 then n5 + 1 else n5
+
+/-- The 64 bits of `2/π` that start `s` bits into word `d`, `s < 64`. -/
+def window (d s : UInt64) : UInt64 :=
+  if s == 0 then invPiWord d else (invPiWord d <<< s) ||| (invPiWord (d + 1) >>> (64 - s))
+
+/-- The top 128 bits of the product of the 128-bit numbers `a1 : a0` and `b1 : b0`. -/
+def mulTop (a1 a0 b1 b0 : UInt64) : UInt64 × UInt64 :=
+  let (p11h, p11l) := mul64 a1 b1
+  let (p10h, p10l) := mul64 a1 b0
+  let (p01h, p01l) := mul64 a0 b1
+  let (p00h, _) := mul64 a0 b0
+  let s1 := p00h + p10l
+  let k1 := if s1 < p00h then (1 : UInt64) else 0
+  let w1 := s1 + p01l
+  let k2 := if w1 < s1 then (1 : UInt64) else 0
+  let s2 := p11l + p10h
+  let k3 := if s2 < p11l then (1 : UInt64) else 0
+  let s3 := s2 + p01h
+  let k4 := if s3 < s2 then (1 : UInt64) else 0
+  let w2 := s3 + (k1 + k2)
+  let k5 := if w2 < s3 then (1 : UInt64) else 0
+  (p11h + k3 + k4 + k5, w2)
+
+/-- The top 128 bits of the 192-bit `a2 : a1 : a0` shifted left by `lz < 192`. -/
+def shiftTop (a2 a1 a0 lz : UInt64) : UInt64 × UInt64 :=
+  let (x2, x1, x0) := if 128 ≤ lz then (a0, (0 : UInt64), (0 : UInt64))
+    else if 64 ≤ lz then (a1, a0, 0) else (a2, a1, a0)
+  let s := lz &&& 63
+  if s == 0 then (x2, x1)
+  else ((x2 <<< s) ||| (x1 >>> (64 - s)), (x1 <<< s) ||| (x0 >>> (64 - s)))
+
+/-- Payne–Hanek reduction, for `2 ^ 20 · π/2 ≤ x` finite, in word arithmetic as Go's
+`math.trigReduce` does it after K. C. Ng, "Argument Reduction for Huge Arguments: Good to the Last
+Bit", 1992: the count `n` of `π/2` and `x - n · π/2` as `y0 + y1`.  With `x = m · 2 ^ e`, the bits
+of `2/π` before bit `e - 1` contribute multiples of 4 to `x · 2/π`, so the low 192 bits of
+`m · z`, for the 192-bit window `z` of `2/π` from bit `e - 1` on, are `x · 2/π` modulo 4 with 190
+bits of fraction, exact to `2 ^ -137` since the window omits less than `2 ^ -190` per unit of
+`m < 2 ^ 53`.  The fraction is rounded to the nearer quadrant, shifted to its leading bit, which
+is the `2 ^ -62` bit or a higher one, at the double closest to a multiple of `π/2` the lowest, and
+multiplied by `π/2` as a 128-bit number.  The top 106 bits of the product become `y0 + y1` by an
+exact two-sum. -/
+def remLarge (x : Float) : UInt64 × Float × Float :=
+  let b := x.toBits
+  let m := (b &&& 0xFFFFFFFFFFFFF) ||| 0x10000000000000
+  -- The window starts at bit `e - 1`, `e = exponent - 1075`, which is bit `e + 62` from the
+  -- start of word 0.
+  let g := ((b >>> 52) &&& 0x7FF) - 1013
+  let d := g >>> 6
+  let s := g &&& 63
+  let (h2, l2) := mul64 (window (d + 2) s) m
+  let (h1, l1) := mul64 (window (d + 1) s) m
+  let w1 := h2 + l1
+  let w2 := h1 + window d s * m + (if w1 < h2 then 1 else 0)
+  let q := w2 >>> 62
+  let f2 := w2 &&& 0x3FFFFFFFFFFFFFFF
+  -- A fraction of one half or more rounds up to the next quadrant: its magnitude is the
+  -- 190-bit negation.
+  let up := f2 >>> 61 == 1
+  let (a2, a1, a0) := if up then
+      ((0 - f2 - (if w1 != 0 || l2 != 0 then 1 else 0)) &&& 0x3FFFFFFFFFFFFFFF,
+        0 - w1 - (if l2 != 0 then 1 else 0), 0 - l2)
+    else (f2, w1, l2)
+  let lz := if a2 != 0 then clz64 a2 else if a1 != 0 then 64 + clz64 a1 else 128 + clz64 a0
+  let (t1, t0) := shiftTop a2 a1 a0 lz
+  -- `π/2 · 2 ^ 127`, from the same computation of `π`.
+  let (u1, u0) := mulTop t1 t0 0xC90FDAA22168C234 0xC4C6628B80DC1CD1
+  -- The remainder is `(u1 : u0) · 2 ^ (-125 - lz)`, with its leading bit at `p = 64 + k`.
+  let k := if u1 >>> 63 == 1 then (63 : UInt64) else 62
+  let hi := u1 >>> (k - 52)
+  let lo := ((u1 <<< (105 - k)) ||| (u0 >>> (k - 41))) &&& 0x1FFFFFFFFFFFFF
+  let a := hi.toFloat * Float.ofBits ((k + 910 - lz) <<< 52)
+  let c := lo.toFloat * Float.ofBits ((k + 857 - lz) <<< 52)
+  let y0 := a + c
+  let y1 := c - (y0 - a)
+  if up then (q + 1, -y0, -y1) else (q, y0, y1)
+
 /-- fdlibm's `__ieee754_rem_pio2` for `π/4 < x`: the count `n` of `π/2` and `x - n · π/2` as
 `y0 + y1` in `[-π/4, π/4]`.  Up to `9π/4` the count is fixed by the high word, except near
-`π/2`, `π`, `3π/2`, and `2π`, where the subtraction cancels and the medium case runs.  An argument
-of `2 ^ 20 · π/2` or more gives NaN. -/
+`π/2`, `π`, `3π/2`, and `2π`, where the subtraction cancels and the medium case runs, and from
+`2 ^ 20 · π/2` on the Payne–Hanek reduction runs. -/
 def remPio2 (x : Float) : UInt64 × Float × Float :=
   let ix := x.toBits >>> 32
   if ix ≤ 0x400f6a7a then
@@ -110,7 +225,7 @@ def remPio2 (x : Float) : UInt64 × Float × Float :=
       if ix == 0x4012d97c then remMedium x ix else (3, remSmall x 3.0)
     else if ix == 0x401921fb then remMedium x ix else (4, remSmall x 4.0)
   else if ix < 0x413921fb then remMedium x ix
-  else (0, Float.ofBits 0x7FF8000000000000, Float.ofBits 0x7FF8000000000000)
+  else remLarge x
 
 /-- `sin x`, as fdlibm's `sin`: the kernel on `[-π/4, π/4]`, `x` itself below `2 ^ -26`, NaN for
 an infinity or NaN, and otherwise the kernel of the quadrant of the reduced `|x|`, negated for a
@@ -144,6 +259,7 @@ def cos (x : Float) : Float :=
     else if q == 2 then -kernelCos y0 y1
     else kernelSin y0 y1 true
 
-verified_compile compiled := [kernelSin, kernelCos, remSmall, remMedium, remPio2, sin, cos]
+verified_compile compiled := [kernelSin, kernelCos, remSmall, remMedium, invPiWord, mul64, clz64,
+  window, mulTop, shiftTop, remLarge, remPio2, sin, cos]
 
 end Verified.Examples.Trig

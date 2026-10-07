@@ -27402,8 +27402,23 @@ expanded into its pairs and proves by `cases` on each component.
 - [x] Step 1: `kernelSin`, `kernelCos`, fdlibm's special cases up to `9π/4`, and the three-step
   Cody–Waite reduction below `2 ^ 20 · π/2`; larger arguments give NaN.  355,526 results lie within
   one unit of glibc's, 3,639 of them one unit apart.
-- [ ] Step 2: `UInt64` array literals in the verified compiler, for the table of 2/π.
-- [ ] Step 3: Payne–Hanek reduction for the full range, in word arithmetic.
+- [ ] Step 2, deferred: array literals in the verified compiler.  A fresh review of the design
+  (`Expr.lit`, one allocation and constant stores, reflected from `#[…]`) adopted it, and found
+  that a literal allocates, so a table read from one would turn `sin` and `cos` into
+  `ImplementsA true`, a trap allowed on every input.  The user chose a lookup function for the
+  table of `2/π` instead, which keeps both `ImplementsA false`, and literals wait for a program
+  that needs them.
+- [x] Step 3: Payne–Hanek reduction for the full range, in word arithmetic after Go's
+  `math.trigReduce` (K. C. Ng, "Argument Reduction for Huge Arguments: Good to the Last Bit",
+  1992): the low 192 bits of the significand times a 192-bit window of `2/π`, the fraction rounded
+  to the nearer quadrant, shifted to its leading bit, multiplied by `π/2` as a 128-bit number, and
+  turned into `y0 + y1` by an exact two-sum.  The 19 words of `2/π` come from fdlibm's `ipio2`
+  table and agree with an independent computation from Machin's formula.  glibc's `cos` of
+  `6381956970095103 · 2 ^ 797`, the double closest to a multiple of `π/2`, is 8 units from the
+  correctly rounded value, which an exact reduction with a 2,000-bit `π` gives and `Trig.cos`
+  matches, so `TrigAccuracy.lean` checks that argument and 300 huge ones, with their negatives,
+  against an exact reference in Lean's integers: all 1,220 results lie within one unit, 42 of them
+  one unit from the correctly rounded value.  Against glibc, 360,002 results lie within one unit.
 - [ ] Step 4: the Fourier demo with `Trig.sin` and `Trig.cos`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
