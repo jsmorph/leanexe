@@ -59,6 +59,7 @@ import LeanExe.IR.Words
 import LeanExe.Pipeline.Allocation
 import LeanExe.Pipeline.Budget
 import LeanExe.Pipeline.FileBytes
+import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
 import LeanExe.Pipeline.Records
 import LeanExe.Pipeline.ReleaseTree

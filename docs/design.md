@@ -258,9 +258,8 @@ No work on items 2 and 3 is planned.
 - [ ] The host's invocation of kernels and a run in a browser.
 - [ ] A proof of the I/O adapter.
 - [ ] `Array Float` literals.
-- [ ] The verified compiler: records with array fields.
 
-Unknowns: how Talos's semantics is tested against the WebAssembly specification, and whether Talos bounds call depth.
+Unknowns: how Talos's semantics is tested against the WebAssembly specification.  Talos bounds no call depth, which the verified compiler's depth guard addresses.
 
 ## Commands
 
