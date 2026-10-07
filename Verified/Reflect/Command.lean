@@ -27,12 +27,15 @@ partial def tyOf (type : Lean.Expr) : MetaM Ty := do
   if type.isConstOf ``UInt64 then return .word
   if type.isConstOf ``Bool then return .bool
   if let (``Prod, #[a, b]) := type.getAppFnArgs then return .pair (← tyOf a) (← tyOf b)
-  throwError "verified_compile: the type {type} is not UInt64, Bool, or a pair of them"
+  if let (``Array, #[e]) := type.getAppFnArgs then
+    if (← whnfR e).isConstOf ``UInt64 then return .array
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Array UInt64, or a pair"
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
   | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
+  | .array => mkConst ``Ty.array
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
   | [] => mkApp (mkConst ``List.nil [Level.zero]) α
@@ -140,7 +143,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     | .bool =>
       let src ← mkAppOptM ``Expr.bool #[some c.sigs, some c.ctx, some e]
       return (src, ← rflProof c src e, .bool)
-    | .pair _ _ => pure ()
+    | .pair _ _ | .array => pure ()
   if let .letE _ type value body _ := e then
     let s ← tyOf type
     let (vs, hv, _) ← reflect c value
@@ -206,8 +209,24 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (bs, hb, _) ← reflectUnder (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
+  | ``Nat.toUInt64, #[n] =>
+    let (``Array.size, #[_, xs]) := n.consumeMData.getAppFnArgs
+      | throwError "verified_compile: unsupported term {e}"
+    let (s, h, _) ← reflectArray xs
+    return (← mkAppM ``Expr.size #[s], ← mkAppM ``size_eq #[h], .word)
+  | ``getElem!, #[_, _, _, _, _, _, xs, k] =>
+    let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
+      | throwError "verified_compile: an index must be `i.toNat` for a word `i`, in {e}"
+    let (as, ha, _) ← reflectArray xs
+    let (is, hi, _) ← reflect c i
+    return (← mkAppM ``Expr.get #[as, is], ← mkAppM ``get_eq #[ha, hi], .word)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- The reflection of an expression of type `Array UInt64`. -/
+  reflectArray (xs : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let r ← reflect c xs
+    unless r.2.2 == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    return r
   /-- The reflection of `body a b` with `a : α` of type `s` as variable 1 and `b : β` of type `t`
   as variable 0, with its proof abstracted over `a` and `b`. -/
   reflectUnder (α β : Lean.Expr) (s t : Ty) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
@@ -282,12 +301,15 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
   lambdaTelescope (← instantiateMVars info.value) fun params body => do
     let types ← params.toList.mapM fun p => do tyOf (← inferType p)
     let result ← tyOf (← inferType body)
+    unless result.scalar do
+      throwError "verified_compile: the result of {name} contains an array, which needs an \
+        owned result"
     let vars := params.toList.zip types
     let env ← envExpr vars
     let (src, proof, _) ← reflect ⟨sigs, funs, callees, vars, env⟩ body
     let funcType := mkApp (mkConst ``Func) sigs
     let func ← mkAppOptM ``Func.mk #[some sigs, some (toExpr name.getString!),
-      some (ctxExpr types), some (tyExpr result), some src]
+      some (ctxExpr types), some (tyExpr result), some src, some (← mkEqRefl (toExpr true))]
     addDefinition (base ++ `func) funcType func
     let lhs ← mkAppM ``Func.denote #[mkConst (base ++ `func), funs, env]
     let eqType ← mkForallFVars params (← mkEq lhs (mkAppN (mkConst name) params))
@@ -301,6 +323,7 @@ def tyStx : Ty → CommandElabM Term
   | .word => `(UInt64)
   | .bool => `(Bool)
   | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
+  | .array => `(Array UInt64)
 
 /-- The argument type of a definition: its parameter types as a right-nested product, or `Unit`
 for none. -/
@@ -367,7 +390,7 @@ def elabVerifiedCompile : CommandElab
       elabCommand (← `(theorem $implId :
           LeanExe.Pipeline.ImplementsA $aborts $moduleId $index $lean (fun _ _ _ => True)
             (fun _ _ _ _ _ => True) := by
-          have h := Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1
+          have h := Verified.ImplementsA.lean rfl (Verified.Prog.correct $progId $fvar).1
           have hComp : (fun $x => Verified.Funs.get (Verified.Prog.funs $progId) $fvar
               (Verified.Env.ofArgs _ $x)) = $lean := by
             funext $x

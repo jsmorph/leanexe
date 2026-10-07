@@ -1,4 +1,3 @@
-import LeanExe.Pipeline.Implements
 import LeanExe.Dialect.Loop
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
@@ -10,8 +9,6 @@ arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero is
 a shift uses its amount modulo 64. -/
 
 namespace Verified
-
-open Wasm LeanExe.Pipeline
 
 /-- A binary operation on words. -/
 inductive BinOp where
@@ -43,10 +40,11 @@ def CmpOp.apply : CmpOp → UInt64 → UInt64 → Bool
   | .lt, a, b => decide (a < b)
   | .le, a, b => decide (a ≤ b)
 
-/-- The types of values: words, `Bool`s, and pairs. -/
+/-- The types of values: words, `Bool`s, pairs, and arrays of words. -/
 inductive Ty where
   | word | bool
   | pair (first second : Ty)
+  | array
   deriving Repr, DecidableEq, Inhabited
 
 /-- The Lean type of a value. -/
@@ -54,21 +52,21 @@ abbrev Ty.denote : Ty → Type
   | .word => UInt64
   | .bool => Bool
   | .pair a b => a.denote × b.denote
+  | .array => Array UInt64
 
 /-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
 def boolWord (b : Bool) : UInt64 := cond b 1 0
 
 /-- The number of words that hold a value of the type. -/
 def Ty.width : Ty → Nat
-  | .word | .bool => 1
+  | .word | .bool | .array => 1
   | .pair a b => a.width + b.width
 
-/-- The words that hold a value, as `Implements` passes it: a pair is its first component's
-words followed by its second's. -/
-def Ty.values : (t : Ty) → t.denote → List Value
-  | .word, v => [.i64 v]
-  | .bool, b => [.i64 (boolWord b)]
-  | .pair a b, p => a.values p.1 ++ b.values p.2
+/-- Whether a type holds no arrays. -/
+def Ty.scalar : Ty → Bool
+  | .word | .bool => true
+  | .pair a b => a.scalar && b.scalar
+  | .array => false
 
 /-- A variable of type `t` in the context `Γ`, by its distance from the front of `Γ`. -/
 inductive Var : List Ty → Ty → Type where
@@ -93,11 +91,6 @@ inductive Env : List Ty → Type where
 def Env.get : {Γ : List Ty} → {t : Ty} → Env Γ → Var Γ t → t.denote
   | _, _, .cons v _, .here => v
   | _, _, .cons _ env, .there x => env.get x
-
-/-- The words that hold the values, in order. -/
-def Env.values : {Γ : List Ty} → Env Γ → List Value
-  | _, .nil => []
-  | _, .cons (t := t) v env => t.values v ++ env.values
 
 /-- The values of a context, given by index. -/
 def Env.ofFn : {Γ : List Ty} → ((i : Fin Γ.length) → (Γ.get i).denote) → Env Γ
@@ -144,7 +137,8 @@ def Funs.get : {S : List Sig} → {g : Sig} → Funs S → FVar S g → Env g.pa
 parameter `i`.  `letPair e body` gives `body` the second component of `e` as variable 0 and the
 first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from the value of
 `init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
-index as variable 1. -/
+index as variable 1.  `size a` is the number of elements of `a` as a word, and `get a i` is
+element `i` of `a`, or 0 when `i` is not below the size, as Lean's `a[i.toNat]!` gives. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -162,6 +156,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
   | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
       Expr S Γ t
+  | size (a : Expr S Γ .array) : Expr S Γ .word
+  | get (a : Expr S Γ .array) (i : Expr S Γ .word) : Expr S Γ .word
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -205,6 +201,8 @@ def Expr.denote (funs : Funs S) :
   | _, _, .loop count init body, env =>
     LeanExe.loop (count.denote funs env) (init.denote funs env)
       fun i acc => body.denote funs (.cons acc (.cons i env))
+  | _, _, .size a, env => (a.denote funs env).size.toUInt64
+  | _, _, .get a i, env => (a.denote funs env)[(i.denote funs env).toNat]!
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
@@ -223,6 +221,8 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
+  | _, _, .size a => a.aborts
+  | _, _, .get a i => a.aborts || i.aborts
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
@@ -237,20 +237,19 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .pair first second, i => first.uses i || second.uses i
   | _, _, .letPair e body, i => e.uses i || body.uses (i + 2)
   | _, _, .loop count init body, i => count.uses i || init.uses i || body.uses (i + 2)
+  | _, _, .size a, i => a.uses i
+  | _, _, .get a k, i => a.uses i || k.uses i
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
-has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body. -/
+has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body.  The
+result holds no arrays: a returned array must be owned by the caller, which the compiler does not
+yet arrange. -/
 structure Func (S : List Sig) where
   name : String
   params : List Ty
   result : Ty
   body : Expr S params result
-
-/-- The arguments of a function, as the words that hold them, in order. -/
-instance : Scalar (Env Γ) := ⟨Env.values⟩
-
-/-- A value is passed as the words that hold it. -/
-instance (t : Ty) : Scalar t.denote := ⟨t.values⟩
+  result_scalar : result.scalar = true
 
 /-- The Lean function that `func` means, given the Lean functions that it calls. -/
 def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.result.denote :=

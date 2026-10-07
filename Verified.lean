@@ -11,3 +11,4 @@ import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
+import Verified.Examples.Arrays

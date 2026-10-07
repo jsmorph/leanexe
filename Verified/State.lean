@@ -1,4 +1,5 @@
 import Verified.Compile
+import LeanExe.Pipeline.Allocation
 import LeanExe.TalosCompat
 
 /-! The states of the verified compiler's proof: how locals hold words, how words represent values
@@ -134,9 +135,14 @@ theorem wp_storeCode {m : Module} {Q : Assertion α} {store : Store α} {host : 
       exact hout1 j (by simp at hj; omega)
 
 
+/-- The array `xs` at `ptr` in `heap` at `store`, borrowed or owned. -/
+def Mode.array : Mode → Heap → Store Unit → UInt64 → Array UInt64 → Prop
+  | .borrowed, heap, store, ptr, xs => heap.Borrowed store ptr xs
+  | .owned, heap, store, ptr, xs => heap.Owned store ptr xs
+
 /-- The words `ws` represent the value `v` of type `t` in `heap` at `store`, with the arrays that
-the value contains held in mode `mode`: a word as itself, a `Bool` as 1 or 0, and a pair as its
-first component's words followed by its second's. -/
+the value contains held in mode `mode`: a word as itself, a `Bool` as 1 or 0, a pair as its first
+component's words followed by its second's, and an array as its address. -/
 def Ty.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
     (t : Ty) → List Value → t.denote → Prop
   | .word, ws, v => ws = [.i64 v]
@@ -144,6 +150,13 @@ def Ty.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
   | .pair a b, ws, p =>
     ∃ first second, ws = first ++ second ∧ a.Rep mode heap store first p.1 ∧
       b.Rep mode heap store second p.2
+  | .array, ws, xs => ∃ ptr, ws = [.i64 ptr] ∧ mode.array heap store ptr xs
+
+theorem Mode.array.borrow {mode : Mode} {heap : Heap} {store : Store Unit} {ptr : UInt64}
+    {xs : Array UInt64} (h : mode.array heap store ptr xs) : heap.Borrowed store ptr xs := by
+  cases mode
+  · exact h
+  · exact Heap.Owned.borrowed h
 
 @[simp] theorem Ty.rep_word {mode : Mode} {heap : Heap} {store : Store Unit} {ws : List Value}
     {v : UInt64} : Ty.Rep mode heap store .word ws v ↔ ws = [.i64 v] := Iff.rfl
@@ -157,6 +170,7 @@ theorem Ty.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
   | .word, _, _, h | .bool, _, _, h => by subst h; rfl
   | .pair _ _, _, _, ⟨_, _, h, h1, h2⟩ => by
     subst h; simp [Ty.width, h1.length, h2.length]
+  | .array, _, _, ⟨_, h, _⟩ => by subst h; rfl
 
 /-- A value read where a borrowed one suffices. -/
 theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
@@ -164,13 +178,17 @@ theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
       t.Rep .borrowed heap store ws v
   | .word, _, _, h | .bool, _, _, h => h
   | .pair _ _, _, _, ⟨first, second, h, h1, h2⟩ => ⟨first, second, h, h1.borrow, h2.borrow⟩
+  | .array, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.borrow⟩
 
 /-- A value whose type holds no arrays has the same words in either mode. -/
 theorem Ty.Rep.owned {mode : Mode} {heap : Heap} {store : Store Unit} :
-    {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
-      t.Rep .owned heap store ws v
-  | .word, _, _, h | .bool, _, _, h => h
-  | .pair _ _, _, _, ⟨first, second, h, h1, h2⟩ => ⟨first, second, h, h1.owned, h2.owned⟩
+    {t : Ty} → t.scalar = true → {ws : List Value} → {v : t.denote} →
+      t.Rep mode heap store ws v → t.Rep .owned heap store ws v
+  | .word, _, _, _, h | .bool, _, _, _, h => h
+  | .pair _ _, hs, _, _, ⟨first, second, h, h1, h2⟩ =>
+    ⟨first, second, h, h1.owned (by simp [Ty.scalar] at hs; exact hs.1),
+      h2.owned (by simp [Ty.scalar] at hs; exact hs.2)⟩
+  | .array, hs, _, _, _ => absurd hs (by decide)
 
 /-- The words of the values of a context, in order. -/
 def Env.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
@@ -230,6 +248,13 @@ theorem Step.cap {heap heap' : Heap} {store store' : Store Unit} (h : Step heap 
     (m : Module) : store'.memoryCap m 0 = store.memoryCap m 0 := by
   simp [Store.memoryCap, h.caps]
 
+theorem Mode.array.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit}
+    {ptr : UInt64} {xs : Array UInt64} (hStep : Step heap store heap' store')
+    (h : mode.array heap store ptr xs) : mode.array heap' store' ptr xs := by
+  cases mode
+  · exact (hStep.keeps.borrowed hStep.at_ h fun _ hb => nomatch hb).1
+  · exact ((hStep.keeps.owned hStep.at_ h fun _ hb => nomatch hb).1).1
+
 /-- A value's words represent it after a step. -/
 theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit}
     (hStep : Step heap store heap' store') :
@@ -238,6 +263,7 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
   | .word, _, _, h | .bool, _, _, h => h
   | .pair _ _, _, _, ⟨first, second, h, h1, h2⟩ =>
     ⟨first, second, h, h1.step hStep, h2.step hStep⟩
+  | .array, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.step hStep⟩
 
 /-- Each variable `x` live in `live` starts at local `(slots.getD x.index default).loc`, its
 words end below `base`, and its locals hold words that represent its value in `heap` at
@@ -308,11 +334,6 @@ end Holds
 their agreement with the verified compiler's representation.  A function's theorem for Lean's
 types follows from them, for every signature, without a proof per signature. -/
 
-/-- Whether a type holds no arrays. -/
-def Ty.scalar : Ty → Bool
-  | .word | .bool => true
-  | .pair a b => a.scalar && b.scalar
-
 theorem Ty.scalar_pair {a b : Ty} (h : (Ty.pair a b).scalar = true) :
     a.scalar = true ∧ b.scalar = true := by
   simpa [Ty.scalar] using h
@@ -323,9 +344,10 @@ theorem Ty.scalar_pair {a b : Ty} (h : (Ty.pair a b).scalar = true) :
   | .bool, _ => @instScalarOfFlat Bool UInt64 instFlatBoolUInt64 instScalarUInt64
   | .pair a b, h => @instScalarProd a.denote b.denote (a.scalarInst (Ty.scalar_pair h).1)
       (b.scalarInst (Ty.scalar_pair h).2)
+  | .array, h => absurd h (by decide)
 
 /-- The `Represent` instance that Lean synthesizes for a type: the one from `Scalar` for a type
-without arrays, and the instance for pairs otherwise. -/
+without arrays, and the instances for pairs and arrays otherwise. -/
 @[instance_reducible] def Ty.leanInst : (t : Ty) → Represent t.denote
   | .word => @instRepresentOfScalar UInt64 instScalarUInt64
   | .bool => @instRepresentOfScalar Bool
@@ -334,6 +356,7 @@ without arrays, and the instance for pairs otherwise. -/
     if h : (Ty.pair a b).scalar = true then
       @instRepresentOfScalar _ ((Ty.pair a b).scalarInst h)
     else @instRepresentProd _ _ a.leanInst b.leanInst
+  | .array => instRepresentArrayUInt64
 
 /-- The words of a value of a type without arrays. -/
 theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
@@ -348,28 +371,54 @@ theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
     · rintro ⟨first, second, rfl, h1, h2⟩
       rw [(a.scalar_rep (Ty.scalar_pair h).1).mpr h1, (b.scalar_rep (Ty.scalar_pair h).2).mpr h2]
       rfl
-
-theorem Ty.scalar_eq_true : (t : Ty) → t.scalar = true
-  | .word | .bool => rfl
-  | .pair a b => by simp [Ty.scalar, a.scalar_eq_true, b.scalar_eq_true]
+  | .array, h, _, _ => absurd h (by decide)
 
 theorem Ty.leanInst_scalar : (t : Ty) → (h : t.scalar = true) →
     t.leanInst = @instRepresentOfScalar _ (t.scalarInst h)
   | .word, _ | .bool, _ => rfl
   | .pair _ _, h => by rw [Ty.leanInst, dite_eq_left h]
+  | .array, h => absurd h (by decide)
 
-/-- Lean's instance agrees with the verified compiler's representation, borrowed or owned. -/
-theorem Ty.leanInst_rep {heap : Heap} {store : Store Unit} (t : Ty) {ws : List Value}
-    {v : t.denote} :
-    (@Represent.borrowed _ t.leanInst heap store ws v ↔ t.Rep .borrowed heap store ws v) ∧
-      (@Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v) := by
-  rw [t.leanInst_scalar t.scalar_eq_true]
-  exact ⟨t.scalar_rep _, t.scalar_rep _⟩
+/-- Lean's instance agrees with the verified compiler's representation of a borrowed value. -/
+theorem Ty.leanInst_borrowed {heap : Heap} {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {v : t.denote} →
+      (@Represent.borrowed _ t.leanInst heap store ws v ↔ t.Rep .borrowed heap store ws v)
+  | .word, _, _ | .bool, _, _ | .array, _, _ => Iff.rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h]
+      exact (Ty.pair a b).scalar_rep h
+    · rw [Ty.leanInst, dite_eq_right h]
+      constructor
+      · rintro ⟨first, second, rfl, h1, h2⟩
+        exact ⟨first, second, rfl, a.leanInst_borrowed.mp h1, b.leanInst_borrowed.mp h2⟩
+      · rintro ⟨first, second, rfl, h1, h2⟩
+        exact ⟨first, second, rfl, a.leanInst_borrowed.mpr h1, b.leanInst_borrowed.mpr h2⟩
 
-theorem Ty.leanInst_blocks {store : Store Unit} (t : Ty) {ws : List Value} {v : t.denote} :
-    @Represent.blocks _ t.leanInst store ws v = [] := by
-  rw [t.leanInst_scalar t.scalar_eq_true]
+/-- Lean's instance agrees with the verified compiler's representation of an owned value whose
+type holds no arrays. -/
+theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} (t : Ty) (h : t.scalar = true)
+    {ws : List Value} {v : t.denote} :
+    @Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v := by
+  rw [t.leanInst_scalar h]
+  exact t.scalar_rep h
+
+theorem Ty.leanInst_blocks {store : Store Unit} (t : Ty) (h : t.scalar = true) {ws : List Value}
+    {v : t.denote} : @Represent.blocks _ t.leanInst store ws v = [] := by
+  rw [t.leanInst_scalar h]
   rfl
+
+theorem Ty.leanInst_moves {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {v : t.denote} → @Represent.moves _ t.leanInst store ws v = []
+  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h]
+      rfl
+    · rw [Ty.leanInst, dite_eq_right h]
+      show @Represent.moves _ a.leanInst store _ p.1 ++ @Represent.moves _ b.leanInst store _ p.2 = []
+      rw [a.leanInst_moves, b.leanInst_moves]
+      rfl
 
 /-- The Lean type of a function's arguments: `Unit` for none, the parameter's type for one, and
 the right-nested product of the parameters' types for more. -/
@@ -421,27 +470,49 @@ theorem argsScalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
       rw [(t.scalar_rep _).mpr h1, (argsScalar_rep (u :: ts) _).mpr h2]
       rfl
 
-theorem all_scalar : (ps : List Ty) → ps.all Ty.scalar = true
-  | [] => rfl
-  | t :: ts => by simp [t.scalar_eq_true, all_scalar ts]
-
 theorem argsInst_scalar : (ps : List Ty) → (h : ps.all Ty.scalar = true) →
     argsInst ps = @instRepresentOfScalar _ (argsScalarInst ps h)
   | [], _ => rfl
-  | [t], _ => t.leanInst_scalar _
+  | [t], h => t.leanInst_scalar (by simpa using h)
   | _ :: _ :: _, h => by rw [argsInst, dite_eq_left h]
 
 /-- Lean's instance for the arguments agrees with the verified compiler's representation. -/
-theorem argsInst_borrowed {heap : Heap} {store : Store Unit} (ps : List Ty) {ws : List Value}
-    {y : argsTy ps} :
-    @Represent.borrowed _ (argsInst ps) heap store ws y ↔
-      Env.Rep .borrowed heap store ws (Env.ofArgs ps y) := by
-  rw [argsInst_scalar ps (all_scalar ps)]
-  exact argsScalar_rep ps _
+theorem argsInst_borrowed {heap : Heap} {store : Store Unit} :
+    (ps : List Ty) → {ws : List Value} → {y : argsTy ps} →
+      (@Represent.borrowed _ (argsInst ps) heap store ws y ↔
+        Env.Rep .borrowed heap store ws (Env.ofArgs ps y))
+  | [], _, _ => Iff.rfl
+  | [t], ws, y => by
+    rw [show (@Represent.borrowed _ (argsInst [t]) heap store ws y) =
+      @Represent.borrowed _ t.leanInst heap store ws y from rfl, t.leanInst_borrowed]
+    constructor
+    · intro hy; exact ⟨ws, [], by simp, hy, rfl⟩
+    · rintro ⟨first, rest, rfl, h1, rfl⟩; simpa using h1
+  | t :: u :: ts, ws, y => by
+    by_cases h : (t :: u :: ts).all Ty.scalar = true
+    · rw [argsInst_scalar _ h]
+      exact argsScalar_rep _ h
+    · rw [argsInst, dite_eq_right h]
+      constructor
+      · rintro ⟨first, rest, rfl, h1, h2⟩
+        exact ⟨first, rest, rfl, t.leanInst_borrowed.mp h1, (argsInst_borrowed (u :: ts)).mp h2⟩
+      · rintro ⟨first, rest, rfl, h1, h2⟩
+        exact ⟨first, rest, rfl, t.leanInst_borrowed.mpr h1,
+          (argsInst_borrowed (u :: ts)).mpr h2⟩
 
-theorem argsInst_moves {store : Store Unit} (ps : List Ty) {ws : List Value} {y : argsTy ps} :
-    @Represent.moves _ (argsInst ps) store ws y = [] := by
-  rw [argsInst_scalar ps (all_scalar ps)]
-  rfl
+theorem argsInst_moves {store : Store Unit} :
+    (ps : List Ty) → {ws : List Value} → {y : argsTy ps} →
+      @Represent.moves _ (argsInst ps) store ws y = []
+  | [], _, _ => rfl
+  | [t], _, _ => t.leanInst_moves
+  | t :: u :: ts, ws, y => by
+    by_cases h : (t :: u :: ts).all Ty.scalar = true
+    · rw [argsInst_scalar _ h]
+      rfl
+    · rw [argsInst, dite_eq_right h]
+      show @Represent.moves _ t.leanInst store _ y.1 ++
+        @Represent.moves _ (argsInst (u :: ts)) store _ y.2 = []
+      rw [t.leanInst_moves, argsInst_moves (u :: ts)]
+      rfl
 
 end Verified
