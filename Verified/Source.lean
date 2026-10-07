@@ -41,21 +41,32 @@ def CmpOp.apply : CmpOp → UInt64 → UInt64 → Bool
   | .lt, a, b => decide (a < b)
   | .le, a, b => decide (a ≤ b)
 
-/-- The types of values. -/
+/-- The types of values: words, `Bool`s, and pairs. -/
 inductive Ty where
   | word | bool
+  | pair (first second : Ty)
   deriving Repr, DecidableEq, Inhabited
 
 /-- The Lean type of a value. -/
 abbrev Ty.denote : Ty → Type
   | .word => UInt64
   | .bool => Bool
+  | .pair a b => a.denote × b.denote
 
-/-- The word that holds a value: a word itself, and 1 or 0 for a `Bool`, as `Implements` passes
-a `Bool`. -/
-def Ty.encode : (t : Ty) → t.denote → UInt64
-  | .word, v => v
-  | .bool, b => cond b 1 0
+/-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
+def boolWord (b : Bool) : UInt64 := cond b 1 0
+
+/-- The number of words that hold a value of the type. -/
+def Ty.width : Ty → Nat
+  | .word | .bool => 1
+  | .pair a b => a.width + b.width
+
+/-- The words that hold a value, as `Implements` passes it: a pair is its first component's
+words followed by its second's. -/
+def Ty.values : (t : Ty) → t.denote → List Value
+  | .word, v => [.i64 v]
+  | .bool, b => [.i64 (boolWord b)]
+  | .pair a b, p => a.values p.1 ++ b.values p.2
 
 /-- A variable of type `t` in the context `Γ`, by its distance from the front of `Γ`. -/
 inductive Var : List Ty → Ty → Type where
@@ -82,9 +93,9 @@ def Env.get : {Γ : List Ty} → {t : Ty} → Env Γ → Var Γ t → t.denote
   | _, _, .cons _ env, .there x => env.get x
 
 /-- The words that hold the values, in order. -/
-def Env.words : {Γ : List Ty} → Env Γ → List UInt64
+def Env.values : {Γ : List Ty} → Env Γ → List Value
   | _, .nil => []
-  | _, .cons (t := t) v env => t.encode v :: env.words
+  | _, .cons (t := t) v env => t.values v ++ env.values
 
 /-- The values of a context, given by index. -/
 def Env.ofFn : {Γ : List Ty} → ((i : Fin Γ.length) → (Γ.get i).denote) → Env Γ
@@ -123,7 +134,8 @@ def Funs.get : {S : List Sig} → {ps : List Ty} → {r : Ty} →
 /-- An expression of type `t` over the variables of `Γ` that may call the functions `S`.
 `letE value body` gives `body` the value of `value` as variable 0, ahead of the variables of `Γ`.
 `call f args` applies function `f` to the values of `args`, argument `i` having the type of
-parameter `i`. -/
+parameter `i`.  `letPair e body` gives `body` the second component of `e` as variable 0 and the
+first as variable 1. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -136,6 +148,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | ite (c : Expr S Γ .bool) (thenE elseE : Expr S Γ t) : Expr S Γ t
   | letE (value : Expr S Γ s) (body : Expr S (s :: Γ) t) : Expr S Γ t
   | call (f : FVar S ps r) (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) : Expr S Γ r
+  | pair (first : Expr S Γ s) (second : Expr S Γ t) : Expr S Γ (.pair s t)
+  | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -172,6 +186,10 @@ def Expr.denote (funs : Funs S) :
     if c.denote funs env then thenE.denote funs env else elseE.denote funs env
   | _, _, .letE value body, env => body.denote funs (.cons (value.denote funs env) env)
   | _, _, .call f args, env => funs.get f (Env.ofFn fun i => (args i).denote funs env)
+  | _, _, .pair first second, env => (first.denote funs env, second.denote funs env)
+  | _, _, .letPair e body, env =>
+    let p := e.denote funs env
+    body.denote funs (.cons p.2 (.cons p.1 env))
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body. -/
@@ -181,11 +199,11 @@ structure Func (S : List Sig) where
   result : Ty
   body : Expr S params result
 
-/-- The arguments of a function, one word each, in order. -/
-instance : Scalar (Env Γ) := ⟨fun env => env.words.map Value.i64⟩
+/-- The arguments of a function, as the words that hold them, in order. -/
+instance : Scalar (Env Γ) := ⟨Env.values⟩
 
-/-- A value is passed as the word that holds it. -/
-instance (t : Ty) : Scalar t.denote := ⟨fun v => [.i64 (t.encode v)]⟩
+/-- A value is passed as the words that hold it. -/
+instance (t : Ty) : Scalar t.denote := ⟨t.values⟩
 
 /-- The Lean function that `func` means, given the Lean functions that it calls. -/
 def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.result.denote :=

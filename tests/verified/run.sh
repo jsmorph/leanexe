@@ -10,7 +10,7 @@ mkdir -p "$out"
 cd "$root"
 for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:compiled.module:mix \
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
-    Verified.Examples.Calls:compiled.module:calls; do
+    Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -23,7 +23,7 @@ passed=0
 failed=0
 while IFS='|' read -r name export result args expected; do
   read -ra argv <<<"$args"
-  got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}")
+  got=$("$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" | paste -sd' ')
   if [ "$got" = "$expected" ]; then
     passed=$((passed + 1))
   else

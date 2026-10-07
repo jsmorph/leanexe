@@ -11,25 +11,28 @@ definition `f` the source function `p.f.func`, the equation `p.f.denote_eq`, and
 to a module that computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds.  A
-definition's parameters and result are `UInt64` or `Bool`.  Its body may use literals and other
-closed terms, its parameters, `let`, the word operations `+`, `-`, `*`, `/`, `%`, `&&&`, `|||`,
-`^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`, `=`, and `≠` as
-`Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, and calls of the listed
-definitions before it. -/
+definition's parameters and result are `UInt64`, `Bool`, or pairs of them.  Its body may use
+literals and other closed terms, its parameters, `let`, the word operations `+`, `-`, `*`, `/`,
+`%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`, `=`,
+and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, pairs built
+with `(a, b)` and taken apart with `.1`, `.2`, or `match`, and calls of the listed definitions
+before it. -/
 
 namespace Verified.Reflect
 
 open Lean Meta Elab Command Term
 
-def tyOf (type : Lean.Expr) : MetaM Ty := do
+partial def tyOf (type : Lean.Expr) : MetaM Ty := do
   let type ← whnfR type
   if type.isConstOf ``UInt64 then return .word
   if type.isConstOf ``Bool then return .bool
-  throwError "verified_compile: the type {type} is neither UInt64 nor Bool"
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then return .pair (← tyOf a) (← tyOf b)
+  throwError "verified_compile: the type {type} is not UInt64, Bool, or a pair of them"
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
+  | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
   | [] => mkApp (mkConst ``List.nil [Level.zero]) α
@@ -130,11 +133,14 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     return (src, ← rflProof c src e, t)
   if let some src := ← reflectCall? e then return src
   if !e.hasFVar && !e.hasLooseBVars then
-    let t ← tyOf (← inferType e)
-    let src ← match t with
-      | .word => mkAppOptM ``Expr.word #[some c.sigs, some c.ctx, some e]
-      | .bool => mkAppOptM ``Expr.bool #[some c.sigs, some c.ctx, some e]
-    return (src, ← rflProof c src e, t)
+    match ← tyOf (← inferType e) with
+    | .word =>
+      let src ← mkAppOptM ``Expr.word #[some c.sigs, some c.ctx, some e]
+      return (src, ← rflProof c src e, .word)
+    | .bool =>
+      let src ← mkAppOptM ``Expr.bool #[some c.sigs, some c.ctx, some e]
+      return (src, ← rflProof c src e, .bool)
+    | .pair _ _ => pure ()
   if let .letE _ type value body _ := e then
     let s ← tyOf type
     let (vs, hv, _) ← reflect c value
@@ -145,6 +151,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       let hb ← mkLambdaFVars #[x] hb
       let src ← mkAppM ``Expr.letE #[vs, bs]
       return (src, ← mkAppM ``letE_eq #[hv, hb], t)
+  if let some app ← matchMatcherApp? e then
+    if app.discrs.size == 1 && app.alts.size == 1 then
+      let alt := app.alts[0]!
+      return ← destructure app.discrs[0]! fun a b => return alt.beta #[a, b]
   let (fn, args) := e.getAppFnArgs
   if let some op := binOp? fn then
     if args.size == 6 then
@@ -169,6 +179,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (ls, hl, _) ← reflect c a
     let (rs, hr, _) ← reflect c b
     return (← mkAppM ``Expr.or #[ls, rs], ← mkAppM ``or_eq #[hl, hr], .bool)
+  | ``Prod.mk, #[_, _, a, b] =>
+    let (as, ha, s) ← reflect c a
+    let (bs, hb, t) ← reflect c b
+    return (← mkAppM ``Expr.pair #[as, bs], ← mkAppM ``pair_eq #[ha, hb], .pair s t)
+  | ``Prod.fst, #[_, _, p] => destructure p fun a _ => return a
+  | ``Prod.snd, #[_, _, p] => destructure p fun _ b => return b
   | ``ite, #[_, p, _, a, b] =>
     let (as, ha, t) ← reflect c a
     let (bs, hb, _) ← reflect c b
@@ -186,6 +202,22 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM (iteLemma op) #[hl, hr, ha, hb], t)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
+  of the body `body a b`. -/
+  destructure (p : Lean.Expr) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
+      MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let (ps, hp, pt) ← reflect c p
+    let .pair s t := pt | throwError "verified_compile: {p} is not a pair"
+    let (``Prod, #[α, β]) := (← whnfR (← inferType p)).getAppFnArgs
+      | throwError "verified_compile: {p} is not a pair"
+    withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
+      let envA ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some a, some c.env]
+      let ctxA := ctxExpr (s :: c.vars.map (·.2))
+      let envB ← mkAppOptM ``Env.cons #[some ctxA, some (tyExpr t), some b, some envA]
+      let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
+      let (bs, hb, u) ← reflect c' (← body a b)
+      let hb ← mkLambdaFVars #[a, b] hb
+      return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
   reflectCall? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
@@ -254,6 +286,7 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
 def tyStx : Ty → CommandElabM Term
   | .word => `(UInt64)
   | .bool => `(Bool)
+  | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
 
 /-- The argument type of a definition: its parameter types as a right-nested product, or `Unit`
 for none. -/
