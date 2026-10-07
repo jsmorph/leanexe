@@ -27188,14 +27188,79 @@ The remaining agenda, in order, is `LeanExe.repeatWhile`, recursion, enumeration
 records with array fields.  Each item ends with bytes, theorems, and tests, and each starts with
 research and a reviewed recommendation.
 
-`repeatWhile fuel init cond step` is `LeanExe.loop` with an exit when `cond` fails: the result is
-`go (fuel.toNat - k) s` for the state `s` after `k` passes.  A rewrite into `loop` over a state and
-a flag would run every pass of the fuel, which programs often set near `2^64`.
+`repeatWhile fuel init cond step` applies `step` while `cond` holds, at most `fuel` times.  A
+rewrite into `loop` over a state and a flag would run every pass of the fuel, which programs often
+set near `2^64`, so the code must leave the loop when `cond` fails.
 
-- [ ] V11: `LeanExe.repeatWhile`.
+Design for V11.  `Expr.loop` gains a condition on the state, `cond : Expr S (t :: Γ) .bool`, which
+does not see the index, and its meaning becomes
+`LeanExe.loop N I (fun i s => bif C s then B i s else s)`.  Since `C` does not depend on the index,
+a state that fails `C` stays unchanged for the remaining passes, so the code may leave the loop at
+the first failure: at the top of each pass it tests the count, then evaluates `cond` on the state
+and leaves the block when it is false.  The proof keeps the invariant of `spec_loop`, the state
+after `i` passes of the meaning's function, and closes the early exit with a lemma that the
+remaining passes keep a state that fails `C`.  `LeanExe.loop` is the case `cond = true`, whose
+meaning reduces to the old one by `cond true a b = a`, so `loop_eq` and `loop_flat_eq` keep their
+right-hand sides and the hand-written examples' `rfl` proofs still check.  The reflector maps
+`LeanExe.repeatWhile fuel init cond step` to the loop with the index unused, by a lemma that
+`repeatWhile.go` agrees with the fold.  A separate constructor would need its own case in every
+function and lemma over expressions, as the generalization does, and a second proof of about 300
+lines.  The cost of the generalization is the constant test in a plain loop, three instructions
+per pass.  A condition that sees the index would change the meaning to an early-exit fold that is
+not `LeanExe.loop`, and no construct of the dialect needs one.
+
+- [x] V11: `LeanExe.repeatWhile`.
 - [ ] V12: recursion.
 - [ ] V13: enumerations and `match` on them.
 - [ ] V14: records with array fields.
+
+### V11: `LeanExe.repeatWhile`
+
+The review of the design kept the generalization of `Expr.loop` and required two changes.  The
+condition receives the state as a borrowed variable, because in the loop's mode an owned state
+would be copied on each pass when the condition takes it apart, and every `repeatWhile` in the
+repository carries an array.  The live sets include the condition's uses: the count, the initial
+state, and the body see `live i || cond.uses (i + 1) || body.uses (i + 2)`, the condition sees the
+state and that set, and the release after the loop covers the variables that only the condition
+or the body uses.  Nothing dies in the condition, so `After.test` carries the invariant across its
+step: `Ty.Rep.step` keeps the state, `Holds.step` the outer variables, and `Step.transBoth` with
+`Mode.fresh_congr` the step from the loop's start.  The proof of `spec_loop` grew from 290 to 360
+lines, and a plain loop's code gains a constant test of three instructions per pass.
+
+The first build of the example failed: the kernel reached its recursion limit on
+`collatzSteps`, `fall`, and `firstMultiple`, whose fuels are literals.  The generated
+`implements` proof closed the equation `f (g y) = r (F y)` with `exact denote_eq …`, and the
+elaborator and the kernel unify `flatResult (F y)` with `collatzSteps …` by unfolding the side of
+greater definitional height, the user's definition.  That unfolding reaches `repeatWhile.go` on the
+literal fuel and evaluates the loop's state symbolically, pass by pass.  The reflector now builds
+the proof as a term: `Prog.get_there` and `Prog.get_here`, proved once by `rfl`, take
+`program.funs.get` to the source function's `Func.denote`, the flattenings are lambdas with no
+type annotation, and the equation enters through `Eq.trans` with explicit middle terms.  Every
+kernel check is then a match of terms or a beta reduction.  The constants `p.f.flatArgs` and
+`p.f.flatResult` are gone, and the `Agree` theorems state the lambdas.
+
+The review of V11 found three more paths on which the kernel evaluated a loop over literal data,
+and test programs reproduce each.  The underlying rule: when the kernel compares two terms with
+different heads, it unfolds a definition with the hint `abbrev` first, and a matcher,
+`Prod.casesOn`, and `Prod.snd` are such definitions.  Unfolding a matcher down to `Prod.rec` puts
+the discriminant in weak head normal form, which runs the loop.
+
+| Case | Mismatch | Fix |
+|------|----------|-----|
+| A pair result that holds arrays, `countUp` | `flatResult` was `fun p => (p.1, p.2)` while the equation used the identity | Every agreement is restated along `flatFn`, the flattening of the equation |
+| `match` on a loop's result, `sumTo`, `rest` | `alt E.1 E.2` against the matcher | `casesEq` proves `alt (fields d) = match d with …` by `cases` on a variable, with a variable for the alternative |
+| `match` on a call with literal arguments, `fallSteps` | `funs.get f values` against the callee's `Func.denote`, then the callee's body | Calls reach the callee's meaning through `getChain`, with a structural `FVar` chain |
+| A closed loop term, `offset` | The term became a constant that `decide` evaluated | Only literals become constants |
+
+Two steps also compared a definition with its body.  `denote_eq` now relates `f` to its body
+through `f = fun params => body` by `rfl`: against a lambda the kernel can only unfold `f`, and the
+two lambdas then match.  Applied with `congrFun`, the equation reaches `f params` by beta reduction.
+A definition without parameters has no lambda, and the kernel compares the constant with a body
+headed by a matcher, unfolding the matcher first.  Lean's own `eq_def` for such a definition costs
+the same, nine seconds for a loop of 30,000 passes against half a second for three.  This case
+stays as a documented limit.  Equations compose with `transHint`, which keeps the first proof's
+middle term, so the elaborator does not unify the two middle terms by reduction.  `Repeat.lean`
+adds 115 cases, and all 6,138 cases pass.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

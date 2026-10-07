@@ -21,3 +21,4 @@ import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
 import Verified.Examples.Grids
+import Verified.Examples.Repeat

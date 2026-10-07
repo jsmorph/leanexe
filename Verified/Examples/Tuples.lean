@@ -35,7 +35,7 @@ def sumFirstF (S : List Sig) : Func S where
   name := "sumFirst"
   params := [.array P]
   result := .float
-  body := .loop (.size (Var.ofIndex _ 0 rfl)) (.toFloat .convert (.word 0))
+  body := .loop (.size (Var.ofIndex _ 0 rfl)) (.toFloat .convert (.word 0)) (.bool true)
     (.fbin .add (.v 0)
       (.letE (.get (Var.ofIndex _ 2 rfl) (.v 1)) (.proj (Var.ofIndex _ 0 rfl) (.fst .here))))
   placeArgs := rfl

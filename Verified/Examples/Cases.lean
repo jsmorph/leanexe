@@ -15,6 +15,7 @@ import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
 import Verified.Examples.Grids
+import Verified.Examples.Repeat
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -487,6 +488,36 @@ def main : IO Unit := do
       let r := arrayOut (cellWords (Grids.addCell grid ⟨1.0, 2.0, 3.0⟩ p))
       let args := s!"{g} {conservedArg ⟨1.0, 2.0, 3.0⟩} {floatArg p}"
       IO.println s!"grids|addCell|array-u64|{args}|{r}|1"
+  for n in [0, 1, 2, 3, 6, 7, 27, 97, 18446744073709551615] do
+    IO.println s!"repeat|collatzSteps|i64|i64:{n}|{Repeat.collatzSteps n}"
+  for k in [1, 2, 7, 1000] do
+    for x in [0, 1, 999, 18446744073709551615] do
+      IO.println s!"repeat|firstMultiple|i64|i64:{k} i64:{x}|{Repeat.firstMultiple k x}"
+  IO.println s!"repeat|firstMultiple|i64|i64:0 i64:0|{Repeat.firstMultiple 0 0}"
+  for a in [2.0, 0.0, 1e10, 0.25, 0.0 / 0.0, -1.0, 1.0 / 0.0, 1e-300] do
+    IO.println s!"repeat|newtonSqrt|f64|{floatArg a}|{(Repeat.newtonSqrt a).toBits}"
+  for xs in arrays do
+    let a := arrayArg xs
+    for limit in [0, 50, 1000000] do
+      for count in [0, 3, 100] do
+        let r := arrayOut (Repeat.below xs limit count)
+        IO.println s!"repeat|below|array-u64|{a} i64:{limit} i64:{count}|{r}|2"
+    for v in [0, 1, 7] do
+      IO.println s!"repeat|clearUntil|array-u64|{a} i64:{v}|{arrayOut (Repeat.clearUntil xs v)}|1|1"
+  for h0 in [10.0, 0.0, -1.0, 100.0] do
+    for dt in [0.01, 0.1] do
+      let f := Repeat.fall h0 dt
+      let r := s!"{f.height.toBits} {f.speed.toBits} {f.steps}"
+      IO.println s!"repeat|fall|list:f64,f64,i64|{floatArg h0} {floatArg dt}|{r}"
+  for xs in arrays.take 3 do
+    let (ys, n) := Repeat.countUp xs
+    IO.println s!"repeat|countUp|list:array-u64,i64|{arrayArg xs}|{arrayOut ys} {n}|1"
+    IO.println s!"repeat|rest|i64|{arrayArg xs}|{Repeat.rest xs}"
+  for k in [0, 7] do
+    IO.println s!"repeat|sumTo|i64|i64:{k}|{Repeat.sumTo k}"
+    IO.println s!"repeat|fallSteps|i64|i64:{k}|{Repeat.fallSteps k}"
+  for x in [0, 5, 18446744073709551615] do
+    IO.println s!"repeat|offset|i64|i64:{x}|{Repeat.offset x}"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"

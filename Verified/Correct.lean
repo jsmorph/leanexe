@@ -108,6 +108,16 @@ theorem loopState_eq (n : UInt64) (init : α) (f : UInt64 → α → α) :
   | zero => rfl
   | succ k ih => rw [Nat.fold_succ, ← ih]; rfl
 
+/-- A loop whose function keeps a state that fails `c` keeps it for every later pass. -/
+theorem loopState_stop {α : Type} (init : α) (c : α → Bool) (f : UInt64 → α → α) {k : Nat}
+    (h : c (loopState init (fun i s => bif c s then f i s else s) k) = false) :
+    ∀ j, k ≤ j → loopState init (fun i s => bif c s then f i s else s) j =
+      loopState init (fun i s => bif c s then f i s else s) k := by
+  intro j hj
+  induction j, hj using Nat.le_induction with
+  | base => rfl
+  | succ j _ ih => rw [loopState, ih, h]; rfl
+
 theorem Mode.fresh_scalar {mode : Mode} {store : Store Unit} {t : Ty} (h : t.scalar = true)
     (ws : List Value) (v : t.denote) : mode.fresh store t ws v = [] := by
   cases mode
@@ -915,7 +925,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
     · have := ihE modes (by simpa using h1)
       simp only [Bool.or_eq_true] at this; tauto
     · exact Or.inr h1
-  | loop count init body _ ihI ihB =>
+  | loop count init cond body _ ihI _ ihB =>
     intro modes h
     simp only [Expr.mode] at h
     have : init.mode modes = .owned ∨ body.mode (.borrowed :: .borrowed :: modes) = .owned := by
@@ -1491,25 +1501,48 @@ theorem live_dup : ∀ a b : Bool, (a || b || b) = true → (a || b) = true := b
 
 theorem live_assoc : ∀ a b c : Bool, (a || b || c) = true → (a || (b || c)) = true := by decide
 
-/-- The live sets and trap flags of a loop: `a` for a variable live after it, `c`, `n`, and `b`
-for its use in the count, the initial state, and the body, and `o` for an owned variable in
-scope. -/
-theorem loop_live_count : ∀ a n b c : Bool,
-    (a || n || b || c) = true → (a || (c || n || b)) = true := by decide
+/-- The live sets and trap flags of a loop: `a` for a variable live after it, `c`, `n`, `d`, and
+`b` for its use in the count, the initial state, the condition, and the body, and `o` for an
+owned variable in scope. -/
+theorem loop_live_count : ∀ a d b n c : Bool,
+    (a || d || b || n || c) = true → (a || (c || n || d || b)) = true := by decide
 
-theorem loop_live_init : ∀ a b n : Bool, (a || b || n) = true → (a || n || b) = true := by decide
+theorem loop_live_state : ∀ a d b c n : Bool,
+    (a || d || b) = true → (a || (c || n || d || b)) = true := by decide
 
-theorem loop_live_state : ∀ a b c n : Bool, (a || b) = true → (a || (c || n || b)) = true := by
+theorem loop_sel : ∀ a d b : Bool, (d || b) = true → (a || d || b) = true := by decide
+
+theorem loop_trap_count : ∀ c n d b o : Bool, (c || o) = true → (c || n || d || b || o) = true := by
   decide
 
-theorem loop_trap_count : ∀ c n b o : Bool, (c || o) = true → (c || n || b || o) = true := by
+theorem loop_trap_init : ∀ c n d b o : Bool, (n || o) = true → (c || n || d || b || o) = true := by
   decide
 
-theorem loop_trap_init : ∀ c n b o : Bool, (n || o) = true → (c || n || b || o) = true := by
+theorem loop_trap_cond : ∀ c n d b o : Bool, (d || o) = true → (c || n || d || b || o) = true := by
   decide
 
-theorem loop_trap_body : ∀ c n b m z o : Bool, (m = true → (c || n || b || o) = true) →
-    z = false → (b || (m || (z || o))) = true → (c || n || b || o) = true := by decide
+theorem loop_trap_body : ∀ c n d b m z o : Bool, (m = true → (c || n || d || b || o) = true) →
+    z = false → (b || (m || (z || o))) = true → (c || n || d || b || o) = true := by decide
+
+/-- The condition's live sets: the state, variable 0, and the outer variables of `all`, which
+hold every outer variable that the condition uses. -/
+theorem cond_live (all d : Nat → Bool) (hd : ∀ i, d (i + 1) = true → all i = true) :
+    ∀ j, ((j == 0 || shift 1 all j) || d j) = true → (j == 0 || shift 1 all j) = true
+  | 0, _ => rfl
+  | k + 1, h => by
+    have hk : ¬ k + 1 < 1 := by omega
+    simp only [shift, hk, if_false, Nat.add_sub_cancel] at h ⊢
+    have : (k + 1 == 0) = false := rfl
+    rw [this, Bool.false_or] at h ⊢
+    cases hd' : d (k + 1)
+    · simpa [hd'] using h
+    · exact hd k hd'
+
+theorem cond_live_outer (all d : Nat → Bool) (hd : ∀ i, d (i + 1) = true → all i = true)
+    (j : Nat) (h : ((j + 1 == 0 || shift 1 all (j + 1)) || d (j + 1)) = true) : all j = true := by
+  have := cond_live all d hd (j + 1) h
+  have hk : ¬ j + 1 < 1 := by omega
+  simpa [shift, hk] using this
 
 /-- A loop's mode, the join of the initial state's mode and the body's mode for a borrowed
 state, holds the body's value for a state in that mode. -/
@@ -1895,7 +1928,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .not _, hp, _, _, _, _, _ | _, .and _ _, hp, _, _, _, _, _
   | _, .or _ _, hp, _, _, _, _, _ | _, .ite _ _ _, hp, _, _, _, _, _
   | _, .letE _ _, hp, _, _, _, _, _ | _, .call _ _, hp, _, _, _, _, _
-  | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _, hp, _, _, _, _, _
+  | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _ _, hp, _, _, _, _, _
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
@@ -2844,47 +2877,90 @@ theorem spec_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Pat
     (hNext heap store s _ (After.refl hAt hVars (by intro i h; simp [Expr.uses, h]) rfl rfl
       (Holds.Apart.ofScalar rfl)))
 
-/-- `LeanExe.loop`: the count in local `base`, the initial state, coerced to the loop's mode,
-from local `base + 2` on, and the index in local `base + 1`.  The invariant at the top of the
-WebAssembly `loop` holds the count, the index `i`, and the state after `i` iterations, with the
+/-- A value apart from the live variables in its mode is apart from them read borrowed. -/
+theorem Holds.Apart.borrow {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool}
+    {heap : Heap} {store : Store Unit} {s : Locals} {t : Ty} {mode : Mode} {ws : List Value}
+    {v : t.denote} (h : Holds.Apart env slots live store s t mode ws v)
+    (hRep : t.Rep mode heap store ws v) : Holds.Apart env slots live store s t .borrowed ws v := by
+  intro u y hy hm wy hwy hly b hb c hc
+  have hyo : (slots.getD y.index default).mode = .owned := hm.resolve_left nofun
+  exact regionsDisjoint_symm (hRep.reads_apart c
+    (fun b' hb' => regionsDisjoint_symm (h u y hy (Or.inr hyo) wy hwy hly b' hb' c hc)) b hb)
+
+/-- A test of a value: the facts of the value's code, then the facts of a test's code in the
+context with the value as variable 0, in which no variable dies, give the facts of the value's
+code at the test's heap and locals. -/
+theorem After.test {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L LC LC' : Nat → Bool}
+    {base base' : Nat} {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit}
+    {s s1 s2 : Locals} {t u : Ty} {mode m2 : Mode} {sl : Slot} {v : t.denote} {c : u.denote}
+    {ws wc : List Value}
+    (a1 : After env slots L0 L base heap store s t mode v heap1 store1 s1 ws)
+    (aC : After (Env.cons v env) (sl :: slots) LC LC' base' heap1 store1 s1 u m2 c heap2 store2
+      s2 wc)
+    (hBase : base ≤ base') (hLC : ∀ i, LC i = true → LC' i = true) (hScalar : u.scalar = true) :
+    After env slots L0 L base heap store s t mode v heap2 store2 s2 ws := by
+  have hKeep : ∀ r, Holds.KeepDying (Env.cons v env) (sl :: slots) LC LC' store1 s1 r :=
+    fun r t' x hx hxo => by rw [hLC _ hx] at hxo; exact nomatch hxo
+  obtain ⟨hRep, hSame, -⟩ := a1.rep.step aC.step fun r _ => hKeep r
+  have hStep := a1.step.transBoth (keep := Holds.KeepDying env slots L0 L store s) aC.step
+    fun r hr => ⟨hr, fun _ => hKeep r⟩
+  rw [Mode.fresh_scalar hScalar, List.append_nil, ← Mode.fresh_congr hSame] at hStep
+  have hF : Frame base s1 s2 := aC.frame.mono hBase
+  exact ⟨hStep, a1.frame.trans hF,
+    (a1.holds.step aC.step fun _ _ _ _ _ _ c _ => hKeep c).frame hF le_rfl, hRep,
+    a1.apart.transfer a1.holds aC.step hF (fun _ _ _ _ _ _ c _ => hKeep c) hSame⟩
+
+/-- `LeanExe.loop` with a condition: the count in local `base`, the initial state, coerced to the
+loop's mode, from local `base + 2` on, and the index in local `base + 1`.  The invariant at the top
+of the WebAssembly `loop` holds the count, the index `i`, and the state after `i` passes, with the
 facts of `After` for the outer variables live in the loop, those live after it or used by the
-body.  Each iteration releases a state that the body does not use, runs the body, coerces its
-value to the loop's mode, and stores it as the next state.  After the loop the outer variables
-that only the body uses are released. -/
+condition or the body.  Each pass leaves at the count, then runs the condition with the state as a
+borrowed variable, in which no variable dies, so `After.test` keeps the invariant at its heap.  A
+false condition leaves with the state, which `loopState_stop` shows is the loop's value.
+Otherwise the pass releases a state that the body does not use, runs the body, coerces its value
+to the loop's mode, and stores it as the next state.  After the loop the outer variables that only
+the condition or the body uses are released. -/
 theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
-    {init : Expr S Γ' tTy} {body : Expr S (tTy :: .word :: Γ') tTy}
+    {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
+    {body : Expr S (tTy :: .word :: Γ') tTy}
     (countSpec : ∀ env slots live, CodeSpec m funs host count env slots live)
     (initSpec : ∀ env slots live, CodeSpec m funs host init env slots live)
+    (condSpec : ∀ env slots live, CodeSpec m funs host cond env slots live)
     (bodySpec : ∀ env slots live, CodeSpec m funs host body env slots live) :
-    ∀ env slots live, CodeSpec m funs host (Expr.loop count init body) env slots live := by
+    ∀ env slots live, CodeSpec m funs host (Expr.loop count init cond body) env slots live := by
   intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
   have hc := Nat.le_max_left count.width (max (1 + max init.width (copyWidth tTy))
-    (2 + tTy.width + max body.width (copyWidth tTy)))
+    (2 + tTy.width + max (max cond.width body.width) (copyWidth tTy)))
   have hi := (Nat.le_max_left (1 + max init.width (copyWidth tTy))
-    (2 + tTy.width + max body.width (copyWidth tTy))).trans (Nat.le_max_right count.width _)
+    (2 + tTy.width + max (max cond.width body.width) (copyWidth tTy))).trans
+    (Nat.le_max_right count.width _)
   have hb := (Nat.le_max_right (1 + max init.width (copyWidth tTy))
-    (2 + tTy.width + max body.width (copyWidth tTy))).trans (Nat.le_max_right count.width _)
+    (2 + tTy.width + max (max cond.width body.width) (copyWidth tTy))).trans
+    (Nat.le_max_right count.width _)
   have hi1 := Nat.le_max_left init.width (copyWidth tTy)
   have hi2 := Nat.le_max_right init.width (copyWidth tTy)
-  have hb1 := Nat.le_max_left body.width (copyWidth tTy)
-  have hb2 := Nat.le_max_right body.width (copyWidth tTy)
+  have hb1 := Nat.le_max_left (max cond.width body.width) (copyWidth tTy)
+  have hb2 := Nat.le_max_right (max cond.width body.width) (copyWidth tTy)
+  have hcd := Nat.le_max_left cond.width body.width
+  have hbd := Nat.le_max_right cond.width body.width
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  obtain ⟨⟨hPc, hPi⟩, hPb⟩ := hPlace
-  have hOwnedTrap : (Expr.loop count init body).mode (slots.map Slot.mode) = .owned →
+  obtain ⟨⟨⟨hPc, hPi⟩, hPcd⟩, hPb⟩ := hPlace
+  have hOwnedTrap : (Expr.loop count init cond body).mode (slots.map Slot.mode) = .owned →
       TrapOK true Q := fun ht => hTrap.of_imp fun _ => by
-    have := (Expr.loop count init body).mode_owned (slots.map Slot.mode) ht
+    have := (Expr.loop count init cond body).mode_owned (slots.map Slot.mode) ht
     rw [Slot.any_map] at this
     exact this
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
   -- The count, in local `base`.
-  have hCountIn : ∀ i, ((live i || init.uses i || body.uses (i + 2)) || count.uses i) = true →
-      (live i || (Expr.loop count init body).uses i) = true := fun i h => by
-    simp only [Expr.uses]; exact loop_live_count _ _ _ _ h
-  refine countSpec env slots (fun i => live i || init.uses i || body.uses (i + 2)) h base heap
+  have hCountIn : ∀ i, ((live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
+      count.uses i) = true → (live i || (Expr.loop count init cond body).uses i) = true :=
+    fun i h => by simp only [Expr.uses]; exact loop_live_count _ _ _ _ _ h
+  refine countSpec env slots
+    (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) h base heap
     store s hh (hVars.live_mono hCountIn) hAt hCap hBase (by omega) hPc _ _
-    (hTrap.of_imp fun h => by simp only [Expr.aborts]; exact loop_trap_count _ _ _ _ h)
+    (hTrap.of_imp fun h => by simp only [Expr.aborts]; exact loop_trap_count _ _ _ _ _ h)
     fun heap1 store1 s1 ws1 a1 => ?_
   have hR1 := a1.rep
   simp only [Ty.rep_word] at hR1
@@ -2906,15 +2982,17 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   have hN2 : (setLocal { s1 with values := s.values } base
       (.i64 (count.denote funs env))).get base = some (.i64 (count.denote funs env)) :=
     Locals.get_setLocal_same hLow1 (Locals.lt_total hHigh1)
-  have e1' : Evolves env slots (fun i => (live i || init.uses i || body.uses (i + 2)) ||
-      count.uses i) (fun i => live i || body.uses (i + 2) || init.uses i) base heap store s heap1
-      store1 (setLocal { s1 with values := s.values } base (.i64 (count.denote funs env))) :=
-    (Evolves.mk e1.step hF2 (e1.holds.agree f2)).mono fun i h => loop_live_init _ _ _ h
+  have e1' : Evolves env slots
+      (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) || count.uses i)
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) base heap store s
+      heap1 store1
+      (setLocal { s1 with values := s.values } base (.i64 (count.denote funs env))) :=
+    Evolves.mk e1.step hF2 (e1.holds.agree f2)
   -- The initial state, coerced to the loop's mode, in the locals from `base + 2` on.
-  refine initSpec env slots (fun i => live i || body.uses (i + 2)) h (base + 1) heap1 store1 _
-    (hF2.half.trans hh) (e1'.holds.mono (Nat.le_succ base)) e1'.step.at_
-    (by rw [e1'.step.cap m]; exact hCap) (by rw [hF2.params]; omega) (by omega) hPi _ _
-    (hTrap.of_imp fun h => by simp only [Expr.aborts]; exact loop_trap_init _ _ _ _ h)
+  refine initSpec env slots (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
+    (base + 1) heap1 store1 _ (hF2.half.trans hh) (e1'.holds.mono (Nat.le_succ base))
+    e1'.step.at_ (by rw [e1'.step.cap m]; exact hCap) (by rw [hF2.params]; omega) (by omega) hPi
+    _ _ (hTrap.of_imp fun h => by simp only [Expr.aborts]; exact loop_trap_init _ _ _ _ _ h)
     fun heap2 store2 s3 ws0 a2 => ?_
   refine After.coerce hm a2 (fun h => by simp [Mode.join, h]) le_rfl
     (by rw [a2.frame.params, hF2.params]; omega) (a2.frame.half.trans (hF2.half.trans hh))
@@ -2925,10 +3003,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   have hN3 : s3.get base = some (.i64 (count.denote funs env)) :=
     (a2.frame.below base (by omega)).1.trans hN2
   have a0 := (After.prepend (hVars.live_mono hCountIn) e1'
-    (a2.lower e1'.holds (Nat.le_succ base) fun i h => by simp [h]) (fun i h => by
-      have := loop_live_init _ _ _ h
-      simp only [Bool.or_eq_true] at this ⊢; exact Or.inl this) fun i h => by simp [h]).liveIn
-    hCountIn
+    (a2.lower e1'.holds (Nat.le_succ base) fun i h => by simp [h]) (fun i h => by simp [h])
+    fun i h => by simp [h]).liveIn hCountIn
   refine wp_storeCode ws0 h (base + 2) tTy.types s3 s.values a0.rep.typed hh3
     (by rw [hF3.params]; omega) (by rw [Ty.types_length, hh3]; omega)
     fun s4 hF4 hold4 _ => ?_
@@ -2956,19 +3032,40 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       (fun j hj _ => ⟨by rw [Locals.get_setLocal_ne hLow4 (by omega)]; rfl,
         by rw [Locals.get_setLocal_ne hLow4 (by omega)]; rfl⟩) le_rfl
       (by rw [a0.rep.length, hh4]; omega)
-  -- The loop.  The invariant holds the count, the index `i`, and the state after `i`
-  -- iterations, and the count less the index decreases.
+  -- The exit at either test: the release of the outer variables that only the loop uses, and the
+  -- load of the state.
+  have hExit : ∀ heapX stX sX wsX (vals : List Value), vals = s.values →
+      LocalsHold sX (base + 2) tTy.types wsX →
+      After env slots (fun i => live i || (Expr.loop count init cond body).uses i)
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) base heap store s tTy
+        ((init.mode (slots.map Slot.mode)).join
+          (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
+        ((Expr.loop count init cond body).denote funs env) heapX stX sX wsX →
+      wp m (releaseWhere Γ' slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
+        (loadCode h (base + 2) tTy.types ++ rest)) Q stX { sX with values := vals } host := by
+    intro heapX stX sX wsX vals hv holdX aX
+    subst hv
+    refine After.release hm (live := live)
+      (sel := fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) hVars aX
+      (fun i h => by simp only [Expr.uses]; exact loop_live_state _ _ _ _ _ h)
+      (fun i h => by simp only [Bool.and_eq_true] at h; exact loop_sel _ _ _ h.1)
+      (fun i h => by simp [h]) fun heap' store' a' => ?_
+    refine wp_loadCode wsX a'.rep.typed (aX.frame.half.trans hh) holdX ?_
+    exact hNext heap' store' sX wsX a'
+  -- The loop.  The invariant holds the count, the index `i`, and the state after `i` passes, and
+  -- the count less the index decreases.
   refine wp_block_cons ?_
   refine wp_loop_cons
     (fun st si => ∃ heapI wsI, ∃ i : UInt64, i ≤ count.denote funs env ∧
       si.get base = some (.i64 (count.denote funs env)) ∧ si.get (base + 1) = some (.i64 i) ∧
       LocalsHold si (base + 2) tTy.types wsI ∧
-      After env slots (fun i => live i || (Expr.loop count init body).uses i)
-        (fun i => live i || body.uses (i + 2)) base heap store s tTy
+      After env slots (fun i => live i || (Expr.loop count init cond body).uses i)
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) base heap store s tTy
         ((init.mode (slots.map Slot.mode)).join
           (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
         (loopState (init.denote funs env)
-          (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat) heapI st si wsI)
+          (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) heapI st si wsI)
     (fun _ s' => match s'.get (base + 1) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
       | _ => 0)
@@ -2976,161 +3073,218 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   rintro st si ⟨heapI, wsI, i, hiN, hNi, hii, holdi, aI⟩
   simp only [wp_localGet_cons, Locals.get_values, hii, hNi, wp_geUI64_cons, wp_br_if_cons]
   by_cases hge : count.denote funs env ≤ i
-  · -- The index reached the count: the release of the outer variables that only the body
-    -- uses, and the load of the state.
+  · -- The index reached the count.
     simp (config := { decide := true }) only [ge_iff_le, hge, ↓reduceIte, List.take_zero,
       List.drop_zero, List.nil_append]
     rw [UInt64.le_antisymm hiN hge, loopState_eq] at aI
-    refine After.release hm (s1 := si) (live := live)
-      (sel := fun i => body.uses (i + 2) && !live i) hVars aI
-      (fun i h => by simp only [Expr.uses]; exact loop_live_state _ _ _ _ h)
-      (fun i h => by simp only [Bool.and_eq_true] at h; simp [h.1]) (fun i h => by simp [h])
-      fun heap' store' a' => ?_
-    refine wp_loadCode wsI a'.rep.typed (aI.frame.half.trans hh) holdi ?_
-    exact hNext heap' store' si wsI a'
-  · -- One more iteration.
-    have hlt : i < count.denote funs env := UInt64.not_le.mp hge
-    have hsucc : (i + 1).toNat = i.toNat + 1 := by
-      have := UInt64.lt_iff_toNat_lt.mp hlt
-      have := (count.denote funs env).toNat_lt
-      rw [UInt64.toNat_add]; simp; omega
-    simp (config := { decide := true }) only [ge_iff_le, hge, ↓reduceIte]
-    have holdIdx : LocalsHold si (base + 1) Ty.word.types [.i64 i] := fun k hk => by
-      obtain rfl : k = 0 := by simpa using hk
-      simpa [Ty.types, slotIndex] using hii
-    have hhi : si.half = h := aI.frame.half.trans hh
-    have hRoomi : base + 2 + tTy.width + max body.width (copyWidth tTy) ≤ h := by omega
-    -- The body's context: the state as variable 0 and the index as variable 1.
-    have hIdx := Holds.push (t := .word) (v := i) (mode := .borrowed)
-      (live' := fun j => decide (j + 1 < 2) ||
-        shift 2 (fun i => live i || body.uses (i + 2)) (j + 1) || body.uses (j + 1))
-      ((aI.holds.mono (Nat.le_add_right base 1)).live_mono fun j h => by simpa using h) holdIdx
-      rfl
-      (Holds.Apart.ofScalar rfl)
-    have hVarsB : Holds (Env.cons (loopState (init.denote funs env)
-          (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat)
-          (Env.cons (t := .word) i env))
-        (⟨base + 2, (init.mode (slots.map Slot.mode)).join
+    exact hExit _ _ _ _ _ rfl holdi aI
+  -- One more pass, if the condition holds.
+  have hlt : i < count.denote funs env := UInt64.not_le.mp hge
+  have hsucc : (i + 1).toNat = i.toNat + 1 := by
+    have := UInt64.lt_iff_toNat_lt.mp hlt
+    have := (count.denote funs env).toNat_lt
+    rw [UInt64.toNat_add]; simp; omega
+  simp (config := { decide := true }) only [ge_iff_le, hge, ↓reduceIte]
+  have hhi : si.half = h := aI.frame.half.trans hh
+  -- The condition's context: the state, borrowed, as variable 0.
+  have hdAll : ∀ j, cond.uses (j + 1) = true →
+      (live j || cond.uses (j + 1) || body.uses (j + 2)) = true := fun j h => by simp [h]
+  have hVarsC : Holds (Env.cons (loopState (init.denote funs env)
+        (fun i acc => bif cond.denote funs (.cons acc env) then
+          body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) env)
+      (⟨base + 2, .borrowed⟩ :: slots)
+      (fun j => (j == 0 ||
+        shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j) || cond.uses j)
+      (base + 2 + tTy.width) heapI st si :=
+    Holds.push ((aI.holds.mono (by omega)).live_mono fun j hj => cond_live_outer _ _ hdAll j hj)
+      holdi aI.rep.borrow
+      ((aI.apart.borrow aI.rep).live_mono fun j hj => cond_live_outer _ _ hdAll j hj)
+  refine condSpec _ (⟨base + 2, .borrowed⟩ :: slots)
+    (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j) h
+    (base + 2 + tTy.width) heapI st si hhi hVarsC aI.step.at_ (by rw [aI.step.cap m]; exact hCap)
+    (by rw [aI.frame.params]; omega) (by omega) hPcd _ _
+    ((hTrap.of_imp fun h => by
+      have h' : (cond.aborts || slots.any (·.mode == .owned)) = true := by
+        simpa [List.any_cons] using h
+      simp only [Expr.aborts]; exact loop_trap_cond _ _ _ _ _ h').imp fun _ h => h)
+    fun heapC stC sC wsC aC => ?_
+  have hRC := aC.rep
+  simp only [Ty.rep_bool] at hRC
+  subst hRC
+  have aI2 := After.test aI aC (by omega) (cond_live _ _ hdAll) rfl
+  have hiiC : sC.get (base + 1) = some (.i64 i) :=
+    (aC.frame.below (base + 1) (by omega)).1.trans hii
+  have hNiC : sC.get base = some (.i64 (count.denote funs env)) :=
+    (aC.frame.below base (by omega)).1.trans hNi
+  have holdC : LocalsHold sC (base + 2) tTy.types wsI :=
+    (LocalsHold.frame aC.frame (by rw [aI.rep.length, Ty.types_length])
+      (by rw [Ty.types_length])).mpr holdi
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append,
+    wp_eqzI64_cons, wp_br_if_cons]
+  cases hcv : cond.denote funs (Env.cons (loopState (init.denote funs env)
+      (fun i acc => bif cond.denote funs (.cons acc env) then
+        body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) env)
+  · -- The condition fails: the state stays for the remaining passes.
+    simp (config := { decide := true }) only [↓reduceIte, List.take_zero, List.drop_zero,
+      List.nil_append]
+    have hStop := loopState_stop (init.denote funs env)
+      (fun acc => cond.denote funs (.cons acc env))
+      (fun i acc => body.denote funs (.cons acc (.cons i env))) hcv _
+      (UInt64.le_iff_toNat_le.mp hiN)
+    rw [← hStop, loopState_eq] at aI2
+    exact hExit _ _ _ _ _ rfl holdC aI2
+  simp (config := { decide := true }) only [↓reduceIte]
+  -- The condition holds: the pass runs the body.
+  set sB : Locals := { sC with values := si.values }
+  have aB0 := aI2.reframe (Frame.ofValues (s := sC) (values := si.values))
+  have holdB : LocalsHold sB (base + 2) tTy.types wsI := holdC
+  have hiiB : sB.get (base + 1) = some (.i64 i) := hiiC
+  have hNiB : sB.get base = some (.i64 (count.denote funs env)) := hNiC
+  have holdIdx : LocalsHold sB (base + 1) Ty.word.types [.i64 i] := fun k hk => by
+    obtain rfl : k = 0 := by simpa using hk
+    simpa [Ty.types, slotIndex] using hiiB
+  have hhB : sB.half = h := aB0.frame.half.trans hh
+  have hRoomi : base + 2 + tTy.width + max body.width (copyWidth tTy) ≤ h := by omega
+  -- The body's context: the state as variable 0 and the index as variable 1.
+  have hIdx := Holds.push (t := .word) (v := i) (mode := .borrowed)
+    (live' := fun j => decide (j + 1 < 2) ||
+      shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) (j + 1) ||
+        body.uses (j + 1))
+    ((aB0.holds.mono (Nat.le_add_right base 1)).live_mono fun j h => by simpa using h) holdIdx
+    rfl
+    (Holds.Apart.ofScalar rfl)
+  have hVarsB : Holds (Env.cons (loopState (init.denote funs env)
+        (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat)
+        (Env.cons (t := .word) i env))
+      (⟨base + 2, (init.mode (slots.map Slot.mode)).join
+        (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
+        ⟨base + 1, .borrowed⟩ :: slots)
+      (fun j => decide (j < 2) ||
+        shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j || body.uses j)
+      (base + 2 + tTy.width) heapC stC sB :=
+    Holds.push (hIdx.mono (base' := base + 2) (by simp [Ty.width])) holdB aB0.rep
+      (Holds.Apart.push (u := .word) (v := i) (mv := .borrowed)
+        (live' := fun j => decide (j + 1 < 2) ||
+          shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) (j + 1) ||
+            body.uses (j + 1))
+        (aB0.apart.live_mono fun j h => by simpa using h) holdIdx rfl
+        fun _ _ _ c hc => by simp [Ty.regions, Ty.reads] at hc)
+  have hRelease : (if (init.mode (slots.map Slot.mode)).join
+        (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) = .owned ∧
+        body.uses 0 = false then releaseCode tTy (base + 2) else []) =
+      (if body.uses 0 = false then [0] else []).flatMap
+        (releaseVar (tTy :: .word :: Γ') (⟨base + 2, (init.mode (slots.map Slot.mode)).join
           (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
-          ⟨base + 1, .borrowed⟩ :: slots)
-        (fun j => decide (j < 2) ||
-          shift 2 (fun i => live i || body.uses (i + 2)) j || body.uses j)
-        (base + 2 + tTy.width) heapI st si :=
-      Holds.push (hIdx.mono (base' := base + 2) (by simp [Ty.width])) holdi aI.rep
-        (Holds.Apart.push (u := .word) (v := i) (mv := .borrowed)
-          (live' := fun j => decide (j + 1 < 2) ||
-            shift 2 (fun i => live i || body.uses (i + 2)) (j + 1) || body.uses (j + 1))
-          (aI.apart.live_mono fun j h => by simpa using h) holdIdx rfl
-          fun _ _ _ c hc => by simp [Ty.regions, Ty.reads] at hc)
-    have hRelease : (if (init.mode (slots.map Slot.mode)).join
-          (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) = .owned ∧
-          body.uses 0 = false then releaseCode tTy (base + 2) else []) =
-        (if body.uses 0 = false then [0] else []).flatMap
-          (releaseVar (tTy :: .word :: Γ') (⟨base + 2, (init.mode (slots.map Slot.mode)).join
-            (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
-            ⟨base + 1, .borrowed⟩ :: slots)) := by
-      cases body.uses 0 <;>
-        cases (init.mode (slots.map Slot.mode)).join
-          (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) <;> simp [releaseVar]
-    rw [hRelease]
-    refine wp_releaseVars hm _ (by split <;> simp) hVarsB aI.step.at_ (by split <;> simp)
-      fun heap2 store2 e2 => ?_
-    have e2' := e2.mono
-      (live' := fun j => shift 2 (fun i => live i || body.uses (i + 2)) j || body.uses j)
-      fun j h => by
-        match j with
-        | 0 =>
-          have h0 : body.uses 0 = true := by simpa [shift] using h
-          simp [h0]
-        | 1 => simp
-        | k + 2 => split <;> simpa using h
-    refine bodySpec _ _ (shift 2 fun i => live i || body.uses (i + 2)) h (base + 2 + tTy.width)
-      heap2 store2 si hhi e2'.holds e2'.step.at_
-      (by rw [e2'.step.cap m, aI.step.cap m]; exact hCap) (by rw [aI.frame.params]; omega)
-      (by omega) hPb _ _
-      ((hTrap.of_imp fun h => by
-        have hmo := (Expr.loop count init body).mode_owned (slots.map Slot.mode)
-        rw [Slot.any_map] at hmo
-        simp only [List.any_cons, Expr.aborts] at h ⊢
-        exact loop_trap_body _ _ _ _ _ _ (fun hv => hmo (beq_iff_eq.mp hv)) rfl h).imp
-          fun _ h => h)
-      fun heap6 store6 s6 ws6 aB => ?_
-    have hp6 : s6.params = s.params := aB.frame.params.trans aI.frame.params
-    refine After.coerce hm aB
-      (fun h => loop_mode (f := fun md => body.mode (md :: .borrowed :: slots.map Slot.mode)) h)
-      le_rfl (by rw [hp6]; omega) (aB.frame.half.trans hhi) (by omega)
-      (by rw [aB.step.cap m, e2'.step.cap m, aI.step.cap m]; exact hCap)
-      (fun _ ht _ => (hOwnedTrap ht).imp fun _ h => h) fun heap6 store6 s6 ws6 aB => ?_
-    have hp6 : s6.params = s.params := aB.frame.params.trans aI.frame.params
-    have hh6 : s6.half = h := aB.frame.half.trans hhi
-    refine wp_storeCode ws6 h (base + 2) tTy.types s6 si.values aB.rep.typed hh6
-      (by rw [hp6]; omega) (by rw [Ty.types_length, hh6]; omega) fun s7 hF7 hold7 _ => ?_
-    have hp7' : s7.params = s.params := hF7.params.trans hp6
-    have hh7 : s7.half = h := hF7.half.trans hh6
-    have hget7 : ∀ j < base + 2, s7.get j = si.get j := fun j hj => by
-      rw [(hF7.below j hj).1]
-      exact (aB.frame.below j (by omega)).1
-    -- The next index, in local `base + 1`.
-    simp only [wp_localGet_cons, Locals.get_values, hget7 (base + 1) (by omega), hii,
-      wp_constI64_cons, wp_addI64_cons]
-    have hLow7 : ({ s7 with values := si.values } : Locals).params.length ≤ base + 1 := by
-      show s7.params.length ≤ base + 1; rw [hp7']; omega
-    have hHigh7 : base + 1 < s7.half := by rw [hh7]; omega
-    refine wp_localSet_local (s := s7) (vs := si.values) hLow7 (Locals.lt_total hHigh7) ?_
-    have hget8 : (setLocal { s7 with values := si.values } (base + 1) (.i64 (i + 1))).get
-        (base + 1) = some (.i64 (i + 1)) :=
-      Locals.get_setLocal_same hLow7 (Locals.lt_total hHigh7)
-    have hold8 : LocalsHold (setLocal { s7 with values := si.values } (base + 1)
-        (.i64 (i + 1))) (base + 2) tTy.types ws6 :=
-      hold7.keep (lo := base + 2) (by simp)
-        (fun j hj _ => ⟨by rw [Locals.get_setLocal_ne hLow7 (by omega)]; rfl,
-          by rw [Locals.get_setLocal_ne hLow7 (by omega)]; rfl⟩) le_rfl
-        (by rw [aB.rep.length, hh7]; omega)
-    -- The state after `i + 1` iterations: the facts of the body's code for the outer context.
-    have aB' := After.prepend hVarsB e2' aB (fun j h => live_right _ _ _ h) fun j h => by
-      simp [h]
-    have hNew : ∀ r, (∀ b ∈ ((init.mode (slots.map Slot.mode)).join
-          (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))).fresh st tTy wsI
-          (loopState (init.denote funs env)
-            (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat),
-          regionsDisjoint r b) →
-        ((init.mode (slots.map Slot.mode)).join
-            (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) = .owned → ∀ w,
-          LocalsHold si (base + 2) tTy.types w → w.length = tTy.width →
-          ∀ b ∈ tTy.blocks st w (loopState (init.denote funs env)
-            (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat),
-          regionsDisjoint r b) ∧
-        (Mode.borrowed = .owned → ∀ w, LocalsHold si (base + 1) Ty.word.types w →
-          w.length = Ty.word.width →
-          ∀ b ∈ Ty.word.blocks st w i, regionsDisjoint r b) := by
-      intro r hFresh
-      refine ⟨fun hmo w hw hlw b hb => ?_, fun hmo => nomatch hmo⟩
-      obtain rfl := LocalsHold.unique hw holdi (hlw.trans aI.rep.length.symm)
-      rw [hmo] at hFresh
-      exact hFresh b hb
-    have aNext := After.bind2 hVars aI (Frame.refl base si) aB' (by omega) hNew
-      (fun j h => by simpa using h)
-      (fun j h => by simp only [Expr.uses]; exact loop_live_state _ _ _ _ h) fun _ h => h
-    have hv : loopState (init.denote funs env)
-        (fun i acc => body.denote funs (.cons acc (.cons i env))) (i + 1).toNat =
-        body.denote funs (.cons (loopState (init.denote funs env)
-          (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat) (.cons i env)) := by
-      rw [hsucc, loopState, UInt64.ofNat_toNat]
-    rw [wp_br_cons]
-    dsimp only
-    refine ⟨⟨heap6, ws6, i + 1, UInt64.le_iff_toNat_le.mpr ?_, ?_, hget8, hold8, ?_⟩, ?_⟩
-    · have := UInt64.lt_iff_toNat_lt.mp hlt
-      omega
-    · rw [Locals.get_setLocal_ne hLow7 (by omega), Locals.get_values, hget7 base (by omega)]
-      exact hNi
-    · rw [hv]
-      exact aNext.reframe ((hF7.mono (base := base) (by omega)).trans
-        ((Frame.setValues (s := s7) (vs := si.values) (base := base + 1) hLow7 le_rfl
-          hHigh7).mono (base := base)
-          (by omega)))
-    · have := UInt64.lt_iff_toNat_lt.mp hlt
-      simp only [hget8]
-      omega
+          ⟨base + 1, .borrowed⟩ :: slots)) := by
+    cases body.uses 0 <;>
+      cases (init.mode (slots.map Slot.mode)).join
+        (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) <;> simp [releaseVar]
+  rw [hRelease]
+  refine wp_releaseVars hm _ (by split <;> simp) hVarsB aB0.step.at_ (by split <;> simp)
+    fun heap2 store2 e2 => ?_
+  have e2' := e2.mono
+    (live' := fun j =>
+      shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j || body.uses j)
+    fun j h => by
+      match j with
+      | 0 =>
+        have h0 : body.uses 0 = true := by simpa [shift] using h
+        simp [h0]
+      | 1 => simp
+      | k + 2 => split <;> simpa using h
+  refine bodySpec _ _ (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
+    (base + 2 + tTy.width) heap2 store2 sB hhB e2'.holds e2'.step.at_
+    (by rw [e2'.step.cap m, aB0.step.cap m]; exact hCap) (by rw [aB0.frame.params]; omega)
+    (by omega) hPb _ _
+    ((hTrap.of_imp fun h => by
+      have hmo := (Expr.loop count init cond body).mode_owned (slots.map Slot.mode)
+      rw [Slot.any_map] at hmo
+      simp only [List.any_cons, Expr.aborts] at h ⊢
+      exact loop_trap_body _ _ _ _ _ _ _ (fun hv => hmo (beq_iff_eq.mp hv)) rfl h).imp
+        fun _ h => h)
+    fun heap6 store6 s6 ws6 aB => ?_
+  have hp6 : s6.params = s.params := aB.frame.params.trans aB0.frame.params
+  refine After.coerce hm aB
+    (fun h => loop_mode (f := fun md => body.mode (md :: .borrowed :: slots.map Slot.mode)) h)
+    le_rfl (by rw [hp6]; omega) (aB.frame.half.trans hhB) (by omega)
+    (by rw [aB.step.cap m, e2'.step.cap m, aB0.step.cap m]; exact hCap)
+    (fun _ ht _ => (hOwnedTrap ht).imp fun _ h => h) fun heap6 store6 s6 ws6 aB => ?_
+  have hp6 : s6.params = s.params := aB.frame.params.trans aB0.frame.params
+  have hh6 : s6.half = h := aB.frame.half.trans hhB
+  refine wp_storeCode ws6 h (base + 2) tTy.types s6 si.values aB.rep.typed hh6
+    (by rw [hp6]; omega) (by rw [Ty.types_length, hh6]; omega) fun s7 hF7 hold7 _ => ?_
+  have hp7' : s7.params = s.params := hF7.params.trans hp6
+  have hh7 : s7.half = h := hF7.half.trans hh6
+  have hget7 : ∀ j < base + 2, s7.get j = sB.get j := fun j hj => by
+    rw [(hF7.below j hj).1]
+    exact (aB.frame.below j (by omega)).1
+  -- The next index, in local `base + 1`.
+  simp only [wp_localGet_cons, Locals.get_values, hget7 (base + 1) (by omega), hiiB,
+    wp_constI64_cons, wp_addI64_cons]
+  have hLow7 : ({ s7 with values := si.values } : Locals).params.length ≤ base + 1 := by
+    show s7.params.length ≤ base + 1; rw [hp7']; omega
+  have hHigh7 : base + 1 < s7.half := by rw [hh7]; omega
+  refine wp_localSet_local (s := s7) (vs := si.values) hLow7 (Locals.lt_total hHigh7) ?_
+  have hget8 : (setLocal { s7 with values := si.values } (base + 1) (.i64 (i + 1))).get
+      (base + 1) = some (.i64 (i + 1)) :=
+    Locals.get_setLocal_same hLow7 (Locals.lt_total hHigh7)
+  have hold8 : LocalsHold (setLocal { s7 with values := si.values } (base + 1)
+      (.i64 (i + 1))) (base + 2) tTy.types ws6 :=
+    hold7.keep (lo := base + 2) (by simp)
+      (fun j hj _ => ⟨by rw [Locals.get_setLocal_ne hLow7 (by omega)]; rfl,
+        by rw [Locals.get_setLocal_ne hLow7 (by omega)]; rfl⟩) le_rfl
+      (by rw [aB.rep.length, hh7]; omega)
+  -- The state after `i + 1` iterations: the facts of the body's code for the outer context.
+  have aB' := After.prepend hVarsB e2' aB (fun j h => live_right _ _ _ h) fun j h => by
+    simp [h]
+  have hNew : ∀ r, (∀ b ∈ ((init.mode (slots.map Slot.mode)).join
+        (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))).fresh stC tTy wsI
+        (loopState (init.denote funs env)
+          (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat),
+        regionsDisjoint r b) →
+      ((init.mode (slots.map Slot.mode)).join
+          (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)) = .owned → ∀ w,
+        LocalsHold sB (base + 2) tTy.types w → w.length = tTy.width →
+        ∀ b ∈ tTy.blocks stC w (loopState (init.denote funs env)
+          (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat),
+        regionsDisjoint r b) ∧
+      (Mode.borrowed = .owned → ∀ w, LocalsHold sB (base + 1) Ty.word.types w →
+        w.length = Ty.word.width →
+        ∀ b ∈ Ty.word.blocks stC w i, regionsDisjoint r b) := by
+    intro r hFresh
+    refine ⟨fun hmo w hw hlw b hb => ?_, fun hmo => nomatch hmo⟩
+    obtain rfl := LocalsHold.unique hw holdB (hlw.trans aB0.rep.length.symm)
+    rw [hmo] at hFresh
+    exact hFresh b hb
+  have aNext := After.bind2 hVars aB0 (Frame.refl base sB) aB' (by omega) hNew
+    (fun j h => by simpa using h)
+    (fun j h => by simp only [Expr.uses]; exact loop_live_state _ _ _ _ _ h) fun _ h => h
+  have hv : loopState (init.denote funs env)
+      (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) (i + 1).toNat =
+      body.denote funs (.cons (loopState (init.denote funs env)
+        (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) (.cons i env)) := by
+    rw [hsucc, loopState, UInt64.ofNat_toNat]
+    simp only [hcv, Bool.cond_true]
+  rw [wp_br_cons]
+  dsimp only
+  refine ⟨⟨heap6, ws6, i + 1, UInt64.le_iff_toNat_le.mpr ?_, ?_, hget8, hold8, ?_⟩, ?_⟩
+  · have := UInt64.lt_iff_toNat_lt.mp hlt
+    omega
+  · rw [Locals.get_setLocal_ne hLow7 (by omega), Locals.get_values, hget7 base (by omega)]
+    exact hNiB
+  · rw [hv]
+    exact aNext.reframe ((hF7.mono (base := base) (by omega)).trans
+      ((Frame.setValues (s := s7) (vs := si.values) (base := base + 1) hLow7 le_rfl
+        hHigh7).mono (base := base)
+        (by omega)))
+  · have := UInt64.lt_iff_toNat_lt.mp hlt
+    simp only [hget8]
+    omega
 
 /-- `LeanExe.build`: the count in local `base`, a trap at `unreachable` when it is `2 ^ 29` or
 more, a new owned array at the address in local `base + 1`, and the index in local `base + 2`.
@@ -4180,8 +4334,8 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | call g args argsSpec => exact spec_call hm hCalls g args argsSpec
   | pair first second firstSpec secondSpec => exact spec_pair hm firstSpec secondSpec
   | letPair e body eSpec bodySpec => exact spec_letPair hm eSpec bodySpec
-  | loop count init body countSpec initSpec bodySpec =>
-    exact spec_loop hm countSpec initSpec bodySpec
+  | loop count init cond body countSpec initSpec condSpec bodySpec =>
+    exact spec_loop hm countSpec initSpec condSpec bodySpec
   | size x => exact spec_size hm x
   | get x i iSpec => exact spec_get hm x iSpec
   | build count elem countSpec elemSpec => exact spec_build hm countSpec elemSpec
