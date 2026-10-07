@@ -27419,7 +27419,18 @@ expanded into its pairs and proves by `cases` on each component.
   matches, so `TrigAccuracy.lean` checks that argument and 300 huge ones, with their negatives,
   against an exact reference in Lean's integers: all 1,220 results lie within one unit, 42 of them
   one unit from the correctly rounded value.  Against glibc, 360,002 results lie within one unit.
-- [ ] Step 4: the Fourier demo with `Trig.sin` and `Trig.cos`.
+- [x] Step 4: the Fourier demo, `Verified/Examples/Fourier.lean`: `transform dir xs` over `n`
+  complex values as `2 n` interleaved floats, by the `n²` products of the definition with a local
+  table of factors `(Trig.cos θ, Trig.sin θ)`, `θ = 2 π m / n`, and the output as an outer loop's
+  state updated in place; `dft`, `inverse`, and `powerSpectrum` of real samples.  The program lists
+  the trigonometric definitions and compiles them with it.  `dft` is `ImplementsA true`, since it
+  allocates.  `FourierAccuracy.lean` checks the exact facts and, within a tolerance from the error
+  bound of recursive summation, a constant, single frequencies, the round trip, Parseval's
+  identity, and agreement with factors from the C library.  An FFT is later work.  A fresh review
+  found the code and the allocation counts right and several statements in the documentation too
+  strong, all corrected.  `Verified.lean`, the root that `lake build Verified` builds, lacked
+  `Recursion`, `Fields`, `Trig`, and `Fourier`, so the suite could read stale object files.  The
+  root now imports them.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

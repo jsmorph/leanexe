@@ -5,7 +5,9 @@
 # released must equal the field, the host's array arguments and the result's arrays.  A seventh
 # field bounds the number of allocations, the host's included.  A case whose expected result is
 # `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean checks Trig.sin and
-# Trig.cos against the C library's within one unit in the last place.
+# Trig.cos against the C library's within one unit in the last place, and
+# Verified/Examples/FourierAccuracy.lean checks that Fourier.dft, inverse, and powerSpectrum behave
+# as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -32,7 +34,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Enums:compiled.module:enums \
     Verified.Examples.Recursion:compiled.module:recursion \
     Verified.Examples.Fields:compiled.module:fields \
-    Verified.Examples.Trig:compiled.module:trig; do
+    Verified.Examples.Trig:compiled.module:trig \
+    Verified.Examples.Fourier:compiled.module:fourier; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -100,4 +103,6 @@ done <"$cases"
 echo "verified: passed $passed failed $failed"
 [ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
 # The accuracy of Trig.sin and Trig.cos against the C library's, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
+# The behavior of the Fourier transforms, in native Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean

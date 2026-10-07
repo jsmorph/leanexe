@@ -23,3 +23,7 @@ import Verified.Examples.Records
 import Verified.Examples.Grids
 import Verified.Examples.Repeat
 import Verified.Examples.Enums
+import Verified.Examples.Recursion
+import Verified.Examples.Fields
+import Verified.Examples.Trig
+import Verified.Examples.Fourier
