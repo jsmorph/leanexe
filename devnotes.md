@@ -27293,6 +27293,35 @@ does, and a `let` of a pair uses `pair_eta`.  `kernelDefEq` rethrows kernel exce
 constructor's word is computed by the kernel.  `Enums.lean` adds 214 cases, and all 6,352 cases
 pass.
 
+### V12 plan: recursion
+
+The design, reviewed with changes, gives a recursive definition a fixed-point meaning and a
+depth guard in the code.  `Prog.Meaning prog funs` is an inductive predicate: a recursive
+function's meaning is any `M` with `M env = body.denote (Funs.cons M funs) env`, which the
+reflector supplies as the user's definition through `f.eq_def`.  The code of a recursive function,
+and of every function that calls one, takes the depth as an extra first parameter, traps at
+`unreachable` when it reaches the limit `L`, and passes the depth plus one to the recursive
+functions it calls.  An entry function per such function, appended after the program's functions
+and exported under the definition's name, calls it with depth 0.  The theorem for these functions
+is `ImplementsA true`: the call returns the definition's value or traps.  Talos bounds no call
+depth, and Wasmtime ends deep recursion with a stack-overflow trap, which `Trapped` does not
+admit, so the guard turns that gap into one fact that tests establish: `L` frames fit the stack.
+
+- [ ] `Sig.depth`; `Expr.depthCalls`; `RecFunc` with the body over its own signature; `Prog.rec`;
+  `Prog.Meaning`, with `Prog.funs` for programs without recursion and a corollary for them.
+- [ ] `CodeSpec` gains the frame's parameter values `ps`, with `s.params = ps`, and `Calls`
+  becomes `CallsAt m funs ps`: a recursive callee's internal specification holds at every depth,
+  and the call reads the caller's depth from the head of `ps`.
+- [ ] The internal function: the depth at local 0, the parameters from position 1, the guard, and
+  the flagged call sequence; entries and their exports and types.
+- [ ] `Func.correct` over the slot shift; `Prog.calls` with four cases (plain, flagged without
+  recursion, recursive, nil), the recursive one by induction on `L - d`.
+- [ ] The reflector: recursion through `eq_def`, a self callee, the mode rounds, the inverse of
+  the flattening, terms only, rejection of `sorry` in termination proofs.
+- [ ] `Recursion.lean`: exponentiation by squaring, `gcd`, a pairwise float sum with two
+  self-calls, a recursion that moves an owned array, one that calls another, and a chain that
+  returns at depth `L - 1` and traps at `L`.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
