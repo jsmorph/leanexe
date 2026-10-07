@@ -1,4 +1,5 @@
 import Verified.Heap
+import LeanExe.Pipeline.FlatRecords
 import LeanExe.ProofKit.F64Bits
 import LeanExe.ProofKit.F64Convert
 import LeanExe.ProofKit.F64Decoded
@@ -5344,6 +5345,18 @@ theorem Agree.prod {α β γ δ : Type} {ia : Represent α} {ib : Represent β} 
   moves store vs p := by
     show @Represent.moves _ ia store _ p.1 ++ @Represent.moves _ ja store _ p.2 = _ ++ _
     rw [ha.width, ha.moves, hb.moves]
+
+/-- A structure represented as its `Flat` tuple agrees along `φ ∘ Flat.flat` with whatever its
+tuple agrees with along `φ`. -/
+theorem Agree.flat {α β γ : Type} [Flat α β] {ib : Represent β} {ic : Represent γ} {φ : β → γ}
+    (h : Agree ib ic φ) :
+    Agree (@instRepresentOfFlat α β _ ib) ic (fun x => φ (Flat.flat x)) where
+  borrowed heap store vs x := h.borrowed heap store vs (Flat.flat x)
+  owned heap store vs x := h.owned heap store vs (Flat.flat x)
+  width x := h.width (Flat.flat x)
+  blocks store vs x := h.blocks store vs (Flat.flat x)
+  reads store vs x := h.reads store vs (Flat.flat x)
+  moves store vs x := h.moves store vs (Flat.flat x)
 
 /-- The words of an array of a `Flat` type are the words of its elements' flattenings. -/
 theorem flatWords_map {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ : α → e.denote)

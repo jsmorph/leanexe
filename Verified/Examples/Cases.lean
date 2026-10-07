@@ -18,6 +18,7 @@ import Verified.Examples.Grids
 import Verified.Examples.Repeat
 import Verified.Examples.Enums
 import Verified.Examples.Recursion
+import Verified.Examples.Fields
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -193,6 +194,23 @@ infinities, both zeros, the smallest subnormal, and words. -/
 def floatWords : List UInt64 :=
   [0x7FF0000000000001, 0x7FF8000000000001, 0xFFF8000000000000, 0xFFFFFFFFFFFFFFFF,
     0x7FF0000000000000, 0xFFF0000000000000, 0x8000000000000000, 0x3FF0000000000000] ++ words
+
+/-- The host's arguments and output for a `Fields.Book`: its tuple's arrays and word. -/
+def bookArg (b : Fields.Book) : String :=
+  s!"{arrayArg b.prices} {arrayArg b.sizes} i64:{b.fills}"
+
+def bookOut (b : Fields.Book) : String := s!"{arrayOut b.prices} {arrayOut b.sizes} {b.fills}"
+
+/-- The words of an array of `Fields.Cell`s: each cell's level bits and count. -/
+def fieldCellWords (cs : Array Fields.Cell) : Array UInt64 :=
+  cs.flatMap fun c => #[c.level.toBits, c.count]
+
+/-- The host's arguments and output for a `Fields.Grid`: its cells' words, time, and steps. -/
+def gridArg (g : Fields.Grid) : String :=
+  s!"{arrayArg (fieldCellWords g.cells)} {floatArg g.time} i64:{g.steps}"
+
+def gridOut (g : Fields.Grid) : String :=
+  s!"{arrayOut (fieldCellWords g.cells)} {g.time.toBits} {g.steps}"
 
 end Verified.Examples
 
@@ -640,3 +658,37 @@ def main : IO Unit := do
     for n in [0, 1, 998, 999] do
       IO.println s!"recursion|deep|i64|i64:{n} i64:{a} i64:{b}|{Recursion.deep n a b}"
     IO.println s!"recursion|deep|i64|i64:1000 i64:{a} i64:{b}|trap"
+  let bookKinds := "array-u64,array-u64,i64"
+  let books : List Fields.Book :=
+    [⟨#[], #[], 0⟩, ⟨#[5], #[3], 1⟩, Fields.mkBook 4, ⟨#[1, 2, 3], #[10], 7⟩]
+  for n in [0, 1, 5] do
+    IO.println s!"fields|mkBook|list:{bookKinds}|i64:{n}|{bookOut (Fields.mkBook n)}|2"
+  for b in books do
+    IO.println s!"fields|bookTotal|i64|{bookArg b}|{Fields.bookTotal b}|2"
+    IO.println s!"fields|bookValue|i64|{bookArg b}|{Fields.bookValue b}|2"
+    IO.println s!"fields|bookShape|i64|{bookArg b}|{Fields.bookShape b}|2"
+    let (b', t) := Fields.withTotal b
+    IO.println s!"fields|withTotal|list:{bookKinds},i64|{bookArg b}|{bookOut b'} {t}|4"
+    for (i, q) in [((0 : UInt64), (9 : UInt64)), (2, 4), (100, 1)] do
+      let r := bookOut (Fields.fillOrder b i q)
+      IO.println s!"fields|fillOrder|list:{bookKinds}|{bookArg b} i64:{i} i64:{q}|{r}|4"
+    for c in [true, false] do
+      let other := Fields.mkBook 2
+      let r := bookOut (Fields.pickBook c b other)
+      IO.println s!"fields|pickBook|list:{bookKinds}|{boolArg c} {bookArg b} {bookArg other}|{r}|6"
+  let grids : List Fields.Grid :=
+    [⟨#[], 0.0, 0⟩, ⟨#[⟨1.5, 2⟩], 0.25, 3⟩,
+      ⟨(Array.range 5).map fun i => ⟨i.toUInt64.toFloat, i.toUInt64⟩, -1.0, 7⟩]
+  for g in grids do
+    for (k, dt) in [((0 : UInt64), (0.5 : Float)), (1, 0.5), (7, 0.125), (100, 1e-3)] do
+      let r := gridOut (Fields.advance g k dt)
+      IO.println s!"fields|advance|list:array-u64,f64,i64|{gridArg g} i64:{k} {floatArg dt}|{r}|2|2"
+    IO.println s!"fields|gridLevel|f64|{gridArg g}|{(Fields.gridLevel g).toBits}|1"
+    let cells := arrayOut (fieldCellWords (Fields.gridCells g))
+    IO.println s!"fields|gridCells|array-u64|{gridArg g}|{cells}|2"
+    for label in [(0 : UInt64), 5] do
+      let w : Fields.World := ⟨g, label⟩
+      IO.println s!"fields|worldLevel|f64|{gridArg g} i64:{label}|{(Fields.worldLevel w).toBits}|1"
+      let w' := Fields.relabel w 3
+      let r := s!"{gridOut w'.grid} {w'.label}"
+      IO.println s!"fields|relabel|list:array-u64,f64,i64,i64|{gridArg g} i64:{label} i64:3|{r}|2"

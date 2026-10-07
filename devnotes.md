@@ -27212,7 +27212,7 @@ not `LeanExe.loop`, and no construct of the dialect needs one.
 - [x] V11: `LeanExe.repeatWhile`.
 - [x] V12: recursion.
 - [x] V13: enumerations and `match` on them.
-- [ ] V14: records with array fields.
+- [x] V14: records with array fields, as borrowed parameters, results, locals, and loop states.
 
 ### V11: `LeanExe.repeatWhile`
 
@@ -27348,6 +27348,39 @@ admit, so the guard turns that gap into one fact that tests establish: `L` frame
   two self-calls, a recursion that moves an owned array, recursions over a pair, a structure, and
   an array of structures, a function that calls two recursive ones, a chain that returns at depth
   `L - 1` and traps at `L`, and the widest accepted frame at depth 999.
+
+### V14: records with array fields
+
+The first design added four instances to the shared base: a record as its `Flat` tuple, and
+`Moved` of a scalar, of a pair, and of a record, for owned record parameters.  The user asked to
+reconsider it, and the check against the programs that would use records changed the scope.
+Euler, Clob, and Drone carry their arrays as tuples, which `Verified` already supports, and a
+callee that must update an array in place can take that array as its own owned parameter.  Owned
+record and pair parameters are deferred until a program needs them, so V14 needs one instance,
+`instRepresentOfFlat` at priority 50, below the `Scalar` route, in the new shared file
+`LeanExe/Pipeline/FlatRecords.lean`.  `Records.lean` there already holds heap-record facts.  The
+new file rebuilds nothing in `LeanExe` or `Examples`, and every type that resolved before resolves
+to the same instance, which `#synth` confirmed for `Bool`, scalar structures, enumerations, arrays
+of structures, pairs, `Moved` arrays, and `Encode` types.
+
+A fresh review adopted the reduced plan with changes, all made.  A record variable splits as a pair
+through `pairView`, and the gap between the body at the rebuilt record and at the variable closes by
+`p.flat_eta.R`, a theorem proved by `rfl` with the body and the variable free.  A `rfl` hint on the
+instantiated body would let the kernel unfold a callee such as `advance g 1000 dt` or evaluate a
+`match` discriminant.  Parameter splits of pairs now use `pair_eta` the same way.  `projReduce` and
+`isPlace` became `MetaM`: a projection of a constructor reduces, `(y.1, y.2)` reduces to `y` from
+the inside out, and `isPlace` uses `ctorTuple?`, the tuple construction of `reflectStruct?`, so it
+predicts the source term exactly.  `shapeOf` rejects a record with arrays whose `Flat` instance is
+not a pair or omits a field, and the inverse of a structure's flattening composes its tuple's laws,
+so a recursive definition may take a record with an array of structures.
+
+- [x] `instRepresentOfFlat` in `LeanExe/Pipeline/FlatRecords.lean`; `Agree.flat`.
+- [x] `shapeOf`, `agreeTy`, `pairView` with `flat_eta`, `destructure`, `reflectSplit`, `let`,
+  `match`, `projReduce`, `isPlace`, `ctorTuple?`, and a named rejection of comparisons of values
+  other than words.
+- [x] `Fields.lean`: `Book`, `Grid` with an array of `Cell`s, and `World` holding a `Grid`.
+- [x] Tests: 6,993 cases pass; `advance` allocates twice, the host's array and one copy, and
+  updates the copy in place.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

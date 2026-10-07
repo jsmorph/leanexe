@@ -18,21 +18,22 @@ The reflector is meta code and is not trusted: Lean's kernel checks every equati
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
 definition's parameters and result are `UInt64`, `Bool`, `Float`, structures with a `Flat` instance
 whose tuple is their fields, enumerations with a `Flat` instance to words, arrays of these, and
-pairs.  Its body may also hold arrays of tuples, which have no `Represent` instance.  A structure's
-source value is its flattening `φ`, the source value of its `Flat` tuple, an array's is the array of
-its elements' flattenings, and each equation states that the source expression means `φ` of the Lean
-term, with `φ` the identity for the types without structures.  The theorem follows from the equation
-by `ImplementsA.transferAgree`, with proofs that Lean's instances agree with the source instances
-along `φ`.  Its body may use literals, its parameters, `let`, the word operations `+`, `-`, `*`,
-`/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`,
-`=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, also as
-`if h : c` with branches that do not use `h`, pairs built
-with `(a, b)` and taken apart with `.1`, `.2`, or `match`, structures built with their constructor
-or `{ s with … }` and taken apart with their fields or `match`, enumeration constructors,
-`Flat.flat` of enumerations, `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them,
-`LeanExe.loop`, `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`,
-`xs.push v`, `xs ++ ys`, `LeanExe.build`, calls of the listed definitions before it, and, in a
-recursive definition, calls of itself. -/
+pairs, and structures whose `Flat` tuple holds arrays, which are represented as that tuple and split
+as pairs are.  Its body may also hold arrays of tuples, which have no `Represent` instance.  A
+structure's source value is its flattening `φ`, the source value of its `Flat` tuple, an array's is
+the array of its elements' flattenings, and each equation states that the source expression means
+`φ` of the Lean term, with `φ` the identity for the types without structures.  The theorem follows
+from the equation by `ImplementsA.transferAgree`, with proofs that Lean's instances agree with the
+source instances along `φ`.  Its body may use literals, its parameters, `let`, the word operations
+`+`, `-`, `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`,
+`≤`, `>`, `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a
+comparison, also as `if h : c` with branches that do not use `h`, pairs built with `(a, b)` and
+taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
+and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
+`match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
+`LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
+`xs ++ ys`, `LeanExe.build`, calls of the listed definitions before it, and, in a recursive
+definition, calls of itself. -/
 
 namespace Verified.Reflect
 
@@ -99,38 +100,6 @@ def flatInstance? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) :
     | return none
   return some (← instantiateMVars β, inst)
 
-partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
-  if let some e ← elemOf? type then return ⟨.elem e, none⟩
-  let type ← whnfR type
-  if let (``Prod, #[a, b]) := type.getAppFnArgs then
-    let sa ← shapeOf a
-    let sb ← shapeOf b
-    let ty := match sa.ty, sb.ty with
-      | .elem ea, .elem eb => Ty.elem (.prod ea eb)
-      | ta, tb => .pair ta tb
-    if sa.flat.isNone && sb.flat.isNone then return ⟨ty, none⟩
-    let f ← withLocalDeclD `p type fun p => do
-      mkLambdaFVars #[p] (← mkAppM ``Prod.mk
-        #[sa.apply (← mkAppM ``Prod.fst #[p]), sb.apply (← mkAppM ``Prod.snd #[p])])
-    return ⟨ty, some f⟩
-  if let (``Array, #[el]) := type.getAppFnArgs then
-    let se ← shapeOf el
-    let .elem e := se.ty | throwError "verified_compile: an array holds elements, not {el}"
-    if se.flat.isNone then return ⟨.array e, none⟩
-    let φ ← se.fn el
-    let f ← withLocalDeclD `xs type fun xs => do mkLambdaFVars #[xs] (← mkAppM ``Array.map #[φ, xs])
-    return ⟨.array e, some f⟩
-  if let some (β, inst) ← flatInstance? type then
-    let sβ ← shapeOf β
-    let .elem _ := sβ.ty | throwError "verified_compile: the structure {type} holds arrays"
-    let f ← withLocalDeclD `x type fun x => do
-      mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
-    return ⟨sβ.ty, some f⟩
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, a structure with a \
-    `Flat` instance, an array, or a pair"
-
-def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
-
 /-- The constructor and field names of a structure type other than `Prod`. -/
 def structOf? (type : Lean.Expr) : MetaM (Option (ConstructorVal × Array Name)) := do
   let type ← whnfR type
@@ -163,6 +132,47 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
     unless (leaves.map (·.1)).eraseDups.length == leaves.length do
       throwError "verified_compile: the `Flat` instance of {type} repeats a field"
     return leaves
+
+partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
+  if let some e ← elemOf? type then return ⟨.elem e, none⟩
+  let type ← whnfR type
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    let sa ← shapeOf a
+    let sb ← shapeOf b
+    let ty := match sa.ty, sb.ty with
+      | .elem ea, .elem eb => Ty.elem (.prod ea eb)
+      | ta, tb => .pair ta tb
+    if sa.flat.isNone && sb.flat.isNone then return ⟨ty, none⟩
+    let f ← withLocalDeclD `p type fun p => do
+      mkLambdaFVars #[p] (← mkAppM ``Prod.mk
+        #[sa.apply (← mkAppM ``Prod.fst #[p]), sb.apply (← mkAppM ``Prod.snd #[p])])
+    return ⟨ty, some f⟩
+  if let (``Array, #[el]) := type.getAppFnArgs then
+    let se ← shapeOf el
+    let .elem e := se.ty | throwError "verified_compile: an array holds elements, not {el}"
+    if se.flat.isNone then return ⟨.array e, none⟩
+    let φ ← se.fn el
+    let f ← withLocalDeclD `xs type fun xs => do mkLambdaFVars #[xs] (← mkAppM ``Array.map #[φ, xs])
+    return ⟨.array e, some f⟩
+  if let some (β, inst) ← flatInstance? type then
+    let sβ ← shapeOf β
+    unless sβ.ty matches .elem _ do
+      -- A structure that holds arrays is split as its tuple, which must be a pair of all its
+      -- fields.
+      let some (ctor, _) ← structOf? type
+        | throwError "verified_compile: {type} holds arrays and is not a structure"
+      let (``Prod, _) := (← whnfR β).getAppFnArgs
+        | throwError "verified_compile: the `Flat` instance of {type} holds arrays and is not a \
+            pair"
+      unless (← flatTree type β inst ctor).length == ctor.numFields do
+        throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
+    let f ← withLocalDeclD `x type fun x => do
+      mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
+    return ⟨sβ.ty, some f⟩
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, a structure with a \
+    `Flat` instance, an array, or a pair"
+
+def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
 
 /-- The steps to field `i` of a structure value in its flattening, if the type is a structure
 with a `Flat` instance. -/
@@ -337,24 +347,64 @@ def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
       #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some (← flatValue x),
         some (← envExpr rest)]
 
-/-- `e` with each projection of a pair `(a, b)` at its head replaced by the component. -/
-partial def projReduce (e : Lean.Expr) : Lean.Expr :=
+/-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
+replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
+from the inside out.  Each step is a reduction or eta for pairs, so the result is equal to `e` by
+`rfl`. -/
+partial def projReduce (e : Lean.Expr) : MetaM Lean.Expr := do
   let e := e.consumeMData.headBeta
   match e.getAppFnArgs with
-  | (``Prod.fst, #[_, _, p]) => match (projReduce p).getAppFnArgs with
+  | (``Prod.fst, #[_, _, p]) => match (← projReduce p).getAppFnArgs with
     | (``Prod.mk, #[_, _, a, _]) => projReduce a
-    | _ => e
-  | (``Prod.snd, #[_, _, p]) => match (projReduce p).getAppFnArgs with
+    | _ => return e
+  | (``Prod.snd, #[_, _, p]) => match (← projReduce p).getAppFnArgs with
     | (``Prod.mk, #[_, _, _, b]) => projReduce b
-    | _ => e
-  | _ => e
+    | _ => return e
+  | (``Prod.mk, #[α, β, a, b]) =>
+    let a ← projReduce a
+    let b ← projReduce b
+    if let (``Prod.fst, #[_, _, y]) := a.getAppFnArgs then
+      if let (``Prod.snd, #[_, _, y']) := b.getAppFnArgs then
+        if y == y' then return y
+    return mkApp4 e.getAppFn α β a b
+  | _ =>
+    let some (i, p) ← structProj? e | return e
+    let p ← projReduce p
+    let .const k _ := p.getAppFn | return e
+    let some (.ctorInfo ctor) := (← getEnv).find? k | return e
+    unless p.getAppNumArgs == ctor.numParams + ctor.numFields do return e
+    projReduce (p.getArg! (ctor.numParams + i))
 
-/-- Whether a Lean term reflects to a place: a variable or a pair of places. -/
-partial def isPlace (e : Lean.Expr) : Bool :=
-  let e := projReduce e
-  e.isFVar || match e.getAppFnArgs with
-    | (``Prod.mk, #[_, _, a, b]) => isPlace a && isPlace b
-    | _ => false
+/-- The `Flat` tuple of the fields of `e`, an application of a structure's constructor, built
+along the tuple tree of its instance. -/
+partial def ctorTuple? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let .const ctorName _ := e.getAppFn | return none
+  let some (.ctorInfo ctor) := (← getEnv).find? ctorName | return none
+  let type ← inferType e
+  let some (ctor', _) ← structOf? type | return none
+  unless ctor'.name == ctor.name do return none
+  let args := e.getAppArgs
+  unless args.size == ctor.numParams + ctor.numFields do return none
+  let some (β, inst) ← flatInstance? type | return none
+  let tree ← flatTree type β inst ctor
+  let fields := args.extract ctor.numParams args.size
+  let rec build (pre : List Bool) (ty : Lean.Expr) : MetaM Lean.Expr := do
+    if let some (i, _) := tree.find? (·.2 == pre.reverse) then return fields[i]!
+    let ty ← whnfR ty
+    let (``Prod, #[a, b]) := ty.getAppFnArgs
+      | throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
+    mkAppM ``Prod.mk #[← build (false :: pre) a, ← build (true :: pre) b]
+  return some (← build [] β)
+
+/-- Whether a Lean term reflects to a place: a variable, a pair of places, or a structure's
+constructor whose tuple of fields is a place, as `reflectStruct?` reflects it. -/
+partial def isPlace (e : Lean.Expr) : MetaM Bool := do
+  let e ← projReduce e
+  if e.isFVar then return true
+  if let (``Prod.mk, #[_, _, a, b]) := e.getAppFnArgs then
+    return (← isPlace a) && (← isPlace b)
+  if let some tuple ← ctorTuple? e then return ← isPlace tuple
+  return false
 
 /-- `fn args`, with each argument that `bind` marks bound by a `let` around the application, in
 order.  The result is equal to `fn args` by `zeta`. -/
@@ -415,6 +465,62 @@ def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
+
+/-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
+for its second. -/
+def tuplePath (x : Lean.Expr) : List Bool → MetaM Lean.Expr
+  | [] => return x
+  | false :: rest => do tuplePath (← mkAppM ``Prod.fst #[x]) rest
+  | true :: rest => do tuplePath (← mkAppM ``Prod.snd #[x]) rest
+
+/-- A pair or a record that holds arrays, viewed as a pair for its destructuring: the component
+types `α` and `β` of `α × β` or of the record's `Flat` tuple, the value built from components `a`
+and `b`, the pair `pair p` of a value `p`, `p` itself or `Flat.flat p`, and the proof `eta B v` of
+`B (rebuild (pair v).1 (pair v).2) = B v`. -/
+structure PairView where
+  α : Lean.Expr
+  β : Lean.Expr
+  rebuild : Lean.Expr → Lean.Expr → MetaM Lean.Expr
+  pair : Lean.Expr → Lean.Expr
+  eta : Lean.Expr → Lean.Expr → MetaM Lean.Expr
+
+/-- The view of `type` as a pair.  A pair's eta is `pair_eta`.  A record's is the theorem
+`base.flat_eta.R`, added once per program and record type and proved by `rfl` with `B` and `v`
+free, so that the kernel unfolds only the `Flat` instance and structure eta, never the terms that
+`B` and `v` stand for. -/
+def pairView (base : Name) (type : Lean.Expr) : MetaM PairView := do
+  let type ← whnfR type
+  if let (``Prod, #[α, β]) := type.getAppFnArgs then
+    return ⟨α, β, fun a b => mkAppM ``Prod.mk #[a, b], id, fun B v => mkAppM ``pair_eta #[B, v]⟩
+  let some (ctor, _) ← structOf? type
+    | throwError "verified_compile: {type} is not a pair or a record"
+  let some (τ, inst) ← flatInstance? type
+    | throwError "verified_compile: the record {type} has no `Flat` instance"
+  let (``Prod, #[α, β]) := (← whnfR τ).getAppFnArgs
+    | throwError "verified_compile: the `Flat` instance of {type} is not a pair"
+  let tree ← flatTree type τ inst ctor
+  let rebuild (a b : Lean.Expr) : MetaM Lean.Expr := do
+    let fields ← (List.range ctor.numFields).mapM fun i => do
+      match tree.find? (·.1 == i) with
+      | some (_, false :: rest) => tuplePath a rest
+      | some (_, true :: rest) => tuplePath b rest
+      | _ => throwError "verified_compile: the `Flat` instance of {type} does not hold field {i}"
+    return mkAppN (mkConst ctor.name type.getAppFn.constLevels!) (type.getAppArgs ++ fields.toArray)
+  let pair (p : Lean.Expr) := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type τ inst p
+  let .const n _ := type.getAppFn | throwError "verified_compile: the record {type}"
+  let name := base ++ `flat_eta ++ n
+  unless (← getEnv).contains name do
+    let (stmt, proof) ← withLocalDeclD `γ (mkSort levelOne) fun γ => do
+      withLocalDeclD `B (← mkArrow type γ) fun B => withLocalDeclD `v type fun v => do
+        let P := pair v
+        let lhs := mkApp B (← rebuild (← mkAppM ``Prod.fst #[P]) (← mkAppM ``Prod.snd #[P]))
+        let rhs := mkApp B v
+        let proof ← mkExpectedTypeHint (← mkEqRefl rhs) (← mkEq lhs rhs)
+        return (← mkForallFVars #[γ, B, v] (← mkEq lhs rhs), ← mkLambdaFVars #[γ, B, v] proof)
+    addTheorem name stmt proof
+  let eta (B v : Lean.Expr) : MetaM Lean.Expr := do
+    return mkApp3 (mkConst name) (← inferType (mkApp B v)) B v
+  return ⟨α, β, rebuild, pair, eta⟩
 
 /-- Whether the kernel finds `a` and `b` definitionally equal, in the current local context. -/
 def kernelDefEq (a b : Lean.Expr) : MetaM Bool := do
@@ -530,7 +636,7 @@ with `let` first.  A `let` of a place is replaced by its body with the place for
 and every variable of a pair type is split into variables for its components, so that a
 projection reads a component and a use of the whole is the pair of the components. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
-  let e := projReduce e
+  let e ← projReduce e
   if e.isFVar then
     let (x, t) ← varOf c e
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
@@ -563,14 +669,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         return (src, proof, .float)
     | .elem (.prod _ _) | .pair _ _ | .array _ => pure ()
   if let .letE n type value body _ := e then
-    if isPlace value then return ← reflectAs (body.instantiate1 value) e
+    if ← isPlace value then return ← reflectAs (body.instantiate1 value) e
     let s ← tyOf type
     if let .pair _ _ := s then
+      let view ← pairView c.base type
       let (src, proof, t) ← destructure c [] value fun a b => do
-        return body.instantiate1 (← mkAppM ``Prod.mk #[a, b])
-      -- The body at the pair of the value's components is the `let`, by eta for pairs.
+        return body.instantiate1 (← view.rebuild a b)
+      -- The body at the value built from the value's components is the `let`, by the view's eta.
       let lam := Lean.mkLambda n .default type body
-      let eta ← mkAppM ``pair_eta #[lam, value]
+      let eta ← view.eta lam value
       let some (_, lhs, _) := (← inferType eta).eq? | throwError "verified_compile: {eta}"
       return (src, ← restate proof (← mkExpectedTypeHint eta (← mkEq lhs e)), t)
     let (vs, hv, _) ← reflect c value
@@ -596,18 +703,18 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!
-      if let (``Prod.mk, #[_, _, a, b]) := (projReduce d).getAppFnArgs then
+      if let (``Prod.mk, #[_, _, a, b]) := (← projReduce d).getAppFnArgs then
         return ← reflectAs (alt.beta #[a, b]) e
       if let some (_, fields) ← structOf? (← inferType d) then
         -- The fields of a structure are its projections, of a variable bound to it first.
         let fieldsOf (y : Lean.Expr) : MetaM (Array Lean.Expr) := fields.mapM (mkProjection y)
-        let (src, proof, t) ← if (projReduce d).isFVar then reflect c (alt.beta (← fieldsOf d))
+        let (src, proof, t) ← if ← isPlace d then reflect c (alt.beta (← fieldsOf d))
           else reflect c (← withLetDecl `t (← inferType d) d fun y => do
             mkLetFVars #[y] (alt.beta (← fieldsOf y)))
         return (src, ← restate proof (← casesEq app fieldsOf), t)
       if let .elem _ ← tyOf (← inferType d) then
         -- The components of a tuple are its projections, of a variable bound to it first.
-        let (src, proof, t) ← if (projReduce d).isFVar then reflect c (alt.beta (← pairFields d))
+        let (src, proof, t) ← if (← projReduce d).isFVar then reflect c (alt.beta (← pairFields d))
           else reflect c (← withLetDecl `t (← inferType d) d fun y => do
             mkLetFVars #[y] (alt.beta (← pairFields y)))
         return (src, ← restate proof (← casesEq app pairFields), t)
@@ -663,7 +770,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
     unless ← isFloat α do throwError "verified_compile: unsupported {fn} on {α}"
     -- `min` and `max` are `if a ≤ b`, with operands that are not variables bound first.
-    let bind := [false, false, !(projReduce a).isFVar, !(projReduce b).isFVar]
+    let bind := [false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
     if bind.any id then
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
     let cond ← mkAppM ``LE.le #[a, b]
@@ -740,7 +847,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
-    let xs := projReduce xs
+    let xs ← projReduce xs
     unless xs.isFVar do
       return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (setArgs.set! 1 a))) e
@@ -754,7 +861,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Array.push, pushArgs@#[α, xs, v] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
-    let xs := projReduce xs
+    let xs ← projReduce xs
     unless xs.isFVar do
       return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (pushArgs.set! 1 a))) e
@@ -766,8 +873,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     return (src, ← mkAppM ``push_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, hv], .array el)
   | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
     let .array el ← tyOf α | throwError "verified_compile: unsupported term {e}"
-    let xs := projReduce xs
-    let ys := projReduce ys
+    let xs ← projReduce xs
+    let ys ← projReduce ys
     unless xs.isFVar do
       return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (appendArgs.set! 4 a))) e
@@ -800,7 +907,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
-    let xs := projReduce xs
+    let xs ← projReduce xs
     unless xs.isFVar do
       return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn #[mkAppN n.consumeMData.getAppFn (sizeArgs.set! 1 a)])) e
@@ -816,7 +923,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``getElem!, getArgs@#[_, _, β, _, _, inh, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: an index must be `i.toNat` for a word `i`, in {e}"
-    let xs := projReduce xs
+    let xs ← projReduce xs
     unless xs.isFVar do
       return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
         mkLetFVars #[a] (mkAppN e.getAppFn (getArgs.set! 6 a))) e
@@ -849,24 +956,7 @@ where
   /-- A structure built with its constructor: the tuple that its `Flat` instance makes of the
   fields, reflected as a tuple, whose meaning is the structure's flattening. -/
   reflectStruct? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
-    let .const ctorName _ := e.getAppFn | return none
-    let some (.ctorInfo ctor) := (← getEnv).find? ctorName | return none
-    let type ← inferType e
-    let some (ctor', _) ← structOf? type | return none
-    unless ctor'.name == ctor.name do return none
-    let args := e.getAppArgs
-    unless args.size == ctor.numParams + ctor.numFields do return none
-    let some (β, inst) ← flatInstance? type | return none
-    let tree ← flatTree type β inst ctor
-    let fields := args.extract ctor.numParams args.size
-    -- The tuple of the fields along the tree.
-    let rec build (pre : List Bool) (ty : Lean.Expr) : MetaM Lean.Expr := do
-      if let some (i, _) := tree.find? (·.2 == pre.reverse) then return fields[i]!
-      let ty ← whnfR ty
-      let (``Prod, #[a, b]) := ty.getAppFnArgs
-        | throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
-      mkAppM ``Prod.mk #[← build (false :: pre) a, ← build (true :: pre) b]
-    let tuple ← build [] β
+    let some tuple ← ctorTuple? e | return none
     let (src, proof, t) ← reflect c tuple
     return some (src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)), t)
   /-- `e`, reflected as the term `T` with `eq : T = e`. -/
@@ -922,7 +1012,7 @@ where
   reflectEnumMatch (app : MatcherApp) (n : Name) (inst : Lean.Expr) :
       MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let d := app.discrs[0]!
-    unless (projReduce d).isFVar do
+    unless (← projReduce d).isFVar do
       return ← reflectAs (← withLetDecl `t (← inferType d) d fun y => do
         mkLetFVars #[y] { app with discrs := #[y] }.toExpr) app.toExpr
     unless app.remaining.isEmpty do
@@ -1015,8 +1105,15 @@ where
     | x :: rest, body => do
       match ← tyOf (← inferType x) with
       | .pair _ _ =>
-        destructure c rest x fun a b => do
-          return body.replaceFVar x (← mkAppM ``Prod.mk #[a, b])
+        let view ← pairView c.base (← inferType x)
+        let (src, proof, t) ← destructure c rest x fun a b => do
+          return body.replaceFVar x (← view.rebuild a b)
+        -- The body at the value built from `x`'s components is the body, by the view's eta.
+        let P := view.pair x
+        let split := body.replaceFVar x
+          (← view.rebuild (← mkAppM ``Prod.fst #[P]) (← mkAppM ``Prod.snd #[P]))
+        let eta ← view.eta (← mkLambdaFVars #[x] body) x
+        return (src, ← restate proof (← mkExpectedTypeHint eta (← mkEq split body)), t)
       | _ => reflectSplit c rest body
   /-- The reflection of `body a` with `a : α` of type `s` as variable 0, with its proof abstracted
   over `a`, which is split when it has a pair type. -/
@@ -1049,7 +1146,7 @@ where
   reflectProj (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let rec walk (e : Lean.Expr) (steps : List Bool) :
         MetaM (Lean.Expr × List Bool × (Lean.Expr → MetaM Lean.Expr)) := do
-      let e := projReduce e
+      let e ← projReduce e
       let down (p : Lean.Expr) (path : List Bool) (step : Lean.Expr → MetaM Lean.Expr) := do
         let (base, steps, chain) ← walk p (path ++ steps)
         return (base, steps, fun y => do step (← chain y))
@@ -1075,21 +1172,20 @@ where
       return (src, ← rflProof c src (← flatValue e), .elem target)
     reflectAs (← withLetDecl `t (← inferType base) base fun y => do
       mkLetFVars #[y] (← chain y)) e
-  /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
-  of the body `body a b`, in which the variables `rest` are split. -/
+  /-- The destructuring of the pair or record `p` into the components `a` and `b` of its pair
+  view, as variables 1 and 0 of the body `body a b`, in which the variables `rest` are split. -/
   destructure (c : Ctx) (rest : List Lean.Expr) (p : Lean.Expr)
       (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (ps, hp, pt) ← reflect c p
     let .pair s t := pt | throwError "verified_compile: {p} is not a pair"
-    let (``Prod, #[α, β]) := (← whnfR (← inferType p)).getAppFnArgs
-      | throwError "verified_compile: {p} is not a pair"
-    let (bs, hb, u) ← reflectUnder c rest α β s t body
-    let sa ← shapeOf α
-    let sb ← shapeOf β
+    let view ← pairView c.base (← inferType p)
+    let (bs, hb, u) ← reflectUnder c rest view.α view.β s t body
+    let sa ← shapeOf view.α
+    let sb ← shapeOf view.β
     if sa.flat.isNone && sb.flat.isNone then
       return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
     return (← mkAppM ``Expr.letPair #[ps, bs],
-      ← mkAppM ``letPair_flat_eq #[← sa.fn α, ← sb.fn β, p, hp, hb], u)
+      ← mkAppM ``letPair_flat_eq #[← sa.fn view.α, ← sb.fn view.β, view.pair p, hp, hb], u)
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
   reflectCall? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
@@ -1100,9 +1196,10 @@ where
     unless args.size == callee.sig.params.length do
       throwError "verified_compile: {fn} must be applied to all {callee.sig.params.length} \
         arguments"
-    let bind := (args.toList.zip callee.sig.params).zipIdx.map fun ((a, t), i) =>
-      !t.scalar && if callee.sig.mode i = .owned then !(projReduce a).isFVar
-        else !isPlace a
+    let bind ← (args.toList.zip callee.sig.params).zipIdx.mapM fun ((a, t), i) => do
+      if t.scalar then return false
+      if callee.sig.mode i = .owned then return !(← projReduce a).isFVar
+      return !(← isPlace a)
     if bind.any id then
       return some (← reflectAs (← bindArgs e.getAppFn args.toList bind #[] #[]) e)
     let reflected ← args.toList.mapM (reflect c)
@@ -1119,7 +1216,10 @@ where
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
     return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.sig.result)
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
-    let (ls, hl, _) ← reflect c a
+    let (ls, hl, t) ← reflect c a
+    unless t == .word do
+      throwError "verified_compile: comparisons apply to words, floats, and enumerations, not \
+        {← inferType a}"
     let (rs, hr, _) ← reflect c b
     return (← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs], ← mkAppM ``cmp_eq #[cmpExpr op, hl, hr],
       .bool)
@@ -1227,6 +1327,13 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
   | .pair a b, (``Prod, #[ua, ub]) =>
     let (_, proof) ← agreeProd (← agreeTy ua a) (← agreeTy ub b)
     agreeAs userT inst src φ proof
+  | .pair _ _, _ =>
+    -- A record with arrays agrees as its `Flat` tuple does.
+    let some (β, _) ← flatInstance? userT
+      | throwError "verified_compile: the type {userT} does not have the shape of {tyExpr t}"
+    let (_, proof) ← agreeTy β t
+    agreeAs userT inst src φ
+      (← mkAppOptM ``Agree.flat #[some userT, some β, none, none, none, none, none, some proof])
   | _, _ => throwError "verified_compile: the type {userT} does not have the shape of {tyExpr t}"
 
 /-- The flattening of an argument of type `userT`, a value of `t.argTy m`, and the proof of
@@ -1406,13 +1513,6 @@ definition. -/
 def rflEq (x y : Lean.Expr) : MetaM Lean.Expr := do
   mkExpectedTypeHint (← mkEqRefl y) (← mkEq x y)
 
-/-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
-for its second. -/
-def tuplePath (x : Lean.Expr) : List Bool → MetaM Lean.Expr
-  | [] => return x
-  | false :: rest => do tuplePath (← mkAppM ``Prod.fst #[x]) rest
-  | true :: rest => do tuplePath (← mkAppM ``Prod.snd #[x]) rest
-
 /-- The inverse of the flattening of a Lean type, `none` for a type that flattening leaves as it
 is.  A pair maps its components, an array maps its elements, and a structure whose `Flat` instance
 is a tuple of all its fields builds the structure from the tuple's components.  The laws hold by
@@ -1480,19 +1580,30 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
   unless tree.length == ctor.numFields do
     throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
   let iβ ← inverseOf? β
-  let u ← withLocalDeclD `v src fun v => do
-    let w := match iβ with
-      | some i => i.u.beta #[v]
-      | none => v
+  -- The structure built from a tuple `w` of its fields.
+  let ctorOf (w : Lean.Expr) : MetaM Lean.Expr := do
     let fields ← (List.range ctor.numFields).mapM fun i => do
       let some (_, steps) := tree.find? (·.1 == i)
         | throwError "verified_compile: field {i} of {type} is missing from its `Flat` instance"
       tuplePath w steps
-    let app := mkAppN (mkConst ctor.name type.getAppFn.constLevels!)
-      (type.getAppArgs ++ fields.toArray)
-    mkLambdaFVars #[v] app
-  return some (inverse u (fun x => rflEq (u.beta #[φ.beta #[x]]) x)
-    (fun v => rflEq (φ.beta #[u.beta #[v]]) v))
+    return mkAppN (mkConst ctor.name type.getAppFn.constLevels!) (type.getAppArgs ++ fields.toArray)
+  let u ← withLocalDeclD `v src fun v => do
+    mkLambdaFVars #[v] (← ctorOf (match iβ with
+      | some i => i.u.beta #[v]
+      | none => v))
+  let some i := iβ
+    | return some (inverse u (fun x => rflEq (u.beta #[φ.beta #[x]]) x)
+        (fun v => rflEq (φ.beta #[u.beta #[v]]) v))
+  -- The tuple's laws, under the structure's constructor; the rest is structure eta and the
+  -- unfolding of `Flat.flat`.
+  let left (x : Lean.Expr) : MetaM Lean.Expr := do
+    let fx := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x
+    let ctorFn ← withLocalDeclD `t β fun t => do mkLambdaFVars #[t] (← ctorOf t)
+    let h ← transHint (← mkCongrArg ctorFn (← i.left fx)) (← rflEq (← ctorOf fx) x)
+    mkExpectedTypeHint h (← mkEq (u.beta #[φ.beta #[x]]) x)
+  let right (v : Lean.Expr) : MetaM Lean.Expr := do
+    mkExpectedTypeHint (← i.right v) (← mkEq (φ.beta #[u.beta #[v]]) v)
+  return some (inverse u left right)
 
 /-- The proof of `∀ env, P env` for environments of the context `ts`, from the proof that `k`
 gives of `P (Env.cons v₀ (… Env.nil))` for variables `v₀ …` of the context's types. -/
