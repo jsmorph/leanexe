@@ -121,17 +121,41 @@ def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
     mkAppOptM ``Env.cons
       #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some x, some (← envExpr rest)]
 
+/-- Whether a Lean term reflects to a place: a variable or a pair of places. -/
+partial def isPlace (e : Lean.Expr) : Bool :=
+  let e := e.consumeMData
+  e.isFVar || match e.getAppFnArgs with
+    | (``Prod.mk, #[_, _, a, b]) => isPlace a && isPlace b
+    | _ => false
+
+/-- `fn args`, with each argument that `bind` marks bound by a `let` around the application, in
+order.  The result is equal to `fn args` by `zeta`. -/
+def bindArgs (fn : Lean.Expr) : List Lean.Expr → List Bool → Array Lean.Expr → Array Lean.Expr →
+    MetaM Lean.Expr
+  | [], _, newArgs, fvars => mkLetFVars fvars (mkAppN fn newArgs)
+  | a :: as, b :: bs, newArgs, fvars => do
+    if b then
+      withLetDecl `a (← inferType a) a fun x => bindArgs fn as bs (newArgs.push x) (fvars.push x)
+    else bindArgs fn as bs (newArgs.push a) fvars
+  | a :: as, [], newArgs, fvars => bindArgs fn as [] (newArgs.push a) fvars
+
+/-- The source variable for the Lean variable `e` in scope, and its type. -/
+def varOf (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Ty) := do
+  let some i := c.vars.findIdx? (·.1 == e)
+    | throwError "verified_compile: {e} is not a variable in scope"
+  let some (_, t) := c.vars[i]? | throwError "verified_compile: variable index {i}"
+  let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty) |>.app
+    (tyExpr t))
+  return (← mkAppOptM ``Var.ofIndex #[some (tyExpr t), some c.ctx, some (toExpr i), some proof],
+    t)
+
 /-- The source expression for the Lean term `e`, with the proof that it means `e`, and its
-type. -/
+type.  An array that a reader reads and an argument with arrays that is not a place are bound
+with `let` first. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
   let e := e.consumeMData.headBeta
   if e.isFVar then
-    let some i := c.vars.findIdx? (·.1 == e)
-      | throwError "verified_compile: {e} is not a variable in scope"
-    let some (_, t) := c.vars[i]? | throwError "verified_compile: variable index {i}"
-    let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty) |>.app
-      (tyExpr t))
-    let x ← mkAppOptM ``Var.ofIndex #[some (tyExpr t), some c.ctx, some (toExpr i), some proof]
+    let (x, t) ← varOf c e
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return (src, ← rflProof c src e, t)
   if let some src := ← reflectCall? e then return src
@@ -210,23 +234,30 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return f.beta #[i, acc]
     return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
   | ``Nat.toUInt64, #[n] =>
-    let (``Array.size, #[_, xs]) := n.consumeMData.getAppFnArgs
+    let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
-    let (s, h, _) ← reflectArray xs
-    return (← mkAppM ``Expr.size #[s], ← mkAppM ``size_eq #[h], .word)
-  | ``getElem!, #[_, _, _, _, _, _, xs, k] =>
+    let xs := xs.consumeMData
+    unless xs.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn #[mkAppN n.consumeMData.getAppFn (sizeArgs.set! 1 a)]))
+    let (x, t) ← varOf c xs
+    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
+    let src ← mkAppOptM ``Expr.size #[some c.sigs, some c.ctx, some x]
+    return (src, ← rflProof c src e, .word)
+  | ``getElem!, getArgs@#[_, _, _, _, _, _, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: an index must be `i.toNat` for a word `i`, in {e}"
-    let (as, ha, _) ← reflectArray xs
+    let xs := xs.consumeMData
+    unless xs.isFVar do
+      return ← reflect c (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (getArgs.set! 6 a)))
+    let (x, t) ← varOf c xs
+    unless t == .array do throwError "verified_compile: {xs} is not an Array UInt64"
     let (is, hi, _) ← reflect c i
-    return (← mkAppM ``Expr.get #[as, is], ← mkAppM ``get_eq #[ha, hi], .word)
+    return (← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, some x, some is],
+      ← mkAppM ``get_eq #[x, hi], .word)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
-  /-- The reflection of an expression of type `Array UInt64`. -/
-  reflectArray (xs : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
-    let r ← reflect c xs
-    unless r.2.2 == .array do throwError "verified_compile: {xs} is not an Array UInt64"
-    return r
   /-- The reflection of `body a b` with `a : α` of type `s` as variable 1 and `b : β` of type `t`
   as variable 0, with its proof abstracted over `a` and `b`. -/
   reflectUnder (α β : Lean.Expr) (s t : Ty) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
@@ -257,6 +288,9 @@ where
     let args := e.getAppArgs
     unless args.size == callee.params.length do
       throwError "verified_compile: {fn} must be applied to all {callee.params.length} arguments"
+    let bind := (args.toList.zip callee.params).map fun (a, t) => !t.scalar && !isPlace a
+    if bind.any id then
+      return some (← reflect c (← bindArgs e.getAppFn args.toList bind #[] #[]))
     let reflected ← args.toList.mapM (reflect c)
     let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
     let argList ← reflected.foldrM (fun (s, _, _) acc => mkAppM ``Args.cons #[s, acc]) nilArgs
@@ -301,9 +335,6 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
   lambdaTelescope (← instantiateMVars info.value) fun params body => do
     let types ← params.toList.mapM fun p => do tyOf (← inferType p)
     let result ← tyOf (← inferType body)
-    unless result.scalar do
-      throwError "verified_compile: the result of {name} contains an array, which needs an \
-        owned result"
     let vars := params.toList.zip types
     let env ← envExpr vars
     let (src, proof, _) ← reflect ⟨sigs, funs, callees, vars, env⟩ body
@@ -314,7 +345,7 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let lhs ← mkAppM ``Func.denote #[mkConst (base ++ `func), funs, env]
     let eqType ← mkForallFVars params (← mkEq lhs (mkAppN (mkConst name) params))
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params proof)
-    let aborts ← reduce (← mkAppM ``Expr.aborts #[src])
+    let aborts ← reduce (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
     unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
       throwError "verified_compile: cannot evaluate whether {name} may trap"
     return ⟨name, types, result, aborts.isConstOf ``Bool.true⟩
@@ -390,7 +421,7 @@ def elabVerifiedCompile : CommandElab
       elabCommand (← `(theorem $implId :
           LeanExe.Pipeline.ImplementsA $aborts $moduleId $index $lean (fun _ _ _ => True)
             (fun _ _ _ _ _ => True) := by
-          have h := Verified.ImplementsA.lean rfl (Verified.Prog.correct $progId $fvar).1
+          have h := Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1
           have hComp : (fun $x => Verified.Funs.get (Verified.Prog.funs $progId) $fvar
               (Verified.Env.ofArgs _ $x)) = $lean := by
             funext $x

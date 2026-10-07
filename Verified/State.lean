@@ -135,21 +135,54 @@ theorem wp_storeCode {m : Module} {Q : Assertion α} {store : Store α} {host : 
       exact hout1 j (by simp at hj; omega)
 
 
+theorem Ty.scalar_pair {a b : Ty} (h : (Ty.pair a b).scalar = true) :
+    a.scalar = true ∧ b.scalar = true := by
+  simpa [Ty.scalar] using h
+
 /-- The array `xs` at `ptr` in `heap` at `store`, borrowed or owned. -/
 def Mode.array : Mode → Heap → Store Unit → UInt64 → Array UInt64 → Prop
   | .borrowed, heap, store, ptr, xs => heap.Borrowed store ptr xs
   | .owned, heap, store, ptr, xs => heap.Owned store ptr xs
 
+/-- The blocks of the objects that an owned value's arrays occupy, each as its start and
+length. -/
+def Ty.blocks (store : Store Unit) : (t : Ty) → List Value → t.denote → List (Nat × Nat)
+  | .word, _, _ | .bool, _, _ => []
+  | .pair a b, ws, p =>
+    a.blocks store (ws.take a.width) p.1 ++ b.blocks store (ws.drop a.width) p.2
+  | .array, ws, _ => match ws with
+    | [.i64 ptr] => [block store ptr]
+    | _ => []
+
+/-- The regions of a borrowed value's arrays: each array's length word and elements. -/
+def Ty.reads : (t : Ty) → List Value → t.denote → List (Nat × Nat)
+  | .word, _, _ | .bool, _, _ => []
+  | .pair a b, ws, p => a.reads (ws.take a.width) p.1 ++ b.reads (ws.drop a.width) p.2
+  | .array, ws, xs => match ws with
+    | [.i64 ptr] => [(ptr.toNat, 8 * (xs.size + 1))]
+    | _ => []
+
+/-- The regions that a value occupies: its blocks when owned, and its arrays' regions when
+borrowed. -/
+def Ty.regions (mode : Mode) (store : Store Unit) (t : Ty) (ws : List Value) (v : t.denote) :
+    List (Nat × Nat) :=
+  match mode with
+  | .owned => t.blocks store ws v
+  | .borrowed => t.reads ws v
+
 /-- The words `ws` represent the value `v` of type `t` in `heap` at `store`, with the arrays that
 the value contains held in mode `mode`: a word as itself, a `Bool` as 1 or 0, a pair as its first
-component's words followed by its second's, and an array as its address. -/
+component's words followed by its second's, and an array as its address.  The components of an
+owned pair occupy disjoint blocks. -/
 def Ty.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
     (t : Ty) → List Value → t.denote → Prop
   | .word, ws, v => ws = [.i64 v]
   | .bool, ws, b => ws = [.i64 (boolWord b)]
   | .pair a b, ws, p =>
     ∃ first second, ws = first ++ second ∧ a.Rep mode heap store first p.1 ∧
-      b.Rep mode heap store second p.2
+      b.Rep mode heap store second p.2 ∧
+      (mode = .owned → ∀ x ∈ a.blocks store first p.1, ∀ y ∈ b.blocks store second p.2,
+        regionsDisjoint x y)
   | .array, ws, xs => ∃ ptr, ws = [.i64 ptr] ∧ mode.array heap store ptr xs
 
 theorem Mode.array.borrow {mode : Mode} {heap : Heap} {store : Store Unit} {ptr : UInt64}
@@ -168,16 +201,59 @@ theorem Ty.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       ws.length = t.width
   | .word, _, _, h | .bool, _, _, h => by subst h; rfl
-  | .pair _ _, _, _, ⟨_, _, h, h1, h2⟩ => by
+  | .pair _ _, _, _, ⟨_, _, h, h1, h2, _⟩ => by
     subst h; simp [Ty.width, h1.length, h2.length]
   | .array, _, _, ⟨_, h, _⟩ => by subst h; rfl
+
+theorem Ty.blocks_append {store : Store Unit} {a b : Ty} {first second : List Value}
+    {p : a.denote × b.denote} (h : first.length = a.width) :
+    (Ty.pair a b).blocks store (first ++ second) p =
+      a.blocks store first p.1 ++ b.blocks store second p.2 := by
+  simp [Ty.blocks, ← h]
+
+theorem Ty.reads_append {a b : Ty} {first second : List Value} {p : a.denote × b.denote}
+    (h : first.length = a.width) :
+    (Ty.pair a b).reads (first ++ second) p = a.reads first p.1 ++ b.reads second p.2 := by
+  simp [Ty.reads, ← h]
+
+theorem Ty.regions_append {mode : Mode} {store : Store Unit} {a b : Ty}
+    {first second : List Value} {p : a.denote × b.denote} (h : first.length = a.width) :
+    (Ty.pair a b).regions mode store (first ++ second) p =
+      a.regions mode store first p.1 ++ b.regions mode store second p.2 := by
+  cases mode
+  · exact Ty.reads_append h
+  · exact Ty.blocks_append h
+
+theorem Ty.blocks_scalar {store : Store Unit} :
+    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.blocks store ws v = []
+  | .word, _, _, _ | .bool, _, _, _ => rfl
+  | .pair a b, h, ws, p => by
+    simp only [Ty.blocks, a.blocks_scalar (Ty.scalar_pair h).1,
+      b.blocks_scalar (Ty.scalar_pair h).2, List.append_nil]
+  | .array, h, _, _ => absurd h (by decide)
+
+theorem Ty.regions_scalar {mode : Mode} {store : Store Unit} :
+    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.regions mode store ws v = []
+  | .word, _, _, _ | .bool, _, _, _ => by cases mode <;> rfl
+  | .pair a b, h, ws, p => by
+    cases mode
+    · simp only [Ty.regions, Ty.reads]
+      have ha := a.regions_scalar (mode := .borrowed) (store := store) (Ty.scalar_pair h).1
+        (ws.take a.width) p.1
+      have hb := b.regions_scalar (mode := .borrowed) (store := store) (Ty.scalar_pair h).2
+        (ws.drop a.width) p.2
+      simp only [Ty.regions] at ha hb
+      rw [ha, hb]; rfl
+    · exact Ty.blocks_scalar _ h ws p
+  | .array, h, _, _ => absurd h (by decide)
 
 /-- A value read where a borrowed one suffices. -/
 theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       t.Rep .borrowed heap store ws v
   | .word, _, _, h | .bool, _, _, h => h
-  | .pair _ _, _, _, ⟨first, second, h, h1, h2⟩ => ⟨first, second, h, h1.borrow, h2.borrow⟩
+  | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩ =>
+    ⟨first, second, h, h1.borrow, h2.borrow, nofun⟩
   | .array, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.borrow⟩
 
 /-- A value whose type holds no arrays has the same words in either mode. -/
@@ -185,9 +261,9 @@ theorem Ty.Rep.owned {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → t.scalar = true → {ws : List Value} → {v : t.denote} →
       t.Rep mode heap store ws v → t.Rep .owned heap store ws v
   | .word, _, _, _, h | .bool, _, _, _, h => h
-  | .pair _ _, hs, _, _, ⟨first, second, h, h1, h2⟩ =>
-    ⟨first, second, h, h1.owned (by simp [Ty.scalar] at hs; exact hs.1),
-      h2.owned (by simp [Ty.scalar] at hs; exact hs.2)⟩
+  | .pair a _, hs, _, _, ⟨first, second, h, h1, h2, _⟩ =>
+    ⟨first, second, h, h1.owned (Ty.scalar_pair hs).1, h2.owned (Ty.scalar_pair hs).2,
+      fun _ x hx => by rw [a.blocks_scalar (Ty.scalar_pair hs).1] at hx; exact nomatch hx⟩
   | .array, hs, _, _, _ => absurd hs (by decide)
 
 /-- The words of the values of a context, in order. -/
@@ -223,80 +299,279 @@ theorem Env.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
   width _ := t.width
   borrowed heap store vs v := t.Rep .borrowed heap store vs v
   owned heap store vs v := t.Rep .owned heap store vs v
-  blocks _ _ _ := []
+  blocks store vs v := t.blocks store vs v
   reads _ _ _ := []
   moves _ _ _ := []
 
 /-- A step from `heap` at `store` to `heap'` at `store'`: the allocator invariant holds after it,
-the memory caps are unchanged, and every region of `heap` keeps its bytes and is a region of
-`heap'`. -/
-structure Step (heap : Heap) (store : Store Unit) (heap' : Heap) (store' : Store Unit) : Prop where
+the memory caps are unchanged, and every region of `heap` in `keep` keeps its bytes, is a region
+of `heap'`, and lies apart from the blocks `fresh`.  The regions outside `keep` are those of the
+blocks that the step consumes. -/
+structure Step (heap : Heap) (store : Store Unit) (keep : Nat × Nat → Prop) (heap' : Heap)
+    (store' : Store Unit) (fresh : List (Nat × Nat)) : Prop where
   at_ : heap'.At store'
   caps : store'.memoryCaps = store.memoryCaps
-  keeps : heap.Keeps store [] heap' store' []
+  keeps : ∀ r, heap.Region r → 0 < r.2 → keep r →
+    (∀ a, r.1 ≤ a → a < r.1 + r.2 → store'.mem.bytes a = store.mem.bytes a) ∧
+      heap'.Region r ∧ ∀ b ∈ fresh, regionsDisjoint r b
 
-theorem Step.refl {heap : Heap} {store : Store Unit} (h : heap.At store) :
-    Step heap store heap store :=
-  ⟨h, rfl, Heap.Keeps.refl heap store []⟩
+namespace Step
 
-theorem Step.trans {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit}
-    (h1 : Step heap store heap1 store1) (h2 : Step heap1 store1 heap2 store2) :
-    Step heap store heap2 store2 :=
-  ⟨h2.at_, h2.caps.trans h1.caps, h1.keeps.trans h2.keeps fun _ _ _ _ hb => nomatch hb⟩
+variable {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit}
+  {keep keep1 keep2 : Nat × Nat → Prop} {fresh fresh1 fresh2 : List (Nat × Nat)}
 
-theorem Step.cap {heap heap' : Heap} {store store' : Store Unit} (h : Step heap store heap' store')
-    (m : Module) : store'.memoryCap m 0 = store.memoryCap m 0 := by
+theorem refl (h : heap.At store) (keep : Nat × Nat → Prop) : Step heap store keep heap store [] :=
+  ⟨h, rfl, fun _ hr _ _ => ⟨fun _ _ _ => rfl, hr, nofun⟩⟩
+
+/-- Two steps in a row, the second keeping what the first keeps and leaves apart from its
+blocks. -/
+theorem transBoth (h1 : Step heap store keep1 heap1 store1 fresh1)
+    (h2 : Step heap1 store1 keep2 heap2 store2 fresh2)
+    (hKeep : ∀ r, keep r → keep1 r ∧ ((∀ b ∈ fresh1, regionsDisjoint r b) → keep2 r)) :
+    Step heap store keep heap2 store2 (fresh1 ++ fresh2) := by
+  refine ⟨h2.at_, h2.caps.trans h1.caps, fun r hr hpos hk => ?_⟩
+  obtain ⟨hk1, hk2⟩ := hKeep r hk
+  obtain ⟨hBytes1, hRegion1, hFresh1⟩ := h1.keeps r hr hpos hk1
+  obtain ⟨hBytes2, hRegion2, hFresh2⟩ := h2.keeps r hRegion1 hpos (hk2 hFresh1)
+  refine ⟨fun a hl hh => (hBytes2 a hl hh).trans (hBytes1 a hl hh), hRegion2, fun b hb => ?_⟩
+  rcases List.mem_append.mp hb with hb | hb
+  · exact hFresh1 b hb
+  · exact hFresh2 b hb
+
+theorem trans (h1 : Step heap store keep1 heap1 store1 fresh1)
+    (h2 : Step heap1 store1 keep2 heap2 store2 fresh2)
+    (hKeep : ∀ r, keep r → keep1 r ∧ ((∀ b ∈ fresh1, regionsDisjoint r b) → keep2 r)) :
+    Step heap store keep heap2 store2 fresh2 :=
+  let h := h1.transBoth h2 hKeep
+  ⟨h.at_, h.caps, fun r hr hpos hk => by
+    obtain ⟨hb, hreg, hf⟩ := h.keeps r hr hpos hk
+    exact ⟨hb, hreg, fun b hb' => hf b (List.mem_append_right _ hb')⟩⟩
+
+/-- A step for fewer kept regions and fewer fresh blocks. -/
+theorem mono (h : Step heap store keep1 heap1 store1 fresh1) {keep' : Nat × Nat → Prop}
+    {fresh' : List (Nat × Nat)} (hKeep : ∀ r, keep' r → keep1 r)
+    (hFresh : ∀ b ∈ fresh', b ∈ fresh1) : Step heap store keep' heap1 store1 fresh' :=
+  ⟨h.at_, h.caps, fun r hr hpos hk => by
+    obtain ⟨hb, hreg, hf⟩ := h.keeps r hr hpos (hKeep r hk)
+    exact ⟨hb, hreg, fun b hb' => hf b (hFresh b hb')⟩⟩
+
+theorem cap (h : Step heap store keep heap1 store1 fresh) (m : Module) :
+    store1.memoryCap m 0 = store.memoryCap m 0 := by
   simp [Store.memoryCap, h.caps]
 
+theorem borrowed (h : Step heap store keep heap1 store1 fresh) {p : UInt64} {xs : Array UInt64}
+    (hp : heap.Borrowed store p xs) (hk : keep (p.toNat, 8 * (xs.size + 1))) :
+    heap1.Borrowed store1 p xs ∧ ∀ b ∈ fresh, regionsDisjoint (p.toNat, 8 * (xs.size + 1)) b := by
+  obtain ⟨hBytes, hRegion, hFresh⟩ := h.keeps _ hp.region (by show 0 < 8 * (xs.size + 1); omega) hk
+  exact ⟨hp.keepIn h.at_ hBytes hRegion, hFresh⟩
+
+theorem owned (h : Step heap store keep heap1 store1 fresh) {p : UInt64} {xs : Array UInt64}
+    (hp : heap.Owned store p xs) (hk : keep (block store p)) :
+    (heap1.Owned store1 p xs ∧ capacityAt store1 p = capacityAt store p) ∧
+      ∀ b ∈ fresh, regionsDisjoint (block store p) b := by
+  obtain ⟨hBytes, hRegion, hFresh⟩ := h.keeps _ hp.region (by simp [block]) hk
+  exact ⟨hp.keepIn h.at_ hBytes hRegion, hFresh⟩
+
+end Step
+
+/-- An array after a step that keeps its region: it is still held in its mode, its region is the
+same, and the region lies apart from the step's fresh blocks. -/
 theorem Mode.array.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit}
-    {ptr : UInt64} {xs : Array UInt64} (hStep : Step heap store heap' store')
-    (h : mode.array heap store ptr xs) : mode.array heap' store' ptr xs := by
+    {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)} {ptr : UInt64} {xs : Array UInt64}
+    (hStep : Step heap store keep heap' store' fresh) (h : mode.array heap store ptr xs)
+    (hKeep : ∀ r ∈ Ty.array.regions mode store [.i64 ptr] xs, keep r) :
+    mode.array heap' store' ptr xs ∧
+      Ty.array.regions mode store' [.i64 ptr] xs = Ty.array.regions mode store [.i64 ptr] xs ∧
+      ∀ r ∈ Ty.array.regions mode store [.i64 ptr] xs, ∀ b ∈ fresh, regionsDisjoint r b := by
   cases mode
-  · exact (hStep.keeps.borrowed hStep.at_ h fun _ hb => nomatch hb).1
-  · exact ((hStep.keeps.owned hStep.at_ h fun _ hb => nomatch hb).1).1
+  · obtain ⟨h1, h2⟩ := hStep.borrowed h (hKeep _ (List.mem_singleton_self _))
+    refine ⟨h1, rfl, fun r hr => ?_⟩
+    rw [List.mem_singleton.mp hr]
+    exact h2
+  · obtain ⟨⟨h1, hCap⟩, h2⟩ := hStep.owned h (hKeep _ (List.mem_singleton_self _))
+    refine ⟨h1, ?_, fun r hr => ?_⟩
+    · simp [Ty.regions, Ty.blocks, block_eq hCap]
+    · rw [List.mem_singleton.mp hr]
+      exact h2
 
-/-- A value's words represent it after a step. -/
+/-- A value after a step that keeps its regions: its words still represent it, its regions are
+the same, and they lie apart from the step's fresh blocks. -/
 theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit}
-    (hStep : Step heap store heap' store') :
+    {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)}
+    (hStep : Step heap store keep heap' store' fresh) :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
-      t.Rep mode heap' store' ws v
-  | .word, _, _, h | .bool, _, _, h => h
-  | .pair _ _, _, _, ⟨first, second, h, h1, h2⟩ =>
-    ⟨first, second, h, h1.step hStep, h2.step hStep⟩
-  | .array, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.step hStep⟩
+      (∀ r ∈ t.regions mode store ws v, keep r) →
+      t.Rep mode heap' store' ws v ∧ t.regions mode store' ws v = t.regions mode store ws v ∧
+        ∀ r ∈ t.regions mode store ws v, ∀ b ∈ fresh, regionsDisjoint r b
+  | .word, _, _, h, _ => ⟨h, by cases mode <;> rfl, by cases mode <;> exact nofun⟩
+  | .bool, _, _, h, _ => ⟨h, by cases mode <;> rfl, by cases mode <;> exact nofun⟩
+  | .pair a b, _, p, ⟨first, second, rfl, h1, h2, hd⟩, hKeep => by
+    have hl := h1.length
+    rw [Ty.regions_append hl] at hKeep
+    obtain ⟨r1, e1, f1⟩ := h1.step hStep fun r hr => hKeep r (List.mem_append_left _ hr)
+    obtain ⟨r2, e2, f2⟩ := h2.step hStep fun r hr => hKeep r (List.mem_append_right _ hr)
+    refine ⟨⟨first, second, rfl, r1, r2, fun hm x hx y hy => ?_⟩, ?_, ?_⟩
+    · subst hm
+      have e1' : a.blocks store' first p.1 = a.blocks store first p.1 := e1
+      have e2' : b.blocks store' second p.2 = b.blocks store second p.2 := e2
+      rw [e1'] at hx
+      rw [e2'] at hy
+      exact hd rfl x hx y hy
+    · rw [Ty.regions_append hl, Ty.regions_append hl, e1, e2]
+    · rw [Ty.regions_append hl]
+      intro r hr
+      rcases List.mem_append.mp hr with hr | hr
+      · exact f1 r hr
+      · exact f2 r hr
+  | .array, _, _, ⟨ptr, rfl, ha⟩, hKeep => by
+    obtain ⟨h1, h2, h3⟩ := ha.step hStep hKeep
+    exact ⟨⟨ptr, rfl, h1⟩, h2, h3⟩
 
-/-- Each variable `x` live in `live` starts at local `(slots.getD x.index default).loc`, its
-words end below `base`, and its locals hold words that represent its value in `heap` at
-`store`, in the variable's mode. -/
+/-- Locals that hold two lists in a row hold each. -/
+theorem LocalsHold.append {s : Locals} {loc : Nat} {first second : List Value} :
+    LocalsHold s loc (first ++ second) ↔
+      LocalsHold s loc first ∧ LocalsHold s (loc + first.length) second := by
+  constructor
+  · intro h
+    refine ⟨fun k hk => ?_, fun k hk => ?_⟩
+    · have := h k (by simp; omega)
+      rwa [List.getElem_append_left hk] at this
+    · have := h (first.length + k) (by simp; omega)
+      rw [List.getElem_append_right (by omega)] at this
+      rw [Nat.add_assoc]
+      simpa using this
+  · rintro ⟨h1, h2⟩ k hk
+    by_cases hk1 : k < first.length
+    · rw [List.getElem_append_left hk1]
+      exact h1 k hk1
+    · rw [List.getElem_append_right (by omega)]
+      have := h2 (k - first.length) (by simp at hk; omega)
+      rw [show loc + first.length + (k - first.length) = loc + k by omega] at this
+      exact this
+
+/-- Locals that hold words of a given length determine them. -/
+theorem LocalsHold.unique {s : Locals} {loc : Nat} {ws1 ws2 : List Value}
+    (h1 : LocalsHold s loc ws1) (h2 : LocalsHold s loc ws2) (hl : ws1.length = ws2.length) :
+    ws1 = ws2 := by
+  apply List.ext_getElem hl
+  intro k hk1 hk2
+  have := (h1 k hk1).symm.trans (h2 k hk2)
+  exact Option.some.inj this
+
+theorem Var.index_lt {Γ : List Ty} {t : Ty} (x : Var Γ t) : x.index < Γ.length := by
+  induction x with
+  | here => simp [Var.index]
+  | there y ih => simp [Var.index]; omega
+
+theorem Var.getElem?_index {Γ : List Ty} {t : Ty} : (x : Var Γ t) → Γ[x.index]? = some t
+  | .here => rfl
+  | .there x => by simp [Var.index, x.getElem?_index]
+
+theorem Var.index_ofIndex : (Γ : List Ty) → (i : Nat) → {t : Ty} → (h : Γ[i]? = some t) →
+    (Var.ofIndex Γ i h).index = i
+  | _ :: _, 0, _, h => by simp at h; subst h; rfl
+  | _ :: Γ, i + 1, _, h => by
+    simp only [Var.ofIndex, Var.index]
+    rw [Var.index_ofIndex Γ i]
+  | [], _, _, h => by simp at h
+
+/-- The facts about the variables live in `live`.  Each starts at its slot's local, its words end
+below `base`, and its locals hold words that represent its value in its mode in `heap` at
+`store`.  The blocks of a live owned variable lie apart from the regions of every other live
+variable: from its blocks when it is owned and from its arrays when it is borrowed. -/
 def Holds {Γ : List Ty} (env : Env Γ) (slots : List Slot) (live : Nat → Bool) (base : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals) : Prop :=
-  ∀ (t : Ty) (x : Var Γ t), live x.index = true →
+  (∀ (t : Ty) (x : Var Γ t), live x.index = true →
     (slots.getD x.index default).loc + t.width ≤ base ∧
     ∃ ws, LocalsHold s (slots.getD x.index default).loc ws ∧
-      t.Rep (slots.getD x.index default).mode heap store ws (env.get x)
+      t.Rep (slots.getD x.index default).mode heap store ws (env.get x)) ∧
+  ∀ (t u : Ty) (x : Var Γ t) (y : Var Γ u), live x.index = true → live y.index = true →
+    x.index ≠ y.index → (slots.getD x.index default).mode = .owned →
+    ∀ wx wy, LocalsHold s (slots.getD x.index default).loc wx → wx.length = t.width →
+      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      ∀ b ∈ t.blocks store wx (env.get x),
+        ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), regionsDisjoint b c
+
+/-- A value lies apart from the variables live in `live`: its regions lie apart from those of
+each live variable when either is owned. -/
+def Holds.Apart {Γ : List Ty} (env : Env Γ) (slots : List Slot) (live : Nat → Bool)
+    (store : Store Unit) (s : Locals) (t : Ty) (mode : Mode) (ws : List Value) (v : t.denote) :
+    Prop :=
+  ∀ (u : Ty) (y : Var Γ u), live y.index = true →
+    (mode = .owned ∨ (slots.getD y.index default).mode = .owned) →
+    ∀ wy, LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      ∀ b ∈ t.regions mode store ws v,
+        ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), regionsDisjoint b c
+
+/-- The region `r` lies apart from the blocks of the owned variables live in `liveIn` and not in
+`liveOut`, those that die between the two. -/
+def Holds.KeepDying {Γ : List Ty} (env : Env Γ) (slots : List Slot) (liveIn liveOut : Nat → Bool)
+    (store : Store Unit) (s : Locals) (r : Nat × Nat) : Prop :=
+  ∀ (t : Ty) (x : Var Γ t), liveIn x.index = true → liveOut x.index = false →
+    (slots.getD x.index default).mode = .owned →
+    ∀ wx, LocalsHold s (slots.getD x.index default).loc wx → wx.length = t.width →
+      ∀ b ∈ t.blocks store wx (env.get x), regionsDisjoint r b
 
 namespace Holds
 
 variable {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool} {base : Nat}
   {heap : Heap} {store : Store Unit} {s : Locals}
 
+/-- The words of a live variable. -/
+theorem get (h : Holds env slots live base heap store s) {t : Ty} (x : Var Γ t)
+    (hx : live x.index = true) :
+    (slots.getD x.index default).loc + t.width ≤ base ∧
+    ∃ ws, LocalsHold s (slots.getD x.index default).loc ws ∧
+      t.Rep (slots.getD x.index default).mode heap store ws (env.get x) :=
+  h.1 t x hx
+
 /-- `Holds` for fewer variables. -/
 theorem live_mono (h : Holds env slots live base heap store s) {live' : Nat → Bool}
     (hLive : ∀ i, live' i = true → live i = true) : Holds env slots live' base heap store s :=
-  fun t x hx => h t x (hLive _ hx)
+  ⟨fun t x hx => h.1 t x (hLive _ hx),
+    fun t u x y hx hy => h.2 t u x y (hLive _ hx) (hLive _ hy)⟩
+
+/-- `Holds` for fewer variables, compared on the indices of variables. -/
+theorem live_mono' (h : Holds env slots live base heap store s) {live' : Nat → Bool}
+    (hLive : ∀ i < Γ.length, live' i = true → live i = true) :
+    Holds env slots live' base heap store s :=
+  ⟨fun t x hx => h.1 t x (hLive _ x.index_lt hx),
+    fun t u x y hx hy => h.2 t u x y (hLive _ x.index_lt hx) (hLive _ y.index_lt hy)⟩
 
 theorem mono (h : Holds env slots live base heap store s) {base' : Nat} (hb : base ≤ base') :
     Holds env slots live base' heap store s :=
-  fun t x hx => ⟨by have := (h t x hx).1; omega, (h t x hx).2⟩
+  ⟨fun t x hx => ⟨by have := (h.1 t x hx).1; omega, (h.1 t x hx).2⟩, h.2⟩
+
+/-- Locals that agree below `base` hold the same words for a live variable. -/
+theorem hold_agree (h : Holds env slots live base heap store s) {s' : Locals}
+    (hs : ∀ j < base, s'.get j = s.get j) {t : Ty} {x : Var Γ t} (hx : live x.index = true)
+    {ws : List Value} (hl : ws.length = t.width) :
+    LocalsHold s' (slots.getD x.index default).loc ws ↔
+      LocalsHold s (slots.getD x.index default).loc ws := by
+  have hBelow := (h.1 t x hx).1
+  constructor
+  · intro hold k hk
+    rw [← hs _ (by omega)]
+    exact hold k hk
+  · intro hold k hk
+    rw [hs _ (by omega)]
+    exact hold k hk
+
+/-- `Holds` with a lower bound for the variables' locals, which another `Holds` gives. -/
+theorem lower {base' : Nat} (h : Holds env slots live base' heap store s) {live0 : Nat → Bool}
+    {heap0 : Heap} {store0 : Store Unit} {s0 : Locals}
+    (h0 : Holds env slots live0 base heap0 store0 s0)
+    (hLive : ∀ i, live i = true → live0 i = true) : Holds env slots live base heap store s :=
+  ⟨fun t x hx => ⟨(h0.1 t x (hLive _ hx)).1, (h.1 t x hx).2⟩, h.2⟩
 
 /-- `Holds` depends only on the locals below `base`. -/
 theorem agree (h : Holds env slots live base heap store s) {s' : Locals}
     (hs : ∀ j < base, s'.get j = s.get j) : Holds env slots live base heap store s' := by
-  intro t x hx
-  obtain ⟨hBelow, ws, hold, hRep⟩ := h t x hx
-  refine ⟨hBelow, ws, fun k hk => ?_, hRep⟩
-  rw [hs _ (by have := hRep.length; omega)]
-  exact hold k hk
+  refine ⟨fun t x hx => ?_, fun t u x y hx hy hxy hm wx wy hwx hlx hwy hly => ?_⟩
+  · obtain ⟨hBelow, ws, hold, hRep⟩ := h.1 t x hx
+    exact ⟨hBelow, ws, (h.hold_agree hs hx hRep.length).mpr hold, hRep⟩
+  · exact h.2 t u x y hx hy hxy hm wx wy ((h.hold_agree hs hx hlx).mp hwx) hlx
+      ((h.hold_agree hs hy hly).mp hwy) hly
 
 theorem frame (h : Holds env slots live base heap store s) {base' : Nat} {s' : Locals}
     (hf : Frame base' s s') (hb : base ≤ base') : Holds env slots live base heap store s' :=
@@ -307,25 +582,249 @@ theorem setLocal (h : Holds env slots live base heap store s) {i : Nat} {v : Val
     Holds env slots live base heap store (Verified.setLocal s i v) :=
   h.agree fun j hj => Locals.get_setLocal_ne hLow (by omega)
 
-theorem step (h : Holds env slots live base heap store s) {heap' : Heap} {store' : Store Unit}
-    (hStep : Step heap store heap' store') : Holds env slots live base heap' store' s := by
-  intro t x hx
-  obtain ⟨hBelow, ws, hold, hRep⟩ := h t x hx
-  exact ⟨hBelow, ws, hold, hRep.step hStep⟩
+/-- The regions of each variable live in `live` lie apart from the blocks of the owned variables
+that die between `liveIn` and `live`. -/
+theorem keepDying {liveIn : Nat → Bool} (h : Holds env slots liveIn base heap store s)
+    (hLive : ∀ i, live i = true → liveIn i = true) {u : Ty} {y : Var Γ u}
+    (hy : live y.index = true) {wy : List Value}
+    (hwy : LocalsHold s (slots.getD y.index default).loc wy) (hly : wy.length = u.width) :
+    ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y),
+      KeepDying env slots liveIn live store s c := by
+  intro c hc t x hx hxOut hm wx hwx hlx b hb
+  have hne : x.index ≠ y.index := fun he => by rw [he, hy] at hxOut; exact nomatch hxOut
+  exact regionsDisjoint_symm (h.2 t u x y hx (hLive _ hy) hne hm wx wy hwx hlx hwy hly b hb c hc)
 
-/-- A binding adds its value, in the locals from `base` on in mode `mode`, as variable 0. -/
+/-- `Holds` after a step that keeps the regions of the live variables. -/
+theorem step (h : Holds env slots live base heap store s) {keep : Nat × Nat → Prop}
+    {heap' : Heap} {store' : Store Unit} {fresh : List (Nat × Nat)}
+    (hStep : Step heap store keep heap' store' fresh)
+    (hKeep : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
+      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c) :
+    Holds env slots live base heap' store' s := by
+  -- The regions of each live variable are the same after the step.
+  have hSame : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
+      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      u.regions (slots.getD y.index default).mode store' wy (env.get y) =
+        u.regions (slots.getD y.index default).mode store wy (env.get y) := by
+    intro u y hy wy hwy hly
+    obtain ⟨_, ws, hold, hRep⟩ := h.1 u y hy
+    obtain rfl := LocalsHold.unique hwy hold (hly.trans hRep.length.symm)
+    exact (hRep.step hStep (hKeep u y hy _ hwy hly)).2.1
+  refine ⟨fun t x hx => ?_, fun t u x y hx hy hxy hm wx wy hwx hlx hwy hly b hb c hc => ?_⟩
+  · obtain ⟨hBelow, ws, hold, hRep⟩ := h.1 t x hx
+    exact ⟨hBelow, ws, hold, (hRep.step hStep (hKeep t x hx ws hold hRep.length)).1⟩
+  · have hbx := hSame t x hx wx hwx hlx
+    have hcy := hSame u y hy wy hwy hly
+    simp only [Ty.regions, hm] at hbx
+    rw [hbx] at hb
+    rw [hcy] at hc
+    exact h.2 t u x y hx hy hxy hm wx wy hwx hlx hwy hly b hb c hc
+
+/-- A binding adds its value, in the locals from `base` on in mode `mode`, as variable 0, when
+the value lies apart from the variables live in the body. -/
 theorem push {t : Ty} {v : t.denote} {mode : Mode} {live' : Nat → Bool}
     (h : Holds env slots (fun i => live' (i + 1)) base heap store s) {ws : List Value}
-    (hold : LocalsHold s base ws) (hRep : t.Rep mode heap store ws v) :
+    (hold : LocalsHold s base ws) (hRep : t.Rep mode heap store ws v)
+    (hApart : Holds.Apart env slots (fun i => live' (i + 1)) store s t mode ws v) :
     Holds (Env.cons v env) (⟨base, mode⟩ :: slots) live' (base + t.width) heap store s := by
-  intro t' x hx
-  cases x with
-  | here => exact ⟨by simp [Var.index], ws, by simpa [Var.index] using hold, by simpa [Var.index,
-      Env.get] using hRep⟩
-  | there y =>
-    simp only [Var.index, Env.get, List.getD_cons_succ]
-    obtain ⟨hBelow, rest⟩ := h _ y hx
-    exact ⟨by omega, rest⟩
+  refine ⟨fun t' x hx => ?_, fun t1 t2 x y hx hy hxy hm wx wy hwx hlx hwy hly => ?_⟩
+  · cases x with
+    | here => exact ⟨by simp [Var.index], ws, by simpa [Var.index] using hold,
+        by simpa [Var.index, Env.get] using hRep⟩
+    | there y =>
+      simp only [Var.index, Env.get, List.getD_cons_succ]
+      obtain ⟨hBelow, rest⟩ := h.1 _ y hx
+      exact ⟨by omega, rest⟩
+  · cases x with
+    | here =>
+      cases y with
+      | here => exact absurd rfl hxy
+      | there y =>
+        change mode = .owned at hm
+        change LocalsHold s base wx at hwx
+        change LocalsHold s (slots.getD y.index default).loc wy at hwy
+        obtain rfl := LocalsHold.unique hwx hold (hlx.trans hRep.length.symm)
+        subst hm
+        exact hApart _ y hy (Or.inl rfl) wy hwy hly
+    | there x =>
+      cases y with
+      | here =>
+        change (slots.getD x.index default).mode = .owned at hm
+        change LocalsHold s (slots.getD x.index default).loc wx at hwx
+        change LocalsHold s base wy at hwy
+        obtain rfl := LocalsHold.unique hwy hold (hly.trans hRep.length.symm)
+        intro b hb c hc
+        have hRegions : t1.regions (slots.getD x.index default).mode store wx (env.get x) =
+            t1.blocks store wx (env.get x) := by rw [hm]; rfl
+        exact regionsDisjoint_symm (hApart _ x hx (Or.inr hm) wx hwx hlx c hc b
+          (hRegions ▸ hb))
+      | there y =>
+        change (slots.getD x.index default).mode = .owned at hm
+        change LocalsHold s (slots.getD x.index default).loc wx at hwx
+        change LocalsHold s (slots.getD y.index default).loc wy at hwy
+        exact h.2 t1 t2 x y hx hy (fun he => hxy (by simp [Var.index, he])) hm wx wy hwx hlx hwy
+          hly
+
+/-- The facts about the variables of a context without its first variable. -/
+theorem pop {t : Ty} {v : t.denote} {sl : Slot} {live' : Nat → Bool}
+    (h : Holds (Env.cons v env) (sl :: slots) live' base heap store s) :
+    Holds env slots (fun i => live' (i + 1)) base heap store s :=
+  ⟨fun t' x hx => h.1 t' (.there x) hx,
+    fun t1 t2 x y hx hy hxy hm => h.2 t1 t2 (.there x) (.there y) hx hy
+      (fun he => hxy (Nat.succ.inj he)) hm⟩
+
+/-- The regions of a live variable after a step that keeps them are the same, and the variable
+still holds its value. -/
+theorem regions_after (h : Holds env slots live base heap store s) {keep : Nat × Nat → Prop}
+    {heap' : Heap} {store' : Store Unit} {fresh : List (Nat × Nat)}
+    (hStep : Step heap store keep heap' store' fresh) {u : Ty} {y : Var Γ u}
+    (hy : live y.index = true) {wy : List Value}
+    (hwy : LocalsHold s (slots.getD y.index default).loc wy) (hly : wy.length = u.width)
+    (hKeep : ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c) :
+    u.regions (slots.getD y.index default).mode store' wy (env.get y) =
+        u.regions (slots.getD y.index default).mode store wy (env.get y) ∧
+      ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y),
+        ∀ b ∈ fresh, regionsDisjoint c b := by
+  obtain ⟨_, ws, hold, hRep⟩ := h.1 u y hy
+  obtain rfl := LocalsHold.unique hwy hold (hly.trans hRep.length.symm)
+  obtain ⟨-, h2, h3⟩ := hRep.step hStep hKeep
+  exact ⟨h2, h3⟩
+
+end Holds
+
+/-- The blocks that a value occupies when owned, and none when borrowed: those that its holder
+must consume. -/
+def Mode.fresh (mode : Mode) (store : Store Unit) (t : Ty) (ws : List Value) (v : t.denote) :
+    List (Nat × Nat) :=
+  match mode with
+  | .owned => t.blocks store ws v
+  | .borrowed => []
+
+namespace Holds
+
+variable {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool} {base : Nat}
+  {heap : Heap} {store : Store Unit} {s : Locals}
+
+/-- `Holds` for live sets that agree on the indices of variables. -/
+theorem congr_live (h : Holds env slots live base heap store s) {live' : Nat → Bool}
+    (hL : ∀ i < Γ.length, live' i = true → live i = true) :
+    Holds env slots live' base heap store s :=
+  h.live_mono' hL
+
+theorem KeepDying.congr {liveIn liveOut liveIn' liveOut' : Nat → Bool} {r : Nat × Nat}
+    (h : KeepDying env slots liveIn liveOut store s r)
+    (hSub : ∀ i < Γ.length, liveIn' i = true → liveOut' i = false →
+      liveIn i = true ∧ liveOut i = false) :
+    KeepDying env slots liveIn' liveOut' store s r :=
+  fun t x hx hxo hm => let ⟨a, b⟩ := hSub _ x.index_lt hx hxo; h t x a b hm
+
+theorem Apart.live_mono {t : Ty} {mode : Mode} {ws : List Value} {v : t.denote}
+    (h : Holds.Apart env slots live store s t mode ws v) {live' : Nat → Bool}
+    (hLive : ∀ i, live' i = true → live i = true) :
+    Holds.Apart env slots live' store s t mode ws v :=
+  fun u y hy => h u y (hLive _ hy)
+
+/-- A value apart from the variables of a context is apart from those after its first. -/
+theorem Apart.pop {t u : Ty} {v : u.denote} {sl : Slot} {live' : Nat → Bool} {mode : Mode}
+    {ws : List Value} {w : t.denote}
+    (h : Holds.Apart (Env.cons v env) (sl :: slots) live' store s t mode ws w) :
+    Holds.Apart env slots (fun i => live' (i + 1)) store s t mode ws w :=
+  fun u y hy => h u (.there y) hy
+
+/-- A value without arrays lies apart from every variable. -/
+theorem Apart.ofScalar {t : Ty} {mode : Mode} {ws : List Value} {v : t.denote}
+    (h : t.scalar = true) : Holds.Apart env slots live store s t mode ws v :=
+  fun _ _ _ _ _ _ _ b hb => by rw [Ty.regions_scalar t h] at hb; exact nomatch hb
+
+/-- A pair apart from the live variables has each component apart from them. -/
+theorem Apart.fst {a b : Ty} {mode : Mode} {first second : List Value}
+    {p : a.denote × b.denote}
+    (h : Holds.Apart env slots live store s (.pair a b) mode (first ++ second) p)
+    (hl : first.length = a.width) : Holds.Apart env slots live store s a mode first p.1 :=
+  fun u y hy hm wy hwy hly x hx c hc => h u y hy hm wy hwy hly x
+    (by rw [Ty.regions_append hl]; exact List.mem_append_left _ hx) c hc
+
+theorem Apart.snd {a b : Ty} {mode : Mode} {first second : List Value}
+    {p : a.denote × b.denote}
+    (h : Holds.Apart env slots live store s (.pair a b) mode (first ++ second) p)
+    (hl : first.length = a.width) : Holds.Apart env slots live store s b mode second p.2 :=
+  fun u y hy hm wy hwy hly x hx c hc => h u y hy hm wy hwy hly x
+    (by rw [Ty.regions_append hl]; exact List.mem_append_right _ hx) c hc
+
+/-- A value apart from the variables of a context and from a new variable 0, in the locals from
+`loc` on in mode `mv`, is apart from the variables of the context with it. -/
+theorem Apart.push {t u : Ty} {v : u.denote} {loc : Nat} {mv mode : Mode} {live' : Nat → Bool}
+    {ws wv : List Value} {w : t.denote}
+    (h : Holds.Apart env slots (fun i => live' (i + 1)) store s t mode ws w)
+    (hold : LocalsHold s loc wv) (hl : wv.length = u.width)
+    (hHere : mode = .owned ∨ mv = .owned →
+      ∀ b ∈ t.regions mode store ws w, ∀ c ∈ u.regions mv store wv v, regionsDisjoint b c) :
+    Holds.Apart (Env.cons v env) (⟨loc, mv⟩ :: slots) live' store s t mode ws w := by
+  intro u' y hy hm wy hwy hly
+  cases y with
+  | here =>
+    change LocalsHold s loc wy at hwy
+    obtain rfl := LocalsHold.unique hwy hold (hly.trans hl.symm)
+    exact hHere hm
+  | there y => exact h u' y hy hm wy hwy hly
+
+/-- A value apart from the live variables stays apart in locals that agree below `base`. -/
+theorem Apart.agree (h : Holds env slots live base heap store s) {t : Ty} {mode : Mode}
+    {ws : List Value} {v : t.denote} (hApart : Holds.Apart env slots live store s t mode ws v)
+    {s' : Locals} (hs : ∀ j < base, s'.get j = s.get j) :
+    Holds.Apart env slots live store s' t mode ws v :=
+  fun u y hy hm wy hwy hly => hApart u y hy hm wy ((h.hold_agree hs hy hly).mp hwy) hly
+
+/-- Every region lies apart from the blocks of the variables that die where none dies. -/
+theorem KeepDying.none {live : Nat → Bool} {r : Nat × Nat} :
+    KeepDying env slots live live store s r :=
+  fun _ _ hx hxo => by rw [hx] at hxo; exact nomatch hxo
+
+theorem KeepDying.mono {liveIn liveOut liveIn' liveOut' : Nat → Bool} {r : Nat × Nat}
+    (h : KeepDying env slots liveIn liveOut store s r)
+    (hSub : ∀ i, liveIn' i = true → liveOut' i = false → liveIn i = true ∧ liveOut i = false) :
+    KeepDying env slots liveIn' liveOut' store s r :=
+  fun t x hx hxo hm => let ⟨a, b⟩ := hSub _ hx hxo; h t x a b hm
+
+/-- The facts that carry from a state to the one after a subexpression's step: when the step
+keeps the regions of the variables live after it, those regions are unchanged.  So a region
+apart from the blocks of variables that die later is apart from them in either state. -/
+theorem KeepDying.transfer (h : Holds env slots live base heap store s)
+    {liveIn liveOut liveMid : Nat → Bool} {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
+    {fresh : List (Nat × Nat)}
+    (hStep : Step heap store (KeepDying env slots live liveMid store s) heap1 store1 fresh)
+    (hFrame : ∀ j < base, s1.get j = s.get j) (hMid : ∀ i, liveMid i = true → live i = true)
+    (hSub : ∀ i, liveIn i = true → liveOut i = false → liveMid i = true) {r : Nat × Nat}
+    (hr : KeepDying env slots liveIn liveOut store s r) :
+    KeepDying env slots liveIn liveOut store1 s1 r := by
+  intro t x hx hxo hm wx hwx hlx b hb
+  have hxMid := hSub _ hx hxo
+  have hwx' := (h.live_mono hMid |>.hold_agree hFrame hxMid hlx).mp hwx
+  have hSame := (h.regions_after hStep (hMid _ hxMid) hwx' hlx
+    (h.keepDying hMid hxMid hwx' hlx)).1
+  simp only [Ty.regions, hm] at hSame
+  rw [hSame] at hb
+  exact hr t x hx hxo hm wx hwx' hlx b hb
+
+/-- A value apart from the live variables stays apart after a step that keeps its regions and
+theirs. -/
+theorem Apart.transfer (h : Holds env slots live base heap store s) {t : Ty} {mode : Mode}
+    {ws : List Value} {v : t.denote} (hApart : Holds.Apart env slots live store s t mode ws v)
+    {keep : Nat × Nat → Prop} {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
+    {fresh : List (Nat × Nat)} (hStep : Step heap store keep heap1 store1 fresh)
+    (hFrame : ∀ j < base, s1.get j = s.get j)
+    (hKeep : ∀ (u : Ty) (y : Var Γ u), live y.index = true → ∀ wy,
+      LocalsHold s (slots.getD y.index default).loc wy → wy.length = u.width →
+      ∀ c ∈ u.regions (slots.getD y.index default).mode store wy (env.get y), keep c)
+    (hSame : t.regions mode store1 ws v = t.regions mode store ws v) :
+    Holds.Apart env slots live store1 s1 t mode ws v := by
+  intro u y hy hm wy hwy hly b hb c hc
+  have hwy' := (h.hold_agree hFrame hy hly).mp hwy
+  have := (h.regions_after hStep hy hwy' hly (hKeep u y hy wy hwy' hly)).1
+  rw [this] at hc
+  rw [hSame] at hb
+  exact hApart u y hy hm wy hwy' hly b hb c hc
 
 end Holds
 
@@ -333,10 +832,6 @@ end Holds
 /-! The instances that Lean synthesizes for the source types, rebuilt by recursion over `Ty`, and
 their agreement with the verified compiler's representation.  A function's theorem for Lean's
 types follows from them, for every signature, without a proof per signature. -/
-
-theorem Ty.scalar_pair {a b : Ty} (h : (Ty.pair a b).scalar = true) :
-    a.scalar = true ∧ b.scalar = true := by
-  simpa [Ty.scalar] using h
 
 /-- The `Scalar` instance that Lean synthesizes for a type without arrays. -/
 @[instance_reducible] def Ty.scalarInst : (t : Ty) → t.scalar = true → Scalar t.denote
@@ -367,8 +862,9 @@ theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
     constructor
     · rintro rfl
       exact ⟨_, _, rfl, (a.scalar_rep (Ty.scalar_pair h).1).mp rfl,
-        (b.scalar_rep (Ty.scalar_pair h).2).mp rfl⟩
-    · rintro ⟨first, second, rfl, h1, h2⟩
+        (b.scalar_rep (Ty.scalar_pair h).2).mp rfl, fun _ x hx => by
+          rw [a.blocks_scalar (Ty.scalar_pair h).1] at hx; exact nomatch hx⟩
+    · rintro ⟨first, second, rfl, h1, h2, -⟩
       rw [(a.scalar_rep (Ty.scalar_pair h).1).mpr h1, (b.scalar_rep (Ty.scalar_pair h).2).mpr h2]
       rfl
   | .array, h, _, _ => absurd h (by decide)
@@ -391,22 +887,70 @@ theorem Ty.leanInst_borrowed {heap : Heap} {store : Store Unit} :
     · rw [Ty.leanInst, dite_eq_right h]
       constructor
       · rintro ⟨first, second, rfl, h1, h2⟩
-        exact ⟨first, second, rfl, a.leanInst_borrowed.mp h1, b.leanInst_borrowed.mp h2⟩
-      · rintro ⟨first, second, rfl, h1, h2⟩
+        exact ⟨first, second, rfl, a.leanInst_borrowed.mp h1, b.leanInst_borrowed.mp h2, nofun⟩
+      · rintro ⟨first, second, rfl, h1, h2, -⟩
         exact ⟨first, second, rfl, a.leanInst_borrowed.mpr h1, b.leanInst_borrowed.mpr h2⟩
 
-/-- Lean's instance agrees with the verified compiler's representation of an owned value whose
-type holds no arrays. -/
-theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} (t : Ty) (h : t.scalar = true)
-    {ws : List Value} {v : t.denote} :
-    @Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v := by
-  rw [t.leanInst_scalar h]
-  exact t.scalar_rep h
+theorem Ty.scalarInst_length : (t : Ty) → (h : t.scalar = true) → (v : t.denote) →
+    (@Scalar.values _ (t.scalarInst h) v).length = t.width
+  | .word, _, _ | .bool, _, _ => rfl
+  | .pair a b, h, p => by
+    show (@Scalar.values _ (a.scalarInst (Ty.scalar_pair h).1) p.1 ++
+      @Scalar.values _ (b.scalarInst (Ty.scalar_pair h).2) p.2).length = _
+    rw [List.length_append, a.scalarInst_length, b.scalarInst_length]
+    rfl
+  | .array, h, _ => absurd h (by decide)
 
-theorem Ty.leanInst_blocks {store : Store Unit} (t : Ty) (h : t.scalar = true) {ws : List Value}
-    {v : t.denote} : @Represent.blocks _ t.leanInst store ws v = [] := by
-  rw [t.leanInst_scalar h]
-  rfl
+/-- Lean's instance gives a value the verified compiler's width. -/
+theorem Ty.leanInst_width : (t : Ty) → (v : t.denote) → @Represent.width _ t.leanInst v = t.width
+  | .word, _ | .bool, _ | .array, _ => rfl
+  | .pair a b, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h]
+      exact (Ty.pair a b).scalarInst_length h p
+    · rw [Ty.leanInst, dite_eq_right h]
+      show @Represent.width _ a.leanInst p.1 + @Represent.width _ b.leanInst p.2 = _
+      rw [a.leanInst_width, b.leanInst_width]
+      rfl
+
+/-- Lean's instance gives a value the verified compiler's blocks. -/
+theorem Ty.leanInst_blocks {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {v : t.denote} →
+      @Represent.blocks _ t.leanInst store ws v = t.blocks store ws v
+  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h, Ty.blocks_scalar _ h]
+      rfl
+    · rw [Ty.leanInst, dite_eq_right h]
+      show @Represent.blocks _ a.leanInst store (ws.take (@Represent.width _ a.leanInst p.1)) p.1 ++
+        @Represent.blocks _ b.leanInst store (ws.drop (@Represent.width _ a.leanInst p.1)) p.2 = _
+      rw [a.leanInst_width, a.leanInst_blocks, b.leanInst_blocks]
+      rfl
+
+/-- Lean's instance agrees with the verified compiler's representation of an owned value. -/
+theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} :
+    (t : Ty) → {ws : List Value} → {v : t.denote} →
+      (@Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v)
+  | .word, _, _ | .bool, _, _ | .array, _, _ => Iff.rfl
+  | .pair a b, ws, p => by
+    by_cases h : (Ty.pair a b).scalar = true
+    · rw [(Ty.pair a b).leanInst_scalar h]
+      exact (Ty.pair a b).scalar_rep h
+    · rw [Ty.leanInst, dite_eq_right h]
+      constructor
+      · rintro ⟨first, second, rfl, h1, h2, hd⟩
+        refine ⟨first, second, rfl, a.leanInst_owned.mp h1, b.leanInst_owned.mp h2,
+          fun _ x hx y hy => ?_⟩
+        rw [← a.leanInst_blocks] at hx
+        rw [← b.leanInst_blocks] at hy
+        exact hd x hx y hy
+      · rintro ⟨first, second, rfl, h1, h2, hd⟩
+        refine ⟨first, second, rfl, a.leanInst_owned.mpr h1, b.leanInst_owned.mpr h2,
+          fun x hx y hy => ?_⟩
+        rw [a.leanInst_blocks] at hx
+        rw [b.leanInst_blocks] at hy
+        exact hd rfl x hx y hy
 
 theorem Ty.leanInst_moves {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} → @Represent.moves _ t.leanInst store ws v = []
@@ -416,7 +960,8 @@ theorem Ty.leanInst_moves {store : Store Unit} :
     · rw [(Ty.pair a b).leanInst_scalar h]
       rfl
     · rw [Ty.leanInst, dite_eq_right h]
-      show @Represent.moves _ a.leanInst store _ p.1 ++ @Represent.moves _ b.leanInst store _ p.2 = []
+      show @Represent.moves _ a.leanInst store _ p.1 ++
+        @Represent.moves _ b.leanInst store _ p.2 = []
       rw [a.leanInst_moves, b.leanInst_moves]
       rfl
 
