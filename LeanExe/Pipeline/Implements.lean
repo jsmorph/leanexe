@@ -218,6 +218,16 @@ instance : Represent (Moved (Array Float)) where
   reads _ _ _ := []
   moves store vs xs := Represent.moves store vs (Moved.mk (xs.val.map Float.toBits))
 
+/-- An array of a structure, sum, or enumeration that the caller hands over: the call receives
+its words as owned and consumes its block. -/
+instance [Flat α β] [Scalar β] : Represent (Moved (Array α)) where
+  width _ := 1
+  borrowed heap store vs xs := Represent.borrowed heap store vs (Moved.mk (flatWords xs.val))
+  owned heap store vs xs := Represent.owned heap store vs (Moved.mk (flatWords xs.val))
+  blocks store vs xs := Represent.blocks store vs (Moved.mk (flatWords xs.val))
+  reads _ _ _ := []
+  moves store vs xs := Represent.moves store vs (Moved.mk (flatWords xs.val))
+
 mutual
 /-- A slot of a record: a word, or a child value held by its pointer. -/
 inductive Slot where

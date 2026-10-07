@@ -17,3 +17,4 @@ import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
+import Verified.Examples.Elements

@@ -93,35 +93,61 @@ def ToWord.apply : ToWord → Float → UInt64
   | .truncate, a => a.toUInt64
   | .toBits, a => a.toBits
 
-/-- The types of values: words, `Bool`s, pairs, arrays of words, and floats. -/
-inductive Ty where
-  | word | bool
-  | pair (first second : Ty)
-  | array
-  | float
+/-- The types of the values that occupy one word and that an array may hold: words, `Bool`s,
+and floats. -/
+inductive Elem where
+  | word | bool | float
   deriving Repr, DecidableEq, Inhabited
+
+/-- The types of values: the element types, pairs, and arrays of an element type. -/
+inductive Ty where
+  | elem (e : Elem)
+  | pair (first second : Ty)
+  | array (e : Elem)
+  deriving Repr, DecidableEq, Inhabited
+
+@[match_pattern] abbrev Ty.word : Ty := .elem .word
+@[match_pattern] abbrev Ty.bool : Ty := .elem .bool
+@[match_pattern] abbrev Ty.float : Ty := .elem .float
+
+/-- The Lean type of an element. -/
+abbrev Elem.denote : Elem → Type
+  | .word => UInt64
+  | .bool => Bool
+  | .float => Float
 
 /-- The Lean type of a value. -/
 abbrev Ty.denote : Ty → Type
-  | .word => UInt64
-  | .bool => Bool
+  | .elem e => e.denote
   | .pair a b => a.denote × b.denote
-  | .array => Array UInt64
-  | .float => Float
+  | .array e => Array e.denote
+
+/-- Lean's default value of an element type, which a read past the end of an array gives. -/
+instance Elem.instInhabited : (e : Elem) → Inhabited e.denote
+  | .word => inferInstanceAs (Inhabited UInt64)
+  | .bool => inferInstanceAs (Inhabited Bool)
+  | .float => inferInstanceAs (Inhabited Float)
 
 /-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
 def boolWord (b : Bool) : UInt64 := cond b 1 0
 
+/-- The word that holds an element in an array: a word as itself, a `Bool` as 1 or 0, and a float
+as its bit pattern. -/
+def Elem.toWord : (e : Elem) → e.denote → UInt64
+  | .word, x => x
+  | .bool, b => boolWord b
+  | .float, x => x.toBits
+
 /-- The number of words that hold a value of the type. -/
 def Ty.width : Ty → Nat
-  | .word | .bool | .array | .float => 1
+  | .elem _ | .array _ => 1
   | .pair a b => a.width + b.width
 
 /-- Whether a type holds no arrays. -/
 def Ty.scalar : Ty → Bool
-  | .word | .bool | .float => true
+  | .elem _ => true
   | .pair a b => a.scalar && b.scalar
-  | .array => false
+  | .array _ => false
 
 /-- A variable of type `t` in the context `Γ`, by its distance from the front of `Γ`. -/
 inductive Var : List Ty → Ty → Type where
@@ -161,7 +187,7 @@ inductive Mode where
 /-- The mode of a parameter of type `t` for which the mode `m` was chosen: only an array
 parameter is owned. -/
 def Ty.paramMode : Ty → Mode → Mode
-  | .array, m => m
+  | .array _, m => m
   | _, _ => .borrowed
 
 /-- The modes of parameters of types `ts` for which the modes `ms` were chosen, in order, a missing
@@ -221,9 +247,9 @@ parameter `i`.  `letPair e body` gives `body` the second component of `e` as var
 first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from the value of
 `init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
 index as variable 1.  `size x` is the number of elements of the array variable `x` as a word,
-and `get x i` is element `i` of `x`, or 0 when `i` is not below the size, as Lean's
-`x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of `count` words whose
-element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`:
+and `get x i` is element `i` of `x`, or the element type's default value when `i` is not below
+the size, as Lean's `x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of
+`count` elements whose element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`:
 the array of `x` with element `i` replaced by `v`, or `x` when `i` is not below the size.
 `push x v` is `x.push v`, and `append x y` is `x ++ y`.  `float bits` is the float with the bit
 pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats, and
@@ -245,12 +271,13 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
   | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
       Expr S Γ t
-  | size (x : Var Γ .array) : Expr S Γ .word
-  | get (x : Var Γ .array) (i : Expr S Γ .word) : Expr S Γ .word
-  | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) .word) : Expr S Γ .array
-  | set (x : Var Γ .array) (i v : Expr S Γ .word) : Expr S Γ .array
-  | push (x : Var Γ .array) (v : Expr S Γ .word) : Expr S Γ .array
-  | append (x y : Var Γ .array) : Expr S Γ .array
+  | size (x : Var Γ (.array e)) : Expr S Γ .word
+  | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
+  | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
+  | set (x : Var Γ (.array e)) (i : Expr S Γ .word) (v : Expr S Γ (.elem e)) :
+      Expr S Γ (.array e)
+  | push (x : Var Γ (.array e)) (v : Expr S Γ (.elem e)) : Expr S Γ (.array e)
+  | append (x y : Var Γ (.array e)) : Expr S Γ (.array e)
   | float (bits : UInt64) : Expr S Γ .float
   | fbin (op : FBinOp) (left right : Expr S Γ .float) : Expr S Γ .float
   | funary (op : FUnOp) (e : Expr S Γ .float) : Expr S Γ .float

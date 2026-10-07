@@ -11,6 +11,7 @@ import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
+import Verified.Examples.Elements
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -92,6 +93,25 @@ def bands : List (Float × Float) :=
     (0.0 / 0.0, 1.0)]
 
 def floatArg (x : Float) : String := s!"f64:{x.toBits}"
+
+/-- Arrays of floats: empty, one element, a few, the special floats, and 50 elements. -/
+def floatArrays : List (Array Float) :=
+  [#[], #[1.5], #[1.0, -2.0, 0.5], floats.toArray,
+    (List.range 50).toArray.map fun i => (UInt64.ofNat i).toFloat * 0.25 - 3.0]
+
+/-- Arrays of `Bool`s: empty, one element, a few, and 40 elements. -/
+def boolArrays : List (Array Bool) :=
+  [#[], #[true], #[false, true, true], (List.range 40).toArray.map fun i => i % 3 == 0]
+
+/-- The host's argument and output for an array of floats, by bit patterns. -/
+def floatArrayArg (xs : Array Float) : String := arrayArg (xs.map Float.toBits)
+
+def floatArrayOut (xs : Array Float) : String := arrayOut (xs.map Float.toBits)
+
+/-- The host's argument and output for an array of `Bool`s, as 1 or 0. -/
+def boolArrayArg (bs : Array Bool) : String := arrayArg (bs.map fun b => if b then 1 else 0)
+
+def boolArrayOut (bs : Array Bool) : String := arrayOut (bs.map fun b => if b then 1 else 0)
 
 /-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
 infinities, both zeros, the smallest subnormal, and words. -/
@@ -315,6 +335,35 @@ def main : IO Unit := do
           let (r, m) := Floats.mixed n x xs (y, k)
           let args := s!"i64:{n} {floatArg x} {arrayArg xs} {floatArg y} i64:{k}"
           IO.println s!"floats|mixed|list:f64,i64|{args}|{r.toBits} {m}"
+  for xs in floatArrays do
+    let a := floatArrayArg xs
+    IO.println s!"elements|total|f64|{a}|{(Elements.total xs).toBits}|1"
+    IO.println s!"elements|largest|f64|{a}|{(Elements.largest xs).toBits}|1"
+    IO.println s!"elements|negatives|array-u64|{a}|{boolArrayOut (Elements.negatives xs)}|2"
+    for x in [0.0, -0.0, 2.5, 0.0 / 0.0] do
+      let r := floatArrayOut (Elements.extend xs x)
+      IO.println s!"elements|extend|array-u64|{a} {floatArg x}|{r}|2"
+    for ys in floatArrays do
+      let c := floatArrayArg ys
+      IO.println s!"elements|dot|f64|{a} {c}|{(Elements.dot xs ys).toBits}|2"
+      let r := floatArrayOut (Elements.axpy 2.0 xs ys)
+      IO.println s!"elements|axpy|array-u64|{floatArg 2.0} {a} {c}|{r}|2|2"
+    for bs in boolArrays do
+      IO.println s!"elements|select|f64|{boolArrayArg bs} {a}|{(Elements.select bs xs).toBits}|2"
+  for n in [0, 1, 5, 100] do
+    for (x0, dx) in [(0.0, 1.0), (-1.5, 0.1), (1e300, 1e300)] do
+      let g := floatArrayOut (Elements.grid n x0 dx)
+      IO.println s!"elements|grid|array-u64|i64:{n} {floatArg x0} {floatArg dx}|{g}|1"
+  for bs in boolArrays do
+    let a := boolArrayArg bs
+    IO.println s!"elements|countTrue|i64|{a}|{Elements.countTrue bs}|1"
+    for b in [false, true] do
+      let r := boolArrayOut (Elements.pushFlag bs b)
+      IO.println s!"elements|pushFlag|array-u64|{a} {boolArg b}|{r}|1"
+    for i in [0, 1, 2, 39, 40, 18446744073709551615] do
+      IO.println s!"elements|flip|array-u64|{a} i64:{i}|{boolArrayOut (Elements.flip bs i)}|1|1"
+  for n in [0, 1, 2, 10, 30] do
+    IO.println s!"elements|sieve|array-u64|i64:{n}|{boolArrayOut (Elements.sieve n)}|1|1"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"
