@@ -18,6 +18,24 @@ theorem boolWord_not (x : Bool) :
     UInt64.ofNat ((if boolWord x = 0 then (1 : UInt32) else 0).toNat) = boolWord (!x) := by
   cases x <;> decide
 
+theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt32 := by
+  apply UInt32.toNat_inj.mp
+  simp [UInt64.toNat_toUInt32]
+
+/-- `wrap_toUInt32` with the modulus as `simp` writes it. -/
+theorem ofNat_mod_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 4294967296) = a.toUInt32 :=
+  wrap_toUInt32 a
+
+/-- The offset of element `k` of an array of `size` words. -/
+theorem element_offset {k : UInt64} {size : Nat} (hk : k.toNat < size)
+    (hSize : 8 * (size + 1) ≤ 4294967296) :
+    (k + 1) * 8 = UInt64.ofNat (8 * (k.toNat + 1)) := by
+  have := hk
+  have := hSize
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
 @[simp] theorem shift_add (k : Nat) (live : Nat → Bool) (i : Nat) :
     shift k live (i + k) = live i := by
   simp [shift]
@@ -760,6 +778,119 @@ theorem spec_loop {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word} {init : 
       simp only [hget8]
       omega
 
+/-- The size of an array: the load of its length word. -/
+theorem spec_size {Γ' : List Ty} {a : Expr S Γ' .array}
+    (aSpec : ∀ env slots live, CodeSpec m funs host a env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.size a) env slots live := by
+  intro env slots live base heap store s hVars hAt hCap hBase hRoom rest Q hTrap hNext
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  refine aSpec env slots live base heap store s hVars hAt hCap hBase hRoom _ _ hTrap
+    fun heap1 store1 s1 ws h1 f1 hR => ?_
+  obtain ⟨ptr, rfl, hB⟩ := hR
+  have hA := hB.borrow.values
+  have hLength := hA.lengthBound
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append,
+    wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero,
+    UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead]
+  simpa only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append] using
+    hNext heap1 store1 s1 [.i64 (a.denote funs env).size.toUInt64] h1 f1 rfl
+
+/-- A read of an array: the address and the position in locals, a comparison of the position
+with the length word, and the load of the element or 0. -/
+theorem spec_get {Γ' : List Ty} {a : Expr S Γ' .array} {i : Expr S Γ' .word}
+    (aSpec : ∀ env slots live, CodeSpec m funs host a env slots live)
+    (iSpec : ∀ env slots live, CodeSpec m funs host i env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.get a i) env slots live := by
+  intro env slots live base heap store s hVars hAt hCap hBase hRoom rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have ha : a.width ≤ max a.width (max 2 (1 + i.width)) := Nat.le_max_left ..
+  have h2 : 2 ≤ max a.width (max 2 (1 + i.width)) :=
+    (Nat.le_max_left ..).trans (Nat.le_max_right ..)
+  have hi : 1 + i.width ≤ max a.width (max 2 (1 + i.width)) :=
+    (Nat.le_max_right ..).trans (Nat.le_max_right ..)
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The address, in local `base`.
+  refine aSpec env slots (fun k => live k || i.uses k) base heap store s
+    (hVars.live_mono (by live_tac)) hAt hCap hBase (by omega) _ _
+    (hTrap.of_imp fun h => by simp [Expr.aborts, h]) fun heap1 store1 s1 ws1 h1 f1 hR1 => ?_
+  obtain ⟨ptr, rfl, hB1⟩ := hR1
+  have hp1 : s1.params = s.params := f1.params
+  have hl1 : s1.locals.length = s.locals.length := f1.length
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
+  refine wp_localSet_local (by rw [hp1]; omega) (by rw [hp1, hl1]; omega) ?_
+  let s1a := setLocal { s1 with values := s.values } base (.i64 ptr)
+  have hp1a : s1a.params = s.params := hp1
+  have hl1a : s1a.locals.length = s.locals.length := by simp [s1a, setLocal, hl1]
+  have hVars1 : Holds env slots (fun k => live k || (a.uses k || i.uses k)) base heap1 store1
+      s1a :=
+    ((hVars.frame f1 le_rfl).step h1).setLocal (le_refl _)
+      (by show s1.params.length ≤ base; rw [hp1]; exact hBase)
+  have hPtr1 : s1a.get base = some (.i64 ptr) :=
+    Locals.get_setLocal_same (by show s1.params.length ≤ base; rw [hp1]; omega)
+      (by show base < s1.params.length + s1.locals.length; rw [hp1, hl1]; omega)
+  -- The position, in local `base + 1`.
+  refine iSpec env slots live (base + 1) heap1 store1 s1a
+    ((hVars1.mono (Nat.le_succ base)).live_mono (by live_tac)) h1.at_
+    (by rw [h1.cap m]; exact hCap) (by rw [hp1a]; omega) (by rw [hp1a, hl1a]; omega) _ _
+    (hTrap.of_imp fun h => by simp [Expr.aborts, h]) fun heap2 store2 s2 ws2 h2 f2 hR2 => ?_
+  simp only [Ty.rep_word] at hR2
+  subst hR2
+  have hp2 : s2.params = s.params := f2.params.trans hp1a
+  have hl2 : s2.locals.length = s.locals.length := f2.length.trans hl1a
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
+  refine wp_localSet_local (by rw [hp2]; omega) (by rw [hp2, hl2]; omega) ?_
+  let s2b := setLocal { s2 with values := s.values } (base + 1) (.i64 (i.denote funs env))
+  show wp m _ Q store2 s2b host
+  have hK : s2b.get (base + 1) = some (.i64 (i.denote funs env)) :=
+    Locals.get_setLocal_same (by show s2.params.length ≤ base + 1; rw [hp2]; omega)
+      (by show base + 1 < s2.params.length + s2.locals.length; rw [hp2, hl2]; omega)
+  have hP : s2b.get base = some (.i64 ptr) := by
+    calc s2b.get base = s2.get base :=
+          Locals.get_setLocal_ne (by show s2.params.length ≤ base + 1; rw [hp2]; omega)
+            (by omega)
+      _ = s1a.get base := f2.below base (by omega)
+      _ = some (.i64 ptr) := hPtr1
+  have hFrame : Frame base s s2b := by
+    refine ⟨hp2, by simp [s2b, setLocal, hl2], fun j hj => ?_⟩
+    calc s2b.get j = s2.get j :=
+          Locals.get_setLocal_ne (by show s2.params.length ≤ base + 1; rw [hp2]; omega)
+            (by omega)
+      _ = s1a.get j := f2.below j (by omega)
+      _ = s1.get j :=
+          Locals.get_setLocal_ne (by show s1.params.length ≤ base; rw [hp1]; omega) (by omega)
+      _ = s.get j := f1.below j (by omega)
+  have hs2b : s2b.values = s.values := rfl
+  have hA := (hB1.step h2).borrow.values
+  have hLength := hA.lengthBound
+  have hSize := hA.size_lt
+  have hv := hNext heap2 store2 s2b [.i64 (a.denote funs env)[(i.denote funs env).toNat]!]
+    (h1.trans h2) hFrame rfl
+  simp only [wp_localGet_cons, Locals.get_values, hK, hP, wp_wrapI64_cons, wp_load64_cons,
+    wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead]
+  simp only [wp_ltUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hLess : i.denote funs env < UInt64.ofNat (a.denote funs env).size ↔
+      (i.denote funs env).toNat < (a.denote funs env).size := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' hSize]
+  by_cases hk : (i.denote funs env).toNat < (a.denote funs env).size
+  · rw [ite_eq_left (by simp [hLess.mpr hk])]
+    have hOffset := element_offset hk (by have := hA.1; omega)
+    have hElement := hA.elementBound _ hk
+    simp only [wp_localGet_cons, Locals.get_values, hK, hP, wp_constI64_cons, wp_addI64_cons,
+      wp_mulI64_cons, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32, UInt32.toNat_zero,
+      Nat.add_zero, UInt32.add_zero, hOffset]
+    rw [ite_eq_right (by omega), hA.elementRead _ hk,
+      ← getElem!_pos (a.denote funs env) (i.denote funs env).toNat hk]
+    simpa [wp_nil, hs2b] using hv
+  · rw [ite_eq_right (by simp [hLess, hk])]
+    simp only [wp_constI64_cons, getElem!_neg (a.denote funs env) (i.denote funs env).toNat hk]
+      at hv ⊢
+    simpa [wp_nil, hs2b, show (default : UInt64) = 0 from rfl] using hv
+
 end Cases
 
 /-- The code of every expression meets its specification. -/
@@ -781,6 +912,8 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | pair first second firstSpec secondSpec => exact spec_pair firstSpec secondSpec
   | letPair e body eSpec bodySpec => exact spec_letPair eSpec bodySpec
   | loop count init body countSpec initSpec bodySpec => exact spec_loop countSpec initSpec bodySpec
+  | size a aSpec => exact spec_size aSpec
+  | get a i aSpec iSpec => exact spec_get aSpec iSpec
 
 theorem Var.index_lt {Γ : List Ty} {t : Ty} (x : Var Γ t) : x.index < Γ.length := by
   induction x with
@@ -870,7 +1003,7 @@ theorem Func.correct {S : List Sig} (func : Func S) (funs : Funs S) (m : Module)
       hStep.keeps r hr hpos (fun _ hb => nomatch hb), trivial⟩
     have hLen := hRep.length
     show func.result.Rep .owned heap' store' _ (func.body.denote funs args)
-    convert hRep.owned using 1
+    convert hRep.owned func.result_scalar using 1
     simp [Func.function, Func.type, Function.numParams, Function.toLocals, hLen, hLength,
       List.take_of_length_le]
 
@@ -939,7 +1072,7 @@ theorem ImplementsA.comap {α β γ δ : Type} [Represent α] [Represent β] [Re
 /-- A function's theorem in the form of Lean's instances: for the Lean tuple of its arguments and
 its result type, with the instances Lean synthesizes for them. -/
 theorem ImplementsA.lean {ps : List Ty} {r : Ty} {aborts : Bool} {m : Module} {entry : Nat}
-    {f : Env ps → r.denote}
+    {f : Env ps → r.denote} (hr : r.scalar = true)
     (h : @ImplementsA _ _ (Env.represent ps) (Ty.represent r) aborts m entry f
       (fun _ _ _ => True) (fun _ _ _ _ _ => True)) :
     @ImplementsA _ _ (argsInst ps) r.leanInst aborts m entry (fun y => f (Env.ofArgs ps y))
@@ -948,6 +1081,6 @@ theorem ImplementsA.lean {ps : List Ty} {r : Ty} {aborts : Bool} {m : Module} {e
     aborts m entry f h (Env.ofArgs ps) id
     (fun _ _ _ _ hy => (argsInst_borrowed ps).mp hy) (fun _ _ _ _ => Separate.nil)
     (fun _ _ _ => (argsInst_moves ps).symm)
-    (fun _ _ _ _ hz => (r.leanInst_rep).2.mpr hz) (fun _ _ _ => r.leanInst_blocks)
+    (fun _ _ _ _ hz => (r.leanInst_owned hr).mpr hz) (fun _ _ _ => r.leanInst_blocks hr)
 
 end Verified

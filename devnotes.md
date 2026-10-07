@@ -26419,7 +26419,10 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V6b: calls between reflected definitions.
 - [x] V7a: pairs, with values of several words.
 - [x] V7b: `LeanExe.loop` over a state of any type.
-- [ ] Later: arrays, floats, recursion, and ownership.
+- [x] V8a: the heap statement, and borrowed arrays of words with their size and reads.
+- [ ] V8b: allocation, owned array results and temporaries, and releases.
+- [ ] V8c: inferred parameter modes, moves, and in-place updates.
+- [ ] Later: floats, records, and recursion.
 
 V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
 Lean's operation on `UInt64`.  The WebAssembly shifts already use their amount modulo 64, as
@@ -26640,6 +26643,30 @@ default.  `Verified.lean` now imports `Verified.Examples.Loops`, which V7b left 
 `lake build Verified` had not rebuilt the loops example; the first test run after the change
 crashed with a segmentation fault while evaluating that stale module.  The test passes all 3,608
 cases.
+
+### V8a, second part: borrowed arrays
+
+`Ty.array` is an `Array UInt64`, held as the address of its length word and elements, and
+`Ty.Rep` represents it in mode `borrowed` by `Heap.Borrowed` and in mode `owned` by `Heap.Owned`.
+`Mode.array.step` carries either through a `Step` with `Heap.Keeps.borrowed` and
+`Heap.Keeps.owned`, so a variable's array survives calls and later subexpressions.  `size a`
+compiles to the load of the length word, and `get a i` to the `LeanExe` read template: the
+address and the position go to scratch locals, `i64.lt_u` compares the position with the length
+word, and an `if` loads the element or pushes 0, which is `a[i.toNat]!`.  The proof of the read
+follows `Expr.program_spec`'s read case, with the bounds from `UInt64Array.At`.  A function's result
+still holds no arrays, a field of `Func` checked by `rfl`, because a returned array must be owned
+by the caller; V8b lifts that restriction.  `Ty.leanInst` now covers arrays and pairs that contain
+them, with the pair instance of `Implements.lean`, and `ImplementsA.lean` assumes a result without
+arrays.
+
+The reflector writes `xs.size.toUInt64` as `size` and `xs[i.toNat]!` as `get`, and rejects a
+definition whose result contains an array.  `Arrays.lean` has seven definitions: a sum, a dot
+product of arrays of different lengths, a count, a search with a pair state, reads at computed
+positions including `i + 1` wrapping to 0, a pair of arrays passed to calls, and an array chosen by
+an `if` and bound with `let`.  Its module has 2,138 bytes.  Native Lean writes a panic message and a
+backtrace for each read past the end, 472 in the cases, so `tests/verified/run.sh` now keeps
+standard error in a file and fails on anything else, as `tests/modules/run.sh` does.  The test
+passes all 3,778 cases of the eight examples.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

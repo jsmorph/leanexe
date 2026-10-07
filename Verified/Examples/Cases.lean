@@ -5,6 +5,7 @@ import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
+import Verified.Examples.Arrays
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -49,6 +50,14 @@ def selectCases : List (UInt64 × UInt64 × UInt64) :=
 /-- Loop counts: none, one, a few, and enough to wrap the Fibonacci numbers and the powers.
 `sumPowers` takes time quadratic in its count and runs only on the counts up to 100. -/
 def counts : List UInt64 := [0, 1, 2, 3, 7, 8, 64, 65, 100, 1000, 65537]
+
+/-- Arrays: empty, one element, a few, the words, and 100 elements. -/
+def arrays : List (Array UInt64) :=
+  [#[], #[5], #[1, 2, 3], words.toArray, (List.range 100).toArray.map UInt64.ofNat]
+
+/-- The host's argument for an array. -/
+def arrayArg (xs : Array UInt64) : String :=
+  "array-u64:" ++ ",".intercalate (xs.toList.map toString)
 
 end Verified.Examples
 
@@ -103,3 +112,17 @@ def main : IO Unit := do
   for n in [0, 1, 3, 10, 50] do
     for k in [0, 1, 3, 10, 50] do
       IO.println s!"loops|grid|i64|i64:{n} i64:{k}|{Loops.grid n k}"
+  for xs in arrays do
+    IO.println s!"arrays|sum|i64|{arrayArg xs}|{Arrays.sum xs}"
+    for key in [0, 1, 2, 5, 255] do
+      IO.println s!"arrays|count|i64|{arrayArg xs} i64:{key}|{Arrays.count xs key}"
+    for limit in [0, 2, 50, 255, 18446744073709551615] do
+      let (found, seen) := Arrays.firstAbove xs limit
+      let seenWord := if seen then 1 else 0
+      IO.println s!"arrays|firstAbove|list:i64,i64|{arrayArg xs} i64:{limit}|{found} {seenWord}"
+    for i in [0, 1, 2, 3, 11, 99, 100, 18446744073709551615] do
+      IO.println s!"arrays|at3|i64|{arrayArg xs} i64:{i}|{Arrays.at3 xs i}"
+    for ys in arrays do
+      IO.println s!"arrays|dot|i64|{arrayArg xs} {arrayArg ys}|{Arrays.dot xs ys}"
+      IO.println s!"arrays|sumBoth|i64|{arrayArg xs} {arrayArg ys}|{Arrays.sumBoth (xs, ys)}"
+      IO.println s!"arrays|larger|i64|{arrayArg xs} {arrayArg ys}|{Arrays.larger xs ys}"

@@ -110,6 +110,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .letPair (s := s) (t := t) e body => s.width + t.width + max e.width body.width
   | _, _, .loop (t := t) count init body =>
     max count.width (max (1 + init.width) (2 + t.width + body.width))
+  | _, _, .size a => a.width
+  | _, _, .get a i => max a.width (max 2 (1 + i.width))
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at local `(slots.getD x.index default).loc`, the locals from `base` on are free, and
@@ -121,7 +123,10 @@ encoder writes block types of at most one result.  `letE` stores its value from 
 and gives its body the locals above it, and `letPair` stores its first component from `base` on
 and its second after it.  A call pushes its arguments in order and calls the function.  A loop
 keeps its count in local `base`, its index in local `base + 1`, and its state from local
-`base + 2` on, and leaves the block when the index reaches the count. -/
+`base + 2` on, and leaves the block when the index reaches the count.  `size` loads the length
+word at the array's address.  `get` keeps the array's address in local `base` and the position in
+local `base + 1`, compares the position with the length word, and loads the element or yields
+0. -/
 def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
@@ -170,6 +175,13 @@ def Expr.code (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
           [] []] ++
       loadCode (base + 2) t.width
+  | _, _, .size a => a.code slots base live ++ [.wrapI64, .load64 0]
+  | _, _, .get a i =>
+    a.code slots base (fun k => live k || i.uses k) ++ [.localSet base] ++
+      i.code slots (base + 1) live ++
+      [.localSet (base + 1), .localGet (base + 1), .localGet base, .wrapI64, .load64 0, .ltUI64,
+        .iff 0 1 [.localGet base, .localGet (base + 1), .constI64 1, .addI64, .constI64 8, .mulI64,
+          .addI64, .wrapI64, .load64 0] [.constI64 0] [] [.i64]]
 
 /-- The slots of a function's parameters, all borrowed: parameter `i` starts after the words of
 the parameters before it. -/
