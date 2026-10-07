@@ -27141,23 +27141,61 @@ its `Flat` tuple, which is the representation of its flattening.  The proof is a
 because the same proof as a term exhausted the heartbeats on `swapEnds` in `Updates.lean`.
 `Records.lean` adds 195 cases, and all 5,939 cases pass.
 
+### V10b, second part: arrays of structures
+
+An array of structures is the array of the flattened elements, `Array.map φ`, and
+`size_map_eq`, `get_map_eq`, `set_map_eq`, `push_map_eq`, `append_map_eq`, and `build_map_eq` state
+each operation on the mapped array.  `get_map_eq` needs `φ default = default` for a read past the
+end; the reflector checks the equation by `isDefEq` and passes `rfl`, so a structure whose default
+does not take each field's default is rejected with a message.  A field read of a structure that is
+not a variable, such as `grid[i.toNat]!.state.density`, binds the structure with `let` and rebuilds
+the chain of projections on the new variable.
+
+The transfer for scalar structures proved each correspondence of the instances by `rfl`.  For an
+array of structures the instances differ: Lean's stores `flatWords xs`, the scalar values of each
+element's `Flat` tuple, and the source instance stores `e.words (xs.map φ)`.  `flatWords_map`
+equates the two from `φ`'s agreement on one element, which holds by `rfl`.  `Agree instA instB φ`
+collects the six correspondences, `Agree.flatArray` and `Agree.flatMoved` prove it for arrays,
+`Agree.prod` combines pairs, and `ImplementsA.transferAgree` takes the agreements of the argument
+tuple and of the result.
+
+The reflector first decomposed the source instance with `whnf`, which unfolded
+`instRepresentProd` into its structure, so a pair's components were lost.  It follows the source
+types instead: `agreeArgs` mirrors `argsInst`, `agreeArg` mirrors `Ty.argInst`, and `agreeTy`
+mirrors `Ty.leanInst`, and each returns the flattening with its proof, so `flatArgs` and
+`flatResult` are the functions that the proofs mention.  A first version proved the agreement of
+the other types field by field by unfolding; after review, `Agree.scalar` covers the types without
+arrays, from the equation of the words of a value and of its flattening, and `Agree.refl` the
+arrays without structures, so each case of the recursion applies one lemma.  `Agree.scalar` takes
+the source `Scalar` instance `Ty.scalarInst t h` or `argsScalarInst ps ms h`, with `h` by
+evaluation.  Every step has an `isDefEq` check before the kernel's, so a failure names the type.
+`transferFlat` is gone: `transferAgree` applies `transfer` directly.  An array of plain tuples is
+accepted inside a body, as `Grids.pairTotal` shows, and rejected as a parameter or result with a
+message that Lean has no `Represent` instance for it.  `Grids.lean` adds 84 cases, and all 6,023
+cases pass.
+
 - [x] V10a: `Elem.prod`, `Path`, `Expr.mk`, `Expr.proj`, and arrays of multi-word elements, with
   the reflector mapping Lean's array-free pairs to `Elem.prod`, and hand-written programs for
   arrays of tuples.
 - [x] V10b, first part: scalar structures through `Flat`, with the transfer and the commuting
   lemmas.
-- [ ] V10b, second part: arrays of structures and the default equation.
-- [ ] Later: enumerations and `match` on them, and a read of one field of an array element that
-  loads only that field's words.
+- [x] V10b, second part: arrays of structures and the default equation.
+- [ ] Later: a read of one field of an array element that loads only that field's words.
 
-After records, `LeanExe.repeatWhile`, then recursion.  `repeatWhile fuel init cond step` is
-`LeanExe.loop` with an exit when `cond` fails: a source constructor with `cond` and `step` over the
-state, code like the loop's with a second exit, and a proof modeled on `spec_loop` whose invariant
-says that the result is `go (fuel.toNat - k) s` for the state `s` after `k` passes.  A rewrite into
-`loop` over a state and a flag would run every pass of the fuel, which programs often set near
-`2^64`.
+### The remaining coverage
+
+The remaining agenda, in order, is `LeanExe.repeatWhile`, recursion, enumerations with `match`, and
+records with array fields.  Each item ends with bytes, theorems, and tests, and each starts with
+research and a reviewed recommendation.
+
+`repeatWhile fuel init cond step` is `LeanExe.loop` with an exit when `cond` fails: the result is
+`go (fuel.toNat - k) s` for the state `s` after `k` passes.  A rewrite into `loop` over a state and
+a flag would run every pass of the fuel, which programs often set near `2^64`.
 
 - [ ] V11: `LeanExe.repeatWhile`.
+- [ ] V12: recursion.
+- [ ] V13: enumerations and `match` on them.
+- [ ] V14: records with array fields.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

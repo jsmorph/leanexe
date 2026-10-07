@@ -2,9 +2,10 @@ import Verified.Reflect.Command
 
 /-! The fifteenth program of the verified compiler: arrays of tuples, whose elements occupy
 several consecutive words.  Lean has no `Represent` instance for an array of pairs, so the
-reflector rejects such types, and the programs here are written in the source language.  Each
+reflector rejects such types as parameters and results, and the programs here are written in the
+source language.  Each
 `example` states that a source function means the Lean function beside it.  Arrays of structures
-will reach these arrays through the reflector. -/
+with `Flat` instances reach the same arrays through the reflector, in `Grids.lean`. -/
 
 namespace Verified.Examples.Tuples
 

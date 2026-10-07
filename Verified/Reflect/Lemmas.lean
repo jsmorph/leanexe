@@ -225,4 +225,56 @@ theorem get_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : UIn
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by
   subst hi; rfl
 
+/-! The array operations on an array of structures, whose source value is the array of the
+elements' flattenings. -/
+
+theorem size_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.array e))
+    (xs : Array α) (hx : env.get x = xs.map φ) :
+    (Expr.size (S := S) x).denote funs env = xs.size.toUInt64 := by
+  show (env.get x).size.toUInt64 = _
+  rw [hx, Array.size_map]
+
+/-- A read past the end gives the flattening of Lean's default structure, which must be the
+element type's default value. -/
+theorem get_map_eq {e : Elem} {α : Type} [Inhabited α] (φ : α → e.denote)
+    (hd : φ default = default) (x : Var Γ (.array e)) (xs : Array α) {i : Expr S Γ .word}
+    {I : UInt64} (hx : env.get x = xs.map φ) (hi : i.denote funs env = I) :
+    (Expr.get x i).denote funs env = φ xs[I.toNat]! := by
+  show (env.get x)[(i.denote funs env).toNat]! = _
+  rw [hx, hi]
+  by_cases h : I.toNat < xs.size
+  · rw [getElem!_pos (xs.map φ) I.toNat (by simpa using h), getElem!_pos xs I.toNat h,
+      Array.getElem_map]
+  · rw [getElem!_neg (xs.map φ) I.toNat (by simpa using h), getElem!_neg xs I.toNat h, hd]
+
+theorem set_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.array e))
+    (xs : Array α) {i : Expr S Γ .word} {v : Expr S Γ (.elem e)} {I : UInt64} (V : α)
+    (hx : env.get x = xs.map φ) (hi : i.denote funs env = I) (hv : v.denote funs env = φ V) :
+    (Expr.set x i v).denote funs env = (xs.set! I.toNat V).map φ := by
+  show (env.get x).set! (i.denote funs env).toNat (v.denote funs env) = _
+  rw [hx, hi, hv, Array.set!_eq_setIfInBounds, Array.set!_eq_setIfInBounds,
+    Array.map_setIfInBounds]
+
+theorem push_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.array e))
+    (xs : Array α) {v : Expr S Γ (.elem e)} (V : α) (hx : env.get x = xs.map φ)
+    (hv : v.denote funs env = φ V) :
+    (Expr.push x v).denote funs env = (xs.push V).map φ := by
+  show (env.get x).push (v.denote funs env) = _
+  rw [hx, hv, Array.map_push]
+
+theorem append_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x y : Var Γ (.array e))
+    (xs ys : Array α) (hx : env.get x = xs.map φ) (hy : env.get y = ys.map φ) :
+    (Expr.append (S := S) x y).denote funs env = (xs ++ ys).map φ := by
+  show env.get x ++ env.get y = _
+  rw [hx, hy, Array.map_append]
+
+theorem build_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (F : UInt64 → α)
+    {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)} {N : UInt64}
+    (hn : count.denote funs env = N) (hf : ∀ i, elem.denote funs (.cons i env) = φ (F i)) :
+    (Expr.build count elem).denote funs env = (LeanExe.build N F).map φ := by
+  subst hn
+  show LeanExe.build _ (fun i => elem.denote funs (.cons i env)) = _
+  simp only [LeanExe.build, hf, Array.map_ofFn]
+  rfl
+
 end Verified.Reflect

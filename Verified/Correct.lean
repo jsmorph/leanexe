@@ -4611,25 +4611,133 @@ theorem ImplementsA.transfer {α β γ δ : Type} {_ : Represent α} [Represent 
         simp only [Represent.outside, hBlocks]
         exact hout, trivial⟩
 
-/-- `transfer` for a Lean function `F` whose result `F y` the compiled function gives as `r (F y)`:
-an argument `y` represented as `g y` is, and a value `r z` that represents `z`. -/
-theorem ImplementsA.transferFlat {α β γ δ : Type} {_ : Represent α} [Represent β]
-    {_ : Represent γ} [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
-    (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
-    (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y))
-    (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
-      Represent.borrowed heap store vs (g y))
-    (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
-      Separate store (Represent.moves store vs y) (Represent.reads store vs y) →
-        Separate store (Represent.moves store vs (g y)) (Represent.reads store vs (g y)))
-    (hMoves : ∀ heap store vs y, Represent.borrowed heap store vs y →
-      Represent.moves store vs (g y) = Represent.moves store vs y)
-    (hResult : ∀ heap store vs z, Represent.owned heap store vs (r z) →
-      Represent.owned heap store vs z)
-    (hBlocks : ∀ store vs z, Represent.blocks store vs z = Represent.blocks store vs (r z)) :
+/-- Two `Represent` instances agree along `φ`: a value `y` of the first type is represented as
+`φ y` is in the second. -/
+structure Agree {α β : Type} (instA : Represent α) (instB : Represent β) (φ : α → β) : Prop where
+  borrowed : ∀ heap store vs y, @Represent.borrowed _ instA heap store vs y ↔
+    @Represent.borrowed _ instB heap store vs (φ y)
+  owned : ∀ heap store vs y, @Represent.owned _ instA heap store vs y ↔
+    @Represent.owned _ instB heap store vs (φ y)
+  width : ∀ y, @Represent.width _ instA y = @Represent.width _ instB (φ y)
+  blocks : ∀ store vs y,
+    @Represent.blocks _ instA store vs y = @Represent.blocks _ instB store vs (φ y)
+  reads : ∀ store vs y,
+    @Represent.reads _ instA store vs y = @Represent.reads _ instB store vs (φ y)
+  moves : ∀ store vs y,
+    @Represent.moves _ instA store vs y = @Represent.moves _ instB store vs (φ y)
+
+/-- An instance agrees with itself along the identity. -/
+theorem Agree.refl {α : Type} (inst : Represent α) : Agree inst inst id :=
+  ⟨fun _ _ _ _ => Iff.rfl, fun _ _ _ _ => Iff.rfl, fun _ => rfl, fun _ _ _ => rfl,
+    fun _ _ _ => rfl, fun _ _ _ => rfl⟩
+
+/-- Instances from `Scalar` agree along a map that keeps each value's words. -/
+theorem Agree.scalar {α β : Type} [Scalar α] [Scalar β] (φ : α → β)
+    (h : ∀ x, Scalar.values x = Scalar.values (φ x)) :
+    Agree (instRepresentOfScalar (α := α)) (instRepresentOfScalar (α := β)) φ where
+  borrowed _ _ vs y := by show vs = _ ↔ vs = _; rw [h]
+  owned _ _ vs y := by show vs = _ ↔ vs = _; rw [h]
+  width y := by show List.length _ = List.length _; rw [h]
+  blocks _ _ _ := rfl
+  reads _ _ _ := rfl
+  moves _ _ _ := rfl
+
+/-- Pairs agree componentwise. -/
+theorem Agree.prod {α β γ δ : Type} {ia : Represent α} {ib : Represent β} {ja : Represent γ}
+    {jb : Represent δ} {φ : α → β} {ψ : γ → δ} (ha : Agree ia ib φ) (hb : Agree ja jb ψ) :
+    Agree (@instRepresentProd _ _ ia ja) (@instRepresentProd _ _ ib jb)
+      (fun p => (φ p.1, ψ p.2)) where
+  borrowed heap store vs p := by
+    show (∃ first second, vs = first ++ second ∧ _ ∧ _) ↔
+      (∃ first second, vs = first ++ second ∧ _ ∧ _)
+    simp only [ha.borrowed, hb.borrowed]
+  owned heap store vs p := by
+    show (∃ first second, vs = first ++ second ∧ _ ∧ _ ∧ _) ↔
+      (∃ first second, vs = first ++ second ∧ _ ∧ _ ∧ _)
+    simp only [ha.owned, hb.owned, Represent.outside, ha.blocks, hb.blocks]
+  width p := by
+    show @Represent.width _ ia p.1 + @Represent.width _ ja p.2 = _ + _
+    rw [ha.width, hb.width]
+  blocks store vs p := by
+    show @Represent.blocks _ ia store _ p.1 ++ @Represent.blocks _ ja store _ p.2 = _ ++ _
+    rw [ha.width, ha.blocks, hb.blocks]
+  reads store vs p := by
+    show @Represent.reads _ ia store _ p.1 ++ @Represent.reads _ ja store _ p.2 = _ ++ _
+    rw [ha.width, ha.reads, hb.reads]
+  moves store vs p := by
+    show @Represent.moves _ ia store _ p.1 ++ @Represent.moves _ ja store _ p.2 = _ ++ _
+    rw [ha.width, ha.moves, hb.moves]
+
+/-- The words of an array of a `Flat` type are the words of its elements' flattenings. -/
+theorem flatWords_map {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ : α → e.denote)
+    (hφ : ∀ x, (Scalar.values (Flat.flat x)).map Value.word = e.toWords (φ x)) (xs : Array α) :
+    flatWords xs = e.words (xs.map φ) := by
+  rw [Elem.words_eq, Array.toList_map, List.flatMap_map]
+  show (xs.toList.flatMap fun x => (Scalar.values (Flat.flat x)).map Value.word).toArray = _
+  rw [show (fun x => (Scalar.values (Flat.flat x)).map Value.word) = fun x => e.toWords (φ x) from
+    funext hφ]
+
+/-- An array of a `Flat` type agrees with the array of its elements' flattenings. -/
+theorem Agree.flatArray {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ : α → e.denote)
+    (hφ : ∀ x, (Scalar.values (Flat.flat x)).map Value.word = e.toWords (φ x)) :
+    Agree (instRepresentArrayOfFlatOfScalar (α := α) (β := β)) e.arrayInst
+      (fun xs => xs.map φ) where
+  borrowed heap store vs xs := by
+    rw [e.arrayInst_borrowed]
+    show (∃ ptr, vs = [.i64 ptr] ∧ heap.Borrowed store ptr (flatWords xs)) ↔
+      ∃ ptr, vs = [.i64 ptr] ∧ Mode.array .borrowed heap store ptr (e.words (xs.map φ))
+    rw [flatWords_map e φ hφ]; rfl
+  owned heap store vs xs := by
+    rw [e.arrayInst_owned]
+    show (∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr (flatWords xs)) ↔
+      ∃ ptr, vs = [.i64 ptr] ∧ Mode.array .owned heap store ptr (e.words (xs.map φ))
+    rw [flatWords_map e φ hφ]; rfl
+  width xs := by rw [e.arrayInst_width]; rfl
+  blocks store vs xs := by rw [e.arrayInst_blocks]; rfl
+  reads store vs xs := by
+    rw [e.arrayInst_reads]
+    show (match vs with
+      | [.i64 ptr] => [(ptr.toNat, 8 * ((flatWords xs).size + 1))]
+      | _ => []) = _
+    rw [flatWords_map e φ hφ]; rfl
+  moves store vs xs := by rw [e.arrayInst_moves]; rfl
+
+/-- An owned array of a `Flat` type agrees with the owned array of its elements' flattenings. -/
+theorem Agree.flatMoved {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ : α → e.denote)
+    (hφ : ∀ x, (Scalar.values (Flat.flat x)).map Value.word = e.toWords (φ x)) :
+    Agree (instRepresentMovedArrayOfFlatOfScalar (α := α) (β := β)) e.movedInst
+      (fun xs => Moved.mk (xs.val.map φ)) where
+  borrowed heap store vs xs := by
+    rw [e.movedInst_borrowed]
+    show (∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr (flatWords xs.val)) ↔
+      ∃ ptr, vs = [.i64 ptr] ∧ Mode.array .owned heap store ptr (e.words (xs.val.map φ))
+    rw [flatWords_map e φ hφ]; rfl
+  owned heap store vs xs := by
+    show (∃ ptr, vs = [.i64 ptr] ∧ heap.Owned store ptr (flatWords xs.val)) ↔ _
+    rw [show @Represent.owned _ e.movedInst heap store vs (Moved.mk (xs.val.map φ)) ↔
+      (Ty.array e).Rep .owned heap store vs (xs.val.map φ) by cases e <;> exact Iff.rfl]
+    show _ ↔ ∃ ptr, vs = [.i64 ptr] ∧ Mode.array .owned heap store ptr (e.words (xs.val.map φ))
+    rw [flatWords_map e φ hφ]; rfl
+  width xs := by rw [e.movedInst_width]; rfl
+  blocks store vs xs := by
+    show (match vs with | [.i64 ptr] => [block store ptr] | _ => []) = _
+    cases e <;> rfl
+  reads store vs xs := by rw [e.movedInst_reads]; rfl
+  moves store vs xs := by rw [e.movedInst_moves]; rfl
+
+/-- `transfer` for a Lean function `F` whose result `F y` the compiled function gives as `r (F y)`,
+from the agreement of the instances of the arguments along `g` and of the result along `r`. -/
+theorem ImplementsA.transferAgree {α β γ δ : Type} {ia : Represent α} {ib : Represent β}
+    {ic : Represent γ} {id : Represent δ} {aborts : Bool} {m : Module} {entry : Nat}
+    {f : α → γ} (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
+    (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y)) (hArgs : Agree ib ia g)
+    (hResult : Agree id ic r) :
     ImplementsA aborts m entry F (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
-  ImplementsA.transfer h g F hArgs hSep hMoves
-    (fun _ _ _ y hy => hResult _ _ _ _ (hF y ▸ hy)) (fun _ _ y => by rw [hBlocks, hF])
+  ImplementsA.transfer h g F (fun _ _ _ _ hy => (hArgs.borrowed _ _ _ _).mp hy)
+    (fun _ _ _ _ _ hs => by rw [← hArgs.moves, ← hArgs.reads]; exact hs)
+    (fun _ _ _ _ _ => (hArgs.moves _ _ _).symm)
+    (fun _ _ _ y hy => (hResult.owned _ _ _ _).mpr (hF y ▸ hy))
+    (fun _ _ y => by rw [hF]; exact hResult.blocks _ _ _)
 
 /-- A function's theorem for the verified compiler's representation gives the theorem for Lean
 types whose representations agree with it. -/

@@ -14,6 +14,7 @@ import Verified.Examples.Floats
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
+import Verified.Examples.Grids
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -148,6 +149,21 @@ def cellArg (c : Cell) : String :=
 open Records in
 def cellOut (c : Cell) : String :=
   s!"{c.index} {conservedOut c.state} {c.pressure.toBits} {bit c.ok}"
+
+open Records in
+/-- The host's arguments and outputs for arrays of structures, by their words. -/
+def conservedWords (us : Array Conserved) : Array UInt64 :=
+  (us.toList.flatMap fun u => [u.density.toBits, u.momentum.toBits, u.energy.toBits]).toArray
+
+open Records in
+def cellWords (cs : Array Cell) : Array UInt64 :=
+  (cs.toList.flatMap fun c => c.index :: (conservedWords #[c.state]).toList ++
+    [c.pressure.toBits, if c.ok then 1 else 0]).toArray
+
+open Records in
+/-- Arrays of structures: empty, one element, the special structures, and built ones. -/
+def conservedArrays : List (Array Conserved) :=
+  [#[], #[⟨1.0, 2.0, 3.0⟩], conserveds.toArray, Grids.ramp 10]
 
 /-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
 infinities, both zeros, the smallest subnormal, and words. -/
@@ -445,6 +461,32 @@ def main : IO Unit := do
         IO.println s!"records|bumpIndex|{cellKinds}|{cellArg cell}|{r}"
         let (b, k) := Records.withCount cell
         IO.println s!"records|withCount|{cellKinds},i64|{cellArg cell}|{cellOut b} {k}"
+  for n in [0, 1, 5, 100] do
+    IO.println s!"grids|ramp|array-u64|i64:{n}|{arrayOut (conservedWords (Grids.ramp n))}|1"
+    IO.println s!"grids|pairTotal|f64|i64:{n}|{(Grids.pairTotal n).toBits}|0"
+  for us in conservedArrays do
+    let a := arrayArg (conservedWords us)
+    IO.println s!"grids|totalEnergy|f64|{a}|{(Grids.totalEnergy us).toBits}|1"
+    for x in [2.0, -0.5] do
+      let r := arrayOut (conservedWords (Grids.scaled x us))
+      IO.println s!"grids|scaled|array-u64|{floatArg x} {a}|{r}|1|1"
+    let (ws, t) := Grids.withTotal us
+    let r := s!"{arrayOut (conservedWords ws)} {t.toBits}"
+    IO.println s!"grids|withTotal|list:array-u64,f64|{a}|{r}|1|1"
+    for vs in conservedArrays do
+      let r := arrayOut (conservedWords (Grids.joined us vs))
+      IO.println s!"grids|joined|array-u64|{a} {arrayArg (conservedWords vs)}|{r}|2"
+    let grid := Grids.cells us
+    let g := arrayArg (cellWords grid)
+    IO.println s!"grids|cells|array-u64|{a}|{arrayOut (cellWords grid)}|2"
+    IO.println s!"grids|allOk|i64|{g}|{bit (Grids.allOk grid)}|1"
+    IO.println s!"grids|count|i64|{g}|{Grids.count grid}|1"
+    for i in [0, 1, 2, 9, 10, 18446744073709551615] do
+      IO.println s!"grids|density|f64|{g} i64:{i}|{(Grids.density grid i).toBits}|1"
+    for p in [1.5, -1.0] do
+      let r := arrayOut (cellWords (Grids.addCell grid ⟨1.0, 2.0, 3.0⟩ p))
+      let args := s!"{g} {conservedArg ⟨1.0, 2.0, 3.0⟩} {floatArg p}"
+      IO.println s!"grids|addCell|array-u64|{args}|{r}|1"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"
