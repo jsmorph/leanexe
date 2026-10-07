@@ -1,52 +1,13 @@
-import Verified.Correct
-import LeanExe.Encoding.RoundTrip
+import Verified.Reflect.Command
 
 /-! The first program of the verified compiler: `a * b + c * c - 7` on 64-bit words.  The
-compiler's theorem gives the module's correctness, and the encoder's round trip carries it to
-the bytes. -/
+reflector writes the source function, proves that it means `poly`, and states that the module's
+bytes compute `poly`. -/
 
 namespace Verified.Examples.Poly
 
-open LeanExe.Pipeline Verified
-
-/-- The Lean function. -/
 def poly (a b c : UInt64) : UInt64 := a * b + c * c - 7
 
-/-- `poly` in the source language. -/
-def polyFunc : Func S :=
-  ⟨"poly", [.word, .word, .word], .word,
-    .bin .sub (.bin .add (.bin .mul (.v 0) (.v 1)) (.bin .mul (.v 2) (.v 2))) (.word 7)⟩
-
-def prog : Prog [([.word, .word, .word], .word)] := .cons polyFunc .nil
-
-def module : Wasm.Module := compile prog
-
-/-- `poly` with its three arguments as one tuple. -/
-def polyTuple (x : UInt64 × UInt64 × UInt64) : UInt64 := poly x.1 x.2.1 x.2.2
-
-/-- The source function means `poly`. -/
-theorem polyFunc_denote (a b c : UInt64) :
-    (polyFunc (S := [])).denote .nil (.cons a (.cons b (.cons c .nil))) = poly a b c := rfl
-
-/-- The arguments of `polyFunc` from a tuple. -/
-def args (x : UInt64 × UInt64 × UInt64) : Env [.word, .word, .word] :=
-  .cons x.1 (.cons x.2.1 (.cons x.2.2 .nil))
-
-theorem poly_implements : ImplementsPureA false module 2 polyTuple := by
-  have h : ImplementsPureA false module 2 ((polyFunc (S := [])).denote .nil) :=
-    (Prog.correct prog .here).1
-  have hComp : (polyFunc (S := [])).denote .nil ∘ args = polyTuple := by
-    funext x
-    exact polyFunc_denote x.1 x.2.1 x.2.2
-  rw [← hComp]
-  exact ImplementsPureA.comap h args fun _ => rfl
-
-/-- `encode` succeeds on `module`, and the module that `decode` reads from the bytes computes
-`poly` on every input, without a trap. -/
-theorem poly_bytes : ∃ bytes, Wasm.Encoding.encode module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ ImplementsPureA false m 2 polyTuple := by
-  obtain ⟨bytes, success, decoded⟩ :=
-    Wasm.Encoding.round_trip module (by decide) (by decide +kernel)
-  exact ⟨bytes, success, module, decoded, poly_implements⟩
+verified_compile compiled := [poly]
 
 end Verified.Examples.Poly
