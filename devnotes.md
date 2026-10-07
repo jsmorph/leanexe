@@ -26540,6 +26540,77 @@ a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose bod
 definition.  Its module has 2,065 bytes, and the test passes all 3,608 cases of the seven
 examples, with loop counts from 0 to 65,537.
 
+### V8: the next stage, researched and reviewed
+
+The user asked (2026-10-06) for the best next step given the whole agenda, which the design
+record lists as arrays, floats, recursion, and ownership.  A count over the 32 example programs
+shows arrays in 20, floats in 14, structures or inductive types in 11, in-place updates in 7, and
+recursion with a termination proof in 4.  Structures of scalars are passed as tuples through
+`Flat` and need reflector work but no new statement; only `Words` and `Trees` keep records on the
+heap.  Arrays, ownership, and trees need the heap form of the theorem: `ImplementsA` with
+`Heap.At`, the `Represent` instances, and the region frame `Heap.Keeps`.
+
+The current theorem, `ImplementsPureA false`, holds the store fixed through all 14 cases of
+`Expr.code_spec`.  The heap form threads a heap and a store through every case, because a call or
+a subexpression may allocate.  Floats done first would add cases that this change rewrites, and
+floats bring their own change to code generation, since every local is now i64.  Recursion adds
+few cases; it changes `Prog`, `denote`, and `Prog.calls`, and only 4 examples need it, two of
+them with trees on the heap.  The next stage is therefore the heap statement and arrays.
+
+An independent review (2026-10-06) confirmed that choice and found that the first draft did not
+fix the final form of `Expr.code_spec`: it left out the trap premise, result modes, owned
+variables, consumed blocks, and the disjointness of owned blocks, each of which the allocation
+and ownership iterations need.  It also pointed to the ownership model the user chose on
+2026-10-01 for `LeanExe`: unique ownership with moves, modes inferred by the compiler, a move at a
+value's last use, a copy at an earlier use into an owned position, and a release of an owned
+value that a path does not consume.  The revised plan adopts that model and fixes the statement in
+V8a:
+
+| Iteration | Content |
+|---|---|
+| V8a | The heap statement in its final form, proved for every existing construct.  `Ty.array`, an `Array UInt64` held as a pointer, as a borrowed parameter, call argument, and `let` value; `xs.size.toUInt64` and the bounds-checked read `xs[i.toNat]!`.  Results contain no arrays. |
+| V8b | Allocation: `LeanExe.build`, owned array results and temporaries, releases where an owned value dies unconsumed, and the trap at `unreachable` when memory runs out.  A flow of a borrowed parameter into a result is rejected until V8c. |
+| V8c | Inferred parameter modes (owned when a path returns the parameter, passes it at its last use to an owned parameter, or updates it in place), moves at last uses, copies at earlier uses into owned positions, and the in-place `set!`, `push`, and `++`. |
+
+The V8a statement:
+
+1. Each function's theorem is `ImplementsA aborts m (callIndex g) f (fun _ _ _ => True)
+   (fun _ _ _ _ _ => True)`.  `aborts` is part of the signature, computed by the `Prog`
+   constructor from the body: true when the body allocates or calls a function that may trap.
+   A function that does not allocate keeps the guarantee that it returns without a trap.  The
+   scalar programs of V1 to V7 lose two things: the theorem now assumes `Heap.At` and the memory
+   cap, and it gives the region frame instead of `final = store`.  `ImplementsPureA` names loop
+   bodies as the use of `final = store`, and the loop case here threads the store, so no caller
+   in this compiler needs either.
+2. Each variable has a mode, borrowed or owned, and a value is represented by a relation
+   `Ty.Rep mode heap store ws v`: a word, a `Bool`, and a pair as now, an array as `[.i64 ptr]`
+   with `heap.Borrowed store ptr xs` when borrowed and `heap.Owned store ptr xs` when owned.  A
+   value has one mode for all the arrays it contains.
+3. `Expr.code` takes the set of variables live after the expression, as a list of `Bool`s
+   aligned with the context, and passes each subexpression the variables that the rest of the
+   expression uses.  V8a moves nothing, so the set does not change its code, but V8c's moves
+   need it in every case.
+4. `Expr.code_spec` assumes `Heap.At`, the memory cap, `TrapOK aborts Q`, and `Holds` for the
+   variables live before the expression: their locals hold words that represent their values in
+   the current heap and store, and the blocks of owned variables are pairwise disjoint and apart
+   from the borrowed regions.  It ends with a heap and store reached by a step, `heap.At`, equal
+   caps, and `heap.Keeps store gone heap' store' fresh`, where `gone` holds the blocks of the
+   variables the expression consumes and `fresh` the blocks of an owned result.  `Holds` holds
+   afterward for the variables live after the expression, and the pushed words represent the value
+   in its mode.  The cases go through a few lemmas about the step and about `Holds`, so later
+   changes to these definitions touch the lemmas, not the cases.
+5. The read stores the array operand and the position in scratch locals, then compares the
+   position with the length word and loads the element or yields 0, the `LeanExe` read template,
+   proved after `Expr.program_spec`'s read case.
+6. The reflector proves, for each signature, that the source types' representation agrees with the
+   `Represent` instances Lean chooses for the Lean types, a pair instance, `Scalar`, or `Flat`.
+
+Allocator budgets, which give `LeanExe`'s allocating functions a theorem without a trap, are
+deferred.  For a compiler they need a cost semantics that gives, for every input, the number of
+allocations and the largest block, since `Heap.Budget` counts blocks of one size.  The agenda does
+not list them, and the factoring through step lemmas confines a later change to those lemmas, the
+allocation cases, and the cost function.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
