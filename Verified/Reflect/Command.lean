@@ -597,14 +597,38 @@ def enumWord? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
   let some v := natOf w | throwError "verified_compile: the word of {e} is not a literal: {w}"
   return some (← mkAppOptM ``OfNat.ofNat #[some (mkConst ``UInt64), some (mkRawNatLit v), none])
 
-/-- The components of a pair. -/
-def pairFields (p : Lean.Expr) : MetaM (Array Lean.Expr) :=
-  return #[← mkAppM ``Prod.fst #[p], ← mkAppM ``Prod.snd #[p]]
+/-- `d` expanded along its product type into the pairs of its projections. -/
+partial def expandPairs (d : Lean.Expr) : MetaM Lean.Expr := do
+  let (``Prod, _) := (← whnfR (← inferType d)).getAppFnArgs | return d
+  mkAppM ``Prod.mk
+    #[← expandPairs (← mkAppM ``Prod.fst #[d]), ← expandPairs (← mkAppM ``Prod.snd #[d])]
+
+/-- The arguments that the one alternative of the match `app` receives for the discriminant `d`,
+a tuple, along the alternative's pattern, which may take nested pairs apart: the match on `d`
+expanded into pairs reduces to the alternative applied to them. -/
+def matchFields (app : MatcherApp) (d : Lean.Expr) : MetaM (Array Lean.Expr) := do
+  withLocalDeclD `h (← inferType app.alts[0]!) fun h => do
+    let .reduced v ← reduceMatcher? { app with discrs := #[← expandPairs d], alts := #[h] }.toExpr
+      | throwError "verified_compile: cannot reduce the match {app.toExpr}"
+    unless v.getAppFn == h do
+      throwError "verified_compile: the match {app.toExpr} gives {v}"
+    v.getAppArgs.mapM projReduce
+
+/-- Closes `g` by `rfl` after `cases` on each of the variables `xs` that has a product type and on
+the components that each gives, so that a match on nested pairs reduces. -/
+partial def casesRefl (g : MVarId) : List Lean.Expr → MetaM Unit
+  | [] => g.refl
+  | x :: xs => g.withContext do
+    if let (``Prod, _) := (← whnfR (← inferType x)).getAppFnArgs then
+      for sg in ← g.cases x.fvarId! do
+        casesRefl sg.mvarId (sg.fields.toList ++ xs)
+    else casesRefl g xs
 
 /-- For a match `app` with one discriminant `d` of a structure type, `Prod` included, and one
 alternative `alt`, the proof of `alt (fields d) = app`.  It is proved by `cases` on a variable for
-`d`, with a variable for the alternative, and then applied to both, so that the kernel evaluates
-neither the value nor the alternative's body. -/
+`d`, and on its components when it is a tuple that the pattern takes apart further, with a variable
+for the alternative, and then applied to both, so that the kernel evaluates neither the value nor
+the alternative's body. -/
 def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) :
     MetaM Lean.Expr := do
   let alt := app.alts[0]!
@@ -619,7 +643,7 @@ def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) 
     let lhs := mkAppN h (← fields s)
     let rhs := { app with discrs := #[s], alts := #[h] }.toExpr
     let goal ← mkFreshExprMVar (← mkEq lhs rhs)
-    for sg in ← goal.mvarId!.cases s.fvarId! do sg.mvarId.refl
+    casesRefl goal.mvarId! [s]
     mkLambdaFVars #[h, s] (← instantiateMVars goal)
   return mkApp2 gen alt d
 
@@ -703,8 +727,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!
-      if let (``Prod.mk, #[_, _, a, b]) := (← projReduce d).getAppFnArgs then
-        return ← reflectAs (alt.beta #[a, b]) e
+      if (← projReduce d).isAppOf ``Prod.mk then
+        return ← reflectAs (alt.beta (← matchFields app d)) e
       if let some (_, fields) ← structOf? (← inferType d) then
         -- The fields of a structure are its projections, of a variable bound to it first.
         let fieldsOf (y : Lean.Expr) : MetaM (Array Lean.Expr) := fields.mapM (mkProjection y)
@@ -714,12 +738,14 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         return (src, ← restate proof (← casesEq app fieldsOf), t)
       if let .elem _ ← tyOf (← inferType d) then
         -- The components of a tuple are its projections, of a variable bound to it first.
-        let (src, proof, t) ← if (← projReduce d).isFVar then reflect c (alt.beta (← pairFields d))
+        let (src, proof, t) ←
+          if (← projReduce d).isFVar then reflect c (alt.beta (← matchFields app d))
           else reflect c (← withLetDecl `t (← inferType d) d fun y => do
-            mkLetFVars #[y] (alt.beta (← pairFields y)))
-        return (src, ← restate proof (← casesEq app pairFields), t)
-      let (src, proof, t) ← destructure c [] d fun a b => return alt.beta #[a, b]
-      return (src, ← restate proof (← casesEq app pairFields), t)
+            mkLetFVars #[y] (alt.beta (← matchFields app y)))
+        return (src, ← restate proof (← casesEq app (matchFields app)), t)
+      let (src, proof, t) ← destructure c [] d fun a b => do
+        return alt.beta (← matchFields app (← mkAppM ``Prod.mk #[a, b]))
+      return (src, ← restate proof (← casesEq app (matchFields app)), t)
   if let some (_, p) ← structProj? e then
     if (← structOf? (← inferType p)).isSome then return ← reflectProj e
   let (fn, args) := e.getAppFnArgs

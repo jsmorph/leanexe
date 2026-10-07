@@ -19,6 +19,7 @@ import Verified.Examples.Repeat
 import Verified.Examples.Enums
 import Verified.Examples.Recursion
 import Verified.Examples.Fields
+import Verified.Examples.Trig
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -211,6 +212,28 @@ def gridArg (g : Fields.Grid) : String :=
 
 def gridOut (g : Fields.Grid) : String :=
   s!"{arrayOut (fieldCellWords g.cells)} {g.time.toBits} {g.steps}"
+
+/-- Arguments for `Trig.sin` and `Trig.cos`: zeros, infinities, NaN, the smallest subnormal, the
+doubles at and around the high words where fdlibm's branches change, the doubles next to
+`k · π/2` for `k` up to 8, hashed values spread over the exponents from `2 ^ -30` to `2 ^ 21`, and
+the negatives of all of these. -/
+def trigArgs : List Float :=
+  let special := [0.0, 1.0 / 0.0, 0.0 / 0.0, Float.ofBits 1, Float.ofBits 0x000FFFFFFFFFFFFF,
+    1.0, 2.0, 3.0, 0.5, 1e6, 1e7]
+  let highWords : List UInt64 := [0x3e46a09e, 0x3e500000, 0x3fe921fb, 0x4002d97c, 0x400f6a7a,
+    0x4012d97c, 0x4015fdbc, 0x401921fb, 0x401c463b, 0x413921fb]
+  let thresholds := highWords.flatMap fun w =>
+    [Float.ofBits (w <<< (32 : UInt64)), Float.ofBits ((w <<< (32 : UInt64)) ||| 0xFFFFFFFF),
+      Float.ofBits ((w + 1) <<< (32 : UInt64))]
+  let multiples := (List.range 8).flatMap fun k =>
+    let b := ((UInt64.ofNat (k + 1)).toFloat * 1.5707963267948966).toBits
+    [b - 2, b - 1, b, b + 1, b + 2].map Float.ofBits
+  let hashed := (List.range 200).map fun i =>
+    let h := (UInt64.ofNat i + 1) * 0x9e3779b97f4a7c15
+    let e : UInt64 := 993 + (h >>> (58 : UInt64)) % 52
+    Float.ofBits ((e <<< (52 : UInt64)) ||| (h &&& 0xFFFFFFFFFFFFF))
+  let all := special ++ thresholds ++ multiples ++ hashed
+  all ++ all.map (- ·)
 
 end Verified.Examples
 
@@ -692,3 +715,6 @@ def main : IO Unit := do
       let w' := Fields.relabel w 3
       let r := s!"{gridOut w'.grid} {w'.label}"
       IO.println s!"fields|relabel|list:array-u64,f64,i64,i64|{gridArg g} i64:{label} i64:3|{r}|2"
+  for x in trigArgs do
+    IO.println s!"trig|sin|f64|{floatArg x}|{(Trig.sin x).toBits}"
+    IO.println s!"trig|cos|f64|{floatArg x}|{(Trig.cos x).toBits}"
