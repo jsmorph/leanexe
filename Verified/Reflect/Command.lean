@@ -14,7 +14,8 @@ The reflector is meta code and is not trusted: Lean's kernel checks every equati
 definition's parameters and result are `UInt64` or `Bool`.  Its body may use literals and other
 closed terms, its parameters, `let`, the word operations `+`, `-`, `*`, `/`, `%`, `&&&`, `|||`,
 `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`, `=`, and `≠` as
-`Bool` values, `!`, `&&`, and `||`, and `if` on a `Bool` or on a comparison. -/
+`Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, and calls of the listed
+definitions before it. -/
 
 namespace Verified.Reflect
 
@@ -40,11 +41,21 @@ def sigExpr (params : List Ty) (result : Ty) : Lean.Expr :=
   mkApp4 (mkConst ``Prod.mk [Level.zero, Level.zero]) (mkApp (mkConst ``List [Level.zero])
     (mkConst ``Ty)) (mkConst ``Ty) (ctxExpr params) (tyExpr result)
 
-/-- The functions an expression may call, the Lean functions they mean, the variables in scope
-with their types, variable 0 first, and the environment of their values. -/
+/-- A listed definition that a later one may call: its name, its signature, and its equation
+`∀ args, Func.denote … = name args`. -/
+structure Callee where
+  name : Name
+  params : List Ty
+  result : Ty
+  denoteEq : Name
+
+/-- The functions an expression may call, the Lean functions they mean, the definitions behind
+them, variable 0 of `sigs` first, the variables in scope with their types, variable 0 first, and
+the environment of their values. -/
 structure Ctx where
   sigs : Lean.Expr
   funs : Lean.Expr
+  callees : List Callee
   vars : List (Lean.Expr × Ty)
   env : Lean.Expr
 
@@ -97,6 +108,13 @@ def iteLemma : CmpOp → Name
   | .lt => ``ite_lt_eq
   | .le => ``ite_le_eq
 
+/-- `Env.cons v₀ (… (Env.cons vₙ Env.nil))` for the variables `vars`. -/
+def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
+  | [] => return mkConst ``Env.nil
+  | (x, t) :: rest => do
+    mkAppOptM ``Env.cons
+      #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some x, some (← envExpr rest)]
+
 /-- The source expression for the Lean term `e`, with the proof that it means `e`, and its
 type. -/
 partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
@@ -110,6 +128,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let x ← mkAppOptM ``Var.ofIndex #[some (tyExpr t), some c.ctx, some (toExpr i), some proof]
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return (src, ← rflProof c src e, t)
+  if let some src := ← reflectCall? e then return src
   if !e.hasFVar && !e.hasLooseBVars then
     let t ← tyOf (← inferType e)
     let src ← match t with
@@ -167,18 +186,34 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM (iteLemma op) #[hl, hr, ha, hb], t)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- A call of a listed definition before this one: the source call, with the proof built from
+  the arguments' proofs and the callee's equation. -/
+  reflectCall? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
+    let .const fn _ := e.getAppFn | return none
+    let some j := c.callees.findIdx? (·.name == fn) | return none
+    let some callee := c.callees[j]? | return none
+    let args := e.getAppArgs
+    unless args.size == callee.params.length do
+      throwError "verified_compile: {fn} must be applied to all {callee.params.length} arguments"
+    let reflected ← args.toList.mapM (reflect c)
+    let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
+    let argList ← reflected.foldrM (fun (s, _, _) acc => mkAppM ``Args.cons #[s, acc]) nilArgs
+    let nilEq ← mkAppOptM ``ofFn_nil_eq #[some c.sigs, some c.ctx, some c.funs, some c.env]
+    let hargs ← reflected.foldrM (fun (_, h, _) acc => mkAppM ``ofFn_cons_eq #[h, acc]) nilEq
+    let values ← envExpr (args.toList.zip callee.params)
+    let proof ← mkEqRefl (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Sig) |>.app
+      (sigExpr callee.params callee.result))
+    let f ← mkAppOptM ``FVar.ofIndex #[some (ctxExpr callee.params), some (tyExpr callee.result),
+      some c.sigs, some (toExpr j), some proof]
+    let hf ← mkExpectedTypeHint (mkAppN (mkConst callee.denoteEq) args)
+      (← mkEq (← mkAppM ``Funs.get #[c.funs, f, values]) e)
+    let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
+    return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.result)
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (ls, hl, _) ← reflect c a
     let (rs, hr, _) ← reflect c b
     return (← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs], ← mkAppM ``cmp_eq #[cmpExpr op, hl, hr],
       .bool)
-
-/-- `Env.cons v₀ (… (Env.cons vₙ Env.nil))` for the variables `vars`. -/
-def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
-  | [] => return mkConst ``Env.nil
-  | (x, t) :: rest => do
-    mkAppOptM ``Env.cons
-      #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some x, some (← envExpr rest)]
 
 /-- What the reflector learns from one definition. -/
 structure Reflected where
@@ -196,7 +231,8 @@ def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
 
 /-- Reflects definition `name` as a function that may call the functions `sigs`, meaning
 `funs`, and adds `base.func` and `base.denote_eq`. -/
-def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) : MetaM Reflected := do
+def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List Callee) :
+    MetaM Reflected := do
   let info ← getConstInfoDefn name
   unless info.levelParams.isEmpty do
     throwError "verified_compile: {name} has universe parameters"
@@ -205,7 +241,7 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) : MetaM Reflect
     let result ← tyOf (← inferType body)
     let vars := params.toList.zip types
     let env ← envExpr vars
-    let (src, proof, _) ← reflect ⟨sigs, funs, vars, env⟩ body
+    let (src, proof, _) ← reflect ⟨sigs, funs, callees, vars, env⟩ body
     let funcType := mkApp (mkConst ``Func) sigs
     let func ← mkAppOptM ``Func.mk #[some sigs, some (toExpr name.getString!),
       some (ctxExpr types), some (tyExpr result), some src]
@@ -252,13 +288,15 @@ def elabVerifiedCompile : CommandElab
       let mut sigs : List (List Ty × Ty) := []
       let mut prog := Lean.mkConst ``Prog.nil
       let mut out : Array Reflected := #[]
+      let mut callees : List Callee := []
       for name in names do
         let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r) => sigExpr p r)
         let funs ← mkAppM ``Prog.funs #[prog]
-        let r ← reflectDefinition (base ++ Name.mkSimple name.getString!) name sigsExpr funs
-        prog ← mkAppM ``Prog.cons #[Lean.mkConst (base ++ Name.mkSimple name.getString! ++ `func),
-          prog]
+        let fbase := base ++ Name.mkSimple name.getString!
+        let r ← reflectDefinition fbase name sigsExpr funs callees
+        prog ← mkAppM ``Prog.cons #[Lean.mkConst (fbase ++ `func), prog]
         sigs := (r.params, r.result) :: sigs
+        callees := ⟨name, r.params, r.result, fbase ++ `denote_eq⟩ :: callees
         out := out.push r
       let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map fun (p, r) => sigExpr p r)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog

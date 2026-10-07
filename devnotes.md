@@ -26416,7 +26416,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V4: `Bool`, comparisons, and conditionals, with typed expressions.
 - [x] V5: several functions and calls between them, each function calling only earlier ones.
 - [x] V6a: a reflector from single Lean definitions to the source syntax, with `denote (reflect f) = f`.
-- [ ] V6b: calls between reflected definitions.
+- [x] V6b: calls between reflected definitions.
 - [ ] Later: loops, floats, arrays, and ownership.
 
 V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
@@ -26493,6 +26493,14 @@ and `Prog.correct`.  The examples `Poly`, `Mix`, `Lets`, and `Select` are now re
 first three give modules of the same sizes as their hand-written versions.  `Select` gains
 `clamp`, with `if` on `<` and `>`, and `pickNe`, with `if` on `≠` and a `Bool` parameter, and the
 test passes all 1,776 cases.
+
+V6b lets a reflected definition call the listed definitions before it.  The reflector writes the
+call with `Args`, proves that the arguments' environment is `Env.cons` of their Lean values from
+`ofFn_cons_eq` and `ofFn_nil_eq`, and closes it with `call_eq` and the callee's equation, which it
+proved first.  A call is reflected before the closed-term rule, so `g 3` compiles to a call
+instead of a constant.  `Calls.lean` is now four definitions and one `verified_compile`, and its
+module has the same size as the hand-written one.  Every example is now reflected, and the test
+passes all 1,776 cases.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
