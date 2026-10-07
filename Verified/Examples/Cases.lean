@@ -215,11 +215,13 @@ def gridOut (g : Fields.Grid) : String :=
 
 /-- Arguments for `Trig.sin` and `Trig.cos`: zeros, infinities, NaN, the smallest subnormal, the
 doubles at and around the high words where fdlibm's branches change, the doubles next to
-`k · π/2` for `k` up to 8, hashed values spread over the exponents from `2 ^ -30` to `2 ^ 21`, and
-the negatives of all of these. -/
+`k · π/2` for `k` up to 8, large arguments up to the largest double, among them the double closest
+to a multiple of `π/2`, hashed values spread over the exponents from `2 ^ -30` to `2 ^ 21` and from
+there to the largest double, and the negatives of all of these. -/
 def trigArgs : List Float :=
   let special := [0.0, 1.0 / 0.0, 0.0 / 0.0, Float.ofBits 1, Float.ofBits 0x000FFFFFFFFFFFFF,
-    1.0, 2.0, 3.0, 0.5, 1e6, 1e7]
+    1.0, 2.0, 3.0, 0.5, 1e6, 1e7, 1e22, 1e300, Float.ofBits 0x7FEFFFFFFFFFFFFF,
+    Float.ofBits (((1872 : UInt64) <<< (52 : UInt64)) ||| (6381956970095103 - 4503599627370496))]
   let highWords : List UInt64 := [0x3e46a09e, 0x3e500000, 0x3fe921fb, 0x4002d97c, 0x400f6a7a,
     0x4012d97c, 0x4015fdbc, 0x401921fb, 0x401c463b, 0x413921fb]
   let thresholds := highWords.flatMap fun w =>
@@ -232,7 +234,11 @@ def trigArgs : List Float :=
     let h := (UInt64.ofNat i + 1) * 0x9e3779b97f4a7c15
     let e : UInt64 := 993 + (h >>> (58 : UInt64)) % 52
     Float.ofBits ((e <<< (52 : UInt64)) ||| (h &&& 0xFFFFFFFFFFFFF))
-  let all := special ++ thresholds ++ multiples ++ hashed
+  let huge := (List.range 100).map fun i =>
+    let h := (UInt64.ofNat i + 3) * 0xbf58476d1ce4e5b9
+    let e : UInt64 := 1044 + (h >>> (52 : UInt64)) % 1003
+    Float.ofBits ((e <<< (52 : UInt64)) ||| (h &&& 0xFFFFFFFFFFFFF))
+  let all := special ++ thresholds ++ multiples ++ hashed ++ huge
   all ++ all.map (- ·)
 
 end Verified.Examples
