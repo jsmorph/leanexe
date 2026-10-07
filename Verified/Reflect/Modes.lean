@@ -17,11 +17,13 @@ value that is consumed or owned, or a loop's state when its body consumes the st
 an owned value. -/
 def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool) → Bool → Nat → Bool
   | _, _, .var x, live, owned, k => owned && k == x.index && !live k
-  | _, _, .word _, _, _, _ | _, _, .bool _, _, _, _ | _, _, .size _, _, _, _ => false
+  | _, _, .word _, _, _, _ | _, _, .bool _, _, _, _ | _, _, .size _, _, _, _
+  | _, _, .float _, _, _, _ => false
   | _, _, .bin _ left right, live, _, k | _, _, .cmp _ left right, live, _, k
-  | _, _, .and left right, live, _, k | _, _, .or left right, live, _, k =>
+  | _, _, .and left right, live, _, k | _, _, .or left right, live, _, k
+  | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k =>
     left.demands (fun i => live i || right.uses i) false k || right.demands live false k
-  | _, _, .not e, live, _, k => e.demands live false k
+  | _, _, .not e, live, _, k | _, _, .funary _ e, live, _, k => e.demands live false k
   | _, _, .ite c thenE elseE, live, owned, k =>
     let branch := owned || thenE.mode [] == .owned || elseE.mode [] == .owned
     c.demands (fun i => live i || thenE.uses i || elseE.uses i) false k ||

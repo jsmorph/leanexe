@@ -10,6 +10,7 @@ import Verified.Examples.Owned
 import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
+import Verified.Examples.Floats
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -71,6 +72,26 @@ def arrayOut (xs : Array UInt64) : String :=
   "[" ++ ", ".intercalate (xs.toList.map toString) ++ "]"
 
 def boolArg (b : Bool) : String := if b then "i64:1" else "i64:0"
+
+def bit (b : Bool) : Nat := if b then 1 else 0
+
+/-- Floats: both zeros, small and large magnitudes of each sign, the smallest subnormal, both
+infinities, and NaN. -/
+def floats : List Float :=
+  [0.0, -0.0, 1.0, -1.0, 0.5, 1.5, -3.25, 2.0, 1e300, -1e-300, Float.ofBits 1, 1.0 / 0.0,
+    -1.0 / 0.0, 0.0 / 0.0]
+
+/-- Floats for the functions of two or three floats: both zeros, both infinities, NaN, and
+values of each sign. -/
+def someFloats : List Float := [0.0, -0.0, 1.0, -1.5, 1.0 / 0.0, -1.0 / 0.0, 0.0 / 0.0, 1e300]
+
+/-- Bands for the functions of a float and a band: ordinary, reversed, empty, unbounded, from
+`-0` to `0`, and with a NaN bound. -/
+def bands : List (Float × Float) :=
+  [(0.0, 1.0), (-1.0, 2.0), (1.0, 0.0), (1.5, 1.5), (-1.0 / 0.0, 1.0 / 0.0), (-0.0, 0.0),
+    (0.0 / 0.0, 1.0)]
+
+def floatArg (x : Float) : String := s!"f64:{x.toBits}"
 
 end Verified.Examples
 
@@ -250,6 +271,32 @@ def main : IO Unit := do
       IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|4|4"
       let (b1, b2) := Modes.both xs ys
       IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
+  for x in floats do
+    let a := floatArg x
+    IO.println s!"floats|negate|f64|{a}|{(Floats.negate x).toBits}"
+    for (lo, hi) in bands do
+      let band := s!"{a} {floatArg lo} {floatArg hi}"
+      IO.println s!"floats|piecewise|f64|{band}|{(Floats.piecewise x lo hi).toBits}"
+      IO.println s!"floats|inBand|i64|{band}|{bit (Floats.inBand x lo hi)}"
+      IO.println s!"floats|clamp|f64|{band}|{(Floats.clamp x lo hi).toBits}"
+      IO.println s!"floats|hypot|f64|{band}|{(Floats.hypot x lo hi).toBits}"
+  for a in someFloats do
+    for b in someFloats do
+      let ab := s!"{floatArg a} {floatArg b}"
+      IO.println s!"floats|least|f64|{ab}|{(Floats.least a b).toBits}"
+      IO.println s!"floats|most|f64|{ab}|{(Floats.most a b).toBits}"
+      IO.println s!"floats|combined|f64|{ab}|{(Floats.combined a b).toBits}"
+      for c in [0.0, -0.0, 0.0 / 0.0, 2.5] do
+        IO.println s!"floats|minSum|f64|{ab} {floatArg c}|{(Floats.minSum a b c).toBits}"
+  for n in counts do
+    IO.println s!"floats|harmonic|f64|i64:{n}|{(Floats.harmonic n).toBits}"
+  for x in someFloats do
+    for xs in [#[], #[1, 2, 3]] do
+      for (y, k) in [(2.0, 5), (0.0 / 0.0, 18446744073709551615), (-0.0, 0)] do
+        for n in [0, 18446744073709551615] do
+          let (r, m) := Floats.mixed n x xs (y, k)
+          let args := s!"i64:{n} {floatArg x} {arrayArg xs} {floatArg y} i64:{k}"
+          IO.println s!"floats|mixed|list:f64,i64|{args}|{r.toBits} {m}"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"

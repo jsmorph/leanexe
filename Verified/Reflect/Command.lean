@@ -29,15 +29,17 @@ partial def tyOf (type : Lean.Expr) : MetaM Ty := do
   let type ← whnfR type
   if type.isConstOf ``UInt64 then return .word
   if type.isConstOf ``Bool then return .bool
+  if type.isConstOf ``Float then return .float
   if let (``Prod, #[a, b]) := type.getAppFnArgs then return .pair (← tyOf a) (← tyOf b)
   if let (``Array, #[e]) := type.getAppFnArgs then
     if (← whnfR e).isConstOf ``UInt64 then return .array
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Array UInt64, or a pair"
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Array UInt64, or a pair"
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
   | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
+  | .float => mkConst ``Ty.float
   | .array => mkConst ``Ty.array
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
@@ -97,6 +99,52 @@ def binOp? : Name → Option Lean.Expr
   | ``HShiftLeft.hShiftLeft => some (mkConst ``BinOp.shl)
   | ``HShiftRight.hShiftRight => some (mkConst ``BinOp.shr)
   | _ => none
+
+def fbinOp? : Name → Option Lean.Expr
+  | ``HAdd.hAdd => some (mkConst ``FBinOp.add)
+  | ``HSub.hSub => some (mkConst ``FBinOp.sub)
+  | ``HMul.hMul => some (mkConst ``FBinOp.mul)
+  | ``HDiv.hDiv => some (mkConst ``FBinOp.div)
+  | _ => none
+
+def isFloat (α : Lean.Expr) : MetaM Bool := return (← whnfR α).isConstOf ``Float
+
+/-- A comparison of floats as a `Prop`: its operation and its operands, with `>` and `≥` as `<`
+and `≤` on swapped operands.  `=` and `≠` on floats compare bit patterns, which `==` and `!=` do
+not, and the reflector rejects them. -/
+def fcomparison? (p : Lean.Expr) : MetaM (Option (FCmpOp × Lean.Expr × Lean.Expr)) := do
+  match p.consumeMData.getAppFnArgs with
+  | (``LT.lt, #[α, _, a, b]) => if ← isFloat α then return some (.lt, a, b) else return none
+  | (``LE.le, #[α, _, a, b]) => if ← isFloat α then return some (.le, a, b) else return none
+  | (``GT.gt, #[α, _, a, b]) => if ← isFloat α then return some (.lt, b, a) else return none
+  | (``GE.ge, #[α, _, a, b]) => if ← isFloat α then return some (.le, b, a) else return none
+  | (``Eq, #[α, _, _]) | (``Ne, #[α, _, _]) =>
+    if ← isFloat α then
+      throwError "verified_compile: = and ≠ on Float compare bit patterns; use == and !="
+    return none
+  | _ => return none
+
+def fcmpExpr : FCmpOp → Lean.Expr
+  | .lt => mkConst ``FCmpOp.lt
+  | .le => mkConst ``FCmpOp.le
+  | .eq => mkConst ``FCmpOp.eq
+
+/-- The value of a float literal, computed natively: a scientific or natural literal, or its
+negation.  The kernel checks the bits that the reflector derives from it. -/
+partial def floatLit? (e : Lean.Expr) : MetaM (Option Float) := do
+  let natOf (n : Lean.Expr) : Option Nat := n.nat? <|> n.rawNatLit?
+  match e.consumeMData.getAppFnArgs with
+  | (``OfScientific.ofScientific, #[_, _, m, sgn, ex]) =>
+    let some m := natOf (← instantiateMVars m) | return none
+    let some ex := natOf (← instantiateMVars ex) | return none
+    if sgn.isConstOf ``Bool.true then return some (Float.ofScientific m true ex)
+    if sgn.isConstOf ``Bool.false then return some (Float.ofScientific m false ex)
+    return none
+  | (``OfNat.ofNat, #[_, n, _]) =>
+    let some n := natOf (← instantiateMVars n) | return none
+    return some (Float.ofNat n)
+  | (``Neg.neg, #[_, _, x]) => return (← floatLit? x).map (- ·)
+  | _ => return none
 
 /-- A comparison of words as a `Prop`: its operation and its operands, with `>` and `≥` as `<`
 and `≤` on swapped operands. -/
@@ -191,6 +239,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     | .bool =>
       let src ← mkAppOptM ``Expr.bool #[some c.sigs, some c.ctx, some e]
       return (src, ← rflProof c src e, .bool)
+    | .float =>
+      if let some x ← floatLit? e then
+        let bits := x.toBits
+        let src ← mkAppOptM ``Expr.float #[some c.sigs, some c.ctx, some (toExpr bits)]
+        let prop ← mkEq (← mkAppM ``Float.toBits #[e]) (toExpr bits)
+        let dec ← mkDecide prop
+        let h := mkApp3 (mkConst ``of_decide_eq_true) prop dec.appArg!
+          (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+        let proof ← mkAppOptM ``float_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
+          some (toExpr bits), some e, some h]
+        return (src, proof, .float)
     | .pair _ _ | .array => pure ()
   if let .letE _ type value body _ := e then
     if isPlace value then return ← reflect c (body.instantiate1 value)
@@ -214,17 +273,44 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return ← destructure c [] app.discrs[0]! fun a b => return alt.beta #[a, b]
   let (fn, args) := e.getAppFnArgs
   if let some op := binOp? fn then
+    if args.size == 6 && (← isFloat args[0]!) then
+      let some fop := fbinOp? fn
+        | throwError "verified_compile: unsupported operation {fn} on Float"
+      let (ls, hl, _) ← reflect c args[4]!
+      let (rs, hr, _) ← reflect c args[5]!
+      return (← mkAppM ``Expr.fbin #[fop, ls, rs], ← mkAppM ``fbin_eq #[fop, hl, hr], .float)
     if args.size == 6 then
       let (ls, hl, _) ← reflect c args[4]!
       let (rs, hr, _) ← reflect c args[5]!
       return (← mkAppM ``Expr.bin #[op, ls, rs], ← mkAppM ``bin_eq #[op, hl, hr], .word)
   match fn, args with
   | ``Decidable.decide, #[p, _] =>
+    if let some (op, a, b) ← fcomparison? p then return ← reflectFCmp op a b
     let some (op, a, b) ← comparison? p
       | throwError "verified_compile: unsupported decision {p}"
     reflectCmp op a b
-  | ``BEq.beq, #[_, _, a, b] => reflectCmp .eq a b
-  | ``bne, #[_, _, a, b] => reflectCmp .ne a b
+  | ``BEq.beq, #[α, _, a, b] =>
+    if ← isFloat α then reflectFCmp .eq a b else reflectCmp .eq a b
+  | ``bne, #[α, _, a, b] =>
+    if ← isFloat α then
+      let (s, h, _) ← reflectFCmp .eq a b
+      return (← mkAppM ``Expr.not #[s], ← mkAppM ``not_eq #[h], .bool)
+    reflectCmp .ne a b
+  | ``Neg.neg, #[α, _, x] =>
+    unless ← isFloat α do throwError "verified_compile: unsupported negation {e}"
+    reflectFUnary (mkConst ``FUnOp.neg) x
+  | ``Float.sqrt, #[x] => reflectFUnary (mkConst ``FUnOp.sqrt) x
+  | ``Float.abs, #[x] => reflectFUnary (mkConst ``FUnOp.abs) x
+  | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
+    unless ← isFloat α do throwError "verified_compile: unsupported {fn} on {α}"
+    -- `min` and `max` are `if a ≤ b`, with operands that are not variables bound first.
+    let bind := [false, false, !(projReduce a).isFVar, !(projReduce b).isFVar]
+    if bind.any id then
+      return ← reflect c (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[])
+    let cond ← mkAppM ``LE.le #[a, b]
+    let t ← if fn == ``Min.min then mkAppM ``ite #[cond, a, b] else mkAppM ``ite #[cond, b, a]
+    let (src, proof, ty) ← reflect c t
+    return (src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) e), ty)
   | ``not, #[a] =>
     let (s, h, _) ← reflect c a
     return (← mkAppM ``Expr.not #[s], ← mkAppM ``not_eq #[h], .bool)
@@ -251,6 +337,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         let (cs, hc, _) ← reflect c cond
         return (← mkAppM ``Expr.ite #[cs, as, bs], ← mkAppM ``ite_eq #[hc, ha, hb], t)
     | _ => pure ()
+    if let some (op, l, r) ← fcomparison? p then
+      let (ls, hl, _) ← reflect c l
+      let (rs, hr, _) ← reflect c r
+      let cond ← mkAppM ``Expr.fcmp #[fcmpExpr op, ls, rs]
+      let thm ← match op with
+        | .lt => pure ``ite_flt_eq
+        | .le => pure ``ite_fle_eq
+        | .eq => throwError "verified_compile: unsupported condition {p}"
+      return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM thm #[hl, hr, ha, hb], t)
     let some (op, l, r) ← comparison? p
       | throwError "verified_compile: unsupported condition {p}"
     let (ls, hl, _) ← reflect c l
@@ -404,6 +499,14 @@ where
     let (rs, hr, _) ← reflect c b
     return (← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs], ← mkAppM ``cmp_eq #[cmpExpr op, hl, hr],
       .bool)
+  reflectFCmp (op : FCmpOp) (a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let (ls, hl, _) ← reflect c a
+    let (rs, hr, _) ← reflect c b
+    return (← mkAppM ``Expr.fcmp #[fcmpExpr op, ls, rs],
+      ← mkAppM ``fcmp_eq #[fcmpExpr op, hl, hr], .bool)
+  reflectFUnary (op x : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let (s, h, _) ← reflect c x
+    return (← mkAppM ``Expr.funary #[op, s], ← mkAppM ``funary_eq #[op, h], .float)
 
 /-- What the reflector learns from one definition: its signature, whether a call may trap, and the
 modes of its parameters. -/
@@ -468,6 +571,7 @@ def tyStx : Ty → CommandElabM Term
   | .bool => `(Bool)
   | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
   | .array => `(Array UInt64)
+  | .float => `(Float)
 
 /-- The type of an argument in mode `m`: `Moved` for an owned array. -/
 def argStx (t : Ty) : Mode → CommandElabM Term

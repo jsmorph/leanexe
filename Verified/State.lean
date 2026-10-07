@@ -293,7 +293,7 @@ def Mode.array : Mode → Heap → Store Unit → UInt64 → Array UInt64 → Pr
 /-- The blocks of the objects that an owned value's arrays occupy, each as its start and
 length. -/
 def Ty.blocks (store : Store Unit) : (t : Ty) → List Value → t.denote → List (Nat × Nat)
-  | .word, _, _ | .bool, _, _ => []
+  | .word, _, _ | .bool, _, _ | .float, _, _ => []
   | .pair a b, ws, p =>
     a.blocks store (ws.take a.width) p.1 ++ b.blocks store (ws.drop a.width) p.2
   | .array, ws, _ => match ws with
@@ -302,7 +302,7 @@ def Ty.blocks (store : Store Unit) : (t : Ty) → List Value → t.denote → Li
 
 /-- The addresses of a value's arrays. -/
 def Ty.pointers : (t : Ty) → List Value → List UInt64
-  | .word, _ | .bool, _ => []
+  | .word, _ | .bool, _ | .float, _ => []
   | .pair a b, ws => a.pointers (ws.take a.width) ++ b.pointers (ws.drop a.width)
   | .array, ws => match ws with
     | [.i64 ptr] => [ptr]
@@ -310,7 +310,7 @@ def Ty.pointers : (t : Ty) → List Value → List UInt64
 
 /-- The regions of a borrowed value's arrays: each array's length word and elements. -/
 def Ty.reads : (t : Ty) → List Value → t.denote → List (Nat × Nat)
-  | .word, _, _ | .bool, _, _ => []
+  | .word, _, _ | .bool, _, _ | .float, _, _ => []
   | .pair a b, ws, p => a.reads (ws.take a.width) p.1 ++ b.reads (ws.drop a.width) p.2
   | .array, ws, xs => match ws with
     | [.i64 ptr] => [(ptr.toNat, 8 * (xs.size + 1))]
@@ -332,6 +332,7 @@ def Ty.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
     (t : Ty) → List Value → t.denote → Prop
   | .word, ws, v => ws = [.i64 v]
   | .bool, ws, b => ws = [.i64 (boolWord b)]
+  | .float, ws, x => ws = [.f64 x.toBits]
   | .pair a b, ws, p =>
     ∃ first second, ws = first ++ second ∧ a.Rep mode heap store first p.1 ∧
       b.Rep mode heap store second p.2 ∧
@@ -354,7 +355,7 @@ theorem Mode.array.borrow {mode : Mode} {heap : Heap} {store : Store Unit} {ptr 
 theorem Ty.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       ws.length = t.width
-  | .word, _, _, h | .bool, _, _, h => by subst h; rfl
+  | .word, _, _, h | .bool, _, _, h | .float, _, _, h => by subst h; rfl
   | .pair _ _, _, _, ⟨_, _, h, h1, h2, _⟩ => by
     subst h; simp [Ty.width, h1.length, h2.length]
   | .array, _, _, ⟨_, h, _⟩ => by subst h; rfl
@@ -380,7 +381,7 @@ theorem Ty.regions_append {mode : Mode} {store : Store Unit} {a b : Ty}
 
 theorem Ty.blocks_scalar {store : Store Unit} :
     (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.blocks store ws v = []
-  | .word, _, _, _ | .bool, _, _, _ => rfl
+  | .word, _, _, _ | .bool, _, _, _ | .float, _, _, _ => rfl
   | .pair a b, h, ws, p => by
     simp only [Ty.blocks, a.blocks_scalar (Ty.scalar_pair h).1,
       b.blocks_scalar (Ty.scalar_pair h).2, List.append_nil]
@@ -388,7 +389,7 @@ theorem Ty.blocks_scalar {store : Store Unit} :
 
 theorem Ty.regions_scalar {mode : Mode} {store : Store Unit} :
     (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.regions mode store ws v = []
-  | .word, _, _, _ | .bool, _, _, _ => by cases mode <;> rfl
+  | .word, _, _, _ | .bool, _, _, _ | .float, _, _, _ => by cases mode <;> rfl
   | .pair a b, h, ws, p => by
     cases mode
     · simp only [Ty.regions, Ty.reads]
@@ -403,14 +404,14 @@ theorem Ty.regions_scalar {mode : Mode} {store : Store Unit} :
 
 theorem Ty.reads_scalar :
     (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.reads ws v = []
-  | .word, _, _, _ | .bool, _, _, _ => rfl
+  | .word, _, _, _ | .bool, _, _, _ | .float, _, _, _ => rfl
   | .pair a b, h, ws, p => by
     simp only [Ty.reads, a.reads_scalar (Ty.scalar_pair h).1 _ p.1,
       b.reads_scalar (Ty.scalar_pair h).2 _ p.2, List.append_nil]
   | .array, h, _, _ => absurd h (by decide)
 
 theorem Ty.pointers_scalar : (t : Ty) → t.scalar = true → (ws : List Value) → t.pointers ws = []
-  | .word, _, _ | .bool, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .float, _, _ => rfl
   | .pair a b, h, ws => by
     simp only [Ty.pointers, a.pointers_scalar (Ty.scalar_pair h).1,
       b.pointers_scalar (Ty.scalar_pair h).2, List.append_nil]
@@ -420,7 +421,7 @@ theorem Ty.pointers_scalar : (t : Ty) → t.scalar = true → (ws : List Value) 
 theorem Ty.blocks_pointers {store : Store Unit} :
     (t : Ty) → (ws : List Value) → (v : t.denote) →
       t.blocks store ws v = (t.pointers ws).map (block store)
-  | .word, _, _ | .bool, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .float, _, _ => rfl
   | .pair a b, ws, p => by
     simp only [Ty.blocks, Ty.pointers, List.map_append, a.blocks_pointers, b.blocks_pointers]
   | .array, ws, _ => by
@@ -431,7 +432,7 @@ theorem Ty.blocks_pointers {store : Store Unit} :
 theorem Ty.Rep.pairwise {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep .owned heap store ws v →
       (t.blocks store ws v).Pairwise regionsDisjoint
-  | .word, _, _, _ | .bool, _, _, _ => List.Pairwise.nil
+  | .word, _, _, _ | .bool, _, _, _ | .float, _, _, _ => List.Pairwise.nil
   | .pair _ _, _, _, ⟨first, second, h, h1, h2, hd⟩ => by
     subst h
     rw [Ty.blocks_append h1.length]
@@ -443,7 +444,8 @@ theorem Ty.Rep.reads_apart {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       ∀ r, (∀ c ∈ t.regions mode store ws v, regionsDisjoint r c) →
       ∀ c ∈ t.reads ws v, regionsDisjoint r c
-  | .word, _, _, _, _, _, _, hc | .bool, _, _, _, _, _, _, hc => by simp [Ty.reads] at hc
+  | .word, _, _, _, _, _, _, hc | .bool, _, _, _, _, _, _, hc | .float, _, _, _, _, _, _, hc => by
+    simp [Ty.reads] at hc
   | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩, r, hr, c, hc => by
     subst h
     rw [Ty.reads_append h1.length] at hc
@@ -464,7 +466,7 @@ theorem Ty.Rep.reads_apart {mode : Mode} {heap : Heap} {store : Store Unit} :
 theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       t.Rep .borrowed heap store ws v
-  | .word, _, _, h | .bool, _, _, h => h
+  | .word, _, _, h | .bool, _, _, h | .float, _, _, h => h
   | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩ =>
     ⟨first, second, h, h1.borrow, h2.borrow, nofun⟩
   | .array, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.borrow⟩
@@ -473,7 +475,7 @@ theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
 theorem Ty.Rep.owned {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → t.scalar = true → {ws : List Value} → {v : t.denote} →
       t.Rep mode heap store ws v → t.Rep .owned heap store ws v
-  | .word, _, _, _, h | .bool, _, _, _, h => h
+  | .word, _, _, _, h | .bool, _, _, _, h | .float, _, _, _, h => h
   | .pair a _, hs, _, _, ⟨first, second, h, h1, h2, _⟩ =>
     ⟨first, second, h, h1.owned (Ty.scalar_pair hs).1, h2.owned (Ty.scalar_pair hs).2,
       fun _ x hx => by rw [a.blocks_scalar (Ty.scalar_pair hs).1] at hx; exact nomatch hx⟩
@@ -656,6 +658,7 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
         ∀ r ∈ t.regions mode store ws v, ∀ b ∈ fresh, regionsDisjoint r b
   | .word, _, _, h, _ => ⟨h, by cases mode <;> rfl, by cases mode <;> exact nofun⟩
   | .bool, _, _, h, _ => ⟨h, by cases mode <;> rfl, by cases mode <;> exact nofun⟩
+  | .float, _, _, h, _ => ⟨h, by cases mode <;> rfl, by cases mode <;> exact nofun⟩
   | .pair a b, _, p, ⟨first, second, rfl, h1, h2, hd⟩, hKeep => by
     have hl := h1.length
     rw [Ty.regions_append hl] at hKeep
@@ -679,7 +682,7 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
     exact ⟨⟨ptr, rfl, h1⟩, h2, h3⟩
 
 theorem Ty.types_length : (t : Ty) → t.types.length = t.width
-  | .word | .bool | .array => rfl
+  | .word | .bool | .array | .float => rfl
   | .pair a b => by simp [Ty.types, Ty.width, a.types_length, b.types_length]
 
 theorem Ty.Rep.typed {mode : Mode} {heap : Heap} {store : Store Unit} {t : Ty} {ws : List Value}
@@ -1145,6 +1148,7 @@ types follows from them, for every signature, without a proof per signature. -/
 @[instance_reducible] def Ty.scalarInst : (t : Ty) → t.scalar = true → Scalar t.denote
   | .word, _ => instScalarUInt64
   | .bool, _ => @instScalarOfFlat Bool UInt64 instFlatBoolUInt64 instScalarUInt64
+  | .float, _ => instScalarFloat
   | .pair a b, h => @instScalarProd a.denote b.denote (a.scalarInst (Ty.scalar_pair h).1)
       (b.scalarInst (Ty.scalar_pair h).2)
   | .array, h => absurd h (by decide)
@@ -1155,6 +1159,7 @@ without arrays, and the instances for pairs and arrays otherwise. -/
   | .word => @instRepresentOfScalar UInt64 instScalarUInt64
   | .bool => @instRepresentOfScalar Bool
       (@instScalarOfFlat Bool UInt64 instFlatBoolUInt64 instScalarUInt64)
+  | .float => @instRepresentOfScalar Float instScalarFloat
   | .pair a b =>
     if h : (Ty.pair a b).scalar = true then
       @instRepresentOfScalar _ ((Ty.pair a b).scalarInst h)
@@ -1165,7 +1170,7 @@ without arrays, and the instances for pairs and arrays otherwise. -/
 theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
     (t : Ty) → (h : t.scalar = true) → {ws : List Value} → {v : t.denote} →
       (ws = @Scalar.values _ (t.scalarInst h) v ↔ t.Rep mode heap store ws v)
-  | .word, _, _, _ | .bool, _, _, _ => Iff.rfl
+  | .word, _, _, _ | .bool, _, _, _ | .float, _, _, _ => Iff.rfl
   | .pair a b, h, ws, p => by
     constructor
     · rintro rfl
@@ -1179,7 +1184,7 @@ theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
 
 theorem Ty.leanInst_scalar : (t : Ty) → (h : t.scalar = true) →
     t.leanInst = @instRepresentOfScalar _ (t.scalarInst h)
-  | .word, _ | .bool, _ => rfl
+  | .word, _ | .bool, _ | .float, _ => rfl
   | .pair _ _, h => by rw [Ty.leanInst, dite_eq_left h]
   | .array, h => absurd h (by decide)
 
@@ -1187,7 +1192,7 @@ theorem Ty.leanInst_scalar : (t : Ty) → (h : t.scalar = true) →
 theorem Ty.leanInst_borrowed {heap : Heap} {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} →
       (@Represent.borrowed _ t.leanInst heap store ws v ↔ t.Rep .borrowed heap store ws v)
-  | .word, _, _ | .bool, _, _ | .array, _, _ => Iff.rfl
+  | .word, _, _ | .bool, _, _ | .array, _, _ | .float, _, _ => Iff.rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1201,7 +1206,7 @@ theorem Ty.leanInst_borrowed {heap : Heap} {store : Store Unit} :
 
 theorem Ty.scalarInst_length : (t : Ty) → (h : t.scalar = true) → (v : t.denote) →
     (@Scalar.values _ (t.scalarInst h) v).length = t.width
-  | .word, _, _ | .bool, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .float, _, _ => rfl
   | .pair a b, h, p => by
     show (@Scalar.values _ (a.scalarInst (Ty.scalar_pair h).1) p.1 ++
       @Scalar.values _ (b.scalarInst (Ty.scalar_pair h).2) p.2).length = _
@@ -1211,7 +1216,7 @@ theorem Ty.scalarInst_length : (t : Ty) → (h : t.scalar = true) → (v : t.den
 
 /-- Lean's instance gives a value the verified compiler's width. -/
 theorem Ty.leanInst_width : (t : Ty) → (v : t.denote) → @Represent.width _ t.leanInst v = t.width
-  | .word, _ | .bool, _ | .array, _ => rfl
+  | .word, _ | .bool, _ | .array, _ | .float, _ => rfl
   | .pair a b, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1225,7 +1230,7 @@ theorem Ty.leanInst_width : (t : Ty) → (v : t.denote) → @Represent.width _ t
 theorem Ty.leanInst_blocks {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} →
       @Represent.blocks _ t.leanInst store ws v = t.blocks store ws v
-  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .array, _, _ | .float, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h, Ty.blocks_scalar _ h]
@@ -1240,7 +1245,7 @@ theorem Ty.leanInst_blocks {store : Store Unit} :
 theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} →
       (@Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v)
-  | .word, _, _ | .bool, _, _ | .array, _, _ => Iff.rfl
+  | .word, _, _ | .bool, _, _ | .array, _, _ | .float, _, _ => Iff.rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1262,7 +1267,7 @@ theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} :
 
 theorem Ty.leanInst_moves {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} → @Represent.moves _ t.leanInst store ws v = []
-  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .array, _, _ | .float, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1276,7 +1281,7 @@ theorem Ty.leanInst_moves {store : Store Unit} :
 theorem Ty.leanInst_reads {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} →
       @Represent.reads _ t.leanInst store ws v = t.reads ws v
-  | .word, _, _ | .bool, _, _ | .array, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .array, _, _ | .float, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h, Ty.reads_scalar _ h]
@@ -1288,7 +1293,7 @@ theorem Ty.leanInst_reads {store : Store Unit} :
       rfl
 
 theorem Ty.paramMode_scalar : (t : Ty) → t.scalar = true → (m : Mode) → t.paramMode m = .borrowed
-  | .word, _, _ | .bool, _, _ | .pair _ _, _, _ => rfl
+  | .word, _, _ | .bool, _, _ | .pair _ _, _, _ | .float, _, _ => rfl
   | .array, h, _ => absurd h (by decide)
 
 /-- The Lean type of an argument of type `t` at a parameter for which the mode `m` was chosen:
@@ -1301,7 +1306,7 @@ abbrev Ty.argTy : Ty → Mode → Type
 def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array, .owned, x => x.val
   | .array, .borrowed, x => x
-  | .word, _, x | .bool, _, x | .pair _ _, _, x => x
+  | .word, _, x | .bool, _, x | .pair _ _, _, x | .float, _, x => x
 
 /-- The `Represent` instance that Lean synthesizes for an argument. -/
 @[instance_reducible] def Ty.argInst : (t : Ty) → (m : Mode) → Represent (t.argTy m)
@@ -1309,6 +1314,7 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array, .borrowed => Ty.leanInst .array
   | .word, _ => Ty.leanInst .word
   | .bool, _ => Ty.leanInst .bool
+  | .float, _ => Ty.leanInst .float
   | .pair a b, _ => Ty.leanInst (.pair a b)
 
 /-- The `Scalar` instance that Lean synthesizes for an argument without arrays. -/
@@ -1316,23 +1322,24 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
     Scalar (t.argTy m)
   | .word, _, h => Ty.scalarInst .word h
   | .bool, _, h => Ty.scalarInst .bool h
+  | .float, _, h => Ty.scalarInst .float h
   | .pair a b, _, h => Ty.scalarInst (.pair a b) h
   | .array, _, h => absurd h (by decide)
 
 theorem Ty.argScalar_values : (t : Ty) → (m : Mode) → (h : t.scalar = true) → (x : t.argTy m) →
     @Scalar.values _ (t.argScalarInst m h) x = @Scalar.values _ (t.scalarInst h) (t.argVal m x)
-  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => rfl
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ | .float, _, _, _ => rfl
   | .array, _, h, _ => absurd h (by decide)
 
 theorem Ty.argInst_scalar : (t : Ty) → (m : Mode) → (h : t.scalar = true) →
     t.argInst m = @instRepresentOfScalar _ (t.argScalarInst m h)
-  | .word, _, h | .bool, _, h | .pair _ _, _, h => Ty.leanInst_scalar _ h
+  | .word, _, h | .bool, _, h | .pair _ _, _, h | .float, _, h => Ty.leanInst_scalar _ h
   | .array, _, h => absurd h (by decide)
 
 theorem Ty.argInst_width : (t : Ty) → (m : Mode) → (x : t.argTy m) →
     @Represent.width _ (t.argInst m) x = t.width
   | .array, .owned, _ | .array, .borrowed, _ => rfl
-  | .word, _, x | .bool, _, x | .pair _ _, _, x => Ty.leanInst_width _ x
+  | .word, _, x | .bool, _, x | .pair _ _, _, x | .float, _, x => Ty.leanInst_width _ x
 
 /-- Lean's instance for an argument agrees with the verified compiler's representation. -/
 theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
@@ -1340,7 +1347,7 @@ theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
       (@Represent.borrowed _ (t.argInst m) heap store ws x ↔
         t.Rep (t.paramMode m) heap store ws (t.argVal m x))
   | .array, .owned, _, _ | .array, .borrowed, _, _ => Iff.rfl
-  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_borrowed _
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ | .float, _, _, _ => Ty.leanInst_borrowed _
 
 theorem Ty.argInst_moves {store : Store Unit} :
     (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
@@ -1349,7 +1356,7 @@ theorem Ty.argInst_moves {store : Store Unit} :
         | .owned => t.pointers ws
         | .borrowed => []
   | .array, .owned, _, _ | .array, .borrowed, _, _ => rfl
-  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_moves _
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ | .float, _, _, _ => Ty.leanInst_moves _
 
 theorem Ty.argInst_reads {store : Store Unit} :
     (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
@@ -1358,7 +1365,7 @@ theorem Ty.argInst_reads {store : Store Unit} :
         | .owned => []
         | .borrowed => t.reads ws (t.argVal m x)
   | .array, .owned, _, _ | .array, .borrowed, _, _ => rfl
-  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_reads _
+  | .word, _, _, _ | .bool, _, _, _ | .pair _ _, _, _, _ | .float, _, _, _ => Ty.leanInst_reads _
 
 /-- The Lean type of a function's arguments, for parameters of types `ps` for which the modes `ms`
 were chosen: `Unit` for none, the argument's type for one, and the right-nested product of the

@@ -12,6 +12,7 @@ open Wasm
 /-- The WebAssembly types of the words that hold a value of type `t`, in order. -/
 def Ty.types : Ty → List ValueType
   | .word | .bool | .array => [.i64]
+  | .float => [.f64]
   | .pair a b => a.types ++ b.types
 
 /-- The scratch locals that an operation needs for itself: two for division and remainder, which
@@ -45,6 +46,26 @@ def CmpOp.instr : CmpOp → Instruction
   | .ne => .neI64
   | .lt => .ltUI64
   | .le => .leUI64
+
+def FBinOp.instr : FBinOp → Instruction
+  | .add => .f64Add
+  | .sub => .f64Sub
+  | .mul => .f64Mul
+  | .div => .f64Div
+
+def FCmpOp.instr : FCmpOp → Instruction
+  | .lt => .f64Lt
+  | .le => .f64Le
+  | .eq => .f64Eq
+
+/-- The instructions of an operation on one float after the code of its operand.  The negation
+subtracts from negative zero, since Talos's `f64.neg` keeps a NaN's payload and flips its sign
+while Lean has one NaN. -/
+def FUnOp.code (op : FUnOp) (operand : Program) : Program :=
+  match op with
+  | .sqrt => operand ++ [.f64Sqrt]
+  | .abs => operand ++ [.f64Abs]
+  | .neg => .f64Const 0x8000000000000000 :: operand ++ [.f64Sub]
 
 /-- The largest of the numbers `w i`, or 0. -/
 def argsMax : {ps : List Ty} → ((i : Fin ps.length) → Nat) → Nat
@@ -125,13 +146,14 @@ def copyArrayCode (src base : Nat) : Program :=
 hold: each array copied into a new array, and the other words as they are. -/
 def copyCode (h : Nat) : Ty → Nat → Nat → Program
   | .word, src, _ | .bool, src, _ => [.localGet src]
+  | .float, src, _ => [.localGet (src + h)]
   | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array, src, base => copyArrayCode src base
 
 /-- The instructions that release the arrays of the owned value of type `t` whose words locals
 `src` on hold. -/
 def releaseCode : Ty → Nat → Program
-  | .word, _ | .bool, _ => []
+  | .word, _ | .bool, _ | .float, _ => []
   | .pair a b, src => releaseCode a src ++ releaseCode b (src + a.width)
   | .array, src => [.localGet src, .call 1]
 
@@ -267,12 +289,13 @@ the scratch of each `push` and `append`, and the locals of each copy, on a path 
 expression.  A call's
 arguments and a pair's components leave their words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
-  | _, _, .word _ | _, _, .bool _ | _, _, .size _ => 0
+  | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ => 0
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
-  | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right =>
+  | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right
+  | _, _, .fbin _ left right | _, _, .fcmp _ left right =>
     max left.width right.width
-  | _, _, .not e => e.width
+  | _, _, .not e | _, _, .funary _ e => e.width
   | _, _, .ite (t := t) c thenE elseE =>
     max c.width (t.width + max (max thenE.width elseE.width) (copyWidth t))
   | _, _, .letE (s := s) value body => s.width + max value.width body.width
@@ -322,6 +345,14 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
+  | _, _, .float bits => [.f64Const (Float.ofBits bits).toBits]
+  | _, _, .fbin op left right =>
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+      [op.instr]
+  | _, _, .funary op e => op.code (e.code h slots base live)
+  | _, _, .fcmp op left right =>
+    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+      [op.instr, .extendUI32]
   | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
     left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++

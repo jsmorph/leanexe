@@ -41,11 +41,44 @@ def CmpOp.apply : CmpOp → UInt64 → UInt64 → Bool
   | .lt, a, b => decide (a < b)
   | .le, a, b => decide (a ≤ b)
 
-/-- The types of values: words, `Bool`s, pairs, and arrays of words. -/
+/-- A binary operation on floats. -/
+inductive FBinOp where
+  | add | sub | mul | div
+  deriving Repr, DecidableEq
+
+/-- Lean's operation, binary64 with rounding to nearest. -/
+def FBinOp.apply : FBinOp → Float → Float → Float
+  | .add, a, b => a + b
+  | .sub, a, b => a - b
+  | .mul, a, b => a * b
+  | .div, a, b => a / b
+
+/-- An operation on one float: the square root, the absolute value, and the negation. -/
+inductive FUnOp where
+  | sqrt | abs | neg
+  deriving Repr, DecidableEq
+
+def FUnOp.apply : FUnOp → Float → Float
+  | .sqrt, a => a.sqrt
+  | .abs, a => a.abs
+  | .neg, a => -a
+
+/-- A comparison of floats, false when an operand is NaN. -/
+inductive FCmpOp where
+  | lt | le | eq
+  deriving Repr, DecidableEq
+
+def FCmpOp.apply : FCmpOp → Float → Float → Bool
+  | .lt, a, b => decide (a < b)
+  | .le, a, b => decide (a ≤ b)
+  | .eq, a, b => a == b
+
+/-- The types of values: words, `Bool`s, pairs, arrays of words, and floats. -/
 inductive Ty where
   | word | bool
   | pair (first second : Ty)
   | array
+  | float
   deriving Repr, DecidableEq, Inhabited
 
 /-- The Lean type of a value. -/
@@ -54,18 +87,19 @@ abbrev Ty.denote : Ty → Type
   | .bool => Bool
   | .pair a b => a.denote × b.denote
   | .array => Array UInt64
+  | .float => Float
 
 /-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
 def boolWord (b : Bool) : UInt64 := cond b 1 0
 
 /-- The number of words that hold a value of the type. -/
 def Ty.width : Ty → Nat
-  | .word | .bool | .array => 1
+  | .word | .bool | .array | .float => 1
   | .pair a b => a.width + b.width
 
 /-- Whether a type holds no arrays. -/
 def Ty.scalar : Ty → Bool
-  | .word | .bool => true
+  | .word | .bool | .float => true
   | .pair a b => a.scalar && b.scalar
   | .array => false
 
@@ -171,7 +205,8 @@ and `get x i` is element `i` of `x`, or 0 when `i` is not below the size, as Lea
 `x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of `count` words whose
 element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`:
 the array of `x` with element `i` replaced by `v`, or `x` when `i` is not below the size.
-`push x v` is `x.push v`, and `append x y` is `x ++ y`. -/
+`push x v` is `x.push v`, and `append x y` is `x ++ y`.  `float bits` is the float with the bit
+pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -195,6 +230,10 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | set (x : Var Γ .array) (i v : Expr S Γ .word) : Expr S Γ .array
   | push (x : Var Γ .array) (v : Expr S Γ .word) : Expr S Γ .array
   | append (x y : Var Γ .array) : Expr S Γ .array
+  | float (bits : UInt64) : Expr S Γ .float
+  | fbin (op : FBinOp) (left right : Expr S Γ .float) : Expr S Γ .float
+  | funary (op : FUnOp) (e : Expr S Γ .float) : Expr S Γ .float
+  | fcmp (op : FCmpOp) (left right : Expr S Γ .float) : Expr S Γ .bool
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -245,6 +284,10 @@ def Expr.denote (funs : Funs S) :
   | _, _, .set x i v, env => (env.get x).set! (i.denote funs env).toNat (v.denote funs env)
   | _, _, .push x v, env => (env.get x).push (v.denote funs env)
   | _, _, .append x y, env => env.get x ++ env.get y
+  | _, _, .float bits, _ => Float.ofBits bits
+  | _, _, .fbin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
+  | _, _, .funary op e, env => op.apply (e.denote funs env)
+  | _, _, .fcmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
@@ -255,8 +298,10 @@ def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
 which may allocate, or calls a function that may trap, that returns arrays, or that owns a
 parameter, whose argument the call may copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ => false
-  | _, _, .bin _ left right | _, _, .cmp _ left right => left.aborts || right.aborts
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
+  | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
+  | _, _, .fcmp _ left right => left.aborts || right.aborts
+  | _, _, .funary _ e => e.aborts
   | _, _, .not e => e.aborts
   | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
   | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
@@ -272,9 +317,11 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
-  | _, _, .word _, _ | _, _, .bool _, _ => false
+  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ => false
   | _, _, .var x, i => i == x.index
-  | _, _, .bin _ left right, i | _, _, .cmp _ left right, i => left.uses i || right.uses i
+  | _, _, .bin _ left right, i | _, _, .cmp _ left right, i | _, _, .fbin _ left right, i
+  | _, _, .fcmp _ left right, i => left.uses i || right.uses i
+  | _, _, .funary _ e, i => e.uses i
   | _, _, .not e, i => e.uses i
   | _, _, .and left right, i | _, _, .or left right, i => left.uses i || right.uses i
   | _, _, .ite c thenE elseE, i => c.uses i || thenE.uses i || elseE.uses i
@@ -306,8 +353,10 @@ def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 pair of such arguments, and a variable at an owned parameter.  The reflector binds any other such
 argument with `let`. -/
 def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ => true
-  | _, _, .bin _ left right | _, _, .cmp _ left right => left.placeArgs && right.placeArgs
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _ => true
+  | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
+  | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs
+  | _, _, .funary _ e => e.placeArgs
   | _, _, .not e => e.placeArgs
   | _, _, .and left right | _, _, .or left right => left.placeArgs && right.placeArgs
   | _, _, .ite c thenE elseE => c.placeArgs && thenE.placeArgs && elseE.placeArgs

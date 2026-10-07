@@ -1,4 +1,5 @@
 import Verified.Heap
+import LeanExe.ProofKit.F64Bits
 
 /-! The compiler's correctness theorem: every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows, and
@@ -509,6 +510,119 @@ theorem spec_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
   · by_cases hab : left.denote funs env ≤ right.denote funs env <;>
       simpa [hab, Expr.denote, CmpOp.apply, boolWord] using hv
+
+/-- A float constant, from its bit pattern. -/
+theorem spec_float {Γ : List Ty} (bits : UInt64) :
+    ∀ env slots live,
+      CodeSpec m funs host (Expr.float (S := S) (Γ := Γ) bits) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt _ _ _ _ rest Q _ hNext
+  simpa [Expr.code, Expr.denote] using
+    hNext heap store s [.f64 (Float.ofBits bits).toBits] (After.refl hAt hVars
+      (by intro i h; simp [h]) rfl (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
+        rw [Ty.regions_scalar .float rfl] at hb; exact nomatch hb)
+
+/-- An operation on floats. -/
+theorem spec_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
+    (leftSpec : ∀ env slots live, CodeSpec m funs host left env slots live)
+    (rightSpec : ∀ env slots live, CodeSpec m funs host right env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.fbin op left right) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
+  have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, List.append_assoc]
+  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hVars hAt hCap hBase
+    (by omega) (by omega) hPlace.1 hPlace.2 _ _
+    (hTrap.of_imp fun h => by simp only [Expr.aborts, Bool.or_eq_true] at h ⊢; tauto)
+    (hTrap.of_imp fun h => by simp only [Expr.aborts, Bool.or_eq_true] at h ⊢; tauto)
+    fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ => ?_
+  have hR1' : ws1 = [.f64 (left.denote funs env).toBits] := hR1
+  have hR2' : ws2 = [.f64 (right.denote funs env).toBits] := hR2
+  subst hR1' hR2'
+  have hStep' := hStep
+  rw [fresh_scalar_append rfl rfl] at hStep'
+  have hv := hNext heap2 store2 s2 [.f64 ((Expr.fbin op left right).denote funs env).toBits]
+    (After.ofScalar rfl hStep' rfl hF hH rfl)
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append] at hv ⊢
+  cases op <;>
+    simpa [FBinOp.instr, Expr.denote, FBinOp.apply, f64Add, f64Sub, f64Mul, f64Div,
+      F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, F64Bits.toBits_div] using hv
+
+/-- `After` for locals that differ from the starting ones only in the operand stack. -/
+theorem After.ofValues {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap' : Heap} {store store' : Store Unit} {s s' : Locals} {t : Ty}
+    {mode : Mode} {v : t.denote} {ws vs : List Value}
+    (a : After env slots L0 L base heap store { s with values := vs } t mode v heap' store' s'
+      ws) :
+    After env slots L0 L base heap store s t mode v heap' store' s' ws :=
+  ⟨a.step, a.frame.values, a.holds, a.rep, a.apart⟩
+
+/-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
+theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
+    (eSpec : ∀ env slots live, CodeSpec m funs host e env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.funary op e) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  simp only [Expr.code]
+  cases op with
+  | neg =>
+    simp only [FUnOp.code, List.cons_append, List.append_assoc, wp_f64Const_cons]
+    refine eSpec env slots live h base heap store { s with values := .f64 0x8000000000000000 ::
+      s.values } hh (hVars.agree Frame.ofValues) hAt hCap hBase hRoom hPlace _ _ hTrap
+      fun heap1 store1 s1 ws a1 => ?_
+    have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
+    subst hR
+    have hStep := a1.step
+    rw [Mode.fresh_scalar rfl] at hStep
+    have hv := hNext heap1 store1 s1 [.f64 (-(e.denote funs env)).toBits]
+      (After.ofValues (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl))
+    simpa [Expr.denote, FUnOp.apply, f64Sub, F64Bits.toBits_neg] using hv
+  | sqrt | abs =>
+    simp only [FUnOp.code, List.append_assoc, List.cons_append, List.nil_append]
+    refine eSpec env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace _ _ hTrap
+      fun heap1 store1 s1 ws a1 => ?_
+    have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
+    subst hR
+    have hStep := a1.step
+    rw [Mode.fresh_scalar rfl] at hStep
+    have hv := hNext heap1 store1 s1 [.f64 ((Expr.funary _ e).denote funs env).toBits]
+      (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl)
+    simpa [Expr.denote, FUnOp.apply, f64Sqrt, f64Abs, F64Bits.toBits_sqrt, F64Bits.toBits_abs]
+      using hv
+
+/-- A comparison of floats. -/
+theorem spec_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
+    (leftSpec : ∀ env slots live, CodeSpec m funs host left env slots live)
+    (rightSpec : ∀ env slots live, CodeSpec m funs host right env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.fcmp op left right) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
+  have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, List.append_assoc]
+  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hVars hAt hCap hBase
+    (by omega) (by omega) hPlace.1 hPlace.2 _ _
+    (hTrap.of_imp fun h => by simp only [Expr.aborts, Bool.or_eq_true] at h ⊢; tauto)
+    (hTrap.of_imp fun h => by simp only [Expr.aborts, Bool.or_eq_true] at h ⊢; tauto)
+    fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ => ?_
+  have hR1' : ws1 = [.f64 (left.denote funs env).toBits] := hR1
+  have hR2' : ws2 = [.f64 (right.denote funs env).toBits] := hR2
+  subst hR1' hR2'
+  have hStep' := hStep
+  rw [fresh_scalar_append rfl rfl] at hStep'
+  have hv := hNext heap2 store2 s2 _ (After.ofScalar rfl hStep' rfl hF hH rfl)
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append] at hv ⊢
+  cases op <;>
+    simp only [FCmpOp.instr, wp_f64Lt_cons, wp_f64Le_cons, wp_f64Eq_cons, wp_extendUI32_cons]
+  · cases hc : IEEE64.lt (left.denote funs env).toBits (right.denote funs env).toBits <;>
+      simpa [hc, Expr.denote, FCmpOp.apply, F64Bits.decide_lt, f64Lt, boolWord] using hv
+  · cases hc : IEEE64.le (left.denote funs env).toBits (right.denote funs env).toBits <;>
+      simpa [hc, Expr.denote, FCmpOp.apply, F64Bits.decide_le, f64Le, boolWord] using hv
+  · cases hc : IEEE64.eq (left.denote funs env).toBits (right.denote funs env).toBits <;>
+      simpa [hc, Expr.denote, FCmpOp.apply, F64Bits.beq_eq, f64Eq, boolWord] using hv
 
 /-- The negation of a `Bool`. -/
 theorem spec_not {Γ : List Ty} {e : Expr S Γ .bool}
@@ -1491,7 +1605,9 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _, hp, _, _, _, _, _
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
-  | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _ => by
+  | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
+  | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
+  | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _ => by
     simp [Expr.isPlace] at hp
 
 theorem args_trap_first : ∀ a d b o : Bool, (a || o) = true → (a || d || b || o) = true := by
@@ -3554,6 +3670,10 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | set x i v iSpec vSpec => exact spec_set hm x iSpec vSpec
   | push x v vSpec => exact spec_push hm x vSpec
   | append x y => exact spec_append hm x y
+  | float bits => exact spec_float bits
+  | fbin op left right leftSpec rightSpec => exact spec_fbin op leftSpec rightSpec
+  | funary op e eSpec => exact spec_funary op eSpec
+  | fcmp op left right leftSpec rightSpec => exact spec_fcmp op leftSpec rightSpec
 
 /-- The position of a variable's first word among the words of the context's values. -/
 def Var.offset : {Γ : List Ty} → {t : Ty} → Var Γ t → Nat
