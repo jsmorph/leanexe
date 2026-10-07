@@ -3,7 +3,8 @@ import LeanExe.Dialect.Build
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
-words, `Bool`, and pairs, and an expression of type `t` in a context `Γ` that may call functions
+words, `Bool`s, floats, tuples of these, pairs, and arrays, and an expression of type `t` in a
+context `Γ` that may call functions
 with the signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only
 variables in scope, and calls only functions that exist.  Each operation means Lean's operation:
 arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and
@@ -93,13 +94,15 @@ def ToWord.apply : ToWord → Float → UInt64
   | .truncate, a => a.toUInt64
   | .toBits, a => a.toBits
 
-/-- The types of the values that occupy one word and that an array may hold: words, `Bool`s,
-and floats. -/
+/-- The types of the values that hold no arrays and that an array may hold: words, `Bool`s,
+floats, and tuples of these. -/
 inductive Elem where
   | word | bool | float
+  | prod (first second : Elem)
   deriving Repr, DecidableEq, Inhabited
 
-/-- The types of values: the element types, pairs, and arrays of an element type. -/
+/-- The types of values: the element types, pairs, which may hold arrays, and arrays of an element
+type. -/
 inductive Ty where
   | elem (e : Elem)
   | pair (first second : Ty)
@@ -115,6 +118,7 @@ abbrev Elem.denote : Elem → Type
   | .word => UInt64
   | .bool => Bool
   | .float => Float
+  | .prod a b => a.denote × b.denote
 
 /-- The Lean type of a value. -/
 abbrev Ty.denote : Ty → Type
@@ -127,20 +131,50 @@ instance Elem.instInhabited : (e : Elem) → Inhabited e.denote
   | .word => inferInstanceAs (Inhabited UInt64)
   | .bool => inferInstanceAs (Inhabited Bool)
   | .float => inferInstanceAs (Inhabited Float)
+  | .prod a b => ⟨(@default _ a.instInhabited, @default _ b.instInhabited)⟩
 
 /-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
 def boolWord (b : Bool) : UInt64 := cond b 1 0
 
-/-- The word that holds an element in an array: a word as itself, a `Bool` as 1 or 0, and a float
-as its bit pattern. -/
-def Elem.toWord : (e : Elem) → e.denote → UInt64
-  | .word, x => x
-  | .bool, b => boolWord b
-  | .float, x => x.toBits
+/-- The number of words that hold an element. -/
+def Elem.width : Elem → Nat
+  | .word | .bool | .float => 1
+  | .prod a b => a.width + b.width
+
+@[simp] theorem Elem.width_word : Elem.width .word = 1 := rfl
+@[simp] theorem Elem.width_bool : Elem.width .bool = 1 := rfl
+@[simp] theorem Elem.width_float : Elem.width .float = 1 := rfl
+
+/-- The words that hold an element in an array, in order: a word as itself, a `Bool` as 1 or 0,
+a float as its bit pattern, and a tuple as its first part's words followed by its second's. -/
+def Elem.toWords : (e : Elem) → e.denote → List UInt64
+  | .word, x => [x]
+  | .bool, b => [boolWord b]
+  | .float, x => [x.toBits]
+  | .prod a b, v => a.toWords v.1 ++ b.toWords v.2
+
+/-- A component of type `e'` of an element of type `e`: the element, or a component of its first
+or its second part. -/
+inductive Path : Elem → Elem → Type where
+  | here : Path e e
+  | fst (p : Path a e) : Path (.prod a b) e
+  | snd (p : Path b e) : Path (.prod a b) e
+
+def Path.get : {e e' : Elem} → Path e e' → e.denote → e'.denote
+  | _, _, .here, v => v
+  | _, _, .fst p, v => p.get v.1
+  | _, _, .snd p, v => p.get v.2
+
+/-- The number of words of an element before its component. -/
+def Path.offset : {e e' : Elem} → Path e e' → Nat
+  | _, _, .here => 0
+  | _, _, .fst p => p.offset
+  | _, _, .snd (a := a) p => a.width + p.offset
 
 /-- The number of words that hold a value of the type. -/
 def Ty.width : Ty → Nat
-  | .elem _ | .array _ => 1
+  | .elem e => e.width
+  | .array _ => 1
   | .pair a b => a.width + b.width
 
 /-- Whether a type holds no arrays. -/
@@ -249,11 +283,13 @@ first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from th
 index as variable 1.  `size x` is the number of elements of the array variable `x` as a word,
 and `get x i` is element `i` of `x`, or the element type's default value when `i` is not below
 the size, as Lean's `x[i.toNat]!` gives.  `build count elem` is `LeanExe.build`: the array of
-`count` elements whose element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`:
+`count` elements whose element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is
+`x.set! i.toNat v`:
 the array of `x` with element `i` replaced by `v`, or `x` when `i` is not below the size.
 `push x v` is `x.push v`, and `append x y` is `x ++ y`.  `float bits` is the float with the bit
 pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats, and
-`toFloat` and `toWord` convert between words and floats. -/
+`toFloat` and `toWord` convert between words and floats.  `mk first second` is the tuple of two
+elements, and `proj x p` is the component at path `p` of the tuple variable `x`. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -284,6 +320,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | fcmp (op : FCmpOp) (left right : Expr S Γ .float) : Expr S Γ .bool
   | toFloat (op : ToFloat) (e : Expr S Γ .word) : Expr S Γ .float
   | toWord (op : ToWord) (e : Expr S Γ .float) : Expr S Γ .word
+  | mk (first : Expr S Γ (.elem a)) (second : Expr S Γ (.elem b)) : Expr S Γ (.elem (.prod a b))
+  | proj (x : Var Γ (.elem e)) (p : Path e e') : Expr S Γ (.elem e')
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -340,6 +378,8 @@ def Expr.denote (funs : Funs S) :
   | _, _, .fcmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .toFloat op e, env => op.apply (e.denote funs env)
   | _, _, .toWord op e, env => op.apply (e.denote funs env)
+  | _, _, .mk first second, env => (first.denote funs env, second.denote funs env)
+  | _, _, .proj x p, env => p.get (env.get x)
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
@@ -355,6 +395,8 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .fcmp _ left right => left.aborts || right.aborts
   | _, _, .toFloat _ e => e.aborts
   | _, _, .toWord _ e => e.aborts
+  | _, _, .mk first second => first.aborts || second.aborts
+  | _, _, .proj _ _ => false
   | _, _, .funary _ e => e.aborts
   | _, _, .not e => e.aborts
   | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
@@ -377,6 +419,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .fcmp _ left right, i => left.uses i || right.uses i
   | _, _, .toFloat _ e, i => e.uses i
   | _, _, .toWord _ e, i => e.uses i
+  | _, _, .mk first second, i => first.uses i || second.uses i
+  | _, _, .proj x _, i => i == x.index
   | _, _, .funary _ e, i => e.uses i
   | _, _, .not e, i => e.uses i
   | _, _, .and left right, i | _, _, .or left right, i => left.uses i || right.uses i
@@ -414,6 +458,8 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs
   | _, _, .toFloat _ e => e.placeArgs
   | _, _, .toWord _ e => e.placeArgs
+  | _, _, .mk first second => first.placeArgs && second.placeArgs
+  | _, _, .proj _ _ => true
   | _, _, .funary _ e => e.placeArgs
   | _, _, .not e => e.placeArgs
   | _, _, .and left right | _, _, .or left right => left.placeArgs && right.placeArgs

@@ -9,23 +9,48 @@ namespace Verified
 
 open Wasm
 
+/-- The WebAssembly types of the words that hold an element, in order. -/
+def Elem.types : Elem → List ValueType
+  | .word | .bool => [.i64]
+  | .float => [.f64]
+  | .prod a b => a.types ++ b.types
+
+@[simp] theorem Elem.types_word : Elem.types .word = [.i64] := rfl
+@[simp] theorem Elem.types_bool : Elem.types .bool = [.i64] := rfl
+@[simp] theorem Elem.types_float : Elem.types .float = [.f64] := rfl
+
 /-- The WebAssembly types of the words that hold a value of type `t`, in order. -/
 def Ty.types : Ty → List ValueType
-  | .word | .bool | .array _ => [.i64]
-  | .float => [.f64]
+  | .elem e => e.types
+  | .array _ => [.i64]
   | .pair a b => a.types ++ b.types
 
-/-- The instructions that turn an element's value on top of the stack into the word that holds it
+/-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
 in an array: a float's bit pattern moves from an f64 to an i64. -/
-def Elem.wordCode : Elem → Program
-  | .word | .bool => []
-  | .float => [.i64ReinterpretF64]
+def toWordCode : ValueType → Program
+  | .f64 => [.i64ReinterpretF64]
+  | _ => []
 
-/-- The instructions that turn the word that holds an element in an array into the element's
-value. -/
-def Elem.valueCode : Elem → Program
-  | .word | .bool => []
-  | .float => [.f64ReinterpretI64]
+/-- The instructions that turn the i64 that holds a word of type `ty` in an array into the
+word. -/
+def ofWordCode : ValueType → Program
+  | .f64 => [.f64ReinterpretI64]
+  | _ => []
+
+/-- The word count `k` of an element as the code uses it, at most `2 ^ 29`.  An element of
+`2 ^ 29` words or more is in no array that memory holds, so the code may use any positive count
+for it, and `2 ^ 29` keeps the count positive and below `2 ^ 64`. -/
+def wordCount (k : Nat) : UInt64 := UInt64.ofNat (min k 536870912)
+
+/-- The instructions that multiply the word on top of the stack by the word count `k`, none for
+1. -/
+def scaleCode (k : Nat) : Program :=
+  if k = 1 then [] else [.constI64 (wordCount k), .mulI64]
+
+/-- The instructions that divide the word on top of the stack by the word count `k`, none for
+1. -/
+def divCode (k : Nat) : Program :=
+  if k = 1 then [] else [.constI64 (wordCount k), .divUI64]
 
 /-- The scratch locals that an operation needs for itself: two for division and remainder, which
 save their operands to test the divisor. -/
@@ -165,18 +190,39 @@ def copyArrayCode (src base : Nat) : Program :=
   [.localGet src, .wrapI64, .load64 0, .localSet base] ++ allocArrayCode base (base + 1) ++
     copyIntoCode src (base + 1) base (base + 2) ++ [.localGet (base + 1)]
 
+/-- The instructions that push the address of word `w0 + j` of the array at the address in local
+`ptr`, with `w0` in local `w0`. -/
+def wordAddrCode (ptr w0 j : Nat) : Program :=
+  [.localGet ptr, .localGet w0, .constI64 (UInt64.ofNat (j + 1)), .addI64, .constI64 8, .mulI64,
+    .addI64, .wrapI64]
+
+/-- The instructions that push the words `w0 + j` on, of types `tys`, of the array at the address
+in local `ptr`, each when the flag in local `flag` is 1, and 0 in its place otherwise. -/
+def loadWordsCode (ptr w0 flag : Nat) : Nat → List ValueType → Program
+  | _, [] => []
+  | j, ty :: tys =>
+    [.localGet flag, .wrapI64, .iff 0 1 (wordAddrCode ptr w0 j ++ [.load64 0]) [.constI64 0] []
+      [.i64]] ++ ofWordCode ty ++ loadWordsCode ptr w0 flag (j + 1) tys
+
+/-- The instructions that write the words of types `tys` at positions `src` on as the words
+`w0 + j` on of the array at the address in local `ptr`. -/
+def storeWordsCode (h ptr w0 : Nat) : Nat → Nat → List ValueType → Program
+  | _, _, [] => []
+  | j, src, ty :: tys =>
+    wordAddrCode ptr w0 j ++ .localGet (slotIndex h src ty) :: toWordCode ty ++ [.store64 0] ++
+      storeWordsCode h ptr w0 (j + 1) (src + 1) tys
+
 /-- The instructions that push a copy of the value of type `t` whose words positions `src` on
 hold: each array copied into a new array, and the other words as they are. -/
 def copyCode (h : Nat) : Ty → Nat → Nat → Program
-  | .word, src, _ | .bool, src, _ => [.localGet src]
-  | .float, src, _ => [.localGet (src + h)]
+  | .elem e, src, _ => loadCode h src e.types
   | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array _, src, base => copyArrayCode src base
 
 /-- The instructions that release the arrays of the owned value of type `t` whose words locals
 `src` on hold. -/
 def releaseCode : Ty → Nat → Program
-  | .word, _ | .bool, _ | .float, _ => []
+  | .elem _, _ => []
   | .pair a b, src => releaseCode a src ++ releaseCode b (src + a.width)
   | .array _, src => [.localGet src, .call 1]
 
@@ -307,10 +353,11 @@ def Expr.placeCode (h : Nat) (slots : List Slot) :
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
 and `letPair` value and of each `ite` result, two for each division or remainder, the count, the
 index, and the state of each loop, the position of each read, the count, the address, and the
-index of each `build`, the position, the value, and the address of each `set`, the value and
-the scratch of each `push` and `append`, and the locals of each copy, on a path of the
-expression.  A call's
-arguments and a pair's components leave their words on the stack, so they share their locals. -/
+index of each `build`, with the element's words and the position of its first word, the
+position, the value's words, the address, and the position of the first word of each `set`, the
+value's words and the scratch of each `push` and `append`, and the locals of each copy, on a path
+of the expression.  A call's arguments, a pair's components, and a tuple's components leave their
+words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ => 0
   | _, _, .var (t := t) _ => t.copyScratch
@@ -332,11 +379,14 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .loop (t := t) count init body =>
     max count.width (max (1 + max init.width (copyWidth t))
       (2 + t.width + max body.width (copyWidth t)))
-  | _, _, .get _ i => max i.width 1
-  | _, _, .build count elem => max count.width (3 + elem.width)
-  | _, _, .set (e := e) _ i v => max i.width (max (1 + v.width) (2 + copyWidth (.array e)))
-  | _, _, .push _ v => max v.width 8
+  | _, _, .get _ i => max i.width 2
+  | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
+  | _, _, .set (e := e) _ i v =>
+    max i.width (max (1 + v.width) (1 + e.width + copyWidth (.array e)))
+  | _, _, .push (e := e) _ v => max v.width (e.width + 7)
   | _, _, .append _ _ => 7
+  | _, _, .mk first second => max first.width second.width
+  | _, _, .proj _ _ => 0
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at position `(slots.getD x.index default).loc`, the positions from `base` on are free, `h`
@@ -353,21 +403,24 @@ locals above it, and `letPair` stores its first component from `base` on and its
 it.  A call pushes its arguments in order, its arrays read in place, and calls the function.  A
 loop keeps its count in local `base`, its index in local `base + 1`, and its state from local
 `base + 2` on, and leaves the block when the index reaches the count.  `size` loads the length
-word at the array's address.  `get` keeps the position in local `base`, compares it with the
-length word, loads the element's word or yields 0, and turns the word into the element's value,
-which for a float moves its bit pattern to an f64.  `set`, `push`, and `build` turn an element's
-value into its word before they store it.  `build` keeps its count in local `base`, traps
-at `unreachable` when the count is `2 ^ 29` or more, since the array would not fit in 32-bit
-memory, allocates the array into local `base + 1`, and keeps the index in local `base + 2`.  For
-each index it pushes the element's address, runs the element's code, and stores the element; the
-outer variables that only the element reads stay live through the loop and are released after
-it.  `set` keeps the position in local `base` and the value in local `base + 1`, then takes the
-array as owned, in local `base + 2`, and writes the element when the position is below the
-length: an owned array that dies there is updated in its own block, and any other is copied
-first.  `push` keeps the value in local `base` and `append` the length of `y` there; both take
-the array `x` with `Var.roomCode`, which gives a block with room for the result, write the new
-elements, and push the block's address.  `append` releases `y` after the copy when `y` is owned
-and dies there. -/
+word at the array's address and divides it by the element's word count `k`.  `get` keeps the
+position in local `base`, compares it with the size, keeps the result as a flag in local
+`base + 1`, puts the position of the element's first word in local `base`, and loads each of the
+element's words under the flag, 0 past the end, turning a float's word into an f64.  `build` keeps
+its count in local `base`, traps at `unreachable` when the count's words would be `2 ^ 29` or
+more, since the array would not fit in 32-bit memory, allocates the array into local `base + 1`,
+and keeps the index in local `base + 2`.  For each index it runs the element's code, stores the
+element's words from local `base + 3` on, puts the position of the element's first word after them,
+and writes each word; the outer variables that only the element reads stay live through the loop
+and are released after it.  `set` keeps the position in local `base` and the value's words from
+local `base + 1` on, then takes the array as owned, in local `base + 1 + k`, and writes the
+element's words when the position is below the size: an owned array that dies there is updated in
+its own block, and any other is copied first.  `push` keeps the value's words from local `base` on
+and their count in local `base + k`, and `append` keeps the length of `y` in local `base`; both
+take the array `x` with `Var.roomCode`, which gives a block with room for the result, write the new
+words, and push the block's address.  `append` releases `y` after the copy when `y` is owned and
+dies there.  `mk` pushes its components' words in order, and `proj` loads the words of the
+component from the tuple variable's positions. -/
 def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
@@ -458,33 +511,34 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       releaseWhere Γ slots (fun i => body.uses (i + 2) && !live i) ++
       loadCode h (base + 2) t.types
   | _, _, .size (e := e) x =>
-    [.localGet (slots.getD x.index default).loc, .wrapI64, .load64 0] ++
+    [.localGet (slots.getD x.index default).loc, .wrapI64, .load64 0] ++ divCode e.width ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode (.array e) (slots.getD x.index default).loc else [])
   | _, _, .get (e := e) x i =>
-    i.code h slots base (fun k => live k || k == x.index) ++
+    i.code h slots base (fun j => live j || j == x.index) ++
       [.localSet base, .localGet base, .localGet (slots.getD x.index default).loc, .wrapI64,
-        .load64 0, .ltUI64,
-        .iff 0 1 [.localGet (slots.getD x.index default).loc, .localGet base, .constI64 1,
-          .addI64, .constI64 8, .mulI64, .addI64, .wrapI64, .load64 0] [.constI64 0] [] [.i64]] ++
-      e.valueCode ++
+        .load64 0] ++ divCode e.width ++
+      [.ltUI64, .extendUI32, .localSet (base + 1), .localGet base] ++ scaleCode e.width ++
+      [.localSet base] ++
+      loadWordsCode (slots.getD x.index default).loc base (base + 1) 0 e.types ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode (.array e) (slots.getD x.index default).loc else [])
   | _, _, .set (e := e) x i v =>
-    i.code h slots base (fun k => live k || k == x.index || v.uses k) ++ [.localSet base] ++
-      v.code h slots (base + 1) (fun k => live k || k == x.index) ++ e.wordCode ++
-      [.localSet (base + 1)] ++
-      x.ownedCode h slots (base + 2) live ++
-      [.localSet (base + 2), .localGet base, .localGet (base + 2), .wrapI64, .load64 0, .ltUI64,
-        .iff 0 0 [.localGet (base + 2), .localGet base, .constI64 1, .addI64, .constI64 8,
-          .mulI64, .addI64, .wrapI64, .localGet (base + 1), .store64 0] [] [] [],
-        .localGet (base + 2)]
+    i.code h slots base (fun j => live j || j == x.index || v.uses j) ++ [.localSet base] ++
+      v.code h slots (base + 1) (fun j => live j || j == x.index) ++
+      storeCode h (base + 1) e.types ++ x.ownedCode h slots (base + 1 + e.width) live ++
+      [.localSet (base + 1 + e.width), .localGet base, .localGet (base + 1 + e.width), .wrapI64,
+        .load64 0] ++ divCode e.width ++
+      [.ltUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + 2 + e.width)] ++
+          storeWordsCode h (base + 1 + e.width) (base + 2 + e.width) 0 (base + 1) e.types) [] [] [],
+        .localGet (base + 1 + e.width)]
   | _, _, .push (e := e) x v =>
-    v.code h slots base (fun k => live k || k == x.index) ++ e.wordCode ++
-      [.localSet base, .constI64 1, .localSet (base + 1)] ++
-      x.roomCode slots (base + 2) live (base + 1) ++
-      [.localGet (base + 6), .localGet (base + 3), .constI64 1, .addI64, .constI64 8, .mulI64,
-        .addI64, .wrapI64, .localGet base, .store64 0, .localGet (base + 6)]
+    v.code h slots base (fun j => live j || j == x.index) ++ storeCode h base e.types ++
+      [.constI64 (wordCount e.width), .localSet (base + e.width)] ++
+      x.roomCode slots (base + e.width + 1) live (base + e.width) ++
+      storeWordsCode h (base + e.width + 5) (base + e.width + 2) 0 base e.types ++
+      [.localGet (base + e.width + 5)]
   | Γ, _, .append x y =>
     [.localGet (slots.getD y.index default).loc, .wrapI64, .load64 0, .localSet base] ++
       x.roomCode slots (base + 1) (fun k => live k || k == y.index) base ++
@@ -495,17 +549,23 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | Γ, _, .build (e := e) count elem =>
     let all := fun i => live i || elem.uses (i + 1)
     count.code h slots base all ++
-      [.localSet base, .localGet base, .constI64 536870912, .geUI64,
-        .iff 0 0 [.unreachable] [] [] []] ++
-      allocArrayCode base (base + 1) ++
+      [.localSet base, .localGet base,
+        .constI64 (UInt64.ofNat ((536870912 + e.width - 1) / e.width)), .geUI64,
+        .iff 0 0 [.unreachable] [] [] [], .localGet base] ++ scaleCode e.width ++
+      [.localSet (base + 2)] ++ allocArrayCode (base + 2) (base + 1) ++
       [.constI64 0, .localSet (base + 2),
-        .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1,
-          .localGet (base + 1), .localGet (base + 2), .constI64 1, .addI64, .constI64 8, .mulI64,
-          .addI64, .wrapI64] ++
-          elem.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++ e.wordCode ++
-          [.store64 0, .localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
+        .block 0 0 [.loop 0 0 ([.localGet (base + 2), .localGet base, .geUI64, .br_if 1] ++
+          elem.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all) ++
+          storeCode h (base + 3) e.types ++ [.localGet (base + 2)] ++ scaleCode e.width ++
+          [.localSet (base + 3 + e.width)] ++
+          storeWordsCode h (base + 1) (base + 3 + e.width) 0 (base + 3) e.types ++
+          [.localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
           [] []] [] []] ++
       releaseWhere Γ slots (fun i => elem.uses (i + 1) && !live i) ++ [.localGet (base + 1)]
+  | _, _, .mk first second =>
+    first.code h slots base (fun i => live i || second.uses i) ++ second.code h slots base live
+  | _, _, .proj (e' := e') x p =>
+    loadCode h ((slots.getD x.index default).loc + p.offset) e'.types
 
 /-- The slots of parameters of types `ts` for which the modes `ms` were chosen: parameter `i` starts
 after the words of the parameters before it. -/
