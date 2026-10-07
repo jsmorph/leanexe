@@ -13,6 +13,7 @@ import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
+import Verified.Examples.Records
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -125,6 +126,28 @@ def pointWords (xs : Array (Float × UInt64)) : Array UInt64 :=
 
 def nestedWords (xs : Array ((UInt64 × Bool) × Float)) : Array UInt64 :=
   (xs.toList.flatMap fun ((k, b), x) => [k, if b then 1 else 0, x.toBits]).toArray
+
+open Records in
+/-- Structures of three floats: ordinary, with both zeros, and with NaN and a large value. -/
+def conserveds : List Conserved :=
+  [⟨1.0, 2.0, 3.0⟩, ⟨0.0, -0.0, 1.5⟩, ⟨0.0 / 0.0, 1e300, -2.5⟩]
+
+open Records in
+/-- The host's arguments and output for a `Conserved` and a `Cell`, field by field. -/
+def conservedArg (c : Conserved) : String :=
+  s!"f64:{c.density.toBits} f64:{c.momentum.toBits} f64:{c.energy.toBits}"
+
+open Records in
+def conservedOut (c : Conserved) : String :=
+  s!"{c.density.toBits} {c.momentum.toBits} {c.energy.toBits}"
+
+open Records in
+def cellArg (c : Cell) : String :=
+  s!"i64:{c.index} {conservedArg c.state} f64:{c.pressure.toBits} {boolArg c.ok}"
+
+open Records in
+def cellOut (c : Cell) : String :=
+  s!"{c.index} {conservedOut c.state} {c.pressure.toBits} {bit c.ok}"
 
 /-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
 infinities, both zeros, the smallest subnormal, and words. -/
@@ -396,6 +419,32 @@ def main : IO Unit := do
     for ys in pointArrays do
       let j := arrayOut (pointWords (Tuples.joined xs ys))
       IO.println s!"tuples|joined|array-u64|{a} {arrayArg (pointWords ys)}|{j}|2"
+  let three := "list:f64,f64,f64"
+  let cellKinds := "list:i64,f64,f64,f64,f64,i64"
+  for c in conserveds do
+    let a := conservedArg c
+    IO.println s!"records|kinetic|f64|{a}|{(Records.kinetic c).toBits}"
+    IO.println s!"records|reversed|{three}|{a}|{conservedOut (Records.reversed c)}"
+    for x in [2.0, -0.5, 0.0 / 0.0] do
+      IO.println s!"records|scale|{three}|{floatArg x} {a}|{conservedOut (Records.scale x c)}"
+    for n in [0, 1, 5] do
+      IO.println s!"records|repeated|{three}|i64:{n} {a}|{conservedOut (Records.repeated n c)}"
+    for d in conserveds do
+      let b := conservedArg d
+      IO.println s!"records|add|{three}|{a} {b}|{conservedOut (Records.add c d)}"
+      for f in [false, true] do
+        let r := conservedOut (Records.pick f c d)
+        IO.println s!"records|pick|{three}|{boolArg f} {a} {b}|{r}"
+    for i in [0, 7, 18446744073709551615] do
+      for p in [1.5, -1.0, -0.0, 0.0 / 0.0] do
+        let cell := Records.mkCell i c p
+        let args := s!"i64:{i} {a} {floatArg p}"
+        IO.println s!"records|mkCell|{cellKinds}|{args}|{cellOut cell}"
+        IO.println s!"records|cellEnergy|f64|{cellArg cell}|{(Records.cellEnergy cell).toBits}"
+        let r := cellOut (Records.bumpIndex cell)
+        IO.println s!"records|bumpIndex|{cellKinds}|{cellArg cell}|{r}"
+        let (b, k) := Records.withCount cell
+        IO.println s!"records|withCount|{cellKinds},i64|{cellArg cell}|{cellOut b} {k}"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"

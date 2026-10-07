@@ -111,6 +111,15 @@ theorem letE_eq {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {V : s.den
     (Expr.letE v b).denote funs env = B V := by
   subst hv; exact hb _
 
+/-- A binding whose value means `φ X` for a Lean value `X` of another type, with the body's
+meaning given at every `φ x`.  The reflector uses it for a value of a structure type, whose
+source value is its flattening. -/
+theorem letE_flat_eq {s t : Ty} {α : Type} (φ : α → s.denote) (X : α) {v : Expr S Γ s}
+    {b : Expr S (s :: Γ) t} {B : α → t.denote} (hv : v.denote funs env = φ X)
+    (hb : ∀ x, b.denote funs (.cons (φ x) env) = B x) :
+    (Expr.letE v b).denote funs env = B X := by
+  rw [Expr.denote, hv]; exact hb X
+
 theorem ofFn_nil_eq :
     Env.ofFn (fun i => ((Args.nil : Args S Γ []).get i).denote funs env) = Env.nil := rfl
 
@@ -146,6 +155,25 @@ theorem letPair_eq {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t ::
     (Expr.letPair e body).denote funs env = B E.1 E.2 := by
   subst he; exact hb _ _
 
+/-- A destructuring of a pair whose components are the flattenings `φa P.1` and `φb P.2` of a Lean
+pair `P`. -/
+theorem letPair_flat_eq {s t u : Ty} {α β : Type} (φa : α → s.denote) (φb : β → t.denote)
+    (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {B : α → β → u.denote}
+    (he : e.denote funs env = (φa P.1, φb P.2))
+    (hb : ∀ a b, body.denote funs (.cons (φb b) (.cons (φa a) env)) = B a b) :
+    (Expr.letPair e body).denote funs env = B P.1 P.2 := by
+  rw [Expr.denote, he]; exact hb _ _
+
+/-- A loop whose state is the image of a state under `φ` gives the image of the loop of the
+states. -/
+theorem loop_map {α β : Type} (φ : α → β) (n : UInt64) (init : α) (F : UInt64 → α → α)
+    (G : UInt64 → β → β) (h : ∀ i s, G i (φ s) = φ (F i s)) :
+    LeanExe.loop n (φ init) G = φ (LeanExe.loop n init F) := by
+  unfold LeanExe.loop
+  induction n.toNat with
+  | zero => rfl
+  | succ k ih => simp only [Nat.fold_succ, ih, h]
+
 /-- A loop means `LeanExe.loop` with the meanings of its count, its initial state, and its
 body. -/
 theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
@@ -158,6 +186,18 @@ theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
   obtain rfl : (fun i acc => body.denote funs (.cons acc (.cons i env))) = B :=
     funext fun i => funext (hb i)
   rfl
+
+/-- A loop whose state is a structure: the source state is the flattening of the Lean state. -/
+theorem loop_flat_eq {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (F : UInt64 → α → α)
+    {count : Expr S Γ .word} {init : Expr S Γ t} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
+    (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
+    (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s)) :
+    (Expr.loop count init body).denote funs env = φ (LeanExe.loop N I F) := by
+  subst hn
+  show LeanExe.loop _ (init.denote funs env)
+    (fun i acc => body.denote funs (.cons acc (.cons i env))) = _
+  rw [hi]
+  exact loop_map φ _ I F _ hb
 
 /-- `LeanExe.build` with the meanings of its count and its element function. -/
 theorem build_eq {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)}

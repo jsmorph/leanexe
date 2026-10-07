@@ -13,11 +13,15 @@ to a module that computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
-definition's parameters and result are `UInt64`, `Bool`, `Float`, arrays of these, or pairs.  Its
-body may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
+definition's parameters and result are `UInt64`, `Bool`, `Float`, structures with a `Flat` instance
+whose tuple is their fields, arrays of `UInt64`, `Bool`, or `Float`, or pairs.  A structure's source
+value is its flattening `φ`, the source value of its `Flat` tuple, and each equation states that the
+source expression means `φ` of the Lean term, with `φ` the identity for the other types.  Its body
+may use literals and other closed terms, its parameters, `let`, the word operations `+`, `-`,
 `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`,
 `≥`, `=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison,
-pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, `LeanExe.loop`,
+pairs built with `(a, b)` and taken apart with `.1`, `.2`, or `match`, structures built with their
+constructor or `{ s with … }` and taken apart with their fields or `match`, `LeanExe.loop`,
 `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`, `xs ++ ys`, `LeanExe.build`
 of words, and calls of the listed definitions before it. -/
 
@@ -37,16 +41,6 @@ def elemOf (type : Lean.Expr) : MetaM Elem := do
   let some e ← elemOf? type
     | throwError "verified_compile: arrays hold UInt64, Bool, or Float, not {type}"
   return e
-
-partial def tyOf (type : Lean.Expr) : MetaM Ty := do
-  if let some e ← elemOf? type then return .elem e
-  let type ← whnfR type
-  if let (``Prod, #[a, b]) := type.getAppFnArgs then
-    match ← tyOf a, ← tyOf b with
-    | .elem ea, .elem eb => return .elem (.prod ea eb)
-    | ta, tb => return .pair ta tb
-  if let (``Array, #[e]) := type.getAppFnArgs then return .array (← elemOf e)
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, an array, or a pair"
 
 def elemExpr : Elem → Lean.Expr
   | .word => mkConst ``Elem.word
@@ -73,6 +67,119 @@ def tyExpr : Ty → Lean.Expr
   | .float => mkConst ``Ty.float
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
+
+/-- How a Lean type is flattened into a source type: the source type, and the function `φ` from
+the Lean type to the source type's meaning, `none` for the identity.  A structure with a `Flat`
+instance is the flattening of its `Flat` tuple, so nested structures are flattened in turn. -/
+structure Shape where
+  ty : Ty
+  flat : Option Lean.Expr
+
+/-- `φ e`, beta-reduced. -/
+def Shape.apply (sh : Shape) (e : Lean.Expr) : Lean.Expr :=
+  match sh.flat with
+  | none => e
+  | some f => f.beta #[e]
+
+/-- `φ` as a function from `type` to the source type's meaning, the identity when `flat` is
+`none`. -/
+def Shape.fn (sh : Shape) (type : Lean.Expr) : MetaM Lean.Expr := do
+  let f ← match sh.flat with
+    | some f => pure f
+    | none => withLocalDeclD `x type fun x => mkLambdaFVars #[x] x
+  mkExpectedTypeHint f (← mkArrow type (mkApp (mkConst ``Ty.denote) (tyExpr sh.ty)))
+
+/-- The `Flat` instance of a type and its tuple type, if Lean finds one. -/
+def flatInstance? (type : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+  let β ← mkFreshTypeMVar
+  let some inst ← synthInstance? (mkApp2 (mkConst ``LeanExe.Pipeline.Flat) type β)
+    | return none
+  return some (← instantiateMVars β, inst)
+
+partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
+  if let some e ← elemOf? type then return ⟨.elem e, none⟩
+  let type ← whnfR type
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    let sa ← shapeOf a
+    let sb ← shapeOf b
+    let ty := match sa.ty, sb.ty with
+      | .elem ea, .elem eb => Ty.elem (.prod ea eb)
+      | ta, tb => .pair ta tb
+    if sa.flat.isNone && sb.flat.isNone then return ⟨ty, none⟩
+    let f ← withLocalDeclD `p type fun p => do
+      mkLambdaFVars #[p] (← mkAppM ``Prod.mk
+        #[sa.apply (← mkAppM ``Prod.fst #[p]), sb.apply (← mkAppM ``Prod.snd #[p])])
+    return ⟨ty, some f⟩
+  if let (``Array, #[el]) := type.getAppFnArgs then
+    let se ← shapeOf el
+    let .elem e := se.ty | throwError "verified_compile: an array holds elements, not {el}"
+    unless se.flat.isNone do
+      throwError "verified_compile: arrays of structures are not supported yet: {type}"
+    return ⟨.array e, none⟩
+  if let some (β, inst) ← flatInstance? type then
+    let sβ ← shapeOf β
+    let .elem _ := sβ.ty | throwError "verified_compile: the structure {type} holds arrays"
+    let f ← withLocalDeclD `x type fun x => do
+      mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
+    return ⟨sβ.ty, some f⟩
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, a structure with a \
+    `Flat` instance, an array, or a pair"
+
+def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
+
+/-- The constructor and field names of a structure type other than `Prod`. -/
+def structOf? (type : Lean.Expr) : MetaM (Option (ConstructorVal × Array Name)) := do
+  let type ← whnfR type
+  let .const n _ := type.getAppFn | return none
+  if n == ``Prod then return none
+  let env ← getEnv
+  unless isStructure env n do return none
+  let some (.ctorInfo ctor) := env.find? (getStructureCtor env n).name | return none
+  return some (ctor, getStructureFields env n)
+
+/-- The tuple tree of a structure's `Flat` instance: `Flat.flat` of the structure built from fresh
+variables, reduced down the tuple's pairs, has those variables at its leaves.  Each leaf is the
+index of a field, and a leaf is reached by steps `false` for a pair's first component and `true`
+for its second.  The reflector rejects an instance whose leaves are not distinct fields. -/
+partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
+    MetaM (List (Nat × List Bool)) := do
+  let type ← whnfR type
+  let ctorApp := mkAppN (mkConst ctor.name type.getAppFn.constLevels!) type.getAppArgs
+  forallBoundedTelescope (← inferType ctorApp) ctor.numFields fun ys _ => do
+    let t := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst (mkAppN ctorApp ys)
+    let rec descend (t ty : Lean.Expr) (steps : List Bool) : MetaM (List (Nat × List Bool)) := do
+      let ty ← whnfR ty
+      let t' ← whnf t
+      if let some i := ys.findIdx? (· == t') then return [(i, steps.reverse)]
+      if let (``Prod, #[a, b]) := ty.getAppFnArgs then
+        if let (``Prod.mk, #[_, _, x, y]) := t'.getAppFnArgs then
+          return (← descend x a (false :: steps)) ++ (← descend y b (true :: steps))
+      throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
+    let leaves ← descend t β []
+    unless (leaves.map (·.1)).eraseDups.length == leaves.length do
+      throwError "verified_compile: the `Flat` instance of {type} repeats a field"
+    return leaves
+
+/-- The steps to field `i` of a structure value in its flattening, if the type is a structure
+with a `Flat` instance. -/
+def fieldPath? (type : Lean.Expr) (i : Nat) : MetaM (Option (List Bool)) := do
+  let some (ctor, _) ← structOf? type | return none
+  let some (β, inst) ← flatInstance? type | return none
+  let tree ← flatTree type β inst ctor
+  return (tree.find? (·.1 == i)).map (·.2)
+
+/-- Field `i` and the structure value `p` of a structure projection `e`. -/
+def structProj? (e : Lean.Expr) : MetaM (Option (Nat × Lean.Expr)) := do
+  if let .proj _ i p := e then return some (i, p)
+  let .const fn _ := e.getAppFn | return none
+  let some info ← getProjectionFnInfo? fn | return none
+  if info.fromClass then return none
+  let args := e.getAppArgs
+  unless args.size == info.numParams + 1 do return none
+  return some (info.i, args[info.numParams]!)
+
+/-- The source value of a Lean term: its flattening. -/
+def flatValue (e : Lean.Expr) : MetaM Lean.Expr := return (← shapeOf (← inferType e)).apply e
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
   | [] => mkApp (mkConst ``List.nil [Level.zero]) α
@@ -222,7 +329,8 @@ def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
   | [] => return mkConst ``Env.nil
   | (x, t) :: rest => do
     mkAppOptM ``Env.cons
-      #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some x, some (← envExpr rest)]
+      #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some (← flatValue x),
+        some (← envExpr rest)]
 
 /-- `e` with each projection of a pair `(a, b)` at its head replaced by the component. -/
 partial def projReduce (e : Lean.Expr) : Lean.Expr :=
@@ -274,10 +382,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   if e.isFVar then
     let (x, t) ← varOf c e
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
-    return (src, ← rflProof c src e, t)
+    return (src, ← rflProof c src (← flatValue e), t)
   if let some src := ← reflectCall? e then return src
-  if !e.hasFVar && !e.hasLooseBVars then
-    match ← tyOf (← inferType e) with
+  if let some src := ← reflectStruct? e then return src
+  let shape ← shapeOf (← inferType e)
+  if !e.hasFVar && !e.hasLooseBVars && shape.flat.isNone then
+    match shape.ty with
     | .word =>
       let src ← mkAppOptM ``Expr.word #[some c.sigs, some c.ctx, some e]
       return (src, ← rflProof c src e, .word)
@@ -302,19 +412,27 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       return ← destructure c [] value fun a b => do
         return body.instantiate1 (← mkAppM ``Prod.mk #[a, b])
     let (vs, hv, _) ← reflect c value
+    let sv ← shapeOf type
     return ← withLocalDeclD `x type fun x => do
-      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some x, some c.env]
+      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some (sv.apply x), some c.env]
       let c' : Ctx := { c with vars := (x, s) :: c.vars, env := env' }
       let (bs, hb, t) ← reflect c' (body.instantiate1 x)
       let hb ← mkLambdaFVars #[x] hb
       let src ← mkAppM ``Expr.letE #[vs, bs]
-      return (src, ← mkAppM ``letE_eq #[hv, hb], t)
+      if sv.flat.isNone then return (src, ← mkAppM ``letE_eq #[hv, hb], t)
+      return (src, ← mkAppM ``letE_flat_eq #[← sv.fn type, value, hv, hb], t)
   if let some app ← matchMatcherApp? e then
     if app.discrs.size == 1 && app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!
       if let (``Prod.mk, #[_, _, a, b]) := (projReduce d).getAppFnArgs then
         return ← reflect c (alt.beta #[a, b])
+      if let some (_, fields) ← structOf? (← inferType d) then
+        -- The fields of a structure are its projections, of a variable bound to it first.
+        let fieldsOf (y : Lean.Expr) : MetaM (Array Lean.Expr) := fields.mapM (mkProjection y)
+        if (projReduce d).isFVar then return ← reflect c (alt.beta (← fieldsOf d))
+        return ← reflect c (← withLetDecl `t (← inferType d) d fun y => do
+          mkLetFVars #[y] (alt.beta (← fieldsOf y)))
       if let .elem _ ← tyOf (← inferType d) then
         -- The components of a tuple are its projections, of a variable bound to it first.
         if (projReduce d).isFVar then
@@ -322,6 +440,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         return ← reflect c (← withLetDecl `t (← inferType d) d fun y => do
           mkLetFVars #[y] (alt.beta #[← mkAppM ``Prod.fst #[y], ← mkAppM ``Prod.snd #[y]]))
       return ← destructure c [] d fun a b => return alt.beta #[a, b]
+  if let some (_, p) ← structProj? e then
+    if (← structOf? (← inferType p)).isSome then return ← reflectProj e
   let (fn, args) := e.getAppFnArgs
   if let some op := binOp? fn then
     if args.size == 6 && (← isFloat args[0]!) then
@@ -392,36 +512,22 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Prod.snd, #[_, _, p] =>
     if let .elem _ ← tyOf (← inferType p) then reflectProj e
     else destructure c [] p fun _ b => return b
-  | ``ite, #[_, p, _, a, b] =>
-    let (as, ha, t) ← reflect c a
-    let (bs, hb, _) ← reflect c b
-    match (p.consumeMData).getAppFnArgs with
-    | (``Eq, #[α, cond, tru]) =>
-      if (← whnfR α).isConstOf ``Bool && tru.isConstOf ``Bool.true then
-        let (cs, hc, _) ← reflect c cond
-        return (← mkAppM ``Expr.ite #[cs, as, bs], ← mkAppM ``ite_eq #[hc, ha, hb], t)
-    | _ => pure ()
-    if let some (op, l, r) ← fcomparison? p then
-      let (ls, hl, _) ← reflect c l
-      let (rs, hr, _) ← reflect c r
-      let cond ← mkAppM ``Expr.fcmp #[fcmpExpr op, ls, rs]
-      let thm ← match op with
-        | .lt => pure ``ite_flt_eq
-        | .le => pure ``ite_fle_eq
-        | .eq => throwError "verified_compile: unsupported condition {p}"
-      return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM thm #[hl, hr, ha, hb], t)
-    let some (op, l, r) ← comparison? p
-      | throwError "verified_compile: unsupported condition {p}"
-    let (ls, hl, _) ← reflect c l
-    let (rs, hr, _) ← reflect c r
-    let cond ← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs]
-    return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM (iteLemma op) #[hl, hr, ha, hb], t)
+  | ``ite, #[α, p, inst, a, b] =>
+    let (src, proof, t) ← reflectIte p a b
+    let some φ := (← shapeOf α).flat | return (src, proof, t)
+    -- The `if` of the flattenings is the flattening of the `if`.
+    let comm ← mkAppOptM ``apply_ite #[none, none, some φ, some p, some inst, some a, some b]
+    return (src, ← mkEqTrans proof (← mkEqSymm comm), t)
   | ``LeanExe.loop, #[α, n, init, f] =>
     let (ns, hn, _) ← reflect c n
     let (is, hi, t) ← reflect c init
     let (bs, hb, _) ← reflectUnder c [] (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
-    return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
+    let sa ← shapeOf α
+    if sa.flat.isNone then
+      return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
+    return (← mkAppM ``Expr.loop #[ns, is, bs],
+      ← mkAppM ``loop_flat_eq #[← sa.fn α, init, f, hn, hi, hb], t)
   | ``Array.set!, setArgs@#[α, xs, k, v] =>
     let el ← elemOf α
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
@@ -496,6 +602,55 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       ← mkAppM ``get_eq #[x, hi], .elem el)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- A structure built with its constructor: the tuple that its `Flat` instance makes of the
+  fields, reflected as a tuple, whose meaning is the structure's flattening. -/
+  reflectStruct? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
+    let .const ctorName _ := e.getAppFn | return none
+    let some (.ctorInfo ctor) := (← getEnv).find? ctorName | return none
+    let type ← inferType e
+    let some (ctor', _) ← structOf? type | return none
+    unless ctor'.name == ctor.name do return none
+    let args := e.getAppArgs
+    unless args.size == ctor.numParams + ctor.numFields do return none
+    let some (β, inst) ← flatInstance? type | return none
+    let tree ← flatTree type β inst ctor
+    let fields := args.extract ctor.numParams args.size
+    -- The tuple of the fields along the tree.
+    let rec build (pre : List Bool) (ty : Lean.Expr) : MetaM Lean.Expr := do
+      if let some (i, _) := tree.find? (·.2 == pre.reverse) then return fields[i]!
+      let ty ← whnfR ty
+      let (``Prod, #[a, b]) := ty.getAppFnArgs
+        | throwError "verified_compile: the `Flat` instance of {type} is not a tuple of its fields"
+      mkAppM ``Prod.mk #[← build (false :: pre) a, ← build (true :: pre) b]
+    let tuple ← build [] β
+    let (src, proof, t) ← reflect c tuple
+    return some (src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)), t)
+  /-- An `if` on the condition `p` between `a` and `b`, whose meaning is the `if` of their
+  flattenings. -/
+  reflectIte (p a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let (as, ha, t) ← reflect c a
+    let (bs, hb, _) ← reflect c b
+    match (p.consumeMData).getAppFnArgs with
+    | (``Eq, #[α, cond, tru]) =>
+      if (← whnfR α).isConstOf ``Bool && tru.isConstOf ``Bool.true then
+        let (cs, hc, _) ← reflect c cond
+        return (← mkAppM ``Expr.ite #[cs, as, bs], ← mkAppM ``ite_eq #[hc, ha, hb], t)
+    | _ => pure ()
+    if let some (op, l, r) ← fcomparison? p then
+      let (ls, hl, _) ← reflect c l
+      let (rs, hr, _) ← reflect c r
+      let cond ← mkAppM ``Expr.fcmp #[fcmpExpr op, ls, rs]
+      let thm ← match op with
+        | .lt => pure ``ite_flt_eq
+        | .le => pure ``ite_fle_eq
+        | .eq => throwError "verified_compile: unsupported condition {p}"
+      return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM thm #[hl, hr, ha, hb], t)
+    let some (op, l, r) ← comparison? p
+      | throwError "verified_compile: unsupported condition {p}"
+    let (ls, hl, _) ← reflect c l
+    let (rs, hr, _) ← reflect c r
+    let cond ← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs]
+    return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM (iteLemma op) #[hl, hr, ha, hb], t)
   /-- The reflection of `body` in the context `c`, with each variable of `xs` that has a pair
   type split first into its components. -/
   reflectSplit (c : Ctx) : List Lean.Expr → Lean.Expr → MetaM (Lean.Expr × Lean.Expr × Ty)
@@ -512,9 +667,11 @@ where
   reflectUnder (c : Ctx) (rest : List Lean.Expr) (α β : Lean.Expr) (s t : Ty)
       (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) :=
     withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
-      let envA ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some a, some c.env]
+      let envA ← mkAppOptM ``Env.cons
+        #[some c.ctx, some (tyExpr s), some (← flatValue a), some c.env]
       let ctxA := ctxExpr (s :: c.vars.map (·.2))
-      let envB ← mkAppOptM ``Env.cons #[some ctxA, some (tyExpr t), some b, some envA]
+      let envB ← mkAppOptM ``Env.cons
+        #[some ctxA, some (tyExpr t), some (← flatValue b), some envA]
       let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
       let (bs, hb, u) ← reflectSplit c' (b :: a :: rest) (← body a b)
       return (bs, ← mkLambdaFVars #[a, b] hb, u)
@@ -528,7 +685,10 @@ where
         if let .elem _ ← tyOf (← inferType p) then walk p (false :: steps) else return (e, steps)
       | (``Prod.snd, #[_, _, p]) =>
         if let .elem _ ← tyOf (← inferType p) then walk p (true :: steps) else return (e, steps)
-      | _ => return (e, steps)
+      | _ =>
+        let some (i, p) ← structProj? e | return (e, steps)
+        let some path ← fieldPath? (← inferType p) i | return (e, steps)
+        walk p (path ++ steps)
     let (base, steps) ← walk e []
     if base.isFVar then
       let (x, t) ← varOf c base
@@ -536,7 +696,7 @@ where
       let (path, target) ← pathExpr be steps
       let src ← mkAppOptM ``Expr.proj #[some c.sigs, some c.ctx, some (elemExpr be),
         some (elemExpr target), some x, some path]
-      return (src, ← rflProof c src e, .elem target)
+      return (src, ← rflProof c src (← flatValue e), .elem target)
     reflect c (← withLetDecl `t (← inferType base) base fun y => do
       let chain ← steps.foldlM (fun acc step =>
         mkAppM (if step then ``Prod.snd else ``Prod.fst) #[acc]) y
@@ -550,7 +710,12 @@ where
     let (``Prod, #[α, β]) := (← whnfR (← inferType p)).getAppFnArgs
       | throwError "verified_compile: {p} is not a pair"
     let (bs, hb, u) ← reflectUnder c rest α β s t body
-    return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
+    let sa ← shapeOf α
+    let sb ← shapeOf β
+    if sa.flat.isNone && sb.flat.isNone then
+      return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
+    return (← mkAppM ``Expr.letPair #[ps, bs],
+      ← mkAppM ``letPair_flat_eq #[← sa.fn α, ← sb.fn β, p, hp, hb], u)
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
   reflectCall? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do
@@ -575,7 +740,7 @@ where
     let proof ← mkEqRefl (mkApp2 (mkConst ``Option.some [Level.zero]) (mkConst ``Sig) sig)
     let f ← mkAppOptM ``FVar.ofIndex #[some sig, some c.sigs, some (toExpr j), some proof]
     let hf ← mkExpectedTypeHint (mkAppN (mkConst callee.denoteEq) args)
-      (← mkEq (← mkAppM ``Funs.get #[c.funs, f, values]) e)
+      (← mkEq (← mkAppM ``Funs.get #[c.funs, f, values]) (← flatValue e))
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
     return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.result)
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
@@ -604,6 +769,8 @@ structure Reflected where
   result : Ty
   aborts : Bool
   modes : List Mode
+  /-- The Lean type of the tuple of the definition's arguments, with `Moved` for an owned array. -/
+  argsType : Lean.Expr
   deriving Inhabited
 
 def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
@@ -635,7 +802,8 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     throwError "verified_compile: {name} has universe parameters"
   lambdaTelescope (← instantiateMVars info.value) fun params body => do
     let types ← params.toList.mapM fun p => do tyOf (← inferType p)
-    let result ← tyOf (← inferType body)
+    let resultShape ← shapeOf (← inferType body)
+    let result := resultShape.ty
     let vars := params.toList.zip types
     let env ← envExpr vars
     let (src, proof, _) ← reflect.reflectSplit ⟨sigs, funs, callees, vars, env⟩ params.toList body
@@ -647,48 +815,51 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
       some (modesExpr modes)]
     addDefinition (base ++ `func) funcType func
     let lhs ← mkAppM ``Func.denote #[mkConst (base ++ `func), funs, env]
-    let eqType ← mkForallFVars params (← mkEq lhs (mkAppN (mkConst name) params))
+    let eqType ← mkForallFVars params
+      (← mkEq lhs (resultShape.apply (mkAppN (mkConst name) params)))
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params proof)
     let aborts ← reduce (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
     unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
       throwError "verified_compile: cannot evaluate whether {name} may trap"
-    return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes⟩
-
-def elemStx : Elem → CommandElabM Term
-  | .word => `(UInt64)
-  | .bool => `(Bool)
-  | .float => `(Float)
-  | .prod a b => do `(($(← elemStx a) × $(← elemStx b)))
-
-def tyStx : Ty → CommandElabM Term
-  | .elem e => elemStx e
-  | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
-  | .array e => do `(Array $(← elemStx e))
-
-/-- The type of an argument in mode `m`: `Moved` for an owned array. -/
-def argStx (t : Ty) : Mode → CommandElabM Term
-  | .owned => do `(LeanExe.Pipeline.Moved $(← tyStx t))
-  | .borrowed => tyStx t
-
-/-- The argument type of a definition: its parameters' argument types as a right-nested product,
-or `Unit` for none.  `modes` gives the parameters' modes. -/
-def argType : List Ty → List Mode → CommandElabM Term
-  | [], _ => `(Unit)
-  | [t], m :: _ => argStx t m
-  | [t], [] => tyStx t
-  | t :: ts, ms => do
-    `($(← argStx t (ms.headD .borrowed)) × $(← argType ts ms.tail))
-
-def modeStx : Mode → CommandElabM Term
-  | .owned => `(Verified.Mode.owned)
-  | .borrowed => `(Verified.Mode.borrowed)
+    -- The flattenings of the tuple of the arguments and of the result, which the theorem uses.
+    let pModes := paramModes types modes
+    let argTys ← (params.toList.zip pModes).mapM fun (p, m) => do
+      let ty ← inferType p
+      return (p, if m == .owned then mkApp (mkConst ``LeanExe.Pipeline.Moved) ty else ty)
+    let argsType ← tupleType (argTys.map (·.2))
+    let plain ← params.toList.allM fun p => do return (← shapeOf (← inferType p)).flat.isNone
+    let flatArgs ← withLocalDeclD `x argsType fun x => do
+      mkLambdaFVars #[x] (← if plain then pure x else flatTuple x (argTys.map (·.1)))
+    addDefinition (base ++ `flatArgs)
+      (← mkArrow argsType (← mkAppM ``argsTy #[ctxExpr types, modesExpr modes])) flatArgs
+    addDefinition (base ++ `flatResult)
+      (← mkArrow (← inferType body) (← mkAppM ``Ty.denote #[tyExpr result]))
+      (← resultShape.fn (← inferType body))
+    return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes, argsType⟩
+where
+  /-- The right-nested product of `tys`, `Unit` for none. -/
+  tupleType : List Lean.Expr → MetaM Lean.Expr
+    | [] => return mkConst ``Unit
+    | [t] => return t
+    | t :: ts => do mkAppM ``Prod #[t, ← tupleType ts]
+  /-- The tuple of the flattenings of the components of `x`, a value of `tupleType` of the
+  parameters' types; an owned array's component is its own flattening, the identity. -/
+  flatTuple (x : Lean.Expr) : List Lean.Expr → MetaM Lean.Expr
+    | [] => return mkConst ``Unit.unit
+    | [p] => do
+      if (← inferType x) == (← inferType p) then flatValue x else return x
+    | p :: ps => do
+      let first ← mkAppM ``Prod.fst #[x]
+      let rest ← mkAppM ``Prod.snd #[x]
+      let f ← if (← inferType first) == (← inferType p) then flatValue first else pure first
+      mkAppM ``Prod.mk #[f, ← flatTuple rest ps]
 
 /-- The value of the argument `x` in mode `m`. -/
 def argVal (x : Term) : Mode → CommandElabM Term
   | .owned => `($(x).val)
   | .borrowed => return x
 
-/-- The values of the components of `x : argType params modes`, in order. -/
+/-- The values of the components of `x`, the tuple of a definition's arguments, in order. -/
 def argProjs (x : Term) : List Mode → Nat → CommandElabM (List Term)
   | _, 0 => return []
   | ms, 1 => return [← argVal x (ms.headD .borrowed)]
@@ -741,23 +912,28 @@ def elabVerifiedCompile : CommandElab
       let eqId := mkIdent (base ++ simple ++ `denote_eq)
       let x := mkIdent `x
       let modes := paramModes r.params r.modes
-      let α ← argType r.params modes
+      let α ← liftTermElabM <| withOptions (fun o => o.setBool `pp.fullNames true) <|
+        PrettyPrinter.delab r.argsType
       let projs ← argProjs x modes r.params.length
-      let chosen ← r.modes.toArray.mapM modeStx
       let fvar ← fvarStx (n - 1 - k)
       let index := Syntax.mkNumLit (toString (2 + k))
       let lean ← `(fun ($x : $α) => $fnId $(projs.toArray)*)
       let aborts := mkIdent (if r.aborts then ``Bool.true else ``Bool.false)
+      let flatArgs := mkIdent (base ++ simple ++ `flatArgs)
+      let flatResult := mkIdent (base ++ simple ++ `flatResult)
+      -- The theorem for the flattened types, carried to Lean's types: each argument is
+      -- represented as its flattening is, and the flattening of the result represents it.
       elabCommand (← `(theorem $implId :
           LeanExe.Pipeline.ImplementsA $aborts $moduleId $index $lean (fun _ _ _ => True)
             (fun _ _ _ _ _ => True) := by
           have h := Verified.ImplementsA.lean (Verified.Prog.correct $progId $fvar).1
-          have hComp : (fun $x => Verified.Funs.get (Verified.Prog.funs $progId) $fvar
-              (Verified.Env.ofArgs _ [$chosen,*] $x)) = $lean := by
-            funext $x
-            exact $eqId $(projs.toArray)*
-          rw [← hComp]
-          exact h))
+          refine Verified.ImplementsA.transferFlat h $flatArgs $flatResult $lean ?_ ?_ ?_ ?_ ?_ ?_
+          · intro $x:ident; exact $eqId $(projs.toArray)*
+          · intro _ _ _ _ hy; exact hy
+          · intro _ _ _ _ _ hs; exact hs
+          · intro _ _ _ _ _; rfl
+          · intro _ _ _ _ hz; exact hz
+          · intro _ _ _; rfl))
       claims := claims.push
         (← `(LeanExe.Pipeline.ImplementsA $aborts $(mkIdent `m) $index $lean (fun _ _ _ => True)
           (fun _ _ _ _ _ => True)))

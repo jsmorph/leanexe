@@ -27114,11 +27114,39 @@ since Lean has no `Represent` instance for an array of pairs; each has an `examp
 `rfl` that it means a Lean function.  All 5,744 cases pass, and the in-place bound holds for an
 update of an owned array of two-word elements.
 
+### V10b, first part: structures
+
+The reflector computes for each Lean type a `Shape`: the source type and the flattening `φ` from
+the Lean type to the source type's meaning, `none` for the identity.  A structure with a `Flat S β`
+instance has `φ x = φ_β (Flat.flat x)`, which flattens nested structures, a pair is flattened
+componentwise, and an array of words, `Bool`s, or floats is its own flattening.  The environment of
+each equation holds `φ x` for each variable `x`, and each equation states that the source
+expression means `φ` of the Lean term, so the lemmas for the other types are the case of the
+identity.  No inverse of `φ` is needed: a binding's and a loop's body is proved over a Lean
+variable `x` with `φ x` in the environment, and `letE_flat_eq`, `letPair_flat_eq`, and
+`loop_flat_eq` with `loop_map` substitute the value, and `apply_ite` moves `φ` out of an `if`.
+
+The reflector reads a structure's tuple tree by reducing `Flat.flat` of the structure built from
+fresh variables and rejects an instance whose leaves are not distinct fields.  A constructor
+application or `{ s with … }`, which Lean elaborates as a constructor of projections, becomes the
+tuple of the fields along the tree, and a chain of field reads and pair projections on a variable
+becomes one path.  A `match` on a structure binds its fields as projections.
+
+`ImplementsA.transfer` generalizes `comap` to a Lean function `F` whose arguments are represented as
+their images under `g` are, and `transferFlat` takes the equation `f (g y) = r (F y)` with `r` the
+result's flattening.  The generated theorem applies it with `g` and `r` the functions
+`p.f.flatArgs` and `p.f.flatResult`, the identity for a definition without structures, and proves
+every correspondence of the instances by `rfl`: Lean's instance for a structure represents it as
+its `Flat` tuple, which is the representation of its flattening.  The proof is a tactic block,
+because the same proof as a term exhausted the heartbeats on `swapEnds` in `Updates.lean`.
+`Records.lean` adds 195 cases, and all 5,939 cases pass.
+
 - [x] V10a: `Elem.prod`, `Path`, `Expr.mk`, `Expr.proj`, and arrays of multi-word elements, with
   the reflector mapping Lean's array-free pairs to `Elem.prod`, and hand-written programs for
   arrays of tuples.
-- [ ] V10b: structures through `Flat`: the transfer, the commuting lemmas, the default equation,
-  and arrays of records.
+- [x] V10b, first part: scalar structures through `Flat`, with the transfer and the commuting
+  lemmas.
+- [ ] V10b, second part: arrays of structures and the default equation.
 - [ ] Later: enumerations and `match` on them, and a read of one field of an array element that
   loads only that field's words.
 

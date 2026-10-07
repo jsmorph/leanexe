@@ -19,3 +19,4 @@ import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
+import Verified.Examples.Records
