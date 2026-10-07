@@ -135,28 +135,27 @@ theorem _root_.LeanExe.ProofKit.UInt64Array.At.writeElement {store : Store Unit}
         omega)]
       exact h.elementRead j hj
 
-/-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
-length word is `n` and whose elements are what memory held, with its address in local `ptr`.  The
-allocation may trap at `unreachable` when memory runs out. -/
-theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
-    {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
-    {Q : Assertion Unit} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
-    (hTrap : TrapOK true Q) (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
-    (hLow : s.params.length ≤ ptr) (hHigh : ptr < s.params.length + s.locals.length)
-    (hne : count ≠ ptr)
+/-- The allocation of a block of `bytes` bytes, the count on top of the stack, for an array of
+`n` words, with `n` in local `len`: a new owned block of at least `bytes` bytes whose length word
+is `n` and whose elements are what memory held, with its address in local `ptr`.  The allocation
+may trap at `unreachable` when memory runs out. -/
+theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {len ptr : Nat} {n bytes : UInt64} {vs : List Value}
+    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q) (hn : n.toNat < 536870912)
+    (hBytes : 8 * (n.toNat + 1) ≤ bytes.toNat) (hBytes32 : bytes.toNat ≤ 4294967296)
+    (hN : s.get len = some (.i64 n)) (hLow : s.params.length ≤ ptr)
+    (hHigh : ptr < s.params.length + s.locals.length) (hne : len ≠ ptr)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
       words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
-      heap'.Owned store' root words →
-      wp m rest Q store' (setLocal { s with values := s.values } ptr (.i64 root)) host) :
-    wp m (allocArrayCode count ptr ++ rest) Q store s host := by
+      heap'.Owned store' root words → bytes.toNat ≤ capacityAt store' root →
+      wp m rest Q store' (setLocal { s with values := vs } ptr (.i64 root)) host) :
+    wp m (allocBlockCode len ptr ++ rest) Q store { s with values := .i64 bytes :: vs } host := by
   have hn' : UInt64.ofNat n.toNat = n := UInt64.ofNat_toNat
-  obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hn
-  rw [hn'] at hBytes hAllocSize
-  simp only [allocArrayCode, List.cons_append, List.nil_append, wp_localGet_cons, hN,
-    wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
-  refine wp_alloc hm hAt (by rw [hBytes]; omega) hCap hTrap fun hFits => ?_
-  rw [hAllocSize] at hFits ⊢
-  generalize hNeed : (n + 1) * 8 = need at hFits hBytes ⊢
+  simp only [allocBlockCode, List.cons_append, List.nil_append]
+  refine wp_alloc hm hAt hBytes32 hCap hTrap fun hFits => ?_
+  have hRound := le_allocSize hBytes32
+  generalize hNeed : allocSize bytes = need at hFits hRound ⊢
   have hBlock := hAt.allocate_block 1 hFits
   have hCapacity := allocated_capacity need heap.free
   generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock ⊢
@@ -167,11 +166,11 @@ theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
   have hRoot32 : root.toUInt32.toNat = root.toNat := by
     rw [Memory.toUInt32_toNat]; omega
   set store1 := heap.allocateStore store need 1 with hStore1
-  refine wp_localSet_local (s := s) (vs := s.values) hLow hHigh ?_
-  let s1 := setLocal { s with values := s.values } ptr (.i64 root)
-  have hLow1 : ({ s with values := s.values } : Locals).params.length ≤ ptr := hLow
+  refine wp_localSet_local (s := s) (vs := vs) hLow hHigh ?_
+  let s1 := setLocal { s with values := vs } ptr (.i64 root)
+  have hLow1 : ({ s with values := vs } : Locals).params.length ≤ ptr := hLow
   have hRoot1 : s1.get ptr = some (.i64 root) := Locals.get_setLocal_same hLow1 hHigh
-  have hN1 : s1.get count = some (.i64 n) := by
+  have hN1 : s1.get len = some (.i64 n) := by
     rw [Locals.get_setLocal_ne hLow1 hne]; exact hN
   -- The length word.
   show wp m _ Q store1 s1 host
@@ -194,10 +193,169 @@ theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
   have hWithin : WritesWithin store1 store2 root.toNat cap.toNat :=
     ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
   subst hRoot hCapDef
+  have hCapEq := ((hAt.allocate_block 1 hFits).writesWithin hWithin).capacity_eq
   have hNew := Heap.newArray_of_writes hAt hFits hWithin hValues (by rw [hSize]; omega)
     (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
   exact hNext _ store2 _ words hSize
     ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩ hNew.owned
+    (by rw [hCapEq]; omega)
+
+/-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
+length word is `n` and whose elements are what memory held, with its address in local `ptr`.  The
+allocation may trap at `unreachable` when memory runs out. -/
+theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
+    {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
+    {Q : Assertion Unit} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hTrap : TrapOK true Q) (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
+    (hLow : s.params.length ≤ ptr) (hHigh : ptr < s.params.length + s.locals.length)
+    (hne : count ≠ ptr)
+    (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
+      words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
+      heap'.Owned store' root words →
+      wp m rest Q store' (setLocal { s with values := s.values } ptr (.i64 root)) host) :
+    wp m (allocArrayCode count ptr ++ rest) Q store s host := by
+  have hn' : UInt64.ofNat n.toNat = n := UInt64.ofNat_toNat
+  obtain ⟨hBytes, -⟩ := allocSize_words hn
+  rw [hn'] at hBytes
+  simp only [allocArrayCode, List.cons_append, List.nil_append, wp_localGet_cons, hN,
+    wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
+  exact wp_allocBlock hm hAt hCap hTrap hn (by rw [hBytes]) (by rw [hBytes]; omega) hN hLow hHigh
+    hne fun heap' store' root words hSize hStep hOwned _ => hNext heap' store' root words hSize
+      hStep hOwned
+
+/-- `words` with elements `k` to `k + i - 1` replaced by the first `i` elements of `xs`. -/
+def overlay (words xs : Array UInt64) (k i : Nat) : Array UInt64 :=
+  Array.ofFn (n := words.size) fun j =>
+    if k ≤ j.val ∧ j.val < k + i then xs[j.val - k]! else words[j.val]
+
+theorem overlay_size (words xs : Array UInt64) (k i : Nat) :
+    (overlay words xs k i).size = words.size := Array.size_ofFn
+
+theorem overlay_zero (words xs : Array UInt64) (k : Nat) : overlay words xs k 0 = words := by
+  apply Array.ext (overlay_size ..) fun j _ _ => ?_
+  simp only [overlay, Array.getElem_ofFn]
+  rw [ite_eq_right (by omega)]
+
+theorem overlay_succ {words xs : Array UInt64} {k i : Nat} (hki : k + i < words.size)
+    (hi : i < xs.size) :
+    (overlay words xs k i).set (k + i) xs[i] (by rw [overlay_size]; exact hki) =
+      overlay words xs k (i + 1) := by
+  apply Array.ext (by simp [overlay_size]) fun j h1 _ => ?_
+  rw [Array.getElem_set]
+  simp only [overlay, Array.getElem_ofFn]
+  by_cases hj : k + i = j
+  · subst hj
+    rw [ite_eq_left rfl, ite_eq_left (by omega), Nat.add_sub_cancel_left, getElem!_pos xs i hi]
+  · rw [ite_eq_right hj]
+    by_cases hin : k ≤ j ∧ j < k + i
+    · rw [ite_eq_left hin, ite_eq_left (by omega)]
+    · rw [ite_eq_right hin, ite_eq_right (by omega)]
+
+/-- The address of element `k + i` of the array at `ptr`, from `ptr + 8 * k` and `i`. -/
+theorem element_address_at (ptr : UInt64) (k i : Nat) :
+    (ptr + UInt64.ofNat (8 * k) + (UInt64.ofNat i + 1) * 8).toUInt32 =
+      UInt64Array.wordAddress ptr (k + i + 1) := by
+  unfold UInt64Array.wordAddress
+  congr 1
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
+/-- The copy loop: the elements of the array `xs`, readable at `psrc`, go to elements `k` on of
+the array `words` at `pdst`, whose address plus `8 * k` local `dst` holds.  The loop writes only
+inside the region of `words`, which lies apart from that of `xs`, and changes no local but
+`index`. -/
+theorem wp_copyInto {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {src dst count index : Nat} {psrc pdst : UInt64} {xs words : Array UInt64} {k : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hSrcA : UInt64Array.At store psrc xs) (hDstA : UInt64Array.At store pdst words)
+    (hFit : k + xs.size ≤ words.size)
+    (hApart : psrc.toNat + 8 * (xs.size + 1) ≤ pdst.toNat ∨
+      pdst.toNat + 8 * (words.size + 1) ≤ psrc.toNat)
+    (hSrc : s.get src = some (.i64 psrc))
+    (hDst : s.get dst = some (.i64 (pdst + UInt64.ofNat (8 * k))))
+    (hCount : s.get count = some (.i64 (UInt64.ofNat xs.size)))
+    (hSrcI : src ≠ index) (hDstI : dst ≠ index) (hCountI : count ≠ index)
+    (hLow : s.params.length ≤ index) (hHigh : index < s.params.length + s.locals.length)
+    (hNext : ∀ (store' : Store Unit) (s' : Locals),
+      Memory.WritesRange store store' pdst.toNat (pdst.toNat + 8 * (words.size + 1)) →
+      UInt64Array.At store' pdst (overlay words xs k xs.size) →
+      s'.params = s.params → s'.locals.length = s.locals.length →
+      (∀ j, j ≠ index → s'.get j = s.get j) → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (copyIntoCode src dst count index ++ rest) Q store s host := by
+  have hSrcFit := hSrcA.1
+  have hDstFit := hDstA.1
+  simp only [copyIntoCode, List.cons_append, List.nil_append, wp_constI64_cons]
+  refine wp_localSet_local (s := s) (vs := s.values) hLow hHigh ?_
+  have hLow0 : ({ s with values := s.values } : Locals).params.length ≤ index := hLow
+  refine wp_block_cons ?_
+  refine wp_loop_cons
+    (fun st si => ∃ i, i ≤ xs.size ∧
+      Memory.WritesRange store st pdst.toNat (pdst.toNat + 8 * (words.size + 1)) ∧
+      UInt64Array.At st pdst (overlay words xs k i) ∧ si.params = s.params ∧
+      si.locals.length = s.locals.length ∧ (∀ j, j ≠ index → si.get j = s.get j) ∧
+      si.get index = some (.i64 (UInt64.ofNat i)))
+    (fun _ si => match si.get index with
+      | some (.i64 i) => xs.size - i.toNat
+      | _ => 0)
+    ⟨0, Nat.zero_le _, Memory.WritesRange.refl .., by rw [overlay_zero]; exact hDstA, rfl,
+      by simp [setLocal], fun j hj => Locals.get_setLocal_ne hLow0 hj,
+      Locals.get_setLocal_same hLow0 hHigh⟩ ?_
+  rintro st si ⟨i, hi, hW, hA, hp, hl, hOther, hIdx⟩
+  have hi64 : (UInt64.ofNat i).toNat = i :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  have hN64 : (UInt64.ofNat xs.size).toNat = xs.size :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  simp only [wp_localGet_cons, Locals.get_values, hIdx, hOther count hCountI, hCount,
+    wp_geUI64_cons, wp_br_if_cons]
+  by_cases hDone : UInt64.ofNat xs.size ≤ UInt64.ofNat i
+  · -- The copy is complete.
+    have hiEq : i = xs.size := by
+      rw [UInt64.le_iff_toNat_le, hi64, hN64] at hDone; omega
+    subst hiEq
+    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte, List.take_zero,
+      List.drop_zero, List.nil_append]
+    exact hNext st _ hW hA hp hl (fun j hj => hOther j hj) rfl
+  · -- One more element.
+    have hLess : i < xs.size := by
+      rw [UInt64.le_iff_toNat_le, hi64, hN64] at hDone; omega
+    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte]
+    have hSrcAt := hSrcA.writesRange hW (by omega)
+    have hSrcElement := hSrcAt.elementBound i hLess
+    have hki : k + i < (overlay words xs k i).size := by rw [overlay_size]; omega
+    have hDstElement := hA.elementBound (k + i) hki
+    simp only [wp_localGet_cons, Locals.get_values, hOther dst hDstI, hDst, hIdx,
+      hOther src hSrcI, hSrc, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons,
+      wrap_toUInt32, element_address_at]
+    simp only [element_address, wp_load64_cons, wp_store64_cons, UInt32.toNat_zero, Nat.add_zero,
+      UInt32.add_zero]
+    have hRead : st.mem.read64 (UInt64Array.wordAddress psrc (i + 1)) = xs[i] :=
+      hSrcAt.elementRead i hLess
+    rw [ite_eq_right (show ¬((UInt64Array.wordAddress psrc (i + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega),
+      ite_eq_right (show ¬((UInt64Array.wordAddress pdst (k + i + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega), hRead]
+    simp only [wp_localGet_cons, hIdx, wp_constI64_cons, wp_addI64_cons]
+    have hLowI : si.params.length ≤ index := by rw [hp]; exact hLow
+    have hHighI : index < si.params.length + si.locals.length := by rw [hp, hl]; exact hHigh
+    refine wp_localSet_local (s := si) (vs := si.values) hLowI hHighI ?_
+    rw [wp_br_cons]
+    dsimp only
+    have hLowI' : ({ si with values := si.values } : Locals).params.length ≤ index := hLowI
+    have hSucc : UInt64.ofNat i + 1 = UInt64.ofNat (i + 1) := by
+      rw [UInt64.ofNat_add]; rfl
+    have hSucc64 : (UInt64.ofNat (i + 1)).toNat = i + 1 :=
+      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+    refine ⟨⟨i + 1, hLess, hW.trans (UInt64Array.writeElement_frame st pdst words.size (k + i)
+      xs[i] hDstFit (by omega)), ?_, hp, by simp [setLocal, hl], fun j hj => ?_, ?_⟩, ?_⟩
+    · rw [← overlay_succ (by omega) hLess]
+      exact hA.writeElement hki xs[i]
+    · rw [Locals.get_values, Locals.get_setLocal_ne hLowI' hj, Locals.get_values]
+      exact hOther j hj
+    · rw [Locals.get_setLocal_same hLowI' hHighI, hSucc]
+    · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc, hSucc64, hi64]
+      omega
 
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
 owned array, with the locals from `base` to `base + 2` as scratch.  The copy allocates, so it may
@@ -214,13 +372,12 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       wp m rest Q store' { s' with values := .i64 ptr' :: s.values } host) :
     wp m (copyArrayCode src base ++ rest) Q store s host := by
   have hA := hB.values
-  have hFit := hA.1
   have hLen := hA.lengthBound
+  have hFitA := hA.1
   have hSizeLt : xs.size < 536870912 := by omega
-  obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hSizeLt
   have hN : (UInt64.ofNat xs.size).toNat = xs.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  simp only [copyArrayCode, allocArrayCode, List.cons_append, List.nil_append]
+  simp only [copyArrayCode, List.append_assoc, List.cons_append, List.nil_append]
   -- The length, in local `base`.
   simp only [wp_localGet_cons, hSrc, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
     UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
@@ -232,28 +389,15 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     Locals.get_setLocal_same hLow1 (by show base < s.params.length + s.locals.length; omega)
   have hSrc1 : s1.get src = some (.i64 ptr) := by
     rw [Locals.get_setLocal_ne hLow1 (by omega)]; exact hSrc
-  have hF1 : Frame base s s1 :=
-    ⟨rfl, by simp [s1, setLocal], fun j hj => Locals.get_setLocal_ne hLow1 (by omega)⟩
-  -- The allocation of the new array.
+  -- The new array, at the address in local `base + 1`.
   show wp m _ Q store s1 host
-  simp only [wp_localGet_cons, hN1, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
-  refine wp_alloc hm hAt (by rw [hBytes]; omega) hCap hTrap fun hFits => ?_
-  rw [hAllocSize] at hFits ⊢
-  generalize hNeed : (UInt64.ofNat xs.size + 1) * 8 = need at hFits hBytes ⊢
-  have hBlock := hAt.allocate_block 1 hFits
-  have hCapacity := allocated_capacity need heap.free
-  generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock ⊢
-  generalize hCapDef : allocatedCapacity need heap.free = cap at hBlock hCapacity
-  have hRootBase := hBlock.base
-  have hRootAddress := hBlock.address
-  have hRootMemory := hBlock.memory
-  have hRoot32 : root.toUInt32.toNat = root.toNat := by
-    rw [Memory.toUInt32_toNat]; omega
-  set store1 := heap.allocateStore store need 1 with hStore1
-  refine wp_localSet_local (s := s1) (vs := s.values) (by show s.params.length ≤ base + 1; omega)
-    (by show base + 1 < s1.params.length + s1.locals.length; simp [s1, setLocal]; omega) ?_
-  let s2 := setLocal { s1 with values := s.values } (base + 1) (.i64 root)
-  have hLow2 : ({ s1 with values := s.values } : Locals).params.length ≤ base + 1 := by
+  refine wp_allocArray hm hAt hCap hTrap (by rw [hN]; exact hSizeLt) hN1
+    (by show s.params.length ≤ base + 1; omega)
+    (by show base + 1 < s1.params.length + s1.locals.length; simp [s1, setLocal]; omega)
+    (by omega) fun heap1 store1 root words hSize hStep1 hOwned1 => ?_
+  rw [hN] at hSize
+  let s2 := setLocal { s1 with values := s1.values } (base + 1) (.i64 root)
+  have hLow2 : ({ s1 with values := s1.values } : Locals).params.length ≤ base + 1 := by
     show s.params.length ≤ base + 1; omega
   have hRoot2 : s2.get (base + 1) = some (.i64 root) :=
     Locals.get_setLocal_same hLow2
@@ -262,129 +406,48 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     rw [Locals.get_setLocal_ne hLow2 (by omega)]; exact hN1
   have hSrc2 : s2.get src = some (.i64 ptr) := by
     rw [Locals.get_setLocal_ne hLow2 (by omega)]; exact hSrc1
-  -- The length word.
+  -- The source stays readable, apart from the new block.
+  obtain ⟨hB1, hApart1⟩ := hStep1.borrowed hB trivial
+  have hApart := hApart1 _ (List.mem_singleton_self _)
+  have hCapacity := hOwned1.capacity
+  have hRootBase := hOwned1.base
+  simp only [block, regionsDisjoint] at hApart
+  -- The elements.
   show wp m _ Q store1 s2 host
-  simp only [wp_localGet_cons, Locals.get_values, hRoot2, wp_wrapI64_cons, hN2, wp_store64_cons,
-    wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
-  rw [ite_eq_right (by omega)]
-  set store2 : Store Unit :=
-    { store1 with mem := (store1.mem.write64 root.toUInt32 (UInt64.ofNat xs.size)) } with hStore2
-  -- The index, in local `base + 2`.
-  simp only [wp_constI64_cons]
-  refine wp_localSet_local (s := s2) (vs := s.values)
+  refine wp_copyInto (k := 0) hB1.values hOwned1.values (by omega) (by rw [hSize]; omega) hSrc2
+    (by simpa using hRoot2) hN2 (by omega) (by omega) (by omega)
     (by show s.params.length ≤ base + 2; omega)
-    (by show base + 2 < s2.params.length + s2.locals.length; simp [s2, s1, setLocal]; omega) ?_
-  let s3 := setLocal { s2 with values := s.values } (base + 2) (.i64 0)
-  have hLow3 : ({ s2 with values := s.values } : Locals).params.length ≤ base + 2 := by
-    show s.params.length ≤ base + 2; omega
-  have hParams3 : s3.params = s.params := rfl
-  have hLength3 : s3.locals.length = s.locals.length := by simp [s3, s2, s1, setLocal]
-  have hF3 : Frame base s s3 := by
-    refine ⟨rfl, hLength3, fun j hj => ?_⟩
-    rw [Locals.get_setLocal_ne hLow3 (by omega), Locals.get_values,
-      Locals.get_setLocal_ne hLow2 (by omega), Locals.get_values]
-    exact hF1.below j hj
-  have hIdx3 : s3.get (base + 2) = some (.i64 0) :=
-    Locals.get_setLocal_same hLow3
-      (by show base + 2 < s2.params.length + s2.locals.length; simp [s2, s1, setLocal]; omega)
-  have hN3 : s3.get base = some (.i64 (UInt64.ofNat xs.size)) := by
-    rw [Locals.get_setLocal_ne hLow3 (by omega)]; exact hN2
-  have hRoot3 : s3.get (base + 1) = some (.i64 root) := by
-    rw [Locals.get_setLocal_ne hLow3 (by omega)]; exact hRoot2
-  have hSrc3 : s3.get src = some (.i64 ptr) := by
-    rw [Locals.get_setLocal_ne hLow3 (by omega)]; exact hSrc2
-  -- The source array stays readable while the code writes inside the new block.
-  obtain ⟨hRegionA, hBytesA, hApartA⟩ := hB.region.allocate 1 hAt hFits
-  have hTopA : (heap.allocate need).top.toNat ≤ store1.mem.pages * 65536 :=
-    (hAt.allocate 1 hFits).top
-  have hBelowA : ptr.toNat + 8 * (xs.size + 1) ≤ (heap.allocate need).top.toNat :=
-    hRegionA.below
-  have hSrcAt : ∀ st : Store Unit,
-      Memory.WritesRange store1 st root.toNat (root.toNat + 8 * (xs.size + 1)) →
-      UInt64Array.At st ptr xs := by
-    intro st hW
-    rw [hRoot, hCapDef] at hApartA
-    simp only [regionsDisjoint] at hApartA
-    refine arrayAt_frameIn hA ?_ fun a hl hh => ?_
-    · rw [hW.2.1]; omega
-    · rw [hW.2.2 a (by omega)]
-      exact hBytesA a hl hh
-  have hPrefix2 : UInt64Array.PrefixAt store2 root xs 0 := by
-    refine UInt64Array.PrefixAt.empty _ _ _ (by omega) ?_ ?_
-    · simp only [store2, Wasm.Mem.write64_pages]; omega
-    · exact Memory.read64_write64 ..
-  have hWrites2 : Memory.WritesRange store1 store2 root.toNat (root.toNat + 8 * (xs.size + 1)) :=
-    Memory.WritesRange.write64 _ root.toUInt32 _ _ _ (by omega) (by omega)
-  -- The loop: element `k` of the source goes to element `k` of the new array.
-  refine wp_block_cons ?_
-  refine wp_loop_cons
-    (fun st si => ∃ k, k ≤ xs.size ∧ UInt64Array.PrefixAt st root xs k ∧
-      Memory.WritesRange store1 st root.toNat (root.toNat + 8 * (xs.size + 1)) ∧
-      Frame base s si ∧ si.get base = some (.i64 (UInt64.ofNat xs.size)) ∧
-      si.get (base + 1) = some (.i64 root) ∧ si.get (base + 2) = some (.i64 (UInt64.ofNat k)) ∧
-      si.get src = some (.i64 ptr))
-    (fun _ si => match si.get (base + 2) with
-      | some (.i64 i) => xs.size - i.toNat
-      | _ => 0)
-    ⟨0, Nat.zero_le _, hPrefix2, hWrites2, hF3, hN3, hRoot3, hIdx3, hSrc3⟩ ?_
-  rintro st si ⟨k, hk, hPrefix, hWrites, hFi, hNi, hRooti, hIdxi, hSrci⟩
-  have hk64 : (UInt64.ofNat k).toNat = k :=
-    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  simp only [wp_localGet_cons, Locals.get_values, hIdxi, hNi, wp_geUI64_cons, wp_br_if_cons]
-  by_cases hDone : UInt64.ofNat xs.size ≤ UInt64.ofNat k
-  · -- The copy is complete.
-    have hkEq : k = xs.size := by
-      rw [UInt64.le_iff_toNat_le, hk64, hN] at hDone; omega
-    subst hkEq
-    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte, List.take_zero,
-      List.drop_zero, List.nil_append]
-    simp only [hRooti]
-    have hValues := hPrefix.complete
-    have hWithin : WritesWithin store1 st root.toNat cap.toNat :=
-      ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
-    subst hRoot hCapDef
-    have hNew := Heap.newArray_of_writes hAt hFits hWithin hValues (by omega)
-      (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
-    exact hNext _ st si _ ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩
-      hNew.owned hFi
-  · -- One more element.
-    have hLess : k < xs.size := by
-      rw [UInt64.le_iff_toNat_le, hk64, hN] at hDone; omega
-    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte]
-    have hSrcAt' := hSrcAt st hWrites
-    have hElement := hPrefix.elementBound k hLess
-    have hSrcElement := hSrcAt'.elementBound k hLess
-    simp only [wp_localGet_cons, Locals.get_values, hRooti, hIdxi, hSrci, wp_constI64_cons,
-      wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wp_load64_cons, wp_store64_cons,
-      wrap_toUInt32, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero, element_address]
-    have hRead : st.mem.read64 (UInt64Array.wordAddress ptr (k + 1)) = xs[k] :=
-      hSrcAt'.elementRead k hLess
-    rw [ite_eq_right (by rw [UInt64Array.wordAddress]; omega), hRead,
-      ite_eq_right (by omega)]
-    have hFitRoot : root.toNat + 8 * (xs.size + 1) ≤ 4294967296 := by omega
-    have hLowI : si.params.length ≤ base + 2 := by rw [hFi.params]; omega
-    have hHighI : base + 2 < si.params.length + si.locals.length := by
-      rw [hFi.params, hFi.length]; omega
-    refine wp_localSet_local (s := si) (vs := si.values) hLowI hHighI ?_
-    rw [wp_br_cons]
-    dsimp only
-    have hLowI' : ({ si with values := si.values } : Locals).params.length ≤ base + 2 := hLowI
-    have hSucc : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
-      rw [UInt64.ofNat_add]; rfl
-    have hSucc64 : (UInt64.ofNat (k + 1)).toNat = k + 1 :=
-      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-    refine ⟨⟨k + 1, hLess, hPrefix.write_next hLess,
-      hWrites.trans (UInt64Array.writeElement_frame st root xs.size k xs[k] hFitRoot hLess),
-      ⟨hFi.params, by simp [setLocal, hFi.length], fun j hj => ?_⟩, ?_, ?_, ?_, ?_⟩, ?_⟩
-    · rw [Locals.get_values, Locals.get_setLocal_ne hLowI' (by omega), Locals.get_values]
-      exact hFi.below j hj
-    · rw [Locals.get_setLocal_ne hLowI' (by omega), Locals.get_values]; exact hNi
-    · rw [Locals.get_setLocal_ne hLowI' (by omega), Locals.get_values]; exact hRooti
-    · rw [Locals.get_setLocal_same hLowI' hHighI, hSucc]
-    · rw [Locals.get_setLocal_ne hLowI' (by omega), Locals.get_values]; exact hSrci
-    · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc,
-        hSucc64, hk64]
-      omega
+    (by show base + 2 < s2.params.length + s2.locals.length; simp [s2, s1, setLocal]; omega)
+    fun store2 s3 hW hA2 hp3 hl3 hOther3 hv3 => ?_
+  have hXs : overlay words xs 0 xs.size = xs := by
+    apply Array.ext (by rw [overlay_size, hSize]) fun j h1 h2 => ?_
+    simp only [overlay, Array.getElem_ofFn]
+    rw [ite_eq_left (by rw [overlay_size] at h1; omega), Nat.sub_zero, getElem!_pos xs j h2]
+  rw [hXs] at hA2
+  have hWithin : WritesWithin store1 store2 root.toNat (capacityAt store1 root) :=
+    ⟨by rw [hW.1], hW.2.1, fun a ha => hW.2.2 a (by rw [hSize] at hCapacity; omega)⟩
+  obtain ⟨hOwned2, hCapSame⟩ := hOwned1.rewrite hWithin hA2 (by rw [hSize] at hCapacity; omega)
+  have hBlock : block store2 root = block store1 root := block_eq hCapSame
+  have hWrite : Step heap1 store1 (fun r => regionsDisjoint r (block store1 root)) heap1 store2
+      [] :=
+    ⟨Heap.At.writesOwned hStep1.at_ hOwned1 hWithin, by rw [hW.1], fun r hr _ hd =>
+      ⟨fun x hl hh => hWithin.bytes x (by simp only [block, regionsDisjoint] at hd; omega), hr,
+        nofun⟩⟩
+  have hStep := hStep1.transBoth hWrite (keep := fun _ => True)
+    fun _ _ => ⟨trivial, fun hf => hf _ (List.mem_singleton_self _)⟩
+  have hF : Frame base s s3 := by
+    refine ⟨hp3, by rw [hl3]; simp [s2, s1, setLocal], fun j hj => ?_⟩
+    rw [hOther3 j (by omega)]
+    show s2.get j = s.get j
+    rw [Locals.get_setLocal_ne hLow2 (by omega), Locals.get_values,
+      Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
+  simp only [wp_localGet_cons, hOther3 (base + 1) (by omega), hRoot2]
+  have hNext' := hNext heap1 store2 s3 root
+    (hStep.mono (fun _ h => h) fun b hb => by
+      rw [List.mem_singleton.mp hb, hBlock]; exact List.mem_append_left _ (List.mem_singleton_self _))
+    hOwned2 hF
+  have hv2 : s2.values = s.values := rfl
+  simpa [hv3, hv2] using hNext'
 
 /-- The copy of a value of type `t` whose words locals `src` on hold and that its words represent
 in `heap` at `store`: each of its arrays goes to a new owned block, and the other words stay as

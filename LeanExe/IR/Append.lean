@@ -448,20 +448,6 @@ theorem Stmt.appendGrow_spec {releaseType scratch dst size1 size2 limit index ca
       hFrame0.get src2 hSrcBelow2 hSrc2, hP2])
     (fun _ => hXv) fun _ => hYv
 
-theorem le_allocSize {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) :
-    bytes.toNat ≤ (allocSize bytes).toNat := by
-  have hRound : ((bytes + 7) / 8 * 8).toNat = (bytes.toNat + 7) / 8 * 8 := by
-    simp only [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, UInt64.reduceToNat]
-    omega
-  unfold allocSize
-  split
-  · rename_i hSmall
-    rw [UInt64.lt_iff_toNat_lt, hRound] at hSmall
-    simp only [UInt64.reduceToNat] at hSmall ⊢
-    omega
-  · rw [hRound]
-    omega
-
 /-- Local `dst` receives `xs ++ ys` as an owned array, where local `src1` holds `xs`, owned
 and consumed, and local `src2` holds `ys`, borrowed and apart from the block of `xs`.  The
 template writes the locals `dst`, `size1`, `size2`, `limit`, `index`, and `cap`. -/
