@@ -121,6 +121,12 @@ theorem build_eq {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word} {
   obtain rfl : (fun i => elem.denote funs (.cons i env)) = F := funext hf
   rfl
 
+/-- An update of an array variable, which leaves it unchanged past its end. -/
+theorem set_eq (x : Var Γ .array) {i v : Expr S Γ .word} {I V : UInt64}
+    (hi : i.denote funs env = I) (hv : v.denote funs env = V) :
+    (Expr.set x i v).denote funs env = (env.get x).set! I.toNat V := by
+  subst hi hv; rfl
+
 /-- A read of an array variable, 0 past its end. -/
 theorem get_eq (x : Var Γ .array) {i : Expr S Γ .word} {I : UInt64}
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by

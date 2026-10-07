@@ -111,7 +111,8 @@ theorem allocSize_words {size : Nat} (h : size < 536870912) :
 
 /-- An array after a write of element `k`: the array with that element replaced. -/
 theorem _root_.LeanExe.ProofKit.UInt64Array.At.writeElement {store : Store Unit} {ptr : UInt64}
-    {values : Array UInt64} (h : UInt64Array.At store ptr values) {k : Nat} (hk : k < values.size) (v : UInt64) :
+    {values : Array UInt64} (h : UInt64Array.At store ptr values) {k : Nat}
+    (hk : k < values.size) (v : UInt64) :
     UInt64Array.At (UInt64Array.writeElement store ptr k v) ptr (values.set k v hk) := by
   have hFit := h.1
   refine ⟨by simpa using h.1, by simpa using h.2.1, ?_, fun j hj => ?_⟩

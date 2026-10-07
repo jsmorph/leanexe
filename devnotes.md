@@ -26828,6 +26828,37 @@ element read the same owned array.  A case of the form `…|trap` must trap at `
 `squares` with a count of `2^29` does.  All 3,965 cases pass, and the theorems use only `propext`,
 `Classical.choice`, and `Quot.sound`.
 
+### V8c, first part: in-place `set!`
+
+V8c covers inferred parameter modes, moves into owned positions, and the in-place `set!`, `push`,
+and `++`.  Its order is: `set!` with the owner rule; `push` and `++`, which share the capacity
+growth of `LeanExe`'s `Stmt.reserve`; and inferred parameter modes with `Moved` argument types,
+whose rule "owned when a path updates it in place" needs the three updates.  A review
+(2026-10-07) confirmed the order and found no defect in the design of the first part.
+
+`Expr.set x i v` is `x.set! i.toNat v`, with the array operand a variable, as for the readers; the
+reflector binds any other operand with `let`.  Its code follows the owner rule: the position's and
+the value's code run first with `x` live, and `x` is then taken in an owned position by
+`Var.ownedCode`, which moves an owned `x` that dies there and copies any other.  An owned array
+that dies at the update is therefore written in its own block, and a borrowed parameter or an
+array that stays live is copied first.  The flag `aborts` is true, since the copy of a borrowed
+array allocates; for an owned array the copy is already covered by the owned variable in scope.
+`Var.code` holds the variable's code that `Expr.code` and `Var.ownedCode` share.
+
+`spec_ownedVar` gives the owned position's facts from `spec_var` and `After.coerce`;
+`After.storeWord` stores a word value in a local as an evolution; `After.writeElement` writes the
+element.  In the in-place case the step consumes `x`'s block and the value's fresh block is that
+same block, which `After` states without change.  [`Updates.lean`](Verified/Examples/Updates.lean)
+updates a parameter, a built array, a loop's state, an array twice in a row, and an array that
+stays live; its cases check the allocation counters, and `setBuilt` and `histogram` allocate no
+copy.  All 4,081 cases pass, and the theorems use only `propext`, `Classical.choice`, and
+`Quot.sound`.
+
+- [x] In-place `set!` with the owner rule.
+- [ ] `push` and `++` with capacity growth.
+- [ ] Inferred parameter modes, `Moved` argument types, and release at entry of unread owned
+  parameters.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

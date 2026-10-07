@@ -13,3 +13,4 @@ import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
+import Verified.Examples.Updates

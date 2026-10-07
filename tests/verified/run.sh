@@ -16,7 +16,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
-    Verified.Examples.Owned:compiled.module:owned; do
+    Verified.Examples.Owned:compiled.module:owned \
+    Verified.Examples.Updates:compiled.module:updates; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -25,9 +26,10 @@ done
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
-# Native Lean panics on the reads past the end of an array that the cases exercise: it writes a
-# message and a backtrace to standard error and returns Lean's default value.  The run fails when
-# Lean exits with an error or writes any other message.
+# Native Lean panics on the reads and updates past the end of an array that the cases exercise: it
+# writes a message and a backtrace to standard error, and a read returns Lean's default value and
+# an update the array unchanged.  The run fails when Lean exits with an error or writes any other
+# message.
 if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lean \
     >"$cases" 2>"$errors"; then
   cat "$errors" >&2
@@ -44,7 +46,7 @@ if [ "$others" -ne 0 ]; then
   echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
   exit 1
 fi
-echo "native Lean: $reads reads past the end, as the cases expect"
+echo "native Lean: $reads accesses past the end, as the cases expect"
 passed=0
 failed=0
 while IFS='|' read -r name export result args expected live; do
