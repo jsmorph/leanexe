@@ -20,6 +20,7 @@ import Verified.Examples.Enums
 import Verified.Examples.Recursion
 import Verified.Examples.Fields
 import Verified.Examples.Trig
+import Verified.Examples.Fourier
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -724,3 +725,13 @@ def main : IO Unit := do
   for x in trigArgs do
     IO.println s!"trig|sin|f64|{floatArg x}|{(Trig.sin x).toBits}"
     IO.println s!"trig|cos|f64|{floatArg x}|{(Trig.cos x).toBits}"
+  for xs in floatArrays ++ [0, 1, 2, 3, 4, 5, 7, 8, 12, 16, 31, 64, 100].map (Fourier.signal · 1) do
+    let a := floatArrayArg xs
+    IO.println s!"fourier|dft|array-u64|{a}|{floatArrayOut (Fourier.dft xs)}|2|3"
+    IO.println s!"fourier|inverse|array-u64|{a}|{floatArrayOut (Fourier.inverse xs)}|2|3"
+    let p := floatArrayOut (Fourier.powerSpectrum xs)
+    IO.println s!"fourier|powerSpectrum|array-u64|{a}|{p}|2|5"
+  for n in [(1 : UInt64), 2, 3, 4, 8, 12, 360, 1000] do
+    for m in [0, 1, n / 8, n / 4, n / 2, n - 1, n, 3 * n + 1] do
+      let (c, s) := Fourier.twiddle n m
+      IO.println s!"fourier|twiddle|list:f64,f64|i64:{n} i64:{m}|{c.toBits} {s.toBits}"
