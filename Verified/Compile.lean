@@ -67,6 +67,17 @@ def FUnOp.code (op : FUnOp) (operand : Program) : Program :=
   | .abs => operand ++ [.f64Abs]
   | .neg => .f64Const 0x8000000000000000 :: operand ++ [.f64Sub]
 
+/-- The instructions of a conversion of a word to a float after the code of its operand.
+`Float.ofBits` reinterprets the word and adds negative zero, which gives the canonical NaN for a
+NaN and leaves every other float unchanged. -/
+def ToFloat.code : ToFloat → Program
+  | .convert => [.f64ConvertI64U]
+  | .ofBits => [.f64ReinterpretI64, .f64Const 0x8000000000000000, .f64Add]
+
+def ToWord.instr : ToWord → Instruction
+  | .truncate => .i64TruncSatF64U
+  | .toBits => .i64ReinterpretF64
+
 /-- The largest of the numbers `w i`, or 0. -/
 def argsMax : {ps : List Ty} → ((i : Fin ps.length) → Nat) → Nat
   | [], _ => 0
@@ -296,6 +307,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .fbin _ left right | _, _, .fcmp _ left right =>
     max left.width right.width
   | _, _, .not e | _, _, .funary _ e => e.width
+  | _, _, .toFloat _ e => e.width
+  | _, _, .toWord _ e => e.width
   | _, _, .ite (t := t) c thenE elseE =>
     max c.width (t.width + max (max thenE.width elseE.width) (copyWidth t))
   | _, _, .letE (s := s) value body => s.width + max value.width body.width
@@ -345,7 +358,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
-  | _, _, .float bits => [.f64Const (Float.ofBits bits).toBits]
+  | _, _, .float bits =>
+    [.f64Const (if Wasm.IEEE64.isNaN bits then Wasm.IEEE64.canonicalNaN else bits)]
   | _, _, .fbin op left right =>
     left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       [op.instr]
@@ -353,6 +367,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | _, _, .fcmp op left right =>
     left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
       [op.instr, .extendUI32]
+  | _, _, .toFloat op e => e.code h slots base live ++ op.code
+  | _, _, .toWord op e => e.code h slots base live ++ [op.instr]
   | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
     left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++

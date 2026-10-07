@@ -24,6 +24,8 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k =>
     left.demands (fun i => live i || right.uses i) false k || right.demands live false k
   | _, _, .not e, live, _, k | _, _, .funary _ e, live, _, k => e.demands live false k
+  | _, _, .toFloat _ e, live, _, k => e.demands live false k
+  | _, _, .toWord _ e, live, _, k => e.demands live false k
   | _, _, .ite c thenE elseE, live, owned, k =>
     let branch := owned || thenE.mode [] == .owned || elseE.mode [] == .owned
     c.demands (fun i => live i || thenE.uses i || elseE.uses i) false k ||
