@@ -133,6 +133,12 @@ theorem pair_eq {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {A : s.denote} {B
     (Expr.pair a b).denote funs env = (A, B) := by
   subst ha hb; rfl
 
+/-- A tuple of two elements. -/
+theorem mk_eq {a b : Elem} {x : Expr S Γ (.elem a)} {y : Expr S Γ (.elem b)} {X : a.denote}
+    {Y : b.denote} (hx : x.denote funs env = X) (hy : y.denote funs env = Y) :
+    (Expr.mk x y).denote funs env = (X, Y) := by
+  subst hx hy; rfl
+
 /-- A destructuring of a pair, which `Prod.fst`, `Prod.snd`, and `match` on a pair become. -/
 theorem letPair_eq {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
     {E : s.denote × t.denote} {B : s.denote → t.denote → u.denote}

@@ -27062,6 +27062,66 @@ array of floats and `flip` on an owned array of `Bool`s update in place.  All 5,
 - [x] `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, and computed `Float.ofBits`.
 - [x] `Ty.elem` and `Ty.array (e : Elem)`: arrays of words, floats, and `Bool`.
 
+### V10 design: records
+
+Records are tuples in the source, and the reflector carries each theorem to the user's structure.
+A structure `S` with `instance : Flat S β` corresponds to the element type of `β` with every nested
+structure flattened in turn, and the reflector proves `g (φ x) = φ (f x)` for the definition `f`,
+the source function `g`, and the deep flattening `φ`.  `ImplementsA.comap` in `Correct.lean`
+already gives `ImplementsA` for `f` from `ImplementsA` for `g`, given correspondences of the
+instances, which hold by unfolding for a scalar structure and by `flatWords xs = e.words (xs.map
+φ)` for an array of structures.  A type universe that holds the user's structure types would put
+`Ty`, `Expr`, `Env`, and `Funs` in `Type 1` and still need each structure's flattening as data.
+
+A new element constructor `Elem.prod a b` is the type of every array-free tuple, from a structure
+or from Lean's `×`, and `Ty.pair` remains for pairs that hold arrays.  Element types must contain
+the tuples, because an array element of record type is a record value, and `(Ty.elem e).denote`
+reduces to `e.denote` only when tuples are elements.  A projection reads a slice of a record
+variable's positions along a path of first and second steps (`Expr.proj`), and `Expr.mk` builds a
+record.  An array element of `k` words occupies `k` consecutive words, the length word counts
+words as `flatWords` does, `size` divides it by `k`, and a read checks the index against that
+quotient once and loads each word under the result.  The review of this design found that adding
+`Elem.prod` forces multi-word array elements into the same step, since every array operation is
+generic over the element type, and that the reflector's equations need commuting lemmas for the
+flattening through `if`, `let`, loops, calls, and array operations.  It also found that `φ default
+= default` fails for structures whose fields have default values, so the reflector proves it by
+`rfl` for each structure and rejects the program otherwise.
+
+### V10a: tuples and arrays of multi-word elements
+
+`Ty.Rep (.elem e) ws v` is now `ws = e.values v` for every element type, with `Elem.values`
+recursive over tuples, and `Ty.width (.elem e)` is `e.width`.  Array code works on words: `size`
+divides the length word by the word count, a read keeps a flag for the position's test and loads
+each word under it, and an update, a push, and a build store the element's words in locals and
+write each.  `wp_loadWordsCode` and `wp_storeWordsCode` prove these loops of words by induction over
+the element's types, `writeWords` describes the array after the writes, and `Elem.words_ext`,
+`Elem.words_set`, and `Elem.words_push_into` relate the words to Lean's `set!` and `push`.  An
+update keeps the position of the element's first word in local `base + 2 + k`, above the array's
+address, because the frame of the array's owned value covers the positions below `base + 1 + k`.
+
+The first version used `UInt64.ofNat k` for the word count `k`, which wraps for `k ≥ 2^64`: an
+empty array of such elements would divide by zero in `size`, and a push would extend by the wrong
+count.  No such element is in an array that memory holds, which caps the words at `2^29`, so the
+code uses `wordCount k = min k 2^29`, which equals `k` for every real element and keeps the
+theorem unconditional.  The build's limit becomes `⌈2^29 / k⌉` elements.
+
+The reflector maps an array-free Lean pair to `Elem.prod`: `(a, b)` becomes `Expr.mk`, a chain of
+`.1` and `.2` on a tuple variable becomes one `Expr.proj`, and a projection of another tuple or a
+`match` on one binds it with `let`.  Pairs that hold arrays keep `Ty.pair` and the splitting of
+their variables.  The existing examples now reflect their scalar pairs as tuples and pass
+unchanged, and `Verified/Examples/Tuples.lean` adds hand-written programs for arrays of tuples,
+since Lean has no `Represent` instance for an array of pairs; each has an `example` proving by
+`rfl` that it means a Lean function.  All 5,744 cases pass, and the in-place bound holds for an
+update of an owned array of two-word elements.
+
+- [x] V10a: `Elem.prod`, `Path`, `Expr.mk`, `Expr.proj`, and arrays of multi-word elements, with
+  the reflector mapping Lean's array-free pairs to `Elem.prod`, and hand-written programs for
+  arrays of tuples.
+- [ ] V10b: structures through `Flat`: the transfer, the commuting lemmas, the default equation,
+  and arrays of records.
+- [ ] Later: enumerations and `match` on them, and a read of one field of an array element that
+  loads only that field's words.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

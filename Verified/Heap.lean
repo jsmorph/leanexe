@@ -543,30 +543,13 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       t.Rep .owned heap' store' ws' v → Frame base s s' →
       wp m rest Q store' { s' with values := ws'.reverse ++ s.values } host) →
     wp m (copyCode h t src base ++ rest) Q store s host
-  | .word, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, _, hRep, hold, _, _, _,
-      hNext => by
-    simp only [Ty.rep_word] at hRep
-    subst hRep
-    have h0 : s.get src = some (.i64 v) := LocalsHold.word hold
-    simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
-    simpa using hNext heap store s [.i64 v] (Step.refl hAt _) rfl (Frame.refl base s)
-  | .bool, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, _, hRep, hold, _, _, _,
-      hNext => by
-    simp only [Ty.rep_bool] at hRep
-    subst hRep
-    have h0 : s.get src = some (.i64 (boolWord v)) := LocalsHold.word hold
-    simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
-    simpa using hNext heap store s [.i64 (boolWord v)] (Step.refl hAt _) rfl (Frame.refl base s)
-  | .float, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, hh, hRep, hold, _, _,
+  | .elem e, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, hh, hRep, hold, _, _,
       _, hNext => by
-    have hRep' : ws = [.f64 v.toBits] := hRep
+    have hRep' : ws = e.values v := hRep
     subst hRep'
-    have h0 : s.get (src + h) = some (.f64 v.toBits) := by
-      have := hold 0 (by simp)
-      rw [hh] at this
-      simpa [Ty.types, slotIndex] using this
-    simp only [copyCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
-    simpa using hNext heap store s [.f64 v.toBits] (Step.refl hAt _) rfl (Frame.refl base s)
+    simp only [copyCode]
+    exact wp_loadCode _ (by rw [e.values_length, e.types_length]) hh hold
+      (hNext heap store s _ (Step.refl hAt _) rfl (Frame.refl base s))
   | .array _, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
       hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, ha⟩ := hRep
@@ -624,11 +607,7 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       Step heap store (fun r => ∀ b ∈ t.blocks store ws v, regionsDisjoint r b) heap' store' [] →
       wp m rest Q store' s host) →
     wp m (releaseCode t src ++ rest) Q store s host
-  | .word, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
-    simpa [releaseCode] using hNext heap store (Step.refl hAt _)
-  | .bool, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
-    simpa [releaseCode] using hNext heap store (Step.refl hAt _)
-  | .float, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
+  | .elem _, heap, store, _, _, _, _, _, _, hAt, _, _, hNext => by
     simpa [releaseCode] using hNext heap store (Step.refl hAt _)
   | .array _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨ptr, rfl, hOwned⟩ := hRep

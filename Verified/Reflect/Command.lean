@@ -41,7 +41,10 @@ def elemOf (type : Lean.Expr) : MetaM Elem := do
 partial def tyOf (type : Lean.Expr) : MetaM Ty := do
   if let some e ← elemOf? type then return .elem e
   let type ← whnfR type
-  if let (``Prod, #[a, b]) := type.getAppFnArgs then return .pair (← tyOf a) (← tyOf b)
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    match ← tyOf a, ← tyOf b with
+    | .elem ea, .elem eb => return .elem (.prod ea eb)
+    | ta, tb => return .pair ta tb
   if let (``Array, #[e]) := type.getAppFnArgs then return .array (← elemOf e)
   throwError "verified_compile: the type {type} is not UInt64, Bool, Float, an array, or a pair"
 
@@ -49,12 +52,26 @@ def elemExpr : Elem → Lean.Expr
   | .word => mkConst ``Elem.word
   | .bool => mkConst ``Elem.bool
   | .float => mkConst ``Elem.float
+  | .prod a b => mkApp2 (mkConst ``Elem.prod) (elemExpr a) (elemExpr b)
+
+/-- The path along the steps `steps`, from the outside in, of a component of an element of type
+`e`: `false` for the first part and `true` for the second.  Also the component's type. -/
+def pathExpr : Elem → List Bool → MetaM (Lean.Expr × Elem)
+  | e, [] => return (mkApp (mkConst ``Path.here) (elemExpr e), e)
+  | .prod a b, false :: rest => do
+    let (p, t) ← pathExpr a rest
+    return (mkApp4 (mkConst ``Path.fst) (elemExpr a) (elemExpr t) (elemExpr b) p, t)
+  | .prod a b, true :: rest => do
+    let (p, t) ← pathExpr b rest
+    return (mkApp4 (mkConst ``Path.snd) (elemExpr b) (elemExpr t) (elemExpr a) p, t)
+  | _, _ :: _ => throwError "verified_compile: a projection of an element that is not a tuple"
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
   | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
   | .float => mkConst ``Ty.float
+  | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
 
 def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
@@ -277,7 +294,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
         let proof ← mkAppOptM ``float_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
           some (toExpr bits), some e, some h]
         return (src, proof, .float)
-    | .pair _ _ | .array _ => pure ()
+    | .elem (.prod _ _) | .pair _ _ | .array _ => pure ()
   if let .letE _ type value body _ := e then
     if isPlace value then return ← reflect c (body.instantiate1 value)
     let s ← tyOf type
@@ -295,9 +312,16 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   if let some app ← matchMatcherApp? e then
     if app.discrs.size == 1 && app.alts.size == 1 then
       let alt := app.alts[0]!
-      if let (``Prod.mk, #[_, _, a, b]) := (projReduce app.discrs[0]!).getAppFnArgs then
+      let d := app.discrs[0]!
+      if let (``Prod.mk, #[_, _, a, b]) := (projReduce d).getAppFnArgs then
         return ← reflect c (alt.beta #[a, b])
-      return ← destructure c [] app.discrs[0]! fun a b => return alt.beta #[a, b]
+      if let .elem _ ← tyOf (← inferType d) then
+        -- The components of a tuple are its projections, of a variable bound to it first.
+        if (projReduce d).isFVar then
+          return ← reflect c (alt.beta #[← mkAppM ``Prod.fst #[d], ← mkAppM ``Prod.snd #[d]])
+        return ← reflect c (← withLetDecl `t (← inferType d) d fun y => do
+          mkLetFVars #[y] (alt.beta #[← mkAppM ``Prod.fst #[y], ← mkAppM ``Prod.snd #[y]]))
+      return ← destructure c [] d fun a b => return alt.beta #[a, b]
   let (fn, args) := e.getAppFnArgs
   if let some op := binOp? fn then
     if args.size == 6 && (← isFloat args[0]!) then
@@ -359,9 +383,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Prod.mk, #[_, _, a, b] =>
     let (as, ha, s) ← reflect c a
     let (bs, hb, t) ← reflect c b
+    if let (.elem ea, .elem eb) := (s, t) then
+      return (← mkAppM ``Expr.mk #[as, bs], ← mkAppM ``mk_eq #[ha, hb], .elem (.prod ea eb))
     return (← mkAppM ``Expr.pair #[as, bs], ← mkAppM ``pair_eq #[ha, hb], .pair s t)
-  | ``Prod.fst, #[_, _, p] => destructure c [] p fun a _ => return a
-  | ``Prod.snd, #[_, _, p] => destructure c [] p fun _ b => return b
+  | ``Prod.fst, #[_, _, p] =>
+    if let .elem _ ← tyOf (← inferType p) then reflectProj e
+    else destructure c [] p fun a _ => return a
+  | ``Prod.snd, #[_, _, p] =>
+    if let .elem _ ← tyOf (← inferType p) then reflectProj e
+    else destructure c [] p fun _ b => return b
   | ``ite, #[_, p, _, a, b] =>
     let (as, ha, t) ← reflect c a
     let (bs, hb, _) ← reflect c b
@@ -488,6 +518,29 @@ where
       let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
       let (bs, hb, u) ← reflectSplit c' (b :: a :: rest) (← body a b)
       return (bs, ← mkLambdaFVars #[a, b] hb, u)
+  /-- A component of a tuple, `e`, a chain of `Prod.fst` and `Prod.snd`: the projection of a tuple
+  variable along a path, with a tuple that is not a variable bound with `let` first. -/
+  reflectProj (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let rec walk (e : Lean.Expr) (steps : List Bool) : MetaM (Lean.Expr × List Bool) := do
+      let e := projReduce e
+      match e.getAppFnArgs with
+      | (``Prod.fst, #[_, _, p]) =>
+        if let .elem _ ← tyOf (← inferType p) then walk p (false :: steps) else return (e, steps)
+      | (``Prod.snd, #[_, _, p]) =>
+        if let .elem _ ← tyOf (← inferType p) then walk p (true :: steps) else return (e, steps)
+      | _ => return (e, steps)
+    let (base, steps) ← walk e []
+    if base.isFVar then
+      let (x, t) ← varOf c base
+      let .elem be := t | throwError "verified_compile: {base} is not a tuple"
+      let (path, target) ← pathExpr be steps
+      let src ← mkAppOptM ``Expr.proj #[some c.sigs, some c.ctx, some (elemExpr be),
+        some (elemExpr target), some x, some path]
+      return (src, ← rflProof c src e, .elem target)
+    reflect c (← withLetDecl `t (← inferType base) base fun y => do
+      let chain ← steps.foldlM (fun acc step =>
+        mkAppM (if step then ``Prod.snd else ``Prod.fst) #[acc]) y
+      mkLetFVars #[y] chain)
   /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
   of the body `body a b`, in which the variables `rest` are split. -/
   destructure (c : Ctx) (rest : List Lean.Expr) (p : Lean.Expr)
@@ -601,14 +654,16 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
       throwError "verified_compile: cannot evaluate whether {name} may trap"
     return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes⟩
 
-def tyStx : Ty → CommandElabM Term
+def elemStx : Elem → CommandElabM Term
   | .word => `(UInt64)
   | .bool => `(Bool)
-  | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
-  | .array .word => `(Array UInt64)
-  | .array .bool => `(Array Bool)
-  | .array .float => `(Array Float)
   | .float => `(Float)
+  | .prod a b => do `(($(← elemStx a) × $(← elemStx b)))
+
+def tyStx : Ty → CommandElabM Term
+  | .elem e => elemStx e
+  | .pair a b => do `(($(← tyStx a) × $(← tyStx b)))
+  | .array e => do `(Array $(← elemStx e))
 
 /-- The type of an argument in mode `m`: `Moved` for an owned array. -/
 def argStx (t : Ty) : Mode → CommandElabM Term

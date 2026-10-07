@@ -12,6 +12,7 @@ import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Elements
+import Verified.Examples.Tuples
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -112,6 +113,18 @@ def floatArrayOut (xs : Array Float) : String := arrayOut (xs.map Float.toBits)
 def boolArrayArg (bs : Array Bool) : String := arrayArg (bs.map fun b => if b then 1 else 0)
 
 def boolArrayOut (bs : Array Bool) : String := arrayOut (bs.map fun b => if b then 1 else 0)
+
+/-- Arrays of tuples of a float and a word: empty, one element, special floats, and built ones. -/
+def pointArrays : List (Array (Float × UInt64)) :=
+  [#[], #[(1.5, 7)], #[(0.0 / 0.0, 1), (-0.0, 18446744073709551615), (1.0 / 0.0, 0)],
+    Tuples.points 10]
+
+/-- The host's argument and output for an array of tuples, by their words. -/
+def pointWords (xs : Array (Float × UInt64)) : Array UInt64 :=
+  (xs.toList.flatMap fun (x, k) => [x.toBits, k]).toArray
+
+def nestedWords (xs : Array ((UInt64 × Bool) × Float)) : Array UInt64 :=
+  (xs.toList.flatMap fun ((k, b), x) => [k, if b then 1 else 0, x.toBits]).toArray
 
 /-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
 infinities, both zeros, the smallest subnormal, and words. -/
@@ -364,6 +377,25 @@ def main : IO Unit := do
       IO.println s!"elements|flip|array-u64|{a} i64:{i}|{boolArrayOut (Elements.flip bs i)}|1|1"
   for n in [0, 1, 2, 10, 30] do
     IO.println s!"elements|sieve|array-u64|i64:{n}|{boolArrayOut (Elements.sieve n)}|1|1"
+  for n in [0, 1, 5, 100] do
+    IO.println s!"tuples|points|array-u64|i64:{n}|{arrayOut (pointWords (Tuples.points n))}|1"
+    IO.println s!"tuples|flags|array-u64|i64:{n}|{arrayOut (nestedWords (Tuples.flags n))}|1"
+    for i in [0, 1, 4, 5, 18446744073709551615] do
+      let fs := Tuples.flags n
+      let a := arrayArg (nestedWords fs)
+      IO.println s!"tuples|flagAt|i64|{a} i64:{i}|{bit (Tuples.flagAt fs i)}|1"
+  for xs in pointArrays do
+    let a := arrayArg (pointWords xs)
+    IO.println s!"tuples|sumFirst|f64|{a}|{(Tuples.sumFirst xs).toBits}|1"
+    IO.println s!"tuples|count|i64|{a}|{Tuples.count xs}|1"
+    for i in [0, 1, 2, 9, 10, 18446744073709551615] do
+      let r := arrayOut (pointWords (Tuples.bump xs i))
+      IO.println s!"tuples|bump|array-u64|{a} i64:{i}|{r}|1|1"
+    let r := arrayOut (pointWords (Tuples.pushPoint xs 2.5 9))
+    IO.println s!"tuples|pushPoint|array-u64|{a} {floatArg 2.5} i64:9|{r}|1"
+    for ys in pointArrays do
+      let j := arrayOut (pointWords (Tuples.joined xs ys))
+      IO.println s!"tuples|joined|array-u64|{a} {arrayArg (pointWords ys)}|{j}|2"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"

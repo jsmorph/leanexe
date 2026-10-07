@@ -26,6 +26,9 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .not e, live, _, k | _, _, .funary _ e, live, _, k => e.demands live false k
   | _, _, .toFloat _ e, live, _, k => e.demands live false k
   | _, _, .toWord _ e, live, _, k => e.demands live false k
+  | _, _, .mk first second, live, _, k =>
+    first.demands (fun i => live i || second.uses i) false k || second.demands live false k
+  | _, _, .proj _ _, _, _, _ => false
   | _, _, .ite c thenE elseE, live, owned, k =>
     let branch := owned || thenE.mode [] == .owned || elseE.mode [] == .owned
     c.demands (fun i => live i || thenE.uses i || elseE.uses i) false k ||
