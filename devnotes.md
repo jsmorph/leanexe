@@ -26856,8 +26856,9 @@ copy.  All 4,081 cases pass, and the theorems use only `propext`, `Classical.cho
 
 - [x] In-place `set!` with the owner rule.
 - [x] `push` and `++` with capacity growth.
-- [ ] Inferred parameter modes, `Moved` argument types, and release at entry of unread owned
-  parameters.
+- [x] Parameter modes in signatures, owned arguments moved or copied, `Moved` argument types, and
+  release at entry of unused owned parameters.
+- [ ] Mode inference in the reflector.
 
 ### V8c, second part: `push` and `++`
 
@@ -26891,6 +26892,38 @@ pushes allocate 11 blocks.  [`Grow.lean`](Verified/Examples/Grow.lean) covers `p
 parameters, built arrays, and loop states, an array that stays live, an array appended to itself,
 and an owned right operand.  All 4,235 cases pass, and the theorems use only `propext`,
 `Classical.choice`, and `Quot.sound`.
+
+### V8c, third part: parameter modes
+
+A signature carries the modes chosen for its parameters, `Sig.modes`, and `paramModes` makes
+every parameter that does not hold an array borrowed, so only an array parameter is owned.
+`Env.Rep`, `Env.moves`, and `Env.reads` take the modes as a function of the index, which makes the
+shift to a context's tail definitional.  `Env.represent` reads the owned arguments' addresses as
+`moves` and the borrowed arguments' arrays as `reads`, and the callee receives `Separate` for them,
+as `ImplementsA` gives.  `ImplementsA.lean` states the theorem for Lean's tuple with
+`Moved (Array UInt64)` at an owned parameter.  Its agreement lemmas hold for words of the right
+length, so `ImplementsA.comap` takes the argument representation as a hypothesis of its `moves`
+and `Separate` conditions.
+
+An argument at an owned parameter is a variable, which `placeArgs` checks and the reflector
+arranges with `let`.  `callMoves` moves the variable when it is owned, dies at the call, and no
+other argument with arrays reads it, and `Var.ownedCode` copies it otherwise.  The argument code
+keeps every argument's variables live until the call, so a scalar argument after a moved array, as
+in `bump xs (xs.size - 1)`, still reads it.  `args_spec` carries four facts by induction over the
+arguments: the step, whose fresh blocks are the copies; `Separate` in the final store; that a
+region apart from the copies and the moved variables lies apart from the consumed blocks; and that
+a region apart from the variables of the arguments with arrays lies apart from the borrowed
+arrays.  `spec_call` composes the arguments' step with the callee's, which keeps the regions apart
+from the consumed blocks, and releases the owned variables that die at the call and that the call
+does not consume.
+
+A function releases at entry the owned parameters that its body does not use, and
+`Env.Rep.apart` derives `Holds` for the parameters from `Separate`.  `Func.aborts` is true when a
+parameter is owned, since the body may copy that parameter, and a call's `aborts` is true when the
+callee owns a parameter, since the call may copy the argument.  The reflector gives every
+parameter the borrowed mode in this step, so the modules and the 4,235 cases are unchanged, and
+the theorem covers every choice of modes.  The theorems use only `propext`, `Classical.choice`,
+and `Quot.sound`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

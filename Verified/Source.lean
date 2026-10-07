@@ -98,13 +98,41 @@ def Env.ofFn : {Γ : List Ty} → ((i : Fin Γ.length) → (Γ.get i).denote) �
   | [], _ => .nil
   | _ :: _, f => .cons (f ⟨0, by simp⟩) (Env.ofFn fun i => f i.succ)
 
-/-- The signature of a function: its parameter types, its result type, and whether a call may
-trap at `unreachable`, which only a function that allocates, directly or through a call, does. -/
+/-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
+which its holder must consume. -/
+inductive Mode where
+  | borrowed | owned
+  deriving DecidableEq, Repr, Inhabited
+
+/-- The mode of a parameter of type `t` for which the mode `m` was chosen: only an array
+parameter is owned. -/
+def Ty.paramMode : Ty → Mode → Mode
+  | .array, m => m
+  | _, _ => .borrowed
+
+/-- The modes of parameters of types `ts` for which the modes `ms` were chosen, in order, a missing
+choice borrowed. -/
+def paramModes : List Ty → List Mode → List Mode
+  | [], _ => []
+  | t :: ts, ms => t.paramMode (ms.headD .borrowed) :: paramModes ts ms.tail
+
+/-- The mode of parameter `i` among parameters of types `ts` for which the modes `ms` were
+chosen. -/
+def paramMode (ts : List Ty) (ms : List Mode) (i : Nat) : Mode :=
+  (paramModes ts ms).getD i .borrowed
+
+/-- The signature of a function: its parameter types, its result type, whether a call may trap
+at `unreachable`, which only a function that allocates, directly or through a call, does, and the
+modes chosen for its parameters.  The call consumes the arrays of its owned parameters. -/
 structure Sig where
   params : List Ty
   result : Ty
   aborts : Bool
+  modes : List Mode
   deriving DecidableEq
+
+/-- The modes of the parameters of the signature `g`, by index. -/
+def Sig.mode (g : Sig) : Nat → Mode := paramMode g.params g.modes
 
 /-- A function with signature `g` among the functions `S` that an expression may call, by its
 distance from the front of `S`. -/
@@ -224,8 +252,8 @@ def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
   | _ + 1, b => b 0 || argsAny fun i => b i.succ
 
 /-- Whether the code of an expression may trap: whether it builds, updates, or extends an array,
-which may allocate, or calls a function that may trap or that returns arrays, since only these
-allocate. -/
+which may allocate, or calls a function that may trap, that returns arrays, or that owns a
+parameter, whose argument the call may copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right => left.aborts || right.aborts
@@ -234,7 +262,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
   | _, _, .letE value body => value.aborts || body.aborts
   | _, _, .call (g := g) _ args =>
-    g.aborts || !g.result.scalar || argsAny fun i => (args i).aborts
+    g.aborts || !g.result.scalar || argsAny fun i => (args i).aborts || g.mode i == .owned
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init body => count.aborts || init.aborts || body.aborts
@@ -262,6 +290,11 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .push x v, i => i == x.index || v.uses i
   | _, _, .append x y, i => i == x.index || i == y.index
 
+/-- The index of an expression that is a variable. -/
+def Expr.varIndex? : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Option Nat
+  | _, _, .var x => some x.index
+  | _, _, _ => none
+
 /-- Whether an expression is a variable or a pair of such expressions, which a call reads in
 place. -/
 def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
@@ -270,7 +303,8 @@ def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, _ => false
 
 /-- Whether every argument of every call in an expression that holds arrays is a variable or a
-pair of such arguments.  The reflector binds any other such argument with `let`. -/
+pair of such arguments, and a variable at an owned parameter.  The reflector binds any other such
+argument with `let`. -/
 def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right => left.placeArgs && right.placeArgs
@@ -280,6 +314,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letE value body => value.placeArgs && body.placeArgs
   | _, _, .call (g := g) _ args =>
     argsAny (fun i => !(g.params.get i).scalar && !(args i).isPlace) == false &&
+      argsAny (fun i => g.mode i == .owned && (args i).varIndex?.isNone) == false &&
       !(argsAny fun i => !(args i).placeArgs)
   | _, _, .pair first second => first.placeArgs && second.placeArgs
   | _, _, .letPair e body => e.placeArgs && body.placeArgs
@@ -291,18 +326,21 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .append _ _ => true
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
-has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body.  The
-arguments of the body's calls that hold arrays are variables or pairs of variables. -/
+has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body, held
+in the mode that `modes` chooses for it.  The arguments of the body's calls that hold arrays are
+variables or pairs of variables. -/
 structure Func (S : List Sig) where
   name : String
   params : List Ty
   result : Ty
   body : Expr S params result
   placeArgs : body.placeArgs = true
+  modes : List Mode
 
-/-- Whether a call of the function may trap: whether its body may, or its result holds arrays,
-which a borrowed result's copy allocates. -/
-def Func.aborts (func : Func S) : Bool := func.body.aborts || !func.result.scalar
+/-- Whether a call of the function may trap: whether its body may, its result holds arrays, which
+a borrowed result's copy allocates, or a parameter is owned, whose variable the body may copy. -/
+def Func.aborts (func : Func S) : Bool :=
+  func.body.aborts || !func.result.scalar || (paramModes func.params func.modes).any (· == .owned)
 
 /-- The Lean function that `func` means, given the Lean functions that it calls. -/
 def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.result.denote :=
@@ -312,7 +350,7 @@ def Func.denote (func : Func S) (funs : Funs S) (args : Env func.params) : func.
 before it in the module. -/
 inductive Prog : List Sig → Type where
   | nil : Prog []
-  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.aborts⟩ :: S)
+  | cons (f : Func S) (rest : Prog S) : Prog (⟨f.params, f.result, f.aborts, f.modes⟩ :: S)
 
 /-- The Lean functions that a program's functions mean. -/
 def Prog.funs : {S : List Sig} → Prog S → Funs S
