@@ -4,7 +4,8 @@
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the host's array arguments and the result's arrays.  A seventh
 # field bounds the number of allocations, the host's included.  A case whose expected result is
-# `trap` must trap at `unreachable`.
+# `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean checks Trig.sin and
+# Trig.cos against the C library's within one unit in the last place.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -30,7 +31,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Repeat:compiled.module:repeat \
     Verified.Examples.Enums:compiled.module:enums \
     Verified.Examples.Recursion:compiled.module:recursion \
-    Verified.Examples.Fields:compiled.module:fields; do
+    Verified.Examples.Fields:compiled.module:fields \
+    Verified.Examples.Trig:compiled.module:trig; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -96,4 +98,6 @@ while IFS='|' read -r name export result args expected live allocsMax; do
   fi
 done <"$cases"
 echo "verified: passed $passed failed $failed"
-[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ]
+[ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
+# The accuracy of Trig.sin and Trig.cos against the C library's, in native Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean

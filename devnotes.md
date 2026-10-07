@@ -27382,6 +27382,30 @@ so a recursive definition may take a record with an array of structures.
 - [x] Tests: 6,993 cases pass; `advance` allocates twice, the host's array and one copy, and
   updates the copy in place.
 
+### `sin` and `cos` in the dialect
+
+The Fourier demo needs sine and cosine, which the dialect lacks, and a `sin` written in the dialect
+tests the compiler on bit patterns, word arithmetic, branches, and constants.  Lean's `Float.sin`
+is `@[extern "sin"] opaque`, the C library's function, so no theorem can relate compiled code to
+it.  `Trig.sin` is a Lean definition, a port of fdlibm from FreeBSD's `lib/msun/src` (`k_sin.c`,
+`k_cos.c`, `s_sin.c`, `s_cos.c`, `e_rem_pio2.c`), and the compiler's theorem states that the module
+computes it bit for bit, `ImplementsA false`.  Its accuracy is tested against glibc's `sin` and
+`cos`: fdlibm and glibc each state an error below one unit in the last place, so their results lie
+at most one unit apart.  The user chose fdlibm's structure and coefficients, glibc as the only
+reference (mpmath would be a new dependency), and the full range in steps.  A fresh review compared
+the port with the C line by line and found no difference that changes a result: the 19 constants,
+the operation order, the thresholds, and the quadrant tables match, and reducing `|x|` with
+`sin (-x) = -sin x` gives fdlibm's values.  The port needed nested tuple patterns,
+`let (n, y0, y1) := …`, which the reflector now reads by reducing the match on the discriminant
+expanded into its pairs and proves by `cases` on each component.
+
+- [x] Step 1: `kernelSin`, `kernelCos`, fdlibm's special cases up to `9π/4`, and the three-step
+  Cody–Waite reduction below `2 ^ 20 · π/2`; larger arguments give NaN.  355,526 results lie within
+  one unit of glibc's, 3,639 of them one unit apart.
+- [ ] Step 2: `UInt64` array literals in the verified compiler, for the table of 2/π.
+- [ ] Step 3: Payne–Hanek reduction for the full range, in word arithmetic.
+- [ ] Step 4: the Fourier demo with `Trig.sin` and `Trig.cos`.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
