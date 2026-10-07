@@ -70,4 +70,20 @@ theorem letE_eq {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {V : s.den
     (Expr.letE v b).denote funs env = B V := by
   subst hv; exact hb _
 
+theorem ofFn_nil_eq :
+    Env.ofFn (fun i => ((Args.nil : Args S Γ []).get i).denote funs env) = Env.nil := rfl
+
+theorem ofFn_cons_eq {t : Ty} {ts : List Ty} {e : Expr S Γ t} {rest : Args S Γ ts}
+    {A : t.denote} {As : Env ts} (he : e.denote funs env = A)
+    (hrest : Env.ofFn (fun i => (rest.get i).denote funs env) = As) :
+    Env.ofFn (fun i => ((Args.cons e rest).get i).denote funs env) = Env.cons A As := by
+  subst he hrest; rfl
+
+/-- A call means its callee's value at its arguments' values. -/
+theorem call_eq {ps : List Ty} {r : Ty} (f : FVar S ps r)
+    {args : (i : Fin ps.length) → Expr S Γ (ps.get i)} {A : Env ps} {R : r.denote}
+    (hargs : Env.ofFn (fun i => (args i).denote funs env) = A) (hf : funs.get f A = R) :
+    (Expr.call f args).denote funs env = R := by
+  subst hargs; exact hf
+
 end Verified.Reflect

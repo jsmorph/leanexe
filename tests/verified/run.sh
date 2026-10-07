@@ -10,7 +10,7 @@ mkdir -p "$out"
 cd "$root"
 for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:compiled.module:mix \
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
-    Verified.Examples.Calls:module:calls; do
+    Verified.Examples.Calls:compiled.module:calls; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
