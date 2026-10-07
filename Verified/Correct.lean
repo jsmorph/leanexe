@@ -28,6 +28,13 @@ theorem Frame.values {base : Nat} {s s' : Locals} {values : List Value}
     (h : Frame base { s with values } s') : Frame base s s' :=
   ⟨h.params, h.length, h.below⟩
 
+theorem Frame.mono {base base' : Nat} {s s' : Locals} (h : Frame base' s s') (hb : base ≤ base') :
+    Frame base s s' :=
+  ⟨h.params, h.length, fun j hj => h.below j (by omega)⟩
+
+@[simp] theorem Locals.get_values (s : Locals) (vs : List Value) (i : Nat) :
+    ({ s with values := vs } : Locals).get i = s.get i := rfl
+
 /-- Local `i`, past the parameters, after a store of `v`. -/
 def setLocal (s : Locals) (i : Nat) (v : Value) : Locals :=
   { s with locals := s.locals.set (i - s.params.length) v }
@@ -215,6 +222,18 @@ theorem le_argsMax : {ps : List Ty} → (w : (i : Fin ps.length) → Nat) →
   | _ :: _, w, ⟨0, _⟩ => Nat.le_max_left _ _
   | _ :: _, w, ⟨i + 1, h⟩ =>
     (le_argsMax (fun j => w j.succ) ⟨i, by simpa using h⟩).trans (Nat.le_max_right _ _)
+
+/-- The state of `LeanExe.loop` after `k` iterations. -/
+def loopState (init : α) (f : UInt64 → α → α) : Nat → α
+  | 0 => init
+  | k + 1 => f (UInt64.ofNat k) (loopState init f k)
+
+theorem loopState_eq (n : UInt64) (init : α) (f : UInt64 → α → α) :
+    loopState init f n.toNat = LeanExe.loop n init f := by
+  unfold LeanExe.loop
+  induction n.toNat with
+  | zero => rfl
+  | succ k ih => rw [Nat.fold_succ, ← ih]; rfl
 
 /-- The code of an expression pushes the words of its value, in the frames that
 `Expr.code_spec` describes. -/
@@ -603,6 +622,152 @@ theorem Expr.code_spec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs
         rw [h4.below j (by omega)]
         exact hbelow j hj
       exact hNext s4 hFrame
+  | @loop Γ' tTy count init body countSpec initSpec bodySpec =>
+      have hWidth := hRoom
+      simp only [Expr.width] at hWidth
+      have hc : count.width ≤
+          max count.width (max (1 + init.width) (2 + tTy.width + body.width)) :=
+        Nat.le_max_left ..
+      have hi : 1 + init.width ≤
+          max count.width (max (1 + init.width) (2 + tTy.width + body.width)) :=
+        (Nat.le_max_left ..).trans (Nat.le_max_right ..)
+      have hb : 2 + tTy.width + body.width ≤
+          max count.width (max (1 + init.width) (2 + tTy.width + body.width)) :=
+        (Nat.le_max_right ..).trans (Nat.le_max_right ..)
+      simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+      -- The count, in local `base`.
+      refine countSpec env locs base s hVars hBase (by omega) _ _ fun s1 h1 => ?_
+      have hp1 : s1.params = s.params := h1.params
+      have hl1 : s1.locals.length = s.locals.length := h1.length
+      rw [rev_values_word]
+      refine wp_localSet_local (by rw [hp1]; omega) (by rw [hp1, hl1]; omega) ?_
+      have hF2 : Frame base s
+          (setLocal { s1 with values := s.values } base (.i64 (count.denote funs env))) :=
+        ⟨hp1, by simp [setLocal, hl1], fun j hj => by
+          rw [Locals.get_setLocal_ne (by show s1.params.length ≤ base; rw [hp1]; omega)
+            (by omega)]
+          exact h1.below j hj⟩
+      have hN2 : (setLocal { s1 with values := s.values } base
+          (.i64 (count.denote funs env))).get base = some (.i64 (count.denote funs env)) :=
+        Locals.get_setLocal_same (by show s1.params.length ≤ base; rw [hp1]; omega)
+          (by show base < s1.params.length + s1.locals.length; rw [hp1, hl1]; omega)
+      -- The initial state, in the locals from `base + 2` on.
+      refine initSpec env locs (base + 1) _
+        ((hVars.agree fun j hj => hF2.below j hj).mono (Nat.le_succ base))
+        (by rw [hF2.params]; omega) (by rw [hF2.params, hF2.length]; omega) _ _
+        fun s3 h3 => ?_
+      have hF3 : Frame base s s3 := hF2.trans (h3.mono (Nat.le_succ base))
+      have hN3 : s3.get base = some (.i64 (count.denote funs env)) :=
+        (h3.below base (by omega)).trans hN2
+      refine wp_storeCode _ (base + 2) tTy.width s3 s.values (Ty.values_length _ _)
+        (by rw [hF3.params]; omega) (by rw [hF3.params, hF3.length]; omega)
+        fun s4 hp4 hl4 hold4 hout4 => ?_
+      -- The index, in local `base + 1`.
+      simp only [wp_constI64_cons]
+      refine wp_localSet_local (s := s4) (vs := s.values) (by rw [hp4, hF3.params]; omega)
+        (by rw [hp4, hl4, hF3.params, hF3.length]; omega) ?_
+      have hLow4 : ({ s4 with values := s.values } : Locals).params.length ≤ base + 1 := by
+        show s4.params.length ≤ base + 1; rw [hp4, hF3.params]; omega
+      have hF5 : Frame base s
+          (setLocal { s4 with values := s.values } (base + 1) (.i64 0)) :=
+        ⟨hp4.trans hF3.params, by simp [setLocal, hl4, hF3.length], fun j hj => by
+          rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values,
+            hout4 j (Or.inl (by omega))]
+          exact hF3.below j hj⟩
+      have hN5 : (setLocal { s4 with values := s.values } (base + 1) (.i64 0)).get base =
+          some (.i64 (count.denote funs env)) := by
+        rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values,
+          hout4 base (Or.inl (by omega))]
+        exact hN3
+      have hI5 : (setLocal { s4 with values := s.values } (base + 1) (.i64 0)).get (base + 1) =
+          some (.i64 0) :=
+        Locals.get_setLocal_same hLow4
+          (by show base + 1 < s4.params.length + s4.locals.length
+              rw [hp4, hl4, hF3.params, hF3.length]; omega)
+      have hold5 : LocalsHold (setLocal { s4 with values := s.values } (base + 1) (.i64 0))
+          (base + 2) (tTy.values (init.denote funs env)) := fun k hk => by
+        rw [Locals.get_setLocal_ne hLow4 (by omega), Locals.get_values]
+        exact hold4 k hk
+      -- The loop: the invariant holds the count, the index `i`, and the state after `i`
+      -- iterations, and the count less the index decreases.
+      refine wp_block_cons ?_
+      refine wp_loop_cons
+        (fun st s' => st = store ∧ Frame base s s' ∧
+          s'.get base = some (.i64 (count.denote funs env)) ∧
+          ∃ i : UInt64, i ≤ count.denote funs env ∧ s'.get (base + 1) = some (.i64 i) ∧
+            LocalsHold s' (base + 2) (tTy.values (loopState (init.denote funs env)
+              (fun i acc => body.denote funs (.cons acc (.cons i env))) i.toNat)))
+        (fun _ s' => match s'.get (base + 1) with
+          | some (.i64 i) => (count.denote funs env).toNat - i.toNat
+          | _ => 0)
+        ⟨rfl, hF5, hN5, 0, UInt64.zero_le, hI5, hold5⟩ ?_
+      rintro st si ⟨rfl, hFi, hNi, i, hiN, hii, holdi⟩
+      simp only [wp_localGet_cons, Locals.get_values, hii, hNi, wp_geUI64_cons, wp_br_if_cons]
+      have hRoomi : base + 2 + tTy.width + body.width ≤ si.params.length + si.locals.length := by
+        rw [hFi.params, hFi.length]; omega
+      by_cases hge : count.denote funs env ≤ i
+      · -- The index reached the count: the state locals hold the loop's value.
+        simp (config := { decide := true }) only [ge_iff_le, hge, ↓reduceIte, List.take_zero,
+          List.drop_zero, List.nil_append]
+        rw [UInt64.le_antisymm hiN hge, loopState_eq] at holdi
+        refine wp_loadCode _ (Ty.values_length _ _) holdi ?_
+        exact hNext si hFi
+      · -- One more iteration: the body, the store of its value, and the next index.
+        have hlt : i < count.denote funs env := UInt64.not_le.mp hge
+        have hsucc : (i + 1).toNat = i.toNat + 1 := by
+          have := UInt64.lt_iff_toNat_lt.mp hlt
+          have := (count.denote funs env).toNat_lt
+          rw [UInt64.toNat_add]; simp; omega
+        simp (config := { decide := true }) only [ge_iff_le, hge, ↓reduceIte]
+        have holdIdx : LocalsHold si (base + 1) (Ty.values .word i) := fun k hk => by
+          obtain rfl : k = 0 := by simpa using hk
+          simpa using hii
+        refine bodySpec _ _ (base + 2 + tTy.width) si
+          ((((hVars.agree fun j hj => hFi.below j hj).mono (Nat.le_succ base)).push
+            holdIdx).push holdi)
+          (by rw [hFi.params]; omega) hRoomi _ _ fun s6 h6 => ?_
+        refine wp_storeCode _ (base + 2) tTy.width s6 si.values (Ty.values_length _ _)
+          (by rw [h6.params, hFi.params]; omega)
+          (by rw [h6.params, h6.length, hFi.params, hFi.length]; omega)
+          fun s7 hp7 hl7 hold7 hout7 => ?_
+        have hp7' : s7.params = s.params := hp7.trans (h6.params.trans hFi.params)
+        have hl7' : s7.locals.length = s.locals.length :=
+          hl7.trans (h6.length.trans hFi.length)
+        have hget7 : ∀ j < base + 2, s7.get j = si.get j := fun j hj => by
+          rw [hout7 j (Or.inl hj)]
+          exact h6.below j (by omega)
+        simp only [wp_localGet_cons, Locals.get_values, hget7 (base + 1) (by omega), hii,
+          wp_constI64_cons, wp_addI64_cons]
+        have hLow7 : ({ s7 with values := si.values } : Locals).params.length ≤ base + 1 := by
+          show s7.params.length ≤ base + 1; rw [hp7']; omega
+        refine wp_localSet_local (s := s7) (vs := si.values) (by rw [hp7']; omega)
+          (by rw [hp7', hl7']; omega) ?_
+        have hget8 : (setLocal { s7 with values := si.values } (base + 1) (.i64 (i + 1))).get
+            (base + 1) = some (.i64 (i + 1)) :=
+          Locals.get_setLocal_same hLow7
+            (by show base + 1 < s7.params.length + s7.locals.length; rw [hp7', hl7']; omega)
+        have hold8 : LocalsHold (setLocal { s7 with values := si.values } (base + 1)
+            (.i64 (i + 1))) (base + 2) (tTy.values (loopState (init.denote funs env)
+              (fun i acc => body.denote funs (.cons acc (.cons i env))) (i + 1).toNat)) := by
+          rw [hsucc, loopState, UInt64.ofNat_toNat]
+          intro k hk
+          rw [Locals.get_setLocal_ne hLow7 (by omega), Locals.get_values]
+          exact hold7 k hk
+        rw [wp_br_cons]
+        dsimp only
+        refine ⟨⟨rfl, ⟨hp7', by simp [setLocal, hl7'], fun j hj => ?_⟩, ?_, i + 1,
+          UInt64.le_iff_toNat_le.mpr ?_, hget8, hold8⟩, ?_⟩
+        · rw [Locals.get_values, Locals.get_setLocal_ne hLow7 (by omega), Locals.get_values,
+            hget7 j (by omega)]
+          exact hFi.below j hj
+        · rw [Locals.get_setLocal_ne hLow7 (by omega), Locals.get_values,
+            hget7 base (by omega)]
+          exact hNi
+        · have := UInt64.lt_iff_toNat_lt.mp hlt
+          omega
+        · have := UInt64.lt_iff_toNat_lt.mp hlt
+          simp only [hget8]
+          omega
 
 theorem Var.index_lt {Γ : List Ty} {t : Ty} (x : Var Γ t) : x.index < Γ.length := by
   induction x with

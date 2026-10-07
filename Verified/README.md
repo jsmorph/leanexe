@@ -18,48 +18,53 @@ parts of the IR it needs, so ordinary development of `LeanExe` does not affect i
 ## What it covers
 
 A program is a list of functions in which each function may call the functions after it in the
-list, so the calls have no cycles.  A function's parameters and result are 64-bit words,
-`Bool`s, or pairs of these, and its body is a typed expression.  An expression of type `t` over a context `Γ` of
-types that may call functions with the signatures `S` has type `Expr S Γ t`, so every expression
-is well typed, reads only variables in scope, and calls only functions that exist.  Expressions
-are constants, variables, `let` bindings, calls, pairs and their destructuring, the operations
-`+`, `-`, `*`, `/`, `%`,
-`&&&`, `|||`, `^^^`, `<<<`, and `>>>` on words, the unsigned comparisons `==`, `!=`, `<`, and `≤`,
-the `Bool` operations `!`, `&&`, and `||`, and `if`, each with Lean's meaning.  Arithmetic wraps
-modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its
-amount modulo 64.  A variable is numbered by its distance from the front of the context: a
-binding's value is variable 0 of its body, and parameter `i` is variable `i` of the function's
-body.
+list, so the calls have no cycles.  A function's parameters and result are 64-bit words, `Bool`s,
+or pairs of these, and its body is a typed expression.  An expression of type `t` over a context
+`Γ` of types that may call functions with the signatures `S` has type `Expr S Γ t`, so every
+expression is well typed, reads only variables in scope, and calls only functions that exist.
+Expressions are constants, variables, `let` bindings, calls, pairs and their destructuring, the
+operations `+`, `-`, `*`, `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>` on words, the unsigned
+comparisons `==`, `!=`, `<`, and `≤`, the `Bool` operations `!`, `&&`, and `||`, `if`, and
+`LeanExe.loop`, each with Lean's meaning.  Arithmetic wraps modulo 2^64, division by zero gives 0,
+the remainder by zero is the dividend, and a shift uses its amount modulo 64.  `LeanExe.loop n
+init f` applies `f` to the indices 0 to `n - 1` in order, starting from the state `init`, and the
+state may have any of the types.  A variable is numbered by its distance from the front of the
+context: a binding's value is variable 0 of its body, parameter `i` is variable `i` of the
+function's body, and a loop's body has the state as variable 0 and the index as variable 1.
 
 A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0,
 and a pair as its first component's words followed by its second's.  A function with a pair
 result returns several WebAssembly results.  Each binding's value is stored in locals of its own,
 and a call pushes its arguments' words in order and calls the function, which the module places
 before its callers.  An `if` stores the words of its value in locals in each branch and loads them
-after it, because the encoder writes block types of at most one result.  WebAssembly traps on a
-zero divisor, so the compiled division and remainder save their operands in scratch locals, test
-the divisor, and return Lean's result for zero.  [`Source.lean`](Source.lean) defines the syntax and `Func.denote`,
-[`Compile.lean`](Compile.lean) the compiler, and [`Correct.lean`](Correct.lean) the theorem.  The
-compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release`
-at functions 0 and 1.
+after it, because the encoder writes block types of at most one result.  A loop keeps its count,
+its index, and its state in locals, compares the index with the count at the top of a WebAssembly
+`loop` inside a `block`, and branches out of the block when the index reaches the count.
+WebAssembly traps on a zero divisor, so the compiled division and remainder save their operands in
+scratch locals, test the divisor, and return Lean's result for zero.  [`Source.lean`](Source.lean)
+defines the syntax and `Func.denote`, [`Compile.lean`](Compile.lean) the compiler, and
+[`Correct.lean`](Correct.lean) the theorem.  The compiled module has the layout of `LeanExe`'s
+modules, with the runtime's `alloc` and `release` at functions 0 and 1.
 
-The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
-writes ordinary Lean definitions as a source program.  For each definition `f` it adds the source
-function `p.f.func`, the equation `p.f.denote_eq` that it means `f`, and `p.f.implements`, which
-states that function `2 + k` of the module `p.module` computes `f` on the tuple of its arguments.
-`p.bytes` states that the module's bytes decode to a module that computes every listed definition.
-The reflector is meta code and is not trusted: it builds each equation from the lemmas of
+The reflector, `verified_compile p := [f, g, …]` in
+[`Reflect/Command.lean`](Reflect/Command.lean), writes ordinary Lean definitions as a source
+program.  For each definition `f` it adds the source function `p.f.func`, the equation
+`p.f.denote_eq` that it means `f`, and `p.f.implements`, which states that function `2 + k` of the
+module `p.module` computes `f` on the tuple of its arguments.  `p.bytes` states that the module's
+bytes decode to a module that computes every listed definition.  The reflector is meta code and is
+not trusted: it builds each equation from the lemmas of
 [`Reflect/Lemmas.lean`](Reflect/Lemmas.lean), one per Lean form, and Lean's kernel checks it.  An
 `if` on a `Prop` comparison needs a lemma, because Lean elaborates it with `UInt64`'s `Decidable`
-instance, which is not definitionally the source's test of a `Bool`.  A call of an earlier
-listed definition becomes a source call, proved from the callee's equation.
+instance, which is not definitionally the source's test of a `Bool`.  A call of an earlier listed
+definition becomes a source call, proved from the callee's equation, and `LeanExe.loop` becomes a
+loop whose body is the reflection of the loop function's body.
 
 | Theorem | Statement |
 |---------|-----------|
-| `Prog.correct` | For every program and every function in it, the function's index in the compiled module returns the word of the function's meaning from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
+| `Prog.correct` | For every program and every function in it, the function's index in the compiled module returns the words of the function's meaning from any store, without a trap, and leaves the store unchanged (`ImplementsPureA false`). |
 | `Func.correct` | A function in a module whose functions at the call indices compute the functions it calls computes its own meaning. |
-| `Expr.code_spec` | From any frame in which every variable holds the word of its value in its local, the code of an expression pushes the word of the expression's value and changes no parameter and no local below the locals it uses. |
-| `compiled.bytes` | In each example, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; [`Pairs.lean`](Examples/Pairs.lean), pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, and calls that pass and return pairs; and [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
+| `Expr.code_spec` | From any frame in which every variable holds the words of its value in its locals, the code of an expression pushes the words of the expression's value and changes no parameter and no local below the locals it uses.  The loop case is a proof by `wp_loop_cons` with an invariant: the index `i` is at most the count, and the state locals hold the state after `i` iterations. |
+| `compiled.bytes` | In each example, the bytes of the module decode to a module that computes the example's Lean functions: [`Poly.lean`](Examples/Poly.lean), `a * b + c * c - 7`; [`Mix.lean`](Examples/Mix.lean), division, remainder, the bitwise operations, and the shifts; [`Lets.lean`](Examples/Lets.lean), four nested `let` bindings, one inside the operand of a division; [`Select.lean`](Examples/Select.lean), `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result; [`Pairs.lean`](Examples/Pairs.lean), pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, and calls that pass and return pairs; and [`Calls.lean`](Examples/Calls.lean), four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`; and [`Loops.lean`](Examples/Loops.lean), loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Every example is
 an ordinary Lean file: its definitions and one `verified_compile` command.
@@ -75,14 +80,15 @@ The commands build the library and its theorems, write each example's module to
 `build/verified/`, validate it with `wasm-tools`, and compare every case of
 [`Cases.lean`](Examples/Cases.lean) between the Wasmtime host and native Lean.  The setup is that
 of [the repository README](../README.md#commands).  The cases cover words near 0, 2^32, 2^63, and
-2^64, where the arithmetic wraps, zero divisors, shift amounts of 64 or more, and equal words in
-comparisons.
+2^64, where the arithmetic wraps, zero divisors, shift amounts of 64 or more, equal words in
+comparisons, and loop counts of 0, 1, and up to 65,537.
 
 ## Related work
 
 [The journal](../devnotes.md) records the analysis that led to this library and its plan.  The
-`LeanExe` rule for expressions, `Expr.program_spec` in [`LeanExe/IR/Expr.lean`](../LeanExe/IR/Expr.lean),
-proves the same kind of fact for one IR program at a time.  [`Scale`](../Examples/Scale/README.md)
+`LeanExe` rule for expressions, `Expr.program_spec` in
+[`LeanExe/IR/Expr.lean`](../LeanExe/IR/Expr.lean), proves the same kind of fact for one IR program
+at a time.  [`Scale`](../Examples/Scale/README.md)
 and [`Axpy`](../Examples/Axpy/README.md) are the closest programs of the `LeanExe` compiler.
 
 ## References

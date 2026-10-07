@@ -1,11 +1,13 @@
 import LeanExe.Pipeline.Implements
+import LeanExe.Dialect.Loop
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
-the function's arguments and `let`-bound values.  The types are 64-bit words and `Bool`, and an
-expression of type `t` in a context `Γ` has type `Expr Γ t`, so every expression is well typed and
-reads only variables in scope.  Each operation means Lean's operation: arithmetic wraps modulo
-2^64, division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount
-modulo 64. -/
+the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
+words, `Bool`, and pairs, and an expression of type `t` in a context `Γ` that may call functions
+with the signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only
+variables in scope, and calls only functions that exist.  Each operation means Lean's operation:
+arithmetic wraps modulo 2^64, division by zero gives 0, the remainder by zero is the dividend, and
+a shift uses its amount modulo 64. -/
 
 namespace Verified
 
@@ -135,7 +137,9 @@ def Funs.get : {S : List Sig} → {ps : List Ty} → {r : Ty} →
 `letE value body` gives `body` the value of `value` as variable 0, ahead of the variables of `Γ`.
 `call f args` applies function `f` to the values of `args`, argument `i` having the type of
 parameter `i`.  `letPair e body` gives `body` the second component of `e` as variable 0 and the
-first as variable 1. -/
+first as variable 1.  `loop count init body` is `LeanExe.loop`: starting from the value of
+`init`, it applies `body` to the indices 0 to `count - 1`, with the state as variable 0 and the
+index as variable 1. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -150,6 +154,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | call (f : FVar S ps r) (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) : Expr S Γ r
   | pair (first : Expr S Γ s) (second : Expr S Γ t) : Expr S Γ (.pair s t)
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
+  | loop (count : Expr S Γ .word) (init : Expr S Γ t) (body : Expr S (t :: .word :: Γ) t) :
+      Expr S Γ t
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -190,6 +196,9 @@ def Expr.denote (funs : Funs S) :
   | _, _, .letPair e body, env =>
     let p := e.denote funs env
     body.denote funs (.cons p.2 (.cons p.1 env))
+  | _, _, .loop count init body, env =>
+    LeanExe.loop (count.denote funs env) (init.denote funs env)
+      fun i acc => body.denote funs (.cons acc (.cons i env))
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body. -/

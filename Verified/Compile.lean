@@ -79,10 +79,9 @@ def paramLocs : List Ty → Nat → List Nat
 def widthSum (ts : List Ty) : Nat := (ts.map Ty.width).sum
 
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
-and `letPair` value and of each `ite` result, and two for each division or remainder, on a path
-of the expression.  A
-call's arguments and a pair's components leave their words on the stack, so they share their
-locals. -/
+and `letPair` value and of each `ite` result, two for each division or remainder, and the count,
+the index, and the state of each loop, on a path of the expression.  A call's arguments and a
+pair's components leave their words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ => 0
   | _, _, .bin op left right => op.scratch + max left.width right.width
@@ -94,6 +93,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .call _ args => argsMax fun i => (args i).width
   | _, _, .pair first second => max first.width second.width
   | _, _, .letPair (s := s) (t := t) e body => s.width + t.width + max e.width body.width
+  | _, _, .loop (t := t) count init body =>
+    max count.width (max (1 + init.width) (2 + t.width + body.width))
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at local `locs.getD x.index 0`, and the locals from `base` on are free.  A comparison
@@ -102,7 +103,8 @@ the else branch first, and each branch stores its words in the locals from `base
 code loads after the `if`: the encoder writes block types of at most one result.  `letE` stores
 its value from local `base` on and gives its body the locals above it, and `letPair` stores its
 first component from `base` on and its second after it.  A call pushes its arguments in order and
-calls the function. -/
+calls the function.  A loop keeps its count in local `base`, its index in local `base + 1`, and
+its state from local `base + 2` on, and leaves the block when the index reaches the count. -/
 def Expr.code (locs : List Nat) (base : Nat) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
@@ -129,6 +131,15 @@ def Expr.code (locs : List Nat) (base : Nat) :
     e.code locs (base + s.width + t.width) ++ storeCode (base + s.width) t.width ++
       storeCode base s.width ++
       body.code ((base + s.width) :: base :: locs) (base + s.width + t.width)
+  | _, _, .loop (t := t) count init body =>
+    count.code locs base ++ [.localSet base] ++ init.code locs (base + 1) ++
+      storeCode (base + 2) t.width ++ [.constI64 0, .localSet (base + 1),
+        .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
+          body.code ((base + 2) :: (base + 1) :: locs) (base + 2 + t.width) ++
+          storeCode (base + 2) t.width ++
+          [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
+          [] []] ++
+      loadCode (base + 2) t.width
 
 def Func.type (func : Func S) : FuncType :=
   { params := List.replicate (widthSum func.params) .i64
