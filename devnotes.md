@@ -27210,7 +27210,7 @@ per pass.  A condition that sees the index would change the meaning to an early-
 not `LeanExe.loop`, and no construct of the dialect needs one.
 
 - [x] V11: `LeanExe.repeatWhile`.
-- [ ] V12: recursion.
+- [x] V12: recursion.
 - [x] V13: enumerations and `match` on them.
 - [ ] V14: records with array fields.
 
@@ -27322,11 +27322,32 @@ admit, so the guard turns that gap into one fact that tests establish: `L` frame
   four cases (nil, plain or flagged `cons`, `consRec`), the recursive one by strong induction on
   `depthLimit.toNat - d.toNat`; `entry_correct` and `Prog.correct_entry` for the exported
   entries.
-- [ ] The reflector: recursion through `eq_def`, a self callee, the mode rounds, the inverse of
-  the flattening, terms only, rejection of `sorry` in termination proofs.
-- [ ] `Recursion.lean`: exponentiation by squaring, `gcd`, a pairwise float sum with two
-  self-calls, a recursion that moves an owned array, one that calls another, and a chain that
-  returns at depth `L - 1` and traps at `L`.
+- [x] The reflector: recursion through `eq_def`, a self callee, the mode rounds, the inverse of
+  the flattening, terms only, rejection of `sorry` in termination proofs.  A fresh review of the
+  reflector plan (2026-10-07) adopted it with changes, all made: one path for every program, an
+  explicit chain `p.funs` with the proof `p.meaning` in place of `Prog.funs`; enumerations
+  rejected anywhere in a recursive definition's parameter types, since at a word that encodes no
+  constructor the body does not compute the definition at any decoded argument; equations built
+  so that the kernel compares the definition only with an identical copy of itself (`rfl` for
+  `M E` against the unfolding of `M` at `E`, then congruence under the definition with the inverse
+  laws); `if h : c` with branches that ignore `h` reflected as `if c`; a check that a `Flat`
+  instance holds every field before the reflector inverts it; and mode rounds that update the self
+  signature and the self callee together.
+- [x] The frame cap.  `wasmtime run -W max-wasm-stack=N`, bisected at depth 999, gave 80, 208,
+  and 400 bytes per frame for frames of 14, 30, and 54 positions with 8, 24, and 48 values live
+  across the self-call: 8 bytes per live value and 16 per frame.  The reflector rejects a function
+  that takes the call depth with more than 32 positions, so 1,000 frames take about 280 KB of the
+  512 KiB default stack and the rest holds the functions without the depth at the top of the chain.
+  `Recursion.deep` runs 32 positions at depth 999 under `top1` and `top2`.
+- [x] Deep bodies.  The widest-frame example exceeded the elaborator's recursion limit, 512, in two
+  places: the elaborator's `decide` of the `bytes` theorem's bound on locals, and Meta `reduce` of
+  `positions`, both of which evaluate the body once per level.  Both now evaluate in the kernel
+  (`decide +kernel`, `Kernel.whnf`), as do `Func.aborts`, `Func.depth`, and `Expr.paramChoice`.
+  A body of 26 nested `let`s with a 26-term sum now compiles at the default limit.
+- [x] `Recursion.lean`: exponentiation by squaring with `if h :`, `gcd`, a pairwise float sum with
+  two self-calls, a recursion that moves an owned array, recursions over a pair, a structure, and
+  an array of structures, a function that calls two recursive ones, a chain that returns at depth
+  `L - 1` and traps at `L`, and the widest accepted frame at depth 999.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

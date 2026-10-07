@@ -5,11 +5,14 @@ import LeanExe.Encoding.RoundTrip
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
-`Verified.Reflect.Lemmas`, composed term by term.  It adds the program `p.program`, the module
-`p.module := compile p.prog`, in which the `k`-th definition is function `2 + k`, and for each
+`Verified.Reflect.Lemmas`, composed term by term.  It adds the program `p.program`, the meanings
+`p.funs` of its functions with the proof `p.meaning` that they are, the module
+`p.module := compile p.program`, in which the `k`-th definition is function `2 + k`, and for each
 definition `f` the source function `p.f.func`, the equation `p.f.denote_eq`, and the theorem
-`p.f.implements` that the module computes `f`.  `p.bytes` states that the module's bytes decode
-to the module, which computes every listed definition.
+`p.f.implements` that the module computes `f`, at the entry of `f` when its code takes the call
+depth.  A recursive definition is reflected from its unfolding equation, and its meaning
+`p.f.meaning` is the definition at the inverses of the flattenings.  `p.bytes` states that the
+module's bytes decode to the module, which computes every listed definition.
 
 The reflector is meta code and is not trusted: Lean's kernel checks every equation it builds, and
 the theorem holds for the parameter modes that `Expr.paramChoice` chooses as for any others.  A
@@ -22,12 +25,14 @@ term, with `φ` the identity for the types without structures.  The theorem foll
 by `ImplementsA.transferAgree`, with proofs that Lean's instances agree with the source instances
 along `φ`.  Its body may use literals, its parameters, `let`, the word operations `+`, `-`, `*`,
 `/`, `%`, `&&&`, `|||`, `^^^`, `<<<`, and `>>>`, the comparisons `==`, `!=`, `<`, `≤`, `>`, `≥`,
-`=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, pairs built
+`=`, and `≠` as `Bool` values, `!`, `&&`, and `||`, `if` on a `Bool` or on a comparison, also as
+`if h : c` with branches that do not use `h`, pairs built
 with `(a, b)` and taken apart with `.1`, `.2`, or `match`, structures built with their constructor
 or `{ s with … }` and taken apart with their fields or `match`, enumeration constructors,
 `Flat.flat` of enumerations, `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them,
 `LeanExe.loop`, `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`,
-`xs.push v`, `xs ++ ys`, `LeanExe.build`, and calls of the listed definitions before it. -/
+`xs.push v`, `xs ++ ys`, `LeanExe.build`, calls of the listed definitions before it, and, in a
+recursive definition, calls of itself. -/
 
 namespace Verified.Reflect
 
@@ -392,16 +397,16 @@ partial def fvarAt (sigs : Lean.Expr) (j : Nat) : MetaM Lean.Expr := do
     | throwError "verified_compile: the reference {inner}"
   return mkApp4 (mkConst ``FVar.there) rest g h inner
 
-/-- The proof that `prog.funs.get fv env` is the meaning of the function that `fv` names, by
-`Prog.get_there` and `Prog.get_here`, for `prog` a chain of `Prog.cons`. -/
-partial def getChain (prog fv env : Lean.Expr) : MetaM Lean.Expr := do
-  let (``Prog.cons, #[_, f, rest]) := prog.getAppFnArgs
-    | throwError "verified_compile: the program {prog}"
+/-- The proof that `funs.get fv env` is `F env` for the meaning `F` of the function that `fv`
+names, by `Funs.get_there` and `Funs.get_here`, for `funs` a chain of `Funs.cons`. -/
+partial def getChain (funs fv env : Lean.Expr) : MetaM Lean.Expr := do
+  let (``Funs.cons, #[S, h, F, rest]) := funs.getAppFnArgs
+    | throwError "verified_compile: the meanings {funs}"
   match fv.getAppFnArgs with
-  | (``FVar.here, _) => mkAppM ``Prog.get_here #[f, rest, env]
-  | (``FVar.there, args) =>
-    transHint (← mkAppM ``Prog.get_there #[f, rest, args.back!, env])
-      (← getChain rest args.back! env)
+  | (``FVar.here, _) => return mkAppN (mkConst ``Funs.get_here) #[S, h, F, rest, env]
+  | (``FVar.there, #[_, g, _, v]) =>
+    transHint (mkAppN (mkConst ``Funs.get_there) #[S, g, h, F, rest, v, env])
+      (← getChain rest v env)
   | _ => throwError "verified_compile: the function reference {fv}"
 
 def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
@@ -693,6 +698,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Prod.snd, #[_, _, p] =>
     if let .elem _ ← tyOf (← inferType p) then reflectProj e
     else destructure c [] p fun _ b => return b
+  | ``dite, #[α, p, inst, a, b] =>
+    -- `if h : p then a else b` whose branches do not use `h` is `if p then a else b`.
+    let .lam _ _ ta _ := a.consumeMData | throwError "verified_compile: unsupported term {e}"
+    let .lam _ _ tb _ := b.consumeMData | throwError "verified_compile: unsupported term {e}"
+    if ta.hasLooseBVars || tb.hasLooseBVars then
+      throwError "verified_compile: the branches of {e} use the hypothesis of the `if`"
+    reflectAs (← mkAppOptM ``ite #[some α, some p, some inst, some ta, some tb]) e
   | ``ite, #[α, p, inst, a, b] =>
     if let some r ← enumIte? α p inst a b then return r
     let (src, proof, t) ← reflectIte p a b
@@ -1102,7 +1114,7 @@ where
     let f ← fvarAt c.sigs j
     -- `funs.get f values` is the callee's meaning by `getChain`, and the callee's equation gives
     -- its value, with no unfolding of the callee's definition.
-    let hf ← transHint (← getChain c.funs.appArg! f values)
+    let hf ← transHint (← getChain c.funs f values)
       (mkAppN (mkConst callee.denoteEq) args)
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
     return some (src, ← mkAppM ``call_eq #[f, hargs, hf], callee.sig.result)
@@ -1267,6 +1279,9 @@ structure Reflected where
   aborts : Bool
   modes : List Mode
   depth : Bool
+  /-- The equation `∀ args, F (env of args) = flat (name args)` of the meaning `F` of the
+  definition's function in the program's meanings. -/
+  meaningEq : Name
   /-- The Lean type of the tuple of the definition's arguments, with `Moved` for an owned array. -/
   argsType : Lean.Expr
   /-- The Lean type of the definition's result. -/
@@ -1277,17 +1292,64 @@ structure Reflected where
   flatResult : Lean.Expr
   deriving Inhabited
 
-/-- The modes of a literal list of modes. -/
-partial def modesOf (e : Lean.Expr) : Option (List Mode) :=
-  match e.getAppFnArgs with
-  | (``List.nil, _) => some []
+/-- The weak head normal form of `e` by the kernel.  The reflector evaluates the compiler's
+functions of a source body this way: Meta's `reduce` would recurse once per level of the body and
+exceed the elaborator's recursion limit on a deep one. -/
+def kernelWhnf (e : Lean.Expr) : MetaM Lean.Expr := do
+  match Kernel.whnf (← getEnv) (← getLCtx) e with
+  | .ok r => return r
+  | .error ex => throwKernelException ex
+
+/-- The modes of the list of modes `e`, evaluated by the kernel. -/
+partial def modesOf (e : Lean.Expr) : MetaM (Option (List Mode)) := do
+  match (← kernelWhnf e).getAppFnArgs with
+  | (``List.nil, _) => return some []
   | (``List.cons, #[_, m, rest]) =>
+    let m ← kernelWhnf m
     let m? := if m.isConstOf ``Mode.owned then some Mode.owned
       else if m.isConstOf ``Mode.borrowed then some Mode.borrowed else none
-    match m?, modesOf rest with
-    | some m, some ms => some (m :: ms)
-    | _, _ => none
-  | _ => none
+    match m?, ← modesOf rest with
+    | some m, some ms => return some (m :: ms)
+    | _, _ => return none
+  | _ => return none
+
+/-- The value of a Boolean property of a definition, which the kernel evaluates. -/
+def boolOf (what : MessageData) (e : Lean.Expr) : MetaM Bool := do
+  let v ← kernelWhnf e
+  if v.isConstOf ``Bool.true then return true
+  if v.isConstOf ``Bool.false then return false
+  throwError "verified_compile: cannot evaluate {what}"
+
+/-- The parameter modes that `Expr.paramChoice` gives for the source body `src` of `name`. -/
+def paramChoiceOf (name : Name) (src : Lean.Expr) : MetaM (List Mode) := do
+  let some modes ← modesOf (← mkAppM ``Expr.paramChoice #[src])
+    | throwError "verified_compile: cannot evaluate the parameter modes of {name}"
+  return modes
+
+/-- The right-nested product of `tys`, `Unit` for none. -/
+def tupleType : List Lean.Expr → MetaM Lean.Expr
+  | [] => return mkConst ``Unit
+  | [t] => return t
+  | t :: ts => do mkAppM ``Prod #[t, ← tupleType ts]
+
+/-- What `reflectDefinition` and `reflectRecursive` record of definition `name` with parameters
+`params` of types `types` and result type `resultType`: Lean's tuple of the arguments, in which an
+owned array has type `Moved`, the flattenings of the arguments and of the result, and the theorems
+`base.argsAgree` and `base.resultAgree` that Lean's instances agree with the source instances
+along them. -/
+def finishReflected (base name : Name) (params : Array Lean.Expr) (types : List Ty) (result : Ty)
+    (resultType : Lean.Expr) (aborts : Bool) (modes : List Mode) (depth : Bool)
+    (meaningEq : Name) : MetaM Reflected := do
+  let argTys ← (params.toList.zip (paramModes types modes)).mapM fun (p, m) => do
+    let ty ← inferType p
+    return if m == .owned then mkApp (mkConst ``LeanExe.Pipeline.Moved) ty else ty
+  let argsType ← tupleType argTys
+  let (flatArgs, argsAgree) ← agreeArgs argsType types modes
+  let (flatResult, resultAgree) ← agreeTy resultType result
+  addTheorem (base ++ `argsAgree) (← inferType argsAgree) argsAgree
+  addTheorem (base ++ `resultAgree) (← inferType resultAgree) resultAgree
+  return ⟨name, types, result, aborts, modes, depth, meaningEq, argsType, resultType, flatArgs,
+    flatResult⟩
 
 /-- Reflects definition `name` as a function that may call the functions `sigs`, meaning
 `funs`, with the parameter modes that `Expr.paramChoice` gives, and adds `base.func` and
@@ -1305,8 +1367,7 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let env ← envExpr vars
     let (src, proof, _) ← reflect.reflectSplit ⟨base.getPrefix, sigs, funs, callees, vars, env⟩
       params.toList body
-    let some modes := modesOf (← reduce (← mkAppM ``Expr.paramChoice #[src]))
-      | throwError "verified_compile: cannot evaluate the parameter modes of {name}"
+    let modes ← paramChoiceOf name src
     let funcType := mkApp (mkConst ``Func) sigs
     let func ← mkAppOptM ``Func.mk #[some sigs, some (toExpr name.getString!),
       some (ctxExpr types), some (tyExpr result), some src, some (← mkEqRefl (toExpr true)),
@@ -1324,33 +1385,275 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let happ ← params.foldlM (fun h p => mkCongrFun h p) hdef
     let full ← restate proof (← mkEqSymm happ)
     addTheorem (base ++ `denote_eq) eqType (← mkLambdaFVars params full)
-    let aborts ← reduce (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
-    unless aborts.isConstOf ``Bool.true || aborts.isConstOf ``Bool.false do
-      throwError "verified_compile: cannot evaluate whether {name} may trap"
-    let depth ← reduce (← mkAppM ``Func.depth #[mkConst (base ++ `func)])
-    unless depth.isConstOf ``Bool.true || depth.isConstOf ``Bool.false do
-      throwError "verified_compile: cannot evaluate whether the code of {name} takes the depth"
-    -- Lean's tuple of the arguments, in which an owned array has type `Moved`, the flattenings
-    -- of the arguments and of the result, and the agreement of Lean's instances with the source
-    -- instances along them.
-    let argTys ← (params.toList.zip (paramModes types modes)).mapM fun (p, m) => do
-      let ty ← inferType p
-      return if m == .owned then mkApp (mkConst ``LeanExe.Pipeline.Moved) ty else ty
-    let argsType ← tupleType argTys
-    let (flatArgs, argsAgree) ← agreeArgs argsType types modes
-    let resultType ← inferType body
-    let (flatResult, resultAgree) ← agreeTy resultType result
-    addTheorem (base ++ `argsAgree) (← inferType argsAgree) argsAgree
-    addTheorem (base ++ `resultAgree) (← inferType resultAgree) resultAgree
-    return ⟨name, types, result, aborts.isConstOf ``Bool.true, modes, depth.isConstOf ``Bool.true,
-      argsType, resultType,
-      flatArgs, flatResult⟩
-where
-  /-- The right-nested product of `tys`, `Unit` for none. -/
-  tupleType : List Lean.Expr → MetaM Lean.Expr
-    | [] => return mkConst ``Unit
-    | [t] => return t
-    | t :: ts => do mkAppM ``Prod #[t, ← tupleType ts]
+    let aborts ← boolOf m!"whether {name} may trap"
+      (← mkAppM ``Func.aborts #[mkConst (base ++ `func)])
+    let depth ← boolOf m!"whether the code of {name} takes the call depth"
+      (← mkAppM ``Func.depth #[mkConst (base ++ `func)])
+    finishReflected base name params types result (← inferType body) aborts modes depth
+      (base ++ `denote_eq)
+
+/-- The inverse `u` of the flattening `φ` of a Lean type, which the meaning of a recursive
+definition applies to the values of its parameters, with the proofs of the two inverse laws at
+given terms: `left a : u (φ a) = a` and `right v : φ (u v) = v`. -/
+structure Inverse where
+  u : Lean.Expr
+  left : Lean.Expr → MetaM Lean.Expr
+  right : Lean.Expr → MetaM Lean.Expr
+
+/-- The proof of `x = y` by `rfl`, for terms that the kernel identifies by unfolding a flattening
+and its inverse, by projections of constructors, and by structure eta, none of which evaluates a
+definition. -/
+def rflEq (x y : Lean.Expr) : MetaM Lean.Expr := do
+  mkExpectedTypeHint (← mkEqRefl y) (← mkEq x y)
+
+/-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
+for its second. -/
+def tuplePath (x : Lean.Expr) : List Bool → MetaM Lean.Expr
+  | [] => return x
+  | false :: rest => do tuplePath (← mkAppM ``Prod.fst #[x]) rest
+  | true :: rest => do tuplePath (← mkAppM ``Prod.snd #[x]) rest
+
+/-- The inverse of the flattening of a Lean type, `none` for a type that flattening leaves as it
+is.  A pair maps its components, an array maps its elements, and a structure whose `Flat` instance
+is a tuple of all its fields builds the structure from the tuple's components.  The laws hold by
+`rfl`, except for an array, whose laws follow from its elements' by `map_inverse`.  An
+enumeration has no inverse on the words that encode no constructor, and the reflector rejects it.
+-/
+partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
+  let sh ← shapeOf type
+  let some φ := sh.flat | return none
+  let type ← whnfR type
+  let src := mkApp (mkConst ``Ty.denote) (tyExpr sh.ty)
+  let inverse (u : Lean.Expr) (left right : Lean.Expr → MetaM Lean.Expr) : Inverse :=
+    ⟨u, left, right⟩
+  if let (``Prod, #[a, b]) := type.getAppFnArgs then
+    let ia ← inverseOf? a
+    let ib ← inverseOf? b
+    let part (i : Option Inverse) (x : Lean.Expr) : Lean.Expr := match i with
+      | some i => i.u.beta #[x]
+      | none => x
+    let u ← withLocalDeclD `v src fun v => do
+      mkLambdaFVars #[v] (← mkAppOptM ``Prod.mk #[some a, some b,
+        some (part ia (← mkAppM ``Prod.fst #[v])), some (part ib (← mkAppM ``Prod.snd #[v]))])
+    let lawOf (i : Option Inverse) (f : Inverse → Lean.Expr → MetaM Lean.Expr) (x : Lean.Expr) :
+        MetaM Lean.Expr := match i with
+      | some i => f i x
+      | none => mkEqRefl x
+    let left (x : Lean.Expr) : MetaM Lean.Expr := do
+      let h1 ← lawOf ia Inverse.left (← mkAppM ``Prod.fst #[x])
+      let h2 ← lawOf ib Inverse.left (← mkAppM ``Prod.snd #[x])
+      let h ← mkCongr (← mkCongrArg (mkApp2 (mkConst ``Prod.mk [Level.zero, Level.zero]) a b) h1)
+        h2
+      mkExpectedTypeHint h (← mkEq (u.beta #[φ.beta #[x]]) x)
+    let right (v : Lean.Expr) : MetaM Lean.Expr := do
+      let h1 ← lawOf ia Inverse.right (← mkAppM ``Prod.fst #[v])
+      let h2 ← lawOf ib Inverse.right (← mkAppM ``Prod.snd #[v])
+      let (α', β') ← match (← whnf (← inferType v)).getAppFnArgs with
+        | (``Prod, #[α', β']) => pure (α', β')
+        | _ => throwError "verified_compile: the flattening of {type} is not a pair"
+      let h ← mkCongr
+        (← mkCongrArg (mkApp2 (mkConst ``Prod.mk [Level.zero, Level.zero]) α' β') h1) h2
+      mkExpectedTypeHint h (← mkEq (φ.beta #[u.beta #[v]]) v)
+    return some (inverse u left right)
+  if let (``Array, #[el]) := type.getAppFnArgs then
+    let some ie ← inverseOf? el | return none
+    let se ← shapeOf el
+    let φe ← se.fn el
+    let srcEl := mkApp (mkConst ``Ty.denote) (tyExpr se.ty)
+    let u ← withLocalDeclD `v src fun v => do
+      mkLambdaFVars #[v] (← mkAppOptM ``Array.map #[some srcEl, some el, some ie.u, some v])
+    let left (x : Lean.Expr) : MetaM Lean.Expr := do
+      let h ← withLocalDeclD `y el fun y => do mkLambdaFVars #[y] (← ie.left y)
+      let p ← mkAppM ``map_inverse #[φe, ie.u, h, x]
+      mkExpectedTypeHint p (← mkEq (u.beta #[φ.beta #[x]]) x)
+    let right (v : Lean.Expr) : MetaM Lean.Expr := do
+      let h ← withLocalDeclD `w srcEl fun w => do mkLambdaFVars #[w] (← ie.right w)
+      let p ← mkAppM ``map_inverse #[ie.u, φe, h, v]
+      mkExpectedTypeHint p (← mkEq (φ.beta #[u.beta #[v]]) v)
+    return some (inverse u left right)
+  let some (ctor, _) ← structOf? type
+    | throwError "verified_compile: the parameter type {type} of a recursive definition holds an \
+        enumeration, whose flattening has no inverse on the words that encode no constructor"
+  let some (β, inst) ← flatInstance? type
+    | throwError "verified_compile: the structure {type} has no `Flat` instance"
+  let tree ← flatTree type β inst ctor
+  unless tree.length == ctor.numFields do
+    throwError "verified_compile: the `Flat` instance of {type} does not hold all its fields"
+  let iβ ← inverseOf? β
+  let u ← withLocalDeclD `v src fun v => do
+    let w := match iβ with
+      | some i => i.u.beta #[v]
+      | none => v
+    let fields ← (List.range ctor.numFields).mapM fun i => do
+      let some (_, steps) := tree.find? (·.1 == i)
+        | throwError "verified_compile: field {i} of {type} is missing from its `Flat` instance"
+      tuplePath w steps
+    let app := mkAppN (mkConst ctor.name type.getAppFn.constLevels!)
+      (type.getAppArgs ++ fields.toArray)
+    mkLambdaFVars #[v] app
+  return some (inverse u (fun x => rflEq (u.beta #[φ.beta #[x]]) x)
+    (fun v => rflEq (φ.beta #[u.beta #[v]]) v))
+
+/-- The proof of `∀ env, P env` for environments of the context `ts`, from the proof that `k`
+gives of `P (Env.cons v₀ (… Env.nil))` for variables `v₀ …` of the context's types. -/
+partial def splitEnv (ts : List Ty) (P : Lean.Expr) (k : List Lean.Expr → MetaM Lean.Expr) :
+    MetaM Lean.Expr := do
+  match ts with
+  | [] => return mkApp2 (mkConst ``env_forall_nil) P (← k [])
+  | t :: rest =>
+    let h ← withLocalDeclD `v (mkApp (mkConst ``Ty.denote) (tyExpr t)) fun v => do
+      let P' ← withLocalDeclD `e (mkApp (mkConst ``Env) (ctxExpr rest)) fun e => do
+        let cons ← mkAppOptM ``Env.cons #[some (ctxExpr rest), some (tyExpr t), some v, some e]
+        mkLambdaFVars #[e] (mkApp P cons).headBeta
+      mkLambdaFVars #[v] (← splitEnv rest P' fun vs => k (v :: vs))
+    return mkAppN (mkConst ``env_forall_cons) #[tyExpr t, ctxExpr rest, P, h]
+
+/-- `Env.cons v₀ (… Env.nil)` for values `vs` of the context `ts`. -/
+def envOfValues : List Ty → List Lean.Expr → MetaM Lean.Expr
+  | t :: ts, v :: vs => do
+    mkAppOptM ``Env.cons #[some (ctxExpr ts), some (tyExpr t), some v, some (← envOfValues ts vs)]
+  | _, _ => return mkConst ``Env.nil
+
+/-- Reflects the recursive definition `name`, whose unfolding equation is `eqName`, as a
+recursive function that may call itself and the functions `sigs`, meaning `funs`, after the
+program `rest` with the proof `hRest` that `funs` are its meanings.  It adds `base.meaning`, the
+function of an environment that the definition means; `base.meaning_eq`, its value at the
+flattenings of arguments; `base.func`; `base.denote_eq`, the body's value; and `base.fixed`, the
+equation that makes `base.meaning` the function's meaning in `Prog.Meaning`.  The equations never
+make the kernel compare the definition at two different arguments, since its value is a
+`WellFounded.fix`.  The parameter modes are the choice of `Expr.paramChoice` for the body
+reflected with the modes before, from all borrowed, until the choice repeats or every parameter
+has had a round. -/
+def reflectRecursive (base name eqName : Name) (sigs funs rest hRest : Lean.Expr)
+    (callees : List Callee) : MetaM Reflected := do
+  let info ← getConstInfoDefn name
+  unless info.levelParams.isEmpty do
+    throwError "verified_compile: {name} has universe parameters"
+  if (← collectAxioms name).contains ``sorryAx then
+    throwError "verified_compile: the definition of {name} uses `sorry`"
+  forallTelescope (← inferType (mkConst eqName)) fun params eqn => do
+    let some (_, _, rhs) := eqn.eq?
+      | throwError "verified_compile: the unfolding equation of {name} is {eqn}"
+    let types ← params.toList.mapM fun p => do tyOf (← inferType p)
+    let resultType ← inferType rhs
+    let resultShape ← shapeOf resultType
+    let result := resultShape.ty
+    let ctx := ctxExpr types
+    let vars := params.toList.zip types
+    let env ← envExpr vars
+    let invs ← params.toList.mapM fun p => do inverseOf? (← inferType p)
+    -- The arguments at an environment `e`: the inverses of its values.
+    let getAt (e : Lean.Expr) (i : Nat) : MetaM Lean.Expr := do
+      let t := types[i]!
+      let x ← mkAppOptM ``Var.ofIndex #[some (tyExpr t), some ctx, some (toExpr i),
+        some (← mkEqRefl (mkApp (mkApp (mkConst ``Option.some [Level.zero]) (mkConst ``Ty))
+          (tyExpr t)))]
+      mkAppOptM ``Env.get #[some ctx, some (tyExpr t), some e, some x]
+    let argsAt (e : Lean.Expr) : MetaM (List Lean.Expr) :=
+      (List.range types.length).mapM fun i => do
+        let g ← getAt e i
+        return match invs[i]! with
+          | some inv => inv.u.beta #[g]
+          | none => g
+    let meaningAt (e : Lean.Expr) : MetaM Lean.Expr := do
+      return resultShape.apply (mkAppN (mkConst name) (← argsAt e).toArray)
+    let envType := mkApp (mkConst ``Env) ctx
+    let mValue ← withLocalDeclD `env envType fun e => do mkLambdaFVars #[e] (← meaningAt e)
+    addDefinition (base ++ `meaning) (← mkArrow envType (mkApp (mkConst ``Ty.denote)
+      (tyExpr result))) mValue
+    let M := Lean.mkConst (base ++ `meaning)
+    -- `M` at the flattenings of `params`: by unfolding `M`, then by the left inverse law at each
+    -- argument, under the definition.
+    let mid ← meaningAt env
+    let step1 ← rflEq (mkApp M env) mid
+    let argsEnv ← argsAt env
+    let mut nameEq ← mkEqRefl (mkConst name)
+    for i in [0:types.length] do
+      let p := params[i]!
+      let h ← match invs[i]! with
+        | some inv => do mkExpectedTypeHint (← inv.left p) (← mkEq argsEnv[i]! p)
+        | none => rflEq argsEnv[i]! p
+      nameEq ← mkCongr nameEq h
+    let step2 ← match resultShape.flat with
+      | none => pure nameEq
+      | some _ => mkCongrArg (← resultShape.fn resultType) nameEq
+    let selfEq ← transHint step1 step2
+    addTheorem (base ++ `meaning_eq)
+      (← mkForallFVars params (← mkEq (mkApp M env)
+        (resultShape.apply (mkAppN (mkConst name) params))))
+      (← mkLambdaFVars params selfEq)
+    -- The body, reflected with a callee for the definition itself as function 0.
+    let selfSig (modes : List Mode) : Sig := ⟨types, result, true, modes, true⟩
+    let reflectWith (modes : List Mode) : MetaM (Lean.Expr × Lean.Expr) := do
+      let g := sigExpr (selfSig modes)
+      let sigs' := mkApp3 (mkConst ``List.cons [Level.zero]) (mkConst ``Sig) g sigs
+      let funs' := mkAppN (mkConst ``Funs.cons) #[sigs, g, M, funs]
+      let callees' := ⟨name, selfSig modes, base ++ `meaning_eq⟩ :: callees
+      let (src, proof, _) ← reflect.reflectSplit
+        ⟨base.getPrefix, sigs', funs', callees', vars, env⟩ params.toList rhs
+      return (src, proof)
+    let mut modes : List Mode := types.map fun _ => .borrowed
+    let first ← reflectWith modes
+    let mut src := first.1
+    let mut proof := first.2
+    for _ in [0:types.length] do
+      let choice ← paramChoiceOf name src
+      if choice == modes then break
+      modes := choice
+      let next ← reflectWith modes
+      src := next.1
+      proof := next.2
+    let g := sigExpr (selfSig modes)
+    let sigs' := mkApp3 (mkConst ``List.cons [Level.zero]) (mkConst ``Sig) g sigs
+    let funs' := mkAppN (mkConst ``Funs.cons) #[sigs, g, M, funs]
+    let func ← mkAppOptM ``RecFunc.mk #[some sigs, some (toExpr name.getString!), some ctx,
+      some (tyExpr result), some (modesExpr modes), some src, some (← mkEqRefl (toExpr true))]
+    addDefinition (base ++ `func) (mkApp (mkConst ``RecFunc) sigs) func
+    let f := Lean.mkConst (base ++ `func)
+    let body := mkApp2 (mkConst ``RecFunc.body) sigs f
+    let denote (e : Lean.Expr) : Lean.Expr :=
+      mkAppN (mkConst ``Expr.denote) #[sigs', funs', ctx, tyExpr result, body, e]
+    let full ← restate proof (← mkEqSymm (mkAppN (mkConst eqName) params))
+    addTheorem (base ++ `denote_eq)
+      (← mkForallFVars params (← mkEq (denote env)
+        (resultShape.apply (mkAppN (mkConst name) params))))
+      (← mkLambdaFVars params full)
+    -- The fixed-point equation at each environment `E`: `M E` unfolds to the definition at the
+    -- inverses of `E`'s values, which is the body's value at their flattenings, which are `E`'s
+    -- values by the right inverse law.
+    let consRecApp := mkAppN (mkConst ``Prog.Meaning.consRec) #[sigs, f, rest, funs, M, hRest]
+    let .forallE _ fixedType _ _ ← whnf (← inferType consRecApp)
+      | throwError "verified_compile: the type of Prog.Meaning.consRec"
+    let .forallE n envTy P0 bi := fixedType
+      | throwError "verified_compile: the fixed-point equation {fixedType}"
+    let P := Lean.mkLambda n bi envTy P0
+    let fixed ← splitEnv types P fun vs => do
+      let E ← envOfValues types vs
+      let as ← argsAt E
+      let step1 ← rflEq (mkApp M E) (← meaningAt E)
+      let bodyEq := mkAppN (mkConst (base ++ `denote_eq)) as.toArray
+      -- The flattenings of the arguments are the values `vs`.
+      let mut envEq ← mkEqRefl (mkConst ``Env.nil)
+      let mut flatTail := Lean.mkConst ``Env.nil
+      for i in (List.range types.length).reverse do
+        let t := types[i]!
+        let rest := ctxExpr (types.drop (i + 1))
+        let a := as[i]!
+        let flat := (← shapeOf (← inferType params[i]!)).apply a
+        let h ← match invs[i]! with
+          | some inv => do mkExpectedTypeHint (← inv.right vs[i]!) (← mkEq flat vs[i]!)
+          | none => rflEq flat vs[i]!
+        let cons := mkApp2 (mkConst ``Env.cons) rest (tyExpr t)
+        envEq ← mkCongr (← mkCongrArg cons h) envEq
+        flatTail := mkApp2 cons flat flatTail
+      let envEq' ← mkExpectedTypeHint envEq (← mkEq flatTail E)
+      let denEq ← mkCongrArg (mkAppN (mkConst ``Expr.denote) #[sigs', funs', ctx, tyExpr result,
+        body]) envEq'
+      let h ← transHint (← transHint step1 (← mkEqSymm bodyEq)) denEq
+      mkExpectedTypeHint h (mkApp P E).headBeta
+    addTheorem (base ++ `fixed) fixedType fixed
+    finishReflected base name params types result resultType true modes true
+      (base ++ `meaning_eq)
 
 /-- The values of the components of `x`, the tuple of a definition's arguments, as terms. -/
 def argProjsE (x : Lean.Expr) : List Mode → Nat → MetaM (List Lean.Expr)
@@ -1366,12 +1669,12 @@ where
 
 /-- The proof of the theorem `claim` that the module computes the definition of `r`: the
 compiler's theorem `h` for its source function, carried to Lean's instances by
-`ImplementsA.transferAgree`.  The program constant `program` has the value `prog`.  The equation
-of the definition enters through `Prog.get_there` and `Prog.get_here`, which take
-`program.funs.get` to the source function's meaning, and through plain lambdas for the
-flattenings, so that the kernel checks each step by matching terms and by beta reduction and never
-unfolds the definition or its loops. -/
-def implementsProof (program : Name) (prog h F : Lean.Expr) (r : Reflected) (eqName : Name)
+`ImplementsA.transferAgree`.  The constant `funs` of the functions' meanings has the value
+`funsVal`, a chain of `Funs.cons`.  The definition's equation `r.meaningEq` enters through
+`Funs.get_there` and `Funs.get_here`, which take `funs.get` to the meaning of the definition's
+function, and through plain lambdas for the flattenings, so that the kernel checks each step by
+matching terms and by beta reduction and never unfolds the definition or its loops. -/
+def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
   let hTy ← inferType h
   let #[α, γ, ia, ic, aborts, m, entry, f, _, _] := hTy.getAppArgs
@@ -1384,18 +1687,36 @@ def implementsProof (program : Name) (prog h F : Lean.Expr) (r : Reflected) (eqN
     let get := a.headBeta
     let #[_, _, _, fv, env] := get.getAppArgs
       | throwError "verified_compile: the meaning {get}"
-    let get' := get.replace fun e => if e.isConstOf program then some prog else none
+    let get' := get.replace fun e => if e.isConstOf funs then some funsVal else none
     let step ← mkExpectedTypeHint (← mkEqRefl a) (← mkEq a get')
-    let chain ← getChain prog fv env
+    let chain ← getChain funsVal fv env
     let some (_, _, b) := (← inferType chain).eq?
       | throwError "verified_compile: the meaning of {get}"
     let c := mkApp r.flatResult (mkApp F y)
     let projs ← argProjsE y modes r.params.length
-    let eq ← mkExpectedTypeHint (mkAppN (mkConst eqName) projs.toArray) (← mkEq b c)
+    let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
     mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
   return mkAppN (mkConst ``ImplementsA.transferAgree)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, h, r.flatArgs,
       r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
+
+/-- The most positions that the reflector accepts in a function whose code takes the call depth.
+Wasmtime 44 on aarch64 keeps 8 bytes for each value live across a call and 16 bytes per frame, so
+`depthLimit` frames of 32 positions take about 280 KB of its 512 KiB default stack, and the rest
+holds the functions without the depth parameter at the top of the chain.  The example
+`Recursion.deep` runs a frame of 32 positions, each live across the self-call, at depth 999 under
+two such functions. -/
+def depthPositions : Nat := 32
+
+/-- Rejects a function whose code takes the call depth and needs more than `depthPositions`
+positions, from its body `body`. -/
+def checkPositions (name : Name) (body : Lean.Expr) : MetaM Unit := do
+  let n ← kernelWhnf (← mkAppM ``positions #[body, toExpr true])
+  let some k := natOf n
+    | throwError "verified_compile: cannot evaluate the positions of {name}"
+  if k > depthPositions then
+    throwError "verified_compile: the code of {name} takes the call depth and needs {k} \
+      positions, more than the {depthPositions} that {depthLimit} nested calls may use"
 
 /-- `FVar.there (… (FVar.there FVar.here))` with `k` applications of `there`. -/
 def fvarStx : Nat → CommandElabM Term
@@ -1404,60 +1725,99 @@ def fvarStx : Nat → CommandElabM Term
 
 syntax (name := verifiedCompile) "verified_compile " ident " := " "[" ident,* "]" : command
 
+/-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
+order, each of which may call those before it and, when recursive, itself; the meanings
+`p.funs` of its functions and the proof `p.meaning : Prog.Meaning p.program p.funs`; the module
+`p.module`; for each definition `f`, the theorem `p.f.implements` that the module computes `f`,
+at the function's index, or at its exported entry when its code takes the call depth; and
+`p.bytes`, the module's bytes with all those theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
-    let (reflected, prog) ← liftTermElabM do
+    let (reflected, funsVal) ← liftTermElabM do
       let mut sigs : List Sig := []
       let mut prog := Lean.mkConst ``Prog.nil
+      let mut funs := Lean.mkConst ``Funs.nil
+      let mut meaning := Lean.mkConst ``Prog.Meaning.nil
       let mut out : Array Reflected := #[]
       let mut callees : List Callee := []
       for name in names do
         let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
-        let funs ← mkAppM ``Prog.funs #[prog]
         let fbase := base ++ Name.mkSimple name.getString!
-        let r ← reflectDefinition fbase name sigsExpr funs callees
-        prog ← mkAppM ``Prog.cons #[Lean.mkConst (fbase ++ `func), prog]
+        let f := Lean.mkConst (fbase ++ `func)
+        let r ← match ← getUnfoldEqnFor? name with
+          | none =>
+            let r ← reflectDefinition fbase name sigsExpr funs callees
+            if r.depth then checkPositions name (mkApp2 (mkConst ``Func.body) sigsExpr f)
+            let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+            meaning := mkAppN (Lean.mkConst ``Prog.Meaning.cons) #[sigsExpr, f, prog, funs, meaning]
+            funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig,
+              mkAppN (Lean.mkConst ``Func.denote) #[sigsExpr, f, funs], funs]
+            prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, prog]
+            pure r
+          | some eqName =>
+            let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
+            checkPositions name (mkApp2 (mkConst ``RecFunc.body) sigsExpr f)
+            let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+            let M := Lean.mkConst (fbase ++ `meaning)
+            meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consRec)
+              #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `fixed)]
+            funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
+            prog := mkAppN (Lean.mkConst ``Prog.consRec) #[sigsExpr, f, prog]
+            pure r
         let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
         sigs := sig :: sigs
-        callees := ⟨name, sig, fbase ++ `denote_eq⟩ :: callees
+        callees := ⟨name, sig, r.meaningEq⟩ :: callees
         out := out.push r
       let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
+      addDefinition (base ++ `funs) (mkApp (Lean.mkConst ``Funs) sigsExpr) funs
+      addTheorem (base ++ `meaning)
+        (mkApp3 (Lean.mkConst ``Prog.Meaning) sigsExpr (Lean.mkConst (base ++ `program))
+          (Lean.mkConst (base ++ `funs))) meaning
       addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
         (← mkAppM ``compile #[Lean.mkConst (base ++ `program)])
-      return (out, prog)
+      return (out, funs)
     let progId := mkIdent (base ++ `program)
+    let funsId := mkIdent (base ++ `funs)
+    let meaningId := mkIdent (base ++ `meaning)
     let moduleId := mkIdent (base ++ `module)
     let n := reflected.size
     let mut claims : Array Term := #[]
     let mut proofs : Array Term := #[]
+    let mut entries := 0
     for k in [0:n] do
       let r := reflected[k]!
       let simple := Name.mkSimple r.name.getString!
       let implName := base ++ simple ++ `implements
       let fvar ← fvarStx (n - 1 - k)
+      -- The compiler's theorem at the function's index, or at its entry, the `j`-th, when its
+      -- code takes the call depth.
+      let (hStx, index) ← if r.depth then
+          let j := entries
+          entries := entries + 1
+          pure (← `(Verified.Prog.correct_entry $progId $funsId $meaningId $fvar rfl
+            (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
+        else
+          pure (← `((Verified.Prog.correct $progId $funsId $meaningId $fvar).1 rfl), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
-        let h ← Term.elabTerm
-          (← `(Verified.ImplementsA.lean
-            ((Verified.Prog.correct_funs $progId rfl $fvar).1 rfl))) none
+        let h ← Term.elabTerm (← `(Verified.ImplementsA.lean $hStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
         let F ← withLocalDeclD `x r.argsType fun x => do
           let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
           mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
-        let proof ← implementsProof (base ++ `program) prog h F r
-          (base ++ simple ++ `denote_eq) (base ++ simple ++ `argsAgree)
+        let proof ← implementsProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
           (base ++ simple ++ `resultAgree)
         -- The statement with the trap flag, the module, and the index as constants.
         let ty ← inferType proof
         let args := ty.getAppArgs
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr r.aborts)
-          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + k)))
+          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index))
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
@@ -1467,7 +1827,7 @@ def elabVerifiedCompile : CommandElab
     elabCommand (← `(theorem $bytesId : ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
         Wasm.Encoding.decode bytes = .ok $moduleId ∧ $conj := by
       obtain ⟨bytes, success, decoded⟩ :=
-        Wasm.Encoding.round_trip $moduleId (by decide) (by decide +kernel)
+        Wasm.Encoding.round_trip $moduleId (by decide +kernel) (by decide +kernel)
       exact ⟨bytes, success, decoded, $impls⟩))
   | _ => throwUnsupportedSyntax
 

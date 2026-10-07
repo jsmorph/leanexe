@@ -370,4 +370,18 @@ theorem flat_ite_ne {E α : Type} [Flat E UInt64]
     (if a ≠ b then x else y) = (if Flat.flat a ≠ Flat.flat b then x else y) := by
   by_cases hab : a = b <;> simp [hab, h.eq_iff]
 
+/-- A statement about every environment of a nonempty context, from the statement about each
+first value and each environment of the rest. -/
+theorem env_forall_cons {t : Ty} {Γ' : List Ty} {P : Env (t :: Γ') → Prop}
+    (h : ∀ v env, P (.cons v env)) : ∀ env, P env
+  | .cons v env => h v env
+
+theorem env_forall_nil {P : Env [] → Prop} (h : P .nil) : ∀ env, P env
+  | .nil => h
+
+/-- An array mapped by a function and then by a left inverse of it. -/
+theorem map_inverse {α β : Type} (f : α → β) (g : β → α) (h : ∀ x, g (f x) = x)
+    (xs : Array α) : (xs.map f).map g = xs := by
+  rw [Array.map_map, show g ∘ f = id from funext h, Array.map_id]
+
 end Verified.Reflect
