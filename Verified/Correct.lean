@@ -1,5 +1,7 @@
 import Verified.Heap
 import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Convert
+import LeanExe.ProofKit.F64Decoded
 
 /-! The compiler's correctness theorem: every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows, and
@@ -516,7 +518,7 @@ theorem spec_float {Γ : List Ty} (bits : UInt64) :
     ∀ env slots live,
       CodeSpec m funs host (Expr.float (S := S) (Γ := Γ) bits) env slots live := by
   intro env slots live h base heap store s hh hVars hAt _ _ _ _ rest Q _ hNext
-  simpa [Expr.code, Expr.denote] using
+  simpa [Expr.code, Expr.denote, F64Bits.toBits_ofBits] using
     hNext heap store s [.f64 (Float.ofBits bits).toBits] (After.refl hAt hVars
       (by intro i h; simp [h]) rfl (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .float rfl] at hb; exact nomatch hb)
@@ -589,6 +591,82 @@ theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
     have hv := hNext heap1 store1 s1 [.f64 ((Expr.funary _ e).denote funs env).toBits]
       (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl)
     simpa [Expr.denote, FUnOp.apply, f64Sqrt, f64Abs, F64Bits.toBits_sqrt, F64Bits.toBits_abs]
+      using hv
+
+/-- Adding negative zero to a float gives the canonical NaN for a NaN and leaves every other
+float unchanged: a zero keeps its sign, and a finite nonzero float rounds to itself. -/
+theorem add_negZero (x : UInt64) :
+    IEEE64.add x 0x8000000000000000 = if IEEE64.isNaN x then IEEE64.canonicalNaN else x := by
+  unfold IEEE64.add
+  by_cases hn : IEEE64.isNaN x
+  · simp [hn]
+  have hz : IEEE64.isNaN 0x8000000000000000 = false := by decide
+  have hzi : IEEE64.isInfinite 0x8000000000000000 = false := by decide
+  have hzv : IEEE64.scaledValue 0x8000000000000000 = 0 := by decide
+  have hzs : IEEE64.sign 0x8000000000000000 = true := by decide
+  simp only [hn, hz, Bool.or_false, Bool.false_eq_true, ite_false, hzi, hzv, Int.add_zero, hzs,
+    Bool.and_true]
+  by_cases hi : IEEE64.isInfinite x
+  · simp [hi]
+  simp only [hi, Bool.false_eq_true, ite_false]
+  have he : IEEE64.exponent x ≠ 2047 := by
+    intro he
+    simp only [IEEE64.isNaN, IEEE64.isInfinite, he] at hn hi
+    simp_all
+  by_cases hm : IEEE64.scaledMagnitude x = 0
+  · have hx := F64Convert.zero_encoding x hm
+    have hv : IEEE64.scaledValue x = 0 := by simp [IEEE64.scaledValue, hm]
+    simp only [hv, beq_self_eq_true, ite_true]
+    conv => rhs; rw [hx]
+    cases IEEE64.sign x <;> rfl
+  · have hm' : (IEEE64.scaledMagnitude x : Int) ≠ 0 := by exact_mod_cast hm
+    have hv : IEEE64.scaledValue x ≠ 0 := by
+      simp only [IEEE64.scaledValue]
+      split <;> omega
+    simp only [hv, beq_iff_eq, ite_false]
+    have hneg : decide (IEEE64.scaledValue x < 0) = IEEE64.sign x := by
+      simp only [IEEE64.scaledValue]
+      split <;> simp_all; omega
+    have habs : (IEEE64.scaledValue x).natAbs = IEEE64.scaledMagnitude x := by
+      simp only [IEEE64.scaledValue]
+      split <;> simp
+    rw [hneg, habs]
+    exact F64Decoded.roundScaled_value x he hm
+
+/-- A conversion of a word to a float. -/
+theorem spec_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
+    (eSpec : ∀ env slots live, CodeSpec m funs host e env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.toFloat op e) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  simp only [Expr.code, List.append_assoc]
+  refine eSpec env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace _ _ hTrap
+    fun heap1 store1 s1 ws a1 => ?_
+  have hR : ws = [.i64 (e.denote funs env)] := a1.rep
+  subst hR
+  have hStep := a1.step
+  rw [Mode.fresh_scalar rfl] at hStep
+  have hv := hNext heap1 store1 s1 [.f64 ((Expr.toFloat op e).denote funs env).toBits]
+    (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl)
+  cases op <;>
+    simpa [ToFloat.code, Expr.denote, ToFloat.apply, f64ConvertI64U, f64Add,
+      F64Convert.toBits_toFloat, F64Bits.toBits_ofBits, add_negZero] using hv
+
+/-- A conversion of a float to a word. -/
+theorem spec_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
+    (eSpec : ∀ env slots live, CodeSpec m funs host e env slots live) :
+    ∀ env slots live, CodeSpec m funs host (Expr.toWord op e) env slots live := by
+  intro env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+  simp only [Expr.code, List.append_assoc]
+  refine eSpec env slots live h base heap store s hh hVars hAt hCap hBase hRoom hPlace _ _ hTrap
+    fun heap1 store1 s1 ws a1 => ?_
+  have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
+  subst hR
+  have hStep := a1.step
+  rw [Mode.fresh_scalar rfl] at hStep
+  have hv := hNext heap1 store1 s1 [.i64 ((Expr.toWord op e).denote funs env)]
+    (After.ofScalar rfl hStep rfl a1.frame a1.holds rfl)
+  cases op <;>
+    simpa [ToWord.instr, Expr.denote, ToWord.apply, i64TruncSatF64U, F64Convert.toUInt64_eq]
       using hv
 
 /-- A comparison of floats. -/
@@ -1607,7 +1685,8 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
-  | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _ => by
+  | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _
+  | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by
     simp [Expr.isPlace] at hp
 
 theorem args_trap_first : ∀ a d b o : Bool, (a || o) = true → (a || d || b || o) = true := by
@@ -3674,6 +3753,8 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | fbin op left right leftSpec rightSpec => exact spec_fbin op leftSpec rightSpec
   | funary op e eSpec => exact spec_funary op eSpec
   | fcmp op left right leftSpec rightSpec => exact spec_fcmp op leftSpec rightSpec
+  | toFloat op e eSpec => exact spec_toFloat op eSpec
+  | toWord op e eSpec => exact spec_toWord op eSpec
 
 /-- The position of a variable's first word among the words of the context's values. -/
 def Var.offset : {Γ : List Ty} → {t : Ty} → Var Γ t → Nat

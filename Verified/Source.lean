@@ -73,6 +73,26 @@ def FCmpOp.apply : FCmpOp → Float → Float → Bool
   | .le, a, b => decide (a ≤ b)
   | .eq, a, b => a == b
 
+/-- A conversion of a word to a float: `UInt64.toFloat`, rounded to nearest, and `Float.ofBits`,
+which gives the canonical NaN for every NaN pattern. -/
+inductive ToFloat where
+  | convert | ofBits
+  deriving Repr, DecidableEq
+
+def ToFloat.apply : ToFloat → UInt64 → Float
+  | .convert, a => a.toFloat
+  | .ofBits, a => Float.ofBits a
+
+/-- A conversion of a float to a word: `Float.toUInt64`, which truncates toward zero and
+saturates, with 0 for NaN, and `Float.toBits`. -/
+inductive ToWord where
+  | truncate | toBits
+  deriving Repr, DecidableEq
+
+def ToWord.apply : ToWord → Float → UInt64
+  | .truncate, a => a.toUInt64
+  | .toBits, a => a.toBits
+
 /-- The types of values: words, `Bool`s, pairs, arrays of words, and floats. -/
 inductive Ty where
   | word | bool
@@ -206,7 +226,8 @@ and `get x i` is element `i` of `x`, or 0 when `i` is not below the size, as Lea
 element `i` is the value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`:
 the array of `x` with element `i` replaced by `v`, or `x` when `i` is not below the size.
 `push x v` is `x.push v`, and `append x y` is `x ++ y`.  `float bits` is the float with the bit
-pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats. -/
+pattern `bits`, `fbin`, `funary`, and `fcmp` are the operations and comparisons of floats, and
+`toFloat` and `toWord` convert between words and floats. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
@@ -234,6 +255,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | fbin (op : FBinOp) (left right : Expr S Γ .float) : Expr S Γ .float
   | funary (op : FUnOp) (e : Expr S Γ .float) : Expr S Γ .float
   | fcmp (op : FCmpOp) (left right : Expr S Γ .float) : Expr S Γ .bool
+  | toFloat (op : ToFloat) (e : Expr S Γ .word) : Expr S Γ .float
+  | toWord (op : ToWord) (e : Expr S Γ .float) : Expr S Γ .word
 
 /-- Variable `i` of a context known when the expression is written. -/
 abbrev Expr.v {S : List Sig} {Γ : List Ty} {t : Ty} (i : Nat) (h : Γ[i]? = some t := by rfl) :
@@ -288,6 +311,8 @@ def Expr.denote (funs : Funs S) :
   | _, _, .fbin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .funary op e, env => op.apply (e.denote funs env)
   | _, _, .fcmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
+  | _, _, .toFloat op e, env => op.apply (e.denote funs env)
+  | _, _, .toWord op e, env => op.apply (e.denote funs env)
 
 /-- Whether any of the values `b i` is true. -/
 def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
@@ -301,6 +326,8 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.aborts || right.aborts
+  | _, _, .toFloat _ e => e.aborts
+  | _, _, .toWord _ e => e.aborts
   | _, _, .funary _ e => e.aborts
   | _, _, .not e => e.aborts
   | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
@@ -321,6 +348,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .var x, i => i == x.index
   | _, _, .bin _ left right, i | _, _, .cmp _ left right, i | _, _, .fbin _ left right, i
   | _, _, .fcmp _ left right, i => left.uses i || right.uses i
+  | _, _, .toFloat _ e, i => e.uses i
+  | _, _, .toWord _ e, i => e.uses i
   | _, _, .funary _ e, i => e.uses i
   | _, _, .not e, i => e.uses i
   | _, _, .and left right, i | _, _, .or left right, i => left.uses i || right.uses i
@@ -356,6 +385,8 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs
+  | _, _, .toFloat _ e => e.placeArgs
+  | _, _, .toWord _ e => e.placeArgs
   | _, _, .funary _ e => e.placeArgs
   | _, _, .not e => e.placeArgs
   | _, _, .and left right | _, _, .or left right => left.placeArgs && right.placeArgs

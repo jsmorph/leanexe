@@ -93,6 +93,12 @@ def bands : List (Float × Float) :=
 
 def floatArg (x : Float) : String := s!"f64:{x.toBits}"
 
+/-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
+infinities, both zeros, the smallest subnormal, and words. -/
+def floatWords : List UInt64 :=
+  [0x7FF0000000000001, 0x7FF8000000000001, 0xFFF8000000000000, 0xFFFFFFFFFFFFFFFF,
+    0x7FF0000000000000, 0xFFF0000000000000, 0x8000000000000000, 0x3FF0000000000000] ++ words
+
 end Verified.Examples
 
 open Verified.Examples in
@@ -290,6 +296,18 @@ def main : IO Unit := do
         IO.println s!"floats|minSum|f64|{ab} {floatArg c}|{(Floats.minSum a b c).toBits}"
   for n in counts do
     IO.println s!"floats|harmonic|f64|i64:{n}|{(Floats.harmonic n).toBits}"
+    IO.println s!"floats|mean|f64|i64:{n}|{(Floats.mean n).toBits}"
+  for x in floats ++ [0.0005, 0.9994, 1.8446744073709552e16, 1.8446744073709552e19, -0.5] do
+    let a := floatArg x
+    IO.println s!"floats|truncate|i64|{a}|{Floats.truncate x}"
+    IO.println s!"floats|bits|i64|{a}|{Floats.bits x}"
+    let (l1, l2) := Floats.literals x
+    IO.println s!"floats|literals|list:f64,f64|{a}|{l1.toBits} {l2.toBits}"
+    for k in [0, 1, 52, 1023] do
+      IO.println s!"floats|scaleByPower|f64|{a} i64:{k}|{(Floats.scaleByPower x k).toBits}"
+  for w in floatWords do
+    IO.println s!"floats|ofBits|f64|i64:{w}|{(Floats.ofBits w).toBits}"
+    IO.println s!"floats|roundTrip|i64|i64:{w}|{Floats.roundTrip w}"
   for x in someFloats do
     for xs in [#[], #[1, 2, 3]] do
       for (y, k) in [(2.0, 5), (0.0 / 0.0, 18446744073709551615), (-0.0, 0)] do

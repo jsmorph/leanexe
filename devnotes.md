@@ -27005,11 +27005,49 @@ smallest subnormal.  Native Lean returns the canonical NaN for every NaN result,
 enables Cranelift's NaN canonicalization, so the cases compare results bit for bit.  All 5,324
 cases pass, and the theorems use only `propext`, `Classical.choice`, and `Quot.sound`.
 
+### V9c: conversions
+
+`Expr.toFloat` converts a word with `UInt64.toFloat` (`f64.convert_i64_u`) or `Float.ofBits`, and
+`Expr.toWord` converts a float with `Float.toUInt64` (`i64.trunc_sat_f64_u`) or `Float.toBits`
+(`i64.reinterpret_f64`).  The two constructors have constructor type indices.  One constructor
+indexed by a function of the operation, `Expr S Γ op.dst`, would leave index equations such as
+`op.dst = .array` that Lean's dependent pattern matching cannot solve.  Lean's `Float.ofBits`
+gives the canonical NaN for every NaN pattern, and `f64.reinterpret_i64` keeps the pattern, so the
+code adds −0 after the reinterpret.  `add_negZero` proves that `IEEE64.add x (-0)` is the canonical
+NaN for a NaN and `x` otherwise, by `zero_encoding` for zeros and `roundScaled_value` for finite
+nonzero floats.
+
+A float constant's code now holds `if isNaN bits then canonicalNaN else bits`, computed with
+integer operations, in place of `(Float.ofBits bits).toBits`.  `tools/Emit.lean` writes the bytes
+by evaluating `compile` natively, and the old form made those bytes depend on Lean's native float
+code agreeing with its model.  The reviewer of this stage stated that native `Float.ofBits` copies
+NaN patterns, but in this toolchain it returns the canonical NaN, as a test showed, so the change
+removes a dependency and fixes no wrong result.  The reflector computes the bits of `Float.ofBits`
+and `UInt64.toFloat` of a word literal and of a negated literal with integer operations, and the
+kernel checks them.  The 182 new cases include NaN patterns of both signs, a signaling NaN, and
+truncations that saturate, and all 5,506 cases pass.
+
+### V9b design: arrays of floats
+
+The same review found that an element type `Elem` with `Elem.denote` defined by cases is not
+definitionally `(Elem.ty e).denote` for a variable `e`, so `get`, `set`, `push`, and `build` would
+need casts.  The scalar element types become a sub-inductive of `Ty`: `Ty.elem (e : Elem)` and
+`Ty.array (e : Elem)`, with `Ty.word`, `Ty.bool`, and `Ty.float` as abbreviations marked
+`@[match_pattern]`, so `(Ty.elem e).denote` reduces to `e.denote`.  `Elem.words` gives an array's
+words by cases: the identity for words, so `.array .word` keeps today's definitions, `map
+Float.toBits` for floats, which is the `Represent (Array Float)` instance, and `flatWords` for
+`Bool`, which is the instance of arrays of `Flat` types.  One lemma, `e.words xs = xs.map
+e.toWord`, gives the facts about sizes, reads, updates, pushes, appends, and builds.  A read loads
+the word and converts it with `f64.reinterpret_i64` for a float, and an update, a push, or a build
+converts a float with `i64.reinterpret_f64` before the store.  Arrays of `Bool` need a `Represent
+(Moved (Array α))` instance for `Flat` types in `LeanExe/Pipeline/Implements.lean`, which arrays
+of records also need.
+
 - [x] Typed locals.
 - [x] `Float`: literals, `+ - * /`, `sqrt`, `abs`, negation, comparisons, `min`, `max`, and float
   parameters, results, bindings, pairs, and loop states.
-- [ ] Arrays of a scalar element type stored as consecutive words, `Array Float` first.
-- [ ] `UInt64.toFloat`, `Float.toUInt64`, and computed `Float.ofBits`.
+- [x] `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, and computed `Float.ofBits`.
+- [ ] `Ty.elem` and `Ty.array (e : Elem)`: arrays of words, floats, and `Bool`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

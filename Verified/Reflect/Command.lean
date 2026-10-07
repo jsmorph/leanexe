@@ -129,21 +129,34 @@ def fcmpExpr : FCmpOp → Lean.Expr
   | .le => mkConst ``FCmpOp.le
   | .eq => mkConst ``FCmpOp.eq
 
-/-- The value of a float literal, computed natively: a scientific or natural literal, or its
-negation.  The kernel checks the bits that the reflector derives from it. -/
-partial def floatLit? (e : Lean.Expr) : MetaM (Option Float) := do
-  let natOf (n : Lean.Expr) : Option Nat := n.nat? <|> n.rawNatLit?
+def natOf (n : Lean.Expr) : Option Nat := n.nat? <|> n.rawNatLit?
+
+/-- The value of a word literal. -/
+def wordLit? (e : Lean.Expr) : MetaM (Option UInt64) := do
+  let (``OfNat.ofNat, #[α, n, _]) := e.consumeMData.getAppFnArgs | return none
+  unless (← whnfR α).isConstOf ``UInt64 do return none
+  return (natOf (← instantiateMVars n)).map UInt64.ofNat
+
+/-- The bit pattern of a float literal: a scientific or natural literal, `Float.ofBits` or
+`UInt64.toFloat` of a word literal, or the negation of a float literal.  Lean's model has one
+NaN, so `Float.ofBits` and the negation give the canonical NaN for a NaN.  The kernel checks the
+bits. -/
+partial def floatLit? (e : Lean.Expr) : MetaM (Option UInt64) := do
+  let canonical (w : UInt64) := if Wasm.IEEE64.isNaN w then Wasm.IEEE64.canonicalNaN else w
   match e.consumeMData.getAppFnArgs with
   | (``OfScientific.ofScientific, #[_, _, m, sgn, ex]) =>
     let some m := natOf (← instantiateMVars m) | return none
     let some ex := natOf (← instantiateMVars ex) | return none
-    if sgn.isConstOf ``Bool.true then return some (Float.ofScientific m true ex)
-    if sgn.isConstOf ``Bool.false then return some (Float.ofScientific m false ex)
+    if sgn.isConstOf ``Bool.true then return some (Float.ofScientific m true ex).toBits
+    if sgn.isConstOf ``Bool.false then return some (Float.ofScientific m false ex).toBits
     return none
   | (``OfNat.ofNat, #[_, n, _]) =>
     let some n := natOf (← instantiateMVars n) | return none
-    return some (Float.ofNat n)
-  | (``Neg.neg, #[_, _, x]) => return (← floatLit? x).map (- ·)
+    return some (Float.ofNat n).toBits
+  | (``Float.ofBits, #[w]) => return (← wordLit? w).map canonical
+  | (``UInt64.toFloat, #[w]) => return (← wordLit? w).map Wasm.IEEE64.convertI64U
+  | (``Neg.neg, #[_, _, x]) =>
+    return (← floatLit? x).map fun b => canonical (b ^^^ 0x8000000000000000)
   | _ => return none
 
 /-- A comparison of words as a `Prop`: its operation and its operands, with `>` and `≥` as `<`
@@ -240,8 +253,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
       let src ← mkAppOptM ``Expr.bool #[some c.sigs, some c.ctx, some e]
       return (src, ← rflProof c src e, .bool)
     | .float =>
-      if let some x ← floatLit? e then
-        let bits := x.toBits
+      if let some bits ← floatLit? e then
         let src ← mkAppOptM ``Expr.float #[some c.sigs, some c.ctx, some (toExpr bits)]
         let prop ← mkEq (← mkAppM ``Float.toBits #[e]) (toExpr bits)
         let dec ← mkDecide prop
@@ -300,6 +312,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     unless ← isFloat α do throwError "verified_compile: unsupported negation {e}"
     reflectFUnary (mkConst ``FUnOp.neg) x
   | ``Float.sqrt, #[x] => reflectFUnary (mkConst ``FUnOp.sqrt) x
+  | ``UInt64.toFloat, #[x] =>
+    reflectConv ``Expr.toFloat ``toFloat_eq (mkConst ``ToFloat.convert) x .float
+  | ``Float.ofBits, #[x] =>
+    reflectConv ``Expr.toFloat ``toFloat_eq (mkConst ``ToFloat.ofBits) x .float
+  | ``Float.toUInt64, #[x] =>
+    reflectConv ``Expr.toWord ``toWord_eq (mkConst ``ToWord.truncate) x .word
+  | ``Float.toBits, #[x] => reflectConv ``Expr.toWord ``toWord_eq (mkConst ``ToWord.toBits) x .word
   | ``Float.abs, #[x] => reflectFUnary (mkConst ``FUnOp.abs) x
   | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
     unless ← isFloat α do throwError "verified_compile: unsupported {fn} on {α}"
@@ -507,6 +526,10 @@ where
   reflectFUnary (op x : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr × Ty) := do
     let (s, h, _) ← reflect c x
     return (← mkAppM ``Expr.funary #[op, s], ← mkAppM ``funary_eq #[op, h], .float)
+  reflectConv (ctor thm : Name) (op x : Lean.Expr) (t : Ty) :
+      MetaM (Lean.Expr × Lean.Expr × Ty) := do
+    let (s, h, _) ← reflect c x
+    return (← mkAppM ctor #[op, s], ← mkAppM thm #[op, h], t)
 
 /-- What the reflector learns from one definition: its signature, whether a call may trap, and the
 modes of its parameters. -/

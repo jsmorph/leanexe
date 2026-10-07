@@ -74,6 +74,14 @@ theorem funary_eq (op : FUnOp) {e : Expr S Γ .float} {E : Float} (h : e.denote 
     (Expr.funary op e).denote funs env = op.apply E := by
   subst h; rfl
 
+theorem toFloat_eq (op : ToFloat) {e : Expr S Γ .word} {E : UInt64}
+    (h : e.denote funs env = E) : (Expr.toFloat op e).denote funs env = op.apply E := by
+  subst h; rfl
+
+theorem toWord_eq (op : ToWord) {e : Expr S Γ .float} {E : Float}
+    (h : e.denote funs env = E) : (Expr.toWord op e).denote funs env = op.apply E := by
+  subst h; rfl
+
 theorem fcmp_eq (op : FCmpOp) {l r : Expr S Γ .float} {L R : Float}
     (hl : l.denote funs env = L) (hr : r.denote funs env = R) :
     (Expr.fcmp op l r).denote funs env = op.apply L R := by

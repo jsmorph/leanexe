@@ -2,9 +2,10 @@ import Verified.Reflect.Command
 
 /-! The thirteenth program of the verified compiler: floats.  The programs use the arithmetic
 operations, the square root, the absolute value, negation, comparisons as conditions and as
-`Bool` values, `min` and `max`, and literals, and they pass floats as parameters, results,
-components of pairs, and a loop's state.  The reflector rejects `=` and `≠` on floats, which
-compare bit patterns, and accepts `==` and `!=`, which compare values as IEEE 754 does. -/
+`Bool` values, `min` and `max`, literals, and the conversions between words and floats, and they
+pass floats as parameters, results, components of pairs, and a loop's state.  The reflector
+rejects `=` and `≠` on floats, which compare bit patterns, and accepts `==` and `!=`, which
+compare values as IEEE 754 does. -/
 
 namespace Verified.Examples.Floats
 
@@ -38,7 +39,27 @@ def mixed (n : UInt64) (x : Float) (xs : Array UInt64) (p : Float × UInt64) : F
 
 def combined (x y : Float) : Float := hypot x y 2.0 + piecewise x 0.0 1.0
 
+/-- The mean of the indices below `n`, NaN for `n = 0`. -/
+def mean (n : UInt64) : Float := (LeanExe.loop n 0.0 fun i acc => acc + i.toFloat) / n.toFloat
+
+def truncate (x : Float) : UInt64 := (x * 1000).toUInt64
+
+def bits (x : Float) : UInt64 := x.toBits
+
+def ofBits (w : UInt64) : Float := Float.ofBits w
+
+def roundTrip (w : UInt64) : UInt64 := (Float.ofBits w).toBits
+
+/-- `x * 2 ^ k` for `k` from 0 to 1023, with the power built from its exponent field. -/
+def scaleByPower (x : Float) (k : UInt64) : Float := x * Float.ofBits ((k + 1023) <<< 52)
+
+/-- Literal NaN patterns, which Lean's model replaces with the canonical NaN, a negated NaN, and
+a converted word. -/
+def literals (x : Float) : Float × Float :=
+  (min x (Float.ofBits 0x7FF0000000000001), x - (-(Float.ofBits 0xFFF8000000000001)) +
+    UInt64.toFloat 18446744073709551615)
+
 verified_compile compiled := [piecewise, hypot, inBand, clamp, negate, least, most, minSum,
-  harmonic, mixed, combined]
+  harmonic, mixed, combined, mean, truncate, bits, ofBits, roundTrip, scaleByPower, literals]
 
 end Verified.Examples.Floats
