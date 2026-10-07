@@ -200,8 +200,25 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (rs, hr, _) ← reflect c r
     let cond ← mkAppM ``Expr.cmp #[cmpExpr op, ls, rs]
     return (← mkAppM ``Expr.ite #[cond, as, bs], ← mkAppM (iteLemma op) #[hl, hr, ha, hb], t)
+  | ``LeanExe.loop, #[α, n, init, f] =>
+    let (ns, hn, _) ← reflect c n
+    let (is, hi, t) ← reflect c init
+    let (bs, hb, _) ← reflectUnder (mkConst ``UInt64) α .word t fun i acc =>
+      return f.beta #[i, acc]
+    return (← mkAppM ``Expr.loop #[ns, is, bs], ← mkAppM ``loop_eq #[hn, hi, hb], t)
   | _, _ => throwError "verified_compile: unsupported term {e}"
 where
+  /-- The reflection of `body a b` with `a : α` of type `s` as variable 1 and `b : β` of type `t`
+  as variable 0, with its proof abstracted over `a` and `b`. -/
+  reflectUnder (α β : Lean.Expr) (s t : Ty) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
+      MetaM (Lean.Expr × Lean.Expr × Ty) :=
+    withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
+      let envA ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some a, some c.env]
+      let ctxA := ctxExpr (s :: c.vars.map (·.2))
+      let envB ← mkAppOptM ``Env.cons #[some ctxA, some (tyExpr t), some b, some envA]
+      let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
+      let (bs, hb, u) ← reflect c' (← body a b)
+      return (bs, ← mkLambdaFVars #[a, b] hb, u)
   /-- The destructuring of the pair `p` into its components `a` and `b`, as variables 1 and 0
   of the body `body a b`. -/
   destructure (p : Lean.Expr) (body : Lean.Expr → Lean.Expr → MetaM Lean.Expr) :
@@ -210,14 +227,8 @@ where
     let .pair s t := pt | throwError "verified_compile: {p} is not a pair"
     let (``Prod, #[α, β]) := (← whnfR (← inferType p)).getAppFnArgs
       | throwError "verified_compile: {p} is not a pair"
-    withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
-      let envA ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some a, some c.env]
-      let ctxA := ctxExpr (s :: c.vars.map (·.2))
-      let envB ← mkAppOptM ``Env.cons #[some ctxA, some (tyExpr t), some b, some envA]
-      let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
-      let (bs, hb, u) ← reflect c' (← body a b)
-      let hb ← mkLambdaFVars #[a, b] hb
-      return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
+    let (bs, hb, u) ← reflectUnder α β s t body
+    return (← mkAppM ``Expr.letPair #[ps, bs], ← mkAppM ``letPair_eq #[hp, hb], u)
   /-- A call of a listed definition before this one: the source call, with the proof built from
   the arguments' proofs and the callee's equation. -/
   reflectCall? (e : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr × Ty)) := do

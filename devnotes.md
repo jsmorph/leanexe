@@ -26418,7 +26418,7 @@ Wasmtime, all equal to native Lean.  The theorems use only `propext`, `Classical
 - [x] V6a: a reflector from single Lean definitions to the source syntax, with `denote (reflect f) = f`.
 - [x] V6b: calls between reflected definitions.
 - [x] V7a: pairs, with values of several words.
-- [ ] V7b: `LeanExe.loop` over a state of any type.
+- [x] V7b: `LeanExe.loop` over a state of any type.
 - [ ] Later: arrays, floats, recursion, and ownership.
 
 V2 replaces the three arithmetic constructors with one, `bin`, over ten operations, each meaning
@@ -26521,6 +26521,24 @@ every `if` now stores its value's words in locals in each branch and loads them 
 block, as `LeanExe` does for pair-valued branches.  `Pairs.lean` has seven definitions with pair
 parameters, pair results, nested pairs, and calls that pass pairs, and the test passes all 3,120
 cases of the six examples, comparing multi-value results with `list:` result kinds.
+
+V7b adds `loop count init body`, which means `LeanExe.loop` over a state of any type, with the
+state as variable 0 of the body and the index as variable 1.  The code keeps the count in local
+`base`, the index in `base + 1`, and the state from `base + 2` on, and runs a WebAssembly `loop`
+inside a `block`.  Each iteration compares the index with the count by `i64.ge_u`, branches out of
+the block when the index reaches the count, and otherwise runs the body, stores the new state, and
+adds 1 to the index.  The proof applies Talos's `wp_loop_cons` with an invariant and a measure:
+the index `i` is at most the count, the state locals hold the state after `i` iterations, and the
+count less the index decreases.  The index never passes the count, so adding 1 does not wrap.
+The state after `i` iterations is `loopState`, a structural recursion with `loopState_eq` relating
+it to `LeanExe.loop`.  The invariant cannot use `Nat.fold` itself: the type of `Nat.fold`'s
+function depends on the count, so `simp` cannot rewrite the count from `(i + 1).toNat` to
+`i.toNat + 1`.  The reflector writes `LeanExe.loop n init f` as a loop whose body is the
+reflection of `f i acc`, proved by `loop_eq`, and a `match` on a pair state becomes `letPair` as
+before.  `Loops.lean` has seven definitions: loops over a word, over a pair, and over a pair with
+a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier
+definition.  Its module has 2,065 bytes, and the test passes all 3,608 cases of the seven
+examples, with loop counts from 0 to 65,537.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

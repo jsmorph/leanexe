@@ -98,4 +98,17 @@ theorem letPair_eq {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t ::
     (Expr.letPair e body).denote funs env = B E.1 E.2 := by
   subst he; exact hb _ _
 
+/-- A loop means `LeanExe.loop` with the meanings of its count, its initial state, and its
+body. -/
+theorem loop_eq {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
+    {body : Expr S (t :: .word :: Γ) t} {N : UInt64} {I : t.denote}
+    {B : UInt64 → t.denote → t.denote} (hn : count.denote funs env = N)
+    (hi : init.denote funs env = I)
+    (hb : ∀ i acc, body.denote funs (.cons acc (.cons i env)) = B i acc) :
+    (Expr.loop count init body).denote funs env = LeanExe.loop N I B := by
+  subst hn hi
+  obtain rfl : (fun i acc => body.denote funs (.cons acc (.cons i env))) = B :=
+    funext fun i => funext (hb i)
+  rfl
+
 end Verified.Reflect

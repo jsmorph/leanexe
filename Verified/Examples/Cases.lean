@@ -4,6 +4,7 @@ import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Pairs
+import Verified.Examples.Loops
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -45,6 +46,10 @@ def selectCases : List (UInt64 × UInt64 × UInt64) :=
     ([(1, 2, 3), (5, 5, 1), (5, 1, 5), (0, 0, 0)].flatMap fun (a, b, c) =>
       [(a, b, c), (a, c, b), (b, a, c), (b, c, a), (c, a, b), (c, b, a)])
 
+/-- Loop counts: none, one, a few, and enough to wrap the Fibonacci numbers and the powers.
+`sumPowers` takes time quadratic in its count and runs only on the counts up to 100. -/
+def counts : List UInt64 := [0, 1, 2, 3, 7, 8, 64, 65, 100, 1000, 65537]
+
 end Verified.Examples
 
 open Verified.Examples in
@@ -83,3 +88,18 @@ def main : IO Unit := do
     for flag in [false, true] do
       let f := if flag then 1 else 0
       IO.println s!"select|pickNe|i64|i64:{a} i64:{b} i64:{f}|{Select.pickNe a b flag}"
+  for n in counts do
+    IO.println s!"loops|triangle|i64|i64:{n}|{Loops.triangle n}"
+    IO.println s!"loops|fib|i64|i64:{n}|{Loops.fib n}"
+    for x in words do
+      IO.println s!"loops|power|i64|i64:{x} i64:{n}|{Loops.power x n}"
+      IO.println s!"loops|collatz|i64|i64:{x} i64:{n}|{Loops.collatz x n}"
+      let (found, seen) := Loops.firstAbove x n
+      let seenWord := if seen then 1 else 0
+      IO.println s!"loops|firstAbove|list:i64,i64|i64:{x} i64:{n}|{found} {seenWord}"
+  for n in counts.filter (· ≤ 100) do
+    for x in [0, 1, 2, 3, 18446744073709551615] do
+      IO.println s!"loops|sumPowers|i64|i64:{x} i64:{n}|{Loops.sumPowers x n}"
+  for n in [0, 1, 3, 10, 50] do
+    for k in [0, 1, 3, 10, 50] do
+      IO.println s!"loops|grid|i64|i64:{n} i64:{k}|{Loops.grid n k}"
