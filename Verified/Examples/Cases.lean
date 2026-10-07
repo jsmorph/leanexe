@@ -16,6 +16,7 @@ import Verified.Examples.Tuples
 import Verified.Examples.Records
 import Verified.Examples.Grids
 import Verified.Examples.Repeat
+import Verified.Examples.Enums
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -165,6 +166,26 @@ open Records in
 /-- Arrays of structures: empty, one element, the special structures, and built ones. -/
 def conservedArrays : List (Array Conserved) :=
   [#[], #[⟨1.0, 2.0, 3.0⟩], conserveds.toArray, Grids.ramp 10]
+
+/-! The host's words for enumerations and a calculator, by their `Flat` instances. -/
+
+open Enums in
+def opWord (o : Op) : UInt64 := LeanExe.Pipeline.Flat.flat o
+
+open Enums in
+def phaseWord (p : Phase) : UInt64 := LeanExe.Pipeline.Flat.flat p
+
+open Enums in
+def calcArg (c : Calc) : String := s!"i64:{c.value} i64:{c.steps} i64:{opWord c.last}"
+
+open Enums in
+def calcOut (c : Calc) : String := s!"{c.value} {c.steps} {opWord c.last}"
+
+open Enums in
+def allOps : List Op := [.add, .sub, .mul, .neg]
+
+open Enums in
+def allPhases : List Phase := [.solid, .liquid, .gas]
 
 /-- Words for `Float.ofBits`: NaN patterns with either sign and a signaling one, both
 infinities, both zeros, the smallest subnormal, and words. -/
@@ -518,6 +539,61 @@ def main : IO Unit := do
     IO.println s!"repeat|fallSteps|i64|i64:{k}|{Repeat.fallSteps k}"
   for x in [0, 5, 18446744073709551615] do
     IO.println s!"repeat|offset|i64|i64:{x}|{Repeat.offset x}"
+  for op in allOps do
+    for (a, b) in [((5 : UInt64), (3 : UInt64)), (0, 1), (18446744073709551615, 2)] do
+      IO.println s!"enums|apply|i64|i64:{opWord op} i64:{a} i64:{b}|{Enums.apply op a b}"
+    for op2 in allOps do
+      let args := s!"i64:{opWord op} i64:{opWord op2}"
+      IO.println s!"enums|same|i64|{args}|{bit (Enums.same op op2)}"
+      IO.println s!"enums|differ|i64|{args}|{bit (Enums.differ op op2)}"
+    for c in [(⟨7, 2, .mul⟩ : Enums.Calc), ⟨0, 0, .add⟩] do
+      let r := calcOut (Enums.step c op 3)
+      IO.println s!"enums|step|list:i64,i64,i64|{calcArg c} i64:{opWord op} i64:3|{r}"
+    let c : Enums.Calc := ⟨10, 1, op⟩
+    IO.println s!"enums|lastOp|i64|{calcArg c}|{opWord (Enums.lastOp c)}"
+    IO.println s!"enums|undo|i64|{calcArg c}|{Enums.undo c}"
+    IO.println s!"enums|opCode|i64|i64:{opWord op}|{Enums.opCode op}"
+    let (t, n) := Enums.tagged op 41
+    IO.println s!"enums|tagged|list:i64,i64|i64:{opWord op} i64:41|{opWord t} {n}"
+    for op2 in allOps do
+      let args := s!"i64:{opWord op} i64:{opWord op2}"
+      IO.println s!"enums|notSame|i64|{args}|{bit (Enums.notSame op op2)}"
+      IO.println s!"enums|ifDiffer|i64|{args} i64:9|{Enums.ifDiffer op op2 9}"
+      IO.println s!"enums|combine|i64|{args}|{Enums.combine op op2}"
+  for t in [0.0, 273.15, 300.0, 373.15, 500.0, -1.0 / 0.0, 0.0 / 0.0] do
+    IO.println s!"enums|phaseOf|i64|{floatArg t}|{phaseWord (Enums.phaseOf t)}"
+    IO.println s!"enums|phaseHeat|f64|{floatArg t}|{(Enums.phaseHeat t).toBits}"
+  for p in allPhases do
+    IO.println s!"enums|isGas|i64|i64:{phaseWord p}|{bit (Enums.isGas p)}"
+    IO.println s!"enums|heat|f64|i64:{phaseWord p}|{(Enums.heat p).toBits}"
+    for k in [0, 3] do
+      IO.println s!"enums|cool|i64|i64:{phaseWord p} i64:{k}|{phaseWord (Enums.cool p k)}"
+  for (x, y) in [((0 : UInt64), (0 : UInt64)), (1, 2),
+      (18446744073709551615, 18446744073709551615)] do
+    IO.println s!"enums|wordsDiffer|i64|i64:{x} i64:{y}|{bit (Enums.wordsDiffer x y)}"
+  IO.println s!"enums|onlyWord|i64|i64:0|{Enums.onlyWord .only}"
+  for l in [Enums.Level.low, .high] do
+    let w : UInt64 := LeanExe.Pipeline.Flat.flat l
+    IO.println s!"enums|raise|i64|i64:{w}|{(LeanExe.Pipeline.Flat.flat (Enums.raise l) : UInt64)}"
+    IO.println s!"enums|isHigh|i64|i64:{w}|{bit (Enums.isHigh l)}"
+  for w in [0, 1, 2, 3, 4, 18446744073709551615] do
+    IO.println s!"enums|ofWord|i64|i64:{w}|{opWord (Enums.ofWord w)}"
+  let opArrays : List (Array Enums.Op) :=
+    [#[], #[.add], #[.add, .mul, .sub, .neg],
+      (Array.range 10).map fun i => Enums.ofWord (i % 4).toUInt64]
+  for ops in opArrays do
+    for xs in arrays.take 4 do
+      let args := s!"{arrayArg (ops.map opWord)} {arrayArg xs}"
+      IO.println s!"enums|run|list:i64,i64,i64|{args}|{calcOut (Enums.run ops xs)}|2"
+  for ts in floatArrays ++ [#[250.0, 300.0, 400.0, 373.15, 273.15]] do
+    let ps := Enums.phases ts
+    IO.println s!"enums|phases|array-u64|{floatArrayArg ts}|{arrayOut (ps.map phaseWord)}|2"
+    let a := arrayArg (ps.map phaseWord)
+    IO.println s!"enums|countGas|i64|{a}|{Enums.countGas ps}|1"
+    IO.println s!"enums|firstPhase|i64|{a}|{phaseWord (Enums.firstPhase ps)}|1"
+    for i in [0, 1, 5, 18446744073709551615] do
+      let r := arrayOut ((Enums.melt ps i).map phaseWord)
+      IO.println s!"enums|melt|array-u64|{a} i64:{i}|{r}|1|1"
   -- `firstOfCopy` reads past the end of an empty array, which native Lean reports.
   for xs in arrays.filter (·.size > 0) do
     IO.println s!"owned|firstOfCopy|i64|{arrayArg xs}|{Owned.firstOfCopy xs}|0"
