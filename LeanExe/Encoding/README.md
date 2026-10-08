@@ -64,11 +64,14 @@ table.  Each local uses a one-element declaration group.  Memory instructions
 use alignment zero, which is a valid alignment hint for every emitted load and
 store.  Every conditional includes an explicit `else`.  The module contains
 the type, import, function, memory, global, export, and code sections, including
-empty sections.  These choices select permitted binary forms.
+empty sections, and a data section when the memory has data segments.  Each
+data segment is active, in memory 0, at an `i32.const` offset.  These choices
+select permitted binary forms.
 
 The accepted Talos metadata includes canonical function `gcTypes`, integer
 global initializers with matching declared types and constant `sourceInit`,
-and empty memory data.  Unsupported syntax or inconsistent metadata produces
+and data segments with Talos's default metadata: memory index 0, no offset
+type, and no offset expression.  Unsupported syntax or inconsistent metadata produces
 an error.  The theorem's subject is the returned Lean byte array.  Running
 those bytes also depends on the external runtime and host environment.
 

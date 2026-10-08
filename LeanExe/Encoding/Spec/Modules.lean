@@ -57,24 +57,39 @@ structure Shape (m : Wasm.Module) : Prop where
   tagExports : m.tagExports = []
   tags : m.tags = []
 
+/-- The memory declarations without their data segments, which the data section carries. -/
+def memoryDecls (m : Wasm.Module) : List Wasm.MemDecl :=
+  m.memory.toList.map fun decl => { decl with data := [] }
+
+/-- The data segments of the default memory. -/
+def dataSegments (m : Wasm.Module) : List Wasm.DataSegment :=
+  m.memory.toList.flatMap (·.data)
+
 inductive Section (id : UInt8) (relation : Bytes → α → Prop) : Bytes → α → Prop
   | intro (sizeBytes payload : Bytes) (value : α)
       (size : Unsigned 32 sizeBytes payload.length)
       (encoding : relation payload value) :
       Section id relation (id :: (sizeBytes ++ payload)) value
 
+/-- The data section, absent when there are no data segments. -/
+inductive DataSection : Bytes → List Wasm.DataSegment → Prop
+  | empty : DataSection [] []
+  | present (bytes : Bytes) (segments : List Wasm.DataSegment) (nonempty : segments ≠ [])
+      (encoding : Section 11 (Vector DataSegment) bytes segments) : DataSection bytes segments
+
 inductive ModuleBytes : Bytes → Wasm.Module → Prop
-  | intro (m : Wasm.Module) (types imports functions memories globals exports codes : Bytes)
+  | intro (m : Wasm.Module) (types imports functions memories globals exports codes datas : Bytes)
       (shape : Shape m)
       (typeSection : Section 1 (Vector FuncType) types m.types)
       (importSection : Section 2 (Vector (Import m.types)) imports m.imports)
       (functionSection : Section 3 (Vector (FunctionIndex m.types)) functions m.funcs)
-      (memorySection : Section 5 (Vector Memory) memories m.memory.toList)
+      (memorySection : Section 5 (Vector Memory) memories (memoryDecls m))
       (globalSection : Section 6 (Vector Global) globals m.globals)
       (exportSection : Section 7 (Vector Export) exports (Spec.exports m))
-      (codeSection : Section 10 (Vector (Sized CodeBody)) codes m.funcs) :
+      (codeSection : Section 10 (Vector (Sized CodeBody)) codes m.funcs)
+      (dataSection : DataSection datas (dataSegments m)) :
       ModuleBytes ([0, 97, 115, 109, 1, 0, 0, 0] ++ types ++ imports ++ functions ++
-        memories ++ globals ++ exports ++ codes) m
+        memories ++ globals ++ exports ++ codes ++ datas) m
 
 end Wasm.Encoding.Spec
 

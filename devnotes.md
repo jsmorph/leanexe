@@ -27541,6 +27541,23 @@ calls of `exp` and `tanh`, about 3 percent of the measured 0.55 seconds per toke
 limit its speed.  The open decision is whether the source passes tables as explicit parameters or
 the reflector adds them.
 
+### Constant tables: implementation
+
+The user chose the design with explicit table parameters: a function takes its table as a borrowed
+array parameter, and an exported wrapper binds the constant table, whose address the entry pushes.
+
+The verified encoder now writes a data section when the memory has data segments.  Each segment is
+active in memory 0 at an `i32.const` offset, with Talos's default metadata.  The memory section
+carries the declaration without its segments, `Spec.memoryDecls`, and the decoder joins the
+segments in `Spec.dataSegments` back to the memory, rejecting segments without a memory.  A module
+without segments encodes to the same bytes as before.  `decode_encode` and `encode_complete` cover
+the new section, and a module with two segments decodes to itself, re-encodes to the same bytes,
+and passes `wasm-tools validate`.
+
+- [x] Data section in the verified encoder.
+- [ ] Layout, entry wrapper, and theorem.
+- [ ] Reflector case, Trig on tables, and tests.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

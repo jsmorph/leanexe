@@ -26,6 +26,16 @@ theorem memory_produces (decl : Wasm.MemDecl)
   simp only [Produces, memory, he]
   exact ⟨_, rfl, hes⟩
 
+theorem dataSegment_produces (segment : Wasm.DataSegment) (ready : DataReady segment) :
+    Produces (dataSegment segment) (Size.dataSegment segment) := by
+  cases ready with
+  | intro offset bytes length =>
+      obtain ⟨encodedLength, hl, hls⟩ := u32_produces bytes.length length
+      simp only [Produces, dataSegment, hl]
+      refine ⟨_, rfl, ?_⟩
+      simp [signed32, Size.dataSegment, Size.s32, hls]
+      omega
+
 theorem global_produces (decl : Wasm.GlobalDecl) (ready : GlobalReady decl) :
     Produces (global decl) (Size.global decl) := by
   cases ready with
@@ -137,6 +147,26 @@ theorem vectorSection_complete (id : UInt8) (encode : (value : α) → Result re
   obtain ⟨output, ho, _⟩ := section_produces id payload _ hps bound
   exact ⟨output, by simpa only [hp, Except.bind, bind] using ho⟩
 
+theorem dataSection_complete (segments : List Wasm.DataSegment)
+    (count : segments.length < 2 ^ 32)
+    (bound : Size.vector (segments.map Size.dataSegment) < 2 ^ 32)
+    (accepted : ∀ segment ∈ segments, DataReady segment) :
+    ∃ output, dataSection segments = .ok output := by
+  cases segments with
+  | nil => exact ⟨_, rfl⟩
+  | cons segment rest =>
+      obtain ⟨output, ho⟩ := vectorSection_complete 11 dataSegment Size.dataSegment
+        (segment :: rest) count bound fun s member => dataSegment_produces s (accepted s member)
+      simp only [dataSection, ho]
+      exact ⟨_, rfl⟩
+
+theorem memoryDecls_form {m : Wasm.Module} (ready : Ready m) :
+    ∀ decl ∈ Spec.memoryDecls m, decl.data = [] ∧ decl.is64 = false := by
+  intro decl member
+  simp only [Spec.memoryDecls, List.mem_map] at member
+  obtain ⟨original, hMember, rfl⟩ := member
+  exact ⟨rfl, ready.memories original hMember⟩
+
 theorem module_complete (m : Wasm.Module) (ready : Ready m) :
     ∃ output, module m = .ok output := by
   obtain ⟨types, ht⟩ := vectorSection_complete 1 functionType Size.functionType m.types
@@ -147,9 +177,9 @@ theorem module_complete (m : Wasm.Module) (ready : Ready m) :
   obtain ⟨functions, hf⟩ := vectorSection_complete 3 (functionIndex m.types)
     (fun f => Size.u32 (f.typeIdx.getD 0)) m.funcs ready.functionCount ready.functionSize
     (fun f member => functionIndex_produces m.types f (ready.functions f member))
-  obtain ⟨memories, hm⟩ := vectorSection_complete 5 memory Size.memory m.memory.toList
-    (by cases m.memory <;> simp) ready.memorySize
-    (fun d member => memory_produces d (ready.memories d member))
+  obtain ⟨memories, hm⟩ := vectorSection_complete 5 memory Size.memory (Spec.memoryDecls m)
+    (by cases h : m.memory <;> simp [Spec.memoryDecls, h]) ready.memorySize
+    (fun d member => memory_produces d (memoryDecls_form ready d member))
   obtain ⟨globals, hg⟩ := vectorSection_complete 6 global Size.global m.globals
     ready.globalCount ready.globalSize (fun d member => global_produces d (ready.globals d member))
   obtain ⟨exports, he⟩ := vectorSection_complete 7 exportEntry Size.exportEntry (Spec.exports m)
@@ -157,7 +187,9 @@ theorem module_complete (m : Wasm.Module) (ready : Ready m) :
   obtain ⟨codes, hc⟩ := vectorSection_complete 10 functionBody Size.functionBody m.funcs
     ready.functionCount ready.codeSize
     (fun f member => functionBody_produces m.types f (ready.functions f member))
-  simp only [module, shape_produces m ready.shape, ht, hi, hf, hm, hg, he, hc]
+  obtain ⟨datas, hd⟩ := dataSection_complete (Spec.dataSegments m) ready.dataCount
+    ready.dataSize ready.data
+  simp only [module, shape_produces m ready.shape, ht, hi, hf, hm, hg, he, hc, hd]
   exact ⟨_, rfl⟩
 
 theorem encode_complete (m : Wasm.Module) (ready : Ready m) :

@@ -52,6 +52,15 @@ def signed64 (value : UInt64) : Encoded (Spec.Signed 64) value.toBitVec.toInt :=
   ⟨signed 64 value.toBitVec.toInt,
     signed_correct 64 _ (by decide) (BitVec.le_toInt _) BitVec.toInt_lt⟩
 
+def dataSegment : (segment : Wasm.DataSegment) → Result Spec.DataSegment segment
+  | { offset := some offset, bytes := bytes, memIdx := 0, offsetType := none,
+      offsetExprPresent := false, offsetExpr := [] } => do
+      let length ← u32 bytes.length
+      let encoded := signed32 offset
+      pure ⟨0x00 :: 0x41 :: (encoded.val ++ 0x0b :: (length.val ++ bytes)),
+        .intro _ _ _ _ encoded.property length.property⟩
+  | _ => .error "data segment is outside LeanExe's emitted WASM"
+
 def global : (decl : Wasm.GlobalDecl) → Result Spec.Global decl
   | { init := .i32 value, declaredType := some .i32, isMut := mutable,
       sourceInit := some [.const initial], initExpr := [] } =>
