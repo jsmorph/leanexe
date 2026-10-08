@@ -27575,8 +27575,20 @@ Changing `ImplementsA` itself would have reached the older IR pipeline and its e
   `p.f.implements` states `ImplementsTables` with the tables' addresses and names, for example
   `[(4096, squares)]`.  `Tables.lean` tests two tables, reads past the end, and an owned array
   updated from a table: 14,205 cases pass.
-- [ ] Trig and Fourier on tables.
-- [ ] The instantiation theorem.
+- [x] Trig and Fourier on tables.  `Trig.invPi` and `Trig.halfPi` are tables, `sinWith` and
+  `cosWith` and the functions they call take them as parameters, and `sin` and `cos` are wrappers.
+  Fourier's functions take the tables as `twiddleWith`, `transformWith`, `dftWith`, `inverseWith`,
+  and `powerSpectrumWith`, and `twiddle`, `dft`, `inverse`, and `powerSpectrum` are wrappers.
+  `TrigAccuracy.lean` compares the tables with Machin's formula.
+- [x] The instantiation theorem, `compileWith_initialStore` in `Verified/Instantiate.lean`, which
+  the reflector states for each program as `p.initial`.  Talos's `Module.initialStore` writes each
+  active segment of memory 0 that fits in the initial pages.  The proof follows the segments by
+  induction: each segment fits, since the pages cover the tables' end, and leaves the earlier
+  tables' bytes alone, since its range starts where the previous one ends.  `wordBytes` now gives
+  the bytes in the form `Mem.write64` stores them, so `read64_write64` reads each word back.  The
+  only premise is that the tables end below 65,535 pages, which `decide` checks for a program.
+- [x] Tests: 14,205 cases pass, the trigonometric results are unchanged, and the 20 Fourier
+  signals pass.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

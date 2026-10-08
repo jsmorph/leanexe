@@ -1,4 +1,5 @@
 import Verified.Correct
+import Verified.Instantiate
 import Verified.Reflect.Lemmas
 import Verified.Reflect.Modes
 import LeanExe.Encoding.RoundTrip
@@ -32,8 +33,11 @@ taken apart with `.1`, `.2`, or `match`, structures built with their constructor
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
 `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
 `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
-`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, calls of the listed definitions before it, and, in a recursive
-definition, calls of itself. -/
+`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, calls of the
+listed definitions before it, and, in a recursive definition, calls of itself.  A definition
+`f x := g T₁ … Tₖ x` that applies a listed definition `g` to constants `Tᵢ` of type `Array UInt64`
+before its own parameters is a wrapper: the module holds the tables `Tᵢ` in data segments and
+exports `f` as an entry that passes their addresses to `g`. -/
 
 namespace Verified.Reflect
 
@@ -1963,9 +1967,12 @@ syntax (name := verifiedCompile) "verified_compile " ident " := " "[" ident,* "]
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
 order, each of which may call those before it and, when recursive, itself; the meanings
 `p.funs` of its functions and the proof `p.meaning : Prog.Meaning p.program p.funs`; the module
-`p.module`; for each definition `f`, the theorem `p.f.implements` that the module computes `f`,
-at the function's index, or at its exported entry when its code takes the call depth; and
-`p.bytes`, the module's bytes with all those theorems. -/
+`p.module`; the tables `p.tables` and the wrappers `p.wrappers`; for each definition `f`, the
+theorem `p.f.implements` that the module computes `f`, at the function's index, at its exported
+entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
+that holds the tables; `p.initial`, that the store in which the module starts meets the
+allocator invariant and holds the tables; and `p.bytes`, the module's bytes with all the
+functions' theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
@@ -2053,6 +2060,11 @@ def elabVerifiedCompile : CommandElab
         (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
           Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers)])
       return (out, wraps, tableNames, funs)
+    -- The store in which the module starts.
+    let initialProof ← `(Verified.compileWith_initialStore $(mkIdent (base ++ `program))
+      $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers)) (by decide +kernel))
+    elabCommand (← `(theorem $(mkIdent (target.getId ++ `initial)) : type_of% $initialProof :=
+      $initialProof))
     let progId := mkIdent (base ++ `program)
     let funsId := mkIdent (base ++ `funs)
     let meaningId := mkIdent (base ++ `meaning)

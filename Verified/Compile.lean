@@ -726,9 +726,11 @@ def tableAddr (tables : List (Array UInt64)) (k : Nat) : UInt64 :=
 def tablesEnd (tables : List (Array UInt64)) : Nat :=
   4096 + 8 * (tables.map fun t => t.size + 1).sum
 
-/-- The bytes of a word, the least significant first. -/
+/-- The bytes of a word, the least significant first, as `Mem.write64` stores them. -/
 def wordBytes (w : UInt64) : List UInt8 :=
-  (List.range 8).map fun i => (w >>> UInt64.ofNat (8 * i)).toUInt8
+  [(w &&& 0xFF).toUInt8, ((w >>> 8) &&& 0xFF).toUInt8, ((w >>> 16) &&& 0xFF).toUInt8,
+    ((w >>> 24) &&& 0xFF).toUInt8, ((w >>> 32) &&& 0xFF).toUInt8, ((w >>> 40) &&& 0xFF).toUInt8,
+    ((w >>> 48) &&& 0xFF).toUInt8, ((w >>> 56) &&& 0xFF).toUInt8]
 
 /-- The data segments that write the tables at their addresses when the module is
 instantiated. -/

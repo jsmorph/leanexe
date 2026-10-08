@@ -166,10 +166,13 @@ as a borrowed array parameter, so the theorems for borrowed arrays cover it.  A 
 definition `f x := g T₁ … Tₖ x` that applies a listed function `g` to tables before its own
 parameters.  The module exports it as an entry that pushes the tables' addresses and calls `g`, and
 its theorem is `ImplementsTables`, `ImplementsA` with two further premises: each table is a borrowed
-array at its address, and the blocks that the arguments move lie apart from it.  The data segments
-put the tables at those addresses when the module is instantiated, but no theorem yet states that
-instantiation establishes the premises, as none states it for the allocator invariant.  A wrapper
-is no function of the program, so other functions pass tables as parameters.
+array at its address, and the blocks that the arguments move lie apart from it.  The instantiation
+theorem `compileWith_initialStore` in [`Instantiate.lean`](Instantiate.lean) shows that the store
+in which the module starts, as Talos's `Module.initialStore` builds it, meets the allocator
+invariant with the bump pointer after the tables and an empty free list, caps the memory at 65,535
+pages, and holds each table at its address, so the theorems apply to the first call.  The reflector
+states it for each program as `p.initial`.  A wrapper is no function of the program, so other
+functions pass tables as parameters.
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
 writes ordinary Lean definitions as a source program.  For each definition `f` it adds the source
@@ -280,6 +283,7 @@ patterns, so that `0.0 ≠ -0.0`, and which no f64 instruction computes.
 |---------|-----------|
 | `Prog.correct` | For every program, meanings `funs` of its functions, and function in it, the function's index in the compiled module meets `FunSpec`: the code computes the function's meaning in the sense of `ImplementsA`, from its arguments when it does not take the call depth, and then without a trap when its signature's `aborts` is false, and from the depth and its arguments at every depth otherwise.  `Prog.correct_funs` states it for a program without recursion and `Prog.funs`. |
 | `Prog.correct_entry` | The exported entry of a function whose code takes the call depth computes the function's meaning in the sense of `ImplementsA true`. |
+| `compileWith_initialStore` | The store in which the module of a program with tables starts meets the allocator invariant for `initialHeap`, whose bump pointer follows the tables, caps its memory at 65,535 pages, and holds each table as a borrowed array at its address, when the tables end below 65,535 pages.  `tables_written` shows by induction over the segments that each table's range holds its length word and words, and `read64_of_bytes` reads each word back through `read64_write64`, since `wordBytes` gives the bytes that `Mem.write64` stores. |
 | `Prog.correct_wrapper` | A wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that their regions join the arguments' reads.  `ImplementsTables.lean` carries the theorem to Lean's instances. |
 | `Prog.calls` | By induction on the program: a recursive function's internal function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit. |
 | `bodyFunction_runs` | A function's code, with or without the depth parameter, in a module whose functions at the call indices compute the functions it calls at the next depth, computes the body's meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
