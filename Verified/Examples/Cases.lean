@@ -273,6 +273,16 @@ def main : IO Unit := do
     for flag in [false, true] do
       let f := if flag then 1 else 0
       IO.println s!"pairs|unnest|i64|i64:{a} i64:{f} i64:{b}|{Pairs.unnest ((a, flag), b)}"
+    let (t1, t2, t3) := Pairs.triple a
+    IO.println s!"pairs|triple|list:i64,i64,i64|i64:{a}|{t1} {t2} {t3}"
+    IO.println s!"pairs|sumTriple|i64|i64:{a}|{Pairs.sumTriple a}"
+    IO.println s!"pairs|leftNested|i64|i64:{a} i64:{b}|{Pairs.leftNested a b}"
+    IO.println s!"pairs|skipMiddle|i64|i64:{a}|{Pairs.skipMiddle a}"
+    IO.println s!"pairs|keepPair|i64|i64:{a}|{Pairs.keepPair a}"
+    IO.println s!"pairs|literalTwice|i64|i64:{a} i64:{b}|{Pairs.literalTwice a b}"
+    IO.println s!"pairs|literalCall|i64|i64:{a} i64:{b}|{Pairs.literalCall a b}"
+  for xs in arrays do
+    IO.println s!"pairs|sizesOf|i64|{arrayArg xs}|{Pairs.sizesOf xs}"
   for (a, b, c) in selectCases do
     IO.println s!"select|median|i64|i64:{a} i64:{b} i64:{c}|{Select.median a b c}"
     IO.println s!"select|inBand|i64|i64:{a} i64:{b} i64:{c}|{if Select.inBand a b c then 1 else 0}"

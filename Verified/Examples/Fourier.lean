@@ -6,9 +6,10 @@ the transform computes `X k = Σ j, x j · exp (-2 π i j k / n)` in floating po
 layout, by the `n²` products of the definition.  An odd last float is ignored.  The factors
 `exp (-2 π i m / n)` come from `Trig.cos` and `Trig.sin` at the rounded angle `2 π m / n`, and the
 program lists their definitions and compiles them with it.  The compiler's theorem states that the
-module computes these definitions bit for bit, or, for those that allocate, traps at `unreachable`
-when memory runs out.  `FourierAccuracy.lean` checks, in native Lean, that they behave as a
-Fourier transform. -/
+module computes these definitions bit for bit.  For the functions that allocate, `transform`, `dft`,
+`inverse`, and `powerSpectrum`, it also allows a trap at `unreachable` on any input, since an
+allocation traps there when memory runs out.  `FourierAccuracy.lean` checks, in native Lean, that
+they behave as a Fourier transform. -/
 
 namespace Verified.Examples.Fourier
 
@@ -52,7 +53,7 @@ def powerSpectrum (samples : Array Float) : Array Float :=
     let b := ys[(2 * k + 1).toNat]!
     a * a + b * b
 
-/-- A test signal of `n` complex values with parts in `[-1, 1)`, hashed from `seed`; the program
+/-- A test signal of `n` complex values with parts in `[-1, 1)`, hashed from `seed`.  The program
 does not list it. -/
 def signal (n : Nat) (seed : UInt64) : Array Float :=
   (Array.range (2 * n)).map fun i =>
@@ -60,7 +61,8 @@ def signal (n : Nat) (seed : UInt64) : Array Float :=
     (h >>> (11 : UInt64)).toFloat / 9007199254740992.0 * 2.0 - 1.0
 
 verified_compile compiled := [Trig.kernelSin, Trig.kernelCos, Trig.remSmall, Trig.remMedium,
-  Trig.invPiWord, Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop, Trig.shiftTop, Trig.remLarge,
-  Trig.remPio2, Trig.sin, Trig.cos, twiddle, transform, dft, inverse, powerSpectrum]
+  Trig.halfPiWord, Trig.invPiWord, Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop,
+  Trig.shiftTop, Trig.remLarge, Trig.remPio2, Trig.sin, Trig.cos, twiddle, transform, dft, inverse,
+  powerSpectrum]
 
 end Verified.Examples.Fourier

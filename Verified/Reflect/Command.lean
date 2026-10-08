@@ -614,21 +614,11 @@ def matchFields (app : MatcherApp) (d : Lean.Expr) : MetaM (Array Lean.Expr) := 
       throwError "verified_compile: the match {app.toExpr} gives {v}"
     v.getAppArgs.mapM projReduce
 
-/-- Closes `g` by `rfl` after `cases` on each of the variables `xs` that has a product type and on
-the components that each gives, so that a match on nested pairs reduces. -/
-partial def casesRefl (g : MVarId) : List Lean.Expr → MetaM Unit
-  | [] => g.refl
-  | x :: xs => g.withContext do
-    if let (``Prod, _) := (← whnfR (← inferType x)).getAppFnArgs then
-      for sg in ← g.cases x.fvarId! do
-        casesRefl sg.mvarId (sg.fields.toList ++ xs)
-    else casesRefl g xs
-
 /-- For a match `app` with one discriminant `d` of a structure type, `Prod` included, and one
-alternative `alt`, the proof of `alt (fields d) = app`.  It is proved by `cases` on a variable for
-`d`, and on its components when it is a tuple that the pattern takes apart further, with a variable
-for the alternative, and then applied to both, so that the kernel evaluates neither the value nor
-the alternative's body. -/
+alternative `alt`, the proof of `alt (fields d) = app`.  It is proved by `rfl` for a variable for
+`d` and a variable for the alternative, since structure eta lets the match reduce on a variable,
+also when the pattern takes nested pairs apart, and then applied to both, so that the kernel
+evaluates neither the value nor the alternative's body. -/
 def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) :
     MetaM Lean.Expr := do
   let alt := app.alts[0]!
@@ -643,7 +633,7 @@ def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) 
     let lhs := mkAppN h (← fields s)
     let rhs := { app with discrs := #[s], alts := #[h] }.toExpr
     let goal ← mkFreshExprMVar (← mkEq lhs rhs)
-    casesRefl goal.mvarId! [s]
+    goal.mvarId!.refl
     mkLambdaFVars #[h, s] (← instantiateMVars goal)
   return mkApp2 gen alt d
 
@@ -727,8 +717,14 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!
-      if (← projReduce d).isAppOf ``Prod.mk then
-        return ← reflectAs (alt.beta (← matchFields app d)) e
+      -- A pair built in place whose pattern binds its two components becomes `let` bindings of
+      -- the components.  A pattern that takes a component further apart binds the pair first, as
+      -- for any other value.
+      if (← projReduce d).isAppOf ``Prod.mk && app.altNumParams[0]! == 2 then
+        let fs ← matchFields app d
+        let lets ← withLetDecl `a (← inferType fs[0]!) fs[0]! fun a => do
+          withLetDecl `b (← inferType fs[1]!) fs[1]! fun b => mkLetFVars #[a, b] (alt.beta #[a, b])
+        return ← reflectAs lets e
       if let some (_, fields) ← structOf? (← inferType d) then
         -- The fields of a structure are its projections, of a variable bound to it first.
         let fieldsOf (y : Lean.Expr) : MetaM (Array Lean.Expr) := fields.mapM (mkProjection y)
