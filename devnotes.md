@@ -27654,7 +27654,104 @@ The suite passes 15,260 cases.
 
 The comparisons with the compiled C sources check that each port computes what its source
 computes, which the accuracy checks confirm only within their tolerance.  They need a C compiler
-and the third-party sources, so they are not part of `tests/verified/run.sh`.
+and the third-party sources, and the user chose to keep them out of `tests/verified/run.sh`.  The
+recipe below reproduces them.  The script, run in an empty directory, downloads the sources at the
+pinned commits and builds one program per function from unmodified source files.  The headers it
+writes beside fdlibm's files supply FreeBSD's word macros and declare `fd_expm1` and `fd_tanh`,
+the names to which the compile flags rename `expm1` and `tanh` so that they do not collide with
+the C library's, and the stubs beside Arm's files remove its test annotations.  Each program reads lines of an argument's bits and the Lean result's bits, computes
+the C result, and reports the arguments at which the two differ, counting any two NaNs as equal.
+
+```sh
+set -euo pipefail
+fd=https://raw.githubusercontent.com/freebsd/freebsd-src
+fd=$fd/20381bce4b63975494a2f4bc84257f6932e6d379/lib/msun/src
+arm=https://raw.githubusercontent.com/ARM-software/optimized-routines
+arm=$arm/503fafe311c177de0e571c458c7c337b1ca5f522/math
+mkdir -p fd arm
+for f in s_expm1.c s_tanh.c; do curl -sSfL -o fd/$f $fd/$f; done
+for f in exp.c exp_data.c log.c log_data.c math_err.c math_config.h; do
+  curl -sSfL -o arm/$f $arm/$f
+done
+cat > fd/math_private.h <<'EOF'
+#include <stdint.h>
+#include <string.h>
+typedef uint32_t u_int32_t;
+#define __weak_reference(a, b)
+#define GET_HIGH_WORD(i, d) do { uint64_t w_; memcpy(&w_, &(d), 8); (i) = w_ >> 32; } while (0)
+#define GET_LOW_WORD(i, d) do { uint64_t w_; memcpy(&w_, &(d), 8); (i) = (uint32_t)w_; } while (0)
+#define INSERT_WORDS(d, hi, lo) do { uint64_t w_ = (uint64_t)(uint32_t)(hi) << 32 | \
+  (uint32_t)(lo); memcpy(&(d), &w_, 8); } while (0)
+#define SET_HIGH_WORD(d, v) do { uint64_t w_; memcpy(&w_, &(d), 8); \
+  w_ = (w_ & 0xffffffffu) | (uint64_t)(uint32_t)(v) << 32; memcpy(&(d), &w_, 8); } while (0)
+#define STRICT_ASSIGN(type, lval, rval) ((lval) = (rval))
+EOF
+printf 'double fd_expm1(double);\ndouble fd_tanh(double);\ndouble fabs(double);\n' > fd/math.h
+printf '#define TEST_SIG(...)\n' > arm/test_sig.h
+printf '#define TEST_ULP(...)\n#define TEST_ULP_NONNEAREST(...)\n' > arm/test_defs.h
+printf '#define TEST_INTERVAL(...)\n#define TEST_SYM_INTERVAL(...)\n' >> arm/test_defs.h
+cat > driver.c <<'EOF'
+#include <stdio.h>
+#include <stdint.h>
+#include <string.h>
+double FN(double);
+int main(void) {
+  unsigned long long xb, yb;
+  long n = 0, bad = 0;
+  while (scanf("%llu %llu", &xb, &yb) == 2) {
+    uint64_t w = xb, r;
+    double x, y;
+    memcpy(&x, &w, 8);
+    y = FN(x);
+    memcpy(&r, &y, 8);
+    int nans = (r << 1) > 0xFFE0000000000000ull && (yb << 1) > 0xFFE0000000000000ull;
+    if (r != yb && !nans) {
+      if (bad < 10) printf("x %llu: C %llu, Lean %llu\n", xb, (unsigned long long)r, yb);
+      bad++;
+    }
+    n++;
+  }
+  printf("%ld arguments, %ld differ\n", n, bad);
+  return bad != 0;
+}
+EOF
+c="cc -O2 -ffp-contract=off -fno-builtin -w"
+$c -Dexpm1=fd_expm1 -Dtanh=fd_tanh -c fd/s_expm1.c fd/s_tanh.c
+$c -DFN=fd_expm1 driver.c s_expm1.o -o expm1
+$c -DFN=fd_tanh driver.c s_tanh.o s_expm1.o -lm -o tanh
+$c -DHAVE_FAST_ROUND=0 -DHAVE_FAST_FMA=0 -DUSE_GLIBC_ABI=0 -c arm/exp.c arm/exp_data.c \
+  arm/log.c arm/log_data.c arm/math_err.c
+$c -DFN=exp driver.c exp.o exp_data.o math_err.o -o exp
+$c -DFN=log driver.c log.o log_data.o math_err.o -o log
+```
+
+`Compare.lean`, placed in the script's directory `d`, prints the bits of the arguments and of the
+Lean results for the function named on its command line.  Run from the repository after
+`lake build Verified`, `lake env lean --run $d/Compare.lean log | $d/log` compares `log` on 500,002
+arguments, and the same holds for `exp`, `expm1`, and `tanh`.  On 2026-10-08, with GCC 14.2 on aarch64, none of the four
+differed.
+
+```lean
+import Verified.Examples.Exp
+import Verified.Examples.Tanh
+import Verified.Examples.Log
+import Verified.Examples.Reference
+
+open Verified.Examples Verified.Examples.Reference
+
+def args : Array Float :=
+  hashed 300000 23 0 2047 ++ evenly 100000 (-40.0) 40.0 ++ evenly 100000 0.9 1.1
+
+def main (argv : List String) : IO Unit := do
+  let f : Float → Float := match argv with
+    | ["exp"] => Exp.exp
+    | ["expm1"] => Tanh.expm1
+    | ["tanh"] => Tanh.tanh
+    | _ => Log.log
+  let out ← IO.getStdout
+  for x in args do
+    out.putStrLn s!"{x.toBits} {(f x).toBits}"
+```
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
