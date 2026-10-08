@@ -27652,15 +27652,16 @@ missed the high-word thresholds, the header of `Reference.lean` claimed a relati
 and `2 ^ -19` from 1.  The checks now include the high-word thresholds and 40,000 arguments near 1.
 The suite passes 15,260 cases.
 
-The comparisons with the compiled C sources check that each port computes what its source
-computes, which the accuracy checks confirm only within their tolerance.  They need a C compiler
-and the third-party sources, and the user chose to keep them out of `tests/verified/run.sh`.  The
-recipe below reproduces them.  The script, run in an empty directory, downloads the sources at the
-pinned commits and builds one program per function from unmodified source files.  The headers it
-writes beside fdlibm's files supply FreeBSD's word macros and declare `fd_expm1` and `fd_tanh`,
-the names to which the compile flags rename `expm1` and `tanh` so that they do not collide with
-the C library's, and the stubs beside Arm's files remove its test annotations.  Each program reads lines of an argument's bits and the Lean result's bits, computes
-the C result, and reports the arguments at which the two differ, counting any two NaNs as equal.
+The comparisons with the compiled C sources check that each port computes what its source computes,
+which the accuracy checks confirm only within their tolerance.  They need a C compiler and the
+third-party sources, and the user chose to keep them out of `tests/verified/run.sh`.  The recipe
+below reproduces them.  The script, run in an empty directory, downloads the sources at the pinned
+commits and builds one program per function from unmodified source files.  The headers it writes
+beside fdlibm's files supply FreeBSD's word macros and declare `fd_expm1` and `fd_tanh`, the names
+to which the compile flags rename `expm1` and `tanh` so that they do not collide with the C
+library's, and the stubs beside Arm's files remove its test annotations.  Each program reads lines
+of an argument's bits and the Lean result's bits, computes the C result, and reports the arguments
+at which the two differ, counting any two NaNs as equal.
 
 ```sh
 set -euo pipefail
@@ -27728,8 +27729,8 @@ $c -DFN=log driver.c log.o log_data.o math_err.o -o log
 `Compare.lean`, placed in the script's directory `d`, prints the bits of the arguments and of the
 Lean results for the function named on its command line.  Run from the repository after
 `lake build Verified`, `lake env lean --run $d/Compare.lean log | $d/log` compares `log` on 500,002
-arguments, and the same holds for `exp`, `expm1`, and `tanh`.  On 2026-10-08, with GCC 14.2 on aarch64, none of the four
-differed.
+arguments, and the same holds for `exp`, `expm1`, and `tanh`.  On 2026-10-08, with GCC 14.2 on
+aarch64, none of the four differed.
 
 ```lean
 import Verified.Examples.Exp
