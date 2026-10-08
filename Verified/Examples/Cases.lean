@@ -25,6 +25,8 @@ import Verified.Examples.Insert
 import Verified.Examples.Clob
 import Verified.Examples.Tables
 import Verified.Examples.Exp
+import Verified.Examples.Tanh
+import Verified.Examples.Log
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -577,6 +579,24 @@ def main : IO Unit := do
     1024.0] ++ (List.range 300).map fun i => -750.0 + i.toFloat * 4.9
   for x in expArgs do
     IO.println s!"exp|exp|f64|{floatArg x}|{(Exp.exp x).toBits}"
+  -- `expm1` and `tanh` at the thresholds of the code, where `k` changes the form of `expm1`'s
+  -- result, and over their ranges.
+  let tanhArgs := floats ++ [1e-300, -1e-300, 1e-17, 3e-9, -3e-9, 0.2, 0.3466, -0.3466, 0.44,
+    0.6, 1.0397, -1.0397, 1.5, -1.5, 5.0, 13.5, 14.5, 22.0, -22.0, 25.0, 38.8, 39.0, -38.9,
+    -39.0, 40.0, 700.0, 709.4, 709.78, 709.79, -800.0] ++
+    (List.range 200).map fun i => -45.0 + i.toFloat * 0.47
+  for x in tanhArgs do
+    IO.println s!"tanh|expm1|f64|{floatArg x}|{(Tanh.expm1 x).toBits}"
+    IO.println s!"tanh|tanh|f64|{floatArg x}|{(Tanh.tanh x).toBits}"
+  -- `log` near 1, at the ends of that path, over the exponents, at subnormals, and at the special
+  -- values.
+  let logArgs := floats ++ [0.9375, 0.93749999999999989, 1.0646972656249998, 1.064697265625,
+    1.0000000000000002, 0.99999999999999989, 1e-310, 5e-324, 1e-300, 1e300, 1.7976931348623157e308,
+    0.6875, 1.375, 2.0, 0.5, -2.0] ++
+    (List.range 200).map fun i =>
+      Float.ofBits (((UInt64.ofNat i * 10 + 13) <<< 52) + 0x8765432112345)
+  for x in logArgs do
+    IO.println s!"log|log|f64|{floatArg x}|{(Log.log x).toBits}"
   -- Constant tables, read in range and past the end, and an update of an owned array from one.
   for k in [0, 1, 3, 5, 7, 8, 100, 18446744073709551615] do
     IO.println s!"tables|square|i64|i64:{k}|{Tables.square k}"

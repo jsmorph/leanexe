@@ -2,8 +2,8 @@
 integers.  A fixed-point value at precision `q` is an integer `v` that stands for `v · 2 ^ -q`.
 `ln 2` comes from `ln 2 = 2 atanh (1/3)`, `exp` from the reduction by `ln 2` and the Taylor series,
 and the rounding to the nearest double covers subnormals, zero, and overflow.  Each definition
-states the error that its truncations leave, which is below a relative `2 ^ -380` at the
-precisions that `precision` chooses.  A reference can round the wrong way only where the exact
+states the error that its truncations leave, which is below a relative `2 ^ -330` at the
+precisions that the checks use.  A reference can round the wrong way only where the exact
 value lies that near a midpoint between doubles, and then the two doubles beside the midpoint are
 the only ones within one unit of it, so a check of one unit passes for the result either way. -/
 
@@ -68,7 +68,8 @@ def exp (x : Int) (q : Nat) : Int × Int :=
 
 /-- `expm1 (y) · 2 ^ q` for `y = x · 2 ^ -q`, truncated, within a relative
 `2 ^ (15 - q) / min 1 |y|` of the exact value: the error of `exp` is less than `2 ^ 13 exp y`
-units, and `|expm1 y|` is at least `exp y · min 1 |y| / 2`. -/
+units, the truncation adds less than one, and `|expm1 y|` is at least
+`0.63 · max 1 (exp y) · min 1 |y|`. -/
 def expm1 (x : Int) (q : Nat) : Int :=
   let (v, s) := exp x q
   shift v (s + q) - 2 ^ q
@@ -81,6 +82,34 @@ def tanh (x : Int) (q : Nat) : Int :=
   let e := expm1 (2 * x.natAbs) q
   let t := e * 2 ^ q / (e + 2 ^ (q + 1))
   if x < 0 then -t else t
+
+/-- `atanh (s · 2 ^ -q) · 2 ^ q` for `s ≤ 2 ^ q / 5`, by its series, less than `2 n + 3` units
+below the exact value for `n` terms: `s²` and each power lose less than a unit to truncation, so
+that a power lies less than 2.1 units below its exact value, each quotient loses one more, and the
+terms omitted sum to less than one unit. -/
+def atanhFixed (s q : Nat) : Nat := Id.run do
+  let s2 := s * s / 2 ^ q
+  let mut total := 0
+  let mut term := s
+  let mut n := 1
+  while term != 0 do
+    total := total + term / n
+    term := term * s2 / 2 ^ q
+    n := n + 2
+  return total
+
+/-- `ln (m · 2 ^ e) · 2 ^ q` for `m > 0`, `q ≤ 500`, and `|j| ≤ 2 ^ 11`, which every double meets,
+as `j ln 2 + 2 atanh ((y - 1)/(y + 1))` with `m · 2 ^ e = y · 2 ^ j` and `3/4 ≤ y < 3/2`, so that
+`|(y - 1)/(y + 1)| ≤ 1/5`.  The
+truncated quotient and the series leave less than `2 ^ 9` units, and `ln 2` less than
+`2 |j| ≤ 2 ^ 12` more, so that the value lies within `2 ^ 13` units of the exact one, and within
+`2 ^ 9` when `j = 0`. -/
+def log (m : Nat) (e : Int) (q : Nat) : Int :=
+  let L := Nat.log2 m
+  let L := if 2 * m ≥ 3 * 2 ^ L then L + 1 else L
+  let num : Int := (m : Int) - 2 ^ L
+  let a : Int := 2 * atanhFixed (num.natAbs * 2 ^ q / (m + 2 ^ L)) q
+  (e + L) * ln2 q + if num < 0 then -a else a
 
 /-- `v / 2 ^ n` rounded to the nearest integer, ties to even. -/
 def roundShift (v n : Nat) : Nat :=
