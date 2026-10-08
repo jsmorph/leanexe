@@ -24,6 +24,7 @@ import Verified.Examples.Fourier
 import Verified.Examples.Insert
 import Verified.Examples.Clob
 import Verified.Examples.Tables
+import Verified.Examples.Exp
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -570,6 +571,12 @@ def main : IO Unit := do
       IO.println s!"clob|runCommands|{two}|{ap} {as} {arrayArg cs}|{r}"
       let r := tripleOut (Clob.runOut p s o cs)
       IO.println s!"clob|runOut|{three}|{ap} {as} {arrayArg o} {arrayArg cs}|{r}"
+  -- `exp` over its whole range, at its thresholds, and at the special values.
+  let expArgs := floats ++ [-746.0, -745.2, -740.0, -708.5, -708.3, -100.0, -1.0, -0.5, 1e-20,
+    -1e-20, 0.5, 1.0, 2.0, 10.0, 100.0, 511.9, 512.0, 600.0, 709.7, 709.8, 710.0, 1023.0,
+    1024.0] ++ (List.range 300).map fun i => -750.0 + i.toFloat * 4.9
+  for x in expArgs do
+    IO.println s!"exp|exp|f64|{floatArg x}|{(Exp.exp x).toBits}"
   -- Constant tables, read in range and past the end, and an update of an owned array from one.
   for k in [0, 1, 3, 5, 7, 8, 100, 18446744073709551615] do
     IO.println s!"tables|square|i64|i64:{k}|{Tables.square k}"
