@@ -5715,8 +5715,12 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
       rw [FVar.callIndex_there]
       exact hRest g'
 
+theorem compileWith_runtime {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) : Runtime (compileWith prog tables wrappers) :=
+  ⟨rfl, rfl, by simp [compileWith], by simp [compileWith]⟩
+
 theorem compile_runtime {S : List Sig} (prog : Prog S) : Runtime (compile prog) :=
-  ⟨rfl, rfl, by simp [compile], by simp [compile]⟩
+  compileWith_runtime prog [] []
 
 /-- The correctness theorem.  For meanings `funs` of a program's functions, every function of the
 program's module, at its call index, computes the function that `funs` gives it: it returns words
@@ -5725,6 +5729,13 @@ traps only at `unreachable`, only when it may allocate or its code takes the cal
 theorem Prog.correct {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs) :
     Calls (compile prog) funs :=
   prog.calls funs h _ (compile_runtime prog) fun _ hk => compile_funcs prog hk
+
+/-- The correctness theorem for a program with tables and wrappers. -/
+theorem Prog.correctWith {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs)
+    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length)) :
+    Calls (compileWith prog tables wrappers) funs :=
+  prog.calls funs h _ (compileWith_runtime prog tables wrappers) fun _ hk =>
+    compileWith_funcs prog tables wrappers hk
 
 /-- The `local.get` of each position from `k`, in order, pushes the words `vs` that they hold. -/
 theorem wp_localGets {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
@@ -5993,6 +6004,289 @@ theorem ImplementsA.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts : Bool
       (fun y => f (Env.ofArgs ps ms y)) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   @ImplementsA.comap _ _ _ _ (Env.represent ps ms) (argsInst ps ms) (Ty.represent r) r.leanInst
     aborts m entry f h (Env.ofArgs ps ms) id
+    (fun _ _ _ _ hy => (argsInst_borrowed ps ms).mp hy)
+    (fun _ _ _ _ hy hS => by
+      have hl := ((argsInst_borrowed ps ms).mp hy).length
+      rw [argsInst_moves ps ms hl, argsInst_reads ps ms hl] at hS
+      exact hS)
+    (fun _ _ _ _ hy => (argsInst_moves ps ms ((argsInst_borrowed ps ms).mp hy).length).symm)
+    (fun _ _ _ _ hz => r.leanInst_owned.mpr hz) (fun _ _ _ => r.leanInst_blocks)
+
+/-- `ImplementsA` for an entry that reads constant tables: from a heap and store in which each
+table `(p, xs)` of `tables` is a borrowed array at `p` that lies apart from the blocks that the
+arguments move.  The other premises and the conclusion are those of `ImplementsA`. -/
+def ImplementsTables {α β : Type} [Represent α] [Represent β] (aborts : Bool) (m : Module)
+    (entry : Nat) (f : α → β) (tables : List (UInt64 × Array UInt64)) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
+    heap.At store →
+    (∀ t ∈ tables, heap.Borrowed store t.1 t.2 ∧
+      Apart store (Represent.moves store params x) (t.1.toNat, 8 * (t.2.size + 1))) →
+    Represent.borrowed heap store params x →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
+    store.memoryCap m 0 ≤ 65535 →
+    Runs aborts env m entry store params.reverse fun final values =>
+      ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r ∧ Represent.outside final values.reverse (f x) r)
+
+/-- The context of a wrapper's callee: the tables `ks` of `tables`, then the wrapper's own
+arguments. -/
+def Env.withTables (tables : List (Array UInt64)) {Γ : List Ty} :
+    (ks : List (Fin tables.length)) → Env Γ → Env (List.replicate ks.length (.array .word) ++ Γ)
+  | [], env => env
+  | k :: ks, env => .cons (t := .array .word) tables[k] (Env.withTables tables ks env)
+
+theorem paramMode_tables (n : Nat) (ps : List Ty) (ms : List Mode) (i : Nat) :
+    paramMode (List.replicate n (.array .word) ++ ps) ms (i + n) = paramMode ps (ms.drop n) i := by
+  induction n generalizing ms with
+  | zero => rfl
+  | succ n ih =>
+    rw [show i + (n + 1) = (i + n) + 1 by omega]
+    simp only [paramMode, List.replicate_succ, List.cons_append, paramModes, List.getD_cons_succ]
+    have := ih ms.tail
+    simp only [paramMode] at this
+    rw [this, List.drop_tail]
+
+theorem paramMode_tables_lt (n : Nat) (ps : List Ty) (ms : List Mode)
+    (hB : (ms.take n).all (· == .borrowed) = true) (i : Nat) (hi : i < n) :
+    paramMode (List.replicate n (.array .word) ++ ps) ms i = .borrowed := by
+  induction n generalizing ms i with
+  | zero => omega
+  | succ n ih =>
+    simp only [paramMode, List.replicate_succ, List.cons_append, paramModes]
+    cases ms with
+    | nil =>
+      cases i with
+      | zero => rfl
+      | succ i =>
+        simp only [List.getD_cons_succ, List.tail_nil]
+        have := ih [] (by simp) i (by omega)
+        simpa [paramMode] using this
+    | cons m ms =>
+      simp only [List.take_succ_cons, List.all_cons, Bool.and_eq_true, beq_iff_eq] at hB
+      cases i with
+      | zero => simp [Ty.paramMode, hB.1]
+      | succ i =>
+        simp only [List.getD_cons_succ, List.tail_cons]
+        have := ih ms hB.2 i (by omega)
+        simpa [paramMode] using this
+
+theorem Env.withTables_rep {tables : List (Array UInt64)} {Γ : List Ty} :
+    (ks : List (Fin tables.length)) → {modes : Nat → Mode} →
+    (∀ i < ks.length, modes i = .borrowed) → {heap : Heap} → {store : Store Unit} →
+    {ws : List Value} → {env : Env Γ} →
+    (∀ k ∈ ks, heap.Borrowed store (tableAddr tables k.val) tables[k]) →
+    Env.Rep (fun i => modes (i + ks.length)) heap store ws env →
+    Env.Rep modes heap store
+      ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+      (Env.withTables tables ks env)
+  | [], _, _, _, _, _, _, _, h => h
+  | k :: ks, modes, hB, heap, store, ws, env, hT, h => by
+    refine ⟨[.i64 (tableAddr tables k.val)],
+      (ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws,
+      rfl, ⟨_, rfl, ?_⟩, ?_⟩
+    · rw [hB 0 (by simp)]
+      exact hT k (by simp)
+    · exact Env.withTables_rep ks (modes := fun i => modes (i + 1))
+        (fun i hi => hB (i + 1) (by simp; omega)) (fun k' hk => hT k' (by simp [hk])) h
+
+theorem Env.withTables_moves {tables : List (Array UInt64)} {Γ : List Ty} :
+    (ks : List (Fin tables.length)) → {modes : Nat → Mode} →
+    (∀ i < ks.length, modes i = .borrowed) → {ws : List Value} → {env : Env Γ} →
+    Env.moves modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+        (Env.withTables tables ks env) =
+      Env.moves (fun i => modes (i + ks.length)) ws env
+  | [], _, _, _, _ => rfl
+  | k :: ks, modes, hB, ws, env => by
+    simp only [List.map_cons, List.cons_append]
+    rw [show (Value.i64 (tableAddr tables k.val) ::
+        ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)) =
+        [Value.i64 (tableAddr tables k.val)] ++
+          ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws) from rfl]
+    show Env.moves modes ([Value.i64 (tableAddr tables k.val)] ++
+        ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws))
+        (.cons (t := .array .word) tables[k] (Env.withTables tables ks env)) = _
+    rw [Env.moves_cons rfl, hB 0 (by simp), List.nil_append]
+    exact Env.withTables_moves ks (modes := fun i => modes (i + 1))
+      (fun i hi => hB (i + 1) (by simp; omega))
+
+theorem Env.withTables_reads {tables : List (Array UInt64)} {Γ : List Ty} :
+    (ks : List (Fin tables.length)) → {modes : Nat → Mode} →
+    (∀ i < ks.length, modes i = .borrowed) → {ws : List Value} → {env : Env Γ} →
+    Env.reads modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+        (Env.withTables tables ks env) =
+      (ks.map fun k : Fin tables.length =>
+          ((tableAddr tables k.val).toNat, 8 * (tables[k].size + 1))) ++
+        Env.reads (fun i => modes (i + ks.length)) ws env
+  | [], _, _, _, _ => rfl
+  | k :: ks, modes, hB, ws, env => by
+    simp only [List.map_cons, List.cons_append]
+    rw [show (Value.i64 (tableAddr tables k.val) ::
+        ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)) =
+        [Value.i64 (tableAddr tables k.val)] ++
+          ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws) from rfl]
+    show Env.reads modes ([Value.i64 (tableAddr tables k.val)] ++
+        ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws))
+        (.cons (t := .array .word) tables[k] (Env.withTables tables ks env)) = _
+    rw [Env.reads_cons rfl, hB 0 (by simp)]
+    rw [Env.withTables_reads ks (modes := fun i => modes (i + 1))
+      (fun i hi => hB (i + 1) (by simp; omega))]
+    rfl
+
+/-- `i64.const` of each word of `addrs`, in order, pushes the words. -/
+theorem wp_constI64s {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
+    {rest : Program} : (addrs : List UInt64) → (s : Locals) →
+    wp m rest Q store { s with values := (addrs.map Value.i64).reverse ++ s.values } host →
+    wp m (addrs.map Instruction.constI64 ++ rest) Q store s host
+  | [], s, h => by simpa using h
+  | a :: as, s, h => by
+    simp only [List.map_cons, List.cons_append, wp_constI64_cons]
+    refine wp_constI64s as _ ?_
+    simpa using h
+
+/-- A wrapper at position `e` calls its callee with the tables at their addresses and its own
+arguments, and so computes the callee's meaning at the tables, from a store that holds the tables
+apart from the blocks that the arguments move.  It may trap where the callee may. -/
+theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
+    {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
+    (hCalls : Calls m funs) {e : Nat}
+    (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+      w.params w.result w.depth w.callee.callIndex e)) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) (w.aborts || w.depth) m e
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) := by
+  intro host store heap ws args hAt hTables hRep hSep hCap
+  have hShift : (fun i => paramMode (List.replicate w.tables.length (.array .word) ++ w.params)
+      w.modes (i + w.tables.length)) = paramMode w.params (w.modes.drop w.tables.length) :=
+    funext fun i => paramMode_tables _ _ _ i
+  have hB : ∀ i < w.tables.length,
+      paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes i =
+        .borrowed :=
+    fun i hi => paramMode_tables_lt _ _ _ w.borrowed i hi
+  have hT : ∀ k ∈ w.tables, heap.Borrowed store (tableAddr tables k.val) tables[k] := fun k hk =>
+    (hTables _ (List.mem_map.mpr ⟨k, hk, rfl⟩)).1
+  have hRep' := Env.withTables_rep w.tables hB hT (by rw [hShift]; exact hRep)
+  have hMoves := Env.withTables_moves (tables := tables) w.tables hB (ws := ws) (env := args)
+  have hReads := Env.withTables_reads (tables := tables) w.tables hB (ws := ws) (env := args)
+  rw [hShift] at hMoves hReads
+  have hSep' : Separate store
+      (Env.moves (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
+        ((w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+        (Env.withTables tables w.tables args))
+      (Env.reads (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
+        ((w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+        (Env.withTables tables w.tables args)) := by
+    rw [hMoves, hReads]
+    refine ⟨hSep.1, fun r hr => ?_⟩
+    rcases List.mem_append.mp hr with hr | hr
+    · obtain ⟨k, hk, rfl⟩ := List.mem_map.mp hr
+      exact (hTables _ (List.mem_map.mpr ⟨k, hk, rfl⟩)).2
+    · exact hSep.2 r hr
+  have hLength : ws.length = widthSum w.params := hRep.length
+  have hRun := FunSpec.runs (hCalls w.callee) hm host hAt hRep' hSep' hCap (d := 0)
+    (fun _ => trivial) []
+  have hNum : (wrapperFunction (w.tables.map fun k => tableAddr tables k.val) w.params w.result
+      w.depth w.callee.callIndex e).numParams = widthSum w.params := by
+    simp only [wrapperFunction, Function.numParams, flatMap_types_length]
+  apply Runs.of_wp_entry_for (f := wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+      w.params w.result w.depth w.callee.callIndex e)
+    (by rw [hm.imports, List.length_nil, Nat.sub_zero]; exact he) (hImp := by simp [hm.imports])
+  rw [List.take_of_length_le (by rw [hNum, List.length_reverse, hLength]), List.reverse_reverse]
+  have hAddrs : (w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) =
+      (w.tables.map fun k => tableAddr tables k.val).map Value.i64 := by
+    simp only [List.map_map]; rfl
+  rw [hAddrs] at hRun
+  simp only [wrapperFunction, List.append_assoc, List.range_eq_range', flatMap_types_length,
+    ← hLength]
+  refine wp_constI64s _ _ ?_
+  refine wp_localGets ws 0 _ (fun i hi => by simp [Function.toLocals, hi]) ?_
+  have hStack : ws.reverse ++ ((((if w.depth then ([0] : List UInt64) else []) ++
+        (w.tables.map fun k : Fin tables.length => tableAddr tables k.val)).map
+          Value.i64).reverse ++
+        []) =
+      ((w.tables.map fun k : Fin tables.length => tableAddr tables k.val).map Value.i64 ++
+        ws).reverse ++ ((if w.depth then [Value.i64 0] else []) ++ []) := by
+    cases w.depth <;> simp [List.reverse_append]
+  rw [← hStack] at hRun
+  refine wp_call_runs hRun (TrapOK.of_msg fun _ => Iff.rfl) fun st' vs hPost => ?_
+  obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions⟩ := hPost
+  rw [wp_nil]
+  have hOut : out.length = w.result.width := by
+    have := hOwned.length; rwa [List.length_reverse] at this
+  have hTake : (out ++ []).take w.result.types.length = out := by
+    rw [List.append_nil]; exact List.take_of_length_le (by rw [Ty.types_length, hOut])
+  have hDrop : ws.reverse.drop (List.flatMap Ty.types w.params).length = [] :=
+    List.drop_of_length_le (by rw [List.length_reverse, flatMap_types_length, hLength])
+  dsimp only [Function.numParams]
+  rw [hTake, hDrop, List.append_nil]
+  exact ⟨heap', hAt', hOwned, hCaps, fun r hr hpos hA =>
+    hRegions r hr hpos (by rw [← hAddrs]; exact hMoves ▸ hA)⟩
+
+/-- The wrapper theorem for the `j`-th wrapper of a program with tables. -/
+theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
+    (hj : wrappers[j]? = some w) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) (w.aborts || w.depth) (compileWith prog tables wrappers)
+      (2 + S.length + prog.depthFuns.length + j)
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) :=
+  wrapper_correct (compileWith_runtime prog tables wrappers) w
+    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj)
+
+/-- `ImplementsTables` for a Lean function `F` on types whose representations agree with it, as
+`ImplementsA.transfer` states for `ImplementsA`. -/
+theorem ImplementsTables.transfer {α β γ δ : Type} {_ : Represent α} [Represent β]
+    {_ : Represent γ} [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
+    {tables : List (UInt64 × Array UInt64)}
+    (h : ImplementsTables aborts m entry f tables) (g : β → α) (F : β → δ)
+    (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.borrowed heap store vs (g y))
+    (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Separate store (Represent.moves store vs y) (Represent.reads store vs y) →
+        Separate store (Represent.moves store vs (g y)) (Represent.reads store vs (g y)))
+    (hMoves : ∀ heap store vs y, Represent.borrowed heap store vs y →
+      Represent.moves store vs (g y) = Represent.moves store vs y)
+    (hResult : ∀ heap store vs y, Represent.owned heap store vs (f (g y)) →
+      Represent.owned heap store vs (F y))
+    (hBlocks : ∀ store vs y,
+      Represent.blocks store vs (F y) = Represent.blocks store vs (f (g y))) :
+    ImplementsTables aborts m entry F tables := by
+  intro env store heap vs y hAt hT hY hSep' hCap
+  exact (h env store heap vs (g y) hAt (fun t ht => by
+      rw [hMoves _ _ _ _ hY]; exact hT t ht) (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
+    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions⟩ =>
+      ⟨heap', hAt', hResult _ _ _ _ hOwned, hCaps, fun r hr hpos hA => by
+        obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos (by rw [hMoves _ _ _ _ hY]; exact hA)
+        refine ⟨hb, hreg, ?_⟩
+        simp only [Represent.outside, hBlocks]
+        exact hout⟩
+
+theorem ImplementsTables.transferAgree {α β γ δ : Type} {ia : Represent α} {ib : Represent β}
+    {ic : Represent γ} {id : Represent δ} {aborts : Bool} {m : Module} {entry : Nat}
+    {f : α → γ} {tables : List (UInt64 × Array UInt64)}
+    (h : ImplementsTables aborts m entry f tables)
+    (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y)) (hArgs : Agree ib ia g)
+    (hResult : Agree id ic r) :
+    ImplementsTables aborts m entry F tables :=
+  ImplementsTables.transfer h g F (fun _ _ _ _ hy => (hArgs.borrowed _ _ _ _).mp hy)
+    (fun _ _ _ _ _ hs => by rw [← hArgs.moves, ← hArgs.reads]; exact hs)
+    (fun _ _ _ _ _ => (hArgs.moves _ _ _).symm)
+    (fun _ _ _ y hy => (hResult.owned _ _ _ _).mpr (hF y ▸ hy))
+    (fun _ _ y => by rw [hF]; exact hResult.blocks _ _ _)
+
+/-- The wrapper theorem in the form of Lean's instances, as `ImplementsA.lean` states it. -/
+theorem ImplementsTables.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts : Bool}
+    {m : Module} {entry : Nat} {f : Env ps → r.denote} {tables : List (UInt64 × Array UInt64)}
+    (h : @ImplementsTables _ _ (Env.represent ps ms) (Ty.represent r) aborts m entry f tables) :
+    @ImplementsTables _ _ (argsInst ps ms) r.leanInst aborts m entry
+      (fun y => f (Env.ofArgs ps ms y)) tables :=
+  @ImplementsTables.transfer _ _ _ _ (Env.represent ps ms) (argsInst ps ms) (Ty.represent r)
+    r.leanInst aborts m entry f tables h (Env.ofArgs ps ms) (fun y => f (Env.ofArgs ps ms y))
     (fun _ _ _ _ hy => (argsInst_borrowed ps ms).mp hy)
     (fun _ _ _ _ hy hS => by
       have hl := ((argsInst_borrowed ps ms).mp hy).length
