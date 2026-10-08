@@ -709,12 +709,63 @@ def entryFunction (params : List Ty) (result : Ty) (idx typeIdx : Nat) : Wasm.Fu
     results := result.types
     typeIdx := some typeIdx }
 
-/-- Globals 0 through 3 hold the allocator state: the bump pointer, which starts at the heap base
-4096, the free-list head, and the allocation and free counters.  Copied from `LeanExe.IR`. -/
-def runtimeGlobals : List GlobalDecl :=
-  (4096 :: List.replicate 3 0).map fun value =>
+/-- Globals 0 through 3 hold the allocator state: the bump pointer, which starts at `top`, the
+free-list head, and the allocation and free counters.  Copied from `LeanExe.IR`, where `top` is
+the heap base 4096. -/
+def runtimeGlobals (top : UInt64) : List GlobalDecl :=
+  (top :: List.replicate 3 0).map fun value =>
     { init := .i64 value, declaredType := some .i64, isMut := true,
       sourceInit := some [.constI64 value] }
+
+/-- The address of table `k` of `tables`.  Each table is an array of words, its length word and
+its words, and the tables follow one another from the heap base, 4096. -/
+def tableAddr (tables : List (Array UInt64)) (k : Nat) : UInt64 :=
+  UInt64.ofNat (4096 + 8 * ((tables.take k).map fun t => t.size + 1).sum)
+
+/-- The end of the tables, where the allocator's bump pointer starts. -/
+def tablesEnd (tables : List (Array UInt64)) : Nat :=
+  4096 + 8 * (tables.map fun t => t.size + 1).sum
+
+/-- The bytes of a word, the least significant first. -/
+def wordBytes (w : UInt64) : List UInt8 :=
+  (List.range 8).map fun i => (w >>> UInt64.ofNat (8 * i)).toUInt8
+
+/-- The data segments that write the tables at their addresses when the module is
+instantiated. -/
+def tableSegments (tables : List (Array UInt64)) : List DataSegment :=
+  tables.mapIdx fun k t =>
+    { offset := some (tableAddr tables k).toUInt32
+      bytes := (UInt64.ofNat t.size :: t.toList).flatMap wordBytes }
+
+/-- An exported entry that passes constant tables of words to function `callee` of the program.
+The callee's first parameters are borrowed arrays of words, one per table, which the entry fills
+with the addresses of the tables `tables`, and its other parameters are the entry's own. -/
+structure Wrapper (S : List Sig) (T : Nat) where
+  name : String
+  tables : List (Fin T)
+  params : List Ty
+  result : Ty
+  aborts : Bool
+  modes : List Mode
+  depth : Bool
+  callee : FVar S
+    ⟨List.replicate tables.length (.array .word) ++ params, result, aborts, modes, depth⟩
+  borrowed : (modes.take tables.length).all (· == .borrowed) = true
+
+def Wrapper.type (w : Wrapper S T) : FuncType :=
+  { params := w.params.flatMap Ty.types, results := w.result.types }
+
+/-- The code of a wrapper: it calls the function at `idx` with depth 0 when that function takes
+the call depth, the addresses `addrs` of the tables, and its own arguments. -/
+def wrapperFunction (addrs : List UInt64) (params : List Ty) (result : Ty) (depth : Bool)
+    (idx typeIdx : Nat) : Wasm.Function :=
+  let tys := params.flatMap Ty.types
+  { params := tys
+    locals := []
+    body := ((if depth then [0] else []) ++ addrs).map Instruction.constI64 ++
+      (List.range tys.length).map Instruction.localGet ++ [.call idx]
+    results := result.types
+    typeIdx := some typeIdx }
 
 /-- Parameter and result types of the runtime functions.  Copied from `LeanExe.IR`. -/
 def wordToWord : FuncType := { params := [.i64], results := [.i64] }
@@ -755,21 +806,32 @@ def Prog.exports (n : Nat) : {S : List Sig} → Prog S → List Export
   | _, .consRec f rest => rest.exports n ++
     [{ name := f.name, funcIdx := 2 + n + rest.depthFuns.length }]
 
-/-- The module of a program, each function exported under its name.  Functions 0 and 1 are the
-runtime's `alloc` and `release`, and the program's functions follow them, each with the type of
-its own index. -/
-def compile (prog : Prog S) : Module :=
-  let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes
+/-- The module of a program with constant tables `tables` and the wrappers `wrappers`, each
+function exported under its name.  Functions 0 and 1 are the runtime's `alloc` and `release`, the
+program's functions follow them, then the entries of the functions that take the call depth, and
+then the wrappers, each with the type of its own index.  Data segments write the tables from the
+heap base on, and the allocator's bump pointer starts after them. -/
+def compileWith (prog : Prog S) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) : Module :=
+  let n := 2 + S.length + prog.depthFuns.length
+  let types := [wordToWord, wordToNone] ++ prog.types ++ prog.entryTypes ++
+    wrappers.map Wrapper.type
   { funcs := [LeanExe.Runtime.allocFunction 0, LeanExe.Runtime.releaseFunction 1] ++
-      prog.functions ++ prog.entries S.length
+      prog.functions ++ prog.entries S.length ++
+      wrappers.mapIdx fun j w => wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+        w.params w.result w.depth w.callee.callIndex (n + j)
     exports := [{ name := "alloc", funcIdx := 0 }, { name := "release", funcIdx := 1 }] ++
-      prog.exports S.length
-    memory := some { pagesMin := 16, pagesMax := some 65535 }
-    globals := runtimeGlobals
+      prog.exports S.length ++ wrappers.mapIdx fun j w => { name := w.name, funcIdx := n + j }
+    memory := some { pagesMin := UInt32.ofNat (max 16 ((tablesEnd tables + 65535) / 65536))
+                     pagesMax := some 65535, data := tableSegments tables }
+    globals := runtimeGlobals (UInt64.ofNat (tablesEnd tables))
     types
     gcTypes := types.map fun type => { comp := .func type }
     globalExports := [("allocCount", 2), ("freeCount", 3)]
     memoryExports := [("memory", 0)] }
+
+/-- The module of a program without tables. -/
+def compile (prog : Prog S) : Module := compileWith prog [] []
 
 theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length := by
   induction prog with
@@ -777,23 +839,57 @@ theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length
   | cons f rest ih => simp [Prog.functions, ih]
   | consRec f rest ih => simp [Prog.functions, ih]
 
-theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length) :
-    (compile prog).funcs[2 + k]? = prog.functions[k]? := by
+theorem compileWith_funcs (prog : Prog S) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length) :
+    (compileWith prog tables wrappers).funcs[2 + k]? = prog.functions[k]? := by
   conv_lhs => rw [show 2 + k = k + 1 + 1 by omega]
-  simp only [compile, List.cons_append, List.nil_append, List.getElem?_cons_succ]
+  simp only [compileWith, List.cons_append, List.nil_append, List.getElem?_cons_succ,
+    List.append_assoc]
   rw [List.getElem?_append_left (by rw [prog.functions_length]; exact hk)]
+
+theorem compile_funcs (prog : Prog S) {k : Nat} (hk : k < S.length) :
+    (compile prog).funcs[2 + k]? = prog.functions[k]? :=
+  compileWith_funcs prog [] [] hk
 
 /-- The entry of the `j`-th function whose code takes the call depth follows the program's
 functions. -/
+theorem compileWith_entries (prog : Prog S) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {j idx : Nat} {params : List Ty} {result : Ty}
+    (hj : prog.depthFuns[j]? = some (idx, params, result)) :
+    (compileWith prog tables wrappers).funcs[2 + S.length + j]? =
+      some (entryFunction params result idx (2 + S.length + j)) := by
+  have hlt : j < prog.depthFuns.length := (List.getElem?_eq_some_iff.mp hj).1
+  simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]
+  rw [show 2 + S.length + j = (S.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
+    List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length]; omega),
+    prog.functions_length, Nat.add_sub_cancel_left,
+    List.getElem?_append_left (by simp [Prog.entries, hlt]), Prog.entries,
+    List.getElem?_mapIdx, hj, show S.length + j + 1 + 1 = 2 + S.length + j by omega]
+  rfl
+
 theorem compile_entries (prog : Prog S) {j idx : Nat} {params : List Ty} {result : Ty}
     (hj : prog.depthFuns[j]? = some (idx, params, result)) :
     (compile prog).funcs[2 + S.length + j]? =
-      some (entryFunction params result idx (2 + S.length + j)) := by
-  simp only [compile, List.cons_append, List.nil_append]
-  rw [show 2 + S.length + j = (S.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
+      some (entryFunction params result idx (2 + S.length + j)) :=
+  compileWith_entries prog [] [] hj
+
+/-- The `j`-th wrapper follows the entries. -/
+theorem compileWith_wrappers (prog : Prog S) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
+    (hj : wrappers[j]? = some w) :
+    (compileWith prog tables wrappers).funcs[2 + S.length + prog.depthFuns.length + j]? =
+      some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val) w.params w.result
+        w.depth w.callee.callIndex (2 + S.length + prog.depthFuns.length + j)) := by
+  simp only [compileWith, List.cons_append, List.nil_append, List.append_assoc]
+  rw [show 2 + S.length + prog.depthFuns.length + j =
+      (S.length + prog.depthFuns.length + j) + 1 + 1 by omega, List.getElem?_cons_succ,
     List.getElem?_cons_succ, List.getElem?_append_right (by rw [prog.functions_length]; omega),
-    prog.functions_length, Nat.add_sub_cancel_left, Prog.entries, List.getElem?_mapIdx, hj,
-    show S.length + j + 1 + 1 = 2 + S.length + j by omega]
-  rfl
+    prog.functions_length,
+    List.getElem?_append_right (by simp [Prog.entries]; omega),
+    show S.length + prog.depthFuns.length + j - S.length - (prog.entries S.length).length = j by
+      simp [Prog.entries]; omega,
+    List.getElem?_mapIdx, hj, Option.map_some,
+    show S.length + prog.depthFuns.length + j + 1 + 1 = 2 + S.length + prog.depthFuns.length + j by
+      omega]
 
 end Verified

@@ -27554,8 +27554,21 @@ without segments encodes to the same bytes as before.  `decode_encode` and `enco
 the new section, and a module with two segments decodes to itself, re-encodes to the same bytes,
 and passes `wasm-tools validate`.
 
+`compileWith prog tables wrappers` lays the word tables out from 4096, each as a length word and
+its words, writes them with one data segment each, and starts the bump pointer after them.  A
+wrapper is an exported function that calls a program function whose first parameters are borrowed
+arrays of words with the tables' addresses, pushed as `i64.const`, and then its own arguments.
+`compile prog` is `compileWith prog [] []`, so the bytes of existing modules do not change.
+`ImplementsA`'s condition sees the argument value but not the argument words, so it cannot state
+that the owned arguments lie apart from the tables.  The wrapper's theorem therefore uses
+`ImplementsTables`, a predicate in `Verified/Correct.lean` with `ImplementsA`'s premises and
+conclusion and two more premises: each table is a borrowed array at its address, and the blocks
+that the arguments move lie apart from it.  `wrapper_correct` proves it from the callee's
+`FunSpec`, and `ImplementsTables.transfer`, `transferAgree`, and `lean` carry it to Lean's types.
+Changing `ImplementsA` itself would have reached the older IR pipeline and its examples.
+
 - [x] Data section in the verified encoder.
-- [ ] Layout, entry wrapper, and theorem.
+- [x] Layout, wrapper code, `wrapper_correct`, and the transfer lemmas.
 - [ ] Reflector case, Trig on tables, and tests.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
