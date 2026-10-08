@@ -4,22 +4,23 @@ import Verified.Reflect.Command
 FreeBSD's `lib/msun/src` has it (`k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and
 `e_rem_pio2.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this
 notice).  An argument above `π/4` in magnitude is reduced by multiples of `π/2` to `y0 + y1` in
-`[-π/4, π/4]`, and the kernels evaluate fdlibm's minimax polynomials there; fdlibm states an error
+`[-π/4, π/4]`, and the kernels evaluate fdlibm's minimax polynomials there.  fdlibm states an error
 below one unit in the last place.  Each constant is written as the bit pattern that fdlibm's source
 gives beside its decimal value.  Lean's `Float.sin` is `@[extern "sin"]`, the C library's function,
-with no definition in Lean, so the compiler's theorem is about these definitions, and the tests
-compare them with the C library.
+with no definition in Lean, so the compiler's theorem is about these definitions.
 
 The reduction is fdlibm's special cases up to `9π/4` and its three-step Cody–Waite reduction
 below `2 ^ 20 · π/2`, and above that a Payne–Hanek reduction in word arithmetic, which reads the
-bits of `2/π` from a lookup function, so that no call allocates.  The reduction takes `|x|`, by
+bits of `2/π` and `π/2` from lookup functions, so that no call allocates.  The reduction takes `|x|`, by
 `sin (-x) = -sin x` and `cos (-x) = cos x`, so its quadrant count is a word, where fdlibm reduces
-`x` itself with a signed count. -/
+`x` itself with a signed count.  `TrigAccuracy.lean` checks, in native Lean, the words of `2/π` and
+`π/2` and the results against a reference computed with Lean's integers. -/
 
 namespace Verified.Examples.Trig
 
 /-- fdlibm's `__kernel_sin`: `sin (x + y)` for `|x| ≤ π/4` with the tail `y`, which `tail` says
-is not zero.  The polynomial of degree 13 approximates `sin x / x` within `2 ^ -58`. -/
+is not zero.  The odd polynomial of degree 13 approximates `sin x`: its quotient by `x`, of degree
+12, is within `2 ^ -58` of `sin x / x`. -/
 def kernelSin (x y : Float) (tail : Bool) : Float :=
   let S1 := Float.ofBits 0xBFC5555555555549  -- -1.66666666666666324348e-01
   let S2 := Float.ofBits 0x3F8111111110F8A6  --  8.33333333332248946124e-03
@@ -95,10 +96,16 @@ def remMedium (x : Float) (ix : UInt64) : UInt64 × Float × Float :=
     else (n, y0, (r - y0) - w)
   else (n, y0, (r - y0) - w)
 
+/-- Word `k` of `π/2 · 2 ^ 127`, truncated to 128 bits: word 0 is the high word and word 1 the
+low word.  It is a lookup function, as `invPiWord` is, and `TrigAccuracy.lean` compares it with `π`
+computed from Machin's formula. -/
+def halfPiWord (k : UInt64) : UInt64 :=
+  if k == 0 then 0xC90FDAA22168C234 else 0xC4C6628B80DC1CD1
+
 /-- Word `k` of the binary digits of `2/π`, `2/π = Σ (invPiWord k) · 2 ^ (-64 k)`: word 0 is the
 integer part, 0, and words 1 to 19, 1216 bits, are fdlibm's table `ipio2` (`k_rem_pio2.c`) regrouped
-from 24-bit chunks, which an independent computation of `2/π` from Machin's formula confirms.  A
-lookup function, where a table in memory would allocate. -/
+from 24-bit chunks.  The words are a lookup function because a table in memory would allocate.
+`TrigAccuracy.lean` compares them with `2/π` computed from Machin's formula. -/
 def invPiWord (k : UInt64) : UInt64 :=
   if k == 1 then 0xA2F9836E4E441529 else if k == 2 then 0xFC2757D1F534DDC0
   else if k == 3 then 0xDB6295993C439041 else if k == 4 then 0xFE5163ABDEBBC561
@@ -171,10 +178,10 @@ Bit", 1992: the count `n` of `π/2` and `x - n · π/2` as `y0 + y1`.  With `x =
 of `2/π` before bit `e - 1` contribute multiples of 4 to `x · 2/π`, so the low 192 bits of
 `m · z`, for the 192-bit window `z` of `2/π` from bit `e - 1` on, are `x · 2/π` modulo 4 with 190
 bits of fraction, exact to `2 ^ -137` since the window omits less than `2 ^ -190` per unit of
-`m < 2 ^ 53`.  The fraction is rounded to the nearer quadrant, shifted to its leading bit, which
-is the `2 ^ -62` bit or a higher one, at the double closest to a multiple of `π/2` the lowest, and
-multiplied by `π/2` as a 128-bit number.  The top 106 bits of the product become `y0 + y1` by an
-exact two-sum. -/
+`m < 2 ^ 53`.  The fraction is rounded to the nearer quadrant and shifted to its leading bit.
+That bit is the `2 ^ -62` bit or a higher one, and the double closest to a multiple of `π/2` gives
+the lowest.  The shifted fraction is multiplied by `π/2` as a 128-bit number, and the top 106 bits
+of the product become `y0 + y1` by an exact two-sum. -/
 def remLarge (x : Float) : UInt64 × Float × Float :=
   let b := x.toBits
   let m := (b &&& 0xFFFFFFFFFFFFF) ||| 0x10000000000000
@@ -198,8 +205,7 @@ def remLarge (x : Float) : UInt64 × Float × Float :=
     else (f2, w1, l2)
   let lz := if a2 != 0 then clz64 a2 else if a1 != 0 then 64 + clz64 a1 else 128 + clz64 a0
   let (t1, t0) := shiftTop a2 a1 a0 lz
-  -- `π/2 · 2 ^ 127`, from the same computation of `π`.
-  let (u1, u0) := mulTop t1 t0 0xC90FDAA22168C234 0xC4C6628B80DC1CD1
+  let (u1, u0) := mulTop t1 t0 (halfPiWord 0) (halfPiWord 1)
   -- The remainder is `(u1 : u0) · 2 ^ (-125 - lz)`, with its leading bit at `p = 64 + k`.
   let k := if u1 >>> 63 == 1 then (63 : UInt64) else 62
   let hi := u1 >>> (k - 52)
@@ -259,7 +265,7 @@ def cos (x : Float) : Float :=
     else if q == 2 then -kernelCos y0 y1
     else kernelSin y0 y1 true
 
-verified_compile compiled := [kernelSin, kernelCos, remSmall, remMedium, invPiWord, mul64, clz64,
-  window, mulTop, shiftTop, remLarge, remPio2, sin, cos]
+verified_compile compiled := [kernelSin, kernelCos, remSmall, remMedium, halfPiWord, invPiWord,
+  mul64, clz64, window, mulTop, shiftTop, remLarge, remPio2, sin, cos]
 
 end Verified.Examples.Trig

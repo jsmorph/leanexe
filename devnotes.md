@@ -27400,8 +27400,8 @@ the operation order, the thresholds, and the quadrant tables match, and reducing
 expanded into its pairs and proves by `cases` on each component.
 
 - [x] Step 1: `kernelSin`, `kernelCos`, fdlibm's special cases up to `9π/4`, and the three-step
-  Cody–Waite reduction below `2 ^ 20 · π/2`; larger arguments give NaN.  355,526 results lie within
-  one unit of glibc's, 3,639 of them one unit apart.
+  Cody–Waite reduction below `2 ^ 20 · π/2`, with NaN for larger arguments until step 3.  355,526
+  results lie within one unit of glibc's, 3,639 of them one unit apart.
 - [ ] Step 2, deferred: array literals in the verified compiler.  A fresh review of the design
   (`Expr.lit`, one allocation and constant stores, reflected from `#[…]`) adopted it, and found
   that a literal allocates, so a table read from one would turn `sin` and `cos` into
@@ -27415,7 +27415,7 @@ expanded into its pairs and proves by `cases` on each component.
   turned into `y0 + y1` by an exact two-sum.  The 19 words of `2/π` come from fdlibm's `ipio2`
   table and agree with an independent computation from Machin's formula.  glibc's `cos` of
   `6381956970095103 · 2 ^ 797`, the double closest to a multiple of `π/2`, is 8 units from the
-  correctly rounded value, which an exact reduction with a 2,000-bit `π` gives and `Trig.cos`
+  correctly rounded value, which an exact reduction with a 2,400-bit `π` gives and `Trig.cos`
   matches, so `TrigAccuracy.lean` checks that argument and 300 huge ones, with their negatives,
   against an exact reference in Lean's integers: all 1,220 results lie within one unit, 42 of them
   one unit from the correctly rounded value.  Against glibc, 360,002 results lie within one unit.
@@ -27431,6 +27431,38 @@ expanded into its pairs and proves by `cases` on each component.
   strong, all corrected.  `Verified.lean`, the root that `lake build Verified` builds, lacked
   `Recursion`, `Fields`, `Trig`, and `Fourier`, so the suite could read stale object files.  The
   root now imports them.
+
+### Review of `sin`, `cos`, and the Fourier demo
+
+A fresh review of the three commits found eight problems.  In the reflector, a match on a pair
+built in place took the pair apart along any pattern, so `let (x, y, z) := (a, f b)` computed
+`f b` once for each component it held, and a pattern of two variables substituted each component
+into the body once per use.  Such a match now becomes `let` bindings of the components when the
+pattern binds two variables, and any other pattern takes apart a variable bound to the pair.  The
+equation of a match and its alternative needed no `cases`: `rfl` with a variable for the
+discriminant closes it, since the kernel's structure eta lets the match reduce on a variable.
+`TrigAccuracy.lean` compared `Trig.sin` and `Trig.cos` with glibc and justified a distance of one
+unit by glibc's error bound, which glibc's `cos` exceeds by 8 units at the hard argument.  The
+check now compares every result with the reference in Lean's integers, at 70 Taylor terms, whose
+remainder lies below `2 ^ -300` for `|r| ≤ π/4`, and reports glibc's distance for information.  It
+also compares the words of `Trig.invPiWord` and of the new lookup function `Trig.halfPiWord`, which
+replaces the literal `π/2 · 2 ^ 127` in `remLarge`, with `2/π` and `π/2` from the 2,400-bit `π`.
+The power spectrum check in `FourierAccuracy.lean` used an absolute tolerance of `10 ^ -9` and now
+uses the summation tolerance `τ` on the magnitude.  The other findings concerned the
+documentation: the Fourier header said that the allocating functions trap only when memory runs
+out, where their theorem allows a trap on any input, the README's instructions omitted the
+accuracy checks, and several sentences of `Trig.lean` were fragments or wrong, among them the
+degree of the polynomial for `sin x / x`, which is 12.
+
+- [x] Reflector: `let` bindings for a pair built in place with a two-variable pattern, `rfl` in
+  `casesEq`, and `casesRefl` removed.
+- [x] `Pairs.lean`: patterns nested on the left and on the right, a wildcard, a pair kept whole, a
+  component used twice, a call inside a pair built in place, and a triple that holds arrays.
+- [x] `Trig.halfPiWord`, the constants check, the reference for every argument, and the power
+  spectrum by `τ`.
+- [x] Tests: 9,832 cases pass.  The 360,022 trigonometric results lie within one unit of the
+  reference, 7,394 of them one unit off, and glibc's within 8 units, 313 of them unequal.  The 20
+  Fourier signals pass.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

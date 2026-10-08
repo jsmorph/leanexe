@@ -9,7 +9,9 @@ itself under `==`, and a constant 1 gives `n` at frequency 0.  With
 gives at most `τ` elsewhere, a single frequency gives `n` there and nearly 0 elsewhere within `τ`,
 the result agrees within `τ` with a transform whose factors come from the C library's `cos` and
 `sin`, `inverse` undoes `dft` within `2 τ`, and Parseval's identity holds within
-`4 τ √(n Σ |x j| ²)`.  The power spectrum of a real wave of 64 samples is checked within `10 ^ -9`.
+`4 τ √(n Σ |x j| ²)`.  For the power spectrum `P` of the real wave `sin (2 π · 5 j / 64)`,
+`√(P k)` lies within `2 τ` of the magnitude 32 at frequency 5 and of 0 elsewhere, which covers the
+bound `√2 τ` on the magnitude from `τ` on each part and the roundings of the squares and the root.
 `τ` follows the error bound of recursive summation, `n` roundings in a sum of `n` terms, with room
 for the factors' errors, and is a test tolerance, not a proved bound.  The check exits with an
 error at the first failure.  Run with `lake env lean --run`. -/
@@ -99,8 +101,9 @@ def main : IO UInt32 := do
     let samples := (Array.range 64).map fun j =>
       Float.sin (6.283185307179586 * ((j * 5 % 64).toFloat / 64.0))
     let P := Fourier.powerSpectrum samples
+    let t := tolerance (samples.flatMap fun v => #[v, 0.0])
     check "the power spectrum of a real wave" (P.size == 33 &&
-      (List.range 33).all fun k => (P[k]! - if k == 5 then 1024.0 else 0.0).abs ≤ 1e-9)
+      (List.range 33).all fun k => (Float.sqrt P[k]! - if k == 5 then 32.0 else 0.0).abs ≤ 2.0 * t)
     IO.println s!"fourier accuracy: {count + 2} signals behave as their transforms should"
     return 0
   catch e =>
