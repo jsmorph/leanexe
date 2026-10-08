@@ -1,5 +1,6 @@
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Build
+import LeanExe.Dialect.InsertErase
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
@@ -291,10 +292,13 @@ elements of the array variable `x` as a word, and `get x i` is element `i` of `x
 type's default value when `i` is not below the size, as Lean's `x[i.toNat]!` gives.
 `build count elem` is `LeanExe.build`: the array of `count` elements whose element `i` is the
 value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
-element `i` replaced by `v`, or `x` when `i` is not below the size.  `push x v` is `x.push v`, and
-`append x y` is `x ++ y`.  `float bits` is the float with the bit pattern `bits`, `fbin`,
-`funary`, and `fcmp` are the operations and comparisons of floats, and `toFloat` and `toWord`
-convert between words and floats.  `mk first second` is the tuple of two elements, and
+element `i` replaced by `v`, or `x` when `i` is not below the size.  `push x v` is `x.push v`,
+`append x y` is `x ++ y`, `insertAt x i v` is `LeanExe.insertAt`, the array of `x` with `v`
+inserted at position `i`, or `x` when `i` is past the size, and `eraseAt x i` is
+`LeanExe.eraseAt`, the array of `x` without element `i`, or `x` when `i` is not below the size.
+`float bits` is the float with the bit pattern `bits`, `fbin`, `funary`, and `fcmp` are the
+operations and comparisons of floats, and `toFloat` and `toWord` convert between words and
+floats.  `mk first second` is the tuple of two elements, and
 `proj x p` is the component at path `p` of the tuple variable `x`. -/
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
@@ -320,6 +324,9 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       Expr S Γ (.array e)
   | push (x : Var Γ (.array e)) (v : Expr S Γ (.elem e)) : Expr S Γ (.array e)
   | append (x y : Var Γ (.array e)) : Expr S Γ (.array e)
+  | insertAt (x : Var Γ (.array e)) (i : Expr S Γ .word) (v : Expr S Γ (.elem e)) :
+      Expr S Γ (.array e)
+  | eraseAt (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.array e)
   | float (bits : UInt64) : Expr S Γ .float
   | fbin (op : FBinOp) (left right : Expr S Γ .float) : Expr S Γ .float
   | funary (op : FUnOp) (e : Expr S Γ .float) : Expr S Γ .float
@@ -380,6 +387,9 @@ def Expr.denote (funs : Funs S) :
   | _, _, .set x i v, env => (env.get x).set! (i.denote funs env).toNat (v.denote funs env)
   | _, _, .push x v, env => (env.get x).push (v.denote funs env)
   | _, _, .append x y, env => env.get x ++ env.get y
+  | _, _, .insertAt x i v, env =>
+    LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env)
+  | _, _, .eraseAt x i, env => LeanExe.eraseAt (env.get x) (i.denote funs env)
   | _, _, .float bits, _ => Float.ofBits bits
   | _, _, .fbin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .funary op e, env => op.apply (e.denote funs env)
@@ -419,7 +429,8 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
   | _, _, .size _ => false
   | _, _, .get _ i => i.aborts
-  | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _ => true
+  | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
+  | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
 
 /-- Whether an expression calls a function whose code takes the call depth. -/
 def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
@@ -443,7 +454,8 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .size _ => false
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
-  | _, _, .set _ i v => i.depthCalls || v.depthCalls
+  | _, _, .set _ i v | _, _, .insertAt _ i v => i.depthCalls || v.depthCalls
+  | _, _, .eraseAt _ i => i.depthCalls
   | _, _, .push _ v => v.depthCalls
   | _, _, .append _ _ => false
 
@@ -470,7 +482,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .size x, i => i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
-  | _, _, .set x k v, i => i == x.index || k.uses i || v.uses i
+  | _, _, .set x k v, i | _, _, .insertAt x k v, i => i == x.index || k.uses i || v.uses i
+  | _, _, .eraseAt x k, i => i == x.index || k.uses i
   | _, _, .push x v, i => i == x.index || v.uses i
   | _, _, .append x y, i => i == x.index || i == y.index
 
@@ -512,7 +525,8 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
     count.placeArgs && init.placeArgs && cond.placeArgs && body.placeArgs
   | _, _, .get _ i => i.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
-  | _, _, .set _ i v => i.placeArgs && v.placeArgs
+  | _, _, .set _ i v | _, _, .insertAt _ i v => i.placeArgs && v.placeArgs
+  | _, _, .eraseAt _ i => i.placeArgs
   | _, _, .push _ v => v.placeArgs
   | _, _, .append _ _ => true
 

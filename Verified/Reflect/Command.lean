@@ -32,7 +32,7 @@ taken apart with `.1`, `.2`, or `match`, structures built with their constructor
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
 `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
 `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
-`xs ++ ys`, `LeanExe.build`, calls of the listed definitions before it, and, in a recursive
+`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, calls of the listed definitions before it, and, in a recursive
 definition, calls of itself. -/
 
 namespace Verified.Reflect
@@ -790,8 +790,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
   | ``Float.toBits, #[x] => reflectConv ``Expr.toWord ``toWord_eq (mkConst ``ToWord.toBits) x .word
   | ``Float.abs, #[x] => reflectFUnary (mkConst ``FUnOp.abs) x
   | ``Min.min, #[α, inst, a, b] | ``Max.max, #[α, inst, a, b] =>
-    unless ← isFloat α do throwError "verified_compile: unsupported {fn} on {α}"
-    -- `min` and `max` are `if a ≤ b`, with operands that are not variables bound first.
+    unless (← isFloat α) || (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: unsupported {fn} on {α}"
+    -- `min` and `max` on floats and words are `if a ≤ b`, with operands that are not variables
+    -- bound first.
     let bind := [false, false, !(← projReduce a).isFVar, !(← projReduce b).isFVar]
     if bind.any id then
       return ← reflectAs (← bindArgs e.getAppFn [α, inst, a, b] bind #[] #[]) e
@@ -893,6 +895,34 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let src ← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some vs]
     if se.flat.isNone then return (src, ← mkAppM ``push_eq #[x, hv], .array el)
     return (src, ← mkAppM ``push_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, hv], .array el)
+  | ``LeanExe.insertAt, insertArgs@#[α, xs, k, v] =>
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
+    let xs ← projReduce xs
+    unless xs.isFVar do
+      return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (insertArgs.set! 1 a))) e
+    let (x, t) ← varOf c xs
+    unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
+    let (is, hi, _) ← reflect c k
+    let (vs, hv, _) ← reflect c v
+    let src ← mkAppOptM ``Expr.insertAt #[some c.sigs, some c.ctx, none, some x, some is, some vs]
+    if se.flat.isNone then return (src, ← mkAppM ``insertAt_eq #[x, hi, hv], .array el)
+    return (src, ← mkAppM ``insertAt_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, hi, hv],
+      .array el)
+  | ``LeanExe.eraseAt, eraseArgs@#[α, xs, k] =>
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
+    let xs ← projReduce xs
+    unless xs.isFVar do
+      return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (eraseArgs.set! 1 a))) e
+    let (x, t) ← varOf c xs
+    unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
+    let (is, hi, _) ← reflect c k
+    let src ← mkAppOptM ``Expr.eraseAt #[some c.sigs, some c.ctx, none, some x, some is]
+    if se.flat.isNone then return (src, ← mkAppM ``eraseAt_eq #[x, hi], .array el)
+    return (src, ← mkAppM ``eraseAt_map_eq #[← se.fn α, x, xs, ← arrayEq x xs, hi], .array el)
   | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
     let .array el ← tyOf α | throwError "verified_compile: unsupported term {e}"
     let xs ← projReduce xs

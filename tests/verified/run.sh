@@ -35,7 +35,9 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Recursion:compiled.module:recursion \
     Verified.Examples.Fields:compiled.module:fields \
     Verified.Examples.Trig:compiled.module:trig \
-    Verified.Examples.Fourier:compiled.module:fourier; do
+    Verified.Examples.Fourier:compiled.module:fourier \
+    Verified.Examples.Insert:compiled.module:insert \
+    Verified.Examples.Clob:compiled.module:clob; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"

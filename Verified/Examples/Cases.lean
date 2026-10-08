@@ -21,6 +21,8 @@ import Verified.Examples.Recursion
 import Verified.Examples.Fields
 import Verified.Examples.Trig
 import Verified.Examples.Fourier
+import Verified.Examples.Insert
+import Verified.Examples.Clob
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -170,6 +172,35 @@ open Records in
 /-- Arrays of structures: empty, one element, the special structures, and built ones. -/
 def conservedArrays : List (Array Conserved) :=
   [#[], #[⟨1.0, 2.0, 3.0⟩], conserveds.toArray, Grids.ramp 10]
+
+/-! Order books for `Clob`: books of up to eight levels with descending prices, mismatched sides,
+and a level of the largest size, with command streams of the three kinds near the book's prices. -/
+
+def clobBelow (n i : Nat) : UInt64 := UInt64.ofNat ((i * 2654435761 + 7) % n)
+
+def clobBook (n top seed : Nat) : Array UInt64 × Array UInt64 :=
+  ((List.range n).toArray.map fun k => UInt64.ofNat (top - 3 * k - (seed + k) % 3),
+    (List.range n).toArray.map fun k => 1 + clobBelow 20 (seed + 5 * k))
+
+def clobBooks : List (Array UInt64 × Array UInt64) :=
+  [(#[], #[]), (#[100], #[5]), (#[105, 102, 101, 100, 98], #[4, 4, 6, 7, 10]), (#[100, 98], #[5]),
+    (#[100], #[5, 6]), (#[100, 99], #[18446744073709551615, 2])] ++
+    (List.range 30).map fun i => clobBook (i % 9) (200 + 7 * i) i
+
+/-- An output array of up to two words, to which `stepCommand` and `runOut` append. -/
+def clobOutputs (i : Nat) : Array UInt64 :=
+  (List.range (i % 3)).toArray.map fun k => UInt64.ofNat (7 + k)
+
+def clobCommands (ps : Array UInt64) (count seed : Nat) : Array UInt64 :=
+  ((List.range count).flatMap fun j =>
+    let near := if ps.isEmpty then 100 else ps[(seed + j) % ps.size]!
+    [clobBelow 3 (seed + 7 * j), if (seed + j) % 4 = 0 then near + 1 else near,
+      1 + clobBelow 9 (seed + 3 * j)]).toArray
+
+def pairOut (r : Array UInt64 × Array UInt64) : String := s!"{arrayOut r.1} {arrayOut r.2}"
+
+def tripleOut (r : Array UInt64 × Array UInt64 × Array UInt64) : String :=
+  s!"{arrayOut r.1} {arrayOut r.2.1} {arrayOut r.2.2}"
 
 /-! The host's words for enumerations and a calculator, by their `Flat` instances. -/
 
@@ -497,6 +528,77 @@ def main : IO Unit := do
       IO.println s!"elements|flip|array-u64|{a} i64:{i}|{boolArrayOut (Elements.flip bs i)}|1|1"
   for n in [0, 1, 2, 10, 30] do
     IO.println s!"elements|sieve|array-u64|i64:{n}|{boolArrayOut (Elements.sieve n)}|1|1"
+  -- The order book.
+  let two := "list:array-u64,array-u64"
+  let three := "list:array-u64,array-u64,array-u64"
+  for (i, (p, s)) in (List.range clobBooks.length).zip clobBooks do
+    let (ap, as) := (arrayArg p, arrayArg s)
+    let q := clobBelow 60 i
+    let (filled, cost) := Clob.marketBuy p s q
+    IO.println s!"clob|marketBuy|list:i64,i64|{ap} {as} i64:{q}|{filled} {cost}"
+    for k in [0, p.size / 2, p.size, p.size + 2].map UInt64.ofNat do
+      let a := clobBelow 8 (i + k.toNat)
+      IO.println s!"clob|fillLevel|array-u64|{as} i64:{k} i64:{a}|{arrayOut (Clob.fillLevel s k a)}"
+      let r := arrayOut (Clob.fillTwice s k a 1)
+      IO.println s!"clob|fillTwice|array-u64|{as} i64:{k} i64:{a} i64:1|{r}"
+      IO.println s!"clob|fillKeep|{two}|{as} i64:{k} i64:{a}|{pairOut (Clob.fillKeep s k a)}"
+      let r := pairOut (Clob.insertLevel p s k 97 3)
+      IO.println s!"clob|insertLevel|{two}|{ap} {as} i64:{k} i64:97 i64:3|{r}"
+      IO.println s!"clob|setLevel|{two}|{ap} {as} i64:{k} i64:9|{pairOut (Clob.setLevel p s k 9)}"
+      IO.println s!"clob|removeLevel|{two}|{ap} {as} i64:{k}|{pairOut (Clob.removeLevel p s k)}"
+    let top := if p.isEmpty then [] else [p[0]!, p[p.size - 1]!, p[0]! + 1]
+    for price in [0, 99, 100, 150, 18446744073709551615] ++ top do
+      IO.println s!"clob|findLevel|i64|{ap} i64:{price}|{Clob.findLevel p price}"
+      IO.println s!"clob|depth|i64|{ap} {as} i64:{price}|{Clob.depth p s price}"
+      let r := pairOut (Clob.addBid p s price 4)
+      IO.println s!"clob|addBid|{two}|{ap} {as} i64:{price} i64:4|{r}"
+      let c := clobBelow 12 (i + price.toNat)
+      let r := pairOut (Clob.cancelBid p s price c)
+      IO.println s!"clob|cancelBid|{two}|{ap} {as} i64:{price} i64:{c}|{r}"
+      for kind in [0, 1, 2] do
+        let r := pairOut (Clob.applyCommand p s kind price 5)
+        IO.println s!"clob|applyCommand|{two}|{ap} {as} i64:{kind} i64:{price} i64:5|{r}"
+        let o := clobOutputs i
+        let r := tripleOut (Clob.stepCommand p s o kind price 5)
+        let args := s!"{ap} {as} {arrayArg o} i64:{kind} i64:{price} i64:5"
+        IO.println s!"clob|stepCommand|{three}|{args}|{r}"
+    -- Command streams, the last with a trailing partial command, which the runs ignore.
+    for cs in [0, 1, 4, 13].map (clobCommands p · i) ++ [clobCommands p 2 i ++ #[0, 5]] do
+      let o := clobOutputs i
+      let r := pairOut (Clob.runCommands p s cs)
+      IO.println s!"clob|runCommands|{two}|{ap} {as} {arrayArg cs}|{r}"
+      let r := tripleOut (Clob.runOut p s o cs)
+      IO.println s!"clob|runOut|{three}|{ap} {as} {arrayArg o} {arrayArg cs}|{r}"
+  -- Insertions and removals, out of range as well.
+  for xs in arrays do
+    let a := arrayArg xs
+    for i in [0, 1, 2, 5, 11, 12, 13, 99, 100, 101, 18446744073709551615] do
+      let r := arrayOut (Insert.insertParam xs i 7)
+      IO.println s!"insert|insertParam|array-u64|{a} i64:{i} i64:7|{r}|1|2"
+      IO.println s!"insert|eraseParam|array-u64|{a} i64:{i}|{arrayOut (Insert.eraseParam xs i)}|1|1"
+    let bound := 3 + Nat.log2 (xs.size + 1)
+    IO.println s!"insert|sortInsert|array-u64|{a}|{arrayOut (Insert.sortInsert xs)}|2|{bound}"
+    for v in [0, 1, 5, 255] do
+      IO.println s!"insert|removeAll|array-u64|{a} i64:{v}|{arrayOut (Insert.removeAll xs v)}|1|1"
+  for n in [0, 1, 3, 10] do
+    for i in [0, 1, 2, 3, 9, 10, 11, 18446744073709551615] do
+      let r := arrayOut (Insert.insertBuilt n i 7)
+      IO.println s!"insert|insertBuilt|array-u64|i64:{n} i64:{i} i64:7|{r}|1|2"
+      let r := arrayOut (Insert.eraseBuilt n i)
+      IO.println s!"insert|eraseBuilt|array-u64|i64:{n} i64:{i}|{r}|1|1"
+      let (k1, k2) := Insert.insertKeep n i 7
+      let kinds := "list:array-u64,array-u64"
+      IO.println s!"insert|insertKeep|{kinds}|i64:{n} i64:{i} i64:7|{arrayOut k1} {arrayOut k2}|2|2"
+      let t := Insert.pointTotal n i 2.5 9
+      IO.println s!"insert|pointTotal|i64|i64:{n} i64:{i} {floatArg 2.5} i64:9|{t}|0|2"
+  for us in conservedArrays do
+    let a := arrayArg (conservedWords us)
+    let u : Records.Conserved := ⟨4.0, -0.0, 0.0 / 0.0⟩
+    for i in [0, 1, 2, 3, 4, 10, 11, 18446744073709551615] do
+      let r := arrayOut (conservedWords (Insert.insertConserved us i u))
+      IO.println s!"insert|insertConserved|array-u64|{a} i64:{i} {conservedArg u}|{r}|1|2"
+      let r := arrayOut (conservedWords (Insert.eraseConserved us i))
+      IO.println s!"insert|eraseConserved|array-u64|{a} i64:{i}|{r}|1|1"
   for n in [0, 1, 5, 100] do
     IO.println s!"tuples|points|array-u64|i64:{n}|{arrayOut (pointWords (Tuples.points n))}|1"
     IO.println s!"tuples|flags|array-u64|i64:{n}|{arrayOut (nestedWords (Tuples.flags n))}|1"

@@ -27,8 +27,9 @@ body that calls functions and releases temporaries, carries the proofs of the co
 | `runCommands_append` | Running a command stream in two chunks, the first of whole commands, gives the book of running it at once. |
 | `runOut_book` | The book that `runOut` leaves is the book of `runCommands`. |
 
-The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  The last two theorems concern the Lean program alone, and
+The proofs are in [`Verify.lean`](Verify.lean), with the lemmas about command streams in
+[`Commands.lean`](Commands.lean), and they use only the axioms `propext`, `Classical.choice`, and
+`Quot.sound`.  The last two theorems concern the Lean program alone, and
 since `clob_bytes` states that the module computes `runCommands` and `runOut`, they hold for its
 results.  [The manual's section on ownership](../../docs/manual.md#ownership) explains consumed and
 borrowed arguments, using `fillTuple` from this example.

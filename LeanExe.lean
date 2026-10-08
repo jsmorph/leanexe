@@ -4,6 +4,7 @@ import LeanExe.Compiler.Command
 import LeanExe.Compiler.Scalar
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Float32
+import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.RepeatWhile
 import LeanExe.Encoding

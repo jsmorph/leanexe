@@ -183,6 +183,17 @@ def copyIntoCode (src dst count index : Nat) : Program :=
       .wrapI64, .load64 0, .store64 0,
       .localGet index, .constI64 1, .addI64, .localSet index, .br 0]]]
 
+/-- The loop that moves the words of the array at the address in local `ptr` from the position in
+local `lo` up to the position in local `index` up by `k` words, from the top down, so that it reads
+each word before it overwrites it.  Local `index` counts down to the value of `lo`. -/
+def shiftUpCode (ptr lo index k : Nat) : Program :=
+  [.block 0 0 [.loop 0 0 [.localGet index, .localGet lo, .leUI64, .br_if 1,
+    .localGet index, .constI64 1, .subI64, .localSet index,
+    .localGet ptr, .localGet index, .constI64 (UInt64.ofNat (k + 1)), .addI64, .constI64 8,
+    .mulI64, .addI64, .wrapI64,
+    .localGet ptr, .localGet index, .constI64 1, .addI64, .constI64 8, .mulI64, .addI64,
+    .wrapI64, .load64 0, .store64 0, .br 0]]]
+
 /-- The instructions that copy the array whose address local `src` holds into a new array and
 push the new array's address.  Local `base` holds the length, `base + 1` the new address, and
 `base + 2` the index of the element being copied. -/
@@ -316,7 +327,8 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
   | _, _, .ite _ thenE elseE => (thenE.mode modes).join (elseE.mode modes)
   | _, _, .letE value body => body.mode (value.mode modes :: modes)
   | _, _, .call (g := g) _ _ => if g.result.scalar then .borrowed else .owned
-  | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _ => .owned
+  | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
+  | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => .owned
   | _, _, .pair first second => (first.mode modes).join (second.mode modes)
   | _, _, .letPair e body => body.mode (e.mode modes :: e.mode modes :: modes)
   | _, _, .loop _ init _ body =>
@@ -385,6 +397,8 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
     max i.width (max (1 + v.width) (1 + e.width + copyWidth (.array e)))
   | _, _, .push (e := e) _ v => max v.width (e.width + 7)
   | _, _, .append _ _ => 7
+  | _, _, .insertAt (e := e) _ i v => max i.width (max (1 + v.width) (e.width + 8))
+  | _, _, .eraseAt _ i => max i.width 8
   | _, _, .mk first second => max first.width second.width
   | _, _, .proj _ _ => 0
 
@@ -422,7 +436,18 @@ its own block, and any other is copied first.  `push` keeps the value's words fr
 and their count in local `base + k`, and `append` keeps the length of `y` in local `base`; both
 take the array `x` with `Var.roomCode`, which gives a block with room for the result, write the new
 words, and push the block's address.  `append` releases `y` after the copy when `y` is owned and
-dies there.  `mk` pushes its components' words in order, and `proj` loads the words of the
+dies there.  `insertAt` keeps the position in local `base`, the value's words from local
+`base + 1` on, and their count after them, takes the array with `Var.roomCode` for one more
+element, and then compares the position with the old size.  In range, it moves the words from the
+element's first word, which it keeps in the scratch local of the new length, to the old length up
+by the element's word count with `shiftUpCode` and writes the value's words there.  Out of range,
+it writes the old length back: `Var.roomCode` has then copied or moved the array, and it traps when
+the longer length would be `2 ^ 29` words or more, where Lean returns the array unchanged.
+`eraseAt` keeps the position in local `base`, the array as owned in local `base + 1`, its length
+in local `base + 2`, and the element's first word in local `base + 3`.  When the position is below
+the size, it moves the words after the element down by the element's word count with
+`copyIntoCode`, whose source and destination lie in the same block, and writes the shorter length.
+`mk` pushes its components' words in order, and `proj` loads the words of the
 component from the tuple variable's positions. -/
 def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
@@ -553,6 +578,37 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
         .localSet (base + 4)] ++
       copyIntoCode (slots.getD y.index default).loc (base + 4) base (base + 6) ++
       releaseWhere Γ slots (fun k => k == y.index && !live k) ++ [.localGet (base + 5)]
+  | _, _, .insertAt (e := e) x i v =>
+    i.code h slots base (fun j => live j || j == x.index || v.uses j) ++ [.localSet base] ++
+      v.code h slots (base + 1) (fun j => live j || j == x.index) ++
+      storeCode h (base + 1) e.types ++
+      [.constI64 (wordCount e.width), .localSet (base + e.width + 1)] ++
+      x.roomCode slots (base + e.width + 2) live (base + e.width + 1) ++
+      [.localGet base, .localGet (base + e.width + 3)] ++ divCode e.width ++
+      [.leUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + e.width + 4), .localGet (base + e.width + 3),
+            .localSet (base + e.width + 7)] ++
+          shiftUpCode (base + e.width + 6) (base + e.width + 4) (base + e.width + 7) e.width ++
+          storeWordsCode h (base + e.width + 6) (base + e.width + 4) 0 (base + 1) e.types)
+        [.localGet (base + e.width + 6), .wrapI64, .localGet (base + e.width + 3), .store64 0]
+        [] [],
+        .localGet (base + e.width + 6)]
+  | _, _, .eraseAt (e := e) x i =>
+    i.code h slots base (fun j => live j || j == x.index) ++ [.localSet base] ++
+      x.ownedCode h slots (base + 1) live ++
+      [.localSet (base + 1), .localGet (base + 1), .wrapI64, .load64 0, .localSet (base + 2),
+        .localGet base, .localGet (base + 2)] ++ divCode e.width ++
+      [.ltUI64, .iff 0 0 ([.localGet base] ++ scaleCode e.width ++
+          [.localSet (base + 3), .localGet (base + 2), .localGet (base + 3), .subI64,
+            .constI64 (wordCount e.width), .subI64, .localSet (base + 4),
+            .localGet (base + 1), .localGet (base + 3), .constI64 (wordCount e.width), .addI64,
+            .constI64 8, .mulI64, .addI64, .localSet (base + 5),
+            .localGet (base + 1), .localGet (base + 3), .constI64 8, .mulI64, .addI64,
+            .localSet (base + 6)] ++
+          copyIntoCode (base + 5) (base + 6) (base + 4) (base + 7) ++
+          [.localGet (base + 1), .wrapI64, .localGet (base + 2), .constI64 (wordCount e.width),
+            .subI64, .store64 0]) [] [] [],
+        .localGet (base + 1)]
   | Γ, _, .build (e := e) count elem =>
     let all := fun i => live i || elem.uses (i + 1)
     count.code h slots base all ++

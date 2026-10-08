@@ -357,6 +357,395 @@ theorem wp_copyInto {m : Module} {host : HostEnv Unit} {store : Store Unit} {s :
     · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc, hSucc64, hi64]
       omega
 
+/-- `ws` with the words from position `lo` to position `hi` moved up by `k`: positions `lo + k` to
+`hi + k` hold the old words `lo` to `hi`, and the other positions keep theirs. -/
+def shiftUp (ws : Array UInt64) (lo hi k : Nat) : Array UInt64 :=
+  Array.ofFn (n := ws.size) fun j =>
+    if lo + k ≤ j.val ∧ j.val < hi + k then ws[j.val - k]! else ws[j.val]
+
+theorem shiftUp_size (ws : Array UInt64) (lo hi k : Nat) : (shiftUp ws lo hi k).size = ws.size :=
+  Array.size_ofFn
+
+theorem shiftUp_self (ws : Array UInt64) (hi k : Nat) : shiftUp ws hi hi k = ws := by
+  apply Array.ext (shiftUp_size ..) fun j _ _ => ?_
+  simp only [shiftUp, Array.getElem_ofFn]
+  rw [ite_eq_right (by omega)]
+
+theorem shiftUp_step {ws : Array UInt64} {t hi k : Nat} (ht : 0 < t) (hFit : hi + k ≤ ws.size)
+    (hth : t ≤ hi) :
+    (shiftUp ws t hi k).set (t - 1 + k) ws[t - 1]! (by rw [shiftUp_size]; omega) =
+      shiftUp ws (t - 1) hi k := by
+  apply Array.ext (by simp [shiftUp_size]) fun j h1 _ => ?_
+  rw [Array.getElem_set]
+  simp only [shiftUp, Array.getElem_ofFn]
+  by_cases hj : t - 1 + k = j
+  · subst hj
+    rw [ite_eq_left rfl, ite_eq_left (by omega), show t - 1 + k - k = t - 1 by omega]
+  · rw [ite_eq_right hj]
+    by_cases hin : t + k ≤ j ∧ j < hi + k
+    · rw [ite_eq_left hin, ite_eq_left (by omega)]
+    · rw [ite_eq_right hin, ite_eq_right (by omega)]
+
+/-- `ws` with the `n` words from position `lo + k` on moved down by `k`, to positions `lo` to
+`lo + n`, and the other positions keeping theirs. -/
+def shiftDown (ws : Array UInt64) (lo n k : Nat) : Array UInt64 :=
+  Array.ofFn (n := ws.size) fun j =>
+    if lo ≤ j.val ∧ j.val < lo + n then ws[j.val + k]! else ws[j.val]
+
+theorem shiftDown_size (ws : Array UInt64) (lo n k : Nat) : (shiftDown ws lo n k).size = ws.size :=
+  Array.size_ofFn
+
+theorem shiftDown_zero (ws : Array UInt64) (lo k : Nat) : shiftDown ws lo 0 k = ws := by
+  apply Array.ext (shiftDown_size ..) fun j _ _ => ?_
+  simp only [shiftDown, Array.getElem_ofFn]
+  rw [ite_eq_right (by omega)]
+
+theorem shiftDown_succ {ws : Array UInt64} {lo i k : Nat} (hFit : lo + i + k < ws.size) :
+    (shiftDown ws lo i k).set (lo + i) ws[lo + k + i]! (by rw [shiftDown_size]; omega) =
+      shiftDown ws lo (i + 1) k := by
+  apply Array.ext (by simp [shiftDown_size]) fun j h1 _ => ?_
+  rw [Array.getElem_set]
+  simp only [shiftDown, Array.getElem_ofFn]
+  by_cases hj : lo + i = j
+  · subst hj
+    rw [ite_eq_left rfl, ite_eq_left (by omega), show lo + k + i = lo + i + k by omega]
+  · rw [ite_eq_right hj]
+    by_cases hin : lo ≤ j ∧ j < lo + i
+    · rw [ite_eq_left hin, ite_eq_left (by omega)]
+    · rw [ite_eq_right hin, ite_eq_right (by omega)]
+
+theorem shiftUp_getElem! (ws : Array UInt64) (lo hi k : Nat) {j : Nat} (hj : j < ws.size) :
+    (shiftUp ws lo hi k)[j]! = if lo + k ≤ j ∧ j < hi + k then ws[j - k]! else ws[j]! := by
+  rw [getElem!_pos _ j (by rw [shiftUp_size]; exact hj), getElem!_pos ws j hj]
+  simp only [shiftUp, Array.getElem_ofFn]
+
+theorem shiftDown_getElem! (ws : Array UInt64) (lo n k : Nat) {j : Nat} (hj : j < ws.size) :
+    (shiftDown ws lo n k)[j]! = if lo ≤ j ∧ j < lo + n then ws[j + k]! else ws[j]! := by
+  rw [getElem!_pos _ j (by rw [shiftDown_size]; exact hj), getElem!_pos ws j hj]
+  simp only [shiftDown, Array.getElem_ofFn]
+
+theorem extract_getElem! (ws : Array UInt64) {n j : Nat} (hj : j < n) (hn : n ≤ ws.size) :
+    (ws.extract 0 n)[j]! = ws[j]! := by
+  rw [getElem!_pos _ j (by simp only [Array.size_extract]; omega), getElem!_pos ws j (by omega)]
+  simp [Array.getElem_extract]
+
+/-- The words of an array with room for one more element, with the words from element `i` on
+moved up by one element and the new element's words written at element `i`, are the words of the
+array with the element inserted at `i`. -/
+theorem Elem.words_insertIdx (e : Elem) {xs : Array e.denote} {ws : Array UInt64} (v : e.denote)
+    {i : Nat} (hi : i ≤ xs.size) (hSize : ws.size = xs.size * e.width + e.width)
+    (hPrefix : ∀ w, w < xs.size * e.width → ws[w]! = (e.words xs)[w]!) :
+    writeWords (shiftUp ws (i * e.width) (xs.size * e.width) e.width) (i * e.width)
+      (e.toWords v) = e.words (xs.insertIdx i v hi) := by
+  have hk := e.width_pos
+  have hik : i * e.width ≤ xs.size * e.width := Nat.mul_le_mul_right _ hi
+  apply Elem.words_ext e (by rw [writeWords_size, shiftUp_size, hSize, Array.size_insertIdx,
+    Nat.succ_mul])
+  intro i' hi' j hj
+  rw [Array.size_insertIdx] at hi'
+  have hpos : i' * e.width + j < xs.size * e.width + e.width := by
+    have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hi')
+    rw [Nat.succ_mul, Nat.succ_mul] at this; omega
+  rw [writeWords_getElem! _ _ _ (by rw [e.toWords_length, shiftUp_size, hSize]; omega),
+    e.toWords_length, getElem!_pos (xs.insertIdx i v hi) i' (by rw [Array.size_insertIdx]; omega),
+    Array.getElem_insertIdx]
+  rcases Nat.lt_trichotomy i' i with hlt | heq | hgt
+  · have hw : i' * e.width + j < i * e.width := by
+      have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hlt)
+      rw [Nat.succ_mul] at this; omega
+    rw [if_neg (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), if_neg (by omega),
+      hPrefix _ (by omega), Elem.words_getElem! e xs (by omega) hj, dite_eq_left hlt]
+  · subst heq
+    rw [if_pos (by omega), show i' * e.width + j - i' * e.width = j by omega,
+      dite_eq_right (by omega), dite_eq_left rfl]
+  · have hw : i * e.width + e.width ≤ i' * e.width + j := by
+      have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hgt)
+      rw [Nat.succ_mul] at this; omega
+    have hi1 : i' - 1 < xs.size := by omega
+    have hsplit : i' * e.width + j - e.width = (i' - 1) * e.width + j := by
+      rw [Nat.sub_mul, Nat.one_mul]
+      have : e.width ≤ i' * e.width := Nat.le_mul_of_pos_left _ (by omega)
+      omega
+    rw [if_neg (by omega), shiftUp_getElem! _ _ _ _ (by rw [hSize]; omega), if_pos (by omega),
+      hsplit, hPrefix _ (by
+        have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hi1)
+        rw [Nat.succ_mul] at this; omega),
+      Elem.words_getElem! e xs hi1 hj, dite_eq_right (by omega), dite_eq_right (by omega)]
+
+/-- The words of an array with the words after element `i` moved down by one element, cut to
+one element fewer, are the words of the array without element `i`. -/
+theorem Elem.words_eraseIdx (e : Elem) {xs : Array e.denote} {i : Nat} (hi : i < xs.size) :
+    (shiftDown (e.words xs) (i * e.width) (xs.size * e.width - i * e.width - e.width)
+      e.width).extract 0 (xs.size * e.width - e.width) = e.words (xs.eraseIdx i hi) := by
+  have hk := e.width_pos
+  have hik : i * e.width + e.width ≤ xs.size * e.width := by
+    have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hi)
+    rw [Nat.succ_mul] at this; omega
+  apply Elem.words_ext e (by
+    rw [Array.size_extract, shiftDown_size, Elem.words_size, Array.size_eraseIdx, Nat.sub_mul,
+      Nat.one_mul]; omega)
+  intro i' hi' j hj
+  rw [Array.size_eraseIdx] at hi'
+  have hi1 : i' + 1 < xs.size := by omega
+  have hpos : i' * e.width + j + e.width < xs.size * e.width := by
+    have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hi1)
+    rw [Nat.succ_mul, Nat.succ_mul] at this; omega
+  rw [extract_getElem! _ (by omega) (by rw [shiftDown_size, Elem.words_size]; omega),
+    shiftDown_getElem! _ _ _ _ (by rw [Elem.words_size]; omega),
+    getElem!_pos (xs.eraseIdx i hi) i' (by rw [Array.size_eraseIdx]; omega),
+    Array.getElem_eraseIdx]
+  by_cases hlt : i' < i
+  · have hw : i' * e.width + j < i * e.width := by
+      have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hlt)
+      rw [Nat.succ_mul] at this; omega
+    rw [if_neg (by omega), Elem.words_getElem! e xs (by omega) hj, dite_eq_left hlt]
+  · have hw : i * e.width ≤ i' * e.width := Nat.mul_le_mul_right _ (by omega)
+    rw [if_pos (by omega), show i' * e.width + j + e.width = (i' + 1) * e.width + j by
+      rw [Nat.succ_mul]; omega, Elem.words_getElem! e xs hi1 hj, dite_eq_right hlt]
+
+/-- The first words of an array with room, up to its old length, are the old words. -/
+theorem Elem.words_extract_prefix (e : Elem) {xs : Array e.denote} {ws : Array UInt64}
+    (hSize : xs.size * e.width ≤ ws.size)
+    (hPrefix : ∀ w, w < xs.size * e.width → ws[w]! = (e.words xs)[w]!) :
+    ws.extract 0 (xs.size * e.width) = e.words xs := by
+  apply Array.ext (by rw [Array.size_extract, Elem.words_size]; omega) fun w h1 h2 => ?_
+  have hw : w < xs.size * e.width := by rw [Elem.words_size] at h2; exact h2
+  rw [← getElem!_pos _ w h1, ← getElem!_pos (e.words xs) w h2, extract_getElem! _ hw hSize]
+  exact hPrefix w hw
+
+/-- The address of word `i + k + 1` of the array at `ptr`, from `i` and `k + 1`. -/
+theorem element_address_up (ptr : UInt64) (i k : Nat) :
+    (ptr + (UInt64.ofNat i + UInt64.ofNat (k + 1)) * 8).toUInt32 =
+      UInt64Array.wordAddress ptr (i + k + 1) := by
+  unfold UInt64Array.wordAddress
+  congr 1
+  apply UInt64.toNat_inj.mp
+  simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+  omega
+
+/-- The loop of `shiftUpCode`: in the array `ws` at `p`, whose address local `ptr` holds, the words
+from position `l`, in local `lo`, to position `h`, in local `index`, move up by `k`.  The loop
+writes only inside the region of `ws` and changes no local but `index`. -/
+theorem wp_shiftUp {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {ptr lo index k : Nat} {p : UInt64} {ws : Array UInt64} {l h : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hA : UInt64Array.At store p ws) (hlh : l ≤ h) (hFit : h + k ≤ ws.size)
+    (hP : s.get ptr = some (.i64 p)) (hLo : s.get lo = some (.i64 (UInt64.ofNat l)))
+    (hIdx : s.get index = some (.i64 (UInt64.ofNat h)))
+    (hPI : ptr ≠ index) (hLI : lo ≠ index)
+    (hLow : s.params.length ≤ index) (hHigh : index < s.params.length + s.locals.length)
+    (hNext : ∀ (store' : Store Unit) (s' : Locals),
+      Memory.WritesRange store store' p.toNat (p.toNat + 8 * (ws.size + 1)) →
+      UInt64Array.At store' p (shiftUp ws l h k) →
+      s'.params = s.params → s'.locals.length = s.locals.length →
+      (∀ j, j ≠ index → s'.get j = s.get j) → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (shiftUpCode ptr lo index k ++ rest) Q store s host := by
+  have hFitA := hA.1
+  have hl64 : (UInt64.ofNat l).toNat = l :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  simp only [shiftUpCode, List.cons_append, List.nil_append]
+  refine wp_block_cons ?_
+  refine wp_loop_cons
+    (fun st si => ∃ t, l ≤ t ∧ t ≤ h ∧
+      Memory.WritesRange store st p.toNat (p.toNat + 8 * (ws.size + 1)) ∧
+      UInt64Array.At st p (shiftUp ws t h k) ∧ si.params = s.params ∧
+      si.locals.length = s.locals.length ∧ (∀ j, j ≠ index → si.get j = s.get j) ∧
+      si.get index = some (.i64 (UInt64.ofNat t)))
+    (fun _ si => match si.get index with
+      | some (.i64 i) => i.toNat
+      | _ => 0)
+    ⟨h, hlh, le_rfl, Memory.WritesRange.refl .., by rw [shiftUp_self]; exact hA, rfl, rfl,
+      fun _ _ => rfl, hIdx⟩ ?_
+  rintro st si ⟨t, hlt, hth, hW, hAt, hp, hl, hOther, hT⟩
+  have ht64 : (UInt64.ofNat t).toNat = t :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  simp only [wp_localGet_cons, Locals.get_values, hT, hOther lo hLI, hLo, wp_leUI64_cons,
+    wp_br_if_cons]
+  by_cases hDone : UInt64.ofNat t ≤ UInt64.ofNat l
+  · -- The move is complete.
+    have htEq : t = l := by
+      rw [UInt64.le_iff_toNat_le, ht64, hl64] at hDone; omega
+    subst htEq
+    simp (config := { decide := true }) only [hDone, ↓reduceIte, List.take_zero,
+      List.drop_zero, List.nil_append]
+    exact hNext st _ hW hAt hp hl (fun j hj => hOther j hj) rfl
+  · -- One more word.
+    have hLess : l < t := by
+      rw [UInt64.le_iff_toNat_le, ht64, hl64] at hDone; omega
+    simp (config := { decide := true }) only [hDone, ↓reduceIte]
+    have hPred : UInt64.ofNat t - 1 = UInt64.ofNat (t - 1) := by
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_sub_of_le _ _ (by
+        rw [UInt64.le_iff_toNat_le, ht64]; simp only [UInt64.reduceToNat]; omega), ht64]
+      rw [UInt64.toNat_ofNat_of_lt'
+        (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)]
+      simp only [UInt64.reduceToNat]
+    simp only [wp_localGet_cons, Locals.get_values, hT, wp_constI64_cons, wp_subI64_cons, hPred]
+    have hLowI : si.params.length ≤ index := by rw [hp]; exact hLow
+    have hHighI : index < si.params.length + si.locals.length := by rw [hp, hl]; exact hHigh
+    refine wp_localSet_local (s := si) (vs := si.values) hLowI hHighI ?_
+    have hLowI' : ({ si with values := si.values } : Locals).params.length ≤ index := hLowI
+    have hGetI := Locals.get_setLocal_same hLowI' hHighI (v := .i64 (UInt64.ofNat (t - 1)))
+    have hGetP : (setLocal { si with values := si.values } index
+        (.i64 (UInt64.ofNat (t - 1)))).get ptr = some (.i64 p) := by
+      rw [Locals.get_setLocal_ne hLowI' hPI, Locals.get_values, hOther ptr hPI, hP]
+    have hRd : t - 1 < (shiftUp ws t h k).size := by rw [shiftUp_size]; omega
+    have hWr : t - 1 + k < (shiftUp ws t h k).size := by rw [shiftUp_size]; omega
+    have hSrcElement := hAt.elementBound (t - 1) hRd
+    have hDstElement := hAt.elementBound (t - 1 + k) hWr
+    simp only [wp_localGet_cons, Locals.get_values, hGetP, hGetI, wp_constI64_cons,
+      wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wrap_toUInt32, element_address_up,
+      element_address]
+    simp only [wp_load64_cons, wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    have hRead : st.mem.read64 (UInt64Array.wordAddress p (t - 1 + 1)) = ws[t - 1]! := by
+      have h2 : (shiftUp ws t h k)[t - 1]'hRd = ws[t - 1]! := by
+        simp only [shiftUp, Array.getElem_ofFn]
+        rw [ite_eq_right (by omega)]
+        exact (getElem!_pos ws _ (by omega)).symm
+      exact (hAt.elementRead (t - 1) hRd).trans h2
+    rw [ite_eq_right (show ¬((UInt64Array.wordAddress p (t - 1 + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega),
+      ite_eq_right (show ¬((UInt64Array.wordAddress p (t - 1 + k + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega), hRead]
+    rw [wp_br_cons]
+    dsimp only
+    refine ⟨⟨t - 1, by omega, by omega, hW.trans (UInt64Array.writeElement_frame st p ws.size
+      (t - 1 + k) ws[t - 1]! hFitA (by omega)), ?_, hp, by simp [setLocal, hl], fun j hj => ?_,
+      by rw [Locals.get_values]; exact hGetI⟩, ?_⟩
+    · rw [← shiftUp_step (by omega) hFit hth]
+      exact hAt.writeElement hWr ws[t - 1]!
+    · rw [Locals.get_values, Locals.get_setLocal_ne hLowI' hj, Locals.get_values]
+      exact hOther j hj
+    · simp only [Locals.get_values, hGetI, ht64]
+      rw [UInt64.toNat_ofNat_of_lt'
+        (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)]
+      omega
+
+/-- The loop of `copyIntoCode` inside one array: in the array `ws` at `p`, the `n` words from
+position `l + k` on move down by `k`, with `p + 8 (l + k)` in local `src` and `p + 8 l` in local
+`dst`.  Each word is read before the loop writes it, since the writes trail the reads.  The loop
+writes only inside the region of `ws` and changes no local but `index`. -/
+theorem wp_copyDown {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
+    {src dst count index : Nat} {p : UInt64} {ws : Array UInt64} {l n k : Nat}
+    {rest : Program} {Q : Assertion Unit}
+    (hA : UInt64Array.At store p ws) (hFit : l + n + k ≤ ws.size)
+    (hSrc : s.get src = some (.i64 (p + UInt64.ofNat (8 * (l + k)))))
+    (hDst : s.get dst = some (.i64 (p + UInt64.ofNat (8 * l))))
+    (hCount : s.get count = some (.i64 (UInt64.ofNat n)))
+    (hSrcI : src ≠ index) (hDstI : dst ≠ index) (hCountI : count ≠ index)
+    (hLow : s.params.length ≤ index) (hHigh : index < s.params.length + s.locals.length)
+    (hNext : ∀ (store' : Store Unit) (s' : Locals),
+      Memory.WritesRange store store' p.toNat (p.toNat + 8 * (ws.size + 1)) →
+      UInt64Array.At store' p (shiftDown ws l n k) →
+      s'.params = s.params → s'.locals.length = s.locals.length →
+      (∀ j, j ≠ index → s'.get j = s.get j) → s'.values = s.values →
+      wp m rest Q store' s' host) :
+    wp m (copyIntoCode src dst count index ++ rest) Q store s host := by
+  have hFitA := hA.1
+  simp only [copyIntoCode, List.cons_append, List.nil_append, wp_constI64_cons]
+  refine wp_localSet_local (s := s) (vs := s.values) hLow hHigh ?_
+  have hLow0 : ({ s with values := s.values } : Locals).params.length ≤ index := hLow
+  refine wp_block_cons ?_
+  refine wp_loop_cons
+    (fun st si => ∃ i, i ≤ n ∧
+      Memory.WritesRange store st p.toNat (p.toNat + 8 * (ws.size + 1)) ∧
+      UInt64Array.At st p (shiftDown ws l i k) ∧ si.params = s.params ∧
+      si.locals.length = s.locals.length ∧ (∀ j, j ≠ index → si.get j = s.get j) ∧
+      si.get index = some (.i64 (UInt64.ofNat i)))
+    (fun _ si => match si.get index with
+      | some (.i64 i) => n - i.toNat
+      | _ => 0)
+    ⟨0, Nat.zero_le _, Memory.WritesRange.refl .., by rw [shiftDown_zero]; exact hA, rfl,
+      by simp [setLocal], fun j hj => Locals.get_setLocal_ne hLow0 hj,
+      Locals.get_setLocal_same hLow0 hHigh⟩ ?_
+  rintro st si ⟨i, hi, hW, hAt, hp, hl, hOther, hIdx⟩
+  have hi64 : (UInt64.ofNat i).toNat = i :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  have hN64 : (UInt64.ofNat n).toNat = n :=
+    UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+  simp only [wp_localGet_cons, Locals.get_values, hIdx, hOther count hCountI, hCount,
+    wp_geUI64_cons, wp_br_if_cons]
+  by_cases hDone : UInt64.ofNat n ≤ UInt64.ofNat i
+  · -- The move is complete.
+    have hiEq : i = n := by
+      rw [UInt64.le_iff_toNat_le, hi64, hN64] at hDone; omega
+    subst hiEq
+    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte, List.take_zero,
+      List.drop_zero, List.nil_append]
+    exact hNext st _ hW hAt hp hl (fun j hj => hOther j hj) rfl
+  · -- One more word.
+    have hLess : i < n := by
+      rw [UInt64.le_iff_toNat_le, hi64, hN64] at hDone; omega
+    simp (config := { decide := true }) only [ge_iff_le, hDone, ↓reduceIte]
+    have hRd : l + k + i < (shiftDown ws l i k).size := by rw [shiftDown_size]; omega
+    have hWr : l + i < (shiftDown ws l i k).size := by rw [shiftDown_size]; omega
+    have hSrcElement := hAt.elementBound (l + k + i) hRd
+    have hDstElement := hAt.elementBound (l + i) hWr
+    simp only [wp_localGet_cons, Locals.get_values, hOther dst hDstI, hDst, hIdx,
+      hOther src hSrcI, hSrc, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons,
+      wrap_toUInt32, element_address_at]
+    simp only [wp_load64_cons, wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    have hRead : st.mem.read64 (UInt64Array.wordAddress p (l + k + i + 1)) = ws[l + k + i]! := by
+      have h2 : (shiftDown ws l i k)[l + k + i]'hRd = ws[l + k + i]! := by
+        simp only [shiftDown, Array.getElem_ofFn]
+        rw [ite_eq_right (by omega)]
+        exact (getElem!_pos ws _ (by omega)).symm
+      exact (hAt.elementRead (l + k + i) hRd).trans h2
+    rw [ite_eq_right (show ¬((UInt64Array.wordAddress p (l + k + i + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega),
+      ite_eq_right (show ¬((UInt64Array.wordAddress p (l + i + 1)).toNat + 8 >
+        st.mem.pages * 65536) by rw [UInt64Array.wordAddress]; omega), hRead]
+    simp only [wp_localGet_cons, hIdx, wp_constI64_cons, wp_addI64_cons]
+    have hLowI : si.params.length ≤ index := by rw [hp]; exact hLow
+    have hHighI : index < si.params.length + si.locals.length := by rw [hp, hl]; exact hHigh
+    refine wp_localSet_local (s := si) (vs := si.values) hLowI hHighI ?_
+    rw [wp_br_cons]
+    dsimp only
+    have hLowI' : ({ si with values := si.values } : Locals).params.length ≤ index := hLowI
+    have hSucc : UInt64.ofNat i + 1 = UInt64.ofNat (i + 1) := by
+      rw [UInt64.ofNat_add]; rfl
+    have hSucc64 : (UInt64.ofNat (i + 1)).toNat = i + 1 :=
+      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+    refine ⟨⟨i + 1, hLess, hW.trans (UInt64Array.writeElement_frame st p ws.size (l + i)
+      ws[l + k + i]! hFitA (by omega)), ?_, hp, by simp [setLocal, hl], fun j hj => ?_, ?_⟩, ?_⟩
+    · rw [← shiftDown_succ (by omega)]
+      exact hAt.writeElement hWr ws[l + k + i]!
+    · rw [Locals.get_values, Locals.get_setLocal_ne hLowI' hj, Locals.get_values]
+      exact hOther j hj
+    · rw [Locals.get_setLocal_same hLowI' hHighI, hSucc]
+    · simp only [Locals.get_setLocal_same hLowI' hHighI, hSucc, hSucc64, hi64]
+      omega
+
+/-- An array after a write of a length `n` no larger than its own: its first `n` words. -/
+theorem _root_.LeanExe.ProofKit.UInt64Array.At.writeLength {store : Store Unit} {ptr : UInt64}
+    {values : Array UInt64} (h : UInt64Array.At store ptr values) {n : Nat}
+    (hn : n ≤ values.size) :
+    UInt64Array.At { store with mem := store.mem.write64 ptr.toUInt32 (UInt64.ofNat n) } ptr
+      (values.extract 0 n) := by
+  have hFit := h.1
+  have hMem := h.2.1
+  have hP := h.pointerAddress_toNat
+  have hsz : (values.extract 0 n).size = n := by simp only [Array.size_extract]; omega
+  refine ⟨by rw [hsz]; omega, ?_, ?_, fun j hj => ?_⟩
+  · rw [hsz]; show _ ≤ (store.mem.write64 _ _).pages * 65536
+    rw [Mem.write64_pages]; omega
+  · show (store.mem.write64 _ _).read64 _ = _
+    rw [Memory.read64_write64, hsz]
+  · have hj' : j < n := by rw [hsz] at hj; exact hj
+    show (store.mem.write64 ptr.toUInt32 _).read64 _ = _
+    rw [Memory.read64_write64_disjoint store.mem _ _ _ (Or.inr (by
+      rw [h.elementAddress_toNat j (by omega), hP]; omega)), h.elementRead j (by omega)]
+    simp [Array.getElem_extract]
+
+theorem writeLength_frame (store : Store Unit) (ptr : UInt64) (size n : Nat)
+    (hFit : ptr.toNat + 8 * (size + 1) ≤ 4294967296) :
+    Memory.WritesRange store { store with mem := store.mem.write64 ptr.toUInt32 (UInt64.ofNat n) }
+      ptr.toNat (ptr.toNat + 8 * (size + 1)) := by
+  apply Memory.WritesRange.write64
+  · rw [Memory.toUInt32_toNat, Nat.mod_eq_of_lt (by omega)]
+  · rw [Memory.toUInt32_toNat, Nat.mod_eq_of_lt (by omega)]; omega
+
 /-- The allocation of a block of the byte count on top of the stack for an array of `total` words,
 with `total` in local `len`, and the copy into it of the array `xs`, borrowed at `ptr`, whose
 address local `src` holds and whose length local `count` holds: a new owned block, with its address
