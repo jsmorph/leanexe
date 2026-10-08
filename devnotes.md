@@ -27505,6 +27505,42 @@ their chunking theorems with the same lemmas.
 - [x] Tests: 14,149 cases pass.  A parameter that dies at an insertion or removal is owned, so the
   caller's block becomes the result: one block stays live, and a removal allocates nothing.
 
+### Constant tables: analysis
+
+Table-driven algorithms are the norm for transcendental functions, so the dialect needs constant
+tables beyond the lookup functions that `Trig.lean` uses for the 21 words of `2/π` and `π/2`.
+Production tables in 64-bit words: exp 256 (ARM optimized-routines, glibc, musl), log 256 plus 256
+without FMA, pow 512, glibc's sin and cos 440 plus 75, and CORE-MATH's correctly rounded functions
+about 7,700 for a basic set.  A basic set in the glibc style needs about 1,900 words (15 KiB).
+Sources: ARM `math/math_config.h` at 503fafe, glibc `sysdeps/ieee754/dbl-64` at 04e750e7, musl
+`src/math`, FreeBSD `lib/msun/src` at 20381bc, and the CORE-MATH mirror at 3ce26eb.
+
+Two fresh reviews weighed the options.  An allocating literal allocates on every evaluation and
+turns its functions into `ImplementsA true`.  Data segments below the heap base at 4096 need no new
+heap invariant, since every owned block and free node lies above it, but the area holds about 512
+words.  Data segments at 4096 and above lie inside the heap, and a table that is not a variable has
+no proof that it stays apart from owned blocks, so every proof case would need a new invariant.  A
+larger fixed heap base changes invariants that `LeanExe.Pipeline` shares with the older compiler.
+A second memory needs multi-memory, which Safari lacks, and Talos has no wp lemma for it.  Tables
+compiled into code, as a comparison tree or `br_table`, need no memory but cost `log₂ n` branches
+on the index or encoder work for `br_table`.  Tables passed by the host leave the theorem to trust
+the host.
+
+The second review found a design that the first missed: data segments from 4096 up, with the
+initial `top` after them, and each table passed to the compiled code as a borrowed array argument
+by the exported entry, which pushes the table's address as it pushes the call depth today.  A
+table is then a variable, and the existing proofs for borrowed arrays apply: `Holds` keeps owned
+blocks apart from it in a function, and `ImplementsA` keeps it across calls.  `Expr`, `CodeSpec`,
+the `spec_*` lemmas, and the shared heap invariants stay as they are.  The work is a data section in
+the verified encoder, the initial `top` and page count from the tables' end, the entry wrapper with
+a precondition that each table is borrowed at its address and lies apart from the owned arguments,
+`ImplementsA.transfer` generalized beyond `Pre = True`, a reflector case for a function that applies
+another to a constant table, and optionally a lemma that Talos's instantiation gives a store with
+these premises and the allocator invariant.  For GPT-2 on the CPU, a token needs about 184,000
+calls of `exp` and `tanh`, about 3 percent of the measured 0.55 seconds per token, so tables do not
+limit its speed.  The open decision is whether the source passes tables as explicit parameters or
+the reflector adds them.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
