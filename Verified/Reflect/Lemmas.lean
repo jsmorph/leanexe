@@ -277,6 +277,19 @@ theorem push_eq {e : Elem} (x : Var Γ (.array e)) {v : Expr S Γ (.elem e)} {V 
     (Expr.push x v).denote funs env = (env.get x).push V := by
   subst hv; rfl
 
+/-- An insertion into an array variable, which leaves it unchanged past its end. -/
+theorem insertAt_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word}
+    {v : Expr S Γ (.elem e)} {I : UInt64} {V : e.denote} (hi : i.denote funs env = I)
+    (hv : v.denote funs env = V) :
+    (Expr.insertAt x i v).denote funs env = LeanExe.insertAt (env.get x) I V := by
+  subst hi hv; rfl
+
+/-- A removal from an array variable, which leaves it unchanged past its end. -/
+theorem eraseAt_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : UInt64}
+    (hi : i.denote funs env = I) :
+    (Expr.eraseAt x i).denote funs env = LeanExe.eraseAt (env.get x) I := by
+  subst hi; rfl
+
 /-- A read of an array variable, the element type's default value past its end. -/
 theorem get_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : UInt64}
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by
@@ -318,6 +331,46 @@ theorem push_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.
     (Expr.push x v).denote funs env = (xs.push V).map φ := by
   show (env.get x).push (v.denote funs env) = _
   rw [hx, hv, Array.map_push]
+
+theorem insertAt_map {α β : Type} (φ : α → β) (xs : Array α) (i : UInt64) (v : α) :
+    (LeanExe.insertAt xs i v).map φ = LeanExe.insertAt (xs.map φ) i (φ v) := by
+  unfold LeanExe.insertAt Array.insertIdxIfInBounds
+  by_cases h : i.toNat ≤ xs.size
+  · rw [dite_eq_left h, dite_eq_left (by simpa using h)]
+    apply Array.ext (by simp [Array.size_insertIdx]) fun j h1 h2 => ?_
+    simp only [Array.getElem_map, Array.getElem_insertIdx, Array.size_map]
+    by_cases hlt : j < i.toNat
+    · rw [dite_eq_left hlt, dite_eq_left hlt]
+    · by_cases heq : j = i.toNat
+      · rw [dite_eq_right hlt, dite_eq_left heq, dite_eq_right hlt, dite_eq_left heq]
+      · rw [dite_eq_right hlt, dite_eq_right heq, dite_eq_right hlt, dite_eq_right heq]
+  · rw [dite_eq_right h, dite_eq_right (by simpa using h)]
+
+theorem eraseAt_map {α β : Type} (φ : α → β) (xs : Array α) (i : UInt64) :
+    (LeanExe.eraseAt xs i).map φ = LeanExe.eraseAt (xs.map φ) i := by
+  unfold LeanExe.eraseAt Array.eraseIdxIfInBounds
+  by_cases h : i.toNat < xs.size
+  · rw [dite_eq_left h, dite_eq_left (by simpa using h)]
+    apply Array.ext (by simp [Array.size_eraseIdx]) fun j h1 h2 => ?_
+    simp only [Array.getElem_map, Array.getElem_eraseIdx]
+    by_cases hlt : j < i.toNat
+    · rw [dite_eq_left hlt, dite_eq_left hlt]
+    · rw [dite_eq_right hlt, dite_eq_right hlt]
+  · rw [dite_eq_right h, dite_eq_right (by simpa using h)]
+
+theorem insertAt_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.array e))
+    (xs : Array α) {i : Expr S Γ .word} {v : Expr S Γ (.elem e)} {I : UInt64} (V : α)
+    (hx : env.get x = xs.map φ) (hi : i.denote funs env = I) (hv : v.denote funs env = φ V) :
+    (Expr.insertAt x i v).denote funs env = (LeanExe.insertAt xs I V).map φ := by
+  show LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env) = _
+  rw [hx, hi, hv, insertAt_map]
+
+theorem eraseAt_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x : Var Γ (.array e))
+    (xs : Array α) {i : Expr S Γ .word} {I : UInt64} (hx : env.get x = xs.map φ)
+    (hi : i.denote funs env = I) :
+    (Expr.eraseAt x i).denote funs env = (LeanExe.eraseAt xs I).map φ := by
+  show LeanExe.eraseAt (env.get x) (i.denote funs env) = _
+  rw [hx, hi, eraseAt_map]
 
 theorem append_map_eq {e : Elem} {α : Type} (φ : α → e.denote) (x y : Var Γ (.array e))
     (xs ys : Array α) (hx : env.get x = xs.map φ) (hy : env.get y = ys.map φ) :

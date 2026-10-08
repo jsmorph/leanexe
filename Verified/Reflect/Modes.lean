@@ -69,6 +69,11 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .push x v, live, _, k =>
     (k == x.index && !live k) || v.demands (fun j => live j || j == x.index) false k
   | _, _, .append x y, live, _, k => k == x.index && !live k && x.index != y.index
+  | _, _, .insertAt x i v, live, _, k =>
+    (k == x.index && !live k) || i.demands (fun j => live j || v.uses j || j == x.index) false k ||
+      v.demands (fun j => live j || j == x.index) false k
+  | _, _, .eraseAt x i, live, _, k =>
+    (k == x.index && !live k) || i.demands (fun j => live j || j == x.index) false k
 
 /-- The modes chosen for the parameters of types `params` of a function with body `body`: owned
 for an array parameter that the body consumes where it dies, and borrowed otherwise. -/

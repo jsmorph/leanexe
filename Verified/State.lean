@@ -97,6 +97,13 @@ theorem Frame.setValues {base : Nat} {s : Locals} {vs : List Value} {i : Nat} {v
     Frame base s (setLocal { s with values := vs } i v) :=
   Frame.ofValues.trans (@Frame.set base { s with values := vs } i v hLow hBase hHigh)
 
+/-- Locals that differ from `s` at most in local `index`, at or above `base` and below the half,
+agree with `s` below `base`. -/
+theorem Frame.ofOthers {base index : Nat} {s s' : Locals} (hp : s'.params = s.params)
+    (hl : s'.locals.length = s.locals.length) (hOther : ∀ j, j ≠ index → s'.get j = s.get j)
+    (hBase : base ≤ index) (hHalf : index < s.half) : Frame base s s' :=
+  ⟨hp, hl, fun j hj => ⟨hOther j (by omega), hOther _ (by omega)⟩⟩
+
 /-- A position below the half has its i64 local among the locals. -/
 theorem Locals.lt_total {s : Locals} {i : Nat} (h : i < s.half) :
     i < s.params.length + s.locals.length := by

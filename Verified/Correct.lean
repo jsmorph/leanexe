@@ -1100,7 +1100,8 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact nomatch h1
       · exact Or.inr h1
-  | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ => intro _ _; simp [Expr.aborts]
+  | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
+  | eraseAt _ _ _ => intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
 theorem Slot.any_map (slots : List Slot) :
@@ -1343,6 +1344,24 @@ theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0
   exact a.rewrite ⟨by rw [hFrame.1], hFrame.2.1, fun x hx => hFrame.2.2 x (by omega)⟩ rfl
     (hA.writeElement hk v) (by rw [Array.size_set]; exact hCapacity)
 
+/-- Writes inside the words of an owned array value that leave it holding `words'`, no longer than
+`words`: the value becomes `words'`, in the same block. -/
+theorem After.rewriteRange {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
+    {base : Nat} {heap heap1 : Heap} {store store1 store2 : Store Unit} {s s1 : Locals}
+    {words words' : Array UInt64} {root : UInt64}
+    (a : After env slots L0 L base heap store s (.array .word) .owned words heap1 store1 s1
+      [.i64 root])
+    (hW : Memory.WritesRange store1 store2 root.toNat (root.toNat + 8 * (words.size + 1)))
+    (hValues : UInt64Array.At store2 root words') (hLe : words'.size ≤ words.size) :
+    After env slots L0 L base heap store s (.array .word) .owned words' heap1 store2 s1
+      [.i64 root] := by
+  obtain ⟨p, hp, hOwned⟩ := a.rep
+  replace hOwned : heap1.Owned store1 p words := hOwned
+  obtain rfl : p = root := by simp only [List.cons.injEq, Value.i64.injEq] at hp; exact hp.1.symm
+  have hCapacity := hOwned.capacity
+  exact a.rewrite ⟨by rw [hW.1], hW.2.1, fun x hx => hW.2.2 x (by omega)⟩ (by rw [hW.1])
+    hValues (by omega)
+
 /-- An owned variable that dies: its words as an owned value, which consumes its blocks. -/
 theorem After.move {Γ : List Ty} {env : Env Γ} {slots : List Slot} {live : Nat → Bool}
     {base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} {t : Ty} (x : Var Γ t)
@@ -1448,6 +1467,9 @@ theorem wordCount_ne_zero {k : Nat} (hk : 0 < k) : wordCount k ≠ 0 := by
   rw [h] at this
   simp at this
   omega
+
+theorem wordCount_eq {k : Nat} (hk : k < 536870912) : wordCount k = UInt64.ofNat k := by
+  simp only [wordCount, Nat.min_eq_left (Nat.le_of_lt hk)]
 
 theorem wp_scaleCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
     {rest : Program} {Q : Assertion Unit} (k : Nat) (x : UInt64) :
@@ -2096,6 +2118,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
+  | _, .insertAt _ _ _, hp, _, _, _, _, _ | _, .eraseAt _ _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _
   | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by
@@ -4508,6 +4531,511 @@ theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (
   have hv3 : s3.values = s.values := by rw [hs3]; exact hv2
   simpa [hv4, hv3] using hNext heap2 store3 s4 [.i64 p] aFin
 
+/-- `LeanExe.eraseAt x i`: the position in local `base`, the array as owned in local `base + 1`,
+its length in local `base + 2`, and, when the position is below the size, the element's first
+word in local `base + 3`, the move of the words after the element down by its word count, and the
+write of the shorter length. -/
+theorem spec_eraseAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
+    {i : Expr S Γ' .word}
+    (iSpec : ∀ env slots live, CodeSpec m funs host pv i env slots live) :
+    ∀ env slots live, CodeSpec m funs host pv (Expr.eraseAt x i) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hi := Nat.le_max_left i.width 8
+  have hx := Nat.le_max_right i.width 8
+  have hk := e.width_pos
+  have hcw : copyWidth (Ty.array e) = 4 := rfl
+  simp only [Expr.placeArgs] at hPlace
+  have hTrapT : TrapOK true Q := hTrap.of_imp fun _ => by simp [Expr.aborts]
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The position, in local `base`.
+  have hIn : ∀ k, ((live k || k == x.index) || i.uses k) = true →
+      (live k || (Expr.eraseAt x i).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact live_assoc _ _ _ h
+  refine iSpec env slots (fun k => live k || k == x.index) h base heap store s hh hpv
+    (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap1 store1 s1 ws1 a1 => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_word] at hR1
+  subst hR1
+  refine After.storeWord a1 le_rfl hBase (by rw [hh]; omega) fun e1 hI1 => ?_
+  have hp1 := e1.frame.params
+  have hh1 := e1.frame.half.trans hh
+  -- The array as owned, in local `base + 1`.
+  refine spec_ownedVar hm x hh1 (hp1.trans hpv) (e1.holds.mono (Nat.le_succ base)) e1.step.at_
+    (by rw [e1.step.cap m]; exact hCap) (by rw [hp1]; omega) (by omega) hTrapT
+    fun heap3 store3 s3 ws3 a3 => ?_
+  obtain ⟨p, hws, hOwned⟩ := a3.rep
+  subst hws
+  have hp3 : s3.params = s.params := a3.frame.params.trans hp1
+  have hh3 : s3.half = h := a3.frame.half.trans hh1
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
+  have hLow3 : ({ s3 with values := s.values } : Locals).params.length ≤ base + 1 := by
+    show s3.params.length ≤ _; rw [hp3]; omega
+  have hHigh3' : base + 1 < s3.half := by rw [hh3]; omega
+  have hHigh3 := Locals.lt_total (s := { s3 with values := s.values }) hHigh3'
+  refine wp_localSet_local hLow3 hHigh3 ?_
+  set s4 : Locals := setLocal { s3 with values := s.values } (base + 1) (.i64 p) with hs4
+  have hP4 : s4.get (base + 1) = some (.i64 p) := Locals.get_setLocal_same hLow3 hHigh3
+  have hF4 : Frame (base + 1) s3 s4 := Frame.setValues hLow3 le_rfl hHigh3'
+  have hI4 : s4.get base = some (.i64 (i.denote funs env)) :=
+    (hF4.below base (by omega)).1.trans ((a3.frame.below base (by omega)).1.trans hI1)
+  have hh4 : s4.half = h := hF4.half.trans hh3
+  have hp4 : s4.params = s.params := hF4.params.trans hp3
+  have a4 := a3.toWords.reframe hF4
+  -- The rest of the code, from the array after the move or without it.
+  have hFinish : ∀ (store4 : Store Unit) (s' : Locals) (ws : Array UInt64),
+      Frame (base + 1) s4 s' → s'.values = s.values →
+      ws = e.words (LeanExe.eraseAt (env.get x) (i.denote funs env)) →
+      After env slots (fun k => live k || k == x.index) live (base + 1) heap1 store1
+        (setLocal { s1 with values := s.values } base (.i64 (i.denote funs env)))
+        (.array .word) .owned ws heap3 store4 s' [.i64 p] →
+      wp m rest Q store4 { s' with values := .i64 p :: s'.values } host := by
+    rintro store4 s' ws _ hv' rfl aX
+    have aX1 := (After.ofWords aX).lower e1.holds (Nat.le_succ base) fun k h => by simp [h]
+    have aX2 := After.prepend (hVars.live_mono hIn) e1 aX1 (fun k h => by simp [h])
+      fun k h => by simp [h]
+    simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX2.liveIn hIn)
+  have hA := hOwned.values
+  have hLength := hA.lengthBound
+  have hnk : (env.get x).size * e.width < 536870912 := by
+    have := hA.1; rw [Elem.words_size] at this; omega
+  have hn64 : (env.get x).size < UInt64.size := by
+    have := Nat.le_mul_of_pos_right (env.get x).size hk
+    rw [show UInt64.size = 18446744073709551616 from rfl]; omega
+  -- The length, in local `base + 2`.
+  show wp m _ Q store3 s4 host
+  simp only [wp_localGet_cons, hP4, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
+    UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+  rw [ite_eq_right (by omega), hA.lengthRead, Elem.words_size]
+  have hLow5 : ({ s4 with values := s4.values } : Locals).params.length ≤ base + 2 := by
+    show s4.params.length ≤ _; rw [hp4]; omega
+  have hHigh5' : base + 2 < s4.half := by rw [hh4]; omega
+  have hHigh5 := Locals.lt_total (s := { s4 with values := s4.values }) hHigh5'
+  refine wp_localSet_local hLow5 hHigh5 ?_
+  set L := (env.get x).size * e.width with hLdef
+  set s5 : Locals := setLocal { s4 with values := s4.values } (base + 2) (.i64 (UInt64.ofNat L))
+    with hs5
+  have hF5 : Frame (base + 2) s4 s5 := Frame.setValues hLow5 le_rfl hHigh5'
+  have hL5 : s5.get (base + 2) = some (.i64 (UInt64.ofNat L)) :=
+    Locals.get_setLocal_same hLow5 hHigh5
+  have hI5 : s5.get base = some (.i64 (i.denote funs env)) :=
+    (hF5.below base (by omega)).1.trans hI4
+  have hP5 : s5.get (base + 1) = some (.i64 p) := (hF5.below _ (by omega)).1.trans hP4
+  have hh5 : s5.half = h := hF5.half.trans hh4
+  have hp5 : s5.params = s.params := hF5.params.trans hp4
+  -- The test of the position.
+  simp only [wp_localGet_cons, Locals.get_values, hI5, hL5]
+  rw [wp_divCode hk, words_div hk hnk]
+  simp only [wp_ltUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hLess : i.denote funs env < UInt64.ofNat (env.get x).size ↔
+      (i.denote funs env).toNat < (env.get x).size := by
+    rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' hn64]
+  by_cases hc : (i.denote funs env).toNat < (env.get x).size
+  · rw [ite_eq_left (by simp [hLess.mpr hc])]
+    set I := (i.denote funs env).toNat with hIdef
+    set W := I * e.width with hWdef
+    have hk29 : e.width < 536870912 := by
+      have := Nat.le_mul_of_pos_left e.width (show 0 < (env.get x).size by omega); omega
+    have hIk : W + e.width ≤ L := by
+      have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hc)
+      rw [Nat.succ_mul] at this; omega
+    have hwc := wordCount_eq hk29
+    -- The element's first word, in local `base + 3`.
+    simp only [wp_localGet_cons, Locals.get_values, hI5]
+    have hs := words_scale hk (show I * e.width < 536870912 by omega)
+    rw [UInt64.ofNat_toNat] at hs
+    rw [wp_scaleCode, hs]
+    have hLow6 : ({ s5 with values := s5.values } : Locals).params.length ≤ base + 3 := by
+      show s5.params.length ≤ _; rw [hp5]; omega
+    have hHigh6' : base + 3 < s5.half := by rw [hh5]; omega
+    have hHigh6 := Locals.lt_total (s := { s5 with values := s5.values }) hHigh6'
+    refine wp_localSet_local hLow6 hHigh6 ?_
+    set s6 : Locals := setLocal { s5 with values := s5.values } (base + 3) (.i64 (UInt64.ofNat W))
+      with hs6
+    have hF6 : Frame (base + 3) s5 s6 := Frame.setValues hLow6 le_rfl hHigh6'
+    have hW6 : s6.get (base + 3) = some (.i64 (UInt64.ofNat W)) :=
+      Locals.get_setLocal_same hLow6 hHigh6
+    have hL6 : s6.get (base + 2) = some (.i64 (UInt64.ofNat L)) :=
+      (hF6.below _ (by omega)).1.trans hL5
+    have hP6 : s6.get (base + 1) = some (.i64 p) := (hF6.below _ (by omega)).1.trans hP5
+    have hh6 : s6.half = h := hF6.half.trans hh5
+    have hp6 : s6.params = s.params := hF6.params.trans hp5
+    -- The count of words to move, in local `base + 4`.
+    simp only [wp_localGet_cons, Locals.get_values, hL6, hW6, wp_subI64_cons, wp_constI64_cons]
+    have hCount : UInt64.ofNat L - UInt64.ofNat W - wordCount e.width =
+        UInt64.ofNat (L - W - e.width) := by
+      rw [hwc]
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_sub, UInt64.toNat_ofNat']
+      omega
+    rw [hCount]
+    have hLow7 : ({ s6 with values := s6.values } : Locals).params.length ≤ base + 4 := by
+      show s6.params.length ≤ _; rw [hp6]; omega
+    have hHigh7' : base + 4 < s6.half := by rw [hh6]; omega
+    have hHigh7 := Locals.lt_total (s := { s6 with values := s6.values }) hHigh7'
+    refine wp_localSet_local hLow7 hHigh7 ?_
+    set s7 : Locals := setLocal { s6 with values := s6.values } (base + 4)
+      (.i64 (UInt64.ofNat (L - W - e.width))) with hs7
+    have hF7 : Frame (base + 4) s6 s7 := Frame.setValues hLow7 le_rfl hHigh7'
+    have hN7 : s7.get (base + 4) = some (.i64 (UInt64.ofNat (L - W - e.width))) :=
+      Locals.get_setLocal_same hLow7 hHigh7
+    have hW7 : s7.get (base + 3) = some (.i64 (UInt64.ofNat W)) :=
+      (hF7.below _ (by omega)).1.trans hW6
+    have hL7 : s7.get (base + 2) = some (.i64 (UInt64.ofNat L)) :=
+      (hF7.below _ (by omega)).1.trans hL6
+    have hP7 : s7.get (base + 1) = some (.i64 p) := (hF7.below _ (by omega)).1.trans hP6
+    have hh7 : s7.half = h := hF7.half.trans hh6
+    have hp7 : s7.params = s.params := hF7.params.trans hp6
+    -- The source address, in local `base + 5`.
+    simp only [wp_localGet_cons, Locals.get_values, hP7, hW7, wp_constI64_cons, wp_addI64_cons,
+      wp_mulI64_cons]
+    have hSrc : p + (UInt64.ofNat W + wordCount e.width) * 8 =
+        p + UInt64.ofNat (8 * (W + e.width)) := by
+      rw [hwc]; congr 1
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+      omega
+    rw [hSrc]
+    have hLow8 : ({ s7 with values := s7.values } : Locals).params.length ≤ base + 5 := by
+      show s7.params.length ≤ _; rw [hp7]; omega
+    have hHigh8' : base + 5 < s7.half := by rw [hh7]; omega
+    have hHigh8 := Locals.lt_total (s := { s7 with values := s7.values }) hHigh8'
+    refine wp_localSet_local hLow8 hHigh8 ?_
+    set s8 : Locals := setLocal { s7 with values := s7.values } (base + 5)
+      (.i64 (p + UInt64.ofNat (8 * (W + e.width)))) with hs8
+    have hF8 : Frame (base + 5) s7 s8 := Frame.setValues hLow8 le_rfl hHigh8'
+    have hS8 : s8.get (base + 5) = some (.i64 (p + UInt64.ofNat (8 * (W + e.width)))) :=
+      Locals.get_setLocal_same hLow8 hHigh8
+    have hN8 : s8.get (base + 4) = some (.i64 (UInt64.ofNat (L - W - e.width))) :=
+      (hF8.below _ (by omega)).1.trans hN7
+    have hW8 : s8.get (base + 3) = some (.i64 (UInt64.ofNat W)) :=
+      (hF8.below _ (by omega)).1.trans hW7
+    have hL8 : s8.get (base + 2) = some (.i64 (UInt64.ofNat L)) :=
+      (hF8.below _ (by omega)).1.trans hL7
+    have hP8 : s8.get (base + 1) = some (.i64 p) := (hF8.below _ (by omega)).1.trans hP7
+    have hh8 : s8.half = h := hF8.half.trans hh7
+    have hp8 : s8.params = s.params := hF8.params.trans hp7
+    -- The destination address, in local `base + 6`.
+    simp only [wp_localGet_cons, Locals.get_values, hP8, hW8, wp_constI64_cons, wp_addI64_cons,
+      wp_mulI64_cons]
+    have hDst : p + UInt64.ofNat W * 8 = p + UInt64.ofNat (8 * W) := by
+      congr 1
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_mul, UInt64.toNat_ofNat', UInt64.reduceToNat]
+      omega
+    rw [hDst]
+    have hLow9 : ({ s8 with values := s8.values } : Locals).params.length ≤ base + 6 := by
+      show s8.params.length ≤ _; rw [hp8]; omega
+    have hHigh9' : base + 6 < s8.half := by rw [hh8]; omega
+    have hHigh9 := Locals.lt_total (s := { s8 with values := s8.values }) hHigh9'
+    refine wp_localSet_local hLow9 hHigh9 ?_
+    set s9 : Locals := setLocal { s8 with values := s8.values } (base + 6)
+      (.i64 (p + UInt64.ofNat (8 * W))) with hs9
+    have hF9 : Frame (base + 6) s8 s9 := Frame.setValues hLow9 le_rfl hHigh9'
+    have hD9 : s9.get (base + 6) = some (.i64 (p + UInt64.ofNat (8 * W))) :=
+      Locals.get_setLocal_same hLow9 hHigh9
+    have hS9 : s9.get (base + 5) = some (.i64 (p + UInt64.ofNat (8 * (W + e.width)))) :=
+      (hF9.below _ (by omega)).1.trans hS8
+    have hN9 : s9.get (base + 4) = some (.i64 (UInt64.ofNat (L - W - e.width))) :=
+      (hF9.below _ (by omega)).1.trans hN8
+    have hL9 : s9.get (base + 2) = some (.i64 (UInt64.ofNat L)) :=
+      (hF9.below _ (by omega)).1.trans hL8
+    have hP9 : s9.get (base + 1) = some (.i64 p) := (hF9.below _ (by omega)).1.trans hP8
+    have hh9 : s9.half = h := hF9.half.trans hh8
+    have hp9 : s9.params = s.params := hF9.params.trans hp8
+    -- The move of the words after the element.
+    have hWs : (e.words (env.get x)).size = L := Elem.words_size e _
+    refine wp_copyDown (l := W) (n := L - W - e.width) (k := e.width) hA (by omega) hS9 hD9 hN9
+      (by omega) (by omega) (by omega) (by rw [hp9]; omega)
+      (Locals.lt_total (s := s9) (by rw [hh9]; omega))
+      fun store10 s10 hW10 hA10 hp10 hl10 hOther10 hv10 => ?_
+    have hP10 : s10.get (base + 1) = some (.i64 p) := by rw [hOther10 _ (by omega)]; exact hP9
+    have hL10 : s10.get (base + 2) = some (.i64 (UInt64.ofNat L)) := by
+      rw [hOther10 _ (by omega)]; exact hL9
+    -- The shorter length.
+    simp only [wp_localGet_cons, Locals.get_values, hP10, hL10, wp_wrapI64_cons, wrap_toUInt32,
+      wp_constI64_cons, wp_subI64_cons]
+    have hLen : UInt64.ofNat L - wordCount e.width = UInt64.ofNat (L - e.width) := by
+      rw [hwc]
+      apply UInt64.toNat_inj.mp
+      simp only [UInt64.toNat_sub, UInt64.toNat_ofNat']
+      omega
+    rw [hLen]
+    have hFit10 := hA10.1
+    have hMem10 := hA10.2.1
+    have hPtr := hA10.pointerAddress_toNat
+    simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    rw [ite_eq_right (by rw [hPtr]; rw [shiftDown_size] at hFit10 hMem10; omega)]
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, hP10]
+    have hFrame : Frame (base + 1) s4 s10 :=
+      (hF5.mono (by omega)).trans ((hF6.mono (by omega)).trans ((hF7.mono (by omega)).trans
+        ((hF8.mono (by omega)).trans ((hF9.mono (by omega)).trans
+          (Frame.ofOthers hp10 hl10 hOther10 (by omega) (by rw [hh9]; omega))))))
+    have hEq : LeanExe.eraseAt (env.get x) (i.denote funs env) = (env.get x).eraseIdx I hc :=
+      dite_eq_left hc
+    rw [show s5.values = s10.values from hv10.symm]
+    refine hFinish _ s10 _ hFrame hv10 (by rw [hEq]; exact Elem.words_eraseIdx e hc)
+      ((a4.reframe hFrame).rewriteRange
+        (hW10.trans (writeLength_frame store10 p (e.words (env.get x)).size (L - e.width)
+          (by rw [shiftDown_size] at hFit10; exact hFit10)))
+        (hA10.writeLength (by rw [shiftDown_size]; omega))
+        (by simp only [Array.size_extract, shiftDown_size]; omega))
+  · rw [ite_eq_right (by simp [hLess, hc])]
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, wp_localGet_cons, hP5]
+    exact hFinish _ s5 (e.words (env.get x)) (hF5.mono (by omega)) rfl
+      (by simp [LeanExe.eraseAt, Array.eraseIdxIfInBounds, hc]) (a4.reframe (hF5.mono (by omega)))
+
+/-- `LeanExe.insertAt x i v`: the position in local `base`, the value's words from local `base + 1`
+on, their count after them, the array taken with room for one more element by `Var.roomCode` from
+local `base + k + 2` on, and then, when the position is at most the size, the element's first word
+in local `base + k + 4`, the move of the words from there up by the element's word count, and the
+writes of the value's words, or otherwise the old length written back. -/
+theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
+    {i : Expr S Γ' .word} {v : Expr S Γ' (.elem e)}
+    (iSpec : ∀ env slots live, CodeSpec m funs host pv i env slots live)
+    (vSpec : ∀ env slots live, CodeSpec m funs host pv v env slots live) :
+    ∀ env slots live, CodeSpec m funs host pv (Expr.insertAt x i v) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hi := Nat.le_max_left i.width (max (1 + v.width) (e.width + 8))
+  have hv := (Nat.le_max_left (1 + v.width) (e.width + 8)).trans (Nat.le_max_right i.width _)
+  have hx := (Nat.le_max_right (1 + v.width) (e.width + 8)).trans (Nat.le_max_right i.width _)
+  have hk := e.width_pos
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  have hTrapT : TrapOK true Q := hTrap.of_imp fun _ => by simp [Expr.aborts]
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  -- The position, in local `base`.
+  have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
+      (live k || (Expr.insertAt x i v).uses k) = true := fun k h => by
+    simp only [Expr.uses]; exact set_live_index _ _ _ _ h
+  refine iSpec env slots (fun k => live k || k == x.index || v.uses k) h base heap store s hh hpv
+    (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace.1 _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap1 store1 s1 ws1 a1 => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_word] at hR1
+  subst hR1
+  refine After.storeWord a1 le_rfl hBase (by rw [hh]; omega) fun e1 hI1 => ?_
+  have hp1 := e1.frame.params
+  have hh1 := e1.frame.half.trans hh
+  -- The value's words, from local `base + 1` on.
+  refine vSpec env slots (fun k => live k || k == x.index) h (base + 1) heap1 store1 _ hh1
+    (hp1.trans hpv) (e1.holds.mono (Nat.le_succ base)) e1.step.at_ (by rw [e1.step.cap m]; exact
+        hCap)
+    (by rw [hp1]; omega) (by omega) hPlace.2 _ _ (hTrapT.of_imp fun _ => rfl)
+    fun heap2 store2 s2 ws2 a2 => ?_
+  have hR2 := Ty.rep_elem.mp a2.rep
+  subst hR2
+  have e2a := a2.toEvolves rfl
+  have hp2a : s2.params = s.params := e2a.frame.params.trans hp1
+  have hh2a : s2.half = h := e2a.frame.half.trans hh1
+  refine wp_storeCode (e.values (v.denote funs env)) h (base + 1) e.types s2 s.values
+    (by rw [e.values_length, e.types_length]) hh2a (by rw [hp2a]; omega)
+    (by rw [e.types_length, hh2a]; omega) fun s2' f2 hold2 _ => ?_
+  have f2' : Frame (base + 1) s2 { s2' with values := s.values } := f2.trans Frame.ofValues
+  have e2 : Evolves env slots (fun k => (live k || k == x.index) || v.uses k)
+      (fun k => live k || k == x.index) (base + 1) heap1 store1 _ heap2 store2
+      { s2' with values := s.values } :=
+    ⟨e2a.step, e2a.frame.trans f2', e2a.holds.agree f2'⟩
+  have hp2 : s2'.params = s.params := f2.params.trans hp2a
+  have hh2 : s2'.half = h := f2.half.trans hh2a
+  have hI2 : s2'.get base = some (.i64 (i.denote funs env)) :=
+    (e2.frame.below base (by omega)).1.trans hI1
+  -- The count of new words, in local `base + k + 1`.
+  simp only [wp_constI64_cons]
+  have hLowK : ({ s2' with values := s.values } : Locals).params.length ≤ base + e.width + 1 := by
+    show s2'.params.length ≤ _; rw [hp2]; omega
+  have hHighK' : base + e.width + 1 < ({ s2' with values := s.values } : Locals).half := by
+    simp only [Locals.half_values, hh2]; omega
+  have hHighK := Locals.lt_total hHighK'
+  refine wp_localSet_local hLowK hHighK ?_
+  set s3 := setLocal { s2' with values := s.values } (base + e.width + 1)
+    (.i64 (wordCount e.width)) with hs3
+  have hK3 : s3.get (base + e.width + 1) = some (.i64 (wordCount e.width)) :=
+    Locals.get_setLocal_same hLowK hHighK
+  have hF3 : Frame (base + e.width + 1) { s2' with values := s.values } s3 :=
+    Frame.setValues (s := { s2' with values := s.values }) (vs := s.values) hLowK le_rfl hHighK'
+  have hold3 : LocalsHold s3 (base + 1) e.types (e.values (v.denote funs env)) :=
+    (LocalsHold.frame (Frame.ofValues.trans hF3) (by rw [e.values_length, e.types_length])
+      (by rw [e.types_length]; omega)).mpr hold2
+  have e3 : Evolves env slots (fun k => (live k || k == x.index) || v.uses k)
+      (fun k => live k || k == x.index) (base + 1) heap1 store1 _ heap2 store2 s3 :=
+    ⟨e2.step, e2.frame.trans (hF3.mono (by omega)), e2.holds.agree (hF3.mono (by omega))⟩
+  have hp3 : s3.params = s.params := e3.frame.params.trans hp1
+  have hh3 : s3.half = h := e3.frame.half.trans hh1
+  have hI3 : s3.get base = some (.i64 (i.denote funs env)) :=
+    (hF3.below base (by omega)).1.trans hI2
+  -- The array, with room for one more element, from local `base + k + 2` on.
+  refine spec_room hm x (b := base + e.width + 2) (ext := base + e.width + 1)
+    (e := wordCount e.width) (s := s3) (e3.holds.mono (by omega))
+    e3.step.at_ (by rw [e3.step.cap m, e1.step.cap m]; exact hCap) (by rw [hp3]; omega)
+    (by rw [hh3]; omega) hK3 (by omega) (by rw [wordCount_toNat]; omega) hTrapT
+    fun heap3 store3 s4 q words hSize hPrefix aR hN4 hQ4 hv4 => ?_
+  obtain ⟨p0, hp0, hOwnedQ⟩ := aR.rep
+  replace hOwnedQ : heap3.Owned store3 p0 words := hOwnedQ
+  obtain rfl : p0 = q := by simp only [List.cons.injEq, Value.i64.injEq] at hp0; exact hp0.1.symm
+  have hAQ := hOwnedQ.values
+  have hFitQ := hAQ.1
+  have hMemQ := hAQ.2.1
+  have hPtrQ := hAQ.pointerAddress_toNat
+  have hWs : (e.words (env.get x)).size = (env.get x).size * e.width := Elem.words_size e _
+  have hk29 : e.width < 536870912 := by
+    rw [wordCount_toNat] at hSize; omega
+  have hkw : (wordCount e.width).toNat = e.width := by rw [wordCount_toNat]; omega
+  rw [hkw, hWs] at hSize
+  have hnk : (env.get x).size * e.width < 536870912 := by omega
+  have hn64 : (env.get x).size < UInt64.size := by
+    have := Nat.le_mul_of_pos_right (env.get x).size hk
+    rw [show UInt64.size = 18446744073709551616 from rfl]; omega
+  have hN4' : s4.get (base + e.width + 3) =
+      some (.i64 (UInt64.ofNat ((env.get x).size * e.width))) := by
+    rw [← hWs]; exact hN4
+  have hQ4' : s4.get (base + e.width + 6) = some (.i64 p0) := hQ4
+  have hPrefix' : ∀ w, w < (env.get x).size * e.width →
+      words[w]! = (e.words (env.get x))[w]! := fun w hw => by
+    rw [hPrefix w (by rw [hWs]; exact hw), getElem!_pos _ w (by rw [hWs]; exact hw)]
+  have hp4 : s4.params = s.params := aR.frame.params.trans hp3
+  have hh4 : s4.half = h := aR.frame.half.trans hh3
+  have hI4 : s4.get base = some (.i64 (i.denote funs env)) :=
+    (aR.frame.below base (by omega)).1.trans hI3
+  have hold4 : LocalsHold s4 (base + 1) e.types (e.values (v.denote funs env)) :=
+    (LocalsHold.frame aR.frame (by rw [e.values_length, e.types_length])
+      (by rw [e.types_length]; omega)).mpr hold3
+  -- The rest of the code, from the array after the writes or with the old length.
+  have hFinish : ∀ (store5 : Store Unit) (s' : Locals) (ws : Array UInt64),
+      s'.values = s.values →
+      ws = e.words (LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env)) →
+      After env slots (fun k => live k || k == x.index) live (base + e.width + 2) heap2 store2 s3
+        (.array .word) .owned ws heap3 store5 s' [.i64 p0] →
+      wp m rest Q store5 { s' with values := .i64 p0 :: s'.values } host := by
+    rintro store5 s' ws hv' rfl aX
+    have aX1 := (After.ofWords aX).lower e3.holds (by omega) fun k h => by simp [h]
+    have aX2 := After.prepend (e1.holds.mono (Nat.le_succ base)) e3 aX1
+      (fun k h => by simp [h]) fun k h => by simp [h]
+    have aX3 := After.prepend (hVars.live_mono hIn) e1 (aX2.lower e1.holds (Nat.le_succ base)
+      fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
+    simpa [hv'] using hNext heap3 store5 _ [.i64 p0] (aX3.liveIn hIn)
+  -- The test of the position.
+  simp only [wp_localGet_cons, Locals.get_values, hI4, hN4']
+  rw [wp_divCode hk, words_div hk hnk]
+  simp only [wp_leUI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hLe : i.denote funs env ≤ UInt64.ofNat (env.get x).size ↔
+      (i.denote funs env).toNat ≤ (env.get x).size := by
+    rw [UInt64.le_iff_toNat_le, UInt64.toNat_ofNat_of_lt' hn64]
+  by_cases hc : (i.denote funs env).toNat ≤ (env.get x).size
+  · rw [ite_eq_left (by simp [hLe.mpr hc])]
+    have hWL : (i.denote funs env).toNat * e.width ≤ (env.get x).size * e.width :=
+      Nat.mul_le_mul_right _ hc
+    -- The element's first word, in local `base + k + 4`.
+    simp only [wp_localGet_cons, Locals.get_values, hI4]
+    have hs := words_scale hk (show (i.denote funs env).toNat * e.width < 536870912 by omega)
+    rw [UInt64.ofNat_toNat] at hs
+    rw [wp_scaleCode, hs]
+    have hLow5 : ({ s4 with values := s4.values } : Locals).params.length ≤ base + e.width + 4 := by
+      show s4.params.length ≤ _; rw [hp4]; omega
+    have hHigh5' : base + e.width + 4 < s4.half := by rw [hh4]; omega
+    have hHigh5 := Locals.lt_total (s := { s4 with values := s4.values }) hHigh5'
+    refine wp_localSet_local hLow5 hHigh5 ?_
+    set s5 : Locals := setLocal { s4 with values := s4.values } (base + e.width + 4)
+      (.i64 (UInt64.ofNat ((i.denote funs env).toNat * e.width))) with hs5
+    have hF5 : Frame (base + e.width + 4) s4 s5 := Frame.setValues hLow5 le_rfl hHigh5'
+    have hW5 : s5.get (base + e.width + 4) =
+        some (.i64 (UInt64.ofNat ((i.denote funs env).toNat * e.width))) :=
+      Locals.get_setLocal_same hLow5 hHigh5
+    have hN5 : s5.get (base + e.width + 3) =
+        some (.i64 (UInt64.ofNat ((env.get x).size * e.width))) :=
+      (hF5.below _ (by omega)).1.trans hN4'
+    have hQ5 : s5.get (base + e.width + 6) = some (.i64 p0) := by
+      rw [Locals.get_setLocal_ne hLow5 (by omega)]; exact hQ4'
+    have hh5 : s5.half = h := hF5.half.trans hh4
+    have hp5 : s5.params = s.params := hF5.params.trans hp4
+    -- The old length, in local `base + k + 7`.
+    simp only [wp_localGet_cons, hN5]
+    have hLow6 : ({ s5 with values := s5.values } : Locals).params.length ≤ base + e.width + 7 := by
+      show s5.params.length ≤ _; rw [hp5]; omega
+    have hHigh6' : base + e.width + 7 < s5.half := by rw [hh5]; omega
+    have hHigh6 := Locals.lt_total (s := { s5 with values := s5.values }) hHigh6'
+    refine wp_localSet_local hLow6 hHigh6 ?_
+    set s6 : Locals := setLocal { s5 with values := s5.values } (base + e.width + 7)
+      (.i64 (UInt64.ofNat ((env.get x).size * e.width))) with hs6
+    have hF6 : Frame (base + e.width + 7) s5 s6 := Frame.setValues hLow6 le_rfl hHigh6'
+    have hL6 : s6.get (base + e.width + 7) =
+        some (.i64 (UInt64.ofNat ((env.get x).size * e.width))) :=
+      Locals.get_setLocal_same hLow6 hHigh6
+    have hW6 : s6.get (base + e.width + 4) =
+        some (.i64 (UInt64.ofNat ((i.denote funs env).toNat * e.width))) :=
+      (hF6.below _ (by omega)).1.trans hW5
+    have hQ6 : s6.get (base + e.width + 6) = some (.i64 p0) :=
+      (hF6.below _ (by omega)).1.trans hQ5
+    have hh6 : s6.half = h := hF6.half.trans hh5
+    have hp6 : s6.params = s.params := hF6.params.trans hp5
+    -- The move of the words from the element's first word up.
+    refine wp_shiftUp (ptr := base + e.width + 6) (lo := base + e.width + 4)
+      (index := base + e.width + 7) (k := e.width) (l := (i.denote funs env).toNat * e.width)
+      (h := (env.get x).size * e.width) hAQ hWL (by omega) hQ6 hW6 hL6 (by omega) (by omega)
+      (by rw [hp6]; omega) (Locals.lt_total (s := s6) (by rw [hh6]; omega))
+      fun store7 s7 hW7 hA7 hp7 hl7 hOther7 hv7 => ?_
+    have hQ7 : s7.get (base + e.width + 6) = some (.i64 p0) := by
+      rw [hOther7 _ (by omega)]; exact hQ6
+    have hW7' : s7.get (base + e.width + 4) =
+        some (.i64 (UInt64.ofNat ((i.denote funs env).toNat * e.width))) := by
+      rw [hOther7 _ (by omega)]; exact hW6
+    have hFrame7 : Frame (base + e.width + 2) s4 s7 :=
+      (hF5.mono (by omega)).trans ((hF6.mono (by omega)).trans
+        (Frame.ofOthers hp7 hl7 hOther7 (by omega) (by rw [hh6]; omega)))
+    have aS := (aR.reframe hFrame7).rewriteRange hW7 hA7 (by rw [shiftUp_size])
+    have hold7 : LocalsHold s7 (base + 1) e.types
+        (List.zipWith typedValue e.types (e.toWords (v.denote funs env))) := by
+      rw [e.values_typed]
+      exact (LocalsHold.frame hFrame7 (by rw [e.values_length, e.types_length])
+        (by rw [e.types_length]; omega)).mpr hold4
+    have hW64 : (UInt64.ofNat ((i.denote funs env).toNat * e.width)).toNat =
+        (i.denote funs env).toNat * e.width :=
+      UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
+    -- The writes of the value's words.
+    rw [← List.append_nil (storeWordsCode h (base + e.width + 6) (base + e.width + 4) 0 (base + 1)
+      e.types)]
+    refine wp_storeWordsCode 0 (base + 1) e.types (e.toWords (v.denote funs env))
+      (shiftUp words ((i.denote funs env).toNat * e.width) ((env.get x).size * e.width) e.width)
+      store7 s7 aS (hFrame7.half.trans hh4) hQ7 hW7' hold7
+      (by rw [e.toWords_length, e.types_length])
+      (by rw [hW64, e.types_length, shiftUp_size, hSize]; omega) fun store8 a8 => ?_
+    rw [hW64] at a8
+    simp only [Nat.add_zero] at a8
+    have hEq : LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env) =
+        (env.get x).insertIdx (i.denote funs env).toNat (v.denote funs env) hc := dite_eq_left hc
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, hQ7]
+    rw [show s4.values = s7.values from (hv7.trans rfl).symm]
+    exact hFinish store8 s7 _ (hv7.trans hv4)
+      (by rw [hEq]; exact Elem.words_insertIdx e (v.denote funs env) hc hSize hPrefix') a8
+  · rw [ite_eq_right (by simp [hLe, hc])]
+    simp only [wp_localGet_cons, Locals.get_values, hQ4', wp_wrapI64_cons, wrap_toUInt32, hN4']
+    simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
+    rw [ite_eq_right (by rw [hPtrQ]; omega)]
+    rw [wp_nil]
+    dsimp only
+    simp only [List.take_zero, List.drop_zero, List.nil_append, hQ4']
+    have hEq : LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env) = env.get x :=
+      dite_eq_right hc
+    exact hFinish _ s4 _ hv4
+      (by rw [hEq]; exact Elem.words_extract_prefix e (by omega) hPrefix')
+      (aR.rewriteRange (writeLength_frame store3 p0 words.size ((env.get x).size * e.width) hFitQ)
+        (hAQ.writeLength (by omega)) (by simp only [Array.size_extract]; omega))
+
 end Cases
 
 /-- The code of every expression meets its specification. -/
@@ -4578,6 +5106,12 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (host : HostE
   | push x v vSpec =>
     intro hD; exact spec_push hm x (vSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | append x y => intro _; exact spec_append hm x y
+  | insertAt x i v iSpec vSpec =>
+    intro hD
+    exact spec_insertAt hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | eraseAt x i iSpec =>
+    intro hD; exact spec_eraseAt hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | float bits => intro _; exact spec_float bits
   | fbin op left right leftSpec rightSpec =>
     intro hD

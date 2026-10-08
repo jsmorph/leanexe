@@ -27464,6 +27464,47 @@ degree of the polynomial for `sin x / x`, which is 12.
   reference, 7,394 of them one unit off, and glibc's within 8 units, 313 of them unequal.  The 20
   Fourier signals pass.
 
+### `insertAt` and `eraseAt`
+
+The CLOB inserts and removes price levels, which Verified cannot express, and a port with
+`LeanExe.build` would allocate a new array for each command.  The user chose two dialect
+functions with word indices that leave the array unchanged out of range, as `set!` does:
+`LeanExe.insertAt xs i v` is `xs.insertIdx i.toNat v` when `i.toNat ≤ xs.size`, and
+`LeanExe.eraseAt xs i` is `xs.eraseIdxIfInBounds i.toNat`.  Their meanings are core functions, so
+proofs about programs get Lean's lemmas, and native Lean updates an unshared array in place, as
+the module does.
+
+The code of `insertAt x i v` keeps `i` and the value's words in locals, takes `x` with
+`Var.roomCode` for one more element, as `push` does, and then tests `i ≤ size`.  In range, a
+descending loop moves the words from position `i k` to the old length up by `k`, the element's
+word count, and the value's words go to position `i k`.  Out of range, the code writes the old
+length back, which leaves `x`'s words.  The code of `eraseAt x i` takes `x` as owned, moved when it
+dies and copied otherwise, as `set` does, and when `i < size` moves the words after the element
+down by `k` with the ascending copy loop of `copyIntoCode` and writes the length minus `k`.  The
+proofs need two loop lemmas for copies inside one block, where the existing `wp_copyInto` requires
+separate blocks, and `After.rewrite` covers the writes and the shorter length.
+
+A fresh review of the design found no defect in the code and three gaps in the plan: the word-level
+lemmas that relate the moved words to Lean's `insertIdx` and `eraseIdx`, the map lemmas for arrays
+of structures, and the core function `Array.insertIdxIfInBounds`, which is `insertAt`'s meaning and
+which the definition now uses.  It also noted that WebAssembly's `memory.copy` would replace each
+move loop with one instruction, at the cost of adding it to the verified encoder.  The proofs keep
+every local that the code writes after taking the array at or above the base of that step's
+`After`, so the element's first word goes to a scratch local instead of the position's local.
+
+The CLOB port changes three things in the program: `marketBuy` returns a pair, the conditions use
+`&&` and `==`, and the level updates use the new functions.  The command-stream lemmas of
+`Examples/Clob/Verify.lean` moved to `Examples/Clob/Commands.lean`, so that both versions state
+their chunking theorems with the same lemmas.
+
+- [x] Dialect functions and source constructors.
+- [x] Code, loop lemmas, `spec_insertAt`, and `spec_eraseAt`.
+- [x] Reflector, mode inference, example, and cases.
+- [x] The CLOB in Verified, with `runCommands_append` and `runOut_book`.  The port needed `min` on
+  words, which the reflector now writes as `if a ≤ b`, as it does on floats.
+- [x] Tests: 14,149 cases pass.  A parameter that dies at an insertion or removal is owned, so the
+  caller's block becomes the result: one block stays live, and a removal allocates nothing.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
