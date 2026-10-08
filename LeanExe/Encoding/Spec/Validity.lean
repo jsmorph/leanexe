@@ -160,8 +160,13 @@ def Function (m : Wasm.Module) (func : Wasm.Function) : Prop :=
   Types func.locals ∧ func.params.length + func.locals.length < 2 ^ 32 ∧
   Program (functionContext m func) func.body [] func.results
 
+/-- An active data segment of the default memory at a constant offset. -/
+def DataSegment (segment : Wasm.DataSegment) : Prop :=
+  segment.memIdx = 0 ∧ segment.offset.isSome ∧ segment.offsetExpr = []
+
 def Memory (decl : Wasm.MemDecl) : Prop :=
-  decl.is64 = false ∧ decl.data = [] ∧ decl.pagesMin.toNat ≤ 65536 ∧
+  decl.is64 = false ∧ (∀ segment ∈ decl.data, DataSegment segment) ∧
+  decl.pagesMin.toNat ≤ 65536 ∧
   ∀ maximum ∈ decl.pagesMax, decl.pagesMin ≤ maximum ∧ maximum.toNat ≤ 65536
 
 structure Module (m : Wasm.Module) : Prop where

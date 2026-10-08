@@ -116,7 +116,7 @@ rule and its declaration rules.
 | `types` | Makes all parameter and result types valid numeric types.  With canonical metadata, each type is a valid singleton final function subtype. |
 | `imports` | Provides an existing type for every imported function signature.  The encoding derivation supplies the chosen index and the two names. |
 | `functions` | Connects each declared type index to the function signature, validates local types, bounds the combined parameter/local count, and types the body from an empty stack to the declared results. |
-| `memories` | Requires 32-bit memory, minimum at most 65,536 pages, and any maximum between the minimum and 65,536. |
+| `memories` | Requires 32-bit memory, minimum at most 65,536 pages, and any maximum between the minimum and 65,536.  Each data segment targets memory 0 at a constant offset. |
 | `globals` | Supplies a numeric global type, mutability, and a matching constant initializer.  Integer constants are permitted constant expressions. |
 | `functionCount` | Bounds the combined import and defined-function index set. |
 | Function exports | Each index refers to an imported or defined function. |

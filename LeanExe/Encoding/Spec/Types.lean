@@ -52,6 +52,15 @@ inductive Global : Bytes → Wasm.GlobalDecl → Prop
         { init := .i64 value, declaredType := some .i64, isMut := mutable,
           sourceInit := some [.constI64 value] }
 
+/-- An active data segment of the default memory at a constant offset: mode 0, `i32.const` of the
+offset, `end`, and the bytes as a vector. -/
+inductive DataSegment : Bytes → Wasm.DataSegment → Prop
+  | intro (offsetBytes lengthBytes : Bytes) (offset : UInt32) (bytes : List UInt8)
+      (constant : Signed 32 offsetBytes offset.toBitVec.toInt)
+      (length : Unsigned 32 lengthBytes bytes.length) :
+      DataSegment (0x00 :: 0x41 :: (offsetBytes ++ 0x0b :: (lengthBytes ++ bytes)))
+        { offset := some offset, bytes := bytes }
+
 end Wasm.Encoding.Spec
 
 namespace Wasm.Encoding

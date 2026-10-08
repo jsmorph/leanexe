@@ -168,6 +168,11 @@ def global (decl : Wasm.GlobalDecl) : Nat :=
   | .i64 value => 4 + s64 value
   | _ => 0
 
+def dataSegment (segment : Wasm.DataSegment) : Nat :=
+  match segment.offset with
+  | some offset => 3 + s32 offset + u32 segment.bytes.length + segment.bytes.length
+  | none => 0
+
 def typeIndex (signature : Wasm.FuncType) : List Wasm.FuncType → Nat
   | [] => 0
   | head :: tail => if head = signature then 0 else typeIndex signature tail + 1
@@ -206,12 +211,19 @@ structure ExportReady (entry : UInt8 × String × Nat) : Prop where
   name : entry.2.1.toUTF8.size < 2 ^ 32
   index : entry.2.2 < 2 ^ 32
 
+/-- An active data segment of the default memory at a constant offset, as the encoder writes
+it. -/
+inductive DataReady : Wasm.DataSegment → Prop
+  | intro (offset : UInt32) (bytes : List UInt8) (length : bytes.length < 2 ^ 32) :
+      DataReady { offset := some offset, bytes := bytes }
+
 structure Ready (m : Wasm.Module) : Prop where
   shape : Spec.Shape m
   types : ∀ type ∈ m.types, TypeReady type
   imports : ∀ decl ∈ m.imports, ImportReady m.types decl
   functions : ∀ func ∈ m.funcs, FunctionReady m.types func
-  memories : ∀ decl ∈ m.memory.toList, decl.data = [] ∧ decl.is64 = false
+  memories : ∀ decl ∈ m.memory.toList, decl.is64 = false
+  data : ∀ segment ∈ Spec.dataSegments m, DataReady segment
   globals : ∀ decl ∈ m.globals, GlobalReady decl
   exports : ∀ entry ∈ Spec.exports m, ExportReady entry
   typeCount : m.types.length < 2 ^ 32
@@ -222,9 +234,11 @@ structure Ready (m : Wasm.Module) : Prop where
   typeSize : Size.vector (m.types.map Size.functionType) < 2 ^ 32
   importSize : Size.vector (m.imports.map (Size.importFunction m.types)) < 2 ^ 32
   functionSize : Size.vector (m.funcs.map (fun f => Size.u32 (f.typeIdx.getD 0))) < 2 ^ 32
-  memorySize : Size.vector (m.memory.toList.map Size.memory) < 2 ^ 32
+  memorySize : Size.vector ((Spec.memoryDecls m).map Size.memory) < 2 ^ 32
   globalSize : Size.vector (m.globals.map Size.global) < 2 ^ 32
   exportSize : Size.vector ((Spec.exports m).map Size.exportEntry) < 2 ^ 32
   codeSize : Size.vector (m.funcs.map Size.functionBody) < 2 ^ 32
+  dataCount : (Spec.dataSegments m).length < 2 ^ 32
+  dataSize : Size.vector ((Spec.dataSegments m).map Size.dataSegment) < 2 ^ 32
 
 end Wasm.Encoding

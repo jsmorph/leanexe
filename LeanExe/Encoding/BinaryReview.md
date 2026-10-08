@@ -146,7 +146,8 @@ the [official module grammar][modules].
 | Component | Checked correspondence |
 | --- | --- |
 | Header | Magic `00 61 73 6d`, version `01 00 00 00`. |
-| Sections | IDs `1, 2, 3, 5, 6, 7, 10`, once each, in the prescribed order.  Empty vectors are permitted. |
+| Sections | IDs `1, 2, 3, 5, 6, 7, 10`, once each, in the prescribed order, then ID `11` when the memory has data segments.  Empty vectors are permitted. |
+| Data section | Each segment uses mode `0`, an active segment of memory 0, with the offset as `i32.const` and `end`, then the bytes as a vector.  The memory section carries the declaration without its segments, and the decoder joins the segments back to the memory. |
 | Type and import sections | Preserve the type table and import order.  Each imported function's selected type index resolves to its recorded signature. |
 | Function and code sections | Both range over `m.funcs` in the same order.  Their counts agree.  Each type index resolves to that function's parameter and result lists. |
 | Locals | Each local forms a group with count one.  Vector count therefore also bounds the expanded local count. |

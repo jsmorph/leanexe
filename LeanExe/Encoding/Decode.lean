@@ -170,6 +170,19 @@ def memories : Parser (Option MemDecl) := do
 def constEnd : Parser Unit := do
   if (← byte) ≠ 0x0b then unsupported "global initializer"
 
+/-- An active data segment of the default memory at a constant offset. -/
+def dataSegment : Parser DataSegment := do
+  match ← byte with
+  | 0x00 => do
+      if (← byte) ≠ 0x41 then unsupported "data segment offset"
+      else do
+        let offset := wrap32 (← signed 32)
+        constEnd
+        let length ← unsigned 32
+        let bytes ← take length
+        pure { offset := some offset, bytes := bytes }
+  | _ => unsupported "passive or explicitly indexed data segment"
+
 def mutability : Parser Bool := do
   match ← byte with
   | 0x00 => pure false
@@ -392,6 +405,7 @@ structure Sections where
   globals : List GlobalDecl := []
   exports : List (UInt8 × String × Nat) := []
   codes : List (List ValueType × Program) := []
+  data : List DataSegment := []
 
 /-- Position of a section id in the required order, or 0 for an unknown id. -/
 def sectionOrder : UInt8 → Nat
@@ -413,6 +427,7 @@ def sectionContents (id : UInt8) (size : Nat) (acc : Sections) : Parser Sections
   | 6 => return { acc with globals := ← within size (vec global) }
   | 7 => return { acc with exports := ← within size (vec exportEntry) }
   | 10 => return { acc with codes := ← within size (vec code) }
+  | 11 => return { acc with data := ← within size (vec dataSegment) }
   | _ => unsupported s!"section {id}"
 
 def sections : Nat → Nat → Sections → Parser Sections
@@ -452,7 +467,7 @@ def assemble (found : Sections) (funcs : List Function) : Module :=
   { funcs
     exports := found.exports.filterMap fun (kind, exportName, index) =>
       if kind = 0x00 then some { name := exportName, funcIdx := index } else none
-    memory := found.memory
+    memory := found.memory.map fun decl => { decl with data := found.data }
     globals := found.globals
     imports := found.imports
     types := found.types
@@ -469,8 +484,9 @@ def moduleParser : Parser Module := do
     if version ≠ [0x01, 0x00, 0x00, 0x00] then malformed "unknown binary version" else do
       let available ← remaining
       let found ← sections available 0 {}
-      let funcs ← functions found.types found.functions found.codes
-      pure (assemble found funcs)
+      if found.memory.isNone && !found.data.isEmpty then invalid "unknown memory" else do
+        let funcs ← functions found.types found.functions found.codes
+        pure (assemble found funcs)
 
 end Wasm.Encoding.Decoder
 

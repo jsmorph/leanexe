@@ -95,19 +95,26 @@ def sectionBytes (id : UInt8) (payload : Encoded relation value) :
   let size ← u32 payload.val.length
   pure ⟨id :: (size.val ++ payload.val), .intro _ _ _ size.property payload.property⟩
 
+def dataSection : (segments : List Wasm.DataSegment) → Result Spec.DataSection segments
+  | [] => .ok ⟨[], .empty⟩
+  | segment :: rest => do
+      let encoded ← vector dataSegment (segment :: rest) >>= sectionBytes 11
+      pure ⟨encoded.val, .present _ _ (List.cons_ne_nil _ _) encoded.property⟩
+
 def module (m : Wasm.Module) : Result Spec.ModuleBytes m := do
   let fields ← shape m
   let types ← vector functionType m.types >>= sectionBytes 1
   let imports ← vector (importFunction m.types) m.imports >>= sectionBytes 2
   let functions ← vector (functionIndex m.types) m.funcs >>= sectionBytes 3
-  let memories ← vector memory m.memory.toList >>= sectionBytes 5
+  let memories ← vector memory (Spec.memoryDecls m) >>= sectionBytes 5
   let globals ← vector global m.globals >>= sectionBytes 6
   let exports ← vector exportEntry (Spec.exports m) >>= sectionBytes 7
   let codes ← vector functionBody m.funcs >>= sectionBytes 10
+  let datas ← dataSection (Spec.dataSegments m)
   pure ⟨[0, 97, 115, 109, 1, 0, 0, 0] ++ types.val ++ imports.val ++ functions.val ++
-    memories.val ++ globals.val ++ exports.val ++ codes.val,
-    .intro _ _ _ _ _ _ _ _ fields.down types.property imports.property functions.property
-      memories.property globals.property exports.property codes.property⟩
+    memories.val ++ globals.val ++ exports.val ++ codes.val ++ datas.val,
+    .intro _ _ _ _ _ _ _ _ _ fields.down types.property imports.property functions.property
+      memories.property globals.property exports.property codes.property datas.property⟩
 
 def encode (m : Wasm.Module) : Except String ByteArray :=
   (module m).map fun encoded => ⟨encoded.val.toArray⟩
