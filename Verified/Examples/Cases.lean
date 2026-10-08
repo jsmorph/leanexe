@@ -23,6 +23,7 @@ import Verified.Examples.Trig
 import Verified.Examples.Fourier
 import Verified.Examples.Insert
 import Verified.Examples.Clob
+import Verified.Examples.Tables
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -569,6 +570,13 @@ def main : IO Unit := do
       IO.println s!"clob|runCommands|{two}|{ap} {as} {arrayArg cs}|{r}"
       let r := tripleOut (Clob.runOut p s o cs)
       IO.println s!"clob|runOut|{three}|{ap} {as} {arrayArg o} {arrayArg cs}|{r}"
+  -- Constant tables, read in range and past the end, and an update of an owned array from one.
+  for k in [0, 1, 3, 5, 7, 8, 100, 18446744073709551615] do
+    IO.println s!"tables|square|i64|i64:{k}|{Tables.square k}"
+    IO.println s!"tables|sum|i64|i64:{k}|{Tables.sum k}"
+    for xs in arrays do
+      let r := arrayOut (Tables.setSquare xs k)
+      IO.println s!"tables|setSquare|array-u64|{arrayArg xs} i64:{k}|{r}|1|1"
   -- Insertions and removals, out of range as well.
   for xs in arrays do
     let a := arrayArg xs

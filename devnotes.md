@@ -27569,7 +27569,14 @@ Changing `ImplementsA` itself would have reached the older IR pipeline and its e
 
 - [x] Data section in the verified encoder.
 - [x] Layout, wrapper code, `wrapper_correct`, and the transfer lemmas.
-- [ ] Reflector case, Trig on tables, and tests.
+- [x] Reflector: a listed definition `f x := g T₁ … Tₖ x`, with `g` listed before it and each `Tᵢ`
+  a constant of type `Array UInt64`, becomes a wrapper.  `p.tables` and `p.wrappers` hold the
+  tables in the order of first use and the wrappers, `p.module` is `compileWith`, and
+  `p.f.implements` states `ImplementsTables` with the tables' addresses and names, for example
+  `[(4096, squares)]`.  `Tables.lean` tests two tables, reads past the end, and an owned array
+  updated from a table: 14,205 cases pass.
+- [ ] Trig and Fourier on tables.
+- [ ] The instantiation theorem.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

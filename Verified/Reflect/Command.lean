@@ -1863,6 +1863,78 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, h, r.flatArgs,
       r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
+/-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`. -/
+def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
+    (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
+  let hTy ← inferType h
+  let #[α, γ, ia, ic, aborts, m, entry, f, tables] := hTy.getAppArgs
+    | throwError "verified_compile: the wrapper's theorem {hTy}"
+  let β := r.argsType
+  let δ := r.resultType
+  let modes := paramModes r.params r.modes
+  let hF ← withLocalDeclD `y β fun y => do
+    let a := mkApp f (mkApp r.flatArgs y)
+    let get := a.headBeta
+    let #[_, _, _, fv, env] := get.getAppArgs
+      | throwError "verified_compile: the meaning {get}"
+    let get' := get.replace fun e => if e.isConstOf funs then some funsVal else none
+    let step ← mkExpectedTypeHint (← mkEqRefl a) (← mkEq a get')
+    -- The callee, a projection of the wrapper's record.
+    let chain ← getChain funsVal (← whnf fv) env
+    let some (_, _, b) := (← inferType chain).eq?
+      | throwError "verified_compile: the meaning of {get}"
+    let c := mkApp r.flatResult (mkApp F y)
+    let projs ← argProjsE y modes r.params.length
+    let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
+    mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
+  return mkAppN (mkConst ``ImplementsTables.transferAgree)
+    #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, h,
+      r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
+
+/-- The callee and the tables of a wrapper definition `fun params => g T₁ … Tₖ params`: `g` is a
+listed definition and each `Tᵢ` a constant of type `Array UInt64`, which `g` takes as borrowed
+arrays of words before the definition's own parameters. -/
+def wrapperShape? (name : Name) (callees : List Callee) : MetaM (Option (Callee × List Name)) := do
+  let info ← getConstInfoDefn name
+  lambdaTelescope (← instantiateMVars info.value) fun params body => do
+    let .const fn _ := body.getAppFn | return none
+    let some callee := callees.find? (·.name == fn) | return none
+    let args := body.getAppArgs
+    unless params.size < args.size do return none
+    let k := args.size - params.size
+    unless args.extract k args.size == params do return none
+    let words := mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)
+    let mut tables := #[]
+    for t in args.extract 0 k do
+      let .const c _ := t | return none
+      unless ← isDefEq (← inferType t) words do return none
+      tables := tables.push c
+    unless callee.sig.params.take k == List.replicate k (.array .word) &&
+        (callee.sig.modes.take k).all (· == .borrowed) do
+      throwError "verified_compile: {fn} must take the tables of {name} as borrowed arrays of \
+        words before its other parameters"
+    return some (callee, tables.toList)
+
+/-- Reflects the wrapper definition `name`, which applies `callee` to the tables `tables` and its
+own parameters, and adds `base.denote_eq`: the callee's meaning at the tables and the parameters
+is the flattening of `name` at the parameters, from the callee's own equation. -/
+def reflectWrapper (base name : Name) (callee : Callee) (tables : List Name) :
+    MetaM Reflected := do
+  let info ← getConstInfoDefn name
+  lambdaTelescope (← instantiateMVars info.value) fun params body => do
+    let types ← params.toList.mapM fun p => do tyOf (← inferType p)
+    let resultShape ← shapeOf (← inferType body)
+    let calleeEq := mkAppN (Lean.mkConst callee.denoteEq)
+      (tables.toArray.map Lean.mkConst ++ params)
+    let some (_, lhs, _) := (← inferType calleeEq).eq?
+      | throwError "verified_compile: the equation of {callee.name}"
+    let eq ← mkEq lhs (resultShape.apply (mkAppN (mkConst name) params))
+    addTheorem (base ++ `denote_eq) (← mkForallFVars params eq)
+      (← mkLambdaFVars params (← mkExpectedTypeHint calleeEq eq))
+    let k := tables.length
+    finishReflected base name params types resultShape.ty (← inferType body) callee.sig.aborts
+      (callee.sig.modes.drop k) callee.sig.depth (base ++ `denote_eq)
+
 /-- The most positions that the reflector accepts in a function whose code takes the call depth.
 Wasmtime 44 on aarch64 keeps 8 bytes for each value live across a call and 16 bytes per frame, so
 `depthLimit` frames of 32 positions take about 280 KB of its 512 KiB default stack, and the rest
@@ -1882,7 +1954,7 @@ def checkPositions (name : Name) (body : Lean.Expr) : MetaM Unit := do
       positions, more than the {depthPositions} that {depthLimit} nested calls may use"
 
 /-- `FVar.there (… (FVar.there FVar.here))` with `k` applications of `there`. -/
-def fvarStx : Nat → CommandElabM Term
+def fvarStx {m : Type → Type} [Monad m] [MonadQuotation m] : Nat → m Term
   | 0 => `(Verified.FVar.here)
   | k + 1 => do `(Verified.FVar.there $(← fvarStx k))
 
@@ -1899,16 +1971,30 @@ def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
-    let (reflected, funsVal) ← liftTermElabM do
+    let (reflected, wraps, tableNames, funsVal) ← liftTermElabM do
       let mut sigs : List Sig := []
       let mut prog := Lean.mkConst ``Prog.nil
       let mut funs := Lean.mkConst ``Funs.nil
       let mut meaning := Lean.mkConst ``Prog.Meaning.nil
       let mut out : Array Reflected := #[]
       let mut callees : List Callee := []
+      let mut wraps : Array (Reflected × Callee × List Nat) := #[]
+      let mut tableNames : Array Name := #[]
       for name in names do
         let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
         let fbase := base ++ Name.mkSimple name.getString!
+        -- A wrapper passes constant tables to a listed function; it is no function of the
+        -- program, and the module exports it after the entries.
+        if let some (callee, tnames) ← wrapperShape? name callees then
+          let mut idxs := #[]
+          for t in tnames do
+            match tableNames.findIdx? (· == t) with
+            | some i => idxs := idxs.push i
+            | none =>
+              idxs := idxs.push tableNames.size
+              tableNames := tableNames.push t
+          wraps := wraps.push (← reflectWrapper fbase name callee tnames, callee, idxs.toList)
+          continue
         let f := Lean.mkConst (fbase ++ `func)
         let r ← match ← getUnfoldEqnFor? name with
           | none =>
@@ -1940,13 +2026,39 @@ def elabVerifiedCompile : CommandElab
       addTheorem (base ++ `meaning)
         (mkApp3 (Lean.mkConst ``Prog.Meaning) sigsExpr (Lean.mkConst (base ++ `program))
           (Lean.mkConst (base ++ `funs))) meaning
+      -- The tables, in the order of their first use, and the wrappers.
+      let words := mkApp (Lean.mkConst ``Array [.zero]) (Lean.mkConst ``UInt64)
+      addDefinition (base ++ `tables) (mkApp (Lean.mkConst ``List [.zero]) words)
+        (listExpr words (tableNames.toList.map Lean.mkConst))
+      let T := mkApp2 (Lean.mkConst ``List.length [.zero]) words
+        (Lean.mkConst (base ++ `tables))
+      let mut wexprs : Array Lean.Expr := #[]
+      for (r, callee, idxs) in wraps do
+        let some pos := out.findIdx? (·.name == callee.name)
+          | throwError "verified_compile: the callee {callee.name}"
+        let fvarTy := mkApp2 (Lean.mkConst ``FVar) sigsExpr (sigExpr callee.sig)
+        let fvar ← Term.elabTermEnsuringType (← fvarStx (out.size - 1 - pos)) (some fvarTy)
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let fvar ← instantiateMVars fvar
+        let fins ← idxs.mapM fun i => do
+          mkAppM ``Fin.mk #[mkNatLit i, ← mkDecideProof (← mkLt (mkNatLit i) T)]
+        wexprs := wexprs.push (mkAppN (Lean.mkConst ``Wrapper.mk)
+          #[sigsExpr, T, toExpr r.name.getString!, listExpr (mkApp (Lean.mkConst ``Fin) T) fins,
+            ctxExpr r.params, tyExpr r.result, toExpr callee.sig.aborts,
+            modesExpr callee.sig.modes, toExpr callee.sig.depth, fvar, ← mkEqRefl (toExpr true)])
+      let wrapperTy := mkApp2 (Lean.mkConst ``Wrapper) sigsExpr T
+      addDefinition (base ++ `wrappers) (mkApp (Lean.mkConst ``List [.zero]) wrapperTy)
+        (listExpr wrapperTy wexprs.toList)
       addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
-        (← mkAppM ``compile #[Lean.mkConst (base ++ `program)])
-      return (out, funs)
+        (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
+          Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers)])
+      return (out, wraps, tableNames, funs)
     let progId := mkIdent (base ++ `program)
     let funsId := mkIdent (base ++ `funs)
     let meaningId := mkIdent (base ++ `meaning)
     let moduleId := mkIdent (base ++ `module)
+    let tablesId := mkIdent (base ++ `tables)
+    let wrappersId := mkIdent (base ++ `wrappers)
     let n := reflected.size
     let mut claims : Array Term := #[]
     let mut proofs : Array Term := #[]
@@ -1961,10 +2073,11 @@ def elabVerifiedCompile : CommandElab
       let (hStx, index) ← if r.depth then
           let j := entries
           entries := entries + 1
-          pure (← `(Verified.Prog.correct_entry $progId $funsId $meaningId $fvar rfl
-            (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
+          pure (← `(Verified.Prog.correct_entryWith $progId $funsId $meaningId $tablesId
+            $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
         else
-          pure (← `((Verified.Prog.correct $progId $funsId $meaningId $fvar).1 rfl), 2 + k)
+          pure (← `((Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId
+            $fvar).1 rfl), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
@@ -1984,6 +2097,41 @@ def elabVerifiedCompile : CommandElab
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
+    -- The wrappers' theorems, at their positions after the entries.
+    let mut j := 0
+    for (r, _, idxs) in wraps do
+      let simple := Name.mkSimple r.name.getString!
+      let implName := base ++ simple ++ `implements
+      let hStx ← `(Verified.Prog.correct_wrapper $progId $funsId $meaningId $tablesId $wrappersId
+        (j := $(Lean.quote j)) rfl)
+      liftTermElabM do
+        let h ← Term.elabTerm (← `(Verified.ImplementsTables.lean $hStx)) none
+        Term.synthesizeSyntheticMVarsNoPostponing
+        let h ← instantiateMVars h
+        let F ← withLocalDeclD `x r.argsType fun x => do
+          let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
+          mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
+        let proof ← wrapperProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
+          (base ++ simple ++ `resultAgree)
+        -- The statement with the trap flag, the module, the index, and the tables' addresses
+        -- and names as constants.
+        let ty ← inferType proof
+        let args := ty.getAppArgs
+        let entryTy ← mkAppM ``Prod #[mkConst ``UInt64,
+          mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)]
+        let entries' ← idxs.mapM fun i => do
+          let addr ← kernelWhnf (← mkAppM ``UInt64.toNat
+            #[← mkAppM ``tableAddr #[mkConst (base ++ `tables), mkNatLit i]])
+          let some a := natOf addr
+            | throwError "verified_compile: cannot evaluate the address of table {i}"
+          mkAppM ``Prod.mk #[toExpr (UInt64.ofNat a), mkConst tableNames[i]!]
+        let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr (r.aborts || r.depth))
+          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + n + entries + j))
+          |>.set! 8 (listExpr entryTy entries'))
+        addTheorem implName claim proof
+      claims := claims.push (← `(type_of% $(mkIdent implName)))
+      proofs := proofs.push (mkIdent implName)
+      j := j + 1
     let bytesId := mkIdent (target.getId ++ `bytes)
     let conj ← claims.pop.foldrM (fun c acc => `($c ∧ $acc)) claims.back!
     let impls ← proofs.pop.foldrM (fun p acc => `(⟨$p, $acc⟩)) proofs.back!

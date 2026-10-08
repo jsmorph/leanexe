@@ -5806,6 +5806,18 @@ theorem Prog.correct_entry {S : List Sig} (prog : Prog S) (funs : Funs S)
       (2 + S.length + j) (funs.get f) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
   entry_correct (compile_runtime prog) (prog.correct funs h f) hd trivial (compile_entries prog hj)
 
+/-- `Prog.correct_entry` for a program with tables and wrappers. -/
+theorem Prog.correct_entryWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
+    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result)) :
+    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true
+      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f) (fun _ _ _ => True)
+      (fun _ _ _ _ _ => True) :=
+  entry_correct (compileWith_runtime prog tables wrappers)
+    (prog.correctWith funs h tables wrappers f) hd trivial
+    (compileWith_entries prog tables wrappers hj)
+
 /-- A function's theorem for the verified compiler's representation gives the theorem for a Lean
 function `F` on types whose representations agree with it: each argument `y` is represented as
 `g y` is, and the result of `f` at `g y` represents `F y`. -/
