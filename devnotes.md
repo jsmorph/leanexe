@@ -27590,6 +27590,48 @@ Changing `ImplementsA` itself would have reached the older IR pipeline and its e
 - [x] Tests: 14,205 cases pass, the trigonometric results are unchanged, and the 20 Fourier
   signals pass.
 
+### More transcendental functions
+
+The user asked for other transcendental functions as exercises of the dialect, and approved three
+ports: `exp` from Arm's optimized-routines, `tanh` through `expm1` from fdlibm, and `log` from
+Arm's optimized-routines.  Arm's `exp` and `log` read tables of 256 and 512 words, which exercise
+the data segments, and fdlibm's `expm1` and `tanh` are table-free code with many branches on the
+exponent bits.  Each port uses the configuration for a target without fused multiply-add, since
+the dialect has no fused operation, and each constant appears as its bit pattern.  Sources:
+[Arm optimized-routines `math/`](https://github.com/ARM-software/optimized-routines/tree/503fafe311c177de0e571c458c7c337b1ca5f522/math)
+at commit `503fafe3`, and [FreeBSD `lib/msun/src`](https://github.com/freebsd/freebsd-src/tree/20381bce4b63975494a2f4bc84257f6932e6d379/lib/msun/src)
+at commit `20381bce`.
+
+`Verified/Examples/Reference.lean` holds the exact references for the accuracy checks in Lean's
+integers: `ln 2` from `2 atanh (1/3)` at 2,400 bits, `exp` by reduction and Taylor series,
+`expm1` and `tanh` from `exp`, and rounding to the nearest double with subnormals and overflow.
+Each definition states the error its truncations leave.  `precision x` raises the working
+precision for `|x| < 1` so that `x · 2 ^ q` is exact and holds at least 400 bits, which keeps
+`expm1` and `tanh` of tiny arguments accurate.  The check of one unit passes for a reference
+rounded the wrong way, since that can happen only next to a midpoint, where the two doubles beside
+it are the only ones within one unit.  `TrigAccuracy.lean` and `ExpAccuracy.lean` use its
+rounding, distances, and tallies.  In a distance, `∞` follows the largest finite double, so a
+result of `DBL_MAX` where the reference overflows counts as one unit.
+
+A fresh reviewer compared the `exp` port with Arm's sources and found no defect in the code.  It
+confirmed the 256 table words and the constants by script and the order of every operation, and
+found four errors in the documentation: the accuracy check claimed `ln 2` to within a few units
+of `2 ^ -400`, where the series leaves 124 units; the C library's report, described as
+information, failed the check on a NaN or infinity; the header called every constant a
+hexadecimal float of Arm's source, though `InvLn2N` is a product and the overflow factors come
+from `math_err.c`; and it stated `|r| ≤ ln 2/(2 N)`, which the rounding of `x · N/ln 2` exceeds
+slightly.  All four are fixed, and `TrigAccuracy.lean` had the first two and is fixed the same
+way.
+
+- [x] `exp`: 180,085 results lie within one unit of the correctly rounded value, 147 of them
+  unequal; glibc's `exp` lies within one unit, 116 unequal.  The table agrees with `2 ^ (j/128)`.
+  Arm's `exp.c`, `exp_data.c`, and `math_err.c`, compiled here unmodified with GCC 14,
+  `-ffp-contract=off`, and the same configuration, give the same bits as `Exp.exp` on 380,085
+  arguments, 200,000 of them hashed over all exponents.
+- [ ] `expm1` and `tanh` from fdlibm, with references from `Reference.expm1` and
+  `Reference.tanh`.
+- [ ] `log` from Arm, with a reference from `atanh`.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

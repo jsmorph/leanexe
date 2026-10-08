@@ -30,3 +30,5 @@ import Verified.Examples.Fourier
 import Verified.Examples.Insert
 import Verified.Examples.Clob
 import Verified.Examples.Tables
+import Verified.Examples.Exp
+import Verified.Examples.Reference

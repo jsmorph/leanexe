@@ -1,27 +1,28 @@
 import Verified.Examples.Trig
+import Verified.Examples.Reference
 
 /-! A native check of `Trig.sin` and `Trig.cos` against a reference computed with Lean's integers:
 the reduction by a 2,400-bit `π` from Machin's formula, the Taylor series of `sin` and `cos` in
-300-bit fixed point, and rounding to the nearest double.  fdlibm states an error below one unit in
-the last place, so each result must lie within one unit of the reference.  The arguments are hashed
-values over the exponents from `2 ^ -30` to `2 ^ 1023` with both signs, evenly spaced values up to
-100, the doubles at and next to the rounded `k · π/2` for `k` up to 20,000, where the reduction
-cancels, and five more with their negatives: `6381956970095103 · 2 ^ 797`, the double closest to a
-multiple of `π/2`, `1647100`, just above `2 ^ 20 · π/2`, where the Payne–Hanek reduction begins,
-`10 ^ 22`, `10 ^ 300`, and the largest finite double.  The check first compares the words of
-the tables `Trig.invPi` and `Trig.halfPi` with `2/π` and `π/2` from the same `π`.  It also reports,
-for information, the distance from the reference of the C library's `sin` and `cos`, which Lean's
-`Float.sin` and `Float.cos` call.  The check exits with an error at the first result further than
-one unit from the reference, or at a NaN or infinity.  Run with `lake env lean --run`. -/
+300-bit fixed point, and `Reference.toFloat`'s rounding to the nearest double.  fdlibm states an
+error below one unit in the last place, so each result must lie within one unit of the reference.
+The arguments are hashed values over the exponents from `2 ^ -30` to `2 ^ 1023` with both signs,
+evenly spaced values up to 100, the doubles at and next to the rounded `k · π/2` for `k` up to
+20,000, where the reduction cancels, and five more with their negatives:
+`6381956970095103 · 2 ^ 797`, the double closest to a multiple of `π/2`, `1647100`, just above
+`2 ^ 20 · π/2`, where the Payne–Hanek reduction begins, `10 ^ 22`, `10 ^ 300`, and the largest
+finite double.  The check first compares the words of the tables `Trig.invPi` and `Trig.halfPi`
+with `2/π` and `π/2` from the same `π`.  It also reports, for information, the distance from the
+reference of the C library's `sin` and `cos`, which Lean's `Float.sin` and `Float.cos` call.  The
+check exits with an error at the first result further than one unit from the reference, or at a
+NaN.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.TrigAccuracy
 
-/-- The position of a finite float among the floats in order. -/
-def order (x : Float) : Int :=
-  let b := x.toBits
-  if b >>> 63 == 1 then -((b &&& 0x7FFFFFFFFFFFFFFF).toNat : Int) else (b.toNat : Int)
+open Verified.Examples Reference
 
-/-- `arctan (1 / x) · 2 ^ p`, within a few units, by its alternating series. -/
+/-- `arctan (1 / x) · 2 ^ p` for `x ≥ 2`, by its alternating series, within `n + 2` units of the
+exact value for `n` terms: each term is the floor of the exact term, and the terms omitted sum to
+less than `4/3` units. -/
 def arctanInv (x p : Nat) : Int := Id.run do
   let mut total : Int := 0
   let mut term : Nat := 2 ^ p / x
@@ -34,23 +35,9 @@ def arctanInv (x p : Nat) : Int := Id.run do
     sign := -sign
   return total
 
-/-- `π · 2 ^ 2400` by Machin's formula `π = 16 arctan (1/5) - 4 arctan (1/239)`, within a few
-units. -/
+/-- `π · 2 ^ 2400` by Machin's formula `π = 16 arctan (1/5) - 4 arctan (1/239)`, within `2 ^ 14`
+units, since the series have 517 and 152 terms. -/
 def piScaled : Int := 4 * (4 * arctanInv 5 2400 - arctanInv 239 2400)
-
-/-- The bits of the double nearest to `v · 2 ^ -300`, for `v` with a normal result. -/
-def nearest (v : Int) : UInt64 :=
-  if v == 0 then 0 else
-    let a := v.natAbs
-    let l := Nat.log2 a + 1
-    let sh := l - 53
-    let q := a >>> sh
-    let r := a - (q <<< sh)
-    let half := if sh == 0 then 0 else 2 ^ (sh - 1)
-    let q := if sh != 0 && (r > half || (r == half && q % 2 == 1)) then q + 1 else q
-    let (q, l) := if q == 2 ^ 53 then (q / 2, l + 1) else (q, l)
-    let bits := (UInt64.ofNat (l + 1023 - 1 - 300) <<< 52) ||| UInt64.ofNat (q - 2 ^ 52)
-    if v < 0 then bits ||| 0x8000000000000000 else bits
 
 /-- The words of `2/π · 2 ^ 1216` from `piScaled`, the integer part first. -/
 def invPiWords : List UInt64 :=
@@ -64,7 +51,7 @@ def halfPiWords : List UInt64 :=
 
 /-- `(sin x, cos x)` for a finite `x` with a normal result, by exact reduction and Taylor series in
 300-bit fixed point, rounded to the nearest doubles. -/
-def reference (x : Float) : UInt64 × UInt64 :=
+def reference (x : Float) : Float × Float :=
   let b := x.toBits
   let frac := (b &&& 0xFFFFFFFFFFFFF).toNat
   let e := ((b >>> 52) &&& 0x7FF).toNat
@@ -96,11 +83,7 @@ def reference (x : Float) : UInt64 × UInt64 :=
     | 1 => (c, -s)
     | 2 => (-s, -c)
     | _ => (-c, s)
-  if b >>> 63 == 1 then (nearest (-vs), nearest vc) else (nearest vs, nearest vc)
-
-/-- The number of floats from `a` to `b`, when both are finite. -/
-def distance (a b : Float) : Option Nat :=
-  if a.isFinite && b.isFinite then some (order a - order b).natAbs else none
+  (toFloat (if b >>> 63 == 1 then -vs else vs) (-300), toFloat vc (-300))
 
 def args : Array Float :=
   let hashed := (Array.range 100000).map fun i =>
@@ -119,35 +102,25 @@ def args : Array Float :=
 
 end Verified.Examples.TrigAccuracy
 
-open Verified.Examples Verified.Examples.TrigAccuracy in
+open Verified.Examples Verified.Examples.Reference Verified.Examples.TrigAccuracy in
 def main : IO UInt32 := do
   unless invPiWords == Trig.invPi.toList && halfPiWords == Trig.halfPi.toList do
     IO.eprintln "fail: the words of 2/π or π/2 differ from those of Machin's formula"
     return 1
-  let mut worst := 0
-  let mut unequal := 0
-  let mut libraryWorst := 0
-  let mut libraryUnequal := 0
+  let mut ours : Tally := {}
+  let mut library : Tally := {}
   for x in args do
     let (rs, rc) := reference x
-    for (name, ours, library, ref) in
+    for (name, y, l, ref) in
         [("sin", Trig.sin x, Float.sin x, rs), ("cos", Trig.cos x, Float.cos x, rc)] do
-      let some d := distance ours (Float.ofBits ref)
-        | IO.eprintln s!"fail: {name} at bits {x.toBits}: {ours.toBits}, the reference {ref}"
-          return 1
-      if 1 < d then
-        IO.eprintln s!"fail: {name} at bits {x.toBits}: {ours.toBits}, the reference {ref}, {d} \
-          units apart"
+      unless (distance y ref).any (· ≤ 1) do
+        IO.eprintln s!"fail: {name} at bits {x.toBits}: {y.toBits}, the reference {ref.toBits}"
         return 1
-      if 0 < d then unequal := unequal + 1
-      worst := max worst d
-      let some dl := distance library (Float.ofBits ref)
-        | IO.eprintln s!"fail: the C library's {name} at bits {x.toBits}: {library.toBits}"
-          return 1
-      if 0 < dl then libraryUnequal := libraryUnequal + 1
-      libraryWorst := max libraryWorst dl
+      ours := ours.add y ref
+      library := library.add l ref
   IO.println s!"trig accuracy: the words of 2/π and π/2 agree with Machin's formula, and \
-    {2 * args.size} results lie within {worst} unit of the reference, {unequal} of them unequal"
-  IO.println s!"trig accuracy: the C library's results lie within {libraryWorst} units of the \
-    reference, {libraryUnequal} of them unequal"
+    {2 * args.size} results lie within {units ours.worst} of the reference, {ours.unequal} of \
+    them unequal"
+  IO.println s!"trig accuracy: the C library's results lie within {units library.worst} of the \
+    reference, {library.unequal} of them unequal{library.unorderedNote}"
   return 0
