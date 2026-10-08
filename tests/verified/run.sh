@@ -4,11 +4,11 @@
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the host's array arguments and the result's arrays.  A seventh
 # field bounds the number of allocations, the host's included.  A case whose expected result is
-# `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean and
-# Verified/Examples/ExpAccuracy.lean check Trig.sin, Trig.cos, and Exp.exp within one unit in the
-# last place of references computed with Lean's integers, and
-# Verified/Examples/FourierAccuracy.lean checks that Fourier.dft, inverse, and powerSpectrum behave
-# as their mathematical counterparts.
+# `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean,
+# ExpAccuracy.lean, TanhAccuracy.lean, and LogAccuracy.lean check Trig.sin, Trig.cos, Exp.exp,
+# Tanh.expm1, and Log.log within one unit in the last place, and Tanh.tanh within two, of
+# references computed with Lean's integers, and Verified/Examples/FourierAccuracy.lean checks that
+# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -40,7 +40,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Insert:compiled.module:insert \
     Verified.Examples.Clob:compiled.module:clob \
     Verified.Examples.Tables:compiled.module:tables \
-    Verified.Examples.Exp:compiled.module:exp; do
+    Verified.Examples.Exp:compiled.module:exp Verified.Examples.Tanh:compiled.module:tanh \
+    Verified.Examples.Log:compiled.module:log; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -112,5 +113,8 @@ echo "verified: passed $passed failed $failed"
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
 # The behavior of the Fourier transforms, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean || exit 1
-# The accuracy of exp against a reference computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ExpAccuracy.lean
+# The accuracy of exp, expm1, tanh, and log against references computed with Lean's integers, in
+# native Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ExpAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/LogAccuracy.lean

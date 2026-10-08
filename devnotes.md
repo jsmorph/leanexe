@@ -27628,9 +27628,33 @@ way.
   Arm's `exp.c`, `exp_data.c`, and `math_err.c`, compiled here unmodified with GCC 14,
   `-ffp-contract=off`, and the same configuration, give the same bits as `Exp.exp` on 380,085
   arguments, 200,000 of them hashed over all exponents.
-- [ ] `expm1` and `tanh` from fdlibm, with references from `Reference.expm1` and
-  `Reference.tanh`.
-- [ ] `log` from Arm, with a reference from `atanh`.
+- [x] `expm1` and `tanh` from fdlibm, with references from `Reference.expm1` and
+  `Reference.tanh`.  184,589 results of `expm1` lie within one unit, 12,357 unequal.  160,073
+  results of `tanh` lie within two units, 10,407 unequal, and the 74 at two units are the 74 at
+  which glibc's `tanh` is two units away.  fdlibm states no bound for `tanh`, so the check
+  requires the two units it finds.  fdlibm's `s_expm1.c` and `s_tanh.c`, compiled here unmodified
+  with a header that supplies FreeBSD's word macros, give the same bits as the port on 340,236
+  arguments.
+- [x] `log` from Arm, with a reference from `atanh`.  The tables agree with their centers within
+  Arm's stated bound, and 340,066 results lie within one unit, 231 unequal.  Arm's `log.c`,
+  compiled here with `HAVE_FAST_FMA` 0, gives the same bits as the port on 520,057 arguments.  The
+  first version extended the sign of `k` with a wrong mask, which this comparison exposed.
+
+Fresh reviewers of the `tanh` and `log` ports found no defect in the code or the references.  The
+first compared the port with compiled fdlibm on 170,062 more arguments, and the second compared
+`log` with Arm's compiled code and the reference on 140,000 arguments near 1, without a
+difference.  Both found errors in the documentation, all fixed: the docstring of `expm1Kernel`
+gave a wrong formula for the result and for `r1`, `expm1`'s docstring stated `k` as an exact floor
+where the code truncates a rounded product and compares high words, two edges of the `tanh` check
+missed the high-word thresholds, the header of `Reference.lean` claimed a relative error of
+`2 ^ -380` where `log` near 1 reaches `2 ^ -338`, `Log.lean` quoted Arm's bound for results above
+`2 ^ -5` where its results exceed `2 ^ -4`, and the `log` check had no argument between `2 ^ -51`
+and `2 ^ -19` from 1.  The checks now include the high-word thresholds and 40,000 arguments near 1.
+The suite passes 15,260 cases.
+
+The comparisons with the compiled C sources check that each port computes what its source
+computes, which the accuracy checks confirm only within their tolerance.  They need a C compiler
+and the third-party sources, so they are not part of `tests/verified/run.sh`.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

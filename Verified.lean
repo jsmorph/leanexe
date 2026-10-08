@@ -31,4 +31,6 @@ import Verified.Examples.Insert
 import Verified.Examples.Clob
 import Verified.Examples.Tables
 import Verified.Examples.Exp
+import Verified.Examples.Tanh
+import Verified.Examples.Log
 import Verified.Examples.Reference
