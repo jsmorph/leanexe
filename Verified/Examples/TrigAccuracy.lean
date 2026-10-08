@@ -9,7 +9,7 @@ values over the exponents from `2 ^ -30` to `2 ^ 1023` with both signs, evenly s
 cancels, and five more with their negatives: `6381956970095103 · 2 ^ 797`, the double closest to a
 multiple of `π/2`, `1647100`, just above `2 ^ 20 · π/2`, where the Payne–Hanek reduction begins,
 `10 ^ 22`, `10 ^ 300`, and the largest finite double.  The check first compares the words of
-`Trig.invPiWord` and `Trig.halfPiWord` with `2/π` and `π/2` from the same `π`.  It also reports,
+the tables `Trig.invPi` and `Trig.halfPi` with `2/π` and `π/2` from the same `π`.  It also reports,
 for information, the distance from the reference of the C library's `sin` and `cos`, which Lean's
 `Float.sin` and `Float.cos` call.  The check exits with an error at the first result further than
 one unit from the reference, or at a NaN or infinity.  Run with `lake env lean --run`. -/
@@ -121,8 +121,7 @@ end Verified.Examples.TrigAccuracy
 
 open Verified.Examples Verified.Examples.TrigAccuracy in
 def main : IO UInt32 := do
-  unless invPiWords == (List.range 20).map (Trig.invPiWord ∘ UInt64.ofNat) &&
-      halfPiWords == [Trig.halfPiWord 0, Trig.halfPiWord 1] do
+  unless invPiWords == Trig.invPi.toList && halfPiWords == Trig.halfPi.toList do
     IO.eprintln "fail: the words of 2/π or π/2 differ from those of Machin's formula"
     return 1
   let mut worst := 0

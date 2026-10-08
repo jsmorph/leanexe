@@ -27,7 +27,7 @@ def tolerance (xs : Array Float) : Float :=
   2.0 * (n + 8.0) * ε * xs.foldl (fun s v => s + v.abs) 0.0
 
 /-- The transform with factors from the C library's `cos` and `sin`, in the order of
-`Fourier.transform`. -/
+`Fourier.transformWith`. -/
 def reference (xs : Array Float) : Array Float := Id.run do
   let n := xs.size / 2
   let mut out := Array.replicate (2 * n) 0.0
