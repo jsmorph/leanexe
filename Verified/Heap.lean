@@ -860,12 +860,14 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     exact List.mem_append_left _ (List.mem_singleton_self _)
 
 /-- The byte count of a block for the length `t` in local `total`, given the capacity `c` in
-local `cap`: at least the bytes that the length needs and at most `2 ^ 32`. -/
+local `cap`: at least the bytes that the length needs, at most `2 ^ 32`, and at most the larger of
+those bytes and twice the capacity. -/
 theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
     {total cap : Nat} {t c : UInt64} {rest : Program} {Q : Assertion Unit}
     (hT : s.get total = some (.i64 t)) (hC : s.get cap = some (.i64 c))
     (ht : t.toNat < 536870912) (hc : c.toNat < 4294967296)
     (hNext : ∀ r : UInt64, 8 * (t.toNat + 1) ≤ r.toNat → r.toNat ≤ 4294967296 →
+      r.toNat ≤ max (8 * (t.toNat + 1)) (2 * c.toNat) →
       wp m rest Q store { s with values := .i64 r :: s.values } host) :
     wp m (requestCode total cap ++ rest) Q store s host := by
   have hNeed : ((t + 1) * 8).toNat = 8 * (t.toNat + 1) := by
@@ -888,14 +890,18 @@ theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {
       simp only [wp_localGet_cons, hC, wp_constI64_cons, wp_mulI64_cons, wp_nil]
       rw [UInt64.le_iff_toNat_le, hNeed] at h1
       rw [UInt64.le_iff_toNat_le] at h2
-      simpa using hNext (c * 2) h1 h2
+      simpa using hNext (c * 2) h1 h2 (by rw [hDouble]; omega)
     · simp (config := { decide := true }) only [h2, ↓reduceIte]
       simp only [wp_constI64_cons, wp_nil]
       rw [UInt64.le_iff_toNat_le, hNeed] at h1
       simpa using hNext 4294967296 (by simp only [UInt64.reduceToNat]; omega) (by decide)
+        (by
+          rw [UInt64.not_le, UInt64.lt_iff_toNat_lt, hDouble] at h2
+          simp only [UInt64.reduceToNat] at h2 ⊢
+          omega)
   · simp (config := { decide := true }) only [h1, ↓reduceIte]
     simp only [wp_localGet_cons, hT, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons, wp_nil]
-    simpa using hNext ((t + 1) * 8) (by rw [hNeed]) (by rw [hNeed]; omega)
+    simpa using hNext ((t + 1) * 8) (by rw [hNeed]) (by rw [hNeed]; omega) (by rw [hNeed]; omega)
 
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
 owned array, with the locals from `base` to `base + 2` as scratch.  The copy allocates, so it may

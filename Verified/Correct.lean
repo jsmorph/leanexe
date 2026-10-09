@@ -4252,7 +4252,7 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
     have hC4' : ({ s4 with values := s4.values } : Locals).get (b + 3) =
         some (.i64 (store.mem.read64 (p - 32).toUInt32)) := hC4
     refine wp_requestCode hT4' hC4' (by rw [hTotal]; exact hTotalLt) (by rw [hcN]; omega)
-      fun r hr1 hr2 => ?_
+      fun r hr1 hr2 _ => ?_
     refine wp_allocCopy hm hAt hCap le_rfl (TrapOK.any (hTrap.imp fun _ h => h)) hOwned.borrowed
       (by rw [hTotal]; exact hTotalLt) (by rw [hTotal]; omega) hr1 hr2 hP4 hT4 hN4
       (by show s.params.length ≤ b + 4; omega) (by rw [hp4, hl4]; omega)
