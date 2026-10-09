@@ -5014,6 +5014,20 @@ theorem _root_.Wasm.Runs.of_imp {α : Type} {env : HostEnv α} {m : Module} {id 
   · exact h.weaken
   · rw [himp rfl]; exact h
 
+/-- `ImplementsA` under a stronger precondition and with a weaker postcondition. -/
+theorem ImplementsA.mono {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {Pre Pre' : α → Heap → Store Unit → Prop}
+    {Post Post' : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m entry f Pre Post)
+    (hPre : ∀ x heap store, Pre' x heap store → Pre x heap store)
+    (hPost : ∀ x heap store heap' store', Pre' x heap store →
+      Post x heap store heap' store' → Post' x heap store heap' store') :
+    ImplementsA aborts m entry f Pre' Post' :=
+  fun env store heap params x hAt hPre' hRep hSep hCap =>
+    (h env store heap params x hAt (hPre x heap store hPre') hRep hSep hCap).mono
+      fun final _ ⟨heap', hAt', hOwned, hCaps, hRegions, hPost0⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions, hPost x heap store heap' final hPre' hPost0⟩
+
 /-- `ImplementsB` gives `ImplementsA` without the bound. -/
 theorem ImplementsB.implementsA {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
     {m : Module} {entry : Nat} {f : α → β} {bound : α → Nat}

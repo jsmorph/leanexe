@@ -2,6 +2,7 @@ import Verified.Source
 import Verified.Compile
 import Verified.State
 import Verified.Correct
+import Verified.BoundFacts
 import Verified.Reflect.Lemmas
 import Verified.Reflect.Command
 import Verified.Examples.Poly
