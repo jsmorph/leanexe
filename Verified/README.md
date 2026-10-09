@@ -341,9 +341,10 @@ bound for `tanh`, and glibc's `tanh` lies two units from the reference at the sa
 [`LogAccuracy.lean`](Examples/LogAccuracy.lean) compares the tables of `Log.lean` with the centers
 they describe and requires 340,066 results of `Log.log` to lie within one unit.
 [`FourierAccuracy.lean`](Examples/FourierAccuracy.lean) checks on 20 signals the facts that hold
-exactly in floating point, such as the transform of an impulse, and, within a tolerance from the
+exactly in floating point, such as the transform of an impulse, and, within a tolerance `τ` from the
 error bound of recursive summation, single frequencies, the round trip, Parseval's identity,
-agreement with factors from the C library, and the power spectrum of a real wave.
+agreement with the exact transform computed with Lean's integers, and the power spectrum of a real
+wave.  The results lie within `0.1 τ` of the exact transform.
 
 ## Related work
 
