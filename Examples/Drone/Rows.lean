@@ -1,18 +1,17 @@
 import Examples.Drone.Kernels
+import Examples.Drone.Flat
 import LeanExe.IR.BuildRecord
 import LeanExe.IR.RecordRead
 import Examples.Drone.Costs
 import LeanExe.Pipeline.Budget
 
 /-! The compiled functions of the drone planner's rows compute their Lean definitions.  A
-`Choice` is represented as its three words, and an array of choices as `flatWords`, three words
-for each choice. -/
+`Choice` is represented as its three words, by the instance of `Flat.lean`, and an array of
+choices as `flatWords`, three words for each choice. -/
 
 namespace Examples.Drone
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime Examples.Drone
-
-instance : Flat Choice (UInt64 × UInt64 × UInt64) := ⟨fun c => (c.time, c.excess, c.parent)⟩
 
 def chooseTuple : Choice × Choice → Choice := fun (a, b) => choose a b
 

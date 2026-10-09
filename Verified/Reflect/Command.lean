@@ -33,8 +33,9 @@ taken apart with `.1`, `.2`, or `match`, structures built with their constructor
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
 `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
 `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
-`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, calls of the
-listed definitions before it, and, in a recursive definition, calls of itself.  A definition
+`xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
+constants whose type holds no array, as their values, calls of the listed definitions before it,
+and, in a recursive definition, calls of itself.  A definition
 `f x := g T₁ … Tₖ x` that applies a listed definition `g` to constants `Tᵢ` of type `Array UInt64`
 before its own parameters is a wrapper: the module holds the tables `Tᵢ` in data segments and
 exports `f` as an entry that passes their addresses to `g`. -/
@@ -686,6 +687,16 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
           some (toExpr bits), some e, some h]
         return (src, proof, .float)
     | .elem (.prod _ _) | .pair _ _ | .array _ => pure ()
+  -- A named constant that holds no array is its value, which the kernel unfolds to it.
+  if let .const name lvls := e then
+    if let .defnInfo info ← getConstInfo name then
+      if info.safety == .safe && shape.ty.scalar then
+        try
+          return ← reflectAs (info.value.instantiateLevelParams info.levelParams lvls) e
+        catch
+          | .error ref msg =>
+            throw (.error ref m!"verified_compile: in the value of the constant {name}: {msg}")
+          | ex => throw ex
   if let .letE n type value body _ := e then
     if ← isPlace value then return ← reflectAs (body.instantiate1 value) e
     let s ← tyOf type

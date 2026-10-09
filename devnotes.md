@@ -27783,6 +27783,34 @@ that is exactly 0 comes out as the factors' error, near `10 ^ -89`.
 - [x] Fresh review, fixes, and the full suite: 15,260 cases pass, and the Fourier module's bytes
   are unchanged.
 
+### The drone planner in Verified
+
+The user asked for the drone planner of `Examples/Drone` in Verified, with a reflector change for
+named constants.  A probe had shown that the planner compiles unchanged except for its constants
+`stateCount`, `infinity`, and `unreachable`, which the reflector rejected.  The reflector now
+reflects a safe named definition whose type holds no array as its value, which the kernel unfolds to
+the constant by `rfl`.  The case comes after the calls of listed definitions, so a listed
+definition without parameters, such as `initial`, stays a call, and arrays stay out, since a
+constant array is a table that a wrapper passes.  An error inside the value names the constant.
+The `Flat Choice` instance moved from `Rows.lean` of the `LeanExe` proof chain to
+`Examples/Drone/Flat.lean`, which both pipelines import, and the `LeanExe` drone proofs rebuild.
+
+`Verified/Examples/Drone.lean` lists the 17 functions, with `floorAt` and `best`, which `LeanExe`
+inlines.  `drone_compute` and `drone_safe` state the claims of `Examples/Drone/Verify.lean` for the
+module's bytes: entry 18 computes `compute`, and with the planner's `compute_correct` and
+`compute_safe` its results are optimal and safe flights.  `Implements` and `ImplementsA true` with
+trivial conditions are equivalent, so the statements match those of `Verify.lean`.  The
+complete-execution and memory theorem `drone_compute_total` has no counterpart, since Verified's
+theorem allows an allocating function to trap anywhere.  The module has 5,261 bytes, against 5,181
+for `LeanExe`'s.  The cases run `compute` on the 116 terrains of `tests/drone/corpus.txt`, each
+leaving only the host's terrain and the result allocated, and every other export on terrains, rows,
+and tables from native runs of the planner.
+
+A fresh reviewer found no defect in the theorems or the claims.  It found that an error in a
+constant's value named a piece of the value, that a self-referential `unsafe` constant made the
+reflector loop, and that the cases never ran `advance`.  All three are fixed.  The suite passes
+15,837 cases, 577 of them the drone's.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

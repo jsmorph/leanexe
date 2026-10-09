@@ -29,6 +29,7 @@ import Examples.Drone.Acceleration
 import Examples.Drone.Cases
 import Examples.Drone.Correct
 import Examples.Drone.Corridor
+import Examples.Drone.Flat
 import Examples.Drone.Forward
 import Examples.Drone.Gluing
 import Examples.Drone.Kinematics
