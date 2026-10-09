@@ -27811,6 +27811,85 @@ constant's value named a piece of the value, that a self-referential `unsafe` co
 reflector loop, and that the cases never ran `advance`.  All three are fixed.  The suite passes
 15,837 cases, 577 of them the drone's.
 
+### Trap-free theorems: design
+
+The theorem of a function that allocates, `ImplementsA true`, allows a trap at `unreachable` on
+any input, so a module that always traps satisfies it.  The user chose a conditional trap-free
+theorem with an allocation bound that ignores reuse: if `top` plus the bound fits under the memory
+cap, the call returns the Lean result.  The bound counts every byte the code could request, as a
+Lean function of the arguments, and a reused free block only makes the real growth of `top`
+smaller.
+
+**The cost of an allocation.**  `alloc bytes` either reuses a free block, leaving `top`, or bumps
+`top` by `48 + allocSize bytes`, and it traps only when no free block fits and
+`top + 48 + allocSize bytes` exceeds `65536 · cap` (`Heap.Room`, `alloc_spec_runs`).  So
+`allocCost b := 48 + allocSize b` bounds the growth of `top` for one allocation, and an allocation
+cannot trap when `top + allocCost b ≤ 65536 · cap`.
+
+**The bound mirrors the code.**  Copies depend on modes and liveness, so `Expr.allocs funs bounds
+modes live env` follows `Expr.code`'s recursion with the same live sets:
+
+| Construct | Bytes counted |
+|-----------|---------------|
+| `var x` | a copy of `x`'s arrays when `x` is owned and live, each array `allocCost ((size · w + 1) · 8)`, since a length word counts words |
+| `coerceCode` | a copy when a borrowed value must be owned (`ite`, `pair`, loop states, a call's owned arguments, the result) |
+| `build n f` | `allocCost ((n · w + 1) · 8)` and the elements' allocations, at each index |
+| `set`, `eraseAt` | a copy when `x` is not an owned variable that dies |
+| `push`, `++`, `insertAt` | `allocCost (16 · (len' + 1))` for a growth of an owned dying array, with `len'` the new length in words, since the block lacks room and the request is below twice the bytes the new length needs, and `allocCost ((len' + 1) · 8)` for the copy otherwise |
+| `ite` | the condition's, then the taken branch's |
+| `loop` | the count's and the initial state's, then each iteration's condition and body, and the condition that fails, which still runs |
+| `call f args` | the scalar arguments' under the live set `all`, the copies that `ownedCode` makes of owned arguments under `kept`, nothing for borrowed arguments, which `placeCode` loads, and the callee's bound at the arguments' values |
+
+A function's bound is its body's at the entry slots with nothing live after, plus the copy of a
+borrowed result.  `Bounds S` holds the bounds of a program's functions, as `Funs S` holds their
+meanings.  A recursive function gets no bound in this step.  Code that takes the call depth, `depthCalls`,
+keeps today's trap allowance, since the depth guard is its only other trap.
+
+**The specification.**  `CodeSpec` changes in two places.  Its trap allowance becomes
+`e.depthCalls || ((e.aborts || owned in scope) && !(top + e.allocs … ≤ 65536 · cap))`, so code may
+trap only through a recursive call or when the bound does not fit, and otherwise exactly where it
+may today.  Its continuation also receives `heap'.top ≤ heap.top + e.allocs …` when the
+expression has no depth calls, which holds on every return whether or not the bound fits.  `After`
+and `Step` are unchanged.  Each rule passes its parts the allowance by one lemma: when the whole
+bound fits, the part's bound fits, since `top` has grown by at most the bounds of the parts before
+it.  `wp_alloc` takes the allowance `!(top + allocCost b ≤ 65536 · cap)` and uses
+`alloc_spec_runs` with `Heap.Room` when it fits.  The checks for arrays of `2 ^ 29` words or more
+trap only when the bound, computed in `Nat`, exceeds `2 ^ 32`, so they need no other allowance.
+`FunSpec` carries the bound and states both facts for a call.
+
+**The theorems.**  `Prog.correct` and `p.f.implements` keep their statements, derived from the new
+specification.  For a function without depth calls, `p.f.trapFree` states
+`ImplementsA false` with the precondition `heap.top + p.f.bound x ≤ 65536 · cap` and the
+postcondition that `top` grows by at most the bound.  The reflector defines `p.f.bound` from the
+reflected program.  The drone then needs a theorem that bounds `p.compute.bound` for valid
+terrain.
+
+**Order.**  The new rule lemmas are added beside the old ones, so that every commit builds, and the
+main induction switches to them when all are proved; then the old ones go.
+
+A fresh reviewer checked the design against the code.  It found no unsound step and no missed
+allocation site, and it confirmed the cost of an allocation, that `release` never lowers `top`,
+that the only traps are allocation, the two checks for `2 ^ 29` words, and the depth guard, and
+that the existing theorems follow.  It corrected the table, which now counts words in lengths,
+charges the copy of `roomCode` at the new length, mirrors the call's argument code, and counts the
+failing condition of a loop.  It found four further points.  The transfer lemmas and
+`ImplementsTables` fix `Pre` and `Post` to `True`, so they must be generalized, and wrappers need
+the bounded form too.  A push, append, or insertion is charged as a growth even when it extends in
+place, so a loop of `n` pushes gets a bound near `8 n²` bytes, beyond the cap from about 23,000
+pushes of one-word elements, which an amortized argument would remove later.  A numeric bound for
+the drone needs the reflector to state each bound as a plain Lean equation, as it does for
+meanings.  The theorem rests on Talos's model, in which `memory.grow` succeeds whenever the cap
+allows it, and a real engine may refuse earlier.
+
+- [x] Review of this design.
+- [ ] `allocCost`, `Ty.copyCost`, `Expr.allocs`, `Bounds`, and `Prog.bounds`.
+- [ ] `wp_alloc` and the copy lemmas of `Heap.lean` with the allowance and the growth of `top`.
+- [ ] The rules, the new `CodeSpec`, `FunSpec`, and `Prog.correct`; the old rules removed.
+- [ ] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
+- [ ] `p.f.bound` with a plain Lean equation, and `p.f.trapFree`, in the reflector.
+- [ ] A page bound for the drone.
+- [ ] Recursion, with a bound on the depth.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
