@@ -825,6 +825,264 @@ theorem specB_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Pa
     (hNext heap store s _ (After.refl hAt hVars (by intro i h; simp [Expr.uses, h]) rfl rfl
       (Holds.Apart.ofScalar rfl)) fun _ => Nat.le_add_right _ _)
 
+/-- A value turned from mode `source` into mode `target` after an expression's code: a borrowed
+value that must be owned is copied into new blocks, which raises `top` by at most `coerceCost t source target v`, and the
+facts of `After` carry over. -/
+theorem After.coerceB (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {liveIn live : Nat → Bool} {h base base' : Nat} {heap : Heap} {store : Store Unit}
+    {s : Locals} {t : Ty} {source target : Mode} {v : t.denote} {heap1 : Heap}
+    {store1 : Store Unit} {s1 : Locals} {ws vs : List Value} {rest : Program}
+    {Q : Assertion Unit}
+    (a : After env slots liveIn live base heap store s t source v heap1 store1 s1 ws)
+    (hTarget : source = .owned → target = .owned) (hBase' : base ≤ base')
+    (hLow : s1.params.length ≤ base') (hh : s1.half = h) (hRoom : base' + copyWidth t ≤ h)
+    (hCap : store1.memoryCap m 0 ≤ 65535)
+    (hTrap : source = .borrowed → target = .owned → t.scalar = false →
+      TrapOK (!decide (heap1.Within store1 m (t.copyCost v))) Q)
+    (hNext : ∀ heap2 store2 s2 ws2,
+      After env slots liveIn live base heap store s t target v heap2 store2 s2 ws2 →
+      heap2.top.toNat ≤ heap1.top.toNat + coerceCost t source target v →
+      wp m rest Q store2 { s2 with values := ws2.reverse ++ vs } host) :
+    wp m (coerceCode h t source target base' ++ rest) Q store1
+      { s1 with values := ws.reverse ++ vs } host := by
+  by_cases hCopy : source = .borrowed ∧ target = .owned ∧ t.scalar = false
+  · obtain ⟨hs, ht, hScalar⟩ := hCopy
+    subst hs ht
+    have hW : copyWidth t = t.width + 3 := by simp [copyWidth, hScalar]
+    simp only [coerceCode, and_self, hScalar, ↓reduceIte, List.append_assoc]
+    refine wp_storeCode ws h base' t.types s1 vs a.rep.typed hh hLow
+      (by rw [Ty.types_length, hh]; omega) fun s2 hF2 hold2 _ => ?_
+    refine wp_copyCode hm t a.step.at_ hCap (hTrap rfl rfl hScalar)
+      (hF2.half.trans hh) a.rep
+      hold2 (le_refl _) (by rw [hF2.params]; omega)
+      (by simp only [Locals.half_values, hF2.half, hh, Ty.copyScratch, hScalar,
+        Bool.false_eq_true, ↓reduceIte]; omega)
+      fun heap3 store3 s3 ws3 hStep3 hRep3 hF3 hTop3 => ?_
+    have hF13 : Frame base s1 s3 :=
+      (hF2.mono hBase').trans (Frame.ofValues.trans (hF3.mono (by omega)))
+    have hF : Frame base s s3 := a.frame.trans hF13
+    have hStep0 := a.step
+    simp only [Mode.fresh] at hStep0
+    refine hNext heap3 store3 s3 ws3 ⟨?_, hF, ?_, hRep3, ?_⟩ (by simpa [coerceCost] using hTop3)
+    · exact hStep0.trans hStep3 fun _ hr => ⟨hr, fun _ => trivial⟩
+    · exact (a.holds.step hStep3 fun _ _ _ _ _ _ _ _ => trivial).agree hF13
+    · intro u y hy _ wy hwy hly b hb c hc
+      have hwy' := (a.holds.hold_agree hF13 hy hly).mp hwy
+      obtain ⟨hSame, hFresh⟩ := a.holds.regions_after hStep3 hy hwy' hly fun _ _ => trivial
+      rw [hSame] at hc
+      exact regionsDisjoint_symm (hFresh c hc b hb)
+  · have hEmpty : coerceCode h t source target base' = [] := by
+      simp only [coerceCode]; rw [ite_eq_right hCopy]
+    rw [hEmpty, List.nil_append]
+    -- No copy: the modes agree, or the type holds no arrays.
+    have hSame : source = target ∨ t.scalar = true := by
+      cases source <;> cases target <;> simp_all
+    rcases hSame with rfl | hScalar
+    · exact hNext heap1 store1 s1 ws a (Nat.le_add_right _ _)
+    · refine hNext heap1 store1 s1 ws ⟨?_, a.frame, a.holds, ?_, ?_⟩ (Nat.le_add_right _ _)
+      · have hStep := a.step
+        rw [Mode.fresh_scalar hScalar] at hStep ⊢
+        exact hStep
+      · cases target
+        · exact a.rep.borrow
+        · exact a.rep.owned hScalar
+      · intro u y hy hm wy hwy hly b hb
+        rw [Ty.regions_scalar t hScalar] at hb
+        exact nomatch hb
+
+/-- The allowance of an allocation of a part, from that of the whole, which may allocate. -/
+theorem _root_.Wasm.TrapOK.alloc {Q : Assertion Unit} {d a : Bool} {P P' : Prop} [Decidable P]
+    [Decidable P'] (h : TrapOK (d || (a && !decide P)) Q) (ha : a = true)
+    (hP : d = false → P → P') : TrapOK (!decide P') Q :=
+  h.part (d' := false) (a' := true) nofun (fun _ => ha) hP
+
+/-- One branch of an `if`, after the condition: the releases of the owned variables that die at
+its entry, its code, the coercion of its value to the `if`'s mode, and the store of its words,
+which the code loads after the `if`. -/
+theorem ite_branchB (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
+    {thenE elseE b : Expr S Γ' tTy}
+    (bSpec : ∀ env slots live, CodeSpecB m funs bounds host pv b env slots live)
+    {env : Env Γ'} {slots : List Slot} {live : Nat → Bool} {h base : Nat} {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit} (hh : s.half = h)
+    (hpv : s.params = pv)
+    (hVars : Holds env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) base heap
+      store s)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
+    (hRoomB : base + tTy.width + max b.width (copyWidth tTy) ≤ h)
+    {B cA : Nat}
+    (hTrap : TrapOK (trapFlag m (Expr.ite c thenE elseE) slots heap store B) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) live base heap store s
+        tTy ((Expr.ite c thenE elseE).mode (slots.map Slot.mode))
+        ((Expr.ite c thenE elseE).denote funs env) heap' store' s' ws →
+      ((Expr.ite c thenE elseE).depthCalls = false → heap'.top.toNat ≤ heap.top.toNat + B) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host)
+    {heap1 : Heap} {store1 : Store Unit} {s1 : Locals}
+    (e1 : Evolves env slots (fun i => live i || (Expr.ite c thenE elseE).uses i)
+      (fun i => live i || thenE.uses i || elseE.uses i) base heap store s heap1 store1
+      { s1 with values := s.values })
+    (hTop1 : (Expr.ite c thenE elseE).depthCalls = false → heap1.top.toNat ≤ heap.top.toNat + cA)
+    (hB : B = cA + (b.allocs funs bounds (slots.map Slot.mode) live env +
+      coerceCost tTy (b.mode (slots.map Slot.mode))
+        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env)))
+    (hbd : b.depthCalls = true → (Expr.ite c thenE elseE).depthCalls = true)
+    (hbPlace : b.placeArgs = true)
+    (hbu : ∀ i, b.uses i = true → (thenE.uses i || elseE.uses i) = true)
+    (hba : b.aborts = true → (Expr.ite c thenE elseE).aborts = true)
+    (hval : b.denote funs env = (Expr.ite c thenE elseE).denote funs env)
+    (hbm : b.mode (slots.map Slot.mode) = .owned →
+      (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned)
+    (Qb : Assertion Unit) (hQbTrap : ∀ st, Q (.Trap st "unreachable") → Qb (.Trap st "unreachable"))
+    (hQb : ∀ st' s', wp m (loadCode h base tTy.types ++ rest) Q st'
+      { s' with values := s.values } host → Qb (.Fallthrough st' s')) :
+    wp m (releaseWhere Γ' slots (fun i => (live i || thenE.uses i || elseE.uses i) &&
+        !(live i || b.uses i)) ++
+      (b.code h slots (base + tTy.width) live ++
+        (coerceCode h tTy (b.mode (slots.map Slot.mode))
+          ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (base + tTy.width) ++
+          storeCode h base tTy.types))) Qb store1 { s1 with values := s.values } host := by
+  have hp1 : s1.params = s.params := e1.frame.params
+  have hh1 : s1.half = h := e1.frame.half.trans hh
+  have hTrapB : TrapOK (trapFlag m (Expr.ite c thenE elseE) slots heap store B) Qb :=
+    hTrap.imp hQbTrap
+  have hbd' : (Expr.ite c thenE elseE).depthCalls = false → b.depthCalls = false := fun hd => by
+    cases hb : b.depthCalls
+    · rfl
+    · rw [hbd hb] at hd; exact nomatch hd
+  have hSubMid : ∀ i, (live i || b.uses i) = true →
+      (live i || thenE.uses i || elseE.uses i) = true := fun i =>
+    ite_live_branch _ _ _ _ (hbu i)
+  refine wp_releaseWhereT hm e1.holds e1.step.at_
+    (fun i h => by simp only [Bool.and_eq_true] at h; exact h.1) fun heap2 store2 e2 hTop2 => ?_
+  have hEq : (fun i => (live i || thenE.uses i || elseE.uses i) &&
+      !((live i || thenE.uses i || elseE.uses i) && !(live i || b.uses i))) =
+      (fun i => live i || b.uses i) := by
+    funext i
+    exact live_released _ _ (hSubMid i)
+  rw [hEq] at e2
+  rw [← List.append_nil (storeCode h base tTy.types)]
+  have hbw := Nat.le_max_left b.width (copyWidth tTy)
+  have hcw := Nat.le_max_right b.width (copyWidth tTy)
+  refine bSpec env slots live h (base + tTy.width) heap2 store2 { s1 with values := s.values }
+    hh1 (hp1.trans hpv) (e2.holds.mono (by omega)) e2.step.at_
+    (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
+    (by show s1.params.length ≤ base + tTy.width; rw [hp1]; omega)
+    (by omega) hbPlace _ _ (hTrapB.part hbd (fun h => by
+          simp only [Bool.or_eq_true] at h ⊢; exact h.imp_left hba) fun hd hw => by
+        rw [hB] at hw
+        exact (hw.after (heap1 := heap2) (store1 := store2)
+          (by have := hTop1 hd; have := congrArg UInt64.toNat hTop2; omega)
+          (by rw [e2.step.cap m, e1.step.cap m])).mono (Nat.le_add_right _ _))
+    fun heap3 store3 s3 ws3 a3 hTop3 => ?_
+  have hp3 : s3.params = s.params := a3.frame.params.trans hp1
+  have hh3 : s3.half = h := a3.frame.half.trans hh1
+  refine After.coerceB hm a3 hbm le_rfl (by rw [hp3]; omega) hh3 (by omega)
+    (by rw [a3.step.cap m, e2.step.cap m, e1.step.cap m]; exact hCap)
+    (fun hs ht _ => hTrapB.alloc (by
+      have := (Expr.ite c thenE elseE).mode_owned (slots.map Slot.mode) ht
+      rw [Slot.any_map] at this; exact this) fun hd hw => by
+        rw [hB, ← Nat.add_assoc] at hw
+        have h3 := hw.after (heap1 := heap3) (store1 := store3)
+          (c1 := cA + b.allocs funs bounds (slots.map Slot.mode) live env)
+          (by have := hTop3 (hbd' hd); have := hTop1 hd; have := congrArg UInt64.toNat hTop2; omega)
+          (by rw [a3.step.cap m, e2.step.cap m, e1.step.cap m])
+        simpa [coerceCost, hs, ht] using h3)
+    fun heap4 store4 s4 ws4 a4 hTop4 => ?_
+  have hp4 : s4.params = s.params := a4.frame.params.trans hp1
+  have hh4 : s4.half = h := a4.frame.half.trans hh1
+  refine wp_storeCode ws4 h base tTy.types s4 s.values a4.rep.typed hh4 (by rw [hp4]; omega)
+    (by rw [Ty.types_length, hh4]; omega) fun s5 hF5 hold _ => ?_
+  rw [wp_nil]
+  refine hQb _ _ (wp_loadCode ws4 a4.rep.typed (hF5.half.trans hh4) hold ?_)
+  -- The `if`'s facts: the evolutions of the condition and the releases, then the branch.
+  have hLower := a4.lower e2.holds (Nat.le_add_right _ _) (fun i h => by simp [h])
+  have hEntry : ∀ i, (live i || thenE.uses i || elseE.uses i) = true →
+      (live i || (Expr.ite c thenE elseE).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact ite_live_entry _ _ _ _ h
+  have e12 := Evolves.trans hVars e1 e2 hSubMid hEntry
+  have aAll := After.prepend hVars e12 hLower (fun i h => hEntry i (hSubMid i h))
+    (fun i h => by simp [h])
+  have hF45 : Frame base s4 { s5 with values := s.values } := hF5.trans Frame.ofValues
+  have hFrame : Frame base s { s5 with values := s.values } := aAll.frame.trans hF45
+  rw [hval] at aAll
+  refine hNext heap4 store4 _ ws4 ⟨aAll.step, hFrame, aAll.holds.agree hF45, aAll.rep, ?_⟩
+    fun hd => by
+      have := hTop1 hd; have := hTop3 (hbd' hd); have := congrArg UInt64.toNat hTop2
+      have := congrArg UInt64.toNat hTop2
+      rw [hB]; omega
+  exact aAll.apart.agree aAll.holds hF45
+
+/-- An `if`: the condition, then each branch as `ite_branchB` describes. -/
+theorem specB_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
+    {thenE elseE : Expr S Γ' tTy}
+    (cSpec : ∀ env slots live, CodeSpecB m funs bounds host pv c env slots live)
+    (thenSpec : ∀ env slots live, CodeSpecB m funs bounds host pv thenE env slots live)
+    (elseSpec : ∀ env slots live, CodeSpecB m funs bounds host pv elseE env slots live) :
+    ∀ env slots live, CodeSpecB m funs bounds host pv (Expr.ite c thenE elseE) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hc : c.width ≤ max c.width (tTy.width + max (max thenE.width elseE.width)
+      (copyWidth tTy)) := Nat.le_max_left ..
+  have hb : tTy.width + max (max thenE.width elseE.width) (copyWidth tTy) ≤
+      max c.width (tTy.width + max (max thenE.width elseE.width) (copyWidth tTy)) :=
+    Nat.le_max_right ..
+  have ht : thenE.width ≤ max thenE.width elseE.width := Nat.le_max_left ..
+  have he : elseE.width ≤ max thenE.width elseE.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  obtain ⟨⟨hPlaceC, hPlaceT⟩, hPlaceE⟩ := hPlace
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  have hMid : ∀ i, ((live i || thenE.uses i || elseE.uses i) || c.uses i) = true →
+      (live i || (Expr.ite c thenE elseE).uses i) = true := by
+    intro i h; simp only [Expr.uses]; exact ite_live_cond _ _ _ _ h
+  refine cSpec env slots _ h base heap store s hh hpv (hVars.live_mono hMid) hAt hCap hBase
+    (by omega) hPlaceC _ _
+    (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact ite_trap_cond _ _ _ _ h)
+      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+    fun heap1 store1 s1 ws1 a1 hTop1 => ?_
+  have hR1 := a1.rep
+  simp only [Ty.rep_bool] at hR1
+  subst hR1
+  have e1 : Evolves env slots (fun i => live i || (Expr.ite c thenE elseE).uses i)
+      (fun i => live i || thenE.uses i || elseE.uses i) base heap store s heap1 store1
+      { s1 with values := s.values } := by
+    have e := (a1.toEvolves rfl).values s.values
+    exact ⟨e.step.mono (fun r hr => hr.mono fun i h1 h2 => ⟨hMid i h1, h2⟩) fun _ h => h,
+      e.frame, e.holds⟩
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append,
+    wp_eqzI64_cons]
+  rw [wp_iff_control_types]
+  refine wp_iff_cons rfl ?_
+  have hModeT : thenE.mode (slots.map Slot.mode) = .owned →
+      (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned :=
+    fun h => by simp [Expr.mode, h, Mode.join]
+  have hModeE : elseE.mode (slots.map Slot.mode) = .owned →
+      (Expr.ite c thenE elseE).mode (slots.map Slot.mode) = .owned := fun h => by
+    simp only [Expr.mode, h]
+    cases thenE.mode (slots.map Slot.mode) <;> rfl
+  have hRoomT : base + tTy.width + max thenE.width (copyWidth tTy) ≤ h := by
+    have := Nat.max_le.mpr ⟨ht.trans (Nat.le_max_left _ (copyWidth tTy)), Nat.le_max_right _ _⟩
+    omega
+  have hRoomE : base + tTy.width + max elseE.width (copyWidth tTy) ≤ h := by
+    have := Nat.max_le.mpr ⟨he.trans (Nat.le_max_left _ (copyWidth tTy)), Nat.le_max_right _ _⟩
+    omega
+  cases hcv : c.denote funs env
+  · simp (config := { decide := true }) only [↓reduceIte]
+    exact ite_branchB hm elseSpec hh hpv hVars hCap hBase hRoomE hTrap hNext e1
+      (fun hd => hTop1 (by simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.1.1))
+      (by simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte])
+      (fun h => by simp [Expr.depthCalls, h]) hPlaceE
+      (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
+      (by simp [Expr.denote, hcv]) hModeE _ (fun _ h => h) fun _ _ h => by simpa using h
+  · simp (config := { decide := true }) only [↓reduceIte]
+    exact ite_branchB hm thenSpec hh hpv hVars hCap hBase hRoomT hTrap hNext e1
+      (fun hd => hTop1 (by simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.1.1))
+      (by simp only [Expr.allocs, Expr.mode]; rw [if_pos hcv])
+      (fun h => by simp [Expr.depthCalls, h]) hPlaceT
+      (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
+      (by simp [Expr.denote, hcv]) hModeT _ (fun _ h => h) fun _ _ h => by simpa using h
+
 end Cases
 
 end Verified
