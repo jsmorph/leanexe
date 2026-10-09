@@ -1074,8 +1074,8 @@ theorem spec_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Pat
       (Holds.Apart.ofScalar rfl)) fun _ => Nat.le_add_right _ _)
 
 /-- A value turned from mode `source` into mode `target` after an expression's code: a borrowed
-value that must be owned is copied into new blocks, which raises `top` by at most `coerceCost t source target v`, and the
-facts of `After` carry over. -/
+value that must be owned is copied into new blocks, which raises `top` by at most
+`coerceCost t source target v`, and the facts of `After` carry over. -/
 theorem After.coerce (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {liveIn live : Nat → Bool} {h base base' : Nat} {heap : Heap} {store : Store Unit}
     {s : Locals} {t : Ty} {source target : Mode} {v : t.denote} {heap1 : Heap}
@@ -1417,7 +1417,8 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
 /-- An allowance for a trap when `top` cannot rise by a charge gives the allowance of a part
 that takes no call depth and whose room follows from the charge's. -/
 theorem _root_.Wasm.TrapOK.narrow {Q : Assertion Unit} {a : Bool} {P P' : Prop} [Decidable P]
-    [Decidable P'] (h : TrapOK (!decide P) Q) (hP : P → P') : TrapOK (false || (a && !decide P')) Q :=
+    [Decidable P'] (h : TrapOK (!decide P) Q) (hP : P → P') :
+    TrapOK (false || (a && !decide P')) Q :=
   h.of_imp fun h' => by
     simp only [Bool.false_or, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at h' ⊢
     exact fun hp => h'.2 (hP hp)
@@ -1500,10 +1501,12 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
   have hB : (Expr.pair first second).allocs funs bounds (slots.map Slot.mode) live env =
       first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i) env +
         coerceCost sTy (first.mode (slots.map Slot.mode))
-          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode))) (first.denote funs env) +
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (first.denote funs env) +
         second.allocs funs bounds (slots.map Slot.mode) live env +
         coerceCost tTy (second.mode (slots.map Slot.mode))
-          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode))) (second.denote funs env) := by
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (second.denote funs env) := by
     simp only [Expr.allocs, Expr.mode]
   refine firstSpec env slots (fun i => live i || second.uses i) h base heap store s hh hpv
       hVarsL hAt
@@ -1515,7 +1518,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
     (by rw [a1.frame.params]; exact hBase) (a1.frame.half.trans hh) (by omega)
     (by rw [a1.step.cap m]; exact hCap) (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost sTy (first.mode (slots.map Slot.mode))
-          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode))) (first.denote funs env) =
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (first.denote funs env) =
           sTy.copyCost (first.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
       exact hw.shift (c1 := first.allocs funs bounds (slots.map Slot.mode)
         (fun i => live i || second.uses i) env) (hTopF (hdF hd)) (by rw [hB]; omega)
@@ -1529,7 +1533,8 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_right _ _ _ h)
       fun hd hw => hw.shift (heap1 := heap1) (store1 := store1)
         (c1 := first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i)
-          env + coerceCost sTy (first.mode (slots.map Slot.mode)) ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          env + coerceCost sTy (first.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
             (first.denote funs env))
         (by have := hTopF (hdF hd); have := hTopC1; omega) (by rw [hB]; omega) (a1.step.cap m))
     fun heap2 store2 s2 ws2 a2 hTopS => ?_
@@ -1540,11 +1545,13 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
     (by rw [a2.step.cap m, a1.step.cap m]; exact hCap)
     (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
       have hcc : coerceCost tTy (second.mode (slots.map Slot.mode))
-          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode))) (second.denote funs env) =
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          (second.denote funs env) =
           tTy.copyCost (second.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
       exact hw.shift (heap1 := heap2) (store1 := store2)
         (c1 := first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i)
-          env + coerceCost sTy (first.mode (slots.map Slot.mode)) ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+          env + coerceCost sTy (first.mode (slots.map Slot.mode))
+          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
             (first.denote funs env) + second.allocs funs bounds (slots.map Slot.mode) live env)
         (by have := hTopF (hdF hd); have := hTopC1; have := hTopS (hdS hd); omega)
         (by rw [hB]; omega)
@@ -2028,7 +2035,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           have hRoom0 := hRoom ⟨0, by simp⟩
           simp only [show modes ↑(⟨0, by simp⟩ : Fin (p :: ps).length) = .owned from hmd,
             ↓reduceIte] at hRoom0
-          have hc0 : argCost funs bounds (slots.map Slot.mode) all kept modes args env ⟨0, by simp⟩ =
+          have hc0 : argCost funs bounds (slots.map Slot.mode) all kept modes args env
+              ⟨0, by simp⟩ =
               x.ownedCost (slots.map Slot.mode) all (env.get x) := by
             simp only [argCost]
             rw [if_neg (show ¬((p :: ps).get ⟨0, by simp⟩).scalar = true from hp),
@@ -2354,7 +2362,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     (initSpec : ∀ env slots live, CodeSpec m funs bounds host pv init env slots live)
     (condSpec : ∀ env slots live, CodeSpec m funs bounds host pv cond env slots live)
     (bodySpec : ∀ env slots live, CodeSpec m funs bounds host pv body env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds host pv (Expr.loop count init cond body) env slots live :=
+    ∀ env slots live,
+      CodeSpec m funs bounds host pv (Expr.loop count init cond body) env slots live :=
         by
   intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
     hNext
@@ -2446,14 +2455,18 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     (by rw [a2.frame.params, hF2.params]; omega) (a2.frame.half.trans (hF2.half.trans hh))
     (by omega) (by rw [a2.step.cap m, e1'.step.cap m]; exact hCap)
     (fun hs ht _ => hTrap.alloc (hOwnedA ht) fun hd hw => by
-      have hcc : coerceCost tTy (init.mode (slots.map Slot.mode)) ((init.mode (slots.map Slot.mode)).join (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
+      have hcc : coerceCost tTy (init.mode (slots.map Slot.mode))
+          ((init.mode (slots.map Slot.mode)).join
+            (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
           (init.denote funs env) = tTy.copyCost (init.denote funs env) := by
         rw [coerceCost, if_pos ⟨hs, ht⟩]
       exact hw.shift (hTop2 hd) (by rw [hT]; omega) (by rw [a2.step.cap m, e1'.step.cap m]))
     fun heap2' store2 s3 ws0 a2 hTopCo => ?_
   have hTopEntry : (Expr.loop count init cond body).depthCalls = false →
       heap2'.top.toNat + Expr.loopRest funs bounds (slots.map Slot.mode) live init cond body env
-        (count.denote funs env).toNat 0 (init.denote funs env) ≤ heap.top.toNat + (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env :=
+        (count.denote funs env).toNat 0 (init.denote funs env) ≤
+        heap.top.toNat + (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode)
+          live env :=
     fun hd => by have := hTop2 hd; rw [hT]; omega
   have hF3 : Frame base s s3 := hF2.trans (a2.frame.mono (Nat.le_succ base))
   have hh3 : s3.half = h := hF3.half.trans hh
@@ -2499,7 +2512,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
         ((Expr.loop count init cond body).denote funs env) heapX stX sX wsX →
       ((Expr.loop count init cond body).depthCalls = false →
-        heapX.top.toNat ≤ heap.top.toNat + (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env) →
+        heapX.top.toNat ≤ heap.top.toNat +
+          (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env) →
       wp m (releaseWhere Γ' slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
         (loadCode h (base + 2) tTy.types ++ rest)) Q stX { sX with values := vals } host := by
     intro heapX stX sX wsX vals hv holdX aX hTopX
@@ -2532,7 +2546,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           (loopState (init.denote funs env)
             (fun i acc => bif cond.denote funs (.cons acc env) then
               body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) ≤
-          heap.top.toNat + (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env))
+          heap.top.toNat +
+            (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env))
     (fun _ s' => match s'.get (base + 1) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
       | _ => 0)
@@ -2714,8 +2729,12 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     le_rfl (by rw [hp6]; omega) (aB.frame.half.trans hhB) (by omega)
     (by rw [aB.step.cap m, e2'.step.cap m, aB0.step.cap m]; exact hCap)
     (fun hs ht _ => (hTrap.alloc (hOwnedA ht) fun hd hw => by
-      have hcc : coerceCost tTy (body.mode (((init.mode (slots.map Slot.mode)).join (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))) :: .borrowed ::
-          slots.map Slot.mode)) ((init.mode (slots.map Slot.mode)).join (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
+      have hcc : coerceCost tTy
+          (body.mode (((init.mode (slots.map Slot.mode)).join
+            (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))) :: .borrowed ::
+            slots.map Slot.mode))
+          ((init.mode (slots.map Slot.mode)).join
+            (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode)))
           (body.denote funs (.cons (loopState (init.denote funs env)
               (fun i acc => bif cond.denote funs (.cons acc env) then
                 body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) (.cons i env))) =
@@ -2834,8 +2853,12 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   have he2 := Nat.le_max_right elem.width (e.width + 1)
   have hk := e.width_pos
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  have hT : (Expr.build count elem).allocs funs bounds (slots.map Slot.mode) live env = count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1)) env + allocCost (((count.denote funs env).toNat * e.width + 1) * 8) + sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
-          (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env)) (count.denote funs env).toNat := rfl
+  have hT : (Expr.build count elem).allocs funs bounds (slots.map Slot.mode) live env =
+      count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1)) env +
+        allocCost (((count.denote funs env).toNat * e.width + 1) * 8) +
+        sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
+          (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env))
+          (count.denote funs env).toNat := rfl
   have hdK : (Expr.build count elem).depthCalls = false → count.depthCalls = false ∧
       elem.depthCalls = false := fun hd => by
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd
@@ -2935,7 +2958,8 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   have hLow4 : s3.params.length ≤ base + 1 := by rw [hp3]; omega
   have hHigh4' : base + 1 < s3.half := by rw [hh3]; omega
   have hHigh4 := Locals.lt_total hHigh4'
-  refine wp_allocArray (c := allocCost (((count.denote funs env).toNat * e.width + 1) * 8)) hm e1.step.at_ (by rw [e1.step.cap m]; exact hCap)
+  refine wp_allocArray (c := allocCost (((count.denote funs env).toNat * e.width + 1) * 8)) hm
+    e1.step.at_ (by rw [e1.step.cap m]; exact hCap)
     (by rw [hTn]; unfold allocCost; omega)
     (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.shift (hTopK (hdK hd).1)
       (by rw [hT]; omega) (e1.step.cap m))
@@ -2991,7 +3015,9 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
         (fun i => live i || elem.uses (i + 1)) base heap store s (.array .word) .owned words heapI
         st si [.i64 root] ∧
       ((Expr.build count elem).depthCalls = false →
-        heapI.top.toNat ≤ heap.top.toNat + (count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1)) env + allocCost (((count.denote funs env).toNat * e.width + 1) * 8) +
+        heapI.top.toNat ≤ heap.top.toNat +
+          (count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1))
+            env + allocCost (((count.denote funs env).toNat * e.width + 1) * 8) +
           sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
           (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env)) i)))
     (fun _ si => match si.get (base + 2) with
@@ -3055,7 +3081,8 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
         (fun _ => by simp [Expr.aborts]) fun hd hw => hw.of_le (by
           have := hInv hd
           have := sumBelow_mono (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
-          (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env)) (show i + 1 ≤ (count.denote funs env).toNat by omega)
+            (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env))
+            (show i + 1 ≤ (count.denote funs env).toNat by omega)
           simp only [sumBelow] at this
           simp only [List.map_cons]; rw [hT]; omega) (aI.step.cap m)).imp fun _ h => h)
     fun heapE stE sE wsE aE hTopE => ?_
@@ -3193,7 +3220,10 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hcw : copyWidth (Ty.array e) = 4 := rfl
   have hk := e.width_pos
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  have hT : (Expr.set x i v).allocs funs bounds (slots.map Slot.mode) live env = i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index || v.uses j) env + v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env + x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
+  have hT : (Expr.set x i v).allocs funs bounds (slots.map Slot.mode) live env =
+      i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index || v.uses j) env +
+        v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env +
+        x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
   have hdS : (Expr.set x i v).depthCalls = false → i.depthCalls = false ∧ v.depthCalls = false :=
     fun hd => by simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
@@ -4681,7 +4711,8 @@ theorem bodyFunction_runs {S : List Sig} {params : List Ty} {result : Ty} (modes
     (hSep : Separate store (Env.moves (paramMode params modes) ws args)
       (Env.reads (paramMode params modes) ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) :
-    Runs (aborts && (depth || !decide (heap.Within store m (bodyBound modes body funs bounds args))))
+    Runs (aborts &&
+        (depth || !decide (heap.Within store m (bodyBound modes body funs bounds args))))
       host m pos store ((if depth then [Value.i64 d] else []) ++ ws).reverse
       fun final values => ∃ heap' : Heap, heap'.At final ∧
         result.Rep .owned heap' final values.reverse (body.denote funs args) ∧
@@ -4798,7 +4829,8 @@ theorem bodyFunction_runs {S : List Sig} {params : List Ty} {result : Ty} (modes
           · rw [hDepth hdep] at hb; exact nomatch hb
           · rfl
         exact ⟨hAborts (by simp [hd]), Or.inl hd⟩
-      · exact ⟨hAborts (by simp only [Bool.or_eq_true]; exact Or.inl ha), Or.inr hw⟩) fun heap' store' s' ws' a hTopB => ?_
+      · exact ⟨hAborts (by simp only [Bool.or_eq_true]; exact Or.inl ha), Or.inr hw⟩)
+    fun heap' store' s' ws' a hTopB => ?_
   · cases hdep : depth
     · rw [hDepth hdep] at hb; exact nomatch hb
     · rw [hp1, hp0]; exact hHead hdep
@@ -4945,7 +4977,8 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
       | _ n ih' =>
         intro d hn
         rw [hMeaning]
-        refine bodyFunction_depth f.modes f.body f.placeArgs _ (.cons (fun _ => 0) (rest.bounds funs'))
+        refine bodyFunction_depth f.modes f.body f.placeArgs _
+          (.cons (fun _ => 0) (rest.bounds funs'))
           m _ hm hpos d fun hlt => ?_
         have hlt' : d.toNat < 1000 := UInt64.lt_iff_toNat_lt.mp hlt
         have hd1 : (d + 1).toNat = d.toNat + 1 := by
@@ -5618,7 +5651,8 @@ theorem ImplementsTables.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts :
       (fun y => f (Env.ofArgs ps ms y)) tables (fun y => Pre (Env.ofArgs ps ms y))
       (fun y => Post (Env.ofArgs ps ms y)) :=
   @ImplementsTables.transfer _ _ _ _ (Env.represent ps ms) (argsInst ps ms) (Ty.represent r)
-    r.leanInst aborts m entry f tables Pre Post h (Env.ofArgs ps ms) (fun y => f (Env.ofArgs ps ms y))
+    r.leanInst aborts m entry f tables Pre Post h (Env.ofArgs ps ms)
+    (fun y => f (Env.ofArgs ps ms y))
     (fun _ _ _ _ hy => (argsInst_borrowed ps ms).mp hy)
     (fun _ _ _ _ hy hS => by
       have hl := ((argsInst_borrowed ps ms).mp hy).length

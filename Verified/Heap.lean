@@ -44,20 +44,23 @@ theorem wp_release {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : H
   simpa using hNext
 
 /-- Whether `top` can rise by `n` bytes within the memory cap of `m`. -/
-def _root_.LeanExe.Pipeline.Heap.Within (heap : Heap) (store : Store Unit) (m : Module) (n : Nat) : Prop :=
+def _root_.LeanExe.Pipeline.Heap.Within (heap : Heap) (store : Store Unit) (m : Module)
+    (n : Nat) : Prop :=
   heap.top.toNat + n ≤ 65536 * store.memoryCap m 0
 
 instance {heap : Heap} {store : Store Unit} {m : Module} {n : Nat} :
     Decidable (heap.Within store m n) :=
   inferInstanceAs (Decidable (_ ≤ _))
 
-theorem _root_.LeanExe.Pipeline.Heap.Within.mono {heap : Heap} {store : Store Unit} {m : Module} {n n' : Nat}
+theorem _root_.LeanExe.Pipeline.Heap.Within.mono {heap : Heap} {store : Store Unit}
+    {m : Module} {n n' : Nat}
     (h : heap.Within store m n) (hle : n' ≤ n) : heap.Within store m n' := by
   unfold Heap.Within at *; omega
 
 /-- An allocation of `need` bytes for which `top` can rise by `48 + need` within the cap has the
 room that `alloc` needs. -/
-theorem _root_.LeanExe.Pipeline.Heap.Within.room {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
+theorem _root_.LeanExe.Pipeline.Heap.Within.room {heap : Heap} {store : Store Unit}
+    {m : Module} {need : UInt64}
     (h : heap.Within store m (48 + need.toNat)) (hCap : store.memoryCap m 0 ≤ 65535) :
     heap.Room store m need := by
   unfold Heap.Within at h
@@ -68,7 +71,8 @@ theorem _root_.LeanExe.Pipeline.Heap.Within.room {heap : Heap} {store : Store Un
   · intro _; omega
 
 /-- An allocation that fits raises `top` by at most `48 + need`. -/
-theorem _root_.LeanExe.Pipeline.Heap.allocate_top {heap : Heap} {need : UInt64} (h : heap.Fits need) :
+theorem _root_.LeanExe.Pipeline.Heap.allocate_top {heap : Heap} {need : UInt64}
+    (h : heap.Fits need) :
     (heap.allocate need).top.toNat ≤ heap.top.toNat + allocCost need.toNat := by
   have hTop := allocatedTop_toNat heap.top need heap.free h.fit32
   simp only [Heap.allocate, allocCost]
@@ -249,7 +253,8 @@ theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
   simp only [allocArrayCode, List.cons_append, List.nil_append, wp_localGet_cons, hN,
     wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
   exact wp_allocBlock hm hAt hCap (by rw [hSize, hBytes]; exact hc) hTrap hn (by rw [hBytes])
-    (by rw [hBytes]; omega) hN hLow hHigh hne fun heap' store' root words hSize hStep hOwned _ hTop =>
+    (by rw [hBytes]; omega) hN hLow hHigh hne
+    fun heap' store' root words hSize hStep hOwned _ hTop =>
       hNext heap' store' root words hSize hStep hOwned hTop
 
 /-- `words` with elements `k` to `k + i - 1` replaced by the first `i` elements of `xs`. -/
@@ -785,7 +790,8 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     {store : Store Unit} {s : Locals} {src len count dst index : Nat} {ptr total bytes : UInt64}
     {xs : Array UInt64} {vs : List Value} {rest : Program} {Q : Assertion Unit} {c : Nat}
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
-    (hc : allocCost (allocSize bytes).toNat ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
+    (hc : allocCost (allocSize bytes).toNat ≤ c)
+    (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
     (hB : heap.Borrowed store ptr xs) (hTotal : total.toNat < 536870912)
     (hn : xs.size ≤ total.toNat) (hBytes : 8 * (total.toNat + 1) ≤ bytes.toNat)
     (hBytes32 : bytes.toNat ≤ 4294967296) (hSrc : s.get src = some (.i64 ptr))
@@ -893,8 +899,8 @@ theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {
     simpa using hNext ((t + 1) * 8) (by rw [hNeed]) (by rw [hNeed]; omega) (by rw [hNeed]; omega)
 
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
-owned array, with the locals from `base` to `base + 2` as scratch.  It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
-cap, and it raises `top` by at most `c`. -/
+owned array, with the locals from `base` to `base + 2` as scratch.  It traps at `unreachable` only
+when `top` cannot rise by the charge `c` within the cap, and it raises `top` by at most `c`. -/
 theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {src base : Nat} {ptr : UInt64} {xs : Array UInt64}
     {rest : Program} {Q : Assertion Unit} {c : Nat}
@@ -959,7 +965,8 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
   simpa [hv2, hv1] using hNext heap1 store1 s2 q hStep hOwned hF hTop
 
 /-- An assertion that accepts every trap at `unreachable` accepts those of any allowance. -/
-theorem _root_.Wasm.TrapOK.any {b : Bool} {Q : Assertion Unit} (h : TrapOK true Q) : TrapOK b Q := by
+theorem _root_.Wasm.TrapOK.any {b : Bool} {Q : Assertion Unit} (h : TrapOK true Q) :
+    TrapOK b Q := by
   cases b
   · trivial
   · exact h
@@ -975,7 +982,8 @@ theorem _root_.Wasm.TrapOK.within {P P' : Prop} [Decidable P] [Decidable P'] {Q 
 
 /-- Room for `c1 + c2` before a step that raises `top` by at most `c1` leaves room for `c2` after
 it. -/
-theorem _root_.LeanExe.Pipeline.Heap.Within.after {heap heap1 : Heap} {store store1 : Store Unit} {m : Module}
+theorem _root_.LeanExe.Pipeline.Heap.Within.after {heap heap1 : Heap} {store store1 : Store Unit}
+    {m : Module}
     {c1 c2 : Nat} (h : heap.Within store m (c1 + c2)) (hTop : heap1.top.toNat ≤ heap.top.toNat + c1)
     (hCaps : store1.memoryCap m 0 = store.memoryCap m 0) : heap1.Within store1 m c2 := by
   unfold Heap.Within at *; rw [hCaps]; omega
