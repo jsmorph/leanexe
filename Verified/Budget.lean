@@ -4586,4 +4586,415 @@ theorem Expr.code_specB {S : List Sig} (m : Module) (funs : Funs S) (bounds : Bo
       (secondSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | proj x p => intro _; exact specB_proj x p
 
+/-- A function's code after the copy of its parameters, whose words start at position `p0`: the
+release of the owned parameters that the body does not use, the body's code, and the coercion of
+the body's value to an owned one.  The code traps only through a call whose code takes the call
+depth, or, when it may allocate, when `top` cannot rise by the function's bound within the cap, and
+it raises `top` by at most that bound when the body takes no call depth. -/
+theorem body_code_specB {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
+    (body : Expr S params result) (placeArgs : body.placeArgs = true) (p0 h : Nat)
+    (funs : Funs S) (bounds : Bounds S) (m : Module) (host : HostEnv Unit) (hm : Runtime m)
+    {d0 : UInt64} (hCalls : CallsAtB m funs bounds d0) (args : Env params) (heap : Heap)
+    (store : Store Unit) (s : Locals) (hh : s.half = h)
+    (hRoom : p0 + widthSum params + body.width + copyWidth result ≤ h)
+    (hDepth : body.depthCalls = true → s.params.head? = some (.i64 d0))
+    (hVars : Holds args (paramSlots params modes p0) (fun _ => true) (p0 + widthSum params)
+      heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hBase : s.params.length ≤ p0 + widthSum params) (Q : Assertion Unit)
+    (hTrap : TrapOK (body.depthCalls ||
+      ((body.aborts || !result.scalar || (paramModes params modes).any (· == .owned)) &&
+        !decide (heap.Within store m (bodyBound modes body funs bounds args)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After args (paramSlots params modes p0) (fun _ => true) (fun _ => false)
+        (p0 + widthSum params) heap store s result .owned (body.denote funs args) heap' store' s'
+        ws →
+      (body.depthCalls = false →
+        heap'.top.toNat ≤ heap.top.toNat + bodyBound modes body funs bounds args) →
+      Q (.Fallthrough store' { s' with values := ws.reverse ++ s.values })) :
+    wp m (releaseWhere params (paramSlots params modes p0) (fun i => !body.uses i) ++
+      (body.code h (paramSlots params modes p0) (p0 + widthSum params) (fun _ => false) ++
+      (coerceCode h result (body.mode ((paramSlots params modes p0).map Slot.mode)) .owned
+        (p0 + widthSum params + body.width) ++ []))) Q store s host := by
+  have hModes : (paramSlots params modes p0).map Slot.mode = entryModes params modes := by
+    rw [entryModes, paramSlots_modes, paramSlots_modes]
+  refine wp_releaseWhereT hm hVars hAt (fun _ _ => rfl) fun heap1 store1 e hTop1 => ?_
+  have e' := e.mono (live' := fun i => false || body.uses i) fun i h => by simpa using h
+  refine Expr.code_specB m funs bounds host hm hCalls body hDepth args
+    (paramSlots params modes p0) (fun _ => false) h (p0 + widthSum params)
+    heap1 store1 s hh rfl e'.holds e'.step.at_ (by rw [e'.step.cap m]; exact hCap) hBase (by omega)
+    placeArgs _ _
+    (hTrap.part (fun h => h)
+      (fun h => by
+        rw [← Slot.any_map, paramSlots_modes] at h
+        exact trap_left _ _ _ h)
+      fun _ hw => hw.of_le (by rw [hTop1, hModes]; simp only [bodyBound]; omega) (e'.step.cap m))
+    fun heap' store' s' ws a hTopB => ?_
+  have a' := After.prepend hVars e' a (fun _ _ => rfl) fun _ h => nomatch h
+  refine After.coerceB hm a' (fun _ => rfl) (Nat.le_add_right _ _)
+    (by rw [a'.frame.params]; omega) (a'.frame.half.trans hh) (by omega)
+    (by rw [a'.step.cap m]; exact hCap)
+    (fun hs _ hsc => hTrap.alloc (by simp [hsc]) fun hd hw => hw.of_le (by
+      have := hTopB hd
+      rw [hModes] at this hs
+      rw [hTop1] at this
+      simp [bodyBound, coerceCost, hs]
+      omega) (a'.step.cap m))
+    fun heap'' store'' s'' ws'' a'' hTopC => ?_
+  rw [wp_nil]
+  exact hNext heap'' store'' s'' ws'' a'' fun hd => by
+    have := hTopB hd
+    rw [hModes] at this hTopC
+    rw [hTop1] at this
+    simp only [bodyBound]
+    omega
+
+/-- The code of a function with modes `modes` and body `body`, at position `pos` of a module whose
+functions at the call indices compute the functions that the body calls, computes the body's
+meaning from the words `ws` of its arguments after, when the code takes the call depth, the depth
+`d`, and traps at the depth limit.  When the code takes no call depth, it traps only when it may
+allocate and `top` cannot rise by the function's bound within the cap, and it raises `top` by at
+most that bound. -/
+theorem bodyFunction_runsB {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
+    (body : Expr S params result) (placeArgs : body.placeArgs = true) (depth : Bool)
+    (funs : Funs S) (bounds : Bounds S) (m : Module) (pos : Nat) (hm : Runtime m)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body depth pos)) (d : UInt64)
+    (hCalls : (depth = true → d < depthLimit) → CallsAtB m funs bounds d)
+    (hDepth : depth = false → body.depthCalls = false) (aborts : Bool)
+    (hAborts : (body.aborts || !result.scalar || (paramModes params modes).any (· == .owned) ||
+      depth) = true → aborts = true)
+    (host : HostEnv Unit) (store : Store Unit) (heap : Heap) (ws : List Value)
+    (args : Env params) (hAt : heap.At store)
+    (hRep : Env.Rep (paramMode params modes) heap store ws args)
+    (hSep : Separate store (Env.moves (paramMode params modes) ws args)
+      (Env.reads (paramMode params modes) ws args))
+    (hCap : store.memoryCap m 0 ≤ 65535) :
+    Runs (aborts && (depth || !decide (heap.Within store m (bodyBound modes body funs bounds args))))
+      host m pos store ((if depth then [Value.i64 d] else []) ++ ws).reverse
+      fun final values => ∃ heap' : Heap, heap'.At final ∧
+        result.Rep .owned heap' final values.reverse (body.denote funs args) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 →
+          Apart store (Env.moves (paramMode params modes) ws args) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧
+          ∀ b ∈ result.blocks final values.reverse (body.denote funs args), regionsDisjoint r b) ∧
+        (depth = false →
+          heap'.top.toNat ≤ heap.top.toNat + bodyBound modes body funs bounds args) := by
+  have hLength : ws.length = widthSum params := hRep.length
+  have hdv : (if depth then [Value.i64 d] else []).length = (if depth then 1 else 0) := by
+    cases depth <;> rfl
+  have hNum := bodyFunction_numParams modes body depth pos
+  have hRes : (bodyFunction modes body depth pos).results.length = result.width := by
+    simp [bodyFunction, Ty.types_length]
+  apply Runs.of_wp_entry_for (f := bodyFunction modes body depth pos)
+    (by rw [hm.imports, List.length_nil, Nat.sub_zero]; exact hFunc)
+    (hImp := by simp [hm.imports])
+  have hTake : (((if depth then [Value.i64 d] else []) ++ ws).reverse.take
+      (bodyFunction modes body depth pos).numParams).reverse =
+      (if depth then [Value.i64 d] else []) ++ ws := by
+    rw [List.take_of_length_le (by
+      rw [hNum, List.length_reverse, List.length_append, hdv, hLength])]
+    simp
+  rw [hTake, show (bodyFunction modes body depth pos).body =
+    (if depth then guardCode else []) ++
+    (paramCopyCode (positions body depth) (if depth then 1 else 0) (params.flatMap Ty.types) ++
+    (releaseWhere params (paramSlots params modes (if depth then 1 else 0))
+        (fun i => !body.uses i) ++
+      (body.code (positions body depth) (paramSlots params modes (if depth then 1 else 0))
+        ((if depth then 1 else 0) + widthSum params) (fun _ => false) ++
+      (coerceCode (positions body depth) result
+        (body.mode ((paramSlots params modes (if depth then 1 else 0)).map Slot.mode)) .owned
+        ((if depth then 1 else 0) + widthSum params + body.width) ++ [])))) by
+    simp [bodyFunction]]
+  have hl0 : ((bodyFunction modes body depth pos).toLocals
+      ((if depth then [Value.i64 d] else []) ++ ws)).locals.length =
+      body.width + copyWidth result + positions body depth := by
+    simp [Function.toLocals, bodyFunction]
+  have hHead : depth = true →
+      ((if depth then [Value.i64 d] else []) ++ ws).head? = some (.i64 d) := by
+    intro hd; subst hd; rfl
+  refine wp_guardCode depth (d := d) (fun hd => by subst hd; simp [Function.toLocals])
+    (fun hd st => by
+      show TrapMsg _ "unreachable"
+      rw [hAborts (by simp [hd]), hd]
+      rfl) fun hlt => ?_
+  have hCalls' : CallsAtB m funs bounds d := hCalls hlt
+  have hPos : positions body depth =
+      (if depth then 1 else 0) + widthSum params + body.width + copyWidth result := rfl
+  have hp0 : ((bodyFunction modes body depth pos).toLocals
+      ((if depth then [Value.i64 d] else []) ++ ws)).params =
+      (if depth then [Value.i64 d] else []) ++ ws := rfl
+  have hv0 : ((bodyFunction modes body depth pos).toLocals
+      ((if depth then [Value.i64 d] else []) ++ ws)).values = [] := rfl
+  generalize (bodyFunction modes body depth pos).toLocals
+    ((if depth then [Value.i64 d] else []) ++ ws) = s0 at hl0 hp0 hv0 ⊢
+  generalize (if depth then 1 else 0) = p0 at hdv hNum hPos ⊢
+  generalize (if depth then [Value.i64 d] else []) = dv at hdv hHead hp0 ⊢
+  generalize positions body depth = h at hPos hl0 ⊢
+  have hLocals : s0.params.length + s0.locals.length = h + h := by
+    rw [hp0, hl0, List.length_append, hdv, hLength, hPos]; omega
+  refine wp_paramCopyCode (params.flatMap Ty.types) p0
+    (by rw [flatMap_types_length, hp0, List.length_append, hdv, hLength])
+    (by rw [hp0, List.length_append, hdv, hLength, hPos]; omega) (by rw [hLocals])
+    fun s1 hp1 hl1 hv1 hlow1 hcopy1 => ?_
+  have hh1 : s1.half = h := by
+    simp only [Locals.half, hp1, hl1, hLocals]; omega
+  have hParam : ∀ j (hj : j < ws.length), s0.get (p0 + j) = some ws[j] := by
+    intro j hj
+    have hlt : p0 + j < (dv ++ ws).length := by rw [List.length_append, hdv]; omega
+    simp only [Locals.get, hp0, hlt, ↓reduceIte]
+    rw [List.getElem?_append_right (by omega), hdv, Nat.add_sub_cancel_left,
+      List.getElem?_eq_getElem hj]
+  -- The locals after the copy hold each parameter's words.
+  have hHold : ∀ {t : Ty} (x : Var params t),
+      LocalsHold s1 (p0 + x.offset) t.types ((ws.drop x.offset).take t.width) := by
+    intro t x k hk
+    have hk' := hk
+    simp only [List.length_take, List.length_drop] at hk'
+    have hlt : x.offset + k < ws.length := by have := x.offset_width; omega
+    have hkw : k < t.width := by have := x.offset_width; omega
+    rw [List.getElem_take, List.getElem_drop, hh1]
+    by_cases hf : t.types.getD k .i64 = .f64
+    · rw [hf]
+      show s1.get (p0 + x.offset + k + h) = _
+      rw [hcopy1 (p0 + x.offset + k) (by omega)
+        (by rw [flatMap_types_length]; have := x.offset_width; omega)
+        (by rw [show p0 + x.offset + k - p0 = x.offset + k by omega, x.types_getD hkw, hf]),
+        Nat.add_assoc]
+      exact hParam _ hlt
+    · have hIdx : slotIndex h (p0 + x.offset + k) (t.types.getD k .i64) = p0 + x.offset + k := by
+        generalize t.types.getD k .i64 = ty at hf ⊢
+        cases ty <;> first | rfl | exact absurd rfl hf
+      rw [hIdx, hlow1 _ (by have := x.offset_width; omega), Nat.add_assoc]
+      exact hParam _ hlt
+  have hWords : ∀ {t : Ty} (x : Var params t),
+      ((ws.drop x.offset).take t.width).length = t.width := by
+    intro t x
+    have := x.offset_width
+    simp only [List.length_take, List.length_drop]
+    omega
+  refine body_code_specB modes body placeArgs p0 h funs bounds m host hm hCalls' args heap store s1
+    hh1 (by omega) (fun hb => ?_)
+    ⟨fun t x _ => ?_, fun t u x y _ _ hxy hmo wx wy hwx hlx hwy hly => ?_⟩ hAt hCap
+    (by rw [hp1, hp0, List.length_append, hdv, hLength]) _
+    ((TrapOK.of_msg fun _ => Iff.rfl).of_imp fun hb => by
+      simp only [Bool.or_eq_true, Bool.and_eq_true] at hb ⊢
+      rcases hb with hb | ⟨ha, hw⟩
+      · have hd : depth = true := by
+          cases hdep : depth
+          · rw [hDepth hdep] at hb; exact nomatch hb
+          · rfl
+        exact ⟨hAborts (by simp [hd]), Or.inl hd⟩
+      · exact ⟨hAborts (by simp only [Bool.or_eq_true]; exact Or.inl ha), Or.inr hw⟩) fun heap' store' s' ws' a hTopB => ?_
+  · cases hdep : depth
+    · rw [hDepth hdep] at hb; exact nomatch hb
+    · rw [hp1, hp0]; exact hHead hdep
+  · rw [paramSlots_getD x]
+    exact ⟨show p0 + x.offset + t.width ≤ p0 + widthSum params by
+      have := x.offset_width; omega, _, hHold x, hRep.var x⟩
+  · rw [paramSlots_getD x] at hwx hmo
+    rw [paramSlots_getD y] at hwy ⊢
+    obtain rfl := LocalsHold.unique hwx (hHold x) (by rw [hlx, hWords])
+    obtain rfl := LocalsHold.unique hwy (hHold y) (by rw [hly, hWords])
+    exact hRep.apart x hSep y hxy hmo
+  · have hLen := a.rep.length
+    have hValues : (ws'.reverse ++ s1.values).take
+        (bodyFunction modes body depth pos).results.length ++
+        (dv ++ ws).reverse.drop (bodyFunction modes body depth pos).numParams = ws'.reverse := by
+      rw [hv1, hv0, hNum, hRes, List.append_nil,
+        List.take_of_length_le (by rw [List.length_reverse, hLen]),
+        List.drop_of_length_le (by rw [List.length_reverse, List.length_append, hdv, hLength]),
+        List.append_nil]
+    simp only [hValues]
+    refine ⟨heap', a.step.at_, ?_, a.step.caps, fun r hr hpos hA => ?_,
+      fun hdep => hTopB (hDepth hdep)⟩
+    · rw [List.reverse_reverse]
+      exact a.rep
+    · obtain ⟨hb, hreg, hf⟩ := a.step.keeps r hr hpos fun t x _ _ hmo wx hwx hlx b hb => by
+        rw [paramSlots_getD x] at hwx hmo
+        obtain rfl := LocalsHold.unique hwx (hHold x) (by rw [hlx, hWords x])
+        rw [Ty.blocks_pointers] at hb
+        obtain ⟨q, hq, rfl⟩ := List.mem_map.mp hb
+        exact hA q (Env.moves_var x hRep hmo q hq)
+      refine ⟨hb, hreg, fun b hb' => hf b ?_⟩
+      rw [List.reverse_reverse] at hb'
+      exact hb'
+
+/-- The code of a function whose code does not take the call depth computes its body's meaning
+from the words of its arguments, within the function's bound. -/
+theorem bodyFunction_implementsB {S : List Sig} {params : List Ty} {result : Ty}
+    (modes : List Mode) (body : Expr S params result) (placeArgs : body.placeArgs = true)
+    (funs : Funs S) (bounds : Bounds S) (m : Module) (pos : Nat) (hm : Runtime m)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body false pos))
+    (hCalls : CallsB m funs bounds) (hDepth : body.depthCalls = false) (aborts : Bool)
+    (hAborts : (body.aborts || !result.scalar || (paramModes params modes).any (· == .owned)) =
+      true → aborts = true) :
+    @ImplementsB _ _ (Env.represent params modes) (Ty.represent result) aborts m pos
+      (body.denote funs) (bodyBound modes body funs bounds) := by
+  intro host store heap ws args hAt hRep hSep hCap
+  have hRun := bodyFunction_runsB modes body placeArgs false funs bounds m pos hm hFunc 0
+    (fun _ => hCalls.at 0) (fun _ => hDepth) aborts (fun h => hAborts (by simpa using h)) host
+    store heap ws args hAt hRep hSep hCap
+  simp only [Bool.false_eq_true, ↓reduceIte, List.nil_append, Bool.false_or] at hRun
+  exact hRun.mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
+    ⟨heap', hAt', hOwned, hCaps, hRegions, by simpa using hTop⟩
+
+/-- The code of a function whose code takes the call depth computes its body's meaning from the
+words of the depth `d` and its arguments, when the functions that the body calls compute theirs
+at the next depth below the limit, and traps at the limit. -/
+theorem bodyFunction_depthB {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
+    (body : Expr S params result) (placeArgs : body.placeArgs = true) (funs : Funs S)
+    (bounds : Bounds S) (m : Module) (pos : Nat) (hm : Runtime m)
+    (hFunc : m.funcs[pos]? = some (bodyFunction modes body true pos)) (d : UInt64)
+    (hCalls : d < depthLimit → CallsAtB m funs bounds d) :
+    @ImplementsA _ _ (Env.represent (.word :: params) (.borrowed :: modes)) (Ty.represent result)
+      true m pos (depthMeaning (body.denote funs)) (fun env _ _ => env.depthOf = d)
+      (fun _ _ _ _ _ => True) := by
+  intro host store heap vs env hAt hd hRep hSep hCap
+  cases env with
+  | cons d' args =>
+    change d' = d at hd
+    subst hd
+    obtain ⟨ws, rfl, hRep'⟩ := Env.rep_depth.mp hRep
+    have hSep' : Separate store (Env.moves (paramMode params modes) ws args)
+        (Env.reads (paramMode params modes) ws args) := by
+      have := hSep
+      change Separate store
+        (Env.moves (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
+          (.cons (t := .word) d' args))
+        (Env.reads (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
+          (.cons (t := .word) d' args)) at this
+      rw [Env.moves_depth, Env.reads_depth] at this
+      exact this
+    have hRun := bodyFunction_runsB modes body placeArgs true funs bounds m pos hm hFunc d'
+      (fun h => hCalls (h rfl)) nofun true (fun _ => rfl) host store heap ws args hAt hRep' hSep'
+      hCap
+    simp only [↓reduceIte, List.singleton_append, Bool.true_or, Bool.and_self] at hRun
+    exact hRun.mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+      ⟨heap', hAt', hOwned, hCaps, fun r hr hpos hA => hRegions r hr hpos (by
+        change Apart store (Env.moves (paramMode (.word :: params) (.borrowed :: modes))
+          (.i64 d' :: ws) (.cons (t := .word) d' args)) r at hA
+        rw [Env.moves_depth] at hA
+        exact hA), trivial⟩
+
+/-- The functions of a program, placed from position 2 of a module without imports, compute
+their meanings `funs` within their bounds. -/
+theorem Prog.callsB {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : prog.Meaning funs)
+    (m : Module) (hm : Runtime m)
+    (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = prog.functions[k]?) :
+    CallsB m funs (prog.bounds funs) := by
+  induction hMeaning with
+  | nil => intro g fv; cases fv
+  | @cons S' f rest funs' _ ih =>
+    have hRest : CallsB m funs' (rest.bounds funs') := ih fun k hk => by
+      rw [hFuncs k (by simp; omega)]
+      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    have hpos : m.funcs[2 + S'.length]? =
+        some (bodyFunction f.modes f.body f.depth (2 + S'.length)) := by
+      rw [hFuncs _ (by simp)]
+      simp [Prog.functions, rest.functions_length, Func.function]
+    intro g fv
+    cases fv with
+    | here =>
+      rw [FVar.callIndex_here]
+      refine ⟨fun hdep => ?_, fun hdep d _ => ?_, _, hpos,
+        bodyFunction_numParams f.modes f.body f.depth _⟩
+      · have hdep' : f.depth = false := hdep
+        rw [hdep'] at hpos
+        exact bodyFunction_implementsB f.modes f.body f.placeArgs funs' (rest.bounds funs') m _ hm
+          hpos hRest hdep' f.aborts id
+      · have hdep' : f.depth = true := hdep
+        rw [hdep'] at hpos
+        exact bodyFunction_depthB f.modes f.body f.placeArgs funs' (rest.bounds funs') m _ hm hpos d
+          fun _ => hRest.at d
+    | there g' =>
+      rw [FVar.callIndex_there]
+      exact hRest g'
+  | @consRec S' f rest funs' M _ hM ih =>
+    have hRest : CallsB m funs' (rest.bounds funs') := ih fun k hk => by
+      rw [hFuncs k (by simp; omega)]
+      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    have hpos : m.funcs[2 + S'.length]? =
+        some (bodyFunction f.modes f.body true (2 + S'.length)) := by
+      rw [hFuncs _ (by simp)]
+      simp [Prog.functions, rest.functions_length, RecFunc.function]
+    have hMeaning : depthMeaning M = depthMeaning (f.body.denote (.cons (g := f.sig) M funs')) := by
+      funext env
+      cases env with
+      | cons _ args => exact hM args
+    -- The function at each depth, by induction on the distance to the limit.
+    have hAt : ∀ n d, depthLimit.toNat - d.toNat = n →
+        @ImplementsA _ _ (Env.represent (.word :: f.params) (.borrowed :: f.modes))
+          (Ty.represent f.result) true m (2 + S'.length) (depthMeaning M)
+          (fun env _ _ => env.depthOf = d) (fun _ _ _ _ _ => True) := by
+      intro n
+      induction n using Nat.strongRecOn with
+      | _ n ih' =>
+        intro d hn
+        rw [hMeaning]
+        refine bodyFunction_depthB f.modes f.body f.placeArgs _ (.cons (fun _ => 0) (rest.bounds funs'))
+          m _ hm hpos d fun hlt => ?_
+        have hlt' : d.toNat < 1000 := UInt64.lt_iff_toNat_lt.mp hlt
+        have hd1 : (d + 1).toNat = d.toNat + 1 := by
+          rw [UInt64.toNat_add]
+          simp only [UInt64.reduceToNat]
+          omega
+        intro g fv
+        cases fv with
+        | here =>
+          rw [FVar.callIndex_here]
+          refine ⟨nofun, fun _ d' hd' => ?_, _, hpos, bodyFunction_numParams f.modes f.body true _⟩
+          subst hd'
+          exact ih' _ (by rw [← hn, hd1]; simp only [depthLimit, UInt64.reduceToNat]; omega)
+            (d + 1) rfl
+        | there g' =>
+          rw [FVar.callIndex_there]
+          exact hRest.at d g'
+    intro g fv
+    cases fv with
+    | here =>
+      rw [FVar.callIndex_here]
+      exact ⟨nofun, fun _ d _ => hAt _ d rfl, _, hpos, bodyFunction_numParams f.modes f.body true _⟩
+    | there g' =>
+      rw [FVar.callIndex_there]
+      exact hRest g'
+
+/-- A run that may trap as `a` allows may trap as any `a'` that `a` implies. -/
+theorem _root_.Wasm.Runs.of_imp {α : Type} {env : HostEnv α} {m : Module} {id : Nat}
+    {initial : Store α} {args : List Value} {P : Store α → List Value → Prop} {a a' : Bool}
+    (h : Runs a env m id initial args P) (himp : a = true → a' = true) :
+    Runs a' env m id initial args P := by
+  cases a
+  · exact h.weaken
+  · rw [himp rfl]; exact h
+
+/-- `ImplementsB` gives `ImplementsA` without the bound. -/
+theorem ImplementsB.implementsA {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {bound : α → Nat}
+    (h : ImplementsB aborts m entry f bound) :
+    ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+  fun env store heap params x hAt _ hRep hSep hCap =>
+    ((h env store heap params x hAt hRep hSep hCap).of_imp fun hf => by
+      simp only [Bool.and_eq_true] at hf; exact hf.1).mono
+      fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions, trivial⟩
+
+/-- `ImplementsB` gives a call that does not trap when `top` can rise by the bound within the
+cap, and that raises `top` by at most the bound. -/
+theorem ImplementsB.trapFree {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
+    {m : Module} {entry : Nat} {f : α → β} {bound : α → Nat}
+    (h : ImplementsB aborts m entry f bound) :
+    ImplementsA false m entry f (fun x heap store => heap.Within store m (bound x))
+      (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + bound x) :=
+  fun env store heap params x hAt hW hRep hSep hCap =>
+    (h env store heap params x hAt hRep hSep hCap).of_imp fun hf => by
+      simp only [Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at hf
+      exact absurd hW hf.2
+
+/-- `CallsB` gives `Calls`. -/
+theorem CallsB.calls {S : List Sig} {m : Module} {funs : Funs S} {bounds : Bounds S}
+    (h : CallsB m funs bounds) : Calls m funs :=
+  fun f => ⟨fun hd => ((h f).1 hd).implementsA, (h f).2.1, (h f).2.2⟩
+
 end Verified

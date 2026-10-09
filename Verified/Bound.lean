@@ -187,13 +187,18 @@ def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (live : 
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
   (paramSlots params modes 0).map Slot.mode
 
-/-- The allocation bound of a function: its body's, with nothing live after it, and the copy of
-a borrowed result. -/
+/-- The allocation bound of a function with the parameter modes `modes` and the body `body`: the
+body's, with nothing live after it, and the copy of a borrowed result. -/
+def bodyBound {params : List Ty} {result : Ty} (modes : List Mode) (body : Expr S params result)
+    (funs : Funs S) (bounds : Bounds S) (args : Env params) : Nat :=
+  let ms := entryModes params modes
+  body.allocs funs bounds ms (fun _ => false) args +
+    coerceCost result (body.mode ms) .owned (body.denote funs args)
+
+/-- The allocation bound of a function. -/
 def Func.bound (func : Func S) (funs : Funs S) (bounds : Bounds S) (args : Env func.params) :
     Nat :=
-  let modes := entryModes func.params func.modes
-  func.body.allocs funs bounds modes (fun _ => false) args +
-    coerceCost func.result (func.body.mode modes) .owned (func.body.denote funs args)
+  bodyBound func.modes func.body funs bounds args
 
 /-- The bounds of a program's functions, for the meanings `funs`.  A recursive function's code
 takes the call depth, which the bound does not cover, and gets 0. -/
