@@ -5,16 +5,17 @@
 These files define textbook pseudorandom number generators as LeanExe programs and prove their
 periods and structure as Lean theorems.  The programs use only `UInt64` words, wrapping arithmetic,
 and `LeanExe.loop`, so the theorems describe the values that a compiled module returns once the
-programs pass through `verified_compile`.  The files import no `Verified.*` module, and no generator
-is compiled yet.  Every theorem depends only on the axioms `propext`, `Classical.choice`, and
+programs pass through `verified_compile`.  The files import the dialect, Mathlib, and [the orbit
+lemmas](Orbit.lean) that the generators share, and no module of the compiler, so no generator is
+compiled yet.  Every theorem depends only on the axioms `propext`, `Classical.choice`, and
 `Quot.sound`.  No proof uses `native_decide`: finite checks use `decide`, or `decide +kernel`, which
 the kernel evaluates without adding an axiom.
 
 | Generator | File | Proved | Planned |
 |-----------|------|--------|---------|
 | LCG modulo `2^64` | [The LCG](Lcg.lean) | Hull–Dobell conditions, bijectivity, each word once per period, bit periods | jump-ahead, output functions |
-| Park–Miller | `ParkMiller.lean` | none | primality of `2^31 - 1`, period `2^31 - 2` |
-| xorshift64 | `Xorshift.lean` | none | zero stays zero and nonzero stays nonzero, period `2^64 - 1` |
+| Park–Miller | [Park–Miller](ParkMiller.lean) | primality of `2^31 - 1`, primitive root, period `2^31 - 2`, each state once per period | Schrage's method |
+| xorshift64 | [xorshift64](Xorshift.lean) | linearity, bijectivity, nonzero states stay nonzero | period `2^64 - 1` |
 
 ## Linear congruential generator modulo 2^64
 
@@ -59,42 +60,63 @@ Both are of low difficulty.
 
 ## Park–Miller minimal standard generator
 
-The step is `16807 * x % 2147483647` on words, with the state in `[1, 2^31 - 2]`.  Park and Miller
-proposed it as a minimal standard in 1988, after Lewis, Goodman, and Miller.  In 64-bit arithmetic
-the product is below `2^46`, so the program computes the product and the remainder directly.  Park
-and Miller give Schrage's method for 32-bit arithmetic, which a later theorem may prove equal to the
-direct computation.
+`step x` is `16807 * x % 2147483647`, and `advance n x` applies it `n` times.  Park and Miller
+proposed the generator as a minimal standard in 1988, after Lewis, Goodman, and Miller, with the
+state in `[1, 2^31 - 2]`.  On that range the product is below `2^46`, so the program computes it
+directly in 64-bit words.  Park and Miller give Schrage's method, which avoids the long product, for
+32-bit arithmetic.  From the seed 1, `advance 10000 1` evaluates to 1043618065, the value that Park
+and Miller give for the 10,000th step.
 
 The modulus `p = 2^31 - 1` is prime, and `p - 1 = 2 · 3^2 · 7 · 11 · 31 · 151 · 331`.  Mathlib's
-`lucas_primality` proves the primality of `p` from a witness `a` with `a^(p-1) = 1` and
-`a^((p-1)/q) ≠ 1` for each prime `q` dividing `p - 1`.  The same seven inequalities and
-`orderOf_eq_of_pow_and_pow_div_prime` give 16807 the order `p - 1` in `ZMod p`, so 16807 is a
-primitive root.  `norm_num`'s `PowMod` extension evaluates each `a^e % p` by repeated squaring with
-a proof, so no step multiplies `2^31` times.  For `x` in `[1, p - 1]`, `n` steps give
-`16807^n * x % p`, so the minimal period is `p - 1 = 2^31 - 2` and each value in the range occurs
-once per period.  The difficulty is low to moderate, mostly in moving between words, natural
-numbers, and `ZMod p`.
+`lucas_primality` proves the primality of `p` from a witness `a` with `a^(p-1) = 1` in `ZMod p` and
+`a^((p-1)/q) ≠ 1` for each prime `q` dividing `p - 1`.  With the witness 16807, the same eight
+powers and `orderOf_eq_of_pow_and_pow_div_prime` give 16807 the order `p - 1`, so 16807 is a
+primitive root.  Mathlib's `reduce_mod_char` evaluates each power by repeated squaring with a proof,
+and `decide +kernel` checks the seven inequalities between residues.  For a state `x` in the range,
+`n` steps give `16807^n * x % p`, so `x` returns exactly when the order divides `n`.  The orbit
+lemma then gives each state in the range once per period.
+
+| Theorem | Statement |
+|---------|-----------|
+| `prime_modulus` | `2^31 - 1` is prime. |
+| `orderOf_multiplier` | 16807 has order `2^31 - 2` in `ZMod (2^31 - 1)`. |
+| `step_minimalPeriod` | From every state in `[1, 2^31 - 2]`, `step` returns after `2^31 - 2` steps and not before. |
+| `existsUnique_iterate`, `advance_existsUnique` | From every state in the range, each state in the range occurs at exactly one count below `2^31 - 2`. |
+| `advance_mem` | `advance` keeps a state in the range. |
+| `step_zero` | 0 is a fixed point, so the seed must lie in the range. |
+
+A theorem that Schrage's method computes `16807 * x % p` without intermediate values of `2^31` or
+more is of low difficulty, and only a 32-bit program needs it.
 
 ## Marsaglia's xorshift64
 
-The step is `x ^= x << 13; x ^= x >> 7; x ^= x << 17`, the 64-bit example of Marsaglia's paper,
-whose triple `(13, 7, 17)` is among his 275 triples for which the matrix `T` of the step has order
-`2^64 - 1` among nonsingular 64 × 64 matrices over GF(2).  The step distributes over xor and maps 0
-to 0.  Each of its three xorshifts is injective, since `d = d <<< a` or `d = d >>> a` with `a > 0`
-forces every bit of `d` to 0 by induction on the bit position.  The step is then a bijection, and a
-nonzero state never becomes 0.  These properties are of low difficulty.
+`step x` applies `x ^^^ (x <<< 13)`, then `x ^^^ (x >>> 7)`, then `x ^^^ (x <<< 17)`, the 64-bit
+example of Marsaglia's paper.  The triple `(13, 7, 17)` is among his 275 triples for which the
+matrix `T` of the step has order `2^64 - 1` among nonsingular 64 × 64 matrices over GF(2).  Each of
+the three xorshifts distributes over xor and is injective, since `d = d <<< a` or `d = d >>> a` with
+`a > 0` forces every bit of `d` to 0, by induction on the bit position.  The step is then a
+bijection that maps 0 to 0, so a nonzero state never becomes 0.
 
-The period `2^64 - 1` from every nonzero state is harder.  Marsaglia's proof of his criterion uses
-the characteristic polynomial of `T`, and a formal version needs polynomials over GF(2) and
+| Theorem | Statement |
+|---------|-----------|
+| `step_xor` | `step (x ^^^ y) = step x ^^^ step y`. |
+| `step_bijective` | `step` is a bijection on words. |
+| `iterate_ne_zero`, `advance_ne_zero` | A nonzero state never becomes 0. |
+
+The period `2^64 - 1` from every nonzero state remains.  Marsaglia's proof of his criterion uses the
+characteristic polynomial of `T`, and a formal version needs polynomials over GF(2) and
 Cayley–Hamilton, which Mathlib has, with a large amount of connecting work.  A proof about one orbit
 avoids that theory.  If the state 1 has minimal period `N = 2^64 - 1`, its orbit holds `N` distinct
 nonzero words, which are all of them, so every nonzero word lies on the orbit and has the same
 minimal period.  The period of 1 follows from `step^[N] 1 = 1` and `step^[N/q] 1 ≠ 1` for the seven
 primes `q` of `2^64 - 1 = 3 · 5 · 17 · 257 · 641 · 65537 · 6700417`.  These iterates need
-jump-ahead: the matrix of the step as 64 column words, 64 squarings, and a product for each of the
-eight exponents, a few hundred thousand word operations for the kernel.  The proof that the matrix
-arithmetic computes the iterates is short, since the step is linear over xor.  The kernel's time for
-the computation is unknown and needs a prototype before the approach is chosen.
+jump-ahead: the matrix of the step as 64 column words, 63 squarings, and a product for each of the
+eight exponents.  A prototype with natural numbers as words, outside the repository, evaluates all
+eight conditions with `decide +kernel` in 17 seconds of wall time for the whole file, and its
+theorem depends on `propext` alone.  The remaining proof shows that the matrix arithmetic computes
+the iterates: applying a list of columns to a vector is linear over xor, so the columns of a square
+are the images of the columns, and the identity columns decompose a word into its bits.  The
+difficulty is moderate.
 
 ## Later candidates
 
@@ -114,8 +136,8 @@ equidistribution, such as the spectral test of an LCG, need lattice theory and a
    of seeds outside `[1, 2^31 - 2]`, since 0 is a fixed point.
 3. The location of the programs: in these files, or in `Examples/<Name>/Program.lean` with a
    `Verified/Examples` file for the compilation, as the drone planner has.
-4. The xorshift period: the orbit computation above, after a prototype measures the kernel's time,
-   or a formal version of Marsaglia's polynomial argument.
+4. The xorshift period: the orbit computation above, which the prototype shows the kernel checks in
+   seconds, or a formal version of Marsaglia's polynomial argument.
 5. The statistical properties worth proving beyond periods and equidistribution.
 
 ## Compiling
@@ -123,20 +145,23 @@ equidistribution, such as the spectral test of an LCG, need lattice theory and a
 Once `Verified/` settles, each file gains an import of `Verified.Reflect.Command` and a command such
 as `verified_compile compiled := [affine, step, advance]`.  A theorem then combines
 `compiled.advance.implements` with `advance_existsUnique`, as `drone_compute` combines the
-compiler's theorem with the planner's own.  The programs use calls, word constants, arithmetic, and
-`LeanExe.loop` with an unused index, all of which the reflector accepts.  `Verified.lean` must also
-import the new modules for `lake build Verified` to check them.
+compiler's theorem with the planner's own.  The programs use calls, `let`, word constants, word
+arithmetic, shifts, xor, and `LeanExe.loop` with an unused index, all of which the compiler's README
+lists among the forms it covers.  `Verified.lean` must also import the new modules for
+`lake build Verified` to check them.
 
 ## Plan
 
 - [x] Research the generators, sources, and proof methods (2026-10-09).
 - [x] LCG: Hull–Dobell conditions for `2^64` in both directions, bijectivity, each word once per
   period, bit periods (2026-10-09).
+- [x] Park–Miller: primality, primitive root, period, each state once per period (2026-10-09).
+- [x] xorshift64: linearity, bijectivity, nonzero states (2026-10-09).
+- [x] xorshift64: prototype the kernel computation of the eight iterates of 1 (2026-10-09).
+- [ ] xorshift64: the matrix arithmetic and the period `2^64 - 1`, after decision 4.
 - [ ] LCG: jump-ahead and high-bit equidistribution.
-- [ ] Park–Miller: primality, primitive root, period, each value once per period.
-- [ ] xorshift64: linearity, injectivity, zero and nonzero states.
-- [ ] xorshift64: prototype the kernel computation of `step^[N] 1`, then the period.
-- [ ] `verified_compile` for each generator.
+- [ ] Park–Miller: Schrage's method, after decision 2.
+- [ ] `verified_compile` for each generator, once `Verified/` settles.
 
 ## References
 
