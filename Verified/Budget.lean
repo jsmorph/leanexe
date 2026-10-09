@@ -1331,6 +1331,136 @@ theorem specB_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr
         rw [hB]; omega)
   simpa [List.reverse_append, List.append_assoc] using hv
 
+/-- A binding of a pair's components: the pair's code, the stores of its components' words, the
+release of each component that is owned and that the body does not use, and the body's code. -/
+theorem specB_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
+    {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy}
+    (eSpec : ∀ env slots live, CodeSpecB m funs bounds host pv e env slots live)
+    (bodySpec : ∀ env slots live, CodeSpecB m funs bounds host pv body env slots live) :
+    ∀ env slots live, CodeSpecB m funs bounds host pv (Expr.letPair e body) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hER : e.width ≤ max e.width body.width := Nat.le_max_left ..
+  have hBR : body.width ≤ max e.width body.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, List.append_assoc]
+  have hV : ∀ i, ((live i || body.uses (i + 2)) || e.uses i) = true →
+      (live i || (Expr.letPair e body).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact live_seq _ _ _ h
+  refine eSpec env slots (fun i => live i || body.uses (i + 2)) h
+    (base + sTy.width + tTy.width) heap store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt
+        hCap
+    (by omega) (by omega) hPlace.1
+    _ _ (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
+      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+    fun heap1 store1 s1 ws a1 hTop1 => ?_
+  have hp1 : s1.params = s.params := a1.frame.params
+  have hh1 : s1.half = h := a1.frame.half.trans hh
+  have a1' := a1.lower (hVars.live_mono hV) (by omega) fun i h => by simp [h]
+  obtain ⟨wf, wsec, rfl, hRf, hRs, hDisj⟩ := a1.rep
+  have hlf := hRf.length
+  have hls := hRs.length
+  rw [List.reverse_append, List.append_assoc]
+  refine wp_storeCode wsec h (base + sTy.width) tTy.types s1 (wf.reverse ++ s.values) hRs.typed
+    hh1 (by rw [hp1]; omega) (by rw [Ty.types_length, hh1]; omega) fun s2 hF2 hold2 _ => ?_
+  have hh2 : s2.half = h := hF2.half.trans hh1
+  refine wp_storeCode wf h base sTy.types s2 s.values hRf.typed hh2 (by rw [hF2.params, hp1]; omega)
+    (by rw [Ty.types_length, hh2]; omega) fun s3 hF3 hold1 habove3 => ?_
+  have hold1' : LocalsHold { s3 with values := s.values } base sTy.types wf := hold1
+  have hold2' : LocalsHold { s3 with values := s.values } (base + sTy.width) tTy.types wsec :=
+    hold2.keep hF3.half habove3 (by rw [Ty.types_length]) (by rw [hls, hh2]; omega)
+  have f3 : Frame base s1 { s3 with values := s.values } :=
+    (hF2.mono (by omega)).trans (hF3.trans Frame.ofValues)
+  have hp3 : s3.params = s.params := hF3.params.trans (hF2.params.trans hp1)
+  -- The body's context: the second component as variable 0 and the first as variable 1.
+  have hVars1 := (a1'.holds.agree f3)
+  have hApart := a1'.apart.agree a1'.holds f3
+  have hVarsB : Holds (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => decide (i < 2) || shift 2 live i || body.uses i)
+      (base + sTy.width + tTy.width) heap1 store1 { s3 with values := s.values } := by
+    refine Holds.push (Holds.push (hVars1.live_mono fun i h => by simpa using h) hold1' hRf
+      ((hApart.fst hlf).live_mono fun i h => by simpa using h)) hold2' hRs ?_
+    refine Holds.Apart.push ((hApart.snd hlf).live_mono fun i h => by simpa using h) hold1' hlf
+      fun hmo b hb c hc => ?_
+    have hmo' : e.mode (slots.map Slot.mode) = .owned := by simpa using hmo
+    rw [hmo'] at hb hc hDisj
+    exact regionsDisjoint_symm (hDisj rfl c hc b hb)
+  have hRelease : ∀ rest' : Program,
+      (if e.mode (slots.map Slot.mode) = .owned ∧ body.uses 1 = false then
+        releaseCode sTy base else []) ++
+      ((if e.mode (slots.map Slot.mode) = .owned ∧ body.uses 0 = false then
+        releaseCode tTy (base + sTy.width) else []) ++ rest') =
+      ((if body.uses 1 = false then [1] else []) ++
+        (if body.uses 0 = false then [0] else [])).flatMap
+        (releaseVar (tTy :: sTy :: Γ') (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+          ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots)) ++ rest' := by
+    intro rest'
+    cases body.uses 1 <;> cases body.uses 0 <;> cases e.mode (slots.map Slot.mode) <;>
+      simp [releaseVar]
+  rw [hRelease]
+  have hd1 : (Expr.letPair e body).depthCalls = false → e.depthCalls = false := fun hd => by
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.1
+  have hd3 : (Expr.letPair e body).depthCalls = false → body.depthCalls = false := fun hd => by
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.2
+  refine wp_releaseVarsT hm _ (by split <;> split <;> simp) hVarsB a1.step.at_
+    (by split <;> split <;> simp) fun heap2 store2 e2 hTop2 => ?_
+  have e2' := e2.mono (live' := fun i => shift 2 live i || body.uses i) fun i h => by
+    match i with
+    | 0 =>
+      have h0 : body.uses 0 = true := by simpa [shift] using h
+      simp [h0]
+    | 1 =>
+      have h1 : body.uses 1 = true := by simpa [shift] using h
+      simp [h1]
+    | k + 2 => split <;> split <;> simpa using h
+  refine bodySpec _ _ (shift 2 live) h (base + sTy.width + tTy.width) heap2 store2
+    { s3 with values := s.values } (f3.half.trans hh1) (hp3.trans hpv) e2'.holds e2'.step.at_
+    (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
+    (by show s3.params.length ≤ base + sTy.width + tTy.width; rw [hp3]; omega)
+    (by omega) hPlace.2 _ _
+    (hTrap.part (by flag_tac) (fun h => by
+      have hmo := e.mode_owned (slots.map Slot.mode)
+      rw [Slot.any_map] at hmo
+      simp only [List.any_cons, Expr.aborts] at h ⊢
+      exact let_trap_body2 _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
+        simp only [Expr.allocs] at hw
+        exact hw.shift (heap1 := heap2) (store1 := store2)
+          (c1 := e.allocs funs bounds (slots.map Slot.mode) (fun i => live i || body.uses (i + 2))
+            env)
+          (by have := hTop1 (hd1 hd); have := congrArg UInt64.toNat hTop2; omega)
+          (by simp only [List.map_cons]; omega) (by rw [e2'.step.cap m, a1.step.cap m]))
+    fun heap3 store3 s4 ws4 aB hTop3 => ?_
+  have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
+  have hNew : ∀ r, (∀ b ∈ (e.mode (slots.map Slot.mode)).fresh store1 (.pair sTy tTy) (wf ++ wsec)
+      (e.denote funs env), regionsDisjoint r b) →
+      ((e.mode (slots.map Slot.mode)) = .owned → ∀ w,
+        LocalsHold { s3 with values := s.values } (base + sTy.width) tTy.types w →
+        w.length = tTy.width →
+        ∀ b ∈ tTy.blocks store1 w (e.denote funs env).2, regionsDisjoint r b) ∧
+      ((e.mode (slots.map Slot.mode)) = .owned → ∀ w,
+        LocalsHold { s3 with values := s.values } base sTy.types w → w.length = sTy.width →
+        ∀ b ∈ sTy.blocks store1 w (e.denote funs env).1, regionsDisjoint r b) := by
+    intro r hFresh
+    rw [Mode.fresh_pair hlf] at hFresh
+    refine ⟨fun hmo w hw hlw b hb => ?_, fun hmo w hw hlw b hb => ?_⟩
+    · obtain rfl := LocalsHold.unique hw hold2' (hlw.trans hls.symm)
+      rw [hmo] at hFresh
+      exact hFresh b (List.mem_append_right _ hb)
+    · obtain rfl := LocalsHold.unique hw hold1' (hlw.trans hlf.symm)
+      rw [hmo] at hFresh
+      exact hFresh b (List.mem_append_left _ hb)
+  exact hNext heap3 store3 s4 ws4
+    ((After.bind2 (hVars.live_mono hV) a1' f3 aB' (by omega) hNew
+      (fun i h => by simpa using h) (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
+    fun hd => by
+      have := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      simp only [List.map_cons] at h3
+      simp only [Expr.allocs]; omega
+
 end Cases
 
 end Verified
