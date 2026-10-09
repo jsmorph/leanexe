@@ -1855,7 +1855,7 @@ matching terms and by beta reduction and never unfolds the definition or its loo
 def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
   let hTy ← inferType h
-  let #[α, γ, ia, ic, aborts, m, entry, f, _, _] := hTy.getAppArgs
+  let #[α, γ, ia, ic, aborts, m, entry, f, pre, post] := hTy.getAppArgs
     | throwError "verified_compile: the compiler's theorem {hTy}"
   let β := r.argsType
   let δ := r.resultType
@@ -1875,14 +1875,14 @@ def implementsProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
     mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
   return mkAppN (mkConst ``ImplementsA.transferAgree)
-    #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, h, r.flatArgs,
-      r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
+    #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, pre, post, h,
+      r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
 /-- `implementsProof` for a wrapper, whose theorem `h` is `ImplementsTables`. -/
 def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     (argsAgree resultAgree : Name) : MetaM Lean.Expr := do
   let hTy ← inferType h
-  let #[α, γ, ia, ic, aborts, m, entry, f, tables] := hTy.getAppArgs
+  let #[α, γ, ia, ic, aborts, m, entry, f, tables, pre, post] := hTy.getAppArgs
     | throwError "verified_compile: the wrapper's theorem {hTy}"
   let β := r.argsType
   let δ := r.resultType
@@ -1903,8 +1903,8 @@ def wrapperProof (funs : Name) (funsVal h F : Lean.Expr) (r : Reflected)
     let eq ← mkExpectedTypeHint (mkAppN (mkConst r.meaningEq) projs.toArray) (← mkEq b c)
     mkLambdaFVars #[y] (← transHint (← transHint step chain) eq)
   return mkAppN (mkConst ``ImplementsTables.transferAgree)
-    #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, h,
-      r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
+    #[α, β, γ, δ, ia, ← userInst β, ic, ← userInst δ, aborts, m, entry, f, tables, pre, post,
+      h, r.flatArgs, r.flatResult, F, hF, mkConst argsAgree, mkConst resultAgree]
 
 /-- The callee and the tables of a wrapper definition `fun params => g T₁ … Tₖ params`: `g` is a
 listed definition and each `Tᵢ` a constant of type `Array UInt64`, which `g` takes as borrowed
@@ -2116,7 +2116,8 @@ def elabVerifiedCompile : CommandElab
         let ty ← inferType proof
         let args := ty.getAppArgs
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr r.aborts)
-          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index))
+          |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
+          |>.set! 8 (← Core.betaReduce args[8]!) |>.set! 9 (← Core.betaReduce args[9]!))
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
@@ -2150,7 +2151,8 @@ def elabVerifiedCompile : CommandElab
           mkAppM ``Prod.mk #[toExpr (UInt64.ofNat a), mkConst tableNames[i]!]
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr (r.aborts || r.depth))
           |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + n + entries + j))
-          |>.set! 8 (listExpr entryTy entries'))
+          |>.set! 8 (listExpr entryTy entries') |>.set! 9 (← Core.betaReduce args[9]!)
+          |>.set! 10 (← Core.betaReduce args[10]!))
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)

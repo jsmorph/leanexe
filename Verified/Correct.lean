@@ -5825,8 +5825,9 @@ function `F` on types whose representations agree with it: each argument `y` is 
 `g y` is, and the result of `f` at `g y` represents `F y`. -/
 theorem ImplementsA.transfer {α β γ δ : Type} {_ : Represent α} [Represent β] {_ : Represent γ}
     [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
-    (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
-    (g : β → α) (F : β → δ)
+    {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m entry f Pre Post) (g : β → α) (F : β → δ)
     (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
       Represent.borrowed heap store vs (g y))
     (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
@@ -5838,15 +5839,15 @@ theorem ImplementsA.transfer {α β γ δ : Type} {_ : Represent α} [Represent 
       Represent.owned heap store vs (F y))
     (hBlocks : ∀ store vs y,
       Represent.blocks store vs (F y) = Represent.blocks store vs (f (g y))) :
-    ImplementsA aborts m entry F (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
-  intro env store heap vs y hAt _ hY hSep' hCap
-  exact (h env store heap vs (g y) hAt trivial (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
-    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+    ImplementsA aborts m entry F (fun y => Pre (g y)) (fun y => Post (g y)) := by
+  intro env store heap vs y hAt hPre hY hSep' hCap
+  exact (h env store heap vs (g y) hAt hPre (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
+    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, hPost⟩ =>
       ⟨heap', hAt', hResult _ _ _ _ hOwned, hCaps, fun r hr hpos hA => by
         obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos (by rw [hMoves _ _ _ _ hY]; exact hA)
         refine ⟨hb, hreg, ?_⟩
         simp only [Represent.outside, hBlocks]
-        exact hout, trivial⟩
+        exact hout, hPost⟩
 
 /-- Two `Represent` instances agree along `φ`: a value `y` of the first type is represented as
 `φ y` is in the second. -/
@@ -5978,10 +5979,12 @@ theorem Agree.flatMoved {α β : Type} [Flat α β] [Scalar β] (e : Elem) (φ :
 from the agreement of the instances of the arguments along `g` and of the result along `r`. -/
 theorem ImplementsA.transferAgree {α β γ δ : Type} {ia : Represent α} {ib : Represent β}
     {ic : Represent γ} {id : Represent δ} {aborts : Bool} {m : Module} {entry : Nat}
-    {f : α → γ} (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
+    {f : α → γ} {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m entry f Pre Post)
     (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y)) (hArgs : Agree ib ia g)
     (hResult : Agree id ic r) :
-    ImplementsA aborts m entry F (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+    ImplementsA aborts m entry F (fun y => Pre (g y)) (fun y => Post (g y)) :=
   ImplementsA.transfer h g F (fun _ _ _ _ hy => (hArgs.borrowed _ _ _ _).mp hy)
     (fun _ _ _ _ _ hs => by rw [← hArgs.moves, ← hArgs.reads]; exact hs)
     (fun _ _ _ _ _ => (hArgs.moves _ _ _).symm)
@@ -5992,8 +5995,9 @@ theorem ImplementsA.transferAgree {α β γ δ : Type} {ia : Represent α} {ib :
 types whose representations agree with it. -/
 theorem ImplementsA.comap {α β γ δ : Type} [Represent α] [Represent β] [Represent γ]
     [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
-    (h : ImplementsA aborts m entry f (fun _ _ _ => True) (fun _ _ _ _ _ => True))
-    (g : β → α) (k : γ → δ)
+    {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsA aborts m entry f Pre Post) (g : β → α) (k : γ → δ)
     (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
       Represent.borrowed heap store vs (g y))
     (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
@@ -6004,20 +6008,21 @@ theorem ImplementsA.comap {α β γ δ : Type} [Represent α] [Represent β] [Re
     (hResult : ∀ heap store vs z, Represent.owned heap store vs z →
       Represent.owned heap store vs (k z))
     (hBlocks : ∀ store vs z, Represent.blocks store vs (k z) = Represent.blocks store vs z) :
-    ImplementsA aborts m entry (k ∘ f ∘ g) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+    ImplementsA aborts m entry (k ∘ f ∘ g) (fun y => Pre (g y)) (fun y => Post (g y)) :=
   ImplementsA.transfer h g (k ∘ f ∘ g) hArgs hSep hMoves (fun _ _ _ _ hz => hResult _ _ _ _ hz)
     (fun _ _ _ => hBlocks _ _ _)
 
 /-- A function's theorem in the form of Lean's instances: for the Lean tuple of its arguments and
 its result type, with the instances Lean synthesizes for them. -/
 theorem ImplementsA.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts : Bool} {m : Module}
-    {entry : Nat} {f : Env ps → r.denote}
-    (h : @ImplementsA _ _ (Env.represent ps ms) (Ty.represent r) aborts m entry f
-      (fun _ _ _ => True) (fun _ _ _ _ _ => True)) :
+    {entry : Nat} {f : Env ps → r.denote} {Pre : Env ps → Heap → Store Unit → Prop}
+    {Post : Env ps → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : @ImplementsA _ _ (Env.represent ps ms) (Ty.represent r) aborts m entry f Pre Post) :
     @ImplementsA _ _ (argsInst ps ms) r.leanInst aborts m entry
-      (fun y => f (Env.ofArgs ps ms y)) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+      (fun y => f (Env.ofArgs ps ms y)) (fun y => Pre (Env.ofArgs ps ms y))
+      (fun y => Post (Env.ofArgs ps ms y)) :=
   @ImplementsA.comap _ _ _ _ (Env.represent ps ms) (argsInst ps ms) (Ty.represent r) r.leanInst
-    aborts m entry f h (Env.ofArgs ps ms) id
+    aborts m entry f Pre Post h (Env.ofArgs ps ms) id
     (fun _ _ _ _ hy => (argsInst_borrowed ps ms).mp hy)
     (fun _ _ _ _ hy hS => by
       have hl := ((argsInst_borrowed ps ms).mp hy).length
@@ -6030,9 +6035,11 @@ theorem ImplementsA.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts : Bool
 table `(p, xs)` of `tables` is a borrowed array at `p` that lies apart from the blocks that the
 arguments move.  The other premises and the conclusion are those of `ImplementsA`. -/
 def ImplementsTables {α β : Type} [Represent α] [Represent β] (aborts : Bool) (m : Module)
-    (entry : Nat) (f : α → β) (tables : List (UInt64 × Array UInt64)) : Prop :=
+    (entry : Nat) (f : α → β) (tables : List (UInt64 × Array UInt64))
+    (Pre : α → Heap → Store Unit → Prop)
+    (Post : α → Heap → Store Unit → Heap → Store Unit → Prop) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
-    heap.At store →
+    heap.At store → Pre x heap store →
     (∀ t ∈ tables, heap.Borrowed store t.1 t.2 ∧
       Apart store (Represent.moves store params x) (t.1.toNat, 8 * (t.2.size + 1))) →
     Represent.borrowed heap store params x →
@@ -6043,7 +6050,8 @@ def ImplementsTables {α β : Type} [Represent α] [Represent β] (aborts : Bool
         final.memoryCaps = store.memoryCaps ∧
         (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
-            heap'.Region r ∧ Represent.outside final values.reverse (f x) r)
+            heap'.Region r ∧ Represent.outside final values.reverse (f x) r) ∧
+        Post x heap store heap' final
 
 /-- The context of a wrapper's callee: the tables `ks` of `tables`, then the wrapper's own
 arguments. -/
@@ -6171,8 +6179,9 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
       (Ty.represent w.result) (w.aborts || w.depth) m e
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
-      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) := by
-  intro host store heap ws args hAt hTables hRep hSep hCap
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
+      (fun _ _ _ _ _ => True) := by
+  intro host store heap ws args hAt _ hTables hRep hSep hCap
   have hShift : (fun i => paramMode (List.replicate w.tables.length (.array .word) ++ w.params)
       w.modes (i + w.tables.length)) = paramMode w.params (w.modes.drop w.tables.length) :=
     funext fun i => paramMode_tables _ _ _ i
@@ -6237,7 +6246,7 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
   dsimp only [Function.numParams]
   rw [hTake, hDrop, List.append_nil]
   exact ⟨heap', hAt', hOwned, hCaps, fun r hr hpos hA =>
-    hRegions r hr hpos (by rw [← hAddrs]; exact hMoves ▸ hA)⟩
+    hRegions r hr hpos (by rw [← hAddrs]; exact hMoves ▸ hA), trivial⟩
 
 /-- The wrapper theorem for the `j`-th wrapper of a program with tables. -/
 theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
@@ -6248,7 +6257,8 @@ theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
       (Ty.represent w.result) (w.aborts || w.depth) (compileWith prog tables wrappers)
       (2 + S.length + prog.depthFuns.length + j)
       (fun env => funs.get w.callee (Env.withTables tables w.tables env))
-      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) :=
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
+      (fun _ _ _ _ _ => True) :=
   wrapper_correct (compileWith_runtime prog tables wrappers) w
     (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj)
 
@@ -6256,8 +6266,9 @@ theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
 `ImplementsA.transfer` states for `ImplementsA`. -/
 theorem ImplementsTables.transfer {α β γ δ : Type} {_ : Represent α} [Represent β]
     {_ : Represent γ} [Represent δ] {aborts : Bool} {m : Module} {entry : Nat} {f : α → γ}
-    {tables : List (UInt64 × Array UInt64)}
-    (h : ImplementsTables aborts m entry f tables) (g : β → α) (F : β → δ)
+    {tables : List (UInt64 × Array UInt64)} {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsTables aborts m entry f tables Pre Post) (g : β → α) (F : β → δ)
     (hArgs : ∀ heap store vs y, Represent.borrowed heap store vs y →
       Represent.borrowed heap store vs (g y))
     (hSep : ∀ heap store vs y, Represent.borrowed heap store vs y →
@@ -6269,24 +6280,25 @@ theorem ImplementsTables.transfer {α β γ δ : Type} {_ : Represent α} [Repre
       Represent.owned heap store vs (F y))
     (hBlocks : ∀ store vs y,
       Represent.blocks store vs (F y) = Represent.blocks store vs (f (g y))) :
-    ImplementsTables aborts m entry F tables := by
-  intro env store heap vs y hAt hT hY hSep' hCap
-  exact (h env store heap vs (g y) hAt (fun t ht => by
+    ImplementsTables aborts m entry F tables (fun y => Pre (g y)) (fun y => Post (g y)) := by
+  intro env store heap vs y hAt hPre hT hY hSep' hCap
+  exact (h env store heap vs (g y) hAt hPre (fun t ht => by
       rw [hMoves _ _ _ _ hY]; exact hT t ht) (hArgs _ _ _ _ hY) (hSep _ _ _ _ hY hSep')
-    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions⟩ =>
+    hCap).mono fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, hPost⟩ =>
       ⟨heap', hAt', hResult _ _ _ _ hOwned, hCaps, fun r hr hpos hA => by
         obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos (by rw [hMoves _ _ _ _ hY]; exact hA)
         refine ⟨hb, hreg, ?_⟩
         simp only [Represent.outside, hBlocks]
-        exact hout⟩
+        exact hout, hPost⟩
 
 theorem ImplementsTables.transferAgree {α β γ δ : Type} {ia : Represent α} {ib : Represent β}
     {ic : Represent γ} {id : Represent δ} {aborts : Bool} {m : Module} {entry : Nat}
-    {f : α → γ} {tables : List (UInt64 × Array UInt64)}
-    (h : ImplementsTables aborts m entry f tables)
+    {f : α → γ} {tables : List (UInt64 × Array UInt64)} {Pre : α → Heap → Store Unit → Prop}
+    {Post : α → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : ImplementsTables aborts m entry f tables Pre Post)
     (g : β → α) (r : δ → γ) (F : β → δ) (hF : ∀ y, f (g y) = r (F y)) (hArgs : Agree ib ia g)
     (hResult : Agree id ic r) :
-    ImplementsTables aborts m entry F tables :=
+    ImplementsTables aborts m entry F tables (fun y => Pre (g y)) (fun y => Post (g y)) :=
   ImplementsTables.transfer h g F (fun _ _ _ _ hy => (hArgs.borrowed _ _ _ _).mp hy)
     (fun _ _ _ _ _ hs => by rw [← hArgs.moves, ← hArgs.reads]; exact hs)
     (fun _ _ _ _ _ => (hArgs.moves _ _ _).symm)
@@ -6296,11 +6308,15 @@ theorem ImplementsTables.transferAgree {α β γ δ : Type} {ia : Represent α} 
 /-- The wrapper theorem in the form of Lean's instances, as `ImplementsA.lean` states it. -/
 theorem ImplementsTables.lean {ps : List Ty} {ms : List Mode} {r : Ty} {aborts : Bool}
     {m : Module} {entry : Nat} {f : Env ps → r.denote} {tables : List (UInt64 × Array UInt64)}
-    (h : @ImplementsTables _ _ (Env.represent ps ms) (Ty.represent r) aborts m entry f tables) :
+    {Pre : Env ps → Heap → Store Unit → Prop}
+    {Post : Env ps → Heap → Store Unit → Heap → Store Unit → Prop}
+    (h : @ImplementsTables _ _ (Env.represent ps ms) (Ty.represent r) aborts m entry f tables Pre
+      Post) :
     @ImplementsTables _ _ (argsInst ps ms) r.leanInst aborts m entry
-      (fun y => f (Env.ofArgs ps ms y)) tables :=
+      (fun y => f (Env.ofArgs ps ms y)) tables (fun y => Pre (Env.ofArgs ps ms y))
+      (fun y => Post (Env.ofArgs ps ms y)) :=
   @ImplementsTables.transfer _ _ _ _ (Env.represent ps ms) (argsInst ps ms) (Ty.represent r)
-    r.leanInst aborts m entry f tables h (Env.ofArgs ps ms) (fun y => f (Env.ofArgs ps ms y))
+    r.leanInst aborts m entry f tables Pre Post h (Env.ofArgs ps ms) (fun y => f (Env.ofArgs ps ms y))
     (fun _ _ _ _ hy => (argsInst_borrowed ps ms).mp hy)
     (fun _ _ _ _ hy hS => by
       have hl := ((argsInst_borrowed ps ms).mp hy).length
