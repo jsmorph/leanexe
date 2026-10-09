@@ -201,7 +201,9 @@ def Func.bound (func : Func S) (funs : Funs S) (bounds : Bounds S) (args : Env f
   bodyBound func.modes func.body funs bounds args
 
 /-- The bounds of a program's functions, for the meanings `funs`.  A recursive function's code
-takes the call depth, which the bound does not cover, and gets 0. -/
+takes the call depth, which the bound does not cover, and gets 0.  The entry of another function
+whose code takes the call depth counts each recursive callee as 0 and bounds nothing, and
+`FunSpec` does not use it. -/
 def Prog.bounds : {S : List Sig} → Prog S → Funs S → Bounds S
   | _, .nil, .nil => .nil
   | _, .cons f rest, .cons _ funs => .cons (f.bound funs (rest.bounds funs)) (rest.bounds funs)

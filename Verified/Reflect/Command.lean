@@ -1845,6 +1845,12 @@ where
     | .owned => mkAppM ``LeanExe.Pipeline.Moved.val #[x]
     | .borrowed => return x
 
+/-- The definition of `r` as a function of the tuple of its arguments. -/
+def leanFun (r : Reflected) : MetaM Lean.Expr :=
+  withLocalDeclD `x r.argsType fun x => do
+    let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
+    mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
+
 /-- The proof of the theorem `claim` that the module computes the definition of `r`: the
 compiler's theorem `h` for its source function, carried to Lean's instances by
 `ImplementsA.transferAgree`.  The constant `funs` of the functions' meanings has the value
@@ -2107,12 +2113,11 @@ def elabVerifiedCompile : CommandElab
         let h ← Term.elabTerm (← `(Verified.ImplementsA.lean $hStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
-        let F ← withLocalDeclD `x r.argsType fun x => do
-          let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
-          mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
+        let F ← leanFun r
         let proof ← implementsProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
           (base ++ simple ++ `resultAgree)
-        -- The statement with the trap flag, the module, and the index as constants.
+        -- The statement with the trap flag, the module, and the index as constants, and the
+        -- precondition and postcondition beta-reduced.
         let ty ← inferType proof
         let args := ty.getAppArgs
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr r.aborts)
@@ -2121,6 +2126,48 @@ def elabVerifiedCompile : CommandElab
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
+      -- For a function whose code takes no call depth, its allocation bound on Lean's argument
+      -- tuple, and the theorem without a trap: under the condition that the bound fits when the
+      -- function may trap, and with the growth of `top` bounded by the bound.
+      unless r.depth do
+        let boundName := base ++ simple ++ `bound
+        liftTermElabM do
+          let h0 ← Term.elabTerm (← `((Verified.Prog.correctWith $progId $funsId $meaningId
+            $tablesId $wrappersId $fvar).1 rfl)) none
+          Term.synthesizeSyntheticMVarsNoPostponing
+          let h0 ← instantiateMVars h0
+          let h0Ty ← instantiateMVars (← inferType h0)
+          let #[_, _, ia, _, _, _, _, _, boundEnv] := h0Ty.getAppArgs
+            | throwError "verified_compile: the bounded theorem {h0Ty}"
+          let #[ps, ms] := ia.getAppArgs
+            | throwError "verified_compile: the instance {ia}"
+          let boundVal ← withLocalDeclD `x r.argsType fun x =>
+            mkLambdaFVars #[x] (mkApp boundEnv
+              (mkAppN (mkConst ``Env.ofArgs) #[ps, ms, (mkApp r.flatArgs x).headBeta]))
+          -- The height above its value's makes the kernel unfold `p.f.bound`, and not the
+          -- compiler's bound, when it matches the statement with the proof.
+          addAndCompile <| .defnDecl <| mkDefinitionValEx boundName []
+            (← mkArrow r.argsType (mkConst ``Nat)) boundVal
+            (.regular (getMaxHeight (← getEnv) boundVal + 1)) .safe [boundName]
+          let h ← mkAppM ``ImplementsA.lean
+            #[← mkAppM (if r.aborts then ``ImplementsB.trapFree else ``ImplementsB.noTrap) #[h0]]
+          let proof ← implementsProof (base ++ `funs) funsVal h (← leanFun r) r
+            (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+          let ty ← inferType proof
+          let args := ty.getAppArgs
+          let boundId := mkIdent boundName
+          let pre ← if r.aborts then
+              Term.elabTermEnsuringType (← `(fun x heap store =>
+                LeanExe.Pipeline.Heap.Within heap store $moduleId ($boundId x)))
+                (← inferType args[8]!)
+            else Core.betaReduce args[8]!
+          let post ← Term.elabTermEnsuringType (← `(fun x heap _ heap' _ =>
+            heap'.top.toNat ≤ heap.top.toNat + $boundId x)) (← inferType args[9]!)
+          Term.synthesizeSyntheticMVarsNoPostponing
+          let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr false)
+            |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
+            |>.set! 8 (← instantiateMVars pre) |>.set! 9 (← instantiateMVars post))
+          addTheorem (base ++ simple ++ `trapFree) claim proof
     -- The wrappers' theorems, at their positions after the entries.
     let mut j := 0
     for (r, _, idxs) in wraps do
@@ -2132,9 +2179,7 @@ def elabVerifiedCompile : CommandElab
         let h ← Term.elabTerm (← `(Verified.ImplementsTables.lean $hStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
         let h ← instantiateMVars h
-        let F ← withLocalDeclD `x r.argsType fun x => do
-          let projs ← argProjsE x (paramModes r.params r.modes) r.params.length
-          mkLambdaFVars #[x] (mkAppN (mkConst r.name) projs.toArray)
+        let F ← leanFun r
         let proof ← wrapperProof (base ++ `funs) funsVal h F r (base ++ simple ++ `argsAgree)
           (base ++ simple ++ `resultAgree)
         -- The statement with the trap flag, the module, the index, and the tables' addresses

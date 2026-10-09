@@ -11,7 +11,9 @@ bytes, a theorem, and a test in Wasmtime.
 
 The library shares the trusted base and the statement of correctness with `LeanExe`: Talos's
 semantics, the encoder and decoder with `decode_encode`, `Implements` and its relatives in
-[`LeanExe/Pipeline/`](../LeanExe/Pipeline/), and the runtime.  It copies, and will change, the
+[`LeanExe/Pipeline/`](../LeanExe/Pipeline/), and the runtime.  The theorems without a trap add one
+definition, `Heap.Within` in [`Heap.lean`](Heap.lean), and the allocation bound of
+[`Bound.lean`](Bound.lean).  It copies, and will change, the
 parts of the IR it needs, so ordinary development of `LeanExe` does not affect it.  Nothing in
 `LeanExe` or `Examples` imports it, and it is not a default target of `lake build`.
 
@@ -169,8 +171,10 @@ owned array that dies is charged a block of twice the bytes of its new length, e
 extends in place, so a loop of `n` pushes of one word is charged about `8 n²` bytes.  A function's
 bound is its body's plus the copy of a borrowed result, and a recursive function gets none.
 `ImplementsB aborts m e f bound` is the theorem with the bound: the call traps only when `aborts`
-holds and `top + bound x` exceeds the cap of `65536 · cap` bytes, and it raises `top` by at most
-`bound x`.  `ImplementsB.trapFree` turns it into `ImplementsA false`, with the precondition that the
+holds and `heap.Within store m (bound x)` fails, and it raises `top` by at most `bound x`.
+`Heap.Within`, defined in [`Heap.lean`](Heap.lean), states that `top + bound x` is at most `65536`
+times the memory's cap in pages, which `ImplementsA` requires to be at most 65,535, so the bound
+must fit in 4,294,901,760 bytes.  `ImplementsB.trapFree` turns it into `ImplementsA false`, with the precondition that the
 bound fits and the postcondition that `top` rises by at most the bound, and
 `ImplementsB.implementsA` into `ImplementsA aborts` without the bound.
 
@@ -293,6 +297,21 @@ rewritings leaves the meaning unchanged.  The reflector computes the bit pattern
 of `Float.ofBits` or `UInt64.toFloat` of a word literal, and of a negated literal, and the kernel
 checks by `decide` that the literal has it.  It rejects `=` and `≠` on floats, which compare bit
 patterns, so that `0.0 ≠ -0.0`, and which no f64 instruction computes.
+
+For each definition whose code takes no call depth the reflector also adds `p.f.bound`, the
+function's allocation bound in bytes on the tuple of its arguments, with `Moved (Array α)` for an
+owned array and `Unit` for no parameters, and `p.f.trapFree`.  `p.f.bound` is the compiler's bound,
+`Prog.bounds` of the program at the function, composed with the flattening of the tuple, and `#eval`
+computes it by interpreting `Expr.allocs` over the reflected program.  `p.f.trapFree` states
+`ImplementsA false`: the call returns `f` of its arguments, without a trap and for enough fuel, and
+raises `top` by at most `p.f.bound x`.  When the function may trap, its precondition is
+`heap.Within store p.module (p.f.bound x)`: `top` plus the bound is at most `65536` times the
+memory's cap of at most 65,535 pages, 4,294,901,760 bytes.  The theorem holds in Talos's semantics,
+in which `memory.grow` succeeds up to the cap.  An engine that refuses growth earlier makes the
+allocator trap at `unreachable`.  The bound ignores the reuse of freed blocks and charges every
+extension of a dying owned array as a new block, so a precondition that fails says nothing about
+the program, and it depends on the modes that `Expr.paramChoice` chooses.  No theorem bounds the
+memory's pages, and wrappers get no `trapFree`.
 
 | Theorem | Statement |
 |---------|-----------|

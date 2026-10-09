@@ -161,8 +161,9 @@ theorem _root_.LeanExe.ProofKit.UInt64Array.At.writeElement {store : Store Unit}
 
 /-- The allocation of a block of `bytes` bytes, the count on top of the stack, for an array of
 `n` words, with `n` in local `len`: a new owned block of at least `bytes` bytes whose length word
-is `n` and whose elements are what memory held, with its address in local `ptr`.  The allocation
-may trap at `unreachable` when memory runs out. -/
+is `n` and whose elements are what memory held, with its address in local `ptr`.
+It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
+cap, and it raises `top` by at most `c`. -/
 theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {len ptr : Nat} {n bytes : UInt64} {vs : List Value}
     {rest : Program} {Q : Assertion Unit} {c : Nat} (hAt : heap.At store)
@@ -227,8 +228,9 @@ theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
     (by rw [hCapEq]; omega) hTop
 
 /-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
-length word is `n` and whose elements are what memory held, with its address in local `ptr`.  The
-allocation may trap at `unreachable` when memory runs out. -/
+length word is `n` and whose elements are what memory held, with its address in local `ptr`.
+It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
+cap, and it raises `top` by at most `c`. -/
 theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
     {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
@@ -776,8 +778,9 @@ theorem writeLength_frame (store : Store Unit) (ptr : UInt64) (size n : Nat)
 /-- The allocation of a block of the byte count on top of the stack for an array of `total` words,
 with `total` in local `len`, and the copy into it of the array `xs`, borrowed at `ptr`, whose
 address local `src` holds and whose length local `count` holds: a new owned block, with its address
-in local `dst`, holding an array of `total` words whose first elements are those of `xs`.  The
-allocation may trap at `unreachable` when memory runs out. -/
+in local `dst`, holding an array of `total` words whose first elements are those of `xs`.
+It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
+cap, and it raises `top` by at most `c`. -/
 theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {src len count dst index : Nat} {ptr total bytes : UInt64}
     {xs : Array UInt64} {vs : List Value} {rest : Program} {Q : Assertion Unit} {c : Nat}
@@ -890,8 +893,8 @@ theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {
     simpa using hNext ((t + 1) * 8) (by rw [hNeed]) (by rw [hNeed]; omega) (by rw [hNeed]; omega)
 
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
-owned array, with the locals from `base` to `base + 2` as scratch.  The copy allocates, so it may
-trap at `unreachable`. -/
+owned array, with the locals from `base` to `base + 2` as scratch.  It traps at `unreachable` only when `top` cannot rise by the charge `c` within the
+cap, and it raises `top` by at most `c`. -/
 theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {src base : Nat} {ptr : UInt64} {xs : Array UInt64}
     {rest : Program} {Q : Assertion Unit} {c : Nat}
