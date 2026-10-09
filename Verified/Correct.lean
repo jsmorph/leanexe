@@ -392,8 +392,8 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
     obtain ⟨hOwned, hLiveX⟩ := hCopy
     simp only [Expr.code, Var.code, hOwned, hLiveX, and_self, ↓reduceIte]
     refine wp_copyCode hm tTy hAt hCap
-      (hTrap.of_imp fun _ => by simp [Slot.any_owned hOwned]) hh hRep hold hBelow hBase
-      (by rw [hh]; simpa [Expr.width] using hRoom) fun heap' store' s' ws' hStep hRep' hF => ?_
+      (TrapOK.any (hTrap.of_imp fun _ => by simp [Slot.any_owned hOwned])) hh hRep hold hBelow hBase
+      (by rw [hh]; simpa [Expr.width] using hRoom) fun heap' store' s' ws' hStep hRep' hF _ => ?_
     have hHolds := (hVars.live_mono hLiveIn).step hStep (fun _ _ _ _ _ _ _ _ => trivial)
     refine hNext heap' store' s' ws' ⟨?_, hF, hHolds.frame hF le_rfl, ?_, ?_⟩
     · rw [hMode, hOwned]
@@ -962,11 +962,12 @@ theorem After.coerce (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Lis
     simp only [coerceCode, and_self, hScalar, ↓reduceIte, List.append_assoc]
     refine wp_storeCode ws h base' t.types s1 vs a.rep.typed hh hLow
       (by rw [Ty.types_length, hh]; omega) fun s2 hF2 hold2 _ => ?_
-    refine wp_copyCode hm t a.step.at_ hCap (hTrap rfl rfl hScalar) (hF2.half.trans hh) a.rep
+    refine wp_copyCode hm t a.step.at_ hCap (TrapOK.any (hTrap rfl rfl hScalar))
+      (hF2.half.trans hh) a.rep
       hold2 (le_refl _) (by rw [hF2.params]; omega)
       (by simp only [Locals.half_values, hF2.half, hh, Ty.copyScratch, hScalar,
         Bool.false_eq_true, ↓reduceIte]; omega)
-      fun heap3 store3 s3 ws3 hStep3 hRep3 hF3 => ?_
+      fun heap3 store3 s3 ws3 hStep3 hRep3 hF3 _ => ?_
     have hF13 : Frame base s1 s3 :=
       (hF2.mono hBase').trans (Frame.ofValues.trans (hF3.mono (by omega)))
     have hF : Frame base s s3 := a.frame.trans hF13
@@ -3597,9 +3598,9 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   have hLow4 : s3.params.length ≤ base + 1 := by rw [hp3]; omega
   have hHigh4' : base + 1 < s3.half := by rw [hh3]; omega
   have hHigh4 := Locals.lt_total hHigh4'
-  refine wp_allocArray hm e1.step.at_ (by rw [e1.step.cap m]; exact hCap) hTrapT
-    (by rw [hTn]; exact hck) hT3 hLow4 hHigh4 (by omega)
-    fun heap2 store2 root words hSize hStepA hOwned => ?_
+  refine wp_allocArray hm e1.step.at_ (by rw [e1.step.cap m]; exact hCap) le_rfl
+    (TrapOK.any hTrapT) (by rw [hTn]; exact hck) hT3 hLow4 hHigh4 (by omega)
+    fun heap2 store2 root words hSize hStepA hOwned _ => ?_
   rw [hTn] at hSize
   set s4 := setLocal { s3 with values := s3.values } (base + 1) (.i64 root) with hs4
   have f4 : Frame base s3 s4 := Frame.setValues hLow4 (by omega) hHigh4'
@@ -4108,12 +4109,13 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
         8 * ((UInt64.ofNat (el.words (env.get x)).size + e).toNat + 1) := by
       simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.reduceToNat] at hTotal ⊢
       omega
-    refine wp_allocCopy hm hAt hCap hTrap hB (by rw [hTotal]; exact hTotalLt) (by omega)
+    refine wp_allocCopy hm hAt hCap le_rfl (TrapOK.any hTrap) hB (by rw [hTotal]; exact hTotalLt)
+      (by omega)
       (by rw [hBytes]) (by rw [hBytes, hTotal]; omega) hP3 hT3 hN3
       (by show s.params.length ≤ b + 4; omega) (by rw [hp3, hl3]; omega)
       (by show s.params.length ≤ b + 5; omega) (by rw [hp3, hl3]; omega)
       (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
-      fun heap1 store1 s4 q words hSize hPrefix hStep hOwnedQ _ hp4 hl4 hOther4 hQ4 hv4 => ?_
+      fun heap1 store1 s4 q words hSize hPrefix hStep hOwnedQ _ hp4 hl4 hOther4 hQ4 hv4 _ => ?_
     have hF4 : Frame b s s4 := ⟨hp4.trans hp3, hl4.trans hl3, fun j hj =>
       ⟨by rw [hOther4 j (by omega) (by omega), (hFrame3 j hj).1],
         by rw [hOther4 _ (by omega) (by omega), (hFrame3 j hj).2]⟩⟩
@@ -4251,12 +4253,12 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
         some (.i64 (store.mem.read64 (p - 32).toUInt32)) := hC4
     refine wp_requestCode hT4' hC4' (by rw [hTotal]; exact hTotalLt) (by rw [hcN]; omega)
       fun r hr1 hr2 => ?_
-    refine wp_allocCopy hm hAt hCap (hTrap.imp fun _ h => h) hOwned.borrowed
+    refine wp_allocCopy hm hAt hCap le_rfl (TrapOK.any (hTrap.imp fun _ h => h)) hOwned.borrowed
       (by rw [hTotal]; exact hTotalLt) (by rw [hTotal]; omega) hr1 hr2 hP4 hT4 hN4
       (by show s.params.length ≤ b + 4; omega) (by rw [hp4, hl4]; omega)
       (by show s.params.length ≤ b + 5; omega) (by rw [hp4, hl4]; omega)
       (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
-      fun heap1 store1 s5 q words hSize hPrefix hStep1 hOwnedQ _ hp5 hl5 hOther5 hQ5 hv5 => ?_
+      fun heap1 store1 s5 q words hSize hPrefix hStep1 hOwnedQ _ hp5 hl5 hOther5 hQ5 hv5 _ => ?_
     have hP5 : s5.get b = some (.i64 p) := by rw [hOther5 b (by omega) (by omega)]; exact hP4
     simp only [wp_localGet_cons, hP5]
     obtain ⟨⟨hOwnedP1, hCapP1⟩, hApartPQ⟩ := hStep1.owned hOwned trivial

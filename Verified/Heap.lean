@@ -1,4 +1,5 @@
 import Verified.State
+import Verified.Bound
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.ReleaseTree
 import LeanExe.ProofKit.ArrayPrefix
@@ -42,23 +43,60 @@ theorem wp_release {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : H
   obtain ⟨out', rfl, rfl, rfl⟩ := hPost
   simpa using hNext
 
-/-- A call of `alloc` on the byte count on top of the stack: the allocation, or a trap at
-`unreachable` when memory runs out. -/
+/-- Whether `top` can rise by `n` bytes within the memory cap of `m`. -/
+def _root_.LeanExe.Pipeline.Heap.Within (heap : Heap) (store : Store Unit) (m : Module) (n : Nat) : Prop :=
+  heap.top.toNat + n ≤ 65536 * store.memoryCap m 0
+
+instance {heap : Heap} {store : Store Unit} {m : Module} {n : Nat} :
+    Decidable (heap.Within store m n) :=
+  inferInstanceAs (Decidable (_ ≤ _))
+
+theorem _root_.LeanExe.Pipeline.Heap.Within.mono {heap : Heap} {store : Store Unit} {m : Module} {n n' : Nat}
+    (h : heap.Within store m n) (hle : n' ≤ n) : heap.Within store m n' := by
+  unfold Heap.Within at *; omega
+
+/-- An allocation of `need` bytes for which `top` can rise by `48 + need` within the cap has the
+room that `alloc` needs. -/
+theorem _root_.LeanExe.Pipeline.Heap.Within.room {heap : Heap} {store : Store Unit} {m : Module} {need : UInt64}
+    (h : heap.Within store m (48 + need.toNat)) (hCap : store.memoryCap m 0 ≤ 65535) :
+    heap.Room store m need := by
+  unfold Heap.Within at h
+  intro _
+  unfold FixedArrayBump.requiredPages
+  constructor
+  · omega
+  · intro _; omega
+
+/-- An allocation that fits raises `top` by at most `48 + need`. -/
+theorem _root_.LeanExe.Pipeline.Heap.allocate_top {heap : Heap} {need : UInt64} (h : heap.Fits need) :
+    (heap.allocate need).top.toNat ≤ heap.top.toNat + allocCost need.toNat := by
+  have hTop := allocatedTop_toNat heap.top need heap.free h.fit32
+  simp only [Heap.allocate, allocCost]
+  rw [hTop]
+  split <;> omega
+
+/-- A call of `alloc` on the byte count on top of the stack: the allocation, which raises `top`
+by at most `c`, or a trap at `unreachable`, which happens only when `top` cannot rise by `c`
+within the cap. -/
 theorem wp_alloc {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {bytes : UInt64} {vs : List Value} {rest : Program}
-    {Q : Assertion Unit} (hAt : heap.At store) (hBytes : bytes.toNat ≤ 4294967296)
-    (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q)
+    {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (hBytes : bytes.toNat ≤ 4294967296)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hc : allocCost (allocSize bytes).toNat ≤ c)
+    (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
     (hNext : heap.Fits (allocSize bytes) →
+      (heap.allocate (allocSize bytes)).top.toNat ≤ heap.top.toNat + c →
       wp m rest Q (heap.allocateStore store (allocSize bytes) 1)
         { s with values := .i64 (FixedArrayAllocate.root heap.top (allocSize bytes) heap.free) ::
           vs } host) :
     wp m (.call 0 :: rest) Q store { s with values := .i64 bytes :: vs } host := by
-  have hRun := (alloc_spec_or_abort hm.memory32 hm.imports hm.alloc host heap store bytes hAt
-    hBytes hCap).append_args (by simp [hm.imports]) (by simpa [hm.imports] using hm.alloc)
-    (by rfl) vs
+  have hRun := (alloc_spec_runs (!decide (heap.Within store m c)) hm.memory32 hm.imports hm.alloc
+    host heap store bytes hAt hBytes hCap fun hw => by
+      simp only [Bool.not_eq_false'] at hw
+      exact ((of_decide_eq_true hw).mono hc).room hCap).append_args (by simp [hm.imports])
+    (by simpa [hm.imports] using hm.alloc) (by rfl) vs
   refine wp_call_runs hRun hTrap fun st' out hPost => ?_
   obtain ⟨out', rfl, hFits, rfl, rfl⟩ := hPost
-  simpa using hNext hFits
+  simpa using hNext hFits ((Heap.allocate_top hFits).trans (by omega))
 
 theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt32 := by
   apply UInt32.toNat_inj.mp
@@ -141,21 +179,23 @@ is `n` and whose elements are what memory held, with its address in local `ptr`.
 may trap at `unreachable` when memory runs out. -/
 theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {len ptr : Nat} {n bytes : UInt64} {vs : List Value}
-    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
-    (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q) (hn : n.toNat < 536870912)
+    {rest : Program} {Q : Assertion Unit} {c : Nat} (hAt : heap.At store)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hc : allocCost (allocSize bytes).toNat ≤ c)
+    (hTrap : TrapOK (!decide (heap.Within store m c)) Q) (hn : n.toNat < 536870912)
     (hBytes : 8 * (n.toNat + 1) ≤ bytes.toNat) (hBytes32 : bytes.toNat ≤ 4294967296)
     (hN : s.get len = some (.i64 n)) (hLow : s.params.length ≤ ptr)
     (hHigh : ptr < s.params.length + s.locals.length) (hne : len ≠ ptr)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
       words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
       heap'.Owned store' root words → bytes.toNat ≤ capacityAt store' root →
+      heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' (setLocal { s with values := vs } ptr (.i64 root)) host) :
     wp m (allocBlockCode len ptr ++ rest) Q store { s with values := .i64 bytes :: vs } host := by
   have hn' : UInt64.ofNat n.toNat = n := UInt64.ofNat_toNat
   simp only [allocBlockCode, List.cons_append, List.nil_append]
-  refine wp_alloc hm hAt hBytes32 hCap hTrap fun hFits => ?_
+  refine wp_alloc hm hAt hBytes32 hCap hc hTrap fun hFits hTop => ?_
   have hRound := le_allocSize hBytes32
-  generalize hNeed : allocSize bytes = need at hFits hRound ⊢
+  generalize hNeed : allocSize bytes = need at hFits hRound hTop ⊢
   have hBlock := hAt.allocate_block 1 hFits
   have hCapacity := allocated_capacity need heap.free
   generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock ⊢
@@ -198,30 +238,31 @@ theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
     (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
   exact hNext _ store2 _ words hSize
     ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩ hNew.owned
-    (by rw [hCapEq]; omega)
+    (by rw [hCapEq]; omega) hTop
 
 /-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
 length word is `n` and whose elements are what memory held, with its address in local `ptr`.  The
 allocation may trap at `unreachable` when memory runs out. -/
 theorem wp_allocArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {count ptr : Nat} {n : UInt64} {rest : Program}
-    {Q : Assertion Unit} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
-    (hTrap : TrapOK true Q) (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
+    {Q : Assertion Unit} {c : Nat} (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hc : allocCost (8 * (n.toNat + 1)) ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
+    (hn : n.toNat < 536870912) (hN : s.get count = some (.i64 n))
     (hLow : s.params.length ≤ ptr) (hHigh : ptr < s.params.length + s.locals.length)
     (hne : count ≠ ptr)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
       words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
-      heap'.Owned store' root words →
+      heap'.Owned store' root words → heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' (setLocal { s with values := s.values } ptr (.i64 root)) host) :
     wp m (allocArrayCode count ptr ++ rest) Q store s host := by
   have hn' : UInt64.ofNat n.toNat = n := UInt64.ofNat_toNat
-  obtain ⟨hBytes, -⟩ := allocSize_words hn
-  rw [hn'] at hBytes
+  obtain ⟨hBytes, hSize⟩ := allocSize_words hn
+  rw [hn'] at hBytes hSize
   simp only [allocArrayCode, List.cons_append, List.nil_append, wp_localGet_cons, hN,
     wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
-  exact wp_allocBlock hm hAt hCap hTrap hn (by rw [hBytes]) (by rw [hBytes]; omega) hN hLow hHigh
-    hne fun heap' store' root words hSize hStep hOwned _ => hNext heap' store' root words hSize
-      hStep hOwned
+  exact wp_allocBlock hm hAt hCap (by rw [hSize, hBytes]; exact hc) hTrap hn (by rw [hBytes])
+    (by rw [hBytes]; omega) hN hLow hHigh hne fun heap' store' root words hSize hStep hOwned _ hTop =>
+      hNext heap' store' root words hSize hStep hOwned hTop
 
 /-- `words` with elements `k` to `k + i - 1` replaced by the first `i` elements of `xs`. -/
 def overlay (words xs : Array UInt64) (k i : Nat) : Array UInt64 :=
@@ -753,8 +794,9 @@ in local `dst`, holding an array of `total` words whose first elements are those
 allocation may trap at `unreachable` when memory runs out. -/
 theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {src len count dst index : Nat} {ptr total bytes : UInt64}
-    {xs : Array UInt64} {vs : List Value} {rest : Program} {Q : Assertion Unit}
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q)
+    {xs : Array UInt64} {vs : List Value} {rest : Program} {Q : Assertion Unit} {c : Nat}
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hc : allocCost (allocSize bytes).toNat ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
     (hB : heap.Borrowed store ptr xs) (hTotal : total.toNat < 536870912)
     (hn : xs.size ≤ total.toNat) (hBytes : 8 * (total.toNat + 1) ≤ bytes.toNat)
     (hBytes32 : bytes.toNat ≤ 4294967296) (hSrc : s.get src = some (.i64 ptr))
@@ -770,12 +812,13 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       Step heap store (fun _ => True) heap' store' [block store' q] → heap'.Owned store' q words →
       bytes.toNat ≤ capacityAt store' q → s'.params = s.params →
       s'.locals.length = s.locals.length → (∀ j, j ≠ dst → j ≠ index → s'.get j = s.get j) →
-      s'.get dst = some (.i64 q) → s'.values = vs → wp m rest Q store' s' host) :
+      s'.get dst = some (.i64 q) → s'.values = vs → heap'.top.toNat ≤ heap.top.toNat + c →
+      wp m rest Q store' s' host) :
     wp m (allocBlockCode len dst ++ (copyIntoCode src dst count index ++ rest)) Q store
       { s with values := .i64 bytes :: vs } host := by
   have hFitA := hB.values.1
-  refine wp_allocBlock hm hAt hCap hTrap hTotal hBytes hBytes32 hLen hDst hDstHigh hLenDst
-    fun heap1 store1 q words0 hSize0 hStep1 hOwned1 hCapQ => ?_
+  refine wp_allocBlock hm hAt hCap hc hTrap hTotal hBytes hBytes32 hLen hDst hDstHigh hLenDst
+    fun heap1 store1 q words0 hSize0 hStep1 hOwned1 hCapQ hTop => ?_
   have hLow1 : ({ s with values := vs } : Locals).params.length ≤ dst := hDst
   have hQ1 : (setLocal { s with values := vs } dst (.i64 q)).get dst = some (.i64 q) :=
     Locals.get_setLocal_same hLow1 hDstHigh
@@ -809,7 +852,7 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     (fun j hj => ?_) (hStep.mono (fun _ h => h) fun b hb => ?_) hOwned2
     (by rw [hCapSame]; exact hCapQ) hp2 (by rw [hl2]; simp [setLocal])
     (fun j hj hji => by rw [hOther2 j hji, hGet1 j hj])
-    (by rw [hOther2 dst hDstIndex]; exact hQ1) hv2
+    (by rw [hOther2 dst hDstIndex]; exact hQ1) hv2 hTop
   · rw [getElem!_pos _ j (by rw [overlay_size]; omega)]
     simp only [overlay, Array.getElem_ofFn]
     rw [ite_eq_left (by omega), Nat.sub_zero, getElem!_pos xs j hj]
@@ -859,13 +902,14 @@ owned array, with the locals from `base` to `base + 2` as scratch.  The copy all
 trap at `unreachable`. -/
 theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : Heap}
     {store : Store Unit} {s : Locals} {src base : Nat} {ptr : UInt64} {xs : Array UInt64}
-    {rest : Program} {Q : Assertion Unit}
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hTrap : TrapOK true Q)
+    {rest : Program} {Q : Assertion Unit} {c : Nat}
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hc : allocCost (8 * (xs.size + 1)) ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
     (hB : heap.Borrowed store ptr xs) (hSrc : s.get src = some (.i64 ptr)) (hSrcBase : src < base)
     (hBase : s.params.length ≤ base) (hRoom : base + 3 ≤ s.half)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ptr' : UInt64),
       Step heap store (fun _ => True) heap' store' [block store' ptr'] →
-      heap'.Owned store' ptr' xs → Frame base s s' →
+      heap'.Owned store' ptr' xs → Frame base s s' → heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' { s' with values := .i64 ptr' :: s.values } host) :
     wp m (copyArrayCode src base ++ rest) Q store s host := by
   have hTot : 2 * s.half ≤ s.params.length + s.locals.length := by
@@ -876,7 +920,7 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
   have hSizeLt : xs.size < 536870912 := by omega
   have hN : (UInt64.ofNat xs.size).toNat = xs.size :=
     UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
-  obtain ⟨hBytes, -⟩ := allocSize_words hSizeLt
+  obtain ⟨hBytes, hAllocSize⟩ := allocSize_words hSizeLt
   simp only [copyArrayCode, allocArrayCode, List.append_assoc, List.cons_append,
     List.nil_append]
   -- The length, in local `base`.
@@ -893,14 +937,15 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
   -- The new array and its elements.
   show wp m _ Q store s1 host
   simp only [wp_localGet_cons, hN1, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons]
-  refine wp_allocCopy hm hAt hCap hTrap hB (by rw [hN]; exact hSizeLt) (by rw [hN])
+  refine wp_allocCopy (c := c) hm hAt hCap (by rw [hAllocSize, hBytes]; exact hc) hTrap hB
+    (by rw [hN]; exact hSizeLt) (by rw [hN])
     (by rw [hBytes]; rw [hN]) (by rw [hBytes]; omega) hSrc1 hN1 hN1
     (by show s.params.length ≤ base + 1; omega)
     (by show base + 1 < s1.params.length + s1.locals.length; simp [s1, setLocal]; omega)
     (by show s.params.length ≤ base + 2; omega)
     (by show base + 2 < s1.params.length + s1.locals.length; simp [s1, setLocal]; omega)
     (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
-    fun heap1 store1 s2 q words hSize hPrefix hStep hOwned _ hp2 hl2 hOther2 hQ2 hv2 => ?_
+    fun heap1 store1 s2 q words hSize hPrefix hStep hOwned _ hp2 hl2 hOther2 hQ2 hv2 hTop => ?_
   have hWords : words = xs := by
     apply Array.ext (by rw [hSize, hN]) fun j h1 h2 => ?_
     rw [← getElem!_pos words j h1]
@@ -916,20 +961,45 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
   simp only [wp_localGet_cons, hQ2]
   have hv1 : s1.values = s.values := rfl
-  simpa [hv2, hv1] using hNext heap1 store1 s2 q hStep hOwned hF
+  simpa [hv2, hv1] using hNext heap1 store1 s2 q hStep hOwned hF hTop
+
+/-- An assertion that accepts every trap at `unreachable` accepts those of any allowance. -/
+theorem _root_.Wasm.TrapOK.any {b : Bool} {Q : Assertion Unit} (h : TrapOK true Q) : TrapOK b Q := by
+  cases b
+  · trivial
+  · exact h
+
+/-- An allowance for a trap when `top` cannot rise by `c` gives one for any `c'` whose room
+follows from `c`'s. -/
+theorem _root_.Wasm.TrapOK.within {P P' : Prop} [Decidable P] [Decidable P'] {Q : Assertion Unit}
+    (h : TrapOK (!decide P) Q) (hP : P → P') : TrapOK (!decide P') Q := by
+  by_cases hp' : P'
+  · simp [hp', TrapOK]
+  · have hp : ¬P := fun hp => hp' (hP hp)
+    simpa [hp, hp'] using h
+
+/-- Room for `c1 + c2` before a step that raises `top` by at most `c1` leaves room for `c2` after
+it. -/
+theorem _root_.LeanExe.Pipeline.Heap.Within.after {heap heap1 : Heap} {store store1 : Store Unit} {m : Module}
+    {c1 c2 : Nat} (h : heap.Within store m (c1 + c2)) (hTop : heap1.top.toNat ≤ heap.top.toNat + c1)
+    (hCaps : store1.memoryCap m 0 = store.memoryCap m 0) : heap1.Within store1 m c2 := by
+  unfold Heap.Within at *; rw [hCaps]; omega
 
 /-- The copy of a value of type `t` whose words locals `src` on hold and that its words represent
 in `heap` at `store`: each of its arrays goes to a new owned block, and the other words stay as
-they are.  The copy consumes nothing. -/
+they are.  The copy consumes nothing, raises `top` by at most `t.copyCost v`, and traps only when
+`top` cannot rise by that much within the cap. -/
 theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {h src base : Nat} {mode : Mode}
       {ws : List Value} {v : t.denote} {rest : Program} {Q : Assertion Unit},
-    heap.At store → store.memoryCap m 0 ≤ 65535 → TrapOK true Q → s.half = h →
+    heap.At store → store.memoryCap m 0 ≤ 65535 →
+    TrapOK (!decide (heap.Within store m (t.copyCost v))) Q → s.half = h →
     t.Rep mode heap store ws v → LocalsHold s src t.types ws → src + t.width ≤ base →
     s.params.length ≤ base → base + t.copyScratch ≤ s.half →
     (∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ws' : List Value),
       Step heap store (fun _ => True) heap' store' (t.blocks store' ws' v) →
       t.Rep .owned heap' store' ws' v → Frame base s s' →
+      heap'.top.toNat ≤ heap.top.toNat + t.copyCost v →
       wp m rest Q store' { s' with values := ws'.reverse ++ s.values } host) →
     wp m (copyCode h t src base ++ rest) Q store s host
   | .elem e, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, _, _, hh, hRep, hold, _, _,
@@ -938,15 +1008,17 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     subst hRep'
     simp only [copyCode]
     exact wp_loadCode _ (by rw [e.values_length, e.types_length]) hh hold
-      (hNext heap store s _ (Step.refl hAt _) rfl (Frame.refl base s))
-  | .array _, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
+      (hNext heap store s _ (Step.refl hAt _) rfl (Frame.refl base s) (Nat.le_add_right _ _))
+  | .array e, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep, hold,
       hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, ha⟩ := hRep
     have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
     simp only [copyCode]
-    exact wp_copyArray hm hAt hCap hTrap ha.borrow h0 (by simp [Ty.width] at hSrc; omega) hBase
-      (by simpa [Ty.copyScratch, Ty.scalar] using hRoom) fun heap' store' s' ptr' hStep hOwned hF =>
-        hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned⟩ hF
+    exact wp_copyArray hm hAt hCap
+      (by simp only [Elem.words_size, Ty.copyCost, allocCost]; omega) hTrap ha.borrow h0
+      (by simp [Ty.width] at hSrc; omega) hBase
+      (by simpa [Ty.copyScratch, Ty.scalar] using hRoom) fun heap' store' s' ptr' hStep hOwned hF
+        hTop => hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned⟩ hF hTop
   | .pair a b, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, hh, hRep,
       hold, hSrc, hBase, hRoom, hNext => by
     obtain ⟨first, second, rfl, h1, h2, -⟩ := hRep
@@ -962,10 +1034,13 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       · have := Ty.scalar_pair hp
         rcases hc with rfl | rfl <;> simp_all
       · rw [ite_eq_right hp]; split <;> omega
-    refine wp_copyCode hm a hAt hCap hTrap hh h1 hold1 (by simp [Ty.width] at hSrc; omega) hBase
-      (by have := hScratch a (Or.inl rfl); omega) fun heap1 store1 s1 ws1 hStep1 hRep1 hF1 => ?_
+    refine wp_copyCode hm a hAt hCap (hTrap.within fun hw => hw.mono (Nat.le_add_right _ _)) hh
+      h1 hold1 (by simp [Ty.width] at hSrc; omega) hBase
+      (by have := hScratch a (Or.inl rfl); omega) fun heap1 store1 s1 ws1 hStep1 hRep1 hF1 hTop1 =>
+        ?_
     have hR2 := (h2.step hStep1 fun _ _ => trivial).1
-    refine wp_copyCode hm b hStep1.at_ (by rw [hStep1.cap m]; exact hCap) hTrap
+    refine wp_copyCode hm b hStep1.at_ (by rw [hStep1.cap m]; exact hCap)
+      (hTrap.within fun hw => Heap.Within.after hw hTop1 (hStep1.cap m))
       (s := { s1 with values := ws1.reverse ++ s.values }) (by simp [hF1.half, hh]) hR2
       ((LocalsHold.frame (s' := { s1 with values := ws1.reverse ++ s.values })
         (hF1.trans Frame.ofValues) (h2.length.trans b.types_length.symm)
@@ -973,14 +1048,16 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       (by simp [Ty.width] at hSrc; omega)
       (by show s1.params.length ≤ base; rw [hF1.params]; exact hBase)
       (by simp only [Locals.half_values, hF1.half]; have := hScratch b (Or.inr rfl); omega)
-      fun heap2 store2 s2 ws2 hStep2 hRep2 hF2 => ?_
+      fun heap2 store2 s2 ws2 hStep2 hRep2 hF2 hTop2 => ?_
     obtain ⟨hRep1', hSame1, hFresh1⟩ := hRep1.step hStep2 fun _ _ => trivial
     have hBlocks1 : a.blocks store2 ws1 v.1 = a.blocks store1 ws1 v.1 := hSame1
     have hStep := hStep1.transBoth (keep := fun _ => True) hStep2
       fun _ _ => ⟨trivial, fun _ => trivial⟩
     refine hNext heap2 store2 s2 (ws1 ++ ws2) ?_
       ⟨ws1, ws2, rfl, hRep1', hRep2, fun _ x hx y hy => ?_⟩
-      (hF1.trans hF2.values) |> fun h => by simpa [List.reverse_append, List.append_assoc] using h
+      (hF1.trans hF2.values) (by show _ ≤ _ + (a.copyCost v.1 + b.copyCost v.2); omega)
+      |> fun h => by
+        simpa [List.reverse_append, List.append_assoc] using h
     · rw [Ty.blocks_append hRep1.length, hBlocks1]
       exact hStep
     · rw [hBlocks1] at hx
