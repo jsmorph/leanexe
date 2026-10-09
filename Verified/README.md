@@ -310,8 +310,10 @@ memory's cap of at most 65,535 pages, 4,294,901,760 bytes.  The theorem holds in
 in which `memory.grow` succeeds up to the cap.  An engine that refuses growth earlier makes the
 allocator trap at `unreachable`.  The bound ignores the reuse of freed blocks and charges every
 extension of a dying owned array as a new block, so a precondition that fails says nothing about
-the program, and it depends on the modes that `Expr.paramChoice` chooses.  No theorem bounds the
-memory's pages, and wrappers get no `trapFree`.
+the program, and it depends on the modes that `Expr.paramChoice` chooses.  A wrapper whose callee's
+code takes no call depth gets the same two declarations, with `Wrapper.bound`, the callee's bound at
+the tables and the wrapper's arguments, as `ImplementsTables` with the same conditions.  No theorem
+bounds the memory's pages.
 
 | Theorem | Statement |
 |---------|-----------|

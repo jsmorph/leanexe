@@ -5499,20 +5499,45 @@ theorem wp_constI64s {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
     refine wp_constI64s as _ ?_
     simpa using h
 
-/-- A wrapper at position `e` calls its callee with the tables at their addresses and its own
-arguments, and so computes the callee's meaning at the tables, from a store that holds the tables
-apart from the blocks that the arguments move.  It may trap where the callee may. -/
-theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
+/-- The allocation bound of a wrapper: its callee's at the tables and the wrapper's arguments. -/
+def Wrapper.bound {S : List Sig} (tables : List (Array UInt64)) (w : Wrapper S tables.length)
+    (bounds : Bounds S) (args : Env w.params) : Nat :=
+  bounds.get w.callee (Env.withTables tables w.tables args)
+
+/-- A run of the wrapper at position `e`: it calls its callee with the tables at their addresses
+and its own arguments, and so computes the callee's meaning at the tables, from a store that holds
+the tables apart from the blocks that the arguments move.  It traps only where the callee may:
+when the callee's code takes the call depth, or when it may allocate and `top` cannot rise by the
+wrapper's bound within the cap.  Otherwise it raises `top` by at most the bound. -/
+theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
     {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
     {bounds : Bounds S} (hCalls : Calls m funs bounds) {e : Nat}
     (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
-      w.params w.result w.depth w.callee.callIndex e)) :
-    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
-      (Ty.represent w.result) (w.aborts || w.depth) m e
-      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
-      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
-      (fun _ _ _ _ _ => True) := by
-  intro host store heap ws args hAt _ hTables hRep hSep hCap
+      w.params w.result w.depth w.callee.callIndex e))
+    (host : HostEnv Unit) {store : Store Unit} {heap : Heap} {ws : List Value}
+    {args : Env w.params} (hAt : heap.At store)
+    (hTables : ∀ t ∈ w.tables.map fun k => (tableAddr tables k.val, tables[k]),
+      heap.Borrowed store t.1 t.2 ∧
+        Apart store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args)
+          (t.1.toNat, 8 * (t.2.size + 1)))
+    (hRep : Env.Rep (paramMode w.params (w.modes.drop w.tables.length)) heap store ws args)
+    (hSep : Separate store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args)
+      (Env.reads (paramMode w.params (w.modes.drop w.tables.length)) ws args))
+    (hCap : store.memoryCap m 0 ≤ 65535) :
+    Runs ((w.aborts && !decide (heap.Within store m (Wrapper.bound tables w bounds args))) ||
+        w.depth) host m e store ws.reverse
+      fun final values => ∃ heap' : Heap, heap'.At final ∧
+        w.result.Rep .owned heap' final values.reverse
+          (funs.get w.callee (Env.withTables tables w.tables args)) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 →
+          Apart store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧
+          ∀ b ∈ w.result.blocks final values.reverse
+            (funs.get w.callee (Env.withTables tables w.tables args)), regionsDisjoint r b) ∧
+        (w.depth = false →
+          heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w bounds args) := by
   have hShift : (fun i => paramMode (List.replicate w.tables.length (.array .word) ++ w.params)
       w.modes (i + w.tables.length)) = paramMode w.params (w.modes.drop w.tables.length) :=
     funext fun i => paramMode_tables _ _ _ i
@@ -5540,12 +5565,8 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
       exact (hTables _ (List.mem_map.mpr ⟨k, hk, rfl⟩)).2
     · exact hSep.2 r hr
   have hLength : ws.length = widthSum w.params := hRep.length
-  have hRun := (FunSpec.runs (hCalls w.callee) hm host hAt hRep' hSep' hCap (d := 0)
-    (fun _ => trivial) []).of_imp (a' := w.aborts || w.depth) fun h => by
-      simp only [Bool.or_eq_true, Bool.and_eq_true] at h ⊢
-      rcases h with ⟨h, _⟩ | h
-      · exact Or.inl h
-      · exact Or.inr h
+  have hRun := FunSpec.runs (hCalls w.callee) hm host hAt hRep' hSep' hCap (d := 0)
+    (fun _ => trivial) []
   have hNum : (wrapperFunction (w.tables.map fun k => tableAddr tables k.val) w.params w.result
       w.depth w.callee.callIndex e).numParams = widthSum w.params := by
     simp only [wrapperFunction, Function.numParams, flatMap_types_length]
@@ -5570,7 +5591,7 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
     cases w.depth <;> simp [List.reverse_append]
   rw [← hStack] at hRun
   refine wp_call_runs hRun (TrapOK.of_msg fun _ => Iff.rfl) fun st' vs hPost => ?_
-  obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions, _⟩ := hPost
+  obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions, hTop⟩ := hPost
   rw [wp_nil]
   have hOut : out.length = w.result.width := by
     have := hOwned.length; rwa [List.length_reverse] at this
@@ -5581,7 +5602,66 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
   dsimp only [Function.numParams]
   rw [hTake, hDrop, List.append_nil]
   exact ⟨heap', hAt', hOwned, hCaps, fun r hr hpos hA =>
-    hRegions r hr hpos (by rw [← hAddrs]; exact hMoves ▸ hA), trivial⟩
+    hRegions r hr hpos (by rw [← hAddrs]; exact hMoves ▸ hA), hTop⟩
+
+/-- A wrapper at position `e` computes its callee's meaning at the tables, from a store that holds
+the tables apart from the blocks that the arguments move.  It may trap where the callee may. -/
+theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
+    {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
+    {bounds : Bounds S} (hCalls : Calls m funs bounds) {e : Nat}
+    (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+      w.params w.result w.depth w.callee.callIndex e)) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) (w.aborts || w.depth) m e
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
+      (fun _ _ _ _ _ => True) :=
+  fun host _ _ _ _ hAt _ hTables hRep hSep hCap =>
+    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+      simp only [Bool.or_eq_true, Bool.and_eq_true] at h ⊢
+      rcases h with ⟨h, _⟩ | h
+      · exact Or.inl h
+      · exact Or.inr h).mono fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions, trivial⟩
+
+/-- A wrapper whose code takes no call depth computes its callee's meaning at the tables without
+a trap when `top` can rise by its bound within the cap, and it raises `top` by at most the
+bound. -/
+theorem wrapper_trapFree {m : Module} (hm : Runtime m) {S : List Sig}
+    {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
+    {bounds : Bounds S} (hCalls : Calls m funs bounds) {e : Nat}
+    (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+      w.params w.result w.depth w.callee.callIndex e)) (hd : w.depth = false) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) false m e
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k]))
+      (fun x heap store => heap.Within store m (Wrapper.bound tables w bounds x))
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w bounds x) :=
+  fun host _ _ _ _ hAt hW hTables hRep hSep hCap =>
+    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+      simp [hd, hW] at h).mono fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions, hTop hd⟩
+
+/-- A wrapper that cannot trap and whose code takes no call depth computes its callee's meaning at
+the tables, and it raises `top` by at most its bound. -/
+theorem wrapper_noTrap {m : Module} (hm : Runtime m) {S : List Sig}
+    {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
+    {bounds : Bounds S} (hCalls : Calls m funs bounds) {e : Nat}
+    (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
+      w.params w.result w.depth w.callee.callIndex e)) (ha : w.aborts = false)
+    (hd : w.depth = false) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) false m e
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w bounds x) :=
+  fun host _ _ _ _ hAt _ hTables hRep hSep hCap =>
+    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+      simp [ha, hd] at h).mono fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
+        ⟨heap', hAt', hOwned, hCaps, hRegions, hTop hd⟩
 
 /-- The wrapper theorem for the `j`-th wrapper of a program with tables. -/
 theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
@@ -5596,6 +5676,38 @@ theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
       (fun _ _ _ _ _ => True) :=
   wrapper_correct (compileWith_runtime prog tables wrappers) w
     (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj)
+
+/-- `wrapper_trapFree` for the `j`-th wrapper of a program with tables. -/
+theorem Prog.wrapper_trapFree {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
+    (hj : wrappers[j]? = some w) (hd : w.depth = false) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) false (compileWith prog tables wrappers)
+      (2 + S.length + prog.depthFuns.length + j)
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k]))
+      (fun x heap store => heap.Within store (compileWith prog tables wrappers)
+        (Wrapper.bound tables w (prog.bounds funs) x))
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w (prog.bounds funs) x) :=
+  Verified.wrapper_trapFree (compileWith_runtime prog tables wrappers) w
+    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj) hd
+
+/-- `wrapper_noTrap` for the `j`-th wrapper of a program with tables. -/
+theorem Prog.wrapper_noTrap {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
+    (hj : wrappers[j]? = some w) (ha : w.aborts = false) (hd : w.depth = false) :
+    @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
+      (Ty.represent w.result) false (compileWith prog tables wrappers)
+      (2 + S.length + prog.depthFuns.length + j)
+      (fun env => funs.get w.callee (Env.withTables tables w.tables env))
+      (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w (prog.bounds funs) x) :=
+  Verified.wrapper_noTrap (compileWith_runtime prog tables wrappers) w
+    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj) ha hd
 
 /-- `ImplementsTables` for a Lean function `F` on types whose representations agree with it, as
 `ImplementsA.transfer` states for `ImplementsA`. -/

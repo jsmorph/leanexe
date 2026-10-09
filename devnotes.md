@@ -27888,7 +27888,7 @@ allows it, and a real engine may refuse earlier.
 - [x] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
 - [x] `p.f.bound` as the compiler's bound, and `p.f.trapFree`, in the reflector.
 - [ ] `p.f.bound_eq`, the bound as a plain Lean equation.
-- [ ] Wrappers with the bound.
+- [x] Wrappers with the bound.
 - [ ] A page bound for the drone.
 - [ ] Recursion, with a bound on the depth.
 
@@ -27917,7 +27917,10 @@ recursive functions need.
 postcondition that `top` rises by at most the bound, and `ImplementsB.noTrap` gives the same
 postcondition without a precondition for a function whose `aborts` is false.  The reflector emits
 `p.f.bound`, the compiler's bound composed with the flattening of Lean's argument tuple, and
-`p.f.trapFree` for every function whose code takes no call depth.  Wrappers get no `trapFree` yet.
+`p.f.trapFree` for every function whose code takes no call depth.  `wrapper_runs` gives a wrapper
+the callee's trap flag and bound, `Wrapper.bound`, from which `wrapper_correct` keeps its statement
+and `wrapper_trapFree` and `wrapper_noTrap` give the bounded forms, so the reflector emits `bound`
+and `trapFree` for wrappers as well.
 The first version added `p.f.bound` with the reducibility height 1 that the reflector's
 `addDefinition` gives every definition.  The kernel unfolds the side of greater height first, so
 when it matched the statement with the proof it unfolded the compiler's bound over the reflected

@@ -1845,6 +1845,20 @@ where
     | .owned => mkAppM ``LeanExe.Pipeline.Moved.val #[x]
     | .borrowed => return x
 
+/-- The list of the addresses and names of the tables `idxs` among the program's tables `tables`,
+named `tableNames`, which a wrapper's theorems state. -/
+def tableEntries (tables : Name) (tableNames : Array Name) (idxs : List Nat) :
+    MetaM Lean.Expr := do
+  let entryTy ← mkAppM ``Prod #[mkConst ``UInt64,
+    mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)]
+  let entries ← idxs.mapM fun i => do
+    let addr ← kernelWhnf (← mkAppM ``UInt64.toNat
+      #[← mkAppM ``tableAddr #[mkConst tables, mkNatLit i]])
+    let some a := natOf addr
+      | throwError "verified_compile: cannot evaluate the address of table {i}"
+    mkAppM ``Prod.mk #[toExpr (UInt64.ofNat a), mkConst tableNames[i]!]
+  return listExpr entryTy entries
+
 /-- The definition of `r` as a function of the tuple of its arguments. -/
 def leanFun (r : Reflected) : MetaM Lean.Expr :=
   withLocalDeclD `x r.argsType fun x => do
@@ -2186,21 +2200,62 @@ def elabVerifiedCompile : CommandElab
         -- and names as constants.
         let ty ← inferType proof
         let args := ty.getAppArgs
-        let entryTy ← mkAppM ``Prod #[mkConst ``UInt64,
-          mkApp (mkConst ``Array [.zero]) (mkConst ``UInt64)]
-        let entries' ← idxs.mapM fun i => do
-          let addr ← kernelWhnf (← mkAppM ``UInt64.toNat
-            #[← mkAppM ``tableAddr #[mkConst (base ++ `tables), mkNatLit i]])
-          let some a := natOf addr
-            | throwError "verified_compile: cannot evaluate the address of table {i}"
-          mkAppM ``Prod.mk #[toExpr (UInt64.ofNat a), mkConst tableNames[i]!]
         let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr (r.aborts || r.depth))
           |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + n + entries + j))
-          |>.set! 8 (listExpr entryTy entries') |>.set! 9 (← Core.betaReduce args[9]!)
-          |>.set! 10 (← Core.betaReduce args[10]!))
+          |>.set! 8 (← tableEntries (base ++ `tables) tableNames idxs)
+          |>.set! 9 (← Core.betaReduce args[9]!) |>.set! 10 (← Core.betaReduce args[10]!))
         addTheorem implName claim proof
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
+      -- For a wrapper whose callee's code takes no call depth, its bound and its theorem without
+      -- a trap, as for a function.
+      unless r.depth do
+        let boundName := base ++ simple ++ `bound
+        liftTermElabM do
+          let h0Stx ← if r.aborts then
+              `(Verified.Prog.wrapper_trapFree $progId $funsId $meaningId $tablesId $wrappersId
+                (j := $(Lean.quote j)) rfl rfl)
+            else
+              `(Verified.Prog.wrapper_noTrap $progId $funsId $meaningId $tablesId $wrappersId
+                (j := $(Lean.quote j)) rfl rfl rfl)
+          let h0 ← Term.elabTerm h0Stx none
+          Term.synthesizeSyntheticMVarsNoPostponing
+          let h0 ← instantiateMVars h0
+          let h0Ty ← instantiateMVars (← inferType h0)
+          let #[_, _, ia, _, _, _, _, _, _, _, post] := h0Ty.getAppArgs
+            | throwError "verified_compile: the wrapper's bounded theorem {h0Ty}"
+          let #[ps, ms] := ia.getAppArgs
+            | throwError "verified_compile: the instance {ia}"
+          -- The wrapper's bound on the source arguments, `Wrapper.bound` in the postcondition.
+          let boundEnv ← lambdaTelescope post fun xs body => do
+            let some (_, _, rhs) := body.le?
+              | throwError "verified_compile: the wrapper's postcondition {body}"
+            mkLambdaFVars #[xs[0]!] rhs.appArg!
+          let boundVal ← withLocalDeclD `x r.argsType fun x =>
+            mkLambdaFVars #[x] (mkApp boundEnv
+              (mkAppN (mkConst ``Env.ofArgs) #[ps, ms, (mkApp r.flatArgs x).headBeta])).headBeta
+          addAndCompile <| .defnDecl <| mkDefinitionValEx boundName []
+            (← mkArrow r.argsType (mkConst ``Nat)) boundVal
+            (.regular (getMaxHeight (← getEnv) boundVal + 1)) .safe [boundName]
+          let h ← mkAppM ``ImplementsTables.lean #[h0]
+          let proof ← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
+            (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)
+          let ty ← inferType proof
+          let args := ty.getAppArgs
+          let boundId := mkIdent boundName
+          let pre ← if r.aborts then
+              Term.elabTermEnsuringType (← `(fun x heap store =>
+                LeanExe.Pipeline.Heap.Within heap store $moduleId ($boundId x)))
+                (← inferType args[9]!)
+            else Core.betaReduce args[9]!
+          let post ← Term.elabTermEnsuringType (← `(fun x heap _ heap' _ =>
+            heap'.top.toNat ≤ heap.top.toNat + $boundId x)) (← inferType args[10]!)
+          Term.synthesizeSyntheticMVarsNoPostponing
+          let claim := mkAppN ty.getAppFn (args.set! 4 (toExpr false)
+            |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit (2 + n + entries + j))
+            |>.set! 8 (← tableEntries (base ++ `tables) tableNames idxs)
+            |>.set! 9 (← instantiateMVars pre) |>.set! 10 (← instantiateMVars post))
+          addTheorem (base ++ simple ++ `trapFree) claim proof
       j := j + 1
     let bytesId := mkIdent (target.getId ++ `bytes)
     let conj ← claims.pop.foldrM (fun c acc => `($c ∧ $acc)) claims.back!
