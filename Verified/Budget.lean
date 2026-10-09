@@ -1083,6 +1083,141 @@ theorem specB_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .b
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
       (by simp [Expr.denote, hcv]) hModeT _ (fun _ h => h) fun _ _ h => by simpa using h
 
+/-- A `let` binding: the value's code, the store of its words from local `base` on, the release
+of the value when it is owned and the body does not use it, and the body's code. -/
+theorem specB_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr S Γ' sTy}
+    {body : Expr S (sTy :: Γ') tTy}
+    (valueSpec : ∀ env slots live, CodeSpecB m funs bounds host pv value env slots live)
+    (bodySpec : ∀ env slots live, CodeSpecB m funs bounds host pv body env slots live) :
+    ∀ env slots live, CodeSpecB m funs bounds host pv (Expr.letE value body) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hValueRoom : value.width ≤ max value.width body.width := Nat.le_max_left ..
+  have hBodyRoom : body.width ≤ max value.width body.width := Nat.le_max_right ..
+  simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
+  simp only [Expr.code, List.append_assoc]
+  have hV : ∀ i, ((live i || body.uses (i + 1)) || value.uses i) = true →
+      (live i || (Expr.letE value body).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact live_seq _ _ _ h
+  refine valueSpec env slots (fun i => live i || body.uses (i + 1)) h (base + sTy.width) heap
+    store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt hCap (by omega) (by omega) hPlace.1 _
+        _
+    (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
+      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+    fun heap1 store1 s1 ws1 a1 hTop1 => ?_
+  have hp1 : s1.params = s.params := a1.frame.params
+  have hh1 : s1.half = h := a1.frame.half.trans hh
+  have a1' := a1.lower (hVars.live_mono hV) (Nat.le_add_right _ _) fun i h => by simp [h]
+  refine wp_storeCode ws1 h base sTy.types s1 s.values a1.rep.typed hh1 (by rw [hp1]; omega)
+    (by rw [Ty.types_length, hh1]; omega) fun s2 hF2 hold _ => ?_
+  have f2 : Frame base s1 { s2 with values := s.values } := hF2.trans Frame.ofValues
+  have hp2 : s2.params = s.params := hF2.params.trans hp1
+  have hh2 : ({ s2 with values := s.values } : Locals).half = h := f2.half.trans hh1
+  have hold' : LocalsHold { s2 with values := s.values } base sTy.types ws1 := hold
+  -- The body's context: the value as variable 0, in the locals from `base` on.
+  have hVarsB : Holds (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (fun i => i == 0 || shift 1 live i || body.uses i) (base + sTy.width) heap1 store1
+      { s2 with values := s.values } :=
+    Holds.push ((a1'.holds.agree f2).live_mono fun i h => by
+        simpa using h)
+      hold' a1.rep ((a1'.apart.agree a1'.holds f2).live_mono
+        fun i h => by simpa using h)
+  have hRelease : (if value.mode (slots.map Slot.mode) = .owned ∧ body.uses 0 = false then
+      releaseCode sTy base else []) =
+      (if body.uses 0 = false then [0] else []).flatMap
+        (releaseVar (sTy :: Γ') (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)) := by
+    cases body.uses 0 <;> cases value.mode (slots.map Slot.mode) <;> simp [releaseVar]
+  rw [hRelease]
+  have hd1 : (Expr.letE value body).depthCalls = false → value.depthCalls = false := fun hd => by
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.1
+  have hd3 : (Expr.letE value body).depthCalls = false → body.depthCalls = false := fun hd => by
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.2
+  refine wp_releaseVarsT hm _ (by split <;> simp) hVarsB a1.step.at_ (by split <;> simp)
+    fun heap2 store2 e2 hTop2 => ?_
+  have e2' := e2.mono (live' := fun i => shift 1 live i || body.uses i) fun i h => by
+    cases i with
+    | zero =>
+      have h0 : body.uses 0 = true := by simpa [shift] using h
+      simp [h0]
+    | succ k => split <;> simpa using h
+  refine bodySpec _ _ (shift 1 live) h (base + sTy.width) heap2 store2
+    { s2 with values := s.values } hh2 (hp2.trans hpv) e2'.holds e2'.step.at_
+    (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
+    (by show s2.params.length ≤ base + sTy.width; rw [hp2]; omega)
+    (by omega) hPlace.2 _ _
+    (hTrap.part (by flag_tac) (fun h => by
+      have hmo := value.mode_owned (slots.map Slot.mode)
+      rw [Slot.any_map] at hmo
+      simp only [List.any_cons, Expr.aborts] at h ⊢
+      exact let_trap_body _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
+        simp only [Expr.allocs] at hw
+        exact hw.after (heap1 := heap2) (store1 := store2)
+          (by have := hTop1 (hd1 hd); have := congrArg UInt64.toNat hTop2; omega)
+          (by rw [e2'.step.cap m, a1.step.cap m]))
+    fun heap3 store3 s3 ws3 aB hTop3 => ?_
+  have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
+  exact hNext heap3 store3 s3 ws3
+    ((After.bind (hVars.live_mono hV) a1' f2 hold' aB' (fun i h => by simpa using h)
+      (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV) fun hd => by
+      have := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      simp only [List.map_cons] at h3
+      simp only [Expr.allocs]; omega
+
+/-- An allowance for a trap when `top` cannot rise by a charge gives the allowance of a part
+that takes no call depth and whose room follows from the charge's. -/
+theorem _root_.Wasm.TrapOK.narrow {Q : Assertion Unit} {a : Bool} {P P' : Prop} [Decidable P]
+    [Decidable P'] (h : TrapOK (!decide P) Q) (hP : P → P') : TrapOK (false || (a && !decide P')) Q :=
+  h.of_imp fun h' => by
+    simp only [Bool.false_or, Bool.and_eq_true, Bool.not_eq_true', decide_eq_false_iff_not] at h' ⊢
+    exact fun hp => h'.2 (hP hp)
+
+/-- A variable in an owned position: its words as an owned value, which move it when it is owned
+and dies, and a copy otherwise, which raises `top` by at most `x.ownedCost` and traps only when
+`top` cannot rise by that much. -/
+theorem specB_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy)
+    {env : Env Γ'} {slots : List Slot} {live : Nat → Bool} {h base : Nat} {heap : Heap}
+    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit} (hh : s.half = h)
+    (hpv : s.params = pv)
+    (hVars : Holds env slots (fun i => live i || i == x.index) base heap store s)
+    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
+    (hRoom : base + copyWidth tTy ≤ h)
+    (hTrap : TrapOK (!decide (heap.Within store m
+      (x.ownedCost (slots.map Slot.mode) live (env.get x)))) Q)
+    (hNext : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || i == x.index) live base heap store s tTy .owned
+        (env.get x) heap' store' s' ws →
+      heap'.top.toNat ≤ heap.top.toNat + x.ownedCost (slots.map Slot.mode) live (env.get x) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
+    wp m (x.ownedCode h slots base live ++ rest) Q store s host := by
+  simp only [Var.ownedCode, List.append_assoc]
+  have hScratch := tTy.copyScratch_le
+  have hMode : modeAt (slots.map Slot.mode) x.index = (slots.getD x.index default).mode :=
+    Slot.modes_getD slots x.index
+  refine specB_var (S := []) (funs := .nil) (bounds := .nil) hm x env slots live h base heap store
+      s hh hpv hVars hAt
+    hCap hBase (by simp only [Expr.width]; omega) rfl _ _
+    (hTrap.narrow fun hw => hw.mono (by simp only [Expr.allocs, Var.ownedCost]; omega))
+    fun heap1 store1 s1 ws1 a1 hTop1 => ?_
+  have hTop1' := hTop1 rfl
+  simp only [Expr.allocs] at hTop1'
+  rw [show (Expr.var (S := []) x).mode (slots.map Slot.mode) = (slots.getD x.index default).mode
+    from Slot.modes_getD slots x.index] at a1
+  exact After.coerceB hm a1 (fun _ => rfl) le_rfl (by rw [a1.frame.params]; exact hBase)
+    (a1.frame.half.trans hh) (by omega) (by rw [a1.step.cap m]; exact hCap)
+    (fun hs _ _ => hTrap.within fun hw => by
+      have h2 := hw.after (heap1 := heap1) (store1 := store1)
+        (c1 := x.cost (slots.map Slot.mode) live (env.get x))
+        (c2 := coerceCost tTy (modeAt (slots.map Slot.mode) x.index) .owned (env.get x)) hTop1'
+        (a1.step.cap m)
+      simp only [coerceCost, hMode, hs, and_self, ↓reduceIte] at h2
+      exact h2)
+    fun heap2 store2 s2 ws2 a2 hTop2 => hNext heap2 store2 s2 ws2 a2 (by
+      simp only [Expr.denote] at hTop2
+      simp only [Var.ownedCost]; rw [hMode]; omega)
+
 end Cases
 
 end Verified
