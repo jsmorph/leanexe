@@ -27754,6 +27754,35 @@ def main (argv : List String) : IO Unit := do
     out.putStrLn s!"{x.toBits} {(f x).toBits}"
 ```
 
+### The Fourier check on exact references
+
+The exact `sin` and `cos` of `TrigAccuracy.lean` moved to `Reference.lean`: `arctanInv` and
+`piWide`, Machin's formula at 2,400 bits, `sinCosFixed`, the Taylor series at a reduced argument,
+`sinCosTurns`, for the angle `2 π num / den`, and `sinCos`, for a double.  Each states its error
+bound.  `TrigAccuracy.lean` uses `sinCos` and gives the same results as before: 7,394 of 360,022
+results unequal to the reference, and 313 of glibc's.
+
+`FourierAccuracy.lean` compared the transform with one built from glibc's `cos` and `sin`, within
+the tolerance `τ`, which follows the error bound of recursive summation and is a test tolerance,
+not a proved bound.  It now compares with the exact transform: each value times a factor of
+`sinCosTurns` is an integer at the scale `2 ^ -1374`, the sums are exact, and only the factors'
+errors, below `2 ^ -292`, and the final rounding separate it from the true transform.  The test waves come from `sinCosTurns` too,
+so that the check no longer uses the C library.  The largest distance from the exact transform over
+the 20 signals is `0.097 τ`, so `τ` holds about ten times the error measured.
+
+A fresh reviewer compared `sinCosTurns` and `sinCos` with Python's `decimal` on 74,140 inputs,
+without a quadrant or sign error and within the stated bounds, and confirmed that `exact` gives the
+correctly rounded transform of every hashed signal.  It found two inaccurate claims, both fixed.
+The header of `Reference.lean` claimed a relative error below `2 ^ -330`, where `sin` and `cos`
+have absolute bounds.  On the trig check's arguments other than 0, the smallest value is about
+`2 ^ -61`, so their relative error is below `2 ^ -231`, and the header now states `2 ^ -230`.  The
+header of `FourierAccuracy.lean` called the comparison the exact transform rounded, where a part
+that is exactly 0 comes out as the factors' error, near `10 ^ -89`.
+
+- [x] References moved, both checks on them, and `Fourier.lean`'s header within 100 columns.
+- [x] Fresh review, fixes, and the full suite: 15,260 cases pass, and the Fourier module's bytes
+  are unchanged.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code

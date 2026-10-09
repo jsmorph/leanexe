@@ -6,11 +6,12 @@ the transform computes `X k = Σ j, x j · exp (-2 π i j k / n)` in floating po
 layout, by the `n²` products of the definition.  An odd last float is ignored.  The factors
 `exp (-2 π i m / n)` come from `Trig.cosWith` and `Trig.sinWith` at the rounded angle `2 π m / n`,
 and the program lists their definitions and compiles them with it.  The functions take Trig's
-tables as parameters, and `twiddle`, `dft`, `inverse`, and `powerSpectrum` pass them.  The compiler's theorem states that the
-module computes these definitions bit for bit.  For the functions that allocate, `transformWith`,
-`dftWith`, `inverseWith`, and `powerSpectrumWith`, and their wrappers, it also allows a trap at `unreachable` on any input, since an
-allocation traps there when memory runs out.  `FourierAccuracy.lean` checks, in native Lean, that
-they behave as a Fourier transform. -/
+tables as parameters, and `twiddle`, `dft`, `inverse`, and `powerSpectrum` pass them.  The
+compiler's theorem states that the module computes these definitions bit for bit.  For the
+functions that allocate, `transformWith`, `dftWith`, `inverseWith`, and `powerSpectrumWith`, and
+their wrappers, it also allows a trap at `unreachable` on any input, since an allocation traps
+there when memory runs out.  `FourierAccuracy.lean` checks, in native Lean, that they behave as a
+Fourier transform. -/
 
 namespace Verified.Examples.Fourier
 

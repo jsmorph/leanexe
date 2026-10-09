@@ -1,9 +1,10 @@
 /-! Exact references for the accuracy checks of the transcendental functions, computed with Lean's
 integers.  A fixed-point value at precision `q` is an integer `v` that stands for `v · 2 ^ -q`.
-`ln 2` comes from `ln 2 = 2 atanh (1/3)`, `exp` from the reduction by `ln 2` and the Taylor series,
-and the rounding to the nearest double covers subnormals, zero, and overflow.  Each definition
-states the error that its truncations leave, which is below a relative `2 ^ -330` at the
-precisions that the checks use.  A reference can round the wrong way only where the exact
+`ln 2` comes from `ln 2 = 2 atanh (1/3)` and `π` from Machin's formula, `exp`, `sin`, and `cos`
+from reductions by them and Taylor series, `log` from `atanh`, and the rounding to the nearest
+double covers subnormals, zero, and overflow.  Each definition
+states the error that its truncations leave, which is below a relative `2 ^ -230` for every value
+that a check compares unit by unit.  A reference can round the wrong way only where the exact
 value lies that near a midpoint between doubles, and then the two doubles beside the midpoint are
 the only ones within one unit of it, so a check of one unit passes for the result either way. -/
 
@@ -111,6 +112,65 @@ def log (m : Nat) (e : Int) (q : Nat) : Int :=
   let a : Int := 2 * atanhFixed (num.natAbs * 2 ^ q / (m + 2 ^ L)) q
   (e + L) * ln2 q + if num < 0 then -a else a
 
+/-- `arctan (1 / x) · 2 ^ w` for `x ≥ 2`, by its alternating series, within `n + 1` units of the
+exact value for `n` terms: each term is the floor of the exact term, and the terms omitted sum to
+less than the first of them, which is below one unit. -/
+def arctanInv (x w : Nat) : Int := Id.run do
+  let mut total : Int := 0
+  let mut term : Nat := 2 ^ w / x
+  let mut n := 1
+  let mut sign : Int := 1
+  while term != 0 do
+    total := total + sign * (term / n : Nat)
+    term := term / (x * x)
+    n := n + 2
+    sign := -sign
+  return total
+
+/-- `π · 2 ^ W` by Machin's formula `π = 16 arctan (1/5) - 4 arctan (1/239)`, within `2 ^ 14`
+units, since the series have 517 and 152 terms. -/
+def piWide : Int := 4 * (4 * arctanInv 5 W - arctanInv 239 W)
+
+/-- `π · 2 ^ q` for `q ≤ W - 14`, within two units. -/
+def pi (q : Nat) : Int := piWide / 2 ^ (W - q)
+
+/-- `(sin ρ, cos ρ) · 2 ^ q` for `ρ = r · 2 ^ -q` with `|ρ| ≤ 1`, by the Taylor series at `|ρ|`.
+Each term is the floor of `|ρ| ^ k / k! · 2 ^ q` computed from the one before, less than two units
+below the exact term, and the series stops at the first term that is zero, so that each value lies
+within `2 n + 2` units of the exact one for `n` terms. -/
+def sinCosFixed (r : Int) (q : Nat) : Int × Int := Id.run do
+  let a := r.natAbs
+  let mut s : Int := 0
+  let mut c : Int := 0
+  let mut term : Nat := 2 ^ q
+  let mut k := 0
+  while term != 0 do
+    match k % 4 with
+    | 0 => c := c + term
+    | 1 => s := s + term
+    | 2 => c := c - term
+    | _ => s := s - term
+    k := k + 1
+    term := term * a / 2 ^ q / k
+  return (if r < 0 then -s else s, c)
+
+/-- `(sin, cos)` of `k π/2 + ρ` from `(sin ρ, cos ρ)`. -/
+def quadrant (k : Nat) (s c : Int) : Int × Int :=
+  match k % 4 with
+  | 0 => (s, c)
+  | 1 => (c, -s)
+  | 2 => (-s, -c)
+  | _ => (-c, s)
+
+/-- `(sin θ, cos θ) · 2 ^ q` for `θ = 2 π num / den`, `den > 0`, and `q ≤ W - 14`, from the
+nearest multiple `k π/2` of `θ` and the series at `θ - k π/2`.  The error of `π` moves the reduced
+angle by less than half a unit and its truncation by less than one, so that each value lies within
+`2 n + 4` units of the exact one for `n` terms of the series. -/
+def sinCosTurns (num den q : Nat) : Int × Int :=
+  let k := (8 * num + den) / (2 * den)
+  let (s, c) := sinCosFixed ((((4 * num : Nat) : Int) - (k * den : Nat)) * pi q / (2 * den)) q
+  quadrant k s c
+
 /-- `v / 2 ^ n` rounded to the nearest integer, ties to even. -/
 def roundShift (v n : Nat) : Nat :=
   if n == 0 then v
@@ -160,6 +220,18 @@ magnitude. -/
 def precision (x : Float) : Nat :=
   let (m, e) := exactValue x
   P + (-((Nat.log2 m.natAbs : Int) + e)).toNat
+
+/-- `(sin x, cos x) · 2 ^ q` for a finite `x` and `q ≤ 300`, from the nearest multiple `k π/2` of
+`|x|` and the series at `|x| - k π/2`, which has at most 70 terms.  `|x| · 2/π · 2 ^ q` comes from
+`piWide`, whose relative error is below `2 ^ -2387`, within two units, so that the reduced angle
+lies within 5 units and each value within `2 ^ 8` units of the exact one. -/
+def sinCos (x : Float) (q : Nat) : Int × Int :=
+  let (m, e) := exactValue x
+  let t : Int := (m.natAbs * 2 ^ (e + W + 1 + q).toNat : Nat) / piWide
+  let k := (t / 2 ^ q).toNat + if t % 2 ^ q ≥ 2 ^ (q - 1) then 1 else 0
+  let (s, c) := sinCosFixed ((t - k * 2 ^ q) * piWide / 2 ^ (W + 1)) q
+  let (s, c) := quadrant k s c
+  if m < 0 then (-s, c) else (s, c)
 
 /-- The position of a float that is not NaN among the floats in order, in which `∞` follows the
 largest finite double and `0` and `-0` share a position. -/
