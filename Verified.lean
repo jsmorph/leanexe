@@ -33,4 +33,5 @@ import Verified.Examples.Tables
 import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
+import Verified.Examples.Drone
 import Verified.Examples.Reference

@@ -27,6 +27,7 @@ import Verified.Examples.Tables
 import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
+import Verified.Examples.Drone
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -276,6 +277,85 @@ def trigArgs : List Float :=
     Float.ofBits ((e <<< (52 : UInt64)) ||| (h &&& 0xFFFFFFFFFFFFF))
   let all := special ++ thresholds ++ multiples ++ hashed ++ huge
   all ++ all.map (- ·)
+
+open _root_.Examples.Drone in
+/-- The words of an array of choices, three for each. -/
+def choiceWords (cs : Array Choice) : Array UInt64 :=
+  (cs.toList.flatMap fun c => [c.time, c.excess, c.parent]).toArray
+
+open _root_.Examples.Drone in
+def choiceArg (c : Choice) : String := s!"i64:{c.time} i64:{c.excess} i64:{c.parent}"
+
+open _root_.Examples.Drone in
+def choiceOut (c : Choice) : String := s!"{c.time} {c.excess} {c.parent}"
+
+open _root_.Examples.Drone in
+/-- The cases of the drone planner: `compute` on the terrains of `tests/drone/corpus.txt`, which
+leave the host's terrain and the result live, and each other export on terrains, rows, and tables
+from native runs of the planner. -/
+def droneCases : IO Unit := do
+  let terrains ← (← IO.FS.lines "tests/drone/corpus.txt").toList.mapM fun line => do
+    let t := (line.splitOn "|").headD ""
+    let terrain : Array UInt64 :=
+      if t.isEmpty then #[] else (t.splitOn ",").toArray.map fun w => w.toNat!.toUInt64
+    return terrain
+  for terrain in terrains do
+    IO.println s!"drone|compute|array-u64|{arrayArg terrain}|{arrayOut (compute terrain)}|2"
+  for n in [0, 1, 2, 3, 100, 101, 1000, 65535, 65536, 4294967296] do
+    IO.println s!"drone|ceilSqrt|i64|i64:{n}|{ceilSqrt n}"
+    IO.println s!"drone|restSeconds|i64|i64:{n}|{restSeconds n}"
+  for (r0, r1) in [(0, 0), (0, 100), (100, 0), (500, 525)] do
+    for (z0, z1) in [(0, 0), (100, 125), (200, 100), (700, 900)] do
+      for (u, v) in [(0, 0), (0, 5), (10, 15), (20, 20), (5, 20)] do
+        let t := edgeTicks r0 r1 (r0 + z0) (r1 + z1) u v
+        IO.println s!"drone|edgeTicks|i64|i64:{r0} i64:{r1} i64:{r0 + z0} i64:{r1 + z1} \
+          i64:{u} i64:{v}|{t}"
+  for (a, b) in [(0, 0), (5, 100), (100, 5), (0, 18446744073709551615)] do
+    IO.println s!"drone|distance|i64|i64:{a} i64:{b}|{distance a b}"
+  for state in [0, 4, 5, 23, 44] do
+    IO.println s!"drone|altitude|i64|i64:100 i64:{state}|{altitude 100 state}"
+    IO.println s!"drone|speed|i64|i64:{state}|{speed state}"
+  let choices : List Choice := [⟨0, 0, 0⟩, ⟨840, 100, 3⟩, ⟨840, 50, 7⟩, ⟨840, 100, 9⟩,
+    ⟨1000000000000, 1000000000000, 0⟩]
+  for a in choices do
+    for b in choices do
+      IO.println s!"drone|choose|list:i64,i64,i64|{choiceArg a} {choiceArg b}|\
+        {choiceOut (choose a b)}"
+  IO.println s!"drone|initial|array-u64||{arrayOut (choiceWords initial)}|1"
+  let samples := [#[0, 100, 50, 0], #[500], #[0, 2000000, 0]] ++ terrains.take 4
+  for terrain in samples do
+    let a := arrayArg terrain
+    let n := terrain.size.toUInt64
+    let count := if 0 < n && n ≤ 64 && validHeights terrain then n else 0
+    IO.println s!"drone|validHeights|i64|{a}|{bit (validHeights terrain)}|1"
+    for i in List.range terrain.size do
+      IO.println s!"drone|floorAt|i64|{a} i64:{i}|{floorAt terrain i.toUInt64}|1"
+    let (status, next, table) := forward terrain count
+    let w := arrayArg (choiceWords table)
+    IO.println s!"drone|forward|list:i64,i64,array-u64|{a} i64:{count}|{status} {next} \
+      {arrayOut (choiceWords table)}|2"
+    IO.println s!"drone|output|array-u64|{a} {w} i64:{count}|\
+      {arrayOut (output terrain table count)}|3"
+    for i in [1, count.toNat] do
+      let rows := table.extract 0 (45 * max i 1)
+      let (s1, s2, t) := extend terrain count i.toUInt64 rows
+      IO.println s!"drone|extend|list:i64,i64,array-u64|{a} i64:{count} i64:{i} \
+        {arrayArg (choiceWords rows)}|{s1} {s2} {arrayOut (choiceWords t)}|2"
+    for k in (List.range (min 3 terrain.size)).drop 1 do
+      let r0 := floorAt terrain (k - 1).toUInt64
+      let r1 := floorAt terrain k.toUInt64
+      let base := (45 * (k - 1)).toUInt64
+      let last := k + 1 == terrain.size
+      IO.println s!"drone|advance|array-u64|i64:{r0} i64:{r1} {boolArg last} {w} i64:{base}|\
+        {arrayOut (choiceWords (advance r0 r1 last table base))}|2"
+      for target in [0, 7, 44] do
+        for sources in [0, 20, 45] do
+          IO.println s!"drone|best|list:i64,i64,i64|i64:{r0} i64:{r1} {w} i64:{base} \
+            i64:{target} i64:{sources}|{choiceOut (best r0 r1 table base target sources)}|1"
+        for source in [0, 6, 44] do
+          let old := table[(base + source).toNat]!
+          IO.println s!"drone|predecessor|list:i64,i64,i64|i64:{r0} i64:{r1} {choiceArg old} \
+            i64:{target} i64:{source}|{choiceOut (predecessor r0 r1 old target source)}"
 
 end Verified.Examples
 
@@ -597,6 +677,7 @@ def main : IO Unit := do
       Float.ofBits (((UInt64.ofNat i * 10 + 13) <<< 52) + 0x8765432112345)
   for x in logArgs do
     IO.println s!"log|log|f64|{floatArg x}|{(Log.log x).toBits}"
+  droneCases
   -- Constant tables, read in range and past the end, and an update of an owned array from one.
   for k in [0, 1, 3, 5, 7, 8, 100, 18446744073709551615] do
     IO.println s!"tables|square|i64|i64:{k}|{Tables.square k}"

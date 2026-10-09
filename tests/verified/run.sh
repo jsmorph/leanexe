@@ -41,7 +41,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Clob:compiled.module:clob \
     Verified.Examples.Tables:compiled.module:tables \
     Verified.Examples.Exp:compiled.module:exp Verified.Examples.Tanh:compiled.module:tanh \
-    Verified.Examples.Log:compiled.module:log; do
+    Verified.Examples.Log:compiled.module:log Verified.Examples.Drone:compiled.module:drone; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
