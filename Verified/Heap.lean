@@ -102,20 +102,6 @@ theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt3
   apply UInt32.toNat_inj.mp
   simp [UInt64.toNat_toUInt32]
 
-/-- `wrap_toUInt32` with the modulus as `simp` writes it. -/
-theorem ofNat_mod_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 4294967296) = a.toUInt32 :=
-  wrap_toUInt32 a
-
-/-- The offset of element `k` of an array of `size` words. -/
-theorem element_offset {k : UInt64} {size : Nat} (hk : k.toNat < size)
-    (hSize : 8 * (size + 1) ≤ 4294967296) :
-    (k + 1) * 8 = UInt64.ofNat (8 * (k.toNat + 1)) := by
-  have := hk
-  have := hSize
-  apply UInt64.toNat_inj.mp
-  simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
-  omega
-
 /-- The address of element `k` of the array at `ptr`. -/
 theorem element_address (ptr : UInt64) (k : Nat) :
     (ptr + (UInt64.ofNat k + 1) * 8).toUInt32 = UInt64Array.wordAddress ptr (k + 1) := by
@@ -1071,7 +1057,7 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
 
 /-- The release of the owned value of type `t` whose words locals `src` on hold: a step that
 consumes the value's blocks and leaves `top`. -/
-theorem wp_releaseCodeT {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
+theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {src : Nat} {ws : List Value}
       {v : t.denote} {rest : Program} {Q : Assertion Unit},
     heap.At store → t.Rep .owned heap store ws v → LocalsHold s src t.types ws →
@@ -1096,12 +1082,12 @@ theorem wp_releaseCodeT {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       (LocalsHold.append (hl1.trans a.types_length.symm)).mp hold
     rw [hl1] at hold2
     simp only [releaseCode, List.append_assoc]
-    refine wp_releaseCodeT hm a hAt h1 hold1 fun heap1 store1 hStep1 hTop1 => ?_
+    refine wp_releaseCode hm a hAt h1 hold1 fun heap1 store1 hStep1 hTop1 => ?_
     -- The second component's blocks lie apart from the first's, so the first release keeps them.
     obtain ⟨hR2, hSame2, -⟩ :=
       h2.step hStep1 fun r hr x hx => regionsDisjoint_symm (hd rfl x hx r hr)
     have hBlocks2 : b.blocks store1 second v.2 = b.blocks store second v.2 := hSame2
-    refine wp_releaseCodeT hm b hStep1.at_ hR2 hold2 fun heap2 store2 hStep2 hTop2 => ?_
+    refine wp_releaseCode hm b hStep1.at_ hR2 hold2 fun heap2 store2 hStep2 hTop2 => ?_
     refine hNext heap2 store2 (hStep1.trans hStep2 fun r hr => ⟨fun x hx => ?_, fun _ x hx => ?_⟩)
       (hTop2.trans hTop1)
     · rw [Ty.blocks_append hl1] at hr
@@ -1109,18 +1095,6 @@ theorem wp_releaseCodeT {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     · rw [Ty.blocks_append hl1] at hr
       rw [hBlocks2] at hx
       exact hr x (List.mem_append_right _ hx)
-
-/-- The release of the owned value of type `t` whose words locals `src` on hold: a step that
-consumes the value's blocks. -/
-theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} (t : Ty)
-    {heap : Heap} {store : Store Unit} {s : Locals} {src : Nat} {ws : List Value} {v : t.denote}
-    {rest : Program} {Q : Assertion Unit} (hAt : heap.At store)
-    (hRep : t.Rep .owned heap store ws v) (hold : LocalsHold s src t.types ws)
-    (hNext : ∀ (heap' : Heap) (store' : Store Unit),
-      Step heap store (fun r => ∀ b ∈ t.blocks store ws v, regionsDisjoint r b) heap' store' [] →
-      wp m rest Q store' s host) :
-    wp m (releaseCode t src ++ rest) Q store s host :=
-  wp_releaseCodeT hm t hAt hRep hold fun heap' store' hStep _ => hNext heap' store' hStep
 
 /-- The state evolved from `heap` at `store` with locals `s` to `heap'` at `store'` with `s'`:
 a step that consumes the blocks of the owned variables that die between `liveIn` and `live`, no
@@ -1175,7 +1149,7 @@ end Evolves
 
 /-- The release of the owned variables at the indices `is`, each once: the state evolves to one
 in which they are no longer live, with the same `top`. -/
-theorem wp_releaseVarsT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
+theorem wp_releaseVars {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
     {env : Env Γ} {slots : List Slot} {base : Nat} :
     (is : List Nat) → is.Nodup → ∀ {live : Nat → Bool} {heap : Heap} {store : Store Unit}
       {s : Locals} {rest : Program} {Q : Assertion Unit},
@@ -1196,7 +1170,7 @@ theorem wp_releaseVarsT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ 
         heap1.top = heap.top →
         wp m (is.flatMap (releaseVar Γ slots) ++ rest) Q store1 s host := by
       intro heap1 store1 e1 hTop1
-      refine wp_releaseVarsT hm is hNodup' e1.holds e1.step.at_ (fun j hj => ?_)
+      refine wp_releaseVars hm is hNodup' e1.holds e1.step.at_ (fun j hj => ?_)
         fun heap2 store2 e2 hTop2 => ?_
       · simp only [live1, Bool.and_eq_true, bne_iff_ne]
         exact ⟨hLive j (List.mem_cons_of_mem _ hj), fun he => hi (he ▸ hj)⟩
@@ -1223,7 +1197,7 @@ theorem wp_releaseVarsT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ 
       by_cases hOwned : (slots.getD i default).mode = .owned
       · simp only [hOwned, ↓reduceIte]
         rw [hOwned] at hRep
-        refine wp_releaseCodeT hm t hAt hRep hold fun heap1 store1 hStep1 hTop1 =>
+        refine wp_releaseCode hm t hAt hRep hold fun heap1 store1 hStep1 hTop1 =>
           hRest heap1 store1 ?_ hTop1
         refine ⟨hStep1.mono (fun r hr b hb => hr t x (by rw [hxi]; exact hLive i (by simp))
             (by simp [live1, hxi]) (by rw [hxi]; exact hOwned) ws (by rw [hxi]; exact hold)
@@ -1239,21 +1213,9 @@ theorem wp_releaseVarsT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ 
       · simp only [hOwned, ↓reduceIte, List.nil_append]
         exact hRest heap store (Evolves.refl hAt hVars fun j _ h => hSub1 j h) rfl
 
-/-- The release of the owned variables at the indices `is`, each once: the state evolves to one
-in which they are no longer live. -/
-theorem wp_releaseVars {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
-    {env : Env Γ} {slots : List Slot} {base : Nat} (is : List Nat) (hNodup : is.Nodup)
-    {live : Nat → Bool} {heap : Heap} {store : Store Unit} {s : Locals} {rest : Program}
-    {Q : Assertion Unit} (hVars : Holds env slots live base heap store s) (hAt : heap.At store)
-    (hLive : ∀ i ∈ is, live i = true)
-    (hNext : ∀ heap' store', Evolves env slots live (fun i => live i && !is.contains i) base heap
-      store s heap' store' s → wp m rest Q store' s host) :
-    wp m (is.flatMap (releaseVar Γ slots) ++ rest) Q store s host :=
-  wp_releaseVarsT hm is hNodup hVars hAt hLive fun heap' store' e _ => hNext heap' store' e
-
 /-- The release of the owned variables that `sel` selects among those live, which leaves
 `top`. -/
-theorem wp_releaseWhereT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
+theorem wp_releaseWhere {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
     {env : Env Γ} {slots : List Slot} {base : Nat} {sel live : Nat → Bool} {heap : Heap}
     {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
     (hVars : Holds env slots live base heap store s) (hAt : heap.At store)
@@ -1262,7 +1224,7 @@ theorem wp_releaseWhereT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ
       s heap' store' s → heap'.top = heap.top → wp m rest Q store' s host) :
     wp m (releaseWhere Γ slots sel ++ rest) Q store s host := by
   unfold releaseWhere
-  refine wp_releaseVarsT hm _ (List.nodup_range.filter _) hVars hAt
+  refine wp_releaseVars hm _ (List.nodup_range.filter _) hVars hAt
     (fun i hi => hSel i (List.mem_filter.mp hi).2) fun heap' store' e hTop =>
       hNext heap' store' ?_ hTop
   have hSame : ∀ i < Γ.length,
@@ -1272,16 +1234,5 @@ theorem wp_releaseWhereT {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ
   exact ⟨e.step.mono (fun r hr => hr.congr fun i hi h1 h2 => ⟨h1, by rw [← hSame i hi]; exact h2⟩)
       (fun _ h => h), e.frame,
     e.holds.live_mono' fun i hi h => by rw [hSame i hi]; exact h⟩
-
-/-- The release of the owned variables that `sel` selects among those live. -/
-theorem wp_releaseWhere {m : Module} (hm : Runtime m) {host : HostEnv Unit} {Γ : List Ty}
-    {env : Env Γ} {slots : List Slot} {base : Nat} {sel live : Nat → Bool} {heap : Heap}
-    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
-    (hVars : Holds env slots live base heap store s) (hAt : heap.At store)
-    (hSel : ∀ i, sel i = true → live i = true)
-    (hNext : ∀ heap' store', Evolves env slots live (fun i => live i && !sel i) base heap store
-      s heap' store' s → wp m rest Q store' s host) :
-    wp m (releaseWhere Γ slots sel ++ rest) Q store s host :=
-  wp_releaseWhereT hm hVars hAt hSel fun heap' store' e _ => hNext heap' store' e
 
 end Verified
