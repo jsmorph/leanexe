@@ -1,4 +1,4 @@
-import LeanExe.Dialect.Loop
+import Verified.Examples.Orbit
 import Mathlib.Algebra.Ring.Periodic
 import Mathlib.Data.Nat.Factorization.Basic
 import Mathlib.Data.UInt
@@ -31,15 +31,8 @@ def advance (n x : UInt64) : UInt64 := LeanExe.loop n x fun _ s => step s
 open Function
 open scoped UInt64.CommRing
 
-theorem loop_eq_iterate {α : Type} (f : α → α) (n : UInt64) (x : α) :
-    LeanExe.loop n x (fun _ s => f s) = f^[n.toNat] x := by
-  unfold LeanExe.loop
-  induction n.toNat with
-  | zero => rfl
-  | succ m ih => rw [Nat.fold_succ, ih, iterate_succ_apply']
-
 theorem advance_eq_iterate (n x : UInt64) : advance n x = step^[n.toNat] x :=
-  loop_eq_iterate step n x
+  Orbit.loop_eq_iterate step n x
 
 theorem mod_add_mul_div (a m : UInt64) : a % m + m * (a / m) = a := by
   apply UInt64.toNat_inj.mp
@@ -130,14 +123,9 @@ theorem minimalPeriod_eq_of_conditions {a c : UInt64} (ha : a % 4 = 1) (hc : c %
 exactly one count of steps below `2^64`. -/
 theorem existsUnique_iterate {f : UInt64 → UInt64} {x : UInt64}
     (h : minimalPeriod f x = 2 ^ 64) (y : UInt64) : ∃! n, n < 2 ^ 64 ∧ f^[n] x = y := by
-  have inj : Set.InjOn (fun n => f^[n] x) (Set.Iio (2 ^ 64)) := by
-    simpa [h] using iterate_injOn_Iio_minimalPeriod (f := f) (x := x)
-  let g : Fin UInt64.size → Fin UInt64.size := fun n => (f^[n] x).toFin
-  have ginj : Injective g := fun m n hmn =>
-    Fin.ext (inj m.isLt n.isLt (UInt64.toFin_injective hmn))
-  obtain ⟨n, hn⟩ := Finite.injective_iff_surjective.mp ginj y.toFin
-  exact ⟨n, ⟨n.isLt, UInt64.toFin_injective hn⟩, fun m hm =>
-    inj hm.1 n.isLt (hm.2.trans (UInt64.toFin_injective hn).symm)⟩
+  rw [← h]
+  exact Orbit.existsUnique_iterate (S := Set.univ)
+    (by rw [Nat.card_univ, Orbit.natCard_uint64, h]) (fun _ => trivial) trivial
 
 /-! ### Reduction modulo a divisor of `2^64` -/
 
