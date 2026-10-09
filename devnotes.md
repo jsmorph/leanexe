@@ -27882,13 +27882,77 @@ meanings.  The theorem rests on Talos's model, in which `memory.grow` succeeds w
 allows it, and a real engine may refuse earlier.
 
 - [x] Review of this design.
-- [ ] `allocCost`, `Ty.copyCost`, `Expr.allocs`, `Bounds`, and `Prog.bounds`.
-- [ ] `wp_alloc` and the copy lemmas of `Heap.lean` with the allowance and the growth of `top`.
-- [ ] The rules, the new `CodeSpec`, `FunSpec`, and `Prog.correct`; the old rules removed.
-- [ ] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
-- [ ] `p.f.bound` with a plain Lean equation, and `p.f.trapFree`, in the reflector.
+- [x] `allocCost`, `Ty.copyCost`, `Expr.allocs`, `Bounds`, and `Prog.bounds`.
+- [x] `wp_alloc` and the copy lemmas of `Heap.lean` with the allowance and the growth of `top`.
+- [x] The rules, the new `CodeSpec`, `FunSpec`, and `Prog.correct`; the old rules removed.
+- [x] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
+- [x] `p.f.bound` as the compiler's bound, and `p.f.trapFree`, in the reflector.
+- [ ] `p.f.bound_eq`, the bound as a plain Lean equation.
+- [ ] Wrappers with the bound.
 - [ ] A page bound for the drone.
 - [ ] Recursion, with a bound on the depth.
+
+### Trap-free theorems: implementation
+
+The budgeted rules were written beside the old ones in a separate file, one construct per commit,
+and each of those commits built.  When the induction over expressions and the function and program theorems
+were proved, the old rules went: a Lean script walked the constants that the kept declarations use,
+from the examples, the reflector, the budgeted theorems, and the program-level theorems, and found
+that only seven helpers besides the 54 old declarations had no other use.  The budgeted names then
+took the old ones, so `CodeSpec`, `FunSpec`, `Calls`, `CallsAt`, the `spec_` rules, and
+`Prog.calls` are the budgeted statements.  [`Correct.lean`](Verified/Correct.lean) holds the rules
+and the theorem, [`After.lean`](Verified/After.lean) the facts that the rules share, and
+[`Bound.lean`](Verified/Bound.lean) the bound.
+
+Three things differ from the design.  `Prog.correct` does not keep its statement: it states
+`Calls (compile prog) funs (prog.bounds funs)`, from which `ImplementsB.implementsA` gives the old
+`ImplementsA aborts` with trivial conditions, so `Examples/Tuples.lean` names the bounds.
+`wp_requestCode` gained an upper bound on the bytes it requests, the larger of what the new length
+needs and twice the capacity, which the growth of an owned array needs to stay within its charge of
+`allocCost (16 · (len' + 1))`.  A function's bound is `bodyBound` of its modes and body, which
+`Func.bound` names, since `body_code_spec` and `bodyFunction_runs` take a body and its modes, as
+recursive functions need.
+
+`ImplementsB.trapFree` gives `ImplementsA false` under `heap.Within store m (bound x)`, with the
+postcondition that `top` rises by at most the bound, and `ImplementsB.noTrap` gives the same
+postcondition without a precondition for a function whose `aborts` is false.  The reflector emits
+`p.f.bound`, the compiler's bound composed with the flattening of Lean's argument tuple, and
+`p.f.trapFree` for every function whose code takes no call depth.  Wrappers get no `trapFree` yet.
+The first version added `p.f.bound` with the reducibility height 1 that the reflector's
+`addDefinition` gives every definition.  The kernel unfolds the side of greater height first, so
+when it matched the statement with the proof it unfolded the compiler's bound over the reflected
+body instead of `p.f.bound`, and `Examples/Exp.lean` ran for an hour without finishing.  With the
+height of its value plus one, the kernel unfolds `p.f.bound` first, and `Exp.lean` builds in 8
+seconds.
+Evaluated, `Grow.compiled.evens.bound n` is `8 n² + 72 n + 56` for `n` up to 5, as the research
+below derived by hand.
+
+A research agent compared ways to state the bound as a plain Lean equation: the compiler's bound
+alone, a reflected term that mirrors the user's definition with an equation proved per Lean form as
+for meanings, and coarser forms.  It recommended the compiler's bound first and the mirrored
+equation `p.f.bound_eq` second, at an estimated 1,000 to 2,000 lines, since a numeric bound from the
+compiler's bound alone means unfolding `Expr.allocs` over the reflected code in every user proof.
+It derived by hand that the drone's `compute` has the bound `540 c² + 612 c + 56` bytes for `c`
+stations, at most 2,251,064 for the 64 stations that `compute` accepts, since the drone has no
+`push` and builds every array.  Evaluated with `#eval`, `compiled.compute.bound` equals that
+formula at 1, 2, 3, 4, 6, 8, 12, and 64 stations, 2,251,064 bytes at 64, and it is 1,192 bytes for
+65 stations, which `compute` rejects.  The evaluation interprets `Expr.allocs` over the reflected
+program and takes 414 seconds at 64 stations.  The bound charges a loop of `n` pushes about `8 n²`
+bytes and counts total rather than peak allocation, which a later program may need to change.
+
+A fresh reviewer found no defect in the statements: `Expr.allocs` charges every allocation of the
+compiled code, the allowance matches the design, and the old guarantees follow.  It found stale
+documentation, now fixed: this checklist, the doc comments of `Prog.correct` and four allocation
+lemmas, the README's undefined `cap`, and the README's list of the definitions a reader must check,
+which now names `Heap.Within`.  It suggested the precondition-free theorem for functions that cannot
+trap, which the reflector now emits, a bounded wrapper theorem, a bound on memory pages, which no
+theorem gives since the postcondition bounds `top`, and documentation of units, the cap of 65,535
+pages, and Talos's model of `memory.grow` for each `trapFree`.
+
+Commit `7c42e31c` holds only the file renames and does not build, and `e9f20f39` completes it.  A
+full build of `Verified` takes about 1,600 seconds, longer than the 900 seconds that
+`tools/leanrun` allows by default, and `Examples/Repeat.lean` alone takes more than 900, so long
+builds run with `--timeout`.  The suite passes 15,837 cases after the replacement.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

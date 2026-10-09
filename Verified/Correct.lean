@@ -4992,6 +4992,14 @@ theorem ImplementsB.implementsA {α β : Type} {_ : Represent α} {_ : Represent
       fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
         ⟨heap', hAt', hOwned, hCaps, hRegions, trivial⟩
 
+/-- `ImplementsB` for a call that cannot trap gives `ImplementsA false` without a precondition, and
+the call raises `top` by at most the bound. -/
+theorem ImplementsB.noTrap {α β : Type} {_ : Represent α} {_ : Represent β} {m : Module}
+    {entry : Nat} {f : α → β} {bound : α → Nat} (h : ImplementsB false m entry f bound) :
+    ImplementsA false m entry f (fun _ _ _ => True)
+      (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + bound x) :=
+  fun env store heap params x hAt _ hRep hSep hCap => h env store heap params x hAt hRep hSep hCap
+
 /-- `ImplementsB` gives a call that does not trap when `top` can rise by the bound within the
 cap, and that raises `top` by at most the bound. -/
 theorem ImplementsB.trapFree {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
@@ -5012,9 +5020,11 @@ theorem compile_runtime {S : List Sig} (prog : Prog S) : Runtime (compile prog) 
   compileWith_runtime prog [] []
 
 /-- The correctness theorem.  For meanings `funs` of a program's functions, every function of the
-program's module, at its call index, computes the function that `funs` gives it: it returns words
-that represent the value, with the heap and store changed only as `ImplementsA` allows, and it
-traps only at `unreachable`, only when it may allocate or its code takes the call depth. -/
+program's module, at its call index, computes the function that `funs` gives it, as `FunSpec`
+states with the bounds `Prog.bounds`: it returns words that represent the value, with the heap and
+store changed only as `ImplementsA` allows.  A function whose code takes no call depth traps only
+at `unreachable`, only when it may allocate and `top` cannot rise by its bound within the cap, and
+it raises `top` by at most its bound.  A function whose code takes the call depth may trap. -/
 theorem Prog.correct {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs) :
     Calls (compile prog) funs (prog.bounds funs) :=
   prog.calls funs h _ (compile_runtime prog) fun _ hk => compile_funcs prog hk
