@@ -4490,4 +4490,100 @@ theorem specB_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' 
 
 end Cases
 
+/-- The code of every expression meets its specification with the allocation bound. -/
+theorem Expr.code_specB {S : List Sig} (m : Module) (funs : Funs S) (bounds : Bounds S)
+    (host : HostEnv Unit) (hm : Runtime m) {pv : List Value} {d0 : UInt64}
+    (hCalls : CallsAtB m funs bounds d0) {Γ : List Ty} {t : Ty} (expr : Expr S Γ t) :
+    (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
+    ∀ env slots live, CodeSpecB m funs bounds host pv expr env slots live := by
+  induction expr with
+  | word value => intro _; exact specB_word value
+  | bool value => intro _; exact specB_bool value
+  | var x => intro _; exact specB_var hm x
+  | bin op left right leftSpec rightSpec =>
+    intro hD
+    exact specB_bin op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | cmp op left right leftSpec rightSpec =>
+    intro hD
+    exact specB_cmp op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | not e eSpec => intro hD; exact specB_not (eSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | and left right leftSpec rightSpec =>
+    intro hD
+    exact specB_and (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | or left right leftSpec rightSpec =>
+    intro hD
+    exact specB_or (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | ite c thenE elseE cSpec thenSpec elseSpec =>
+    intro hD
+    exact specB_ite hm (cSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (thenSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (elseSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | letE value body valueSpec bodySpec =>
+    intro hD
+    exact specB_letE hm (valueSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | call g args argsSpec =>
+    intro hD
+    exact specB_call hm hCalls g args (fun i => argsSpec i fun h => hD (by
+      simp only [Expr.depthCalls, Bool.or_eq_true]
+      exact Or.inr (le_argsAny _ i h))) hD
+  | pair first second firstSpec secondSpec =>
+    intro hD
+    exact specB_pair hm (firstSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (secondSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | letPair e body eSpec bodySpec =>
+    intro hD
+    exact specB_letPair hm (eSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | loop count init cond body countSpec initSpec condSpec bodySpec =>
+    intro hD
+    exact specB_loop hm (countSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (initSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (condSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | size x => intro _; exact specB_size hm x
+  | get x i iSpec =>
+    intro hD; exact specB_get hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | build count elem countSpec elemSpec =>
+    intro hD
+    exact specB_build hm (countSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (elemSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | set x i v iSpec vSpec =>
+    intro hD
+    exact specB_set hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | push x v vSpec =>
+    intro hD; exact specB_push hm x (vSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | append x y => intro _; exact specB_append hm x y
+  | insertAt x i v iSpec vSpec =>
+    intro hD
+    exact specB_insertAt hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (vSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | eraseAt x i iSpec =>
+    intro hD; exact specB_eraseAt hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | float bits => intro _; exact specB_float bits
+  | fbin op left right leftSpec rightSpec =>
+    intro hD
+    exact specB_fbin op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | funary op e eSpec =>
+    intro hD; exact specB_funary op (eSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | fcmp op left right leftSpec rightSpec =>
+    intro hD
+    exact specB_fcmp op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (rightSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | toFloat op e eSpec =>
+    intro hD; exact specB_toFloat op (eSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | toWord op e eSpec =>
+    intro hD; exact specB_toWord op (eSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | mk first second firstSpec secondSpec =>
+    intro hD
+    exact specB_mk (firstSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (secondSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | proj x p => intro _; exact specB_proj x p
+
 end Verified
