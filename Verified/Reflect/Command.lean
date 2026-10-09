@@ -2099,8 +2099,8 @@ def elabVerifiedCompile : CommandElab
           pure (← `(Verified.Prog.correct_entryWith $progId $funsId $meaningId $tablesId
             $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
         else
-          pure (← `((Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId
-            $fvar).1 rfl), 2 + k)
+          pure (← `(Verified.ImplementsB.implementsA ((Verified.Prog.correctWith $progId $funsId
+            $meaningId $tablesId $wrappersId $fvar).1 rfl)), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
