@@ -75,6 +75,106 @@ def argCost {S : List Sig} {Γ : List Ty} (funs : Funs S) (bounds : Bounds S) (m
   if (ps.get i).scalar then (args i).allocs funs bounds modesL all env
   else if modes i = .owned then (args i).ownedCost modesL kept env else 0
 
+/-- `ImplementsA` with the allocation bound `bound`: the call traps only when `aborts` holds and
+`top` cannot rise by `bound x` within the cap, and it raises `top` by at most `bound x`. -/
+def ImplementsB {α β : Type} [Represent α] [Represent β] (aborts : Bool) (m : Module) (entry : Nat)
+    (f : α → β) (bound : α → Nat) : Prop :=
+  ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
+    heap.At store → Represent.borrowed heap store params x →
+    Separate store (Represent.moves store params x) (Represent.reads store params x) →
+    store.memoryCap m 0 ≤ 65535 →
+    Runs (aborts && !decide (heap.Within store m (bound x))) env m entry store params.reverse
+      fun final values =>
+      ∃ heap' : Heap, heap'.At final ∧ Represent.owned heap' final values.reverse (f x) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 → Apart store (Represent.moves store params x) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r ∧ Represent.outside final values.reverse (f x) r) ∧
+        heap'.top.toNat ≤ heap.top.toNat + bound x
+
+/-- `FunSpec` with the allocation bound `A`: a function whose code takes no call depth is
+`ImplementsB` for `A`, and one whose code takes it is as `FunSpec` states. -/
+def FunSpecB (m : Module) (g : Sig) (idx : Nat) (F : Env g.params → g.result.denote)
+    (A : Env g.params → Nat) (D : UInt64 → Prop) : Prop :=
+  (g.depth = false →
+    @ImplementsB _ _ (Env.represent g.params g.modes) (Ty.represent g.result) g.aborts m idx F A) ∧
+  (g.depth = true → ∀ d, D d →
+    @ImplementsA _ _ (Env.represent (.word :: g.params) (.borrowed :: g.modes))
+      (Ty.represent g.result) true m idx (depthMeaning F) (fun env _ _ => env.depthOf = d)
+      (fun _ _ _ _ _ => True)) ∧
+  ∃ fn, m.funcs[idx]? = some fn ∧ fn.numParams = (if g.depth then 1 else 0) + widthSum g.params
+
+/-- `Calls` with the bounds `bounds`. -/
+def CallsB {S : List Sig} (m : Module) (funs : Funs S) (bounds : Bounds S) : Prop :=
+  ∀ {g : Sig} (f : FVar S g), FunSpecB m g f.callIndex (funs.get f) (bounds.get f) (fun _ => True)
+
+/-- `CallsAt` with the bounds `bounds`. -/
+def CallsAtB {S : List Sig} (m : Module) (funs : Funs S) (bounds : Bounds S) (d0 : UInt64) :
+    Prop :=
+  ∀ {g : Sig} (f : FVar S g), FunSpecB m g f.callIndex (funs.get f) (bounds.get f)
+    (fun d => d = d0 + 1)
+
+theorem CallsB.at {S : List Sig} {m : Module} {funs : Funs S} {bounds : Bounds S}
+    (h : CallsB m funs bounds) (d0 : UInt64) : CallsAtB m funs bounds d0 :=
+  fun f => ⟨(h f).1, fun hd d _ => (h f).2.1 hd d trivial, (h f).2.2⟩
+
+/-- `callMoves` reads only the slots' modes. -/
+theorem callMovesAt_eq {S : List Sig} {Γ : List Ty} {g : Sig} (slots : List Slot)
+    (live : Nat → Bool) (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) :
+    callMovesAt (slots.map Slot.mode) live args = callMoves slots live args := by
+  funext i
+  cases hv : (args i).varIndex? <;> simp only [callMovesAt, callMoves, hv, modeAt, Slot.modes_getD]
+
+/-- A call of the function that `FunSpec` describes, from the words `ws` of its arguments above,
+when its code takes the call depth, a depth `d` that `D` admits: the call returns words that
+represent its value and changes the heap and store only as `ImplementsA` allows, or traps when the
+function may trap and `top` cannot rise by its bound, or its code takes the depth. -/
+theorem FunSpecB.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.result.denote}
+    {A : Env g.params → Nat} {D : UInt64 → Prop} (hF : FunSpecB m g idx F A D) (hm : Runtime m)
+    (host : HostEnv Unit)
+    {heap : Heap} {store : Store Unit} {ws : List Value} {args : Env g.params}
+    (hAt : heap.At store) (hRep : Env.Rep g.mode heap store ws args)
+    (hSep : Separate store (Env.moves g.mode ws args) (Env.reads g.mode ws args))
+    (hCap : store.memoryCap m 0 ≤ 65535) {d : UInt64} (hd : g.depth = true → D d)
+    (rest : List Value) :
+    Runs ((g.aborts && !decide (heap.Within store m (A args))) || g.depth) host m idx store
+      (ws.reverse ++ ((if g.depth then [.i64 d] else []) ++ rest))
+      fun final values => ∃ out, values = out ++ rest ∧ ∃ heap' : Heap, heap'.At final ∧
+        g.result.Rep .owned heap' final out.reverse (F args) ∧
+        final.memoryCaps = store.memoryCaps ∧
+        (∀ r, heap.Region r → 0 < r.2 → Apart store (Env.moves g.mode ws args) r →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+          heap'.Region r ∧
+          ∀ b ∈ g.result.blocks final out.reverse (F args), regionsDisjoint r b) ∧
+        (g.depth = false → heap'.top.toNat ≤ heap.top.toNat + A args) := by
+  obtain ⟨hFalse, hTrue, fn, hfn, hnum⟩ := hF
+  cases hdep : g.depth
+  · have hRun := (hFalse hdep host store heap ws args hAt hRep hSep hCap).append_args
+      (by simp [hm.imports]) (by simpa [hm.imports] using hfn)
+      (by simp [hRep.length, hnum, hdep]) rest
+    simp only [Bool.or_false, Bool.false_eq_true, ↓reduceIte, List.nil_append]
+    exact hRun.mono fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
+      ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, fun _ => hTop⟩
+  · have hSep' : Separate store
+        (Env.moves (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
+          (.cons (t := .word) d args))
+        (Env.reads (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
+          (.cons (t := .word) d args)) := by
+      rw [Env.moves_depth, Env.reads_depth]; exact hSep
+    have hRun := (hTrue hdep d (hd hdep) host store heap (.i64 d :: ws)
+      (.cons (t := .word) d args) hAt rfl
+      (Env.rep_depth.mpr ⟨ws, rfl, hRep⟩) hSep' hCap).append_args
+      (by simp [hm.imports]) (by simpa [hm.imports] using hfn)
+      (by simp [hRep.length, hnum, hdep]; omega) rest
+    simp only [Bool.or_true, ↓reduceIte]
+    rw [show ws.reverse ++ ([.i64 d] ++ rest) = (.i64 d :: ws).reverse ++ rest by simp]
+    exact hRun.mono fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, _⟩ =>
+      ⟨out, hv, heap', hAt', hOwned, hCaps, fun r hr hpos hA =>
+        hRegions r hr hpos (by
+          show Apart store (Env.moves (paramMode (.word :: g.params) (.borrowed :: g.modes))
+            (.i64 d :: ws) (.cons (t := .word) d args)) r
+          rw [Env.moves_depth]; exact hA), nofun⟩
+
 section Cases
 
 variable {S : List Sig} {m : Module} {funs : Funs S} {bounds : Bounds S} {host : HostEnv Unit}
@@ -1841,6 +1941,270 @@ theorem args_specB (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List 
                 rw [hmd] at hc
                 exact hReads1 r (hr.mono fun k h => by
                   rw [Bool.and_eq_true]; exact ⟨by simpa using hp, h⟩) c hc
+
+/-- The release of the owned variables that `sel` selects after an expression's code, those live
+in `L1` and not in `live`, gives the facts of the code and the release for `live`.  The value lies
+apart from the released blocks, so its words still represent it, and `top` is unchanged. -/
+theorem After.releaseT (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L1 live sel : Nat → Bool} {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit}
+    {s s1 : Locals} {t : Ty} {mode : Mode} {v : t.denote} {ws vals : List Value}
+    {rest : Program} {Q : Assertion Unit}
+    (h0 : Holds env slots L0 base heap store s)
+    (a : After env slots L0 L1 base heap store s t mode v heap1 store1 s1 ws)
+    (hL1 : ∀ i, L1 i = true → L0 i = true) (hSel : ∀ i, sel i = true → L1 i = true)
+    (hLive : ∀ i, live i = true → (L1 i && !sel i) = true)
+    (hNext : ∀ heap2 store2,
+      After env slots L0 live base heap store s t mode v heap2 store2 s1 ws →
+      heap2.top = heap1.top → wp m rest Q store2 { s1 with values := vals } host) :
+    wp m (releaseWhere Γ slots sel ++ rest) Q store1 { s1 with values := vals } host := by
+  refine wp_releaseWhereT hm (a.holds.agree Frame.ofValues) a.step.at_ hSel
+    fun heap2 store2 e hTop => ?_
+  have e' := e.mono hLive
+  have hLiveL1 : ∀ i, live i = true → L1 i = true := fun i h => by
+    have := hLive i h
+    simp only [Bool.and_eq_true] at this
+    exact this.1
+  -- The value lies apart from the blocks of the variables that die.
+  have hKeepV : ∀ r ∈ t.regions mode store1 ws v,
+      Holds.KeepDying env slots L1 live store1 { s1 with values := vals } r := by
+    intro r hr u x hx _ hmx wx hwx hlx b hb
+    have hb' : b ∈ u.regions (slots.getD x.index default).mode store1 wx (env.get x) := by
+      rw [hmx]; exact hb
+    exact a.apart u x hx (Or.inr hmx) wx hwx hlx r hr b hb'
+  obtain ⟨hRep, hSame, -⟩ := a.rep.step e'.step hKeepV
+  have hStep := a.step.transBoth (keep := Holds.KeepDying env slots L0 live store s) e'.step
+    fun r hr =>
+    ⟨hr.mono fun i h1 h2 => ⟨h1, by
+        cases hl : live i with
+        | false => rfl
+        | true => rw [hLiveL1 i hl] at h2; exact nomatch h2⟩,
+      fun _ => Holds.KeepDying.transfer h0 a.step a.frame hL1
+        (fun i h1 _ => h1) (hr.mono fun i h1 h2 => ⟨hL1 _ h1, h2⟩)⟩
+  refine hNext heap2 store2 ⟨hStep.mono (fun _ h => h) fun b hb => ?_, a.frame,
+    e'.holds.agree Frame.ofValues, hRep, ?_⟩ hTop
+  · rw [Mode.fresh_congr hSame] at hb
+    exact List.mem_append_left _ hb
+  · exact Holds.Apart.transfer (a.holds.live_mono hLiveL1) (a.apart.live_mono hLiveL1) e'.step
+      Frame.ofValues (fun u y hy wy hwy hly => a.holds.keepDying hLiveL1 hy hwy hly) hSame
+
+/-- A call: the arguments, the callee, whose theorem `Calls` gives, and the release of the owned
+variables that the arguments use and that die at the call, other than those that the call
+consumes. -/
+theorem specB_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAtB m funs bounds d0) {sig : Sig}
+    {Γ' : List Ty} (g : FVar S sig)
+    (args : (i : Fin sig.params.length) → Expr S Γ' (sig.params.get i))
+    (argsSpec : ∀ i env slots live, CodeSpecB m funs bounds host pv (args i) env slots live)
+    (hDepth : (Expr.call g args).depthCalls = true → pv.head? = some (.i64 d0)) :
+    ∀ env slots live, CodeSpecB m funs bounds host pv (Expr.call g args) env slots live := by
+  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    hNext
+  have hRoom' : ∀ i : Fin sig.params.length, base + (if sig.mode i = .owned then
+      copyWidth (sig.params.get i)
+      else (args i).width) ≤ h := fun i =>
+    (Nat.add_le_add_left (le_argsMax (fun i => if sig.mode i = .owned then
+      copyWidth (sig.params.get i) else (args i).width) i) base).trans hRoom
+  simp only [Expr.placeArgs, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at hPlace
+  obtain ⟨⟨hA, hV⟩, hB⟩ := hPlace
+  have hPlace1 : ∀ i, (sig.params.get i).scalar = false → sig.mode i = .borrowed →
+      (args i).isPlace = true := fun i hs _ => by
+    cases hi : (args i).isPlace with
+    | true => rfl
+    | false =>
+      have := le_argsAny (fun i => !(sig.params.get i).scalar && !(args i).isPlace) i
+        (by simp only [hs, hi, Bool.not_false, Bool.and_self])
+      rw [hA] at this
+      exact nomatch this
+  have hVar : ∀ i : Fin sig.params.length, sig.mode i = .owned → ∃ x, args i = .var x :=
+      fun i hmo => by
+    refine Expr.exists_var (args i) ?_
+    cases hi : (args i).varIndex?.isNone with
+    | false => rfl
+    | true =>
+      have := le_argsAny (fun i => sig.mode i == .owned && (args i).varIndex?.isNone) i
+        (by simp [hmo, hi])
+      rw [hV] at this
+      exact nomatch this
+  have hPlace2 : ∀ i, (args i).placeArgs = true := fun i => by
+    cases hi : (args i).placeArgs with
+    | true => rfl
+    | false =>
+      have := le_argsAny (fun i => !(args i).placeArgs) i (by simp [hi])
+      rw [hB] at this
+      exact nomatch this
+  -- The variables that the call consumes: those that an argument moves.
+  have hMoved : ∀ k, (argsAny fun j => callMoves slots live args j && (args j).uses k) = true →
+      ∃ j x, args j = .var x ∧ x.index = k ∧ sig.mode j = .owned ∧
+        (slots.getD k default).mode = .owned ∧ live k = false ∧
+        ∀ j', j' ≠ j → (sig.params.get j').scalar = false → (args j').uses k = false := by
+    intro k hk
+    obtain ⟨j, hj⟩ := argsAny_true.mp hk
+    simp only [Bool.and_eq_true, callMoves, beq_iff_eq] at hj
+    obtain ⟨⟨hmo, hj⟩, hu⟩ := hj
+    obtain ⟨x, hx⟩ := hVar j hmo
+    rw [hx] at hj hu
+    simp only [Expr.varIndex?, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at hj
+    simp only [Expr.uses, beq_iff_eq] at hu
+    subst hu
+    obtain ⟨⟨hmx, hlx⟩, hOthers⟩ := hj
+    refine ⟨j, x, hx, rfl, hmo, hmx, hlx, fun j' hj' hs => ?_⟩
+    cases hu : (args j').uses x.index with
+    | false => rfl
+    | true =>
+      have := le_argsAny (fun j' => j' != j && !(sig.params.get j').scalar &&
+        (args j').uses x.index) j' (by rw [hs, hu]; simp [hj'])
+      rw [hOthers] at this
+      exact nomatch this
+  have hAllocs : (Expr.call g args).allocs funs bounds (slots.map Slot.mode) live env =
+      argsSum (argCost funs bounds (slots.map Slot.mode)
+        (fun i => live i || argsAny fun j => (args j).uses i)
+        (fun i => (live i || argsAny fun j => (args j).uses i) &&
+          !(argsAny fun j => callMoves slots live args j && (args j).uses i)) sig.mode args env) +
+        bounds.get g (Env.ofFn fun i => (args i).denote funs env) := by
+    simp only [Expr.allocs, callMovesAt_eq]; rfl
+  simp only [Expr.code, List.append_assoc]
+  refine wp_depthCode sig.depth (fun hd => by
+    rw [hpv]; exact hDepth (by simp [Expr.depthCalls, hd])) ?_
+  refine args_specB hm (all := fun i => live i || argsAny fun j => (args j).uses i)
+    (kept := fun i => (live i || argsAny fun j => (args j).uses i) &&
+      !(argsAny fun j => callMoves slots live args j && (args j).uses i)) sig.mode args argsSpec
+    (fun i k h => by
+      simp only [Bool.or_eq_true]
+      exact Or.inr (le_argsAny (fun j => (args j).uses k) i h))
+    (fun k h => by simp only [Bool.and_eq_true] at h; exact h.1)
+    (fun i hmo => ?_) hPlace1 (fun i hmo => ?_) hPlace2
+    (fun i h => by
+      simp only [Expr.depthCalls, Bool.or_eq_true]; exact Or.inr (le_argsAny _ i h))
+    (fun i h => by
+      simp only [Bool.or_eq_true] at h
+      simp only [Expr.aborts, Bool.or_eq_true]
+      rcases h with h | h
+      · exact Or.inl (Or.inr (le_argsAny (fun j => (args j).aborts || sig.mode j == .owned) i
+          (by simpa only [Bool.or_eq_true] using h)))
+      · exact Or.inr h) heap store
+    { s with values := (if sig.depth then [.i64 (d0 + 1)] else []) ++ s.values } hh hpv hVars hAt
+    hCap hBase hRoom' _ _
+    (hTrap.part id id fun _ hw => hw.mono (by rw [hAllocs]; exact Nat.le_add_right _ _))
+    fun heap1 store1 s1 ws1 F hStep1 hF1 hH1 hRep1 hSep1 hX1 hY1 hTop1 => ?_
+  · -- An owned parameter holds arrays.
+    have := paramMode_owned hmo
+    exact this
+  · obtain ⟨x, hx⟩ := hVar i hmo
+    refine ⟨x, hx, fun hkx => ?_⟩
+    have hux : (args i).uses x.index = true := by rw [hx]; simp [Expr.uses]
+    have hAll : (argsAny fun j => (args j).uses x.index) = true := le_argsAny _ i hux
+    simp only [hAll, Bool.or_true, Bool.true_and, Bool.not_eq_false'] at hkx
+    obtain ⟨j, y, hy, hyx, -, hmy, -, hOthers⟩ := hMoved _ hkx
+    have hji : j = i := by
+      by_contra hne
+      have := hOthers i (Ne.symm hne) (paramMode_owned hmo)
+      rw [hux] at this
+      exact nomatch this
+    subst hji
+    exact ⟨hmy, hOthers⟩
+  -- The callee, from the arguments' state, above the next call depth when its code takes it.
+  replace hF1 : Frame base s s1 := hF1.values
+  simp only [Holds.keepDying_values] at hX1
+  have hRun := FunSpecB.runs (hCalls g) hm host hStep1.at_ hRep1 hSep1
+    (by rw [hStep1.cap m]; exact hCap) (d := d0 + 1) (fun _ => rfl) s.values
+  have hsd : (Expr.call g args).depthCalls = false → sig.depth = false := fun hd => by
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd.1
+  refine wp_call_runs hRun (hTrap.of_imp fun h => by
+    simp only [trapFlag, Bool.or_eq_true, Bool.and_eq_true, Bool.not_eq_true',
+      decide_eq_false_iff_not] at h ⊢
+    cases hdc : (Expr.call g args).depthCalls
+    · rcases h with ⟨ha, hw⟩ | hd
+      · have hab : ((Expr.call g args).aborts || slots.any (·.mode == .owned)) = true := by
+          simp only [Expr.aborts, Bool.or_eq_true]; exact Or.inl (Or.inl (Or.inl (Or.inl ha)))
+        refine Or.inr ⟨by simpa only [Bool.or_eq_true] using hab, fun hW => hw ?_⟩
+        rw [hAllocs] at hW
+        exact hW.shift (hTop1 hdc) le_rfl (hStep1.cap m)
+      · rw [hsd hdc] at hd; exact nomatch hd
+    · exact Or.inl rfl) fun st' vs hPost => ?_
+  obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions, hTopC⟩ := hPost
+  have hRep : sig.result.Rep ((Expr.call g args).mode (slots.map Slot.mode)) heap' st'
+      out.reverse (funs.get g (Env.ofFn fun i => (args i).denote funs env)) := by
+    simp only [Expr.mode]
+    split
+    · exact Ty.Rep.borrow hOwned
+    · exact hOwned
+  have hStepC : Step heap1 store1
+      (Apart store1 (Env.moves sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env))) heap'
+      st' (((Expr.call g args).mode (slots.map Slot.mode)).fresh st' sig.result out.reverse
+        (funs.get g (Env.ofFn fun i => (args i).denote funs env))) :=
+    ⟨hAt', hCaps, fun r hr hpos hA => by
+      obtain ⟨hb, hreg, hout⟩ := hRegions r hr hpos hA
+      exact ⟨hb, hreg, fun b hb' => hout b (Mode.fresh_sub hb')⟩⟩
+  -- The variables live after the call: those that its arguments use, other than the moved ones.
+  have hKeptAll : ∀ i, ((live i || argsAny fun j => (args j).uses i) &&
+      !(argsAny fun j => callMoves slots live args j && (args j).uses i)) = true →
+      (live i || argsAny fun j => (args j).uses i) = true :=
+    fun i h => by simp only [Bool.and_eq_true] at h; exact h.1
+  have hMovedDie : ∀ i, (argsAny fun j => sig.mode j == .owned && (args j).uses i &&
+      !((live i || argsAny fun j => (args j).uses i) &&
+        !(argsAny fun j => callMoves slots live args j && (args j).uses i))) = true →
+      (live i || argsAny fun j => (args j).uses i) = true ∧
+        ((live i || argsAny fun j => (args j).uses i) &&
+          !(argsAny fun j => callMoves slots live args j && (args j).uses i)) = false := by
+    intro i h
+    obtain ⟨j, hj⟩ := argsAny_true.mp h
+    simp only [Bool.and_eq_true, Bool.not_eq_true'] at hj
+    refine ⟨?_, hj.2⟩
+    simp only [Bool.or_eq_true]
+    exact Or.inr (le_argsAny (fun j => (args j).uses i) j hj.1.2)
+  have hKeepC : ∀ (u : Ty) (y : Var Γ' u),
+      ((live y.index || argsAny fun j => (args j).uses y.index) &&
+        !(argsAny fun j => callMoves slots live args j && (args j).uses y.index)) = true →
+      ∀ wy, LocalsHold s1 (slots.getD y.index default).loc u.types wy → wy.length = u.width →
+      ∀ c ∈ u.regions (slots.getD y.index default).mode store1 wy (env.get y),
+        Apart store1 (Env.moves sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env)) c := by
+    intro u y hy wy hwy hly c hc
+    have hyAll := hKeptAll _ hy
+    have hwy' := (hVars.hold_agree hF1 hyAll hly).mp hwy
+    obtain ⟨hSame, hFresh⟩ := hVars.regions_after hStep1 hyAll hwy' hly fun _ _ => trivial
+    rw [hSame] at hc
+    refine hX1 c (hFresh c hc) fun t x hx _ hmx wx hwx hlx b hb => ?_
+    obtain ⟨hxAll, hxKept⟩ := hMovedDie _ hx
+    have hne : x.index ≠ y.index := fun he => by rw [he, hy] at hxKept; exact nomatch hxKept
+    exact regionsDisjoint_symm
+      (hVars.2 t u x y hxAll hyAll hne hmx wx wy hwx hlx hwy' hly b hb c hc)
+  have aCall : After env slots (fun i => live i || (Expr.call g args).uses i)
+      (fun i => (live i || argsAny fun j => (args j).uses i) &&
+        !(argsAny fun j => callMoves slots live args j && (args j).uses i)) base heap store s
+      sig.result ((Expr.call g args).mode (slots.map Slot.mode))
+      (funs.get g (Env.ofFn fun i => (args i).denote funs env)) heap' st' s1 out.reverse := by
+    refine ⟨hStep1.trans hStepC fun r hr => ⟨trivial, fun hF => hX1 r hF
+        (hr.mono fun i h _ => hMovedDie i h)⟩, hF1,
+      (hH1.live_mono hKeptAll).step hStepC hKeepC, hRep, ?_⟩
+    intro u y hy _ wy hwy hly b hb c hc
+    obtain ⟨hSame, hFresh⟩ := (hH1.live_mono hKeptAll).regions_after hStepC hy hwy hly
+      (hKeepC u y hy wy hwy hly)
+    rw [hSame] at hc
+    have hb' : b ∈ ((Expr.call g args).mode (slots.map Slot.mode)).fresh st' sig.result
+        out.reverse (funs.get g (Env.ofFn fun i => (args i).denote funs env)) := by
+      simp only [Expr.mode] at hb ⊢
+      cases hsc : sig.result.scalar
+      · simp only [hsc, Bool.false_eq_true, ↓reduceIte] at hb ⊢
+        exact hb
+      · simp only [hsc, ↓reduceIte] at hb
+        rw [Ty.regions_scalar _ hsc] at hb
+        exact nomatch hb
+    exact regionsDisjoint_symm (hFresh c hc b hb')
+  refine After.releaseT hm (s1 := s1) (live := live)
+    (sel := fun i => ((live i || argsAny fun j => (args j).uses i) &&
+      !(argsAny fun j => callMoves slots live args j && (args j).uses i)) && !live i) hVars aCall
+    hKeptAll (fun i h => by simp only [Bool.and_eq_true] at h ⊢; exact h.1) (fun i h => ?_)
+    fun heap2 store2 a2 hTopR => ?_
+  · have hk : (argsAny fun j => callMoves slots live args j && (args j).uses i) = false := by
+      cases hm' : argsAny fun j => callMoves slots live args j && (args j).uses i with
+      | false => rfl
+      | true =>
+        obtain ⟨_, _, _, _, _, _, hl, _⟩ := hMoved i hm'
+        rw [hl] at h
+        exact nomatch h
+    simp [h, hk]
+  · simpa using hNext heap2 store2 s1 out.reverse a2 fun hd => by
+      have := hTop1 hd; have := hTopC (hsd hd); have := congrArg UInt64.toNat hTopR
+      rw [hAllocs]; omega
 
 end Cases
 
