@@ -4,16 +4,13 @@
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the host's array arguments and the result's arrays.  A seventh
 # field bounds the number of allocations, the host's included.  A case whose expected result is
-# `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean,
-# ExpAccuracy.lean, TanhAccuracy.lean, LogAccuracy.lean, Log1pAccuracy.lean, AtanAccuracy.lean,
-# AsinAccuracy.lean, and TanAccuracy.lean check Trig.sin, Trig.cos, Exp.exp, Tanh.expm1, Log.log,
-# Log1p.log1p, Atan.atan, Atan.atan2, Asin.asin, Asin.acos, and Tan.tan within one unit in the
-# last place, and Tanh.tanh within two, of references computed with Lean's integers, and
-# Verified/Examples/FourierAccuracy.lean checks that
-# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.  After writing
-# the modules, it builds Verified/Examples/ExpTheorem.lean and checks Verified/Examples/ExpFile.lean,
-# whose theorems state that exp.wasm holds the module of ExpTheorem.exp_bytes_accuracy, and it fails
-# unless both report only the axioms propext, Classical.choice, and Quot.sound.
+# `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
+# module and checks its file theorem module, whose theorems state that the written file holds the
+# module of the function's byte theorem, and it fails unless both file theorems report only the
+# axioms propext, Classical.choice, and Quot.sound.  Last, the Verified/Examples/*Accuracy.lean
+# checks compare the transcendental functions with references computed with Lean's integers, each
+# within the bound its docstring states, and Verified/Examples/FourierAccuracy.lean checks that
+# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -49,27 +46,35 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Log:compiled.module:log \
     Verified.Examples.Log1p:compiled.module:log1p Verified.Examples.Atan:compiled.module:atan \
     Verified.Examples.Asin:compiled.module:asin Verified.Examples.Tan:compiled.module:tan \
+    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
+    Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
+    Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
+    Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
     Verified.Examples.Drone:compiled.module:drone; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
 done
-# exp_file_decode depends on ExpTheorem.exp_bytes_accuracy, so its axiom report covers the theorem.
-tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem
-expReports=$(tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean) || {
-  echo "$expReports"
-  echo "fail: Verified/Examples/ExpFile.lean does not check against $out/exp.wasm" >&2
-  exit 1
-}
-permitted=$(grep -c "depends on axioms: \[propext, Classical.choice, Quot.sound\]$" \
-  <<<"$expReports" || true)
-if [ "$permitted" -ne 2 ]; then
-  echo "$expReports"
-  echo "fail: exp_file and exp_file_decode must report only the three permitted axioms" >&2
-  exit 1
-fi
-echo "exp: exp.wasm holds the module of the exponential theorem, with the permitted axioms"
+# Each entry names the written module, the theorem module, and the file theorem module.  The file
+# module's second theorem depends on the byte theorem, so its axiom report covers that theorem.
+for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile; do
+  IFS=: read -r name theorem file <<<"$entry"
+  tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
+  reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
+    echo "$reports"
+    echo "fail: Verified/Examples/$file.lean does not check against $out/$name.wasm" >&2
+    exit 1
+  }
+  permitted=$(grep -c "depends on axioms: \[propext, Classical.choice, Quot.sound\]$" \
+    <<<"$reports" || true)
+  if [ "$permitted" -ne 2 ]; then
+    echo "$reports"
+    echo "fail: the theorems of $file.lean must report only the three permitted axioms" >&2
+    exit 1
+  fi
+  echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
+done
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
@@ -136,12 +141,20 @@ echo "verified: passed $passed failed $failed"
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
 # The behavior of the Fourier transforms, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean || exit 1
-# The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, and tan against references
-# computed with Lean's integers, in native Lean.
+# The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, tan, sinh, cosh, asinh,
+# acosh, atanh, exp2, exp10, log2, log10, pow, sinpi, cospi, tanpi, erf, and erfc against
+# references computed with Lean's integers, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ExpAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanhAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/LogAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log1pAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AtanAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean
