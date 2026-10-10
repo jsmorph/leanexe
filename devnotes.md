@@ -29933,3 +29933,64 @@ Among the C library's distances, which the checks report for information, `TrigA
 ## 2026-10-11: Integration of the exp2 and exp10 theorems and the worst inputs
 
 Opus merged `w/exp2` at `1b5bffb9` (the `exp2` and `exp10` theorems with their byte theorems) and `w/ports` at `bd2a78fa` (Zimmermann's worst inputs in every accuracy check) into `transcendentals`.  Git committed the first merge with its default message because it had no conflict; since nothing was pushed, Opus rebuilt the two merge commits with `git commit-tree` on the same trees and parents with a corrected message, checked that the final tree was unchanged, and now merges with `--no-commit`.  `LeanExe.lean` now imports `F64BinadeWord`, `Verified.lean` imports `WorstCases`, and the file theorem loop of `tests/verified/run.sh` gains `exp2:Exp2Bytes:Exp2File`.  The build passed with 3,895 jobs, and `exp2_bytes_accuracy` and `exp10_bytes_accuracy` report only the permitted axioms (`opus-merge-exp2-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-8.log`): the `exp`, `log`, and `exp2` file checks, 15,837 cases, and every accuracy check within its decided bound with the worst inputs included, among them 84,189 results of `atan2` within two units and 222,136 of `erfc` within four.
+
+## 2026-10-10: Argument reduction of `sin` and `cos` (track `trig`, minideb1)
+
+The track works in `/home/somebody/src/lt-trig` on branch `w/trig`.  The reduction comes first because it does not depend on the kernel polynomials.  Every result below reports only `propext`, `Classical.choice`, and `Quot.sound`, and the logs are in `build/transcendentals/trig-*.log` of the worktree.
+
+| Module | Result |
+|---|---|
+| `TrigPi` | `π` within `2 ^ -1270` from Machin's formula, with the alternating arctangent remainder `arctan_error` and partial sums checked by `decide +kernel`.  `table_bounds`: `Trig.invPi` is `2/π` truncated to 1216 bits.  `half_bounds`: `Trig.halfPi` is `π · 2 ^ 126` truncated.  The module builds in 10 seconds. |
+| `TrigDistance` | `quadrant_distance`: for every exponent field from 1022 to 2046 and every 53-bit significand, `x · 2/π` lies more than `2 ^ -63` from every integer.  One certificate per binade, a convergent `p/q` of the binade's `β = 2 ^ (E - 1075) · invPi` modulo 1 with `q ≥ 2 ^ 53`, gives `|m β - n| ≥ 1/q - 2 ^ 53 |β - p/q| > 2 ^ -62`, since `q` cannot divide `m p` for `0 < m < q`.  The 1025 certificates were computed offline with Python and are checked by the kernel; the smallest bound, `2 ^ -61.54`, belongs to exponent field 1872, the binade of the known worst case `6381956970095103 · 2 ^ 797`. |
+| `TrigWords` | Natural-number specifications of `mul64`, `mulTop`, `clz64`, and `shiftTop`, and `or_shift` for disjoint shifted words. |
+| `TrigWindows` | The three words that `remLarge` reads from `invPi` for each exponent field from 1043 to 2046, checked by the kernel in 10 seconds. |
+| `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | `remLarge_spec`: for positive finite `x` with exponent field from 1043, an integer `N` congruent to the returned count modulo 4 has `r = x - N π/2` with `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -134`, `|y0 + y1 - r| ≤ |r| / 2 ^ 72`, and `|y1| ≤ |y0| / 2 ^ 53`.  `remLarge_eq` splits the routine into five stages proved separately; the last is an exact two-sum. |
+| `TrigFloatTools` | Exact sums and differences stated with values, on grids found from magnitudes. |
+| `TrigSmall` | `remSmallW_spec`: fdlibm's one-step reduction for `k` from 1 to 4 lies within `2 ^ -60` relative of `x - k π/2` when `2 ^ -22 ≤ |x - k π/2| ≤ π/4 + 2 ^ -17`. |
+| `TrigNearest` | `add_nearest` and `sub_nearest`: no word lies closer to the exact sum than the rounded sum.  `small_two_diff`: for `4 |w| ≤ |a|` and `s` the rounded `a - w`, `a - s` and `(a - s) - w` are exact. |
+| `TrigMediumFn`, `TrigMediumConst` | `fn_spec`: for `1 ≤ x` and `x · 2/π ≤ 2 ^ 20`, the rounded `x · invpio2` plus and minus `1.5 · 2 ^ 52` is an integer `N` within `1/2 + 2 ^ -30` of `x · 2/π`.  The six words of `π/2` are checked against `π`, and `comp_step` covers fdlibm's compensated step `r = t - w`, `w' = A - ((t - r) - w)`. |
+| `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC` | `caseA`, `caseB`, and `caseC`: each outcome of the two exponent tests gives `y0 + y1` within `|r| / 2 ^ 60` of `r = x - N π/2`, with `|y1| ≤ |y0| / 2 ^ 52`. |
+| `TrigMedium` | `remMedium_spec`: the same for `Trig.remMedium` on a positive double with word from `0x3FF0000000000000` to below `0x413921FB00000000`, with the returned count equal to `N` and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -28`. |
+| `TrigReduce` | `remPio2_spec`: for a positive finite double with word from `0x3FE921FC00000000`, the result of `Trig.remPio2 invPi halfPi` satisfies `Reduced`: some `N` congruent to the count modulo 4 has `|y0 + y1 - r| ≤ |r| / 2 ^ 60`, `|y1| ≤ |y0| / 2 ^ 52`, and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -17`. |
+
+Several failures recurred and have one cause each.  `omega` and `positivity` reach the maximum recursion depth when the context or the goal holds powers such as `2 ^ 128` or `2 ^ 1088` together with other arithmetic, and `congr 1` does so when it tries to close goals with large numerals; clearing unrelated hypotheses, evaluating powers to numerals first, and replacing `positivity` with explicit lemmas fixed every case.  `generalize` and `rw` reach the same limit when two different natural-number expressions of the same shape, such as `a2 * 2 ^ 128 + a1 * 2 ^ 64 + a0` and `w2 * 2 ^ 128 + w1 * 2 ^ 64 + l2`, meet in one hypothesis: the unifier unfolds `Nat.add` and `Nat.mul` on the large literals.  Lemmas stated with a named variable and proved by `subst` avoid the comparison.  A first `rfl` proof of `remLarge_eq` with projections timed out; the version with pattern-matching `let` and the stage definitions unfolded first takes under a second.  `exponentiation.threshold 4096` made Lean evaluate powers such as `2 ^ 1278` during unification, and removing it from `TrigLarge` removed several recursion failures.
+
+The nearest property was needed because fdlibm's medium reduction subtracts `(t - r) - w` after `r = t - w` rounded, and the relative error bound alone cannot show that `(t - r) - w` is exact when `w` is far smaller than the last place of `t`.  The rounding keeps the nearest multiple of `2 ^ s`, every finite magnitude between `2 ^ (52 + s)` and `2 ^ (53 + s)` is such a multiple, and `t` itself is a candidate, so the rounding error is at most `|w|`.  These lemmas are general, and `TrigNearest` and `TrigFloatTools` could move to ProofKit.
+
+- [x] The words of `2/π` and `π/2`.
+- [x] The word routines.
+- [x] `remLarge`.
+- [x] The distance from multiples of `π/2`.
+- [x] `remSmall`.
+The medium reduction stops after one, two, or three steps by comparing exponent fields, and each outcome is a separate theorem.  The count is exact because `x · invpio2` lies below `2 ^ 20`, so adding `1.5 · 2 ^ 52` rounds it to an integer, and `TrigDistance` bounds `|r|` below by `2 ^ -63 · π/2`.  In the third outcome the cancellation in the second step makes `R1 - W2` exact, which the third step requires.  `TrigMedium` connects the `Float` code to the word definitions with `F64Bits` and `F64Convert.toUInt64_eq`, and the float literal `1.5 · 2 ^ 52` is decided by the kernel.
+
+The one-step branches of `remPio2` accept more than `|x - k π/2| ≤ π/4`.  The high-word thresholds `0x4015fdbc` and `0x401c463b` lie above `7π/4` and `9π/4`, so `|r|` reaches `π/4 + 4.79 · 10 ^ -6` for `k = 4`, and `π/4 + 2 ^ -17` bounds every branch.  The kernel bounds in `TrigKernelPoly` hold for `|x| ≤ 0.7854`, which exceeds `π/4` by `1.84 · 10 ^ -6`, so the final theorems need kernel bounds on `|x| ≤ 0.78541`.
+
+- [x] `remMedium`.
+- [x] `remPio2`, combining the branches.
+- [x] Kernel bounds on `|x| ≤ 0.78541`.
+- [x] `kernelSin` and `kernelCos` in floating point.
+- [x] Quadrant, sign, and the final rounding step.
+- [x] Exact results at zero, infinities, and NaN.
+- [x] Byte theorems and the file theorem module.
+
+## 2026-10-11: The kernels and the final step of `sin` and `cos` (track `trig`)
+
+`TrigKernelWide` reruns the checks of `TrigKernelPoly` on `|x| ≤ 0.78541` with the same allowances, `(129/128) 2 ^ -58` for the sine and `2 ^ -59 - 2 ^ -70` for the cosine.  The largest errors lie inside `[0, 0.7854]`, so the wider range changes neither constant, and each check takes 8 seconds as one declaration.  `TrigKernelPoly` is unchanged.
+
+The rounding analysis tracks each operation with `F64ErrorTrack.Approx` and a bound on the operation's exact value (`TrigApprox.AB`).  The sine kernel's bounds are polynomials in `X = |x|`, so the error keeps its relative size for small `x`: `GW_AB` and `LW_AB` give `3/4 u X ^ 3 + 16 u ^ 2 X` for the evaluated correction, and `sinTail_spec` and `sinDirect_spec` give a real `t`, rounded to the result, within `u (33/40 X ^ 3 + X / 30)` of `sin (x + y)`.  The inner polynomials use constant bounds, `u/32` for the sine and `3u/25` for the cosine.  `linarith` proves each step's bound from facts about powers of `X`; `nlinarith` timed out whenever those facts were in the context, and underflow terms had to be bounded by underflow terms, since `linarith` cannot compare `2 ^ -1075` with a power of `X` it has no lower bound for.
+
+The cosine kernel needs two exact operations: `0.5 * z` (`F64ExactProduct.mul_exact_scaled`) and `1 - w` for `w` in `[1/2, 1]` (a common grid of `2 ^ -53`).  Then `(1 - w) - hz` recovers the rounding error of `w` up to `u ^ 2`, the rounding of `z = x * x` contributes `u x ^ 2 / 2`, and `cos_spec` bounds the result within `7/5 u` of `cos (x + y)`.  The term `y (sin x - x)` that the kernel omits contributes up to `0.127 u`.
+
+`F64RelativeStep.within_one_relative` needs the result within `11/8 u` of `sin r`, which leaves `3/8 u` for the evaluation once the final rounding takes `u`.  The bound on the sine kernel's error reaches `0.44 u` at `|r| = π/4`, so `TrigStep.sin_final` splits at `|r| = 0.54`.  Below, the bound is at most `0.31 u |sin r|`.  Above, `sin r` lies in `[1/2, 1)`, and `unit_step` applies `F64FullStep.one_step_binades` to that binade, which allows an error below one and a half spacings, `1.5 u`, against the `1.44 u` that the proof bounds.  `cos_final` applies `unit_step` to the cosine's `7/5 u` plus the reduction's `2 ^ -59 |r|`.  `TrigTiny.self_step` covers `sin x = x` for `|x| < 2 ^ -26` in every binade, subnormals included.
+
+| Module | Result |
+|---|---|
+| `TrigKernelWide` | `sin_kernel_error_wide`, `cos_kernel_error_wide` on `|x| ≤ 0.78541`. |
+| `TrigApprox` | `AB.mul`, `AB.add`, `AB.sub`: error tracking with magnitude bounds. |
+| `TrigKernelWords` | The kernels on words, coefficient bounds, and `sinR_AB`, `cosR_AB`. |
+| `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec` | `sinTail_spec`, `sinDirect_spec`. |
+| `TrigCosKernel` | `half_exact`, `one_sub_exact`, `cos_tail_expand`, `cos_spec`. |
+| `TrigStep`, `TrigTiny` | `unit_step`, `sin_final`, `cos_final`, `self_step`, `zero_step`. |
+| `TrigQuadrant`, `TrigSinCos` | `reduced_kernels`, `quadrant`, `sin_within`, `cos_within`. |
+| `TrigTheorem`, `TrigFile` | `sin_bytes_accuracy`, `cos_bytes_accuracy`, the exact results, and the file theorems for `build/verified/trig.wasm`. |
