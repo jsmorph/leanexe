@@ -71,6 +71,7 @@ import LeanExe.ProofKit.Allocation
 import LeanExe.ProofKit.Array
 import LeanExe.ProofKit.ArrayPrefix
 import LeanExe.ProofKit.AsinRemainder
+import LeanExe.ProofKit.BorrowedKept
 import LeanExe.ProofKit.CallRemainder
 import LeanExe.ProofKit.ExpTinyError
 import LeanExe.ProofKit.F32Add
@@ -125,6 +126,8 @@ import LeanExe.ProofKit.F64DyadicBounds
 import LeanExe.ProofKit.F64Enclosure
 import LeanExe.ProofKit.F64Encoding
 import LeanExe.ProofKit.F64ErrorPropagation
+import LeanExe.ProofKit.F64ErrorTrack
+import LeanExe.ProofKit.F64ExactProduct
 import LeanExe.ProofKit.F64ExponentBounds
 import LeanExe.ProofKit.F64FullStep
 import LeanExe.ProofKit.F64GridExact
@@ -163,6 +166,7 @@ import LeanExe.ProofKit.F64QuotientResidual
 import LeanExe.ProofKit.F64RationalBounds
 import LeanExe.ProofKit.F64RationalNormalize
 import LeanExe.ProofKit.F64RationalScale
+import LeanExe.ProofKit.F64RelativeStep
 import LeanExe.ProofKit.F64RoundDyadic
 import LeanExe.ProofKit.F64RoundFinish
 import LeanExe.ProofKit.F64RoundRational

@@ -29647,3 +29647,131 @@ The error budget has slack everywhere.  The polynomial's error is at most `2 ^ -
 - [x] `exp2` for every finite input, with the exceptional values.
 - [ ] `exp10`: the reduction through `ExpIntegerSelection` with `invlog10_2N`, the two-part residual, `log 10` bounds, and the coefficients against `(log 10) ^ n / n!`.  The overflow bound `0x1.34413509f79ffp8` lies above `log10` of the overflow threshold, so the overflow branch is exact; the largest double below it gives `10 ^ x ≤ DBL_MAX (1 - 2 ^ -42.8)`.
 - [ ] Byte theorems and the file theorem module.
+
+## 2026-10-10: Integration of the logarithm main path and the stage 5 ports
+
+Opus merged `w/log` at `3c21c26e` (the logarithm main path) and `w/ports` at `f1de26f0` (stage 5) into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64RelativeStep` and `F64ErrorTrack`, `Verified.lean` imports `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference`, and `tests/verified/run.sh` emits the four new modules and runs their checks.  The build passed with 3,842 jobs (`opus-merge-s5-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-6.log`): 204,298 results of `exp2`, 200,707 of `exp10`, 342,197 of `log2` and of `log10`, and 110,911 of `pow` within one unit.
+
+The user approved installing elan on a third build host.  Opus installed elan 4.2.4 from the official `elan-init.sh` with `--no-modify-path` and the pinned toolchain `leanprover/lean4:v4.34.0-rc2`, without changes to the shell profiles.  The checkout is a separate clone of the user's main checkout there, which stays unchanged.  The permission check refused a `git remote set-url` in the first attempt, a step that was unnecessary.  `.lake/packages` (8.6 GB, 28.5 minutes through the local machine) and `.lake/build` (1.8 GB, 3.5 minutes) came from another build host, whose clock agrees with this one's, and `lake build --no-build` then reported every job of the exponential theorem, `log_normal_within`, and the kernel bounds up to date.  The runner's systemd scope works there.  The `exp2` track runs in a separate worktree.
+
+## 2026-10-10: Logarithm theorem, complete (track `log`)
+
+`LogTheorem.log_bytes_accuracy` is accepted.  The bytes of `Log.compiled.module` decode to the module, its function 5 is exported as `log`, and the initial store satisfies `LogTheorem.Ready`: the allocator invariant, `logTable` borrowed at 4096, `logTable2` at 6152, and a memory cap of at most 65,535 pages.  A call from a ready store returns without a trap the bits of `Log.log x` and leaves a ready store whose earlier heap regions keep their bytes.  For finite `x` with `0 < value x` the bits satisfy `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits))`.  `log_within_one` states the bound for the Lean function, and `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, and `log_nan` give `log 1 = +0`, `log (±0) = -∞`, `log (+∞) = +∞`, and the canonical NaN for negative arguments, negative infinity included, and for NaN.  `LogFile.log_file` and `log_file_decode` prove that `build/verified/log.wasm` holds the module.
+
+| Inputs | Path | Theorem |
+|---|---|---|
+| Positive normal outside `[15/16, 1 + 265/4096)` | `logCore` on the argument's bits | `LogMain.log_normal_within` |
+| Positive subnormal | `x · 2 ^ 52`, exact by `F64ExactProduct.mul_exact_scaled`, then `logCore` on the bits less `52 · 2 ^ 52` | `LogMain.log_subnormal_within` |
+| `[15/16, 1 + 265/4096)` other than 1 | `logNear1` | `LogTheorem.near1_within` |
+| 1, zeros, `+∞`, negatives, NaN | the guards of `logWith` | `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, `log_nan` |
+
+The path near 1 needs a bound relative to `ρ = |x - 1|`, between `2 ^ -53` and `265/4096`.  `x - 1` is exact on the grid of `2 ^ -53`, and every later operation is tracked with errors proportional to `ρ`, using `ρ ^ 2 ≤ ρ/15` and `multiplicationUnderflowEpsilon ≤ u ρ / 2 ^ 900`.  The result before its final rounding is within `(1/15 + 1/13) u ρ` of `r · eval near1Kernel r`; the two largest terms are the roundings of `rhi · rhi` and of `r - hi`, each about `u ρ / 30`.  `LogKernelPoly.near1_kernel_error` adds `(15/16) 2 ^ -62 ρ`, and `|log x| ≥ (15/16) ρ`, so the total stays below the allowed `3/8` units of roundoff of `log x` by a factor of about 2.4.  The split into 26-bit `rhi` and `rlo` needs no exactness argument: its identity `rhi ^ 2 + (r - rhi)(rhi + r) = r ^ 2` holds for the computed `rhi`, and only the roundings of `rlo` and of the product enter.
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64ExactProduct.lean` | `mul_exact_scaled`, the exact product of words with scaled magnitudes `ma 2 ^ sa` and `mb 2 ^ sb` when `ma mb < 2 ^ 53`, and `int_mul_exact` for a word holding an integer.  `LogCoreFinal.ln2hi_mul_exact` now uses it. |
+| `LeanExe/ProofKit/BorrowedKept.lean` | `borrowed_kept`, the lemma of `ExpTheorem` in a shared module. |
+| `Verified/Examples/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
+| `Verified/Examples/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
+| `Verified/Examples/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
+| `Verified/Examples/LogFile.lean` | `log_file` and `log_file_decode`. |
+
+Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-thm-2.log` replays the chain with no `sorry`; `log-file-1.log` for the file theorems, which took 24 seconds).  Flipping one bit of the last byte of `log.wasm` made `log_file` fail at `decide` (`log-file-negative-1.log`), and the original file was restored with hash `342b0f5c…90f2`.
+
+| Run | Result and cause |
+|---|---|
+| `log-sub-1` | `simp` in `mul_exact_scaled` reached the recursion limit under `exponentiation.threshold 4096`; the file uses the default threshold and an explicit sign table.  `log-sub-2`, `-3`: a shift literal needed the type `UInt64`, and a rewrite hit the wrong `value`.  `log-sub-4` passed. |
+| `log-near-1` | `near1_bounds` failed because `|B8| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
+| `log-near-3`, `-4` | One theorem for the whole path ran past 200,000 heartbeats.  It was split into `poly_error`, `split_error`, and `near1_error` over named words. |
+| `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
+| `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
+
+`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Verified.Examples.LogTheorem`, check `Verified/Examples/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
+
+- [x] Subnormal arguments.
+- [x] `logNear1` and the path near 1.
+- [x] Exceptional values and the full theorem.
+- [x] Byte theorem and `LogFile.lean`.
+
+## 2026-10-10: Ports of `sinpi`, `cospi`, `tanpi`, `erf`, and `erfc`
+
+The coordinator kept the stage 5 bounds and assigned stage 6 to the same worktree, asking for an integer reference of `erf` and `erfc` with a documented error bound and for `tanpi` arguments next to its poles and zeros.  All five functions come from FreeBSD's msun at the pinned commit, which has `s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and `k_cospi.h`, and no `k_tanpi.h`: `s_tanpi.c` holds its own kernel.  Arm's `math/` has a double `erf.c` but no `erfc`, and the coordinator named `s_erf.c`.
+
+### Sources and helpers
+
+| Function | Source | Calls | Constants | Stated error |
+|---|---|---|---|---|
+| `sinpi` | `s_sinpi.c` and `k_sinpi.h`, Copyright (c) 2017, 2023 Steven G. Kargl, BSD-2-Clause | `__kernel_sin`, `__kernel_cos` | `pi_hi`, `pi_lo` with bits | None |
+| `cospi` | `s_cospi.c` and `k_cospi.h`, Kargl, BSD-2-Clause | `__kernel_sin`, `__kernel_cos` | `pi_hi`, `pi_lo` | None |
+| `tanpi` | `s_tanpi.c`, Kargl, BSD-2-Clause | `__kernel_tan` | `pi_hi`, `pi_lo` | None |
+| `erf`, `erfc` | `s_erf.c`, Copyright (C) 1993 Sun | `exp` | 56 with bits, and `tiny = 1e-300` | Below one unit for `erf` below 0.84375, and none elsewhere |
+
+The 62 annotated constants agree with their decimals.  The trigonometric kernels are fdlibm's `k_sin.c`, `k_cos.c`, and `k_tan.c`, which `Trig.kernelSin`, `Trig.kernelCos`, and `Tan.kernelTan` port.  The coefficients of `Trig.lean` equal those of `k_sin.c` and `k_cos.c` at the pinned commit, whose code matches as well.  `Sinpi.lean` lists the three kernels, so that the reflector compiles those Lean definitions into its module.  `erf` and `erfc` call fdlibm's `exp` (`e_exp.c`), and `Erf.lean` calls `Exp.expWith` with `Exp.expTable` in its place, as stage 4 did for `sinh` and `cosh`.  Both `exp` routines state errors below one unit, and their results may differ in the last bit.
+
+### Deviations from the C sources
+
+The kernels round their argument to single precision with `(float) x`, and the dialect has no single precision.  `Sinpi.toSingle` rounds the 52-bit fraction to 23 bits, ties to even, with any carry into the exponent field, which is `(float) x` for zero and for every double whose single-precision value is normal.  Every argument of the kernels is 0 or lies from `2 ^ -54` to `1/2`, so the rounding stays in that range.  A Python comparison with C's conversion through `struct` found no difference among 200,000 random doubles from `2 ^ -60` to 1 and 500,000 doubles at and next to the rounding ties.  The table lists the other differences.
+
+| Function | Difference |
+|---|---|
+| `sinpi`, `cospi`, `tanpi` | `FFLOOR` is `Sinpi.ffloor` on 64-bit words with 32-bit masks.  The shared start of the three kernels is `piProduct`, and the scaled `π x` of `s_sinpi.c` and `s_tanpi.c` below `2 ^ -29` is `piTiny`.  `s_sinpi.c` and `s_cospi.c` take the parity of the integer part after subtracting `2 ^ 30` from integers above `2 ^ 30` and converting to `uint32_t`, which C leaves undefined above `2 ^ 32`.  `oddPart` takes the parity from `toUInt64`, as `s_tanpi.c`'s `(uint64_t) x & 1` does, which is the parity the code intends and the value of the usual 64-bit truncation.  `vzero/vzero` is `0/0`, `1/vzero` and `odd/vzero` divide by 0, and `(int) ax == 0` is `ax.toUInt64 == 0`. |
+| `erf`, `erfc` | `erfSmall`, `erfMiddle`, `erfTail`, and `erfExp` compute the rational functions and the two exponentials with fdlibm's operations, where fdlibm writes them out in each function.  The flag expressions `1 - tiny`, `tiny - 1`, `2 - tiny`, and `tiny · tiny` stay rounded sums and products.  `s_erf.c`'s comment calls the target of `R/S` `log (erfc x · x) - x² + 0.5625`, and its formula `erfc x = exp (-x² - 0.5625 + R/S)/x` gives `+ x²`, which the docstring of `Erf.lean` states. |
+
+### References and checks
+
+`Verified/Examples/ErfReference.lean` computes `erf` below 6 from the series of positive terms `erf x = (2/√π) x e^(-x²) Σ (2 x²)^n/(2 n + 1)!!`, which converges everywhere and has no cancellation, at 64 bits above the result's precision, and `erfc = 1 - erf` there.  From 6 on it computes `erfc` from Laplace's continued fraction `√π e^(x²) erfc x = 1/(x + (1/2)/(x + 1/(x + (3/2)/(x + ⋯))))` in exact integer arithmetic.  For `x = u/v`, the equivalence transformation that multiplies each level by `2 v` gives integer elements, `2 v`, `2 v² (k - 1)`, and `2 u`.  The elements are positive, so successive convergents lie on alternate sides of the value, and the loop stops when two of them agree within a relative `2 ^ -(q + 2)`, which bounds the error of the result.  `erf` is `±1` from 6 on, since `erfc 6 < 2 ^ -54`, and `erfc` is 0 from 28 on and 2 from -6 down.  The first draft used the continued fraction from 3 on, where it needs 1,173 levels at 400 bits, against 347 at 6, so the series covers everything below 6.  Python models of these references agreed exactly with 260-digit decimal computations of `erf` and `erfc` at 750 arguments, and the continued fraction reproduced the C library's `erfc` at 2, 3, and 6.
+
+The references of `sinpi`, `cospi`, and `tanpi` in `SinpiAccuracy.lean` take `Reference.sinCosTurns` at `|x|/2` turns, at 64 bits above the precision of `x`.  The exact zeros and poles come from rules rather than from the series: an integer, or an integer plus `1/2`, gives the value and the sign that IEEE 754 and the sources specify.  The check requires those signs bit for bit, which `Reference.distance` alone ignores, since it places both zeros at one position.  Python models of these references agreed exactly with 260-digit decimal computations at 1,353 arguments that are neither integers nor integers plus `1/2`.
+
+| Check | Results | Largest distance | Unequal | Log |
+|---|---|---|---|---|
+| `sinpi` | 204,609 | 1 unit, zeros and infinities with their signs | 4,638 | `ports-SinpiAccuracy-2.log` |
+| `cospi` | 204,609 | 1 unit, with signs | 4,595 | `ports-SinpiAccuracy-2.log` |
+| `tanpi` | 204,609 | 1 unit, with signs | 5,183 | `ports-SinpiAccuracy-2.log` |
+| `erf` | 222,117 | 1 unit | 8,944 | `ports-ErfAccuracy-3.log` |
+| `erfc` | 222,117 | 2 units | 28,331 | `ports-ErfAccuracy-3.log` |
+
+The `tanpi` arguments include the multiples of `1/4` from -100 to 100 and the doubles next to them, and the doubles next to `2 ^ k + 1/2` for `k` up to 51, where `tanpi` has its poles, zeros, and values `±1`.  The first `erf` run (`ports-ErfAccuracy-2.log`) enforced three units to measure the distances, and the final run enforces one for `erf` and two for `erfc`.  A Python model with the C library's `exp` in place of `Exp.expWith` placed its two-unit results of `erfc` throughout the range from 1.25 to 27, where the result is the product of two exponentials divided by `x`.  `tools/Emit.lean` encoded and decoded both modules: `sinpi` 5,806 bytes and `erf` 7,016 bytes.  Lean has no binding of these five functions, so the checks report no library distances.
+
+### Failures
+
+The first build (`ports-s6-build-1.log`) failed in `Sinpi.kernelTanpi`: a line that begins with `-` continues the line before it as a subtraction, so `-Tan.kernelTan hi lo true` after a `let` became part of the `let`'s value.  A `;` after the `let` fixed it.  The first `erf` check failed because `shift`, opened from `Verified.Examples`, resolved to another declaration, as in stages 3 and 5, and the check now names `Reference.shift`.
+
+### Recommended bounds
+
+`WithinSteps 1` for `sinpi`, `cospi`, `tanpi`, and `erf`, whose checks find one unit, with the exact signed zeros and infinities as separate equalities.  `WithinSteps 2` for `erfc`, whose check finds two units: from 1.25 on its result combines two calls of `exp`, each below 0.52 units, a product, and a division.
+
+### Integration
+
+The coordinator adds `Sinpi`, `Erf`, and `ErfReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on whichever check line is no longer last.
+
+```bash
+    Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean
+```
+
+- [x] Fetch the sources, audit the constants, and compare the trigonometric kernels with `Trig.lean`.
+- [x] Port the five functions.
+- [x] Write the references, with the error bound of the continued fraction, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Decisions after the review of gamma, Bessel, and worst inputs
+
+The ports track reviewed the implementation options for stages 7 and 8 (its journal section, commit `7229fce0` on `w/ports`) and ran exact models of the existing ports at the worst inputs that Zimmermann's survey of libm accuracy lists for FreeBSD.  Three decided bounds were too small: `atan2` and `asinh` reach two steps, and `erfc` reaches three, with FreeBSD's known worst case at 4.08 units.  The sampled checks missed these inputs.  Opus made the following decisions under the user's delegation.
+
+| Item | Decision | Reason |
+|---|---|---|
+| `atan2`, `asinh` | Two steps | The worst inputs reach two. |
+| `erfc` | Four steps with the fdlibm port | The worst known case is 4.08 units.  CORE-MATH's `erfc` with the software fused multiply-add remains an option. |
+| Accuracy checks | Every check gains Zimmermann's worst inputs and enforces the decided bound | The sampled arguments missed the worst cases of three functions. |
+| `tgamma`, `lgamma` | CORE-MATH (MIT) with a software fused multiply-add proved correct once, one step | fdlibm's `lgamma` errs by up to 4.45e15 units next to its negative zeros, and FreeBSD's `tgamma` by 1,030 units between -184 and -170.  WebAssembly has no deterministic fused multiply-add. |
+| `lgamma` API | `lgammaR : Float → Float × Float` returning `log |Γ x|` and the sign as ±1, and `lgamma x := (lgammaR x).1` | The sign as `lgamma_r` defines it, without global state. |
+| `j0`, `j1`, `y0`, `y1` | fdlibm, with a bound in units of the modulus `√(J² + Y²)` | No permissively licensed implementation reaches a step bound next to the zeros, and a step bound would need the distance of every zero from its nearest doubles.  Measured against the modulus, fdlibm stays within 3.01 units. |
+| `jn`, `yn` | fdlibm, with a modulus bound that grows with the order, and the order as C's 32-bit `int` in a `UInt64` | The error grows with the order, to about 30 units at order 100. |
+
+Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, but no Bessel functions, no error function, and no Stirling series with a remainder, so the stage 6 to 8 proofs start with those definitions and their series.
+
+## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
+
+Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
