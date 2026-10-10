@@ -28012,7 +28012,11 @@ The drone needs no array updates and no wrappers, so the order puts its theorem 
   variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, `bound_func`, and
   `bound_eq` for bodies of these forms.
 - [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
-- [ ] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.
+- [x] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.  Importing
+  `Examples.Drone.Extend` into the example changed the compiled program: `getUnfoldEqnFor?`
+  returns `f.eq_def` whenever the environment holds it, also for a definition that is not
+  recursive, and the proofs of `Extend.lean` generate `extend.eq_def`.  The reflector now tests
+  `isRecursiveDefinition` first.
 - [x] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`: every function of Updates, Grow, Insert,
   and Clob has a `bound_eq`.
 - [ ] 5: wrappers.

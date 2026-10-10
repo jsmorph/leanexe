@@ -2946,7 +2946,10 @@ def elabVerifiedCompile : CommandElab
           wraps := wraps.push (← reflectWrapper fbase name callee tnames, callee, idxs.toList)
           continue
         let f := Lean.mkConst (fbase ++ `func)
-        let r ← match ← getUnfoldEqnFor? name with
+        -- `getUnfoldEqnFor?` also returns the unfolding equation of a definition that is not
+        -- recursive when an imported module has generated it, so recursion is tested first.
+        let eqn? ← if ← isRecursiveDefinition name then getUnfoldEqnFor? name else pure none
+        let r ← match eqn? with
           | none =>
             let r ← reflectDefinition fbase name sigsExpr funs prog callees
             if r.depth then checkPositions name (mkApp2 (mkConst ``Func.body) sigsExpr f)
