@@ -29772,8 +29772,29 @@ The one-step branches of `remPio2` accept more than `|x - k π/2| ≤ π/4`.  Th
 
 - [x] `remMedium`.
 - [x] `remPio2`, combining the branches.
-- [ ] Kernel bounds on `|x| ≤ 0.78541`.
-- [ ] `kernelSin` and `kernelCos` in floating point.
-- [ ] Quadrant, sign, and the final rounding step with `F64RelativeStep.within_one_relative`.
-- [ ] Exact results at zero, infinities, and NaN.
-- [ ] Byte theorems and the file theorem module.
+- [x] Kernel bounds on `|x| ≤ 0.78541`.
+- [x] `kernelSin` and `kernelCos` in floating point.
+- [x] Quadrant, sign, and the final rounding step.
+- [x] Exact results at zero, infinities, and NaN.
+- [x] Byte theorems and the file theorem module.
+
+## 2026-10-11: The kernels and the final step of `sin` and `cos` (track `trig`)
+
+`TrigKernelWide` reruns the checks of `TrigKernelPoly` on `|x| ≤ 0.78541` with the same allowances, `(129/128) 2 ^ -58` for the sine and `2 ^ -59 - 2 ^ -70` for the cosine.  The largest errors lie inside `[0, 0.7854]`, so the wider range changes neither constant, and each check takes 8 seconds as one declaration.  `TrigKernelPoly` is unchanged.
+
+The rounding analysis tracks each operation with `F64ErrorTrack.Approx` and a bound on the operation's exact value (`TrigApprox.AB`).  The sine kernel's bounds are polynomials in `X = |x|`, so the error keeps its relative size for small `x`: `GW_AB` and `LW_AB` give `3/4 u X ^ 3 + 16 u ^ 2 X` for the evaluated correction, and `sinTail_spec` and `sinDirect_spec` give a real `t`, rounded to the result, within `u (33/40 X ^ 3 + X / 30)` of `sin (x + y)`.  The inner polynomials use constant bounds, `u/32` for the sine and `3u/25` for the cosine.  `linarith` proves each step's bound from facts about powers of `X`; `nlinarith` timed out whenever those facts were in the context, and underflow terms had to be bounded by underflow terms, since `linarith` cannot compare `2 ^ -1075` with a power of `X` it has no lower bound for.
+
+The cosine kernel needs two exact operations: `0.5 * z` (`F64ExactProduct.mul_exact_scaled`) and `1 - w` for `w` in `[1/2, 1]` (a common grid of `2 ^ -53`).  Then `(1 - w) - hz` recovers the rounding error of `w` up to `u ^ 2`, the rounding of `z = x * x` contributes `u x ^ 2 / 2`, and `cos_spec` bounds the result within `7/5 u` of `cos (x + y)`.  The term `y (sin x - x)` that the kernel omits contributes up to `0.127 u`.
+
+`F64RelativeStep.within_one_relative` needs the result within `11/8 u` of `sin r`, which leaves `3/8 u` for the evaluation once the final rounding takes `u`.  The bound on the sine kernel's error reaches `0.44 u` at `|r| = π/4`, so `TrigStep.sin_final` splits at `|r| = 0.54`.  Below, the bound is at most `0.31 u |sin r|`.  Above, `sin r` lies in `[1/2, 1)`, and `unit_step` applies `F64FullStep.one_step_binades` to that binade, which allows an error below one and a half spacings, `1.5 u`, against the `1.44 u` that the proof bounds.  `cos_final` applies `unit_step` to the cosine's `7/5 u` plus the reduction's `2 ^ -59 |r|`.  `TrigTiny.self_step` covers `sin x = x` for `|x| < 2 ^ -26` in every binade, subnormals included.
+
+| Module | Result |
+|---|---|
+| `TrigKernelWide` | `sin_kernel_error_wide`, `cos_kernel_error_wide` on `|x| ≤ 0.78541`. |
+| `TrigApprox` | `AB.mul`, `AB.add`, `AB.sub`: error tracking with magnitude bounds. |
+| `TrigKernelWords` | The kernels on words, coefficient bounds, and `sinR_AB`, `cosR_AB`. |
+| `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec` | `sinTail_spec`, `sinDirect_spec`. |
+| `TrigCosKernel` | `half_exact`, `one_sub_exact`, `cos_tail_expand`, `cos_spec`. |
+| `TrigStep`, `TrigTiny` | `unit_step`, `sin_final`, `cos_final`, `self_step`, `zero_step`. |
+| `TrigQuadrant`, `TrigSinCos` | `reduced_kernels`, `quadrant`, `sin_within`, `cos_within`. |
+| `TrigTheorem`, `TrigFile` | `sin_bytes_accuracy`, `cos_bytes_accuracy`, the exact results, and the file theorems for `build/verified/trig.wasm`. |
