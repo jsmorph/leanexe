@@ -17,14 +17,6 @@ theorem residual_bits (x : Float) : (floatResidual x).toBits = residual x.toBits
     lowProduct, F64Bits.toBits_add, F64Bits.toBits_mul, ExpReductionSelection.floatInteger_bits,
     F64Bits.toBits_ofBits, not_nan_of_finite hh, not_nan_of_finite hl]
 
-theorem floatResidual_bounds (x : Float) (hxf : Finite x.toBits)
-    (hx : |value x.toBits| ≤ 768) :
-    Finite (floatResidual x).toBits ∧ |value (floatResidual x).toBits| ≤ 1 / 256 ∧
-      |value (floatResidual x).toBits - ideal x.toBits| ≤ 1 / (2 : ℝ) ^ 60 := by
-  rw [residual_bits]
-  exact residual_bounds x.toBits hxf hx
-
 #print axioms residual_bits
-#print axioms floatResidual_bounds
 
 end Verified.Examples.ExpResidualBounds

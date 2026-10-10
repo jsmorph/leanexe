@@ -1,6 +1,8 @@
 import Verified.Examples.ExpSpecialPositive
 import Verified.Examples.ExpTableReconstruction
 import LeanExe.ProofKit.F64GridExact
+import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.RealRoundedError
 
 /-!
 The negative special path of `Exp.exp`.  For finite `-768 ≤ a ≤ -512`, the reconstruction `y`
@@ -12,7 +14,7 @@ the result is within one step of the nonnegative nearest-even reference of `exp 
 
 namespace Verified.Examples.ExpSpecialNegative
 open CodeLib.IEEE64
-open LeanExe.ProofKit F64NearestNonnegative
+open LeanExe.ProofKit F64NearestNonnegative F64Magnitude RealRoundedError
 
 set_option exponentiation.threshold 4096
 
@@ -95,26 +97,6 @@ theorem negativeResult_bits (s tmp : Float) :
   · rw [ite_eq_right h, ite_eq_right
       (by rw [← one_bits]; exact fun h' => h ((F64Bits.lt_iff _ _).mpr h'))]
 
-theorem sum_scaled (a b : UInt64) :
-    value a + value b =
-      ((Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b : Int) : ℝ) / (2 : ℝ) ^ 1074 := by
-  simp only [value]
-  push_cast
-  ring
-
-theorem pow_div_1074 (n : Nat) : (2 : ℝ) ^ (1074 + n) / (2 : ℝ) ^ 1074 = 2 ^ n := by
-  rw [pow_add, mul_div_cancel_left₀ _ (pow_ne_zero _ two_ne_zero)]
-
-theorem scaled_ge (a b : UInt64) (n : Nat) (h : (2 : ℝ) ^ n ≤ value a + value b) :
-    (2 : Int) ^ (1074 + n) ≤ Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b := by
-  rw [← pow_div_1074, sum_scaled, div_le_div_iff_of_pos_right (by positivity)] at h
-  exact_mod_cast h
-
-theorem scaled_lt (a b : UInt64) (n : Nat) (h : value a + value b < (2 : ℝ) ^ n) :
-    Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b < (2 : Int) ^ (1074 + n) := by
-  rw [← pow_div_1074, sum_scaled, div_lt_div_iff_of_pos_right (by positivity)] at h
-  exact_mod_cast h
-
 theorem one_scaled : Wasm.IEEE64.scaledValue one = 2 ^ 1074 := by decide +kernel
 
 theorem one_finite : Finite one := by
@@ -124,22 +106,6 @@ theorem one_finite : Finite one := by
 theorem one_value : value one = 1 := by
   rw [value, one_scaled, Int.cast_pow, Int.cast_ofNat]
   exact div_self (pow_ne_zero 1074 (two_ne_zero : (2 : ℝ) ≠ 0))
-
-theorem negate_value (y : UInt64) (hy : Finite y) :
-    Finite (Wasm.IEEE64.negate y) ∧ value (Wasm.IEEE64.negate y) = -value y := by
-  have h := negate_spec y hy
-  refine ⟨h.1, ?_⟩
-  simp only [value, h.2]
-  push_cast
-  ring
-
-/-- Half of `2 ^ g` scaled units is `2 ^ q u` when `g = q + 1022`. -/
-theorem half_unit (g : Nat) (q : Int) (hq : (g : Int) = q + 1074 - 52) :
-    (2 : ℝ) ^ g / 2 / (2 : ℝ) ^ 1074 = (2 : ℝ) ^ q * unitRoundoff64 := by
-  have h := F64NearestBinade.power_quotient_split g 52 q hq
-  rw [div_div, mul_comm (2 : ℝ), ← div_div, h]
-  simp only [unitRoundoff64]
-  ring
 
 /-- The bounds on `y = s ⊕ p` used by the compensated sequence. -/
 theorem comp_y_real (u S P Y0 : ℝ) (hu0 : 0 < u) (hu1 : u ≤ 1 / 1024) (hS : 0 < S)
@@ -212,17 +178,6 @@ theorem comp_error_real (u S P Y0 Hi A2 B1 L1 L2 : ℝ) (hu0 : 0 < u) (hu1 : u �
   have h4 := abs_le.mp hL2'
   rw [abs_le]
   constructor <;> linarith
-
-theorem grid_value (w : UInt64) (R g : Nat)
-    (h : Wasm.IEEE64.scaledValue w = (R : Int) * 2 ^ g) :
-    value w = (R : ℝ) * (2 : ℝ) ^ g / (2 : ℝ) ^ 1074 := by
-  rw [value, h, Int.cast_mul, Int.cast_pow, Int.cast_natCast, Int.cast_ofNat]
-
-theorem rel_bound {X A u : ℝ} (hu1 : u ≤ 1) (h : |X - A| ≤ u * |A|) : |X| ≤ 2 * |A| := by
-  have h1 := abs_le.mp h
-  have h2 : u * |A| ≤ |A| := mul_le_of_le_one_left (abs_nonneg A) hu1
-  rw [abs_le]
-  constructor <;> cases abs_cases A <;> linarith
 
 /-- `hi = 1 ⊕ y` for `0 < y < 1`: `1 - hi` is exact, and the rounding error `1 + y - hi` is at
 most `u` and at most `y`. -/

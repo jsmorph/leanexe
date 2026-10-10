@@ -1,8 +1,10 @@
-import LeanExe.ProofKit.F64ArithmeticBounds
+import LeanExe.ProofKit.F64StageBounds
+import LeanExe.ProofKit.RealRoundedError
 import Verified.Examples.ExpApproximation
 
 namespace Verified.Examples.ExpEvaluationBounds
 open CodeLib.IEEE64
+open LeanExe.ProofKit F64StageBounds RealRoundedError
 
 set_option exponentiation.threshold 4096
 
@@ -28,66 +30,6 @@ theorem coefficient_bounds :
   obtain ⟨h2, h3, h4, h5⟩ := ExpApproximation.coefficient_values
   rw [h2, h3, h4, h5]
   norm_num
-
-private theorem mul_stage (a b : UInt64) (ha : Finite a) (hb : Finite b)
-    (A B M : ℝ) (hA : |value a| ≤ A) (hB : |value b| ≤ B)
-    (hM : A * B ≤ M) (hmin : minNormal64 ≤ M) (hmax : M < (2 : ℝ) ^ 1022) :
-    Finite (Wasm.IEEE64.mul a b) ∧
-    |value (Wasm.IEEE64.mul a b)| ≤ A * B + arithmeticEpsilon * M ∧
-    |value (Wasm.IEEE64.mul a b) - value a * value b| ≤ arithmeticEpsilon * M := by
-  have hp : |value a * value b| ≤ A * B := by
-    rw [abs_mul]
-    exact mul_le_mul hA hB (abs_nonneg _) ((abs_nonneg _).trans hA)
-  have he := LeanExe.ProofKit.F64ArithmeticBounds.mul_error_scaled a b ha hb M hmin hmax
-    (hp.trans hM)
-  exact ⟨he.1, LeanExe.ProofKit.F64ArithmeticBounds.magnitude_of_error _ _ _ _ he.2 hp,
-    he.2⟩
-
-private theorem add_stage (a b : UInt64) (ha : Finite a) (hb : Finite b)
-    (A B M : ℝ) (hA : |value a| ≤ A) (hB : |value b| ≤ B)
-    (hM : A + B ≤ M) (hmax : M < (2 : ℝ) ^ 1023) :
-    Finite (Wasm.IEEE64.add a b) ∧
-    |value (Wasm.IEEE64.add a b)| ≤ A + B + arithmeticEpsilon * M ∧
-    |value (Wasm.IEEE64.add a b) - (value a + value b)| ≤ arithmeticEpsilon * M := by
-  have hp : |value a + value b| ≤ A + B :=
-    (abs_add_le _ _).trans (add_le_add hA hB)
-  have he := LeanExe.ProofKit.F64ArithmeticBounds.add_error_scaled a b ha hb M hmax
-    (hp.trans hM)
-  exact ⟨he.1, LeanExe.ProofKit.F64ArithmeticBounds.magnitude_of_error _ _ _ _ he.2 hp,
-    he.2⟩
-
-private theorem product_error (a b A B ea eb : ℝ)
-    (ha : |a - A| ≤ ea) (hb : |b - B| ≤ eb) :
-    |a * b - A * B| ≤ ea * |b| + |A| * eb := by
-  calc
-    _ = |(a - A) * b + A * (b - B)| := by congr 1; ring
-    _ ≤ |(a - A) * b| + |A * (b - B)| := abs_add_le _ _
-    _ = |a - A| * |b| + |A| * |b - B| := by rw [abs_mul, abs_mul]
-    _ ≤ ea * |b| + |A| * eb :=
-      add_le_add (mul_le_mul_of_nonneg_right ha (abs_nonneg _))
-        (mul_le_mul_of_nonneg_left hb (abs_nonneg _))
-
-
-private theorem rounded_sum_error (c a b A B ec ea eb : ℝ)
-    (hc : |c - (a + b)| ≤ ec) (ha : |a - A| ≤ ea) (hb : |b - B| ≤ eb) :
-    |c - (A + B)| ≤ ec + ea + eb := by
-  have hs : |a + b - (A + B)| ≤ ea + eb := by
-    calc
-      _ = |(a - A) + (b - B)| := by congr 1; ring
-      _ ≤ |a - A| + |b - B| := abs_add_le _ _
-      _ ≤ ea + eb := add_le_add ha hb
-  calc
-    _ ≤ |c - (a + b)| + |a + b - (A + B)| := abs_sub_le _ _ _
-    _ ≤ ec + (ea + eb) := add_le_add hc hs
-    _ = ec + ea + eb := by ring
-
-private theorem rounded_product_error (c a b A B ec ea eb : ℝ)
-    (hc : |c - a * b| ≤ ec) (ha : |a - A| ≤ ea) (hb : |b - B| ≤ eb) :
-    |c - A * B| ≤ ec + ea * |b| + |A| * eb := by
-  calc
-    _ ≤ |c - a * b| + |a * b - A * B| := abs_sub_le _ _ _
-    _ ≤ ec + (ea * |b| + |A| * eb) := add_le_add hc (product_error _ _ _ _ _ _ ha hb)
-    _ = ec + ea * |b| + |A| * eb := by ring
 
 theorem evaluation_error (r t : UInt64) (hrf : Finite r) (htf : Finite t)
     (hr : |value r| ≤ 1 / 256) (ht : |value t| ≤ 1 / (2 : ℝ) ^ 53) :
@@ -246,7 +188,6 @@ theorem evaluation_error (r t : UInt64) (hrf : Finite r) (htf : Finite t)
     ring
   rw [hid] at hye
   exact ⟨hy.1, hym, hye.trans (by norm_num [arithmeticEpsilon])⟩
-
 
 theorem evaluation_exp_error (r t : UInt64) (hrf : Finite r) (htf : Finite t)
     (hr : |value r| ≤ 1 / 256) (ht : |value t| ≤ 1 / (2 : ℝ) ^ 53) :

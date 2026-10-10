@@ -1,21 +1,16 @@
 import Verified.Examples.ExpScaleFacts
 import LeanExe.ProofKit.F64Packing
+import LeanExe.ProofKit.F64Magnitude
 
 namespace Verified.Examples.ExpScaleEncoding
 open CodeLib.IEEE64
-open LeanExe.ProofKit
+open LeanExe.ProofKit F64Magnitude
 
 set_option exponentiation.threshold 4096
 
 def encodedScale (j : Fin 128) (q : Int) : UInt64 :=
   Wasm.IEEE64.encodeFinite false (1023 + q).toNat
     (Wasm.IEEE64.fraction (ExpTableBounds.headBits j.val))
-
-private theorem normal_value (w : UInt64) (hs : Wasm.IEEE64.sign w = false)
-    (he : 0 < Wasm.IEEE64.exponent w) :
-    value w = ((2 : ℝ) ^ 52 + (Wasm.IEEE64.fraction w : ℝ)) *
-      (2 : ℝ) ^ (Wasm.IEEE64.exponent w - 1) / (2 : ℝ) ^ 1074 := by
-  norm_num [value, Wasm.IEEE64.scaledValue, Wasm.IEEE64.scaledMagnitude, hs, Nat.ne_of_gt he]
 
 theorem encoded_scale_value (j : Fin 128) (q : Int) (hqlo : -1000 ≤ q) (hqhi : q ≤ 999) :
     Finite (encodedScale j q) ∧

@@ -1,4 +1,5 @@
 import Verified.Examples.ExpSpecialNegative
+import LeanExe.ProofKit.F64Magnitude
 
 /-!
 The final multiplication of the negative special path of `Exp.exp`: the exact product of
@@ -8,49 +9,9 @@ least 1.
 
 namespace Verified.Examples.ExpSpecialNegative
 open CodeLib.IEEE64
-open LeanExe.ProofKit F64NearestNonnegative
+open LeanExe.ProofKit F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
-
-theorem lt_limit_of_finite (c : UInt64) (hcf : Finite c) (hcs : Wasm.IEEE64.sign c = false) :
-    c.toNat < limit := by
-  have hl : limit = 0x7FF0000000000000 := rfl
-  simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, Wasm.IEEE64.exponent, bne_iff_ne,
-    ne_eq] at hcf
-  simp only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le] at hcs
-  rw [hl]
-  omega
-#print axioms lt_limit_of_finite
-
-theorem magnitude_lt_of_exponent_lt (y : UInt64) (e : Nat) (he : 1 ≤ e)
-    (h : Wasm.IEEE64.exponent y < e) :
-    Wasm.IEEE64.scaledMagnitude y < 2 ^ (51 + e) := by
-  have hf : Wasm.IEEE64.fraction y < 2 ^ 52 := Nat.mod_lt _ (by positivity)
-  simp only [Wasm.IEEE64.scaledMagnitude, beq_iff_eq]
-  split_ifs with h0
-  · exact lt_of_lt_of_le hf (Nat.pow_le_pow_right (by norm_num) (by omega))
-  · calc
-      (2 ^ 52 + Wasm.IEEE64.fraction y) * 2 ^ (Wasm.IEEE64.exponent y - 1) <
-          2 ^ 53 * 2 ^ (Wasm.IEEE64.exponent y - 1) :=
-        Nat.mul_lt_mul_of_pos_right (by omega) (by positivity)
-      _ = 2 ^ (53 + (Wasm.IEEE64.exponent y - 1)) := by rw [pow_add]
-      _ ≤ 2 ^ (51 + e) := Nat.pow_le_pow_right (by norm_num) (by omega)
-#print axioms magnitude_lt_of_exponent_lt
-
-/-- A word with value at least 1 has exponent field at least 1023. -/
-theorem exponent_ge_of_one_le (y : UInt64) (hy : 1 ≤ value y) : 1023 ≤ Wasm.IEEE64.exponent y := by
-  by_contra h
-  have hm := magnitude_lt_of_exponent_lt y 1023 (by norm_num) (by omega)
-  have hv : |value y| < 1 := by
-    rw [value, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074),
-      div_lt_one (by positivity)]
-    have h1 : |(Wasm.IEEE64.scaledValue y : ℝ)| = (Wasm.IEEE64.scaledMagnitude y : ℝ) := by
-      rw [← Int.cast_abs, ← Int.natCast_natAbs, natAbs_scaledValue, Int.cast_natCast]
-    rw [h1]
-    exact_mod_cast hm
-  have := le_abs_self (value y)
-  linarith
-#print axioms exponent_ge_of_one_le
 
 theorem scale_down_word : (0x0010000000000000 : UInt64) = Wasm.IEEE64.encodeFinite false 1 0 := by
   decide +kernel
@@ -130,10 +91,6 @@ theorem comp_final (z : UInt64) (hzf : Finite z) (R : Nat)
 
 #print axioms comp_final
 
-theorem zero_word_value : value (UInt64.ofNat (0 * 2 ^ 52)) = 0 := by
-  have h : Wasm.IEEE64.scaledValue (UInt64.ofNat (0 * 2 ^ 52)) = 0 := by decide +kernel
-  rw [value, h, Int.cast_zero, zero_div]
-
 theorem two_zpow_1022 : (2 : ℝ) ^ (1022 : Int) = (2 : ℝ) ^ 1022 := zpow_natCast 2 1022
 
 /-- The compensated branch: for `y = s ⊕ p < 1` with `s + p` within `(21/64) u s` of
@@ -205,8 +162,8 @@ theorem compensated_one_step (s p : UInt64) (E : ℝ) (hsf : Finite s) (hpf : Fi
     rw [hk]
     exact herr
   refine ⟨hclim, F64FullStep.one_step_binades E c 0 2 (by norm_num) (by norm_num)
-    (by rw [zero_word_value]; exact hE.le) (fun _ => by rw [hbnd]; exact hE2)
-    (hclim.trans (by decide)) (by rw [zero_word_value]; exact hc0) (by rw [hbnd]; exact hc2) he⟩
+    (by rw [value_zero_boundary]; exact hE.le) (fun _ => by rw [hbnd]; exact hE2)
+    (hclim.trans (by decide)) (by rw [value_zero_boundary]; exact hc0) (by rw [hbnd]; exact hc2) he⟩
 
 #print axioms compensated_one_step
 
@@ -319,7 +276,7 @@ theorem negative_one_step (x : Float) (hxf : Finite x.toBits)
     simp only [Bool.false_eq_true, ite_false] at hexp
     have hy1' : 1 ≤ value (Wasm.IEEE64.add s p) := le_of_not_gt hy1
     have hey := exponent_ge_of_one_le _ hy1'
-    have hys := (ExpSpecialPositive.normal_of_value (Wasm.IEEE64.add s p) (by
+    have hys := (normal_of_value (Wasm.IEEE64.add s p) (by
       have : (1 : ℝ) / 2 ^ 1022 < 1 := by norm_num
       linarith)).2
     have hefin : Wasm.IEEE64.exponent (Wasm.IEEE64.add s p) ≤ 2046 := by

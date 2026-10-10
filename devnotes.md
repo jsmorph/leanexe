@@ -29186,3 +29186,36 @@ The runner converts each module to text with `wasm-tools print` and reads it wit
 The user chose to check the exponential theorem in `tests/verified/run.sh` and to leave `Verified.lean` unchanged.  `lake build` covers the default targets `LeanExe` and `Examples`, and `lake build Verified` covers the modules that `Verified.lean` imports, so neither build checked the theorem.  The 48 proof modules took 178 seconds of module time to build from source on the build host.  After writing the modules, `run.sh` now builds `Verified.Examples.ExpTheorem` and checks `Verified/Examples/ExpFile.lean` against the `exp.wasm` it has just written.  It fails unless `exp_file` and `exp_file_decode` both report exactly `propext`, `Classical.choice`, and `Quot.sound`.  `exp_file_decode` depends on `exp_bytes_accuracy`, so the report covers the theorem.  The axiom check catches a `sorry`, which `lake build` reports only as a warning.
 
 The script passed (`opus-verified-tests-2.log`).  A negative test flipped one bit of the last byte of `exp.wasm`, and the file check failed at `decide` (`opus-exp-file-negative-1.log`).  The original file was then restored with the same hash.
+
+## 2026-10-10: Consolidation of the exponential proof
+
+The user chose to consolidate the 49 exponential proof files before starting another function.  An inventory script (`build/transcendentals/opus-inventory-1.tsv`) lists 342 declarations, their files, and their uses.  Fourteen have no use outside their own file.  Six of those are final results, four are rounding-reference facts that document `F64PositiveRounding`, and four are GPT intermediates superseded by later lemmas.  The exp-specific chain of reduction, table, evaluation, and reconstruction lemmas stays as it is.
+
+General lemmas sit in exp-specific files, and some appear twice: `ExpTinyError.one_value` and `ExpSpecialNegative.one_value` state the value of the word of 1.0, and `ExpSpecialPositive.value_ge_of_exponent` and `ExpNegativeFinal.exponent_ge_of_one_le` are special cases of `ExpTheorem.magnitude_ge` and `ExpFarRange.exponent_ge_of_value`.  The destinations avoid modules with many dependents: `F64ArithmeticBounds` has 48, including unrelated examples, and `LeanExe/Pipeline/Allocation.lean` has 189, including `Verified.Correct`.  `borrowed_kept` therefore stays in `ExpTheorem` until a second table-reading function needs a shared form of `exp_entry_call`.  Mathlib has `Real.exp_nat_mul` but no real `exp_int_mul`.
+
+- [x] A new `LeanExe/ProofKit/F64Magnitude.lean`: the relations between exponent field, magnitude, and sign, the encoding of positive normal words, and the words of 0 and 1.0, with the two special cases replaced at their call sites.
+- [x] The scaled-sum helpers of `ExpSpecialNegative`, placed in `F64Magnitude` instead of `F64GridExact.lean` (`sum_scaled`, `pow_div_1074`, `scaled_ge`, `scaled_lt`, `grid_value`, `half_unit`).
+- [x] A new `RealRoundedError.lean`, instead of `RealProductError.lean`: GPT's `product_error`, `rounded_sum_error`, `rounded_product_error`, and `rel_bound`.
+- [x] A new `LeanExe/ProofKit/F64StageBounds.lean`: `mul_stage` and `add_stage`.
+- [x] `RealExpError.lean`: `exp_int_mul` and `exp_pow_two`.
+- [x] Remove `floatEvaluation_error`, `floatEvaluation_exp_error`, `floatReconstruction_error`, and `floatResidual_bounds`.
+- [x] Import the new ProofKit modules from `LeanExe.lean`, as the other ProofKit modules are.
+- [x] Rebuild `Verified.Examples.ExpTheorem` and `LeanExe`, run `tests/verified/run.sh`, and copy the sources to the build host.
+
+### Consolidation results
+
+The moves differ from the plan in three places.  The scaled-sum helpers and `half_unit` went to `F64Magnitude` rather than `F64GridExact`, since `half_unit` needs `F64NearestBinade`, which `F64Magnitude` already imports.  GPT's `product_error`, `rounded_sum_error`, `rounded_product_error`, and `rel_bound` went to a new `RealRoundedError.lean` rather than `RealProductError.lean`, whose dependents include five modules of unrelated examples, and GPT's `product_error` became `factor_error` there to differ from `RealProductError.product_error`.  `value_ge_of_exponent`, `exponent_ge_of_value`, and `exponent_ge_of_one_le` stay as short corollaries of `magnitude_ge` and `magnitude_lt` instead of separate arguments, and `normal_of_value` now uses `magnitude_lt` instead of the binade boundary.  The new names `value_zero` and `value_zero_boundary` avoid `F64Add.zero_value`, which states a different fact.
+
+Several duplicates remain in the exp-specific chain.  `ExpSpecialNegative.one_value` restates `ExpTinyError.one_value` for the local definition `one`, and the three `quotient_bounds` lemmas in `ExpCoreInterval`, `ExpShiftedBits`, and `ExpSpecialScale` differ only in their numeric bounds.  `borrowed_kept` stays in `ExpTheorem`, as planned.
+
+`LeanExe.lean` now imports the sixteen ProofKit modules that GPT and Opus added, in its sorted list, so the default `lake build` checks them.  No module imports `LeanExe` itself, so the change rebuilds only that module.
+
+| Check | Result | Log |
+|---|---|---|
+| `F64Magnitude` alone | The first run failed: `F64NearestBinade` does not import `F64ExponentBounds`, so `F64ExponentBounds.boundary` was unknown.  The second, with the import added, passed. | `opus-magnitude-1.log`, `opus-magnitude-2.log` |
+| `lake build Verified.Examples.ExpTheorem` after each group | Passed, with no `sorryAx` | `opus-consolidate-1.log`, `opus-consolidate-2.log` |
+| `lake build`, the default targets | Passed, 3,897 jobs, no `sorry` warning.  It also compiled `Examples` modules not built before in this checkout. | `opus-default-build-1.log` |
+| `tests/verified/run.sh` | Passed: the file check, 15,837 cases, and the accuracy checks | `opus-verified-tests-3.log` |
+| the build host, the same sources, `lake build Verified.Examples.ExpTheorem` | Passed, compiling the 35 changed or dependent modules, with no `sorryAx` | the build host `opus-consolidate-m2-1.log` |
+
+The removed GPT lemmas are `floatEvaluation_error` and `floatEvaluation_exp_error` in `ExpEvaluationFloat`, `floatReconstruction_error` in `ExpReconstructionBounds`, and `floatResidual_bounds` in `ExpResidualFloat`.  No declaration used them.  The second checkout's copy of GPT's warning in `AGENTS.md` was removed as in the primary one.

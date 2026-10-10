@@ -1,9 +1,10 @@
 import Verified.Examples.ExpScaleEncoding
 import Verified.Examples.ExpShiftedBits
+import LeanExe.ProofKit.F64Magnitude
 
 namespace Verified.Examples.ExpScaleBits
 open CodeLib.IEEE64
-open LeanExe.ProofKit
+open LeanExe.ProofKit F64Magnitude
 
 set_option exponentiation.threshold 4096
 
@@ -11,12 +12,6 @@ def index (ki : UInt64) : UInt64 := 2 * (ki % 128)
 
 def scaleBits (ki : UInt64) : UInt64 :=
   Exp.expTable[(index ki + 1).toNat]! + (ki <<< (45 : UInt64))
-
-private theorem positive_encoding_toNat (e f : Nat) (he : e < 2048) (hf : f < 2 ^ 52) :
-    (Wasm.IEEE64.encodeFinite false e f).toNat = e * 2 ^ 52 + f := by
-  simp only [Wasm.IEEE64.encodeFinite, Bool.false_eq_true, ite_false, zero_add,
-    UInt64.toNat_ofNat']
-  exact Nat.mod_eq_of_lt (by omega)
 
 theorem index_values (ki : UInt64) (j : Fin 128) (hj : (ki % 128).toNat = j.val) :
     (index ki).toNat = 2 * j.val ∧ (index ki + 1).toNat = 2 * j.val + 1 := by

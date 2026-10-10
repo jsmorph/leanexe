@@ -1,5 +1,6 @@
 import Verified.Examples.ExpCoreRange
 import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64Magnitude
 
 /-!
 One representable step for a reconstruction of `exp`.  Let `E` lie in the range that table
@@ -11,20 +12,9 @@ entry `j` gives in the binade of `2 ^ q`, and let `P` be within `(7/5) u 2 ^ q H
 namespace Verified.Examples.ExpOneStep
 open CodeLib.IEEE64
 open LeanExe.ProofKit F64NearestNonnegative F64NearestBinade F64PositiveOrder F64FullStep
+  F64Magnitude
 
 set_option exponentiation.threshold 4096
-
-theorem finite_below_overflow (c : UInt64) (h : c.toNat < limit) :
-    value c < (2 : ℝ) ^ 1024 := by
-  have hlim : limit < 2 ^ 63 := by decide
-  have hle := (value_le_iff (h.trans hlim)
-    (by decide : (0x7FEFFFFFFFFFFFFF : UInt64).toNat < 2 ^ 63)).mpr (by
-      change c.toNat < 0x7FF0000000000000 at h
-      change c.toNat ≤ 0x7FEFFFFFFFFFFFFF
-      omega)
-  rw [F64PositiveRounding.largest_finite_value] at hle
-  have h971 : (0 : ℝ) < 2 ^ 971 := by positivity
-  linarith
 
 /-- The range of `exp x` from the reduction `k = 128 q + j`, for `abs x ≤ 768`. -/
 theorem target_bounds (x : UInt64) (hxf : Finite x) (hx : |value x| ≤ 768) (k q : Int)
@@ -179,7 +169,6 @@ theorem one_step_of_error (E P : ℝ) (c : UInt64) (q : Int) (j : Fin 128)
     refine one_step_binades E c e (e + 1) (by omega) (by omega) (by rw [hva]; linarith)
       (fun _ => by rw [hvb]; linarith) hc63 (by rw [hva]; linarith) (by rw [hvb]; linarith) he
 
-#print axioms finite_below_overflow
 #print axioms target_bounds
 #print axioms one_step_of_error
 
