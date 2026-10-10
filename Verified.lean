@@ -33,5 +33,10 @@ import Verified.Examples.Tables
 import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
+import Verified.Examples.Log1p
+import Verified.Examples.Atan
+import Verified.Examples.Asin
+import Verified.Examples.Tan
 import Verified.Examples.Drone
 import Verified.Examples.Reference
+import Verified.Examples.ArcReference
