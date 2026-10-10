@@ -29645,8 +29645,8 @@ The error budget has slack everywhere.  The polynomial's error is at most `2 ^ -
 | Overflow bound | The first `positive_within` assumed `E ≤ 2 ^ 1024 - 2 ^ 984`, false for the double below 1024; the proof had room for `2 ^ 1024 - 2 ^ 980`. | `arm-scale-1` |
 
 - [x] `exp2` for every finite input, with the exceptional values.
-- [ ] `exp10`: the reduction through `ExpIntegerSelection` with `invlog10_2N`, the two-part residual, `log 10` bounds, and the coefficients against `(log 10) ^ n / n!`.  The overflow bound `0x1.34413509f79ffp8` lies above `log10` of the overflow threshold, so the overflow branch is exact; the largest double below it gives `10 ^ x ≤ DBL_MAX (1 - 2 ^ -42.8)`.
-- [ ] Byte theorems and the file theorem module.
+- [x] `exp10`: the reduction through `ExpIntegerSelection` with `invlog10_2N`, the two-part residual, `log 10` bounds, and the coefficients against `(log 10) ^ n / n!`.  The overflow bound `0x1.34413509f79ffp8` lies above `log10` of the overflow threshold, so the overflow branch is exact; the largest double below it gives `10 ^ x ≤ DBL_MAX (1 - 2 ^ -42.8)`.
+- [x] Byte theorems and the file theorem module.
 
 ## 2026-10-10: Integration of the logarithm main path and the stage 5 ports
 
@@ -29775,3 +29775,32 @@ Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, 
 ## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
 
 Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
+
+## 2026-10-11: The `exp10` theorem and the byte theorems (track `exp2`)
+
+The `exp10` proof reuses the `exp2` structure: `ArmReconstruction`, `ArmSpecial`, `ArmScale`, and `exp2SpecialCase`'s two equations from `Exp2Paths` apply unchanged, with `ρ = 10 ^ r` for the ideal residual `r = x - k log10 2 / 128`.  The differences lie in the reduction and the constants.  `exp10` rounds `x · 128 / log10 2` with the shift `0x1.8p52`, so its key has `exp`'s form directly and `ExpIntegerSelection` and `ExpShiftedBits` give `k` and the key without change.  The residual is computed in two parts: the product of `k` with the 32-bit high part of `-log10 2 / 128` is exact (`F64ExactProduct.mul_exact_scaled`), adding `x` to it is exact on the grid of `2 ^ 1012` scaled units (or of `x` itself when `k = 0`), and the low part adds one rounding, so the computed residual lies within `2 ^ -61` of the ideal one.  The final sum of the ordinary path is `s · tmp + s` rather than `s + s · tmp`; `add_comm_finite` swaps it.
+
+The constants need `log 10`, which `log 10 = 3 log 2 + log (5/4)` gives from `ExpReductionBounds.log_two_enclosure` and 45 terms of the series of `log (5/4)` (`Real.abs_log_sub_add_sum_range_le`), with dyadic bounds of width below `2 ^ -88`.  The kernel then checks, on rationals: the coefficients against `(log 10) ^ n / n!`, the two-part constant within `2 ^ -85` of `log10 2 / 128`, the reduction constant within `2 ^ -40` of `128 / log10 2`, the overflow bound `0x1.34413509f79ffp8` with `10 ^ x ≥ 2 ^ 1024` from it on, the double below it with `10 ^ x ≤ 2 ^ 1024 - 2 ^ 980`, and `10 ^ -350 ≤ 2 ^ -1075`.  With the evaluation's `3 · 2 ^ -58` and the residual's perturbation of `ρ`, the polynomial word approximates `T + ρ - 1` within `2 ^ -56`, the bound that `ArmReconstruction` takes.
+
+| File | Content |
+|---|---|
+| `Exp10Constants.lean` | The enclosure of `log 10` and the rational checks. |
+| `Exp10Evaluation.lean` | The polynomial within `2 ^ -57` of `10 ^ r - 1` on `|r| ≤ 1/850`, and its evaluation within `2 ^ -58`. |
+| `Exp10Reduction.lean` | `k`, the key, the exact high part, and the computed residual within `2 ^ -61` of the ideal one. |
+| `Exp10Core.lean` | The float-to-word identities, `add_comm_finite`, and the state of `exp10Core`. |
+| `Exp10Paths.lean` | One step on the three paths: `|x| < 256`, `256 ≤ x ≤ 0x1.34413509f79fep8`, `-350 ≤ x ≤ -256`. |
+| `Exp10Theorem.lean` | The branches of `exp10With`, the tiny, overflow, and underflow cases, `exp10_within`, and the exceptional values. |
+| `Exp2Bytes.lean` | `Ready` (the allocator invariant, `Exp.expTable` borrowed at 4096, the memory cap), the entry calls of functions 7 and 8, `exp2_bytes_accuracy`, `exp10_bytes_accuracy`, and `exp2_module_accuracy`, their conjunction. |
+| `Exp2File.lean` | `exp2_file` and `exp2_file_decode`, which obtains the bytes from `exp2_module_accuracy`, so its axiom report covers both byte theorems. |
+
+The accepted statements are `Exp10Theorem.exp10_within : Finite x.toBits → F64SignedRounding.WithinSteps 1 ((10 : ℝ) ^ value x.toBits) (Exp2.exp10 x).toBits`, the exceptional values `exp10_pos_zero`, `exp10_neg_zero`, `exp10_pos_infinity`, `exp10_neg_infinity`, and `exp10_nan`, and the byte theorems above.  Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`exp10-theorem-1.log`, `exp2-bytes-2.log`), and the modules build without warnings.  `tools/Emit.lean` wrote `build/verified/exp2.wasm` (5,406 bytes, SHA-256 `653f7a02…c063`), and `Exp2File.lean` checked against it with exactly two axiom lines, both permitted (`exp2-emit-1.log`, `exp2-file-2.log`).  The build host has no `wasm-tools`, so the module was not validated there; `tests/verified/run.sh` validates it.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Missing import | `Real.abs_log_sub_add_sum_range_le` lives in `Mathlib.Analysis.SpecialFunctions.Log.Deriv`, which the chain did not import. | `exp10-constants-1` |
+| Reduction | Calculations that began with `_ ≤ 1 / 2 ^ 53 * …` elaborated their numerals as naturals; annotating `(1 : ℝ)` fixed them.  `push_cast` turned `2 ^ 1074` into a numeral and left `field_simp` unable to cancel it; explicit cast lemmas and `mul_div_cancel_right₀` did.  Two error bounds were too tight: the sum before the last rounding needed `1/850 + …` rather than `1/512`, and its rounding `2 ^ -62` rather than `2 ^ -61`. | `exp10-reduction-1`, `-2` |
+| Core | `residual` was ambiguous with Mathlib's `_root_.residual`; qualified names fixed it.  The bound `exp b ≤ 2` was too coarse for the residual's perturbation of `ρ`; `exp b ≤ 1 + 2/364` from `Real.abs_exp_sub_one_le` sufficed. | `exp10-core-1` |
+| Paths | `rw [div_eq_mul_one_div]` without arguments also rewrote the constants `1 / 2 ^ 40`; naming its arguments fixed it. | `exp10-paths-1` |
+
+- [x] `exp10` for every finite input, with the exceptional values.
+- [x] Byte theorems for both exports and the file theorem module.  The `tests/verified/run.sh` entry is `exp2:Exp2Bytes:Exp2File`.
