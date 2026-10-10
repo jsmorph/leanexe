@@ -94,7 +94,7 @@ The generated compiler theorems establish that the compiled module computes each
 
 ### The exponential theorem
 
-`ExpTheorem.exp_bytes_accuracy` states that the bytes of `Exp.compiled.module` decode to the module, that its function 5 is exported as `exp`, and that every first call of that entry from the module's initial store returns without a trap a single `f64`.  That word is the bit pattern of `Exp.exp x`, and for finite `x` it is at most `0x7FF0000000000000` and within one encoding step of `F64PositiveRounding.roundNearestEven (Real.exp (value x))`.  `ExpTheorem.exp_one_step` states the bound for the Lean function, and `exp_pos_zero`, `exp_neg_zero`, `exp_pos_infinity`, `exp_neg_infinity`, and `exp_nan` give the exceptional results.  Every one of these theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
+`ExpTheorem.exp_bytes_accuracy` states that the bytes of `Exp.compiled.module` decode to the module, that its function 5 is exported as `exp`, and that the module's initial store satisfies the store invariant `ExpTheorem.Ready`: the allocator invariant, the table borrowed at address 4096, and a memory cap of at most 65,535 pages.  A call of that entry from a store satisfying `Ready` returns without a trap a single `f64` and leaves a store satisfying `Ready`, in which every heap region of the earlier store keeps its bytes.  The theorem therefore covers every call in a sequence of calls to `exp` from the initial store.  The returned word is the bit pattern of `Exp.exp x`, and for finite `x` it is at most `0x7FF0000000000000` and within one encoding step of `F64PositiveRounding.roundNearestEven (Real.exp (value x))`.  `ExpTheorem.exp_one_step` states the bound for the Lean function, and `exp_pos_zero`, `exp_neg_zero`, `exp_pos_infinity`, `exp_neg_infinity`, and `exp_nan` give the exceptional results.  Every one of these theorems reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Inputs | Branch of `Exp.expWith` | Theorem |
 |---|---|---|
@@ -105,18 +105,18 @@ The generated compiler theorems establish that the compiled module computes each
 | `abs(a) ≥ 1024`, finite | the products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
 | zeros, infinities, NaN | `1 + x` and the `-∞` test | `ExpTheorem.exp_pos_zero` through `exp_nan` |
 
-The proof modules are separate from the root `Verified` import.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
+The proof modules are separate from the root `Verified` import.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
 
 ### Limits of the exponential theorem
 
-The user reviewed the statement on 2026-10-10.  The review found four limits.  The plan for each is in the last column.
+The user reviewed the statement on 2026-10-10, and the review found four limits.  Work the same day removed the first-call limit and added a theorem for the file.  The table lists the limits that remain.
 
 | Limit | Detail | Plan |
 |---|---|---|
-| Talos and the decoder are trusted | The statement uses the CodeLib interpreter's `Wasm.run`, `Module.initialStore` for instantiation, and `Wasm.Encoding.decode`, which [the design notes](docs/design.md#scope-of-the-theorem) list as trusted.  The decoder test runs the official WebAssembly testsuite, and the interpreter's testsuite report in the CodeLib package is empty.  Engines outside the deterministic profile, such as browsers, may return other NaN bits. | Run the interpreter testsuite and `tests/verified/run.sh`, and record the results. |
-| No theorem covers `exp.wasm` | `tests/verified/run.sh` writes `build/verified/exp.wasm` with `tools/Emit.lean`, which evaluates `encode` with compiled Lean code. | Add an `exp_file` theorem in its own module, as `gpt_file` in `Examples/Gpt/File.lean` does for `gpt.wasm`. |
+| Talos and the decoder are trusted | The statement uses the CodeLib interpreter's `Wasm.run`, `Module.initialStore` for instantiation, and `Wasm.Encoding.decode`, which [the design notes](docs/design.md#scope-of-the-theorem) list as trusted.  The decoder test runs the official WebAssembly testsuite, and the interpreter's testsuite report in the CodeLib package is empty.  Engines outside the deterministic profile, such as browsers, may return other NaN bits. | `tests/verified/run.sh` passed on 2026-10-10.  The interpreter testsuite needs CodeLib's `vendor/testsuite` submodule, which is not checked out on minideb1, and `just`.  Both need the user's approval. |
+| The file theorem trusts `binary_file%` | `ExpFile.exp_file` proves that `build/verified/exp.wasm` holds `encode Exp.compiled.module`, and `exp_file_decode` that the file decodes to the module of `exp_bytes_accuracy`.  The elaborator `binary_file%`, which reads the file, is trusted, as for `gpt_file`. | None. |
 | Canonical NaN argument only | The argument is `x.toBits` for a Lean `Float`, and `F64Bits.toBits_canonical` shows that every NaN `Float` has the canonical bits.  A WebAssembly caller can pass any of the other `2^53 - 3` NaN words.  For such a word the compiled code reaches `1.0 + x`, which gives the canonical NaN in Talos, but no theorem states this. | None.  The limit stays recorded. |
-| First call only, nothing about the final store | The theorem starts from the module's initial store and discards what `ImplementsTables` states about the final store. | Prove a store invariant: the allocator invariant, the table borrowed at 4096, and a memory cap of at most 65,535 pages.  Show that it holds initially and that each call to `exp` preserves it and keeps every heap region's bytes, so the bound holds for every call in a sequence of calls to `exp`.  Calls to the module's other exports between them stay outside. |
+| Calls to the module's other exports | `exp_bytes_accuracy` covers sequences of calls to `exp`.  A call to `alloc`, `release`, `specialCase`, `expCore`, or `expWith` between them needs a theorem that it preserves `Ready`. | None planned. |
 
 ### Library results added for the theorem
 
@@ -133,8 +133,9 @@ GPT's reconstruction lemmas now expose the bound before the final rounding (`pre
 
 - [x] Review the final theorem's statement and premises with the user.
 - [x] Commit the theorem with its limits recorded.
-- [ ] Prove the store invariant and the bound for every call in a sequence of calls to `exp`.
-- [ ] Add `exp_file`, run `tests/verified/run.sh` and the interpreter testsuite, and record the results.  CodeLib's testsuite recipe needs `just`, which minideb1 lacks.  The user decides between installing `just` and running the recipe's command directly.
+- [x] Prove the store invariant and the bound for every call in a sequence of calls to `exp`.
+- [x] Add `exp_file` and run `tests/verified/run.sh`.
+- [ ] Run the interpreter testsuite.  It needs CodeLib's `vendor/testsuite` submodule, which is not checked out on minideb1, and `just`, which minideb1 lacks.  The user decides how to provide both.
 - [ ] Decide whether `Verified.Examples.ExpTheorem` should join a repository test driver or the root `Verified` import.
 - [ ] Consolidate the proof files: GPT's 39 files and the new ones contain lemmas that belong in ProofKit, such as the exponent and magnitude bounds in `ExpNegativeFinal` and `ExpTheorem`.
 

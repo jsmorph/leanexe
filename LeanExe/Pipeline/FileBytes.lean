@@ -1,8 +1,11 @@
 import Lean
+import LeanExe.Encoding.Modules
 
 /-! `binary_file% "path"` elaborates to the bytes of the file at `path`, relative to the
 directory of the source file, as a `ByteArray` term.  Lean's `include_str` reads a text
-file the same way. -/
+file the same way.  `encode_eq_of_toList` states that a module's encoding is such a file
+from a comparison of byte lists, which the kernel decides, since it reads an array element
+by walking the list that represents the array. -/
 
 open Lean Elab Term
 
@@ -14,3 +17,16 @@ syntax (name := binaryFile) "binary_file% " str : term
     | throwError "cannot compute the directory of the source file"
   let bytes ← IO.FS.readBinFile (dir / path)
   return mkApp (mkConst ``ByteArray.mk) (toExpr bytes.data)
+
+namespace LeanExe.Pipeline
+
+theorem encode_eq_of_toList {m : Wasm.Module} {file : ByteArray}
+    (h : (Wasm.Encoding.encode m).toOption.map (·.data.toList) = some file.data.toList) :
+    Wasm.Encoding.encode m = .ok file := by
+  cases hEncode : Wasm.Encoding.encode m with
+  | error _ => simp [hEncode, Except.toOption] at h
+  | ok bytes =>
+    simp only [hEncode, Except.toOption, Option.map_some, Option.some.injEq] at h
+    rw [ByteArray.ext (Array.toList_inj.mp h)]
+
+end LeanExe.Pipeline

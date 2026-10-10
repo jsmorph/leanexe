@@ -29150,5 +29150,22 @@ The review found four limits, which [the project notes](transcendentals.md#limit
 The user chose this order.
 
 - [x] Record the limits in the project notes and commit the theorem.
-- [ ] Prove the store invariant: it holds at the initial store, each call to `exp` preserves it and keeps every heap region's bytes, and every call in a sequence of calls to `exp` returns the bounded result.
-- [ ] Add `exp_file` in its own module, run `tests/verified/run.sh`, and run the interpreter testsuite once the user decides how to provide `just`.
+- [x] Prove the store invariant: it holds at the initial store, each call to `exp` preserves it and keeps every heap region's bytes, and every call in a sequence of calls to `exp` returns the bounded result.
+- [x] Add `exp_file` in its own module and run `tests/verified/run.sh`.
+- [ ] Run the interpreter testsuite once the user decides how to provide CodeLib's `vendor/testsuite` submodule and `just`.
+
+### Store invariant
+
+`ExpTheorem.Ready heap store` holds when `heap.At store`, `heap.Borrowed store 4096 Exp.expTable`, and `store.memoryCap Exp.compiled.module 0 ≤ 65535`.  `ready_initial` proves it for the module's initial store from `compiled.initial`.  `exp_entry_call` replaces `exp_entry_first_call`: from any store satisfying `Ready`, the call returns the bits of `Exp.exp x`, and some `heap'` satisfies `Ready heap' final`, with every region of `heap` keeping its bytes and remaining a region of `heap'`.  `exp_bytes_accuracy` now states the byte round trip, the export, `Ready` at the initial store, and, for every store satisfying `Ready`, the bounded result together with `Ready` and the region frame after the call.
+
+The first attempt applied `Heap.Borrowed.keepIn` to the concrete table and stopped at the maximum recursion depth.  Matching the region bounds made Lean reduce `Exp.expTable.size`, the size of a literal array of 256 words.  `borrowed_kept` states the same step for any array, so the concrete table only instantiates it.  The scratch checks are `build/transcendentals/opus-calls-diag-1.log` through `-3.log`.  The accepted build on minideb1 is `build/transcendentals/opus-calls-1.log`, and `ready_initial`, `exp_entry_call`, and `exp_bytes_accuracy` report only `propext`, `Classical.choice`, and `Quot.sound`.  `borrowed_kept` is general over heaps and belongs in `LeanExe/Pipeline/Allocation.lean` next to `Heap.Keeps.borrowed` when the proof files are consolidated.
+
+### File theorem and tests
+
+With the pinned `wasm-tools` 1.251.0 from `build/tools` on `PATH`, `tests/verified/run.sh` passed after `lake build Verified`.  It reported 15,837 cases passed and none failed, and its `exp` accuracy check found all 180,085 results within one unit of the reference, 147 of them unequal to it.  The run took 7 minutes 21 seconds, and its log is `build/transcendentals/opus-verified-tests-1.log` on minideb1.
+
+[The file module](Verified/Examples/ExpFile.lean) proves `exp_file`, that `build/verified/exp.wasm` holds `encode Exp.compiled.module`, by the kernel's comparison of byte lists, as `gpt_file` does.  `exp_file_decode` combines it with `exp_bytes_accuracy` to show that the file decodes to the module of the theorem.  Both report only `propext`, `Classical.choice`, and `Quot.sound`, in `build/transcendentals/opus-exp-file-1.log`.
+
+Opus first copied GPT's `encode_eq_of_toList` into the file module, because `build/gpt/gpt.wasm` did not exist and `Examples/Gpt/File.lean` could not be rechecked.  The user pointed out that the file can be built.  The lemma now lives in `LeanExe/Pipeline/FileBytes.lean`, which imports `LeanExe.Encoding.Modules` for it, and both file modules use it.  The GPT proof modules were built for the first time on minideb1 (`opus-file-build-1.log`), `Emit.lean` wrote the 14,141-byte `gpt.wasm` (`opus-gpt-emit-1.log`), and `gpt_file` checked with the moved lemma (`opus-gpt-file-1.log`).
+
+The interpreter testsuite cannot run yet.  CodeLib's `vendor/testsuite` submodule, `https://github.com/WebAssembly/testsuite` at `9233a0a8`, is not initialized in the package checkout, and no copy of the testsuite exists under `~/src` on minideb1.  CodeLib's `just testsuite` recipe runs `scripts/testsuite.sh`, which calls `lake -d interpreter exe testsuite` and ignores its exit status with `|| true`.  A run on this machine would also need `tools/leanrun` around the Lean build.
