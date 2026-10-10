@@ -29609,3 +29609,9 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Integration of the logarithm main path and the stage 5 ports
+
+Opus merged `w/log` at `3c21c26e` (the logarithm main path) and `w/ports` at `f1de26f0` (stage 5) into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64RelativeStep` and `F64ErrorTrack`, `Verified.lean` imports `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference`, and `tests/verified/run.sh` emits the four new modules and runs their checks.  The build passed with 3,842 jobs (`opus-merge-s5-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-6.log`): 204,298 results of `exp2`, 200,707 of `exp10`, 342,197 of `log2` and of `log10`, and 110,911 of `pow` within one unit.
+
+The user approved installing elan on a third build host.  Opus installed elan 4.2.4 from the official `elan-init.sh` with `--no-modify-path` and the pinned toolchain `leanprover/lean4:v4.34.0-rc2`, without changes to the shell profiles.  The checkout is a separate clone of the user's main checkout there, which stays unchanged.  The permission check refused a `git remote set-url` in the first attempt, a step that was unnecessary.  `.lake/packages` (8.6 GB, 28.5 minutes through the local machine) and `.lake/build` (1.8 GB, 3.5 minutes) came from another build host, whose clock agrees with this one's, and `lake build --no-build` then reported every job of the exponential theorem, `log_normal_within`, and the kernel bounds up to date.  The runner's systemd scope works there.  The `exp2` track runs in a separate worktree.
