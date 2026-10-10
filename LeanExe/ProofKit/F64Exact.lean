@@ -180,9 +180,35 @@ theorem mul_two_exact (y : UInt64) (hy : Finite y) (hye : 1 ≤ Wasm.IEEE64.expo
     rw [hp]
     split <;> push_cast <;> ring
 
+/-- Halving a word whose exponent field is at least 2 is exact. -/
+theorem mul_half_exact (y : UInt64) (hy : Finite y) (hye : 2 ≤ Wasm.IEEE64.exponent y) :
+    Finite (Wasm.IEEE64.mul 0x3FE0000000000000 y) ∧
+      value (Wasm.IEEE64.mul 0x3FE0000000000000 y) = value y / 2 := by
+  have hy2 : Wasm.IEEE64.exponent y < 2047 := by
+    have h := hy
+    simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, bne_iff_ne, ne_eq] at h
+    have : Wasm.IEEE64.exponent y < 2048 := Nat.mod_lt _ (by norm_num)
+    omega
+  have hw : Wasm.IEEE64.encodeFinite false 1022 0 = 0x3FE0000000000000 := by decide
+  have h := F64PowerScale.mul_power_finite 1022 y (by norm_num) (by norm_num) hy (by omega)
+    (by omega) (by omega)
+  rw [hw] at h
+  refine ⟨h.1, ?_⟩
+  rw [h.2, show ((1022 : ℕ) : ℤ) - 1023 = -1 by norm_num, zpow_neg_one]
+  ring
+
+/-- A word of magnitude at least `2 ^ -1000` has exponent field at least 2. -/
+theorem exponent_two_of_value (w : UInt64) (h : 1 / 2 ^ 1000 ≤ |value w|) :
+    2 ≤ Wasm.IEEE64.exponent w := by
+  by_contra hn
+  have := F64Magnitude.magnitude_lt w 2 (-1021) (by norm_num) (by norm_num) (by omega)
+  have h2 : (2 : ℝ) ^ (-1021 : ℤ) < 1 / 2 ^ 1000 := by norm_num
+  exact absurd h (not_le.mpr (this.trans h2))
+
 #print axioms magnitude_grid
 #print axioms sub_sterbenz
 #print axioms sub_exact
 #print axioms mul_two_exact
+#print axioms mul_half_exact
 
 end LeanExe.ProofKit.F64Exact
