@@ -29237,7 +29237,7 @@ The user directed Opus to build out all the transcendental functions, to prove t
 
 ### Work division
 
-Each agent works in its own copy of the primary checkout, on its own branch, so that builds and edits do not interfere.  A copy made with `cp -a` keeps the build: `lake build --no-build Verified.Examples.ExpTheorem LeanExe.ProofKit.F64SignedRounding` in a separate worktree reported all 3,573 jobs up to date.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their copies, and the merge into `transcendentals` uses Git's union merge for `devnotes.md` (set in `.git/info/attributes`), since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, and `Verified.lean`.
+Each agent works in its own Git worktree, a separate worktree on branch `w/<track>`, so that builds and edits do not interfere.  The primary checkouts are themselves worktrees of the main checkout on each machine, so a plain `cp -a` copy would share the primary's HEAD and index.  Each worker worktree is therefore created with `git worktree add --no-checkout`, filled with the primary's files and build by `tar` without `.git`, and reset to its branch.  The copied build is current: `lake build --no-build Verified.Examples.ExpTheorem LeanExe` reported all 3,655 jobs up to date in both worktrees on the build host.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their worktrees, and Opus resolves conflicts in `devnotes.md` at each merge with `git merge-file --union`, since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, `Verified.lean`, and `tests/verified/run.sh`.
 
 | Track | Machine | Work |
 |---|---|---|
@@ -29245,7 +29245,7 @@ Each agent works in its own copy of the primary checkout, on its own branch, so 
 | Logarithm | a build host | Tables, both paths, subnormal inputs, exceptional values, and the byte theorem. |
 | Exponential minus one and hyperbolic tangent | a build host | Reduction, kernel, the scaling forms, saturation, `tanh` from `expm1`, and the byte theorems. |
 | Sine and cosine | a build host | The words of `2/π` and `π/2`, the Payne–Hanek arithmetic, the smallest distance of a double from a multiple of `π/2`, the medium reduction, the kernels, and the byte theorems. |
-| New ports | the build host, if the user approves its Lean toolchain | Stage 3 to 6 implementations with sampled tests. |
+| New ports | a build host | The stage 3 implementations, `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`, with sampled tests and a recommended bound for each. |
 
 - [x] `LeanExe/ProofKit/F64SignedRounding.lean`: the signed reference, `position`, `WithinSteps`, and the negation and nonnegative lemmas (`opus-signed-1.log` failed on a lemma name, `opus-signed-2.log` passed with the permitted axioms).
 - [ ] Polynomial bounds and series remainders.
