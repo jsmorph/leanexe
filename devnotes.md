@@ -28013,7 +28013,8 @@ The drone needs no array updates and no wrappers, so the order puts its theorem 
   `bound_eq` for bodies of these forms.
 - [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
 - [ ] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.
-- [ ] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`.
+- [x] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`: every function of Updates, Grow, Insert,
+  and Clob has a `bound_eq`.
 - [ ] 5: wrappers.
 
 ### Bound equations: kernel evaluation of loops
