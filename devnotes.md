@@ -28176,7 +28176,12 @@ standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong
 | Merge | run `main`'s default build and checks on `verified`, then fast-forward `main` |
 | Order | the merge checks, then task 66 (an amortized charge for `push` and a recursion depth bound), then the generators, then record fields in `bound_eq` |
 
-- [ ] Merge checks and fast-forward.
+- [x] Merge checks and fast-forward.  The manual's full check passed on `verified`: the build with
+  no `sorry`, the same bytes for the 33 modules, 16,039 module cases, 77 release-count cases, 20
+  depth-guard cases, 360 chunk cases, 1,975 drone calls and 116 drone terrains, LTG, the decoder
+  test with no failure, and 474 WGSL cases on each of SwiftShader and lavapipe.  The GPT module's
+  bytes did not change, so the GPT tests did not run.  `main` had no commits after `33f15752`, so
+  it fast-forwards to `verified`.
 - [ ] Amortized push charge and recursion depth bound.
 - [ ] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
   structure, spectral test values.
