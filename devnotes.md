@@ -29291,3 +29291,39 @@ Every theorem in the four modules reports only `propext`, `Classical.choice`, an
 - [x] `TaylorRemainder`: `sin`, `cos`, `exp`, `log (1 + x)`, and `atan`.
 - [x] The sine and cosine kernel polynomials.
 - [x] The two logarithm polynomials.
+
+## 2026-10-10: Kernel polynomials of stage 3 (track poly, minideb2)
+
+The coordinator asked for the approximation bounds of the stage 3 kernels that the ports agent takes from FreeBSD msun at commit `20381bce4b63975494a2f4bc84257f6932e6d379`: `s_log1p.c`, `s_atan.c`, `e_asin.c` with `e_acos.c`, and `k_tan.c`.  The sources were fetched into `scratchpad/w-poly/msun` (SHA-256 of `s_log1p.c` `6fb0248e…`, `s_atan.c` `562febb0…`, `e_asin.c` `4340fb7c…`, `e_acos.c` `935323d6…`, `k_tan.c` `0021bc1b…`), and each coefficient list is `ratOfWord` of the bit patterns that the source prints beside the decimal values.  A Python model with exact fractions (`stage3.py`, `stage3b.py`) measured each largest error by sampling and sized each check before Lean ran.
+
+| Kernel | Range | Source's bound | Largest sampled error | Proved bound |
+|---|---|---|---|---|
+| `log1p`, `Lp1` to `Lp7`, against `log (1 + s) - log (1 - s)` | `abs s ≤ 0.1716`; the code's thresholds give at most 0.171574 | `2 ^ -58.45` | `2 ^ -58.47` at `s ≈ 0.168` | `(93/128) 2 ^ -58` relative to `s`, about `2 ^ -58.46` |
+| `atan`, `aT[0]` to `aT[10]` | `abs x ≤ 7/16`, the widest reduced range | none stated | `2 ^ -57.71` relative to `x`, at `x ≈ 0.188` | `(5/8) 2 ^ -57`, about `2 ^ -57.68` |
+| `tan`, `T[0]` to `T[12]`, against `tan = sin/cos` | `abs x ≤ 0.67434` | `2 ^ -59.2` | `2 ^ -59.147` at `x ≈ 0.670` | `(59/64) 2 ^ -59` relative to `x`, about `2 ^ -59.12` |
+| `asin`, `pS0` to `pS5` over `qS1` to `qS4`, against `(arcsin x - x)/x ^ 3` | `abs x ≤ 1/2`, which covers both uses in `e_asin.c` and `e_acos.c` | `2 ^ -58.75` | `2 ^ -56.58` at `x = 0` | `(11/16) 2 ^ -56`, about `2 ^ -56.54` |
+
+Two of the stated bounds are below the measured errors.  The tangent polynomial's error exceeds the `2 ^ -59.2` of `k_tan.c` near the end of its range, as the sine polynomial's error exceeded the `2 ^ -58` of `k_sin.c`.  The `asin` bound of `e_asin.c` describes the minimax error with exact coefficients: `pS0` is `1/6` rounded down, and its rounding alone gives the error `1/6 - pS0 ≈ 2 ^ -56.58` at `x = 0`.  The proved bounds are the ones the function proofs should use.
+
+The first `atan` build, a single `decide +kernel` over the whole interval with the Taylor polynomial of degree 29, ran for more than 4.5 minutes and reached 5.7 GB of resident memory under the runner's 6 GiB limit, and I stopped it (`poly-atan-kernel-1.log`).  A probe over one sixteenth of the interval passed in 5.2 seconds of kernel time (`poly-atan-probe-1.log`).  The kernel's cost for one declaration grows faster than the work, because it keeps every intermediate result for the whole declaration.  `LeanExe/ProofKit/PolyChecks.lean` therefore states `Covers`, a conjunction of checks over adjacent intervals, each proved as its own declaration, with `bounded_of_covers`.  The sixteen `atan` parts then built in 40 seconds.  `scratchpad/w-poly/gen.py` writes the part theorems.
+
+`PolyChecks` also gives `mulP`, the one-sided bounds `nonpos_of_bounded` and `nonneg_of_bounded`, the weighted bound `abs_le_weighted`, and `sub_div_le`.  The tangent and arcsine errors are relative to a weight: `abs (S - C P) ≤ ε C` with `S` and `C` the Taylor polynomials of `sin x / x` and `cos x`, and `abs (T q - p) ≤ ε q` with `T` the Taylor polynomial of `(arcsin x - x)/x ^ 3`.  A plain bound on `S - C P` divided by the smallest cosine would lose about 0.36 bits, and the arcsine denominator falls from 1 to 0.515 on its range.  Each weighted bound is two one-sided checks, `A - ε W + M` and `A + ε W - M` within `M` of zero.
+
+`LeanExe/ProofKit/LogRatioRemainder.lean` gives the remainder of `log (1 + x) - log (1 - x)` from `Real.hasSum_log_sub_log_of_abs_lt_one`.  Mathlib has no series for `arcsin`, so `LeanExe/ProofKit/AsinRemainder.lean` proves one without series.  The truncation `S` of the binomial series of `(1 - u) ^ (-1/2)` satisfies `1 - (1 - u) S(u) ^ 2 = u ^ n G(u)`.  The kernel checks that the product has no terms below degree `n` and bounds `G` on `[0, 1/4]`.  With `y = 1/√(1 - u)`, the identity `(y - S) (1 - u) (y + S) = u ^ n G(u)` bounds `y - S`.  The mean value inequality, applied to `arcsin` minus its Taylor polynomial, whose derivative is `y - S` at `u = t ^ 2`, then bounds the remainder by `(4/3) γ abs x ^ (2n + 1)`.
+
+| Check | Result | Log |
+|---|---|---|
+| `AtanKernelPoly`, one declaration | Stopped after 4 minutes 40 seconds at 5.7 GB | `poly-atan-kernel-1.log` |
+| Probe over one sixteenth of the `atan` interval | Passed, 5.2 seconds of kernel time | `poly-atan-probe-1.log` |
+| `PolyChecks` and `AtanKernelPoly` in sixteen parts | Passed, 40 seconds | `poly-atan-kernel-2.log` |
+| `LogRatioRemainder` and `Log1pKernelPoly` in eight parts over the dyadic interval `[0, 15439/2 ^ 19]` | Passed, 19 seconds | `poly-log1p-tan-1.log` |
+| `TanKernelPoly` | The kernel checks passed.  Two `calc` blocks left goals `A ≤ A` whose sides differ invisibly, and explicit `trans` steps replaced them.  The second run passed in 53 seconds. | `poly-log1p-tan-1.log`, `poly-tan-asin-1.log` |
+| `AsinRemainder` | The first run failed: `HasDerivAt.sum` states its function as a sum of functions, `convert` descended into module instances, and a rewrite ran in the wrong order. | `poly-tan-asin-1.log` |
+| `AsinRemainder` and `AsinKernelPoly` | The remainder passed after the fixes, with `HasDerivAt.congr_deriv` replacing `convert`.  The kernel checks of the bound passed on the first run, and one step failed because `push_cast` had not removed the casts of `3/4` and `1/4`.  The third run passed in 26 seconds. | `poly-asin-2.log`, `poly-asin-3.log` |
+
+Every theorem in the six new modules reports only `propext`, `Classical.choice`, and `Quot.sound`, and the builds produced no warnings in these files.
+
+- [x] `log1p` polynomial: `Log1pKernelPoly.log1p_kernel_error`.
+- [x] `atan` polynomial: `AtanKernelPoly.atan_kernel_error`.
+- [x] `asin` rational function, with the remainder of `arcsin`: `AsinKernelPoly.asin_kernel_error`.
+- [x] `tan` polynomial: `TanKernelPoly.tan_kernel_error`.
