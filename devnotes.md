@@ -29483,3 +29483,48 @@ Every theorem in the six new modules reports only `propext`, `Classical.choice`,
 ## 2026-10-10: Integration of the stage 4 ports and the stage 3 kernel bounds
 
 Opus merged `w/ports` at `f8d17857` (stage 4) and `w/poly` at `d539b111` (the stage 3 kernel bounds) into `transcendentals`, resolving both journal conflicts by keeping both sides.  `LeanExe.lean` now imports `PolyChecks`, `LogRatioRemainder`, and `AsinRemainder`, `Verified.lean` imports `Sinh`, `Asinh`, and `HyperbolicReference`, and `tests/verified/run.sh` emits the two new modules and runs their accuracy checks.  `lake build LeanExe Verified` with the four kernel-bound modules passed with 3,829 jobs, and all 13 kernel-bound theorems report only the permitted axioms (`opus-merge-s4-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-5.log`): 208,085 results of `sinh` within two units and of `cosh` within one, 200,047 of `asinh` within one, and 200,099 of `acosh` and 200,153 of `atanh` within two.
+
+## 2026-10-10: Logarithm theorem, main path (track `log`)
+
+Opus works on the theorem for `Verified.Examples.Log.log` in a separate worktree on the build host, branch `w/log`.  The target is `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits)) (Log.log x).toBits` for every finite positive `x`, the exact results outside the domain and at 1, and the byte and file theorems.  This entry covers the main path, `Log.logCore`, which every positive normal or subnormal argument outside `[15/16, 1 + 265/4096)` takes.
+
+### Error budget
+
+A result `c = fl(V)` of a final addition satisfies `|c - y| ≤ u |y| + (1 + u) δ` for `δ = |V - y|` and `u = 2 ^ -53`.  A new ProofKit lemma, `F64RelativeStep.within_one_relative`, turns `|c - y| ≤ (11/8) u |y|` into one step from the signed nearest-even reference, so the error before the final rounding may reach `3/8` of a unit relative to `|log x|`.  It places `c` in its binade and applies `F64FullStep.one_step_binades` either to that binade or to the one below, which covers results just above a power of two.  On the main path `|log x| ≥ 0.06`, since the argument lies outside `[15/16, 1 + 265/4096)`, so the budget is about `2.9 · 2 ^ -60` absolute.
+
+The computed error is about `1.9 · 2 ^ -60`.  The rounding of `r = ((z - chi) - clo) invc` contributes `2 ^ -60` after the exact `z - chi`, the rounding of `w - hi` contributes `2 ^ -61`, and the polynomial `2 ^ -62.9` from `LogKernelPoly.core_kernel_error`.  The table error of `logc` is at most `2 ^ -64`, and the two words of `log 2` differ from `log 2` by at most `2 ^ -91`.  The proof does not use the exactness of Arm's two-sum steps: tracking `w - hi` and `(w - hi) + r` with one unit of roundoff each costs `2 ^ -61`, which the budget absorbs.  The exact steps that the budget needs are `kd · ln2hi`, `kd · ln2hi + logc`, whose relative error would otherwise reach a unit of `log x` for large `k`, and `z - chi`.
+
+### Results
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64RelativeStep.lean` | `one_step_relative` and `within_one_relative`: one step from a relative error of `11/8` units of roundoff, for numbers of magnitude at least `2 ^ -1000`, and `negate_negate`. |
+| `LeanExe/ProofKit/F64ErrorTrack.lean` | `Approx w X e` and its rules for rounded sums, differences, and products, and exact sums and differences on a grid. |
+| `Verified/Examples/LogBranches.lean` | The paths of `Log.logWith` by argument bits, and the invalid path's canonical NaN. |
+| `Verified/Examples/LogTables.lean` | For each of the 128 entries, by `decide +kernel` in 18 seconds: finiteness, `|c invc - 1| ≤ 2 ^ -100`, the reduced argument within `0.0039` over the subinterval, the grids of `chi` and `logc`, `|clo| ≤ 2 ^ -50`, and `|logc - log c| ≤ 2 ^ -64` from a Taylor bracket of `exp`. |
+| `Verified/Examples/LogCoreBits.lean` | `logCore_eq`, which restates `Log.logCore` through `reduced` and `finalOf`, the words of `i`, `k`, and `z` for an argument `E · 2 ^ 52 + f` modulo `2 ^ 64`, and the exact value of `kd`. |
+| `Verified/Examples/LogCoreFinal.lean` | `final_error`: the arithmetic after `r` within `(5/4) 2 ^ -61` before its final rounding. |
+| `Verified/Examples/LogCoreStep.lean` | `reduced_error`, `ln2_error`, `target_close`, and `core_within`, one step for `Log.logCore` on every argument word that reaches it, subnormals scaled by `2 ^ 52` included. |
+| `Verified/Examples/LogMain.lean` | `log_normal_within`: `Log.log` on a positive normal argument outside the path near 1. |
+
+Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-main-1.log`, which replays all of them, has no `sorry`).
+
+| Run | Result and cause |
+|---|---|
+| `log-relstep-1`, `-2` | `le_or_lt` renamed to `le_or_gt`; a rewrite under a `decide` in `negate_negate`; `F64Sign` not imported; `field_simp` closing goals before `ring`.  `log-relstep-3` passed. |
+| `log-tables-1` | Passed on the first run. |
+| `log-corebits-1`, `-2` | `roundScaledMagnitude_spec` covers only values below 4; the general `F64GridExact.signed_grid_packing_exact` replaced it.  `push_cast` evaluated `2 ^ 1074` on one side under `exponentiation.threshold 4096`.  `log-corebits-3` passed. |
+| `log-track-1` | `add_le_add_right` adds on the other side in this Mathlib.  `log-track-2` passed. |
+| `log-final-1` | A `calc` against a power that `push_cast` had normalized, and rewrites of `set` names.  The 20-step error chain elaborated on the first run.  `log-final-2` passed. |
+| `log-step-1` to `-4` | `set` abstractions did not match terms created after them, and `nlinarith` reached the recursion limit on products with `2 ^ 100`.  The assembly was split into a real-arithmetic lemma, `target_close`, a word equation, `core_word`, and `core_within` without `set`.  `log-step-5` passed. |
+| `log-main-1` | Passed on the first run. |
+
+`PolyBound` worked as the poly track described: `LogKernelPoly.core_kernel_error` entered `target_close` directly.  A missing general abstraction is an exact product of a word holding an integer with a constant word; `LogCoreFinal.ln2hi_mul_exact` repeats `ExpReductionExact.high_mul_exact` for another constant.
+
+- [x] Branches and the invalid path.
+- [x] Table facts.
+- [x] Main path for normal arguments outside `[15/16, 1 + 265/4096)`.
+- [ ] Subnormal arguments.
+- [ ] `logNear1` and the path near 1.
+- [ ] Exceptional values and the full theorem.
+- [ ] Byte theorem and `LogFile.lean`.
