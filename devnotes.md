@@ -29180,3 +29180,9 @@ The runner converts each module to text with `wasm-tools print` and reads it wit
 ### Decoder test
 
 `wasm-tools json-from-wast` converted all 257 top-level testsuite scripts into `build/decode-test`, with 5,904 module files and no conversion failure.  `tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean` then ran in 17 seconds with no failures (`opus-decode-test-1.log`).  It decoded 712 valid modules, each equal to the module of the text decoder's path and each satisfying `decode (encode m) = m`.  It found 1,502 valid modules outside the decoder's subset, rejected 676 malformed modules, and counted 35 malformed modules outside the subset.
+
+### Test driver
+
+The user chose to check the exponential theorem in `tests/verified/run.sh` and to leave `Verified.lean` unchanged.  `lake build` covers the default targets `LeanExe` and `Examples`, and `lake build Verified` covers the modules that `Verified.lean` imports, so neither build checked the theorem.  The 48 proof modules took 178 seconds of module time to build from source on the build host.  After writing the modules, `run.sh` now builds `Verified.Examples.ExpTheorem` and checks `Verified/Examples/ExpFile.lean` against the `exp.wasm` it has just written.  It fails unless `exp_file` and `exp_file_decode` both report exactly `propext`, `Classical.choice`, and `Quot.sound`.  `exp_file_decode` depends on `exp_bytes_accuracy`, so the report covers the theorem.  The axiom check catches a `sorry`, which `lake build` reports only as a warning.
+
+The script passed (`opus-verified-tests-2.log`).  A negative test flipped one bit of the last byte of `exp.wasm`, and the file check failed at `decide` (`opus-exp-file-negative-1.log`).  The original file was then restored with the same hash.
