@@ -28186,3 +28186,65 @@ standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong
 - [ ] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
   structure, spectral test values.
 - [ ] Record fields in `bound_eq`.
+
+### Amortized growth and recursion: design
+
+Task 66 extends the trap-free theorems in two directions.  A research agent wrote the design and a
+fresh reviewer checked it against the code; the user decided its two open questions.
+
+**Recursion.**  A function whose code takes the call depth starts with `guardCode`, which traps at
+`unreachable` when the depth reaches `depthLimit = 1000`, and callers push depth plus one, entries
+and wrappers depth 0.  Every function's bound takes the frames available, `k = 1000 − d`.
+`Prog.bounds` branches on `Func.depth`: a depth function's bound is defined by structural recursion
+on `k`, with `B 0 = 0` and `B (k + 1)` its body's bound with the callees, itself included, at fuel
+`k`, and any other function keeps its bound at every fuel.  The guard makes fuel 0 trap, so the
+bound on `top` holds on every return, and `Prog.calls` keeps its induction on `1000 − d`, which
+supplies the self entry at the next fuel.  The user chose a separate condition for the depth over
+folding it into the bound with `B 0 = 2^32`: `Expr.fits` mirrors `Expr.allocs` with `&&` in place
+of `+`, a depth function has `F 0 = false`, and `p.f.fits k x` states that the run at `x` needs at
+most `k` frames.  `CodeSpec`'s trap flag becomes `!fits || (allocating && !Within)`, callee `fits`
+entries sit beside the bounds, and the reflector generates `p.f.bound`, `p.f.bound_eq`, `p.f.fits`,
+`p.f.fits_eq`, and `p.f.trapFree` under `p.f.fits 1000 x ∧ Within (p.f.bound 1000 x)` for each depth
+function.  A recursive function needs its own bound definition and a chain lemma for `FVar.here`
+under `Prog.consRec`, which `boundsChain` lacks, and the `fits` builders follow the rule that lemma
+conclusions are built from their arguments.
+
+**Growth.**  `roomCode` extends an owned array that dies in place when its block, whose capacity
+`c` the header records, has room, and otherwise requests `2c`, `2^32`, or the new length's bytes,
+copies, and releases the old block.  With `u = 8 · (n + 1)`, the potential `Φ = 4u ∸ 2c` lies in
+`[0, 2u]`, and the theorem takes the form `top' + Φ(result) ≤ top + Φ(consumed) + bound`.  A growth
+of an array whose potential is counted then costs `48 + 32 · ext`, and one whose potential is not
+counted costs today's `growCost` plus `16 · ext`; the reviewer checked every case, including reuse
+of a free block, the request of `2^32`, the `2^29`-word trap, and `insertAt` past the end.  When
+`top` rises, the new block's capacity equals the request, which removes the rounding term without
+changing `Heap.At`.  `wp_requestCode` needs the lower bound `min(2c, 2^32) ≤ r`, `spec_room` the new
+block's capacity, and `set` and `eraseAt` in place the unchanged capacity.
+
+The user chose flags over a potential on every array, which would triple the charge of every
+creation and the drone's bound.  The flags are bound data and leave the compiled code unchanged.
+The review fixed their rules: a value whose type holds no array counts as paid, borrowed values
+carry no potential, and a loop state or parameter is paid only when a growth on some path of its
+body spends the credit, so loops and functions without growth keep today's bounds.  A loop converts
+an unpaid initial state at `2u` per array, a caller converts an unpaid argument for a paid parameter
+at the same cost, a paid result passes its credit to the caller, and a recursive function's result
+flag is computed by checking an assumed flag, as for loops.  `FunSpec`'s bounded part needs a new
+predicate with the potential, and `FunSpec.runs`, `bodyFunction_implements`, `wrapper_runs`,
+`entry_correct`, `Prog.correct`, and the reflector's extraction of the bound change with it; the
+user-facing `p.f.bound` adds `2u` per array of each paid owned parameter, so `p.f.trapFree` keeps
+its statement.
+
+The README must state at each step what changes: recursive functions get bounds, `trapFree` covers
+code with the call depth, and an extension is charged by its flag.  Every `trapFree` holds in
+Talos's semantics, which has no stack limit, and the tests cover frames of at most 32 positions at
+1,000 nested calls on Wasmtime 44 for aarch64.  Neither part changes the compiled code, so module
+bytes and the test suite stay as they are, and the drone is rebuilt after each step to confirm that
+its theorem stands.
+
+- [x] Design, review, and the user's two decisions.
+- [ ] B1: fuel-indexed bounds, `fits`, the new trap flag, and `trapFree` for depth functions;
+  theorem: `Recursion.chain` returns without a trap for `n.toNat < 1000`.
+- [ ] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
+  slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
+- [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
+- [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
+  condition `i < n → (n − i).toNat < 1000`.
