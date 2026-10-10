@@ -3,6 +3,7 @@ import LeanExe.ProofKit.F64ErrorTrack
 import LeanExe.ProofKit.F64PowerScale
 import LeanExe.ProofKit.F64PackRelative
 import LeanExe.ProofKit.PolyBound
+import LeanExe.ProofKit.F64ExactProduct
 
 /-!
 The error of `LogCoreBits.finalOf`, the arithmetic of `Log.logCore` after `r`, `kd`, and `logc`.
@@ -77,26 +78,10 @@ theorem ln2hi_mul_exact (kd : UInt64) (n : Nat) (hkd : Finite kd)
     value (Wasm.IEEE64.mul kd 0x3FE62E42FEFA3800) = value kd * value 0x3FE62E42FEFA3800 ∧
     Wasm.IEEE64.scaledMagnitude (Wasm.IEEE64.mul kd 0x3FE62E42FEFA3800) =
       (3048493539143 * n) * 2 ^ 1032 := by
-  obtain ⟨-, -, -, -, -, -, -, hhm, hhs⟩ := constants
-  have hf : Finite 0x3FE62E42FEFA3800 := constants.1
-  have hsmall : 3048493539143 * n < 2 ^ 53 := by omega
-  have hprod : Wasm.IEEE64.scaledMagnitude kd * Wasm.IEEE64.scaledMagnitude 0x3FE62E42FEFA3800 =
-      (3048493539143 * n) * 2 ^ (1074 + 1032) := by
-    rw [hmag, hhm, pow_add]
-    ring
-  rw [mul_finite_rounder kd _ hkd hf, hprod,
-    F64PowerScale.dyadic_shifted_exact _ _ _ hsmall]
-  have hmax : (3048493539143 * n) * 2 ^ 1032 < 2 ^ 2097 := by
-    calc (3048493539143 * n) * 2 ^ 1032 < 2 ^ 53 * 2 ^ 1032 :=
-          Nat.mul_lt_mul_of_pos_right hsmall (by positivity)
-      _ ≤ 2 ^ 2097 := by norm_num
-  obtain ⟨hpf, hpm, hps⟩ := F64PackRelative.pack_spec
-    (Wasm.IEEE64.sign kd != Wasm.IEEE64.sign 0x3FE62E42FEFA3800) _ hmax
-  rw [F64GridExact.roundedMagnitude_shifted_small _ _ hsmall.le] at hpm
-  refine ⟨hpf, ?_, hpm⟩
-  simp only [value, Wasm.IEEE64.scaledValue]
-  rw [hps, hpm, hmag, hhm, hhs]
-  cases Wasm.IEEE64.sign kd <;> simp <;> ring
+  obtain ⟨-, -, -, -, -, -, -, hhm, -⟩ := constants
+  obtain ⟨h1, h2, h3, -⟩ := F64ExactProduct.int_mul_exact kd _ hkd constants.1 n 3048493539143
+    1032 hmag hhm (by omega) (by norm_num)
+  exact ⟨h1, h2, by rw [h3]; ring⟩
 
 theorem abs_add_bound {a b A B : ℝ} (ha : |a| ≤ A) (hb : |b| ≤ B) : |a + b| ≤ A + B :=
   (abs_add_le _ _).trans (add_le_add ha hb)
