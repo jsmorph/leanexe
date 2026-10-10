@@ -29332,3 +29332,74 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.le
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
 - [ ] Prove the theorems (later tracks).
+
+## 2026-10-10: Ports of `sinh`, `cosh`, `asinh`, `acosh`, and `atanh`
+
+The coordinator merged the stage 3 ports into `transcendentals` as `dac3972a` and assigned stage 4 to the same worktree and branch.  The five functions come from fdlibm as FreeBSD's msun has it at the pinned commit, and they call `expm1`, `exp`, `log`, `log1p`, and `sqrt`.  Each port calls the Lean definition of the existing port where fdlibm calls one of these functions, so that the theorems for those definitions apply.
+
+### Sources and helpers
+
+| Function | Source | Calls | Constants | Stated error |
+|---|---|---|---|---|
+| `sinh` | `e_sinh.c`, Copyright (C) 1993 Sun | `expm1`, `exp`, `__ldexp_exp` | `shuge = 1.0e+307` as `0x7FAC7B1F3CAC7433` | None |
+| `cosh` | `e_cosh.c`, Copyright (C) 1993 Sun | `expm1`, `exp`, `__ldexp_exp` | `huge = 1.0e+300` | None |
+| `asinh` | `s_asinh.c`, Copyright (C) 1993 Sun | `log`, `log1p`, `sqrt` | `ln2` and `one` with bits, `huge` | None |
+| `acosh` | `e_acosh.c`, Copyright (C) 1993 Sun | `log`, `log1p`, `sqrt` | `ln2` with bits | None |
+| `atanh` | `e_atanh.c`, Copyright (C) 1993 Sun | `log1p` | `huge = 1e300` | None |
+| `__frexp_exp`, `__ldexp_exp` | `k_exp.c`, Copyright (c) 2011 David Schultz, BSD-2-Clause | `exp` | `k = 1799`, `kln2 = 1246.97177782734161156` as `0x40937BE319BA0DA4` | None |
+
+The three constants annotated with bits agree with their decimals, and `kln2`'s bits are those of the double nearest `1799 ln 2`, which a 60-digit decimal computation confirms.  The pinned commit has no `k_exp.h`: the helpers live in `k_exp.c`, and `Sinh.lean` ports `__frexp_exp` as `frexpExp` and `__ldexp_exp` as `ldexpExp`, which calls `Exp.expWith` for its `exp (x - kln2)`.  `__ldexp_cexp` serves only the complex functions and stays unported.
+
+The table compares the functions that fdlibm calls with the Lean definitions that the ports call.  `expm1` and `log1p` are fdlibm's own functions, and `sqrt` is IEEE 754's correctly rounded square root in both.  `exp` and `log` differ: fdlibm calls its `e_exp.c` and `e_log.c`, and the ports call Arm's routines, which `Exp.lean` and `Log.lean` port.  All four state errors below one unit in the last place, Arm's 0.511 and about 0.52 units, so the results of `sinh`, `cosh`, `asinh`, and `acosh` can differ from fdlibm's in the last bit where those helpers round differently.
+
+| fdlibm calls | Port calls | Same function |
+|---|---|---|
+| `expm1` (`s_expm1.c`) | `Tanh.expm1` | Yes |
+| `exp` (`e_exp.c`) | `Exp.expWith` with `Exp.expTable` (Arm) | No |
+| `log` (`e_log.c`) | `Log.logWith` with `Log.logTable` and `Log.logTable2` (Arm) | No |
+| `log1p` (`s_log1p.c`) | `Log1p.log1p` | Yes |
+| `sqrt` | `Float.sqrt`, `f64.sqrt` | Yes |
+| `__ldexp_exp` (`k_exp.c`) | `Sinh.ldexpExp`, ported | Yes, with Arm's `exp` inside |
+
+`Sinh.lean` lists `Exp.specialCase`, `Exp.expCore`, `Exp.expWith`, `Tanh.expm1Kernel`, and `Tanh.expm1` before its own definitions, and `sinh` and `cosh` are wrappers that pass `Exp.expTable` to `sinhWith` and `coshWith`.  `Asinh.lean` lists `Log.logNear1`, `Log.logCore`, `Log.logWith`, `Log1p.log1pTail`, and `Log1p.log1p`, and `asinh` and `acosh` pass `Log.logTable` and `Log.logTable2`.  `atanh` needs no table and is an ordinary listed function.
+
+### Deviations from the C sources
+
+The deviations follow those of stage 3.  Flag-only expressions keep their values (`shuge + x > 1`, `huge + x > 1`, `huge + x > 0`, and `x/zero` as `x/0`), and signed high words are words whose sign bit the comparisons test.  `k_exp.c`'s signed exponents are two's complement words, and the callers' `-1` is `0 - 1`.  Its 32-bit `INSERT_WORDS` keeps the low 32 bits of `(0x3ff + expt) << 20` before placing them in the high half.  `sinh`'s `h = -h` is the literal `-0.5`, and `atanh`'s `SET_HIGH_WORD (x, ix)` forms `|x|` from the words.
+
+### References and checks
+
+`Verified/Examples/HyperbolicReference.lean` adds `sinhFixed` and `coshFixed` from `Reference.expm1`, `asinhFixed` (`2 atanh (y/(1 + √(1 + y²)))` below 0.4 and `Reference.log` of `y + √(y² + 1)` above), `acoshFixed` (`Reference.log` of `y + √(y² - 1)`), and `atanhLog` (`(log (1 + y) - log (1 - y))/2` above `1/5`, with `Reference.atanhFixed` below).  Python models of these references agreed with a 120-digit decimal computation of the functions at 3,000 random arguments each, 15,000 in all.  Python models of the ports, with the C library standing in for `exp`, `log`, `expm1`, and `log1p`, found two units for `sinh`, `acosh`, and `atanh` and one for `cosh` and `asinh`.  The Lean checks with the Lean helpers found the same distances.
+
+| Check | Results | Largest distance | Unequal | C library, for information | Log |
+|---|---|---|---|---|---|
+| `sinh` | 208,085 | 2 units | 30,641 | 2 units, 30,703 unequal | `ports-SinhAccuracy-3.log` |
+| `cosh` | 208,085 | 1 unit | 19,036 | 2 units, 19,127 unequal | `ports-SinhAccuracy-3.log` |
+| `asinh` | 200,047 | 1 unit | 23,062 | 1 unit, 23,065 unequal | `ports-AsinhAccuracy-3.log` |
+| `acosh` | 200,099 | 2 units | 31,737 | 2 units, 31,737 unequal | `ports-AsinhAccuracy-3.log` |
+| `atanh` | 200,153 | 2 units | 18,851 | 2 units, 18,850 unequal | `ports-AsinhAccuracy-3.log` |
+
+The first runs (`ports-SinhAccuracy-2.log`, `ports-AsinhAccuracy-2.log`) enforced a bound of three units to measure the distances, and the final run (`ports-s4-build-3.log` and the `-3` checks) enforces the distances found.  `tools/Emit.lean` encoded and decoded both modules: `sinh` 6,849 bytes and `asinh` 9,315 bytes.  The C library's distances and counts lie close to the ports', which fits glibc's versions of these functions, derived from the same fdlibm sources.
+
+### Failures
+
+The first build (`ports-s4-build-1.log`) failed in `Sinh.frexpExp`: in `hx &&& 0xfffff` inside the shifted expression the literal became a natural number, as in stage 3, and the annotation `(0xfffff : UInt64)` fixed it.  The `sinh` check of that run failed because the module had not built.  The second build passed.
+
+### Recommended bounds
+
+`WithinSteps 2` for `sinh`, `acosh`, and `atanh`, whose checks find two units, and `WithinSteps 1` for `cosh` and `asinh`, whose checks find one.  Each function adds roundings to a helper whose error is already near half a unit: `cosh` adds two products and a sum to `exp`, and `asinh` applies `log` or `log1p` to a rounded argument.  If a proof of one step for `cosh` or `asinh` cannot keep the final word within one and a half spacings of the exact value, two steps is the fallback.
+
+### Integration
+
+The coordinator adds `Sinh`, `Asinh`, and `HyperbolicReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on the line of whichever check is no longer last.
+
+```bash
+    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean
+```
+
+- [x] Fetch the sources and the helper `k_exp.c`, and audit the constants.
+- [x] Port the five functions and the helper, calling the existing Lean definitions.
+- [x] Write the references and the checks, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
