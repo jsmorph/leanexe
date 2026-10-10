@@ -29616,3 +29616,42 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 Opus merged `w/log` at `3c21c26e` (the logarithm main path) and `w/ports` at `f1de26f0` (stage 5) into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64RelativeStep` and `F64ErrorTrack`, `Verified.lean` imports `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference`, and `tests/verified/run.sh` emits the four new modules and runs their checks.  The build passed with 3,842 jobs (`opus-merge-s5-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-6.log`): 204,298 results of `exp2`, 200,707 of `exp10`, 342,197 of `log2` and of `log10`, and 110,911 of `pow` within one unit.
 
 The user approved installing elan on debtop1 (x86_64, 4 cores, 15 GB).  Opus installed elan 4.2.4 from the official `elan-init.sh` with `--no-modify-path` and the pinned toolchain `leanprover/lean4:v4.34.0-rc2`, without changes to the shell profiles.  The checkout is a separate clone, `/home/somebody/src/lt-debtop`, of the user's `~/src/leanexe` there, which stays unchanged.  The permission check refused a `git remote set-url` in the first attempt, a step that was unnecessary.  `.lake/packages` (8.6 GB, 28.5 minutes through the workstation) and `.lake/build` (1.8 GB, 3.5 minutes) came from minideb1, whose clock agrees with that of debtop1, and `lake build --no-build` then reported every job of the exponential theorem, `log_normal_within`, and the kernel bounds up to date.  The runner's systemd scope works there.  The `exp2` track runs in the worktree `/home/somebody/src/lt-exp2` on debtop1.
+
+## 2026-10-10: Logarithm theorem, complete (track `log`)
+
+`LogTheorem.log_bytes_accuracy` is accepted.  The bytes of `Log.compiled.module` decode to the module, its function 5 is exported as `log`, and the initial store satisfies `LogTheorem.Ready`: the allocator invariant, `logTable` borrowed at 4096, `logTable2` at 6152, and a memory cap of at most 65,535 pages.  A call from a ready store returns without a trap the bits of `Log.log x` and leaves a ready store whose earlier heap regions keep their bytes.  For finite `x` with `0 < value x` the bits satisfy `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits))`.  `log_within_one` states the bound for the Lean function, and `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, and `log_nan` give `log 1 = +0`, `log (±0) = -∞`, `log (+∞) = +∞`, and the canonical NaN for negative arguments, negative infinity included, and for NaN.  `LogFile.log_file` and `log_file_decode` prove that `build/verified/log.wasm` holds the module.
+
+| Inputs | Path | Theorem |
+|---|---|---|
+| Positive normal outside `[15/16, 1 + 265/4096)` | `logCore` on the argument's bits | `LogMain.log_normal_within` |
+| Positive subnormal | `x · 2 ^ 52`, exact by `F64ExactProduct.mul_exact_scaled`, then `logCore` on the bits less `52 · 2 ^ 52` | `LogMain.log_subnormal_within` |
+| `[15/16, 1 + 265/4096)` other than 1 | `logNear1` | `LogTheorem.near1_within` |
+| 1, zeros, `+∞`, negatives, NaN | the guards of `logWith` | `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, `log_nan` |
+
+The path near 1 needs a bound relative to `ρ = |x - 1|`, between `2 ^ -53` and `265/4096`.  `x - 1` is exact on the grid of `2 ^ -53`, and every later operation is tracked with errors proportional to `ρ`, using `ρ ^ 2 ≤ ρ/15` and `multiplicationUnderflowEpsilon ≤ u ρ / 2 ^ 900`.  The result before its final rounding is within `(1/15 + 1/13) u ρ` of `r · eval near1Kernel r`; the two largest terms are the roundings of `rhi · rhi` and of `r - hi`, each about `u ρ / 30`.  `LogKernelPoly.near1_kernel_error` adds `(15/16) 2 ^ -62 ρ`, and `|log x| ≥ (15/16) ρ`, so the total stays below the allowed `3/8` units of roundoff of `log x` by a factor of about 2.4.  The split into 26-bit `rhi` and `rlo` needs no exactness argument: its identity `rhi ^ 2 + (r - rhi)(rhi + r) = r ^ 2` holds for the computed `rhi`, and only the roundings of `rlo` and of the product enter.
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64ExactProduct.lean` | `mul_exact_scaled`, the exact product of words with scaled magnitudes `ma 2 ^ sa` and `mb 2 ^ sb` when `ma mb < 2 ^ 53`, and `int_mul_exact` for a word holding an integer.  `LogCoreFinal.ln2hi_mul_exact` now uses it. |
+| `LeanExe/ProofKit/BorrowedKept.lean` | `borrowed_kept`, the lemma of `ExpTheorem` in a shared module. |
+| `Verified/Examples/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
+| `Verified/Examples/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
+| `Verified/Examples/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
+| `Verified/Examples/LogFile.lean` | `log_file` and `log_file_decode`. |
+
+Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-thm-2.log` replays the chain with no `sorry`; `log-file-1.log` for the file theorems, which took 24 seconds).  Flipping one bit of the last byte of `log.wasm` made `log_file` fail at `decide` (`log-file-negative-1.log`), and the original file was restored with hash `342b0f5c…90f2`.
+
+| Run | Result and cause |
+|---|---|
+| `log-sub-1` | `simp` in `mul_exact_scaled` reached the recursion limit under `exponentiation.threshold 4096`; the file uses the default threshold and an explicit sign table.  `log-sub-2`, `-3`: a shift literal needed the type `UInt64`, and a rewrite hit the wrong `value`.  `log-sub-4` passed. |
+| `log-near-1` | `near1_bounds` failed because `|B8| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
+| `log-near-3`, `-4` | One theorem for the whole path ran past 200,000 heartbeats.  It was split into `poly_error`, `split_error`, and `near1_error` over named words. |
+| `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
+| `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
+
+`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Verified.Examples.LogTheorem`, check `Verified/Examples/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
+
+- [x] Subnormal arguments.
+- [x] `logNear1` and the path near 1.
+- [x] Exceptional values and the full theorem.
+- [x] Byte theorem and `LogFile.lean`.
