@@ -29402,3 +29402,84 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.
 - [x] Port the five functions and the helper, calling the existing Lean definitions.
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Ports of `exp2`, `exp10`, `log2`, `log10`, and `pow`
+
+The coordinator kept the stage 4 bounds as proposed and assigned stage 5 to the same worktree.  Four of the five functions come from Arm's optimized-routines at the pinned commit, since `exp` and `log` already do, and `log10` from FreeBSD's msun, since Arm's `math/` has no double `log10`, only `log10f.c`.  The configuration is the one of `Exp.lean` and `Log.lean`: `HAVE_FAST_FMA` 0, `TOINT_INTRINSICS` 0 (Arm sets `HAVE_FAST_ROUND` only on AArch64), `WANT_ROUNDING` 1, `WANT_ERRNO` 0, and `IEEE_754_2008_SNAN` 1.
+
+### Sources and tables
+
+| Function | Source | Configuration | Tables | Stated error |
+|---|---|---|---|---|
+| `exp2` | `math/exp2.c`, `math/exp_data.c`, Arm 2018-2025 | `EXP_TABLE_BITS` 7, `EXP2_POLY_ORDER` 5 | `__exp_data.tab`, 256 words, passed as `Exp.expTable` | 0.511 units without fused multiply-add (`exp_data.c`) |
+| `exp10` | `math/exp10.c`, `math/exp_data.c`, Arm 2023-2025 | `EXP10_POLY_WIDE` 0 | `__exp_data.tab`, passed as `Exp.expTable` | About 0.513 units, the largest observed |
+| `log2` | `math/log2.c`, `math/log2_data.c`, Arm 2018-2025 | `LOG2_TABLE_BITS` 6, `LOG2_POLY_ORDER` 7, `LOG2_POLY1_ORDER` 11 | `tab` (`invc`, `logc`) and `tab2` (`chi`, `clo`), 64 entries each, 128 words each | 0.550 units on the main path and 0.55 near 1, without fused multiply-add |
+| `log10` | `e_log10.c` and `k_log.h`, FreeBSD, Sun 1993 | | None | None for `log10`; `k_log.h` states below one unit for `log` |
+| `pow` | `math/pow.c`, `math/pow_common.h`, `math/pow_log_data.c`, `math/exp_data.c`, Arm 2018-2026 | `POW_LOG_TABLE_BITS` 7, `POW_LOG_POLY_ORDER` 8, `EXP_POLY_ORDER` 5 | `__pow_log_data.tab`, 128 entries of `invc`, `pad`, `logc`, and `logctail`, 512 words, and `__exp_data.tab` as `Exp.expTable` | 0.54 units |
+
+A Python script read the constants and tables from Arm's sources as hexadecimal floats, with C comments removed, since the first version took numbers from comments such as "relative error: 0x1.2fad8188p-63" as coefficients.  The N = 128 section of `__exp_data.tab` equals `Exp.expTable` word for word, all 256 words, so `exp2`, `exp10`, and `pow` pass `Exp.expTable`.  `exp_data.c`'s `invln2N`, `shift`, `negln2hiN`, `negln2loN`, and polynomial for `pow`'s exponential are the bits of `Exp.expCore`.  The coefficients of `pow`'s logarithm are the products in the source, such as `0x1.555555555556p-2 * -2`, exact since each factor is a power of 2.  `Log2Accuracy.lean` compares each entry of `log2`'s tables with its center: `chi + clo` agrees with `1/invc` within `2 ^ -100` and `logc` with `log2 (chi + clo)` within `2 ^ -68`, as Arm's comment states.
+
+### Helpers shared with `exp`
+
+`exp2.c`'s `specialcase` and `exp10.c`'s `special_case` are the same code, and `Exp2.exp2SpecialCase` serves both.  It differs from `exp.c`'s `specialcase`, ported as `Exp.specialCase`: for a positive `k` it lowers the scale by one binade and doubles the result, where `exp.c` lowers it by 1009 binades and multiplies by `2 ^ 1009`.  `pow.c`'s `specialcase` differs again: it keeps the sign of a negative result in the scale, rounds by the magnitude in the subnormal range, and returns `DBL_MAX` for `pow (0x1.fffffffffffffp1023, 1)` when rounding upward.  `pow.c`'s `exp_inline` takes the tail `xtail` and the sign bias, so `Pow.powExp` and `Pow.powExpCore` port it rather than calling `Exp.expWith`.  The reductions of `exp2` and `exp10` sit in `exp2Core` and `exp10Core`, which take the flag that C expresses by setting `abstop` to 0, as `Exp.expCore` does.
+
+### Special cases of `pow`
+
+| Condition | Result |
+|---|---|
+| `y = ±0` | 1, or `x + y` for a signaling NaN `x` |
+| `x = 1` | 1, or `x + y` for a signaling NaN `y` |
+| `x` or `y` NaN | `x + y` |
+| `x = -1` and `y = ±∞` | 1 |
+| `y = ±∞` otherwise | 0 when `|x| < 1` and `y = +∞` or `|x| > 1` and `y = -∞`, and `y · y = +∞` otherwise |
+| `x` zero or infinite, `y` finite and nonzero | `x²`, or `1/x²` for a negative `y`, negated for a negative `x` and an odd integer `y` |
+| `x` negative and finite, `y` not an integer | NaN, as `(x - x)/(x - x)` |
+| `x` negative and finite, `y` an odd integer | the result for `|x|` with the sign bit set through the bias `0x800 << 7` |
+| `|y|` below `2 ^ -65` | 1 for `|x| = 1`, `1 + y` for `|x| > 1`, `1 - y` for `|x| < 1` |
+| `|y|` from `2 ^ 63` on | 1 for `|x| = 1`, and otherwise the overflow product when `|x| > 1` and `y > 0` or `|x| < 1` and `y < 0`, and the underflow product otherwise |
+| `x` subnormal | normalized by `2 ^ 52` before the logarithm |
+
+`checkint` returns 0 for a non-integer, 1 for an odd integer, and 2 for an even one.  The results agree with C99's Annex F, F.10.4.4, which the reference of `PowAccuracy.lean` implements separately.  The deterministic profile canonicalizes every NaN result, and Lean's `Float` holds no signaling NaN, so the `issignaling` tests matter only to a WebAssembly caller that passes one.
+
+### Deviations from the sources
+
+The expressions that Arm or fdlibm evaluates only for flags or the rounding mode keep their values or are left out where they compute no result, as in `Exp.lean`: `force_eval_double`, `opt_barrier_double`, and `check_oflow` are identities, and `pow.c`'s test `1 + 2 ^ -60 != 1` stays, false in rounding to nearest.  `__math_oflow`, `__math_uflow`, `__math_invalid`, and `__math_divzero` are the expressions that compute them, signed where `pow` passes a sign.  The dialect compares no Booleans, so `pow.c`'s two tests of the form `(a) == (b)` on comparisons are nested tests with the same results, and `checkint` runs in each of the two tests that use it, where C keeps its value.  `log2` follows `Log.lean`'s treatment of Arm's 32-bit comparisons and arithmetic shift.  `log10`'s signed `hx` and `k` are words, as in `Log1p.lean`, and `-two54/vzero` and `(x - x)/zero` divide by 0.
+
+### Checks
+
+`PowerReference.lean` adds `ln 10 = 3 ln 2 + 2 atanh (1/9)`, `exp2` from `Reference.expFixed` at `(y - k) ln 2`, `exp10` from `Reference.exp` at `y ln 10`, `log2` and `log10` as `Reference.log` divided by `ln 2` or `ln 10`, and `powExponent`, `y log x` at precision 500.  Python models of the five ports, with the exact constants and tables, lay within one unit of 150-digit decimal values at about 30,000 arguments per function and 23,000 pairs for `pow`.
+
+| Check | Results within one unit | Unequal | C library, for information | Log |
+|---|---|---|---|---|
+| `exp2` | 204,298 | 307 | 1 unit, 307 unequal | `ports-Exp2Accuracy-1.log` |
+| `exp10` | 200,707 | 114 | Lean has no binding | `ports-Exp2Accuracy-1.log` |
+| `log2` | 342,197 | 889 | 1 unit, 857 unequal | `ports-Log2Accuracy-2.log` |
+| `log10` | 342,197 | 1,221 | 2 units, 50,047 unequal | `ports-Log2Accuracy-2.log` |
+| `pow` | 110,911 | 78 | 1 unit, 78 unequal | `ports-PowAccuracy-4.log` |
+
+The equal counts for `exp2` and `pow` fit glibc's use of Arm's routines for these functions.  `tools/Emit.lean` encoded and decoded the four modules: `exp2` 5,406 bytes, `log2` 4,972, `log10` 2,313, and `pow` 11,156.
+
+### Failures
+
+The first build (`ports-s5-build-1.log`) failed in `Pow.lean`: `0x800 <<< 7` and the mask `0x7fffffffffffffff` elaborated as natural numbers, and the reflector rejected the comparison of two Booleans with "comparisons apply to words, floats, and enumerations, not Bool".  The first `log2` check failed because `shift`, opened from `Verified.Examples`, resolved to a declaration other than `Reference.shift`, as in stage 3.  The `pow` check failed twice on untyped literals in its argument generator, the second time on the shift amount in `h >>> 43`, before `ports-PowAccuracy-4.log` passed.
+
+### Recommended bounds
+
+`WithinSteps 1` for all five, the bound of `exp` and `log`.  Arm's stated errors for `exp2`, `exp10`, `log2`, and `pow` lie between 0.51 and 0.55 units, and the checks find at most one unit for each function.  `log10` adds `k log10 2` and the scaled `log (1 + f)` in extra precision, and its check also finds one unit.
+
+### Integration
+
+The coordinator adds `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on whichever check line is no longer last.
+
+```bash
+    Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
+    Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean
+```
+
+- [x] Fetch the sources, extract the constants and tables, and compare `__exp_data.tab` with `Exp.expTable`.
+- [x] Port the five functions.
+- [x] Write the references and the checks, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
