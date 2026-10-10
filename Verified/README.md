@@ -248,11 +248,12 @@ evaluate a loop over literal data pass by pass.  `p.f.denote_eq` relates `f` to 
 = fun params => body`, which the kernel checks by unfolding `f` against the lambda.  A call and
 `p.f.implements` reach a function's meaning through `Funs.get_there` and `Funs.get_here`, which take
 `p.funs.get` to the function's meaning.  A recursive definition, one that Lean records as
-recursive, is reflected from its unfolding equation `f.eq_def` with a callee for itself, and its meaning
-`p.f.meaning` is `f` at the inverses of the flattenings of an environment's values.  Both laws of
-the inverse hold, by `rfl` for structures and pairs and by `map_inverse` for arrays, and they give
-the self-call's equation `p.f.meaning_eq` and the fixed-point equation `p.f.fixed`, which the kernel
-checks without comparing `f` at two different arguments, since `f`'s value is a `WellFounded.fix`.
+recursive, is reflected from its unfolding equation `f.eq_def` with a callee for itself, and its
+meaning `p.f.meaning` is `f` at the inverses of the flattenings of an environment's values.  Both
+laws of the inverse hold, by `rfl` for structures and pairs and by `map_inverse` for arrays, and
+they give the self-call's equation `p.f.meaning_eq` and the fixed-point equation `p.f.fixed`, which
+the kernel checks without comparing `f` at two different arguments, since `f`'s value is a
+`WellFounded.fix`.
 An enumeration in a parameter type has no inverse on the words that encode no constructor, so the
 reflector rejects it in a recursive definition, as it rejects a recursive definition that uses
 `sorry`.  Its parameter modes are the choice of `Expr.paramChoice` for the body reflected with the
@@ -301,8 +302,9 @@ patterns, so that `0.0 ≠ -0.0`, and which no f64 instruction computes.
 For each definition whose code takes no call depth the reflector also adds `p.f.bound`, the
 function's allocation bound in bytes on the tuple of its arguments, with `Moved (Array α)` for an
 owned array and `Unit` for no parameters, and `p.f.trapFree`.  `p.f.bound` is the compiler's bound,
-`Prog.bounds` of the program at the function, composed with the flattening of the tuple, and `#eval`
-computes it by interpreting `Expr.allocs` over the reflected program.  `p.f.trapFree` states
+`Func.bound` of the function among the functions before it, which is `Prog.bounds` of the program
+at the function, composed with the flattening of the tuple, and `#eval` computes it by interpreting
+`Expr.allocs` over the reflected program.  `p.f.trapFree` states
 `ImplementsA false`: the call returns `f` of its arguments, without a trap and for enough fuel, and
 raises `top` by at most `p.f.bound x`.  When the function may trap, its precondition is
 `heap.Within store p.module (p.f.bound x)`: `top` plus the bound is at most `65536` times the
@@ -319,14 +321,17 @@ bounds the memory's pages.
 definition: the user's loop counts, initial states, steps, conditions, and call arguments,
 `blockCost` and `growCost` of [`BoundFacts.lean`](BoundFacts.lean) for each block that the modes and
 live sets call for, `loopCost` and `sumBelow` for loops and builds, and `p.g.bound` at the
-arguments of a call, with `let` values substituted and summands `0` dropped, so that a function
-that allocates nothing gets `p.f.bound x = 0`.  [`BoundFacts.lean`](BoundFacts.lean) gives the
+arguments of a call, or the numeral that `p.g.bound_eq` states, with `let` values substituted and
+summands `0` dropped, so that a function that allocates nothing gets `p.f.bound x = 0`.  The
+arrays of a record with array fields appear as components of its flattening, such as
+`(Flat.flat b).1.size`.  [`BoundFacts.lean`](BoundFacts.lean) gives the
 sizes of the blocks, sums of `sumBelow`, and `loopCost_le`, which bounds a loop's cost by an
 invariant of its index and state.  The proof applies one lemma of
 [`Reflect/BoundLemmas.lean`](Reflect/BoundLemmas.lean) per source form.  Each lemma builds its
-conclusion from its arguments, so that the kernel joins two equations only where their terms are
-identical: it compares two closed `Nat` sums that differ by evaluating both, which for a closed
-loop means running it.  A wrapper's `bound_eq` states its bound as the callee's bound at the tables
+conclusion from its arguments, so that two equations join where their terms are identical.  The
+kernel compares two closed `Nat` sums that differ by evaluating both, which for a closed loop means
+running it, so the proof's hints compare different terms only where one holds a variable, or under
+heads that the kernel unfolds by their heights before it compares arguments.  A wrapper's `bound_eq` states its bound as the callee's bound at the tables
 and its arguments, or as the numeral that the callee's equation states.
 
 | Theorem | Statement |

@@ -48,8 +48,8 @@ theorem sumBelow_succ' (f : Nat → Nat) :
 
 /-- `loopCost` of a loop whose condition and body cost nothing, stated for any costs so that the
 conclusion is the term it rewrites. -/
-theorem loopCost_eq_zero {α : Type} {CA : α → Nat} {C : α → Bool} {BA : UInt64 → α → Nat}
-    {F : UInt64 → α → α} (hCA : ∀ s, CA s = 0) (hBA : ∀ i s, BA i s = 0) :
+theorem loopCost_eq_zero {α : Type} {CA : α → Nat} {C : α → Bool}
+    {BA : UInt64 → α → Nat} {F : UInt64 → α → α} (hCA : ∀ s, CA s = 0) (hBA : ∀ i s, BA i s = 0) :
     ∀ (n : Nat) (i : UInt64) (s : α), loopCost CA C BA F n i s = 0
   | 0, _, _ => rfl
   | n + 1, i, s => by

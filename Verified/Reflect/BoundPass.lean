@@ -9,10 +9,11 @@ terms that do not match fail at once: the kernel would otherwise unfold the comp
 compare them.  A side condition is a closed term, which the kernel evaluates to a constructor, and
 its proof is `rfl`.
 
-The proofs hold no beta-redex: each lemma's conclusion is built from its arguments, and each
-congruence is stated with its sides.  The type that `inferType` computes for a proof is then the one
-the kernel infers, and two equations join only where their terms are identical, since the kernel
-compares two closed `Nat` sums that differ by evaluating both. -/
+Each lemma's conclusion is built from its arguments, and each congruence is stated with its sides,
+so the type that `inferType` computes for a proof is the one the kernel infers, and two equations
+join where their terms are identical.  The kernel compares two closed `Nat` sums that differ by
+evaluating both, so the hints that do compare different terms compare them where one holds a free
+variable, or under heads that the kernel unfolds by their heights before it compares arguments. -/
 
 namespace Verified.Reflect
 
@@ -25,7 +26,7 @@ structure Bound where
   deriving Inhabited
 
 /-- From the modes and the live set at a site, as terms, the bound of a source expression, or
-`none` for a form without bound lemmas. -/
+`none` in a recursive definition, which has no bound. -/
 abbrev BoundBuilder := Lean.Expr → Lean.Expr → MetaM (Option Bound)
 
 def noBound : BoundBuilder := fun _ _ => return none
@@ -43,30 +44,16 @@ def natAdd : Lean.Expr :=
   mkApp4 (mkConst ``HAdd.hAdd [0, 0, 0]) nat nat nat
     (mkApp2 (mkConst ``instHAdd [0]) nat (mkConst ``instAddNat))
 
+/-- `HMul.hMul` on `Nat` with the instance of the lemma statements. -/
+def natMul : Lean.Expr :=
+  let nat := mkConst ``Nat
+  mkApp4 (mkConst ``HMul.hMul [0, 0, 0]) nat nat nat
+    (mkApp2 (mkConst ``instHMul [0]) nat (mkConst ``instMulNat))
+
 /-- The names of the binders of a `∀` type. -/
 def binderNames : Lean.Expr → List Name
   | .forallE n _ b _ => n :: binderNames b
   | _ => []
-
-/-- The lemma `n` applied to the arguments that `args` names, with the others found by unification
-at reducible transparency.  Every argument must be found. -/
-def appNamed (n : Name) (args : List (Name × Lean.Expr)) : MetaM Lean.Expr := do
-  let c ← mkConstWithFreshMVarLevels n
-  let ty ← inferType c
-  let names := binderNames ty
-  let (mvars, _, _) ← forallMetaTelescope ty
-  for (name, v) in args do
-    let some i := names.idxOf? name
-      | throwError "verified_compile: {n} has no argument {name}"
-    unless ← withReducible (isDefEq mvars[i]! v) do
-      throwError "verified_compile: in {n}, the argument {name} does not match:{indentExpr v}\n\
-        has type{indentExpr (← inferType v)}\nexpected{indentExpr (← inferType mvars[i]!)}"
-  let app ← instantiateMVars (mkAppN c mvars)
-  if app.hasExprMVar then
-    let missing := (names.zip mvars.toList).filterMap fun (name, m) =>
-      if m.isMVar then some name else none
-    throwError "verified_compile: in {n}, the arguments {missing} are not determined"
-  return app
 
 /-- A lemma being applied: its arguments are metavariables, which the builder assigns by name. -/
 structure LemmaApp where
@@ -113,12 +100,7 @@ def LemmaApp.allocsArgs (a : LemmaApp) (name : Name) : MetaM (Lean.Expr × Lean.
   let ty ← a.hypType name
   let some (_, lhs, _) := ty.eq?
     | throwError "verified_compile: the argument {name} of {a.name} is not an equation:{indentExpr ty}"
-  let lhs := lhs.consumeMData
-  -- `@Expr.allocs S funs bounds modes live Γ t e env`, possibly inside an addition.
-  let lhs := match lhs.getAppFnArgs with
-    | (``HAdd.hAdd, #[_, _, _, _, x, _]) => x
-    | _ => lhs
-  let (``Expr.allocs, #[_, _, _, modes, live, _, _, _, _]) := lhs.getAppFnArgs
+  let (``Expr.allocs, #[_, _, _, modes, live, _, _, _, _]) := lhs.consumeMData.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {a.name} is not a bound:{indentExpr lhs}"
   return (modes, live)
 
@@ -158,34 +140,30 @@ def congrOn (f g a b hf hx : Lean.Expr) : MetaM Lean.Expr := do
   let β ← inferType (mkApp f a)
   return mkAppN (mkConst ``congr [← getLevel α, ← getLevel β]) #[α, β, f, g, a, b, hf, hx]
 
-/-- `f a = g b` from `ha : a = a'` and `hb : b = b'`, either `none` for `rfl`, for the binary
-operation `op` with `f = op a` and `g = op a'`: congruence with the sides given, so that the
-kernel infers the terms it states. -/
+/-- `op a b = op a' b'` from `ha : a = a'` and `hb : b = b'`, either `none` for `rfl`, by
+congruence with the sides given. -/
 def congr2 (op a a' b b' : Lean.Expr) (ha? hb? : Option Lean.Expr) : MetaM Lean.Expr := do
   let ha ← match ha? with | some h => pure h | none => mkEqRefl a
   let hb ← match hb? with | some h => pure h | none => mkEqRefl b
   congrOn (mkApp op a) (mkApp op a') b b' (← congrArgOn op a a' ha) hb
 
-/-- From `p : X = a + b`, the proof of `X = c` for `c` the sum without a summand `0`. -/
-def dropZeroAdd (p : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
-  let (_, rhs) ← eqSides p
-  let (``HAdd.hAdd, #[_, _, _, _, a, b]) := rhs.getAppFnArgs | return (rhs, p)
-  unless rhs.appFn!.appFn! == natAdd do return (rhs, p)
-  if isNatZero a && isNatZero b then return (natZero, ← mkEqTrans p (← mkAppM ``Nat.add_zero #[a]))
-  if isNatZero a then return (b, ← mkEqTrans p (← mkAppM ``Nat.zero_add #[b]))
-  if isNatZero b then return (a, ← mkEqTrans p (← mkAppM ``Nat.add_zero #[a]))
-  return (rhs, p)
-
-/-- The value that the kernel computes for the closed term `e`: a constructor or a literal. -/
-def kernelEval (e : Lean.Expr) : MetaM Lean.Expr := do
+/-- The weak head normal form of `e` by the kernel: a constructor or a literal for a closed term of
+an inductive type.  The reflector evaluates the compiler's functions of a source body this way:
+Meta's `reduce` would recurse once per level of the body and exceed the elaborator's recursion
+limit on a deep one. -/
+def kernelWhnf (e : Lean.Expr) : MetaM Lean.Expr := do
   match Kernel.whnf (← getEnv) (← getLCtx) e with
   | .ok r => return r
   | .error ex => throwKernelException ex
 
-/-- The numeral, in the form of the lemma statements, that the closed `Nat` term `e` evaluates to. -/
+/-- The value of a numeral, raw or in the form `OfNat.ofNat`. -/
+def natOf (n : Lean.Expr) : Option Nat := n.nat? <|> n.rawNatLit?
+
+/-- The numeral, in the form of the lemma statements, that the closed `Nat` term `e` evaluates
+to. -/
 def evalNat (e : Lean.Expr) : MetaM Lean.Expr := do
-  let v ← kernelEval e
-  let some n := v.rawNatLit? <|> v.nat?
+  let v ← kernelWhnf e
+  let some n := natOf v
     | throwError "verified_compile: {e} does not evaluate to a numeral:{indentExpr v}"
   return mkNatLit n
 
@@ -196,7 +174,7 @@ def evalEq (e v : Lean.Expr) : MetaM Lean.Expr := do
 /-- The Boolean that the closed term `e` evaluates to, with an error that names `what` when it does
 not evaluate to `true` or `false`. -/
 def evalBool (what : MessageData) (e : Lean.Expr) : MetaM Bool := do
-  let v ← kernelEval e
+  let v ← kernelWhnf e
   if v.isConstOf ``Bool.true then return true
   if v.isConstOf ``Bool.false then return false
   throwError "verified_compile: {what} does not evaluate to a Boolean:{indentExpr v}"
@@ -204,7 +182,7 @@ def evalBool (what : MessageData) (e : Lean.Expr) : MetaM Bool := do
 /-- Whether the closed `Mode` term `e` evaluates to `Mode.owned`, with an error that names `what`
 when it evaluates to neither mode. -/
 def evalOwned (what : MessageData) (e : Lean.Expr) : MetaM Bool := do
-  let v ← kernelEval e
+  let v ← kernelWhnf e
   if v.isConstOf ``Mode.owned then return true
   if v.isConstOf ``Mode.borrowed then return false
   throwError "verified_compile: {what} does not evaluate to a mode:{indentExpr v}"
@@ -213,5 +191,11 @@ def modeConst (owned : Bool) : Lean.Expr :=
   mkConst (if owned then ``Mode.owned else ``Mode.borrowed)
 
 def boolConst (b : Bool) : Lean.Expr := mkConst (if b then ``Bool.true else ``Bool.false)
+
+/-- For `x = a * 1`, with `1` in the form of the lemma statements, `a` and the proof of `x = a`. -/
+def mulOne? (x : Lean.Expr) : MetaM (Option (Lean.Expr × Lean.Expr)) := do
+  let (``HMul.hMul, #[_, _, _, _, a, w]) := x.getAppFnArgs | return none
+  unless x.appFn!.appFn! == natMul && w == mkNatLit 1 do return none
+  return some (a, ← mkAppM ``Nat.mul_one #[a])
 
 end Verified.Reflect
