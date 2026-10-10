@@ -651,9 +651,11 @@ def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) 
   let gen ← withLocalDeclD `h altTy fun h => withLocalDeclD `s dTy fun s => do
     let lhs := mkAppN h (← fields s)
     let rhs := { app with discrs := #[s], alts := #[h] }.toExpr
-    let goal ← mkFreshExprMVar (← mkEq lhs rhs)
+    -- `refl` proves the goal by `Eq.refl lhs`, whose type omits the match, so a hint states it.
+    let eq ← mkEq lhs rhs
+    let goal ← mkFreshExprMVar eq
     goal.mvarId!.refl
-    mkLambdaFVars #[h, s] (← instantiateMVars goal)
+    mkLambdaFVars #[h, s] (← mkExpectedTypeHint (← instantiateMVars goal) eq)
   return mkApp2 gen alt d
 
 /-- From `proof : X = flatValue a` and `eq : a = e`, the proof of `X = flatValue e`. -/
@@ -700,35 +702,29 @@ blocks, and `e'` the cost without its summands `0`, with an `if` whose branches 
 user's, which appear only inside the charges.  `none` when nothing changes. -/
 partial def normCost (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := do
   match e.getAppFnArgs with
-  | (``HAdd.hAdd, #[α, _, _, _, a, b]) =>
-    unless α.isConstOf ``Nat do return (e, none)
+  | (``HAdd.hAdd, #[_, _, _, _, a, b]) =>
+    let op := e.appFn!.appFn!
+    unless op == natAdd do return (e, none)
     let (a', ha?) ← normCost a
     let (b', hb?) ← normCost b
-    let step? ← if ha?.isNone && hb?.isNone then pure none else do
-      let ha ← match ha? with | some h => pure h | none => mkEqRefl a
-      let hb ← match hb? with | some h => pure h | none => mkEqRefl b
-      pure (some (← mkAppM ``congr #[← mkCongrArg e.appFn!.appFn! ha, hb]))
-    let sum ← mkAppM ``HAdd.hAdd #[a', b']
+    let step? ← if ha?.isNone && hb?.isNone then pure none
+      else some <$> congr2 op a a' b b' ha? hb?
     let drop? : Option (Lean.Expr × Lean.Expr) ←
-      if isNatZero a' && isNatZero b' then pure (some (natZero, ← mkAppM ``Nat.add_zero #[a']))
+      if isNatZero b' then pure (some (a', ← mkAppM ``Nat.add_zero #[a']))
       else if isNatZero a' then pure (some (b', ← mkAppM ``Nat.zero_add #[b']))
-      else if isNatZero b' then pure (some (a', ← mkAppM ``Nat.add_zero #[a']))
       else pure none
     match step?, drop? with
     | none, none => return (e, none)
-    | some s, none => return (sum, some s)
+    | some s, none => return (mkApp2 op a' b', some s)
     | none, some (r, d) => return (r, some d)
     | some s, some (r, d) => return (r, some (← mkEqTrans s d))
   | (``ite, #[α, cond, inst, a, b]) =>
     unless α.isConstOf ``Nat do return (e, none)
+    let iteFn := e.appFn!.appFn!
     let (a', ha?) ← normCost a
     let (b', hb?) ← normCost b
-    let step? ← if ha?.isNone && hb?.isNone then pure none else do
-      let ha ← match ha? with | some h => pure h | none => mkEqRefl a
-      let hb ← match hb? with | some h => pure h | none => mkEqRefl b
-      let iteFn := mkApp3 (mkConst ``ite [levelOne]) α cond inst
-      pure (some (← mkAppM ``congr #[← mkCongrArg iteFn ha, hb]))
-    let ite' := mkApp5 (mkConst ``ite [levelOne]) α cond inst a' b'
+    let step? ← if ha?.isNone && hb?.isNone then pure none
+      else some <$> congr2 iteFn a a' b b' ha? hb?
     if isNatZero a' && isNatZero b' then
       let self ← mkAppOptM ``ite_self #[some α, some cond, some inst, some natZero]
       match step? with
@@ -736,36 +732,107 @@ partial def normCost (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
       | some s => return (natZero, some (← mkEqTrans s self))
     match step? with
     | none => return (e, none)
-    | some s => return (ite', some s)
+    | some s => return (mkApp2 iteFn a' b', some s)
   | (``sumBelow, #[f, n]) =>
-    if f.isLambda && isNatZero f.bindingBody! then
-      return (natZero, some (← mkAppM ``sumBelow_zero #[n]))
-    return (e, none)
+    unless f.isLambda && isNatZero f.bindingBody! do return (e, none)
+    let h ← withLocalDeclD `k (mkConst ``Nat) fun k => do mkLambdaFVars #[k] (← mkEqRefl natZero)
+    return (natZero, some (← mkAppOptM ``sumBelow_zero #[some f, some h, some n]))
   | (``loopCost, #[α, CA, C, BA, F, n, i, s]) =>
-    if CA.isLambda && isNatZero CA.bindingBody! && BA.isLambda && BA.bindingBody!.isLambda &&
-        isNatZero BA.bindingBody!.bindingBody! then
-      return (natZero, some (← mkAppOptM ``loopCost_eq_zero
-        #[some α, some C, some F, some n, some i, some s]))
-    return (e, none)
+    unless CA.isLambda && isNatZero CA.bindingBody! && BA.isLambda && BA.bindingBody!.isLambda &&
+        isNatZero BA.bindingBody!.bindingBody! do return (e, none)
+    let hCA ← withLocalDeclD `s α fun x => do mkLambdaFVars #[x] (← mkEqRefl natZero)
+    let hBA ← withLocalDeclD `i (mkConst ``UInt64) fun j => withLocalDeclD `s α fun x => do
+      mkLambdaFVars #[j, x] (← mkEqRefl natZero)
+    return (natZero, some (← mkAppOptM ``loopCost_eq_zero
+      #[some α, some CA, some C, some BA, some F, some hCA, some hBA, some n, some i, some s]))
   | (``blockCost, #[x]) | (``growCost, #[x]) =>
     let (``HMul.hMul, #[_, _, _, _, a, w]) := x.getAppFnArgs | return (e, none)
-    unless natOf w == some 1 do return (e, none)
-    return (mkApp e.getAppFn a, some (← mkCongrArg e.getAppFn (← mkAppM ``Nat.mul_one #[a])))
+    unless w == mkNatLit 1 do return (e, none)
+    let f := e.getAppFn
+    return (mkApp f a, some (← congrArgOn f x a (← mkAppM ``Nat.mul_one #[a])))
   | _ => return (e, none)
 
-/-- `e` with every projection of a pair or structure built in place reduced, at any depth: the
-values that a bound substitutes for a bound variable carry such projections. -/
-def deepProj (e : Lean.Expr) : MetaM Lean.Expr :=
-  Meta.transform e (post := fun x => return .done (← projReduce x))
+/-- `e` with its head reduced once when it projects an application of a structure's constructor,
+or, for a pair `(y.1, y.2)` of the projections of one term `y`, `y`. -/
+def projStep? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  if let some (i, p) ← structProj? e then
+    let .const k _ := p.getAppFn | return none
+    let some (.ctorInfo ctor) := (← getEnv).find? k | return none
+    unless p.getAppNumArgs == ctor.numParams + ctor.numFields do return none
+    return some (p.getArg! (ctor.numParams + i))
+  let (``Prod.mk, #[_, _, a, b]) := e.getAppFnArgs | return none
+  let (``Prod.fst, #[_, _, y]) := a.getAppFnArgs | return none
+  let (``Prod.snd, #[_, _, y']) := b.getAppFnArgs | return none
+  return if y == y' then some y else none
 
-/-- The bound that `p : allocs = rhs` gives, with `rhs` normalized by `normCost`, and, when `subst`
-holds, with its projections of values built in place reduced. -/
-def boundOf (p : Lean.Expr) (subst := false) : MetaM Bound := do
+/-- The fields of `e`, an application of the constructor of a structure, or `none`. -/
+def ctorFields? (e : Lean.Expr) : MetaM (Option (Array Lean.Expr)) := do
+  let .const k _ := e.getAppFn | return none
+  let some (.ctorInfo ctor) := (← getEnv).find? k | return none
+  unless isStructure (← getEnv) ctor.induct do return none
+  unless e.getAppNumArgs == ctor.numParams + ctor.numFields do return none
+  return some (e.getAppArgs.extract ctor.numParams e.getAppNumArgs)
+
+/-- The maximal parts of `e` that are not applications of a structure's constructor. -/
+partial def ctorLeaves (e : Lean.Expr) : MetaM (Array Lean.Expr) := do
+  match ← ctorFields? e with
+  | some fs => fs.foldlM (fun acc f => return acc ++ (← ctorLeaves f)) #[]
+  | none => return #[e]
+
+/-- `e` with its leaves, from position `i` on, replaced by the terms `ys`, and the next position. -/
+partial def ctorRebuild (e : Lean.Expr) (ys : Array Lean.Expr) (i : Nat) :
+    MetaM (Lean.Expr × Nat) := do
+  let some fs ← ctorFields? e | return (ys[i]!, i + 1)
+  let mut j := i
+  let mut fs' := #[]
+  for f in fs do
+    let (f', j') ← ctorRebuild f ys j
+    fs' := fs'.push f'
+    j := j'
+  return (mkAppN e.getAppFn (e.getAppArgs.extract 0 (e.getAppNumArgs - fs.size) ++ fs'), j)
+
+/-- `e` with each projection of an application of a structure's constructor reduced where the
+projection holds a free variable.  The kernel checks the reduction by comparing pairs of terms of
+which one holds that variable, and it evaluates the operands of `Nat` operations only in pairs of
+closed terms. -/
+def reduceOpenProjs (e : Lean.Expr) : MetaM Lean.Expr :=
+  Meta.transform e (post := fun x => do
+    unless x.hasFVar do return .done x
+    return .done ((← projStep? x).getD x))
+
+/-- `b`, abstracted over variables, at the values `vs`: its proof applied to them, and its cost
+instantiated with them, with the projections reduced that a value built in place leaves in it.
+The reduction runs with the values' leaves as new variables, as `reduceOpenProjs` requires, and the
+proof, abstracted over the variables, is applied to the leaves, which the kernel instantiates
+without comparing anything. -/
+def Bound.at (b : Bound) (vs : Array Lean.Expr) : MetaM Bound := do
+  let plain : Bound := ⟨b.cost.beta vs, mkAppN b.proof vs⟩
+  unless ← vs.anyM fun v => return (← ctorFields? v).isSome do return plain
+  let leaves ← vs.foldlM (fun acc v => return acc ++ (← ctorLeaves v)) #[]
+  let decls ← leaves.mapIdxM fun i l => do
+    return ((`y).appendIndexAfter i, fun _ => inferType l)
+  withLocalDeclsD decls fun ys => do
+    let mut j := 0
+    let mut vs' := #[]
+    for v in vs do
+      let (v', j') ← ctorRebuild v ys j
+      vs' := vs'.push v'
+      j := j'
+    let cost := b.cost.beta vs'
+    let reduced ← reduceOpenProjs cost
+    if reduced == cost then return plain
+    let p := mkAppN b.proof vs'
+    let (lhs, _) ← eqSides p
+    let h ← mkExpectedTypeHint p (← mkEq lhs reduced)
+    return ⟨(← mkLambdaFVars ys reduced).beta leaves, mkAppN (← mkLambdaFVars ys h) leaves⟩
+
+/-- The bound that `p : allocs = rhs` gives, with `rhs` normalized by `normCost` and its projections
+of values built in place reduced by `reduceOpenProjs`. -/
+def boundOf (p : Lean.Expr) : MetaM Bound := do
   let (lhs, rhs) ← eqSides p
   let (rhs', h?) ← normCost rhs
   let p ← match h? with | some h => mkEqTrans p h | none => pure p
-  unless subst do return ⟨rhs', p⟩
-  let reduced ← deepProj rhs'
+  let reduced ← reduceOpenProjs rhs'
   if reduced == rhs' then return ⟨rhs', p⟩
   return ⟨reduced, ← mkExpectedTypeHint p (← mkEq lhs reduced)⟩
 
@@ -778,7 +845,7 @@ partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
   | .elem _ => return (natZero, ← evalEq lhs natZero)
   | .array e =>
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
-    let w ← kernelEval width
+    let w ← evalNat width
     let hw ← evalEq width w
     let (``Array, #[α]) := (← whnfR (← inferType u)).getAppFnArgs
       | throwError "verified_compile: the copy of {u}, which is not an array"
@@ -792,10 +859,11 @@ partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
         mkExpectedTypeHint h (← mkEq sizeV n)
     let p ← (← LemmaApp.start ``copyCost_array
       [(`e, elemExpr e), (`xs, v), (`hn, hn), (`hw, hw)]).finish
-    if natOf w == some 1 then
-      let h ← mkCongrArg (mkConst ``blockCost) (← mkAppM ``Nat.mul_one #[n])
-      return (← mkAppM ``blockCost #[n], ← mkEqTrans p h)
-    return (← mkAppM ``blockCost #[← mkAppM ``HMul.hMul #[n, w]], p)
+    let (_, cost) ← eqSides p
+    if w == mkNatLit 1 then
+      let h ← congrArgOn (mkConst ``blockCost) cost.appArg! n (← mkAppM ``Nat.mul_one #[n])
+      return (mkApp (mkConst ``blockCost) n, ← mkEqTrans p h)
+    return (cost, p)
   | .pair a b =>
     let view ← pairView base (← inferType u)
     let P := view.pair u
@@ -862,8 +930,8 @@ def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Refl
   let some b ← r.bound modes live | return none
   let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} has no coercion"
-  let (_, hk) ← coerceEq base t s M v r.lean
-  let h ← mkAppM ``congr #[← mkCongrArg lhs.appFn!.appFn! b.proof, hk]
+  let (K, hk) ← coerceEq base t s M v r.lean
+  let h ← congr2 lhs.appFn!.appFn! allocs b.cost coerce K (some b.proof) (some hk)
   let (cost, h) ← dropZeroAdd h
   app.assign name h
   return some ⟨cost, h⟩
@@ -1047,8 +1115,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let some _ ← app.child `hva rv.bound | return none
         let some bb ← bodyBound (← mkAppM ``List.cons #[m, modes])
           (← mkAppM ``shift #[mkNatLit 1, live]) | return none
-        app.assign `hba bb.proof
-        boundOf (← app.finish) (subst := true)
+        app.assign `hba (← bb.at #[value]).proof
+        boundOf (← app.finish)
       return ⟨src, ← restate proof (← bareEq (body.instantiate1 value) e), rb.ty, e, bound⟩
   if let some app ← matchMatcherApp? e then
     if app.discrs.size != 1 then
@@ -1360,14 +1428,19 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       app.assign `all allRhs
       app.assign `hall (← mkEqRefl allRhs)
       let width := mkApp (mkConst ``Elem.width) (elemExpr el)
-      let w ← kernelEval width
+      let w ← evalNat width
       app.assign `w w
       app.assign `hw (← evalEq width w)
       app.assign `hn (← userProof c rn)
       let some _ ← app.child `hna rn.bound | return none
       let some eb ← ue.bound (← mkAppM ``List.cons #[mkConst ``Mode.borrowed, modes])
         (← mkAppM ``shift #[mkNatLit 1, allRhs]) | return none
-      app.assign `hea eb.proof
+      -- The element's bound at the index `UInt64.ofNat k` of the sum.
+      let (EA, hea) ← withLocalDeclD `k (mkConst ``Nat) fun k => do
+        let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
+        return (← mkLambdaFVars #[k] b.cost, ← mkLambdaFVars #[k] b.proof)
+      app.assign `EA EA
+      app.assign `hea hea
       boundOf (← app.finish)
     if se.flat.isNone then
       return ⟨src, ← mkAppM ``build_eq #[rn.proof, hf], .array el, e, bound⟩
@@ -1472,8 +1545,8 @@ where
         let (``coerceCost, #[_, s, M', v]) := coerce.getAppFnArgs
           | throwError "verified_compile: the loop's body"
         let value ← projReduce (F.beta u.xs)
-        let (_, hk) ← coerceEq c.base ri.ty s M' v value
-        let h ← mkAppM ``congr #[← mkCongrArg lhs.appFn!.appFn! b.proof, hk]
+        let (K, hk) ← coerceEq c.base ri.ty s M' v value
+        let h ← congr2 lhs.appFn!.appFn! allocs b.cost coerce K (some b.proof) (some hk)
         let (cost, h) ← dropZeroAdd h
         return some (← mkLambdaFVars u.xs cost, ← mkLambdaFVars u.xs h)
       | return none
@@ -1767,11 +1840,20 @@ where
         (boundArgs c bounds modes live ++ [(`e, rp.src), (`body, rb.src)] ++ flatArgs)
       let m ← assignMode app `m `hm
       app.assign `he (← userProof c rp)
+      -- The components: those of a pair built in place, or the projections.
+      let pair ← if flat then pure (view.pair p) else instantiateMVars app.mvars[← app.index `E]!
+      let (A, B) ← match pair.getAppFnArgs with
+        | (``Prod.mk, #[_, _, a, b]) => pure (a, b)
+        | _ => do pure (← mkAppM ``Prod.fst #[pair], ← mkAppM ``Prod.snd #[pair])
+      app.assign `A A
+      app.assign `B B
+      app.assign `hA (← mkEqRefl A)
+      app.assign `hB (← mkEqRefl B)
       let some _ ← app.child `hea rp.bound | return none
       let some bb ← u.bound (← mkAppM ``List.cons #[m, ← mkAppM ``List.cons #[m, modes]])
         (← mkAppM ``shift #[mkNatLit 2, live]) | return none
-      app.assign `hba bb.proof
-      boundOf (← app.finish) (subst := true)
+      app.assign `hba (← bb.at #[A, B]).proof
+      boundOf (← app.finish)
     if !flat then
       return ⟨src, ← mkAppM ``letPair_eq #[rp.proof, rb.proof], rb.ty, rb.lean, bound⟩
     return ⟨src, ← mkAppM ``letPair_flat_eq #[← sa.fn view.α, ← sb.fn view.β, view.pair p,

@@ -7,7 +7,12 @@ live set at its site and returns the bound term with its proof.  Each lemma is a
 arguments named, and the others are found by unification at reducible transparency, so that two
 terms that do not match fail at once: the kernel would otherwise unfold the compiler's bound to
 compare them.  A side condition is a closed term, which the kernel evaluates to a constructor, and
-its proof is `rfl`. -/
+its proof is `rfl`.
+
+The proofs hold no beta-redex: each lemma's conclusion is built from its arguments, and each
+congruence is stated with its sides.  The type that `inferType` computes for a proof is then the one
+the kernel infers, and two equations join only where their terms are identical, since the kernel
+compares two closed `Nat` sums that differ by evaluating both. -/
 
 namespace Verified.Reflect
 
@@ -17,6 +22,7 @@ open Lean Meta
 structure Bound where
   cost : Lean.Expr
   proof : Lean.Expr
+  deriving Inhabited
 
 /-- From the modes and the live set at a site, as terms, the bound of a source expression, or
 `none` for a form without bound lemmas. -/
@@ -27,7 +33,15 @@ def noBound : BoundBuilder := fun _ _ => return none
 /-- The numeral `0 : Nat`. -/
 def natZero : Lean.Expr := mkNatLit 0
 
-def isNatZero (e : Lean.Expr) : Bool := e.nat? == some 0 || e.rawNatLit? == some 0
+/-- Whether `e` is the numeral `0` in the form of the lemma statements, so that a lemma about `0`
+applies to it syntactically. -/
+def isNatZero (e : Lean.Expr) : Bool := e == natZero
+
+/-- `HAdd.hAdd` on `Nat` with the instance of the lemma statements. -/
+def natAdd : Lean.Expr :=
+  let nat := mkConst ``Nat
+  mkApp4 (mkConst ``HAdd.hAdd [0, 0, 0]) nat nat nat
+    (mkApp2 (mkConst ``instHAdd [0]) nat (mkConst ``instAddNat))
 
 /-- The names of the binders of a `∀` type. -/
 def binderNames : Lean.Expr → List Name
@@ -132,45 +146,48 @@ def eqSides (p : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
     | throwError "verified_compile: the equation {p}"
   return (l, r)
 
+/-- `congrArg f h : f a = f b` for `h : a = b`, with the sides given. -/
+def congrArgOn (f a b h : Lean.Expr) : MetaM Lean.Expr := do
+  let α ← inferType a
+  let β ← inferType (mkApp f a)
+  return mkAppN (mkConst ``congrArg [← getLevel α, ← getLevel β]) #[α, β, a, b, f, h]
+
+/-- `congr hf hx : f a = g b` for `hf : f = g` and `hx : a = b`, with the sides given. -/
+def congrOn (f g a b hf hx : Lean.Expr) : MetaM Lean.Expr := do
+  let α ← inferType a
+  let β ← inferType (mkApp f a)
+  return mkAppN (mkConst ``congr [← getLevel α, ← getLevel β]) #[α, β, f, g, a, b, hf, hx]
+
+/-- `f a = g b` from `ha : a = a'` and `hb : b = b'`, either `none` for `rfl`, for the binary
+operation `op` with `f = op a` and `g = op a'`: congruence with the sides given, so that the
+kernel infers the terms it states. -/
+def congr2 (op a a' b b' : Lean.Expr) (ha? hb? : Option Lean.Expr) : MetaM Lean.Expr := do
+  let ha ← match ha? with | some h => pure h | none => mkEqRefl a
+  let hb ← match hb? with | some h => pure h | none => mkEqRefl b
+  congrOn (mkApp op a) (mkApp op a') b b' (← congrArgOn op a a' ha) hb
+
 /-- From `p : X = a + b`, the proof of `X = c` for `c` the sum without a summand `0`. -/
 def dropZeroAdd (p : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
   let (_, rhs) ← eqSides p
   let (``HAdd.hAdd, #[_, _, _, _, a, b]) := rhs.getAppFnArgs | return (rhs, p)
+  unless rhs.appFn!.appFn! == natAdd do return (rhs, p)
   if isNatZero a && isNatZero b then return (natZero, ← mkEqTrans p (← mkAppM ``Nat.add_zero #[a]))
   if isNatZero a then return (b, ← mkEqTrans p (← mkAppM ``Nat.zero_add #[b]))
   if isNatZero b then return (a, ← mkEqTrans p (← mkAppM ``Nat.add_zero #[a]))
   return (rhs, p)
-
-/-- The sum `((x₀ + x₁) + …) + xₙ` of `xs` without its summands `0`, and the proof that the sum
-equals it. -/
-def sumNorm (xs : List Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
-  match xs with
-  | [] => return (natZero, ← mkEqRefl natZero)
-  | x :: rest =>
-    let mut acc := x
-    let mut proof ← mkEqRefl x
-    let mut sum := x
-    for y in rest do
-      -- `sum + y = acc + y`, then the sum without a zero.
-      sum ← mkAppM ``HAdd.hAdd #[sum, y]
-      let step ← mkCongrArg (← withLocalDeclD `z (mkConst ``Nat) fun z => do
-        mkLambdaFVars #[z] (← mkAppM ``HAdd.hAdd #[z, y])) proof
-      let (c, p) ← dropZeroAdd (← mkEqTrans step (← mkEqRefl (← mkAppM ``HAdd.hAdd #[acc, y])))
-      acc := c
-      proof := p
-    return (acc, proof)
-
-/-- From `p : X = s` for a left-nested sum `s` of the terms `xs`, the proof of `X = c` for `c` the
-sum without its summands `0`. -/
-def normSum (p : Lean.Expr) (xs : List Lean.Expr) : MetaM Bound := do
-  let (c, h) ← sumNorm xs
-  return ⟨c, ← mkEqTrans p h⟩
 
 /-- The value that the kernel computes for the closed term `e`: a constructor or a literal. -/
 def kernelEval (e : Lean.Expr) : MetaM Lean.Expr := do
   match Kernel.whnf (← getEnv) (← getLCtx) e with
   | .ok r => return r
   | .error ex => throwKernelException ex
+
+/-- The numeral, in the form of the lemma statements, that the closed `Nat` term `e` evaluates to. -/
+def evalNat (e : Lean.Expr) : MetaM Lean.Expr := do
+  let v ← kernelEval e
+  let some n := v.rawNatLit? <|> v.nat?
+    | throwError "verified_compile: {e} does not evaluate to a numeral:{indentExpr v}"
+  return mkNatLit n
 
 /-- The proof of `e = v` by `rfl` for the closed term `e` and the constructor `v` it evaluates to. -/
 def evalEq (e v : Lean.Expr) : MetaM Lean.Expr := do

@@ -18,9 +18,11 @@ theorem blockCost_eq (words : Nat) : blockCost words = 8 * words + 56 := by
 theorem growCost_eq (words : Nat) : growCost words = 16 * words + 64 := by
   simp only [growCost, allocCost]; omega
 
-theorem sumBelow_zero : ∀ n : Nat, sumBelow (fun _ => 0) n = 0
+/-- `sumBelow` of terms that are all `0`, stated for any `f` so that the conclusion is the term it
+rewrites. -/
+theorem sumBelow_zero {f : Nat → Nat} (h : ∀ k, f k = 0) : ∀ n : Nat, sumBelow f n = 0
   | 0 => rfl
-  | n + 1 => by simp only [sumBelow, sumBelow_zero n]
+  | n + 1 => by simp only [sumBelow, sumBelow_zero h n, h, Nat.add_zero]
 
 theorem sumBelow_const (c : Nat) : ∀ n : Nat, sumBelow (fun _ => c) n = n * c
   | 0 => by simp [sumBelow]
@@ -44,11 +46,14 @@ theorem sumBelow_succ' (f : Nat → Nat) :
     simp only [sumBelow] at ih ⊢
     omega
 
-theorem loopCost_eq_zero {α : Type} (C : α → Bool) (F : UInt64 → α → α) :
-    ∀ (n : Nat) (i : UInt64) (s : α), loopCost (fun _ => 0) C (fun _ _ => 0) F n i s = 0
+/-- `loopCost` of a loop whose condition and body cost nothing, stated for any costs so that the
+conclusion is the term it rewrites. -/
+theorem loopCost_eq_zero {α : Type} {CA : α → Nat} {C : α → Bool} {BA : UInt64 → α → Nat}
+    {F : UInt64 → α → α} (hCA : ∀ s, CA s = 0) (hBA : ∀ i s, BA i s = 0) :
+    ∀ (n : Nat) (i : UInt64) (s : α), loopCost CA C BA F n i s = 0
   | 0, _, _ => rfl
   | n + 1, i, s => by
-    simp only [loopCost, loopCost_eq_zero C F n, Nat.zero_add, ite_self]
+    simp only [loopCost, loopCost_eq_zero hCA hBA n, hCA, hBA, Nat.zero_add, ite_self]
 
 /-- A bound on the cost of a loop from an invariant `P` of its index and state: when each state
 that `P` admits at index `k` costs at most `cost k`, through the condition and, when the condition
