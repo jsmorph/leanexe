@@ -28152,3 +28152,32 @@ system".
 - [x] A posteriori flux bounds and the balance with exact boundary fluxes
 - [x] READMEs list the new theorems
 - [x] Merge `euler` into `main` (fast-forward)
+
+## 2026-10-10: Decisions on the generators, the merge, and the order of work
+
+The user decided seven questions that the generator work and the trap-free work left open.  The
+LCG keeps the increment `1442695040888963407` of O'Neill's PCG library: Knuth's
+[`rsixfour.c`](https://mmix.cs.hm.edu/tools/rsixfour.c) gives the multiplier with a citation of
+Volume 2, Section 3.3.4, and its own increment `9754186451795953191` as "some random start value",
+so no source prescribes the increment, and the theorems hold for any odd one.  Park–Miller keeps
+the direct product in 64-bit words, which is exact below `2^46`, and seeds by the rule of the C++
+standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong), which
+`std::minstd_rand0` instantiates with these parameters: the state is the seed modulo `2^31 - 1`, or
+1 when that is 0.
+
+| Decision | Answer |
+|----------|--------|
+| LCG increment | PCG's `1442695040888963407` |
+| Park–Miller arithmetic | direct 64-bit product |
+| Park–Miller seeds | C++ rule: `s % (2^31 - 1)`, and 1 for 0, with a theorem that every seed reaches the range |
+| Location | `Examples/Lcg/`, `Examples/ParkMiller/`, `Examples/Xorshift/`, and the shared lemmas in `Examples/Orbit/` |
+| xorshift period | the orbit computation of the state 1 by matrix jump-ahead |
+| Further properties | equidistribution over a period, jump-ahead, the LCG's lattice structure, and the spectral test values of the multiplier |
+| Merge | run `main`'s default build and checks on `verified`, then fast-forward `main` |
+| Order | the merge checks, then task 66 (an amortized charge for `push` and a recursion depth bound), then the generators, then record fields in `bound_eq` |
+
+- [ ] Merge checks and fast-forward.
+- [ ] Amortized push charge and recursion depth bound.
+- [ ] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
+  structure, spectral test values.
+- [ ] Record fields in `bound_eq`.
