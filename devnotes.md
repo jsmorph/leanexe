@@ -29290,6 +29290,7 @@ Every theorem in the four modules reports only `propext`, `Classical.choice`, an
 - [x] `TaylorRemainder`: `sin`, `cos`, `exp`, `log (1 + x)`, and `atan`.
 - [x] The sine and cosine kernel polynomials.
 - [x] The two logarithm polynomials.
+
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
 The ports track works in a separate worktree, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
@@ -29367,3 +29368,7 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.le
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
 - [ ] Prove the theorems (later tracks).
+
+## 2026-10-10: Integration of the stage 3 ports
+
+Opus merged `w/ports` at `b7064fcd` into `transcendentals` (`dac3972a`), resolving the journal conflict by keeping both sides.  `Verified.lean` now imports `Log1p`, `Atan`, `Asin`, `Tan`, and `ArcReference`, and `tests/verified/run.sh` emits and validates the four new modules and runs their accuracy checks.  `tools/leanrun --timeout 60m lake build Verified` passed (`opus-ports-verified-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-4.log`): the exponential file check, 15,837 cases, and every accuracy check, among them 350,133 results of `log1p`, 200,075 of `atan`, 84,169 of `atan2`, 400,336 of `asin` and `acos`, and 180,050 of `tan` within one unit.  `wasm-tools validate` accepted the four new modules, which the build host could not run for lack of the tool and the Wasmtime host.
