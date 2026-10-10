@@ -28019,7 +28019,8 @@ The drone needs no array updates and no wrappers, so the order puts its theorem 
   `isRecursiveDefinition` first.
 - [x] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`: every function of Updates, Grow, Insert,
   and Clob has a `bound_eq`.
-- [ ] 5: wrappers.
+- [x] 5: wrappers: `p.w.bound_eq` states the callee's bound at the tables and the arguments, by
+  the chain of `Prog.bounds` behind a hint, or the numeral of the callee's equation.
 
 ### Bound equations: kernel evaluation of loops
 
