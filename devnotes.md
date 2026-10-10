@@ -29546,3 +29546,91 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references, with the error bound of the continued fraction, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Review of the options for stages 7 and 8
+
+The coordinator asked for a review, without porting, of the implementations available for `tgamma`, `lgamma` with its sign, and the Bessel functions `j0`, `j1`, `y0`, `y1`, `jn`, and `yn`.  The goal is a full-domain theorem per function, so the review recommends the algorithm and the bound together, and the API.  The review measured fdlibm itself rather than relying on its comments.
+
+### Method and tools
+
+No arbitrary-precision library is installed on the local machine or the machines: Python has no `mpmath`, `sympy`, or `gmpy2`, and nothing was installed.  The measurements use integer references written in Python for this review: the power series of `J0` and `J1` up to 300 with guard bits for cancellation, `Y0` and `Y1` from their series with Euler's constant by Brent and McMillan's algorithm, Hankel's expansions above 300, `J_n` from its series, `Y_n` by forward recurrence at 600 extra bits, and `lgamma` from Stirling's series at `x + N ≥ 300` with 60 Bernoulli terms and the reflection formula for negative `x`.  The series and Hankel's expansions agree to the last bit at precision 300 for `x` = 300, 300.5, and 333.3, and `lgamma` agrees with `ln (n - 1)!` within `2 ^ -383` at the integers tried.  FreeBSD's code was compiled from the pinned commit into a shared library on the local machine (gcc 14 on AArch64, `-O2 -ffp-contract=off`, no fused multiply-add in the object code), with FreeBSD's own `exp`, `log`, `expm1`, `log1p`, `sin`, `cos`, `sincos`, `sinpi`, and `cospi`, all renamed so that none resolves to glibc's.  The build replaces FreeBSD's `math.h` with a shim over glibc's and deletes the unused `rnintl` from its copy of `math_private.h`, which gcc cannot tokenize.  glibc 2.41, the local machine's library, was measured through `ctypes`.  The measurement reproduces [Zimmermann's published largest known errors](https://members.loria.fr/PZimmermann/papers/accuracy.pdf) (report of 2026-08-24, GNU libc 2.44 and FreeBSD 15.1) for FreeBSD at his inputs: `j0` 4.5e14 units at `0x1.33d152e971b40p+1`, `j1` 1.10e15, `y0` 1.42e15, `y1` 5.56e15, `lgamma` 4.45e15 at `-0x1.3a7fc9600f86cp+1`, and `tgamma` 1.03e3 at `-0x1.547cf3ddaaddap+7`.  The scripts and the build sit in the ports track's scratch directory on the local machine.
+
+### Candidates
+
+| Implementation | License | Functions | Size | Operations | Stated accuracy |
+|---|---|---|---|---|---|
+| FreeBSD `e_lgamma_r.c` (fdlibm) | Sun 1993, permissive | `lgamma_r`, `lgamma` with the global `signgam` | 299 lines | double, `log`, `__kernel_sin`, `__kernel_cos` | None |
+| FreeBSD `bsdsrc/b_tgamma.c` (P. McIlroy 1992, rearranged 2021) | BSD-3-Clause | `tgamma` | 396 lines plus `b_log.c` (400) and `b_exp.c` (122) | double, `(float)` splits, its own `log` and `exp` in two parts, `sinpi`, `cospi`, `ceil` | Below 0.9 units for `x > 0`, "provably".  Below 4 units observed for `x < 0` |
+| FreeBSD `e_j0.c`, `e_j1.c`, `e_jn.c` (fdlibm) | Sun 1993 | `j0`, `y0`, `j1`, `y1`, `jn`, `yn` | 385, 379, 270 lines | double, `sincos`, `cos`, `sqrt`, `log` | Approximation errors only, such as `2 ^ -63.67` for `R0/S0` |
+| CORE-MATH at `ff2f71f6` (2026-10-10), `src/binary64/tgamma/tgamma.c` | MIT, A. Sibidanov 2024 | `cr_tgamma` | 1,105 lines, 57 KB, 421 hexadecimal constants | double-double arithmetic, `__builtin_fma` at 13 sites, a table of hard cases | Correctly rounded |
+| CORE-MATH, `src/binary64/lgamma/lgamma.c` | MIT, A. Sibidanov 2025 | `cr_lgamma`, setting `signgam` | 1,454 lines, 83 KB, 667 constants | double-double, `__builtin_fma` at 14 sites, a table of hard cases | Correctly rounded |
+| SLEEF | Boost Software License 1.0 | `tgamma_u10`, `lgamma_u10`, with variants without fused multiply-add (`purec`) | Vector-style C | double-double | `tgamma` 1.0 unit, and `lgamma` 1.0 unit for positive `x` and `max (1 ULP, 1e-15)`, an absolute allowance, for negative `x` |
+| OpenLibm, Musl | MIT and permissive | fdlibm's functions.  Musl's `tgamma` is its own | | double | As fdlibm, except Musl's `tgamma` |
+| GNU libc | LGPL-2.1 | All | | | Zimmermann finds 2.44's `lgamma` and `tgamma` apparently correctly rounded, and 2.44 integrates CORE-MATH code |
+
+CORE-MATH's binary32 and binary64 directories at the pinned commit hold no Bessel function, and its binary64 directory holds `tgamma` and `lgamma`.  Neither `tgamma.c` nor `lgamma.c` uses `long double`, `_Float128`, or 128-bit integers.  glibc's license is LGPL-2.1, and the repository declares no license of its own, so copying glibc's code would bring the LGPL's terms into it.  The review uses glibc only as a measured comparison.  Intel's library has the only good Bessel results in Zimmermann's table (0.600 to 1.25 units) and is proprietary.
+
+### Published largest known errors
+
+| Function | glibc 2.44 | Intel | FreeBSD 15.1 | OpenLibm | Musl | Apple | CUDA |
+|---|---|---|---|---|---|---|---|
+| `j0` | 4.51e14 | 0.600 | 4.51e14 | 4.51e14 | 4.51e14 | 3.83e14 | 3.08e20 |
+| `j1` | 4.47e14 | 0.615 | 1.10e15 | 1.10e15 | 1.10e15 | 1.10e15 | 1.73e21 |
+| `y0` | 5.93e15 | 1.14 | 1.42e15 | 1.42e15 | 1.42e15 | 1.42e15 | 1.18e21 |
+| `y1` | 5.56e15 | 1.25 | 5.56e15 | 5.56e15 | 5.56e15 | 5.56e15 | 1.17e21 |
+| `lgamma` | 0.500 | 0.515 | 4.45e15 | 4.45e15 | 4.45e15 | 2.33e16 | 5.11e15 |
+| `tgamma` | 0.500 | 0.519 | 1.03e3 | 1.03e3 | 16.0 | 1.03e3 | 10.1 |
+
+The table is Zimmermann's Table 3, in units in the last place.  Zimmermann lists glibc 2.44's `lgamma` and `tgamma` among the ten functions that seem to be correctly rounded and notes that 2.44 integrates code from CORE-MATH.
+
+### Measurements
+
+| Function and region | FreeBSD | glibc 2.41 |
+|---|---|---|
+| `j0` next to its first five zeros (2.4048 to 14.931) | 1.0e13 to 4.5e14 units | 8.0e12 to 3.8e14 |
+| `j1` next to its first five zeros (3.8317 to 16.471) | 2.3e13 to 1.1e15 | 2.3e13 to 9.0e14 |
+| `y0` next to its first five zeros (0.8936 to 13.361) | 7.0e12 to 1.4e15 | 8.6e12 to 3.5e15 |
+| `y1` next to its first five zeros (2.1971 to 14.897) | 3.7e13 to 5.6e15 | 4.5e13 to 4.7e15 |
+| Bessel functions next to their zeros near `10 ^ 5` | 1.8e4 to 1.0e6 | 1.0e4 to 1.1e6 |
+| Bessel functions at 1,600 random arguments from `2 ^ 9` to `2 ^ 1020` | below 2.9 | below 2.9 |
+| `j0`, `j1`, `y0`, `y1` at 7,000 arguments up to 300 and large, zeros included, in units of the modulus `M = √(J² + Y²)` | below 3.01 | below 3.14 |
+| `jn`, `yn` next to zeros, orders 2 to 20 | 3.9e14 to 2.8e17 | 2.3e14 to 2.8e17 |
+| `jn` below its first zero, `x < n`, orders 2 to 100 | 1.0 (order 2) to 25 (order 100) | |
+| `jn`, `yn` in units of the modulus, orders 2 to 100 | `jn` 2.1 to 9.0, `yn` 3.0 to 30.4 at order 100 | |
+| `lgamma` next to its first nine negative zeros (-2.4570 to -6.0014) | 1.9e13 to 4.45e15 | 0.71 to 2.85 |
+| `lgamma` within 200 units of 1 and of 2 | 0.84 and 0.89 | 0.84 and 0.89 |
+| `lgamma` next to the poles -1 to -39 | 195 | 2.13 |
+| `lgamma`, random positive `x` and negative `x` | 1.58 and 15.2 | 1.38 and 1.76 |
+| `tgamma`, positive `x` up to the overflow | 0.80 | 3.4 |
+| `tgamma`, -170 to 0, and next to the poles -1 to -29 | 2.25 and 1.33 | 3.51 and 3.47 |
+| `tgamma`, -184 to -170, where the results are subnormal | 1.03e3 | 2.48 |
+
+The large errors next to zeros come from cancellation: fdlibm's `j0` above 2 forms `P cos (x - π/4) - Q sin (x - π/4)` with an absolute error near `2 ^ -56` of the amplitude, and its `lgamma` for negative `x` subtracts `lgamma (-x)` from `log (π/|x sin (π x)|)`.  fdlibm's absolute errors near the Bessel zeros are small, which the measurement in units of the modulus shows: at most about three units of `M`, the amplitude that `J` and `Y` share and that never vanishes.  Near `2 ^ 41` the doubles nearest the measured zeros lay about `2 ^ -12` from them, the spacing of the doubles there, too far for the cancellation to dominate.  A double that lies much closer to a zero at that scale would show a large error, as the worst cases near `10 ^ 5` do.
+
+### A software fused multiply-add
+
+The deterministic WebAssembly profile has no fused multiply-add, and `f64x2.relaxed_madd` of the relaxed-SIMD proposal may round once or twice, so it gives no defined result.  CORE-MATH's code therefore needs a dialect function `fma a b c` that rounds `a · b + c` once.  An integer implementation decodes the three operands, forms the 106-bit product with `Trig.mul64`'s method, aligns the addend with a sticky bit, adds or subtracts, normalizes with `Trig.clz64`'s method, and rounds to nearest even, covering subnormal results, overflow, zeros, infinities, and NaN.  That is about 150 word operations against one instruction, and one theorem, that it returns the nearest-even rounding of the exact `a · b + c`, covers every use.  ProofKit's rounding of scaled rationals (`F64RoundRational`, `F64RoundScaled`) gives the rounding half of that proof.  CORE-MATH's fast paths evaluate the fused operation at 13 and 14 sites, some in polynomial loops, so a call costs a few thousand word operations more than with hardware support.  Replacing each `fma (a, b, -a b)` by Dekker's product would change the source and need a range argument at each site, so the review does not recommend it.
+
+### What Mathlib provides
+
+The pinned Mathlib has `Real.Gamma` with Euler's reflection formula, log-convexity and Bohr and Mollerup's sequence for `log Γ`, the digamma function, the Beta function, Stirling's sequence for factorials, Gaussian integrals, and hypergeometric series.  It has no Bessel function, no error function, and no Stirling series with a remainder for `log Γ` at real arguments.  The gamma proofs therefore need Binet's or Euler and Maclaurin's remainder for Stirling's series, and the Bessel proofs need definitions of `J_n` and `Y_n`, their recurrences and Wronskian, and Hankel's expansions with Watson's remainder bounds, which is substantial analysis in Lean before any floating-point argument.
+
+### Recommendations
+
+| Function | Algorithm | Bound | API |
+|---|---|---|---|
+| `tgamma` | CORE-MATH's `cr_tgamma`, MIT, with the verified software `fma` | `WithinSteps 1`, from the error analysis of its fast path, accurate path, and table of hard cases.  Correct rounding as a theorem would need CORE-MATH's search for hard cases as a verified input, which the review does not recommend | `Gamma.tgamma : Float → Float`, the C99 name, since BSD's `gamma` meant `lgamma`.  NaN at the negative integers and `-∞`, `±∞` at `±0`, `+∞` above about 171.62, and `±0` with the sign of `Γ` below about -184. |
+| `lgamma` | CORE-MATH's `cr_lgamma`, MIT, with the verified `fma` | `WithinSteps 1` everywhere, with `lgamma 1 = lgamma 2 = +0` exactly.  CORE-MATH keeps relative accuracy next to the negative zeros | `Gamma.lgammaR : Float → Float × Float`, `(log |Γ x|, ±1)`, the sign as POSIX `lgamma_r` returns it through its pointer and CORE-MATH stores in `signgam`: the sign of `Γ x`, 1 at the poles, and the sign of `x` at `±0`.  `Gamma.lgamma x := (lgammaR x).1`. |
+| `j0`, `j1`, `y0`, `y1` | fdlibm's `e_j0.c` and `e_j1.c`, which need only double arithmetic, `sincos`, `sqrt`, and `log`, like the ports already done | No step bound: no permissively licensed implementation achieves one, and a proof would need the distance from every zero to its nearest doubles, which nobody has computed for these functions.  The recommended bound: the error at most 4 units in the last place of the modulus `M (x) = √(J (x)² + Y (x)²)`, with the order's `J` and `Y`.  FreeBSD measures at most 3.01. | `Bessel.j0`, `j1`, `y0`, `y1 : Float → Float`, with C's special values: `j0 (±0) = 1`, `y0 (+0) = -∞`, `y0` and `y1` of a negative `x` NaN. |
+| `jn`, `yn` | fdlibm's `e_jn.c` after the four above | A bound in units of the modulus that grows with the order, such as `4 + |n|/3` units, to be fixed by the proof, since FreeBSD reaches 30 units at order 100 | `Bessel.jn`, `yn : UInt64 → Float → Float`, the order as C's `int` in the low 32 bits, two's complement, `J_(-n) = (-1)^n J_n`, `J_n (-x) = (-1)^n J_n x`, NaN for `yn` of a negative `x`, and `yn n (±0) = -∞` for every `n`, as POSIX specifies, although the limit is `+∞` for a negative odd `n`. |
+
+A relative bound for the Bessel functions over a finite range, for example the first few hundred zeros, is a later option: expansions about each zero, stored to triple precision and checked by the kernel, give relative accuracy there.  Above `2 ^ 60` the zeros of `J0` lie within `2 ^ -63` of `(k + 3/4) π`, so the distance problem becomes the trigonometric track's.  Between those ranges the problem is open.
+
+### Effects on the earlier recommendations
+
+Zimmermann's FreeBSD inputs, run through the Python models of this track's ports, change three earlier recommendations.  The model of `atan2`, which copies the port operation for operation, lies two steps from the reference at `y = -0x1.358bb5eb25bdcp+813` and `x = 0x1.2f86b82481a0ap+815`, where FreeBSD's published error is 1.55 units, so `atan2` needs `WithinSteps 2`.  The model of `asinh` lies two steps away at `-0x1.02657ff36d5f3p-2` (FreeBSD 1.92 units), so `asinh` needs `WithinSteps 2`.  A dense scan of `erfc`'s model over its tail ranges, 70,000 arguments with the C library's `exp` standing in for `Exp.expWith`, found 705 results two steps away and one three steps away, at `0x1.5ea52c08eb7ccp+0`, and FreeBSD's published error is 4.08 units, so `erfc` needs at least `WithinSteps 3`.  I recommend `WithinSteps 4` for `erfc`, or CORE-MATH's correctly rounded `erfc` with the software `fma`.  The models of `acosh`, `atanh`, and `sinh` lie two steps away at FreeBSD's inputs, as recommended, and those of `atan`, `asin`, `acos`, `log1p`, `erf`, `sinpi`, `cospi`, and `tanpi` lie within one.  The accuracy checks would gain from Zimmermann's inputs for each function, which the coordinator may add or ask this track to add.
+
+- [x] Fetch FreeBSD's gamma and Bessel sources, CORE-MATH's, and Zimmermann's report.
+- [x] Build FreeBSD's code and the integer references, and measure near zeros, poles, and large arguments.
+- [x] Recommend the algorithm, bound, and API per function.
+- [ ] Decide stages 7 and 8 (coordinator and user).
