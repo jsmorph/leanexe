@@ -10,10 +10,10 @@ once, when this file builds.
 Each conclusion is built from the lemma's arguments without applying an argument or building a
 lambda, and a binder's body enters through its equation at the value.  The type that the kernel
 infers for an application of a lemma, which instantiates without beta reduction, is then the type
-that `inferType` computes, and the reflector joins two equations only where their terms are
-identical.  The kernel compares two closed `Nat` sums that differ by evaluating both, since it
-reduces the operands of `Nat.add` to numerals before it compares arguments, and a sum can hold a
-loop's cost. -/
+that `inferType` computes, so the reflector joins two equations where their terms are identical.
+The kernel compares two closed `Nat` sums that differ by evaluating both, since it reduces the
+operands of `Nat.add` to numerals before it compares arguments, and a sum can hold a loop's
+cost. -/
 
 namespace Verified.Reflect
 
@@ -368,21 +368,11 @@ theorem varOwned_copyBorrowed {t : Ty} (x : Var Γ t) {v : t.denote} {C : Nat}
     x.ownedCost modes live v = C := by
   simp [Var.ownedCost, Var.cost, coerceCost, hm, hc]
 
-theorem ownedArg_move {t : Ty} (x : Var Γ t) {kept : Nat → Bool}
-    (hm : modeAt modes x.index = .owned) (hk : kept x.index = false) :
-    (Expr.var x : Expr S Γ t).ownedCost modes kept env = 0 :=
-  varOwned_move x hm hk
-
-theorem ownedArg_copyKept {t : Ty} (x : Var Γ t) {kept : Nat → Bool} {C : Nat}
-    (hm : modeAt modes x.index = .owned) (hk : kept x.index = true)
-    (hc : t.copyCost (env.get x) = C) :
+/-- The owned copy of an argument, a variable, from its owned copy as a variable. -/
+theorem ownedArg_var {t : Ty} (x : Var Γ t) {kept : Nat → Bool} {C : Nat}
+    (h : x.ownedCost modes kept (env.get x) = C) :
     (Expr.var x : Expr S Γ t).ownedCost modes kept env = C :=
-  varOwned_copyLive x hm hk hc
-
-theorem ownedArg_copyBorrowed {t : Ty} (x : Var Γ t) {kept : Nat → Bool} {C : Nat}
-    (hm : modeAt modes x.index = .borrowed) (hc : t.copyCost (env.get x) = C) :
-    (Expr.var x : Expr S Γ t).ownedCost modes kept env = C :=
-  varOwned_copyBorrowed x hm hc
+  h
 
 theorem call_bound {g : Sig} (f : FVar S g) {argList : Args S Γ g.params}
     {all kept : Nat → Bool} {A : Env g.params} {AS R : Nat}

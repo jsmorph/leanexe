@@ -70,8 +70,9 @@ and `output` builds at most 128 words. -/
 theorem compute_bound (terrain : Array UInt64) : compiled.compute.bound terrain ≤ 2251064 := by
   rw [compiled.compute.bound_eq, compiled.forward.bound_eq, compiled.initial.bound_eq,
     compiled.output.bound_eq]
-  generalize hc : (if (decide (0 < terrain.size.toUInt64) && decide (terrain.size.toUInt64 ≤ 64) &&
-      validHeights terrain) = true then terrain.size.toUInt64 else 0) = c
+  generalize hc : (if (decide (0 < terrain.size.toUInt64) &&
+      decide (terrain.size.toUInt64 ≤ 64) && validHeights terrain) = true then
+    terrain.size.toUInt64 else 0) = c
   have hc64 : c.toNat ≤ 64 := by
     subst hc
     split

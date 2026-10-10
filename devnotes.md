@@ -28006,11 +28006,17 @@ embeds the meaning proofs, which increment 1 measures.
 
 The drone needs no array updates and no wrappers, so the order puts its theorem third.
 
+The implementation differs from this design in two points.  No `bound_func` exists: `p.f.bound`
+is defined as `Func.bound` of the function among those before it, with a height above its value's,
+and the builder of a call relates `Bounds.get` to the callee's `p.g.bound` with `boundsChain` in
+place.  The root builder runs inside the parameters' telescope in `reflectDefinition`, so
+`Reflected` stores no declarations.
+
 - [x] Design and review.
 - [x] `ImplementsA.mono` and `BoundFacts.lean`: `blockCost`, `growCost`, `loopCost_le`, and sums.
 - [x] 1: `Reflection` with a builder at every return site, the lemmas and builders for leaves,
-  variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, `bound_func`, and
-  `bound_eq` for bodies of these forms.
+  variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, and `bound_eq`
+  for bodies of these forms.
 - [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
 - [x] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.  Importing
   `Examples.Drone.Extend` into the example changed the compiled program: `getUnfoldEqnFor?`
@@ -28065,8 +28071,13 @@ this design adopts:
    hypotheses `∀ s, CA s = 0` and `∀ k, f k = 0`.  The type that `inferType` computes for each
    proof is then the type the kernel infers, so the existing joins are syntactic.
 2. A projection of a constructor application is reduced, behind a hint, only where it holds a
-   free variable.  The kernel checks the hint by comparing pairs of which one holds that variable,
-   and `lazy_delta_reduction` applies `reduce_nat` only when both terms of a pair are closed.
+   variable of the context at the hint.  The kernel checks the hint by comparing pairs of which one
+   holds that variable, and `lazy_delta_reduction` applies `reduce_nat` only when both terms of a
+   pair are closed.  A variable that a lambda inside the cost binds, such as a loop's state in its
+   step, does not count: at the hint it is bound, and a reduction under it would leave two closed
+   sums that differ inside `loopCost`.  The review of the implementation found that the first
+   version counted such variables, since `Meta.transform` instantiates binders with new free
+   variables.
    `boundOf` reduces such projections in every cost, which removes those that the reflection's
    tuple views leave while their components are variables.  `Bound.at` substitutes values for a
    binder's variables: when a value is built in place, its leaves, the maximal parts that are not

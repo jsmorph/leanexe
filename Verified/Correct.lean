@@ -5015,8 +5015,9 @@ theorem _root_.Wasm.Runs.of_imp {α : Type} {env : HostEnv α} {m : Module} {id 
   · rw [himp rfl]; exact h
 
 /-- `ImplementsA` under a stronger precondition and with a weaker postcondition. -/
-theorem _root_.LeanExe.Pipeline.ImplementsA.mono {α β : Type} {_ : Represent α} {_ : Represent β} {aborts : Bool}
-    {m : Module} {entry : Nat} {f : α → β} {Pre Pre' : α → Heap → Store Unit → Prop}
+theorem _root_.LeanExe.Pipeline.ImplementsA.mono {α β : Type} {_ : Represent α}
+    {_ : Represent β} {aborts : Bool} {m : Module} {entry : Nat} {f : α → β}
+    {Pre Pre' : α → Heap → Store Unit → Prop}
     {Post Post' : α → Heap → Store Unit → Heap → Store Unit → Prop}
     (h : ImplementsA aborts m entry f Pre Post)
     (hPre : ∀ x heap store, Pre' x heap store → Pre x heap store)
