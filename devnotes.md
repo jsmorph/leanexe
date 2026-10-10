@@ -29290,3 +29290,27 @@ Every theorem in the four modules reports only `propext`, `Classical.choice`, an
 - [x] `TaylorRemainder`: `sin`, `cos`, `exp`, `log (1 + x)`, and `atan`.
 - [x] The sine and cosine kernel polynomials.
 - [x] The two logarithm polynomials.
+
+## 2026-10-10: Exponential minus one and hyperbolic tangent (track `expm1`)
+
+The track proves `WithinSteps 1` for `Tanh.expm1` and `WithinSteps 2` for `Tanh.tanh` on every finite input, the exceptional results, and the byte theorems, in a separate worktree on branch `w/expm1`.  The kernel of `expm1` computes `r - (r e - r ^ 2 / 2)` with `e` a quotient of polynomials in `r`, and the result paths scale `1 + expm1 r` by `2 ^ k` in five forms.  A hand budget of the rounding errors before the last rounding gives at most about `0.23 u` for the kernel and leaves margins below ten percent of a spacing for `k = 1` with `r < -1/4` and for `2 ≤ k < 20` with `exp r - 2 ^ -k` just above `0.457`.  The proof therefore needs the half-spacing bound and the nearest property of the final rounding, which the existing ProofKit lemmas state only as relative errors.
+
+| Module | Content | Log |
+|---|---|---|
+| `Verified/Examples/Expm1Words.lean` | The kernel on bit patterns, `kernel`, and `kernel_bits`, its equality with `Tanh.expm1Kernel` | `expm1-words-1.log` |
+| `Verified/Examples/Expm1KernelPoly.lean` | `kernel_approx`: the kernel in exact arithmetic is within `2 ^ -62 abs(r) ^ 3` of `exp r - 1` for `abs(r) ≤ 0.3466`.  The error's numerator, with the exponential's Taylor polynomial of degree 17, is `r ^ 3` times a polynomial of degree 26 that `PolyBound.check` bounds by `2 ^ -60` in 21 pieces; its maximum is about `2 ^ -61.74`. | `expm1-kernelpoly-1.log` (a wrong remainder constant and an `abs_add_le` rewrite), `expm1-kernelpoly-2.log` |
+| `LeanExe/ProofKit/F64NearestSum.lean` | `add_nearest`, `add_nearest_neg`, `sub_nearest`, `sub_nearest_neg`: a rounded sum below `2 ^ 1023` is `Nearest` to the exact sum, or its negation to the negated sum.  `add_half_spacing`, `sub_half_spacing`: the error is at most half the spacing of the binade below a bound on the sum. | `expm1-nearestsum-1.log` to `-4.log` |
+| `LeanExe/ProofKit/F64NearestSteps.lean` | `one_step_of_nearest` and the corollaries `within_of_interior`, `within_of_relative`, `within_of_tiny`: a nearest word of `s` lies within one step of the reference of `y` when `abs(s - y)` is below the spacing, with the near-bottom case of a binade handled by a relative bound below `(1 - 2 ^ -50) u y` | `expm1-steps-1.log` to `-4.log` |
+| `LeanExe/ProofKit/F64ApproxStages.lean` | `mul_approx`, `add_approx`, `sub_approx`, `div_approx`: one rounded operation on approximations of real numbers | `expm1-stages-1.log`, `-2.log` |
+
+`omega` in this toolchain exceeds the recursion limit when its context holds a fact with the coefficient `2 ^ 52`: `example (e n : Nat) (h : e * 2 ^ 52 + 2 ≤ n) : e * 2 ^ 52 ≤ n := by omega` fails in a file of its own, also with the literal `4503599627370496`, while the same goal without the large coefficient succeeds.  `set_option maxRecDepth 100000` did not help.  `F64NearestSteps` therefore proves the word arithmetic in small lemmas whose contexts hold no such fact (`below_two`, `two_le_of_lt`, `boundary_lt_limit`, `previous_binade`).
+
+- [x] Kernel words and the bridge from `Tanh.expm1Kernel`.
+- [x] Kernel approximation in exact arithmetic.
+- [x] Nearest rounding of sums and the one-step criterion.
+- [ ] Kernel rounding analysis.
+- [ ] Reduction: `k`, `hi`, `lo`, `y`, `c`.
+- [ ] The five scaling forms, saturation, overflow, and the tiny path.
+- [ ] `expm1` theorem and exceptional values.
+- [ ] `tanh`.
+- [ ] Byte and file theorems.
