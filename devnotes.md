@@ -29292,6 +29292,199 @@ Every theorem in the four modules reports only `propext`, `Classical.choice`, an
 - [x] The sine and cosine kernel polynomials.
 - [x] The two logarithm polynomials.
 
+## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
+
+The ports track works in `/home/somebody/src/lt-ports` on minideb2, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
+
+### Sources
+
+All six functions come from fdlibm as [FreeBSD's msun](https://github.com/freebsd/freebsd-src/tree/20381bce4b63975494a2f4bc84257f6932e6d379/lib/msun/src) has it at the pinned commit.  [Arm optimized-routines](https://github.com/ARM-software/optimized-routines/tree/503fafe311c177de0e571c458c7c337b1ca5f522/math) at its pinned commit has scalar double versions of these functions only under `math/aarch64/experimental`, with error bounds of 2 to 3.5 units in their names (`acos_2u.c`, `asin_3u.c`, and others), so fdlibm is the more accurate source for each.  Each source file carries Sun's notice, "Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved", which each module's docstring cites as the existing fdlibm ports do.
+
+| Function | Source | Operations | Constants | Stated error |
+|---|---|---|---|---|
+| `log1p` | `s_log1p.c`, Copyright (C) 1993 | `+ - * /`, high-word extraction and replacement, conversion of the integer `k` | 10 with bits, and `0.66666666666666666` as `0x3FE5555555555555` | Below one unit in the last place |
+| `atan` | `s_atan.c`, Copyright (C) 1993 | `+ - * /`, `fabs`, high and low words | 19 with bits, and `1.0e+300` as `0x7E37E43C8800759C` | None |
+| `atan2` | `e_atan2.c`, Copyright (C) 1993 | `+ - * /`, `fabs`, words, `atan` | 4 with bits, and `1.0e-300` as `0x01A56E1FC2F8F359` | None |
+| `asin` | `e_asin.c`, Copyright (C) 1993 | `+ - * /`, `sqrt`, `fabs`, words, clearing the low word | 14 with bits, and `1.0e+300` | None for the function, and `R` within `2 ^ -58.75` |
+| `acos` | `e_acos.c`, Copyright (C) 1993 | as `asin` | 14 with bits | None |
+| `tan` | `s_tan.c`, Copyright (C) 1993, and `k_tan.c`, Copyright 2004 | `+ - * /`, words, clearing the low word, `(int) x`, `__ieee754_rem_pio2` | 16 with bits | "Nearly rounded", and the kernel polynomial within `2 ^ -59.2` |
+
+A Python check converted each decimal constant that the sources annotate with its bits and compared the two: all 77 agree.  The configuration is the default double build without `long double` or fused multiply-add, and `STRICT_ASSIGN` is a plain assignment for `double`.  The Python scripts of this track sit in its scratch directory on the workstation and are not part of the repository.
+
+### Deviations from the C sources
+
+The dialect has no floating-point flags, so the expressions that fdlibm evaluates only to raise flags keep their values, as in the existing ports: the guards `two54 + x > 0`, `huge + x > 1`, and `(int) x == 0` stay, and `π + tiny` stays a rounded sum.  fdlibm's signed high words are words, so a signed comparison with a positive bound becomes a test of the sign bit and an unsigned comparison.  The table lists the other differences.
+
+| Function | Difference |
+|---|---|
+| `log1p` | The signed `k` is a two's complement word, converted to a double as `Log.logCore` converts its `k`.  `-two54/vzero` is `-two54/0`.  The end of the function is `log1pTail`, and the path with `k = 0` passes the correction 0, which C leaves unset and never reads. |
+| `atan` | The index `id = -1` of the direct polynomial is 4, and comparisons select the entries of `atanhi` and `atanlo`.  The volatile read of `atanlo[3]` is its value. |
+| `atan2` | `nan_mix (x, y)`, a `long double` sum in C, is `x + y`.  A NaN result is the canonical NaN in the deterministic profile either way.  `k = (iy - ix) >> 20` is the arithmetic shift of the 64-bit two's complement difference, with the signed tests on its sign bit.  `switch` statements are comparisons. |
+| `asin`, `acos` | `asinRatio` computes `p/q` with fdlibm's operations, where fdlibm writes them out in each branch.  `SET_LOW_WORD (w, 0)` is a mask. |
+| `tan` | The reduction is `Trig.remPio2` of `|x|`, and the result is negated for a negative `x`, as `Trig.sinWith` does.  fdlibm reduces `x` itself, and every operation of its reduction and kernel is odd under round-to-nearest, so the negation gives fdlibm's result for the same reduction.  From `2 ^ 20 · π/2` on, `Trig.remPio2` is the Payne–Hanek reduction of `Trig.lean` in place of fdlibm's `__kernel_rem_pio2`, so there the reduced argument may differ from fdlibm's in its last bits.  The kernel's `iy = ±1` is the Boolean `odd`, and `(double)(1 - ((hx >> 30) & 2))` is the sign of `x` as `±1`.  `(int) x == 0` is `x.toUInt64 == 0`: both truncations give 0 for every `x` below `2 ^ -27` in magnitude, where the test runs. |
+
+### Reuse of the trigonometric reduction
+
+`verified_compile` resolves each listed name with `realizeGlobalConstNoOverloadWithInfo` and names the reflected definition by the last component of that name under the module's namespace.  `Tan.lean` therefore lists `Trig.remSmall`, `Trig.remMedium`, `Trig.mul64`, `Trig.clz64`, `Trig.window`, `Trig.mulTop`, `Trig.shiftTop`, `Trig.remLarge`, and `Trig.remPio2` before its own `kernelTan`, `tanWith`, and `tan`, and the reflector compiles those Lean definitions again into the module of `tan`.  `tan x := tanWith Trig.invPi Trig.halfPi x` is a wrapper whose tables are `Trig`'s constants.  No source is copied, and the theorems of the trigonometric track about `Trig.remPio2` apply to `Tan.tanWith` unchanged.  The module took 33 seconds to build.
+
+### References and checks
+
+`Verified/Examples/ArcReference.lean` adds `isqrt`, the half-angle step, `atanFixed` (two half-angle steps and the alternating series below `1/5`), `atanQuotient` for `atan (num/den)`, `asinFixed` (`2 atan (x/(1 + √(1 - x²)))`), and `acosFixed` (`2 atan √((1 - x)/(1 + x))`), each with the error that its truncations leave.  The references of `log1p` (`2 atanh (x/(2 + x))` from `Reference.atanhFixed` near 0 and `Reference.log` of the exact `1 + x` elsewhere) and of `tan` (the quotient of `Reference.sinCosFixed` below 1 and of `Reference.sinCos` above) sit in their checks.  Before the Lean runs, Python models of the ports and of the references ran over about 40,000 arguments per function: each port lay within one unit of its reference, and the C library within one unit except `tan` at `6381956970095103 · 2 ^ 797`, 14 units away.  The models also caught one error in the draft reference of `atan2`, which gave `π/2` instead of `π/4` and `3π/4` for two infinite arguments.
+
+The final run (`ports-build-3.log` and the checks' `-3` logs) built the five modules without warnings and ran the four checks on the final sources, each in under a minute once it held the machine's lock.  The earlier passing runs of `log1p` and `tan` (`ports-Log1pAccuracy-1.log`, `ports-TanAccuracy-2.log`) used the same definitions with earlier docstrings and gave the same counts.  The C library's `tan` lies 14 units from the reference at `6381956970095103 · 2 ^ 797`, the double closest to a multiple of `π/2`, where the port and a Python model with an exact reduction agree with the reference.
+
+| Check | Results within one unit of the reference | Unequal to it | C library, for information | Log |
+|---|---|---|---|---|
+| `log1p` | 350,133 | 12,127 | Lean has no binding | `ports-Log1pAccuracy-3.log` |
+| `atan` | 200,075 | 6,138 | Within 1 unit, 93 unequal | `ports-AtanAccuracy-3.log` |
+| `atan2` | 84,169 | 3,099 | All equal | `ports-AtanAccuracy-3.log` |
+| `asin` and `acos` | 400,336 | 13,555 | Within 1 unit, 235 unequal | `ports-AsinAccuracy-3.log` |
+| `tan` | 180,050 | 4,382 | Within 14 units, 300 unequal | `ports-TanAccuracy-3.log` |
+
+`tools/Emit.lean` encoded each module and decoded the bytes back to it: `log1p` 2,600 bytes, `atan` 3,486, `asin` 2,621, and `tan` 5,756 (`ports-emit-*.log`, files in `build/transcendentals/ports-emit`).  minideb2 has no `wasm-tools` or Wasmtime host, so neither validation nor a host run took place.  The coordinator's run of `tests/verified/run.sh` on minideb1 covers both once the entries below are added.
+
+### Failures
+
+The first build (`ports-build-1.log`) failed in two modules.  In `Atan.atan2`, `((hy >>> 31) &&& 1) ||| ((hx >>> 30) &&& 2)` elaborated its literals as natural numbers, since `&&&` and `|||` have no default instance that fixes the literal's type, and `Log.lean` already writes such literals as `(0xfff : UInt64)`.  In `Tan.kernelTan`, `let big := ix ≥ 0x3FE59428` bound a proposition, which the reflector rejects.  `let big : Bool := …` elaborates the comparison as a Boolean.  The second build (`ports-build-2.log`) passed.  The first `atan` check (`ports-AtanAccuracy-1.log`) failed to elaborate for the same literal defaulting in its argument generator.
+
+### Recommended bounds
+
+Every check found at most one unit, so the recommendation is `WithinSteps 1` for all six functions, the bound of `exp`, `log`, `expm1`, `sin`, and `cos`.  fdlibm states below one unit for `log1p` and "nearly rounded" for `tan`, and states nothing for the other four.  The largest risk is `atan2`: the quotient `y/x` is rounded before `atan`, adding up to half a unit of the result to `atan`'s own error, and a negative `x` adds the rounding of `π - (z - pi_lo)`.  If its proof cannot keep the final word within one and a half spacings of the exact value, `WithinSteps 2` is the fallback for `atan2`.
+
+### Integration
+
+The coordinator adds the four modules and `ArcReference` to `Verified.lean`, so that `lake build Verified` builds the checks' imports.  `tests/verified/run.sh` needs the four `emit` entries and the four checks below, and the `LogAccuracy.lean` line, no longer the last check, needs `|| exit 1`.  Cases for the Wasmtime host in `Verified/Examples/Cases.lean` would compare the compiled modules with native Lean, as the cases of the existing ports do.
+
+```bash
+    Verified.Examples.Log1p:compiled.module:log1p Verified.Examples.Atan:compiled.module:atan \
+    Verified.Examples.Asin:compiled.module:asin Verified.Examples.Tan:compiled.module:tan \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log1pAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AtanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean
+```
+
+- [x] Fetch the sources and audit the constants.
+- [x] Port the six functions and compile them.
+- [x] Write the references and the checks, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+- [ ] Prove the theorems (later tracks).
+
+## 2026-10-10: Integration of the stage 3 ports
+
+Opus merged `w/ports` at `b7064fcd` into `transcendentals` (`dac3972a`), resolving the journal conflict by keeping both sides.  `Verified.lean` now imports `Log1p`, `Atan`, `Asin`, `Tan`, and `ArcReference`, and `tests/verified/run.sh` emits and validates the four new modules and runs their accuracy checks.  `tools/leanrun --timeout 60m lake build Verified` passed (`opus-ports-verified-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-4.log`): the exponential file check, 15,837 cases, and every accuracy check, among them 350,133 results of `log1p`, 200,075 of `atan`, 84,169 of `atan2`, 400,336 of `asin` and `acos`, and 180,050 of `tan` within one unit.  `wasm-tools validate` accepted the four new modules, which minideb2 could not run for lack of the tool and the Wasmtime host.
+
+## 2026-10-10: Ports of `sinh`, `cosh`, `asinh`, `acosh`, and `atanh`
+
+The coordinator merged the stage 3 ports into `transcendentals` as `dac3972a` and assigned stage 4 to the same worktree and branch.  The five functions come from fdlibm as FreeBSD's msun has it at the pinned commit, and they call `expm1`, `exp`, `log`, `log1p`, and `sqrt`.  Each port calls the Lean definition of the existing port where fdlibm calls one of these functions, so that the theorems for those definitions apply.
+
+### Sources and helpers
+
+| Function | Source | Calls | Constants | Stated error |
+|---|---|---|---|---|
+| `sinh` | `e_sinh.c`, Copyright (C) 1993 Sun | `expm1`, `exp`, `__ldexp_exp` | `shuge = 1.0e+307` as `0x7FAC7B1F3CAC7433` | None |
+| `cosh` | `e_cosh.c`, Copyright (C) 1993 Sun | `expm1`, `exp`, `__ldexp_exp` | `huge = 1.0e+300` | None |
+| `asinh` | `s_asinh.c`, Copyright (C) 1993 Sun | `log`, `log1p`, `sqrt` | `ln2` and `one` with bits, `huge` | None |
+| `acosh` | `e_acosh.c`, Copyright (C) 1993 Sun | `log`, `log1p`, `sqrt` | `ln2` with bits | None |
+| `atanh` | `e_atanh.c`, Copyright (C) 1993 Sun | `log1p` | `huge = 1e300` | None |
+| `__frexp_exp`, `__ldexp_exp` | `k_exp.c`, Copyright (c) 2011 David Schultz, BSD-2-Clause | `exp` | `k = 1799`, `kln2 = 1246.97177782734161156` as `0x40937BE319BA0DA4` | None |
+
+The three constants annotated with bits agree with their decimals, and `kln2`'s bits are those of the double nearest `1799 ln 2`, which a 60-digit decimal computation confirms.  The pinned commit has no `k_exp.h`: the helpers live in `k_exp.c`, and `Sinh.lean` ports `__frexp_exp` as `frexpExp` and `__ldexp_exp` as `ldexpExp`, which calls `Exp.expWith` for its `exp (x - kln2)`.  `__ldexp_cexp` serves only the complex functions and stays unported.
+
+The table compares the functions that fdlibm calls with the Lean definitions that the ports call.  `expm1` and `log1p` are fdlibm's own functions, and `sqrt` is IEEE 754's correctly rounded square root in both.  `exp` and `log` differ: fdlibm calls its `e_exp.c` and `e_log.c`, and the ports call Arm's routines, which `Exp.lean` and `Log.lean` port.  All four state errors below one unit in the last place, Arm's 0.511 and about 0.52 units, so the results of `sinh`, `cosh`, `asinh`, and `acosh` can differ from fdlibm's in the last bit where those helpers round differently.
+
+| fdlibm calls | Port calls | Same function |
+|---|---|---|
+| `expm1` (`s_expm1.c`) | `Tanh.expm1` | Yes |
+| `exp` (`e_exp.c`) | `Exp.expWith` with `Exp.expTable` (Arm) | No |
+| `log` (`e_log.c`) | `Log.logWith` with `Log.logTable` and `Log.logTable2` (Arm) | No |
+| `log1p` (`s_log1p.c`) | `Log1p.log1p` | Yes |
+| `sqrt` | `Float.sqrt`, `f64.sqrt` | Yes |
+| `__ldexp_exp` (`k_exp.c`) | `Sinh.ldexpExp`, ported | Yes, with Arm's `exp` inside |
+
+`Sinh.lean` lists `Exp.specialCase`, `Exp.expCore`, `Exp.expWith`, `Tanh.expm1Kernel`, and `Tanh.expm1` before its own definitions, and `sinh` and `cosh` are wrappers that pass `Exp.expTable` to `sinhWith` and `coshWith`.  `Asinh.lean` lists `Log.logNear1`, `Log.logCore`, `Log.logWith`, `Log1p.log1pTail`, and `Log1p.log1p`, and `asinh` and `acosh` pass `Log.logTable` and `Log.logTable2`.  `atanh` needs no table and is an ordinary listed function.
+
+### Deviations from the C sources
+
+The deviations follow those of stage 3.  Flag-only expressions keep their values (`shuge + x > 1`, `huge + x > 1`, `huge + x > 0`, and `x/zero` as `x/0`), and signed high words are words whose sign bit the comparisons test.  `k_exp.c`'s signed exponents are two's complement words, and the callers' `-1` is `0 - 1`.  Its 32-bit `INSERT_WORDS` keeps the low 32 bits of `(0x3ff + expt) << 20` before placing them in the high half.  `sinh`'s `h = -h` is the literal `-0.5`, and `atanh`'s `SET_HIGH_WORD (x, ix)` forms `|x|` from the words.
+
+### References and checks
+
+`Verified/Examples/HyperbolicReference.lean` adds `sinhFixed` and `coshFixed` from `Reference.expm1`, `asinhFixed` (`2 atanh (y/(1 + √(1 + y²)))` below 0.4 and `Reference.log` of `y + √(y² + 1)` above), `acoshFixed` (`Reference.log` of `y + √(y² - 1)`), and `atanhLog` (`(log (1 + y) - log (1 - y))/2` above `1/5`, with `Reference.atanhFixed` below).  Python models of these references agreed with a 120-digit decimal computation of the functions at 3,000 random arguments each, 15,000 in all.  Python models of the ports, with the C library standing in for `exp`, `log`, `expm1`, and `log1p`, found two units for `sinh`, `acosh`, and `atanh` and one for `cosh` and `asinh`.  The Lean checks with the Lean helpers found the same distances.
+
+| Check | Results | Largest distance | Unequal | C library, for information | Log |
+|---|---|---|---|---|---|
+| `sinh` | 208,085 | 2 units | 30,641 | 2 units, 30,703 unequal | `ports-SinhAccuracy-3.log` |
+| `cosh` | 208,085 | 1 unit | 19,036 | 2 units, 19,127 unequal | `ports-SinhAccuracy-3.log` |
+| `asinh` | 200,047 | 1 unit | 23,062 | 1 unit, 23,065 unequal | `ports-AsinhAccuracy-3.log` |
+| `acosh` | 200,099 | 2 units | 31,737 | 2 units, 31,737 unequal | `ports-AsinhAccuracy-3.log` |
+| `atanh` | 200,153 | 2 units | 18,851 | 2 units, 18,850 unequal | `ports-AsinhAccuracy-3.log` |
+
+The first runs (`ports-SinhAccuracy-2.log`, `ports-AsinhAccuracy-2.log`) enforced a bound of three units to measure the distances, and the final run (`ports-s4-build-3.log` and the `-3` checks) enforces the distances found.  `tools/Emit.lean` encoded and decoded both modules: `sinh` 6,849 bytes and `asinh` 9,315 bytes.  The C library's distances and counts lie close to the ports', which fits glibc's versions of these functions, derived from the same fdlibm sources.
+
+### Failures
+
+The first build (`ports-s4-build-1.log`) failed in `Sinh.frexpExp`: in `hx &&& 0xfffff` inside the shifted expression the literal became a natural number, as in stage 3, and the annotation `(0xfffff : UInt64)` fixed it.  The `sinh` check of that run failed because the module had not built.  The second build passed.
+
+### Recommended bounds
+
+`WithinSteps 2` for `sinh`, `acosh`, and `atanh`, whose checks find two units, and `WithinSteps 1` for `cosh` and `asinh`, whose checks find one.  Each function adds roundings to a helper whose error is already near half a unit: `cosh` adds two products and a sum to `exp`, and `asinh` applies `log` or `log1p` to a rounded argument.  If a proof of one step for `cosh` or `asinh` cannot keep the final word within one and a half spacings of the exact value, two steps is the fallback.
+
+### Integration
+
+The coordinator adds `Sinh`, `Asinh`, and `HyperbolicReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on the line of whichever check is no longer last.
+
+```bash
+    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean
+```
+
+- [x] Fetch the sources and the helper `k_exp.c`, and audit the constants.
+- [x] Port the five functions and the helper, calling the existing Lean definitions.
+- [x] Write the references and the checks, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Kernel polynomials of stage 3 (track poly, minideb2)
+
+The coordinator asked for the approximation bounds of the stage 3 kernels that the ports agent takes from FreeBSD msun at commit `20381bce4b63975494a2f4bc84257f6932e6d379`: `s_log1p.c`, `s_atan.c`, `e_asin.c` with `e_acos.c`, and `k_tan.c`.  The sources were fetched into `scratchpad/w-poly/msun` (SHA-256 of `s_log1p.c` `6fb0248e…`, `s_atan.c` `562febb0…`, `e_asin.c` `4340fb7c…`, `e_acos.c` `935323d6…`, `k_tan.c` `0021bc1b…`), and each coefficient list is `ratOfWord` of the bit patterns that the source prints beside the decimal values.  A Python model with exact fractions (`stage3.py`, `stage3b.py`) measured each largest error by sampling and sized each check before Lean ran.
+
+| Kernel | Range | Source's bound | Largest sampled error | Proved bound |
+|---|---|---|---|---|
+| `log1p`, `Lp1` to `Lp7`, against `log (1 + s) - log (1 - s)` | `abs s ≤ 0.1716`; the code's thresholds give at most 0.171574 | `2 ^ -58.45` | `2 ^ -58.47` at `s ≈ 0.168` | `(93/128) 2 ^ -58` relative to `s`, about `2 ^ -58.46` |
+| `atan`, `aT[0]` to `aT[10]` | `abs x ≤ 7/16`, the widest reduced range | none stated | `2 ^ -57.71` relative to `x`, at `x ≈ 0.188` | `(5/8) 2 ^ -57`, about `2 ^ -57.68` |
+| `tan`, `T[0]` to `T[12]`, against `tan = sin/cos` | `abs x ≤ 0.67434` | `2 ^ -59.2` | `2 ^ -59.147` at `x ≈ 0.670` | `(59/64) 2 ^ -59` relative to `x`, about `2 ^ -59.12` |
+| `asin`, `pS0` to `pS5` over `qS1` to `qS4`, against `(arcsin x - x)/x ^ 3` | `abs x ≤ 1/2`, which covers both uses in `e_asin.c` and `e_acos.c` | `2 ^ -58.75` | `2 ^ -56.58` at `x = 0` | `(11/16) 2 ^ -56`, about `2 ^ -56.54` |
+
+Two of the stated bounds are below the measured errors.  The tangent polynomial's error exceeds the `2 ^ -59.2` of `k_tan.c` near the end of its range, as the sine polynomial's error exceeded the `2 ^ -58` of `k_sin.c`.  The `asin` bound of `e_asin.c` describes the minimax error with exact coefficients: `pS0` is `1/6` rounded down, and its rounding alone gives the error `1/6 - pS0 ≈ 2 ^ -56.58` at `x = 0`.  The proved bounds are the ones the function proofs should use.
+
+The first `atan` build, a single `decide +kernel` over the whole interval with the Taylor polynomial of degree 29, ran for more than 4.5 minutes and reached 5.7 GB of resident memory under the runner's 6 GiB limit, and I stopped it (`poly-atan-kernel-1.log`).  A probe over one sixteenth of the interval passed in 5.2 seconds of kernel time (`poly-atan-probe-1.log`).  The kernel's cost for one declaration grows faster than the work, because it keeps every intermediate result for the whole declaration.  `LeanExe/ProofKit/PolyChecks.lean` therefore states `Covers`, a conjunction of checks over adjacent intervals, each proved as its own declaration, with `bounded_of_covers`.  The sixteen `atan` parts then built in 40 seconds.  `scratchpad/w-poly/gen.py` writes the part theorems.
+
+`PolyChecks` also gives `mulP`, the one-sided bounds `nonpos_of_bounded` and `nonneg_of_bounded`, the weighted bound `abs_le_weighted`, and `sub_div_le`.  The tangent and arcsine errors are relative to a weight: `abs (S - C P) ≤ ε C` with `S` and `C` the Taylor polynomials of `sin x / x` and `cos x`, and `abs (T q - p) ≤ ε q` with `T` the Taylor polynomial of `(arcsin x - x)/x ^ 3`.  A plain bound on `S - C P` divided by the smallest cosine would lose about 0.36 bits, and the arcsine denominator falls from 1 to 0.515 on its range.  Each weighted bound is two one-sided checks, `A - ε W + M` and `A + ε W - M` within `M` of zero.
+
+`LeanExe/ProofKit/LogRatioRemainder.lean` gives the remainder of `log (1 + x) - log (1 - x)` from `Real.hasSum_log_sub_log_of_abs_lt_one`.  Mathlib has no series for `arcsin`, so `LeanExe/ProofKit/AsinRemainder.lean` proves one without series.  The truncation `S` of the binomial series of `(1 - u) ^ (-1/2)` satisfies `1 - (1 - u) S(u) ^ 2 = u ^ n G(u)`.  The kernel checks that the product has no terms below degree `n` and bounds `G` on `[0, 1/4]`.  With `y = 1/√(1 - u)`, the identity `(y - S) (1 - u) (y + S) = u ^ n G(u)` bounds `y - S`.  The mean value inequality, applied to `arcsin` minus its Taylor polynomial, whose derivative is `y - S` at `u = t ^ 2`, then bounds the remainder by `(4/3) γ abs x ^ (2n + 1)`.
+
+| Check | Result | Log |
+|---|---|---|
+| `AtanKernelPoly`, one declaration | Stopped after 4 minutes 40 seconds at 5.7 GB | `poly-atan-kernel-1.log` |
+| Probe over one sixteenth of the `atan` interval | Passed, 5.2 seconds of kernel time | `poly-atan-probe-1.log` |
+| `PolyChecks` and `AtanKernelPoly` in sixteen parts | Passed, 40 seconds | `poly-atan-kernel-2.log` |
+| `LogRatioRemainder` and `Log1pKernelPoly` in eight parts over the dyadic interval `[0, 15439/2 ^ 19]` | Passed, 19 seconds | `poly-log1p-tan-1.log` |
+| `TanKernelPoly` | The kernel checks passed.  Two `calc` blocks left goals `A ≤ A` whose sides differ invisibly, and explicit `trans` steps replaced them.  The second run passed in 53 seconds. | `poly-log1p-tan-1.log`, `poly-tan-asin-1.log` |
+| `AsinRemainder` | The first run failed: `HasDerivAt.sum` states its function as a sum of functions, `convert` descended into module instances, and a rewrite ran in the wrong order. | `poly-tan-asin-1.log` |
+| `AsinRemainder` and `AsinKernelPoly` | The remainder passed after the fixes, with `HasDerivAt.congr_deriv` replacing `convert`.  The kernel checks of the bound passed on the first run, and one step failed because `push_cast` had not removed the casts of `3/4` and `1/4`.  The third run passed in 26 seconds. | `poly-asin-2.log`, `poly-asin-3.log` |
+
+Every theorem in the six new modules reports only `propext`, `Classical.choice`, and `Quot.sound`, and the builds produced no warnings in these files.
+
+- [x] `log1p` polynomial: `Log1pKernelPoly.log1p_kernel_error`.
+- [x] `atan` polynomial: `AtanKernelPoly.atan_kernel_error`.
+- [x] `asin` rational function, with the remainder of `arcsin`: `AsinKernelPoly.asin_kernel_error`.
+- [x] `tan` polynomial: `TanKernelPoly.tan_kernel_error`.
+
+## 2026-10-10: Integration of the stage 4 ports and the stage 3 kernel bounds
+
+Opus merged `w/ports` at `f8d17857` (stage 4) and `w/poly` at `d539b111` (the stage 3 kernel bounds) into `transcendentals`, resolving both journal conflicts by keeping both sides.  `LeanExe.lean` now imports `PolyChecks`, `LogRatioRemainder`, and `AsinRemainder`, `Verified.lean` imports `Sinh`, `Asinh`, and `HyperbolicReference`, and `tests/verified/run.sh` emits the two new modules and runs their accuracy checks.  `lake build LeanExe Verified` with the four kernel-bound modules passed with 3,829 jobs, and all 13 kernel-bound theorems report only the permitted axioms (`opus-merge-s4-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-5.log`): 208,085 results of `sinh` within two units and of `cosh` within one, 200,047 of `asinh` within one, and 200,099 of `acosh` and 200,153 of `atanh` within two.
+
 ## 2026-10-10: Logarithm theorem, main path (track `log`)
 
 Opus works on the theorem for `Verified.Examples.Log.log` in `/home/somebody/src/lt-log` on minideb1, branch `w/log`.  The target is `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits)) (Log.log x).toBits` for every finite positive `x`, the exact results outside the domain and at 1, and the byte and file theorems.  This entry covers the main path, `Log.logCore`, which every positive normal or subnormal argument outside `[15/16, 1 + 265/4096)` takes.
@@ -29375,3 +29568,83 @@ Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log
 - [x] `logNear1` and the path near 1.
 - [x] Exceptional values and the full theorem.
 - [x] Byte theorem and `LogFile.lean`.
+## 2026-10-10: Ports of `exp2`, `exp10`, `log2`, `log10`, and `pow`
+
+The coordinator kept the stage 4 bounds as proposed and assigned stage 5 to the same worktree.  Four of the five functions come from Arm's optimized-routines at the pinned commit, since `exp` and `log` already do, and `log10` from FreeBSD's msun, since Arm's `math/` has no double `log10`, only `log10f.c`.  The configuration is the one of `Exp.lean` and `Log.lean`: `HAVE_FAST_FMA` 0, `TOINT_INTRINSICS` 0 (Arm sets `HAVE_FAST_ROUND` only on AArch64), `WANT_ROUNDING` 1, `WANT_ERRNO` 0, and `IEEE_754_2008_SNAN` 1.
+
+### Sources and tables
+
+| Function | Source | Configuration | Tables | Stated error |
+|---|---|---|---|---|
+| `exp2` | `math/exp2.c`, `math/exp_data.c`, Arm 2018-2025 | `EXP_TABLE_BITS` 7, `EXP2_POLY_ORDER` 5 | `__exp_data.tab`, 256 words, passed as `Exp.expTable` | 0.511 units without fused multiply-add (`exp_data.c`) |
+| `exp10` | `math/exp10.c`, `math/exp_data.c`, Arm 2023-2025 | `EXP10_POLY_WIDE` 0 | `__exp_data.tab`, passed as `Exp.expTable` | About 0.513 units, the largest observed |
+| `log2` | `math/log2.c`, `math/log2_data.c`, Arm 2018-2025 | `LOG2_TABLE_BITS` 6, `LOG2_POLY_ORDER` 7, `LOG2_POLY1_ORDER` 11 | `tab` (`invc`, `logc`) and `tab2` (`chi`, `clo`), 64 entries each, 128 words each | 0.550 units on the main path and 0.55 near 1, without fused multiply-add |
+| `log10` | `e_log10.c` and `k_log.h`, FreeBSD, Sun 1993 | | None | None for `log10`; `k_log.h` states below one unit for `log` |
+| `pow` | `math/pow.c`, `math/pow_common.h`, `math/pow_log_data.c`, `math/exp_data.c`, Arm 2018-2026 | `POW_LOG_TABLE_BITS` 7, `POW_LOG_POLY_ORDER` 8, `EXP_POLY_ORDER` 5 | `__pow_log_data.tab`, 128 entries of `invc`, `pad`, `logc`, and `logctail`, 512 words, and `__exp_data.tab` as `Exp.expTable` | 0.54 units |
+
+A Python script read the constants and tables from Arm's sources as hexadecimal floats, with C comments removed, since the first version took numbers from comments such as "relative error: 0x1.2fad8188p-63" as coefficients.  The N = 128 section of `__exp_data.tab` equals `Exp.expTable` word for word, all 256 words, so `exp2`, `exp10`, and `pow` pass `Exp.expTable`.  `exp_data.c`'s `invln2N`, `shift`, `negln2hiN`, `negln2loN`, and polynomial for `pow`'s exponential are the bits of `Exp.expCore`.  The coefficients of `pow`'s logarithm are the products in the source, such as `0x1.555555555556p-2 * -2`, exact since each factor is a power of 2.  `Log2Accuracy.lean` compares each entry of `log2`'s tables with its center: `chi + clo` agrees with `1/invc` within `2 ^ -100` and `logc` with `log2 (chi + clo)` within `2 ^ -68`, as Arm's comment states.
+
+### Helpers shared with `exp`
+
+`exp2.c`'s `specialcase` and `exp10.c`'s `special_case` are the same code, and `Exp2.exp2SpecialCase` serves both.  It differs from `exp.c`'s `specialcase`, ported as `Exp.specialCase`: for a positive `k` it lowers the scale by one binade and doubles the result, where `exp.c` lowers it by 1009 binades and multiplies by `2 ^ 1009`.  `pow.c`'s `specialcase` differs again: it keeps the sign of a negative result in the scale, rounds by the magnitude in the subnormal range, and returns `DBL_MAX` for `pow (0x1.fffffffffffffp1023, 1)` when rounding upward.  `pow.c`'s `exp_inline` takes the tail `xtail` and the sign bias, so `Pow.powExp` and `Pow.powExpCore` port it rather than calling `Exp.expWith`.  The reductions of `exp2` and `exp10` sit in `exp2Core` and `exp10Core`, which take the flag that C expresses by setting `abstop` to 0, as `Exp.expCore` does.
+
+### Special cases of `pow`
+
+| Condition | Result |
+|---|---|
+| `y = ±0` | 1, or `x + y` for a signaling NaN `x` |
+| `x = 1` | 1, or `x + y` for a signaling NaN `y` |
+| `x` or `y` NaN | `x + y` |
+| `x = -1` and `y = ±∞` | 1 |
+| `y = ±∞` otherwise | 0 when `|x| < 1` and `y = +∞` or `|x| > 1` and `y = -∞`, and `y · y = +∞` otherwise |
+| `x` zero or infinite, `y` finite and nonzero | `x²`, or `1/x²` for a negative `y`, negated for a negative `x` and an odd integer `y` |
+| `x` negative and finite, `y` not an integer | NaN, as `(x - x)/(x - x)` |
+| `x` negative and finite, `y` an odd integer | the result for `|x|` with the sign bit set through the bias `0x800 << 7` |
+| `|y|` below `2 ^ -65` | 1 for `|x| = 1`, `1 + y` for `|x| > 1`, `1 - y` for `|x| < 1` |
+| `|y|` from `2 ^ 63` on | 1 for `|x| = 1`, and otherwise the overflow product when `|x| > 1` and `y > 0` or `|x| < 1` and `y < 0`, and the underflow product otherwise |
+| `x` subnormal | normalized by `2 ^ 52` before the logarithm |
+
+`checkint` returns 0 for a non-integer, 1 for an odd integer, and 2 for an even one.  The results agree with C99's Annex F, F.10.4.4, which the reference of `PowAccuracy.lean` implements separately.  The deterministic profile canonicalizes every NaN result, and Lean's `Float` holds no signaling NaN, so the `issignaling` tests matter only to a WebAssembly caller that passes one.
+
+### Deviations from the sources
+
+The expressions that Arm or fdlibm evaluates only for flags or the rounding mode keep their values or are left out where they compute no result, as in `Exp.lean`: `force_eval_double`, `opt_barrier_double`, and `check_oflow` are identities, and `pow.c`'s test `1 + 2 ^ -60 != 1` stays, false in rounding to nearest.  `__math_oflow`, `__math_uflow`, `__math_invalid`, and `__math_divzero` are the expressions that compute them, signed where `pow` passes a sign.  The dialect compares no Booleans, so `pow.c`'s two tests of the form `(a) == (b)` on comparisons are nested tests with the same results, and `checkint` runs in each of the two tests that use it, where C keeps its value.  `log2` follows `Log.lean`'s treatment of Arm's 32-bit comparisons and arithmetic shift.  `log10`'s signed `hx` and `k` are words, as in `Log1p.lean`, and `-two54/vzero` and `(x - x)/zero` divide by 0.
+
+### Checks
+
+`PowerReference.lean` adds `ln 10 = 3 ln 2 + 2 atanh (1/9)`, `exp2` from `Reference.expFixed` at `(y - k) ln 2`, `exp10` from `Reference.exp` at `y ln 10`, `log2` and `log10` as `Reference.log` divided by `ln 2` or `ln 10`, and `powExponent`, `y log x` at precision 500.  Python models of the five ports, with the exact constants and tables, lay within one unit of 150-digit decimal values at about 30,000 arguments per function and 23,000 pairs for `pow`.
+
+| Check | Results within one unit | Unequal | C library, for information | Log |
+|---|---|---|---|---|
+| `exp2` | 204,298 | 307 | 1 unit, 307 unequal | `ports-Exp2Accuracy-1.log` |
+| `exp10` | 200,707 | 114 | Lean has no binding | `ports-Exp2Accuracy-1.log` |
+| `log2` | 342,197 | 889 | 1 unit, 857 unequal | `ports-Log2Accuracy-2.log` |
+| `log10` | 342,197 | 1,221 | 2 units, 50,047 unequal | `ports-Log2Accuracy-2.log` |
+| `pow` | 110,911 | 78 | 1 unit, 78 unequal | `ports-PowAccuracy-4.log` |
+
+The equal counts for `exp2` and `pow` fit glibc's use of Arm's routines for these functions.  `tools/Emit.lean` encoded and decoded the four modules: `exp2` 5,406 bytes, `log2` 4,972, `log10` 2,313, and `pow` 11,156.
+
+### Failures
+
+The first build (`ports-s5-build-1.log`) failed in `Pow.lean`: `0x800 <<< 7` and the mask `0x7fffffffffffffff` elaborated as natural numbers, and the reflector rejected the comparison of two Booleans with "comparisons apply to words, floats, and enumerations, not Bool".  The first `log2` check failed because `shift`, opened from `Verified.Examples`, resolved to a declaration other than `Reference.shift`, as in stage 3.  The `pow` check failed twice on untyped literals in its argument generator, the second time on the shift amount in `h >>> 43`, before `ports-PowAccuracy-4.log` passed.
+
+### Recommended bounds
+
+`WithinSteps 1` for all five, the bound of `exp` and `log`.  Arm's stated errors for `exp2`, `exp10`, `log2`, and `pow` lie between 0.51 and 0.55 units, and the checks find at most one unit for each function.  `log10` adds `k log10 2` and the scaled `log (1 + f)` in extra precision, and its check also finds one unit.
+
+### Integration
+
+The coordinator adds `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on whichever check line is no longer last.
+
+```bash
+    Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
+    Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean
+```
+
+- [x] Fetch the sources, extract the constants and tables, and compare `__exp_data.tab` with `Exp.expTable`.
+- [x] Port the five functions.
+- [x] Write the references and the checks, and run the checks.
+- [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
