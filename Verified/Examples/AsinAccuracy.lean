@@ -1,15 +1,18 @@
 import Verified.Examples.Asin
+import Verified.Examples.WorstCases
 import Verified.Examples.ArcReference
 
-/-! A native check of `Asin.asin` and `Asin.acos` against references computed with Lean's
-integers through `ArcReference.asinFixed` and `ArcReference.acosFixed`, rounded to the nearest
-double.  fdlibm states no error bound for either function, and the check requires one unit in the
-last place, the largest distance it finds.  The arguments are evenly spaced values from -1 to 1,
-hashed values over the exponents below 1 with both signs, the doubles `±(1 - 2 ^ -k)`, the doubles
-next to the high words that the code compares with and to `±1`, and the special values.  The
-check also reports, for information, the distance from the reference of the C library's `asin` and
-`acos`, which Lean's `Float.asin` and `Float.acos` call.  It exits with an error at the first
-result further than one unit from the reference.  Run with `lake env lean --run`. -/
+/-! A native check of `Asin.asin` and `Asin.acos` against references computed with Lean's integers
+through `ArcReference.asinFixed` and `ArcReference.acosFixed`, rounded to the nearest double.
+fdlibm states no error bound for either function, and the check requires one unit in the last place,
+the largest distance it finds.  The arguments are evenly spaced values from -1 to 1, hashed values
+over the exponents below 1 with both signs, the doubles `±(1 - 2 ^ -k)`, the doubles next to the
+high words that the code compares with and to `±1`, and the special values.  The arguments also
+include those of `WorstCases`, which give the largest known errors of thirteen libraries in Tables 4
+to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  The check
+also reports, for information, the distance from the reference of the C library's `asin` and `acos`,
+which Lean's `Float.asin` and `Float.acos` call.  It exits with an error at the first result further
+than one unit from the reference.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.AsinAccuracy
 
@@ -53,7 +56,8 @@ def args : Array Float :=
   let special := #[0.0, -0.0, Float.ofBits 0x7FF0000000000000, Float.ofBits 0xFFF0000000000000,
     Float.ofBits 0x7FF8000000000000, 2.0, -2.0, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x8000000000000001]
-  evenly 100000 (-1.0) 1.0 ++ hashed 100000 71 0 1023 ++ toOne ++ edges ++ special
+  evenly 100000 (-1.0) 1.0 ++ hashed 100000 71 0 1023 ++ toOne ++ edges ++ special ++
+    (WorstCases.asin ++ WorstCases.acos).map Float.ofBits
 
 end Verified.Examples.AsinAccuracy
 
