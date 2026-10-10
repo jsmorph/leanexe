@@ -51,3 +51,4 @@ import Verified.Examples.ArcReference
 import Verified.Examples.HyperbolicReference
 import Verified.Examples.PowerReference
 import Verified.Examples.ErfReference
+import Verified.Examples.WorstCases

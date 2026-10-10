@@ -111,6 +111,7 @@ import LeanExe.ProofKit.F64AdjacentSigned
 import LeanExe.ProofKit.F64Admissibility
 import LeanExe.ProofKit.F64AffineUpdate
 import LeanExe.ProofKit.F64ArithmeticBounds
+import LeanExe.ProofKit.F64BinadeWord
 import LeanExe.ProofKit.F64Bits
 import LeanExe.ProofKit.F64Bounds
 import LeanExe.ProofKit.F64Compare

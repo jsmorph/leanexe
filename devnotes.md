@@ -29928,3 +29928,7 @@ Among the C library's distances, which the checks report for information, `TrigA
 - [x] Extract the double-precision inputs of Tables 4 to 11 into `WorstCases.lean`.
 - [x] Add them to the 15 checks and set the decided bounds.
 - [x] Run the checks and report the functions that fail their bounds (none).
+
+## 2026-10-11: Integration of the exp2 and exp10 theorems and the worst inputs
+
+Opus merged `w/exp2` at `1b5bffb9` (the `exp2` and `exp10` theorems with their byte theorems) and `w/ports` at `bd2a78fa` (Zimmermann's worst inputs in every accuracy check) into `transcendentals`.  Git committed the first merge with its default message because it had no conflict; since nothing was pushed, Opus rebuilt the two merge commits with `git commit-tree` on the same trees and parents with a corrected message, checked that the final tree was unchanged, and now merges with `--no-commit`.  `LeanExe.lean` now imports `F64BinadeWord`, `Verified.lean` imports `WorstCases`, and the file theorem loop of `tests/verified/run.sh` gains `exp2:Exp2Bytes:Exp2File`.  The build passed with 3,895 jobs, and `exp2_bytes_accuracy` and `exp10_bytes_accuracy` report only the permitted axioms (`opus-merge-exp2-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-8.log`): the `exp`, `log`, and `exp2` file checks, 15,837 cases, and every accuracy check within its decided bound with the worst inputs included, among them 84,189 results of `atan2` within two units and 222,136 of `erfc` within four.
