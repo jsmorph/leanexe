@@ -107,7 +107,7 @@ theorem residual_bits (x : Float) : (floatResidual x).toBits = Exp10Reduction.re
 theorem add_comm_finite (a b : UInt64) (ha : Finite a) (hb : Finite b) :
     Wasm.IEEE64.add a b = Wasm.IEEE64.add b a := by
   simp only [Wasm.IEEE64.add, not_nan_of_finite ha, not_nan_of_finite hb,
-    not_infinite_of_finite ha, not_infinite_of_finite hb, Bool.or_false, Bool.false_or,
+    not_infinite_of_finite ha, not_infinite_of_finite hb, Bool.or_false,
     Bool.false_eq_true, ite_false, Int.add_comm, Bool.and_comm]
 
 /-- The state of `exp10Core` for `|x| ≤ 400`. -/
