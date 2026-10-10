@@ -70,6 +70,8 @@ import LeanExe.Pipeline.Slotted
 import LeanExe.ProofKit.Allocation
 import LeanExe.ProofKit.Array
 import LeanExe.ProofKit.ArrayPrefix
+import LeanExe.ProofKit.AsinRemainder
+import LeanExe.ProofKit.BorrowedKept
 import LeanExe.ProofKit.CallRemainder
 import LeanExe.ProofKit.ExpTinyError
 import LeanExe.ProofKit.F32Add
@@ -124,6 +126,8 @@ import LeanExe.ProofKit.F64DyadicBounds
 import LeanExe.ProofKit.F64Enclosure
 import LeanExe.ProofKit.F64Encoding
 import LeanExe.ProofKit.F64ErrorPropagation
+import LeanExe.ProofKit.F64ErrorTrack
+import LeanExe.ProofKit.F64ExactProduct
 import LeanExe.ProofKit.F64ExponentBounds
 import LeanExe.ProofKit.F64FullStep
 import LeanExe.ProofKit.F64GridExact
@@ -162,6 +166,7 @@ import LeanExe.ProofKit.F64QuotientResidual
 import LeanExe.ProofKit.F64RationalBounds
 import LeanExe.ProofKit.F64RationalNormalize
 import LeanExe.ProofKit.F64RationalScale
+import LeanExe.ProofKit.F64RelativeStep
 import LeanExe.ProofKit.F64RoundDyadic
 import LeanExe.ProofKit.F64RoundFinish
 import LeanExe.ProofKit.F64RoundRational
@@ -208,11 +213,13 @@ import LeanExe.ProofKit.FloatShift
 import LeanExe.ProofKit.FloatSqrtRounding
 import LeanExe.ProofKit.Frame
 import LeanExe.ProofKit.FreeListMemory
+import LeanExe.ProofKit.LogRatioRemainder
 import LeanExe.ProofKit.Memory
 import LeanExe.ProofKit.MemoryEnsure
 import LeanExe.ProofKit.MemoryFrame
 import LeanExe.ProofKit.MemoryGrowth
 import LeanExe.ProofKit.PolyBound
+import LeanExe.ProofKit.PolyChecks
 import LeanExe.ProofKit.QuantizedInt32
 import LeanExe.ProofKit.RealAffineError
 import LeanExe.ProofKit.RealExpError
