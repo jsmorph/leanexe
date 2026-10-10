@@ -29737,3 +29737,54 @@ Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, 
 ## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
 
 Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
+
+## 2026-10-10: Full theorems for `atan` and `log1p` (track arc)
+
+The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved, `log1p` is in progress, and the other three functions have not started.
+
+### Error tracking
+
+`LeanExe/ProofKit/F64Approx.lean` tracks a computed word against an exact real value.  `Approx w v e` bounds `abs (value w - v)` by `e`, and `SApprox w v s M e` scales `M` and `e` by a real `s`, so that a polynomial evaluated at a small argument keeps short rational constants.  Each operation lemma charges the relative rounding `2 ^ -53` of a bound on the result, plus `2 ^ -1075` for products and quotients that may underflow.  `F64HalfUlp.add_half` charges a sum half a spacing of the binade below a bound on its magnitude instead, which is up to a factor of two smaller.
+
+A finishing criterion turns a total error into one step.  `within_one_of_error` asks for an error below one and a half spacings of the binade at or below `y`.  `F64RoundNearest` adds a criterion that charges the last rounding nothing: a sum or difference rounds to a nearest word of its exact value (`add_rounded`, `sub_rounded`, from the grid of `roundedMagnitude`), nearest words of two numbers closer than one spacing are at most one step apart (`steps_of_nearest`), and so the exact value of the last sum may differ from `y` by up to one spacing (`within_one_of_rounded`) or by the fraction `1/(2 ^ 53 + 1)` of `y` (`within_one_of_rounded_rel`).  The `log1p` analysis needs it near the binade boundary at `1/2`, where the old criterion fails by a few percent.
+
+### `atan`
+
+`AtanTheorem.atan_within_one` states `WithinSteps 1 (Real.arctan (value x.toBits)) (Atan.atan x).toBits` for every finite `x`, and it reports only `propext`, `Classical.choice`, and `Quot.sound` (`arc-atan-main-5.log`, commit `e3d560d8`).  The proof splits on the code's branches.  The polynomial branch uses the kernel bound of `AtanKernelPoly` with the error chain of `AtanTheoremPoly`.  The four reduced branches compute the reduced argument with exact `2a`, `2a - 1`, `a - 1`, and `a - 1.5` (doubling and Sterbenz's lemma), add `atanhi + atanlo`, which lie within `2 ^ -64` of `arctan 0.5`, `π/4`, `arctan 1.5`, and `π/2` (`AtanTheoremConst`), and finish with `within_one_of_error` on eight subintervals whose constants `scratchpad/w-poly/arc/cases.py` computed.
+
+### `log1p`
+
+The exact value of `f - (f²/2 - s (f²/2 + R))` with the exact `s = f/(2 + f)` is `2 s + s R(s)`, the kernel of `Log1pKernelPoly`, so the error of the code's `s` enters through the chain only.  The chains of `Log1pTheoremCore` run at the scale `σ = abs f` for four ranges of `f` and give `f²/2` and `P = s (f²/2 + R)`.  For `k = 0`, `x ≤ 0.285` meets the relative criterion with `ρ` of `0.62` and `0.65` times `2 ^ -53` for negative and positive `x`, and `x ≥ 0.285` meets the absolute criterion in `[1/4, 1/2)` with an error of `0.64 · 2 ^ -54` (`Log1pTheoremK0`).
+
+For `k ≠ 0` the target is `K log 2 + log (1 + f) + log (1 + t)`, where `u = 2 ^ K (1 + f)` and `t = (1 + x - u)/u` is the rounding error of `u = 1 + x` that the correction `c` carries.  The general path computes `A - G` with the exact `A = kd ln2Hi` and `G = (f²/2 - (P + (kd ln2Lo + c))) - f`, whose sums round within half a spacing.  The table lists its cases, with errors in units of `2 ^ -54` from `scratchpad/w-poly/arc/log/tailnum.py`.
+
+| Case | Chain | Binade start | Error | Limit |
+|---|---|---|---|---|
+| `abs K ≥ 2`, or `K = 1` with `f ≥ -0.175`, or `K = -1` with `f ≤ 0.2125` | `abs f ≤ 0.41422` | `1/2` | 1.33 | 2 |
+| `K = 1`, `f < -0.175` | `abs f ≤ 0.293` | `1/4` | 0.93 | 1 |
+| `K = -1`, `0.2125 < f < 0.285` | `abs f ≤ 0.285` | `1/4` | 0.87 | 1 |
+| `K = -1`, `f ≥ 0.285` | `f ≥ 0.285` | `1/4` | 1.10 | 1.5 |
+
+The last case exceeds one spacing.  There `abs G ≥ 1/4`, so `G` and `-ln2Hi` lie on the grid of `2 ^ -54`, the difference `A - G` is exact, and `within_one_of_error` allows one and a half spacings.  For `hu = 0` the code takes `f²/2 (1 - 2f/3)` with `abs f ≤ 3 · 2 ^ -21`, and for `f = 0` it returns `A + (c + kd ln2Lo)`.  Both errors stay far below one spacing of `[1/2, 1)`.
+
+The correction is exact except in three places.  For `x ≤ -1/2`, `u = 1 + x` is exact and `c = 0`.  For `x ≥ 1`, `u - x` is exact on the grid of `x` and `1 - (u - x)` by Sterbenz's lemma.  For `x ≥ 2 ^ 53` the code passes `c = 0` with `t = 1/x ≤ 2 ^ -53`, and `K ≥ 53` puts `y` above 32, where a spacing is `2 ^ -47`.  For `x = 1 - 2 ^ -53` the sum `1 + x` rounds to 2, `u - x = 1 + 2 ^ -53` rounds to 1, and `c = 0` misses `t = -2 ^ -54`; there `f = 0`, and the error `2 ^ -54` stays below one spacing of `[1/2, 1)`.
+
+`ln2Hi + ln2Lo` lies within `2 ^ -81` of `log 2` by the series of `LogRatioRemainder` at `1/3`, since `(1 + 1/3)/(1 - 1/3) = 2` (`Log1pTheoremConst.ln2_close`).  The same series at `s = q/(2 + q)` bounds `log (1 + q)` for a rational `q` (`log_ge`, `log_le`), and the kernel evaluates both ends in `ℚ`.  The case boundaries use these bounds at `0.285`, `-0.175`, `0.2125`, `-0.2929`, and `0.41422`.
+
+### Files and checks
+
+| File | State | Log |
+|---|---|---|
+| `F64Approx`, `F64HighWord`, `F64Exact`, `F64WithinSelf`, `AtanTheorem*` | Committed in `e3d560d8` | `arc-atan-main-5.log` |
+| `F64HalfUlp` | Committed in `e02cb52c` | `arc-halfulp-2.log` |
+| `F64RoundNearest` | The first run failed on a missing import of `F64Approx`; the second is building | `arc-roundnearest-1.log`, `arc-roundnearest-2.log` |
+| `Log1pTheoremBranches`, `Core`, `Const`, `K0`, `Tail`, `Reduce` | Written in `scratchpad/w-poly/arc`, not built | |
+
+- [x] `atan` within one step.
+- [x] Half-spacing sums, `F64HalfUlp`.
+- [ ] Nearest rounding of sums, `F64RoundNearest`.
+- [ ] `log1p`: branches, chains, `k = 0`, `k ≠ 0`, normalization, corrections, main theorem.
+- [ ] Exceptional values of `atan` and `log1p` with `WithinSteps 0`.
+- [ ] First report to the coordinator.
+- [ ] Merge `78965047` and reuse `LogCoreBits.kd_value` and `F64ExactProduct.int_mul_exact` in place of the local conversion and product lemmas.
+- [ ] `atan2`, `asin`, `acos`, byte theorems, file theorems, and the lines for `tests/verified/run.sh`.
