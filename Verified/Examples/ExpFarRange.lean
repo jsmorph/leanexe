@@ -1,4 +1,5 @@
 import Verified.Examples.ExpNegativeFinal
+import LeanExe.ProofKit.RealExpError
 
 /-!
 The special path of `Exp.exp` for `768 < abs a < 1024`, with coarse bounds.  The reduction keeps
@@ -10,7 +11,7 @@ compensated sequence gives zero or the smallest subnormal, and the reference is 
 
 namespace Verified.Examples.ExpFarRange
 open CodeLib.IEEE64
-open LeanExe.ProofKit F64NearestNonnegative
+open LeanExe.ProofKit F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
 
@@ -223,16 +224,13 @@ theorem log_two_fine : Real.log 2 ≤ 6932 / 10000 := by
   rw [h] at hc
   exact ExpReductionBounds.log_two_enclosure.2.trans hc
 
-theorem exp_pow_two (n : Nat) : Real.exp ((n : ℝ) * Real.log 2) = (2 : ℝ) ^ n := by
-  simpa only [Real.exp_log (by norm_num : (0 : ℝ) < 2)] using Real.exp_nat_mul (Real.log 2) n
-
 /-- From 768 on, `exp` reaches the overflow threshold. -/
 theorem exp_ge_overflow (a : ℝ) (ha : 768 ≤ a) :
     F64PositiveRounding.overflowThreshold ≤ Real.exp a := by
   have hl := log_two_fine
   have h1 : ((1024 : Nat) : ℝ) * Real.log 2 ≤ a := by push_cast; linarith
   have h2 : (2 : ℝ) ^ 1024 ≤ Real.exp a := by
-    rw [← exp_pow_two]
+    rw [← RealExpError.exp_pow_two]
     exact Real.exp_le_exp.mpr h1
   have h3 : F64PositiveRounding.overflowThreshold ≤ (2 : ℝ) ^ 1024 := by
     rw [show F64PositiveRounding.overflowThreshold = (2 : ℝ) ^ 1024 - (2 : ℝ) ^ 970 from rfl]
@@ -245,7 +243,7 @@ theorem exp_le_tiny (a : ℝ) (ha : a ≤ -768) : Real.exp a ≤ 1 / (2 : ℝ) ^
   have hl := log_two_fine
   have h1 : a ≤ -(((1100 : Nat) : ℝ) * Real.log 2) := by push_cast; linarith
   have h2 := Real.exp_le_exp.mpr h1
-  rw [Real.exp_neg, exp_pow_two] at h2
+  rw [Real.exp_neg, RealExpError.exp_pow_two] at h2
   simpa only [one_div] using h2
 
 theorem far_quotient_pos (xv : ℝ) (k q : Int) (j : Fin 128) (hk : k = 128 * q + j.val)
@@ -289,27 +287,6 @@ theorem quotient_bounds_far (k q : Int) (j : Fin 128) (hk : k = 128 * q + j.val)
   have hb := abs_le.mp h
   have hjb := j.isLt
   omega
-
-/-- A word with value at least `2 ^ (e - 1023)` has exponent field at least `e`. -/
-theorem exponent_ge_of_value (y : UInt64) (e : Nat) (he : 1 ≤ e)
-    (hy : (2 : ℝ) ^ ((e : Int) - 1023) ≤ value y) : e ≤ Wasm.IEEE64.exponent y := by
-  by_contra h
-  have hm := ExpSpecialNegative.magnitude_lt_of_exponent_lt y e he (by omega)
-  have hv : |value y| < (2 : ℝ) ^ ((e : Int) - 1023) := by
-    rw [value, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
-    have h1 : |(Wasm.IEEE64.scaledValue y : ℝ)| = (Wasm.IEEE64.scaledMagnitude y : ℝ) := by
-      rw [← Int.cast_abs, ← Int.natCast_natAbs, natAbs_scaledValue, Int.cast_natCast]
-    rw [h1, div_lt_iff₀ (by positivity)]
-    have hm' : (Wasm.IEEE64.scaledMagnitude y : ℝ) < (2 : ℝ) ^ (51 + e) := by exact_mod_cast hm
-    calc
-      _ < (2 : ℝ) ^ (51 + e) := hm'
-      _ = (2 : ℝ) ^ ((e : Int) - 1023) * (2 : ℝ) ^ 1074 := by
-        rw [← zpow_natCast, ← zpow_natCast, ← zpow_add₀ (by norm_num)]
-        congr 1
-        push_cast
-        ring
-  have := le_abs_self (value y)
-  linarith
 
 /-- For finite `768 ≤ a < 1024`, `Exp.exp` gives positive infinity, and `exp a` reaches the
 overflow threshold. -/
@@ -389,7 +366,7 @@ theorem far_positive (x : Float) (hxf : Finite x.toBits) (hxhi : |value x.toBits
     linarith
   have hey := exponent_ge_of_value y 1120 (by norm_num) hy97
   have hsmall : 1 / (2 : ℝ) ^ 1022 < (2 : ℝ) ^ (98 : Int) / 2 := by norm_num
-  have hys := (ExpSpecialPositive.normal_of_value y (by linarith)).2
+  have hys := (normal_of_value y (by linarith)).2
   rw [ExpSpecialPositive.scale_up_word, F64PowerScale.mul_power_overflow 2032 y (by norm_num)
     (by norm_num) hrec.1 (by omega) (by omega) (by omega), hys, ExpSpecialPositive.infinity_word]
 
@@ -484,7 +461,6 @@ theorem far_negative (x : Float) (hxf : Finite x.toBits) (hxhi : |value x.toBits
 #print axioms far_quotient_pos
 #print axioms far_quotient_neg
 #print axioms quotient_bounds_far
-#print axioms exponent_ge_of_value
 #print axioms far_positive
 #print axioms far_negative
 

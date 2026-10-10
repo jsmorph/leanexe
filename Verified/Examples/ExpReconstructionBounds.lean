@@ -142,21 +142,8 @@ theorem reconstruction_error (s r t : UInt64)
       exact mul_le_mul_of_nonneg_right
         (mul_le_mul_of_nonneg_right (by norm_num : (169 / 128 : ℝ) ≤ 4 / 3) hu) hS.le
 
-theorem floatReconstruction_error (s r t : Float)
-    (hsf : Finite s.toBits) (hrf : Finite r.toBits) (htf : Finite t.toBits)
-    (hslo : 1 / (2 : ℝ) ^ 1000 ≤ value s.toBits)
-    (hshi : value s.toBits ≤ (2 : ℝ) ^ 1000)
-    (hr : |value r.toBits| ≤ 1 / 256) (ht : |value t.toBits| ≤ 1 / (2 : ℝ) ^ 53) :
-    Finite (floatReconstruction s r t).toBits ∧
-    |value (floatReconstruction s r t).toBits -
-        value s.toBits * (1 + value t.toBits) * Real.exp (value r.toBits)| ≤
-      (4 / 3) * unitRoundoff64 * value s.toBits := by
-  rw [reconstruction_bits]
-  exact reconstruction_error s.toBits r.toBits t.toBits hsf hrf htf hslo hshi hr ht
-
 #print axioms reconstruction_bits
 #print axioms presum_error
 #print axioms reconstruction_error
-#print axioms floatReconstruction_error
 
 end Verified.Examples.ExpReconstructionBounds

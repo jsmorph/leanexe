@@ -1,5 +1,6 @@
 import Verified.Examples.ExpReducedReconstruction
 import Verified.Examples.ExpTableBounds
+import LeanExe.ProofKit.RealExpError
 
 namespace Verified.Examples.ExpTableReconstruction
 open CodeLib.IEEE64
@@ -7,20 +8,11 @@ open LeanExe.ProofKit
 
 set_option exponentiation.threshold 4096
 
-private theorem exp_int_mul (x : ℝ) (n : Int) : Real.exp ((n : ℝ) * x) = Real.exp x ^ n := by
-  cases n with
-  | ofNat k =>
-    simpa only [Int.ofNat_eq_natCast, Int.cast_natCast, zpow_natCast] using Real.exp_nat_mul x k
-  | negSucc k =>
-    simp only [Int.negSucc_eq, ← Int.natCast_succ,
-      Int.cast_neg, Int.cast_natCast, neg_mul, Real.exp_neg, zpow_neg, zpow_natCast,
-      Real.exp_nat_mul]
-
 theorem exponential_factor (k q : Int) (j : Fin 128) (hk : k = 128 * q + j.val) :
     (2 : ℝ) ^ q * Real.exp ((j.val : ℝ) * Real.log 2 / 128) =
       Real.exp ((k : ℝ) * Real.log 2 / 128) := by
   have hp : (2 : ℝ) ^ q = Real.exp ((q : ℝ) * Real.log 2) := by
-    rw [exp_int_mul, Real.exp_log (by norm_num : (0 : ℝ) < 2)]
+    rw [RealExpError.exp_int_mul, Real.exp_log (by norm_num : (0 : ℝ) < 2)]
   rw [hp, ← Real.exp_add, hk]
   congr 1
   push_cast

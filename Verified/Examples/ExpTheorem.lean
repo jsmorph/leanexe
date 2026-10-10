@@ -1,4 +1,5 @@
 import Verified.Examples.ExpFarRange
+import LeanExe.ProofKit.F64Magnitude
 
 /-!
 The accuracy theorem for `Exp.exp`.  For every finite binary64 input `a`, the result is a
@@ -9,7 +10,7 @@ nearest-even rounding of the real `exp a`.  The exceptional inputs give the resu
 
 namespace Verified.Examples.ExpTheorem
 open CodeLib.IEEE64
-open LeanExe.ProofKit F64NearestNonnegative
+open LeanExe.ProofKit F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
 
@@ -22,48 +23,6 @@ theorem large_magnitude (x : UInt64) (he : 1033 ≤ Wasm.IEEE64.exponent x) : 10
     exact lt_of_not_ge h
   have := F64ExponentBounds.exponent_lt_of_magnitude_lt x 1033 (by decide) hlt
   omega
-
-/-- Below exponent field `e`, the input has magnitude below `2 ^ (e - 1023)`. -/
-theorem magnitude_lt (x : UInt64) (e : Nat) (q : Int) (he1 : 1 ≤ e) (hq : (e : Int) = q + 1023)
-    (he : Wasm.IEEE64.exponent x < e) : |value x| < (2 : ℝ) ^ q := by
-  have hm := ExpSpecialNegative.magnitude_lt_of_exponent_lt x e he1 he
-  rw [value, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
-  have h1 : |(Wasm.IEEE64.scaledValue x : ℝ)| = (Wasm.IEEE64.scaledMagnitude x : ℝ) := by
-    rw [← Int.cast_abs, ← Int.natCast_natAbs, natAbs_scaledValue, Int.cast_natCast]
-  rw [h1, div_lt_iff₀ (by positivity)]
-  have hm' : (Wasm.IEEE64.scaledMagnitude x : ℝ) < (2 : ℝ) ^ (51 + e) := by exact_mod_cast hm
-  calc
-    _ < (2 : ℝ) ^ (51 + e) := hm'
-    _ = (2 : ℝ) ^ q * (2 : ℝ) ^ 1074 := by
-      rw [← zpow_natCast, ← zpow_natCast, ← zpow_add₀ (by norm_num)]
-      congr 1
-      push_cast
-      omega
-
-/-- At or above exponent field `e`, the input has magnitude at least `2 ^ (e - 1023)`. -/
-theorem magnitude_ge (x : UInt64) (e : Nat) (q : Int) (he1 : 1 ≤ e) (he2 : e < 2048)
-    (hq : (e : Int) = q + 1023) (he : e ≤ Wasm.IEEE64.exponent x) : (2 : ℝ) ^ q ≤ |value x| := by
-  by_contra h
-  have hb : value (F64ExponentBounds.boundary e) = (2 : ℝ) ^ q :=
-    F64NearestBinade.boundary_power e q he1 he2 hq
-  have hlt : |value x| < |value (F64ExponentBounds.boundary e)| := by
-    rw [hb, abs_of_pos (zpow_pos (by norm_num : (0 : ℝ) < 2) q)]
-    exact lt_of_not_ge h
-  have := F64ExponentBounds.exponent_lt_of_magnitude_lt x e he2 hlt
-  omega
-
-theorem sign_value (x : UInt64) (hx : 0 < Wasm.IEEE64.scaledMagnitude x) :
-    (Wasm.IEEE64.sign x = true ↔ value x < 0) := by
-  have h2 : (0 : ℝ) < 2 ^ 1074 := by positivity
-  have hm : (0 : ℝ) < (Wasm.IEEE64.scaledMagnitude x : ℝ) := by exact_mod_cast hx
-  cases hs : Wasm.IEEE64.sign x
-  · simp only [value, Wasm.IEEE64.scaledValue, hs, Bool.false_eq_true, ite_false,
-      Int.cast_natCast, false_iff, not_lt]
-    positivity
-  · simp only [value, Wasm.IEEE64.scaledValue, hs, ite_true, Int.cast_neg, Int.cast_natCast,
-      true_iff, neg_div]
-    have := div_pos hm h2
-    linarith
 
 private theorem saturated_guard (a : UInt64) (hlo : 1033 ≤ a.toNat) (hhi : a.toNat < 2047) :
     a - 969 ≥ (63 : UInt64) ∧ ¬ a - 969 ≥ (0x80000000 : UInt64) ∧ a ≥ (0x409 : UInt64) ∧
@@ -231,10 +190,6 @@ theorem exp_neg_zero :
     ExpTinyError.float_result_bits, hb]
   decide +kernel
 
-theorem zero_value : value (0 : UInt64) = 0 := by
-  have h : Wasm.IEEE64.scaledValue (0 : UInt64) = 0 := by decide +kernel
-  rw [value, h, Int.cast_zero, zero_div]
-
 /-- Positive zero lies within one step of the reference of a positive number below `2 ^ -1100`. -/
 theorem zero_one_step (E : ℝ) (hE : 0 < E) (hEt : E ≤ 1 / (2 : ℝ) ^ 1100) :
     (0 : UInt64).toNat ≤ (F64PositiveRounding.roundNearestEven E).toNat + 1 ∧
@@ -244,10 +199,10 @@ theorem zero_one_step (E : ℝ) (hE : 0 < E) (hEt : E ≤ 1 / (2 : ℝ) ^ 1100) 
   have h1 : (1 : ℝ) / 2 ^ 1100 ≤ (2 : ℝ) ^ (-1021 : Int) := by norm_num
   have h2 : (1 : ℝ) / 2 ^ 1100 < 3 * ((2 : ℝ) ^ (0 - 1) / (2 : ℝ) ^ 1074) / 2 := by norm_num
   refine F64FullStep.one_step_binades E 0 0 2 (by norm_num) (by norm_num)
-    (by rw [ExpSpecialNegative.zero_word_value]; exact hE.le) (fun _ => by rw [hbnd]; exact hEt.trans h1)
-    (by decide) (by rw [ExpSpecialNegative.zero_word_value, zero_value])
-    (by rw [hbnd, zero_value]; positivity) ?_
-  rw [zero_value, zero_sub, abs_neg, abs_of_pos hE]
+    (by rw [value_zero_boundary]; exact hE.le) (fun _ => by rw [hbnd]; exact hEt.trans h1)
+    (by decide) (by rw [value_zero_boundary, value_zero])
+    (by rw [hbnd, value_zero]; positivity) ?_
+  rw [value_zero, zero_sub, abs_neg, abs_of_pos hE]
   linarith
 
 /-- The accuracy theorem: for every finite input, `Exp.exp` returns a nonnegative word, possibly
@@ -414,9 +369,6 @@ theorem exp_bytes_accuracy :
   exact ⟨(Exp.exp x).toBits, hv, rfl, exp_one_step x, hrest⟩
 
 #print axioms large_magnitude
-#print axioms magnitude_lt
-#print axioms magnitude_ge
-#print axioms sign_value
 #print axioms saturated_selected
 #print axioms underflow_product
 #print axioms overflow_product

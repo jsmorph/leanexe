@@ -1,4 +1,5 @@
 import Mathlib.Analysis.Complex.Exponential
+import Mathlib.Analysis.SpecialFunctions.Log.Basic
 import Mathlib.Tactic
 
 namespace LeanExe.ProofKit.RealExpError
@@ -67,9 +68,24 @@ theorem exp_perturbation_small (a b : ℝ) (ha : |a| ≤ 1 / 256)
       mul_le_mul hea hphi (abs_nonneg _) (by norm_num)
     _ ≤ 2 * |b - a| := by nlinarith [abs_nonneg (b - a)]
 
+
+theorem exp_int_mul (x : ℝ) (n : Int) : Real.exp ((n : ℝ) * x) = Real.exp x ^ n := by
+  cases n with
+  | ofNat k =>
+    simpa only [Int.ofNat_eq_natCast, Int.cast_natCast, zpow_natCast] using Real.exp_nat_mul x k
+  | negSucc k =>
+    simp only [Int.negSucc_eq, ← Int.natCast_succ,
+      Int.cast_neg, Int.cast_natCast, neg_mul, Real.exp_neg, zpow_neg, zpow_natCast,
+      Real.exp_nat_mul]
+
+theorem exp_pow_two (n : Nat) : Real.exp ((n : ℝ) * Real.log 2) = (2 : ℝ) ^ n := by
+  simpa only [Real.exp_log (by norm_num : (0 : ℝ) < 2)] using Real.exp_nat_mul (Real.log 2) n
+
 #print axioms exp_perturbation_small
 #print axioms taylor_error_one
 #print axioms taylor_five_error
 #print axioms taylor_five_error_small
+#print axioms exp_int_mul
+#print axioms exp_pow_two
 
 end LeanExe.ProofKit.RealExpError

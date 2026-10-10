@@ -99,7 +99,7 @@ The generated compiler theorems establish that the compiled module computes each
 | `abs(a) ≥ 1024`, finite | the products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
 | zeros, infinities, NaN | `1 + x` and the `-∞` test | `ExpTheorem.exp_pos_zero` through `exp_nan` |
 
-The proof modules are separate from the root `Verified` import.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
+The proof modules are separate from the root `Verified` import, and the ProofKit modules they use are imported by `LeanExe.lean`.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
 
 ### Limits of the exponential theorem
 
@@ -120,6 +120,9 @@ The user reviewed the statement on 2026-10-10, and the review found four limits.
 | [Multiplication by a power of two](LeanExe/ProofKit/F64PowerScale.lean) | The exact product or infinity, and `dyadic_shifted_exact`, moved from `ExpReductionExact`. |
 | [Grid exactness](LeanExe/ProofKit/F64GridExact.lean) | Exact sums and differences on a grid, moved from `ExpReductionExact`, and rounding of a positive sum within one binade with the half-ulp bound. |
 | [Reconstruction one step](Verified/Examples/ExpOneStep.lean) | One step from the `(7/5) u 2^q H j` reconstruction bound, including the top binade next to infinity. |
+| [Exponent, magnitude, and sign](LeanExe/ProofKit/F64Magnitude.lean) | Bounds between a word's exponent field and the magnitude of its value, the sign bit and the sign of the value, the value of a positive normal word, the words of zero, and sums of scaled values. |
+| [Rounding stages](LeanExe/ProofKit/F64StageBounds.lean) | One rounded product or sum in a chain of bounded operations. |
+| [Errors of rounded sums and products](LeanExe/ProofKit/RealRoundedError.lean) | Errors of sums and products whose operands carry errors. |
 
 GPT's reconstruction lemmas now expose the bound before the final rounding (`presum_error`), the residual perturbation (`residual_change`), and the table perturbation (`table_change`).  The compensated subnormal path uses these pieces, and GPT's original statements are proved from them.  Several of GPT's hypotheses were widened where their proofs already allowed it, for example from `abs(a) ≤ 512` to 768 and from `abs(k) ≤ 147457` to `2^30`.
 
@@ -131,7 +134,7 @@ GPT's reconstruction lemmas now expose the bound before the final rounding (`pre
 - [x] Add `exp_file` and run `tests/verified/run.sh`.
 - [x] Run the interpreter testsuite.
 - [x] Check the theorem in `tests/verified/run.sh`.  The user chose this over the root `Verified` import.
-- [ ] Consolidate the proof files: GPT's 39 files and the new ones contain lemmas that belong in ProofKit, such as the exponent and magnitude bounds in `ExpNegativeFinal` and `ExpTheorem`.
+- [x] Consolidate the proof files.  General lemmas moved to ProofKit, which `LeanExe.lean` now imports, and four unused GPT lemmas were removed.
 
 ## Function agenda
 

@@ -1,6 +1,7 @@
 import Verified.Examples.ExpSpecialPositiveCore
 import Verified.Examples.ExpOneStep
 import LeanExe.ProofKit.F64PowerScale
+import LeanExe.ProofKit.F64Magnitude
 
 /-!
 The positive special path of `Exp.exp`.  For finite `512 ≤ a ≤ 768`, the result is the product of
@@ -10,7 +11,7 @@ step of the nonnegative nearest-even reference of `exp a`, overflow included.
 
 namespace Verified.Examples.ExpSpecialPositive
 open CodeLib.IEEE64
-open LeanExe.ProofKit F64NearestNonnegative
+open LeanExe.ProofKit F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
 
@@ -20,45 +21,6 @@ theorem scale_up_word : (0x7F00000000000000 : UInt64) = Wasm.IEEE64.encodeFinite
 theorem infinity_word :
     Wasm.IEEE64.infinity false = F64PositiveRounding.positiveInfinity := by
   decide
-
-/-- A word with value above `2 ^ -1022` is normal and positive. -/
-theorem normal_of_value (y : UInt64) (hy : 1 / (2 : ℝ) ^ 1022 < value y) :
-    1 ≤ Wasm.IEEE64.exponent y ∧ Wasm.IEEE64.sign y = false := by
-  constructor
-  · by_contra h
-    have hm := F64ExponentBounds.magnitude_le_boundary y 1 (by norm_num) (by omega)
-    have hb : value (F64ExponentBounds.boundary 1) = (2 : ℝ) ^ (-1022 : Int) :=
-      F64NearestBinade.boundary_power 1 (-1022) le_rfl (by norm_num) (by norm_num)
-    have hp : (2 : ℝ) ^ (-1022 : Int) = 1 / (2 : ℝ) ^ 1022 := by norm_num
-    rw [hb, hp, abs_of_pos (by positivity)] at hm
-    have := le_abs_self (value y)
-    linarith
-  · by_contra h
-    have hs : Wasm.IEEE64.sign y = true := by simpa using h
-    have hv : value y ≤ 0 := by
-      simp only [value, Wasm.IEEE64.scaledValue, hs, ite_true, Int.cast_neg, Int.cast_natCast]
-      have : (0 : ℝ) ≤ (Wasm.IEEE64.scaledMagnitude y : ℝ) / (2 : ℝ) ^ 1074 := by positivity
-      rw [neg_div]
-      linarith
-    have : (0 : ℝ) < 1 / (2 : ℝ) ^ 1022 := by positivity
-    linarith
-
-/-- A positive word whose exponent field is at least `e` has value at least `2 ^ (e - 1023)`. -/
-theorem value_ge_of_exponent (y : UInt64) (e : Nat) (q : Int) (he : 1 ≤ e) (he' : e < 2048)
-    (heq : (e : Int) = q + 1023) (hs : Wasm.IEEE64.sign y = false)
-    (hye : e ≤ Wasm.IEEE64.exponent y) : (2 : ℝ) ^ q ≤ value y := by
-  have hb : value (F64ExponentBounds.boundary e) = (2 : ℝ) ^ q :=
-    F64NearestBinade.boundary_power e q he he' heq
-  have hnn : 0 ≤ value y := by
-    simp only [value, Wasm.IEEE64.scaledValue, hs, Bool.false_eq_true, ite_false,
-      Int.cast_natCast]
-    positivity
-  by_contra h
-  have hlt : |value y| < |value (F64ExponentBounds.boundary e)| := by
-    rw [hb, abs_of_nonneg hnn, abs_of_pos (zpow_pos (by norm_num) q)]
-    exact lt_of_not_ge h
-  have := F64ExponentBounds.exponent_lt_of_magnitude_lt y e he' hlt
-  omega
 
 theorem positive_one_step (x : Float) (hxf : Finite x.toBits)
     (hx : |value x.toBits| ≤ 768) (hxpos : 512 ≤ value x.toBits) :
@@ -163,8 +125,6 @@ theorem positive_one_step (x : Float) (hxf : Finite x.toBits)
 
 #print axioms scale_up_word
 #print axioms infinity_word
-#print axioms normal_of_value
-#print axioms value_ge_of_exponent
 #print axioms positive_one_step
 
 end Verified.Examples.ExpSpecialPositive
