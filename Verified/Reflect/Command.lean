@@ -836,6 +836,20 @@ def boundOf (p : Lean.Expr) : MetaM Bound := do
   if reduced == rhs' then return ⟨rhs', p⟩
   return ⟨reduced, ← mkExpectedTypeHint p (← mkEq lhs reduced)⟩
 
+/-- The size of the Lean array `u`, whose flattening is the source value `v` of an array of
+elements `e`, with the proof of `v.size = u.size`. -/
+def arraySizeEq (e : Elem) (v u : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
+  let (``Array, #[α]) := (← whnfR (← inferType u)).getAppFnArgs
+    | throwError "verified_compile: the size of {u}, which is not an array"
+  let n ← mkAppM ``Array.size #[u]
+  let sizeV := mkApp2 (mkConst ``Array.size [Level.zero]) (mkApp (mkConst ``Elem.denote)
+    (elemExpr e)) v
+  match (← shapeOf α).flat with
+  | none => return (n, ← mkExpectedTypeHint (← mkEqRefl n) (← mkEq sizeV n))
+  | some φ => do
+    let h ← mkAppOptM ``Array.size_map #[none, none, some φ, some u]
+    return (n, ← mkExpectedTypeHint h (← mkEq sizeV n))
+
 /-- The proof of `t.copyCost v = C` for the source value `v` of the Lean term `u`, with `C` written
 with `blockCost` of the sizes of `u`'s arrays. -/
 partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
@@ -847,16 +861,7 @@ partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
     let w ← evalNat width
     let hw ← evalEq width w
-    let (``Array, #[α]) := (← whnfR (← inferType u)).getAppFnArgs
-      | throwError "verified_compile: the copy of {u}, which is not an array"
-    let n ← mkAppM ``Array.size #[u]
-    let sizeV := mkApp2 (mkConst ``Array.size [Level.zero]) (mkApp (mkConst ``Elem.denote)
-      (elemExpr e)) v
-    let hn ← match (← shapeOf α).flat with
-      | none => mkExpectedTypeHint (← mkEqRefl n) (← mkEq sizeV n)
-      | some φ => do
-        let h ← mkAppOptM ``Array.size_map #[none, none, some φ, some u]
-        mkExpectedTypeHint h (← mkEq sizeV n)
+    let (n, hn) ← arraySizeEq e v u
     let p ← (← LemmaApp.start ``copyCost_array
       [(`e, elemExpr e), (`xs, v), (`hn, hn), (`hw, hw)]).finish
     let (_, cost) ← eqSides p
@@ -935,6 +940,73 @@ def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Refl
   let (cost, h) ← dropZeroAdd h
   app.assign name h
   return some ⟨cost, h⟩
+
+/-- The proof of `x.ownedCost modes live (env.get x) = C` for the array variable `x` whose Lean
+variable is `u`: nothing when `x` is owned and dies, and a copy otherwise. -/
+def varOwnedEq (c : Ctx) (modes live x : Lean.Expr) (t : Ty) (u : Lean.Expr) :
+    MetaM Lean.Expr := do
+  let v ← mkAppM ``Env.get #[c.env, x]
+  let args := [(`Γ, c.ctx), (`modes, modes), (`live, live), (`t, tyExpr t), (`x, x), (`v, v)]
+  let index ← mkAppM ``Var.index #[x]
+  let mode ← mkAppM ``modeAt #[modes, index]
+  if ← evalOwned m!"the mode of {u}" mode then
+    let isLive := (mkApp live index).headBeta
+    if ← evalBool m!"whether {u} is live" isLive then
+      let (_, hc) ← copyCostEq c.base t v u
+      return ← (← LemmaApp.start ``varOwned_copyLive (args ++
+        [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst true)),
+          (`hc, hc)])).finish
+    return ← (← LemmaApp.start ``varOwned_move (args ++
+      [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst false))])).finish
+  let (_, hc) ← copyCostEq c.base t v u
+  (← LemmaApp.start ``varOwned_copyBorrowed (args ++
+    [(`hm, ← evalEq mode (modeConst false)), (`hc, hc)])).finish
+
+/-- The proof of `x.roomCost modes live (env.get x) ext = C` for the array variable `x` of elements
+`e` whose Lean variable is `u`: the growth of an owned array that dies, and a copy at the new
+length otherwise. -/
+def roomEq (c : Ctx) (modes live x : Lean.Expr) (e : Elem) (u ext : Lean.Expr) :
+    MetaM Bound := do
+  let v ← mkAppM ``Env.get #[c.env, x]
+  let (n, hn) ← arraySizeEq e v u
+  let width := mkApp (mkConst ``Elem.width) (elemExpr e)
+  let w ← evalNat width
+  let args := [(`Γ, c.ctx), (`modes, modes), (`live, live), (`e, elemExpr e), (`x, x), (`xs, v),
+    (`ext, ext), (`n, n), (`w, w), (`hn, hn), (`hw, ← evalEq width w)]
+  let index ← mkAppM ``Var.index #[x]
+  let mode ← mkAppM ``modeAt #[modes, index]
+  let p ← if ← evalOwned m!"the mode of {u}" mode then do
+      let isLive := (mkApp live index).headBeta
+      if ← evalBool m!"whether {u} is live" isLive then
+        (← LemmaApp.start ``room_copyLive (args ++
+          [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst true))])).finish
+      else
+        (← LemmaApp.start ``room_grow (args ++
+          [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst false))])).finish
+    else
+      (← LemmaApp.start ``room_copyBorrowed (args ++
+        [(`hm, ← evalEq mode (modeConst false))])).finish
+  let (_, cost) ← eqSides p
+  unless w == mkNatLit 1 do return ⟨cost, p⟩
+  -- `charge (n * 1 + ext)` is `charge (n + ext)`.
+  let charge := cost.appFn!
+  let arg := cost.appArg!
+  let (``HAdd.hAdd, #[_, _, _, _, m, ext']) := arg.getAppFnArgs
+    | throwError "verified_compile: the room {cost}"
+  let add := arg.appFn!.appFn!
+  let inner ← congr2 add m n ext' ext' (some (← mkAppM ``Nat.mul_one #[n])) none
+  let h ← congrArgOn charge arg (mkApp2 add n ext') inner
+  return ⟨mkApp charge (mkApp2 add n ext'), ← mkEqTrans p h⟩
+
+/-- Assigns the extension `k` of a push or an insertion of an element `e`, with its proof
+`(wordCount e.width).toNat = k`, the literal that the kernel computes. -/
+def assignExtension (app : LemmaApp) (e : Elem) : MetaM Lean.Expr := do
+  let ext ← mkAppM ``UInt64.toNat #[← mkAppM ``wordCount #[mkApp (mkConst ``Elem.width)
+    (elemExpr e)]]
+  let k ← evalNat ext
+  app.assign `k k
+  app.assign `hk (← evalEq ext k)
+  return k
 
 /-- The builder of a binary form with the lemma `n` over the parts `l` and `r`. -/
 def binBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (l r : Reflection) :
@@ -1337,10 +1409,18 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let ri ← reflect c i
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.set #[some c.sigs, some c.ctx, none, some x, some ri.src, some rv.src]
+    let bound : BoundBuilder := fun modes live => do
+      let some bounds := c.bounds | return none
+      let app ← LemmaApp.start ``set_bound (boundArgs c bounds modes live ++
+        [(`e, elemExpr el), (`x, x), (`i, ri.src), (`v, rv.src)])
+      let some _ ← app.child `hi ri.bound | return none
+      let some _ ← app.child `hv rv.bound | return none
+      app.assign `hx (← varOwnedEq c modes live x (.array el) xs)
+      boundOf (← app.finish)
     if se.flat.isNone then
-      return ⟨src, ← mkAppM ``set_eq #[x, ri.proof, rv.proof], .array el, e, noBound⟩
+      return ⟨src, ← mkAppM ``set_eq #[x, ri.proof, rv.proof], .array el, e, bound⟩
     return ⟨src, ← mkAppM ``set_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, ri.proof, rv.proof],
-      .array el, e, noBound⟩
+      .array el, e, bound⟩
   | ``Array.push, pushArgs@#[α, xs, v] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
@@ -1352,9 +1432,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some rv.src]
-    if se.flat.isNone then return ⟨src, ← mkAppM ``push_eq #[x, rv.proof], .array el, e, noBound⟩
+    let bound : BoundBuilder := fun modes live => do
+      let some bounds := c.bounds | return none
+      let app ← LemmaApp.start ``push_bound (boundArgs c bounds modes live ++
+        [(`e, elemExpr el), (`x, x), (`v, rv.src)])
+      let k ← assignExtension app el
+      let some _ ← app.child `hv rv.bound | return none
+      app.assign `hx (← roomEq c modes live x el xs k).proof
+      boundOf (← app.finish)
+    if se.flat.isNone then return ⟨src, ← mkAppM ``push_eq #[x, rv.proof], .array el, e, bound⟩
     return ⟨src, ← mkAppM ``push_map_eq #[← se.fn α, x, xs, v, ← arrayEq x xs, rv.proof],
-      .array el, e, noBound⟩
+      .array el, e, bound⟩
   | ``LeanExe.insertAt, insertArgs@#[α, xs, k, v] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
@@ -1368,10 +1456,19 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.insertAt
       #[some c.sigs, some c.ctx, none, some x, some ri.src, some rv.src]
+    let bound : BoundBuilder := fun modes live => do
+      let some bounds := c.bounds | return none
+      let app ← LemmaApp.start ``insertAt_bound (boundArgs c bounds modes live ++
+        [(`e, elemExpr el), (`x, x), (`i, ri.src), (`v, rv.src)])
+      let k ← assignExtension app el
+      let some _ ← app.child `hi ri.bound | return none
+      let some _ ← app.child `hv rv.bound | return none
+      app.assign `hx (← roomEq c modes live x el xs k).proof
+      boundOf (← app.finish)
     if se.flat.isNone then
-      return ⟨src, ← mkAppM ``insertAt_eq #[x, ri.proof, rv.proof], .array el, e, noBound⟩
+      return ⟨src, ← mkAppM ``insertAt_eq #[x, ri.proof, rv.proof], .array el, e, bound⟩
     return ⟨src, ← mkAppM ``insertAt_map_eq
-      #[← se.fn α, x, xs, v, ← arrayEq x xs, ri.proof, rv.proof], .array el, e, noBound⟩
+      #[← se.fn α, x, xs, v, ← arrayEq x xs, ri.proof, rv.proof], .array el, e, bound⟩
   | ``LeanExe.eraseAt, eraseArgs@#[α, xs, k] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
@@ -1383,10 +1480,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let ri ← reflect c k
     let src ← mkAppOptM ``Expr.eraseAt #[some c.sigs, some c.ctx, none, some x, some ri.src]
+    let bound : BoundBuilder := fun modes live => do
+      let some bounds := c.bounds | return none
+      let app ← LemmaApp.start ``eraseAt_bound (boundArgs c bounds modes live ++
+        [(`e, elemExpr el), (`x, x), (`i, ri.src)])
+      let some _ ← app.child `hi ri.bound | return none
+      app.assign `hx (← varOwnedEq c modes live x (.array el) xs)
+      boundOf (← app.finish)
     if se.flat.isNone then
-      return ⟨src, ← mkAppM ``eraseAt_eq #[x, ri.proof], .array el, e, noBound⟩
+      return ⟨src, ← mkAppM ``eraseAt_eq #[x, ri.proof], .array el, e, bound⟩
     return ⟨src, ← mkAppM ``eraseAt_map_eq #[← se.fn α, x, xs, ← arrayEq x xs, ri.proof],
-      .array el, e, noBound⟩
+      .array el, e, bound⟩
   | ``HAppend.hAppend, appendArgs@#[α, _, _, _, xs, ys] =>
     let .array el ← tyOf α | throwError "verified_compile: unsupported term {e}"
     let xs ← projReduce xs
@@ -1403,10 +1507,34 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let (``Array, #[β]) := (← whnfR α).getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
     let se ← shapeOf β
-    if se.flat.isNone then return ⟨src, ← rflProof c src e, .array el, e, noBound⟩
+    let bound : BoundBuilder := fun modes live => do
+      let some bounds := c.bounds | return none
+      let app ← LemmaApp.start ``append_bound (boundArgs c bounds modes live ++
+        [(`e, elemExpr el), (`x, x), (`y, y)])
+      -- The extension: `ys`'s size times the element's width.
+      let (ny, hny) ← arraySizeEq el (← mkAppM ``Env.get #[c.env, y]) ys
+      let width := mkApp (mkConst ``Elem.width) (elemExpr el)
+      let w ← evalNat width
+      let some (_, prod, _) := (← app.hypType `hk).eq?
+        | throwError "verified_compile: the extension of {e}"
+      let (``HMul.hMul, #[_, _, _, _, size, _]) := prod.getAppFnArgs
+        | throwError "verified_compile: the extension of {e}"
+      let mul := prod.appFn!.appFn!
+      let hk ← congr2 mul size ny width w (some hny) (some (← evalEq width w))
+      let (k, hk) ← if w == mkNatLit 1 then
+          pure (ny, ← mkEqTrans hk (← mkAppM ``Nat.mul_one #[ny]))
+        else pure (mkApp2 mul ny w, hk)
+      app.assign `k k
+      app.assign `hk hk
+      let some (_, room, _) := (← app.hypType `hx).eq?
+        | throwError "verified_compile: the room of {e}"
+      let roomArgs := room.getAppArgs
+      app.assign `hx (← roomEq c roomArgs[0]! roomArgs[1]! x el xs k).proof
+      boundOf (← app.finish)
+    if se.flat.isNone then return ⟨src, ← rflProof c src e, .array el, e, bound⟩
     return ⟨src, ← mkAppOptM ``append_map_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
       none, none, some (← se.fn β), some x, some y, some xs, some ys, some (← arrayEq x xs),
-      some (← arrayEq y ys)], .array el, e, noBound⟩
+      some (← arrayEq y ys)], .array el, e, bound⟩
   | ``LeanExe.build, #[α, n, f] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
