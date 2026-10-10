@@ -29746,7 +29746,7 @@ The `erf` track works in `/home/somebody/src/lt-erf` on debtop1, branch `w/erf`,
 ### Plan
 
 - [x] Define `erf`, `erfc`, and `erfcx x = exp (x²) erfc x`, and prove the facts the kernels need (`LeanExe/ProofKit/RealErf.lean`).
-- [ ] Bound each rational function of `s_erf.c` against the quantity it approximates.
+- [x] Bound each rational function of `s_erf.c` against the quantity it approximates.
 - [ ] Prove `WithinSteps 1` for `erf` and `WithinSteps 4` for `erfc`, the exceptional values, the byte theorems, and the file theorems.
 
 ### `RealErf`
@@ -29788,3 +29788,29 @@ Each check compares `Q ((2/√π)_lo T - c) - P` with `ε Q` through `PolyChecks
 `PolyCalculus` adds the formal derivative with `HasDerivAt` for `eval`, powers, `spread` for `p (x²)`, `oddP`, reversal, and `hatP c n` with `eval (hatP c n) x = x^(2n) eval c (1/x²)`.  `RealErfScaled` adds `erfcxN = erfcx/(2/√π)`, which satisfies `erfcxN' = 2 x erfcxN - 1`, a comparison lemma `ode_backward` for any function with derivative `2 x G - k`, and rational asymptotic bounds `erfcxN_asym`.  The tail models use `erfcxN`, so their chain carries no error from the enclosure of `π`.
 
 A first-order model of the `erfc` tail, which counts each rounding as half a unit of its binade and each `exp` as about `1.32 u` from the exponential proof's reconstruction bounds, gives at most 5.9 units in the last place near `x ≈ 1.32`.  The largest share, about `2.8 u` in the second exponential's argument, is the Horner evaluation of `R` and `S` at `s ≈ 0.58`.  Four steps therefore look out of reach for a worst-case error analysis, while the sampled maximum is three steps.
+
+### Kernel bounds, tail ranges
+
+`ErfTailKernel` proves `|tailF R S x| ≤ 2^-56` for `R_a/S_a` on `[1.25, tailB2]` and for `R_b/S_b` on `[tailB1, 28]`, where `tailF R S x = R/S (1/x²) - 9/16 - log (x erfcx x)` is the error of the model that the code exponentiates.  `tailB2 = 0x4006DB6E00000000 ≈ 2.8571434`, below which `erf` uses `R_a/S_a`, and `tailB1 = 0x4006DB6D00000000 ≈ 2.8571415`, from which `erfc` uses `R_b/S_b`, so each kernel covers every argument at which either function calls it.  The proof works with `erfcxN = erfcx/(2/√π)` and its equation `erfcxN' = 2 x erfcxN - 1`, so the enclosure of `π` does not enter.
+
+| Step | Method |
+|---|---|
+| Models | 32 pieces from 28 down to 1.25, each with a polynomial `p_j` of degree 16 in `t = x - c_j` that approximates `erfcxN`. |
+| Start | At 28, `erfcxN_asym` with 20 and 21 terms encloses `erfcxN` within about `10^-60`. |
+| Chain | `defectP p c = p' - 2 (c + t) p + 1` is checked below `eD_j` on the piece, and `ode_backward` gives `|erfcxN - p_j| ≤ s_j + eD_j (b_j - x)`.  At each junction the next piece's start bound `s_{j+1}` covers the previous model's error and the difference of the two polynomials. |
+| Kernel error | The derivative of `tailF` is `N(x)/(x² S(1/x²))² · ... - (1/x + 2 x - 1/erfcxN)`.  A check of degree 46 to 50 bounds its distance from the model's version on each piece, and `anchor_bound` evaluates `tailF` at 41 anchor points, with `exp` through a Taylor polynomial of 24 terms and its remainder.  Each sub-interval bound then follows from the anchor value and the derivative bound. |
+
+| Kernel | Proved | Largest sampled `|tailF|` | Source's statement |
+|---|---|---|---|
+| `R_a/S_a` on `[1.25, tailB2]` | `2^-56` | `2^-58.27` at `x ≈ 1.455` | `2^-62.57` |
+| `R_b/S_b` on `[tailB1, 28]` | `2^-56` | `2^-59.34` at `x = 28` | `2^-61.52` |
+
+The samples (`sample_tail.py`, 401 points per kernel, `erfc` from the series in `fval.py` at 60 digits) exceed the source's stated errors, so those statements do not bound the absolute error of `R/S` against `log (x erfcx x) + 0.5625`.  The proved bound is a uniform `2^-56` because the anchor and derivative budgets were set to that level.  It costs about `0.125 u` in the `erfc` budget, a small share of the total.  `gen_tail.py` computes the models, junctions, anchors, and budgets with exact rationals, and `emit_tail.py` and `emit_kernel.py` write `ErfTailCoeffs`, `ErfTailPieces0` to `ErfTailPieces7` (four pieces each, about 80 to 120 s per file), and `ErfTailKernel`.
+
+| Run | Result | Log |
+|---|---|---|
+| Tail base lemmas | Passed after casts on the right of bounds stated in `ℚ`, `Pi.mul_apply` after `HasDerivAt.mul`, and the removal of unused hypotheses from `deriv_bound` | `erf-tailbase-6.log` |
+| Pieces and kernel, first full build | `decide` on `Rat` fails to reduce, so every check uses `decide +kernel`.  `le_or_lt` is `le_or_gt` here. | `erf-tail-p0-1.log`, `erf-tail-p0-2.log` |
+| Pieces 0 to 7 and the kernel | Pieces passed.  `spos_a` failed on the cast of `5/4`, and the kernel on `exact_mod_cast` for `a31 = 5/4`. | `erf-tail-all-3.log` |
+| Kernel with the casts fixed | `tail_kernel_a` and `tail_kernel_b` with `propext`, `Classical.choice`, and `Quot.sound` | `erf-tail-all-4.log` |
+| Pieces with `#print axioms` for each model and piece bound | Passed, 81 declarations of the tail files with the permitted axioms | `erf-tools-2.log` |
