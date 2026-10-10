@@ -87,16 +87,16 @@ Separate target equalities cover `exp(+0) = exp(-0) = 1`, `exp(+infinity) = +inf
 | `tan` | [fdlibm, with the reduction of `Trig`](Verified/Examples/Tan.lean) | 1 step | Kernel bound proved; follows `sin` and `cos`. |
 | `sinh`, `cosh` | [fdlibm, calling `Exp.expWith` and `Tanh.expm1`](Verified/Examples/Sinh.lean) | 2 steps, 1 step | Open; follows `exp` and `expm1`. |
 | `asinh`, `acosh`, `atanh` | [fdlibm, calling `Log.logWith` and `Log1p.log1p`](Verified/Examples/Asinh.lean) | 2 steps each | Open; follows `log` and `log1p`. |
-| `exp2`, `exp10` | [Arm, with `Exp.expTable`](Verified/Examples/Exp2.lean) | 1 step | In progress (track `exp2`). |
+| `exp2`, `exp10` | [Arm, with `Exp.expTable`](Verified/Examples/Exp2.lean) | 1 step | Proved: [the byte theorems](Verified/Examples/Exp2Bytes.lean), `exp2_bytes_accuracy` and `exp10_bytes_accuracy`, from `Exp2Theorem.exp2_within` and `Exp10Theorem.exp10_within`. |
 | `log2` | [Arm](Verified/Examples/Log2.lean) | 1 step | In progress (track `log`). |
 | `log10` | [fdlibm](Verified/Examples/Log10.lean) | 1 step | In progress (track `log`). |
-| `pow` | [Arm, with `Exp.expTable`](Verified/Examples/Pow.lean) | 1 step | Open. |
+| `pow` | [Arm, with `Exp.expTable`](Verified/Examples/Pow.lean) | 1 step | In progress (track `exp2`). |
 | `sinpi`, `cospi`, `tanpi` | [fdlibm, calling the `Trig` and `Tan` kernels](Verified/Examples/Sinpi.lean) | 1 step | Open. |
-| `erf`, `erfc` | [fdlibm, calling `Exp.expWith`](Verified/Examples/Erf.lean) | 1 step, 4 steps | Open. |
+| `erf`, `erfc` | [fdlibm, calling `Exp.expWith`](Verified/Examples/Erf.lean) | 1 step, 4 steps | The real functions are defined and analyzed in `RealErf`; the kernel bounds and theorems are in progress (track `erf`).  `erfc` reaches four steps at `0x1.527f4fb0d9331p+0`, so its bound has no margin. |
 | `tgamma`, `lgamma` | CORE-MATH, with a verified software fused multiply-add | 1 step | Port in progress. |
 | `j0`, `j1`, `y0`, `y1`, `jn`, `yn` | fdlibm | A bound in units of the modulus `√(J² + Y²)`, growing with the order for `jn` and `yn` | Port in progress. |
 
-Each bound is the decided one, from the source's stated error, the sampled test that `tests/verified/run.sh` runs, and the errors of exact models of the ports at the worst inputs that Zimmermann's survey of libm accuracy lists for FreeBSD.  Those inputs raised `atan2` and `asinh` to two steps and `erfc` to four, which the sampled tests had missed.  Where a port calls `Exp.expWith` or `Log.logWith` in place of fdlibm's own `exp` or `log`, the results can differ from fdlibm's in the last bit, and the journal records each such call.
+Each bound is the decided one, from the source's stated error, the sampled test that `tests/verified/run.sh` runs, and the errors of exact models of the ports at the worst inputs that Zimmermann's survey of libm accuracy lists for FreeBSD.  Those inputs raised `atan2` and `asinh` to two steps and `erfc` to four, which the sampled tests had missed.  Every accuracy check now includes the double-precision inputs of Tables 4 to 11 of Gladman, Innocente, Mather, Ozaki, and Zimmermann, [Accuracy of Mathematical Functions](https://members.loria.fr/PZimmermann/papers/accuracy.pdf) (August 2026), and each check's largest distance equals the decided bound.  Where a port calls `Exp.expWith` or `Log.logWith` in place of fdlibm's own `exp` or `log`, the results can differ from fdlibm's in the last bit, and the journal records each such call.
 
 The generated compiler theorems establish that the compiled module computes each Lean algorithm.  The scalar routines have proofs allowing no trap under their runtime and table premises.  [The Verified compiler documentation](Verified/README.md) describes those premises and the generated `denote_eq`, `implements`, `initial`, and `bytes` results.
 
@@ -164,7 +164,7 @@ The approved full `exp` theorem is proved.  The decisions below set the order, t
 | 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | `log` proved.  The others in progress. |
 | 3 | `log1p`, `tan`, `atan`, `atan2`, `asin`, `acos` | Cancellation, endpoint behavior, reciprocal error, signed zeros, and quadrants.  Trig reduction feeds `tan`; each kernel needs its own approximation proof. | Ported; kernel bounds proved; theorems in progress. |
 | 4 | `sinh`, `cosh`, `asinh`, `acosh`, `atanh` | Piecewise formulas using proved exponential, logarithm, and square-root results.  Control cancellation, domains, and intermediate overflow. | Ported. |
-| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | Ported; `exp2`, `exp10`, `log2`, and `log10` theorems in progress. |
+| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | `exp2` and `exp10` proved; `log2`, `log10`, and `pow` in progress. |
 | 6 | `sinpi`, `cospi`, `tanpi`, `erf`, `erfc` | Reduction in units of pi.  Error-function definitions, approximation and remainder bounds, and the small `erfc` tail. | Ported. |
 | 7 | `gamma`/`tgamma`, `lgamma` | Recurrence, reflection, approximation and asymptotic remainders, poles, sign, and overflow. | Planned.  Names and sign API need agreement. |
 | 8 | Bessel `j0`, `j1`, `y0`, `y1`, then `jn`, `yn` | Real specifications, small-argument and asymptotic errors, recurrence direction and stability, and accumulated error for integer order. | Planned.  Order type and range need agreement. |
