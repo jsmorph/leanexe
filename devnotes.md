@@ -29610,3 +29610,41 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-11: The `exp2` theorem (track `exp2`, debtop1)
+
+The track works in `/home/somebody/src/lt-exp2` on debtop1, branch `w/exp2`, a worktree of the standalone clone `/home/somebody/src/lt-debtop`, started from `transcendentals` at `c9ff162d`.  Its task is the full theorem for Arm's `exp2` and `exp10` as `Verified/Examples/Exp2.lean` ports them, with byte theorems.  The first milestone, `exp2` for every finite input, is done.  The real function is `Real.rpow 2`, written `(2 : ℝ) ^ a`, which reads as the statement intends; `Real.rpow_def_of_pos` turns it into `exp (log 2 · a)` where the proofs need it.
+
+`Exp2.exp2Core` shares Arm's table, scale arithmetic, and `specialcase` structure with `Exp.expCore`, but three parts differ: the reduction adds `0x1.8p52 / 128` to `x` instead of rounding `x · N/ln 2`, the polynomial approximates `2 ^ r - 1` with `C1 r` in place of `r`, and the positive special case lowers the scale by one binade and doubles, where `exp` lowers it by 1009 and multiplies by `2 ^ 1009`.  The exponential proof's reconstruction lemmas are stated for `exp`'s residual and evaluation words, so they do not apply directly.  The plan generalized them over any polynomial word `w` that approximates `T + ρ - 1`, with `ρ` the real factor (`2 ^ r` here, `10 ^ r` for `exp10`), and reused the exp table, scale encoding, one-step, and compensated-subnormal lemmas unchanged.  The shifted key `ki = 0x42C8000000000000 + k` of `exp2` raised by `7 · 2 ^ 52` has the form `0x4338000000000000 + k` of `exp`'s key with the same low 19 bits, so `ExpScaleBits` and `ExpSpecialScale` apply to it.
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64BinadeWord.lean` | The bits `(g + 1) · 2 ^ 52 + (R - 2 ^ 52)` of a nonnegative word with scaled value `R · 2 ^ g`. |
+| `Exp2Selection.lean` | The shifted sum in the binade `[2 ^ 45, 2 ^ 46)`, its bits, `k` within `1/2` of `128 x`, the exact `k / 128`, and the exact residual with `|r| ≤ 1/256`. |
+| `Exp2Approximation.lean` | The coefficients against `(log 2) ^ n / n!` on the enclosure of `log 2` (kernel checks on rationals), and the polynomial within `2 ^ -58` of `2 ^ r - 1`. |
+| `Exp2Evaluation.lean` | The rounded evaluation, with `F64ErrorTrack.Approx`, within `2 ^ -56` of `t + 2 ^ r - 1` and at most `1/64`. |
+| `ArmReconstruction.lean` | `presum_general` and `reconstruction_general` for any polynomial word, `table_general`, `target_range`, and `ordinary_within`. |
+| `ArmSpecial.lean` | `positive_within` (lowered scale doubled, below `2 ^ 1024 - 2 ^ 980`) and `negative_within` (scaled down by `2 ^ -1022`, compensated below 1). |
+| `ArmScale.lean` | The scale word's value for every normal binade, and the lowered scale `2 ^ (q - 1) H j`. |
+| `Exp2Core.lean` | The key, the float-to-word identities, the state of `exp2Core`, `2 ^ x = 2 ^ q exp (j log 2 / 128) 2 ^ r`, and `319/320 ≤ 2 ^ r ≤ 257/256`. |
+| `Exp2Paths.lean` | One step on the three paths: `|x| ≤ 928`, `928 < x ≤ 1024 - 2 ^ -43`, `-1075 < x < -928`. |
+| `Exp2Branches.lean` | The branches of `exp2With`, the special flag as `|x| > 928`, and the bound below 1024. |
+| `Exp2Theorem.lean` | The tiny, overflow, and underflow cases, `exp2_within`, and the exceptional values. |
+
+The accepted statements are `Exp2Theorem.exp2_within : Finite x.toBits → F64SignedRounding.WithinSteps 1 ((2 : ℝ) ^ value x.toBits) (Exp2.exp2 x).toBits`, and `exp2_pos_zero`, `exp2_neg_zero` (`0x3FF0000000000000`), `exp2_pos_infinity` (`0x7FF0000000000000`), `exp2_neg_infinity` (`0`), and `exp2_nan` (the canonical NaN).  Every theorem in these modules reports only `propext`, `Classical.choice`, and `Quot.sound` in `exp2-theorem-3.log`, and the modules build without warnings.
+
+The error budget has slack everywhere.  The polynomial's error is at most `2 ^ -58`, its rounding `2 ^ -57`, the scaled sum's error `(21/128) u s` before the last rounding and `(6/5) u s` after it, and the table's `s / 2 ^ 98`, against the `(7/5) u 2 ^ q H j` that `ExpOneStep.one_step_of_error` accepts.  The doubling on the positive special path is exact because the sum stays below `2 ^ 1023`: the largest double below 1024 is `1024 - 2 ^ -43`, where `2 ^ x ≤ 2 ^ 1024 - 2 ^ 980`.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Selection bounds | `norm_num at *` turned the real goal `2 ^ 52 ≤ R` into a statement on naturals, which `linarith` could not combine with the real hypotheses.  Normalizing only the hypotheses fixed it. | `exp2-selection-1`, `-2` |
+| Approximation casts | `exact_mod_cast` did not move rational bounds such as `ratOfWord c1 ≤ 7/10` to the reals, as the poly track had found.  `Rat.cast_le.mpr` followed by `push_cast` worked. | `exp2-approx-1` |
+| Evaluation budget | Two chained error bounds were below what the rules give (`2 ^ -60 + 2 ^ -67 + 2 ^ -60 > 2 ^ -59`); the final bound became `2 ^ -57` and the comparison with `2 ^ r - 1` `2 ^ -56`. | `exp2-eval-1`, `-2` |
+| Reconstruction | A `positivity` call on `0 ≤ value s * 2` timed out in `whnf`, and the table bound `s / 2 ^ 99` was too tight; explicit `mul_nonneg` and `s / 2 ^ 98` fixed them. | `arm-recon-1` |
+| Lean panic | `INTERNAL PANIC: Nat.pow exponent is too big`.  Bisection with truncated copies (`exp2-diag-*`) located it: `linarith` preprocesses every hypothesis with `norm_num`, whose `rpow` extension tried to evaluate `(2 : ℝ) ^ ((1024 : ℝ) - 1 / 2 ^ 43)` exactly.  Moving the exponential bound into its own lemma, with no such hypothesis in context, fixed it.  Later proofs keep `linarith` away from real powers with numeral exponents. | `exp2-paths-1`, `exp2-diag-C*`, `exp2-diag-T*` |
+| Branch shapes | A single lemma for the branches from 1024 on had to predict the shape `simp` leaves for `decide`d conditions; one lemma per branch, each closing to the branch value, avoided that. | `exp2-branches-1` |
+| Overflow bound | The first `positive_within` assumed `E ≤ 2 ^ 1024 - 2 ^ 984`, false for the double below 1024; the proof had room for `2 ^ 1024 - 2 ^ 980`. | `arm-scale-1` |
+
+- [x] `exp2` for every finite input, with the exceptional values.
+- [ ] `exp10`: the reduction through `ExpIntegerSelection` with `invlog10_2N`, the two-part residual, `log 10` bounds, and the coefficients against `(log 10) ^ n / n!`.  The overflow bound `0x1.34413509f79ffp8` lies above `log10` of the overflow threshold, so the overflow branch is exact; the largest double below it gives `10 ^ x ≤ DBL_MAX (1 - 2 ^ -42.8)`.
+- [ ] Byte theorems and the file theorem module.
