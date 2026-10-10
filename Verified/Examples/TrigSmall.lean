@@ -7,7 +7,7 @@ import Mathlib.Analysis.Real.Pi.Bounds
 /-!
 The accuracy of `Trig.remSmall`, fdlibm's one-step reduction `x - k π/2` for `k` from 1 to 4.  The
 product `k · pio2_1` is exact, `z = x - k · pio2_1` is exact, and `y0 + y1` equals
-`z - fl(k · pio2_1t)` exactly.  For `|x - k π/2|` from `2 ^ -22` to `π/4 + 2 ^ -20`, the result lies
+`z - fl(k · pio2_1t)` exactly.  For `|x - k π/2|` from `2 ^ -22` to `π/4 + 2 ^ -17`, the result lies
 within `2 ^ -60` relative of `x - k π/2`.
 -/
 
@@ -103,7 +103,7 @@ theorem value_of_scaled (w : UInt64) : value w = (Wasm.IEEE64.scaledValue w : �
 theorem remSmallW_spec (x kb C W : UInt64) (K : Nat) (hc : SmallConst K kb C W) (hK1 : 1 ≤ K)
     (hK4 : K ≤ 4) (hxf : Finite x) (hx : 1 / 2 ≤ |value x|)
     (hr1 : 1 / 2 ^ 22 ≤ |value x - K * (Real.pi / 2)|)
-    (hr2 : |value x - K * (Real.pi / 2)| ≤ Real.pi / 4 + 1 / 2 ^ 20) :
+    (hr2 : |value x - K * (Real.pi / 2)| ≤ Real.pi / 4 + 1 / 2 ^ 17) :
     Finite (remSmallW x kb).1 ∧ Finite (remSmallW x kb).2 ∧
       |value (remSmallW x kb).1 + value (remSmallW x kb).2 - (value x - K * (Real.pi / 2))| ≤
         |value x - K * (Real.pi / 2)| / 2 ^ 60 ∧
@@ -177,8 +177,8 @@ theorem remSmallW_spec (x kb C W : UInt64) (K : Nat) (hc : SmallConst K kb C W) 
   have hDhi : |value z - value W| ≤ 4 / 5 := by
     have h := abs_add_le r (value z - value W - r)
     rw [show r + (value z - value W - r) = value z - value W by ring] at h
-    have hr' : |r| ≤ Real.pi / 4 + 1 / 2 ^ 20 := hr2
-    have : Real.pi / 4 + 1 / 2 ^ 20 + 1 / 2 ^ 83 ≤ (4 : ℝ) / 5 := by nlinarith
+    have hr' : |r| ≤ Real.pi / 4 + 1 / 2 ^ 17 := hr2
+    have : Real.pi / 4 + 1 / 2 ^ 17 + 1 / 2 ^ 83 ≤ (4 : ℝ) / 5 := by nlinarith
     linarith
   obtain ⟨hyf, hye⟩ := sub_rel z W hzf hc.Wf (by linarith)
   generalize Wasm.IEEE64.sub z W = y0 at hyf hye ⊢
