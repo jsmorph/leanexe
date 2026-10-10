@@ -29737,3 +29737,38 @@ Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, 
 ## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
 
 Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
+
+## 2026-10-11: Error function, real analysis (track `erf`)
+
+The `erf` track works in a separate worktree, branch `w/erf`, a worktree of a separate clone created from `transcendentals` at `67932055`.  Its goal is the full theorems for `Erf.erf` (one step) and `Erf.erfc` (four steps), with byte theorems.  The pinned Mathlib has no error function, no `erfc`, and no asymptotic series of either.  It has the Gaussian integral on the half-line (`integral_gaussian_Ioi`), the fundamental theorem of calculus for continuous integrands (`Continuous.integral_hasStrictDerivAt`), and bounds on `π` to 20 digits (`pi_gt_d20`, `pi_lt_d20`).
+
+### Plan
+
+- [x] Define `erf`, `erfc`, and `erfcx x = exp (x²) erfc x`, and prove the facts the kernels need (`LeanExe/ProofKit/RealErf.lean`).
+- [ ] Bound each rational function of `s_erf.c` against the quantity it approximates.
+- [ ] Prove `WithinSteps 1` for `erf` and `WithinSteps 4` for `erfc`, the exceptional values, the byte theorems, and the file theorems.
+
+### `RealErf`
+
+`erf x = (2/√π) ∫₀ˣ exp (-t²) dt` and `erfc x = 1 - erf x`.  The derivative comes from the fundamental theorem of calculus, oddness from a zero derivative of `erf (-x) + erf x`, strict monotonicity from the positive derivative, and the limit 1 at positive infinity from `intervalIntegral_tendsto_integral_Ioi` and `integral_gaussian_Ioi`.  `scale_bounds` encloses `2/√π` between `333038747416263463341/2^68` and `333038747416263463344/2^68`, a relative width near `10^-20`, from Mathlib's 20-digit bounds on `π`.
+
+| Theorem | Statement |
+|---|---|
+| `exp_nonpos_remainder` | For `y ≤ 0`, the exponential's Taylor polynomial of degree `n - 1` errs by at most `(-y)^n/n!`.  The proof is an induction in which `B ± (exp - T)` is antitone on `(-∞, 0]`. |
+| `erf_series` | For every real `x`, `|erf x - (2/√π) x Σ k < n, (-1)^k x^(2k)/(k! (2k + 1))| ≤ (2/√π) |x|^(2n+1)/(n! (2n + 1))`, with the partial sum as `x * eval (erfCoeffs n) (x^2)` for `PolyBound`.  The bound integrates `exp_nonpos_remainder` at `-t²` by the same monotonicity argument, so it holds beyond `|x| ≤ 1`, which the kernel range up to 1.25 needs. |
+| `erfc_asym`, `erfcx_asym` | For `x > 0` and every `N`, `0 ≤ (-1)^N (erfc x - asym N x)`, where `asym N x = (1/√π) exp (-x²) Σ n < N, a_n x^(-2n-1)` and `a_n = (-1)^n (2n-1)!!/2^n`.  The derivative of `erfc - asym N` is `-(2/√π) a_N exp (-x²) x^(-2N)`, whose sign makes `(-1)^N (erfc - asym N)` antitone, and both functions tend to 0. |
+| `hasDerivAt_erfcx` | `erfcx' = 2 x erfcx - 2/√π`. |
+| `erfcx_backward` | If `|p' - 2 x p + 2/√π| ≤ η` on `[a, b]` with `0 ≤ a` and `|erfcx b - p b| ≤ σ`, then `|erfcx x - p x| ≤ σ + η (b - x)` on `[a, b]`.  The equation's solutions grow like `exp (x²)`, so errors shrink toward smaller `x`, and an enclosure from the asymptotic bounds at a large `x` can be carried down to 1.25 piece by piece. |
+
+The tail rational functions of `s_erf.c` approximate `log (x erfc x) + x² + 0.5625` in `s = 1/x²` on `[1.25, 28)`.  Below about 8 the asymptotic series is too inaccurate, and the power series loses the result to cancellation, so the plan for that range is polynomial models of `erfcx` on pieces, checked against its differential equation with `PolyBound` and chained downward with `erfcx_backward` from the asymptotic enclosure.
+
+### Runs
+
+| Run | Result | Log |
+|---|---|---|
+| First build of `Verified.Examples.Erf`, `TaylorRemainder`, and `PolyChecks` in this worktree | Passed, 3,630 jobs | `erf-port-build-1.log` |
+| `RealErf`, first draft | 21 errors.  `convert ... using 1` on `HasDerivAt` left goals that equate instance paths, `IntegrableOn` and `intervalIntegral_tendsto_integral_Ioi` needed `open MeasureTheory`, `left_mem_Ici` and `right_mem_Iic` are `self_mem_Ici` and `self_mem_Iic` here, `ge_of_tendsto` was the wrong direction for `le_of_tendsto`, and `positivity` cannot use a hypothesis for `(-1)^N a_N ≥ 0`. | `erf-real-1.log` |
+| Second draft, with `HasDerivAt.congr_deriv` in place of `convert` | Five errors: a power identity, two `linarith` steps whose products needed the factor `2/√π` pulled out, an inverse-power identity, and `(erfcx - p) u`, which `ring` treats as one atom until `Pi.sub_apply` rewrites it | `erf-real-2.log` |
+| Third draft | Two `linarith` failures: the hints `le_abs_self` and `neg_abs_le` were swapped between the two signs | `erf-real-3.log` |
+| Fourth draft | Passed, 12 theorems with the permitted axioms, no warnings | `erf-real-4.log` |
+| With `erfc_eq`, `erfc_strictAnti`, and `erfcx_asym` | Passed, 14 theorems with `propext`, `Classical.choice`, and `Quot.sound` only, no warnings | `erf-real-5.log` |
