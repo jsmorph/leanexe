@@ -113,10 +113,10 @@ The user reviewed the statement on 2026-10-10, and the review found four limits.
 
 | Limit | Detail | Plan |
 |---|---|---|
-| Talos and the decoder are trusted | The statement uses the CodeLib interpreter's `Wasm.run`, `Module.initialStore` for instantiation, and `Wasm.Encoding.decode`, which [the design notes](docs/design.md#scope-of-the-theorem) list as trusted.  The decoder test runs the official WebAssembly testsuite, and the interpreter's testsuite report in the CodeLib package is empty.  Engines outside the deterministic profile, such as browsers, may return other NaN bits. | `tests/verified/run.sh` passed on 2026-10-10.  The interpreter testsuite needs CodeLib's `vendor/testsuite` submodule, which is not checked out on minideb1, and `just`.  Both need the user's approval. |
+| Talos and the decoder are trusted | The statement uses the CodeLib interpreter's `Wasm.run`, `Module.initialStore` for instantiation, and `Wasm.Encoding.decode`, which [the design notes](docs/design.md#scope-of-the-theorem) list as trusted.  The decoder test runs the official WebAssembly testsuite, and the interpreter's testsuite report in the CodeLib package is empty.  Engines outside the deterministic profile, such as browsers, may return other NaN bits. | `tests/verified/run.sh` and the WebAssembly testsuite passed on 2026-10-10.  The testsuite run recorded 64,751 passes, no failures, and 346 skips, and every float, conversion, integer, and memory-access file passed all its commands.  The testsuite runner reads modules through the interpreter's text decoder, so it tests execution.  `tests/decoder/DecodeTest.lean` tests the binary decoder and was not run. |
 | The file theorem trusts `binary_file%` | `ExpFile.exp_file` proves that `build/verified/exp.wasm` holds `encode Exp.compiled.module`, and `exp_file_decode` that the file decodes to the module of `exp_bytes_accuracy`.  The elaborator `binary_file%`, which reads the file, is trusted, as for `gpt_file`. | None. |
 | Canonical NaN argument only | The argument is `x.toBits` for a Lean `Float`, and `F64Bits.toBits_canonical` shows that every NaN `Float` has the canonical bits.  A WebAssembly caller can pass any of the other `2^53 - 3` NaN words.  For such a word the compiled code reaches `1.0 + x`, which gives the canonical NaN in Talos, but no theorem states this. | None.  The limit stays recorded. |
-| Calls to the module's other exports | `exp_bytes_accuracy` covers sequences of calls to `exp`.  A call to `alloc`, `release`, `specialCase`, `expCore`, or `expWith` between them needs a theorem that it preserves `Ready`. | None planned. |
+| Host actions between calls | `exp_bytes_accuracy` covers sequences of calls to `exp`.  The module also exports `alloc`, `release`, `specialCase`, `expCore`, `expWith`, its memory, and the globals `allocCount` and `freeCount`.  A host that calls another export or writes the memory between calls to `exp` needs a theorem that the action preserves `Ready`. | None planned. |
 
 ### Library results added for the theorem
 
@@ -135,7 +135,7 @@ GPT's reconstruction lemmas now expose the bound before the final rounding (`pre
 - [x] Commit the theorem with its limits recorded.
 - [x] Prove the store invariant and the bound for every call in a sequence of calls to `exp`.
 - [x] Add `exp_file` and run `tests/verified/run.sh`.
-- [ ] Run the interpreter testsuite.  It needs CodeLib's `vendor/testsuite` submodule, which is not checked out on minideb1, and `just`, which minideb1 lacks.  The user decides how to provide both.
+- [x] Run the interpreter testsuite.
 - [ ] Decide whether `Verified.Examples.ExpTheorem` should join a repository test driver or the root `Verified` import.
 - [ ] Consolidate the proof files: GPT's 39 files and the new ones contain lemmas that belong in ProofKit, such as the exponent and magnitude bounds in `ExpNegativeFinal` and `ExpTheorem`.
 
