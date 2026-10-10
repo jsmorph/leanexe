@@ -99,7 +99,7 @@ The generated compiler theorems establish that the compiled module computes each
 | `abs(a) ≥ 1024`, finite | the products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
 | zeros, infinities, NaN | `1 + x` and the `-∞` test | `ExpTheorem.exp_pos_zero` through `exp_nan` |
 
-The proof modules are separate from the root `Verified` import.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
+The proof modules are separate from the root `Verified` import.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
 
 ### Limits of the exponential theorem
 
@@ -130,7 +130,7 @@ GPT's reconstruction lemmas now expose the bound before the final rounding (`pre
 - [x] Prove the store invariant and the bound for every call in a sequence of calls to `exp`.
 - [x] Add `exp_file` and run `tests/verified/run.sh`.
 - [x] Run the interpreter testsuite.
-- [ ] Decide whether `Verified.Examples.ExpTheorem` should join a repository test driver or the root `Verified` import.
+- [x] Check the theorem in `tests/verified/run.sh`.  The user chose this over the root `Verified` import.
 - [ ] Consolidate the proof files: GPT's 39 files and the new ones contain lemmas that belong in ProofKit, such as the exponent and magnitude bounds in `ExpNegativeFinal` and `ExpTheorem`.
 
 ## Function agenda

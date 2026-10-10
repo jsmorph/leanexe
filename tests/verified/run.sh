@@ -8,7 +8,10 @@
 # ExpAccuracy.lean, TanhAccuracy.lean, and LogAccuracy.lean check Trig.sin, Trig.cos, Exp.exp,
 # Tanh.expm1, and Log.log within one unit in the last place, and Tanh.tanh within two, of
 # references computed with Lean's integers, and Verified/Examples/FourierAccuracy.lean checks that
-# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
+# Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.  After writing
+# the modules, it builds Verified/Examples/ExpTheorem.lean and checks Verified/Examples/ExpFile.lean,
+# whose theorems state that exp.wasm holds the module of ExpTheorem.exp_bytes_accuracy, and it fails
+# unless both report only the axioms propext, Classical.choice, and Quot.sound.
 # Run `tools/leanrun --timeout 60m lake build Verified` first.  Usage: tests/verified/run.sh
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
@@ -47,6 +50,21 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
 done
+# exp_file_decode depends on ExpTheorem.exp_bytes_accuracy, so its axiom report covers the theorem.
+tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem
+expReports=$(tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean) || {
+  echo "$expReports"
+  echo "fail: Verified/Examples/ExpFile.lean does not check against $out/exp.wasm" >&2
+  exit 1
+}
+permitted=$(grep -c "depends on axioms: \[propext, Classical.choice, Quot.sound\]$" \
+  <<<"$expReports" || true)
+if [ "$permitted" -ne 2 ]; then
+  echo "$expReports"
+  echo "fail: exp_file and exp_file_decode must report only the three permitted axioms" >&2
+  exit 1
+fi
+echo "exp: exp.wasm holds the module of the exponential theorem, with the permitted axioms"
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
