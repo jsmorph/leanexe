@@ -1,14 +1,17 @@
 import Verified.Examples.Log1p
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Log1p.log1p` against a reference computed with Lean's integers, rounded to
 the nearest double.  fdlibm states an error below one unit in the last place, so each result must
-lie within one unit of the reference.  The arguments are evenly spaced values from -1 to 10 and
-from -0.3 to 0.42, the range without reduction, hashed positive values over all exponents, hashed
-values from -1 to 0, the doubles next to the high words that the code compares with, next to the
-`x` at which `1 + x` crosses the code's `√2` and `√2/2`, and next to `2 ^ 53`, the doubles
-`-1 + 2 ^ -k`, and the special values.  Lean has no `log1p` that calls the C library, so the check
-reports no library distance.  It exits with an error at the first result further than one unit
+lie within one unit of the reference.  The arguments are evenly spaced values from -1 to 10 and from
+-0.3 to 0.42, the range without reduction, hashed positive values over all exponents, hashed values
+from -1 to 0, the doubles next to the high words that the code compares with, next to the `x` at
+which `1 + x` crosses the code's `√2` and `√2/2`, and next to `2 ^ 53`, the doubles `-1 + 2 ^ -k`,
+and the special values.  Lean has no `log1p` that calls the C library, so the check reports no
+library distance.  The arguments also include those of `WorstCases`, which give the largest known
+errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente,
+Mather, Ozaki, and Zimmermann.  It exits with an error at the first result further than one unit
 from the reference.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.Log1pAccuracy
@@ -52,7 +55,8 @@ def args : Array Float :=
     Float.ofBits 0x8000000000000001]
   evenly 100000 (-1.0) 10.0 ++ evenly 100000 (-0.3) 0.42 ++
     (hashed 100000 41 0 2047).map Float.abs ++ (hashed 50000 43 0 1023).map (fun x => -x.abs) ++
-    edges ++ toMinusOne ++ special
+    edges ++ toMinusOne ++ special ++
+    WorstCases.log1p.map Float.ofBits
 
 end Verified.Examples.Log1pAccuracy
 

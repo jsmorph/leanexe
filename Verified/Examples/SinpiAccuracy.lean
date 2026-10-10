@@ -1,4 +1,5 @@
 import Verified.Examples.Sinpi
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Sinpi.sinpi`, `Sinpi.cospi`, and `Sinpi.tanpi` against references computed
@@ -9,11 +10,13 @@ Where the result is a zero or an infinity, the check also requires its sign, by 
 `cospi (n + 1/2)` is `+0`, `tanpi n` has the sign of `n` for an even `n` and the other sign for an
 odd one, and `tanpi (n + 1/2)` is `+∞` for an even `n` and `-∞` for an odd one.  The arguments are
 evenly spaced values from -4 to 4, the multiples of `1/4` from -100 to 100 and the doubles next to
-them, where the functions have their zeros, poles, and values `±1`, the doubles next to
-`n + 1/2` for `n` up to `2 ^ 51`, hashed values over the exponents from `2 ^ -60` to `2 ^ 60` with
-both signs, the doubles next to the high words that the code compares with, subnormal values, and
-the special values.  Lean has no binding of these functions, so the check reports no library
-distance.  It exits with an error at the first result that fails.  Run with
+them, where the functions have their zeros, poles, and values `±1`, the doubles next to `n + 1/2`
+for `n` up to `2 ^ 51`, hashed values over the exponents from `2 ^ -60` to `2 ^ 60` with both signs,
+the doubles next to the high words that the code compares with, subnormal values, and the special
+values.  Lean has no binding of these functions, so the check reports no library distance.  The
+arguments also include those of `WorstCases`, which give the largest known errors of thirteen
+libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and
+Zimmermann.  It exits with an error at the first result that fails.  Run with
 `lake env lean --run`. -/
 
 namespace Verified.Examples.SinpiAccuracy
@@ -103,7 +106,8 @@ def args : Array Float :=
     Float.ofBits 0x8000000000000001, Float.ofBits 0x000FFFFFFFFFFFFF,
     Float.ofBits 0x7FEFFFFFFFFFFFFF]
   evenly 100000 (-4.0) 4.0 ++ quarters.flatMap near ++ halves.flatMap near ++
-    hashed 100000 139 963 120 ++ edges.flatMap near ++ special
+    hashed 100000 139 963 120 ++ edges.flatMap near ++ special ++
+    (WorstCases.sinpi ++ WorstCases.cospi ++ WorstCases.tanpi).map Float.ofBits
 
 end Verified.Examples.SinpiAccuracy
 

@@ -1,16 +1,18 @@
 import Verified.Examples.Exp
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Exp.exp` against `Reference.exp` rounded to the nearest double.  Arm states
-an error of 0.511 units in the last place, so each result must lie within one unit of the
-reference.  The check first compares each table entry `H j · (1 + T j)` with `2 ^ (j/128)` from the
-same series, within `2 ^ -100` relatively.  The arguments are evenly spaced values over the whole
-range in which `exp` is finite and positive, hashed values over the exponents from `2 ^ -60` to
-`2 ^ 10` with both signs, the doubles next to the thresholds of the code and of overflow and
-underflow, and the special values.  It also reports, for information, the distance from the
-reference of the C library's `exp`, which Lean's `Float.exp` calls.  The check exits with an error
-at the first result further than one unit from the reference.  Run with
-`lake env lean --run`. -/
+an error of 0.511 units in the last place, so each result must lie within one unit of the reference.
+The check first compares each table entry `H j · (1 + T j)` with `2 ^ (j/128)` from the same series,
+within `2 ^ -100` relatively.  The arguments are evenly spaced values over the whole range in which
+`exp` is finite and positive, hashed values over the exponents from `2 ^ -60` to `2 ^ 10` with both
+signs, the doubles next to the thresholds of the code and of overflow and underflow, and the special
+values.  The arguments also include those of `WorstCases`, which give the largest known errors of
+thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki,
+and Zimmermann.  It also reports, for information, the distance from the reference of the C
+library's `exp`, which Lean's `Float.exp` calls.  The check exits with an error at the first result
+further than one unit from the reference.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.ExpAccuracy
 
@@ -45,7 +47,8 @@ def args : Array Float :=
     -Float.ofBits 0x3C90000000000000, 1.0, -1.0, 0.5].flatMap near
   let special := #[0.0, -0.0, Float.ofBits 0x7FF0000000000000, Float.ofBits 0xFFF0000000000000,
     Float.ofBits 0x7FF8000000000000, 1e300, -1e300, Float.ofBits 1, -Float.ofBits 1]
-  evenly 120000 (-745.5) 710.0 ++ hashed 60000 13 963 71 ++ edges ++ special
+  evenly 120000 (-745.5) 710.0 ++ hashed 60000 13 963 71 ++ edges ++ special ++
+    WorstCases.exp.map Float.ofBits
 
 end Verified.Examples.ExpAccuracy
 
