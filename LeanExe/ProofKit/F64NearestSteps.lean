@@ -95,15 +95,17 @@ theorem two_gaps (n a : Nat) (ha : a * 2 ^ 52 ≤ n) (hn : n + 2 < limit) :
   linarith
 
 /-- From the nonnegative steps to `WithinSteps`. -/
-theorem within_of_steps (y : ℝ) (hy : 0 ≤ y) (hyt : y < (2 : ℝ) ^ 1023) (c : UInt64)
-    (hc : c.toNat < limit)
+theorem below_threshold (y : ℝ) (hy : y < (2 : ℝ) ^ 1023) :
+    y < F64PositiveRounding.overflowThreshold := by
+  unfold F64PositiveRounding.overflowThreshold
+  have : (2 : ℝ) ^ 1023 ≤ 2 ^ 1024 - 2 ^ 970 := by norm_num
+  linarith
+
+theorem within_of_steps (y : ℝ) (hy : 0 ≤ y) (hth : y < F64PositiveRounding.overflowThreshold)
+    (c : UInt64) (hc : c.toNat < limit)
     (hsteps : c.toNat ≤ (F64NearestEven.roundNearestEven y).toNat + 1 ∧
       (F64NearestEven.roundNearestEven y).toNat ≤ c.toNat + 1) :
     F64SignedRounding.WithinSteps 1 y c := by
-  have hth : y < F64PositiveRounding.overflowThreshold := by
-    unfold F64PositiveRounding.overflowThreshold
-    have : (2 : ℝ) ^ 1023 ≤ 2 ^ 1024 - 2 ^ 970 := by norm_num
-    linarith
   rw [← F64PositiveRounding.reference_finite y hth] at hsteps
   exact F64SignedRounding.within_of_nonneg 1 y hy c (by have := hc; unfold limit at this; omega)
     hsteps.1 hsteps.2
@@ -119,7 +121,7 @@ theorem nearest_ge (y : ℝ) (w lo : UInt64) (hw : Nearest y w) (hlo : lo.toNat 
   linarith
 
 /-- The value of the third word of binade `e`. -/
-theorem third_word_value (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2045) :
+theorem third_word_value (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046) :
     value (UInt64.ofNat (e * 2 ^ 52 + 2)) =
       ((2 : ℝ) ^ (e + 51) + 2 * 2 ^ (e - 1)) / 2 ^ 1074 := by
   have hb := boundary_value e he (by omega)
@@ -140,7 +142,7 @@ theorem below_two (n k L : Nat) (h : k + 2 ≤ n) (hn : n < L) :
 theorem two_le_of_lt (n L : Nat) (h : 2 ≤ n) (hn : n < L) : n - 2 + 2 < L ∧ n - 2 + 2 = n := by
   omega
 
-theorem boundary_lt_limit (e : Nat) (he' : e ≤ 2045) : e * 2 ^ 52 + 2 < limit := by
+theorem boundary_lt_limit (e : Nat) (he' : e ≤ 2046) : e * 2 ^ 52 + 2 < limit := by
   unfold limit
   omega
 
@@ -151,7 +153,7 @@ theorem previous_binade (e : Nat) (he : 2 ≤ e) : (e - 1) * 2 ^ 52 + 2 ≤ e * 
   exact Nat.add_le_add_left (by norm_num) _
 
 /-- The steps for `y` at least two spacings into binade `e`. -/
-theorem steps_interior (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2045)
+theorem steps_interior (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
     (hy : ((2 : ℝ) ^ (e + 51) + 2 * 2 ^ (e - 1)) / 2 ^ 1074 ≤ y)
     (hc : Nearest s c) (hw : Nearest y w) (hd : |s - y| < (2 : ℝ) ^ (e - 1) / 2 ^ 1074) :
     c.toNat ≤ w.toNat + 1 ∧ w.toNat ≤ c.toNat + 1 := by
@@ -174,15 +176,16 @@ theorem steps_interior (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' 
 
 /-- Within one step when `|s - y|` is below the spacing `d = 2 ^ (e - 1)` scaled units of the
 binade of `y` and `y` lies at least two spacings above the start of the binade. -/
-theorem within_of_interior (y s : ℝ) (c : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2045)
-    (hy : ((2 : ℝ) ^ (e + 51) + 2 * 2 ^ (e - 1)) / 2 ^ 1074 ≤ y) (hyt : y < (2 : ℝ) ^ 1023)
+theorem within_of_interior (y s : ℝ) (c : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
+    (hy : ((2 : ℝ) ^ (e + 51) + 2 * 2 ^ (e - 1)) / 2 ^ 1074 ≤ y)
+    (hyt : y < F64PositiveRounding.overflowThreshold)
     (hc : Nearest s c) (hd : |s - y| < (2 : ℝ) ^ (e - 1) / 2 ^ 1074) :
     F64SignedRounding.WithinSteps 1 y c :=
   within_of_steps y (le_trans (by positivity) hy) hyt c hc.1
     (steps_interior y s c _ e he he' hy hc (F64NearestEven.roundNearestEven_spec y).1 hd)
 
 /-- The steps for `y` in binade `e` with relative distance below `(1 - 2 ^ -50) u`. -/
-theorem steps_relative (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2045)
+theorem steps_relative (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
     (hy : (2 : ℝ) ^ (e + 51) / 2 ^ 1074 ≤ y) (hy' : y < (2 : ℝ) ^ (e + 52) / 2 ^ 1074)
     (hc : Nearest s c) (hw : Nearest y w)
     (hr : |s - y| ≤ (1 - 1 / 2 ^ 50) * unitRoundoff64 * y) :
@@ -255,14 +258,11 @@ theorem steps_relative (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' 
 
 /-- Within one step when `|s - y|` is below `(1 - 2 ^ -50) u y` for `y` in the binade of exponent
 field `e`. -/
-theorem within_of_relative (y s : ℝ) (c : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2045)
+theorem within_of_relative (y s : ℝ) (c : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
     (hy : (2 : ℝ) ^ (e + 51) / 2 ^ 1074 ≤ y) (hy' : y < (2 : ℝ) ^ (e + 52) / 2 ^ 1074)
+    (hyt : y < F64PositiveRounding.overflowThreshold)
     (hc : Nearest s c) (hr : |s - y| ≤ (1 - 1 / 2 ^ 50) * unitRoundoff64 * y) :
     F64SignedRounding.WithinSteps 1 y c := by
-  have hyt : y < (2 : ℝ) ^ 1023 := by
-    refine hy'.trans_le ?_
-    rw [div_le_iff₀ (by positivity), ← pow_add]
-    exact pow_le_pow_right₀ (by norm_num) (by omega)
   exact within_of_steps y (le_trans (by positivity) hy) hyt c hc.1
     (steps_relative y s c _ e he he' hy hy' hc (F64NearestEven.roundNearestEven_spec y).1 hr)
 
@@ -286,11 +286,61 @@ theorem steps_tiny (y s : ℝ) (c w : UInt64) (hc : Nearest s c) (hw : Nearest y
     linarith
 
 /-- Within one step when `|s - y|` is below the smallest spacing. -/
-theorem within_of_tiny (y s : ℝ) (c : UInt64) (hy0 : 0 ≤ y) (hyt : y < (2 : ℝ) ^ 1023)
+theorem within_of_tiny (y s : ℝ) (c : UInt64) (hy0 : 0 ≤ y)
+    (hyt : y < F64PositiveRounding.overflowThreshold)
     (hc : Nearest s c) (hd : |s - y| < 1 / 2 ^ 1074) :
     F64SignedRounding.WithinSteps 1 y c :=
   within_of_steps y hy0 hyt c hc.1
     (steps_tiny y s c _ hc (F64NearestEven.roundNearestEven_spec y).1 hd)
+
+/-- Two words below a word in binade `e` span at least one spacing of the binade. -/
+theorem down_gaps (w : UInt64) (e : Nat) (he : 1 ≤ e) (hwlo : e * 2 ^ 52 ≤ w.toNat)
+    (h2 : 2 ≤ w.toNat) (hwl : w.toNat < limit) :
+    (2 : ℝ) ^ (e - 1) / 2 ^ 1074 ≤ value w - value (UInt64.ofNat (w.toNat - 2)) := by
+  obtain ⟨hlt, heq⟩ := two_le_of_lt _ _ h2 hwl
+  rcases Nat.lt_or_ge e 2 with he1 | he2
+  · have h := two_gaps (w.toNat - 2) 0 (Nat.zero_le _) hlt
+    rw [heq, ofNat_toNat_value] at h
+    rw [show e - 1 = 0 by omega]
+    have h1 : (2 : ℝ) ^ 0 / 2 ^ 1074 ≤ 2 * ((2 : ℝ) ^ (0 - 1) / 2 ^ 1074) := by norm_num
+    linarith
+  · have hm := previous_binade e he2
+    have h := two_gaps (w.toNat - 2) (e - 1) ((below_two _ _ _ (le_trans hm hwlo) hwl).1) hlt
+    rw [heq, ofNat_toNat_value] at h
+    have hpe : (2 : ℝ) * 2 ^ (e - 1 - 1) = 2 ^ (e - 1) := by
+      rw [← pow_succ']; congr 1; omega
+    have h1 : (2 : ℝ) ^ (e - 1) / 2 ^ 1074 = 2 * ((2 : ℝ) ^ (e - 1 - 1) / 2 ^ 1074) := by
+      rw [← hpe]; ring
+    linarith
+
+/-- The steps when `|s - y|` is below half the spacing of the binade at or below `y`. -/
+theorem steps_half (y s : ℝ) (c w : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
+    (hy : (2 : ℝ) ^ (e + 51) / 2 ^ 1074 ≤ y) (hc : Nearest s c) (hw : Nearest y w)
+    (hd : |s - y| < (2 : ℝ) ^ (e - 1) / 2 ^ 1074 / 2) :
+    c.toNat ≤ w.toNat + 1 ∧ w.toNat ≤ c.toNat + 1 := by
+  have hel2 := boundary_lt_limit e he'
+  have hel : e * 2 ^ 52 < limit := lt_of_le_of_lt (Nat.le_add_right _ _) hel2
+  have hwlo := nearest_ge y _ _ hw (by rw [word_toNat _ hel]; exact hel)
+    (by rw [boundary_value e he (by omega)]; exact hy)
+  rw [word_toNat _ hel] at hwlo
+  have hwl := hw.1
+  have hd2 := abs_lt.mp hd
+  have hp : (0 : ℝ) < 2 ^ (e - 1) / 2 ^ 1074 := by positivity
+  refine one_step_of_nearest y s c w hc hw ?_ ?_
+  · intro hl
+    have h := two_gaps w.toNat e hwlo hl
+    rw [ofNat_toNat_value] at h
+    linarith
+  · intro h2
+    have h := down_gaps w e he hwlo h2 hwl
+    linarith
+
+theorem within_of_half (y s : ℝ) (c : UInt64) (e : Nat) (he : 1 ≤ e) (he' : e ≤ 2046)
+    (hy : (2 : ℝ) ^ (e + 51) / 2 ^ 1074 ≤ y) (hyt : y < F64PositiveRounding.overflowThreshold)
+    (hc : Nearest s c) (hd : |s - y| < (2 : ℝ) ^ (e - 1) / 2 ^ 1074 / 2) :
+    F64SignedRounding.WithinSteps 1 y c :=
+  within_of_steps y (le_trans (by positivity) hy) hyt c hc.1
+    (steps_half y s c _ e he he' hy hc (F64NearestEven.roundNearestEven_spec y).1 hd)
 
 #print axioms step_up
 #print axioms step_down
@@ -299,5 +349,7 @@ theorem within_of_tiny (y s : ℝ) (c : UInt64) (hy0 : 0 ≤ y) (hyt : y < (2 : 
 #print axioms within_of_interior
 #print axioms within_of_relative
 #print axioms within_of_tiny
+#print axioms down_gaps
+#print axioms within_of_half
 
 end LeanExe.ProofKit.F64NearestSteps

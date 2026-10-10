@@ -29315,3 +29315,21 @@ The track proves `WithinSteps 1` for `Tanh.expm1` and `WithinSteps 2` for `Tanh.
 - [ ] `expm1` theorem and exceptional values.
 - [ ] `tanh`.
 - [ ] Byte and file theorems.
+
+### Kernel rounding analysis
+
+The kernel analysis compares each rounded value with the same expression in exact arithmetic at `X = value x`, with the stage lemmas of `F64ApproxStages` and, where a result lies just below a power of two, the half spacing of `F64NearestSum`.  `Expm1KernelInner` and `Expm1KernelE0` bound `x/2`, `hxs`, the polynomial `r1` (within `1.03 u` of `P (X ^ 2/2)`), `t` (`2.37 u`), the numerator (`5.4 u`), the denominator (`5.93 u`), their quotient (`1.92 u`), and `e` (`2.7 u X ^ 2/2 + 4 η`).  `Expm1KernelOuter.m0_spec` bounds the path for `k = 0` before its last rounding by `0.56 u abs(X) + 16 η` from `exp X - 1`, and `e2_spec` bounds `X - e2` on the scaled paths by `0.24 u` from `exp (X + C) - 1`, for a correction `abs(C) ≤ 0.36 u`.  The hand budget for the tight forms needs the kernel below `0.25 u`, so `e2_spec` leaves a margin of `0.01 u`.
+
+Arithmetic with `unitRoundoff64` and `multiplicationUnderflowEpsilon` failed in three ways before it built.  `positivity` and `linarith` on hypotheses that mention `2 ^ 1075` exceeded the recursion limit or the heartbeat limit, and `nlinarith` over the full context of a proof timed out in the simplex search (`expm1-outer-1.log` to `-5.log`).  The fix keeps `η` symbolic with `0 ≤ η` and moves each inequality into a lemma whose variables are plain reals (`m0_arith1` to `m0_arith3`, `e2_arith1` to `e2_arith3`).  One of those lemmas was false as first stated: it omitted the `u ^ 2` terms, which `nlinarith` reported as a failure (`expm1-outer-4.log`).
+
+`F64NearestScale.scale_nearest` multiplies a nearest word of `s ≥ 2 ^ -1021` by `2 ^ k`, `1 ≤ k ≤ 1023`, and keeps it nearest to `2 ^ k s`.  `sub_one_absorbed` shows that subtracting 1 from a word in `[2 ^ 56, 2 ^ 1023)` returns the word.  `F64NearestSteps` now takes the overflow threshold instead of `2 ^ 1023` as the upper bound of `y`, so the corollaries cover the top binade, and `within_of_half` accepts `abs(s - y)` below half the spacing without a condition on the position of `y` in its binade.
+
+| Module | Log |
+|---|---|
+| `Verified/Examples/Expm1KernelInner.lean` | `expm1-inner-1.log` to `-4.log` |
+| `Verified/Examples/Expm1KernelE0.lean` | `expm1-e0-1.log` to `-4.log` (a square bound of `0.12013` below `0.3466 ^ 2`, and a product bound of `1.1` below `0.3466 · 3.1737`) |
+| `Verified/Examples/Expm1KernelOuter.lean` | `expm1-outer-1.log` to `-7.log` |
+| `LeanExe/ProofKit/F64NearestScale.lean` | `expm1-scale-1.log` to `-4.log` |
+| `LeanExe/ProofKit/F64NearestSteps.lean`, extended | `expm1-steps-5.log` |
+
+- [x] Kernel rounding analysis.
