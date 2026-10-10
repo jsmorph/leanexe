@@ -2882,6 +2882,44 @@ def reflectWrapper (base name : Name) (callee : Callee) (tables : List Name) :
     finishReflected base name params types resultShape.ty (← inferType body) callee.sig.aborts
       (callee.sig.modes.drop k) callee.sig.depth (base ++ `denote_eq)
 
+/-- Adds `base.bound_eq` for the wrapper `name` of `callee`, whose bound is `boundName`: the
+wrapper's bound at its arguments is the callee's bound at the tables and the arguments, or the
+numeral that the callee's own equation states.  The proof is the chain of `Prog.bounds` from the
+callee's index, which the kernel checks against the wrapper's bound by unfolding `Wrapper.bound`
+and comparing the callee's index and environments. -/
+def wrapperBoundEquation (base name boundName : Name) (callee : Callee) (progVal funsVal : Lean.Expr) :
+    MetaM Unit := do
+  let some cb := callee.bound? | return
+  let info ← getConstInfoDefn name
+  lambdaTelescope (← instantiateMVars info.value) fun params body => do
+    let args := body.getAppArgs
+    let k := args.size - params.size
+    let owned (i : Nat) := callee.sig.mode i == .owned && !callee.sig.params[i]!.scalar
+    let wTuple ← argsTuple (params.toList.zip ((List.range params.size).map fun i => owned (k + i)))
+    let lhs := mkApp (mkConst boundName) wTuple
+    let target := mkApp (mkConst cb.bound)
+      (← argsTuple (args.toList.zip ((List.range args.size).map owned)))
+    -- `Wrapper.bound tables w bounds env` unfolds to `bounds.get w.callee env'`.
+    let some get ← unfoldDefinition? ((← getConstInfoDefn boundName).value.beta #[wTuple])
+      | throwError "verified_compile: the bound of {name}"
+    let #[_, _, _, fv, env] := get.headBeta.getAppArgs
+      | throwError "verified_compile: the bound of {name}: {get}"
+    let chain ← boundsChain progVal funsVal (← whnfR fv) env
+    let some (_, _, chainRhs) := (← inferType chain).eq?
+      | throwError "verified_compile: the bounds of {name}"
+    unless ← isDefEq chainRhs.appArg! (← unfoldDefinition target).appArg!.headBeta do
+      throwError "verified_compile: the arguments of {name} do not match the bound of {callee.name}"
+    let h ← mkExpectedTypeHint chain (← mkEq lhs target)
+    let (rhs, h) ← match cb.numeralEq with
+      | some n => do
+        let hn := mkAppN (mkConst n) args
+        let some (_, _, c) := (← inferType hn).eq?
+          | throwError "verified_compile: the bound equation of {callee.name}"
+        pure (c, ← mkEqTrans h hn)
+      | none => pure (target, h)
+    addTheorem (base ++ `bound_eq) (← mkForallFVars params (← mkEq lhs rhs))
+      (← mkLambdaFVars params h)
+
 /-- The most positions that the reflector accepts in a function whose code takes the call depth.
 Wasmtime 44 on aarch64 keeps 8 bytes for each value live across a call and 16 bytes per frame, so
 `depthLimit` frames of 32 positions take about 280 KB of its 512 KiB default stack, and the rest
@@ -3110,7 +3148,7 @@ def elabVerifiedCompile : CommandElab
           addTheorem (base ++ simple ++ `trapFree) claim proof
     -- The wrappers' theorems, at their positions after the entries.
     let mut j := 0
-    for (r, _, idxs) in wraps do
+    for (r, callee, idxs) in wraps do
       let simple := Name.mkSimple r.name.getString!
       let implName := base ++ simple ++ `implements
       let hStx ← `(Verified.Prog.correct_wrapper $progId $funsId $meaningId $tablesId $wrappersId
@@ -3163,6 +3201,8 @@ def elabVerifiedCompile : CommandElab
           addAndCompile <| .defnDecl <| mkDefinitionValEx boundName []
             (← mkArrow r.argsType (mkConst ``Nat)) boundVal
             (.regular (getMaxHeight (← getEnv) boundVal + 1)) .safe [boundName]
+          wrapperBoundEquation (base ++ simple) r.name boundName callee
+            (← getConstInfoDefn (base ++ `program)).value funsVal
           let h ← mkAppM ``ImplementsTables.lean #[h0]
           let proof ← wrapperProof (base ++ `funs) funsVal h (← leanFun r) r
             (base ++ simple ++ `argsAgree) (base ++ simple ++ `resultAgree)

@@ -326,7 +326,8 @@ invariant of its index and state.  The proof applies one lemma of
 [`Reflect/BoundLemmas.lean`](Reflect/BoundLemmas.lean) per source form.  Each lemma builds its
 conclusion from its arguments, so that the kernel joins two equations only where their terms are
 identical: it compares two closed `Nat` sums that differ by evaluating both, which for a closed
-loop means running it.  A wrapper has no `bound_eq`.
+loop means running it.  A wrapper's `bound_eq` states its bound as the callee's bound at the tables
+and its arguments, or as the numeral that the callee's equation states.
 
 | Theorem | Statement |
 |---------|-----------|
