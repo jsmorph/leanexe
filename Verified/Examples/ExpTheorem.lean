@@ -1,0 +1,399 @@
+import Verified.Examples.ExpFarRange
+
+/-!
+The accuracy theorem for `Exp.exp`.  For every finite binary64 input `a`, the result is a
+nonnegative word, possibly positive infinity, within one representable step of the nonnegative
+nearest-even rounding of the real `exp a`.  The exceptional inputs give the results of IEEE 754:
+`exp (±0) = 1`, `exp (+∞) = +∞`, `exp (-∞) = +0`, and the canonical NaN for a NaN.
+-/
+
+namespace Verified.Examples.ExpTheorem
+open CodeLib.IEEE64
+open LeanExe.ProofKit F64NearestNonnegative
+
+set_option exponentiation.threshold 4096
+
+/-- From exponent field 1033 on, the input has magnitude at least 1024. -/
+theorem large_magnitude (x : UInt64) (he : 1033 ≤ Wasm.IEEE64.exponent x) : 1024 ≤ |value x| := by
+  by_contra h
+  have hb := ExpBranches.large_boundary
+  have hlt : |value x| < |value (F64ExponentBounds.boundary 1033)| := by
+    rw [hb, abs_of_pos (by norm_num : (0 : ℝ) < 1024)]
+    exact lt_of_not_ge h
+  have := F64ExponentBounds.exponent_lt_of_magnitude_lt x 1033 (by decide) hlt
+  omega
+
+/-- Below exponent field `e`, the input has magnitude below `2 ^ (e - 1023)`. -/
+theorem magnitude_lt (x : UInt64) (e : Nat) (q : Int) (he1 : 1 ≤ e) (hq : (e : Int) = q + 1023)
+    (he : Wasm.IEEE64.exponent x < e) : |value x| < (2 : ℝ) ^ q := by
+  have hm := ExpSpecialNegative.magnitude_lt_of_exponent_lt x e he1 he
+  rw [value, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
+  have h1 : |(Wasm.IEEE64.scaledValue x : ℝ)| = (Wasm.IEEE64.scaledMagnitude x : ℝ) := by
+    rw [← Int.cast_abs, ← Int.natCast_natAbs, natAbs_scaledValue, Int.cast_natCast]
+  rw [h1, div_lt_iff₀ (by positivity)]
+  have hm' : (Wasm.IEEE64.scaledMagnitude x : ℝ) < (2 : ℝ) ^ (51 + e) := by exact_mod_cast hm
+  calc
+    _ < (2 : ℝ) ^ (51 + e) := hm'
+    _ = (2 : ℝ) ^ q * (2 : ℝ) ^ 1074 := by
+      rw [← zpow_natCast, ← zpow_natCast, ← zpow_add₀ (by norm_num)]
+      congr 1
+      push_cast
+      omega
+
+/-- At or above exponent field `e`, the input has magnitude at least `2 ^ (e - 1023)`. -/
+theorem magnitude_ge (x : UInt64) (e : Nat) (q : Int) (he1 : 1 ≤ e) (he2 : e < 2048)
+    (hq : (e : Int) = q + 1023) (he : e ≤ Wasm.IEEE64.exponent x) : (2 : ℝ) ^ q ≤ |value x| := by
+  by_contra h
+  have hb : value (F64ExponentBounds.boundary e) = (2 : ℝ) ^ q :=
+    F64NearestBinade.boundary_power e q he1 he2 hq
+  have hlt : |value x| < |value (F64ExponentBounds.boundary e)| := by
+    rw [hb, abs_of_pos (zpow_pos (by norm_num : (0 : ℝ) < 2) q)]
+    exact lt_of_not_ge h
+  have := F64ExponentBounds.exponent_lt_of_magnitude_lt x e he2 hlt
+  omega
+
+theorem sign_value (x : UInt64) (hx : 0 < Wasm.IEEE64.scaledMagnitude x) :
+    (Wasm.IEEE64.sign x = true ↔ value x < 0) := by
+  have h2 : (0 : ℝ) < 2 ^ 1074 := by positivity
+  have hm : (0 : ℝ) < (Wasm.IEEE64.scaledMagnitude x : ℝ) := by exact_mod_cast hx
+  cases hs : Wasm.IEEE64.sign x
+  · simp only [value, Wasm.IEEE64.scaledValue, hs, Bool.false_eq_true, ite_false,
+      Int.cast_natCast, false_iff, not_lt]
+    positivity
+  · simp only [value, Wasm.IEEE64.scaledValue, hs, ite_true, Int.cast_neg, Int.cast_natCast,
+      true_iff, neg_div]
+    have := div_pos hm h2
+    linarith
+
+private theorem saturated_guard (a : UInt64) (hlo : 1033 ≤ a.toNat) (hhi : a.toNat < 2047) :
+    a - 969 ≥ (63 : UInt64) ∧ ¬ a - 969 ≥ (0x80000000 : UInt64) ∧ a ≥ (0x409 : UInt64) ∧
+      ¬ a ≥ (0x7ff : UInt64) := by
+  have hs : (969 : UInt64) ≤ a := UInt64.le_iff_toNat_le.mpr (by change 969 ≤ a.toNat; omega)
+  have hsub : (a - 969).toNat = a.toNat - 969 := UInt64.toNat_sub_of_le _ _ hs
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · apply UInt64.le_iff_toNat_le.mpr
+    rw [hsub]
+    change 63 ≤ a.toNat - 969
+    omega
+  · intro h
+    have hn := UInt64.le_iff_toNat_le.mp h
+    rw [hsub] at hn
+    change 0x80000000 ≤ a.toNat - 969 at hn
+    omega
+  · apply UInt64.le_iff_toNat_le.mpr
+    change 0x409 ≤ a.toNat
+    omega
+  · intro h
+    have hn := UInt64.le_iff_toNat_le.mp h
+    change 0x7ff ≤ a.toNat at hn
+    omega
+
+theorem saturated_selected (tab : Array UInt64) (x : Float)
+    (he : 1033 ≤ Wasm.IEEE64.exponent x.toBits) (hf : Wasm.IEEE64.exponent x.toBits < 2047) :
+    Exp.expWith tab x = if x.toBits >>> 63 == 1 then
+        Float.ofBits 0x1000000000000000 * Float.ofBits 0x1000000000000000
+      else Float.ofBits 0x7000000000000000 * Float.ofBits 0x7000000000000000 := by
+  obtain ⟨hg1, hg2, hg3, hg4⟩ := saturated_guard (ExpBranches.exponentWord x.toBits)
+    (by rw [ExpBranches.exponent_word_spec]; exact he)
+    (by rw [ExpBranches.exponent_word_spec]; exact hf)
+  have hninf : ¬ (x.toBits == 0xFFF0000000000000) = true := by
+    intro h
+    have heq : x.toBits = 0xFFF0000000000000 := by simpa using h
+    rw [heq] at hf
+    exact absurd hf (by decide)
+  have hc : (0x408 : UInt64) - 0x3C9 = 63 := by decide
+  simp only [Exp.expWith, ExpBranches.exponentWord, hc] at hg1 hg2 hg3 hg4 ⊢
+  rw [ite_eq_left hg1, ite_eq_right hg2, ite_eq_left hg3, ite_eq_right hninf, ite_eq_right hg4]
+
+theorem underflow_product :
+    (Float.ofBits 0x1000000000000000 * Float.ofBits 0x1000000000000000).toBits = 0 := by
+  rw [F64Bits.toBits_mul, F64Bits.toBits_ofBits]
+  decide +kernel
+
+theorem overflow_product :
+    (Float.ofBits 0x7000000000000000 * Float.ofBits 0x7000000000000000).toBits =
+      0x7FF0000000000000 := by
+  rw [F64Bits.toBits_mul, F64Bits.toBits_ofBits]
+  decide +kernel
+
+/-- From magnitude 1024 on, `Exp.exp` gives positive infinity for positive inputs and positive
+zero for negative ones. -/
+theorem saturated_bits (x : Float) (hxf : Finite x.toBits)
+    (he : 1033 ≤ Wasm.IEEE64.exponent x.toBits) :
+    (Exp.exp x).toBits = if value x.toBits < 0 then 0 else 0x7FF0000000000000 := by
+  have hf : Wasm.IEEE64.exponent x.toBits < 2047 := by
+    have h := hxf
+    simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, bne_iff_ne, ne_eq] at h
+    have : Wasm.IEEE64.exponent x.toBits < 2048 := Nat.mod_lt _ (by norm_num)
+    omega
+  have hmag : 0 < Wasm.IEEE64.scaledMagnitude x.toBits := by
+    simp only [Wasm.IEEE64.scaledMagnitude, beq_iff_eq, show Wasm.IEEE64.exponent x.toBits ≠ 0 by
+      omega, ite_false]
+    positivity
+  have hsign : (x.toBits >>> 63 == 1) = Wasm.IEEE64.sign x.toBits := by
+    have hlt := x.toBits.toNat_lt
+    simp only [Wasm.IEEE64.sign]
+    by_cases h : 2 ^ 63 ≤ x.toBits.toNat
+    · rw [decide_eq_true h]
+      apply beq_iff_eq.mpr
+      apply UInt64.toNat_inj.mp
+      rw [UInt64.toNat_shiftRight]
+      change x.toBits.toNat >>> 63 = 1
+      rw [Nat.shiftRight_eq_div_pow]
+      omega
+    · rw [decide_eq_false h]
+      apply beq_eq_false_iff_ne.mpr
+      intro heq
+      have := congrArg UInt64.toNat heq
+      rw [UInt64.toNat_shiftRight] at this
+      change x.toBits.toNat >>> 63 = 1 at this
+      rw [Nat.shiftRight_eq_div_pow] at this
+      omega
+  rw [Exp.exp, saturated_selected _ x he hf, hsign]
+  by_cases hs : Wasm.IEEE64.sign x.toBits = true
+  · rw [ite_eq_left hs, underflow_product, ite_eq_left ((sign_value _ hmag).mp hs)]
+  · have hs' : ¬ value x.toBits < 0 := fun h => hs ((sign_value _ hmag).mpr h)
+    rw [ite_eq_right hs, overflow_product, ite_eq_right hs']
+
+private theorem nonfinite_guard (a : UInt64) (ha : a.toNat = 2047) :
+    a - 969 ≥ (63 : UInt64) ∧ ¬ a - 969 ≥ (0x80000000 : UInt64) ∧ a ≥ (0x409 : UInt64) ∧
+      a ≥ (0x7ff : UInt64) := by
+  have hs : (969 : UInt64) ≤ a := UInt64.le_iff_toNat_le.mpr (by change 969 ≤ a.toNat; omega)
+  have hsub : (a - 969).toNat = a.toNat - 969 := UInt64.toNat_sub_of_le _ _ hs
+  refine ⟨?_, ?_, ?_, ?_⟩
+  · apply UInt64.le_iff_toNat_le.mpr
+    rw [hsub]
+    change 63 ≤ a.toNat - 969
+    omega
+  · intro h
+    have hn := UInt64.le_iff_toNat_le.mp h
+    rw [hsub] at hn
+    change 0x80000000 ≤ a.toNat - 969 at hn
+    omega
+  · apply UInt64.le_iff_toNat_le.mpr
+    change 0x409 ≤ a.toNat
+    omega
+  · apply UInt64.le_iff_toNat_le.mpr
+    change 0x7ff ≤ a.toNat
+    omega
+
+/-- An infinity or NaN input: `-∞` gives `+0`, and any other gives `1 + x`. -/
+theorem nonfinite_selected (tab : Array UInt64) (x : Float)
+    (he : Wasm.IEEE64.exponent x.toBits = 2047) :
+    Exp.expWith tab x = if x.toBits == 0xFFF0000000000000 then 0.0 else 1.0 + x := by
+  obtain ⟨hg1, hg2, hg3, hg4⟩ := nonfinite_guard (ExpBranches.exponentWord x.toBits)
+    (by rw [ExpBranches.exponent_word_spec]; exact he)
+  have hc : (0x408 : UInt64) - 0x3C9 = 63 := by decide
+  simp only [Exp.expWith, ExpBranches.exponentWord, hc] at hg1 hg2 hg3 hg4 ⊢
+  rw [ite_eq_left hg1, ite_eq_right hg2, ite_eq_left hg3]
+  by_cases h : (x.toBits == 0xFFF0000000000000) = true
+  · rw [ite_eq_left h, ite_eq_left h]
+  · rw [ite_eq_right h, ite_eq_right h, ite_eq_left hg4]
+
+theorem exp_pos_infinity :
+    (Exp.exp (Float.ofBits 0x7FF0000000000000)).toBits = 0x7FF0000000000000 := by
+  have hb : (Float.ofBits 0x7FF0000000000000).toBits = 0x7FF0000000000000 := by
+    rw [F64Bits.toBits_ofBits]
+    decide +kernel
+  rw [Exp.exp, nonfinite_selected _ _ (by rw [hb]; decide +kernel), hb,
+    ite_eq_right (by decide), ExpTinyError.float_result_bits, hb]
+  decide +kernel
+
+theorem exp_neg_infinity : (Exp.exp (Float.ofBits 0xFFF0000000000000)).toBits = 0 := by
+  have hb : (Float.ofBits 0xFFF0000000000000).toBits = 0xFFF0000000000000 := by
+    rw [F64Bits.toBits_ofBits]
+    decide +kernel
+  rw [Exp.exp, nonfinite_selected _ _ (by rw [hb]; decide +kernel), hb, ite_eq_left (by decide)]
+  rfl
+
+theorem exp_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
+    (Exp.exp x).toBits = Wasm.IEEE64.canonicalNaN := by
+  have hc := F64Bits.toBits_canonical x
+  rw [ite_eq_left h] at hc
+  rw [Exp.exp, nonfinite_selected _ _ (by rw [← hc]; decide +kernel), ← hc,
+    ite_eq_right (by decide), ExpTinyError.float_result_bits, ← hc]
+  decide +kernel
+
+theorem exp_pos_zero : (Exp.exp (Float.ofBits 0)).toBits = 0x3FF0000000000000 := by
+  have hb : (Float.ofBits 0).toBits = 0 := by
+    rw [F64Bits.toBits_ofBits]
+    decide +kernel
+  rw [Exp.exp, ExpBranches.tiny_selected _ _ (by rw [hb]; decide +kernel),
+    ExpTinyError.float_result_bits, hb]
+  decide +kernel
+
+theorem exp_neg_zero :
+    (Exp.exp (Float.ofBits 0x8000000000000000)).toBits = 0x3FF0000000000000 := by
+  have hb : (Float.ofBits 0x8000000000000000).toBits = 0x8000000000000000 := by
+    rw [F64Bits.toBits_ofBits]
+    decide +kernel
+  rw [Exp.exp, ExpBranches.tiny_selected _ _ (by rw [hb]; decide +kernel),
+    ExpTinyError.float_result_bits, hb]
+  decide +kernel
+
+theorem zero_value : value (0 : UInt64) = 0 := by
+  have h : Wasm.IEEE64.scaledValue (0 : UInt64) = 0 := by decide +kernel
+  rw [value, h, Int.cast_zero, zero_div]
+
+/-- Positive zero lies within one step of the reference of a positive number below `2 ^ -1100`. -/
+theorem zero_one_step (E : ℝ) (hE : 0 < E) (hEt : E ≤ 1 / (2 : ℝ) ^ 1100) :
+    (0 : UInt64).toNat ≤ (F64PositiveRounding.roundNearestEven E).toNat + 1 ∧
+      (F64PositiveRounding.roundNearestEven E).toNat ≤ (0 : UInt64).toNat + 1 := by
+  have hbnd : value (UInt64.ofNat (2 * 2 ^ 52)) = (2 : ℝ) ^ (-1021 : Int) :=
+    F64NearestBinade.boundary_power 2 (-1021) (by norm_num) (by norm_num) (by norm_num)
+  have h1 : (1 : ℝ) / 2 ^ 1100 ≤ (2 : ℝ) ^ (-1021 : Int) := by norm_num
+  have h2 : (1 : ℝ) / 2 ^ 1100 < 3 * ((2 : ℝ) ^ (0 - 1) / (2 : ℝ) ^ 1074) / 2 := by norm_num
+  refine F64FullStep.one_step_binades E 0 0 2 (by norm_num) (by norm_num)
+    (by rw [ExpSpecialNegative.zero_word_value]; exact hE.le) (fun _ => by rw [hbnd]; exact hEt.trans h1)
+    (by decide) (by rw [ExpSpecialNegative.zero_word_value, zero_value])
+    (by rw [hbnd, zero_value]; positivity) ?_
+  rw [zero_value, zero_sub, abs_neg, abs_of_pos hE]
+  linarith
+
+/-- The accuracy theorem: for every finite input, `Exp.exp` returns a nonnegative word, possibly
+positive infinity, within one representable step of the nonnegative nearest-even rounding of
+`exp a`. -/
+theorem exp_one_step (x : Float) (hxf : Finite x.toBits) :
+    (Exp.exp x).toBits.toNat ≤ 0x7FF0000000000000 ∧
+      (Exp.exp x).toBits.toNat ≤
+        (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat + 1 ∧
+      (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat ≤
+        (Exp.exp x).toBits.toNat + 1 := by
+  have hl : limit = 0x7FF0000000000000 := rfl
+  have hf : Wasm.IEEE64.exponent x.toBits < 2047 := by
+    have h := hxf
+    simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, bne_iff_ne, ne_eq] at h
+    have : Wasm.IEEE64.exponent x.toBits < 2048 := Nat.mod_lt _ (by norm_num)
+    omega
+  rcases (show Wasm.IEEE64.exponent x.toBits < 1032 ∨ Wasm.IEEE64.exponent x.toBits = 1032 ∨
+      1033 ≤ Wasm.IEEE64.exponent x.toBits by omega) with he | he | he
+  · have hx : |value x.toBits| < 512 := by
+      have h := magnitude_lt x.toBits 1032 9 (by norm_num) (by norm_num) he
+      norm_num at h
+      exact h
+    obtain ⟨_, h1, h2⟩ := ExpBranches.exp_small_one_step x hxf hx
+    have hr : (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat < limit := by
+      rw [F64PositiveRounding.reference_finite _ (ExpBranches.exp_small_below_overflow _ hx.le)]
+      exact (F64NearestEven.roundNearestEven_spec _).1.1
+    refine ⟨?_, h1, h2⟩
+    rw [← hl]
+    omega
+  · have hlo : 512 ≤ |value x.toBits| := by
+      have h := magnitude_ge x.toBits 1032 9 (by norm_num) (by norm_num) (by norm_num) he.ge
+      norm_num at h
+      exact h
+    have hhi : |value x.toBits| < 1024 := by
+      have h := magnitude_lt x.toBits 1033 10 (by norm_num) (by norm_num) (by omega)
+      norm_num at h
+      exact h
+    by_cases hpos : 0 ≤ value x.toBits
+    · rw [abs_of_nonneg hpos] at hlo hhi
+      by_cases h768 : value x.toBits ≤ 768
+      · obtain ⟨h0, h1, h2⟩ := ExpSpecialPositive.positive_one_step x hxf
+          (by rw [abs_of_nonneg hpos]; exact h768) hlo
+        exact ⟨by rw [← hl]; exact h0, h1, h2⟩
+      · obtain ⟨hc, ht⟩ := ExpFarRange.far_positive x hxf (by rw [abs_of_nonneg hpos]; exact hhi)
+          (le_of_lt (lt_of_not_ge h768))
+        rw [hc, F64PositiveRounding.reference_overflow _ ht]
+        exact ⟨by decide, Nat.le_succ _, Nat.le_succ _⟩
+    · have hneg : value x.toBits < 0 := lt_of_not_ge hpos
+      rw [abs_of_neg hneg] at hlo hhi
+      by_cases h768 : -768 ≤ value x.toBits
+      · obtain ⟨h0, h1, h2⟩ := ExpSpecialNegative.negative_one_step x hxf
+          (by rw [abs_of_neg hneg]; linarith) (by linarith)
+        exact ⟨by rw [← hl]; exact h0, h1, h2⟩
+      · obtain ⟨h0, h1, h2⟩ := ExpFarRange.far_negative x hxf
+          (by rw [abs_of_neg hneg]; exact hhi) (by linarith)
+        exact ⟨by rw [← hl]; exact h0, h1, h2⟩
+  · have hbits := saturated_bits x hxf he
+    have hbig := large_magnitude x.toBits he
+    by_cases hneg : value x.toBits < 0
+    · rw [ite_eq_left hneg] at hbits
+      rw [abs_of_neg hneg] at hbig
+      rw [hbits]
+      obtain ⟨h1, h2⟩ := zero_one_step _ (Real.exp_pos _) (ExpFarRange.exp_le_tiny _ (by linarith))
+      exact ⟨by decide, h1, h2⟩
+    · rw [ite_eq_right hneg] at hbits
+      rw [abs_of_nonneg (not_lt.mp hneg)] at hbig
+      rw [hbits, F64PositiveRounding.reference_overflow _
+        (ExpFarRange.exp_ge_overflow _ (by linarith))]
+      exact ⟨le_refl _, Nat.le_succ _, Nat.le_succ _⟩
+
+open Wasm LeanExe.Pipeline in
+/-- The first call of the module's `exp` entry, from the store in which the module starts, with
+the bits of a float `x`: it returns without a trap, and its result is the bits of
+`Exp.exp x`. -/
+theorem exp_entry_first_call (env : HostEnv Unit) (x : Float) :
+    Runs false env Exp.compiled.module 5 Exp.compiled.module.initialStore [.f64 x.toBits]
+      (fun _ values => values = [.f64 (Exp.exp x).toBits]) := by
+  obtain ⟨hAt, hCap, hBor⟩ := Exp.compiled.initial
+  have htab : ∀ t ∈ [((4096 : UInt64), Exp.expTable)],
+      (Verified.initialHeap Exp.compiled.tables).Borrowed
+          (Verified.compileWith Exp.compiled.program Exp.compiled.tables
+            Exp.compiled.wrappers).initialStore t.1 t.2 ∧
+        Apart (Verified.compileWith Exp.compiled.program Exp.compiled.tables
+            Exp.compiled.wrappers).initialStore [] (t.1.toNat, 8 * (t.2.size + 1)) := by
+    intro t ht
+    simp only [List.mem_singleton] at ht
+    subst ht
+    exact ⟨hBor 0 (by decide), Apart.nil⟩
+  have h := Exp.compiled.exp.implements env
+    (Verified.compileWith Exp.compiled.program Exp.compiled.tables
+      Exp.compiled.wrappers).initialStore
+    (Verified.initialHeap Exp.compiled.tables) [.f64 x.toBits] x hAt trivial htab rfl
+    Separate.nil hCap
+  refine h.mono ?_
+  intro final values hpost
+  obtain ⟨_, _, howned, _⟩ := hpost
+  have hv : values.reverse = [.f64 (Exp.exp x).toBits] := howned
+  have := congrArg List.reverse hv
+  simpa using this
+
+/-- Function 5 of the module is its export `exp`. -/
+theorem exp_export : ({ name := "exp", funcIdx := 5 } : Wasm.Export) ∈ Exp.compiled.module.exports := by
+  decide +kernel
+
+/-- The accuracy theorem for the compiled module: its bytes decode to the module, whose function 5
+is exported as `exp`, and the first call of that entry, from the store in which the module
+starts, returns without a trap a single `f64` whose bits are those of `Exp.exp x`.  For finite
+`x` these bits lie within one representable step of the nonnegative nearest-even rounding of
+`exp x`. -/
+theorem exp_bytes_accuracy :
+    ∃ bytes, Wasm.Encoding.encode Exp.compiled.module = .ok bytes ∧
+      Wasm.Encoding.decode bytes = .ok Exp.compiled.module ∧
+      ({ name := "exp", funcIdx := 5 } : Wasm.Export) ∈ Exp.compiled.module.exports ∧
+      ∀ (env : Wasm.HostEnv Unit) (x : Float),
+        Wasm.Runs false env Exp.compiled.module 5 Exp.compiled.module.initialStore
+          [.f64 x.toBits] (fun _ values => ∃ w : UInt64, values = [.f64 w] ∧
+            w = (Exp.exp x).toBits ∧
+            (Finite x.toBits →
+              w.toNat ≤ 0x7FF0000000000000 ∧
+              w.toNat ≤ (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat + 1 ∧
+              (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat ≤
+                w.toNat + 1)) := by
+  obtain ⟨bytes, henc, hdec, _⟩ := Exp.compiled.bytes
+  refine ⟨bytes, henc, hdec, exp_export, fun env x => (exp_entry_first_call env x).mono ?_⟩
+  intro _ values hv
+  exact ⟨(Exp.exp x).toBits, hv, rfl, exp_one_step x⟩
+
+#print axioms large_magnitude
+#print axioms magnitude_lt
+#print axioms magnitude_ge
+#print axioms sign_value
+#print axioms saturated_selected
+#print axioms underflow_product
+#print axioms overflow_product
+#print axioms saturated_bits
+#print axioms nonfinite_selected
+#print axioms exp_pos_infinity
+#print axioms exp_neg_infinity
+#print axioms exp_nan
+#print axioms exp_pos_zero
+#print axioms exp_neg_zero
+#print axioms zero_one_step
+#print axioms exp_one_step
+#print axioms exp_entry_first_call
+#print axioms exp_export
+#print axioms exp_bytes_accuracy
+
+end Verified.Examples.ExpTheorem
