@@ -27957,6 +27957,65 @@ full build of `Verified` takes about 1,600 seconds, longer than the 900 seconds 
 `tools/leanrun` allows by default, and `Examples/Repeat.lean` alone takes more than 900, so long
 builds run with `--timeout`.  The suite passes 15,837 cases after the replacement.
 
+### Bound equations: design
+
+`p.f.bound` is the compiler's bound, so a numeric fact about it means unfolding `Expr.allocs` over
+the reflected code.  `p.f.bound_eq` will state it as a Lean term in the definition's parameters
+that mirrors the definition: the user's loop counts, initial states, steps, conditions, and call
+arguments, `blockCost` and `growCost` for each block that the modes and live sets call for,
+`loopCost` and `sumBelow` for loops and builds, and `p.g.bound` at Lean arguments for callees.  The
+term mentions no mode, live set, source expression, or environment, it substitutes `let` values,
+and it drops the zero summands that its own lemmas produce, so a function that allocates nothing
+gets `p.f.bound … = 0`.
+
+The bound depends on the parameter modes and the live sets, which the reflector knows only after it
+has reflected the whole body.  Each constructing case of `reflect` therefore returns, besides the
+source and its meaning proof, a builder: a meta function that takes the modes and the live set as
+terms and returns the cost with a proof that the source's `Expr.allocs` equals it.  The builders run
+after the mode choice, from the root with the entry modes and `fun _ => false`.  Each applies one
+lemma per source constructor, from a new file `Reflect/BoundLemmas.lean`, and picks the variant
+whose side condition holds, such as `modeAt modes k = .owned` or `live k = false`, which it decides
+with `kernelWhnf` and proves by `Eq.refl`.  A condition that does not reduce stops the build with
+an error.  Pass-through cases such as `restate`, `reflectAs`, and `reflectVia` return their child's
+builder, since they change only the meaning proof.  Binder cases save their variables' declarations
+and reopen them with `withExistingLocalDecls`.  `p.f.bound_func` relates `Func.bound` of the source
+function to `p.f.bound` through a chain of `Bounds.get` steps, as `getChain` does for meanings, and
+callers use it to name their callees' bounds.  The kernel never unfolds `Expr.allocs`,
+`Prog.bounds`, the user's definitions, or loops: each lemma is proved once with variables, and
+every junction between two equations meets under a shared head.
+
+Two alternatives were rejected.  Generic lemmas over all modes and live sets, composed in the
+meaning pass, leave closed conditions inside the user's terms and under binders, which a later walk
+would have to resolve with markers and `funext`.  A second run of `reflect` with the modes known
+would repeat all of reflection.  A mode-free over-approximation would remove only the decisions,
+the cheapest part, and turn every lemma into an inequality.
+
+A fresh reviewer found the lemma statements correct against `Expr.allocs` and the variant sets
+exhaustive, and it confirmed the drone's right-hand sides and `loopCost_le`.  It found four defects,
+now part of the design.  The meaning proofs state the forms of the meaning lemmas, such as
+`BinOp.apply BinOp.add a b` and `Env.get (Env.cons …) (Var.ofIndex …)`, so each value that enters
+the term must be restated to the user's term at its constructing site.  Several junctions are not
+syntactic: `Func.body` of the function constant, the `id` hints of flattenings, beta-redexes from
+instantiated lambdas, `Func.sig` in chain steps, and `Env.ofArgs` against an environment of
+meaning values.  The guard that keeps a builder's mistake from becoming an hour-long kernel search
+therefore compares terms modulo those named reductions.  `projReduce` reduces only at the head, so
+a deep traversal removes the projections that substitution leaves inside callee tuples.  The root
+builder runs outside the telescope of the parameters, so `Reflected` stores their declarations.
+The reviewer also expects `bound_eq` to cost about twice the kernel time of `denote_eq`, since it
+embeds the meaning proofs, which increment 1 measures.
+
+The drone needs no array updates and no wrappers, so the order puts its theorem third.
+
+- [x] Design and review.
+- [x] `ImplementsA.mono` and `BoundFacts.lean`: `blockCost`, `growCost`, `loopCost_le`, and sums.
+- [ ] 1: `Reflection` with a builder at every return site, the lemmas and builders for leaves,
+  variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, `bound_func`, and
+  `bound_eq` for bodies of these forms.
+- [ ] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
+- [ ] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.
+- [ ] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`.
+- [ ] 5: wrappers.
+
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
 The Euler READMEs listed results that the solver at commit `eef07963` had proved and this code
