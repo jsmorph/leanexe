@@ -29609,3 +29609,30 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Argument reduction of `sin` and `cos` (track `trig`)
+
+The track works in a separate worktree on branch `w/trig`.  The reduction comes first because it does not depend on the kernel polynomials.  Every result below reports only `propext`, `Classical.choice`, and `Quot.sound`, and the logs are in `build/transcendentals/trig-*.log` of the worktree.
+
+| Module | Result |
+|---|---|
+| `TrigPi` | `π` within `2 ^ -1270` from Machin's formula, with the alternating arctangent remainder `arctan_error` and partial sums checked by `decide +kernel`.  `table_bounds`: `Trig.invPi` is `2/π` truncated to 1216 bits.  `half_bounds`: `Trig.halfPi` is `π · 2 ^ 126` truncated.  The module builds in 10 seconds. |
+| `TrigDistance` | `quadrant_distance`: for every exponent field from 1022 to 2046 and every 53-bit significand, `x · 2/π` lies more than `2 ^ -63` from every integer.  One certificate per binade, a convergent `p/q` of the binade's `β = 2 ^ (E - 1075) · invPi` modulo 1 with `q ≥ 2 ^ 53`, gives `|m β - n| ≥ 1/q - 2 ^ 53 |β - p/q| > 2 ^ -62`, since `q` cannot divide `m p` for `0 < m < q`.  The 1025 certificates were computed offline with Python and are checked by the kernel; the smallest bound, `2 ^ -61.54`, belongs to exponent field 1872, the binade of the known worst case `6381956970095103 · 2 ^ 797`. |
+| `TrigWords` | Natural-number specifications of `mul64`, `mulTop`, `clz64`, and `shiftTop`, and `or_shift` for disjoint shifted words. |
+| `TrigWindows` | The three words that `remLarge` reads from `invPi` for each exponent field from 1043 to 2046, checked by the kernel in 10 seconds. |
+| `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | `remLarge_spec`: for positive finite `x` with exponent field from 1043, an integer `N` congruent to the returned count modulo 4 has `r = x - N π/2` with `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -134`, `|y0 + y1 - r| ≤ |r| / 2 ^ 72`, and `|y1| ≤ |y0| / 2 ^ 53`.  `remLarge_eq` splits the routine into five stages proved separately; the last is an exact two-sum. |
+| `TrigFloatTools` | Exact sums and differences stated with values, on grids found from magnitudes. |
+| `TrigSmall` | `remSmallW_spec`: fdlibm's one-step reduction for `k` from 1 to 4 lies within `2 ^ -60` relative of `x - k π/2` when `2 ^ -22 ≤ |x - k π/2| ≤ π/4 + 2 ^ -20`. |
+| `TrigNearest` | `add_nearest` and `sub_nearest`: no word lies closer to the exact sum than the rounded sum.  `small_two_diff`: for `4 |w| ≤ |a|` and `s` the rounded `a - w`, `a - s` and `(a - s) - w` are exact. |
+
+Several failures recurred and have one cause each.  `omega` and `positivity` reach the maximum recursion depth when the context or the goal holds powers such as `2 ^ 128` or `2 ^ 1088` together with other arithmetic, and `congr 1` does so when it tries to close goals with large numerals; clearing unrelated hypotheses, evaluating powers to numerals first, and replacing `positivity` with explicit lemmas fixed every case.  `generalize` and `rw` reach the same limit when two different natural-number expressions of the same shape, such as `a2 * 2 ^ 128 + a1 * 2 ^ 64 + a0` and `w2 * 2 ^ 128 + w1 * 2 ^ 64 + l2`, meet in one hypothesis: the unifier unfolds `Nat.add` and `Nat.mul` on the large literals.  Lemmas stated with a named variable and proved by `subst` avoid the comparison.  A first `rfl` proof of `remLarge_eq` with projections timed out; the version with pattern-matching `let` and the stage definitions unfolded first takes under a second.  `exponentiation.threshold 4096` made Lean evaluate powers such as `2 ^ 1278` during unification, and removing it from `TrigLarge` removed several recursion failures.
+
+The nearest property was needed because fdlibm's medium reduction subtracts `(t - r) - w` after `r = t - w` rounded, and the relative error bound alone cannot show that `(t - r) - w` is exact when `w` is far smaller than the last place of `t`.  The rounding keeps the nearest multiple of `2 ^ s`, every finite magnitude between `2 ^ (52 + s)` and `2 ^ (53 + s)` is such a multiple, and `t` itself is a candidate, so the rounding error is at most `|w|`.  These lemmas are general, and `TrigNearest` and `TrigFloatTools` could move to ProofKit.
+
+- [x] The words of `2/π` and `π/2`.
+- [x] The word routines.
+- [x] `remLarge`.
+- [x] The distance from multiples of `π/2`.
+- [x] `remSmall`.
+- [ ] `remMedium`.
+- [ ] `remPio2`, combining the branches.
