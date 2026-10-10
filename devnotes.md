@@ -28008,13 +28008,86 @@ The drone needs no array updates and no wrappers, so the order puts its theorem 
 
 - [x] Design and review.
 - [x] `ImplementsA.mono` and `BoundFacts.lean`: `blockCost`, `growCost`, `loopCost_le`, and sums.
-- [ ] 1: `Reflection` with a builder at every return site, the lemmas and builders for leaves,
+- [x] 1: `Reflection` with a builder at every return site, the lemmas and builders for leaves,
   variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, `bound_func`, and
   `bound_eq` for bodies of these forms.
-- [ ] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
+- [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
 - [ ] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.
 - [ ] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`.
 - [ ] 5: wrappers.
+
+### Bound equations: kernel evaluation of loops
+
+After increments 1 and 2, the build of `Verified/Examples/Repeat.lean` rose from 1,308 s to 5,140 s.
+A copy of `sumTo` with 10,000 iterations isolates the cause: the kernel checks
+`compiled.sumTo.bound_eq` in 7.2 s, ten times the 1,000-iteration copy's time squared, and every
+other declaration of the copy in under 1 s except `denote_eq` (0.7 s).  Bisection of the proof term
+finds the time at one `Eq.trans`, whose two arguments each check in under 6 ms.  Its middle term is
+the closed sum `0 + 0 + 0 + loopCost (fun a => 0) … (fun a b => 0) …` from `loop_bound`, and the
+left side of its second argument is the conclusion of `loopCost_eq_zero`, whose lambdas have the
+binder type `Ty.denote (Ty.elem (Elem.word.prod Elem.word))` where the term has `UInt64 × UInt64`.
+
+The [kernel's definitional equality check](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/kernel/type_checker.cpp)
+explains the cost.  `lazy_delta_reduction` tries `reduce_nat` on terms without free variables before
+it compares the arguments of two applications with the same head, and `reduce_bin_nat_op` puts both
+operands of `Nat.add` in weak head normal form.  `HAdd.hAdd` has abbreviation hints, so the
+argument comparison does not apply to it at all: both sides unfold to `Nat.add`, and the kernel
+evaluates `loopCost` to a numeral, re-deriving each state from the start because nothing shares the
+states, which makes the time quadratic in the iterations.  Any syntactic difference inside a closed
+`Nat` sum has this effect, whatever its kind.  Two kinds occur.  A lemma conclusion that builds a
+lambda, as `loopCost_eq_zero` does, differs from the term in binder types.  A lemma conclusion that
+applies a function argument, as `letE_bound` does with `BA V`, contains a beta-redex in the type
+that the kernel infers, since the kernel instantiates without beta reduction, while `inferType`,
+`instantiateMVars`, and `mkEqTrans` reduce it, so the middle terms that the pass builds are the
+reduced forms.  With the zero rule disabled, the second kind still costs 1,001 unfoldings of
+`loopCost` for 1,000 iterations.  The projection reduction of `boundOf`, an `id` hint over a whole
+equation, is a third instance.
+
+A difference at the top of a compared pair costs nothing when it is a beta-redex or a primitive
+projection of a constructor: `is_def_eq_core` applies `whnf_core` before `lazy_delta_reduction`.  A
+first design kept every junction syntactic by computing each cost from the type the kernel infers
+and joining proofs through congruences down to each difference.  A fresh reviewer confirmed the
+diagnosis against the kernel source and found that design incomplete: congruence cannot pass a
+binder without `funext` or a dependent argument such as the condition of an `if`, where the kernel
+would still compare closed branches.  It recommended removing the redexes at their source, which
+this design adopts:
+
+1. Every bound lemma builds its conclusion from its arguments, without applying an argument or
+   building a lambda.  `letE`, `letE_flat`, `letPair`, and `letPair_flat` take the body's equation
+   at the value, which the builder obtains by applying the body's proof, and `build` takes the
+   element's equation at `UInt64.ofNat k`.  `loopCost_eq_zero` and `sumBelow_zero` take the
+   hypotheses `∀ s, CA s = 0` and `∀ k, f k = 0`.  The type that `inferType` computes for each
+   proof is then the type the kernel infers, so the existing joins are syntactic.
+2. A projection of a constructor application is reduced, behind a hint, only where it holds a
+   free variable.  The kernel checks the hint by comparing pairs of which one holds that variable,
+   and `lazy_delta_reduction` applies `reduce_nat` only when both terms of a pair are closed.
+   `boundOf` reduces such projections in every cost, which removes those that the reflection's
+   tuple views leave while their components are variables.  `Bound.at` substitutes values for a
+   binder's variables: when a value is built in place, its leaves, the maximal parts that are not
+   constructor applications, become new variables, the projections are reduced, and the proof,
+   abstracted over the variables, is applied to the leaves, which the kernel instantiates without
+   comparing anything.
+3. `normCost` builds its congruences from the term's own parts.  `sumNorm` and `normSum`, which
+   have no callers, are removed.
+
+The meaning pass had a related cost that predates the bound pass: `denote_eq` evaluated
+`LeanExe.repeatWhile.go` 1,001 times for the 1,000-iteration copy.  `casesEq` proves
+`alt s.1 s.2 = match s with …` for variables by `MVarId.refl`, whose proof `Eq.refl (alt s.1 s.2)`
+does not record the match, so the final restatement of `denote_eq` compared `X.2 + k` with the
+`match` on the loop `X`, and the kernel evaluated `X` to reduce the match.  A hint now states the
+equation, and the 10,000-iteration copy checks `denote_eq` in under 20 ms instead of 724 ms.
+
+- [x] Diagnosis.
+- [x] Review of the design.
+- [x] `casesEq` states its equation.
+- [x] Lemmas with conclusions built from their arguments, and their builders.
+- [x] Projection reduction on variables.
+- [x] `normCost` with explicit congruences, and numerals from `evalNat` in the form of the lemma
+  statements, since the kernel's `whnf` returns raw literals.
+- [x] The 10,000-iteration copy checks `bound_eq` in under 20 ms instead of 6.9 s.  The full build
+  of `Verified` takes 241 s, and `Verified/Examples/Repeat.lean` builds in 6.3 s instead of
+  5,140 s, and in less than the 1,308 s it took before the bound pass, through the `casesEq` fix.
+  The suite passes 15,837 checks.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 

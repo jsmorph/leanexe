@@ -5,7 +5,15 @@ and a Lean term: one lemma per source form and side condition.  Each states `Exp
 source expression from the bounds of its parts, with the modes and live sets of `Expr.allocs`, and
 each side condition is an equation between a closed term and a constructor, which the kernel checks
 by `rfl`.  The lemmas hold for every program, mode list, and live set, so the kernel checks each
-once, when this file builds. -/
+once, when this file builds.
+
+Each conclusion is built from the lemma's arguments without applying an argument or building a
+lambda, and a binder's body enters through its equation at the value.  The type that the kernel
+infers for an application of a lemma, which instantiates without beta reduction, is then the type
+that `inferType` computes, and the reflector joins two equations only where their terms are
+identical.  The kernel compares two closed `Nat` sums that differ by evaluating both, since it
+reduces the operands of `Nat.add` to numerals before it compares arguments, and a sum can hold a
+loop's cost. -/
 
 namespace Verified.Reflect
 
@@ -241,21 +249,21 @@ theorem ite_fle_bound {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R
 /-! `let`, pairs, and destructuring. -/
 
 theorem letE_bound {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {m : Mode}
-    {V : s.denote} {VA : Nat} {BA : s.denote → Nat}
+    {V : s.denote} {VA BA : Nat}
     (hm : v.mode modes = m) (hv : v.denote funs env = V)
     (hva : v.allocs funs bounds modes (fun i => live i || b.uses (i + 1)) env = VA)
-    (hba : ∀ x, b.allocs funs bounds (m :: modes) (shift 1 live) (.cons x env) = BA x) :
-    (Expr.letE v b).allocs funs bounds modes live env = VA + BA V := by
-  subst hm hv hva; rw [← hba]; rfl
+    (hba : b.allocs funs bounds (m :: modes) (shift 1 live) (.cons V env) = BA) :
+    (Expr.letE v b).allocs funs bounds modes live env = VA + BA := by
+  subst hm hv hva hba; rfl
 
 /-- `letE_bound` for a value that means `φ X` for a Lean value `X` of another type. -/
 theorem letE_flat_bound {s t : Ty} {α : Type} (φ : α → s.denote) (X : α)
-    {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {m : Mode} {VA : Nat} {BA : α → Nat}
+    {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {m : Mode} {VA BA : Nat}
     (hm : v.mode modes = m) (hv : v.denote funs env = φ X)
     (hva : v.allocs funs bounds modes (fun i => live i || b.uses (i + 1)) env = VA)
-    (hba : ∀ x, b.allocs funs bounds (m :: modes) (shift 1 live) (.cons (φ x) env) = BA x) :
-    (Expr.letE v b).allocs funs bounds modes live env = VA + BA X := by
-  subst hm hva; rw [← hba, ← hv]; rfl
+    (hba : b.allocs funs bounds (m :: modes) (shift 1 live) (.cons (φ X) env) = BA) :
+    (Expr.letE v b).allocs funs bounds modes live env = VA + BA := by
+  subst hm hva hba; rw [← hv]; rfl
 
 theorem pair_bound {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {M : Mode}
     {A : s.denote} {B : t.denote} {AA KA BA KB : Nat}
@@ -268,26 +276,29 @@ theorem pair_bound {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {M : Mode}
     (Expr.pair a b).allocs funs bounds modes live env = AA + KA + BA + KB := by
   subst hM ha hb haa hka hba hkb; rfl
 
+/-- The bound of a destructuring, with the body's at the components `A` and `B` of the pair's
+value `E`: its projections, or the components themselves when the value is built in place. -/
 theorem letPair_bound {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u}
-    {m : Mode} {E : s.denote × t.denote} {EA : Nat} {BA : s.denote → t.denote → Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = E)
+    {m : Mode} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
+    (hm : e.mode modes = m) (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
     (hea : e.allocs funs bounds modes (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : ∀ a b, body.allocs funs bounds (m :: m :: modes) (shift 2 live)
-      (.cons b (.cons a env)) = BA a b) :
-    (Expr.letPair e body).allocs funs bounds modes live env = EA + BA E.1 E.2 := by
-  subst hm he hea; rw [← hba]; rfl
+    (hba : body.allocs funs bounds (m :: m :: modes) (shift 2 live) (.cons B (.cons A env)) =
+      BA) :
+    (Expr.letPair e body).allocs funs bounds modes live env = EA + BA := by
+  subst hm he hA hB hea hba; rfl
 
 /-- `letPair_bound` for a pair whose components are the flattenings `φa P.1` and `φb P.2` of a
 Lean pair `P`. -/
 theorem letPair_flat_bound {s t u : Ty} {α β : Type} (φa : α → s.denote) (φb : β → t.denote)
     (P : α × β) {e : Expr S Γ (.pair s t)} {body : Expr S (t :: s :: Γ) u} {m : Mode}
-    {EA : Nat} {BA : α → β → Nat}
-    (hm : e.mode modes = m) (he : e.denote funs env = (φa P.1, φb P.2))
+    {A : α} {B : β} {EA BA : Nat}
+    (hm : e.mode modes = m) (he : e.denote funs env = (φa P.1, φb P.2)) (hA : P.1 = A)
+    (hB : P.2 = B)
     (hea : e.allocs funs bounds modes (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : ∀ a b, body.allocs funs bounds (m :: m :: modes) (shift 2 live)
-      (.cons (φb b) (.cons (φa a) env)) = BA a b) :
-    (Expr.letPair e body).allocs funs bounds modes live env = EA + BA P.1 P.2 := by
-  subst hm hea; rw [← hba]; simp only [Expr.allocs, he]
+    (hba : body.allocs funs bounds (m :: m :: modes) (shift 2 live)
+      (.cons (φb B) (.cons (φa A) env)) = BA) :
+    (Expr.letPair e body).allocs funs bounds modes live env = EA + BA := by
+  subst hm hA hB hea hba; simp only [Expr.allocs, he]
 
 /-! Calls. -/
 
@@ -455,14 +466,14 @@ theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C 
   simp only [hc, hb, hca, hba]
 
 theorem build_bound {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) (.elem e)}
-    {N : UInt64} {all : Nat → Bool} {w NA : Nat} {EA : UInt64 → Nat}
+    {N : UInt64} {all : Nat → Bool} {w NA : Nat} {EA : Nat → Nat}
     (hall : all = fun i => live i || elem.uses (i + 1)) (hw : e.width = w)
     (hn : count.denote funs env = N)
     (hna : count.allocs funs bounds modes all env = NA)
-    (hea : ∀ i, elem.allocs funs bounds (.borrowed :: modes) (shift 1 all) (.cons i env) =
-      EA i) :
+    (hea : ∀ k : Nat, elem.allocs funs bounds (.borrowed :: modes) (shift 1 all)
+      (.cons (UInt64.ofNat k) env) = EA k) :
     (Expr.build count elem).allocs funs bounds modes live env =
-      NA + blockCost (N.toNat * w) + sumBelow (fun k => EA (UInt64.ofNat k)) N.toNat := by
+      NA + blockCost (N.toNat * w) + sumBelow EA N.toNat := by
   subst hall hw hn hna
   obtain rfl := funext hea
   rfl
