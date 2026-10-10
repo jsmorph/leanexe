@@ -29332,6 +29332,34 @@ Arithmetic with `unitRoundoff64` and `multiplicationUnderflowEpsilon` failed in 
 | `LeanExe/ProofKit/F64NearestSteps.lean`, extended | `expm1-steps-5.log` |
 
 - [x] Kernel rounding analysis.
+
+### Branches, scaling forms, and reduction
+
+`Expm1Branches` reduces `Tanh.expm1` to one call per branch under hypotheses on the high word, and `high_le_iff` converts a high-word comparison into a comparison of absolute values.  The scaling forms take `y` and `c` from the reduction with `abs(y) ≤ 0.3466`, `abs(c) ≤ 0.36 u`, and `y + c` within `2 ^ -70` of a real `r`, and prove `WithinSteps 1` against `2 ^ k exp r - 1`.  `Expm1FormBase.common` collects the kernel facts that all forms share: `(y - e2) - (exp r - 1)` is within `0.2401 u`, and `exp r` lies in `[0.707, 1.4143]`.  `within_of_level` is the one-step criterion for an exact result at least two spacings above the bottom of its binade.
+
+The reduction follows the code.  For `k = ±1`, `hi = x ∓ ln2Hi` is exact because both operands are multiples of `2 ^ -53` and the difference is below 1, and `yc_spec` bounds `y = hi - lo` and `c = (hi - y) - lo`.  For other `k`, the rounded `invln2 x ± 1/2` lies within `2 ^ -41` of `x/log 2 ± 1/2`, so the truncation `k` satisfies `abs(x - k log 2) ≤ 0.3465736`.  The product `k ln2Hi` is exact because `ln2Hi` has 32 significant bits and `k ≤ 1024`, and `hi` is exact on the grid of `2 ^ -53`.  The error of `y + c` against `x - k log 2` is at most `2 ^ -74` from `yc_spec`, `1024 · 2 ^ -86` from the split of `log 2`, and `2 ^ -74` from the rounding of `lo`, which sum to less than `2 ^ -70`.
+
+| Module | Content | Log |
+|---|---|---|
+| `Verified/Examples/Expm1Branches.lean` | Branch selection: `select_reduced_one`, `select_reduced_neg`, `select_reduced_pos`, `select_middle`, `select_tiny`, `select_overflow`, `select_saturated`, `select_nonfinite` | `expm1-branches-1.log` to `-4.log` |
+| `Verified/Examples/Expm1FormWords.lean` | The words `2 ^ k`, `2 ^ -k`, and `1 - 2 ^ -k` of the forms, and `mul_negTwo` | `expm1-formwords-1.log` to `-3.log` |
+| `Verified/Examples/Expm1SubOne.lean` | `sub_one_large`: subtracting 1 from a positive word at or above `2 ^ 55` returns the word | `expm1-subone-1.log` to `-5.log` |
+| `Verified/Examples/Expm1FormBase.lean` | `common`, `within_of_level` | `expm1-formbase-1.log`, `-2.log` |
+| `Verified/Examples/Expm1FormsOne.lean` | `k = -1`, and `k = 1` with `y < -1/4` and with `y ≥ -1/4` | `expm1-formsone-1.log` to `-3.log` |
+| `Verified/Examples/Expm1FormsTwo.lean` | `-56 ≤ k ≤ -2`, `57 ≤ k ≤ 1023`, and `k = 1024` with `exp r ≤ 1 - 2 ^ -46` | `expm1-formstwo-1.log` to `-5.log` |
+| `Verified/Examples/Expm1FormsMid.lean` | `2 ≤ k < 20` and `20 ≤ k ≤ 56` | `expm1-formsmid-1.log` to `-3.log` |
+| `Verified/Examples/Expm1ReduceConst.lean` | `ln2_split` (`2 ^ -86`) and `invln2_bound` (`2 ^ -55`) from `ExpReductionBounds.log_two_enclosure` | `expm1-reduceconst-1.log` |
+| `Verified/Examples/Expm1ReduceWords.lean` | `diff_exact`, `sum_exact`, `mul_ln2Hi`, `convert_spec`, `truncSat_spec` | `expm1-reducewords-1.log` to `-4.log` |
+| `Verified/Examples/Expm1ReduceOne.lean` | `yc_spec`, `reduce_one_pos`, `reduce_one_neg` | `expm1-reduceone-1.log`, `-2.log` |
+| `Verified/Examples/Expm1ReduceK.lean` | `quotient_spec`, `reduce_k_pos` (`1 ≤ k ≤ 1024`), `reduce_k_neg` (`1 ≤ -k ≤ 56`) | `expm1-reducek-1.log` to `-7.log` |
+
+The form for `k = 1024` first assumed `exp r ≤ 1 - 2 ^ -40`, which the reduction cannot supply: at the overflow threshold `x - 1024 log 2` is only about `-2.37e-14`, so the hypothesis became `exp r ≤ 1 - 2 ^ -46`.  `omega` failed on goals of the form `abs(k) ≤ 1024` for an integer cast of a natural number (`expm1-reducek-4.log`), since it treats `abs` as an atom, and `Nat.abs_cast` with `exact_mod_cast` replaced it.  Lean elaborates `((-(k : ℤ)) : ℝ)` as `-((k : ℤ) : ℝ)`, so statements about the cast of `-k` needed `push_cast` on both sides (`expm1-reducek-6.log`).
+
+- [x] Branch selection.
+- [x] Scaling forms for every `k` from -56 to 1024.
+- [x] Reduction for `k = ±1` and for general `k`.
+- [ ] Overflow, saturation, middle, and tiny paths, and the `expm1` theorem.
+
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
 The ports track works in a separate worktree, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
