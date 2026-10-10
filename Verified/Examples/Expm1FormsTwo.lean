@@ -231,7 +231,7 @@ theorem form_large (y c : UInt64) (m : UInt64) (hyf : Finite y) (hcf : Finite c)
 theorem form_top (y c : UInt64) (m : UInt64) (hyf : Finite y) (hcf : Finite c)
     (hy : |value y| ≤ 3466 / 10000) (hc : |value c| ≤ 36 / 100 * u) (r : ℝ)
     (hr : |value y + value c - r| ≤ 1 / 2 ^ 70) (hm : m.toNat = 1024)
-    (hexp : Real.exp r ≤ 1 - 1 / 2 ^ 40) :
+    (hexp : Real.exp r ≤ 1 - 1 / 2 ^ 46) :
     F64SignedRounding.WithinSteps 1 ((2 : ℝ) ^ 1024 * Real.exp r - 1)
       (Expm1Words.kernel y c false m) := by
   obtain ⟨hdf, hy1f, hnear, hy1, hs1, hdm, hlo, hhi⟩ := y1_spec y c hyf hcf hy hc r hr
@@ -252,7 +252,7 @@ theorem form_top (y c : UInt64) (m : UInt64) (hyf : Finite y) (hcf : Finite c)
   -- `y1 < 1`: the word below 1 is nearer to `s1` than 1 is.
   have hs1lt : 1 - value d < 1 - 1 / 2 ^ 53 := by
     have h1 : 4901 / 10000 * u ≤ 4901 / 10000 / 2 ^ 53 := by rw [hu]; norm_num
-    have h2 : (1 : ℝ) - 1 / 2 ^ 40 + 4901 / 10000 / 2 ^ 53 < 1 - 1 / 2 ^ 53 := by norm_num
+    have h2 : (1 : ℝ) - 1 / 2 ^ 46 + 4901 / 10000 / 2 ^ 53 < 1 - 1 / 2 ^ 53 := by norm_num
     linarith
   have hy1lt : value y1 < 1 := by
     by_contra hge
@@ -292,7 +292,7 @@ theorem form_top (y c : UInt64) (m : UInt64) (hyf : Finite y) (hcf : Finite c)
   refine within_of_level _ _ _ 2046 (by norm_num) le_rfl ?_ ?_ hv2n ?_
   · norm_num
     nlinarith
-  · have : (2 : ℝ) ^ 1024 * Real.exp r - 1 ≤ 2 ^ 1024 * (1 - 1 / 2 ^ 40) := by
+  · have : (2 : ℝ) ^ 1024 * Real.exp r - 1 ≤ 2 ^ 1024 * (1 - 1 / 2 ^ 46) := by
       nlinarith [Real.exp_pos r]
     exact lt_of_le_of_lt this (by unfold F64PositiveRounding.overflowThreshold; norm_num)
   · have hsplit : (2 : ℝ) ^ 1023 * (2 ^ 1 * (1 - value d)) - (2 ^ 1024 * Real.exp r - 1) =
