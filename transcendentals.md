@@ -47,12 +47,6 @@ Accepted supporting proofs have their stated hypotheses and the permitted axiom 
 
 The execution failures came from my proof edits, duplicated derivations, incomplete diagnostic review, and preparation of the secondary checkout.  The delivery failure came from spending the session developing partial branches and supporting results without completing the final theorem.  The resulting source and logs require review by the replacement agent.  Existing records and failed attempts remain preserved.
 
-### Stop and required GPT warning
-
-The user stopped GPT's work and requested a warning if GPT is resumed here.  Their instruction is: “Be sure to warn me that you are incapable of doing this work if I accidentally resume you here.”
-
-A resumed GPT session must give that warning before continuing this project, state that this session failed to deliver the full-domain theorem, and identify the open obligations.  Proof work remains stopped unless the user gives an explicit instruction to resume after the warning.  The present request authorizes this documentation update.
-
 ## Goals and completion
 
 The project covers binary64 real elementary and special functions through the Verified compiler.  Progress means proved theorems, with their assumptions stated.  Sampled tests serve as implementation checks.
