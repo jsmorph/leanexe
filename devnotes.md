@@ -29634,3 +29634,39 @@ Zimmermann's FreeBSD inputs, run through the Python models of this track's ports
 - [x] Build FreeBSD's code and the integer references, and measure near zeros, poles, and large arguments.
 - [x] Recommend the algorithm, bound, and API per function.
 - [ ] Decide stages 7 and 8 (coordinator and user).
+
+## 2026-10-11: Zimmermann's inputs in the accuracy checks
+
+The coordinator decided the bounds after the review of stages 7 and 8: two steps for `atan2` and `asinh`, four for `erfc` with the fdlibm port, and the earlier bounds for the other functions.  The coordinator also asked for the inputs of Zimmermann's report in every accuracy check, the earlier ports' and the `Trig`, `Exp`, `Log`, and `Tanh` checks included, with each check's bound set to the decided one, and approved this track's edits of the shared `*Accuracy.lean` files for the purpose.  This section records the inputs, the edits, and the results.
+
+### Inputs
+
+`Verified/Examples/WorstCases.lean` lists the double-precision inputs of Tables 4 to 11 of B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision", August 2026 (https://members.loria.fr/PZimmermann/papers/accuracy.pdf).  Each table entry is the input with the largest known error of one function in one of thirteen libraries: GNU libc 2.44, the Intel Math Library, AMD LibM, Newlib, OpenLibm, Musl, Apple's library, LLVM libc, MSVC, FreeBSD 15.1, the Arm Performance Library, CUDA, and ROCm.  A scratch script extracted the entries from the text of the PDF, where each table's caption follows its body, and wrote one array of bit patterns per function, with the report's hexadecimal input and its tables in a comment.  The module has 33 arrays with 5 to 12 distinct inputs each: the 27 functions of the earlier ports and `lgamma`, `tgamma`, `j0`, `j1`, `y0`, and `y1`, whose checks will use them with the ports of items 3 and 4.  The pairs of `atan2` and `pow` keep the report's order, the first and second arguments of the C function, and the check of `atan2` adds each pair in both orders.
+
+Each of the 15 checks imports the module, appends its function's arrays to its arguments, and cites the report in its docstring.  The bounds of `atan2` and `asinh` went from one step to two, and that of `erfc` from two to four, with their docstrings.  In `AtanAccuracy` and `PowAccuracy` the arguments end with a `flatMap` over the special values, whose lambda would absorb an appended `++`, so the worst-case pairs are bound to `worst` and placed before it.
+
+### Results
+
+The final runs (`ports-wc-<check>-1.log`, with `AtanAccuracy`, `AsinhAccuracy`, and `ErfAccuracy` rerun in `-2` after the docstring edits) passed every check, each in under two minutes once it held the machine's lock.  The table gives each function's decided bound in steps, the largest distance from the reference that its check found, and the number of results.
+
+| Function | Bound | Largest | Results | Function | Bound | Largest | Results |
+|---|---|---|---|---|---|---|---|
+| `exp` | 1 | 1 | 180,095 | `sinh` | 2 | 2 | 208,106 |
+| `log` | 1 | 1 | 340,076 | `cosh` | 1 | 1 | 208,106 |
+| `expm1` | 1 | 1 | 184,599 | `asinh` | 2 | 2 | 200,057 |
+| `tanh` | 2 | 2 | 160,082 | `acosh` | 2 | 2 | 200,109 |
+| `sin`, `cos` | 1 | 1 | 360,062 | `atanh` | 2 | 2 | 200,163 |
+| `log1p` | 1 | 1 | 350,144 | `exp2` | 1 | 1 | 204,309 |
+| `atan` | 1 | 1 | 200,084 | `exp10` | 1 | 1 | 200,717 |
+| `atan2` | 2 | 2 | 84,189 | `log2`, `log10` | 1 | 1 | 342,219 each |
+| `asin`, `acos` | 1 | 1 | 400,376 | `pow` | 1 | 1 | 110,922 |
+| `tan` | 1 | 1 | 180,059 | `sinpi`, `cospi`, `tanpi` | 1 | 1 | 204,631 each |
+| `erf` | 1 | 1 | 222,136 | `erfc` | 4 | 4 | 222,136 |
+
+No function fails its decided bound.  `atan2`, `asinh`, and `erfc` reach their new bounds exactly.  A probe over the same arguments (`build/transcendentals/ports-probe.lean`, `ports-probe-1.log`) placed the two-step results of `atan2` at two pairs of Table 6, `(-0x1.ec2003fe89e36p-433, 0x1.ec173ed5fd8f5p-427)` and `(-0x1.358bb5eb25bdcp+813, 0x1.2f86b82481a0ap+815)`, the second also in Tables 7 and 9, those of `asinh` at `-0x1.02657ff36d5f3p-2` (Tables 6, 7, and 9) and `-0x1.0240f2bdb3f25p-2` (Table 7), and the four-step result of `erfc` at `0x1.527f4fb0d9331p+0` (Table 7, Musl).  No other argument of the checks lies two steps away for `atan2` and `asinh` or three for `erfc`.  The review's dense scan of a Python model of `erfc` found one more result three steps away, at `0x1.5ea52c08eb7ccp+0`, which the checks do not contain.  `erfc`'s bound of four steps therefore holds with no margin at these inputs, and a later change of `Exp.expWith` could move some result to five.  CORE-MATH's correctly rounded `erfc` with the software `fma` remains the alternative that the coordinator noted.
+
+Among the C library's distances, which the checks report for information, `TrigAccuracy` reports 8 units for glibc 2.41 and `TanAccuracy` 14.  Both come from the hard argument `6381956970095103 · 2 ^ 797`, which the checks already had: there glibc's `cos` lies 7.95 units from a 1,200-digit decimal computation, and its `tan` 14.4 units from a 900-bit integer computation.  At the report's inputs, glibc's `sin` and `cos` lie within 0.52 units of a 700-bit integer computation.
+
+- [x] Extract the double-precision inputs of Tables 4 to 11 into `WorstCases.lean`.
+- [x] Add them to the 15 checks and set the decided bounds.
+- [x] Run the checks and report the functions that fail their bounds (none).

@@ -1,17 +1,20 @@
 import Verified.Examples.Pow
+import Verified.Examples.WorstCases
 import Verified.Examples.PowerReference
 
 /-! A native check of `Pow.pow` against a reference computed with Lean's integers through
 `PowerReference.powExponent` and `Reference.exp`, rounded to the nearest double, with the special
 cases of C99's Annex F.  Arm states a worst-case error of 0.54 units in the last place, so each
-result must lie within one unit of the reference.  The pairs `(x, y)` are hashed pairs with `x`
-from `2 ^ -60` to `2 ^ 60` and `y` from `2 ^ -10` to `2 ^ 10` in magnitude, `x` within `2 ^ 20`
-units of 1 with `|y|` from `2 ^ 20` to `2 ^ 50`, negative `x` with the integers `y` from -100 to
-100, `x = 2` and `x = -2` with the integers and halves `y` from -1080 to 1030, `x = 10` and
-`x = 0.1` with `y` near the limits of overflow and underflow, and every pair of the special values.
-It also reports, for information, the distance from the reference of the C library's `pow`, which
-Lean's `Float.pow` calls.  It exits with an error at the first result further than one unit from
-the reference.  Run with `lake env lean --run`. -/
+result must lie within one unit of the reference.  The pairs `(x, y)` are hashed pairs with `x` from
+`2 ^ -60` to `2 ^ 60` and `y` from `2 ^ -10` to `2 ^ 10` in magnitude, `x` within `2 ^ 20` units of
+1 with `|y|` from `2 ^ 20` to `2 ^ 50`, negative `x` with the integers `y` from -100 to 100, `x = 2`
+and `x = -2` with the integers and halves `y` from -1080 to 1030, `x = 10` and `x = 0.1` with `y`
+near the limits of overflow and underflow, and every pair of the special values.  The arguments also
+include those of `WorstCases`, which give the largest known errors of thirteen libraries in Tables 4
+to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It also
+reports, for information, the distance from the reference of the C library's `pow`, which Lean's
+`Float.pow` calls.  It exits with an error at the first result further than one unit from the
+reference.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.PowAccuracy
 
@@ -94,7 +97,8 @@ def pairs : Array (Float × Float) :=
     -1e300, 1e-300, Float.ofBits 1, Float.ofBits 0x8000000000000001,
     Float.ofBits 0x7FEFFFFFFFFFFFFF, Float.ofBits 0x3B90000000000000,
     Float.ofBits 0x43F0000000000000, Float.ofBits 0xC3F0000000000000]
-  ordinary ++ nearOne ++ negative ++ twos ++ limits ++
+  let worst := WorstCases.pow.map fun (x, y) => (Float.ofBits x, Float.ofBits y)
+  ordinary ++ nearOne ++ negative ++ twos ++ limits ++ worst ++
     special.flatMap fun x => special.map fun y => (x, y)
 
 end Verified.Examples.PowAccuracy
