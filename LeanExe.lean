@@ -212,6 +212,7 @@ import LeanExe.ProofKit.Memory
 import LeanExe.ProofKit.MemoryEnsure
 import LeanExe.ProofKit.MemoryFrame
 import LeanExe.ProofKit.MemoryGrowth
+import LeanExe.ProofKit.PolyBound
 import LeanExe.ProofKit.QuantizedInt32
 import LeanExe.ProofKit.RealAffineError
 import LeanExe.ProofKit.RealExpError
@@ -222,6 +223,7 @@ import LeanExe.ProofKit.RealRoundedError
 import LeanExe.ProofKit.RealRusanovError
 import LeanExe.ProofKit.RealSqrtError
 import LeanExe.ProofKit.Signed32
+import LeanExe.ProofKit.TaylorRemainder
 import LeanExe.Runtime.Defs
 import LeanExe.Runtime.FreeList
 import LeanExe.Runtime.Tree

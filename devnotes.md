@@ -29238,7 +29238,7 @@ The user directed Opus to build out all the transcendental functions, to prove t
 
 ### Work division
 
-Each agent works in its own copy of the primary checkout, on its own branch, so that builds and edits do not interfere.  A copy made with `cp -a` keeps the build: `lake build --no-build Verified.Examples.ExpTheorem LeanExe.ProofKit.F64SignedRounding` in `/home/somebody/src/lt-copytest` reported all 3,573 jobs up to date.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their copies, and the merge into `transcendentals` uses Git's union merge for `devnotes.md` (set in `.git/info/attributes`), since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, and `Verified.lean`.
+Each agent works in its own Git worktree, `/home/somebody/src/lt-<track>` on branch `w/<track>`, so that builds and edits do not interfere.  The primary checkouts are themselves worktrees of `/home/somebody/src/leanexe` on each machine, so a plain `cp -a` copy would share the primary's HEAD and index.  Each worker worktree is therefore created with `git worktree add --no-checkout`, filled with the primary's files and build by `tar` without `.git`, and reset to its branch.  The copied build is current: `lake build --no-build Verified.Examples.ExpTheorem LeanExe` reported all 3,655 jobs up to date in both minideb1 worktrees.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their worktrees, and Opus resolves conflicts in `devnotes.md` at each merge with `git merge-file --union`, since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, `Verified.lean`, and `tests/verified/run.sh`.
 
 | Track | Machine | Work |
 |---|---|---|
@@ -29246,7 +29246,7 @@ Each agent works in its own copy of the primary checkout, on its own branch, so 
 | Logarithm | minideb1 | Tables, both paths, subnormal inputs, exceptional values, and the byte theorem. |
 | Exponential minus one and hyperbolic tangent | minideb2 | Reduction, kernel, the scaling forms, saturation, `tanh` from `expm1`, and the byte theorems. |
 | Sine and cosine | minideb1 | The words of `2/π` and `π/2`, the Payne–Hanek arithmetic, the smallest distance of a double from a multiple of `π/2`, the medium reduction, the kernels, and the byte theorems. |
-| New ports | debtop1, if the user approves its Lean toolchain | Stage 3 to 6 implementations with sampled tests. |
+| New ports | minideb2, or debtop1 if the user approves its Lean toolchain | The stage 3 implementations, `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`, with sampled tests and a recommended bound for each. |
 
 - [x] `LeanExe/ProofKit/F64SignedRounding.lean`: the signed reference, `position`, `WithinSteps`, and the negation and nonnegative lemmas (`opus-signed-1.log` failed on a lemma name, `opus-signed-2.log` passed with the permitted axioms).
 - [ ] Polynomial bounds and series remainders.
@@ -29254,3 +29254,40 @@ Each agent works in its own copy of the primary checkout, on its own branch, so 
 - [ ] `expm1` and `tanh` theorems.
 - [ ] `sin` and `cos` theorems.
 - [ ] Stage 3 to 8 ports and theorems.
+
+## 2026-10-10: Polynomial bounds and Taylor remainders (track poly, minideb2)
+
+The minimax kernels of `sin`, `cos`, `log`, and `expm1` approximate their functions better than the Taylor polynomials of the same degree, so a bound on a kernel's error needs the range of a polynomial over an interval.  `LeanExe/ProofKit/PolyBound.lean` provides a checker that the kernel evaluates with `decide +kernel`.  `check p lo hi ε d` shifts the rational coefficients of `p` to the center `c` of `[lo, hi]`, accepts when `Σ |q k| h ^ k ≤ ε` for the half-width `h`, and otherwise bisects, at most `d` times along each branch.  `check_sound` turns an accepted check into `|eval p x| ≤ ε` for every real `x` in the interval.  The functions use structural recursion only, and `ratOfWord` gives the exact rational value of a binary64 word, so that `ratOfWord_cast` turns a kernel coefficient `value 0x...` into a polynomial coefficient.
+
+A Python simulation of the same algorithm with exact fractions (`scratchpad/w-poly/sim.py`) chose the design before any Lean ran.  For the sine kernel against the Taylor polynomial in `z = x ^ 2`, uniform subdivision was unnecessary: bisection reached a bound 0.8 percent above the largest error with 103 pieces and numbers below 430 bits.  The Lean module with both trigonometric checks then built in 8.6 seconds, and the module with both logarithm checks in 22 seconds.
+
+`LeanExe/ProofKit/TaylorRemainder.lean` gives the Taylor polynomials as coefficient lists and bounds their remainders.  The sine and cosine bounds hold for `|x| ≤ 1` and come from `Real.hasSum_sin` and `Real.hasSum_cos` with a geometric majorant of ratio `1/2`, using `(2n + 1)! 2 ^ k ≤ (2(k + n) + 1)!`.  The arctangent bound holds for `|x| < 1` from `Real.hasSum_arctan`, the exponential bound comes from `Real.exp_bound`, and the bound for `log (1 + x)` from `Real.abs_log_sub_add_sum_range_le`.
+
+| Theorem | Statement |
+|---|---|
+| `PolyBound.check_sound` | `check p lo hi ε d = true → lo ≤ x → x ≤ hi → abs (eval p x) ≤ ε` |
+| `TaylorRemainder.sin_remainder` | `abs x ≤ 1 → abs (sin x - x * eval (sinCoeffs n) (x ^ 2)) ≤ 2 abs x ^ (2n + 1) / (2n + 1)!` |
+| `TaylorRemainder.cos_remainder` | `abs x ≤ 1 → abs (cos x - eval (cosCoeffs n) (x ^ 2)) ≤ 2 abs x ^ (2n) / (2n)!` |
+| `TaylorRemainder.exp_remainder` | `abs x ≤ 1 → 0 < n → abs (exp x - eval (expCoeffs n) x) ≤ abs x ^ n (n + 1)/(n! n)` |
+| `TaylorRemainder.log1p_remainder` | `abs x < 1 → abs (log (1 + x) - eval (log1pCoeffs n) x) ≤ abs x ^ (n + 1) / (1 - abs x)` |
+| `TaylorRemainder.atan_remainder` | `abs x < 1 → abs (arctan x - x * eval (atanCoeffs n) (x ^ 2)) ≤ abs x ^ (2n + 1) / (1 - x ^ 2)` |
+| `TrigKernelPoly.sin_kernel_error` | `abs x ≤ 0.7854 → abs (sin x - x * eval sinKernel (x ^ 2)) ≤ abs x (65/64) 2 ^ -58` |
+| `TrigKernelPoly.cos_kernel_error` | `abs x ≤ 0.7854 → abs (cos x - eval cosKernel (x ^ 2)) ≤ 2 ^ -59` |
+| `LogKernelPoly.core_kernel_error` | `abs r ≤ 1/256 → abs (log (1 + r) - r * eval coreKernel r) ≤ abs r (17/32) 2 ^ -54` |
+| `LogKernelPoly.near1_kernel_error` | `-1/16 ≤ r ≤ 265/4096 → abs (log (1 + r) - r * eval near1Kernel r) ≤ abs r (15/16) 2 ^ -62` |
+
+The sine kernel's largest error relative to `x` on `[0, 0.7854]` is about `2 ^ -57.994`, at `x ≈ 0.765`, which exceeds the `2 ^ -58` that fdlibm's comment in `k_sin.c` states, so the theorem states `(65/64) 2 ^ -58`.  The cosine kernel's largest absolute error there is about `2 ^ -59.83`.  The polynomial of `Log.logCore` has relative error up to `2 ^ -54.96` at `r = ±1/256` and `2 ^ -55.35` on `abs r ≤ 0x1.fp-9`, about `2 ^ -63` in absolute terms, which is the scale of Arm's error budget for that path.  The polynomial of `Log.logNear1` has relative error up to `2 ^ -62.15` on its range, at `r = -1/16`.  Each of these largest errors comes from the Python sampling, and each theorem's bound rests on the kernel check alone.
+
+| Check | Result | Log |
+|---|---|---|
+| `LeanExe.ProofKit.PolyBound` | Passed on the first run | `poly-bound-1.log` |
+| `LeanExe.ProofKit.TaylorRemainder` | The first run failed: `nlinarith` did not prove `2 m! ≤ (m + 2)!`, `field_simp` left `(1/2) ^ k 2 ^ k`, and `linarith` did not match `2 a / b` with `a / b * 2`.  The second passed. | `poly-taylor-1.log`, `poly-taylor-2.log` |
+| `Verified.Examples.TrigKernelPoly` | Both kernel checks passed on the first run.  Two numeral casts failed under `exact_mod_cast` and passed with `norm_num`. | `poly-trig-kernel-1.log`, `poly-trig-kernel-2.log` |
+| `Verified.Examples.LogKernelPoly`, with `TaylorRemainder` rebuilt after adding `log1pQuotCoeffs` | Passed on the first run | `poly-log-kernel-1.log` |
+
+Every theorem in the four modules reports only `propext`, `Classical.choice`, and `Quot.sound`, and the builds produced no warnings in these files.  All 28 coefficient words of the two demonstrations appear in `Trig.lean` and `Log.lean`.  The `expm1` kernel is a rational function of `r`, so its bound needs a polynomial inequality between a numerator and a denominator, which this checker states after multiplying out.  That case is left to the `expm1` track.
+
+- [x] `PolyBound`: the checker, its soundness, and `ratOfWord`.
+- [x] `TaylorRemainder`: `sin`, `cos`, `exp`, `log (1 + x)`, and `atan`.
+- [x] The sine and cosine kernel polynomials.
+- [x] The two logarithm polynomials.
