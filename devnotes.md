@@ -29740,7 +29740,7 @@ Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at 
 
 ## 2026-10-10: Full theorems for `atan` and `log1p` (track arc)
 
-The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved, `log1p` is in progress, and the other three functions have not started.
+The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved, `log1p` and `asin` are written and building, and `acos` and `atan2` have not started.
 
 ### Error tracking
 
@@ -29771,20 +29771,28 @@ The correction is exact except in three places.  For `x ≤ -1/2`, `u = 1 + x` i
 
 `ln2Hi + ln2Lo` lies within `2 ^ -81` of `log 2` by the series of `LogRatioRemainder` at `1/3`, since `(1 + 1/3)/(1 - 1/3) = 2` (`Log1pTheoremConst.ln2_close`).  The same series at `s = q/(2 + q)` bounds `log (1 + q)` for a rational `q` (`log_ge`, `log_le`), and the kernel evaluates both ends in `ℚ`.  The case boundaries use these bounds at `0.285`, `-0.175`, `0.2125`, `-0.2929`, and `0.41422`.
 
+### A pitfall of `linarith`
+
+`linarith` failed on three linear goals in `F64RoundNearest` and one in `Log1pTheoremConst` although every hypothesis it needed was present.  Its preprocessing step `cancelDenoms` ([`Mathlib/Tactic/Linarith/Preprocessing.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/Linarith/Preprocessing.lean)) runs only on a hypothesis whose left side contains a division, and it calls `CancelDenoms.derive` ([`Mathlib/Tactic/CancelDenoms/Core.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/CancelDenoms/Core.lean)), which normalizes the whole term with `norm_num`, including the arguments of functions.  A hypothesis with a division therefore holds `value (UInt64.ofNat (a * 4503599627370496))` where a hypothesis without one holds `value (UInt64.ofNat (a * 2 ^ 52))`, and `2 ^ (-1021 : ℤ)` becomes a rational number in one and stays a power in the other.  `linarith` treats the two forms as different atoms.  The proofs now name such terms with `set` before calling `linarith`, or chain the inequalities explicitly.
+
 ### Files and checks
 
 | File | State | Log |
 |---|---|---|
 | `F64Approx`, `F64HighWord`, `F64Exact`, `F64WithinSelf`, `AtanTheorem*` | Committed in `e3d560d8` | `arc-atan-main-5.log` |
 | `F64HalfUlp` | Committed in `e02cb52c` | `arc-halfulp-2.log` |
-| `F64RoundNearest` | The first run failed on a missing import of `F64Approx`; the second is building | `arc-roundnearest-1.log`, `arc-roundnearest-2.log` |
-| `Log1pTheoremBranches`, `Core`, `Const`, `K0`, `Tail`, `Reduce` | Written in `scratchpad/w-poly/arc`, not built | |
+| `F64Exact` (adds `mul_half_exact` and `exponent_two_of_value`) | Builds, not committed | `arc-log1p-1.log` |
+| `F64RoundNearest`, `F64WithinZero` | Three `linarith` failures fixed, rebuilding | `arc-log1p-1.log`, `arc-log1p-2.log` |
+| `Log1pTheorem*` (nine files) | `Branches` failed on the order of `unfold` and `Const` on a mismatched absolute value, both fixed; the rest wait on `F64RoundNearest` | `arc-log1p-1.log`, `arc-log1p-2.log` |
+| `AtanTheoremSpecial` | Building | `arc-log1p-2.log` |
+| `AsinTheorem*`, `F64DivNearest` | Written in `scratchpad/w-poly/arc`, not built | |
 
 - [x] `atan` within one step.
 - [x] Half-spacing sums, `F64HalfUlp`.
+- [x] Merge `78965047` (`637fc911`) and reuse `LogCoreBits.kd_value` and `F64ExactProduct.int_mul_exact`.
 - [ ] Nearest rounding of sums, `F64RoundNearest`.
 - [ ] `log1p`: branches, chains, `k = 0`, `k ≠ 0`, normalization, corrections, main theorem.
 - [ ] Exceptional values of `atan` and `log1p` with `WithinSteps 0`.
 - [ ] First report to the coordinator.
-- [ ] Merge `78965047` and reuse `LogCoreBits.kd_value` and `F64ExactProduct.int_mul_exact` in place of the local conversion and product lemmas.
-- [ ] `atan2`, `asin`, `acos`, byte theorems, file theorems, and the lines for `tests/verified/run.sh`.
+- [ ] `asin` dispatcher and exceptional values.
+- [ ] `acos`, `atan2`, byte theorems, file theorems, and the lines for `tests/verified/run.sh`.
