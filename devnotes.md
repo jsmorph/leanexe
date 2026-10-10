@@ -29648,3 +29648,49 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-11: `log2` theorem (track `log`)
+
+The coordinator assigned the full theorems for `Log2.log2` and `Log10.log10` after merging the logarithm theorem.  The branch merged `transcendentals` at c9ff162d (60848aaa), with the conflicts of `devnotes.md` resolved by keeping both sides.  The target of `log2` is `Real.logb 2 x`, which Mathlib defines as `log x / log 2`, so the internal lemmas state `Real.log x / Real.log 2` and `log2_within_one` unfolds `Real.logb`.  The theorem covers every finite positive input, subnormal ones included, and the exceptional inputs give the results of IEEE 754 as for `log`.
+
+### Paths and bounds
+
+| Path | Inputs | Error before the final rounding | Allowance |
+|---|---|---|---|
+| Main (`log2Core`) | outside `[1 - 0x1.5b51p-5, 1 + 0x1.6ab2p-5)`, where `|log2 x| ≥ 31/500` | `2 ^ -64 + 0.0241 u` | `(15/32) u |y|` with `F64RelativeStepWide` |
+| Near 1 (`log2Near1`) | inside that interval, other than 1 | `u ρ / 9 + 2 ^ -61 ρ` for `ρ = |x - 1|` | `(3/8) u |y|` with `|y| ≥ 1.35 ρ` |
+
+On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: at subinterval 42 the error reached 1.39 of the allowance.  Two facts closed the gap: `t3 - hi` is exact by Sterbenz's lemma (`F64Sterbenz`), since `|kd + logc| ≥ 1/20` outside the seven subintervals around 1, and the factor `47/32` of `F64RelativeStepWide` leaves `15/32` of a unit before the final rounding.  `t1 = rhi invln2hi` is exact because `rhi` has 21 significant bits (`F64HighWord`) and `invln2hi` 32.  Near 1, `hi = rhi invln2hi` is exact for the same reason, `hi - y` is exact by Sterbenz's lemma, and the remaining errors are proportional to `ρ`, so the path has ample margin.  The polynomial checks of `Log2KernelPoly` compare the Taylor polynomial of `log (1 + r)` with `S` times the code's polynomial, where `S` is the split of `log 2` from `ExpReductionBounds`, and divide by `log 2` at the end.
+
+### Exact results
+
+`log2 (2 ^ k) = k` for every `k` from -1074 to 1023 other than 0, as values.  Such an argument reaches `log2Core` with `z = 1` in subinterval 40, where `r`, `logc`, and every word of `final2Word` that does not depend on `kd` are fixed words, so the remaining arithmetic `powStep` has one variable.  The kernel evaluates `powStep` for each `k`; one `decide` over all 2,100 values ran more than 15 minutes at 8 GB without finishing, so `Log2Power` checks 42 chunks of 50.  Checked in parallel, the chunks exhausted the 11 GB of minideb1 and the build stalled with no CPU use, so the module sets `Elab.async false` and takes about seven minutes.  The other exact results are `log2 1 = +0`, `log2 (±0) = -∞`, `log2 (+∞) = +∞`, and the canonical NaN for a negative argument, negative infinity included, and for a NaN.
+
+### Modules
+
+| Module | Content |
+|---|---|
+| `F64RelativeStepWide` | `F64RelativeStep` with `47/32` in place of `11/8` |
+| `F64Sterbenz` | Exact subtraction of words within a factor 2, and the divisibility of scaled values |
+| `F64HighWord` | The word with the low 32 bits cleared: finite, 21 significant bits, within `2 ^ -20` |
+| `F64RoundedStep` | One step for a rounded sum whose exact value lies within `63/64` units of `y` (for `log10`) |
+| `Log2Branches`, `Log2CoreBits` | Path selection and the word form of `log2Core` |
+| `Log2Tables` | 64 entries checked by the kernel; `logc` within `2 ^ -65` of `log2 c` |
+| `Log2KernelPoly` | Polynomial errors of both paths |
+| `Log2CoreFinal`, `Log2CoreStep` | The arithmetic after `r`, and one step on the main path |
+| `Log2Main`, `Log2Near1` | Normal and subnormal arguments, and the path near 1 |
+| `Log2Power` | `log2 (2 ^ k) = k` |
+| `Log2Theorem`, `Log2File` | `log2_within_one`, exceptional values, `Ready`, `log2_bytes_accuracy`, and the file |
+
+`F64RoundedStep.within_one_add` takes the sum before its rounding, not the rounded result: `Wasm.IEEE64.add` rounds within half a spacing of the binade of the sum (`F64Packing.pack_magnitude_error`), and a case analysis over the binades of the sum and of `y` gives one step through `F64FullStep.one_step_binades` whenever the sum lies within `63/64` units of `y`.  `log10` needs it: its error before the final rounding reaches about `0.82` units of the result near `f = 0.414`, beyond the `15/32` that the rounded-result lemmas leave.
+
+### Failures
+
+`congr 1` on powers of 2 reached the maximum recursion depth inside `Log2CoreStep`; the identity came from `Real.log_injOn_pos` instead.  `UInt64.toNat_ofNat` concerns literals; `UInt64.ofNat n` needs `UInt64.toNat_ofNat'`.  A location list of `simp only at` broken across lines ended the tactic block.  `field_simp` closed goals that a following `ring` then found empty, and `rw` closed goals that a following `norm_num` found empty; `<;>` avoids both.  In `F64RoundedStep`, `nlinarith` timed out on the binade cases until they were rewritten in one variable `T = 2 ^ m / 2 ^ 1074` with `linarith`.
+
+### Integration
+
+`LeanExe.lean` needs `F64RelativeStepWide`, `F64Sterbenz`, `F64HighWord`, and `F64RoundedStep`; `Verified.lean` needs `Log2Theorem` and `Log2Power`.  The `tests/verified/run.sh` entry is `log2:Log2Theorem:Log2File`; `Log2File` prints exactly two `#print axioms` lines, both with the three permitted axioms against the emitted `log2.wasm` of 4,972 bytes.
+
+- [x] `log2` main path, path near 1, exact results, byte and file theorems.
+- [ ] `log10` (in progress: constants, word form, and kernel error accepted or under test).
