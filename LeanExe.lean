@@ -70,6 +70,7 @@ import LeanExe.Pipeline.Slotted
 import LeanExe.ProofKit.Allocation
 import LeanExe.ProofKit.Array
 import LeanExe.ProofKit.ArrayPrefix
+import LeanExe.ProofKit.AsinRemainder
 import LeanExe.ProofKit.CallRemainder
 import LeanExe.ProofKit.ExpTinyError
 import LeanExe.ProofKit.F32Add
@@ -208,11 +209,13 @@ import LeanExe.ProofKit.FloatShift
 import LeanExe.ProofKit.FloatSqrtRounding
 import LeanExe.ProofKit.Frame
 import LeanExe.ProofKit.FreeListMemory
+import LeanExe.ProofKit.LogRatioRemainder
 import LeanExe.ProofKit.Memory
 import LeanExe.ProofKit.MemoryEnsure
 import LeanExe.ProofKit.MemoryFrame
 import LeanExe.ProofKit.MemoryGrowth
 import LeanExe.ProofKit.PolyBound
+import LeanExe.ProofKit.PolyChecks
 import LeanExe.ProofKit.QuantizedInt32
 import LeanExe.ProofKit.RealAffineError
 import LeanExe.ProofKit.RealExpError

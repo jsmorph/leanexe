@@ -29480,3 +29480,7 @@ Every theorem in the six new modules reports only `propext`, `Classical.choice`,
 - [x] `atan` polynomial: `AtanKernelPoly.atan_kernel_error`.
 - [x] `asin` rational function, with the remainder of `arcsin`: `AsinKernelPoly.asin_kernel_error`.
 - [x] `tan` polynomial: `TanKernelPoly.tan_kernel_error`.
+
+## 2026-10-10: Integration of the stage 4 ports and the stage 3 kernel bounds
+
+Opus merged `w/ports` at `f8d17857` (stage 4) and `w/poly` at `d539b111` (the stage 3 kernel bounds) into `transcendentals`, resolving both journal conflicts by keeping both sides.  `LeanExe.lean` now imports `PolyChecks`, `LogRatioRemainder`, and `AsinRemainder`, `Verified.lean` imports `Sinh`, `Asinh`, and `HyperbolicReference`, and `tests/verified/run.sh` emits the two new modules and runs their accuracy checks.  `lake build LeanExe Verified` with the four kernel-bound modules passed with 3,829 jobs, and all 13 kernel-bound theorems report only the permitted axioms (`opus-merge-s4-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-5.log`): 208,085 results of `sinh` within two units and of `cosh` within one, 200,047 of `asinh` within one, and 200,099 of `acosh` and 200,153 of `atanh` within two.

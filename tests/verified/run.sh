@@ -6,9 +6,11 @@
 # field bounds the number of allocations, the host's included.  A case whose expected result is
 # `trap` must trap at `unreachable`.  Last, Verified/Examples/TrigAccuracy.lean,
 # ExpAccuracy.lean, TanhAccuracy.lean, LogAccuracy.lean, Log1pAccuracy.lean, AtanAccuracy.lean,
-# AsinAccuracy.lean, and TanAccuracy.lean check Trig.sin, Trig.cos, Exp.exp, Tanh.expm1, Log.log,
-# Log1p.log1p, Atan.atan, Atan.atan2, Asin.asin, Asin.acos, and Tan.tan within one unit in the
-# last place, and Tanh.tanh within two, of references computed with Lean's integers, and
+# AsinAccuracy.lean, TanAccuracy.lean, SinhAccuracy.lean, and AsinhAccuracy.lean check Trig.sin,
+# Trig.cos, Exp.exp, Tanh.expm1, Log.log, Log1p.log1p, Atan.atan, Atan.atan2, Asin.asin,
+# Asin.acos, Tan.tan, Sinh.cosh, and Asinh.asinh within one unit in the last place, and
+# Tanh.tanh, Sinh.sinh, Asinh.acosh, and Asinh.atanh within two, of references computed with
+# Lean's integers, and
 # Verified/Examples/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.  After writing
 # the modules, it builds Verified/Examples/ExpTheorem.lean and checks Verified/Examples/ExpFile.lean,
@@ -49,6 +51,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Log:compiled.module:log \
     Verified.Examples.Log1p:compiled.module:log1p Verified.Examples.Atan:compiled.module:atan \
     Verified.Examples.Asin:compiled.module:asin Verified.Examples.Tan:compiled.module:tan \
+    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
     Verified.Examples.Drone:compiled.module:drone; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
@@ -136,12 +139,14 @@ echo "verified: passed $passed failed $failed"
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
 # The behavior of the Fourier transforms, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean || exit 1
-# The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, and tan against references
-# computed with Lean's integers, in native Lean.
+# The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, tan, sinh, cosh, asinh,
+# acosh, and atanh against references computed with Lean's integers, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ExpAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanhAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/LogAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log1pAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AtanAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean
