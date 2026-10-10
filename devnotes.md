@@ -29773,3 +29773,18 @@ The tail rational functions of `s_erf.c` approximate `log (x erfc x) + x² + 0.5
 | Third draft | Two `linarith` failures: the hints `le_abs_self` and `neg_abs_le` were swapped between the two signs | `erf-real-3.log` |
 | Fourth draft | Passed, 12 theorems with the permitted axioms, no warnings | `erf-real-4.log` |
 | With `erfc_eq`, `erfc_strictAnti`, and `erfcx_asym` | Passed, 14 theorems with `propext`, `Classical.choice`, and `Quot.sound` only, no warnings | `erf-real-5.log` |
+
+### Kernel bounds, small and middle ranges
+
+The coordinator approved the plan for the tail kernels and asked for the `erfc` budget to use the exponential proof's internal bounds, with a report of the reached bound if four steps fail.  The two kernels below 1.25 are proved.
+
+| Theorem | Statement | Largest error, source's statement | Run |
+|---|---|---|---|
+| `ErfKernelSmall.small_kernel_error` | `|erf x - x - x (pp/qq)(x²)| ≤ (21/32) 2^-55 |x|` for `|x| ≤ 0.84375` | `2^-55.86` at `z = 0`, where `pp0` is `2/√π - 1` rounded one unit below `efx`.  The source states `2^-57.90`, which leaves this out. | `erf-small-2.log`, 41 s |
+| `ErfKernelMiddle.middle_kernel_error` | `|erf (1 + s) - erx - P (s)/Q (s)| ≤ (21/16) 2^-58` for `-5/32 ≤ s ≤ 1/4` | `2^-58.20` at `s = 1/4`.  The source states `2^-59.06`. | `erf-middle-1.log`, 173 s |
+
+Each check compares `Q ((2/√π)_lo T - c) - P` with `ε Q` through `PolyChecks.abs_le_weighted`, where `T` is the series partial sum from `erf_series`, with 20 terms for the small range and 26 for the middle, shifted to `s` by `PolyBound.shift` for the middle range.  The enclosure of `2/√π` adds `3/2^68` times the partial sum.  The middle checks have degree 57 and numbers of about 930 bits, split into eight declarations per side, and took about 10 s each.  The first small run (`erf-small-1.log`) failed on a wrong value of `20! · 41` in the remainder bound and on a goal that `gcongr` had already closed.
+
+`PolyCalculus` adds the formal derivative with `HasDerivAt` for `eval`, powers, `spread` for `p (x²)`, `oddP`, reversal, and `hatP c n` with `eval (hatP c n) x = x^(2n) eval c (1/x²)`.  `RealErfScaled` adds `erfcxN = erfcx/(2/√π)`, which satisfies `erfcxN' = 2 x erfcxN - 1`, a comparison lemma `ode_backward` for any function with derivative `2 x G - k`, and rational asymptotic bounds `erfcxN_asym`.  The tail models use `erfcxN`, so their chain carries no error from the enclosure of `π`.
+
+A first-order model of the `erfc` tail, which counts each rounding as half a unit of its binade and each `exp` as about `1.32 u` from the exponential proof's reconstruction bounds, gives at most 5.9 units in the last place near `x ≈ 1.32`.  The largest share, about `2.8 u` in the second exponential's argument, is the Horner evaluation of `R` and `S` at `s ≈ 0.58`.  Four steps therefore look out of reach for a worst-case error analysis, while the sampled maximum is three steps.
