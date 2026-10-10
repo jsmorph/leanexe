@@ -43,8 +43,11 @@ import Verified.Examples.Exp2
 import Verified.Examples.Log2
 import Verified.Examples.Log10
 import Verified.Examples.Pow
+import Verified.Examples.Sinpi
+import Verified.Examples.Erf
 import Verified.Examples.Drone
 import Verified.Examples.Reference
 import Verified.Examples.ArcReference
 import Verified.Examples.HyperbolicReference
 import Verified.Examples.PowerReference
+import Verified.Examples.ErfReference

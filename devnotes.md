@@ -29717,3 +29717,23 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.le
 - [x] Port the five functions.
 - [x] Write the references, with the error bound of the continued fraction, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
+
+## 2026-10-10: Decisions after the review of gamma, Bessel, and worst inputs
+
+The ports track reviewed the implementation options for stages 7 and 8 (its journal section, commit `7229fce0` on `w/ports`) and ran exact models of the existing ports at the worst inputs that Zimmermann's survey of libm accuracy lists for FreeBSD.  Three decided bounds were too small: `atan2` and `asinh` reach two steps, and `erfc` reaches three, with FreeBSD's known worst case at 4.08 units.  The sampled checks missed these inputs.  Opus made the following decisions under the user's delegation.
+
+| Item | Decision | Reason |
+|---|---|---|
+| `atan2`, `asinh` | Two steps | The worst inputs reach two. |
+| `erfc` | Four steps with the fdlibm port | The worst known case is 4.08 units.  CORE-MATH's `erfc` with the software fused multiply-add remains an option. |
+| Accuracy checks | Every check gains Zimmermann's worst inputs and enforces the decided bound | The sampled arguments missed the worst cases of three functions. |
+| `tgamma`, `lgamma` | CORE-MATH (MIT) with a software fused multiply-add proved correct once, one step | fdlibm's `lgamma` errs by up to 4.45e15 units next to its negative zeros, and FreeBSD's `tgamma` by 1,030 units between -184 and -170.  WebAssembly has no deterministic fused multiply-add. |
+| `lgamma` API | `lgammaR : Float → Float × Float` returning `log |Γ x|` and the sign as ±1, and `lgamma x := (lgammaR x).1` | The sign as `lgamma_r` defines it, without global state. |
+| `j0`, `j1`, `y0`, `y1` | fdlibm, with a bound in units of the modulus `√(J² + Y²)` | No permissively licensed implementation reaches a step bound next to the zeros, and a step bound would need the distance of every zero from its nearest doubles.  Measured against the modulus, fdlibm stays within 3.01 units. |
+| `jn`, `yn` | fdlibm, with a modulus bound that grows with the order, and the order as C's 32-bit `int` in a `UInt64` | The error grows with the order, to about 30 units at order 100. |
+
+Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, but no Bessel functions, no error function, and no Stirling series with a remainder, so the stage 6 to 8 proofs start with those definitions and their series.
+
+## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
+
+Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
