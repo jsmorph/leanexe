@@ -171,6 +171,7 @@ import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
 import LeanExe.ProofKit.F64RusanovResidual
 import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64SignedRounding
 import LeanExe.ProofKit.F64Source
 import LeanExe.ProofKit.F64Sqrt
 import LeanExe.ProofKit.F64SqrtBounds

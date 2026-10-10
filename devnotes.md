@@ -29219,3 +29219,37 @@ Several duplicates remain in the exp-specific chain.  `ExpSpecialNegative.one_va
 | the build host, the same sources, `lake build Verified.Examples.ExpTheorem` | Passed, compiling the 35 changed or dependent modules, with no `sorryAx` | the build host `opus-consolidate-m2-1.log` |
 
 The removed GPT lemmas are `floatEvaluation_error` and `floatEvaluation_exp_error` in `ExpEvaluationFloat`, `floatReconstruction_error` in `ExpReconstructionBounds`, and `floatResidual_bounds` in `ExpResidualFloat`.  No declaration used them.  The second checkout's copy of GPT's warning in `AGENTS.md` was removed as in the primary one.
+
+## 2026-10-10: Plan for the remaining functions
+
+The user directed Opus to build out all the transcendental functions, to prove the theorems for the existing `log`, `expm1`, `tanh`, `sin`, and `cos`, and to use two build hosts and concurrent agents.  For the decisions that the plan left open, the user said to follow the precedent of the exponential work or Opus's recommendation after review.  The table records those decisions.  Each later change to one of them goes in this journal with its reason.
+
+| Decision | Choice and reason |
+|---|---|
+| Accuracy bound | One representable step from the nearest-even reference, as for `exp`, for `log`, `expm1`, `sin`, `cos`, and each new function whose implementation allows it.  `tanh` gets two steps: `TanhAccuracy.lean` finds results two units from the reference, fdlibm states no bound, and glibc's `tanh` from the same source shows the same distance.  A new function's bound is set when its port is reviewed, from the source's stated error and the sampled test. |
+| Signed results | `F64SignedRounding.roundNearestEven` negates the nonnegative reference of `abs y` for negative `y`, since rounding to nearest, ties to even, is symmetric.  `position` maps a word to the encoding of its magnitude, negated for a set sign bit, so both zeros sit at 0 and adjacent values have adjacent positions.  `WithinSteps n y w` states that `w` is not a NaN and that its position differs from the reference's by at most `n`.  For a nonnegative result it is the statement of `exp_one_step`. |
+| Domain and exceptional values | Every finite input in the mathematical domain, with exact equalities for signed zeros, infinities, NaN, and inputs outside the domain, as for `exp`. |
+| Byte theorems | The form of `exp_bytes_accuracy`: a store invariant `Ready` with the function's tables borrowed, every call in a sequence of calls, and a file theorem checked by `tests/verified/run.sh`. |
+| Sources of new ports | FreeBSD msun at the pinned commit, or Arm optimized-routines where it has a double routine without fused multiply-add.  Each port records its audit of operations, constants, and license. |
+| Placement | `Verified.Examples`, as for `exp`. |
+| Gamma and Bessel | Decided when stage 7 starts.  fdlibm's `lgamma`, `j0`, and `y0` lose relative accuracy near the zeros of the functions, so a one-step bound there needs other algorithms or a different bound. |
+| Shared proof tools | A polynomial bound checked by the kernel on rational intervals, and Taylor remainders for the series that the kernels approximate, in ProofKit.  The minimax kernels of `sin`, `cos`, `log`, and `expm1` are more accurate than their Taylor truncations, so the coefficient-by-coefficient argument of the exponential proof does not extend to them. |
+
+### Work division
+
+Each agent works in its own copy of the primary checkout, on its own branch, so that builds and edits do not interfere.  A copy made with `cp -a` keeps the build: `lake build --no-build Verified.Examples.ExpTheorem LeanExe.ProofKit.F64SignedRounding` in a separate worktree reported all 3,573 jobs up to date.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their copies, and the merge into `transcendentals` uses Git's union merge for `devnotes.md` (set in `.git/info/attributes`), since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, and `Verified.lean`.
+
+| Track | Machine | Work |
+|---|---|---|
+| Polynomial bounds | a build host | The kernel-checked polynomial bound and the series remainders for `sin`, `cos`, `log1p`, `exp`, and `atan`. |
+| Logarithm | a build host | Tables, both paths, subnormal inputs, exceptional values, and the byte theorem. |
+| Exponential minus one and hyperbolic tangent | a build host | Reduction, kernel, the scaling forms, saturation, `tanh` from `expm1`, and the byte theorems. |
+| Sine and cosine | a build host | The words of `2/π` and `π/2`, the Payne–Hanek arithmetic, the smallest distance of a double from a multiple of `π/2`, the medium reduction, the kernels, and the byte theorems. |
+| New ports | the build host, if the user approves its Lean toolchain | Stage 3 to 6 implementations with sampled tests. |
+
+- [x] `LeanExe/ProofKit/F64SignedRounding.lean`: the signed reference, `position`, `WithinSteps`, and the negation and nonnegative lemmas (`opus-signed-1.log` failed on a lemma name, `opus-signed-2.log` passed with the permitted axioms).
+- [ ] Polynomial bounds and series remainders.
+- [ ] `log` theorem.
+- [ ] `expm1` and `tanh` theorems.
+- [ ] `sin` and `cos` theorems.
+- [ ] Stage 3 to 8 ports and theorems.

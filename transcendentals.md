@@ -1,8 +1,8 @@
 # Transcendental functions
 
-Status: 2026-10-09.  The primary checkout is a separate checkout, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The proof changes are uncommitted.  The existing numerical algorithms and Verified compiler are unchanged.
+Status: 2026-10-10.  The primary checkout is a separate checkout, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The exponential theorem and its consolidation are committed.  The existing numerical algorithms and Verified compiler are unchanged.
 
-Opus replaced GPT on 2026-10-09 and completed the full exponential theorem, `ExpTheorem.exp_bytes_accuracy`, which covers every finite binary64 input and the decoded WebAssembly bytes.  The sections below on GPT's failure remain as the record the user requested.  The remaining functions are plans.
+Opus replaced GPT on 2026-10-09 and completed the full exponential theorem, `ExpTheorem.exp_bytes_accuracy`, which covers every finite binary64 input and the decoded WebAssembly bytes.  The sections below on GPT's failure remain as the record the user requested.  On 2026-10-10 the user directed the work on all the remaining functions and delegated the open decisions, which [the journal](devnotes.md#2026-10-10-plan-for-the-remaining-functions) records with the division of the work.
 
 ## Failure to deliver the requested theorems
 
@@ -138,12 +138,12 @@ GPT's reconstruction lemmas now expose the bound before the final rounding (`pre
 
 ## Function agenda
 
-The approved full `exp` theorem is proved.  The following order and inventory are proposals.  Selection of a new algorithm, accuracy bound, or public API requires the user's confirmation.
+The approved full `exp` theorem is proved.  The decisions below set the order, the bounds, and the placement.
 
 | Stage | Functions | Main theorem work | Status |
 |---|---|---|---|
 | 1 | `exp` | Complete the obligations above and prove the numerical statement about bytes. | Proved: `ExpTheorem.exp_bytes_accuracy`. |
-| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | Implementations and compiler proofs exist.  Full numerical theorems are open. |
+| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | Implementations and compiler proofs exist.  Proofs started 2026-10-10. |
 | 3 | `log1p`, `tan`, `atan`, `atan2`, `asin`, `acos` | Cancellation, endpoint behavior, reciprocal error, signed zeros, and quadrants.  Trig reduction feeds `tan`; each kernel needs its own approximation proof. | Planned. |
 | 4 | `sinh`, `cosh`, `asinh`, `acosh`, `atanh` | Piecewise formulas using proved exponential, logarithm, and square-root results.  Control cancellation, domains, and intermediate overflow. | Planned. |
 | 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | Planned. |
@@ -153,17 +153,19 @@ The approved full `exp` theorem is proved.  The following order and inventory ar
 
 The broader special-function scope is open.  Candidate later families are beta, digamma, zeta, incomplete gamma, Airy, Dawson, and Fresnel functions.  Each needs a selected mathematical specification, input domain, error bound, and API before implementation.
 
-### Decisions requiring agreement
+### Decisions
 
-| Decision | What remains to choose |
+The user delegated these decisions on 2026-10-10: Opus follows the precedent of the exponential work or its own recommendation after review, and records each choice in the journal.
+
+| Decision | Choice |
 |---|---|
-| Inventory and order | Confirm the proposed families and delivery order after `exp`. |
-| Numerical guarantees | Choose bounds and domains for functions beyond `exp`, including behavior near zeros, poles, and saturated tails. |
-| Library placement | Choose the public namespace and module layout beyond the current `Verified.Examples` proofs. |
-| Gamma API | Choose `gamma` or `tgamma`, and whether `lgamma` returns its sign separately or as part of its result. |
-| Bessel API | Choose the order type, supported orders, and treatment of negative orders and arguments. |
-| Algorithm or compiler changes | Review any required change to an existing algorithm or compiler before implementation. |
-| Dependencies | Obtain approval before installing or adding a dependency. |
+| Inventory and order | The stages in the agenda, with stage 2 first.  Independent tracks run at once. |
+| Numerical guarantees | `F64SignedRounding.WithinSteps 1` for `log`, `expm1`, `sin`, `cos`, and each new function whose implementation allows it, and `WithinSteps 2` for `tanh`, whose sampled results reach two units.  A new function's bound is set at the review of its port. |
+| Library placement | `Verified.Examples`, as for `exp`. |
+| Gamma API | Decided when stage 7 starts. |
+| Bessel API | Decided when stage 8 starts. |
+| Algorithm or compiler changes | Reviewed and recorded in the journal before implementation. |
+| Dependencies | Approval from the user before installing or adding one. |
 
 ### Sources and review
 
@@ -182,10 +184,10 @@ Both machines are available through Tailscale SSH as `somebody`.  Keep Lean and 
 | Machine | Checkout | State and role |
 |---|---|---|
 | the build host | a separate checkout | Primary branch `transcendentals`.  Holds the integrated proof sources, the journal, and the accepted builds. |
-| the build host | a separate checkout | Detached at the same base commit, with the same uncommitted proof sources as the build host.  Its earlier state is saved in a backup. |
+| the build host | a separate checkout | Secondary checkout of `transcendentals`.  Its earlier state is saved in a backup. |
 | Both | the main checkout | Original setup checkouts with their own journal changes.  Preserve those changes. |
 
-Opus developed the proofs on the build host and used the build host for synchronized builds and an independent rebuild of the proof modules from source.  Independent jobs can use the two machines at once, with one Lean slot per machine.
+Opus developed the exponential proofs on the build host and used the build host for synchronized builds and an independent rebuild of the proof modules from source.  Independent jobs can use the two machines at once, with one Lean slot per machine.  Agents work in copies of a machine's checkout under a separate worktree, each on its own branch.
 
 Connect from the local machine:
 
@@ -250,6 +252,6 @@ Repository test drivers, when an implementation check is needed, run directly as
 
 The build host is the primary source for integrated work.  Before work on the build host, copy the assigned source files and their changed dependencies from the primary checkout, compare the sources, and build the required imports there.  Transfer an explicit set of source changes and record it in the journal.  Compiled `.olean` files, build output, and Lake caches remain local to each checkout.
 
-Assign separate files to simultaneous work.  Integrate accepted supporting proofs into the build host and recheck the resulting target there.  Preserve uncommitted work on both machines.  Check the working tree before applying changes.  New branch, API, algorithm, dependency, or compiler decisions follow the approval requirements above.  Additional agent delegation requires an explicit request or an applicable instruction authorizing it.
+Assign separate files to simultaneous work.  Integrate accepted supporting proofs into the build host and recheck the resulting target there.  Preserve uncommitted work on both machines.  Check the working tree before applying changes.  New API, algorithm, dependency, or compiler decisions follow the decisions above.  The user authorized concurrent agents on 2026-10-10.
 
 Logs belong under `build/transcendentals/` on the machine that ran the proof.  The primary [development journal](devnotes.md) should identify the machine, source revision or transferred files, target, accepted theorem statements, failures, and axiom reports.
