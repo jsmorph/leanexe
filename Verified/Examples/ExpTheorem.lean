@@ -320,61 +320,98 @@ theorem exp_one_step (x : Float) (hxf : Finite x.toBits) :
       exact ⟨le_refl _, Nat.le_succ _, Nat.le_succ _⟩
 
 open Wasm LeanExe.Pipeline in
-/-- The first call of the module's `exp` entry, from the store in which the module starts, with
-the bits of a float `x`: it returns without a trap, and its result is the bits of
-`Exp.exp x`. -/
-theorem exp_entry_first_call (env : HostEnv Unit) (x : Float) :
-    Runs false env Exp.compiled.module 5 Exp.compiled.module.initialStore [.f64 x.toBits]
-      (fun _ values => values = [.f64 (Exp.exp x).toBits]) := by
+/-- A store from which the module's `exp` entry runs, with `heap` the allocator's state: the
+allocator invariant holds, the table is a borrowed array at address 4096, and the memory cap is at
+most 65,535 pages. -/
+def Ready (heap : Heap) (store : Store Unit) : Prop :=
+  heap.At store ∧ heap.Borrowed store 4096 Exp.expTable ∧
+    store.memoryCap Exp.compiled.module 0 ≤ 65535
+
+open Wasm LeanExe.Pipeline in
+/-- The store in which the module starts is ready, with the heap that holds its tables. -/
+theorem ready_initial :
+    Ready (Verified.initialHeap Exp.compiled.tables) Exp.compiled.module.initialStore := by
   obtain ⟨hAt, hCap, hBor⟩ := Exp.compiled.initial
+  exact ⟨hAt, hBor 0 (by decide), hCap⟩
+
+open Wasm LeanExe.Pipeline in
+/-- A borrowed array stays borrowed through a step that keeps the bytes of every region.  Stated
+for any array, so that checking it never evaluates the size of a literal table. -/
+theorem borrowed_kept {heap heap' : Heap} {store final : Store Unit} {p : UInt64}
+    {ws : Array UInt64} (hp : heap.Borrowed store p ws) (hAt : heap'.At final)
+    (hkeep : ∀ r, heap.Region r → 0 < r.2 →
+      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧ heap'.Region r) :
+    heap'.Borrowed final p ws := by
+  obtain ⟨hb, hr⟩ := hkeep _ hp.region (by show 0 < 8 * (ws.size + 1); omega)
+  exact hp.keepIn hAt hb hr
+
+open Wasm LeanExe.Pipeline in
+/-- A call of the module's `exp` entry from a ready store, with the bits of a float `x`: it
+returns without a trap the bits of `Exp.exp x` and leaves a ready store, and every region of the
+heap before the call keeps its bytes and stays a region. -/
+theorem exp_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
+    (h : Ready heap store) :
+    Runs false env Exp.compiled.module 5 store [.f64 x.toBits] fun final values =>
+      values = [.f64 (Exp.exp x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
+        ∀ r, heap.Region r → 0 < r.2 →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r := by
+  obtain ⟨hAt, hTab, hCap⟩ := h
   have htab : ∀ t ∈ [((4096 : UInt64), Exp.expTable)],
-      (Verified.initialHeap Exp.compiled.tables).Borrowed
-          (Verified.compileWith Exp.compiled.program Exp.compiled.tables
-            Exp.compiled.wrappers).initialStore t.1 t.2 ∧
-        Apart (Verified.compileWith Exp.compiled.program Exp.compiled.tables
-            Exp.compiled.wrappers).initialStore [] (t.1.toNat, 8 * (t.2.size + 1)) := by
+      heap.Borrowed store t.1 t.2 ∧ Apart store [] (t.1.toNat, 8 * (t.2.size + 1)) := by
     intro t ht
     simp only [List.mem_singleton] at ht
     subst ht
-    exact ⟨hBor 0 (by decide), Apart.nil⟩
-  have h := Exp.compiled.exp.implements env
-    (Verified.compileWith Exp.compiled.program Exp.compiled.tables
-      Exp.compiled.wrappers).initialStore
-    (Verified.initialHeap Exp.compiled.tables) [.f64 x.toBits] x hAt trivial htab rfl
-    Separate.nil hCap
-  refine h.mono ?_
+    exact ⟨hTab, Apart.nil⟩
+  refine (Exp.compiled.exp.implements env store heap [.f64 x.toBits] x hAt trivial htab rfl
+    Separate.nil hCap).mono ?_
   intro final values hpost
-  obtain ⟨_, _, howned, _⟩ := hpost
+  obtain ⟨heap', hAt', howned, hcaps, hframe, _⟩ := hpost
   have hv : values.reverse = [.f64 (Exp.exp x).toBits] := howned
-  have := congrArg List.reverse hv
-  simpa using this
+  have hvs : values = [.f64 (Exp.exp x).toBits] := by
+    have := congrArg List.reverse hv
+    simpa using this
+  have hkeep : ∀ r, heap.Region r → 0 < r.2 →
+      (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+        heap'.Region r :=
+    fun r hr hpos => ⟨(hframe r hr hpos Apart.nil).1, (hframe r hr hpos Apart.nil).2.1⟩
+  exact ⟨hvs, heap', ⟨hAt', borrowed_kept hTab hAt' hkeep, memoryCap_le_of_caps hcaps hCap⟩,
+    hkeep⟩
 
 /-- Function 5 of the module is its export `exp`. -/
 theorem exp_export : ({ name := "exp", funcIdx := 5 } : Wasm.Export) ∈ Exp.compiled.module.exports := by
   decide +kernel
 
 /-- The accuracy theorem for the compiled module: its bytes decode to the module, whose function 5
-is exported as `exp`, and the first call of that entry, from the store in which the module
-starts, returns without a trap a single `f64` whose bits are those of `Exp.exp x`.  For finite
-`x` these bits lie within one representable step of the nonnegative nearest-even rounding of
+is exported as `exp`, and the store in which the module starts is ready.  A call of that entry
+from a ready store returns without a trap a single `f64` whose bits are those of `Exp.exp x`, and
+it leaves a ready store in which every region of the heap before the call keeps its bytes.  The
+theorem therefore covers every call in a sequence of calls to `exp` from the initial store.  For
+finite `x` the bits lie within one representable step of the nonnegative nearest-even rounding of
 `exp x`. -/
 theorem exp_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Exp.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Exp.compiled.module ∧
       ({ name := "exp", funcIdx := 5 } : Wasm.Export) ∈ Exp.compiled.module.exports ∧
-      ∀ (env : Wasm.HostEnv Unit) (x : Float),
-        Wasm.Runs false env Exp.compiled.module 5 Exp.compiled.module.initialStore
-          [.f64 x.toBits] (fun _ values => ∃ w : UInt64, values = [.f64 w] ∧
-            w = (Exp.exp x).toBits ∧
+      Ready (Verified.initialHeap Exp.compiled.tables) Exp.compiled.module.initialStore ∧
+      ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
+        (x : Float), Ready heap store →
+        Wasm.Runs false env Exp.compiled.module 5 store [.f64 x.toBits] (fun final values =>
+          ∃ w : UInt64, values = [.f64 w] ∧ w = (Exp.exp x).toBits ∧
             (Finite x.toBits →
               w.toNat ≤ 0x7FF0000000000000 ∧
               w.toNat ≤ (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat + 1 ∧
               (F64PositiveRounding.roundNearestEven (Real.exp (value x.toBits))).toNat ≤
-                w.toNat + 1)) := by
+                w.toNat + 1) ∧
+            ∃ heap' : LeanExe.Pipeline.Heap, Ready heap' final ∧
+              ∀ r, heap.Region r → 0 < r.2 →
+                (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+                  heap'.Region r) := by
   obtain ⟨bytes, henc, hdec, _⟩ := Exp.compiled.bytes
-  refine ⟨bytes, henc, hdec, exp_export, fun env x => (exp_entry_first_call env x).mono ?_⟩
-  intro _ values hv
-  exact ⟨(Exp.exp x).toBits, hv, rfl, exp_one_step x⟩
+  refine ⟨bytes, henc, hdec, exp_export, ready_initial,
+    fun env heap store x h => (exp_entry_call env heap store x h).mono ?_⟩
+  intro _ values ⟨hv, hrest⟩
+  exact ⟨(Exp.exp x).toBits, hv, rfl, exp_one_step x, hrest⟩
 
 #print axioms large_magnitude
 #print axioms magnitude_lt
@@ -392,7 +429,9 @@ theorem exp_bytes_accuracy :
 #print axioms exp_neg_zero
 #print axioms zero_one_step
 #print axioms exp_one_step
-#print axioms exp_entry_first_call
+#print axioms ready_initial
+#print axioms borrowed_kept
+#print axioms exp_entry_call
 #print axioms exp_export
 #print axioms exp_bytes_accuracy
 
