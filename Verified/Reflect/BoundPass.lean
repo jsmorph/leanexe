@@ -103,7 +103,7 @@ def LemmaApp.allocsArgs (a : LemmaApp) (name : Name) :
   let ty ← a.hypType name
   let some (_, lhs, _) := ty.eq?
     | throwError "verified_compile: the argument {name} of {a.name} is not an equation:{indentExpr ty}"
-  let (``Expr.allocs, #[_, _, _, modes, paid, live, _, _, _, _]) := lhs.consumeMData.getAppFnArgs
+  let (``Expr.allocs, #[_, _, _, _, modes, paid, live, _, _, _, _]) := lhs.consumeMData.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {a.name} is not a bound:{indentExpr lhs}"
   return (modes, paid, live)
 
@@ -181,6 +181,13 @@ def evalBool (what : MessageData) (e : Lean.Expr) : MetaM Bool := do
   if v.isConstOf ``Bool.true then return true
   if v.isConstOf ``Bool.false then return false
   throwError "verified_compile: {what} does not evaluate to a Boolean:{indentExpr v}"
+
+/-- The Booleans of the closed `List Bool` term `e`, which the kernel evaluates. -/
+partial def evalBoolList (what : MessageData) (e : Lean.Expr) : MetaM (List Bool) := do
+  match (← kernelWhnf e).getAppFnArgs with
+  | (``List.nil, _) => return []
+  | (``List.cons, #[_, b, rest]) => return (← evalBool what b) :: (← evalBoolList what rest)
+  | _ => throwError "verified_compile: {what} does not evaluate to a list:{indentExpr e}"
 
 /-- Whether the closed `Mode` term `e` evaluates to `Mode.owned`, with an error that names `what`
 when it evaluates to neither mode. -/

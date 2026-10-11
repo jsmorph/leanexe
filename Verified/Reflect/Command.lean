@@ -225,6 +225,9 @@ structure CalleeBound where
   bound : Name
   fits? : Option Name := none
   numeralEq : Option Name := none
+  /-- For a function with a paid parameter, whose entry `bound` is `base.cost`, `base.bound`: the
+  credits plus the entry. -/
+  credited? : Option Name := none
   deriving Inhabited
 
 /-- A listed definition that a later one may call: its name, its signature, its equation
@@ -245,11 +248,17 @@ structure Tables where
   funs : Lean.Expr
   fuel : Lean.Expr
   self : Option (Lean.Expr × Lean.Expr × Lean.Expr) := none
+  /-- In a recursive definition, the flags of the definition and of the functions before it. -/
+  selfFlags : Option Lean.Expr := none
 
 /-- `Prog.boundsAt` or `Prog.fitsAt` of the functions before the definition, at `fuel`. -/
 def Tables.rest (t : Tables) (fits : Bool) : Lean.Expr :=
   mkAppN (mkConst (if fits then ``Prog.fitsAt else ``Prog.boundsAt))
     #[t.sigs, t.prog, t.funs, t.fuel]
+
+/-- The flags of the functions that the body may call. -/
+def Tables.flags (t : Tables) : Lean.Expr :=
+  t.selfFlags.getD (mkApp2 (mkConst ``Prog.flags) t.sigs t.prog)
 
 /-- The bounds, or the frames conditions, of the functions that the body may call. -/
 def Tables.table (t : Tables) (fits : Bool) : Lean.Expr :=
@@ -717,8 +726,8 @@ def userProof (c : Ctx) (r : Reflection) : MetaM Lean.Expr := do
 
 /-- The arguments that the bound lemmas take from the context. -/
 def boundArgs (c : Ctx) (bounds modes paid live : Lean.Expr) : List (Name × Lean.Expr) :=
-  [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`bounds, bounds), (`modes, modes), (`paid, paid),
-    (`live, live), (`env, c.env)]
+  [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`flags, c.tables.flags), (`bounds, bounds),
+    (`modes, modes), (`paid, paid), (`live, live), (`env, c.env)]
 
 /-- The arguments that the frames lemmas take from the context. -/
 def fitsArgs (c : Ctx) : List (Name × Lean.Expr) :=
@@ -1086,7 +1095,7 @@ def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Refl
     | throwError "verified_compile: the argument {name} of {app.name} is not an equation"
   let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} is not a branch"
-  let (``Expr.allocs, #[_, _, _, modes, paid, live, _, _, _, _]) := allocs.getAppFnArgs
+  let (``Expr.allocs, #[_, _, _, _, modes, paid, live, _, _, _, _]) := allocs.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} is not a bound"
   let b ← r.bound modes paid live
   let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
@@ -1603,9 +1612,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         forallTelescope hcaTy fun xs eq => do
           let some (_, lhs, _) := eq.eq? | throwError "verified_compile: the condition of {e}"
           let args := lhs.getAppArgs
-          let proof ← (← LemmaApp.start ``bool_bound [(`S, c.sigs), (`Γ, args[6]!),
-            (`funs, c.funs), (`bounds, bounds), (`modes, args[3]!), (`paid, args[4]!),
-            (`live, args[5]!), (`env, args[9]!), (`v, mkConst ``Bool.true)]).finish
+          let proof ← (← LemmaApp.start ``bool_bound [(`S, c.sigs), (`Γ, args[7]!),
+            (`funs, c.funs), (`flags, args[2]!), (`bounds, bounds), (`modes, args[4]!),
+            (`paid, args[5]!), (`live, args[6]!), (`env, args[10]!),
+            (`v, mkConst ``Bool.true)]).finish
           return (← mkLambdaFVars xs natZero, ← mkLambdaFVars xs proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u cs α init condTrue hc f none⟩
@@ -1631,7 +1641,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let ty ← uc.instantiate hcaTy
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the condition of {e}"
         let args := lhs.getAppArgs
-        let b ← rc.bound args[3]! args[4]! args[5]!
+        let b ← rc.bound args[4]! args[5]! args[6]!
         return (← mkLambdaFVars uc.xs b.term, ← mkLambdaFVars uc.xs b.proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u rc.src α init cnd hc F (some uc.fits)⟩
@@ -1953,7 +1963,7 @@ where
         let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
           | throwError "verified_compile: the loop's body"
         let args := allocs.getAppArgs
-        let b ← u.r.bound args[3]! args[4]! args[5]!
+        let b ← u.r.bound args[4]! args[5]! args[6]!
         let (``coerceCost, #[_, s, M', v]) := coerce.getAppFnArgs
           | throwError "verified_compile: the loop's body"
         let value ← projReduce (F.beta u.xs)
@@ -2374,7 +2384,8 @@ where
       app.assign `hargs hargs
       let some (_, sumLhs, _) := (← app.hypType `hsum).eq?
         | throwError "verified_compile: the argument hsum of call_bound"
-      -- `ArgsCost funs bounds modes paid all kept env md argList`, with `md` third from the end.
+      -- `ArgsCost funs flags bounds modes paid all kept env md argList`, with `md` third from the
+      -- end.
       let sumArgs := sumLhs.getAppArgs
       unless sumLhs.isAppOf ``ArgsCost && sumArgs.size ≥ 6 do
         throwError "verified_compile: the arguments' bound {sumLhs}"
@@ -2384,6 +2395,13 @@ where
       let hsum ← argsCostBound bounds modes paid all kept md (reflected.zip callee.sig.params)
         argList
       app.assign `hsum hsum
+      -- The credits of the arguments at paid owned parameters that the call does not move from
+      -- paid variables.
+      let some (_, _, cRhs) := (← app.hypType `hc).eq?
+        | throwError "verified_compile: the argument hc of call_bound"
+      app.assign `c cRhs
+      app.assign `hc (← mkEqRefl cRhs)
+      app.assign `hcr (← argsCreditBound cRhs (reflected.zip callee.sig.params) argList)
       let some (_, getLhs, _) := (← app.hypType `hb).eq?
         | throwError "verified_compile: the argument hb of call_bound"
       let hb ← entry false cb.bound getLhs
@@ -2418,12 +2436,13 @@ where
       app.childFits `he r.fits
       app.assign `hr (← argsFits rest restList)
       app.finish
-  /-- The proof of `ArgsCost funs bounds modes paid all kept env md argList = AS` for the
+  /-- The proof of `ArgsCost funs flags bounds modes paid all kept env md argList = AS` for the
   arguments `args`, each with its parameter type. -/
   argsCostBound (bounds modes paid all kept md : Lean.Expr) (args : List (Reflection × Ty))
       (argList : Lean.Expr) : MetaM Lean.Expr := do
-    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`bounds, bounds),
-      (`modes, modes), (`paid, paid), (`all, all), (`kept, kept), (`env, c.env), (`md, md)]
+    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`flags, c.tables.flags),
+      (`bounds, bounds), (`modes, modes), (`paid, paid), (`all, all), (`kept, kept),
+      (`env, c.env), (`md, md)]
     match args with
     | [] => return (← (← LemmaApp.start ``argsCost_nil common).finish)
     | (r, t) :: rest =>
@@ -2435,7 +2454,7 @@ where
             (parts ++ [(`ht, ← evalEq scalar (boolConst true))])
           let some (_, lhs, _) := (← app.hypType `he).eq?
             | throwError "verified_compile: the argument he of argsCost_scalar"
-          let (``Expr.allocs, #[_, _, _, ms, pd, lv, _, _, _, _]) := lhs.getAppFnArgs
+          let (``Expr.allocs, #[_, _, _, _, ms, pd, lv, _, _, _, _]) := lhs.getAppFnArgs
             | throwError "verified_compile: the argument he of argsCost_scalar"
           let b ← r.bound ms pd lv
           app.assign `he b.proof
@@ -2462,6 +2481,41 @@ where
       let md' := restArgs[restArgs.size - 3]!
       let hr ← argsCostBound bounds modes paid all kept md' rest restList
       app.assign `hr hr
+      return (← boundOf (← app.finish)).proof
+  /-- The proof of `ArgsCredit funs env cf argList = CR` for the arguments `args`, each with its
+  parameter type: the credit of each argument for which the kernel evaluates `cf` to `true`. -/
+  argsCreditBound (cf : Lean.Expr) (args : List (Reflection × Ty)) (argList : Lean.Expr) :
+      MetaM Lean.Expr := do
+    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env), (`c, cf)]
+    match args with
+    | [] => (← LemmaApp.start ``argsCredit_nil common).finish
+    | (r, t) :: rest =>
+      let restList := argList.appArg!
+      let parts := common ++ [(`e, r.src), (`rest, restList)]
+      let probe ← LemmaApp.start ``argsCredit_none parts
+      let some (_, cond, _) := (← probe.hypType `hc).eq?
+        | throwError "verified_compile: the argument hc of argsCredit_none"
+      let charged ← evalBool m!"whether a call charges a credit for {r.lean}" cond
+      let app ← if charged then do
+          let app ← LemmaApp.start ``argsCredit_some parts
+          app.assign `hc (← evalEq cond (boolConst true))
+          let some (_, credit, _) := (← app.hypType `he).eq?
+            | throwError "verified_compile: the argument he of argsCredit_some"
+          let (``Ty.credit, #[_, v]) := credit.getAppFnArgs
+            | throwError "verified_compile: the credit {credit}"
+          let (E, he) ← ValueCost.credit.eq c.base t v r.lean
+          app.assign `E E
+          app.assign `he he
+          pure app
+        else do
+          probe.assign `hc (← evalEq cond (boolConst false))
+          pure probe
+      let some (_, lhs, _) := (← app.hypType `hr).eq?
+        | throwError "verified_compile: the argument hr of the arguments' credits"
+      let restArgs := lhs.getAppArgs
+      unless lhs.isAppOf ``ArgsCredit && restArgs.size ≥ 2 do
+        throwError "verified_compile: the arguments' credits {lhs}"
+      app.assign `hr (← argsCreditBound restArgs[restArgs.size - 2]! rest restList)
       return (← boundOf (← app.finish)).proof
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM Reflection := do
     let rl ← reflect c a
@@ -2652,6 +2706,8 @@ structure Reflected where
   flatResult : Lean.Expr
   /-- The bound of a listed definition, or `none` for a wrapper. -/
   bound? : Option CalleeBound := none
+  /-- Whether a parameter is paid, so that the bound adds the credits to the table's entry. -/
+  paid : Bool := false
   deriving Inhabited
 
 /-- The modes of the list of modes `e`, evaluated by the kernel. -/
@@ -2696,7 +2752,7 @@ def finishReflected (base name : Name) (params : Array Lean.Expr) (types : List 
   addTheorem (base ++ `argsAgree) (← inferType argsAgree) argsAgree
   addTheorem (base ++ `resultAgree) (← inferType resultAgree) resultAgree
   return ⟨name, types, result, aborts, modes, depth, meaningEq, argsType, resultType, flatArgs,
-    flatResult, none⟩
+    flatResult, none, false⟩
 
 /-- Adds the definition `name` of a bound or frames condition on Lean's argument tuple, with a
 height above its value's, so that the kernel unfolds it, and not the compiler's function, when it
@@ -2727,10 +2783,11 @@ def Reflected.tupleOf (r : Reflected) (params : Array Lean.Expr) : MetaM Lean.Ex
 body's bound at the entry modes with nothing live after it, from the reflection `body` of the body
 of definition `r` at the parameters `params` and their environment `env`, with the body's equation
 `denoteEq`, and the copy of a borrowed result.  The lemma's arguments `args` name the function and
-the bounds of its callees, and `base` is the program's name. -/
+the bounds of its callees, and `base` is the program's name.  For a recursive definition, `self?`
+is the table of flags with the definition's own entry, which the lemma's `fl` takes. -/
 def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
     (params : Array Lean.Expr) (env : Lean.Expr) (resultShape : Shape) (base denoteEq : Name)
-    (body : Reflection) : MetaM Bound := do
+    (body : Reflection) (self? : Option Lean.Expr := none) : MetaM Bound := do
   let some entry ← modesOf (← mkAppM ``entryModes #[ctxExpr r.params, modesExpr r.modes])
     | throwError "verified_compile: cannot evaluate the entry modes of {r.name}"
   let ms := modesExpr entry
@@ -2738,6 +2795,19 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
   let some (_, entryModes, _) := (← app.hypType `hms).eq?
     | throwError "verified_compile: the entry modes of {r.name}"
   app.assign `hms (← evalEq entryModes ms)
+  -- The parameters' flags, which the kernel evaluates.
+  let some (_, pfTerm, _) := (← app.hypType `hpf).eq?
+    | throwError "verified_compile: the parameter flags of {r.name}"
+  let pf := toExpr (← evalBoolList m!"the parameter flags of {r.name}" pfTerm)
+  app.assign `pf pf
+  app.assign `hpf (← evalEq pfTerm pf)
+  if app.names.contains `hfl then
+    let some (_, flTerm, _) := (← app.hypType `hfl).eq?
+      | throwError "verified_compile: the flags of {r.name}"
+    let some fl := self?
+      | throwError "verified_compile: the flags of {r.name} are missing"
+    app.assign `fl fl
+    app.assign `hfl (← mkExpectedTypeHint (← mkEqRefl fl) (← mkEq flTerm fl))
   let call := mkAppN (mkConst r.name) params
   app.assign `V (resultShape.apply call)
   app.assign `hv (← mkExpectedTypeHint (mkAppN (mkConst denoteEq) params) (← app.hypType `hv))
@@ -2766,37 +2836,103 @@ def bodyFitsEq (thm : Name) (args : List (Name × Lean.Expr)) (env : Lean.Expr)
   app.assign `h (← mkExpectedTypeHint b.proof (← app.hypType `h))
   return ⟨b.term, ← app.finish⟩
 
-/-- For definition `r`, whose code takes the call depth, adds `base.bound` and `base.fits`, its
-bound and frames condition with `k` frames on Lean's argument tuple, from its entries `B k` and
-`Fi k` of the tables, and their equations `base.bound_eq` and `base.fits_eq` at `k + 1` frames, for
-`k` the local variable `k`, by the lemmas `boundThm` and `fitsThm` with the arguments `args`, and
-the callees' tables `rest` and `restFits`.  The lemmas take the function's value, a `Func.mk` or
-a `RecFunc.mk`, whose projections reduce without unfolding it. -/
+/-- For definition `r`, whose code takes the call depth, adds `base.cost` and `base.fits`, its
+table's entry and frames condition with `k` frames on Lean's argument tuple, from its entries `B k`
+and `Fi k` of the tables, and their equations `base.cost_eq` and `base.fits_eq` at `k + 1` frames,
+for `k` the local variable `k`, by the lemmas `boundThm` and `fitsThm` with the arguments `args`,
+and the callees' tables `rest` and `restFits`.  The name `cost` is `bound` for a function without
+paid parameters, and `self?` is as `bodyBoundEq` takes it.  The lemmas take the function's value,
+a `Func.mk` or a `RecFunc.mk`, whose projections reduce without unfolding it. -/
 def addDepthBound (base : Name) (r : Reflected) (B Fi k : Lean.Expr) (params : Array Lean.Expr)
     (env : Lean.Expr) (resultShape : Shape) (body : Reflection) (boundThm fitsThm : Name)
-    (args : List (Name × Lean.Expr)) (rest restFits : Lean.Expr) : MetaM Unit := do
+    (args : List (Name × Lean.Expr)) (rest restFits : Lean.Expr) (cost : Name := `bound)
+    (self? : Option Lean.Expr := none) : MetaM Unit := do
   let nat := Lean.mkConst ``Nat
-  for (name, entry, ty) in [(`bound, B, nat), (`fits, Fi, mkConst ``Bool)] do
+  for (name, entry, ty) in [(cost, B, nat), (`fits, Fi, mkConst ``Bool)] do
     let value ← withLocalDeclD `k nat fun k => withLocalDeclD `x r.argsType fun x => do
       mkLambdaFVars #[k, x] (mkApp2 entry k (r.envOf x))
     addBoundDefinition (base ++ name) (← mkArrow nat (← mkArrow r.argsType ty)) value
   let tuple ← r.tupleOf params
-  -- The definition at `k + 1`, the fuel of the lemma's statement, and the tuple.
+  -- The definition at `k + 1`, the fuel of the lemma's statement, which `boundAt` and `fitsAt`
+  -- take before the environment, and the tuple.
   let equation (name eq : Name) (root : Bound) : MetaM Unit := do
     let (own, _) ← eqSides root.proof
+    let args := own.getAppArgs
     addEquation (base ++ eq) (#[k] ++ params)
-      (mkApp2 (mkConst (base ++ name)) own.getAppArgs[4]! tuple) root
-  equation `bound `bound_eq
+      (mkApp2 (mkConst (base ++ name)) args[args.size - 2]! tuple) root
+  equation cost (Name.mkSimple (cost.toString ++ "_eq"))
     (← bodyBoundEq boundThm (args ++ [(`rest, rest)]) r params env resultShape base.getPrefix
-      (base ++ `denote_eq) body)
+      (base ++ `denote_eq) body self?)
   equation `fits `fits_eq (← bodyFitsEq fitsThm (args ++ [(`rest, restFits)]) env body)
+
+/-- The proof of `Env.credit sel env = C` for the environment `env` of a definition's parameters,
+the Lean terms and types `vars`: the credit of each parameter that the kernel evaluates `sel` to
+pick. -/
+partial def envCreditEq (base : Name) (sel env : Lean.Expr) :
+    List (Lean.Expr × Ty) → MetaM Bound
+  | [] => do return ⟨natZero, ← (← LemmaApp.start ``envCredit_nil [(`sel, sel)]).finish⟩
+  | (u, t) :: rest => do
+    let (``Env.cons, #[_, _, v, envRest]) := env.getAppFnArgs
+      | throwError "verified_compile: the parameters' environment {env}"
+    let parts := [(`sel, sel), (`t, tyExpr t), (`v, v), (`rest, envRest)]
+    let probe ← LemmaApp.start ``envCredit_none parts
+    let some (_, cond, _) := (← probe.hypType `hs).eq?
+      | throwError "verified_compile: the argument hs of envCredit_none"
+    let picked ← evalBool m!"whether the parameter {u} is paid" cond
+    let app ← if picked then do
+        let app ← LemmaApp.start ``envCredit_some parts
+        app.assign `hs (← evalEq cond (boolConst true))
+        let (E, he) ← ValueCost.credit.eq base t v u
+        app.assign `E E
+        app.assign `he he
+        pure app
+      else do
+        probe.assign `hs (← evalEq cond (boolConst false))
+        pure probe
+    let some (_, lhs, _) := (← app.hypType `hr).eq?
+      | throwError "verified_compile: the argument hr of the parameters' credits"
+    let r ← envCreditEq base lhs.getAppArgs[0]! envRest rest
+    app.assign `hr r.proof
+    boundOf (← app.finish)
+
+/-- For definition `r`, which has a paid parameter, adds `base.bound`, the credits of its paid owned
+parameters plus `base.cost`, on Lean's argument tuple, with the number of frames first when its
+code takes the call depth, and its equation `base.bound_eq`.  The parameters' signature is `g`,
+their flags `pf`, their Lean terms and types `vars`, and their environment `env`. -/
+def addCreditBound (base : Name) (r : Reflected) (g : Lean.Expr) (pf : List Bool) (depth : Bool)
+    (params : Array Lean.Expr) (env k : Lean.Expr) (vars : List (Lean.Expr × Ty)) :
+    MetaM Unit := do
+  let sel := mkApp2 (mkConst ``Sig.paidSel) g (toExpr pf)
+  let nat := Lean.mkConst ``Nat
+  let credit (e : Lean.Expr) := mkAppN (mkConst ``Env.credit) #[sel, ctxExpr r.params, e]
+  let cost := Lean.mkConst (base ++ `cost)
+  let value ← withLocalDeclD `k nat fun kv => withLocalDeclD `x r.argsType fun x => do
+    let c := if depth then mkApp2 cost kv x else mkApp cost x
+    let body := mkApp2 natAdd (credit (r.envOf x)) c
+    if depth then mkLambdaFVars #[kv, x] body else mkLambdaFVars #[x] body
+  let type ← if depth then mkArrow nat (← mkArrow r.argsType nat) else mkArrow r.argsType nat
+  addBoundDefinition (base ++ `bound) type value
+  let tuple ← r.tupleOf params
+  let c := if depth then mkApp2 cost k tuple else mkApp cost tuple
+  let ce ← envCreditEq base.getPrefix sel env vars
+  let (CR, hn?) ← normCost ce.term
+  let hc ← match hn? with
+    | some h => mkEqTrans ce.proof h
+    | none => pure ce.proof
+  let proof ← congr2 natAdd (credit env) CR c c (some hc) none
+  let lhs := if depth then mkApp2 (mkConst (base ++ `bound)) k tuple
+    else mkApp (mkConst (base ++ `bound)) tuple
+  addEquation (base ++ `bound_eq) (if depth then #[k] ++ params else params) lhs
+    ⟨mkApp2 natAdd CR c, proof⟩
 
 /-- Reflects definition `name` as a function that may call the functions `sigs`, meaning
 `funs`, of the program `prog`, with the parameter modes that `Expr.paramChoice` gives, and adds
 `base.func`, `base.denote_eq`, and `base.bound`, the function's allocation bound on Lean's tuple of
-its arguments, with `base.bound_eq`, which states the bound as a Lean term in the parameters.  When
-its code takes the call depth, the bound takes the frames available, and `base.fits` and
-`base.fits_eq` state whether its calls find their frames. -/
+its arguments, with `base.bound_eq`, which states the bound as a Lean term in the parameters.  For
+a function with a paid parameter, `base.cost` is the table's entry with `base.cost_eq`, and
+`base.bound` is the credits of the paid arguments plus `base.cost`.  When its code takes the call
+depth, the bound takes the frames available, and `base.fits` and `base.fits_eq` state whether its
+calls find their frames. -/
 def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees : List Callee) :
     MetaM Reflected := do
   let info ← getConstInfoDefn name
@@ -2840,29 +2976,43 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
       (← mkAppM ``Func.depth #[f])
     let reflected ← finishReflected base name params types result (← inferType body) aborts
       modes depth (base ++ `denote_eq)
-    let boundName := base ++ `bound
+    -- The parameters' flags, from the flags of the functions before it.  A function with a paid
+    -- parameter has its table's entry as `base.cost` and the credits plus it as `base.bound`.
+    let flags := mkApp2 (mkConst ``Prog.flags) sigs prog
+    let pf ← evalBoolList m!"the parameter flags of {name}"
+      (mkAppN (mkConst ``Func.paidParams) #[sigs, f, flags])
+    let paid := pf.any id
+    let cost : Name := if paid then `cost else `bound
+    let costName := base ++ cost
+    let credited? := if paid then some (base ++ `bound) else none
+    let g := mkApp2 (mkConst ``Func.sig) sigs f
     if depth then
       let rest := mkAppN (mkConst ``Prog.boundsAt) #[sigs, prog, funs]
       let restFits := mkAppN (mkConst ``Prog.fitsAt) #[sigs, prog, funs]
-      addDepthBound base reflected (mkAppN (mkConst ``Func.boundAt) #[sigs, f, funs, rest])
+      addDepthBound base reflected (mkAppN (mkConst ``Func.boundAt) #[sigs, f, funs, flags, rest])
         (mkAppN (mkConst ``Func.fitsAt) #[sigs, f, funs, restFits]) k params env resultShape r
-        ``funcAt_bound ``funcAt_fits [(`func, func), (`funs, funs), (`k, k)] rest restFits
-      return { reflected with bound? := some { bound := boundName, fits? := some (base ++ `fits) } }
+        ``funcAt_bound ``funcAt_fits [(`func, func), (`funs, funs), (`flags, flags), (`k, k)] rest
+        restFits cost
+      if paid then addCreditBound base reflected g pf true params env k vars
+      return { reflected with
+        bound? := some { bound := costName, fits? := some (base ++ `fits), credited? }, paid }
     -- The bound: the compiler's bound of the function, among the functions before it, at the
     -- flattening of Lean's tuple of the arguments.
     let bounds := mkAppN (mkConst ``Prog.boundsAt) #[sigs, prog, funs, mkNatLit 0]
     let boundVal ← withLocalDeclD `x reflected.argsType fun x => do
-      mkLambdaFVars #[x] (mkAppN (mkConst ``Func.bound) #[sigs, f, funs, bounds, reflected.envOf x])
-    addBoundDefinition boundName (← mkArrow reflected.argsType (mkConst ``Nat)) boundVal
+      mkLambdaFVars #[x]
+        (mkAppN (mkConst ``Func.bound) #[sigs, f, funs, flags, bounds, reflected.envOf x])
+    addBoundDefinition costName (← mkArrow reflected.argsType (mkConst ``Nat)) boundVal
     let root ← bodyBoundEq ``func_bound
-      [(`func, func), (`funs, funs), (`bounds, tables.table false)] reflected params env
-      resultShape base.getPrefix (base ++ `denote_eq) r
+      [(`func, func), (`funs, funs), (`flags, flags), (`bounds, tables.table false)] reflected
+      params env resultShape base.getPrefix (base ++ `denote_eq) r
     let root : Bound :=
       ⟨root.term.replaceFVar k (mkNatLit 0), root.proof.replaceFVar k (mkNatLit 0)⟩
-    addEquation (base ++ `bound_eq) params (mkApp (mkConst boundName) (← reflected.tupleOf params))
-      root
-    let numeralEq := if (natOf root.term).isSome then some (base ++ `bound_eq) else none
-    return { reflected with bound? := some { bound := boundName, numeralEq } }
+    let costEq := base ++ Name.mkSimple (cost.toString ++ "_eq")
+    addEquation costEq params (mkApp (mkConst costName) (← reflected.tupleOf params)) root
+    if paid then addCreditBound base reflected g pf false params env k vars
+    let numeralEq := if (natOf root.term).isSome then some costEq else none
+    return { reflected with bound? := some { bound := costName, numeralEq, credited? }, paid }
 
 /-- The inverse `u` of the flattening `φ` of a Lean type, which the meaning of a recursive
 definition applies to the values of its parameters, with the proofs of the two inverse laws at
@@ -3068,28 +3218,59 @@ def reflectRecursive (base name eqName : Name) (sigs funs rest hRest : Lean.Expr
       #[sigs, mkApp2 (mkConst ``RecFunc.sig) sigs fConst, M, funs]
     let restB := mkAppN (mkConst ``Prog.boundsAt) #[sigs, rest, funs]
     let restF := mkAppN (mkConst ``Prog.fitsAt) #[sigs, rest, funs]
-    let selfB := mkAppN (mkConst ``RecFunc.boundAt) #[sigs, fConst, funsP, restB]
+    let restFlags := mkApp2 (mkConst ``Prog.flags) sigs rest
+    let selfB := mkAppN (mkConst ``RecFunc.boundAt) #[sigs, fConst, funsP, restFlags, restB]
     let selfF := mkAppN (mkConst ``RecFunc.fitsAt) #[sigs, fConst, funsP, restF]
-    let reflectWith (modes : List Mode) : MetaM Reflection := do
+    -- The flags of the definition and of the functions before it, with the definition's own
+    -- entry as its parameters' flags `pf` and its result's `rf`.
+    let flagsWith (modes : List Mode) (pf : List Bool) (rf : Bool) : Lean.Expr :=
+      mkAppN (mkConst ``Flags.cons) #[sigs, sigExpr (selfSig modes), toExpr pf, toExpr rf, restFlags]
+    let reflectWith (modes : List Mode) (pf : List Bool) (rf : Bool) : MetaM Reflection := do
       let g := sigExpr (selfSig modes)
       let sigs' := mkApp3 (mkConst ``List.cons [Level.zero]) (mkConst ``Sig) g sigs
       let funs' := mkAppN (mkConst ``Funs.cons) #[sigs, g, M, funs]
+      let cost : Name := if pf.any id then `cost else `bound
       let callee : Callee :=
         { name := name, sig := selfSig modes, denoteEq := base ++ `meaning_eq,
-          bound := { bound := base ++ `bound, fits? := some (base ++ `fits) } }
+          bound := { bound := base ++ cost, fits? := some (base ++ `fits) } }
       let tables : Tables :=
-        { sigs, prog := rest, funs, fuel := k, self := some (g, mkApp selfB k, mkApp selfF k) }
+        { sigs, prog := rest, funs, fuel := k, self := some (g, mkApp selfB k, mkApp selfF k),
+          selfFlags := some (flagsWith modes pf rf) }
       let ctx : Ctx :=
         { base := base.getPrefix, sigs := sigs', funs := funs', callees := callee :: callees,
           vars := vars, env := env, tables }
       reflect.reflectSplit ctx params.toList rhs
+    -- The flags that the body gives: a parameter is paid when the body extends an array, with
+    -- the definition's calls of itself counted as extending nothing, and the result when the
+    -- body's value is paid with the calls of itself paid.
+    let flagsOf (modes : List Mode) (src : Lean.Expr) : MetaM (List Bool × Bool) := do
+      let g := sigExpr (selfSig modes)
+      let sigs' := mkApp3 (mkConst ``List.cons [Level.zero]) (mkConst ``Sig) g sigs
+      let off := mkAppN (mkConst ``Flags.cons) #[sigs, g, toExpr ([] : List Bool),
+        toExpr false, restFlags]
+      let grows ← evalBool m!"whether the body of {name} extends an array"
+        (mkAppN (mkConst ``Expr.grows) #[sigs', off, ctx, tyExpr result, src])
+      let pf := (paramModes types modes).map fun m => m == .owned && grows
+      if result.scalar then return (pf, false)
+      let live := Lean.mkLambda `i .default (mkConst ``Nat) (mkConst ``Bool.false)
+      let paidV ← evalBool m!"whether the body of {name} is paid"
+        (mkAppN (mkConst ``Expr.paid) #[sigs', flagsWith modes pf true,
+          modesExpr (paramModes types modes), toExpr pf, live, ctx, tyExpr result, src])
+      return (pf, paidV)
     let mut modes : List Mode := types.map fun _ => .borrowed
-    let mut r ← reflectWith modes
+    let mut pf : List Bool := types.map fun _ => false
+    let mut rf : Bool := false
+    let mut r ← reflectWith modes pf rf
     for _ in [0:types.length] do
       let choice ← paramChoiceOf name r.src
       if choice == modes then break
       modes := choice
-      r ← reflectWith modes
+      r ← reflectWith modes pf rf
+    let (pf', rf') ← flagsOf modes r.src
+    if pf' != pf || rf' != rf then
+      pf := pf'
+      rf := rf'
+      r ← reflectWith modes pf rf
     let src := r.src
     let proof := r.proof
     let g := sigExpr (selfSig modes)
@@ -3144,12 +3325,20 @@ def reflectRecursive (base name eqName : Name) (sigs funs rest hRest : Lean.Expr
     let reflected ← finishReflected base name params types result resultType true modes true
       (base ++ `meaning_eq)
     -- The lemmas take the function's value, whose projections reduce without unfolding it.
-    let funsV := mkAppN (mkConst ``Funs.cons)
-      #[sigs, mkApp2 (mkConst ``RecFunc.sig) sigs func, M, funs]
+    let sigV := mkApp2 (mkConst ``RecFunc.sig) sigs func
+    let funsV := mkAppN (mkConst ``Funs.cons) #[sigs, sigV, M, funs]
+    let flagsV := mkAppN (mkConst ``Flags.cons) #[sigs, sigV, toExpr pf, toExpr rf, restFlags]
+    let paid := pf.any id
+    let cost : Name := if paid then `cost else `bound
     addDepthBound base reflected selfB selfF k params env resultShape r ``recFuncAt_bound
-      ``recFuncAt_fits [(`func, func), (`funs, funsV), (`k, k)] restB restF
+      ``recFuncAt_fits [(`func, func), (`funs, funsV), (`flags, restFlags), (`k, k)] restB restF
+      cost (some flagsV)
+    if paid then
+      addCreditBound base reflected (mkApp2 (mkConst ``RecFunc.sig) sigs func) pf true params env k
+        vars
     return { reflected with
-      bound? := some { bound := base ++ `bound, fits? := some (base ++ `fits) } }
+      bound? := some { bound := base ++ cost, fits? := some (base ++ `fits),
+                       credited? := if paid then some (base ++ `bound) else none }, paid }
 
 /-- The values of the components of `x`, the tuple of a definition's arguments, as terms. -/
 def argProjsE (x : Lean.Expr) : List Mode → Nat → MetaM (List Lean.Expr)
@@ -3306,23 +3495,53 @@ def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
     let lhs := mkApp (mkConst boundName) wTuple
     let target := mkApp (mkConst cb.bound)
       (← argsTuple (args.toList.zip ((List.range args.size).map owned)))
-    -- `Wrapper.bound tables w bounds env` unfolds to `bounds.get w.callee env'`.
-    let some get ← unfoldDefinition? ((← getConstInfoDefn boundName).value.beta #[wTuple])
+    -- `Wrapper.bound tables w flags bounds env` unfolds to the credits of the callee's paid
+    -- owned parameters plus `bounds.get w.callee env'`.  For a callee with a paid parameter, the
+    -- sum is the callee's `bound`, the credits plus its entry `cost`, and otherwise the credits
+    -- are 0.
+    let some sum ← unfoldDefinition? ((← getConstInfoDefn boundName).value.beta #[wTuple])
       | throwError "verified_compile: the bound of {name}"
-    let #[_, _, bounds, fv, env] := get.headBeta.getAppArgs
+    let sum := sum.headBeta
+    let (``HAdd.hAdd, #[_, _, _, _, credit, get]) := sum.getAppFnArgs
+      | throwError "verified_compile: the bound of {name}: {sum}"
+    let (``Env.credit, #[sel, _, envC]) := credit.getAppFnArgs
+      | throwError "verified_compile: the credits of {name}: {credit}"
+    let (``Sig.paidSel, #[g, pf]) := sel.getAppFnArgs
+      | throwError "verified_compile: the credits of {name}: {sel}"
+    let notFn := Lean.mkLambda `b .default (mkConst ``Bool)
+      (mkApp (mkConst ``Bool.not) (.bvar 0))
+    let unpaid := mkApp3 (mkConst ``List.all [Level.zero]) (mkConst ``Bool) pf notFn
+    let unpaidV ← evalBool m!"whether {callee.name} has no paid parameter" unpaid
+    let #[_, _, bounds, fv, env] := get.getAppArgs
       | throwError "verified_compile: the bound of {name}: {get}"
     let chain ← tableChain false progVal funsVal (← whnfR fv) env bounds.appArg!
     let some (_, _, chainRhs) := (← inferType chain).eq?
       | throwError "verified_compile: the bounds of {name}"
     checkEntryTarget m!"{name}" chainRhs target
-    let h ← mkExpectedTypeHint chain (← mkEq lhs target)
-    let (rhs, h) ← match cb.numeralEq with
-      | some n => do
-        let hn := mkAppN (mkConst n) args
-        let some (_, _, c) := (← inferType hn).eq?
-          | throwError "verified_compile: the bound equation of {callee.name}"
-        pure (c, ← mkEqTrans h hn)
-      | none => pure (target, h)
+    let hget ← mkExpectedTypeHint chain (← mkEq get target)
+    let hlhs ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs sum)
+    let (rhs, h) ← match unpaidV, cb.credited?, cb.numeralEq with
+      | false, some credited, _ => do
+        -- The kernel unfolds the callee's `bound` to compare it with the credits plus `cost`.
+        let full := mkApp (mkConst credited) target.appArg!
+        let hsum ← congr2 natAdd credit credit get target none (some hget)
+        let hfull ← mkExpectedTypeHint (← mkEqRefl full) (← mkEq (mkApp2 natAdd credit target) full)
+        pure (full, ← mkEqTrans hlhs (← mkEqTrans hsum hfull))
+      | false, none, _ =>
+        throwError "verified_compile: {callee.name} has a paid parameter but no bound with credits"
+      | true, _, numeralEq? => do
+        let hnone ← mkAppOptM ``Sig.paidSel_none
+          #[some g, some pf, some (← evalEq unpaid (boolConst true))]
+        let hzero ← mkAppM ``Env.credit_eq_zero #[hnone, envC]
+        let hsum ← congr2 natAdd credit natZero get target (some hzero) (some hget)
+        let h ← mkEqTrans hlhs (← mkEqTrans hsum (← mkAppM ``Nat.zero_add #[target]))
+        match numeralEq? with
+        | some n => do
+          let hn := mkAppN (mkConst n) args
+          let some (_, _, c) := (← inferType hn).eq?
+            | throwError "verified_compile: the bound equation of {callee.name}"
+          pure (c, ← mkEqTrans h hn)
+        | none => pure (target, h)
     addTheorem (base ++ `bound_eq) (← mkForallFVars params (← mkEq lhs rhs))
       (← mkLambdaFVars params h)
 
@@ -3499,9 +3718,14 @@ def elabVerifiedCompile : CommandElab
           entries := entries + 1
           pure (← `(Verified.Prog.correct_entryWith $progId $funsId $meaningId $tablesId
             $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
+        else if r.paid then
+          pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB
+            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $fvar 0)
+            rfl)), 2 + k)
         else
-          pure (← `(Verified.ImplementsB.implementsA ((Verified.Prog.correctWith $progId $funsId
-            $meaningId $tablesId $wrappersId $fvar 0).1 rfl)), 2 + k)
+          pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB_unpaid
+            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $fvar 0)
+            rfl (by decide +kernel))), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
@@ -3530,18 +3754,25 @@ def elabVerifiedCompile : CommandElab
         let progVal := (← getConstInfoDefn (base ++ `program)).value
         let (h, pre?, post) ← if r.depth then
             let frames ← evalNat (mkApp (mkConst ``framesAt) (toExpr (0 : UInt64)))
-            let h0 ← Term.elabTerm (← `(Verified.Prog.entry_trapFreeWith $progId $funsId
-              $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote (index - 2 - n)))
-              (by decide +kernel))) none
+            let h0 ← Term.elabTerm (← if r.paid then
+                `(Verified.Prog.entry_trapFreeWith $progId $funsId
+                  $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote (index - 2 - n)))
+                  (by decide +kernel))
+              else
+                `(Verified.Prog.entry_trapFreeWith_unpaid $progId $funsId
+                  $meaningId $tablesId $wrappersId $fvar rfl (j := $(Lean.quote (index - 2 - n)))
+                  (by decide +kernel) (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
             let h0 ← instantiateMVars h0
             -- The precondition
-            -- `fun x heap store => fits.get f x = true ∧ Within … (bounds.get f x)`.
+            -- `fun x heap store => fits.get f x = true ∧ Within … (bounds.get f x)`, with the
+            -- credits before `bounds.get f x` for a function with a paid parameter.
             let (fitsFn, boundFn) ← lambdaTelescope (← inferType h0).getAppArgs[8]! fun _ pre => do
               let (``And, #[l, w]) := pre.getAppFnArgs
                 | throwError "verified_compile: the precondition {pre}"
               let some (_, fl, _) := l.eq? | throwError "verified_compile: the precondition {pre}"
-              return (fl.appFn!, w.appArg!.appFn!)
+              let entry := if r.paid then w.appArg!.appArg! else w.appArg!
+              return (fl.appFn!, entry.appFn!)
             let fv := boundFn.appArg!
             -- The chains hold the numeral of `framesAt 0`, which the kernel compares with
             -- `framesAt 0` by evaluating the subtraction of two words' values.
@@ -3555,12 +3786,21 @@ def elabVerifiedCompile : CommandElab
                 LeanExe.Pipeline.Heap.Within heap store $moduleId ($boundId $fr x))),
               ← `(fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + $boundId $fr x))
           else
-            let h0 ← Term.elabTerm (← `((Verified.Prog.correctWith $progId $funsId $meaningId
-              $tablesId $wrappersId $fvar 0).1 rfl)) none
+            let h0 ← Term.elabTerm (← if r.paid then
+                `(Verified.FunSpec.implementsB (Verified.Prog.correctWith $progId $funsId
+                  $meaningId $tablesId $wrappersId $fvar 0) rfl)
+              else
+                `(Verified.FunSpec.implementsB_unpaid (Verified.Prog.correctWith $progId $funsId
+                  $meaningId $tablesId $wrappersId $fvar 0) rfl (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
             let h0 ← instantiateMVars h0
-            let #[_, _, _, _, _, _, _, _, boundEnv] := (← inferType h0).getAppArgs
+            let #[_, _, _, _, _, _, _, _, boundFn] := (← inferType h0).getAppArgs
               | throwError "verified_compile: the bounded theorem {← inferType h0}"
+            -- The table's entry `bounds.get f`, after the credits for a function with a paid
+            -- parameter.
+            let boundEnv ← if r.paid then
+                lambdaTelescope boundFn fun _ body => pure body.appArg!.appFn!
+              else pure boundFn
             let h0 ← rewriteEntry h0 boundEnv fun env =>
               tableChain false progVal funsVal boundEnv.appArg! env boundEnv.appFn!.appArg!.appArg!
             let h0 ←

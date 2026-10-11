@@ -28269,7 +28269,7 @@ its theorem stands.
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
 - [x] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
 - [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
-  condition `i < n → (n − i).toNat < 1000`.
+  condition `n − i < 1000` in `Nat`.
 
 ### Bounds and frames of recursion: implementation
 
@@ -28471,12 +28471,72 @@ The user-facing `p.f.bound` adds `Ty.credit` of each paid argument, and `Impleme
 is at least 0, so `p.f.trapFree` keeps its statement.  A function without paid parameters gets
 the bound it gets today.
 
-- [ ] `Flags`, `Prog.flags`, the parameter and result flags, and `Expr.paid` and `Expr.allocs`
+- [x] `Flags`, `Prog.flags`, the parameter and result flags, and `Expr.paid` and `Expr.allocs`
   with the table and the call's credits.
-- [ ] `ImplementsP`, `FunSpec` with it, `FunSpec.runs`, `Calls`, `CallsAt`, and `Prog.calls`.
-- [ ] `spec_call` with the moved arguments' potential, the credits, and the result's potential;
+- [x] `ImplementsP`, `FunSpec` with it, `FunSpec.runs`, `Calls`, `CallsAt`, and `Prog.calls`.
+- [x] `spec_call` with the moved arguments' potential, the credits, and the result's potential;
   `body_code_spec` with the parameter flags.
-- [ ] `ImplementsB` from `ImplementsP`, the entry and wrapper theorems, and `Prog.correct`.
-- [ ] The reflector: the table, the call lemmas, and `p.f.bound` with the credits.
-- [ ] Theorem: `Recursion.fill` bounded linearly, with its frames condition
-  `i < n → (n − i).toNat < 1000`; the README; a review.
+- [x] `ImplementsB` from `ImplementsP`, the entry and wrapper theorems, and `Prog.correct`.
+- [x] The reflector: the table, the call lemmas, and `p.f.bound` with the credits.
+- [x] Theorem: `Recursion.fill` bounded linearly, with its frames condition `n − i < 1000` in
+  `Nat`; the README; a review.
+
+A reviewer found the flag rules sound: any choice of parameter flags is sound, since a callee uses
+only the potential that its callers supply, and the result flag is the only flag a proof depends
+on.  When a recursive function's check fails, its body's bound and `RecFunc.boundAt` use `false`.
+The review changes the plan in these points.  One predicate with the flags, the potentials, `pre`,
+and `fits` replaces `ImplementsF` and serves both branches of `FunSpec`, and `ImplementsB` follows
+from it for users.  A call counts in `Expr.grows` when it passes an argument to a paid parameter,
+with a recursive function's call of itself ignored.  `args_spec` states that a moved argument's
+words are its variable's.  A call is paid only when the callee's result holds an array, since
+`Expr.mode_of_paid` needs a paid value owned.  The reflector computes a recursive function's
+result flag before it reflects the body.  The table of bounds must hold the bound without the
+credits, since a call charges the credits and callers' equations name the callee's entry.
+
+The user chose the names: `p.f.bound` stays the bound on how far `top` rises during a call, with
+the credits, so `p.f.trapFree` keeps its statement for every function.  A function with a paid
+parameter also gets `p.f.cost`, the table's entry without the credits, with
+`p.f.bound x = credit x + p.f.cost x` and `p.f.cost_eq`.  A caller's equation names `p.g.cost` for
+such a callee and `p.g.bound` for any other.
+
+### Potential for parameters and results: implementation notes
+
+`Correct.lean` carries the flags through `CodeSpec`, `FunSpec`, and `Calls`.  `ImplementsP` replaces
+`ImplementsF` and serves both branches of `FunSpec`.  `args_spec` bounds the potential of the
+arguments at the paid owned parameters by `Expr.paramPot`, a moved paid variable's own potential
+or a credit.  `spec_call` turns that bound into the moved variables' share of `dyingPot` by
+`Env.pot_argsSum` and `Env.pot_step`, plus `callCredits`.  `body_code_spec` counts the paid
+parameters' potential at entry, `Env.pot_paramSlots` reads it from the argument words, and
+`FunSpec.implementsB`, `entry_trapFree`, and `Wrapper.bound` add the credits to the user's bound.
+
+The reflector's steps:
+
+- [x] `BoundPass` and the argument positions of `Expr.allocs`, which now takes the flags.
+- [x] `Tables.flags`: `Prog.flags` of the functions before a definition, and for a recursive one
+  a table whose own entry holds the flags that the reflector computes from the body.
+- [x] The call's credits, by `ArgsCredit` and a condition per argument that the kernel evaluates.
+- [x] `func_bound`, `funcAt_bound`, and `recFuncAt_bound` with the parameter flags.
+- [x] Names: a function with a paid parameter gets `p.f.cost`, the table's entry, and `p.f.bound`,
+  the credits plus `p.f.cost`.  Callers' equations name `p.g.cost` for such a callee.
+- [x] `trapFree` by `FunSpec.implementsB` and a variant for unpaid parameters that keeps today's
+  statement, and the same for entries and wrappers.
+- [x] Theorems: `Recursion.fill_fits`, `fill_cost`, and `fill_trapFree`, and `Tables.pushSquare`,
+  a wrapper of a callee with a paid parameter, with `pushSquare_bound`.
+- [x] The README.
+- [ ] A review by a fresh agent, the verified suite, and the commit.
+
+The `implements` and `trapFree` theorems of a function without paid parameters come from
+`FunSpec.implementsB_unpaid` and `Prog.entry_trapFreeWith_unpaid`, whose condition that no
+parameter flag holds the kernel evaluates, so their statements have no credits.  A function with a
+paid parameter states them with `p.f.bound`, which the kernel unfolds to the credits plus
+`p.f.cost` when it checks the statement against the proof.  A wrapper's `bound_eq` names the
+callee's `p.g.bound` when the callee has a paid parameter, and otherwise its entry, from
+`Env.credit_eq_zero`.
+
+`Flags.params` and `Flags.result` look up a function's flags by `FVar.index` in `Flags.toList`.
+The first definition matched `Flags S` and `FVar S g` together, and the kernel reduced that match in
+40 to 130 ms per `.there` step on the program of `Trig.lean`: a lookup at depth 10 took 0.5 s, while
+the lookup by index takes under 5 ms.  The reflector evaluates the flags at every argument of every
+call, and the elaborator counts the kernel's allocations as heartbeats, so `verified_compile` of
+`Trig.lean`, whose reflection runs in one `TermElabM` block, exceeded the 200,000 heartbeats.  With
+the lookup by index the module builds in 33 s.

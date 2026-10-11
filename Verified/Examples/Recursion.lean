@@ -277,4 +277,64 @@ theorem chain_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 21 (
     (fun x _ _ h => ⟨(chain_fits 1000 x).mpr h.1, by rw [chain_bound]; exact h.2⟩)
     fun x _ _ _ _ _ h => by simpa [chain_bound] using h
 
+/-- Below `n`, `i + 1` does not wrap. -/
+theorem succ_toNat {i n : UInt64} (h : i < n) : (i + 1).toNat = i.toNat + 1 := by
+  rw [UInt64.lt_iff_toNat_lt] at h
+  have := UInt64.toNat_lt n
+  simp only [UInt64.toNat_add, UInt64.reduceToNat]
+  omega
+
+/-- `fill xs i n` makes `n - i` nested calls below its own when `i < n`, and none otherwise: with
+`k` frames available, its calls find their frames exactly when `n - i < k`, in `Nat`'s
+subtraction. -/
+theorem fill_fits : ∀ (k : Nat) (xs : Array UInt64) (i n : UInt64),
+    compiled.fill.fits k (⟨xs⟩, i, n) = true ↔ n.toNat - i.toNat < k
+  | 0, xs, i, n => by simp [show compiled.fill.fits 0 (⟨xs⟩, i, n) = false from rfl]
+  | k + 1, xs, i, n => by
+    rw [compiled.fill.fits_eq]
+    by_cases h : i < n
+    · simp only [h, ↓reduceIte, fill_fits k, succ_toNat h]
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+    · simp only [h, ↓reduceIte, true_iff]
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+
+/-- Each of the `n - i` pushes of `fill xs i n` extends the call's paid parameter, at a header and
+four times its 8 added bytes. -/
+theorem fill_cost : ∀ (k : Nat) (xs : Array UInt64) (i n : UInt64),
+    compiled.fill.cost k (⟨xs⟩, i, n) ≤ 80 * (n.toNat - i.toNat)
+  | 0, _, _, _ => Nat.zero_le _
+  | k + 1, xs, i, n => by
+    rw [compiled.fill.cost_eq]
+    by_cases h : i < n
+    · have := fill_cost k (xs.push i) (i + 1) n
+      simp only [h, ↓reduceIte, paidGrowCost_eq]
+      rw [succ_toNat h] at this
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+    · simp only [h, ↓reduceIte]
+      exact Nat.zero_le _
+
+/-- The module computes `fill xs i n` without a trap when it makes fewer than 1,000 nested calls
+and `top` can rise within the memory's cap by the credit of `xs`, 16 bytes for each of its words
+and its length, and 80 bytes for each pushed word, and it raises `top` by at most that sum. -/
+theorem fill_trapFree : ImplementsA false compiled.module 20
+    (fun (x : Moved (Array UInt64) × UInt64 × UInt64) => fill x.1.val x.2.1 x.2.2)
+    (fun x heap store => x.2.2.toNat - x.2.1.toNat < 1000 ∧
+      heap.Within store compiled.module
+        (16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat)))
+    (fun x heap _ heap' _ => heap'.top.toNat ≤
+      heap.top.toNat + (16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat))) :=
+  have hle : ∀ x : Moved (Array UInt64) × UInt64 × UInt64, compiled.fill.bound 1000 x ≤
+      16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat) := by
+    rintro ⟨⟨xs⟩, i, n⟩
+    dsimp only
+    have := fill_cost 1000 xs i n
+    rw [compiled.fill.bound_eq, creditCost]
+    omega
+  compiled.fill.trapFree.mono
+    (fun x _ _ h => ⟨(fill_fits 1000 x.1.val x.2.1 x.2.2).mpr h.1, h.2.mono (hle x)⟩)
+    fun x _ _ _ _ _ h => Nat.le_trans h (Nat.add_le_add_left (hle x) _)
+
 end Verified.Examples.Recursion

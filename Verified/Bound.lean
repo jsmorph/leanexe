@@ -30,6 +30,12 @@ def Ty.credit : (t : Ty) → t.denote → Nat
   | .pair a b, v => a.credit v.1 + b.credit v.2
   | .array e, xs => 16 * (xs.size * e.width + 1)
 
+/-- The credits of the arguments that `sel` picks. -/
+def Env.credit (sel : Nat → Bool) : {Γ : List Ty} → Env Γ → Nat
+  | _, .nil => 0
+  | _, .cons (t := t) v env => (if sel 0 then t.credit v else 0) + Env.credit (fun i => sel (i + 1))
+      env
+
 /-- The bytes of `coerceCode`: a copy when a borrowed value must be owned. -/
 def coerceCost (t : Ty) (source target : Mode) (v : t.denote) : Nat :=
   if source = .borrowed ∧ target = .owned then t.copyCost v else 0
@@ -84,6 +90,18 @@ def argsSum : {n : Nat} → ((i : Fin n) → Nat) → Nat
   | 0, _ => 0
   | _ + 1, b => b 0 + argsSum fun i => b i.succ
 
+theorem argsSum_le : {n : Nat} → {f g : Fin n → Nat} → (∀ i, f i ≤ g i) →
+    argsSum f ≤ argsSum g
+  | 0, _, _, _ => Nat.le_refl 0
+  | _ + 1, _, _, h => Nat.add_le_add (h 0) (argsSum_le fun i => h i.succ)
+
+theorem argsSum_add : {n : Nat} → (f g : Fin n → Nat) →
+    argsSum (fun i => f i + g i) = argsSum f + argsSum g
+  | 0, _, _ => rfl
+  | _ + 1, f, g => by
+    simp only [argsSum, argsSum_add (fun i => f i.succ) (fun i => g i.succ)]
+    omega
+
 /-- Bounds for the functions with the signatures `S`, as `Funs S` holds their meanings. -/
 inductive Bounds : List Sig → Type where
   | nil : Bounds []
@@ -92,6 +110,27 @@ inductive Bounds : List Sig → Type where
 def Bounds.get : {S : List Sig} → {g : Sig} → Bounds S → FVar S g → Env g.params → Nat
   | _, _, .cons b _, .here => b
   | _, _, .cons _ rest, .there h => rest.get h
+
+/-- The paid flags of the functions with the signatures `S`: for each, whether each of its
+parameters is paid and whether its result is. -/
+inductive Flags : List Sig → Type where
+  | nil : Flags []
+  | cons (params : List Bool) (result : Bool) (rest : Flags S) : Flags (g :: S)
+
+/-- The flags of the functions, in the order of `S`. -/
+def Flags.toList : {S : List Sig} → Flags S → List (List Bool × Bool)
+  | _, .nil => []
+  | _, .cons ps r rest => (ps, r) :: rest.toList
+
+/-- The flags of the parameters of function `f`.  The lookup goes by `f`'s index: the kernel
+reduces a match on `Flags S` and `FVar S g` together in tens of milliseconds per step of `f`, and
+the reflector evaluates these flags at every argument of every call. -/
+def Flags.params {S : List Sig} {g : Sig} (flags : Flags S) (f : FVar S g) : List Bool :=
+  (flags.toList.getD f.index ([], false)).1
+
+/-- Whether the result of function `f` is paid. -/
+def Flags.result {S : List Sig} {g : Sig} (flags : Flags S) (f : FVar S g) : Bool :=
+  (flags.toList.getD f.index ([], false)).2
 
 /-- `callMoves` on the modes of the slots. -/
 def callMovesAt (modes : List Mode) (live : Nat → Bool) {S : List Sig} {Γ : List Ty} {g : Sig}
@@ -103,62 +142,96 @@ def callMovesAt (modes : List Mode) (live : Nat → Bool) {S : List Sig} {Γ : L
         !(argsAny fun j => j != i && !(g.params.get j).scalar && (args j).uses k)
     | none => false
 
+/-- Whether an expression is a paid variable. -/
+def Expr.paidVar (paid : List Bool) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .var x => paidAt paid x.index
+  | _, _, _ => false
+
 /-- The bytes of `Expr.ownedCode`: those of `Var.ownedCode` for a variable, and none otherwise. -/
 def Expr.ownedCost (modes : List Mode) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
   | _, _, .var x, env => x.ownedCost modes live (env.get x)
   | _, _, _, _ => 0
 
-/-- Whether an expression extends an array: whether it holds `push`, `++`, or `insertAt`. -/
-def Expr.grows : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+/-- Whether an expression extends an array: whether it holds `push`, `++`, `insertAt`, or a call
+of a function with a paid parameter, given the flags `flags`. -/
+def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .push _ _ | _, _, .append _ _ | _, _, .insertAt _ _ _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right | _, _, .and left right | _, _, .or left right
-  | _, _, .mk left right | _, _, .pair left right => left.grows || right.grows
-  | _, _, .not e | _, _, .funary _ e | _, _, .toFloat _ e | _, _, .toWord _ e => e.grows
-  | _, _, .ite c thenE elseE => c.grows || thenE.grows || elseE.grows
-  | _, _, .letE value body | _, _, .letPair value body => value.grows || body.grows
-  | _, _, .call _ args => argsAny fun i => (args i).grows
-  | _, _, .loop count init cond body => count.grows || init.grows || cond.grows || body.grows
-  | _, _, .build count elem => count.grows || elem.grows
-  | _, _, .get _ i | _, _, .eraseAt _ i => i.grows
-  | _, _, .set _ i v => i.grows || v.grows
+  | _, _, .mk left right | _, _, .pair left right => left.grows flags || right.grows flags
+  | _, _, .not e | _, _, .funary _ e | _, _, .toFloat _ e | _, _, .toWord _ e => e.grows flags
+  | _, _, .ite c thenE elseE => c.grows flags || thenE.grows flags || elseE.grows flags
+  | _, _, .letE value body | _, _, .letPair value body => value.grows flags || body.grows flags
+  | _, _, .call f args =>
+    (argsAny fun i => (args i).grows flags) || (flags.params f).any id
+  | _, _, .loop count init cond body =>
+    count.grows flags || init.grows flags || cond.grows flags || body.grows flags
+  | _, _, .build count elem => count.grows flags || elem.grows flags
+  | _, _, .get _ i | _, _, .eraseAt _ i => i.grows flags
+  | _, _, .set _ i v => i.grows flags || v.grows flags
   | _, _, _ => false
+
+/-- Whether parameter `i` of a function with signature `g` and parameter flags `pf` is paid and
+owned, so that its potential counts. -/
+def Sig.paidSel (g : Sig) (pf : List Bool) (i : Nat) : Bool := paidAt pf i && g.mode i == .owned
+
+/-- The selection `sel` of a function's arguments, for its code that takes the call depth first:
+position 0, the depth word, is never picked, and position `i + 1` is picked when `sel i` holds. -/
+def depthSelOf (sel : Nat → Bool) : Nat → Bool
+  | 0 => false
+  | i + 1 => sel i
+
+/-- `Sig.paidSel` for the arguments of a function's code that takes the call depth first. -/
+def Sig.depthSel (g : Sig) (pf : List Bool) : Nat → Bool := depthSelOf (g.paidSel pf)
+
+/-- The credits that a call of `f` charges: that of each argument at a paid owned parameter, unless
+the argument is a paid variable that the call moves, whose potential the caller holds. -/
+def callCredits (funs : Funs S) (flags : Flags S) (modes : List Mode) (paid : List Bool)
+    (live : Nat → Bool) {Γ : List Ty} {g : Sig} (f : FVar S g)
+    (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) (env : Env Γ) : Nat :=
+  argsSum fun i =>
+    if g.paidSel (flags.params f) i && !(callMovesAt modes live args i && (args i).paidVar paid) then
+      (g.params.get i).credit ((args i).denote funs env)
+    else 0
 
 /-- Whether the potential of an expression's value is counted, given the variables' modes and
 flags and the variables live after it: for the growth of an owned array that dies, for a moved
 variable that is paid, for an `if` whose branches are both paid, for a `let` whose body's value is
-paid, and for a loop whose state is paid, as `Expr.statePaid` states. -/
-def Expr.paid (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
+paid, for a loop whose state is paid, as `Expr.statePaid` states, and for a call of a function
+whose result holds arrays and is paid, given the functions' flags `flags`. -/
+def Expr.paid (flags : Flags S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .var x => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
   | _, _, .push x _ | _, _, .insertAt x _ _ => modeAt modes x.index == .owned && !live x.index
   | _, _, .append x y => modeAt modes x.index == .owned && !(live x.index || x.index == y.index)
-  | _, _, .ite _ thenE elseE => thenE.paid modes paid live && elseE.paid modes paid live
+  | _, _, .ite _ thenE elseE =>
+    thenE.paid flags modes paid live && elseE.paid flags modes paid live
   | _, _, .letE value body =>
-    body.paid (value.mode modes :: modes)
-      (value.paid modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
+    body.paid flags (value.mode modes :: modes)
+      (value.paid flags modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
   | _, _, .loop _ init cond body =>
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-    mode == .owned && body.grows &&
-      body.paid (mode :: .borrowed :: modes) (true :: false :: paid)
+    mode == .owned && body.grows flags &&
+      body.paid flags (mode :: .borrowed :: modes) (true :: false :: paid)
         (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+  | _, _, .call (g := g) f _ => !g.result.scalar && flags.result f
   | _, _, _ => false
 
 /-- Whether a loop's state is paid: the loop's mode is owned, its body extends an array, and the
 body's value is paid when the state is, so that each state passes its potential to the next. -/
-def Expr.statePaid {Γ : List Ty} {t : Ty} (modes : List Mode) (paid : List Bool)
+def Expr.statePaid {Γ : List Ty} {t : Ty} (flags : Flags S) (modes : List Mode) (paid : List Bool)
     (live : Nat → Bool) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
     (body : Expr S (t :: .word :: Γ) t) : Bool :=
   let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-  mode == .owned && body.grows &&
-    body.paid (mode :: .borrowed :: modes) (true :: false :: paid)
+  mode == .owned && body.grows flags &&
+    body.paid flags (mode :: .borrowed :: modes) (true :: false :: paid)
       (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
 
 /-- A paid value is owned. -/
-theorem Expr.mode_of_paid {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
+theorem Expr.mode_of_paid {flags : Flags S} {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
     ∀ {modes : List Mode} {paid : List Bool} {live : Nat → Bool},
-      e.paid modes paid live = true → e.mode modes = .owned := by
+      e.paid flags modes paid live = true → e.mode modes = .owned := by
   induction e <;> intro modes paid live h
   case var x =>
     simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
@@ -170,19 +243,24 @@ theorem Expr.mode_of_paid {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
   case loop count init cond body _ _ _ _ =>
     simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
     exact h.1.1
+  case call g f args _ =>
+    simp only [Expr.paid, Bool.and_eq_true, Bool.not_eq_true'] at h
+    simp [Expr.mode, h.1]
   all_goals first | rfl | simp [Expr.paid] at h
 
-theorem Expr.paid_loop {Γ : List Ty} {t : Ty} (modes : List Mode) (paid : List Bool)
-    (live : Nat → Bool) (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
-    (body : Expr S (t :: .word :: Γ) t) :
-    (Expr.loop count init cond body).paid modes paid live =
-      Expr.statePaid modes paid live init cond body := by
+theorem Expr.paid_loop {Γ : List Ty} {t : Ty} (flags : Flags S) (modes : List Mode)
+    (paid : List Bool) (live : Nat → Bool) (count : Expr S Γ .word) (init : Expr S Γ t)
+    (cond : Expr S (t :: Γ) .bool) (body : Expr S (t :: .word :: Γ) t) :
+    (Expr.loop count init cond body).paid flags modes paid live =
+      Expr.statePaid flags modes paid live init cond body := by
   simp only [Expr.paid, Expr.statePaid]
 
 /-- The allocation bound of the code of an expression with the variables' modes `modes` and flags
-`paid` and the variables `live` live after it, for the functions `funs` with the bounds `bounds`
-and the values `env` of its variables, together with the potential of a paid value. -/
-def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool)
+`paid` and the variables `live` live after it, for the functions `funs` with the flags `flags` and
+the bounds `bounds` and the values `env` of its variables, together with the potential of a paid
+value. -/
+def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : List Mode)
+    (paid : List Bool)
     (live : Nat → Bool) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ => 0
   | _, _, .var x, env => x.cost modes live (env.get x)
@@ -190,59 +268,60 @@ def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : 
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
   | _, _, .and left right, env | _, _, .or left right, env
   | _, _, .mk left right, env =>
-    left.allocs funs bounds modes paid (fun i => live i || right.uses i) env +
-      right.allocs funs bounds modes paid live env
+    left.allocs funs flags bounds modes paid (fun i => live i || right.uses i) env +
+      right.allocs funs flags bounds modes paid live env
   | _, _, .not e, env | _, _, .funary _ e, env | _, _, .toFloat _ e, env
-  | _, _, .toWord _ e, env => e.allocs funs bounds modes paid live env
+  | _, _, .toWord _ e, env => e.allocs funs flags bounds modes paid live env
   | _, _, .ite (t := t) c thenE elseE, env =>
     let mode := (thenE.mode modes).join (elseE.mode modes)
-    c.allocs funs bounds modes paid (fun i => live i || thenE.uses i || elseE.uses i) env +
+    c.allocs funs flags bounds modes paid (fun i => live i || thenE.uses i || elseE.uses i) env +
       if c.denote funs env then
-        thenE.allocs funs bounds modes paid live env +
+        thenE.allocs funs flags bounds modes paid live env +
           coerceCost t (thenE.mode modes) mode (thenE.denote funs env)
       else
-        elseE.allocs funs bounds modes paid live env +
+        elseE.allocs funs flags bounds modes paid live env +
           coerceCost t (elseE.mode modes) mode (elseE.denote funs env)
   | _, _, .letE value body, env =>
-    value.allocs funs bounds modes paid (fun i => live i || body.uses (i + 1)) env +
-      body.allocs funs bounds (value.mode modes :: modes)
-        (value.paid modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
+    value.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 1)) env +
+      body.allocs funs flags bounds (value.mode modes :: modes)
+        (value.paid flags modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
         (.cons (value.denote funs env) env)
   | _, _, .call (g := g) f args, env =>
     let all := fun i => live i || argsAny fun j => (args j).uses i
     let kept := fun i =>
       all i && !(argsAny fun j => callMovesAt modes live args j && (args j).uses i)
     (argsSum fun i =>
-      if (g.params.get i).scalar then (args i).allocs funs bounds modes paid all env
+      if (g.params.get i).scalar then (args i).allocs funs flags bounds modes paid all env
       else if g.mode i = .owned then (args i).ownedCost modes kept env else 0) +
+      callCredits funs flags modes paid live f args env +
       bounds.get f (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .pair (s := s) (t := t) first second, env =>
     let mode := (first.mode modes).join (second.mode modes)
-    first.allocs funs bounds modes paid (fun i => live i || second.uses i) env +
+    first.allocs funs flags bounds modes paid (fun i => live i || second.uses i) env +
       coerceCost s (first.mode modes) mode (first.denote funs env) +
-      second.allocs funs bounds modes paid live env +
+      second.allocs funs flags bounds modes paid live env +
       coerceCost t (second.mode modes) mode (second.denote funs env)
   | _, _, .letPair e body, env =>
     let mode := e.mode modes
     let p := e.denote funs env
-    e.allocs funs bounds modes paid (fun i => live i || body.uses (i + 2)) env +
-      body.allocs funs bounds (mode :: mode :: modes) (false :: false :: paid) (shift 2 live)
+    e.allocs funs flags bounds modes paid (fun i => live i || body.uses (i + 2)) env +
+      body.allocs funs flags bounds (mode :: mode :: modes) (false :: false :: paid) (shift 2 live)
         (.cons p.2 (.cons p.1 env))
   | _, _, .loop (t := t) count init cond body, env =>
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
-    let ps := Expr.statePaid modes paid live init cond body
-    count.allocs funs bounds modes paid (fun i => all i || init.uses i) env +
-      init.allocs funs bounds modes paid all env +
+    let ps := Expr.statePaid flags modes paid live init cond body
+    count.allocs funs flags bounds modes paid (fun i => all i || init.uses i) env +
+      init.allocs funs flags bounds modes paid all env +
       coerceCost t (init.mode modes) mode (init.denote funs env) +
-      (if ps && !init.paid modes paid all then t.credit (init.denote funs env) else 0) +
+      (if ps && !init.paid flags modes paid all then t.credit (init.denote funs env) else 0) +
       loopCost
-        (fun s => cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
+        (fun s => cond.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 all j)
           (.cons s env))
         (fun s => cond.denote funs (.cons s env))
         (fun i s =>
-          body.allocs funs bounds (mode :: .borrowed :: modes) (ps :: false :: paid)
+          body.allocs funs flags bounds (mode :: .borrowed :: modes) (ps :: false :: paid)
             (shift 2 all)
               (.cons s (.cons i env)) +
             coerceCost t (body.mode (mode :: .borrowed :: modes)) mode
@@ -250,28 +329,28 @@ def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : 
         (fun i s => body.denote funs (.cons s (.cons i env)))
         (count.denote funs env).toNat 0 (init.denote funs env)
   | _, _, .size _, _ | _, _, .proj _ _, _ => 0
-  | _, _, .get x i, env => i.allocs funs bounds modes paid (fun j => live j || j == x.index) env
+  | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
-    i.allocs funs bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
-      v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+    i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
+      v.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env +
       x.ownedCost modes live (env.get x)
   | _, _, .push (e := e) x v, env =>
-    v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+    v.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env +
       x.roomCost modes paid live (env.get x) (wordCount e.width).toNat
   | _, _, .append (e := e) x y, env =>
     x.roomCost modes paid (fun k => live k || k == y.index) (env.get x) ((env.get y).size * e.width)
   | _, _, .insertAt (e := e) x i v, env =>
-    i.allocs funs bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
-      v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+    i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
+      v.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env +
       x.roomCost modes paid live (env.get x) (wordCount e.width).toNat
   | _, _, .eraseAt x i, env =>
-    i.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+    i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env +
       x.ownedCost modes live (env.get x)
   | _, _, .build (e := e) count elem, env =>
     let all := fun i => live i || elem.uses (i + 1)
     let n := (count.denote funs env).toNat
-    count.allocs funs bounds modes paid all env + allocCost ((n * e.width + 1) * 8) +
-      sumBelow (fun k => elem.allocs funs bounds (.borrowed :: modes) (false :: paid)
+    count.allocs funs flags bounds modes paid all env + allocCost ((n * e.width + 1) * 8) +
+      sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
         (shift 1 all)
         (.cons (UInt64.ofNat k) env)) n
 
@@ -279,18 +358,57 @@ def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : 
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
   (paramSlots params modes 0).map Slot.mode
 
-/-- The allocation bound of a function with the parameter modes `modes` and the body `body`: the
-body's, with nothing live after it, and the copy of a borrowed result. -/
-def bodyBound {params : List Ty} {result : Ty} (modes : List Mode) (body : Expr S params result)
-    (funs : Funs S) (bounds : Bounds S) (args : Env params) : Nat :=
+/-- The flags of a function's parameters: an owned parameter, which holds an array, is paid when
+`grows` holds, that is, when the body extends an array. -/
+def paramFlags (params : List Ty) (modes : List Mode) (grows : Bool) : List Bool :=
+  (entryModes params modes).map fun m => m == .owned && grows
+
+/-- The allocation bound of a function with the parameter modes `modes`, the parameter flags `pf`,
+and the body `body`: the body's, with nothing live after it, and the copy of a borrowed result. -/
+def bodyBound {params : List Ty} {result : Ty} (modes : List Mode) (pf : List Bool)
+    (body : Expr S params result) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
+    (args : Env params) : Nat :=
   let ms := entryModes params modes
-  body.allocs funs bounds ms [] (fun _ => false) args +
+  body.allocs funs flags bounds ms pf (fun _ => false) args +
     coerceCost result (body.mode ms) .owned (body.denote funs args)
 
-/-- The allocation bound of a function. -/
-def Func.bound (func : Func S) (funs : Funs S) (bounds : Bounds S) (args : Env func.params) :
-    Nat :=
-  bodyBound func.modes func.body funs bounds args
+/-- The flags of a function's parameters, given the flags `flags` of the functions it calls. -/
+def Func.paidParams (func : Func S) (flags : Flags S) : List Bool :=
+  paramFlags func.params func.modes (func.body.grows flags)
+
+/-- Whether a function's result is paid: whether it holds arrays and the body's value is paid with
+the parameters' flags. -/
+def Func.paidResult (func : Func S) (flags : Flags S) : Bool :=
+  !func.result.scalar &&
+    func.body.paid flags (entryModes func.params func.modes) (func.paidParams flags)
+      (fun _ => false)
+
+/-- The allocation bound of a function, without the credits of its paid parameters. -/
+def Func.bound (func : Func S) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
+    (args : Env func.params) : Nat :=
+  bodyBound func.modes (func.paidParams flags) func.body funs flags bounds args
+
+/-- The flags of a recursive function's parameters, with its calls of itself counted as extending
+nothing. -/
+def RecFunc.paidParams (func : RecFunc S) (flags : Flags S) : List Bool :=
+  paramFlags func.params func.modes (func.body.grows (.cons [] false flags))
+
+/-- Whether a recursive function's result is paid: whether it holds arrays and the body's value is
+paid when the function's calls of itself return paid values, a flag that the check confirms. -/
+def RecFunc.paidResult (func : RecFunc S) (flags : Flags S) : Bool :=
+  !func.result.scalar &&
+    func.body.paid (.cons (func.paidParams flags) true flags)
+      (entryModes func.params func.modes) (func.paidParams flags) (fun _ => false)
+
+/-- The flags of a recursive function and of the functions it calls. -/
+def RecFunc.flags (func : RecFunc S) (flags : Flags S) : Flags (func.sig :: S) :=
+  .cons (func.paidParams flags) (func.paidResult flags) flags
+
+/-- The flags of a program's functions. -/
+def Prog.flags : {S : List Sig} → Prog S → Flags S
+  | _, .nil => .nil
+  | _, .cons f rest => .cons (f.paidParams rest.flags) (f.paidResult rest.flags) rest.flags
+  | _, .consRec f rest => f.flags rest.flags
 
 /-- Whether a call of each function with the signatures `S` finds the frames it needs, as
 `Bounds S` holds their bounds. -/
@@ -431,17 +549,18 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
 /-- The bound of a function whose code takes the call depth, with `k` frames available: none at
 0, where the guard traps, and otherwise its body's with its callees at `k - 1` frames, from their
 bounds `rest` at each number of frames. -/
-def Func.boundAt (func : Func S) (funs : Funs S) (rest : Nat → Bounds S) :
+def Func.boundAt (func : Func S) (funs : Funs S) (flags : Flags S) (rest : Nat → Bounds S) :
     Nat → Env func.params → Nat
   | 0 => fun _ => 0
-  | k + 1 => func.bound funs (rest k)
+  | k + 1 => func.bound funs flags (rest k)
 
 /-- The bound of a recursive function with `k` frames available: none at 0, and otherwise its
 body's, with itself and its callees at `k - 1` frames. -/
-def RecFunc.boundAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat → Bounds S) :
-    Nat → Env func.params → Nat
+def RecFunc.boundAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (flags : Flags S)
+    (rest : Nat → Bounds S) : Nat → Env func.params → Nat
   | 0 => fun _ => 0
-  | k + 1 => bodyBound func.modes func.body funs (.cons (func.boundAt funs rest k) (rest k))
+  | k + 1 => bodyBound func.modes (func.paidParams flags) func.body funs (func.flags flags)
+    (.cons (func.boundAt funs flags rest k) (rest k))
 
 /-- Whether a function whose code takes the call depth finds its frames with `k` frames
 available: not at 0, and otherwise whether its body does, with its callees at `k - 1` frames. -/
@@ -473,16 +592,16 @@ bound, with its callees at 0 frames, is the same at every `k`. -/
 def Prog.boundsAt : {S : List Sig} → Prog S → Funs S → Nat → Bounds S
   | _, .nil, .nil, _ => .nil
   | _, .cons f rest, .cons _ funs, k =>
-    .cons (if f.depth then f.boundAt funs (rest.boundsAt funs) k
-      else f.bound funs (rest.boundsAt funs 0)) (rest.boundsAt funs k)
+    .cons (if f.depth then f.boundAt funs rest.flags (rest.boundsAt funs) k
+      else f.bound funs rest.flags (rest.boundsAt funs 0)) (rest.boundsAt funs k)
   | _, .consRec f rest, .cons M funs, k =>
-    .cons (f.boundAt (.cons M funs) (rest.boundsAt funs) k) (rest.boundsAt funs k)
+    .cons (f.boundAt (.cons M funs) rest.flags (rest.boundsAt funs) k) (rest.boundsAt funs k)
 
 theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
     (Prog.boundsAt (.cons f rest) (.cons F funs) k).get .here =
-      if f.depth then f.boundAt funs (rest.boundsAt funs) k
-      else f.bound funs (rest.boundsAt funs 0) := rfl
+      if f.depth then f.boundAt funs rest.flags (rest.boundsAt funs) k
+      else f.bound funs rest.flags (rest.boundsAt funs 0) := rfl
 
 theorem Prog.fitsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
