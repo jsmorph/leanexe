@@ -23,6 +23,13 @@ def Ty.copyCost : (t : Ty) → t.denote → Nat
   | .pair a b, v => a.copyCost v.1 + b.copyCost v.2
   | .array e, xs => allocCost ((xs.size * e.width + 1) * 8)
 
+/-- The most potential that a value held in owned mode can have: twice the bytes of each array's
+length word and words. -/
+def Ty.credit : (t : Ty) → t.denote → Nat
+  | .elem _, _ => 0
+  | .pair a b, v => a.credit v.1 + b.credit v.2
+  | .array e, xs => 16 * (xs.size * e.width + 1)
+
 /-- The bytes of `coerceCode`: a copy when a borrowed value must be owned. -/
 def coerceCost (t : Ty) (source target : Mode) (v : t.denote) : Nat :=
   if source = .borrowed ∧ target = .owned then t.copyCost v else 0
@@ -102,18 +109,75 @@ def Expr.ownedCost (modes : List Mode) (live : Nat → Bool) :
   | _, _, .var x, env => x.ownedCost modes live (env.get x)
   | _, _, _, _ => 0
 
+/-- Whether an expression extends an array: whether it holds `push`, `++`, or `insertAt`. -/
+def Expr.grows : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .push _ _ | _, _, .append _ _ | _, _, .insertAt _ _ _ => true
+  | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
+  | _, _, .fcmp _ left right | _, _, .and left right | _, _, .or left right
+  | _, _, .mk left right | _, _, .pair left right => left.grows || right.grows
+  | _, _, .not e | _, _, .funary _ e | _, _, .toFloat _ e | _, _, .toWord _ e => e.grows
+  | _, _, .ite c thenE elseE => c.grows || thenE.grows || elseE.grows
+  | _, _, .letE value body | _, _, .letPair value body => value.grows || body.grows
+  | _, _, .call _ args => argsAny fun i => (args i).grows
+  | _, _, .loop count init cond body => count.grows || init.grows || cond.grows || body.grows
+  | _, _, .build count elem => count.grows || elem.grows
+  | _, _, .get _ i | _, _, .eraseAt _ i => i.grows
+  | _, _, .set _ i v => i.grows || v.grows
+  | _, _, _ => false
+
 /-- Whether the potential of an expression's value is counted, given the variables' modes and
 flags and the variables live after it: for the growth of an owned array that dies, for a moved
-variable that is paid, and for a `let` whose body's value is paid. -/
+variable that is paid, for an `if` whose branches are both paid, for a `let` whose body's value is
+paid, and for a loop whose state is paid, as `Expr.statePaid` states. -/
 def Expr.paid (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .var x => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
   | _, _, .push x _ | _, _, .insertAt x _ _ => modeAt modes x.index == .owned && !live x.index
   | _, _, .append x y => modeAt modes x.index == .owned && !(live x.index || x.index == y.index)
+  | _, _, .ite _ thenE elseE => thenE.paid modes paid live && elseE.paid modes paid live
   | _, _, .letE value body =>
     body.paid (value.mode modes :: modes)
       (value.paid modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
+  | _, _, .loop _ init cond body =>
+    let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
+    mode == .owned && body.grows &&
+      body.paid (mode :: .borrowed :: modes) (true :: false :: paid)
+        (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
   | _, _, _ => false
+
+/-- Whether a loop's state is paid: the loop's mode is owned, its body extends an array, and the
+body's value is paid when the state is, so that each state passes its potential to the next. -/
+def Expr.statePaid {Γ : List Ty} {t : Ty} (modes : List Mode) (paid : List Bool)
+    (live : Nat → Bool) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (body : Expr S (t :: .word :: Γ) t) : Bool :=
+  let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
+  mode == .owned && body.grows &&
+    body.paid (mode :: .borrowed :: modes) (true :: false :: paid)
+      (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+
+/-- A paid value is owned. -/
+theorem Expr.mode_of_paid {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
+    ∀ {modes : List Mode} {paid : List Bool} {live : Nat → Bool},
+      e.paid modes paid live = true → e.mode modes = .owned := by
+  induction e <;> intro modes paid live h
+  case var x =>
+    simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
+    exact h.1.1
+  case ite c thenE elseE _ thenIh _ =>
+    simp only [Expr.paid, Bool.and_eq_true] at h
+    simp [Expr.mode, Mode.join, thenIh h.1]
+  case letE value body _ bodyIh => exact bodyIh h
+  case loop count init cond body _ _ _ _ =>
+    simp only [Expr.paid, Bool.and_eq_true, beq_iff_eq] at h
+    exact h.1.1
+  all_goals first | rfl | simp [Expr.paid] at h
+
+theorem Expr.paid_loop {Γ : List Ty} {t : Ty} (modes : List Mode) (paid : List Bool)
+    (live : Nat → Bool) (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (body : Expr S (t :: .word :: Γ) t) :
+    (Expr.loop count init cond body).paid modes paid live =
+      Expr.statePaid modes paid live init cond body := by
+  simp only [Expr.paid, Expr.statePaid]
 
 /-- The allocation bound of the code of an expression with the variables' modes `modes` and flags
 `paid` and the variables `live` live after it, for the functions `funs` with the bounds `bounds`
@@ -167,16 +231,18 @@ def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : 
   | _, _, .loop (t := t) count init cond body, env =>
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
+    let ps := Expr.statePaid modes paid live init cond body
     count.allocs funs bounds modes paid (fun i => all i || init.uses i) env +
       init.allocs funs bounds modes paid all env +
       coerceCost t (init.mode modes) mode (init.denote funs env) +
+      (if ps && !init.paid modes paid all then t.credit (init.denote funs env) else 0) +
       loopCost
         (fun s => cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 all j)
           (.cons s env))
         (fun s => cond.denote funs (.cons s env))
         (fun i s =>
-          body.allocs funs bounds (mode :: .borrowed :: modes) (false :: false :: paid)
+          body.allocs funs bounds (mode :: .borrowed :: modes) (ps :: false :: paid)
             (shift 2 all)
               (.cons s (.cons i env)) +
             coerceCost t (body.mode (mode :: .borrowed :: modes)) mode

@@ -56,4 +56,20 @@ theorem pushTwo_bound (n a b : UInt64) :
       blockCost n.toNat + growCost ((LeanExe.build n fun i => i).size + 1) 1 + (48 + 32) := by
   rw [compiled.pushTwo.bound_eq, paidGrowCost_eq]
 
+/-- `evens` pushes `n` words onto a paid loop state, at a header and four times the 8 added bytes
+each, after the built array's block and its credit. -/
+theorem evens_bound (n : UInt64) : compiled.evens.bound n = 72 + 80 * n.toNat := by
+  rw [compiled.evens.bound_eq, loopCost_const]
+  simp only [LeanExe.build, Array.size_ofFn, blockCost_eq, creditCost, paidGrowCost_eq,
+    UInt64.toNat_zero]
+  omega
+
+/-- `repeated` appends `xs` to a paid loop state `n` times, at a header and four times the added
+bytes each, after the built array's block and its credit. -/
+theorem repeated_bound (xs : Array UInt64) (n : UInt64) :
+    compiled.repeated.bound (xs, n) = 72 + n.toNat * (32 * xs.size + 48) := by
+  rw [compiled.repeated.bound_eq, loopCost_const]
+  simp only [LeanExe.build, Array.size_ofFn, blockCost_eq, creditCost, paidGrowCost_eq,
+    UInt64.toNat_zero]
+
 end Verified.Examples.Grow

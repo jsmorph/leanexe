@@ -42,6 +42,25 @@ def Ty.pot (store : Store Unit) : (t : Ty) → List Value → t.denote → Nat
     | [.i64 ptr] => arrayPot store ptr (e.words xs).size
     | _ => 0
 
+/-- The potential of a value held in owned mode is at most its credit, since each array's block
+holds at least its length word and words. -/
+theorem Ty.pot_le_credit {heap : Heap} {store : Store Unit} :
+    (t : Ty) → (ws : List Value) → (v : t.denote) → t.Rep .owned heap store ws v →
+      t.pot store ws v ≤ t.credit v
+  | .elem _, _, _, _ => Nat.le_refl 0
+  | .pair a b, _, p, ⟨first, second, h, ha, hb, _⟩ => by
+    subst h
+    simp only [Ty.pot, Ty.credit, List.take_left' ha.length, List.drop_left' ha.length]
+    have := Ty.pot_le_credit a first p.1 ha
+    have := Ty.pot_le_credit b second p.2 hb
+    omega
+  | .array e, _, xs, ⟨ptr, h, hOwned⟩ => by
+    subst h
+    have hc := (hOwned : heap.Owned store ptr (e.words xs)).capacity
+    rw [Elem.words_size] at hc
+    simp only [Ty.pot, arrayPot, Ty.credit, Elem.words_size]
+    omega
+
 /-- The potential of variable `x`, from its words at its slot. -/
 def Env.potOf (store : Store Unit) (s : Locals) {Γ : List Ty} (env : Env Γ) (slots : List Slot)
     {t : Ty} (x : Var Γ t) : Nat :=
@@ -83,6 +102,14 @@ theorem Ty.pot_of_blocks {store store' : Store Unit} :
       simp only [arrayPot]
       omega
     · split <;> simp_all
+
+/-- A change of store that keeps the regions of a value held in owned mode keeps its potential. -/
+theorem Ty.pot_of_regions {store store' : Store Unit} {t : Ty} {mode : Mode} {ws : List Value}
+    {v : t.denote} (hm : mode = .owned)
+    (h : t.regions mode store' ws v = t.regions mode store ws v) :
+    t.pot store' ws v = t.pot store ws v := by
+  subst hm
+  exact Ty.pot_of_blocks t ws v h
 
 theorem getD_tail {α : Type} (l : List α) (i : Nat) (d : α) :
     l.tail.getD i d = l.getD (i + 1) d := by
@@ -312,6 +339,18 @@ theorem dyingPot_eq_zero_unpaid {L0 L1 : Nat → Bool}
     · cases h1 : L1 i
       · simp [h i h0 h1]
       · simp
+
+/-- The potential of the paid owned variables that die, when no paid variable after the first
+dies: at most the first's when it is paid. -/
+theorem dyingPot_le_head {t : Ty} (v : t.denote) (sl : Slot) (p : Bool) (L0 L1 : Nat → Bool)
+    (h : ∀ i, L0 (i + 1) = true → L1 (i + 1) = false → paidAt paid i = false) :
+    dyingPot store s (Env.cons v env) (sl :: slots) (p :: paid) L0 L1 ≤
+      (if p = true then t.pot store (s.read sl.loc t.types) v else 0) := by
+  rw [dyingPot_cons, dyingPot_eq_zero_unpaid h, Nat.add_zero]
+  cases p
+  · simp only [Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.le_refl]
+  · simp only [↓reduceIte]
+    split <;> omega
 
 /-- No variable is paid without flags. -/
 theorem dyingPot_nil (L0 L1 : Nat → Bool) : dyingPot store s env slots [] L0 L1 = 0 :=

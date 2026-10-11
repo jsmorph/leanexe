@@ -18,6 +18,10 @@ def growCost (words ext : Nat) : Nat := allocCost (16 * (words + 1)) + 16 * ext
 bytes, which with the array's potential pay for a move and pass the potential on. -/
 def paidGrowCost (ext : Nat) : Nat := allocCost (32 * ext)
 
+/-- The credit for a loop's initial state that is not paid, for an array of `words` words: the most
+potential that the array's block can hold. -/
+def creditCost (words : Nat) : Nat := 16 * (words + 1)
+
 theorem blockCost_eq (words : Nat) : blockCost words = 8 * words + 56 := by
   simp only [blockCost, allocCost]; omega
 
@@ -63,6 +67,15 @@ theorem loopCost_eq_zero {α : Type} {CA : α → Nat} {C : α → Bool}
   | 0, _, _ => rfl
   | n + 1, i, s => by
     simp only [loopCost, loopCost_eq_zero hCA hBA n, hCA, hBA, Nat.zero_add, ite_self]
+
+/-- `loopCost` of a loop whose condition holds and costs nothing and whose passes cost `c` each. -/
+theorem loopCost_const {α : Type} {F : UInt64 → α → α} (c : Nat) :
+    ∀ (n : Nat) (i : UInt64) (s : α),
+      loopCost (fun _ => 0) (fun _ => true) (fun _ _ => c) F n i s = n * c
+  | 0, _, _ => by simp [loopCost]
+  | n + 1, i, s => by
+    simp only [loopCost, loopCost_const c n, ↓reduceIte, Nat.zero_add, Nat.succ_mul]
+    omega
 
 /-- A bound on the cost of a loop from an invariant `P` of its index and state: when each state
 that `P` admits at index `k` costs at most `cost k`, through the condition and, when the condition
