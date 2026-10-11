@@ -1,20 +1,22 @@
 import Verified.Examples.Trig
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Trig.sin` and `Trig.cos` against `Reference.sinCos`, which reduces the
-argument with a 2,400-bit `π` from Machin's formula and sums the Taylor series of `sin` and `cos`
-in 300-bit fixed point, rounded to the nearest double.  fdlibm states an error below one unit in
-the last place, so each result must lie within one unit of the reference.  The arguments are
-hashed values over the exponents from `2 ^ -30` to `2 ^ 1023` with both signs, evenly spaced
-values up to 100, the doubles at and next to the rounded `k · π/2` for `k` up to 20,000, where the
-reduction cancels, and five more with their negatives: `6381956970095103 · 2 ^ 797`, the double
-closest to a multiple of `π/2`, `1647100`, just above `2 ^ 20 · π/2`, where the Payne–Hanek
-reduction begins, `10 ^ 22`, `10 ^ 300`, and the largest finite double.  The check first compares
-the words of the tables `Trig.invPi` and `Trig.halfPi` with `2/π` and `π/2` from the same `π`.  It
-also reports, for information, the distance from the reference of the C library's `sin` and
-`cos`, which Lean's `Float.sin` and `Float.cos` call.  The check exits with an error at the first
-result further than one unit from the reference, or at a NaN.  Run with
-`lake env lean --run`. -/
+argument with a 2,400-bit `π` from Machin's formula and sums the Taylor series of `sin` and `cos` in
+300-bit fixed point, rounded to the nearest double.  fdlibm states an error below one unit in the
+last place, so each result must lie within one unit of the reference.  The arguments are hashed
+values over the exponents from `2 ^ -30` to `2 ^ 1023` with both signs, evenly spaced values up to
+100, the doubles at and next to the rounded `k · π/2` for `k` up to 20,000, where the reduction
+cancels, and five more with their negatives: `6381956970095103 · 2 ^ 797`, the double closest to a
+multiple of `π/2`, `1647100`, just above `2 ^ 20 · π/2`, where the Payne–Hanek reduction begins,
+`10 ^ 22`, `10 ^ 300`, and the largest finite double.  The check first compares the words of the
+tables `Trig.invPi` and `Trig.halfPi` with `2/π` and `π/2` from the same `π`.  The arguments also
+include those of `WorstCases`, which give the largest known errors of thirteen libraries in Tables 4
+to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It also
+reports, for information, the distance from the reference of the C library's `sin` and `cos`, which
+Lean's `Float.sin` and `Float.cos` call.  The check exits with an error at the first result further
+than one unit from the reference, or at a NaN.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.TrigAccuracy
 
@@ -50,7 +52,8 @@ def args : Array Float :=
   let hard : Array Float :=
     #[Float.ofBits (((1872 : UInt64) <<< (52 : UInt64)) ||| (6381956970095103 - 4503599627370496)),
       1647100.0, 1e22, 1e300, Float.ofBits 0x7FEFFFFFFFFFFFFF]
-  hashed ++ even ++ multiples ++ hard ++ hard.map (- ·)
+  hashed ++ even ++ multiples ++ hard ++ hard.map (- ·) ++
+    (WorstCases.sin ++ WorstCases.cos).map Float.ofBits
 
 end Verified.Examples.TrigAccuracy
 

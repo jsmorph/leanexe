@@ -1,21 +1,24 @@
 import Verified.Examples.Log2
+import Verified.Examples.WorstCases
 import Verified.Examples.Log10
 import Verified.Examples.PowerReference
 
-/-! A native check of `Log2.log2` and `Log10.log10` against references computed with Lean's
-integers through `PowerReference.log2` and `PowerReference.log10`, rounded to the nearest double.
-Arm states 0.55 units in the last place for `log2` and `k_log.h` below one unit for fdlibm's
-logarithms, so each result must lie within one unit of the reference.  The check first compares
-each pair of `log2`'s table entries with the center `c` that they describe: `chi + clo` with
-`1/invc` within `2 ^ -100` relatively, and `logc` with `log2 c` within `2 ^ -68`, the bound that
-Arm's comment states.  The arguments are those of `LogAccuracy.lean`: evenly spaced values from 0
-to 20 and from 0.9 to 1.1, hashed positive values over all exponents, doubles on both sides of 1 at
-hashed distances of up to `2 ^ 36` units, the doubles next to the ends of the binades and of the
+/-! A native check of `Log2.log2` and `Log10.log10` against references computed with Lean's integers
+through `PowerReference.log2` and `PowerReference.log10`, rounded to the nearest double.  Arm states
+0.55 units in the last place for `log2` and `k_log.h` below one unit for fdlibm's logarithms, so
+each result must lie within one unit of the reference.  The check first compares each pair of
+`log2`'s table entries with the center `c` that they describe: `chi + clo` with `1/invc` within
+`2 ^ -100` relatively, and `logc` with `log2 c` within `2 ^ -68`, the bound that Arm's comment
+states.  The arguments are those of `LogAccuracy.lean`: evenly spaced values from 0 to 20 and from
+0.9 to 1.1, hashed positive values over all exponents, doubles on both sides of 1 at hashed
+distances of up to `2 ^ 36` units, the doubles next to the ends of the binades and of the
 subnormals, negative values, and the special values.  To these the check adds the doubles next to
 the ends of `log2`'s path near 1, the powers of 2, and the powers of 10 up to `10 ^ 22`, whose
-logarithms are integers.  It also reports, for information, the distance from the reference of
-the C library's `log2` and `log10`, which Lean's `Float.log2` and `Float.log10` call.  It exits
-with an error at the first result further than one unit from the reference.  Run with
+logarithms are integers.  The arguments also include those of `WorstCases`, which give the largest
+known errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman,
+Innocente, Mather, Ozaki, and Zimmermann.  It also reports, for information, the distance from the
+reference of the C library's `log2` and `log10`, which Lean's `Float.log2` and `Float.log10` call.
+It exits with an error at the first result further than one unit from the reference.  Run with
 `lake env lean --run`. -/
 
 namespace Verified.Examples.Log2Accuracy
@@ -67,7 +70,8 @@ def args : Array Float :=
   let powersOf2 := (Array.range 2046).map fun k => Float.ofBits ((UInt64.ofNat (k + 1)) <<< 52)
   let powersOf10 := (Array.range 23).map fun k => Float.ofNat (10 ^ k)
   evenly 100000 0.0 20.0 ++ evenly 100000 0.9 1.1 ++ (hashed 100000 107 0 2047).map Float.abs ++
-    near1 ++ edges ++ subnormalTwos ++ powersOf2 ++ powersOf10 ++ special
+    near1 ++ edges ++ subnormalTwos ++ powersOf2 ++ powersOf10 ++ special ++
+    (WorstCases.log2 ++ WorstCases.log10).map Float.ofBits
 
 end Verified.Examples.Log2Accuracy
 
