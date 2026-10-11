@@ -29405,6 +29405,8 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 | `Verified/Examples/TanhTheorem.lean` | `tanh-theorem-1.log` to `-3.log` |
 | `Verified/Examples/TanhMain.lean` | `tanh-main-1.log`, `-2.log` |
 | `Verified/Examples/TanhSpecial.lean` | `tanh-special-1.log`, `-2.log` |
+| `Verified/Examples/TanhBytes.lean` | `tanh-bytes-1.log` |
+| `Verified/Examples/TanhFile.lean` | `tanh-emit-1.log`, `tanh-filebytes-1.log`, `tanh-file-1.log` (`LeanExe.Pipeline.FileBytes` was not built in the worktree), `tanh-file-2.log` |
 
 `Expm1NearForms` and `Expm1Near` export the paths that `tanh` uses.  For `x < 0` the result is `-w` for a word `w` within `u S` and `u/2` of a positive `S`, and `S` lies within `0.56 u abs(x) + 16 η` of `1 - exp x` without reduction (`near_middle`), within `0.2451 u` for `k = -1` (`near_one`), and within `0.3726 u` for `abs(x)` from 1.0397 to 38 (`near_k`).  For `2 ≤ x ≤ 44` the result lies within `u S` of a positive `S` within `0.85 u (exp x - 1)` of `exp x - 1` (`near_pos`).  Two failures recurred here.  `linarith` normalizes a hypothesis with a numeric quotient through `norm_num`, which also rewrites the threshold word `UInt64.ofNat (C * 2 ^ 32)` to a literal, so the same word became two atoms (`expm1-near-1.log`); `set` now names each threshold value before the arithmetic.  Rewriting the count `m` to 1 in a goal also rewrote `m` inside the reduced arguments, and unifying them with the unrewritten ones exceeded the recursion limit; `neg_one_near_m` takes `m.toNat = 1` instead.
 
@@ -29412,11 +29414,13 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 
 `linarith` treats a `set` variable as an atom and never unfolds its value, so a bound named by `set E := ...` was useless to it (`tanh-small-2.log`); the bounds now go to `small_core` as terms.  The same holds for later hypotheses that mention the unfolded term, so `TanhLarge` names no values.
 
+`TanhBytes` states the byte theorems of the two exports of the module, `expm1` (function 3, `WithinSteps 1`) and `tanh` (function 4, `WithinSteps 3`).  Its ready store needs only the allocator invariant and the memory cap, since the module reads no tables, and `tanh_module_accuracy` is the conjunction of the two theorems.  `TanhFile.tanh_file_decode` takes its bytes from `tanh_module_accuracy`, so its axiom report covers both byte theorems.  With `build/verified/tanh.wasm` written by `tools/Emit.lean`, both theorems of `TanhFile` report only the three permitted axioms, and the entry for `tests/verified/run.sh` is `tanh:TanhBytes:TanhFile`.
+
 - [x] Nearest rounding of quotients and the criteria for several steps.
 - [x] Errors of the `expm1` paths before the last rounding.
 - [x] `tanh` branches and the four ranges.
 - [x] `tanh` theorem and exceptional values.
-- [ ] Byte theorems and the file module.
+- [x] Byte theorems and the file module.
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
