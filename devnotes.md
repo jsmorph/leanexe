@@ -30078,6 +30078,11 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowLogBits.lean` | `powLog_eq`, `fields`, `fields_upper`, `fields_lower`, `zhi_toNat`. |
 | `PowLogTable.lean` | The entry checks, `log_table`, `kernel_error`, `kernel_eval`. |
 | `PowLogReduce.lean` | `word_fields`, `split_state`, `reduce_state`. |
+| `PowLogSum.lean` | `grid_sum`, `t1_exact`, `half_exact`, `square_exact`, `lo1_error`, `ln2_words`. |
+| `PowLogPoly.lean` | `p_error`: the word `p` within `(7/4) u |r| ^ 3 + 5 μ` of `poly r`. |
+| `PowLogSums.lean` | `lo3_error`, `sum5`, `ytail`. |
+| `PowLogEval.lean` | `logWords` and `finalOf_bits`: `powLog`'s arithmetic on words. |
+| `PowBranches.lean` | The guards of `powWith` for a positive `x`, `main_selected`, `positive_special`. |
 
 | Failure | Cause and fix | Log |
 |---|---|---|
@@ -30086,10 +30091,14 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | Parser | `linarith [show … by norm_num]` across a line break failed to parse; separate `have`s fixed it. | `pow-expeval-1` |
 | `congr 1` | Reached the maximum recursion depth on a Float-valued goal; `congrArg` with the multiplication fixed it. | `pow-exppaths-1` |
 | Atoms | `set` does not rewrite hypotheses created later, so `value x.toBits` and `X` differed for `rw`; `change` fixed it. | `pow-expthm-1` |
+| `rw` | `UInt64.toNat_sub_of_le _ _` matched the literal difference `(2047 - 1).toNat` before the intended one; explicit arguments fixed it. | `pow-pos-1` |
+| Imports | `PowExpPaths.ofBits_finite` was used without importing `PowExpPaths`. | `pow-pos-1` |
+| Heartbeats | `after_error` and `product_error` ran out of the per-declaration budget; `nlinarith` in large contexts became `linarith` or a separate real lemma (`PowLogError.combine`). | `pow-pos-2` |
 
 - [x] `powExp_within` and the tight reconstruction (`pow-expthm-2.log`).
 - [x] The table checks, the polynomial bound, and the exact reduction (`pow-expthm-2.log`, `pow-logreduce-2.log`).
-- [ ] `t1`, `t2`, `hi`, `lo2`, `lo4` exact or on the grid of `2 ^ -60`; the error of `lo1`, `lo3`, `p`, the sum `lo`, and `y + tail`.
+- [x] `t1`, `t2`, `lo2`, `lo4` exact through `PowLogSum.grid_sum` on the grid of `2 ^ 1014` scaled units; the errors of `lo1`, `lo3`, `p`, the five-term sum `lo`, and `y + tail` (`pow-pos-2.log`).
+- [ ] `PowLogError.after_error` accepted: the first run exhausted the heartbeats of the declaration through eight `nlinarith` calls in a context of about eighty hypotheses.
 - [ ] `|y + tail - log x| ≤ |log x| / 2 ^ 66` for every positive normal or subnormal `x`, with `x = 1` evaluated directly.
 - [ ] `ehi + elo` against `y log x`, and milestone 1: `x > 0` with the special cases of `y`.
 - [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
