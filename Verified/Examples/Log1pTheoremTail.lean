@@ -1,6 +1,7 @@
 import Verified.Examples.Log1pTheoremK0
 import LeanExe.ProofKit.F64HalfUlp
 import LeanExe.ProofKit.F64WithinSelf
+import LeanExe.ProofKit.F64Near
 import Mathlib.Analysis.Complex.ExponentialBounds
 import Mathlib.Analysis.SpecialFunctions.Log.Deriv
 
@@ -195,6 +196,92 @@ theorem ln2_bounds : 6931471803 / 10 ^ 10 < Real.log 2 ∧ Real.log 2 < 69314718
   have h2 := Real.log_two_lt_d9
   constructor <;> norm_num at h1 h2 ⊢ <;> linarith
 
+/-- An upper bound of `|y|` that keeps every rounded value of the tail finite. -/
+theorem y_lt (K v t KM Lm : ℝ) (hKM : |K| ≤ KM) (hKM1 : KM ≤ 2000)
+    (hlog : |Real.log (1 + v)| ≤ Lm) (hLm : Lm ≤ 1) (ht : |t| ≤ 1 / 4) :
+    |K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t)| < 2 ^ 1022 := by
+  have hl2 := ln2_bounds
+  have hlt := abs_log_t t ht
+  have h1 : |K * Real.log 2| ≤ 2000 * (6931471808 / 10 ^ 10) := by
+    rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)]
+    exact mul_le_mul (hKM.trans hKM1) hl2.2.le (by linarith) (by norm_num)
+  have h2 := abs_add_le (K * Real.log 2 + Real.log (1 + v)) (Real.log (1 + t))
+  have h3 := abs_add_le (K * Real.log 2) (Real.log (1 + v))
+  have h4 : (2000 * (6931471808 / 10 ^ 10) + 1 + 1 : ℝ) < 2 ^ 1022 := by norm_num
+  linarith
+
+/-- A lower bound of `|y|` from `|K| ≥ KL`. -/
+theorem y_ge (K v t KL T V : ℝ) (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (ht : |t| ≤ T) (hT : T ≤ 1 / 4)
+    (hlv : |Real.log (1 + v)| ≤ V) :
+    KL * (6931471803 / 10 ^ 10) - 2 * T - V ≤
+      |K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t)| := by
+  have hl2b := ln2_bounds
+  have hlt2 := abs_log_t t (ht.trans hT)
+  have h1 : KL * (6931471803 / 10 ^ 10) ≤ |K * Real.log 2| := by
+    rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)]
+    exact mul_le_mul hKL hl2b.1.le (by norm_num) (hKL0.trans hKL)
+  have h2 := abs_sub_abs_le_abs_sub (K * Real.log 2) (-(Real.log (1 + v) + Real.log (1 + t)))
+  rw [sub_neg_eq_add, abs_neg, ← add_assoc] at h2
+  have h3 := abs_add_le (Real.log (1 + v)) (Real.log (1 + t))
+  linarith
+
+/-- The general path's error: the exact value of the last difference lies within `E` of `y`, for
+`E < Y ≤ |y|`. -/
+theorem finish_s_near (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
+    (gD gE gG : ℕ) (hf : Finite f.toBits) (hv : -1 < value f.toBits)
+    (hσ1 : |value f.toBits| ≤ F0)
+    (hq : FSApprox (hfsqOf f) (value f.toBits / 2 * value f.toBits)
+      (|value f.toBits| * |value f.toBits|) Mh eh)
+    (hP : FSApprox (POf f) (Pstar (value f.toBits))
+      (|value f.toBits| * (|value f.toBits| * |value f.toBits|)) MP eP)
+    (hkd : FApprox (LogCoreBits.kdOf k) K 0)
+    (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000) (hT : T ≤ 1 / 4) (het : et ≤ 1)
+    (hlog : |Real.log (1 + value f.toBits)| ≤ Lm) (hLm : Lm ≤ 1)
+    (hs : |sStar (value f.toBits)| ≤ 1716 / 10000)
+    (hgD : gD ≤ 1023) (hgE : gE ≤ 1023) (hgG : gG ≤ 1023)
+    (hSD : MP * (F0 * (F0 * F0)) + (KM * (191 / 10 ^ 12) + T) + (eP * (F0 * (F0 * F0)) +
+      (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et + (KM * (191 / 10 ^ 12) + T +
+        (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et)) / 2 ^ 53)) < 2 ^ (53 + gD) / 2 ^ 1074)
+    (hSE : F0 * F0 / 2 + (MP * (F0 * (F0 * F0)) + (KM * (191 / 10 ^ 12) + T)) +
+      (eh * (F0 * F0) + (eP * (F0 * (F0 * F0)) + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 +
+        et + (KM * (191 / 10 ^ 12) + T + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et)) /
+          2 ^ 53) + 2 ^ gD / 2 / 2 ^ 1074)) < 2 ^ (53 + gE) / 2 ^ 1074)
+    (hSG : Lm + 1716 / 10000 * ((93 / 128) / 2 ^ 58) + (KM * (191 / 10 ^ 12) + T) +
+      (eh * (F0 * F0) + (eP * (F0 * (F0 * F0)) + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 +
+        et + (KM * (191 / 10 ^ 12) + T + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075 + et)) /
+          2 ^ 53) + 2 ^ gD / 2 / 2 ^ 1074) + 2 ^ gE / 2 / 2 ^ 1074) < 2 ^ (53 + gG) / 2 ^ 1074)
+    (hE : eh * (F0 * F0) + (eP * (F0 * (F0 * F0)) + (KM * (191 / 10 ^ 12) / 2 ^ 53 +
+      1 / 2 ^ 1075 + et + (KM * (191 / 10 ^ 12) + T + (KM * (191 / 10 ^ 12) / 2 ^ 53 +
+        1 / 2 ^ 1075 + et)) / 2 ^ 53) + 2 ^ gD / 2 / 2 ^ 1074) + 2 ^ gE / 2 / 2 ^ 1074 + 0 +
+          2 ^ gG / 2 / 2 ^ 1074 + (KM / 2 ^ 81 + 1716 / 10000 * ((93 / 128) / 2 ^ 58) +
+            2 * T ^ 2) ≤ E)
+    (hY : Y ≤ |K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)|)
+    (hEY : E < Y) :
+    F64Near.Near
+      (LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (LogCoreBits.kdOf k * ln2LoF + c))) - f)).toBits
+      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)) E := by
+  set v := value f.toBits with hvdef
+  have hσ0 := abs_nonneg v
+  have hF0 : 0 ≤ F0 := hσ0.trans hσ1
+  have hq2 := fsapprox_abs hq (mul_le_mul hσ1 hσ1 hσ0 hF0)
+  have hP3 := fsapprox_abs hP (mul_le_mul hσ1 (mul_le_mul hσ1 hσ1 hσ0 hF0)
+    (mul_nonneg hσ0 hσ0) hF0)
+  obtain ⟨hG, hd⟩ := tail_s_G f c k K t et KM T F0 (eh * (F0 * F0)) (MP * (F0 * (F0 * F0)))
+    (eP * (F0 * (F0 * F0))) Lm gD gE gG hf hv hσ1 hq2.1 hP3.1 hP3.2 hkd hKM hc ht hKM1 hT het
+    hlog hs hgD hgE hgG hSD hSE hSG
+  have hsk : |sStar v| * ((93 / 128) / 2 ^ 58) ≤ 1716 / 10000 * ((93 / 128) / 2 ^ 58) :=
+    mul_le_mul_of_nonneg_right hs (by positivity)
+  have hK81 : |K| / 2 ^ 81 ≤ KM / 2 ^ 81 := div_le_div_of_nonneg_right hKM (by positivity)
+  have ht2 : 2 * t ^ 2 ≤ 2 * T ^ 2 := by
+    have : t ^ 2 ≤ T ^ 2 := by
+      rw [← sq_abs t]
+      exact pow_le_pow_left₀ (abs_nonneg t) ht 2
+    linarith
+  have hyt := y_lt K v t KM Lm hKM hKM1 hlog hLm (ht.trans hT)
+  exact F64Near.near_sub hA hG _ E ((sub_close _ _ _ _ _ _ _ hA hG hd).trans (by linarith))
+    (by linarith) (by linarith [(by norm_num : (2 : ℝ) ^ 1022 + 2 ^ 1022 = 2 ^ 1023)])
+
 /-- The general path within one step, for a criterion binade `a` below `Y ≤ |y|`. -/
 theorem finish_s (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y : ℝ)
     (gD gE gG a : ℕ) (hf : Finite f.toBits) (hv : -1 < value f.toBits)
@@ -231,37 +318,16 @@ theorem finish_s (f c : Float) (k : UInt64) (K t et KM T F0 Mh eh MP eP Lm E Y :
     F64SignedRounding.WithinSteps 1
       (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
       (LogCoreBits.kdOf k * ln2HiF - ((hfsqOf f - (POf f + (LogCoreBits.kdOf k * ln2LoF + c))) - f)).toBits := by
-  set v := value f.toBits with hvdef
-  have hσ0 := abs_nonneg v
-  have hF0 : 0 ≤ F0 := hσ0.trans hσ1
-  have hq2 := fsapprox_abs hq (mul_le_mul hσ1 hσ1 hσ0 hF0)
-  have hP3 := fsapprox_abs hP (mul_le_mul hσ1 (mul_le_mul hσ1 hσ1 hσ0 hF0)
-    (mul_nonneg hσ0 hσ0) hF0)
-  obtain ⟨hG, hd⟩ := tail_s_G f c k K t et KM T F0 (eh * (F0 * F0)) (MP * (F0 * (F0 * F0)))
-    (eP * (F0 * (F0 * F0))) Lm gD gE gG hf hv hσ1 hq2.1 hP3.1 hP3.2 hkd hKM hc ht hKM1 hT het
-    hlog hs hgD hgE hgG hSD hSE hSG
-  have hsk : |sStar v| * ((93 / 128) / 2 ^ 58) ≤ 1716 / 10000 * ((93 / 128) / 2 ^ 58) :=
-    mul_le_mul_of_nonneg_right hs (by positivity)
-  have hK81 : |K| / 2 ^ 81 ≤ KM / 2 ^ 81 := div_le_div_of_nonneg_right hKM (by positivity)
-  have ht2 : 2 * t ^ 2 ≤ 2 * T ^ 2 := by
-    have : t ^ 2 ≤ T ^ 2 := by
-      rw [← sq_abs t]
-      exact pow_le_pow_left₀ (abs_nonneg t) ht 2
-    linarith
-  refine sub_within hA hG _ E ((sub_close _ _ _ _ _ _ _ hA hG hd).trans (by linarith)) a ha1 ha
+  have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
+    rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
+    positivity
+  refine (finish_s_near f c k K t et KM T F0 Mh eh MP eP Lm E Y gD gE gG hf hv hσ1 hq hP hkd hA hKM
+    hc ht hKM1 hT het hlog hLm hs hgD hgE hgG hSD hSE hSG hE hY (by linarith)).within_one a ha1 ha
     (hYa.trans hY) hEa ?_
-  have hl2 := ln2_bounds
-  have hlt := abs_log_t t (by linarith)
-  have h1 : |K * Real.log 2| ≤ 2000 * (6931471808 / 10 ^ 10) := by
-    rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)]
-    exact mul_le_mul (hKM.trans hKM1) hl2.2.le (by linarith) (by norm_num)
-  have h2 := abs_add_le (K * Real.log 2 + Real.log (1 + v)) (Real.log (1 + t))
-  have h3 := abs_add_le (K * Real.log 2) (Real.log (1 + v))
-  have h4 : (2000 * (6931471808 / 10 ^ 10) + 1 + 1 : ℝ) < 2 ^ 1022 := by norm_num
-  linarith
+  exact (y_lt K _ t KM Lm hKM hKM1 hlog hLm (ht.trans hT)).trans (by norm_num)
 
-/-- `f = 0`: `A + (c + kd ln2Lo)`. -/
-theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (hv0 : v = 0)
+/-- `f = 0`: the error of `A + (c + kd ln2Lo)`. -/
+theorem finish_z_near (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (hv0 : v = 0)
     (hkd : FApprox (LogCoreBits.kdOf k) K 0)
     (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
     (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
@@ -269,10 +335,9 @@ theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (
     (hE : et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075) + (T + KM * (191 / 10 ^ 12) +
       (et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075))) / 2 ^ 53 +
         (KM / 2 ^ 81 + 2 * T ^ 2) ≤ E)
-    (ha1 : 1 ≤ a) (ha : a < 2047) (hEa : E < (2 : ℝ) ^ (a - 1) / 2 ^ 1074)
-    (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤ KL * (6931471803 / 10 ^ 10) - 2 * T) :
-    F64SignedRounding.WithinSteps 1 (K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t))
-      (LogCoreBits.kdOf k * ln2HiF + (c + LogCoreBits.kdOf k * ln2LoF)).toBits := by
+    (hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T) :
+    F64Near.Near (LogCoreBits.kdOf k * ln2HiF + (c + LogCoreBits.kdOf k * ln2LoF)).toBits
+      (K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t)) E := by
   subst hv0
   have hB := fapprox_mul hkd lo_approx KM (191 / 10 ^ 12) hKM lo_bound (KM * (191 / 10 ^ 12))
     (by linarith) (by nlinarith)
@@ -312,13 +377,42 @@ theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (
     have := abs_sub_abs_le_abs_sub (K * Real.log 2) (-Real.log (1 + t))
     rw [sub_neg_eq_add, abs_neg] at this
     linarith
-  refine add_within hA hC _ E (by linarith) a ha1 ha (hYa.trans hy) hEa ?_
   have h1 : |K * Real.log 2| ≤ 2000 * (6931471808 / 10 ^ 10) := by
     rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)]
     exact mul_le_mul (hKM.trans hKM1) hl2b.2.le (by linarith) (by norm_num)
   have h2 := abs_add_le (K * Real.log 2) (Real.log (1 + t))
   have h4 : (2000 * (6931471808 / 10 ^ 10) + 1 : ℝ) < 2 ^ 1022 := by norm_num
-  linarith
+  exact F64Near.near_add hA hC _ E (by linarith) (by linarith)
+    (by linarith [(by norm_num : (2 : ℝ) ^ 1022 + 2 ^ 1022 = 2 ^ 1023)])
+
+/-- `f = 0`: `A + (c + kd ln2Lo)`. -/
+theorem finish_z (c : Float) (k : UInt64) (v K t et KM KL T E : ℝ) (a : ℕ) (hv0 : v = 0)
+    (hkd : FApprox (LogCoreBits.kdOf k) K 0)
+    (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
+    (hT : T ≤ 1 / 4) (het : et ≤ 1)
+    (hE : et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075) + (T + KM * (191 / 10 ^ 12) +
+      (et + (KM * (191 / 10 ^ 12) / 2 ^ 53 + 1 / 2 ^ 1075))) / 2 ^ 53 +
+        (KM / 2 ^ 81 + 2 * T ^ 2) ≤ E)
+    (ha1 : 1 ≤ a) (ha : a < 2047) (hEa : E < (2 : ℝ) ^ (a - 1) / 2 ^ 1074)
+    (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤ KL * (6931471803 / 10 ^ 10) - 2 * T) :
+    F64SignedRounding.WithinSteps 1 (K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t))
+      (LogCoreBits.kdOf k * ln2HiF + (c + LogCoreBits.kdOf k * ln2LoF)).toBits := by
+  have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
+    rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
+    positivity
+  have hlv : |Real.log (1 + v)| ≤ 0 := by rw [hv0, add_zero, Real.log_one, abs_zero]
+  have hy := y_ge K v t KL T 0 hKL0 hKL ht hT hlv
+  have hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T := by
+    generalize value (UInt64.ofNat (a * 2 ^ 52)) = B at hB0 hYa
+    linarith
+  have hBy : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤
+      |K * Real.log 2 + Real.log (1 + v) + Real.log (1 + t)| := by
+    generalize value (UInt64.ofNat (a * 2 ^ 52)) = B at hYa ⊢
+    linarith
+  refine (finish_z_near c k v K t et KM KL T E hv0 hkd hA hKM hKL0 hKL hc ht hKM1 hT het hE
+    hEY).within_one a ha1 ha hBy hEa ?_
+  exact (y_lt K v t KM 0 hKM hKM1 hlv (by norm_num) (ht.trans hT)).trans (by norm_num)
 
 theorem c23_close : |value 0x3FE5555555555555 - 2 / 3| ≤ 1 / 2 ^ 53 := by
   rw [← ratOfWord_cast, show ratOfWord 0x3FE5555555555555 = 6004799503160661 / 9007199254740992 by
@@ -344,9 +438,8 @@ theorem log_cubic (v : ℝ) (hv : |v| ≤ 1 / 2) :
   rw [add_comm 1 v] at h ⊢
   linarith
 
-/-- `hu = 0`, `f ≠ 0`: `A - ((f²/2 (1 - 2f/3) - (kd ln2Lo + c)) - f)`.  The rounding errors
-other than `c`'s and those proportional to `kd ln2Lo + c` stay below `2 ^ -60`. -/
-theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
+/-- `hu = 0`, `f ≠ 0`: the error of `A - ((f²/2 (1 - 2f/3) - (kd ln2Lo + c)) - f)`. -/
+theorem finish_q_near (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ)
     (hf : Finite f.toBits) (hv1 : |value f.toBits| ≤ 1 / 2 ^ 19)
     (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (LogCoreBits.kdOf k) K 0)
     (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
@@ -354,12 +447,10 @@ theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
     (hT : T ≤ 1 / 4) (het : et ≤ 1)
     (hE : 1 / 2 ^ 60 + et + (KM * (191 / 10 ^ 12) + T + et) / 2 ^ 50 + KM / 2 ^ 81 +
       2 * T ^ 2 ≤ E)
-    (ha1 : 1 ≤ a) (ha : a < 2047) (hEa : E < (2 : ℝ) ^ (a - 1) / 2 ^ 1074)
-    (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤
-      KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19) :
-    F64SignedRounding.WithinSteps 1
-      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
-      (LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (LogCoreBits.kdOf k * ln2LoF + c)) - f)).toBits := by
+    (hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19) :
+    F64Near.Near
+      (LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (LogCoreBits.kdOf k * ln2LoF + c)) - f)).toBits
+      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)) E := by
   set v := value f.toBits with hvdef
   have hKM0 : 0 ≤ KM := (abs_nonneg K).trans hKM
   have het0 : 0 ≤ et := (abs_nonneg _).trans hc.2
@@ -504,18 +595,46 @@ theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
     have h3 := abs_add_le (Real.log (1 + v)) (Real.log (1 + t))
     linarith
   unfold RqOf hfsqOf
-  refine sub_within hA hG _ E ?_ a ha1 ha (hYa.trans hy) hEa ?_
-  · have := sub_close _ _ _ _ _ _ _ hA hG hd
-    rw [heE, heC] at this
+  have hyt := y_lt K v t KM (2 / 2 ^ 19) hKM hKM1 (by linarith) (by norm_num) (ht.trans hT)
+  refine F64Near.near_sub hA hG _ E ?_ (by linarith)
+    (by linarith [(by norm_num : (2 : ℝ) ^ 1022 + 2 ^ 1022 = 2 ^ 1023)])
+  have := sub_close _ _ _ _ _ _ _ hA hG hd
+  rw [heE, heC] at this
+  linarith
+
+/-- `hu = 0`, `f ≠ 0`: `A - ((f²/2 (1 - 2f/3) - (kd ln2Lo + c)) - f)`.  The rounding errors
+other than `c`'s and those proportional to `kd ln2Lo + c` stay below `2 ^ -60`. -/
+theorem finish_q (f c : Float) (k : UInt64) (K t et KM KL T E : ℝ) (a : ℕ)
+    (hf : Finite f.toBits) (hv1 : |value f.toBits| ≤ 1 / 2 ^ 19)
+    (hv0 : 1 / 2 ^ 1000 ≤ |value f.toBits|) (hkd : FApprox (LogCoreBits.kdOf k) K 0)
+    (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0) (hKM : |K| ≤ KM)
+    (hKL0 : 0 ≤ KL) (hKL : KL ≤ |K|) (hc : FApprox c t et) (ht : |t| ≤ T) (hKM1 : KM ≤ 2000)
+    (hT : T ≤ 1 / 4) (het : et ≤ 1)
+    (hE : 1 / 2 ^ 60 + et + (KM * (191 / 10 ^ 12) + T + et) / 2 ^ 50 + KM / 2 ^ 81 +
+      2 * T ^ 2 ≤ E)
+    (ha1 : 1 ≤ a) (ha : a < 2047) (hEa : E < (2 : ℝ) ^ (a - 1) / 2 ^ 1074)
+    (hYa : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤
+      KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19) :
+    F64SignedRounding.WithinSteps 1
+      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
+      (LogCoreBits.kdOf k * ln2HiF - ((RqOf f - (LogCoreBits.kdOf k * ln2LoF + c)) - f)).toBits := by
+  have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := by
+    rw [F64PositiveSpacing.boundary_value a ha1 (by omega)]
+    positivity
+  have hlv : |Real.log (1 + value f.toBits)| ≤ 2 / 2 ^ 19 := by
+    have := abs_log_t (value f.toBits) (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 19 ≤ 1 / 4)])
     linarith
-  · have h1 : |K * Real.log 2| ≤ 2000 * (6931471808 / 10 ^ 10) := by
-      rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)]
-      exact mul_le_mul (hKM.trans hKM1) hl2b.2.le (by linarith) (by norm_num)
-    have h2 := abs_add_le (K * Real.log 2 + Real.log (1 + v)) (Real.log (1 + t))
-    have h3 := abs_add_le (K * Real.log 2) (Real.log (1 + v))
-    have h4 : (2000 * (6931471808 / 10 ^ 10) + 1 + 1 : ℝ) < 2 ^ 1022 := by norm_num
-    have : (2 : ℝ) / 2 ^ 19 ≤ 1 := by norm_num
+  have hy := y_ge K (value f.toBits) t KL T (2 / 2 ^ 19) hKL0 hKL ht hT hlv
+  have hEY : E < KL * (6931471803 / 10 ^ 10) - 2 * T - 2 / 2 ^ 19 := by
+    generalize value (UInt64.ofNat (a * 2 ^ 52)) = B at hB0 hYa
     linarith
+  have hBy : value (UInt64.ofNat (a * 2 ^ 52)) + E ≤
+      |K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)| := by
+    generalize value (UInt64.ofNat (a * 2 ^ 52)) = B at hYa ⊢
+    linarith
+  refine (finish_q_near f c k K t et KM KL T E hf hv1 hv0 hkd hA hKM hKL0 hKL hc ht hKM1 hT het hE
+    hEY).within_one a ha1 ha hBy hEa ?_
+  exact (y_lt K _ t KM (2 / 2 ^ 19) hKM hKM1 hlv (by norm_num) (ht.trans hT)).trans (by norm_num)
 
 set_option maxHeartbeats 1000000 in
 /-- `K = -1` and `f ≥ 0.285`: `|G| ≥ 1/4`, so `A - G` is exact, and the error stays below one and
