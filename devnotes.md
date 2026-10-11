@@ -30115,7 +30115,7 @@ The targets are `WithinSteps 2` against `Real.arsinh`, `Real.arcosh`, and `Real.
 | `asinh` on `[2, 2 ^ 29]`, `acosh` on `[2, 2 ^ 28]` | Argument within `1.315 · 2 ^ -53` and `1.765 · 2 ^ -53` relative, then `within_two_of_close` in `[1, 2)` | Committed in `5ede907a`, `f8d93194` |
 | `asinh` on `[2 ^ -28, 2]`, `acosh` on `(1, 2]`, `atanh` on `[2 ^ -28, 1/2)` | `log1p` at a computed argument | Open |
 
-An analysis with dense sampling and per-operation worst cases (scripts in `scratchpad/w-poly/arc/hyp`) showed that composing "log1p within one step" with the argument error cannot give two steps on the `log1p` branches.  The rounding of the argument `u` costs up to one spacing of the target, and `log1p` passes it through with factor `1/(1 + u)`; there are inputs where the nearest word of `log1p` at the computed argument is already two steps from the reference.  The compiled functions reach exactly two steps there (`asinh 0x3fe0a9ff5094e9cc`, `atanh 0x3fd9147494025dc1`, `acosh 0x3ff000007ffee997`).
+An analysis with dense sampling and per-operation worst cases (scripts in `/home/somebody/src/machines/work/w-poly/arc/hyp`) showed that composing "log1p within one step" with the argument error cannot give two steps on the `log1p` branches.  The rounding of the argument `u` costs up to one spacing of the target, and `log1p` passes it through with factor `1/(1 + u)`; there are inputs where the nearest word of `log1p` at the computed argument is already two steps from the reference.  The compiled functions reach exactly two steps there (`asinh 0x3fe0a9ff5094e9cc`, `atanh 0x3fd9147494025dc1`, `acosh 0x3ff000007ffee997`).
 
 A proof therefore needs the internal bounds of `log1p`.  These bound the exact value `S` of its last operation, whose result is the nearest word of `S`, so two steps follow when `|S - Y| < 2` spacings (`F64TwoSteps.within_two_of_rounded`), where `Y` is the target.  The table lists the worst cases in spacings of the target's binade.
 
@@ -30126,6 +30126,31 @@ A proof therefore needs the internal bounds of `log1p`.  These bound the exact v
 | `acosh` small | 1.75 near `x = 1` | 0.65 | 2.4 |
 
 The plan, approved by the coordinator: expose the bound `|S - log(1 + x)| ≤ E` of `log1p` for `x ≥ 0`, prove two steps for `atanh` small, prove two steps for `asinh` small if a separate `log1p` case for `f ∈ [-0.2, -0.175]` brings `E` below 0.84 (otherwise three steps with the margin reported), and prove two steps for `acosh` small only if a refined model of `t + √(2t + t²)` closes the gap (otherwise three steps with the margin reported).
+
+### The error bound of `log1p`
+
+`F64Near.Near c y E` states that the word `c` is a nearest rounding of a real within `E` of `y`.  `near_sub` and `near_add` produce it from the `FApprox` bounds of the operands of a last subtraction or addition, `Near.within_one` and `Near.within_two` turn it into one or two steps, `Near.shift` moves the target, and `Near.half` carries it through the exact halving of `atanh` (`Rounded.half`, which compares each word with its exact double).  In `Log1pTheoremTail` the finishing theorems `finish_s`, `finish_q`, and `finish_z` now follow from `finish_s_near`, `finish_q_near`, and `finish_z_near`, and `tail_big_near` replaces `tail_big`; in `Log1pTheorem`, `special_two` and `big_finish` follow from `special_two_near` and `big_near`.  `log1p_within_one` keeps its statement, and `Log1pBytes`, `Log1pFile`, and the `asin`, `acos`, and `asinh` files that import the tail build unchanged (`arc-near-9.log`).
+
+`Log1pTheoremNear.log1p_near` states `Near (Log1p.log1p x).toBits (log (1 + x)) (errBound x)` for finite `x ≥ 2 ^ -29`, with `errBound` in the table.  `Log1pTheoremNearTail.tail_near` splits the case `K = 1`, `f < -0.175` at `f = -0.2501` and `f = -0.2199`: above `-0.2199` the value `G = (f²/2 - (P + C)) - f` lies below 1/4, so its rounding costs `2 ^ -56` instead of `2 ^ -55`, and the smaller `|f|` lowers the polynomial terms.  The boundaries in `x` lie at least `10 ^ -4` inside those in `f`, which absorbs the rounding of `u = 1 + x` (`main_near`).  Commits `0d18df49`, `10e57295`, and `1aa2145f`; logs `arc-near-1.log` to `arc-near-9.log`.
+
+| `x` | Path | `errBound x` |
+|---|---|---|
+| `[2 ^ -29, 0.285]` | `K = 0` | `1.74 · 2 ^ -53 x² + 2 ^ -59 x` |
+| `(0.285, 0.41421)` | `K = 0` | `0.65 · 2 ^ -54` |
+| `[0.41421, 0.4999)` | `K = 1`, `f < -0.25` | `0.85 · 2 ^ -54` |
+| `[0.4999, 0.5603)` | `K = 1`, `f ∈ [-0.2501, -0.2199)` | `0.76 · 2 ^ -54` |
+| `[0.5603, 0.6499)` | `K = 1`, `f ∈ [-0.2199, -0.175)` | `0.43 · 2 ^ -54` |
+| `[0.6499, 2 ^ 53)` | `K ≥ 2` or `f ≥ -0.175` | `1.33 · 2 ^ -54` |
+| `[2 ^ 53, ∞)` | `K ≥ 53` | `6 · 2 ^ -54` |
+
+The compositions bound `|S - Y| ≤ errBound w + |w - W|/(1 + W - |w - W|)` for the computed argument `w` and its exact value `W`, with `Y = log (1 + W)`.  A model of these bounds (`near/plan2.py` in the scratch directory) splits the inputs of each branch into pieces with constant chains; on each piece the argument term is a ratio of quadratics in the input, convex after clearing the denominator, so its endpoints bound it.  Below `Y = 1/4` a relative criterion applies, `|S - Y| ≤ ρ Y` with `ρ (2 ^ 52 + 1) < 1`, since the pieces would otherwise span 25 binades.
+
+- [x] `log1p` error bound for `x ≥ 2 ^ -29`
+- [ ] `atanh` on `[2 ^ -28, 1/2)`: relative pieces up to `a = 0.1244`, then `[0.1244, 0.2]`, `[0.2, 0.24493]`, `[0.24493, 0.46212]`, `[0.46212, 0.5)` with largest ratio 0.9724 of the budget
+- [ ] `atanh` on `[1/2, 1)`: one division, relative error `2 ^ -53` of the argument
+- [ ] `asinh` on `[2 ^ -28, 2]`
+- [ ] `acosh` on `(1, 2]`: the bounds with relative rounding errors reach 1.32 times the budget near `x = 1 + 0.03`; the half-spacing model reaches 0.98
+- [ ] Exceptional values, dispatchers, byte and file theorems
 
 ### A pitfall of `linarith`
 
