@@ -28533,6 +28533,15 @@ paid parameter states them with `p.f.bound`, which the kernel unfolds to the cre
 callee's `p.g.bound` when the callee has a paid parameter, and otherwise its entry, from
 `Env.credit_eq_zero`.
 
+The review asked whether a parameter should be paid only when its own value reaches an extension.
+The charges satisfy `creditCost u + paidGrowCost k = growCost (u + k) k = 16 u + 32 k + 64`, so a
+single extension costs the same whether the parameter is paid or not.  A paid flag lowers the bound
+when the argument is a moved paid variable, which carries potential without a credit.  For a
+parameter that the body does not extend, the current rule charges a credit that only a caller's
+later extension of a paid result recovers, and the per-parameter rule loses a moved argument's
+potential when the parameter is returned.  Each difference is at most one credit per array per call,
+no example has such a parameter, and the user chose to keep the current rule.
+
 `Flags.params` and `Flags.result` look up a function's flags by `FVar.index` in `Flags.toList`.
 The first definition matched `Flags S` and `FVar S g` together, and the kernel reduced that match in
 40 to 130 ms per `.there` step on the program of `Trig.lean`: a lookup at depth 10 took 0.5 s, while
