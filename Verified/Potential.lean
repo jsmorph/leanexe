@@ -61,6 +61,42 @@ theorem Ty.pot_le_credit {heap : Heap} {store : Store Unit} :
     simp only [Ty.pot, arrayPot, Ty.credit, Elem.words_size]
     omega
 
+/-- The potential of the arguments that `sel` picks, from their words `ws`. -/
+def Env.argPot (store : Store Unit) (sel : Nat → Bool) :
+    {Γ : List Ty} → List Value → Env Γ → Nat
+  | _, _, .nil => 0
+  | _, ws, .cons (t := t) v env =>
+    (if sel 0 then t.pot store (ws.take t.width) v else 0) +
+      Env.argPot store (fun i => sel (i + 1)) (ws.drop t.width) env
+
+/-- Arguments of which `sel` picks none have no credits. -/
+theorem Env.credit_eq_zero {sel : Nat → Bool} (h : ∀ i, sel i = false) :
+    {Γ : List Ty} → (env : Env Γ) → Env.credit sel env = 0
+  | _, .nil => rfl
+  | _, .cons _ env => by
+    simp only [Env.credit, h 0, Bool.false_eq_true, ↓reduceIte, Nat.zero_add]
+    exact Env.credit_eq_zero (sel := fun i => sel (i + 1)) (fun i => h (i + 1)) env
+
+/-- The potential of arguments held in owned mode is at most their credits. -/
+theorem Env.argPot_le_credit {heap : Heap} {store : Store Unit} :
+    {Γ : List Ty} → (modes : Nat → Mode) → (sel : Nat → Bool) → (ws : List Value) →
+    (env : Env Γ) → Env.Rep modes heap store ws env → (∀ i, sel i = true → modes i = .owned) →
+      Env.argPot store sel ws env ≤ Env.credit sel env
+  | _, _, _, _, .nil, _, _ => Nat.le_refl 0
+  | _, modes, sel, ws, .cons (t := t) v env, hr, hsel => by
+    obtain ⟨first, rest, h, hv, hrest⟩ := hr
+    subst h
+    have hl := hv.length
+    simp only [Env.argPot, Env.credit, List.take_left' hl, List.drop_left' hl]
+    have := Env.argPot_le_credit (fun i => modes (i + 1)) (fun i => sel (i + 1)) rest env hrest
+      fun i h => hsel (i + 1) h
+    cases h0 : sel 0
+    · simp only [Bool.false_eq_true, ↓reduceIte]; omega
+    · have hm := hsel 0 h0
+      rw [hm] at hv
+      have := Ty.pot_le_credit t first v hv
+      simp only [↓reduceIte]; omega
+
 /-- The potential of variable `x`, from its words at its slot. -/
 def Env.potOf (store : Store Unit) (s : Locals) {Γ : List Ty} (env : Env Γ) (slots : List Slot)
     {t : Ty} (x : Var Γ t) : Nat :=
@@ -183,6 +219,25 @@ theorem pot_single : {Γ : List Ty} → {t : Ty} → (env : Env Γ) → (slots :
     have hf : (fun i => i + 1 == x.index + 1) = (fun i => i == x.index) := by funext i; simp
     simp only [Env.pot, Var.index, hf, ih]
     simp [Env.potOf, Var.index, Env.get]
+
+/-- The potential of pairwise disjoint selections, summed over a call's arguments, is that of
+their union. -/
+theorem pot_argsSum {Γ : List Ty} (env : Env Γ) (slots : List Slot) :
+    {n : Nat} → (sel : Fin n → Nat → Bool) →
+    (∀ i j k, i ≠ j → sel i k = true → sel j k = false) →
+    argsSum (fun i => env.pot store s slots (sel i)) =
+      env.pot store s slots (fun k => argsAny fun i => sel i k)
+  | 0, _, _ => (pot_none env slots _ fun _ => rfl).symm
+  | n + 1, sel, h => by
+    rw [argsSum, pot_argsSum env slots (fun i => sel i.succ)
+      fun i j k hij => h i.succ j.succ k fun e => hij (Fin.succ_injective _ e)]
+    rw [← pot_or env slots (sel 0) (fun k => argsAny fun i : Fin n => sel i.succ k) fun k h0 => ?_]
+    · rfl
+    · cases hc : argsAny fun i : Fin n => sel i.succ k
+      · rfl
+      · obtain ⟨j, hj⟩ := argsAny_true.mp hc
+        rw [h 0 j.succ k (Fin.succ_ne_zero j).symm h0] at hj
+        exact nomatch hj
 
 /-- The potential of variables that stay live and owned across a step that keeps the regions apart
 from the variables that die, with the locals kept below `base`, is unchanged: their words stay in
