@@ -28262,8 +28262,8 @@ its theorem stands.
   - [x] The reflector: `p.f.bound`, `p.f.fits`, their equations, and `p.f.trapFree` for depth
     functions, with a builder family for `fits`.
   - [x] `Recursion.chain`'s theorem and the README.
-  - [ ] A review by a fresh agent, and the suite.
-- [ ] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
+  - [ ] A review by a fresh agent.  The verified suite passed: 15,837 cases, none failed.
+- [x] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
 - [ ] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
 - [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
