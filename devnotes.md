@@ -29708,7 +29708,17 @@ The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound
 
 ### The compiler's time and memory on the gamma port
 
-With its `verified_compile` call, `Tgamma` did not finish: the build ran 25 minutes of CPU time at the scope's memory limits, 4.2 GB of memory and 1 GB of swap, before `leanrun` stopped it.  A probe that compiled only the helpers through `asLgammaAsym` ran 18 minutes at the same limits.  The coordinator suggested small probes with the profiler.  A `LeanExe.loop` over a 6-tuple of floats with a trivial body type-checks in 1.27 s and over a pair in 1.12 s, so tuple loop states are not the cause.  A chain of `let (h, l) := mulDD h l x y` lines type-checks in 2.67 s for 10 lines and 7.64 s for 20, and 40 lines exhausted the scope's memory.  Measurements of the proof size and memory per chain length are in progress.
+With its `verified_compile` call, `Tgamma` did not finish: the build ran 25 minutes of CPU time at the scope's memory limits, 4.2 GB of memory and 1 GB of swap, before `leanrun` stopped it.  A probe that compiled only the helpers through `asLgammaAsym` ran 18 minutes at the same limits.  The coordinator suggested small probes with the profiler.  A `LeanExe.loop` over a 6-tuple of floats with a trivial body type-checks in 1.27 s and over a pair in 1.12 s, so tuple loop states are not the cause.  A chain of `let (h, l) := mulDD h l x y` lines type-checks in 2.67 s for 10 lines and 7.64 s for 20, and 40 lines exhausted the scope's memory.
+
+| Lets | Elaboration and type checking | Memory peak | Objects of the program constant | Distinct subterms |
+|---|---|---|---|---|
+| 5 | 3.4 s | 1.0 GB | 1,958 | |
+| 10 | 5.3 s | 1.0 GB | 5,093 | 491 |
+| 15 | 10.6 s | 1.3 GB | 9,578 | |
+| 20 | 17.6 s | 2.0 GB | 15,413 | 851 |
+| 40 | killed at 4.4 GB and 1 GB of swap | | | |
+
+The program constant `<program>.chain.func` grows quadratically with the number of bindings, while its structurally distinct subterms grow linearly, and the same chain rewritten to reference only the newest variables has the same counts, so de Bruijn depth is not the cause.  The cause is in `Verified/Reflect/Command.lean`: `Ctx.ctx` is `ctxExpr (c.vars.map (·.2))`, which builds a fresh `List Ty` expression of the whole context at each of its 23 uses, and the `mkAppM` steps that build each `Expr` node, `Env.cons`, and proof step embed these copies and the indices inferred from them.  Each node thus carries an unshared copy of a context whose length is the number of variables in scope, two more for each pair let, so a function with `n` bindings costs `O(n²)` objects in its program and proofs, and one `verified_compile` call accumulates them for all its functions.  Two fixes in the reflector suggest themselves, neither tried: keep the context expression in `Ctx` and extend it by one `List.cons` per binding, so that nested contexts share their tails, with the same for `Env.cons`, or hash-cons the values and proofs before they are added.  The coordinator decides between them and the restructuring of the ports into functions of fewer bindings, which it approved once the cause was measured.
 
 - [x] `Fma.fma` with `verified_compile`, and its check.
 - [x] `Tgamma`, `Lgamma`, and `GammaReference`, and their checks without `verified_compile`.
