@@ -656,6 +656,16 @@ theorem After.writeElement {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0
   exact a.rewrite ⟨by rw [hFrame.1], hFrame.2.1, fun x hx => hFrame.2.2 x (by omega)⟩ rfl
     (hA.writeElement hk v) (by rw [Array.size_set]; exact hCapacity)
 
+/-- The write of element `k` of an owned array keeps the capacity in its header. -/
+theorem capacityAt_writeElement {heap : Heap} {store : Store Unit} {p : UInt64}
+    {words : Array UInt64} (hOwned : heap.Owned store p words) {k : Nat} (hk : k < words.size)
+    (v : UInt64) : capacityAt (UInt64Array.writeElement store p k v) p = capacityAt store p := by
+  have hA := hOwned.values
+  have hCapacity := hOwned.capacity
+  have hFrame := UInt64Array.writeElement_frame store p words.size k v hA.1 hk
+  exact (hOwned.rewrite ⟨by rw [hFrame.1], hFrame.2.1, fun x hx => hFrame.2.2 x (by omega)⟩
+    (hA.writeElement hk v) (by rw [Array.size_set]; exact hCapacity)).2
+
 /-- Writes inside the words of an owned array value that leave it holding `words'`, no longer than
 `words`: the value becomes `words'`, in the same block. -/
 theorem After.rewriteRange {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L : Nat → Bool}
@@ -921,11 +931,11 @@ theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 
     w.toNat + j + tys.length ≤ ws.size →
     (∀ store2, After env slots L0 L base heap store0 s0 (.array .word) .owned
         (writeWords ws (w.toNat + j) words) heap1 store2 s [.i64 p] →
-      wp m rest Q store2 s host) →
+      capacityAt store2 p = capacityAt store1 p → wp m rest Q store2 s host) →
     wp m (storeWordsCode h ptr w0 j src tys ++ rest) Q store1 s host
   | _, _, [], words, ws, store1, s, a, _, _, _, _, hl, _, hk => by
     obtain rfl : words = [] := List.eq_nil_of_length_eq_zero (by simpa using hl)
-    simpa [storeWordsCode, writeWords] using hk store1 a
+    simpa [storeWordsCode, writeWords] using hk store1 a rfl
   | j, src, ty :: tys, v :: words, ws, store1, s, a, hh, hP, hW, hold, hl, hFit, hk => by
     simp only [List.length_cons, Nat.add_right_cancel_iff] at hl
     simp only [List.length_cons] at hFit
@@ -950,7 +960,8 @@ theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 
     simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
     rw [ite_eq_right (by omega)]
     refine wp_storeWordsCode (j + 1) (src + 1) tys words _ _ s (a.writeElement hn v) hh hP hW
-      holdRest hl (by rw [Array.size_set]; omega) fun store2 a2 => hk store2 ?_
+      holdRest hl (by rw [Array.size_set]; omega) fun store2 a2 hc =>
+        hk store2 ?_ (hc.trans (capacityAt_writeElement hOwned hn v))
     have hSet : ws.set (w.toNat + j) v hn = ws.set! (w.toNat + j) v := by
       simp [Array.set!_eq_setIfInBounds, Array.setIfInBounds, hn]
     rw [hSet, show w.toNat + (j + 1) = w.toNat + j + 1 by omega] at a2

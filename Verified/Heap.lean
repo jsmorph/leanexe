@@ -79,6 +79,38 @@ theorem _root_.LeanExe.Pipeline.Heap.allocate_top {heap : Heap} {need : UInt64}
   rw [hTop]
   split <;> omega
 
+/-- How an allocation of `bytes` changed `top`: it reused free memory, which leaves `top` unchanged
+and gives a block of at least `bytes`, or it raised `top` by `48 + allocSize bytes` for a block of
+    exactly
+that capacity. -/
+def AllocShape (heap heap' : Heap) (bytes : UInt64) (cap : Nat) : Prop :=
+  (heap'.top.toNat = heap.top.toNat ∧ bytes.toNat ≤ cap) ∨
+    (heap'.top.toNat = heap.top.toNat + 48 + (allocSize bytes).toNat ∧
+      cap = (allocSize bytes).toNat)
+
+theorem AllocShape.le {heap heap' : Heap} {bytes : UInt64} {cap : Nat}
+    (h : AllocShape heap heap' bytes cap) (hb : bytes.toNat ≤ 4294967296) : bytes.toNat ≤ cap := by
+  rcases h with ⟨_, h⟩ | ⟨_, rfl⟩
+  · exact h
+  · exact le_allocSize hb
+
+theorem _root_.LeanExe.Pipeline.Heap.allocate_shape {heap : Heap} {bytes : UInt64}
+    (hb : bytes.toNat ≤ 4294967296) (h : heap.Fits (allocSize bytes)) :
+    AllocShape heap (heap.allocate (allocSize bytes)) bytes
+      (allocatedCapacity (allocSize bytes) heap.free).toNat := by
+  have hTop := allocatedTop_toNat heap.top (allocSize bytes) heap.free h.fit32
+  have hCap := allocated_capacity (allocSize bytes) heap.free
+  have hRound := le_allocSize hb
+  simp only [AllocShape, Heap.allocate]
+  rw [hTop]
+  cases hTake : takeFirstFitFrom 0 (allocSize bytes) heap.free with
+  | some choice =>
+    left
+    exact ⟨by simp, by omega⟩
+  | none =>
+    right
+    simp [allocatedCapacity, hTake]
+
 /-- A call of `alloc` on the byte count on top of the stack: the allocation, which raises `top`
 by at most `c`, or a trap at `unreachable`, which happens only when `top` cannot rise by `c`
 within the cap. -/
@@ -178,7 +210,7 @@ theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
     (hHigh : ptr < s.params.length + s.locals.length) (hne : len ≠ ptr)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (root : UInt64) (words : Array UInt64),
       words.size = n.toNat → Step heap store (fun _ => True) heap' store' [block store' root] →
-      heap'.Owned store' root words → bytes.toNat ≤ capacityAt store' root →
+      heap'.Owned store' root words → AllocShape heap heap' bytes (capacityAt store' root) →
       heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' (setLocal { s with values := vs } ptr (.i64 root)) host) :
     wp m (allocBlockCode len ptr ++ rest) Q store { s with values := .i64 bytes :: vs } host := by
@@ -186,7 +218,8 @@ theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
   simp only [allocBlockCode, List.cons_append, List.nil_append]
   refine wp_alloc hm hAt hBytes32 hCap hc hTrap fun hFits hTop => ?_
   have hRound := le_allocSize hBytes32
-  generalize hNeed : allocSize bytes = need at hFits hRound hTop ⊢
+  have hShape := Heap.allocate_shape hBytes32 hFits
+  generalize hNeed : allocSize bytes = need at hFits hRound hTop hShape ⊢
   have hBlock := hAt.allocate_block 1 hFits
   have hCapacity := allocated_capacity need heap.free
   generalize hRoot : FixedArrayAllocate.root heap.top need heap.free = root at hBlock ⊢
@@ -229,7 +262,7 @@ theorem wp_allocBlock {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap 
     (by rw [hWrites.1]; exact heap.allocateStore_memoryCaps store need 1)
   exact hNext _ store2 _ words hSize
     ⟨hNew.at_, hNew.caps, fun r hr hpos _ => hNew.keeps r hr hpos nofun⟩ hNew.owned
-    (by rw [hCapEq]; omega) hTop
+    (by rw [hCapEq]; exact hShape) hTop
 
 /-- The allocation of an array of `n` words, with `n` in local `count`: a new owned block whose
 length word is `n` and whose elements are what memory held, with its address in local `ptr`.
@@ -805,7 +838,7 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
       (words : Array UInt64), words.size = total.toNat →
       (∀ j (hj : j < xs.size), words[j]! = xs[j]) →
       Step heap store (fun _ => True) heap' store' [block store' q] → heap'.Owned store' q words →
-      bytes.toNat ≤ capacityAt store' q → s'.params = s.params →
+      AllocShape heap heap' bytes (capacityAt store' q) → s'.params = s.params →
       s'.locals.length = s.locals.length → (∀ j, j ≠ dst → j ≠ index → s'.get j = s.get j) →
       s'.get dst = some (.i64 q) → s'.values = vs → heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' s' host) :
@@ -855,14 +888,17 @@ theorem wp_allocCopy {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     exact List.mem_append_left _ (List.mem_singleton_self _)
 
 /-- The byte count of a block for the length `t` in local `total`, given the capacity `c` in
-local `cap`: at least the bytes that the length needs, at most `2 ^ 32`, and at most the larger of
-those bytes and twice the capacity. -/
+local `cap`: twice the capacity when that holds the length and is at most `2 ^ 32`, `2 ^ 32` when
+twice the capacity holds the length and exceeds `2 ^ 32`, and the bytes that the length needs
+otherwise. -/
 theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {s : Locals}
     {total cap : Nat} {t c : UInt64} {rest : Program} {Q : Assertion Unit}
     (hT : s.get total = some (.i64 t)) (hC : s.get cap = some (.i64 c))
     (ht : t.toNat < 536870912) (hc : c.toNat < 4294967296)
-    (hNext : ∀ r : UInt64, 8 * (t.toNat + 1) ≤ r.toNat → r.toNat ≤ 4294967296 →
-      r.toNat ≤ max (8 * (t.toNat + 1)) (2 * c.toNat) →
+    (hNext : ∀ r : UInt64,
+      (r.toNat = 2 * c.toNat ∧ 8 * (t.toNat + 1) ≤ 2 * c.toNat ∧ 2 * c.toNat ≤ 4294967296) ∨
+        (r.toNat = 4294967296 ∧ 8 * (t.toNat + 1) ≤ 2 * c.toNat ∧ 4294967296 < 2 * c.toNat) ∨
+        (r.toNat = 8 * (t.toNat + 1) ∧ 2 * c.toNat < 8 * (t.toNat + 1)) →
       wp m rest Q store { s with values := .i64 r :: s.values } host) :
     wp m (requestCode total cap ++ rest) Q store s host := by
   have hNeed : ((t + 1) * 8).toNat = 8 * (t.toNat + 1) := by
@@ -885,18 +921,18 @@ theorem wp_requestCode {m : Module} {host : HostEnv Unit} {store : Store Unit} {
       simp only [wp_localGet_cons, hC, wp_constI64_cons, wp_mulI64_cons, wp_nil]
       rw [UInt64.le_iff_toNat_le, hNeed] at h1
       rw [UInt64.le_iff_toNat_le] at h2
-      simpa using hNext (c * 2) h1 h2 (by rw [hDouble]; omega)
+      simpa using hNext (c * 2) (Or.inl ⟨hDouble, by rw [← hDouble]; exact h1,
+        by rw [← hDouble]; exact h2⟩)
     · simp (config := { decide := true }) only [h2, ↓reduceIte]
       simp only [wp_constI64_cons, wp_nil]
       rw [UInt64.le_iff_toNat_le, hNeed] at h1
-      simpa using hNext 4294967296 (by simp only [UInt64.reduceToNat]; omega) (by decide)
-        (by
-          rw [UInt64.not_le, UInt64.lt_iff_toNat_lt, hDouble] at h2
-          simp only [UInt64.reduceToNat] at h2 ⊢
-          omega)
+      rw [UInt64.not_le, UInt64.lt_iff_toNat_lt, hDouble] at h2
+      simp only [UInt64.reduceToNat] at h2
+      simpa using hNext 4294967296 (Or.inr (Or.inl ⟨rfl, by rw [← hDouble]; exact h1, h2⟩))
   · simp (config := { decide := true }) only [h1, ↓reduceIte]
     simp only [wp_localGet_cons, hT, wp_constI64_cons, wp_addI64_cons, wp_mulI64_cons, wp_nil]
-    simpa using hNext ((t + 1) * 8) (by rw [hNeed]) (by rw [hNeed]; omega) (by rw [hNeed]; omega)
+    rw [UInt64.le_iff_toNat_le, hNeed, hDouble] at h1
+    simpa using hNext ((t + 1) * 8) (Or.inr (Or.inr ⟨hNeed, by omega⟩))
 
 /-- The copy of an array that is readable at `ptr`, whose address local `src` holds, into a new
 owned array, with the locals from `base` to `base + 2` as scratch.  It traps at `unreachable` only

@@ -26,8 +26,9 @@ structure Bound where
   proof : Lean.Expr
   deriving Inhabited
 
-/-- From the modes and the live set at a site, as terms, the bound of a source expression. -/
-abbrev BoundBuilder := Lean.Expr → Lean.Expr → MetaM Bound
+/-- From the modes, the paid flags, and the live set at a site, as terms, the bound of a source
+expression. -/
+abbrev BoundBuilder := Lean.Expr → Lean.Expr → Lean.Expr → MetaM Bound
 
 /-- The frames condition of a source expression. -/
 abbrev FitsBuilder := MetaM Bound
@@ -95,15 +96,16 @@ def LemmaApp.start (n : Name) (args : List (Name × Lean.Expr)) : MetaM LemmaApp
 def LemmaApp.hypType (a : LemmaApp) (name : Name) : MetaM Lean.Expr := do
   instantiateMVars (← inferType a.mvars[← a.index name]!)
 
-/-- The modes and the live set of the `Expr.allocs` on the left of the equation that argument
-`name` states. -/
-def LemmaApp.allocsArgs (a : LemmaApp) (name : Name) : MetaM (Lean.Expr × Lean.Expr) := do
+/-- The modes, the paid flags, and the live set of the `Expr.allocs` on the left of the equation
+that argument `name` states. -/
+def LemmaApp.allocsArgs (a : LemmaApp) (name : Name) :
+    MetaM (Lean.Expr × Lean.Expr × Lean.Expr) := do
   let ty ← a.hypType name
   let some (_, lhs, _) := ty.eq?
     | throwError "verified_compile: the argument {name} of {a.name} is not an equation:{indentExpr ty}"
-  let (``Expr.allocs, #[_, _, _, modes, live, _, _, _, _]) := lhs.consumeMData.getAppFnArgs
+  let (``Expr.allocs, #[_, _, _, modes, paid, live, _, _, _, _]) := lhs.consumeMData.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {a.name} is not a bound:{indentExpr lhs}"
-  return (modes, live)
+  return (modes, paid, live)
 
 /-- The application, with every argument assigned. -/
 def LemmaApp.finish (a : LemmaApp) : MetaM Lean.Expr := do
@@ -115,11 +117,11 @@ def LemmaApp.finish (a : LemmaApp) : MetaM Lean.Expr := do
     throwError "verified_compile: in {a.name}, the arguments {missing} are not determined"
   return app
 
-/-- Runs the builder `b` of the part that argument `name` bounds, at the modes and live set that
-the argument states, and assigns its proof. -/
+/-- Runs the builder `b` of the part that argument `name` bounds, at the modes, paid flags, and live
+set that the argument states, and assigns its proof. -/
 def LemmaApp.child (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM Bound := do
-  let (modes, live) ← a.allocsArgs name
-  let r ← b modes live
+  let (modes, paid, live) ← a.allocsArgs name
+  let r ← b modes paid live
   a.assign name r.proof
   return r
 

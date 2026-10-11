@@ -48,4 +48,12 @@ def repeated (xs : Array UInt64) (n : UInt64) : Array UInt64 :=
 verified_compile compiled := [pushParam, pushBuilt, pushTwo, pushSize, pushKeep, evens,
   appendParams, appendBuilt, appendRoom, appendSelf, appendSelfOwned, appendOwnedRight, repeated]
 
+/-- The first push of `pushTwo` is charged a block of twice the bytes of its new length and twice
+its 8 added bytes, and the second, which grows the paid result of the first, a header and four times
+its 8 added bytes. -/
+theorem pushTwo_bound (n a b : UInt64) :
+    compiled.pushTwo.bound (n, a, b) =
+      blockCost n.toNat + growCost ((LeanExe.build n fun i => i).size + 1) 1 + (48 + 32) := by
+  rw [compiled.pushTwo.bound_eq, paidGrowCost_eq]
+
 end Verified.Examples.Grow

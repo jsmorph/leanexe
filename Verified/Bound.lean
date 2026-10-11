@@ -4,11 +4,12 @@ import Verified.Compile
 `top`, as a Lean function of the values of its variables.  An allocation of `b` payload bytes
 either reuses a free block, which leaves `top`, or raises `top` by `48 + b`, and the code requests
 only multiples of 8 of at least 8 bytes, so `allocCost b = 48 + b`.  The bound follows
-`Expr.code` with the modes of the variables and the same live sets: it counts each copy that the
-modes and the live sets call for, each array that `build` makes, and each block of `push`, `++`,
-and `insertAt`.  An owned array that dies grows into a block of less than twice the bytes of its
-new length, which the code requests only when its block lacks room, and the bound charges that
-block even when the array extends in place.  The bound ignores the reuse of freed blocks. -/
+`Expr.code` with the modes of the variables, the same live sets, and flags that state which
+variables are paid: it counts each copy that the modes and the live sets call for, each array that
+`build` makes, and each block of `push`, `++`, and `insertAt`.  An owned array that dies and is not
+paid is charged a block of twice the bytes of its new length and twice the added bytes, even when
+it extends in place.  A paid one is charged a header and four times the added bytes, which with
+its potential pay for its growth.  The bound ignores the reuse of freed blocks. -/
 
 namespace Verified
 
@@ -39,13 +40,20 @@ def Var.ownedCost (modes : List Mode) (live : Nat → Bool) {Γ : List Ty} {t : 
     (v : t.denote) : Nat :=
   x.cost modes live v + coerceCost t (modeAt modes x.index) .owned v
 
-/-- The bytes of `Var.roomCode` for an extension by `ext` words of the array `xs` of `x`: a block
-of less than twice the new length's bytes for an owned array that dies, and a copy at the new
-length otherwise. -/
-def Var.roomCost (modes : List Mode) (live : Nat → Bool) {Γ : List Ty} {e : Elem}
-    (x : Var Γ (.array e)) (xs : Array e.denote) (ext : Nat) : Nat :=
+/-- Whether variable `i` is paid, among the flags `paid`: whether the potential of its arrays is
+counted. -/
+def paidAt (paid : List Bool) (i : Nat) : Bool := paid.getD i false
+
+/-- The charge of `Var.roomCode` for an extension by `ext` words of the array `xs` of `x`: for an
+owned array that dies, a header and four times the added bytes when it is paid, which with its
+potential cover the bytes of the code and the result's potential, and a block of twice the new
+length's bytes and twice the added bytes when it is not, which cover both alone, and a copy at the
+new length otherwise. -/
+def Var.roomCost (modes : List Mode) (paid : List Bool) (live : Nat → Bool) {Γ : List Ty}
+    {e : Elem} (x : Var Γ (.array e)) (xs : Array e.denote) (ext : Nat) : Nat :=
   let len := xs.size * e.width + ext
-  if modeAt modes x.index = .owned ∧ live x.index = false then allocCost (16 * (len + 1))
+  if modeAt modes x.index = .owned ∧ live x.index = false then
+    if paidAt paid x.index then allocCost (32 * ext) else allocCost (16 * (len + 1)) + 16 * ext
   else allocCost ((len + 1) * 8)
 
 /-- The sum of `f k` for `k` below `n`. -/
@@ -94,93 +102,111 @@ def Expr.ownedCost (modes : List Mode) (live : Nat → Bool) :
   | _, _, .var x, env => x.ownedCost modes live (env.get x)
   | _, _, _, _ => 0
 
-/-- The allocation bound of the code of an expression with the variables' modes `modes` and the
-variables `live` live after it, for the functions `funs` with the bounds `bounds` and the values
-`env` of its variables. -/
-def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (live : Nat → Bool) :
-    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
+/-- Whether the potential of an expression's value is counted, given the variables' modes and
+flags and the variables live after it: for the growth of an owned array that dies, for a moved
+variable that is paid, and for a `let` whose body's value is paid. -/
+def Expr.paid (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
+    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
+  | _, _, .var x => modeAt modes x.index == .owned && !live x.index && paidAt paid x.index
+  | _, _, .push x _ | _, _, .insertAt x _ _ => modeAt modes x.index == .owned && !live x.index
+  | _, _, .append x y => modeAt modes x.index == .owned && !(live x.index || x.index == y.index)
+  | _, _, .letE value body =>
+    body.paid (value.mode modes :: modes)
+      (value.paid modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
+  | _, _, _ => false
+
+/-- The allocation bound of the code of an expression with the variables' modes `modes` and flags
+`paid` and the variables `live` live after it, for the functions `funs` with the bounds `bounds`
+and the values `env` of its variables, together with the potential of a paid value. -/
+def Expr.allocs (funs : Funs S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool)
+    (live : Nat → Bool) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ => 0
   | _, _, .var x, env => x.cost modes live (env.get x)
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
   | _, _, .and left right, env | _, _, .or left right, env
   | _, _, .mk left right, env =>
-    left.allocs funs bounds modes (fun i => live i || right.uses i) env +
-      right.allocs funs bounds modes live env
+    left.allocs funs bounds modes paid (fun i => live i || right.uses i) env +
+      right.allocs funs bounds modes paid live env
   | _, _, .not e, env | _, _, .funary _ e, env | _, _, .toFloat _ e, env
-  | _, _, .toWord _ e, env => e.allocs funs bounds modes live env
+  | _, _, .toWord _ e, env => e.allocs funs bounds modes paid live env
   | _, _, .ite (t := t) c thenE elseE, env =>
     let mode := (thenE.mode modes).join (elseE.mode modes)
-    c.allocs funs bounds modes (fun i => live i || thenE.uses i || elseE.uses i) env +
+    c.allocs funs bounds modes paid (fun i => live i || thenE.uses i || elseE.uses i) env +
       if c.denote funs env then
-        thenE.allocs funs bounds modes live env +
+        thenE.allocs funs bounds modes paid live env +
           coerceCost t (thenE.mode modes) mode (thenE.denote funs env)
       else
-        elseE.allocs funs bounds modes live env +
+        elseE.allocs funs bounds modes paid live env +
           coerceCost t (elseE.mode modes) mode (elseE.denote funs env)
   | _, _, .letE value body, env =>
-    value.allocs funs bounds modes (fun i => live i || body.uses (i + 1)) env +
-      body.allocs funs bounds (value.mode modes :: modes) (shift 1 live)
+    value.allocs funs bounds modes paid (fun i => live i || body.uses (i + 1)) env +
+      body.allocs funs bounds (value.mode modes :: modes)
+        (value.paid modes paid (fun i => live i || body.uses (i + 1)) :: paid) (shift 1 live)
         (.cons (value.denote funs env) env)
   | _, _, .call (g := g) f args, env =>
     let all := fun i => live i || argsAny fun j => (args j).uses i
     let kept := fun i =>
       all i && !(argsAny fun j => callMovesAt modes live args j && (args j).uses i)
     (argsSum fun i =>
-      if (g.params.get i).scalar then (args i).allocs funs bounds modes all env
+      if (g.params.get i).scalar then (args i).allocs funs bounds modes paid all env
       else if g.mode i = .owned then (args i).ownedCost modes kept env else 0) +
       bounds.get f (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .pair (s := s) (t := t) first second, env =>
     let mode := (first.mode modes).join (second.mode modes)
-    first.allocs funs bounds modes (fun i => live i || second.uses i) env +
+    first.allocs funs bounds modes paid (fun i => live i || second.uses i) env +
       coerceCost s (first.mode modes) mode (first.denote funs env) +
-      second.allocs funs bounds modes live env +
+      second.allocs funs bounds modes paid live env +
       coerceCost t (second.mode modes) mode (second.denote funs env)
   | _, _, .letPair e body, env =>
     let mode := e.mode modes
     let p := e.denote funs env
-    e.allocs funs bounds modes (fun i => live i || body.uses (i + 2)) env +
-      body.allocs funs bounds (mode :: mode :: modes) (shift 2 live) (.cons p.2 (.cons p.1 env))
+    e.allocs funs bounds modes paid (fun i => live i || body.uses (i + 2)) env +
+      body.allocs funs bounds (mode :: mode :: modes) (false :: false :: paid) (shift 2 live)
+        (.cons p.2 (.cons p.1 env))
   | _, _, .loop (t := t) count init cond body, env =>
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
     let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
-    count.allocs funs bounds modes (fun i => all i || init.uses i) env +
-      init.allocs funs bounds modes all env +
+    count.allocs funs bounds modes paid (fun i => all i || init.uses i) env +
+      init.allocs funs bounds modes paid all env +
       coerceCost t (init.mode modes) mode (init.denote funs env) +
       loopCost
-        (fun s => cond.allocs funs bounds (.borrowed :: modes) (fun j => j == 0 || shift 1 all j)
+        (fun s => cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
+          (fun j => j == 0 || shift 1 all j)
           (.cons s env))
         (fun s => cond.denote funs (.cons s env))
         (fun i s =>
-          body.allocs funs bounds (mode :: .borrowed :: modes) (shift 2 all)
+          body.allocs funs bounds (mode :: .borrowed :: modes) (false :: false :: paid)
+            (shift 2 all)
               (.cons s (.cons i env)) +
             coerceCost t (body.mode (mode :: .borrowed :: modes)) mode
               (body.denote funs (.cons s (.cons i env))))
         (fun i s => body.denote funs (.cons s (.cons i env)))
         (count.denote funs env).toNat 0 (init.denote funs env)
   | _, _, .size _, _ | _, _, .proj _ _, _ => 0
-  | _, _, .get x i, env => i.allocs funs bounds modes (fun j => live j || j == x.index) env
+  | _, _, .get x i, env => i.allocs funs bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
-    i.allocs funs bounds modes (fun j => live j || j == x.index || v.uses j) env +
-      v.allocs funs bounds modes (fun j => live j || j == x.index) env +
+    i.allocs funs bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
+      v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
       x.ownedCost modes live (env.get x)
   | _, _, .push (e := e) x v, env =>
-    v.allocs funs bounds modes (fun j => live j || j == x.index) env +
-      x.roomCost modes live (env.get x) (wordCount e.width).toNat
+    v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+      x.roomCost modes paid live (env.get x) (wordCount e.width).toNat
   | _, _, .append (e := e) x y, env =>
-    x.roomCost modes (fun k => live k || k == y.index) (env.get x) ((env.get y).size * e.width)
+    x.roomCost modes paid (fun k => live k || k == y.index) (env.get x) ((env.get y).size * e.width)
   | _, _, .insertAt (e := e) x i v, env =>
-    i.allocs funs bounds modes (fun j => live j || j == x.index || v.uses j) env +
-      v.allocs funs bounds modes (fun j => live j || j == x.index) env +
-      x.roomCost modes live (env.get x) (wordCount e.width).toNat
+    i.allocs funs bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
+      v.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
+      x.roomCost modes paid live (env.get x) (wordCount e.width).toNat
   | _, _, .eraseAt x i, env =>
-    i.allocs funs bounds modes (fun j => live j || j == x.index) env +
+    i.allocs funs bounds modes paid (fun j => live j || j == x.index) env +
       x.ownedCost modes live (env.get x)
   | _, _, .build (e := e) count elem, env =>
     let all := fun i => live i || elem.uses (i + 1)
     let n := (count.denote funs env).toNat
-    count.allocs funs bounds modes all env + allocCost ((n * e.width + 1) * 8) +
-      sumBelow (fun k => elem.allocs funs bounds (.borrowed :: modes) (shift 1 all)
+    count.allocs funs bounds modes paid all env + allocCost ((n * e.width + 1) * 8) +
+      sumBelow (fun k => elem.allocs funs bounds (.borrowed :: modes) (false :: paid)
+        (shift 1 all)
         (.cons (UInt64.ofNat k) env)) n
 
 /-- The modes of a function's parameters at entry. -/
@@ -192,7 +218,7 @@ body's, with nothing live after it, and the copy of a borrowed result. -/
 def bodyBound {params : List Ty} {result : Ty} (modes : List Mode) (body : Expr S params result)
     (funs : Funs S) (bounds : Bounds S) (args : Env params) : Nat :=
   let ms := entryModes params modes
-  body.allocs funs bounds ms (fun _ => false) args +
+  body.allocs funs bounds ms [] (fun _ => false) args +
     coerceCost result (body.mode ms) .owned (body.denote funs args)
 
 /-- The allocation bound of a function. -/

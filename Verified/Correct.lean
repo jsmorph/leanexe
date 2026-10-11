@@ -1,10 +1,12 @@
-import Verified.After
+import Verified.Potential
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
 of an expression traps only through a call of a function whose code takes the call depth, or when
-`top` cannot rise by the expression's allocation bound, `Expr.allocs`, within the memory cap, and
-it raises `top` by at most that bound.  `ImplementsB.trapFree` gives the theorem without a trap
+`top` cannot rise by the potential of the paid owned variables that die in the expression plus its
+allocation bound, `Expr.allocs`, within the memory cap.  `top` after the code, plus the potential of
+a paid value, is at most `top` before it plus that sum.  `ImplementsB.trapFree` gives the theorem
+    without a trap
 for a function whose bound fits. -/
 
 namespace Verified
@@ -23,26 +25,33 @@ abbrev trapFlag {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (e : Expr S 
 /-- The code of an expression, for the variables `live` live after it, pushes words that
 represent its value: from any heap and store with the allocator invariant, in which the locals
 have `h` positions, the variables live before the expression hold their values below position
-`base`, and the positions from `base` on are free, the code ends as `After` states.  It may trap
-at `unreachable` only as `trapFlag` allows for the bound `e.allocs` and the frames `e.fits`, for
-callees with the bounds `bounds` and the frames `fits`, and, when it finds its frames, it raises
-`top` by at most that bound.  The locals' parameters are `pv`, the function's arguments, which no
-code changes. -/
+`base`, and the positions from `base` on are free, the code ends as `After` states.  The flags
+`paid` state which variables' potential counts.  The code may trap at `unreachable` only as
+`trapFlag` allows for the potential of the paid owned variables that die plus the bound
+`e.allocs`, and the frames `e.fits`, for callees with the bounds `bounds` and the frames `fits`.
+When it finds its frames, `top` after the code, plus the potential of a paid value, is at most `top`
+before it plus that sum.  The locals' parameters are `pv`, the function's arguments, which no code
+    changes. -/
 def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
     (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (pv : List Value) (e : Expr S Γ t)
-    (env : Env Γ) (slots : List Slot) (live : Nat → Bool) : Prop :=
+    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool) : Prop :=
   ∀ (h base : Nat) (heap : Heap) (store : Store Unit) (s : Locals), s.half = h → s.params = pv →
     Holds env slots (fun i => live i || e.uses i) base heap store s → heap.At store →
     store.memoryCap m 0 ≤ 65535 → s.params.length ≤ base → base + e.width ≤ h →
     e.placeArgs = true →
     ∀ (rest : Program) (Q : Assertion Unit),
-    TrapOK (trapFlag m e slots heap store (e.allocs funs bounds (slots.map Slot.mode) live env)
-      (e.fits funs fits env)) Q →
+    TrapOK (trapFlag m e slots heap store
+      (dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+        e.allocs funs bounds (slots.map Slot.mode) paid live env) (e.fits funs fits env)) Q →
     (∀ heap' store' s' ws,
       After env slots (fun i => live i || e.uses i) live base heap store s t
         (e.mode (slots.map Slot.mode)) (e.denote funs env) heap' store' s' ws →
       (e.fits funs fits env = true →
-        heap'.top.toNat ≤ heap.top.toNat + e.allocs funs bounds (slots.map Slot.mode) live env) →
+        heap'.top.toNat +
+            (if e.paid (slots.map Slot.mode) paid live then t.pot store' ws (e.denote funs env)
+              else 0) ≤
+          heap.top.toNat + dyingPot store s env slots paid (fun i => live i || e.uses i) live +
+            e.allocs funs bounds (slots.map Slot.mode) paid live env) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wp m (e.code h slots base live ++ rest) Q store s host
 
@@ -83,9 +92,9 @@ macro "flag_tac" : tactic =>
 /-- The bytes of a call's argument `i`: those of its code when it holds no arrays, those of its
 owned code when its parameter is owned, and none for a borrowed place. -/
 def argCost {S : List Sig} {Γ : List Ty} (funs : Funs S) (bounds : Bounds S) (modesL : List Mode)
-    (all kept : Nat → Bool) {ps : List Ty} (modes : Nat → Mode)
+    (paidL : List Bool) (all kept : Nat → Bool) {ps : List Ty} (modes : Nat → Mode)
     (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) (env : Env Γ) (i : Fin ps.length) : Nat :=
-  if (ps.get i).scalar then (args i).allocs funs bounds modesL all env
+  if (ps.get i).scalar then (args i).allocs funs bounds modesL paidL all env
   else if modes i = .owned then (args i).ownedCost modesL kept env else 0
 
 /-- `ImplementsA` with the allocation bound `bound`: the call traps only when `aborts` holds and
@@ -244,17 +253,18 @@ theorem loopCost_zero {α : Type} {cc : α → Nat} {cond : α → Bool} {bc : U
 /-- The bytes of a loop's iterations from index `i`, with `n` indices left, at the state `x`, as
 `Expr.allocs` counts them. -/
 def Expr.loopRest {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S) (bounds : Bounds S)
-    (modes : List Mode) (live : Nat → Bool) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
+    (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (init : Expr S Γ t) (cond : Expr S (t
+        :: Γ) .bool)
     (body : Expr S (t :: .word :: Γ) t) (env : Env Γ) (n : Nat) (i : UInt64) (x : t.denote) :
     Nat :=
   loopCost
-    (fun s => cond.allocs funs bounds (.borrowed :: modes)
+    (fun s => cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
       (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
       (.cons s env))
     (fun s => cond.denote funs (.cons s env))
     (fun i s =>
       body.allocs funs bounds (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
-          modes))) :: .borrowed :: modes)
+          modes))) :: .borrowed :: modes) (false :: false :: paid)
           (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
           (.cons s (.cons i env)) +
         coerceCost t (body.mode (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
@@ -264,57 +274,62 @@ def Expr.loopRest {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S) (bounds
     (fun i s => body.denote funs (.cons s (.cons i env))) n i x
 
 theorem Expr.allocs_loop {S : List Sig} {Γ : List Ty} {t : Ty} (funs : Funs S)
-    (bounds : Bounds S) (modes : List Mode) (live : Nat → Bool) (count : Expr S Γ .word)
+    (bounds : Bounds S) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (count : Expr S Γ
+        .word)
     (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool) (body : Expr S (t :: .word :: Γ) t)
     (env : Env Γ) :
-    (Expr.loop count init cond body).allocs funs bounds modes live env =
-      count.allocs funs bounds modes
+    (Expr.loop count init cond body).allocs funs bounds modes paid live env =
+      count.allocs funs bounds modes paid
           (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2)) || init.uses i) env +
-        init.allocs funs bounds modes (fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
+        init.allocs funs bounds modes paid (fun i => live i || cond.uses (i + 1) || body.uses (i +
+            2))
           env +
         coerceCost t (init.mode modes)
           ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
           (init.denote funs env) +
-        Expr.loopRest funs bounds modes live init cond body env (count.denote funs env).toNat 0
+        Expr.loopRest funs bounds modes paid live init cond body env (count.denote funs env).toNat 0
           (init.denote funs env) := rfl
 
 theorem Expr.loopRest_true {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
-    {bounds : Bounds S} {modes : List Mode} {live : Nat → Bool} {init : Expr S Γ t}
+    {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} (h : cond.denote funs (.cons x env) = true) :
-    Expr.loopRest funs bounds modes live init cond body env (n + 1) i x =
-      cond.allocs funs bounds (.borrowed :: modes)
+    Expr.loopRest funs bounds modes paid live init cond body env (n + 1) i x =
+      cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
           (.cons x env) +
         (body.allocs funs bounds (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
-            modes))) :: .borrowed :: modes)
+            modes))) :: .borrowed :: modes) (false :: false :: paid)
             (shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)))
             (.cons x (.cons i env)) +
           coerceCost t (body.mode (((init.mode modes).join (body.mode (.borrowed :: .borrowed ::
             modes))) :: .borrowed :: modes))
             ((init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)))
             (body.denote funs (.cons x (.cons i env))) +
-          Expr.loopRest funs bounds modes live init cond body env n (i + 1)
+          Expr.loopRest funs bounds modes paid live init cond body env n (i + 1)
             (body.denote funs (.cons x (.cons i env)))) := by
   unfold Expr.loopRest
   exact loopCost_succ_true (cond := fun s => cond.denote funs (.cons s env)) h
 
 theorem Expr.loopRest_false {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
-    {bounds : Bounds S} {modes : List Mode} {live : Nat → Bool} {init : Expr S Γ t}
+    {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} (h : cond.denote funs (.cons x env) = false) :
-    Expr.loopRest funs bounds modes live init cond body env (n + 1) i x =
-      cond.allocs funs bounds (.borrowed :: modes)
+    Expr.loopRest funs bounds modes paid live init cond body env (n + 1) i x =
+      cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
           (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
           (.cons x env) := by
   unfold Expr.loopRest
   exact loopCost_succ_false (cond := fun s => cond.denote funs (.cons s env)) h
 
 theorem Expr.loopRest_zero {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
-    {bounds : Bounds S} {modes : List Mode} {live : Nat → Bool} {init : Expr S Γ t}
+    {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ}
     {i : UInt64} {x : t.denote} :
-    Expr.loopRest funs bounds modes live init cond body env 0 i x = 0 := rfl
+    Expr.loopRest funs bounds modes paid live init cond body env 0 i x = 0 := rfl
 
 /-- Whether a loop's passes from index `i`, with `n` indices left, from the state `x`, find their
 frames, as `Expr.fits` states for the loop. -/
@@ -352,13 +367,14 @@ theorem _root_.LeanExe.Pipeline.Heap.Within.of_le {heap heap1 : Heap} {store sto
   unfold Heap.Within at *; rw [hCaps]; omega
 
 theorem Expr.loopRest_cond_le {S : List Sig} {Γ : List Ty} {t : Ty} {funs : Funs S}
-    {bounds : Bounds S} {modes : List Mode} {live : Nat → Bool} {init : Expr S Γ t}
+    {bounds : Bounds S} {modes : List Mode} {paid : List Bool}
+    {live : Nat → Bool} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {env : Env Γ} {n : Nat}
     {i : UInt64} {x : t.denote} :
-    cond.allocs funs bounds (.borrowed :: modes)
+    cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
         (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j)
         (.cons x env) ≤
-      Expr.loopRest funs bounds modes live init cond body env (n + 1) i x := by
+      Expr.loopRest funs bounds modes paid live init cond body env (n + 1) i x := by
   cases h : cond.denote funs (.cons x env)
   · rw [Expr.loopRest_false h]
   · rw [Expr.loopRest_true h]; omega
@@ -382,22 +398,64 @@ theorem fitsOf {b : Bool} {P : Prop} (h : (!b) = false → P) (hb : b = true) : 
   h (by simp [hb])
 
 
+/-- An expression's bound with the potentials, from the bound without them, when its value is not
+paid. -/
+theorem top_unpaid {top' top dying allocs pot : Nat} {paid : Bool} (hp : paid = false)
+    (h : top' ≤ top + dying + allocs) : top' + (if paid then pot else 0) ≤ top + dying + allocs :=
+        by
+  subst hp; simpa using h
+
+theorem top_unpaid_le {top' top dying allocs pot : Nat} {paid : Bool} (hp : paid = false)
+    (h : top' ≤ top + allocs) : top' + (if paid then pot else 0) ≤ top + dying + allocs := by
+  subst hp; simp only [Bool.false_eq_true, ↓reduceIte, Nat.add_zero]; omega
+
+/-- The bound of a whole whose value is a scalar from the bound of its part, whose dying potential
+is at most the whole's and whose bound is the whole's. -/
+theorem top_part {top' top d d' a pot1 pot2 : Nat} {p1 p2 : Bool} (hp2 : pot2 = 0) (hd : d' ≤ d)
+    (h : top' + (if p1 then pot1 else 0) ≤ top + d' + a) :
+    top' + (if p2 then pot2 else 0) ≤ top + d + a := by
+  subst hp2; split <;> split at h <;> omega
+
+/-- The bound of a moved variable: when it is paid, its potential is among the dying ones. -/
+theorem top_move {Γ : List Ty} {env : Env Γ} {slots : List Slot} {paid : List Bool}
+    {live : Nat → Bool} {store : Store Unit} {s : Locals} {t : Ty} (x : Var Γ t)
+    {ws : List Value} {top a : Nat}
+    (hold : LocalsHold s (slots.getD x.index default).loc t.types ws) (hl : ws.length = t.width)
+    (hOwned : (slots.getD x.index default).mode = .owned) (hDead : live x.index = false) :
+    top + (if (Expr.var (S := S) x).paid (slots.map Slot.mode) paid live then
+        t.pot store ws (env.get x) else 0) ≤
+      top + dyingPot store s env slots paid (fun i => live i || (Expr.var (S := S) x).uses i)
+        live + a := by
+  split
+  · next hp =>
+    simp only [Expr.paid, modeAt, Slot.modes_getD, hOwned, hDead, beq_self_eq_true,
+      Bool.not_false, Bool.true_and] at hp
+    have := dyingPot_var (store := store) (s := s) (env := env) (paid := paid)
+      (liveIn := fun i => live i || (Expr.var (S := S) x).uses i) x (by simp [Expr.uses]) hDead
+      hp hOwned
+    rw [Env.potOf, hold.read_eq (by rw [hl, Ty.types_length])] at this
+    omega
+  · omega
+
 /-- Two parts of an expression in sequence: the parts trap only as the whole's allowance
-`d || (a && …)` allows for the sum of their bounds, and, when the whole finds its frames, `top`
-rises by at most that sum. -/
+`d || (a && …)` allows for the potential of the paid owned variables that die in the whole and the
+sum of their bounds, and, when the whole finds its frames, `top` rises by at most that sum.  The
+variables that die in the whole are those that die in the first part and those that die in the
+second, and the potential of the second's lies in blocks that the first keeps. -/
 theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
-    (lSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv l env slots live)
-    (rSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv r env slots live)
-    (env : Env Γ) (slots : List Slot) (live : Nat → Bool) (h base : Nat) (heap : Heap)
-    (store : Store Unit) (s : Locals) (hh : s.half = h) (hpv : s.params = pv)
+    (lSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv l env slots paid live)
+    (rSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv r env slots paid live)
+    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool) (h base : Nat)
+    (heap : Heap) (store : Store Unit) (s : Locals) (hh : s.half = h) (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || (l.uses i || r.uses i)) base heap store s)
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
     (hRoomL : base + l.width ≤ h) (hRoomR : base + r.width ≤ h)
     (hPlaceL : l.placeArgs = true) (hPlaceR : r.placeArgs = true) (rest : Program)
     (Q : Assertion Unit) {d a : Bool}
     (hTrap : TrapOK (d || (a && !decide (heap.Within store m
-      (l.allocs funs bounds (slots.map Slot.mode) (fun i => live i || r.uses i) env +
-        r.allocs funs bounds (slots.map Slot.mode) live env)))) Q)
+      (dyingPot store s env slots paid (fun i => live i || (l.uses i || r.uses i)) live +
+        (l.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || r.uses i) env +
+          r.allocs funs bounds (slots.map Slot.mode) paid live env))))) Q)
     (hdl : (!l.fits funs fits env) = true → d = true)
     (hdr : (!r.fits funs fits env) = true → d = true)
     (hal : (l.aborts || slots.any (·.mode == .owned)) = true → a = true)
@@ -418,8 +476,9 @@ theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
         ∀ y ∈ (r.mode (slots.map Slot.mode)).fresh store2 u ws2 (r.denote funs env),
           regionsDisjoint x y) →
       (d = false → heap2.top.toNat ≤ heap.top.toNat +
-        (l.allocs funs bounds (slots.map Slot.mode) (fun i => live i || r.uses i) env +
-          r.allocs funs bounds (slots.map Slot.mode) live env)) →
+        dyingPot store s env slots paid (fun i => live i || (l.uses i || r.uses i)) live +
+        (l.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || r.uses i) env +
+          r.allocs funs bounds (slots.map Slot.mode) paid live env)) →
       wp m rest Q store2 { s2 with values := ws2.reverse ++ (ws1.reverse ++ s.values) } host) :
     wp m (l.code h slots base (fun i => live i || r.uses i) ++ (r.code h slots base live ++ rest))
       Q store s host := by
@@ -434,28 +493,50 @@ theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
     cases hr : r.fits funs fits env
     · rw [hdr (by simp [hr])] at hd; exact nomatch hd
     · rfl
-  refine lSpec env slots _ h base heap store s hh hpv hVarsL hAt hCap hBase hRoomL hPlaceL _ _
-      (hTrap.part hdl hal fun _ hw => hw.mono (Nat.le_add_right _ _))
+  have hSplit : dyingPot store s env slots paid (fun i => live i || (l.uses i || r.uses i)) live =
+      dyingPot store s env slots paid (fun i => live i || r.uses i || l.uses i)
+          (fun i => live i || r.uses i) +
+        dyingPot store s env slots paid (fun i => live i || r.uses i) live := by
+    rw [dyingPot_split _ (fun i => live i || r.uses i) _ (fun i h => by simp_all)
+      (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      cases live i <;> cases l.uses i <;> cases r.uses i <;> rfl) fun _ => rfl
+  refine lSpec env slots paid _ h base heap store s hh hpv hVarsL hAt hCap hBase hRoomL hPlaceL _ _
+      (hTrap.part hdl hal fun _ hw => hw.mono (by rw [hSplit]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
-  refine rSpec env slots live h base heap1 store1 { s1 with values := ws1.reverse ++ s.values }
+  have hDr : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
+      (fun i => live i || r.uses i) live =
+        dyingPot store s env slots paid (fun i => live i || r.uses i) live := by
+    rw [dyingPot_values]
+    exact dyingPot_after hVarsL a1 (fun i h => by simp [h]) _ _ fun _ h => h
+  refine rSpec env slots paid live h base heap1 store1 { s1 with values := ws1.reverse ++ s.values }
     (a1.frame.half.trans hh) (a1.frame.params.trans hpv) (a1.holds.agree Frame.ofValues)
     a1.step.at_
     (by rw [a1.step.cap m]; exact hCap)
     (by show s1.params.length ≤ base; rw [a1.frame.params]; exact hBase) hRoomR hPlaceR _ _
-    (hTrap.part hdr har fun hd hw => hw.after (hTop1 (hdl' hd)) (a1.step.cap m))
+    (hTrap.part hdr har fun hd hw => by
+      have := hTop1 (hdl' hd)
+      rw [hDr]
+      exact hw.shift (c1 := dyingPot store s env slots paid (fun i => live i || r.uses i || l.uses
+          i)
+          (fun i => live i || r.uses i) +
+          l.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || r.uses i) env)
+        (by omega) (by rw [hSplit]; omega) (a1.step.cap m))
     fun heap2 store2 s2 ws2 a2 hTop2 => ?_
   obtain ⟨hStep, hFrame, hRep1, hApart1, hDisjoint⟩ :=
     After.seq hVarsL a1 a2 (fun i h => by simp [h]) fun i h => by simp [h]
   exact hNext heap2 store2 s2 ws1 ws2
     (hStep.mono (fun _ hr => hr.mono fun i h1 h2 => ⟨hIn i h1, h2⟩) fun _ hb => hb) hFrame
     a2.holds hRep1 a2.rep hApart1 a2.apart hDisjoint fun hd => by
-      have := hTop1 (hdl' hd); have := hTop2 (hdr' hd); omega
+      have := hTop1 (hdl' hd); have := hTop2 (hdr' hd); rw [hDr] at this; rw [hSplit]; omega
 
 /-- A constant word. -/
 theorem spec_word {Γ : List Ty} (value : UInt64) :
-    ∀ env slots live,
-      CodeSpec m funs bounds fits host pv (Expr.word (S := S) (Γ := Γ) value) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+    ∀ env slots paid live,
+      CodeSpec m funs bounds fits host pv (Expr.word (S := S) (Γ := Γ) value) env slots paid live :=
+          by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote] using
@@ -466,9 +547,10 @@ theorem spec_word {Γ : List Ty} (value : UInt64) :
 
 /-- A constant `Bool`. -/
 theorem spec_bool {Γ : List Ty} (value : Bool) :
-    ∀ env slots live,
-      CodeSpec m funs bounds fits host pv (Expr.bool (S := S) (Γ := Γ) value) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+    ∀ env slots paid live,
+      CodeSpec m funs bounds fits host pv (Expr.bool (S := S) (Γ := Γ) value) env slots paid live :=
+          by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote] using
@@ -479,9 +561,10 @@ theorem spec_bool {Γ : List Ty} (value : Bool) :
 
 /-- A float constant, from its bit pattern. -/
 theorem spec_float {Γ : List Ty} (bits : UInt64) :
-    ∀ env slots live,
-      CodeSpec m funs bounds fits host pv (Expr.float (S := S) (Γ := Γ) bits) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+    ∀ env slots paid live,
+      CodeSpec m funs bounds fits host pv (Expr.float (S := S) (Γ := Γ) bits) env slots paid live :=
+          by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote, F64Bits.toBits_ofBits] using
@@ -492,10 +575,13 @@ theorem spec_float {Γ : List Ty} (bits : UInt64) :
 
 /-- An operation on words; division and remainder save their operands to test the divisor. -/
 theorem spec_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.bin op left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.bin op left right) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -506,7 +592,8 @@ theorem spec_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
   have hS : op.scratch ≤ max op.scratch (max left.width right.width) := Nat.le_max_left ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -576,10 +663,13 @@ theorem spec_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
 
 /-- A comparison of words. -/
 theorem spec_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.cmp op left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.cmp op left right) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -587,7 +677,8 @@ theorem spec_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -613,10 +704,13 @@ theorem spec_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
 
 /-- An operation on floats. -/
 theorem spec_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.fbin op left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.fbin op left right) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -624,7 +718,8 @@ theorem spec_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -644,10 +739,13 @@ theorem spec_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
 
 /-- A comparison of floats. -/
 theorem spec_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.fcmp op left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.fcmp op left right) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -655,7 +753,8 @@ theorem spec_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -679,18 +778,22 @@ theorem spec_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
 
 /-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
 theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
-    (eSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv e env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.funary op e) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (eSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.funary op e) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   simp only [Expr.code]
   cases op with
   | neg =>
     simp only [FUnOp.code, List.cons_append, List.append_assoc, wp_f64Const_cons]
-    refine eSpec env slots live h base heap store { s with values := .f64 0x8000000000000000 ::
-      s.values } hh hpv (hVars.agree Frame.ofValues) hAt hCap hBase hRoom hPlace _ _ hTrap
+    refine eSpec env slots paid live h base heap store { s with values := .f64 0x8000000000000000 ::
+      s.values } hh hpv (hVars.agree Frame.ofValues) hAt hCap hBase hRoom hPlace _ _
+      (by rw [dyingPot_values]; exact hTrap)
       fun heap1 store1 s1 ws a1 hTop => ?_
-    have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a hTop
+    have hNext1 := fun store' s' ws a =>
+      hNext heap1 store' s' ws a fun hf => top_part rfl (dyingPot_values _ _ _).le (hTop hf)
     have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
     subst hR
     have hStep := a1.step
@@ -700,10 +803,12 @@ theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
     simpa [Expr.denote, FUnOp.apply, f64Sub, F64Bits.toBits_neg] using hv
   | sqrt | abs =>
     simp only [FUnOp.code, List.append_assoc, List.cons_append, List.nil_append]
-    refine eSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+    refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _
+        _
         hTrap
       fun heap1 store1 s1 ws a1 hTop => ?_
-    have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a hTop
+    have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part rfl le_rfl
+        (hTop hf)
     have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
     subst hR
     have hStep := a1.step
@@ -716,15 +821,18 @@ theorem spec_funary {Γ : List Ty} (op : FUnOp) {e : Expr S Γ .float}
 
 /-- A conversion of a word to a float. -/
 theorem spec_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
-    (eSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv e env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.toFloat op e) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (eSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.toFloat op e) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   simp only [Expr.code, List.append_assoc]
-  refine eSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
       hTrap
     fun heap1 store1 s1 ws a1 hTop => ?_
-  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a hTop
+  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part rfl le_rfl
+      (hTop hf)
   have hR : ws = [.i64 (e.denote funs env)] := a1.rep
   subst hR
   have hStep := a1.step
@@ -738,15 +846,18 @@ theorem spec_toFloat {Γ : List Ty} (op : ToFloat) {e : Expr S Γ .word}
 
 /-- A conversion of a float to a word. -/
 theorem spec_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
-    (eSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv e env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.toWord op e) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (eSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.toWord op e) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   simp only [Expr.code, List.append_assoc]
-  refine eSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
       hTrap
     fun heap1 store1 s1 ws a1 hTop => ?_
-  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a hTop
+  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part rfl le_rfl
+      (hTop hf)
   have hR : ws = [.f64 (e.denote funs env).toBits] := a1.rep
   subst hR
   have hStep := a1.step
@@ -760,15 +871,18 @@ theorem spec_toWord {Γ : List Ty} (op : ToWord) {e : Expr S Γ .float}
 
 /-- The negation of a `Bool`. -/
 theorem spec_not {Γ : List Ty} {e : Expr S Γ .bool}
-    (eSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv e env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.not e) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (eSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.not e) env slots paid live :=
+        by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
-  refine eSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
       hTrap
     fun heap1 store1 s1 ws a1 hTop => ?_
-  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a hTop
+  have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part rfl le_rfl
+      (hTop hf)
   have hR := a1.rep
   simp only [Ty.rep_bool] at hR
   subst hR
@@ -782,10 +896,13 @@ theorem spec_not {Γ : List Ty} {e : Expr S Γ .bool}
 
 /-- The conjunction of `Bool`s. -/
 theorem spec_and {Γ : List Ty} {left right : Expr S Γ .bool}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.and left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.and left right) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -793,7 +910,8 @@ theorem spec_and {Γ : List Ty} {left right : Expr S Γ .bool}
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -809,10 +927,13 @@ theorem spec_and {Γ : List Ty} {left right : Expr S Γ .bool}
 
 /-- The disjunction of `Bool`s. -/
 theorem spec_or {Γ : List Ty} {left right : Expr S Γ .bool}
-    (leftSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv left env slots live)
-    (rightSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv right env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.or left right) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (leftSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv right env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.or left right) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -820,7 +941,8 @@ theorem spec_or {Γ : List Ty} {left right : Expr S Γ .bool}
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
+  refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
+      hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -837,10 +959,14 @@ theorem spec_or {Γ : List Ty} {left right : Expr S Γ .bool}
 /-- A tuple of two elements: the code of each, in order. -/
 theorem spec_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
     {second : Expr S Γ (.elem b)}
-    (firstSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv first env slots live)
-    (secondSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv second env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.mk first second) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (firstSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv first env slots paid
+        live)
+    (secondSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv second env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.mk first second) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -848,7 +974,7 @@ theorem spec_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
   have hR : second.width ≤ max first.width second.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, List.append_assoc]
-  refine seq_spec firstSpec secondSpec env slots live h base heap store s hh hpv hVars hAt hCap
+  refine seq_spec firstSpec secondSpec env slots paid live h base heap store s hh hpv hVars hAt hCap
       hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -868,8 +994,10 @@ theorem spec_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
 /-- A variable: read in place when borrowed, moved where it dies, and copied where it stays
 live. -/
 theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.var (S := S) x) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom _ rest Q hTrap hNext
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.var (S := S) x) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom _ rest Q hTrap
+      hNext
   have hx : (fun i => live i || (Expr.var (S := S) x).uses i) x.index = true := by
     simp [Expr.uses]
   obtain ⟨hBelow, ws, hold, hRep⟩ := hVars.get x hx
@@ -882,18 +1010,18 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
   · -- A copy into new blocks.
     obtain ⟨hOwned, hLiveX⟩ := hCopy
     simp only [Expr.code, Var.code, hOwned, hLiveX, and_self, ↓reduceIte]
-    have hc : (Expr.var (S := S) x).allocs funs bounds (slots.map Slot.mode) live env =
+    have hc : (Expr.var (S := S) x).allocs funs bounds (slots.map Slot.mode) paid live env =
         tTy.copyCost (env.get x) := by
       simp only [Expr.allocs, Var.cost, modeAt, Slot.modes_getD, hOwned, hLiveX, and_self,
         ↓reduceIte]
     have hT : TrapOK (false || (true && !decide (heap.Within store m (tTy.copyCost (env.get x)))))
         Q := hTrap.part nofun (fun _ => by simp [Slot.any_owned hOwned])
-      fun _ hw => by rwa [hc] at hw
+      fun _ hw => hw.mono (by rw [hc]; omega)
     refine wp_copyCode hm tTy hAt hCap hT hh hRep hold hBelow hBase
       (by rw [hh]; simpa [Expr.width] using hRoom) fun heap' store' s' ws' hStep hRep' hF hTop => ?_
     have hHolds := (hVars.live_mono hLiveIn).step hStep (fun _ _ _ _ _ _ _ _ => trivial)
     refine hNext heap' store' s' ws' ⟨?_, hF, hHolds.frame hF le_rfl, ?_, ?_⟩
-      (fun _ => by rw [hc]; exact hTop)
+      (fun _ => top_unpaid_le (by simp [Expr.paid, hLiveX]) (by rw [hc]; exact hTop))
     · rw [hMode, hOwned]
       exact hStep.mono (fun _ _ => trivial) fun _ h => h
     · rw [hMode, hOwned]; exact hRep'
@@ -913,7 +1041,7 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
         · rfl
         · exact absurd ⟨hOwned, h⟩ hCopy
       refine wp_loadCode ws hRep.typed hh hold (hNext heap store s ws ⟨?_, Frame.refl base s,
-        hVars.live_mono hLiveIn, ?_, ?_⟩ fun _ => Nat.le_add_right _ _)
+        hVars.live_mono hLiveIn, ?_, ?_⟩ fun _ => top_move x hold hl hOwned hDead)
       · rw [hMode, hOwned]
         exact ⟨hAt, rfl, fun r hr _ hk => ⟨fun _ _ _ => rfl, hr,
           fun b hb => hk tTy x hx hDead hOwned ws hold hl b hb⟩⟩
@@ -929,7 +1057,9 @@ theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
         · exact absurd h hOwned
       refine wp_loadCode ws hRep.typed hh hold (hNext heap store s ws (After.refl hAt hVars hLiveIn
         (by rw [hMode]; exact hRep) (by rw [hMode, hBorrowed]; rfl) ?_)
-        fun _ => Nat.le_add_right _ _)
+        fun _ => top_unpaid_le
+          (by simp only [Expr.paid, modeAt, Slot.modes_getD, hBorrowed]; rfl)
+          (Nat.le_add_right _ _))
       rw [hMode]
       intro u y hy hm wy hwy hly b hb c hc
       rcases hm with hm | hm
@@ -973,8 +1103,9 @@ theorem read_release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Lis
 /-- The size of an array variable: the load of its length word, then the release of the variable
 when it is owned and dies there. -/
 theorem spec_size (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e)) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.size (S := S) x) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.size (S := S) x) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   obtain ⟨-, ws, hold, hRep⟩ := hVars.1 _ x (by simp [Expr.uses])
   obtain ⟨ptr, rfl, hB⟩ := hRep
   have hA := hB.borrow.values
@@ -990,7 +1121,8 @@ theorem spec_size (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
     words_div e.width_pos hnk]
   refine read_release hm x hVars hAt fun heap' store' ev hTop => ?_
   exact hNext heap' store' s [.i64 (env.get x).size.toUInt64]
-    (After.ofScalar rfl ev.step rfl ev.frame ev.holds rfl) fun _ => by rw [hTop]; omega
+    (After.ofScalar rfl ev.step rfl ev.frame ev.holds rfl)
+    fun _ => top_unpaid_le rfl (by rw [hTop]; omega)
 
 /-- A read of an array variable: the position in local `base`, a comparison of it with the
 array's size as a flag in local `base + 1`, the position of the element's first word in local
@@ -998,9 +1130,11 @@ array's size as a flag in local `base + 1`, the position of the element's first 
 dies there. -/
 theorem spec_get (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
     {i : Expr S Γ' .word}
-    (iSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv i env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.get x i) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (iSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv i env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.get x i) env slots paid live :=
+        by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -1011,9 +1145,14 @@ theorem spec_get (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hIn : ∀ k, ((live k || k == x.index) || i.uses k) = true →
       (live k || (Expr.get x i).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact live_assoc _ _ _ h
-  refine iSpec env slots (fun k => live k || k == x.index) h base heap store s hh hpv
+  have hD : dyingPot store s env slots paid (fun k => (live k || k == x.index) || i.uses k)
+      (fun k => live k || k == x.index) ≤
+        dyingPot store s env slots paid (fun k => live k || (Expr.get x i).uses k) live :=
+    dyingPot_mono hIn fun k h => by simp [h]
+  refine iSpec env slots paid (fun k => live k || k == x.index) h base heap store s hh hpv
     (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _
-    hTrap fun heap1 store1 s1 ws1 a1 hTop1 => ?_
+    (hTrap.part id id fun _ hw => hw.mono (by dsimp only; simp only [Expr.allocs]; omega))
+    fun heap1 store1 s1 ws1 a1 hTop1 => ?_
   have hR1 := a1.rep
   simp only [Ty.rep_word] at hR1
   subst hR1
@@ -1130,12 +1269,13 @@ theorem spec_get (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
       (fun k h => by simp [h]) fun k h => by simp [h]
     exact hNext heap2 store2 s1c (e.values (env.get x)[(i.denote funs env).toNat]!)
       ((After.ofScalar (t := .elem e) (mode := .borrowed) rfl e12.step rfl e12.frame e12.holds
-        rfl).liveIn hIn) fun hd => by rw [hTop2]; exact hTop1 hd
+        rfl).liveIn hIn) fun hd => by rw [hTop2]; exact top_part rfl hD (hTop1 hd)
 
 /-- A component of a tuple variable: the loads of the words that hold it. -/
 theorem spec_proj {Γ' : List Ty} {e e' : Elem} (x : Var Γ' (.elem e)) (p : Path e e') :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.proj (S := S) x p) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.proj (S := S) x p) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   obtain ⟨-, ws, hold, hRep⟩ := hVars.1 _ x (by simp [Expr.uses])
   have hRep' : ws = e.values (env.get x) := hRep
   subst hRep'
@@ -1220,15 +1360,15 @@ its entry, its code, the coercion of its value to the `if`'s mode, and the store
 which the code loads after the `if`. -/
 theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
     {thenE elseE b : Expr S Γ' tTy}
-    (bSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv b env slots live)
-    {env : Env Γ'} {slots : List Slot} {live : Nat → Bool} {h base : Nat} {heap : Heap}
-    {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit} (hh : s.half = h)
-    (hpv : s.params = pv)
+    (bSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv b env slots paid live)
+    {env : Env Γ'} {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {h base : Nat}
+    {heap : Heap} {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
+    (hh : s.half = h) (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) base heap
       store s)
     (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
     (hRoomB : base + tTy.width + max b.width (copyWidth tTy) ≤ h)
-    {B cA : Nat} {wf : Bool}
+    {B cA Db : Nat} {wf : Bool}
     (hTrap : TrapOK (trapFlag m (Expr.ite c thenE elseE) slots heap store B wf) Q)
     (hNext : ∀ heap' store' s' ws,
       After env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) live base heap store s
@@ -1241,9 +1381,10 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
       (fun i => live i || thenE.uses i || elseE.uses i) base heap store s heap1 store1
       { s1 with values := s.values })
     (hTop1 : wf = true → heap1.top.toNat ≤ heap.top.toNat + cA)
-    (hB : B = cA + (b.allocs funs bounds (slots.map Slot.mode) live env +
+    (hB : B = cA + (Db + (b.allocs funs bounds (slots.map Slot.mode) paid live env +
       coerceCost tTy (b.mode (slots.map Slot.mode))
-        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env)))
+        ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env))))
+    (hDb : dyingPot store s env slots paid (fun i => live i || b.uses i) live ≤ Db)
     (hbd : wf = true → b.fits funs fits env = true)
     (hbPlace : b.placeArgs = true)
     (hbu : ∀ i, b.uses i = true → (thenE.uses i || elseE.uses i) = true)
@@ -1277,10 +1418,20 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
     funext i
     exact live_released _ _ (hSubMid i)
   rw [hEq] at e2
+  have hEntry : ∀ i, (live i || thenE.uses i || elseE.uses i) = true →
+      (live i || (Expr.ite c thenE elseE).uses i) = true := fun i h => by
+    simp only [Expr.uses]; exact ite_live_entry _ _ _ _ h
+  -- The variables that die in the branch keep their potential across the condition and the
+  -- releases.
+  have hDb2 : dyingPot store2 { s1 with values := s.values } env slots paid
+      (fun i => live i || b.uses i) live =
+        dyingPot store s env slots paid (fun i => live i || b.uses i) live := by
+    rw [dyingPot_evolves e1.holds e2 hSubMid _ _ fun _ h => h,
+      dyingPot_evolves hVars e1 hEntry _ _ hSubMid]
   rw [← List.append_nil (storeCode h base tTy.types)]
   have hbw := Nat.le_max_left b.width (copyWidth tTy)
   have hcw := Nat.le_max_right b.width (copyWidth tTy)
-  refine bSpec env slots live h (base + tTy.width) heap2 store2 { s1 with values := s.values }
+  refine bSpec env slots paid live h (base + tTy.width) heap2 store2 { s1 with values := s.values }
     hh1 (hp1.trans hpv) (e2.holds.mono (by omega)) e2.step.at_
     (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
     (by show s1.params.length ≤ base + tTy.width; rw [hp1]; omega)
@@ -1292,7 +1443,7 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
         rw [hB] at hw
         exact (hw.after (heap1 := heap2) (store1 := store2)
           (by have := hTop1 (hwf hd); have := congrArg UInt64.toNat hTop2; omega)
-          (by rw [e2.step.cap m, e1.step.cap m])).mono (Nat.le_add_right _ _))
+          (by rw [e2.step.cap m, e1.step.cap m])).mono (by rw [hDb2]; omega))
     fun heap3 store3 s3 ws3 a3 hTop3 => ?_
   have hp3 : s3.params = s.params := a3.frame.params.trans hp1
   have hh3 : s3.half = h := a3.frame.half.trans hh1
@@ -1301,11 +1452,13 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
     (fun hs ht _ => hTrapB.alloc (by
       have := (Expr.ite c thenE elseE).mode_owned (slots.map Slot.mode) ht
       rw [Slot.any_map] at this; exact this) fun hd hw => by
-        rw [hB, ← Nat.add_assoc] at hw
-        have h3 := hw.after (heap1 := heap3) (store1 := store3)
-          (c1 := cA + b.allocs funs bounds (slots.map Slot.mode) live env)
+        have h3 := hw.shift (heap1 := heap3) (store1 := store3)
+          (c1 := cA + Db + b.allocs funs bounds (slots.map Slot.mode) paid live env)
+          (c2 := coerceCost tTy (b.mode (slots.map Slot.mode))
+            ((Expr.ite c thenE elseE).mode (slots.map Slot.mode)) (b.denote funs env))
           (by have := hTop3 (hbd' hd); have := hTop1 (hwf hd); have := congrArg UInt64.toNat hTop2
               omega)
+          (by rw [hB]; omega)
           (by rw [a3.step.cap m, e2.step.cap m, e1.step.cap m])
         simpa [coerceCost, hs, ht] using h3)
     fun heap4 store4 s4 ws4 a4 hTop4 => ?_
@@ -1317,9 +1470,6 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
   refine hQb _ _ (wp_loadCode ws4 a4.rep.typed (hF5.half.trans hh4) hold ?_)
   -- The `if`'s facts: the evolutions of the condition and the releases, then the branch.
   have hLower := a4.lower e2.holds (Nat.le_add_right _ _) (fun i h => by simp [h])
-  have hEntry : ∀ i, (live i || thenE.uses i || elseE.uses i) = true →
-      (live i || (Expr.ite c thenE elseE).uses i) = true := fun i h => by
-    simp only [Expr.uses]; exact ite_live_entry _ _ _ _ h
   have e12 := Evolves.trans hVars e1 e2 hSubMid hEntry
   have aAll := After.prepend hVars e12 hLower (fun i h => hEntry i (hSubMid i h))
     (fun i h => by simp [h])
@@ -1336,11 +1486,15 @@ theorem ite_branch (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .
 /-- An `if`: the condition, then each branch as `ite_branch` describes. -/
 theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bool}
     {thenE elseE : Expr S Γ' tTy}
-    (cSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv c env slots live)
-    (thenSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv thenE env slots live)
-    (elseSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv elseE env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.ite c thenE elseE) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (cSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv c env slots paid live)
+    (thenSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv thenE env slots paid
+        live)
+    (elseSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv elseE env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.ite c thenE elseE) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -1357,10 +1511,24 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
   have hMid : ∀ i, ((live i || thenE.uses i || elseE.uses i) || c.uses i) = true →
       (live i || (Expr.ite c thenE elseE).uses i) = true := by
     intro i h; simp only [Expr.uses]; exact ite_live_cond _ _ _ _ h
-  refine cSpec env slots _ h base heap store s hh hpv (hVars.live_mono hMid) hAt hCap hBase
+  -- The variables that die in the `if` die in the condition or after it.
+  have hSplitI : dyingPot store s env slots paid (fun i => live i || (Expr.ite c thenE elseE).uses
+      i)
+      live =
+        dyingPot store s env slots paid (fun i => (live i || thenE.uses i || elseE.uses i) ||
+          c.uses i) (fun i => live i || thenE.uses i || elseE.uses i) +
+        dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live := by
+    rw [dyingPot_split _ (fun i => live i || thenE.uses i || elseE.uses i) _
+      (fun i h => hMid i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases c.uses i <;> cases thenE.uses i <;> cases elseE.uses i <;> rfl)
+      fun _ => rfl
+  refine cSpec env slots paid _ h base heap store s hh hpv (hVars.live_mono hMid) hAt hCap hBase
     (by omega) hPlaceC _ _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact ite_trap_cond _ _ _ _ h)
-      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+      fun _ hw => hw.mono (by rw [hSplitI]; simp only [Expr.allocs]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
   have hR1 := a1.rep
   simp only [Ty.rep_bool] at hR1
@@ -1388,18 +1556,50 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
   have hRoomE : base + tTy.width + max elseE.width (copyWidth tTy) ≤ h := by
     have := Nat.max_le.mpr ⟨he.trans (Nat.le_max_left _ (copyWidth tTy)), Nat.le_max_right _ _⟩
     omega
+  have hNextB : ∀ heap' store' s' ws,
+      After env slots (fun i => live i || (Expr.ite c thenE elseE).uses i) live base heap store s
+        tTy ((Expr.ite c thenE elseE).mode (slots.map Slot.mode))
+        ((Expr.ite c thenE elseE).denote funs env) heap' store' s' ws →
+      ((Expr.ite c thenE elseE).fits funs fits env = true →
+        heap'.top.toNat ≤ heap.top.toNat +
+          (dyingPot store s env slots paid (fun i => live i || (Expr.ite c thenE elseE).uses i)
+            live + (Expr.ite c thenE elseE).allocs funs bounds (slots.map Slot.mode) paid live
+              env)) →
+      wp m rest Q store' { s' with values := ws.reverse ++ s.values } host :=
+    fun heap' store' s' ws a hT => hNext heap' store' s' ws a fun hf =>
+      top_unpaid rfl (by have := hT hf; omega)
+  have hTopC : (Expr.ite c thenE elseE).fits funs fits env = true →
+      heap1.top.toNat ≤ heap.top.toNat +
+        (dyingPot store s env slots paid (fun i => (live i || thenE.uses i || elseE.uses i) ||
+          c.uses i) (fun i => live i || thenE.uses i || elseE.uses i) +
+          c.allocs funs bounds (slots.map Slot.mode) paid
+            (fun i => live i || thenE.uses i || elseE.uses i) env) := fun hd => by
+    have := hTop1 (by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1)
+    omega
   cases hcv : c.denote funs env
   · simp (config := { decide := true }) only [↓reduceIte]
-    exact ite_branch hm elseSpec hh hpv hVars hCap hBase hRoomE hTrap hNext e1
-      (fun hd => hTop1 (by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1))
-      (by simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte])
-      (fun h => by simp only [Expr.fits, hcv, Bool.and_eq_true] at h; simpa using h.2) hPlaceE
+    exact ite_branch hm elseSpec hh hpv hVars hCap hBase hRoomE hTrap hNextB e1 hTopC
+      (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
+      (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, Bool.false_eq_true, ↓reduceIte]
+          omega)
+      (show dyingPot store s env slots paid (fun i => live i || elseE.uses i) live ≤
+          dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live
+        from dyingPot_mono (fun i h => by
+          simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) fun _ h => h)
+      (show (Expr.ite c thenE elseE).fits funs fits env = true → elseE.fits funs fits env = true
+        from fun h => by
+          simp only [Expr.fits, hcv, Bool.and_eq_true, Bool.false_eq_true, ↓reduceIte] at h
+          exact h.2) hPlaceE
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
       (by simp [Expr.denote, hcv]) hModeE _ (fun _ h => h) fun _ _ h => by simpa using h
   · simp (config := { decide := true }) only [↓reduceIte]
-    exact ite_branch hm thenSpec hh hpv hVars hCap hBase hRoomT hTrap hNext e1
-      (fun hd => hTop1 (by simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.1))
-      (by simp only [Expr.allocs, Expr.mode]; rw [if_pos hcv])
+    exact ite_branch hm thenSpec hh hpv hVars hCap hBase hRoomT hTrap hNextB e1 hTopC
+      (Db := dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live)
+      (by rw [hSplitI]; simp only [Expr.allocs, Expr.mode, hcv, ↓reduceIte]; omega)
+      (show dyingPot store s env slots paid (fun i => live i || thenE.uses i) live ≤
+          dyingPot store s env slots paid (fun i => live i || thenE.uses i || elseE.uses i) live
+        from dyingPot_mono (fun i h => by
+          simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) fun _ h => h)
       (fun h => by simp only [Expr.fits, hcv, Bool.and_eq_true] at h; simpa using h.2) hPlaceT
       (fun i h => by simp [h]) (fun h => by simp [Expr.aborts, h])
       (by simp [Expr.denote, hcv]) hModeT _ (fun _ h => h) fun _ _ h => by simpa using h
@@ -1408,10 +1608,14 @@ theorem spec_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .bo
 of the value when it is owned and the body does not use it, and the body's code. -/
 theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr S Γ' sTy}
     {body : Expr S (sTy :: Γ') tTy}
-    (valueSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv value env slots live)
-    (bodySpec : ∀ env slots live, CodeSpec m funs bounds fits host pv body env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.letE value body) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (valueSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv value env slots paid
+        live)
+    (bodySpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv body env slots paid live)
+        :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.letE value body) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -1422,11 +1626,23 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
   have hV : ∀ i, ((live i || body.uses (i + 1)) || value.uses i) = true →
       (live i || (Expr.letE value body).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
-  refine valueSpec env slots (fun i => live i || body.uses (i + 1)) h (base + sTy.width) heap
+  -- The variables that die in the `let` die in the value or in the body.
+  have hSplitL : dyingPot store s env slots paid (fun i => live i || (Expr.letE value body).uses i)
+      live =
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1) || value.uses i)
+          (fun i => live i || body.uses (i + 1)) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+    rw [dyingPot_split _ (fun i => live i || body.uses (i + 1)) _
+      (fun i h => hV i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases value.uses i <;> cases body.uses (i + 1) <;> rfl) fun _ => rfl
+  refine valueSpec env slots paid (fun i => live i || body.uses (i + 1)) h (base + sTy.width) heap
     store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt hCap (by omega) (by omega) hPlace.1 _
         _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
-      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+      fun _ hw => hw.mono (by rw [hSplitL]; simp only [Expr.allocs]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
   have hp1 : s1.params = s.params := a1.frame.params
   have hh1 : s1.half = h := a1.frame.half.trans hh
@@ -1465,7 +1681,35 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
       have h0 : body.uses 0 = true := by simpa [shift] using h
       simp [h0]
     | succ k => split <;> simpa using h
-  refine bodySpec _ _ (shift 1 live) h (base + sTy.width) heap2 store2
+  -- The body's dying variables: the value's variable, whose potential is the value's when paid,
+  -- and the others, whose potential the value's code and the release keep.
+  have hDb : dyingPot store2 { s2 with values := s.values } (Env.cons (value.denote funs env) env)
+      (⟨base, value.mode (slots.map Slot.mode)⟩ :: slots)
+      (value.paid (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) :: paid)
+      (fun i => shift 1 live i || body.uses i) (shift 1 live) ≤
+        (if value.paid (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) = true then
+          sTy.pot store1 ws1 (value.denote funs env) else 0) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+    rw [dyingPot_evolves hVarsB e2' (fun i h => by
+      simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
+      dyingPot_cons]
+    have hTail : dyingPot store1 { s2 with values := s.values } env slots paid
+        (fun i => shift 1 live (i + 1) || body.uses (i + 1)) (fun i => shift 1 live (i + 1)) =
+          dyingPot store s env slots paid (fun i => live i || body.uses (i + 1)) live := by
+      rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 1)) (L1' := live)
+        (fun i => by simp [shift]) (fun i => by simp [shift])]
+      exact dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f2)
+        (fun i h => by simp [h]) _ _ fun _ h => h
+    rw [hTail, hold'.read_eq (by rw [a1.rep.length, Ty.types_length])]
+    refine Nat.add_le_add_right ?_ _
+    split
+    · next hc =>
+      simp only [Bool.and_eq_true] at hc
+      simp only [hc.1.2, ↓reduceIte, le_refl]
+    · exact Nat.zero_le _
+  refine bodySpec _ _
+    (value.paid (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) :: paid)
+    (shift 1 live) h (base + sTy.width) heap2 store2
     { s2 with values := s.values } hh2 (hp2.trans hpv) e2'.holds e2'.step.at_
     (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
     (by show s2.params.length ≤ base + sTy.width; rw [hp2]; omega)
@@ -1475,18 +1719,29 @@ theorem spec_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr 
       rw [Slot.any_map] at hmo
       simp only [List.any_cons, Expr.aborts] at h ⊢
       exact let_trap_body _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
-        simp only [Expr.allocs] at hw
-        exact hw.after (heap1 := heap2) (store1 := store2)
-          (by have := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2; omega)
-          (by rw [e2'.step.cap m, a1.step.cap m]))
+        have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        dsimp only at h1
+        refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
+        rw [hSplitL]
+        simp only [Expr.allocs, List.map_cons]
+        omega)
     fun heap3 store3 s3 ws3 aB hTop3 => ?_
   have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
   exact hNext heap3 store3 s3 ws3
     ((After.bind (hVars.live_mono hV) a1' f2 hold' aB' (fun i h => by simpa using h)
       (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV) fun hd => by
-      have := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
-      simp only [List.map_cons] at h3
-      simp only [Expr.allocs]; omega
+      have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      dsimp only at h1
+      have hpot : (if (Expr.letE value body).paid (slots.map Slot.mode) paid live = true then
+          tTy.pot store3 ws3 ((Expr.letE value body).denote funs env) else 0) =
+          (if body.paid ((⟨base, value.mode (slots.map Slot.mode)⟩ :: slots).map Slot.mode)
+              (value.paid (slots.map Slot.mode) paid (fun i => live i || body.uses (i + 1)) ::
+                paid) (shift 1 live) = true then
+            tTy.pot store3 ws3 (body.denote funs (.cons (value.denote funs env) env)) else 0) :=
+        rfl
+      rw [hpot, hSplitL]
+      simp only [Expr.allocs, List.map_cons] at h3 ⊢
+      omega
 
 /-- An allowance for a trap when `top` cannot rise by a charge gives the allowance of a part
 that takes no call depth and whose room follows from the charge's. -/
@@ -1519,13 +1774,15 @@ theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' t
   have hScratch := tTy.copyScratch_le
   have hMode : modeAt (slots.map Slot.mode) x.index = (slots.getD x.index default).mode :=
     Slot.modes_getD slots x.index
-  refine spec_var (S := []) (funs := .nil) (bounds := .nil) (fits := .nil) hm x env slots live h base heap store
-      s hh hpv hVars hAt
+  refine spec_var (S := []) (funs := .nil) (bounds := .nil) (fits := .nil) hm x env slots [] live h
+      base heap store s hh hpv hVars hAt
     hCap hBase (by simp only [Expr.width]; omega) rfl _ _
-    (hTrap.narrow fun hw => hw.mono (by simp only [Expr.allocs, Var.ownedCost]; omega))
+    (hTrap.narrow fun hw => hw.mono (by
+      rw [dyingPot_nil]; simp only [Expr.allocs, Var.ownedCost]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
   have hTop1' := hTop1 rfl
-  simp only [Expr.allocs] at hTop1'
+  simp only [Expr.allocs, Expr.paid, paidAt, List.getD_nil, Bool.and_false, Bool.false_eq_true,
+    ↓reduceIte, Nat.add_zero, dyingPot_nil] at hTop1'
   rw [show (Expr.var (S := []) x).mode (slots.map Slot.mode) = (slots.getD x.index default).mode
     from Slot.modes_getD slots x.index] at a1
   exact After.coerce hm a1 (fun _ => rfl) le_rfl (by rw [a1.frame.params]; exact hBase)
@@ -1544,10 +1801,14 @@ theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' t
 /-- A pair: the code of each component, each followed by its coercion to the pair's mode. -/
 theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr S Γ' sTy}
     {second : Expr S Γ' tTy}
-    (firstSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv first env slots live)
-    (secondSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv second env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.pair first second) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (firstSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv first env slots paid
+        live)
+    (secondSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv second env slots paid
+        live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.pair first second) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -1573,21 +1834,33 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
   have hdS : (Expr.pair first second).fits funs fits env = true →
       second.fits funs fits env = true := fun hd => by
     simp only [Expr.fits, Bool.and_eq_true] at hd; exact hd.2
-  have hB : (Expr.pair first second).allocs funs bounds (slots.map Slot.mode) live env =
-      first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i) env +
+  have hB : (Expr.pair first second).allocs funs bounds (slots.map Slot.mode) paid live env =
+      first.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env +
         coerceCost sTy (first.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (first.denote funs env) +
-        second.allocs funs bounds (slots.map Slot.mode) live env +
+        second.allocs funs bounds (slots.map Slot.mode) paid live env +
         coerceCost tTy (second.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (second.denote funs env) := by
     simp only [Expr.allocs, Expr.mode]
-  refine firstSpec env slots (fun i => live i || second.uses i) h base heap store s hh hpv
-      hVarsL hAt
+  -- The variables that die in the pair die in the first component or in the second.
+  have hSplitP : dyingPot store s env slots paid (fun i => live i || (Expr.pair first second).uses
+      i)
+      live =
+        dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+          (fun i => live i || second.uses i) +
+        dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
+    rw [dyingPot_split _ (fun i => live i || second.uses i) _
+      (fun i h => hIn i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases first.uses i <;> cases second.uses i <;> rfl) fun _ => rfl
+  refine firstSpec env slots paid _ h base heap store s hh hpv hVarsL hAt
     hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
-      fun _ hw => hw.mono (by rw [hB]; omega))
+      fun _ hw => hw.mono (by rw [hB, hSplitP]; omega))
     fun heap1 store1 s1 ws1 a1 hTopF => ?_
   refine After.coerce hm a1 (fun h => by simp [Mode.join, h]) le_rfl
     (by rw [a1.frame.params]; exact hBase) (a1.frame.half.trans hh) (by omega)
@@ -1596,22 +1869,34 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
           (first.denote funs env) =
           sTy.copyCost (first.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
-      exact hw.shift (c1 := first.allocs funs bounds (slots.map Slot.mode)
-        (fun i => live i || second.uses i) env) (hTopF (hdF (fits_of_not hd))) (by rw [hB]; omega)
-        (a1.step.cap m))
+      have := hTopF (hdF (fits_of_not hd))
+      exact hw.shift (c1 := dyingPot store s env slots paid
+          (fun i => live i || second.uses i || first.uses i) (fun i => live i || second.uses i) +
+        first.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i) env)
+        (by omega) (by rw [hB, hSplitP]; omega) (a1.step.cap m))
     fun heap1 store1 s1 ws1 a1 hTopC1 => ?_
-  refine secondSpec env slots live h base heap1 store1
+  have hDs : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
+      (fun i => live i || second.uses i) live =
+        dyingPot store s env slots paid (fun i => live i || second.uses i) live := by
+    rw [dyingPot_values]
+    exact dyingPot_after hVarsL a1 (fun i h => by simp [h]) _ _ fun _ h => h
+  refine secondSpec env slots paid live h base heap1 store1
     { s1 with values := ws1.reverse ++ s.values } (a1.frame.half.trans hh)
     (a1.frame.params.trans hpv) (a1.holds.agree Frame.ofValues) a1.step.at_
     (by rw [a1.step.cap m]; exact hCap)
     (by show s1.params.length ≤ base; rw [a1.frame.params]; exact hBase) (by omega) hPlace.2 _ _
     (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_right _ _ _ h)
-      fun hd hw => hw.shift (heap1 := heap1) (store1 := store1)
-        (c1 := first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i)
-          env + coerceCost sTy (first.mode (slots.map Slot.mode))
-          ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
-            (first.denote funs env))
-        (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1; omega) (by rw [hB]; omega) (a1.step.cap m))
+      fun hd hw => by
+        rw [hDs]
+        exact hw.shift (heap1 := heap1) (store1 := store1)
+          (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+            (fun i => live i || second.uses i) +
+            first.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
+            env + coerceCost sTy (first.mode (slots.map Slot.mode))
+            ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
+              (first.denote funs env))
+          (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1; omega)
+          (by rw [hB, hSplitP]; omega) (a1.step.cap m))
     fun heap2 store2 s2 ws2 a2 hTopS => ?_
   refine After.coerce hm a2 (fun h => by
       simp only [Mode.join, h]; cases first.mode (slots.map Slot.mode) <;> rfl) le_rfl
@@ -1624,13 +1909,17 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
           (second.denote funs env) =
           tTy.copyCost (second.denote funs env) := by rw [coerceCost, if_pos ⟨hs, ht⟩]
       exact hw.shift (heap1 := heap2) (store1 := store2)
-        (c1 := first.allocs funs bounds (slots.map Slot.mode) (fun i => live i || second.uses i)
+        (c1 := dyingPot store s env slots paid (fun i => live i || second.uses i || first.uses i)
+          (fun i => live i || second.uses i) +
+          first.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || second.uses i)
           env + coerceCost sTy (first.mode (slots.map Slot.mode))
           ((first.mode (slots.map Slot.mode)).join (second.mode (slots.map Slot.mode)))
-            (first.denote funs env) + second.allocs funs bounds (slots.map Slot.mode) live env)
+            (first.denote funs env) +
+          dyingPot store s env slots paid (fun i => live i || second.uses i) live +
+          second.allocs funs bounds (slots.map Slot.mode) paid live env)
         (by have := hTopF (hdF (fits_of_not hd)); have := hTopC1
-            have := hTopS (hdS (fits_of_not hd)); omega)
-        (by rw [hB]; omega)
+            have := hTopS (hdS (fits_of_not hd)); rw [hDs] at this; omega)
+        (by rw [hB, hSplitP]; omega)
         (by rw [a2.step.cap m, a1.step.cap m]))
     fun heap2 store2 s2 ws2 a2 hTopC2 => ?_
   obtain ⟨hStep, hFrame, hRep1, hApart1, hDisjoint⟩ :=
@@ -1648,19 +1937,23 @@ theorem spec_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr 
       rcases List.mem_append.mp hb with hb | hb
       · exact hApart1 w y hy hmo wy hwy hly b hb c hc
       · exact a2.apart w y hy hmo wy hwy hly b hb c hc⟩
-      (fun hd => by
-        have := hTopF (hdF hd); have := hTopC1; have := hTopS (hdS hd); have := hTopC2
-        rw [hB]; omega)
+      (fun hd => top_unpaid rfl (by
+        have := hTopF (hdF hd); have := hTopC1; have h3 := hTopS (hdS hd); have := hTopC2
+        rw [hDs] at h3
+        rw [hB, hSplitP]; omega))
   simpa [List.reverse_append, List.append_assoc] using hv
 
 /-- A binding of a pair's components: the pair's code, the stores of its components' words, the
 release of each component that is owned and that the body does not use, and the body's code. -/
 theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
     {e : Expr S Γ' (.pair sTy tTy)} {body : Expr S (tTy :: sTy :: Γ') uTy}
-    (eSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv e env slots live)
-    (bodySpec : ∀ env slots live, CodeSpec m funs bounds fits host pv body env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.letPair e body) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (eSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv e env slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv body env slots paid live)
+        :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.letPair e body) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -1671,12 +1964,24 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
   have hV : ∀ i, ((live i || body.uses (i + 2)) || e.uses i) = true →
       (live i || (Expr.letPair e body).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
-  refine eSpec env slots (fun i => live i || body.uses (i + 2)) h
+  -- The variables that die in the binding die in the pair or in the body.
+  have hSplitL : dyingPot store s env slots paid (fun i => live i || (Expr.letPair e body).uses i)
+      live =
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2) || e.uses i)
+          (fun i => live i || body.uses (i + 2)) +
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
+    rw [dyingPot_split _ (fun i => live i || body.uses (i + 2)) _
+      (fun i h => hV i (by simp [h])) (fun i h => by simp [h])]
+    congr 1
+    exact dyingPot_congr (fun i => by
+      simp only [Expr.uses]
+      cases live i <;> cases e.uses i <;> cases body.uses (i + 2) <;> rfl) fun _ => rfl
+  refine eSpec env slots paid _ h
     (base + sTy.width + tTy.width) heap store s hh hpv ((hVars.mono (by omega)).live_mono hV) hAt
         hCap
     (by omega) (by omega) hPlace.1
     _ _ (hTrap.part (by flag_tac) (fun h => by simp only [Expr.aborts]; exact trap_left _ _ _ h)
-      fun _ hw => hw.mono (by simp only [Expr.allocs]; exact Nat.le_add_right _ _))
+      fun _ hw => hw.mono (by rw [hSplitL]; simp only [Expr.allocs]; omega))
     fun heap1 store1 s1 ws a1 hTop1 => ?_
   have hp1 : s1.params = s.params := a1.frame.params
   have hh1 : s1.half = h := a1.frame.half.trans hh
@@ -1740,7 +2045,24 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       have h1 : body.uses 1 = true := by simpa [shift] using h
       simp [h1]
     | k + 2 => split <;> split <;> simpa using h
-  refine bodySpec _ _ (shift 2 live) h (base + sTy.width + tTy.width) heap2 store2
+  -- The body's dying variables: the components, which are unpaid, and the others, whose potential
+  -- the pair's code and the releases keep.
+  have hDb : dyingPot store2 { s3 with values := s.values }
+      (Env.cons (e.denote funs env).2 (Env.cons (e.denote funs env).1 env))
+      (⟨base + sTy.width, e.mode (slots.map Slot.mode)⟩ ::
+        ⟨base, e.mode (slots.map Slot.mode)⟩ :: slots) (false :: false :: paid)
+      (fun i => shift 2 live i || body.uses i) (shift 2 live) =
+        dyingPot store s env slots paid (fun i => live i || body.uses (i + 2)) live := by
+    rw [dyingPot_evolves hVarsB e2' (fun i h => by
+      simp only [Bool.or_eq_true] at h ⊢; rcases h with h | h <;> simp [h]) _ _ fun _ h => h,
+      dyingPot_cons, dyingPot_cons]
+    simp only [Bool.and_false, Bool.false_and, Bool.false_eq_true, ↓reduceIte, Nat.zero_add]
+    rw [dyingPot_congr (L0' := fun i => live i || body.uses (i + 2)) (L1' := live)
+      (fun i => by simp [shift]) (fun i => by simp [shift])]
+    exact dyingPot_step (hVars.live_mono hV) a1'.step (a1'.frame.trans f3)
+      (fun i h => by simp [h]) _ _ fun _ h => h
+  refine bodySpec _ _ (false :: false :: paid) (shift 2 live) h (base + sTy.width + tTy.width)
+    heap2 store2
     { s3 with values := s.values } (f3.half.trans hh1) (hp3.trans hpv) e2'.holds e2'.step.at_
     (by rw [e2'.step.cap m, a1.step.cap m]; exact hCap)
     (by show s3.params.length ≤ base + sTy.width + tTy.width; rw [hp3]; omega)
@@ -1750,12 +2072,11 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       rw [Slot.any_map] at hmo
       simp only [List.any_cons, Expr.aborts] at h ⊢
       exact let_trap_body2 _ _ _ _ (fun hv => hmo (by simpa using hv)) h) fun hd hw => by
-        simp only [Expr.allocs] at hw
-        exact hw.shift (heap1 := heap2) (store1 := store2)
-          (c1 := e.allocs funs bounds (slots.map Slot.mode) (fun i => live i || body.uses (i + 2))
-            env)
-          (by have := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2; omega)
-          (by simp only [List.map_cons]; omega) (by rw [e2'.step.cap m, a1.step.cap m]))
+        have h1 := hTop1 (hd1 (fits_of_not hd)); have := congrArg UInt64.toNat hTop2
+        refine hw.of_le ?_ (by rw [e2'.step.cap m, a1.step.cap m])
+        rw [hSplitL, hDb]
+        simp only [Expr.allocs, List.map_cons]
+        omega)
     fun heap3 store3 s4 ws4 aB hTop3 => ?_
   have aB' := After.prepend hVarsB e2' aB (fun i h => live_right _ _ _ h) fun i h => by simp [h]
   have hNew : ∀ r, (∀ b ∈ (e.mode (slots.map Slot.mode)).fresh store1 (.pair sTy tTy) (wf ++ wsec)
@@ -1779,10 +2100,12 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
   exact hNext heap3 store3 s4 ws4
     ((After.bind2 (hVars.live_mono hV) a1' f3 aB' (by omega) hNew
       (fun i h => by simpa using h) (fun i h => by simp [h]) fun i h => by simp [h]).liveIn hV)
-    fun hd => by
-      have := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+    fun hd => top_unpaid rfl (by
+      have h1 := hTop1 (hd1 hd); have h3 := hTop3 (hd3 hd); have := congrArg UInt64.toNat hTop2
+      rw [hDb] at h3
       simp only [List.map_cons] at h3
-      simp only [Expr.allocs]; omega
+      rw [hSplitL]
+      simp only [Expr.allocs]; omega)
 
 /-- The code of a call's arguments pushes words that represent their values in the modes
 `modes`, in order.  An argument without arrays runs its code with the variables `all` live after
@@ -1794,10 +2117,10 @@ borrowed arguments' arrays, and a region apart from `F` and from the blocks of t
 variables lies apart from the owned arguments' blocks.  A region apart from the variables that
 the arguments with arrays read lies apart from the borrowed arguments' arrays. -/
 theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
-    {all kept : Nat → Bool} {h base : Nat} {d a : Bool} :
+    {paid : List Bool} {all kept : Nat → Bool} {h base : Nat} {d a : Bool} :
     {ps : List Ty} → (modes : Nat → Mode) →
     (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
-    (∀ i env slots live, CodeSpec m funs bounds fits host pv (args i) env slots live) →
+    (∀ i env slots paid live, CodeSpec m funs bounds fits host pv (args i) env slots paid live) →
     (∀ i k, (args i).uses k = true → all k = true) → (∀ k, kept k = true → all k = true) →
     (∀ i : Fin ps.length, modes i = .owned → (ps.get i).scalar = false) →
     (∀ i, (ps.get i).scalar = false → modes i = .borrowed → (args i).isPlace = true) →
@@ -1816,7 +2139,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
       base + (if modes i = .owned then copyWidth (ps.get i) else (args i).width) ≤ h) →
     ∀ (rest : Program) (Q : Assertion Unit),
     TrapOK (d || (a && !decide (heap.Within store m
-      (argsSum (argCost funs bounds (slots.map Slot.mode) all kept modes args env))))) Q →
+      (argsSum (argCost funs bounds (slots.map Slot.mode) paid all kept modes args env))))) Q →
     (∀ heap' store' s' ws F, Step heap store (fun _ => True) heap' store' F →
       Frame base s s' → Holds env slots all base heap' store' s' →
       Env.Rep modes heap' store' ws (Env.ofFn fun i => (args i).denote funs env) →
@@ -1832,7 +2155,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         ∀ c ∈ Env.reads modes ws (Env.ofFn fun i => (args i).denote funs env),
           regionsDisjoint r c) →
       (d = false → heap'.top.toNat ≤ heap.top.toNat +
-        argsSum (argCost funs bounds (slots.map Slot.mode) all kept modes args env)) →
+        argsSum (argCost funs bounds (slots.map Slot.mode) paid all kept modes args env)) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
     wp m (argsCode (fun i => if (ps.get i).scalar then (args i).code h slots base all
       else if modes i = .owned then (args i).ownedCode h slots base kept
@@ -1845,9 +2168,9 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
   | p :: ps, modes, args, argsSpec, hUses, hKept, hArray, hPlace, hOwned, hPlaceArgs, hdA, haA,
       heap, store, s, hh, hpv, hVars, hAt, hCap, hBase, hRoom, rest, Q, hTrap, hNext => by
     simp only [argsCode, List.append_assoc]
-    have hSum : argsSum (argCost funs bounds (slots.map Slot.mode) all kept modes args env) =
-        argCost funs bounds (slots.map Slot.mode) all kept modes args env ⟨0, by simp⟩ +
-          argsSum (argCost funs bounds (slots.map Slot.mode) all kept (fun i => modes (i + 1))
+    have hSum : argsSum (argCost funs bounds (slots.map Slot.mode) paid all kept modes args env) =
+        argCost funs bounds (slots.map Slot.mode) paid all kept modes args env ⟨0, by simp⟩ +
+          argsSum (argCost funs bounds (slots.map Slot.mode) paid all kept (fun i => modes (i + 1))
             (fun i : Fin ps.length => args i.succ) env) := rfl
     have hd0 : d = false → (args ⟨0, by simp⟩).fits funs fits env = true := fun hd => by
       by_contra hc
@@ -1856,7 +2179,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
     -- The other arguments, from the state after the first, and the facts of all of them.
     have hRest : ∀ heap1 store1 s1 ws0 F0,
         (d = false → heap1.top.toNat ≤ heap.top.toNat +
-          argCost funs bounds (slots.map Slot.mode) all kept modes args env ⟨0, by simp⟩) →
+          argCost funs bounds (slots.map Slot.mode) paid all kept modes args env ⟨0, by simp⟩) →
         Step heap store (fun _ => True) heap1 store1 F0 → Frame base s s1 →
         Holds env slots all base heap1 store1 s1 →
         p.Rep (modes 0) heap1 store1 ws0 ((args ⟨0, by simp⟩).denote funs env) →
@@ -2052,19 +2375,23 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
       have hRoom0 := hRoom ⟨0, by simp⟩
       simp only [show modes ↑(⟨0, by simp⟩ : Fin (p :: ps).length) = .borrowed from hmd,
         reduceCtorEq, ↓reduceIte] at hRoom0
-      have hc0 : argCost funs bounds (slots.map Slot.mode) all kept modes args env ⟨0, by simp⟩ =
-          (args ⟨0, by simp⟩).allocs funs bounds (slots.map Slot.mode) all env := by
+      have hc0 : argCost funs bounds (slots.map Slot.mode) paid all kept modes args env ⟨0, by simp⟩
+          =
+          (args ⟨0, by simp⟩).allocs funs bounds (slots.map Slot.mode) paid all env := by
         simp only [argCost]; rw [if_pos (show ((p :: ps).get ⟨0, by simp⟩).scalar = true from hp)]
-      refine argsSpec ⟨0, by simp⟩ env slots all h base heap store s hh hpv (hVars.live_mono
+      have hD0 : dyingPot store s env slots paid (fun k => all k || (args ⟨0, by simp⟩).uses k)
+          all = 0 := dyingPot_eq_zero hSub
+      refine argsSpec ⟨0, by simp⟩ env slots paid all h base heap store s hh hpv (hVars.live_mono
           hSub)
         hAt hCap hBase hRoom0 (hPlaceArgs _) _ _
         (hTrap.part (hdA _) (fun h => haA _ (by
             simp only [Bool.or_eq_true] at h ⊢; tauto))
-          fun _ hw => hw.mono (by rw [hSum, hc0]; exact Nat.le_add_right _ _))
+          fun _ hw => hw.mono (by rw [hD0, hSum, hc0]; omega))
         fun heap1 store1 s1 ws1 a1 hTop1 => ?_
       have hStep := a1.step
       rw [Mode.fresh_scalar (show ((p :: ps).get ⟨0, by simp⟩).scalar = true from hp)] at hStep
-      refine hRest heap1 store1 s1 ws1 [] (fun hd => by rw [hc0]; exact hTop1 (hd0 hd))
+      refine hRest heap1 store1 s1 ws1 [] (fun hd => by
+          have := hTop1 (hd0 hd); rw [hD0] at this; rw [hc0]; omega)
         (hStep.mono (fun _ _ => (Holds.KeepDying.none).mono
           fun i h1 h2 => ⟨hSub i h1, h2⟩) fun _ h => h) a1.frame a1.holds
         (by rw [hmd]; exact a1.rep.borrow) (fun _ _ _ q hq => ?_) (fun q hq => ?_)
@@ -2112,7 +2439,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           have hRoom0 := hRoom ⟨0, by simp⟩
           simp only [show modes ↑(⟨0, by simp⟩ : Fin (p :: ps).length) = .owned from hmd,
             ↓reduceIte] at hRoom0
-          have hc0 : argCost funs bounds (slots.map Slot.mode) all kept modes args env
+          have hc0 : argCost funs bounds (slots.map Slot.mode) paid all kept modes args env
               ⟨0, by simp⟩ =
               x.ownedCost (slots.map Slot.mode) all (env.get x) := by
             simp only [argCost]
@@ -2171,7 +2498,8 @@ theorem After.release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Li
     (hLive : ∀ i, live i = true → (L1 i && !sel i) = true)
     (hNext : ∀ heap2 store2,
       After env slots L0 live base heap store s t mode v heap2 store2 s1 ws →
-      heap2.top = heap1.top → wp m rest Q store2 { s1 with values := vals } host) :
+      heap2.top = heap1.top → t.regions mode store2 ws v = t.regions mode store1 ws v →
+      wp m rest Q store2 { s1 with values := vals } host) :
     wp m (releaseWhere Γ slots sel ++ rest) Q store1 { s1 with values := vals } host := by
   refine wp_releaseWhere hm (a.holds.agree Frame.ofValues) a.step.at_ hSel
     fun heap2 store2 e hTop => ?_
@@ -2197,7 +2525,7 @@ theorem After.release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Li
       fun _ => Holds.KeepDying.transfer h0 a.step a.frame hL1
         (fun i h1 _ => h1) (hr.mono fun i h1 h2 => ⟨hL1 _ h1, h2⟩)⟩
   refine hNext heap2 store2 ⟨hStep.mono (fun _ h => h) fun b hb => ?_, a.frame,
-    e'.holds.agree Frame.ofValues, hRep, ?_⟩ hTop
+    e'.holds.agree Frame.ofValues, hRep, ?_⟩ hTop hSame
   · rw [Mode.fresh_congr hSame] at hb
     exact List.mem_append_left _ hb
   · exact Holds.Apart.transfer (a.holds.live_mono hLiveL1) (a.apart.live_mono hLiveL1) e'.step
@@ -2210,10 +2538,13 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
     {sig : Sig}
     {Γ' : List Ty} (g : FVar S sig)
     (args : (i : Fin sig.params.length) → Expr S Γ' (sig.params.get i))
-    (argsSpec : ∀ i env slots live, CodeSpec m funs bounds fits host pv (args i) env slots live)
+    (argsSpec : ∀ i env slots paid live, CodeSpec m funs bounds fits host pv (args i) env slots paid
+        live)
     (hDepth : (Expr.call g args).depthCalls = true → pv.head? = some (.i64 d0)) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.call g args) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.call g args) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hRoom' : ∀ i : Fin sig.params.length, base + (if sig.mode i = .owned then
       copyWidth (sig.params.get i)
@@ -2271,8 +2602,8 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
         (args j').uses x.index) j' (by rw [hs, hu]; simp [hj'])
       rw [hOthers] at this
       exact nomatch this
-  have hAllocs : (Expr.call g args).allocs funs bounds (slots.map Slot.mode) live env =
-      argsSum (argCost funs bounds (slots.map Slot.mode)
+  have hAllocs : (Expr.call g args).allocs funs bounds (slots.map Slot.mode) paid live env =
+      argsSum (argCost funs bounds (slots.map Slot.mode) paid
         (fun i => live i || argsAny fun j => (args j).uses i)
         (fun i => (live i || argsAny fun j => (args j).uses i) &&
           !(argsAny fun j => callMoves slots live args j && (args j).uses i)) sig.mode args env) +
@@ -2281,7 +2612,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
   simp only [Expr.code, List.append_assoc]
   refine wp_depthCode sig.depth (fun hd => by
     rw [hpv]; exact hDepth (by simp [Expr.depthCalls, hd])) ?_
-  refine args_spec hm (all := fun i => live i || argsAny fun j => (args j).uses i)
+  refine args_spec hm (paid := paid) (all := fun i => live i || argsAny fun j => (args j).uses i)
     (kept := fun i => (live i || argsAny fun j => (args j).uses i) &&
       !(argsAny fun j => callMoves slots live args j && (args j).uses i)) sig.mode args argsSpec
     (fun i k h => by
@@ -2302,7 +2633,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
       · exact Or.inr h) heap store
     { s with values := (if sig.depth then [.i64 (d0 + 1)] else []) ++ s.values } hh hpv hVars hAt
     hCap hBase hRoom' _ _
-    (hTrap.part id id fun _ hw => hw.mono (by rw [hAllocs]; exact Nat.le_add_right _ _))
+    (hTrap.part id id fun _ hw => hw.mono (by rw [hAllocs]; omega))
     fun heap1 store1 s1 ws1 F hStep1 hF1 hH1 hRep1 hSep1 hX1 hY1 hTop1 => ?_
   · -- An owned parameter holds arrays.
     have := paramMode_owned hmo
@@ -2345,7 +2676,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
         Bool.not_eq_true', decide_eq_false_iff_not]
       refine ⟨hab, fun hW => hw ?_⟩
       rw [hAllocs] at hW
-      exact hW.shift (hTop1 (by simp [hfc])) le_rfl (hStep1.cap m)) fun st' vs hPost => ?_
+      exact hW.shift (hTop1 (by simp [hfc])) (by omega) (hStep1.cap m)) fun st' vs hPost => ?_
   obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions, hTopC⟩ := hPost
   have hRep : sig.result.Rep ((Expr.call g args).mode (slots.map Slot.mode)) heap' st'
       out.reverse (funs.get g (Env.ofFn fun i => (args i).denote funs env)) := by
@@ -2419,7 +2750,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
     (sel := fun i => ((live i || argsAny fun j => (args j).uses i) &&
       !(argsAny fun j => callMoves slots live args j && (args j).uses i)) && !live i) hVars aCall
     hKeptAll (fun i h => by simp only [Bool.and_eq_true] at h ⊢; exact h.1) (fun i h => ?_)
-    fun heap2 store2 a2 hTopR => ?_
+    fun heap2 store2 a2 hTopR _ => ?_
   · have hk : (argsAny fun j => callMoves slots live args j && (args j).uses i) = false := by
       cases hm' : argsAny fun j => callMoves slots live args j && (args j).uses i with
       | false => rfl
@@ -2428,9 +2759,9 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs bounds
         rw [hl] at h
         exact nomatch h
     simp [h, hk]
-  · simpa using hNext heap2 store2 s1 out.reverse a2 fun hd => by
+  · simpa using hNext heap2 store2 s1 out.reverse a2 fun hd => top_unpaid rfl (by
       have := hTop1 (by simp [hd]); have := hTopC (hsd hd); have := congrArg UInt64.toNat hTopR
-      rw [hAllocs]; omega
+      rw [hAllocs]; omega)
 
 /-- `LeanExe.loop` with a condition: the count in local `base`, the initial state, coerced to the
 loop's mode, from local `base + 2` on, and the index in local `base + 1`.  The invariant at the top
@@ -2445,14 +2776,17 @@ the condition or the body uses are released. -/
 theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ' .word}
     {init : Expr S Γ' tTy} {cond : Expr S (tTy :: Γ') .bool}
     {body : Expr S (tTy :: .word :: Γ') tTy}
-    (countSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv count env slots live)
-    (initSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv init env slots live)
-    (condSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv cond env slots live)
-    (bodySpec : ∀ env slots live, CodeSpec m funs bounds fits host pv body env slots live) :
-    ∀ env slots live,
-      CodeSpec m funs bounds fits host pv (Expr.loop count init cond body) env slots live :=
+    (countSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv count env slots paid
+        live)
+    (initSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv init env slots paid live)
+    (condSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv cond env slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv body env slots paid live)
+        :
+    ∀ env slots paid live,
+      CodeSpec m funs bounds fits host pv (Expr.loop count init cond body) env slots paid live :=
         by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -2484,14 +2818,35 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     fun hd => by
       simp only [Expr.fits, Bool.and_eq_true] at hd
       exact ⟨hd.1.1, hd.1.2, hd.2⟩
-  have hT := Expr.allocs_loop funs bounds (slots.map Slot.mode) live count init cond body env
+  have hT := Expr.allocs_loop funs bounds (slots.map Slot.mode) paid live count init cond body env
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
   -- The count, in local `base`.
   have hCountIn : ∀ i, ((live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
       count.uses i) = true → (live i || (Expr.loop count init cond body).uses i) = true :=
     fun i h => by simp only [Expr.uses]; exact loop_live_count _ _ _ _ _ h
-  refine countSpec env slots
-    (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) h base heap
+  -- The variables that die in the count and in the initial state.  The others that die in the
+  -- loop are released after it, and their potential is dropped.
+  have hDw : dyingPot store s env slots paid
+        (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
+          count.uses i) (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) +
+      dyingPot store s env slots paid
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i)
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) ≤
+      dyingPot store s env slots paid (fun i => live i || (Expr.loop count init cond body).uses i)
+        live := by
+    rw [dyingPot_split _ (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i)
+      _ (fun i h => hCountIn i (by simp [h])) (fun i h => by simp [h]),
+      dyingPot_split (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i)
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) live (fun i h => by simp [h])
+      (fun i h => by simp [h])]
+    rw [dyingPot_congr (L0 := fun i => live i || (Expr.loop count init cond body).uses i)
+      (L0' := fun i => (live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
+        count.uses i) (fun i => by
+          simp only [Expr.uses]
+          cases live i <;> cases count.uses i <;> cases init.uses i <;>
+            cases cond.uses (i + 1) <;> cases body.uses (i + 2) <;> rfl) fun _ => rfl]
+    omega
+  refine countSpec env slots paid _ h base heap
     store s hh hpv (hVars.live_mono hCountIn) hAt hCap hBase (by omega) hPc _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun h => by simp only [Expr.aborts]; exact loop_trap_count _ _ _ _ _ h)
@@ -2524,21 +2879,42 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       (setLocal { s1 with values := s.values } base (.i64 (count.denote funs env))) :=
     Evolves.mk e1.step hF2 (e1.holds.agree f2)
   -- The initial state, coerced to the loop's mode, in the locals from `base + 2` on.
-  refine initSpec env slots (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
+  have hDi : dyingPot store1
+      (setLocal { s1 with values := s.values } base (.i64 (count.denote funs env))) env slots paid
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i)
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) =
+    dyingPot store s env slots paid
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i)
+      (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) :=
+    dyingPot_evolves (hVars.live_mono hCountIn) e1' (fun i h => by simp [h]) _ _ fun _ h => h
+  refine initSpec env slots paid _ h
     (base + 1) heap1 store1 _ (hF2.half.trans hh) (hF2.params.trans hpv)
     (e1'.holds.mono (Nat.le_succ base))
     e1'.step.at_ (by rw [e1'.step.cap m]; exact hCap) (by rw [hF2.params]; omega) (by omega) hPi
     _ _ (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun h => by simp only [Expr.aborts]; exact loop_trap_init _ _ _ _ _ h)
-      fun hd hw => hw.shift (heap1 := heap1) (store1 := store1) (hTopK (hdl (fits_of_not hd)).1)
-        (by rw [hT]; omega) (e1'.step.cap m))
+      fun hd hw => by
+        have := hTopK (hdl (fits_of_not hd)).1
+        rw [hDi]
+        exact hw.shift (heap1 := heap1) (store1 := store1)
+          (c1 := dyingPot store s env slots paid
+            (fun i => (live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
+              count.uses i)
+            (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) +
+            count.allocs funs bounds (slots.map Slot.mode) paid
+              (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) env)
+          (by omega) (by rw [hT]; omega) (e1'.step.cap m))
     fun heap2 store2 s3 ws0 a2 hTopI => ?_
   have hTop2 : (Expr.loop count init cond body).fits funs fits env = true →
-      heap2.top.toNat ≤ heap.top.toNat + (count.allocs funs bounds (slots.map Slot.mode)
+      heap2.top.toNat ≤ heap.top.toNat +
+        (dyingPot store s env slots paid (fun i => live i || (Expr.loop count init cond body).uses
+            i)
+          live +
+        (count.allocs funs bounds (slots.map Slot.mode) paid
         (fun i => live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) env +
-        init.allocs funs bounds (slots.map Slot.mode)
-        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) env) := fun hd => by
-    have := hTopK (hdl hd).1; have := hTopI (hdl hd).2.1; omega
+        init.allocs funs bounds (slots.map Slot.mode) paid
+        (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) env)) := fun hd => by
+    have := hTopK (hdl hd).1; have := hTopI (hdl hd).2.1; rw [hDi] at this; omega
   refine After.coerce hm a2 (fun h => by simp [Mode.join, h]) le_rfl
     (by rw [a2.frame.params, hF2.params]; omega) (a2.frame.half.trans (hF2.half.trans hh))
     (by omega) (by rw [a2.step.cap m, e1'.step.cap m]; exact hCap)
@@ -2552,10 +2928,15 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         (by rw [a2.step.cap m, e1'.step.cap m]))
     fun heap2' store2 s3 ws0 a2 hTopCo => ?_
   have hTopEntry : (Expr.loop count init cond body).fits funs fits env = true →
-      heap2'.top.toNat + Expr.loopRest funs bounds (slots.map Slot.mode) live init cond body env
+      heap2'.top.toNat + Expr.loopRest funs bounds (slots.map Slot.mode) paid live init cond body
+          env
         (count.denote funs env).toNat 0 (init.denote funs env) ≤
-        heap.top.toNat + (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode)
-          live env :=
+        heap.top.toNat +
+          (dyingPot store s env slots paid (fun i => live i || (Expr.loop count init cond body).uses
+              i)
+            live +
+          (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) paid live
+              env) :=
     fun hd => by have := hTop2 hd; rw [hT]; omega
   have hF3 : Frame base s s3 := hF2.trans (a2.frame.mono (Nat.le_succ base))
   have hh3 : s3.half = h := hF3.half.trans hh
@@ -2602,7 +2983,11 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         ((Expr.loop count init cond body).denote funs env) heapX stX sX wsX →
       ((Expr.loop count init cond body).fits funs fits env = true →
         heapX.top.toNat ≤ heap.top.toNat +
-          (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env) →
+          (dyingPot store s env slots paid (fun i => live i || (Expr.loop count init cond body).uses
+              i)
+            live +
+          (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) paid live env))
+              →
       wp m (releaseWhere Γ' slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
         (loadCode h (base + 2) tTy.types ++ rest)) Q stX { sX with values := vals } host := by
     intro heapX stX sX wsX vals hv holdX aX hTopX
@@ -2611,10 +2996,10 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       (sel := fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) hVars aX
       (fun i h => by simp only [Expr.uses]; exact loop_live_state _ _ _ _ _ h)
       (fun i h => by simp only [Bool.and_eq_true] at h; exact loop_sel _ _ _ h.1)
-      (fun i h => by simp [h]) fun heap' store' a' hTopR => ?_
+      (fun i h => by simp [h]) fun heap' store' a' hTopR _ => ?_
     refine wp_loadCode wsX a'.rep.typed (aX.frame.half.trans hh) holdX ?_
-    exact hNext heap' store' sX wsX a' fun hd => by
-      have := hTopX hd; have := congrArg UInt64.toNat hTopR; omega
+    exact hNext heap' store' sX wsX a' fun hd => top_unpaid rfl (by
+      have := hTopX hd; have := congrArg UInt64.toNat hTopR; omega)
   -- The loop.  The invariant holds the count, the index `i`, and the state after `i` passes, and
   -- the count less the index decreases.
   refine wp_block_cons ?_
@@ -2634,13 +3019,17 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           (loopState (init.denote funs env)
             (fun i acc => bif cond.denote funs (.cons acc env) then
               body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) = true ∧
-        heapI.top.toNat + Expr.loopRest funs bounds (slots.map Slot.mode) live init cond body env
+        heapI.top.toNat + Expr.loopRest funs bounds (slots.map Slot.mode) paid live init cond body
+            env
           ((count.denote funs env).toNat - i.toNat) i
           (loopState (init.denote funs env)
             (fun i acc => bif cond.denote funs (.cons acc env) then
               body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) ≤
           heap.top.toNat +
-            (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) live env))
+            (dyingPot store s env slots paid
+              (fun i => live i || (Expr.loop count init cond body).uses i) live +
+            (Expr.loop count init cond body).allocs funs bounds (slots.map Slot.mode) paid live
+                env)))
     (fun _ s' => match s'.get (base + 1) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
       | _ => 0)
@@ -2694,8 +3083,18 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     Holds.push ((aI.holds.mono (by omega)).live_mono fun j hj => cond_live_outer _ _ hdAll j hj)
       holdi aI.rep.borrow
       ((aI.apart.borrow aI.rep).live_mono fun j hj => cond_live_outer _ _ hdAll j hj)
-  refine condSpec _ (⟨base + 2, .borrowed⟩ :: slots)
-    (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j) h
+  -- No variable dies in the condition: the outer ones it uses stay live, and the state is
+  -- borrowed.
+  have hDc : dyingPot st si (Env.cons (loopState (init.denote funs env)
+        (fun i acc => bif cond.denote funs (.cons acc env) then
+          body.denote funs (.cons acc (.cons i env)) else acc) i.toNat) env)
+      (⟨base + 2, .borrowed⟩ :: slots) (false :: paid)
+      (fun j => (j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j) ||
+        cond.uses j)
+      (fun j => j == 0 || shift 1 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j) =
+      0 :=
+    dyingPot_eq_zero fun j h => cond_live _ _ hdAll j h
+  refine condSpec _ (⟨base + 2, .borrowed⟩ :: slots) (false :: paid) _ h
     (base + 2 + tTy.width) heapI st si hhi (aI.frame.params.trans hpv) hVarsC aI.step.at_
     (by rw [aI.step.cap m]; exact hCap)
     (by rw [aI.frame.params]; omega) (by omega) hPcd _ _
@@ -2709,12 +3108,14 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         (by
           have := (hInv (fits_of_not hd)).2
           have := Expr.loopRest_cond_le (funs := funs) (bounds := bounds)
-            (modes := slots.map Slot.mode) (live := live) (init := init) (cond := cond)
+            (modes := slots.map Slot.mode) (paid := paid) (live := live) (init := init) (cond :=
+                cond)
             (body := body) (env := env) (n := (count.denote funs env).toNat - i.toNat - 1) (i := i)
             (x := loopState (init.denote funs env)
               (fun i acc => bif cond.denote funs (.cons acc env) then
                 body.denote funs (.cons acc (.cons i env)) else acc) i.toNat)
           rw [← hk] at this
+          rw [hDc]
           simp only [List.map_cons]; omega)
         (aI.step.cap m)).imp fun _ h => h)
     fun heapC stC sC wsC aC hTopC => ?_
@@ -2746,6 +3147,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       have h1 := (hInv hd).2
       rw [hk, Expr.loopRest_false hcv] at h1
       have h2 := hTopC (hFitsC hd)
+      rw [hDc] at h2
       simp only [List.map_cons] at h2
       omega
   simp (config := { decide := true }) only [↓reduceIte]
@@ -2802,6 +3204,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     exact h1
   have hTopC' := fun hd => by
     have h2 := hTopC (hFitsC hd)
+    rw [hDc] at h2
     simp only [List.map_cons] at h2
     exact h2
   have hFitsB : (Expr.loop count init cond body).fits funs fits env = true →
@@ -2825,7 +3228,29 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         simp [h0]
       | 1 => simp
       | k + 2 => split <;> simpa using h
-  refine bodySpec _ _ (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
+  -- No paid variable dies in the body: the state and the index are unpaid, and the outer ones
+  -- it uses stay live.
+  have hDbody : dyingPot store2 sB (Env.cons (loopState (init.denote funs env)
+        (fun i acc => bif cond.denote funs (.cons acc env) then
+            body.denote funs (.cons acc (.cons i env)) else acc) i.toNat)
+        (Env.cons (t := .word) i env))
+      (⟨base + 2, (init.mode (slots.map Slot.mode)).join
+        (body.mode (.borrowed :: .borrowed :: slots.map Slot.mode))⟩ ::
+        ⟨base + 1, .borrowed⟩ :: slots) (false :: false :: paid)
+      (fun j => shift 2 (fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) j ||
+        body.uses j)
+      (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) = 0 :=
+    dyingPot_eq_zero_unpaid fun j h0 h1 => by
+      match j with
+      | 0 => rfl
+      | 1 => rfl
+      | k + 2 =>
+        have hk : ¬ k + 2 < 2 := by omega
+        simp only [shift, hk, ↓reduceIte, Nat.add_sub_cancel] at h0 h1
+        revert h0 h1
+        cases live k <;> cases cond.uses (k + 1) <;> cases body.uses (k + 2) <;> simp
+  refine bodySpec _ _ (false :: false :: paid)
+    (shift 2 fun i => live i || cond.uses (i + 1) || body.uses (i + 2)) h
     (base + 2 + tTy.width) heap2 store2 sB hhB (aB0.frame.params.trans hpv) e2'.holds e2'.step.at_
     (by rw [e2'.step.cap m, aB0.step.cap m]; exact hCap) (by rw [aB0.frame.params]; omega)
     (by omega) hPb _ _
@@ -2840,6 +3265,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
         hw.of_le (by
           have := hInv' (fits_of_not hd); have := hTopC' (fits_of_not hd)
           have := congrArg UInt64.toNat hTopRel
+          rw [hDbody]
           simp only [List.map_cons]; omega)
         (by rw [e2'.step.cap m, aB0.step.cap m])).imp
         fun _ h => h)
@@ -2867,6 +3293,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
           have := hInv' (fits_of_not hd); have := hTopC' (fits_of_not hd)
           have := congrArg UInt64.toNat hTopRel
           have h6 := hTopB (hFitsB (fits_of_not hd)).1
+          rw [hDbody] at h6
           simp only [List.map_cons] at h6
           omega)
         (by rw [aB.step.cap m, e2'.step.cap m, aB0.step.cap m])).imp fun _ h => h)
@@ -2949,6 +3376,7 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
     refine ⟨(hFitsB hd).2, ?_⟩
     have := hInv' hd; have := hTopC' hd; have := congrArg UInt64.toNat hTopRel
     have h6 := hTopB (hFitsB hd).1
+    rw [hDbody] at h6
     simp only [List.map_cons] at h6 hTopCo2
     omega
   · have := UInt64.lt_iff_toNat_lt.mp hlt
@@ -2963,10 +3391,14 @@ variables live in the loop.  Each iteration runs the element's code in the conte
 index, which keeps every region, and stores the element. -/
 theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S Γ' .word}
     {elem : Expr S (.word :: Γ') (.elem e)}
-    (countSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv count env slots live)
-    (elemSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv elem env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.build count elem) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (countSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv count env slots paid
+        live)
+    (elemSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv elem env slots paid live)
+        :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.build count elem) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -2976,10 +3408,12 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   have he2 := Nat.le_max_right elem.width (e.width + 1)
   have hk := e.width_pos
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  have hT : (Expr.build count elem).allocs funs bounds (slots.map Slot.mode) live env =
-      count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1)) env +
+  have hT : (Expr.build count elem).allocs funs bounds (slots.map Slot.mode) paid live env =
+      count.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || elem.uses (i + 1)) env
+          +
         allocCost (((count.denote funs env).toNat * e.width + 1) * 8) +
-        sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
+        sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode) (false ::
+            paid)
           (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env))
           (count.denote funs env).toNat := rfl
   have hdK : (Expr.build count elem).fits funs fits env = true → count.fits funs fits env = true ∧
@@ -2988,7 +3422,8 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
     simp only [Expr.fits, Bool.and_eq_true] at hd
     exact ⟨hd.1, allBelow_get hd.2⟩
   have hTrapW : ¬heap.Within store m
-      ((Expr.build count elem).allocs funs bounds (slots.map Slot.mode) live env) →
+      (dyingPot store s env slots paid (fun i => live i || (Expr.build count elem).uses i) live +
+        (Expr.build count elem).allocs funs bounds (slots.map Slot.mode) paid live env) →
       TrapOK true Q := fun hw =>
     hTrap.of_imp fun _ => by simp [trapFlag, Expr.aborts, hw]
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
@@ -2996,7 +3431,28 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   have hCountIn : ∀ i, ((live i || elem.uses (i + 1)) || count.uses i) = true →
       (live i || (Expr.build count elem).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
-  refine countSpec env slots (fun i => live i || elem.uses (i + 1)) h base heap store s hh hpv
+  -- The variables that die in the count.  The others that die in the build are released after
+  -- it, and their potential is dropped.
+  have hDk : dyingPot store s env slots paid (fun i => (live i || elem.uses (i + 1)) || count.uses
+      i)
+      (fun i => live i || elem.uses (i + 1)) ≤
+        dyingPot store s env slots paid (fun i => live i || (Expr.build count elem).uses i) live :=
+    dyingPot_mono hCountIn fun i h => by simp [h]
+  -- No paid variable dies in an element: the index is unpaid, and the outer variables that the
+  -- element uses stay live.
+  have hDe : ∀ (v : UInt64) (st' : Store Unit) (s' : Locals) (sl : Slot),
+      dyingPot st' s' (Env.cons (t := .word) v env) (sl :: slots) (false :: paid)
+        (fun j => shift 1 (fun i => live i || elem.uses (i + 1)) j || elem.uses j)
+        (shift 1 fun i => live i || elem.uses (i + 1)) = 0 := fun _ _ _ _ =>
+    dyingPot_eq_zero_unpaid fun j h0 h1 => by
+      match j with
+      | 0 => rfl
+      | k + 1 =>
+        have hk : ¬ k + 1 < 1 := by omega
+        simp only [shift, hk, ↓reduceIte, Nat.add_sub_cancel] at h0 h1
+        revert h0 h1
+        cases live k <;> cases elem.uses (k + 1) <;> simp
+  refine countSpec env slots paid _ h base heap store s hh hpv
     (hVars.live_mono hCountIn) hAt hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts]) fun _ hw => hw.mono (by rw [hT]; omega))
@@ -3086,8 +3542,14 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
   refine wp_allocArray (c := allocCost (((count.denote funs env).toNat * e.width + 1) * 8)) hm
     e1.step.at_ (by rw [e1.step.cap m]; exact hCap)
     (by rw [hTn]; unfold allocCost; omega)
-    (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.shift (hTopK (hdK (fits_of_not hd)).1)
-      (by rw [hT]; omega) (e1.step.cap m))
+    (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => by
+      have := hTopK (hdK (fits_of_not hd)).1
+      exact hw.shift (c1 := dyingPot store s env slots paid
+          (fun i => (live i || elem.uses (i + 1)) || count.uses i)
+          (fun i => live i || elem.uses (i + 1)) +
+          count.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || elem.uses (i + 1))
+            env)
+        (by omega) (by rw [hT]; omega) (e1.step.cap m))
     (by rw [hTn]; exact hck) hT3 hLow4 hHigh4 (by omega)
     fun heap2 store2 root words hSize hStepA hOwned hTopA => ?_
   rw [hTn] at hSize
@@ -3141,9 +3603,12 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
         st si [.i64 root] ∧
       ((Expr.build count elem).fits funs fits env = true →
         heapI.top.toNat ≤ heap.top.toNat +
-          (count.allocs funs bounds (slots.map Slot.mode) (fun i => live i || elem.uses (i + 1))
+          (dyingPot store s env slots paid (fun i => (live i || elem.uses (i + 1)) || count.uses i)
+            (fun i => live i || elem.uses (i + 1)) +
+          count.allocs funs bounds (slots.map Slot.mode) paid (fun i => live i || elem.uses (i + 1))
             env + allocCost (((count.denote funs env).toNat * e.width + 1) * 8) +
-          sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
+          sumBelow (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode) (false ::
+              paid)
           (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env)) i)))
     (fun _ si => match si.get (base + 2) with
       | some (.i64 i) => (count.denote funs env).toNat - i.toNat
@@ -3174,12 +3639,12 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
       (sel := fun i => elem.uses (i + 1) && !live i) hVars (After.ofWords aI)
       (fun i h => by simp only [Expr.uses]; exact live_build _ _ _ h)
       (fun i h => by simp only [Bool.and_eq_true] at h; simp [h.1]) (fun i h => by simp [h])
-      fun heap' store' a' hTopR => ?_
+      fun heap' store' a' hTopR _ => ?_
     simp only [wp_localGet_cons, Locals.get_values, hRooti]
-    simpa [setLocal, hs2] using hNext heap' store' si [.i64 root] a' fun hd => by
+    simpa [setLocal, hs2] using hNext heap' store' si [.i64 root] a' fun hd => top_unpaid rfl (by
       have h1 := hInv hd; have := congrArg UInt64.toNat hTopR
       rw [hiEq] at h1
-      rw [hT]; omega
+      rw [hT]; omega)
   -- One more element.
   have hLess : i < (count.denote funs env).toNat := by
     rw [UInt64.le_iff_toNat_le, hi64] at hDone; omega
@@ -3199,7 +3664,8 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
     (live' := fun j => shift 1 (fun i => live i || elem.uses (i + 1)) j || elem.uses j)
     (hVarsI.live_mono hLE) holdIdx rfl (Holds.Apart.ofScalar rfl)).mono
     (base' := base + 3) (by simp [Ty.width])
-  refine elemSpec _ _ (shift 1 fun i => live i || elem.uses (i + 1)) h (base + 3) heapI st si hhi
+  refine elemSpec _ _ (false :: paid) (shift 1 fun i => live i || elem.uses (i + 1)) h (base + 3)
+    heapI st si hhi
     (aI.frame.params.trans hpv) hVarsE aI.step.at_ (by rw [aI.step.cap m]; exact hCap)
     (by show si.params.length ≤ base + 3; rw [aI.frame.params]; omega) (by omega)
     hPlace.2 _ _ ((hTrap.part (fun h => by
@@ -3209,9 +3675,11 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
         (fun _ => by simp [Expr.aborts]) fun hd hw => hw.of_le (by
           have := hInv (fits_of_not hd)
           have := sumBelow_mono (fun k => elem.allocs funs bounds (.borrowed :: slots.map Slot.mode)
+              (false :: paid)
             (shift 1 (fun i => live i || elem.uses (i + 1))) (.cons (UInt64.ofNat k) env))
             (show i + 1 ≤ (count.denote funs env).toNat by omega)
           simp only [sumBelow] at this
+          rw [hDe]
           simp only [List.map_cons]; rw [hT]; omega) (aI.step.cap m)).imp fun _ h => h)
     fun heapE stE sE wsE aE hTopE => ?_
   have hRE := Ty.rep_elem.mp aE.rep
@@ -3282,7 +3750,7 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
     (aI2.reframe ((f6.mono (by omega)).trans (f7.mono (by omega)))) hh7
     (by rw [hget7 (base + 1) (by omega)]; exact hRooti) hW7 hold7
     (by rw [e.toWords_length, e.types_length]) (by rw [hik64, e.types_length]; omega)
-    fun store8 a8 => ?_
+    fun store8 a8 _ => ?_
   rw [hik64, Nat.add_zero] at a8
   -- The next index, in local `base + 2`.
   simp only [wp_localGet_cons, hget7 (base + 2) (by omega), hIdxi, wp_constI64_cons,
@@ -3321,6 +3789,7 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
     exact hRooti
   · intro hd
     have := hInv hd; have h6 := hTopE ((hdK hd).2 i hLess)
+    rw [hDe] at h6
     simp only [List.map_cons] at h6
     simp only [sumBelow]; omega
   · rw [hIdx9]
@@ -3333,10 +3802,12 @@ and, when the position is below the size, the position of the element's first wo
 `base + 2 + k` and the writes of the element's words. -/
 theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
     {i : Expr S Γ' .word} {v : Expr S Γ' (.elem e)}
-    (iSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv i env slots live)
-    (vSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv v env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.set x i v) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (iSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv i env slots paid live)
+    (vSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.set x i v) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -3348,9 +3819,10 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hcw : copyWidth (Ty.array e) = 4 := rfl
   have hk := e.width_pos
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  have hT : (Expr.set x i v).allocs funs bounds (slots.map Slot.mode) live env =
-      i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index || v.uses j) env +
-        v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env +
+  have hT : (Expr.set x i v).allocs funs bounds (slots.map Slot.mode) paid live env =
+      i.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index || v.uses j)
+          env +
+        v.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index) env +
         x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
   have hdS : (Expr.set x i v).fits funs fits env = true →
       i.fits funs fits env = true ∧ v.fits funs fits env = true :=
@@ -3360,7 +3832,24 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
       (live k || (Expr.set x i v).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact set_live_index _ _ _ _ h
-  refine iSpec env slots (fun k => live k || k == x.index || v.uses k) h base heap store s hh hpv
+  -- The variables that die in the position and in the value.  The array, when it dies, is
+  -- consumed, and its potential is dropped.
+  have hDiv : dyingPot store s env slots paid
+        (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => live k || k == x.index || v.uses k) +
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) ≤
+      dyingPot store s env slots paid (fun k => live k || (Expr.set x i v).uses k) live := by
+    rw [dyingPot_split _ (fun k => live k || k == x.index || v.uses k) live
+      (fun k h => hIn k (by simp [h])) (fun k h => by simp [h]),
+      dyingPot_split (fun k => live k || k == x.index || v.uses k) (fun k => live k || k == x.index)
+        live (fun k h => by simp [h]) (fun k h => by simp [h]),
+      dyingPot_congr (L0 := fun k => live k || (Expr.set x i v).uses k)
+        (L0' := fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => by simp only [Expr.uses, Bool.or_comm, Bool.or_left_comm])
+        fun _ => rfl]
+    omega
+  refine iSpec env slots paid _ h base heap store s hh hpv
     (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
@@ -3373,13 +3862,29 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hp1 := e1.frame.params
   have hh1 := e1.frame.half.trans hh
   -- The value's words, from local `base + 1` on.
-  refine vSpec env slots (fun k => live k || k == x.index) h (base + 1) heap1 store1 _ hh1
+  have hDv : ∀ s1' : Locals, Evolves env slots (fun k => (live k || k == x.index || v.uses k) ||
+        i.uses k) (fun k => live k || k == x.index || v.uses k) base heap store s heap1 store1
+        s1' →
+      dyingPot store1 s1' env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) =
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) := fun _ e =>
+    dyingPot_evolves (hVars.live_mono hIn) e (fun k h => by simp [h]) _ _ fun _ h => h
+  refine vSpec env slots paid _ h (base + 1) heap1 store1 _ hh1
     (hp1.trans hpv) (e1.holds.mono (Nat.le_succ base)) e1.step.at_ (by rw [e1.step.cap m]; exact
         hCap)
     (by rw [hp1]; omega) (by omega) hPlace.2 _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
-      fun hd hw => hw.shift (hTopI (hdS (fits_of_not hd)).1) (by rw [hT]; omega) (e1.step.cap m))
+      fun hd hw => by
+        have := hTopI (hdS (fits_of_not hd)).1
+        rw [hDv _ e1]
+        exact hw.shift (c1 := dyingPot store s env slots paid
+            (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+            (fun k => live k || k == x.index || v.uses k) +
+            i.allocs funs bounds (slots.map Slot.mode) paid
+              (fun j => live j || j == x.index || v.uses j) env)
+          (by omega) (by rw [hT]; omega) (e1.step.cap m))
     fun heap2 store2 s2 ws2 a2 hTopV => ?_
   have hR2 := Ty.rep_elem.mp a2.rep
   subst hR2
@@ -3405,7 +3910,9 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
     (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
     (by show s2'.params.length ≤ _; rw [hp2]; omega)
     (by omega) (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.of_le (by
-      have := hTopI (hdS (fits_of_not hd)).1; have := hTopV (hdS (fits_of_not hd)).2; rw [hT]; omega)
+      have := hTopI (hdS (fits_of_not hd)).1; have h2 := hTopV (hdS (fits_of_not hd)).2
+      rw [hDv _ e1] at h2
+      rw [hT]; omega)
       (by rw [e2.step.cap m, e1.step.cap m]))
     fun heap3 store3 s3 ws3 a3 hTopO => ?_
   obtain ⟨p, hws, hOwned⟩ := a3.rep
@@ -3444,8 +3951,10 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
       (fun k h => by simp [h]) fun k h => by simp [h]
     have aX3 := After.prepend (hVars.live_mono hIn) e1 (aX2.lower e1.holds (Nat.le_succ base)
       fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
-    simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX3.liveIn hIn) fun hd => by
-      have := hTopI (hdS hd).1; have := hTopV (hdS hd).2; rw [hT]; omega
+    simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX3.liveIn hIn) fun hd => top_unpaid rfl (by
+      have := hTopI (hdS hd).1; have h2 := hTopV (hdS hd).2
+      rw [hDv _ e1] at h2
+      rw [hT]; omega)
   have hA := hOwned.values
   have hLength := hA.lengthBound
   have hnk : (env.get x).size * e.width < 536870912 := by
@@ -3502,7 +4011,7 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
       (by rw [hik64, e.types_length, Elem.words_size]
           have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hc)
           rw [Nat.succ_mul] at this; omega)
-      fun store6 a6 => ?_
+      fun store6 a6 _ => ?_
     rw [hik64] at a6
     simp only [Nat.add_zero] at a6
     rw [Elem.words_set e hc] at a6
@@ -3530,28 +4039,106 @@ theorem allocSize_le_mul {bytes : UInt64} {k : Nat} (h8 : 8 ≤ bytes.toNat)
   · simp only [UInt64.reduceToNat]; omega
   · rw [hRound]; omega
 
-/-- `Var.roomCost` covers a copy at the new length. -/
-theorem Var.roomCost_copy {Γ : List Ty} {e : Elem} (x : Var Γ (.array e)) (modes : List Mode)
-    (live : Nat → Bool) (xs : Array e.denote) (ext : Nat) :
-    allocCost ((xs.size * e.width + ext + 1) * 8) ≤ x.roomCost modes live xs ext := by
-  simp only [Var.roomCost, allocCost]
-  split <;> omega
+/-- `Var.roomCost` of an array that is copied: a copy at the new length. -/
+theorem Var.roomCost_copy {Γ : List Ty} {e : Elem} (x : Var Γ (.array e)) {modes : List Mode}
+    (paid : List Bool) {live : Nat → Bool} (xs : Array e.denote) (ext : Nat)
+    (h : ¬(modeAt modes x.index = .owned ∧ live x.index = false)) :
+    x.roomCost modes paid live xs ext = allocCost ((xs.size * e.width + ext + 1) * 8) := by
+  simp only [Var.roomCost, ite_eq_right h]
+
+/-- `Var.roomCost` of an owned array that dies: for a paid one, a header and four times the added
+bytes, and for an unpaid one, a block of twice the new length's bytes and twice the added bytes. -/
+theorem Var.roomCost_move {Γ : List Ty} {e : Elem} (x : Var Γ (.array e)) {modes : List Mode}
+    (paid : List Bool) {live : Nat → Bool} (xs : Array e.denote) (ext : Nat)
+    (h : modeAt modes x.index = .owned ∧ live x.index = false) :
+    x.roomCost modes paid live xs ext =
+      if paidAt paid x.index then allocCost (32 * ext)
+      else allocCost (16 * (xs.size * e.width + ext + 1)) + 16 * ext := by
+  simp only [Var.roomCost, ite_eq_left h]
+
+/-! The arithmetic of a growth with the potential `4u ∸ 2c`, for an array of `n` words in a block
+of capacity `c` that grows to `t` words.  A move requests `r`, twice the capacity or the new
+length's bytes, which the allocator rounds to `A`, a multiple of 8. -/
+
+theorem room_inplace_paid {n t c : Nat} (hnt : n ≤ t) :
+    4 * (8 * (t + 1)) - 2 * c ≤ (4 * (8 * (n + 1)) - 2 * c) + (48 + 32 * (t - n)) := by omega
+
+theorem room_inplace_unpaid {n t c : Nat} (hc : 8 * (n + 1) ≤ c) (hnt : n ≤ t) :
+    4 * (8 * (t + 1)) - 2 * c ≤ 48 + 16 * (t + 1) + 16 * (t - n) := by omega
+
+theorem room_alloc_paid {n t c r A : Nat} (hA : A % 8 = 0) (hAr : r ≤ A) (hAr7 : A ≤ r + 7)
+    (hroom : c < 8 * (t + 1))
+    (hr : (r = 2 * c ∧ 8 * (t + 1) ≤ 2 * c) ∨ (r = 8 * (t + 1) ∧ 2 * c < 8 * (t + 1))) :
+    48 + A ≤ (4 * (8 * (n + 1)) - 2 * c) + (48 + 32 * (t - n)) := by
+  rcases hr with ⟨rfl, h⟩ | ⟨rfl, h⟩ <;> omega
+
+theorem room_alloc_unpaid {n t c r A : Nat} (hA : A % 8 = 0) (hAr : r ≤ A) (hAr7 : A ≤ r + 7)
+    (hroom : c < 8 * (t + 1))
+    (hr : (r = 2 * c ∧ 8 * (t + 1) ≤ 2 * c) ∨ (r = 8 * (t + 1) ∧ 2 * c < 8 * (t + 1))) :
+    48 + A ≤ 48 + 16 * (t + 1) + 16 * (t - n) := by
+  rcases hr with ⟨rfl, h⟩ | ⟨rfl, h⟩ <;> omega
+
+theorem room_move_paid {top top' n t c c' r A : Nat} (hA : A % 8 = 0) (hAr : r ≤ A)
+    (hAr7 : A ≤ r + 7) (hc : 8 * (n + 1) ≤ c) (hroom : c < 8 * (t + 1))
+    (hr : (r = 2 * c ∧ 8 * (t + 1) ≤ 2 * c) ∨ (r = 8 * (t + 1) ∧ 2 * c < 8 * (t + 1)))
+    (hshape : (top' = top ∧ r ≤ c') ∨ (top' = top + 48 + A ∧ c' = A)) :
+    top' + (4 * (8 * (t + 1)) - 2 * c') ≤
+      top + (4 * (8 * (n + 1)) - 2 * c) + (48 + 32 * (t - n)) := by
+  rcases hr with ⟨rfl, h⟩ | ⟨rfl, h⟩ <;> rcases hshape with ⟨rfl, h'⟩ | ⟨rfl, rfl⟩ <;> omega
+
+theorem room_move_unpaid {top top' n t c c' r A : Nat} (hA : A % 8 = 0) (hAr : r ≤ A)
+    (hAr7 : A ≤ r + 7) (hc : 8 * (n + 1) ≤ c) (hroom : c < 8 * (t + 1))
+    (hr : (r = 2 * c ∧ 8 * (t + 1) ≤ 2 * c) ∨ (r = 8 * (t + 1) ∧ 2 * c < 8 * (t + 1)))
+    (hshape : (top' = top ∧ r ≤ c') ∨ (top' = top + 48 + A ∧ c' = A)) :
+    top' + (4 * (8 * (t + 1)) - 2 * c') ≤ top + (48 + 16 * (t + 1) + 16 * (t - n)) := by
+  rcases hr with ⟨rfl, h⟩ | ⟨rfl, h⟩ <;> rcases hshape with ⟨rfl, h'⟩ | ⟨rfl, rfl⟩ <;> omega
+
+/-- A block of more than `2 ^ 31` bytes below `top` leaves no room for either charge. -/
+theorem room_huge {top n t c : Nat} (hroom : c < 8 * (t + 1)) (hnt : 8 * (n + 1) ≤ c)
+    (hc : 4294967296 < 2 * c) (htop : c ≤ top) :
+    4294901760 < top + (4 * (8 * (n + 1)) - 2 * c) + (48 + 32 * (t - n)) ∧
+      4294901760 < top + (48 + 16 * (t + 1) + 16 * (t - n)) := by
+  omega
+
+/-- A new length of `2 ^ 29` words or more leaves no room for any charge. -/
+theorem room_long {n t c : Nat} (ht : 536870912 ≤ t) (hnt : n ≤ t) (hc : c < 4294967296) :
+    4294901760 < (4 * (8 * (n + 1)) - 2 * c) + (48 + 32 * (t - n)) ∧
+      4294901760 < 48 + 16 * (t + 1) + 16 * (t - n) ∧ 4294901760 < 48 + (t + 1) * 8 := by
+  omega
+
+/-- The rounded byte count of an allocation is a multiple of 8 within 7 of the request. -/
+theorem allocSize_round {bytes : UInt64} (h : bytes.toNat ≤ 4294967296) (h8 : 8 ≤ bytes.toNat) :
+    (allocSize bytes).toNat % 8 = 0 ∧ bytes.toNat ≤ (allocSize bytes).toNat ∧
+      (allocSize bytes).toNat ≤ bytes.toNat + 7 := by
+  have hRound : ((bytes + 7) / 8 * 8).toNat = (bytes.toNat + 7) / 8 * 8 := by
+    simp only [UInt64.toNat_mul, UInt64.toNat_div, UInt64.toNat_add, UInt64.reduceToNat]
+    omega
+  unfold allocSize
+  split
+  · rename_i hs
+    rw [UInt64.lt_iff_toNat_lt, hRound] at hs
+    simp only [UInt64.reduceToNat] at hs
+    omega
+  · rw [hRound]; omega
 
 /-- `Var.roomCode`: an owned array, at the address in local `b + 4`, whose first elements are
 those of `x`, whose length is `x`'s length plus the word `e` in local `ext`, and whose block has
-room for that length.  An owned `x` that dies is consumed; any other `x` is read.  The code traps
-only when `top` cannot rise by `Var.roomCost` within the cap, and it raises `top` by at most that
-cost. -/
+room for that length.  An owned `x` that dies is consumed, and any other `x` is read.  The code
+traps only when `top` cannot rise by the potential of the paid owned variables that die plus
+`Var.roomCost` within the cap.  `top` after the code, plus the potential of the array when `x` is
+owned and dies, is at most `top` before it plus that sum. -/
 theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.array el))
     {env : Env Γ'}
-    {slots : List Slot} {live : Nat → Bool} {b ext : Nat} {e : UInt64} {heap : Heap}
+    {slots : List Slot} {paid : List Bool} {live : Nat → Bool} {b ext : Nat} {e : UInt64}
+    {heap : Heap}
     {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit}
     (hVars : Holds env slots (fun i => live i || i == x.index) b heap store s)
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ b)
     (hRoom : b + 6 ≤ s.half) (hExt : s.get ext = some (.i64 e))
     (hExtB : ext < b) (he : e.toNat ≤ 536870912)
     (hTrap : TrapOK (!decide (heap.Within store m
-      (x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat))) Q)
+      (dyingPot store s env slots paid (fun i => live i || i == x.index) live +
+        x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat))) Q)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (q : UInt64)
       (words : Array UInt64), words.size = (el.words (env.get x)).size + e.toNat →
       (∀ j (hj : j < (el.words (env.get x)).size), words[j]! = (el.words (env.get x))[j]) →
@@ -3559,13 +4146,31 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
         words heap' store' s' [.i64 q] →
       s'.get (b + 1) = some (.i64 (UInt64.ofNat (el.words (env.get x)).size)) →
       s'.get (b + 4) = some (.i64 q) → s'.values = s.values →
-      heap'.top.toNat ≤ heap.top.toNat + x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat →
+      heap'.top.toNat +
+          (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+            arrayPot store' q words.size else 0) ≤
+        heap.top.toNat + dyingPot store s env slots paid (fun i => live i || i == x.index) live +
+          x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat →
       wp m rest Q store' s' host) :
     wp m (x.roomCode slots b live ext ++ rest) Q store s host := by
   have hTot : 2 * s.half ≤ s.params.length + s.locals.length := by
     simp only [Locals.half]; omega
   obtain ⟨hBelowX, ws, hold, hRep⟩ := hVars.get x (by simp)
   obtain ⟨p, rfl, hArr⟩ := hRep
+  -- The potential of `x` when it is paid and dies, which `dyingPot` counts.
+  have hPotX : (slots.getD x.index default).mode = .owned → live x.index = false →
+      paidAt paid x.index = true →
+      arrayPot store p (el.words (env.get x)).size ≤
+        dyingPot store s env slots paid (fun i => live i || i == x.index) live :=
+    fun hOw hDd hp => by
+      have := dyingPot_var (store := store) (s := s) (env := env) (paid := paid)
+        (liveIn := fun i => live i || i == x.index) x (by simp) hDd hp hOw
+      rw [Env.potOf, hold.read_eq rfl] at this
+      exact this
+  have hModes : ∀ P : Prop, ((slots.getD x.index default).mode = .owned ∧ live x.index = false ↔ P)
+      →
+      (modeAt (slots.map Slot.mode) x.index = .owned ∧ live x.index = false ↔ P) := fun P h => by
+    rw [modeAt, Slot.modes_getD]; exact h
   have hB := hArr.borrow
   have hA := hB.values
   have hLenB := hA.lengthBound
@@ -3631,12 +4236,32 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
   by_cases hBig : (536870912 : UInt64) ≤ UInt64.ofNat (el.words (env.get x)).size + e
   · simp (config := { decide := true }) only [ge_iff_le, hBig, ↓reduceIte]
     rw [wp_unreachable_cons]
-    have hW : ¬heap.Within store m (x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat) := by
-      have hc := x.roomCost_copy (slots.map Slot.mode) live (env.get x) e.toNat
-      rw [UInt64.le_iff_toNat_le, hTotal, Elem.words_size] at hBig
+    have hW : ¬heap.Within store m
+        (dyingPot store s env slots paid (fun i => live i || i == x.index) live +
+          x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat) := by
+      rw [UInt64.le_iff_toNat_le, hTotal] at hBig
       simp only [UInt64.reduceToNat] at hBig
-      simp only [Heap.Within, allocCost] at hc ⊢
-      omega
+      intro hw
+      unfold Heap.Within at hw
+      have hws := Elem.words_size el (env.get x)
+      by_cases hMv : (slots.getD x.index default).mode = .owned ∧ live x.index = false
+      · have hO : heap.Owned store p (el.words (env.get x)) := by rw [hMv.1] at hArr; exact hArr
+        have hAddr := hO.address
+        have hL := room_long (n := (el.words (env.get x)).size)
+          (t := (el.words (env.get x)).size + e.toNat) (c := capacityAt store p) hBig (by omega)
+          (by omega)
+        rw [Var.roomCost_move x paid (env.get x) e.toNat ((hModes _ Iff.rfl).mpr hMv)] at hw
+        cases hp : paidAt paid x.index
+        · simp only [hp, Bool.false_eq_true, ↓reduceIte, allocCost] at hw; omega
+        · have := hPotX hMv.1 hMv.2 hp
+          simp only [hp, ↓reduceIte, allocCost] at hw
+          simp only [arrayPot] at this
+          omega
+      · rw [Var.roomCost_copy x paid (env.get x) e.toNat
+          (fun h => hMv ((hModes _ Iff.rfl).mp h))] at hw
+        have hL := room_long (n := 0) (t := (el.words (env.get x)).size + e.toNat) (c := 0) hBig
+          (by omega) (by omega)
+        simp only [allocCost] at hw; omega
     exact (hTrap.of_imp (a := true) fun _ => by simpa using hW) _
   simp (config := { decide := true }) only [ge_iff_le, hBig, ↓reduceIte]
   rw [wp_nil]
@@ -3671,15 +4296,16 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
       simp only [UInt64.toNat_mul, UInt64.toNat_add, UInt64.reduceToNat] at hTotal ⊢
       omega
     have hc : allocCost (allocSize ((UInt64.ofNat (el.words (env.get x)).size + e + 1) * 8)).toNat ≤
-        x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat := by
+        x.roomCost (slots.map Slot.mode) paid live (env.get x) e.toNat := by
       have h1 := allocSize_le_mul (k := (el.words (env.get x)).size + e.toNat + 1)
         (bytes := (UInt64.ofNat (el.words (env.get x)).size + e + 1) * 8)
         (by rw [hBytes]; omega) (by rw [hBytes, hTotal]; omega) (by rw [hBytes, hTotal])
-      have h2 := x.roomCost_copy (slots.map Slot.mode) live (env.get x) e.toNat
-      rw [← Elem.words_size el (env.get x)] at h2
-      simp only [allocCost] at h2 ⊢
+      rw [Var.roomCost_copy x paid (env.get x) e.toNat (fun h => hMove ((hModes _ Iff.rfl).mp h)),
+        ← Elem.words_size el (env.get x)]
+      simp only [allocCost] at h1 ⊢
       omega
-    refine wp_allocCopy hm hAt hCap hc hTrap hB (by rw [hTotal]; exact hTotalLt)
+    refine wp_allocCopy hm hAt hCap (le_trans hc (Nat.le_add_left _ _)) hTrap hB
+      (by rw [hTotal]; exact hTotalLt)
       (by omega)
       (by rw [hBytes]) (by rw [hBytes, hTotal]; omega) hP3 hT3 hN3
       (by show s.params.length ≤ b + 4; omega) (by rw [hp3, hl3]; omega)
@@ -3692,7 +4318,7 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
     have hVarsL := hVars.live_mono (live' := live) fun i h => by simp [h]
     refine hNext heap1 store1 s4 q words (by rw [hSize, hTotal]) hPrefix ⟨?_, hF4, ?_,
       ⟨q, rfl, hOwnedQ⟩, ?_⟩ (by rw [hOther4 _ (by omega) (by omega)]; exact hN3) hQ4
-      (by rw [hv4, hv3]) hTop4
+      (by rw [hv4, hv3]) (by rw [ite_eq_right hMove]; omega)
     · exact hStep.mono (fun _ _ => trivial) fun _ h => h
     · exact (hVarsL.step hStep fun _ _ _ _ _ _ _ _ => trivial).frame hF4 le_rfl
     · intro u y hy _ wy hwy hly c hc d hd
@@ -3705,9 +4331,9 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
   rw [ite_eq_left (show (slots.getD x.index default).mode = .owned ∧ live x.index = false from
     ⟨hOwnedX, hDead⟩)]
   have hOwned : heap.Owned store p (el.words (env.get x)) := by rw [hOwnedX] at hArr; exact hArr
-  have hCost : x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat =
-      allocCost (16 * ((env.get x).size * el.width + e.toNat + 1)) := by
-    simp only [Var.roomCost, modeAt, Slot.modes_getD, hOwnedX, hDead, and_self, ↓reduceIte]
+  have hCost := Var.roomCost_move x paid (env.get x) e.toNat
+    ((hModes _ Iff.rfl).mpr ⟨hOwnedX, hDead⟩)
+  have hws := Elem.words_size el (env.get x)
   have hBaseP := hOwned.base
   have hAddrP := hOwned.address
   have hBelowP := hOwned.below
@@ -3814,8 +4440,22 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
       ⟨by rw [hWrites.1], hWrites.2.1, fun a ha => hWrites.2.2 a (by omega)⟩
     have aW := ((a0.toWords.reframe hF4).reframe hF5).rewrite hWithin (by rw [hWrites.1]) hValues
       (by rw [hSize, hTotal]; omega)
+    have hCapSame : capacityAt store' p = capacityAt store p := by
+      unfold capacityAt
+      dsimp only [store']
+      rw [Memory.read64_write64_disjoint _ _ _ _ (Or.inl (by rw [hCapAddr, hP32]; omega))]
     refine hNext heap store' _ p words (by rw [hSize, hTotal]) (fun j hj => ?_) aW hN5 hQ5 rfl
-      (Nat.le_add_right _ _)
+      (by
+        rw [ite_eq_left ⟨hOwnedX, hDead⟩, hCost]
+        simp only [arrayPot, hCapSame, hSize, hTotal]
+        cases hp : paidAt paid x.index
+        · have := room_inplace_unpaid (n := (el.words (env.get x)).size)
+            (t := (el.words (env.get x)).size + e.toNat) hCapacityP (by omega)
+          simp only [Bool.false_eq_true, ↓reduceIte, allocCost]; omega
+        · have h1 := hPotX hOwnedX hDead hp
+          have := room_inplace_paid (n := (el.words (env.get x)).size)
+            (t := (el.words (env.get x)).size + e.toNat) (c := capacityAt store p) (by omega)
+          simp only [↓reduceIte, allocCost]; simp only [arrayPot] at h1; omega)
     rw [getElem!_pos words j (by rw [hSize, hTotal]; omega)]
     simp only [words, Array.getElem_ofFn]
     rw [ite_eq_left hj, getElem!_pos _ j hj]
@@ -3826,24 +4466,73 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
     have hC4' : ({ s4 with values := s4.values } : Locals).get (b + 3) =
         some (.i64 (store.mem.read64 (p - 32).toUInt32)) := hC4
     refine wp_requestCode hT4' hC4' (by rw [hTotal]; exact hTotalLt) (by rw [hcN]; omega)
-      fun r hr1 hr2 hr3 => ?_
-    have hc : allocCost (allocSize r).toNat ≤
-        x.roomCost (slots.map Slot.mode) live (env.get x) e.toNat := by
-      rw [UInt64.le_iff_toNat_le, hNeed, hcN] at hFits
-      rw [hTotal, hcN] at hr3
-      have hr : r.toNat ≤ 8 * (2 * ((el.words (env.get x)).size + e.toNat + 1)) :=
-        hr3.trans (max_le (by omega) (by omega))
-      have h1 := allocSize_le_mul (by rw [hTotal] at hr1; omega) hr2 hr
-      rw [hCost]
-      rw [Elem.words_size] at h1
-      simp only [allocCost]
+      fun r hr => ?_
+    rw [UInt64.le_iff_toNat_le, hNeed, hcN] at hFits
+    replace hr : (r.toNat = 2 * capacityAt store p ∧
+          8 * ((el.words (env.get x)).size + e.toNat + 1) ≤ 2 * capacityAt store p ∧
+          2 * capacityAt store p ≤ 4294967296) ∨
+        (r.toNat = 4294967296 ∧
+          8 * ((el.words (env.get x)).size + e.toNat + 1) ≤ 2 * capacityAt store p ∧
+          4294967296 < 2 * capacityAt store p) ∨
+        (r.toNat = 8 * ((el.words (env.get x)).size + e.toNat + 1) ∧
+          2 * capacityAt store p < 8 * ((el.words (env.get x)).size + e.toNat + 1)) := by
+      rcases hr with h | h | h
+      · left; omega
+      · right; left; omega
+      · right; right; omega
+    have hRoomX : capacityAt store p < 8 * ((el.words (env.get x)).size + e.toNat + 1) := by
       omega
-    refine wp_allocCopy hm hAt hCap hc (hTrap.imp fun _ h => h) hOwned.borrowed
+    have hr1 : 8 * ((UInt64.ofNat (el.words (env.get x)).size + e).toNat + 1) ≤ r.toNat := by
+      rw [hTotal]; rcases hr with ⟨h, _⟩ | ⟨h, _⟩ | ⟨h, _⟩ <;> omega
+    have hr2 : r.toNat ≤ 4294967296 := by rcases hr with ⟨h, _⟩ | ⟨h, _⟩ | ⟨h, _⟩ <;> omega
+    have hRound := allocSize_round hr2 (by rw [hTotal] at hr1; omega)
+    have hTopP := hOwned.below
+    -- The allocation's charge fits whenever the growth's does; a request of `2 ^ 32` bytes
+    -- follows a block too large for either.
+    have hTrapA : TrapOK (!decide (heap.Within store m (allocCost (allocSize r).toNat))) Q :=
+      hTrap.of_imp fun h => by
+        simp only [Bool.not_eq_true', decide_eq_false_iff_not] at h ⊢
+        refine fun hw => h (hw.mono ?_)
+        unfold Heap.Within at hw
+        rw [hCost]
+        rcases hr with hr | hr | hr
+        · cases hp : paidAt paid x.index
+          · have := room_alloc_unpaid (n := (el.words (env.get x)).size)
+              (t := (el.words (env.get x)).size + e.toNat) hRound.1 hRound.2.1 hRound.2.2
+              hRoomX (Or.inl ⟨hr.1, hr.2.1⟩)
+            simp only [Bool.false_eq_true, ↓reduceIte, allocCost]; omega
+          · have h1 := hPotX hOwnedX hDead hp
+            have := room_alloc_paid (n := (el.words (env.get x)).size)
+              (t := (el.words (env.get x)).size + e.toNat) hRound.1 hRound.2.1 hRound.2.2
+              hRoomX (Or.inl ⟨hr.1, hr.2.1⟩)
+            simp only [↓reduceIte, allocCost]; simp only [arrayPot] at h1; omega
+        · exfalso
+          have hH := room_huge (top := heap.top.toNat) (n := (el.words (env.get x)).size)
+            (t := (el.words (env.get x)).size + e.toNat) hRoomX hCapacityP hr.2.2 (by omega)
+          rw [hCost] at hw
+          cases hp : paidAt paid x.index
+          · simp only [hp, Bool.false_eq_true, ↓reduceIte, allocCost] at hw; omega
+          · have h1 := hPotX hOwnedX hDead hp
+            simp only [hp, ↓reduceIte, allocCost] at hw; simp only [arrayPot] at h1; omega
+        · cases hp : paidAt paid x.index
+          · have := room_alloc_unpaid (n := (el.words (env.get x)).size)
+              (t := (el.words (env.get x)).size + e.toNat) hRound.1 hRound.2.1 hRound.2.2
+              hRoomX (Or.inr hr)
+            simp only [Bool.false_eq_true, ↓reduceIte, allocCost]; omega
+          · have h1 := hPotX hOwnedX hDead hp
+            have := room_alloc_paid (n := (el.words (env.get x)).size)
+              (t := (el.words (env.get x)).size + e.toNat) hRound.1 hRound.2.1 hRound.2.2
+              hRoomX (Or.inr hr)
+            simp only [↓reduceIte, allocCost]; simp only [arrayPot] at h1; omega
+    refine wp_allocCopy (c := allocCost (allocSize r).toNat) hm hAt hCap le_rfl
+      (hTrapA.imp fun _ h => h)
+      hOwned.borrowed
       (by rw [hTotal]; exact hTotalLt) (by rw [hTotal]; omega) hr1 hr2 hP4 hT4 hN4
       (by show s.params.length ≤ b + 4; omega) (by rw [hp4, hl4]; omega)
       (by show s.params.length ≤ b + 5; omega) (by rw [hp4, hl4]; omega)
       (by omega) (by omega) (by omega) (by omega) (by omega) (by omega)
-      fun heap1 store1 s5 q words hSize hPrefix hStep1 hOwnedQ _ hp5 hl5 hOther5 hQ5 hv5 hTop5 => ?_
+      fun heap1 store1 s5 q words hSize hPrefix hStep1 hOwnedQ hShape hp5 hl5 hOther5 hQ5 hv5
+        _ => ?_
     have hP5 : s5.get b = some (.i64 p) := by rw [hOther5 b (by omega) (by omega)]; exact hP4
     simp only [wp_localGet_cons, hP5]
     obtain ⟨⟨hOwnedP1, hCapP1⟩, hApartPQ⟩ := hStep1.owned hOwned trivial
@@ -3864,17 +4553,46 @@ theorem spec_room (hm : Runtime m) {Γ' : List Ty} {el : Elem} (x : Var Γ' (.ar
     have hF5 : Frame b s4 { s5 with values := s4.values } := ⟨hp5, hl5, fun j hj =>
       ⟨by show s5.get j = s4.get j; exact hOther5 j (by omega) (by omega),
         by show s5.get _ = s4.get _; exact hOther5 _ (by omega) (by omega)⟩⟩
+    -- The bound: the move's cost and the new block's potential, against `x`'s potential when it
+    -- is paid.
+    have hQAddr := hOwnedQ.address
+    have hQBase := hOwnedQ.base
+    have hr' : (r.toNat = 2 * capacityAt store p ∧
+          8 * ((el.words (env.get x)).size + e.toNat + 1) ≤ 2 * capacityAt store p) ∨
+        (r.toNat = 8 * ((el.words (env.get x)).size + e.toNat + 1) ∧
+          2 * capacityAt store p < 8 * ((el.words (env.get x)).size + e.toNat + 1)) := by
+      rcases hr with hr | hr | hr
+      · exact Or.inl ⟨hr.1, hr.2.1⟩
+      · exfalso
+        have := hShape.le hr2
+        omega
+      · exact Or.inr hr
     exact hNext _ _ _ q words (by rw [hSize, hTotal]) hPrefix (aG.reframe hF5)
-      (by show s5.get (b + 1) = _; rw [hOther5 _ (by omega) (by omega)]; exact hN4) hQ5 rfl hTop5
+      (by show s5.get (b + 1) = _; rw [hOther5 _ (by omega) (by omega)]; exact hN4) hQ5 rfl (by
+        rw [ite_eq_left ⟨hOwnedX, hDead⟩, hCost]
+        show heap1.top.toNat + arrayPot _ q words.size ≤ _
+        simp only [arrayPot, hCapQ2, hSize, hTotal]
+        cases hp : paidAt paid x.index
+        · have := room_move_unpaid (top := heap.top.toNat) (top' := heap1.top.toNat)
+            (n := (el.words (env.get x)).size) (t := (el.words (env.get x)).size + e.toNat)
+            hRound.1 hRound.2.1 hRound.2.2 hCapacityP hRoomX hr' hShape
+          simp only [Bool.false_eq_true, ↓reduceIte, allocCost]; omega
+        · have h1 := hPotX hOwnedX hDead hp
+          have := room_move_paid (top := heap.top.toNat) (top' := heap1.top.toNat)
+            (n := (el.words (env.get x)).size) (t := (el.words (env.get x)).size + e.toNat)
+            hRound.1 hRound.2.1 hRound.2.2 hCapacityP hRoomX hr' hShape
+          simp only [↓reduceIte, allocCost]; simp only [arrayPot] at h1; omega)
 
 /-- `x.push v`: the value's words from local `base` on, the array taken with room for one more
 element by `Var.roomCode` from local `base + k + 1` on, and the writes of the element's words
 after the array's words. -/
 theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
     {v : Expr S Γ' (.elem e)}
-    (vSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv v env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.push x v) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (vSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.push x v) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -3882,9 +4600,9 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   have h8 := Nat.le_max_right v.width (e.width + 7)
   have hk := e.width_pos
   simp only [Expr.placeArgs] at hPlace
-  have hT : (Expr.push x v).allocs funs bounds (slots.map Slot.mode) live env =
-      v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env +
-        x.roomCost (slots.map Slot.mode) live (env.get x) (wordCount e.width).toNat := rfl
+  have hT : (Expr.push x v).allocs funs bounds (slots.map Slot.mode) paid live env =
+      v.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index) env +
+        x.roomCost (slots.map Slot.mode) paid live (env.get x) (wordCount e.width).toNat := rfl
   have hdS : (Expr.push x v).fits funs fits env = true → v.fits funs fits env = true :=
     fun hd => by simpa [Expr.fits] using hd
   simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
@@ -3892,12 +4610,26 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   have hIn : ∀ k, ((live k || k == x.index) || v.uses k) = true →
       (live k || (Expr.push x v).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact live_assoc _ _ _ h
-  refine vSpec env slots (fun k => live k || k == x.index) h base heap store s hh hpv
+  -- The variables that die in the value, and the array when it dies.
+  have hDiv : dyingPot store s env slots paid (fun k => live k || (Expr.push x v).uses k) live =
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) +
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live := by
+    rw [dyingPot_congr (L0 := fun k => live k || (Expr.push x v).uses k)
+        (L0' := fun k => (live k || k == x.index) || v.uses k)
+        (fun k => by simp only [Expr.uses, Bool.or_assoc]) fun _ => rfl]
+    exact dyingPot_split _ _ _ (fun k h => by simp [h]) (fun k h => by simp [h])
+  refine vSpec env slots paid _ h base heap store s hh hpv
     (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
-      fun _ hw => hw.mono (by rw [hT]; omega))
+      fun _ hw => hw.mono (by rw [hT, hDiv]; omega))
     fun heap1 store1 s1 ws1 a1 hTopV => ?_
+  replace hTopV : v.fits funs fits env = true →
+      heap1.top.toNat ≤ heap.top.toNat + dyingPot store s env slots paid
+        (fun k => (live k || k == x.index) || v.uses k) (fun k => live k || k == x.index) +
+        v.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index) env :=
+    fun hd => Nat.le_trans (Nat.le_add_right _ _) (hTopV hd)
   have hR1 := Ty.rep_elem.mp a1.rep
   subst hR1
   have e1a := a1.toEvolves rfl
@@ -3935,13 +4667,18 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
     ⟨e1.step, e1.frame.trans (hF2.mono (by omega)), e1.holds.agree (hF2.mono (by omega))⟩
   have hp2 : s2.params = s.params := e2.frame.params
   have hh2 : s2.half = h := e2.frame.half.trans hh
+  have hDx : dyingPot store1 s2 env slots paid (fun k => live k || k == x.index) live =
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live :=
+    dyingPot_evolves (hVars.live_mono hIn) e2 (fun k h => by simp [h]) _ _ fun _ h => h
   -- The array, with room for one more element, from local `base + k + 1` on.
-  refine spec_room hm x (b := base + e.width + 1) (ext := base + e.width) (e := wordCount e.width)
+  refine spec_room hm x (paid := paid) (b := base + e.width + 1) (ext := base + e.width) (e :=
+      wordCount e.width)
     (s := s2) (e2.holds.mono (by omega))
     e2.step.at_ (by rw [e2.step.cap m]; exact hCap) (by rw [hp2]; omega)
     (by rw [hh2]; omega) hK2 (by omega) (by rw [wordCount_toNat]; omega)
     (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.of_le
-      (by have := hTopV (hdS (fits_of_not hd)); rw [hT]; omega) (e2.step.cap m))
+      (by have := hTopV (hdS (fits_of_not hd)); rw [hDx]; rw [hT, hDiv] at hw; omega)
+      (e2.step.cap m))
     fun heap2 store2 s3 q words hSize hPrefix aR hN3 hQ3 hv3 hTopR => ?_
   obtain ⟨p, hp, hOwnedQ⟩ := aR.rep
   replace hOwnedQ : heap2.Owned store2 p words := hOwnedQ
@@ -3962,7 +4699,7 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   -- The writes of the element's words after the array's words.
   refine wp_storeWordsCode 0 base e.types (e.toWords (v.denote funs env)) words store2 s3 aR
     (aR.frame.half.trans hh2) hQ3 hN3 hold3 (by rw [e.toWords_length, e.types_length])
-    (by rw [hL64, e.types_length, hSize]; omega) fun store4 a4 => ?_
+    (by rw [hL64, e.types_length, hSize]; omega) fun store4 a4 hCap4 => ?_
   rw [hL64] at a4
   simp only [Nat.add_zero] at a4
   rw [Elem.words_push_into e (v.denote funs env) hSize (fun w hw => by
@@ -3971,19 +4708,49 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   have aFin := After.prepend (hVars.live_mono hIn) e2 ((After.ofWords a4).lower e2.holds (by omega)
     fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
   simp only [wp_localGet_cons, hQ3]
-  simpa [hv3, hs2, setLocal] using hNext heap2 store4 s3 [.i64 p] (aFin.liveIn hIn) fun hd => by
-    have := hTopV (hdS hd); rw [hT]; omega
+  have hBound : (Expr.push x v).fits funs fits env = true →
+      heap2.top.toNat + (if (Expr.push x v).paid (slots.map Slot.mode) paid live then
+          (Ty.array e).pot store4 [.i64 p] ((Expr.push x v).denote funs env) else 0) ≤
+        heap.top.toNat + dyingPot store s env slots paid (fun i => live i || (Expr.push x v).uses i)
+          live + (Expr.push x v).allocs funs bounds (slots.map Slot.mode) paid live env := by
+    intro hd
+    have hV := hTopV (hdS hd)
+    rw [hDx] at hTopR
+    have hWords : (e.words ((env.get x).push (v.denote funs env))).size = words.size := by
+      rw [Elem.words_size, Array.size_push, hSize, Nat.succ_mul]
+    have hPot : (Ty.array e).pot store4 [.i64 p] ((Expr.push x v).denote funs env) =
+        arrayPot store2 p words.size := by
+      show arrayPot store4 p (e.words ((env.get x).push (v.denote funs env))).size = _
+      rw [hWords]; unfold arrayPot; rw [hCap4]
+    rw [hT, hDiv]
+    show heap2.top.toNat + (if (modeAt (slots.map Slot.mode) x.index == .owned &&
+        !live x.index) = true then _ else 0) ≤ _
+    rw [hPot]
+    by_cases hc : (slots.getD x.index default).mode = .owned ∧ live x.index = false
+    · rw [ite_eq_left hc] at hTopR
+      rw [ite_eq_left
+          (by simp only [modeAt, Slot.modes_getD, hc.1, hc.2, beq_self_eq_true, Bool.not_false,
+        Bool.and_self])]
+      omega
+    · rw [ite_eq_right hc] at hTopR
+      rw [ite_eq_right (by
+        simp only [modeAt, Slot.modes_getD, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true']
+        exact hc)]
+      omega
+  simpa [hv3, hs2, setLocal] using hNext heap2 store4 s3 [.i64 p] (aFin.liveIn hIn) hBound
 
 /-- `x ++ y`: the length of `y` in local `base`, the array `x` taken with room for `y`'s elements
 by `Var.roomCode` from local `base + 1` on, with `y` live, the copy of `y`'s elements after `x`'s,
 and the release of `y` when it is owned and dies there. -/
 theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (.array e)) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.append (S := S) x y) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom _ rest Q hTrap hNext
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.append (S := S) x y) env slots
+        paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom _ rest Q hTrap
+      hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
-  have hT : (Expr.append (S := S) x y).allocs funs bounds (slots.map Slot.mode) live env =
-      x.roomCost (slots.map Slot.mode) (fun k => live k || k == y.index) (env.get x)
+  have hT : (Expr.append (S := S) x y).allocs funs bounds (slots.map Slot.mode) paid live env =
+      x.roomCost (slots.map Slot.mode) paid (fun k => live k || k == y.index) (env.get x)
         ((env.get y).size * e.width) := rfl
   have hTot : 2 * s.half ≤ s.params.length + s.locals.length := by
     simp only [Locals.half]; omega
@@ -4024,11 +4791,22 @@ theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (
   have hVars1 : Holds env slots (fun k => (live k || k == y.index) || k == x.index) (base + 1)
       heap store s1 :=
     ((hVars.live_mono hIn).agree hF1).mono (by omega)
-  refine spec_room hm x (b := base + 1) (ext := base) (e := UInt64.ofNat (e.words (env.get y)).size)
+  have e0 : Evolves env slots (fun i => live i || (Expr.append (S := S) x y).uses i)
+      (fun k => (live k || k == y.index) || k == x.index) base heap store s heap store s1 :=
+    ⟨Step.refl hAt _, hF1, (hVars.live_mono hIn).agree hF1⟩
+  -- The potential of `x` when it is paid and dies, which `spec_room` counts.
+  have hDx : dyingPot store s1 env slots paid (fun k => (live k || k == y.index) || k == x.index)
+        (fun k => live k || k == y.index) ≤
+      dyingPot store s env slots paid (fun i => live i || (Expr.append (S := S) x y).uses i)
+        live := by
+    rw [dyingPot_evolves hVars e0 hIn _ _ fun _ h => h]
+    exact dyingPot_mono (fun k h => hIn k h) fun k h => by simp [h]
+  refine spec_room hm x (paid := paid) (b := base + 1) (ext := base) (e := UInt64.ofNat (e.words
+      (env.get y)).size)
     (s := s1) hVars1 hAt hCap (by show s.params.length ≤ base + 1; omega)
     (by rw [hh1', hh]; omega)
     hM1 (by omega) (by rw [hMY]; exact Nat.le_of_lt hmY)
-    (hTrap.alloc (by simp [Expr.aborts]) fun _ hw => hw.mono (by rw [hT, hExt]))
+    (hTrap.alloc (by simp [Expr.aborts]) fun _ hw => hw.mono (by have := hDx; rw [hT, hExt]; omega))
     fun heap1 store1 s2 q words hSize hPrefix aR hN2 hQ2 hv2 hTopR => ?_
   rw [hMY] at hSize
   have hp2 : s2.params = s.params := aR.frame.params
@@ -4113,6 +4891,8 @@ theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (
     ⟨by rw [hW.1], hW.2.1, fun a ha => hW.2.2 a (by omega)⟩
   have aW := aR.rewrite hWithin (by rw [hW.1]) hA2
     (by rw [Elem.words_append, Array.size_append]; omega)
+  have hCap2 : capacityAt store2 p = capacityAt store1 p :=
+    (hOwnedQ.rewrite hWithin hA2 (by rw [Elem.words_append, Array.size_append]; omega)).2
   have hF4 : Frame (base + 1) s2 s4 := ⟨hp4.trans rfl, by rw [hl4]; simp [s3, setLocal],
     fun j hj => ⟨by rw [hOther4 j (by omega), hGet3 j (by omega)],
       by rw [hOther4 _ (by omega), hGet3 _ (by omega)]⟩⟩
@@ -4121,18 +4901,42 @@ theorem spec_append (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x y : Var Γ' (
     (sel := fun k => k == y.index && !live k) hVars1 (After.ofWords (aW.reframe hF4))
     (fun k h => by simp [h]) (fun k h => by
       simp only [Bool.and_eq_true, beq_iff_eq] at h; simp [h.1])
-    (fun k h => by simp [h]) fun heap2 store3 a' hTop2 => ?_
+    (fun k h => by simp [h]) fun heap2 store3 a' hTop2 hRegions => ?_
   have hQ4 : s4.get (base + 5) = some (.i64 p) := by
     rw [hOther4 _ (by omega), hGet3 _ (by omega)]; exact hQ2
   simp only [wp_localGet_cons, hQ4]
-  have e0 : Evolves env slots (fun i => live i || (Expr.append (S := S) x y).uses i)
-      (fun k => (live k || k == y.index) || k == x.index) base heap store s heap store s1 :=
-    ⟨Step.refl hAt _, hF1, (hVars.live_mono hIn).agree hF1⟩
   have aFin := After.prepend hVars e0 (a'.lower ((hVars.live_mono hIn).agree
     hF1) (by omega) fun k h => by simp [h]) hIn fun k h => by simp [h]
   have hv3 : s3.values = s.values := by rw [hs3]; exact hv2
-  simpa [hv4, hv3] using hNext heap2 store3 s4 [.i64 p] aFin fun _ => by
-    rw [hTop2, hT, ← hExt]; exact hTopR
+  have hBound : (Expr.append (S := S) x y).fits funs fits env = true →
+      heap2.top.toNat + (if (Expr.append (S := S) x y).paid (slots.map Slot.mode) paid live then
+          (Ty.array e).pot store3 [.i64 p] ((Expr.append (S := S) x y).denote funs env) else 0) ≤
+        heap.top.toNat + dyingPot store s env slots paid
+          (fun i => live i || (Expr.append (S := S) x y).uses i) live +
+          (Expr.append (S := S) x y).allocs funs bounds (slots.map Slot.mode) paid live env := by
+    intro _
+    have hPot : (Ty.array e).pot store3 [.i64 p] ((Expr.append (S := S) x y).denote funs env) =
+        arrayPot store1 p words.size := by
+      show (Ty.array e).pot store3 [.i64 p] (env.get x ++ env.get y) = _
+      rw [Ty.pot_of_blocks _ _ _ hRegions]
+      show arrayPot store2 p (e.words (env.get x ++ env.get y)).size = _
+      rw [Elem.words_append, Array.size_append, ← hSize]; unfold arrayPot; rw [hCap2]
+    rw [hTop2, hT, ← hExt, hPot]
+    show heap1.top.toNat + (if (modeAt (slots.map Slot.mode) x.index == .owned &&
+        !(live x.index || x.index == y.index)) = true then _ else 0) ≤ _
+    by_cases hc : (slots.getD x.index default).mode = .owned ∧
+        (live x.index || x.index == y.index) = false
+    · rw [ite_eq_left hc] at hTopR
+      rw [ite_eq_left
+          (by simp only [modeAt, Slot.modes_getD, hc.1, hc.2, beq_self_eq_true, Bool.not_false,
+        Bool.and_self])]
+      omega
+    · rw [ite_eq_right hc] at hTopR
+      rw [ite_eq_right (by
+        simp only [modeAt, Slot.modes_getD, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true']
+        exact hc)]
+      omega
+  simpa [hv4, hv3] using hNext heap2 store3 s4 [.i64 p] aFin hBound
 
 /-- `LeanExe.eraseAt x i`: the position in local `base`, the array as owned in local `base + 1`,
 its length in local `base + 2`, and, when the position is below the size, the element's first
@@ -4140,9 +4944,11 @@ word in local `base + 3`, the move of the words after the element down by its wo
 write of the shorter length. -/
 theorem spec_eraseAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
     {i : Expr S Γ' .word}
-    (iSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv i env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.eraseAt x i) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (iSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv i env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.eraseAt x i) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -4151,8 +4957,8 @@ theorem spec_eraseAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.
   have hk := e.width_pos
   have hcw : copyWidth (Ty.array e) = 4 := rfl
   simp only [Expr.placeArgs] at hPlace
-  have hT : (Expr.eraseAt x i).allocs funs bounds (slots.map Slot.mode) live env =
-      i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env +
+  have hT : (Expr.eraseAt x i).allocs funs bounds (slots.map Slot.mode) paid live env =
+      i.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index) env +
         x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
   have hdS : (Expr.eraseAt x i).fits funs fits env = true → i.fits funs fits env = true :=
     fun hd => by simpa [Expr.fits] using hd
@@ -4161,7 +4967,11 @@ theorem spec_eraseAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.
   have hIn : ∀ k, ((live k || k == x.index) || i.uses k) = true →
       (live k || (Expr.eraseAt x i).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact live_assoc _ _ _ h
-  refine iSpec env slots (fun k => live k || k == x.index) h base heap store s hh hpv
+  have hDi : dyingPot store s env slots paid (fun k => (live k || k == x.index) || i.uses k)
+        (fun k => live k || k == x.index) ≤
+      dyingPot store s env slots paid (fun k => live k || (Expr.eraseAt x i).uses k) live :=
+    dyingPot_mono hIn fun k h => by simp [h]
+  refine iSpec env slots paid _ h base heap store s hh hpv
     (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
@@ -4209,8 +5019,8 @@ theorem spec_eraseAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.
     have aX1 := (After.ofWords aX).lower e1.holds (Nat.le_succ base) fun k h => by simp [h]
     have aX2 := After.prepend (hVars.live_mono hIn) e1 aX1 (fun k h => by simp [h])
       fun k h => by simp [h]
-    simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX2.liveIn hIn) fun hd => by
-      have := hTopI (hdS hd); rw [hT]; omega
+    simpa [hv'] using hNext heap3 store4 _ [.i64 p] (aX2.liveIn hIn) fun hd => top_unpaid rfl (by
+      have := hTopI (hdS hd); rw [hT]; omega)
   have hA := hOwned.values
   have hLength := hA.lengthBound
   have hnk : (env.get x).size * e.width < 536870912 := by
@@ -4414,10 +5224,12 @@ in local `base + k + 4`, the move of the words from there up by the element's wo
 writes of the value's words, or otherwise the old length written back. -/
 theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.array e))
     {i : Expr S Γ' .word} {v : Expr S Γ' (.elem e)}
-    (iSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv i env slots live)
-    (vSpec : ∀ env slots live, CodeSpec m funs bounds fits host pv v env slots live) :
-    ∀ env slots live, CodeSpec m funs bounds fits host pv (Expr.insertAt x i v) env slots live := by
-  intro env slots live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap
+    (iSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv i env slots paid live)
+    (vSpec : ∀ env slots paid live, CodeSpec m funs bounds fits host pv v env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv (Expr.insertAt x i v) env slots paid
+        live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q
+      hTrap
     hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -4426,10 +5238,11 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
   have hx := (Nat.le_max_right (1 + v.width) (e.width + 8)).trans (Nat.le_max_right i.width _)
   have hk := e.width_pos
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  have hT : (Expr.insertAt x i v).allocs funs bounds (slots.map Slot.mode) live env =
-      i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index || v.uses j) env +
-        v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env +
-        x.roomCost (slots.map Slot.mode) live (env.get x) (wordCount e.width).toNat := rfl
+  have hT : (Expr.insertAt x i v).allocs funs bounds (slots.map Slot.mode) paid live env =
+      i.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index || v.uses j)
+          env +
+        v.allocs funs bounds (slots.map Slot.mode) paid (fun j => live j || j == x.index) env +
+        x.roomCost (slots.map Slot.mode) paid live (env.get x) (wordCount e.width).toNat := rfl
   have hdS : (Expr.insertAt x i v).fits funs fits env = true →
       i.fits funs fits env = true ∧ v.fits funs fits env = true :=
     fun hd => by simpa [Expr.fits] using hd
@@ -4438,7 +5251,24 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
   have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
       (live k || (Expr.insertAt x i v).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact set_live_index _ _ _ _ h
-  refine iSpec env slots (fun k => live k || k == x.index || v.uses k) h base heap store s hh hpv
+  -- The variables that die in the position, in the value, and the array when it dies.
+  have hDiv : dyingPot store s env slots paid
+        (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => live k || k == x.index || v.uses k) +
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) +
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live ≤
+      dyingPot store s env slots paid (fun k => live k || (Expr.insertAt x i v).uses k) live := by
+    rw [dyingPot_split _ (fun k => live k || k == x.index || v.uses k) live
+      (fun k h => hIn k (by simp [h])) (fun k h => by simp [h]),
+      dyingPot_split (fun k => live k || k == x.index || v.uses k) (fun k => live k || k == x.index)
+        live (fun k h => by simp [h]) (fun k h => by simp [h]),
+      dyingPot_congr (L0 := fun k => live k || (Expr.insertAt x i v).uses k)
+        (L0' := fun k => (live k || k == x.index || v.uses k) || i.uses k)
+        (fun k => by simp only [Expr.uses, Bool.or_comm, Bool.or_left_comm])
+        fun _ => rfl]
+    omega
+  refine iSpec env slots paid _ h base heap store s hh hpv
     (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
@@ -4451,13 +5281,29 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
   have hp1 := e1.frame.params
   have hh1 := e1.frame.half.trans hh
   -- The value's words, from local `base + 1` on.
-  refine vSpec env slots (fun k => live k || k == x.index) h (base + 1) heap1 store1 _ hh1
+  have hDv : ∀ s1' : Locals, Evolves env slots (fun k => (live k || k == x.index || v.uses k) ||
+        i.uses k) (fun k => live k || k == x.index || v.uses k) base heap store s heap1 store1
+        s1' →
+      dyingPot store1 s1' env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) =
+      dyingPot store s env slots paid (fun k => (live k || k == x.index) || v.uses k)
+        (fun k => live k || k == x.index) := fun _ e =>
+    dyingPot_evolves (hVars.live_mono hIn) e (fun k h => by simp [h]) _ _ fun _ h => h
+  refine vSpec env slots paid _ h (base + 1) heap1 store1 _ hh1
     (hp1.trans hpv) (e1.holds.mono (Nat.le_succ base)) e1.step.at_ (by rw [e1.step.cap m]; exact
         hCap)
     (by rw [hp1]; omega) (by omega) hPlace.2 _ _
     (hTrap.part (fun h => by simp only [Bool.not_eq_true'] at h; simp [Expr.fits, h])
       (fun _ => by simp [Expr.aborts])
-      fun hd hw => hw.shift (hTopI (hdS (fits_of_not hd)).1) (by rw [hT]; omega) (e1.step.cap m))
+      fun hd hw => by
+        have := hTopI (hdS (fits_of_not hd)).1
+        rw [hDv _ e1]
+        exact hw.shift (c1 := dyingPot store s env slots paid
+            (fun k => (live k || k == x.index || v.uses k) || i.uses k)
+            (fun k => live k || k == x.index || v.uses k) +
+            i.allocs funs bounds (slots.map Slot.mode) paid
+              (fun j => live j || j == x.index || v.uses j) env)
+          (by omega) (by rw [hT]; omega) (e1.step.cap m))
     fun heap2 store2 s2 ws2 a2 hTopV => ?_
   have hR2 := Ty.rep_elem.mp a2.rep
   subst hR2
@@ -4500,13 +5346,22 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
   have hh3 : s3.half = h := e3.frame.half.trans hh1
   have hI3 : s3.get base = some (.i64 (i.denote funs env)) :=
     (hF3.below base (by omega)).1.trans hI2
+  have hDx : dyingPot store2 s3 env slots paid (fun k => live k || k == x.index) live =
+      dyingPot store s env slots paid (fun k => live k || k == x.index) live := by
+    rw [dyingPot_evolves (e1.holds.mono (Nat.le_succ base)) e3 (fun k h => by simp [h]) _ _
+      fun _ h => h]
+    exact dyingPot_evolves (hVars.live_mono hIn) e1 (fun k h => by simp [h]) _ _
+      fun k h => by simp [h]
   -- The array, with room for one more element, from local `base + k + 2` on.
-  refine spec_room hm x (b := base + e.width + 2) (ext := base + e.width + 1)
+  refine spec_room hm x (paid := paid) (b := base + e.width + 2) (ext := base + e.width + 1)
     (e := wordCount e.width) (s := s3) (e3.holds.mono (by omega))
     e3.step.at_ (by rw [e3.step.cap m, e1.step.cap m]; exact hCap) (by rw [hp3]; omega)
     (by rw [hh3]; omega) hK3 (by omega) (by rw [wordCount_toNat]; omega)
     (hTrap.alloc (by simp [Expr.aborts]) fun hd hw => hw.of_le
-      (by have := hTopI (hdS (fits_of_not hd)).1; have := hTopV (hdS (fits_of_not hd)).2; rw [hT]; omega)
+      (by
+        have := hTopI (hdS (fits_of_not hd)).1; have h2 := hTopV (hdS (fits_of_not hd)).2
+        rw [hDv _ e1] at h2
+        rw [hDx]; rw [hT] at hw; omega)
       (by rw [e3.step.cap m, e1.step.cap m]))
     fun heap3 store3 s4 q words hSize hPrefix aR hN4 hQ4 hv4 hTopR => ?_
   obtain ⟨p0, hp0, hOwnedQ⟩ := aR.rep
@@ -4540,20 +5395,56 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
     (LocalsHold.frame aR.frame (by rw [e.values_length, e.types_length])
       (by rw [e.types_length]; omega)).mpr hold3
   -- The rest of the code, from the array after the writes or with the old length.
+  have hCapW : ∀ (store' : Store Unit) (ws' : Array UInt64),
+      Memory.WritesRange store3 store' p0.toNat (p0.toNat + 8 * (words.size + 1)) →
+      UInt64Array.At store' p0 ws' → ws'.size ≤ words.size →
+      capacityAt store' p0 = capacityAt store3 p0 := fun store' ws' hW hA hLe => by
+    have := hOwnedQ.capacity
+    exact (hOwnedQ.rewrite ⟨by rw [hW.1], hW.2.1, fun a ha => hW.2.2 a (by omega)⟩ hA
+      (by omega)).2
+  rw [hDx] at hTopR
   have hFinish : ∀ (store5 : Store Unit) (s' : Locals) (ws : Array UInt64),
       s'.values = s.values →
       ws = e.words (LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env)) →
+      capacityAt store5 p0 = capacityAt store3 p0 → ws.size ≤ words.size →
       After env slots (fun k => live k || k == x.index) live (base + e.width + 2) heap2 store2 s3
         (.array .word) .owned ws heap3 store5 s' [.i64 p0] →
       wp m rest Q store5 { s' with values := .i64 p0 :: s'.values } host := by
-    rintro store5 s' ws hv' rfl aX
+    rintro store5 s' ws hv' rfl hCap5 hLe aX
     have aX1 := (After.ofWords aX).lower e3.holds (by omega) fun k h => by simp [h]
     have aX2 := After.prepend (e1.holds.mono (Nat.le_succ base)) e3 aX1
       (fun k h => by simp [h]) fun k h => by simp [h]
     have aX3 := After.prepend (hVars.live_mono hIn) e1 (aX2.lower e1.holds (Nat.le_succ base)
       fun k h => by simp [h]) (fun k h => by simp [h]) fun k h => by simp [h]
-    simpa [hv'] using hNext heap3 store5 _ [.i64 p0] (aX3.liveIn hIn) fun hd => by
-      have := hTopI (hdS hd).1; have := hTopV (hdS hd).2; rw [hT]; omega
+    have hBound : (Expr.insertAt x i v).fits funs fits env = true →
+        heap3.top.toNat + (if (Expr.insertAt x i v).paid (slots.map Slot.mode) paid live then
+            (Ty.array e).pot store5 [.i64 p0] ((Expr.insertAt x i v).denote funs env) else 0) ≤
+          heap.top.toNat + dyingPot store s env slots paid
+            (fun k => live k || (Expr.insertAt x i v).uses k) live +
+            (Expr.insertAt x i v).allocs funs bounds (slots.map Slot.mode) paid live env := by
+      intro hd
+      have := hTopI (hdS hd).1; have h2 := hTopV (hdS hd).2
+      rw [hDv _ e1] at h2
+      have hPot : (Ty.array e).pot store5 [.i64 p0] ((Expr.insertAt x i v).denote funs env) ≤
+          arrayPot store3 p0 words.size := by
+        show arrayPot store5 p0 (e.words (LeanExe.insertAt (env.get x) (i.denote funs env)
+          (v.denote funs env))).size ≤ _
+        unfold arrayPot; rw [hCap5]; omega
+      rw [hT]
+      show heap3.top.toNat + (if (modeAt (slots.map Slot.mode) x.index == .owned &&
+          !live x.index) = true then _ else 0) ≤ _
+      by_cases hc : (slots.getD x.index default).mode = .owned ∧ live x.index = false
+      · rw [ite_eq_left hc] at hTopR
+        rw [ite_eq_left
+            (by simp only [modeAt, Slot.modes_getD, hc.1, hc.2, beq_self_eq_true, Bool.not_false,
+        Bool.and_self])]
+        omega
+      · rw [ite_eq_right hc] at hTopR
+        rw [ite_eq_right (by
+          simp only [modeAt, Slot.modes_getD, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true']
+          exact hc)]
+        omega
+    simpa [hv'] using hNext heap3 store5 _ [.i64 p0] (aX3.liveIn hIn) hBound
   -- The test of the position.
   simp only [wp_localGet_cons, Locals.get_values, hI4, hN4']
   rw [wp_divCode hk, words_div hk hnk]
@@ -4640,7 +5531,7 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
       (shiftUp words ((i.denote funs env).toNat * e.width) ((env.get x).size * e.width) e.width)
       store7 s7 aS (hFrame7.half.trans hh4) hQ7 hW7' hold7
       (by rw [e.toWords_length, e.types_length])
-      (by rw [hW64, e.types_length, shiftUp_size, hSize]; omega) fun store8 a8 => ?_
+      (by rw [hW64, e.types_length, shiftUp_size, hSize]; omega) fun store8 a8 hCap8 => ?_
     rw [hW64] at a8
     simp only [Nat.add_zero] at a8
     have hEq : LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env) =
@@ -4650,7 +5541,9 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
     simp only [List.take_zero, List.drop_zero, List.nil_append, hQ7]
     rw [show s4.values = s7.values from (hv7.trans rfl).symm]
     exact hFinish store8 s7 _ (hv7.trans hv4)
-      (by rw [hEq]; exact Elem.words_insertIdx e (v.denote funs env) hc hSize hPrefix') a8
+      (by rw [hEq]; exact Elem.words_insertIdx e (v.denote funs env) hc hSize hPrefix')
+      (hCap8.trans (hCapW store7 _ hW7 hA7 (le_of_eq (shiftUp_size ..))))
+      (le_of_eq (by rw [writeWords_size, shiftUp_size])) a8
   · rw [ite_eq_right (by simp [hLe, hc])]
     simp only [wp_localGet_cons, Locals.get_values, hQ4', wp_wrapI64_cons, wrap_toUInt32, hN4']
     simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
@@ -4660,10 +5553,13 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
     simp only [List.take_zero, List.drop_zero, List.nil_append, hQ4']
     have hEq : LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env) = env.get x :=
       dite_eq_right hc
+    have hWL := writeLength_frame store3 p0 words.size ((env.get x).size * e.width) hFitQ
+    have hAL := hAQ.writeLength (by omega : (env.get x).size * e.width ≤ words.size)
     exact hFinish _ s4 _ hv4
       (by rw [hEq]; exact Elem.words_extract_prefix e (by omega) hPrefix')
-      (aR.rewriteRange (writeLength_frame store3 p0 words.size ((env.get x).size * e.width) hFitQ)
-        (hAQ.writeLength (by omega)) (by simp only [Array.size_extract]; omega))
+      (hCapW _ _ hWL hAL (by simp only [Array.size_extract]; omega))
+      (by simp only [Array.size_extract]; omega)
+      (aR.rewriteRange hWL hAL (by simp only [Array.size_extract]; omega))
 
 end Cases
 
@@ -4672,7 +5568,7 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (bounds : Bou
     (fits : Fits S) (host : HostEnv Unit) (hm : Runtime m) {pv : List Value} {d0 : UInt64}
     (hCalls : CallsAt m funs bounds fits d0) {Γ : List Ty} {t : Ty} (expr : Expr S Γ t) :
     (expr.depthCalls = true → pv.head? = some (.i64 d0)) →
-    ∀ env slots live, CodeSpec m funs bounds fits host pv expr env slots live := by
+    ∀ env slots paid live, CodeSpec m funs bounds fits host pv expr env slots paid live := by
   induction expr with
   | word value => intro _; exact spec_word value
   | bool value => intro _; exact spec_bool value
@@ -4799,15 +5695,17 @@ theorem body_code_spec {S : List Sig} {params : List Ty} {result : Ty} (modes : 
   refine wp_releaseWhere hm hVars hAt (fun _ _ => rfl) fun heap1 store1 e hTop1 => ?_
   have e' := e.mono (live' := fun i => false || body.uses i) fun i h => by simpa using h
   refine Expr.code_spec m funs bounds fits host hm hCalls body hDepth args
-    (paramSlots params modes p0) (fun _ => false) h (p0 + widthSum params)
+    (paramSlots params modes p0) [] (fun _ => false) h (p0 + widthSum params)
     heap1 store1 s hh rfl e'.holds e'.step.at_ (by rw [e'.step.cap m]; exact hCap) hBase (by omega)
     placeArgs _ _
     (hTrap.part (fun h => h)
       (fun h => by
         rw [← Slot.any_map, paramSlots_modes] at h
         exact trap_left _ _ _ h)
-      fun _ hw => hw.of_le (by rw [hTop1, hModes]; simp only [bodyBound]; omega) (e'.step.cap m))
+      fun _ hw => hw.of_le (by rw [hTop1, hModes, dyingPot_nil]; simp only [bodyBound]; omega)
+        (e'.step.cap m))
     fun heap' store' s' ws a hTopB => ?_
+  simp only [dyingPot_nil, Nat.add_zero] at hTopB
   have a' := After.prepend hVars e' a (fun _ _ => rfl) fun _ h => nomatch h
   refine After.coerce hm a' (fun _ => rfl) (Nat.le_add_right _ _)
     (by rw [a'.frame.params]; omega) (a'.frame.half.trans hh) (by omega)

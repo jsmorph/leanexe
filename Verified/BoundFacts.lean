@@ -9,14 +9,23 @@ namespace Verified
 /-- The growth of `top` for a block of `words` words after its length word. -/
 def blockCost (words : Nat) : Nat := allocCost ((words + 1) * 8)
 
-/-- The growth of `top` for the block into which an owned array of `words` words grows. -/
-def growCost (words : Nat) : Nat := allocCost (16 * (words + 1))
+/-- The growth of `top` for an owned array that is not paid and grows to `words` words, `ext` of
+them added: a block of twice the new length's bytes, and twice the added bytes, which the array
+passes on as potential. -/
+def growCost (words ext : Nat) : Nat := allocCost (16 * (words + 1)) + 16 * ext
+
+/-- The charge for a paid owned array that grows by `ext` words: a header and four times the added
+bytes, which with the array's potential pay for a move and pass the potential on. -/
+def paidGrowCost (ext : Nat) : Nat := allocCost (32 * ext)
 
 theorem blockCost_eq (words : Nat) : blockCost words = 8 * words + 56 := by
   simp only [blockCost, allocCost]; omega
 
-theorem growCost_eq (words : Nat) : growCost words = 16 * words + 64 := by
+theorem growCost_eq (words ext : Nat) : growCost words ext = 16 * words + 16 * ext + 64 := by
   simp only [growCost, allocCost]; omega
+
+theorem paidGrowCost_eq (ext : Nat) : paidGrowCost ext = 32 * ext + 48 := by
+  simp only [paidGrowCost, allocCost]; omega
 
 /-- `sumBelow` of terms that are all `0`, stated for any `f` so that the conclusion is the term it
 rewrites. -/
