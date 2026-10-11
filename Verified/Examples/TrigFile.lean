@@ -16,11 +16,13 @@ theorem trig_file :
   LeanExe.Pipeline.encode_eq_of_toList (by decide +kernel)
 
 /-- `build/verified/trig.wasm` decodes to the module of `TrigTheorem.sin_bytes_accuracy` and
-`TrigTheorem.cos_bytes_accuracy`. -/
+`TrigTheorem.cos_bytes_accuracy`.  The proof takes the bytes from both theorems together, so its
+axiom report covers both. -/
 theorem trig_file_decode :
     Wasm.Encoding.decode (binary_file% "../../build/verified/trig.wasm") =
       .ok Trig.compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := TrigTheorem.sin_bytes_accuracy
+  obtain ⟨⟨bytes, henc, hdec, _⟩, _⟩ :=
+    And.intro TrigTheorem.sin_bytes_accuracy TrigTheorem.cos_bytes_accuracy
   have h : binary_file% "../../build/verified/trig.wasm" = bytes :=
     Except.ok.inj (trig_file.symm.trans henc)
   rw [h]

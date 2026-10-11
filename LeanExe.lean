@@ -133,6 +133,7 @@ import LeanExe.ProofKit.F64ExponentBounds
 import LeanExe.ProofKit.F64FullStep
 import LeanExe.ProofKit.F64GridExact
 import LeanExe.ProofKit.F64Halving
+import LeanExe.ProofKit.F64HighWord
 import LeanExe.ProofKit.F64InternalEnergy
 import LeanExe.ProofKit.F64Magnitude
 import LeanExe.ProofKit.F64MagnitudeEnclosure
@@ -168,10 +169,12 @@ import LeanExe.ProofKit.F64RationalBounds
 import LeanExe.ProofKit.F64RationalNormalize
 import LeanExe.ProofKit.F64RationalScale
 import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64RelativeStepWide
 import LeanExe.ProofKit.F64RoundDyadic
 import LeanExe.ProofKit.F64RoundFinish
 import LeanExe.ProofKit.F64RoundRational
 import LeanExe.ProofKit.F64RoundScaled
+import LeanExe.ProofKit.F64RoundedStep
 import LeanExe.ProofKit.F64RounderEnclosure
 import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
@@ -187,6 +190,7 @@ import LeanExe.ProofKit.F64SqrtEnclosure
 import LeanExe.ProofKit.F64SqrtFinite
 import LeanExe.ProofKit.F64SqrtRounding
 import LeanExe.ProofKit.F64StageBounds
+import LeanExe.ProofKit.F64Sterbenz
 import LeanExe.ProofKit.F64StrictOrder
 import LeanExe.ProofKit.F64Sub
 import LeanExe.ProofKit.F64SymmetricFaces
