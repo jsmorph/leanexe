@@ -30054,3 +30054,26 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
 
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: The `tan` kernel (track `trig`)
+
+`TanWords` states `Tan.kernelTan` on words.  Below the high word `0x3FE59428` (`|x| < 0.67434`), `smallW` adds the correction `corrW x y` to `x` and, for odd quadrants, replaces `x + r` by the compensated reciprocal `-1/(x + r)`.  From `0x3FE59428` on, `bigW` evaluates the same correction at `x' = π/4 - |x + y|` and returns `±(v - 2 (x' - (w ^ 2/(w + v) - r)))` with `v = ±1`.  `TanPoly.corr_AB` bounds the correction's rounding error by `1.336 u X ^ 3 + 1.8 u X ^ 5` plus terms in `u ^ 2` and `η`, `TanMath.tan_tail_expand` bounds `tan (x + y)` against the kernel polynomial with `TanKernelPoly.tan_kernel_error`, and `TanEven.even_within` proves the even path within one step of `tan r` for `2 ^ -70 ≤ |x| ≤ 0.67434` and a reduction error up to `|r| / 2 ^ 59`.  It uses `TanStep.near_bin` (same binade, error below one spacing) above `|x| = 0.4643` and `TanStep.near_rel` (error below `0.74 u |tan r|`) below.
+
+The odd path rounds `w = x + r`, truncates `w` and `-1/w` to their high 32 bits, and corrects the quotient with `t z`, which is exact because both heads have 21 significant bits.  `TanTrunc` proves the truncation facts and a Sterbenz lemma for `z - x`, `TanComp.comp_real` bounds the correction in real numbers scaled by `w`, and `TanOdd.odd_spec` gives a real `τ`, to which the result is nearest, within `u / (2 ^ 11 |W|)` of `-1/W` for `W = x + r`.
+
+The first build of `TanOdd` held minideb1's Lean slot for 26 minutes at the 4 GB memory limit until the coordinator stopped it.  Probes of parts of the module (`build/transcendentals/P1*.lean`, `p1*.log`) with a monitor of the Lean process's anonymous memory located the cause in one declaration, `smallW_odd : smallW x y true = oddW x (corrW x y) := rfl`.  The definitional check unfolded `Wasm.IEEE64.add` and the other operations instead of the two definitions and passed 3 GB within 16 seconds, while the definition alone stayed at the import baseline of 0.47 GB.  `simp only [smallW, oddW, mask, ...]` proves the same equation in 6 seconds.  The proof of `odd_spec` is also split into one lemma per rounding step, and the module now builds in about 20 seconds with 0.55 GB of anonymous memory (`tan-odd-9.log`, `tan-odd-9.mem`).  Equations between definitions built from IEEE operations should be proved with `simp only` and the definitions, never with `rfl`.  The resident set of a Lean process includes about 6.5 GB of mapped `.olean` files, so the monitor (`build/transcendentals/memwatch.sh`) reads `RssAnon`.
+
+| Module | Result |
+|---|---|
+| `TanStep` | `near_rel`, `near_bin`, `word_value`, `binade`: final steps for a nearest result. |
+| `TanWords` | `smallW`, `bigW`, `kernelTan_small_bits`, `kernelTan_big_bits`. |
+| `TanPoly`, `TanMath` | `corr_AB`, `polyR_AB`, `tan_tail_expand`, `tan_diff`. |
+| `TanTrunc`, `TanEven` | `trunc_spec`, `sterbenz`, `even_sum`, `even_within`. |
+| `TanComp`, `TanOdd` | `comp_real`, `odd_spec`. |
+
+- [x] Even path below `0x3FE59428` (`even_within`).
+- [x] Odd path below `0x3FE59428`: the real error (`odd_spec`).
+- [ ] Odd path: the final step (`odd_within`).
+- [ ] From `0x3FE59428` on: the argument `x'`, the real error (`TanBigReal`), and the final step for both parities.
+- [ ] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
+- [ ] `TanTheorem` (byte theorem) and `TanFile`.
