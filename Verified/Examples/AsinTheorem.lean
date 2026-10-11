@@ -67,16 +67,12 @@ theorem signed_asin (x z : Float) (hx0 : value x.toBits ≠ 0)
       simp only [show (32 : UInt64).toNat % 64 = 32 from rfl,
         show (31 : UInt64).toNat % 64 = 31 from rfl, Nat.shiftRight_eq_div_pow]
       omega
-    cases h : (x.toBits >>> 32 >>> 31 == 1)
-    · simp only [beq_eq_false_iff_ne, ne_eq] at h
-      simp only [Bool.not_false, beq_iff_eq]
-      apply UInt64.toNat_inj.mp
-      have h2 : (x.toBits >>> 32 >>> 31).toNat ≠ 1 := fun h3 => h (UInt64.toNat_inj.mp h3)
-      simp
-      omega
-    · simp only [beq_iff_eq] at h
-      rw [h]
-      rfl
+    have hcases : x.toBits >>> 32 >>> 31 = 0 ∨ x.toBits >>> 32 >>> 31 = 1 := by
+      rcases (by omega : (x.toBits >>> 32 >>> 31).toNat = 0 ∨
+          (x.toBits >>> 32 >>> 31).toNat = 1) with h | h
+      · exact Or.inl (UInt64.toNat_inj.mp (by rw [h]; rfl))
+      · exact Or.inr (UInt64.toNat_inj.mp (by rw [h]; rfl))
+    rcases hcases with h | h <;> rw [h] <;> decide
   rw [h01, F64UpperWord.sign_test]
   cases hs : Wasm.IEEE64.sign x.toBits
   · have hpos : 0 ≤ value x.toBits := by
