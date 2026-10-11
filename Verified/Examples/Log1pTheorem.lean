@@ -1,4 +1,5 @@
 import Verified.Examples.Log1pTheoremCorr
+import LeanExe.ProofKit.F64Near
 
 /-!
 `Log1p.log1p x` within one step of `log (1 + x)` for every finite `x > -1`.  The proof follows the
@@ -280,9 +281,9 @@ theorem word_value (w : UInt64) (q : ℚ) (h : PolyBound.ratOfWord w = q) : valu
 
 /-- `x = 1 - 2 ^ -53`: `1 + x` rounds to 2, the correction is 0 against `t = -2 ^ -54`, and
 `f = 0`. -/
-theorem special_two (x : Float) (hxb : x.toBits = 0x3FEFFFFFFFFFFFFF) :
-    F64SignedRounding.WithinSteps 1 (Real.log (1 + value x.toBits))
-      (mainTail (1.0 + x) (cOf x (1.0 + x) / (1.0 + x)) (kOf (1.0 + x))).toBits := by
+theorem special_two_near (x : Float) (hxb : x.toBits = 0x3FEFFFFFFFFFFFFF) :
+    F64Near.Near (mainTail (1.0 + x) (cOf x (1.0 + x) / (1.0 + x)) (kOf (1.0 + x))).toBits
+      (Real.log (1 + value x.toBits)) ((101 / 100) / 2 ^ 54) := by
   have hone : (1.0 : Float).toBits = 0x3FF0000000000000 := rfl
   have hvx : value x.toBits = 1 - 1 / 2 ^ 53 := by
     rw [hxb, word_value _ (1 - 1 / 2 ^ 53) (by decide +kernel)]
@@ -346,12 +347,38 @@ theorem special_two (x : Float) (hxb : x.toBits = 0x3FEFFFFFFFFFFFFF) :
     norm_num
   rw [ht] at hc ⊢
   rw [hK] at hkd hA ⊢
-  refine finish_z _ k (value f.toBits) ((1 : ℤ) : ℝ) (-1 / 2 ^ 54) (1 / 2 ^ 54) 1 1 (1 / 2 ^ 54)
-    ((101 / 100) / 2 ^ 54) 1022 hf0 hkd hA (by norm_num) (by norm_num) (by norm_num) hc
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
-    (by norm_num) ?_
-  rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
-  norm_num
+  exact finish_z_near _ k (value f.toBits) ((1 : ℤ) : ℝ) (-1 / 2 ^ 54) (1 / 2 ^ 54) 1 1 (1 / 2 ^ 54)
+    ((101 / 100) / 2 ^ 54) hf0 hkd hA (by norm_num) (by norm_num) (by norm_num) hc
+    (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+
+/-- `x = 1 - 2 ^ -53`: `1 + x` rounds to 2, the correction is 0 against `t = -2 ^ -54`, and
+`f = 0`. -/
+theorem special_two (x : Float) (hxb : x.toBits = 0x3FEFFFFFFFFFFFFF) :
+    F64SignedRounding.WithinSteps 1 (Real.log (1 + value x.toBits))
+      (mainTail (1.0 + x) (cOf x (1.0 + x) / (1.0 + x)) (kOf (1.0 + x))).toBits := by
+  have hvx : value x.toBits = 1 - 1 / 2 ^ 53 := by
+    rw [hxb, word_value _ (1 - 1 / 2 ^ 53) (by decide +kernel)]
+    norm_num
+  have hl : Real.log (1 + value x.toBits) = Real.log 2 + Real.log (1 + -1 / 2 ^ 54) := by
+    rw [hvx, ← Real.log_mul (by norm_num : (2 : ℝ) ≠ 0) (by norm_num : (1 + -1 / 2 ^ 54 : ℝ) ≠ 0)]
+    norm_num
+  have hB : value (UInt64.ofNat (1022 * 2 ^ 52)) = 1 / 2 := by
+    rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
+    norm_num
+  have h1 := abs_le.mp (abs_log_t (-1 / 2 ^ 54) (by norm_num))
+  rw [show |(-1 / 2 ^ 54 : ℝ)| = 1 / 2 ^ 54 by norm_num] at h1
+  have h2 := ln2_bounds
+  have hy : 0 < Real.log (1 + value x.toBits) := by
+    rw [hl]
+    generalize Real.log (1 + -1 / 2 ^ 54) = L at h1 ⊢
+    linarith [h1.1, h2.1]
+  refine (special_two_near x hxb).within_one 1022 (by norm_num) (by norm_num) ?_ (by norm_num) ?_
+  · rw [hB, abs_of_pos hy, hl]
+    generalize Real.log (1 + -1 / 2 ^ 54) = L at h1 ⊢
+    linarith [h1.1, h2.1]
+  · rw [abs_of_pos hy, hl]
+    generalize Real.log (1 + -1 / 2 ^ 54) = L at h1 ⊢
+    linarith [h1.2, h2.2]
 
 /-- **`log1p` within one step.**  For every finite `x > -1`, `Log1p.log1p x` lies within one
 representable step of the nearest-even reference of `log (1 + x)`. -/
