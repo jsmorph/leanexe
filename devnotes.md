@@ -29698,11 +29698,20 @@ A Python model of the word algorithm (`py/fma.py` in the scratch directory) agre
 
 ### Results
 
-`FmaAccuracy` (`ports-FmaAccuracy-3.log`) checked 763,816 operand triples and found every result equal to the exact value rounded to the nearest double, quiet NaNs included; 204,780 of them differ from the separately rounded product and sum.  The first run failed to elaborate an untyped shift amount in the generator of hashed operands, which a type annotation fixed.
+`FmaAccuracy` (`ports-FmaAccuracy-3.log`) checked 763,816 operand triples and found every result equal to the exact value rounded to the nearest double, quiet NaNs included, and 204,780 of them differ from the separately rounded product and sum.  The first run failed to elaborate an untyped shift amount in the generator of hashed operands, which a type annotation fixed.
 
 `TgammaAccuracy` (`ports-TgammaAccuracy-1.log`) checked 74,373 arguments, with `tgamma` built without its `verified_compile` call, and found every result equal to the reference, none even one step away.  The direct calls of the accurate path at 7,002 arguments, the 57 hard cases included, also equal the reference everywhere.
 
+`LgammaAccuracy` (`ports-LgammaAccuracy-5.log`) checked 81,033 arguments, with `lgamma` built without its `verified_compile` call, and found every result equal to the reference and every sign as specified.  The direct calls of the accurate path at 9,234 arguments, the 19 hard cases included, also equal the reference everywhere.  Two earlier runs failed on defects of the check, not of the port: the reference rounded the residue of the series at the exact zeros 1 and 2 instead of returning 0, and the direct calls of the accurate path included magnitudes from `0x1.006df1bfac84ep+1015` up, which `cr_lgamma` never passes to it and where it returns NaN from `∞ - ∞`.
+
+The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0; the recurrence now adds the leading zero bits of `x` to its precision.
+
+### The compiler's time and memory on the gamma port
+
+With its `verified_compile` call, `Tgamma` did not finish: the build ran 25 minutes of CPU time at the scope's memory limits, 4.2 GB of memory and 1 GB of swap, before `leanrun` stopped it.  A probe that compiled only the helpers through `asLgammaAsym` ran 18 minutes at the same limits.  The coordinator suggested small probes with the profiler.  A `LeanExe.loop` over a 6-tuple of floats with a trivial body type-checks in 1.27 s and over a pair in 1.12 s, so tuple loop states are not the cause.  A chain of `let (h, l) := mulDD h l x y` lines type-checks in 2.67 s for 10 lines and 7.64 s for 20, and 40 lines exhausted the scope's memory.  Measurements of the proof size and memory per chain length are in progress.
+
 - [x] `Fma.fma` with `verified_compile`, and its check.
-- [x] `Tgamma` and `GammaReference`, and the check of `tgamma` without `verified_compile`.
-- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel`.
-- [ ] The checks of `lgamma` and of the Bessel functions, and the Bessel bounds.
+- [x] `Tgamma`, `Lgamma`, and `GammaReference`, and their checks without `verified_compile`.
+- [x] `Bessel` and `BesselReference`, built with `verified_compile` commented out, and a measuring run of the check.
+- [ ] The cause of the compiler's cost on long chains of pair lets, and the restructuring or the fix.
+- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel`, and the final checks and bounds.
