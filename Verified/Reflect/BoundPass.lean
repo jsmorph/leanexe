@@ -19,17 +19,20 @@ namespace Verified.Reflect
 
 open Lean Meta
 
-/-- A bound term and the proof that a source expression's `Expr.allocs` equals it. -/
+/-- A term and the proof that a source expression's bound, `Expr.allocs`, or its frames condition,
+`Expr.fits`, equals it. -/
 structure Bound where
-  cost : Lean.Expr
+  term : Lean.Expr
   proof : Lean.Expr
   deriving Inhabited
 
-/-- From the modes and the live set at a site, as terms, the bound of a source expression, or
-`none` in a recursive definition, which has no bound. -/
+/-- From the modes and the live set at a site, as terms, the bound of a source expression. -/
 abbrev BoundBuilder := Lean.Expr → Lean.Expr → MetaM (Option Bound)
 
 def noBound : BoundBuilder := fun _ _ => return none
+
+/-- The frames condition of a source expression. -/
+abbrev FitsBuilder := MetaM Bound
 
 /-- The numeral `0 : Nat`. -/
 def natZero : Lean.Expr := mkNatLit 0

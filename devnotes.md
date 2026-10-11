@@ -28259,11 +28259,46 @@ its theorem stands.
     `Prog.boundsAt` replaces `Prog.bounds`, and the reflector reads the fuel from the bound it
     rewrites.  `Expr.fits_of_depthCalls` gives the frames of code without depth calls.  The
     compiled code is unchanged.
-  - [ ] The reflector: `p.f.bound`, `p.f.fits`, their equations, and `p.f.trapFree` for depth
+  - [x] The reflector: `p.f.bound`, `p.f.fits`, their equations, and `p.f.trapFree` for depth
     functions, with a builder family for `fits`.
-  - [ ] `Recursion.chain`'s theorem, the README, and a review.
+  - [x] `Recursion.chain`'s theorem and the README.
+  - [ ] A review by a fresh agent, and the suite.
+- [ ] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
 - [ ] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
 - [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
 - [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
   condition `i < n → (n − i).toNat < 1000`.
+
+### Bounds and frames of recursion: implementation
+
+Every definition now has a bound.  The reflector reflects each body in a context whose `Tables`
+hold the bounds and frames conditions of the callees at a local variable `k`, the frames available,
+and, in a recursive definition, the definition's own entries `RecFunc.boundAt … k` and
+`RecFunc.fitsAt … k` first.  `tableChain` proves the entry of a callee from the program's chain: a
+function whose code takes no call depth gives `f.bound fs (rest.boundsAt fs 0)` at every `k`, and
+one whose code takes it gives `f.boundAt` or `f.fitsAt` at `k`.  A definition whose code takes no
+call depth gets its equation with `k` replaced by 0, the substitution of a closed term for a
+variable, so its statements are those of before.  A definition whose code takes the depth gets
+`p.f.bound` and `p.f.fits` as functions of `k` and of Lean's argument tuple, and `bound_eq` and
+`fits_eq` at `k + 1`, from `funcAt_bound`, `recFuncAt_bound`, `funcAt_fits`, and `recFuncAt_fits`.
+These lemmas take the function's value, a `Func.mk` or `RecFunc.mk`, as `func_bound` does: the
+reflector checks lemma arguments at reducible transparency, which does not unfold the constant
+`p.f.func`, while the projections of the value reduce.
+
+Each reflection carries a frames builder beside its bound builder, with one lemma per source form
+in `Reflect/FitsLemmas.lean`.  `LemmaApp.childFits` first tries `Expr.fits_of_depthCalls`, whose
+side condition `e.depthCalls = false` the kernel evaluates, so a part without a call of a depth
+function contributes `true` and no lemma chain.  `normFits` drops the operands `true` of `&&`.
+`p.f.trapFree` comes from `Prog.entry_trapFreeWith`, with the table entries `bounds.get f` and
+`fits.get f` replaced by the function's own entries at 1,000 frames through `rewriteEntry`, which
+the non-depth theorems now use as well.
+
+In `Recursion.lean`, `chain_fits` proves `compiled.chain.fits k n = true ↔ n.toNat < k` by induction
+on `k` from `fits_eq` and `rfl` at 0, and `chain_trapFree` states that the module computes `chain n`
+without a trap for `n.toNat < 1000` when `top` is within the cap, from `chain_bound`, the bound 0.
+The equations read as the definitions do, for example
+`compiled.gcd.fits (k + 1) (a, b) = if b = 0 then true else compiled.gcd.fits k (b, a % b)`.
+
+A wrapper whose callee's code takes the call depth still gets no bound and no `trapFree`: no
+example has one, and `wrapper_trapFree` requires `w.depth = false`.

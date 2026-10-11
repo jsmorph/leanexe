@@ -5430,7 +5430,8 @@ theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
       (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
       (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
-        heap.Within store (compileWith prog tables wrappers) ((prog.boundsAt funs (framesAt 0)).get f x))
+        heap.Within store (compileWith prog tables wrappers)
+          ((prog.boundsAt funs (framesAt 0)).get f x))
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + (prog.boundsAt funs (framesAt 0)).get f x) :=
   entry_trapFree (compileWith_runtime prog tables wrappers)

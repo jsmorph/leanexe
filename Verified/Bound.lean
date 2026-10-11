@@ -386,7 +386,6 @@ def Prog.boundsAt : {S : List Sig} → Prog S → Funs S → Nat → Bounds S
   | _, .consRec f rest, .cons M funs, k =>
     .cons (f.boundAt (.cons M funs) (rest.boundsAt funs) k) (rest.boundsAt funs k)
 
-
 theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
     (Prog.boundsAt (.cons f rest) (.cons F funs) k).get .here =

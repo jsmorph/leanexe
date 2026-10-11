@@ -549,7 +549,7 @@ theorem bounds_get_here (f : Func S) (rest : Prog S) (F : Env f.params → f.res
     (fs : Funs S) (k : Nat) (hd : f.depth = false) (env : Env f.params) :
     (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
       f.bound fs (rest.boundsAt fs 0) env := by
-  rw [Prog.boundsAt_cons_here, if_neg (by simp [hd])]
+  rw [Prog.boundsAt_cons_here, hd]; rfl
 
 theorem bounds_get_there {g : Sig} (f : Func S) (rest : Prog S)
     (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
