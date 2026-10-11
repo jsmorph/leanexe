@@ -13,7 +13,8 @@ general path computes `A - G` with `G = (f²/2 - (P + (kd ln2Lo + c))) - f`; the
 kernel's error, and `2 t²`.  The sums round within half a spacing of their binades
 (`F64HalfUlp`).  For `hu = 0` the polynomial is `f²/2 (1 - 2f/3)`, and for `f = 0` the result is
 `A + (c + kd ln2Lo)`.  Each path ends with `F64RoundNearest`, whose criterion charges nothing for
-the last rounding.
+the last rounding.  The `_near` theorems bound the exact value of the last operation (`F64Near.Near`), and the
+step theorems follow from them; `tail_big_near` gives the bound for `K ≥ 50`.
 -/
 
 namespace Verified.Examples.Log1pTheoremTail
@@ -968,9 +969,8 @@ theorem tail_main (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.to
         norm_num
 
 set_option maxHeartbeats 2000000 in
-/-- `log1pTail` for `K ≥ 50`, where `y` exceeds 32 and one spacing is `2 ^ -47`, for a correction
-within `2 ^ -52` of `t`. -/
-theorem tail_big (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
+/-- `log1pTail` for `K ≥ 50`, where `y` exceeds 32, for a correction within `2 ^ -52` of `t`. -/
+theorem tail_big_near (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toBits)
     (hv1 : -2929 / 10000 ≤ value f.toBits) (hv2 : value f.toBits ≤ 41422 / 100000)
     (hhu1 : (hu == 0) = false → 1 / 2 ^ 30 ≤ |value f.toBits|)
     (hhu2 : (hu == 0) = true → |value f.toBits| ≤ 1 / 2 ^ 19)
@@ -979,9 +979,8 @@ theorem tail_big (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toB
     (hA : FApprox (LogCoreBits.kdOf k * ln2HiF) (K * value 0x3FE62E42FEE00000) 0)
     (hK1 : 50 ≤ K) (hK2 : K ≤ 1100)
     (hc : FApprox c t et) (ht : |t| ≤ 1 / 2 ^ 53) (het : et ≤ 1 / 2 ^ 52) :
-    F64SignedRounding.WithinSteps 1
-      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t))
-      (Log1p.log1pTail f c k hu).toBits := by
+    F64Near.Near (Log1p.log1pTail f c k hu).toBits
+      (K * Real.log 2 + Real.log (1 + value f.toBits) + Real.log (1 + t)) (6 / 2 ^ 54) := by
   set v := value f.toBits with hvdef
   have hKa : |K| = K := abs_of_pos (by linarith)
   have hKM : |K| ≤ 1100 := by rw [hKa]; exact hK2
@@ -1002,15 +1001,13 @@ theorem tail_big (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toB
       have h5 := (abs_le.mp htl).1
       rw [abs_of_pos (by linarith)]
       linarith
-    refine finish_s f c k K t et 1100 (1 / 2 ^ 52) (41422 / 100000) _ _ _ _ (34659 / 100000)
-      (6 / 2 ^ 54) 34 1016 1018 1020 1028 hf (by linarith)
+    refine finish_s_near f c k K t et 1100 (1 / 2 ^ 52) (41422 / 100000) _ _ _ _ (34659 / 100000)
+      (6 / 2 ^ 54) 34 1016 1018 1020 hf (by linarith)
       (abs_le.mpr ⟨by linarith, by linarith⟩) hc4.1 hc4.2 hkd hA hKM hc ht' (by norm_num)
       (by norm_num) (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 1)]) hlog (by norm_num) hs
-      (by norm_num) (by norm_num) (by norm_num) ?_ ?_ ?_ ?_ (by norm_num) (by norm_num)
-      (by norm_num) hY ?_
+      (by norm_num) (by norm_num) (by norm_num) ?_ ?_ ?_ ?_ hY (by norm_num)
     all_goals first
       | (norm_num; done)
-      | (rw [F64PositiveSpacing.boundary_value 1028 (by norm_num) (by norm_num)]; norm_num)
       | (norm_num at het ⊢; linarith)
   · have hσ := hhu2 hhu
     cases hz : (f == 0.0)
@@ -1020,23 +1017,17 @@ theorem tail_big (f c : Float) (k hu : UInt64) (K t et : ℝ) (hf : Finite f.toB
         have := (beq_zero_iff f hf).mpr h
         rw [hz] at this
         exact Bool.false_ne_true this
-      refine finish_q f c k K t et 1100 50 (1 / 2 ^ 52) (2 / 2 ^ 52) 1028 hf hσ (hvz hv0) hkd
+      refine finish_q_near f c k K t et 1100 50 (1 / 2 ^ 52) (6 / 2 ^ 54) hf hσ (hvz hv0) hkd
         hA hKM (by norm_num) hKL hc ht' (by norm_num) (by norm_num)
-        (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 1)]) ?_ (by norm_num) (by norm_num)
-        (by norm_num) ?_
-      · norm_num at het ⊢
-        linarith
-      · rw [F64PositiveSpacing.boundary_value 1028 (by norm_num) (by norm_num)]
-        norm_num
+        (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 1)]) ?_ (by norm_num)
+      norm_num at het ⊢
+      linarith
     · have hv0 : v = 0 := (beq_zero_iff f hf).mp hz
       rw [Log1pTheoremBranches.tail_z_eq f c k hu hk hhu hz]
-      refine finish_z c k v K t et 1100 50 (1 / 2 ^ 52) (2 / 2 ^ 52) 1028 hv0 hkd hA hKM
+      refine finish_z_near c k v K t et 1100 50 (1 / 2 ^ 52) (6 / 2 ^ 54) hv0 hkd hA hKM
         (by norm_num) hKL hc ht' (by norm_num) (by norm_num)
-        (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 1)]) ?_ (by norm_num) (by norm_num)
-        (by norm_num) ?_
-      · norm_num at het ⊢
-        linarith
-      · rw [F64PositiveSpacing.boundary_value 1028 (by norm_num) (by norm_num)]
-        norm_num
+        (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 1)]) ?_ (by norm_num)
+      norm_num at het ⊢
+      linarith
 
 end Verified.Examples.Log1pTheoremTail
