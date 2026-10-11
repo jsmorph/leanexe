@@ -29436,7 +29436,27 @@ The coordinator assigned `Sinh.sinh` (two steps) and `Sinh.cosh` (one step) next
 
 For `sinh`, two steps fail only for `abs(x)` in `(0.347, 0.481)`, where `expm1` takes the path `k = 1` and its result carries `0.98 u` before the last rounding.  A sharper bound of `0.73 u` for that path, from the half spacing of `x - e` below `1/4`, raises the factor to 0.92, still short.  For `cosh` on `[0.3466, 22)`, one step needs an `exp` error near `u` (factor 0.94 at `1.0 u`, 1.72 at Arm's `0.52 u`), and the proved `7/5 u` gives 0.68.  From 22 to the overflow thresholds both functions return `exp abs(x) / 2` (or the `__ldexp_exp` form), which inherits the one step of `ExpTheorem.exp_one_step`; `exp x / 2` and `cosh x` or `sinh x` differ by less than `e ^ -44` relatively, which can move the reference across a midpoint, so the composition gives two steps there.  The reachable counts are therefore three steps for `sinh` and two for `cosh`, short of the targets of two and one.  The gap lies in the proved bounds of `expm1` on its path `k = 1` and of `exp`.
 
-- [ ] Decision on the step counts of `sinh` and `cosh`.
+- [x] Decision on the step counts of `sinh` and `cosh`: strengthen the bound for `exp` first.
+
+### A tight bound for `exp`
+
+The coordinator decided to tighten the bound for `exp` before stating the step counts, and to make the result general so that other tracks can use it in place of the `1.405 u` of the `erf` track's `ExpRelative.expWith_relative`.  `ExpTight.reconstruction_near` shows that the final operation `s + s w` of the reconstruction rounds once, to the nearest word of the exact sum, and that the sum lies within `u/32` of `2 ^ d exp x`, relative to `2 ^ d exp x`.  The proof replaces the constants of `ExpTableReconstruction` with tighter ones.  The residual lies in `abs(r) ≤ 0.002708` and within `2 ^ -60` of the ideal residual, and on that interval the polynomial lies within `2 ^ -64` of `exp r - 1` (`ExpTightPoly`, a kernel check of its difference from the Taylor polynomial of degree 10).  The rounded evaluation lies within `u/100` of the polynomial, and the product `s w` and the residual error add `u/60` and `u/127` relative to `s`.
+
+`ExpTightFloat` carries the bound to `Exp.exp`, which is `Exp.expWith Exp.expTable`.  On the positive special path the code multiplies the reconstruction by `2 ^ 1009`, which is exact below `709.7827` (where `exp x` stays a relative `10 ^ -5` below `2 ^ 1024`), so the nearest property scales with it (`F64NearestScale.scale_nearest`).  On the negative special path down to `-708` the reconstruction `y` is at least 1, so the code takes the uncompensated branch and the product with `2 ^ -1022` is exact.  The new ProofKit module `F64NearestHalf` bounds the distance from a nearest word to its target by half the spacing of a grid (`nearest_half`), and gives `abs(c - s) ≤ u s` for a target in `[2 ^ -1022, 2 ^ 1022)` (`nearest_relative`).
+
+| Theorem | Range of `x` | Statement |
+|---|---|---|
+| `exp_near` | `-512 < x ≤ 709.7827` | some `s` has `Nearest s (exp x)` and `abs(s - e ^ x) ≤ (u/32) e ^ x` |
+| `positive_near` | `512 ≤ x ≤ 709.7827` | the result is `2 ^ 1009 y`, with `y` nearest to some `s` within `(u/32) e ^ x / 2 ^ 1009` of `e ^ x / 2 ^ 1009` |
+| `negative_near` | `-708 ≤ x ≤ -512` | the result is `y / 2 ^ 1022`, with `y ≥ 1` nearest to some `s` within `(u/32) 2 ^ 1022 e ^ x` of `2 ^ 1022 e ^ x` |
+| `exp_relative` | `-708 ≤ x ≤ 709.7827` | the result is finite and `abs(exp x - e ^ x) ≤ 1.033 u e ^ x` |
+
+The constant `1.033` is `1 + 1/32` with room for the product of the two errors.  In units in the last place the composition gives at most `0.5 + 1/32`, close to Arm's `0.52`.  The relative form is weaker by up to a factor of 2 near the top of a binade, because the half spacing there is `u` times the bottom of the binade, so proofs of step counts should use `exp_near` or `negative_near`.  Below `-708.4` the result is subnormal and above `709.7827` it can overflow, so the ranges cover the normal results.
+
+- [x] Tight bound for `exp`.
+- [ ] `cosh` within one step on every range.
+- [ ] `sinh`: tighten the path `k = 1` of `expm1`, and state three steps if two stay out of reach.
+- [ ] Exact results, byte theorems, and the file module for `sinh` and `cosh`.
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
