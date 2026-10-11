@@ -30056,7 +30056,7 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
 ## 2026-10-10: Full theorems for `atan` and `log1p` (track arc, minideb2)
 
-The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan`, `log1p`, and `atan2` are proved with their byte and file theorems; `asin` and `acos` are building.  After them the coordinator assigned `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` (two steps each, through `Log.logWith` and `Log1p.log1p`), and asked that the duplicate ProofKit modules keep their names until a later consolidation.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
+The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan`, `atan2`, `log1p`, `asin`, and `acos` are proved with their byte and file theorems; every Lean file on the branch builds at `b1049813` (`arc-full-1.log`).  After them the coordinator assigned `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` (two steps each, through `Log.logWith` and `Log1p.log1p`), and asked that the duplicate ProofKit modules keep their names until a later consolidation.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
 
 ### Error tracking
 
@@ -30110,24 +30110,9 @@ The table lists the largest totals in spacings of each case's binade; the limit 
 
 Other pitfalls found in the last runs: `Real.arctan |v||` parses as `Real.arctan |v| ||`, so a closing absolute value after another needs parentheses; `have h : 1126 / 10000 / 2 ^ 53 + ... ≤ ...` without a type ascription is a statement about natural numbers, true by truncation; `F64Bits.toBits_ofBits` leaves `if isNaN w then canonicalNaN else w`; `push_cast` evaluates `2 ^ 53` to a numeral, so `exact` against a hypothesis with the power fails; and `omega` treats `n % 2 ^ 63` and `n % 9223372036854775808` as different atoms, so `Nat.reducePow` must normalize both sides first.  `nlinarith` in a context that holds `scaledMagnitude w = q * 2 ^ (e - 1 + 32)` multiplies that hypothesis and spends minutes in `whnf` on the power; `AsinTheoremMid` now clears it once used.  `rw [← hsqv]` with `hsqv : √t * √t = t` also rewrites the `t` inside `√t`, so the proofs name `√t` with `set` first.
 
-### `asin` and `acos` drafts
+### `asin` and `acos`
 
-The drafts below are committed without a successful build, because each imports `Log1pTheoremReduce`, `Log1pTheoremCorr`, or `Log1pTheoremTail`, which still fail.  Their error analyses are complete, and the constants come from the scripts in `tools/arc/asin` (`mkratio.py` writes `AsinTheoremRatio.lean`, `mkmid.py` writes `AsinTheoremMid.lean`, both into the parent directory; the `model*.py` files hold the range analyses).  The proofs already avoid the pitfalls found so far: the `linarith` atoms above, `Real.arcsin_le_arcsin` with one argument, `0` against `0 / 2 ^ 53` in the inputs of the ratio chains (`ht.mono le_rfl (by norm_num)`), and the exponent bound `exponent_lt_one` in place of `exponent_le_of_value` for products of high parts.
-
-| File | Content | State |
-|---|---|---|
-| `AsinTheoremSupport` | `trunc_facts` (high part of `s`), `poly_bound`, `exponent_lt_one` | Not built |
-| `AsinTheoremRatio` | Seven `FSApprox` chains for `asinRatio` over ranges of `t` | Generated, not built |
-| `AsinTheoremBranches` | Branch equations of `asin`, `ixA`, `tOf`, `bigTail`, `midTail` | Not built |
-| `AsinTheoremSmall` | Kernel link, `x + x r(x²)` by the relative criterion, `|x| < 2 ^ -26` | Not built |
-| `AsinTheoremHalf` | Half-angle identities, exact `t = (1 - |x|)/2` | Not built |
-| `AsinTheoremBig`, `AsinTheoremMid` | `0.975 ≤ |x| < 1`, and three ranges of `[0.5, 0.975)` | Mid generated, not built |
-| `AsinTheorem` | `asin_within_one` for `|x| ≤ 1`, the case `|x| = 1` | Not built; exceptional values not written |
-| `AcosTheoremBranches` | Branch equations of `acos`, exact `z`, `abs_arcsin_le` | Not built |
-| `AcosTheoremSmall`, `AcosTheoremNeg` | `|x| < 1/2`, and `-1 < x ≤ -1/2` (absolute criterion, spacing `2 ^ -51`) | Not built |
-| `AcosTheoremPos` | `1/2 ≤ x < 1`: relative criterion on `df + w`, doubling by `F64RoundDouble` | Not built |
-
-Not written: the `acos` dispatcher, the exceptional values of both functions (`±0`, `±1`, NaN, `|x| > 1`), and the byte and file theorems for `asin.wasm`.
+`AsinTheorem.asin_within_one` states `WithinSteps 1 (Real.arcsin (value x.toBits)) (Asin.asin x).toBits` and `AcosTheorem.acos_within_one` states `WithinSteps 1 (Real.arccos (value x.toBits)) (Asin.acos x).toBits`, each for finite `x` with `|value x.toBits| ≤ 1` (`arc-mix-21.log`, `arc-mix-24.log`).  `AsinTheoremSpecial` gives the canonical NaN for NaN and `|x| > 1`, `±0` for `asin (±0)`, and `+0` for `acos 1`.  `AsinBytes.asin_module_accuracy` states the byte theorems of `asin` (function 3) and `acos` (function 4), and `AsinFile` checks against `build/verified/asin.wasm` (`arc-file-4.log`).  The constants come from the scripts in `tools/arc/asin`: `mkratio.py` writes `AsinTheoremRatio.lean` and `mkmid.py` writes `AsinTheoremMid.lean`, both into the parent directory, and the `model*.py` files hold the range analyses.  The proofs of `AsinTheoremMid` and `AcosTheoremPos.pos_core` run long because of many `nlinarith` calls in large contexts, and they raise `maxHeartbeats` to 1,000,000 and 4,000,000.
 
 ### Byte and file theorems
 
@@ -30155,7 +30140,11 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`�
 | `AtanTwoBits`, `AtanTwoTheorem`, `AtanBytes` | Committed in `9a6d5815` | `arc-mix-18.log` |
 | `AtanTwoSpecial` | Committed in `6c879ed0` | `arc-mix-19.log` |
 | `Log1pFile`, `AtanFile` | Committed in `60db9f02` and `62a8397d`; checked against modules written with `tools/Emit.lean` | `arc-file-2.log`, `arc-file-3.log` |
-| `AsinTheoremMid` and the later `asin` and `acos` files, `AsinBytes`, `AsinFile` | Building | `arc-mix-20.log` |
+| `AsinTheoremMid` | Committed in `c81394a9` | `arc-mix-20.log` |
+| `AsinTheorem`, `AcosTheoremBranches`, `AcosTheoremSmall`, `AcosTheoremNeg` | Committed in `ec6c4837` | `arc-mix-21.log` |
+| `AcosTheoremPos`, `AcosTheorem` | Committed in `45322ba6`, `e3cada66` | `arc-mix-23.log`, `arc-mix-24.log` |
+| `AsinTheoremSpecial`, `AsinBytes`, `AsinFile` | Committed in `b1049813` | `arc-mix-25.log`, `arc-file-4.log` |
+| All 55 Lean modules changed on the branch since `a2c5fea3` | Build together, no `sorryAx` | `arc-full-1.log` |
 
 - [x] `atan` within one step.
 - [x] Half-spacing sums, `F64HalfUlp`.
@@ -30172,5 +30161,5 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`�
 - [ ] `asin` and `acos` from the drafts in `fa37a25d`.
 - [x] `atan2`, its exceptional values, and the byte and file theorems of `atan.wasm`.
 - [x] File theorem of `log1p`.
-- [ ] Byte and file theorems of `asin.wasm`, then the build of every file on the branch and the report with the lines `log1p:Log1pBytes:Log1pFile`, `atan:AtanBytes:AtanFile`, and `asin:AsinBytes:AsinFile`.
+- [x] Byte and file theorems of `asin.wasm`, the build of every file on the branch, and the report with the lines `log1p:Log1pBytes:Log1pFile`, `atan:AtanBytes:AtanFile`, and `asin:AsinBytes:AsinFile`.
 - [ ] `asinh`, `acosh`, `atanh`.
