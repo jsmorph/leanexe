@@ -29704,7 +29704,21 @@ A Python model of the word algorithm (`py/fma.py` in the scratch directory) agre
 
 `LgammaAccuracy` (`ports-LgammaAccuracy-5.log`) checked 81,033 arguments, with `lgamma` built without its `verified_compile` call, and found every result equal to the reference and every sign as specified.  The direct calls of the accurate path at 9,234 arguments, the 19 hard cases included, also equal the reference everywhere.  Two earlier runs failed on defects of the check, not of the port: the reference rounded the residue of the series at the exact zeros 1 and 2 instead of returning 0, and the direct calls of the accurate path included magnitudes from `0x1.006df1bfac84ep+1015` up, which `cr_lgamma` never passes to it and where it returns NaN from `∞ - ∞`.
 
-The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0; the recurrence now adds the leading zero bits of `x` to its precision.
+The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0.  The recurrence now adds the leading zero bits of `x` to its precision, and the rerun (`ports-BesselAccuracy-6.log`, the module built without `verified_compile`) passed with these largest errors of each order, in units of the modulus.
+
+| Order | `jn` | `yn` | `4 + |n|/6` | `4 + |n|/3` |
+|---|---|---|---|---|
+| 2, -2 | 2.648 | 2.420 | 4.33 | 4.67 |
+| 3, -3 | 2.030 | 2.323 | 4.50 | 5.00 |
+| 5 | 2.490 | 4.137 | 4.83 | 5.67 |
+| `2 ^ 32 + 5` (5, other arguments) | 2.490 | 3.522 | 4.83 | 5.67 |
+| -7 | 3.225 | 4.797 | 5.17 | 6.33 |
+| 10 | 2.547 | 4.655 | 5.67 | 7.33 |
+| 20 | 3.426 | 8.793 | 7.33 | 10.67 |
+| 50 | 10.408 | 10.039 | 12.33 | 20.67 |
+| 100 | 8.755 | 15.380 | 20.67 | 37.33 |
+
+The coordinator's bounds: 4 units of the modulus for `j0`, `j1`, `y0`, and `y1`, whose largest errors are 2.617, 2.764, 3.171, and 3.243, and `a + b |n|` units for `jn` and `yn`, with the constants that the proof reaches.  `yn` of order 20 exceeds `4 + |n|/6`, which the first measurements suggested, so with `a = 4` the data need `b ≥ 0.24`, and the check enforces `4 + |n|/3`, the form of the review, until the proof fixes the constants.
 
 ### The compiler's time and memory on the gamma port
 
