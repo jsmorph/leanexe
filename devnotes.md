@@ -30100,3 +30100,47 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
 
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: Bessel functions of order 0 and 1, definitions and series (track `log`)
+
+The coordinator moved `asin` and `acos` back to the arc track and gave this track the real Bessel functions as new ProofKit modules, since Mathlib has none.  The task asks for definitions of `J0`, `J1`, `Y0`, and `Y1`, their power series with remainder bounds for small `x`, the functions `P` and `Q` of the large-argument form with bounds on `[2, ∞)` that suffice to check fdlibm's `pzero`, `qzero`, `pone`, and `qone`, the Wronskian, and a lower bound on the modulus.  This track committed nothing for `asin` or `acos`; its only commit after the `log10` work is the merge of `transcendentals` at `a2c5fea3` (`e3c84a4a`).  This section records the definitions and the small-argument series, which `tools/leanrun` accepted (`bes-phase1-1.log`).
+
+### Definitions
+
+The functions are series in `z = x²/4`, as [DLMF 10.2.2, 10.8.1, and 10.8.2](https://dlmf.nist.gov/10.8) give them: `J0 = Σ (-1)^k z^k / k!²`, `J1 = (x/2) Σ (-1)^k z^k / (k! (k+1)!)`, `Y0 = (2/π) ((ln (x/2) + γ) J0 + Σ (-1)^(k+1) H_k z^k / k!²)`, and `Y1 = (2/π) (ln (x/2) + γ) J1 - 2/(π x) - (x/(2π)) Σ (-1)^k (H_k + H_(k+1)) z^k / (k! (k+1)!)`, with `γ = Real.eulerMascheroniConstant` and `H_k = harmonic k`.  DLMF writes the last series with `ψ (k+1) + ψ (k+2) = H_k + H_(k+1) - 2γ`, and the `γ` part of that sum is the `γ` term of the definition here.  `Y0` and `Y1` are meant for `x > 0`.  The coefficient sequences are rational (`qa0`, `qa1`, `qc0`, `qc1`), so their partial sums are `PolyBound` lists (`a0List N` and the others) that the kernel evaluates.
+
+`EntireSeries` handles any power series `psum a z = Σ a_k z^k` for which `Σ |a_k| R^k` converges for every `R ≥ 0`.  Its derivative is the series of `(k+1) a_(k+1)`, from Mathlib's termwise differentiation on a ball (`hasDerivAt_tsum_of_isPreconnected`), and its remainder after `N` terms is at most `|a_N| |z|^N / (1 - q)` when `|a_(k+1)| |z| ≤ q |a_k|` for `k ≥ N`.  `PolyCalc` adds exact rational evaluation of `PolyBound` lists and their derivative lists, which the large-argument proofs use.
+
+### Results
+
+| Theorem (`LeanExe.ProofKit`) | Statement |
+|---|---|
+| `Bessel.hasDerivAt_J0`, `hasDerivAt_J1'` | `J0' = -J1`, and `J1' = J0 - J1/x` for `x ≠ 0` |
+| `Bessel.hasDerivAt_Y0`, `hasDerivAt_Y1` | `Y0' = -Y1` and `Y1' = Y0 - Y1/x` for `x ≠ 0` |
+| `Bessel.wronskian` | `J1 x Y0 x - J0 x Y1 x = 2/(π x)` for `x ≠ 0` |
+| `Bessel.Y0_sub_log`, `Y1_sub_log` | `Y0 - (2/π) J0 ln x` and `Y1 - (2/π) (J1 ln x - 1/x)` as series in `z` with the constant `γ - ln 2`, the parts that fdlibm approximates below 2 |
+| `Bessel.a0_remainder` and the three others | for `|z| ≤ 1`, so `|x| ≤ 2`, and `N ≥ 1`, each series lies within `2 |a_N| |z|^N` of its partial sum of `N` terms |
+| `EulerGamma.gamma_close`, `gamma_rad_small` | `|γ - gammaMid| ≤ gammaRad < 2^-84` for a rational `gammaMid` |
+| `EulerGamma.log_two_close` | `log 2` within `2^-100` of a rational |
+
+The derivatives reduce to four identities between the coefficient sequences, such as `(k+1) c1_k = a1_k - 2 c0_k`, which `field_simp` and `ring` check for every `k`.  For the Wronskian, the logarithm terms cancel and `x (J1 Y0 - J0 Y1) = (2/π) F (x²/4)` with `F = A0 + 2 z A1 C0 + z A0 C1` in terms of the four series.  The same identities give `F' = 0` on all of `ℝ`, so `F` equals `F 0 = 1`, and no limit at 0 is needed.  The ratio bounds use `H_(k+1) ≤ 2 H_k` for `k ≥ 1`, which is why the remainder theorems ask for `N ≥ 1`.
+
+Mathlib bounds `γ` only by `1/2 < γ < 2/3`, and the large-argument proofs start from `Y0 2`, whose `γ` term must be known to about `2^-80`.  `EulerGamma` adds to `H_n - log n` the Euler–Maclaurin corrections `-t/2 + t²/12 - t⁴/120 + t⁶/252 - t⁸/240 + t¹⁰/132` with `t = 1/n`.  The step from `n` to `n + 1`, times `(1 + t)^10`, is a polynomial minus `(1 + t)^10 log (1 + t)`; with 24 terms of the series of the logarithm the kernel finds the coefficients below `t^13` to be zero, so each step is at most `0.28 t^13` for `t ≤ 1/128`.  The steps from 128 on then add up to less than `2^-85.9`, and `log 128 = 7 log 2` comes from 100 terms of the series of `-log (1 - 1/2)`.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Name clash | A theorem `Entire.dcoef` hid the definition `dcoef` inside the `Entire` namespace; it became `Entire.deriv`. | `bes-entire-2` |
+| `abs_c1` | `simp` rewrote `harmonic (k+1)` by `harmonic_succ` after the nonnegativity fact was stated; explicit rewriting replaced `simp`. | `bes-defs-1` |
+| `hasDerivAt_Y1` | Rewriting `Y1` by its unfolded form also rewrote the `Y1 x` in the target derivative; `HasDerivAt.congr_of_eventuallyEq` replaced the rewrite. | `bes-defs-1` |
+| Ratio bounds | `nlinarith` could not bound the expanded quotients of `c0` and `c1`; the proofs now bound `H_(k+1) ≤ 2 H_k` and `(k+1)² ≥ 4` separately. | `bes-defs-1` |
+| `EulerGamma` | A rewrite with `← abs_of_pos` also turned the right side's `(1+t)^10` into an absolute value, and `field_simp` needed `k + 127 ≠ 0`. | `bes-gamma-2` |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The builds waited about 25 minutes for the runner's lock, which another track's build held while its scope was throttled at `memory.high`.
+
+- [x] `EntireSeries`, `Bessel`, `PolyCalc`, and `EulerGamma`.
+- [ ] `P` and `Q`, their system, and bounds on `[2, ∞)` (the energy method below).
+- [ ] Comparison with fdlibm's rational approximations, and the modulus bound.
+
+### Plan for the large-argument bounds
+
+The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = √(πx/2) Y`, Bessel's equation becomes `U'' = -(1 + κ/x²) U` with `κ = 1/4` for order 0 and `κ = -3/4` for order 1, and `P = U cos θ + V sin θ`, `Q = V cos θ - U sin θ` satisfy `P'' = 2Q' - (κ/x²) P` and `Q'' = -2P' - (κ/x²) Q`.  For an approximation `(A, B)` with residuals `r₁`, `r₂`, the energy `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` of the errors `p = P - A` and `q = Q - B` satisfies `(√E)' ≤ |r₁| + |r₂|` when `κ ≥ 0`, and a weighted energy does the same for `κ < 0`.  So the errors stay within their value at `x = 2` plus the residuals' integral, which ties the series values at 2 to the asymptotic expansion at infinity without the connection formulas.  The approximations are Taylor polynomials of degree 40 on `[2, 3]`, `[3, 4.5]`, `[4.5, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms on `[30, ∞)`.  A Python model of this chain, with the start bound `2^-84`, ends at `2^-83.4` for order 0 and `2^-81.7` for order 1.  The same model finds fdlibm's approximation errors at about `2^-57` for `P` and `2^-59.6` for `x Q`, above the `2^-60.26` and `2^-61.22` that `e_j0.c` and `e_j1.c` state, so the comparison will report the proved values.
