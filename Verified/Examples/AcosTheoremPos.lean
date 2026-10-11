@@ -16,6 +16,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Approx F64RoundNearest PolyBound AsinThe
 
 set_option exponentiation.threshold 4096
 
+set_option maxHeartbeats 4000000 in
 theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBits)
     (h2 : value x.toBits < 1) (T0 Mr er : ℝ) (hT0 : T0 ≤ 1 / 4)
     (hzT : (1 - value x.toBits) / 2 ≤ T0)
@@ -94,7 +95,7 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
   -- `w * w` and `z - w * w` are exact
   have hww := F64ExactProduct.mul_exact_scaled w.toBits w.toBits hwf hwf q q
     (Wasm.IEEE64.exponent s.toBits - 1 + 32) (Wasm.IEEE64.exponent s.toBits - 1 + 32) hqm hqm
-    (by nlinarith) (by omega) (by
+    (lt_of_le_of_lt (Nat.mul_le_mul hq.le hq.le) (by norm_num)) (by omega) (by
       have := exponent_lt_one s.toBits (by
         rw [abs_of_pos hvs0]
         have : (1 + 1 / 2 ^ 53 : ℝ) * (1 / 2) < 1 := by norm_num
@@ -102,6 +103,8 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
       omega)
   rw [← F64Bits.toBits_mul] at hww
   have hwwv : value (w * w).toBits = vw * vw := hww.2.1
+  have hwwf := hww.1
+  clear hww hqm
   have hww2 : vw * vw ≤ (1 + 1 / 2 ^ 53) ^ 2 * vz := by
     have := mul_le_mul hvwh hvwh hvw0.le hk0
     rw [← hss]
@@ -113,7 +116,7 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
     linarith
   have hc2 : (1 + 1 / 2 ^ 53 : ℝ) ^ 2 ≤ 2 := by norm_num
   have hc1 : (1 / 2 : ℝ) ≤ (1 - 1 / 2 ^ 53) ^ 2 * (1 - 1 / 2 ^ 20) ^ 2 := by norm_num
-  have htw := F64Exact.sub_exact z.toBits (w * w).toBits hzf hww.1 (by rw [hzv]; exact hvzp)
+  have htw := F64Exact.sub_exact z.toBits (w * w).toBits hzf hwwf (by rw [hzv]; exact hvzp)
     (by rw [hwwv]; exact mul_pos hvw0 hvw0) (by rw [hwwv, hzv]; nlinarith)
     (by rw [hwwv, hzv]; nlinarith) (by rw [hzv]; linarith [(by norm_num : (1 / 4 : ℝ) < 2 ^ 900)])
     (by rw [hwwv]; nlinarith [(by norm_num : (1 : ℝ) < 2 ^ 900)])
@@ -205,11 +208,15 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
       exact hs.2
     have h5 := mul_le_mul h3 h4 (abs_nonneg _) (mul_nonneg (by norm_num) hs0n)
     have h6 : (1 / 2 ^ 20 + 1 / 2 ^ 53) * s0 * (s0 / 2 ^ 53) ≤ s0 / 2 ^ 70 * (19 / 10 * s0) := by
-      have : (1 / 2 ^ 20 + 1 / 2 ^ 53 : ℝ) / 2 ^ 53 ≤ 1 / 2 ^ 70 * (19 / 10) := by norm_num
-      nlinarith [mul_self_nonneg s0]
+      have hc : (1 / 2 ^ 20 + 1 / 2 ^ 53 : ℝ) / 2 ^ 53 ≤ 1 / 2 ^ 70 * (19 / 10) := by norm_num
+      calc (1 / 2 ^ 20 + 1 / 2 ^ 53) * s0 * (s0 / 2 ^ 53) =
+            ((1 / 2 ^ 20 + 1 / 2 ^ 53) / 2 ^ 53) * (s0 * s0) := by ring
+        _ ≤ (1 / 2 ^ 70 * (19 / 10)) * (s0 * s0) :=
+            mul_le_mul_of_nonneg_right hc (mul_self_nonneg s0)
+        _ = s0 / 2 ^ 70 * (19 / 10 * s0) := by ring
     have h7 : s0 / 2 ^ 70 * (19 / 10 * s0) ≤ s0 / 2 ^ 70 * (vs + vw) :=
       mul_le_mul_of_nonneg_left (by linarith) (div_nonneg hs0n (by norm_num))
-    linarith
+    exact h5.trans (h6.trans h7)
   -- `r s`
   have hvsM : |vs| ≤ (1 + 1 / 2 ^ 53) * s0 := by rw [abs_of_pos hvs0]; linarith
   have hrs := Approx.mono (fapprox_mul hrA (approx_self s.toBits hs.1) (Mr * vz)
@@ -322,7 +329,7 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
   have hsum1 : vw + vw2 < 2 := by
     have h3 := (abs_le.mp hS).2
     have h4 := Real.arcsin_le_pi_div_two s0
-    have h5 := Real.pi_lt_four
+    have h5 := Real.pi_lt_d2
     have h6 : (7 / 10 / 2 ^ 53 : ℝ) * s0 ≤ 1 / 10 := by
       have : (7 / 10 / 2 ^ 53 : ℝ) ≤ 1 / 5 := by norm_num
       nlinarith
@@ -351,7 +358,7 @@ theorem pos_core (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ value x.toBi
       abs_of_pos (by linarith : (0 : ℝ) < 2 - (vw + vw2))] at h3
     have h5 := le_abs_self (|value u.toBits| - (vw + vw2))
     linarith [(by norm_num : (4 : ℝ) < 2 ^ 900)]
-  obtain ⟨h2f, h2v⟩ := AtanTheoremReduce.double_float u hu huv huv2
+  obtain ⟨h2f, h2v⟩ := AtanTheoremReduce.double_float u hu (le_trans (by norm_num) huv) huv2
   have hR2 := F64RoundDouble.rounded_double u.toBits (vw + vw2) hRd
     (by rw [abs_of_pos (by linarith : (0 : ℝ) < vw + vw2)]
         linarith [(by norm_num : (1 : ℝ) / 2 ^ 1000 ≤ 1 / 2 ^ 28)])
