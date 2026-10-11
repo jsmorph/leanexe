@@ -29398,13 +29398,24 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 | `LeanExe/ProofKit/F64NearestRelative.lean` | `expm1-neardiv-2.log` |
 | `Verified/Examples/Expm1NearForms.lean` | `expm1-nearforms-1.log`, `-2.log` |
 | `Verified/Examples/Expm1Near.lean` | `expm1-near-1.log` to `-3.log` |
+| `Verified/Examples/TanhBranches.lean` | `tanh-words-1.log` (`simp_all` left `if 1072693248 ≤ ix` against a hypothesis `ix < 1072693248`), `-2.log` |
+| `Verified/Examples/TanhWords.lean` | `tanh-words-2.log` to `-4.log` |
+| `Verified/Examples/TanhSmall.lean` | `tanh-small-1.log` to `-3.log` |
+| `Verified/Examples/TanhLarge.lean` | `tanh-large-1.log` to `-3.log` |
+| `Verified/Examples/TanhTheorem.lean` | `tanh-theorem-1.log` to `-3.log` |
+| `Verified/Examples/TanhMain.lean` | `tanh-main-1.log`, `-2.log` |
+| `Verified/Examples/TanhSpecial.lean` | `tanh-special-1.log`, `-2.log` |
 
 `Expm1NearForms` and `Expm1Near` export the paths that `tanh` uses.  For `x < 0` the result is `-w` for a word `w` within `u S` and `u/2` of a positive `S`, and `S` lies within `0.56 u abs(x) + 16 η` of `1 - exp x` without reduction (`near_middle`), within `0.2451 u` for `k = -1` (`near_one`), and within `0.3726 u` for `abs(x)` from 1.0397 to 38 (`near_k`).  For `2 ≤ x ≤ 44` the result lies within `u S` of a positive `S` within `0.85 u (exp x - 1)` of `exp x - 1` (`near_pos`).  Two failures recurred here.  `linarith` normalizes a hypothesis with a numeric quotient through `norm_num`, which also rewrites the threshold word `UInt64.ofNat (C * 2 ^ 32)` to a literal, so the same word became two atoms (`expm1-near-1.log`); `set` now names each threshold value before the arithmetic.  Rewriting the count `m` to 1 in a goal also rewrote `m` inside the reduced arguments, and unifying them with the unrewritten ones exceeded the recursion limit; `neg_one_near_m` takes `m.toNat = 1` instead.
 
+`TanhMain.tanh_within_three` states, for every `x` with `Finite x.toBits`, `WithinSteps 3 (Real.tanh (value x.toBits)) (Tanh.tanh x).toBits`.  The ranges prove more: `TanhTheorem.tiny_within` gives one step below `2 ^ -28`, where the result is `x` and `abs(x - tanh x) ≤ 4/3 abs(x) ^ 3`; `TanhLarge.large_core` gives one step on `[1, 22)`, where the error before the last rounding is at most `7.704 u / D + η` with `D ≥ 8.36`; and `TanhTheorem.huge_within` gives one step from 22 on.  On `[2 ^ -28, 1)`, `TanhSmall.small_core` needs `2 E + P u ≤ (47/16) u P (2 - P - 1/1000)` for the bound `E` on the error of `-t`, and the three paths of `expm1` give it with the margins `4.51 u P` against `4.85 u P` without reduction, and positive quadratics on `P` in `[0.29, 0.65]` and `[0.64, 0.87]`.  `TanhSpecial` gives both zeros unchanged, 1 and `-1` for the infinities, and the canonical NaN.
+
+`linarith` treats a `set` variable as an atom and never unfolds its value, so a bound named by `set E := ...` was useless to it (`tanh-small-2.log`); the bounds now go to `small_core` as terms.  The same holds for later hypotheses that mention the unfolded term, so `TanhLarge` names no values.
+
 - [x] Nearest rounding of quotients and the criteria for several steps.
 - [x] Errors of the `expm1` paths before the last rounding.
-- [ ] `tanh` branches and the four ranges.
-- [ ] `tanh` theorem and exceptional values.
+- [x] `tanh` branches and the four ranges.
+- [x] `tanh` theorem and exceptional values.
 - [ ] Byte theorems and the file module.
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
