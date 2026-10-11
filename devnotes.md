@@ -30104,6 +30104,29 @@ The eighth run exposed an error in the first statement of `corr_mid`.  The main 
 
 The table lists the largest totals in spacings of each case's binade; the limit is 2.5.
 
+### `asinh`, `acosh`, and `atanh`
+
+The targets are `WithinSteps 2` against `Real.arsinh`, `Real.arcosh`, and `Real.artanh`.  The code calls `Log.log` and `Log1p.log1p`, whose theorems give one step at the computed argument, so the proofs compose.  `F64Compose.within_two_of_close` turns one step at `y₁` into two steps at `y₂` when `|y₁ - y₂|` lies below one spacing of a binade at or below both.  `F64Compose.error_of_within` bounds a word within one step by 1.5 spacings, or 2.5 in the top two spacings of a binade.  `F64RelError` tracks relative errors of positive values over ranges too wide for the scaled chains of `F64Approx`.
+
+| Branch | Method | State |
+|---|---|---|
+| `asinh`, `atanh` below `2 ^ -28` | The result is `x`; `arsinh x` and `artanh x` lie within `|x|³` and `2|x|³` of `x` | Committed in `c4cf80e2` |
+| `asinh` from `2 ^ 28`, `acosh` from `2 ^ 28` | `Log.log |x| + ln2`: the error of `log` from `error_of_within`, then the nearest rounding of the sum (`AsinhTheoremLarge.log_ln2`) | Committed in `a5077186` |
+| `asinh` on `[2, 2 ^ 29]`, `acosh` on `[2, 2 ^ 28]` | Argument within `1.315 · 2 ^ -53` and `1.765 · 2 ^ -53` relative, then `within_two_of_close` in `[1, 2)` | Committed in `5ede907a`, `f8d93194` |
+| `asinh` on `[2 ^ -28, 2]`, `acosh` on `(1, 2]`, `atanh` on `[2 ^ -28, 1/2)` | `log1p` at a computed argument | Open |
+
+An analysis with dense sampling and per-operation worst cases (scripts in `scratchpad/w-poly/arc/hyp`) showed that composing "log1p within one step" with the argument error cannot give two steps on the `log1p` branches.  The rounding of the argument `u` costs up to one spacing of the target, and `log1p` passes it through with factor `1/(1 + u)`; there are inputs where the nearest word of `log1p` at the computed argument is already two steps from the reference.  The compiled functions reach exactly two steps there (`asinh 0x3fe0a9ff5094e9cc`, `atanh 0x3fd9147494025dc1`, `acosh 0x3ff000007ffee997`).
+
+A proof therefore needs the internal bounds of `log1p`.  These bound the exact value `S` of its last operation, whose result is the nearest word of `S`, so two steps follow when `|S - Y| < 2` spacings (`F64TwoSteps.within_two_of_rounded`), where `Y` is the target.  The table lists the worst cases in spacings of the target's binade.
+
+| Branch | Worst `|log(1 + u_c) - Y|` | `E` of `log1p` there | Sum |
+|---|---|---|---|
+| `atanh` small | 1.02 | at most 0.93 | 1.95, two steps |
+| `asinh` small | 1.16, at `Y` just below 1/2, `u ≈ 0.64` | 0.93, the uniform bound of the case `K = 1`, `f < -0.175` | 2.09 |
+| `acosh` small | 1.75 near `x = 1` | 0.65 | 2.4 |
+
+The plan, approved by the coordinator: expose the bound `|S - log(1 + x)| ≤ E` of `log1p` for `x ≥ 0`, prove two steps for `atanh` small, prove two steps for `asinh` small if a separate `log1p` case for `f ∈ [-0.2, -0.175]` brings `E` below 0.84 (otherwise three steps with the margin reported), and prove two steps for `acosh` small only if a refined model of `t + √(2t + t²)` closes the gap (otherwise three steps with the margin reported).
+
 ### A pitfall of `linarith`
 
 `linarith` failed on three linear goals in `F64RoundNearest` and one in `Log1pTheoremConst` although every hypothesis it needed was present.  Its preprocessing step `cancelDenoms` ([`Mathlib/Tactic/Linarith/Preprocessing.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/Linarith/Preprocessing.lean)) runs only on a hypothesis whose left side contains a division, and it calls `CancelDenoms.derive` ([`Mathlib/Tactic/CancelDenoms/Core.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/CancelDenoms/Core.lean)), which normalizes the whole term with `norm_num`, including the arguments of functions.  A hypothesis with a division therefore holds `value (UInt64.ofNat (a * 4503599627370496))` where a hypothesis without one holds `value (UInt64.ofNat (a * 2 ^ 52))`, and `2 ^ (-1021 : ℤ)` becomes a rational number in one and stays a power in the other.  `linarith` treats the two forms as different atoms.  The proofs now name such terms with `set` before calling `linarith`, or chain the inequalities explicitly.  A `set` variable does not help when the goal is created afterwards from a lemma statement: the goal holds `value (UInt64.ofNat (n * 2 ^ 52))` while the hypothesis holds the variable.  `generalize value (UInt64.ofNat (n * 2 ^ 52)) = B at h ⊢` before `linarith` replaces both by one plain variable.
@@ -30162,4 +30185,5 @@ Other pitfalls found in the last runs: `Real.arctan |v||` parses as `Real.arctan
 - [x] `atan2`, its exceptional values, and the byte and file theorems of `atan.wasm`.
 - [x] File theorem of `log1p`.
 - [x] Byte and file theorems of `asin.wasm`, the build of every file on the branch, and the report with the lines `log1p:Log1pBytes:Log1pFile`, `atan:AtanBytes:AtanFile`, and `asin:AsinBytes:AsinFile`.
-- [ ] `asinh`, `acosh`, `atanh`.
+- [x] `asinh`, `acosh`, `atanh`: tiny, middle, and large branches.
+- [ ] `log1p` bounds for `x ≥ 0`, the `log1p` branches of `asinh`, `acosh`, `atanh`, exceptional values, byte theorems, and the file module of `asinh.wasm`.
