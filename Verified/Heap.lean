@@ -81,8 +81,7 @@ theorem _root_.LeanExe.Pipeline.Heap.allocate_top {heap : Heap} {need : UInt64}
 
 /-- How an allocation of `bytes` changed `top`: it reused free memory, which leaves `top` unchanged
 and gives a block of at least `bytes`, or it raised `top` by `48 + allocSize bytes` for a block of
-    exactly
-that capacity. -/
+exactly that capacity. -/
 def AllocShape (heap heap' : Heap) (bytes : UInt64) (cap : Nat) : Prop :=
   (heap'.top.toNat = heap.top.toNat ∧ bytes.toNat ≤ cap) ∨
     (heap'.top.toNat = heap.top.toNat + 48 + (allocSize bytes).toNat ∧

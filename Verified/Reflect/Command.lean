@@ -1158,8 +1158,8 @@ def assignExtension (app : LemmaApp) (e : Elem) : MetaM Lean.Expr := do
 def binBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (l r : Reflection) :
     BoundBuilder := fun modes paid live => do
   let bounds := c.tables.table false
-  let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args ++ [(`l, l.src), (`r,
-      r.src)])
+  let app ← LemmaApp.start n
+      (boundArgs c bounds modes paid live ++ args ++ [(`l, l.src), (`r, r.src)])
   let _ ← app.child `hl l.bound
   let _ ← app.child `hr r.bound
   boundOf (← app.finish)
@@ -1227,8 +1227,8 @@ structure Under where
   decls : List LocalDecl
 
 /-- The bound of `u`'s body, abstracted over its binders. -/
-def Under.bound (u : Under) : BoundBuilder := fun modes paid live => withExistingLocalDecls u.decls
-    do
+def Under.bound (u : Under) : BoundBuilder := fun modes paid live =>
+    withExistingLocalDecls u.decls do
   let b ← u.r.bound modes paid live
   return ⟨← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof⟩
 

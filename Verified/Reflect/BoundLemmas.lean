@@ -125,8 +125,8 @@ theorem mk_bound {a b : Elem} {l : Expr S Γ (.elem a)} {r : Expr S Γ (.elem b)
     (Expr.mk l r).allocs funs bounds modes paid live env = L + R := by
   subst hl hr; rfl
 
-theorem not_bound {e : Expr S Γ .bool} {E : Nat} (h : e.allocs funs bounds modes paid live env = E)
-    :
+theorem not_bound {e : Expr S Γ .bool} {E : Nat}
+    (h : e.allocs funs bounds modes paid live env = E) :
     (Expr.not e).allocs funs bounds modes paid live env = E := by
   subst h; rfl
 
@@ -285,8 +285,8 @@ theorem letPair_bound {s t u : Ty} {e : Expr S Γ (.pair s t)} {body : Expr S (t
     {m : Mode} {E : s.denote × t.denote} {A : s.denote} {B : t.denote} {EA BA : Nat}
     (hm : e.mode modes = m) (he : e.denote funs env = E) (hA : E.1 = A) (hB : E.2 = B)
     (hea : e.allocs funs bounds modes paid (fun i => live i || body.uses (i + 2)) env = EA)
-    (hba : body.allocs funs bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live) (.cons
-        B (.cons A env)) =
+    (hba : body.allocs funs bounds (m :: m :: modes) (false :: false :: paid) (shift 2 live)
+        (.cons B (.cons A env)) =
       BA) :
     (Expr.letPair e body).allocs funs bounds modes paid live env = EA + BA := by
   subst hm he hA hB hea hba; rfl
@@ -419,8 +419,8 @@ theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     (hka : coerceCost t (init.mode modes) M I = KA)
     (hca : ∀ s, cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
       (fun j => j == 0 || shift 1 all j) (.cons s env) = CA s)
-    (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes) (false :: false :: paid) (shift
-        2 all)
+    (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes)
+        (false :: false :: paid) (shift 2 all)
         (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) =
       BA i s) :
     (Expr.loop count init cond body).allocs funs bounds modes paid live env =
@@ -450,8 +450,8 @@ theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C 
     (hka : coerceCost t (init.mode modes) M (φ I) = KA)
     (hca : ∀ s, cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
       (fun j => j == 0 || shift 1 all j) (.cons (φ s) env) = CA s)
-    (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes) (false :: false :: paid) (shift
-        2 all)
+    (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes)
+        (false :: false :: paid) (shift 2 all)
         (.cons (φ s) (.cons i env)) +
           coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) = BA i s) :
     (Expr.loop count init cond body).allocs funs bounds modes paid live env =
