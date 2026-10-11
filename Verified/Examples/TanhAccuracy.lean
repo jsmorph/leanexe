@@ -1,22 +1,24 @@
 import Verified.Examples.Tanh
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Tanh.expm1` and `Tanh.tanh` against `Reference.expm1` and `Reference.tanh`
-rounded to the nearest double.  fdlibm states an error below one unit in the last place for
-`expm1`, so each of its results must lie within one unit of the reference.  fdlibm states no bound
-for `tanh`, whose quotients enlarge the error of `expm1`.  Its results must lie within two units,
-the largest distance that the check finds, and glibc's `tanh`, derived from the same source,
-lies two units from the reference at the same arguments.  The arguments of `expm1` are evenly
-spaced values from -40 to 710, hashed values over the exponents from `2 ^ -60` to `2 ^ 9` with
-both signs, the doubles next to the high words that the code compares with and next to
-`(n + 1/2) ln 2` for the `n` at which `k` changes the form of the result, evenly spaced values
-from the high-word thresholds to `ln 2/2`, `1.5 ln 2`, and `o_threshold`, tiny values, and the
-special values.  Those of `tanh` are evenly spaced
-values from -25 to 25, hashed values over the exponents from `2 ^ -60` to `2 ^ 5` with both signs,
-the doubles next to its thresholds, tiny values, and the special values.  The check also reports,
-for information, the distance from the reference of the C library's `tanh`, which Lean's
-`Float.tanh` calls, and it exits with an error at the first result further from the reference
-than its bound.  Run with `lake env lean --run`. -/
+rounded to the nearest double.  fdlibm states an error below one unit in the last place for `expm1`,
+so each of its results must lie within one unit of the reference.  fdlibm states no bound for
+`tanh`, whose quotients enlarge the error of `expm1`.  Its results must lie within two units, the
+largest distance that the check finds, and glibc's `tanh`, derived from the same source, lies two
+units from the reference at the same arguments.  The arguments of `expm1` are evenly spaced values
+from -40 to 710, hashed values over the exponents from `2 ^ -60` to `2 ^ 9` with both signs, the
+doubles next to the high words that the code compares with and next to `(n + 1/2) ln 2` for the `n`
+at which `k` changes the form of the result, evenly spaced values from the high-word thresholds to
+`ln 2/2`, `1.5 ln 2`, and `o_threshold`, tiny values, and the special values.  Those of `tanh` are
+evenly spaced values from -25 to 25, hashed values over the exponents from `2 ^ -60` to `2 ^ 5` with
+both signs, the doubles next to its thresholds, tiny values, and the special values.  The arguments
+also include those of `WorstCases`, which give the largest known errors of thirteen libraries in
+Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  The
+check also reports, for information, the distance from the reference of the C library's `tanh`,
+which Lean's `Float.tanh` calls, and it exits with an error at the first result further from the
+reference than its bound.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.TanhAccuracy
 
@@ -65,12 +67,14 @@ def expm1Args : Array Float :=
     fun x => near x ++ near (-x)
   let between := (evenly 1000 highWords[1]! (1.5 * ln2) ++ evenly 200 (0.5 * ln2) highWords[0]! ++
     evenly 1000 highWords[3]! 709.782712893384).flatMap fun x => #[x, -x]
-  evenly 120000 (-40.0) 710.0 ++ hashed 60000 17 963 70 ++ edges ++ between ++ tiny ++ special
+  evenly 120000 (-40.0) 710.0 ++ hashed 60000 17 963 70 ++ edges ++ between ++ tiny ++ special ++
+    WorstCases.expm1.map Float.ofBits
 
 def tanhArgs : Array Float :=
   let edges := #[Float.ofBits 0x3E30000000000000, 1.0, 22.0, 0.5, 2.0].flatMap
     fun x => near x ++ near (-x)
-  evenly 100000 (-25.0) 25.0 ++ hashed 60000 19 963 66 ++ edges ++ tiny ++ special
+  evenly 100000 (-25.0) 25.0 ++ hashed 60000 19 963 66 ++ edges ++ tiny ++ special ++
+    WorstCases.tanh.map Float.ofBits
 
 end Verified.Examples.TanhAccuracy
 

@@ -23,7 +23,7 @@ The compiler is untrusted.  It emits the IR as a Lean definition and the module 
 | Lean's kernel, with `propext`, `Classical.choice`, and `Quot.sound` | Checks every proof.  Proofs may not use `bv_decide` or `native_decide`, which add an axiom that trusts compiled code. |
 | Talos's semantics (`CodeLib`, revision `87e3aa5e` of `github.com/jsmorph/talos`) | Defines what a module does.  `Triple` and `Implements` are statements about Talos runs, and the IR has no semantics of its own. |
 | The binary decoder, `Wasm.Encoding.decode` | Defines what the bytes mean.  [`tests/decoder/DecodeTest.lean`](../tests/decoder/DecodeTest.lean) runs it over the official WebAssembly testsuite. |
-| The step from a constant to a file | [`tools/Emit.lean`](../tools/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  `gpt_file` and `exp_file` prove the contents of `gpt.wasm` and `exp.wasm`, and they trust the elaborator `binary_file%`, which reads the file. |
+| The step from a constant to a file | [`tools/Emit.lean`](../tools/Emit.lean) evaluates `encode` with compiled Lean code and writes the file.  `gpt_file`, `exp_file`, and `log_file` prove the contents of `gpt.wasm`, `exp.wasm`, and `log.wasm`, and they trust the elaborator `binary_file%`, which reads the file. |
 
 ### Outside the proofs
 
