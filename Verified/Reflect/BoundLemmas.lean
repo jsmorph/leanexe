@@ -543,20 +543,26 @@ theorem func_bound {func : Func S} {args : Env func.params} {ms : List Mode}
     func.bound funs bounds args = BA + KA := by
   subst hms hv hba hk; rfl
 
+/-- The entry of a function whose code takes no call depth, at any number of frames: its own
+bound, with its callees at 0 frames. -/
 theorem bounds_get_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
-    (fs : Funs S) (env : Env f.params) :
-    (Prog.bounds (.cons f rest) (.cons F fs)).get .here env = f.bound fs (rest.bounds fs) env :=
-  rfl
+    (fs : Funs S) (k : Nat) (hd : f.depth = false) (env : Env f.params) :
+    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
+      f.bound fs (rest.boundsAt fs 0) env := by
+  rw [Prog.boundsAt_cons_here, if_neg (by simp [hd])]
 
 theorem bounds_get_there {g : Sig} (f : Func S) (rest : Prog S)
-    (F : Env f.params → f.result.denote) (fs : Funs S) (v : FVar S g) (env : Env g.params) :
-    (Prog.bounds (.cons f rest) (.cons F fs)).get (.there v) env = (rest.bounds fs).get v env :=
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
+    (env : Env g.params) :
+    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get (.there v) env =
+      (rest.boundsAt fs k).get v env :=
   rfl
 
 theorem bounds_get_thereRec {g : Sig} (f : RecFunc S) (rest : Prog S)
-    (M : Env f.params → f.result.denote) (fs : Funs S) (v : FVar S g) (env : Env g.params) :
-    (Prog.bounds (.consRec f rest) (.cons M fs)).get (.there v) env =
-      (rest.bounds fs).get v env :=
+    (M : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
+    (env : Env g.params) :
+    (Prog.boundsAt (.consRec f rest) (.cons M fs) k).get (.there v) env =
+      (rest.boundsAt fs k).get v env :=
   rfl
 
 end Verified.Reflect
