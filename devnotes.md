@@ -29813,3 +29813,64 @@ The samples (`sample_tail.py`, 401 points per kernel, `erfc` from the series in 
 | Pieces 0 to 7 and the kernel | Pieces passed.  `spos_a` failed on the cast of `5/4`, and the kernel on `exact_mod_cast` for `a31 = 5/4`. | `erf-tail-all-3.log` |
 | Kernel with the casts fixed | `tail_kernel_a` and `tail_kernel_b` with `propext`, `Classical.choice`, and `Quot.sound` | `erf-tail-all-4.log` |
 | Pieces with `#print axioms` for each model and piece bound | Passed, 81 declarations of the tail files with the permitted axioms | `erf-tools-2.log` |
+
+### One step for `erf`
+
+`ErfTheorem.erf_within_one` states `WithinSteps 1 (erf (value x)) (Erf.erf x).toBits` for every finite `x`, and `erf_bytes_accuracy` carries it to the decoded module and every call of its export `erf` (function 11) from a store that borrows `Exp.expTable` at address 4096.  The exceptional values follow the code: `erf (±0) = ±0`, `erf (±∞) = ±1`, and the canonical NaN for a NaN.  `ErfFile` checks `build/verified/erf.wasm` against `ErfTheorem.erf_module_accuracy`, which depends on the byte theorem.
+
+The proof gives one step through the nearest rounding of the code's final sum wherever the plain relative bound is too weak.  `F64AddNearest.add_nearest` shows that a rounded positive sum is a nearest value of the exact sum, and `within_of_nearest` and `within_nearest_relative` give `m` steps when the exact sum lies within `m` spacings of the reference, or within `(63/64) m` units of roundoff relative to it.  The other ranges use `F64RelativeSteps.within_steps_relative`, which tolerates `(m + 3/8) u` relative to `|y|` down to `17/16 · 2^-1022`, and `within_steps_low` for absolute errors below `(2m + 1)/2 · 2^-1074`.
+
+| Range of `|x|` | Code | Method | Margin |
+|---|---|---|---|
+| `0` | `(8 x + efx8 x)/8` | the word, computed | exact |
+| `(0, 2^-1022)` | `(8 x + efx8 x)/8` | absolute error below `1.26 · 2^-1074` against `1.5 · 2^-1074` (`ErfSub.erf_subnormal`) | 16% |
+| `[2^-1022, 2^-1015)` | same | `8 x` and `/8` exact (`F64DivApprox.div_eight_value`), `1.21 u` relative against `1.375 u` | 12% |
+| `[2^-1015, 2^-28)` | `x + efx x` | `1.25 u` relative against `1.375 u` (`ErfEnds.erf_tiny`) | 9% |
+| `[2^-28, 0.84375)` | `x + x pp/qq (x x)` | 74 intervals, nearest final sum; relative criterion below 0.48 and spacing `2^-53` above (`ErfSmall`) | 1.7% at `x ≈ 0.84` |
+| `[0.84375, 1.25)` | `erx + pa/qa (x - 1)` | 13 intervals of `s`, error at most `0.51` of the spacing `2^-53` (`ErfMiddle`) | 49% |
+| `[1.25, 6)` | `1 - exp (-z² - 9/16) exp (t)/x` | 30 intervals; relative `erfc` error at most `11.2 u` times `erfc 1.25 ≤ 0.0772` stays below the spacing `2^-53` (`ErfTailErf`) | 14% |
+| `[6, ∞)` | `1 - tiny`, the word of 1 | `erfc 6 < 2^-54` (`ErfEnds.erf_large`) | large |
+
+Negative arguments reduce to positive ones: below 0.84375 the code applies the same operations to `x`, and negating operands negates rounded sums, products, and quotients (`F64NegateOps`) unless the exact sum is zero, which `ErfNegative.add_ne_zero_of_within` excludes from the step at `-x`.  From 0.84375 on the code negates its final sum through the sign flag.  `erf` is odd (`RealErf.erf_neg`), so `within_negate` carries the step.
+
+The small range is the tightest.  The rigorous Horner bound (`F64Horner.hornerErr`, with each partial polynomial bounded by `magBound` on the interval) gives a pre-rounding error of `0.983` spacings at `x ≈ 0.84`, and the kernel's `(21/32) 2^-55` is a fixed share of it, because fdlibm's `pp/qq` equioscillates and reaches `0.55 · 2^-55` at both ends of `[0, 0.712]`.  The intervals near 0.84 have width `1/256`.
+
+| File | Contents |
+|---|---|
+| `LeanExe/ProofKit/F64Horner.lean` | verified Horner bound `hornerW_approx`, `magBound`, `lowBound` |
+| `LeanExe/ProofKit/F64DivApprox.lean` | `div_approx`, `ratio_lipschitz`, `div_real_adaptive`, `div_eight` |
+| `LeanExe/ProofKit/F64AddNearest.lean` | `add_nearest`, `steps_of_nearest`, `within_of_nearest`, `within_nearest_relative` |
+| `LeanExe/ProofKit/F64RelativeSteps.lean` | `within_steps_relative`, `within_steps_low` |
+| `LeanExe/ProofKit/F64NegateOps.lean` | rounded operations under negation |
+| `Verified/Examples/ExpRelative.lean` | `|expWith x - e^x| ≤ 1.405 u e^x` for `|x| < 512` |
+| `ErfSmallBase`, `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfSmall` | small range |
+| `ErfMiddleBase`, `ErfMiddle` | middle range |
+| `ErfTailSplit`, `ErfTailEval`, `ErfTailCompose`, `ErfTailErfBase`, `ErfTailErf` | tail: exact split of `x²`, the argument of the second exponential, composition with `x erfc x = exp (-z² - 9/16) exp (t - tailF)` |
+| `ErfEnds`, `ErfSub` | below `2^-28` and from 6 on |
+| `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | the code's paths, positive and negative arguments |
+| `ErfTheorem`, `ErfFile` | exceptional values, byte and file theorems |
+
+The run line for `tests/verified/run.sh` is `erf:ErfTheorem:ErfFile`.
+
+### Estimate for `erfc`
+
+The coordinator asked how far two refinements bring the `erfc` bound before any `erfc` theorem is written: (a) Horner bounds on subintervals of `s` that charge each rounding with the magnitude of its partial result there, and (b) a relative bound for `Exp.expWith` near Arm's stated error, for which the coordinator fixed the figure `0.52` units, about `1.04 u` relative.  The tail estimates come from `plan_refine.py` in the scratch directory, which applies the error terms of `ErfTailEval` and `ErfTailCompose` with rational interval bounds.  The steps follow from `within_steps_relative`, which needs `(m + 3/8) u`, or, through the nearest rounding of the final quotient, from `within_nearest_relative`, which needs `(63/64) m u` before that rounding.
+
+| Analysis of the tail `exp (-z² - 9/16) exp (t)/x` | Bound near `x = 1.25` | Steps | Through the nearest quotient |
+|---|---|---|---|
+| As in the `erf` proof: `hornerErr` on 40 intervals, `1.405 u` per exponential | `10.2 u` | 10 | 10 |
+| (b) only: `1.04 u` per exponential | `9.48 u` | 10 | 9 |
+| (a) only: half a unit of each partial result's binade on 400 intervals | `8.27 u` | 8 | 8 |
+| (a) and (b) | `7.54 u` | 8 | 7 |
+
+Four rounded operations follow the two exponentials' arguments: the two exponentials, their product, and the quotient by `x`.  Each can cost a full `u` relative to its result in the worst case, so they alone use about `4.1 u`, more than four steps, before any error in `t`.  The rest, about `3.3 u` with (a), comes from `t`, mostly from the Horner evaluation of `ra` and `sa` at `s ≈ 0.64`, where `R ≈ -74` and `S ≈ 346` and no partial sum cancels.  The figures are worst-case bounds; earlier sampling found at most three steps.
+
+The middle range is near four steps as well: the pre-rounding error of `(1 - erx) - P/Q` reaches `3.97` spacings of the result near `x = 1.25`, where `erfc x ≈ 0.077` and the spacing is `2^-56`.
+
+| Runs | Result | Logs |
+|---|---|---|
+| Rounding tools: nearest sums, Horner, division, relative steps, negation | Passed after fixes for the exponent threshold option, `Int.log`'s import, a reversed inequality in `steps_of_nearest`, and `pack_spec` in place of the bounded `roundScaledMagnitude_spec` | `erf-tools-1.log` to `erf-tools-5.log` |
+| Small and middle bases and intervals | Passed; the first version of the coefficient relations had the wrong shape after `simp` | `erf-base-1.log` to `erf-base-4.log` |
+| Tail split, evaluation, and composition | Passed after `set` abbreviations were removed where later lemmas produced the unabbreviated terms, and after `nlinarith` calls that timed out were replaced by explicit products and `linarith only` | `erf-base-5.log` to `erf-base-16.log` |
+| Paths, positive and negative arguments, theorem module | Passed; branch conditions on both sides of the negation needed `simp` in place of `rw [if_pos]` | `erf-base-17.log` to `erf-base-24.log` |
+| `erf.wasm` and `ErfFile` | `tools/Emit.lean` wrote 7,016 bytes; both file theorems report only the permitted axioms | `erf-emit-1.log`, `erf-file-1.log` |
