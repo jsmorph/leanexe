@@ -376,7 +376,34 @@ theorem within_two_rel (y : ℝ) (c : UInt64) (X : ℝ) (n : ℕ) (hn2 : 2 ≤ n
       have h5 : 5 / 2 / 2 ^ 53 * B = 5 * (B / 2 ^ 53) / 2 := by ring
       linarith
 
+/-- Two steps below `2 ^ -1020`, where consecutive words lie at least `2 ^ -1074` apart, for a
+nonnegative word and a nonnegative `y`. -/
+theorem within_two_low (y : ℝ) (c : UInt64) (hcf : Finite c) (hc63 : c.toNat < 2 ^ 63)
+    (hc1 : value c ≤ 1 / 2 ^ 1020) (hy0 : 0 ≤ y) (hy1 : y ≤ 1 / 2 ^ 1020)
+    (hE : |value c - y| < 5 / 2 / 2 ^ 1074) :
+    F64SignedRounding.WithinSteps 2 y c := by
+  have hl : limit = 2047 * 2 ^ 52 := rfl
+  have hUw : (UInt64.ofNat (3 * 2 ^ 52)).toNat = 3 * 2 ^ 52 :=
+    UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
+  have hUv : value (UInt64.ofNat (3 * 2 ^ 52)) = 1 / 2 ^ 1020 := by
+    rw [F64PositiveSpacing.boundary_value 3 (by norm_num) (by norm_num)]
+    norm_num
+  have hcU : c.toNat ≤ 3 * 2 ^ 52 := by
+    have h := (value_le_iff hc63 (by rw [hUw]; norm_num)).mp (by rw [hUv]; exact hc1)
+    rwa [hUw] at h
+  have h0 : value (UInt64.ofNat 0) = 0 := by
+    have h : Wasm.IEEE64.scaledValue (UInt64.ofNat 0) = 0 := by decide +kernel
+    rw [value, h]
+    norm_num
+  have hd : ((2 : ℝ) ^ (0 - 1) / 2 ^ 1074) = 1 / 2 ^ 1074 := by norm_num
+  have hstep := two_steps_full y ((2 : ℝ) ^ (0 - 1) / 2 ^ 1074) c 0 (3 * 2 ^ 52)
+    (by positivity) (by rw [hd]; norm_num) (by rw [hl]; norm_num) (by rw [hl]; norm_num)
+    ⟨Nat.zero_le _, hcU⟩ (by rw [h0]; exact hy0) (fun _ => by rw [hUv]; exact hy1)
+    (fun m _ hm2 => gap_lower m 0 (by omega) (by omega)) (by rw [hd]; linarith)
+  exact F64SignedRounding.within_of_nonneg 2 y hy0 c (by omega) hstep.1 hstep.2
+
 #print axioms within_two_of_error
+#print axioms within_two_low
 #print axioms steps_two_of_nearest
 #print axioms within_two_of_rounded
 #print axioms within_two_rel

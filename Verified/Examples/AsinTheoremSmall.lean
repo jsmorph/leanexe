@@ -99,7 +99,8 @@ theorem small_finish (x : Float) (hx : Finite x.toBits) (T0 Mr er ρ : ℝ)
   have hxr := fsapprox_mul hfx hr (1 / 2 ^ 960) hη3 (by nlinarith)
   have hker := asin_kernel v (by linarith)
   have hy := abs_le_abs_arcsin v (by linarith)
-  have hρ0 : 0 ≤ ρ := le_trans (by positivity) hρn
+  have hT0 : 0 ≤ T0 := le_trans (mul_nonneg hσp.le hσp.le) hσ2
+  have hρ0 : 0 ≤ ρ := le_trans (mul_nonneg hT0 (by linarith)) hρn
   refine add_within_rel (approx_self x.toBits hx) hxr.approx (Real.arcsin v) ρ hρ0 hρ ?_ ?_
     (lt_trans (abs_arcsin_lt v) (by norm_num))
   · rw [abs_sub_comm] at hker
@@ -128,14 +129,14 @@ theorem tiny_within (x : Float) (hx : Finite x.toBits) (h : |value x.toBits| < 1
   have hker := asin_kernel v (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 26 ≤ 1 / 2)])
   -- `|P/Q| ≤ 1/5` near zero
   have hP := poly_bound AsinKernelPoly.asinP 0 (1 / 2 ^ 52) (1 / 5) 4 (by decide +kernel) (v * v)
-    (by push_cast; positivity) (by
+    (by push_cast; exact mul_self_nonneg v) (by
       push_cast
       have := mul_le_mul h.le h.le (abs_nonneg v) (by positivity)
       rw [abs_mul_abs_self] at this
       norm_num at this ⊢
       linarith)
   have hQ := poly_bound (subP AsinKernelPoly.asinQ [1]) 0 (1 / 2 ^ 52) (1 / 100) 4
-    (by decide +kernel) (v * v) (by push_cast; positivity) (by
+    (by decide +kernel) (v * v) (by push_cast; exact mul_self_nonneg v) (by
       push_cast
       have := mul_le_mul h.le h.le (abs_nonneg v) (by positivity)
       rw [abs_mul_abs_self] at this
