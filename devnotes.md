@@ -29530,6 +29530,45 @@ Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log
 - [ ] Exceptional values and the full theorem.
 - [ ] Byte theorem and `LogFile.lean`.
 
+## 2026-10-10: Logarithm theorem, complete (track `log`)
+
+`LogTheorem.log_bytes_accuracy` is accepted.  The bytes of `Log.compiled.module` decode to the module, its function 5 is exported as `log`, and the initial store satisfies `LogTheorem.Ready`: the allocator invariant, `logTable` borrowed at 4096, `logTable2` at 6152, and a memory cap of at most 65,535 pages.  A call from a ready store returns without a trap the bits of `Log.log x` and leaves a ready store whose earlier heap regions keep their bytes.  For finite `x` with `0 < value x` the bits satisfy `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits))`.  `log_within_one` states the bound for the Lean function, and `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, and `log_nan` give `log 1 = +0`, `log (±0) = -∞`, `log (+∞) = +∞`, and the canonical NaN for negative arguments, negative infinity included, and for NaN.  `LogFile.log_file` and `log_file_decode` prove that `build/verified/log.wasm` holds the module.
+
+| Inputs | Path | Theorem |
+|---|---|---|
+| Positive normal outside `[15/16, 1 + 265/4096)` | `logCore` on the argument's bits | `LogMain.log_normal_within` |
+| Positive subnormal | `x · 2 ^ 52`, exact by `F64ExactProduct.mul_exact_scaled`, then `logCore` on the bits less `52 · 2 ^ 52` | `LogMain.log_subnormal_within` |
+| `[15/16, 1 + 265/4096)` other than 1 | `logNear1` | `LogTheorem.near1_within` |
+| 1, zeros, `+∞`, negatives, NaN | the guards of `logWith` | `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, `log_nan` |
+
+The path near 1 needs a bound relative to `ρ = |x - 1|`, between `2 ^ -53` and `265/4096`.  `x - 1` is exact on the grid of `2 ^ -53`, and every later operation is tracked with errors proportional to `ρ`, using `ρ ^ 2 ≤ ρ/15` and `multiplicationUnderflowEpsilon ≤ u ρ / 2 ^ 900`.  The result before its final rounding is within `(1/15 + 1/13) u ρ` of `r · eval near1Kernel r`; the two largest terms are the roundings of `rhi · rhi` and of `r - hi`, each about `u ρ / 30`.  `LogKernelPoly.near1_kernel_error` adds `(15/16) 2 ^ -62 ρ`, and `|log x| ≥ (15/16) ρ`, so the total stays below the allowed `3/8` units of roundoff of `log x` by a factor of about 2.4.  The split into 26-bit `rhi` and `rlo` needs no exactness argument: its identity `rhi ^ 2 + (r - rhi)(rhi + r) = r ^ 2` holds for the computed `rhi`, and only the roundings of `rlo` and of the product enter.
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64ExactProduct.lean` | `mul_exact_scaled`, the exact product of words with scaled magnitudes `ma 2 ^ sa` and `mb 2 ^ sb` when `ma mb < 2 ^ 53`, and `int_mul_exact` for a word holding an integer.  `LogCoreFinal.ln2hi_mul_exact` now uses it. |
+| `LeanExe/ProofKit/BorrowedKept.lean` | `borrowed_kept`, the lemma of `ExpTheorem` in a shared module. |
+| `Verified/Examples/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
+| `Verified/Examples/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
+| `Verified/Examples/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
+| `Verified/Examples/LogFile.lean` | `log_file` and `log_file_decode`. |
+
+Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-thm-2.log` replays the chain with no `sorry`; `log-file-1.log` for the file theorems, which took 24 seconds).  Flipping one bit of the last byte of `log.wasm` made `log_file` fail at `decide` (`log-file-negative-1.log`), and the original file was restored with hash `342b0f5c…90f2`.
+
+| Run | Result and cause |
+|---|---|
+| `log-sub-1` | `simp` in `mul_exact_scaled` reached the recursion limit under `exponentiation.threshold 4096`; the file uses the default threshold and an explicit sign table.  `log-sub-2`, `-3`: a shift literal needed the type `UInt64`, and a rewrite hit the wrong `value`.  `log-sub-4` passed. |
+| `log-near-1` | `near1_bounds` failed because `|B8| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
+| `log-near-3`, `-4` | One theorem for the whole path ran past 200,000 heartbeats.  It was split into `poly_error`, `split_error`, and `near1_error` over named words. |
+| `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
+| `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
+
+`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Verified.Examples.LogTheorem`, check `Verified/Examples/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
+
+- [x] Subnormal arguments.
+- [x] `logNear1` and the path near 1.
+- [x] Exceptional values and the full theorem.
+- [x] Byte theorem and `LogFile.lean`.
+
 ## 2026-10-10: Ports of `exp2`, `exp10`, `log2`, `log10`, and `pow`
 
 The coordinator kept the stage 4 bounds as proposed and assigned stage 5 to the same worktree.  Four of the five functions come from Arm's optimized-routines at the pinned commit, since `exp` and `log` already do, and `log10` from FreeBSD's msun, since Arm's `math/` has no double `log10`, only `log10f.c`.  The configuration is the one of `Exp.lean` and `Log.lean`: `HAVE_FAST_FMA` 0, `TOINT_INTRINSICS` 0 (Arm sets `HAVE_FAST_ROUND` only on AArch64), `WANT_ROUNDING` 1, `WANT_ERRNO` 0, and `IEEE_754_2008_SNAN` 1.
@@ -29611,6 +29650,44 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 - [x] Write the references and the checks, and run the checks.
 - [ ] Add the modules to `Verified.lean` and `tests/verified/run.sh` (coordinator).
 
+## 2026-10-11: The `exp2` theorem (track `exp2`, debtop1)
+
+The track works in `/home/somebody/src/lt-exp2` on debtop1, branch `w/exp2`, a worktree of the standalone clone `/home/somebody/src/lt-debtop`, started from `transcendentals` at `c9ff162d`.  Its task is the full theorem for Arm's `exp2` and `exp10` as `Verified/Examples/Exp2.lean` ports them, with byte theorems.  The first milestone, `exp2` for every finite input, is done.  The real function is `Real.rpow 2`, written `(2 : ℝ) ^ a`, which reads as the statement intends; `Real.rpow_def_of_pos` turns it into `exp (log 2 · a)` where the proofs need it.
+
+`Exp2.exp2Core` shares Arm's table, scale arithmetic, and `specialcase` structure with `Exp.expCore`, but three parts differ: the reduction adds `0x1.8p52 / 128` to `x` instead of rounding `x · N/ln 2`, the polynomial approximates `2 ^ r - 1` with `C1 r` in place of `r`, and the positive special case lowers the scale by one binade and doubles, where `exp` lowers it by 1009 and multiplies by `2 ^ 1009`.  The exponential proof's reconstruction lemmas are stated for `exp`'s residual and evaluation words, so they do not apply directly.  The plan generalized them over any polynomial word `w` that approximates `T + ρ - 1`, with `ρ` the real factor (`2 ^ r` here, `10 ^ r` for `exp10`), and reused the exp table, scale encoding, one-step, and compensated-subnormal lemmas unchanged.  The shifted key `ki = 0x42C8000000000000 + k` of `exp2` raised by `7 · 2 ^ 52` has the form `0x4338000000000000 + k` of `exp`'s key with the same low 19 bits, so `ExpScaleBits` and `ExpSpecialScale` apply to it.
+
+| File | Content |
+|---|---|
+| `LeanExe/ProofKit/F64BinadeWord.lean` | The bits `(g + 1) · 2 ^ 52 + (R - 2 ^ 52)` of a nonnegative word with scaled value `R · 2 ^ g`. |
+| `Exp2Selection.lean` | The shifted sum in the binade `[2 ^ 45, 2 ^ 46)`, its bits, `k` within `1/2` of `128 x`, the exact `k / 128`, and the exact residual with `|r| ≤ 1/256`. |
+| `Exp2Approximation.lean` | The coefficients against `(log 2) ^ n / n!` on the enclosure of `log 2` (kernel checks on rationals), and the polynomial within `2 ^ -58` of `2 ^ r - 1`. |
+| `Exp2Evaluation.lean` | The rounded evaluation, with `F64ErrorTrack.Approx`, within `2 ^ -56` of `t + 2 ^ r - 1` and at most `1/64`. |
+| `ArmReconstruction.lean` | `presum_general` and `reconstruction_general` for any polynomial word, `table_general`, `target_range`, and `ordinary_within`. |
+| `ArmSpecial.lean` | `positive_within` (lowered scale doubled, below `2 ^ 1024 - 2 ^ 980`) and `negative_within` (scaled down by `2 ^ -1022`, compensated below 1). |
+| `ArmScale.lean` | The scale word's value for every normal binade, and the lowered scale `2 ^ (q - 1) H j`. |
+| `Exp2Core.lean` | The key, the float-to-word identities, the state of `exp2Core`, `2 ^ x = 2 ^ q exp (j log 2 / 128) 2 ^ r`, and `319/320 ≤ 2 ^ r ≤ 257/256`. |
+| `Exp2Paths.lean` | One step on the three paths: `|x| ≤ 928`, `928 < x ≤ 1024 - 2 ^ -43`, `-1075 < x < -928`. |
+| `Exp2Branches.lean` | The branches of `exp2With`, the special flag as `|x| > 928`, and the bound below 1024. |
+| `Exp2Theorem.lean` | The tiny, overflow, and underflow cases, `exp2_within`, and the exceptional values. |
+
+The accepted statements are `Exp2Theorem.exp2_within : Finite x.toBits → F64SignedRounding.WithinSteps 1 ((2 : ℝ) ^ value x.toBits) (Exp2.exp2 x).toBits`, and `exp2_pos_zero`, `exp2_neg_zero` (`0x3FF0000000000000`), `exp2_pos_infinity` (`0x7FF0000000000000`), `exp2_neg_infinity` (`0`), and `exp2_nan` (the canonical NaN).  Every theorem in these modules reports only `propext`, `Classical.choice`, and `Quot.sound` in `exp2-theorem-3.log`, and the modules build without warnings.
+
+The error budget has slack everywhere.  The polynomial's error is at most `2 ^ -58`, its rounding `2 ^ -57`, the scaled sum's error `(21/128) u s` before the last rounding and `(6/5) u s` after it, and the table's `s / 2 ^ 98`, against the `(7/5) u 2 ^ q H j` that `ExpOneStep.one_step_of_error` accepts.  The doubling on the positive special path is exact because the sum stays below `2 ^ 1023`: the largest double below 1024 is `1024 - 2 ^ -43`, where `2 ^ x ≤ 2 ^ 1024 - 2 ^ 980`.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Selection bounds | `norm_num at *` turned the real goal `2 ^ 52 ≤ R` into a statement on naturals, which `linarith` could not combine with the real hypotheses.  Normalizing only the hypotheses fixed it. | `exp2-selection-1`, `-2` |
+| Approximation casts | `exact_mod_cast` did not move rational bounds such as `ratOfWord c1 ≤ 7/10` to the reals, as the poly track had found.  `Rat.cast_le.mpr` followed by `push_cast` worked. | `exp2-approx-1` |
+| Evaluation budget | Two chained error bounds were below what the rules give (`2 ^ -60 + 2 ^ -67 + 2 ^ -60 > 2 ^ -59`); the final bound became `2 ^ -57` and the comparison with `2 ^ r - 1` `2 ^ -56`. | `exp2-eval-1`, `-2` |
+| Reconstruction | A `positivity` call on `0 ≤ value s * 2` timed out in `whnf`, and the table bound `s / 2 ^ 99` was too tight; explicit `mul_nonneg` and `s / 2 ^ 98` fixed them. | `arm-recon-1` |
+| Lean panic | `INTERNAL PANIC: Nat.pow exponent is too big`.  Bisection with truncated copies (`exp2-diag-*`) located it: `linarith` preprocesses every hypothesis with `norm_num`, whose `rpow` extension tried to evaluate `(2 : ℝ) ^ ((1024 : ℝ) - 1 / 2 ^ 43)` exactly.  Moving the exponential bound into its own lemma, with no such hypothesis in context, fixed it.  Later proofs keep `linarith` away from real powers with numeral exponents. | `exp2-paths-1`, `exp2-diag-C*`, `exp2-diag-T*` |
+| Branch shapes | A single lemma for the branches from 1024 on had to predict the shape `simp` leaves for `decide`d conditions; one lemma per branch, each closing to the branch value, avoided that. | `exp2-branches-1` |
+| Overflow bound | The first `positive_within` assumed `E ≤ 2 ^ 1024 - 2 ^ 984`, false for the double below 1024; the proof had room for `2 ^ 1024 - 2 ^ 980`. | `arm-scale-1` |
+
+- [x] `exp2` for every finite input, with the exceptional values.
+- [x] `exp10`: the reduction through `ExpIntegerSelection` with `invlog10_2N`, the two-part residual, `log 10` bounds, and the coefficients against `(log 10) ^ n / n!`.  The overflow bound `0x1.34413509f79ffp8` lies above `log10` of the overflow threshold, so the overflow branch is exact; the largest double below it gives `10 ^ x ≤ DBL_MAX (1 - 2 ^ -42.8)`.
+- [x] Byte theorems and the file theorem module.
+
 ## 2026-10-10: Integration of the logarithm main path and the stage 5 ports, and debtop1
 
 Opus merged `w/log` at `3c21c26e` (the logarithm main path) and `w/ports` at `f1de26f0` (stage 5) into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64RelativeStep` and `F64ErrorTrack`, `Verified.lean` imports `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference`, and `tests/verified/run.sh` emits the four new modules and runs their checks.  The build passed with 3,842 jobs (`opus-merge-s5-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-6.log`): 204,298 results of `exp2`, 200,707 of `exp10`, 342,197 of `log2` and of `log10`, and 110,911 of `pow` within one unit.
@@ -29619,37 +29696,42 @@ The user approved installing elan on debtop1 (x86_64, 4 cores, 15 GB).  Opus ins
 
 ## 2026-10-10: Logarithm theorem, complete (track `log`)
 
-`LogTheorem.log_bytes_accuracy` is accepted.  The bytes of `Log.compiled.module` decode to the module, its function 5 is exported as `log`, and the initial store satisfies `LogTheorem.Ready`: the allocator invariant, `logTable` borrowed at 4096, `logTable2` at 6152, and a memory cap of at most 65,535 pages.  A call from a ready store returns without a trap the bits of `Log.log x` and leaves a ready store whose earlier heap regions keep their bytes.  For finite `x` with `0 < value x` the bits satisfy `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits))`.  `log_within_one` states the bound for the Lean function, and `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, and `log_nan` give `log 1 = +0`, `log (±0) = -∞`, `log (+∞) = +∞`, and the canonical NaN for negative arguments, negative infinity included, and for NaN.  `LogFile.log_file` and `log_file_decode` prove that `build/verified/log.wasm` holds the module.
+## 2026-10-11: `log2` theorem (track `log`)
 
-| Inputs | Path | Theorem |
-|---|---|---|
-| Positive normal outside `[15/16, 1 + 265/4096)` | `logCore` on the argument's bits | `LogMain.log_normal_within` |
-| Positive subnormal | `x · 2 ^ 52`, exact by `F64ExactProduct.mul_exact_scaled`, then `logCore` on the bits less `52 · 2 ^ 52` | `LogMain.log_subnormal_within` |
-| `[15/16, 1 + 265/4096)` other than 1 | `logNear1` | `LogTheorem.near1_within` |
-| 1, zeros, `+∞`, negatives, NaN | the guards of `logWith` | `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, `log_nan` |
+The coordinator assigned the full theorems for `Log2.log2` and `Log10.log10` after merging the logarithm theorem.  The branch merged `transcendentals` at c9ff162d (60848aaa), with the conflicts of `devnotes.md` resolved by keeping both sides.  The target of `log2` is `Real.logb 2 x`, which Mathlib defines as `log x / log 2`, so the internal lemmas state `Real.log x / Real.log 2` and `log2_within_one` unfolds `Real.logb`.  The theorem covers every finite positive input, subnormal ones included, and the exceptional inputs give the results of IEEE 754 as for `log`.
 
-The path near 1 needs a bound relative to `ρ = |x - 1|`, between `2 ^ -53` and `265/4096`.  `x - 1` is exact on the grid of `2 ^ -53`, and every later operation is tracked with errors proportional to `ρ`, using `ρ ^ 2 ≤ ρ/15` and `multiplicationUnderflowEpsilon ≤ u ρ / 2 ^ 900`.  The result before its final rounding is within `(1/15 + 1/13) u ρ` of `r · eval near1Kernel r`; the two largest terms are the roundings of `rhi · rhi` and of `r - hi`, each about `u ρ / 30`.  `LogKernelPoly.near1_kernel_error` adds `(15/16) 2 ^ -62 ρ`, and `|log x| ≥ (15/16) ρ`, so the total stays below the allowed `3/8` units of roundoff of `log x` by a factor of about 2.4.  The split into 26-bit `rhi` and `rlo` needs no exactness argument: its identity `rhi ^ 2 + (r - rhi)(rhi + r) = r ^ 2` holds for the computed `rhi`, and only the roundings of `rlo` and of the product enter.
+### Paths and bounds
 
-| File | Content |
+| Path | Inputs | Error before the final rounding | Allowance |
+|---|---|---|---|
+| Main (`log2Core`) | outside `[1 - 0x1.5b51p-5, 1 + 0x1.6ab2p-5)`, where `|log2 x| ≥ 31/500` | `2 ^ -64 + 0.0241 u` | `(15/32) u |y|` with `F64RelativeStepWide` |
+| Near 1 (`log2Near1`) | inside that interval, other than 1 | `u ρ / 9 + 2 ^ -61 ρ` for `ρ = |x - 1|` | `(3/8) u |y|` with `|y| ≥ 1.35 ρ` |
+
+On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: at subinterval 42 the error reached 1.39 of the allowance.  Two facts closed the gap: `t3 - hi` is exact by Sterbenz's lemma (`F64Sterbenz`), since `|kd + logc| ≥ 1/20` outside the seven subintervals around 1, and the factor `47/32` of `F64RelativeStepWide` leaves `15/32` of a unit before the final rounding.  `t1 = rhi invln2hi` is exact because `rhi` has 21 significant bits (`F64HighWord`) and `invln2hi` 32.  Near 1, `hi = rhi invln2hi` is exact for the same reason, `hi - y` is exact by Sterbenz's lemma, and the remaining errors are proportional to `ρ`, so the path has ample margin.  The polynomial checks of `Log2KernelPoly` compare the Taylor polynomial of `log (1 + r)` with `S` times the code's polynomial, where `S` is the split of `log 2` from `ExpReductionBounds`, and divide by `log 2` at the end.
+
+### Exact results
+
+`log2 (2 ^ k) = k` for every `k` from -1074 to 1023 other than 0, as values.  Such an argument reaches `log2Core` with `z = 1` in subinterval 40, where `r`, `logc`, and every word of `final2Word` that does not depend on `kd` are fixed words, so the remaining arithmetic `powStep` has one variable.  The kernel evaluates `powStep` for each `k`.  One `decide` over all 2,100 values had not finished after 16 minutes, and a second form over a `Nat.rec` fold had not finished after 10, so both were stopped; chunks of 50 took 4 to 9 seconds each, and `Log2Power` checks 42 of them.  The first build of `Log2Power`, with the chunks elaborated in parallel, stopped making progress: after 13 minutes the `lean` process had used 4.5 minutes of CPU and then none, with its 54 threads waiting on futexes.  `ps` reported resident sizes near 8 GB for that process and for the two single-`decide` runs, figures that count the mapped `.olean` files, and `free` reported no free memory and 6 GB of page cache for the machine.  The scope's `memory.events` was not read, so the cause of the stall is not established; throttling at the scope's `memory.high` of 4 GiB fits the symptoms.  All of these runs went through `tools/leanrun`.  With `Elab.async false` the module checks in about seven minutes.  The other exact results are `log2 1 = +0`, `log2 (±0) = -∞`, `log2 (+∞) = +∞`, and the canonical NaN for a negative argument, negative infinity included, and for a NaN.
+
+### Modules
+
+| Module | Content |
 |---|---|
-| `LeanExe/ProofKit/F64ExactProduct.lean` | `mul_exact_scaled`, the exact product of words with scaled magnitudes `ma 2 ^ sa` and `mb 2 ^ sb` when `ma mb < 2 ^ 53`, and `int_mul_exact` for a word holding an integer.  `LogCoreFinal.ln2hi_mul_exact` now uses it. |
-| `LeanExe/ProofKit/BorrowedKept.lean` | `borrowed_kept`, the lemma of `ExpTheorem` in a shared module. |
-| `Verified/Examples/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
-| `Verified/Examples/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
-| `Verified/Examples/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
-| `Verified/Examples/LogFile.lean` | `log_file` and `log_file_decode`. |
+| `F64RelativeStepWide` | `F64RelativeStep` with `47/32` in place of `11/8` |
+| `F64Sterbenz` | Exact subtraction of words within a factor 2, and the divisibility of scaled values |
+| `F64HighWord` | The word with the low 32 bits cleared: finite, 21 significant bits, within `2 ^ -20` |
+| `F64RoundedStep` | One step for a rounded sum whose exact value lies within `63/64` units of `y` (for `log10`) |
+| `Log2Branches`, `Log2CoreBits` | Path selection and the word form of `log2Core` |
+| `Log2Tables` | 64 entries checked by the kernel; `logc` within `2 ^ -65` of `log2 c` |
+| `Log2KernelPoly` | Polynomial errors of both paths |
+| `Log2CoreFinal`, `Log2CoreStep` | The arithmetic after `r`, and one step on the main path |
+| `Log2Main`, `Log2Near1` | Normal and subnormal arguments, and the path near 1 |
+| `Log2Power` | `log2 (2 ^ k) = k` |
+| `Log2Theorem`, `Log2File` | `log2_within_one`, exceptional values, `Ready`, `log2_bytes_accuracy`, and the file |
 
-Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-thm-2.log` replays the chain with no `sorry`; `log-file-1.log` for the file theorems, which took 24 seconds).  Flipping one bit of the last byte of `log.wasm` made `log_file` fail at `decide` (`log-file-negative-1.log`), and the original file was restored with hash `342b0f5c…90f2`.
+`F64RoundedStep.within_one_add` takes the sum before its rounding, not the rounded result: `Wasm.IEEE64.add` rounds within half a spacing of the binade of the sum (`F64Packing.pack_magnitude_error`), and a case analysis over the binades of the sum and of `y` gives one step through `F64FullStep.one_step_binades` whenever the sum lies within `63/64` units of `y`.  `log10` needs it: its error before the final rounding reaches about `0.82` units of the result near `f = 0.414`, beyond the `15/32` that the rounded-result lemmas leave.
 
-| Run | Result and cause |
-|---|---|
-| `log-sub-1` | `simp` in `mul_exact_scaled` reached the recursion limit under `exponentiation.threshold 4096`; the file uses the default threshold and an explicit sign table.  `log-sub-2`, `-3`: a shift literal needed the type `UInt64`, and a rewrite hit the wrong `value`.  `log-sub-4` passed. |
-| `log-near-1` | `near1_bounds` failed because `|B8| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
-| `log-near-3`, `-4` | One theorem for the whole path ran past 200,000 heartbeats.  It was split into `poly_error`, `split_error`, and `near1_error` over named words. |
-| `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
-| `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
-
-`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Verified.Examples.LogTheorem`, check `Verified/Examples/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
+### Failures
 
 - [x] Subnormal arguments.
 - [x] `logNear1` and the path near 1.
@@ -29876,3 +29958,297 @@ The middle range is near four steps as well: the pre-rounding error of `(1 - erx
 | Tail split, evaluation, and composition | Passed after `set` abbreviations were removed where later lemmas produced the unabbreviated terms, and after `nlinarith` calls that timed out were replaced by explicit products and `linarith only` | `erf-base-5.log` to `erf-base-16.log` |
 | Paths, positive and negative arguments, theorem module | Passed; branch conditions on both sides of the negation needed `simp` in place of `rw [if_pos]` | `erf-base-17.log` to `erf-base-24.log` |
 | `erf.wasm` and `ErfFile` | `tools/Emit.lean` wrote 7,016 bytes; both file theorems report only the permitted axioms | `erf-emit-1.log`, `erf-file-1.log` |
+
+## 2026-10-11: The `exp10` theorem and the byte theorems (track `exp2`, debtop1)
+
+The `exp10` proof reuses the `exp2` structure: `ArmReconstruction`, `ArmSpecial`, `ArmScale`, and `exp2SpecialCase`'s two equations from `Exp2Paths` apply unchanged, with `ρ = 10 ^ r` for the ideal residual `r = x - k log10 2 / 128`.  The differences lie in the reduction and the constants.  `exp10` rounds `x · 128 / log10 2` with the shift `0x1.8p52`, so its key has `exp`'s form directly and `ExpIntegerSelection` and `ExpShiftedBits` give `k` and the key without change.  The residual is computed in two parts: the product of `k` with the 32-bit high part of `-log10 2 / 128` is exact (`F64ExactProduct.mul_exact_scaled`), adding `x` to it is exact on the grid of `2 ^ 1012` scaled units (or of `x` itself when `k = 0`), and the low part adds one rounding, so the computed residual lies within `2 ^ -61` of the ideal one.  The final sum of the ordinary path is `s · tmp + s` rather than `s + s · tmp`; `add_comm_finite` swaps it.
+
+The constants need `log 10`, which `log 10 = 3 log 2 + log (5/4)` gives from `ExpReductionBounds.log_two_enclosure` and 45 terms of the series of `log (5/4)` (`Real.abs_log_sub_add_sum_range_le`), with dyadic bounds of width below `2 ^ -88`.  The kernel then checks, on rationals: the coefficients against `(log 10) ^ n / n!`, the two-part constant within `2 ^ -85` of `log10 2 / 128`, the reduction constant within `2 ^ -40` of `128 / log10 2`, the overflow bound `0x1.34413509f79ffp8` with `10 ^ x ≥ 2 ^ 1024` from it on, the double below it with `10 ^ x ≤ 2 ^ 1024 - 2 ^ 980`, and `10 ^ -350 ≤ 2 ^ -1075`.  With the evaluation's `3 · 2 ^ -58` and the residual's perturbation of `ρ`, the polynomial word approximates `T + ρ - 1` within `2 ^ -56`, the bound that `ArmReconstruction` takes.
+
+| File | Content |
+|---|---|
+| `Exp10Constants.lean` | The enclosure of `log 10` and the rational checks. |
+| `Exp10Evaluation.lean` | The polynomial within `2 ^ -57` of `10 ^ r - 1` on `|r| ≤ 1/850`, and its evaluation within `2 ^ -58`. |
+| `Exp10Reduction.lean` | `k`, the key, the exact high part, and the computed residual within `2 ^ -61` of the ideal one. |
+| `Exp10Core.lean` | The float-to-word identities, `add_comm_finite`, and the state of `exp10Core`. |
+| `Exp10Paths.lean` | One step on the three paths: `|x| < 256`, `256 ≤ x ≤ 0x1.34413509f79fep8`, `-350 ≤ x ≤ -256`. |
+| `Exp10Theorem.lean` | The branches of `exp10With`, the tiny, overflow, and underflow cases, `exp10_within`, and the exceptional values. |
+| `Exp2Bytes.lean` | `Ready` (the allocator invariant, `Exp.expTable` borrowed at 4096, the memory cap), the entry calls of functions 7 and 8, `exp2_bytes_accuracy`, `exp10_bytes_accuracy`, and `exp2_module_accuracy`, their conjunction. |
+| `Exp2File.lean` | `exp2_file` and `exp2_file_decode`, which obtains the bytes from `exp2_module_accuracy`, so its axiom report covers both byte theorems. |
+
+The accepted statements are `Exp10Theorem.exp10_within : Finite x.toBits → F64SignedRounding.WithinSteps 1 ((10 : ℝ) ^ value x.toBits) (Exp2.exp10 x).toBits`, the exceptional values `exp10_pos_zero`, `exp10_neg_zero`, `exp10_pos_infinity`, `exp10_neg_infinity`, and `exp10_nan`, and the byte theorems above.  Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`exp10-theorem-1.log`, `exp2-bytes-2.log`), and the modules build without warnings.  `tools/Emit.lean` wrote `build/verified/exp2.wasm` (5,406 bytes, SHA-256 `653f7a02…c063`) on debtop1, and `Exp2File.lean` checked against it with exactly two axiom lines, both permitted (`exp2-emit-1.log`, `exp2-file-2.log`).  debtop1 has no `wasm-tools`, so the module was not validated there; `tests/verified/run.sh` validates it on minideb1.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Missing import | `Real.abs_log_sub_add_sum_range_le` lives in `Mathlib.Analysis.SpecialFunctions.Log.Deriv`, which the chain did not import. | `exp10-constants-1` |
+| Reduction | Calculations that began with `_ ≤ 1 / 2 ^ 53 * …` elaborated their numerals as naturals; annotating `(1 : ℝ)` fixed them.  `push_cast` turned `2 ^ 1074` into a numeral and left `field_simp` unable to cancel it; explicit cast lemmas and `mul_div_cancel_right₀` did.  Two error bounds were too tight: the sum before the last rounding needed `1/850 + …` rather than `1/512`, and its rounding `2 ^ -62` rather than `2 ^ -61`. | `exp10-reduction-1`, `-2` |
+| Core | `residual` was ambiguous with Mathlib's `_root_.residual`; qualified names fixed it.  The bound `exp b ≤ 2` was too coarse for the residual's perturbation of `ρ`; `exp b ≤ 1 + 2/364` from `Real.abs_exp_sub_one_le` sufficed. | `exp10-core-1` |
+| Paths | `rw [div_eq_mul_one_div]` without arguments also rewrote the constants `1 / 2 ^ 40`; naming its arguments fixed it. | `exp10-paths-1` |
+
+- [x] `exp10` for every finite input, with the exceptional values.
+- [x] Byte theorems for both exports and the file theorem module.  The `tests/verified/run.sh` entry is `exp2:Exp2Bytes:Exp2File`.
+
+## 2026-10-10: Review of the options for stages 7 and 8
+
+The coordinator asked for a review, without porting, of the implementations available for `tgamma`, `lgamma` with its sign, and the Bessel functions `j0`, `j1`, `y0`, `y1`, `jn`, and `yn`.  The goal is a full-domain theorem per function, so the review recommends the algorithm and the bound together, and the API.  The review measured fdlibm itself rather than relying on its comments.
+
+### Method and tools
+
+No arbitrary-precision library is installed on the workstation or the machines: Python has no `mpmath`, `sympy`, or `gmpy2`, and nothing was installed.  The measurements use integer references written in Python for this review: the power series of `J0` and `J1` up to 300 with guard bits for cancellation, `Y0` and `Y1` from their series with Euler's constant by Brent and McMillan's algorithm, Hankel's expansions above 300, `J_n` from its series, `Y_n` by forward recurrence at 600 extra bits, and `lgamma` from Stirling's series at `x + N ≥ 300` with 60 Bernoulli terms and the reflection formula for negative `x`.  The series and Hankel's expansions agree to the last bit at precision 300 for `x` = 300, 300.5, and 333.3, and `lgamma` agrees with `ln (n - 1)!` within `2 ^ -383` at the integers tried.  FreeBSD's code was compiled from the pinned commit into a shared library on the workstation (gcc 14 on AArch64, `-O2 -ffp-contract=off`, no fused multiply-add in the object code), with FreeBSD's own `exp`, `log`, `expm1`, `log1p`, `sin`, `cos`, `sincos`, `sinpi`, and `cospi`, all renamed so that none resolves to glibc's.  The build replaces FreeBSD's `math.h` with a shim over glibc's and deletes the unused `rnintl` from its copy of `math_private.h`, which gcc cannot tokenize.  glibc 2.41, the workstation's library, was measured through `ctypes`.  The measurement reproduces [Zimmermann's published largest known errors](https://members.loria.fr/PZimmermann/papers/accuracy.pdf) (report of 2026-08-24, GNU libc 2.44 and FreeBSD 15.1) for FreeBSD at his inputs: `j0` 4.5e14 units at `0x1.33d152e971b40p+1`, `j1` 1.10e15, `y0` 1.42e15, `y1` 5.56e15, `lgamma` 4.45e15 at `-0x1.3a7fc9600f86cp+1`, and `tgamma` 1.03e3 at `-0x1.547cf3ddaaddap+7`.  The scripts and the build sit in the ports track's scratch directory on the workstation.
+
+### Candidates
+
+| Implementation | License | Functions | Size | Operations | Stated accuracy |
+|---|---|---|---|---|---|
+| FreeBSD `e_lgamma_r.c` (fdlibm) | Sun 1993, permissive | `lgamma_r`, `lgamma` with the global `signgam` | 299 lines | double, `log`, `__kernel_sin`, `__kernel_cos` | None |
+| FreeBSD `bsdsrc/b_tgamma.c` (P. McIlroy 1992, rearranged 2021) | BSD-3-Clause | `tgamma` | 396 lines plus `b_log.c` (400) and `b_exp.c` (122) | double, `(float)` splits, its own `log` and `exp` in two parts, `sinpi`, `cospi`, `ceil` | Below 0.9 units for `x > 0`, "provably".  Below 4 units observed for `x < 0` |
+| FreeBSD `e_j0.c`, `e_j1.c`, `e_jn.c` (fdlibm) | Sun 1993 | `j0`, `y0`, `j1`, `y1`, `jn`, `yn` | 385, 379, 270 lines | double, `sincos`, `cos`, `sqrt`, `log` | Approximation errors only, such as `2 ^ -63.67` for `R0/S0` |
+| CORE-MATH at `ff2f71f6` (2026-10-10), `src/binary64/tgamma/tgamma.c` | MIT, A. Sibidanov 2024 | `cr_tgamma` | 1,105 lines, 57 KB, 421 hexadecimal constants | double-double arithmetic, `__builtin_fma` at 13 sites, a table of hard cases | Correctly rounded |
+| CORE-MATH, `src/binary64/lgamma/lgamma.c` | MIT, A. Sibidanov 2025 | `cr_lgamma`, setting `signgam` | 1,454 lines, 83 KB, 667 constants | double-double, `__builtin_fma` at 14 sites, a table of hard cases | Correctly rounded |
+| SLEEF | Boost Software License 1.0 | `tgamma_u10`, `lgamma_u10`, with variants without fused multiply-add (`purec`) | Vector-style C | double-double | `tgamma` 1.0 unit, and `lgamma` 1.0 unit for positive `x` and `max (1 ULP, 1e-15)`, an absolute allowance, for negative `x` |
+| OpenLibm, Musl | MIT and permissive | fdlibm's functions.  Musl's `tgamma` is its own | | double | As fdlibm, except Musl's `tgamma` |
+| GNU libc | LGPL-2.1 | All | | | Zimmermann finds 2.44's `lgamma` and `tgamma` apparently correctly rounded, and 2.44 integrates CORE-MATH code |
+
+CORE-MATH's binary32 and binary64 directories at the pinned commit hold no Bessel function, and its binary64 directory holds `tgamma` and `lgamma`.  Neither `tgamma.c` nor `lgamma.c` uses `long double`, `_Float128`, or 128-bit integers.  glibc's license is LGPL-2.1, and the repository declares no license of its own, so copying glibc's code would bring the LGPL's terms into it.  The review uses glibc only as a measured comparison.  Intel's library has the only good Bessel results in Zimmermann's table (0.600 to 1.25 units) and is proprietary.
+
+### Published largest known errors
+
+| Function | glibc 2.44 | Intel | FreeBSD 15.1 | OpenLibm | Musl | Apple | CUDA |
+|---|---|---|---|---|---|---|---|
+| `j0` | 4.51e14 | 0.600 | 4.51e14 | 4.51e14 | 4.51e14 | 3.83e14 | 3.08e20 |
+| `j1` | 4.47e14 | 0.615 | 1.10e15 | 1.10e15 | 1.10e15 | 1.10e15 | 1.73e21 |
+| `y0` | 5.93e15 | 1.14 | 1.42e15 | 1.42e15 | 1.42e15 | 1.42e15 | 1.18e21 |
+| `y1` | 5.56e15 | 1.25 | 5.56e15 | 5.56e15 | 5.56e15 | 5.56e15 | 1.17e21 |
+| `lgamma` | 0.500 | 0.515 | 4.45e15 | 4.45e15 | 4.45e15 | 2.33e16 | 5.11e15 |
+| `tgamma` | 0.500 | 0.519 | 1.03e3 | 1.03e3 | 16.0 | 1.03e3 | 10.1 |
+
+The table is Zimmermann's Table 3, in units in the last place.  Zimmermann lists glibc 2.44's `lgamma` and `tgamma` among the ten functions that seem to be correctly rounded and notes that 2.44 integrates code from CORE-MATH.
+
+### Measurements
+
+| Function and region | FreeBSD | glibc 2.41 |
+|---|---|---|
+| `j0` next to its first five zeros (2.4048 to 14.931) | 1.0e13 to 4.5e14 units | 8.0e12 to 3.8e14 |
+| `j1` next to its first five zeros (3.8317 to 16.471) | 2.3e13 to 1.1e15 | 2.3e13 to 9.0e14 |
+| `y0` next to its first five zeros (0.8936 to 13.361) | 7.0e12 to 1.4e15 | 8.6e12 to 3.5e15 |
+| `y1` next to its first five zeros (2.1971 to 14.897) | 3.7e13 to 5.6e15 | 4.5e13 to 4.7e15 |
+| Bessel functions next to their zeros near `10 ^ 5` | 1.8e4 to 1.0e6 | 1.0e4 to 1.1e6 |
+| Bessel functions at 1,600 random arguments from `2 ^ 9` to `2 ^ 1020` | below 2.9 | below 2.9 |
+| `j0`, `j1`, `y0`, `y1` at 7,000 arguments up to 300 and large, zeros included, in units of the modulus `M = √(J² + Y²)` | below 3.01 | below 3.14 |
+| `jn`, `yn` next to zeros, orders 2 to 20 | 3.9e14 to 2.8e17 | 2.3e14 to 2.8e17 |
+| `jn` below its first zero, `x < n`, orders 2 to 100 | 1.0 (order 2) to 25 (order 100) | |
+| `jn`, `yn` in units of the modulus, orders 2 to 100 | `jn` 2.1 to 9.0, `yn` 3.0 to 30.4 at order 100 | |
+| `lgamma` next to its first nine negative zeros (-2.4570 to -6.0014) | 1.9e13 to 4.45e15 | 0.71 to 2.85 |
+| `lgamma` within 200 units of 1 and of 2 | 0.84 and 0.89 | 0.84 and 0.89 |
+| `lgamma` next to the poles -1 to -39 | 195 | 2.13 |
+| `lgamma`, random positive `x` and negative `x` | 1.58 and 15.2 | 1.38 and 1.76 |
+| `tgamma`, positive `x` up to the overflow | 0.80 | 3.4 |
+| `tgamma`, -170 to 0, and next to the poles -1 to -29 | 2.25 and 1.33 | 3.51 and 3.47 |
+| `tgamma`, -184 to -170, where the results are subnormal | 1.03e3 | 2.48 |
+
+The large errors next to zeros come from cancellation: fdlibm's `j0` above 2 forms `P cos (x - π/4) - Q sin (x - π/4)` with an absolute error near `2 ^ -56` of the amplitude, and its `lgamma` for negative `x` subtracts `lgamma (-x)` from `log (π/|x sin (π x)|)`.  fdlibm's absolute errors near the Bessel zeros are small, which the measurement in units of the modulus shows: at most about three units of `M`, the amplitude that `J` and `Y` share and that never vanishes.  Near `2 ^ 41` the doubles nearest the measured zeros lay about `2 ^ -12` from them, the spacing of the doubles there, too far for the cancellation to dominate.  A double that lies much closer to a zero at that scale would show a large error, as the worst cases near `10 ^ 5` do.
+
+### A software fused multiply-add
+
+The deterministic WebAssembly profile has no fused multiply-add, and `f64x2.relaxed_madd` of the relaxed-SIMD proposal may round once or twice, so it gives no defined result.  CORE-MATH's code therefore needs a dialect function `fma a b c` that rounds `a · b + c` once.  An integer implementation decodes the three operands, forms the 106-bit product with `Trig.mul64`'s method, aligns the addend with a sticky bit, adds or subtracts, normalizes with `Trig.clz64`'s method, and rounds to nearest even, covering subnormal results, overflow, zeros, infinities, and NaN.  That is about 150 word operations against one instruction, and one theorem, that it returns the nearest-even rounding of the exact `a · b + c`, covers every use.  ProofKit's rounding of scaled rationals (`F64RoundRational`, `F64RoundScaled`) gives the rounding half of that proof.  CORE-MATH's fast paths evaluate the fused operation at 13 and 14 sites, some in polynomial loops, so a call costs a few thousand word operations more than with hardware support.  Replacing each `fma (a, b, -a b)` by Dekker's product would change the source and need a range argument at each site, so the review does not recommend it.
+
+### What Mathlib provides
+
+The pinned Mathlib has `Real.Gamma` with Euler's reflection formula, log-convexity and Bohr and Mollerup's sequence for `log Γ`, the digamma function, the Beta function, Stirling's sequence for factorials, Gaussian integrals, and hypergeometric series.  It has no Bessel function, no error function, and no Stirling series with a remainder for `log Γ` at real arguments.  The gamma proofs therefore need Binet's or Euler and Maclaurin's remainder for Stirling's series, and the Bessel proofs need definitions of `J_n` and `Y_n`, their recurrences and Wronskian, and Hankel's expansions with Watson's remainder bounds, which is substantial analysis in Lean before any floating-point argument.
+
+### Recommendations
+
+| Function | Algorithm | Bound | API |
+|---|---|---|---|
+| `tgamma` | CORE-MATH's `cr_tgamma`, MIT, with the verified software `fma` | `WithinSteps 1`, from the error analysis of its fast path, accurate path, and table of hard cases.  Correct rounding as a theorem would need CORE-MATH's search for hard cases as a verified input, which the review does not recommend | `Gamma.tgamma : Float → Float`, the C99 name, since BSD's `gamma` meant `lgamma`.  NaN at the negative integers and `-∞`, `±∞` at `±0`, `+∞` above about 171.62, and `±0` with the sign of `Γ` below about -184. |
+| `lgamma` | CORE-MATH's `cr_lgamma`, MIT, with the verified `fma` | `WithinSteps 1` everywhere, with `lgamma 1 = lgamma 2 = +0` exactly.  CORE-MATH keeps relative accuracy next to the negative zeros | `Gamma.lgammaR : Float → Float × Float`, `(log |Γ x|, ±1)`, the sign as POSIX `lgamma_r` returns it through its pointer and CORE-MATH stores in `signgam`: the sign of `Γ x`, 1 at the poles, and the sign of `x` at `±0`.  `Gamma.lgamma x := (lgammaR x).1`. |
+| `j0`, `j1`, `y0`, `y1` | fdlibm's `e_j0.c` and `e_j1.c`, which need only double arithmetic, `sincos`, `sqrt`, and `log`, like the ports already done | No step bound: no permissively licensed implementation achieves one, and a proof would need the distance from every zero to its nearest doubles, which nobody has computed for these functions.  The recommended bound: the error at most 4 units in the last place of the modulus `M (x) = √(J (x)² + Y (x)²)`, with the order's `J` and `Y`.  FreeBSD measures at most 3.01. | `Bessel.j0`, `j1`, `y0`, `y1 : Float → Float`, with C's special values: `j0 (±0) = 1`, `y0 (+0) = -∞`, `y0` and `y1` of a negative `x` NaN. |
+| `jn`, `yn` | fdlibm's `e_jn.c` after the four above | A bound in units of the modulus that grows with the order, such as `4 + |n|/3` units, to be fixed by the proof, since FreeBSD reaches 30 units at order 100 | `Bessel.jn`, `yn : UInt64 → Float → Float`, the order as C's `int` in the low 32 bits, two's complement, `J_(-n) = (-1)^n J_n`, `J_n (-x) = (-1)^n J_n x`, NaN for `yn` of a negative `x`, and `yn n (±0) = -∞` for every `n`, as POSIX specifies, although the limit is `+∞` for a negative odd `n`. |
+
+A relative bound for the Bessel functions over a finite range, for example the first few hundred zeros, is a later option: expansions about each zero, stored to triple precision and checked by the kernel, give relative accuracy there.  Above `2 ^ 60` the zeros of `J0` lie within `2 ^ -63` of `(k + 3/4) π`, so the distance problem becomes the trigonometric track's.  Between those ranges the problem is open.
+
+### Effects on the earlier recommendations
+
+Zimmermann's FreeBSD inputs, run through the Python models of this track's ports, change three earlier recommendations.  The model of `atan2`, which copies the port operation for operation, lies two steps from the reference at `y = -0x1.358bb5eb25bdcp+813` and `x = 0x1.2f86b82481a0ap+815`, where FreeBSD's published error is 1.55 units, so `atan2` needs `WithinSteps 2`.  The model of `asinh` lies two steps away at `-0x1.02657ff36d5f3p-2` (FreeBSD 1.92 units), so `asinh` needs `WithinSteps 2`.  A dense scan of `erfc`'s model over its tail ranges, 70,000 arguments with the C library's `exp` standing in for `Exp.expWith`, found 705 results two steps away and one three steps away, at `0x1.5ea52c08eb7ccp+0`, and FreeBSD's published error is 4.08 units, so `erfc` needs at least `WithinSteps 3`.  I recommend `WithinSteps 4` for `erfc`, or CORE-MATH's correctly rounded `erfc` with the software `fma`.  The models of `acosh`, `atanh`, and `sinh` lie two steps away at FreeBSD's inputs, as recommended, and those of `atan`, `asin`, `acos`, `log1p`, `erf`, `sinpi`, `cospi`, and `tanpi` lie within one.  The accuracy checks would gain from Zimmermann's inputs for each function, which the coordinator may add or ask this track to add.
+
+- [x] Fetch FreeBSD's gamma and Bessel sources, CORE-MATH's, and Zimmermann's report.
+- [x] Build FreeBSD's code and the integer references, and measure near zeros, poles, and large arguments.
+- [x] Recommend the algorithm, bound, and API per function.
+- [ ] Decide stages 7 and 8 (coordinator and user).
+
+## 2026-10-11: Zimmermann's inputs in the accuracy checks
+
+The coordinator decided the bounds after the review of stages 7 and 8: two steps for `atan2` and `asinh`, four for `erfc` with the fdlibm port, and the earlier bounds for the other functions.  The coordinator also asked for the inputs of Zimmermann's report in every accuracy check, the earlier ports' and the `Trig`, `Exp`, `Log`, and `Tanh` checks included, with each check's bound set to the decided one, and approved this track's edits of the shared `*Accuracy.lean` files for the purpose.  This section records the inputs, the edits, and the results.
+
+### Inputs
+
+`Verified/Examples/WorstCases.lean` lists the double-precision inputs of Tables 4 to 11 of B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision", August 2026 (https://members.loria.fr/PZimmermann/papers/accuracy.pdf).  Each table entry is the input with the largest known error of one function in one of thirteen libraries: GNU libc 2.44, the Intel Math Library, AMD LibM, Newlib, OpenLibm, Musl, Apple's library, LLVM libc, MSVC, FreeBSD 15.1, the Arm Performance Library, CUDA, and ROCm.  A scratch script extracted the entries from the text of the PDF, where each table's caption follows its body, and wrote one array of bit patterns per function, with the report's hexadecimal input and its tables in a comment.  The module has 33 arrays with 5 to 12 distinct inputs each: the 27 functions of the earlier ports and `lgamma`, `tgamma`, `j0`, `j1`, `y0`, and `y1`, whose checks will use them with the ports of items 3 and 4.  The pairs of `atan2` and `pow` keep the report's order, the first and second arguments of the C function, and the check of `atan2` adds each pair in both orders.
+
+Each of the 15 checks imports the module, appends its function's arrays to its arguments, and cites the report in its docstring.  The bounds of `atan2` and `asinh` went from one step to two, and that of `erfc` from two to four, with their docstrings.  In `AtanAccuracy` and `PowAccuracy` the arguments end with a `flatMap` over the special values, whose lambda would absorb an appended `++`, so the worst-case pairs are bound to `worst` and placed before it.
+
+### Results
+
+The final runs (`ports-wc-<check>-1.log`, with `AtanAccuracy`, `AsinhAccuracy`, and `ErfAccuracy` rerun in `-2` after the docstring edits) passed every check, each in under two minutes once it held the machine's lock.  The table gives each function's decided bound in steps, the largest distance from the reference that its check found, and the number of results.
+
+| Function | Bound | Largest | Results | Function | Bound | Largest | Results |
+|---|---|---|---|---|---|---|---|
+| `exp` | 1 | 1 | 180,095 | `sinh` | 2 | 2 | 208,106 |
+| `log` | 1 | 1 | 340,076 | `cosh` | 1 | 1 | 208,106 |
+| `expm1` | 1 | 1 | 184,599 | `asinh` | 2 | 2 | 200,057 |
+| `tanh` | 2 | 2 | 160,082 | `acosh` | 2 | 2 | 200,109 |
+| `sin`, `cos` | 1 | 1 | 360,062 | `atanh` | 2 | 2 | 200,163 |
+| `log1p` | 1 | 1 | 350,144 | `exp2` | 1 | 1 | 204,309 |
+| `atan` | 1 | 1 | 200,084 | `exp10` | 1 | 1 | 200,717 |
+| `atan2` | 2 | 2 | 84,189 | `log2`, `log10` | 1 | 1 | 342,219 each |
+| `asin`, `acos` | 1 | 1 | 400,376 | `pow` | 1 | 1 | 110,922 |
+| `tan` | 1 | 1 | 180,059 | `sinpi`, `cospi`, `tanpi` | 1 | 1 | 204,631 each |
+| `erf` | 1 | 1 | 222,136 | `erfc` | 4 | 4 | 222,136 |
+
+No function fails its decided bound.  `atan2`, `asinh`, and `erfc` reach their new bounds exactly.  A probe over the same arguments (`build/transcendentals/ports-probe.lean`, `ports-probe-1.log`) placed the two-step results of `atan2` at two pairs of Table 6, `(-0x1.ec2003fe89e36p-433, 0x1.ec173ed5fd8f5p-427)` and `(-0x1.358bb5eb25bdcp+813, 0x1.2f86b82481a0ap+815)`, the second also in Tables 7 and 9, those of `asinh` at `-0x1.02657ff36d5f3p-2` (Tables 6, 7, and 9) and `-0x1.0240f2bdb3f25p-2` (Table 7), and the four-step result of `erfc` at `0x1.527f4fb0d9331p+0` (Table 7, Musl).  No other argument of the checks lies two steps away for `atan2` and `asinh` or three for `erfc`.  The review's dense scan of a Python model of `erfc` found one more result three steps away, at `0x1.5ea52c08eb7ccp+0`, which the checks do not contain.  `erfc`'s bound of four steps therefore holds with no margin at these inputs, and a later change of `Exp.expWith` could move some result to five.  CORE-MATH's correctly rounded `erfc` with the software `fma` remains the alternative that the coordinator noted.
+
+Among the C library's distances, which the checks report for information, `TrigAccuracy` reports 8 units for glibc 2.41 and `TanAccuracy` 14.  Both come from the hard argument `6381956970095103 · 2 ^ 797`, which the checks already had: there glibc's `cos` lies 7.95 units from a 1,200-digit decimal computation, and its `tan` 14.4 units from a 900-bit integer computation.  At the report's inputs, glibc's `sin` and `cos` lie within 0.52 units of a 700-bit integer computation.
+
+- [x] Extract the double-precision inputs of Tables 4 to 11 into `WorstCases.lean`.
+- [x] Add them to the 15 checks and set the decided bounds.
+- [x] Run the checks on minideb2 and report the functions that fail their bounds (none).
+
+## 2026-10-11: Integration of the exp2 and exp10 theorems and the worst inputs
+
+Opus merged `w/exp2` at `1b5bffb9` (the `exp2` and `exp10` theorems with their byte theorems) and `w/ports` at `bd2a78fa` (Zimmermann's worst inputs in every accuracy check) into `transcendentals`.  Git committed the first merge with its default message because it had no conflict; since nothing was pushed, Opus rebuilt the two merge commits with `git commit-tree` on the same trees and parents with a corrected message, checked that the final tree was unchanged, and now merges with `--no-commit`.  `LeanExe.lean` now imports `F64BinadeWord`, `Verified.lean` imports `WorstCases`, and the file theorem loop of `tests/verified/run.sh` gains `exp2:Exp2Bytes:Exp2File`.  The build passed with 3,895 jobs, and `exp2_bytes_accuracy` and `exp10_bytes_accuracy` report only the permitted axioms (`opus-merge-exp2-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-8.log`): the `exp`, `log`, and `exp2` file checks, 15,837 cases, and every accuracy check within its decided bound with the worst inputs included, among them 84,189 results of `atan2` within two units and 222,136 of `erfc` within four.
+
+## 2026-10-10: Argument reduction of `sin` and `cos` (track `trig`, minideb1)
+
+The track works in `/home/somebody/src/lt-trig` on branch `w/trig`.  The reduction comes first because it does not depend on the kernel polynomials.  Every result below reports only `propext`, `Classical.choice`, and `Quot.sound`, and the logs are in `build/transcendentals/trig-*.log` of the worktree.
+
+| Module | Result |
+|---|---|
+| `TrigPi` | `π` within `2 ^ -1270` from Machin's formula, with the alternating arctangent remainder `arctan_error` and partial sums checked by `decide +kernel`.  `table_bounds`: `Trig.invPi` is `2/π` truncated to 1216 bits.  `half_bounds`: `Trig.halfPi` is `π · 2 ^ 126` truncated.  The module builds in 10 seconds. |
+| `TrigDistance` | `quadrant_distance`: for every exponent field from 1022 to 2046 and every 53-bit significand, `x · 2/π` lies more than `2 ^ -63` from every integer.  One certificate per binade, a convergent `p/q` of the binade's `β = 2 ^ (E - 1075) · invPi` modulo 1 with `q ≥ 2 ^ 53`, gives `|m β - n| ≥ 1/q - 2 ^ 53 |β - p/q| > 2 ^ -62`, since `q` cannot divide `m p` for `0 < m < q`.  The 1025 certificates were computed offline with Python and are checked by the kernel; the smallest bound, `2 ^ -61.54`, belongs to exponent field 1872, the binade of the known worst case `6381956970095103 · 2 ^ 797`. |
+| `TrigWords` | Natural-number specifications of `mul64`, `mulTop`, `clz64`, and `shiftTop`, and `or_shift` for disjoint shifted words. |
+| `TrigWindows` | The three words that `remLarge` reads from `invPi` for each exponent field from 1043 to 2046, checked by the kernel in 10 seconds. |
+| `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | `remLarge_spec`: for positive finite `x` with exponent field from 1043, an integer `N` congruent to the returned count modulo 4 has `r = x - N π/2` with `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -134`, `|y0 + y1 - r| ≤ |r| / 2 ^ 72`, and `|y1| ≤ |y0| / 2 ^ 53`.  `remLarge_eq` splits the routine into five stages proved separately; the last is an exact two-sum. |
+| `TrigFloatTools` | Exact sums and differences stated with values, on grids found from magnitudes. |
+| `TrigSmall` | `remSmallW_spec`: fdlibm's one-step reduction for `k` from 1 to 4 lies within `2 ^ -60` relative of `x - k π/2` when `2 ^ -22 ≤ |x - k π/2| ≤ π/4 + 2 ^ -17`. |
+| `TrigNearest` | `add_nearest` and `sub_nearest`: no word lies closer to the exact sum than the rounded sum.  `small_two_diff`: for `4 |w| ≤ |a|` and `s` the rounded `a - w`, `a - s` and `(a - s) - w` are exact. |
+| `TrigMediumFn`, `TrigMediumConst` | `fn_spec`: for `1 ≤ x` and `x · 2/π ≤ 2 ^ 20`, the rounded `x · invpio2` plus and minus `1.5 · 2 ^ 52` is an integer `N` within `1/2 + 2 ^ -30` of `x · 2/π`.  The six words of `π/2` are checked against `π`, and `comp_step` covers fdlibm's compensated step `r = t - w`, `w' = A - ((t - r) - w)`. |
+| `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC` | `caseA`, `caseB`, and `caseC`: each outcome of the two exponent tests gives `y0 + y1` within `|r| / 2 ^ 60` of `r = x - N π/2`, with `|y1| ≤ |y0| / 2 ^ 52`. |
+| `TrigMedium` | `remMedium_spec`: the same for `Trig.remMedium` on a positive double with word from `0x3FF0000000000000` to below `0x413921FB00000000`, with the returned count equal to `N` and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -28`. |
+| `TrigReduce` | `remPio2_spec`: for a positive finite double with word from `0x3FE921FC00000000`, the result of `Trig.remPio2 invPi halfPi` satisfies `Reduced`: some `N` congruent to the count modulo 4 has `|y0 + y1 - r| ≤ |r| / 2 ^ 60`, `|y1| ≤ |y0| / 2 ^ 52`, and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -17`. |
+
+Several failures recurred and have one cause each.  `omega` and `positivity` reach the maximum recursion depth when the context or the goal holds powers such as `2 ^ 128` or `2 ^ 1088` together with other arithmetic, and `congr 1` does so when it tries to close goals with large numerals; clearing unrelated hypotheses, evaluating powers to numerals first, and replacing `positivity` with explicit lemmas fixed every case.  `generalize` and `rw` reach the same limit when two different natural-number expressions of the same shape, such as `a2 * 2 ^ 128 + a1 * 2 ^ 64 + a0` and `w2 * 2 ^ 128 + w1 * 2 ^ 64 + l2`, meet in one hypothesis: the unifier unfolds `Nat.add` and `Nat.mul` on the large literals.  Lemmas stated with a named variable and proved by `subst` avoid the comparison.  A first `rfl` proof of `remLarge_eq` with projections timed out; the version with pattern-matching `let` and the stage definitions unfolded first takes under a second.  `exponentiation.threshold 4096` made Lean evaluate powers such as `2 ^ 1278` during unification, and removing it from `TrigLarge` removed several recursion failures.
+
+The nearest property was needed because fdlibm's medium reduction subtracts `(t - r) - w` after `r = t - w` rounded, and the relative error bound alone cannot show that `(t - r) - w` is exact when `w` is far smaller than the last place of `t`.  The rounding keeps the nearest multiple of `2 ^ s`, every finite magnitude between `2 ^ (52 + s)` and `2 ^ (53 + s)` is such a multiple, and `t` itself is a candidate, so the rounding error is at most `|w|`.  These lemmas are general, and `TrigNearest` and `TrigFloatTools` could move to ProofKit.
+
+- [x] The words of `2/π` and `π/2`.
+- [x] The word routines.
+- [x] `remLarge`.
+- [x] The distance from multiples of `π/2`.
+- [x] `remSmall`.
+The medium reduction stops after one, two, or three steps by comparing exponent fields, and each outcome is a separate theorem.  The count is exact because `x · invpio2` lies below `2 ^ 20`, so adding `1.5 · 2 ^ 52` rounds it to an integer, and `TrigDistance` bounds `|r|` below by `2 ^ -63 · π/2`.  In the third outcome the cancellation in the second step makes `R1 - W2` exact, which the third step requires.  `TrigMedium` connects the `Float` code to the word definitions with `F64Bits` and `F64Convert.toUInt64_eq`, and the float literal `1.5 · 2 ^ 52` is decided by the kernel.
+
+The one-step branches of `remPio2` accept more than `|x - k π/2| ≤ π/4`.  The high-word thresholds `0x4015fdbc` and `0x401c463b` lie above `7π/4` and `9π/4`, so `|r|` reaches `π/4 + 4.79 · 10 ^ -6` for `k = 4`, and `π/4 + 2 ^ -17` bounds every branch.  The kernel bounds in `TrigKernelPoly` hold for `|x| ≤ 0.7854`, which exceeds `π/4` by `1.84 · 10 ^ -6`, so the final theorems need kernel bounds on `|x| ≤ 0.78541`.
+
+- [x] `remMedium`.
+- [x] `remPio2`, combining the branches.
+- [x] Kernel bounds on `|x| ≤ 0.78541`.
+- [x] `kernelSin` and `kernelCos` in floating point.
+- [x] Quadrant, sign, and the final rounding step.
+- [x] Exact results at zero, infinities, and NaN.
+- [x] Byte theorems and the file theorem module.
+
+## 2026-10-11: The kernels and the final step of `sin` and `cos` (track `trig`)
+
+`TrigKernelWide` reruns the checks of `TrigKernelPoly` on `|x| ≤ 0.78541` with the same allowances, `(129/128) 2 ^ -58` for the sine and `2 ^ -59 - 2 ^ -70` for the cosine.  The largest errors lie inside `[0, 0.7854]`, so the wider range changes neither constant, and each check takes 8 seconds as one declaration.  `TrigKernelPoly` is unchanged.
+
+The rounding analysis tracks each operation with `F64ErrorTrack.Approx` and a bound on the operation's exact value (`TrigApprox.AB`).  The sine kernel's bounds are polynomials in `X = |x|`, so the error keeps its relative size for small `x`: `GW_AB` and `LW_AB` give `3/4 u X ^ 3 + 16 u ^ 2 X` for the evaluated correction, and `sinTail_spec` and `sinDirect_spec` give a real `t`, rounded to the result, within `u (33/40 X ^ 3 + X / 30)` of `sin (x + y)`.  The inner polynomials use constant bounds, `u/32` for the sine and `3u/25` for the cosine.  `linarith` proves each step's bound from facts about powers of `X`; `nlinarith` timed out whenever those facts were in the context, and underflow terms had to be bounded by underflow terms, since `linarith` cannot compare `2 ^ -1075` with a power of `X` it has no lower bound for.
+
+The cosine kernel needs two exact operations: `0.5 * z` (`F64ExactProduct.mul_exact_scaled`) and `1 - w` for `w` in `[1/2, 1]` (a common grid of `2 ^ -53`).  Then `(1 - w) - hz` recovers the rounding error of `w` up to `u ^ 2`, the rounding of `z = x * x` contributes `u x ^ 2 / 2`, and `cos_spec` bounds the result within `7/5 u` of `cos (x + y)`.  The term `y (sin x - x)` that the kernel omits contributes up to `0.127 u`.
+
+`F64RelativeStep.within_one_relative` needs the result within `11/8 u` of `sin r`, which leaves `3/8 u` for the evaluation once the final rounding takes `u`.  The bound on the sine kernel's error reaches `0.44 u` at `|r| = π/4`, so `TrigStep.sin_final` splits at `|r| = 0.54`.  Below, the bound is at most `0.31 u |sin r|`.  Above, `sin r` lies in `[1/2, 1)`, and `unit_step` applies `F64FullStep.one_step_binades` to that binade, which allows an error below one and a half spacings, `1.5 u`, against the `1.44 u` that the proof bounds.  `cos_final` applies `unit_step` to the cosine's `7/5 u` plus the reduction's `2 ^ -59 |r|`.  `TrigTiny.self_step` covers `sin x = x` for `|x| < 2 ^ -26` in every binade, subnormals included.
+
+| Module | Result |
+|---|---|
+| `TrigKernelWide` | `sin_kernel_error_wide`, `cos_kernel_error_wide` on `|x| ≤ 0.78541`. |
+| `TrigApprox` | `AB.mul`, `AB.add`, `AB.sub`: error tracking with magnitude bounds. |
+| `TrigKernelWords` | The kernels on words, coefficient bounds, and `sinR_AB`, `cosR_AB`. |
+| `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec` | `sinTail_spec`, `sinDirect_spec`. |
+| `TrigCosKernel` | `half_exact`, `one_sub_exact`, `cos_tail_expand`, `cos_spec`. |
+| `TrigStep`, `TrigTiny` | `unit_step`, `sin_final`, `cos_final`, `self_step`, `zero_step`. |
+| `TrigQuadrant`, `TrigSinCos` | `reduced_kernels`, `quadrant`, `sin_within`, `cos_within`. |
+| `TrigTheorem`, `TrigFile` | `sin_bytes_accuracy`, `cos_bytes_accuracy`, the exact results, and the file theorems for `build/verified/trig.wasm`. |
+`congr 1` on powers of 2 reached the maximum recursion depth inside `Log2CoreStep`; the identity came from `Real.log_injOn_pos` instead.  `UInt64.toNat_ofNat` concerns literals; `UInt64.ofNat n` needs `UInt64.toNat_ofNat'`.  A location list of `simp only at` broken across lines ended the tactic block.  `field_simp` closed goals that a following `ring` then found empty, and `rw` closed goals that a following `norm_num` found empty; `<;>` avoids both.  In `F64RoundedStep`, `nlinarith` timed out on the binade cases until they were rewritten in one variable `T = 2 ^ m / 2 ^ 1074` with `linarith`.
+
+### Integration
+
+`LeanExe.lean` needs `F64RelativeStepWide`, `F64Sterbenz`, `F64HighWord`, and `F64RoundedStep`; `Verified.lean` needs `Log2Theorem` and `Log2Power`.  The `tests/verified/run.sh` entry is `log2:Log2Theorem:Log2File`; `Log2File` prints exactly two `#print axioms` lines, both with the three permitted axioms against the emitted `log2.wasm` of 4,972 bytes.
+
+- [x] `log2` main path, path near 1, exact results, byte and file theorems.
+- [ ] `log10` (in progress: constants, word form, and kernel error accepted or under test).
+
+## 2026-10-11: Integration of the sine, cosine, and log2 theorems
+
+Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at `3924f81c` (the `log2` theorem, with the journal's corrected memory figures) into `transcendentals`, with a merge script that merges with `--no-commit`, resolves `devnotes.md` by union, and commits with a proper message.  `LeanExe.lean` now imports `F64HighWord`, `F64RelativeStepWide`, `F64RoundedStep`, and `F64Sterbenz`, `Verified.lean` imports `TrigTheorem`, `Log2Theorem`, and `Log2Power`, and the file theorem loop of `tests/verified/run.sh` gains `trig:TrigTheorem:TrigFile` and `log2:Log2Theorem:Log2File`.
+
+`TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
+
+`lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: `log10` theorem (track `log`)
+
+The target of `log10` is `Real.logb 10 x`, which Mathlib defines as `log x / log 10`.  `Log10Theorem.log10_within_one` proves `WithinSteps 1` for every finite positive input, subnormal ones included, and the exceptional inputs give the results of IEEE 754 as for `log`.  fdlibm's `Lg1` to `Lg7` in `k_log.h` are the words of `Lp1` to `Lp7` in `s_log1p.c`, so `Log1pKernelPoly.log1p_kernel_error` bounds the polynomial: `log (1 + f)` is within `2 ^ -58 |s|` of `s (2 + Lg1 s ^ 2 + ... + Lg7 s ^ 14)` for `s = f / (2 + f)` and `|s| ≤ 0.1716`.  The same lemma gives `|log (1 + f)| ≥ 2 (1 - 2 ^ -58) |s|`, the lower bound that the relative error needs.
+
+### Bound
+
+The rounded-result lemmas do not suffice for `log10`.  With `σ = |s|`, the error before the final rounding is at most `0.7026 u σ` plus terms in `|k|` below `2 ^ -80 |k|` and an absolute term below `2 ^ -1065`; near `f = 0.414` and `k = 0` this is about `0.82` units of the result, beyond the `15/32` that `F64RelativeStepWide` leaves.  `F64RoundedStep.within_one_add` takes the sum before the rounding instead and allows `63/64` units, so the bound holds with a margin of about 18 percent, both for `k = 0`, where `|log10 x| ≥ 0.8684 σ`, and for `k ≠ 0`, where `|log10 x| ≥ 0.1472 |k|`.
+
+| Step | Fact |
+|---|---|
+| Reduction | `x = 2 ^ k x'` with `x'` from 0.70710 to 1.41422, from the exponent and fraction fields (`Log10Bits.xr_fields`) |
+| `f = x' - 1` | exact by Sterbenz's lemma, on the grid of `2 ^ -53` |
+| `0.5 f`, `hi ivln10hi`, `y log10_2hi` | exact products: `hi` has 21 significant bits, `ivln10hi` 32, `y` 11, `log10_2hi` 40 |
+| `f - hi`, `y log10_2hi - w` | exact by Sterbenz's lemma, or a subtraction from 0 |
+| `s`, `z`, `w`, `R`, `r` | errors in multiples of `u σ`: 2.0001, 0.8581, 0.0556, 0.945, 0.6713 |
+| `hi + lo` | within `1.2772 u σ` of `s (2 + Lg1 s ^ 2 + ...)` |
+| `ivln10hi + ivln10lo`, `log10_2hi + log10_2lo` | within `2 ^ -86` of `1 / log 10` and `log 2 / log 10`, with `log 10 = 3 log 2 + log (5/4)` from 20 terms of the series of `atanh (1/9)` |
+
+Each product of two error bounds that shrink with `σ` takes one factor in a form valid for all `σ ≤ 0.1716`, so every bound is linear in `σ` and `linarith` checks it.  An exact-rational Python model of the chain chose the constants before the Lean proof.
+
+### Exact results
+
+`log10 1 = +0`, `log10 (±0) = -∞`, `log10 (+∞) = +∞`, and the canonical NaN for a negative argument, negative infinity included, and for a NaN.  `log10 (10 ^ n) = n` for `n` from 0 to 22, the powers of ten that binary64 holds exactly: the kernel evaluates `tailWord` at each of the 22 words in `pow10_checks`.
+
+### Modules
+
+| Module | Content |
+|---|---|
+| `Log10Consts` | The enclosure of `log 10`, the split constants, and `|log (1 + f)| ≥ 2 (1 - 2 ^ -58) |s|` |
+| `Log10Bits` | `kLog1p` and the tail on words, the reduction of the argument word, and the path lemmas |
+| `Log10Kernel` | The errors of `hfsq` and of `k_log1p` |
+| `Log10Final` | One step for the tail after `f` and `y` (`tail10`) |
+| `Log10Main` | The reduction for an argument word and `main10` |
+| `Log10Theorem`, `Log10File` | `log10_within_one`, exceptional values, `log10_pow10`, `Ready`, `log10_bytes_accuracy`, and the file |
+
+The module has no tables, so `Ready` is the allocator invariant and the memory cap; the export `log10` is function 3.
+
+### Failures
+
+`nlinarith` in the long proof of `tail10` exhausted 8,000,000 heartbeats; every bound there is linear, and `linarith` checks the proof.  Literals in bitwise expressions without an expected type elaborated as natural numbers until annotated as `UInt64`.  `Nat.and_two_pow_sub_one_eq_mod`, `Nat.two_pow_add_eq_or_of_lt`, and a test-bit lemma for `&&& 0x100000` gave the reduction; `omega` could not see `UInt64.size`.  An absolute error term of `2 ^ -1070` grew by `u 2 ^ -1070` in one addition and needed a larger constant.  `rw` with `← not_lt` found no `LinearOrder` on `UInt64`; `UInt64.not_le` and `UInt64.not_lt` serve.
+
+### Integration
+
+`Verified.lean` needs `Log10Theorem`; `LeanExe.lean` needs `F64RoundedStep`, listed with the `log2` entry.  The `tests/verified/run.sh` entry is `log10:Log10Theorem:Log10File`; `Log10File` prints exactly two `#print axioms` lines against the emitted `log10.wasm`.
+
+- [x] `log10` main path for normal and subnormal arguments, exceptional values, powers of ten.
+- [x] Byte and file theorems.
+
+## 2026-10-11: Decisions on tanh, the reflector, and the Bessel bounds
+
+The `expm1` track proved `Expm1Theorem.expm1_within_one` and the exact results of `expm1`.  For `tanh` on `2^-28 ≤ |x| < 1`, composing worst-case bounds gives four steps from the one-step `expm1` theorem alone and three when each `expm1` path's bound before its final rounding is exported; two steps fail by a factor of 0.74 at `|x| = atanh(1/2)`, where the result's spacing halves.  Sampling and the worst inputs reach two steps.  Opus set the `tanh` bound to three steps, with the gap recorded as one of the analysis.
+
+The ports track measured why `verified_compile` did not finish on the CORE-MATH `tgamma` port.  With the profiler and systemd's memory accounting on probes that chain `let (h, l) := mulDD ...` lines, the objects in the generated program grew from 5,093 at 10 lets to 15,413 at 20, and a probe of 40 lets exhausted the runner's memory, while the structurally distinct subterms grew linearly, from 491 to 851.  Loop states over tuples are not the cause: a loop over a 6-tuple of floats checks in 1.27 s.  In `Verified/Reflect/Command.lean`, `Ctx.ctx` rebuilds the expression of the whole context at each of its 23 uses, so every node of the program and of its proofs carries its own copy, and a function with `n` bindings costs `O(n²)`.  This may also explain the 1,684 seconds of `Verified.Examples.Repeat`.  Opus chose to fix the reflector by keeping the context expression in `Ctx` and extending it by one `List.cons` per binding, instead of splitting the port's functions around the problem.  The fix is developed in `/home/somebody/src/lt-reflect` on debtop1, branch `w/reflect`, and merges only after the probes grow linearly, `lake build Verified` and the theorem modules pass, every emitted module is byte-identical to the current output, and the build times are measured before and after.  Every worktree rebuilds after that merge, since every example imports the reflector.
+
+The Bessel ports measured, in units of the modulus `√(J² + Y²)`, largest errors of 2.617 (`j0`), 2.764 (`j1`), 3.171 (`y0`), 3.243 (`y1`), 10.41 (`jn` at order 50), and 15.38 (`yn` at order 100).  Opus set the bound to 4 units for `j0`, `j1`, `y0`, and `y1`, and to `a + b |n|` units for `jn` and `yn`, with the constants that the proof reaches; the data fit `4 + |n|/6`.  `lgamma`'s check found all 81,033 results equal to its integer reference.
+
+On minideb1 a build of `Verified/Examples/TanOdd.lean` (track `trig`) held the runner's lock for 26 minutes of its 40-minute timeout while its scope sat above `memory.high` (4.76 GB against 4.29 GB, swap full, 57,071 high events, about 4 seconds of CPU per minute).  Opus stopped the Lean process and told the track to treat it as a timeout without a diagnostic and to divide the module before building it again.
+
+The log10 integration: Opus merged `w/log` at `315ad465` (659d6c95), added `Log10Theorem` to `Verified.lean` and `log10:Log10Theorem:Log10File` to the file loop of `tests/verified/run.sh`.  The build passed with 3,907 jobs, and `log10_bytes_accuracy` reports only the permitted axioms (`opus-merge-log10-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-10.log`) with six file checks: `exp`, `log`, `exp2`, `trig`, `log2`, and `log10`.
