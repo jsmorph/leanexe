@@ -27,9 +27,7 @@ structure Bound where
   deriving Inhabited
 
 /-- From the modes and the live set at a site, as terms, the bound of a source expression. -/
-abbrev BoundBuilder := Lean.Expr → Lean.Expr → MetaM (Option Bound)
-
-def noBound : BoundBuilder := fun _ _ => return none
+abbrev BoundBuilder := Lean.Expr → Lean.Expr → MetaM Bound
 
 /-- The frames condition of a source expression. -/
 abbrev FitsBuilder := MetaM Bound
@@ -119,11 +117,11 @@ def LemmaApp.finish (a : LemmaApp) : MetaM Lean.Expr := do
 
 /-- Runs the builder `b` of the part that argument `name` bounds, at the modes and live set that
 the argument states, and assigns its proof. -/
-def LemmaApp.child (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM (Option Bound) := do
+def LemmaApp.child (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM Bound := do
   let (modes, live) ← a.allocsArgs name
-  let some r ← b modes live | return none
+  let r ← b modes live
   a.assign name r.proof
-  return some r
+  return r
 
 /-- The left and right sides of the equation that `p` proves. -/
 def eqSides (p : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) := do
