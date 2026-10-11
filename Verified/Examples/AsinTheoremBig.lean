@@ -70,26 +70,32 @@ theorem big_within (x : Float) (hx : Finite x.toBits) (h1 : 974998 / 1000000 ≤
     rw [Real.le_sqrt (by positivity) hvtp.le]
     norm_num
     linarith
-  have hev : (1126 / 10000) / 2 ^ 53 + ((1126 / 10000) / 2 ^ 53 * (1719 / 10000 * (1 / 79)) +
+  have hev : (1126 / 10000 : ℝ) / 2 ^ 53 + ((1126 / 10000) / 2 ^ 53 * (1719 / 10000 * (1 / 79)) +
       1126 / 10000 * (891 / 1250 / 2 ^ 53 * (1 / 79)) + (1126 / 10000) / 2 ^ 53 *
         (891 / 1250 / 2 ^ 53 * (1 / 79)) + 1 / 400 / 2 ^ 53 + 1 / 2 ^ 1075) +
-      115 / 1000 / 2 ^ 53 ≤ (23 / 100) / 2 ^ 53 := by norm_num
-  have hv1 : 1 / 2 ^ 1000 ≤ |value ssr.toBits| := by
-    have := (abs_le.mp hrv0).1
-    rw [abs_of_pos (by norm_num at hlo this hev ⊢; nlinarith)]
-    norm_num at hlo this hev hsq0 ⊢
+      115 / 1000 / 2 ^ 53 ≤ (2314 / 10000) / 2 ^ 53 := by norm_num
+  have hrr : -(1719 / 10000 * (1 / 79)) * Real.sqrt vt ≤ Real.sqrt vt * rv := by
+    have h3 := (abs_le.mp hrM).1
+    have h4 : -(1719 / 10000 * (1 / 79)) ≤ rv := by linarith
+    have h5 := mul_le_mul_of_nonneg_left h4 hsqrt0.le
     linarith
+  have hlo' : Real.sqrt vt + Real.sqrt vt * rv ≤ value ssr.toBits + 2314 / 10000 / 2 ^ 53 := by
+    linarith
+  have hhi' : value ssr.toBits ≤ Real.sqrt vt + Real.sqrt vt * rv + 2314 / 10000 / 2 ^ 53 := by
+    linarith
+  have hrv1 := (abs_le.mp hrv0).2
+  have hv1 : 1 / 2 ^ 1000 ≤ |value ssr.toBits| := by
+    have hp : 1 / 2 ^ 1000 ≤ value ssr.toBits := by linarith
+    exact hp.trans (le_abs_self _)
   have hv2 : |value ssr.toBits| < 2 ^ 900 := by
-    have := (abs_le.mp hrv0).2
     rw [abs_lt]
-    norm_num at hlo hhi this hev hsqrt1 ⊢
     constructor <;> linarith
   obtain ⟨h2f, h2v⟩ := AtanTheoremReduce.double_float ssr hssr.1 hv1 hv2
-  have htwo : FApprox (2.0 * ssr) (2 * (Real.sqrt vt + Real.sqrt vt * rv)) ((46 / 100) / 2 ^ 53) := by
+  have htwo : FApprox (2.0 * ssr) (2 * (Real.sqrt vt + Real.sqrt vt * rv)) ((4628 / 10000) / 2 ^ 53) := by
     refine ⟨h2f, ?_⟩
     rw [h2v, show 2 * value ssr.toBits - 2 * (Real.sqrt vt + Real.sqrt vt * rv) =
       2 * (value ssr.toBits - (Real.sqrt vt + Real.sqrt vt * rv)) by ring, abs_mul, abs_two]
-    have := hssr.2
+    have := hssr.2.trans hev
     linarith
   -- `2 (s + s r) - pio2_lo`
   have hlof : Finite (0x3C91A62633145C07 : UInt64) := by
@@ -150,9 +156,11 @@ theorem big_within (x : Float) (hx : Finite x.toBits) (h1 : 974998 / 1000000 ≤
     norm_num
     linarith
   · rw [abs_lt]
-    have := Real.arcsin_le_pi_div_two a
-    have := Real.pi_lt_four
-    constructor <;> nlinarith [(by norm_num : (2 : ℝ) < 2 ^ 1022)]
+    have h3 := Real.arcsin_le_pi_div_two a
+    have h4 := Real.neg_pi_div_two_le_arcsin a
+    have h5 := Real.pi_lt_four
+    have h6 : (2 : ℝ) < 2 ^ 1022 := by norm_num
+    constructor <;> linarith
 
 #print axioms big_within
 
