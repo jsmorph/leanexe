@@ -868,7 +868,7 @@ def reduceOpenProjs (e : Lean.Expr) : MetaM Lean.Expr := do
     unless x.hasAnyFVar lctx.contains do return .done x
     return .done ((← projStep? x).getD x))
 
-/-- `b`, abstracted over variables, at the values `vs`: its proof applied to them, and its cost
+/-- `b`, abstracted over variables, at the values `vs`: its proof applied to them, and its term
 instantiated with them, with the projections reduced that a value built in place leaves in it.
 The reduction runs with the values' leaves as new variables, as `reduceOpenProjs` requires, and the
 proof, abstracted over the variables, is applied to the leaves, which the kernel instantiates
@@ -905,8 +905,9 @@ def boundOf (p : Lean.Expr) : MetaM Bound := do
   return ⟨reduced, ← mkExpectedTypeHint p (← mkEq lhs reduced)⟩
 
 /-- `e = e'` for `e` a frames condition that the frames lemmas build from `&&` and `if`s, and `e'`
-the condition without its operands `true` of `&&`, and with `true` for an `if` whose branches are
-`true`; `none` when nothing changes. -/
+the condition without its operands `true` of `&&`, with `true` for an `if` whose branches are
+`true`, and with `true` for `allBelow` and `loopFits` whose parts are `true`.  `none` when nothing
+changes. -/
 partial def normFits (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := do
   match e.getAppFnArgs with
   | (``and, #[a, b]) =>
@@ -939,6 +940,20 @@ partial def normFits (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
     match step? with
     | none => return (e, none)
     | some s => return (mkApp2 iteFn a' b', some s)
+  | (``allBelow, #[f, n]) =>
+    unless f.isLambda && f.bindingBody!.isConstOf ``Bool.true do return (e, none)
+    let h ← withLocalDeclD `k (mkConst ``Nat) fun k => do
+      mkLambdaFVars #[k] (← mkEqRefl (mkConst ``Bool.true))
+    return (mkConst ``Bool.true, some (← mkAppOptM ``allBelow_true #[some f, some h, some n]))
+  | (``loopFits, #[α, cf, C, bf, F, n, i, s]) =>
+    unless cf.isLambda && cf.bindingBody!.isConstOf ``Bool.true && bf.isLambda &&
+        bf.bindingBody!.isLambda && bf.bindingBody!.bindingBody!.isConstOf ``Bool.true do
+      return (e, none)
+    let hc ← withLocalDeclD `s α fun x => do mkLambdaFVars #[x] (← mkEqRefl (mkConst ``Bool.true))
+    let hb ← withLocalDeclD `i (mkConst ``UInt64) fun j => withLocalDeclD `s α fun x => do
+      mkLambdaFVars #[j, x] (← mkEqRefl (mkConst ``Bool.true))
+    return (mkConst ``Bool.true, some (← mkAppOptM ``loopFits_true
+      #[some α, some cf, some C, some bf, some F, some hc, some hb, some n, some i, some s]))
   | _ => return (e, none)
 
 /-- The frames condition that `p : fits = rhs` gives, with `rhs` normalized by `normFits` and its
@@ -1215,14 +1230,14 @@ such as `p.g.bound tuple`.  The kernel unfolds `p.g.bound`, the higher definitio
 `Env.ofArgs` and compares the two applications argument by argument, which needs every argument but
 the environment identical: a difference in another would make it unfold the entry on both sides
 and evaluate it. -/
-def checkBoundTarget (what : MessageData) (own target : Lean.Expr) : MetaM Unit := do
+def checkEntryTarget (what : MessageData) (own target : Lean.Expr) : MetaM Unit := do
   let unfolded := (← unfoldDefinition target).headBeta
   let a := own.getAppArgs
   let b := unfolded.getAppArgs
   unless own.getAppFn == unfolded.getAppFn && a.size == b.size && a.pop == b.pop do
-    throwError "verified_compile: the bound of {what} does not match its callee's bound"
+    throwError "verified_compile: the table's entry of {what} does not match {target}"
   unless ← isDefEq a.back! b.back! do
-    throwError "verified_compile: the arguments of {what} do not match its callee's bound"
+    throwError "verified_compile: the arguments of {what} do not match {target}"
 
 /-- The right-nested tuple of `xs`, `()` for none, with each owned array as `Moved`. -/
 def argsTuple : List (Lean.Expr × Bool) → MetaM Lean.Expr
@@ -2275,6 +2290,7 @@ where
       (mkAppN (mkConst callee.denoteEq) args)
     let src ← mkAppM ``Expr.call #[f, ← mkAppM ``Args.get #[argList]]
     let cb := callee.bound
+    let depth := callee.sig.depth
     let owned := (List.range args.size).map fun i => callee.sig.mode i == .owned &&
       !callee.sig.params[i]!.scalar
     let tuple ← argsTuple (args.toList.zip owned)
@@ -2282,11 +2298,11 @@ where
     -- at the arguments, which take the fuel first when the callee's code takes the call depth.
     let entry (fits : Bool) (name : Name) (getLhs : Lean.Expr) : MetaM Lean.Expr := do
       let chain ← c.tables.get fits f getLhs.appArg!
-      let target := if cb.fits?.isSome then mkApp2 (mkConst name) c.tables.fuel tuple
+      let target := if depth then mkApp2 (mkConst name) c.tables.fuel tuple
         else mkApp (mkConst name) tuple
       let some (_, _, chainRhs) := (← inferType chain).eq?
         | throwError "verified_compile: the bounds of {fn}"
-      checkBoundTarget m!"{fn}" chainRhs target
+      checkEntryTarget m!"{fn}" chainRhs target
       mkExpectedTypeHint chain (← mkEq getLhs target)
     let bound : BoundBuilder := fun modes live => do
       let bounds := c.tables.table false
@@ -2319,13 +2335,15 @@ where
       app.assign `hb hb
       boundOf (← app.finish)
     let fits : FitsBuilder := do
-      let app ← LemmaApp.start (if cb.fits?.isSome then ``call_depth_fits else ``call_fits)
+      let app ← LemmaApp.start (if depth then ``call_depth_fits else ``call_fits)
         (fitsArgs c ++ [(`f, f), (`argList, argList)])
-      let some (_, depth, _) := (← app.hypType `hd).eq?
+      let some (_, sigDepth, _) := (← app.hypType `hd).eq?
         | throwError "verified_compile: the argument hd of the frames of a call"
-      app.assign `hd (← evalEq depth (boolConst cb.fits?.isSome))
+      app.assign `hd (← evalEq sigDepth (boolConst depth))
       app.assign `hsum (← argsFits reflected argList)
-      if let some name := cb.fits? then
+      if depth then
+        let some name := cb.fits?
+          | throwError "verified_compile: {fn} takes the call depth and has no frames condition"
         app.assign `hargs hargs
         let some (_, getLhs, _) := (← app.hypType `hf).eq?
           | throwError "verified_compile: the argument hf of call_depth_fits"
@@ -2629,6 +2647,15 @@ def addBoundDefinition (name : Name) (type value : Lean.Expr) : MetaM Unit := do
   addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
+/-- Adds the theorem `name : ∀ xs, lhs = root.term`, for `root.proof : own = root.term` with `own`
+the value of `lhs`'s definition at its arguments, which the kernel checks by unfolding `lhs`. -/
+def addEquation (name : Name) (xs : Array Lean.Expr) (lhs : Lean.Expr) (root : Bound) :
+    MetaM Unit := do
+  let (own, _) ← eqSides root.proof
+  let step ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs own)
+  addTheorem name (← mkForallFVars xs (← mkEq lhs root.term))
+    (← mkLambdaFVars xs (← mkEqTrans step root.proof))
+
 /-- The source environment of the flattening of Lean's argument tuple `x` of `r`. -/
 def Reflected.envOf (r : Reflected) (x : Lean.Expr) : Lean.Expr :=
   mkAppN (mkConst ``Env.ofArgs)
@@ -2696,13 +2723,11 @@ def addDepthBound (base : Name) (r : Reflected) (B Fi k : Lean.Expr) (params : A
       mkLambdaFVars #[k, x] (mkApp2 entry k (r.envOf x))
     addBoundDefinition (base ++ name) (← mkArrow nat (← mkArrow r.argsType ty)) value
   let tuple ← r.tupleOf params
+  -- The definition at `k + 1`, the fuel of the lemma's statement, and the tuple.
   let equation (name eq : Name) (root : Bound) : MetaM Unit := do
     let (own, _) ← eqSides root.proof
-    let lhs := mkApp2 (mkConst (base ++ name)) own.getAppArgs[4]! tuple
-    let step ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs own)
-    let xs := #[k] ++ params
-    addTheorem (base ++ eq) (← mkForallFVars xs (← mkEq lhs root.term))
-      (← mkLambdaFVars xs (← mkEqTrans step root.proof))
+    addEquation (base ++ eq) (#[k] ++ params)
+      (mkApp2 (mkConst (base ++ name)) own.getAppArgs[4]! tuple) root
   equation `bound `bound_eq
     (← bodyBoundEq boundThm (args ++ [(`rest, rest)]) r params env resultShape base.getPrefix
       (base ++ `denote_eq) body)
@@ -2776,11 +2801,8 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
       resultShape base.getPrefix (base ++ `denote_eq) r
     let root : Bound :=
       ⟨root.term.replaceFVar k (mkNatLit 0), root.proof.replaceFVar k (mkNatLit 0)⟩
-    let (fbEnv, _) ← eqSides root.proof
-    let lhs := mkApp (mkConst boundName) (← reflected.tupleOf params)
-    let step ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs fbEnv)
-    addTheorem (base ++ `bound_eq) (← mkForallFVars params (← mkEq lhs root.term))
-      (← mkLambdaFVars params (← mkEqTrans step root.proof))
+    addEquation (base ++ `bound_eq) params (mkApp (mkConst boundName) (← reflected.tupleOf params))
+      root
     let numeralEq := if (natOf root.term).isSome then some (base ++ `bound_eq) else none
     return { reflected with bound? := some { bound := boundName, numeralEq } }
 
@@ -3234,7 +3256,7 @@ def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
     let chain ← tableChain false progVal funsVal (← whnfR fv) env bounds.appArg!
     let some (_, _, chainRhs) := (← inferType chain).eq?
       | throwError "verified_compile: the bounds of {name}"
-    checkBoundTarget m!"{name}" chainRhs target
+    checkEntryTarget m!"{name}" chainRhs target
     let h ← mkExpectedTypeHint chain (← mkEq lhs target)
     let (rhs, h) ← match cb.numeralEq with
       | some n => do
@@ -3463,6 +3485,8 @@ def elabVerifiedCompile : CommandElab
               let some (_, fl, _) := l.eq? | throwError "verified_compile: the precondition {pre}"
               return (fl.appFn!, w.appArg!.appFn!)
             let fv := boundFn.appArg!
+            -- The chains hold the numeral of `framesAt 0`, which the kernel compares with
+            -- `framesAt 0` by evaluating the subtraction of two words' values.
             let h0 ← rewriteEntry h0 boundFn fun env =>
               tableChain false progVal funsVal fv env frames
             let h0 ← rewriteEntry h0 fitsFn fun env => tableChain true progVal funsVal fv env frames
@@ -3554,9 +3578,7 @@ def elabVerifiedCompile : CommandElab
           let boundVal ← withLocalDeclD `x r.argsType fun x =>
             mkLambdaFVars #[x] (mkApp boundEnv
               (mkAppN (mkConst ``Env.ofArgs) #[ps, ms, (mkApp r.flatArgs x).headBeta])).headBeta
-          addAndCompile <| .defnDecl <| mkDefinitionValEx boundName []
-            (← mkArrow r.argsType (mkConst ``Nat)) boundVal
-            (.regular (getMaxHeight (← getEnv) boundVal + 1)) .safe [boundName]
+          addBoundDefinition boundName (← mkArrow r.argsType (mkConst ``Nat)) boundVal
           wrapperBoundEquation (base ++ simple) r.name boundName callee
             (← getConstInfoDefn (base ++ `program)).value funsVal
           let h ← mkAppM ``ImplementsTables.lean #[h0]

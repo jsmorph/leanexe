@@ -1,11 +1,11 @@
 import Verified.Reflect.BoundLemmas
 
 /-! The lemmas from which the reflector builds the equation between whether a function's calls find
-their frames, `Expr.fits`, and a Lean term: one lemma per source form, with the forms of
-conditions that `BoundLemmas` distinguishes.  An expression that calls no function whose code
-takes the call depth finds its frames by `Expr.fits_of_depthCalls`.  As in `BoundLemmas`, each
-conclusion is built from the lemma's arguments, and a binder's body enters through its equation at
-the value. -/
+their frames, `Expr.fits`, and a Lean term: one lemma per source form with parts, with the forms
+of conditions that `BoundLemmas` distinguishes.  An expression that calls no function whose code
+takes the call depth, a leaf among them, finds its frames by `Expr.fits_of_depthCalls`.  As in
+`BoundLemmas`, each conclusion is built from the lemma's arguments, and a binder's body enters
+through its equation at the value. -/
 
 namespace Verified.Reflect
 
@@ -297,53 +297,20 @@ theorem fits_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.
       f.fitsAt fs (rest.fitsAt fs) k env := by
   rw [Prog.fitsAt_cons_here, hd]; rfl
 
-/-- The bound of a function whose code takes the call depth, with `k` frames. -/
-theorem bounds_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
-    (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
-    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
-      f.boundAt fs (rest.boundsAt fs) k env := by
-  rw [Prog.boundsAt_cons_here, hd]; rfl
-
-/-- The bound of a function whose code takes the call depth, with `k + 1` frames: its body's, with
-its callees at `k`. -/
-theorem funcAt_bound {func : Func S} {rest : Nat → Bounds S} {k : Nat} {args : Env func.params}
-    {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
-    (hms : entryModes func.params func.modes = ms)
-    (hv : func.body.denote funs args = V)
-    (hba : func.body.allocs funs (rest k) ms (fun _ => false) args = BA)
-    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
-    func.boundAt funs rest (k + 1) args = BA + KA := by
-  subst hms hv hba hk; rfl
-
-/-- The bound of a recursive function with `k + 1` frames: its body's, with itself and its callees
-at `k`. -/
-theorem recFuncAt_bound {func : RecFunc S} {funs : Funs (func.sig :: S)} {rest : Nat → Bounds S}
-    {k : Nat} {args : Env func.params} {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
-    (hms : entryModes func.params func.modes = ms)
-    (hv : func.body.denote funs args = V)
-    (hba : func.body.allocs funs (.cons (func.boundAt funs rest k) (rest k)) ms (fun _ => false)
-      args = BA)
-    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
-    func.boundAt funs rest (k + 1) args = BA + KA := by
-  subst hms hv hba hk; rfl
-
+/-- The frames condition of a function whose code takes the call depth, with `k + 1` frames: its
+body's, with its callees at `k`. -/
 theorem funcAt_fits {func : Func S} {rest : Nat → Fits S} {k : Nat} {args : Env func.params}
     {B : Bool} (h : func.body.fits funs (rest k) args = B) :
     func.fitsAt funs rest (k + 1) args = B := by
   subst h; rfl
 
+/-- The frames condition of a recursive function with `k + 1` frames: its body's, with itself and
+its callees at `k`. -/
 theorem recFuncAt_fits {func : RecFunc S} {funs : Funs (func.sig :: S)} {rest : Nat → Fits S}
     {k : Nat} {args : Env func.params} {B : Bool}
     (h : func.body.fits funs (.cons (func.fitsAt funs rest k) (rest k)) args = B) :
     func.fitsAt funs rest (k + 1) args = B := by
   subst h; rfl
-
-/-- The bound of a recursive function, with `k` frames. -/
-theorem bounds_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f.result.denote)
-    (fs : Funs S) (k : Nat) (env : Env f.params) :
-    (Prog.boundsAt (.consRec f rest) (.cons M fs) k).get .here env =
-      f.boundAt (.cons M fs) (rest.boundsAt fs) k env :=
-  rfl
 
 /-- The frames of a recursive function, with `k` frames. -/
 theorem fits_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f.result.denote)
@@ -352,16 +319,7 @@ theorem fits_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f
       f.fitsAt (.cons M fs) (rest.fitsAt fs) k env :=
   rfl
 
-/-! The tables of a recursive function's body, which hold its own entry first. -/
-
-theorem bounds_get_cons_here {g : Sig} (b : Env g.params → Nat) (rest : Bounds S)
-    (env : Env g.params) : (Bounds.cons b rest).get .here env = b env :=
-  rfl
-
-theorem bounds_get_cons_there {g h : Sig} (b : Env h.params → Nat) (rest : Bounds S)
-    (v : FVar S g) (env : Env g.params) :
-    (Bounds.cons b rest).get (.there v) env = rest.get v env :=
-  rfl
+/-! The frames conditions of a recursive function's body, which hold its own entry first. -/
 
 theorem fits_get_cons_here {g : Sig} (b : Env g.params → Bool) (rest : Fits S)
     (env : Env g.params) : (Fits.cons b rest).get .here env = b env :=

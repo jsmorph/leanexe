@@ -6,7 +6,10 @@ the fixed-point equation of its body.  The code of a recursive function, and of 
 calls one, takes the call depth and traps at `unreachable` at depth 1,000; the theorem for it holds
 at its exported entry, which starts at depth 0.  The programs recurse once and twice per call, on
 words, floats, a pair, a structure, an array of structures, and an owned array that each call
-extends and moves into the next, and one calls two of the others. -/
+extends and moves into the next.  One calls two of the others, one recursion calls another, and
+`spread` calls them inside loops, a build, conditions, and arguments.  `chain_fits` and
+`chain_trapFree` state from the reflector's equations that `chain n` needs `n + 1` frames and that
+the module computes it without a trap for every `n` below 1,000. -/
 
 namespace Verified.Examples.Recursion
 
@@ -214,8 +217,35 @@ decreasing_by
   simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at h ⊢
   omega
 
+/-- Twice `x`: a function without the call depth, to which `spread` passes a call of `chain`. -/
+def double (x : UInt64) : UInt64 := x * 2
+
+/-- Calls of functions that take the call depth in a loop's body, a build's elements, a
+`repeatWhile`'s condition, a destructured pair, an update, the argument of a function without the
+call depth, and the conditions of `if`s on a `Bool`, a float, and `≠`, and of `powGcd`, which takes
+the depth without recursion. -/
+def spread (n : UInt64) (xs : Array Float) : UInt64 :=
+  let total := LeanExe.loop n 0 fun i acc => acc + gcd i 12
+  let ys := LeanExe.build n fun i => chain (i % 4)
+  let r := LeanExe.repeatWhile n 0 (fun s => gcd s 6 < 3) fun s => s + 1
+  let (a, b) := fibPair (1, 1) (n % 8)
+  let zs := ys.set! (n % 4).toNat (pow a 2)
+  let c := double (chain (b % 5))
+  let d := if gcd a b == 1 then c else 0
+  let e := if sumRange xs 0 2 < 1.0 then d else d + 1
+  if powGcd a b ≠ 0 then total + zs.size.toUInt64 + r + e else e
+
+/-- `gcd 12 18` after `n` nested calls: a recursion that calls another function that takes the call
+depth, four calls deep, at its deepest frame. -/
+def countdown (n : UInt64) : UInt64 := if n = 0 then gcd 12 18 else countdown (n - 1)
+termination_by n.toNat
+decreasing_by
+  rename_i h
+  simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at h ⊢
+  omega
+
 verified_compile compiled := [gcd, pow, sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
-  top2, top1, deep]
+  top2, top1, deep, double, spread, countdown]
 
 /-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls find their frames
 exactly when `n < k`. -/
@@ -238,9 +268,9 @@ theorem chain_bound : ∀ (k : Nat) (n : UInt64), compiled.chain.bound k n = 0
     rw [compiled.chain.bound_eq, chain_bound k]
     simp
 
-/-- The module computes `chain n` without a trap for every `n` below 1,000, and leaves `top`
-where it was. -/
-theorem chain_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 18 (fun x => chain x)
+/-- The module computes `chain n` without a trap for every `n` below 1,000 when `top` lies within
+the memory's cap, and it does not raise `top`. -/
+theorem chain_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 21 (fun x => chain x)
     (fun x heap store => x.toNat < 1000 ∧ heap.Within store compiled.module 0)
     (fun _ heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat) :=
   compiled.chain.trapFree.mono

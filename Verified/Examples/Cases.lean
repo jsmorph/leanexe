@@ -916,6 +916,12 @@ def main : IO Unit := do
     for n in [0, 1, 998, 999] do
       IO.println s!"recursion|deep|i64|i64:{n} i64:{a} i64:{b}|{Recursion.deep n a b}"
     IO.println s!"recursion|deep|i64|i64:1000 i64:{a} i64:{b}|trap"
+  for xs in floatArrays.take 3 do
+    for n in [0, 1, 5, 12] do
+      IO.println s!"recursion|spread|i64|i64:{n} {floatArrayArg xs}|{Recursion.spread n xs}|1"
+  for n in [0, 1, 500, 995] do
+    IO.println s!"recursion|countdown|i64|i64:{n}|{Recursion.countdown n}"
+  IO.println s!"recursion|countdown|i64|i64:996|trap"
   let bookKinds := "array-u64,array-u64,i64"
   let books : List Fields.Book :=
     [⟨#[], #[], 0⟩, ⟨#[5], #[3], 1⟩, Fields.mkBook 4, ⟨#[1, 2, 3], #[10], 7⟩]

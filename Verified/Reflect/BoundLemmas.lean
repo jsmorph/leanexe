@@ -565,4 +565,52 @@ theorem bounds_get_thereRec {g : Sig} (f : RecFunc S) (rest : Prog S)
       (rest.boundsAt fs k).get v env :=
   rfl
 
+/-- The bound of a function whose code takes the call depth, with `k` frames. -/
+theorem bounds_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
+    (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
+    (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
+      f.boundAt fs (rest.boundsAt fs) k env := by
+  rw [Prog.boundsAt_cons_here, hd]; rfl
+
+/-- The bound of a function whose code takes the call depth, with `k + 1` frames: its body's, with
+its callees at `k`. -/
+theorem funcAt_bound {func : Func S} {rest : Nat → Bounds S} {k : Nat} {args : Env func.params}
+    {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
+    (hms : entryModes func.params func.modes = ms)
+    (hv : func.body.denote funs args = V)
+    (hba : func.body.allocs funs (rest k) ms (fun _ => false) args = BA)
+    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
+    func.boundAt funs rest (k + 1) args = BA + KA := by
+  subst hms hv hba hk; rfl
+
+/-- The bound of a recursive function with `k + 1` frames: its body's, with itself and its callees
+at `k`. -/
+theorem recFuncAt_bound {func : RecFunc S} {funs : Funs (func.sig :: S)} {rest : Nat → Bounds S}
+    {k : Nat} {args : Env func.params} {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
+    (hms : entryModes func.params func.modes = ms)
+    (hv : func.body.denote funs args = V)
+    (hba : func.body.allocs funs (.cons (func.boundAt funs rest k) (rest k)) ms (fun _ => false)
+      args = BA)
+    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
+    func.boundAt funs rest (k + 1) args = BA + KA := by
+  subst hms hv hba hk; rfl
+
+/-- The bound of a recursive function, with `k` frames. -/
+theorem bounds_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f.result.denote)
+    (fs : Funs S) (k : Nat) (env : Env f.params) :
+    (Prog.boundsAt (.consRec f rest) (.cons M fs) k).get .here env =
+      f.boundAt (.cons M fs) (rest.boundsAt fs) k env :=
+  rfl
+
+/-! The bounds of a recursive function's body, which hold its own entry first. -/
+
+theorem bounds_get_cons_here {g : Sig} (b : Env g.params → Nat) (rest : Bounds S)
+    (env : Env g.params) : (Bounds.cons b rest).get .here env = b env :=
+  rfl
+
+theorem bounds_get_cons_there {g h : Sig} (b : Env h.params → Nat) (rest : Bounds S)
+    (v : FVar S g) (env : Env g.params) :
+    (Bounds.cons b rest).get (.there v) env = rest.get v env :=
+  rfl
+
 end Verified.Reflect
