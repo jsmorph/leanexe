@@ -30,7 +30,7 @@ theorem ix_lt (x : Float) (H : ℕ) (hH : H < 2 ^ 31) (q : ℚ)
     ixOf x < UInt64.ofNat H ↔ |value x.toBits| < (q : ℝ) := by
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' (hH.trans (by decide)),
     ← value_word _ q hq]
-  exact F64HighWord.high_lt_iff x.toBits H hH
+  exact F64UpperWord.high_lt_iff x.toBits H hH
 
 theorem ix_66 (x : Float) : ixOf x < 0x44100000 ↔ |value x.toBits| < 2 ^ 66 := by
   have h := ix_lt x 0x44100000 (by norm_num) (2 ^ 66) (by decide +kernel)
@@ -82,7 +82,7 @@ theorem signed_result (x z : Float) (hx0 : value x.toBits ≠ 0)
       simp only [value, Wasm.IEEE64.scaledValue, h0]
       split <;> simp
     · exact h0
-  rw [F64HighWord.sign_test]
+  rw [F64UpperWord.sign_test]
   cases hs : Wasm.IEEE64.sign x.toBits
   · have hpos : 0 ≤ value x.toBits := by
       by_contra hn
@@ -115,7 +115,7 @@ theorem atan_big_eq (x : Float) (hx : Finite x.toBits) (h1 : ixOf x ≥ 0x441000
     Atan.atan x = if x.toBits >>> 32 >>> 31 == 1 then
         -Float.ofBits 0x3FF921FB54442D18 - Float.ofBits 0x3C91A62633145C07
       else Float.ofBits 0x3FF921FB54442D18 + Float.ofBits 0x3C91A62633145C07 := by
-  have hf := F64HighWord.finite_high x.toBits hx
+  have hf := F64UpperWord.finite_high x.toBits hx
   have hn1 : ¬ ixOf x > 0x7ff00000 := by
     intro h
     have := UInt64.lt_iff_toNat_lt.mp h
@@ -189,7 +189,7 @@ theorem atan_big (x : Float) (hx : Finite x.toBits) (h1 : ixOf x ≥ 0x44100000)
     decide +kernel
   have h := signed_result x (Float.ofBits 0x3FF921FB54442D18 + Float.ofBits 0x3C91A62633145C07)
     hx0 hz
-  rw [F64HighWord.sign_test] at h ⊢
+  rw [F64UpperWord.sign_test] at h ⊢
   cases hs : Wasm.IEEE64.sign x.toBits
   · simpa [hs] using h
   · simp only [hs, ite_true] at h ⊢
@@ -216,7 +216,7 @@ theorem huge_gt (x : Float) (hx : Finite x.toBits) (hs : |value x.toBits| < 1) :
     linarith
   have hx' : FApprox x (value x.toBits) 0 := approx_self _ hx
   have ha := fapprox_add (fapprox_ofBits _ hf) hx' _ hB (by norm_num)
-  rw [gt_iff_lt, F64HighWord.float_lt_iff _ _ one_finite ha.1, one_value]
+  rw [gt_iff_lt, F64UpperWord.float_lt_iff _ _ one_finite ha.1, one_value]
   have hl := ha.lower
   have hs' := (abs_lt.mp hs).1
   have h3 : (0 : ℝ) + 0 + 10 ^ 302 / 2 ^ 53 ≤ 10 ^ 298 := by norm_num

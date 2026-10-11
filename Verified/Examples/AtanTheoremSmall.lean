@@ -105,7 +105,7 @@ theorem atan_poly_small (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ^ 27 ≤ 
     have := (abs_le.mp hn).1
     linarith
   exact rel_finish _ hcf (Real.arctan v) s (Wasm.IEEE64.exponent x.toBits) hexp
-    (by have := F64HighWord.finite_high x.toBits hx; rw [F64HighWord.high_toNat] at this;
+    (by have := F64UpperWord.finite_high x.toBits hx; rw [F64UpperWord.high_toNat] at this;
         simp only [Wasm.IEEE64.exponent]; omega)
     hb.1 hb.2 (1 / 15) (12 / 10 / 2 ^ 53) (by norm_num) (by positivity)
     (htot.trans (mul_le_mul_of_nonneg_right hρ hs0.le)) hlow (by norm_num) (by norm_num)

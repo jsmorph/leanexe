@@ -1,6 +1,6 @@
 import Verified.Examples.Log1p
 import Verified.Examples.LogCoreBits
-import LeanExe.ProofKit.F64HighWord
+import LeanExe.ProofKit.F64UpperWord
 
 /-!
 The branches of `Log1p.log1p` and `Log1p.log1pTail` as equations.  `hxOf x` is the high word of

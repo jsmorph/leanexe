@@ -19,7 +19,7 @@ theorem ixA_lt (x : Float) (H : ℕ) (hH : H < 2 ^ 31) (q : ℚ)
     ixA x < UInt64.ofNat H ↔ |value x.toBits| < (q : ℝ) := by
   rw [UInt64.lt_iff_toNat_lt, UInt64.toNat_ofNat_of_lt' (hH.trans (by decide)),
     ← AtanTheoremReduce.value_word _ q hq]
-  exact F64HighWord.high_lt_iff x.toBits H hH
+  exact F64UpperWord.high_lt_iff x.toBits H hH
 
 theorem arcsin_ge_half (a : ℝ) (h : 1 / 2 ≤ a) (h1 : a ≤ 1) : 5233 / 10000 ≤ Real.arcsin a := by
   have hs : Real.arcsin (1 / 2) = Real.pi / 6 := by
@@ -77,7 +77,7 @@ theorem signed_asin (x z : Float) (hx0 : value x.toBits ≠ 0)
     · simp only [beq_iff_eq] at h
       rw [h]
       rfl
-  rw [h01, F64HighWord.sign_test]
+  rw [h01, F64UpperWord.sign_test]
   cases hs : Wasm.IEEE64.sign x.toBits
   · have hpos : 0 ≤ value x.toBits := by
       by_contra hn
@@ -126,8 +126,8 @@ theorem unit_bits (x : Float) (h : |value x.toBits| = 1) :
       decide +kernel]
     norm_num
   have ha : value (Wasm.IEEE64.abs x.toBits) = value (0x3FF0000000000000 : UInt64) := by
-    rw [F64HighWord.value_abs, h, hone]
-  have hat := F64HighWord.abs_toNat x.toBits
+    rw [F64UpperWord.value_abs, h, hone]
+  have hat := F64UpperWord.abs_toNat x.toBits
   have hlt : (Wasm.IEEE64.abs x.toBits).toNat < 2 ^ 63 := by rw [hat]; omega
   have hc : (0x3FF0000000000000 : UInt64).toNat = 4607182418800017408 := rfl
   have h1 := (F64PositiveOrder.value_le_iff hlt (by rw [hc]; norm_num)).mp ha.le

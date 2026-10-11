@@ -1,5 +1,5 @@
 import Verified.Examples.Asin
-import LeanExe.ProofKit.F64HighWord
+import LeanExe.ProofKit.F64UpperWord
 
 /-!
 The branches of `Asin.asin` and `Asin.acos` as equations.  `ixA x` is the high word of `|x|` and

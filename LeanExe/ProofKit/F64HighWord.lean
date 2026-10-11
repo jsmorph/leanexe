@@ -1,140 +1,145 @@
-import LeanExe.ProofKit.F64PositiveOrder
-import LeanExe.ProofKit.F64Sign
 import LeanExe.ProofKit.F64Magnitude
-import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F64Sterbenz
 
 /-!
-The tests that fdlibm's code makes on the high 32 bits of a binary64 word, as magnitudes.  `ix`,
-the high word without its sign bit, is below `H` exactly when the magnitude is below the value of
-the word with high word `H` and low word 0.  The sign test `hx >>> 31 == 1` is the sign bit, and
-the comparisons `Wasm.IEEE64.lt` and `Wasm.IEEE64.eq` of finite words compare their values.
+The high word of a binary64 value: `w &&& 0xFFFFFFFF00000000` clears the low 32 bits of the
+fraction.  The result keeps the sign and the exponent field, so it is finite when `w` is, and its
+scaled magnitude is `ma 2 ^ (32 + e - 1)` with `ma < 2 ^ 21` for exponent field `e`, so it
+multiplies a constant of 32 significant bits exactly.  It differs from `w` by at most
+`|w| / 2 ^ 20`, or by less than `2 ^ -1040` for a subnormal `w`.
 -/
 
 namespace LeanExe.ProofKit.F64HighWord
 open CodeLib.IEEE64
 
-set_option exponentiation.threshold 4096
+/-- The word with the low 32 bits cleared. -/
+def high (w : UInt64) : UInt64 := w &&& 0xFFFFFFFF00000000
 
-theorem abs_toNat (x : UInt64) : (Wasm.IEEE64.abs x).toNat = x.toNat % 2 ^ 63 := by
-  have hx := x.toNat_lt
-  simp only [Wasm.IEEE64.abs, Wasm.IEEE64.encodeFinite, Wasm.IEEE64.exponent,
-    Wasm.IEEE64.fraction, UInt64.toNat_ofNat', Bool.false_eq_true, ite_false]
+theorem high_toNat (w : UInt64) : (high w).toNat = w.toNat / 4294967296 * 4294967296 := by
+  have hw := w.toNat_lt
+  unfold high
+  rw [UInt64.toNat_and]
+  simp only [UInt64.reduceToNat]
+  apply Nat.eq_of_testBit_eq
+  intro j
+  have hm : (18446744069414584320 : Nat) = (2 ^ 32 - 1) * 2 ^ 32 := by norm_num
+  have hp : (4294967296 : Nat) = 2 ^ 32 := by norm_num
+  rw [hm, hp, Nat.testBit_and, Nat.testBit_mul_two_pow, Nat.testBit_mul_two_pow,
+    Nat.testBit_div_two_pow, Nat.testBit_two_pow_sub_one]
+  by_cases hj : 32 ≤ j
+  · have he : j - 32 + 32 = j := by omega
+    rw [he]
+    by_cases hj2 : j < 64
+    · simp [hj, show j - 32 < 32 by omega]
+    · have h1 : w.toNat.testBit j = false :=
+        Nat.testBit_lt_two_pow (lt_of_lt_of_le hw (Nat.pow_le_pow_right (by norm_num) (by omega)))
+      simp [h1]
+  · simp [hj]
+
+theorem high_fields (w : UInt64) :
+    Wasm.IEEE64.exponent (high w) = Wasm.IEEE64.exponent w ∧
+      Wasm.IEEE64.sign (high w) = Wasm.IEEE64.sign w ∧
+      Wasm.IEEE64.fraction (high w) = Wasm.IEEE64.fraction w / 4294967296 * 4294967296 := by
+  have h := high_toNat w
+  have hw := w.toNat_lt
+  simp only [Wasm.IEEE64.exponent, Wasm.IEEE64.sign, Wasm.IEEE64.fraction, h, Nat.reducePow]
+  simp only [Nat.reducePow] at hw
+  refine ⟨by omega, ?_, by omega⟩
+  congr 1
+  apply propext
   omega
 
-theorem value_abs (x : UInt64) : value (Wasm.IEEE64.abs x) = |value x| := by
-  obtain ⟨he, hf, hs⟩ := F64Sign.fields_abs x
-  have hm : Wasm.IEEE64.scaledMagnitude (Wasm.IEEE64.abs x) = Wasm.IEEE64.scaledMagnitude x := by
-    simp only [Wasm.IEEE64.scaledMagnitude, he, hf]
-  have h1 : Wasm.IEEE64.scaledValue (Wasm.IEEE64.abs x) =
-      (Wasm.IEEE64.scaledMagnitude x : Int) := by
-    simp only [Wasm.IEEE64.scaledValue, hs, hm, Bool.false_eq_true, ite_false]
-  have h2 : |(Wasm.IEEE64.scaledValue x : ℝ)| = (Wasm.IEEE64.scaledMagnitude x : ℝ) := by
-    rw [← Int.cast_abs, Int.abs_eq_natAbs, natAbs_scaledValue]
+theorem high_finite (w : UInt64) (hw : Finite w) : Finite (high w) := by
+  simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, (high_fields w).1]
+  exact hw
+
+theorem high_magnitude (w : UInt64) :
+    ∃ ma : Nat, Wasm.IEEE64.scaledMagnitude (high w) =
+      ma * 2 ^ (32 + (Wasm.IEEE64.exponent w - 1)) ∧ ma < 2 ^ 21 := by
+  obtain ⟨he, -, hf⟩ := high_fields w
+  have hflt : Wasm.IEEE64.fraction w < 4503599627370496 := Nat.mod_lt _ (by norm_num)
+  unfold Wasm.IEEE64.scaledMagnitude
+  rw [he, hf]
+  by_cases h0 : Wasm.IEEE64.exponent w = 0
+  · refine ⟨Wasm.IEEE64.fraction w / 4294967296, ?_, by simp only [Nat.reducePow]; omega⟩
+    simp only [h0, beq_self_eq_true, ↓reduceIte, Nat.zero_sub, add_zero]
     norm_num
-  simp only [value, h1, abs_div, h2, Int.cast_natCast]
-  rw [abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
+  · refine ⟨2 ^ 20 + Wasm.IEEE64.fraction w / 4294967296, ?_, by simp only [Nat.reducePow]; omega⟩
+    have h' : (Wasm.IEEE64.exponent w == 0) = false := by simpa using h0
+    simp only [h', Bool.false_eq_true, ↓reduceIte, pow_add]
+    ring
 
-theorem high_toNat (x : UInt64) :
-    ((x >>> 32) &&& 0x7fffffff).toNat = x.toNat % 2 ^ 63 / 2 ^ 32 := by
-  have hx := x.toNat_lt
-  simp only [UInt64.toNat_and, UInt64.toNat_shiftRight]
-  rw [show (0x7fffffff : UInt64).toNat = 2 ^ 31 - 1 from rfl, Nat.and_two_pow_sub_one_eq_mod]
-  simp only [show (32 : UInt64).toNat % 64 = 32 from rfl, Nat.shiftRight_eq_div_pow]
-  omega
-
-/-- The high word without the sign bit is below `H` exactly when the magnitude is below the value
-of the word with high word `H` and low word 0. -/
-theorem high_lt_iff (x : UInt64) (H : ℕ) (hH : H < 2 ^ 31) :
-    ((x >>> 32) &&& 0x7fffffff).toNat < H ↔ |value x| < value (UInt64.ofNat (H * 2 ^ 32)) := by
-  have hx := x.toNat_lt
-  have hH' : H * 2 ^ 32 < 2 ^ 63 := by
-    calc H * 2 ^ 32 < 2 ^ 31 * 2 ^ 32 := Nat.mul_lt_mul_of_pos_right hH (by positivity)
-      _ = 2 ^ 63 := by norm_num
-  have hw : (UInt64.ofNat (H * 2 ^ 32)).toNat = H * 2 ^ 32 :=
-    UInt64.toNat_ofNat_of_lt' (hH'.trans (by norm_num))
-  have ha : (Wasm.IEEE64.abs x).toNat < 2 ^ 63 := by rw [abs_toNat]; omega
-  rw [high_toNat, ← value_abs, Nat.div_lt_iff_lt_mul (by positivity)]
-  constructor
-  · intro h
-    apply F64PositiveOrder.value_strict (by rw [hw]; exact hH')
-    rw [abs_toNat, hw]
-    exact h
-  · intro h
-    by_contra hn
-    have hle : (UInt64.ofNat (H * 2 ^ 32)).toNat ≤ (Wasm.IEEE64.abs x).toNat := by
-      rw [abs_toNat, hw]
-      omega
-    have := (F64PositiveOrder.value_le_iff (by rw [hw]; exact hH') ha).mpr hle
-    linarith
-
-/-- `hx >>> 31 == 1` for the high word `hx` is the sign bit. -/
-theorem sign_test (x : UInt64) : ((x >>> 32) >>> 31 == 1) = Wasm.IEEE64.sign x := by
-  have hx := x.toNat_lt
-  have hn : ((x >>> 32) >>> 31).toNat = x.toNat / 2 ^ 63 := by
-    simp only [UInt64.toNat_shiftRight, show (32 : UInt64).toNat % 64 = 32 from rfl,
-      show (31 : UInt64).toNat % 64 = 31 from rfl, Nat.shiftRight_eq_div_pow]
+theorem high_le (w : UInt64) :
+    Wasm.IEEE64.scaledMagnitude (high w) ≤ Wasm.IEEE64.scaledMagnitude w ∧
+      (Wasm.IEEE64.scaledMagnitude w - Wasm.IEEE64.scaledMagnitude (high w)) * 2 ^ 20 ≤
+        Wasm.IEEE64.scaledMagnitude w + 2 ^ 54 := by
+  obtain ⟨he, -, hf⟩ := high_fields w
+  have hflt : Wasm.IEEE64.fraction w < 4503599627370496 := Nat.mod_lt _ (by norm_num)
+  unfold Wasm.IEEE64.scaledMagnitude
+  rw [he, hf]
+  by_cases h0 : Wasm.IEEE64.exponent w = 0
+  · simp only [h0, beq_self_eq_true, ↓reduceIte, Nat.reducePow]
     omega
-  unfold Wasm.IEEE64.sign
-  by_cases h : 2 ^ 63 ≤ x.toNat
-  · have h1 : (x >>> 32) >>> 31 = 1 := UInt64.toNat_inj.mp (by rw [hn]; simp; omega)
-    rw [h1, beq_self_eq_true]
-    exact (decide_eq_true h).symm
-  · have h1 : (x >>> 32) >>> 31 ≠ 1 := fun he => by
-      have := congrArg UInt64.toNat he
-      rw [hn] at this
-      simp at this
+  · have h' : (Wasm.IEEE64.exponent w == 0) = false := by simpa using h0
+    simp only [h', Bool.false_eq_true, ↓reduceIte]
+    set q := 2 ^ (Wasm.IEEE64.exponent w - 1) with hq
+    have h1 : 2 ^ 52 + Wasm.IEEE64.fraction w / 4294967296 * 4294967296 ≤
+        2 ^ 52 + Wasm.IEEE64.fraction w := by omega
+    have h2 : (2 ^ 52 + Wasm.IEEE64.fraction w - (2 ^ 52 + Wasm.IEEE64.fraction w / 4294967296 *
+        4294967296)) * 2 ^ 20 ≤ 2 ^ 52 + Wasm.IEEE64.fraction w := by
+      simp only [Nat.reducePow]
       omega
-    rw [beq_eq_false_iff_ne.mpr h1]
-    exact (decide_eq_false h).symm
+    refine ⟨Nat.mul_le_mul_right _ h1, ?_⟩
+    rw [← Nat.sub_mul]
+    calc (2 ^ 52 + Wasm.IEEE64.fraction w - (2 ^ 52 + Wasm.IEEE64.fraction w / 4294967296 *
+          4294967296)) * q * 2 ^ 20
+        = (2 ^ 52 + Wasm.IEEE64.fraction w - (2 ^ 52 + Wasm.IEEE64.fraction w / 4294967296 *
+          4294967296)) * 2 ^ 20 * q := by ring
+      _ ≤ (2 ^ 52 + Wasm.IEEE64.fraction w) * q := Nat.mul_le_mul_right _ h2
+      _ ≤ (2 ^ 52 + Wasm.IEEE64.fraction w) * q + 2 ^ 54 := Nat.le_add_right _ _
 
-/-- The high word of a finite word without its sign bit is below that of infinity. -/
-theorem finite_high (x : UInt64) (hx : Finite x) :
-    ((x >>> 32) &&& 0x7fffffff).toNat < 0x7ff00000 := by
-  have h := hx
-  simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, Wasm.IEEE64.exponent, bne_iff_ne,
-    ne_eq] at h
-  rw [high_toNat]
-  have := x.toNat_lt
-  omega
+/-- The high word differs from `w` by at most `|w| / 2 ^ 20 + 2 ^ -1040`. -/
+theorem high_close (w : UInt64) :
+    |value w - value (high w)| ≤ |value w| / 2 ^ 20 + 1 / 2 ^ 1040 := by
+  obtain ⟨-, hs, -⟩ := high_fields w
+  obtain ⟨hle, hkey⟩ := high_le w
+  have hdiff : |value w - value (high w)| * 2 ^ 1074 =
+      (Wasm.IEEE64.scaledMagnitude w : ℝ) - Wasm.IEEE64.scaledMagnitude (high w) := by
+    have hle' : (Wasm.IEEE64.scaledMagnitude (high w) : ℝ) ≤ Wasm.IEEE64.scaledMagnitude w := by
+      exact_mod_cast hle
+    have hv : value w - value (high w) = (if Wasm.IEEE64.sign w then -1 else 1) *
+        (((Wasm.IEEE64.scaledMagnitude w : ℝ) - Wasm.IEEE64.scaledMagnitude (high w)) / 2 ^ 1074) := by
+      simp only [value, Wasm.IEEE64.scaledValue, hs]
+      split <;> push_cast <;> ring
+    rw [hv, abs_mul]
+    have h1 : |(if Wasm.IEEE64.sign w then -1 else 1 : ℝ)| = 1 := by split <;> norm_num
+    rw [h1, one_mul, abs_div, abs_of_nonneg (by linarith), abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074),
+      div_mul_cancel₀ _ (by positivity)]
+  have habs := F64Sterbenz.value_abs_scaled w
+  have hkeyR : ((Wasm.IEEE64.scaledMagnitude w : ℝ) - Wasm.IEEE64.scaledMagnitude (high w)) * 2 ^ 20 ≤
+      (Wasm.IEEE64.scaledMagnitude w : ℝ) + 2 ^ 54 := by
+    have h := hkey
+    have h' : (((Wasm.IEEE64.scaledMagnitude w - Wasm.IEEE64.scaledMagnitude (high w)) * 2 ^ 20 : Nat) :
+        ℝ) ≤ ((Wasm.IEEE64.scaledMagnitude w + 2 ^ 54 : Nat) : ℝ) := by exact_mod_cast h
+    push_cast [Nat.cast_sub hle] at h'
+    norm_num at h' ⊢ <;> linarith
+  rw [← hdiff, ← habs] at hkeyR
+  have h1074 : (0 : ℝ) < 2 ^ 1074 := by positivity
+  have h20 : (0 : ℝ) < 2 ^ 20 := by positivity
+  have hfin : |value w - value (high w)| * (2 ^ 1074 * 2 ^ 20) ≤
+      (|value w| / 2 ^ 20 + 1 / 2 ^ 1040) * (2 ^ 1074 * 2 ^ 20) := by
+    have e1 : (|value w| / 2 ^ 20 + 1 / 2 ^ 1040) * (2 ^ 1074 * 2 ^ 20) =
+        |value w| * 2 ^ 1074 + 2 ^ 54 := by
+      field_simp <;> ring
+    rw [e1]
+    linarith
+  exact le_of_mul_le_mul_right hfin (by positivity)
 
-theorem lt_iff_value (a b : UInt64) (ha : Finite a) (hb : Finite b) :
-    Wasm.IEEE64.lt a b = true ↔ value a < value b := by
-  simp only [Wasm.IEEE64.lt, not_nan_of_finite ha, not_nan_of_finite hb, Bool.or_false,
-    Bool.false_eq_true, ite_false, decide_eq_true_eq, value]
-  constructor
-  · intro h
-    exact div_lt_div_of_pos_right (by exact_mod_cast h) (by positivity)
-  · intro h
-    have := (div_lt_div_iff_of_pos_right (by positivity : (0 : ℝ) < 2 ^ 1074)).mp h
-    exact_mod_cast this
-
-theorem eq_iff_value (a b : UInt64) (ha : Finite a) (hb : Finite b) :
-    Wasm.IEEE64.eq a b = true ↔ value a = value b := by
-  simp only [Wasm.IEEE64.eq, not_nan_of_finite ha, not_nan_of_finite hb, Bool.or_false,
-    Bool.false_eq_true, ite_false, beq_iff_eq, value]
-  constructor
-  · intro h
-    rw [h]
-  · intro h
-    have := (div_left_inj' (by positivity : (2 : ℝ) ^ 1074 ≠ 0)).mp h
-    exact_mod_cast this
-
-theorem float_lt_iff (a b : Float) (ha : Finite a.toBits) (hb : Finite b.toBits) :
-    a < b ↔ value a.toBits < value b.toBits := by
-  rw [F64Bits.lt_iff, lt_iff_value _ _ ha hb]
-
-theorem float_beq_iff (a b : Float) (ha : Finite a.toBits) (hb : Finite b.toBits) :
-    (a == b) = true ↔ value a.toBits = value b.toBits := by
-  rw [F64Bits.beq_eq, eq_iff_value _ _ ha hb]
-
-#print axioms abs_toNat
-#print axioms value_abs
-#print axioms high_lt_iff
-#print axioms sign_test
-#print axioms finite_high
-#print axioms lt_iff_value
-#print axioms eq_iff_value
-#print axioms float_lt_iff
-#print axioms float_beq_iff
+#print axioms high_toNat
+#print axioms high_fields
+#print axioms high_finite
+#print axioms high_magnitude
+#print axioms high_le
+#print axioms high_close
 
 end LeanExe.ProofKit.F64HighWord

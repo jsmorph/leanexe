@@ -1,13 +1,16 @@
 import Verified.Examples.Tan
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Tan.tan` against a reference computed with Lean's integers, rounded to the
-nearest double.  fdlibm states that the result is nearly rounded, and the check requires one unit
-in the last place.  The arguments are those of `TrigAccuracy.lean`: hashed values over the
-exponents from `2 ^ -30` to `2 ^ 1023` with both signs, evenly spaced values up to 100, the
-doubles at and next to the rounded `k · π/2` for `k` up to 20,000, where `tan` has its zeros and
-poles, and the five hard arguments with their negatives.  To these the check adds the doubles next
-to the high words that the code compares with and the special values.  It also reports, for
+nearest double.  fdlibm states that the result is nearly rounded, and the check requires one unit in
+the last place.  The arguments are those of `TrigAccuracy.lean`: hashed values over the exponents
+from `2 ^ -30` to `2 ^ 1023` with both signs, evenly spaced values up to 100, the doubles at and
+next to the rounded `k · π/2` for `k` up to 20,000, where `tan` has its zeros and poles, and the
+five hard arguments with their negatives.  To these the check adds the doubles next to the high
+words that the code compares with and the special values.  The arguments also include those of
+`WorstCases`, which give the largest known errors of thirteen libraries in Tables 4 to 11 of the
+August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It also reports, for
 information, the distance from the reference of the C library's `tan`, which Lean's `Float.tan`
 calls.  It exits with an error at the first result further than one unit from the reference.  Run
 with `lake env lean --run`. -/
@@ -57,7 +60,8 @@ def args : Array Float :=
   let special := #[0.0, -0.0, Float.ofBits 0x7FF0000000000000, Float.ofBits 0xFFF0000000000000,
     Float.ofBits 0x7FF8000000000000, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x8000000000000001]
-  hashed ++ even ++ multiples ++ hard ++ hard.map (- ·) ++ edges ++ special
+  hashed ++ even ++ multiples ++ hard ++ hard.map (- ·) ++ edges ++ special ++
+    WorstCases.tan.map Float.ofBits
 
 end Verified.Examples.TanAccuracy
 

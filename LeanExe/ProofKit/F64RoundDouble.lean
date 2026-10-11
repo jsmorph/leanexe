@@ -29,7 +29,7 @@ theorem rounded_abs_ge (c : UInt64) (S : ℝ) (hc : Rounded c S) (a : ℕ) (ha :
   obtain ⟨hcf, -, -, hnear⟩ := hc
   have hlim : limit = 2047 * 2 ^ 52 := rfl
   have hcl : (Wasm.IEEE64.abs c).toNat < limit := by
-    rw [F64HighWord.abs_toNat, hlim]
+    rw [F64UpperWord.abs_toNat, hlim]
     simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, Wasm.IEEE64.exponent, bne_iff_ne,
       ne_eq] at hcf
     have := c.toNat_lt
@@ -37,13 +37,13 @@ theorem rounded_abs_ge (c : UInt64) (S : ℝ) (hc : Rounded c S) (a : ℕ) (ha :
   have hN : Nearest |S| (Wasm.IEEE64.abs c) := by
     refine ⟨hcl, fun v hv => ?_⟩
     have h1 := hnear v
-    rw [F64HighWord.value_abs]
+    rw [F64UpperWord.value_abs]
     rw [abs_of_nonneg (value_nonneg_of_lt v (by rw [hlim] at hv; omega))] at h1
     exact h1
   have hab := nearest_above |S| _ hN a ha hS
   have hBt : (UInt64.ofNat (a * 2 ^ 52)).toNat = a * 2 ^ 52 :=
     UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
-  rw [← F64HighWord.value_abs]
+  rw [← F64UpperWord.value_abs]
   exact (F64PositiveOrder.value_le_iff (by rw [hBt]; omega) (by rw [hlim] at hcl; omega)).mpr
     (by rw [hBt]; exact hab)
 
@@ -52,7 +52,7 @@ theorem nonfinite_ge (v : UInt64) (hv : ¬ Finite v) : (2 : ℝ) ^ 1023 ≤ |val
   have hB := F64PositiveSpacing.boundary_value 2046 (by norm_num) (by norm_num)
   have hBt : (UInt64.ofNat (2046 * 2 ^ 52)).toNat = 2046 * 2 ^ 52 :=
     UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
-  have hat := F64HighWord.abs_toNat v
+  have hat := F64UpperWord.abs_toNat v
   have hvn := v.toNat_lt
   have he : v.toNat % 2 ^ 63 / 2 ^ 52 = 2047 := by
     simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, Wasm.IEEE64.exponent, bne_iff_ne,
@@ -61,7 +61,7 @@ theorem nonfinite_ge (v : UInt64) (hv : ¬ Finite v) : (2 : ℝ) ^ 1023 ≤ |val
   have h := (F64PositiveOrder.value_le_iff (left := UInt64.ofNat (2046 * 2 ^ 52))
     (right := Wasm.IEEE64.abs v) (by rw [hBt]; omega) (by rw [hat]; omega)).mpr
     (by rw [hBt, hat]; omega)
-  rw [hB, F64HighWord.value_abs] at h
+  rw [hB, F64UpperWord.value_abs] at h
   have h2 : (2 : ℝ) ^ (2046 + 51) / 2 ^ 1074 = 2 ^ 1023 := by norm_num
   rw [h2] at h
   exact h

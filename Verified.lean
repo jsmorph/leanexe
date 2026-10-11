@@ -51,3 +51,7 @@ import Verified.Examples.ArcReference
 import Verified.Examples.HyperbolicReference
 import Verified.Examples.PowerReference
 import Verified.Examples.ErfReference
+import Verified.Examples.WorstCases
+import Verified.Examples.TrigTheorem
+import Verified.Examples.Log2Theorem
+import Verified.Examples.Log2Power

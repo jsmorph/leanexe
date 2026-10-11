@@ -1,16 +1,20 @@
 import Verified.Examples.Sinh
+import Verified.Examples.WorstCases
 import Verified.Examples.HyperbolicReference
 
 /-! A native check of `Sinh.sinh` and `Sinh.cosh` against references computed with Lean's integers
 through `HyperbolicReference.sinhFixed` and `coshFixed`, rounded to the nearest double.  fdlibm
-states no error bound for either function, and the check requires the largest distance it finds:
-two units in the last place for `sinh` and one for `cosh`.  The arguments are evenly spaced values
-from -30 to 30 and from 709 to 711 with both signs, around fdlibm's thresholds near `ln (DBL_MAX)`
-and the overflow threshold, hashed values over the exponents from `2 ^ -60` to `2 ^ 9` with both
-signs, the doubles next to the high words that the code compares with, and the special values.  The
-check also reports, for information, the distance from the reference of the C library's `sinh` and
-`cosh`, which Lean's `Float.sinh` and `Float.cosh` call.  It exits with an error at the first
-result further from the reference than its bound.  Run with `lake env lean --run`. -/
+states no error bound for either function, and the check requires the largest distance it finds: two
+units in the last place for `sinh` and one for `cosh`.  The arguments are evenly spaced values from
+-30 to 30 and from 709 to 711 with both signs, around fdlibm's thresholds near `ln (DBL_MAX)` and
+the overflow threshold, hashed values over the exponents from `2 ^ -60` to `2 ^ 9` with both signs,
+the doubles next to the high words that the code compares with, and the special values.  The
+arguments also include those of `WorstCases`, which give the largest known errors of thirteen
+libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and
+Zimmermann.  The check also reports, for information, the distance from the reference of the C
+library's `sinh` and `cosh`, which Lean's `Float.sinh` and `Float.cosh` call.  It exits with an
+error at the first result further from the reference than its bound.  Run with
+`lake env lean --run`. -/
 
 namespace Verified.Examples.SinhAccuracy
 
@@ -46,7 +50,8 @@ def args : Array Float :=
     Float.ofBits 0x7FF8000000000000, 1e300, -1e300, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x8000000000000001, Float.ofBits 0x7FEFFFFFFFFFFFFF]
   evenly 100000 (-30.0) 30.0 ++ overflow ++ overflow.map (- ·) ++ hashed 100000 79 963 70 ++
-    edges ++ special
+    edges ++ special ++
+    (WorstCases.sinh ++ WorstCases.cosh).map Float.ofBits
 
 end Verified.Examples.SinhAccuracy
 
