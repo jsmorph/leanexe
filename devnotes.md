@@ -29693,3 +29693,51 @@ On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: 
 
 - [x] `log2` main path, path near 1, exact results, byte and file theorems.
 - [ ] `log10` (in progress: constants, word form, and kernel error accepted or under test).
+
+## 2026-10-11: `log10` theorem (track `log`)
+
+The target of `log10` is `Real.logb 10 x`, which Mathlib defines as `log x / log 10`.  `Log10Theorem.log10_within_one` proves `WithinSteps 1` for every finite positive input, subnormal ones included, and the exceptional inputs give the results of IEEE 754 as for `log`.  fdlibm's `Lg1` to `Lg7` in `k_log.h` are the words of `Lp1` to `Lp7` in `s_log1p.c`, so `Log1pKernelPoly.log1p_kernel_error` bounds the polynomial: `log (1 + f)` is within `2 ^ -58 |s|` of `s (2 + Lg1 s ^ 2 + ... + Lg7 s ^ 14)` for `s = f / (2 + f)` and `|s| ≤ 0.1716`.  The same lemma gives `|log (1 + f)| ≥ 2 (1 - 2 ^ -58) |s|`, the lower bound that the relative error needs.
+
+### Bound
+
+The rounded-result lemmas do not suffice for `log10`.  With `σ = |s|`, the error before the final rounding is at most `0.7026 u σ` plus terms in `|k|` below `2 ^ -80 |k|` and an absolute term below `2 ^ -1065`; near `f = 0.414` and `k = 0` this is about `0.82` units of the result, beyond the `15/32` that `F64RelativeStepWide` leaves.  `F64RoundedStep.within_one_add` takes the sum before the rounding instead and allows `63/64` units, so the bound holds with a margin of about 18 percent, both for `k = 0`, where `|log10 x| ≥ 0.8684 σ`, and for `k ≠ 0`, where `|log10 x| ≥ 0.1472 |k|`.
+
+| Step | Fact |
+|---|---|
+| Reduction | `x = 2 ^ k x'` with `x'` from 0.70710 to 1.41422, from the exponent and fraction fields (`Log10Bits.xr_fields`) |
+| `f = x' - 1` | exact by Sterbenz's lemma, on the grid of `2 ^ -53` |
+| `0.5 f`, `hi ivln10hi`, `y log10_2hi` | exact products: `hi` has 21 significant bits, `ivln10hi` 32, `y` 11, `log10_2hi` 40 |
+| `f - hi`, `y log10_2hi - w` | exact by Sterbenz's lemma, or a subtraction from 0 |
+| `s`, `z`, `w`, `R`, `r` | errors in multiples of `u σ`: 2.0001, 0.8581, 0.0556, 0.945, 0.6713 |
+| `hi + lo` | within `1.2772 u σ` of `s (2 + Lg1 s ^ 2 + ...)` |
+| `ivln10hi + ivln10lo`, `log10_2hi + log10_2lo` | within `2 ^ -86` of `1 / log 10` and `log 2 / log 10`, with `log 10 = 3 log 2 + log (5/4)` from 20 terms of the series of `atanh (1/9)` |
+
+Each product of two error bounds that shrink with `σ` takes one factor in a form valid for all `σ ≤ 0.1716`, so every bound is linear in `σ` and `linarith` checks it.  An exact-rational Python model of the chain chose the constants before the Lean proof.
+
+### Exact results
+
+`log10 1 = +0`, `log10 (±0) = -∞`, `log10 (+∞) = +∞`, and the canonical NaN for a negative argument, negative infinity included, and for a NaN.  `log10 (10 ^ n) = n` for `n` from 0 to 22, the powers of ten that binary64 holds exactly: the kernel evaluates `tailWord` at each of the 22 words in `pow10_checks`.
+
+### Modules
+
+| Module | Content |
+|---|---|
+| `Log10Consts` | The enclosure of `log 10`, the split constants, and `|log (1 + f)| ≥ 2 (1 - 2 ^ -58) |s|` |
+| `Log10Bits` | `kLog1p` and the tail on words, the reduction of the argument word, and the path lemmas |
+| `Log10Kernel` | The errors of `hfsq` and of `k_log1p` |
+| `Log10Final` | One step for the tail after `f` and `y` (`tail10`) |
+| `Log10Main` | The reduction for an argument word and `main10` |
+| `Log10Theorem`, `Log10File` | `log10_within_one`, exceptional values, `log10_pow10`, `Ready`, `log10_bytes_accuracy`, and the file |
+
+The module has no tables, so `Ready` is the allocator invariant and the memory cap; the export `log10` is function 3.
+
+### Failures
+
+`nlinarith` in the long proof of `tail10` exhausted 8,000,000 heartbeats; every bound there is linear, and `linarith` checks the proof.  Literals in bitwise expressions without an expected type elaborated as natural numbers until annotated as `UInt64`.  `Nat.and_two_pow_sub_one_eq_mod`, `Nat.two_pow_add_eq_or_of_lt`, and a test-bit lemma for `&&& 0x100000` gave the reduction; `omega` could not see `UInt64.size`.  An absolute error term of `2 ^ -1070` grew by `u 2 ^ -1070` in one addition and needed a larger constant.  `rw` with `← not_lt` found no `LinearOrder` on `UInt64`; `UInt64.not_le` and `UInt64.not_lt` serve.
+
+### Integration
+
+`Verified.lean` needs `Log10Theorem`; `LeanExe.lean` needs `F64RoundedStep`, listed with the `log2` entry.  The `tests/verified/run.sh` entry is `log10:Log10Theorem:Log10File`; `Log10File` prints exactly two `#print axioms` lines against the emitted `log10.wasm`.
+
+- [x] `log10` main path for normal and subnormal arguments, exceptional values, powers of ten.
+- [x] Byte and file theorems.
