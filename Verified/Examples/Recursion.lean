@@ -217,4 +217,34 @@ decreasing_by
 verified_compile compiled := [gcd, pow, sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
   top2, top1, deep]
 
+/-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls find their frames
+exactly when `n < k`. -/
+theorem chain_fits : ∀ (k : Nat) (n : UInt64), compiled.chain.fits k n = true ↔ n.toNat < k
+  | 0, n => by simp [show compiled.chain.fits 0 n = false from rfl]
+  | k + 1, n => by
+    rw [compiled.chain.fits_eq]
+    by_cases h : n = 0
+    · simp [h]
+    · simp only [h, ↓reduceIte, chain_fits k (n - 1)]
+      have hn : n.toNat ≠ 0 := fun e => h (UInt64.toNat_inj.mp (by simpa using e))
+      simp only [UInt64.toNat_sub, UInt64.reduceToNat]
+      have := UInt64.toNat_lt n
+      omega
+
+/-- `chain` allocates nothing. -/
+theorem chain_bound : ∀ (k : Nat) (n : UInt64), compiled.chain.bound k n = 0
+  | 0, _ => rfl
+  | k + 1, n => by
+    rw [compiled.chain.bound_eq, chain_bound k]
+    simp
+
+/-- The module computes `chain n` without a trap for every `n` below 1,000, and leaves `top`
+where it was. -/
+theorem chain_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 18 (fun x => chain x)
+    (fun x heap store => x.toNat < 1000 ∧ heap.Within store compiled.module 0)
+    (fun _ heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat) :=
+  compiled.chain.trapFree.mono
+    (fun x _ _ h => ⟨(chain_fits 1000 x).mpr h.1, by rw [chain_bound]; exact h.2⟩)
+    fun x _ _ _ _ _ h => by simpa [chain_bound] using h
+
 end Verified.Examples.Recursion

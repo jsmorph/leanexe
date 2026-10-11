@@ -1,15 +1,95 @@
 import Verified.Reflect.BoundLemmas
 
 /-! The lemmas from which the reflector builds the equation between whether a function's calls find
-their frames, `Expr.fits`, and a Lean term: one lemma per source form whose frames depend on
-values, with the forms of conditions that `BoundLemmas` distinguishes.  The frames of a form
-without such a dependence follow from `Expr.fits` by its definition.  As in `BoundLemmas`, each
+their frames, `Expr.fits`, and a Lean term: one lemma per source form, with the forms of
+conditions that `BoundLemmas` distinguishes.  An expression that calls no function whose code
+takes the call depth finds its frames by `Expr.fits_of_depthCalls`.  As in `BoundLemmas`, each
 conclusion is built from the lemma's arguments, and a binder's body enters through its equation at
 the value. -/
 
 namespace Verified.Reflect
 
 variable {S : List Sig} {Γ : List Ty} {funs : Funs S} {fits : Fits S} {env : Env Γ}
+
+/-! Operators and array operations: the frames of their parts. -/
+
+theorem bin_fits (op : BinOp) {l r : Expr S Γ .word} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.bin op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem cmp_fits (op : CmpOp) {l r : Expr S Γ .word} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.cmp op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem fbin_fits (op : FBinOp) {l r : Expr S Γ .float} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.fbin op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem fcmp_fits (op : FCmpOp) {l r : Expr S Γ .float} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.fcmp op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem and_fits {l r : Expr S Γ .bool} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.and l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem or_fits {l r : Expr S Γ .bool} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.or l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem mk_fits {a b : Elem} {l : Expr S Γ (.elem a)} {r : Expr S Γ (.elem b)} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.mk l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem pair_fits {s t : Ty} {a : Expr S Γ s} {b : Expr S Γ t} {A B : Bool}
+    (ha : a.fits funs fits env = A) (hb : b.fits funs fits env = B) :
+    (Expr.pair a b).fits funs fits env = (A && B) := by
+  subst ha hb; rfl
+
+theorem not_fits {e : Expr S Γ .bool} {E : Bool} (h : e.fits funs fits env = E) :
+    (Expr.not e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem funary_fits (op : FUnOp) {e : Expr S Γ .float} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.funary op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem toFloat_fits (op : ToFloat) {e : Expr S Γ .word} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.toFloat op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem toWord_fits (op : ToWord) {e : Expr S Γ .float} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.toWord op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem get_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
+    (hi : i.fits funs fits env = I) : (Expr.get x i).fits funs fits env = I := by
+  subst hi; rfl
+
+theorem eraseAt_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
+    (hi : i.fits funs fits env = I) : (Expr.eraseAt x i).fits funs fits env = I := by
+  subst hi; rfl
+
+theorem set_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word}
+    {v : Expr S Γ (.elem e)} {I V : Bool} (hi : i.fits funs fits env = I)
+    (hv : v.fits funs fits env = V) : (Expr.set x i v).fits funs fits env = (I && V) := by
+  subst hi hv; rfl
+
+theorem insertAt_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word}
+    {v : Expr S Γ (.elem e)} {I V : Bool} (hi : i.fits funs fits env = I)
+    (hv : v.fits funs fits env = V) : (Expr.insertAt x i v).fits funs fits env = (I && V) := by
+  subst hi hv; rfl
+
+theorem push_fits {e : Elem} (x : Var Γ (.array e)) {v : Expr S Γ (.elem e)} {V : Bool}
+    (hv : v.fits funs fits env = V) : (Expr.push x v).fits funs fits env = V := by
+  subst hv; rfl
 
 /-! `if`, one lemma per form of condition. -/
 
@@ -215,13 +295,81 @@ theorem fits_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.
     (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
     (Prog.fitsAt (.cons f rest) (.cons F fs) k).get .here env =
       f.fitsAt fs (rest.fitsAt fs) k env := by
-  rw [Prog.fitsAt_cons_here, if_pos (by simp [hd])]
+  rw [Prog.fitsAt_cons_here, hd]; rfl
 
 /-- The bound of a function whose code takes the call depth, with `k` frames. -/
 theorem bounds_get_hereDepth (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (fs : Funs S) (k : Nat) (hd : f.depth = true) (env : Env f.params) :
     (Prog.boundsAt (.cons f rest) (.cons F fs) k).get .here env =
       f.boundAt fs (rest.boundsAt fs) k env := by
-  rw [Prog.boundsAt_cons_here, if_pos (by simp [hd])]
+  rw [Prog.boundsAt_cons_here, hd]; rfl
+
+/-- The bound of a function whose code takes the call depth, with `k + 1` frames: its body's, with
+its callees at `k`. -/
+theorem funcAt_bound {func : Func S} {rest : Nat → Bounds S} {k : Nat} {args : Env func.params}
+    {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
+    (hms : entryModes func.params func.modes = ms)
+    (hv : func.body.denote funs args = V)
+    (hba : func.body.allocs funs (rest k) ms (fun _ => false) args = BA)
+    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
+    func.boundAt funs rest (k + 1) args = BA + KA := by
+  subst hms hv hba hk; rfl
+
+/-- The bound of a recursive function with `k + 1` frames: its body's, with itself and its callees
+at `k`. -/
+theorem recFuncAt_bound {func : RecFunc S} {funs : Funs (func.sig :: S)} {rest : Nat → Bounds S}
+    {k : Nat} {args : Env func.params} {ms : List Mode} {V : func.result.denote} {BA KA : Nat}
+    (hms : entryModes func.params func.modes = ms)
+    (hv : func.body.denote funs args = V)
+    (hba : func.body.allocs funs (.cons (func.boundAt funs rest k) (rest k)) ms (fun _ => false)
+      args = BA)
+    (hk : coerceCost func.result (func.body.mode ms) .owned V = KA) :
+    func.boundAt funs rest (k + 1) args = BA + KA := by
+  subst hms hv hba hk; rfl
+
+theorem funcAt_fits {func : Func S} {rest : Nat → Fits S} {k : Nat} {args : Env func.params}
+    {B : Bool} (h : func.body.fits funs (rest k) args = B) :
+    func.fitsAt funs rest (k + 1) args = B := by
+  subst h; rfl
+
+theorem recFuncAt_fits {func : RecFunc S} {funs : Funs (func.sig :: S)} {rest : Nat → Fits S}
+    {k : Nat} {args : Env func.params} {B : Bool}
+    (h : func.body.fits funs (.cons (func.fitsAt funs rest k) (rest k)) args = B) :
+    func.fitsAt funs rest (k + 1) args = B := by
+  subst h; rfl
+
+/-- The bound of a recursive function, with `k` frames. -/
+theorem bounds_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f.result.denote)
+    (fs : Funs S) (k : Nat) (env : Env f.params) :
+    (Prog.boundsAt (.consRec f rest) (.cons M fs) k).get .here env =
+      f.boundAt (.cons M fs) (rest.boundsAt fs) k env :=
+  rfl
+
+/-- The frames of a recursive function, with `k` frames. -/
+theorem fits_get_hereRec (f : RecFunc S) (rest : Prog S) (M : Env f.params → f.result.denote)
+    (fs : Funs S) (k : Nat) (env : Env f.params) :
+    (Prog.fitsAt (.consRec f rest) (.cons M fs) k).get .here env =
+      f.fitsAt (.cons M fs) (rest.fitsAt fs) k env :=
+  rfl
+
+/-! The tables of a recursive function's body, which hold its own entry first. -/
+
+theorem bounds_get_cons_here {g : Sig} (b : Env g.params → Nat) (rest : Bounds S)
+    (env : Env g.params) : (Bounds.cons b rest).get .here env = b env :=
+  rfl
+
+theorem bounds_get_cons_there {g h : Sig} (b : Env h.params → Nat) (rest : Bounds S)
+    (v : FVar S g) (env : Env g.params) :
+    (Bounds.cons b rest).get (.there v) env = rest.get v env :=
+  rfl
+
+theorem fits_get_cons_here {g : Sig} (b : Env g.params → Bool) (rest : Fits S)
+    (env : Env g.params) : (Fits.cons b rest).get .here env = b env :=
+  rfl
+
+theorem fits_get_cons_there {g h : Sig} (b : Env h.params → Bool) (rest : Fits S)
+    (v : FVar S g) (env : Env g.params) :
+    (Fits.cons b rest).get (.there v) env = rest.get v env :=
+  rfl
 
 end Verified.Reflect
