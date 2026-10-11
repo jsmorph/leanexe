@@ -52,13 +52,13 @@ theorem one_sub_ge (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ≤ |value x.t
         abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1021)]
     nlinarith
   have h5 : |q| < (2 ^ 53 : ℤ) := by
-    have : ((|q| : ℤ) : ℝ) < ((2 ^ 53 : ℤ) : ℝ) := by push_cast; exact h4
+    have : ((|q| : ℤ) : ℝ) < ((2 ^ 53 : ℤ) : ℝ) := by push_cast; linarith
     exact_mod_cast this
   have h6 : |q| ≤ (2 ^ 53 - 1 : ℤ) := by omega
   have h7 : |(q : ℝ)| ≤ 2 ^ 53 - 1 := by
     have : ((|q| : ℤ) : ℝ) ≤ ((2 ^ 53 - 1 : ℤ) : ℝ) := by exact_mod_cast h6
     push_cast at this
-    exact this
+    linarith
   have h8 : |value x.toBits| * 2 ^ 1074 = 2 ^ 1021 * |(q : ℝ)| := by
     rw [← abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074), ← abs_mul, h3, abs_mul,
       abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1021)]

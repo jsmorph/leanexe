@@ -59,9 +59,11 @@ theorem atan_tiny (x : Float) (hx : Finite x.toBits) (hs : |value x.toBits| < 1 
   have : |v| * v ^ 2 ≤ |v| * (1 / 2 ^ 54) := mul_le_mul_of_nonneg_left hv2 hv0
   nlinarith
 
-theorem atan_poly_small (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ^ 27 ≤ |value x.toBits|)
-    (h2 : |value x.toBits| ≤ 1 / 4) :
-    F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) (x - x * atanS x).toBits := by
+theorem atan_poly_small_err (x : Float) (hx : Finite x.toBits)
+    (h1 : 1 / 2 ^ 27 ≤ |value x.toBits|) (h2 : |value x.toBits| ≤ 1 / 4) :
+    Finite (x - x * atanS x).toBits ∧
+      |value (x - x * atanS x).toBits - Real.arctan (value x.toBits)| ≤
+        12 / 10 / 2 ^ 53 * |value x.toBits| := by
   set v := value x.toBits with hv
   set s := |v| with hsdef
   have hs0 : 0 < s := lt_of_lt_of_le (by positivity) h1
@@ -86,6 +88,15 @@ theorem atan_poly_small (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ^ 27 ≤ 
     linarith
   have hρ : polyErr (1 / 4) (10237 / 10000) + 5 / 8 / 2 ^ 57 ≤ 12 / 10 / 2 ^ 53 := by
     norm_num [polyErr]
+  exact ⟨hcf, htot.trans (mul_le_mul_of_nonneg_right hρ hs0.le)⟩
+
+theorem atan_poly_small (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ^ 27 ≤ |value x.toBits|)
+    (h2 : |value x.toBits| ≤ 1 / 4) :
+    F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) (x - x * atanS x).toBits := by
+  set v := value x.toBits with hv
+  set s := |v| with hsdef
+  have hs0 : 0 < s := lt_of_lt_of_le (by positivity) h1
+  obtain ⟨hcf, htot⟩ := atan_poly_small_err x hx h1 h2
   have hexp : 2 ≤ Wasm.IEEE64.exponent x.toBits := by
     by_contra hn
     have h := F64Magnitude.magnitude_lt x.toBits 2 (-1021) (by norm_num) (by norm_num) (by omega)
@@ -108,11 +119,14 @@ theorem atan_poly_small (x : Float) (hx : Finite x.toBits) (h1 : 1 / 2 ^ 27 ≤ 
     (by have := F64UpperWord.finite_high x.toBits hx; rw [F64UpperWord.high_toNat] at this;
         simp only [Wasm.IEEE64.exponent]; omega)
     hb.1 hb.2 (1 / 15) (12 / 10 / 2 ^ 53) (by norm_num) (by positivity)
-    (htot.trans (mul_le_mul_of_nonneg_right hρ hs0.le)) hlow (by norm_num) (by norm_num)
+    htot hlow (by norm_num) (by norm_num)
 
-theorem atan_poly_mid_a (x : Float) (hx : Finite x.toBits) (h1 : 1 / 4 ≤ |value x.toBits|)
+theorem atan_poly_mid_a_err (x : Float) (hx : Finite x.toBits) (h1 : 1 / 4 ≤ |value x.toBits|)
     (h2 : |value x.toBits| ≤ 2556 / 10000) :
-    F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) (x - x * atanS x).toBits := by
+    Finite (x - x * atanS x).toBits ∧
+      |value (x - x * atanS x).toBits - Real.arctan (value x.toBits)| ≤ 1222 / 1000 / 2 ^ 55 ∧
+      value (UInt64.ofNat (1020 * 2 ^ 52)) + 1222 / 1000 / 2 ^ 55 + 1 / 2 ^ 52 ≤
+        |Real.arctan (value x.toBits)| := by
   set v := value x.toBits with hv
   have hxs : FSApprox x v (2556 / 10000) 1 0 :=
     fsapprox_input x hx _ (by norm_num) (by norm_num) h2
@@ -140,14 +154,25 @@ theorem atan_poly_mid_a (x : Float) (hx : Finite x.toBits) (h1 : 1 / 4 ≤ |valu
     rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 4)] at hn
     have := (abs_le.mp hn).1
     linarith
-  exact abs_finish _ hcf _ _ 1020 (by norm_num) (by norm_num) htot
-    (by rw [F64PositiveSpacing.boundary_value 1020 (by norm_num) (by norm_num)]
-        norm_num [polyErr] at hlow ⊢; linarith)
-    (by norm_num [polyErr])
+  refine ⟨hcf, htot.trans (by norm_num [polyErr]), ?_⟩
+  rw [F64PositiveSpacing.boundary_value 1020 (by norm_num) (by norm_num)]
+  norm_num at hlow ⊢
+  linarith
 
-theorem atan_poly_mid_b (x : Float) (hx : Finite x.toBits) (h1 : 2556 / 10000 ≤ |value x.toBits|)
-    (h2 : |value x.toBits| ≤ 7 / 16) :
+theorem atan_poly_mid_a (x : Float) (hx : Finite x.toBits) (h1 : 1 / 4 ≤ |value x.toBits|)
+    (h2 : |value x.toBits| ≤ 2556 / 10000) :
     F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) (x - x * atanS x).toBits := by
+  obtain ⟨hcf, htot, hlow⟩ := atan_poly_mid_a_err x hx h1 h2
+  refine abs_finish _ hcf _ _ 1020 (by norm_num) (by norm_num) htot ?_ (by norm_num)
+  generalize value (UInt64.ofNat (1020 * 2 ^ 52)) = B at hlow ⊢
+  linarith
+
+theorem atan_poly_mid_b_err (x : Float) (hx : Finite x.toBits)
+    (h1 : 2556 / 10000 ≤ |value x.toBits|) (h2 : |value x.toBits| ≤ 7 / 16) :
+    Finite (x - x * atanS x).toBits ∧
+      |value (x - x * atanS x).toBits - Real.arctan (value x.toBits)| ≤ 1308 / 1000 / 2 ^ 54 ∧
+      value (UInt64.ofNat (1021 * 2 ^ 52)) + 1308 / 1000 / 2 ^ 54 + 1 / 2 ^ 52 ≤
+        |Real.arctan (value x.toBits)| := by
   set v := value x.toBits with hv
   have hxs : FSApprox x v (7 / 16) 1 0 := fsapprox_input x hx _ (by norm_num) (by norm_num) h2
   have hP := atanS_approx x _ hxs (by norm_num) (by norm_num)
@@ -170,10 +195,18 @@ theorem atan_poly_mid_b (x : Float) (hx : Finite x.toBits) (h1 : 2556 / 10000 �
       (2556 / 10000) ^ 7 / (1 - (2556 / 10000) ^ 2) ≤ |Real.arctan v| := by
     rw [abs_arctan]
     exact (arctan_ge_quintic _ (by norm_num) (by norm_num)).trans (Real.arctan_mono h1)
-  exact abs_finish _ hcf _ _ 1021 (by norm_num) (by norm_num) htot
-    (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]
-        norm_num [polyErr] at hlow ⊢; linarith)
-    (by norm_num [polyErr])
+  refine ⟨hcf, htot.trans (by norm_num [polyErr]), ?_⟩
+  rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]
+  norm_num at hlow ⊢
+  linarith
+
+theorem atan_poly_mid_b (x : Float) (hx : Finite x.toBits) (h1 : 2556 / 10000 ≤ |value x.toBits|)
+    (h2 : |value x.toBits| ≤ 7 / 16) :
+    F64SignedRounding.WithinSteps 1 (Real.arctan (value x.toBits)) (x - x * atanS x).toBits := by
+  obtain ⟨hcf, htot, hlow⟩ := atan_poly_mid_b_err x hx h1 h2
+  refine abs_finish _ hcf _ _ 1021 (by norm_num) (by norm_num) htot ?_ (by norm_num)
+  generalize value (UInt64.ofNat (1021 * 2 ^ 52)) = B at hlow ⊢
+  linarith
 
 #print axioms atan_tiny
 #print axioms atan_poly_small
