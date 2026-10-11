@@ -30055,7 +30055,7 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
 ## 2026-10-10: Full theorems for `atan` and `log1p` (track arc)
 
-The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved and `log1p` is building.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track, so this track now covers `log1p`, `atan`, and `atan2`; the subsection on the handoff records the state of the `asin` and `acos` drafts.
+The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved and `log1p` is building.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
 
 ### Error tracking
 
@@ -30090,7 +30090,7 @@ The correction is exact except in three places.  For `x â‰¤ -1/2`, `u = 1 + x` i
 
 `linarith` failed on three linear goals in `F64RoundNearest` and one in `Log1pTheoremConst` although every hypothesis it needed was present.  Its preprocessing step `cancelDenoms` ([`Mathlib/Tactic/Linarith/Preprocessing.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/Linarith/Preprocessing.lean)) runs only on a hypothesis whose left side contains a division, and it calls `CancelDenoms.derive` ([`Mathlib/Tactic/CancelDenoms/Core.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/CancelDenoms/Core.lean)), which normalizes the whole term with `norm_num`, including the arguments of functions.  A hypothesis with a division therefore holds `value (UInt64.ofNat (a * 4503599627370496))` where a hypothesis without one holds `value (UInt64.ofNat (a * 2 ^ 52))`, and `2 ^ (-1021 : â„¤)` becomes a rational number in one and stays a power in the other.  `linarith` treats the two forms as different atoms.  The proofs now name such terms with `set` before calling `linarith`, or chain the inequalities explicitly.
 
-### `asin` and `acos` handoff
+### `asin` and `acos` drafts
 
 The drafts below are committed without a successful build, because each imports `Log1pTheoremReduce`, `Log1pTheoremCorr`, or `Log1pTheoremTail`, which still fail.  Their error analyses are complete, and the constants come from the scripts in `tools/arc/asin` (`mkratio.py` writes `AsinTheoremRatio.lean`, `mkmid.py` writes `AsinTheoremMid.lean`, both into the parent directory; the `model*.py` files hold the range analyses).  The proofs already avoid the pitfalls found so far: the `linarith` atoms above, `Real.arcsin_le_arcsin` with one argument, `0` against `0 / 2 ^ 53` in the inputs of the ratio chains (`ht.mono le_rfl (by norm_num)`), and the exponent bound `exponent_lt_one` in place of `exponent_le_of_value` for products of high parts.
 
@@ -30111,20 +30111,22 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`Â
 
 ### Byte and file theorems
 
-`tests/verified/run.sh` checks only the two axiom reports of each file module, so the decode theorem of a module with several exports must depend on all of its byte theorems (`atan` and `atan2` for `atan.wasm`), for example through `And.intro` of the byte theorems or a conjunction theorem as `Exp2Bytes.exp2_module_accuracy` does.  The entries for `run.sh` take the form `name:TheoremModule:FileModule` with the emitted names `log1p` and `atan`.
+`tests/verified/run.sh` checks only the two axiom reports of each file module, so the decode theorem of a module with several exports must depend on all of its byte theorems (`atan` and `atan2` for `atan.wasm`, `asin` and `acos` for `asin.wasm`), for example through `And.intro` of the byte theorems or a conjunction theorem as `Exp2Bytes.exp2_module_accuracy` does.  The entries for `run.sh` take the form `name:TheoremModule:FileModule` with the emitted names `log1p`, `atan`, and `asin`.
 
 ### Files and checks
 
 | File | State | Log |
 |---|---|---|
 | `F64Approx`, `F64HighWord`, `F64Exact`, `F64WithinSelf`, `AtanTheorem*` | Committed in `e3d560d8` | `arc-atan-main-5.log` |
+| `F64UpperWord` | The arc track's `F64HighWord`, renamed in the merge `b8141b87` because the log2 track added a different module of that name | |
 | `F64HalfUlp` | Committed in `e02cb52c` | `arc-halfulp-2.log` |
 | `F64RoundNearest`, `F64Exact` (exact halving) | Committed in `e4ccf55d` | `arc-log1p-2.log` |
 | `Log1pTheoremBranches`, `Log1pTheoremCore`, `Log1pTheoremConst` | Committed in `080edd5f` | `arc-log1p-2.log` |
 | `Log1pTheoremK0`, `F64RoundDouble` | Committed in `256a52ae` | `arc-log1p-3.log` |
-| `F64WithinZero` | Two triangle inequalities in the wrong direction, fixed | `arc-log1p-3.log` |
-| `Log1pTheoremTail` | Fails: a missing import of `Mathlib.Analysis.Complex.ExponentialBounds`, an unqualified `ratOfWord_cast`, a missing `abs_nonneg`, a heartbeat timeout, and several failed `linarith` steps | `arc-log1p-3.log` |
-| `Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheorem`, `Log1pTheoremSpecial`, `AtanTheoremSpecial` | Wait on `Log1pTheoremTail` | |
+| `F64WithinZero`, `AtanTheoremSpecial` | Committed in `00fbf798` | `arc-log1p-4.log` |
+| `Log1pTheoremTail` | The third run failed on a missing import, an unqualified name, a missing `abs_nonneg`, and `linarith` steps; the fourth on casts of rational constants, a missing triangle inequality, and the heartbeat limit of `tail_main`; rebuilding | `arc-log1p-3.log`, `arc-log1p-4.log`, `arc-log1p-5.log` |
+| `Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheorem`, `Log1pTheoremSpecial` | Wait on `Log1pTheoremTail` | |
+| `AcosTheorem`, `AsinTheoremSpecial`, `Log1pBytes`, `Log1pFile`, `AtanBytes` | Written in `scratchpad/w-poly/arc`; the byte theorems wait on the export indices | |
 
 - [x] `atan` within one step.
 - [x] Half-spacing sums, `F64HalfUlp`.
@@ -30132,7 +30134,9 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`Â
 - [x] Nearest rounding of sums, `F64RoundNearest`.
 - [x] `log1p` branches, chains, `ln 2`, and `k = 0`.
 - [ ] `log1p` for `k â‰  0`: tail, normalization, corrections, main theorem.
-- [ ] Exceptional values of `atan` and `log1p` with `WithinSteps 0`.
+- [x] Exceptional values of `atan`.
+- [ ] Exceptional values of `log1p`.
 - [ ] First report to the coordinator.
-- [x] Hand the `asin` and `acos` drafts to the log track.
+- [x] Merge `a2c5fea3` (`b8141b87`).
+- [ ] `asin` and `acos` from the drafts in `fa37a25d`.
 - [ ] `atan2`, byte theorems, file theorems, and the lines for `tests/verified/run.sh`.
