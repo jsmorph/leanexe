@@ -30084,6 +30084,8 @@ The last case exceeds one spacing.  There `abs G ≥ 1/4`, so `G` and `-ln2Hi` l
 
 The correction is exact except in three places.  For `x ≤ -1/2`, `u = 1 + x` is exact and `c = 0`.  For `x ≥ 1`, `u - x` is exact on the grid of `x` and `1 - (u - x)` by Sterbenz's lemma.  For `x ≥ 2 ^ 53` the code passes `c = 0` with `t = 1/x ≤ 2 ^ -53`, and `K ≥ 53` puts `y` above 32, where a spacing is `2 ^ -47`.  For `x = 1 - 2 ^ -53` the sum `1 + x` rounds to 2, `u - x = 1 + 2 ^ -53` rounds to 1, and `c = 0` misses `t = -2 ^ -54`; there `f = 0`, and the error `2 ^ -54` stays below one spacing of `[1/2, 1)`.
 
+The eighth run exposed an error in the first statement of `corr_mid`.  The main path takes negative `x` with `abs x ≥ 1228485/2 ^ 22`, so `u = 1 + x` rounds to at most `0.70710659`, above the bound `0.7071065` that `corr_mid` claimed and `main_reduce` assumed.  The hypothesis of `main_reduce` now reads `value u < 1482910/2 ^ 21`, which is the code's own threshold `hu < 0x6a09e` on the upper word, and `corr_mid` proves it from `1 + x ≤ 2965819/2 ^ 22` and the rounding error of the sum.
+
 `ln2Hi + ln2Lo` lies within `2 ^ -81` of `log 2` by the series of `LogRatioRemainder` at `1/3`, since `(1 + 1/3)/(1 - 1/3) = 2` (`Log1pTheoremConst.ln2_close`).  The same series at `s = q/(2 + q)` bounds `log (1 + q)` for a rational `q` (`log_ge`, `log_le`), and the kernel evaluates both ends in `ℚ`.  The case boundaries use these bounds at `0.285`, `-0.175`, `0.2125`, `-0.2929`, and `0.41422`.
 
 ### A pitfall of `linarith`
@@ -30109,6 +30111,19 @@ The drafts below are committed without a successful build, because each imports 
 
 Not written: the `acos` dispatcher, the exceptional values of both functions (`±0`, `±1`, NaN, `|x| > 1`), and the byte and file theorems for `asin.wasm`.
 
+### `atan2` plan
+
+The code computes `q = |y/x|` rounded, `z = atan q`, and returns `z`, `-z`, `π - (z - π_lo)`, or `(z - π_lo) - π` by the quadrant, with shortcuts for `|y/x| > 2 ^ 60` and, for negative `x`, `|y/x| < 2 ^ -60`.  `AtanTwoArg` gives `arg (x + y i)` as `arctan (y/x)`, `arctan (y/x) + π`, or `arctan (y/x) - π`.  The quotient is a nearest word of `|y/x|` (`F64DivNearest.div_rounded`, a draft), so `|q - Q| ≤ 2 ^ -53 Q` and `|arctan q - arctan Q| ≤ 2 ^ -53 Q/(1 + Q²)`.  The theorem `atan_within_one` does not suffice: one step of `z` around `arctan q` and one step from `arctan q` to `arctan Q` do not compose into two steps near the top of a binade.  The proof therefore needs the error bounds inside the `atan` cases, `|z - arctan q| ≤ E` with `E` between 1.07 and 1.44 spacings of the case's binade (`AtanTheoremCases`) and `1.2 · 2 ^ -53 q` for the polynomial branch.  With these bounds the quadrants `x > 0` need errors below 2.5 spacings (at most 1.5 in the reduced cases, and `2.25 · 2 ^ -53` relative in the polynomial branch), and the quadrants `x < 0` need the rounded criterion with two spacings of `[1, 2)` near `π/2`, where the sum of `E` (1.30), the sensitivity (0.18), and the rounding of `z - π_lo` (0.5) reaches 1.97.  `F64TwoSteps` (written, not built) holds the two-step criteria: from a total error below 2.5 spacings, from a rounded word within two spacings, and a relative form still to write.
+
+| Step | State |
+|---|---|
+| `Complex.arg` through `arctan` (`AtanTwoArg`) | Written, not built |
+| Two-step criteria (`F64TwoSteps`) | Written, not built |
+| Branch equations (`AtanTwoBranches`) | Written, not built |
+| Quotient error from `F64DivBounds.div_real_mixed` and the sensitivity of `arctan` (`AtanTwoQuot`) | Written, not built |
+| Error bounds of the `atan` cases | `AtanTheoremCases` split into `caseX_err` and `caseX`, not built; polynomial branch to do |
+| Quadrants, exceptional values, byte theorem | Not started |
+
 ### Byte and file theorems
 
 `tests/verified/run.sh` checks only the two axiom reports of each file module, so the decode theorem of a module with several exports must depend on all of its byte theorems (`atan` and `atan2` for `atan.wasm`, `asin` and `acos` for `asin.wasm`), for example through `And.intro` of the byte theorems or a conjunction theorem as `Exp2Bytes.exp2_module_accuracy` does.  The entries for `run.sh` take the form `name:TheoremModule:FileModule` with the emitted names `log1p`, `atan`, and `asin`.
@@ -30124,8 +30139,10 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`�
 | `Log1pTheoremBranches`, `Log1pTheoremCore`, `Log1pTheoremConst` | Committed in `080edd5f` | `arc-log1p-2.log` |
 | `Log1pTheoremK0`, `F64RoundDouble` | Committed in `256a52ae` | `arc-log1p-3.log` |
 | `F64WithinZero`, `AtanTheoremSpecial` | Committed in `00fbf798` | `arc-log1p-4.log` |
-| `Log1pTheoremTail` | The third run failed on a missing import, an unqualified name, a missing `abs_nonneg`, and `linarith` steps; the fourth on casts of rational constants, a missing triangle inequality, and the heartbeat limit of `tail_main`; rebuilding | `arc-log1p-3.log`, `arc-log1p-4.log`, `arc-log1p-5.log` |
-| `Log1pTheoremReduce`, `Log1pTheoremCorr`, `Log1pTheorem`, `Log1pTheoremSpecial` | Wait on `Log1pTheoremTail` | |
+| `Log1pTheoremTail` | Committed in `eec77684` | `arc-log1p-6.log` |
+| `Log1pTheoremReduce` | Committed in `aa728a24`; the threshold fix changes the hypothesis of `main_reduce` | `arc-log1p-8.log` |
+| `Log1pTheoremCorr`, `Log1pTheorem`, `Log1pTheoremSpecial` | Rebuilding with the threshold fix | `arc-log1p-9.log` |
+| `AsinTheoremSupport` and the other `asin` and `acos` files | Rebuilding after fixes to an ambiguous `Finite` and a cast | `arc-log1p-9.log` |
 | `AcosTheorem`, `AsinTheoremSpecial`, `Log1pBytes`, `Log1pFile`, `AtanBytes` | Written in `scratchpad/w-poly/arc`; the byte theorems wait on the export indices | |
 
 - [x] `atan` within one step.
@@ -30133,7 +30150,8 @@ Not written: the `acos` dispatcher, the exceptional values of both functions (`�
 - [x] Merge `78965047` (`637fc911`) and reuse `LogCoreBits.kd_value` and `F64ExactProduct.int_mul_exact`.
 - [x] Nearest rounding of sums, `F64RoundNearest`.
 - [x] `log1p` branches, chains, `ln 2`, and `k = 0`.
-- [ ] `log1p` for `k ≠ 0`: tail, normalization, corrections, main theorem.
+- [x] `log1p` tail and argument reduction for `k ≠ 0`.
+- [ ] `log1p` corrections and main theorem.
 - [x] Exceptional values of `atan`.
 - [ ] Exceptional values of `log1p`.
 - [ ] First report to the coordinator.
