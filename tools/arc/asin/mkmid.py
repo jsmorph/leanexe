@@ -38,6 +38,7 @@ def emit(name,alo,ahi,chain,n,Enum):
     assert E<=Enum<h
     yb = "1" if n==1023 else "1 / 2"
     return f'''
+set_option maxHeartbeats 1000000 in
 theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value x.toBits|)
     (h2 : |value x.toBits| ≤ {Q(ahi)}) (hy : {yb} + {Q(Enum)} ≤ Real.arcsin |value x.toBits|) :
     F64SignedRounding.WithinSteps 1 (Real.arcsin |value x.toBits|) (midTail (tOf x)).toBits := by
@@ -102,7 +103,7 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
   -- `w * w` and `t - w * w` are exact
   have hww := F64ExactProduct.mul_exact_scaled w.toBits w.toBits hwf hwf q q
     (Wasm.IEEE64.exponent s.toBits - 1 + 32) (Wasm.IEEE64.exponent s.toBits - 1 + 32) hqm hqm
-    (by nlinarith) (by omega) (by
+    (lt_of_le_of_lt (Nat.mul_le_mul hq.le hq.le) (by norm_num)) (by omega) (by
       have := AsinTheoremSupport.exponent_lt_one s.toBits (by
         rw [abs_of_pos hvs0]
         have : ({Q(shi)} : ℝ) + {Q(shi)} / 2 ^ 53 < 1 := by norm_num
@@ -110,6 +111,8 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
       omega)
   rw [← F64Bits.toBits_mul] at hww
   have hwwv : value (w * w).toBits = vw * vw := hww.2.1
+  have hwwf := hww.1
+  clear hww hqm
   -- `|t - w²|` is small
   have hdw : |Real.sqrt vt - vw| ≤ {Q(shi)} / 2 ^ 53 + {Q(shi)} / 2 ^ 20 := by
     rw [abs_le]
@@ -121,7 +124,8 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
         norm_num
       linarith
   have htw0 : |vt - vw * vw| ≤ {Q(Mtw)} := by
-    rw [show vt - vw * vw = (Real.sqrt vt - vw) * (Real.sqrt vt + vw) by rw [← hsqv]; ring,
+    rw [show vt - vw * vw = (Real.sqrt vt - vw) * (Real.sqrt vt + vw) by
+      linear_combination (-1 : ℝ) * hsqv,
       abs_mul, abs_of_pos (by linarith : 0 < Real.sqrt vt + vw)]
     have h3 : Real.sqrt vt + vw ≤ 2 * {Q(shi)} + {Q(shi)} / 2 ^ 53 := by linarith
     have h4 := mul_le_mul hdw h3 (by positivity) (by positivity)
@@ -136,7 +140,7 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
     have := (abs_le.mp htw0).2
     have : ({Q(Mtw)} : ℝ) ≤ {Q(lo)} := by norm_num
     linarith
-  have htw := F64Exact.sub_exact (tOf x).toBits (w * w).toBits htf hww.1 (by rw [htv]; exact hvtp)
+  have htw := F64Exact.sub_exact (tOf x).toBits (w * w).toBits htf hwwf (by rw [htv]; exact hvtp)
     (by rw [hwwv]; positivity) (by rw [hwwv, htv]; exact hwwt1) (by rw [hwwv, htv]; exact hwwt2)
     (by rw [htv]; linarith [(by norm_num : ({Q(hi)} : ℝ) < 2 ^ 900)])
     (by rw [hwwv]; nlinarith [(by norm_num : (4 : ℝ) < 2 ^ 900)])
@@ -172,12 +176,9 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
   have hlov : |value (0x3C91A62633145C07 : UInt64)| ≤ 1 / 10 ^ 16 :=
     le_trans (abs_value_le _ ((1 / 10 ^ 16 : ℚ)) (by decide +kernel)) (by norm_num)
   have h4v : |value (0x3FE921FB54442D18 : UInt64) - 7853981633974483 / 10 ^ 16| ≤ 1 / 10 ^ 16 := by
-    rw [← ratOfWord_cast]
-    have h := qabs_cast (ratOfWord 0x3FE921FB54442D18 - 7853981633974483 / 10 ^ 16)
-    push_cast at h
-    rw [← h]
-    exact_mod_cast (by decide +kernel :
-      qabs (ratOfWord 0x3FE921FB54442D18 - 7853981633974483 / 10 ^ 16) ≤ 1 / 10 ^ 16)
+    rw [← ratOfWord_cast, show ratOfWord 0x3FE921FB54442D18 = 884279719003555 / 2 ^ 50 by
+      decide +kernel]
+    norm_num [abs_le]
   have hlo2c := fapprox_sub (const_word _ hlof) hc2 {Q(Blo)} (by
     have h3 := abs_sub (value (0x3C91A62633145C07 : UInt64)) (2 * cv)
     rw [abs_mul, abs_two] at h3
@@ -238,12 +239,14 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
   -- the exact value against `arcsin a`
   have hy0 := arcsin_half a (by linarith) (by linarith)
   rw [← hvt] at hy0
-  have hker := asin_kernel (Real.sqrt vt) (by rw [abs_of_pos hsqrt0]; linarith)
+  have hker := asin_kernel (Real.sqrt vt) (by
+    rw [abs_of_pos hsqrt0, Real.sqrt_le_left (by norm_num)]
+    linarith)
   rw [hsqv, abs_of_pos hsqrt0] at hker
   have hpi := AtanTheoremConst.atan_inf
   have hh4 : value (0x3FE921FB54442D18 : UInt64) + value (0x3FE921FB54442D18 : UInt64) =
       value (0x3FF921FB54442D18 : UInt64) := by
-    rw [← ratOfWord_cast, ← ratOfWord_cast, ← ratOfWord_cast]
+    rw [← ratOfWord_cast, ← ratOfWord_cast]
     exact_mod_cast (by decide +kernel : ratOfWord 0x3FE921FB54442D18 +
       ratOfWord 0x3FE921FB54442D18 = ratOfWord 0x3FF921FB54442D18)
   have hk3 : Real.sqrt vt ^ 3 ≤ {Q(shi)} ^ 3 := pow_le_pow_left₀ hsqrt0.le hsqhi 3
@@ -253,8 +256,11 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
     have hid : Real.sqrt vt - vw - cv = (vt - vw * vw) * (vs - Real.sqrt vt) /
         ((Real.sqrt vt + vw) * (vs + vw)) := by
       rw [hcv]
-      field_simp
+      set u := Real.sqrt vt with hu
       rw [← hsqv]
+      have h5 := hden1.ne'
+      have h6 := hden2.ne'
+      field_simp
       ring
     rw [hid, abs_div, abs_mul, abs_of_pos (mul_pos hden1 hden2)]
     have h3 : |vs - Real.sqrt vt| ≤ {Q(shi)} / 2 ^ 53 := hs.2
