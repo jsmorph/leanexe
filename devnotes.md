@@ -30244,3 +30244,141 @@ The Bessel ports measured, in units of the modulus `√(J² + Y²)`, largest err
 On the build host a build of `Verified/Examples/TanOdd.lean` (track `trig`) held the runner's lock for 26 minutes of its 40-minute timeout while its scope sat above `memory.high` (4.76 GB against 4.29 GB, swap full, 57,071 high events, about 4 seconds of CPU per minute).  Opus stopped the Lean process and told the track to treat it as a timeout without a diagnostic and to divide the module before building it again.
 
 The log10 integration: Opus merged `w/log` at `315ad465` (659d6c95), added `Log10Theorem` to `Verified.lean` and `log10:Log10Theorem:Log10File` to the file loop of `tests/verified/run.sh`.  The build passed with 3,907 jobs, and `log10_bytes_accuracy` reports only the permitted axioms (`opus-merge-log10-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-10.log`) with six file checks: `exp`, `log`, `exp2`, `trig`, `log2`, and `log10`.
+
+## 2026-10-11: Error function, real analysis (track `erf`)
+
+The `erf` track works in a separate worktree, branch `w/erf`, a worktree of a separate clone created from `transcendentals` at `67932055`.  Its goal is the full theorems for `Erf.erf` (one step) and `Erf.erfc` (four steps), with byte theorems.  The pinned Mathlib has no error function, no `erfc`, and no asymptotic series of either.  It has the Gaussian integral on the half-line (`integral_gaussian_Ioi`), the fundamental theorem of calculus for continuous integrands (`Continuous.integral_hasStrictDerivAt`), and bounds on `π` to 20 digits (`pi_gt_d20`, `pi_lt_d20`).
+
+### Plan
+
+- [x] Define `erf`, `erfc`, and `erfcx x = exp (x²) erfc x`, and prove the facts the kernels need (`LeanExe/ProofKit/RealErf.lean`).
+- [x] Bound each rational function of `s_erf.c` against the quantity it approximates.
+- [x] Prove `WithinSteps 1` for `erf`, its exceptional values, its byte theorem, and the file theorem (`ErfTheorem`, `ErfFile`).
+- [ ] Prove the `erfc` theorem, after the coordinator chooses between the bound this proof reaches and a CORE-MATH port (estimate below).
+
+### `RealErf`
+
+`erf x = (2/√π) ∫₀ˣ exp (-t²) dt` and `erfc x = 1 - erf x`.  The derivative comes from the fundamental theorem of calculus, oddness from a zero derivative of `erf (-x) + erf x`, strict monotonicity from the positive derivative, and the limit 1 at positive infinity from `intervalIntegral_tendsto_integral_Ioi` and `integral_gaussian_Ioi`.  `scale_bounds` encloses `2/√π` between `333038747416263463341/2^68` and `333038747416263463344/2^68`, a relative width near `10^-20`, from Mathlib's 20-digit bounds on `π`.
+
+| Theorem | Statement |
+|---|---|
+| `exp_nonpos_remainder` | For `y ≤ 0`, the exponential's Taylor polynomial of degree `n - 1` errs by at most `(-y)^n/n!`.  The proof is an induction in which `B ± (exp - T)` is antitone on `(-∞, 0]`. |
+| `erf_series` | For every real `x`, `|erf x - (2/√π) x Σ k < n, (-1)^k x^(2k)/(k! (2k + 1))| ≤ (2/√π) |x|^(2n+1)/(n! (2n + 1))`, with the partial sum as `x * eval (erfCoeffs n) (x^2)` for `PolyBound`.  The bound integrates `exp_nonpos_remainder` at `-t²` by the same monotonicity argument, so it holds beyond `|x| ≤ 1`, which the kernel range up to 1.25 needs. |
+| `erfc_asym`, `erfcx_asym` | For `x > 0` and every `N`, `0 ≤ (-1)^N (erfc x - asym N x)`, where `asym N x = (1/√π) exp (-x²) Σ n < N, a_n x^(-2n-1)` and `a_n = (-1)^n (2n-1)!!/2^n`.  The derivative of `erfc - asym N` is `-(2/√π) a_N exp (-x²) x^(-2N)`, whose sign makes `(-1)^N (erfc - asym N)` antitone, and both functions tend to 0. |
+| `hasDerivAt_erfcx` | `erfcx' = 2 x erfcx - 2/√π`. |
+| `erfcx_backward` | If `|p' - 2 x p + 2/√π| ≤ η` on `[a, b]` with `0 ≤ a` and `|erfcx b - p b| ≤ σ`, then `|erfcx x - p x| ≤ σ + η (b - x)` on `[a, b]`.  The equation's solutions grow like `exp (x²)`, so errors shrink toward smaller `x`, and an enclosure from the asymptotic bounds at a large `x` can be carried down to 1.25 piece by piece. |
+
+The tail rational functions of `s_erf.c` approximate `log (x erfc x) + x² + 0.5625` in `s = 1/x²` on `[1.25, 28)`.  Below about 8 the asymptotic series is too inaccurate, and the power series loses the result to cancellation, so the plan for that range is polynomial models of `erfcx` on pieces, checked against its differential equation with `PolyBound` and chained downward with `erfcx_backward` from the asymptotic enclosure.
+
+### Runs
+
+| Run | Result | Log |
+|---|---|---|
+| First build of `Verified.Examples.Erf`, `TaylorRemainder`, and `PolyChecks` in this worktree | Passed, 3,630 jobs | `erf-port-build-1.log` |
+| `RealErf`, first draft | 21 errors.  `convert ... using 1` on `HasDerivAt` left goals that equate instance paths, `IntegrableOn` and `intervalIntegral_tendsto_integral_Ioi` needed `open MeasureTheory`, `left_mem_Ici` and `right_mem_Iic` are `self_mem_Ici` and `self_mem_Iic` here, `ge_of_tendsto` was the wrong direction for `le_of_tendsto`, and `positivity` cannot use a hypothesis for `(-1)^N a_N ≥ 0`. | `erf-real-1.log` |
+| Second draft, with `HasDerivAt.congr_deriv` in place of `convert` | Five errors: a power identity, two `linarith` steps whose products needed the factor `2/√π` pulled out, an inverse-power identity, and `(erfcx - p) u`, which `ring` treats as one atom until `Pi.sub_apply` rewrites it | `erf-real-2.log` |
+| Third draft | Two `linarith` failures: the hints `le_abs_self` and `neg_abs_le` were swapped between the two signs | `erf-real-3.log` |
+| Fourth draft | Passed, 12 theorems with the permitted axioms, no warnings | `erf-real-4.log` |
+| With `erfc_eq`, `erfc_strictAnti`, and `erfcx_asym` | Passed, 14 theorems with `propext`, `Classical.choice`, and `Quot.sound` only, no warnings | `erf-real-5.log` |
+
+### Kernel bounds, small and middle ranges
+
+The coordinator approved the plan for the tail kernels and asked for the `erfc` budget to use the exponential proof's internal bounds, with a report of the reached bound if four steps fail.  The two kernels below 1.25 are proved.
+
+| Theorem | Statement | Largest error, source's statement | Run |
+|---|---|---|---|
+| `ErfKernelSmall.small_kernel_error` | `|erf x - x - x (pp/qq)(x²)| ≤ (21/32) 2^-55 |x|` for `|x| ≤ 0.84375` | `2^-55.86` at `z = 0`, where `pp0` is `2/√π - 1` rounded one unit below `efx`.  The source states `2^-57.90`, which leaves this out. | `erf-small-2.log`, 41 s |
+| `ErfKernelMiddle.middle_kernel_error` | `|erf (1 + s) - erx - P (s)/Q (s)| ≤ (21/16) 2^-58` for `-5/32 ≤ s ≤ 1/4` | `2^-58.20` at `s = 1/4`.  The source states `2^-59.06`. | `erf-middle-1.log`, 173 s |
+
+Each check compares `Q ((2/√π)_lo T - c) - P` with `ε Q` through `PolyChecks.abs_le_weighted`, where `T` is the series partial sum from `erf_series`, with 20 terms for the small range and 26 for the middle, shifted to `s` by `PolyBound.shift` for the middle range.  The enclosure of `2/√π` adds `3/2^68` times the partial sum.  The middle checks have degree 57 and numbers of about 930 bits, split into eight declarations per side, and took about 10 s each.  The first small run (`erf-small-1.log`) failed on a wrong value of `20! · 41` in the remainder bound and on a goal that `gcongr` had already closed.
+
+`PolyCalculus` adds the formal derivative with `HasDerivAt` for `eval`, powers, `spread` for `p (x²)`, `oddP`, reversal, and `hatP c n` with `eval (hatP c n) x = x^(2n) eval c (1/x²)`.  `RealErfScaled` adds `erfcxN = erfcx/(2/√π)`, which satisfies `erfcxN' = 2 x erfcxN - 1`, a comparison lemma `ode_backward` for any function with derivative `2 x G - k`, and rational asymptotic bounds `erfcxN_asym`.  The tail models use `erfcxN`, so their chain carries no error from the enclosure of `π`.
+
+A first-order model of the `erfc` tail, which counts each rounding as half a unit of its binade and each `exp` as about `1.32 u` from the exponential proof's reconstruction bounds, gives at most 5.9 units in the last place near `x ≈ 1.32`.  The largest share, about `2.8 u` in the second exponential's argument, is the Horner evaluation of `R` and `S` at `s ≈ 0.58`.  Four steps therefore look out of reach for a worst-case error analysis, while the sampled maximum is three steps.
+
+### Kernel bounds, tail ranges
+
+`ErfTailKernel` proves `|tailF R S x| ≤ 2^-56` for `R_a/S_a` on `[1.25, tailB2]` and for `R_b/S_b` on `[tailB1, 28]`, where `tailF R S x = R/S (1/x²) - 9/16 - log (x erfcx x)` is the error of the model that the code exponentiates.  `tailB2 = 0x4006DB6E00000000 ≈ 2.8571434`, below which `erf` uses `R_a/S_a`, and `tailB1 = 0x4006DB6D00000000 ≈ 2.8571415`, from which `erfc` uses `R_b/S_b`, so each kernel covers every argument at which either function calls it.  The proof works with `erfcxN = erfcx/(2/√π)` and its equation `erfcxN' = 2 x erfcxN - 1`, so the enclosure of `π` does not enter.
+
+| Step | Method |
+|---|---|
+| Models | 32 pieces from 28 down to 1.25, each with a polynomial `p_j` of degree 16 in `t = x - c_j` that approximates `erfcxN`. |
+| Start | At 28, `erfcxN_asym` with 20 and 21 terms encloses `erfcxN` within about `10^-60`. |
+| Chain | `defectP p c = p' - 2 (c + t) p + 1` is checked below `eD_j` on the piece, and `ode_backward` gives `|erfcxN - p_j| ≤ s_j + eD_j (b_j - x)`.  At each junction the next piece's start bound `s_{j+1}` covers the previous model's error and the difference of the two polynomials. |
+| Kernel error | The derivative of `tailF` is `N(x)/(x² S(1/x²))² · ... - (1/x + 2 x - 1/erfcxN)`.  A check of degree 46 to 50 bounds its distance from the model's version on each piece, and `anchor_bound` evaluates `tailF` at 41 anchor points, with `exp` through a Taylor polynomial of 24 terms and its remainder.  Each sub-interval bound then follows from the anchor value and the derivative bound. |
+
+| Kernel | Proved | Largest sampled `|tailF|` | Source's statement |
+|---|---|---|---|
+| `R_a/S_a` on `[1.25, tailB2]` | `2^-56` | `2^-58.27` at `x ≈ 1.455` | `2^-62.57` |
+| `R_b/S_b` on `[tailB1, 28]` | `2^-56` | `2^-59.34` at `x = 28` | `2^-61.52` |
+
+The samples (`sample_tail.py`, 401 points per kernel, `erfc` from the series in `fval.py` at 60 digits) exceed the source's stated errors, so those statements do not bound the absolute error of `R/S` against `log (x erfcx x) + 0.5625`.  The proved bound is a uniform `2^-56` because the anchor and derivative budgets were set to that level.  It costs about `0.125 u` in the `erfc` budget, a small share of the total.  `gen_tail.py` computes the models, junctions, anchors, and budgets with exact rationals, and `emit_tail.py` and `emit_kernel.py` write `ErfTailCoeffs`, `ErfTailPieces0` to `ErfTailPieces7` (four pieces each, about 80 to 120 s per file), and `ErfTailKernel`.
+
+| Run | Result | Log |
+|---|---|---|
+| Tail base lemmas | Passed after casts on the right of bounds stated in `ℚ`, `Pi.mul_apply` after `HasDerivAt.mul`, and the removal of unused hypotheses from `deriv_bound` | `erf-tailbase-6.log` |
+| Pieces and kernel, first full build | `decide` on `Rat` fails to reduce, so every check uses `decide +kernel`.  `le_or_lt` is `le_or_gt` here. | `erf-tail-p0-1.log`, `erf-tail-p0-2.log` |
+| Pieces 0 to 7 and the kernel | Pieces passed.  `spos_a` failed on the cast of `5/4`, and the kernel on `exact_mod_cast` for `a31 = 5/4`. | `erf-tail-all-3.log` |
+| Kernel with the casts fixed | `tail_kernel_a` and `tail_kernel_b` with `propext`, `Classical.choice`, and `Quot.sound` | `erf-tail-all-4.log` |
+| Pieces with `#print axioms` for each model and piece bound | Passed, 81 declarations of the tail files with the permitted axioms | `erf-tools-2.log` |
+
+### One step for `erf`
+
+`ErfTheorem.erf_within_one` states `WithinSteps 1 (erf (value x)) (Erf.erf x).toBits` for every finite `x`, and `erf_bytes_accuracy` carries it to the decoded module and every call of its export `erf` (function 11) from a store that borrows `Exp.expTable` at address 4096.  The exceptional values follow the code: `erf (±0) = ±0`, `erf (±∞) = ±1`, and the canonical NaN for a NaN.  `ErfFile` checks `build/verified/erf.wasm` against `ErfTheorem.erf_module_accuracy`, which depends on the byte theorem.
+
+The proof gives one step through the nearest rounding of the code's final sum wherever the plain relative bound is too weak.  `F64AddNearest.add_nearest` shows that a rounded positive sum is a nearest value of the exact sum, and `within_of_nearest` and `within_nearest_relative` give `m` steps when the exact sum lies within `m` spacings of the reference, or within `(63/64) m` units of roundoff relative to it.  The other ranges use `F64RelativeSteps.within_steps_relative`, which tolerates `(m + 3/8) u` relative to `|y|` down to `17/16 · 2^-1022`, and `within_steps_low` for absolute errors below `(2m + 1)/2 · 2^-1074`.
+
+| Range of `|x|` | Code | Method | Margin |
+|---|---|---|---|
+| `0` | `(8 x + efx8 x)/8` | the word, computed | exact |
+| `(0, 2^-1022)` | `(8 x + efx8 x)/8` | absolute error below `1.26 · 2^-1074` against `1.5 · 2^-1074` (`ErfSub.erf_subnormal`) | 16% |
+| `[2^-1022, 2^-1015)` | same | `8 x` and `/8` exact (`F64DivApprox.div_eight_value`), `1.21 u` relative against `1.375 u` | 12% |
+| `[2^-1015, 2^-28)` | `x + efx x` | `1.25 u` relative against `1.375 u` (`ErfEnds.erf_tiny`) | 9% |
+| `[2^-28, 0.84375)` | `x + x pp/qq (x x)` | 74 intervals, nearest final sum; relative criterion below 0.48 and spacing `2^-53` above (`ErfSmall`) | 1.7% at `x ≈ 0.84` |
+| `[0.84375, 1.25)` | `erx + pa/qa (x - 1)` | 13 intervals of `s`, error at most `0.51` of the spacing `2^-53` (`ErfMiddle`) | 49% |
+| `[1.25, 6)` | `1 - exp (-z² - 9/16) exp (t)/x` | 30 intervals; relative `erfc` error at most `11.2 u` times `erfc 1.25 ≤ 0.0772` stays below the spacing `2^-53` (`ErfTailErf`) | 14% |
+| `[6, ∞)` | `1 - tiny`, the word of 1 | `erfc 6 < 2^-54` (`ErfEnds.erf_large`) | large |
+
+Negative arguments reduce to positive ones: below 0.84375 the code applies the same operations to `x`, and negating operands negates rounded sums, products, and quotients (`F64NegateOps`) unless the exact sum is zero, which `ErfNegative.add_ne_zero_of_within` excludes from the step at `-x`.  From 0.84375 on the code negates its final sum through the sign flag.  `erf` is odd (`RealErf.erf_neg`), so `within_negate` carries the step.
+
+The small range is the tightest.  The rigorous Horner bound (`F64Horner.hornerErr`, with each partial polynomial bounded by `magBound` on the interval) gives a pre-rounding error of `0.983` spacings at `x ≈ 0.84`, and the kernel's `(21/32) 2^-55` is a fixed share of it, because fdlibm's `pp/qq` equioscillates and reaches `0.55 · 2^-55` at both ends of `[0, 0.712]`.  The intervals near 0.84 have width `1/256`.
+
+| File | Contents |
+|---|---|
+| `LeanExe/ProofKit/F64Horner.lean` | verified Horner bound `hornerW_approx`, `magBound`, `lowBound` |
+| `LeanExe/ProofKit/F64DivApprox.lean` | `div_approx`, `ratio_lipschitz`, `div_real_adaptive`, `div_eight` |
+| `LeanExe/ProofKit/F64AddNearest.lean` | `add_nearest`, `steps_of_nearest`, `within_of_nearest`, `within_nearest_relative` |
+| `LeanExe/ProofKit/F64RelativeSteps.lean` | `within_steps_relative`, `within_steps_low` |
+| `LeanExe/ProofKit/F64NegateOps.lean` | rounded operations under negation |
+| `Verified/Examples/ExpRelative.lean` | `|expWith x - e^x| ≤ 1.405 u e^x` for `|x| < 512` |
+| `ErfSmallBase`, `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfSmall` | small range |
+| `ErfMiddleBase`, `ErfMiddle` | middle range |
+| `ErfTailSplit`, `ErfTailEval`, `ErfTailCompose`, `ErfTailErfBase`, `ErfTailErf` | tail: exact split of `x²`, the argument of the second exponential, composition with `x erfc x = exp (-z² - 9/16) exp (t - tailF)` |
+| `ErfEnds`, `ErfSub` | below `2^-28` and from 6 on |
+| `ErfBits`, `ErfPositive`, `ErfNegative`, `ErfOdd` | the code's paths, positive and negative arguments |
+| `ErfTheorem`, `ErfFile` | exceptional values, byte and file theorems |
+
+The run line for `tests/verified/run.sh` is `erf:ErfTheorem:ErfFile`.
+
+### Estimate for `erfc`
+
+The coordinator asked how far two refinements bring the `erfc` bound before any `erfc` theorem is written: (a) Horner bounds on subintervals of `s` that charge each rounding with the magnitude of its partial result there, and (b) a relative bound for `Exp.expWith` near Arm's stated error, for which the coordinator fixed the figure `0.52` units, about `1.04 u` relative.  The tail estimates come from `plan_refine.py` in the scratch directory, which applies the error terms of `ErfTailEval` and `ErfTailCompose` with rational interval bounds.  The steps follow from `within_steps_relative`, which needs `(m + 3/8) u`, or, through the nearest rounding of the final quotient, from `within_nearest_relative`, which needs `(63/64) m u` before that rounding.
+
+| Analysis of the tail `exp (-z² - 9/16) exp (t)/x` | Bound near `x = 1.25` | Steps | Through the nearest quotient |
+|---|---|---|---|
+| As in the `erf` proof: `hornerErr` on 40 intervals, `1.405 u` per exponential | `10.2 u` | 10 | 10 |
+| (b) only: `1.04 u` per exponential | `9.48 u` | 10 | 9 |
+| (a) only: half a unit of each partial result's binade on 400 intervals | `8.27 u` | 8 | 8 |
+| (a) and (b) | `7.54 u` | 8 | 7 |
+
+Four rounded operations follow the two exponentials' arguments: the two exponentials, their product, and the quotient by `x`.  Each can cost a full `u` relative to its result in the worst case, so they alone use about `4.1 u`, more than four steps, before any error in `t`.  The rest, about `3.3 u` with (a), comes from `t`, mostly from the Horner evaluation of `ra` and `sa` at `s ≈ 0.64`, where `R ≈ -74` and `S ≈ 346` and no partial sum cancels.  The figures are worst-case bounds; earlier sampling found at most three steps.
+
+The middle range is near four steps as well: the pre-rounding error of `(1 - erx) - P/Q` reaches `3.97` spacings of the result near `x = 1.25`, where `erfc x ≈ 0.077` and the spacing is `2^-56`.
+
+| Runs | Result | Logs |
+|---|---|---|
+| Rounding tools: nearest sums, Horner, division, relative steps, negation | Passed after fixes for the exponent threshold option, `Int.log`'s import, a reversed inequality in `steps_of_nearest`, and `pack_spec` in place of the bounded `roundScaledMagnitude_spec` | `erf-tools-1.log` to `erf-tools-5.log` |
+| Small and middle bases and intervals | Passed; the first version of the coefficient relations had the wrong shape after `simp` | `erf-base-1.log` to `erf-base-4.log` |
+| Tail split, evaluation, and composition | Passed after `set` abbreviations were removed where later lemmas produced the unabbreviated terms, and after `nlinarith` calls that timed out were replaced by explicit products and `linarith only` | `erf-base-5.log` to `erf-base-16.log` |
+| Paths, positive and negative arguments, theorem module | Passed; branch conditions on both sides of the negation needed `simp` in place of `rw [if_pos]` | `erf-base-17.log` to `erf-base-24.log` |
+| `erf.wasm` and `ErfFile` | `tools/Emit.lean` wrote 7,016 bytes; both file theorems report only the permitted axioms | `erf-emit-1.log`, `erf-file-1.log` |
