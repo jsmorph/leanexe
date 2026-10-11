@@ -30055,7 +30055,7 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
 ## 2026-10-10: Full theorems for `atan` and `log1p` (track arc)
 
-The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan` is proved and `log1p` is building.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
+The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan`, `log1p`, and `atan2` are proved with their byte and file theorems; `asin` and `acos` are building.  After them the coordinator assigned `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` (two steps each, through `Log.logWith` and `Log1p.log1p`), and asked that the duplicate ProofKit modules keep their names until a later consolidation.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
 
 ### Error tracking
 
@@ -30088,9 +30088,26 @@ The eighth run exposed an error in the first statement of `corr_mid`.  The main 
 
 `ln2Hi + ln2Lo` lies within `2 ^ -81` of `log 2` by the series of `LogRatioRemainder` at `1/3`, since `(1 + 1/3)/(1 - 1/3) = 2` (`Log1pTheoremConst.ln2_close`).  The same series at `s = q/(2 + q)` bounds `log (1 + q)` for a rational `q` (`log_ge`, `log_le`), and the kernel evaluates both ends in `ℚ`.  The case boundaries use these bounds at `0.285`, `-0.175`, `0.2125`, `-0.2929`, and `0.41422`.
 
+`Log1pTheorem.log1p_within_one` states `WithinSteps 1 (Real.log (1 + value x.toBits)) (Log1p.log1p x).toBits` for every finite `x` with `-1 < value x.toBits`.  `Log1pTheoremSpecial` gives the words for `-1` (`-∞`), `+∞`, `±0`, `x < -1` and `-∞` (the canonical NaN), and NaN, and `Log1pBytes.log1p_bytes_accuracy` states the byte theorem for function 3 of the module.  All three report only `propext`, `Classical.choice`, and `Quot.sound` (`arc-mix-13.log`, `arc-mix-14.log`).
+
+### `atan2`
+
+`AtanTwoTheorem.atan2_within_two` (commit `9a6d5815`, `arc-mix-18.log`) states `WithinSteps 2 (Complex.arg (x + y i)) (Atan.atan2 y x).toBits` for finite `x` and finite nonzero `y`; `y = ±0` is excluded because `arg` does not distinguish `+0` from `-0` while the code returns `±π` for `x < 0`.  The general branch rests on `AtanTwoAtan.atan_good`, which follows the branches of `atan` for the rounded quotient `q` and bounds the result against `arctan Q` for the exact quotient `Q`.  Each branch gives an error `E` around `arctan q` (the `_err` theorems of `AtanTheoremCases` and `AtanTheoremSmall`), and `AtanTwoErr.sens_range` bounds `|arctan q - arctan Q|` by `H/(1 + L H) · 2 ^ -53 + 2 ^ -1075` for `q ≥ L` and `Q ≤ H`.  For `q ≥ 1.586` this bound is too weak for the quadrants `x < 0`, and `sens_sharp` uses `c ≥ L/(1 + L²)`.  The quadrants `x > 0` meet `within_two_of_error` in the case's binade, with at most 2.21 spacings against 2.5; the quadrants `x < 0` need an error of `z` below 1.49 spacings of `[1, 2)`, which `π - (z - πlo)` turns into two steps through the half-spacing rounding of `z - πlo` and the nearest rounding of the last difference (`neg_finish`).  The largest case errors there are 1.4716 (`case2_c`) and 1.4746 (`case3`).  Below `2 ^ -27` the result is `q`, which meets the relative criterion down to `2 ^ -1021` and `F64TwoSteps.within_two_low` below.  The shortcuts for `|y/x| > 2 ^ 60` and, for `x < 0`, `|y/x| < 2 ^ -59` follow from the exponent fields through the shifted difference of the high words (`AtanTwoBits.k_cases`).  `AtanTwoSpecial` gives the words for `y = ±0` with `x` not NaN (`y` when the sign bit of `x` is clear, `±π` rounded otherwise), for `y = ±∞` (`±π/2` rounded), for `x = ±∞` with finite nonzero `y` (`±0` or `±π` rounded), and for both infinite (`±π/4` or `±3π/4` rounded).  `AtanBytes.atan_module_accuracy` states the byte theorems of both exports, and `AtanFile` checks against `build/verified/atan.wasm`.
+
+| Table | Error of the branch | Sensitivity | Total, quadrant `x > 0` |
+|---|---|---|---|
+| `case0_low`, binade `[1/4, 1/2)` | 1.326 | 0.888 | 2.214 |
+| `case1_low`, `[1/2, 1)` | 1.401 | 0.593 | 1.993 |
+| `case2_a`, `[1/2, 1)` | 1.438 | 0.539 | 1.978 |
+| `mid_a`, `[1/8, 1/4)` | 1.222 | 0.961 | 2.183 |
+
+The table lists the largest totals in spacings of each case's binade; the limit is 2.5.
+
 ### A pitfall of `linarith`
 
-`linarith` failed on three linear goals in `F64RoundNearest` and one in `Log1pTheoremConst` although every hypothesis it needed was present.  Its preprocessing step `cancelDenoms` ([`Mathlib/Tactic/Linarith/Preprocessing.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/Linarith/Preprocessing.lean)) runs only on a hypothesis whose left side contains a division, and it calls `CancelDenoms.derive` ([`Mathlib/Tactic/CancelDenoms/Core.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/CancelDenoms/Core.lean)), which normalizes the whole term with `norm_num`, including the arguments of functions.  A hypothesis with a division therefore holds `value (UInt64.ofNat (a * 4503599627370496))` where a hypothesis without one holds `value (UInt64.ofNat (a * 2 ^ 52))`, and `2 ^ (-1021 : ℤ)` becomes a rational number in one and stays a power in the other.  `linarith` treats the two forms as different atoms.  The proofs now name such terms with `set` before calling `linarith`, or chain the inequalities explicitly.
+`linarith` failed on three linear goals in `F64RoundNearest` and one in `Log1pTheoremConst` although every hypothesis it needed was present.  Its preprocessing step `cancelDenoms` ([`Mathlib/Tactic/Linarith/Preprocessing.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/Linarith/Preprocessing.lean)) runs only on a hypothesis whose left side contains a division, and it calls `CancelDenoms.derive` ([`Mathlib/Tactic/CancelDenoms/Core.lean`](https://github.com/leanprover-community/mathlib4/blob/master/Mathlib/Tactic/CancelDenoms/Core.lean)), which normalizes the whole term with `norm_num`, including the arguments of functions.  A hypothesis with a division therefore holds `value (UInt64.ofNat (a * 4503599627370496))` where a hypothesis without one holds `value (UInt64.ofNat (a * 2 ^ 52))`, and `2 ^ (-1021 : ℤ)` becomes a rational number in one and stays a power in the other.  `linarith` treats the two forms as different atoms.  The proofs now name such terms with `set` before calling `linarith`, or chain the inequalities explicitly.  A `set` variable does not help when the goal is created afterwards from a lemma statement: the goal holds `value (UInt64.ofNat (n * 2 ^ 52))` while the hypothesis holds the variable.  `generalize value (UInt64.ofNat (n * 2 ^ 52)) = B at h ⊢` before `linarith` replaces both by one plain variable.
+
+Other pitfalls found in the last runs: `Real.arctan |v||` parses as `Real.arctan |v| ||`, so a closing absolute value after another needs parentheses; `have h : 1126 / 10000 / 2 ^ 53 + ... ≤ ...` without a type ascription is a statement about natural numbers, true by truncation; `F64Bits.toBits_ofBits` leaves `if isNaN w then canonicalNaN else w`; `push_cast` evaluates `2 ^ 53` to a numeral, so `exact` against a hypothesis with the power fails; and `omega` treats `n % 2 ^ 63` and `n % 9223372036854775808` as different atoms, so `Nat.reducePow` must normalize both sides first.  `nlinarith` in a context that holds `scaledMagnitude w = q * 2 ^ (e - 1 + 32)` multiplies that hypothesis and spends minutes in `whnf` on the power; `AsinTheoremMid` now clears it once used.  `rw [← hsqv]` with `hsqv : √t * √t = t` also rewrites the `t` inside `√t`, so the proofs name `√t` with `set` first.
 
 ### `asin` and `acos` drafts
 
@@ -30111,19 +30128,6 @@ The drafts below are committed without a successful build, because each imports 
 
 Not written: the `acos` dispatcher, the exceptional values of both functions (`±0`, `±1`, NaN, `|x| > 1`), and the byte and file theorems for `asin.wasm`.
 
-### `atan2` plan
-
-The code computes `q = |y/x|` rounded, `z = atan q`, and returns `z`, `-z`, `π - (z - π_lo)`, or `(z - π_lo) - π` by the quadrant, with shortcuts for `|y/x| > 2 ^ 60` and, for negative `x`, `|y/x| < 2 ^ -60`.  `AtanTwoArg` gives `arg (x + y i)` as `arctan (y/x)`, `arctan (y/x) + π`, or `arctan (y/x) - π`.  The quotient is a nearest word of `|y/x|` (`F64DivNearest.div_rounded`, a draft), so `|q - Q| ≤ 2 ^ -53 Q` and `|arctan q - arctan Q| ≤ 2 ^ -53 Q/(1 + Q²)`.  The theorem `atan_within_one` does not suffice: one step of `z` around `arctan q` and one step from `arctan q` to `arctan Q` do not compose into two steps near the top of a binade.  The proof therefore needs the error bounds inside the `atan` cases, `|z - arctan q| ≤ E` with `E` between 1.07 and 1.44 spacings of the case's binade (`AtanTheoremCases`) and `1.2 · 2 ^ -53 q` for the polynomial branch.  With these bounds the quadrants `x > 0` need errors below 2.5 spacings (at most 1.5 in the reduced cases, and `2.25 · 2 ^ -53` relative in the polynomial branch), and the quadrants `x < 0` need the rounded criterion with two spacings of `[1, 2)` near `π/2`, where the sum of `E` (1.30), the sensitivity (0.18), and the rounding of `z - π_lo` (0.5) reaches 1.97.  `F64TwoSteps` (written, not built) holds the two-step criteria: from a total error below 2.5 spacings, from a rounded word within two spacings, and a relative form still to write.
-
-| Step | State |
-|---|---|
-| `Complex.arg` through `arctan` (`AtanTwoArg`) | Written, not built |
-| Two-step criteria (`F64TwoSteps`) | Written, not built |
-| Branch equations (`AtanTwoBranches`) | Written, not built |
-| Quotient error from `F64DivBounds.div_real_mixed` and the sensitivity of `arctan` (`AtanTwoQuot`) | Written, not built |
-| Error bounds of the `atan` cases | `AtanTheoremCases` split into `caseX_err` and `caseX`, not built; polynomial branch to do |
-| Quadrants, exceptional values, byte theorem | Not started |
-
 ### Byte and file theorems
 
 `tests/verified/run.sh` checks only the two axiom reports of each file module, so the decode theorem of a module with several exports must depend on all of its byte theorems (`atan` and `atan2` for `atan.wasm`, `asin` and `acos` for `asin.wasm`), for example through `And.intro` of the byte theorems or a conjunction theorem as `Exp2Bytes.exp2_module_accuracy` does.  The entries for `run.sh` take the form `name:TheoremModule:FileModule` with the emitted names `log1p`, `atan`, and `asin`.
@@ -30140,10 +30144,17 @@ The code computes `q = |y/x|` rounded, `z = atan q`, and returns `z`, `-z`, `π 
 | `Log1pTheoremK0`, `F64RoundDouble` | Committed in `256a52ae` | `arc-log1p-3.log` |
 | `F64WithinZero`, `AtanTheoremSpecial` | Committed in `00fbf798` | `arc-log1p-4.log` |
 | `Log1pTheoremTail` | Committed in `eec77684` | `arc-log1p-6.log` |
-| `Log1pTheoremReduce` | Committed in `aa728a24`; the threshold fix changes the hypothesis of `main_reduce` | `arc-log1p-8.log` |
-| `Log1pTheoremCorr`, `Log1pTheorem`, `Log1pTheoremSpecial` | Rebuilding with the threshold fix | `arc-log1p-9.log` |
-| `AsinTheoremSupport` and the other `asin` and `acos` files | Rebuilding after fixes to an ambiguous `Finite` and a cast | `arc-log1p-9.log` |
-| `AcosTheorem`, `AsinTheoremSpecial`, `Log1pBytes`, `Log1pFile`, `AtanBytes` | Written in `scratchpad/w-poly/arc`; the byte theorems wait on the export indices | |
+| `Log1pTheoremReduce` (threshold fix), `Log1pTheoremCorr`, `F64TwoSteps`, `AsinTheoremSupport`, `AsinTheoremRatio` | Committed in `af2767a8` | `arc-log1p-10.log` |
+| `AtanTheoremCases`, `AtanTheoremSmall` (split into error and step theorems), `AsinTheoremSmall`, `AsinTheoremHalf`, `AtanTwoArg`, `F64TwoSteps.within_two_low` | Committed in `4606b2a0` | `arc-mix-11.log`, `arc-mix-12.log` |
+| `Log1pTheorem`, `Log1pTheoremSpecial`, `AtanTwoBranches` | Committed in `8e140f99` | `arc-mix-13.log` |
+| `Log1pBytes` | Committed in `d0d1b873` | `arc-mix-14.log` |
+| `AtanTwoQuot` | Built | `arc-mix-14.log` |
+| `AsinTheoremBig`, `AtanTwoQuot`, `AtanTwoErr` | Committed in `6b5095d6` | `arc-mix-15.log` |
+| `AtanTwoAtan` | Committed in `f6e93096` | `arc-mix-16.log` |
+| `AtanTwoBits`, `AtanTwoTheorem`, `AtanBytes` | Committed in `9a6d5815` | `arc-mix-18.log` |
+| `AtanTwoSpecial` | Committed in `6c879ed0` | `arc-mix-19.log` |
+| `Log1pFile`, `AtanFile` | Committed in `60db9f02` and `62a8397d`; checked against modules written with `tools/Emit.lean` | `arc-file-2.log`, `arc-file-3.log` |
+| `AsinTheoremMid` and the later `asin` and `acos` files, `AsinBytes`, `AsinFile` | Building | `arc-mix-20.log` |
 
 - [x] `atan` within one step.
 - [x] Half-spacing sums, `F64HalfUlp`.
@@ -30151,10 +30162,14 @@ The code computes `q = |y/x|` rounded, `z = atan q`, and returns `z`, `-z`, `π 
 - [x] Nearest rounding of sums, `F64RoundNearest`.
 - [x] `log1p` branches, chains, `ln 2`, and `k = 0`.
 - [x] `log1p` tail and argument reduction for `k ≠ 0`.
-- [ ] `log1p` corrections and main theorem.
+- [x] `log1p` corrections and main theorem.
 - [x] Exceptional values of `atan`.
-- [ ] Exceptional values of `log1p`.
+- [x] Exceptional values of `log1p`.
+- [x] Byte theorem of `log1p`.
 - [ ] First report to the coordinator.
 - [x] Merge `a2c5fea3` (`b8141b87`).
 - [ ] `asin` and `acos` from the drafts in `fa37a25d`.
-- [ ] `atan2`, byte theorems, file theorems, and the lines for `tests/verified/run.sh`.
+- [x] `atan2`, its exceptional values, and the byte and file theorems of `atan.wasm`.
+- [x] File theorem of `log1p`.
+- [ ] Byte and file theorems of `asin.wasm`, then the build of every file on the branch and the report with the lines `log1p:Log1pBytes:Log1pFile`, `atan:AtanBytes:AtanFile`, and `asin:AsinBytes:AsinFile`.
+- [ ] `asinh`, `acosh`, `atanh`.
