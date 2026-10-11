@@ -1,6 +1,6 @@
 # Transcendental functions
 
-Status: 2026-10-10.  The primary checkout is a separate checkout, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The exponential theorem and its consolidation are committed.  The existing numerical algorithms and Verified compiler are unchanged.
+Status: 2026-10-10.  The primary checkout is a separate checkout, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The theorems for `exp`, `log`, `sin`, `cos`, `exp2`, `exp10`, and `log2` are proved and committed, the stage 3 to 6 functions are ported, and the other theorems and ports are in progress.  The Verified compiler is unchanged.
 
 Opus replaced GPT on 2026-10-09 and completed the full exponential theorem, `ExpTheorem.exp_bytes_accuracy`, which covers every finite binary64 input and the decoded WebAssembly bytes.  The sections below on GPT's failure remain as the record the user requested.  On 2026-10-10 the user directed the work on all the remaining functions and delegated the open decisions, which [the journal](devnotes.md#2026-10-10-plan-for-the-remaining-functions) records with the division of the work.
 
@@ -75,14 +75,28 @@ Separate target equalities cover `exp(+0) = exp(-0) = 1`, `exp(+infinity) = +inf
 
 ## Current status
 
-### Existing functions
+### Functions
 
-| Function | Lean implementation and compiler theorem | Full numerical theorem |
-|---|---|---|
-| `exp` | [Exponential implementation](Verified/Examples/Exp.lean), with generated compiler and byte theorems | Proved: [the exponential theorem](Verified/Examples/ExpTheorem.lean). |
-| `log` | [Logarithm implementation](Verified/Examples/Log.lean), with generated compiler and byte theorems | Open. |
-| `expm1`, `tanh` | [Exponential minus one and hyperbolic tangent](Verified/Examples/Tanh.lean), with generated compiler and byte theorems | Open for both functions. |
-| `sin`, `cos` | [Trigonometric implementations](Verified/Examples/Trig.lean), with generated compiler and byte theorems | Open for both functions. |
+| Function | Implementation | Bound | Full numerical theorem |
+|---|---|---|---|
+| `exp` | [Arm](Verified/Examples/Exp.lean) | 1 step | Proved: [the exponential theorem](Verified/Examples/ExpTheorem.lean), `exp_bytes_accuracy`. |
+| `log` | [Arm](Verified/Examples/Log.lean) | 1 step | Proved: [the logarithm theorem](Verified/Examples/LogTheorem.lean), `log_bytes_accuracy`. |
+| `expm1`, `tanh` | [fdlibm](Verified/Examples/Tanh.lean) | 1 step, 2 steps | In progress (track `expm1`). |
+| `sin`, `cos` | [fdlibm, with Payne–Hanek reduction](Verified/Examples/Trig.lean) | 1 step | Proved: [the trigonometric theorems](Verified/Examples/TrigTheorem.lean), `sin_bytes_accuracy` and `cos_bytes_accuracy`, from `TrigSinCos.sin_within` and `cos_within`.  The reduction rests on `TrigDistance.quadrant_distance`: every double from exponent field 1022 on lies more than `2^-63` quadrants from a multiple of `π/2`. |
+| `log1p`, `atan`, `atan2`, `asin`, `acos` | fdlibm: [log1p](Verified/Examples/Log1p.lean), [atan and atan2](Verified/Examples/Atan.lean), [asin and acos](Verified/Examples/Asin.lean) | 1 step; `atan2` 2 steps | Kernel bounds proved; theorems in progress (track `arc`). |
+| `tan` | [fdlibm, with the reduction of `Trig`](Verified/Examples/Tan.lean) | 1 step | In progress (track `trig`). |
+| `sinh`, `cosh` | [fdlibm, calling `Exp.expWith` and `Tanh.expm1`](Verified/Examples/Sinh.lean) | 2 steps, 1 step | Open; follows `exp` and `expm1`. |
+| `asinh`, `acosh`, `atanh` | [fdlibm, calling `Log.logWith` and `Log1p.log1p`](Verified/Examples/Asinh.lean) | 2 steps each | Open; follows `log` and `log1p`. |
+| `exp2`, `exp10` | [Arm, with `Exp.expTable`](Verified/Examples/Exp2.lean) | 1 step | Proved: [the byte theorems](Verified/Examples/Exp2Bytes.lean), `exp2_bytes_accuracy` and `exp10_bytes_accuracy`, from `Exp2Theorem.exp2_within` and `Exp10Theorem.exp10_within`. |
+| `log2` | [Arm](Verified/Examples/Log2.lean) | 1 step | Proved: [the log2 theorem](Verified/Examples/Log2Theorem.lean), `log2_bytes_accuracy`, with `Log2Power.log2_power` for exact powers of two. |
+| `log10` | [fdlibm](Verified/Examples/Log10.lean) | 1 step | In progress (track `log`). |
+| `pow` | [Arm, with `Exp.expTable`](Verified/Examples/Pow.lean) | 1 step | In progress (track `exp2`). |
+| `sinpi`, `cospi`, `tanpi` | [fdlibm, calling the `Trig` and `Tan` kernels](Verified/Examples/Sinpi.lean) | 1 step | Assigned to track `trig` after `tan`. |
+| `erf`, `erfc` | [fdlibm, calling `Exp.expWith`](Verified/Examples/Erf.lean) | 1 step, 4 steps | The real functions are defined and analyzed in `RealErf`; the kernel bounds and theorems are in progress (track `erf`).  `erfc` reaches four steps at `0x1.527f4fb0d9331p+0`, so its bound has no margin. |
+| `tgamma`, `lgamma` | CORE-MATH, with a verified software fused multiply-add | 1 step | Port in progress. |
+| `j0`, `j1`, `y0`, `y1`, `jn`, `yn` | fdlibm | A bound in units of the modulus `√(J² + Y²)`, growing with the order for `jn` and `yn` | Port in progress. |
+
+Each bound is the decided one, from the source's stated error, the sampled test that `tests/verified/run.sh` runs, and the errors of exact models of the ports at the worst inputs that Zimmermann's survey of libm accuracy lists for FreeBSD.  Those inputs raised `atan2` and `asinh` to two steps and `erfc` to four, which the sampled tests had missed.  Every accuracy check now includes the double-precision inputs of Tables 4 to 11 of Gladman, Innocente, Mather, Ozaki, and Zimmermann, [Accuracy of Mathematical Functions](https://members.loria.fr/PZimmermann/papers/accuracy.pdf) (August 2026), and each check's largest distance equals the decided bound.  Where a port calls `Exp.expWith` or `Log.logWith` in place of fdlibm's own `exp` or `log`, the results can differ from fdlibm's in the last bit, and the journal records each such call.
 
 The generated compiler theorems establish that the compiled module computes each Lean algorithm.  The scalar routines have proofs allowing no trap under their runtime and table premises.  [The Verified compiler documentation](Verified/README.md) describes those premises and the generated `denote_eq`, `implements`, `initial`, and `bytes` results.
 
@@ -126,6 +140,10 @@ The user reviewed the statement on 2026-10-10, and the review found four limits.
 
 GPT's reconstruction lemmas now expose the bound before the final rounding (`presum_error`), the residual perturbation (`residual_change`), and the table perturbation (`table_change`).  The compensated subnormal path uses these pieces, and GPT's original statements are proved from them.  Several of GPT's hypotheses were widened where their proofs already allowed it, for example from `abs(a) ≤ 512` to 768 and from `abs(k) ≤ 147457` to `2^30`.
 
+### The logarithm theorem
+
+`LogTheorem.log_bytes_accuracy` has the form of the exponential theorem.  Its `Ready` borrows `logTable` at address 4096 and `logTable2` at 6152, and for every finite `x` with positive value, subnormals included, the word returned by the export `log` satisfies `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits)) w`.  `log_within_one` states the bound for the Lean function, and `log_one`, `log_zero`, `log_pos_infinity`, `log_negative`, and `log_nan` give the exceptional results: `+0` for 1, negative infinity for both zeros, positive infinity for positive infinity, and the canonical NaN for negative inputs, negative infinity, and NaN.  `LogFile.log_file` and `log_file_decode` prove the contents of `build/verified/log.wasm`, and `tests/verified/run.sh` checks them as it checks `exp_file`.  The four limits of the exponential theorem apply in the same way.  The error before the final rounding is about `1.9 · 2^-60` relative on the main path against an allowance of about `2.9 · 2^-60`, and about `0.145 u |x - 1|` against `0.35 u |x - 1|` near 1.
+
 ## Remaining work on the exponential proof
 
 - [x] Review the final theorem's statement and premises with the user.
@@ -143,11 +161,11 @@ The approved full `exp` theorem is proved.  The decisions below set the order, t
 | Stage | Functions | Main theorem work | Status |
 |---|---|---|---|
 | 1 | `exp` | Complete the obligations above and prove the numerical statement about bytes. | Proved: `ExpTheorem.exp_bytes_accuracy`. |
-| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | Implementations and compiler proofs exist.  Proofs started 2026-10-10. |
-| 3 | `log1p`, `tan`, `atan`, `atan2`, `asin`, `acos` | Cancellation, endpoint behavior, reciprocal error, signed zeros, and quadrants.  Trig reduction feeds `tan`; each kernel needs its own approximation proof. | Planned. |
-| 4 | `sinh`, `cosh`, `asinh`, `acosh`, `atanh` | Piecewise formulas using proved exponential, logarithm, and square-root results.  Control cancellation, domains, and intermediate overflow. | Planned. |
-| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | Planned. |
-| 6 | `sinpi`, `cospi`, `tanpi`, `erf`, `erfc` | Reduction in units of pi.  Error-function definitions, approximation and remainder bounds, and the small `erfc` tail. | Planned. |
+| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | `log`, `sin`, and `cos` proved.  `expm1` and `tanh` in progress. |
+| 3 | `log1p`, `tan`, `atan`, `atan2`, `asin`, `acos` | Cancellation, endpoint behavior, reciprocal error, signed zeros, and quadrants.  Trig reduction feeds `tan`; each kernel needs its own approximation proof. | Ported; kernel bounds proved; theorems in progress. |
+| 4 | `sinh`, `cosh`, `asinh`, `acosh`, `atanh` | Piecewise formulas using proved exponential, logarithm, and square-root results.  Control cancellation, domains, and intermediate overflow. | Ported. |
+| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | `exp2`, `exp10`, and `log2` proved; `log10` and `pow` in progress. |
+| 6 | `sinpi`, `cospi`, `tanpi`, `erf`, `erfc` | Reduction in units of pi.  Error-function definitions, approximation and remainder bounds, and the small `erfc` tail. | Ported. |
 | 7 | `gamma`/`tgamma`, `lgamma` | Recurrence, reflection, approximation and asymptotic remainders, poles, sign, and overflow. | Planned.  Names and sign API need agreement. |
 | 8 | Bessel `j0`, `j1`, `y0`, `y1`, then `jn`, `yn` | Real specifications, small-argument and asymptotic errors, recurrence direction and stability, and accumulated error for integer order. | Planned.  Order type and range need agreement. |
 
@@ -160,10 +178,10 @@ The user delegated these decisions on 2026-10-10: Opus follows the precedent of 
 | Decision | Choice |
 |---|---|
 | Inventory and order | The stages in the agenda, with stage 2 first.  Independent tracks run at once. |
-| Numerical guarantees | `F64SignedRounding.WithinSteps 1` for `log`, `expm1`, `sin`, `cos`, and each new function whose implementation allows it, and `WithinSteps 2` for `tanh`, whose sampled results reach two units.  A new function's bound is set at the review of its port. |
+| Numerical guarantees | `F64SignedRounding.WithinSteps n` with the `n` of the table of functions: one step where the implementation allows it, two for `tanh`, `atan2`, `sinh`, `asinh`, `acosh`, and `atanh`, and four for `erfc`.  The Bessel functions get a bound in units of the modulus `√(J² + Y²)`, since no permissively licensed implementation reaches a step bound next to their zeros and the distance of every zero from its nearest doubles has not been computed. |
 | Library placement | `Verified.Examples`, as for `exp`. |
-| Gamma API | Decided when stage 7 starts. |
-| Bessel API | Decided when stage 8 starts. |
+| Gamma API | `tgamma : Float → Float`, `lgammaR : Float → Float × Float` returning `log |Γ x|` and the sign as ±1, as `lgamma_r` defines it, and `lgamma x := (lgammaR x).1`, from CORE-MATH (MIT) with a software fused multiply-add, since WebAssembly has no deterministic one.  fdlibm's `lgamma` errs by up to 4.45e15 units next to its negative zeros. |
+| Bessel API | `j0`, `j1`, `y0`, `y1 : Float → Float`, and `jn`, `yn : UInt64 → Float → Float` with the order read as C's 32-bit `int`, with the special values of POSIX. |
 | Algorithm or compiler changes | Reviewed and recorded in the journal before implementation. |
 | Dependencies | Approval from the user before installing or adding one. |
 
@@ -184,8 +202,9 @@ Both machines are available through Tailscale SSH as `somebody`.  Keep Lean and 
 | Machine | Checkout | State and role |
 |---|---|---|
 | the build host | a separate checkout | Primary branch `transcendentals`.  Holds the integrated proof sources, the journal, and the accepted builds. |
-| the build host | a separate checkout | Secondary checkout of `transcendentals`.  Its earlier state is saved in a backup. |
-| Both | the main checkout | Original setup checkouts with their own journal changes.  Preserve those changes. |
+| the build host | a separate checkout | Secondary checkout of `transcendentals`.  Its earlier state is saved in a backup.  It has no `wasm-tools` or Wasmtime host. |
+| the build host | a separate worktree | A separate clone of the user's main checkout there, on `transcendentals`, with the build copied from the build host.  Lean installed on 2026-10-10 with the user's approval.  It has no `wasm-tools` or Wasmtime host. |
+| All three | the main checkout | The user's checkouts, with their own changes.  Preserve those changes.  On both build hosts the primary and worker checkouts are worktrees of this repository. |
 
 Opus developed the exponential proofs on the build host and used the build host for synchronized builds and an independent rebuild of the proof modules from source.  Independent jobs can use the two machines at once, with one Lean slot per machine.  Agents work in copies of a machine's checkout under a separate worktree, each on its own branch.
 
