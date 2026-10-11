@@ -250,4 +250,9 @@ theorem root1_le_encl (κ x : ℝ) {p q p' q' : ℝ} {cp ep cq eq cp' ep' cq' eq
   have := mul_le_mul_of_nonneg_left (add_le_add a1 a2) hs'
   linarith
 
+#print axioms start_values0
+#print axioms start_values1
+#print axioms root0_le_encl
+#print axioms root1_le_encl
+
 end LeanExe.ProofKit.BesselStart

@@ -262,4 +262,11 @@ theorem sin2_encl : Encl (Real.sin 2) (2 * (sin1Mid * cos1Mid))
   refine (h.congr e).mono ?_
   norm_num [qabs]
 
+#print axioms Encl.mul
+#print axioms Encl.inv
+#print axioms Encl.sqrt
+#print axioms pi_encl
+#print axioms cos2_encl
+#print axioms sin2_encl
+
 end LeanExe.ProofKit.BesselConstants
