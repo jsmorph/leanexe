@@ -1,4 +1,4 @@
-import Verified.Reflect.BoundLemmas
+import Verified.Reflect.FitsLemmas
 import Lean
 
 /-! The meta functions that build the equation between a source expression's allocation bound and

@@ -351,6 +351,13 @@ def RecFunc.boundAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat
   | 0 => fun _ => 0
   | k + 1 => bodyBound func.modes func.body funs (.cons (func.boundAt funs rest k) (rest k))
 
+/-- Whether a function whose code takes the call depth finds its frames with `k` frames
+available: not at 0, and otherwise whether its body does, with its callees at `k - 1` frames. -/
+def Func.fitsAt (func : Func S) (funs : Funs S) (rest : Nat → Fits S) :
+    Nat → Env func.params → Bool
+  | 0 => fun _ => false
+  | k + 1 => func.body.fits funs (rest k)
+
 /-- Whether a recursive function finds its frames with `k` frames available: not at 0, and
 otherwise whether its body does, with itself and its callees at `k - 1` frames. -/
 def RecFunc.fitsAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat → Fits S) :
@@ -363,11 +370,8 @@ available.  A call of a function whose code takes no call depth always does. -/
 def Prog.fitsAt : {S : List Sig} → Prog S → Funs S → Nat → Fits S
   | _, .nil, .nil, _ => .nil
   | _, .cons f rest, .cons _ funs, k =>
-    .cons (if f.depth then
-        match k with
-        | 0 => fun _ => false
-        | k + 1 => f.body.fits funs (rest.fitsAt funs k)
-      else fun _ => true) (rest.fitsAt funs k)
+    .cons (if f.depth then f.fitsAt funs (rest.fitsAt funs) k else fun _ => true)
+      (rest.fitsAt funs k)
   | _, .consRec f rest, .cons M funs, k =>
     .cons (f.fitsAt (.cons M funs) (rest.fitsAt funs) k) (rest.fitsAt funs k)
 
@@ -392,10 +396,6 @@ theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params �
 theorem Prog.fitsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
     (Prog.fitsAt (.cons f rest) (.cons F funs) k).get .here =
-      if f.depth then
-        match k with
-        | 0 => fun _ => false
-        | k + 1 => f.body.fits funs (rest.fitsAt funs k)
-      else fun _ => true := rfl
+      if f.depth then f.fitsAt funs (rest.fitsAt funs) k else fun _ => true := rfl
 
 end Verified

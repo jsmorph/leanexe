@@ -5157,8 +5157,10 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
         · by_cases hlt : d' < depthLimit
           · rw [framesAt_succ hlt, Prog.fitsAt_cons_here]
             simp only [hdep', ↓reduceIte, hlt, decide_true, Bool.true_and]
+            rfl
           · rw [framesAt_eq_zero hlt, Prog.fitsAt_cons_here]
             simp only [hdep', ↓reduceIte, hlt, decide_false, Bool.false_and]
+            rfl
         · rw [framesAt_succ hlt, Prog.boundsAt_cons_here]
           simp only [hdep', ↓reduceIte]
           rfl
@@ -5352,6 +5354,45 @@ theorem entry_correct {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : N
   rw [List.append_nil, hTake, hDrop, List.append_nil]
   exact ⟨heap', hAt', hOwned, hCaps, hRegions, trivial⟩
 
+/-- The entry of a function whose code takes the call depth, at position `e`, computes the function
+without a trap when its calls find their frames, as `Fi` states, and `top` can rise by its bound
+`A` within the cap, and it raises `top` by at most `A`. -/
+theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
+    {F : Env g.params → g.result.denote} {A : Env g.params → Nat} {Fi : Env g.params → Bool}
+    {D : UInt64 → Prop} (hF : FunSpec m g idx F A Fi D) (hd : g.depth = true) (hD : D 0)
+    (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
+    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false m e F
+      (fun x heap store => Fi x = true ∧ heap.Within store m (A x))
+      (fun x heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat + A x) := by
+  intro host store heap ws args hAt hPre hRep hSep hCap
+  have hLength : ws.length = widthSum g.params := hRep.length
+  have hNum : (entryFunction g.params g.result idx typeIdx).numParams = widthSum g.params := by
+    simp only [entryFunction, Function.numParams, flatMap_types_length]
+  apply Runs.of_wp_entry_for (f := entryFunction g.params g.result idx typeIdx)
+    (by rw [hm.imports, List.length_nil, Nat.sub_zero]; exact he) (hImp := by simp [hm.imports])
+  rw [List.take_of_length_le (by rw [hNum, List.length_reverse, hLength]), List.reverse_reverse]
+  have hFlag : ((g.depth && !Fi args) ||
+      ((g.aborts || g.depth) && !decide (heap.Within store m (A args)))) = false := by
+    simp [hd, hPre.1, hPre.2]
+  have hRun := FunSpec.runs hF hm host hAt hRep hSep hCap (d := 0) (fun _ => hD) []
+  rw [hFlag] at hRun
+  simp only [hd, ↓reduceIte] at hRun
+  simp only [entryFunction, List.append_assoc, List.cons_append, List.nil_append,
+    wp_constI64_cons, List.range_eq_range', flatMap_types_length, ← hLength]
+  refine wp_localGets ws 0 _ (fun i hi => by simp [Function.toLocals, hi]) ?_
+  refine wp_call_runs hRun (TrapOK.of_msg fun _ => Iff.rfl) fun st' vs hPost => ?_
+  obtain ⟨out, rfl, heap', hAt', hOwned, hCaps, hRegions, hTop⟩ := hPost
+  rw [wp_nil]
+  have hOut : out.length = g.result.width := by
+    have := hOwned.length; rwa [List.length_reverse] at this
+  have hTake : out.take g.result.types.length = out :=
+    List.take_of_length_le (by rw [Ty.types_length, hOut])
+  have hDrop : ws.reverse.drop (List.flatMap Ty.types g.params).length = [] :=
+    List.drop_of_length_le (by rw [List.length_reverse, flatMap_types_length, hLength])
+  dsimp only [Function.numParams]
+  rw [List.append_nil, hTake, hDrop, List.append_nil]
+  exact ⟨heap', hAt', hOwned, hCaps, hRegions, hTop (by simp [hd, hPre.1])⟩
+
 /-- The correctness theorem for a program without recursion, whose functions' meanings
 `Prog.funs` gives. -/
 theorem Prog.correct_funs {S : List Sig} (prog : Prog S) (h : prog.recFree = true) :
@@ -5377,6 +5418,22 @@ theorem Prog.correct_entryWith {S : List Sig} (prog : Prog S) (funs : Funs S)
       (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f) (fun _ _ _ => True)
       (fun _ _ _ _ _ => True) :=
   entry_correct (compileWith_runtime prog tables wrappers)
+    (prog.correctWith funs h tables wrappers f 0) hd rfl
+    (compileWith_entries prog tables wrappers hj)
+
+/-- `entry_trapFree` at the exported entry of the `j`-th function whose code takes the call depth,
+of a program with tables and wrappers: with 1000 frames, which the entry's depth 0 leaves. -/
+theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
+    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result)) :
+    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
+      (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
+      (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
+        heap.Within store (compileWith prog tables wrappers) ((prog.boundsAt funs (framesAt 0)).get f x))
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + (prog.boundsAt funs (framesAt 0)).get f x) :=
+  entry_trapFree (compileWith_runtime prog tables wrappers)
     (prog.correctWith funs h tables wrappers f 0) hd rfl
     (compileWith_entries prog tables wrappers hj)
 
