@@ -1095,21 +1095,24 @@ def argsTuple : List (Lean.Expr × Bool) → MetaM Lean.Expr
     let x ← if owned then mkAppM ``LeanExe.Pipeline.Moved.mk #[x] else pure x
     mkAppM ``Prod.mk #[x, ← argsTuple rest]
 
-/-- The proof that the bounds `Prog.bounds prog funs` give the function that `fv` names its own
-bound, `f.bound fs (rest.bounds fs) env`, by `bounds_get_there` and `bounds_get_here`, for chains
-`prog` of `Prog.cons` and `Prog.consRec` and `funs` of `Funs.cons`. -/
-partial def boundsChain (prog funs fv env : Lean.Expr) : MetaM Lean.Expr := do
+/-- The proof that the bounds `Prog.boundsAt prog funs k` give the function that `fv` names, whose
+code takes no call depth, its own bound, `f.bound fs (rest.boundsAt fs 0) env`, by
+`bounds_get_there` and `bounds_get_here`, for chains `prog` of `Prog.cons` and `Prog.consRec` and
+`funs` of `Funs.cons`. -/
+partial def boundsChain (prog funs fv env k : Lean.Expr) : MetaM Lean.Expr := do
   let (``Funs.cons, #[S, _, F, fs]) := funs.getAppFnArgs
     | throwError "verified_compile: the meanings {funs}"
   match fv.getAppFnArgs, prog.getAppFnArgs with
   | (``FVar.here, _), (``Prog.cons, #[_, f, rest]) =>
-    return mkAppN (mkConst ``bounds_get_here) #[S, f, rest, F, fs, env]
+    let hd ← mkExpectedTypeHint (← mkEqRefl (mkConst ``Bool.false))
+      (← mkEq (mkApp2 (mkConst ``Func.depth) S f) (mkConst ``Bool.false))
+    return mkAppN (mkConst ``bounds_get_here) #[S, f, rest, F, fs, k, hd, env]
   | (``FVar.there, #[_, g, _, v]), (``Prog.cons, #[_, f, rest]) =>
-    transHint (mkAppN (mkConst ``bounds_get_there) #[S, g, f, rest, F, fs, v, env])
-      (← boundsChain rest fs v env)
+    transHint (mkAppN (mkConst ``bounds_get_there) #[S, g, f, rest, F, fs, k, v, env])
+      (← boundsChain rest fs v env k)
   | (``FVar.there, #[_, g, _, v]), (``Prog.consRec, #[_, f, rest]) =>
-    transHint (mkAppN (mkConst ``bounds_get_thereRec) #[S, g, f, rest, F, fs, v, env])
-      (← boundsChain rest fs v env)
+    transHint (mkAppN (mkConst ``bounds_get_thereRec) #[S, g, f, rest, F, fs, k, v, env])
+      (← boundsChain rest fs v env k)
   | _, _ => throwError "verified_compile: the function reference {fv} in {prog}"
 
 /-- The source expression for the Lean term `e`, with the proof that it means `e`, its type, and
@@ -2059,7 +2062,7 @@ where
       let some (_, getLhs, _) := (← app.hypType `hb).eq?
         | throwError "verified_compile: the argument hb of call_bound"
       let A := getLhs.appArg!
-      let chain ← boundsChain prog c.funs f A
+      let chain ← boundsChain prog c.funs f A (mkNatLit 0)
       let owned := (List.range args.size).map fun i => callee.sig.mode i == .owned &&
         !callee.sig.params[i]!.scalar
       let tuple ← argsTuple (args.toList.zip owned)
@@ -2368,7 +2371,7 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
     let result := resultShape.ty
     let vars := params.toList.zip types
     let env ← envExpr vars
-    let bounds := mkAppN (mkConst ``Prog.bounds) #[sigs, prog, funs]
+    let bounds := mkAppN (mkConst ``Prog.boundsAt) #[sigs, prog, funs, mkNatLit 0]
     let c : Ctx :=
       { base := base.getPrefix, sigs := sigs, funs := funs, callees := callees, vars := vars,
         env := env, bounds := some bounds, prog := some prog }
@@ -2885,9 +2888,9 @@ def wrapperBoundEquation (base name boundName : Name) (callee : Callee)
     -- `Wrapper.bound tables w bounds env` unfolds to `bounds.get w.callee env'`.
     let some get ← unfoldDefinition? ((← getConstInfoDefn boundName).value.beta #[wTuple])
       | throwError "verified_compile: the bound of {name}"
-    let #[_, _, _, fv, env] := get.headBeta.getAppArgs
+    let #[_, _, bounds, fv, env] := get.headBeta.getAppArgs
       | throwError "verified_compile: the bound of {name}: {get}"
-    let chain ← boundsChain progVal funsVal (← whnfR fv) env
+    let chain ← boundsChain progVal funsVal (← whnfR fv) env bounds.appArg!
     let some (_, _, chainRhs) := (← inferType chain).eq?
       | throwError "verified_compile: the bounds of {name}"
     checkBoundTarget m!"{name}" chainRhs target
@@ -3056,7 +3059,7 @@ def elabVerifiedCompile : CommandElab
             $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)), 2 + n + j)
         else
           pure (← `(Verified.ImplementsB.implementsA ((Verified.Prog.correctWith $progId $funsId
-            $meaningId $tablesId $wrappersId $fvar).1 rfl)), 2 + k)
+            $meaningId $tablesId $wrappersId $fvar 0).1 rfl)), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
       liftTermElabM do
@@ -3083,7 +3086,7 @@ def elabVerifiedCompile : CommandElab
         let boundName := base ++ simple ++ `bound
         liftTermElabM do
           let h0 ← Term.elabTerm (← `((Verified.Prog.correctWith $progId $funsId $meaningId
-            $tablesId $wrappersId $fvar).1 rfl)) none
+            $tablesId $wrappersId $fvar 0).1 rfl)) none
           Term.synthesizeSyntheticMVarsNoPostponing
           let h0 ← instantiateMVars h0
           let h0Ty ← instantiateMVars (← inferType h0)
@@ -3098,7 +3101,7 @@ def elabVerifiedCompile : CommandElab
           let .forallE _ envTy _ _ ← inferType boundEnv
             | throwError "verified_compile: the bound {boundEnv}"
           let hfun ← withLocalDeclD `env envTy fun env => do
-            let chain ← boundsChain progVal funsVal fv env
+            let chain ← boundsChain progVal funsVal fv env boundEnv.appFn!.appArg!.appArg!
             let some (_, _, own) := (← inferType chain).eq?
               | throwError "verified_compile: the bounds of {r.name}"
             mkLambdaFVars #[env] (← mkExpectedTypeHint chain (← mkEq (mkApp boundEnv env) own))

@@ -28242,7 +28242,26 @@ its theorem stands.
 
 - [x] Design, review, and the user's two decisions.
 - [ ] B1: fuel-indexed bounds, `fits`, the new trap flag, and `trapFree` for depth functions;
-  theorem: `Recursion.chain` returns without a trap for `n.toNat < 1000`.
+  theorem: `Recursion.chain` returns without a trap for `n.toNat < 1000`.  Its steps:
+  - [x] `Fits`, `Expr.fits`, `loopFits`, `allBelow`, `argsAll`, `Prog.boundsAt`, and
+    `Prog.fitsAt` in `Bound.lean`, unused by the proofs.
+  - [x] `CodeSpec` with a `Fits` argument, the trap flag `!e.fits || (allocating && !Within)`,
+    and the bound on `top` under `e.fits`, in place of `e.depthCalls`, with every rule converted.
+    `seq_spec` and `TrapOK.part` keep their shapes, since "the whole fits" implies "the part
+    fits" as "the part calls a depth function" implied "the whole does".  The loop's invariant
+    carries `Expr.loopFitsRest`, whether the remaining passes find their frames, beside
+    `Expr.loopRest`, and the build reads the elements' frames from `allBelow`.
+  - [x] `ImplementsF`, `ImplementsB` with a frames condition, for the depth branch of `FunSpec`,
+    `Calls` and `CallsAt` with the bounds and frames at `framesAt d = 1000 − d`, and `Prog.calls`
+    by its induction on the frames left.  A function whose code takes no call depth takes its
+    bound with its callees at 0 frames: it calls no depth function, so the frames do not change
+    the value, and a depth function at 0 frames claims nothing, its frames condition false.
+    `Prog.boundsAt` replaces `Prog.bounds`, and the reflector reads the fuel from the bound it
+    rewrites.  `Expr.fits_of_depthCalls` gives the frames of code without depth calls.  The
+    compiled code is unchanged.
+  - [ ] The reflector: `p.f.bound`, `p.f.fits`, their equations, and `p.f.trapFree` for depth
+    functions, with a builder family for `fits`.
+  - [ ] `Recursion.chain`'s theorem, the README, and a review.
 - [ ] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
 - [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.

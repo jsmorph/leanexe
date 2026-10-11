@@ -200,13 +200,202 @@ def Func.bound (func : Func S) (funs : Funs S) (bounds : Bounds S) (args : Env f
     Nat :=
   bodyBound func.modes func.body funs bounds args
 
-/-- The bounds of a program's functions, for the meanings `funs`.  A recursive function's code
-takes the call depth, which the bound does not cover, and gets 0.  The entry of another function
-whose code takes the call depth counts each recursive callee as 0 and bounds nothing, and
-`FunSpec` does not use it. -/
-def Prog.bounds : {S : List Sig} → Prog S → Funs S → Bounds S
-  | _, .nil, .nil => .nil
-  | _, .cons f rest, .cons _ funs => .cons (f.bound funs (rest.bounds funs)) (rest.bounds funs)
-  | _, .consRec _ rest, .cons _ funs => .cons (fun _ => 0) (rest.bounds funs)
+/-- Whether a call of each function with the signatures `S` finds the frames it needs, as
+`Bounds S` holds their bounds. -/
+inductive Fits : List Sig → Type where
+  | nil : Fits []
+  | cons (b : Env g.params → Bool) (rest : Fits S) : Fits (g :: S)
+
+def Fits.get : {S : List Sig} → {g : Sig} → Fits S → FVar S g → Env g.params → Bool
+  | _, _, .cons b _, .here => b
+  | _, _, .cons _ rest, .there h => rest.get h
+
+/-- Whether `b i` holds for every index `i` of a function's parameters. -/
+def argsAll : {n : Nat} → ((i : Fin n) → Bool) → Bool
+  | 0, _ => true
+  | _ + 1, b => b 0 && argsAll fun i => b i.succ
+
+theorem argsAll_false : {n : Nat} → (b : Fin n → Bool) → (i : Fin n) → b i = false →
+    argsAll b = false
+  | _ + 1, b, ⟨0, _⟩, h => by
+    have h0 : b 0 = false := h
+    simp [argsAll, h0]
+  | _ + 1, b, ⟨i + 1, hi⟩, h => by
+    simp only [argsAll, Bool.and_eq_false_iff]
+    exact Or.inr (argsAll_false (fun j => b j.succ) ⟨i, by omega⟩ h)
+
+/-- Whether `f k` holds for every `k` below `n`. -/
+def allBelow (f : Nat → Bool) : Nat → Bool
+  | 0 => true
+  | n + 1 => allBelow f n && f n
+
+theorem allBelow_get {f : Nat → Bool} : {n : Nat} → allBelow f n = true → ∀ k, k < n →
+    f k = true
+  | n + 1, h, k, hk => by
+    simp only [allBelow, Bool.and_eq_true] at h
+    rcases Nat.lt_succ_iff_lt_or_eq.mp hk with hk | rfl
+    · exact allBelow_get h.1 k hk
+    · exact h.2
+
+/-- Whether a loop's iterations from index `i`, with `n` indices left, from the state `s`, find
+their frames: the condition at each state it tests, and the body at each state that passes it,
+until the first state that fails it. -/
+def loopFits {α : Type} (condFits : α → Bool) (cond : α → Bool) (bodyFits : UInt64 → α → Bool)
+    (step : UInt64 → α → α) : Nat → UInt64 → α → Bool
+  | 0, _, _ => true
+  | n + 1, i, s =>
+    condFits s &&
+      if cond s then bodyFits i s && loopFits condFits cond bodyFits step n (i + 1) (step i s)
+      else true
+
+/-- Whether the code of an expression finds the frames it needs, for the functions `funs` whose
+calls find theirs as `fits` states: whether every call that the run makes of a function whose code
+takes the call depth finds its frames.  It follows `Expr.allocs`, with `&&` in place of `+`. -/
+def Expr.fits (funs : Funs S) (fits : Fits S) :
+    {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Bool
+  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .var _, _ => true
+  | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
+  | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
+  | _, _, .and left right, env | _, _, .or left right, env
+  | _, _, .mk left right, env | _, _, .pair left right, env =>
+    left.fits funs fits env && right.fits funs fits env
+  | _, _, .not e, env | _, _, .funary _ e, env | _, _, .toFloat _ e, env
+  | _, _, .toWord _ e, env => e.fits funs fits env
+  | _, _, .ite c thenE elseE, env =>
+    c.fits funs fits env &&
+      if c.denote funs env then thenE.fits funs fits env else elseE.fits funs fits env
+  | _, _, .letE value body, env =>
+    value.fits funs fits env && body.fits funs fits (.cons (value.denote funs env) env)
+  | _, _, .call (g := g) f args, env =>
+    (argsAll fun i => (args i).fits funs fits env) &&
+      if g.depth then fits.get f (Env.ofFn fun i => (args i).denote funs env) else true
+  | _, _, .letPair e body, env =>
+    let p := e.denote funs env
+    e.fits funs fits env && body.fits funs fits (.cons p.2 (.cons p.1 env))
+  | _, _, .loop count init cond body, env =>
+    count.fits funs fits env && init.fits funs fits env &&
+      loopFits (fun s => cond.fits funs fits (.cons s env)) (fun s => cond.denote funs (.cons s env))
+        (fun i s => body.fits funs fits (.cons s (.cons i env)))
+        (fun i s => body.denote funs (.cons s (.cons i env)))
+        (count.denote funs env).toNat 0 (init.denote funs env)
+  | _, _, .size _, _ | _, _, .proj _ _, _ | _, _, .append _ _, _ => true
+  | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
+  | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
+    i.fits funs fits env && v.fits funs fits env
+  | _, _, .push _ v, env => v.fits funs fits env
+  | _, _, .build count elem, env =>
+    count.fits funs fits env &&
+      allBelow (fun k => elem.fits funs fits (.cons (UInt64.ofNat k) env))
+        (count.denote funs env).toNat
+
+theorem argsAny_eq_false : {n : Nat} → {b : Fin n → Bool} → argsAny b = false → ∀ i, b i = false
+  | _ + 1, b, h, ⟨0, _⟩ => by
+    simp only [argsAny, Bool.or_eq_false_iff] at h; exact h.1
+  | _ + 1, b, h, ⟨i + 1, hi⟩ => by
+    simp only [argsAny, Bool.or_eq_false_iff] at h
+    exact argsAny_eq_false (b := fun j => b j.succ) h.2 ⟨i, by omega⟩
+
+theorem argsAll_true : {n : Nat} → {b : Fin n → Bool} → (∀ i, b i = true) → argsAll b = true
+  | 0, _, _ => rfl
+  | _ + 1, b, h => by
+    simp only [argsAll, Bool.and_eq_true]
+    exact ⟨h 0, argsAll_true fun i => h i.succ⟩
+
+theorem allBelow_true {f : Nat → Bool} (h : ∀ k, f k = true) : ∀ n, allBelow f n = true
+  | 0 => rfl
+  | n + 1 => by simp [allBelow, allBelow_true h n, h n]
+
+theorem loopFits_true {α : Type} {cf : α → Bool} {cond : α → Bool} {bf : UInt64 → α → Bool}
+    {step : UInt64 → α → α} (hc : ∀ s, cf s = true) (hb : ∀ i s, bf i s = true) :
+    ∀ n i s, loopFits cf cond bf step n i s = true
+  | 0, _, _ => rfl
+  | n + 1, i, s => by
+    simp only [loopFits, hc, hb, loopFits_true hc hb n, Bool.true_and]
+    split <;> rfl
+
+/-- An expression whose code calls no function that takes the call depth finds its frames. -/
+theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {t : Ty}
+    (e : Expr S Γ t) : e.depthCalls = false → ∀ env, e.fits funs fits env = true := by
+  induction e with
+  | call f args ih =>
+    intro hd env
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
+    simp only [Expr.fits, hd.1, Bool.false_eq_true, ↓reduceIte, Bool.and_true]
+    exact argsAll_true fun i => ih i (argsAny_eq_false hd.2 i) env
+  | loop count init cond body hc hi hcd hb =>
+    intro hd env
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
+    simp only [Expr.fits, hc hd.1.1.1, hi hd.1.1.2, Bool.true_and]
+    exact loopFits_true (fun s => hcd hd.1.2 _) (fun i s => hb hd.2 _) _ _ _
+  | build count elem hc he =>
+    intro hd env
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
+    simp only [Expr.fits, hc hd.1, Bool.true_and]
+    exact allBelow_true (fun k => he hd.2 _) _
+  | _ =>
+    intro hd env
+    simp_all [Expr.depthCalls, Expr.fits]
+
+/-- The bound of a function whose code takes the call depth, with `k` frames available: none at
+0, where the guard traps, and otherwise its body's with its callees at `k - 1` frames, from their
+bounds `rest` at each number of frames. -/
+def Func.boundAt (func : Func S) (funs : Funs S) (rest : Nat → Bounds S) :
+    Nat → Env func.params → Nat
+  | 0 => fun _ => 0
+  | k + 1 => func.bound funs (rest k)
+
+/-- The bound of a recursive function with `k` frames available: none at 0, and otherwise its
+body's, with itself and its callees at `k - 1` frames. -/
+def RecFunc.boundAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat → Bounds S) :
+    Nat → Env func.params → Nat
+  | 0 => fun _ => 0
+  | k + 1 => bodyBound func.modes func.body funs (.cons (func.boundAt funs rest k) (rest k))
+
+/-- Whether a recursive function finds its frames with `k` frames available: not at 0, and
+otherwise whether its body does, with itself and its callees at `k - 1` frames. -/
+def RecFunc.fitsAt (func : RecFunc S) (funs : Funs (func.sig :: S)) (rest : Nat → Fits S) :
+    Nat → Env func.params → Bool
+  | 0 => fun _ => false
+  | k + 1 => func.body.fits funs (.cons (func.fitsAt funs rest k) (rest k))
+
+/-- Whether the calls of a program's functions find their frames when they have `k` frames
+available.  A call of a function whose code takes no call depth always does. -/
+def Prog.fitsAt : {S : List Sig} → Prog S → Funs S → Nat → Fits S
+  | _, .nil, .nil, _ => .nil
+  | _, .cons f rest, .cons _ funs, k =>
+    .cons (if f.depth then
+        match k with
+        | 0 => fun _ => false
+        | k + 1 => f.body.fits funs (rest.fitsAt funs k)
+      else fun _ => true) (rest.fitsAt funs k)
+  | _, .consRec f rest, .cons M funs, k =>
+    .cons (f.fitsAt (.cons M funs) (rest.fitsAt funs) k) (rest.fitsAt funs k)
+
+/-- The bounds of a program's functions, for the meanings `funs`, when their calls have `k`
+frames available.  A function whose code takes no call depth calls no function that does, so its
+bound, with its callees at 0 frames, is the same at every `k`. -/
+def Prog.boundsAt : {S : List Sig} → Prog S → Funs S → Nat → Bounds S
+  | _, .nil, .nil, _ => .nil
+  | _, .cons f rest, .cons _ funs, k =>
+    .cons (if f.depth then f.boundAt funs (rest.boundsAt funs) k
+      else f.bound funs (rest.boundsAt funs 0)) (rest.boundsAt funs k)
+  | _, .consRec f rest, .cons M funs, k =>
+    .cons (f.boundAt (.cons M funs) (rest.boundsAt funs) k) (rest.boundsAt funs k)
+
+
+theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
+    (funs : Funs S) (k : Nat) :
+    (Prog.boundsAt (.cons f rest) (.cons F funs) k).get .here =
+      if f.depth then f.boundAt funs (rest.boundsAt funs) k
+      else f.bound funs (rest.boundsAt funs 0) := rfl
+
+theorem Prog.fitsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
+    (funs : Funs S) (k : Nat) :
+    (Prog.fitsAt (.cons f rest) (.cons F funs) k).get .here =
+      if f.depth then
+        match k with
+        | 0 => fun _ => false
+        | k + 1 => f.body.fits funs (rest.fitsAt funs k)
+      else fun _ => true := rfl
 
 end Verified

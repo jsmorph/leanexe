@@ -1439,7 +1439,7 @@ when the depth has reached the limit, and the rest of the code otherwise. -/
 theorem wp_guardCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
     {s : Locals} {rest : Program} (depth : Bool) {d : UInt64}
     (h0 : depth = true → s.get 0 = some (.i64 d))
-    (hTrap : depth = true → ∀ st, Q (.Trap st "unreachable"))
+    (hTrap : depth = true → ¬d < depthLimit → ∀ st, Q (.Trap st "unreachable"))
     (hNext : (depth = true → d < depthLimit) → wp m rest Q store s host) :
     wp m ((if depth then guardCode else []) ++ rest) Q store s host := by
   cases depth
@@ -1452,7 +1452,7 @@ theorem wp_guardCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
     by_cases hd : depthLimit ≤ d
     · simp (config := { decide := true }) only [ge_iff_le, hd, ↓reduceIte]
       rw [wp_unreachable_cons]
-      exact hTrap rfl _
+      exact hTrap rfl (UInt64.not_lt.mpr hd) _
     · simp (config := { decide := true }) only [ge_iff_le, hd, ↓reduceIte]
       rw [wp_nil]
       dsimp only
