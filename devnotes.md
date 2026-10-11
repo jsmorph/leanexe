@@ -29361,6 +29361,25 @@ The form for `k = 1024` first assumed `exp r ≤ 1 - 2 ^ -40`, which the reducti
 - [x] Reduction for `k = ±1` and for general `k`.
 - [ ] Overflow, saturation, middle, and tiny paths, and the `expm1` theorem.
 
+### Paths and the theorem
+
+`Expm1PathsReduced` combines each reduction with its forms: `path_one_pos` and `path_one_neg` for `k = ±1`, `path_k_pos` for `1 ≤ k ≤ 1024`, and `path_k_neg` for `1 ≤ -k ≤ 56`, each `WithinSteps 1` against `exp x - 1` through `2 ^ k exp(x - k log 2) = exp x`.  The form for `k = 1024` needs `exp r ≤ 1 - 2 ^ -46`, which `overflow_gap` supplies: at or below the overflow threshold, `x - 1024 log 2 ≤ -2 · 10 ^ -14`, checked against `splitLogTwo` with `decide`.  `Expm1PathsEdge` holds the paths without reduction: the kernel for `2 ^ -54 ≤ abs(x) ≤ 0.3466`, `x - 0` below `2 ^ -54`, positive infinity above the threshold, and `-1` from `x ≤ -38` on.  Its `within_rel` is the one-step criterion for a relative error below `(1 - 2 ^ -50) u` at every normal `y`, with the binade taken from `Nat.log2` of the floor of `y 2 ^ 1074`.  `Expm1Theorem` selects the branch, converts the Float operations to words, and applies the paths; `Expm1Special` states the exceptional results.
+
+| Module | Log |
+|---|---|
+| `Verified/Examples/Expm1PathsReduced.lean` | `expm1-pathsreduced-1.log` (`omega` on a `let` variable against its unfolded value), `-2.log` |
+| `Verified/Examples/Expm1PathsEdge.lean` | `expm1-pathsedge-1.log`, `-2.log` (no result within 40 and 15 minutes), probes `expm1-probe-1` to `-5` |
+| `Verified/Examples/Expm1Theorem.lean` | `expm1-theorem-1.log` (stopped while `Expm1PathsEdge` compiled) |
+
+`Expm1PathsEdge` compiled for 40 and then 15 minutes without a result or a diagnostic.  The first version of `within_rel` called `omega` in a context that held `n < 2 ^ 2098`; with that index arithmetic moved into `binade_index`, a probe of `within_rel` alone took two seconds (`expm1-probe-2.log`), but the whole module still ran past twelve minutes.  Output of `lake env lean` redirected to a file appears only at exit, so a probe killed by the timeout shows nothing; `expm1-probe-5.lean` therefore appends a marker to a file before and after each theorem.  The x + tiny comparison in the saturation test also needed a lemma of its own, `add_neg_lt`, since `F64AddBounds.add_real_relative` covers sums below `2 ^ 1023` only and `x` may be any finite number at or below `-38`.
+
+The error budget of `tanh` by composition is as follows.  For `1 ≤ abs(x) < 22` the code returns `1 - 2/(t + 2)` with `t = expm1(2 abs(x))`, and one step of `t` gives one step of `tanh` (the smallest margin factor is 1.31, at `abs(x) = 1.0986`, where `t` crosses 8).  For `abs(x) < 2 ^ -28` the result is `x` and for `abs(x) ≥ 22` it is exact.  For `2 ^ -28 ≤ abs(x) < 1` the code returns `-t/(t + 2)` with `t = expm1(-2 abs(x))`.  There, `WithinSteps 1` of `t` alone gives four steps of `tanh` (the margin factor for three steps is 0.73).  With the pre-rounding bounds of the `expm1` paths (`0.56 u abs(2x)` on the middle path, `0.2451 u` for `k = -1`, and `1.4901 u / 2 ^ m` for `k = -m ≤ -2`) it gives three steps (factor 1.11) but not two (factor 0.74).  Both minima lie at `abs(x) = atanh(1/2) = 0.5493`, where `tanh x` lies just below `1/2` and its spacing halves.  The factors come from a floating-point sweep over 300000 random arguments and the arguments next to each binade boundary of `tanh`, with every bound composed at its worst case.
+
+- [x] Reduced paths.
+- [ ] Unreduced paths: diagnose the compile time of `Expm1PathsEdge`.
+- [ ] `expm1` theorem and exceptional values.
+- [ ] Decision on the number of steps for `tanh`.
+
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
 The ports track works in `/home/somebody/src/lt-ports` on minideb2, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
