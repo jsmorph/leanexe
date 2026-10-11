@@ -171,7 +171,7 @@ theorem k_nat (u : Float) :
 
 /-- A positive normal `u` away from `[√2/2, √2)` as `2 ^ K (1 + f)` through `mainTail`. -/
 theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤ value u.toBits)
-    (hfar : value u.toBits ≤ 7071065 / 10 ^ 7 ∨ 14142132 / 10 ^ 7 ≤ value u.toBits) :
+    (hfar : value u.toBits < 1482910 / 2097152 ∨ 14142132 / 10 ^ 7 ≤ value u.toBits) :
     ∃ (f : Float) (k hu' : UInt64) (K : ℤ),
       mainTail u c (kOf u) = Log1p.log1pTail f c k hu' ∧
       Finite f.toBits ∧ -2929 / 10000 ≤ value f.toBits ∧ value f.toBits ≤ 41422 / 100000 ∧
@@ -324,7 +324,7 @@ theorem main_reduce (u c : Float) (huf : Finite u.toBits) (hpos : 1 / 2 ^ 60 ≤
         rw [div_lt_iff₀ (by positivity)]
         have h5 : (2 : ℝ) ^ 52 + 2 ^ 52 = 2 ^ 53 := by norm_num
         linarith
-      have h5 : (7071065 : ℝ) / 10 ^ 7 < (2 ^ 52 + 0x6a09e * 2 ^ 32) / 2 ^ 53 := by norm_num
+      have h5 : (1482910 : ℝ) / 2097152 = (2 ^ 52 + 0x6a09e * 2 ^ 32) / 2 ^ 53 := by norm_num
       have h6 : ((2 : ℝ) ^ 52 + 0x6a09e * 2 ^ 32) / 2 ^ 53 ≤ (2 ^ 52 + (F : ℝ)) / 2 ^ 53 :=
         div_le_div_of_nonneg_right h3 (by positivity)
       rcases hfar with h | h <;> rw [hvu] at h <;> linarith
