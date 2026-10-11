@@ -29397,9 +29397,13 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 |---|---|
 | `LeanExe/ProofKit/F64NearestDiv.lean` | `expm1-neardiv-1.log` (a cast order in `grid_nearest`, an `if` with equal branches, and a zero divisor), `-2.log` |
 | `LeanExe/ProofKit/F64NearestRelative.lean` | `expm1-neardiv-2.log` |
+| `Verified/Examples/Expm1NearForms.lean` | `expm1-nearforms-1.log`, `-2.log` |
+| `Verified/Examples/Expm1Near.lean` | `expm1-near-1.log` to `-3.log` |
+
+`Expm1NearForms` and `Expm1Near` export the paths that `tanh` uses.  For `x < 0` the result is `-w` for a word `w` within `u S` and `u/2` of a positive `S`, and `S` lies within `0.56 u abs(x) + 16 η` of `1 - exp x` without reduction (`near_middle`), within `0.2451 u` for `k = -1` (`near_one`), and within `0.3726 u` for `abs(x)` from 1.0397 to 38 (`near_k`).  For `2 ≤ x ≤ 44` the result lies within `u S` of a positive `S` within `0.85 u (exp x - 1)` of `exp x - 1` (`near_pos`).  Two failures recurred here.  `linarith` normalizes a hypothesis with a numeric quotient through `norm_num`, which also rewrites the threshold word `UInt64.ofNat (C * 2 ^ 32)` to a literal, so the same word became two atoms (`expm1-near-1.log`); `set` now names each threshold value before the arithmetic.  Rewriting the count `m` to 1 in a goal also rewrote `m` inside the reduced arguments, and unifying them with the unrewritten ones exceeded the recursion limit; `neg_one_near_m` takes `m.toNat = 1` instead.
 
 - [x] Nearest rounding of quotients and the criteria for several steps.
-- [ ] Errors of the `expm1` paths before the last rounding.
+- [x] Errors of the `expm1` paths before the last rounding.
 - [ ] `tanh` branches and the four ranges.
 - [ ] `tanh` theorem and exceptional values.
 - [ ] Byte theorems and the file module.
