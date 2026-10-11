@@ -1,15 +1,18 @@
 import Verified.Examples.Exp2
+import Verified.Examples.WorstCases
 import Verified.Examples.PowerReference
 
 /-! A native check of `Exp2.exp2` and `Exp2.exp10` against references computed with Lean's integers
 through `PowerReference.exp2` and `PowerReference.exp10`, rounded to the nearest double.  Arm states
 errors near 0.51 units in the last place, so each result must lie within one unit of the reference.
 The arguments of `exp2` are evenly spaced values from -1100 to 1100, hashed values over the
-exponents from `2 ^ -60` to `2 ^ 10` with both signs, the integers from -1080 to 1030 and the
-halves between them, and the doubles next to the code's thresholds: `2 ^ -54`, 512, 928, 1024,
--1022, -1074, -1075, and -1076.  Those of `exp10` are evenly spaced values from -400 to 400, hashed
-values over the same exponents, the integers from -330 to 310, and the doubles next to `2 ^ -57`,
-256, `log10 (DBL_MAX)`, -350, and -307.65.  Both sets add the special values.  The check also
+exponents from `2 ^ -60` to `2 ^ 10` with both signs, the integers from -1080 to 1030 and the halves
+between them, and the doubles next to the code's thresholds: `2 ^ -54`, 512, 928, 1024, -1022,
+-1074, -1075, and -1076.  Those of `exp10` are evenly spaced values from -400 to 400, hashed values
+over the same exponents, the integers from -330 to 310, and the doubles next to `2 ^ -57`, 256,
+`log10 (DBL_MAX)`, -350, and -307.65.  Both sets add the special values.  The arguments also include
+those of `WorstCases`, which give the largest known errors of thirteen libraries in Tables 4 to 11
+of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  The check also
 reports, for information, the distance from the reference of the C library's `exp2`, which Lean's
 `Float.exp2` calls.  Lean has no binding of `exp10`.  The check exits with an error at the first
 result further than one unit from the reference.  Run with `lake env lean --run`. -/
@@ -56,14 +59,16 @@ def exp2Args : Array Float :=
   let edges := (#[Float.ofBits 0x3C90000000000000, 512.0, 928.0, 1024.0] |> both) ++
     #[-1022.0, -1074.0, -1075.0, -1076.0]
   evenly 100000 (-1100.0) 1100.0 ++ hashed 100000 101 963 70 ++ integers ++ edges.flatMap near ++
-    special
+    special ++
+    WorstCases.exp2.map Float.ofBits
 
 def exp10Args : Array Float :=
   let integers := (Array.range 641).map fun i => (UInt64.ofNat i).toFloat - 330.0
   let edges := (#[Float.ofBits 0x3C60000000000000, 256.0, Float.ofBits 0x40734413509F79FF,
     350.0, 307.65] |> both)
   evenly 100000 (-400.0) 400.0 ++ hashed 100000 103 963 70 ++ integers ++ edges.flatMap near ++
-    special
+    special ++
+    WorstCases.exp10.map Float.ofBits
 
 end Verified.Examples.Exp2Accuracy
 

@@ -1,16 +1,19 @@
 import Verified.Examples.Erf
+import Verified.Examples.WorstCases
 import Verified.Examples.ErfReference
 
 /-! A native check of `Erf.erf` and `Erf.erfc` against references computed with Lean's integers
 through `ErfReference`, rounded to the nearest double.  fdlibm states an error below one unit in the
 last place for `erf` below 0.84375 and nothing elsewhere, and the check requires the largest
-distances it finds: one unit in the last place for `erf` and two for `erfc`.  The arguments are
-evenly spaced values from -7 to 7 and from 6 to 28, hashed values over the exponents from `2 ^ -60`
-to `2 ^ 6` with both signs, the doubles next to the high words that the code compares with, the
-doubles from 27.2 to 27.3, where `erfc` enters the subnormal range, and the special values.  Lean
-has no binding of the C library's `erf` and `erfc`, so the check reports no library distance.  It
-exits with an error at the first result further from the reference than its bound.  Run with
-`lake env lean --run`. -/
+distances it finds: one unit in the last place for `erf` and four for `erfc`, which it reaches at
+`0x1.527f4fb0d9331p+0`, Musl's input in Table 7.  The arguments are evenly spaced values from -7 to
+7 and from 6 to 28, hashed values over the exponents from `2 ^ -60` to `2 ^ 6` with both signs, the
+doubles next to the high words that the code compares with, the doubles from 27.2 to 27.3, where
+`erfc` enters the subnormal range, and the special values.  Lean has no binding of the C library's
+`erf` and `erfc`, so the check reports no library distance.  The arguments also include those of
+`WorstCases`, which give the largest known errors of thirteen libraries in Tables 4 to 11 of the
+August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It exits with an error at
+the first result further from the reference than its bound.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.ErfAccuracy
 
@@ -60,14 +63,15 @@ def args : Array Float :=
     Float.ofBits 0x7FF8000000000000, 1.0, -1.0, 1e300, -1e300, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x8000000000000001, Float.ofBits 0x7FEFFFFFFFFFFFFF]
   evenly 100000 (-7.0) 7.0 ++ evenly 20000 6.0 28.0 ++ hashed 100000 137 963 67 ++ edges ++
-    evenly 2000 27.2 27.3 ++ special
+    evenly 2000 27.2 27.3 ++ special ++
+    (WorstCases.erf ++ WorstCases.erfc).map Float.ofBits
 
 end Verified.Examples.ErfAccuracy
 
 open Verified.Examples Verified.Examples.Reference Verified.Examples.ErfAccuracy in
 def main : IO UInt32 := do
   for (name, bound, f, reference) in
-      [("erf", 1, Erf.erf, erfReference), ("erfc", 2, Erf.erfc, erfcReference)] do
+      [("erf", 1, Erf.erf, erfReference), ("erfc", 4, Erf.erfc, erfcReference)] do
     let mut ours : Tally := {}
     for x in args do
       let ref := reference x

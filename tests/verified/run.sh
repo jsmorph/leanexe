@@ -58,7 +58,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
 done
 # Each entry names the written module, the theorem module, and the file theorem module.  The file
 # module's second theorem depends on the byte theorem, so its axiom report covers that theorem.
-for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile; do
+for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2File \
+    trig:TrigTheorem:TrigFile log2:Log2Theorem:Log2File log10:Log10Theorem:Log10File; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
