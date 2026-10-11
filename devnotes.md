@@ -30161,7 +30161,7 @@ The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = �
 
 The kernel checks: the start bound at 2 is at most `2^-83`, every piece's bound plus its residual integral stays below `2^-80`, the residuals of the 60-term expansion vanish below degree 59, and the end of the chain plus the jump at 30 plus the tail integral stays below `2^-80`.  Each of `BesselLarge0` and `BesselLarge1` builds in about 80 seconds, almost all of it in these checks.
 
-The polynomials are dyadic rationals with 110 bits after the point, rounded relative to the piece's half-width so that the residual of the rounding stays small on the long pieces; a first layout with plain 110-bit rounding left a residual of `2^-76` on `[18, 22]`.  Hankel's expansion cannot reach `2^-80` below about 29, where its smallest term is near `e^(-2x)`, so the Taylor pieces run to 30.
+The polynomials are dyadic rationals with 110 bits after the point, rounded relative to the piece's half-width so that the residual of the rounding stays small on the long pieces; in the Python model, plain 110-bit rounding left a residual integral of `2^-76` on `[18, 22]`.  Hankel's expansion cannot reach `2^-80` below about 29, where its smallest term is near `e^(-2x)`, so the Taylor pieces run to 30.
 
 | Failure | Cause and fix | Log |
 |---|---|---|
@@ -30175,3 +30175,52 @@ The polynomials are dyadic rationals with 110 bits after the point, rounded rela
 - [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
 - [ ] Comparison with fdlibm's rational approximations.
 - [ ] Lower bounds on the moduli.
+
+## 2026-10-12: Bessel functions, fdlibm's `P` and `Q` and the moduli (track `log`)
+
+### fdlibm's rational approximations
+
+`pzero`, `qzero`, `pone`, and `qone` in `e_j0.c` and `e_j1.c` pick their coefficients by the high word of `x`, from 2, from `b3 = 0x4006DB6D00000000` (about 2.8571), from `b5 = 0x40122E8B00000000` (about 4.5454), and from 8.  `BesselRatio.pFd R S x = 1 + R(z)/(1 + z S(z))` and `qFd q₀ R S x = (R(z)/(1 + z S(z)) + q₀)/x` with `z = 1/x²` are their formulas without rounding, with `q₀ = -1/8` for `qzero` and `3/8` for `qone`, and the coefficient lists are `ratOfWord` of the words that the sources print.  For each range the modules `BesselFd0a`, `BesselFd0b`, `BesselFd1a`, and `BesselFd1b` prove `|P x - pFd R S x| ≤ e/2^68 + 2^-70` and `|Q x - qFd q₀ R S x| ≤ e/2^68 + 2^-70` for every real `x` in the range, the last range from 8 to infinity.  The bounds are absolute.  The table gives each source comment's figure, the largest error that a Python model found at 4,000 points per range, and the proved bound, all as powers of two.
+
+| Function | Comment | Range from 2 | from `b3` | from `b5` | from 8 |
+|---|---|---|---|---|---|
+| `pzero`, measured / proved | `2^-60.26` | `-58.05` / `-57.94` | `-57.41` / `-57.30` | `-60.00` / `-59.88` | `-60.09` / `-59.97` |
+| `qzero`, measured / proved | `2^-61.22` of `x Q` | `-61.13` / `-61.01` | `-61.35` / `-61.23` | `-63.66` / `-63.52` | `-63.96` / `-63.81` |
+| `pone`, measured / proved | `2^-60.06` | `-57.59` / `-57.48` | `-56.99` / `-56.88` | `-59.79` / `-59.67` | `-59.97` / `-59.86` |
+| `qone`, measured / proved | `2^-61.13` of `x Q` | `-60.70` / `-60.58` | `-61.13` / `-61.01` | `-63.27` / `-63.13` | `-63.82` / `-63.66` |
+
+The approximations of `P` exceed their comments by up to a factor of 6.7 below `b5`, and those of `Q` exceed theirs once multiplied by `x`, as the comments state them: at `x = 2`, `x |Q - qFd|` reaches `2^-60.13` for order 0.  The proved bounds lie 8 to 10 percent above the measured maxima, the margin that the kernel's bisection needs, and they are the figures that a proof of `j0`, `y0`, `j1`, and `y1` should use.  In units of the amplitude `√(2/(πx))` of the result, `2^-56.88` is about `2^-4` of a unit in the last place.
+
+The checks run on short polynomials.  `BesselSeg0` and `BesselSeg1` split each piece of `BesselLarge0` and `BesselLarge1` into dyadic segments of width `c/8` to `c/11` and give, on each, a polynomial of degree 16 in `x - c` with dyadic coefficients that lies within `2^-71` of the piece's polynomial (`segOk`, checked with one rational shift per segment).  Hankel's expansion is truncated to degree 26 with dyadic coefficients, within `2^-72` of the 60-term expansion on `[30, ∞)`.  For a segment, `|A - pFd R S| = |E|/W` with `E = A W - W - x^(2d) R(z)` and `W = x^(2d) (1 + z S(z))` polynomials of degree 28, and `ratioCheckI` bisects the segment until the coefficients of `E` and `W` at each center give `|E| ≤ ε W`.  It works in integers: with dyadic coefficients scaled by `2^s` and `h = (M + Z)/2^(t+1)`, the shifted polynomials have integer coefficients in `Z`, so the kernel computes no rational normalizations.
+
+| Module | Content | Build | Log |
+|---|---|---|---|
+| `BesselRatio` | `revEven`, `evenP`, `pFd`, `qFd`, the integer bisection `ratioCheckI` and its soundness, and the comparison lemmas `p_piece`, `q_piece`, `p_asym`, `q_asym` | 7 s | `bes-base-1` |
+| `BesselSeg0`, `BesselSeg1` | 27 segments per order, the truncated expansion, `near_seg`, `near_asym`, and the step lemmas | 61 s, 58 s | `bes-seg0-2`, `bes-seg1-1` |
+| `BesselFd0a`, `BesselFd1a` | Ranges from 2, `b3`, and `b5`: 15 segment checks each for `P` and `Q` | 149 s, 92 s | `bes-fd0a-1`, `bes-fd1a-1` |
+| `BesselFd0b`, `BesselFd1b` | From 8: 14 segment checks and one check of the expansion each for `P` and `Q` | 46 s, 33 s | `bes-fd0b-1`, `bes-fd1b-1` |
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Rational bisection on the pieces | The first check compared fdlibm's functions with the degree-40 piece polynomials in rational arithmetic; the kernel's terms filled the scope's `memory.high` within two minutes and the process was throttled.  I stopped it after 24 minutes. | `bes-fd0-2` |
+| Integer bisection on degree 30 | Truncating the pieces to degree 30 and moving the bisection to integers kept the memory below the limit, but the products of degree 41 and the 16 checks in one module ran to the 60-minute timeout and held the machine's lock for that hour.  The coordinator asked for modules of about 10 minutes, split before they run. | `bes-fd0-4` |
+| Segments | Degree-16 polynomials on short segments cut each check to a few seconds: one check alone took 12 seconds with the imports. | `ProbeSeg.lean.log` |
+| `near_seg` | `linarith` saw `q.1.fA x` in the piece bound and its unfolded `eval` in the goal; stating the bound with `eval` fixed it. | `bes-seg0-1` |
+
+### The moduli
+
+`BesselModulus` bounds `M₀² = J0² + Y0²` and `M₁² = J1² + Y1²` (`bes-base-1`, accepted with `bes-mod-1`).
+
+| Theorem | Statement | Proof |
+|---|---|---|
+| `modulus_product` | `(2/(πx))² ≤ M₀² M₁²` for `x > 0` | The Wronskian and Lagrange's identity `M₀² M₁² - (J1 Y0 - J0 Y1)² = (J0 J1 + Y0 Y1)²` |
+| `near0`, `near1` | `|P - 1| ≤ 1/10 + 2^-80` and `|Q| ≤ 1/5 + 2^-80` for `x ≥ 2`, both orders | The piece bounds and kernel bounds on the polynomials (`shapeOk`) |
+| `modulus0_large`, `modulus1_large` | `(3/4)(2/(πx)) ≤ M² ≤ (13/10)(2/(πx))` for `x ≥ 2` | `M² = (2/(πx))(P² + Q²)` |
+| `modulus0_small` | `1/25 ≤ M₀²` for `0 < x ≤ 2` | `J0 x ≥ 1/5` from 10 terms of the series and a polynomial check |
+| `modulus1_small` | `4/25 ≤ M₁²` for `0 < x ≤ 2` | `J1 x ≥ 2/5` on `[1, 2]` from the series, and `Y1 x ≤ -2/(πx)` on `(0, 1]` because `ln (x/2) + γ < 0`, `J1 ≥ 0`, and the series of `Y1` is positive there |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The lower bounds below 2 are coarse: the true minima on `(0, 2]` are `M₀ (2) ≈ 0.557` and `M₁ (2) ≈ 0.586`, against the proved `1/5` and `2/5`, so a proof of `y0` or `y1` near 2 may need sharper bounds, which the same series and checks would give on shorter intervals.
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [x] Comparison with fdlibm's rational approximations on all four ranges, both orders.
+- [x] Lower bounds on the moduli.
