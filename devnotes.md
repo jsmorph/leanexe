@@ -29367,17 +29367,23 @@ The form for `k = 1024` first assumed `exp r ≤ 1 - 2 ^ -40`, which the reducti
 | Module | Log |
 |---|---|
 | `Verified/Examples/Expm1PathsReduced.lean` | `expm1-pathsreduced-1.log` (`omega` on a `let` variable against its unfolded value), `-2.log` |
-| `Verified/Examples/Expm1PathsEdge.lean` | `expm1-pathsedge-1.log`, `-2.log` (no result within 40 and 15 minutes), probes `expm1-probe-1` to `-5` |
-| `Verified/Examples/Expm1Theorem.lean` | `expm1-theorem-1.log` (stopped while `Expm1PathsEdge` compiled) |
+| `Verified/Examples/Expm1PathsEdge.lean` | `expm1-pathsedge-1.log`, `-2.log` (no result within 40 and 15 minutes), probes `expm1-probe-1` to `-7`, then built in `expm1-theorem-3.log` to `-6.log` |
+| `Verified/Examples/Expm1Theorem.lean` | `expm1-theorem-1.log` to `-6.log` |
+| `Verified/Examples/Expm1Special.lean` | `expm1-special-1.log`, `-2.log` |
 
-`Expm1PathsEdge` compiled for 40 and then 15 minutes without a result or a diagnostic.  The first version of `within_rel` called `omega` in a context that held `n < 2 ^ 2098`; with that index arithmetic moved into `binade_index`, a probe of `within_rel` alone took two seconds (`expm1-probe-2.log`), but the whole module still ran past twelve minutes.  Output of `lake env lean` redirected to a file appears only at exit, so a probe killed by the timeout shows nothing; `expm1-probe-5.lean` therefore appends a marker to a file before and after each theorem.  The x + tiny comparison in the saturation test also needed a lemma of its own, `add_neg_lt`, since `F64AddBounds.add_real_relative` covers sums below `2 ^ 1023` only and `x` may be any finite number at or below `-38`.
+`Expm1PathsEdge` compiled for 40 and then 15 minutes without a result or a diagnostic.  Output of `lake env lean` redirected to a file appears only at exit, so a probe stopped by the timeout shows nothing; the probes therefore append a marker to a file with `IO.FS.withFile` before and after each theorem.  They located the hang in `path_middle`, at `rfl` for `kernel x c false 0 = sub x (sub (mul x (e0 x)) (hxs x))`: `simp [Expm1Words.kernel]` proves the same equation at once, while `rfl` did not finish in six minutes (`expm1-probe-6`).  The first version of `within_rel` also called `omega` in a context that held `n < 2 ^ 2098`; it was rewritten before the probes, with the index arithmetic in `binade_index`, so its share of the delay is unknown.
+
+Two smaller failures recur in `Expm1Theorem`.  `push_cast` rewrote the threshold word `UInt64.ofNat (C * 2 ^ 32)` in one hypothesis to a literal, so `linarith` saw two different atoms for one word; `high_ge_real` and `high_lt_real` now take the threshold as a rational and never state the word.  `omega` treats `(1072734898 : UInt64).toNat` as an atom, so a negated comparison of words is restated on `toNat` with the literal before `omega`.  The saturation test `x + tiny < 0` needed `add_neg_lt`, which reads the sign of the rounded sum from the definition of `add`, because `F64AddBounds.add_real_relative` covers sums below `2 ^ 1023` only and `x` may be any finite number at or below `-38`.
+
+`Expm1Theorem.expm1_within_one` states, for every `x` with `Finite x.toBits`, `WithinSteps 1 (Real.exp (value x.toBits) - 1) (Tanh.expm1 x).toBits`.  The kernel approximation error enters as a proved theorem, `Expm1KernelPoly.kernel_approx`.  `Expm1Special` gives `expm1_zero` (both zeros return themselves), `expm1_pos_infinity`, `expm1_neg_infinity` (`-1`), and `expm1_nan` (the canonical NaN).  All report only `propext`, `Classical.choice`, and `Quot.sound`.
 
 The error budget of `tanh` by composition is as follows.  For `1 ≤ abs(x) < 22` the code returns `1 - 2/(t + 2)` with `t = expm1(2 abs(x))`, and one step of `t` gives one step of `tanh` (the smallest margin factor is 1.31, at `abs(x) = 1.0986`, where `t` crosses 8).  For `abs(x) < 2 ^ -28` the result is `x` and for `abs(x) ≥ 22` it is exact.  For `2 ^ -28 ≤ abs(x) < 1` the code returns `-t/(t + 2)` with `t = expm1(-2 abs(x))`.  There, `WithinSteps 1` of `t` alone gives four steps of `tanh` (the margin factor for three steps is 0.73).  With the pre-rounding bounds of the `expm1` paths (`0.56 u abs(2x)` on the middle path, `0.2451 u` for `k = -1`, and `1.4901 u / 2 ^ m` for `k = -m ≤ -2`) it gives three steps (factor 1.11) but not two (factor 0.74).  Both minima lie at `abs(x) = atanh(1/2) = 0.5493`, where `tanh x` lies just below `1/2` and its spacing halves.  The factors come from a floating-point sweep over 300000 random arguments and the arguments next to each binade boundary of `tanh`, with every bound composed at its worst case.
 
 - [x] Reduced paths.
-- [ ] Unreduced paths: diagnose the compile time of `Expm1PathsEdge`.
-- [ ] `expm1` theorem and exceptional values.
+- [x] Unreduced paths.
+- [x] `expm1` theorem and exceptional values.
 - [ ] Decision on the number of steps for `tanh`.
+- [ ] `tanh` theorem, byte theorems, and the file module.
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
