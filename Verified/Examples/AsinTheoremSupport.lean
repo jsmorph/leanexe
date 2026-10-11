@@ -35,7 +35,7 @@ theorem and_high32 (T : Nat) (hT : T < 2 ^ 64) :
 /-- The word of `s` with its low 32 bits cleared. -/
 theorem trunc_facts (s : UInt64) (hs : 0 < value s) (hsf : Finite s)
     (he : 506 ≤ Wasm.IEEE64.exponent s) :
-    Finite (s &&& 0xFFFFFFFF00000000) ∧
+    CodeLib.IEEE64.Finite (s &&& 0xFFFFFFFF00000000) ∧
       value (s &&& 0xFFFFFFFF00000000) ≤ value s ∧
       value s - value (s &&& 0xFFFFFFFF00000000) ≤ value s / 2 ^ 20 ∧
       ∃ q : ℕ, q < 2 ^ 21 ∧ Wasm.IEEE64.scaledMagnitude (s &&& 0xFFFFFFFF00000000) =
@@ -67,11 +67,9 @@ theorem trunc_facts (s : UInt64) (hs : 0 < value s) (hsf : Finite s)
     linarith
   · rw [hsv.2, htw.2]
     have h1 : ((F : ℕ) : ℝ) - ((F / 2 ^ 32 * 2 ^ 32 : ℕ) : ℝ) < 2 ^ 32 := by
-      have : F - F / 2 ^ 32 * 2 ^ 32 < 2 ^ 32 := by omega
-      have h2 : F / 2 ^ 32 * 2 ^ 32 ≤ F := Nat.div_mul_le_self F _
-      have h3 : ((F - F / 2 ^ 32 * 2 ^ 32 : ℕ) : ℝ) < 2 ^ 32 := by exact_mod_cast this
-      push_cast [h2] at h3
-      exact h3
+      have h2 : F < F / 2 ^ 32 * 2 ^ 32 + 2 ^ 32 := by omega
+      have h3 : ((F : ℕ) : ℝ) < ((F / 2 ^ 32 * 2 ^ 32 : ℕ) : ℝ) + 2 ^ 32 := by exact_mod_cast h2
+      linarith
     have hp : (0 : ℝ) < 2 ^ (e - 1) := by positivity
     rw [div_sub_div_same, ← sub_mul, div_le_div_iff₀ (by positivity) (by positivity)]
     push_cast at h1 ⊢
