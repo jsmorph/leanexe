@@ -65,6 +65,23 @@ theorem copyCost_array {e : Elem} {xs : Array e.denote} {n w : Nat}
     (hn : xs.size = n) (hw : e.width = w) : (Ty.array e).copyCost xs = blockCost (n * w) := by
   subst hn hw; rfl
 
+theorem credit_pair {a b : Ty} {v : a.denote × b.denote} {A B : Nat}
+    (ha : a.credit v.1 = A) (hb : b.credit v.2 = B) : (Ty.pair a b).credit v = A + B := by
+  subst ha hb; rfl
+
+theorem credit_array {e : Elem} {xs : Array e.denote} {n w : Nat}
+    (hn : xs.size = n) (hw : e.width = w) : (Ty.array e).credit xs = creditCost (n * w) := by
+  subst hn hw; rfl
+
+/-- The credit of a loop's first state, charged when the state is paid and the initial value is
+not. -/
+theorem credit_some {c : Bool} {x X : Nat} (h : c = true) (hx : x = X) :
+    (if c = true then x else 0) = X := by
+  subst h hx; rfl
+
+theorem credit_none {c : Bool} {x : Nat} (h : c = false) : (if c = true then x else 0) = 0 := by
+  subst h; rfl
+
 theorem coerce_copy {t : Ty} {s m : Mode} {v : t.denote} {C : Nat}
     (hs : s = .borrowed) (hm : m = .owned) (hc : t.copyCost v = C) : coerceCost t s m v = C := by
   subst hs hm hc; rfl
@@ -407,25 +424,27 @@ theorem loopCost_map {α β : Type} (φ : α → β) {CA : β → Nat} {C : β �
 theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t}
     {N : UInt64} {I : t.denote} {C : t.denote → Bool} {F : UInt64 → t.denote → t.denote}
-    {all : Nat → Bool} {M : Mode} {NA IA KA : Nat} {CA : t.denote → Nat}
+    {all : Nat → Bool} {M : Mode} {ps : Bool} {NA IA KA CR : Nat} {CA : t.denote → Nat}
     {BA : UInt64 → t.denote → Nat}
     (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
     (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid modes paid live init cond body = ps)
     (hn : count.denote funs env = N) (hi : init.denote funs env = I)
     (hc : ∀ s, cond.denote funs (.cons s env) = C s)
     (hb : ∀ i s, body.denote funs (.cons s (.cons i env)) = F i s)
     (hna : count.allocs funs bounds modes paid (fun i => all i || init.uses i) env = NA)
     (hia : init.allocs funs bounds modes paid all env = IA)
     (hka : coerceCost t (init.mode modes) M I = KA)
+    (hcr : (if (ps && !init.paid modes paid all) = true then t.credit I else 0) = CR)
     (hca : ∀ s, cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
       (fun j => j == 0 || shift 1 all j) (.cons s env) = CA s)
     (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes)
-        (false :: false :: paid) (shift 2 all)
+        (ps :: false :: paid) (shift 2 all)
         (.cons s (.cons i env)) + coerceCost t (body.mode (M :: .borrowed :: modes)) M (F i s) =
       BA i s) :
     (Expr.loop count init cond body).allocs funs bounds modes paid live env =
-      NA + IA + KA + loopCost CA C BA F N.toNat 0 I := by
-  subst hall hM hn hi hna hia hka
+      NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
+  subst hall hM hps hn hi hna hia hka hcr
   obtain rfl : (fun s => cond.denote funs (.cons s env)) = C := funext hc
   obtain rfl : (fun i s => body.denote funs (.cons s (.cons i env))) = F :=
     funext fun i => funext (hb i)
@@ -439,25 +458,28 @@ theorem loop_bound {t : Ty} {count : Expr S Γ .word} {init : Expr S Γ t}
 theorem loop_flat_bound {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (C : α → Bool)
     (F : UInt64 → α → α) {count : Expr S Γ .word} {init : Expr S Γ t}
     {cond : Expr S (t :: Γ) .bool} {body : Expr S (t :: .word :: Γ) t} {N : UInt64}
-    {all : Nat → Bool} {M : Mode} {NA IA KA : Nat} {CA : α → Nat} {BA : UInt64 → α → Nat}
+    {all : Nat → Bool} {M : Mode} {ps : Bool} {NA IA KA CR : Nat} {CA : α → Nat}
+    {BA : UInt64 → α → Nat}
     (hall : all = fun i => live i || cond.uses (i + 1) || body.uses (i + 2))
     (hM : (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes)) = M)
+    (hps : Expr.statePaid modes paid live init cond body = ps)
     (hn : count.denote funs env = N) (hi : init.denote funs env = φ I)
     (hc : ∀ s, cond.denote funs (.cons (φ s) env) = C s)
     (hb : ∀ i s, body.denote funs (.cons (φ s) (.cons i env)) = φ (F i s))
     (hna : count.allocs funs bounds modes paid (fun i => all i || init.uses i) env = NA)
     (hia : init.allocs funs bounds modes paid all env = IA)
     (hka : coerceCost t (init.mode modes) M (φ I) = KA)
+    (hcr : (if (ps && !init.paid modes paid all) = true then t.credit (φ I) else 0) = CR)
     (hca : ∀ s, cond.allocs funs bounds (.borrowed :: modes) (false :: paid)
       (fun j => j == 0 || shift 1 all j) (.cons (φ s) env) = CA s)
     (hba : ∀ i s, body.allocs funs bounds (M :: .borrowed :: modes)
-        (false :: false :: paid) (shift 2 all)
+        (ps :: false :: paid) (shift 2 all)
         (.cons (φ s) (.cons i env)) +
           coerceCost t (body.mode (M :: .borrowed :: modes)) M (φ (F i s)) = BA i s) :
     (Expr.loop count init cond body).allocs funs bounds modes paid live env =
-      NA + IA + KA + loopCost CA C BA F N.toNat 0 I := by
-  subst hall hM hn hna hia hka
-  show _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
+      NA + IA + KA + CR + loopCost CA C BA F N.toNat 0 I := by
+  subst hall hM hps hn hna hia hka hcr
+  show _ + _ + _ + _ + loopCost _ _ _ (fun i s => body.denote funs (.cons s (.cons i env))) _ 0
     (init.denote funs env) = _
   rw [hi, loopCost_map φ hb]
   simp only [hc, hb, hca, hba]

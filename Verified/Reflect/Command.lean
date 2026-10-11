@@ -980,11 +980,23 @@ def arraySizeEq (e : Elem) (v u : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) :=
     let h ← mkAppOptM ``Array.size_map #[none, none, some φ, some u]
     return (n, ← mkExpectedTypeHint h (← mkEq sizeV n))
 
-/-- The proof of `t.copyCost v = C` for the source value `v` of the Lean term `u`, with `C` written
-with `blockCost` of the sizes of `u`'s arrays. -/
-partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
+/-- A cost of a value that sums a charge over its arrays: the function, `Ty.copyCost` or
+`Ty.credit`, and the lemmas that state it for an array, as a charge of the array's words, and for a
+pair. -/
+structure ValueCost where
+  fn : Name
+  array : Name
+  pair : Name
+
+def ValueCost.copy : ValueCost := ⟨``Ty.copyCost, ``copyCost_array, ``copyCost_pair⟩
+
+def ValueCost.credit : ValueCost := ⟨``Ty.credit, ``credit_array, ``credit_pair⟩
+
+/-- The proof of `k.fn t v = C` for the source value `v` of the Lean term `u`, with `C` written
+with the charge of `k.array`, such as `blockCost`, of the sizes of `u`'s arrays. -/
+partial def ValueCost.eq (k : ValueCost) (base : Name) (t : Ty) (v u : Lean.Expr) :
     MetaM (Lean.Expr × Lean.Expr) := do
-  let lhs := mkApp2 (mkConst ``Ty.copyCost) (tyExpr t) v
+  let lhs := mkApp2 (mkConst k.fn) (tyExpr t) v
   match t with
   | .elem _ => return (natZero, ← evalEq lhs natZero)
   | .array e =>
@@ -992,7 +1004,7 @@ partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
     let w ← evalNat width
     let hw ← evalEq width w
     let (_, hn) ← arraySizeEq e v u
-    let p ← (← LemmaApp.start ``copyCost_array
+    let p ← (← LemmaApp.start k.array
       [(`e, elemExpr e), (`xs, v), (`hn, hn), (`hw, hw)]).finish
     let (_, cost) ← eqSides p
     let some (a, h) ← mulOne? cost.appArg! | return (cost, p)
@@ -1002,11 +1014,16 @@ partial def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) :
     let P := view.pair u
     let u1 ← projReduce (← mkAppM ``Prod.fst #[P])
     let u2 ← projReduce (← mkAppM ``Prod.snd #[P])
-    let (_, ha) ← copyCostEq base a (← mkAppM ``Prod.fst #[v]) u1
-    let (_, hb) ← copyCostEq base b (← mkAppM ``Prod.snd #[v]) u2
-    let b ← boundOf (← (← LemmaApp.start ``copyCost_pair
+    let (_, ha) ← k.eq base a (← mkAppM ``Prod.fst #[v]) u1
+    let (_, hb) ← k.eq base b (← mkAppM ``Prod.snd #[v]) u2
+    let b ← boundOf (← (← LemmaApp.start k.pair
       [(`a, tyExpr a), (`b, tyExpr b), (`v, v), (`ha, ha), (`hb, hb)]).finish)
     return (b.term, b.proof)
+
+/-- The proof of `t.copyCost v = C` for the source value `v` of the Lean term `u`, with `C` written
+with `blockCost` of the sizes of `u`'s arrays. -/
+def copyCostEq (base : Name) (t : Ty) (v u : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr) :=
+  ValueCost.copy.eq base t v u
 
 /-- The proof of `coerceCost t s M v = K` for the source value `v` of the Lean term `u`, where the
 modes `s` and `M` are closed terms: a copy when `s` is borrowed and `M` owned. -/
@@ -1897,6 +1914,11 @@ where
     app.assign `all allRhs
     app.assign `hall (← mkEqRefl allRhs)
     let _ ← assignMode app `M `hM
+    let some (_, statePaid, _) := (← app.hypType `hps).eq?
+      | throwError "verified_compile: the loop's state flag"
+    let ps := boolConst (← evalBool m!"whether the state of a loop is paid" statePaid)
+    app.assign `ps ps
+    app.assign `hps (← evalEq statePaid ps)
     app.assign `hn (← userProof c rn)
     app.assign `hi (← userProof c ri)
     app.assign `hc (← hc (← app.hypType `hc))
@@ -1904,6 +1926,23 @@ where
     let _ ← app.child `hna rn.bound
     let _ ← app.child `hia ri.bound
     let _ ← assignCoerce c.base app `hka ri.ty init
+    -- The credit of a paid state whose initial value is not paid.
+    let some (_, credit, _) := (← app.hypType `hcr).eq?
+      | throwError "verified_compile: the loop's credit"
+    let (``ite, #[_, charged, _, creditTerm, _]) := credit.getAppFnArgs
+      | throwError "verified_compile: the loop's credit {credit}"
+    let (``Eq, #[_, chargedFlag, _]) := charged.getAppFnArgs
+      | throwError "verified_compile: the loop's credit {credit}"
+    if ← evalBool m!"whether a loop is charged a credit" chargedFlag then
+      let (``Ty.credit, #[_, v]) := creditTerm.getAppFnArgs
+        | throwError "verified_compile: the loop's credit {creditTerm}"
+      let (CR, hx) ← ValueCost.credit.eq c.base ri.ty v init
+      app.assign `CR CR
+      app.assign `hcr (← mkAppM ``credit_some #[← evalEq chargedFlag (boolConst true), hx])
+    else
+      app.assign `CR natZero
+      app.assign `hcr (← mkAppOptM ``credit_none
+        #[some chargedFlag, some creditTerm, some (← evalEq chargedFlag (boolConst false))])
     let (CA, hca) ← condBound (← app.hypType `hca) bounds
     app.assign `CA CA
     app.assign `hca hca

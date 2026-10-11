@@ -1242,6 +1242,20 @@ theorem After.test {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L LC LC
     (a1.holds.step aC.step fun _ _ _ _ _ _ c _ => hKeep c).frame hF le_rfl, hRep,
     a1.apart.transfer a1.holds aC.step hF (fun _ _ _ _ _ _ c _ => hKeep c) hSame⟩
 
+/-- The test of `After.test` keeps the value's regions. -/
+theorem After.test_regions {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {L0 L LC LC' : Nat → Bool} {base base' : Nat} {heap heap1 heap2 : Heap}
+    {store store1 store2 : Store Unit} {s s1 s2 : Locals} {t u : Ty} {mode m2 : Mode} {sl : Slot}
+    {v : t.denote} {c : u.denote} {ws wc : List Value}
+    (a1 : After env slots L0 L base heap store s t mode v heap1 store1 s1 ws)
+    (aC : After (Env.cons v env) (sl :: slots) LC LC' base' heap1 store1 s1 u m2 c heap2 store2
+      s2 wc)
+    (hLC : ∀ i, LC i = true → LC' i = true) :
+    t.regions mode store2 ws v = t.regions mode store1 ws v := by
+  have hKeep : ∀ r, Holds.KeepDying (Env.cons v env) (sl :: slots) LC LC' store1 s1 r :=
+    fun r t' x hx hxo => by rw [hLC _ hx] at hxo; exact nomatch hxo
+  exact (a1.rep.step aC.step fun r _ => hKeep r).2.1
+
 end Cases
 
 /-- The position of a variable's first word among the words of the context's values. -/

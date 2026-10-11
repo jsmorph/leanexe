@@ -28267,7 +28267,7 @@ its theorem stands.
 - [x] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
 - [x] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
-- [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
+- [x] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
 - [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
   condition `i < n → (n − i).toNat < 1000`.
 
@@ -28374,3 +28374,109 @@ is not paid and `paidGrowCost ext` for a paid one.  The room lemmas state the ne
 that `roomEq` built after the fact.  `Grow.pushTwo_bound` states that the second push of
 `pushTwo` is charged `48 + 32` bytes.
 
+### Potential for loop states: plan
+
+A2 lets a loop's state carry potential.  The state is paid when the loop's mode is owned, the body
+extends an array (`Expr.grows`), and the body's value is paid when the state's slot is, which
+`Expr.statePaid` checks by computing `body.paid` with the flag `true` for the state.  The check
+makes the flag consistent: a paid state's body returns a paid value, which becomes the next
+state.  `Expr.paid` of the loop is `Expr.statePaid`, so a variable that `let` binds to the value
+of a loop with a paid state is paid.
+`Expr.grows` is true when an expression holds `push`, `++`, or `insertAt`, so a loop whose body
+extends nothing keeps its bound.  A call's growth counts in A3.
+
+`Expr.allocs` of a loop gives the body the flags `ps :: false :: paid`, with `ps` the state's flag,
+and charges `Ty.credit` of the initial state when `ps` holds and the initial value is not paid.
+`Ty.credit` is `16 (u + 1)` bytes for each array of `u` words, since an owned array's block holds
+at least its length word and words, `8 (u + 1)` bytes, so its potential is at most `2 · 8 (u + 1)`.  `creditCost` in
+`BoundFacts.lean` names it for `bound_eq`.
+
+The proof of `spec_loop` adds the state's potential, `if ps then Ty.pot …`, to the left side of
+the invariant, and each step of the proof carries it:
+
+- The entry: the initial value's potential when it is paid, which the coercion keeps, since a paid
+  value is owned and the coercion of an owned value is the identity, and otherwise the credit, by
+  `Ty.pot_le_credit` for a value held in owned mode.  `After.coerce` states that a coercion from
+  the owned mode keeps the store and the words.
+- The condition: `After.test_regions` states that the condition keeps the state's regions, so
+  `Ty.pot_of_regions` keeps its potential.
+- The body: its `dyingPot` is at most the state's potential when `ps` holds, by
+  `dyingPot_le_head`, and `ps` gives `body.paid`, so the body's postcondition bounds the next
+  state's potential.  `Expr.mode_of_paid` shows that a paid value is owned, so its coercion is the
+  identity.  A state that the body does not use is released, and its potential dropped.
+- The exit: `After.release` keeps the state's regions, so the loop's value has the potential of
+  the last state, and `Expr.paid` of the loop is `ps`.
+
+The reflector evaluates `Expr.statePaid` and `init.paid` in the kernel, gives `loop_bound` the
+flags, and states the credit with `creditCost` or drops it.
+
+A reviewer found the rule sound at every step of `spec_loop` and the credit a bound on the
+potential of any value held in owned mode.  Two changes follow the review.  An `if` is paid when
+both branches are, since both values are then owned and the coercion is the identity, so a body
+such as `if c then acc.push x else acc` gives a paid state.  The loop lemmas take the state's flag
+`ps` and the credit `CR` as arguments, so an unpaid state gives the equation it gave before A2 after
+`normCost`
+drops the summand `0`, and the credit reflects through `ValueCost.eq`, which also gives the copy
+cost, so a flattened state works, as `Insert.pushConserved` shows with an array of structures.  No
+example has a paid pair state, since a pair is not paid.
+
+- [x] `Expr.grows`, `Expr.statePaid`, `Expr.paid` and `Expr.allocs` of a loop, `Ty.credit`, and
+  `creditCost`.
+- [x] `After.test_regions`, `After.coerce` with the identity fact, `Ty.pot_le_credit`, and
+  `Expr.mode_of_paid`.
+- [x] `spec_loop` with the state's potential, and `ite_branch` with a paid `if`.
+- [x] The reflector's loop lemmas and builder.
+- [x] Theorems: `Grow.evens_bound`, `72 + 80 n`, `Grow.repeated_bound`, `72 + n (32 |xs| + 48)`,
+  `Insert.sortInsert_bound`, at most `72 + 80 |xs|`, and `Insert.pushConserved_bound`,
+  `72 + 144 n`; the README.
+- [x] A review of the change, and the suite.  The reviewer found no defect in the statements or
+  the reflector and asked for docstring and README corrections, which are made.  The verified
+  suite passes: 15,854 cases, none failed.
+
+### Potential for loop states: implementation
+
+The proof follows the plan with these lemmas.  `After.test_regions` gives the regions that the
+condition keeps, and `Ty.pot_of_regions` the potential of a value in owned mode whose regions a
+step keeps.  `loop_entry_pot` bounds the first state's potential by a paid initial value's or the
+credit, and `loop_body_pot` carries the potential through a pass and the coercion.  The body's
+dying potential is at most the state's, by `dyingPot_le_head` with `loop_body_dies`, which shows
+that no paid variable other than the state dies in the body.  `pot_keep` carries a paid `if`'s
+potential through its branch.  `loopCost_const` evaluates a loop whose passes cost the same, which
+the example theorems use.
+
+### Potential for parameters and results: plan
+
+A3 lets a function's owned array parameters and its result carry potential.  The flags of a
+function form a table `Flags S`, beside `Bounds S` and `Fits S`, with a list of parameter flags and
+a result flag for each signature, and `Prog.flags` computes it from the bodies.  A parameter is
+paid when its mode is owned, its type holds an array, and the body extends an array
+(`Expr.grows`).  The result is paid when the body's value is paid with the parameters' flags.  A
+recursive function's result flag assumes its own flag `true` for the calls of itself and checks
+that the body's value is then paid, as `Expr.statePaid` does for a loop, and its body's bound uses
+the flag that the check gives.
+
+`Expr.paid` and `Expr.allocs` take the table.  A call is paid when the callee's result flag is
+true.  The call charges `Ty.credit` of each argument at a paid parameter unless the argument is a
+paid owned variable that the call moves, whose potential the caller's dying variables already
+hold.  The callee's specification, a predicate `ImplementsP` beside `ImplementsB` and
+`ImplementsF`, allows a trap when `top` cannot rise by the potential of the paid arguments plus
+the bound, and states that `top` after the call, plus the result's potential when the result is
+paid, is at most `top` before it plus the potential of the paid arguments plus the bound.  A
+function whose code takes the call depth gets the same potentials in `ImplementsF`.  At a
+function's entry the body's flags are the parameter flags, and `dyingPot` holds the paid
+parameters' potential.
+
+The user-facing `p.f.bound` adds `Ty.credit` of each paid argument, and `ImplementsB` follows from
+`ImplementsP`, since an owned argument's potential is at most its credit and the result's potential
+is at least 0, so `p.f.trapFree` keeps its statement.  A function without paid parameters gets
+the bound it gets today.
+
+- [ ] `Flags`, `Prog.flags`, the parameter and result flags, and `Expr.paid` and `Expr.allocs`
+  with the table and the call's credits.
+- [ ] `ImplementsP`, `FunSpec` with it, `FunSpec.runs`, `Calls`, `CallsAt`, and `Prog.calls`.
+- [ ] `spec_call` with the moved arguments' potential, the credits, and the result's potential;
+  `body_code_spec` with the parameter flags.
+- [ ] `ImplementsB` from `ImplementsP`, the entry and wrapper theorems, and `Prog.correct`.
+- [ ] The reflector: the table, the call lemmas, and `p.f.bound` with the credits.
+- [ ] Theorem: `Recursion.fill` bounded linearly, with its frames condition
+  `i < n → (n − i).toNat < 1000`; the README; a review.
