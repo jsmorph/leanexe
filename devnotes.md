@@ -29453,9 +29453,33 @@ The coordinator decided to tighten the bound for `exp` before stating the step c
 The constant `1.033` is `1 + 1/32` with room for the product of the two errors.  In units in the last place the composition gives at most `0.5 + 1/32`, close to Arm's `0.52`.  The relative form is weaker by up to a factor of 2 near the top of a binade, because the half spacing there is `u` times the bottom of the binade, so proofs of step counts should use `exp_near` or `negative_near`.  Below `-708.4` the result is subnormal and above `709.7827` it can overflow, so the ranges cover the normal results.
 
 - [x] Tight bound for `exp`.
-- [ ] `cosh` within one step on every range.
+- [x] `cosh` within one step on every range.
 - [ ] `sinh`: tighten the path `k = 1` of `expm1`, and state three steps if two stay out of reach.
 - [ ] Exact results, byte theorems, and the file module for `sinh` and `cosh`.
+
+### Hyperbolic cosine: one step
+
+`CoshTheorem.cosh_within_one` states `WithinSteps 1 (cosh x) (Sinh.cosh x).toBits` for every finite `x`, and `cosh_pos_infinity`, `cosh_neg_infinity`, and `cosh_nan` give the exceptional results.  Each range has its own module, and the step criteria that the ranges need are two new ProofKit modules.  `F64NearestBand.within_of_band` gives one step when the rounded real lies less than a spacing above the target and less than three quarters of a spacing below it, which covers the first two words of a binade.  `F64NearestHalve.nearest_halve` shows that halving a nearest word keeps it nearest, for targets from `2 ^ -1020` to `2 ^ 1022`.
+
+| Range of `abs(x)` | Module | Argument |
+|---|---|---|
+| below `2 ^ -55` | `CoshSmall.cosh_tiny` | `1 + t` lies within `2 ^ -55 (1 + 2 u)` of `cosh x` |
+| `2 ^ -55` to `0.34657359` | `CoshSmall.cosh_small` | `t` within `2 u` of `exp a - 1` (`expm1_small`), total error below `0.68 u` against `63/64 u` |
+| `0.34657359` to 22 | `CoshMid.cosh_mid` | `V - cosh x = (T - E)/2 (1 - 1/(T E)) + (B - 1/(2 T))`, inside the band of `F64NearestBand` |
+| 22 to `709.7822265625` | `CoshLarge.cosh_large` | the half of `exp` is nearest to a real within `u/64 exp a` of `exp a / 2` |
+| `709.7822265625` to `710.47607421875` | `SinhLdexp.ldexp_within` | exact `a - kln2`, `kln2 - 1799 ln 2` in `[-9e-17, 0]`, `ldexpExp` exact or infinite |
+| above | `CoshTheorem.cosh_within_one` | `1.0e+300 · 1.0e+300` is infinite, and `cosh x` exceeds the overflow threshold |
+
+The middle range needed the tight bound for `exp`.  For `cosh x < 2` the error before the last rounding is at most `u + u E/32 + u/(2 T)`, below `1.48 u`, against the `1.5 u` that the band allows below the target, and above 2 the quotient is small against the spacing.  The earlier budget estimated this range with a relative criterion and found it short, because the relative criterion loses the factor between the spacing and `u` times the target.  `SinhLdexp.ldexp_within` takes any target `y` with `abs(y - exp a / 2) ≤ exp (-a)/2`, so it serves `sinh` as well.  `SinhLdexpBits` computes the words of `frexpExp` and `ldexpExp` from the exponent field `E` and the fraction of `exp (a - kln2)`: the result is `2 ^ 1798` times that value for `E ≤ 248` and positive infinity for `E = 249`.  Below `2 ^ 1024 (1 - 4 u)` the result is nearest to a real within `0.85 u` of the target, and above, `F64FullStep.one_step_binades` in the top binade, whose end is infinity, bounds the error by `3 · 2 ^ 970`.
+
+| Commit | Content |
+|---|---|
+| `f541b1db` | `F64NearestBand`, `SinhWords`, `CoshMid` |
+| `182eace2` | `F64NearestHalve`, `CoshLarge`, `CoshSmall` |
+| `312c1f10` | `SinhLdexpBits`, `SinhLdexp` |
+| `8eda0238` | `CoshTheorem` |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (logs `build/transcendentals/expm1-coshthm-2.log` and the module logs before it).
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
