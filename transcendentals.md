@@ -1,6 +1,6 @@
 # Transcendental functions
 
-Status: 2026-10-10.  The primary checkout is `somebody@minideb1:/home/somebody/src/leanexe-transcendentals`, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The exponential and logarithm theorems are proved and committed, the stage 3 to 6 functions are ported, and the other theorems are in progress.  The Verified compiler is unchanged.
+Status: 2026-10-10.  The primary checkout is `somebody@minideb1:/home/somebody/src/leanexe-transcendentals`, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The theorems for `exp`, `log`, `sin`, `cos`, `exp2`, `exp10`, and `log2` are proved and committed, the stage 3 to 6 functions are ported, and the other theorems and ports are in progress.  The Verified compiler is unchanged.
 
 Opus replaced GPT on 2026-10-09 and completed the full exponential theorem, `ExpTheorem.exp_bytes_accuracy`, which covers every finite binary64 input and the decoded WebAssembly bytes.  The sections below on GPT's failure remain as the record the user requested.  On 2026-10-10 the user directed the work on all the remaining functions and delegated the open decisions, which [the journal](devnotes.md#2026-10-10-plan-for-the-remaining-functions) records with the division of the work.
 
@@ -82,16 +82,16 @@ Separate target equalities cover `exp(+0) = exp(-0) = 1`, `exp(+infinity) = +inf
 | `exp` | [Arm](Verified/Examples/Exp.lean) | 1 step | Proved: [the exponential theorem](Verified/Examples/ExpTheorem.lean), `exp_bytes_accuracy`. |
 | `log` | [Arm](Verified/Examples/Log.lean) | 1 step | Proved: [the logarithm theorem](Verified/Examples/LogTheorem.lean), `log_bytes_accuracy`. |
 | `expm1`, `tanh` | [fdlibm](Verified/Examples/Tanh.lean) | 1 step, 2 steps | In progress (track `expm1`). |
-| `sin`, `cos` | [fdlibm, with Payne–Hanek reduction](Verified/Examples/Trig.lean) | 1 step | In progress (track `trig`). |
+| `sin`, `cos` | [fdlibm, with Payne–Hanek reduction](Verified/Examples/Trig.lean) | 1 step | Proved: [the trigonometric theorems](Verified/Examples/TrigTheorem.lean), `sin_bytes_accuracy` and `cos_bytes_accuracy`, from `TrigSinCos.sin_within` and `cos_within`.  The reduction rests on `TrigDistance.quadrant_distance`: every double from exponent field 1022 on lies more than `2^-63` quadrants from a multiple of `π/2`. |
 | `log1p`, `atan`, `atan2`, `asin`, `acos` | fdlibm: [log1p](Verified/Examples/Log1p.lean), [atan and atan2](Verified/Examples/Atan.lean), [asin and acos](Verified/Examples/Asin.lean) | 1 step; `atan2` 2 steps | Kernel bounds proved; theorems in progress (track `arc`). |
-| `tan` | [fdlibm, with the reduction of `Trig`](Verified/Examples/Tan.lean) | 1 step | Kernel bound proved; follows `sin` and `cos`. |
+| `tan` | [fdlibm, with the reduction of `Trig`](Verified/Examples/Tan.lean) | 1 step | In progress (track `trig`). |
 | `sinh`, `cosh` | [fdlibm, calling `Exp.expWith` and `Tanh.expm1`](Verified/Examples/Sinh.lean) | 2 steps, 1 step | Open; follows `exp` and `expm1`. |
 | `asinh`, `acosh`, `atanh` | [fdlibm, calling `Log.logWith` and `Log1p.log1p`](Verified/Examples/Asinh.lean) | 2 steps each | Open; follows `log` and `log1p`. |
 | `exp2`, `exp10` | [Arm, with `Exp.expTable`](Verified/Examples/Exp2.lean) | 1 step | Proved: [the byte theorems](Verified/Examples/Exp2Bytes.lean), `exp2_bytes_accuracy` and `exp10_bytes_accuracy`, from `Exp2Theorem.exp2_within` and `Exp10Theorem.exp10_within`. |
-| `log2` | [Arm](Verified/Examples/Log2.lean) | 1 step | In progress (track `log`). |
+| `log2` | [Arm](Verified/Examples/Log2.lean) | 1 step | Proved: [the log2 theorem](Verified/Examples/Log2Theorem.lean), `log2_bytes_accuracy`, with `Log2Power.log2_power` for exact powers of two. |
 | `log10` | [fdlibm](Verified/Examples/Log10.lean) | 1 step | In progress (track `log`). |
 | `pow` | [Arm, with `Exp.expTable`](Verified/Examples/Pow.lean) | 1 step | In progress (track `exp2`). |
-| `sinpi`, `cospi`, `tanpi` | [fdlibm, calling the `Trig` and `Tan` kernels](Verified/Examples/Sinpi.lean) | 1 step | Open. |
+| `sinpi`, `cospi`, `tanpi` | [fdlibm, calling the `Trig` and `Tan` kernels](Verified/Examples/Sinpi.lean) | 1 step | Assigned to track `trig` after `tan`. |
 | `erf`, `erfc` | [fdlibm, calling `Exp.expWith`](Verified/Examples/Erf.lean) | 1 step, 4 steps | The real functions are defined and analyzed in `RealErf`; the kernel bounds and theorems are in progress (track `erf`).  `erfc` reaches four steps at `0x1.527f4fb0d9331p+0`, so its bound has no margin. |
 | `tgamma`, `lgamma` | CORE-MATH, with a verified software fused multiply-add | 1 step | Port in progress. |
 | `j0`, `j1`, `y0`, `y1`, `jn`, `yn` | fdlibm | A bound in units of the modulus `√(J² + Y²)`, growing with the order for `jn` and `yn` | Port in progress. |
@@ -161,10 +161,10 @@ The approved full `exp` theorem is proved.  The decisions below set the order, t
 | Stage | Functions | Main theorem work | Status |
 |---|---|---|---|
 | 1 | `exp` | Complete the obligations above and prove the numerical statement about bytes. | Proved: `ExpTheorem.exp_bytes_accuracy`. |
-| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | `log` proved.  The others in progress. |
+| 2 | Existing `log`, `expm1`, `tanh`, `sin`, `cos` | Log reduction and the near-one path.  Compensated exponential-minus-one arithmetic.  Hyperbolic saturation.  Both trig reduction methods, quadrant selection, and kernel errors, including arguments near zeros and the largest finite inputs. | `log`, `sin`, and `cos` proved.  `expm1` and `tanh` in progress. |
 | 3 | `log1p`, `tan`, `atan`, `atan2`, `asin`, `acos` | Cancellation, endpoint behavior, reciprocal error, signed zeros, and quadrants.  Trig reduction feeds `tan`; each kernel needs its own approximation proof. | Ported; kernel bounds proved; theorems in progress. |
 | 4 | `sinh`, `cosh`, `asinh`, `acosh`, `atanh` | Piecewise formulas using proved exponential, logarithm, and square-root results.  Control cancellation, domains, and intermediate overflow. | Ported. |
-| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | `exp2` and `exp10` proved; `log2`, `log10`, and `pow` in progress. |
+| 5 | `exp2`, `exp10`, `log2`, `log10`, `pow` | Base-specific reduction and exact powers.  For `pow`, logarithm-tail and product error, negative-base integer/parity classification, and exceptional inputs. | `exp2`, `exp10`, and `log2` proved; `log10` and `pow` in progress. |
 | 6 | `sinpi`, `cospi`, `tanpi`, `erf`, `erfc` | Reduction in units of pi.  Error-function definitions, approximation and remainder bounds, and the small `erfc` tail. | Ported. |
 | 7 | `gamma`/`tgamma`, `lgamma` | Recurrence, reflection, approximation and asymptotic remainders, poles, sign, and overflow. | Planned.  Names and sign API need agreement. |
 | 8 | Bessel `j0`, `j1`, `y0`, `y1`, then `jn`, `yn` | Real specifications, small-argument and asymptotic errors, recurrence direction and stability, and accumulated error for integer order. | Planned.  Order type and range need agreement. |
