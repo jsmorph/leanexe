@@ -29383,8 +29383,26 @@ The error budget of `tanh` by composition is as follows.  For `1 ≤ abs(x) < 22
 - [x] Reduced paths.
 - [x] Unreduced paths.
 - [x] `expm1` theorem and exceptional values.
-- [ ] Decision on the number of steps for `tanh`.
-- [ ] `tanh` theorem, byte theorems, and the file module.
+- [x] Decision on the number of steps for `tanh`.
+
+### Hyperbolic tangent
+
+The coordinator chose three steps for `tanh`.  Sampling and the worst inputs of the checks reach two steps, so the gap between two and three lies in the analysis: composed at their worst cases, the bounds leave a margin factor of 0.74 for two steps and 1.11 for three on `2 ^ -28 ≤ abs(x) < 1`, both at `abs(x) = atanh(1/2)`.  The final theorem states `WithinSteps 3` for every finite input, and the parts prove the tightest counts they reach: one step for `abs(x) < 2 ^ -28` and for `1 ≤ abs(x) < 22`, the exact result from 22 on, and three steps between.  The plan follows the budget of the `expm1` paths section.
+
+The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`.  The first is the error of each `expm1` path before its last rounding together with the half spacing of that rounding.  The second is that the quotient rounds to nearest, which `F64NearestDiv.div_nearest` states: `Wasm.IEEE64.div` rounds the scaled quotient with `roundQuotient` on the grid of its binade (`roundQuotient_error` bounds the rounding by half a unit), and `grid_nearest` compares the grid point with every scaled magnitude of a word, as `F64NearestSum.roundedMagnitude_nearest` does for sums.  With `P = 1 - exp(-2 abs(x))`, `C` the value of `-t`, and `D` the value of `t + 2`, the quotient error is `(2 (C - P) - P (D - 2 + C)) / (D (2 - P))`, so its relative error is at most `(2 E + P u) / (D P)` where `E` bounds `abs(C - P)`.
+
+`F64NearestRelative` gives the step criteria for several steps.  `steps_rel_k` chains the one-step criterion: if `abs(s - y) ≤ k (1 - 2 ^ -50) u min(y, s)`, the points `y + j (s - y) / k` split the distance into `k` parts of one step each, by induction on `k`.  `within_rel_of` accepts the simpler hypothesis `abs(s - y) ≤ (k - 1/16) u y` for `y` in `[2 ^ -1021, 2 ^ 1022)`.
+
+| Module | Log |
+|---|---|
+| `LeanExe/ProofKit/F64NearestDiv.lean` | `expm1-neardiv-1.log` (a cast order in `grid_nearest`, an `if` with equal branches, and a zero divisor), `-2.log` |
+| `LeanExe/ProofKit/F64NearestRelative.lean` | `expm1-neardiv-2.log` |
+
+- [x] Nearest rounding of quotients and the criteria for several steps.
+- [ ] Errors of the `expm1` paths before the last rounding.
+- [ ] `tanh` branches and the four ranges.
+- [ ] `tanh` theorem and exceptional values.
+- [ ] Byte theorems and the file module.
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
