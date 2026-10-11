@@ -30145,3 +30145,33 @@ All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and th
 ### Plan for the large-argument bounds
 
 The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = √(πx/2) Y`, Bessel's equation becomes `U'' = -(1 + κ/x²) U` with `κ = 1/4` for order 0 and `κ = -3/4` for order 1, and `P = U cos θ + V sin θ`, `Q = V cos θ - U sin θ` satisfy `P'' = 2Q' - (κ/x²) P` and `Q'' = -2P' - (κ/x²) Q`.  For an approximation `(A, B)` with residuals `r₁`, `r₂`, the energy `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` of the errors `p = P - A` and `q = Q - B` satisfies `(√E)' ≤ |r₁| + |r₂|` when `κ ≥ 0`, and a weighted energy does the same for `κ < 0`.  So the errors stay within their value at `x = 2` plus the residuals' integral, which ties the series values at 2 to the asymptotic expansion at infinity without the connection formulas.  The approximations are Taylor polynomials of degree 40 on `[2, 3]`, `[3, 4.5]`, `[4.5, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms on `[30, ∞)`.  A Python model of this chain, with the start bound `2^-84`, ends at `2^-83.4` for order 0 and `2^-81.7` for order 1.  The same model finds fdlibm's approximation errors at about `2^-57` for `P` and `2^-59.6` for `x Q`, above the `2^-60.26` and `2^-61.22` that `e_j0.c` and `e_j1.c` state, so the comparison will report the proved values.
+
+## 2026-10-11: Bessel functions, bounds on `P` and `Q` over `[2, ∞)` (track `log`)
+
+`tools/leanrun` accepted the bounds on `P0`, `Q0`, `P1`, and `Q1` (`bes-large-4.log`, 3,456 jobs): on `[2, ∞)` each lies within `2^-80` of an explicit approximation, a Taylor polynomial of degree 40 on each of `[2, 3]`, `[3, 9/2]`, `[9/2, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms in `1/x` on `[30, ∞)`.  The method follows the plan of the previous section.  It uses no integral representation of the Bessel functions and no connection formula; the series values at `x = 2` and the energy estimate carry the asymptotic phase and amplitude.
+
+| Module | Content |
+|---|---|
+| `BesselPQ` | `P0 = √(πx/2) (J0 cos θ0 + Y0 sin θ0)`, `Q0 = √(πx/2) (Y0 cos θ0 - J0 sin θ0)` with `θ0 = x - π/4`, and the same for order 1 with `θ1 = x - 3π/4`; the large-argument forms of `J` and `Y` (`J0_large` and the others), the moduli `J² + Y² = (2/(πx)) (P² + Q²)`, and the system `P'' = 2Q' - (κ/x²) P`, `Q'' = -2P' - (κ/x²) Q` with explicit derivatives (`P0_system`, `P1_system`) |
+| `BesselEnergy` | For `κ ≥ 0`, `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` has `(√E)' ≤ |r₁| + |r₂|`; for `κ < 0` and `1 + κ/x² ≥ 81/100`, the energy with the first two terms divided by `1 + κ/x²` has `(√E)' ≤ (10/9)(|r₁| + |r₂|)` |
+| `BesselChain`, `BesselAsym` | Pieces in `x - c` and the asymptotic piece in `1/x`; residuals as kernel-computed polynomials, jumps at the junctions as rational bounds, and the induction over the pieces (`chain0_sound`, `chain1_sound`) |
+| `BesselConstants` | Enclosure arithmetic (`Encl`), `π` by Machin's formula within `2^-190`, `cos 2` and `sin 2` |
+| `BesselStart` | `P`, `Q`, and their derivatives at 2 within `2^-86` of dyadic centers, from the four series at `z = 1`, `γ`, `1/π`, `√(π/2)`, `cos 2`, and `sin 2` |
+| `BesselLarge0`, `BesselLarge1` | The data of the pieces, the kernel checks, and `pieces_bound` and `asym_bound` |
+
+The kernel checks: the start bound at 2 is at most `2^-83`, every piece's bound plus its residual integral stays below `2^-80`, the residuals of the 60-term expansion vanish below degree 59, and the end of the chain plus the jump at 30 plus the tail integral stays below `2^-80`.  Each of `BesselLarge0` and `BesselLarge1` builds in about 80 seconds, almost all of it in these checks.
+
+The polynomials are dyadic rationals with 110 bits after the point, rounded relative to the piece's half-width so that the residual of the rounding stays small on the long pieces; a first layout with plain 110-bit rounding left a residual of `2^-76` on `[18, 22]`.  Hankel's expansion cannot reach `2^-80` below about 29, where its smallest term is near `e^(-2x)`, so the Taylor pieces run to 30.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `HasDerivAt.inv`, `.div` | The module did not import `Mathlib.Analysis.Calculus.Deriv.Inv`; dot notation then looked in `HasFDerivAtFilter`. | `bes-p2-1` |
+| Pi functions | `HasDerivAt.mul`, `.pow`, and `.div` state their functions as pointwise products such as `(p' - q) ^ 2`; `simp only [Pi.add_apply, Pi.sub_apply, Pi.pow_apply]` before `ring` removed them. | `bes-p2-1` |
+| Weighted energy | `field_simp` could not clear `1 + κ/x²` without `x² + κ ≠ 0`, which a short lemma supplies. | `bes-p2-1` |
+| Elaboration of mixed casts | In `(pc.b : ℝ) ≤ pc.c + pc.H`, Lean elaborated the sum in `ℚ`; explicit casts on each term fixed it. | `bes-chain-1` |
+| Name clash | `Encl.abs_le` hid `abs_le` inside the `Encl` namespace; it became `Encl.abs_bound`. | `bes-p2-1` |
+| Start values | `Encl.congr` with an unknown target left a metavariable for `rw`; the target is now given as `(v := Y0 2)`. | `bes-asym-3` |
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [ ] Comparison with fdlibm's rational approximations.
+- [ ] Lower bounds on the moduli.
