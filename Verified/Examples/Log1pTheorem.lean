@@ -240,10 +240,9 @@ theorem main_finish (x u c : Float) (hdom : -1 < value x.toBits) (hu : Finite u.
   exact tail_main f c k hu' K _ et hff hf1 hf2 hhu1 hhu2 hvz hk0 hkd hA (K_cases K hK1 hK2 hK0)
     hc ht het
 
-/-- The main path from `2 ^ 53` on: `u = x`, `c = 0`, and `K ≥ 53`. -/
-theorem big_finish (x : Float) (hx : Finite x.toBits) (h53 : 2 ^ 53 ≤ value x.toBits) :
-    F64SignedRounding.WithinSteps 1 (Real.log (1 + value x.toBits))
-      (mainTail x 0.0 (kOf x)).toBits := by
+/-- The main path from `2 ^ 53` on: `u = x`, `c = 0`, and `K ≥ 53`; the error bound. -/
+theorem big_near (x : Float) (hx : Finite x.toBits) (h53 : 2 ^ 53 ≤ value x.toBits) :
+    F64Near.Near (mainTail x 0.0 (kOf x)).toBits (Real.log (1 + value x.toBits)) (6 / 2 ^ 54) := by
   have hpos : (1 : ℝ) / 2 ^ 60 ≤ value x.toBits := by
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 60 ≤ 2 ^ 53)]
   obtain ⟨f, k, hu', K, heq, hff, hf1, hf2, hvu, hhu1, hhu2, hvz, hk0, hkK, hK1, hK2, hK0⟩ :=
@@ -273,8 +272,38 @@ theorem big_finish (x : Float) (hx : Finite x.toBits) (h53 : 2 ^ 53 ≤ value x.
     (by linarith), ht]
   have hK53' : (50 : ℝ) ≤ K := by exact_mod_cast (show (50 : ℤ) ≤ K by omega)
   have hK2' : (K : ℝ) ≤ 1100 := by exact_mod_cast (show K ≤ 1100 by omega)
-  exact tail_big f 0.0 k hu' K _ _ hff hf1 hf2 hhu1 hhu2 hvz hk0 hkd hA hK53' hK2' hc htb
+  exact tail_big_near f 0.0 k hu' K _ _ hff hf1 hf2 hhu1 hhu2 hvz hk0 hkd hA hK53' hK2' hc htb
     ((le_abs_self _).trans (htb.trans (by norm_num)))
+
+/-- The main path from `2 ^ 53` on: `u = x`, `c = 0`, and `K ≥ 53`. -/
+theorem big_finish (x : Float) (hx : Finite x.toBits) (h53 : 2 ^ 53 ≤ value x.toBits) :
+    F64SignedRounding.WithinSteps 1 (Real.log (1 + value x.toBits))
+      (mainTail x 0.0 (kOf x)).toBits := by
+  have hv0 : 0 < value x.toBits := by linarith [(by norm_num : (0 : ℝ) < 2 ^ 53)]
+  have hvb := F64Magnitude.finite_below_overflow x.toBits
+    (F64Magnitude.lt_limit_of_finite x.toBits hx (F64Exact.sign_of_pos _ hv0))
+  have hl2 := ln2_bounds
+  have hlo : 53 * Real.log 2 ≤ Real.log (1 + value x.toBits) := by
+    have h1 : Real.log ((2 : ℝ) ^ (53 : ℕ)) = (53 : ℕ) * Real.log 2 := Real.log_pow 2 53
+    have h2 : Real.log ((2 : ℝ) ^ (53 : ℕ)) ≤ Real.log (1 + value x.toBits) :=
+      Real.log_le_log (by positivity) (by linarith)
+    rw [h1] at h2
+    exact_mod_cast h2
+  have hhi : Real.log (1 + value x.toBits) ≤ 1025 * Real.log 2 := by
+    have h1 : Real.log ((2 : ℝ) ^ (1025 : ℕ)) = (1025 : ℕ) * Real.log 2 := Real.log_pow 2 1025
+    have h2 : Real.log (1 + value x.toBits) ≤ Real.log ((2 : ℝ) ^ (1025 : ℕ)) :=
+      Real.log_le_log (by linarith) (by linarith [(by norm_num : (1 : ℝ) + 2 ^ 1024 ≤ 2 ^ 1025)])
+    rw [h1] at h2
+    exact_mod_cast h2
+  have hB : value (UInt64.ofNat (1028 * 2 ^ 52)) = 32 := by
+    rw [F64PositiveSpacing.boundary_value 1028 (by norm_num) (by norm_num)]
+    norm_num
+  have hy0 : 0 < Real.log (1 + value x.toBits) := by linarith
+  refine (big_near x hx h53).within_one 1028 (by norm_num) (by norm_num) ?_ (by norm_num) ?_
+  · rw [hB, abs_of_pos hy0]
+    linarith
+  · rw [abs_of_pos hy0]
+    linarith [(by norm_num : (1025 : ℝ) * (6931471808 / 10 ^ 10) < 2 ^ 1023)]
 
 theorem word_value (w : UInt64) (q : ℚ) (h : PolyBound.ratOfWord w = q) : value w = (q : ℝ) := by
   rw [← PolyBound.ratOfWord_cast, h]
