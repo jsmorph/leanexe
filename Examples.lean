@@ -114,6 +114,8 @@ import Examples.Host
 import Examples.Increment.Cases
 import Examples.Increment.Program
 import Examples.Increment.Verify
+import Examples.Lcg.Period
+import Examples.Lcg.Program
 import Examples.Lists.Cases
 import Examples.Lists.Module
 import Examples.Lists.Verify
@@ -124,10 +126,13 @@ import Examples.Mean.Cases
 import Examples.Mean.Module
 import Examples.Mean.Program
 import Examples.Mean.Verify
+import Examples.Orbit.Basic
 import Examples.PairSum.Cases
 import Examples.PairSum.Module
 import Examples.PairSum.Program
 import Examples.PairSum.Verify
+import Examples.ParkMiller.Period
+import Examples.ParkMiller.Program
 import Examples.Piecewise.Cases
 import Examples.Piecewise.Module
 import Examples.Piecewise.Program
@@ -182,3 +187,5 @@ import Examples.Words.Cases
 import Examples.Words.Encode
 import Examples.Words.Module
 import Examples.Words.Verify
+import Examples.Xorshift.Period
+import Examples.Xorshift.Program
