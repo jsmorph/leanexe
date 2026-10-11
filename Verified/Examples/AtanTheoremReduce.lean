@@ -1,6 +1,6 @@
 import Verified.Examples.AtanTheoremTail
 import LeanExe.ProofKit.F64Exact
-import LeanExe.ProofKit.F64HighWord
+import LeanExe.ProofKit.F64UpperWord
 
 /-!
 The reduced arguments of `Atan.atan` for `|x| ≥ 0.4375`, as approximations of their exact values.
@@ -24,7 +24,7 @@ theorem value_word (w : UInt64) (q : ℚ) (h : ratOfWord w = q) : value w = (q :
 theorem abs_facts (x : Float) (hx : Finite x.toBits) :
     Finite x.abs.toBits ∧ value x.abs.toBits = |value x.toBits| := by
   rw [F64Bits.toBits_abs]
-  refine ⟨?_, F64HighWord.value_abs _⟩
+  refine ⟨?_, F64UpperWord.value_abs _⟩
   have he := (F64Sign.fields_abs x.toBits).1
   simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, he] at hx ⊢
   exact hx

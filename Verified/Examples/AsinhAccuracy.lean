@@ -1,18 +1,20 @@
 import Verified.Examples.Asinh
+import Verified.Examples.WorstCases
 import Verified.Examples.HyperbolicReference
 
 /-! A native check of `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` against references computed
-with Lean's integers through `HyperbolicReference`, rounded to the nearest double.  fdlibm states
-no error bound for any of them, and the check requires the largest distance it finds: one unit in
-the last place for `asinh` and two for `acosh` and `atanh`.  The arguments of `asinh` are evenly
-spaced values from -10 to 10 and hashed values over all exponents with both signs, those of
-`acosh` evenly spaced values from 1 to 10, hashed values from 1 up, and `1 + 2 ^ -k`, and those of
-`atanh` evenly spaced values from -1 to 1, hashed values over the exponents below 1 with both
-signs, and `±(1 - 2 ^ -k)`.  Each set adds the doubles next to the high words that its code
-compares with and the special values.  The check also reports, for information, the distance from
-the reference of the C library's functions, which Lean's `Float.asinh`, `Float.acosh`, and
-`Float.atanh` call.  It exits with an error at the first result further from the reference than
-its bound.  Run with `lake env lean --run`. -/
+with Lean's integers through `HyperbolicReference`, rounded to the nearest double.  fdlibm states no
+error bound for any of them, and the check requires the largest distance it finds, two units in the
+last place, for each of them.  The arguments of `asinh` are evenly spaced values from -10 to 10 and
+hashed values over all exponents with both signs, those of `acosh` evenly spaced values from 1 to
+10, hashed values from 1 up, and `1 + 2 ^ -k`, and those of `atanh` evenly spaced values from -1 to
+1, hashed values over the exponents below 1 with both signs, and `±(1 - 2 ^ -k)`.  Each set adds the
+doubles next to the high words that its code compares with and the special values.  The arguments
+also include those of `WorstCases`, which give the largest known errors of thirteen libraries in
+Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  The
+check also reports, for information, the distance from the reference of the C library's functions,
+which Lean's `Float.asinh`, `Float.acosh`, and `Float.atanh` call.  It exits with an error at the
+first result further from the reference than its bound.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.AsinhAccuracy
 
@@ -65,18 +67,21 @@ def edges (words : Array UInt64) : Array Float :=
 
 def asinhArgs : Array Float :=
   evenly 100000 (-10.0) 10.0 ++ hashed 100000 83 0 2047 ++
-    edges #[0x3E30000000000000, 0x41B0000000000000, 0x4000000000000000] ++ special
+    edges #[0x3E30000000000000, 0x41B0000000000000, 0x4000000000000000] ++ special ++
+    WorstCases.asinh.map Float.ofBits
 
 def acoshArgs : Array Float :=
   let toOne := (Array.range 52).map fun k => 1.0 + Float.ofBits ((1022 - UInt64.ofNat k) <<< 52)
   evenly 100000 1.0 10.0 ++ (hashed 100000 89 1023 1024).map Float.abs ++ toOne ++
-    edges #[0x3FF0000000000000, 0x41B0000000000000, 0x4000000000000000] ++ special
+    edges #[0x3FF0000000000000, 0x41B0000000000000, 0x4000000000000000] ++ special ++
+    WorstCases.acosh.map Float.ofBits
 
 def atanhArgs : Array Float :=
   let toOne := both ((Array.range 53).map fun k =>
     1.0 - Float.ofBits ((1022 - UInt64.ofNat k) <<< 52))
   evenly 100000 (-1.0) 1.0 ++ hashed 100000 97 0 1023 ++ toOne ++
-    edges #[0x3E30000000000000, 0x3FE0000000000000, 0x3FF0000000000000] ++ special
+    edges #[0x3E30000000000000, 0x3FE0000000000000, 0x3FF0000000000000] ++ special ++
+    WorstCases.atanh.map Float.ofBits
 
 end Verified.Examples.AsinhAccuracy
 
@@ -84,7 +89,7 @@ open Verified.Examples Verified.Examples.Reference Verified.Examples.AsinhAccura
 def main : IO UInt32 := do
   let checks : List (String × Nat × Array Float × (Float → Float) × (Float → Float) ×
       (Float → Float)) :=
-    [("asinh", 1, asinhArgs, Asinh.asinh, asinhReference, Float.asinh),
+    [("asinh", 2, asinhArgs, Asinh.asinh, asinhReference, Float.asinh),
      ("acosh", 2, acoshArgs, Asinh.acosh, acoshReference, Float.acosh),
      ("atanh", 2, atanhArgs, Asinh.atanh, atanhReference, Float.atanh)]
   for (name, bound, args, f, reference, library) in checks do

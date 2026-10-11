@@ -2,7 +2,7 @@ import LeanExe.ProofKit.F64FullStep
 import LeanExe.ProofKit.F64PackingFinite
 import LeanExe.ProofKit.F64Approx
 import LeanExe.ProofKit.F64SignedRounding
-import LeanExe.ProofKit.F64HighWord
+import LeanExe.ProofKit.F64UpperWord
 import LeanExe.ProofKit.F64Exact
 import Mathlib.Data.Int.Log
 
@@ -297,7 +297,7 @@ theorem within_one_of_rounded (c : UInt64) (S y : ℝ) (hc : Rounded c S) (a : �
   have hB0 : 0 < value (UInt64.ofNat (a * 2 ^ 52)) := lt_of_le_of_lt (by positivity) hBh
   have hlim : limit = 2047 * 2 ^ 52 := rfl
   have hcl : (Wasm.IEEE64.abs c).toNat < limit := by
-    rw [F64HighWord.abs_toNat, hlim]
+    rw [F64UpperWord.abs_toNat, hlim]
     simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, Wasm.IEEE64.exponent, bne_iff_ne,
       ne_eq] at hcf
     have := c.toNat_lt
@@ -305,7 +305,7 @@ theorem within_one_of_rounded (c : UInt64) (S y : ℝ) (hc : Rounded c S) (a : �
   have hN : Nearest |S| (Wasm.IEEE64.abs c) := by
     refine ⟨hcl, fun v hv => ?_⟩
     have h1 := hnear v
-    rw [F64HighWord.value_abs]
+    rw [F64UpperWord.value_abs]
     rw [abs_of_nonneg (value_nonneg_of_lt v (by rw [hlim] at hv; omega))] at h1
     exact h1
   have hyo : |y| < F64PositiveRounding.overflowThreshold := by
@@ -321,7 +321,7 @@ theorem within_one_of_rounded (c : UInt64) (S y : ℝ) (hc : Rounded c S) (a : �
     lt_of_le_of_lt (abs_abs_sub_abs_le_abs_sub S y) h
   have hst := steps_of_nearest |S| |y| _ _ hN hrN a ha hS hy hhS
   have hrle := F64SignedRounding.positive_reference_le |y|
-  have hctn := F64HighWord.abs_toNat c
+  have hctn := F64UpperWord.abs_toNat c
   rcases lt_or_gt_of_ne (show y ≠ 0 by intro h0; rw [h0, abs_zero] at hy; linarith) with hy0 | hy0
   · -- negative: `S` is negative too
     have hS0 : S < 0 := by

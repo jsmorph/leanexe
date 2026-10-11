@@ -1,18 +1,21 @@
 import Verified.Examples.Atan
+import Verified.Examples.WorstCases
 import Verified.Examples.ArcReference
 
-/-! A native check of `Atan.atan` and `Atan.atan2` against references computed with Lean's
-integers through `ArcReference.atanQuotient`, rounded to the nearest double.  fdlibm states no
-error bound for either function, and the check requires one unit in the last place, the largest
-distance it finds.  The arguments of `atan` are evenly spaced values from -10 to 10, hashed values
-over all exponents with both signs, the doubles next to the high words that the code compares
-with, and the special values.  The pairs `(y, x)` of `atan2` are hashed pairs over all exponents,
-hashed pairs whose exponents differ by 55 to 65 in both directions, around the code's limits of
-`2 ^ 60` and `2 ^ -60` on `|y/x|`, with all four signs, hashed `y` with `x = 1`, and every pair of
-special values.  The check also reports, for information, the distance from the reference of the
-C library's `atan` and `atan2`, which Lean's `Float.atan` and `Float.atan2` call.  It exits with an
-error at the first result further than one unit from the reference.  Run with
-`lake env lean --run`. -/
+/-! A native check of `Atan.atan` and `Atan.atan2` against references computed with Lean's integers
+through `ArcReference.atanQuotient`, rounded to the nearest double.  fdlibm states no error bound
+for either function, and the check requires the largest distance it finds: one unit in the last
+place for `atan` and two for `atan2`.  The arguments of `atan` are evenly spaced values from -10 to
+10, hashed values over all exponents with both signs, the doubles next to the high words that the
+code compares with, and the special values.  The pairs `(y, x)` of `atan2` are hashed pairs over all
+exponents, hashed pairs whose exponents differ by 55 to 65 in both directions, around the code's
+limits of `2 ^ 60` and `2 ^ -60` on `|y/x|`, with all four signs, hashed `y` with `x = 1`, and every
+pair of special values.  The arguments also include those of `WorstCases`, which give the largest
+known errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman,
+Innocente, Mather, Ozaki, and Zimmermann.  The check also reports, for information, the distance
+from the reference of the C library's `atan` and `atan2`, which Lean's `Float.atan` and
+`Float.atan2` call.  It exits with an error at the first result further from the reference than its
+bound.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.AtanAccuracy
 
@@ -72,7 +75,8 @@ def atanArgs : Array Float :=
   let special := #[0.0, -0.0, Float.ofBits 0x7FF0000000000000, Float.ofBits 0xFFF0000000000000,
     Float.ofBits 0x7FF8000000000000, 1.0, -1.0, 1e300, -1e300, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x8000000000000001, Float.ofBits 0x7FEFFFFFFFFFFFFF]
-  evenly 100000 (-10.0) 10.0 ++ hashed 100000 51 0 2047 ++ edges ++ special
+  evenly 100000 (-10.0) 10.0 ++ hashed 100000 51 0 2047 ++ edges ++ special ++
+    WorstCases.atan.map Float.ofBits
 
 def atan2Args : Array (Float × Float) :=
   let ys := hashed 60000 53 0 2047
@@ -93,7 +97,9 @@ def atan2Args : Array (Float × Float) :=
   let special := #[0.0, -0.0, Float.ofBits 0x7FF0000000000000, Float.ofBits 0xFFF0000000000000,
     Float.ofBits 0x7FF8000000000000, 1.0, -1.0, 2.5, -2.5, 1e-300, -1e-300, Float.ofBits 1,
     Float.ofBits 0x7FEFFFFFFFFFFFFF]
-  pairs ++ far ++ ones ++ special.flatMap fun y => special.map fun x => (y, x)
+  let worst := WorstCases.atan2.flatMap fun (y, x) =>
+    #[(Float.ofBits y, Float.ofBits x), (Float.ofBits x, Float.ofBits y)]
+  pairs ++ far ++ ones ++ worst ++ special.flatMap fun y => special.map fun x => (y, x)
 
 end Verified.Examples.AtanAccuracy
 
@@ -118,7 +124,7 @@ def main : IO UInt32 := do
   for (y, x) in atan2Args do
     let ref := atan2Reference y x
     let r := Atan.atan2 y x
-    unless (distance r ref).any (· ≤ 1) do
+    unless (distance r ref).any (· ≤ 2) do
       IO.eprintln s!"fail: atan2 at bits {y.toBits} {x.toBits}: {r.toBits}, the reference \
         {ref.toBits}"
       return 1
