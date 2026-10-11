@@ -29746,7 +29746,8 @@ The `erf` track works in a separate worktree, branch `w/erf`, a worktree of a se
 
 - [x] Define `erf`, `erfc`, and `erfcx x = exp (x²) erfc x`, and prove the facts the kernels need (`LeanExe/ProofKit/RealErf.lean`).
 - [x] Bound each rational function of `s_erf.c` against the quantity it approximates.
-- [ ] Prove `WithinSteps 1` for `erf` and `WithinSteps 4` for `erfc`, the exceptional values, the byte theorems, and the file theorems.
+- [x] Prove `WithinSteps 1` for `erf`, its exceptional values, its byte theorem, and the file theorem (`ErfTheorem`, `ErfFile`).
+- [ ] Prove the `erfc` theorem, after the coordinator chooses between the bound this proof reaches and a CORE-MATH port (estimate below).
 
 ### `RealErf`
 
