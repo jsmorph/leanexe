@@ -5,6 +5,7 @@ import Verified.Correct
 import Verified.BoundFacts
 import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundLemmas
+import Verified.Reflect.FitsLemmas
 import Verified.Reflect.Command
 import Verified.Examples.Poly
 import Verified.Examples.Mix
