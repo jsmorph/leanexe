@@ -28265,7 +28265,7 @@ its theorem stands.
   - [x] A review by a fresh agent, and the changes it called for.  The verified suite passes:
     15,854 cases, none failed.
 - [x] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
-- [ ] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
+- [x] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
   slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
 - [ ] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
 - [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
@@ -28312,3 +28312,65 @@ float, and `≠`, and a recursion that calls another depth function.  `spread` a
 were dead code, duplication, and text, which the follow-up changes address.  A wrapper of a
 function whose code takes the call depth gets no `trapFree`, since `wrapper_trapFree` requires
 `w.depth = false`, and no example has one.
+
+### Growth potential for straight-line code: plan
+
+A1 adds the potential of the design to `CodeSpec` with paid flags for `let` slots and growth
+results, and leaves parameters, results of functions, loop states, pairs, and `if`s unpaid, which
+A2 and A3 extend.  An owned array of `n` words at `p` has the potential
+`Φ = 4u ∸ 2c`, with `u = 8 (n + 1)` and `c = capacityAt store p`, and `Ty.pot` sums it over the
+arrays of a value.  The flags form a list `paid` beside the modes: `Expr.paid` is true for a growth
+of an owned array that dies, for a moved variable whose slot is paid, and for a `let` whose body is
+paid, and a `let` slot takes its value's flag.  `CodeSpec` takes `paid`, allows a trap when `top`
+cannot rise by the potential of the paid owned variables that die plus `Expr.allocs`, and states
+`top' + Φ(result) ≤ top + Φ(dying) + Expr.allocs` when the result is paid, and the same without
+`Φ(result)` otherwise.  At a function's entry every flag is false and the result's potential is
+dropped, so `FunSpec`, `ImplementsB`, and every `p.f.bound` of a function without growth keep their
+statements.
+
+The arithmetic of `roomCode`, with `u'` the new length's bytes, `E = u' - u`, and `A` the request
+rounded by `allocSize` to a multiple of 8: in place, `Φ' ≤ Φ + 4E`.  A move that raises `top`
+costs `48 + A` with capacity `A`.  For the request `2c`, `Φ' = 4u' - 2A`, since `2A > 4u'` would
+give `A ≥ 2u' + 8 > 2c + 7`, so the cost and `Φ'` total at most `48 + 4u' - 2c ≤ 48 + 4E + Φ`.  For
+the request `u' > 2c` they total `48 + 3u' ≤ 48 + 4E + Φ`.  A move into a reused block costs 0 and
+leaves `Φ' ≤ 4u' - 2r`, and the request `2^32` cannot complete.  A paid growth is then charged
+`48 + 32 · ext`, with `ext` words added, and an unpaid one today's `48 + 16 (len' + 1)` plus
+`16 · ext`, which covers its paid result's `Φ'` since `c ≥ u`.  A copy keeps today's charge and an
+unpaid result.
+
+- [x] The allocation fact that a block either reuses free memory, with `top` unchanged and a
+  capacity of at least the request, or raises `top` by `48 + allocSize r` with exactly that
+  capacity, through `wp_allocBlock` and `wp_allocCopy`.
+- [x] `Ty.pot`, its invariance under steps that keep a block, and `spec_room` with the potential.
+- [x] `Expr.paid`, `paid` in `Expr.allocs` and `Var.roomCost`, `CodeSpec` with the potential, and
+  every rule.
+- [x] The reflector: the lemmas with `paid`, the paid and unpaid growth lemmas, and a `let` slot's
+  flag by kernel evaluation of `Expr.paid`.
+- [x] `Grow.pushTwo`'s `bound_eq`, whose second push is charged `48 + 32`, the README, and a
+  review.  The reviewer found no defect in the statements, the arithmetic, or the reflector, and
+  seven docstrings that the change had made inaccurate, which are fixed.  The verified suite
+  passes: 15,854 cases, none failed.
+
+### Growth potential for straight-line code: implementation
+
+`AllocShape` in `Heap.lean` states the two outcomes of an allocation, and `wp_allocBlock` and
+`wp_allocCopy` pass it on.  `Potential.lean` defines `arrayPot`, `Ty.pot`, `Env.pot`, and
+`dyingPot`, the potential of the paid owned variables that die between two live sets, with the
+lemmas that split it along a sequence and keep it across a step that keeps the variables' blocks.
+`CodeSpec` takes the flags `paid`, and each rule splits the whole's `dyingPot` into its parts'.  A
+rule whose value is an array that grows needs the array's capacity after the code that writes the
+element or copies the other array, so `wp_storeWordsCode` states that the writes keep the capacity,
+`After.release` states that the release keeps the value's regions, and `spec_insertAt` and
+`spec_append` take the capacity from `Heap.Owned.rewrite`.  A request of `2^32` bytes follows a
+block of more than `2^31` bytes below `top`, which leaves room for neither charge, as `room_huge`
+states.  At a function's entry the flags are empty, so `dyingPot_nil` removes the potential and
+`FunSpec` keeps its statement.
+
+The reflector's builders take the flags beside the modes and the live set, and a `let` slot's flag
+is the Boolean that the kernel computes for `Expr.paid` of the value, which `letE_bound` takes as
+the hypothesis `hp`.  `BoundFacts.lean` names the charges: `growCost words ext` for an array that
+is not paid and `paidGrowCost ext` for a paid one.  The room lemmas state the new length as
+`len + ext` with `len` the length in words, `n` for elements of one word, which removes the congruence
+that `roomEq` built after the fact.  `Grow.pushTwo_bound` states that the second push of
+`pushTwo` is charged `48 + 32` bytes.
+

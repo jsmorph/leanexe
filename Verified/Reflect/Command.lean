@@ -698,7 +698,7 @@ structure Reflection where
   fits : FitsBuilder
 
 instance : Inhabited Reflection :=
-  ⟨⟨default, default, .word, default, fun _ _ => pure default, pure default⟩⟩
+  ⟨⟨default, default, .word, default, fun _ _ _ => pure default, pure default⟩⟩
 
 /-- `r` as the reflection of the Lean term `e`, with the proof `proof` that its source means it. -/
 def Reflection.as (r : Reflection) (proof e : Lean.Expr) : Reflection :=
@@ -716,9 +716,9 @@ def userProof (c : Ctx) (r : Reflection) : MetaM Lean.Expr := do
   mkExpectedTypeHint r.proof (← mkEq (← denoteExpr c r.src) (← flatValue r.lean))
 
 /-- The arguments that the bound lemmas take from the context. -/
-def boundArgs (c : Ctx) (bounds modes live : Lean.Expr) : List (Name × Lean.Expr) :=
-  [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`bounds, bounds), (`modes, modes), (`live, live),
-    (`env, c.env)]
+def boundArgs (c : Ctx) (bounds modes paid live : Lean.Expr) : List (Name × Lean.Expr) :=
+  [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`bounds, bounds), (`modes, modes), (`paid, paid),
+    (`live, live), (`env, c.env)]
 
 /-- The arguments that the frames lemmas take from the context. -/
 def fitsArgs (c : Ctx) : List (Name × Lean.Expr) :=
@@ -1037,6 +1037,16 @@ def assignMode (app : LemmaApp) (name hName : Name) : MetaM Lean.Expr := do
   app.assign hName (← evalEq mode m)
   return m
 
+/-- Assigns the flag `p` of a `let` slot, which equation `hp` determines from the value's
+`Expr.paid`, the Boolean that the kernel computes. -/
+def assignPaid (app : LemmaApp) : MetaM Lean.Expr := do
+  let some (_, flag, _) := (← app.hypType `hp).eq?
+    | throwError "verified_compile: the argument hp of {app.name} is not an equation"
+  let p := boolConst (← evalBool m!"the flag of a let in {app.name}" flag)
+  app.assign `p p
+  app.assign `hp (← evalEq flag p)
+  return p
+
 /-- Assigns the coercion argument `name` of `app`, `coerceCost t s M v = K`, for the Lean term `u`
 whose flattening is `v`. -/
 def assignCoerce (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (u : Lean.Expr) :
@@ -1059,9 +1069,9 @@ def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Refl
     | throwError "verified_compile: the argument {name} of {app.name} is not an equation"
   let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} is not a branch"
-  let (``Expr.allocs, #[_, _, _, modes, live, _, _, _, _]) := allocs.getAppFnArgs
+  let (``Expr.allocs, #[_, _, _, modes, paid, live, _, _, _, _]) := allocs.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} is not a bound"
-  let b ← r.bound modes live
+  let b ← r.bound modes paid live
   let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
     | throwError "verified_compile: the argument {name} of {app.name} has no coercion"
   let (K, hk) ← coerceEq base t s M v r.lean
@@ -1092,42 +1102,47 @@ def varOwnedEq (c : Ctx) (modes live x : Lean.Expr) (t : Ty) (u : Lean.Expr) :
   (← LemmaApp.start ``varOwned_copyBorrowed (args ++
     [(`hm, ← evalEq mode (modeConst false)), (`hc, hc)])).finish
 
-/-- The proof of `x.roomCost modes live (env.get x) ext = C` for the array variable `x` of elements
-`e` whose Lean variable is `u`: the growth of an owned array that dies, and a copy at the new
-length otherwise. -/
-def roomEq (c : Ctx) (modes live x : Lean.Expr) (e : Elem) (u ext : Lean.Expr) :
+/-- The proof of `x.roomCost modes paid live (env.get x) ext = C` for the array variable `x` of
+elements `e` whose Lean variable is `u`: for an owned array that dies, the growth of a paid one or
+of one that is not paid, and a copy at the new length otherwise.  The new length is `n + ext` for
+elements of one word and `n * w + ext` otherwise, with `n` the array's size. -/
+def roomEq (c : Ctx) (modes paid live x : Lean.Expr) (e : Elem) (u ext : Lean.Expr) :
     MetaM Bound := do
   let v ← mkAppM ``Env.get #[c.env, x]
+  let index ← mkAppM ``Var.index #[x]
+  let mode ← mkAppM ``modeAt #[modes, index]
+  let isLive := (mkApp live index).headBeta
+  let owned ← evalOwned m!"the mode of {u}" mode
+  let dies ← if owned then pure !(← evalBool m!"whether {u} is live" isLive) else pure false
+  let base := [(`Γ, c.ctx), (`modes, modes), (`paid, paid), (`live, live), (`e, elemExpr e),
+    (`x, x), (`xs, v), (`ext, ext)]
+  let paidAt ← mkAppM ``paidAt #[paid, index]
+  if dies then
+    if ← evalBool m!"whether {u} is paid" paidAt then
+      let p ← (← LemmaApp.start ``room_growPaid (base ++
+        [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst false)),
+          (`hp, ← evalEq paidAt (boolConst true))])).finish
+      return ⟨(← eqSides p).2, p⟩
   let (n, hn) ← arraySizeEq e v u
   let width := mkApp (mkConst ``Elem.width) (elemExpr e)
   let w ← evalNat width
-  let args := [(`Γ, c.ctx), (`modes, modes), (`live, live), (`e, elemExpr e), (`x, x), (`xs, v),
-    (`ext, ext), (`n, n), (`w, w), (`hn, hn), (`hw, ← evalEq width w)]
-  let index ← mkAppM ``Var.index #[x]
-  let mode ← mkAppM ``modeAt #[modes, index]
-  let p ← if ← evalOwned m!"the mode of {u}" mode then do
-      let isLive := (mkApp live index).headBeta
-      if ← evalBool m!"whether {u} is live" isLive then
-        (← LemmaApp.start ``room_copyLive (args ++
-          [(`hm, ← evalEq mode (modeConst true)),
-            (`hl, ← evalEq isLive (boolConst true))])).finish
-      else
-        (← LemmaApp.start ``room_grow (args ++
-          [(`hm, ← evalEq mode (modeConst true)),
-            (`hl, ← evalEq isLive (boolConst false))])).finish
+  let nw := mkApp2 natMul n w
+  let (len, hlen) ← match ← mulOne? nw with
+    | some (a, h) => pure (a, h)
+    | none => pure (nw, ← mkEqRefl nw)
+  let args := base ++ [(`n, n), (`w, w), (`len, len), (`hn, hn), (`hw, ← evalEq width w),
+    (`hlen, hlen)]
+  let p ← if dies then
+      (← LemmaApp.start ``room_grow (args ++
+        [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst false)),
+          (`hp, ← evalEq paidAt (boolConst false))])).finish
+    else if owned then
+      (← LemmaApp.start ``room_copyLive (args ++
+        [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst true))])).finish
     else
       (← LemmaApp.start ``room_copyBorrowed (args ++
         [(`hm, ← evalEq mode (modeConst false))])).finish
-  let (_, cost) ← eqSides p
-  -- `charge (n * 1 + ext)` is `charge (n + ext)`.
-  let charge := cost.appFn!
-  let arg := cost.appArg!
-  let (``HAdd.hAdd, #[_, _, _, _, m, ext']) := arg.getAppFnArgs
-    | throwError "verified_compile: the room {cost}"
-  let some (a, hm) ← mulOne? m | return ⟨cost, p⟩
-  let add := arg.appFn!.appFn!
-  let h ← congrArgOn charge arg (mkApp2 add a ext') (← congr2 add m a ext' ext' (some hm) none)
-  return ⟨mkApp charge (mkApp2 add a ext'), ← mkEqTrans p h⟩
+  return ⟨(← eqSides p).2, p⟩
 
 /-- Assigns the extension `k` of a push or an insertion of an element `e`, with its proof
 `(wordCount e.width).toNat = k`, the literal that the kernel computes. -/
@@ -1141,26 +1156,27 @@ def assignExtension (app : LemmaApp) (e : Elem) : MetaM Lean.Expr := do
 
 /-- The builder of a binary form with the lemma `n` over the parts `l` and `r`. -/
 def binBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (l r : Reflection) :
-    BoundBuilder := fun modes live => do
+    BoundBuilder := fun modes paid live => do
   let bounds := c.tables.table false
-  let app ← LemmaApp.start n (boundArgs c bounds modes live ++ args ++ [(`l, l.src), (`r, r.src)])
+  let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args ++ [(`l, l.src), (`r,
+      r.src)])
   let _ ← app.child `hl l.bound
   let _ ← app.child `hr r.bound
   boundOf (← app.finish)
 
 /-- The builder of a unary form with the lemma `n` over the part `x`. -/
 def unBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (x : Reflection) :
-    BoundBuilder := fun modes live => do
+    BoundBuilder := fun modes paid live => do
   let bounds := c.tables.table false
-  let app ← LemmaApp.start n (boundArgs c bounds modes live ++ args ++ [(`e, x.src)])
+  let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args ++ [(`e, x.src)])
   let _ ← app.child `h x.bound
   boundOf (← app.finish)
 
 /-- The builder of a leaf with the lemma `n`, whose bound is `0`. -/
 def leafBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) : BoundBuilder :=
-  fun modes live => do
+  fun modes paid live => do
     let bounds := c.tables.table false
-    let app ← LemmaApp.start n (boundArgs c bounds modes live ++ args)
+    let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args)
     return ⟨natZero, ← app.finish⟩
 
 /-- The builder of the frames condition of a form by the lemma `n`, with the arguments `args` and
@@ -1184,9 +1200,9 @@ def unFits (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (x : Reflectio
 /-- The builder of the variable `x` of type `t`, whose Lean variable is `u`: a copy when it is
 owned and live after the use. -/
 def varBound (c : Ctx) (x : Lean.Expr) (t : Ty) (u : Lean.Expr) : BoundBuilder :=
-  fun modes live => do
+  fun modes paid live => do
     let bounds := c.tables.table false
-    let args := boundArgs c bounds modes live ++ [(`x, x)]
+    let args := boundArgs c bounds modes paid live ++ [(`x, x)]
     if let .elem _ := t then
       return ⟨natZero, ← (← LemmaApp.start ``var_elem_bound args).finish⟩
     let index ← mkAppM ``Var.index #[x]
@@ -1211,8 +1227,9 @@ structure Under where
   decls : List LocalDecl
 
 /-- The bound of `u`'s body, abstracted over its binders. -/
-def Under.bound (u : Under) : BoundBuilder := fun modes live => withExistingLocalDecls u.decls do
-  let b ← u.r.bound modes live
+def Under.bound (u : Under) : BoundBuilder := fun modes paid live => withExistingLocalDecls u.decls
+    do
+  let b ← u.r.bound modes paid live
   return ⟨← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof⟩
 
 /-- The frames condition of `u`'s body, abstracted over its binders. -/
@@ -1370,17 +1387,18 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let src ← mkAppM ``Expr.letE #[rv.src, rb.src]
       let proof ← if sv.flat.isNone then mkAppM ``letE_eq #[hv, hb]
         else mkAppM ``letE_flat_eq #[← sv.fn type, value, hv, hb]
-      let bound : BoundBuilder := fun modes live => do
+      let bound : BoundBuilder := fun modes paid live => do
         let bounds := c.tables.table false
         let flatArgs ← match sv.flat with
           | none => pure []
           | some φ => pure [(`φ, φ), (`X, value)]
         let app ← LemmaApp.start (if sv.flat.isNone then ``letE_bound else ``letE_flat_bound)
-          (boundArgs c bounds modes live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
+          (boundArgs c bounds modes paid live ++ [(`v, rv.src), (`b, rb.src)] ++ flatArgs)
         let m ← assignMode app `m `hm
+        let p ← assignPaid app
         app.assign `hv hv
         let _ ← app.child `hva rv.bound
-        let bb ← ub.bound (← mkAppM ``List.cons #[m, modes])
+        let bb ← ub.bound (← mkAppM ``List.cons #[m, modes]) (← mkAppM ``List.cons #[p, paid])
           (← mkAppM ``shift #[mkNatLit 1, live])
         app.assign `hba (← bb.at #[value]).proof
         boundOf (← app.finish)
@@ -1568,9 +1586,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         forallTelescope hcaTy fun xs eq => do
           let some (_, lhs, _) := eq.eq? | throwError "verified_compile: the condition of {e}"
           let args := lhs.getAppArgs
-          let proof ← (← LemmaApp.start ``bool_bound [(`S, c.sigs), (`Γ, args[5]!),
-            (`funs, c.funs), (`bounds, bounds), (`modes, args[3]!), (`live, args[4]!),
-            (`env, args[8]!), (`v, mkConst ``Bool.true)]).finish
+          let proof ← (← LemmaApp.start ``bool_bound [(`S, c.sigs), (`Γ, args[6]!),
+            (`funs, c.funs), (`bounds, bounds), (`modes, args[3]!), (`paid, args[4]!),
+            (`live, args[5]!), (`env, args[9]!), (`v, mkConst ``Bool.true)]).finish
           return (← mkLambdaFVars xs natZero, ← mkLambdaFVars xs proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u cs α init condTrue hc f none⟩
@@ -1596,7 +1614,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let ty ← uc.instantiate hcaTy
         let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the condition of {e}"
         let args := lhs.getAppArgs
-        let b ← rc.bound args[3]! args[4]!
+        let b ← rc.bound args[3]! args[4]! args[5]!
         return (← mkLambdaFVars uc.xs b.term, ← mkLambdaFVars uc.xs b.proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u rc.src α init cnd hc F (some uc.fits)⟩
@@ -1615,9 +1633,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.set
       #[some c.sigs, some c.ctx, none, some x, some ri.src, some rv.src]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
-      let app ← LemmaApp.start ``set_bound (boundArgs c bounds modes live ++
+      let app ← LemmaApp.start ``set_bound (boundArgs c bounds modes paid live ++
         [(`e, elemExpr el), (`x, x), (`i, ri.src), (`v, rv.src)])
       let _ ← app.child `hi ri.bound
       let _ ← app.child `hv rv.bound
@@ -1641,13 +1659,13 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.push #[some c.sigs, some c.ctx, none, some x, some rv.src]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
-      let app ← LemmaApp.start ``push_bound (boundArgs c bounds modes live ++
+      let app ← LemmaApp.start ``push_bound (boundArgs c bounds modes paid live ++
         [(`e, elemExpr el), (`x, x), (`v, rv.src)])
       let k ← assignExtension app el
       let _ ← app.child `hv rv.bound
-      app.assign `hx (← roomEq c modes live x el xs k).proof
+      app.assign `hx (← roomEq c modes paid live x el xs k).proof
       boundOf (← app.finish)
     let fits := formFits c ``push_fits [(`e, elemExpr el), (`x, x), (`v, rv.src)] [(`hv, rv)]
     if se.flat.isNone then
@@ -1667,14 +1685,14 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rv ← reflect c v
     let src ← mkAppOptM ``Expr.insertAt
       #[some c.sigs, some c.ctx, none, some x, some ri.src, some rv.src]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
-      let app ← LemmaApp.start ``insertAt_bound (boundArgs c bounds modes live ++
+      let app ← LemmaApp.start ``insertAt_bound (boundArgs c bounds modes paid live ++
         [(`e, elemExpr el), (`x, x), (`i, ri.src), (`v, rv.src)])
       let k ← assignExtension app el
       let _ ← app.child `hi ri.bound
       let _ ← app.child `hv rv.bound
-      app.assign `hx (← roomEq c modes live x el xs k).proof
+      app.assign `hx (← roomEq c modes paid live x el xs k).proof
       boundOf (← app.finish)
     let fits := formFits c ``insertAt_fits
       [(`e, elemExpr el), (`x, x), (`i, ri.src), (`v, rv.src)] [(`hi, ri), (`hv, rv)]
@@ -1693,9 +1711,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
     let ri ← reflect c k
     let src ← mkAppOptM ``Expr.eraseAt #[some c.sigs, some c.ctx, none, some x, some ri.src]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
-      let app ← LemmaApp.start ``eraseAt_bound (boundArgs c bounds modes live ++
+      let app ← LemmaApp.start ``eraseAt_bound (boundArgs c bounds modes paid live ++
         [(`e, elemExpr el), (`x, x), (`i, ri.src)])
       let _ ← app.child `hi ri.bound
       app.assign `hx (← varOwnedEq c modes live x (.array el) xs)
@@ -1721,9 +1739,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let (``Array, #[β]) := (← whnfR α).getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"
     let se ← shapeOf β
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
-      let app ← LemmaApp.start ``append_bound (boundArgs c bounds modes live ++
+      let app ← LemmaApp.start ``append_bound (boundArgs c bounds modes paid live ++
         [(`e, elemExpr el), (`x, x), (`y, y)])
       let (ny, hny) ← arraySizeEq el (← mkAppM ``Env.get #[c.env, y]) ys
       let width := mkApp (mkConst ``Elem.width) (elemExpr el)
@@ -1742,7 +1760,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let some (_, room, _) := (← app.hypType `hx).eq?
         | throwError "verified_compile: the room of {e}"
       let roomArgs := room.getAppArgs
-      app.assign `hx (← roomEq c roomArgs[0]! roomArgs[1]! x el xs k).proof
+      app.assign `hx (← roomEq c roomArgs[0]! roomArgs[1]! roomArgs[2]! x el xs k).proof
       boundOf (← app.finish)
     if se.flat.isNone then return ⟨src, ← rflProof c src e, .array el, e, bound, leafFits c src⟩
     return ⟨src, ← mkAppOptM ``append_map_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
@@ -1760,10 +1778,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return (rf.src, ← mkLambdaFVars #[i] rf.proof,
         (⟨rf, #[i], [← i.fvarId!.getDecl]⟩ : Under))
     let src ← mkAppM ``Expr.build #[rn.src, fs]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
       let app ← LemmaApp.start ``build_bound
-        (boundArgs c bounds modes live ++ [(`count, rn.src), (`elem, fs)])
+        (boundArgs c bounds modes paid live ++ [(`count, rn.src), (`elem, fs)])
       let some (_, _, allRhs) := (← app.hypType `hall).eq?
         | throwError "verified_compile: the build {e}"
       app.assign `all allRhs
@@ -1775,7 +1793,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       app.assign `hn (← userProof c rn)
       let _ ← app.child `hna rn.bound
       let eb ← ue.bound (← mkAppM ``List.cons #[mkConst ``Mode.borrowed, modes])
-        (← mkAppM ``shift #[mkNatLit 1, allRhs])
+        (← mkAppM ``List.cons #[boolConst false, paid]) (← mkAppM ``shift #[mkNatLit 1, allRhs])
       -- The element's bound at the index `UInt64.ofNat k` of the sum.
       let (EA, hea) ← withLocalDeclD `k (mkConst ``Nat) fun k => do
         let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
@@ -1826,10 +1844,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let .array el := t | throwError "verified_compile: {xs} is not an array variable"
     let ri ← reflect c i
     let src ← mkAppOptM ``Expr.get #[some c.sigs, some c.ctx, none, some x, some ri.src]
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
       let app ← LemmaApp.start ``get_bound
-        (boundArgs c bounds modes live ++ [(`x, x), (`i, ri.src)])
+        (boundArgs c bounds modes paid live ++ [(`x, x), (`i, ri.src)])
       let _ ← app.child `hi ri.bound
       boundOf (← app.finish)
     let se ← shapeOf β
@@ -1864,14 +1882,14 @@ where
   loopBound (rn ri : Reflection) (u : Under) (cond α init C : Lean.Expr)
       (hc : Lean.Expr → MetaM Lean.Expr) (F : Lean.Expr)
       (condBound : Lean.Expr → Lean.Expr → MetaM (Lean.Expr × Lean.Expr)) :
-      BoundBuilder := fun modes live => do
+      BoundBuilder := fun modes paid live => do
     let bounds := c.tables.table false
     let sa ← shapeOf α
     let flatArgs ← match sa.flat with
       | none => pure []
       | some φ => pure [(`φ, φ), (`I, init)]
     let thm := if sa.flat.isNone then ``loop_bound else ``loop_flat_bound
-    let app ← LemmaApp.start thm (boundArgs c bounds modes live ++
+    let app ← LemmaApp.start thm (boundArgs c bounds modes paid live ++
       [(`count, rn.src), (`init, ri.src), (`cond, cond), (`body, u.r.src), (`C, C), (`F, F)] ++
       flatArgs)
     let some (_, _, allRhs) := (← app.hypType `hall).eq?
@@ -1896,7 +1914,7 @@ where
         let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
           | throwError "verified_compile: the loop's body"
         let args := allocs.getAppArgs
-        let b ← u.r.bound args[3]! args[4]!
+        let b ← u.r.bound args[3]! args[4]! args[5]!
         let (``coerceCost, #[_, s, M', v]) := coerce.getAppFnArgs
           | throwError "verified_compile: the loop's body"
         let value ← projReduce (F.beta u.xs)
@@ -1931,10 +1949,10 @@ where
     app.childFits `hbf u.fits
     fitsOf (← app.finish)
   /-- The builder of a pair, with the coercions of its components to the pair's mode. -/
-  pairBound (ra rb : Reflection) : BoundBuilder := fun modes live => do
+  pairBound (ra rb : Reflection) : BoundBuilder := fun modes paid live => do
     let bounds := c.tables.table false
     let app ← LemmaApp.start ``pair_bound
-      (boundArgs c bounds modes live ++ [(`a, ra.src), (`b, rb.src)])
+      (boundArgs c bounds modes paid live ++ [(`a, ra.src), (`b, rb.src)])
     let _ ← assignMode app `M `hM
     app.assign `ha (← userProof c ra)
     app.assign `hb (← userProof c rb)
@@ -2069,10 +2087,10 @@ where
     let rb ← reflect c b
     let iteBound (thm : Name) (condArgs : List (Name × Lean.Expr))
         (conds : List (Name × Reflection)) (cond : BoundBuilder) : BoundBuilder :=
-        fun modes live => do
+        fun modes paid live => do
       let bounds := c.tables.table false
       let app ← LemmaApp.start thm
-        (boundArgs c bounds modes live ++ condArgs ++ [(`a, ra.src), (`b, rb.src)])
+        (boundArgs c bounds modes paid live ++ condArgs ++ [(`a, ra.src), (`b, rb.src)])
       let _ ← assignMode app `M `hM
       for (name, r) in conds do app.assign name (← userProof c r)
       app.assign `ha (← userProof c ra)
@@ -2239,14 +2257,15 @@ where
       app.assign `hA (← mkEqRefl A)
       app.assign `hB (← mkEqRefl B)
       return (A, B)
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
       let app ← LemmaApp.start (if flat then ``letPair_flat_bound else ``letPair_bound)
-        (boundArgs c bounds modes live ++ [(`e, rp.src), (`body, rb.src)] ++ flatArgs)
+        (boundArgs c bounds modes paid live ++ [(`e, rp.src), (`body, rb.src)] ++ flatArgs)
       let m ← assignMode app `m `hm
       let (A, B) ← parts app
       let _ ← app.child `hea rp.bound
       let bb ← u.bound (← mkAppM ``List.cons #[m, ← mkAppM ``List.cons #[m, modes]])
+        (← mkAppM ``List.cons #[boolConst false, ← mkAppM ``List.cons #[boolConst false, paid]])
         (← mkAppM ``shift #[mkNatLit 2, live])
       app.assign `hba (← bb.at #[A, B]).proof
       boundOf (← app.finish)
@@ -2304,10 +2323,10 @@ where
         | throwError "verified_compile: the bounds of {fn}"
       checkEntryTarget m!"{fn}" chainRhs target
       mkExpectedTypeHint chain (← mkEq getLhs target)
-    let bound : BoundBuilder := fun modes live => do
+    let bound : BoundBuilder := fun modes paid live => do
       let bounds := c.tables.table false
       let app ← LemmaApp.start ``call_bound
-        (boundArgs c bounds modes live ++ [(`f, f), (`argList, argList)])
+        (boundArgs c bounds modes paid live ++ [(`f, f), (`argList, argList)])
       for (name, h) in [(`all, `hall), (`kept, `hkept)] do
         let some (_, _, rhs) := (← app.hypType h).eq?
           | throwError "verified_compile: the argument {h} of call_bound"
@@ -2316,14 +2335,14 @@ where
       app.assign `hargs hargs
       let some (_, sumLhs, _) := (← app.hypType `hsum).eq?
         | throwError "verified_compile: the argument hsum of call_bound"
-      -- `ArgsCost funs bounds modes all kept env md argList`, with `md` third from the end.
+      -- `ArgsCost funs bounds modes paid all kept env md argList`, with `md` third from the end.
       let sumArgs := sumLhs.getAppArgs
       unless sumLhs.isAppOf ``ArgsCost && sumArgs.size ≥ 6 do
         throwError "verified_compile: the arguments' bound {sumLhs}"
       let all := sumArgs[sumArgs.size - 6]!
       let kept := sumArgs[sumArgs.size - 5]!
       let md := sumArgs[sumArgs.size - 3]!
-      let hsum ← argsCostBound bounds modes all kept md (reflected.zip callee.sig.params)
+      let hsum ← argsCostBound bounds modes paid all kept md (reflected.zip callee.sig.params)
         argList
       app.assign `hsum hsum
       let some (_, getLhs, _) := (← app.hypType `hb).eq?
@@ -2360,12 +2379,12 @@ where
       app.childFits `he r.fits
       app.assign `hr (← argsFits rest restList)
       app.finish
-  /-- The proof of `ArgsCost funs bounds modes all kept env md argList = AS` for the arguments
-  `args`, each with its parameter type. -/
-  argsCostBound (bounds modes all kept md : Lean.Expr) (args : List (Reflection × Ty))
+  /-- The proof of `ArgsCost funs bounds modes paid all kept env md argList = AS` for the
+  arguments `args`, each with its parameter type. -/
+  argsCostBound (bounds modes paid all kept md : Lean.Expr) (args : List (Reflection × Ty))
       (argList : Lean.Expr) : MetaM Lean.Expr := do
     let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`bounds, bounds),
-      (`modes, modes), (`all, all), (`kept, kept), (`env, c.env), (`md, md)]
+      (`modes, modes), (`paid, paid), (`all, all), (`kept, kept), (`env, c.env), (`md, md)]
     match args with
     | [] => return (← (← LemmaApp.start ``argsCost_nil common).finish)
     | (r, t) :: rest =>
@@ -2377,9 +2396,9 @@ where
             (parts ++ [(`ht, ← evalEq scalar (boolConst true))])
           let some (_, lhs, _) := (← app.hypType `he).eq?
             | throwError "verified_compile: the argument he of argsCost_scalar"
-          let (``Expr.allocs, #[_, _, _, ms, lv, _, _, _, _]) := lhs.getAppFnArgs
+          let (``Expr.allocs, #[_, _, _, ms, pd, lv, _, _, _, _]) := lhs.getAppFnArgs
             | throwError "verified_compile: the argument he of argsCost_scalar"
-          let b ← r.bound ms lv
+          let b ← r.bound ms pd lv
           app.assign `he b.proof
           pure app
         else do
@@ -2402,7 +2421,7 @@ where
       unless lhs.isAppOf ``ArgsCost && restArgs.size ≥ 3 do
         throwError "verified_compile: the arguments' bound {lhs}"
       let md' := restArgs[restArgs.size - 3]!
-      let hr ← argsCostBound bounds modes all kept md' rest restList
+      let hr ← argsCostBound bounds modes paid all kept md' rest restList
       app.assign `hr hr
       return (← boundOf (← app.finish)).proof
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM Reflection := do
@@ -2683,8 +2702,8 @@ def bodyBoundEq (thm : Name) (args : List (Name × Lean.Expr)) (r : Reflected)
   let call := mkAppN (mkConst r.name) params
   app.assign `V (resultShape.apply call)
   app.assign `hv (← mkExpectedTypeHint (mkAppN (mkConst denoteEq) params) (← app.hypType `hv))
-  let (bodyModes, live) ← app.allocsArgs `hba
-  let b ← body.bound bodyModes live
+  let (bodyModes, paid, live) ← app.allocsArgs `hba
+  let b ← body.bound bodyModes paid live
   app.assign `BA b.term
   app.assign `hba (← mkExpectedTypeHint b.proof (← app.hypType `hba))
   -- The copy of a borrowed result, stated with the result's type and body as the terms of the
