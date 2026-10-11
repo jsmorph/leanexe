@@ -30053,3 +30053,42 @@ Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at
 `TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
 
 `lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: The `pow` theorem, exponential and table parts (track `exp2`)
+
+The target for a positive `x` and finite `y` is `F64SignedRounding.WithinSteps 1 (Real.rpow x y)`, with `Real.rpow x y = exp (y log x)`.  `Pow.powMain` computes `log x` as `hi + lo` with about 66 bits, the product `y log x` as `ehi + elo`, and `Pow.powExp`, Arm's `exp_inline`, on that pair.  The proof splits at the pair: `PowExpTheorem.powExp_within` gives one step against `exp L` for every target `L` with `|ehi + elo - L| ≤ |L| / 2 ^ 65` and `|elo| ≤ 17 · 2 ^ -28 |ehi|`, and the logarithm and the product must deliver those two conditions.  Arm states a relative error of `1.5 · 2 ^ -68` for `log_inline` without fused multiply-add, so a proved bound of `2 ^ -66` leaves a margin of a factor of six.
+
+The exponential reuses `exp`'s reduction, table, and scale words; only the residual differs, as `r = reduce (ehi) + elo`.  The reconstruction lemmas of `ArmReconstruction` allow `2 ^ -56` for the polynomial word, too little once the residual carries `|y| · |Δ log x|`, so `ArmTight` repeats them with `|w| ≤ 1/256` and an allowance of `(37/100) u`.  The budget inside that allowance is: the evaluation `2 ^ -59` and the polynomial `2 ^ -63` on `|r| ≤ 1/360` (`PowExpEval`), the residual `2 ^ -60` and the rounding of `+ elo` `2 ^ -61`, and the target term `2 ^ -55`, which `|L| / 2 ^ 65` meets for `|ehi| ≤ 768`.  From 768 to 1024 the result is infinity or lies within one step of zero, and a coarse evaluation on `|r| ≤ 1/128` suffices (`PowExpFar`).  The sharper bound `|x - k log 2 / 128| ≤ 677/250000` replaces the exp track's `1/320`, because `1/360` must hold with `elo` added.
+
+`powSpecialCase` differs from `exp.c`'s `specialcase`: its positive branch multiplies the sum by `2 ^ 1009` on the right, and its negative branch tests `|y| < 1`, takes the sign of `y` for the constant `±1`, and gives a zero the sign of the scale.  For a positive scale and a positive sum these reduce to `ExpSpecialNegative.negativeResult` (`PowExpPaths.negative_eq`), and `ArmTight.mul_comm_finite` swaps the factors of the positive branch.  The test of the positive branch, `1 + 2 ^ -60 != 1`, is false in rounding to nearest (`upward_test`).
+
+The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 and 75 have `invc = 1` and `logc = logctail = 0`.  The kernel checks (`PowLogTable.checked_entries`, `checked_logs`) give, per entry: `invc` on the grid of `2 ^ -7` for `i ≤ 75` and of `2 ^ -8` for `i ≥ 75`; `logc` on the grid of `2 ^ -43` with `|logc| ≤ 0.3466`; `|logctail| ≤ 2 ^ -43`; `|z invc - 1| ≤ 23/4000` on the subinterval; for `logc ≠ 0`, `|logc + r| ≥ |r| + 1/10000` and `≥ 1/450`; and `|logc + logctail + log invc| ≤ 2 ^ -97`, from a Taylor bracket of degree 24.  The polynomial is within `6 · 2 ^ -70 |r|` of `log (1 + r)` (`PolyBound.check`, depth 5).  `PowLogReduce` proves `zlo`, `zhi invc`, `rhi`, `rlo`, and `r` exact: `rhi` lies on the grid of `2 ^ -29`, and `r` on that of `2 ^ -60` because the grid of `invc` matches the exponent field of `z`.
+
+| File | Content |
+|---|---|
+| `ArmTight.lean` | `presum_tight`, `reconstruction_tight`, `reconstruction_target`, `ordinary_tight`, `positive1009_tight` (with overflow), `negative_tight`, `mul_comm_finite`. |
+| `PowExpEval.lean` | `polynomial_error` (`2 ^ -63` on `1/360`), `evaluation_tight` (`2 ^ -59`), `evaluation_coarse`. |
+| `PowExpCore.lean` | `core_eq`, `tmp_bits`, `ideal_tight`, `target_eq`, `core_state`. |
+| `PowExpBranches.lean` | The branches of `powExp` with `signBias = 0`, and the overflow and underflow products. |
+| `PowExpPaths.lean` | `tiny_within`, `ordinary_within`, `positive_bits`, `negative_eq`, `negative_bits`. |
+| `PowExpSpecial.lean` | `positive_within`, `negative_within` for `512 ≤ |x| ≤ 768`. |
+| `PowExpFar.lean` | `far_positive`, `far_negative` for `768 < |x| < 1024`. |
+| `PowExpTheorem.lean` | `powExp_within`. |
+| `PowLogBits.lean` | `powLog_eq`, `fields`, `fields_upper`, `fields_lower`, `zhi_toNat`. |
+| `PowLogTable.lean` | The entry checks, `log_table`, `kernel_error`, `kernel_eval`. |
+| `PowLogReduce.lean` | `word_fields`, `split_state`, `reduce_state`. |
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `linarith` | A sum of three bounds failed with `allowance` unfolded; an explicit `calc` passed. | `pow-tight-1` |
+| `decide` | `Finite 0x7F00000000000000` has no `Decidable` instance; unfolding `Finite` first fixed it. | `pow-tight-1` |
+| Parser | `linarith [show … by norm_num]` across a line break failed to parse; separate `have`s fixed it. | `pow-expeval-1` |
+| `congr 1` | Reached the maximum recursion depth on a Float-valued goal; `congrArg` with the multiplication fixed it. | `pow-exppaths-1` |
+| Atoms | `set` does not rewrite hypotheses created later, so `value x.toBits` and `X` differed for `rw`; `change` fixed it. | `pow-expthm-1` |
+
+- [x] `powExp_within` and the tight reconstruction (`pow-expthm-2.log`).
+- [x] The table checks, the polynomial bound, and the exact reduction (`pow-expthm-2.log`, `pow-logreduce-2.log`).
+- [ ] `t1`, `t2`, `hi`, `lo2`, `lo4` exact or on the grid of `2 ^ -60`; the error of `lo1`, `lo3`, `p`, the sum `lo`, and `y + tail`.
+- [ ] `|y + tail - log x| ≤ |log x| / 2 ^ 66` for every positive normal or subnormal `x`, with `x = 1` evaluated directly.
+- [ ] `ehi + elo` against `y log x`, and milestone 1: `x > 0` with the special cases of `y`.
+- [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
