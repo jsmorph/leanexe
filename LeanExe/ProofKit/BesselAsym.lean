@@ -504,4 +504,11 @@ theorem abs_le_root1 (κ x p q p' q' : ℝ) (hm : 0 < 1 + κ / x ^ 2) :
   constructor <;> apply Real.abs_le_sqrt <;> unfold energy1 <;>
     nlinarith [sq_nonneg p, sq_nonneg q]
 
+#print axioms asym_bound0
+#print axioms asym_bound1
+#print axioms chain0_sound
+#print axioms chain1_sound
+#print axioms jumpAsym0_le
+#print axioms jumpAsym1_le
+
 end LeanExe.ProofKit.BesselChain

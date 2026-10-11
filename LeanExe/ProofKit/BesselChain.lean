@@ -330,4 +330,10 @@ theorem jump1 (κ : ℚ) (P Q Pd Qd : ℝ → ℝ) (s x : ℚ) (pc pc' : Piece)
   push_cast [qabs_cast, evalQ_cast]
   ring
 
+#print axioms resid_le
+#print axioms piece_bound0
+#print axioms piece_bound1
+#print axioms jump0
+#print axioms jump1
+
 end LeanExe.ProofKit.BesselChain
