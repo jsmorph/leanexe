@@ -29423,6 +29423,21 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 - [x] `tanh` theorem and exceptional values.
 - [x] Byte theorems and the file module.
 
+### Hyperbolic sine and cosine: error budget
+
+The coordinator assigned `Sinh.sinh` (two steps) and `Sinh.cosh` (one step) next, with the instruction to report the bound for `cosh` if one step is out of reach.  The budget composes the proved bounds: `Expm1Near` and the pre-rounding errors of the `expm1` forms, `ExpCoreBounds.core_error` for `Exp.expWith` (within `1.4 u` of `exp x` relative to the scale, about `1.406 u exp x`), half spacings for the roundings that `F64NearestSum` and `F64NearestDiv` cover, and the exact scalings by `1/2` and `2`.  A floating-point sweep of 200,000 arguments per range gave these margin factors, where a factor above 1 means the step count follows.
+
+| Function and range | Code | One step | Two steps | Three steps |
+|---|---|---|---|---|
+| `sinh`, `2 ^ -28 ≤ abs(x) < 1` | `h (2 t - t t / (t + 1))`, `t = expm1 abs(x)` | 0.39 | 0.79 | 1.18 |
+| `sinh`, `1 ≤ abs(x) < 22` | `h (t + t / (t + 1))` | 0.73 | 1.47 | |
+| `cosh`, `2 ^ -27 ≤ abs(x) < 0.3466` | `1 + t t / (2 (1 + t))` | 7.48 | | |
+| `cosh`, `0.3466 ≤ abs(x) < 22` | `t/2 + 0.5/t`, `t = exp abs(x)` | 0.68 | 1.36 | |
+
+For `sinh`, two steps fail only for `abs(x)` in `(0.347, 0.481)`, where `expm1` takes the path `k = 1` and its result carries `0.98 u` before the last rounding.  A sharper bound of `0.73 u` for that path, from the half spacing of `x - e` below `1/4`, raises the factor to 0.92, still short.  For `cosh` on `[0.3466, 22)`, one step needs an `exp` error near `u` (factor 0.94 at `1.0 u`, 1.72 at Arm's `0.52 u`), and the proved `7/5 u` gives 0.68.  From 22 to the overflow thresholds both functions return `exp abs(x) / 2` (or the `__ldexp_exp` form), which inherits the one step of `ExpTheorem.exp_one_step`; `exp x / 2` and `cosh x` or `sinh x` differ by less than `e ^ -44` relatively, which can move the reference across a midpoint, so the composition gives two steps there.  The reachable counts are therefore three steps for `sinh` and two for `cosh`, short of the targets of two and one.  The gap lies in the proved bounds of `expm1` on its path `k = 1` and of `exp`.
+
+- [ ] Decision on the step counts of `sinh` and `cosh`.
+
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
 The ports track works in `/home/somebody/src/lt-ports` on minideb2, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
