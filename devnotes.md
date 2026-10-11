@@ -28182,7 +28182,7 @@ standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong
   test with no failure, and 474 WGSL cases on each of SwiftShader and lavapipe.  The GPT module's
   bytes did not change, so the GPT tests did not run.  `main` had no commits after `33f15752`, so
   it fast-forwards to `verified`.
-- [ ] Amortized push charge and recursion depth bound.
+- [x] Amortized push charge and recursion depth bound.
 - [ ] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
   structure, spectral test values.
 - [ ] Record fields in `bound_eq`.
@@ -28523,7 +28523,7 @@ The reflector's steps:
 - [x] Theorems: `Recursion.fill_fits`, `fill_cost`, and `fill_trapFree`, and `Tables.pushSquare`,
   a wrapper of a callee with a paid parameter, with `pushSquare_bound`.
 - [x] The README.
-- [ ] A review by a fresh agent, the verified suite, and the commit.
+- [x] A review by a fresh agent, the verified suite, and the commit.
 
 The `implements` and `trapFree` theorems of a function without paid parameters come from
 `FunSpec.implementsB_unpaid` and `Prog.entry_trapFreeWith_unpaid`, whose condition that no
@@ -28549,3 +28549,95 @@ the lookup by index takes under 5 ms.  The reflector evaluates the flags at ever
 call, and the elaborator counts the kernel's allocations as heartbeats, so `verified_compile` of
 `Trig.lean`, whose reflection runs in one `TermElabM` block, exceeded the 200,000 heartbeats.  With
 the lookup by index the module builds in 33 s.
+
+## 2026-10-11: The generators
+
+Task 70 compiles the generators of `Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` in
+`Verified/Examples/` with the verified compiler, moves them and the lemmas of `Orbit.lean` to
+`Examples/`, and proves the properties that the user chose on 2026-10-10.  G1 and G3 add modules
+with cases, and G2, G4, and G5 add theorems about the programs.  G3 appends its programs to the
+`verified_compile` lists of G1, so the entries and cases of G1 keep their indices.
+
+| Stage | Content |
+|-------|---------|
+| G1 | Move the programs and proofs to `Examples/`, add Park–Miller's seed rule, compile the three generators, with theorems that the module's bytes compute them and the properties of `advance`, and add their cases |
+| G2 | The xorshift period `2^64 - 1` by the orbit of the state 1 with matrix jump-ahead |
+| G3 | Jump-ahead programs for the LCG and xorshift, compiled, with theorems that they equal `advance`, and the equidistribution of the top `j` bits of the LCG's and of xorshift's states over a period |
+| G4 | The LCG's lattice structure |
+| G5 | The spectral test values of the LCG's multiplier |
+
+### G1: plan
+
+Each generator gets a directory in `Examples/`, as the drone planner has: `Program.lean` holds the
+programs in the dialect, without Mathlib, and `Period.lean` the theorems, with Mathlib, which the
+`Examples` library already imports.  The shared lemmas move to `Examples/Orbit/Basic.lean`, with a
+short `README.md`.  The namespaces become `Examples.Lcg`, `Examples.ParkMiller`,
+`Examples.Xorshift`, and `Examples.Orbit`, and `Examples.lean` imports the new modules.  The
+content of `Verified/Examples/GENERATORS.md` moves into the `README.md` of each directory, with the
+commands that build the modules and run their cases, and without the decided questions or the later
+candidates.
+
+Park–Miller's `seed s` follows the decision of 2026-10-10: the state is `s % (2^31 - 1)`, or 1 when
+that is 0, which [rand.eng.lcong] gives for `c = 0`.  `seed_mem` states
+`0 < seed s ∧ seed s < 2147483647`, the hypothesis of `advance_existsUnique` and `advance_mem`.  The
+standard's seed has type `uint_fast32_t`, which glibc defines as `unsigned long`, 64 bits on 64-bit
+platforms, and which may have 32 bits elsewhere, so the rule matches the standard for every seed
+below `2^32`, and for every seed where the type has 64 bits.  `check_value` states Park and Miller's value
+`advance 10000 1 = 1043618065`, which [rand.predef] also requires of `minstd_rand0`, by
+`decide +kernel`.
+
+`Verified/Examples/Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` compile the programs, as
+`Verified/Examples/Drone.lean` compiles the planner, and `Verified.lean` imports them.  The lists
+are `[affine, step, advance]`, since the reflector compiles a call of `affine` only when `affine`
+is listed before `step`, `[step, advance, seed]`, and `[step, advance]`.  None allocates, so each
+function's theorem is `ImplementsA false`.  `lcg_advance`, `parkMiller_advance`, and
+`xorshift_advance` state, as `drone_compute` does, that the bytes decode to the module, that the
+module computes `advance`, and the property of `advance`: each word once per period for the LCG,
+and a nonzero state never becomes 0 for xorshift.  `parkMiller_advance` also states that the module
+computes `seed`, and that from every seeded state each state of the range occurs once per period.
+`Verified/Examples/Cases.lean` gets cases for each function, among them `advance 10000 1`, and
+`tests/verified/run.sh` the three modules.  The `compiled.bytes` row of `Verified/README.md` and
+the table of examples in `docs/manual.md` list the generators.
+
+- [x] The move, the READMEs, and the seed rule with `seed_mem` and `check_value`.
+- [x] The three compiled modules and the theorems about their bytes.
+- [x] The cases, the suite, and the documents.  The verified suite passes 16,064 cases, none failed.
+- [x] A review by a fresh agent, and the commit.
+
+A second fresh agent reviewed the implementation.  It confirmed the indices, the export names, the
+statements, and the moved proofs, and it found the outside references of the former
+`GENERATORS.md` missing, claims of a period theorem for xorshift before G2, stale docstrings, and
+gaps in the READMEs' commands.  The fixes restore the references in each README, state the
+theorems as they stand, put `seed_mem` into `parkMiller_advance`, and give each README the output
+of its command, which the module prints.
+
+The kernel's evaluation of `advance n 1` grows about eightfold when `n` doubles: 0.8 s at 1,000
+steps, 4.3 s at 2,000, and 37 s at 4,000, and at 10,000 it ran for more than 20 minutes.
+`LeanExe.loop` is `Nat.fold`, whose definition passes its function, with a proof `i < n`, to the
+recursive call wrapped in one more lambda, so the function at depth `k` is `k` lambdas deep, which
+is the likely cause.  `check_value` therefore rewrites `advance` to `step^[n]` by
+`advance_eq_iterate`, and the kernel evaluates `Nat.iterate` for 10,000 steps in 0.6 s.
+
+A fresh agent reviewed the first version of this plan.  It found that `affine` must be listed, that
+`Verified.lean` must import the modules for `tests/verified/run.sh`, that `parkMiller_advance` needs
+the module's `seed`, and that a case compares the module with native Lean only, so Park and Miller's
+value needs a theorem.  It confirmed the seed rule against [rand.eng.lcong] and found the forms
+that the programs use among those that the reflector supports.
+
+### G2: representation
+
+The kernel computes the jump-ahead tables of xorshift: the 64 columns of the step, 63 squarings,
+and a product per exponent.  On `UInt64` words it took 1.2 s per squaring, and on `Nat` words, where
+the kernel computes `^^^`, `/`, and `%` on literals, 63 squarings took 16 s.  G2 therefore states
+the tables over `Nat`: `applyList c x` is the xor of the columns `c` at the set bits of `x`, and for
+a map `f` that distributes over xor, `applyList (cols f 64) x = f x` for `x < 2^64`, by induction
+on the bits.  The step on `Nat` is `fun y => (step y.toUInt64).toNat`, which distributes over xor
+by `step_xor`.  A prototype proves the lemmas and checks `step^[2^64 - 1] 1 = 1` and
+`step^[(2^64 - 1) / q] 1 ≠ 1` for the seven primes `q` with one `decide +kernel` in 18 s.  The
+compiled jump-ahead of G3 works on `UInt64` words and arrays, and a lemma on `toNat` relates it to
+the tables of G2.
+
+Later candidates: SplitMix64 advances a Weyl sequence, the case `a = 1` of the LCG theorems, and
+its output mixer is a bijection.  PCG combines an LCG state with an output permutation and has the
+LCG's period.  xoshiro256** has period `2^256 - 1`, which requires the primitivity of a polynomial
+of degree 256 over GF(2).

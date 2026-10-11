@@ -37,4 +37,7 @@ import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
 import Verified.Examples.Drone
+import Verified.Examples.Lcg
+import Verified.Examples.ParkMiller
+import Verified.Examples.Xorshift
 import Verified.Examples.Reference

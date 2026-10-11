@@ -28,6 +28,9 @@ import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
 import Verified.Examples.Drone
+import Verified.Examples.Lcg
+import Verified.Examples.ParkMiller
+import Verified.Examples.Xorshift
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -969,3 +972,18 @@ def main : IO Unit := do
     for m in [0, 1, n / 8, n / 4, n / 2, n - 1, n, 3 * n + 1] do
       let (c, s) := Fourier.twiddle n m
       IO.println s!"fourier|twiddle|list:f64,f64|i64:{n} i64:{m}|{c.toBits} {s.toBits}"
+  for x in words do
+    IO.println s!"lcg|affine|i64|i64:{x} i64:{x * 3} i64:{x + 1}|\
+      {_root_.Examples.Lcg.affine x (x * 3) (x + 1)}"
+    IO.println s!"lcg|step|i64|i64:{x}|{_root_.Examples.Lcg.step x}"
+    IO.println s!"parkmiller|step|i64|i64:{x}|{_root_.Examples.ParkMiller.step x}"
+    IO.println s!"parkmiller|seed|i64|i64:{x}|{_root_.Examples.ParkMiller.seed x}"
+    IO.println s!"xorshift|step|i64|i64:{x}|{_root_.Examples.Xorshift.step x}"
+    for n in [(0 : UInt64), 1, 2, 1000] do
+      IO.println s!"lcg|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.advance n x}"
+      let s := _root_.Examples.ParkMiller.seed x
+      IO.println s!"parkmiller|advance|i64|i64:{n} i64:{s}|{_root_.Examples.ParkMiller.advance n s}"
+      IO.println s!"xorshift|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.advance n x}"
+  IO.println s!"parkmiller|advance|i64|i64:10000 i64:1|{_root_.Examples.ParkMiller.advance 10000 1}"
+  for s in [(2147483646 : UInt64), 2147483647, 2147483648, 4294967294, 4294967295] do
+    IO.println s!"parkmiller|seed|i64|i64:{s}|{_root_.Examples.ParkMiller.seed s}"

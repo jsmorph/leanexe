@@ -8,7 +8,7 @@ index computes an iterate, the minimal period of a point is the `N` whose multip
 and an orbit that stays in a set with as many elements as the period reaches each element once per
 period. -/
 
-namespace Verified.Examples.Orbit
+namespace Examples.Orbit
 
 open Function
 
@@ -41,4 +41,4 @@ theorem existsUnique_iterate {α : Type} {f : α → α} {x : α} {S : Set α} [
 theorem natCard_uint64 : Nat.card UInt64 = 2 ^ 64 := by
   rw [Nat.card_eq_fintype_card, ← FinEnum.card_eq_fintypeCard, FinEnum.card_UInt64]
 
-end Verified.Examples.Orbit
+end Examples.Orbit
