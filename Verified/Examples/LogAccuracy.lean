@@ -1,15 +1,18 @@
 import Verified.Examples.Log
+import Verified.Examples.WorstCases
 import Verified.Examples.Reference
 
 /-! A native check of `Log.log` against `Reference.log` rounded to the nearest double.  Arm's
 comments bound the error below one unit in the last place, so each result must lie within one unit
-of the reference.  The check first compares each pair of table entries with the center `c` that
-they describe: `chi + clo` with `1/invc` within `2 ^ -100` relatively, and `logc` with `log c`
-within `2 ^ -66`, the bound that Arm's comment states.  The arguments are evenly spaced values from
-0 to 20 and from 0.9 to 1.1, hashed positive values over all exponents, doubles on both sides of
-1 at hashed distances of up to `2 ^ 36` units spread over 36 binades of distance, the doubles next
-to the ends of the path near 1, next to 1, and at the ends of the binades and of the subnormals,
-negative values, and the special values.  It also reports, for information, the distance from the
+of the reference.  The check first compares each pair of table entries with the center `c` that they
+describe: `chi + clo` with `1/invc` within `2 ^ -100` relatively, and `logc` with `log c` within
+`2 ^ -66`, the bound that Arm's comment states.  The arguments are evenly spaced values from 0 to 20
+and from 0.9 to 1.1, hashed positive values over all exponents, doubles on both sides of 1 at hashed
+distances of up to `2 ^ 36` units spread over 36 binades of distance, the doubles next to the ends
+of the path near 1, next to 1, and at the ends of the binades and of the subnormals, negative
+values, and the special values.  The arguments also include those of `WorstCases`, which give the
+largest known errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman,
+Innocente, Mather, Ozaki, and Zimmermann.  It also reports, for information, the distance from the
 reference of the C library's `log`, which Lean's `Float.log` calls.  The check exits with an error
 at the first result further than one unit from the reference.  Run with `lake env lean --run`. -/
 
@@ -55,7 +58,8 @@ def args : Array Float :=
     if h &&& 0x8000 == 0 then Float.ofBits (0x3FF0000000000000 + offset)
     else Float.ofBits (0x3FEFFFFFFFFFFFFF - offset)
   evenly 100000 0.0 20.0 ++ evenly 100000 0.9 1.1 ++ (hashed 100000 31 0 2047).map Float.abs ++
-    near1 ++ edges ++ special
+    near1 ++ edges ++ special ++
+    WorstCases.log.map Float.ofBits
 
 end Verified.Examples.LogAccuracy
 
