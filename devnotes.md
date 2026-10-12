@@ -29912,8 +29912,6 @@ Opus merged `w/log` at `3c21c26e` (the logarithm main path) and `w/ports` at `f1
 
 The user approved installing elan on debtop1 (x86_64, 4 cores, 15 GB).  Opus installed elan 4.2.4 from the official `elan-init.sh` with `--no-modify-path` and the pinned toolchain `leanprover/lean4:v4.34.0-rc2`, without changes to the shell profiles.  The checkout is a separate clone, `/home/somebody/src/lt-debtop`, of the user's `~/src/leanexe` there, which stays unchanged.  The permission check refused a `git remote set-url` in the first attempt, a step that was unnecessary.  `.lake/packages` (8.6 GB, 28.5 minutes through the workstation) and `.lake/build` (1.8 GB, 3.5 minutes) came from minideb1, whose clock agrees with that of debtop1, and `lake build --no-build` then reported every job of the exponential theorem, `log_normal_within`, and the kernel bounds up to date.  The runner's systemd scope works there.  The `exp2` track runs in the worktree `/home/somebody/src/lt-exp2` on debtop1.
 
-## 2026-10-10: Logarithm theorem, complete (track `log`)
-
 ## 2026-10-11: `log2` theorem (track `log`)
 
 The coordinator assigned the full theorems for `Log2.log2` and `Log10.log10` after merging the logarithm theorem.  The branch merged `transcendentals` at c9ff162d (60848aaa), with the conflicts of `devnotes.md` resolved by keeping both sides.  The target of `log2` is `Real.logb 2 x`, which Mathlib defines as `log x / log 2`, so the internal lemmas state `Real.log x / Real.log 2` and `log2_within_one` unfolds `Real.logb`.  The theorem covers every finite positive input, subnormal ones included, and the exceptional inputs give the results of IEEE 754 as for `log`.
@@ -29948,13 +29946,6 @@ On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: 
 | `Log2Theorem`, `Log2File` | `log2_within_one`, exceptional values, `Ready`, `log2_bytes_accuracy`, and the file |
 
 `F64RoundedStep.within_one_add` takes the sum before its rounding, not the rounded result: `Wasm.IEEE64.add` rounds within half a spacing of the binade of the sum (`F64Packing.pack_magnitude_error`), and a case analysis over the binades of the sum and of `y` gives one step through `F64FullStep.one_step_binades` whenever the sum lies within `63/64` units of `y`.  `log10` needs it: its error before the final rounding reaches about `0.82` units of the result near `f = 0.414`, beyond the `15/32` that the rounded-result lemmas leave.
-
-### Failures
-
-- [x] Subnormal arguments.
-- [x] `logNear1` and the path near 1.
-- [x] Exceptional values and the full theorem.
-- [x] Byte theorem and `LogFile.lean`.
 
 ## 2026-10-10: Ports of `sinpi`, `cospi`, `tanpi`, `erf`, and `erfc`
 
@@ -30471,7 +30462,7 @@ The middle range is near four steps as well: the pre-rounding error of `(1 - erx
 | Paths, positive and negative arguments, theorem module | Passed; branch conditions on both sides of the negation needed `simp` in place of `rw [if_pos]` | `erf-base-17.log` to `erf-base-24.log` |
 | `erf.wasm` and `ErfFile` | `tools/Emit.lean` wrote 7,016 bytes; both file theorems report only the permitted axioms | `erf-emit-1.log`, `erf-file-1.log` |
 
-## 2026-10-10: Full theorems for `atan` and `log1p` (track arc, minideb2)
+## 2026-10-10: Full theorems for `log1p`, `atan`, `atan2`, `asin`, and `acos` (track arc, minideb2)
 
 The coordinator assigned the full theorems for `Log1p.log1p`, `Atan.atan`, `Atan.atan2`, `Asin.asin`, and `Asin.acos`: `WithinSteps 1` against `Real.log (1 + x)`, `Real.arctan`, `Real.arcsin`, and `Real.arccos` over every finite input in the domain, `WithinSteps 2` for `atan2` against `Complex.arg`, exact results for the exceptional inputs, and byte theorems in the form of `ExpTheorem.exp_bytes_accuracy`.  The work runs in `lt-poly` on branch `w/poly`, with logs `build/transcendentals/arc-*.log`.  `atan`, `atan2`, `log1p`, `asin`, and `acos` are proved with their byte and file theorems; every Lean file on the branch builds at `b1049813` (`arc-full-1.log`).  After them the coordinator assigned `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` (two steps each, through `Log.logWith` and `Log1p.log1p`), and asked that the duplicate ProofKit modules keep their names until a later consolidation.  On 2026-10-10 the coordinator moved `asin` and `acos` to the log track and then returned them, so this track still covers all five functions; the `asin` and `acos` drafts are committed in `fa37a25d`.
 
@@ -30645,14 +30636,6 @@ Two kinds of failure cost builds.  `linarith` failed on goals with `1 / 2 ^ 1075
 - [x] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
 - [x] `TanTheorem` and `TanFile`.
 - [ ] `Sinpi.sinpi`, `cospi`, and `tanpi`.
-
-## 2026-10-11: Integration of the sine, cosine, and log2 theorems
-
-Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at `3924f81c` (the `log2` theorem, with the journal's corrected memory figures) into `transcendentals`, with a merge script that merges with `--no-commit`, resolves `devnotes.md` by union, and commits with a proper message.  `LeanExe.lean` now imports `F64HighWord`, `F64RelativeStepWide`, `F64RoundedStep`, and `F64Sterbenz`, `Verified.lean` imports `TrigTheorem`, `Log2Theorem`, and `Log2Power`, and the file theorem loop of `tests/verified/run.sh` gains `trig:TrigTheorem:TrigFile` and `log2:Log2Theorem:Log2File`.
-
-`TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
-
-`lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
 
 ## 2026-10-11: Bessel functions of order 0 and 1, definitions and series (track `log`)
 
@@ -30851,6 +30834,16 @@ The program constant `<program>.chain.func` grows quadratically with the number 
 Opus merged `w/trig` at `9218575c` (the `tan` theorem), `w/log` at `e5e8827f` (the real Bessel functions `J0`, `J1`, `Y0`, `Y1`, their large-argument forms, fdlibm's rational approximations, and the modulus bounds), and `w/ports` at `363f279a` (the gamma and Bessel ports, with `verified_compile` left out until the reflector fix).  `LeanExe.lean` imports the twenty new ProofKit modules, `Verified.lean` imports `TanTheorem`, `Tgamma`, `Lgamma`, `Bessel`, and their references, the file loop of `tests/verified/run.sh` gains `tan:TanTheorem:TanFile`, and the script now runs `TgammaAccuracy`, `LgammaAccuracy`, and `BesselAccuracy`.  The build passed with 9,426 jobs (`opus-merge-tan-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-13.log`): twelve file checks, 15,837 cases, 74,373 results of `tgamma` and 81,033 of `lgamma` equal to their integer references, and the Bessel functions within their check bounds.
 
 The user asked for a Markdown document beside each transcendental implementation, covering the design, the implementation, the theorems, and references.  The specification is `/home/somebody/src/machines/work/doc-spec.md` on the workstation: one file per implementation module, `Verified/Examples/<Module>.md`, with sections for the specification, algorithm, implementation, theorems, proof, tests, limits, and references, each reference confirmed against its source.  A documentation agent writes them in `/home/somebody/src/lt-docs` on minideb1, branch `w/docs`.
+
+## 2026-10-12: Pause of the proof work
+
+The user paused the proof work and asked for notes to resume it; Opus stopped the seven proof and port agents, stopped the one Lean build still running on debtop1, and kept the documentation agent.  The section "Resuming the work" in `transcendentals.md` records, for each track, its machine, worktree, branch tip, the work done and not yet merged, the uncommitted files, and the next steps, and it lists the decisions taken and not yet acted on: the compiler change for liveness, CORE-MATH's `erfc`, the Bessel unit, and the consolidation of overlapping ProofKit modules.  The uncommitted files stay in their worktrees: eighteen `Pow*.lean` files in `lt-exp2`, six gamma ProofKit modules and a journal change in `lt-erf`, and fix 1 of the reflector in `lt-reflect`.
+
+The documentation agent wrote the twenty function documents on branch `w/docs` (`55cc658c` to `a3654521`), merged as `85cee008`; six forks drafted nineteen of them in parallel, and the agent reviewed and committed each.  A script compared every constant and table word of each port with its C source at the pinned commit, except the CORE-MATH `erfc` and the sources behind `Fma.md`, which the forks could not fetch from gitlab.inria.fr; the documents say so, and they name each reference that could be confirmed only through Crossref, an abstract, or a secondary source.  The review found inconsistencies in `transcendentals.md`, now fixed; stale passages in `docs/design.md`, `docs/manual.md`, and `Verified/README.md`, now general; and in this journal a duplicate empty heading, an empty `log2` failures subsection holding a copy of the `log` checklist, a duplicated integration section, and an `arc` heading naming two of its five functions, now fixed.  The defects in Lean sources (paraphrased license notices, docstrings whose bounds differ from the proofs, and coverage gaps) are listed in `transcendentals.md` under "Corrections found by the documentation review" for the resumed work.
+
+The `sinh` and `cosh` integration: Opus merged `w/expm1` at `b76268b2` (`be50832f`), added `SinhBytes` to `Verified.lean`, the three new ProofKit modules to `LeanExe.lean`, and `sinh:SinhBytes:SinhFile` to the file loop of `tests/verified/run.sh`.  The build passed with 9,452 jobs (`opus-merge-sinh-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-14.log`) with thirteen file checks, 15,837 cases, and every accuracy check.
+
+Four review agents checked the twenty function documents against the Lean sources at `698424f7`, the journal, the plan, the logs, and the pinned C sources, corrected the facts they could check, removed the narration of the writing and the references to the commit the documents were first written against, described the unmerged branch work by branch and commit, and fixed the language.  The documents were committed as `46f239d5` on `w/docs` and merged.  Their findings in Lean sources (the license notices of every fdlibm port and of the CORE-MATH ports, wrong docstring bounds in `Log2.lean`, `BesselAccuracy.lean`, and `Reference.lean`) are added to "Corrections found by the documentation review" in `transcendentals.md`.  The IEEE 754-2019 clause contents rest on one reading of the standard by the first documentation agent; the reviewers could not reach the paywalled text.
 
 ## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
 
