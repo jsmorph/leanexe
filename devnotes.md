@@ -31424,6 +31424,8 @@ While planning `yn` below 2, the track found a band near overflow where neither 
 
 `BesselMillerBack` failed in `bes-on-31.log` at four places.  `b_err` derived `T ≥ 0` from `|B - σJ| ≤ β σJ`, which needs `β ≤ 1`, and its bound holds without that step.  The step from `i = 2` to `i = 1` gives a ratio error of `9.1 u + 2 u`, above the `11 u` that the invariant allowed at `i = 1`, so `Er 1` is now `12 u`, and the factor of the last step at `d = 21/20` rises from `16.725 u` to `17.775 u`, which `jn_backward`'s constant `23 + 8 n` still covers.  `nlinarith` needed `m ≤ 2^31` for the error of `b`, and the branch that rescales needed `b ≤ 2^333` from the invariant to bound `b ≤ 2^1020`.  `bes-on-32.log` built the module in 195 seconds with only the three standard axioms.
 
+`BesselMillerLast` built on its first run, in 134 seconds in `bes-on-33.log`, with only the three standard axioms.  Its statement keeps the bound `d` on `J₂/J₀` as a parameter because the normalization that follows chooses it: `21/20` when the code divides by `b ≈ σ J₀`, which it does only when `|j0 x| ≥ |j1 x|`, and `25/6` when it divides by `a ≈ σ J₁`.  The bound `σ J_n ≤ 2^1018`, from `J_n ≤ J₁`, keeps the final product `t · j0 x` or `t · j1 x` below the overflow threshold.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
