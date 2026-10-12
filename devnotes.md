@@ -30146,11 +30146,37 @@ The plan, approved by the coordinator: expose the bound `|S - log(1 + x)| ≤ E`
 The compositions bound `|S - Y| ≤ errBound w + |w - W|/(1 + W - |w - W|)` for the computed argument `w` and its exact value `W`, with `Y = log (1 + W)`.  A model of these bounds (`near/plan2.py` in the scratch directory) splits the inputs of each branch into pieces with constant chains; on each piece the argument term is a ratio of quadratics in the input, convex after clearing the denominator, so its endpoints bound it.  Below `Y = 1/4` a relative criterion applies, `|S - Y| ≤ ρ Y` with `ρ (2 ^ 52 + 1) < 1`, since the pieces would otherwise span 25 binades.
 
 - [x] `log1p` error bound for `x ≥ 2 ^ -29`
-- [ ] `atanh` on `[2 ^ -28, 1/2)`: relative pieces up to `a = 0.1244`, then `[0.1244, 0.2]`, `[0.2, 0.24493]`, `[0.24493, 0.46212]`, `[0.46212, 0.5)` with largest ratio 0.9724 of the budget
-- [ ] `atanh` on `[1/2, 1)`: one division, relative error `2 ^ -53` of the argument
-- [ ] `asinh` on `[2 ^ -28, 2]`
+- [x] `atanh` on `[2 ^ -28, 1/2)`: relative pieces up to `a = 0.1244`, then `[0.1244, 0.2]`, `[0.2, 0.24493]`, `[0.24493, 0.46212]`, `[0.46212, 0.5)` with largest ratio 0.9724 of the budget
+- [x] `atanh` on `[1/2, 1)`: one division, relative error `2 ^ -53` of the argument
+- [x] `asinh` on `[2 ^ -28, 2]`
 - [ ] `acosh` on `(1, 2]`: the bounds with relative rounding errors reach 1.32 times the budget near `x = 1 + 0.03`; the half-spacing model reaches 0.98
-- [ ] Exceptional values, dispatchers, byte and file theorems
+- [x] Exceptional values and dispatchers of `atanh` and `asinh`
+- [ ] Byte and file theorems of `asinh.wasm`
+
+### `atanh` and `asinh` within two steps
+
+`AtanhTheorem.atanh_within_two` states `WithinSteps 2 (Real.artanh x) (Asinh.atanh x).toBits` for finite `x` with `|x| < 1`, and `AsinhTheorem.asinh_within_two` states `WithinSteps 2 (Real.arsinh x) (Asinh.asinh x).toBits` for every finite `x`.  Both use only `propext`, `Classical.choice`, and `Quot.sound` (`arc-atanh-17.log`, `arc-asinh-13.log`).  The exceptional values are words: `atanh` gives the canonical NaN for NaN, `±∞`, and `|x| > 1` (`atanh_nan`), `±∞` at `±1`, and `±0` at `±0`; `asinh` gives the canonical NaN for NaN, `±∞` at `±∞`, and `±0` at `±0`.  The first test of `atanh` folds the low word into the high word as `(lx ||| -lx) >>> 31`, which is 1 exactly when `lx ≠ 0` (`AtanhTheorem.low_bit`); an `or` with a bit below 2 adds at most 1 to an even bound (`or_bit_le`), so the test holds exactly outside `[-1, 1]`.  `atanh` halves `log1p`'s result, and `F64Near.Near.half` halves the bound through `Rounded.half`, which compares each word with its exact double.
+
+| Branch | Method | Largest share of two spacings |
+|---|---|---|
+| `atanh`, `a < 0.1244` | Relative bound `ρ (2 ^ 52 + 1) < 1` in four ranges (`atanh_piece_rel`) | `ρ = 1.892 · 2 ^ -53` |
+| `atanh`, `0.1244 ≤ a < 1/2` | Four ranges with constant `E` and an argument term convex in `a`, checked at the ends (`atanh_piece`, `quad_le`) | 0.973 |
+| `atanh`, `1/2 ≤ a < 1` | `2a` and `1 - a` exact, one division; `2 artanh a ≥ log 3` | 0.42; above a quotient of `2 ^ 53` the binade `[16, 32)` |
+| `asinh`, `|x| < 0.2526` | Five relative ranges (`asinh_piece_rel`) | `ρ = 1.966 · 2 ^ -53` |
+| `asinh`, `0.2526 ≤ |x| ≤ 2 (1 + 2 ^ -20)` | Twenty ranges with constant chains (`asinh_e`) and constant bounds (`asinh_piece`) | 0.981 at `|x| ∈ [1.155, 1.1753]`, below `arsinh = 1` |
+
+The constants of every range come from `near/atanh_inst.py` and `near/asinh_inst.py` in the scratch directory, which check each hypothesis of the range lemmas in exact rational arithmetic before emitting the Lean text.  The `asinh` ranges are separate theorems (`AsinhTheoremSmallCases.piece0` to `piece24`), since one declaration holding all of them exceeded the default heartbeat limit.  Two elaboration costs appeared: `set` with a numeric real body, such as `set ρ := 30001 / 10000 / 2 ^ 53`, and `set w :=` on a float expression made later `isDefEq` checks unfold real and float arithmetic until the heartbeat limit (`arc-atanh-4.log` to `arc-atanh-7.log`); the lemmas now take such constants as parameters and name expressions with `obtain ⟨w, hw⟩ : ∃ w, w = e`.  `nlinarith` and `linarith` over a context with `2 ^ 1074` and many hypotheses also ran out of heartbeats, and the proofs give them explicit products or use `linarith only`.
+
+Commits: `5e37bd91`, `5d7845b1`, `b3d93058` (`atanh`), `8fc2f7de`, `e91fcfd9` (`asinh`).
+
+### `acosh` from 1 to 2
+
+The code computes `log1p (t + √(2t + t²))` with `t = x - 1`, exact.  A model with relative rounding errors reaches 1.25 to 1.32 times the two-step budget for every `t`, so relative bounds cannot give two steps on any part of the branch (`near/acosh_var.py`).  The model reaches 0.983 only with all three refinements: the square root and the sum `2t + t²` charged half a spacing of their binades, and the last sum `t + s` exact unless it leaves the binade of `s`.  The last sum is exact because `t` is a multiple of `2 ^ -52` and the spacing of `s < 2` divides it.  ProofKit has the half spacing of sums (`F64HalfUlp`) and of grid sums (`F64GridExact`), but only a relative bound for the square root; `CodeLib.IEEE32.roundSqrtIntegral_real_error` gives the half spacing in scaled units, from which a lemma `sqrt_half` in the form of `F64HalfUlp.add_half` follows.  The bound must hold over the 27 binades of `s` from `2 ^ -26` to 2, so the plan states it once for a binade index and treats the top binades, where the model reaches 0.983 near `t = 0.083`, with constant ranges.
+
+- [ ] `sqrt_half`: half a spacing for the square root
+- [ ] Exact or half-spacing last sum `t + s`
+- [ ] `acosh` two steps for a general binade of `s`, then the top binades
+- [ ] `acosh` dispatcher and exceptional values
 
 ### A pitfall of `linarith`
 
@@ -30204,9 +30230,9 @@ Other pitfalls found in the last runs: `Real.arctan |v||` parses as `Real.arctan
 - [x] Exceptional values of `atan`.
 - [x] Exceptional values of `log1p`.
 - [x] Byte theorem of `log1p`.
-- [ ] First report to the coordinator.
+- [x] First report to the coordinator.
 - [x] Merge `a2c5fea3` (`b8141b87`).
-- [ ] `asin` and `acos` from the drafts in `fa37a25d`.
+- [x] `asin` and `acos` from the drafts in `fa37a25d`.
 - [x] `atan2`, its exceptional values, and the byte and file theorems of `atan.wasm`.
 - [x] File theorem of `log1p`.
 - [x] Byte and file theorems of `asin.wasm`, the build of every file on the branch, and the report with the lines `log1p:Log1pBytes:Log1pFile`, `atan:AtanBytes:AtanFile`, and `asin:AsinBytes:AsinFile`.
