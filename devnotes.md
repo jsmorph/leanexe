@@ -31638,3 +31638,16 @@ The first instantiation with binary64 exposed a hypothesis that binary64 does no
 
 - [x] Byte and file theorems for the compiled module
 - [ ] Stage 4: the printers
+
+## 2026-10-12: The printers' code and their native check (track `strconv`)
+
+`PrintFloat.lean` holds `print64`, `print64Ecma`, `print32`, and `print32Ecma` in the verified dialect and compiles with `verified_compile` (`strconv-print-2.log`; the first run failed because a `let` bound a comparison as a `Prop`, which the dialect does not carry, and the bindings became `Bool`).  The method finds the largest exponent `J` at which a multiple of `10 ^ J` lies in the rounding interval, searching down from an exponent above the interval's upper end, and takes the multiple nearest to the value; when that multiple has one digit, it also compares the nearest one-digit multiple of `10 ^ (J - 1)` in the interval, which can lie there only for subnormal words with a significand below 10.  Every comparison is an exact quotient with its remainder flag from `Uscale.scaledQuot`, and the layouts are arrays built element by element from the digits, so that the proof can compare them with `sciLayout` and `ecmaLayout` index by index.
+
+`tools/strconv/print_cases.py` writes `data/strconv/print-cases.txt`: 889 words, 563 binary64 and 326 binary32, with strings computed by a search over the number of significant digits with exact rationals, which does not use the exponent `J`, and for binary64 checked against Python's `repr`.  `PrintFloatAccuracy.lean` runs the four printers natively on these words, requires the expected strings, the round trip through `parse64` and `parse32` in the general grammar to the word (to the canonical NaN for NaNs), and RFC 8259's grammar for the strings of finite words; all 889 cases agree on the first run, in 372 seconds (`strconv-praccuracy-2.log`; the first run failed on the name `show`, which is a keyword).  `PrintFloat.md` describes the specification, the method, the code, and the test.
+
+- [x] Printers in the dialect, compiled, with a native check
+- [ ] The choice of the decimal against `Shortest64` and `Shortest32`
+- [ ] The search and the quotients against that choice
+- [ ] The layouts against `sciLayout` and `ecmaLayout`
+- [ ] `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, the ECMAScript and binary32 counterparts, `print32_low`
+- [ ] Byte and file theorems
