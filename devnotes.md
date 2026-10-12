@@ -31396,6 +31396,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `e_jn.c` takes the tiny path for `ix < 0x3e100000`, which is `x < 2^-30`, while its comment and the docstring of `jnBackward` in `Bessel.lean` say `2**-29` and `2 ^ -29`.  `Bessel.md` now states `2^-30` in the algorithm and in the analysis, and the docstring is a shared file that the track does not edit.  `BesselJnTiny` proves the tiny path for `x < 2^-30`.
 
+`BesselStepF` failed in `bes-on-9.log` because `norm_num` evaluated `2^2046`, which lies below the exponentiation threshold of 2048, and left `2^2098` unevaluated, so the two sides of `2^2098 = 2^52 · 2^2046` and the cast of that bound did not match.  A threshold of 4096 for `finite_of_abs_lt` alone makes `norm_num` evaluate both powers.  `bes-on-10.log` built the module in 9 seconds, and its theorems report only the three standard axioms.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
