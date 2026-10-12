@@ -163,8 +163,9 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.l
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean || exit 1
-# tgamma, lgamma, and the Bessel functions, whose modules wait for the reflector fix before they
+# tgamma, lgamma, the Bessel functions, and CORE-MATH's erfc, whose modules wait for the reflector fix before they
 # compile to WebAssembly, against references computed with Lean's integers, in native Lean.
 tools/leanrun --timeout 30m lake env lean --run Verified/Examples/TgammaAccuracy.lean || exit 1
 tools/leanrun --timeout 30m lake env lean --run Verified/Examples/LgammaAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/BesselAccuracy.lean
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/BesselAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.lean
