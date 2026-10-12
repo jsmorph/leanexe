@@ -333,14 +333,17 @@ of `Trig.sin` and `Trig.cos` to lie within one unit in the last place of a refer
 Lean's integers.  It reports the C library's distance from the reference for information: glibc's
 `cos` lies 8 units from it at `6381956970095103 · 2 ^ 797`, the double closest to a multiple of
 `π/2`.  [`ExpAccuracy.lean`](Examples/ExpAccuracy.lean) compares the table of `Exp.lean` with
-`2 ^ (j/128)` and requires each of 180,085 results of `Exp.exp` to lie within one unit of the
+`2 ^ (j/128)` and requires each result of `Exp.exp` to lie within one unit of the
 correctly rounded value, from arguments over the whole range in which `exp` is finite and positive,
 near its thresholds, and at the special values.  [`TanhAccuracy.lean`](Examples/TanhAccuracy.lean)
-requires 184,589 results of `Tanh.expm1` to lie within one unit, the bound that fdlibm states, and
-160,073 results of `Tanh.tanh` within two units, the largest distance it finds.  fdlibm states no
+requires each result of `Tanh.expm1` to lie within one unit, the bound that fdlibm states, and
+each result of `Tanh.tanh` within two units, the largest distance it finds.  fdlibm states no
 bound for `tanh`, and glibc's `tanh` lies two units from the reference at the same 74 arguments.
 [`LogAccuracy.lean`](Examples/LogAccuracy.lean) compares the tables of `Log.lean` with the centers
-they describe and requires 340,066 results of `Log.log` to lie within one unit.
+they describe and requires each result of `Log.log` to lie within one unit.  The checks of the other
+transcendental ports follow the same pattern, every check includes the worst inputs of Zimmermann's
+report in [`WorstCases.lean`](Examples/WorstCases.lean), and each port's document beside its module, such
+as [the exponential document](Examples/Exp.md), gives its argument sets and the distances measured.
 [`FourierAccuracy.lean`](Examples/FourierAccuracy.lean) checks on 20 signals the facts that hold
 exactly in floating point, such as the transform of an impulse, and, within a tolerance `τ` from the
 error bound of recursive summation, single frequencies, the round trip, Parseval's identity,
