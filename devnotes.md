@@ -31044,5 +31044,6 @@ A proof of `fmaBits_eq` by `rfl` exceeded 4,000,000 heartbeats, while `dsimp onl
 - [x] Special cases and the theorem (`FmaSpecial`, `FmaTheorem`)
 - [x] `FmaSpec.FmaNearest` (`FmaSpecTheorem`)
 - [x] `Fma.md` updated with the theorems
+- [x] Committed as `72655383` on `w/expm1`
 
 The theorem does not cover the NaN payload of `Fma.fma`: `Float.toBits` returns the canonical NaN for every NaN, so `fma_toBits` states the canonical NaN, while the word lemmas `fmaBits_nan_a`, `fmaBits_nan_b`, and `fmaBits_nan_c` state the payload rule of `fmaBits`.  No byte theorem or file theorem is planned, since the function is a helper of the gamma and `erfc` modules, and `Verified.lean` does not import the new modules until the coordinator merges them.
