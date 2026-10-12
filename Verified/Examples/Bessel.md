@@ -100,7 +100,8 @@ Branch `w/log`, in a separate worktree on the build host, holds the commits `278
 | `BesselCombine.invsqrtpi_near`, `tpi_near`, `combine_sub`, `combine_add`, `final_step`, `J0_form`, `Y0_form`, `J1_form`, `Y1_form`, `modulus_lower` | `invsqrtpi` within `0.07 u` of `1/√π` and `tpi` within `0.36 u` of `2/π`; the rounded bracket `P̂ ĉc ∓ Q̂ ŝs` or `P̂ ŝs + Q̂ ĉc` from its factors; `invsqrtpi · T / √x` within `finErr / √x + 2^-1075` of `T/√(π x)`; the four large-argument forms in terms of `sin x ± cos x`; and `√(2/(π x)) √(P² + Q²) ≥ 0.7978 Pl / √x` for `P ≥ Pl > 0` | `b2f71ebf`, `bes-comb-2.log` |
 | `BesselCase.case_sub`, `case_add`, `case_one`, `case_finish`, `BesselLarge.large_sub`, `large_add`, `modulus_ge`, `huge_pq0`, `huge_pq1` | One case of the path from 2 against any `M ≥ 0.7978 Pl / √x` under numeric conditions that `norm_num` checks, both branches of `(cc, ss)` together, and `\|P - 1\| ≤ 262 · 2^-68` and `\|Q\| ≤ 19 · 2^-68` (order 0) or `283 · 2^-68` and `21 · 2^-68` (order 1) from `2^129` on | `b59e0975`, `e667a448`, `bes-case-2.log`, `bes-large-a1.log` |
 | `BesselJ0Large.j0_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j0 x) - J₀(x)\| ≤ 10 u √(J₀(\|x\|)² + Y₀(\|x\|)²)`, on the four ranges, both branches, and the path from `2^129` | `e55ba4e9`, `bes-j0l-4.log` |
-| `BesselY0Large.y0_large` | For finite `x ≥ 2`, `\|value (y0 x) - Y₀(x)\| ≤ 10 u √(J₀(x)² + Y₀(x)²)` | `bes-y0l-2.log` |
+| `BesselY0Large.y0_large` | For finite `x ≥ 2`, `\|value (y0 x) - Y₀(x)\| ≤ 10 u √(J₀(x)² + Y₀(x)²)` | `94fcd632`, `bes-y0l-2.log` |
+| `BesselY1Large.y1_large` | For finite `x ≥ 2`, `\|value (y1 x) - Y₁(x)\| ≤ 12 u √(J₁(x)² + Y₁(x)²)` | `bes-y1l-1.log` |
 
 ## Proof
 
