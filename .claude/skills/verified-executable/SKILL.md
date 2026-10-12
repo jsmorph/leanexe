@@ -16,10 +16,11 @@ the theorem `NAME_bytes`:
 [`tools/demo-check`](../../../tools/demo-check) writes this statement itself and accepts the run
 only if `NAME_bytes` proves it with no axioms beyond `propext`, `Classical.choice`, and
 `Quot.sound`, the specification is the one the review accepted, and the module returns `expected` on
-every sample in Wasmtime.  `Implements` allows a trap, which occurs when memory runs out.  The
-theorem says nothing about the request beyond what `expected` says, so the independent review of
-`expected` against the request is the only check that the theorem states what the request asks.  The
-run does not ask the user to approve the specification.
+every sample in Wasmtime.  `Implements` allows a trap at `unreachable`, which the code executes when
+memory runs out, when an array would hold `2^29` words or more, or when a recursion reaches depth
+1,000.  The theorem says nothing about the request beyond what `expected` says, so the independent
+review of `expected` against the request is the only check that the theorem states what the request
+asks.  The run does not ask the user to approve the specification.
 
 ## Names and files
 

@@ -21,9 +21,9 @@ for every input.  The subtraction and division use the binary64 lemmas of the ot
 | `bucket_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `bucket`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The manual's table of word
-operations](../../docs/leanexe-manual.md#words-and-booleans) lists the conversion.  A width of 0 gives an
-infinite or NaN quotient, which the conversion maps to 2^64 − 1 or 0.
+`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler manual's table of word
+operations](../../docs/leanexe-manual.md#words-and-booleans) lists the conversion.  A width of 0
+gives an infinite or NaN quotient, which the conversion maps to 2^64 − 1 or 0.
 
 ## Running it
 

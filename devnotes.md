@@ -28878,3 +28878,29 @@ per-parameter, listed arrays of tuples as parameter and result types although Le
 recursive ones are, and omitted the `Separate` premise, `p.flat_injective`, the wrappers'
 `ImplementsTables`, and the `mkdir` before `Emit.lean`.  The detailed table of examples moved from
 the internals to the manual.
+
+A second review by two fresh agents checked every claim against the code.  It found errors in the
+new text and in older text of the design document and the LeanExe compiler manual.
+
+The corrections cover these points:
+
+- `ImplementsA.mono` strengthens a precondition.
+- The bound equations of a recursive function with a paid parameter use `p.g.cost` and
+  `creditCost`.
+- A call leaves allocated the result's arrays and the host's arrays at borrowed parameters.
+- `deep` holds 26 values live across the self-call in its 32 positions, and 1,000 such frames take
+  at most 272,000 bytes of stack.
+- `aborts` is a syntactic property of the code.
+- `Prog.correctWith` is the theorem for modules with tables.
+- The LeanExe compiler places a fold before the value that contains it.
+- A build element may call functions of scalars.
+- The LeanExe compiler emits `f64.reinterpret_i64` for `Float.ofBits`, and the proof must exclude a
+  NaN pattern.
+- The Decisions table is now split into decisions that cover both compilers, the LeanExe
+  compiler, and the verified compiler.
+
+`Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop` have no LTG entry, and the
+open work lists them.  `#print axioms` on `Prog.correct`, `Prog.correctWith`, and each example's
+`compiled.bytes` and named theorems reports only `propext`, `Classical.choice`, and `Quot.sound`,
+or a subset of them.  The documents also replace figurative verbs ("enters", "rests on", "carries",
+"joins", "walks", "pays for") with literal statements.

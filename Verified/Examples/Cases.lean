@@ -35,9 +35,9 @@ import Verified.Examples.Xorshift
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
 them, with a sixth field for the cases that check the allocation counters: the number of blocks
-live after the call, the host's array arguments and the arrays of the result, and a seventh field
-for the cases that bound the number of allocations, the host's included.  The expected result
-`trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
+live after the call, the arrays of the result and the host's arrays at borrowed parameters, and a
+seventh field for the cases that bound the number of allocations, the host's included.  The
+expected result `trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples
 

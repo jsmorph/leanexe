@@ -3726,10 +3726,10 @@ def rewriteEntry (h0 old : Lean.Expr) (chainAt : Lean.Expr → MetaM Lean.Expr) 
 
 /-- The most positions that the reflector accepts in a function whose code takes the call depth.
 Wasmtime 44 on aarch64 keeps 8 bytes for each value live across a call and 16 bytes per frame, so
-`depthLimit` frames of 32 positions take about 280 KB of its 512 KiB default stack, and the rest
-holds the functions without the depth parameter at the top of the chain.  The example
-`Recursion.deep` runs a frame of 32 positions, each live across the self-call, at depth 999 under
-two such functions. -/
+`depthLimit` frames of 32 positions take at most 272,000 bytes of its 512 KiB default stack, and
+the rest holds the functions without the depth parameter at the top of the chain.  The example
+`Recursion.deep` runs a frame of 32 positions, 26 of them live across the self-call, at depth 999,
+and its deepest frame calls two functions without the depth parameter. -/
 def depthPositions : Nat := 32
 
 /-- Rejects a function whose code takes the call depth and needs more than `depthPositions`

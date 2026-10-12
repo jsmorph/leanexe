@@ -24,8 +24,9 @@ whole chain at the end with `Stmt.releaseNode_spec`.  The host's counters show t
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  `List UInt64` has a built-in `Encode` instance, which states
-the record layout that the theorems use.  [The manual](../../docs/leanexe-manual.md#records-and-user-types)
-describes recursive types and their records.
+the record layout that the theorems use.  [The LeanExe compiler
+manual](../../docs/leanexe-manual.md#records-and-user-types) describes recursive types and their
+records.
 
 ## Running it
 
@@ -54,6 +55,8 @@ entries [`list-cell`](../../ltg/entries/list-cell/README.md),
 
 ## References
 
-- [The manual's section on records and user types](../../docs/leanexe-manual.md#records-and-user-types).
-- [The manual's section on the Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host), for the
-  `chain-u64` argument and result kinds.
+- [The LeanExe compiler manual's section on records and user
+  types](../../docs/leanexe-manual.md#records-and-user-types).
+- [The LeanExe compiler manual's section on the Wasmtime
+  host](../../docs/leanexe-manual.md#the-wasmtime-host), for the `chain-u64` argument and result
+  kinds.
