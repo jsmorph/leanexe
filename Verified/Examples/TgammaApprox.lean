@@ -133,11 +133,14 @@ def e1 (i : ℕ) : ℚ := q Tgamma.expdTable (64 + 2 * i) + q Tgamma.expdTable (
 /-- `asExpd`'s `1024/ln 2` as `0x1.71547652b82fep+10 + 0x1.777d0ffda0d24p-46`. -/
 def invLn2 : ℚ := ratOfWord 0x40971547652B82FE + ratOfWord 0x3D1777D0FFDA0D24
 
+/-- The constant, the tables, and the kernel of `asExpd`.  The kernel's interval reaches `5/8`,
+beyond the `1/2` of the reduction, because `asLgammaAsym` passes a low part up to about
+`2 ^ -14.5`, which the first product of `asExpd` carries into the kernel's argument. -/
 def ExpFact : Prop :=
   |(invLn2 : ℝ) - 1024 / Real.log 2| ≤ 1 / 2 ^ 80 ∧
     (∀ i < 32, |(e0 i : ℝ) - Real.exp (i * Real.log 2 / 32)| ≤ 1 / 2 ^ 80) ∧
     (∀ i < 32, |(e1 i : ℝ) - Real.exp (i * Real.log 2 / 1024)| ≤ 1 / 2 ^ 80) ∧
-    ∀ X : ℝ, |X| ≤ 513 / 1024 →
+    ∀ X : ℝ, |X| ≤ 5 / 8 →
       |Real.exp (X * Real.log 2 / 1024) - (1 + X * expPoly X)| ≤ 1 / 2 ^ 74
 
 /-- `asSinpid`'s table `st k ≈ sin (k π/128)` for `k ≤ 64`, as double-doubles. -/
