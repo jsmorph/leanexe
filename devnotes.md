@@ -31040,9 +31040,10 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcFastMain` | `core_pr`: the rounding error of `erfFastMain` against its row's polynomial | accepted (`trig-fastmain-7.log`) |
 | `ErfcTest` | `test_near`: when the rounding test passes, the result is a nearest float of `h + l`; `near_within` | accepted (`trig-fastmain-7.log`) |
 | `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | accepted (`trig-fastmain-4.log`) |
+| `ErfcSeriesI` | `eval_serI`, `row_soundI`: the certificate with the shift in integer arithmetic | accepted (`trig-seriesI-3.log`) |
 | `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | accepted (`trig-fastmain-3.log`) |
-| `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | accepted (`trig-fastrow-3.log`) |
-| `ErfcFastPlan`, `ErfcFastRows1` | the certificate parameters and targets of the rows of `C`; the checks of rows 31 to 46, 66 seconds | accepted (`trig-fastrow-3.log`) |
+| `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x`, with the certificate of `ErfcSeriesI` | accepted (`trig-rowsI-1.log`) |
+| `ErfcFastPlan`, `ErfcFastRows0` to `ErfcFastRows11` | the certificate parameters and targets of the 94 rows of `C`, and their checks in twelve groups of at most eight rows, from 9 seconds for rows 1 to 8 to 119 seconds for rows 89 to 94 | accepted (`trig-rowsI-1.log` to `trig-rowsI-4.log`) |
 | `ErfcTrack3` | the stages of `cr_erf_accurate` and its tiny case | accepted (`trig-fastrow-2.log`) |
 | `ErfcFastTiny` | `tiny_err`: `erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `|z| ≤ 1/16` | accepted (`trig-fastrow-1.log`) |
 
@@ -31054,6 +31055,8 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `trig-fastmain-1` | `ErfcTrack` passed with its axiom report; `ErfcFastMain` failed on the instance search for `MainHyp`'s 75 conjuncts and an unindented line |
 
 The lock queue held `trig-fastmain-1` for about 20 minutes behind the coordinator's full build.
+
+The build `trig-rows-1` held the build host's lock until its 120-minute timeout, and the coordinator's integration test and the log track's build timed out waiting for it.  Its module `ErfcFastRows4` checked rows 79 to 94 of `C` by shifting the series of up to 129 terms in rational arithmetic, where every addition reduces fractions with denominators of thousands of bits, and it sat at 4 GB of anonymous memory.  `ErfcSeriesI` now multiplies the series by a common denominator and scales the variable by the row's 32 or 16, so that the shift by the integer center adds and multiplies integers, and divides only the low coefficients at the end.  Row 94 then takes 3 seconds for the check and 22 for the bound (`trig-rowItest-3.log`).  Each row module holds at most eight rows, each build has a timeout of at most 20 minutes and runs alone, and `build/transcendentals/memwatch3.sh` stops a build whose scope sits at `memory.high` with less than half a CPU.
 
 - [x] Error-free transformations and operation bounds (`ErfcEft`, `ErfcEft2`, `ErfcOps`).
 - [x] Error tracking for the stages of `cr_erf_fast` (`ErfcTrack`).

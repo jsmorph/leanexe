@@ -1,5 +1,5 @@
 import Verified.Examples.ErfcFastMain
-import Verified.Examples.ErfcSeries
+import Verified.Examples.ErfcSeriesI
 import Verified.Examples.ErfcRound
 
 /-!
@@ -7,7 +7,7 @@ One row of `cr_erf_fast` from `1/16` on.  For `x` in `[i/16, (i+1)/16)`, `Erfc.e
 `v = ⌊16 x⌋ = i` (`ErfcRound.floorF_spec`), the coefficients of row `i` from `13 (i - 1)`, and the
 exact reduced argument `z = (x - 1/32) - v/16 = x - (2 i + 1)/32`, and evaluates the row's
 polynomial at `z`.  `RowOK` collects the conditions that the kernel checks for a row: finite words,
-the index arithmetic, `ErfcFastMain.MainHyp`, the certificate `ErfcSeries.rowCheck`, and the sum of
+the index arithmetic, `ErfcFastMain.MainHyp`, the certificate `ErfcSeriesI.rowCheckI`, and the sum of
 the rounding bound and the certificate's bound below `T`.  `row_err` then bounds the distance of
 the computed double-double from `erf x` by `T`.
 -/
@@ -15,7 +15,7 @@ the computed double-double from `erf x` by `T`.
 namespace Verified.Examples.ErfcFastRow
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps ErfcTrack ErfcFastMain ErfcSeries
-  ErfcRound FmaSpec PolyBound RealErf
+  ErfcRound ErfcSeriesI FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 
@@ -32,8 +32,8 @@ def RowOK (tab : Array UInt64) (i n J : ℕ) (ε : ℚ) (d : ℕ) (T : ℚ) : Pr
   1 ≤ i ∧ i ≤ 100 ∧ (∀ k < 13, Finite tab[13 * (i - 1) + k]!) ∧
     (∀ k < 13, (13 * (UInt64.ofNat i - 1) + UInt64.ofNat k).toNat = 13 * (i - 1) + k) ∧
     MainHyp (rowQ tab i) (1 / 32) (mainB (rowQ tab i) (1 / 32)) ∧
-    rowCheck n J (((2 * i + 1 : ℕ) : ℚ) / 32) (1 / 32) ε (rowPoly (rowQ tab i)) d = true ∧
-    (mainB (rowQ tab i) (1 / 32)).s8e + rowBound n J (((2 * i + 1 : ℕ) : ℚ) / 32) (1 / 32) ε ≤ T
+    1 ≤ n ∧ rowCheckI n J (2 * i + 1) 32 ε (rowPoly (rowQ tab i)) d = true ∧
+    (mainB (rowQ tab i) (1 / 32)).s8e + rowBoundI n J (2 * i + 1) 32 ε ≤ T
 
 set_option synthInstance.maxSize 4096 in
 instance (tab : Array UInt64) (i n J : ℕ) (ε : ℚ) (d : ℕ) (T : ℚ) :
@@ -74,7 +74,7 @@ theorem row_err (hF : FmaNearest) (tab : Array UInt64) (i n J : ℕ) (ε : ℚ) 
     ff (Erfc.erfFastMain tab x).1 ∧ ff (Erfc.erfFastMain tab x).2 ∧
       |fv (Erfc.erfFastMain tab x).1 + fv (Erfc.erfFastMain tab x).2 - erf (fv x)| ≤ T ∧
       |fv (Erfc.erfFastMain tab x).2| ≤ (mainB (rowQ tab i) (1 / 32)).s8L := by
-  obtain ⟨hi1, hi2, hfin, hidx, hmain, hchk, hT⟩ := hok
+  obtain ⟨hi1, hi2, hfin, hidx, hmain, hn1, hchk, hT⟩ := hok
   obtain ⟨f16, v16, f32, v32, f0625, v0625⟩ := lit_vals
   have hi1r : (1 : ℝ) ≤ i := by exact_mod_cast hi1
   have hi2r : (i : ℝ) ≤ 100 := by exact_mod_cast hi2
@@ -181,9 +181,9 @@ theorem row_err (hF : FmaNearest) (tab : Array UInt64) (i n J : ℕ) (ε : ℚ) 
     (hent 3 (by norm_num)) (hent 4 (by norm_num)) (hent 5 (by norm_num)) (hent 6 (by norm_num))
     (hent 7 (by norm_num)) (hent 8 (by norm_num)) (hent 9 (by norm_num)) (hent 10 (by norm_num))
     (hent 11 (by norm_num)) (hent 12 (by norm_num))
-  have hs := row_sound n J (((2 * i + 1 : ℕ) : ℚ) / 32) (1 / 32) ε (rowPoly (rowQ tab i)) d
-    (by norm_num) hchk _ hzR
-  have hcz : (((((2 * i + 1 : ℕ) : ℚ) / 32 : ℚ)) : ℝ) +
+  have hs := row_soundI n J (2 * i + 1) 32 ε (rowPoly (rowQ tab i)) d hn1 (by norm_num) hchk _
+    (by have := hzR; push_cast at this ⊢; exact this)
+  have hcz : (((2 * i + 1 : ℕ) : ℝ) / ((32 : ℕ) : ℝ)) +
       fv (x - 0.03125 - 0.0625 * Erfc.floorF (16.0 * x)) = fv x := by
     rw [vz]; push_cast; ring
   rw [hcz] at hs
@@ -191,7 +191,7 @@ theorem row_err (hF : FmaNearest) (tab : Array UInt64) (i n J : ℕ) (ε : ℚ) 
   obtain ⟨c1, c2, ce, -, cl⟩ := hc
   refine ⟨c1, c2, ?_, cl⟩
   have hT' : ((mainB (rowQ tab i) (1 / 32)).s8e : ℝ) +
-      (rowBound n J (((2 * i + 1 : ℕ) : ℚ) / 32) (1 / 32) ε : ℝ) ≤ T := by exact_mod_cast hT
+      (rowBoundI n J (2 * i + 1) 32 ε : ℝ) ≤ T := by exact_mod_cast hT
   have := abs_add_le
     (fv (core (Erfc.entry tab (13 * (UInt64.ofNat i - 1)))
       (Erfc.entry tab (13 * (UInt64.ofNat i - 1) + 1))
