@@ -8,8 +8,8 @@ import Verified.Examples.ExpTightFloat
 exact value before the last rounding.  On the path `k = 1`, up to `θ2 ≈ 1.0397`, the result is a
 nearest word to a real `S` within `0.4802 u + 3 η + 2 · 2 ^ -55` of `exp x - 1`, and within
 `0.4802 u + 3 η + 2 · 2 ^ -56` when `exp x - 1 ≤ 1.49` (`near_one_pos`).  From `θ2` to 22 the result
-lies within `u S` of a positive `S` within `1.9604 u`, or within `0.85 u (exp x - 1)`, of
-`exp x - 1` (`near_k_pos`).  Below `0.443` the path `k = 1` takes the form for `x < -1/4`, whose
+lies within `u S` of a positive `S` within `1.9604 u`, or within `0.85 u (exp x - 1)` with
+`exp x - 1 ≥ 3`, of `exp x - 1` (`near_k_pos`).  Below `0.443` the path `k = 1` takes the form for `x < -1/4`, whose
 bound is `0.4802 u`.
 -/
 
@@ -96,7 +96,9 @@ theorem near_k_pos (x : Float) (hxf : Finite x.toBits)
     ∃ S : ℝ, Finite (Tanh.expm1 x).toBits ∧ 0 < S ∧
       |value (Tanh.expm1 x).toBits - S| ≤ u * S ∧
       (|S - (Real.exp (value x.toBits) - 1)| ≤ 4 * (4901 / 10000 * u) ∨
-        |S - (Real.exp (value x.toBits) - 1)| ≤ 85 / 100 * u * (Real.exp (value x.toBits) - 1)) := by
+        (3 ≤ Real.exp (value x.toBits) - 1 ∧
+          |S - (Real.exp (value x.toBits) - 1)| ≤
+            85 / 100 * u * (Real.exp (value x.toBits) - 1))) := by
   obtain ⟨-, -, hθ2, -, -⟩ := Expm1Near.threshold_bounds
   set θ2 := value (UInt64.ofNat (1072734898 * 2 ^ 32))
   have hu : u = 1 / 2 ^ 53 := rfl
@@ -162,9 +164,10 @@ theorem near_k_pos (x : Float) (hxf : Finite x.toBits)
       ∃ S : ℝ, Finite w ∧ 0 < S ∧ |value w - S| ≤ u * S ∧
         (|S - ((2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1)| ≤
           4 * (4901 / 10000 * u) ∨
-        |S - ((2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1)| ≤
+        (3 ≤ (2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1 ∧
+          |S - ((2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1)| ≤
           85 / 100 * u *
-            ((2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1)) := by
+            ((2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1))) := by
     intro w S hn hb
     have hτ1 : (1 : ℝ) / 2 ≤
         (2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1 := by
@@ -177,6 +180,14 @@ theorem near_k_pos (x : Float) (hxf : Finite x.toBits)
     have h1 : (1 : ℝ) / 2 ^ 1022 ≤ 1 / 4 := by norm_num
     have h2 : (2 : ℝ) ^ 32 + 1 ≤ 2 ^ 1022 := by norm_num
     exact F64NearestHalf.nearest_relative S w hn (by linarith) (by linarith)
+  have h3τ : 3 ≤ m.toNat →
+      3 ≤ (2 : ℝ) ^ m.toNat * Real.exp (value x.toBits - (m.toNat : ℤ) * Real.log 2) - 1 := by
+    intro h3
+    have h3r : (3 : ℝ) ≤ m.toNat := by exact_mod_cast h3
+    have hX : 17 / 10 ≤ value x.toBits := by nlinarith
+    rw [he]
+    have := Real.quadratic_le_exp_of_nonneg (show (0 : ℝ) ≤ value x.toBits by linarith)
+    nlinarith
   rcases Nat.lt_or_ge m.toNat 3 with h3' | h3'
   · rcases Nat.lt_or_ge m.toNat 2 with h2' | h2'
     · have hm : m.toNat = 1 := by omega
@@ -216,10 +227,10 @@ theorem near_k_pos (x : Float) (hxf : Finite x.toBits)
       exact hb
   rcases Nat.lt_or_ge m.toNat 20 with h20 | h20
   · obtain ⟨S, h1, h2, h3, h4⟩ := Expm1NearForms.mid_low_near _ _ m hyf hcf hy hc _ hr h3' h20
-    exact ⟨S, h1, h2, h3, Or.inr h4⟩
+    exact ⟨S, h1, h2, h3, Or.inr ⟨h3τ h3', h4⟩⟩
   · obtain ⟨S, h1, h2, h3, h4⟩ :=
       Expm1NearForms.mid_high_near _ _ m hyf hcf hy hc _ hr h20 (by omega)
-    exact ⟨S, h1, h2, h3, Or.inr h4⟩
+    exact ⟨S, h1, h2, h3, Or.inr ⟨h3τ (by omega), h4⟩⟩
 
 #print axioms near_one_pos
 #print axioms near_k_pos
