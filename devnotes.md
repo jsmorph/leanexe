@@ -30587,3 +30587,266 @@ Opus merged `w/expm1` at `df483a74` (the `expm1` and `tanh` theorems), `w/erf` a
 At the user's request Opus pushed `transcendentals` to `github.com/jsmorph/leanexe` at `690f8545`, before this test run, from a new repository in a directory outside the repository filled from a bundle of the build host's branch, with `gh`'s credentials given to that one command.  The user directed that working files stay under a directory outside the repository and out of `/tmp`, on every machine, and that the local machine's the main checkout is not to be touched; the agents' scratch directories and `worker-rules.md` moved to a directory outside the repository.
 
 Decisions since the last entry: `erfc` moves to CORE-MATH's `erfc` with the software fused multiply-add and a one-step bound, since a worst-case analysis of fdlibm's algorithm reaches seven or eight steps; the Bessel theorems state their error as `c · 2^-53 · √(J² + Y²)`, with `c` set by the proof after it uses the pre-rounding forms of the trig and log results; `asinh` and `acosh` may fall to three steps on a subrange if their `log1p` compositions cannot be closed; and the gamma facts are proved only to the precision a one-step bound needs, not to CORE-MATH's correct-rounding precision.  The first reflector change made the program term linear, but the kernel's checking of the generated proofs still grows faster than linearly, and the ports track is measuring that before any further change.
+
+## 2026-10-11: The `tan` kernel (track `trig`)
+
+`TanWords` states `Tan.kernelTan` on words.  Below the high word `0x3FE59428` (`|x| < 0.67434`), `smallW` adds the correction `corrW x y` to `x` and, for odd quadrants, replaces `x + r` by the compensated reciprocal `-1/(x + r)`.  From `0x3FE59428` on, `bigW` evaluates the same correction at `x' = π/4 - |x + y|` and returns `±(v - 2 (x' - (w ^ 2/(w + v) - r)))` with `v = ±1`.  `TanPoly.corr_AB` bounds the correction's rounding error by `1.336 u X ^ 3 + 1.8 u X ^ 5` plus terms in `u ^ 2` and `η`, `TanMath.tan_tail_expand` bounds `tan (x + y)` against the kernel polynomial with `TanKernelPoly.tan_kernel_error`, and `TanEven.even_within` proves the even path within one step of `tan r` for `2 ^ -70 ≤ |x| ≤ 0.67434` and a reduction error up to `|r| / 2 ^ 59`.  It uses `TanStep.near_bin` (same binade, error below one spacing) above `|x| = 0.4643` and `TanStep.near_rel` (error below `0.74 u |tan r|`) below.
+
+The odd path rounds `w = x + r`, truncates `w` and `-1/w` to their high 32 bits, and corrects the quotient with `t z`, which is exact because both heads have 21 significant bits.  `TanTrunc` proves the truncation facts and a Sterbenz lemma for `z - x`, `TanComp.comp_real` bounds the correction in real numbers scaled by `w`, and `TanOdd.odd_spec` gives a real `τ`, to which the result is nearest, within `u / (2 ^ 11 |W|)` of `-1/W` for `W = x + r`.
+
+The first build of `TanOdd` held the build host's Lean slot for 26 minutes at the 4 GB memory limit until the coordinator stopped it.  Probes of parts of the module (`build/transcendentals/P1*.lean`, `p1*.log`) with a monitor of the Lean process's anonymous memory located the cause in one declaration, `smallW_odd : smallW x y true = oddW x (corrW x y) := rfl`.  The definitional check unfolded `Wasm.IEEE64.add` and the other operations instead of the two definitions and passed 3 GB within 16 seconds, while the definition alone stayed at the import baseline of 0.47 GB.  `simp only [smallW, oddW, mask, ...]` proves the same equation in 6 seconds.  The proof of `odd_spec` is also split into one lemma per rounding step, and the module now builds in about 20 seconds with 0.55 GB of anonymous memory (`tan-odd-9.log`, `tan-odd-9.mem`).  Equations between definitions built from IEEE operations should be proved with `simp only` and the definitions, never with `rfl`.  The resident set of a Lean process includes about 6.5 GB of mapped `.olean` files, so the monitor (`build/transcendentals/memwatch.sh`) reads `RssAnon`.
+
+| Module | Result |
+|---|---|
+| `TanStep` | `near_rel`, `near_bin`, `word_value`, `binade`: final steps for a nearest result. |
+| `TanWords` | `smallW`, `bigW`, `kernelTan_small_bits`, `kernelTan_big_bits`. |
+| `TanPoly`, `TanMath` | `corr_AB`, `polyR_AB`, `tan_tail_expand`, `tan_diff`. |
+| `TanTrunc`, `TanEven` | `trunc_spec`, `sterbenz`, `even_sum`, `even_within`. |
+| `TanComp`, `TanOdd` | `comp_real`, `odd_spec`. |
+
+- [x] Even path below `0x3FE59428` (`even_within`).
+- [x] Odd path below `0x3FE59428`: the real error (`odd_spec`).
+- [ ] Odd path: the final step (`odd_within`).
+- [ ] From `0x3FE59428` on: the argument `x'`, the real error (`TanBigReal`), and the final step for both parities.
+- [ ] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
+- [ ] `TanTheorem` (byte theorem) and `TanFile`.
+
+## 2026-10-11: The `tan` theorem (track `trig`)
+
+`TanOddStep.odd_within` finishes the odd path below `0x3FE59428`.  From `|x| = 0.4643` on, `-1/tan r` lies in `[1, 2)`, and the error stays below one spacing, `2 ^ -52`, on four intervals of `|x|` with lower bounds on `tan` from `Real.sin_bound` and `Real.cos_bound` at the left ends; the largest ratio to the spacing is 0.90.  Below 0.4643, `even_err X ≤ 0.6 u X` keeps the error within `0.74 u |tan r| ^ -1`, and `TanStep.near_rel` applies.
+
+From `0x3FE59428` on, the kernel evaluates its polynomial at `x' = (π/4 - |x|) + (π/4 lo - |y|)`.  The first difference is exact by Sterbenz's lemma, and `TanBigWords.arg_spec` places `x'` within `u |x'|` and `2 ^ -100` of `P - |x + y|`, where `P` is the two-word value of `π/4`, within `2 ^ -68` of `π/4` by `Real.pi_gt_d20` and `Real.pi_lt_d20`.  `chain_spec` follows the kernel through `w`, `w ^ 2`, `w + v`, the quotient, the two subtractions, the exact doubling, and the final subtraction, and `TanBigReal.big_real` bounds the computed `x' - (w ^ 2/(w + v) - r)` within `2.4 u |x'| + 4 η` of `W v/(W + v)`; the rounding of `w` enters only through `W ^ 2/(W + v) - w ^ 2/(w + v)`, which carries a factor of the size of `|x'|`.  With `T_v (y) = v - 2 y v/(y + v)`, `TanBigClose` proves `T_1 (tan b) = tan (π/4 - b)`, `T_{-1} (tan b) = -1/tan (π/4 - b)`, and `T_v (A) - T_v (B) = 2 (B - A)/((A + v)(B + v))`, and bounds the error against `T_v (tan b)` for `b = π/4 - |ρ|`: below `0.95 u` from `|x'| = 0.05` on, where `T_1` lies in `[0.79, 0.91]` and `T_{-1}` in `[-1.27, -1.09]`, and below `0.45 u` with `|T_v| ≥ 0.9` below 0.05.  `TanBigStep.big_within` multiplies by the sign word exactly and applies `near_bin` (binade 1022 for even quadrants, 1023 for odd) or `near_rel`.
+
+`TanWith.tan_within` assembles `Tan.tanWith`.  Below `2 ^ -27`, `x.toUInt64 = 0` (from `F64Convert.toUInt64_eq`), the result is `x`, and `|tan x - x| ≤ |x| ^ 3` gives one step through `TrigTiny.self_step`.  Up to the high word `0x3fe921fb`, `kernel_within` runs the kernel with no tail.  Above, `TrigReduce.remPio2_spec` gives the reduction, `tan_quadrant` turns `tan r` or `-1/tan r` into `tan |x|` by the parity of `N`, and the result is negated for a negative `x`.  The reduction allows `|y0|` up to 0.78541, so the large-argument path covers `0.6743 ≤ |x| ≤ 0.78541`.
+
+Two kinds of failure cost builds.  `linarith` failed on goals with `1 / 2 ^ 1075` in modules without `set_option exponentiation.threshold 1200`, since the power stayed an atom.  `|a - |b||` does not parse, since `||` is a token, and `| |a| - |b| |` fails with "expected no space before"; `|(a - |b|)|` parses.
+
+| Module | Result |
+|---|---|
+| `TanOddStep` | `odd_within`: the odd path below `0x3FE59428`. |
+| `TanBigReal`, `TanBigClose` | `big_real`, `tan_quarter`, `big_close_hi`, `big_close_lo`. |
+| `TanBigWords`, `TanBigStep` | `arg_spec`, `chain_spec`, `big_within`: the path from `0x3FE59428` on. |
+| `TanWith` | `tan_within`: one step for every finite `x`. |
+| `TanTheorem`, `TanFile` | `tan_bytes_accuracy`, the exact results, and the file theorems for `build/verified/tan.wasm`. |
+
+`TanTheorem.tan_bytes_accuracy` carries `tan_within` to the bytes of `Tan.compiled.module`, whose function 13 is the export `tan` and which reads `Trig.invPi` and `Trig.halfPi` at addresses 4096 and 4264, for every call in a sequence of calls from the initial store.  `tan_pos_zero`, `tan_neg_zero`, and `tan_nonfinite` give `tan (±0) = ±0` and the canonical NaN for an infinity or a NaN as equalities of bits.  `TanFile` checks `build/verified/tan.wasm`, 5,756 bytes from `tools/Emit.lean`, and its decode theorem takes its bytes from `tan_bytes_accuracy`, so its two axiom lines cover that theorem.  The `tests/verified/run.sh` entry is `tan:TanTheorem:TanFile`.
+
+| Log | Content |
+|---|---|
+| `tan-odd-9.log`, `tan-odd-9.mem` | `TanOdd` after the split, 20 seconds and 0.55 GB. |
+| `tan-oddstep-1.log`, `tan-big-1.log` | `TanOddStep`. |
+| `tan-big-2.log` to `tan-big-7.log` | `TanBigReal`, `TanBigClose`, `TanBigWords`, `TanBigStep`. |
+| `tan-with-1.log` | `TanWith.tan_within`. |
+| `tan-theorem-2.log`, `tan-file-1.log` | The byte theorem and the file theorems. |
+
+- [x] Even and odd paths below `0x3FE59428`.
+- [x] The path from `0x3FE59428` on, both parities.
+- [x] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
+- [x] `TanTheorem` and `TanFile`.
+- [ ] `Sinpi.sinpi`, `cospi`, and `tanpi`.
+
+## 2026-10-11: Integration of the sine, cosine, and log2 theorems
+
+Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at `3924f81c` (the `log2` theorem, with the journal's corrected memory figures) into `transcendentals`, with a merge script that merges with `--no-commit`, resolves `devnotes.md` by union, and commits with a proper message.  `LeanExe.lean` now imports `F64HighWord`, `F64RelativeStepWide`, `F64RoundedStep`, and `F64Sterbenz`, `Verified.lean` imports `TrigTheorem`, `Log2Theorem`, and `Log2Power`, and the file theorem loop of `tests/verified/run.sh` gains `trig:TrigTheorem:TrigFile` and `log2:Log2Theorem:Log2File`.
+
+`TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
+
+`lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: Bessel functions of order 0 and 1, definitions and series (track `log`)
+
+The coordinator moved `asin` and `acos` back to the arc track and gave this track the real Bessel functions as new ProofKit modules, since Mathlib has none.  The task asks for definitions of `J0`, `J1`, `Y0`, and `Y1`, their power series with remainder bounds for small `x`, the functions `P` and `Q` of the large-argument form with bounds on `[2, ∞)` that suffice to check fdlibm's `pzero`, `qzero`, `pone`, and `qone`, the Wronskian, and a lower bound on the modulus.  This track committed nothing for `asin` or `acos`; its only commit after the `log10` work is the merge of `transcendentals` at `a2c5fea3` (`e3c84a4a`).  This section records the definitions and the small-argument series, which `tools/leanrun` accepted (`bes-phase1-1.log`).
+
+### Definitions
+
+The functions are series in `z = x²/4`, as [DLMF 10.2.2, 10.8.1, and 10.8.2](https://dlmf.nist.gov/10.8) give them: `J0 = Σ (-1)^k z^k / k!²`, `J1 = (x/2) Σ (-1)^k z^k / (k! (k+1)!)`, `Y0 = (2/π) ((ln (x/2) + γ) J0 + Σ (-1)^(k+1) H_k z^k / k!²)`, and `Y1 = (2/π) (ln (x/2) + γ) J1 - 2/(π x) - (x/(2π)) Σ (-1)^k (H_k + H_(k+1)) z^k / (k! (k+1)!)`, with `γ = Real.eulerMascheroniConstant` and `H_k = harmonic k`.  DLMF writes the last series with `ψ (k+1) + ψ (k+2) = H_k + H_(k+1) - 2γ`, and the `γ` part of that sum is the `γ` term of the definition here.  `Y0` and `Y1` are meant for `x > 0`.  The coefficient sequences are rational (`qa0`, `qa1`, `qc0`, `qc1`), so their partial sums are `PolyBound` lists (`a0List N` and the others) that the kernel evaluates.
+
+`EntireSeries` handles any power series `psum a z = Σ a_k z^k` for which `Σ |a_k| R^k` converges for every `R ≥ 0`.  Its derivative is the series of `(k+1) a_(k+1)`, from Mathlib's termwise differentiation on a ball (`hasDerivAt_tsum_of_isPreconnected`), and its remainder after `N` terms is at most `|a_N| |z|^N / (1 - q)` when `|a_(k+1)| |z| ≤ q |a_k|` for `k ≥ N`.  `PolyCalc` adds exact rational evaluation of `PolyBound` lists and their derivative lists, which the large-argument proofs use.
+
+### Results
+
+| Theorem (`LeanExe.ProofKit`) | Statement |
+|---|---|
+| `Bessel.hasDerivAt_J0`, `hasDerivAt_J1'` | `J0' = -J1`, and `J1' = J0 - J1/x` for `x ≠ 0` |
+| `Bessel.hasDerivAt_Y0`, `hasDerivAt_Y1` | `Y0' = -Y1` and `Y1' = Y0 - Y1/x` for `x ≠ 0` |
+| `Bessel.wronskian` | `J1 x Y0 x - J0 x Y1 x = 2/(π x)` for `x ≠ 0` |
+| `Bessel.Y0_sub_log`, `Y1_sub_log` | `Y0 - (2/π) J0 ln x` and `Y1 - (2/π) (J1 ln x - 1/x)` as series in `z` with the constant `γ - ln 2`, the parts that fdlibm approximates below 2 |
+| `Bessel.a0_remainder` and the three others | for `|z| ≤ 1`, so `|x| ≤ 2`, and `N ≥ 1`, each series lies within `2 |a_N| |z|^N` of its partial sum of `N` terms |
+| `EulerGamma.gamma_close`, `gamma_rad_small` | `|γ - gammaMid| ≤ gammaRad < 2^-84` for a rational `gammaMid` |
+| `EulerGamma.log_two_close` | `log 2` within `2^-100` of a rational |
+
+The derivatives reduce to four identities between the coefficient sequences, such as `(k+1) c1_k = a1_k - 2 c0_k`, which `field_simp` and `ring` check for every `k`.  For the Wronskian, the logarithm terms cancel and `x (J1 Y0 - J0 Y1) = (2/π) F (x²/4)` with `F = A0 + 2 z A1 C0 + z A0 C1` in terms of the four series.  The same identities give `F' = 0` on all of `ℝ`, so `F` equals `F 0 = 1`, and no limit at 0 is needed.  The ratio bounds use `H_(k+1) ≤ 2 H_k` for `k ≥ 1`, which is why the remainder theorems ask for `N ≥ 1`.
+
+Mathlib bounds `γ` only by `1/2 < γ < 2/3`, and the large-argument proofs start from `Y0 2`, whose `γ` term must be known to about `2^-80`.  `EulerGamma` adds to `H_n - log n` the Euler–Maclaurin corrections `-t/2 + t²/12 - t⁴/120 + t⁶/252 - t⁸/240 + t¹⁰/132` with `t = 1/n`.  The step from `n` to `n + 1`, times `(1 + t)^10`, is a polynomial minus `(1 + t)^10 log (1 + t)`; with 24 terms of the series of the logarithm the kernel finds the coefficients below `t^13` to be zero, so each step is at most `0.28 t^13` for `t ≤ 1/128`.  The steps from 128 on then add up to less than `2^-85.9`, and `log 128 = 7 log 2` comes from 100 terms of the series of `-log (1 - 1/2)`.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Name clash | A theorem `Entire.dcoef` hid the definition `dcoef` inside the `Entire` namespace; it became `Entire.deriv`. | `bes-entire-2` |
+| `abs_c1` | `simp` rewrote `harmonic (k+1)` by `harmonic_succ` after the nonnegativity fact was stated; explicit rewriting replaced `simp`. | `bes-defs-1` |
+| `hasDerivAt_Y1` | Rewriting `Y1` by its unfolded form also rewrote the `Y1 x` in the target derivative; `HasDerivAt.congr_of_eventuallyEq` replaced the rewrite. | `bes-defs-1` |
+| Ratio bounds | `nlinarith` could not bound the expanded quotients of `c0` and `c1`; the proofs now bound `H_(k+1) ≤ 2 H_k` and `(k+1)² ≥ 4` separately. | `bes-defs-1` |
+| `EulerGamma` | A rewrite with `← abs_of_pos` also turned the right side's `(1+t)^10` into an absolute value, and `field_simp` needed `k + 127 ≠ 0`. | `bes-gamma-2` |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The builds waited about 25 minutes for the runner's lock, which another track's build held while its scope was throttled at `memory.high`.
+
+- [x] `EntireSeries`, `Bessel`, `PolyCalc`, and `EulerGamma`.
+- [ ] `P` and `Q`, their system, and bounds on `[2, ∞)` (the energy method below).
+- [ ] Comparison with fdlibm's rational approximations, and the modulus bound.
+
+### Plan for the large-argument bounds
+
+The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = √(πx/2) Y`, Bessel's equation becomes `U'' = -(1 + κ/x²) U` with `κ = 1/4` for order 0 and `κ = -3/4` for order 1, and `P = U cos θ + V sin θ`, `Q = V cos θ - U sin θ` satisfy `P'' = 2Q' - (κ/x²) P` and `Q'' = -2P' - (κ/x²) Q`.  For an approximation `(A, B)` with residuals `r₁`, `r₂`, the energy `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` of the errors `p = P - A` and `q = Q - B` satisfies `(√E)' ≤ |r₁| + |r₂|` when `κ ≥ 0`, and a weighted energy does the same for `κ < 0`.  So the errors stay within their value at `x = 2` plus the residuals' integral, which ties the series values at 2 to the asymptotic expansion at infinity without the connection formulas.  The approximations are Taylor polynomials of degree 40 on `[2, 3]`, `[3, 4.5]`, `[4.5, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms on `[30, ∞)`.  A Python model of this chain, with the start bound `2^-84`, ends at `2^-83.4` for order 0 and `2^-81.7` for order 1.  The same model finds fdlibm's approximation errors at about `2^-57` for `P` and `2^-59.6` for `x Q`, above the `2^-60.26` and `2^-61.22` that `e_j0.c` and `e_j1.c` state, so the comparison will report the proved values.
+
+## 2026-10-11: Bessel functions, bounds on `P` and `Q` over `[2, ∞)` (track `log`)
+
+`tools/leanrun` accepted the bounds on `P0`, `Q0`, `P1`, and `Q1` (`bes-large-4.log`, 3,456 jobs): on `[2, ∞)` each lies within `2^-80` of an explicit approximation, a Taylor polynomial of degree 40 on each of `[2, 3]`, `[3, 9/2]`, `[9/2, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms in `1/x` on `[30, ∞)`.  The method follows the plan of the previous section.  It uses no integral representation of the Bessel functions and no connection formula; the series values at `x = 2` and the energy estimate carry the asymptotic phase and amplitude.
+
+| Module | Content |
+|---|---|
+| `BesselPQ` | `P0 = √(πx/2) (J0 cos θ0 + Y0 sin θ0)`, `Q0 = √(πx/2) (Y0 cos θ0 - J0 sin θ0)` with `θ0 = x - π/4`, and the same for order 1 with `θ1 = x - 3π/4`; the large-argument forms of `J` and `Y` (`J0_large` and the others), the moduli `J² + Y² = (2/(πx)) (P² + Q²)`, and the system `P'' = 2Q' - (κ/x²) P`, `Q'' = -2P' - (κ/x²) Q` with explicit derivatives (`P0_system`, `P1_system`) |
+| `BesselEnergy` | For `κ ≥ 0`, `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` has `(√E)' ≤ |r₁| + |r₂|`; for `κ < 0` and `1 + κ/x² ≥ 81/100`, the energy with the first two terms divided by `1 + κ/x²` has `(√E)' ≤ (10/9)(|r₁| + |r₂|)` |
+| `BesselChain`, `BesselAsym` | Pieces in `x - c` and the asymptotic piece in `1/x`; residuals as kernel-computed polynomials, jumps at the junctions as rational bounds, and the induction over the pieces (`chain0_sound`, `chain1_sound`) |
+| `BesselConstants` | Enclosure arithmetic (`Encl`), `π` by Machin's formula within `2^-190`, `cos 2` and `sin 2` |
+| `BesselStart` | `P`, `Q`, and their derivatives at 2 within `2^-86` of dyadic centers, from the four series at `z = 1`, `γ`, `1/π`, `√(π/2)`, `cos 2`, and `sin 2` |
+| `BesselLarge0`, `BesselLarge1` | The data of the pieces, the kernel checks, and `pieces_bound` and `asym_bound` |
+
+The kernel checks: the start bound at 2 is at most `2^-83`, every piece's bound plus its residual integral stays below `2^-80`, the residuals of the 60-term expansion vanish below degree 59, and the end of the chain plus the jump at 30 plus the tail integral stays below `2^-80`.  Each of `BesselLarge0` and `BesselLarge1` builds in about 80 seconds, almost all of it in these checks.
+
+The polynomials are dyadic rationals with 110 bits after the point, rounded relative to the piece's half-width so that the residual of the rounding stays small on the long pieces; in the Python model, plain 110-bit rounding left a residual integral of `2^-76` on `[18, 22]`.  Hankel's expansion cannot reach `2^-80` below about 29, where its smallest term is near `e^(-2x)`, so the Taylor pieces run to 30.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `HasDerivAt.inv`, `.div` | The module did not import `Mathlib.Analysis.Calculus.Deriv.Inv`; dot notation then looked in `HasFDerivAtFilter`. | `bes-p2-1` |
+| Pi functions | `HasDerivAt.mul`, `.pow`, and `.div` state their functions as pointwise products such as `(p' - q) ^ 2`; `simp only [Pi.add_apply, Pi.sub_apply, Pi.pow_apply]` before `ring` removed them. | `bes-p2-1` |
+| Weighted energy | `field_simp` could not clear `1 + κ/x²` without `x² + κ ≠ 0`, which a short lemma supplies. | `bes-p2-1` |
+| Elaboration of mixed casts | In `(pc.b : ℝ) ≤ pc.c + pc.H`, Lean elaborated the sum in `ℚ`; explicit casts on each term fixed it. | `bes-chain-1` |
+| Name clash | `Encl.abs_le` hid `abs_le` inside the `Encl` namespace; it became `Encl.abs_bound`. | `bes-p2-1` |
+| Start values | `Encl.congr` with an unknown target left a metavariable for `rw`; the target is now given as `(v := Y0 2)`. | `bes-asym-3` |
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [ ] Comparison with fdlibm's rational approximations.
+- [ ] Lower bounds on the moduli.
+
+## 2026-10-12: Bessel functions, fdlibm's `P` and `Q` and the moduli (track `log`)
+
+### fdlibm's rational approximations
+
+`pzero`, `qzero`, `pone`, and `qone` in `e_j0.c` and `e_j1.c` pick their coefficients by the high word of `x`, from 2, from `b3 = 0x4006DB6D00000000` (about 2.8571), from `b5 = 0x40122E8B00000000` (about 4.5454), and from 8.  `BesselRatio.pFd R S x = 1 + R(z)/(1 + z S(z))` and `qFd q₀ R S x = (R(z)/(1 + z S(z)) + q₀)/x` with `z = 1/x²` are their formulas without rounding, with `q₀ = -1/8` for `qzero` and `3/8` for `qone`, and the coefficient lists are `ratOfWord` of the words that the sources print.  For each range the modules `BesselFd0a`, `BesselFd0b`, `BesselFd1a`, and `BesselFd1b` prove `|P x - pFd R S x| ≤ e/2^68 + 2^-70` and `|Q x - qFd q₀ R S x| ≤ e/2^68 + 2^-70` for every real `x` in the range, the last range from 8 to infinity.  The bounds are absolute.  The table gives each source comment's figure, the largest error that a Python model found at 4,000 points per range, and the proved bound, all as powers of two.
+
+| Function | Comment | Range from 2 | from `b3` | from `b5` | from 8 |
+|---|---|---|---|---|---|
+| `pzero`, measured / proved | `2^-60.26` | `-58.05` / `-57.94` | `-57.41` / `-57.30` | `-60.00` / `-59.88` | `-60.09` / `-59.97` |
+| `qzero`, measured / proved | `2^-61.22` of `x Q` | `-61.13` / `-61.01` | `-61.35` / `-61.23` | `-63.66` / `-63.52` | `-63.96` / `-63.81` |
+| `pone`, measured / proved | `2^-60.06` | `-57.59` / `-57.48` | `-56.99` / `-56.88` | `-59.79` / `-59.67` | `-59.97` / `-59.86` |
+| `qone`, measured / proved | `2^-61.13` of `x Q` | `-60.70` / `-60.58` | `-61.13` / `-61.01` | `-63.27` / `-63.13` | `-63.82` / `-63.66` |
+
+The approximations of `P` exceed their comments by up to a factor of 6.7 below `b5`, and those of `Q` exceed theirs once multiplied by `x`, as the comments state them: at `x = 2`, `x |Q - qFd|` reaches `2^-60.13` for order 0.  The proved bounds lie 8 to 10 percent above the measured maxima, the margin that the kernel's bisection needs, and they are the figures that a proof of `j0`, `y0`, `j1`, and `y1` should use.  In units of the amplitude `√(2/(πx))` of the result, `2^-56.88` is about `2^-4` of a unit in the last place.
+
+The checks run on short polynomials.  `BesselSeg0` and `BesselSeg1` split each piece of `BesselLarge0` and `BesselLarge1` into dyadic segments of width `c/8` to `c/11` and give, on each, a polynomial of degree 16 in `x - c` with dyadic coefficients that lies within `2^-71` of the piece's polynomial (`segOk`, checked with one rational shift per segment).  Hankel's expansion is truncated to degree 26 with dyadic coefficients, within `2^-72` of the 60-term expansion on `[30, ∞)`.  For a segment, `|A - pFd R S| = |E|/W` with `E = A W - W - x^(2d) R(z)` and `W = x^(2d) (1 + z S(z))` polynomials of degree 28, and `ratioCheckI` bisects the segment until the coefficients of `E` and `W` at each center give `|E| ≤ ε W`.  It works in integers: with dyadic coefficients scaled by `2^s` and `h = (M + Z)/2^(t+1)`, the shifted polynomials have integer coefficients in `Z`, so the kernel computes no rational normalizations.
+
+| Module | Content | Build | Log |
+|---|---|---|---|
+| `BesselRatio` | `revEven`, `evenP`, `pFd`, `qFd`, the integer bisection `ratioCheckI` and its soundness, and the comparison lemmas `p_piece`, `q_piece`, `p_asym`, `q_asym` | 7 s | `bes-base-1` |
+| `BesselSeg0`, `BesselSeg1` | 27 segments per order, the truncated expansion, `near_seg`, `near_asym`, and the step lemmas | 61 s, 58 s | `bes-seg0-2`, `bes-seg1-1` |
+| `BesselFd0a`, `BesselFd1a` | Ranges from 2, `b3`, and `b5`: 15 segment checks each for `P` and `Q` | 149 s, 92 s | `bes-fd0a-1`, `bes-fd1a-1` |
+| `BesselFd0b`, `BesselFd1b` | From 8: 14 segment checks and one check of the expansion each for `P` and `Q` | 46 s, 33 s | `bes-fd0b-1`, `bes-fd1b-1` |
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Rational bisection on the pieces | The first check compared fdlibm's functions with the degree-40 piece polynomials in rational arithmetic; the kernel's terms filled the scope's `memory.high` within two minutes and the process was throttled.  I stopped it after 24 minutes. | `bes-fd0-2` |
+| Integer bisection on degree 30 | Truncating the pieces to degree 30 and moving the bisection to integers kept the memory below the limit, but the products of degree 41 and the 16 checks in one module ran to the 60-minute timeout and held the machine's lock for that hour.  The coordinator asked for modules of about 10 minutes, split before they run. | `bes-fd0-4` |
+| Segments | Degree-16 polynomials on short segments cut each check to a few seconds: one check alone took 12 seconds with the imports. | `ProbeSeg.lean.log` |
+| `near_seg` | `linarith` saw `q.1.fA x` in the piece bound and its unfolded `eval` in the goal; stating the bound with `eval` fixed it. | `bes-seg0-1` |
+
+### The moduli
+
+`BesselModulus` bounds `M₀² = J0² + Y0²` and `M₁² = J1² + Y1²` (`bes-base-1`, accepted with `bes-mod-1`).
+
+| Theorem | Statement | Proof |
+|---|---|---|
+| `modulus_product` | `(2/(πx))² ≤ M₀² M₁²` for `x > 0` | The Wronskian and Lagrange's identity `M₀² M₁² - (J1 Y0 - J0 Y1)² = (J0 J1 + Y0 Y1)²` |
+| `near0`, `near1` | `|P - 1| ≤ 1/10 + 2^-80` and `|Q| ≤ 1/5 + 2^-80` for `x ≥ 2`, both orders | The piece bounds and kernel bounds on the polynomials (`shapeOk`) |
+| `modulus0_large`, `modulus1_large` | `(3/4)(2/(πx)) ≤ M² ≤ (13/10)(2/(πx))` for `x ≥ 2` | `M² = (2/(πx))(P² + Q²)` |
+| `modulus0_small` | `1/25 ≤ M₀²` for `0 < x ≤ 2` | `J0 x ≥ 1/5` from 10 terms of the series and a polynomial check |
+| `modulus1_small` | `4/25 ≤ M₁²` for `0 < x ≤ 2` | `J1 x ≥ 2/5` on `[1, 2]` from the series, and `Y1 x ≤ -2/(πx)` on `(0, 1]` because `ln (x/2) + γ < 0`, `J1 ≥ 0`, and the series of `Y1` is positive there |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The lower bounds below 2 are coarse: the true minima on `(0, 2]` are `M₀ (2) ≈ 0.557` and `M₁ (2) ≈ 0.586`, against the proved `1/5` and `2/5`, so a proof of `y0` or `y1` near 2 may need sharper bounds, which the same series and checks would give on shorter intervals.
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [x] Comparison with fdlibm's rational approximations on all four ranges, both orders.
+- [x] Lower bounds on the moduli.
+
+## 2026-10-11: A software fused multiply-add, CORE-MATH's gamma functions, and fdlibm's Bessel functions
+
+The coordinator's decisions 3 and 4 after the review: port CORE-MATH's `tgamma` and `lgamma` at a pinned commit with a software `Fma.fma` in the dialect, bound one step, and port fdlibm's `j0`, `j1`, `y0`, `y1`, `jn`, and `yn` with the earlier ports in place of the C library's `sin`, `cos`, and `log`, bound in units of the modulus `√(J² + Y²)`.  The coordinator also accepted two API points: `lgammaR` follows CORE-MATH's `signgam` of -1 at the negative integers, where `lgamma` is `+∞` and fdlibm gives +1, and `jn` and `yn` take `|n| = 2 ^ 31` for `n = -2 ^ 31`, following `J (-n) = (-1) ^ n J n` and `Y (-n) = (-1) ^ n Y n`, where C's `-n` overflows.
+
+### The fused multiply-add
+
+`Verified/Examples/Fma.lean` computes `fma a b c`, the double nearest to the exact `a · b + c` with ties to even, from the bit patterns with 64-bit words alone.  The product of the two significands is a pair of words from the products of their 32-bit halves.  The product and the significand of `c` are shifted so that each has its highest bit at bit 125 of a 128-bit pair, and the smaller is shifted right to the other's scale with its lost bits ORed into bit 0.  Every operand has bits 0 to 19 clear after the first shift, so a shift of 20 or less loses nothing and the sum is exact, and a longer shift leaves at least 72 bits below the rounding position, where the odd sticky bit cannot change the rounding.  `roundPack` rounds the sum at bit `m - 52`, or at the bit of weight `2 ^ -1074` for a subnormal result, and writes `(e - 1) · 2 ^ 52 + q`, which absorbs a carry of the rounding into the exponent and turns an overflow into infinity.
+
+IEEE 754 leaves the NaN of an invalid operation and the payload of a propagated NaN to the implementation.  The port returns the first NaN operand of `a`, `b`, and `c`, quieted, which keeps an input's payload as clause 6.2.3 recommends, and the default `0x7FF8000000000000` for `0 · ∞` and for infinities of opposite signs.  An exact zero sum is `+0` unless the product and `c` are both zeros of negative sign, and a nonzero sum that rounds to zero keeps its sign.  The function raises no flags, since the dialect has none.
+
+A Python model of the word algorithm (`py/fma.py` in the scratch directory) agreed with an exact rational reference and with the C library's `fma` at 309,261 operand triples: every triple of 21 special values and random operands of six kinds, cancellation, subnormal results, overflow, and exact products.  `Verified/Examples/FmaAccuracy.lean` checks the Lean function against `Reference.toFloat` of the exact integer `a · b + c` at every triple of 24 special values and at hashed operands of six kinds: all exponents, products near 1 with `c` the negated rounded product and its neighbors, exact zero sums, subnormal results, overflow, and ties.
+
+### tgamma and lgamma
+
+`Verified/Examples/Tgamma.lean` ports `src/binary64/tgamma/tgamma.c` and `Verified/Examples/Lgamma.lean` ports `src/binary64/lgamma/lgamma.c` of CORE-MATH (https://gitlab.inria.fr/core-math/core-math) at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, MIT license, by Alexei Sibidanov.  Both evaluate in double-double arithmetic with an error bound and return when `h + (l + eps)` and `h + (l - eps)` round alike, fall back to an accurate path of about 100 bits, and end in a table of hard cases.  The ports follow the C code operation for operation and call `Fma.fma` for each `__builtin_fma`, so their results should equal CORE-MATH's bit for bit.  The changes are mechanical: out-parameters become pair results, the tables become arrays of words passed by the wrappers, C's selecting and counting integers become integer-valued doubles or two's complement words with `sar` for the arithmetic shift, `roundeven_finite` adds and subtracts `2 ^ 52`, `floor` follows from it, `__builtin_clzll` is `63 - Fma.msb64`, and the binary searches of the hard-case tables become full scans with the same result.  The flags, `errno`, and `raise_underflow` are gone, and `signgam` is the second result of `Lgamma.lgammaWith`.  `Lgamma` reuses `Tgamma`'s double-double helpers, `asSinpid`, and the table of `as_logd`, which `lgamma.c` repeats; a comparison of the extracted tables confirmed that the repeated arrays are equal.
+
+`Verified/Examples/GammaReference.lean` computes `lgamma y` for `y > 0` as `lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, Stirling's series with 60 terms whose Bernoulli numbers come from the Akiyama–Tanigawa algorithm in exact fractions, and one logarithm of the exact product, and for `x < 0` the reflection formula with `Reference.sinCosTurns`.  `Γ` is `Reference.exp` of `lgamma` with the sign of `sin (π x)`.  A Python model of this reference at 600 bits gave the same doubles as the compiled CORE-MATH at 3,500 arguments, 7,000 results, compiled with `gcc -O2 -ffp-contract=off`, before the Lean version was written.  `TgammaAccuracy.lean` and `LgammaAccuracy.lean` check the ports against it, `lgammaR`'s sign included, and also call the accurate paths directly at an eighth of the arguments and at the hard cases, since the fast paths rarely reach them.
+
+### The Bessel functions
+
+`Verified/Examples/Bessel.lean` ports FreeBSD's `e_j0.c`, `e_j1.c`, and `e_jn.c` at `20381bce4b63975494a2f4bc84257f6932e6d379`.  fdlibm's calls become `Trig.sinWith` and `Trig.cosWith` for `sincos` and `cos`, `Log.logWith` for `log`, and `Float.sqrt` for `sqrt`.  FreeBSD's `sincos` evaluates the same kernel formulas as its `sin` and `cos` (`k_sincos.h` against `k_sin.c` and `k_cos.c`, with `y/2` for `half*y` and `z/2` for `0.5*z`, which are exact), and the four functions call it only from 2 up, where both take the same reduction, so the first two substitutions keep FreeBSD's values.  The square root is correctly rounded on both sides, and only `Log.logWith`, Arm's `log`, may differ from fdlibm's `log` in the last bit.  The 205 constants come from the bit patterns in fdlibm's comments, which a script checked against the rounding of each decimal literal.  `jn` and `yn` read the order as C's `int` in the low 32 bits, and the `while` loop of `jn` that sizes its continued fraction is a `LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel.
+
+`Verified/Examples/BesselReference.lean` computes `J 0`, `J 1`, `Y 0`, and `Y 1` below 300 from their power series, with Euler's constant by Brent and McMillan's algorithm B1, and from 300 up from Hankel's expansions, `J n` from its series below `max 300 n` and by the forward recurrence above, and `Y n` by the forward recurrence, all as in the Python references of the review.  `BesselAccuracy.lean` measures each result in units of the modulus with the definition the review used for FreeBSD's 3.01, which the proof track can state as follows.  For order `n`, let `J` and `Y` be the references at `q` bits, `M = isqrt (J² + Y²) · 2 ^ -q`, and `u = 2 ^ (⌊log₂ M⌋ - 52)`, with no clamp at the subnormal range.  The error of a result `y` for the function `F` is `|y - F|/u`, computed exactly.  In terms of real numbers, the bound `B` means `|y - F (x)| ≤ B · 2 ^ (⌊log₂ √(J n (x)² + Y n (x)²)⌋ - 52)`.
+
+### Results
+
+`FmaAccuracy` (`ports-FmaAccuracy-3.log`) checked 763,816 operand triples and found every result equal to the exact value rounded to the nearest double, quiet NaNs included, and 204,780 of them differ from the separately rounded product and sum.  The first run failed to elaborate an untyped shift amount in the generator of hashed operands, which a type annotation fixed.
+
+`TgammaAccuracy` (`ports-TgammaAccuracy-1.log`) checked 74,373 arguments, with `tgamma` built without its `verified_compile` call, and found every result equal to the reference, none even one step away.  The direct calls of the accurate path at 7,002 arguments, the 57 hard cases included, also equal the reference everywhere.
+
+`LgammaAccuracy` (`ports-LgammaAccuracy-5.log`) checked 81,033 arguments, with `lgamma` built without its `verified_compile` call, and found every result equal to the reference and every sign as specified.  The direct calls of the accurate path at 9,234 arguments, the 19 hard cases included, also equal the reference everywhere.  Two earlier runs failed on defects of the check, not of the port: the reference rounded the residue of the series at the exact zeros 1 and 2 instead of returning 0, and the direct calls of the accurate path included magnitudes from `0x1.006df1bfac84ep+1015` up, which `cr_lgamma` never passes to it and where it returns NaN from `∞ - ∞`.
+
+The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0.  The recurrence now adds the leading zero bits of `x` to its precision, and the rerun (`ports-BesselAccuracy-6.log`, the module built without `verified_compile`) passed with these largest errors of each order, in units of the modulus.
+
+| Order | `jn` | `yn` | `4 + |n|/6` | `4 + |n|/3` |
+|---|---|---|---|---|
+| 2, -2 | 2.648 | 2.420 | 4.33 | 4.67 |
+| 3, -3 | 2.030 | 2.323 | 4.50 | 5.00 |
+| 5 | 2.490 | 4.137 | 4.83 | 5.67 |
+| `2 ^ 32 + 5` (5, other arguments) | 2.490 | 3.522 | 4.83 | 5.67 |
+| -7 | 3.225 | 4.797 | 5.17 | 6.33 |
+| 10 | 2.547 | 4.655 | 5.67 | 7.33 |
+| 20 | 3.426 | 8.793 | 7.33 | 10.67 |
+| 50 | 10.408 | 10.039 | 12.33 | 20.67 |
+| 100 | 8.755 | 15.380 | 20.67 | 37.33 |
+
+The coordinator's bounds: 4 units of the modulus for `j0`, `j1`, `y0`, and `y1`, whose largest errors are 2.617, 2.764, 3.171, and 3.243, and `a + b |n|` units for `jn` and `yn`, with the constants that the proof reaches.  `yn` of order 20 exceeds `4 + |n|/6`, which the first measurements suggested, so with `a = 4` the data need `b ≥ 0.24`, and the check enforces `4 + |n|/3`, the form of the review, until the proof fixes the constants.
+
+### The compiler's time and memory on the gamma port
+
+With its `verified_compile` call, `Tgamma` did not finish: the build ran 25 minutes of CPU time at the scope's memory limits, 4.2 GB of memory and 1 GB of swap, before `leanrun` stopped it.  A probe that compiled only the helpers through `asLgammaAsym` ran 18 minutes at the same limits.  The coordinator suggested small probes with the profiler.  A `LeanExe.loop` over a 6-tuple of floats with a trivial body type-checks in 1.27 s and over a pair in 1.12 s, so tuple loop states are not the cause.  A chain of `let (h, l) := mulDD h l x y` lines type-checks in 2.67 s for 10 lines and 7.64 s for 20, and 40 lines exhausted the scope's memory.
+
+| Lets | Elaboration and type checking | Memory peak | Objects of the program constant | Distinct subterms |
+|---|---|---|---|---|
+| 5 | 3.4 s | 1.0 GB | 1,958 | |
+| 10 | 5.3 s | 1.0 GB | 5,093 | 491 |
+| 15 | 10.6 s | 1.3 GB | 9,578 | |
+| 20 | 17.6 s | 2.0 GB | 15,413 | 851 |
+| 40 | killed at 4.4 GB and 1 GB of swap | | | |
+
+The program constant `<program>.chain.func` grows quadratically with the number of bindings, while its structurally distinct subterms grow linearly, and the same chain rewritten to reference only the newest variables has the same counts, so de Bruijn depth is not the cause.  The cause is in `Verified/Reflect/Command.lean`: `Ctx.ctx` is `ctxExpr (c.vars.map (·.2))`, which builds a fresh `List Ty` expression of the whole context at each of its 23 uses, and the `mkAppM` steps that build each `Expr` node, `Env.cons`, and proof step embed these copies and the indices inferred from them.  Each node thus carries an unshared copy of a context whose length is the number of variables in scope, two more for each pair let, so a function with `n` bindings costs `O(n²)` objects in its program and proofs, and one `verified_compile` call accumulates them for all its functions.  Two fixes in the reflector suggest themselves, neither tried: keep the context expression in `Ctx` and extend it by one `List.cons` per binding, so that nested contexts share their tails, with the same for `Env.cons`, or hash-cons the values and proofs before they are added.  The coordinator decides between them and the restructuring of the ports into functions of fewer bindings, which it approved once the cause was measured.
+
+- [x] `Fma.fma` with `verified_compile`, and its check.
+- [x] `Tgamma`, `Lgamma`, and `GammaReference`, and their checks without `verified_compile`.
+- [x] `Bessel` and `BesselReference`, built with `verified_compile` commented out, and a measuring run of the check.
+- [x] Commit the gamma and Bessel ports, references, and checks without `verified_compile`, at the coordinator's request, so that the log track can state the Bessel theorems.  `BesselAccuracy` passes with the final bounds (`ports-BesselAccuracy-7.log`), and the docstrings of `Tgamma`, `Lgamma`, and `Bessel` state that their `verified_compile` calls wait for the reflector.
+- [ ] The reflector change on `w/reflect` (the build host, a separate worktree), which the coordinator chose over restructuring the ports.
+- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel` after that change, and the final runs of their checks.
+
+## 2026-10-12: Integration of tan, the Bessel foundations, and the gamma and Bessel ports
+
+Opus merged `w/trig` at `9218575c` (the `tan` theorem), `w/log` at `e5e8827f` (the real Bessel functions `J0`, `J1`, `Y0`, `Y1`, their large-argument forms, fdlibm's rational approximations, and the modulus bounds), and `w/ports` at `363f279a` (the gamma and Bessel ports, with `verified_compile` left out until the reflector fix).  `LeanExe.lean` imports the twenty new ProofKit modules, `Verified.lean` imports `TanTheorem`, `Tgamma`, `Lgamma`, `Bessel`, and their references, the file loop of `tests/verified/run.sh` gains `tan:TanTheorem:TanFile`, and the script now runs `TgammaAccuracy`, `LgammaAccuracy`, and `BesselAccuracy`.  The build passed with 9,426 jobs (`opus-merge-tan-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-13.log`): twelve file checks, 15,837 cases, 74,373 results of `tgamma` and 81,033 of `lgamma` equal to their integer references, and the Bessel functions within their check bounds.
+
+The user asked for a Markdown document beside each transcendental implementation, covering the design, the implementation, the theorems, and references.  The specification is a directory outside the repository on the local machine: one file per implementation module, `Verified/Examples/<Module>.md`, with sections for the specification, algorithm, implementation, theorems, proof, tests, limits, and references, each reference confirmed against its source.  A documentation agent writes them in a separate worktree, branch `w/docs`.
