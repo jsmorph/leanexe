@@ -31417,6 +31417,10 @@ The proof of `asExpd_spec` tracks the reduced argument `X` only to `2^-52`, sinc
 
 The large path needs `Γ x < 2^1024` with margin below the overflow threshold `t0`, or the word `ub.toBits + (E <<< 52)` can reach the exponent field 2047 with a nonzero fraction, a NaN.  A 90-digit evaluation gives `log2 Γ = 1024 - 6.90e-14` at the predecessor of `t0`, and track `erf` queued the fact `Γ (0x406573FAE561F647) ≤ 2^1024 (1 - 2^-50)`; the large-path theorem takes it as a hypothesis until it lands.  `asLgammaAsym` takes `asLogd` through the hypothesis `LogdSpec`, in the form track `expm1` announced: the error `2^-69 + |log x| 2^-78` and the low part `2^-22 + |lh|/2^52`.  The low part of the first product, near `185.5 · 2^-22 = 0.725 · 2^-14`, sets the margin of `asExpd_spec`'s hypothesis `|l| ≤ 2^-14`, so a weaker low-part bound for `asLogd` would need a wider `asExpd` analysis.
 
+`asLgammaAsym_spec` puts `asLgammaAsym` within `2^-60` of `log Γ X` for `X = xh + xl` with `4 ≤ xh ≤ 186`, `4 ≤ X ≤ 186`, and `|xl| ≤ 2^-44`, which covers the large path (`xl = 0`) and the reflection, where `xh + xl = 1 - x` exactly.  In units of `2^-63`, the budget is about 3.9 for the first product, almost all of it `asLogd`'s `2^-69` times `X - 1/2 ≤ 185.5`, 1.0 for the change of the series between its argument `z2h` and `1/X²` above 11.5, 0.5 for `StirlingFact`, and 0.4 for the sums, against the 8 of `2^-60`.  The argument `z2h` differs from `1/X²` by up to `2^-44` relative, since `zh` rounds `1/xh` and ignores `xl`, which moves `1/X` by up to `2^-46`.  The bound `|zl| ≤ 2^-38 |zh|` of `recip_dd` gave only `2^-37` for that difference, so `asym_recip` bounds `zh` from the rounded division, and `TgammaPolyLip.eval_lip` with the Lipschitz constant `1/340` of the series above 11.5 bounds the effect.  `BranchOK` bounds the low part of the series by `2^-50` rather than `2^-54`: `fastSum_spec` charges `|sh|/2^51` to the low part, and after the sum with `c18` that term alone is `2^-54.3`.
+
+Plain `linarith` after the generalizations of the double-double results exceeded the heartbeat limit, at `whnf` and `isDefEq` (`gamma-asym4-1.log`, `gamma-asym5-2.log`), and `linarith only` with the needed facts replaced it; the lemmas `abs4` and `abs5` state the triangle inequality for sums of four and five terms, which replaced chains of `abs_add_le` with long terms.  A term with a `by` block inside a `linarith` list, continued on a line indented less than the `by`, ended the block early (`gamma-asym5-1.log`).  During the build of `TgammaAsym6`, SSH to minideb2 did not respond for about 25 minutes while `tailscale ping` did, and the build completed in `gamma-asym6-1.log` with one error in `lgamma_gt`, where `norm_num` evaluated `Γ (3 + 1) = 3!` to `True`.
+
 ### Results
 
 | File | State | Log |
@@ -31451,7 +31455,12 @@ The large path needs `Γ x < 2^1024` with margin below the overflow threshold `t
 | Merge of `transcendentals` at `be5749df`, with `Tgamma.md` resolved by keeping both sides | Committed in `b227991f` | `gamma-merge2-1.log` |
 | `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed in `ef012e60` | `gamma-approx-3.log` |
 | `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed in `54c1cb96` | `gamma-expspec-5.log` |
-| `TgammaAsym1`: `LogdSpec`, `sub_exact_binade`, `half_sub`, `one_sub`, `asym_prod` | Committed with this entry | `gamma-asym1-5.log` |
+| `TgammaAsym1`: `LogdSpec`, `sub_exact_binade`, `half_sub`, `one_sub`, `asym_prod` | Committed in `d81fa94f` | `gamma-asym1-5.log` |
+| `TgammaPolyLip`: `eval_bound`, `eval_lip` | Committed with this entry | `gamma-plip-4.log` |
+| `TgammaAsym2`: the series tails `hiE` and `loE`, `eval_hi`, `eval_lo`, `lip_hi`, `lip_lo` | Committed with this entry | `gamma-asym4-2.log` |
+| `TgammaAsym3`: `log_lo`, `log_hi`, `asym_recip`, `asym_square`, `log_one_add`, `asym_front` | Committed with this entry | `gamma-asym3-2.log` |
+| `TgammaAsym4`: `BranchOK`, `hiBranch`, `asym_hi`; `TgammaAsym5`: `loBranch`, `asym_lo` | Committed with this entry | `gamma-asym5-1.log`, `gamma-asym5-3.log` |
+| `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed with this entry | `gamma-asym6-2.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31470,7 +31479,8 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] The shift loop, the reciprocal, and the result of the path on `(-3, 4)` (`mainPath_within`)
 - [x] The tiny path and the integer path
 - [x] `asExpd` (`asExpd_spec`)
-- [ ] `asLgammaAsym` and the paths above 4 and below -3
+- [x] `asLgammaAsym` (`asLgammaAsym_spec`)
+- [ ] The paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
