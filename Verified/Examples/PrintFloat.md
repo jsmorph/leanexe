@@ -53,7 +53,19 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 ## Theorems
 
-[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  The rest of the proof is planned in three parts: the choice of the decimal against `Shortest64` and `Shortest32`, in terms of the interval of `StrconvInterval`, with the analysis of significant digits above; the search and the quotients against that choice, with `Uscale.scaledQuot_spec`; and the layouts against `sciLayout` and `ecmaLayout`, element by element.  `print64_derives` and `print64_roundtrip` then follow from the layouts and the parsers' theorems.
+[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  Every theorem in the table reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Theorem | Module | Statement |
+|---|---|---|
+| `same_digits`, `more_digits`, `shortest_of_choice` | `PrintFloatShort` | The analysis above. |
+| `quotAt_spec`, `range_spec`, `inside_iff` | `PrintFloatQuot` | `quotAt` is the quotient of `N · 2 ^ sn · 10 ^ -j` by `2 ^ sd · 10 ^ j` with its remainder flag, and `range` gives the least multiplier of `10 ^ j` in the interval and the greatest plus one. |
+| `nearest_spec`, `clamp_spec` | `PrintFloatQuot` | `nearest` rounds `y` to the nearest integer, the even one at a tie, from `⌊2 y⌋` and its remainder flag, and `clamp` of that integer into a run is the nearest member of the run. |
+| `top_top`, `width_le`, `quot_bound` | `PrintFloatSearch` | The top exponent `J` has no multiple of a power of ten above it in the interval, the interval is at most `10 ^ (J + 1)` wide, and the quotients from `J - 1` on stay below `2 ^ 62`. |
+| `startExp_spec`, `found_iff`, `search_spec` | `PrintFloatPick` | The search starts above the interval's upper end, `found` decides whether a multiple lies in the interval, and the search returns `J`. |
+| `no_tie` | `PrintFloatChoice` | A one-digit multiple of `10 ^ J` and one of `10 ^ (J - 1)` in the interval are never at the same distance from the value: a tie would need `5 ^ (1 - J)` to divide a number below 100. |
+| `shortest_spec` | `PrintFloatShortest` | `shortest` returns a decimal of the interval at `J` or `J - 1` that is the printers' choice, so `shortest_of_choice` applies. |
+
+The layouts against `sciLayout` and `ecmaLayout`, element by element, and the theorems of the specification remain; `print64_derives` and `print64_roundtrip` will follow from the layouts and the parsers' theorems.
 
 ## Tests
 
