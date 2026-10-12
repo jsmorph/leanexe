@@ -176,7 +176,7 @@ theorem small_value (b : ℝ) (hb : 1 ≤ b) (nu emin : ℕ) (hmin : 2 * (b ^ em
 /-- `decRound` on the scanner's outputs is the reference of `decValue L · 10 ^ (e - nf)`. -/
 theorem dec_value (f : Fmt) (p F nu emax emin : UInt64) (K : ℕ)
     (hp : p.toNat = f.p) (hF : F.toNat = f.F) (hp60 : f.p ≤ 60)
-    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 62)
+    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 63)
     (hnu : nu.toNat ≤ 2000) (hemax : emax.toNat ≤ 2000) (hemin : emin.toNat ≤ 2000)
     (hmax : threshold f ≤ (10 : ℝ) ^ emax.toNat * 2 ^ nu.toNat)
     (hmin : 2 * ((10 : ℝ) ^ emin.toNat)⁻¹ * 2 ^ nu.toNat ≤ 1)
@@ -305,7 +305,7 @@ theorem dec_value (f : Fmt) (p F nu emax emin : UInt64) (K : ℕ)
 /-- `roundUnits` on the scanner's outputs is the reference of `hexValue L · 2 ^ (e - 4 nf)`. -/
 theorem hex_value (f : Fmt) (p F : UInt64) (nu emax emin : ℕ)
     (hp : p.toNat = f.p) (hF : F.toNat = f.F) (hp55 : f.p ≤ 55)
-    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 62)
+    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 63)
     (hnu : nu ≤ 2000) (hemax : emax ≤ 2000) (hemin : emin ≤ 2000)
     (hmax : threshold f ≤ (2 : ℝ) ^ emax * 2 ^ nu)
     (hmin : 2 * ((2 : ℝ) ^ emin)⁻¹ * 2 ^ nu ≤ 1)

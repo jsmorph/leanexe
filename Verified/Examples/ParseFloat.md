@@ -1,6 +1,6 @@
 # Decimal to binary conversion: `parse64` and `parse32`
 
-The module `ParseFloat` exports `parse64` and `parse32`, which read a number string and return the binary64 or binary32 word of roundTiesToEven applied to the number the string denotes, for strings of any length, or a rejection when the string is not a number of the chosen grammar.  The method is Clinger's fast path for short inputs [1, 7] and otherwise one exact rounding of the decimal value, computed as Cox's unrounded scaling [2] with integers of any size, after the significant digits are cut to 768 (binary64) or 113 (binary32) with a half unit standing for any nonzero remainder.  The decided bound is correct rounding: the result equals the reference word `round64 n` or `round32 n` of the number `n` the string denotes, with no tolerance.  On branch `w/strconv` the specification of this document is proved (stage 1, merged into `transcendentals` at `cf227e3f`), the integer routines of [the limb module](Uscale.md) are proved (stage 2), and `ParseFloat.lean` compiles with the verified compiler and agrees with exact references on 1,030 test strings; the theorems `parse64_accept` and its relatives are open, and the track `strconv` is proving them.
+The module `ParseFloat` exports `parse64` and `parse32`, which read a number string and return the binary64 or binary32 word of roundTiesToEven applied to the number the string denotes, for strings of any length, or a rejection when the string is not a number of the chosen grammar.  The method is Clinger's fast path for short inputs [1, 7] and otherwise one exact rounding of the decimal value, computed as Cox's unrounded scaling [2] with integers of any size, after the significant digits are cut to 768 (binary64) or 113 (binary32) with a half unit standing for any nonzero remainder.  The decided bound is correct rounding: the result equals the reference word `round64 n` or `round32 n` of the number `n` the string denotes, with no tolerance.  On branch `w/strconv` the specification of this document is proved (stage 1, merged into `transcendentals` at `cf227e3f`), the integer routines of [the limb module](Uscale.md) are proved (stage 2), `ParseFloat.lean` compiles with the verified compiler and agrees with exact references on 1,030 test strings, and [the theorem module](ParseFloatTheorem.lean) proves `parse64_accept`, `parse64_reject`, `parse32_accept`, and `parse32_reject` (stage 3).  The byte and file theorems for the compiled module are open.
 
 ## Specification
 
@@ -33,15 +33,20 @@ A string is a list of bytes, and the compiled function receives it as an `Array 
 | `nan`, `-NaN` (general) | `.nan` | `(true, 0x7FF8000000000000)` | `(true, 0x7FC00000)` |
 | `+1`, `01`, `.5`, `inf` (RFC 8259) or `1e`, `0x10`, ` 1` (either) | none | `(false, 0)` | `(false, 0)` |
 
-The planned theorems state the parsers' results for every string of fewer than `2 ^ 32` bytes:
+The theorems of `ParseFloatTheorem` state the parsers' results for every string of fewer than `2 ^ 32` bytes:
 
 ```lean
 theorem parse64_accept (general : Bool) (s : List UInt8) (n : Num) (hs : s.length < 2 ^ 32)
     (h : Derives general s n) : parse64 general (words s) = (true, round64 n)
 theorem parse64_reject (general : Bool) (s : List UInt8) (hs : s.length < 2 ^ 32)
     (h : ∀ n, ¬ Derives general s n) : parse64 general (words s) = (false, 0)
--- parse32_accept and parse32_reject: the same with (round32 n).toUInt64
+theorem parse32_accept (general : Bool) (s : List UInt8) (n : Num) (hs : s.length < 2 ^ 32)
+    (h : Derives general s n) : parse32 general (words s) = (true, (round32 n).toUInt64)
+theorem parse32_reject (general : Bool) (s : List UInt8) (hs : s.length < 2 ^ 32)
+    (h : ∀ n, ¬ Derives general s n) : parse32 general (words s) = (false, 0)
 ```
+
+They follow from `parse64_spec` and `parse32_spec`, which state `parse64 general (words s) = res64 (decode general s)` with `res64 (some n) = (true, round64 n)` and `res64 none = (false, 0)`, and `derives_iff_decode`.
 
 The length hypothesis keeps the dialect's 64-bit positions and counts exact.  It excludes no input of the compiled module: the module's memory holds at most 4 GiB, so an array of one-byte words passed to it has fewer than `2 ^ 29` elements, and every string it can receive satisfies the hypothesis.  Inputs of any length below that bound are rounded correctly, which meets IEEE 754's requirement of correct rounding for at least `p10 + 3` significant digits [4, 9] and is the behavior that C23 announces by defining `CR_DECIMAL_DIG` as `UINTMAX_MAX` [10].
 
@@ -79,7 +84,7 @@ Signed exponents are words with the bias `2 ^ 62`, which keeps every sum of expo
 
 ## Theorems
 
-Every theorem in the table is proved on branch `w/strconv` and reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The parser theorems of the specification are open.
+Every theorem in the table is proved on branch `w/strconv` and reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Module | Statement |
 |---|---|---|
@@ -99,6 +104,10 @@ Every theorem in the table is proved on branch `w/strconv` and reports only the 
 | `span_spec`, `matchLower_spec`, `expPart_spec` | `ParseFloatScan` | `span` stops where `takeWhile` of the class stops, `matchLower` tests the lower-case bytes, and `expPart` is `decodeExpDigits` with the value saturated at `10 ^ 11`. |
 | `leadingZeros_spec`, `anyNonzero_spec`, `digitsVal_spec`, `hexVal_spec` | `ParseFloatDigits` | The number of leading zeros, whether a digit in a range is nonzero, and the value of a run of digits as limbs or as a word. |
 | `decParse_spec`, `hexParse_spec` | `ParseFloatDecParse`, `ParseFloatHexParse` | The flag is the success of the decoder's decimal or hexadecimal branch, and the limbs or word, the count, the biased exponent, and the sticky flag are those of the significand's digits. |
+| `pow10_exact`, `fastPath_spec` | `ParseFloatFast` | `pow10Float k` is the exact double `10 ^ k` for `k ≤ 22`, and `fastPath D qb` is the reference word of `D · 10 ^ q` for `D < 2 ^ 53` and `|q| ≤ 22`. |
+| `dec_value`, `hex_value` | `ParseFloatValue` | `decRound` and `roundUnits` on the scanners' outputs are the references of `decValue L · 10 ^ (e - nf)` and `hexValue L · 2 ^ (e - 4 nf)` for the significand's digits `L`. |
+| `parse64_spec`, `parse32_spec` | `ParseFloatTheorem` | `parse64 general (words s) = res64 (decode general s)` and the binary32 counterpart, for `s.length < 2 ^ 32`. |
+| `parse64_accept`, `parse64_reject`, `parse32_accept`, `parse32_reject` | `ParseFloatTheorem` | The statements of the specification above. |
 
 `ofScientific_spec` concerns Lean's own `Float.ofScientific` at `v4.34.0-rc2` [8], which both compilers use for the decimal literals of a program, so every decimal literal of type `Float` or `Float32` in a verified program means the correctly rounded value.
 
@@ -106,7 +115,7 @@ Every theorem in the table is proved on branch `w/strconv` and reports only the 
 
 [The grid module](StrconvGrid.lean) proves the rounding of a real number in units once for a format given by its precision and the exponent field of its infinities, from the ideas of `FmaGrid` and `FmaNearestEven`: `mag_succ`, `mag_dvd`, and `mag_below` describe the magnitudes of encodings, `nearest_even_pack` shows that a significand rounded in its binade gives the nearest-even encoding, and `nearest_even_unique` shows that two nearest encodings differ by at most one.  [The word module](StrconvWords.lean) connects the grid to ProofKit's binary64 reference and to the binary32 reference, and [the rational module](StrconvRational.lean) proves Talos's rational and dyadic roundings equal to them through `roundsTo_quotient`.  The two `ofScientific` modules follow Lean's definition: the fast path through `F64Bits` and `F32Bits` and the table of powers of ten checked entry by entry, and the model's path through ProofKit's `F64DivCore.pack_div_finite` and `F64RoundDyadic.pack_round_above_dyadic` and their binary32 counterparts.  [The truncation module](StrconvTruncate.lean) proves that two reals in an open interval free of half-grid points have the same reference (`refPos_transfer`) and bounds the significant digits of those points.  The journal sections of track `strconv` record the failed runs and their causes.
 
-The parsers' proof has five parts.  `ParseFloatRound.roundUnits_spec` proves the rounding step: for `φ` in `[0, 1)` that is positive exactly when the flag is set, `roundUnits` gives `refPos f ((u + φ) · 2 ^ (T - 2 ^ 62))`.  `ParseFloatDec.decRound_spec` proves the exact decimal path with `Uscale.scaledQuot_spec`: `decRound` gives `refPos f (D' · 10 ^ q · 2 ^ ν)`, where `D'` is `D`, or `D + 1/2` when a dropped digit is nonzero, and it covers both saturations.  The scanner modules prove that `decParse` and `hexParse` compute the decoder's branches: `ParseFloatScan` reads spans, the special words, and exponents, `ParseFloatDigits` reads leading zeros, the sticky flag, and the values of the kept digits, and `ParseFloatDecParse.decParse_spec` and `ParseFloatHexParse.hexParse_spec` give the flag, the kept digits, their count, the biased exponent of the last kept digit, and the sticky flag in terms of the significand's digits `i ++ f`.  The fast path and the step from the kept digits to the value with `truncate64` and the saturations remain, and then the theorems of the specification, followed by byte and file theorems in the form of `ExpTheorem.exp_bytes_accuracy`.
+The parsers' proof has five parts.  `ParseFloatRound.roundUnits_spec` proves the rounding step: for `φ` in `[0, 1)` that is positive exactly when the flag is set, `roundUnits` gives `refPos f ((u + φ) · 2 ^ (T - 2 ^ 62))`.  `ParseFloatDec.decRound_spec` proves the exact decimal path with `Uscale.scaledQuot_spec`: `decRound` gives `refPos f (D' · 10 ^ q · 2 ^ ν)`, where `D'` is `D`, or `D + 1/2` when a dropped digit is nonzero, and it covers both saturations.  The scanner modules prove that `decParse` and `hexParse` compute the decoder's branches: `ParseFloatScan` reads spans, the special words, and exponents, `ParseFloatDigits` reads leading zeros, the sticky flag, and the values of the kept digits, and `ParseFloatDecParse.decParse_spec` and `ParseFloatHexParse.hexParse_spec` give the flag, the kept digits, their count, the biased exponent of the last kept digit, and the sticky flag in terms of the significand's digits `i ++ f`.  `ParseFloatFast` proves the fast path: `tenWord t`, the word that ProofKit's `F64GridExact.signed_grid_packing_exact` gives for `5 ^ t` on the grid of `2 ^ (1074 + t)`, is the reference word of `10 ^ t`, so each multiplication by `10.0` in `pow10Float` is exact up to `10 ^ 22`, and Talos's `mul` and `div` of two exact words are the reference words of the product and the quotient.  `ParseFloatValue` splits the significand's digits into the kept digits and the dropped digits: with no nonzero dropped digit the scanner's value is exact, and otherwise the truncation theorem applies, while an exponent beyond `10 ^ 11` in magnitude puts both the value and the scanner's value beyond the overflow threshold or below half the least subnormal.  `ParseFloatTheorem` writes `decode` as one chain of conditions (`decode_eq`), shows that the scanner computes each condition, and sets the sign by OR, which is Talos's `negate` on a nonnegative word.  The byte and file theorems in the form of `ExpTheorem.exp_bytes_accuracy` remain.
 
 ## Tests
 

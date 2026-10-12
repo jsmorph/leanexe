@@ -27,7 +27,7 @@ theorem one_limb (c : UInt64) (hc : c.toNat < 2 ^ 32) :
 /-- The exact branch of `decRound`: the encoding of `n / d` scaled by `2 ^ nu`. -/
 theorem exact_path (f : Fmt) (p F nu : UInt64) (n d : Array UInt64)
     (hp : p.toNat = f.p) (hF : F.toNat = f.F) (hp60 : f.p ≤ 60)
-    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 62) (hnu : nu.toNat ≤ 2 ^ 40)
+    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 63) (hnu : nu.toNat ≤ 2 ^ 40)
     (hn : Limbs n) (hd : Limbs d) (hns : n.size ≤ 2 ^ 20) (hds : d.size ≤ 2 ^ 20)
     (hn0 : 0 < val n) (hd0 : 0 < val d) :
     (roundUnits p F
@@ -209,7 +209,7 @@ where `V` is the value of the kept digits `D`, plus one half when `sticky`. -/
 theorem decRound_spec (f : Fmt) (p F nu emax emin : UInt64) (D : Array UInt64)
     (kept qb : UInt64) (sticky : Bool)
     (hp : p.toNat = f.p) (hF : F.toNat = f.F) (hp60 : f.p ≤ 60)
-    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 62)
+    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 63)
     (hnu : nu.toNat ≤ 2000) (hemax : emax.toNat ≤ 2000) (hemin : emin.toNat ≤ 2000)
     (hD : Limbs D) (hDs : D.size ≤ 2 ^ 10) (hk : kept.toNat ≤ 2000)
     (hD1 : kept.toNat = 0 ∨ 10 ^ (kept.toNat - 1) ≤ val D) (hD2 : val D < 10 ^ kept.toNat)
