@@ -7,3 +7,6 @@ share.  `loop_eq_iterate` states that `LeanExe.loop` with an unused index comput
 period of a point as the `N` whose multiples are its periods.  `existsUnique_iterate` states that an
 orbit that stays in a finite set with as many elements as the period reaches each element at
 exactly one count below the period, and `natCard_uint64` counts the words.
+`minimalPeriod_eq_of_primes` gives a point the minimal period `N` when it returns after `N` steps
+and after no `N / q` steps for any prime `q` that divides `N`, and the period of xorshift64 uses
+it.
