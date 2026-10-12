@@ -31405,11 +31405,13 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselJnTiny` failed in `bes-on-13.log` at two places: `push Not` did not rewrite the negated comparison `¬ n > 33` of words, and `nlinarith` did not find `π x (5x/6) ≤ 4 x (5x/6)`.  Rewriting the comparison with `UInt64.lt_iff_toNat_lt` before `omega`, and multiplying `π ≤ 4` by `x (5x/6)` explicitly, fixed both, and `bes-on-14.log` built the module with only the three standard axioms.  The path's error is at most 3 while `M_n ≥ 2^59`, so it contributes less than `u M_n`.
 
+`BesselOrderHuge` replayed in `bes-on-15.log` from an earlier build of its current source, with only the three standard axioms.  From `2^302` on, `λ_k ≤ 2^-269` for `k ≤ 2^32`, so `J_n` and `Y_n` stay within `n 2^-268 (|G₀| + |G₁|)` of `±J₀`, `±J₁`, `±Y₀`, or `±Y₁`, and the code's Hankel term matches that pattern within `10 u M` by the path of `j0` and `y0` from `2^129`.  The deviation from the pattern adds less than `u M`, which gives `11 u M_n` for both functions.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
 - [x] The loops of `jn` and `yn` for `2n ≤ x` (`BesselStepF`, `BesselOrderLoops`).
-- [ ] The Hankel path from `2^302` (`BesselOrderHuge`).
+- [x] The Hankel path from `2^302` (`BesselOrderHuge`).
 - [x] The tiny path of `jn` (`BesselSmallSigns`, `BesselJnTiny`).
 - [ ] Miller's method for `2^-30 ≤ x < 2` (`BesselMillerReal`, `BesselMillerCF`, `BesselMillerDepth`, `BesselMillerFacts`, `BesselMillerT`, `BesselMillerLog`, `BesselMillerStep`, `BesselMillerBack`, `BesselMillerLast`, and a final module).
 - [ ] `yn` for `x < 2`, with the overflow to `-∞`.
