@@ -175,13 +175,14 @@ theorem natCard_nonzero : Nat.card Nonzero = 2 ^ 64 - 1 := by
 /-- From every nonzero state, `step` returns after `2^64 - 1` steps and not before. -/
 theorem step_minimalPeriod {x : UInt64} (hx : x ≠ 0) : minimalPeriod step x = 2 ^ 64 - 1 := by
   obtain ⟨n, ⟨_, hn⟩, _⟩ := Orbit.existsUnique_iterate (S := Nonzero)
-    (by rw [natCard_nonzero, minimalPeriod_one]) (fun n => iterate_ne_zero (by decide : (1 : UInt64) ≠ 0) n)
+    (by rw [natCard_nonzero, minimalPeriod_one])
+    (fun n => iterate_ne_zero (by decide : (1 : UInt64) ≠ 0) n)
     (show x ∈ Nonzero from hx)
   rw [← hn, minimalPeriod_apply_iterate (minimalPeriod_pos_iff_mem_periodicPts.mp
     (by rw [minimalPeriod_one]; norm_num)), minimalPeriod_one]
 
-/-- From every nonzero state `x`, `step` reaches each nonzero state `y` at exactly one count of steps
-below `2^64 - 1`. -/
+/-- From every nonzero state `x`, `step` reaches each nonzero state `y` at exactly one count of
+steps below `2^64 - 1`. -/
 theorem existsUnique_iterate {x y : UInt64} (hx : x ≠ 0) (hy : y ≠ 0) :
     ∃! n, n < 2 ^ 64 - 1 ∧ step^[n] x = y := by
   rw [← step_minimalPeriod hx]
@@ -203,5 +204,39 @@ theorem advance_existsUnique {x y : UInt64} (hx : x ≠ 0) (hy : y ≠ 0) :
     apply UInt64.toNat_inj.mp
     rw [UInt64.toNat_ofNat', hsize]
     exact huniq _ ⟨hm, hmy⟩
+
+/-- Over a period from a nonzero state, the top `j` bits of the state take each nonzero value
+`2^(64 - j)` times and the value 0 `2^(64 - j) - 1` times, since the word 0 never occurs. -/
+theorem advance_topBits {x : UInt64} (hx : x ≠ 0) {j v : Nat} (hj : j ≤ 64) (hv : v < 2 ^ j) :
+    ((Finset.univ : Finset UInt64).filter fun n => n < 18446744073709551615 ∧
+      (advance n x).toNat / 2 ^ (64 - j) = v).card =
+      if v = 0 then 2 ^ (64 - j) - 1 else 2 ^ (64 - j) := by
+  have hnz : ((Finset.univ : Finset UInt64).filter fun y => y ≠ 0 ∧ y.toNat / 2 ^ (64 - j) = v) =
+      ((Finset.univ : Finset UInt64).filter fun y => y.toNat / 2 ^ (64 - j) = v).erase 0 := by
+    ext y
+    simp only [Finset.mem_filter, Finset.mem_univ, true_and, Finset.mem_erase]
+  have hcount : ((Finset.univ : Finset UInt64).filter
+      fun y => y ≠ 0 ∧ y.toNat / 2 ^ (64 - j) = v).card =
+      if v = 0 then 2 ^ (64 - j) - 1 else 2 ^ (64 - j) := by
+    rw [hnz]
+    by_cases hv0 : v = 0
+    · subst hv0
+      rw [Finset.card_erase_of_mem (by simp), Orbit.card_topBits hj hv]
+      simp
+    · rw [Finset.erase_eq_of_notMem (by simp [Ne.symm hv0]), Orbit.card_topBits hj hv]
+      simp [hv0]
+  refine Eq.trans ?_ hcount
+  apply Finset.card_bij (fun n _ => advance n x)
+  · intro n hn
+    rw [Finset.mem_filter] at hn ⊢
+    exact ⟨Finset.mem_univ _, advance_ne_zero hx n, hn.2.2⟩
+  · intro a ha b hb h
+    rw [Finset.mem_filter] at ha hb
+    obtain ⟨k, _, hk⟩ := advance_existsUnique hx (advance_ne_zero hx b)
+    exact (hk a ⟨ha.2.1, h⟩).trans (hk b ⟨hb.2.1, rfl⟩).symm
+  · intro y hy
+    rw [Finset.mem_filter] at hy
+    obtain ⟨n, ⟨hn, hny⟩, _⟩ := advance_existsUnique hx hy.2.1
+    exact ⟨n, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hn, by rw [hny]; exact hy.2.2⟩, hny⟩
 
 end Examples.Xorshift

@@ -28577,13 +28577,12 @@ commands that build the modules and run their cases, and without the decided que
 candidates.
 
 Park–Miller's `seed s` follows the decision of 2026-10-10: the state is `s % (2^31 - 1)`, or 1 when
-that is 0, which [rand.eng.lcong] gives for `c = 0`.  `seed_mem` states
-`0 < seed s ∧ seed s < 2147483647`, the hypothesis of `advance_existsUnique` and `advance_mem`.  The
-standard's seed has type `uint_fast32_t`, which glibc defines as `unsigned long`, 64 bits on 64-bit
-platforms, and which may have 32 bits elsewhere, so the rule matches the standard for every seed
-below `2^32`, and for every seed where the type has 64 bits.  `check_value` states Park and Miller's value
-`advance 10000 1 = 1043618065`, which [rand.predef] also requires of `minstd_rand0`, by
-`decide +kernel`.
+that is 0, which [rand.eng.lcong] gives for `c = 0`.  `seed_mem` states `0 < seed s ∧ seed s <
+2147483647`, the hypothesis of `advance_existsUnique` and `advance_mem`.  The standard's seed has
+type `uint_fast32_t`, which glibc defines as `unsigned long`, 64 bits on 64-bit platforms, and which
+may have 32 bits elsewhere, so the rule matches the standard for every seed below `2^32`, and for
+every seed where the type has 64 bits.  `check_value` states Park and Miller's value `advance 10000
+1 = 1043618065`, which [rand.predef] also requires of `minstd_rand0`, by `decide +kernel`.
 
 `Verified/Examples/Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` compile the programs, as
 `Verified/Examples/Drone.lean` compiles the planner, and `Verified.lean` imports them.  The lists
@@ -28652,6 +28651,137 @@ problem.  It asked for the lemma's hypothesis in Mathlib's form, for `jumpList_t
 state, which G3 needs, for the name `jumpList`, which leaves `jump` to G3's program, and for
 corrections to the READMEs and docstrings.
 
+### G3: plan
+
+G3 appends jump-ahead programs to the generators' modules and proves the equidistribution of the
+top bits over a period.  The LCG's `jump n x` runs 64 passes of `jumpPass n i`.  At pass `i` the
+state holds the coefficients `(am, ap)` of `step^[n % 2^i]` and `(cm, cp)` of `step^[2^i]`.  When
+bit `i` of `n` is set, the pass applies `step^[2^i]` after the first map, giving
+`(am * cm, ap * cm + cp)`, and it squares the second to `(cm * cm, (cm + 1) * cp)`, the step of
+`doubled`.  `jump_eq` follows from `iterate_two_pow` and `Nat.mod_pow_succ` by induction on the
+passes.  xorshift's `applyCols c x` is the xor of the words of the array `c` at the set bits of
+`x`, `square c` the array of `applyCols c c[i]`, and `jump n x` 64 passes of `jumpPass n i`, whose
+state holds the word `step^[n % 2^i] x` and the columns of `step^[2^i]`.  The columns start as
+`LeanExe.build 64 fun k => step (1 <<< k)`, and each pass replaces them with `square c`.  `jump_eq`
+follows from a decomposition of a word into its bits on `UInt64` and from the linearity of `step`,
+which are new lemmas, and it needs no lemma that relates the program's arrays to the tables of G2,
+which stay on natural numbers for the kernel's evaluation.  The named pass functions let the proofs
+unfold each program by `rfl` to a `Nat.fold` of the pass, and scratch prototypes proved `jump_eq`
+for both generators before the plan's review.
+
+| File | Content |
+|------|---------|
+| `Examples/Orbit/Basic.lean` | the bit test `(n >>> k) &&& 1 != 0` as `Nat.testBit`, `(1 <<< i).toNat = 2^i`, and the count of words with given top bits |
+| `Examples/Lcg/Program.lean`, `Jump.lean` | `multiplier`, `increment`, `jumpPass`, `jump`, and `jump_eq` |
+| `Examples/Xorshift/Program.lean`, `Jump.lean` | `applyCols`, `square`, `jumpPass`, `jump`, and `jump_eq`, with `LeanExe.IR.build_get` and `build_congr` |
+| `Examples/Lcg/Period.lean`, `Examples/Xorshift/Period.lean` | `advance_topBits` |
+| `Verified/Examples/Lcg.lean`, `Xorshift.lean` | `lcg_jump`, `xorshift_jump`, and `jump_bound` |
+
+The lists become `[affine, step, advance, jumpPass, jump]` and
+`[step, advance, applyCols, square, jumpPass, jump]`, so the entries of G1 keep their indices.
+`lcg_jump` states that the module's function 6 computes `advance` without a trap, by `jump_eq`.
+xorshift's `jump` allocates: the compiler's bound on the growth of `top` charges 568 bytes for each
+of 65 blocks of 64 words, the first columns and one `square` per pass, `65 · 568 = 36920` bytes,
+and the code releases each pass's old columns.  The last pass squares columns that no pass uses,
+which the uniform loop accepts for one block.  `jump_bound` states
+`compiled.jump.bound x = 36920`, and `xorshift_jump` that function 7 computes `advance` without a
+trap when `top` can rise by 36,920 bytes within the cap.  The cases cover `jump` at the words of
+the other cases and at large counts, with native `jump` as the reference and the allocation fields
+`0` and `65`, xorshift's `applyCols`, `square`, and `jumpPass` at the columns of the step with their
+allocation fields, and the LCG's `jumpPass` at other states.
+
+For the LCG, `n ↦ advance n x` is a bijection of the words, so for `j ≤ 64` and `v < 2^j` exactly
+`2^(64 - j)` counts give `(advance n x).toNat / 2^(64 - j) = v`.  For xorshift from a nonzero `x`,
+the counts below `2^64 - 1` map one to one onto the nonzero words, so the top `j` bits take each
+nonzero value `2^(64 - j)` times and the value 0 `2^(64 - j) - 1` times.  The edge cases hold:
+at `j = 0` only `v = 0` occurs, and at `j = 64` each word occurs once.  Both follow from the count
+of words with given top bits, `2^(64 - j)`, and the bijections of G1 and G2, by `Finset.card_bij`.
+
+- [x] The LCG's `jumpPass`, `jump`, `jump_eq`, and `lcg_jump`.
+- [x] xorshift's programs, `jump_eq`, `jump_bound`, and `xorshift_jump`.
+- [x] Equidistribution for both generators.
+- [x] Cases, the suite, the READMEs, and the manual.  The verified suite passes 16,317 cases, none
+  failed.
+- [x] A review by a fresh agent, and the commit.
+
+The LCG's pass is `jumpPass`, as xorshift's is: `open _root_.Examples.Lcg` made `pass` ambiguous
+with `MonadWriter.pass`.  The first proof of the LCG's count rewrote `2^(64 - j)` by the count of
+words with given top bits, which also rewrote the `2^(64 - j)` inside the filter's predicate and
+sent the elaborator past its recursion limit, so the proofs end with `Eq.trans` instead.  In the
+Lean core of this toolchain the class of `^^^` is `XorOp`, and `Linear` takes it, so one
+`Linear.iterate` serves the maps on natural numbers and on words.
+
+A fresh agent reviewed the first version of this plan.  It confirmed the invariants, the counts and
+their edge cases, and the bound of 65 blocks, and it found that the plan cited a `UInt64`
+decomposition that no file held, omitted the bound's value, the files, and the indices, and
+described the passes unclearly.  A second fresh agent reviewed the implementation.  It confirmed
+the statements, the indices, and the cases, and it asked for the general lemmas `build_congr` and
+`toNat_one_shiftLeft` outside the example, named constants for the LCG's coefficients, one
+definition of linearity, the allocation fields of xorshift's `jumpPass`, and precise wording about
+the bound, which counts the growth of `top` and not the words allocated.
+
+### G4 and G5: plan
+
+G4 and G5 describe the lattice of the LCG's points: the `t`-tuples of successive states
+`(x, step x, …, step^[t-1] x)`.  An integer vector `s = (s_0, …, s_{t-1})` lies in the dual lattice
+`Dual t` when `∑_k s_k a^k ≡ 0 (mod 2^64)`, with `a` the multiplier and `k = 0, …, t - 1`.  Since
+`step^[k] x = a^k x + step^[k] 0` in words, `∑_k s_k (step^[k] x).toNat ≡ d (mod 2^64)` for every
+`x`, with `d = ∑_k s_k (step^[k] 0).toNat`, so every tuple lies on one of the parallel hyperplanes
+`s · y = d + j 2^64`.  For `s ≠ 0` with `S = ∑_k |s_k|`, `s · y` lies for `y` in `[0, 2^64)^t` in a
+closed interval of length `(2^64 - 1) S`, which holds at most `S` members of one residue class, so
+at most `S` hyperplanes hold all the tuples.  The proof states the hyperplanes explicitly, as
+`j` in an interval of `S` integers, which `omega` checks since `2^64` is a literal, and the
+congruence comes from the ring homomorphism `reduce` of `Period.lean`.  G4 states the hyperplane
+bound for every nonzero `s` in `Dual t` and bounds the number of hyperplanes for 2 to 6 successive
+states by the vectors below: 4,008,749,872, 2,903,512, 114,468, 12,288, and, for six, 2,296, from
+the vector `(1502, 30, 36, -6, -264, -458)` of `Dual 6`, whose sum of magnitudes is smaller than
+that of the shortest vector.
+
+G5 states the spectral test values `ν_t² = min {∑ s_k² : s ∈ Dual t, s ≠ 0}` for `t = 2, …, 6`,
+which exact LLL reduction and an enumeration computed, and which the plan's reviewer recomputed
+independently with LLL, Fincke–Pohst enumeration, and, for `t = 2`, Gauss–Lagrange reduction:
+
+| t | `ν_t²` | `log2 ν_t` | shortest `s` |
+|---|--------|-----------|--------------|
+| 2 | 8810664174654508192 | 31.47 | (1381628436, 2627121436) |
+| 3 | 6398304806574 | 21.27 | (-2498093, -397201, 8218) |
+| 4 | 4112636266 | 15.97 | (28729, 22523, -11836, 51380) |
+| 5 | 45662836 | 12.72 | (1079, -547, 5024, -4057, 1581) |
+| 6 | 1846368 | 10.41 | (801, -177, 290, 952, 345, 253) |
+
+`decide` checks that each shortest vector lies in `Dual t` and has squared length `ν_t²`.  The
+lower bound rests on a lemma proved once for every `t`: every `s` in `Dual t` is `y C` for an
+integer `y`, where `C` has the rows `(2^64, 0, …, 0)` and, for `k = 1, …, t - 1`,
+`-(a^k mod 2^64) e_0 + e_k`, with `e_k` the unit vector at coordinate `k`, `y_k = s_k` for `k ≥ 1`,
+and `y_0 = (s_0 + ∑_{k ≥ 1} s_k (a^k mod 2^64)) / 2^64`, an exact division.  A certificate for `t`
+then needs four facts, which the kernel checks: integer matrices `U` and `B` with `U B = C`, an
+integer matrix `A` and an integer `δ` with `B A = δ I`, bounds `b_i` with
+`(ν_t² - 1) ∑_k A_{k i}² < (b_i + 1)² δ²`, and `ν_t² ≤ |z B|²` for every nonzero `z` with
+`|z_i| ≤ b_i`.  From `s = y C = (y U) B = z B` and `δ z_i = (s A)_i`, Cauchy–Schwarz gives
+`(δ z_i)² ≤ (∑ s_k²)(∑_k A_{k i}²)`, so a vector with `∑ s_k² < ν_t²` has `|z_i| ≤ b_i` and,
+by the last fact, `∑ s_k² ≥ ν_t²` unless `z = 0`.  The certificates take `B` as an LLL-reduced basis
+of `Dual t`, `A` as its adjugate, and `δ = det B = ±2^64`, which the lemma does not use, and the
+boxes then hold 3, 9, 27, 27, and 27 vectors.  Vectors are `Fin t → ℤ` and matrices
+`Matrix (Fin t) (Fin t) ℤ`, with the box as `Fintype.piFinset fun i => Finset.Icc (-b i) (b i)`;
+a prototype at `t = 6` measures the kernel's checks first, with Bool checkers over lists of
+integers and one soundness lemma as the alternative if the instances of `Finset` are slow.  A script
+with PEP 723 metadata, run with `uv run`, computes the certificates, and the kernel checks each of
+them, so the theorems do not depend on the script.
+
+| File | Content |
+|------|---------|
+| `Examples/Lcg/Lattice.lean` | `Dual`, `iterate_affine_eq`, the congruence of the tuples, the hyperplane bound, and the instances for `t = 2, …, 6` |
+| `Examples/Lcg/Spectral.lean` | `s = y C`, the certificate lemma, and the values for `t = 2, …, 6` |
+| `Examples/Lcg/certificates.py` | the computation of the certificates |
+
+- [ ] G4: `Dual`, the congruence, the hyperplane bound, and the instances for `t = 2, …, 6`.
+- [ ] G5: `s = y C`, the certificate lemma, the five values, the script, and the README.
+- [ ] A review by a fresh agent, and the commit of each stage.
+
+A fresh agent reviewed the first version of this plan.  It found that the hyperplane bound needs
+`s ≠ 0`, that the plan left `d`, the ranges of `k`, and the lemma `s = y C` unstated, and that the
+certificate needs only the four facts above.  It recomputed the five values and vectors and found
+them unique up to sign, and it gave the vector of `Dual 6` with the smaller sum of magnitudes.
 
 Later candidates: SplitMix64 advances a Weyl sequence, the case `a = 1` of the LCG theorems, and
 its output mixer is a bijection.  PCG combines an LCG state with an output permutation and has the

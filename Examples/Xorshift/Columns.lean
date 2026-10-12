@@ -31,7 +31,7 @@ theorem cols_succ (f : Nat → Nat) (n : Nat) :
   simp [Function.comp, pow_succ, Nat.mul_comm]
 
 /-- `f` distributes over xor. -/
-def Linear (f : Nat → Nat) : Prop := ∀ a b, f (a ^^^ b) = f a ^^^ f b
+def Linear {α : Type} [XorOp α] (f : α → α) : Prop := ∀ a b, f (a ^^^ b) = f a ^^^ f b
 
 theorem Linear.map_zero {f : Nat → Nat} (h : Linear f) : f 0 = 0 := by
   have := h 0 0
@@ -75,12 +75,13 @@ theorem applyList_cols {f : Nat → Nat} (hf : Linear f) :
 /-- `f` maps every number to a word. -/
 def WordValued (f : Nat → Nat) : Prop := ∀ y, f y < 2 ^ 64
 
-theorem Linear.iterate {f : Nat → Nat} (h : Linear f) : ∀ k, Linear f^[k]
+theorem Linear.iterate {α : Type} [XorOp α] {f : α → α} (h : Linear f) : ∀ k, Linear f^[k]
   | 0 => fun _ _ => rfl
   | k + 1 => fun a b => by rw [iterate_succ_apply', iterate_succ_apply', iterate_succ_apply',
       Linear.iterate h k, h]
 
-theorem WordValued.iterate {f : Nat → Nat} (h : WordValued f) (k : Nat) : WordValued f^[k + 1] := fun y => by
+theorem WordValued.iterate {f : Nat → Nat} (h : WordValued f) (k : Nat) :
+    WordValued f^[k + 1] := fun y => by
   rw [iterate_succ_apply']; exact h _
 
 /-- The columns of the square of the linear map with columns `c`. -/
@@ -115,7 +116,8 @@ theorem jumpList_pows {f : Nat → Nat} (hf : Linear f) (hb : WordValued f) :
   | succ k ih =>
     intro j m x hm hx
     have hb' : WordValued f^[2 ^ j] := by
-      obtain ⟨t, ht⟩ : ∃ t, 2 ^ j = t + 1 := ⟨2 ^ j - 1, by have := Nat.one_le_two_pow (n := j); omega⟩
+      obtain ⟨t, ht⟩ : ∃ t, 2 ^ j = t + 1 :=
+        ⟨2 ^ j - 1, by have := Nat.one_le_two_pow (n := j); omega⟩
       rw [ht]; exact hb.iterate t
     have hsq : sq (cols f^[2 ^ j] 64) = cols f^[2 ^ (j + 1)] 64 := by
       rw [sq_cols (hf.iterate _) hb', ← iterate_add, pow_succ, Nat.mul_two]

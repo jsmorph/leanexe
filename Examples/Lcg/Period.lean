@@ -272,8 +272,7 @@ theorem minimalPeriod_affine_iff (a c x : UInt64) :
     minimalPeriod (affine a c) x = 2 ^ 64 ↔ a % 4 = 1 ∧ c % 2 = 1 :=
   ⟨conditions_of_minimalPeriod, fun ⟨ha, hc⟩ => minimalPeriod_eq_of_conditions ha hc x⟩
 
-theorem step_conditions : (6364136223846793005 : UInt64) % 4 = 1 ∧
-    (1442695040888963407 : UInt64) % 2 = 1 := by decide
+theorem step_conditions : multiplier % 4 = 1 ∧ increment % 2 = 1 := by decide
 
 /-- From every state, `step` returns to the state after `2^64` steps and not before. -/
 theorem step_minimalPeriod (x : UInt64) : minimalPeriod step x = 2 ^ 64 :=
@@ -315,5 +314,23 @@ theorem advance_ne_self (x n : UInt64) (hn : n ≠ 0) : advance n x ≠ x := by
 theorem step_periodic_testBit_iff {k : ℕ} (hk : k < 64) (x : UInt64) (p : ℕ) :
     Periodic (fun n => (step^[n] x).toNat.testBit k) p ↔ 2 ^ (k + 1) ∣ p :=
   periodic_testBit_iff step_conditions.1 step_conditions.2 hk x p
+
+/-- Over a period, the top `j` bits of the state take each value `2^(64 - j)` times: exactly
+`2^(64 - j)` counts `n` give `(advance n x).toNat / 2^(64 - j) = v`. -/
+theorem advance_topBits (x : UInt64) {j v : Nat} (hj : j ≤ 64) (hv : v < 2 ^ j) :
+    ((Finset.univ : Finset UInt64).filter
+      fun n => (advance n x).toNat / 2 ^ (64 - j) = v).card = 2 ^ (64 - j) := by
+  have hbij : Bijective fun n => advance n x :=
+    (bijective_iff_existsUnique _).mpr (advance_existsUnique x)
+  refine Eq.trans ?_ (Orbit.card_topBits hj hv)
+  apply Finset.card_bij (fun n _ => advance n x)
+  · intro n hn
+    rw [Finset.mem_filter] at hn ⊢
+    exact ⟨Finset.mem_univ _, hn.2⟩
+  · intro a _ b _ h; exact hbij.1 h
+  · intro y hy
+    obtain ⟨n, rfl⟩ := hbij.2 y
+    rw [Finset.mem_filter] at hy
+    exact ⟨n, Finset.mem_filter.mpr ⟨Finset.mem_univ _, hy.2⟩, rfl⟩
 
 end Examples.Lcg

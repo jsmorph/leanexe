@@ -987,3 +987,20 @@ def main : IO Unit := do
   IO.println s!"parkmiller|advance|i64|i64:10000 i64:1|{_root_.Examples.ParkMiller.advance 10000 1}"
   for s in [(2147483646 : UInt64), 2147483647, 2147483648, 4294967294, 4294967295] do
     IO.println s!"parkmiller|seed|i64|i64:{s}|{_root_.Examples.ParkMiller.seed s}"
+  let cols := LeanExe.build 64 fun i => _root_.Examples.Xorshift.step ((1 : UInt64) <<< i)
+  for x in words do
+    for n in [(0 : UInt64), 1, 2, 1000, 123456789, 9223372036854775808, 18446744073709551615] do
+      IO.println s!"lcg|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.jump n x}"
+      IO.println s!"xorshift|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.jump n x}|0|65"
+    IO.println s!"xorshift|applyCols|i64|{arrayArg cols} i64:{x}|\
+      {_root_.Examples.Xorshift.applyCols cols x}|1|1"
+    for i in [(0 : UInt64), 5, 63] do
+      let st := (x, x * 3 + 1, 6364136223846793005, x ^^^ 1442695040888963407)
+      let r := _root_.Examples.Lcg.jumpPass 1000 i st
+      IO.println s!"lcg|jumpPass|list:i64,i64,i64,i64|i64:1000 i64:{i} i64:{st.1} i64:{st.2.1} \
+        i64:{st.2.2.1} i64:{st.2.2.2}|{r.1} {r.2.1} {r.2.2.1} {r.2.2.2}"
+      let p := _root_.Examples.Xorshift.jumpPass 1000 i (x, cols)
+      IO.println s!"xorshift|jumpPass|list:i64,array-u64|i64:1000 i64:{i} i64:{x} {arrayArg cols}|\
+        {p.1} {arrayOut p.2}|2|2"
+  IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
+    {arrayOut (_root_.Examples.Xorshift.square cols)}|2|2"

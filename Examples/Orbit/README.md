@@ -9,4 +9,5 @@ orbit that stays in a finite set with as many elements as the period reaches eac
 exactly one count below the period, and `natCard_uint64` counts the words.
 `minimalPeriod_eq_of_primes` gives a point the minimal period `N` when it returns after `N` steps
 and after no `N / q` steps for any prime `q` that divides `N`, and the period of xorshift64 uses
-it.
+it.  `shift_and_one_ne_zero` reads the programs' test of bit `k` of a word as `Nat.testBit`, and
+`card_topBits` states that exactly `2^(64 - j)` words have the top `j` bits `v`.
