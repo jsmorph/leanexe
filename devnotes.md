@@ -31041,7 +31041,9 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcTest` | `test_near`: when the rounding test passes, the result is a nearest float of `h + l`; `near_within` | accepted (`trig-fastmain-7.log`) |
 | `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | accepted (`trig-fastmain-4.log`) |
 | `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | accepted (`trig-fastmain-3.log`) |
-| `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | in progress |
+| `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | accepted (`trig-fastrow-3.log`) |
+| `ErfcFastPlan`, `ErfcFastRows1` | the certificate parameters and targets of the rows of `C`; the checks of rows 31 to 46, 66 seconds | accepted (`trig-fastrow-3.log`) |
+| `ErfcTrack3` | the stages of `cr_erf_accurate` and its tiny case | accepted (`trig-fastrow-2.log`) |
 | `ErfcFastTiny` | `tiny_err`: `erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `|z| ≤ 1/16` | accepted (`trig-fastrow-1.log`) |
 
 | Run | Result |
