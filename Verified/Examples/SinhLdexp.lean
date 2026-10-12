@@ -357,12 +357,31 @@ theorem ldexp_high (b yw : UInt64) (s W y : ℝ) (h : Setup b yw s W y)
       (by rw [hr]; unfold F64PositiveRounding.positiveInfinity; omega)
       (by rw [hr]; unfold F64PositiveRounding.positiveInfinity; omega)
 
+/-- The result is positive infinity or a finite word above `2 ^ 1022`. -/
+theorem ldexp_shape (b yw : UInt64) (s W y : ℝ) (h : Setup b yw s W y) :
+    Wasm.IEEE64.mul (ybits b) (sbits b) = 0x7FF0000000000000 ∨
+      (Finite (Wasm.IEEE64.mul (ybits b) (sbits b)) ∧
+        1 / 2 ^ 1022 < value (Wasm.IEEE64.mul (ybits b) (sbits b))) := by
+  obtain ⟨-, -, hyw3⟩ := setup_yw b yw s W y h
+  by_cases hyw : value yw < 2 ^ 248
+  · obtain ⟨hcf, -, hcv⟩ := finite_result b yw h.hbv h.hbs hyw3 hyw
+    right
+    refine ⟨hcf, ?_⟩
+    rw [hcv]
+    have : (1 : ℝ) / 2 ^ 1022 < 2 ^ 776 * 2 ^ 246 := by norm_num
+    nlinarith
+  · left
+    exact ldexp_overflow b h.hbs (big_exponent b yw h.hbv h.hE (not_lt.mp hyw))
+
 /-- `ldexpExp` with the exponent `-1`, against any target within `exp (-a)/2` of `exp a / 2`. -/
 theorem ldexp_within (x : Float) (hxf : Finite x.toBits)
     (hlo : 7097822265625 / 10 ^ 10 ≤ |value x.toBits|)
     (hhi : |value x.toBits| ≤ 71047607421875 / 10 ^ 11)
     (y : ℝ) (hy : |y - Real.exp |value x.toBits| / 2| ≤ Real.exp (-|value x.toBits|) / 2) :
-    F64SignedRounding.WithinSteps 1 y (Sinh.ldexpExp Exp.expTable x.abs (0 - 1)).toBits := by
+    F64SignedRounding.WithinSteps 1 y (Sinh.ldexpExp Exp.expTable x.abs (0 - 1)).toBits ∧
+      ((Sinh.ldexpExp Exp.expTable x.abs (0 - 1)).toBits = 0x7FF0000000000000 ∨
+        (Finite (Sinh.ldexpExp Exp.expTable x.abs (0 - 1)).toBits ∧
+          1 / 2 ^ 1022 < value (Sinh.ldexpExp Exp.expTable x.abs (0 - 1)).toBits)) := by
   have hu : u = 1 / 2 ^ 53 := rfl
   obtain ⟨haf, hav⟩ := abs_float x hxf
   generalize hA : |value x.toBits| = A at hlo hhi hy hav
@@ -436,6 +455,7 @@ theorem ldexp_within (x : Float) (hxf : Finite x.toBits)
     { hn := hn, hbv := hbv, hbs := hbs, hE := hE249, hs1 := hs1, hs2 := hs2, hWlo := hWlo,
       hWhi := hWhi, hy1 := by linarith only [hy2, hWt, hWd2, hexpn, hWlo],
       hy2 := by linarith only [hy1, hWt, hWd1, hexpn, hWlo] }
+  refine ⟨?_, ldexp_shape b yw s W y hS⟩
   by_cases hL : 2 ^ 776 * W ≤ 2 ^ 1024 * (1 - 4 / 2 ^ 53)
   · exact ldexp_low b yw s W y hS hL
   · exact ldexp_high b yw s W y hS (not_le.mp hL)
@@ -446,6 +466,7 @@ theorem ldexp_within (x : Float) (hxf : Finite x.toBits)
 #print axioms product_bits
 #print axioms ldexp_low
 #print axioms ldexp_high
+#print axioms ldexp_shape
 #print axioms ldexp_within
 
 end Verified.Examples.SinhLdexp
