@@ -53,7 +53,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 ## Theorems
 
-No printing theorem is proved yet.  The proof is planned in three parts: the choice of the decimal against `Shortest64` and `Shortest32`, in terms of the interval of `StrconvInterval`, with the analysis of significant digits above; the search and the quotients against that choice, with `Uscale.scaledQuot_spec`; and the layouts against `sciLayout` and `ecmaLayout`, element by element.  `print64_derives` and `print64_roundtrip` then follow from the layouts and the parsers' theorems.
+[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  The rest of the proof is planned in three parts: the choice of the decimal against `Shortest64` and `Shortest32`, in terms of the interval of `StrconvInterval`, with the analysis of significant digits above; the search and the quotients against that choice, with `Uscale.scaledQuot_spec`; and the layouts against `sciLayout` and `ecmaLayout`, element by element.  `print64_derives` and `print64_roundtrip` then follow from the layouts and the parsers' theorems.
 
 ## Tests
 
