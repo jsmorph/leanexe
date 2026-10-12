@@ -31262,6 +31262,8 @@ Below -170 the code chooses between a normal and a subnormal result by the expon
 
 The coordinator approved on 2026-10-12 the hypothesis `SubnormalGap`, which track `erf` proves: every double `-m/2^45` in `(-184, -170)` has `|Γ| ≤ 2^-1022 (1 - 2^-48)` or `|Γ| ≥ 2^-1022 (1 + 2^-48)`.  The margin is thin, since the closest double lies at 34 units of `2^-53` against the 32 of the hypothesis, so the proof of the fact needs `Γ` to about `2^-56` relative at the doubles next to each crossing, with the monotonicity of `|Γ|` on each side of its minimum in each interval `(-n - 1, -n)` from the convexity of `log |Γ|`.  The coordinator also approved low parts below `2^-50` of the high parts: `|sl| ≤ |sh|/2^50` for `asSinpid`, from track `expm1`, and `|l| ≤ |h|/2^50` for `asExpd`, which track `arc` proves by tightening `TgammaExpdSpec`.  With these, `rh` lies within about 20 units of `2^-53` of `|Γ x| 2^E`, inside the gap.
 
+Track `erf` proved the gap as `GammaSubnormal.subnormal_gap` at commit `dc835927` on `w/erf`, with `2 ^ (-1022 : ℤ)` for `2^-1022`, and the reflection path states its hypothesis in that form.  Its tightest point is the double above, with a margin of `2^-52` against a model error below `2^-68`.  `TgammaExpLow.asExpd_low` bounds the low part of `asExpd` by `7.1 · 2^-53` of its high part.  The bounds of `TgammaDD` charge `2^-52` for the error of `fastTwoSum` and for the term `fma ch xh (-a)` of `mulDD`, twice the true `2^-53`, which put the first estimate at `8.03 · 2^-53`, above the `8 · 2^-53` of `2^-50`.  `kernel_low` therefore bounds the low part of `fastTwoSum 1 b1` as the rounding error of `1 + b1`, below `|1 + b1|/2^53` by `F64Approx.fapprox_add`, which gives the margin.  A `positivity` on a term with a table entry reached the maximum recursion depth (`gamma-explow-1.log`), and `div_nonneg` replaced it.
+
 In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a new line inside a `linarith` list ended the term at the line break, since the new line was not indented past the column of `linarith`, and `rw [← hWa]` with `hWa : |W| |D| = 1` rewrote every `1` of the goal.  `have` statements before the call and `rw [hWa] at` a stated inequality replaced them.
 
 ### Results
@@ -31305,7 +31307,8 @@ In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a
 | `TgammaAsym4`: `BranchOK`, `hiBranch`, `asym_hi`; `TgammaAsym5`: `loBranch`, `asym_lo` | Committed in `54581917` | `gamma-asym5-1.log`, `gamma-asym5-3.log` |
 | `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed in `54581917` | `gamma-asym6-2.log` |
 | `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed in `a5086d5a` | `gamma-large-3.log` |
-| `TgammaRefl1`: `refl_front`, `refl_dx`, `refl_odd`, `refl_gamma`; `TgammaRefl2`: `pi_head`, `pi_tail`, `pi_real`, `pi_div` | Committed with this entry | `gamma-refl1-2.log`, `gamma-refl2-3.log` |
+| `TgammaRefl1`: `refl_front`, `refl_dx`, `refl_odd`, `refl_gamma`; `TgammaRefl2`: `pi_head`, `pi_tail`, `pi_real`, `pi_div` | Committed in `fb8a7d88` | `gamma-refl1-2.log`, `gamma-refl2-3.log` |
+| `TgammaExpLow`: `tab_ratio`, `mul_lower`, `table_low`, `kernel_low`, `asExpd_low` | Committed with this entry | `gamma-explow-4.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31327,7 +31330,7 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] `asLgammaAsym` (`asLgammaAsym_spec`)
 - [x] The path above 4 (`largePath_within`, given `GammaBelowT0`)
 - [x] The front of the path below -3 and the quotient by `π` (`TgammaRefl1`, `TgammaRefl2`)
-- [ ] The low part of `asExpd` below `2^-50` of its high part
+- [x] The low part of `asExpd` below `2^-50` of its high part (`asExpd_low`)
 - [ ] The path below -3, given `SubnormalGap` and the specification of `asSinpid`
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
