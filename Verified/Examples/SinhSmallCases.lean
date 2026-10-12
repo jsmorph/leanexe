@@ -60,6 +60,9 @@ theorem sinh_small_pos (x : Float) (hxf : Finite x.toBits) (hlo : 1 / 2 ^ 28 ≤
     (hhi : |value x.toBits| < 1) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
       (0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
+        (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
         (Tanh.expm1 x.abs + 1.0))).toBits := by
   have hu : u = 1 / 2 ^ 53 := rfl
   have hη : η = 1 / 2 ^ 1075 := rfl
@@ -107,6 +110,9 @@ theorem sinh_small_pos (x : Float) (hxf : Finite x.toBits) (hlo : 1 / 2 ^ 28 ≤
         2.9375 * u * (τ + τ / (1 + τ)) →
       F64SignedRounding.WithinSteps 3 (Real.sinh A)
         (0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
+          (Tanh.expm1 x.abs + 1.0))).toBits ∧
+      F64SignedRounding.WithinSteps 3 (-Real.sinh A)
+        (-0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
           (Tanh.expm1 x.abs + 1.0))).toBits := by
     intro E hT hE hnum
     refine small_steps x hlo hhi E htf hT ?_ hnum

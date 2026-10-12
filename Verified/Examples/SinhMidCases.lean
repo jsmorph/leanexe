@@ -57,7 +57,9 @@ theorem mid_num (τ T E : ℝ) (hτ : 1718 / 1000 ≤ τ) (hT : |T - τ| ≤ E) 
 theorem mid_one (x : Float) (hxf : Finite x.toBits) (hlo : 1 ≤ |value x.toBits|)
     (hhi : |value x.toBits| < value (UInt64.ofNat (1072734898 * 2 ^ 32))) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
-      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
+      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
   have hu : u = 1 / 2 ^ 53 := rfl
   have hη : η = 1 / 2 ^ 1075 := rfl
   obtain ⟨haf, hav⟩ := abs_float x hxf
@@ -99,7 +101,9 @@ theorem mid_k (x : Float) (hxf : Finite x.toBits)
     (hlo : value (UInt64.ofNat (1072734898 * 2 ^ 32)) ≤ |value x.toBits|)
     (hhi : |value x.toBits| < 22) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
-      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
+      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
   have hu : u = 1 / 2 ^ 53 := rfl
   obtain ⟨haf, hav⟩ := abs_float x hxf
   obtain ⟨-, -, hθ2, -, -⟩ := Expm1Near.threshold_bounds
@@ -135,7 +139,9 @@ theorem mid_k (x : Float) (hxf : Finite x.toBits)
 theorem sinh_mid_pos (x : Float) (hxf : Finite x.toBits) (hlo : 1 ≤ |value x.toBits|)
     (hhi : |value x.toBits| < 22) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
-      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
+      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
   by_cases h2 : |value x.toBits| < value (UInt64.ofNat (1072734898 * 2 ^ 32))
   · exact mid_one x hxf hlo h2
   · exact mid_k x hxf (le_of_not_gt h2) hhi

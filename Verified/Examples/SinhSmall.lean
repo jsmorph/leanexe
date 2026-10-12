@@ -2,6 +2,7 @@ import Verified.Examples.SinhCore
 import Verified.Examples.SinhExpm1
 import Verified.Examples.CoshSmall
 import Mathlib.Analysis.Complex.ExponentialBounds
+import Verified.Examples.SinhSign
 
 /-!
 `Sinh.sinh` within three steps of `sinh x` for `2 ^ -28 ≤ abs(x) < 1`, where the code returns
@@ -31,7 +32,11 @@ theorem small_words (t : UInt64) (htf : Finite t) (hT0 : 1 / 2 ^ 30 ≤ value t)
       value t ≤ 2 * value t - qv ∧
       Nearest ((2 * value t - qv) / 2) (Wasm.IEEE64.mul Expm1Words.half
         (Wasm.IEEE64.sub (Wasm.IEEE64.mul Expm1Words.two t)
-          (Wasm.IEEE64.div (Wasm.IEEE64.mul t t) (Wasm.IEEE64.add t Expm1Words.one)))) := by
+          (Wasm.IEEE64.div (Wasm.IEEE64.mul t t) (Wasm.IEEE64.add t Expm1Words.one)))) ∧
+      Finite (Wasm.IEEE64.sub (Wasm.IEEE64.mul Expm1Words.two t)
+          (Wasm.IEEE64.div (Wasm.IEEE64.mul t t) (Wasm.IEEE64.add t Expm1Words.one))) ∧
+      1 / 2 ^ 1021 ≤ value (Wasm.IEEE64.sub (Wasm.IEEE64.mul Expm1Words.two t)
+          (Wasm.IEEE64.div (Wasm.IEEE64.mul t t) (Wasm.IEEE64.add t Expm1Words.one))) := by
   have hu : u = 1 / 2 ^ 53 := rfl
   have hη : η = 1 / 2 ^ 1075 := rfl
   set T := value t with hTdef
@@ -85,7 +90,14 @@ theorem small_words (t : UInt64) (htf : Finite t) (hT0 : 1 / 2 ^ 30 ≤ value t)
     (by linarith [show (1 : ℝ) / 2 ^ 1020 ≤ 1 / 2 ^ 30 by norm_num])
     (by linarith [show (4 : ℝ) ≤ 2 ^ 1022 by norm_num])
   rw [← half_eq] at hcn
-  exact ⟨value q, hqr, hV0, hcn⟩
+  have hvr := F64NearestHalf.nearest_relative _ _ hvn
+    (by linarith [show (1 : ℝ) / 2 ^ 1022 ≤ 1 / 2 ^ 30 by norm_num])
+    (by linarith [show (4 : ℝ) < 2 ^ 1022 by norm_num])
+  obtain ⟨hvr1, -⟩ := abs_le.mp hvr
+  rw [hu] at hvr1
+  refine ⟨value q, hqr, hV0, hcn, (nearest_finite _ _ hvn).1, ?_⟩
+  have : (1 : ℝ) / 2 ^ 1021 ≤ 1 / 2 ^ 30 * (1 - 1 / 2 ^ 53) := by norm_num
+  nlinarith
 
 /-- The value of `0.5 (2 t - t t/(t + 1))` within three steps, from a bound `E` on `t`. -/
 theorem small_steps (x : Float) (hlo : 1 / 2 ^ 28 ≤ |value x.toBits|)
@@ -100,10 +112,13 @@ theorem small_steps (x : Float) (hlo : 1 / 2 ^ 28 ≤ |value x.toBits|)
         (Real.exp |value x.toBits| - 1) / (1 + (Real.exp |value x.toBits| - 1)))) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
       (0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
+        (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (2.0 * Tanh.expm1 x.abs - Tanh.expm1 x.abs * Tanh.expm1 x.abs /
         (Tanh.expm1 x.abs + 1.0))).toBits := by
   generalize hA : |value x.toBits| = A at hlo hhi hT hE hnum ⊢
   simp only [F64Bits.toBits_mul, F64Bits.toBits_sub, F64Bits.toBits_div, F64Bits.toBits_add,
-    half_bits, TanhTheorem.two_bits, TanhTheorem.one_bits]
+    half_bits, SinhSign.neg_half_bits, TanhTheorem.two_bits, TanhTheorem.one_bits]
   generalize (Tanh.expm1 x.abs).toBits = t at htf hT hE hnum ⊢
   set τ := Real.exp A - 1 with hτdef
   set T := value t with hTdef
@@ -118,7 +133,8 @@ theorem small_steps (x : Float) (hlo : 1 / 2 ^ 28 ≤ |value x.toBits|)
     have : (1 : ℝ) / 2 ^ 30 ≤ 1 / 2 ^ 28 * (1 - 1 / 2 ^ 40) := by norm_num
     linarith
   have hT2' : T ≤ 2 := by linarith
-  obtain ⟨qv, hqr, hV0, hcn⟩ := small_words t htf hT0 hT2'
+  obtain ⟨qv, hqr, hV0, hcn, hvf, hvlo⟩ := small_words t htf hT0 hT2'
+  rw [SinhSign.mul_negHalf _ hvf hvlo, F64SignedRounding.within_negate, and_self]
   have hy : Real.sinh A = (τ + τ / (1 + τ)) / 2 := by
     have := two_sinh A
     rw [← hτdef] at this
