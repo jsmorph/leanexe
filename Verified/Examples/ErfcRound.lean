@@ -21,6 +21,9 @@ open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps PolyBound
 
 set_option exponentiation.threshold 2200
 
+instance (w : UInt64) : Decidable (Finite w) := by
+  unfold CodeLib.IEEE64.Finite; infer_instance
+
 theorem flt_iff (a b : Float) (ha : ff a) (hb : ff b) : a < b ↔ fv a < fv b := by
   rw [F64Bits.lt_iff]; exact F64UpperWord.lt_iff_value _ _ ha hb
 
