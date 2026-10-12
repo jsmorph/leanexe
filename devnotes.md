@@ -30991,3 +30991,58 @@ The lock queue held these runs for about two hours behind the `exp2` track's `Po
 - [ ] Hard cases.
 
 The CORE-MATH `erfc` port and the gamma foundations: Opus merged `w/trig` at `b1c5f270` (`Erfc.lean`, `ErfcAccuracy.lean`, `FmaSpec.lean` with the hypothesis `FmaNearest` that the `erfc` and `tgamma` proofs take until the software fused multiply-add is proved, and the `erfc` part of `Erf.md`) and `w/erf` at `77f76b81` (the ProofKit modules `GammaBasic`, `GammaThresholds`, `GammaStirling`, `GammaModels`, `RatExpLog`, and `TaylorModel`, with `Tgamma.md` and `Lgamma.md`).  `Verified.lean` imports `Erfc` and `FmaSpec`, `LeanExe.lean` the six modules, and `tests/verified/run.sh` runs `ErfcAccuracy`.  The build passed with 9,482 jobs and no gamma declaration reporting another axiom (`opus-merge-erfc-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-16.log`): 223,592 results of the CORE-MATH `erfc` and 24,895 direct calls of its accurate path equal the reference.  The erf track noted that next to the negative zeros of `lgamma` the fast path for `x < 0` has an absolute error near `1e-21` against results that can be far smaller, so that path's proof uses the rounding test and its facts meet CORE-MATH's tolerance; the other paths need about `2^-60` relative.
+
+## 2026-10-12: The software fused multiply-add theorem (track `expm1`, minideb2)
+
+The coordinator assigned the correctness proof of the ports track's `Verified/Examples/Fma.lean` to this track: `(Fma.fma a b c).toBits` must equal IEEE 754's fusedMultiplyAdd with roundTiesToEven for every triple of words, with signed zeros, subnormal results, overflow, and every NaN and infinity combination, and with the canonical NaN for NaN results.  CORE-MATH's `erfc`, `tgamma`, and `lgamma` rest on this function, and the trig track asked for the corollary `FmaSpec.FmaNearest` in the form its `erfc` proof uses.  The worktree merged `transcendentals` at `bb9002c0` (`3ad72205`) before the work and at `a55d2cfd` (`98703f8a`), which adds `FmaSpec.lean`, during it.  No input was found on which the port is wrong: the theorem covers every triple of words.
+
+### The reference and the theorems
+
+`FmaTheorem.fmaReference a b c` states the operation on words in the style of `Wasm.IEEE64.add` and `Wasm.IEEE64.mul`.  A NaN operand, `0 · ∞`, `∞ · 0`, and an infinite product plus the infinity of the opposite sign give `Wasm.IEEE64.canonicalNaN`, another infinite product gives `Wasm.IEEE64.infinity` of the product's sign, and an infinite `c` with finite `a` and `b` gives `c`.  For finite operands the result is `F64SignedRounding.roundNearestEven (value a * value b + value c)`, the project's nearest-even reference: the finite nonnegative word nearest to the number, the even one at a tie, positive infinity from the overflow threshold `2 ^ 1024 - 2 ^ 970` on, and the negation of the reference of `-y` for a negative `y`, so that a nonzero sum that rounds to zero keeps its sign.  An exact zero sum gives `Wasm.IEEE64.signMask (sign a != sign b && sign c)` when the product and `c` are both zeros, and `+0` otherwise.  The reference rounds the real number directly instead of through CodeLib's `roundDyadicMagnitude`, since ProofKit has no theorem that CodeLib's integer rounders choose the even word at a tie, and the real-valued reference is the one that `WithinSteps` and the other accuracy theorems use.
+
+| Theorem | Module | Statement |
+|---|---|---|
+| `fma_toBits` | `FmaTheorem` | `∀ a b c : Float, (Fma.fma a b c).toBits = fmaReference a.toBits b.toBits c.toBits` |
+| `fmaBits_spec` | `FmaTheorem` | `(if isNaN (Fma.fmaBits a b c) then canonicalNaN else Fma.fmaBits a b c) = fmaReference a b c` for all words |
+| `fma_nearest` | `FmaSpecTheorem` | `FmaSpec.FmaNearest`: for finite operands with `|a · b + c| ≤ 2 ^ 1023`, the result is finite and no finite word is closer to `a · b + c` |
+| `fmaBits_nan_a`, `fmaBits_nan_b`, `fmaBits_nan_c` | `FmaSpecial` | the word result for a NaN operand is the first NaN operand with bit 51 set |
+
+### The proof
+
+The proof works in units of `2 ^ -2400`, in which every product and sum of doubles is an integer.  The doubles of biased exponent `E` (1 for the subnormals) are spaced `2 ^ (E + 1325)` units apart, and `FmaGrid.RoundsTo Y E Q` states that `Y` lies in binade `E` and that `Q` is the integer nearest to `Y / 2 ^ (E + 1325)`, the even one at a tie.  `FmaNearestEven.positive_reference` proves that the nearest-even reference of `Y · 2 ^ -2400` is the word `(E - 1) · 2 ^ 52 + Q`, or positive infinity when that word reaches the exponent field 2047, which is the packing that `Fma.roundPack` performs.  Every double at or above the start of binade `E` is a multiple of the spacing, every double below it lies at least half a spacing below the start, and away from a tie every other double is farther, which gives the even choice.
+
+`FmaRoundPack.roundPack_spec` proves that `roundPack s w h l` is that word for the `E` and `Q` of `N · 2 ^ w`, `N = h · 2 ^ 64 + l`, in seven cases: normal results rounded at bit `m - 52`, exact at `m = 52`, or shifted left, and subnormal results rounded at bit `1326 - w`, zero when that bit lies above bit 127, exact at `w = 1326`, or shifted left.  The rounding of a right shift by `r` follows from bit `r - 1`, the bits below it, and bit `r` (`FmaRound.round_right`).  For the sum, `FmaAlign` shows that the aligned sum `Z` of the product and the addend, both normalized to `[2 ^ 125, 2 ^ 126)` with bits 0 to 19 clear, is exact when the sticky shift loses no set bit and is otherwise odd, at least `2 ^ 124`, and within one unit of the exact sum at its scale.  `FmaGrid.roundsTo_transfer` then carries `RoundsTo` from the aligned sum to the exact sum: every bound in `RoundsTo` is a multiple of twice the unit of `Z`, since the spacing is at least four of its units, and an odd multiple of the unit and a number within one unit of it lie on the same side of every such bound.
+
+| Module | Content |
+|---|---|
+| `FmaWords` | natural-number specifications of `msb64`, `msb128`, `mul128`, `shl128`, `shr128`, `lowBits128`, `sticky128`, `bit128`, `lt128`, `add128`, `sub128` |
+| `FmaGrid` | `spacing`, `RoundsTo`, `packWord`, the grid of doubles, the word of a significand, and `roundsTo_transfer` |
+| `FmaNearestEven` | `positive_reference`, `pack_negative`, `signed_reference` |
+| `FmaRound`, `FmaRoundPack` | the parts and the cases of `roundPack`, and `roundPack_spec` |
+| `FmaDecode` | the fields, sign bits, zero and NaN tests of an operand, and `value` in units of `2 ^ -2400` |
+| `FmaAlign` | the sticky shift and the sum and difference of the aligned addends |
+| `FmaParts` | `fmaBits_eq`, which names the parts of `fmaBits`, and the normalized product and addend |
+| `FmaCombine` | `tail_spec` and `combine_spec`: the rounded sum is the signed reference, or `+0` for an exact zero |
+| `FmaGeneral` | `general_product` and `general_sum`: `fmaBits` on finite operands with nonzero factors |
+| `FmaSpecial` | the NaN, infinity, and zero-product branches, `reference_self`, `reference_not_nan` |
+| `FmaTheorem`, `FmaSpecTheorem` | `fmaReference`, `fmaBits_spec`, `fma_toBits`, and `fma_nearest` |
+
+### Failures and their causes
+
+The first version of the rounding lemma, one module, timed out at 20 minutes without a diagnostic.  Bisection with `sorry` in copies under `build/transcendentals/` found the top-binade branch of `positive_reference`: a rewrite `rw [hq'] at hr1 htie` followed by `exact` elaborated for more than three minutes, and a separate lemma `strict_top` over an arbitrary spacing `S` proves the same step in a few seconds.  The module was split into `FmaGrid` and `FmaNearestEven`, and the threshold steps became four lemmas.  Several proofs failed with maximum recursion depth or heartbeat errors for one cause: `set` introduces local definitions whose bodies `omega` and `rw` see through, and a body such as `(Fma.msb64 (sigWord c)).toNat` or `2 ^ (r - 1)` then unfolds.  `generalize` and `obtain` with opaque variables replace them.
+
+A proof of `fmaBits_eq` by `rfl` exceeded 4,000,000 heartbeats, while `dsimp only` on both sides proves it in four seconds, since it turns the pattern-matching `let`s of the code into projections on both sides alike.  `rw` closes a goal by `rfl` after rewriting, and in `addend_spec` that attempt evaluated `mexp c + 1325 - (125 - m)` until the recursion limit, so the step is a term (`congrArg`, `Eq.trans`).  A lemma stated with `UInt64.ofNat n` does not rewrite a literal such as `1377 : UInt64`, so the comparisons go through `UInt64.le_iff_toNat_le` and `UInt64.toNat_sub_of_le` instead.
+
+### Logs and axioms
+
+`expm1-fma-all-3.log` in `build/transcendentals` on minideb2 builds `Verified.Examples.FmaSpecTheorem` and every module before it, 3,555 jobs, with no warning in the new files.  Its 66 `#print axioms` reports in the `Fma*` modules name only `propext`, `Classical.choice`, and `Quot.sound`, and `fma_toBits`, `fmaBits_spec`, and `fma_nearest` depend on exactly these three.  The module logs of the last successful runs are `expm1-fmawords-3.log`, `expm1-fmagrid-4.log`, `expm1-fmanearesteven-b2.log`, `expm1-fmaround-b3.log`, `expm1-fmaroundpack-b3.log`, `expm1-fmadecode-b2.log`, `expm1-fmaalign-b2.log`, `expm1-fmaparts-b6.log`, `expm1-fmacombine-b8.log`, `expm1-fmageneral-b1.log`, `expm1-fmaspecial-b2.log`, `expm1-fmatheorem-b3.log`, and `expm1-fmaspectheorem-b4.log`.
+
+- [x] Word lemmas (`FmaWords`)
+- [x] The rounding of a number in units of `2 ^ -2400` (`FmaGrid`, `FmaNearestEven`)
+- [x] `roundPack` (`FmaRound`, `FmaRoundPack`)
+- [x] Decoding, alignment, the parts of `fmaBits`, and the rounded sum (`FmaDecode`, `FmaAlign`, `FmaParts`, `FmaCombine`, `FmaGeneral`)
+- [x] Special cases and the theorem (`FmaSpecial`, `FmaTheorem`)
+- [x] `FmaSpec.FmaNearest` (`FmaSpecTheorem`)
+- [x] `Fma.md` updated with the theorems
+
+The theorem does not cover the NaN payload of `Fma.fma`: `Float.toBits` returns the canonical NaN for every NaN, so `fma_toBits` states the canonical NaN, while the word lemmas `fmaBits_nan_a`, `fmaBits_nan_b`, and `fmaBits_nan_c` state the payload rule of `fmaBits`.  No byte theorem or file theorem is planned, since the function is a helper of the gamma and `erfc` modules, and `Verified.lean` does not import the new modules until the coordinator merges them.
