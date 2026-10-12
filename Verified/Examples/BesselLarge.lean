@@ -63,7 +63,8 @@ theorem large_sub {p q c s xa : Float} {P Q A B F M eP eQ Pl Ph Qh K : ℝ}
     (hxf : Finite xa.toBits) (hx2 : 2 ≤ value xa.toBits) (hxb : value xa.toBits ≤ 2 ^ 1024)
     (hF : F = (P * A - Q * B) / √(π * value xa.toBits))
     (hM : 7978 / 10000 * Pl / √(value xa.toBits) ≤ M) :
-    |value (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits - F| ≤ K * 𝐮 * M := by
+    Finite (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits ∧
+      |value (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits - F| ≤ K * 𝐮 * M := by
   have hPm : |P| ≤ Ph := abs_le.mpr ⟨by linarith, hPh⟩
   rw [hF]
   rcases hbr with ⟨hc, hs, hA, hB2⟩ | ⟨hc, hs, hB, hA2⟩
@@ -93,7 +94,8 @@ theorem large_add {p q c s xa : Float} {P Q A B F M eP eQ Pl Ph Qh K : ℝ}
     (hxf : Finite xa.toBits) (hx2 : 2 ≤ value xa.toBits) (hxb : value xa.toBits ≤ 2 ^ 1024)
     (hF : F = (P * B + Q * A) / √(π * value xa.toBits))
     (hM : 7978 / 10000 * Pl / √(value xa.toBits) ≤ M) :
-    |value (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits - F| ≤ K * 𝐮 * M := by
+    Finite (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits ∧
+      |value (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits - F| ≤ K * 𝐮 * M := by
   have hPm : |P| ≤ Ph := abs_le.mpr ⟨by linarith, hPh⟩
   rw [hF]
   rcases hbr with ⟨hc, hs, hA, hB2⟩ | ⟨hc, hs, hB, hA2⟩
