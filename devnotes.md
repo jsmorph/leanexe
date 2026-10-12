@@ -31039,7 +31039,7 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcTrack` | `Tr`, `Pr`, and the stages `pr_fts`, `pr_add`, `pr_mulB`, `pr_mulC`, `pr_mulD` | accepted (`trig-fastmain-1.log`), committed with this section |
 | `ErfcFastMain` | `core_pr`: the rounding error of `erfFastMain` against its row's polynomial | in progress |
 | `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | in progress |
-| `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | in progress |
+| `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | accepted (`trig-fastmain-3.log`) |
 | `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | in progress |
 
 | Run | Result |
