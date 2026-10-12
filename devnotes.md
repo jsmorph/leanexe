@@ -31423,6 +31423,8 @@ While planning `yn` below 2, the track found a band near overflow where neither 
 
 `BesselMillerStep` took four builds, `bes-on-27.log` to `bes-on-30.log`.  Its hypothesis `b · 2i ≤ 2^1020` did not bound the quotient `b · 2i/x`, which can reach `2^1050` for `x` near `2^-30`, so the module now assumes `b λ_i ≤ 2^1020`, which the callers derive from `σ (J_(i-1) + J_(i+1)) ≤ 2^1019` without the scaling and from `b ≤ 2^333` with it.  The other failures were a false lower bound `T ≥ b/3`, which is `T ≥ b/6` for `d ≤ 5`, a difference bound that used `2^1050`, a numeral inequality that Lean read in `ℕ`, and a `ring` after `field_simp` had closed the goal.  `bes-on-30.log` built the module with only the three standard axioms.
 
+`BesselMillerBack` failed in `bes-on-31.log` at four places.  `b_err` derived `T ≥ 0` from `|B - σJ| ≤ β σJ`, which needs `β ≤ 1`, and its bound holds without that step.  The step from `i = 2` to `i = 1` gives a ratio error of `9.1 u + 2 u`, above the `11 u` that the invariant allowed at `i = 1`, so `Er 1` is now `12 u`, and the factor of the last step at `d = 21/20` rises from `16.725 u` to `17.775 u`, which `jn_backward`'s constant `23 + 8 n` still covers.  `nlinarith` needed `m ≤ 2^31` for the error of `b`, and the branch that rescales needed `b ≤ 2^333` from the invariant to bound `b ≤ 2^1020`.  `bes-on-32.log` built the module in 195 seconds with only the three standard axioms.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
