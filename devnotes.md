@@ -31047,3 +31047,35 @@ A proof of `fmaBits_eq` by `rfl` exceeded 4,000,000 heartbeats, while `dsimp onl
 - [x] Committed as `72655383` on `w/expm1`
 
 The theorem does not cover the NaN payload of `Fma.fma`: `Float.toBits` returns the canonical NaN for every NaN, so `fma_toBits` states the canonical NaN, while the word lemmas `fmaBits_nan_a`, `fmaBits_nan_b`, and `fmaBits_nan_c` state the payload rule of `fmaBits`.  No byte theorem or file theorem is planned, since the function is a helper of the gamma and `erfc` modules, and `Verified.lean` does not import the new modules until the coordinator merges them.
+
+## 2026-10-12: The floating-point proof of `lgamma` (track `expm1`, minideb2)
+
+The coordinator assigned the floating-point proof of `Lgamma.lgammaR` and `Lgamma.lgamma` to this track: `F64SignedRounding.WithinSteps 1` against `log |Γ x|` for every finite non-pole input, the sign of `Γ x` as the second result (CORE-MATH's -1 at the negative integers), the exact results at 1, 2, the poles, the infinities, and NaN, and the overflow thresholds of `GammaThresholds`.  Track `erf` proves the approximation facts, and this track proves the floating-point analysis that consumes them, with `FmaSpecTheorem.fma_nearest` at every fused multiply-add.  The first step states the facts in a module of definitions only, `Verified/Examples/LgammaApprox.lean`, as track `arc` did in `TgammaApprox.lean` for `tgamma`.
+
+### The approximation facts
+
+The fast path returns `fh + fl` rounded when `fh + (fl + eps)` and `fh + (fl - eps)` round alike, and otherwise the accurate path's result.  A fast-path result is within one step of the reference whenever the true error is at most twice the computed `eps`: the test places `[h - eps, h + eps]` inside one rounding cell, so an error of up to `2 eps` reaches at most the next cell on either side.  For `x < 0` next to the zeros of `log |Γ|` the absolute error exceeds any relative bound, so the proof uses this argument there, and the pieces and Stirling's series need their errors below about twice CORE-MATH's allowance: CORE-MATH's polynomials take almost all of it (`7.96 · 10^-20` of `8.7 · 10^-20` for the pieces, `4.34 · 10^-20` of `4.5 · 10^-20` for Stirling's series).  Track `erf` found that from -17 to -10.5 the accurate path's reflection cancels by up to `2^31` at the doubles next to the zeros, where the fast path's test fails, so the accurate path's parts there carry `2^-87`, and a cancellation fact closes the one-step bound.
+
+| Fact | Statement | Measured | Tolerance |
+|---|---|---|---|
+| `SmallFact` | `log Γ (1 + x) ≈ x · smallPoly x`, `\|x\| ≤ 1/32` | `2^-74.3 \|x\|` | `2^-70 \|x\|` |
+| `PieceFact` | the 19 pieces from 0.5 to 8.29541, factors `1 - x` and `x - 2` at the zeros, relative | `7.96 · 10^-20` | `12 · 10^-20` |
+| `StirlingFact` | `stirFast` from 8.29541, relative | `4.34 · 10^-20` | `7 · 10^-20` |
+| `LogFact` | `asLogd`, the statement of `TgammaApprox.LogFact` | kernel `2^-71` at `1/2400`, tables `2^-89` | `2^-70`, `2^-80` |
+| `SinpiFact` | `asSinpipid`: the table `sin (kπ/128)/π`, the kernels of `asSinpid`, the polynomial within `3/256` of an integer | `2^-109`, `2^-74.3 \|d\|`, `2^-81.4 d²`, `2^-79.2 \|z\|` | `2^-100`, `2^-73 \|d\|`, `2^-76 d²`, `2^-76 \|z\|` |
+| `AccPolyFact` | `log Γ (1 + x)` and `log Γ (3/2 + d)`, `\|x\|, \|d\| ≤ 1/4` | `2^-105.3 \|x\|`, `2^-110.3` | `2^-70` |
+| `AsymFact` | Stirling's series of the accurate path on `[48, ∞)`, `[14.5, 48]`, `[3.75, 14.5]`, relative | `2^-111.4`, `2^-111.4`, `2^-107.1` | `2^-63`, `2^-87`, `2^-87` |
+| `LogAccFact` | `asLogdAccurate`: kernel, tables, `ln 2` | `2^-110.2 \|X\|`, `2^-148`, `2^-140.3` | `2^-80 \|X\|`, `2^-96`, `2^-100` |
+| `SinpiAccFact` | `asSinpipidAccurate`'s kernels | `2^-107.8 d²`, `2^-115 \|d\|` | `2^-95` |
+| `RootFact` | the 17 polynomials about the zeros from -10.5 to -2, where `\|log \|Γ x\|\| ≤ (1 + 2^-40) afh`, relative | `2^-97.1` | `2^-63` |
+| `DbFact` | the 19 hard cases, relative | `2^-105` | `2^-60` |
+| `CancelFact` | `\|log Γ (1 - x)\| ≤ 2^32 \|log \|Γ x\|\|` at the non-integer doubles from -10.5 down | `2^31.04` at `-10.99999997494789` | `2^32` |
+
+The measurements come from Python scripts in the track's scratch directory (`lg/py`), which evaluate `log |Γ|` with the standard library's `decimal` module at 70 to 90 digits: the shift to an argument of at least 60, Stirling's series with 29 Bernoulli terms, and the reflection for negative arguments.  The evaluator agrees with `log √π`, `log 2`, and `log (2√π)` at 0.5, 3, and -0.5 to 66 digits.  A simulation of `logReduce` over 2.6 million mantissas gives `|r t - 1| ≤ 4.03 · 10^-4`, below the bound `1/2400 ≈ 4.17 · 10^-4` of `LogFact`, with every product `r1 · r2` exact; the proof must establish this bound for every word.  `LgammaApprox` builds in `expm1-lgammaapprox-1.log` (3,697 jobs).
+
+- [x] The approximation facts (`LgammaApprox`), to be agreed with track `erf`
+- [ ] The branch structure and the exceptional values: 1, 2, the poles, the infinities, NaN, and the overflow thresholds
+- [ ] The sign of `Γ`
+- [ ] The fast path: the reductions, the pieces, Stirling's series, the reflection, and the rounding test
+- [ ] The accurate path
+- [ ] `Lgamma.md` updated as the theorems are accepted
