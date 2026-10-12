@@ -21,7 +21,7 @@ theorem case_finish {r : Float} {F w E K M Pl : ℝ} (hr : FApprox r F (E / √w
     (hw2 : 2 ≤ w) (hwb : w ≤ 2 ^ 1024)
     (hK : E + 1 / 2 ^ 500 ≤ K * 𝐮 * (7978 / 10000 * Pl))
     (hM : 7978 / 10000 * Pl / √w ≤ M) (hK0 : 0 ≤ K) :
-    |value r.toBits - F| ≤ K * 𝐮 * M := by
+    Finite r.toBits ∧ |value r.toBits - F| ≤ K * 𝐮 * M := by
   have hu0 : 0 ≤ 𝐮 := by norm_num [unitRoundoff64]
   have hsw : 0 < √w := Real.sqrt_pos.mpr (by linarith)
   have hs : √w ≤ 2 ^ 512 := by
@@ -39,7 +39,7 @@ theorem case_finish {r : Float} {F w E K M Pl : ℝ} (hr : FApprox r F (E / √w
     linarith
   have h3 : K * 𝐮 * (7978 / 10000 * Pl / √w) ≤ K * 𝐮 * M :=
     mul_le_mul_of_nonneg_left hM (mul_nonneg hK0 hu0)
-  linarith [hr.2]
+  exact ⟨hr.1, by linarith [hr.2]⟩
 
 /-- The bracket `P A - Q B` of `j0` and `j1`. -/
 theorem case_sub {p q c s xa : Float} {P Q A B eP eQ eA eB Pm Qm Am Bm Pl K M : ℝ}
@@ -51,8 +51,8 @@ theorem case_sub {p q c s xa : Float} {P Q A B eP eQ eA eB Pm Qm Am Bm Pl K M : 
       1 / 2 ^ 500 ≤ K * 𝐮 * (7978 / 10000 * Pl)) (hK0 : 0 ≤ K)
     (hxf : Finite xa.toBits) (hx2 : 2 ≤ value xa.toBits) (hxb : value xa.toBits ≤ 2 ^ 1024)
     (hM : 7978 / 10000 * Pl / √(value xa.toBits) ≤ M) :
-    |value (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits -
-      (P * A - Q * B) / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
+    Finite (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits ∧
+      |value (Bessel.invsqrtpi * (p * c - q * s) / xa.sqrt).toBits - (P * A - Q * B) / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
   have hT := combine_sub hp hq hc hs hPm hQm hAm hBm h1 h2 hlt
   have hMT : |P * A - Q * B| ≤ Pm * Am + Qm * Bm := by
     have := abs_sub (P * A) (Q * B)
@@ -75,8 +75,8 @@ theorem case_add {p q c s xa : Float} {P Q A B eP eQ eA eB Pm Qm Am Bm Pl K M : 
       1 / 2 ^ 500 ≤ K * 𝐮 * (7978 / 10000 * Pl)) (hK0 : 0 ≤ K)
     (hxf : Finite xa.toBits) (hx2 : 2 ≤ value xa.toBits) (hxb : value xa.toBits ≤ 2 ^ 1024)
     (hM : 7978 / 10000 * Pl / √(value xa.toBits) ≤ M) :
-    |value (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits -
-      (P * B + Q * A) / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
+    Finite (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits ∧
+      |value (Bessel.invsqrtpi * (p * s + q * c) / xa.sqrt).toBits - (P * B + Q * A) / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
   have hT := combine_add hp hq hc hs hPm hQm hAm hBm h1 h2 hlt
   have hMT : |P * B + Q * A| ≤ Pm * Bm + Qm * Am := by
     have := abs_add_le (P * B) (Q * A)
@@ -95,7 +95,8 @@ theorem case_one {c xa : Float} {T A eA d MT Pl K M : ℝ} (hc : FApprox c A eA)
     (hK : finErr (eA + d) MT + 1 / 2 ^ 500 ≤ K * 𝐮 * (7978 / 10000 * Pl)) (hK0 : 0 ≤ K)
     (hxf : Finite xa.toBits) (hx2 : 2 ≤ value xa.toBits) (hxb : value xa.toBits ≤ 2 ^ 1024)
     (hM : 7978 / 10000 * Pl / √(value xa.toBits) ≤ M) :
-    |value (Bessel.invsqrtpi * c / xa.sqrt).toBits - T / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
+    Finite (Bessel.invsqrtpi * c / xa.sqrt).toBits ∧
+      |value (Bessel.invsqrtpi * c / xa.sqrt).toBits - T / √(π * value xa.toBits)| ≤ K * 𝐮 * M := by
   have hcT : FApprox c T (eA + d) := fshift hc hTA
   have hr := final_step hcT hMT hsm hxf hx2
   exact case_finish hr hx2 hxb hK hM hK0
