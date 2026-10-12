@@ -85,6 +85,108 @@ theorem Near.within_two {c : UInt64} {y E : ℝ} (h : Near c y E) (n : ℕ) (hn1
   exact F64TwoSteps.within_two_of_rounded c S y hS n hn1 hn (by linarith) (by linarith)
     (lt_of_le_of_lt hd hE) hyt
 
+/-- Two steps from a relative bound `E ≤ ρ |y|` with `ρ (2 ^ 52 + 1) < 1`: `y` lies in a binade
+`[B, 2B)`, and either `B + E ≤ |y|` with `E < 2 ρ B` below two spacings, or `|y| < B + E`, where
+`E < B 2 ^ -52` stays below two spacings of the binade below. -/
+theorem Near.within_two_rel {c : UInt64} {y E ρ : ℝ} (h : Near c y E) (hE : E ≤ ρ * |y|)
+    (hρ0 : 0 ≤ ρ) (hρ : ρ * (2 ^ 52 + 1) < 1) (hy : 1 / 2 ^ 1020 ≤ |y|) (hyt : |y| < 2 ^ 1022) :
+    F64SignedRounding.WithinSteps 2 y c := by
+  obtain ⟨n, hn2, hn, hBy, hyB⟩ := binade_of_real |y| (le_trans (by norm_num) hy) hyt
+  have hB := F64PositiveSpacing.boundary_value n (by omega) (by omega)
+  set B := value (UInt64.ofNat (n * 2 ^ 52)) with hBdef
+  have hB0 : 0 < B := by rw [hB]; positivity
+  have hsp : (2 : ℝ) ^ (n - 1) / 2 ^ 1074 = B / 2 ^ 52 := by
+    rw [hB, show n + 51 = (n - 1) + 52 by omega, pow_add]
+    field_simp
+  have hρ1 : ρ * 2 ^ 52 < 1 := by nlinarith
+  have hyt' : |y| < 2 ^ 1023 := hyt.trans (by norm_num)
+  by_cases hhi : B + E ≤ |y|
+  · refine h.within_two n (by omega) (by omega) hhi ?_ hyt'
+    rw [hsp]
+    have h1 : ρ * |y| ≤ ρ * (2 * B) := mul_le_mul_of_nonneg_left hyB.le hρ0
+    have h2 : ρ * (2 * B) * 2 ^ 52 < 2 * B := by nlinarith
+    have h3 : 2 * (B / 2 ^ 52) * 2 ^ 52 = 2 * B := by field_simp
+    nlinarith
+  · have hlo : |y| < B + E := lt_of_not_ge hhi
+    have hBl : value (UInt64.ofNat ((n - 1) * 2 ^ 52)) = B / 2 := by
+      rw [F64PositiveSpacing.boundary_value (n - 1) (by omega) (by omega), hB,
+        show n + 51 = (n - 1 + 51) + 1 by omega, pow_succ]
+      ring
+    have hsp' : (2 : ℝ) ^ (n - 1 - 1) / 2 ^ 1074 = B / 2 ^ 53 := by
+      rw [hB, show n + 51 = (n - 1 - 1) + 53 by omega, pow_add]
+      field_simp
+    have h5 : 0 < 1 - ρ := by nlinarith
+    have h3 : E * (1 - ρ) ≤ ρ * B := by
+      have := hE.trans (mul_le_mul_of_nonneg_left hlo.le hρ0)
+      nlinarith
+    have h6 : E * 2 ^ 52 < B := by
+      by_contra hc
+      push Not at hc
+      have h7 := mul_le_mul_of_nonneg_left hc h5.le
+      have h8 := mul_le_mul_of_nonneg_right h3 (by positivity : (0 : ℝ) ≤ 2 ^ 52)
+      nlinarith
+    have hE1 : E < B / 2 ^ 52 := by
+      rw [lt_div_iff₀ (by positivity)]
+      exact h6
+    have hE0 : 0 ≤ E := by
+      obtain ⟨S, _, hd⟩ := h
+      exact (abs_nonneg _).trans hd
+    refine h.within_two (n - 1) (by omega) (by omega) ?_ ?_ hyt'
+    · rw [hBl]
+      have : B / 2 ^ 52 ≤ B / 2 := div_le_div_of_nonneg_left hB0.le (by norm_num) (by norm_num)
+      linarith
+    · rw [hsp']
+      have : 2 * (B / 2 ^ 53) = B / 2 ^ 52 := by field_simp
+      linarith
+
+/-- A nearest rounding of a representable number is that number. -/
+theorem Rounded.exact {c w : UInt64} {S : ℝ} (hc : Rounded c S) (hw : value w = S) :
+    value c = S := by
+  obtain ⟨hcf, hneg, hpos, hnear⟩ := hc
+  have h := hnear w
+  rw [hw, sub_self, abs_zero] at h
+  have habs : |value c| = |S| := by
+    have h0 : |(|value c| - |S|)| = 0 := le_antisymm h (abs_nonneg _)
+    have := abs_eq_zero.mp h0
+    linarith
+  rcases lt_trichotomy S 0 with hS | hS | hS
+  · have hs := hneg hS
+    have hle : value c ≤ 0 := by
+      by_contra hcon
+      push Not at hcon
+      have := F64Exact.sign_of_pos c hcon
+      rw [hs] at this
+      exact Bool.noConfusion this
+    rw [abs_of_nonpos hle, abs_of_neg hS] at habs
+    linarith
+  · rw [hS, abs_zero, abs_eq_zero] at habs
+    rw [habs, hS]
+  · have hs := hpos hS
+    have hct : c.toNat < 2 ^ 63 := by
+      simpa only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le] using hs
+    rw [abs_of_nonneg (value_nonneg_of_lt c hct), abs_of_pos hS] at habs
+    exact habs
+
+/-- `a + a` is exact for `2 ^ -1000 ≤ |a| < 2 ^ 900`: the sum rounds to a nearest word of
+`2 a`, which the word `2 a` represents. -/
+theorem add_self_exact (a : Float) (ha : Finite a.toBits) (h1 : 1 / 2 ^ 1000 ≤ |value a.toBits|)
+    (h2 : |value a.toBits| < 2 ^ 900) :
+    Finite (a + a).toBits ∧ value (a + a).toBits = 2 * value a.toBits := by
+  have hne : value a.toBits + value a.toBits ≠ 0 := by
+    intro h0
+    have : value a.toBits = 0 := by linarith
+    rw [this, abs_zero] at h1
+    linarith [(by positivity : (0 : ℝ) < 1 / 2 ^ 1000)]
+  have hr := add_rounded a.toBits a.toBits ha ha hne (by
+    have : |value a.toBits + value a.toBits| ≤ |value a.toBits| + |value a.toBits| := abs_add_le _ _
+    linarith [(by norm_num : (2 : ℝ) ^ 900 + 2 ^ 900 < 2 ^ 1023)])
+  obtain ⟨_, hwv⟩ := F64Exact.mul_two_exact a.toBits ha
+    (le_trans (by norm_num) (F64Exact.exponent_two_of_value _ h1)) (F64Exact.exponent_le_of_value _ h2)
+  rw [F64Bits.toBits_add]
+  refine ⟨hr.1, ?_⟩
+  rw [Rounded.exact hr (w := Wasm.IEEE64.mul 0x4000000000000000 a.toBits) (by rw [hwv]; ring)]
+  ring
+
 theorem nonzero_of_magnitude (w : UInt64) (h : value w ≠ 0) :
     0 < Wasm.IEEE64.scaledMagnitude w := by
   rcases Nat.eq_zero_or_pos (Wasm.IEEE64.scaledMagnitude w) with h0 | h0
@@ -193,6 +295,9 @@ theorem Near.half {c : UInt64} {y E : ℝ} (h : Near c y E) (hy : 1 / 2 ^ 998 + 
 #print axioms Near.within_one
 #print axioms Near.within_one_rel
 #print axioms Near.within_two
+#print axioms Near.within_two_rel
+#print axioms Rounded.exact
+#print axioms add_self_exact
 #print axioms Rounded.half
 #print axioms Near.half
 
