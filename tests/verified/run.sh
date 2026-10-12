@@ -63,7 +63,8 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     trig:TrigTheorem:TrigFile log2:Log2Theorem:Log2File log10:Log10Theorem:Log10File \
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
-    sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile; do
+    sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
+    pow:PowBytes:PowFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
@@ -172,3 +173,5 @@ tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.l
 # The software fused multiply-add against the exact value rounded to the nearest double, in native
 # Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FmaAccuracy.lean || exit 1
+# The limb arithmetic of the string conversions against Lean's natural numbers, in native Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/UscaleCheck.lean || exit 1
