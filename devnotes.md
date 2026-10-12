@@ -30958,7 +30958,21 @@ The acceptance runs on debtop1: `lake build Verified` passed with all 9,362 jobs
 - [x] Commit the shared contexts separately (`a95ae82b`).
 - [x] Compute the reads of each subexpression as a bitmask and repair the proofs.
 - [x] Acceptance: probes, `lake build Verified`, emitted modules byte for byte, and theorem modules.
-- [ ] The elaboration times of `Repeat`, `Trig`, `Exp`, and `Log`, and the pair-binding probes.
+- [x] The elaboration times of `Repeat`, `Trig`, `Exp`, and `Log`, and the pair-binding probes.
+
+The elaboration of each module with `lake env lean` on debtop1, before the two changes and after them, by the shell's user time and the scope's CPU time and memory peak from systemd's accounting (`build/reflect/before-<module>.log` and `build/transcendentals/reflect-time-<module>-1.log`):
+
+| Module | Before | After |
+|---|---|---|
+| `Trig` | 42 s user, 44 s CPU, 3.9 GB | 29 s user, 30 s CPU, 1.9 GB |
+| `Exp` | 10 s user, 11 s CPU, 1.1 GB | 10 s user, 11 s CPU, 1.0 GB |
+| `Log` | 15 s user, 17 s CPU, 1.4 GB | 13 s user, 15 s CPU, 1.2 GB |
+| `Repeat` | stopped at 60 minutes, swapping at 6 GB of resident memory | stopped at 60 minutes, 3,600 s of CPU time at 2.5 to 2.6 GB |
+| Probe, 10 pair bindings | 8.3 s user, 1.0 GB | 5.8 s user, 0.82 GB (2.1 s for the byte theorem) |
+| Probe, 20 pair bindings | 17.3 s user, 1.8 GB | 7.5 s user, 0.91 GB (2.7 s) |
+| Probe, 40 pair bindings | stopped after 22 minutes at 8 GB | 11.9 s user, 1.0 GB (4.9 s) |
+
+`Repeat` stays slow for another reason: after the change it runs at full CPU without memory pressure (`reflect-time-Repeat-2.log`, watched each minute), while before it swapped.  Its programs loop over literal data, and the README notes that the kernel would evaluate such a loop pass by pass if it unfolded a definition, which the cold baseline's 1,684 s on minideb1 and the hour here suggest it partly does; the liveness change does not address that, and the cause remains unmeasured.
 - [ ] `verified_compile` in `Tgamma`, `Lgamma`, and `Bessel`, with their documents.
 - [ ] The Lean-source corrections of the documentation review.
 ## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
