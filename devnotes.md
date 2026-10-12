@@ -31577,9 +31577,18 @@ Track `arc` asked for `|ll| ≤ 2^-40` in the specification of `asLogd`, which t
 
 `TgammaLogdKernel.kernel_spec` bounds the kernel of `asLogd` after the reduction: for `|r t - 1| ≤ 1/2400`, `dxh = r t - 1` rounded is exact by Sterbenz's lemma, `dxh + dxl` lies within `2^-104` of `Z = r t - 1`, and the polynomial term `f` lies within `2^-72` of `Z² P(Z)`, from `F64Approx` bounds on each rounded operation.  It builds in `expm1-tgammalogdkernel-1.log` with a clean axiom report.
 
+`TgammaLogd.asLogd_spec` completes the analysis of `asLogd`.  For every finite `x` with `value x > 0` and a nonzero exponent field, under `FmaSpec.FmaNearest` and `TgammaApprox.LogFact`, both parts of `(lh, ll) = Tgamma.asLogd Tgamma.logdTable x` are finite, `|lh + ll - log x| ≤ 2^-69 + |log x|/2^78`, and `|ll| ≤ 2^-22 + |lh|/2^52`, the form that track `arc` takes as a hypothesis of `asLgammaAsym`.  `TgammaLogdTab` holds the kernel checks of the table words, `TgammaLogdParts` the exact steps before the final sums (the exponent `E` as a double, `r = r1 r2`, `lt = (l1h + l2h) + E ln2h` on the grid of `2^-34`, and the pair `lh = lt + dxh`, `ll = (lt - lh) + dxh`), and `TgammaLogdTail.logTail_spec` the roundings of the low sums, within `2^-71 + |E| 2^-85`.  `asLogd_spec` adds the kernel's `2^-70`, the tables' `2^-80` twice, and `|E| 2^-80` for `ln 2` from `LogFact`, and bounds `|E|` through `|E| ln 2 ≤ |log x| + ln 2`.  The constant then reaches `0.752 · 2^-69` and the coefficient of `|log x|` reaches `1.49 · 2^-80`, against `2^-69` and `4 · 2^-80` in the statement.
+
+The test runs of these modules, the last of them `expm1-test-logd18.log`, found four causes of failure.  A lookup `tab[(260 : UInt64).toNat]!` compared with `tab[260]!` made the elaborator recurse past its limit, so the lemmas `ix64` to `ix197` rewrite each index to a syntactic one.  `set` broke the atoms of `linarith`, and `obtain ⟨v, hv⟩ : ∃ v, v = …` replaced it.  `push_cast` evaluated `2^1074` to a numeral that no longer matched, so the casts are rewritten with `Int.cast_mul`, `Int.cast_pow`, and `Int.cast_ofNat`.  `positivity` on `0 ≤ ((x.toBits.toNat % 2^52 : ℕ) : ℝ)/2^52` hit the maximum recursion depth (`expm1-test-logd16.log`), and `div_nonneg` proves it.  The largest test run of `TgammaLogd` used 458 MB of anonymous memory.  The modules build in `expm1-tgammalogd-5.log`, where the main theorems report `[propext, Classical.choice, Quot.sound]` and the word checks `[propext]`.
+
+`Lgamma.asLogd` applies the same operations as `Tgamma.asLogd` after `logReduce`, which normalizes subnormal arguments with an exponent down to -1074.  `logTail_spec` assumes `|E| ≤ 1023`, and the bound enters four numeral inequalities of `TgammaLogdTail` and `TgammaLogdParts.lt_exact`, each of which holds with 1074.  The lgamma proof widens that hypothesis and states the theorem for `Lgamma.asLogd` in its own module.
+
 - [x] The approximation facts (`LgammaApprox`), to be agreed with track `erf`
 - [x] The branch structure and the exceptional values: 1, 2, the poles, the infinities, NaN, and the overflow thresholds (`LgammaBranches`, `LgammaSpecial`)
 - [x] The sign of `Γ` (`LgammaSign`)
+- [x] `Tgamma.asLogd` for normal arguments (`TgammaLogd`), for `tgamma` and `lgamma`: commit `c8f1d33a`
+- [ ] `Tgamma.asSinpid`, relative error `2^-58` on `0 < dx < 1` (`TgammaSinpid`)
+- [ ] `Lgamma.asLogd` with subnormal arguments, after widening `logTail_spec` to `|E| ≤ 1074`
 - [ ] The fast path: the reductions, the pieces, Stirling's series, the reflection, and the rounding test
 - [ ] The accurate path
 - [ ] `Lgamma.md` updated as the theorems are accepted

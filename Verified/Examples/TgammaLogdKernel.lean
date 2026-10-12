@@ -4,12 +4,13 @@ import LeanExe.ProofKit.F64Exact
 
 /-!
 The kernel of `Tgamma.asLogd` after the argument reduction.  For doubles `r` and `t` with
-`Z = r t - 1` at most `1/2400` in magnitude, the code computes `o = r t` rounded,
-`dxh = o - 1`, which is exact by Sterbenz's lemma, `dxl = fma (r, t, -o)`, which is the rounding
-error of `o` up to `2^-104`, and the polynomial term `f = dx² ((c0 + dx c1) + dx² (c2 + dx c3))` with
-`dx = fma (r, t, -1)`.  `kernel_spec` bounds `dxh + dxl - Z` by `2^-104` and `f - Z² P(Z)` by
-`2^-72`, with `P(Z) = c0 + Z (c1 + Z (c2 + Z c3))`, for coefficients below `1/2`, `0.34`, `0.26`,
-and `0.21` in magnitude.  Each step follows the rounded operations through `F64Approx`.
+`Z = r t - 1` at most `1/2400` in magnitude, the code computes `o = r t` rounded, which is at least
+`0.99`, `dxh = o - 1`, which is exact by Sterbenz's lemma, `dxl = fma (r, t, -o)`, which is the
+rounding error of `o` up to `2^-104`, and the polynomial term `f = dx² ((c0 + dx c1) + dx² (c2 +
+dx c3))` with `dx = fma (r, t, -1)`.  `kernel_spec` bounds `dxh + dxl - Z` by `2^-104` and
+`f - Z² P(Z)` by `2^-72`, with `P(Z) = c0 + Z (c1 + Z (c2 + Z c3))`, for coefficients below `1/2`,
+`0.34`, `0.26`, and `0.21` in magnitude.  Each step follows the rounded operations through
+`F64Approx`.
 -/
 
 namespace Verified.Examples.TgammaLogdKernel
@@ -33,7 +34,9 @@ theorem kernel_spec (hF : FmaSpec.FmaNearest) (r t c0 c1 c2 c3 : Float)
     (hz : |value r.toBits * value t.toBits - 1| ≤ 1 / 2400)
     (hb0 : |value c0.toBits| ≤ 1 / 2) (hb1 : |value c1.toBits| ≤ 34 / 100)
     (hb2 : |value c2.toBits| ≤ 26 / 100) (hb3 : |value c3.toBits| ≤ 21 / 100) :
-    Finite (r * t - 1.0).toBits ∧ Finite (Fma.fma r t (-(r * t))).toBits ∧
+    Finite (r * t).toBits ∧ 99 / 100 ≤ value (r * t).toBits ∧
+      value (r * t - 1.0).toBits = value (r * t).toBits - 1 ∧
+      Finite (r * t - 1.0).toBits ∧ Finite (Fma.fma r t (-(r * t))).toBits ∧
       Finite ((Fma.fma r t (-1.0) * Fma.fma r t (-1.0)) *
         ((c0 + Fma.fma r t (-1.0) * c1) +
           (Fma.fma r t (-1.0) * Fma.fma r t (-1.0)) * (c2 + Fma.fma r t (-1.0) * c3))).toBits ∧
@@ -142,7 +145,7 @@ theorem kernel_spec (hF : FmaSpec.FmaNearest) (r t c0 c1 c2 c3 : Float)
     (by norm_num)).mono (show _ ≤ (17 / 10 ^ 17 : ℝ) by norm_num)
   have hF' := (fapprox_mul hD hC2 (1 / 2400 * (1 / 2400)) (5002 / 10000) hZsq hPv
     (1 / 11500000) (by norm_num) (by norm_num)).mono (show _ ≤ (1 / 2 ^ 72 : ℝ) by norm_num)
-  refine ⟨hsub.1, hl.1, hF'.1, ?_, ?_, ?_, ?_, ?_⟩
+  refine ⟨ho.1, by linarith, hsub.2, hsub.1, hl.1, hF'.1, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hsub.2]
     have : value o.toBits - 1 + value (Fma.fma r t (-o)).toBits - Z =
         value (Fma.fma r t (-o)).toBits - (ρ * τ - value o.toBits) := by rw [hZ]; ring
