@@ -30846,7 +30846,7 @@ Four review agents checked the twenty function documents against the Lean source
 
 ## 2026-10-12: Bessel functions, the Lean functions `j0`, `j1`, `y0`, and `y1` (track `log`)
 
-The coordinator asked for theorems of the form `|w - F(a)| ≤ c · 2^-53 · √(J(a)² + Y(a)²)` for the ported `Bessel.j0`, `j1`, `y0`, and `y1`, with `c` set by the proof and reported first if it exceeds 12, and asked for inputs tighter than `WithinSteps 1` from the trigonometric and logarithm theorems.  The proof splits each function at 2: from 2 up the large-argument form `(P A ∓ Q B)/√(π x)` with `A = √2 cos θ` and `B = √2 sin θ`, and below 2 fdlibm's rational approximations.  The table lists the modules accepted so far on `w/log`, each with only `propext`, `Classical.choice`, and `Quot.sound` in its axiom report, and here `u = 2^-53`.
+The coordinator asked for theorems of the form `|w - F(a)| ≤ c · 2^-53 · √(J(a)² + Y(a)²)` for the ported `Bessel.j0`, `j1`, `y0`, and `y1`, with `c` set by the proof and reported first if it exceeds 12, and asked for inputs tighter than `WithinSteps 1` from the trigonometric and logarithm theorems.  The proof splits each function at 2: from 2 up the large-argument form `(P A ∓ Q B)/√(π x)` with `A = √2 cos θ` and `B = √2 sin θ`, and below 2 fdlibm's rational approximations.  The table lists the modules accepted on `w/log`, each with only `propext`, `Classical.choice`, and `Quot.sound` in its axiom report, and here `u = 2^-53`.  Rows without a commit belong to the commit headed "Prove j1 within 12 units of the modulus", which follows `14c64510`.
 
 | Module | Result | Commit | Log |
 |---|---|---|---|
@@ -30856,6 +30856,16 @@ The coordinator asked for theorems of the form `|w - F(a)| ≤ c · 2^-53 · √
 | `BesselCS` | `x + x` exact below `2^1023`, and the pairs `(cc, ss)` of `asym0` and `asym1` within `(96/25) u` for the direct sum and `(627/100) u` for the quotient by `cos 2x` | `ef3ed7ac` | `bes-cs-2.log` |
 | `BesselRatioEval`, `BesselPQEval`, `BesselPQRange` | The rounded `R(ẑ)/S(ẑ)` of two Horner evaluations against `R(z)/S(z)` on kernel-checked pieces, `ẑ = 1/(x x)` within `(2 + 2^-40) u/x²`, and the rounded `P` and `Q` terms of one range | `b49cfded`, `52688e88` | `bes-reval-2.log`, `bes-pqe-1.log`, `bes-pqr-2.log` |
 | `BesselPQ0`, `BesselPQ1` | `pAsym` and the `Q` term within explicit bounds of `P` and `Q` on each of the four ranges, with bounds on `P` and `Q` | `6ed384f8` | `bes-pq-3.log` |
+| `BesselCombine`, `BesselCase`, `BesselLarge` | `invsqrtpi` within `0.07 u` of `1/√π` and `tpi` within `0.36 u` of `2/π`, the rounded bracket and the final `invsqrtpi · T / √x`, one case of the path from 2 under numeric conditions, both branches of `(cc, ss)`, and the paths from `2^129` | `b2f71ebf`, `b59e0975`, `e667a448` | `bes-comb-2.log`, `bes-case-2.log`, `bes-large-a1.log` |
+| `BesselJ0Large`, `BesselY0Large`, `BesselY1Large`, `BesselJ1Large` | The bounds from 2 on: `c = 10` for `j0` and `y0`, and `c = 12` for `j1` and `y1` | `e55ba4e9`, `94fcd632`, `36a8f014`, `a498d407` | `bes-j0l-4.log`, `bes-y0l-2.log`, `bes-y1l-1.log`, `bes-j1l-1.log` |
+| `BesselSmallApprox` | fdlibm's four rational approximations below 2, exact in the reals, against the series with 18 terms | `8cceafab` | `bes-sa-4.log` |
+| `BesselSmallEval`, `BesselSmallJ0` | `x x` and Horner evaluations at the computed `ẑ`, `x/2` exact, the third path of `j0` within `2 u`, `J₀ = 1 - x²/4 + O(x⁴)`, and `1e300 + x > 1` for `\|x\| ≤ 2` | `2aea07b7` | `bes-se-1.log`, `bes-j0t-2.log` |
+| `BesselModSmall` | `M₀ ≥ 1/2` on `[0, 2]` and `Y₀(x) ≤ 0.597 ln x` for `0 < x ≤ 1/2` | `14c64510` | `bes-ms-4.log` |
+| `BesselSmallJ0Form2`, `BesselJ0Small` | The fourth path of `j0` within at most `2.227 u` on five pieces of `[1, 2)`, and `j0` within `(235/100) u` of `J₀` for `\|x\| < 2` | | `bes-j0t-2.log` |
+| `BesselJ0Theorem` | `j0_accuracy`, `c = 10` for every finite `x` | `14c64510` | `bes-j0t-1.log`, `bes-j0t-2.log` |
+| `BesselSmallJ1`, `BesselJ1Small` | The first form of `j1` on five ranges of `\|x\|`, `j1` within `j1Err \|x\|`, at most `3.89 u`, of `J₁` for `\|x\| < 2`, and the value 0 at both zeros | | `bes-sj1-2.log`, `bes-j01-1.log` |
+| `BesselModSmall1` | `M₁ ≥ 2/(π x)` on `(0, 1]`, `J₁ ≥ J1lo x` on seven pieces of `[1, 2]`, and `M₁ ≥ 0.42` on `(0, 2]` | | `bes-ms1-1.log` |
+| `BesselJ1Theorem` | `j1_accuracy`, `c = 12` for every finite `x` | | `bes-j01-1.log` |
 
 The `Q` term of order 0 is `(r/s - 1/8)/x`, whose sum lies below `1/4` and so rounds within `u/8`, and that of order 1 is `(3/8 + r/s)/x`, within `u/4`.  The rational functions are evaluated at the computed `ẑ`, so each check bounds the Horner errors on a piece containing `ẑ` and the change from `ẑ` to the real `z` by a Lipschitz constant from `magBound (R' S - R S')` and `lowBound S` on the piece widened by `δ ≥ |ẑ - z|`.  A single interval per range gave bounds near `20 u` for `qzero` from 2 and `5,655 u` for `qzero` from `b3`, because `magBound` and `lowBound` over a wide interval lose the correlation of `R` and `S`; eight equal pieces bring every bound below `0.41 u`.  One check of eight pieces took 5 seconds in the kernel (`ProbeP.lean`), and each of `BesselPQ0` and `BesselPQ1` builds in under 40 seconds.  The numerators' coefficients share one sign, so `R/S ≤ 0` for `pzero` and `qone` and `R/S ≥ 0` for `qzero` and `pone`, which bounds `P` and the `Q` term without further checks.
 
@@ -30870,7 +30880,21 @@ The `Q` term of order 0 is `(r/s - 1/8)/x`, whose sum lies below `1/4` and so ro
 | 1, from `b5` | 0.080 | 0.076 | 0.00610 | 0.00520 |
 | 1, from 8 | 0.025 | 0.025 | 0.00207 | 0.00185 |
 
-The error budget of the path from 2 follows the lemmas' own forms: the rounding of `P̂ ĉc` and `Q̂ ŝs` charges `u` times the product of the magnitude bounds, the difference rounds within `u` below 2, and the final `invsqrtpi · T / √x` adds three relative roundings and the `0.069 u` error of `invsqrtpi`.  The quotient branch of `(cc, ss)` dominates: `P · (627/100) u` is about 6.3 of the 9.4 to 11.8 units of `T`.  A model of these bounds over the four ranges, both branches, and both forms gives `c` at most 9.77 for order 0 and 11.04 for order 1, against the native check's maxima of 3.243 check units, at most `6.49 · 2^-53 M`.  The plan is therefore `c = 10` for `j0` and `y0` and `c = 12` for `j1` and `y1`, both within the limit of 12, unless the paths below 2 need more.
+The error budget of the path from 2 follows the lemmas' own forms: the rounding of `P̂ ĉc` and `Q̂ ŝs` charges `u` times the product of the magnitude bounds, the difference rounds within `u` below 2, and the final `invsqrtpi · T / √x` adds three relative roundings and the `0.069 u` error of `invsqrtpi`.  The quotient branch of `(cc, ss)` dominates: `P · (627/100) u` is about 6.3 of the 9.4 to 11.8 units of `T`.  A model of these bounds over the four ranges, both branches, and both forms gives `c` at most 9.77 for order 0 and 11.04 for order 1, and the theorems from 2 state 10 and 12.  The native check's maxima, 2.617 check units for `j0`, 2.764 for `j1`, 3.171 for `y0`, and 3.243 for `y1`, are at most `5.23`, `5.53`, `6.34`, and `6.49` units of `2^-53 M`.
+
+Below 2, every path is a chain of `F64Approx` steps (`fapprox_mul`, `fapprox_div`, `fapprox_add`, `fapprox_add_half`) whose Horner bounds the kernel checks on one range of `x` each.  `tools/bessel/gensmall.py`, a PEP 723 script run with `uv run`, models each step in exact rationals, rounds every error up to a multiple of `u/1000`, and writes the Lean steps, so that `norm_num` and the kernel check every number; its modes `j0` and `j1` write `BesselSmallJ0Form2` and `BesselSmallJ1`.  The first proof of `j0` below 2 bounded the fourth path, `(1 + x/2)(1 - x/2) + z (z R(z)/S(z))`, on one interval by `4 u` and `j0` by `(42/10) u`.  The proof of `y0` multiplies the error of `j0` by `(2/π) ln x`, and with `(42/10) u` its model needed `c` above 12 next to 2, so five pieces of `[1, 2)` replaced `form2`, at most `2.227 u` each, and `BesselJ0Small.j0_small` now gives `(235/100) u`.  `huge_add` now takes `|x| ≤ 2`, which serves both `j0` and the signed argument of `j1`.
+
+| Function, range of `\|x\|` | Error at most | Modulus at least | Quotient |
+|---|---|---|---|
+| `j0`, below 1 | `2.13 u`: `form1` `2 u`, approximation `0.12 u + 2^-99` | `1/2` | 4.3 |
+| `j0`, `[1, 2)` | `2.35 u`: `form2` pieces at most `2.227 u`, approximation | `1/2` | 4.7 |
+| `j1`, `(0, 1]` | `1.4 u`: piece `1.386 u`, approximation `0.005 u` | `2/(π x) ≥ 0.6366` | 2.2 |
+| `j1`, `[1, 5/4]` | `1.74 u` | `0.4249` | 4.1 |
+| `j1`, `[5/4, 3/2]` | `2.26 u` | `0.4648` | 4.9 |
+| `j1`, `[3/2, 7/4]` | `2.98 u` | `0.4972` | 6.0 |
+| `j1`, `[7/4, 2)` | `3.89 u` | `0.5427` | 7.2 |
+
+`j1` below `2^-27` returns `0.5 x`, within `2^-81 + 2^-1075` of `x/2`, and `|J₁(x) - x/2| ≤ |x|³/8` from the series with one term.  At both zeros the theorem needs the exact value 0, since `J₁(0) = 0` and the modulus at 0 is 0 with Mathlib's `log 0 = 0` and `1/0 = 0`; `j1_zero` computes `0.5 · (±0)` on the two words.  The lower bound `M₁ ≥ 2/(π x)` on `(0, 1]` comes from `Y₁ ≤ -2/(π x)`, since `ln (x/2) + γ < 0`, `2 J₁/x ≥ 0.88`, and the series `C₁` of `Y₁` is at least `0.70` there, and on `[1, 2]` from `J₁ ≥ (a/2) min A₁` on a piece `[a, b]` with `A₁ = 2 J₁/x` checked in `ζ = x²/4`.  `j1_accuracy` uses the uniform bounds `3.89 u` and `0.42`, a quotient of 9.27, so the path from 2 sets `c = 12`, and `j0_accuracy` uses `2.35 u` and `1/2`, so the path from 2 sets `c = 10`.
 
 | Failure | Cause and fix | Log |
 |---|---|---|
@@ -30879,13 +30903,23 @@ The error budget of the path from 2 follows the lemmas' own forms: the rounding 
 | `BesselCS`, first builds | `x + x` has no lemma in ProofKit, and `F64ErrorTrack.add_exact_grid` stops at exponent 2043; `add_self_word` shows `add w w = mul 2 w` from `F64RoundFinish.roundScaled_mul_pow` and `F64PowerScale.mul_power`, which reach `2^1023`.  `congr 1` on two `encodeFinite` words recursed without limit and was replaced by rewriting the fields | `bes-cs-1.log`, `bes-cs-2.log` |
 | `BesselRatioEval`, first build | `norm_num` does not evaluate `2^1000 ≤ 2^1022` under the default `exponentiation.threshold` | `bes-reval-1.log` |
 | `BesselPQ0`, `BesselPQ1`, first builds | casts of rational constants between `ℚ` and `ℝ`, and implicit arguments that a `by` block could not fix, in the generated proofs | `bes-pq0-1.log` to `bes-pq1-2.log` |
+| `BesselModSmall`, first build | 15 checks of polynomials in `x` of degree 34 in one `decide +kernel` held 6.5 GB resident with 53 seconds of CPU time in 11 minutes, and the run was stopped; the same checks in `ζ = x²/4` have degree 17, and the module builds in 22 seconds | `bes-ms-1.log` |
+| `BesselSmallApprox`, first builds | `decide` failed on the first form of the checks, and `Real.pi_gt_d20` does not exist in this Mathlib | `bes-sa-1.log` to `bes-sa-3.log` |
+| `BesselSmallJ0`, third build; `BesselSmallJ1`, first build | `field_simp` closed the final equations, so the `ring` after it failed | `bes-sj0-3.log`, `bes-sj1-1.log` |
+| `BesselJ1Small`, first build | `le_or_lt` is `le_or_gt` in this Mathlib | `bes-j1s-1.log` |
+| `BesselSmallJ0Form2`, first build | `norm_num` at the hypotheses rewrote the absolute values, so `linarith` could not match them with `abs_add_le`; the final step now proves the numeric margin separately.  On the last piece, `1 + x/2 < 2` needs `x < 2`, which every piece now takes | `bes-j01-1.log` |
 
 `tools/bessel/genpq.py` writes `BesselPQ0` and `BesselPQ1`: it chooses the pieces, `δ`, and the bounds with exact rational models of `magBound`, `lowBound`, and `hornerErr`, and the kernel checks every bound.  It is a PEP 723 script run with `uv run` on the local machine, as `AGENTS.md` requires, and its output equals the committed files.  The equations that rewrite `pAsym` and `qRatio` for one range as Horner forms are proved by `rfl` after rewriting `rangeOf`; they compare the same floating-point expressions and evaluate only the table lookups and the index arithmetic, and each module builds in under 40 seconds.
+
+For `y0` below 2, the generator's mode `y0` models `U(z)/V(z) + tpi (ĵ L̂)` on seven pieces from 1/2 to 2 with `|J₀| ≤ Jm` per piece and `|ln x| ≤ 0.6932`, and on `[2^-27, 1/2]` with errors affine in `ℓ = |ln x|`.  The model gives at most `5.19 u` on `[15/8, 2]`, `5.40 u` with the approximation, so `c = 11` with `M₀ ≥ 1/2`, and `4.53 u ℓ + 0.65 u` below 1/2, which `M₀ ≥ 0.597 ℓ` and `ℓ ≥ ln 2` keep below `9.2 u M₀`.  For `y1`, the code returns `-tpi/x` up to about `2^-54`, which overflows to `-∞` for `x` below about `0.64 · 2^-1024` and exceeds `2^1022`, the limit of `fapprox_div`, for `x` below about `0.64 · 2^-1022`.  The theorem of `y1` therefore needs a lower bound on `x`, and `x ≥ 2^-1022` is the bound the current lemmas reach.
 
 - [x] Distance forms of `Trig.sin`, `Trig.cos`, and `Log.log`.
 - [x] Exceptional results of `j0`, `j1`, `y0`, and `y1`.
 - [x] `(cc, ss)`, `P`, and `Q` on the path from 2.
-- [ ] The combination on the path from 2, with `invsqrtpi` and `tpi` against `1/√π` and `2/π`, and the paths above `2^129`.
-- [ ] The rational approximations below 2 against the series, and their evaluation.
-- [ ] Lower bounds on the moduli below 2: `M₀ ≥ 1/2` and `M₁ ≥ 1/2` on `[1, 2]`, and `M₀` against `(2/π) |ln x|` for small `x`.
-- [ ] The four accuracy theorems, `Bessel.md`, and the report.
+- [x] The combination on the path from 2, with `invsqrtpi` and `tpi` against `1/√π` and `2/π`, and the paths above `2^129`.
+- [x] The rational approximations below 2 against the series, and their evaluation for `j0` and `j1`.
+- [x] Lower bounds on the moduli below 2: `M₀ ≥ 1/2`, `M₀` against `|ln x|`, and `M₁` against `2/(π x)` and `J1lo`.
+- [x] `j0_accuracy` with `c = 10` and `j1_accuracy` with `c = 12`.
+- [ ] `y0` below 2: `BesselSmallY0`, the path below `2^-27`, and `y0_accuracy`.
+- [ ] `y1` below 2: the pieces on `[1, 2]`, the chain on `(2^-54, 1]` with errors in `1/x`, the path `-tpi/x`, the lower bound on `x`, and `y1_accuracy`.
+- [ ] `Bessel.md` and the report for `y0` and `y1`.
