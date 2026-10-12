@@ -31085,8 +31085,8 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 | Module | Content | State |
 |---|---|---|
 | `ErfcCast`, `ErfcFastAll`, `ErfcFastPath` | `cr_erf_fast` on `[0, 95/16)` and `cr_erfc_fast` below `0x1.713786d9c7c09p+1` | accepted after the hold (`trig-fastpath-5.log`) |
-| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` at `a39c9426`, the rest and `ErfcSeriesZ` accepted (`trig-accall-2.log`) |
-| `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | written, not built |
+| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` at `a39c9426`, the rest and `ErfcSeriesZ` at `f0eb4ea4` |
+| `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | accepted (`trig-exp1-3.log`, `trig-exp1-10.log`) |
 | `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | written, not built |
 | `ErfcAsymPoly`, `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1`, `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x`, and the certificates of `Tacc` | written, not built |
 | `ErfcEAccPoly`, `ErfcEAcc` | `exp_accurate`: `|eh + el - exp (X - K log 2)|` below `2^-76` of the value | written, not built |
@@ -31097,7 +31097,8 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 - [x] `cr_erf_fast` from `1/16`: `ErfcFastMain`, `ErfcSeries`, `ErfcSeriesI`, `ErfcRound`, `ErfcFastRow`, and the 94 row checks.
 - [x] `cr_erf_fast` below `1/16` (`ErfcFastTiny`).
 - [x] The two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1` (`ErfcFastAll`, `ErfcFastPath`).
-- [ ] `exp_1`, `q_1`, and the tables `T1` and `T2`; `erfc_asympt_fast` and the six rows of `T`.
+- [x] `exp_1`, `q_1`, and the tables `T1` and `T2`.
+- [ ] `erfc_asympt_fast` and the six rows of `T`.
 - [x] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`.
 - [ ] `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
 - [ ] The 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
@@ -31111,6 +31112,8 @@ After the hold `w/trig` merged `transcendentals` at `be5749df` (`dbf35b64`), whi
 `trig-accrows-1` to `trig-accrows-3` accepted `ErfcAccRow`, `ErfcAccPlan`, and the rows up to 40, but the memory guard stopped `ErfcAccRows5`, rows 41 to 47 with series of up to 131 terms, at 3.9 GB.  Probes of row 47 (`trig-accprobe-1` to `trig-accprobe-3`) located the cost in `rowTail`, which shifts the whole series to the row's center in rational arithmetic: 21 seconds and 2.8 GB for one row, against 3.7 seconds for the check of the low part.  Each rational operation in the kernel normalizes its result by a greatest common divisor and builds a structure with proof fields, while integer operations reduce to the kernel's GMP arithmetic on natural numbers.  `ErfcSeriesZ` computes the same shift on integer coefficients and proves `rowBoundZ_eq`, the equality with `rowBoundI`; the tail of row 47 then takes 6.9 seconds and 0.43 GB (`trig-seriesz-3`).  `accBR` also rounds the stage bounds up to multiples of `2^-200`, which `AccHyp` permits since it only bounds each field from below.
 
 With these changes all 47 rows pass (`trig-accrows-4`, `trig-accrows-5`, at most 2.9 GB for `ErfcAccRows5`).  `ErfcAccAll` first checked the low parts of all 47 rows in one declaration and reached 3.9 GB within 30 seconds (`trig-accall-1`); eight checks of at most six rows each, and the conditions of the tiny case split into six declarations, keep it at 3.2 GB, and `trig-accall-2` accepted it in 86 seconds.
+
+The modules of `exp_1` took ten runs (`trig-exp1-1` to `trig-exp1-10`).  The stated bound of `ErfcTrack4.fts_any`, `2 u B + 2 u² (A + B)`, was false for small `B`, since the rounding of the second subtraction adds up to `u³ (A + B)`; the corrected bound `2 u B + 3 u² (A + B)` leaves both users within their margins.  The identity of the reduced argument in `ErfcExp1Red` had the sign of `n (ch + cl - L2)` reversed, and `final_scale` needs `2 ≤ M`, which follows from `n ≤ 4096 · 1021`, so that the product of the high part by `2^(M - 1023)` stays normal and exact.  The other failures were mechanical: `push_cast` evaluated `2^95 - 1` to a numeral, `omega` did not know `UInt64.size`, several `nlinarith` calls timed out where the step is linear, and a `show ... by` split across lines with `by` left of the enclosing tactic did not parse.  `trig-exp1-3` accepted `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, and `ErfcQ1`, and `trig-exp1-10` accepted `ErfcExp1Red` and `ErfcExp1`.
 
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`)
 
