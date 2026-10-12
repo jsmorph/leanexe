@@ -88,7 +88,7 @@ The proof has nine modules in `Verified/Examples/` above the implementation, bes
 | Arithmetic after `r` | `LogCoreFinal` | `final_error`: `kd · ln2hi` and `kd · ln2hi + logc` are exact, and the other operations add at most `(5/4) 2^-61` before the final rounding. |
 | Tables and polynomials | `LogTables`, `LogKernelPoly` | The 128 entries checked in the kernel, and both polynomials against `log (1 + r)`. |
 | Main path | `LogCoreStep`, `LogMain` | `core_within`, one step for every argument word that reaches `logCore`, and its use for normal and subnormal arguments. |
-| Path near 1 and assembly | `LogNear1`, `LogTheorem` | The errors of `logNear1` proportional to `|x - 1|`, the exceptional values, `Ready`, and the byte theorem. |
+| Path near 1 and assembly | `LogNear1`, `LogTheorem` | The errors of `logNear1` proportional to `\|x - 1\|`, the exceptional values, `Ready`, and the byte theorem. |
 
 ### Error budget of the main path
 
@@ -99,8 +99,8 @@ A result `c` of a final addition with exact value `V` satisfies `|c - y| ≤ u |
 | Rounding of `r = ((z - chi) - clo) invc`, with `z - chi` exact | `2^-60`, divided by `995/1000` for the derivative of `log (1 + r)` | `LogCoreStep.reduced_error` |
 | `c · invc` against 1 | `2^-100` | `LogTables.checked_entries` |
 | `logc` against `log c` | `2^-64` | `LogTables.log_center` |
-| `ln2hi + ln2lo` against `ln 2`, times `|k| ≤ 1075` | `1075 · 2^-91` | `LogCoreStep.ln2_error` |
-| Polynomial against `log (1 + r)` for `|r| ≤ 1/256` | `|r| (17/32) 2^-54 ≤ (17/32) 2^-62` | `LogKernelPoly.core_kernel_error` |
+| `ln2hi + ln2lo` against `ln 2`, times `\|k\| ≤ 1075` | `1075 · 2^-91` | `LogCoreStep.ln2_error` |
+| Polynomial against `log (1 + r)` for `\|r\| ≤ 1/256` | `\|r\| (17/32) 2^-54 ≤ (17/32) 2^-62` | `LogKernelPoly.core_kernel_error` |
 | Operations after `r`, before the final rounding | `(5/4) 2^-61` | `LogCoreFinal.final_error` |
 | Total, as `LogCoreStep.core_within` sums it | about `1.83 · 2^-60` against `2.88 · 2^-60` | `LogCoreStep.target_close` |
 
@@ -118,8 +118,8 @@ The proof imports 94 ProofKit modules, most of them the arithmetic chains that p
 
 | Fact | Declaration |
 |---|---|
-| For each of the 128 entries: finiteness, `|c · invc - 1| ≤ 2^-100`, `|(z - c) invc| ≤ 0.0039` over the subinterval, `chi` on the grid of `2^-53` in `[1/2, 3/2]`, `|clo| ≤ 2^-50`, `logc` on the grid of `2^-43` with `|logc| ≤ 3/8` | `LogTables.checked_entries` |
-| For each entry, the Taylor polynomials of degree 19 of `exp` at `logc ∓ 2^-64`, with their remainders, bracket `c`, so `|logc - log c| ≤ 2^-64` | `LogTables.checked_logs` |
+| For each of the 128 entries: finiteness, `\|c · invc - 1\| ≤ 2^-100`, `\|(z - c) invc\| ≤ 0.0039` over the subinterval, `chi` on the grid of `2^-53` in `[1/2, 3/2]`, `\|clo\| ≤ 2^-50`, `logc` on the grid of `2^-43` with `\|logc\| ≤ 3/8` | `LogTables.checked_entries` |
+| For each entry, the Taylor polynomials of degree 19 of `exp` at `logc ∓ 2^-64`, with their remainders, bracket `c`, so `\|logc - log c\| ≤ 2^-64` | `LogTables.checked_logs` |
 | Both polynomials against the Taylor polynomial of `log (1 + r)/r` on their intervals, by `PolyBound.check` | `LogKernelPoly.core_check`, `near1_check` |
 | `ln2hi + ln2lo` within `2^-92` of the split of `ln 2` from `ExpReductionBounds` | `LogCoreStep.split_close` |
 | The values and bounds of the constants | `LogCoreFinal.constants`, `constant_bounds`, `LogNear1.near1_constants`, `near1_bounds` |

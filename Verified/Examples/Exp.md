@@ -67,7 +67,7 @@ The theorems are in [the exponential theorem module](ExpTheorem.lean) and [the f
 | `exp_pos_zero`, `exp_neg_zero` | `exp (±0)` has the bits `0x3FF0000000000000`. |
 | `exp_pos_infinity`, `exp_neg_infinity` | `exp (+∞) = +∞` and `exp (-∞) = +0`, as bits. |
 | `exp_nan` | For a NaN `x`, the result has the bits `Wasm.IEEE64.canonicalNaN`. |
-| `saturated_bits` | From exponent field 1033 on (`|a| ≥ 1024`), the result is `+0` for negative and `+∞` for positive finite inputs. |
+| `saturated_bits` | From exponent field 1033 on (`\|a\| ≥ 1024`), the result is `+0` for negative and `+∞` for positive finite inputs. |
 | `ready_initial` | The module's initial store satisfies `Ready`: the allocator invariant, the table borrowed at 4096, and a memory cap of at most 65,535 pages. |
 | `exp_entry_call` | A call of function 5 from a store satisfying `Ready` returns, without a trap, the bits of `Exp.exp x`, and leaves a store satisfying `Ready` in which every heap region keeps its bytes. |
 | `exp_bytes_accuracy` | `Exp.compiled.module` encodes to bytes that decode to it, exports function 5 as `exp`, starts in a `Ready` store, and every call from a `Ready` store returns the bits of `Exp.exp x`, within one step for finite `x`, and leaves a `Ready` store.  The statement therefore covers every call in a sequence of calls to `exp`. |
@@ -84,12 +84,12 @@ The proof modules form one chain of 35 modules in `Verified/Examples/` above the
 
 | Stage | Modules | Content |
 |---|---|---|
-| Table and constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | The table enclosure, `C1 + C2` within `2^-99` of `ln 2/128`, and the polynomial within `2^-56` of `exp r - 1` for `|r| ≤ 1/256`. |
-| Reduction | `ExpReductionExact`, `ExpIntegerSelection`, `ExpReductionSelection`, `ExpShiftedBits`, `ExpScaleFacts`, `ExpScaleEncoding`, `ExpScaleBits`, `ExpCoreState`, `ExpHighSubtraction`, `ExpHighPartBounds`, `ExpHighResidual`, `ExpResidualBounds`, `ExpResidualFloat` | The shift selects the nearest integer `k` for `|z| ≤ 2^18`; `k · C1` and `x - k · C1` are exact; the scale word is `2^q H_j`; the computed residual is within `2^-60` of the ideal one. |
+| Table and constants | `ExpTableBounds`, `ExpReductionBounds`, `ExpApproximation` | The table enclosure, `C1 + C2` within `2^-99` of `ln 2/128`, and the polynomial within `2^-56` of `exp r - 1` for `\|r\| ≤ 1/256`. |
+| Reduction | `ExpReductionExact`, `ExpIntegerSelection`, `ExpReductionSelection`, `ExpShiftedBits`, `ExpScaleFacts`, `ExpScaleEncoding`, `ExpScaleBits`, `ExpCoreState`, `ExpHighSubtraction`, `ExpHighPartBounds`, `ExpHighResidual`, `ExpResidualBounds`, `ExpResidualFloat` | The shift selects the nearest integer `k` for `\|z\| ≤ 2^18`; `k · C1` and `x - k · C1` are exact; the scale word is `2^q H_j`; the computed residual is within `2^-60` of the ideal one. |
 | Evaluation and reconstruction | `ExpEvaluationBounds`, `ExpEvaluationFloat`, `ExpReconstructionBounds`, `ExpReducedReconstruction`, `ExpTableReconstruction`, `ExpCoreBounds` | The error budget below, ending in `ExpCoreBounds.core_error`. |
-| Main path | `ExpCoreRange`, `ExpCoreInterval`, `ExpCoreOneStep`, `ExpBranches` | The position of `exp a` in its binade, one step for `2^-54 ≤ |a| ≤ 512`, and the tiny path. |
-| Special paths | `ExpSpecialScale`, `ExpSpecialReconstruction`, `ExpSpecialPositiveCore`, `ExpOneStep`, `ExpSpecialPositive`, `ExpSpecialNegative`, `ExpNegativeFinal` | `512 ≤ |a| ≤ 768`, with the compensated subnormal path. |
-| Far range and assembly | `ExpFarRange`, `ExpTheorem` | `768 < |a| < 1024`, saturation, exceptional values, and the byte theorem. |
+| Main path | `ExpCoreRange`, `ExpCoreInterval`, `ExpCoreOneStep`, `ExpBranches` | The position of `exp a` in its binade, one step for `2^-54 ≤ \|a\| ≤ 512`, and the tiny path. |
+| Special paths | `ExpSpecialScale`, `ExpSpecialReconstruction`, `ExpSpecialPositiveCore`, `ExpOneStep`, `ExpSpecialPositive`, `ExpSpecialNegative`, `ExpNegativeFinal` | `512 ≤ \|a\| ≤ 768`, with the compensated subnormal path. |
+| Far range and assembly | `ExpFarRange`, `ExpTheorem` | `768 < \|a\| < 1024`, saturation, exceptional values, and the byte theorem. |
 
 `ExpRelative.expWith_relative`, outside this chain, bounds the relative error of `expWith` by `1.405 · 2^-53` for `|a| < 512`.  [The error function's proof](ErfPositive.lean) uses it for the factors `exp (-z² - 0.5625)` and `exp ((z - x)(z + x) + R/S)`.  [The base-2 and base-10 proofs](Exp2Core.lean) use `ExpTableBounds` and the saturating products of `ExpTheorem`.
 
@@ -111,13 +111,13 @@ A word within one and a half spacings of `E` lies within one step of the nearest
 
 | Range of `a` | Path | Bound before the final step | Theorem |
 |---|---|---|---|
-| `|a| < 2^-54` | `1 + x` | below `1.5 u` (`ExpTinyError.tiny_bounds`) | `ExpBranches.exp_small_one_step` |
-| `2^-54 ≤ |a| < 512` | main path | `(7/5) u s` | `ExpBranches.exp_small_one_step` |
+| `\|a\| < 2^-54` | `1 + x` | below `1.5 u` (`ExpTinyError.tiny_bounds`) | `ExpBranches.exp_small_one_step` |
+| `2^-54 ≤ \|a\| < 512` | main path | `(7/5) u s` | `ExpBranches.exp_small_one_step` |
 | `512 ≤ a ≤ 768` | `specialcase`, product with `2^1009` | `(7/5) u s` on the scaled value; the product is exact or `+∞` | `ExpSpecialPositive.positive_one_step` |
 | `-768 ≤ a ≤ -512`, `y ≥ 1` | product with `2^-1022` | `(7/5) u s`; the product is exact | `ExpSpecialNegative.negative_one_step` |
 | `-768 ≤ a ≤ -512`, `y < 1` | compensated sum, then `2^-1022 (z - 1)` | `((47/16) u + 3u²) · 2^-1022`, against `3u · 2^-1022` | `ExpNegativeFinal.compensated_one_step` |
-| `768 < |a| < 1024` | `specialcase` with coarse bounds | scale above `2^98` gives `+∞`; scale below `2^-85` gives `+0` or the smallest subnormal, and `exp a ≤ 2^-1100` | `ExpFarRange.far_positive`, `far_negative` |
-| `|a| ≥ 1024` | the saturating products | exact words `0` and `0x7FF0000000000000` | `ExpTheorem.saturated_bits` |
+| `768 < \|a\| < 1024` | `specialcase` with coarse bounds | scale above `2^98` gives `+∞`; scale below `2^-85` gives `+0` or the smallest subnormal, and `exp a ≤ 2^-1100` | `ExpFarRange.far_positive`, `far_negative` |
+| `\|a\| ≥ 1024` | the saturating products | exact words `0` and `0x7FF0000000000000` | `ExpTheorem.saturated_bits` |
 
 On the compensated path, `ExpSpecialNegative.comp_sum_bounds` shows that `hi + lo` rounds onto the grid of `2^-52` in `[1, 2]` within `2u + 3u² + u s/8` of `1 + s + p`, with `s < 2`, and `ExpNegativeFinal.comp_final` shows that `z - 1` and its product with `2^-1022` are exact.  The hypothesis of `compensated_one_step` allows `(11/16) u` for `s + p` against `2^1022 E`, and with `u s/8 ≤ u/4` the error of `z - 1` against `2^1022 E` is at most `(47/16) u + 3u²`.  The subnormal spacing is `2u · 2^-1022`, so the total stays below one and a half spacings by about 2 percent of the allowance.  Only relative rounding bounds and two exact subtractions enter, as Arm's comment anticipates.
 
@@ -130,7 +130,7 @@ The proof imports 64 ProofKit modules, most of them the arithmetic chain of `F64
 | Fact | Declaration |
 |---|---|
 | The table's 128 rational enclosures of `2^(j/128)` within `2^-100` | `ExpTableBounds.checked_table_bounds` |
-| `1 ≤ H_j ≤ 2`, `|T_j| ≤ 2^-53`, and `H_j ≤ 255/128`, with `H_j ≥ 257/256` for `j ≠ 0` | `ExpTableBounds.checked_entry_magnitudes`, `ExpCoreRange.checked_head_bounds` |
+| `1 ≤ H_j ≤ 2`, `\|T_j\| ≤ 2^-53`, and `H_j ≤ 255/128`, with `H_j ≥ 257/256` for `j ≠ 0` | `ExpTableBounds.checked_entry_magnitudes`, `ExpCoreRange.checked_head_bounds` |
 | The sign and exponent fields of the heads, and the head word plus `j · 2^45` | `ExpScaleFacts.checked_head_fields` |
 | The Taylor sums of `exp` with 40 terms and their remainder at `128 (C1 + C2) ∓ 2^-92` bracket 2, so `ln 2` lies within `2^-92` of `128 (C1 + C2)`; `InvLn2N · ln 2/128` lies within `2^-53` of 1 | `ExpReductionBounds.checked_log_brackets`, `checked_inverse_bounds` |
 | The saturating products give `0` and `0x7FF0000000000000` | `ExpTheorem.underflow_product`, `overflow_product` |
