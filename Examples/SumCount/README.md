@@ -21,9 +21,9 @@ the result, and no free.
 | `sumCount_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `sumCount`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/manual.md#representations) describes
+`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/leanexe-manual.md#representations) describes
 how an argument and a result represent a Lean value, borrowed or owned.  [The section on
-ownership](../../docs/manual.md#ownership) gives the rules for who releases an array.
+ownership](../../docs/leanexe-manual.md#ownership) gives the rules for who releases an array.
 
 ## Running it
 
@@ -52,7 +52,7 @@ updating their inputs.  The LTG entries
 
 ## References
 
-- [The manual's section on arrays](../../docs/manual.md#arrays), which lists the array operations
+- [The manual's section on arrays](../../docs/leanexe-manual.md#arrays), which lists the array operations
   and their compiled forms.
-- [The manual's section on the Wasmtime host](../../docs/manual.md#the-wasmtime-host), which
+- [The manual's section on the Wasmtime host](../../docs/leanexe-manual.md#the-wasmtime-host), which
   describes the `array-u64` argument and result kinds and the counters.

@@ -26,7 +26,7 @@ result of `Shape.ofWords`, so a sum flows from one function's result into anothe
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  Float literals in the proofs, such as the bits of 3.0, are
 closed by `decide +kernel`, and the float operations by the binary64 lemmas of
-[`Axpy`](../Axpy/README.md).  [The manual](../../docs/manual.md#records-and-user-types) describes
+[`Axpy`](../Axpy/README.md).  [The manual](../../docs/leanexe-manual.md#records-and-user-types) describes
 the representation of user types.
 
 ## Running it
@@ -57,5 +57,5 @@ compiler stores on the heap as records instead of in locals.
 - [The Lean 4 reference on inductive
   types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
 - [The manual's section on conditionals and case
-  splits](../../docs/manual.md#conditionals-and-case-splits), which gives the compiled form of a
+  splits](../../docs/leanexe-manual.md#conditionals-and-case-splits), which gives the compiled form of a
   match.

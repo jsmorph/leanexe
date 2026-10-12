@@ -26,7 +26,7 @@ components.
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  The theorems represent an `Array α` of a flat `α` as
-`flatWords xs`, which [the manual](../../docs/manual.md#representations) defines.  The Euler solvers
+`flatWords xs`, which [the manual](../../docs/leanexe-manual.md#representations) defines.  The Euler solvers
 store their grids in this layout.
 
 ## Running it
@@ -57,6 +57,6 @@ arrays.  [`Bools`](../Bools/README.md) has `Bool` values outside arrays.  The LT
 
 ## References
 
-- [The manual's section on arrays](../../docs/manual.md#arrays), which gives the compiled form of a
+- [The manual's section on arrays](../../docs/leanexe-manual.md#arrays), which gives the compiled form of a
   read of an array of records.
-- [The manual's section on `LeanExe.build`](../../docs/manual.md#leanexebuild).
+- [The manual's section on `LeanExe.build`](../../docs/leanexe-manual.md#leanexebuild).

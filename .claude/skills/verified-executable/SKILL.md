@@ -73,14 +73,15 @@ are outside this skill.  If the request needs one, say so and stop.
 
 ## Stage 2: the program
 
-Write the program in the dialect that [the manual](../../../docs/manual.md#the-dialect) describes,
-in the sections from "The dialect" through "Summary of constructs": integers are `UInt64`, recursion
-is tail recursion with a termination proof or a combinator (`LeanExe.loop`, `LeanExe.build`,
-`LeanExe.repeatWhile`), and arrays are built at the top of a function.  The program must not import
-the specification.  Bound any loop by the input, as the examples bound arrays to eight words where
-the request does.  Compile with `tools/leanrun --timeout 60m lake build Examples.Name.Module`, then
-run `tools/demo-check --run NAME`, which emits the module and runs the samples without proofs.  Fix
-the program until every sample passes.
+Write the program in the dialect that [the LeanExe compiler
+manual](../../../docs/leanexe-manual.md#the-dialect) describes, in the sections from "The dialect"
+through "Summary of constructs": integers are `UInt64`, recursion is tail recursion with a
+termination proof or a combinator (`LeanExe.loop`, `LeanExe.build`, `LeanExe.repeatWhile`), and
+arrays are built at the top of a function.  The program must not import the specification.  Bound
+any loop by the input, as the examples bound arrays to eight words where the request does.  Compile
+with `tools/leanrun --timeout 60m lake build Examples.Name.Module`, then run `tools/demo-check --run
+NAME`, which emits the module and runs the samples without proofs.  Fix the program until every
+sample passes.
 
 ## Stage 3: the proofs
 
@@ -100,10 +101,11 @@ example whose program has the same shape.
 | Calls between listed functions | [`Examples/PrimeFactors/Verify.lean`](../../../Examples/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
 
 Print the IR of each function first, as `#eval NAME.f.ir.body`, and write the proof against it.
-[The manual's section on proving](../../../docs/manual.md#proving) describes the rules, `eval_body`,
-and `eval_state`, and [the LTG entries](../../../ltg/README.md) describe each compiler template's
-rule.  A `simp` call that evaluates a large body may need `set_option maxHeartbeats 1000000 in`.
-Build with `tools/leanrun --timeout 60m lake build Examples.Name.Verify`.
+[The LeanExe compiler manual's section on proving](../../../docs/leanexe-manual.md#proving)
+describes the rules, `eval_body`, and `eval_state`, and [the LTG entries](../../../ltg/README.md)
+describe each compiler template's rule.  A `simp` call that evaluates a large body may need
+`set_option maxHeartbeats 1000000 in`.  Build with `tools/leanrun --timeout 60m lake build
+Examples.Name.Verify`.
 
 ## Stage 4: acceptance and records
 
@@ -135,8 +137,8 @@ Build with `tools/leanrun --timeout 60m lake build Examples.Name.Verify`.
    Examples.Name.Cases` and the call `Examples.Name.cases` to
    [`tests/modules/Cases.lean`](../../../tests/modules/Cases.lean).
 4. Report the result to the user with the theorem line and the sample count.  Commit only when the
-   user's instructions call for it, after [the manual's full
-   check](../../../docs/manual.md#the-full-check).
+   user's instructions call for it, after [the LeanExe compiler manual's full
+   check](../../../docs/leanexe-manual.md#the-full-check).
 
 Keep `journal.md` during the run in natural prose: the decisions in the specification, the
 program's form and why, each proof approach and what changed it, the examples and rules that

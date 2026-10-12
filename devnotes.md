@@ -28844,3 +28844,36 @@ A second fresh agent reviewed the implementation.  It found that structure eta a
 produce a call, which the final hint would make the kernel unfold, and that `kabstract` ran at
 default transparency.  Eta now applies only to a variable or its projection, and the abstraction
 runs at reducible transparency with a check that it reproduces the term.
+
+## 2026-10-11: Documentation for two compilers
+
+A review of the README and the documents found that they presented the LeanExe compiler as the
+system and the verified compiler as a side library.  The README described only `leanexe_compile`,
+the full check omitted `lake build Verified` and `tests/verified/run.sh`, and no manual covered the
+verified compiler: its usage lived in `Verified/README.md` beside the code scheme and the proof.  The
+design document's decisions still said that per-program proofs carry more of the burden, and its
+open work listed records with array fields, which the verified compiler supports.
+
+The verified compiler does not yet cover everything the LeanExe compiler does.  It lacks `Float32`
+and the WGSL path, lists and other recursive types, sum types with fields, tail recursion as a loop,
+`Array.foldl`, and composition through `ImplementsPure`, and GPT-2 and the Euler solvers have no
+port to it.  It adds records with array fields, constant tables, and a theorem that
+excludes a trap for every function, under a bound computed from the code.  Both
+compilers stay, and the documents now describe both.
+
+- [x] `docs/manual.md` became [the LeanExe compiler manual](docs/leanexe-manual.md), with its links
+  updated and a seventh step of the full check for the verified compiler.
+- [x] [The verified compiler manual](docs/verified-manual.md): the dialect, the restrictions, the
+  declarations that `verified_compile` adds, bounds, recursion, tests, and examples.
+- [x] The README compares the two compilers, and `Verified/README.md` keeps the internals: the
+  source language, the code, the theorem, the reflector, and a table of the examples.
+- [x] The design document describes the verified compiler's components and decisions, and its open
+  work lists each compiler's items.
+- [x] A review by a fresh agent and the commit.
+
+The review found errors that the fixes correct: the manual stated the paid-parameter rule as
+per-parameter, listed arrays of tuples as parameter and result types although Lean has no
+`Represent` instance for them, said that every definition with `sorry` is rejected where only
+recursive ones are, and omitted the `Separate` premise, `p.flat_injective`, the wrappers'
+`ImplementsTables`, and the `mkdir` before `Emit.lean`.  The detailed table of examples moved from
+the internals to the manual.

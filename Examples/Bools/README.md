@@ -24,7 +24,7 @@ flag and its value.
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  [The manual's table of word
-operations](../../docs/manual.md#words-and-booleans) gives the compiled form of each Boolean
+operations](../../docs/leanexe-manual.md#words-and-booleans) gives the compiled form of each Boolean
 operation.  `Bool` has a built-in `Flat` instance, `cond b 1 0`, which states how a `Bool` argument
 or result appears to the module.
 
@@ -53,7 +53,7 @@ comparisons inside conditionals instead of returning them.
 
 ## References
 
-- [The manual's section on records and user types](../../docs/manual.md#records-and-user-types),
+- [The manual's section on records and user types](../../docs/leanexe-manual.md#records-and-user-types),
   which gives the representation of enumerations and structures.
 - [The Lean 4 reference on
   `Bool`](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Booleans/).
