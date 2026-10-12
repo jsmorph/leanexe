@@ -28636,6 +28636,23 @@ by `step_xor`.  A prototype proves the lemmas and checks `step^[2^64 - 1] 1 = 1`
 compiled jump-ahead of G3 works on `UInt64` words and arrays, and a lemma on `toNat` relates it to
 the tables of G2.
 
+### G2: the xorshift period
+
+- [x] `Examples/Xorshift/Columns.lean`: columns, squares, and jump-ahead on natural numbers.
+- [x] `orbitCheck_eq`, `minimalPeriod_one`, `step_minimalPeriod`, and `advance_existsUnique` from
+  every nonzero state, with `Orbit.minimalPeriod_eq_of_primes`.
+- [x] `xorshift_advance` with the period, the README, and the manual.
+- [x] A review by a fresh agent, and the commit.
+
+The final file checks `orbitCheck_eq` in about 20 seconds, the time between the file's last save
+and its build output.  The period uses `Orbit.minimalPeriod_eq_of_primes`, with the hypotheses of
+Mathlib's `orderOf_eq_of_pow_and_pow_div_prime`, which Mathlib states for the order of a monoid
+element and not for `minimalPeriod`.  A fresh agent reviewed the stage and found no soundness
+problem.  It asked for the lemma's hypothesis in Mathlib's form, for `jumpList_tables` at every
+state, which G3 needs, for the name `jumpList`, which leaves `jump` to G3's program, and for
+corrections to the READMEs and docstrings.
+
+
 Later candidates: SplitMix64 advances a Weyl sequence, the case `a = 1` of the LCG theorems, and
 its output mixer is a bijection.  PCG combines an LCG state with an output permutation and has the
 LCG's period.  xoshiro256** has period `2^256 - 1`, which requires the primitivity of a polynomial

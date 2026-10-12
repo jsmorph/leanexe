@@ -187,5 +187,6 @@ import Examples.Words.Cases
 import Examples.Words.Encode
 import Examples.Words.Module
 import Examples.Words.Verify
+import Examples.Xorshift.Columns
 import Examples.Xorshift.Period
 import Examples.Xorshift.Program
