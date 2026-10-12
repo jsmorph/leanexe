@@ -346,7 +346,7 @@ theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : F
     (by rw [hc0]; exact finite_of_lt _ hf260) (by rw [hc1]; exact finite_of_lt _ hf261)
     (by rw [hc2]; exact finite_of_lt _ hf262) (by rw [hc3]; exact finite_of_lt _ hf263)
     hcb0 hcb1 hcb2 hcb3
-    hed.1 hed.2 hEb (by rw [e131]; exact hh1.1) (by rw [e197]; exact hh2.1) hv1 hv2 hz1b hz2b hsmall
+    hed.1 hed.2 (hEb.trans (by norm_num)) (by rw [e131]; exact hh1.1) (by rw [e197]; exact hh2.1) hv1 hv2 hz1b hz2b hsmall
     (by rw [e130]; exact hg1.1) (by rw [e196]; exact hg2.1) (by rw [e130]; exact hg1.2)
     (by rw [e196]; exact hg2.2)
   rw [hq] at hT
