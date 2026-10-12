@@ -30124,7 +30124,37 @@ The three functions share `Sinpi.piProduct`, which forms `π x` as `w + t` from 
 | `SinpiKernels`, `SinpiTanKernel` | `kernel_pair`, `kernel_tanpi`. |
 | `SinpiReflect`, `SinpiBits`, `SinpiFloor` | `half_sub`, `sub_half`, `one_sub`, `ax_abs`, `neg_flag`, `ffloor_bits`, `floor_spec`, `oddPart_spec`. |
 
+`SinpiPieces` assembles the reflected chains below 1: `sin_chain` for the four quarters of the sine, `cos_pieces` and `tan_pieces` for the cosine and the tangent, with `tan (π - θ) = -tan θ` above `1/2`.  `SinpiSin`, `SinpiCos`, `SinpiCosFloor`, and `SinpiTanpi` follow the branches of the three functions from `2 ^ -29` (from 0 for `cospi`) below `2 ^ 52`.  From 1 on, `floor_frac` gives the integer part `N` and the exact fraction `|x| - N`, which is 0 or at least `2 ^ -52`, and `sin_shift`, `cos_shift`, and `tan_shift` move the target by `N π`; `oddPart` changes the sign of the sine and the cosine for odd `N`, and the tangent needs no sign change.  Below `2 ^ -29`, `cospi` returns 1, within `2 ^ -55` of `cos (π x)` by `Real.one_sub_sq_div_two_le_cos`.
+
+Below `2 ^ -29`, `sinpi` and `tanpi` return `±0` for `±0` and `piTiny` otherwise.  `SinpiTinyWords` and `SinpiTinySplit` show for normal and subnormal `x` that `x 2 ^ 53` and the head `hi`, the truncation of `x` to its high 32 bits scaled by `2 ^ 53`, are exact products, that `lo = x 2 ^ 53 - hi` is exact by `F64GridExact.sub_grid_exact`, with `|lo| ≤ |x 2 ^ 53| / 2 ^ 20 + 2 ^ -989`, and that `pi_hi hi` is exact because `hi` has at most 21 significant bits.  `SinpiTinyReal.sum_error` places the sum before its last rounding within `|x 2 ^ 53| / 2 ^ 65 + 2 ^ -1036` of `π x 2 ^ 53`, and `final_error` adds the rounding of the sum and the scaling by `2 ^ -53`, which is exact when the result is normal and within `2 ^ -1075` otherwise.  `SinpiTiny.tiny_spec` states the result: within `(1 + 2 ^ -10) u` of `π x` relative to the larger of `|π x|` and `2 ^ -1021`, plus `2 ^ -1085`.  `sin (π x)` and `tan (π x)` lie within `|π x| ^ 3 ≤ 0.32 u |π x|` of `π x`.
+
+`F64RelativeStepWide.within_one_wide` requires `|y| ≥ 2 ^ -1000`, so `SinpiLowStep.within_low` extends it: a finite word within `47/32` units of roundoff of `y`, relative to the larger of `|y|` and `2 ^ -1021`, lies within one step of the nearest-even reference of `y` when `|y| ≥ 2 ^ -1073`.  From `2 ^ -1021` on, the proof is that of `within_one_wide`, whose case of `y` in the binade below that of the word needs that binade to be normal, which `|y| ≥ 2 ^ -1021` ensures.  Below `2 ^ -1021`, the error is less than one and a half spacings of the subnormal binade, and `F64FullStep.one_step_binades` applies to binades 0 to 3.  From `2 ^ 52` on, `SinpiWithin` shows that `cospi` gives `±1` by the lowest bit of `x` below `2 ^ 53` and 1 above, where every input is even, and that `tanpi` gives `±0`.
+
+| Module | Result |
+|---|---|
+| `SinpiPieces`, `SinpiCommon` | `sin_chain`, `cos_pieces`, `tan_pieces`, `abs_thresholds`, `big_integer`. |
+| `SinpiSin`, `SinpiCos`, `SinpiCosFloor`, `SinpiTanpi` | `sinpi_mid`, `sinpi_floor`, `sinpi_big`, `cospi_small`, `cospi_floor`, `tanpi_mid`, `tanpi_floor`. |
+| `SinpiLowStep` | `within_low`. |
+| `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | `tiny_bits`, `split_spec`, `sum_error`, `final_error`, `tiny_spec`, `sinpi_tiny`, `tanpi_tiny`. |
+| `SinpiWithin` | `cospi_big`, `tanpi_big`, `sinpi_within`, `cospi_within`, `tanpi_within`. |
+| `SinpiExact`, `SinpiExactTan` | `sinpi_int`, `cospi_half`, `nonfinite`, `tanpi_int`, `tanpi_half`. |
+| `SinpiTheorem`, `SinpiFile` | `sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, `tanpi_bytes_accuracy`, `sinpi_file_decode`. |
+
+The exact rules are bit equalities for finite `x`.  `sinpi_int` gives `±0` with the sign of `x` for an integer value, `cospi_half` gives `+0` for `n + 1/2`, `tanpi_int` gives `±0` with the sign of `x` exchanged for odd `n`, and `tanpi_half` gives `0x7FF0000000000000` for even `n` and `0xFFF0000000000000` for odd `n`, independent of the sign of `x`.  `nonfinite` gives the canonical NaN for the three functions.  `tanpi_within` excludes the values `n + 1/2`, where `Real.tan` is 0 by Mathlib's division by zero.
+
+`rw [if_neg (by decide)]` rewrites the first `if` in the goal, and after `cos_shift` the first `if` was the real-valued `if N % 2 = 1`, so `decide` met a free variable; the proofs now name each condition with `show` and apply the shift after the word-level rewrites.  `split_spec` first ran out of its 200,000 heartbeats in total: `push_cast` and `field_simp` had evaluated `2 ^ 1074` into a 324-digit numeral, and the fix splits the proof into `tail_le` and `tail_grid` and rewrites with `Nat.cast_mul`, `Nat.cast_pow`, and `mul_div_assoc`.  Mathlib on this toolchain names `le_or_gt` and `lt_or_ge`, `Real.sin_gt_sub_cube` takes one hypothesis, and `UInt64.toNat_inj.mp` replaces `UInt64.eq_of_toNat_eq`.
+
+| Log | Content |
+|---|---|
+| `sinpi-cos-1`, `sinpi-cos-2`, `sinpi-cosfloor-1` | `SinpiCos`, `SinpiCosFloor`, `SinpiTanpi`. |
+| `sinpi-tiny-1` to `sinpi-tiny-3` | `SinpiLowStep` and the tiny modules. |
+| `sinpi-within-1`, `sinpi-exact-1` | `SinpiWithin`, `SinpiExact`, `SinpiExactTan`. |
+| `sinpi-theorem-1`, `sinpi-emit-1`, `sinpi-file-1` | `SinpiTheorem`, the module `sinpi.wasm`, `SinpiFile`. |
+
+`SinpiTheorem` states `sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy` for functions 13, 14, and 15, the exports `sinpi`, `cospi`, and `tanpi`.  The module has no tables, and its entries are `ImplementsA` with trivial pre- and postconditions, so `Ready` consists of the allocator invariant and the memory cap.  `SinpiFile.sinpi_file_decode` takes the bytes from the conjunction of the three byte theorems, so its axiom report covers all three.  `tools/Emit.lean` wrote `build/verified/sinpi.wasm`, 5,806 bytes, which `wasm-tools validate` accepts, and `lake env lean Verified/Examples/SinpiFile.lean` prints two axiom lines, each `[propext, Classical.choice, Quot.sound]`.  Every theorem of these modules reports at most these three axioms.
+
 - [x] The product, the kernels, the reflections, and the integer part.
-- [ ] The reflected chains (`SinpiPieces`).
-- [ ] `piTiny` below `2 ^ -29`, including subnormal inputs.
-- [ ] The three functions, their exact rules, the byte theorems, and the file module for `sinpi.wasm`.
+- [x] The reflected chains (`SinpiPieces`).
+- [x] `piTiny` below `2 ^ -29`, including subnormal inputs.
+- [x] The three functions, their exact rules, the byte theorems, and the file module for `sinpi.wasm`.
+- [ ] The entry `sinpi:SinpiTheorem:SinpiFile` in `tests/verified/run.sh`, which the coordinator adds.
