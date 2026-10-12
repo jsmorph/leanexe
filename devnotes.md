@@ -31633,3 +31633,8 @@ The first instantiation with binary64 exposed a hypothesis that binary64 does no
 - [x] Value: kept digits, sticky flag, and saturations against `round64` and `round32`, with `truncate64` and `truncate32`
 - [x] `parse64_accept`, `parse64_reject`, `parse32_accept`, `parse32_reject`
 - [ ] Byte and file theorems for the compiled module, and the `run.sh` entries for the coordinator
+
+`ParseFloatBytes` proves `parse64_bytes_accuracy` and `parse32_bytes_accuracy` for the entries 35 and 36 of the compiled module, in the form of `ExpTheorem.exp_bytes_accuracy` (`strconv-pbytes-1.log`, first run).  The argument is the pair of the grammar flag, a word 1 or 0, and the string as a borrowed array, whose `Represent.borrowed` is built directly; the result pair returns as two words in reverse order; and the module allocates, so a call may trap at `unreachable` when memory runs out (`ImplementsA true`).  `ParseFloatFile` checks against `build/verified/parsefloat.wasm`, which `tools/Emit.lean` wrote (`strconv-emit-1.log`, 9,452 bytes); the check needed `lake build LeanExe.Pipeline.FileBytes` first (`strconv-pfile-1.log` failed on the missing object file, `pfile-3` passed with the three permitted axioms).  `wasm-tools` is not installed, so the module was not validated by `wasm-tools validate`.  The shared `tests/verified/run.sh` needs three entries, which the report to the coordinator lists.
+
+- [x] Byte and file theorems for the compiled module
+- [ ] Stage 4: the printers
