@@ -30879,6 +30879,7 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
 | `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
 | `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
+| `PowNegBase.lean` | `tailPath`, `neg_path`, `pos_path`, `tail_main`, `norm_neg`, `nonint_nan`, `even_eq`, `odd_rel`, `pow_neg_within`. |
 | `PowMainSign.lean` | `main_rel`, `main_rel_one`, `normWord`, `main_rel_any`. |
 | `PowPositive.lean` | `exact_within`, `near_one_within`, `xor_high`, `not_signaling`, `y_zero`, `main_one`. |
 | `PowTheoremPos.lean` | `positive_rep`, `sign_top`, `prod_big`, `pow_pos_within`. |
@@ -30916,4 +30917,5 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 - [x] `PowSubnormal.subnormal_word` (`pow-pos-12.log`).
 - [x] Milestone 1: `PowTheoremPos.pow_pos_within` for a finite `x > 0` and a finite `y`, against `Real.rpow` (`pow-pos-14.log`, all axiom reports `propext`, `Classical.choice`, `Quot.sound`).  The last fixes replaced `nlinarith` on the products `log x · y` by the lemma `prod_big`, and three literal-first rewrites of `UInt64.toNat_sub` by separate equations for the one subtraction.
 - [x] `PowMainSign.main_rel_any`: the main path with the bias against the main path without it (`pow-m2-2.log`).  The rule for lock use now limits each build to 20 minutes, so the milestone-2 modules build one at a time: `PowNegBase`, `PowSpecial`, `PowTheorem`, `PowBytes`, then `PowFile` with `lake env lean`.
-- [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
+- [x] `PowNegBase.pow_neg_within` for a negative finite `x` and an integer `y`, with `nonint_nan`, `even_eq`, and `odd_rel` (`pow-m2-3.log`).  `tailPath` is the part of `powWith` after its special-case tests; `neg_path` and `pos_path` reduce `pow x y` and `pow (-x) y` to it, and they differ only in the sign bias and in the base of the subnormal normalization, whose masked words agree (`norm_neg`).
+- [ ] Milestone 2: zeros, infinities, NaN, byte theorems, file module.
