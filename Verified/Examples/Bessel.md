@@ -101,7 +101,8 @@ Branch `w/log`, in `/home/somebody/src/lt-log` on minideb1, holds the commits `2
 | `BesselCase.case_sub`, `case_add`, `case_one`, `case_finish`, `BesselLarge.large_sub`, `large_add`, `modulus_ge`, `huge_pq0`, `huge_pq1` | One case of the path from 2 against any `M ≥ 0.7978 Pl / √x` under numeric conditions that `norm_num` checks, both branches of `(cc, ss)` together, and `\|P - 1\| ≤ 262 · 2^-68` and `\|Q\| ≤ 19 · 2^-68` (order 0) or `283 · 2^-68` and `21 · 2^-68` (order 1) from `2^129` on | `b59e0975`, `e667a448`, `bes-case-2.log`, `bes-large-a1.log` |
 | `BesselJ0Large.j0_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j0 x) - J₀(x)\| ≤ 10 u √(J₀(\|x\|)² + Y₀(\|x\|)²)`, on the four ranges, both branches, and the path from `2^129` | `e55ba4e9`, `bes-j0l-4.log` |
 | `BesselY0Large.y0_large` | For finite `x ≥ 2`, `\|value (y0 x) - Y₀(x)\| ≤ 10 u √(J₀(x)² + Y₀(x)²)` | `94fcd632`, `bes-y0l-2.log` |
-| `BesselY1Large.y1_large` | For finite `x ≥ 2`, `\|value (y1 x) - Y₁(x)\| ≤ 12 u √(J₁(x)² + Y₁(x)²)` | `bes-y1l-1.log` |
+| `BesselY1Large.y1_large` | For finite `x ≥ 2`, `\|value (y1 x) - Y₁(x)\| ≤ 12 u √(J₁(x)² + Y₁(x)²)` | `36a8f014`, `bes-y1l-1.log` |
+| `BesselJ1Large.j1_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j1 x) - J₁(x)\| ≤ 12 u √(J₁(\|x\|)² + Y₁(\|x\|)²)`, both signs | `bes-j1l-1.log` |
 
 ## Proof
 
