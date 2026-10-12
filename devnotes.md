@@ -31117,6 +31117,10 @@ The small path shows the error budget of a fast path.  With `R = 1/|x|`, the dou
 
 The analysis of each path tracks absolute errors with explicit magnitude bounds.  `TgammaExpr` evaluates, in the kernel, the bound of a chain of plain double operations in one variable, so the polynomial parts written in double arithmetic, such as `x (c0 + x8 c8)` of the small path, get their bound by `decide +kernel`: `2^-48` with magnitude `1/2` for `|x| ≤ 1/4`.  The double-double parts use the lemmas of `TgammaDD` and `TgammaPolyDDD`.  The approximation facts of `TgammaApprox` and the one-step criterion `within_one_of_rounded_rel` close each path.
 
+### The path on `(-3, 4)`
+
+The code rounds `x - 7/2` before it takes the nearest integer `I`, so `d = x - (I + 7/2)` can exceed `1/2` by up to `2^-51`, as at `x = 1 - 2^-53`.  The coordinator approved widening `MainFact` to `|d| ≤ 1/2 + 2^-50`, which is commit `d06760e6`, and told track `erf`.  `TgammaMainRed.main_red` proves that `I` lies from -7 to 0 and that `i + 7/2` and `d` are exact: the subtraction `x - 7/2` is exact from 2 on, which excludes `I = 1` below 4, and `d` is a multiple of `2^-53` with `|d| < 1` when `|x| ≥ 1/2` and a multiple of `2^-54` with `|d| ≤ 1/4` when `1/4 ≤ |x| < 1/2`.  The proof allows `I = -7` because the identity `Γ x = Γ (x + J) / (x (x + 1) ⋯ (x + J - 1))` holds for each `J = -I`, and a ties-to-even rounding of `x - 7/2` near -6.5 decides between -6 and -7.  A simulation of the shift loop in `py/loopsim.py` over 200,000 uniform arguments, 2,786 arguments within 199 steps of the integers from -3 to 3, and 22,050 arguments at random distances from `2^-60` to 8 from them found the low part `xpl` exactly zero while `x + m < 0` and at most `2^-52.9 |x + m|` after, with every addition to it exact, which is the invariant that the loop's proof will use.
+
 ### Results
 
 | File | State | Log |
@@ -31137,6 +31141,10 @@ The analysis of each path tracks absolute errors with explicit magnitude bounds.
 | `TgammaWords`: words of the tables as rationals, weighted Horner bounds, and list evaluation | Committed in `db6c122a` | `gamma-words-3.log` |
 | `TgammaSmall`: `lE` within `2^-48` (kernel), `horner_small`, `small_poly` within `2^-55` of `smallPoly` | Committed in `b9a70213`, `6b225ee1` | `gamma-small-4.log` |
 | `TgammaSmallPath`: `small_sum`, `small_gamma`, `smallPath_within` | Committed in `6b225ee1` | `gamma-spath-4.log` |
+| `TgammaApprox`: `MainFact` on `\|d\| ≤ 1/2 + 2^-50` | Committed in `d06760e6` | none |
+| `TgammaMul.mulDD_spec` | Committed in `e603a331` | `gamma-mul-1.log` |
+| `TgammaMainRed`: `main_red`, `count_spec` | Committed with this entry | `gamma-mred-3.log` |
+| `TgammaMainPoly`: `main_poly` within `2^-72` of `mainPoly` | Committed with this entry | `gamma-mpoly-1.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31147,9 +31155,12 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [ ] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
 - [x] Exceptional values at `±0`, `±∞`, and NaN (`TgammaSpecial`)
 - [x] Double-double lemmas: `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDDD`, `polyDDD`
-- [ ] Double-double lemmas: `mulDD`, `mulDD3`, `splt`, `sprod`, `poly3`
+- [x] Double-double lemma `mulDD`
+- [ ] Double-double lemmas: `mulDD3`, `splt`, `sprod`, `poly3`
 - [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
 - [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
-- [ ] The tiny path, the integer path, and the paths on `[-3, 4]`, above 4, and below -3
+- [x] The reduction and the polynomial of the path on `(-3, 4)`
+- [ ] The shift loop, the reciprocal, and the result of the path on `(-3, 4)`
+- [ ] The tiny path, the integer path, and the paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
