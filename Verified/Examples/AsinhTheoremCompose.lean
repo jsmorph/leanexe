@@ -87,6 +87,35 @@ theorem quad_le (α β γ L H a : ℝ) (hα : 0 ≤ α) (hL : L ≤ a) (hH : a �
       linarith
     linarith
 
+theorem errQuad_le (v E : ℝ) (h0 : 0 ≤ v) (h1 : v ≤ 285 / 1000)
+    (hE : 174 / 100 / 2 ^ 53 * (285 / 1000) ^ 2 + 285 / 1000 / 2 ^ 59 ≤ E) :
+    174 / 100 / 2 ^ 53 * v ^ 2 + v / 2 ^ 59 ≤ E := by
+  have h2 : v ^ 2 ≤ (285 / 1000) ^ 2 := pow_le_pow_left₀ h0 h1 2
+  have h3 : 174 / 100 / 2 ^ 53 * v ^ 2 ≤ 174 / 100 / 2 ^ 53 * (285 / 1000) ^ 2 :=
+    mul_le_mul_of_nonneg_left h2 (by norm_num)
+  have h4 : v / 2 ^ 59 ≤ 285 / 1000 / 2 ^ 59 := div_le_div_of_nonneg_right h1 (by norm_num)
+  linarith
+
+theorem errBound_mid (v : ℝ) (h1 : 6499 / 10000 ≤ v) (h2 : v < 2 ^ 53) :
+    Log1pTheoremNear.errBound v = 133 / 100 / 2 ^ 54 := by
+  have e1 : ¬ v ≤ 285 / 1000 := by intro h; linarith
+  have e2 : ¬ v < 868669 / 2097152 := by intro h; linarith
+  have e3 : ¬ v < 4999 / 10000 := by intro h; linarith
+  have e4 : ¬ v < 5603 / 10000 := by intro h; linarith
+  have e5 : ¬ v < 6499 / 10000 := by intro h; linarith
+  rw [Log1pTheoremNear.errBound, if_neg e1, if_neg e2, if_neg e3, if_neg e4, if_neg e5,
+    if_pos h2]
+
+theorem errBound_big (v : ℝ) (h : 2 ^ 53 ≤ v) : Log1pTheoremNear.errBound v = 6 / 2 ^ 54 := by
+  have h0 : (6499 : ℝ) / 10000 < 2 ^ 53 := by norm_num
+  have e1 : ¬ v ≤ 285 / 1000 := by intro h'; linarith
+  have e2 : ¬ v < 868669 / 2097152 := by intro h'; linarith
+  have e3 : ¬ v < 4999 / 10000 := by intro h'; linarith
+  have e4 : ¬ v < 5603 / 10000 := by intro h'; linarith
+  have e5 : ¬ v < 6499 / 10000 := by intro h'; linarith
+  rw [Log1pTheoremNear.errBound, if_neg e1, if_neg e2, if_neg e3, if_neg e4, if_neg e5,
+    if_neg (not_lt.mpr h)]
+
 #print axioms log_pade
 #print axioms log_diff
 #print axioms near_compose
