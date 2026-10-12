@@ -53,7 +53,7 @@ private theorem error_sum (xs : Array Float) :
   unfold inputNorm at hmag ⊢
   linear_combination hmag
 
-private theorem sample_safe (xs : Array Float) (h : Admissible xs) (j : Nat)
+theorem sample_safe (xs : Array Float) (h : Admissible xs) (j : Nat)
     (hj : j < xs.size / 2) : sampleMagnitude xs j < (2 : ℝ) ^ 1022 := by
   have hsum : 0 ≤ ∑ i ∈ Finset.range (xs.size / 2), sampleMagnitude xs i :=
     Finset.sum_nonneg (fun i _ => sampleMagnitude_nonneg xs i)
@@ -134,7 +134,7 @@ private theorem row_terms (xs : Array Float) (h : Admissible xs) (k j : Nat)
   · unfold imagReference
     ring
 
-private theorem accumulate_near (xs : Array Float) (h : Admissible xs)
+theorem accumulate_near (xs : Array Float) (h : Admissible xs)
     (terms : UInt64 → Float) (reference : Nat → ℝ)
     (hterms : ∀ j, j < xs.size / 2 →
       FApprox (terms (UInt64.ofNat j)) (reference j) (sampleError xs j))

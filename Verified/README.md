@@ -362,7 +362,16 @@ by the decoded module, with explicit input-representation, allocator, and table 
 permits a trap at `unreachable`.  [The file theorem](Examples/FourierFile.lean) checks the emitted
 `build/verified/fourier.wasm`, and `tests/verified/run.sh` runs its check.  The final numerical,
 byte, and file declarations report only `propext`, `Classical.choice`, and `Quot.sound`.
-Numerical proofs for `inverse` and `powerSpectrum` remain open.
+[The inverse theorem](Examples/FourierInverse.lean) uses the same premises and bounds each
+component's error by `(E + uM)/n + η`, where `E = (G - 1)A + H` and `M = GA + H`.
+The result has `2n` components, including the empty case, and ignores an odd final input float.
+[The power-spectrum theorem](Examples/FourierPowerTheorem.lean) uses `n` real samples and
+`A = Σ |x_j|`, requires finite samples, `n ≤ 2^32`, and `(1 + u)M² + η < 2^1022`, and
+proves finite, nonnegative outputs with error at most
+`4AE + 2E² + 2u(2 + u)M² + 2(1 + u)η` from the exact squared DFT magnitude.
+It returns no values for empty input and `n/2 + 1` values otherwise.
+[The inverse and power byte proofs](Examples/FourierExtraBytes.lean) carry these results to
+the decoded module.  The emitted-file theorem depends on all three numerical byte theorems.
 
 ## Related work
 

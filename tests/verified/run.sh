@@ -64,7 +64,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
-    fourier:FourierBytes:FourierFile; do
+    fourier:FourierExtraBytes:FourierFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {

@@ -1,4 +1,4 @@
-import Verified.Examples.FourierBytes
+import Verified.Examples.FourierExtraBytes
 import LeanExe.Pipeline.FileBytes
 
 namespace Verified.Examples.FourierFile
@@ -12,7 +12,7 @@ theorem fourier_file :
 theorem fourier_file_decode :
     Wasm.Encoding.decode (binary_file% "../../build/verified/fourier.wasm") =
       .ok Fourier.compiled.module := by
-  obtain ⟨bytes, henc, hdec, _⟩ := FourierBytes.dft_bytes_accuracy
+  obtain ⟨⟨bytes, henc, hdec, _⟩, _, _⟩ := FourierExtraBytes.fourier_module_accuracy
   have h : binary_file% "../../build/verified/fourier.wasm" = bytes :=
     Except.ok.inj (fourier_file.symm.trans henc)
   rw [h]

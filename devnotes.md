@@ -31855,3 +31855,62 @@ The numerical theorems of `inverse` and `powerSpectrum` remain open.  An FFT imp
 - [x] Prove the emitted-file equalities and add their verification-driver entry.
 - [ ] Agree on and prove the inverse and power-spectrum bounds.
 - [ ] Select and develop an FFT implementation.
+
+## 2026-10-12: Full Fourier agenda (minideb2)
+
+The user requested the full Fourier agenda after the forward DFT proof was committed as `ed9050d3`.  Work continues on `w/fourier` at `/home/somebody/src/lt-fourier` on minideb2.  The push request was cancelled after GitHub authentication failed.  The current request authorizes the remaining development.
+
+### Scope and decisions
+
+The inverse and power-spectrum numerical theorems will compose with the existing compiler, decoded-byte, and emitted-file proofs.  The proposed inverse bound is `(E + uM) / n + η`, with the approved DFT premises, where `E` and `M` are the existing component error and magnitude bounds.  The proposed power bound is `4AE + 2E² + 2u(2 + u)M² + 2(1 + u)η`, with finite real samples, `n ≤ 2^32`, and `(1 + u)M² + η < 2^1022`.  Both preserve existing output lengths and cover empty input.  These public statements await confirmation.
+
+The FFT proposal uses iterative radix-2 stages, bit-reversed input, and precomputed factors from `Fourier.twiddleWith`.  Separate forward, inverse, and power-spectrum functions would preserve the existing signs, layout, normalization, and ignored odd tail.  The proposal dispatches non-power-of-two lengths to the existing direct transform.  Length handling and inclusion of memory-budget proofs await confirmation.  The FFT numerical bound must be derived before its public theorem is chosen.
+
+The algorithm source is [Cooley and Tukey's 1965 paper](https://web.stanford.edu/class/cme324/classics/cooley-tukey.pdf).  [FFTW's transform conventions](https://www.fftw.org/fftw3_doc/Complex-One_002dDimensional-DFTs.html) give the forward sign −1, backward sign +1, and unnormalized pair.  Our inverse retains its explicit division by the sample count.
+
+### Supporting proofs
+
+The workers own the positive-sign transform and normalization, square-sum arithmetic and real-sample embedding, and FFT design.  The parent owns shared mathematical bounds and integration.  Every Lean and Lake invocation uses `tools/leanrun` and the machine-wide lock.
+
+`FourierMath` now bounds each exact forward coordinate by `inputNorm`, proves error-bound nonnegativity, and proves `magnitudeBound = inputNorm + errorBound`.  `math-agenda-001.log` failed because `one_le_pow₀` takes the exponent implicitly.  An explicit result type fixed that application.  `math-agenda-002.log` passed with status zero and only `propext`, `Classical.choice`, and `Quot.sound` in the final reports.
+
+`FourierTheorem.sample_safe` and `accumulate_near` are public so the positive-sign proof reuses the accepted safety and sequential-sum arguments.  `positive-loop-001.log` checks the generalized exact loop correspondence and the preserved forward theorem.  `positive-001.log` checks the positive-sign accuracy and exact-reference magnitude bounds.  The worker reports status zero and the same three axioms for each accepted declaration.
+
+- [x] Prove shared exact-coordinate and bound identities.
+- [x] Prove the positive-sign unnormalized transform.
+- [ ] Confirm inverse and power-spectrum statements.
+- [ ] Complete their numerical, decoded-byte, and file proofs.
+- [ ] Confirm FFT length handling and runtime scope.
+- [ ] Derive and confirm the FFT numerical bound.
+- [ ] Implement and prove FFT forward, inverse, and power-spectrum functions.
+- [ ] Test compiler behavior, numerical bounds, and performance.
+
+### Confirmed scope and bounds
+
+The user approved the inverse and power-spectrum statements, radix-2 FFT with direct DFT fallback for other lengths, and the current runtime scope that permits `unreachable` traps.  Memory-budget no-trap proofs are outside this agenda.
+
+The user approved the FFT stage bound.  For `n = 2^p`, `p ≤ 32`, `q = (1 + u)²(1 + 32u)`, `r = (1 + u)(2q − 1)`, and `ν = 3(1 + u)²η`, define `K₀ = 0` and `Kₛ₊₁ = 2rKₛ + ν`.  Let `B = r^p A + Kp` and `E = (r^p − 1)A + Kp`.  Finite used inputs and `2qB + 2(1 + u)η < 2^1022` give the proposed forward component bound `E` and inverse bound `(E + uB)/n + η`.  The FFT power-spectrum theorem also requires `(1 + u)B² + η < 2^1022` and uses the approved square-sum error expression with these `B` and `E`.  Empty input has an exact empty result.  Other lengths use the direct-transform domains and bounds.
+
+`FFTSpec` records these statements.  The complex Euclidean norm makes multiplication by an exact Fourier factor preserve magnitude.  The product's two coordinate errors imply a norm error at most `2(q − 1)‖b‖ + 3(1 + u)η`.  Rounded addition or subtraction gives local error at most `(r − 1)(‖a‖ + ‖b‖) + ν`.  The two subtransform input masses add, producing the approved stage recurrence.  The final safety premise bounds every earlier product and butterfly sum.
+
+### Further accepted results and compiler diagnosis
+
+`power-arithmetic-003.log`, `power-embedding-002.log`, and `power-theorem-001.log` pass.  The power theorem proves the approved length, finite and nonnegative output, and numerical error.  Earlier arithmetic checks exposed recursive simplification of `pow_succ` and a let-bound sign rewrite.  Targeted power and sign identities resolved those diagnostics.  The embedding's zero-length simplification was corrected before acceptance.
+
+`extra-bytes-support-001.log` passes for the generic inverse and power calls, their exports, preserved borrowed input and tables, and owned returned arrays.  Numerical byte and file integration imports the approved theorems.  `fft-complex-002.log` checks the Euclidean coordinate and product-error inequalities.  Accepted declarations report only `propext`, `Classical.choice`, and `Quot.sound`.
+
+The first FFT compiler check failed because the compiler creates declarations from a function's final name component.  Both `Fourier.transformWith` and `FFT.transformWith` generated `compiled.transformWith.func`.  The FFT helper is now named `fftTransformWith`.  `fft-compile-002.log` checks that corrected source.  The SSH connection dropped while this target ran, and the remote process continued.  The existing job and log are being followed without a duplicate submission.
+
+### Numerical results and compiler diagnosis
+
+The direct inverse theorem was accepted in `inverse-004.log`.  The real power-spectrum theorem was accepted in `power-theorem-001.log`, after separate arithmetic, embedding, and specification checks.  `extra-bytes-numerical-001.log` accepts the inverse and power results through the existing module's decoded bytes.  `file-agenda-001.log` completed with status 0 and exactly two reports of `propext`, `Classical.choice`, and `Quot.sound`; its decoding theorem depends on all three direct numerical byte theorems.
+
+The FFT proof follows the approved implementation.  `FFTBits`, `FFTIndex`, and `FFTLoop` connect the UInt64 loops, bit-reversed copying, table indices, and stage writes to natural-number indices.  `FFTMath` proves the even/odd transform identities and relates each stage to its exact complex value and input mass.  `FFTArithmetic` proves rounded complex products and butterfly updates.  `FFTNumerical.radix2_accuracy` combines those results with the approved recurrence.  The accepted logs are `fft-structure-003.log`, `fft-structure-004.log`, `fft-loop-006.log`, `fft-math-003.log`, `fft-arithmetic-004.log`, and `fft-numerical-005.log`.  The last check completed with status 0, and its eleven axiom reports contain only the three permitted axioms.  `FFTDivision.normalize_near` was accepted in `fft-division-001.log` for the final inverse composition.
+
+The first FFT compiler attempt failed because the reflector uses the final component of a source name, and both the new helper and `Fourier.transformWith` were named `transformWith`.  The FFT helper is now `fftTransformWith`.  The following full compiler check reached its timeout without a completed declaration.  Separating the pure definitions into `FFT` and the compiler declaration into `FFTProgram` lets the mathematical proofs check without waiting for the compiler diagnosis.  A stage probe initially lacked the existing `Elem.wordsInst (.prod .float .float)` representation instance.  Supplying that instance accepted the stage probe, the paired-array stage loop, and the complete radix-2 subset.  These checks support the existing loop design.  The complete `FFTProgram` check still timed out after ten minutes.  A smaller probe adds the direct fallback and dispatch to the accepted radix-2 subset and enables named kernel traces.  It is waiting for the shared machine lock behind the separate `lt-strconv` and `lt-poly` work.
+
+The numerical test `fft-accuracy-002.log` completed with status 0 for 99 signals.  Its largest component distance was `0.025000` of the stated test tolerance.  The test compares with the existing integer reference and exercises forward transforms, inverse round trips, real power spectra, cancellation, subnormals, and ignored odd tails.  Its tolerance is separate from the proved FFT bounds.  Fixed native/WebAssembly cases now cover 24 arrays and three exports, including finite extremes, nonfinite inputs, and lengths 1024 and 2048 for memory growth.  Their native generation remains queued.
+
+The existing Wasmtime C API on minideb1 supplies the runtime host.  The host gained repeated-array timing with warmups, nine measured batches, a median, and allocation/release checks.  The first C check found a duplicate comparison helper, which was removed in favor of the existing helper.  A later staging attempt failed because its build script had not been transferred.  The corrected host passed the C compiler with `-Wall -Wextra -Werror`; `host-build-003.log` and `host-seed17-001.log` retain the results.  The timing input now matches `Fourier.signal` with seed 17.  FFT runtime results and timings await the checked compiler module.
+
+The API response stream disconnected repeatedly during this work.  Remote jobs and their logs survived those disconnections.  New jobs write an exit-status file before returning through SSH, so a lost client connection does not erase the build result.  The cause of the API stream failures remains unknown because provider-side logs are unavailable.
