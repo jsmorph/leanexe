@@ -350,6 +350,20 @@ error bound of recursive summation, single frequencies, the round trip, Parseval
 agreement with the exact transform computed with Lean's integers, and the power spectrum of a real
 wave.  The results lie within `0.1 τ` of the exact transform.
 
+[The forward DFT theorem](Examples/FourierTheorem.lean) proves finite output components and an
+absolute error of at most `(G - 1) A + H` for each real and imaginary coordinate.  Here
+`n = xs.size / 2`, `A` is the sum of the absolute input components, `u = 2^-53`, `η = 2^-1075`,
+`G = (1 + u)^(n + 2) (1 + 32u)`, and `H = 2n (1 + u)^(n + 1) η`.  Its
+[admissibility premises](Examples/FourierSpec.lean) require finite used inputs, `n ≤ 2^32`, and
+`GA + H < 2^1022`.  An odd final float is ignored.
+
+[The byte theorem](Examples/FourierBytes.lean) carries these bounds to the owned array returned
+by the decoded module, with explicit input-representation, allocator, and table premises.  It
+permits a trap at `unreachable`.  [The file theorem](Examples/FourierFile.lean) checks the emitted
+`build/verified/fourier.wasm`, and `tests/verified/run.sh` runs its check.  The final numerical,
+byte, and file declarations report only `propext`, `Classical.choice`, and `Quot.sound`.
+Numerical proofs for `inverse` and `powerSpectrum` remain open.
+
 ## Related work
 
 [The journal](../devnotes.md) records the analysis that led to this library and its plan.  The
