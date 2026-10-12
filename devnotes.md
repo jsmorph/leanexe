@@ -31249,6 +31249,10 @@ The large path needs `Γ x < 2^1024` with margin below the overflow threshold `t
 
 Plain `linarith` after the generalizations of the double-double results exceeded the heartbeat limit, at `whnf` and `isDefEq` (`gamma-asym4-1.log`, `gamma-asym5-2.log`), and `linarith only` with the needed facts replaced it; the lemmas `abs4` and `abs5` state the triangle inequality for sums of four and five terms, which replaced chains of `abs_add_le` with long terms.  A term with a `by` block inside a `linarith` list, continued on a line indented less than the `by`, ended the block early (`gamma-asym5-1.log`).  During the build of `TgammaAsym6`, SSH to another build host did not respond for about 25 minutes while `ping` did, and the build completed in `gamma-asym6-1.log` with one error in `lgamma_gt`, where `norm_num` evaluated `Γ (3 + 1) = 3!` to `True`.
 
+### The path above 4
+
+`TgammaLarge.largePath_within` proves the path from 4 to `t0` within one step.  `asLgammaAsym_spec` and `asExpd_spec` put `(h + l) 2^E` within `5 · 2^-60` of `Γ x` relative, `eps` stays below `2^-62`, and the rounded `ub = h + (l + eps)` times `2^E` lies within `1.05 · 2^-53` of `Γ x` relative, so `F64RelativeStep.within_one_relative` gives one step whatever the rounding test decides.  The code adds `E` to the exponent field of `ub`, and `scale_word` gives the value `ub 2^E` of that word while the field stays at most 2046.  `field_lower` bounds a positive normal word below by `2^(f - 1023)` for its field `f`, so a field of 2047 or more would put `ub 2^E` at or above `2^1024`.  The hypothesis `GammaBelowT0`, `Γ ≤ 2^1024 (1 - 2^-50)` at the double below `t0`, keeps `ub 2^E` below `2^1024`, since `Γ` increases from 2 on and every double below `t0` is at most that predecessor (`below_t0`).  The first build exceeded the heartbeat limit of the declaration `largePath_within` (`gamma-large-1.log`), and moving the real analysis to `large_bound`, the bound on `eps` to `eps_bound`, and the word to `scale_result` brought each declaration under it.
+
 ### Results
 
 | File | State | Log |
@@ -31284,11 +31288,12 @@ Plain `linarith` after the generalizations of the double-double results exceeded
 | `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed in `ef012e60` | `gamma-approx-3.log` |
 | `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed in `54c1cb96` | `gamma-expspec-5.log` |
 | `TgammaAsym1`: `LogdSpec`, `sub_exact_binade`, `half_sub`, `one_sub`, `asym_prod` | Committed in `d81fa94f` | `gamma-asym1-5.log` |
-| `TgammaPolyLip`: `eval_bound`, `eval_lip` | Committed with this entry | `gamma-plip-4.log` |
-| `TgammaAsym2`: the series tails `hiE` and `loE`, `eval_hi`, `eval_lo`, `lip_hi`, `lip_lo` | Committed with this entry | `gamma-asym4-2.log` |
-| `TgammaAsym3`: `log_lo`, `log_hi`, `asym_recip`, `asym_square`, `log_one_add`, `asym_front` | Committed with this entry | `gamma-asym3-2.log` |
-| `TgammaAsym4`: `BranchOK`, `hiBranch`, `asym_hi`; `TgammaAsym5`: `loBranch`, `asym_lo` | Committed with this entry | `gamma-asym5-1.log`, `gamma-asym5-3.log` |
-| `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed with this entry | `gamma-asym6-2.log` |
+| `TgammaPolyLip`: `eval_bound`, `eval_lip` | Committed in `54581917` | `gamma-plip-4.log` |
+| `TgammaAsym2`: the series tails `hiE` and `loE`, `eval_hi`, `eval_lo`, `lip_hi`, `lip_lo` | Committed in `54581917` | `gamma-asym4-2.log` |
+| `TgammaAsym3`: `log_lo`, `log_hi`, `asym_recip`, `asym_square`, `log_one_add`, `asym_front` | Committed in `54581917` | `gamma-asym3-2.log` |
+| `TgammaAsym4`: `BranchOK`, `hiBranch`, `asym_hi`; `TgammaAsym5`: `loBranch`, `asym_lo` | Committed in `54581917` | `gamma-asym5-1.log`, `gamma-asym5-3.log` |
+| `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed in `54581917` | `gamma-asym6-2.log` |
+| `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed with this entry | `gamma-large-3.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31308,7 +31313,8 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] The tiny path and the integer path
 - [x] `asExpd` (`asExpd_spec`)
 - [x] `asLgammaAsym` (`asLgammaAsym_spec`)
-- [ ] The paths above 4 and below -3
+- [x] The path above 4 (`largePath_within`, given `GammaBelowT0`)
+- [ ] The path below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
