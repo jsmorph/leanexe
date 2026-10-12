@@ -31362,6 +31362,10 @@ The coordinator asked this track to prove the specifications of `Tgamma.asLogd` 
 
 Track `arc` asked for `|ll| ≤ 2^-40` in the specification of `asLogd`, which the code does not give: the low part adds the polynomial term `f = dx² P(dx)` to the double-double sum, and `f` reaches `(4.03 · 10^-4)²/2 ≈ 2^-23.5`, so the pair `(lh, ll)` is not normalized.
 
+`LgammaWalk` connects the fast path's block to the result.  `FastSpec L (fh, fl, eps, sign)` states finiteness, `2^-1000 ≤ eps`, `|fl| ≤ 2^48 eps`, `|fh| + 2^49 eps ≤ 2^1020`, and one of two error conditions: `|L - (fh + fl)| ≤ 2 eps`, which the rounding test turns into one step (`round_test`), or `|L - (fh + fl)| + 2 eps ≤ |L|/2^54` with `2^-1000 ≤ |L| ≤ 2^1020`, which gives one step without the test (`rel_within`).  `select_within` gives one step for the code's choice between the fast result and the accurate path.  The second condition exists because `LogFact` bounds the logarithm's kernel by an absolute `2^-70`: on the branches below `2^-5` in magnitude, `eps` is the constant `1.5 · 10^-22`, and the kernel alone can reach about `3.4 · 10^-22` there, so those branches cannot meet `2 eps`; they meet the relative condition instead, since `|log |Γ x|| ≥ 3` there.  `walk_step` reads a block through `if`, `have`, and the code's pair and triple matchers, for a predicate such as `FastSpec L`, by the method that `LgammaSign` introduced.  The module builds in `expm1-lgammawalk-1.log` with three clean axiom reports.
+
+`TgammaLogdKernel.kernel_spec` bounds the kernel of `asLogd` after the reduction: for `|r t - 1| ≤ 1/2400`, `dxh = r t - 1` rounded is exact by Sterbenz's lemma, `dxh + dxl` lies within `2^-104` of `Z = r t - 1`, and the polynomial term `f` lies within `2^-72` of `Z² P(Z)`, from `F64Approx` bounds on each rounded operation.  It builds in `expm1-tgammalogdkernel-1.log` with a clean axiom report.
+
 - [x] The approximation facts (`LgammaApprox`), to be agreed with track `erf`
 - [x] The branch structure and the exceptional values: 1, 2, the poles, the infinities, NaN, and the overflow thresholds (`LgammaBranches`, `LgammaSpecial`)
 - [x] The sign of `Γ` (`LgammaSign`)
