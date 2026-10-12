@@ -30689,3 +30689,72 @@ All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and th
 - [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
 - [x] Comparison with fdlibm's rational approximations on all four ranges, both orders.
 - [x] Lower bounds on the moduli.
+
+## 2026-10-11: A software fused multiply-add, CORE-MATH's gamma functions, and fdlibm's Bessel functions
+
+The coordinator's decisions 3 and 4 after the review: port CORE-MATH's `tgamma` and `lgamma` at a pinned commit with a software `Fma.fma` in the dialect, bound one step, and port fdlibm's `j0`, `j1`, `y0`, `y1`, `jn`, and `yn` with the earlier ports in place of the C library's `sin`, `cos`, and `log`, bound in units of the modulus `√(J² + Y²)`.  The coordinator also accepted two API points: `lgammaR` follows CORE-MATH's `signgam` of -1 at the negative integers, where `lgamma` is `+∞` and fdlibm gives +1, and `jn` and `yn` take `|n| = 2 ^ 31` for `n = -2 ^ 31`, following `J (-n) = (-1) ^ n J n` and `Y (-n) = (-1) ^ n Y n`, where C's `-n` overflows.
+
+### The fused multiply-add
+
+`Verified/Examples/Fma.lean` computes `fma a b c`, the double nearest to the exact `a · b + c` with ties to even, from the bit patterns with 64-bit words alone.  The product of the two significands is a pair of words from the products of their 32-bit halves.  The product and the significand of `c` are shifted so that each has its highest bit at bit 125 of a 128-bit pair, and the smaller is shifted right to the other's scale with its lost bits ORed into bit 0.  Every operand has bits 0 to 19 clear after the first shift, so a shift of 20 or less loses nothing and the sum is exact, and a longer shift leaves at least 72 bits below the rounding position, where the odd sticky bit cannot change the rounding.  `roundPack` rounds the sum at bit `m - 52`, or at the bit of weight `2 ^ -1074` for a subnormal result, and writes `(e - 1) · 2 ^ 52 + q`, which absorbs a carry of the rounding into the exponent and turns an overflow into infinity.
+
+IEEE 754 leaves the NaN of an invalid operation and the payload of a propagated NaN to the implementation.  The port returns the first NaN operand of `a`, `b`, and `c`, quieted, which keeps an input's payload as clause 6.2.3 recommends, and the default `0x7FF8000000000000` for `0 · ∞` and for infinities of opposite signs.  An exact zero sum is `+0` unless the product and `c` are both zeros of negative sign, and a nonzero sum that rounds to zero keeps its sign.  The function raises no flags, since the dialect has none.
+
+A Python model of the word algorithm (`py/fma.py` in the scratch directory) agreed with an exact rational reference and with the C library's `fma` at 309,261 operand triples: every triple of 21 special values and random operands of six kinds, cancellation, subnormal results, overflow, and exact products.  `Verified/Examples/FmaAccuracy.lean` checks the Lean function against `Reference.toFloat` of the exact integer `a · b + c` at every triple of 24 special values and at hashed operands of six kinds: all exponents, products near 1 with `c` the negated rounded product and its neighbors, exact zero sums, subnormal results, overflow, and ties.
+
+### tgamma and lgamma
+
+`Verified/Examples/Tgamma.lean` ports `src/binary64/tgamma/tgamma.c` and `Verified/Examples/Lgamma.lean` ports `src/binary64/lgamma/lgamma.c` of CORE-MATH (https://gitlab.inria.fr/core-math/core-math) at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, MIT license, by Alexei Sibidanov.  Both evaluate in double-double arithmetic with an error bound and return when `h + (l + eps)` and `h + (l - eps)` round alike, fall back to an accurate path of about 100 bits, and end in a table of hard cases.  The ports follow the C code operation for operation and call `Fma.fma` for each `__builtin_fma`, so their results should equal CORE-MATH's bit for bit.  The changes are mechanical: out-parameters become pair results, the tables become arrays of words passed by the wrappers, C's selecting and counting integers become integer-valued doubles or two's complement words with `sar` for the arithmetic shift, `roundeven_finite` adds and subtracts `2 ^ 52`, `floor` follows from it, `__builtin_clzll` is `63 - Fma.msb64`, and the binary searches of the hard-case tables become full scans with the same result.  The flags, `errno`, and `raise_underflow` are gone, and `signgam` is the second result of `Lgamma.lgammaWith`.  `Lgamma` reuses `Tgamma`'s double-double helpers, `asSinpid`, and the table of `as_logd`, which `lgamma.c` repeats; a comparison of the extracted tables confirmed that the repeated arrays are equal.
+
+`Verified/Examples/GammaReference.lean` computes `lgamma y` for `y > 0` as `lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, Stirling's series with 60 terms whose Bernoulli numbers come from the Akiyama–Tanigawa algorithm in exact fractions, and one logarithm of the exact product, and for `x < 0` the reflection formula with `Reference.sinCosTurns`.  `Γ` is `Reference.exp` of `lgamma` with the sign of `sin (π x)`.  A Python model of this reference at 600 bits gave the same doubles as the compiled CORE-MATH at 3,500 arguments, 7,000 results, compiled with `gcc -O2 -ffp-contract=off`, before the Lean version was written.  `TgammaAccuracy.lean` and `LgammaAccuracy.lean` check the ports against it, `lgammaR`'s sign included, and also call the accurate paths directly at an eighth of the arguments and at the hard cases, since the fast paths rarely reach them.
+
+### The Bessel functions
+
+`Verified/Examples/Bessel.lean` ports FreeBSD's `e_j0.c`, `e_j1.c`, and `e_jn.c` at `20381bce4b63975494a2f4bc84257f6932e6d379`.  fdlibm's calls become `Trig.sinWith` and `Trig.cosWith` for `sincos` and `cos`, `Log.logWith` for `log`, and `Float.sqrt` for `sqrt`.  FreeBSD's `sincos` evaluates the same kernel formulas as its `sin` and `cos` (`k_sincos.h` against `k_sin.c` and `k_cos.c`, with `y/2` for `half*y` and `z/2` for `0.5*z`, which are exact), and the four functions call it only from 2 up, where both take the same reduction, so the first two substitutions keep FreeBSD's values.  The square root is correctly rounded on both sides, and only `Log.logWith`, Arm's `log`, may differ from fdlibm's `log` in the last bit.  The 205 constants come from the bit patterns in fdlibm's comments, which a script checked against the rounding of each decimal literal.  `jn` and `yn` read the order as C's `int` in the low 32 bits, and the `while` loop of `jn` that sizes its continued fraction is a `LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel.
+
+`Verified/Examples/BesselReference.lean` computes `J 0`, `J 1`, `Y 0`, and `Y 1` below 300 from their power series, with Euler's constant by Brent and McMillan's algorithm B1, and from 300 up from Hankel's expansions, `J n` from its series below `max 300 n` and by the forward recurrence above, and `Y n` by the forward recurrence, all as in the Python references of the review.  `BesselAccuracy.lean` measures each result in units of the modulus with the definition the review used for FreeBSD's 3.01, which the proof track can state as follows.  For order `n`, let `J` and `Y` be the references at `q` bits, `M = isqrt (J² + Y²) · 2 ^ -q`, and `u = 2 ^ (⌊log₂ M⌋ - 52)`, with no clamp at the subnormal range.  The error of a result `y` for the function `F` is `|y - F|/u`, computed exactly.  In terms of real numbers, the bound `B` means `|y - F (x)| ≤ B · 2 ^ (⌊log₂ √(J n (x)² + Y n (x)²)⌋ - 52)`.
+
+### Results
+
+`FmaAccuracy` (`ports-FmaAccuracy-3.log`) checked 763,816 operand triples and found every result equal to the exact value rounded to the nearest double, quiet NaNs included, and 204,780 of them differ from the separately rounded product and sum.  The first run failed to elaborate an untyped shift amount in the generator of hashed operands, which a type annotation fixed.
+
+`TgammaAccuracy` (`ports-TgammaAccuracy-1.log`) checked 74,373 arguments, with `tgamma` built without its `verified_compile` call, and found every result equal to the reference, none even one step away.  The direct calls of the accurate path at 7,002 arguments, the 57 hard cases included, also equal the reference everywhere.
+
+`LgammaAccuracy` (`ports-LgammaAccuracy-5.log`) checked 81,033 arguments, with `lgamma` built without its `verified_compile` call, and found every result equal to the reference and every sign as specified.  The direct calls of the accurate path at 9,234 arguments, the 19 hard cases included, also equal the reference everywhere.  Two earlier runs failed on defects of the check, not of the port: the reference rounded the residue of the series at the exact zeros 1 and 2 instead of returning 0, and the direct calls of the accurate path included magnitudes from `0x1.006df1bfac84ep+1015` up, which `cr_lgamma` never passes to it and where it returns NaN from `∞ - ∞`.
+
+The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0.  The recurrence now adds the leading zero bits of `x` to its precision, and the rerun (`ports-BesselAccuracy-6.log`, the module built without `verified_compile`) passed with these largest errors of each order, in units of the modulus.
+
+| Order | `jn` | `yn` | `4 + |n|/6` | `4 + |n|/3` |
+|---|---|---|---|---|
+| 2, -2 | 2.648 | 2.420 | 4.33 | 4.67 |
+| 3, -3 | 2.030 | 2.323 | 4.50 | 5.00 |
+| 5 | 2.490 | 4.137 | 4.83 | 5.67 |
+| `2 ^ 32 + 5` (5, other arguments) | 2.490 | 3.522 | 4.83 | 5.67 |
+| -7 | 3.225 | 4.797 | 5.17 | 6.33 |
+| 10 | 2.547 | 4.655 | 5.67 | 7.33 |
+| 20 | 3.426 | 8.793 | 7.33 | 10.67 |
+| 50 | 10.408 | 10.039 | 12.33 | 20.67 |
+| 100 | 8.755 | 15.380 | 20.67 | 37.33 |
+
+The coordinator's bounds: 4 units of the modulus for `j0`, `j1`, `y0`, and `y1`, whose largest errors are 2.617, 2.764, 3.171, and 3.243, and `a + b |n|` units for `jn` and `yn`, with the constants that the proof reaches.  `yn` of order 20 exceeds `4 + |n|/6`, which the first measurements suggested, so with `a = 4` the data need `b ≥ 0.24`, and the check enforces `4 + |n|/3`, the form of the review, until the proof fixes the constants.
+
+### The compiler's time and memory on the gamma port
+
+With its `verified_compile` call, `Tgamma` did not finish: the build ran 25 minutes of CPU time at the scope's memory limits, 4.2 GB of memory and 1 GB of swap, before `leanrun` stopped it.  A probe that compiled only the helpers through `asLgammaAsym` ran 18 minutes at the same limits.  The coordinator suggested small probes with the profiler.  A `LeanExe.loop` over a 6-tuple of floats with a trivial body type-checks in 1.27 s and over a pair in 1.12 s, so tuple loop states are not the cause.  A chain of `let (h, l) := mulDD h l x y` lines type-checks in 2.67 s for 10 lines and 7.64 s for 20, and 40 lines exhausted the scope's memory.
+
+| Lets | Elaboration and type checking | Memory peak | Objects of the program constant | Distinct subterms |
+|---|---|---|---|---|
+| 5 | 3.4 s | 1.0 GB | 1,958 | |
+| 10 | 5.3 s | 1.0 GB | 5,093 | 491 |
+| 15 | 10.6 s | 1.3 GB | 9,578 | |
+| 20 | 17.6 s | 2.0 GB | 15,413 | 851 |
+| 40 | killed at 4.4 GB and 1 GB of swap | | | |
+
+The program constant `<program>.chain.func` grows quadratically with the number of bindings, while its structurally distinct subterms grow linearly, and the same chain rewritten to reference only the newest variables has the same counts, so de Bruijn depth is not the cause.  The cause is in `Verified/Reflect/Command.lean`: `Ctx.ctx` is `ctxExpr (c.vars.map (·.2))`, which builds a fresh `List Ty` expression of the whole context at each of its 23 uses, and the `mkAppM` steps that build each `Expr` node, `Env.cons`, and proof step embed these copies and the indices inferred from them.  Each node thus carries an unshared copy of a context whose length is the number of variables in scope, two more for each pair let, so a function with `n` bindings costs `O(n²)` objects in its program and proofs, and one `verified_compile` call accumulates them for all its functions.  Two fixes in the reflector suggest themselves, neither tried: keep the context expression in `Ctx` and extend it by one `List.cons` per binding, so that nested contexts share their tails, with the same for `Env.cons`, or hash-cons the values and proofs before they are added.  The coordinator decides between them and the restructuring of the ports into functions of fewer bindings, which it approved once the cause was measured.
+
+- [x] `Fma.fma` with `verified_compile`, and its check.
+- [x] `Tgamma`, `Lgamma`, and `GammaReference`, and their checks without `verified_compile`.
+- [x] `Bessel` and `BesselReference`, built with `verified_compile` commented out, and a measuring run of the check.
+- [x] Commit the gamma and Bessel ports, references, and checks without `verified_compile`, at the coordinator's request, so that the log track can state the Bessel theorems.  `BesselAccuracy` passes with the final bounds (`ports-BesselAccuracy-7.log`), and the docstrings of `Tgamma`, `Lgamma`, and `Bessel` state that their `verified_compile` calls wait for the reflector.
+- [ ] The reflector change on `w/reflect` (debtop1, `/home/somebody/src/lt-reflect`), which the coordinator chose over restructuring the ports.
+- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel` after that change, and the final runs of their checks.
