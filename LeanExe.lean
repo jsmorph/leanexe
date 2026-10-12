@@ -170,6 +170,7 @@ import LeanExe.ProofKit.F64MulBounds
 import LeanExe.ProofKit.F64MulEnclosure
 import LeanExe.ProofKit.F64MulFinite
 import LeanExe.ProofKit.F64Near
+import LeanExe.ProofKit.F64NearReal
 import LeanExe.ProofKit.F64NearestBand
 import LeanExe.ProofKit.F64NearestBinade
 import LeanExe.ProofKit.F64NearestDiv
@@ -220,6 +221,7 @@ import LeanExe.ProofKit.F64RounderEnclosure
 import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
 import LeanExe.ProofKit.F64RusanovResidual
+import LeanExe.ProofKit.F64Saturate
 import LeanExe.ProofKit.F64Sign
 import LeanExe.ProofKit.F64SignedRounding
 import LeanExe.ProofKit.F64Source
@@ -237,6 +239,7 @@ import LeanExe.ProofKit.F64StrictOrder
 import LeanExe.ProofKit.F64Sub
 import LeanExe.ProofKit.F64SymmetricFaces
 import LeanExe.ProofKit.F64TwoSteps
+import LeanExe.ProofKit.F64TwoSum
 import LeanExe.ProofKit.F64UpperWord
 import LeanExe.ProofKit.F64WithinSelf
 import LeanExe.ProofKit.F64WithinZero
