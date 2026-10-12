@@ -31148,6 +31148,14 @@ The divided differences next to the zeros 1 and 2 need the logarithms of the shi
 | `TgammaAccRangeA` | Kernel checks passed; `norm_num` failed on `2 ^ 943` | `erf-gamma-59.log` |
 | `TgammaAccRangeA` | Passed in 405 s, with linter warnings | `erf-gamma-60.log` |
 | `TgammaAccRangeB` | Passed in 457 s | `erf-gamma-61.log` |
+| `TgammaAccRangeC`, with `GammaDD`, `GammaRel`, and `GammaScaled` rebuilt | Passed in 757 s | `erf-gamma-62.log` |
+| `GammaFitsX`, `GammaConvex`, `GammaReflect`, `GammaDDCover`, `LgammaRootBase`; `GammaRoot`; `F64Grid` | Passed; an `obtain` pattern with one bracket too many; an unreachable alternative after `field_simp` | `erf-gamma-63.log` |
+| `TgammaAccRangeA`, `TgammaAccRangeB` again | Passed in 400 s and 468 s, without warnings | `erf-gamma-65.log`, `erf-gamma-66.log` |
+
+- [x] `AccRangeFact`'s nine ranges (`TgammaAccRangeA` to `TgammaAccRangeC`).
+- [ ] `LogFact`, `ExpFact`, `SinFact` (`TgammaLogTables`, `TgammaExpTables`, `TgammaSinTables`), and `TgammaFacts`.
+
+Track `arc` widened the last conjunct of `ExpFact` to `|X| ≤ 5/8` at commit `ef012e60` on `w/poly`, since `asLogd`'s unnormalized low part reaches `asExpd`'s kernel.  `TgammaExpTables.exp_poly` now holds on `|X| ≤ 5/8`, where the Taylor model of degree 12 passes the bound `2 ^ -74` at depth 0 with a model error of `8 · 10 ^ -31`, and `TgammaFacts.exp_poly_wide` states the widened conjunct against `TgammaApprox.expPoly`.  The coordinator also asked for `Γ` at the double before the overflow threshold: `GammaBelowT0.gamma_below_t0` bounds it by `2 ^ 1024 (1 - 2 ^ -50)` from an upper bound on `lgamma` there, which in exact rational arithmetic lies `4.79 · 10 ^ -14` below `1024 ln 2`.
 
 ## 2026-10-12: Integration of asinh, acosh, and atanh
 
