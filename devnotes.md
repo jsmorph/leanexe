@@ -31411,6 +31411,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselMillerCF` failed in `bes-on-17.log` in `Q_grow`: one goal kept the index `n + 0 + 1`, which `nlinarith` treated as a different atom from `n + 1`, and a rewrite named `Q (j + 3)` where the goal concerned `Q (j + 2)`.  Normalizing the index and giving `nlinarith` the products `(λ - 3)(λ' λ - 1) ≥ 0` and `λ Q ≥ 4 Q` fixed both, and `bes-on-18.log` built the module with only the three standard axioms.  The docstring named `good_iter` and `cf_depth`, which live in `BesselMillerDepth`, and now says so.
 
+`BesselMillerDepth` failed in `bes-on-19.log` because `push Not` had turned the hypothesis `¬ v < 10^9` into `10^9 ≤ v`, so the later uses that passed a negated comparison no longer matched.  Passing `not_lt.mp h` and proving the comparison with `by_contra` and `push_neg` fixed both places, and `bes-on-20.log` built the module with only the three standard axioms.  The loop stops within 12 steps because the computed continuants stay within `(100 · 3^j - 50) u` of `Q j`, and `Q 13 > 1.2 · 10^10`.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
