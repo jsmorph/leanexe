@@ -943,6 +943,16 @@ def main : IO Unit := do
       let other := Fields.mkBook 2
       let r := bookOut (Fields.pickBook c b other)
       IO.println s!"fields|pickBook|list:{bookKinds}|{boolArg c} {bookArg b} {bookArg other}|{r}|6"
+    for n in [(0 : UInt64), 3, 1000] do
+      IO.println s!"fields|pushPrices|list:{bookKinds}|{bookArg b} i64:{n}|\
+        {bookOut (Fields.pushPrices b n)}|4"
+      IO.println s!"fields|heavyPick|list:{bookKinds}|{bookArg b} i64:{n}|\
+        {bookOut (Fields.heavyPick b n)}|4"
+  for t in [(⟨#[], 0⟩ : Fields.Tape), ⟨#[4, 5, 6], 1⟩] do
+    for k in [(0 : UInt64), 7] do
+      let r := Fields.moveHead t k
+      IO.println s!"fields|moveHead|list:array-u64,i64|{arrayArg t.marks} i64:{t.head} i64:{k}|\
+        {arrayOut r.marks} {r.head}|2"
   let grids : List Fields.Grid :=
     [⟨#[], 0.0, 0⟩, ⟨#[⟨1.5, 2⟩], 0.25, 3⟩,
       ⟨(Array.range 5).map fun i => ⟨i.toUInt64.toFloat, i.toUInt64⟩, -1.0, 7⟩]
