@@ -65,9 +65,10 @@ noncomputable def accPoly (oh imax ol jmax : ℕ) (d : ℝ) : ℝ :=
 def SmallFact : Prop :=
   ∀ x : ℝ, |x| ≤ 1 / 4 → |Real.Gamma (1 + x) - (1 + x * smallPoly x)| ≤ 1 / 2 ^ 60
 
-/-- `1/2^62` of `Γ (7/2 + d)` on `[-1/2, 1/2]`. -/
+/-- `1/2^62` of `Γ (7/2 + d)` for `|d| ≤ 1/2 + 2 ^ -50`.  The code's `d` exceeds `1/2` by up to
+`2 ^ -51`, since it rounds `x - 7/2` before choosing the nearest integer. -/
 def MainFact : Prop :=
-  ∀ d : ℝ, |d| ≤ 1 / 2 → |Real.Gamma (7 / 2 + d) - mainPoly d| ≤ 1 / 2 ^ 62
+  ∀ d : ℝ, |d| ≤ 1 / 2 + 1 / 2 ^ 50 → |Real.Gamma (7 / 2 + d) - mainPoly d| ≤ 1 / 2 ^ 62
 
 /-- `1/2^62` of `Γ (1 + x)` on `[-1/4, 1/4]`, for the accurate path below `1/4`. -/
 def AccSmallFact : Prop :=
