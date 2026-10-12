@@ -55,3 +55,11 @@ import Verified.Examples.WorstCases
 import Verified.Examples.TrigTheorem
 import Verified.Examples.Log2Theorem
 import Verified.Examples.Log2Power
+import Verified.Examples.Log10Theorem
+import Verified.Examples.TanhBytes
+import Verified.Examples.Expm1Near
+import Verified.Examples.ErfTheorem
+import Verified.Examples.Log1pBytes
+import Verified.Examples.AtanBytes
+import Verified.Examples.AtanTwoSpecial
+import Verified.Examples.AsinBytes
