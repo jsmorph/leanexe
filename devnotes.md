@@ -31082,6 +31082,115 @@ The lock queue held these runs for about two hours behind the `exp2` track's `Po
 
 The CORE-MATH `erfc` port and the gamma foundations: Opus merged `w/trig` at `b1c5f270` (`Erfc.lean`, `ErfcAccuracy.lean`, `FmaSpec.lean` with the hypothesis `FmaNearest` that the `erfc` and `tgamma` proofs take until the software fused multiply-add is proved, and the `erfc` part of `Erf.md`) and `w/erf` at `77f76b81` (the ProofKit modules `GammaBasic`, `GammaThresholds`, `GammaStirling`, `GammaModels`, `RatExpLog`, and `TaylorModel`, with `Tgamma.md` and `Lgamma.md`).  `Verified.lean` imports `Erfc` and `FmaSpec`, `LeanExe.lean` the six modules, and `tests/verified/run.sh` runs `ErfcAccuracy`.  The build passed with 9,482 jobs and no gamma declaration reporting another axiom (`opus-merge-erfc-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-16.log`): 223,592 results of the CORE-MATH `erfc` and 24,895 direct calls of its accurate path equal the reference.  The erf track noted that next to the negative zeros of `lgamma` the fast path for `x < 0` has an absolute error near `1e-21` against results that can be far smaller, so that path's proof uses the rounding test and its facts meet CORE-MATH's tolerance; the other paths need about `2^-60` relative.
 
+## 2026-10-12: Integration of asinh, acosh, and atanh
+
+Opus merged `w/poly` at `b92f7941` into `transcendentals` (`72ca3ad4`): the theorems of `asinh`, `acosh`, and `atanh` within two steps, their exceptional values, the byte theorems `AsinhBytes.asinh_bytes_accuracy`, `acosh_bytes_accuracy`, and `atanh_bytes_accuracy`, the file theorems of `AsinhFile`, and the statements of the `tgamma` facts in `TgammaApprox`.  `LeanExe.lean` gains the ProofKit modules `F64Compose`, `F64Near`, `F64RelError`, and `F64SqrtHalf`, `Verified.lean` gains `AsinhBytes` and `TgammaApprox`, and the file loop of `tests/verified/run.sh` gains `asinh:AsinhBytes:AsinhFile`.  `acosh` reached two steps on `1 < x ≤ 2`, so the allowance of three steps there is unused.  The build passed with 9,511 jobs (`opus-merge-asinh-1.log`).
+
+Two earlier runs of `tests/verified/run.sh` ended with status 75, a timeout waiting for the Lean lock, after checks that passed.  `opus-verified-tests-17.log` holds the second.  A build of `ErfcFastRows4` on track `trig` held the lock for hours at 4 GB of anonymous memory until its timeout, and Opus told the track to divide that check into smaller rows.  The third run passed (`opus-verified-tests-18.log`) with fifteen file checks, 15,837 cases, and every accuracy check.
+
+`Asinh.md` now describes the merged theorems, and the plan's section "Resuming the work" gives the state of each track after the resumption.  The track `log` reported a duplicated journal section "Integration of the sine, cosine, and log2 theorems", but the journal holds that heading and its paragraphs once, at `a55d2cfd` and at the branch tip `38cb2de7`.
+
+## 2026-10-12: Bessel functions, the Lean functions `j0`, `j1`, `y0`, and `y1` (track `log`)
+
+The coordinator asked for theorems of the form `|w - F(a)| ≤ c · 2^-53 · √(J(a)² + Y(a)²)` for the ported `Bessel.j0`, `j1`, `y0`, and `y1`, with `c` set by the proof and reported first if it exceeds 12, and asked for inputs tighter than `WithinSteps 1` from the trigonometric and logarithm theorems.  The proof splits each function at 2: from 2 up the large-argument form `(P A ∓ Q B)/√(π x)` with `A = √2 cos θ` and `B = √2 sin θ`, and below 2 fdlibm's rational approximations.  The table lists the modules accepted on `w/log`, each with only `propext`, `Classical.choice`, and `Quot.sound` in its axiom report, and here `u = 2^-53`.  Rows marked `5669dbdc` came with the commit "Prove j1 within 12 units of the modulus", and rows without a commit belong to the commit headed "Prove y0 and y1 within 11 and 12 units of the modulus", which follows it.
+
+| Module | Result | Commit | Log |
+|---|---|---|---|
+| `TrigNear` | `Trig.sin x` and `Trig.cos x` within `(71/50) u` of `sin x` and `cos x` for every finite `x`, from the kernels' own bounds before the conversion to steps | `278cd102` | `bes-trignear-3.log` |
+| `LogNearMain`, `LogNearAll` | `Log.log x` within `u \|log x\| + 2^-59` on the main path and `(6/5) u \|log x\| + 2^-59` for every finite `x > 0` | `98612d56` | `bes-lognear-1.log`, `bes-lognear-4.log` |
+| `BesselSpecial` | The exceptional results of the four functions | `692d6d84` | `bes-special-2.log` |
+| `BesselCS` | `x + x` exact below `2^1023`, and the pairs `(cc, ss)` of `asym0` and `asym1` within `(96/25) u` for the direct sum and `(627/100) u` for the quotient by `cos 2x` | `ef3ed7ac` | `bes-cs-2.log` |
+| `BesselRatioEval`, `BesselPQEval`, `BesselPQRange` | The rounded `R(ẑ)/S(ẑ)` of two Horner evaluations against `R(z)/S(z)` on kernel-checked pieces, `ẑ = 1/(x x)` within `(2 + 2^-40) u/x²`, and the rounded `P` and `Q` terms of one range | `b49cfded`, `52688e88` | `bes-reval-2.log`, `bes-pqe-1.log`, `bes-pqr-2.log` |
+| `BesselPQ0`, `BesselPQ1` | `pAsym` and the `Q` term within explicit bounds of `P` and `Q` on each of the four ranges, with bounds on `P` and `Q` | `6ed384f8` | `bes-pq-3.log` |
+| `BesselCombine`, `BesselCase`, `BesselLarge` | `invsqrtpi` within `0.07 u` of `1/√π` and `tpi` within `0.36 u` of `2/π`, the rounded bracket and the final `invsqrtpi · T / √x`, one case of the path from 2 under numeric conditions, both branches of `(cc, ss)`, and the paths from `2^129` | `b2f71ebf`, `b59e0975`, `e667a448` | `bes-comb-2.log`, `bes-case-2.log`, `bes-large-a1.log` |
+| `BesselJ0Large`, `BesselY0Large`, `BesselY1Large`, `BesselJ1Large` | The bounds from 2 on: `c = 10` for `j0` and `y0`, and `c = 12` for `j1` and `y1` | `e55ba4e9`, `94fcd632`, `36a8f014`, `a498d407` | `bes-j0l-4.log`, `bes-y0l-2.log`, `bes-y1l-1.log`, `bes-j1l-1.log` |
+| `BesselSmallApprox` | fdlibm's four rational approximations below 2, exact in the reals, against the series with 18 terms | `8cceafab` | `bes-sa-4.log` |
+| `BesselSmallEval`, `BesselSmallJ0` | `x x` and Horner evaluations at the computed `ẑ`, `x/2` exact, the third path of `j0` within `2 u`, `J₀ = 1 - x²/4 + O(x⁴)`, and `1e300 + x > 1` for `\|x\| ≤ 2` | `2aea07b7` | `bes-se-1.log`, `bes-j0t-2.log` |
+| `BesselModSmall` | `M₀ ≥ 1/2` on `[0, 2]` and `Y₀(x) ≤ 0.597 ln x` for `0 < x ≤ 1/2` | `14c64510` | `bes-ms-4.log` |
+| `BesselSmallJ0Form2`, `BesselJ0Small` | The fourth path of `j0` within at most `2.227 u` on five pieces of `[1, 2)`, and `j0` within `(235/100) u` of `J₀` for `\|x\| < 2` | `5669dbdc` | `bes-j0t-2.log` |
+| `BesselJ0Theorem` | `j0_accuracy`, `c = 10` for every finite `x` | `14c64510`, `5669dbdc` | `bes-j0t-1.log`, `bes-j0t-2.log` |
+| `BesselSmallJ1`, `BesselJ1Small` | The first form of `j1` on five ranges of `\|x\|`, `j1` within `j1Err \|x\|`, at most `3.89 u`, of `J₁` for `\|x\| < 2`, and the value 0 at both zeros | `5669dbdc` | `bes-sj1-2.log`, `bes-j01-1.log` |
+| `BesselModSmall1` | `M₁ ≥ 2/(π x)` on `(0, 1]`, `J₁ ≥ J1lo x` on seven pieces of `[1, 2]`, and `M₁ ≥ 0.42` on `(0, 2]` | `5669dbdc` | `bes-ms1-1.log` |
+| `BesselJ1Theorem` | `j1_accuracy`, `c = 12` for every finite `x` | `5669dbdc` | `bes-j01-1.log` |
+| `BesselSmallY0`, `BesselY0Small` | The main path of `y0` on seven pieces from 1/2 to 2 and on `[2^-27, 1/2]` with errors affine in `ℓ = \|ln x\|`, the path `u₀₀ + tpi ln x` below, and `y0` within `11 u M₀` for finite `0 < x < 2` | | `bes-y0s-1.log`, `bes-y01-5.log` |
+| `BesselY0Theorem` | `y0_accuracy`, `c = 11` for every finite `x > 0` | | `bes-y01-5.log` |
+| `BesselSmallY1`, `BesselY1Small` | The main path of `y1` on seven pieces from 1 to 2 and on `[2^-54, 1]` with errors in `u/x`, `u ℓ`, and `u`, the path `-tpi/x` for `2^-1022 ≤ x`, and `y1` within `12 u M₁` for finite `2^-1022 ≤ x < 2` | | `bes-y01-2.log`, `bes-y01-5.log` |
+| `BesselDivTop`, `BesselY1Tiny` | Rounded division with a quotient from `2^1022` up, to the largest double or positive infinity, and `y1` within one step of the nearest double to `Y₁(x)` below about `2^-54` | | `bes-y01-5.log`, `bes-y01-6.log` |
+| `BesselY1Theorem` | `y1_accuracy`, `c = 12` for every finite `x ≥ 2^-1022`, and `y1_positive`, which joins it with `y1_tiny` for every finite `x > 0` | | `bes-y01-6.log` |
+
+The `Q` term of order 0 is `(r/s - 1/8)/x`, whose sum lies below `1/4` and so rounds within `u/8`, and that of order 1 is `(3/8 + r/s)/x`, within `u/4`.  The rational functions are evaluated at the computed `ẑ`, so each check bounds the Horner errors on a piece containing `ẑ` and the change from `ẑ` to the real `z` by a Lipschitz constant from `magBound (R' S - R S')` and `lowBound S` on the piece widened by `δ ≥ |ẑ - z|`.  A single interval per range gave bounds near `20 u` for `qzero` from 2 and `5,655 u` for `qzero` from `b3`, because `magBound` and `lowBound` over a wide interval lose the correlation of `R` and `S`; eight equal pieces bring every bound below `0.41 u`.  One check of eight pieces took 5 seconds in the kernel (`ProbeP.lean`), and each of `BesselPQ0` and `BesselPQ1` builds in under 40 seconds.  The numerators' coefficients share one sign, so `R/S ≤ 0` for `pzero` and `qone` and `R/S ≥ 0` for `qzero` and `pone`, which bounds `P` and the `Q` term without further checks.
+
+| Order, range | `E` of `pAsym`, `u` | `E` of `R/S` of `Q`, `u` | `\|R/S\|` of `P` at most | `\|R/S\|` of `Q` at most |
+|---|---|---|---|---|
+| 0, from 2 | 0.231 | 0.226 | 0.01564 | 0.01402 |
+| 0, from `b3` | 0.123 | 0.130 | 0.00856 | 0.00821 |
+| 0, from `b5` | 0.048 | 0.054 | 0.00362 | 0.00367 |
+| 0, from 8 | 0.015 | 0.018 | 0.00124 | 0.00132 |
+| 1, from 2 | 0.402 | 0.329 | 0.02737 | 0.02053 |
+| 1, from `b3` | 0.210 | 0.185 | 0.01467 | 0.01181 |
+| 1, from `b5` | 0.080 | 0.076 | 0.00610 | 0.00520 |
+| 1, from 8 | 0.025 | 0.025 | 0.00207 | 0.00185 |
+
+The error budget of the path from 2 follows the lemmas' own forms: the rounding of `P̂ ĉc` and `Q̂ ŝs` charges `u` times the product of the magnitude bounds, the difference rounds within `u` below 2, and the final `invsqrtpi · T / √x` adds three relative roundings and the `0.069 u` error of `invsqrtpi`.  The quotient branch of `(cc, ss)` dominates: `P · (627/100) u` is about 6.3 of the 9.4 to 11.8 units of `T`.  A model of these bounds over the four ranges, both branches, and both forms gives `c` at most 9.77 for order 0 and 11.04 for order 1, and the theorems from 2 state 10 and 12.  The native check's maxima, 2.617 check units for `j0`, 2.764 for `j1`, 3.171 for `y0`, and 3.243 for `y1`, are at most `5.23`, `5.53`, `6.34`, and `6.49` units of `2^-53 M`.
+
+Below 2, every path is a chain of `F64Approx` steps (`fapprox_mul`, `fapprox_div`, `fapprox_add`, `fapprox_add_half`) whose Horner bounds the kernel checks on one range of `x` each.  `tools/bessel/gensmall.py`, a PEP 723 script run with `uv run`, models each step in exact rationals, rounds every error up to a multiple of `u/1000`, and writes the Lean steps, so that `norm_num` and the kernel check every number; its modes `j0` and `j1` write `BesselSmallJ0Form2` and `BesselSmallJ1`.  The first proof of `j0` below 2 bounded the fourth path, `(1 + x/2)(1 - x/2) + z (z R(z)/S(z))`, on one interval by `4 u` and `j0` by `(42/10) u`.  The proof of `y0` multiplies the error of `j0` by `(2/π) ln x`, and with `(42/10) u` its model needed `c` above 12 next to 2, so five pieces of `[1, 2)` replaced `form2`, at most `2.227 u` each, and `BesselJ0Small.j0_small` now gives `(235/100) u`.  `huge_add` now takes `|x| ≤ 2`, which serves both `j0` and the signed argument of `j1`.
+
+| Function, range of `\|x\|` | Error at most | Modulus at least | Quotient |
+|---|---|---|---|
+| `j0`, below 1 | `2.13 u`: `form1` `2 u`, approximation `0.12 u + 2^-99` | `1/2` | 4.3 |
+| `j0`, `[1, 2)` | `2.35 u`: `form2` pieces at most `2.227 u`, approximation | `1/2` | 4.7 |
+| `j1`, `(0, 1]` | `1.4 u`: piece `1.386 u`, approximation `0.005 u` | `2/(π x) ≥ 0.6366` | 2.2 |
+| `j1`, `[1, 5/4]` | `1.74 u` | `0.4249` | 4.1 |
+| `j1`, `[5/4, 3/2]` | `2.26 u` | `0.4648` | 4.9 |
+| `j1`, `[3/2, 7/4]` | `2.98 u` | `0.4972` | 6.0 |
+| `j1`, `[7/4, 2)` | `3.89 u` | `0.5427` | 7.2 |
+| `y0`, below about `2^-27` | `2.57 u ℓ + 0.49 u + 2^-60` | `0.597 ℓ`, `ℓ ≥ 18.7` | 4.4 |
+| `y0`, `[2^-27, 1/2]` | `4.532 u ℓ + 0.653 u + 2^-60` | `0.597 ℓ`, `ℓ ≥ ln 2` | 9.2 |
+| `y0`, `[1/2, 1]` | `4.28 u` | `1/2` | 8.6 |
+| `y0`, six pieces of `[1, 2)` | `4.49 u` to `5.40 u`, the largest on `[15/8, 2)` | `1/2` | 10.8 |
+| `y1`, `[2^-1022, 2^-54]` | `u/x + 300 x` | `0.6366/x` | 1.6 |
+| `y1`, `[2^-54, 1]` | `2.909 u/x + 0.894 u ℓ + 2.737 u`, with `ℓ ≤ 0.3679/x` | `0.6366/x` | 9.4 |
+| `y1`, seven pieces of `[1, 2)` | `4.35 u` to `5.50 u` | `J₁` from `0.4249` to `0.5611` by piece | 10.8 |
+
+`j1` below `2^-27` returns `0.5 x`, within `2^-81 + 2^-1075` of `x/2`, and `|J₁(x) - x/2| ≤ |x|³/8` from the series with one term.  At both zeros the theorem needs the exact value 0, since `J₁(0) = 0` and the modulus at 0 is 0 with Mathlib's `log 0 = 0` and `1/0 = 0`; `j1_zero` computes `0.5 · (±0)` on the two words.  The lower bound `M₁ ≥ 2/(π x)` on `(0, 1]` comes from `Y₁ ≤ -2/(π x)`, since `ln (x/2) + γ < 0`, `2 J₁/x ≥ 0.88`, and the series `C₁` of `Y₁` is at least `0.70` there, and on `[1, 2]` from `J₁ ≥ (a/2) min A₁` on a piece `[a, b]` with `A₁ = 2 J₁/x` checked in `ζ = x²/4`.  `j1_accuracy` uses the uniform bounds `3.89 u` and `0.42`, a quotient of 9.27, so the path from 2 sets `c = 12`, and `j0_accuracy` uses `2.35 u` and `1/2`, so the path from 2 sets `c = 10`.
+
+For `y0`, the piece `[15/8, 2)` needs `c = 11`, above the 10 of the path from 2: the quotient `U(ẑ)/V(ẑ)` contributes about `3.1 u` there, `j0` about `(2/π) ln 2 · 2.35 u = 1.04 u`, and the product and sum the rest.  Up to 1/2 the generated `log_piece` carries `ℓ = |ln x|` as a variable: each step's error is an affine function of `ℓ`, the generator rounds its coefficients up, and `nlinarith` checks each step, which `BesselModSmall.Y0_log` turns into a quotient of at most 9.2.  Below about `2^-27` the code returns `u₀₀ + tpi ln x`; the check `uv_check` bounds `U(z) - u₀₀ V(z)` by `0.18 u` for `0 ≤ z ≤ 2^-53`, and `j0_quad` bounds `J₀ - 1`.  For `y1`, the chain on `[2^-54, 1]` carries `1/x` and `ℓ` as variables with `x ℓ ≤ 1/e`, from `ln y ≤ y/e` (`xlog_le`), and `|J₁(x)| ≤ 0.51 x`; `linarith` checks its steps, since `nlinarith` exceeded the heartbeat limit there (`bes-y01-1.log`).  The pieces on `[1, 2]` take `|ln x| ≤ ln 2 - (1 - b/2)` on a piece ending at `b` from `ln (b/2) ≤ b/2 - 1`, which brings `[3/2, 7/4]` from a quotient of 11.5 to 10.8.
+
+Below about `2^-54`, `y1` returns `-tpi/x`.  Its exact value exceeds the largest double for `x` below about `0.64 · 2^-1024`, where the result is `-∞`, and the coordinator decided that this range is stated as `F64SignedRounding.WithinSteps n (Y₁(a)) w`, with the modulus bound kept where it holds and the two statements covering every `x > 0`.  `F64NegateOps.div_negate_left` makes the result the negation of the rounded quotient `c = tpi/x`, and `F64SignedRounding.within_negate` moves the sign to the reference.  The exact quotient `s` lies within `0.36 u/x` of `2/(π x)` and `-Y₁(x)` within `300 x` of it (`BesselY1Small.tiny_close`), so `|s - (-Y₁(x))| ≤ 0.3601 u/x` while both exceed `0.6365/x`.  `F64NearestDiv.div_nearest` stops at quotients of `2^1022`, so `BesselDivTop.div_top` repeats its rational rounding without the bound and packs the grid point with `F64PowerScale.roundScaledMagnitude_shifted`: the result is positive infinity with `s` at least the overflow threshold, or a nearest finite word with `s` at most it.  Below the threshold `F64NearestRelative.within_rel_k` gives one step; from it on, both `s` and `-Y₁(x)` exceed the midpoint below the largest finite double, and `nearest_top` makes the word and the reference that double or positive infinity, one step apart at most.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `TrigNear`, first build | `linarith` lacked the kernel bound with `u` substituted, and `add_le_add_left` adds on the right in this Mathlib; the sine kernel's bound became the lemma `sin_kernel` | `bes-trignear-1.log` |
+| `BesselSpecial`, first build | `decide` on concrete IEEE words reached the recursion limit; `decide +kernel` checks them | `bes-special-1.log` |
+| `BesselCS`, first builds | `x + x` has no lemma in ProofKit, and `F64ErrorTrack.add_exact_grid` stops at exponent 2043; `add_self_word` shows `add w w = mul 2 w` from `F64RoundFinish.roundScaled_mul_pow` and `F64PowerScale.mul_power`, which reach `2^1023`.  `congr 1` on two `encodeFinite` words recursed without limit and was replaced by rewriting the fields | `bes-cs-1.log`, `bes-cs-2.log` |
+| `BesselRatioEval`, first build | `norm_num` does not evaluate `2^1000 ≤ 2^1022` under the default `exponentiation.threshold` | `bes-reval-1.log` |
+| `BesselPQ0`, `BesselPQ1`, first builds | casts of rational constants between `ℚ` and `ℝ`, and implicit arguments that a `by` block could not fix, in the generated proofs | `bes-pq0-1.log` to `bes-pq1-2.log` |
+| `BesselModSmall`, first build | 15 checks of polynomials in `x` of degree 34 in one `decide +kernel` held 6.5 GB resident with 53 seconds of CPU time in 11 minutes, and the run was stopped; the same checks in `ζ = x²/4` have degree 17, and the module builds in 22 seconds | `bes-ms-1.log` |
+| `BesselSmallApprox`, first builds | `decide` failed on the first form of the checks, and `Real.pi_gt_d20` does not exist in this Mathlib | `bes-sa-1.log` to `bes-sa-3.log` |
+| `BesselSmallJ0`, third build; `BesselSmallJ1`, first build | `field_simp` closed the final equations, so the `ring` after it failed | `bes-sj0-3.log`, `bes-sj1-1.log` |
+| `BesselJ1Small`, first build | `le_or_lt` is `le_or_gt` in this Mathlib | `bes-j1s-1.log` |
+| `BesselSmallY0`, first build | the lower end `a² (1 - 2^-50)` of the Horner interval of `log_piece` lay above `ẑ`, whose absolute error `u/4` is large at `x = 2^-27`; the interval starts at `-2^-50` | `bes-sy0-1.log` |
+| `BesselY0Small`, first builds | `coeff_facts` lists `V₀` third, `BesselSpecial` was not imported, and the bound `1 - a²/4 + b⁴/32` of `J₀` exceeds 1 for `a = 0`; `J0_le_one` uses `J₀ ≤ 1 - x²/4 + x⁴/32 ≤ 1` | `bes-y0s-1.log`, `bes-y01-1.log` |
+| `BesselSmallY1`, `BesselDivTop`, `BesselY1Tiny`, first builds | `small_piece` exceeded 200,000 heartbeats with `nlinarith` at each step and passed with `linarith`; missing imports of `F64Source`, `PolyBound`, `F64NegateOps`, and `F64NearestRelative`, a `congr 1` that hit the recursion limit, and the lower half of `abs_le` where the upper half was needed | `bes-y01-1.log`, `bes-y01-2.log`, `bes-y01-5.log` |
+| `bes-y01-3.log`, `bes-y01-4.log` | the first waited past its timeout for the machine's Lean lock, which another track's stalled build held; the second removed a hypothesis of `J1_upper` that `series_close1` needs, where the unused one belonged to `log_upper` | `bes-y01-3.log`, `bes-y01-4.log` |
+| `BesselSmallJ0Form2`, first build | `norm_num` at the hypotheses rewrote the absolute values, so `linarith` could not match them with `abs_add_le`; the final step now proves the numeric margin separately.  On the last piece, `1 + x/2 < 2` needs `x < 2`, which every piece now takes | `bes-j01-1.log` |
+
+`tools/bessel/genpq.py` writes `BesselPQ0` and `BesselPQ1`: it chooses the pieces, `δ`, and the bounds with exact rational models of `magBound`, `lowBound`, and `hornerErr`, and the kernel checks every bound.  It is a PEP 723 script run with `uv run` on the local machine, as `AGENTS.md` requires, and its output equals the committed files.  The equations that rewrite `pAsym` and `qRatio` for one range as Horner forms are proved by `rfl` after rewriting `rangeOf`; they compare the same floating-point expressions and evaluate only the table lookups and the index arithmetic, and each module builds in under 40 seconds.
+
+The generator's modes `y0` and `y1` write `BesselSmallY0` and `BesselSmallY1`, and the hand-written modules `BesselY0Small`, `BesselY1Small`, and `BesselY1Tiny` select the pieces and the paths of the code.
+
+- [x] Distance forms of `Trig.sin`, `Trig.cos`, and `Log.log`.
+- [x] Exceptional results of `j0`, `j1`, `y0`, and `y1`.
+- [x] `(cc, ss)`, `P`, and `Q` on the path from 2.
+- [x] The combination on the path from 2, with `invsqrtpi` and `tpi` against `1/√π` and `2/π`, and the paths above `2^129`.
+- [x] The rational approximations below 2 against the series, and their evaluation for `j0` and `j1`.
+- [x] Lower bounds on the moduli below 2: `M₀ ≥ 1/2`, `M₀` against `|ln x|`, and `M₁` against `2/(π x)` and `J1lo`.
+- [x] `j0_accuracy` with `c = 10` and `j1_accuracy` with `c = 12`.
+- [x] `y0` below 2: `BesselSmallY0`, the path below `2^-27`, and `y0_accuracy` with `c = 11`.
+- [x] `y1` below 2: the pieces on `[1, 2]`, the chain on `[2^-54, 1]`, the path `-tpi/x`, `y1_accuracy` with `c = 12` from `2^-1022`, and `y1_tiny` with one step below `2^-54`.
+- [x] `Bessel.md` and the report for `y0` and `y1`.
+- [ ] `jn` and `yn`, and the byte theorems after the compiler change.
+
 ## 2026-10-12: The floating-point proof of `tgamma` (track arc)
 
 The coordinator assigned the floating-point proof of `Tgamma.tgamma`: `WithinSteps 1` against `Real.Gamma` for every finite input other than the poles, the exact results at the poles, zeros, infinities, and NaN, and the overflow and underflow thresholds from `GammaThresholds`.  Track `erf` proves the mathematical approximation facts, the fused multiply-add enters as the hypothesis `FmaSpec.FmaNearest` that track `expm1` is proving, and the rounding test of the code may be ignored wherever a relative bound of about `2^-60` suffices.  The byte theorem waits for the compiler change.
@@ -31108,6 +31217,14 @@ An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) s
 
 `TgammaApprox` states the facts as propositions over the exact rational values of the table words (`q tab i = ratOfWord tab[i]!`), with polynomials evaluated by `PolyBound.eval`.  The coordinator received the proposal with commit `b92f7941`.  Track `erf`'s Taylor models take `π` from Mathlib's 20-digit bounds `Real.pi_gt_d20` and `Real.pi_lt_d20`, which fix `π` only to `10^-20`, about `2^-66`.  The first proposal asked `2^-80` of the split `π` and of the table `sin (kπ/128)`, which those bounds cannot give, so these two tolerances are now `2^-66`, and the cosine kernel's is `2^-76 d²` to leave room for the uncertainty of `π²`.  A table error of `2^-66` reaches the result of `asSinpid` as a relative error below `2^-59.7`, since the result is at least `sin (π/256)` whenever a table entry other than the exact `st 0 = 0` and `st 64 = 1` contributes.  The database of 57 hard cases needs no separate fact: `AccRangeFact` and an exact evaluation at those arguments bound `Γ` there.
 
+### Shared modules and the analysis method
+
+Track `expm1` merged `w/poly` at `3b5fa105` to use `F64TwoSum`, `TgammaDD`, `TgammaPolyDDD`, `TgammaFloor`, and `TgammaExpr` for `lgamma`, so the statements of those modules stay fixed and later results are new lemmas.  `polyDDD_spec` bounds the initial low part by `|l|`, which costs about `2^-53` of the result when `l` is not small.  Commit `2e03223c` therefore adds `polyDDD_tight`, with a bound of `2^-52` of the top coefficient.  Commit `14346594` adds `polyDDD_damped`, which multiplies the error of `l` by `X ^ (N - 1)`, since the small path's `l` carries an absolute error near `2^-48` that reaches the result only through `x^4`.
+
+The small path shows the error budget of a fast path.  With `R = 1/|x|`, the double-double sum is within `2^-56 R` of `1/x + smallPoly x`, `SmallFact` puts `Γ x` within `2^-60 R` of that, `eps` is below `2^-58 R`, and `Γ x` is at least `0.6 R` by `gamma_sub_inv_bounds`, so the rounded `fh + (fl + eps)` is the nearest double to a value within `2^-54` of `Γ x` relative.  The theorem takes the accurate path's result as a hypothesis, since the code returns it when the rounding test fails.
+
+The analysis of each path tracks absolute errors with explicit magnitude bounds.  `TgammaExpr` evaluates, in the kernel, the bound of a chain of plain double operations in one variable, so the polynomial parts written in double arithmetic, such as `x (c0 + x8 c8)` of the small path, get their bound by `decide +kernel`: `2^-48` with magnitude `1/2` for `|x| ≤ 1/4`.  The double-double parts use the lemmas of `TgammaDD` and `TgammaPolyDDD`.  The approximation facts of `TgammaApprox` and the one-step criterion `within_one_of_rounded_rel` close each path.
+
 ### Results
 
 | File | State | Log |
@@ -31118,6 +31235,16 @@ An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) s
 | `F64Saturate`: rounding to infinity and to zero, `x/0`, `0/0`, `∞/∞`, NaN sums | Committed in `6d4cebb2` | `gamma-saturate-3.log` |
 | `TgammaFloor`: `roundEven_spec`, `floorF_spec` | Committed in `6d4cebb2` | `gamma-floor-4.log` |
 | `TgammaApprox` with the tolerances that involve `π` relaxed | Committed in `02c72fa9` | `gamma-approx-2.log` |
+| `TgammaSpecial`: `+∞`, `-∞` at `±0`, `+∞` at `+∞`, the canonical NaN at `-∞` and NaN | Committed in `7a97f139` | `gamma-special-2.log` |
+| `F64NearReal`: a double within `\|S\|/2^53 + 2^-1075` of every real `S` below `2^1000`, hence the bound of a nearest result such as `Fma.fma` under `FmaNearest` | Committed in `7a97f139` | `gamma-nearreal-2.log` |
+| `TgammaDD`: `fma_approx`, `fastTwoSum_spec`, `twoSum_spec`, `low_sum`, `fastSum_spec`, `high_bound`, `sumDD_spec`, `mulDDD_spec` | Committed in `72c612ea` | `gamma-dd-6.log` |
+| `TgammaPoly`: `loop_succ`, `horner`, `horner_eq`, `horner_eval`, `horner_bound` | Committed in `b9b6e5cf` | `gamma-poly-2.log` |
+| `TgammaPolyDDD`: `polyDDD_spec`, then `polyDDD_core`, `polyDDD_tight`, and `polyDDD_damped` | Committed in `b9b6e5cf`, `2e03223c`, `14346594` | `gamma-pdd-5.log`, `gamma-pdd-8.log`, `gamma-pdd-9.log` |
+| `TgammaExpr`: the error evaluator for straight-line double arithmetic | Committed in `3b5fa105` | `gamma-expr-3.log` |
+| `TgammaRecip`: `recip_corr`, the corrected reciprocal below `1/4` | Committed in `313a1cb2` | `gamma-recip-2.log` |
+| `TgammaWords`: words of the tables as rationals, weighted Horner bounds, and list evaluation | Committed in `db6c122a` | `gamma-words-3.log` |
+| `TgammaSmall`: `lE` within `2^-48` (kernel), `horner_small`, `small_poly` within `2^-55` of `smallPoly` | Committed in `b9a70213`, `6b225ee1` | `gamma-small-4.log` |
+| `TgammaSmallPath`: `small_sum`, `small_gamma`, `smallPath_within` | Committed in `6b225ee1` | `gamma-spath-4.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31125,10 +31252,14 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] Path equations
 - [x] Dekker's error-free sum
 - [x] Merge `transcendentals` at `a55d2cfd` (`FmaSpec`, the gamma foundations) as `a765795b`, with the conflicts in `devnotes.md` and `Tgamma.md` resolved by keeping both sides; the track's modules and `FmaSpec`, `GammaBasic`, and `GammaThresholds` build on it (`gamma-merge-1.log`)
-- [ ] Exceptional values: `±0`, `±∞`, NaN, the negative integers, `2^-1024`, the overflow and underflow paths
-- [ ] Double-double lemmas: `twoSum`, `fastSum`, `sumDD`, `mulDD`, `mulDDD`, `mulDD3`, `polyDDD`, `splt`, `sprod`, `poly3`
+- [ ] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
+- [x] Exceptional values at `±0`, `±∞`, and NaN (`TgammaSpecial`)
+- [x] Double-double lemmas: `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDDD`, `polyDDD`
+- [ ] Double-double lemmas: `mulDD`, `mulDD3`, `splt`, `sprod`, `poly3`
 - [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
-- [ ] Each path, the accurate path, and the database
+- [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
+- [ ] The tiny path, the integer path, and the paths on `[-3, 4]`, above 4, and below -3
+- [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
 ## 2026-10-12: The software fused multiply-add theorem (track `expm1`)
@@ -31237,3 +31368,11 @@ Track `arc` asked for `|ll| ≤ 2^-40` in the specification of `asLogd`, which t
 - [ ] The fast path: the reductions, the pieces, Stirling's series, the reflection, and the rounding test
 - [ ] The accurate path
 - [ ] `Lgamma.md` updated as the theorems are accepted
+
+## 2026-10-12: Integration of the Bessel and fused multiply-add theorems
+
+Opus merged three branches into `transcendentals`.  `w/log` at `38cb2de7` (`3f770f34`) brings the accuracy theorems of `j0`, `j1`, `y0`, and `y1` in units of the modulus, with `c` equal to 10, 12, 11, and 12, `BesselY1Tiny.y1_tiny` for `y1` below about `2^-54`, the exceptional results in `BesselSpecial`, and the distance forms `TrigNear` and `LogNearAll` of `sin`, `cos`, and `log`.  `w/expm1` at `0a96dbd5` (`9c0c7a29`) brings `FmaTheorem.fma_toBits`, which proves `Fma.fma` equal to IEEE 754's fusedMultiplyAdd with roundTiesToEven for every operand triple, its corollary `FmaSpecTheorem.fma_nearest`, the statements of the `lgamma` facts in `LgammaApprox`, and the exceptional values of `lgamma`.  `w/poly` at `e603a331` (`75953254`) brings the exceptional values of `tgamma`, the double-double operations, and the path below 1/4 within one step.  `LeanExe.lean` gains `F64NearReal`, `F64Saturate`, and `F64TwoSum`, and `Verified.lean` gains the nine modules that no other module imports.  The build passed with 9,578 jobs, and every new theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`opus-merge-bessel-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-19.log`) with fifteen file checks, 15,837 cases, and every accuracy check.
+
+The documents `Bessel.md`, `Fma.md`, `Lgamma.md`, `Tgamma.md`, `Log.md`, and `Trig.md` now describe the merged theorems, and `Trig.md` lists `TrigNear`.  Track `log` analyzed `jn` and `yn` on its branch (`48726b90`, not merged): the form `a + b |n|` holds on every path, with `a` near 30 and `b` near 3 or 4, but the range `2 ≤ |x| < 2^302` with `|n| > |x|/2` needs an upper bound on `√(J_k² + Y_k²)` through the turning point `k = x`, which grows like `x^(1/3)` there and which no current module gives.  Opus decided that the track proves the other ranges with that range excluded by an explicit hypothesis, records it as open, and then writes a feasibility analysis of a discrete bound through the turning point from the ratios `Y_(k+1)/Y_k` and `J_(k+1)/J_k` before any decision to formalize it.
+
+The user asked for research on conversions between decimal strings and binary32 and binary64 values in both directions, with a design grounded in published work.  An agent wrote that report in a directory outside the repository on the local machine, with 54 references.  It recommends exact big-integer arithmetic first, built on Cox's unrounded scaling `⟨x · 2^e · 10^p⟩` (2026) for both directions, with Schubfach's decision for shortest output, since no table-based method (Eisel-Lemire, Ryū, Schubfach as shipped, Dragonbox) has a machine-checked proof.  It also finds that Lean `v4.34.0-rc2` defines `Float.ofScientific` publicly, which Opus confirmed in the toolchain's `Init/Data/OfScientific.lean`, so a theorem about it would cover every decimal literal in the compiled programs.  The report lists fourteen decisions, and the user accepted every recommendation: two grammar modes (RFC 8259 and a C-like mode), unlimited input length with correct rounding, strings as one byte per word, binary32 results as words, shortest output as fewest digits then nearest then even, scientific and ECMAScript layouts, a flag and a word as the parser's result, exact `uscale` with Clinger's fast path first, a table-based stage only after measurement, fixed-precision and hexadecimal output later, placement in `Verified.Examples`, the prior Lean projects as references only, and a theorem about `Float.ofScientific`.  Opus created a separate worktree, branch `w/strconv` from `5688a840`, and started track `strconv` on the report's stages 1 to 4.
