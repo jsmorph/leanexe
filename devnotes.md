@@ -31406,6 +31406,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselOrderHuge` replayed in `bes-on-15.log` from an earlier build of its current source, with only the three standard axioms.  From `2^302` on, `λ_k ≤ 2^-269` for `k ≤ 2^32`, so `J_n` and `Y_n` stay within `n 2^-268 (|G₀| + |G₁|)` of `±J₀`, `±J₁`, `±Y₀`, or `±Y₁`, and the code's Hankel term matches that pattern within `10 u M` by the path of `j0` and `y0` from `2^129`.  The deviation from the pattern adds less than `u M`, which gives `11 u M_n` for both functions.
 
+`BesselMillerReal` built in `bes-on-16.log` with only the three standard axioms.  It writes the truncated continued fraction of `jn` as a quotient of kernels, so the cross product gives its error `J_M/(J_(n-1) kern (n - 1) M)` exactly, and bounds the continuant by the product of the `λ_k` and the tail by `2.4 J_n`, which makes the relative error of the fraction at most `2.4/Q²` when the code stops at `Q > 10^9`.  The module docstring named a lemma `cf_value` that the module does not contain; the corrected docstring names `cf_step`.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
