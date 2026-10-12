@@ -18,7 +18,9 @@ carry the factors `1 - x` and `x - 2`), `stirFast` above, the kernels and tables
 (`LogFact`, the statement of `TgammaApprox.LogFact`), and those of `asSinpipid` (`SinpiFact`).  The
 accurate path's are `accSmallPoly` and `accMidPoly` near 1 and 3/2, `asymAcc` for Stirling's series,
 the kernels and tables of `asLogdAccurate` and `asSinpipidAccurate`, the 17 polynomials about the
-zeros of `log |Γ|` from -10.5 to -2 (`rootRanges`), and the 19 hard cases (`DbFact`).
+zeros of `log |Γ|` from -10.5 to -2 (`rootRanges`), with an absolute term `2^-120` that covers
+the distance between each stored center and the zero, and the smallest `|log |Γ|` at the doubles
+of those ranges (`RootMinFact`), and the 19 hard cases (`DbFact`).
 
 The tolerances leave a factor over the errors that a 70-to-90-digit evaluation with Python's
 `decimal` module found at dense sample points: about 1.5 for the pieces (measured `7.96 · 10^-20`
@@ -219,7 +221,14 @@ def RootFact : Prop :=
   ∀ afh lo hi o n k e, (afh, lo, hi, o, n, k, e) ∈ rootRanges →
     ∀ x : ℝ, (lo : ℝ) < x → x < hi → |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ratOfWord afh →
       |lgamma x - (x + rootX0 o) * rootPoly o n k (2 ^ e * (x + rootX0 o))| ≤
-        1 / 2 ^ 63 * |lgamma x|
+        1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120
+
+/-- Every double inside a range of `rootRanges` lies where `|log |Γ|| ≥ 2^-60`; the smallest value
+is about `5.6 · 10^-17`, next to the zero at -2.457. -/
+def RootMinFact : Prop :=
+  ∀ afh lo hi o n k e, (afh, lo, hi, o, n, k, e) ∈ rootRanges →
+    ∀ w : UInt64, CodeLib.IEEE64.Finite w → (lo : ℝ) < CodeLib.IEEE64.value w →
+      CodeLib.IEEE64.value w < hi → 1 / 2 ^ 60 ≤ |lgamma (CodeLib.IEEE64.value w)|
 
 /-- The hard cases of `Lgamma.database`: the argument and the double nearest to `log |Γ|`. -/
 def dbX (k : ℕ) : ℚ := q Lgamma.dbTable (3 * k)
@@ -237,6 +246,6 @@ def CancelFact : Prop :=
 /-- Every approximation statement of the proof. -/
 def AllFacts : Prop :=
   SmallFact ∧ PieceFact ∧ StirlingFact ∧ LogFact ∧ SinpiFact ∧ AccPolyFact ∧ AsymFact ∧
-    LogAccFact ∧ SinpiAccFact ∧ RootFact ∧ DbFact ∧ CancelFact
+    LogAccFact ∧ SinpiAccFact ∧ RootFact ∧ RootMinFact ∧ DbFact ∧ CancelFact
 
 end Verified.Examples.LgammaApprox
