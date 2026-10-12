@@ -31043,6 +31043,7 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | accepted (`trig-fastmain-4.log`) |
 | `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | accepted (`trig-fastmain-3.log`) |
 | `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | in progress |
+| `ErfcFastTiny` | `tiny_err`: `erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `|z| ≤ 1/16` | accepted (`trig-fastrow-1.log`) |
 
 | Run | Result |
 |---|---|
