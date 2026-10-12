@@ -31427,13 +31427,15 @@ While planning `yn` below 2, the track found a band near overflow where neither 
 
 `BesselMillerLast` built on its first run, in 134 seconds in `bes-on-33.log`, with only the three standard axioms.  Its statement keeps the bound `d` on `J₂/J₀` as a parameter because the normalization that follows chooses it: `21/20` when the code divides by `b ≈ σ J₀`, which it does only when `|j0 x| ≥ |j1 x|`, and `25/6` when it divides by `a ≈ σ J₁`.  The bound `σ J_n ≤ 2^1018`, from `J_n ≤ J₁`, keeps the final product `t · j0 x` or `t · j1 x` below the overflow threshold.
 
+`BesselMillerFinal` took four builds.  `backward_eq`, which writes `jnBackward` with the named loops, passed the elaborator by `rfl` in `bes-on-34.log`, and the kernel stopped with deep recursion; a tactic proof that reduced the `let`s with `dsimp` failed the same way in `bes-on-35.log` and `bes-on-36.log`.  The experiment `bes-exp-2.log`, which checks the steps of the proof one at a time with `sorry` after each, found that the kernel accepts `unfold Bessel.jnBackward` and fails once `dsimp` reduces the `let`s inside the alternatives of the matches on loop results.  The likely cause is that the kernel unfolds each match whose two forms differ and then tries to evaluate the loop it matches on, whose arguments are symbolic.  The accepted proof extracts the `let`s above each match with `extract_lets`, splits the two matches with `split`, and states the loop results with the named bodies, so that the kernel compares only equal matches; `bes-exp-3.log` and `bes-on-37.log` accept it.  The constant `23 + 8 n` adds the relative errors `(6.1 + 1.01 (n - 1)) u` of `t`, `5.9 u` of `j0 x` against `J₀ ≥ 2/5 - 7 u`, `(17.78 + 6 (n - 2) + 5) u` of `b`, and two roundings, and in the other branch `9.75 u` of `j1 x` against `J₁ ≥ 2/5` and `(6 (n - 2) + 7) u` of `a`.  `bes-on-37.log` built the module in 36 seconds with only the three standard axioms.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
 - [x] The loops of `jn` and `yn` for `2n ≤ x` (`BesselStepF`, `BesselOrderLoops`).
 - [x] The Hankel path from `2^302` (`BesselOrderHuge`).
 - [x] The tiny path of `jn` (`BesselSmallSigns`, `BesselJnTiny`).
-- [ ] Miller's method for `2^-30 ≤ x < 2` (`BesselMillerReal`, `BesselMillerCF`, `BesselMillerDepth`, `BesselMillerFacts`, `BesselMillerT`, `BesselMillerLog`, `BesselMillerStep`, `BesselMillerBack`, `BesselMillerLast`, and a final module).
+- [x] Miller's method for `2^-30 ≤ x < 2` (`BesselMillerReal`, `BesselMillerCF`, `BesselMillerDepth`, `BesselMillerFacts`, `BesselMillerT`, `BesselMillerLog`, `BesselMillerStep`, `BesselMillerBack`, `BesselMillerLast`, `BesselMillerFinal`).
 - [ ] `yn` for `x < 2`, with the overflow to `-∞`.
 - [ ] The decoding of the order, the exceptional arguments, and the theorems `jn_accuracy` and `yn_accuracy`.
 - [ ] The feasibility analysis of a bound through the turning point.
