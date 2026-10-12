@@ -30843,3 +30843,49 @@ The documentation agent wrote the twenty function documents on branch `w/docs` (
 The `sinh` and `cosh` integration: Opus merged `w/expm1` at `b76268b2` (`be50832f`), added `SinhBytes` to `Verified.lean`, the three new ProofKit modules to `LeanExe.lean`, and `sinh:SinhBytes:SinhFile` to the file loop of `tests/verified/run.sh`.  The build passed with 9,452 jobs (`opus-merge-sinh-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-14.log`) with thirteen file checks, 15,837 cases, and every accuracy check.
 
 Four review agents checked the twenty function documents against the Lean sources at `698424f7`, the journal, the plan, the logs, and the pinned C sources, corrected the facts they could check, removed the narration of the writing and the references to the commit the documents were first written against, described the unmerged branch work by branch and commit, and fixed the language.  The documents were committed as `46f239d5` on `w/docs` and merged.  Their findings in Lean sources (the license notices of every fdlibm port and of the CORE-MATH ports, wrong docstring bounds in `Log2.lean`, `BesselAccuracy.lean`, and `Reference.lean`) are added to "Corrections found by the documentation review" in `transcendentals.md`.  The IEEE 754-2019 clause contents rest on one reading of the standard by the first documentation agent; the reviewers could not reach the paywalled text.
+
+## 2026-10-12: Bessel functions, the Lean functions `j0`, `j1`, `y0`, and `y1` (track `log`)
+
+The coordinator asked for theorems of the form `|w - F(a)| ≤ c · 2^-53 · √(J(a)² + Y(a)²)` for the ported `Bessel.j0`, `j1`, `y0`, and `y1`, with `c` set by the proof and reported first if it exceeds 12, and asked for inputs tighter than `WithinSteps 1` from the trigonometric and logarithm theorems.  The proof splits each function at 2: from 2 up the large-argument form `(P A ∓ Q B)/√(π x)` with `A = √2 cos θ` and `B = √2 sin θ`, and below 2 fdlibm's rational approximations.  The table lists the modules accepted so far on `w/log`, each with only `propext`, `Classical.choice`, and `Quot.sound` in its axiom report, and here `u = 2^-53`.
+
+| Module | Result | Commit | Log |
+|---|---|---|---|
+| `TrigNear` | `Trig.sin x` and `Trig.cos x` within `(71/50) u` of `sin x` and `cos x` for every finite `x`, from the kernels' own bounds before the conversion to steps | `278cd102` | `bes-trignear-3.log` |
+| `LogNearMain`, `LogNearAll` | `Log.log x` within `u \|log x\| + 2^-59` on the main path and `(6/5) u \|log x\| + 2^-59` for every finite `x > 0` | `98612d56` | `bes-lognear-1.log`, `bes-lognear-4.log` |
+| `BesselSpecial` | The exceptional results of the four functions | `692d6d84` | `bes-special-2.log` |
+| `BesselCS` | `x + x` exact below `2^1023`, and the pairs `(cc, ss)` of `asym0` and `asym1` within `(96/25) u` for the direct sum and `(627/100) u` for the quotient by `cos 2x` | `ef3ed7ac` | `bes-cs-2.log` |
+| `BesselRatioEval`, `BesselPQEval`, `BesselPQRange` | The rounded `R(ẑ)/S(ẑ)` of two Horner evaluations against `R(z)/S(z)` on kernel-checked pieces, `ẑ = 1/(x x)` within `(2 + 2^-40) u/x²`, and the rounded `P` and `Q` terms of one range | `b49cfded`, `52688e88` | `bes-reval-2.log`, `bes-pqe-1.log`, `bes-pqr-2.log` |
+| `BesselPQ0`, `BesselPQ1` | `pAsym` and the `Q` term within explicit bounds of `P` and `Q` on each of the four ranges, with bounds on `P` and `Q` | `6ed384f8` | `bes-pq-3.log` |
+
+The `Q` term of order 0 is `(r/s - 1/8)/x`, whose sum lies below `1/4` and so rounds within `u/8`, and that of order 1 is `(3/8 + r/s)/x`, within `u/4`.  The rational functions are evaluated at the computed `ẑ`, so each check bounds the Horner errors on a piece containing `ẑ` and the change from `ẑ` to the real `z` by a Lipschitz constant from `magBound (R' S - R S')` and `lowBound S` on the piece widened by `δ ≥ |ẑ - z|`.  A single interval per range gave bounds near `20 u` for `qzero` from 2 and `5,655 u` for `qzero` from `b3`, because `magBound` and `lowBound` over a wide interval lose the correlation of `R` and `S`; eight equal pieces bring every bound below `0.41 u`.  One check of eight pieces took 5 seconds in the kernel (`ProbeP.lean`), and each of `BesselPQ0` and `BesselPQ1` builds in under 40 seconds.  The numerators' coefficients share one sign, so `R/S ≤ 0` for `pzero` and `qone` and `R/S ≥ 0` for `qzero` and `pone`, which bounds `P` and the `Q` term without further checks.
+
+| Order, range | `E` of `pAsym`, `u` | `E` of `R/S` of `Q`, `u` | `\|R/S\|` of `P` at most | `\|R/S\|` of `Q` at most |
+|---|---|---|---|---|
+| 0, from 2 | 0.231 | 0.226 | 0.01564 | 0.01402 |
+| 0, from `b3` | 0.123 | 0.130 | 0.00856 | 0.00821 |
+| 0, from `b5` | 0.048 | 0.054 | 0.00362 | 0.00367 |
+| 0, from 8 | 0.015 | 0.018 | 0.00124 | 0.00132 |
+| 1, from 2 | 0.402 | 0.329 | 0.02737 | 0.02053 |
+| 1, from `b3` | 0.210 | 0.185 | 0.01467 | 0.01181 |
+| 1, from `b5` | 0.080 | 0.076 | 0.00610 | 0.00520 |
+| 1, from 8 | 0.025 | 0.025 | 0.00207 | 0.00185 |
+
+The error budget of the path from 2 follows the lemmas' own forms: the rounding of `P̂ ĉc` and `Q̂ ŝs` charges `u` times the product of the magnitude bounds, the difference rounds within `u` below 2, and the final `invsqrtpi · T / √x` adds three relative roundings and the `0.069 u` error of `invsqrtpi`.  The quotient branch of `(cc, ss)` dominates: `P · (627/100) u` is about 6.3 of the 9.4 to 11.8 units of `T`.  A model of these bounds over the four ranges, both branches, and both forms gives `c` at most 9.77 for order 0 and 11.04 for order 1, against the native check's maxima of 3.243 check units, at most `6.49 · 2^-53 M`.  The plan is therefore `c = 10` for `j0` and `y0` and `c = 12` for `j1` and `y1`, both within the limit of 12, unless the paths below 2 need more.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `TrigNear`, first build | `linarith` lacked the kernel bound with `u` substituted, and `add_le_add_left` adds on the right in this Mathlib; the sine kernel's bound became the lemma `sin_kernel` | `bes-trignear-1.log` |
+| `BesselSpecial`, first build | `decide` on concrete IEEE words reached the recursion limit; `decide +kernel` checks them | `bes-special-1.log` |
+| `BesselCS`, first builds | `x + x` has no lemma in ProofKit, and `F64ErrorTrack.add_exact_grid` stops at exponent 2043; `add_self_word` shows `add w w = mul 2 w` from `F64RoundFinish.roundScaled_mul_pow` and `F64PowerScale.mul_power`, which reach `2^1023`.  `congr 1` on two `encodeFinite` words recursed without limit and was replaced by rewriting the fields | `bes-cs-1.log`, `bes-cs-2.log` |
+| `BesselRatioEval`, first build | `norm_num` does not evaluate `2^1000 ≤ 2^1022` under the default `exponentiation.threshold` | `bes-reval-1.log` |
+| `BesselPQ0`, `BesselPQ1`, first builds | casts of rational constants between `ℚ` and `ℝ`, and implicit arguments that a `by` block could not fix, in the generated proofs | `bes-pq0-1.log` to `bes-pq1-2.log` |
+
+`tools/bessel/genpq.py` writes `BesselPQ0` and `BesselPQ1`: it chooses the pieces, `δ`, and the bounds with exact rational models of `magBound`, `lowBound`, and `hornerErr`, and the kernel checks every bound.  It is a PEP 723 script run with `uv run` on the local machine, as `AGENTS.md` requires, and its output equals the committed files.  The equations that rewrite `pAsym` and `qRatio` for one range as Horner forms are proved by `rfl` after rewriting `rangeOf`; they compare the same floating-point expressions and evaluate only the table lookups and the index arithmetic, and each module builds in under 40 seconds.
+
+- [x] Distance forms of `Trig.sin`, `Trig.cos`, and `Log.log`.
+- [x] Exceptional results of `j0`, `j1`, `y0`, and `y1`.
+- [x] `(cc, ss)`, `P`, and `Q` on the path from 2.
+- [ ] The combination on the path from 2, with `invsqrtpi` and `tpi` against `1/√π` and `2/π`, and the paths above `2^129`.
+- [ ] The rational approximations below 2 against the series, and their evaluation.
+- [ ] Lower bounds on the moduli below 2: `M₀ ≥ 1/2` and `M₁ ≥ 1/2` on `[1, 2]`, and `M₀` against `(2/π) |ln x|` for small `x`.
+- [ ] The four accuracy theorems, `Bessel.md`, and the report.
