@@ -30894,3 +30894,35 @@ The exact rules are bit equalities for finite `x`.  `sinpi_int` gives `±0` with
 ## 2026-10-12: Resumption, and integration of sinpi, cospi, and tanpi
 
 The user resumed the work and asked that each track document its functions as it goes and that Opus commit and push often.  `worker-rules.md` now requires each accepted theorem to come with the update of its function's document in the same commit, and the seven agents resumed with their next steps from the plan's section "Resuming the work".  Opus merged `w/trig` at `dc95a04f` (`372f27a0`), added `SinpiTheorem` to `Verified.lean` and `sinpi:SinpiTheorem:SinpiFile` to the file loop of `tests/verified/run.sh`, and updated `Sinpi.md` for the merge.  The build passed with 9,474 jobs (`opus-merge-sinpi-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-15.log`) with fourteen file checks, 15,837 cases, and every accuracy check.
+
+## 2026-10-12: CORE-MATH's `erfc` (track `trig`)
+
+The coordinator assigned CORE-MATH's binary64 `erfc` in place of fdlibm's, whose worst case of 4.08 units at `0x1.527f4fb0d9331p+0` cannot be proved within four steps: port it with `Fma.fma`, leave `verified_compile` out until the reflector changes, check it against `ErfReference` and the worst inputs, and prove `WithinSteps 1` against `RealErf.erfc` for every finite input with the exact results.  The port follows `src/binary64/erfc/erfc.c` at `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, the commit of the `tgamma` and `lgamma` ports, fetched from `https://gitlab.inria.fr/core-math/core-math/-/raw/<commit>/src/binary64/erfc/erfc.c`.  The file has the same MD5 sum, `624fbb7ff5a2a3ce4ac60d5e8653f62d`, as the copy that the documentation review downloaded without a commit.  `w/trig` merged `transcendentals` twice, at `be50832f` and at `bb9002c0`, before the port; both merges conflicted only in this journal, and the merges keep both sides.
+
+`Verified/Examples/Erfc.lean` follows the C code operation for operation, and its docstring and the document `Erf.md` list the changes: tuples for results through pointers, seven arrays of words for the tables, `sar` for C's arithmetic shift, `ldexp` as products with powers of two, comparison chains for the searches of the thresholds, full scans of the tables of hard cases, and no flags or `errno`.  The module docstring quotes the MIT notice in full, which the review found missing from `Tgamma.lean` and `Lgamma.lean`.  A Python script, `py/gen.py` in the scratch directory, wrote the tables from the C source, checking that each hexadecimal literal is exactly a double, and `py/audit.py` compared the port with the source.
+
+| Audit item | Result |
+|---|---|
+| Table words against the bits of the C literal in their comments | 3,357 words, 45 of them the zero padding of `Tacc`, none mismatched |
+| Order of the literals of `C`, `C2`, `T1`, `T2`, `T`, `Tacc`, `E2`, and the three tables of exceptions | equal to the C arrays: 1,222, 1,269, 128, 128, 78, 255, 28, 66, 51, and 87 literals |
+| Constants of the code with a C literal in a comment | 68, none mismatched |
+| Elements of `c0`, `p`, `Q_1`, and the two `threshold` arrays in the code | all present except `0x1.63p-2` and `0x1.3p-1`, the last thresholds, which bound `1/x` in their domains (`0x1.62fffffffffffp-2` and `0x1.2b81f34bfce35p-1` at most) |
+| Hexadecimal literals of the C code outside the tables | 25, all present except `0x1.a8b12fc6e4892p+4`, the bound of the removed test of the underflow flag |
+
+The first build of `Erfc` (`erfc-port-1`) stopped when this track's memory guard, set at 3 GB, killed the build of the dependency `Fma`, whose `verified_compile` needs about 4 GB of anonymous memory; the guard now follows the runner's limit of 6 GB.  The second failed because `at` is a keyword, and the third and fourth passed.  `Verified/Examples/ErfcAccuracy.lean` checks `Erfc.erfc` against `ErfAccuracy.erfcReference`, repeated in the file since `ErfAccuracy` has its own `main`, and requires equality.  In `erfc-check-2.log` all 223,592 results equal the reference, and so do the 24,895 direct calls of the accurate path at every eighth argument in its range and at the 69 inputs of the hard cases.  The check is not in `tests/verified/run.sh`, which this track does not edit.
+
+A C harness compiled `erfc.c` with `gcc -O2 -ffp-contract=off` on the local machine and printed the fast path's `h`, `l`, and `err`, and a Python reference with the decimal module at 120 digits measured the error.  Without the rounding test, the fast path returns `h + (l - err)` rounded, and `TanStep.near_rel` gives one step when `h + (l - err)`, to which the result is the nearest double up to the rounding of `l - err`, lies within `0.74 u |erfc x|` of `erfc x`.  At 3,000 random arguments per range, the measured `(|h + l - erfc x| + err)/(u |erfc x|)` stays below 0.0001 for `x < 0`, reaches 0.36 near `0x1.713786d9c7c09p+1`, where `err` makes nearly all of it, and stays below 0.06 on the asymptotic range.  The proof can therefore ignore the test if it bounds `|h + l - erfc x|` by about `0.38 u erfc x` near the top of the second range, an absolute `2^-68.8`, while the measured error there is about `2^-75`.
+
+| Step | State |
+|---|---|
+| Port and native check | done (`2c616c5f`) |
+| `Erf.md`, the parts on CORE-MATH's `erfc` | done with this section |
+| Interface of `Fma.fma` for the proof | stated below, for the track `expm1` |
+| One-step proof | not started |
+
+The proof needs one property of `Fma.fma`: for finite `a`, `b`, `c` with `|a b + c| ≤ 2^1023`, the result is finite and nearest to `a b + c` among the finite doubles.  In Lean, with `t = value a.toBits * value b.toBits + value c.toBits`, it reads `Finite (Fma.fma a b c).toBits ∧ ∀ v : UInt64, Finite v → |value (Fma.fma a b c).toBits - t| ≤ |value v - t|`.  The proof will take it as a hypothesis until the track `expm1` proves it, which keeps the axiom report clean.
+
+- [x] Port `erfc.c` and audit the tables and constants.
+- [x] Check the port natively against `ErfReference`, the worst inputs, and the hard cases.
+- [x] The parts of `Erf.md` on CORE-MATH's `erfc`.
+- [ ] The one-step proof: the double-double arithmetic with the `Fma.fma` interface, the polynomial approximations of `erf` and of `erfc (1/y) exp (1/y²)`, `exp_1` and `exp_accurate`, the hard cases, and the special ranges.
