@@ -31330,6 +31330,26 @@ The small path shows the error budget of a fast path.  With `R = 1/|x|`, the dou
 
 The analysis of each path tracks absolute errors with explicit magnitude bounds.  `TgammaExpr` evaluates, in the kernel, the bound of a chain of plain double operations in one variable, so the polynomial parts written in double arithmetic, such as `x (c0 + x8 c8)` of the small path, get their bound by `decide +kernel`: `2^-48` with magnitude `1/2` for `|x| ≤ 1/4`.  The double-double parts use the lemmas of `TgammaDD` and `TgammaPolyDDD`.  The approximation facts of `TgammaApprox` and the one-step criterion `within_one_of_rounded_rel` close each path.
 
+### The path on `(-3, 4)`
+
+The code rounds `x - 7/2` before it takes the nearest integer `I`, so `d = x - (I + 7/2)` can exceed `1/2` by up to `2^-51`, as at `x = 1 - 2^-53`.  The coordinator approved widening `MainFact` to `|d| ≤ 1/2 + 2^-50`, which is commit `d06760e6`, and told track `erf`.  `TgammaMainRed.main_red` proves that `I` lies from -7 to 0 and that `i + 7/2` and `d` are exact: the subtraction `x - 7/2` is exact from 2 on, which excludes `I = 1` below 4, and `d` is a multiple of `2^-53` with `|d| < 1` when `|x| ≥ 1/2` and a multiple of `2^-54` with `|d| ≤ 1/4` when `1/4 ≤ |x| < 1/2`.  The proof allows `I = -7` because the identity `Γ x = Γ (x + J) / (x (x + 1) ⋯ (x + J - 1))` holds for each `J = -I`, and a ties-to-even rounding of `x - 7/2` near -6.5 decides between -6 and -7.  A simulation of the shift loop in `py/loopsim.py` over 200,000 uniform arguments, 2,786 arguments within 199 steps of the integers from -3 to 3, and 22,050 arguments at random distances from `2^-60` to 8 from them found the low part `xpl` exactly zero while `x + m < 0` and at most `2^-52.9 |x + m|` after, with every addition to it exact, which is the invariant of `TgammaMainLoop.loop_inv`.  That proof tracks relative errors, since a factor can lie within `2^-54` of zero, and it lets the low part of a positive factor carry the rounding of its additions instead of proving them exact.  The first build of `prod_step` exceeded the heartbeat limit (`gamma-mloop-1.log`): `linarith` over the full context of about forty hypotheses timed out, and `linarith only` with the five to ten facts each step needs replaced it.
+
+The error budget of the path on `(-3, 4)` is relative throughout.  `MainFact` contributes `2^-62` because `Γ (7/2 + d) ≥ Γ 2 = 1` by `Real.Gamma_strictMonoOn_Ici`, the double-double polynomial `2^-72`, the product `W` at most `6 · 2^-83`, the corrected reciprocal `2^-77`, the final `mulDD` `2^-70`, and `eps` about `2^-68`, so the sum before the last rounding lies within `2^-60` of `Γ x`.  The first statement of the path equation used `evalF flE d` for the tail, and its `rfl` exceeded the heartbeat limit.  Probes in `gamma-probe4.log` showed that the shift loop as `wState` and the loop body as `body` cost little, while unfolding `evalF` on the concrete expression inside the larger definitional check exceeded the limit, so `mainPath_gen` keeps the code's tail and `fl_eq` proves the tail equal to `evalF flE d` by `simp only` on the equations of `evalF`.
+
+### The tiny, integer, overflow, and underflow paths
+
+The ProofKit lemmas for nearest rounding stop at `2^1022` (`F64NearestDiv.div_nearest`, `F64Approx`) or `2^1023` (`F64RoundNearest.add_rounded`), while the path below `2^-112` rounds `1/x` in the top two binades for subnormal `x`.  `TgammaTop` therefore proves the rounding of `roundScaledMagnitude` up to `2^1024 - 2^971` from its definition, together with `round_rational_gen`, an adaptation of `F64NearestDiv.round_rational` without its upper bound, and it derives `add_top` and `div_top`.  `F64RelativeStep.within_one_relative` has no upper bound on `|y|`, so it gives one step from a relative error of `11/8` units of roundoff in the top binades as well.  The code returns `r - 1/2` when the fused multiply-add finds `r x = 1`; under `FmaNearest` a zero result means `|r x - 1| ≤ 2^-1075`, so `r` lies within `1/2` of `1/x` (`fma_zero`).  For `|x| ≤ 2^-1024` the quotient is an infinity whatever the fused multiply-add returns, because subtracting `1/2` from an infinity keeps it, so the proof needs no statement of `Fma.fma` at infinite operands.
+
+The words `±0` both sit at position 0 of `F64SignedRounding.position`, so either zero is within one step of a `y` below the least subnormal (`within_zero`), and the underflow path needs no parity of `⌊x⌋`.  The integer path multiplies up to `170!`, near `2^1019.4`, beyond the limit `2^900` of `TgammaDD.mulDDD_spec`, so `TgammaInt.mulDDD_big` repeats that proof for products up to `2^1020`; the fused multiply-add of the error term stays near `2^967`.  The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, which needs them for `lgamma`, and track `arc` sent the forms that the large and reflection paths need: for `asLogd` on `[4, 186]`, an error of at most `2^-64` with a low part below `2^-40`, and for `asSinpid` on `(0, 1)`, a relative error of at most `2^-58` with a low part below `2^-40` of the high part.
+
+### The exponential and the logarithm of the large and reflection paths
+
+The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, whose `lgamma` calls them too.  Track `expm1` reported that `asLogd` returns `(lh, ll + f)` with `f = dx² P(dx)` unnormalized, so that its low part reaches about `2^-23.5`, and its statement will give `|ll| ≤ 2^-22` plus a term in `|lh|/2^52`.  The product `mulDD (xh - 1/2) xl (lh - 1) (ll + dz)` of `asLgammaAsym` charges that low part `4 |ll| (x - 1/2)/2^53 ≤ 2^-65.5`, but its own low part grows to about `|ll| (x - 1/2)`, up to `2^-14.5`, and the later `fastSum`s keep it.  `asExpd` receives it as `l`, its first `mulDD` places `1477 l` in the low part of `(x + l) 1024/ln 2`, and `roundEven` acts on the high part only, so the kernel's argument reaches about `0.566` instead of `513/1024`.  The coordinator approved widening the kernel's interval in `ExpFact` to `|X| ≤ 5/8` with the tolerance `2^-74`, since `py/expwide.py` measures the largest errors `2^-77.99` at `513/1024`, `2^-77.75` at `17/32`, `2^-77.49` at `9/16`, and `2^-76.89` at `5/8`.  No `lgamma` statement depends on the old interval: neither `LgammaApprox` nor `Lgamma.lean` on `w/expm1` refers to `ExpFact` or `asExpd`.
+
+The proof of `asExpd_spec` tracks the reduced argument `X` only to `2^-52`, since an error `δ` in `X` changes `exp (X ln 2/1024)` by about `δ 2^-10.5` relative, so the code's exact subtraction `xh - ix` and its `fastTwoSum` are analysed as rounded operations.  The kernel is evaluated at the high part `q1` and multiplied by `q1 + q2`, and `exp_poly` compares the result with `1 + q1 expPoly q1`, so `ExpFact` is applied at `q1` and the low part `q2 ≤ 2^-52` is charged as a shift of the argument.  The first statement of `exp_assemble` used `nlinarith` for products of bounds in a context of about forty hypotheses and exceeded the heartbeat limit (`gamma-expspec-2.log`); explicit `mul_le_mul` facts and `linarith` replaced it.
+
+The large path needs `Γ x < 2^1024` with margin below the overflow threshold `t0`, or the word `ub.toBits + (E <<< 52)` can reach the exponent field 2047 with a nonzero fraction, a NaN.  A 90-digit evaluation gives `log2 Γ = 1024 - 6.90e-14` at the predecessor of `t0`, and track `erf` queued the fact `Γ (0x406573FAE561F647) ≤ 2^1024 (1 - 2^-50)`; the large-path theorem takes it as a hypothesis until it lands.  `asLgammaAsym` takes `asLogd` through the hypothesis `LogdSpec`, in the form track `expm1` announced: the error `2^-69 + |log x| 2^-78` and the low part `2^-22 + |lh|/2^52`.  The low part of the first product, near `185.5 · 2^-22 = 0.725 · 2^-14`, sets the margin of `asExpd_spec`'s hypothesis `|l| ≤ 2^-14`, so a weaker low-part bound for `asLogd` would need a wider `asExpd` analysis.
+
 ### Results
 
 | File | State | Log |
@@ -31350,6 +31370,21 @@ The analysis of each path tracks absolute errors with explicit magnitude bounds.
 | `TgammaWords`: words of the tables as rationals, weighted Horner bounds, and list evaluation | Committed in `db6c122a` | `gamma-words-3.log` |
 | `TgammaSmall`: `lE` within `2^-48` (kernel), `horner_small`, `small_poly` within `2^-55` of `smallPoly` | Committed in `b9a70213`, `6b225ee1` | `gamma-small-4.log` |
 | `TgammaSmallPath`: `small_sum`, `small_gamma`, `smallPath_within` | Committed in `6b225ee1` | `gamma-spath-4.log` |
+| `TgammaApprox`: `MainFact` on `\|d\| ≤ 1/2 + 2^-50` | Committed in `d06760e6` | none |
+| `TgammaMul.mulDD_spec` | Committed in `e603a331` | `gamma-mul-1.log` |
+| `TgammaMainRed`: `main_red`, `count_spec` | Committed in `8f7f0463` | `gamma-mred-3.log` |
+| `TgammaMainPoly`: `main_poly` within `2^-72` of `mainPoly` | Committed in `8f7f0463` | `gamma-mpoly-1.log` |
+| `TgammaMainLoop`: `shift_step`, `mag_bounds`, `prod_step`, `loop_inv` | Committed in `ef9f4625` | `gamma-mloop-3.log` |
+| `TgammaRecipDD.recip_dd` | Committed in `ef9f4625` | `gamma-rdd-2.log` |
+| `TgammaMainPath`: `x_gap`, `w_spec`, `prod_loose`, `mainPath_within` | Committed in `171f956a` | `gamma-mpath-4.log` |
+| `TgammaTop`: `rsm_near`, `rsm_exact`, `add_top`, `div_top`, `div_overflow` | Committed in `eb4f3983` | `gamma-top-4.log` |
+| `TgammaTiny`: `add_overflow`, `within_pos_inf`, `within_neg_inf`, `fma_zero`, `tinyPath_within` | Committed in `eb4f3983` | `gamma-tiny-2.log` |
+| `TgammaEdge`: `overflowPath_within`, `within_zero`, `underflowPath_within`, `intPath_neg` | Committed in `eb4f3983` | `gamma-edge-2.log` |
+| `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed in `eb4f3983` | `gamma-int-4.log` |
+| Merge of `transcendentals` at `be5749df`, with `Tgamma.md` resolved by keeping both sides | Committed in `b227991f` | `gamma-merge2-1.log` |
+| `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed in `ef012e60` | `gamma-approx-3.log` |
+| `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed in `54c1cb96` | `gamma-expspec-5.log` |
+| `TgammaAsym1`: `LogdSpec`, `sub_exact_binade`, `half_sub`, `one_sub`, `asym_prod` | Committed with this entry | `gamma-asym1-5.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31357,13 +31392,18 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] Path equations
 - [x] Dekker's error-free sum
 - [x] Merge `transcendentals` at `a55d2cfd` (`FmaSpec`, the gamma foundations) as `a765795b`, with the conflicts in `devnotes.md` and `Tgamma.md` resolved by keeping both sides; the track's modules and `FmaSpec`, `GammaBasic`, and `GammaThresholds` build on it (`gamma-merge-1.log`)
-- [ ] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
+- [x] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
 - [x] Exceptional values at `±0`, `±∞`, and NaN (`TgammaSpecial`)
 - [x] Double-double lemmas: `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDDD`, `polyDDD`
-- [ ] Double-double lemmas: `mulDD`, `mulDD3`, `splt`, `sprod`, `poly3`
-- [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
+- [x] Double-double lemma `mulDD`
+- [ ] Double-double lemmas: `mulDD3`, `splt`, `sprod`, `poly3`
+- [ ] `asLogd` and `asSinpid` in terms of the facts, assigned to track `expm1` on 2026-10-12
 - [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
-- [ ] The tiny path, the integer path, and the paths on `[-3, 4]`, above 4, and below -3
+- [x] The reduction and the polynomial of the path on `(-3, 4)`
+- [x] The shift loop, the reciprocal, and the result of the path on `(-3, 4)` (`mainPath_within`)
+- [x] The tiny path and the integer path
+- [x] `asExpd` (`asExpd_spec`)
+- [ ] `asLgammaAsym` and the paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
