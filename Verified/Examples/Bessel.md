@@ -33,7 +33,7 @@ The methods are those that fdlibm's comments describe [1, 2, 3].  Below 2, `j0` 
 
 From 2 up, the functions are `√(2/(π x)) (P cos θ ∓ Q sin θ)` and `√(2/(π x)) (P sin θ ± Q cos θ)` with `θ = x - π/4` for order 0 and `θ = x - 3π/4` for order 1, the large-argument forms of DLMF 10.17.3 and 10.17.4 [4].  fdlibm's `pzero`, `qzero`, `pone`, and `qone` approximate `P` by `1 + R(t)/(1 + t S(t))` and `Q` by `(q₀ + R(t)/(1 + t S(t)))/x` with `t = 1/x²`, `q₀ = -1/8` or `3/8`, on the four ranges that start at 2, at about 2.8571, at about 4.5454, and at 8, chosen by the high word of `x`.  `cos θ` and `sin θ` are `(sin x ± cos x)/√2`, and the one of `sin x ± cos x` that cancels comes from `-cos (2x)` divided by the other, which avoids the cancellation.  Above `2^129` the code drops `P - 1` and `Q`, and from `2^1023` on it does not form `cos (2x)`.
 
-`jn` uses the forward recurrence `J_(k+1) = (2k/x) J_k - J_(k-1)` from `j0` and `j1` when `n ≤ x`, where it is stable, and the leading term of the asymptotic expansion above `2^302`.  Below `2^-29` it takes the leading term `(x/2)^n/n!` of the series, and 0 for `n > 33`.  Otherwise it evaluates a continued fraction for `J_n/J_(n-1)`, whose depth a recurrence for its convergents sets, runs the recurrence backward to orders 0 and 1, rescaling by `1/b` when `b` exceeds `10^100` if `n ln (2n/x)` reaches `ln` of the largest double, 709.78, and normalizes by the larger of `j0 x` and `j1 x`.  `yn` uses the forward recurrence from `y0` and `y1`, which is stable for `Y`, and stops when the value reaches `-∞`.
+`jn` uses the forward recurrence `J_(k+1) = (2k/x) J_k - J_(k-1)` from `j0` and `j1` when `n ≤ x`, where it is stable, and the leading term of the asymptotic expansion above `2^302`.  Below `2^-30` it takes the leading term `(x/2)^n/n!` of the series, and 0 for `n > 33`.  The test `ix < 0x3e100000` of `e_jn.c` compares the high word with that of `2^-30`, while its comment and the docstring of `jnBackward` say `2^-29`.  Otherwise it evaluates a continued fraction for `J_n/J_(n-1)`, whose depth a recurrence for its convergents sets, runs the recurrence backward to orders 0 and 1, rescaling by `1/b` when `b` exceeds `10^100` if `n ln (2n/x)` reaches `ln` of the largest double, 709.78, and normalizes by the larger of `j0 x` and `j1 x`.  `yn` uses the forward recurrence from `y0` and `y1`, which is stable for `Y`, and stops when the value reaches `-∞`.
 
 ## Implementation
 
@@ -60,7 +60,7 @@ The tables `j0Table` (92 words) and `j1Table` (102 words) hold the coefficients 
 
 ## Theorems
 
-`transcendentals` contains no theorem about `Bessel.jn` or `Bessel.yn`.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` writes no `bessel.wasm` and runs [the accuracy check](BesselAccuracy.lean) natively.  The real-analysis results below are proved in `LeanExe/ProofKit`, which [the library's root import](../../LeanExe.lean) imports, and in the integration build `opus-merge-tan-1.log`, in `build/transcendentals` on minideb1, each of them reports only `propext`, `Classical.choice`, and `Quot.sound`.
+`transcendentals` contains no theorem about `Bessel.jn` or `Bessel.yn`.  Branch `w/log` contains accepted lemmas toward them, which [the proof of `jn` and `yn`](#proof-of-jn-and-yn-in-progress) lists.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` writes no `bessel.wasm` and runs [the accuracy check](BesselAccuracy.lean) natively.  The real-analysis results below are proved in `LeanExe/ProofKit`, which [the library's root import](../../LeanExe.lean) imports, and in the integration build `opus-merge-tan-1.log`, in `build/transcendentals` on minideb1, each of them reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Statement |
 |---|---|
@@ -183,9 +183,9 @@ The code has five paths after the reflection of the order, which the table lists
 | Path | Code | Mechanism | Growth, in units of `u M_n` |
 |---|---|---|---|
 | both, `x ≥ 2^302` | `invsqrtpi · phaseCos (n mod 4)` or `phaseSin`, divided by `√x` | Hankel's leading term.  With `λ_k ≤ 2^-270` and at most `2^31` steps, 10.6.1 keeps `J_n` and `Y_n` within `2^-238 √(2/(π x))` of `±J₀`, `±J₁`, `±Y₀`, or `±Y₁`, so the bounds of the path from `2^129` carry over | constant |
-| `jn`, `x < 2^-29` | `(x/2)^n/n!`, and 0 for `n > 33` | the first term of 10.2.2, within the relative error `x²/4`, and underflow | far below 1: `Y_k < 0` and `\|Y_(k+1)\| ≥ (λ_k - 1)\|Y_k\|` give `M_n ≥ \|Y_n\| ≥ 2/(π x)` |
+| `jn`, `x < 2^-30` | `(x/2)^n/n!`, and 0 for `n > 33` | the first term of 10.2.2, within the relative error `x²/4`, and underflow | far below 1: `Y_k < 0` and `\|Y_(k+1)\| ≥ (λ_k - 1)\|Y_k\|` give `M_n ≥ \|Y_n\| ≥ 2/(π x)` |
 | `jn`, `2 ≤ n ≤ x < 2^302` | forward 10.6.1 from `j0` and `j1` | rounding of each step, carried to `n` by the cross product | `≈ 2.8 n` at `n = x` |
-| `jn`, `2^-29 ≤ x < n` | Miller's method: the continued fraction for `J_n/J_(n-1)` cut where `Q(k) > 10^9`, backward 10.6.1 to orders 0 and 1 with rescaling by `1/b` above `10^100`, and normalization by the larger of `j0 x` and `j1 x` | truncation of the fraction, rounding of the backward steps, and the error of `j0` or `j1` | linear in `n` |
+| `jn`, `2^-30 ≤ x < n` | Miller's method: the continued fraction for `J_n/J_(n-1)` cut where `Q(k) > 10^9`, backward 10.6.1 to orders 0 and 1 with rescaling by `1/b` above `10^100`, and normalization by the larger of `j0 x` and `j1 x` | truncation of the fraction, rounding of the backward steps, and the error of `j0` or `j1` | linear in `n` |
 | `yn`, `x < 2^302` | forward 10.6.1 from `y0` and `y1`, stopped at `-∞` | rounding of each step, and overflow once `\|Y_n\|` exceeds the largest double | `≈ 3.7 n` |
 
 For the computed `f_(k+1) = λ_k f_k - f_(k-1) + δ_k` with starting errors `e₀` and `e₁`, 10.6.1 and the cross product give the error at `n` exactly:
@@ -203,10 +203,23 @@ The analysis finds no path where the form `a + b |n|` fails: the starting errors
 | `n ∈ {0, ±1}` | yes, from the accepted theorems of `j0`, `j1`, `y0`, and `y1` and the reflection |
 | exceptional arguments | yes |
 | `x ≥ 2^302`, every `n` | yes, from the path from `2^129` and 10.6.1 |
-| `jn`, `x < 2^-29` | yes |
+| `jn`, `x < 2^-30` | yes |
 | `jn` and `yn`, `x < 2` | yes, with the signs and ratios of `J_k` and `Y_k` for `k > x` from the series |
 | `jn` and `yn`, `2 ≤ x < 2^302`, `n ≤ x/2` | yes, with `E_k` |
 | `jn` and `yn`, `2 ≤ x < 2^302`, `n > x/2` | no: it needs the bound on `M_k(x)` through the turning point |
+
+### Proof of `jn` and `yn`, in progress
+
+Track `log` is proving the ranges of the decision of 2026-10-12 on branch `w/log`, and no theorem about `Bessel.jn` or `Bessel.yn` is accepted yet.  The proof defines `J_n` by the series 10.2.2 with ProofKit's `psum` and `Y_n` for `x > 0` from `Y0` and `Y1` by 10.6.1, carries each rounding error to order `n` by the exact formula of the analysis above, and bounds the result with the moduli.  The table lists the accepted modules on `w/log` with their main results, and the log of the runner's build on minideb1, in which each reports only `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Module | Main results | Log |
+|---|---|---|
+| [Order n](BesselOrderN.lean) | `Jn`, `Yn`, and the integer-order `JZ` and `YZ`; `Jn_zero` and `Jn_one`, `Jn 0 = J0` and `Jn 1 = J1`; `Jn_recur`, 10.6.1 for the series when `x ≠ 0`; `cross`, `J_(n+1) Y_n - J_n Y_(n+1) = 2/(π x)` for every `n` when `x ≠ 0`; `Jn_neg`, `J_n(-x) = (-1)^n J_n(x)` | `bes-on-8.log` |
+| [Error propagation](BesselRecur.lean) | `error_formula`: a sequence with `e_(k+2) = λ_(k+1) e_(k+1) - e_k + δ_k` equals the formula `resp` of the analysis; `kern_le`: the kernel `(π x/2)(Y_m J_n - J_m Y_n)` is at most `(π x/2) M_m M_n` in absolute value | `bes-on-8.log` |
+| [The energy of the recurrence](BesselOrderEnergy.lean) | `energy_bound`: `f_m² (x - m) ≤ (f_0² + f_1²) x` for a real solution of 10.6.1 and `m < x`; `modn_bound`: `(π x/2) M_m² (x - m) ≤ 2.6 x` for `x ≥ 2` and `m < x`; `modn_le`: `M_m ≤ 0.92` for `x ≥ 4` and `2m ≤ x` | `bes-on-8.log` |
+| [The forward recurrence](BesselForward.lean) | `forward`: for `4 ≤ x ≤ 2^302`, `2n ≤ x`, and `n ≤ 2^31`, floats `f_k` that start within `10 u M₀` and `12 u M₁` of a real solution `F` of 10.6.1 with `\|F_k\| ≤ M_k`, and whose steps each add at most `u (3.01 λ_(k+1) \|f_(k+1)\| + \|f_k\|) + 2^-1070`, stay within `(17 + 12 m) u M_m` of `F_m` for every `m ≤ n` | `bes-on-8.log` |
+
+`forward` bounds the weight `(π x/2) M_k²` by `2.6 x/(x - k)` from `modn_bound`, where the analysis measured `x/√(x² - k²)`, so its `b = 12` lies above the measured 2.8: the starting errors contribute `22 · 1.3 u M_m` and step `k` at most `2.6 (1 + 2^-18)(1 + 14.04 (k + 1)/x) u M_m`, whose sum over the steps is at most `11.73 (m - 1) u M_m` for `2m ≤ x`.  The modules for the loops of the code, the Hankel path from `2^302`, the tiny path, and Miller's method for `x < 2` are written and not yet accepted.  The remaining parts are those modules, `yn` for `x < 2`, the decoding of the order, the exceptional arguments, and the theorems that join the paths, and track `log` is doing them.
 
 ### Open parts
 
