@@ -31086,7 +31086,7 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 | Module | Content | State |
 |---|---|---|
 | `ErfcCast`, `ErfcFastAll`, `ErfcFastPath` | `cr_erf_fast` on `[0, 95/16)` and `cr_erfc_fast` below `0x1.713786d9c7c09p+1` | accepted after the hold (`trig-fastpath-5.log`) |
-| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` accepted (`trig-acctiny-3.log`), the rest written, not built |
+| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` at `a39c9426`, the rest and `ErfcSeriesZ` accepted (`trig-accall-2.log`) |
 | `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | written, not built |
 | `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | written, not built |
 | `ErfcAsymPoly`, `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1`, `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x`, and the certificates of `Tacc` | written, not built |
@@ -31099,7 +31099,7 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 - [x] `cr_erf_fast` below `1/16` (`ErfcFastTiny`).
 - [x] The two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1` (`ErfcFastAll`, `ErfcFastPath`).
 - [ ] `exp_1`, `q_1`, and the tables `T1` and `T2`; `erfc_asympt_fast` and the six rows of `T`.
-- [ ] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`.
+- [x] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`.
 - [ ] `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
 - [ ] The 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
 
@@ -31108,6 +31108,10 @@ After the hold `w/trig` merged `transcendentals` at `be5749df` (`dbf35b64`), whi
 `trig-accmain-1` failed on a doc comment placed before `set_option ... in` in the generated bound definitions, and on the first stage of `acc_core_pr`, which used the coefficient's magnitude where the bounds use the field `h0M` above it; `Tr.mono` now lifts the first coefficient to the generated bounds.  `trig-accmain-2` accepted `ErfcAccMain` in 453 seconds, the first module whose proof unrolls loops of `LeanExe.loop` with `Nat.fold_succ` and matches the result to the chain of stage lemmas.  `ErfcAccTiny` was still compiling when the run reached its 20-minute timeout, without a diagnostic, so its proof will be split before it is built again.
 
 `ErfcAccTiny` now splits `taccCore` into four pieces, the Horner loop, the first and second multiplications by `z`, and the final additions, and states `taccCore_eq` by `rfl`.  The proof generalizes each piece's result after its stage lemma applies, so the elaborator never unfolds the whole loop at once.  `trig-acctiny-3` accepted the module in 464 seconds with at most 2.2 GB of anonymous memory, and its scope reached `memory.high` only through page cache while the build used a full CPU.  The same split serves `ErfcEAccPoly` and `ErfcAsymPoly` if their builds prove slow.
+
+`trig-accrows-1` to `trig-accrows-3` accepted `ErfcAccRow`, `ErfcAccPlan`, and the rows up to 40, but the memory guard stopped `ErfcAccRows5`, rows 41 to 47 with series of up to 131 terms, at 3.9 GB.  Probes of row 47 (`trig-accprobe-1` to `trig-accprobe-3`) located the cost in `rowTail`, which shifts the whole series to the row's center in rational arithmetic: 21 seconds and 2.8 GB for one row, against 3.7 seconds for the check of the low part.  Each rational operation in the kernel normalizes its result by a greatest common divisor and builds a structure with proof fields, while integer operations reduce to the kernel's GMP arithmetic on natural numbers.  `ErfcSeriesZ` computes the same shift on integer coefficients and proves `rowBoundZ_eq`, the equality with `rowBoundI`; the tail of row 47 then takes 6.9 seconds and 0.43 GB (`trig-seriesz-3`).  `accBR` also rounds the stage bounds up to multiples of `2^-200`, which `AccHyp` permits since it only bounds each field from below.
+
+With these changes all 47 rows pass (`trig-accrows-4`, `trig-accrows-5`, at most 2.9 GB for `ErfcAccRows5`).  `ErfcAccAll` first checked the low parts of all 47 rows in one declaration and reached 3.9 GB within 30 seconds (`trig-accall-1`); eight checks of at most six rows each, and the conditions of the tiny case split into six declarations, keep it at 3.2 GB, and `trig-accall-2` accepted it in 86 seconds.
 
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`, debtop1)
 
