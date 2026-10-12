@@ -31417,6 +31417,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselMillerT` took three builds.  In `bes-on-22.log` a `set` variable `Qk` and the equation of the same name collided, and the final `linarith` mixed `𝐮` with `1/2^53`; in `bes-on-23.log` the `set` had already rewritten the hypothesis `hQd` to `Qk = Q ...`, so a rewrite with it found no `kern` term.  Taking `le_of_le_of_eq hQ hQd.symm` fixed the last error, and `bes-on-24.log` built the module with only the three standard axioms.
 
+`BesselMillerLog` failed in `bes-on-25.log` at six places in `flag_log`.  A cast of the rational `709782713/1000000` needed `Rat.cast_le` and an explicit cast equation; `2n/x ≥ 4` was false for `n = 2` and `x` near 2 and became `2n/x ≥ 2`; `log v ≤ 63` replaced the bound `log v ≤ v`, which gave a factor `2^63` too large; a `set` variable let `rw [Real.log_div]` rewrite `log V` itself, so the quotient rule became a stated term; and the relative bound `V ≤ (1 + 2^-51) v` was false and became `V ≤ (1 + 2^-50) v`.  `bes-on-26.log` built the module with only the three standard axioms, and the docstring no longer names a lemma `flag_pow` that the module does not contain.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
