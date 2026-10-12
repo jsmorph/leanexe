@@ -30501,3 +30501,60 @@ Opus merged `w/expm1` at `df483a74` (the `expm1` and `tanh` theorems), `w/erf` a
 At the user's request Opus pushed `transcendentals` to `github.com/jsmorph/leanexe` at `690f8545`, before this test run, from a new repository in `/home/somebody/src/machines/leanexe-push/repo` filled from a bundle of minideb1's branch, with `gh`'s credentials given to that one command.  The user directed that working files stay under `/home/somebody/src/machines` and out of `/tmp`, on every machine, and that the workstation's `~/src/leanexe` is not to be touched; the agents' scratch directories and `worker-rules.md` moved to `/home/somebody/src/machines/work`.
 
 Decisions since the last entry: `erfc` moves to CORE-MATH's `erfc` with the software fused multiply-add and a one-step bound, since a worst-case analysis of fdlibm's algorithm reaches seven or eight steps; the Bessel theorems state their error as `c · 2^-53 · √(J² + Y²)`, with `c` set by the proof after it uses the pre-rounding forms of the trig and log results; `asinh` and `acosh` may fall to three steps on a subrange if their `log1p` compositions cannot be closed; and the gamma facts are proved only to the precision a one-step bound needs, not to CORE-MATH's correct-rounding precision.  The first reflector change made the program term linear, but the kernel's checking of the generated proofs still grows faster than linearly, and the ports track is measuring that before any further change.
+
+## 2026-10-11: The `tan` kernel (track `trig`)
+
+`TanWords` states `Tan.kernelTan` on words.  Below the high word `0x3FE59428` (`|x| < 0.67434`), `smallW` adds the correction `corrW x y` to `x` and, for odd quadrants, replaces `x + r` by the compensated reciprocal `-1/(x + r)`.  From `0x3FE59428` on, `bigW` evaluates the same correction at `x' = π/4 - |x + y|` and returns `±(v - 2 (x' - (w ^ 2/(w + v) - r)))` with `v = ±1`.  `TanPoly.corr_AB` bounds the correction's rounding error by `1.336 u X ^ 3 + 1.8 u X ^ 5` plus terms in `u ^ 2` and `η`, `TanMath.tan_tail_expand` bounds `tan (x + y)` against the kernel polynomial with `TanKernelPoly.tan_kernel_error`, and `TanEven.even_within` proves the even path within one step of `tan r` for `2 ^ -70 ≤ |x| ≤ 0.67434` and a reduction error up to `|r| / 2 ^ 59`.  It uses `TanStep.near_bin` (same binade, error below one spacing) above `|x| = 0.4643` and `TanStep.near_rel` (error below `0.74 u |tan r|`) below.
+
+The odd path rounds `w = x + r`, truncates `w` and `-1/w` to their high 32 bits, and corrects the quotient with `t z`, which is exact because both heads have 21 significant bits.  `TanTrunc` proves the truncation facts and a Sterbenz lemma for `z - x`, `TanComp.comp_real` bounds the correction in real numbers scaled by `w`, and `TanOdd.odd_spec` gives a real `τ`, to which the result is nearest, within `u / (2 ^ 11 |W|)` of `-1/W` for `W = x + r`.
+
+The first build of `TanOdd` held minideb1's Lean slot for 26 minutes at the 4 GB memory limit until the coordinator stopped it.  Probes of parts of the module (`build/transcendentals/P1*.lean`, `p1*.log`) with a monitor of the Lean process's anonymous memory located the cause in one declaration, `smallW_odd : smallW x y true = oddW x (corrW x y) := rfl`.  The definitional check unfolded `Wasm.IEEE64.add` and the other operations instead of the two definitions and passed 3 GB within 16 seconds, while the definition alone stayed at the import baseline of 0.47 GB.  `simp only [smallW, oddW, mask, ...]` proves the same equation in 6 seconds.  The proof of `odd_spec` is also split into one lemma per rounding step, and the module now builds in about 20 seconds with 0.55 GB of anonymous memory (`tan-odd-9.log`, `tan-odd-9.mem`).  Equations between definitions built from IEEE operations should be proved with `simp only` and the definitions, never with `rfl`.  The resident set of a Lean process includes about 6.5 GB of mapped `.olean` files, so the monitor (`build/transcendentals/memwatch.sh`) reads `RssAnon`.
+
+| Module | Result |
+|---|---|
+| `TanStep` | `near_rel`, `near_bin`, `word_value`, `binade`: final steps for a nearest result. |
+| `TanWords` | `smallW`, `bigW`, `kernelTan_small_bits`, `kernelTan_big_bits`. |
+| `TanPoly`, `TanMath` | `corr_AB`, `polyR_AB`, `tan_tail_expand`, `tan_diff`. |
+| `TanTrunc`, `TanEven` | `trunc_spec`, `sterbenz`, `even_sum`, `even_within`. |
+| `TanComp`, `TanOdd` | `comp_real`, `odd_spec`. |
+
+- [x] Even path below `0x3FE59428` (`even_within`).
+- [x] Odd path below `0x3FE59428`: the real error (`odd_spec`).
+- [ ] Odd path: the final step (`odd_within`).
+- [ ] From `0x3FE59428` on: the argument `x'`, the real error (`TanBigReal`), and the final step for both parities.
+- [ ] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
+- [ ] `TanTheorem` (byte theorem) and `TanFile`.
+
+## 2026-10-11: The `tan` theorem (track `trig`)
+
+`TanOddStep.odd_within` finishes the odd path below `0x3FE59428`.  From `|x| = 0.4643` on, `-1/tan r` lies in `[1, 2)`, and the error stays below one spacing, `2 ^ -52`, on four intervals of `|x|` with lower bounds on `tan` from `Real.sin_bound` and `Real.cos_bound` at the left ends; the largest ratio to the spacing is 0.90.  Below 0.4643, `even_err X ≤ 0.6 u X` keeps the error within `0.74 u |tan r| ^ -1`, and `TanStep.near_rel` applies.
+
+From `0x3FE59428` on, the kernel evaluates its polynomial at `x' = (π/4 - |x|) + (π/4 lo - |y|)`.  The first difference is exact by Sterbenz's lemma, and `TanBigWords.arg_spec` places `x'` within `u |x'|` and `2 ^ -100` of `P - |x + y|`, where `P` is the two-word value of `π/4`, within `2 ^ -68` of `π/4` by `Real.pi_gt_d20` and `Real.pi_lt_d20`.  `chain_spec` follows the kernel through `w`, `w ^ 2`, `w + v`, the quotient, the two subtractions, the exact doubling, and the final subtraction, and `TanBigReal.big_real` bounds the computed `x' - (w ^ 2/(w + v) - r)` within `2.4 u |x'| + 4 η` of `W v/(W + v)`; the rounding of `w` enters only through `W ^ 2/(W + v) - w ^ 2/(w + v)`, which carries a factor of the size of `|x'|`.  With `T_v (y) = v - 2 y v/(y + v)`, `TanBigClose` proves `T_1 (tan b) = tan (π/4 - b)`, `T_{-1} (tan b) = -1/tan (π/4 - b)`, and `T_v (A) - T_v (B) = 2 (B - A)/((A + v)(B + v))`, and bounds the error against `T_v (tan b)` for `b = π/4 - |ρ|`: below `0.95 u` from `|x'| = 0.05` on, where `T_1` lies in `[0.79, 0.91]` and `T_{-1}` in `[-1.27, -1.09]`, and below `0.45 u` with `|T_v| ≥ 0.9` below 0.05.  `TanBigStep.big_within` multiplies by the sign word exactly and applies `near_bin` (binade 1022 for even quadrants, 1023 for odd) or `near_rel`.
+
+`TanWith.tan_within` assembles `Tan.tanWith`.  Below `2 ^ -27`, `x.toUInt64 = 0` (from `F64Convert.toUInt64_eq`), the result is `x`, and `|tan x - x| ≤ |x| ^ 3` gives one step through `TrigTiny.self_step`.  Up to the high word `0x3fe921fb`, `kernel_within` runs the kernel with no tail.  Above, `TrigReduce.remPio2_spec` gives the reduction, `tan_quadrant` turns `tan r` or `-1/tan r` into `tan |x|` by the parity of `N`, and the result is negated for a negative `x`.  The reduction allows `|y0|` up to 0.78541, so the large-argument path covers `0.6743 ≤ |x| ≤ 0.78541`.
+
+Two kinds of failure cost builds.  `linarith` failed on goals with `1 / 2 ^ 1075` in modules without `set_option exponentiation.threshold 1200`, since the power stayed an atom.  `|a - |b||` does not parse, since `||` is a token, and `| |a| - |b| |` fails with "expected no space before"; `|(a - |b|)|` parses.
+
+| Module | Result |
+|---|---|
+| `TanOddStep` | `odd_within`: the odd path below `0x3FE59428`. |
+| `TanBigReal`, `TanBigClose` | `big_real`, `tan_quarter`, `big_close_hi`, `big_close_lo`. |
+| `TanBigWords`, `TanBigStep` | `arg_spec`, `chain_spec`, `big_within`: the path from `0x3FE59428` on. |
+| `TanWith` | `tan_within`: one step for every finite `x`. |
+| `TanTheorem`, `TanFile` | `tan_bytes_accuracy`, the exact results, and the file theorems for `build/verified/tan.wasm`. |
+
+`TanTheorem.tan_bytes_accuracy` carries `tan_within` to the bytes of `Tan.compiled.module`, whose function 13 is the export `tan` and which reads `Trig.invPi` and `Trig.halfPi` at addresses 4096 and 4264, for every call in a sequence of calls from the initial store.  `tan_pos_zero`, `tan_neg_zero`, and `tan_nonfinite` give `tan (±0) = ±0` and the canonical NaN for an infinity or a NaN as equalities of bits.  `TanFile` checks `build/verified/tan.wasm`, 5,756 bytes from `tools/Emit.lean`, and its decode theorem takes its bytes from `tan_bytes_accuracy`, so its two axiom lines cover that theorem.  The `tests/verified/run.sh` entry is `tan:TanTheorem:TanFile`.
+
+| Log | Content |
+|---|---|
+| `tan-odd-9.log`, `tan-odd-9.mem` | `TanOdd` after the split, 20 seconds and 0.55 GB. |
+| `tan-oddstep-1.log`, `tan-big-1.log` | `TanOddStep`. |
+| `tan-big-2.log` to `tan-big-7.log` | `TanBigReal`, `TanBigClose`, `TanBigWords`, `TanBigStep`. |
+| `tan-with-1.log` | `TanWith.tan_within`. |
+| `tan-theorem-2.log`, `tan-file-1.log` | The byte theorem and the file theorems. |
+
+- [x] Even and odd paths below `0x3FE59428`.
+- [x] The path from `0x3FE59428` on, both parities.
+- [x] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
+- [x] `TanTheorem` and `TanFile`.
+- [ ] `Sinpi.sinpi`, `cospi`, and `tanpi`.
