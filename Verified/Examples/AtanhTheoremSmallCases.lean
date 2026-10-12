@@ -10,18 +10,10 @@ rational arithmetic.  `artanh_lower` bounds `2 artanh aL` from below by the rati
 -/
 
 namespace Verified.Examples.AtanhTheoremSmallCases
-open CodeLib.IEEE64 LeanExe.ProofKit Log1pTheoremNear Log1pTheoremConst AtanhTheoremSmall
+open CodeLib.IEEE64 LeanExe.ProofKit Log1pTheoremNear Log1pTheoremConst AsinhTheoremCompose
+  AtanhTheoremSmall
 
 set_option exponentiation.threshold 4096
-
-theorem errQuad_le (v E : ℝ) (h0 : 0 ≤ v) (h1 : v ≤ 285 / 1000)
-    (hE : 174 / 100 / 2 ^ 53 * (285 / 1000) ^ 2 + 285 / 1000 / 2 ^ 59 ≤ E) :
-    174 / 100 / 2 ^ 53 * v ^ 2 + v / 2 ^ 59 ≤ E := by
-  have h2 : v ^ 2 ≤ (285 / 1000) ^ 2 := pow_le_pow_left₀ h0 h1 2
-  have h3 : 174 / 100 / 2 ^ 53 * v ^ 2 ≤ 174 / 100 / 2 ^ 53 * (285 / 1000) ^ 2 :=
-    mul_le_mul_of_nonneg_left h2 (by norm_num)
-  have h4 : v / 2 ^ 59 ≤ 285 / 1000 / 2 ^ 59 := div_le_div_of_nonneg_right h1 (by norm_num)
-  linarith
 
 theorem artanh_lower (aL L : ℝ) (q Lq Uq : ℚ) (n : ℕ) (hq : (q : ℝ) = aL) (hq0 : 0 ≤ q)
     (hq1 : q ≤ 1 / 2) (hLo : Lq ≤ logLo q n) (hHi : logHi (-q) n ≤ Uq)
