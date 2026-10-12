@@ -113,7 +113,7 @@ theorem hexParse_spec (nu : ℕ) (hnu : nu ≤ 2000) (s : List UInt8) (hs : s.le
     (i0 : ℕ) (hi0 : i0 ≤ s.length) :
     (hexParse (UInt64.ofNat nu) (words s) (UInt64.ofNat i0)).1 = (hexBranch (s.drop i0)).isSome ∧
       ∀ i f e, hexBranch (s.drop i0) = some (i, f, e) →
-        (∀ b ∈ i ++ f, isHexDigit b = true) ∧
+        (∀ b ∈ i ++ f, isHexDigit b = true) ∧ i0 + (i ++ f).length ≤ s.length ∧
         (hexParse (UInt64.ofNat nu) (words s) (UInt64.ofNat i0)).2.1.toNat =
           hexValue (((i ++ f).drop ((i ++ f).takeWhile (· == 0x30)).length).take
             (min ((i ++ f).length - ((i ++ f).takeWhile (· == 0x30)).length) 15)) ∧
@@ -335,7 +335,7 @@ theorem hexParse_spec (nu : ℕ) (hnu : nu ≤ 2000) (s : List UInt8) (hs : s.le
   simp only [Option.map_some, Option.some.injEq, Prod.mk.injEq] at hbr
   obtain ⟨rfl, rfl, he⟩ := hbr
   rw [← he, ← hL, ← hz, ← hkept]
-  refine ⟨hLd, hexVal_spec s hs i0 ni L hreads hbound hnis hLd z kept (by omega) (by omega),
+  refine ⟨hLd, by omega, hexVal_spec s hs i0 ni L hreads hbound hnis hLd z kept (by omega) (by omega),
     anyNonzero_spec s hs i0 ni L hreads hbound hnis (z + kept) L.length (by omega) le_rfl, ?_⟩
   -- the biased exponent of the last kept digit
   have hlt : i2 < s.length := by
