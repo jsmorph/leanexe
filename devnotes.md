@@ -30934,3 +30934,48 @@ The documentation agent wrote the twenty function documents on branch `w/docs` (
 The `sinh` and `cosh` integration: Opus merged `w/expm1` at `b76268b2` (`be50832f`), added `SinhBytes` to `Verified.lean`, the three new ProofKit modules to `LeanExe.lean`, and `sinh:SinhBytes:SinhFile` to the file loop of `tests/verified/run.sh`.  The build passed with 9,452 jobs (`opus-merge-sinh-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-14.log`) with thirteen file checks, 15,837 cases, and every accuracy check.
 
 Four review agents checked the twenty function documents against the Lean sources at `698424f7`, the journal, the plan, the logs, and the pinned C sources, corrected the facts they could check, removed the narration of the writing and the references to the commit the documents were first written against, described the unmerged branch work by branch and commit, and fixed the language.  The documents were committed as `46f239d5` on `w/docs` and merged.  Their findings in Lean sources (the license notices of every fdlibm port and of the CORE-MATH ports, wrong docstring bounds in `Log2.lean`, `BesselAccuracy.lean`, and `Reference.lean`) are added to "Corrections found by the documentation review" in `transcendentals.md`.  The IEEE 754-2019 clause contents rest on one reading of the standard by the first documentation agent; the reviewers could not reach the paywalled text.
+
+## 2026-10-12: The floating-point proof of `tgamma` (track arc)
+
+The coordinator assigned the floating-point proof of `Tgamma.tgamma`: `WithinSteps 1` against `Real.Gamma` for every finite input other than the poles, the exact results at the poles, zeros, infinities, and NaN, and the overflow and underflow thresholds from `GammaThresholds`.  Track `erf` proves the mathematical approximation facts, the fused multiply-add enters as the hypothesis `FmaSpec.FmaNearest` that track `expm1` is proving, and the rounding test of the code may be ignored wherever a relative bound of about `2^-60` suffices.  The byte theorem waits for the compiler change.
+
+### Accuracy budget
+
+The final step of every path rounds a double-double `fh + fl` once, or adds a tiny `eps` first.  `F64RoundNearest.within_one_of_rounded_rel` gives one step when the exact sum lies within `ρ |Γ x|` of `Γ x` with `ρ ≤ 1/(2^53 + 1)`.  The approximation facts therefore need only about `2^-60`, and the double-double arithmetic contributes errors near `2^-100`.  A model with Python's `decimal` module at 90 digits (`gamma/py/` in the scratch directory) measured the approximation errors of the code's formulas at dense sample points.
+
+| Formula | Largest sampled error | Stated tolerance |
+|---|---|---|
+| `Γ (1 + x)` below `1/4`, fast path | `2^-63.3` | `2^-60` |
+| `Γ (7/2 + d)`, `\|d\| ≤ 1/2` | `2^-67` absolute | `2^-62` |
+| accurate path, `\|x\| < 1/4` and nine ranges | `2^-108` to `2^-115` relative | `2^-62` |
+| Stirling's forms above and below `11.5` | `2^-67.8` absolute | `2^-64` |
+| `log (1 + z)` kernel, `\|z\| ≤ 1/2400` | `2^-73.4` | `2^-70` |
+| tables of `log`, `exp`, `sin (π x)`, and the split constants | `2^-89` or smaller | `2^-80` |
+| `exp` kernel, `\|X\| ≤ 513/1024` | `2^-78` | `2^-74` |
+| `sin (π d/128)` and `cos (π d/128)` kernels | `2^-74.3 \|d\|`, `2^-81.4 d²` | `2^-71 \|d\|`, `2^-78 d²` |
+
+An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) shows that the index `j` increases with the mantissa in each of the 32 blocks and that `|r1 r2 t - 1| ≤ 0.000403 < 1/2400` at every interval end, hence everywhere.
+
+### Interface with track `erf`
+
+`TgammaApprox` states the facts as propositions over the exact rational values of the table words (`q tab i = ratOfWord tab[i]!`), with polynomials evaluated by `PolyBound.eval`.  The coordinator received the proposal with commit `b92f7941`.  The database of 57 hard cases needs no separate fact: `AccRangeFact` and an exact evaluation at those arguments bound `Γ` there.
+
+### Results
+
+| File | State | Log |
+|---|---|---|
+| `TgammaApprox` | Committed in `b92f7941` | `gamma-approx-1.log` |
+| `TgammaBranches`: one function per path and the equations `tgamma_special` to `tgamma_main` | Committed in `da5566d6` | `gamma-branches-2.log` |
+| `F64TwoSum.fast_two_sum`: Dekker's error-free sum for `\|b\| ≤ \|a\| < 2^900` | Committed in `da5566d6` | `gamma-twosum-2.log` |
+
+The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
+
+- [x] Approximation statements, sent to the coordinator
+- [x] Path equations
+- [x] Dekker's error-free sum
+- [ ] Merge `transcendentals` after the coordinator's push (`FmaSpec`, the gamma foundations)
+- [ ] Exceptional values: `±0`, `±∞`, NaN, the negative integers, `2^-1024`, the overflow and underflow paths
+- [ ] Double-double lemmas: `twoSum`, `fastSum`, `sumDD`, `mulDD`, `mulDDD`, `mulDD3`, `polyDDD`, `splt`, `sprod`, `poly3`
+- [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
+- [ ] Each path, the accurate path, and the database
+- [ ] `tgamma_within_one`
