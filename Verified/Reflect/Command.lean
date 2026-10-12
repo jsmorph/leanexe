@@ -2761,12 +2761,169 @@ def addBoundDefinition (name : Name) (type value : Lean.Expr) : MetaM Unit := do
   addAndCompile <| .defnDecl <| mkDefinitionValEx name [] type value
     (.regular (getMaxHeight (← getEnv) value + 1)) .safe [name]
 
-/-- Adds the theorem `name : ∀ xs, lhs = root.term`, for `root.proof : own = root.term` with `own`
-the value of `lhs`'s definition at its arguments, which the kernel checks by unfolding `lhs`. -/
-def addEquation (name : Name) (xs : Array Lean.Expr) (lhs : Lean.Expr) (root : Bound) :
+/-- The record type, its `Flat` tuple type and instance, and the value `x` of `e = Flat.flat x`,
+when the type is a structure without parameters that holds arrays, which `shapeOf` represents by
+its tuple of fields.  A structure with parameters keeps the flattened form, so that the lemmas of
+`flatFieldEq`, named after the structure, belong to one type. -/
+def recordFlat? (e : Lean.Expr) :
+    MetaM (Option (Lean.Expr × Lean.Expr × Lean.Expr × Lean.Expr)) := do
+  let (``LeanExe.Pipeline.Flat.flat, #[type, τ, inst, x]) := e.getAppFnArgs | return none
+  let .const _ _ := type | return none
+  if (← shapeOf type).ty matches .elem _ then return none
+  return some (type, τ, inst, x)
+
+/-- The proof of `(Flat.flat x).path = x.f`, for field `f` of a record type that holds arrays at
+the leaf `path` of its tuple tree, from the theorem `base.flat_field.R.f`, which is added once per
+program, record type, and field and proved by `rfl` with `v` free.  The kernel then unfolds only
+the `Flat` instance and structure eta, never the term that `x` stands for. -/
+def flatFieldEq (base : Name) (type τ inst : Lean.Expr) (path : List Bool) (field : Name)
+    (x : Lean.Expr) : MetaM Lean.Expr := do
+  let .const n _ := type
+    | throwError "verified_compile: the record {type} of a field lemma has parameters"
+  let name := base ++ `flat_field ++ n ++ field
+  unless (← getEnv).contains name do
+    let (stmt, proof) ← withLocalDeclD `v type fun v => do
+      let lhs ← tuplePath (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type τ inst v) path
+      let rhs ← mkProjection v field
+      let proof ← mkExpectedTypeHint (← mkEqRefl rhs) (← mkEq lhs rhs)
+      return (← mkForallFVars #[v] (← mkEq lhs rhs), ← mkLambdaFVars #[v] proof)
+    addTheorem name stmt proof
+  return mkApp (mkConst name) x
+
+/-- `y`, for an application of a structure's constructor whose fields are the projections of `y`
+in order, which structure eta makes equal to `y`. -/
+def structEta? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let some fs ← ctorFields? e | return none
+  let mut y? : Option Lean.Expr := none
+  for h : i in [0:fs.size] do
+    let some (j, y) ← structProj? fs[i] | return none
+    unless j == i do return none
+    if let some y' := y? then
+      unless y' == y do return none
+    else y? := some y
+  let some y := y? | return none
+  unless ← isDefEq (← inferType y) (← inferType e) do return none
+  return some y
+
+/-- Whether `x` is a variable or a projection of one. -/
+partial def isVarPlace (x : Lean.Expr) : MetaM Bool := do
+  if x.isFVar then return true
+  match x.getAppFnArgs with
+  | (``Prod.fst, #[_, _, p]) | (``Prod.snd, #[_, _, p]) => isVarPlace p
+  | _ =>
+    let some (_, p) ← structProj? x | return false
+    isVarPlace p
+
+/-- The term under the pair projections of `e`, and the steps to `e` from it, `false` for a first
+component and `true` for a second, before `path`. -/
+partial def pairPath (e : Lean.Expr) (path : List Bool) : Lean.Expr × List Bool :=
+  match e.getAppFnArgs with
+  | (``Prod.fst, #[_, _, p]) => pairPath p (false :: path)
+  | (``Prod.snd, #[_, _, p]) => pairPath p (true :: path)
+  | _ => (e, path)
+
+/-- `x.f`, for `e = (Flat.flat x).path` with `x` a variable or a projection of one, of a record type
+that holds arrays, and `f` the field at the leaf `path` of its tuple tree.  Both sides hold the
+variable, so the kernel compares them by unfolding the `Flat` instance and structure eta. -/
+def placeField? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let (flat, path) := pairPath e []
+  if path.isEmpty then return none
+  let some (type, τ, inst, x) ← recordFlat? flat | return none
+  unless ← isVarPlace x do return none
+  let some (ctor, fields) ← structOf? type | return none
+  let tree ← flatTree type τ inst ctor
+  let some (i, _) := tree.find? (·.2 == path) | return none
+  return some (← mkProjection x fields[i]!)
+
+/-- `y`, for a pair `(y.1, y.2)` or an application of a structure's constructor whose fields are the
+projections of `y` in order, which eta makes equal to `y`. -/
+def etaStep? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  if let (``Prod.mk, #[_, _, a, b]) := e.getAppFnArgs then
+    if let (``Prod.fst, #[_, _, y]) := a.getAppFnArgs then
+      if let (``Prod.snd, #[_, _, y']) := b.getAppFnArgs then
+        if y == y' then return some y
+    return none
+  structEta? e
+
+/-- The field of a projection of an application of a structure's constructor. -/
+def ctorProjStep? (e : Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let some (i, p) ← structProj? e | return none
+  let some fs ← ctorFields? p | return none
+  return fs[i]?
+
+/-- A subterm `Flat.flat x` of `e` of a record type that holds arrays and not in `skip`, with no
+loose bound variable, innermost first: the subterms of a term come before it. -/
+partial def innerRecordFlat? (skip : Array Lean.Expr) (e : Lean.Expr) :
+    MetaM (Option (Lean.Expr × Lean.Expr × Lean.Expr × Lean.Expr)) := do
+  let sub ← match e with
+    | .app f a => do
+      if let some r ← innerRecordFlat? skip f then pure (some r) else innerRecordFlat? skip a
+    | .lam _ t b _ | .forallE _ t b _ => do
+      if let some r ← innerRecordFlat? skip t then pure (some r) else innerRecordFlat? skip b
+    | .letE _ t v b _ => do
+      if let some r ← innerRecordFlat? skip t then pure (some r)
+      else if let some r ← innerRecordFlat? skip v then pure (some r)
+      else innerRecordFlat? skip b
+    | .mdata _ b | .proj _ _ b => innerRecordFlat? skip b
+    | _ => pure none
+  if sub.isSome then return sub
+  if e.hasLooseBVars || skip.contains e then return none
+  recordFlat? e
+
+/-- `b` with each component `(Flat.flat x).path` of a record that holds arrays, at the leaf `path`
+of the record's tuple tree for field `f`, written as `x.f`.  When `x` holds no variable that a
+binder inside the term binds, a lemma of `flatFieldEq` rewrites it by congruence on the term with
+the occurrence abstracted at reducible transparency, innermost first, so that the kernel unfolds
+neither `x` nor a term that unfolds to it.  When `x` is a variable or a projection of one, also
+under a binder, the component becomes `x.f` behind a type hint, which the kernel checks with the
+variable free.  The hint also covers the eta of a pair or a structure into `y` when `y` is a
+variable or a projection of one, and, where a term holds a variable of the context, the reduction
+of a projection of a constructor's application.  A component whose `x` holds a bound variable and
+is not a variable or its projection keeps its form. -/
+def fieldTerms (base : Name) (b : Bound) : MetaM Bound := do
+  let mut term := b.term
+  let mut proof := b.proof
+  let mut done : Array Lean.Expr := #[]
+  repeat
+    let some (type, τ, inst, x) ← innerRecordFlat? done term | break
+    let flat := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type τ inst x
+    done := done.push flat
+    let some (ctor, fields) ← structOf? type
+      | throwError "verified_compile: the record {type} is not a structure"
+    let tree ← flatTree type τ inst ctor
+    for (i, path) in tree do
+      let occ ← tuplePath flat path
+      let abst ← withReducible (kabstract term occ)
+      unless abst.hasLooseBVars do continue
+      unless abst.instantiate1 occ == term do
+        throwError "verified_compile: a field of {type} abstracts to a different term"
+      let eqn ← flatFieldEq base type τ inst path fields[i]! x
+      let some (_, _, rhs) := (← inferType eqn).eq?
+        | throwError "verified_compile: the field lemma {eqn} is not an equation"
+      let motive := Lean.mkLambda `t .default (← inferType occ) abst
+      let step ← mkCongrArg motive eqn
+      let term' := abst.instantiate1 rhs
+      proof ← mkEqTrans proof (← mkExpectedTypeHint step (← mkEq term term'))
+      term := term'
+  let lctx ← getLCtx
+  let reduced ← Meta.transform term (post := fun e => do
+    if let some e' ← placeField? e then return .done e'
+    if let some y ← etaStep? e then
+      if ← isVarPlace y then return .done y
+    unless e.hasAnyFVar lctx.contains do return .done e
+    return .done ((← ctorProjStep? e).getD e))
+  if reduced == term then return if term == b.term then b else ⟨term, proof⟩
+  let (lhs, _) ← eqSides proof
+  return ⟨reduced, ← mkExpectedTypeHint proof (← mkEq lhs reduced)⟩
+
+/-- Adds the theorem `name : ∀ xs, lhs = T`, for `root.proof : own = root.term` with `own` the value
+of `lhs`'s definition at its arguments, which the kernel checks by unfolding `lhs`, and `T` the term
+that `fieldTerms` gives for `root.term`, with the lemmas of the program `program`. -/
+def addEquation (program name : Name) (xs : Array Lean.Expr) (lhs : Lean.Expr) (root : Bound) :
     MetaM Unit := do
   let (own, _) ← eqSides root.proof
   let step ← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs own)
+  let root ← fieldTerms program root
   addTheorem name (← mkForallFVars xs (← mkEq lhs root.term))
     (← mkLambdaFVars xs (← mkEqTrans step root.proof))
 
@@ -2858,7 +3015,7 @@ def addDepthBound (base : Name) (r : Reflected) (B Fi k : Lean.Expr) (params : A
   let equation (name eq : Name) (root : Bound) : MetaM Unit := do
     let (own, _) ← eqSides root.proof
     let args := own.getAppArgs
-    addEquation (base ++ eq) (#[k] ++ params)
+    addEquation base.getPrefix (base ++ eq) (#[k] ++ params)
       (mkApp2 (mkConst (base ++ name)) args[args.size - 2]! tuple) root
   equation cost (Name.mkSimple (cost.toString ++ "_eq"))
     (← bodyBoundEq boundThm (args ++ [(`rest, rest)]) r params env resultShape base.getPrefix
@@ -2922,7 +3079,7 @@ def addCreditBound (base : Name) (r : Reflected) (g : Lean.Expr) (pf : List Bool
   let proof ← congr2 natAdd (credit env) CR c c (some hc) none
   let lhs := if depth then mkApp2 (mkConst (base ++ `bound)) k tuple
     else mkApp (mkConst (base ++ `bound)) tuple
-  addEquation (base ++ `bound_eq) (if depth then #[k] ++ params else params) lhs
+  addEquation base.getPrefix (base ++ `bound_eq) (if depth then #[k] ++ params else params) lhs
     ⟨mkApp2 natAdd CR c, proof⟩
 
 /-- Reflects definition `name` as a function that may call the functions `sigs`, meaning
@@ -3009,7 +3166,8 @@ def reflectDefinition (base name : Name) (sigs funs prog : Lean.Expr) (callees :
     let root : Bound :=
       ⟨root.term.replaceFVar k (mkNatLit 0), root.proof.replaceFVar k (mkNatLit 0)⟩
     let costEq := base ++ Name.mkSimple (cost.toString ++ "_eq")
-    addEquation costEq params (mkApp (mkConst costName) (← reflected.tupleOf params)) root
+    addEquation base.getPrefix costEq params (mkApp (mkConst costName) (← reflected.tupleOf params))
+      root
     if paid then addCreditBound base reflected g pf false params env k vars
     let numeralEq := if (natOf root.term).isSome then some costEq else none
     return { reflected with bound? := some { bound := costName, numeralEq, credited? }, paid }

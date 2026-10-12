@@ -28182,9 +28182,9 @@ standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong
   bytes did not change, so the GPT tests did not run.  `main` had no commits after `33f15752`, so
   it fast-forwards to `verified`.
 - [x] Amortized push charge and recursion depth bound.
-- [ ] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
+- [x] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
   structure, spectral test values.
-- [ ] Record fields in `bound_eq`.
+- [x] Record fields in `bound_eq`.
 
 ### Amortized growth and recursion: design
 
@@ -28799,3 +28799,48 @@ Later candidates: SplitMix64 advances a Weyl sequence, the case `a = 1` of the L
 its output mixer is a bijection.  PCG combines an LCG state with an output permutation and has the
 LCG's period.  xoshiro256** has period `2^256 - 1`, which requires the primitivity of a polynomial
 of degree 256 over GF(2).
+
+## 2026-10-11: Record fields in `bound_eq`
+
+The bound equations showed a record's arrays through its flattening: `compiled.fillOrder.bound_eq`
+in `Verified/Examples/Fields.lean` stated `blockCost (Flat.flat b).1.size + blockCost
+(Flat.flat b).2.1.size` where the definition reads `b.prices` and `b.sizes`.  The reflector builds a
+value's bound from its source value, its flattening.  The `Flat` instance of a structure whose
+tuple holds arrays is a tuple of its fields: `flatTree` checks that the leaves are distinct fields,
+and `shapeOf` that every field is present.  So `(Flat.flat x).path` is, by structure eta and the
+instance's unfolding, the field at the leaf `path`.
+
+A first plan rewrote these terms behind one type hint.  A fresh agent's review found that the hint
+would let the kernel evaluate the term that holds the record when it is a call, such as
+`relabel w k` in `relabel`'s bound, the copy of a borrowed result.  The kernel's `is_def_eq_core`
+tries `lazy_delta_reduction` before structure eta, so it unfolds a call to reach a constructor
+([type_checker.cpp](https://github.com/leanprover/lean4/blob/master/src/kernel/type_checker.cpp)).
+
+`addEquation` now runs `fieldTerms`.  A lemma `p.flat_field.R.f : ∀ v, (Flat.flat v).path = v.f`,
+added once per program, record type, and field and proved by `rfl` with `v` free, rewrites each
+component by congruence on the term with the occurrence abstracted, innermost first.  The
+abstraction runs at reducible transparency, as `rw` does, so that it never matches a term that only
+unfolds to the occurrence.  A component of a variable or its projection, also under a binder, such
+as a loop's state, becomes `x.f` behind a type hint, which the kernel checks with the variable free.
+A last step reduces the projections of constructor applications and applies the eta of pairs and
+structures when the result is a variable or its projection, which turns
+`{ prices := b.prices, sizes := b.sizes, fills := b.fills }` into `b`.  The projections are
+projection functions, so the statements print `b.prices` and match what a user writes.  A record
+with parameters keeps the flattened form, so that each lemma, named after the structure, belongs to
+one type.
+
+`fillOrder`'s bound became `blockCost b.prices.size + blockCost b.sizes.size`, `advance`'s
+`blockCost (g.cells.size * 2)`, and `relabel`'s `blockCost ((relabel w k).grid.cells.size * 2)`.
+`Fields.lean` gained `Tape`, whose `Flat` instance is a pattern, `pushPrices`, which extends a
+field's array in a loop whose state is the record, and `heavyPick`, which returns either its
+borrowed argument or a call's result.  Their equations name the fields, `pushPrices`'s step cost
+included, and their cases check the blocks live after each call.
+
+- [x] `fieldTerms` in `addEquation`, the lemmas, the three examples, their cases, and the README.
+- [x] A review by a fresh agent, the suite, and the commit.  The verified suite passes 16,345
+  cases, none failed.
+
+A second fresh agent reviewed the implementation.  It found that structure eta and pair eta could
+produce a call, which the final hint would make the kernel unfold, and that `kabstract` ran at
+default transparency.  Eta now applies only to a variable or its projection, and the abstraction
+runs at reducible transparency with a check that it reproduces the term.
