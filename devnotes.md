@@ -30558,3 +30558,134 @@ Two kinds of failure cost builds.  `linarith` failed on goals with `1 / 2 ^ 1075
 - [x] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
 - [x] `TanTheorem` and `TanFile`.
 - [ ] `Sinpi.sinpi`, `cospi`, and `tanpi`.
+
+## 2026-10-11: Integration of the sine, cosine, and log2 theorems
+
+Opus merged `w/trig` at `ff249dfc` (the `sin` and `cos` theorems) and `w/log` at `3924f81c` (the `log2` theorem, with the journal's corrected memory figures) into `transcendentals`, with a merge script that merges with `--no-commit`, resolves `devnotes.md` by union, and commits with a proper message.  `LeanExe.lean` now imports `F64HighWord`, `F64RelativeStepWide`, `F64RoundedStep`, and `F64Sterbenz`, `Verified.lean` imports `TrigTheorem`, `Log2Theorem`, and `Log2Power`, and the file theorem loop of `tests/verified/run.sh` gains `trig:TrigTheorem:TrigFile` and `log2:Log2Theorem:Log2File`.
+
+`TrigFile.trig_file_decode` took its bytes from `sin_bytes_accuracy` alone, so its axiom report, the only one `tests/verified/run.sh` reads for the module, did not cover `cos_bytes_accuracy`.  It now takes them from `And.intro` of both byte theorems, and every file module with several exports must do the same, as `Exp2File` does through `exp2_module_accuracy`.
+
+`lake build LeanExe Verified` passed with 3,900 jobs, and `sin_bytes_accuracy`, `cos_bytes_accuracy`, and `log2_bytes_accuracy` report only the permitted axioms (`opus-merge-trig-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-9.log`): the five file checks (`exp`, `log`, `exp2`, `trig`, `log2`), 15,837 cases, and every accuracy check.  All agents stopped at the same time when the account's usage limit was reached, and resumed after it reset.
+
+## 2026-10-11: Bessel functions of order 0 and 1, definitions and series (track `log`)
+
+The coordinator moved `asin` and `acos` back to the arc track and gave this track the real Bessel functions as new ProofKit modules, since Mathlib has none.  The task asks for definitions of `J0`, `J1`, `Y0`, and `Y1`, their power series with remainder bounds for small `x`, the functions `P` and `Q` of the large-argument form with bounds on `[2, ∞)` that suffice to check fdlibm's `pzero`, `qzero`, `pone`, and `qone`, the Wronskian, and a lower bound on the modulus.  This track committed nothing for `asin` or `acos`; its only commit after the `log10` work is the merge of `transcendentals` at `a2c5fea3` (`e3c84a4a`).  This section records the definitions and the small-argument series, which `tools/leanrun` accepted (`bes-phase1-1.log`).
+
+### Definitions
+
+The functions are series in `z = x²/4`, as [DLMF 10.2.2, 10.8.1, and 10.8.2](https://dlmf.nist.gov/10.8) give them: `J0 = Σ (-1)^k z^k / k!²`, `J1 = (x/2) Σ (-1)^k z^k / (k! (k+1)!)`, `Y0 = (2/π) ((ln (x/2) + γ) J0 + Σ (-1)^(k+1) H_k z^k / k!²)`, and `Y1 = (2/π) (ln (x/2) + γ) J1 - 2/(π x) - (x/(2π)) Σ (-1)^k (H_k + H_(k+1)) z^k / (k! (k+1)!)`, with `γ = Real.eulerMascheroniConstant` and `H_k = harmonic k`.  DLMF writes the last series with `ψ (k+1) + ψ (k+2) = H_k + H_(k+1) - 2γ`, and the `γ` part of that sum is the `γ` term of the definition here.  `Y0` and `Y1` are meant for `x > 0`.  The coefficient sequences are rational (`qa0`, `qa1`, `qc0`, `qc1`), so their partial sums are `PolyBound` lists (`a0List N` and the others) that the kernel evaluates.
+
+`EntireSeries` handles any power series `psum a z = Σ a_k z^k` for which `Σ |a_k| R^k` converges for every `R ≥ 0`.  Its derivative is the series of `(k+1) a_(k+1)`, from Mathlib's termwise differentiation on a ball (`hasDerivAt_tsum_of_isPreconnected`), and its remainder after `N` terms is at most `|a_N| |z|^N / (1 - q)` when `|a_(k+1)| |z| ≤ q |a_k|` for `k ≥ N`.  `PolyCalc` adds exact rational evaluation of `PolyBound` lists and their derivative lists, which the large-argument proofs use.
+
+### Results
+
+| Theorem (`LeanExe.ProofKit`) | Statement |
+|---|---|
+| `Bessel.hasDerivAt_J0`, `hasDerivAt_J1'` | `J0' = -J1`, and `J1' = J0 - J1/x` for `x ≠ 0` |
+| `Bessel.hasDerivAt_Y0`, `hasDerivAt_Y1` | `Y0' = -Y1` and `Y1' = Y0 - Y1/x` for `x ≠ 0` |
+| `Bessel.wronskian` | `J1 x Y0 x - J0 x Y1 x = 2/(π x)` for `x ≠ 0` |
+| `Bessel.Y0_sub_log`, `Y1_sub_log` | `Y0 - (2/π) J0 ln x` and `Y1 - (2/π) (J1 ln x - 1/x)` as series in `z` with the constant `γ - ln 2`, the parts that fdlibm approximates below 2 |
+| `Bessel.a0_remainder` and the three others | for `|z| ≤ 1`, so `|x| ≤ 2`, and `N ≥ 1`, each series lies within `2 |a_N| |z|^N` of its partial sum of `N` terms |
+| `EulerGamma.gamma_close`, `gamma_rad_small` | `|γ - gammaMid| ≤ gammaRad < 2^-84` for a rational `gammaMid` |
+| `EulerGamma.log_two_close` | `log 2` within `2^-100` of a rational |
+
+The derivatives reduce to four identities between the coefficient sequences, such as `(k+1) c1_k = a1_k - 2 c0_k`, which `field_simp` and `ring` check for every `k`.  For the Wronskian, the logarithm terms cancel and `x (J1 Y0 - J0 Y1) = (2/π) F (x²/4)` with `F = A0 + 2 z A1 C0 + z A0 C1` in terms of the four series.  The same identities give `F' = 0` on all of `ℝ`, so `F` equals `F 0 = 1`, and no limit at 0 is needed.  The ratio bounds use `H_(k+1) ≤ 2 H_k` for `k ≥ 1`, which is why the remainder theorems ask for `N ≥ 1`.
+
+Mathlib bounds `γ` only by `1/2 < γ < 2/3`, and the large-argument proofs start from `Y0 2`, whose `γ` term must be known to about `2^-80`.  `EulerGamma` adds to `H_n - log n` the Euler–Maclaurin corrections `-t/2 + t²/12 - t⁴/120 + t⁶/252 - t⁸/240 + t¹⁰/132` with `t = 1/n`.  The step from `n` to `n + 1`, times `(1 + t)^10`, is a polynomial minus `(1 + t)^10 log (1 + t)`; with 24 terms of the series of the logarithm the kernel finds the coefficients below `t^13` to be zero, so each step is at most `0.28 t^13` for `t ≤ 1/128`.  The steps from 128 on then add up to less than `2^-85.9`, and `log 128 = 7 log 2` comes from 100 terms of the series of `-log (1 - 1/2)`.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Name clash | A theorem `Entire.dcoef` hid the definition `dcoef` inside the `Entire` namespace; it became `Entire.deriv`. | `bes-entire-2` |
+| `abs_c1` | `simp` rewrote `harmonic (k+1)` by `harmonic_succ` after the nonnegativity fact was stated; explicit rewriting replaced `simp`. | `bes-defs-1` |
+| `hasDerivAt_Y1` | Rewriting `Y1` by its unfolded form also rewrote the `Y1 x` in the target derivative; `HasDerivAt.congr_of_eventuallyEq` replaced the rewrite. | `bes-defs-1` |
+| Ratio bounds | `nlinarith` could not bound the expanded quotients of `c0` and `c1`; the proofs now bound `H_(k+1) ≤ 2 H_k` and `(k+1)² ≥ 4` separately. | `bes-defs-1` |
+| `EulerGamma` | A rewrite with `← abs_of_pos` also turned the right side's `(1+t)^10` into an absolute value, and `field_simp` needed `k + 127 ≠ 0`. | `bes-gamma-2` |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The builds waited about 25 minutes for the runner's lock, which another track's build held while its scope was throttled at `memory.high`.
+
+- [x] `EntireSeries`, `Bessel`, `PolyCalc`, and `EulerGamma`.
+- [ ] `P` and `Q`, their system, and bounds on `[2, ∞)` (the energy method below).
+- [ ] Comparison with fdlibm's rational approximations, and the modulus bound.
+
+### Plan for the large-argument bounds
+
+The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = √(πx/2) Y`, Bessel's equation becomes `U'' = -(1 + κ/x²) U` with `κ = 1/4` for order 0 and `κ = -3/4` for order 1, and `P = U cos θ + V sin θ`, `Q = V cos θ - U sin θ` satisfy `P'' = 2Q' - (κ/x²) P` and `Q'' = -2P' - (κ/x²) Q`.  For an approximation `(A, B)` with residuals `r₁`, `r₂`, the energy `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` of the errors `p = P - A` and `q = Q - B` satisfies `(√E)' ≤ |r₁| + |r₂|` when `κ ≥ 0`, and a weighted energy does the same for `κ < 0`.  So the errors stay within their value at `x = 2` plus the residuals' integral, which ties the series values at 2 to the asymptotic expansion at infinity without the connection formulas.  The approximations are Taylor polynomials of degree 40 on `[2, 3]`, `[3, 4.5]`, `[4.5, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms on `[30, ∞)`.  A Python model of this chain, with the start bound `2^-84`, ends at `2^-83.4` for order 0 and `2^-81.7` for order 1.  The same model finds fdlibm's approximation errors at about `2^-57` for `P` and `2^-59.6` for `x Q`, above the `2^-60.26` and `2^-61.22` that `e_j0.c` and `e_j1.c` state, so the comparison will report the proved values.
+
+## 2026-10-11: Bessel functions, bounds on `P` and `Q` over `[2, ∞)` (track `log`)
+
+`tools/leanrun` accepted the bounds on `P0`, `Q0`, `P1`, and `Q1` (`bes-large-4.log`, 3,456 jobs): on `[2, ∞)` each lies within `2^-80` of an explicit approximation, a Taylor polynomial of degree 40 on each of `[2, 3]`, `[3, 9/2]`, `[9/2, 7]`, `[7, 10]`, `[10, 15]`, `[15, 22]`, and `[22, 30]`, and Hankel's expansion with 60 terms in `1/x` on `[30, ∞)`.  The method follows the plan of the previous section.  It uses no integral representation of the Bessel functions and no connection formula; the series values at `x = 2` and the energy estimate carry the asymptotic phase and amplitude.
+
+| Module | Content |
+|---|---|
+| `BesselPQ` | `P0 = √(πx/2) (J0 cos θ0 + Y0 sin θ0)`, `Q0 = √(πx/2) (Y0 cos θ0 - J0 sin θ0)` with `θ0 = x - π/4`, and the same for order 1 with `θ1 = x - 3π/4`; the large-argument forms of `J` and `Y` (`J0_large` and the others), the moduli `J² + Y² = (2/(πx)) (P² + Q²)`, and the system `P'' = 2Q' - (κ/x²) P`, `Q'' = -2P' - (κ/x²) Q` with explicit derivatives (`P0_system`, `P1_system`) |
+| `BesselEnergy` | For `κ ≥ 0`, `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` has `(√E)' ≤ |r₁| + |r₂|`; for `κ < 0` and `1 + κ/x² ≥ 81/100`, the energy with the first two terms divided by `1 + κ/x²` has `(√E)' ≤ (10/9)(|r₁| + |r₂|)` |
+| `BesselChain`, `BesselAsym` | Pieces in `x - c` and the asymptotic piece in `1/x`; residuals as kernel-computed polynomials, jumps at the junctions as rational bounds, and the induction over the pieces (`chain0_sound`, `chain1_sound`) |
+| `BesselConstants` | Enclosure arithmetic (`Encl`), `π` by Machin's formula within `2^-190`, `cos 2` and `sin 2` |
+| `BesselStart` | `P`, `Q`, and their derivatives at 2 within `2^-86` of dyadic centers, from the four series at `z = 1`, `γ`, `1/π`, `√(π/2)`, `cos 2`, and `sin 2` |
+| `BesselLarge0`, `BesselLarge1` | The data of the pieces, the kernel checks, and `pieces_bound` and `asym_bound` |
+
+The kernel checks: the start bound at 2 is at most `2^-83`, every piece's bound plus its residual integral stays below `2^-80`, the residuals of the 60-term expansion vanish below degree 59, and the end of the chain plus the jump at 30 plus the tail integral stays below `2^-80`.  Each of `BesselLarge0` and `BesselLarge1` builds in about 80 seconds, almost all of it in these checks.
+
+The polynomials are dyadic rationals with 110 bits after the point, rounded relative to the piece's half-width so that the residual of the rounding stays small on the long pieces; in the Python model, plain 110-bit rounding left a residual integral of `2^-76` on `[18, 22]`.  Hankel's expansion cannot reach `2^-80` below about 29, where its smallest term is near `e^(-2x)`, so the Taylor pieces run to 30.
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `HasDerivAt.inv`, `.div` | The module did not import `Mathlib.Analysis.Calculus.Deriv.Inv`; dot notation then looked in `HasFDerivAtFilter`. | `bes-p2-1` |
+| Pi functions | `HasDerivAt.mul`, `.pow`, and `.div` state their functions as pointwise products such as `(p' - q) ^ 2`; `simp only [Pi.add_apply, Pi.sub_apply, Pi.pow_apply]` before `ring` removed them. | `bes-p2-1` |
+| Weighted energy | `field_simp` could not clear `1 + κ/x²` without `x² + κ ≠ 0`, which a short lemma supplies. | `bes-p2-1` |
+| Elaboration of mixed casts | In `(pc.b : ℝ) ≤ pc.c + pc.H`, Lean elaborated the sum in `ℚ`; explicit casts on each term fixed it. | `bes-chain-1` |
+| Name clash | `Encl.abs_le` hid `abs_le` inside the `Encl` namespace; it became `Encl.abs_bound`. | `bes-p2-1` |
+| Start values | `Encl.congr` with an unknown target left a metavariable for `rw`; the target is now given as `(v := Y0 2)`. | `bes-asym-3` |
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [ ] Comparison with fdlibm's rational approximations.
+- [ ] Lower bounds on the moduli.
+
+## 2026-10-12: Bessel functions, fdlibm's `P` and `Q` and the moduli (track `log`)
+
+### fdlibm's rational approximations
+
+`pzero`, `qzero`, `pone`, and `qone` in `e_j0.c` and `e_j1.c` pick their coefficients by the high word of `x`, from 2, from `b3 = 0x4006DB6D00000000` (about 2.8571), from `b5 = 0x40122E8B00000000` (about 4.5454), and from 8.  `BesselRatio.pFd R S x = 1 + R(z)/(1 + z S(z))` and `qFd q₀ R S x = (R(z)/(1 + z S(z)) + q₀)/x` with `z = 1/x²` are their formulas without rounding, with `q₀ = -1/8` for `qzero` and `3/8` for `qone`, and the coefficient lists are `ratOfWord` of the words that the sources print.  For each range the modules `BesselFd0a`, `BesselFd0b`, `BesselFd1a`, and `BesselFd1b` prove `|P x - pFd R S x| ≤ e/2^68 + 2^-70` and `|Q x - qFd q₀ R S x| ≤ e/2^68 + 2^-70` for every real `x` in the range, the last range from 8 to infinity.  The bounds are absolute.  The table gives each source comment's figure, the largest error that a Python model found at 4,000 points per range, and the proved bound, all as powers of two.
+
+| Function | Comment | Range from 2 | from `b3` | from `b5` | from 8 |
+|---|---|---|---|---|---|
+| `pzero`, measured / proved | `2^-60.26` | `-58.05` / `-57.94` | `-57.41` / `-57.30` | `-60.00` / `-59.88` | `-60.09` / `-59.97` |
+| `qzero`, measured / proved | `2^-61.22` of `x Q` | `-61.13` / `-61.01` | `-61.35` / `-61.23` | `-63.66` / `-63.52` | `-63.96` / `-63.81` |
+| `pone`, measured / proved | `2^-60.06` | `-57.59` / `-57.48` | `-56.99` / `-56.88` | `-59.79` / `-59.67` | `-59.97` / `-59.86` |
+| `qone`, measured / proved | `2^-61.13` of `x Q` | `-60.70` / `-60.58` | `-61.13` / `-61.01` | `-63.27` / `-63.13` | `-63.82` / `-63.66` |
+
+The approximations of `P` exceed their comments by up to a factor of 6.7 below `b5`, and those of `Q` exceed theirs once multiplied by `x`, as the comments state them: at `x = 2`, `x |Q - qFd|` reaches `2^-60.13` for order 0.  The proved bounds lie 8 to 10 percent above the measured maxima, the margin that the kernel's bisection needs, and they are the figures that a proof of `j0`, `y0`, `j1`, and `y1` should use.  In units of the amplitude `√(2/(πx))` of the result, `2^-56.88` is about `2^-4` of a unit in the last place.
+
+The checks run on short polynomials.  `BesselSeg0` and `BesselSeg1` split each piece of `BesselLarge0` and `BesselLarge1` into dyadic segments of width `c/8` to `c/11` and give, on each, a polynomial of degree 16 in `x - c` with dyadic coefficients that lies within `2^-71` of the piece's polynomial (`segOk`, checked with one rational shift per segment).  Hankel's expansion is truncated to degree 26 with dyadic coefficients, within `2^-72` of the 60-term expansion on `[30, ∞)`.  For a segment, `|A - pFd R S| = |E|/W` with `E = A W - W - x^(2d) R(z)` and `W = x^(2d) (1 + z S(z))` polynomials of degree 28, and `ratioCheckI` bisects the segment until the coefficients of `E` and `W` at each center give `|E| ≤ ε W`.  It works in integers: with dyadic coefficients scaled by `2^s` and `h = (M + Z)/2^(t+1)`, the shifted polynomials have integer coefficients in `Z`, so the kernel computes no rational normalizations.
+
+| Module | Content | Build | Log |
+|---|---|---|---|
+| `BesselRatio` | `revEven`, `evenP`, `pFd`, `qFd`, the integer bisection `ratioCheckI` and its soundness, and the comparison lemmas `p_piece`, `q_piece`, `p_asym`, `q_asym` | 7 s | `bes-base-1` |
+| `BesselSeg0`, `BesselSeg1` | 27 segments per order, the truncated expansion, `near_seg`, `near_asym`, and the step lemmas | 61 s, 58 s | `bes-seg0-2`, `bes-seg1-1` |
+| `BesselFd0a`, `BesselFd1a` | Ranges from 2, `b3`, and `b5`: 15 segment checks each for `P` and `Q` | 149 s, 92 s | `bes-fd0a-1`, `bes-fd1a-1` |
+| `BesselFd0b`, `BesselFd1b` | From 8: 14 segment checks and one check of the expansion each for `P` and `Q` | 46 s, 33 s | `bes-fd0b-1`, `bes-fd1b-1` |
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| Rational bisection on the pieces | The first check compared fdlibm's functions with the degree-40 piece polynomials in rational arithmetic; the kernel's terms filled the scope's `memory.high` within two minutes and the process was throttled.  I stopped it after 24 minutes. | `bes-fd0-2` |
+| Integer bisection on degree 30 | Truncating the pieces to degree 30 and moving the bisection to integers kept the memory below the limit, but the products of degree 41 and the 16 checks in one module ran to the 60-minute timeout and held the machine's lock for that hour.  The coordinator asked for modules of about 10 minutes, split before they run. | `bes-fd0-4` |
+| Segments | Degree-16 polynomials on short segments cut each check to a few seconds: one check alone took 12 seconds with the imports. | `ProbeSeg.lean.log` |
+| `near_seg` | `linarith` saw `q.1.fA x` in the piece bound and its unfolded `eval` in the goal; stating the bound with `eval` fixed it. | `bes-seg0-1` |
+
+### The moduli
+
+`BesselModulus` bounds `M₀² = J0² + Y0²` and `M₁² = J1² + Y1²` (`bes-base-1`, accepted with `bes-mod-1`).
+
+| Theorem | Statement | Proof |
+|---|---|---|
+| `modulus_product` | `(2/(πx))² ≤ M₀² M₁²` for `x > 0` | The Wronskian and Lagrange's identity `M₀² M₁² - (J1 Y0 - J0 Y1)² = (J0 J1 + Y0 Y1)²` |
+| `near0`, `near1` | `|P - 1| ≤ 1/10 + 2^-80` and `|Q| ≤ 1/5 + 2^-80` for `x ≥ 2`, both orders | The piece bounds and kernel bounds on the polynomials (`shapeOk`) |
+| `modulus0_large`, `modulus1_large` | `(3/4)(2/(πx)) ≤ M² ≤ (13/10)(2/(πx))` for `x ≥ 2` | `M² = (2/(πx))(P² + Q²)` |
+| `modulus0_small` | `1/25 ≤ M₀²` for `0 < x ≤ 2` | `J0 x ≥ 1/5` from 10 terms of the series and a polynomial check |
+| `modulus1_small` | `4/25 ≤ M₁²` for `0 < x ≤ 2` | `J1 x ≥ 2/5` on `[1, 2]` from the series, and `Y1 x ≤ -2/(πx)` on `(0, 1]` because `ln (x/2) + γ < 0`, `J1 ≥ 0`, and the series of `Y1` is positive there |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound`, and the modules build without warnings.  The lower bounds below 2 are coarse: the true minima on `(0, 2]` are `M₀ (2) ≈ 0.557` and `M₁ (2) ≈ 0.586`, against the proved `1/5` and `2/5`, so a proof of `y0` or `y1` near 2 may need sharper bounds, which the same series and checks would give on shorter intervals.
+
+- [x] `P`, `Q`, their system, and bounds on `[2, ∞)`.
+- [x] Comparison with fdlibm's rational approximations on all four ranges, both orders.
+- [x] Lower bounds on the moduli.
