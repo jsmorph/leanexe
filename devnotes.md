@@ -31036,7 +31036,9 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcEft2` | Knuth's `two_sum` is exact for `|a|, |b| ≤ 2^1018` | accepted, `52be491a` |
 | `ErfcOps` | error bounds of the operations on Floats: `add_f`, `sub_f`, `mul_f`, `fma_f`, `fastTwoSum_f`, `twoSum_f`, `aMul_f` | accepted, `b0a10033` |
 | `ErfcTrack` | `Tr`, `Pr`, and the stages `pr_fts`, `pr_add`, `pr_mulB`, `pr_mulC`, `pr_mulD` | accepted (`trig-fastmain-1.log`), committed with this section |
-| `ErfcFastMain` | `core_pr`: the rounding error of `erfFastMain` against its row's polynomial | in progress |
+| `ErfcTrack2` | the stages of `cr_erf_fast` below `1/16`, `Pr.shift`, and the cast tactic `qcast` | accepted (`trig-fastmain-5.log`) |
+| `ErfcFastMain` | `core_pr`: the rounding error of `erfFastMain` against its row's polynomial | accepted (`trig-fastmain-7.log`) |
+| `ErfcTest` | `test_near`: when the rounding test passes, the result is a nearest float of `h + l`; `near_within` | accepted (`trig-fastmain-7.log`) |
 | `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | accepted (`trig-fastmain-4.log`) |
 | `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | accepted (`trig-fastmain-3.log`) |
 | `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | in progress |
