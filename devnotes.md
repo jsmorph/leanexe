@@ -30891,3 +30891,7 @@ The exact rules are bit equalities for finite `x`.  `sinpi_int` gives `±0` with
 - [x] `piTiny` below `2 ^ -29`, including subnormal inputs.
 - [x] The three functions, their exact rules, the byte theorems, and the file module for `sinpi.wasm`.
 - [ ] The entry `sinpi:SinpiTheorem:SinpiFile` in `tests/verified/run.sh`, which the coordinator adds.
+
+## 2026-10-12: Resumption, and integration of sinpi, cospi, and tanpi
+
+The user resumed the work and asked that each track document its functions as it goes and that Opus commit and push often.  `worker-rules.md` now requires each accepted theorem to come with the update of its function's document in the same commit, and the seven agents resumed with their next steps from the plan's section "Resuming the work".  Opus merged `w/trig` at `dc95a04f` (`372f27a0`), added `SinpiTheorem` to `Verified.lean` and `sinpi:SinpiTheorem:SinpiFile` to the file loop of `tests/verified/run.sh`, and updated `Sinpi.md` for the merge.  The build passed with 9,474 jobs (`opus-merge-sinpi-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-15.log`) with fourteen file checks, 15,837 cases, and every accuracy check.
