@@ -31120,6 +31120,8 @@ The analysis of each path tracks absolute errors with explicit magnitude bounds.
 
 The code rounds `x - 7/2` before it takes the nearest integer `I`, so `d = x - (I + 7/2)` can exceed `1/2` by up to `2^-51`, as at `x = 1 - 2^-53`.  The coordinator approved widening `MainFact` to `|d| ≤ 1/2 + 2^-50`, which is commit `d06760e6`, and told track `erf`.  `TgammaMainRed.main_red` proves that `I` lies from -7 to 0 and that `i + 7/2` and `d` are exact: the subtraction `x - 7/2` is exact from 2 on, which excludes `I = 1` below 4, and `d` is a multiple of `2^-53` with `|d| < 1` when `|x| ≥ 1/2` and a multiple of `2^-54` with `|d| ≤ 1/4` when `1/4 ≤ |x| < 1/2`.  The proof allows `I = -7` because the identity `Γ x = Γ (x + J) / (x (x + 1) ⋯ (x + J - 1))` holds for each `J = -I`, and a ties-to-even rounding of `x - 7/2` near -6.5 decides between -6 and -7.  A simulation of the shift loop in `py/loopsim.py` over 200,000 uniform arguments, 2,786 arguments within 199 steps of the integers from -3 to 3, and 22,050 arguments at random distances from `2^-60` to 8 from them found the low part `xpl` exactly zero while `x + m < 0` and at most `2^-52.9 |x + m|` after, with every addition to it exact, which is the invariant of `TgammaMainLoop.loop_inv`.  That proof tracks relative errors, since a factor can lie within `2^-54` of zero, and it lets the low part of a positive factor carry the rounding of its additions instead of proving them exact.  The first build of `prod_step` exceeded the heartbeat limit (`gamma-mloop-1.log`): `linarith` over the full context of about forty hypotheses timed out, and `linarith only` with the five to ten facts each step needs replaced it.
 
+The error budget of the path on `(-3, 4)` is relative throughout.  `MainFact` contributes `2^-62` because `Γ (7/2 + d) ≥ Γ 2 = 1` by `Real.Gamma_strictMonoOn_Ici`, the double-double polynomial `2^-72`, the product `W` at most `6 · 2^-83`, the corrected reciprocal `2^-77`, the final `mulDD` `2^-70`, and `eps` about `2^-68`, so the sum before the last rounding lies within `2^-60` of `Γ x`.  The first statement of the path equation used `evalF flE d` for the tail, and its `rfl` exceeded the heartbeat limit.  Probes in `gamma-probe4.log` showed that the shift loop as `wState` and the loop body as `body` cost little, while unfolding `evalF` on the concrete expression inside the larger definitional check exceeded the limit, so `mainPath_gen` keeps the code's tail and `fl_eq` proves the tail equal to `evalF flE d` by `simp only` on the equations of `evalF`.
+
 ### Results
 
 | File | State | Log |
@@ -31144,8 +31146,9 @@ The code rounds `x - 7/2` before it takes the nearest integer `I`, so `d = x - (
 | `TgammaMul.mulDD_spec` | Committed in `e603a331` | `gamma-mul-1.log` |
 | `TgammaMainRed`: `main_red`, `count_spec` | Committed in `8f7f0463` | `gamma-mred-3.log` |
 | `TgammaMainPoly`: `main_poly` within `2^-72` of `mainPoly` | Committed in `8f7f0463` | `gamma-mpoly-1.log` |
-| `TgammaMainLoop`: `shift_step`, `mag_bounds`, `prod_step`, `loop_inv` | Committed with this entry | `gamma-mloop-3.log` |
-| `TgammaRecipDD.recip_dd` | Committed with this entry | `gamma-rdd-2.log` |
+| `TgammaMainLoop`: `shift_step`, `mag_bounds`, `prod_step`, `loop_inv` | Committed in `ef9f4625` | `gamma-mloop-3.log` |
+| `TgammaRecipDD.recip_dd` | Committed in `ef9f4625` | `gamma-rdd-2.log` |
+| `TgammaMainPath`: `x_gap`, `w_spec`, `prod_loose`, `mainPath_within` | Committed with this entry | `gamma-mpath-4.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31161,7 +31164,7 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
 - [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
 - [x] The reduction and the polynomial of the path on `(-3, 4)`
-- [ ] The shift loop, the reciprocal, and the result of the path on `(-3, 4)`
+- [x] The shift loop, the reciprocal, and the result of the path on `(-3, 4)` (`mainPath_within`)
 - [ ] The tiny path, the integer path, and the paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
