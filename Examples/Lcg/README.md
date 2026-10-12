@@ -3,14 +3,16 @@
 ## What it is
 
 [The program](Program.lean) is the linear congruential generator `affine a c x = a * x + c`
-modulo `2^64`, with `step = affine 6364136223846793005 1442695040888963407`, and `advance n x`,
-which applies `step` `n` times with `LeanExe.loop`.  The multiplier is the one that the MMIX
-Supplement's `rsixfour.c` attributes to Knuth, *The Art of Computer Programming*, Volume 2,
-Section 3.3.4, page 108.  The increment is `PCG_DEFAULT_INCREMENT_64` of O'Neill's PCG library,
-which pairs it with the same multiplier, and secondary sources call the pair Knuth's MMIX generator.
-`rsixfour.c` itself uses the increment `9754186451795953191`, and `minimalPeriod_affine_iff` gives
-the full period for any odd increment with this multiplier.  [The compiled module](../../Verified/Examples/Lcg.lean) is the verified compiler's
-module of the three functions.
+modulo `2^64`, with `step = affine multiplier increment`, `multiplier = 6364136223846793005`, and
+`increment = 1442695040888963407`.  `advance n x` applies `step` `n` times with `LeanExe.loop`, and
+`jump n x` computes the same state by Brown's jump-ahead, 64 passes of `jumpPass`.  The multiplier
+is the one that the MMIX Supplement's `rsixfour.c` attributes to Knuth, *The Art of Computer
+Programming*, Volume 2, Section 3.3.4, page 108.  The increment is `PCG_DEFAULT_INCREMENT_64` of
+O'Neill's PCG library, which pairs it with the same multiplier, and secondary sources call the pair
+Knuth's MMIX generator.  `rsixfour.c` itself uses the increment `9754186451795953191`, and
+`minimalPeriod_affine_iff` gives the full period for any odd increment with this multiplier.  [The
+compiled module](../../Verified/Examples/Lcg.lean) is the verified compiler's module of `affine`,
+`step`, `advance`, `jumpPass`, and `jump`.
 
 ## What it shows
 
@@ -32,6 +34,14 @@ the orbit stays among its first four iterates and misses a residue.  For the bit
 candidate period finishes the argument.  The bit theorem states the generator's known weakness:
 bit 0 alternates, and only bit 63 has the full period.
 
+At pass `i`, `jump` holds the coefficients `(am, ap)` of `step^[n % 2^i]` and `(cm, cp)` of
+`step^[2^i]`.  When bit `i` of `n` is set, the pass applies `step^[2^i]` after `step^[n % 2^i]`,
+and it squares the map of `2^i` steps to `(cm * cm, (cm + 1) * cp)`, the squaring of `doubled`, so
+[the jump proof](Jump.lean) follows from `iterate_two_pow` by induction on the passes.  Since
+`n ↦ advance n x` is a bijection of the words, the top `j` bits of the state take each
+value `2^(64 - j)` times over a period, from the count of words with given top bits in
+[`Examples/Orbit`](../Orbit/README.md).
+
 | Theorem | Statement |
 |---------|-----------|
 | `minimalPeriod_affine_iff` | `minimalPeriod (affine a c) x = 2^64 ↔ a % 4 = 1 ∧ c % 2 = 1`, for every `a`, `c`, `x`. |
@@ -40,7 +50,10 @@ bit 0 alternates, and only bit 63 has the full period.
 | `advance_existsUnique` | For all words `x` and `y`, exactly one count `n : UInt64` gives `advance n x = y`. |
 | `advance_ne_self` | `advance n x ≠ x` for every nonzero count `n`. |
 | `periodic_testBit_iff`, `step_periodic_testBit_iff` | Bit `k` of the state, for `k < 64`, repeats after `p` steps if and only if `2^(k+1)` divides `p`. |
+| `jump_eq` | `jump n x = advance n x`. |
+| `advance_topBits` | For `j ≤ 64` and `v < 2^j`, exactly `2^(64 - j)` counts `n` give `(advance n x).toNat / 2^(64 - j) = v`. |
 | `lcg_advance` | The module's bytes decode to the module, whose `advance` export computes `advance` without a trap, and for all words `x` and `y` exactly one count `n` gives `advance n x = y`. |
+| `lcg_jump` | The module's bytes decode to the module, whose `jump` export computes `advance` without a trap. |
 
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Finite checks use
 `decide` or `decide +kernel`, which the kernel evaluates without adding an axiom.
@@ -81,3 +94,5 @@ the state into its output.
 - M. E. O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for
   Random Number Generation," Harvey Mudd College, HMC-CS-2014-0905, 2014, and
   [`pcg_variants.h`](https://github.com/imneme/pcg-c/blob/master/include/pcg_variants.h).
+- F. B. Brown, "Random Number Generation with Arbitrary Strides," *Transactions of the American
+  Nuclear Society* 71:202–203, 1994, [OSTI 89100](https://www.osti.gov/biblio/89100).

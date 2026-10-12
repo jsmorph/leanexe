@@ -114,6 +114,7 @@ import Examples.Host
 import Examples.Increment.Cases
 import Examples.Increment.Program
 import Examples.Increment.Verify
+import Examples.Lcg.Jump
 import Examples.Lcg.Period
 import Examples.Lcg.Program
 import Examples.Lists.Cases
@@ -188,5 +189,6 @@ import Examples.Words.Encode
 import Examples.Words.Module
 import Examples.Words.Verify
 import Examples.Xorshift.Columns
+import Examples.Xorshift.Jump
 import Examples.Xorshift.Period
 import Examples.Xorshift.Program
