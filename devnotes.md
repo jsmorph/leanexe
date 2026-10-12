@@ -30878,6 +30878,7 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
 | `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
 | `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
+| `PowExpSign.lean` | `shift_bias`, `core_bias`, `special_neg`, `special_pos`, `neg_rel`, `special_y`, `powExp_rel`, `powExp_neg_within`. |
 
 | Failure | Cause and fix | Log |
 |---|---|---|
@@ -30900,6 +30901,7 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 - [x] `t1`, `t2`, `lo2`, `lo4` exact through `PowLogSum.grid_sum` on the grid of `2 ^ 1014` scaled units; the errors of `lo1`, `lo3`, `p`, the five-term sum `lo`, and `y + tail` (`pow-pos-2.log`).
 - [x] `PowLogError.after_error` (`pow-pos-3.log`), `PowLogMain.core_bound` (`pow-pos-6.log`), and `PowProduct.product_error` (`pow-pos-5.log`).
 - [x] `PowNegate` (`pow-sign-1.log`), `PowSignRel` and `PowCheckint.checkint_spec` (`pow-pos-5.log`).
+- [x] `PowExpSign.powExp_rel` and `powExp_neg_within`: the bias `0x800 << 7` adds `2 ^ 63` to the scale bits, and every operation after the scale keeps `PowSignRel.Rel`; the compensated sum needs `S + S tmp` nonzero, which `special_y` proves from `PowExpFar.far_sum` (`pow-pos-6.log`).
 - [ ] `PowLogFinal.log_within`: `|y + tail - log x| ≤ (7/8) 2 ^ -65 |log x|` for every positive normal or subnormal `x` other than 1, with `x = 1` evaluated directly; `pow-pos-6.log` ran past its limit in `core_relative`, now split into `case_k`, `case_c`, and `case_one`.
 - [ ] Milestone 1: `PowTheoremPos.pow_pos_within` for `x > 0`, through `PowMainPath`, `PowSubnormal`, and `PowPositive`.
 - [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
