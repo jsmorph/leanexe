@@ -30879,6 +30879,7 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
 | `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
 | `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
+| `PowLogFinal.lean` | `log_split`, `z_value`, `scale53`, `scale52`, `qcast`, `log_within`. |
 | `PowLogCases.lean` | `tail_real`, `cube_bound`, `square_bound`, `case_k`, `case_c`, `case_one`, `core_relative`. |
 | `PowExpSign.lean` | `shift_bias`, `core_bias`, `special_neg`, `special_pos`, `neg_rel`, `special_y`, `powExp_rel`, `powExp_neg_within`. |
 
@@ -30905,6 +30906,6 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 - [x] `PowNegate` (`pow-sign-1.log`), `PowSignRel` and `PowCheckint.checkint_spec` (`pow-pos-5.log`).
 - [x] `PowExpSign.powExp_rel` and `powExp_neg_within`: the bias `0x800 << 7` adds `2 ^ 63` to the scale bits, and every operation after the scale keeps `PowSignRel.Rel`; the compensated sum needs `S + S tmp` nonzero, which `special_y` proves from `PowExpFar.far_sum` (`pow-pos-6.log`).
 - [x] `PowLogCases.core_relative` with the real lemmas `case_k`, `case_c`, and `case_one` (`pow-cases-1.log`, 160 s).  The first version of the case `k = 0`, `logc ≠ 0` also rewrote the wrong absolute value: `rw [abs_of_neg _]` matched `|r|` before `|logc + r|`, and the step `|r| + 1/10000 ≤ |logc + r|` does not follow from the table facts when `r < 0 < -logc`.  The lemma now uses `|r| ≤ |logc + r|`, which holds in all four sign cases, and `|r| ≤ 1.03 |L|`.
-- [ ] `PowLogFinal.log_within`: `|y + tail - log x| ≤ (7/8) 2 ^ -65 |log x|` for every positive normal or subnormal `x` other than 1.  `pow-pos-7.log` ran 1,836 s in `PowLogFinal` before the run was stopped, and with the case analysis built separately the remaining time lies in `log_within`.
+- [x] `PowLogFinal.log_within`: `|y + tail - log x| ≤ (7/8) 2 ^ -65 |log x|` for every positive normal or subnormal `x` other than 1 (`pow-pos-8.log`, 11 s).  `pow-pos-7.log` ran 1,836 s in `PowLogFinal` before the run was stopped.  The diagnostic copies `pow-lw-a.lean` and `pow-lw-c.lean` (logs `pow-lwdiag-1` and `pow-lwdiag-2`) showed the cause: the subinterval bounds went through `push_cast` with the literals `2 ^ 52` and `1853042165022720`, whose normal forms did not match, and an `omega` goal with `min` and those literals made the kernel report deep recursion.  The bounds now compare natural numerators with `Nat.cast_le` and `le_min` or `max_le`, and `scale53`, `scale52`, and `qcast` rewrite the powers of 2 and the rational casts.
 - [ ] Milestone 1: `PowTheoremPos.pow_pos_within` for `x > 0`, through `PowMainPath`, `PowSubnormal`, and `PowPositive`.
 - [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
