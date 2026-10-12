@@ -206,6 +206,10 @@ def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
 
 def ctxExpr (Γ : List Ty) : Lean.Expr := listExpr (mkConst ``Ty) (Γ.map tyExpr)
 
+/-- The context `t :: Γ` for the expression `Γ` of a context, which it shares. -/
+def consCtx (t : Ty) (Γ : Lean.Expr) : Lean.Expr :=
+  mkApp3 (mkConst ``List.cons [Level.zero]) (mkConst ``Ty) (tyExpr t) Γ
+
 def modeExpr : Mode → Lean.Expr
   | .borrowed => mkConst ``Mode.borrowed
   | .owned => mkConst ``Mode.owned
@@ -235,8 +239,10 @@ structure Ctx where
   callees : List Callee
   vars : List (Lean.Expr × Ty)
   env : Lean.Expr
-
-def Ctx.ctx (c : Ctx) : Lean.Expr := ctxExpr (c.vars.map (·.2))
+  /-- The expression of the context, the types of `vars`.  Each binding extends it with
+  `consCtx`, so that the contexts of nested expressions share their tails and the terms that the
+  reflector builds grow linearly with the number of bindings. -/
+  ctx : Lean.Expr
 
 /-- `Expr.denote funs e env`. -/
 def denoteExpr (c : Ctx) (e : Lean.Expr) : MetaM Lean.Expr :=
@@ -344,13 +350,18 @@ def iteLemma : CmpOp → Name
   | .lt => ``ite_lt_eq
   | .le => ``ite_le_eq
 
-/-- `Env.cons v₀ (… (Env.cons vₙ Env.nil))` for the variables `vars`. -/
-def envExpr : List (Lean.Expr × Ty) → MetaM Lean.Expr
-  | [] => return mkConst ``Env.nil
+/-- The context of the variables `vars` and `Env.cons v₀ (… (Env.cons vₙ Env.nil))`, with each
+context built once and shared by the longer ones. -/
+def ctxEnvExpr : List (Lean.Expr × Ty) → MetaM (Lean.Expr × Lean.Expr)
+  | [] => return (ctxExpr [], mkConst ``Env.nil)
   | (x, t) :: rest => do
-    mkAppOptM ``Env.cons
-      #[some (ctxExpr (rest.map (·.2))), some (tyExpr t), some (← flatValue x),
-        some (← envExpr rest)]
+    let (ctx, env) ← ctxEnvExpr rest
+    return (consCtx t ctx,
+      ← mkAppOptM ``Env.cons #[some ctx, some (tyExpr t), some (← flatValue x), some env])
+
+/-- `Env.cons v₀ (… (Env.cons vₙ Env.nil))` for the variables `vars`. -/
+def envExpr (vars : List (Lean.Expr × Ty)) : MetaM Lean.Expr :=
+  return (← ctxEnvExpr vars).2
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
@@ -715,7 +726,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let sv ← shapeOf type
     return ← withLocalDeclD `x type fun x => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (tyExpr s), some (sv.apply x), some c.env]
-      let c' : Ctx := { c with vars := (x, s) :: c.vars, env := env' }
+      let c' : Ctx := { c with vars := (x, s) :: c.vars, env := env', ctx := consCtx s c.ctx }
       let (bs, hb, t) ← reflect c' (body.instantiate1 x)
       let hb ← mkLambdaFVars #[x] hb
       let src ← mkAppM ``Expr.letE #[vs, bs]
@@ -864,7 +875,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (bs, hb, _) ← reflectUnder c [] (mkConst ``UInt64) α .word t fun i acc =>
       return f.beta #[i, acc]
     let cs ← mkAppOptM ``Expr.bool
-      #[some c.sigs, some (ctxExpr (t :: c.vars.map (·.2))), some (mkConst ``Bool.true)]
+      #[some c.sigs, some (consCtx t c.ctx), some (mkConst ``Bool.true)]
     let sa ← shapeOf α
     let src ← mkAppM ``Expr.loop #[ns, is, cs, bs]
     let proof ← if sa.flat.isNone then mkAppM ``loop_eq #[hn, hi, hb]
@@ -964,7 +975,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM (Lean.Expr × Lean.Expr ×
     let (ns, hn, _) ← reflect c n
     let (fs, hf) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
       let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
-      let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env' }
+      let c' : Ctx :=
+        { c with vars := (i, .word) :: c.vars, env := env', ctx := consCtx .word c.ctx }
       let (fs, hf, t) ← reflect c' (f.beta #[i])
       unless t == .elem el do throwError "verified_compile: an element of {e} is not a {α}"
       return (fs, ← mkLambdaFVars #[i] hf)
@@ -1189,7 +1201,7 @@ where
     withLocalDeclD `a α fun a => do
       let env' ← mkAppOptM ``Env.cons
         #[some c.ctx, some (tyExpr s), some (← flatValue a), some c.env]
-      let c' : Ctx := { c with vars := (a, s) :: c.vars, env := env' }
+      let c' : Ctx := { c with vars := (a, s) :: c.vars, env := env', ctx := consCtx s c.ctx }
       let (bs, hb, u) ← reflectSplit c' [a] (← body a)
       return (bs, ← mkLambdaFVars #[a] hb, u)
   /-- The reflection of `body a b` with `a : α` of type `s` as variable 1 and `b : β` of type `t`
@@ -1200,10 +1212,11 @@ where
     withLocalDeclD `a α fun a => withLocalDeclD `b β fun b => do
       let envA ← mkAppOptM ``Env.cons
         #[some c.ctx, some (tyExpr s), some (← flatValue a), some c.env]
-      let ctxA := ctxExpr (s :: c.vars.map (·.2))
+      let ctxA := consCtx s c.ctx
       let envB ← mkAppOptM ``Env.cons
         #[some ctxA, some (tyExpr t), some (← flatValue b), some envA]
-      let c' : Ctx := { c with vars := (b, t) :: (a, s) :: c.vars, env := envB }
+      let c' : Ctx :=
+        { c with vars := (b, t) :: (a, s) :: c.vars, env := envB, ctx := consCtx t ctxA }
       let (bs, hb, u) ← reflectSplit c' (b :: a :: rest) (← body a b)
       return (bs, ← mkLambdaFVars #[a, b] hb, u)
   /-- A component of a tuple or a field of a structure, `e`, a chain of `Prod.fst`, `Prod.snd`,
@@ -1538,8 +1551,8 @@ def reflectDefinition (base name : Name) (sigs funs : Lean.Expr) (callees : List
     let resultShape ← shapeOf (← inferType body)
     let result := resultShape.ty
     let vars := params.toList.zip types
-    let env ← envExpr vars
-    let (src, proof, _) ← reflect.reflectSplit ⟨base.getPrefix, sigs, funs, callees, vars, env⟩
+    let (ctx, env) ← ctxEnvExpr vars
+    let (src, proof, _) ← reflect.reflectSplit ⟨base.getPrefix, sigs, funs, callees, vars, env, ctx⟩
       params.toList body
     let modes ← paramChoiceOf name src
     let funcType := mkApp (mkConst ``Func) sigs
@@ -1716,9 +1729,8 @@ def reflectRecursive (base name eqName : Name) (sigs funs rest hRest : Lean.Expr
     let resultType ← inferType rhs
     let resultShape ← shapeOf resultType
     let result := resultShape.ty
-    let ctx := ctxExpr types
     let vars := params.toList.zip types
-    let env ← envExpr vars
+    let (ctx, env) ← ctxEnvExpr vars
     let invs ← params.toList.mapM fun p => do inverseOf? (← inferType p)
     -- The arguments at an environment `e`: the inverses of its values.
     let getAt (e : Lean.Expr) (i : Nat) : MetaM Lean.Expr := do
@@ -1768,7 +1780,7 @@ def reflectRecursive (base name eqName : Name) (sigs funs rest hRest : Lean.Expr
       let funs' := mkAppN (mkConst ``Funs.cons) #[sigs, g, M, funs]
       let callees' := ⟨name, selfSig modes, base ++ `meaning_eq⟩ :: callees
       let (src, proof, _) ← reflect.reflectSplit
-        ⟨base.getPrefix, sigs', funs', callees', vars, env⟩ params.toList rhs
+        ⟨base.getPrefix, sigs', funs', callees', vars, env, ctx⟩ params.toList rhs
       return (src, proof)
     let mut modes : List Mode := types.map fun _ => .borrowed
     let first ← reflectWith modes
