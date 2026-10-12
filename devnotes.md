@@ -29422,6 +29422,93 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 - [x] `tanh` theorem and exceptional values.
 - [x] Byte theorems and the file module.
 
+### Hyperbolic sine and cosine: error budget
+
+The coordinator assigned `Sinh.sinh` (two steps) and `Sinh.cosh` (one step) next, with the instruction to report the bound for `cosh` if one step is out of reach.  The budget composes the proved bounds: `Expm1Near` and the pre-rounding errors of the `expm1` forms, `ExpCoreBounds.core_error` for `Exp.expWith` (within `1.4 u` of `exp x` relative to the scale, about `1.406 u exp x`), half spacings for the roundings that `F64NearestSum` and `F64NearestDiv` cover, and the exact scalings by `1/2` and `2`.  A floating-point sweep of 200,000 arguments per range gave these margin factors, where a factor above 1 means the step count follows.
+
+| Function and range | Code | One step | Two steps | Three steps |
+|---|---|---|---|---|
+| `sinh`, `2 ^ -28 ≤ abs(x) < 1` | `h (2 t - t t / (t + 1))`, `t = expm1 abs(x)` | 0.39 | 0.79 | 1.18 |
+| `sinh`, `1 ≤ abs(x) < 22` | `h (t + t / (t + 1))` | 0.73 | 1.47 | |
+| `cosh`, `2 ^ -27 ≤ abs(x) < 0.3466` | `1 + t t / (2 (1 + t))` | 7.48 | | |
+| `cosh`, `0.3466 ≤ abs(x) < 22` | `t/2 + 0.5/t`, `t = exp abs(x)` | 0.68 | 1.36 | |
+
+For `sinh`, two steps fail only for `abs(x)` in `(0.347, 0.481)`, where `expm1` takes the path `k = 1` and its result carries `0.98 u` before the last rounding.  A sharper bound of `0.73 u` for that path, from the half spacing of `x - e` below `1/4`, raises the factor to 0.92, still short.  For `cosh` on `[0.3466, 22)`, one step needs an `exp` error near `u` (factor 0.94 at `1.0 u`, 1.72 at Arm's `0.52 u`), and the proved `7/5 u` gives 0.68.  From 22 to the overflow thresholds both functions return `exp abs(x) / 2` (or the `__ldexp_exp` form), which inherits the one step of `ExpTheorem.exp_one_step`; `exp x / 2` and `cosh x` or `sinh x` differ by less than `e ^ -44` relatively, which can move the reference across a midpoint, so the composition gives two steps there.  The reachable counts are therefore three steps for `sinh` and two for `cosh`, short of the targets of two and one.  The gap lies in the proved bounds of `expm1` on its path `k = 1` and of `exp`.
+
+- [x] Decision on the step counts of `sinh` and `cosh`: strengthen the bound for `exp` first.
+
+### A tight bound for `exp`
+
+The coordinator decided to tighten the bound for `exp` before stating the step counts, and to make the result general so that other tracks can use it in place of the `1.405 u` of the `erf` track's `ExpRelative.expWith_relative`.  `ExpTight.reconstruction_near` shows that the final operation `s + s w` of the reconstruction rounds once, to the nearest word of the exact sum, and that the sum lies within `u/32` of `2 ^ d exp x`, relative to `2 ^ d exp x`.  The proof replaces the constants of `ExpTableReconstruction` with tighter ones.  The residual lies in `abs(r) ≤ 0.002708` and within `2 ^ -60` of the ideal residual, and on that interval the polynomial lies within `2 ^ -64` of `exp r - 1` (`ExpTightPoly`, a kernel check of its difference from the Taylor polynomial of degree 10).  The rounded evaluation lies within `u/100` of the polynomial, and the product `s w` and the residual error add `u/60` and `u/127` relative to `s`.
+
+`ExpTightFloat` carries the bound to `Exp.exp`, which is `Exp.expWith Exp.expTable`.  On the positive special path the code multiplies the reconstruction by `2 ^ 1009`, which is exact below `709.7827` (where `exp x` stays a relative `10 ^ -5` below `2 ^ 1024`), so the nearest property scales with it (`F64NearestScale.scale_nearest`).  On the negative special path down to `-708` the reconstruction `y` is at least 1, so the code takes the uncompensated branch and the product with `2 ^ -1022` is exact.  The new ProofKit module `F64NearestHalf` bounds the distance from a nearest word to its target by half the spacing of a grid (`nearest_half`), and gives `abs(c - s) ≤ u s` for a target in `[2 ^ -1022, 2 ^ 1022)` (`nearest_relative`).
+
+| Theorem | Range of `x` | Statement |
+|---|---|---|
+| `exp_near` | `-512 < x ≤ 709.7827` | some `s` has `Nearest s (exp x)` and `abs(s - e ^ x) ≤ (u/32) e ^ x` |
+| `positive_near` | `512 ≤ x ≤ 709.7827` | the result is `2 ^ 1009 y`, with `y` nearest to some `s` within `(u/32) e ^ x / 2 ^ 1009` of `e ^ x / 2 ^ 1009` |
+| `negative_near` | `-708 ≤ x ≤ -512` | the result is `y / 2 ^ 1022`, with `y ≥ 1` nearest to some `s` within `(u/32) 2 ^ 1022 e ^ x` of `2 ^ 1022 e ^ x` |
+| `exp_relative` | `-708 ≤ x ≤ 709.7827` | the result is finite and `abs(exp x - e ^ x) ≤ 1.033 u e ^ x` |
+
+The constant `1.033` is `1 + 1/32` with room for the product of the two errors.  In units in the last place the composition gives at most `0.5 + 1/32`, close to Arm's `0.52`.  The relative form is weaker by up to a factor of 2 near the top of a binade, because the half spacing there is `u` times the bottom of the binade, so proofs of step counts should use `exp_near` or `negative_near`.  Below `-708.4` the result is subnormal and above `709.7827` it can overflow, so the ranges cover the normal results.
+
+- [x] Tight bound for `exp`.
+- [x] `cosh` within one step on every range.
+- [x] `sinh`: tighten the path `k = 1` of `expm1`, and state three steps if two stay out of reach.
+- [x] Exact results, byte theorems, and the file module for `sinh` and `cosh`.
+
+### Hyperbolic cosine: one step
+
+`CoshTheorem.cosh_within_one` states `WithinSteps 1 (cosh x) (Sinh.cosh x).toBits` for every finite `x`, and `cosh_pos_infinity`, `cosh_neg_infinity`, and `cosh_nan` give the exceptional results.  Each range has its own module, and the step criteria that the ranges need are two new ProofKit modules.  `F64NearestBand.within_of_band` gives one step when the rounded real lies less than a spacing above the target and less than three quarters of a spacing below it, which covers the first two words of a binade.  `F64NearestHalve.nearest_halve` shows that halving a nearest word keeps it nearest, for targets from `2 ^ -1020` to `2 ^ 1022`.
+
+| Range of `abs(x)` | Module | Argument |
+|---|---|---|
+| below `2 ^ -55` | `CoshSmall.cosh_tiny` | `1 + t` lies within `2 ^ -55 (1 + 2 u)` of `cosh x` |
+| `2 ^ -55` to `0.34657359` | `CoshSmall.cosh_small` | `t` within `2 u` of `exp a - 1` (`expm1_small`), total error below `0.68 u` against `63/64 u` |
+| `0.34657359` to 22 | `CoshMid.cosh_mid` | `V - cosh x = (T - E)/2 (1 - 1/(T E)) + (B - 1/(2 T))`, inside the band of `F64NearestBand` |
+| 22 to `709.7822265625` | `CoshLarge.cosh_large` | the half of `exp` is nearest to a real within `u/64 exp a` of `exp a / 2` |
+| `709.7822265625` to `710.47607421875` | `SinhLdexp.ldexp_within` | exact `a - kln2`, `kln2 - 1799 ln 2` in `[-9e-17, 0]`, `ldexpExp` exact or infinite |
+| above | `CoshTheorem.cosh_within_one` | `1.0e+300 · 1.0e+300` is infinite, and `cosh x` exceeds the overflow threshold |
+
+The middle range needed the tight bound for `exp`.  For `cosh x < 2` the error before the last rounding is at most `u + u E/32 + u/(2 T)`, below `1.48 u`, against the `1.5 u` that the band allows below the target, and above 2 the quotient is small against the spacing.  The earlier budget estimated this range with a relative criterion and found it short, because the relative criterion loses the factor between the spacing and `u` times the target.  `SinhLdexp.ldexp_within` takes any target `y` with `abs(y - exp a / 2) ≤ exp (-a)/2`, so it serves `sinh` as well.  `SinhLdexpBits` computes the words of `frexpExp` and `ldexpExp` from the exponent field `E` and the fraction of `exp (a - kln2)`: the result is `2 ^ 1798` times that value for `E ≤ 248` and positive infinity for `E = 249`.  Below `2 ^ 1024 (1 - 4 u)` the result is nearest to a real within `0.85 u` of the target, and above, `F64FullStep.one_step_binades` in the top binade, whose end is infinity, bounds the error by `3 · 2 ^ 970`.
+
+| Commit | Content |
+|---|---|
+| `f541b1db` | `F64NearestBand`, `SinhWords`, `CoshMid` |
+| `182eace2` | `F64NearestHalve`, `CoshLarge`, `CoshSmall` |
+| `312c1f10` | `SinhLdexpBits`, `SinhLdexp` |
+| `8eda0238` | `CoshTheorem` |
+
+All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (logs `build/transcendentals/expm1-coshthm-2.log` and the module logs before it).
+
+### Hyperbolic sine: three steps
+
+`SinhTheorem.sinh_within_three` states `WithinSteps 3 (sinh x) (Sinh.sinh x).toBits` for every finite `x`, with `sinh_zero`, `sinh_pos_infinity`, `sinh_neg_infinity`, and `sinh_nan` for the exceptional results.  The code multiplies by `h = ± 0.5`, and `SinhSign.mul_negHalf` shows that the product with `-0.5` is the negation of the product with `0.5`, so each range states both signs and `SinhTheorem.by_sign` selects one.  Below 22 the code evaluates `f t = t + t/(1 + t)` for `t = expm1 abs(x)`, as `2 t - t t/(t + 1)` below 1 and as `t + t/(t + 1)` above, and `2 sinh a = f τ` with `τ = exp a - 1`.  `SinhCore.f_diff` writes `f T - f τ = (T - τ)(1 + 1/((1 + T)(1 + τ)))`, so the error of `t` enters with a factor below 2, and `F64NearestRelative.within_rel_of` gives three steps from a relative error below `2.9375 u`.
+
+| Range of `abs(x)` | Steps | Module | Bound on `t` |
+|---|---|---|---|
+| below `2 ^ -28` | 1 | `SinhRanges.tiny_sinh` | the result is `x`, within `4/3 abs(x) ^ 3` |
+| `2 ^ -28` to `θ1 ≈ 0.3466` | 3 | `SinhSmallCases` | `2 u τ`, from `CoshSmall.expm1_small` |
+| `θ1` to 1 | 3 | `SinhSmallCases` | `0.4802 u` below `0.443`, `0.7302 u` to `τ = 1.49`, `0.9802 u` above, plus the half spacing of `t` |
+| 1 to 22 | 3 | `SinhMidCases` | `1.9803 u` on `k = 1`, `u τ + 1.9605 u` on `k = 2`, `1.8501 u τ` from `k = 3` |
+| 22 to `709.7822265625` | 1 | `SinhRanges.sinh_large` | the half of `exp` from `CoshLarge` |
+| to `710.47607421875` | 1 | `SinhRanges.sinh_ldexp` | `SinhLdexp.ldexp_within`, with the exact product by `± 1` |
+| above | 1 | `SinhRanges.sinh_overflow` | `x · 1.0e+307` is the infinity of the sign of `x` (`SinhOverflow.mul_shuge`) |
+
+The new forms of `expm1` for positive arguments are `Expm1NearPos` (the path `k = 1` in both branches and the path `k = 2`) and `SinhExpm1`, which selects the branch of `Tanh.expm1`.  On the branch `x ≥ -1/4` of `k = 1`, the rounding of `x - e` lies within `2 ^ -56` when `exp a - 1 ≤ 1.49`, half the bound of `Expm1FormsOne.diff_spec`, which the margin needs.
+
+Two steps stay out of reach between `0.347` and `0.481`, as the budget found.  There `t` carries up to `0.73 u` before its last rounding and up to `u/2` from it, and the relative error of the exact difference reaches `2.55 u` at `abs(x) = 0.443`, which is `2.41` spacings of the binade of `sinh x`: the margin factor is `0.83` against the two spacings of two steps and `1.15` against the `2.9375 u` of three.  From 1 to 22 the worst relative error is `2.3 u` on the path `k = 2`, so the relative criterion gives three steps there, while the spacing count, at most `1.5`, would allow two with a criterion near the binade boundaries that the proof does not have.  The theorem states three steps throughout.
+
+`SinhBytes.sinh_bytes_accuracy` and `cosh_bytes_accuracy` state the byte theorems of functions 11 and 12 of `Sinh.compiled.module`, which read `Exp.expTable` at address 4096, and `sinh_module_accuracy` states both.  `SinhFile.sinh_file_decode` depends on `sinh_module_accuracy`, so its axiom report covers both byte theorems; the entry for `tests/verified/run.sh` is `sinh:SinhBytes:SinhFile`.  `SinhLdexp.ldexp_within` now also states that the result of `ldexpExp` is positive infinity or a finite word above `2 ^ -1022`, which the products by `± 1` need.
+
+| Commit | Content |
+|---|---|
+| `9790611a`, `4391a4fc`, `6100e2ad` | `Expm1NearPos`, `SinhExpm1` |
+| `994f8e00` | `SinhCore` |
+| `295e59dd`, `b61595d5`, `be016c4a` | `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases` |
+| `8a0ce8c7`, `42504def`, `7c6d73dd` | `SinhSign`, `SinhOverflow`, the shape of the `ldexpExp` result |
+| `5ab11357` | `SinhRanges`, `SinhTheorem` |
+
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
 The ports track works in a separate worktree, branch `w/ports`, created from `transcendentals` at `9c251438`.  Its task is the stage 3 implementations, compiled with `verified_compile`, with sampled accuracy checks against references computed with Lean's integers.  The theorems for these functions are later work.
