@@ -63,3 +63,10 @@ import Verified.Examples.Log1pBytes
 import Verified.Examples.AtanBytes
 import Verified.Examples.AtanTwoSpecial
 import Verified.Examples.AsinBytes
+import Verified.Examples.TanTheorem
+import Verified.Examples.SinhBytes
+import Verified.Examples.Tgamma
+import Verified.Examples.Lgamma
+import Verified.Examples.Bessel
+import Verified.Examples.GammaReference
+import Verified.Examples.BesselReference

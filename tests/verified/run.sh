@@ -62,7 +62,8 @@ done
 for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2File \
     trig:TrigTheorem:TrigFile log2:Log2Theorem:Log2File log10:Log10Theorem:Log10File \
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
-    atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile; do
+    atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
+    sinh:SinhBytes:SinhFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
@@ -161,4 +162,9 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.l
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean || exit 1
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean || exit 1
+# tgamma, lgamma, and the Bessel functions, whose modules wait for the reflector fix before they
+# compile to WebAssembly, against references computed with Lean's integers, in native Lean.
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/TgammaAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/LgammaAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/BesselAccuracy.lean
