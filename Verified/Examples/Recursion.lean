@@ -178,8 +178,8 @@ def top1 (a b : UInt64) : UInt64 :=
     + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23 + x24 + x25
 
 /-- A recursion whose frame has 32 positions, as many as the reflector accepts in a function
-that takes the call depth, each holding a value live across the self-call, with `top1` and `top2`
-at the top of the chain: at `n = 999` it runs 1,000 nested frames in Wasmtime's default stack. -/
+that takes the call depth, 26 of them live across the self-call, with `top1` and `top2` at the top
+of the chain: at `n = 999` it runs 1,000 nested frames in Wasmtime's default stack. -/
 def deep (n a b : UInt64) : UInt64 :=
   if n = 0 then top1 a b else
     let x0 := a + b

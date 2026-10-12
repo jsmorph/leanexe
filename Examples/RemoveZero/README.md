@@ -55,6 +55,6 @@ when the array is owned.  The LTG entries [`index-loop`](../../ltg/entries/index
 - [The Lean 4 reference on
   arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.findIdx?`
   and `Array.eraseIdx!`.
-- [The manual's section on
-  restrictions](../../docs/leanexe-manual.md#restrictions-and-how-to-write-around-them), on writing around
-  constructs the dialect lacks.
+- [The LeanExe compiler manual's section on
+  restrictions](../../docs/leanexe-manual.md#restrictions-and-how-to-write-around-them), on writing
+  around constructs the dialect lacks.

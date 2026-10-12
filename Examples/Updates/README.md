@@ -25,9 +25,9 @@ tests the three functions by execution only.
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  The proof loads the size with `Stmt.arraySize_spec` and
-proves the copy with `Stmt.pushBuild_spec`, the rule of the push's build statement.  [The manual's
-section on arrays](../../docs/leanexe-manual.md#arrays) lists the update operations and when each one
-copies.
+proves the copy with `Stmt.pushBuild_spec`, the rule of the push's build statement.  [The LeanExe
+compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays) lists the update
+operations and when each one copies.
 
 ## Running it
 
@@ -58,8 +58,8 @@ templates.
 
 ## References
 
-- [The manual's section on ownership](../../docs/leanexe-manual.md#ownership), which gives the rules that
-  decide whether an update is in place.
+- [The LeanExe compiler manual's section on ownership](../../docs/leanexe-manual.md#ownership),
+  which gives the rules that decide whether an update is in place.
 - [The Lean 4 reference on
   arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `push`, `set!`,
   `insertIdx!`, and `eraseIdxIfInBounds`.
