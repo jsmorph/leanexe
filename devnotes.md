@@ -31237,6 +31237,10 @@ The ProofKit lemmas for nearest rounding stop at `2^1022` (`F64NearestDiv.div_ne
 
 The words `±0` both sit at position 0 of `F64SignedRounding.position`, so either zero is within one step of a `y` below the least subnormal (`within_zero`), and the underflow path needs no parity of `⌊x⌋`.  The integer path multiplies up to `170!`, near `2^1019.4`, beyond the limit `2^900` of `TgammaDD.mulDDD_spec`, so `TgammaInt.mulDDD_big` repeats that proof for products up to `2^1020`; the fused multiply-add of the error term stays near `2^967`.  The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, which needs them for `lgamma`, and track `arc` sent the forms that the large and reflection paths need: for `asLogd` on `[4, 186]`, an error of at most `2^-64` with a low part below `2^-40`, and for `asSinpid` on `(0, 1)`, a relative error of at most `2^-58` with a low part below `2^-40` of the high part.
 
+### The exponential and the logarithm of the large and reflection paths
+
+The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, whose `lgamma` calls them too.  Track `expm1` reported that `asLogd` returns `(lh, ll + f)` with `f = dx² P(dx)` unnormalized, so that its low part reaches about `2^-23.5`, and its statement will give `|ll| ≤ 2^-22` plus a term in `|lh|/2^52`.  The product `mulDD (xh - 1/2) xl (lh - 1) (ll + dz)` of `asLgammaAsym` charges that low part `4 |ll| (x - 1/2)/2^53 ≤ 2^-65.5`, but its own low part grows to about `|ll| (x - 1/2)`, up to `2^-14.5`, and the later `fastSum`s keep it.  `asExpd` receives it as `l`, its first `mulDD` places `1477 l` in the low part of `(x + l) 1024/ln 2`, and `roundEven` acts on the high part only, so the kernel's argument reaches about `0.566` instead of `513/1024`.  The coordinator approved widening the kernel's interval in `ExpFact` to `|X| ≤ 5/8` with the tolerance `2^-74`, since `py/expwide.py` measures the largest errors `2^-77.99` at `513/1024`, `2^-77.75` at `17/32`, `2^-77.49` at `9/16`, and `2^-76.89` at `5/8`.  No `lgamma` statement depends on the old interval: neither `LgammaApprox` nor `Lgamma.lean` on `w/expm1` refers to `ExpFact` or `asExpd`.
+
 ### Results
 
 | File | State | Log |
@@ -31264,10 +31268,12 @@ The words `±0` both sit at position 0 of `F64SignedRounding.position`, so eithe
 | `TgammaMainLoop`: `shift_step`, `mag_bounds`, `prod_step`, `loop_inv` | Committed in `ef9f4625` | `gamma-mloop-3.log` |
 | `TgammaRecipDD.recip_dd` | Committed in `ef9f4625` | `gamma-rdd-2.log` |
 | `TgammaMainPath`: `x_gap`, `w_spec`, `prod_loose`, `mainPath_within` | Committed in `171f956a` | `gamma-mpath-4.log` |
-| `TgammaTop`: `rsm_near`, `rsm_exact`, `add_top`, `div_top`, `div_overflow` | Committed with this entry | `gamma-top-4.log` |
-| `TgammaTiny`: `add_overflow`, `within_pos_inf`, `within_neg_inf`, `fma_zero`, `tinyPath_within` | Committed with this entry | `gamma-tiny-2.log` |
-| `TgammaEdge`: `overflowPath_within`, `within_zero`, `underflowPath_within`, `intPath_neg` | Committed with this entry | `gamma-edge-2.log` |
-| `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed with this entry | `gamma-int-4.log` |
+| `TgammaTop`: `rsm_near`, `rsm_exact`, `add_top`, `div_top`, `div_overflow` | Committed in `eb4f3983` | `gamma-top-4.log` |
+| `TgammaTiny`: `add_overflow`, `within_pos_inf`, `within_neg_inf`, `fma_zero`, `tinyPath_within` | Committed in `eb4f3983` | `gamma-tiny-2.log` |
+| `TgammaEdge`: `overflowPath_within`, `within_zero`, `underflowPath_within`, `intPath_neg` | Committed in `eb4f3983` | `gamma-edge-2.log` |
+| `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed in `eb4f3983` | `gamma-int-4.log` |
+| Merge of `transcendentals` at `be5749df`, with `Tgamma.md` resolved by keeping both sides | Committed in `b227991f` | `gamma-merge2-1.log` |
+| `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed with this entry | `gamma-approx-3.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
