@@ -30878,6 +30878,7 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
 | `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
 | `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
+| `PowMainSign.lean` | `main_rel`, `main_rel_one`, `normWord`, `main_rel_any`. |
 | `PowPositive.lean` | `exact_within`, `near_one_within`, `xor_high`, `not_signaling`, `y_zero`, `main_one`. |
 | `PowTheoremPos.lean` | `positive_rep`, `sign_top`, `prod_big`, `pow_pos_within`. |
 | `PowSubnormal.lean` | `two52_scaled`, `subnormal_word`. |
@@ -30913,4 +30914,5 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 - [x] `PowMainPath.main_general`: the main path against `x ^ y` for `x ≠ 1` and `2 ^ -65 ≤ |y| < 2 ^ 63` (`pow-pos-10.log`).  `zpow_natCast` does not rewrite a power with a literal integer exponent such as `2 ^ (-52 : ℤ)`, so the powers of 2 now come from `norm_num` equations, and a casted Nat subtraction `2 ^ 53 - 1` goes through `Nat.cast_le` on `2 ^ 52 + f + 1 ≤ 2 ^ 53`.
 - [x] `PowSubnormal.subnormal_word` (`pow-pos-12.log`).
 - [x] Milestone 1: `PowTheoremPos.pow_pos_within` for a finite `x > 0` and a finite `y`, against `Real.rpow` (`pow-pos-14.log`, all axiom reports `propext`, `Classical.choice`, `Quot.sound`).  The last fixes replaced `nlinarith` on the products `log x · y` by the lemma `prod_big`, and three literal-first rewrites of `UInt64.toNat_sub` by separate equations for the one subtraction.
+- [x] `PowMainSign.main_rel_any`: the main path with the bias against the main path without it (`pow-m2-2.log`).  The rule for lock use now limits each build to 20 minutes, so the milestone-2 modules build one at a time: `PowNegBase`, `PowSpecial`, `PowTheorem`, `PowBytes`, then `PowFile` with `lake env lean`.
 - [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
