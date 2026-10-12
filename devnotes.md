@@ -31562,3 +31562,22 @@ The branch `w/strconv` was fast-forwarded to `transcendentals` at `be5749df`, wh
 `StrconvOfScientific` and `StrconvOfScientific32` build (`strconv-ofsci-7.log`, `strconv-ofsci32-2.log`) and prove `ofScientific_spec` and `ofScientific32_spec` as stated in the plan, with only `propext`, `Classical.choice`, and `Quot.sound`.  Lean's `Float.ofScientific` therefore rounds every decimal correctly, ties to even, and so does every decimal literal of type `Float` or `Float32` in a program of either compiler.  The fast path uses `F64Bits` and `F32Bits` for one multiplication or division of exact values; the table entries of `Float.exactlyRepresentablePowersOfTen` are checked one by one by `decide +kernel` after `interval_cases`.  The model's path uses ProofKit's `F64DivCore.pack_div_finite` and `F64RoundDyadic.pack_round_above_dyadic`, whose binary32 counterparts exist too; `pack_mul_finite` adds the step from the model's `roundWithAccuracy` to `round`, which holds because the model shifts the significand left by the precision.  The model returns infinity beyond `e > 2 ^ 11` and zero below `e < -(2 ^ 11 + log2 m)`, and the proof shows that the reference agrees there: the value exceeds `2 ^ 3123` units in the first case and lies below `2 ^ -974` units in the second.  `push_cast` and `field_simp` expanded `2 ^ 1074` into a 324-digit numeral on one side of an equation and not the other, so the proofs generalize the power to a variable before the casts.
 
 `StrconvTruncate` builds (`strconv-truncate-2.log`) and proves the digit truncation of the report's section 2.5 as `truncate64` and `truncate32`: for `D ≥ 10 ^ 767` and `0 < θ < 1`, the reference of `(D + θ) · 10 ^ j` equals that of `(D + 1/2) · 10 ^ j` (with `10 ^ 112` and binary32's units for `truncate32`).  The proof names the decision points of the rounding, the half-grid points `k · 2 ^ (E - 1) / 2` of the binades 1 to `F - 1` with `k ≤ 2 ^ (p + 1) + 1`, which include the overflow threshold, and `refPos_transfer` shows that two reals in an open interval free of them have the same reference, by carrying `RoundsTo` from one to the other.  Each such point of binary64 is `c · 10 ^ i · 2 ^ 1074` with `c < 10 ^ 768`, since `(2 ^ 54 + 1) · 5 ^ 1075 < 10 ^ 768` and `(2 ^ 54 + 1) · 2 ^ 970 < 10 ^ 768`, which `norm_num` checks; for binary32 the bounds are `(2 ^ 25 + 1) · 5 ^ 150 < 10 ^ 113` and `(2 ^ 25 + 1) · 2 ^ 103 < 10 ^ 113`.  `not_between` then excludes every such point from the open interval between `D · 10 ^ j` and `(D + 1) · 10 ^ j`.
+
+`StrconvInterval` builds (`strconv-interval-2.log`, then `strconv-interval-3.log` after the last repairs) and proves `interval_iff`: for a canonical nonzero significand `Q` of binade `E` whose encoding is finite, `refPos f y = pack f E Q` holds exactly when `y` lies between `lower f E Q` and `upper E Q`, ends included when `Q` is even.  At the start of a normal binade the lower end is `(4 Q - 1) · 2 ^ (E - 1) / 4`, and a real there rounds through the binade below with the significand `2 ^ p`, which `pack_eq` identifies with the same encoding.  This completes stage 1.
+
+| Module | Accepted results |
+|---|---|
+| `StrconvGrammar` | `Num`, `Derives` and its productions, `words` |
+| `StrconvDecode` | `derives_iff_decode`, `derives_unique`, `derives_general` |
+| `StrconvBinary32` | `roundNearestEven` for binary32, `exists_nearest_even` |
+| `StrconvRound` | `round64`, `round32`, `Shortest64`, `Shortest32`, `sciLayout`, `ecmaLayout` |
+| `StrconvGrid` | `nearest_even_pack`, `nearest_even_unique`, `exists_roundsTo`, `positive_reference` |
+| `StrconvWords` | `ref64`, `ref32`, `nearestEven32_unique`, `round64_dec`, `round32_dec` |
+| `StrconvRational` | `rational64`, `dyadic64`, `rational32`, `dyadic32` |
+| `StrconvOfScientific`, `StrconvOfScientific32` | `ofScientific_spec`, `ofScientific32_spec` |
+| `StrconvTruncate` | `refPos_transfer`, `truncate64`, `truncate32` |
+| `StrconvInterval` | `pack_eq`, `interval_iff` |
+
+- [x] Stage 1: `StrconvGrammar`, `StrconvDecode`, `StrconvBinary32`, `StrconvRound`.
+- [x] Stage 1: `StrconvGrid`, `StrconvWords`, `StrconvRational`, `StrconvTruncate`, `StrconvInterval`.
+- [x] Stage 1: `StrconvOfScientific`, `StrconvOfScientific32`.
