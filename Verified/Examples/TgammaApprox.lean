@@ -18,7 +18,8 @@ shift, `accSmallPoly` and `accPoly` those of `Tgamma.accurate`, `stirHi` and `st
 forms of `asLgammaAsym`, `logPoly`, `expPoly`, `sinPoly`, and `cosPoly` the kernels of `asLogd`,
 `asExpd`, and `asSinpid`, and the remaining definitions their tables and constants.  The
 tolerances leave a factor of at least 8 over the errors that a 90-digit evaluation found at dense
-sample points.
+sample points.  The facts that involve `π` allow for an uncertainty of `10 ^ -20` in `π`, the
+precision of Mathlib's bounds `Real.pi_gt_d20` and `Real.pi_lt_d20`.
 -/
 
 namespace Verified.Examples.TgammaApprox
@@ -152,12 +153,12 @@ noncomputable def cosPoly : ℝ → ℝ :=
 def piDD : ℚ := ratOfWord 0x400921FB54442D18 + ratOfWord 0x3CA1A62633145C07
 
 def SinFact : Prop :=
-  (∀ k ≤ 64, |(st k : ℝ) - Real.sin (k * Real.pi / 128)| ≤ 1 / 2 ^ 80) ∧
+  (∀ k ≤ 64, |(st k : ℝ) - Real.sin (k * Real.pi / 128)| ≤ 1 / 2 ^ 66) ∧
     (∀ d : ℝ, |d| ≤ 1 / 2 →
       |Real.sin (Real.pi * d / 128) - d * sinPoly (d ^ 2)| ≤ 1 / 2 ^ 71 * |d|) ∧
     (∀ d : ℝ, |d| ≤ 1 / 2 →
-      |Real.cos (Real.pi * d / 128) - (1 + d ^ 2 * cosPoly (d ^ 2))| ≤ 1 / 2 ^ 78 * d ^ 2) ∧
-    |(piDD : ℝ) - Real.pi| ≤ 1 / 2 ^ 80
+      |Real.cos (Real.pi * d / 128) - (1 + d ^ 2 * cosPoly (d ^ 2))| ≤ 1 / 2 ^ 76 * d ^ 2) ∧
+    |(piDD : ℝ) - Real.pi| ≤ 1 / 2 ^ 66
 
 /-- Every approximation statement of the proof. -/
 def AllFacts : Prop :=
