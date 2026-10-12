@@ -30945,3 +30945,20 @@ The coordinator decided the precision of `lgamma`'s accurate path for `-17 < x <
 - [ ] `LogFact`, `ExpFact`, `SinFact`: `TgammaKernels`.
 - [ ] `TgammaFacts`, the proofs of the eight statements, tested against a copy of `TgammaApprox` until the statement file reaches `transcendentals`.
 - [ ] The twelve `lgamma` statements.
+
+The statement files changed twice on 2026-10-12.  `TgammaApprox` at `d06760e6` widens `MainFact` to `|d| ≤ 1/2 + 2 ^ -50`, since the code computes `i = roundeven (fl (x - 3.5))` and `d` exceeds `1/2` by up to `2 ^ -51` when `x - 3.5` rounds; `TgammaPolyMainEdge` adds two pieces of radius `2 ^ -51` at the ends of the committed eight.  `LgammaApprox` at `9a32b275` adds the absolute term `2 ^ -120` to `RootFact`, since the triple-double center of each root polynomial differs from the zero of `lgamma` and the bound `2 ^ -63 |lgamma x|` vanishes at the zero, and adds `RootMinFact`, `|lgamma| ≥ 2 ^ -60` at every double of the root ranges.  The coordinator also approved `|z| ≤ 1/80` for the fourth clause of `SinpiFact`: on `|z| ≤ 1/64` the relative error of the code's polynomial for `sin (π z)/π` reaches `2 ^ -71.7`, above the stated `2 ^ -76`, while the code uses that polynomial only for `|z| ≤ 3/256`, where the error stays below `2 ^ -79.2`.
+
+`TgammaKernels` stalled under the runner's memory limit like `TgammaAsymFitB`: each of its tables was one declaration that decided a bounded universal statement over 32 to 65 entries, and the kernel kept the whole table's evaluation in one cache (`erf-gamma-39.log`, stopped after 6 minutes at 8 GB).  The module is now four modules, `TgammaKernelBase` with the definitions and the enclosure lemmas and `TgammaLogTables`, `TgammaExpTables`, and `TgammaSinTables` with one declaration per table entry.  Its first build had also failed on two names (`erf-gamma-20.log`): `Expr` inside `Verified.Examples` resolves to the compiler's `Verified.Expr`, so the modules write `TaylorModel.Expr`, and `expCoeffs` lives in `TaylorRemainder`.
+
+The divided differences next to the zeros 1 and 2 need the logarithms of the shifts one at a time.  The first form of `GammaDD.ddShift` took one logarithm of the whole product `Π k < n, (1 + s/(x0 + k))`, whose argument reaches 0.8 in magnitude for `|s| = 1/4` and 16 shifts, so the Taylor model's series did not converge within its term limit and the error reached `10 ^ -13` in the Python model.  `ddShift` now sums `L (s/(x0 + k))/(x0 + k)` with `L u = log (1 + u)/u`, each argument below `|s|/(x0 + k)`, and the Taylor-model errors fall to `10 ^ -29`.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaKernels` | Failed: `Expr` and `expCoeffs` unresolved | `erf-gamma-20.log` |
+| `TgammaAsymFit`, 16 pieces of radius `1/8` | Passed in 395 s | `erf-gamma-27.log` |
+| `TgammaAsymFitB`, 8 pieces of radius `1/4` | Passed in 199 s | `erf-gamma-28.log` |
+| `TgammaAsymFitC` | Passed in 124 s | `erf-gamma-29.log` |
+| `TgammaKernels` with per-module tables | Stopped under memory reclaim | `erf-gamma-39.log` |
+
+- [x] `StirlingFact` (`fit_small_lo`, `asym_small`, `asym_big`).
+- [ ] `MainFact` on `|d| ≤ 1/2 + 2 ^ -50` (`TgammaPolyMainEdge`).
