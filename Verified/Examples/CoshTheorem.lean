@@ -106,7 +106,7 @@ theorem cosh_within_one (x : Float) (hxf : Finite x.toBits) :
       omega
     have hhi := high_lt_real x.toBits 1082536911 (by norm_num) (71047607421875 / 10 ^ 11)
       (71047607421875 / 10 ^ 11) (by norm_num) (by decide +kernel) hdn
-    exact SinhLdexp.ldexp_within x hxf hlo3 hhi.le _ (cosh_half _)
+    exact (SinhLdexp.ldexp_within x hxf hlo3 hhi.le _ (cosh_half _)).1
   rw [ite_eq_right (show ¬ (x.toBits >>> 32 &&& 2147483647 ≤ 1082536910) from hd), overflow_bits]
   have hdn : 1082536911 ≤ (highWord x.toBits).toNat := by
     have : ¬ (highWord x.toBits).toNat ≤ 1082536910 := fun h => hd (UInt64.le_iff_toNat_le.mpr h)
