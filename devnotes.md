@@ -30974,7 +30974,7 @@ The elaboration of each module with `lake env lean`, before the two changes and 
 `Repeat` stays slow for another reason: after the change it runs at full CPU without memory pressure (`reflect-time-Repeat-2.log`, watched each minute), while before it swapped.  The liveness change does not address its cost, whose cause remains unmeasured.  The cold baseline of 2026-10-09 recorded 1,684 s for it.
 - [ ] `verified_compile` in `Tgamma`, `Lgamma`, `Bessel`, and `Erfc`, with their documents.
 
-The liveness change does not let these four modules compile.  With its `verified_compile` call enabled, `Tgamma` rose to 4.2 GB of memory in its scope within 2 minutes and then gained almost no CPU time, and the build was stopped (`build/transcendentals/reflect-compile-Tgamma-1.log`).  Probes divided the cost.  With `debug.skipKernelTC` the whole call elaborates in 29 s at 0.86 GB (`reflect-tgk-1.log`), and the subsets of its functions without `tgammaWith` compile in about a minute at 3.1 GB, while every function but the wrapper still stalls (`reflect-tgp1-1.log` to `reflect-tgp4-1.log`).  The check `(Wasm.Encoding.encode Tgamma.compiled.module).isOk = true` by `decide +kernel`, alone after a compilation without kernel checks, stalls at 4.3 GB (`reflect-tgk3-1.log`), so the remaining cost is the kernel's evaluation of the encoder, which computes every byte of the module.
+The liveness change does not let these four modules compile.  With its `verified_compile` call enabled, `Tgamma` rose to 4.2 GB of memory in its scope within 2 minutes and then gained almost no CPU time, and the build was stopped (`build/transcendentals/reflect-compile-Tgamma-1.log`).  Probes divided the cost.  With `debug.skipKernelTC` the whole call elaborates in 29 s at 0.86 GB (`reflect-tgk-1.log`), and the subsets of its functions without `tgammaWith` compile in about a minute at 3.1 GB, while every function but the wrapper still stalls (`reflect-tgp1-1.log` to `reflect-tgp4-1.log`).  The check `(Wasm.Encoding.encode Tgamma.compiled.module).isOk = true` by `decide +kernel`, alone after a compilation without kernel checks, stalls at 4.3 GB (`reflect-tgk3-1.log`), so the remaining cost is this check, in which the kernel evaluates the code generator and then the encoder.  The section on the kernel's cost of the encoding check divides it.
 
 | Module | Encoded bytes | Kernel check of the encoding |
 |---|---|---|
@@ -30986,8 +30986,63 @@ The liveness change does not let these four modules compile.  With its `verified
 | `Lgamma` | 35,160 | |
 | `Erfc` | 39,368 | |
 
-The sizes come from `#eval` of the encoder on programs compiled without kernel checks (`reflect-tgk5-1.log` and `reflect-size<module>-<n>.log`).  `Lgamma` also needs a source change: its `lgamma x := (lgammaR x).1` calls a wrapper, which the reflector rejects, and a listed `lgammaFirstWith` with the tables as parameters, wrapped by `lgamma`, removes the call.  The coordinator decides between a cheaper encodability check in `LeanExe/Encoding`, more memory for these builds, and smaller modules.
+The sizes come from `#eval` of the encoder on programs compiled without kernel checks (`reflect-tgk5-1.log` and `reflect-size<module>-<n>.log`).  `Lgamma` also needs a source change: its `lgamma x := (lgammaR x).1` calls a wrapper, which the reflector rejects, and a listed `lgammaFirstWith` with the tables as parameters, wrapped by `lgamma`, removes the call.  The coordinator set aside a cheaper encodability check, because the file theorems evaluate the whole encoder too, and asked for the measurements of the next section.
 - [ ] The Lean-source corrections of the documentation review.
+## 2026-10-12: The kernel's cost of the encoding check (w/reflect)
+
+The bytes theorem of `verified_compile` proves `(Wasm.Encoding.encode p.module).isOk = true` by `decide +kernel`, and `p.module` is `compileWith` applied to the reflected program, so one kernel check evaluates the code generator and then the encoder.  The file theorems (`<Module>File.lean`) evaluate the same terms and also compare every byte with the file, which is why the coordinator set aside a cheaper encodability predicate.  The probes (`build/transcendentals/enc*.lean`, logs `reflect-enc*-1.log`) separate the two parts.  A command evaluates `compiled.module` with the interpreter and defines `lit` as the resulting module literal through derived `ToExpr` instances, so that `(encode lit).isOk` measures the encoder alone, and a traversal by the size functions of `Wasm.Encoding.Size` forces the code generator's output without encoding it.  Time is the profiler's kernel time.  Memory is the peak of RssAnon plus VmSwap of the `lean` process, sampled every 0.5 s, less the RssAnon that the probe prints just before the check, which is 0.28 to 0.31 GB after the imports and 0.40 to 0.53 GB after a module compiled with `debug.skipKernelTC`, as the four modules without a `verified_compile` call are.
+
+| Module | Encoded bytes | Encoder alone | Code generator | Whole check |
+|---|---|---|---|---|
+| `Fma` | 4,255 | 3.97 s, 0.61 GB | | 8.57 s, 1.22 GB |
+| `Exp` | 4,451 | 2.41 s, 0.38 GB | | 3.83 s, 0.56 GB |
+| `Sinpi` | 5,806 | 4.71 s, 0.72 GB | | 10.4 s, 1.49 GB |
+| `Trig` | 5,842 | 4.27 s, 0.65 GB | | 12.2 s, 1.46 GB |
+| `Log` | 6,916 | 2.87 s, 0.45 GB | | 5.76 s, 0.76 GB |
+| `Asinh` | 9,315 | 4.96 s, 0.77 GB | | 12.3 s, 1.53 GB |
+| `Pow` | 11,156 | 5.27 s, 0.82 GB | 6.2 s, 0.77 GB | 10.5 s, 1.53 GB |
+| `Bessel` | 18,853 | 13.5 s, 1.67 GB | 16.9 s, 2.27 GB | about 30 s, 3.9 GB |
+| `Tgamma` | 26,286 | 16.4 s, 2.15 GB | 26.8 s, 2.86 GB | about 43 s, 5.0 GB |
+| `Lgamma` | 35,160 | 20.6 s, 3.01 GB | 54 s, 3.48 GB, swapping | about 75 s, 6.5 GB |
+| `Erfc` | 39,368 | 14.0 s, 2.07 GB | 23.5 s, 2.53 GB | about 38 s, 4.6 GB |
+
+The code generator's column is the size traversal of `compiled.module` less the size traversal of `lit`, which costs 1.2 to 4.8 s and 0.13 to 0.47 GB.  The whole check was measured for the seven modules that compile, and for the four others it is the sum of the two parts, which reproduces the measured whole check of `Pow` within 9 % in time and 4 % in memory.  Added to the memory before the check, the sums exceed the runner's `memory.high` of 4 GiB for all four modules, by 0.05 GB for `Bessel` and by 2.7 GB for `Lgamma`.  The other kernel check of the bytes theorem, that every function has at most `Decoder.maxLocals` locals, takes 8.1 s and 0.84 GB for `Tgamma`.
+
+The growth is linear with a large constant.  Over the eleven modules the encoder's memory is 10.4 KB per kernel step of `List.append` or `List.length` plus 0.10 GB (R² 0.996), and its time 75 µs per step (R² 0.97).  Against encoded bytes the fit is weaker (R² 0.87, 63 KB per byte), since a byte of code takes 11 to 14 list steps and a byte of a data segment about three.  The constant belongs to the kernel's evaluation of structural recursion on lists, as a check without the encoder shows (`syn-*.lean`): `(l ++ [1]).length` on a literal list of 40,000 bytes takes 3.9 s and 0.64 GB, ten nested appends take 23.9 s and 3.5 GB, and the element type and the diagnostics option do not change the cost.  Each step costs about 50 µs and 8 KB, and the samples show the memory rising until the check ends.  The same append and length written with `List.rec` instead of the compiled `brecOn` take 1.17 s and 0.19 GB, 3.3 times less.
+
+| Check on `lit` of `Pow` | Kernel time | Memory |
+|---|---|---|
+| The whole encoder | 5.27 s | 0.82 GB |
+| Code section (`vector functionBody`, `sectionBytes 10`) | 4.08 s | 0.63 GB |
+| `functionBody` of each function, without the section | 3.61 s | 0.56 GB |
+| `program` of each body, no byte forced | 1.52 s | 0.23 GB |
+| Data section, 6,160 bytes | 0.90 s | 0.09 GB |
+| Export, global, memory, and import sections | 0.13 s | 0.01 GB |
+| `shape`, the type and function sections, `funcs.length` | under 0.1 s each | under 0.01 GB |
+| Size traversal by `Wasm.Encoding.Size` | 1.22 s | 0.13 GB |
+| The whole encoder and the comparison with the file | 7.6 s | 1.20 GB |
+
+The code section holds most of the cost, in two parts.  Without forcing a byte, `program` costs about 0.75 ms and 110 KB for each of the 2,059 instructions, and the structurally recursive size traversal still costs 0.6 ms and 65 KB per instruction, so a match on `Wasm.Instruction` is expensive in the kernel whatever the recursion.  Its 250 constructors may be the reason, since every `casesOn` application carries all of their minor premises, but the probes do not isolate that.  Forcing the bytes in `sized` adds 2.1 s and 0.33 GB for 4,664 bytes of code through 37,237 append steps, eight per byte, because each level of `program`, `block`, `functionBody`, and `items` appends its part to the bytes of the level below, and `sized` and `sectionBytes` then force the lengths.  The `u32` checks, the 5,580 binds of the `Except` monad, and the proofs of `Encoded`, which the kernel never reduces, are minor.  `List.toArray` in `encode` is the constructor of `Array`, so the `ByteArray` costs nothing, and `isOk` never forces a byte's value.  The comparison with the file forces each value through the `DecidableEq` of `UInt8`, `BitVec`, and `Fin`, which adds 2.3 s and 0.38 GB to the encoder on `Pow`.  In the code generator the most frequent unfoldings are the casts `Eq.ndrec` and `Eq.rec` (102,000 to 157,000), `List.append` (36,000 to 60,000), `Bool` and `Decidable` from comparisons, and `Verified.Expr.rec` (22,000 to 33,000).
+
+An encoder that writes each byte once onto an accumulator and takes the sizes of `sized` and of the sections from `Wasm.Encoding.Size` (about 110 lines, in `build/transcendentals/encCF-<module>.lean`) produces the same bytes as `encode` on `Pow`, `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, which `#eval` checks.  It reuses `Wasm.Encoding.instruction` for the instructions without bodies, so it keeps their cost per instruction.  It reduces the encoder's part by a factor of 1.8 to 2.3 in memory, but the code generator's part stays.  With it, the sums for the whole check, with the memory before the check, are 3.6 GB for `Bessel`, 4.1 GB for `Erfc`, 4.4 GB for `Tgamma`, and 5.3 GB for `Lgamma`, so that `Bessel` fits, `Erfc` reaches the limit, and `Tgamma` and `Lgamma` exceed it.
+
+| Module | `encode`, `isOk` | Accumulator, `isOk` |
+|---|---|---|
+| `Pow` | 5.27 s, 0.82 GB | 3.06 s, 0.43 GB |
+| `Bessel` | 13.5 s, 1.67 GB | 8.52 s, 0.94 GB |
+| `Tgamma` | 16.4 s, 2.15 GB | 9.70 s, 1.05 GB |
+| `Lgamma` | 20.6 s, 3.01 GB | 9.95 s, 1.29 GB |
+| `Erfc` | 14.0 s, 2.07 GB | 7.86 s, 1.06 GB |
+
+On `Pow` the comparison with the file costs 6.87 s and 0.88 GB with the accumulator against 7.6 s and 1.20 GB with `encode`.  Since the memory accumulates over one check, a check of one function bounds it: the largest function of `Lgamma`, the 3,405 bytes of function 38 of 45, takes 11.1 s and 1.23 GB with its code generation and encoding, and 3.83 s and 0.52 GB for the encoding of its literal.  Proving the bytes theorem from one kernel check per function, through `Wasm.Encoding.Ready` and the lemmas of `LeanExe/Encoding/Completeness`, and the file theorems from one comparison per function with a slice of the file, would keep each check near that size, but it changes `Verified/Reflect/Command.lean` and `LeanExe/Pipeline/FileBytes.lean`.
+
+| Option | Effect measured or estimated | Work |
+|---|---|---|
+| More memory for these builds | `memory.high` near 8 GB for the bytes theorems, more for the file theorems, whose comparison added 35 % on `Pow` | none in the code |
+| The accumulator encoder with a theorem that it agrees with `encode` | the encoder's part halves, `Erfc` reaches 4 GB and `Tgamma` and `Lgamma` exceed it | 1 to 2 days, a soundness proof of 300 to 500 lines from the completeness lemmas |
+| One kernel check per function | memory bounded by the largest function, 1.7 GB for `Lgamma` | 2 to 4 days, in the reflector's command and the file theorems |
+
+- [ ] The user decides how the four modules' checks fit: more memory, the encoder, or one check per function.
 ## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
 
 The three functions share `Sinpi.piProduct`, which forms `π x` as `w + t` from the 24-bit head of `x`, its exact tail, `π` as `pi_hi + pi_lo` with `pi_hi` of 26 bits, and a final two-sum.  `SinpiSingle.single_spec` shows that `toSingle` gives a finite word within `2 ^ -24` of `x` relative to its value with a magnitude of at most 24 significant bits; the carry case, where the fraction overflows into the exponent, has the significand `2 ^ 24` at the old scale.  `SinpiProduct.product_spec` places `w + t` within `x / 2 ^ 62` of `π x` and `t` within `|w| / 2 ^ 52` for `x` from `2 ^ -54` to `1/2`, with `|pi_hi + pi_lo - π| ≤ 2 ^ -66` from `Real.pi_gt_d20` and `Real.pi_lt_d20`.  `SinpiKernels.kernel_pair` and `SinpiTanKernel.kernel_tanpi` then apply the accepted kernels of `sin`, `cos`, and `tan`: from `2 ^ -54` to `1/4` for the first two, and below `1/2` for the third, which reflects through `1/2 - x` above `1/4` and uses `tan (π/2 - θ) = (tan θ)⁻¹`.
