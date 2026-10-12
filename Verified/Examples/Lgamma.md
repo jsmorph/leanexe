@@ -1,0 +1,98 @@
+# The logarithm of the gamma function
+
+[The implementation](Lgamma.lean) exports `lgammaR`, which returns `ln |Γ x|` and the sign of `Γ x` as `±1.0`, and `lgamma`, its first component.  Both port CORE-MATH's correctly rounded `cr_lgamma` [1, 2], with [the software fused multiply-add](Fma.lean) for each `__builtin_fma` and the second result in place of the global `signgam`.  The decided bound is one representable step, `F64SignedRounding.WithinSteps 1`, from the nearest-even rounding of `ln |Γ x|`, with the sign exact, and the native check in `tests/verified/run.sh` finds all 81,033 results equal to an integer reference.  `transcendentals` contains no theorem about `lgamma`, and no branch holds one.  The module's `verified_compile` call is commented out until the compiler change that [the plan's section "Resuming the work"](../../transcendentals.md#resuming-the-work) describes, the theorem of the fused multiply-add is assigned to track `expm1` and not started, and the mathematical facts that the proof needs exist only as uncommitted drafts of track `erf`.
+
+## Specification
+
+`lgamma` computes `ln |Γ a|` for the value `a` of its argument, and `lgammaR` adds the sign of `Γ a`.  In Mathlib's terms the real function is `Real.log |Real.Gamma a|` [5].  `Real.Gamma` is 0 at zero and the negative integers by convention, so the poles are outside the domain of the accuracy statement, and the domain is every finite double other than zero and the negative integers.  The decided statement for such an `x` is `F64SignedRounding.WithinSteps 1 (Real.log |Real.Gamma (value x.toBits)|) (Lgamma.lgamma x).toBits`, with `WithinSteps` from [the signed rounding reference](../../LeanExe/ProofKit/F64SignedRounding.lean) as for the other functions, and the second result of `lgammaR x` equal to the sign of `Real.Gamma (value x.toBits)`.
+
+The bound, the API, and CORE-MATH as the source are the decisions of 2026-10-10 recorded in [the journal](../../devnotes.md#2026-10-10-decisions-after-the-review-of-gamma-bessel-and-worst-inputs) and in [the plan](../../transcendentals.md#decisions).  The decision of 2026-10-11 keeps CORE-MATH's sign of -1 at the negative integers, where the review had proposed +1 and fdlibm gives +1 ([the journal](../../devnotes.md#2026-10-11-a-software-fused-multiply-add-core-maths-gamma-functions-and-fdlibms-bessel-functions)).  `lgamma` overflows from `0x1.754d9278b51a8p+1014`, about `2.56 · 10^305`, where `ln Γ` reaches the threshold `2^1024 - 2^970` of IEEE 754-2019 clause 4.3.1 [6].
+
+| Input | `lgamma` | Sign | Source of the rule |
+|---|---|---|---|
+| `1`, `2` | `+0` | `+1` | C99 F.9.5.3 [7]; POSIX [8] |
+| `+0` | `+∞` | `+1` | C99 F.9.5.3; POSIX (a pole error) |
+| `-0` | `+∞` | `-1` | C99 F.9.5.3; POSIX |
+| a negative integer below `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `-1` | C99 F.9.5.3; POSIX leaves `signgam` unspecified |
+| a negative integer from `0x1.754d9278b51a6p+1014` in magnitude | `+∞` | `+1` | the same |
+| `+∞` | `+∞` | `+1` | C99 F.9.5.3; POSIX |
+| `-∞` | `+∞` | `+1` | C99 F.9.5.3; POSIX leaves `signgam` unspecified |
+| NaN | the canonical NaN | `+1` | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [9]; POSIX leaves `signgam` unspecified |
+| `0x1.754d9278b51a6p+1014`, `0x1.754d9278b51a7p+1014` | `0x1.ffffffffffffep+1023`, `0x1.fffffffffffffp+1023` | `+1` | the two largest finite results, special cases of the code |
+| positive `x` from `0x1.754d9278b51a8p+1014` | `+∞`, as `0x1.fp1023 · 0x1.fp1023` | `+1` | overflow |
+
+The signs at `±0` follow the sign of `Γ` near zero.  POSIX leaves `signgam` unspecified at NaN, `-∞`, and the negative integers, so the table records CORE-MATH's choices there, which the port keeps.  CORE-MATH sets `errno` when built with `CORE_MATH_SUPPORT_ERRNO` and raises the divide-by-zero, overflow, and invalid exceptions on these paths, and the port does neither.
+
+## Algorithm
+
+CORE-MATH's method evaluates `ln |Γ x|` in double-double arithmetic, a pair `h + l` of doubles, with an explicit error bound `eps`.  The project's paper describes the method: a fast path with an error bound, a rounding test, and an accurate path when the test fails [3].  When `h + (l + eps)` and `h + (l - eps)` round to the same double, that double is the correctly rounded result, and otherwise `as_lgamma_accurate` evaluates the function to about 100 bits, with a table of 19 hard cases for the inputs whose rounding test that path fails.  The structure below comes from the source [1].
+
+| Range of `\|x\|` | Fast path |
+|---|---|
+| below `2^-75` | `-ln \|x\|`, from `as_logd` in double-double |
+| `2^-75` to `2^-5` | `-ln \|x\|` plus `x` times a polynomial in `x` whose constant term is `-γ` |
+| `2^-5` to 0.5 | `-ln \|x\|` plus the piecewise polynomial of the next line at `1 + x`, which gives `ln Γ (1 + x) = ln \|Γ x\| + ln \|x\|` |
+| 0.5 to 8.29541 | a piecewise polynomial on 19 pieces, each of degree 12 in `z = \|x\| - c_j`, whose borders `ubrd` the code finds from a quadratic estimate and one comparison.  The pieces that contain the zeros 1 and 2 of `ln Γ` are multiplied by `1 - \|x\|` and `\|x\| - 2`, which keeps the result's relative accuracy next to the zeros |
+| from 8.29541 | Stirling's series, `(\|x\| - 1/2)(ln \|x\| - 1)` plus the constant `ln (2π)/2 - 1/2` plus a sum of odd powers of `1/\|x\|` (DLMF 5.11.1) [4], with the sum dropped from `2^100` on |
+
+For a negative `x` the code evaluates the function at `|x|` and applies the reflection (DLMF 5.5.3), in the form `ln |Γ x| = -ln Γ (|x|) - ln (|x| |sin (π x)|/π)`, with `sin (π x)/π` from `as_sinpipid` and its logarithm from `as_logd`.  The sign of `Γ x` for a negative non-integer `x` is `(-1)^m` with `m = -⌊x⌋`, -1 on `(-1, 0)` and +1 on `(-2, -1)`.  Next to the negative zeros of `ln |Γ|`, the subtraction of the two logarithms cancels, and `as_lgamma_accurate` handles it with 17 polynomials about the zeros from -10.5 to -2 (`rootRange`), where the fast path's test fails.  fdlibm's `lgamma` has no such polynomials and errs by up to 4.45e15 units next to these zeros, the reason the review gives for choosing CORE-MATH.
+
+## Implementation
+
+The source is `src/binary64/lgamma/lgamma.c` of CORE-MATH at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` [1], `Copyright (c) 2025 Alexei Sibidanov`, under the MIT license [2].  The module docstring of [the implementation](Lgamma.lean) gives the copyright line and names the MIT license, and it omits the license's permission notice, which the license requires in all copies or substantial portions.  The port follows the C code operation for operation, with [the gamma function's](Tgamma.md#implementation) changes: pair results for pointer outputs, tables as borrowed arrays, integer-valued doubles and two's complement words for C's integers, `Fma.fma`, rounding by adding and subtracting `2^52`, and a scan of the hard cases in place of the binary search.  It reuses `Tgamma`'s double-double helpers, `roundEven`, `floorF`, `asSinpid`, and `Tgamma.logdTable`, the tables of `as_logd`, which `lgamma.c` repeats.  The commented `verified_compile` call lists 42 functions: the 14 of `Fma`, 10 of `Tgamma`, and 18 of this module.
+
+| C code | Port | Reason |
+|---|---|---|
+| the global `signgam` | the second result of `lgammaWith` | The dialect has no global state, and the API returns the sign. |
+| `unsigned` arithmetic of the piece index | words | It does not overflow for these arguments. |
+| the final test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask | a mask with `0xFFFFFFFF` | The same result. |
+| `__builtin_fma` | `Fma.fma`, at 12 calls, and through `Tgamma.mulDD` and `Tgamma.mulDDD` for the other 2 of `lgamma.c`'s 14 | WebAssembly has no deterministic fused multiply-add. |
+| `__builtin_clzll` | `63 - Fma.msb64` | The dialect has no count of leading zeros. |
+| `errno` and the floating-point exceptions | omitted | WebAssembly has no floating-point status flags. |
+| `verified_compile` | commented out | With it, the build exceeds the runner's memory limit, as [the gamma function's Proof section](Tgamma.md#proof) describes. |
+
+The module's own tables hold 1,951 words: `dbTable` (the 19 hard cases as rows `x`, `f`, `δ`), `accurateTable` (1,011 words, the 17 polynomials near the negative zeros among them), `mainTable` (406 words, the borders, offsets, and coefficients of the 19 pieces and the constants of the other ranges), `logAccurateTable`, `sinpiTable`, and `asymTable`.  Each word carries the C literal in a comment.  A comparison of the port with `lgamma.c` at the pinned commit, run outside the repository, gives the results in the table.
+
+| Check | Result |
+|---|---|
+| Floating-point literals of the C file | All 2,327 occurrences occur in `Lgamma` or `Tgamma` as words or decimal literals, some with the opposite sign where the port writes a negation differently.  The 256 occurrences found only in `Tgamma` are those of `as_logd`'s repeated tables and the two constants `c0` and `s0` of the sine routine, which `Lgamma` takes from `Tgamma.asSinpid`. |
+| `double` arrays | All 64 occur in order as contiguous runs of the two modules' tables. |
+| Integer tables | `ubrd` equals the first 20 words of `mainTable`, and both copies of `as_logd`'s `B` in `lgamma.c` equal the first 64 words of `Tgamma.logdTable`. |
+| Comments | 1,979 of the 1,981 words with a hexadecimal literal in their comment equal the bits of that literal.  The other two are the tests of the inputs `0x7F5754D9278B51A6` and `0x7F5754D9278B51A7`, whose comments give the expression of the result. |
+
+The journal records the same equality of the repeated tables.  No run compared the port with compiled CORE-MATH directly, and the evidence of agreement goes through the reference: its Python model agreed with compiled CORE-MATH at 3,500 arguments, and the port agrees with the reference at every argument of the check.  The comments of `lgamma.c`, the module docstring of `Lgamma.lean`, and the docstring of `LgammaAccuracy.lean` give the overflow test as `|x| ≥ 0x1.006df1bfac84ep+1015`, and the code compares with `0x1.754d9278b51a6p+1014`, a discrepancy that the plan lists under "Corrections found by the documentation review".  An evaluation of Stirling's formula in 80-digit decimal arithmetic confirms the code's value: `ln Γ` crosses the overflow threshold between `0x1.754d9278b51a7p+1014` and `0x1.754d9278b51a8p+1014`, and at `0x1.006df1bfac84ep+1015` it is about `1.37 · 2^1024`.
+
+## Theorems
+
+`transcendentals` contains no theorem about `Lgamma.lgamma` or `Lgamma.lgammaR`, and there is no axiom report to give.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` writes no `lgamma.wasm` and runs [the accuracy check](LgammaAccuracy.lean) natively.  The intended results are `WithinSteps 1` against `Real.log |Real.Gamma a|` on the domain above, the exact sign, exact words for the exceptional values in the table, a byte theorem with the tables borrowed, and a file theorem.  No theorem yet states that [the software fused multiply-add](Fma.lean) returns the nearest-even rounding of `a · b + c`.
+
+## Proof
+
+No proof module for `lgamma` exists in `transcendentals` or on a branch, and the proof follows the plan of [the gamma function](Tgamma.md#proof): a theorem for `Fma.fma`, assigned to track `expm1`, the facts about `ln Γ` that Mathlib lacks, an error analysis of each path against one and a half spacings, and the byte and file theorems after the compiler change.  Mathlib has `Real.Gamma`, its recurrence, and Euler's reflection formula [5], and no Stirling series with a remainder for `log Γ` at real arguments.  The decision of 2026-10-12 is to prove these facts only to the precision that a one-step bound needs ([the integration notes](../../devnotes.md#2026-10-12-integration-of-expm1-tanh-erf-log1p-atan-atan2-asin-and-acos-first-push)), and track `erf` holds six uncommitted ProofKit drafts for them, none of them accepted.
+
+Two parts of the analysis are specific to `lgamma`.  The result has relative accuracy next to the zeros 1 and 2, where the pieces carry the factors `1 - |x|` and `|x| - 2`, and next to the negative zeros, where the fast path's subtraction cancels and the accurate path's polynomials about the zeros take over.  A one-step bound there needs the error of each piece relative to the function, and the bound for the reflection needs the distance of each double from the negative zeros or a proof that the accurate path covers every double where the fast path's error exceeds the allowance.  The sign of `Γ` is exact and needs only the parity of `⌊x⌋`.
+
+## Tests
+
+[The accuracy check](LgammaAccuracy.lean) compares `Lgamma.lgammaR` natively with the double nearest to `ln |Γ x|` from [the gamma reference](GammaReference.lean), requires the sign that `signReference` gives, and fails at the first result more than one step away or with another sign.  Its 81,033 arguments are 30,001 evenly spaced values from -20 to 20 and 20,001 from 0.5 to 8.3, 30,000 hashed values over all exponents with both signs, the doubles around the integers and half-integers from -30 to 30.5, around the zeros 1 and 2 and the 17 centers of the accurate path's polynomials, around the 20 borders of the pieces, around ten thresholds of the code and their negations, the 19 hard cases and their neighbors, the six inputs of `WorstCases.lgamma`, and 15 special values.  Those six give the largest known `lgamma` errors in Tables 4 to 11 of Gladman, Innocente, Mather, Ozaki, and Zimmermann's report [10], whose Table 3 lists 0.500 units for GNU libc 2.44 and 4.45e15 for FreeBSD 15.1.  The check also calls `Lgamma.accurate` directly at every eighth finite argument below the overflow test, other than zero and the integers below 3, and at the 19 hard cases, 9,234 arguments.
+
+The reference is that of [the gamma function](Tgamma.md#tests): Stirling's series with 60 terms at `y + N ≥ 300`, the logarithm of the exact product of the shifts, and the reflection for negative arguments, with truncation errors stated in docstrings and not proved.  In `opus-verified-tests-14.log`, the run of `tests/verified/run.sh` in `build/transcendentals` on the build host after the `sinh` merge, all 81,033 results equal the reference with their signs, so the largest measured distance is 0 steps against the decided bound of 1, and the 9,234 results of the accurate path also equal the reference.  The first passing run, `ports-LgammaAccuracy-5.log` in `build/transcendentals` on the build host, gave the same results.  Two earlier runs failed on defects of the check: the reference rounded the residue of the series at the exact zeros 1 and 2 instead of returning 0, and the direct calls of the accurate path included magnitudes from `0x1.006df1bfac84ep+1015` up, where `cr_lgamma` never calls it and where it returns NaN from `∞ - ∞`.
+
+## Limits
+
+Every result for `lgamma` is a test of the Lean function, and the decided theorems are open.  Until the compiler change is merged and `verified_compile` runs, no WebAssembly module exists, and after that the limits of [the exponential](Exp.md#limits) apply: Talos and the decoder are trusted, the file theorem trusts `binary_file%`, the theorems cover the canonical NaN argument only, and host actions between calls need their own theorem.  The port depends on `Fma.fma` on every path, and that function has only a native check, which `tests/verified/run.sh` does not run.
+
+The decided bound allows one step where CORE-MATH's code is designed to be correctly rounded, so a proof of the bound will not establish CORE-MATH's claim.  The signs at NaN, `-∞`, and the negative integers are CORE-MATH's choices where POSIX leaves `signgam` unspecified, and the sign of +1 at the negative integers from `0x1.754d9278b51a6p+1014` up differs from the -1 below it.  The port drops `errno` and the floating-point exceptions that C99 and POSIX specify at the poles and on overflow.
+
+## References
+
+1. CORE-MATH, [`src/binary64/lgamma/lgamma.c`](https://gitlab.inria.fr/core-math/core-math/-/blob/ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8/src/binary64/lgamma/lgamma.c), commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`.  Copyright (c) 2025 Alexei Sibidanov, MIT license.
+2. CORE-MATH, [`LICENSE`](https://gitlab.inria.fr/core-math/core-math/-/blob/ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8/LICENSE), same commit.
+3. A. Sibidanov, P. Zimmermann, and S. Glondu, "The CORE-MATH Project", *2022 IEEE 29th Symposium on Computer Arithmetic (ARITH)*, pp. 26–34, 2022, [doi:10.1109/ARITH54963.2022.00014](https://doi.org/10.1109/ARITH54963.2022.00014).  Crossref confirms the bibliographic data, and the text was read in [HAL hal-03721525v3](https://inria.hal.science/hal-03721525): the abstract states the project's aim of open-source correctly rounded functions, and Section I.B describes the fast path, the rounding test, and the accurate path.
+4. F. W. J. Olver, A. B. Olde Daalhuis, D. W. Lozier, B. I. Schneider, R. F. Boisvert, C. W. Clark, B. R. Miller, B. V. Saunders, H. S. Cohl, and M. A. McClain, eds., *NIST Digital Library of Mathematical Functions*, Release 1.2.8 of 2026-09-15: [§5.5](https://dlmf.nist.gov/5.5) (5.5.3, the reflection) and [§5.11](https://dlmf.nist.gov/5.11) (5.11.1, Stirling's series, and 5.11(ii), its error bounds for real positive arguments).
+5. The Mathlib Community, Mathlib at commit `85e3a25e006c35636f0e53b0e9296caca2685bc0`: [`Mathlib/Analysis/SpecialFunctions/Gamma/Basic.lean`](https://github.com/leanprover-community/mathlib4/blob/85e3a25e006c35636f0e53b0e9296caca2685bc0/Mathlib/Analysis/SpecialFunctions/Gamma/Basic.lean) (`Real.Gamma`, `Real.Gamma_add_one`, `Real.Gamma_neg_nat_eq_zero`) and [`Mathlib/Analysis/SpecialFunctions/Gamma/Beta.lean`](https://github.com/leanprover-community/mathlib4/blob/85e3a25e006c35636f0e53b0e9296caca2685bc0/Mathlib/Analysis/SpecialFunctions/Gamma/Beta.lean) (`Real.Gamma_mul_Gamma_one_sub`).
+6. IEEE, *IEEE Standard for Floating-Point Arithmetic*, IEEE Std 754-2019, 2019, [doi:10.1109/IEEESTD.2019.8766229](https://doi.org/10.1109/IEEESTD.2019.8766229): clause 4.3.1 (the overflow threshold) and clause 9.2 (the recommended operations, which include no gamma function).
+7. ISO/IEC 9899:1999, *Programming languages — C*, Annex F, clauses F.9 and F.9.5.3, as consolidated in WG14 committee draft [N1256](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf) (September 7, 2007).
+8. The Open Group, *The Open Group Base Specifications Issue 8*, IEEE Std 1003.1-2024, [`lgamma`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/lgamma.html): the return values and `signgam`.
+9. WebAssembly Community Group, *WebAssembly Core Specification*, version 3.0, appendix [Profiles](https://webassembly.github.io/spec/core/appendix/profiles.html).
+10. B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, ["Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision"](https://members.loria.fr/PZimmermann/papers/accuracy.pdf), August 2026: Table 3 and Tables 4 to 11.
