@@ -278,7 +278,7 @@ theorem atanh_piece_rel (a : Float) (ha : Finite a.toBits) (aL aH ρ WL WH ρw �
     linarith
   have hEb : errBound (value w.toBits) =
       174 / 100 / 2 ^ 53 * value w.toBits ^ 2 + value w.toBits / 2 ^ 59 := by
-    rw [errBound, if_pos hw285]
+    rw [errBound, ite_eq_left hw285]
   have hN := log1p_near w hwR.2.1 hw29
   rw [hEb] at hN
   have hW1 : 0 ≤ W * (1 - ρw) := mul_nonneg hW0.le (by linarith)

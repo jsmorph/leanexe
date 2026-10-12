@@ -149,7 +149,7 @@ theorem asinh_piece (x : Float) (hx : Finite x.toBits) (aL aH re sL sH h E K YL 
     (hm : re * (sH - 1) + h < aL + sL)
     (hK : re * (sH - 1) + h ≤ K * (aL + sL - (re * (sH - 1) + h)))
     (hδ : re * (sH - 1) + h ≤ 1 / 2 ^ 40)
-    (hYL : YL ≤ Real.log (aL + sL)) (hEK : E + K ≤ 1) (haH3 : aH ≤ 3)
+    (hYL : YL ≤ Real.log (aL + sL)) (haH3 : aH ≤ 3)
     (hn1 : 1 ≤ n) (hn : n < 2047)
     (hB : value (UInt64.ofNat (n * 2 ^ 52)) + (E + K) ≤ YL)
     (hT : E + K < 2 * ((2 : ℝ) ^ (n - 1) / 2 ^ 1074)) :
@@ -304,7 +304,7 @@ theorem asinh_piece_rel (x : Float) (hx : Finite x.toBits) (aL aH re sH UL UH θ
     have := mul_le_mul_of_nonneg_right hUUH (by linarith : (0 : ℝ) ≤ 1 + ρu)
     linarith
   have hN := log1p_near w hu.2.1 hw29
-  rw [errBound, if_pos hw285] at hN
+  rw [errBound, ite_eq_left hw285] at hN
   have hm1 : 0 ≤ U * (1 - ρu) := mul_nonneg hU0.le (by linarith)
   have hm : 0 < 1 + U * (1 - ρu) := by linarith
   have hN2 := near_compose hN hd hm (by linarith [hda.1]) (by linarith [mul_nonneg hρu0 hU0.le])

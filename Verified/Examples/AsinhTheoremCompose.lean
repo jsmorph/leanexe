@@ -103,8 +103,8 @@ theorem errBound_mid (v : ℝ) (h1 : 6499 / 10000 ≤ v) (h2 : v < 2 ^ 53) :
   have e3 : ¬ v < 4999 / 10000 := by intro h; linarith
   have e4 : ¬ v < 5603 / 10000 := by intro h; linarith
   have e5 : ¬ v < 6499 / 10000 := by intro h; linarith
-  rw [Log1pTheoremNear.errBound, if_neg e1, if_neg e2, if_neg e3, if_neg e4, if_neg e5,
-    if_pos h2]
+  rw [Log1pTheoremNear.errBound, ite_eq_right e1, ite_eq_right e2, ite_eq_right e3, ite_eq_right e4, ite_eq_right e5,
+    ite_eq_left h2]
 
 theorem errBound_big (v : ℝ) (h : 2 ^ 53 ≤ v) : Log1pTheoremNear.errBound v = 6 / 2 ^ 54 := by
   have h0 : (6499 : ℝ) / 10000 < 2 ^ 53 := by norm_num
@@ -113,8 +113,8 @@ theorem errBound_big (v : ℝ) (h : 2 ^ 53 ≤ v) : Log1pTheoremNear.errBound v 
   have e3 : ¬ v < 4999 / 10000 := by intro h'; linarith
   have e4 : ¬ v < 5603 / 10000 := by intro h'; linarith
   have e5 : ¬ v < 6499 / 10000 := by intro h'; linarith
-  rw [Log1pTheoremNear.errBound, if_neg e1, if_neg e2, if_neg e3, if_neg e4, if_neg e5,
-    if_neg (not_lt.mpr h)]
+  rw [Log1pTheoremNear.errBound, ite_eq_right e1, ite_eq_right e2, ite_eq_right e3, ite_eq_right e4, ite_eq_right e5,
+    ite_eq_right (not_lt.mpr h)]
 
 #print axioms log_pade
 #print axioms log_diff

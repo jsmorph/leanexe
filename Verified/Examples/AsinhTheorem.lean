@@ -66,17 +66,17 @@ theorem asinh_within_two (x : Float) (hx : Finite x.toBits) :
   refine AsinhTheoremLarge.signed_two x (asinhW x) Real.arsinh Real.arsinh_neg ?_ hx0
   unfold asinhW
   by_cases c2 : ixOf x > 0x41b00000
-  · rw [if_pos c2]
+  · rw [ite_eq_left c2]
     exact AsinhTheoremLarge.asinh_large_w x hx
       (by linarith [(ix_big x).mp c2, (by norm_num : (2 : ℝ) ^ 28 ≤ 268435712)])
-  rw [if_neg c2]
+  rw [ite_eq_right c2]
   have hbig : |value x.toBits| < 268435712 := not_le.mp (fun h => c2 ((ix_big x).mpr h))
   by_cases c3 : ixOf x > 0x40000000
-  · rw [if_pos c3]
+  · rw [ite_eq_left c3]
     exact AsinhTheoremMid.asinh_mid_w x hx
       (by linarith [(ix_mid x).mp c3, (by norm_num : (2 : ℝ) ≤ 1048577 / 524288)])
       (by linarith [(by norm_num : (268435712 : ℝ) ≤ 2 ^ 29)])
-  rw [if_neg c3]
+  rw [ite_eq_right c3]
   have hmid : |value x.toBits| < 1048577 / 524288 := not_le.mp (fun h => c3 ((ix_mid x).mpr h))
   exact AsinhTheoremSmallCases.asinh_small x hx h28
     (by linarith [(by norm_num : (1048577 : ℝ) / 524288 ≤ 1000001 / 500000)])

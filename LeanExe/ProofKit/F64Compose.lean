@@ -26,7 +26,7 @@ theorem within_two_of_close (y₁ y₂ : ℝ) (c : UInt64) (h : F64SignedRoundin
   have hy₂ : 0 ≤ y₂ := by linarith
   obtain ⟨hcn, hcp⟩ := h
   have hr₁ : F64SignedRounding.roundNearestEven y₁ = F64PositiveRounding.roundNearestEven y₁ := by
-    simp only [F64SignedRounding.roundNearestEven, if_pos hy₁]
+    simp only [F64SignedRounding.roundNearestEven, ite_eq_left hy₁]
   rw [hr₁] at hcp
   have hw₁ := (F64NearestEven.roundNearestEven_spec y₁).1
   have hw₂ := (F64NearestEven.roundNearestEven_spec y₂).1
@@ -145,7 +145,7 @@ theorem error_of_within (y : ℝ) (c : UInt64) (h : F64SignedRounding.WithinStep
   obtain ⟨hcn, hcp⟩ := h
   have hr63 : r.toNat < 2 ^ 63 := by omega
   have hrr : F64SignedRounding.roundNearestEven y = r := by
-    simp only [F64SignedRounding.roundNearestEven, if_pos hy0, hrd]
+    simp only [F64SignedRounding.roundNearestEven, ite_eq_left hy0, hrd]
   rw [hrr, F64SignedRounding.position_of_lt r hr63] at hcp
   have hcp' := abs_le.mp hcp
   have hc63 : c.toNat < 2 ^ 63 := by

@@ -49,9 +49,9 @@ theorem low_bit (x : Float) :
   have hor : l.toNat ||| (2 ^ 32 - l.toNat) % 2 ^ 32 < 2 ^ 32 :=
     Nat.or_lt_two_pow hl32 (Nat.mod_lt _ (by norm_num))
   by_cases h0 : l.toNat = 0
-  · rw [h0, if_pos (by rw [← hl]; exact h0)]
+  · rw [h0, ite_eq_left (by rw [← hl]; exact h0)]
     simp
-  · rw [if_neg (by rw [← hl]; exact h0)]
+  · rw [ite_eq_right (by rw [← hl]; exact h0)]
     have hge : 2 ^ 31 ≤ l.toNat ||| (2 ^ 32 - l.toNat) % 2 ^ 32 := by
       rcases Nat.lt_or_ge l.toNat (2 ^ 31) with h | h
       · have : 2 ^ 31 ≤ (2 ^ 32 - l.toNat) % 2 ^ 32 := by omega
@@ -156,7 +156,7 @@ theorem out_condition (x : Float) (h : ¬ (Finite x.toBits ∧ |value x.toBits| 
         show (AsinTheoremBranches.lxA x).toNat = (x.toBits &&& 0xFFFFFFFF).toNat from rfl,
         Log1pTheoremReduce.low_nat, hl0]
       simp
-    rw [hb, if_neg hl, he]
+    rw [hb, ite_eq_right hl, he]
     decide
 
 /-- **`atanh` within two steps.**  For every finite `x` with `|x| < 1`, `Asinh.atanh x` lies within
@@ -189,11 +189,11 @@ theorem atanh_within_two (x : Float) (hx : Finite x.toBits) (hdom : |value x.toB
   refine AsinhTheoremLarge.signed_two x (atanhT x) Real.artanh artanh_odd ?_ hx0
   unfold atanhT
   by_cases c2 : ixOf x < 0x3fe00000
-  · rw [if_pos c2]
+  · rw [ite_eq_left c2]
     have h := AtanhTheoremSmallCases.atanh_small x.abs haf (by rw [hav]; exact h28)
       (by rw [hav]; exact T5.mp c2)
     rwa [hav] at h
-  · rw [if_neg c2]
+  · rw [ite_eq_right c2]
     have h5 : 1 / 2 ≤ |value x.toBits| := not_lt.mp (fun h => c2 (T5.mpr h))
     have h := AtanhTheoremLarge.atanh_large x.abs haf (by rw [hav]; exact h5) (by rw [hav]; exact hdom)
     rwa [hav] at h

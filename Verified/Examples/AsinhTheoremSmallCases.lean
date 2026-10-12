@@ -117,7 +117,7 @@ theorem piece5 (x : Float) (hx : Finite x.toBits) (hL : 1263 / 5000 ≤ |value x
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (284010083 / 1000000000) (6249701 / 25000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1020 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -142,7 +142,7 @@ theorem piece6 (x : Float) (hx : Finite x.toBits) (hL : 2527 / 10000 ≤ |value 
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (142067289 / 500000000) (50017 / 200000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -167,7 +167,7 @@ theorem piece7 (x : Float) (hx : Finite x.toBits) (hL : 3 / 10 ≤ |value x.toBi
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (6880613 / 20000000) (29567303 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -192,7 +192,7 @@ theorem piece8 (x : Float) (hx : Finite x.toBits) (hL : 2083 / 5000 ≤ |value x
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (249953847 / 500000000) (8108071 / 20000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -217,7 +217,7 @@ theorem piece9 (x : Float) (hx : Finite x.toBits) (hL : 43 / 100 ≤ |value x.to
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (6481639 / 12500000) (10443587 / 25000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -242,7 +242,7 @@ theorem piece10 (x : Float) (hx : Finite x.toBits) (hL : 9 / 20 ≤ |value x.toB
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (546585609 / 1000000000) (8720993 / 20000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -267,7 +267,7 @@ theorem piece11 (x : Float) (hx : Finite x.toBits) (hL : 23 / 50 ≤ |value x.to
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (70090879 / 125000000) (22257587 / 50000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -292,7 +292,7 @@ theorem piece12 (x : Float) (hx : Finite x.toBits) (hL : 1 / 2 ≤ |value x.toBi
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (154508497 / 250000000) (48121181 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1021 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -317,7 +317,7 @@ theorem piece13 (x : Float) (hx : Finite x.toBits) (hL : 5211 / 10000 ≤ |value
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (324364067 / 500000000) (10000083 / 20000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -342,7 +342,7 @@ theorem piece14 (x : Float) (hx : Finite x.toBits) (hL : 1303 / 2500 ≤ |value 
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (12977487 / 20000000) (50009283 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -367,7 +367,7 @@ theorem piece15 (x : Float) (hx : Finite x.toBits) (hL : 3 / 5 ≤ |value x.toBi
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower _ _ (383095189 / 500000000) (7110311 / 12500000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -392,7 +392,7 @@ theorem piece16 (x : Float) (hx : Finite x.toBits) (hL : 4 / 5 ≤ |value x.toBi
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (80624847 / 2000000000) (1976053 / 50000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -417,7 +417,7 @@ theorem piece17 (x : Float) (hx : Finite x.toBits) (hL : 9 / 10 ≤ |value x.toB
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (61340601 / 500000000) (5785987 / 50000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -442,7 +442,7 @@ theorem piece18 (x : Float) (hx : Finite x.toBits) (hL : 1 ≤ |value x.toBits|)
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (207106781 / 1000000000) (18822639 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -467,7 +467,7 @@ theorem piece19 (x : Float) (hx : Finite x.toBits) (hL : 26 / 25 ≤ |value x.to
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (482775103 / 2000000000) (21622973 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -492,7 +492,7 @@ theorem piece20 (x : Float) (hx : Finite x.toBits) (hL : 2719 / 2500 ≤ |value 
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (565055163 / 2000000000) (24883279 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -517,7 +517,7 @@ theorem piece21 (x : Float) (hx : Finite x.toBits) (hL : 113 / 100 ≤ |value x.
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (25557601 / 80000000) (13861507 / 50000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -542,7 +542,7 @@ theorem piece22 (x : Float) (hx : Finite x.toBits) (hL : 231 / 200 ≤ |value x.
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (136550323 / 400000000) (29369579 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -567,7 +567,7 @@ theorem piece23 (x : Float) (hx : Finite x.toBits) (hL : 11753 / 10000 ≤ |valu
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (359227943 / 1000000000) (30691683 / 100000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1023 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
@@ -592,7 +592,7 @@ theorem piece24 (x : Float) (hx : Finite x.toBits) (hL : 3 / 2 ≤ |value x.toBi
               | (exfalso; linarith))
     (by norm_num) (by norm_num) (by norm_num)
     (log_lower2 _ _ (1302775637 / 2000000000) (25080801 / 50000000) 12 (by norm_num) (by norm_num) (by norm_num) (by decide +kernel) (by norm_num))
-    (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+    (by norm_num) (by norm_num) (by norm_num)
     (by rw [F64PositiveSpacing.boundary_value 1023 (by norm_num) (by norm_num)]; norm_num)
     (by norm_num)
 
