@@ -31122,6 +31122,12 @@ The code rounds `x - 7/2` before it takes the nearest integer `I`, so `d = x - (
 
 The error budget of the path on `(-3, 4)` is relative throughout.  `MainFact` contributes `2^-62` because `Γ (7/2 + d) ≥ Γ 2 = 1` by `Real.Gamma_strictMonoOn_Ici`, the double-double polynomial `2^-72`, the product `W` at most `6 · 2^-83`, the corrected reciprocal `2^-77`, the final `mulDD` `2^-70`, and `eps` about `2^-68`, so the sum before the last rounding lies within `2^-60` of `Γ x`.  The first statement of the path equation used `evalF flE d` for the tail, and its `rfl` exceeded the heartbeat limit.  Probes in `gamma-probe4.log` showed that the shift loop as `wState` and the loop body as `body` cost little, while unfolding `evalF` on the concrete expression inside the larger definitional check exceeded the limit, so `mainPath_gen` keeps the code's tail and `fl_eq` proves the tail equal to `evalF flE d` by `simp only` on the equations of `evalF`.
 
+### The tiny, integer, overflow, and underflow paths
+
+The ProofKit lemmas for nearest rounding stop at `2^1022` (`F64NearestDiv.div_nearest`, `F64Approx`) or `2^1023` (`F64RoundNearest.add_rounded`), while the path below `2^-112` rounds `1/x` in the top two binades for subnormal `x`.  `TgammaTop` therefore proves the rounding of `roundScaledMagnitude` up to `2^1024 - 2^971` from its definition, together with `round_rational_gen`, an adaptation of `F64NearestDiv.round_rational` without its upper bound, and it derives `add_top` and `div_top`.  `F64RelativeStep.within_one_relative` has no upper bound on `|y|`, so it gives one step from a relative error of `11/8` units of roundoff in the top binades as well.  The code returns `r - 1/2` when the fused multiply-add finds `r x = 1`; under `FmaNearest` a zero result means `|r x - 1| ≤ 2^-1075`, so `r` lies within `1/2` of `1/x` (`fma_zero`).  For `|x| ≤ 2^-1024` the quotient is an infinity whatever the fused multiply-add returns, because subtracting `1/2` from an infinity keeps it, so the proof needs no statement of `Fma.fma` at infinite operands.
+
+The words `±0` both sit at position 0 of `F64SignedRounding.position`, so either zero is within one step of a `y` below the least subnormal (`within_zero`), and the underflow path needs no parity of `⌊x⌋`.  The integer path multiplies up to `170!`, near `2^1019.4`, beyond the limit `2^900` of `TgammaDD.mulDDD_spec`, so `TgammaInt.mulDDD_big` repeats that proof for products up to `2^1020`; the fused multiply-add of the error term stays near `2^967`.  The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, which needs them for `lgamma`, and track `arc` sent the forms that the large and reflection paths need: for `asLogd` on `[4, 186]`, an error of at most `2^-64` with a low part below `2^-40`, and for `asSinpid` on `(0, 1)`, a relative error of at most `2^-58` with a low part below `2^-40` of the high part.
+
 ### Results
 
 | File | State | Log |
@@ -31148,7 +31154,11 @@ The error budget of the path on `(-3, 4)` is relative throughout.  `MainFact` co
 | `TgammaMainPoly`: `main_poly` within `2^-72` of `mainPoly` | Committed in `8f7f0463` | `gamma-mpoly-1.log` |
 | `TgammaMainLoop`: `shift_step`, `mag_bounds`, `prod_step`, `loop_inv` | Committed in `ef9f4625` | `gamma-mloop-3.log` |
 | `TgammaRecipDD.recip_dd` | Committed in `ef9f4625` | `gamma-rdd-2.log` |
-| `TgammaMainPath`: `x_gap`, `w_spec`, `prod_loose`, `mainPath_within` | Committed with this entry | `gamma-mpath-4.log` |
+| `TgammaMainPath`: `x_gap`, `w_spec`, `prod_loose`, `mainPath_within` | Committed in `171f956a` | `gamma-mpath-4.log` |
+| `TgammaTop`: `rsm_near`, `rsm_exact`, `add_top`, `div_top`, `div_overflow` | Committed with this entry | `gamma-top-4.log` |
+| `TgammaTiny`: `add_overflow`, `within_pos_inf`, `within_neg_inf`, `fma_zero`, `tinyPath_within` | Committed with this entry | `gamma-tiny-2.log` |
+| `TgammaEdge`: `overflowPath_within`, `within_zero`, `underflowPath_within`, `intPath_neg` | Committed with this entry | `gamma-edge-2.log` |
+| `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed with this entry | `gamma-int-4.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31156,15 +31166,16 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] Path equations
 - [x] Dekker's error-free sum
 - [x] Merge `transcendentals` at `a55d2cfd` (`FmaSpec`, the gamma foundations) as `a765795b`, with the conflicts in `devnotes.md` and `Tgamma.md` resolved by keeping both sides; the track's modules and `FmaSpec`, `GammaBasic`, and `GammaThresholds` build on it (`gamma-merge-1.log`)
-- [ ] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
+- [x] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
 - [x] Exceptional values at `±0`, `±∞`, and NaN (`TgammaSpecial`)
 - [x] Double-double lemmas: `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDDD`, `polyDDD`
 - [x] Double-double lemma `mulDD`
 - [ ] Double-double lemmas: `mulDD3`, `splt`, `sprod`, `poly3`
-- [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
+- [ ] `asLogd` and `asSinpid` in terms of the facts, assigned to track `expm1` on 2026-10-12
 - [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
 - [x] The reduction and the polynomial of the path on `(-3, 4)`
 - [x] The shift loop, the reciprocal, and the result of the path on `(-3, 4)` (`mainPath_within`)
-- [ ] The tiny path, the integer path, and the paths above 4 and below -3
+- [x] The tiny path and the integer path
+- [ ] `asExpd`, `asLgammaAsym`, and the paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
