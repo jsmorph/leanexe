@@ -50,4 +50,4 @@ describes the rule.
 
 - [The Lean 4 reference on
   arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.foldl`.
-- [The manual's section on folds](../../docs/manual.md#folds).
+- [The manual's section on folds](../../docs/leanexe-manual.md#folds).

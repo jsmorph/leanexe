@@ -25,9 +25,9 @@ compiler turns it into a loop that reads the record's slots and follows the poin
 | `words_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements all three functions. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/manual.md#records-and-user-types)
+`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/leanexe-manual.md#records-and-user-types)
 gives the rules for recursive types.  Its [section on
-representations](../../docs/manual.md#representations) describes `Encode` and `EncodeSlotted`.
+representations](../../docs/leanexe-manual.md#representations) describes `Encode` and `EncodeSlotted`.
 
 ## Running it
 
@@ -58,4 +58,4 @@ recursion.  [`Gcd`](../Gcd/README.md) has tail recursion on words.  The LTG entr
 
 - [The Lean 4 reference on inductive
   types](https://lean-lang.org/doc/reference/4.34.0-rc2/The-Type-System/Inductive-Types/).
-- [The manual's section on recursion](../../docs/manual.md#recursion).
+- [The manual's section on recursion](../../docs/leanexe-manual.md#recursion).

@@ -31,7 +31,7 @@ The proofs are in [`Verify.lean`](Verify.lean), with the lemmas about command st
 [`Commands.lean`](Commands.lean), and they use only the axioms `propext`, `Classical.choice`, and
 `Quot.sound`.  The last two theorems concern the Lean program alone, and
 since `clob_bytes` states that the module computes `runCommands` and `runOut`, they hold for its
-results.  [The manual's section on ownership](../../docs/manual.md#ownership) explains consumed and
+results.  [The manual's section on ownership](../../docs/leanexe-manual.md#ownership) explains consumed and
 borrowed arguments, using `fillTuple` from this example.
 
 ## Running it
