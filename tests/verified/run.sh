@@ -18,6 +18,7 @@ host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
+tools/leanrun --timeout 10m lake env lean tests/fourier/Materialization.lean
 for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:compiled.module:mix \
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
@@ -39,6 +40,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Fields:compiled.module:fields \
     Verified.Examples.Trig:compiled.module:trig \
     Verified.Examples.Fourier:compiled.module:fourier \
+    Verified.Examples.FFTProgram:compiled.module:fft:Verified.Examples.FFT \
     Verified.Examples.Insert:compiled.module:insert \
     Verified.Examples.Clob:compiled.module:clob \
     Verified.Examples.Tables:compiled.module:tables \
@@ -51,8 +53,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
     Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
     Verified.Examples.Drone:compiled.module:drone; do
-  IFS=: read -r module constant name <<<"$entry"
-  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
+  IFS=: read -r module constant name namespace <<<"$entry"
+  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "${namespace:-$module}.$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
 done
@@ -64,7 +66,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
-    fourier:FourierExtraBytes:FourierFile; do
+    fourier:FourierExtraBytes:FourierFile fft:FFTBytes:FFTFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
@@ -147,6 +149,9 @@ echo "verified: passed $passed failed $failed"
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
 # The behavior of the Fourier transforms, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean || exit 1
+tests/fourier/run.sh cases
+tests/fourier/run.sh runtime
+tests/fourier/run.sh accuracy
 # The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, tan, sinh, cosh, asinh,
 # acosh, atanh, exp2, exp10, log2, log10, pow, sinpi, cospi, tanpi, erf, and erfc against
 # references computed with Lean's integers, in native Lean.

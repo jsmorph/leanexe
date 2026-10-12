@@ -1,3 +1,4 @@
+#define _POSIX_C_SOURCE 200809L
 #include <inttypes.h>
 #include <stdbool.h>
 #include <stddef.h>
@@ -5,6 +6,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <time.h>
 
 #include <wasm.h>
 #include <wasmtime.h>
@@ -1384,12 +1386,81 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
   }
 }
 
+static uint64_t monotonic_ns(void) {
+  struct timespec now;
+  if (clock_gettime(CLOCK_MONOTONIC, &now) != 0) {
+    perror("clock_gettime");
+    exit(1);
+  }
+  return (uint64_t)now.tv_sec * UINT64_C(1000000000) + (uint64_t)now.tv_nsec;
+}
+
+static void command_bench_array(Runtime *runtime, int argc, char **argv) {
+  if (argc != 3) {
+    die("usage: bench-array <module.wasm> <function> <float-count> <calls-per-batch>");
+  }
+  uint64_t words = parse_u64(argv[1]);
+  uint64_t repetitions = parse_u64(argv[2]);
+  if (words > (SIZE_MAX - 8) / 8 || repetitions == 0) {
+    die("invalid benchmark size or repetition count");
+  }
+  U64List input = {.items = NULL, .len = (size_t)words};
+  input.items = calloc(input.len == 0 ? 1 : input.len, sizeof(uint64_t));
+  if (input.items == NULL) {
+    die("out of memory");
+  }
+  for (size_t i = 0; i < input.len; i++) {
+    uint64_t h = ((uint64_t)i + UINT64_C(17)) * UINT64_C(0x9e3779b97f4a7c15);
+    double value = (double)(h >> 11) / 9007199254740992.0;
+    value = value * 2.0 - 1.0;
+    memcpy(&input.items[i], &value, sizeof(value));
+  }
+  uint64_t ptr = alloc_u64_array(runtime, input);
+  free_u64_list(input);
+  wasmtime_func_t func = get_func(runtime, argv[0]);
+  wasmtime_func_t release = required_runtime_func(runtime, "release");
+  wasmtime_val_t arg = {.kind = WASMTIME_I64, .of.i64 = (int64_t)ptr};
+  wasmtime_val_t result;
+  for (size_t i = 0; i < 2; i++) {
+    invoke_func(runtime, &func, &arg, 1, &result, 1);
+    call_void_i64_func(runtime, &release, (uint64_t)result.of.i64);
+  }
+  uint64_t allocs_before = read_global_u64(runtime, "allocCount");
+  uint64_t frees_before = read_global_u64(runtime, "freeCount");
+  if (allocs_before - frees_before != 1) {
+    die("benchmark warmup retained an allocation");
+  }
+  uint64_t times[9];
+  for (size_t batch = 0; batch < 9; batch++) {
+    uint64_t start = monotonic_ns();
+    for (uint64_t i = 0; i < repetitions; i++) {
+      invoke_func(runtime, &func, &arg, 1, &result, 1);
+      call_void_i64_func(runtime, &release, (uint64_t)result.of.i64);
+    }
+    times[batch] = monotonic_ns() - start;
+  }
+  uint64_t allocs = read_global_u64(runtime, "allocCount") - allocs_before;
+  uint64_t frees = read_global_u64(runtime, "freeCount") - frees_before;
+  if (allocs != frees) {
+    die("benchmark calls retained an allocation");
+  }
+  qsort(times, 9, sizeof(uint64_t), compare_u64);
+  printf("%s %" PRIu64 " %.0f %.2f\n", argv[0], words, (double)times[4] / repetitions,
+         (double)allocs / (9.0 * repetitions));
+  call_void_i64_func(runtime, &release, ptr);
+  if (read_global_u64(runtime, "allocCount") != read_global_u64(runtime, "freeCount")) {
+    die("benchmark input release retained an allocation");
+  }
+}
+
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
           "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
           "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
-          "file-u64:PATH ...]\n");
+          "file-u64:PATH ...]\n"
+          "       wasmtime-host bench-array <module.wasm> <function> <float-count> "
+          "<calls-per-batch>\n");
   exit(1);
 }
 
@@ -1411,6 +1482,9 @@ int main(int argc, char **argv) {
     init_runtime(&runtime, argv[2]);
     call_export(&runtime, argv[3], argv[4], argc - 5, argv + 5);
     print_stats(&runtime);
+  } else if (strcmp(argv[1], "bench-array") == 0) {
+    init_runtime(&runtime, argv[2]);
+    command_bench_array(&runtime, argc - 3, argv + 3);
   } else if (strcmp(argv[1], "release-reuse") == 0) {
     init_runtime(&runtime, argv[2]);
     command_release_reuse(&runtime, argc - 3, argv + 3);

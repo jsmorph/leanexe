@@ -3,6 +3,7 @@ import Verified.Instantiate
 import Verified.Reflect.Lemmas
 import Verified.Reflect.Modes
 import LeanExe.Encoding.RoundTrip
+import CodeLib.GeneratedCore
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
@@ -39,6 +40,11 @@ and, in a recursive definition, calls of itself.  A definition
 `f x := g T₁ … Tₖ x` that applies a listed definition `g` to constants `Tᵢ` of type `Array UInt64`
 before its own parameters is a wrapper: the module holds the tables `Tᵢ` in data segments and
 exports `f` as an entry that passes their addresses to `g`. -/
+
+register_option Verified.Reflect.materializeModule : Bool := {
+  defValue := false
+  descr := "check a literal compiled module before proving its encoding gates"
+}
 
 namespace Verified.Reflect
 
@@ -470,6 +476,13 @@ def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
+
+unsafe def materializeCompiledModule (base : Name) : MetaM Unit := do
+  let module := Lean.mkConst (base ++ `module)
+  let candidate ← Lean.Meta.evalExpr Wasm.Module (Lean.mkConst ``Wasm.Module) module
+  addDefinition (base ++ `literalModule) (Lean.mkConst ``Wasm.Module) (toExpr candidate)
+  let literal := Lean.mkConst (base ++ `literalModule)
+  addTheorem (base ++ `module_literal_eq) (← mkEq module literal) (← mkEqRefl module)
 
 /-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
 for its second. -/
@@ -1985,10 +1998,11 @@ that holds the tables; `p.initial`, that the store in which the module starts me
 allocator invariant and holds the tables; and `p.bytes`, the module's bytes with all the
 functions' theorems. -/
 @[command_elab verifiedCompile]
-def elabVerifiedCompile : CommandElab
+unsafe def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
+    let materialize := materializeModule.get (← getOptions)
     let (reflected, wraps, tableNames, funsVal) ← liftTermElabM do
       let mut sigs : List Sig := []
       let mut prog := Lean.mkConst ``Prog.nil
@@ -2070,6 +2084,7 @@ def elabVerifiedCompile : CommandElab
       addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
         (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
           Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers)])
+      if materialize then materializeCompiledModule base
       return (out, wraps, tableNames, funs)
     -- The store in which the module starts.
     let initialProof ← `(Verified.compileWith_initialStore $(mkIdent (base ++ `program))
@@ -2160,10 +2175,14 @@ def elabVerifiedCompile : CommandElab
     let bytesId := mkIdent (target.getId ++ `bytes)
     let conj ← claims.pop.foldrM (fun c acc => `($c ∧ $acc)) claims.back!
     let impls ← proofs.pop.foldrM (fun p acc => `(⟨$p, $acc⟩)) proofs.back!
+    let gateProof ← if materialize then
+        let moduleEqId := mkIdent (base ++ `module_literal_eq)
+        `(by rw [($moduleEqId)]; decide +kernel)
+      else `(by decide +kernel)
     elabCommand (← `(theorem $bytesId : ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
         Wasm.Encoding.decode bytes = .ok $moduleId ∧ $conj := by
       obtain ⟨bytes, success, decoded⟩ :=
-        Wasm.Encoding.round_trip $moduleId (by decide +kernel) (by decide +kernel)
+        Wasm.Encoding.round_trip $moduleId $gateProof $gateProof
       exact ⟨bytes, success, decoded, $impls⟩))
   | _ => throwUnsupportedSyntax
 
