@@ -31398,10 +31398,12 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselStepF` failed in `bes-on-9.log` because `norm_num` evaluated `2^2046`, which lies below the exponentiation threshold of 2048, and left `2^2098` unevaluated, so the two sides of `2^2098 = 2^52 · 2^2046` and the cast of that bound did not match.  A threshold of 4096 for `finite_of_abs_lt` alone makes `norm_num` evaluate both powers.  `bes-on-10.log` built the module in 9 seconds, and its theorems report only the three standard axioms.
 
+`BesselOrderLoops` built on its first run, in 7 seconds in `bes-on-11.log`.  It identifies `jn`'s `LeanExe.loop` and `yn`'s `LeanExe.repeatWhile` with iterates of their bodies, and `yn`'s loop runs exactly `n - 1` steps because every value stays finite, so the test against the high word of `-∞` never stops it early.  `jn_forward` and `yn_forward` give `(17 + 12 n) u M_n` from the starting errors of `j0_large`, `j1_large`, `y0_large`, and `y1_large`, and since `n ≥ 2` and `2n ≤ x` force `x ≥ 4`, their hypothesis `4 ≤ x` excludes no case of the covered range.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
-- [ ] The loops of `jn` and `yn` for `2n ≤ x` (`BesselStepF`, `BesselOrderLoops`).
+- [x] The loops of `jn` and `yn` for `2n ≤ x` (`BesselStepF`, `BesselOrderLoops`).
 - [ ] The Hankel path from `2^302` (`BesselOrderHuge`).
 - [ ] The tiny path of `jn` (`BesselSmallSigns`, `BesselJnTiny`).
 - [ ] Miller's method for `2^-30 ≤ x < 2` (`BesselMillerReal`, `BesselMillerCF`, `BesselMillerDepth`, `BesselMillerFacts`, `BesselMillerT`, `BesselMillerLog`, `BesselMillerStep`, `BesselMillerBack`, `BesselMillerLast`, and a final module).
