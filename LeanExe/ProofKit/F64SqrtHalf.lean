@@ -67,7 +67,7 @@ theorem sqrt_half_scaled (magnitude : Nat) (hm : magnitude ≠ 0) (hmax : magnit
   have hpack := F64PackRelative.pack_spec false candidate hcandidateMax
   have hactual : Wasm.IEEE64.roundSqrtMagnitude magnitude =
       Wasm.IEEE64.roundScaledMagnitude false candidate := by
-    simp only [Wasm.IEEE64.roundSqrtMagnitude, beq_iff_eq, if_neg hm]
+    simp only [Wasm.IEEE64.roundSqrtMagnitude, beq_iff_eq, ite_eq_right hm]
     rfl
   have herr := CodeLib.IEEE32.roundSqrtIntegral_real_error radicand outputShift
   -- the unit is at most `2 ^ g`

@@ -42,7 +42,7 @@ theorem finite_of_close (y E : ℝ) (w : UInt64) (h : F64SignedRounding.WithinSt
   linarith
 
 theorem ln2_word : value ln2F.toBits = 6243314768165359 / 2 ^ 53 := by
-  rw [ln2F, F64Bits.toBits_ofBits, if_neg (by decide),
+  rw [ln2F, F64Bits.toBits_ofBits, ite_eq_right (by decide),
     AtanTheoremCases.word_eq 0x3FE62E42FEFA39EF (6243314768165359 / 2 ^ 53) (by decide +kernel)]
   norm_num
 
@@ -190,7 +190,7 @@ theorem arsinh_large (a : ℝ) (ha : 2 ^ 28 ≤ a) :
   have hs1 : a ≤ s := (Real.le_sqrt ha0.le (by positivity)).mpr (by nlinarith)
   have hs2 : s ≤ a + 1 / (2 * a) := by
     rw [hs, Real.sqrt_le_left (by positivity)]
-    have h3 : (a + 1 / (2 * a)) ^ 2 = a ^ 2 + 1 + 1 / (4 * a ^ 2) := by field_simp <;> ring
+    have h3 : (a + 1 / (2 * a)) ^ 2 = a ^ 2 + 1 + 1 / (4 * a ^ 2) := by field_simp; ring
     rw [h3]
     have : 0 ≤ 1 / (4 * a ^ 2) := by positivity
     linarith
@@ -198,7 +198,7 @@ theorem arsinh_large (a : ℝ) (ha : 2 ^ 28 ≤ a) :
   have hr1 : 1 ≤ (a + s) / (2 * a) := by rw [le_div_iff₀ (by positivity)]; linarith
   have hr2 : (a + s) / (2 * a) ≤ 1 + 1 / (4 * a ^ 2) := by
     rw [div_le_iff₀ (by positivity)]
-    have h3 : (1 + 1 / (4 * a ^ 2)) * (2 * a) = 2 * a + 1 / (2 * a) := by field_simp <;> ring
+    have h3 : (1 + 1 / (4 * a ^ 2)) * (2 * a) = 2 * a + 1 / (2 * a) := by field_simp; ring
     rw [h3]
     linarith
   have hlog : Real.arsinh a - (Real.log a + Real.log 2) = Real.log ((a + s) / (2 * a)) := by
@@ -223,7 +223,7 @@ theorem arcosh_large (a : ℝ) (ha : 2 ^ 28 ≤ a) :
       nlinarith
     rw [hs]
     apply (Real.le_sqrt h3 (by nlinarith)).mpr
-    have h4 : (a - 1 / a) ^ 2 = a ^ 2 - 2 + 1 / a ^ 2 := by field_simp <;> ring
+    have h4 : (a - 1 / a) ^ 2 = a ^ 2 - 2 + 1 / a ^ 2 := by field_simp; ring
     rw [h4]
     have h5 : 1 / a ^ 2 ≤ 1 := by
       rw [div_le_one (by positivity)]
@@ -239,7 +239,7 @@ theorem arcosh_large (a : ℝ) (ha : 2 ^ 28 ≤ a) :
   have hr1 : (a + s) / (2 * a) ≤ 1 := by rw [div_le_one (by positivity)]; linarith
   have hr2 : 1 - 1 / (2 * a ^ 2) ≤ (a + s) / (2 * a) := by
     rw [le_div_iff₀ (by positivity)]
-    have h3 : (1 - 1 / (2 * a ^ 2)) * (2 * a) = 2 * a - 1 / a := by field_simp <;> ring
+    have h3 : (1 - 1 / (2 * a ^ 2)) * (2 * a) = 2 * a - 1 / a := by field_simp
     rw [h3]
     linarith
   have hlog : Real.arcosh a - (Real.log a + Real.log 2) = Real.log ((a + s) / (2 * a)) := by

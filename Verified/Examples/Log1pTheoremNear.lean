@@ -103,7 +103,7 @@ theorem errBound_main (v : ℝ) (h : 868669 / 2097152 ≤ v) (h53 : v < 2 ^ 53) 
     linarith [(by norm_num : (285 : ℝ) / 1000 < 868669 / 2097152)]
   have h2 : ¬ v < 868669 / 2097152 := not_lt.mpr h
   unfold errBound
-  rw [if_neg h1, if_neg h2]
+  rw [ite_eq_right h1, ite_eq_right h2]
   split_ifs <;> refine ⟨fun h' => ?_, fun h' => ?_, fun h' => ?_, ?_⟩
   all_goals first
     | (norm_num; done)
@@ -136,14 +136,14 @@ theorem log1p_near (x : Float) (hx : Finite x.toBits) (h29 : 1 / 2 ^ 29 ≤ valu
   by_cases c2 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 < 0x3FDA827A
   · have hP := TP.mp c2
     rw [log1p_k0_eq x (by bits_omega) (by rw [UInt64.lt_iff_toNat_lt, ax_toNat]; simpa using c1)
-      (by simp only [ge_iff_le, not_le, UInt64.lt_iff_toNat_lt, UInt64.le_iff_toNat_le, ax_toNat,
+      (by simp only [ge_iff_le, not_le, UInt64.le_iff_toNat_le, ax_toNat,
             UInt64.reduceToNat, Nat.reducePow] at *
           omega) (by bits_omega),
       tail_k0_eq x 0.0 1 (by decide)]
     by_cases c3 : value x.toBits ≤ 285 / 1000
-    · rw [errBound, if_pos c3]
+    · rw [errBound, ite_eq_left c3]
       exact k0_near_low x hx (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 30 ≤ 1 / 2 ^ 29)]) c3
-    · rw [errBound, if_neg c3, if_pos hP]
+    · rw [errBound, ite_eq_right c3, ite_eq_left hP]
       exact (k0_near_high x hx (by linarith) (by norm_num at hP ⊢; linarith)).mono (by norm_num)
   have hP : 868669 / 2097152 ≤ value x.toBits := not_lt.mp (fun h => c2 (TP.mpr h))
   by_cases c3 : x.toBits.toNat % 2 ^ 63 / 2 ^ 32 < 0x43400000
@@ -187,7 +187,7 @@ theorem log1p_near (x : Float) (hx : Finite x.toBits) (h29 : 1 / 2 ^ 29 ≤ valu
       have e4 : ¬ value x.toBits < 5603 / 10000 := by intro h; linarith
       have e5 : ¬ value x.toBits < 6499 / 10000 := by intro h; linarith
       have e6 : ¬ value x.toBits < 2 ^ 53 := not_lt.mpr h53
-      rw [errBound, if_neg e1, if_neg e2, if_neg e3, if_neg e4, if_neg e5, if_neg e6]
+      rw [errBound, ite_eq_right e1, ite_eq_right e2, ite_eq_right e3, ite_eq_right e4, ite_eq_right e5, ite_eq_right e6]
     rw [hE]
     exact big_near x hx h53
 
