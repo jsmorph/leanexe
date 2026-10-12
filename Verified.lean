@@ -66,6 +66,8 @@ import Verified.Examples.AsinBytes
 import Verified.Examples.TanTheorem
 import Verified.Examples.SinhBytes
 import Verified.Examples.SinpiTheorem
+import Verified.Examples.AsinhBytes
+import Verified.Examples.TgammaApprox
 import Verified.Examples.Tgamma
 import Verified.Examples.Lgamma
 import Verified.Examples.Bessel
