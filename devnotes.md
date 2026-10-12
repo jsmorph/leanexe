@@ -31253,6 +31253,16 @@ Plain `linarith` after the generalizations of the double-double results exceeded
 
 `TgammaLarge.largePath_within` proves the path from 4 to `t0` within one step.  `asLgammaAsym_spec` and `asExpd_spec` put `(h + l) 2^E` within `5 · 2^-60` of `Γ x` relative, `eps` stays below `2^-62`, and the rounded `ub = h + (l + eps)` times `2^E` lies within `1.05 · 2^-53` of `Γ x` relative, so `F64RelativeStep.within_one_relative` gives one step whatever the rounding test decides.  The code adds `E` to the exponent field of `ub`, and `scale_word` gives the value `ub 2^E` of that word while the field stays at most 2046.  `field_lower` bounds a positive normal word below by `2^(f - 1023)` for its field `f`, so a field of 2047 or more would put `ub 2^E` at or above `2^1024`.  The hypothesis `GammaBelowT0`, `Γ ≤ 2^1024 (1 - 2^-50)` at the double below `t0`, keeps `ub 2^E` below `2^1024`, since `Γ` increases from 2 on and every double below `t0` is at most that predecessor (`below_t0`).  The first build exceeded the heartbeat limit of the declaration `largePath_within` (`gamma-large-1.log`), and moving the real analysis to `large_bound`, the bound on `eps` to `eps_bound`, and the word to `scale_result` brought each declaration under it.
 
+### The path below -3
+
+`TgammaRefl1` proves the first steps of the path below -3: `1 - x` as an exact pair, the exact fractional part `d = x - floorF x`, the parity test, and the reflection `Γ x = (-1)^⌊x⌋ π/(sin (π d) Γ (1 - x))`.  `TgammaRefl2.pi_div` bounds the quotient `π/(lh + ll)` that the code forms from `1/lh` and one correction: the result lies within `2^-68` of `P/(lh + ll)` relative for the split constant `P = p1 + p2` when `|ll| ≤ 2^-36 |lh|`.  Mathlib's 20-digit bounds on `π` add about `2^-67` for the difference between `P` and `π`.
+
+Below -170 the code chooses between a normal and a subnormal result by the exponent field `re` of `rh` alone.  If `re ≤ E`, it adds `th = ±2^(E - 1022)`, rounds the sum with `rl` and `eps`, and clears the exponent field.  Otherwise it subtracts `E` from the exponent field of the rounded sum.  When `|Γ x|` lies within about `|rl/rh|` of `2^-1022`, the rounded sum of the first branch can reach `2^(E - 1021)`, whose cleared field gives `±0`, and that of the second branch can fall below `2^(E - 1022)`, which the subtraction turns into a wrong subnormal.  The bounds of the earlier forms, `2^-40` for the low part of `asSinpid` and `2^-45` for that of `asExpd_spec`, allow `|rl/rh|` near `2^-37`, too large to exclude the case.  A scan at 90 digits of the doubles next to each crossing `|Γ| = 2^-1022` in `(-184, -170)` (`py/subgap.py`) found one double near the boundary, `x = -170.584302134743268` (word `0xc06552b29a63f692`) with `|Γ x| = 2^-1022 (1 + 33.97 · 2^-53)`, and the next at a relative distance of `2^-41.3`.  A native run of `Tgamma.tgamma` gave the correctly rounded result at the 366 doubles around the six crossings nearest to doubles (`gamma-subprobe-1.log`), and a run over 20,000 arguments in `(-184, -3)` measured `|l/h|` of `asExpd` up to `3.6 · 2^-53`, `|sl/sh|` of `asSinpid` up to `1.9 · 2^-53`, and `|rl/rh|` up to `6.1 · 2^-53` (`gamma-lowparts-2.log`).
+
+The coordinator approved on 2026-10-12 the hypothesis `SubnormalGap`, which track `erf` proves: every double `-m/2^45` in `(-184, -170)` has `|Γ| ≤ 2^-1022 (1 - 2^-48)` or `|Γ| ≥ 2^-1022 (1 + 2^-48)`.  The margin is thin, since the closest double lies at 34 units of `2^-53` against the 32 of the hypothesis, so the proof of the fact needs `Γ` to about `2^-56` relative at the doubles next to each crossing, with the monotonicity of `|Γ|` on each side of its minimum in each interval `(-n - 1, -n)` from the convexity of `log |Γ|`.  The coordinator also approved low parts below `2^-50` of the high parts: `|sl| ≤ |sh|/2^50` for `asSinpid`, from track `expm1`, and `|l| ≤ |h|/2^50` for `asExpd`, which track `arc` proves by tightening `TgammaExpdSpec`.  With these, `rh` lies within about 20 units of `2^-53` of `|Γ x| 2^E`, inside the gap.
+
+In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a new line inside a `linarith` list ended the term at the line break, since the new line was not indented past the column of `linarith`, and `rw [← hWa]` with `hWa : |W| |D| = 1` rewrote every `1` of the goal.  `have` statements before the call and `rw [hWa] at` a stated inequality replaced them.
+
 ### Results
 
 | File | State | Log |
@@ -31293,7 +31303,8 @@ Plain `linarith` after the generalizations of the double-double results exceeded
 | `TgammaAsym3`: `log_lo`, `log_hi`, `asym_recip`, `asym_square`, `log_one_add`, `asym_front` | Committed in `54581917` | `gamma-asym3-2.log` |
 | `TgammaAsym4`: `BranchOK`, `hiBranch`, `asym_hi`; `TgammaAsym5`: `loBranch`, `asym_lo` | Committed in `54581917` | `gamma-asym5-1.log`, `gamma-asym5-3.log` |
 | `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed in `54581917` | `gamma-asym6-2.log` |
-| `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed with this entry | `gamma-large-3.log` |
+| `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed in `a5086d5a` | `gamma-large-3.log` |
+| `TgammaRefl1`: `refl_front`, `refl_dx`, `refl_odd`, `refl_gamma`; `TgammaRefl2`: `pi_head`, `pi_tail`, `pi_real`, `pi_div` | Committed with this entry | `gamma-refl1-2.log`, `gamma-refl2-3.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31314,7 +31325,9 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] `asExpd` (`asExpd_spec`)
 - [x] `asLgammaAsym` (`asLgammaAsym_spec`)
 - [x] The path above 4 (`largePath_within`, given `GammaBelowT0`)
-- [ ] The path below -3
+- [x] The front of the path below -3 and the quotient by `π` (`TgammaRefl1`, `TgammaRefl2`)
+- [ ] The low part of `asExpd` below `2^-50` of its high part
+- [ ] The path below -3, given `SubnormalGap` and the specification of `asSinpid`
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
