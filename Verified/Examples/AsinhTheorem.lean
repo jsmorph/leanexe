@@ -95,15 +95,21 @@ theorem asinh_nan (x : Float) (h : Wasm.IEEE64.isNaN x.toBits = true) :
   rw [asinh_nonfinite_eq x hix, F64Bits.toBits_add]
   simp only [Wasm.IEEE64.add, h, Bool.true_or, ite_true]
 
+/-- An infinity added to itself is itself. -/
+theorem inf_add_self (w : UInt64) (hn : Wasm.IEEE64.isNaN w = false)
+    (hi : Wasm.IEEE64.isInfinite w = true) : Wasm.IEEE64.add w w = w := by
+  simp only [Wasm.IEEE64.add, hn, hi, Bool.or_self, bne_self_eq_false, Bool.and_false,
+    Bool.false_eq_true, ite_false, ite_true]
+
 theorem asinh_inf (x : Float) (h : x.toBits = 0x7FF0000000000000) :
     (Asinh.asinh x).toBits = 0x7FF0000000000000 := by
   rw [asinh_nonfinite_eq x (by unfold ixOf; rw [h]; decide), F64Bits.toBits_add, h]
-  decide +kernel
+  exact inf_add_self _ (by decide) (by decide)
 
 theorem asinh_neg_inf (x : Float) (h : x.toBits = 0xFFF0000000000000) :
     (Asinh.asinh x).toBits = 0xFFF0000000000000 := by
   rw [asinh_nonfinite_eq x (by unfold ixOf; rw [h]; decide), F64Bits.toBits_add, h]
-  decide +kernel
+  exact inf_add_self _ (by decide) (by decide)
 
 theorem asinh_zero (x : Float) (h : x.toBits = 0) : (Asinh.asinh x).toBits = 0 := by
   have hx : Finite x.toBits := by rw [h]; unfold CodeLib.IEEE64.Finite; decide
