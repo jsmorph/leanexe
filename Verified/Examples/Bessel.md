@@ -102,7 +102,8 @@ Branch `w/log`, in a separate worktree on the build host, holds the commits `278
 | `BesselJ0Large.j0_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j0 x) - J₀(x)\| ≤ 10 u √(J₀(\|x\|)² + Y₀(\|x\|)²)`, on the four ranges, both branches, and the path from `2^129` | `e55ba4e9`, `bes-j0l-4.log` |
 | `BesselY0Large.y0_large` | For finite `x ≥ 2`, `\|value (y0 x) - Y₀(x)\| ≤ 10 u √(J₀(x)² + Y₀(x)²)` | `94fcd632`, `bes-y0l-2.log` |
 | `BesselY1Large.y1_large` | For finite `x ≥ 2`, `\|value (y1 x) - Y₁(x)\| ≤ 12 u √(J₁(x)² + Y₁(x)²)` | `36a8f014`, `bes-y1l-1.log` |
-| `BesselJ1Large.j1_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j1 x) - J₁(x)\| ≤ 12 u √(J₁(\|x\|)² + Y₁(\|x\|)²)`, both signs | `bes-j1l-1.log` |
+| `BesselJ1Large.j1_large` | For finite `x` with `\|x\| ≥ 2`, `\|value (j1 x) - J₁(x)\| ≤ 12 u √(J₁(\|x\|)² + Y₁(\|x\|)²)`, both signs | `a498d407`, `bes-j1l-1.log` |
+| `BesselSmallApprox.j0_approx`, `j1_approx`, `y0_approx`, `y1_approx` | fdlibm's rational approximations below 2, exact in the reals, against the series with 18 terms: within `0.12 u + 2^-99` of `J₀`, `\|x\| (0.005 u + 2^-99)` of `J₁`, `0.21 u + 2^-60` of `Y₀ - (2/π) J₀ ln x`, and `x (0.155 u + 2^-60)` of `Y₁ - (2/π)(J₁ ln x - 1/x)`, with one kernel check `PolyBound.check` each | `bes-sa-4.log` |
 
 ## Proof
 
