@@ -487,6 +487,74 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .push x v, i => i == x.index || v.uses i
   | _, _, .append x y, i => i == x.index || i == y.index
 
+/-- The union of the bitmasks `b i`, as `argsAny` is the disjunction of the values. -/
+def argsMask : {n : Nat} → ((i : Fin n) → Nat) → Nat
+  | 0, _ => 0
+  | _ + 1, b => b 0 ||| argsMask fun i => b i.succ
+
+/-- The variables that an expression reads, as a bitmask whose bit `i` is set when it reads
+variable `i`: `Expr.uses` as data.  The code generator asks whether many variables are read by
+the same subexpression, and the kernel evaluates the code generator in every program's byte
+theorem, so it computes the mask of a subexpression once instead of walking the subexpression
+for each variable. -/
+def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
+  | _, _, .word _ | _, _, .bool _ | _, _, .float _ => 0
+  | _, _, .var x => 1 <<< x.index
+  | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
+  | _, _, .fcmp _ left right => left.useMask ||| right.useMask
+  | _, _, .toFloat _ e => e.useMask
+  | _, _, .toWord _ e => e.useMask
+  | _, _, .mk first second => first.useMask ||| second.useMask
+  | _, _, .proj x _ => 1 <<< x.index
+  | _, _, .funary _ e => e.useMask
+  | _, _, .not e => e.useMask
+  | _, _, .and left right | _, _, .or left right => left.useMask ||| right.useMask
+  | _, _, .ite c thenE elseE => c.useMask ||| thenE.useMask ||| elseE.useMask
+  | _, _, .letE value body => value.useMask ||| body.useMask >>> 1
+  | _, _, .call _ args => argsMask fun j => (args j).useMask
+  | _, _, .pair first second => first.useMask ||| second.useMask
+  | _, _, .letPair e body => e.useMask ||| body.useMask >>> 2
+  | _, _, .loop count init cond body =>
+    count.useMask ||| init.useMask ||| cond.useMask >>> 1 ||| body.useMask >>> 2
+  | _, _, .size x => 1 <<< x.index
+  | _, _, .get x k => 1 <<< x.index ||| k.useMask
+  | _, _, .build count elem => count.useMask ||| elem.useMask >>> 1
+  | _, _, .set x k v | _, _, .insertAt x k v => 1 <<< x.index ||| k.useMask ||| v.useMask
+  | _, _, .eraseAt x k => 1 <<< x.index ||| k.useMask
+  | _, _, .push x v => 1 <<< x.index ||| v.useMask
+  | _, _, .append x y => 1 <<< x.index ||| 1 <<< y.index
+
+/-- `Expr.uses` read from `Expr.useMask`, which the code generator calls. -/
+def Expr.usesFast (e : Expr S Γ t) (i : Nat) : Bool := e.useMask.testBit i
+
+theorem testBit_one_shiftLeft (k i : Nat) : (1 <<< k).testBit i = (i == k) := by
+  rw [Nat.one_shiftLeft, Nat.testBit_two_pow]
+  by_cases h : k = i
+  · subst h; simp
+  · simp [h, Ne.symm h]
+
+theorem argsMask_testBit : {n : Nat} → (b : (i : Fin n) → Nat) → (i : Nat) →
+    (argsMask b).testBit i = argsAny fun j => (b j).testBit i
+  | 0, _, _ => by simp [argsMask, argsAny]
+  | _ + 1, b, i => by
+    simp only [argsMask, argsAny, Nat.testBit_or, argsMask_testBit (fun j => b j.succ) i]
+
+theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
+    e.usesFast i = e.uses i := by
+  unfold Expr.usesFast
+  induction e generalizing i with
+  | word | bool | float => simp [Expr.useMask, Expr.uses]
+  | var x | proj x _ | size x =>
+    simp [Expr.useMask, Expr.uses, testBit_one_shiftLeft, -Nat.testBit_shiftLeft]
+  | call f args ih =>
+    simp only [Expr.useMask, Expr.uses, argsMask_testBit]
+    congr 1
+    funext j
+    exact ih j i
+  | _ =>
+    simp_all [Expr.useMask, Expr.uses, Nat.testBit_or, Nat.testBit_shiftRight,
+      testBit_one_shiftLeft, Nat.add_comm, -Nat.testBit_shiftLeft]
+
 /-- The index of an expression that is a variable. -/
 def Expr.varIndex? : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Option Nat
   | _, _, .var x => some x.index

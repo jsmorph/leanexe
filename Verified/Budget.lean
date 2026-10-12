@@ -126,7 +126,7 @@ theorem callMovesAt_eq {S : List Sig} {Γ : List Ty} {g : Sig} (slots : List Slo
     (live : Nat → Bool) (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) :
     callMovesAt (slots.map Slot.mode) live args = callMoves slots live args := by
   funext i
-  cases hv : (args i).varIndex? <;> simp only [callMovesAt, callMoves, hv, modeAt, Slot.modes_getD]
+  cases hv : (args i).varIndex? <;> simp only [callMovesAt, callMoves, Expr.usesFast_eq, hv, modeAt, Slot.modes_getD]
 
 /-- A call of the function that `FunSpec` describes, from the words `ws` of its arguments above,
 when its code takes the call depth, a depth `d` that `D` admits: the call returns words that
@@ -375,7 +375,7 @@ theorem specB_word {Γ : List Ty} (value : UInt64) :
   intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
-  simpa [Expr.code, Expr.denote] using
+  simpa [Expr.code, Expr.usesFast_eq, Expr.denote] using
     hNext0 store s [.i64 value] (After.refl hAt hVars (by intro i h; simp [h]) rfl
       (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .word rfl] at hb; exact nomatch hb)
@@ -388,7 +388,7 @@ theorem specB_bool {Γ : List Ty} (value : Bool) :
   intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
-  simpa [Expr.code, Expr.denote] using
+  simpa [Expr.code, Expr.usesFast_eq, Expr.denote] using
     hNext0 store s [.i64 (boolWord value)] (After.refl hAt hVars (by intro i h; simp [h]) rfl
       (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .bool rfl] at hb; exact nomatch hb)
@@ -401,7 +401,7 @@ theorem specB_float {Γ : List Ty} (bits : UInt64) :
   intro env slots live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
-  simpa [Expr.code, Expr.denote, F64Bits.toBits_ofBits] using
+  simpa [Expr.code, Expr.usesFast_eq, Expr.denote, F64Bits.toBits_ofBits] using
     hNext0 store s [.f64 (Float.ofBits bits).toBits] (After.refl hAt hVars
       (by intro i h; simp [h]) rfl (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .float rfl] at hb; exact nomatch hb)
@@ -422,7 +422,7 @@ theorem specB_bin {Γ : List Ty} (op : BinOp) {left right : Expr S Γ .word}
     (Nat.le_max_right ..).trans (Nat.le_max_right ..)
   have hS : op.scratch ≤ max op.scratch (max left.width right.width) := Nat.le_max_left ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -503,7 +503,7 @@ theorem specB_cmp {Γ : List Ty} (op : CmpOp) {left right : Expr S Γ .word}
   have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -540,7 +540,7 @@ theorem specB_fbin {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float}
   have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -571,7 +571,7 @@ theorem specB_fcmp {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float}
   have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -709,7 +709,7 @@ theorem specB_and {Γ : List Ty} {left right : Expr S Γ .bool}
   have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -736,7 +736,7 @@ theorem specB_or {Γ : List Ty} {left right : Expr S Γ .bool}
   have hL : left.width ≤ max left.width right.width := Nat.le_max_left ..
   have hR : right.width ≤ max left.width right.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB leftSpec rightSpec env slots live h base heap store s hh hpv hVars hAt hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
@@ -764,7 +764,7 @@ theorem specB_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
   have hL : first.width ≤ max first.width second.width := Nat.le_max_left ..
   have hR : second.width ≤ max first.width second.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_specB firstSpec secondSpec env slots live h base heap store s hh hpv hVars hAt hCap
       hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
@@ -1268,7 +1268,7 @@ theorem specB_ite (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {c : Expr S Γ' .b
   have he : elseE.width ≤ max thenE.width elseE.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   obtain ⟨⟨hPlaceC, hPlaceT⟩, hPlaceE⟩ := hPlace
-  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   have hMid : ∀ i, ((live i || thenE.uses i || elseE.uses i) || c.uses i) = true →
       (live i || (Expr.ite c thenE elseE).uses i) = true := by
     intro i h; simp only [Expr.uses]; exact ite_live_cond _ _ _ _ h
@@ -1333,7 +1333,7 @@ theorem specB_letE (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {value : Expr
   have hValueRoom : value.width ≤ max value.width body.width := Nat.le_max_left ..
   have hBodyRoom : body.width ≤ max value.width body.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   have hV : ∀ i, ((live i || body.uses (i + 1)) || value.uses i) = true →
       (live i || (Expr.letE value body).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
@@ -1471,7 +1471,7 @@ theorem specB_pair (hm : Runtime m) {Γ' : List Ty} {sTy tTy : Ty} {first : Expr
   have hw := Nat.le_max_left (max first.width second.width) (max (copyWidth sTy) (copyWidth tTy))
   have hc := Nat.le_max_right (max first.width second.width) (max (copyWidth sTy) (copyWidth tTy))
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   have hIn : ∀ i, ((live i || second.uses i) || first.uses i) = true →
       (live i || (Expr.pair first second).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
@@ -1572,7 +1572,7 @@ theorem specB_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
   have hER : e.width ≤ max e.width body.width := Nat.le_max_left ..
   have hBR : body.width ≤ max e.width body.width := Nat.le_max_right ..
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   have hV : ∀ i, ((live i || body.uses (i + 2)) || e.uses i) = true →
       (live i || (Expr.letPair e body).uses i) = true := fun i h => by
     simp only [Expr.uses]; exact live_seq _ _ _ h
@@ -2157,7 +2157,7 @@ theorem specB_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAtB m funs boun
         ∀ j', j' ≠ j → (sig.params.get j').scalar = false → (args j').uses k = false := by
     intro k hk
     obtain ⟨j, hj⟩ := argsAny_true.mp hk
-    simp only [Bool.and_eq_true, callMoves, beq_iff_eq] at hj
+    simp only [Bool.and_eq_true, callMoves, Expr.usesFast_eq, beq_iff_eq] at hj
     obtain ⟨⟨hmo, hj⟩, hu⟩ := hj
     obtain ⟨x, hx⟩ := hVar j hmo
     rw [hx] at hj hu
@@ -2180,7 +2180,7 @@ theorem specB_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAtB m funs boun
           !(argsAny fun j => callMoves slots live args j && (args j).uses i)) sig.mode args env) +
         bounds.get g (Env.ofFn fun i => (args i).denote funs env) := by
     simp only [Expr.allocs, callMovesAt_eq]; rfl
-  simp only [Expr.code, List.append_assoc]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine wp_depthCode sig.depth (fun hd => by
     rw [hpv]; exact hDepth (by simp [Expr.depthCalls, hd])) ?_
   refine args_specB hm (all := fun i => live i || argsAny fun j => (args j).uses i)
@@ -2376,7 +2376,7 @@ theorem specB_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S �
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     exact ⟨hd.1.1.1, hd.1.1.2, hd.1.2, hd.2⟩
   have hT := Expr.allocs_loop funs bounds (slots.map Slot.mode) live count init cond body env
-  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   -- The count, in local `base`.
   have hCountIn : ∀ i, ((live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
       count.uses i) = true → (live i || (Expr.loop count init cond body).uses i) = true :=
@@ -2831,7 +2831,7 @@ theorem specB_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S 
       ((Expr.build count elem).allocs funs bounds (slots.map Slot.mode) live env) →
       TrapOK true Q := fun hw =>
     hTrap.of_imp fun _ => by simp [trapFlag, Expr.aborts, hw]
-  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   -- The count, in local `base`.
   have hCountIn : ∀ i, ((live i || elem.uses (i + 1)) || count.uses i) = true →
       (live i || (Expr.build count elem).uses i) = true := fun i h => by
@@ -3184,7 +3184,7 @@ theorem specB_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   have hT : (Expr.set x i v).allocs funs bounds (slots.map Slot.mode) live env = i.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index || v.uses j) env + v.allocs funs bounds (slots.map Slot.mode) (fun j => live j || j == x.index) env + x.ownedCost (slots.map Slot.mode) live (env.get x) := rfl
   have hdS : (Expr.set x i v).depthCalls = false → i.depthCalls = false ∧ v.depthCalls = false :=
     fun hd => by simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd
-  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   -- The position, in local `base`.
   have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
       (live k || (Expr.set x i v).uses k) = true := fun k h => by
@@ -4258,7 +4258,7 @@ theorem specB_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' 
   have hdS : (Expr.insertAt x i v).depthCalls = false →
       i.depthCalls = false ∧ v.depthCalls = false :=
     fun hd => by simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd; exact hd
-  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   -- The position, in local `base`.
   have hIn : ∀ k, ((live k || k == x.index || v.uses k) || i.uses k) = true →
       (live k || (Expr.insertAt x i v).uses k) = true := fun k h => by
@@ -4706,7 +4706,7 @@ theorem bodyFunction_runsB {S : List Sig} {params : List Ty} {result : Ty} (mode
       (coerceCode (positions body depth) result
         (body.mode ((paramSlots params modes (if depth then 1 else 0)).map Slot.mode)) .owned
         ((if depth then 1 else 0) + widthSum params + body.width) ++ [])))) by
-    simp [bodyFunction]]
+    simp [bodyFunction, Expr.usesFast_eq]]
   have hl0 : ((bodyFunction modes body depth pos).toLocals
       ((if depth then [Value.i64 d] else []) ++ ws)).locals.length =
       body.width + copyWidth result + positions body depth := by
