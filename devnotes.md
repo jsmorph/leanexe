@@ -31415,6 +31415,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselMillerFacts` built on its first run in `bes-on-21.log` with only the three standard axioms.  Its ratio bounds `J_i ≤ (5/6) J_(i-1)` and `J_(i+1) ≤ (1/5) J_(i-1)` serve both the backward steps of `jn` and the bounds of `yn` below 2.  `d_one` gives the factor `21/20` for the last backward step of `jn` when the code normalizes by `j0 x`, which it does only when `|j0 x| ≥ |j1 x|`.
 
+`BesselMillerT` took three builds.  In `bes-on-22.log` a `set` variable `Qk` and the equation of the same name collided, and the final `linarith` mixed `𝐮` with `1/2^53`; in `bes-on-23.log` the `set` had already rewritten the hypothesis `hQd` to `Qk = Q ...`, so a rewrite with it found no `kern` term.  Taking `le_of_le_of_eq hQ hQd.symm` fixed the last error, and `bes-on-24.log` built the module with only the three standard axioms.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
