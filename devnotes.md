@@ -30111,3 +30111,20 @@ Two kinds of failure cost builds.  `linarith` failed on goals with `1 / 2 ^ 1075
 - [x] `tanWith`: tiny inputs, the direct and reduced branches, the sign, and the exact results.
 - [x] `TanTheorem` and `TanFile`.
 - [ ] `Sinpi.sinpi`, `cospi`, and `tanpi`.
+
+## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
+
+The three functions share `Sinpi.piProduct`, which forms `π x` as `w + t` from the 24-bit head of `x`, its exact tail, `π` as `pi_hi + pi_lo` with `pi_hi` of 26 bits, and a final two-sum.  `SinpiSingle.single_spec` shows that `toSingle` gives a finite word within `2 ^ -24` of `x` relative to its value with a magnitude of at most 24 significant bits; the carry case, where the fraction overflows into the exponent, has the significand `2 ^ 24` at the old scale.  `SinpiProduct.product_spec` places `w + t` within `x / 2 ^ 62` of `π x` and `t` within `|w| / 2 ^ 52` for `x` from `2 ^ -54` to `1/2`, with `|pi_hi + pi_lo - π| ≤ 2 ^ -66` from `Real.pi_gt_d20` and `Real.pi_lt_d20`.  `SinpiKernels.kernel_pair` and `SinpiTanKernel.kernel_tanpi` then apply the accepted kernels of `sin`, `cos`, and `tan`: from `2 ^ -54` to `1/4` for the first two, and below `1/2` for the third, which reflects through `1/2 - x` above `1/4` and uses `tan (π/2 - θ) = (tan θ)⁻¹`.
+
+`SinpiReflect` proves the reflected arguments `0.5 - a`, `a - 0.5`, and `1.0 - a` exact by Sterbenz's lemma and bounds them away from 0 by the grid of `a`.  `SinpiBits` shows that `ax` is `|x|`, that `neg` is the sign bit, and that `Sinpi.ffloor` clears the fraction bits below the units bit, through `land_clear`, `low_ones`, and `xor_mask`, three statements about bit masks proved with `Nat.testBit`.  `SinpiFloor` turns the cleared word into the integer part `N` of `|x|` with a fraction of 0 or at least `2 ^ -52`, and shows that `oddPart` and `toUInt64 &&& 1` give the parity of `N`.  At `a = 1/2`, the sine chain evaluates `kernelCospi` at `+0`; `decide +kernel` evaluates `productW 0 = (0, 0)` and `cosW 0 0 = 1`.
+
+| Module | Result |
+|---|---|
+| `SinpiSingle`, `SinpiProduct` | `single_spec`, `product_spec`. |
+| `SinpiKernels`, `SinpiTanKernel` | `kernel_pair`, `kernel_tanpi`. |
+| `SinpiReflect`, `SinpiBits`, `SinpiFloor` | `half_sub`, `sub_half`, `one_sub`, `ax_abs`, `neg_flag`, `ffloor_bits`, `floor_spec`, `oddPart_spec`. |
+
+- [x] The product, the kernels, the reflections, and the integer part.
+- [ ] The reflected chains (`SinpiPieces`).
+- [ ] `piTiny` below `2 ^ -29`, including subnormal inputs.
+- [ ] The three functions, their exact rules, the byte theorems, and the file module for `sinpi.wasm`.
