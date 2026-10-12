@@ -31402,12 +31402,14 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselSmallSigns` gives the signs and sizes below 2 that the tiny path and Miller's method use: `J_m > 0` and `J_m ≤ (5/3)(x/2)^m/m!` from the first terms of the series, `Y_k < 0` for `k ≥ 1` by induction with the cross product, and `M_(k+1) ≥ 2/(π x J_k)`.  `bes-on-12.log` replayed an earlier build of the current source.  Every theorem of the module reports only the three standard axioms.
 
+`BesselJnTiny` failed in `bes-on-13.log` at two places: `push Not` did not rewrite the negated comparison `¬ n > 33` of words, and `nlinarith` did not find `π x (5x/6) ≤ 4 x (5x/6)`.  Rewriting the comparison with `UInt64.lt_iff_toNat_lt` before `omega`, and multiplying `π ≤ 4` by `x (5x/6)` explicitly, fixed both, and `bes-on-14.log` built the module with only the three standard axioms.  The path's error is at most 3 while `M_n ≥ 2^59`, so it contributes less than `u M_n`.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
 - [x] The loops of `jn` and `yn` for `2n ≤ x` (`BesselStepF`, `BesselOrderLoops`).
 - [ ] The Hankel path from `2^302` (`BesselOrderHuge`).
-- [ ] The tiny path of `jn` (`BesselSmallSigns`, `BesselJnTiny`).
+- [x] The tiny path of `jn` (`BesselSmallSigns`, `BesselJnTiny`).
 - [ ] Miller's method for `2^-30 ≤ x < 2` (`BesselMillerReal`, `BesselMillerCF`, `BesselMillerDepth`, `BesselMillerFacts`, `BesselMillerT`, `BesselMillerLog`, `BesselMillerStep`, `BesselMillerBack`, `BesselMillerLast`, and a final module).
 - [ ] `yn` for `x < 2`, with the overflow to `-∞`.
 - [ ] The decoding of the order, the exceptional arguments, and the theorems `jn_accuracy` and `yn_accuracy`.
