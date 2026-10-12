@@ -158,10 +158,9 @@ theorem combine_add {p q c s : Float} {P Q A B eP eQ eA eB Pm Qm Am Bm : ℝ}
   unfold mulErr
   norm_num [unitRoundoff64]
 
-/-- `invsqrtpi · t / √x` for `2 ≤ x ≤ 2 ^ 200`. -/
+/-- `invsqrtpi · t / √x` for `x ≥ 2`. -/
 theorem final_step {t x : Float} {T eT MT : ℝ} (ht : FApprox t T eT) (hMT : |T| ≤ MT)
-    (hsm : MT + eT ≤ 4) (hxf : Finite x.toBits) (hx2 : 2 ≤ value x.toBits)
-    (hxb : value x.toBits ≤ 2 ^ 200) :
+    (hsm : MT + eT ≤ 4) (hxf : Finite x.toBits) (hx2 : 2 ≤ value x.toBits) :
     FApprox (Bessel.invsqrtpi * t / x.sqrt) (T / √(π * value x.toBits))
       (finErr eT MT / √(value x.toBits) + 1 / 2 ^ 1075) := by
   have hu : 𝐮 = 1 / 2 ^ 53 := rfl
@@ -182,9 +181,6 @@ theorem final_step {t x : Float} {T eT MT : ℝ} (ht : FApprox t T eT) (hMT : |T
   have he2 : √v / 2 ^ 53 < √v := by
     have : √v / 2 ^ 53 < √v / 1 := div_lt_div_of_pos_left hsv (by norm_num) (by norm_num)
     rwa [div_one] at this
-  have hsb : √v ≤ 2 ^ 100 := by
-    rw [show (2 : ℝ) ^ 100 = √((2 ^ 100) ^ 2) by rw [Real.sqrt_sq (by positivity)]]
-    exact Real.sqrt_le_sqrt (by rw [← pow_mul]; exact hxb)
   set eF := eis * MT + Mis * eT + eis * eT + (Mis + eis) * (MT + eT) / 2 ^ 53 + 1 / 2 ^ 1075
     with heF
   have heF0 : 0 ≤ eF := by rw [heF]; unfold Mis; positivity
