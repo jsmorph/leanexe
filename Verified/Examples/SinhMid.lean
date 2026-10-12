@@ -21,7 +21,10 @@ theorem mid_words (t : UInt64) (htf : Finite t) (hT1 : 1 ≤ value t) (hT2 : val
     ∃ rv : ℝ, |rv - value t / (1 + value t)| ≤ 21 / 10 * u * (value t / (1 + value t)) ∧
       0 ≤ rv ∧
       Nearest ((value t + rv) / 2) (Wasm.IEEE64.mul Expm1Words.half
-        (Wasm.IEEE64.add t (Wasm.IEEE64.div t (Wasm.IEEE64.add t Expm1Words.one)))) := by
+        (Wasm.IEEE64.add t (Wasm.IEEE64.div t (Wasm.IEEE64.add t Expm1Words.one)))) ∧
+      Finite (Wasm.IEEE64.add t (Wasm.IEEE64.div t (Wasm.IEEE64.add t Expm1Words.one))) ∧
+      1 / 2 ^ 1021 ≤ value (Wasm.IEEE64.add t (Wasm.IEEE64.div t (Wasm.IEEE64.add t Expm1Words.one)))
+      := by
   have hu : u = 1 / 2 ^ 53 := rfl
   set T := value t with hTdef
   have hone := Expm1KernelInner.const_values.1
@@ -54,7 +57,14 @@ theorem mid_words (t : UInt64) (htf : Finite t) (hT1 : 1 ≤ value t) (hT2 : val
     (by linarith [show (1 : ℝ) / 2 ^ 1020 ≤ 1 by norm_num])
     (by linarith [show (2 : ℝ) ^ 33 + 2 ≤ 2 ^ 1022 by norm_num])
   rw [← half_eq] at hcn
-  exact ⟨value r, hrr, hr0, hcn⟩
+  have hwr := F64NearestHalf.nearest_relative _ _ hwn
+    (by linarith [show (1 : ℝ) / 2 ^ 1022 ≤ 1 by norm_num])
+    (by linarith [show (2 : ℝ) ^ 33 + 2 < 2 ^ 1022 by norm_num])
+  obtain ⟨hwr1, -⟩ := abs_le.mp hwr
+  rw [hu] at hwr1
+  refine ⟨value r, hrr, hr0, hcn, (nearest_finite _ _ hwn).1, ?_⟩
+  have : (1 : ℝ) / 2 ^ 1021 ≤ 1 * (1 - 1 / 2 ^ 53) := by norm_num
+  nlinarith
 
 theorem mid_steps (x : Float) (hlo : 1 ≤ |value x.toBits|) (hhi : |value x.toBits| < 22) (E : ℝ)
     (htf : Finite (Tanh.expm1 x.abs).toBits)
@@ -65,11 +75,13 @@ theorem mid_steps (x : Float) (hlo : 1 ≤ |value x.toBits|) (hhi : |value x.toB
       2.9375 * u * ((Real.exp |value x.toBits| - 1) +
         (Real.exp |value x.toBits| - 1) / (1 + (Real.exp |value x.toBits| - 1)))) :
     F64SignedRounding.WithinSteps 3 (Real.sinh |value x.toBits|)
-      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
+      (0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits ∧
+    F64SignedRounding.WithinSteps 3 (-Real.sinh |value x.toBits|)
+      (-0.5 * (Tanh.expm1 x.abs + Tanh.expm1 x.abs / (Tanh.expm1 x.abs + 1.0))).toBits := by
   have hu : u = 1 / 2 ^ 53 := rfl
   generalize hA : |value x.toBits| = A at hlo hhi hT hE hnum ⊢
   simp only [F64Bits.toBits_mul, F64Bits.toBits_div, F64Bits.toBits_add, half_bits,
-    TanhTheorem.one_bits]
+    SinhSign.neg_half_bits, TanhTheorem.one_bits]
   generalize (Tanh.expm1 x.abs).toBits = t at htf hT hE hnum ⊢
   set τ := Real.exp A - 1 with hτdef
   set T := value t with hTdef
@@ -93,7 +105,8 @@ theorem mid_steps (x : Float) (hlo : 1 ≤ |value x.toBits|) (hhi : |value x.toB
     have : τ / 2 ^ 40 ≤ τ := by
       rw [div_le_iff₀ (by positivity)]; nlinarith
     linarith [show (2 : ℝ) ^ 32 + 2 ^ 32 ≤ 2 ^ 33 by norm_num]
-  obtain ⟨rv, hrr, hr0, hcn⟩ := mid_words t htf hT1' hT2'
+  obtain ⟨rv, hrr, hr0, hcn, hwf, hwlo⟩ := mid_words t htf hT1' hT2'
+  rw [SinhSign.mul_negHalf _ hwf hwlo, F64SignedRounding.within_negate, and_self]
   have hy : Real.sinh A = (τ + τ / (1 + τ)) / 2 := by
     have := two_sinh A
     rw [← hτdef] at this
