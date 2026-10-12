@@ -31097,15 +31097,16 @@ The final step of every path rounds a double-double `fh + fl` once, or adds a ti
 | accurate path, `\|x\| < 1/4` and nine ranges | `2^-108` to `2^-115` relative | `2^-62` |
 | Stirling's forms above and below `11.5` | `2^-67.8` absolute | `2^-64` |
 | `log (1 + z)` kernel, `\|z\| ≤ 1/2400` | `2^-73.4` | `2^-70` |
-| tables of `log`, `exp`, `sin (π x)`, and the split constants | `2^-89` or smaller | `2^-80` |
+| tables of `log` and `exp`, and the split constants `ln 2` and `1024/ln 2` | `2^-89` or smaller | `2^-80` |
+| table of `sin (kπ/128)` and the split `π` | `2^-108` | `2^-66` |
 | `exp` kernel, `\|X\| ≤ 513/1024` | `2^-78` | `2^-74` |
-| `sin (π d/128)` and `cos (π d/128)` kernels | `2^-74.3 \|d\|`, `2^-81.4 d²` | `2^-71 \|d\|`, `2^-78 d²` |
+| `sin (π d/128)` and `cos (π d/128)` kernels | `2^-74.3 \|d\|`, `2^-81.4 d²` | `2^-71 \|d\|`, `2^-76 d²` |
 
 An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) shows that the index `j` increases with the mantissa in each of the 32 blocks and that `|r1 r2 t - 1| ≤ 0.000403 < 1/2400` at every interval end, hence everywhere.
 
 ### Interface with track `erf`
 
-`TgammaApprox` states the facts as propositions over the exact rational values of the table words (`q tab i = ratOfWord tab[i]!`), with polynomials evaluated by `PolyBound.eval`.  The coordinator received the proposal with commit `b92f7941`.  The database of 57 hard cases needs no separate fact: `AccRangeFact` and an exact evaluation at those arguments bound `Γ` there.
+`TgammaApprox` states the facts as propositions over the exact rational values of the table words (`q tab i = ratOfWord tab[i]!`), with polynomials evaluated by `PolyBound.eval`.  The coordinator received the proposal with commit `b92f7941`.  Track `erf`'s Taylor models take `π` from Mathlib's 20-digit bounds `Real.pi_gt_d20` and `Real.pi_lt_d20`, which fix `π` only to `10^-20`, about `2^-66`.  The first proposal asked `2^-80` of the split `π` and of the table `sin (kπ/128)`, which those bounds cannot give, so these two tolerances are now `2^-66`, and the cosine kernel's is `2^-76 d²` to leave room for the uncertainty of `π²`.  A table error of `2^-66` reaches the result of `asSinpid` as a relative error below `2^-59.7`, since the result is at least `sin (π/256)` whenever a table entry other than the exact `st 0 = 0` and `st 64 = 1` contributes.  The database of 57 hard cases needs no separate fact: `AccRangeFact` and an exact evaluation at those arguments bound `Γ` there.
 
 ### Results
 
@@ -31114,13 +31115,16 @@ An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) s
 | `TgammaApprox` | Committed in `b92f7941` | `gamma-approx-1.log` |
 | `TgammaBranches`: one function per path and the equations `tgamma_special` to `tgamma_main` | Committed in `da5566d6` | `gamma-branches-2.log` |
 | `F64TwoSum.fast_two_sum`: Dekker's error-free sum for `\|b\| ≤ \|a\| < 2^900` | Committed in `da5566d6` | `gamma-twosum-2.log` |
+| `F64Saturate`: rounding to infinity and to zero, `x/0`, `0/0`, `∞/∞`, NaN sums | Committed in `6d4cebb2` | `gamma-saturate-3.log` |
+| `TgammaFloor`: `roundEven_spec`, `floorF_spec` | Committed in `6d4cebb2` | `gamma-floor-4.log` |
+| `TgammaApprox` with the tolerances that involve `π` relaxed | Committed in `02c72fa9` | `gamma-approx-2.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
 - [x] Approximation statements, sent to the coordinator
 - [x] Path equations
 - [x] Dekker's error-free sum
-- [ ] Merge `transcendentals` after the coordinator's push (`FmaSpec`, the gamma foundations)
+- [x] Merge `transcendentals` at `a55d2cfd` (`FmaSpec`, the gamma foundations) as `a765795b`, with the conflicts in `devnotes.md` and `Tgamma.md` resolved by keeping both sides; the track's modules and `FmaSpec`, `GammaBasic`, and `GammaThresholds` build on it (`gamma-merge-1.log`)
 - [ ] Exceptional values: `±0`, `±∞`, NaN, the negative integers, `2^-1024`, the overflow and underflow paths
 - [ ] Double-double lemmas: `twoSum`, `fastSum`, `sumDD`, `mulDD`, `mulDDD`, `mulDD3`, `polyDDD`, `splt`, `sprod`, `poly3`
 - [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
