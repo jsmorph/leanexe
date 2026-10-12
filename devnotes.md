@@ -31364,3 +31364,192 @@ Opus merged three branches into `transcendentals`.  `w/log` at `38cb2de7` (`3f77
 The documents `Bessel.md`, `Fma.md`, `Lgamma.md`, `Tgamma.md`, `Log.md`, and `Trig.md` now describe the merged theorems, and `Trig.md` lists `TrigNear`.  Track `log` analyzed `jn` and `yn` on its branch (`48726b90`, not merged): the form `a + b |n|` holds on every path, with `a` near 30 and `b` near 3 or 4, but the range `2 ≤ |x| < 2^302` with `|n| > |x|/2` needs an upper bound on `√(J_k² + Y_k²)` through the turning point `k = x`, which grows like `x^(1/3)` there and which no current module gives.  Opus decided that the track proves the other ranges with that range excluded by an explicit hypothesis, records it as open, and then writes a feasibility analysis of a discrete bound through the turning point from the ratios `Y_(k+1)/Y_k` and `J_(k+1)/J_k` before any decision to formalize it.
 
 The user asked for research on conversions between decimal strings and binary32 and binary64 values in both directions, with a design grounded in published work.  An agent wrote that report in a directory outside the repository on the local machine, with 54 references.  It recommends exact big-integer arithmetic first, built on Cox's unrounded scaling `⟨x · 2^e · 10^p⟩` (2026) for both directions, with Schubfach's decision for shortest output, since no table-based method (Eisel-Lemire, Ryū, Schubfach as shipped, Dragonbox) has a machine-checked proof.  It also finds that Lean `v4.34.0-rc2` defines `Float.ofScientific` publicly, which Opus confirmed in the toolchain's `Init/Data/OfScientific.lean`, so a theorem about it would cover every decimal literal in the compiled programs.  The report lists fourteen decisions, and the user accepted every recommendation: two grammar modes (RFC 8259 and a C-like mode), unlimited input length with correct rounding, strings as one byte per word, binary32 results as words, shortest output as fewest digits then nearest then even, scientific and ECMAScript layouts, a flag and a word as the parser's result, exact `uscale` with Clinger's fast path first, a table-based stage only after measurement, fixed-precision and hexadecimal output later, placement in `Verified.Examples`, the prior Lean projects as references only, and a theorem about `Float.ofScientific`.  Opus created a separate worktree, branch `w/strconv` from `5688a840`, and started track `strconv` on the report's stages 1 to 4.
+
+## 2026-10-12: Decimal strings and binary floating point, plan and statements (track `strconv`)
+
+The track `strconv` builds proved conversions between decimal strings and binary64 and binary32 values in both directions, on branch `w/strconv` from `transcendentals` at `5688a840`.  The design is the research report `work/w-strconv/report.md` of 2026-10-12, whose fourteen recommendations of section 10 the user accepted: two grammars selected by a parameter (RFC 8259's number, and a general grammar with `+`, leading zeros, `.5` and `5.`, hexadecimal significands with a required binary exponent, and `inf`, `infinity`, and `nan` in any case), inputs of any length with correct rounding, strings as `Array UInt64` with one byte per word and theorems stated on `List UInt8`, binary32 results as words, the shortest output defined as the fewest significant digits, then the nearest, then the even last digit, a scientific and an ECMAScript layout, the outputs `-0`, `NaN`, `Infinity`, and `-Infinity`, a parser result that pairs a flag with a word, an exact first stage with Clinger's fast path, and placement in `Verified.Examples`.  The algorithms are written from the papers: Cox's unrounded scaling [Cox 2026, research.swtch.com/fp], the Schubfach decision [Giulietti 2022], and Clinger's fast path [Clinger, PLDI 1990, doi:10.1145/93542.93557].  No third-party code is ported, and FloatLib, `ryu-lean4`, and `shortest-decimal` serve only as references.
+
+### Statements
+
+The grammar is an inductive relation with one constructor per production, so that it can be compared with the ABNF of RFC 8259 section 6.  The relation is deterministic: the significand's digits are the integer digits followed by the fraction digits, and the exponent is reduced by the number of fraction digits, so `1.0` denotes `.dec false 10 (-1)` and nothing else.  `derives_unique` states this, in place of the report's weaker `derives_value`.
+
+```lean
+inductive Num where
+  | dec (neg : Bool) (d : Nat) (e : Int)   -- (-1)^neg · d · 10^e
+  | hex (neg : Bool) (d : Nat) (e : Int)   -- (-1)^neg · d · 2^e
+  | inf (neg : Bool)
+  | nan
+
+def isDigit (b : UInt8) : Bool := 0x30 ≤ b && b ≤ 0x39
+def isHexDigit (b : UInt8) : Bool := isDigit b || (0x41 ≤ b && b ≤ 0x46) || (0x61 ≤ b && b ≤ 0x66)
+def decValue (ds : List UInt8) : Nat := ds.foldl (fun v b => 10 * v + (b.toNat - 0x30)) 0
+def hexValue (ds : List UInt8) : Nat := ds.foldl (fun v b => 16 * v + hexDigitValue b) 0
+def lower (b : UInt8) : UInt8 := if 0x41 ≤ b && b ≤ 0x5A then b + 0x20 else b
+def ascii (s : String) : List UInt8 := s.toList.map Char.toUInt8
+def words (s : List UInt8) : Array UInt64 := (s.map UInt8.toUInt64).toArray
+
+inductive Sign : Bool → List UInt8 → Bool → Prop          -- general, bytes, negative
+  | none (general : Bool) : Sign general [] false
+  | minus (general : Bool) : Sign general (ascii "-") true
+  | plus : Sign true (ascii "+") false
+
+inductive JsonInt : List UInt8 → Prop                      -- int = zero / ( digit1-9 *DIGIT )
+  | zero : JsonInt (ascii "0")
+  | nonzero (c : UInt8) (ds : List UInt8) :
+      0x31 ≤ c → c ≤ 0x39 → (∀ b ∈ ds, isDigit b) → JsonInt (c :: ds)
+
+inductive JsonFrac : List UInt8 → List UInt8 → Prop        -- [ frac ], with its digits
+  | none : JsonFrac [] []
+  | some (f : List UInt8) : f ≠ [] → (∀ b ∈ f, isDigit b) → JsonFrac (ascii "." ++ f) f
+
+inductive Significand (digit : UInt8 → Bool) :             -- 1*D [ "." *D ] / "." 1*D
+    List UInt8 → List UInt8 → List UInt8 → Prop
+  | int (i : List UInt8) : i ≠ [] → (∀ b ∈ i, digit b) → Significand digit i i []
+  | point (i f : List UInt8) : i ++ f ≠ [] → (∀ b ∈ i ++ f, digit b) →
+      Significand digit (i ++ ascii "." ++ f) i f
+
+inductive Exponent (markers : List UInt8) : List UInt8 → Int → Prop   -- m [ "+" / "-" ] 1*DIGIT
+  | plain (m : UInt8) (ds : List UInt8) : m ∈ markers → ds ≠ [] → (∀ b ∈ ds, isDigit b) →
+      Exponent markers (m :: ds) (decValue ds)
+  | plus (m ds) : ... → Exponent markers (m :: ascii "+" ++ ds) (decValue ds)
+  | minus (m ds) : ... → Exponent markers (m :: ascii "-" ++ ds) (-(decValue ds : Int))
+
+inductive OptExponent (markers : List UInt8) : List UInt8 → Int → Prop
+  | none : OptExponent markers [] 0
+  | some (x : List UInt8) (e : Int) : Exponent markers x e → OptExponent markers x e
+
+inductive Derives : Bool → List UInt8 → Num → Prop
+  | json (sg i fr f x : List UInt8) (neg : Bool) (e : Int) :
+      Sign false sg neg → JsonInt i → JsonFrac fr f → OptExponent (ascii "eE") x e →
+      Derives false (sg ++ i ++ fr ++ x) (.dec neg (decValue (i ++ f)) (e - f.length))
+  | decimal (sg m i f x : List UInt8) (neg : Bool) (e : Int) :
+      Sign true sg neg → Significand isDigit m i f → OptExponent (ascii "eE") x e →
+      Derives true (sg ++ m ++ x) (.dec neg (decValue (i ++ f)) (e - f.length))
+  | hex (sg z m i f x : List UInt8) (neg : Bool) (e : Int) :
+      Sign true sg neg → z ∈ [ascii "0x", ascii "0X"] → Significand isHexDigit m i f →
+      Exponent (ascii "pP") x e →
+      Derives true (sg ++ z ++ m ++ x) (.hex neg (hexValue (i ++ f)) (e - 4 * f.length))
+  | inf (sg w : List UInt8) (neg : Bool) :
+      Sign true sg neg → w.map lower ∈ [ascii "inf", ascii "infinity"] →
+      Derives true (sg ++ w) (.inf neg)
+  | nan (sg w : List UInt8) (neg : Bool) :
+      Sign true sg neg → w.map lower = ascii "nan" → Derives true (sg ++ w) .nan
+
+theorem derives_unique : Derives g s n → Derives g s n' → n = n'
+theorem derives_general : Derives false s n → Derives true s n
+```
+
+The references round the magnitude to nearest, ties to even, and apply the sign afterwards, so that `-0`, `-0.0e5`, and `-1e-400` all give `0x8000000000000000`.  The binary64 reference is ProofKit's `F64PositiveRounding.roundNearestEven`, with positive infinity from `2^1024 - 2^970` on.  The binary32 reference is new, defined in the same way: the nearest-even word among the finite nonnegative `UInt32` words by `CodeLib.IEEE32.value`, with positive infinity from `2^128 - 2^103` on.
+
+```lean
+noncomputable def Num.toReal : Num → ℝ
+  | .dec neg d e => (if neg then -1 else 1) * d * (10 : ℝ) ^ e
+  | .hex neg d e => (if neg then -1 else 1) * d * (2 : ℝ) ^ e
+  | _ => 0
+
+noncomputable def round64 : Num → UInt64
+  | .dec neg d e => withSign64 neg (F64PositiveRounding.roundNearestEven (d * (10 : ℝ) ^ e))
+  | .hex neg d e => withSign64 neg (F64PositiveRounding.roundNearestEven (d * (2 : ℝ) ^ e))
+  | .inf neg => withSign64 neg 0x7FF0000000000000
+  | .nan => 0x7FF8000000000000
+-- withSign64 neg w := if neg then Wasm.IEEE64.negate w else w
+
+noncomputable def round32 : Num → UInt32
+  | .dec neg d e => withSign32 neg (StrconvBinary32.roundNearestEven (d * (10 : ℝ) ^ e))
+  | .hex neg d e => withSign32 neg (StrconvBinary32.roundNearestEven (d * (2 : ℝ) ^ e))
+  | .inf neg => withSign32 neg 0x7F800000
+  | .nan => 0x7FC00000
+```
+
+The parsers take the grammar flag and the string and return a flag and a word, `(false, 0)` on rejection.  The length hypothesis keeps the dialect's 64-bit positions and counts exact; an array in WebAssembly memory has fewer than `2^29` words.
+
+```lean
+def parse64 (general : Bool) (s : Array UInt64) : Bool × UInt64
+def parse32 (general : Bool) (s : Array UInt64) : Bool × UInt64
+
+theorem parse64_accept (general : Bool) (s : List UInt8) (n : Num) (hs : s.length < 2 ^ 32)
+    (h : Derives general s n) : parse64 general (words s) = (true, round64 n)
+theorem parse64_reject (general : Bool) (s : List UInt8) (hs : s.length < 2 ^ 32)
+    (h : ∀ n, ¬ Derives general s n) : parse64 general (words s) = (false, 0)
+theorem parse32_accept ... : parse32 general (words s) = (true, (round32 n).toUInt64)
+theorem parse32_reject ... : parse32 general (words s) = (false, 0)
+
+theorem ofScientific_spec (m : Nat) (s : Bool) (e : Nat) :
+    (Float.ofScientific m s e).toBits = round64 (.dec false m (if s then -(e : Int) else e))
+theorem ofScientific32_spec (m : Nat) (s : Bool) (e : Nat) :
+    (Float32.ofScientific m s e).toBits = round32 (.dec false m (if s then -(e : Int) else e))
+```
+
+The printers take a word (for binary32, the low 32 bits) and return the bytes of the output.  `Shortest64 w neg d e` states the order of the definition: every decimal that rounds to `w` has more significant digits, or as many and a larger distance from the value of `w`, or as many and the same distance, in which case `d · 10^e` is the same number or has an even last digit.
+
+```lean
+def print64 (w : UInt64) : Array UInt64        -- scientific: 1.5e3, 5e-324, -0e0
+def print64Ecma (w : UInt64) : Array UInt64    -- ECMAScript: 1500, 1.5e+21, 0.000001, -0
+def print32 (w : UInt64) : Array UInt64
+def print32Ecma (w : UInt64) : Array UInt64
+
+def canon64 (w : UInt64) : UInt64 := if Wasm.IEEE64.isNaN w then 0x7FF8000000000000 else w
+def stripZeros (d : Nat) : Nat              -- d without its trailing decimal zeros; 0 for 0
+def sigDigits (d : Nat) : Nat := (Nat.digits 10 (stripZeros d)).length
+
+def Shortest64 (w : UInt64) (neg : Bool) (d : Nat) (e : Int) : Prop :=
+  round64 (.dec neg d e) = w ∧
+  ∀ neg' d' e', round64 (.dec neg' d' e') = w →
+    sigDigits d < sigDigits d' ∨
+    (sigDigits d = sigDigits d' ∧
+      (|(Num.dec neg d e).toReal - value w| < |(Num.dec neg' d' e').toReal - value w| ∨
+       (|(Num.dec neg d e).toReal - value w| = |(Num.dec neg' d' e').toReal - value w| ∧
+        ((Num.dec neg d e).toReal = (Num.dec neg' d' e').toReal ∨ stripZeros d % 2 = 0))))
+
+theorem print64_derives (w : UInt64) :
+    ∃ s n, print64 w = words s ∧ Derives true s n ∧ round64 n = canon64 w
+theorem print64_roundtrip (w : UInt64) : parse64 true (print64 w) = (true, canon64 w)
+theorem print64_shortest (w : UInt64) (hf : Wasm.IEEE64.isFinite w)
+    (hz : Wasm.IEEE64.scaledMagnitude w ≠ 0) :
+    ∃ s neg d e, print64 w = words s ∧ Derives false s (.dec neg d e) ∧ Shortest64 w neg d e
+theorem print64_layout (w : UInt64) (hf : ...) (hz : ...) :
+    ∃ neg t k, t % 10 ≠ 0 ∧ Shortest64 w neg t k ∧
+      print64 w = words (sciLayout neg t k) ∧ print64Ecma w = words (ecmaLayout neg t k)
+-- the same for print64Ecma; print32_* on x : UInt32 with input x.toUInt64, round32, Shortest32
+```
+
+`sciLayout neg t k` writes the digits of `t` with a point after the first, `e`, and the exponent `k + (digits of t) - 1` with a minus sign when negative.  `ecmaLayout` transcribes steps 5 to 12 of ECMA-262 Number::toString (6.1.6.1.20): plain notation for a decimal point position `n` from -5 to 21, otherwise `e+` or `e-`.  Zeros print as `0e0` and `-0e0` in the scientific layout and as `0` and `-0` in the ECMAScript layout, and the non-finite words as `NaN`, `Infinity`, and `-Infinity`, which only the general grammar reads.
+
+### Modules
+
+| Module | Content |
+|---|---|
+| `StrconvGrammar` | `Num`, the byte classes, `Sign` through `Derives`, `words` |
+| `StrconvDecode` | A reference decoder on lists with unbounded integers, `derives_iff_decode`, `derives_unique`, `derives_general` |
+| `StrconvBinary32` | The binary32 nearest-even reference, its existence and uniqueness |
+| `StrconvRound` | `round64`, `round32`, `canon64`, `canon32`, `stripZeros`, `sigDigits`, `Shortest64`, `Shortest32`, the layouts |
+| `StrconvGrid` | A grid of one format given by its precision and exponent field, in units of the least subnormal; `RoundsTo` for a real, generalizing `FmaGrid.RoundsTo`, and `positive_reference` for binary64 and binary32, after `FmaNearestEven` |
+| `StrconvRational` | Talos's `roundRationalMagnitude` and `roundDyadicMagnitude` equal the references, for both formats |
+| `StrconvTruncate` | Keeping 768 (binary64) or 113 (binary32) significant digits with a half unit for a nonzero tail keeps the rounding; saturation of large exponents |
+| `StrconvInterval` | The rounding interval of a word: `round64 x = w` exactly when `x` lies in it |
+| `StrconvOfScientific` | `ofScientific_spec`, `ofScientific32_spec` |
+| `Uscale` | Dialect code: natural numbers as arrays of 32-bit limbs in words (multiply-add by a word, shift, compare, subtract, bit length, restoring division) and the exact unrounded scaling |
+| `UscaleTheorem` and parts | The limb routines' values as `Nat`, and the specification of `uscale` |
+| `ParseFloat` | Dialect code: the scanner, digit truncation, Clinger's fast path, `parse64`, `parse32` |
+| `ParseFloatTheorem` and parts, `ParseFloatBytes`, `ParseFloatFile` | `parse64_accept` through `parse32_reject`, the byte and file theorems |
+| `ParseFloatAccuracy` | Native check against a reference with Lean's integers, on selected lines of Tao's data, constructed halfway and long cases, Paxson's tables, and grammar cases |
+| `PrintFloat` | Dialect code: `short64`, `short32` (the Schubfach decision with exact scaling), both layouts |
+| `PrintFloatTheorem` and parts, `PrintFloatBytes`, `PrintFloatFile`, `PrintFloatAccuracy` | The printing theorems, byte and file theorems, and a native check against a brute-force search |
+
+The documents are `ParseFloat.md`, `PrintFloat.md`, and `Uscale.md`, following `doc-spec.md`.  The track writes `StrconvGrid` from the ideas of `FmaGrid` and `FmaNearestEven` (commit `72655383` on `w/expm1`) for a format given by its parameters, since binary32 needs the same lemmas and those modules are written for binary64 in units of `2^-2400`.
+
+### Plan
+
+- [ ] Stage 1: `StrconvGrammar`, `StrconvDecode`, `StrconvBinary32`, `StrconvRound`.
+- [ ] Stage 1: `StrconvGrid`, `StrconvRational`, `StrconvTruncate`, `StrconvInterval`.
+- [ ] Stage 1: `StrconvOfScientific`.
+- [ ] Stage 2: `Uscale` and its theorems, a native check against `Nat`, and its `verified_compile`.
+- [ ] Stage 3: `ParseFloat`, the parse theorems, the byte and file theorems, `ParseFloatAccuracy` with the selected test data and its Apache-2.0 notice, and `ParseFloat.md`.
+- [ ] Stage 4: `PrintFloat`, the printing theorems, the byte and file theorems, `PrintFloatAccuracy`, and `PrintFloat.md`.
+- [ ] Report the lines that `Verified.lean` and `tests/verified/run.sh` need.
+
+The coordinator approved the statements and module names, `derives_unique` in place of `derives_value`, 32-bit limbs for `Uscale`, and a parametric `StrconvGrid`; `FmaGrid` and `FmaNearestEven` could later become instances of `StrconvGrid` in a consolidation pass.  Four points are settled as follows.  The general grammar accepts `+` or `-` before `inf`, `infinity`, and `nan`, and a signed NaN gives the canonical NaN, since `Num.nan` has no sign; `ParseFloat.md` states this.  The hypothesis `s.length < 2 ^ 32` stays, and the docstrings of `parse64_accept` and its relatives and `ParseFloat.md` state that the compiled module cannot receive a longer string, since an array of one-byte words in a 4 GiB memory has fewer than `2 ^ 29` elements.  The ECMAScript layout prints `-0` as `-0` where ECMA-262's Number::toString gives `0`, for the round trip of decision 7, and `print64_layout` and `PrintFloat.md` state the deviation.  `print32` and `print32Ecma` take a word and read its low 32 bits; their theorems take `x : UInt32` with the input `x.toUInt64`, and `print32_low` states `print32 w = print32 (w.toUInt32.toUInt64)` and the same for `print32Ecma`.
+
+The branch `w/strconv` was fast-forwarded to `transcendentals` at `be5749df`, which brings `FmaGrid`, `FmaNearestEven`, `FmaWords`, `FmaTheorem`, `FmaSpecTheorem`, and `F64NearReal`.
+
+`StrconvGrammar`, `StrconvDecode`, `StrconvBinary32`, and `StrconvRound` build (`strconv-grammar-1.log`, `strconv-decode-5.log`, `strconv-round-2.log`).  `derives_iff_decode` proves that `Derives general s n` holds exactly when `decode general s = some n`, where `decode` splits the input with `takeWhile` and `dropWhile` as the scanner will with positions; `derives_unique` and `derives_general` follow, and the three report only `propext`, `Classical.choice`, and `Quot.sound`.  The direction from the grammar to the decoder needs two facts about bytes: after a significand an exponent starts with `e`, `E`, `p`, or `P`, which stops the digits and is no point, and a decimal string holds no byte whose lower case is `i` or `n` and no `x` or `X`, so the tests for the special words and the hexadecimal prefix fail.  The second is checked by `decide +kernel` over the 256 bytes, after plain `decide` reached the elaborator's recursion limit.  `stripZeros` is defined with fuel rather than by well-founded recursion, so that `decide` evaluates the layout examples in `StrconvRound`, which check `1.5e3`, `-5e-324`, `1500`, `1.5e+21`, `0.000001`, `1e-7`, and `1.25`.
