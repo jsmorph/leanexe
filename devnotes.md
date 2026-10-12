@@ -31808,3 +31808,87 @@ The branch `w/strconv` was fast-forwarded to `transcendentals` at `be5749df`, wh
 - [x] Stage 1: `StrconvGrammar`, `StrconvDecode`, `StrconvBinary32`, `StrconvRound`.
 - [x] Stage 1: `StrconvGrid`, `StrconvWords`, `StrconvRational`, `StrconvTruncate`, `StrconvInterval`.
 - [x] Stage 1: `StrconvOfScientific`, `StrconvOfScientific32`.
+
+## 2026-10-11: The `pow` theorem, exponential and table parts (track `exp2`, debtop1)
+
+The target for a positive `x` and finite `y` is `F64SignedRounding.WithinSteps 1 (Real.rpow x y)`, with `Real.rpow x y = exp (y log x)`.  `Pow.powMain` computes `log x` as `hi + lo` with about 66 bits, the product `y log x` as `ehi + elo`, and `Pow.powExp`, Arm's `exp_inline`, on that pair.  The proof splits at the pair: `PowExpTheorem.powExp_within` gives one step against `exp L` for every target `L` with `|ehi + elo - L| ≤ |L| / 2 ^ 65` and `|elo| ≤ 17 · 2 ^ -28 |ehi|`, and the logarithm and the product must deliver those two conditions.  Arm states a relative error of `1.5 · 2 ^ -68` for `log_inline` without fused multiply-add, so a proved bound of `2 ^ -66` leaves a margin of a factor of six.
+
+The exponential reuses `exp`'s reduction, table, and scale words; only the residual differs, as `r = reduce (ehi) + elo`.  The reconstruction lemmas of `ArmReconstruction` allow `2 ^ -56` for the polynomial word, too little once the residual carries `|y| · |Δ log x|`, so `ArmTight` repeats them with `|w| ≤ 1/256` and an allowance of `(37/100) u`.  The budget inside that allowance is: the evaluation `2 ^ -59` and the polynomial `2 ^ -63` on `|r| ≤ 1/360` (`PowExpEval`), the residual `2 ^ -60` and the rounding of `+ elo` `2 ^ -61`, and the target term `2 ^ -55`, which `|L| / 2 ^ 65` meets for `|ehi| ≤ 768`.  From 768 to 1024 the result is infinity or lies within one step of zero, and a coarse evaluation on `|r| ≤ 1/128` suffices (`PowExpFar`).  The sharper bound `|x - k log 2 / 128| ≤ 677/250000` replaces the exp track's `1/320`, because `1/360` must hold with `elo` added.
+
+`powSpecialCase` differs from `exp.c`'s `specialcase`: its positive branch multiplies the sum by `2 ^ 1009` on the right, and its negative branch tests `|y| < 1`, takes the sign of `y` for the constant `±1`, and gives a zero the sign of the scale.  For a positive scale and a positive sum these reduce to `ExpSpecialNegative.negativeResult` (`PowExpPaths.negative_eq`), and `ArmTight.mul_comm_finite` swaps the factors of the positive branch.  The test of the positive branch, `1 + 2 ^ -60 != 1`, is false in rounding to nearest (`upward_test`).
+
+The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 and 75 have `invc = 1` and `logc = logctail = 0`.  The kernel checks (`PowLogTable.checked_entries`, `checked_logs`) give, per entry: `invc` on the grid of `2 ^ -7` for `i ≤ 75` and of `2 ^ -8` for `i ≥ 75`; `logc` on the grid of `2 ^ -43` with `|logc| ≤ 0.3466`; `|logctail| ≤ 2 ^ -43`; `|z invc - 1| ≤ 23/4000` on the subinterval; for `logc ≠ 0`, `|logc + r| ≥ |r| + 1/10000` and `≥ 1/450`; and `|logc + logctail + log invc| ≤ 2 ^ -97`, from a Taylor bracket of degree 24.  The polynomial is within `6 · 2 ^ -70 |r|` of `log (1 + r)` (`PolyBound.check`, depth 5).  `PowLogReduce` proves `zlo`, `zhi invc`, `rhi`, `rlo`, and `r` exact: `rhi` lies on the grid of `2 ^ -29`, and `r` on that of `2 ^ -60` because the grid of `invc` matches the exponent field of `z`.
+
+| File | Content |
+|---|---|
+| `ArmTight.lean` | `presum_tight`, `reconstruction_tight`, `reconstruction_target`, `ordinary_tight`, `positive1009_tight` (with overflow), `negative_tight`, `mul_comm_finite`. |
+| `PowExpEval.lean` | `polynomial_error` (`2 ^ -63` on `1/360`), `evaluation_tight` (`2 ^ -59`), `evaluation_coarse`. |
+| `PowExpCore.lean` | `core_eq`, `tmp_bits`, `ideal_tight`, `target_eq`, `core_state`. |
+| `PowExpBranches.lean` | The branches of `powExp` with `signBias = 0`, and the overflow and underflow products. |
+| `PowExpPaths.lean` | `tiny_within`, `ordinary_within`, `positive_bits`, `negative_eq`, `negative_bits`. |
+| `PowExpSpecial.lean` | `positive_within`, `negative_within` for `512 ≤ |x| ≤ 768`. |
+| `PowExpFar.lean` | `far_positive`, `far_negative` for `768 < |x| < 1024`. |
+| `PowExpTheorem.lean` | `powExp_within`. |
+| `PowLogBits.lean` | `powLog_eq`, `fields`, `fields_upper`, `fields_lower`, `zhi_toNat`. |
+| `PowLogTable.lean` | The entry checks, `log_table`, `kernel_error`, `kernel_eval`. |
+| `PowLogReduce.lean` | `word_fields`, `split_state`, `reduce_state`. |
+| `PowLogSum.lean` | `grid_sum`, `t1_exact`, `half_exact`, `square_exact`, `lo1_error`, `ln2_words`. |
+| `PowLogPoly.lean` | `p_error`: the word `p` within `(7/4) u |r| ^ 3 + 5 μ` of `poly r`. |
+| `PowLogSums.lean` | `lo3_error`, `sum5`, `ytail`. |
+| `PowLogEval.lean` | `logWords` and `finalOf_bits`: `powLog`'s arithmetic on words. |
+| `PowBranches.lean` | The guards of `powWith` for a positive `x`, `main_selected`, `positive_special`. |
+| `PowLogError.lean` | `after_error`, with the real lemma `combine` for the final sum of the bounds. |
+| `PowLogMain.lean` | `ln2_error`, `log1p_linear`, `bound_mono`, `core_bound`: the words of `powLog` against `k log 2 + log z` for each entry. |
+| `PowProduct.lean` | `mask_state`, `product_error`, with the real lemma `product_real`. |
+| `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
+| `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
+| `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
+| `PowFile.lean` | `pow_file`, `pow_file_decode`. |
+| `PowBytes.lean` | `Ready`, `ready_initial`, `pow_entry_call`, `pow_export`, `pow_bytes_accuracy`. |
+| `PowTheorem.lean` | `neg_rpow`, `zero_ref`, `zero_word_within`, `mag_of_value_zero`, `two_mul_of_low`, `zero_signaling`, `pow_within`. |
+| `PowSpecial.lean` | `infnanY`, `infnanX`, `signaling_nan`, `zero_exp_one`, `zero_exp_snan`, `one_base`, `zero_base`, `inf_base`, `inf_exp`, `minus_one_inf`, `nan_base`, `nan_exp`, `tiny_exp`, `huge_exp`, `neg_nonint`. |
+| `PowNegBase.lean` | `tailPath`, `neg_path`, `pos_path`, `tail_main`, `norm_neg`, `nonint_nan`, `even_eq`, `odd_rel`, `pow_neg_within`. |
+| `PowMainSign.lean` | `main_rel`, `main_rel_one`, `normWord`, `main_rel_any`. |
+| `PowPositive.lean` | `exact_within`, `near_one_within`, `xor_high`, `not_signaling`, `y_zero`, `main_one`. |
+| `PowTheoremPos.lean` | `positive_rep`, `sign_top`, `prod_big`, `pow_pos_within`. |
+| `PowSubnormal.lean` | `two52_scaled`, `subnormal_word`. |
+| `PowMainPath.lean` | `log_one`, `log_bounds`, `main_general`. |
+| `PowLogFinal.lean` | `log_split`, `z_value`, `scale53`, `scale52`, `qcast`, `log_within`. |
+| `PowLogCases.lean` | `tail_real`, `cube_bound`, `square_bound`, `case_k`, `case_c`, `case_one`, `core_relative`. |
+| `PowExpSign.lean` | `shift_bias`, `core_bias`, `special_neg`, `special_pos`, `neg_rel`, `special_y`, `powExp_rel`, `powExp_neg_within`. |
+
+| Failure | Cause and fix | Log |
+|---|---|---|
+| `linarith` | A sum of three bounds failed with `allowance` unfolded; an explicit `calc` passed. | `pow-tight-1` |
+| `decide` | `Finite 0x7F00000000000000` has no `Decidable` instance; unfolding `Finite` first fixed it. | `pow-tight-1` |
+| Parser | `linarith [show … by norm_num]` across a line break failed to parse; separate `have`s fixed it. | `pow-expeval-1` |
+| `congr 1` | Reached the maximum recursion depth on a Float-valued goal; `congrArg` with the multiplication fixed it. | `pow-exppaths-1` |
+| Atoms | `set` does not rewrite hypotheses created later, so `value x.toBits` and `X` differed for `rw`; `change` fixed it. | `pow-expthm-1` |
+| `rw` | `UInt64.toNat_sub_of_le _ _` matched the literal difference `(2047 - 1).toNat` before the intended one; explicit arguments fixed it. | `pow-pos-1` |
+| Imports | `PowExpPaths.ofBits_finite` was used without importing `PowExpPaths`. | `pow-pos-1` |
+| Heartbeats | `after_error` and `product_error` ran out of the per-declaration budget; `nlinarith` in large contexts became `linarith` or a separate real lemma (`PowLogError.combine`, `PowProduct.product_real`). | `pow-pos-2`, `pow-pos-3` |
+| False step | `product_error` claimed `\|S - X\| ≤ AB/2^75 + 2μ` for the computed `elo`, but the five rounding terms sum to about `11 AB/2^78`; the step now reads `3 AB/2^76`, and the final `2^-74` still holds. | `pow-pos-4` |
+| False step | In `core_relative` for `k = 0` and `logc ≠ 0` the intermediate bound `B ≤ 0.4 · 2^-65 \|L\|` fails, since `3 u \|r\|³` alone reaches `0.41 · 2^-65 \|r\|`; `nlinarith` searched on it until the run's limit.  `case_c` uses `0.6`, and the final `(7/8) 2^-65` holds. | `pow-pos-6` |
+| Precedence | `!a != b` parses as `!(a != b)`, so the rewrite `(!a != b) = !(a != b)` was trivial and failed to match; `(!a) != b` fixed it. | `pow-pos-3` |
+| Numerals | `simp` evaluates `2 ^ 1074` to a 324-digit literal, so hypotheses with `2 ^ 1074` stopped matching; the `checkint` proofs use `rw` with `checkint_eq`. | `pow-pos-3` |
+| Recursion | `positivity` and `exact_mod_cast` on `0 < 2 ^ 52 + 1853042165022720 + i 2 ^ 45` reached the maximum recursion depth; `Nat.cast_pos` and an explicit `Nat.le_add_right` chain fixed it. | `pow-pos-4`, `pow-pos-5` |
+
+- [x] `powExp_within` and the tight reconstruction (`pow-expthm-2.log`).
+- [x] The table checks, the polynomial bound, and the exact reduction (`pow-expthm-2.log`, `pow-logreduce-2.log`).
+- [x] `t1`, `t2`, `lo2`, `lo4` exact through `PowLogSum.grid_sum` on the grid of `2 ^ 1014` scaled units; the errors of `lo1`, `lo3`, `p`, the five-term sum `lo`, and `y + tail` (`pow-pos-2.log`).
+- [x] `PowLogError.after_error` (`pow-pos-3.log`), `PowLogMain.core_bound` (`pow-pos-6.log`), and `PowProduct.product_error` (`pow-pos-5.log`).
+- [x] `PowNegate` (`pow-sign-1.log`), `PowSignRel` and `PowCheckint.checkint_spec` (`pow-pos-5.log`).
+- [x] `PowExpSign.powExp_rel` and `powExp_neg_within`: the bias `0x800 << 7` adds `2 ^ 63` to the scale bits, and every operation after the scale keeps `PowSignRel.Rel`; the compensated sum needs `S + S tmp` nonzero, which `special_y` proves from `PowExpFar.far_sum` (`pow-pos-6.log`).
+- [x] `PowLogCases.core_relative` with the real lemmas `case_k`, `case_c`, and `case_one` (`pow-cases-1.log`, 160 s).  The first version of the case `k = 0`, `logc ≠ 0` also rewrote the wrong absolute value: `rw [abs_of_neg _]` matched `|r|` before `|logc + r|`, and the step `|r| + 1/10000 ≤ |logc + r|` does not follow from the table facts when `r < 0 < -logc`.  The lemma now uses `|r| ≤ |logc + r|`, which holds in all four sign cases, and `|r| ≤ 1.03 |L|`.
+- [x] `PowLogFinal.log_within`: `|y + tail - log x| ≤ (7/8) 2 ^ -65 |log x|` for every positive normal or subnormal `x` other than 1 (`pow-pos-8.log`, 11 s).  `pow-pos-7.log` ran 1,836 s in `PowLogFinal` before the run was stopped.  The diagnostic copies `pow-lw-a.lean` and `pow-lw-c.lean` (logs `pow-lwdiag-1` and `pow-lwdiag-2`) showed the cause: the subinterval bounds went through `push_cast` with the literals `2 ^ 52` and `1853042165022720`, whose normal forms did not match, and an `omega` goal with `min` and those literals made the kernel report deep recursion.  The bounds now compare natural numerators with `Nat.cast_le` and `le_min` or `max_le`, and `scale53`, `scale52`, and `qcast` rewrite the powers of 2 and the rational casts.
+- [x] `PowMainPath.main_general`: the main path against `x ^ y` for `x ≠ 1` and `2 ^ -65 ≤ |y| < 2 ^ 63` (`pow-pos-10.log`).  `zpow_natCast` does not rewrite a power with a literal integer exponent such as `2 ^ (-52 : ℤ)`, so the powers of 2 now come from `norm_num` equations, and a casted Nat subtraction `2 ^ 53 - 1` goes through `Nat.cast_le` on `2 ^ 52 + f + 1 ≤ 2 ^ 53`.
+- [x] `PowSubnormal.subnormal_word` (`pow-pos-12.log`).
+- [x] Milestone 1: `PowTheoremPos.pow_pos_within` for a finite `x > 0` and a finite `y`, against `Real.rpow` (`pow-pos-14.log`, all axiom reports `propext`, `Classical.choice`, `Quot.sound`).  The last fixes replaced `nlinarith` on the products `log x · y` by the lemma `prod_big`, and three literal-first rewrites of `UInt64.toNat_sub` by separate equations for the one subtraction.
+- [x] `PowMainSign.main_rel_any`: the main path with the bias against the main path without it (`pow-m2-2.log`).  The rule for lock use now limits each build to 20 minutes, so the milestone-2 modules build one at a time: `PowNegBase`, `PowSpecial`, `PowTheorem`, `PowBytes`, then `PowFile` with `lake env lean`.
+- [x] `PowNegBase.pow_neg_within` for a negative finite `x` and an integer `y`, with `nonint_nan`, `even_eq`, and `odd_rel` (`pow-m2-3.log`).  `tailPath` is the part of `powWith` after its special-case tests; `neg_path` and `pos_path` reduce `pow x y` and `pow (-x) y` to it, and they differ only in the sign bias and in the base of the subnormal normalization, whose masked words agree (`norm_neg`).
+- [x] `PowSpecial`: the special values of C99 F.9.4.4 for zeros, infinities, and NaN, the canonical NaN for a negative base with a non-integer exponent, and the results for `|y| < 2 ^ -65` and `|y| ≥ 2 ^ 63` (`pow-m2-5.log`).  `infnanY` and `infnanX` restate the two blocks of `powWith` for exceptional `y` and `x`; `pow_y_special` and `pow_x_special` reduce `pow` to them, and the theorems rewrite their conditions with `ite_eq_left` and `ite_eq_right`.  Two results deviate from Annex F: `pow (x, ±0)` for a signaling NaN `x` and `pow (+1, y)` for a signaling NaN `y` are `x + y`, a NaN, where Annex F gives 1.
+- [x] `PowTheorem.pow_within`: one step against `Real.rpow` for finite `x` and `y` with `x > 0`, with `x < 0` and an integer `y`, or with `x = ±0` and `y ≥ 0` (`exp2-pow-m2-6.log`, 4 s).  The zero base uses `PowSpecial.zero_base` for `y > 0` and `zero_exp_one` for `y = 0`, and `zero_word_within` places both zero words within one step of 0.  Mathlib's `Real.rpow 0 y` is 0 for `y < 0`, where the port returns infinity, so the hypothesis excludes `x = 0` with `y < 0`, and `PowSpecial.zero_base` states those results.  The logs of this and later runs carry the track's prefix `exp2-`.
+- [x] `PowBytes.pow_bytes_accuracy`, with `Ready` for the borrowed tables `Pow.powLogTable` at 4096 and `Exp.expTable` at 8200 (`exp2-pow-bytes-2.log`).  The entry call follows `SinhBytes` with two tables in the list of `implements`, and `BorrowedKept.borrowed_kept` keeps each table borrowed after the call.  `exp2-pow-bytes-1.log` built with one linter warning, an unused `List.mem_singleton` in a `simp only`, which the second run removes.
+- [x] `PowFile.pow_file` and `pow_file_decode` against `build/verified/pow.wasm` (`exp2-pow-file-3.log`, `lake env lean`, two axiom lines with `propext`, `Classical.choice`, and `Quot.sound`).  `exp2-pow-file-1.log` failed with "(kernel) deep recursion detected" in `pow_file_decode`, which lacked the `set_option maxRecDepth 100000` of `pow_file`.  In Lean v4.34.0-rc2 `addDecl` passes `maxRecDepth` to the kernel (`src/lean/Lean/AddDecl.lean` of the toolchain).  A definition holding only the literal failed the same way with the default limit (`exp2-pow-file-2.log`), so the kernel's check of the 11,156-byte literal exceeds that limit, and `exp2-powfile-diag-1.log` checked the decode theorem with the raised limit both in the shared form and with the definition.  `ErfFile.erf_file_decode`, for the 7,016-byte `erf.wasm`, sets no limit.  The file came from `tools/Emit.lean` in `pow-emit-1`, as `tests/verified/run.sh` writes it, and is 11,156 bytes.  `tests/verified/run.sh` needs the entry `pow:PowBytes:PowFile` in its file-theorem loop, a change for the coordinator.
+- [x] Merged `transcendentals` at `be5749df` (`0dc32640`), which touches no `pow` file.  `devnotes.md` conflicted, and the merge keeps both sections, those of `transcendentals` first.  On the merged tree `exp2-pow-bytes-3.log` replays `PowBytes` and every module it imports without rebuilding one, and `exp2-pow-file-3.log` ran after the merge.
+- [x] Milestone 2: the full theorem `PowTheorem.pow_within`, the special values of `PowSpecial`, `PowBytes.pow_bytes_accuracy`, and `PowFile`.
