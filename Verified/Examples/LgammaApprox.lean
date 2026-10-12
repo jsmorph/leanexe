@@ -115,7 +115,9 @@ noncomputable def sinKernel : ℝ → ℝ :=
 noncomputable def cosKernel : ℝ → ℝ :=
   eval ((q Lgamma.sinpiTable 130 + ratOfWord 0xBBD692B66E3CF6E8) :: coeffs Lgamma.sinpiTable 131 1 3)
 
-/-- The polynomial of `asSinpipid` within `3/256` of an integer: `sin (π z)/π ≈ z + z³ nearPoly z²`. -/
+/-- The polynomial of `asSinpipid` within `3/256` of an integer: `sin (π z)/π ≈ z + z³ nearPoly z²`.
+`SinpiFact` states it on `|z| ≤ 1/80`, which contains the computed `z = 0.5 - |x - 0.5|` of that
+branch.  At `|z| = 1/64` its relative error reaches `2^-71.7`. -/
 noncomputable def nearPoly : ℝ → ℝ :=
   eval ((q Lgamma.sinpiTable 138 + q Lgamma.sinpiTable 139) :: coeffs Lgamma.sinpiTable 140 1 3)
 
@@ -125,7 +127,7 @@ def SinpiFact : Prop :=
       |Real.sin (Real.pi * d / 128) - d * sinKernel (d ^ 2)| ≤ 1 / 2 ^ 73 * |d|) ∧
     (∀ d : ℝ, |d| ≤ 1 / 2 →
       |Real.cos (Real.pi * d / 128) - (1 + d ^ 2 * cosKernel (d ^ 2))| ≤ 1 / 2 ^ 76 * d ^ 2) ∧
-    (∀ z : ℝ, |z| ≤ 1 / 64 →
+    (∀ z : ℝ, |z| ≤ 1 / 80 →
       |Real.sin (Real.pi * z) / Real.pi - (z + z ^ 3 * nearPoly (z ^ 2))| ≤ 1 / 2 ^ 76 * |z|)
 
 /-! ### The accurate path -/
