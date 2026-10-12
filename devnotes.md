@@ -31274,6 +31274,27 @@ The generator's modes `y0` and `y1` write `BesselSmallY0` and `BesselSmallY1`, a
 - [x] `Bessel.md` and the report for `y0` and `y1`.
 - [ ] `jn` and `yn`, and the byte theorems after the compiler change.
 
+## 2026-10-12: Bessel functions of integer order, the analysis of `jn` and `yn` (track `log`)
+
+The coordinator asked for the accuracy theorems of `jn` and `yn` in the form `|w - J_n(x)| ≤ (a + b |n|) · 2^-53 · √(J_n² + Y_n²)`, with the step form `F64SignedRounding.WithinSteps` where the modulus form cannot hold, and for the analysis in `Bessel.md` and here before any Lean.  The analysis is the subsection "Analysis of `jn` and `yn`" of [the Bessel document](Verified/Examples/Bessel.md#analysis-of-jn-and-yn), and `uv run tools/bessel/ordern.py` reproduces its numbers from 200-digit values of `J_k(x)` and `Y_k(x)`.  The DLMF equations it cites (3.6(iii), 10.4.1, 10.5.2, 10.6.1, 10.9.30, 10.18.6, 10.18.17, 10.21.3, 10.74(iv)) and the comments of FreeBSD's `e_jn.c` at `20381bce` were read online on 2026-10-12.
+
+The error of each recurrence has an exact form: a rounding `δ_k` at step `k` reaches index `n` as `δ_k (π x/2)(Y_k J_n - J_k Y_n)`, from 10.6.1 and the cross product 10.5.2.  In the oscillatory range `k < x` the weight `(π x/2) M_k²` follows `x/√(x² - k²)` and reaches `1.257 x^(1/3)` at `k = x`, so the propagated rounding of the forward recurrence of `jn` is about `2.8 n u M_n` at `n = x`.  Above `x`, `J_k > 0 > Y_k` and the exact kernels keep the forward recurrence of `yn` near `3.7 n u M_n`, while the Cauchy–Schwarz bound `M_k M_n` of the kernels grows without bound there.  Miller's method of `jn` for `x < n` meets the same weights below `x`, its continued fraction stops at `Q(k) > 10^9`, and its normalization by the larger of `j0 x` and `j1 x` costs at most `18.4 u` relative on the samples from 2 to 202.
+
+| Quantity | `x = 20` | `x = 100` | `x = 300` |
+|---|---|---|---|
+| `(π x/2) M_k²` at `k = 3x/4`, against `x/√(x² - k²) = 1.5119` | 1.4967 | 1.5111 | 1.5118 |
+| `(π x/2) M_x² / x^(1/3)` | 1.257 | 1.257 | 1.257 |
+| `S_x/x` | 1.319 | 1.433 | 1.479 |
+| propagated rounding of `jn` at `n = x`, in `n u M_n` | 2.44 | 2.70 | 2.84 |
+| largest propagated rounding of `yn` up to `n = 3x`, in `n u M_n` | 3.43 | 3.64 | 3.72 |
+
+The analysis finds no path where the form `a + b |n|` fails, and it estimates `a` near 30 and `b` near 3 to 4 against measured maxima of 10.4 and 15.4 check units at orders 50 and 100.  The Hankel paths from `2^302`, the tiny path of `jn`, the orders 0 and ±1, the exceptional arguments, both functions for `x < 2`, and the recurrences for `n ≤ x/2` can be proved with the current modules: the last by the quantity `E_k = f_(k-1)² - λ_k f_(k-1) f_k + f_k²`, which changes by `-(2/x) f_k f_(k-1)` per step and keeps `f_k²` within a factor of 4 of its start for `k ≤ x/2`.  The range `2 ≤ x < 2^302` with `n > x/2` crosses or approaches the turning point `k = x`, and its proof needs an upper bound on `M_k(x)` through that point for every `k` up to `2^31`.  DLMF gives Nicholson's integral 10.9.30 and the expansion 10.18.17 and no such inequality, so that bound would be a formalization of its own, from Nicholson's integral or from a turning-point estimate of the recurrence, and the track reports the range before it proves anything.
+
+- [x] Analysis of the five paths of `jn` and `yn`, in `Bessel.md` and here.
+- [ ] The coordinator's decision on the range `2 ≤ x < 2^302`, `n > x/2`.
+- [ ] Definitions of `J_n` and `Y_n`, the recurrence for the series, and the cross product for every `n`.
+- [ ] The provable ranges, with `Bessel.md` and this journal in each commit.
+
 ## 2026-10-12: The floating-point proof of `tgamma` (track arc)
 
 The coordinator assigned the floating-point proof of `Tgamma.tgamma`: `WithinSteps 1` against `Real.Gamma` for every finite input other than the poles, the exact results at the poles, zeros, infinities, and NaN, and the overflow and underflow thresholds from `GammaThresholds`.  Track `erf` proves the mathematical approximation facts, the fused multiply-add enters as the hypothesis `FmaSpec.FmaNearest` that track `expm1` is proving, and the rounding test of the code may be ignored wherever a relative bound of about `2^-60` suffices.  The byte theorem waits for the compiler change.
