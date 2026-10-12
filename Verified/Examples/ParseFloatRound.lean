@@ -248,7 +248,7 @@ theorem two_zpow_split (a b : ℕ) (c : ℤ) (h : (a : ℤ) = b + c) :
 /-- `roundUnits` gives the nearest-even encoding of `(u + φ) · 2 ^ (T - 2 ^ 62)` units. -/
 theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
     (hp : p.toNat = f.p) (hF : F.toNat = f.F) (hp60 : f.p ≤ 60)
-    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 62)
+    (hlim : f.F * 2 ^ (f.p - 1) < 2 ^ 63)
     (hu : u.toNat < 2 ^ 63) (hT1 : 2 ^ 61 ≤ tb.toNat) (hT2 : tb.toNat ≤ 2 ^ 62 + 2 ^ 61)
     (h0 : 0 ≤ φ) (h1 : φ < 1) (hs : sticky = decide (0 < φ))
     (hsb : sticky = true → f.p + 2 ≤ Nat.size u.toNat) :
@@ -257,8 +257,10 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
   have hfp := f.hp
   have hfF := f.hF
   have hF62 : f.F < 2 ^ 62 := by
-    have : 1 ≤ 2 ^ (f.p - 1) := Nat.one_le_two_pow
-    nlinarith
+    have h2 : 2 ≤ 2 ^ (f.p - 1) :=
+      le_trans (by norm_num) (Nat.pow_le_pow_right (by norm_num) (show 1 ≤ f.p - 1 by omega))
+    have := Nat.mul_le_mul_left f.F h2
+    omega
   set T := tb.toNat with hTdef
   set t : ℤ := (T : ℤ) - 2 ^ 62 with htdef
   have ht2 : (0 : ℝ) < (2 : ℝ) ^ t := zpow_pos (by norm_num) t
@@ -470,7 +472,7 @@ theorem roundUnits_spec (f : Fmt) (p F u tb : UInt64) (sticky : Bool) (φ : ℝ)
   rw [positive_reference f y E Q hR]
   obtain ⟨hQ2, _⟩ := significand_bounds f y E Q hR
   have hhalf : half f = 2 ^ (f.p - 1) := rfl
-  have hEb : (E - 1) * 2 ^ (f.p - 1) < 2 ^ 62 :=
+  have hEb : (E - 1) * 2 ^ (f.p - 1) < 2 ^ 63 :=
     lt_of_le_of_lt (Nat.mul_le_mul_right _ (by omega)) hlim
   have hQb : Q ≤ 2 ^ 61 := by
     rw [hhalf] at hQ2
