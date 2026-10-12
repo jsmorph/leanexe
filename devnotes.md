@@ -31242,6 +31242,8 @@ The words `±0` both sit at position 0 of `F64SignedRounding.position`, so eithe
 
 The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSinpid` to track `expm1`, whose `lgamma` calls them too.  Track `expm1` reported that `asLogd` returns `(lh, ll + f)` with `f = dx² P(dx)` unnormalized, so that its low part reaches about `2^-23.5`, and its statement will give `|ll| ≤ 2^-22` plus a term in `|lh|/2^52`.  The product `mulDD (xh - 1/2) xl (lh - 1) (ll + dz)` of `asLgammaAsym` charges that low part `4 |ll| (x - 1/2)/2^53 ≤ 2^-65.5`, but its own low part grows to about `|ll| (x - 1/2)`, up to `2^-14.5`, and the later `fastSum`s keep it.  `asExpd` receives it as `l`, its first `mulDD` places `1477 l` in the low part of `(x + l) 1024/ln 2`, and `roundEven` acts on the high part only, so the kernel's argument reaches about `0.566` instead of `513/1024`.  The coordinator approved widening the kernel's interval in `ExpFact` to `|X| ≤ 5/8` with the tolerance `2^-74`, since `py/expwide.py` measures the largest errors `2^-77.99` at `513/1024`, `2^-77.75` at `17/32`, `2^-77.49` at `9/16`, and `2^-76.89` at `5/8`.  No `lgamma` statement depends on the old interval: neither `LgammaApprox` nor `Lgamma.lean` on `w/expm1` refers to `ExpFact` or `asExpd`.
 
+The proof of `asExpd_spec` tracks the reduced argument `X` only to `2^-52`, since an error `δ` in `X` changes `exp (X ln 2/1024)` by about `δ 2^-10.5` relative, so the code's exact subtraction `xh - ix` and its `fastTwoSum` are analysed as rounded operations.  The kernel is evaluated at the high part `q1` and multiplied by `q1 + q2`, and `exp_poly` compares the result with `1 + q1 expPoly q1`, so `ExpFact` is applied at `q1` and the low part `q2 ≤ 2^-52` is charged as a shift of the argument.  The first statement of `exp_assemble` used `nlinarith` for products of bounds in a context of about forty hypotheses and exceeded the heartbeat limit (`gamma-expspec-2.log`); explicit `mul_le_mul` facts and `linarith` replaced it.
+
 ### Results
 
 | File | State | Log |
@@ -31274,7 +31276,8 @@ The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSin
 | `TgammaEdge`: `overflowPath_within`, `within_zero`, `underflowPath_within`, `intPath_neg` | Committed in `eb4f3983` | `gamma-edge-2.log` |
 | `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed in `eb4f3983` | `gamma-int-4.log` |
 | Merge of `transcendentals` at `be5749df`, with `Tgamma.md` resolved by keeping both sides | Committed in `b227991f` | `gamma-merge2-1.log` |
-| `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed with this entry | `gamma-approx-3.log` |
+| `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed in `ef012e60` | `gamma-approx-3.log` |
+| `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed with this entry | `gamma-expspec-5.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31292,7 +31295,8 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] The reduction and the polynomial of the path on `(-3, 4)`
 - [x] The shift loop, the reciprocal, and the result of the path on `(-3, 4)` (`mainPath_within`)
 - [x] The tiny path and the integer path
-- [ ] `asExpd`, `asLgammaAsym`, and the paths above 4 and below -3
+- [x] `asExpd` (`asExpd_spec`)
+- [ ] `asLgammaAsym` and the paths above 4 and below -3
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
