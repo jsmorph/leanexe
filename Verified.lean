@@ -103,3 +103,7 @@ import Verified.Examples.TgammaLogdKernel
 import Verified.Examples.TgammaMainPath
 import Verified.Examples.TgammaPolyMainEdge
 import Verified.Examples.TgammaPolySmallAcc
+import Verified.Examples.PowBytes
+import Verified.Examples.TgammaAsym6
+import Verified.Examples.TgammaLogd
+import Verified.Examples.UscaleDiv
