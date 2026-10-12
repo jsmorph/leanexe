@@ -31189,6 +31189,19 @@ The pieces 4 and 10 reach a relative error of `7.8 · 10 ^ -20` at their left en
 - [ ] The pieces 4 and 10 in twelve modules (`erf-gamma-90.log` to `erf-gamma-101.log`).
 - [ ] The other statements of `LgammaApprox` and `LgammaFacts.allFacts`.
 
+The coordinator asked for `SubnormalGap` on 2026-10-12: for every double `x = -m/2 ^ 45` in `(-184, -170)`, `|Γ x|` lies at most `2 ^ -1022 (1 - 2 ^ -48)` or at least `2 ^ -1022 (1 + 2 ^ -48)`, so that `tgamma`'s choice between the subnormal and the normal branch below -170 is correct.  `lgamma` is convex on each interval `(-n - 1, -n)`, so a point where `lgamma` exceeds a level next to a point below it bounds `lgamma` from below on the far side, and two points below a level bound it from above between them (`GammaConvex.convex_left`, `convex_right`, `convex_mid`).  `subgap.py` in the track's scratch directory finds, in 80-digit arithmetic, the doubles next to each crossing of `2 ^ -1022`: both crossings of each interval for `n` from 170 to 175, the crossing near -176 for `n = 176`, and none from 177 on, where `|Γ|` at the doubles next to both poles already lies below the level.  `GammaReflect.negPointOk` bounds `lgamma` at those 41 doubles with Mathlib's 20-digit `π`, with Taylor-model errors below `10 ^ -18` against margins of at least `2 ^ -52`; the smallest margin is at `-170.584302134743268`, where `|Γ| = 2 ^ -1022 (1 + 33.97 · 2 ^ -53)`.  The levels `tAbove = -1022 log2Lo + 2 ^ -48` and `tBelow = -1022 log2Hi - 2 ^ -48 - 2 ^ -95` of `lgamma` give the two bounds on `|Γ|` through `exp y ≥ 1 + y`.  The five ProofKit modules `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, and `GammaSubnormal` passed with only the standard axioms, each in under two minutes and at most 0.92 GB.
+
+The modules that import the ports `Verified.Examples.Lgamma` and `Tgamma` reached 3.3 to 3.9 GB of the runner's 4 GB within 30 s of starting, and the ProofKit modules without them stayed below 0.92 GB, which suggests why the divided-difference checks stall: a module of `LgammaPiece4` with two checks of 41,000 and 38,000 coefficient operations stopped at the limit, while modules with 57,000 to 63,000 passed in about a minute (`erf-gamma-91.log` to `erf-gamma-95.log`).  The generators now group checks up to 62,000 operations per module, and `AccPolyFact`'s first clause takes one check per module.
+
+| Run | Result | Log |
+|---|---|---|
+| `LgammaPiece4A`, two checks of 79,000 operations in all | Stopped at the memory limit | `erf-gamma-91.log`, `erf-gamma-95.log` |
+| `LgammaPiece4B` to `LgammaPiece4D`, `LgammaPiece10A` in the first grouping | Passed in 30 to 60 s | `erf-gamma-92.log` to `erf-gamma-94.log`, `erf-gamma-97.log` |
+| `GammaSubnormalBase` | Failed: `zpow_natCast` after `zpow_neg` found no cast, and a `rw [← e]` replaced every `T` | `erf-gamma-102.log`, `erf-gamma-103.log` |
+| `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, `GammaSubnormal` | Passed, standard axioms | `erf-gamma-104.log` to `erf-gamma-106.log` |
+
+- [x] `SubnormalGap` (`GammaSubnormal.subnormal_gap`).
+
 ## 2026-10-12: Integration of asinh, acosh, and atanh
 
 Opus merged `w/poly` at `b92f7941` into `transcendentals` (`72ca3ad4`): the theorems of `asinh`, `acosh`, and `atanh` within two steps, their exceptional values, the byte theorems `AsinhBytes.asinh_bytes_accuracy`, `acosh_bytes_accuracy`, and `atanh_bytes_accuracy`, the file theorems of `AsinhFile`, and the statements of the `tgamma` facts in `TgammaApprox`.  `LeanExe.lean` gains the ProofKit modules `F64Compose`, `F64Near`, `F64RelError`, and `F64SqrtHalf`, `Verified.lean` gains `AsinhBytes` and `TgammaApprox`, and the file loop of `tests/verified/run.sh` gains `asinh:AsinhBytes:AsinhFile`.  `acosh` reached two steps on `1 < x ≤ 2`, so the allowance of three steps there is unused.  The build passed with 9,511 jobs (`opus-merge-asinh-1.log`).
