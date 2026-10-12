@@ -30972,8 +30972,22 @@ The elaboration of each module with `lake env lean` on debtop1, before the two c
 | Probe, 20 pair bindings | 17.3 s user, 1.8 GB | 7.5 s user, 0.91 GB (2.7 s) |
 | Probe, 40 pair bindings | stopped after 22 minutes at 8 GB | 11.9 s user, 1.0 GB (4.9 s) |
 
-`Repeat` stays slow for another reason: after the change it runs at full CPU without memory pressure (`reflect-time-Repeat-2.log`, watched each minute), while before it swapped.  Its programs loop over literal data, and the README notes that the kernel would evaluate such a loop pass by pass if it unfolded a definition, which the cold baseline's 1,684 s on minideb1 and the hour here suggest it partly does; the liveness change does not address that, and the cause remains unmeasured.
-- [ ] `verified_compile` in `Tgamma`, `Lgamma`, and `Bessel`, with their documents.
+`Repeat` stays slow for another reason: after the change it runs at full CPU without memory pressure (`reflect-time-Repeat-2.log`, watched each minute), while before it swapped.  The liveness change does not address its cost, whose cause remains unmeasured.  The cold baseline of 2026-10-09 recorded 1,684 s for it on minideb1.
+- [ ] `verified_compile` in `Tgamma`, `Lgamma`, `Bessel`, and `Erfc`, with their documents.
+
+The liveness change does not let these four modules compile.  With its `verified_compile` call enabled, `Tgamma` rose to 4.2 GB of memory in its scope within 2 minutes and then gained almost no CPU time, and the build was stopped (`build/transcendentals/reflect-compile-Tgamma-1.log`).  Probes divided the cost.  With `debug.skipKernelTC` the whole call elaborates in 29 s at 0.86 GB (`reflect-tgk-1.log`), and the subsets of its functions without `tgammaWith` compile in about a minute at 3.1 GB, while every function but the wrapper still stalls (`reflect-tgp1-1.log` to `reflect-tgp4-1.log`).  The check `(Wasm.Encoding.encode Tgamma.compiled.module).isOk = true` by `decide +kernel`, alone after a compilation without kernel checks, stalls at 4.3 GB (`reflect-tgk3-1.log`), so the remaining cost is the kernel's evaluation of the encoder, which computes every byte of the module.
+
+| Module | Encoded bytes | Kernel check of the encoding |
+|---|---|---|
+| `Fma` | 4,255 | 8.3 s |
+| `Exp` | 4,451 | |
+| `Trig` | 5,842 | 10.6 s (1.9 GB peak with `Fma`'s) |
+| `Bessel` | 18,853 | |
+| `Tgamma` | 26,286, of which 12,408 are the tables' 1,551 words | stalls at 4.3 GB |
+| `Lgamma` | 35,160 | |
+| `Erfc` | 39,368 | |
+
+The sizes come from `#eval` of the encoder on programs compiled without kernel checks (`reflect-tgk5-1.log` and `reflect-size<module>-<n>.log`).  `Lgamma` also needs a source change: its `lgamma x := (lgammaR x).1` calls a wrapper, which the reflector rejects, and a listed `lgammaFirstWith` with the tables as parameters, wrapped by `lgamma`, removes the call.  The coordinator decides between a cheaper encodability check in `LeanExe/Encoding`, more memory for these builds, and smaller modules.
 - [ ] The Lean-source corrections of the documentation review.
 ## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
 
