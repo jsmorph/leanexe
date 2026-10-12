@@ -31270,6 +31270,12 @@ The first build of `sub_branch` exceeded the heartbeat limit of the declaration 
 
 In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a new line inside a `linarith` list ended the term at the line break, since the new line was not indented past the column of `linarith`, and `rw [← hWa]` with `hWa : |W| |D| = 1` rewrote every `1` of the goal.  `have` statements before the call and `rw [hWa] at` a stated inequality replaced them.
 
+### The final theorem
+
+`TgammaFinal.tgamma_within_one` follows the tests of `tgammaWith` in order and applies the theorem of each path: `tinyPath_within`, `smallPath_within`, `overflowPath_within`, `intPath_within`, `underflowPath_within`, `reflPath_within`, `largePath_within`, and `mainPath_within`.  `TgammaCases` states each test as a condition on the value of `x`.  `floorF_spec` covers `|x| < 2^52` only, and `floorF_all` extends it to every finite `x`, since a double of magnitude at least `2^52` is an integer (`TgammaRefl4.grid`) that `roundEven` returns unchanged, so the integer test holds exactly at the integers.  The paths that call the accurate path take it through `AccurateWithin`, the statement that the accurate path is within one step for every finite non-integer `x` with `2^-112 ≤ |x|` and `-184 < x < t0`, which the remaining work proves.  `FmaSpec.FmaNearest` is discharged by `FmaSpecTheorem.fma_nearest`.
+
+The accurate path evaluates the polynomial of each range as a sum of 9 to 14 double coefficients with at most 18 significant bits and a double-double polynomial with coefficients below `2^-17`.  `sprod` splits the powers of `d` at multiples of `2^-25` with `splt`, so the products with the double coefficients and their sum `s0` in plain double arithmetic are exact, which its proof must show from the bit lengths of the coefficients.
+
 ### Results
 
 | File | State | Log |
@@ -31313,7 +31319,8 @@ In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a
 | `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed in `a5086d5a` | `gamma-large-3.log` |
 | `TgammaRefl1`: `refl_front`, `refl_dx`, `refl_odd`, `refl_gamma`; `TgammaRefl2`: `pi_head`, `pi_tail`, `pi_real`, `pi_div` | Committed in `fb8a7d88` | `gamma-refl1-2.log`, `gamma-refl2-3.log` |
 | `TgammaExpLow`: `tab_ratio`, `mul_lower`, `table_low`, `kernel_low`, `asExpd_low` | Committed in `186f4ed0` | `gamma-explow-4.log` |
-| `TgammaRefl3`: `within_pos`, `within_one_abs`, `within_low`; `TgammaBits`: `and_high`, `and_low`, `field_eq`, `nonPositive_sub`, `value_normal`, `value_sub`, `scale_down`, `th_fields`, `mask_fields`; `TgammaRefl4`: `SinpidSpec`, `SubnormalGap`, `grid`, `sin_lower`, `exp_close`, `ratio_err`; `TgammaRefl5`: `prod_close`, `refl_real`; `TgammaRefl6`: `mag_upper`, `mag_lower`, `normal_branch`, `sign_iff`, `th_value`, `mask_value`; `TgammaRefl7`: `sub_x`, `sub_ub`, `sub_branch`; `TgammaRefl8`: `reflTail`, `refl_gen`, `eps_refl`, `tail_within`; `TgammaRefl9`: `pi_words`, `refl_core1`, `refl_core2`, `refl_gap`; `TgammaReflPath`: `reflPath_within` | Committed with this entry | `gamma-refl-all-1.log` |
+| `TgammaRefl3`: `within_pos`, `within_one_abs`, `within_low`; `TgammaBits`: `and_high`, `and_low`, `field_eq`, `nonPositive_sub`, `value_normal`, `value_sub`, `scale_down`, `th_fields`, `mask_fields`; `TgammaRefl4`: `SinpidSpec`, `SubnormalGap`, `grid`, `sin_lower`, `exp_close`, `ratio_err`; `TgammaRefl5`: `prod_close`, `refl_real`; `TgammaRefl6`: `mag_upper`, `mag_lower`, `normal_branch`, `sign_iff`, `th_value`, `mask_value`; `TgammaRefl7`: `sub_x`, `sub_ub`, `sub_branch`; `TgammaRefl8`: `reflTail`, `refl_gen`, `eps_refl`, `tail_within`; `TgammaRefl9`: `pi_words`, `refl_core1`, `refl_core2`, `refl_gap`; `TgammaReflPath`: `reflPath_within` | Committed in `1e59e634` | `gamma-refl-all-1.log` |
+| `TgammaCases`: `tiny_test`, `t0_test`, `floorF_all`, `int_test`, `lit_neg`, `m184_test`, `m3_test`, `p4_test`; `TgammaFinal`: `AccurateWithin`, `tgamma_within_one`, `tgamma_neg_int` | Committed with this entry | `gamma-final-2.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31338,7 +31345,8 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] The low part of `asExpd` below `2^-50` of its high part (`asExpd_low`)
 - [x] The path below -3, given `SubnormalGap` and the specification of `asSinpid` (`reflPath_within`)
 - [ ] The accurate path and the database
-- [ ] `tgamma_within_one`
+- [x] `tgamma_within_one`, given the facts and `AccurateWithin`
+- [ ] `AccurateWithin`: the accurate path and the database
 
 ## 2026-10-12: The software fused multiply-add theorem (track `expm1`, minideb2)
 
