@@ -322,7 +322,7 @@ host's array.  One case builds an array of `2^29` words and must trap at `unreac
 cases include the 116 terrains of [`tests/drone/corpus.txt`](../tests/drone/corpus.txt), on each of
 which the planner must leave only the host's terrain and its result allocated.
 
-The script then runs five native checks of the numerical examples, which the compiler's theorem
+The script then runs native checks of the numerical examples, which the compiler's theorem
 does not cover, since it states that the module computes the Lean definitions and says nothing about
 how well those definitions approximate their mathematical counterparts.
 [`Reference.lean`](Examples/Reference.lean) computes exact references with Lean's integers and
@@ -372,6 +372,19 @@ proves finite, nonnegative outputs with error at most
 It returns no values for empty input and `n/2 + 1` values otherwise.
 [The inverse and power byte proofs](Examples/FourierExtraBytes.lean) carry these results to
 the decoded module.  The emitted-file theorem depends on all three numerical byte theorems.
+
+[The FFT](Examples/FFT.md) uses radix-2 stages for power-of-two lengths and the direct transform
+otherwise.  Its [forward](Examples/FFTTheorem.lean), [inverse](Examples/FFTInverse.lean), and
+[power-spectrum](Examples/FFTPower.lean) numerical theorems extend through the
+[decoded module](Examples/FFTBytes.lean) and [emitted file](Examples/FFTFile.lean), with the three
+permitted axioms.  The compiler declaration enables `Verified.Reflect.materializeModule`: native
+evaluation proposes a literal module, the kernel checks its equality with `compileWith`, and the
+byte proof decides the original encoding premises on that literal.  The option defaults to false.
+The [compiler-option test](../tests/fourier/Materialization.lean) checks its scope and recompiles
+existing array, table-wrapper, and recursive examples.  Wasmtime matched all 72 native FFT cases,
+including allocation accounting.  The independent numerical test passed on 99 signals.
+On the measured the build host host, 4,096 complex samples took 0.482 ms with FFT and 91.811 ms with DFT.
+The FFT document records the measurement method and results through 262,144 samples.
 
 ## Related work
 
