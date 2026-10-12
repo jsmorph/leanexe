@@ -31408,6 +31408,8 @@ Several builds failed before that one.  `bes-on-5.log` stopped at `norm_num` goa
 
 `BesselMillerReal` built in `bes-on-16.log` with only the three standard axioms.  It writes the truncated continued fraction of `jn` as a quotient of kernels, so the cross product gives its error `J_M/(J_(n-1) kern (n - 1) M)` exactly, and bounds the continuant by the product of the `λ_k` and the tail by `2.4 J_n`, which makes the relative error of the fraction at most `2.4/Q²` when the code stops at `Q > 10^9`.  The module docstring named a lemma `cf_value` that the module does not contain; the corrected docstring names `cf_step`.
 
+`BesselMillerCF` failed in `bes-on-17.log` in `Q_grow`: one goal kept the index `n + 0 + 1`, which `nlinarith` treated as a different atom from `n + 1`, and a rewrite named `Q (j + 3)` where the goal concerned `Q (j + 2)`.  Normalizing the index and giving `nlinarith` the products `(λ - 3)(λ' λ - 1) ≥ 0` and `λ Q ≥ 4 Q` fixed both, and `bes-on-18.log` built the module with only the three standard axioms.  The docstring named `good_iter` and `cf_depth`, which live in `BesselMillerDepth`, and now says so.
+
 - [x] Definitions, 10.6.1, the cross product, and the error formula (`BesselOrderN`, `BesselRecur`).
 - [x] The energy bound on `M_m` for `m < x` (`BesselOrderEnergy`).
 - [x] The forward recurrence for `2m ≤ x` (`BesselForward`).
