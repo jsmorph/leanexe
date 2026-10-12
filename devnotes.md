@@ -30872,6 +30872,12 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowLogSums.lean` | `lo3_error`, `sum5`, `ytail`. |
 | `PowLogEval.lean` | `logWords` and `finalOf_bits`: `powLog`'s arithmetic on words. |
 | `PowBranches.lean` | The guards of `powWith` for a positive `x`, `main_selected`, `positive_special`. |
+| `PowLogError.lean` | `after_error`, with the real lemma `combine` for the final sum of the bounds. |
+| `PowLogMain.lean` | `ln2_error`, `log1p_linear`, `bound_mono`, `core_bound`: the words of `powLog` against `k log 2 + log z` for each entry. |
+| `PowProduct.lean` | `mask_state`, `product_error`, with the real lemma `product_real`. |
+| `PowNegate.lean` | `round_not`, `roundDyadic_not`, `add_rel`, `mul_rel`, `within_negrel`: rounding commutes with negation. |
+| `PowSignRel.lean` | The relation `Rel` (negation, two zeros, or two NaNs) and its closure under `add`, `sub`, `mul`, `Float` negation, `ofBits`, `abs`, and the zero tests. |
+| `PowCheckint.lean` | `checkint_eq`, `checkint_magnitude`, `checkint_spec`. |
 
 | Failure | Cause and fix | Log |
 |---|---|---|
@@ -30882,12 +30888,18 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | Atoms | `set` does not rewrite hypotheses created later, so `value x.toBits` and `X` differed for `rw`; `change` fixed it. | `pow-expthm-1` |
 | `rw` | `UInt64.toNat_sub_of_le _ _` matched the literal difference `(2047 - 1).toNat` before the intended one; explicit arguments fixed it. | `pow-pos-1` |
 | Imports | `PowExpPaths.ofBits_finite` was used without importing `PowExpPaths`. | `pow-pos-1` |
-| Heartbeats | `after_error` and `product_error` ran out of the per-declaration budget; `nlinarith` in large contexts became `linarith` or a separate real lemma (`PowLogError.combine`). | `pow-pos-2` |
+| Heartbeats | `after_error` and `product_error` ran out of the per-declaration budget; `nlinarith` in large contexts became `linarith` or a separate real lemma (`PowLogError.combine`, `PowProduct.product_real`). | `pow-pos-2`, `pow-pos-3` |
+| False step | `product_error` claimed `\|S - X\| ≤ AB/2^75 + 2μ` for the computed `elo`, but the five rounding terms sum to about `11 AB/2^78`; the step now reads `3 AB/2^76`, and the final `2^-74` still holds. | `pow-pos-4` |
+| False step | In `core_relative` for `k = 0` and `logc ≠ 0` the intermediate bound `B ≤ 0.4 · 2^-65 \|L\|` fails, since `3 u \|r\|³` alone reaches `0.41 · 2^-65 \|r\|`; `nlinarith` searched on it until the run's limit.  `case_c` uses `0.6`, and the final `(7/8) 2^-65` holds. | `pow-pos-6` |
+| Precedence | `!a != b` parses as `!(a != b)`, so the rewrite `(!a != b) = !(a != b)` was trivial and failed to match; `(!a) != b` fixed it. | `pow-pos-3` |
+| Numerals | `simp` evaluates `2 ^ 1074` to a 324-digit literal, so hypotheses with `2 ^ 1074` stopped matching; the `checkint` proofs use `rw` with `checkint_eq`. | `pow-pos-3` |
+| Recursion | `positivity` and `exact_mod_cast` on `0 < 2 ^ 52 + 1853042165022720 + i 2 ^ 45` reached the maximum recursion depth; `Nat.cast_pos` and an explicit `Nat.le_add_right` chain fixed it. | `pow-pos-4`, `pow-pos-5` |
 
 - [x] `powExp_within` and the tight reconstruction (`pow-expthm-2.log`).
 - [x] The table checks, the polynomial bound, and the exact reduction (`pow-expthm-2.log`, `pow-logreduce-2.log`).
 - [x] `t1`, `t2`, `lo2`, `lo4` exact through `PowLogSum.grid_sum` on the grid of `2 ^ 1014` scaled units; the errors of `lo1`, `lo3`, `p`, the five-term sum `lo`, and `y + tail` (`pow-pos-2.log`).
-- [ ] `PowLogError.after_error` accepted: the first run exhausted the heartbeats of the declaration through eight `nlinarith` calls in a context of about eighty hypotheses.
-- [ ] `|y + tail - log x| ≤ |log x| / 2 ^ 66` for every positive normal or subnormal `x`, with `x = 1` evaluated directly.
-- [ ] `ehi + elo` against `y log x`, and milestone 1: `x > 0` with the special cases of `y`.
+- [x] `PowLogError.after_error` (`pow-pos-3.log`), `PowLogMain.core_bound` (`pow-pos-6.log`), and `PowProduct.product_error` (`pow-pos-5.log`).
+- [x] `PowNegate` (`pow-sign-1.log`), `PowSignRel` and `PowCheckint.checkint_spec` (`pow-pos-5.log`).
+- [ ] `PowLogFinal.log_within`: `|y + tail - log x| ≤ (7/8) 2 ^ -65 |log x|` for every positive normal or subnormal `x` other than 1, with `x = 1` evaluated directly; `pow-pos-6.log` ran past its limit in `core_relative`, now split into `case_k`, `case_c`, and `case_one`.
+- [ ] Milestone 1: `PowTheoremPos.pow_pos_within` for `x > 0`, through `PowMainPath`, `PowSubnormal`, and `PowPositive`.
 - [ ] Milestone 2: negative `x`, zeros, infinities, NaN, byte theorems, file module.
