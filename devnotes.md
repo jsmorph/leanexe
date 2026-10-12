@@ -31018,6 +31018,46 @@ The proof needs one property of `Fma.fma`: for finite `a`, `b`, `c` with `|a b +
 - [x] The parts of `Erf.md` on CORE-MATH's `erfc`.
 - [ ] The one-step proof: the double-double arithmetic with the `Fma.fma` interface, the polynomial approximations of `erf` and of `erfc (1/y) exp (1/y²)`, `exp_1` and `exp_accurate`, the hard cases, and the special ranges.
 
+
+### The one-step proof (track `trig`)
+
+The coordinator accepted the plan below with one condition: the final theorem must not keep the hypothesis `FmaSpec.FmaNearest`.  The track `expm1` will prove it as a corollary of its theorem on `Fma.fma`, and until that corollary is merged the theorem is reported as conditional.  `w/trig` merged `transcendentals` at `72ca3ad4` (`93dfa79f`), which carries the port and `FmaSpec` and adds `TaylorModel` and `RatExpLog` for the exponential's enclosures.
+
+The proof does not use CORE-MATH's error bounds `err`.  When the rounding test passes, `left = RN (h + RN (l - err))` equals `right = RN (h + RN (l + err))`.  The reals whose nearest double is a given double form an interval, and `h + l` lies between `h + RN (l - err)` and `h + RN (l + err)`, so `left` is a nearest double of `h + l`.  `F64NearestRelative.within_rel_of` then gives one step when `|h + l - erfc x| ≤ (15/16) u erfc x` and `erfc x ≥ 2^-1021`, and `F64NearestSteps.within_of_tiny` gives it for subnormal results with an absolute error below `2^-1074`.  Every path, the accurate path and the hard cases included, therefore needs only a bound on its own final sum, and the plan allows `(7/8) u erfc x` for the approximation and the rounding together.
+
+The rounding analysis tracks each float `x` with an ideal real `v` and bounds `|v| ≤ M`, `|x - v| ≤ e` (`ErfcTrack.Tr`), and each double-double `(h, l)` with `|h + l - V| ≤ e` and `|l| ≤ L` (`ErfcTrack.Pr`).  Each lemma takes the result's bounds as parameters and the inequalities that justify them as hypotheses, so that a row of a table needs only rational inequalities, which the kernel checks with one `decide +kernel`.  `ErfcFastMain.mainB` computes the bounds of every stage of `cr_erf_fast` for a row's coefficients, and `MainHyp` states the conditions: the dominance of each `fast_two_sum` and the absence of overflow.
+
+Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf_series`), shifted to the row's center and cut after degree `J`, with `PolyBound.check` on the low part and `PolyBound.absSum` on the high part (`ErfcSeries.row_sound`).  `2/√π` lies within `2^-160` of the middle of `[sLo, sHi]`, from `BesselConstants.pi_encl`, since the 20-digit bounds of `RealErf.scale_bounds` leave an absolute error of `2^-66.4` in `erf`, more than the target `2^-68.5` near `x = 2.885`.  A Python model with the exact definitions of `ErfcSeries.rowBound` and `ErfcFastMain.mainB` found every row of `C` within its target: `(7/8) u erfcLo` at the row's top for rows 1 to 46, and `(7/8) u` for rows 47 to 94, which only negative arguments reach.  The rows need 9 to 129 series terms, a cut after degree 8 to 13, and at most one bisection, and the rounding error of `cr_erf_fast` is at most `5·10^-5` of the target.  A kernel test of the shifts of the series of 60 and 130 terms took under a minute with startup (`trig-shift-2.log`).
+
+| Module | Content | State |
+|---|---|---|
+| `FmaSpec` | `FmaNearest`, the property of `Fma.fma` that the proof assumes | accepted, `b1c5f270` |
+| `ErfcEft` | Dekker's `fast_two_sum` is exact for `|b| ≤ |a| ≤ 2^1020` | accepted, `fba07475` |
+| `ErfcEft2` | Knuth's `two_sum` is exact for `|a|, |b| ≤ 2^1018` | accepted, `52be491a` |
+| `ErfcOps` | error bounds of the operations on Floats: `add_f`, `sub_f`, `mul_f`, `fma_f`, `fastTwoSum_f`, `twoSum_f`, `aMul_f` | accepted, `b0a10033` |
+| `ErfcTrack` | `Tr`, `Pr`, and the stages `pr_fts`, `pr_add`, `pr_mulB`, `pr_mulC`, `pr_mulD` | accepted (`trig-fastmain-1.log`), committed with this section |
+| `ErfcFastMain` | `core_pr`: the rounding error of `erfFastMain` against its row's polynomial | in progress |
+| `ErfcSeries` | `scale_lo`, `scale_hi`, `row_sound`, `erfc_ge` | in progress |
+| `ErfcRound` | `round52`, `roundEven_spec`, `floorF_spec`, `mul_pow2`, comparisons of floats | in progress |
+| `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x` | in progress |
+
+| Run | Result |
+|---|---|
+| `erfc-ops-1`, `erfc-ops-2`, `trig-erfcops-3` | `ErfcOps`: `|a - |b||` does not parse, then passed; the third run replaced the deprecated `if_neg` |
+| `trig-track-1` to `trig-track-3` | `ErfcTrack`: `norm_num` left `2^1000 ≤ 2^1022` unevaluated below the default exponentiation threshold, then passed |
+| `trig-shift-1`, `trig-shift-2` | The first found `PolyCalculus` unbuilt in this worktree; the second timed the series shifts |
+| `trig-fastmain-1` | `ErfcTrack` passed with its axiom report; `ErfcFastMain` failed on the instance search for `MainHyp`'s 75 conjuncts and an unindented line |
+
+The lock queue held `trig-fastmain-1` for about 20 minutes behind the coordinator's full build.
+
+- [x] Error-free transformations and operation bounds (`ErfcEft`, `ErfcEft2`, `ErfcOps`).
+- [x] Error tracking for the stages of `cr_erf_fast` (`ErfcTrack`).
+- [ ] `cr_erf_fast` from `1/16`: `ErfcFastMain`, `ErfcSeries`, `ErfcRound`, `ErfcFastRow`, and the 94 row checks.
+- [ ] `cr_erf_fast` below `1/16`, and the two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1`.
+- [ ] `exp_1`, `q_1`, and the tables `T1` and `T2`; `erfc_asympt_fast` and the six rows of `T` against the models of `erfcxN` of `ErfTailPieces0` to `ErfTailPieces7`.
+- [ ] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`; `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
+- [ ] The rounding test, the 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
+
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`)
 
 The coordinator replaced `erfc` by a port of CORE-MATH's `erfc` with the software fused multiply-add, so the `erf` track writes no fdlibm `erfc` theorem.  The new task is the mathematical foundations of CORE-MATH's `tgamma` and `lgamma` at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, which the ports track ported as `Tgamma.lean` and `Lgamma.lean`.  The coordinator approved the method below and fixed the target at one step for the final theorems, so each approximation needs a bound near `2^-60` relative after its share of rounding error, not CORE-MATH's `2^-103` for the accurate paths.  Every path the code can return through must be covered, the accurate paths and the hard-case returns included, and each hard-case entry needs only a one-step check against `Γ` at its input.  `w/erf` merged `transcendentals` at `a70225bf` for `TrigPi`, which bounds `π` to 1216 bits.
