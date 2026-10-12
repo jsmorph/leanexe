@@ -31165,6 +31165,73 @@ The lock queue held these runs for about two hours behind the `exp2` track's `Po
 
 The CORE-MATH `erfc` port and the gamma foundations: Opus merged `w/trig` at `b1c5f270` (`Erfc.lean`, `ErfcAccuracy.lean`, `FmaSpec.lean` with the hypothesis `FmaNearest` that the `erfc` and `tgamma` proofs take until the software fused multiply-add is proved, and the `erfc` part of `Erf.md`) and `w/erf` at `77f76b81` (the ProofKit modules `GammaBasic`, `GammaThresholds`, `GammaStirling`, `GammaModels`, `RatExpLog`, and `TaylorModel`, with `Tgamma.md` and `Lgamma.md`).  `Verified.lean` imports `Erfc` and `FmaSpec`, `LeanExe.lean` the six modules, and `tests/verified/run.sh` runs `ErfcAccuracy`.  The build passed with 9,482 jobs and no gamma declaration reporting another axiom (`opus-merge-erfc-1.log`), and `tests/verified/run.sh` passed (`opus-verified-tests-16.log`): 223,592 results of the CORE-MATH `erfc` and 24,895 direct calls of its accurate path equal the reference.  The erf track noted that next to the negative zeros of `lgamma` the fast path for `x < 0` has an absolute error near `1e-21` against results that can be far smaller, so that path's proof uses the rounding test and its facts meet CORE-MATH's tolerance; the other paths need about `2^-60` relative.
 
+## 2026-10-12: The approximation facts of `tgamma` and `lgamma` (track `erf`)
+
+The coordinator divided the gamma work on 2026-10-12.  Track `arc` takes the floating-point proof of `Tgamma.tgamma` and stated the eight approximation statements it takes as hypotheses in `Verified/Examples/TgammaApprox.lean` on branch `w/poly` (commit `b92f7941`, revised at `02c72fa9`, which relaxed the tolerances that depend on `π`).  Track `expm1` takes the floating-point proof of `Lgamma.lgammaR` and stated twelve statements in `Verified/Examples/LgammaApprox.lean` on branch `w/expm1` (commit `de1cbab5`).  Track `erf` proves both sets, each as a theorem whose type is the statement, the `tgamma` set first.
+
+The fact modules read the coefficient lists from the ports' tables with the definitions of the two statement files (`q`, `coeffs`, `ddCoeffs` in `TgammaFactsBase`), so that each theorem has the statement's type up to unfolding.  Each interval splits into pieces, and on each piece the kernel compares the polynomial with a Taylor model of the function: `GammaModels.gammaPieceOk` for `Γ`, `GammaFits.fit_piece` for the Stirling fits against `lgamma` and `GammaFits.fit_large` from 16 on against Stirling's series, `GammaScaled.gammaScaledOk` for the accurate path's ranges against `Γ / 2 ^ k` with a relative check (`GammaRel.relOk`), and `TaylorCheck.exprOk` for the kernels of the logarithm, the exponential, and the sine.  `GammaPi` takes `π` within `2 ^ -128` from `TrigPi` for the sine's tables and kernels, and the other models keep Mathlib's 20-digit bounds, where `π` enters only through `ln (2π)/2`.  `GammaDD` adds Taylor models of divided differences `(lgamma (x0 + s) - lgamma x0)/s` for the pieces of `lgamma` that contain the zeros 1 and 2.
+
+The runner's limits (`MemoryHigh` 4 GB, `MemoryMax` 6 GB, one cgroup per call) set the size of a piece.  `TgammaAsymFitB`, four pieces of degree 22 on `[8, 12]`, ran at about 10% CPU under reclaim with 8 GB resident and held the lock for 25 minutes before I stopped it (`erf-gamma-18.log`).  The Python model of the Taylor models counts coefficient operations per piece: pieces near 39,000 operations passed at about 25 seconds each (`TgammaAsymFitC`), pieces near 53,000 took 68 seconds each (`TgammaAsymFit`), and 58,000 stalled.  The modules now keep each piece near 35,000 operations or fewer: `TgammaAsymFit` has 16 pieces of radius `1/8` and degree 16, `TgammaAsymFitB` eight of radius `1/4` and degree 18, and the accurate ranges at `j = 8` and `j = 4`, which shift the argument 8 and 12 times, eight pieces of degree 18.  Each module now builds in its own runner call, since the modules of one `lake build` run in parallel in the same cgroup.
+
+The coordinator decided the precision of `lgamma`'s accurate path for `-17 < x < -10.5`.  There `as_lgamma_accurate` computes `-(lgamma (1 - x) + ln (sin (π φ)/π))` and has no polynomials about the zeros, so the result can be far smaller than the two terms.  `negzeros.py` in the track's scratch directory finds each zero by bisection in 80-digit decimal arithmetic and evaluates `lgamma` at the doubles next to it; the table gives the smallest values and the ratio `lgamma (1 - x)/lgamma x`.  From -17 down no double lies near a zero.  The coordinator chose bounds near `2 ^ -86` relative on the accurate Stirling fits, logarithm, and sine over a separate argument for the doubles near the zeros, and track `expm1` set `2 ^ -87` and `2 ^ -95` in `LgammaApprox`, with `CancelFact` bounding the ratio by `2 ^ 32` from -21/2 down.
+
+| Zero near | Smallest `\|lgamma\|` at a double | Ratio |
+|---|---|---|
+| -11 (both zeros) | `7.9 · 10^-9`, `2.7 · 10^-8` | `2^31.0`, `2^29.3` |
+| -12 | `4.8 · 10^-8`, `5.9 · 10^-8` | `2^28.6`, `2^28.3` |
+| -13 | `4.2 · 10^-6` | `2^22.4` |
+| -14 | `7.1 · 10^-5` | `2^18.4` |
+| -15 | `1.2 · 10^-3` | `2^14.6` |
+| -16 | `3.5 · 10^-3`, `3.4 · 10^-2` | `2^13.1`, `2^9.8` |
+
+`LgammaApprox.PieceFact` widens each piece by `2 ^ -50` at both ends, since the code selects the piece from a rounded `1 + x`, so the generated sub-pieces now cover `[border j - 2^-50, border (j + 1) + 2^-50]`.  The pieces 4 and 10 must hold at every real `x`, including those next to the zeros, where a divided-difference check fails since its remainder term grows like `1/|x - x0|`.  The plan uses the convexity of `log Γ` (Mathlib's `Real.convexOn_log_Gamma`): the divided difference is monotone in `s`, which bounds it for `|s| < τ` by its values at `±τ`, so the checks need to reach only `τ` near `2 ^ -70`.
+
+| Run | Result | Log |
+|---|---|---|
+| `GammaFits` | Passed, standard axioms | `erf-gamma-14.log` |
+| `GammaPi`, `TgammaFactsBase` | Passed | `erf-gamma-17.log` |
+| `TgammaPolyMain`, `TgammaPolySmall` | `gamma_main` and `gamma_small_fast` accepted; `gamma_main_ge` failed where `rw [← h3]` rewrote the 2 of `7/2`, and an extra `ring` followed a `field_simp` that closed the goal | `erf-gamma-17.log` |
+| `GammaDD` | Failed: a `rw` pattern, a `linarith` over `ℚ` facts for a real goal, and a projection `d.lg.a` that `rw` did not match | `erf-gamma-17.log` |
+| `TgammaAsymFit` | Passed in 548 s | `erf-gamma-18.log` |
+| `TgammaAsymFitC` | Kernel checks passed; the cover started at 23/2 in place of 11, and a cast was missing | `erf-gamma-18.log` |
+| `TgammaAsymFitB` | Stopped after 25 minutes under memory reclaim | `erf-gamma-18.log` |
+| `TaylorCheck`, `TgammaFactsBase`, `TgammaPolyMain`, `TgammaPolySmall`, `TgammaPolySmallAcc` | Passed, standard axioms | `erf-gamma-19.log` |
+| `GammaDD` | Failed: `linarith` saw `d.lg.a` and `d.x0` as different atoms, and a `calc` step had no type | `erf-gamma-19.log` |
+
+- [x] `SmallFact`, `MainFact`, `AccSmallFact` (`gamma_small_fast`, `gamma_main`, `gamma_small_acc`).
+- [ ] `StirlingFact`: `TgammaAsymFit`, `TgammaAsymFitB`, `TgammaAsymFitC`, regenerated with smaller pieces.
+- [ ] `AccRangeFact`: `TgammaAccRangeA` to `TgammaAccRangeC`.
+- [ ] `LogFact`, `ExpFact`, `SinFact`: `TgammaKernels`.
+- [ ] `TgammaFacts`, the proofs of the eight statements, tested against a copy of `TgammaApprox` until the statement file reaches `transcendentals`.
+- [ ] The twelve `lgamma` statements.
+
+The statement files changed twice on 2026-10-12.  `TgammaApprox` at `d06760e6` widens `MainFact` to `|d| ≤ 1/2 + 2 ^ -50`, since the code computes `i = roundeven (fl (x - 3.5))` and `d` exceeds `1/2` by up to `2 ^ -51` when `x - 3.5` rounds; `TgammaPolyMainEdge` adds two pieces of radius `2 ^ -51` at the ends of the committed eight.  `LgammaApprox` at `9a32b275` adds the absolute term `2 ^ -120` to `RootFact`, since the triple-double center of each root polynomial differs from the zero of `lgamma` and the bound `2 ^ -63 |lgamma x|` vanishes at the zero, and adds `RootMinFact`, `|lgamma| ≥ 2 ^ -60` at every double of the root ranges.  The coordinator also approved `|z| ≤ 1/80` for the fourth clause of `SinpiFact`: on `|z| ≤ 1/64` the relative error of the code's polynomial for `sin (π z)/π` reaches `2 ^ -71.7`, above the stated `2 ^ -76`, while the code uses that polynomial only for `|z| ≤ 3/256`, where the error stays below `2 ^ -79.2`.
+
+`TgammaKernels` stalled under the runner's memory limit like `TgammaAsymFitB`: each of its tables was one declaration that decided a bounded universal statement over 32 to 65 entries, and the kernel kept the whole table's evaluation in one cache (`erf-gamma-39.log`, stopped after 6 minutes at 8 GB).  The module is now four modules, `TgammaKernelBase` with the definitions and the enclosure lemmas and `TgammaLogTables`, `TgammaExpTables`, and `TgammaSinTables` with one declaration per table entry.  Its first build had also failed on two names (`erf-gamma-20.log`): `Expr` inside `Verified.Examples` resolves to the compiler's `Verified.Expr`, so the modules write `TaylorModel.Expr`, and `expCoeffs` lives in `TaylorRemainder`.
+
+The divided differences next to the zeros 1 and 2 need the logarithms of the shifts one at a time.  The first form of `GammaDD.ddShift` took one logarithm of the whole product `Π k < n, (1 + s/(x0 + k))`, whose argument reaches 0.8 in magnitude for `|s| = 1/4` and 16 shifts, so the Taylor model's series did not converge within its term limit and the error reached `10 ^ -13` in the Python model.  `ddShift` now sums `L (s/(x0 + k))/(x0 + k)` with `L u = log (1 + u)/u`, each argument below `|s|/(x0 + k)`, and the Taylor-model errors fall to `10 ^ -29`.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaKernels` | Failed: `Expr` and `expCoeffs` unresolved | `erf-gamma-20.log` |
+| `TgammaAsymFit`, 16 pieces of radius `1/8` | Passed in 395 s | `erf-gamma-27.log` |
+| `TgammaAsymFitB`, 8 pieces of radius `1/4` | Passed in 199 s | `erf-gamma-28.log` |
+| `TgammaAsymFitC` | Passed in 124 s | `erf-gamma-29.log` |
+| `TgammaKernels`, before the split into four modules | Stopped under memory reclaim | `erf-gamma-39.log` |
+
+- [x] `StirlingFact` (`fit_small_lo`, `asym_small`, `asym_big`).
+- [x] `MainFact` on `|d| ≤ 1/2 + 2 ^ -50` (`gamma_main_wide` in `TgammaPolyMainEdge`).
+
+`TgammaPolyMainEdge` checks the two end pieces with 14 and 13 shifts.  With 13 shifts at the lower end, `a + n` lay below the `16 + r` that `gammaPieceOk` requires, and the `decide` failed (`erf-gamma-52.log`).  With 14 the module passed (`erf-gamma-58.log`).  The accurate ranges build one module per runner call: `TgammaAccRangeA` in 405 s and `TgammaAccRangeB` in 457 s, each at the memory limit with full CPU.  Their first build had failed only on `norm_num` with `2 ^ 943` above the default `exponentiation.threshold`, which the modules now raise to 2048, and on a `ring` after a `field_simp` that closed the goal (`erf-gamma-59.log`).  The replays in `erf-gamma-61.log` showed deprecation warnings in `GammaDD` (`if_neg`, renamed `ite_eq_right` in the toolchain) and `GammaRel` (`push_neg`) and unreachable alternatives after `field_simp`; the modules now avoid them, so the ranges build again before they are committed.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaPolyMainEdge`, 13 shifts at the lower end | `decide` failed at the lower piece | `erf-gamma-52.log` |
+| `TgammaPolyMainEdge` | Passed, standard axioms | `erf-gamma-58.log` |
+| `TgammaAccRangeA` | Kernel checks passed; `norm_num` failed on `2 ^ 943` | `erf-gamma-59.log` |
+| `TgammaAccRangeA` | Passed in 405 s, with linter warnings | `erf-gamma-60.log` |
+| `TgammaAccRangeB` | Passed in 457 s | `erf-gamma-61.log` |
+
 ## 2026-10-12: Integration of asinh, acosh, and atanh
 
 Opus merged `w/poly` at `b92f7941` into `transcendentals` (`72ca3ad4`): the theorems of `asinh`, `acosh`, and `atanh` within two steps, their exceptional values, the byte theorems `AsinhBytes.asinh_bytes_accuracy`, `acosh_bytes_accuracy`, and `atanh_bytes_accuracy`, the file theorems of `AsinhFile`, and the statements of the `tgamma` facts in `TgammaApprox`.  `LeanExe.lean` gains the ProofKit modules `F64Compose`, `F64Near`, `F64RelError`, and `F64SqrtHalf`, `Verified.lean` gains `AsinhBytes` and `TgammaApprox`, and the file loop of `tests/verified/run.sh` gains `asinh:AsinhBytes:AsinhFile`.  `acosh` reached two steps on `1 < x ≤ 2`, so the allowance of three steps there is unused.  The build passed with 9,511 jobs (`opus-merge-asinh-1.log`).
