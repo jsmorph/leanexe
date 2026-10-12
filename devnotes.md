@@ -31244,6 +31244,8 @@ The coordinator assigned the specifications of `Tgamma.asLogd` and `Tgamma.asSin
 
 The proof of `asExpd_spec` tracks the reduced argument `X` only to `2^-52`, since an error `δ` in `X` changes `exp (X ln 2/1024)` by about `δ 2^-10.5` relative, so the code's exact subtraction `xh - ix` and its `fastTwoSum` are analysed as rounded operations.  The kernel is evaluated at the high part `q1` and multiplied by `q1 + q2`, and `exp_poly` compares the result with `1 + q1 expPoly q1`, so `ExpFact` is applied at `q1` and the low part `q2 ≤ 2^-52` is charged as a shift of the argument.  The first statement of `exp_assemble` used `nlinarith` for products of bounds in a context of about forty hypotheses and exceeded the heartbeat limit (`gamma-expspec-2.log`); explicit `mul_le_mul` facts and `linarith` replaced it.
 
+The large path needs `Γ x < 2^1024` with margin below the overflow threshold `t0`, or the word `ub.toBits + (E <<< 52)` can reach the exponent field 2047 with a nonzero fraction, a NaN.  A 90-digit evaluation gives `log2 Γ = 1024 - 6.90e-14` at the predecessor of `t0`, and track `erf` queued the fact `Γ (0x406573FAE561F647) ≤ 2^1024 (1 - 2^-50)`; the large-path theorem takes it as a hypothesis until it lands.  `asLgammaAsym` takes `asLogd` through the hypothesis `LogdSpec`, in the form track `expm1` announced: the error `2^-69 + |log x| 2^-78` and the low part `2^-22 + |lh|/2^52`.  The low part of the first product, near `185.5 · 2^-22 = 0.725 · 2^-14`, sets the margin of `asExpd_spec`'s hypothesis `|l| ≤ 2^-14`, so a weaker low-part bound for `asLogd` would need a wider `asExpd` analysis.
+
 ### Results
 
 | File | State | Log |
@@ -31277,7 +31279,8 @@ The proof of `asExpd_spec` tracks the reduced argument `X` only to `2^-52`, sinc
 | `TgammaInt`: `mulDDD_big`, `iloop_inv`, `intPath_within` | Committed in `eb4f3983` | `gamma-int-4.log` |
 | Merge of `transcendentals` at `be5749df`, with `Tgamma.md` resolved by keeping both sides | Committed in `b227991f` | `gamma-merge2-1.log` |
 | `TgammaApprox`: the kernel of `ExpFact` on `\|X\| ≤ 5/8` | Committed in `ef012e60` | `gamma-approx-3.log` |
-| `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed with this entry | `gamma-expspec-5.log` |
+| `TgammaExpRed`: `exp_mulc`, `exp_red`, `exp_index`, `toWord_nat`; `TgammaExpd`: `exp_poly`; `TgammaExpdSpec`: `exp_table`, `exp_assemble`, `asExpd_spec` | Committed in `54c1cb96` | `gamma-expspec-5.log` |
+| `TgammaAsym1`: `LogdSpec`, `sub_exact_binade`, `half_sub`, `one_sub`, `asym_prod` | Committed with this entry | `gamma-asym1-5.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
