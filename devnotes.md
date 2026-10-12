@@ -31086,11 +31086,14 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 | Module | Content | State |
 |---|---|---|
 | `ErfcCast`, `ErfcFastAll`, `ErfcFastPath` | `cr_erf_fast` on `[0, 95/16)` and `cr_erfc_fast` below `0x1.713786d9c7c09p+1` | accepted after the hold (`trig-fastpath-5.log`) |
-| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | written, not built |
+| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` accepted (`trig-acctiny-3.log`), the rest written, not built |
 | `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | written, not built |
 | `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | written, not built |
 | `ErfcAsymPoly`, `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1`, `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x`, and the certificates of `Tacc` | written, not built |
-| `expAccurate`, `asymptAccurate` with the subnormal correction, the hard cases, the special ranges, the final assembly | | not written |
+| `ErfcEAccPoly`, `ErfcEAcc` | `exp_accurate`: `|eh + el - exp (X - K log 2)|` below `2^-76` of the value | written, not built |
+| `ErfcTrack5`, `ErfcTaccLoop`, `ErfcTaccData`, `ErfcAsymAccHL`, `ErfcAsymAccFin` | `asymptAccurate` within `2^-56 erfc x` before the scaling, and one step after `ldexp`, the subnormal correction included | written, not built |
+| `ErfcHardBase`, `ErfcHardRows`, `ErfcHardNeg`, `ErfcHardPos`, `ErfcHardAsym0`, `ErfcHardAsym1`, `ErfcHardAsym` | the 68 hard cases, one kernel check per row (`gen/hardgen.py`) | written, not built |
+| the special input, the special ranges, the final assembly | | not written |
 
 - [x] `cr_erf_fast` from `1/16`: `ErfcFastMain`, `ErfcSeries`, `ErfcSeriesI`, `ErfcRound`, `ErfcFastRow`, and the 94 row checks.
 - [x] `cr_erf_fast` below `1/16` (`ErfcFastTiny`).
@@ -31103,6 +31106,8 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 After the hold `w/trig` merged `transcendentals` at `be5749df` (`dbf35b64`), which brings `FmaSpecTheorem.fma_nearest`.  The first build of `ErfcFastAll` (`trig-fastpath-1`) reached 3.9 GB of anonymous memory within a minute, and the memory guard stopped it: one kernel check of the low parts of all 94 rows of `C` held the bound structures of every row at once.  Twelve checks of eight rows each keep the module below 2 GB (`trig-fastpath-2`).  The second run showed that `exact_mod_cast` does not transfer a rational inequality such as `s8L ≤ 2 (1/2^53)` to the reals when the real side is written with numerals, since `norm_cast` turns `2^53` into a cast of a natural number; the new tactic `ErfcCast.qc` casts the hypothesis, pushes the casts inward, and closes the goal with `linarith`.  `trig-fastpath-3` to `trig-fastpath-5` fixed a component of an absolute-value bound taken from the wrong side, a rewrite of `fv` under `value`, and a missing `open`, and accepted `ErfcCast`, `ErfcFastAll`, and `ErfcFastPath`.
 
 `trig-accmain-1` failed on a doc comment placed before `set_option ... in` in the generated bound definitions, and on the first stage of `acc_core_pr`, which used the coefficient's magnitude where the bounds use the field `h0M` above it; `Tr.mono` now lifts the first coefficient to the generated bounds.  `trig-accmain-2` accepted `ErfcAccMain` in 453 seconds, the first module whose proof unrolls loops of `LeanExe.loop` with `Nat.fold_succ` and matches the result to the chain of stage lemmas.  `ErfcAccTiny` was still compiling when the run reached its 20-minute timeout, without a diagnostic, so its proof will be split before it is built again.
+
+`ErfcAccTiny` now splits `taccCore` into four pieces, the Horner loop, the first and second multiplications by `z`, and the final additions, and states `taccCore_eq` by `rfl`.  The proof generalizes each piece's result after its stage lemma applies, so the elaborator never unfolds the whole loop at once.  `trig-acctiny-3` accepted the module in 464 seconds with at most 2.2 GB of anonymous memory, and its scope reached `memory.high` only through page cache while the build used a full CPU.  The same split serves `ErfcEAccPoly` and `ErfcAsymPoly` if their builds prove slow.
 
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`, debtop1)
 
