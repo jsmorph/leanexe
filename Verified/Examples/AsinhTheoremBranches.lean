@@ -2,11 +2,11 @@ import Verified.Examples.Asinh
 import Verified.Examples.AtanTheorem
 
 /-!
-The branches of `Asinh.asinh`, `Asinh.acosh`, and `Asinh.atanh` as equations.  `ixOf x` is the
+The branches of `Asinh.asinh` and `Asinh.acosh` as equations.  `ixOf x` is the
 high word of `|x|` (`AtanTheoremBranches.ixOf`), and `hxOf x` the high word of `x`.  `asinhW x` is
 the value of `asinh |x|` before the sign: `log |x| + ln2` above `2 ^ 28`, `log (2 |x| + 1/(√(x² + 1)
-+ |x|))` above 2, and `log1p (|x| + x²/(1 + √(1 + x²)))` below.  `atanhT x` is the value of
-`atanh |x|` before the sign.
++ |x|))` above 2, and `log1p (|x| + x²/(1 + √(1 + x²)))` below.  The branches of `Asinh.atanh` are
+in `AtanhTheoremBranches`.
 -/
 
 namespace Verified.Examples.AsinhTheoremBranches

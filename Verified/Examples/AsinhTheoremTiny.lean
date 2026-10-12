@@ -8,8 +8,7 @@ import Mathlib.Analysis.SpecialFunctions.Artanh
 `Asinh.asinh x` and `Asinh.atanh x` for `|x| < 2 ^ -28`, where both return `x`.  `arsinh x` and
 `artanh x` lie within `|x| ³` of `x`: the first by the mean value theorem, since the derivative of
 `arsinh t - t` is at most `t²` in magnitude, and the second from the cubic bounds of `log (1 ± x)`.
-The result is then within one step by `F64WithinSelf.within_one_of_self`.  The file also states the
-branches of `Asinh.atanh`.
+The result is then within one step by `F64WithinSelf.within_one_of_self`.
 -/
 
 namespace Verified.Examples.AsinhTheoremTiny
