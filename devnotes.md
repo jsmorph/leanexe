@@ -31217,6 +31217,14 @@ An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) s
 
 `TgammaApprox` states the facts as propositions over the exact rational values of the table words (`q tab i = ratOfWord tab[i]!`), with polynomials evaluated by `PolyBound.eval`.  The coordinator received the proposal with commit `b92f7941`.  Track `erf`'s Taylor models take `π` from Mathlib's 20-digit bounds `Real.pi_gt_d20` and `Real.pi_lt_d20`, which fix `π` only to `10^-20`, about `2^-66`.  The first proposal asked `2^-80` of the split `π` and of the table `sin (kπ/128)`, which those bounds cannot give, so these two tolerances are now `2^-66`, and the cosine kernel's is `2^-76 d²` to leave room for the uncertainty of `π²`.  A table error of `2^-66` reaches the result of `asSinpid` as a relative error below `2^-59.7`, since the result is at least `sin (π/256)` whenever a table entry other than the exact `st 0 = 0` and `st 64 = 1` contributes.  The database of 57 hard cases needs no separate fact: `AccRangeFact` and an exact evaluation at those arguments bound `Γ` there.
 
+### Shared modules and the analysis method
+
+Track `expm1` merged `w/poly` at `3b5fa105` to use `F64TwoSum`, `TgammaDD`, `TgammaPolyDDD`, `TgammaFloor`, and `TgammaExpr` for `lgamma`, so the statements of those modules stay fixed and later results are new lemmas.  `polyDDD_spec` bounds the initial low part by `|l|`, which costs about `2^-53` of the result when `l` is not small.  Commit `2e03223c` therefore adds `polyDDD_tight`, with a bound of `2^-52` of the top coefficient.  Commit `14346594` adds `polyDDD_damped`, which multiplies the error of `l` by `X ^ (N - 1)`, since the small path's `l` carries an absolute error near `2^-48` that reaches the result only through `x^4`.
+
+The small path shows the error budget of a fast path.  With `R = 1/|x|`, the double-double sum is within `2^-56 R` of `1/x + smallPoly x`, `SmallFact` puts `Γ x` within `2^-60 R` of that, `eps` is below `2^-58 R`, and `Γ x` is at least `0.6 R` by `gamma_sub_inv_bounds`, so the rounded `fh + (fl + eps)` is the nearest double to a value within `2^-54` of `Γ x` relative.  The theorem takes the accurate path's result as a hypothesis, since the code returns it when the rounding test fails.
+
+The analysis of each path tracks absolute errors with explicit magnitude bounds.  `TgammaExpr` evaluates, in the kernel, the bound of a chain of plain double operations in one variable, so the polynomial parts written in double arithmetic, such as `x (c0 + x8 c8)` of the small path, get their bound by `decide +kernel`: `2^-48` with magnitude `1/2` for `|x| ≤ 1/4`.  The double-double parts use the lemmas of `TgammaDD` and `TgammaPolyDDD`.  The approximation facts of `TgammaApprox` and the one-step criterion `within_one_of_rounded_rel` close each path.
+
 ### Results
 
 | File | State | Log |
@@ -31227,6 +31235,16 @@ An exact computation of `asLogd`'s index over all mantissas (`py/logrange.py`) s
 | `F64Saturate`: rounding to infinity and to zero, `x/0`, `0/0`, `∞/∞`, NaN sums | Committed in `6d4cebb2` | `gamma-saturate-3.log` |
 | `TgammaFloor`: `roundEven_spec`, `floorF_spec` | Committed in `6d4cebb2` | `gamma-floor-4.log` |
 | `TgammaApprox` with the tolerances that involve `π` relaxed | Committed in `02c72fa9` | `gamma-approx-2.log` |
+| `TgammaSpecial`: `+∞`, `-∞` at `±0`, `+∞` at `+∞`, the canonical NaN at `-∞` and NaN | Committed in `7a97f139` | `gamma-special-2.log` |
+| `F64NearReal`: a double within `\|S\|/2^53 + 2^-1075` of every real `S` below `2^1000`, hence the bound of a nearest result such as `Fma.fma` under `FmaNearest` | Committed in `7a97f139` | `gamma-nearreal-2.log` |
+| `TgammaDD`: `fma_approx`, `fastTwoSum_spec`, `twoSum_spec`, `low_sum`, `fastSum_spec`, `high_bound`, `sumDD_spec`, `mulDDD_spec` | Committed in `72c612ea` | `gamma-dd-6.log` |
+| `TgammaPoly`: `loop_succ`, `horner`, `horner_eq`, `horner_eval`, `horner_bound` | Committed in `b9b6e5cf` | `gamma-poly-2.log` |
+| `TgammaPolyDDD`: `polyDDD_spec`, then `polyDDD_core`, `polyDDD_tight`, and `polyDDD_damped` | Committed in `b9b6e5cf`, `2e03223c`, `14346594` | `gamma-pdd-5.log`, `gamma-pdd-8.log`, `gamma-pdd-9.log` |
+| `TgammaExpr`: the error evaluator for straight-line double arithmetic | Committed in `3b5fa105` | `gamma-expr-3.log` |
+| `TgammaRecip`: `recip_corr`, the corrected reciprocal below `1/4` | Committed in `313a1cb2` | `gamma-recip-2.log` |
+| `TgammaWords`: words of the tables as rationals, weighted Horner bounds, and list evaluation | Committed in `db6c122a` | `gamma-words-3.log` |
+| `TgammaSmall`: `lE` within `2^-48` (kernel), `horner_small`, `small_poly` within `2^-55` of `smallPoly` | Committed in `b9a70213`, `6b225ee1` | `gamma-small-4.log` |
+| `TgammaSmallPath`: `small_sum`, `small_gamma`, `smallPath_within` | Committed in `6b225ee1` | `gamma-spath-4.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31234,10 +31252,14 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] Path equations
 - [x] Dekker's error-free sum
 - [x] Merge `transcendentals` at `a55d2cfd` (`FmaSpec`, the gamma foundations) as `a765795b`, with the conflicts in `devnotes.md` and `Tgamma.md` resolved by keeping both sides; the track's modules and `FmaSpec`, `GammaBasic`, and `GammaThresholds` build on it (`gamma-merge-1.log`)
-- [ ] Exceptional values: `±0`, `±∞`, NaN, the negative integers, `2^-1024`, the overflow and underflow paths
-- [ ] Double-double lemmas: `twoSum`, `fastSum`, `sumDD`, `mulDD`, `mulDDD`, `mulDD3`, `polyDDD`, `splt`, `sprod`, `poly3`
+- [ ] Exceptional values at the negative integers, at `2^-1024`, and on the overflow and underflow paths
+- [x] Exceptional values at `±0`, `±∞`, and NaN (`TgammaSpecial`)
+- [x] Double-double lemmas: `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDDD`, `polyDDD`
+- [ ] Double-double lemmas: `mulDD`, `mulDD3`, `splt`, `sprod`, `poly3`
 - [ ] `asLogd`, `asExpd`, `asSinpid`, `asLgammaAsym` in terms of the facts
-- [ ] Each path, the accurate path, and the database
+- [x] The fast path from `2^-112` to `1/4`, given the accurate path at the same input (`smallPath_within`)
+- [ ] The tiny path, the integer path, and the paths on `[-3, 4]`, above 4, and below -3
+- [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
 ## 2026-10-12: The software fused multiply-add theorem (track `expm1`)
