@@ -30927,3 +30927,65 @@ The proof needs one property of `Fma.fma`: for finite `a`, `b`, `c` with `|a b +
 - [x] Check the port natively against `ErfReference`, the worst inputs, and the hard cases.
 - [x] The parts of `Erf.md` on CORE-MATH's `erfc`.
 - [ ] The one-step proof: the double-double arithmetic with the `Fma.fma` interface, the polynomial approximations of `erf` and of `erfc (1/y) exp (1/y²)`, `exp_1` and `exp_accurate`, the hard cases, and the special ranges.
+
+## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`, debtop1)
+
+The coordinator replaced `erfc` by a port of CORE-MATH's `erfc` with the software fused multiply-add, so the `erf` track writes no fdlibm `erfc` theorem.  The new task is the mathematical foundations of CORE-MATH's `tgamma` and `lgamma` at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, which the ports track ported as `Tgamma.lean` and `Lgamma.lean`.  The coordinator approved the method below and fixed the target at one step for the final theorems, so each approximation needs a bound near `2^-60` relative after its share of rounding error, not CORE-MATH's `2^-103` for the accurate paths.  Every path the code can return through must be covered, the accurate paths and the hard-case returns included, and each hard-case entry needs only a one-step check against `Γ` at its input.  `w/erf` merged `transcendentals` at `a70225bf` for `TrigPi`, which bounds `π` to 1216 bits.
+
+The C code states no error for any single polynomial or table.  It states only the total budget `eps` of each path, which combines approximation and rounding error, so each approximation bound comes from a measurement with an exact-integer Python model and a margin.  Each fact is stated in the form the floating-point proof uses: the real function, the interval, the polynomial with `ratOfWord` coefficients, and the bound.
+
+| Fact | `tgamma.c` lines | `lgamma.c` lines |
+|---|---|---|
+| `Γ (x + 1) = x Γ x` and products of shifts in both directions | 834-850, 562-600 | 253-336 |
+| `Γ k = (k - 1)!`, `lgamma 1 = lgamma 2 = 0`, poles | 722-739 | 896-907 |
+| Reflection `Γ x Γ (1 - x) = π / sin (π x)` and the sign `(-1) ^ ⌊x⌋` | 753-798, 741-751 | 1009-1018, 341-357 |
+| Overflow of `Γ` from `0x1.573fae561f648p+7`; underflow below 2^-1078 for `x ≤ -184` | 709-716, 741-751 | |
+| `Γ x - 1/x` for `|x| < 2^-112`; `lgamma x + log |x|` for `|x| < 2^-75` and `2^-100` | 650-681 | 915-918, 235-243 |
+| `lgamma` overflow at `|x| ≥ 0x1.754d9278b51a6p+1014` and its two special words | | 874-895 |
+| `Γ x - 1/x` on `|x| < 1/4`: degree 20 fast, degree 35 accurate | 682-706, 306-345 | |
+| `Γ (3.5 + d)` on `|d| ≤ 1/2`, degree 17 | 812-855 | |
+| Stirling fits of `as_lgamma_asym` for `x > 11.5` and `4 < x ≤ 11.5` | 1058-1105 | |
+| `2^-eoff Γ (b + 1/2 + d/2)` for nine bases `b` from 4 to 160, degrees 25 to 33 | 347-612 | |
+| `lgamma (1 + x)/x` on `|x| < 1/32`; 19 pieces on `[0.5, 8.29541]`; Stirling fit above | | 919-1008 |
+| Accurate `lgamma (1 + x)/x`, `lgamma (1.5 + x)`, three Stirling fits | | 194-340, 1365-1454 |
+| 16 negative zeros of `lgamma` with `lgamma x = (x - x0) P (s (x - x0))` | | 364-752 |
+| `as_logd`, `as_logd_accurate`, `sin (π k/128)` and `sin (π k/128)/π` tables, `as_expd` tables, `π` split | 858-1056, 760 | 1032-1362 |
+| Hard cases: 57 for `tgamma`, 19 for `lgamma` | 210-287 | 158-191 |
+
+The method rests on Stirling's series with a proved remainder.  For `x > 0` let `F x = lgamma x - ((x - 1/2) log x - x + log (2 π)/2)`.  Then `F x - F (x + 1) = (x + 1/2) log (1 + 1/x) - 1`, and `F (x + n) → 0` follows from Mathlib's `Real.BohrMollerup.tendsto_log_gamma` and `Stirling.tendsto_stirlingSeq_sqrt_pi`.  For a coefficient list `cs` of length `m`, the remainder `R = F - series cs` satisfies `R y - R (y + 1) = ρ y`, and in `z = 1/y` the product `(1 + z) ^ (2 m - 1) ρ y` equals a polynomial `qpoly cs` at `z` plus a multiple of the remainder of the logarithm's series.  The kernel checks that the first `2 m + 2` coefficients of `qpoly cs` vanish and bounds the rest with `PolyBound.check`, which gives `|ρ y| ≤ K y ^ -(2 m + 2)`.  The inequality `y ^ -(p + 1) ≤ (p (y - 1) ^ p)⁻¹ - (p y ^ p)⁻¹`, proved by induction on `p`, telescopes, and the limit gives `|R x| ≤ K / ((2 m + 1) (x - 1) ^ (2 m + 1))`.  With the twelve Bernoulli coefficients, `z0 = 1/16`, and `M = 104000`, the bound is `104001 / (25 (x - 1) ^ 25)` for `x ≥ 16`, below `2 ^ -85` at 16.
+
+The recurrence `lgamma (x + n) = lgamma x + Σ log (x + k)` brings every positive argument above 16, and `TaylorModel` evaluates the resulting elementary expression on an interval.  A Taylor model is a polynomial with rational coefficients and an error bound; sums, products, inverses, `exp`, `log (1 + a)`, `log (1 + a)/a`, `sin`, `cos`, and `sin a/a` compose with truncation to a fixed degree, rounding to multiples of `2 ^ -100`, and series remainders from `TaylorRemainder`, and `tm_sound` proves every computed model.  The number of series terms adapts to the argument's bound, since a fixed 30 terms left an error of `1.4 · 10 ^ -18` for `log (1 + w)` with `|w| ≤ 0.26` near `x = 0.78`.  `GammaModels.lgammaExpr` writes `lgamma (a + t)` with `n` shifts, each logarithm of a rational `q` as `m log 2 + log (q / 2 ^ m)` with kernel-checked bounds, and `log π` as `2 log 2 + log (1 + (π/4 - 1))` with Mathlib's 20-digit bounds on `π`.  These bounds limit a model's error to about `10 ^ -21`, which leaves a wide margin for the one-step bound.  A single piece of radius `1/32` with degree 16 took 21 seconds with `lake env lean`, startup included (`erf-tmtest-2.log`).
+
+The one-step target needs one correction for `lgamma`.  Near the negative zeros, `cr_lgamma`'s fast path for `x < 0` has an absolute error near `10 ^ -21` against a result that can be far smaller, so its relative error is not small there.  It returns only when `fh + (fl ± eps)` round to the same double, and then the result is the rounding of `lgamma x` whenever `|lgamma x - (fh + fl)| ≤ eps`.  For that path the facts must meet CORE-MATH's `eps` (`8.7 · 10 ^ -20 |fh| + 10 ^ -24` plus `8 · 10 ^ -22 |lh|`), and the floating-point proof must use the rounding test; elsewhere a relative bound near `2 ^ -60` suffices.
+
+| Module | Main results |
+|---|---|
+| `LeanExe/ProofKit/GammaBasic.lean` | `gamma_add_nat`, `gamma_eq_div`, `gamma_nat_prod` (`Γ (k + 1) = 1 · 2 ⋯ k`), `lgamma_add_one`, `lgamma_one`, `lgamma_two`, `gamma_reflect`, `lgamma_reflect`, `gamma_pos_of_even`, `gamma_neg_of_odd` (the sign `(-1) ^ ⌊x⌋` for non-integer `x < 1`), `two_mul_abs_sub_round_le` (`|sin (π x)| ≥ 2 |x - round x|`), `abs_gamma_le`, `gamma_underflow` (`|Γ x| < 2 ^ -1078` for `x ≤ -184` at distance at least `2 ^ -45` from the integers), `gamma_sub_inv_bounds` (`-8/5 ≤ Γ x - 1/x ≤ 0` on `[-1/2, 1] \ {0}`), `abs_lgamma_add_log_le` (`|lgamma x + log |x|| ≤ 4 |x|` for `0 < |x| ≤ 1/4`) |
+| `LeanExe/ProofKit/GammaStirling.lean` | `F_sub_succ`, `tendsto_F`, `rho_identity`, `abs_rho_le`, `abs_remainder_le` (the general remainder theorem), `stirling_twelve` (`|lgamma x - lead x - series stirCoeffs x| ≤ 104001 / (25 (x - 1) ^ 25)` for `x ≥ 16`) |
+| `LeanExe/ProofKit/RatExpLog.lean` | `abs_exp_sub_le`, `le_log`, `log_le`, `qeval_cast` |
+| `LeanExe/ProofKit/GammaThresholds.lean` | `gamma_overflow` (`Γ x ≥ 2 ^ 1024` from `0x1.573fae561f648p+7`), `lgamma_x1`, `lgamma_x2` (`lgamma` at `0x1.754d9278b51a6p+1014` and the next double within `3/5` and `1/5` of the spacing `2 ^ 971` from the two largest doubles), `lgamma_overflow` (`lgamma x ≥ 2 ^ 1024 - 2 ^ 970` from the double after them), `lgamma_mono`, `lgamma_between`, and the words of the thresholds |
+| `LeanExe/ProofKit/TaylorModel.lean` | `tm_sound` |
+| `LeanExe/ProofKit/GammaModels.lean` | `lgammaExpr_eval`, `lgamma_model`, `gamma_model`, `gammaPieceOk_sound`, `piece_bound`, `cover_pieces` |
+
+All 42 `#print axioms` reports of these modules list only `propext`, `Classical.choice`, and `Quot.sound` (`erf-gamma-12.log`).
+
+| Runs | Result | Logs |
+|---|---|---|
+| `GammaBasic` | Passed after the product cast, the factorial value, the secant-slope arguments, and the logarithm bounds were fixed | `erf-gamma-1.log` to `erf-gamma-3.log` |
+| `GammaStirling`, `RatExpLog` | Passed after a `dsimp` that made no progress was removed | `erf-gamma-3.log`, `erf-gamma-4.log` |
+| `GammaThresholds` | Passed after `rw ... at` closed a goal by unifying an implicit bound with `rfl`, which left `lgamma_mono` with equal endpoints | `erf-gamma-4.log` to `erf-gamma-8.log` |
+| `TaylorModel`, `GammaModels` | Passed after cast forms of `-1/a` were aligned, `0 + t` was simplified after `push_cast`, and `stirRem_eq` used `norm_cast` in place of `ring`, which ran out of heartbeats expanding a 25th power | `erf-gamma-6.log` to `erf-gamma-12.log` |
+| One Taylor-model piece of `Γ` about 3.5 | Accepted by the kernel in 21 seconds | `erf-tmtest-2.log` |
+
+The lock queue held these runs for about two hours behind the `exp2` track's `PowTheorem` build.
+
+- [x] List the facts with source lines and report them.
+- [x] Merge `transcendentals` for `TrigPi`.
+- [x] Identities: shifts, factorials, reflection, sign, poles, `lgamma` at 1 and 2.
+- [x] Thresholds: overflow and underflow of `Γ`, small arguments, `lgamma` overflow.
+- [x] Stirling's series with its remainder.
+- [x] Taylor models of `lgamma` and `Γ` on intervals.
+- [ ] Fast-path approximations: `Γ` about 3.5 (`TgammaMain`, generated, eight pieces), `Γ x - 1/x` below `1/4` (`TgammaSmall`, generated), the Stirling fits of `as_lgamma_asym`, `lgamma`'s 19 pieces and its fit above 8.29541.
+- [ ] Kernel tables: `as_logd`, `as_sinpid`, `as_sinpipid`, `as_expd`, and the splits of `π`, `log 2`, and `1024/log 2`.
+- [ ] Accurate paths, by comparison with the fast-path facts where the domains overlap, and the negative zeros of `lgamma` with divided-difference models.
+- [ ] Hard cases.
