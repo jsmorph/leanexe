@@ -31061,11 +31061,46 @@ The build `trig-rows-1` held minideb1's lock until its 120-minute timeout, and t
 
 - [x] Error-free transformations and operation bounds (`ErfcEft`, `ErfcEft2`, `ErfcOps`).
 - [x] Error tracking for the stages of `cr_erf_fast` (`ErfcTrack`).
-- [ ] `cr_erf_fast` from `1/16`: `ErfcFastMain`, `ErfcSeries`, `ErfcRound`, `ErfcFastRow`, and the 94 row checks.
-- [ ] `cr_erf_fast` below `1/16`, and the two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1`.
-- [ ] `exp_1`, `q_1`, and the tables `T1` and `T2`; `erfc_asympt_fast` and the six rows of `T` against the models of `erfcxN` of `ErfTailPieces0` to `ErfTailPieces7`.
-- [ ] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`; `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
-- [ ] The rounding test, the 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
+
+### The hold of 2026-10-12 and the plan of the remaining proof (track `trig`)
+
+The coordinator held new Lean builds on minideb1 for the integration test, and this track wrote the remaining modules without building them.  The drafts lie in the track's scratch directory under `erfc/proof/`, and those already copied into the worktree are untracked files; none is accepted, and each will be built alone with a timeout of at most 20 minutes once the lock is released.  The Python plans in `erfc/cert/` and `erfc/gen/` use the exact definitions of the Lean checks, so a failing check would show there first.
+
+The asymptotic paths need `x exp (x²) erfc x` to about `2^-60`, which the erf track's models of `erfcxN` on `[1.25, 28]` provide (`ErfTailPieces0` to `ErfTailPieces7`: `|erfcxN x - p (x - c)| ≤ s + eD (b - x)`, relative errors near `2^-66`).  `ErfcAsymCert.certP` writes `x^(2n) Z (1/x²) - sig x^(2n+1) p (x - c)` as a polynomial in `x - c`, with `sig` the middle of the enclosure of `2/√π`, and `cert_sound` turns one `PolyBound.check` with `ε = 2^-62 lo^(2n+1) (pm - pr)` and a few rational conditions into `|Z (1/x²) - x erfcx x| ≤ 2^-61 x erfcx x` on the part of a row's interval that a model piece covers.  The six rows of `T` meet 28 pieces and the ten rows of `Tacc` 38; `cert/aplan.py` found every check passing without bisection except four of the 28 checks of `T`, which need one, and the Python time per check stays near 10 ms.  The interval of `x` of each row follows from its thresholds on `yh`, since `|yh - 1/x| ≤ u/x + 2^-1075` (`ErfcAsymIdx.dom_lo`, `dom_hi`).
+
+`erfc_asympt_fast` then multiplies the row's polynomial at `U = uh + ul ≈ 1/x²` by `1/x` and by `exp (-x²)` in double-double arithmetic.  `ErfcRel.pr_dMul_rel` gives `Erfc.dMul` relative bounds, since `1/x` and `exp (-x²)` make the magnitudes depend on `x`, and the underflow terms stay relative while the product exceeds `2^-980`.  The budget of `ErfcAsymFast.asym_fast_err` is `2^-60` from `exp_1`, `2^-61` from the model and the certificate, `2^-67` from the polynomial's rounding (`ErfcAsymPoly`, with `MU = (1/lo)² (1 + 2^-50)` per row), and `14 u²/x²` from `U`, whose effect the bound `absSum MU Z' ≤ 1` on the derivative limits.  With `x erfcx x` between 0.49 and 0.57 from the first two terms of the asymptotic series (`ErfcAsymZ.G_bounds`), the sum stays below `2^-57 erfc x`, far inside the `(15/16) u erfc x` that `ErfcTest.near_within` needs.
+
+The final theorem will read `erfc_within_of (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits) : WithinSteps 1 (RealErf.erfc (value x.toBits)) (Erfc.erfc x).toBits`, with the exact results for `±0`, `±∞`, and NaN stated without the hypothesis.  When the track `expm1` merges `FmaSpecTheorem.fma_nearest : FmaSpec.FmaNearest`, `erfc_within` applies `erfc_within_of` to it, and only then will the theorem be reported as accepted; until then it is conditional.  `FmaSpec.FmaNearest` states the property for `|a b + c| ≤ 2^1023`, and every use in the proof stays below `2^1021`.
+
+| Range of `x` | Result | Argument |
+|---|---|---|
+| NaN, `±∞`, `±0` | `x + x`, `2`, `0`, and `1` | exact results |
+| `x ≤ -0x1.7744f8f74e94bp+2` | `2 - 2^-54`, which rounds to 2 | the first term of the asymptotic series bounds `erfc 5.86` by `1.7·10^-16`, below the `2.6·10^-16` that puts `2 - 2^-54` within `(15/16) u y` of `y` |
+| `-0x1.c5bf891b4ef6ap-54 ≤ x < 0` | `fma (-x, 2^-54, 1) = 1` | `0x1.c5bf891b4ef6ap+0 < √π`, so `erf (-x) < 2^-53`, half the spacing above 1 (`F64NearestSteps.within_of_half`) |
+| `0 ≤ x ≤ 0x1.c5bf891b4ef6ap-55` | `1` | `1 - erfc x < 5.6·10^-17`, within `(15/16) u` |
+| `0x1.b39dc41e48bfdp+4 ≤ x` | `2^-1074 · 0.25`, which rounds to 0 | `erfc x < 2^-1074 + 2^-1076` (`within_of_tiny`) |
+| the rest | `erfcMain` | the fast path when its test passes (`ErfcTest.test_near`), otherwise the accurate path or a hard case |
+
+On the accurate path the result is `h + (t ± l)` rounded once after the exact `fast_two_sum (1, ∓h)`, and the rounding of `t ± l` adds at most `3 u²`, so the targets `(7/8) u erfc x` of `C2` suffice (`ErfcAccAll`).  A hard case returns the table's `t1 + t2` rounded, which is a nearest float of itself, so a rational enclosure of `erfc` at the case's input within `2^-60` gives one step through `near_within` or, near a binade boundary, `within_of_relative`.  The enclosures come from the series of `erf` for the 46 cases below `0x1.b59ffb450828cp+0` and from the models of `erfcxN` and an enclosure of `exp (-x²)` for the 22 asymptotic cases; the special input `0x1.a8f7bfbd15495p+4` has a subnormal result within `2^-1076` of the `fma`'s exact sum.  On `[0x1.9db1bb14e15cap+4, 0x1.b39dc41e48bfdp+4)` the fast path returns `(0, 0, 1)`, whose test fails.
+
+| Module | Content | State |
+|---|---|---|
+| `ErfcCast`, `ErfcFastAll`, `ErfcFastPath` | `cr_erf_fast` on `[0, 95/16)` and `cr_erfc_fast` below `0x1.713786d9c7c09p+1` | accepted after the hold (`trig-fastpath-5.log`) |
+| `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | written, not built |
+| `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | written, not built |
+| `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | written, not built |
+| `ErfcAsymPoly`, `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1`, `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x`, and the certificates of `Tacc` | written, not built |
+| `expAccurate`, `asymptAccurate` with the subnormal correction, the hard cases, the special ranges, the final assembly | | not written |
+
+- [x] `cr_erf_fast` from `1/16`: `ErfcFastMain`, `ErfcSeries`, `ErfcSeriesI`, `ErfcRound`, `ErfcFastRow`, and the 94 row checks.
+- [x] `cr_erf_fast` below `1/16` (`ErfcFastTiny`).
+- [x] The two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1` (`ErfcFastAll`, `ErfcFastPath`).
+- [ ] `exp_1`, `q_1`, and the tables `T1` and `T2`; `erfc_asympt_fast` and the six rows of `T`.
+- [ ] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`.
+- [ ] `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
+- [ ] The 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
+
+After the hold `w/trig` merged `transcendentals` at `be5749df` (`dbf35b64`), which brings `FmaSpecTheorem.fma_nearest`.  The first build of `ErfcFastAll` (`trig-fastpath-1`) reached 3.9 GB of anonymous memory within a minute, and the memory guard stopped it: one kernel check of the low parts of all 94 rows of `C` held the bound structures of every row at once.  Twelve checks of eight rows each keep the module below 2 GB (`trig-fastpath-2`).  The second run showed that `exact_mod_cast` does not transfer a rational inequality such as `s8L ≤ 2 (1/2^53)` to the reals when the real side is written with numerals, since `norm_cast` turns `2^53` into a cast of a natural number; the new tactic `ErfcCast.qc` casts the hypothesis, pushes the casts inward, and closes the goal with `linarith`.  `trig-fastpath-3` to `trig-fastpath-5` fixed a component of an absolute-value bound taken from the wrong side, a rewrite of `fv` under `value`, and a missing `open`, and accepted `ErfcCast`, `ErfcFastAll`, and `ErfcFastPath`.
 
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`, debtop1)
 
