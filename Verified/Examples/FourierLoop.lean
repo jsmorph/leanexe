@@ -7,6 +7,38 @@ def nSamples (xs : Array Float) : Nat := xs.size / 2
 
 def nWord (xs : Array Float) : UInt64 := xs.size.toUInt64 / 2
 
+def realTermWith (dir : Float) (xs : Array Float) (k j : UInt64) : Float :=
+  let t := Fourier.twiddle (nWord xs) (j * k % nWord xs)
+  let d := dir * t.2
+  xs[(2 * j).toNat]! * t.1 - xs[(2 * j + 1).toNat]! * d
+
+def imagTermWith (dir : Float) (xs : Array Float) (k j : UInt64) : Float :=
+  let t := Fourier.twiddle (nWord xs) (j * k % nWord xs)
+  let d := dir * t.2
+  xs[(2 * j).toNat]! * d + xs[(2 * j + 1).toNat]! * t.1
+
+def realAccumWith (dir : Float) (xs : Array Float) (k : UInt64) : Float :=
+  LeanExe.loop (nWord xs) (0.0 : Float) fun j acc => acc + realTermWith dir xs k j
+
+def imagAccumWith (dir : Float) (xs : Array Float) (k : UInt64) : Float :=
+  LeanExe.loop (nWord xs) (0.0 : Float) fun j acc => acc + imagTermWith dir xs k j
+
+def pairAccumWith (dir : Float) (xs : Array Float) (k : UInt64) : Float × Float :=
+  LeanExe.loop (nWord xs) ((0.0 : Float), (0.0 : Float)) fun j acc =>
+    (acc.1 + realTermWith dir xs k j, acc.2 + imagTermWith dir xs k j)
+
+theorem pairAccumWith_real (dir : Float) (xs : Array Float) (k : UInt64) :
+    (pairAccumWith dir xs k).1 = realAccumWith dir xs k := by
+  exact (Verified.Reflect.loop_map Prod.fst (nWord xs) ((0.0 : Float), (0.0 : Float))
+    (fun j acc => (acc.1 + realTermWith dir xs k j, acc.2 + imagTermWith dir xs k j))
+    (fun j acc => acc + realTermWith dir xs k j) (fun _ _ => rfl)).symm
+
+theorem pairAccumWith_imag (dir : Float) (xs : Array Float) (k : UInt64) :
+    (pairAccumWith dir xs k).2 = imagAccumWith dir xs k := by
+  exact (Verified.Reflect.loop_map Prod.snd (nWord xs) ((0.0 : Float), (0.0 : Float))
+    (fun j acc => (acc.1 + realTermWith dir xs k j, acc.2 + imagTermWith dir xs k j))
+    (fun j acc => acc + imagTermWith dir xs k j) (fun _ _ => rfl)).symm
+
 def realTerm (xs : Array Float) (k j : UInt64) : Float :=
   let t := Fourier.twiddle (nWord xs) (j * k % nWord xs)
   let c := t.1
@@ -35,15 +67,11 @@ def pairAccum (xs : Array Float) (k : UInt64) : Float × Float :=
 
 theorem pairAccum_real (xs : Array Float) (k : UInt64) :
     (pairAccum xs k).1 = realAccum xs k := by
-  exact (Verified.Reflect.loop_map Prod.fst (nWord xs) ((0.0 : Float), (0.0 : Float))
-    (fun j acc => (acc.1 + realTerm xs k j, acc.2 + imagTerm xs k j))
-    (fun j acc => acc + realTerm xs k j) (fun _ _ => rfl)).symm
+  exact pairAccumWith_real (-1.0) xs k
 
 theorem pairAccum_imag (xs : Array Float) (k : UInt64) :
     (pairAccum xs k).2 = imagAccum xs k := by
-  exact (Verified.Reflect.loop_map Prod.snd (nWord xs) ((0.0 : Float), (0.0 : Float))
-    (fun j acc => (acc.1 + realTerm xs k j, acc.2 + imagTerm xs k j))
-    (fun j acc => acc + imagTerm xs k j) (fun _ _ => rfl)).symm
+  exact pairAccumWith_imag (-1.0) xs k
 
 theorem nWord_toNat (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32) :
     (nWord xs).toNat = nSamples xs := by
@@ -112,12 +140,12 @@ theorem ofNat_lt_nWord (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32)
     norm_num at hn
     omega
 
-theorem dft_eq_loop (xs : Array Float) :
-    Fourier.dft xs = LeanExe.loop (nWord xs)
+theorem transform_eq_loop (dir : Float) (xs : Array Float) :
+    Fourier.transformWith Trig.invPi Trig.halfPi dir xs = LeanExe.loop (nWord xs)
       (LeanExe.build (2 * nWord xs) fun _ => (0.0 : Float))
-      (fun k out => (out.set! (2 * k).toNat (pairAccum xs k).1).set!
-        (2 * k + 1).toNat (pairAccum xs k).2) := by
-  unfold Fourier.dft Fourier.dftWith Fourier.transformWith
+      (fun k out => (out.set! (2 * k).toNat (pairAccumWith dir xs k).1).set!
+        (2 * k + 1).toNat (pairAccumWith dir xs k).2) := by
+  unfold Fourier.transformWith
   dsimp only
   apply LeanExe.IR.loop_congr
   intro k hk out
@@ -125,9 +153,9 @@ theorem dft_eq_loop (xs : Array Float) :
       LeanExe.loop (nWord xs) ((0.0 : Float), (0.0 : Float)) (fun j acc =>
         let t := (LeanExe.build (nWord xs) fun m =>
           Fourier.twiddleWith Trig.invPi Trig.halfPi (nWord xs) m)[(j * UInt64.ofNat k % nWord xs).toNat]!
-        (acc.1 + (xs[(2 * j).toNat]! * t.1 - xs[(2 * j + 1).toNat]! * ((-1.0) * t.2)),
-         acc.2 + (xs[(2 * j).toNat]! * ((-1.0) * t.2) + xs[(2 * j + 1).toNat]! * t.1))) =
-        pairAccum xs (UInt64.ofNat k) := by
+        (acc.1 + (xs[(2 * j).toNat]! * t.1 - xs[(2 * j + 1).toNat]! * (dir * t.2)),
+         acc.2 + (xs[(2 * j).toNat]! * (dir * t.2) + xs[(2 * j + 1).toNat]! * t.1))) =
+        pairAccumWith dir xs (UInt64.ofNat k) := by
     apply LeanExe.IR.loop_congr
     intro j hj acc
     have hmod : (UInt64.ofNat j * UInt64.ofNat k % nWord xs).toNat < (nWord xs).toNat := by
@@ -137,6 +165,12 @@ theorem dft_eq_loop (xs : Array Float) :
     rfl
   exact congrArg (fun s : Float × Float =>
     (out.set! (2 * UInt64.ofNat k).toNat s.1).set! (2 * UInt64.ofNat k + 1).toNat s.2) hinner
+
+theorem dft_eq_loop (xs : Array Float) :
+    Fourier.dft xs = LeanExe.loop (nWord xs)
+      (LeanExe.build (2 * nWord xs) fun _ => (0.0 : Float))
+      (fun k out => (out.set! (2 * k).toNat (pairAccum xs k).1).set!
+        (2 * k + 1).toNat (pairAccum xs k).2) := transform_eq_loop (-1.0) xs
 
 private theorem loop_entries (n : UInt64) (hn : n.toNat ≤ 2 ^ 32)
     (f : UInt64 → Float × Float) :
@@ -186,6 +220,30 @@ theorem dft_size (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32) :
   have h := (loop_entries (nWord xs) (nWord_le xs hn) (pairAccum xs)).1
   simpa only [nWord_toNat xs hn] using h
 
+theorem transform_size (dir : Float) (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32) :
+    (Fourier.transformWith Trig.invPi Trig.halfPi dir xs).size = 2 * nSamples xs := by
+  rw [transform_eq_loop]
+  have h := (loop_entries (nWord xs) (nWord_le xs hn) (pairAccumWith dir xs)).1
+  simpa only [nWord_toNat xs hn] using h
+
+theorem transform_get_real (dir : Float) (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32)
+    (k : Nat) (hk : k < nSamples xs) :
+    (Fourier.transformWith Trig.invPi Trig.halfPi dir xs)[2 * k]! =
+      realAccumWith dir xs (UInt64.ofNat k) := by
+  rw [transform_eq_loop]
+  have hk' : k < (nWord xs).toNat := by rw [nWord_toNat xs hn]; exact hk
+  exact ((loop_entries (nWord xs) (nWord_le xs hn) (pairAccumWith dir xs)).2 k hk').1.trans
+    (pairAccumWith_real dir xs _)
+
+theorem transform_get_imag (dir : Float) (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32)
+    (k : Nat) (hk : k < nSamples xs) :
+    (Fourier.transformWith Trig.invPi Trig.halfPi dir xs)[2 * k + 1]! =
+      imagAccumWith dir xs (UInt64.ofNat k) := by
+  rw [transform_eq_loop]
+  have hk' : k < (nWord xs).toNat := by rw [nWord_toNat xs hn]; exact hk
+  exact ((loop_entries (nWord xs) (nWord_le xs hn) (pairAccumWith dir xs)).2 k hk').2.trans
+    (pairAccumWith_imag dir xs _)
+
 theorem dft_get_real (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32)
     (k : Nat) (hk : k < nSamples xs) :
     (Fourier.dft xs)[2 * k]! = realAccum xs (UInt64.ofNat k) := by
@@ -210,5 +268,9 @@ theorem dft_get_imag (xs : Array Float) (hn : nSamples xs ≤ 2 ^ 32)
 #print axioms dft_size
 #print axioms dft_get_real
 #print axioms dft_get_imag
+#print axioms transform_eq_loop
+#print axioms transform_size
+#print axioms transform_get_real
+#print axioms transform_get_imag
 
 end Verified.Examples.FourierLoop
