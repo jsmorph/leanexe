@@ -30959,7 +30959,17 @@ The divided differences next to the zeros 1 and 2 need the logarithms of the shi
 | `TgammaAsymFit`, 16 pieces of radius `1/8` | Passed in 395 s | `erf-gamma-27.log` |
 | `TgammaAsymFitB`, 8 pieces of radius `1/4` | Passed in 199 s | `erf-gamma-28.log` |
 | `TgammaAsymFitC` | Passed in 124 s | `erf-gamma-29.log` |
-| `TgammaKernels` with per-module tables | Stopped under memory reclaim | `erf-gamma-39.log` |
+| `TgammaKernels`, before the split into four modules | Stopped under memory reclaim | `erf-gamma-39.log` |
 
 - [x] `StirlingFact` (`fit_small_lo`, `asym_small`, `asym_big`).
-- [ ] `MainFact` on `|d| ≤ 1/2 + 2 ^ -50` (`TgammaPolyMainEdge`).
+- [x] `MainFact` on `|d| ≤ 1/2 + 2 ^ -50` (`gamma_main_wide` in `TgammaPolyMainEdge`).
+
+`TgammaPolyMainEdge` checks the two end pieces with 14 and 13 shifts.  With 13 shifts at the lower end, `a + n` lay below the `16 + r` that `gammaPieceOk` requires, and the `decide` failed (`erf-gamma-52.log`).  With 14 the module passed (`erf-gamma-58.log`).  The accurate ranges build one module per runner call: `TgammaAccRangeA` in 405 s and `TgammaAccRangeB` in 457 s, each at the memory limit with full CPU.  Their first build had failed only on `norm_num` with `2 ^ 943` above the default `exponentiation.threshold`, which the modules now raise to 2048, and on a `ring` after a `field_simp` that closed the goal (`erf-gamma-59.log`).  The replays in `erf-gamma-61.log` showed deprecation warnings in `GammaDD` (`if_neg`, renamed `ite_eq_right` in the toolchain) and `GammaRel` (`push_neg`) and unreachable alternatives after `field_simp`; the modules now avoid them, so the ranges build again before they are committed.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaPolyMainEdge`, 13 shifts at the lower end | `decide` failed at the lower piece | `erf-gamma-52.log` |
+| `TgammaPolyMainEdge` | Passed, standard axioms | `erf-gamma-58.log` |
+| `TgammaAccRangeA` | Kernel checks passed; `norm_num` failed on `2 ^ 943` | `erf-gamma-59.log` |
+| `TgammaAccRangeA` | Passed in 405 s, with linter warnings | `erf-gamma-60.log` |
+| `TgammaAccRangeB` | Passed in 457 s | `erf-gamma-61.log` |
