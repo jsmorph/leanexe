@@ -184,12 +184,13 @@ theorem decParse_spec (general : Bool) (K : ℕ) (hK : K ≤ 2000) (s : List UIn
     (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).1 =
         (decBranch general (s.drop i0)).isSome ∧
       ∀ i f e, decBranch general (s.drop i0) = some (i, f, e) →
-        (∀ b ∈ i ++ f, isDigit b = true) ∧
+        (∀ b ∈ i ++ f, isDigit b = true) ∧ i0 + (i ++ f).length ≤ s.length ∧
         Limbs (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.1 ∧
         val (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.1 =
           decValue (((i ++ f).drop ((i ++ f).takeWhile (· == 0x30)).length).take
             (min ((i ++ f).length - ((i ++ f).takeWhile (· == 0x30)).length) K)) ∧
-        (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.1.size ≤ s.length + 1 ∧
+        (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.1.size =
+          (min ((i ++ f).length - ((i ++ f).takeWhile (· == 0x30)).length) K + 8) / 9 ∧
         (decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.2.1.toNat =
           min ((i ++ f).length - ((i ++ f).takeWhile (· == 0x30)).length) K ∧
         ((decParse general (UInt64.ofNat K) (words s) (UInt64.ofNat i0)).2.2.2.1.toNat : ℤ) =
@@ -481,8 +482,7 @@ theorem decParse_spec (general : Bool) (K : ℕ) (hK : K ≤ 2000) (s : List UIn
   obtain ⟨rfl, rfl, he⟩ := hbr
   rw [← he, ← hL, ← hz, ← hkept]
   obtain ⟨d1, d2, d3⟩ := digitsVal_spec s hs i0 ni L hreads hbound hnis hLd z kept (by omega)
-  have hdl : (kept + 8) / 9 ≤ s.length + 1 := by omega
-  refine ⟨hLd, d1, d2, by rw [d3]; exact hdl, hN kept (by omega), ?_,
+  refine ⟨hLd, by omega, d1, d2, d3, hN kept (by omega), ?_,
     anyNonzero_spec s hs i0 ni L hreads hbound hnis (z + kept) L.length (by omega) le_rfl⟩
   -- the biased exponent of the last kept digit
   set E := expPart (words s) (UInt64.ofNat (i2 + 1)) with hE
