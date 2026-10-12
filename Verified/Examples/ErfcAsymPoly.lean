@@ -432,7 +432,7 @@ theorem asym_core_pr (hF : FmaNearest) (tab : Array UInt64) (o : UInt64) (uh ul 
     b.f0e b.f0T b.f0Vb (by qcast f_f0H) (by qcast h_f0pre) (by qcast f_f0T) (by qcast f_f0Vb)
     (by qcast f_f0M) (by qcast f_f0L) (by qcast f_f0e) (by qcast h_f0ov)
   unfold asymCore
-  simp only [LeanExe.loop, show (7 : UInt64).toNat = 7 from rfl, Nat.fold_succ, Nat.fold_zero]
+  simp only [LeanExe.loop]
   try dsimp only
   refine f0.congrV ?_
   rw [e12.2, e11.2, e10.2, e9.2, k0.2, k1.2, k2.2, k3.2, k4.2, k5.2, k6.2, e0.2, e1.2]
