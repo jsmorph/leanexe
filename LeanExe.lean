@@ -168,9 +168,12 @@ import LeanExe.ProofKit.F64Mul
 import LeanExe.ProofKit.F64MulBounds
 import LeanExe.ProofKit.F64MulEnclosure
 import LeanExe.ProofKit.F64MulFinite
+import LeanExe.ProofKit.F64NearestBand
 import LeanExe.ProofKit.F64NearestBinade
 import LeanExe.ProofKit.F64NearestDiv
 import LeanExe.ProofKit.F64NearestEven
+import LeanExe.ProofKit.F64NearestHalf
+import LeanExe.ProofKit.F64NearestHalve
 import LeanExe.ProofKit.F64NearestNonnegative
 import LeanExe.ProofKit.F64NearestRelative
 import LeanExe.ProofKit.F64NearestScale
