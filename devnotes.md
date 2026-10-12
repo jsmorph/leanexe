@@ -31375,7 +31375,7 @@ The test runs of these modules, the last of them `expm1-test-logd18.log`, found 
 - [x] The approximation facts (`LgammaApprox`), to be agreed with track `erf`
 - [x] The branch structure and the exceptional values: 1, 2, the poles, the infinities, NaN, and the overflow thresholds (`LgammaBranches`, `LgammaSpecial`)
 - [x] The sign of `Γ` (`LgammaSign`)
-- [x] `Tgamma.asLogd` for normal arguments (`TgammaLogd`), for `tgamma` and `lgamma`
+- [x] `Tgamma.asLogd` for normal arguments (`TgammaLogd`), for `tgamma` and `lgamma`: commit `c8f1d33a`
 - [ ] `Tgamma.asSinpid`, relative error `2^-58` on `0 < dx < 1` (`TgammaSinpid`)
 - [ ] `Lgamma.asLogd` with subnormal arguments, after widening `logTail_spec` to `|E| ≤ 1074`
 - [ ] The fast path: the reductions, the pieces, Stirling's series, the reflection, and the rounding test
