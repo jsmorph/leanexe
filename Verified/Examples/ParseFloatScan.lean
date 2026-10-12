@@ -8,7 +8,7 @@ those of `StrconvGrammar` on every byte (checked over the 256 bytes) and are fal
 past the end, and `span_spec` shows that `span` from position `i` stops after the bytes of
 `(s.drop i).takeWhile` of the class.  `matchLower_spec` reads the test for `inf`, `infinity`, and
 `nan`, and `expPart_spec` the exponent: its flag is `decodeExpDigits` succeeding, its sign is the
-sign of the decoded value, and its value is the decoded magnitude saturated at `10 ^ 10`.
+sign of the decoded value, and its value is the decoded magnitude saturated at `10 ^ 11`.
 -/
 
 namespace Verified.Examples.ParseFloatScan
@@ -261,8 +261,8 @@ theorem matchLower_spec (s : List UInt8) (i len : ℕ) (w : UInt64) (hi : i ≤ 
 
 /-! ### Exponents -/
 
-/-- A decimal exponent saturated at `±10 ^ 10`. -/
-def satE (v : ℤ) : ℤ := max (-(10 ^ 10)) (min v (10 ^ 10))
+/-- A decimal exponent saturated at `±10 ^ 11`. -/
+def satE (v : ℤ) : ℤ := max (-(10 ^ 11)) (min v (10 ^ 11))
 
 theorem decValue_snoc (l : List UInt8) (b : UInt8) :
     decValue (l ++ [b]) = 10 * decValue l + (b.toNat - 0x30) := by
@@ -271,15 +271,15 @@ theorem decValue_snoc (l : List UInt8) (b : UInt8) :
 theorem expDigits_spec (s : List UInt8) (j k : ℕ) (hjk : j ≤ k) (hk : k ≤ s.length)
     (hs : s.length < 2 ^ 32) (hd : ∀ t, j ≤ t → t < k → isDigit (byteAt s t) = true) :
     (expDigits (words s) (UInt64.ofNat j) (UInt64.ofNat k)).toNat =
-      min (decValue ((s.drop j).take (k - j))) (10 ^ 10) := by
+      min (decValue ((s.drop j).take (k - j))) (10 ^ 11) := by
   have hjn : (UInt64.ofNat j).toNat = j := ofNat_toNat _ (by omega)
   have hkn : (UInt64.ofNat k).toNat = k := ofNat_toNat _ (by omega)
   have hkj : (UInt64.ofNat k - UInt64.ofNat j).toNat = k - j := by
     rw [toNat_sub' _ _ (by rw [hjn, hkn]; exact hjk), hjn, hkn]
   unfold expDigits
   have hloop := loop_inv (UInt64.ofNat k - UInt64.ofNat j) (0 : UInt64)
-    (fun t acc => min (10 * acc + (limb (words s) (UInt64.ofNat j + t) - 0x30)) 10000000000)
-    (fun t acc => acc.toNat = min (decValue ((s.drop j).take t)) (10 ^ 10)) (by simp [decValue])
+    (fun t acc => min (10 * acc + (limb (words s) (UInt64.ofNat j + t) - 0x30)) 100000000000)
+    (fun t acc => acc.toNat = min (decValue ((s.drop j).take t)) (10 ^ 11)) (by simp [decValue])
     (by
       intro t acc ht hacc
       rw [hkj] at ht
@@ -297,13 +297,13 @@ theorem expDigits_spec (s : List UInt8) (j k : ℕ) (hjk : j ≤ k) (hk : k ≤ 
         rw [byteAt_lt _ _ (show j + t < s.length by omega)]
         simp
       rw [htake, decValue_snoc]
-      have hacc' : acc.toNat ≤ 10 ^ 10 := by rw [hacc]; exact min_le_right _ _
+      have hacc' : acc.toNat ≤ 10 ^ 11 := by rw [hacc]; exact min_le_right _ _
       have hmul : (10 * acc + ((byteAt s (j + t)).toUInt64 - 0x30)).toNat =
           10 * acc.toNat + ((byteAt s (j + t)).toNat - 0x30) := by
         rw [toNat_add' _ _ (by rw [toNat_mul' _ _ (by simp; omega), hdv]; simp; omega),
           toNat_mul' _ _ (by simp; omega), hdv]; rfl
-      rw [UInt64.toNat_min, hmul, hacc, show (10000000000 : UInt64).toNat = 10 ^ 10 from rfl]
-      rcases le_total (decValue ((s.drop j).take t)) (10 ^ 10) with h | h
+      rw [UInt64.toNat_min, hmul, hacc, show (100000000000 : UInt64).toNat = 10 ^ 11 from rfl]
+      rcases le_total (decValue ((s.drop j).take t)) (10 ^ 11) with h | h
       · rw [min_eq_left h]
       · rw [min_eq_right h]
         rw [min_eq_right (by omega), min_eq_right (by omega)])
@@ -325,10 +325,10 @@ theorem takeWhile_len_pos (p : UInt8 → Bool) (b : UInt8) (t : List UInt8) :
   · rw [List.takeWhile_cons_of_pos hb]; simp [hb]
   · rw [List.takeWhile_cons_of_neg hb]; simp [hb]
 
-theorem satE_neg (d : ℕ) : satE (-(d : ℤ)) = -(min d (10 ^ 10) : ℕ) := by
+theorem satE_neg (d : ℕ) : satE (-(d : ℤ)) = -(min d (10 ^ 11) : ℕ) := by
   unfold satE; push_cast; omega
 
-theorem satE_pos (d : ℕ) : satE (d : ℤ) = (min d (10 ^ 10) : ℕ) := by
+theorem satE_pos (d : ℕ) : satE (d : ℤ) = (min d (10 ^ 11) : ℕ) := by
   unfold satE; push_cast; omega
 
 theorem cls_false : cls false = isDigit := by funext b; rfl
@@ -337,7 +337,7 @@ theorem cls_false : cls false = isDigit := by funext b; rfl
 theorem digit_run (s : List UInt8) (hs : s.length < 2 ^ 32) (j : ℕ) (hj : j ≤ s.length) :
     (span (words s) false (UInt64.ofNat j)).toNat = j + ((s.drop j).takeWhile isDigit).length ∧
       (expDigits (words s) (UInt64.ofNat j) (span (words s) false (UInt64.ofNat j))).toNat =
-        min (decValue ((s.drop j).takeWhile isDigit)) (10 ^ 10) := by
+        min (decValue ((s.drop j).takeWhile isDigit)) (10 ^ 11) := by
   have hsp := span_spec s false j hj hs
   rw [cls_false] at hsp
   set m := ((s.drop j).takeWhile isDigit).length with hm

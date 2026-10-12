@@ -44,9 +44,9 @@ def matchLower (s : Array UInt64) (i len w : UInt64) : Bool :=
   s.size.toUInt64 - i == len &&
     LeanExe.loop len true fun k ok => ok && lowerW (limb s (i + k)) == ((w >>> (8 * k)) &&& 0xFF)
 
-/-- The value of an exponent's decimal digits from `j` to `k`, saturated at `10 ^ 10`. -/
+/-- The value of an exponent's decimal digits from `j` to `k`, saturated at `10 ^ 11`. -/
 def expDigits (s : Array UInt64) (j k : UInt64) : UInt64 :=
-  LeanExe.loop (k - j) 0 fun t acc => min (10 * acc + (limb s (j + t) - 0x30)) 10000000000
+  LeanExe.loop (k - j) 0 fun t acc => min (10 * acc + (limb s (j + t) - 0x30)) 100000000000
 
 /-- An exponent's optional sign and digits from `i` to the end: whether they are well formed,
 whether the sign is negative, and the saturated value. -/
