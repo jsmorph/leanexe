@@ -31651,3 +31651,5 @@ The first instantiation with binary64 exposed a hypothesis that binary64 does no
 - [ ] The layouts against `sciLayout` and `ecmaLayout`
 - [ ] `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, the ECMAScript and binary32 counterparts, `print32_low`
 - [ ] Byte and file theorems
+
+`PrintFloatShort` proves the analysis of significant digits for any interval of positive reals with `hi ≤ 3 lo` (`strconv-pshort-2.log`): `same_digits`, `more_digits`, and `shortest_of_choice`, which states that the printers' choice, the nearest multiple at the top exponent `J` or a nearer one-digit multiple at `J - 1`, has the fewest significant digits, the least distance among those, and an even last digit at a tie.  The first run failed in the one-digit case of `more_digits`: the chain `10 ^ J ≤ m · 10 ^ J ≤ hi ≤ 3 lo ≤ 3 s · 10 ^ e` gives only `10 ^ (J - e) ≤ 3 s`, not a strict bound, and the non-strict bound suffices, since `100 ≤ 3 s` gives two digits when `e ≤ J - 2`.
