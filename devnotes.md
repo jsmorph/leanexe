@@ -29023,6 +29023,8 @@ The full exponential theorem remains open.  The accepted theorem for the origina
 
 Minideb2 contributed supporting exact-arithmetic and rounding proofs.  Its later positive-branch diagnostic lacked the compiled exp import.  Its checkout lags the primary sources and was idle at this status check.  The proposed next split assigns positive scaling and compiler composition to minideb1 and exact negative-compensation arithmetic to minideb2, with one runner-controlled Lean slot per machine.  This update changes documentation.  It runs no Lean proof build or sampled test.
 
+`tools/leanrun --memory-high SIZE` sets the scope's `MemoryHigh` to SIZE, in whole gibibytes with the suffix `G`, and its `MemoryMax` to 2 GiB more.  Without the option the limits stay 4G and 6G, so every other build runs as before, and `MemorySwapMax=1G` and `CPUQuota=100%` do not change.  The runner passes the size into the scope as `LEANRUN_MEMORY_HIGH`, so that a nested call checks the inherited scope against it, and a nested call that names another size fails.  The coordinator assigned `--memory-high 10G` to the builds of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc` on debtop1, which has 15 GB, one build at a time.
+
 ## 2026-10-09: Failure account and stopped GPT work
 
 
