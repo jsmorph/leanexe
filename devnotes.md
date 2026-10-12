@@ -28775,9 +28775,21 @@ them, so the theorems do not depend on the script.
 | `Examples/Lcg/Spectral.lean` | `s = y C`, the certificate lemma, and the values for `t = 2, …, 6` |
 | `Examples/Lcg/certificates.py` | the computation of the certificates |
 
-- [ ] G4: `Dual`, the congruence, the hyperplane bound, and the instances for `t = 2, …, 6`.
-- [ ] G5: `s = y C`, the certificate lemma, the five values, the script, and the README.
-- [ ] A review by a fresh agent, and the commit of each stage.
+- [x] G4: `Dual`, the congruence, the hyperplane bound, and the instances for `t = 2, …, 6`.  The
+  file checks in a few seconds.
+- [x] G5: `s = y C`, the certificate lemma, the five values, the script, and their README text.  The
+  kernel checks the five certificates, with Mathlib's `Matrix` and `Fintype.piFinset`, in 1.8 s
+  for the whole file, so the proofs use no Bool checkers over lists.  `shortest2` to `shortest6`
+  live in `Lattice.lean`, and the script prints the rest of `Spectral.lean` after its last section
+  header.
+- [x] A review by a fresh agent of each stage, and one commit for both.
+
+The review of G4 confirmed the statements and the vectors, found that a README sentence credited the
+six-state bound to the spectral test's vector, and asked for clearer docstrings.  The review of G5
+checked in Python every fact that the kernel checks and the script's output against the file, found
+no soundness defect, and asked for the build of `Examples.Lcg.Spectral` in the README's commands,
+Knuth's reading of `1 / ν_t` over all families of hyperplanes, one docstring per certificate, and
+one definition of the shortest vectors.
 
 A fresh agent reviewed the first version of this plan.  It found that the hyperplane bound needs
 `s ≠ 0`, that the plan left `d`, the ranges of `k`, and the lemma `s = y C` unstated, and that the

@@ -42,6 +42,31 @@ and it squares the map of `2^i` steps to `(cm * cm, (cm + 1) * cp)`, the squarin
 value `2^(64 - j)` times over a period, from the count of words with given top bits in
 [`Examples/Orbit`](../Orbit/README.md).
 
+[The lattice proofs](Lattice.lean) describe the tuples `(x, step x, …, step^[t-1] x)` of `t`
+successive states.  An integer vector `s` lies in the dual lattice `Dual t` when
+`∑ s_k a^k ≡ 0 (mod 2^64)`, for `a` the multiplier, and since `k` steps from `x` give `a^k x` plus
+`k` steps from 0, `∑ s_k y_k` at every tuple `y` is congruent modulo `2^64` to its value `d` at the
+tuple from 0.  The tuples therefore lie on parallel hyperplanes `∑ s_k y_k = d + j 2^64` for
+integers `j`, and for a nonzero `s` at most `∑ |s_k|` of them hold tuples.  With the shortest
+vectors of `Dual t` for two to five states and, for six, a vector whose sum of magnitudes, 2,296, is
+below the 2,818 of the shortest, all pairs of successive states lie on at most 4,008,749,872 lines
+and all 6-tuples on at most 2,296 hyperplanes, from every starting word.
+
+[The spectral test](Spectral.lean) gives `ν_t²`, the smallest squared length of a nonzero vector
+of `Dual t`, for `t = 2, …, 6`: 8,810,664,174,654,508,192, 6,398,304,806,574, 4,112,636,266,
+45,662,836, and 1,846,368, or `log2 ν_t` of 31.47, 21.27, 15.97, 12.72, and 10.41.  Knuth shows
+that `1 / ν_t` is the largest distance between adjacent hyperplanes, over all families of parallel
+hyperplanes that cover the `t`-tuples, scaled to the unit cube.  A shortest vector shows that `ν_t²`
+is attained.  Every vector of `Dual t` is an integer combination of the rows of the canonical basis
+`C`, the row `(2^64, 0, …, 0)` and, for `k = 1, …, t - 1`, the row with `-(a^k mod 2^64)` at
+coordinate 0 and 1 at coordinate `k`.  The lower bound then follows from four facts per `t` that
+the kernel checks: integer matrices with `U B = C` and `B A = δ I`, a bound `b_i` for each
+coordinate with `(ν_t² - 1) ∑_k A_{k i}² < (b_i + 1)² δ²`, and `ν_t² ≤ |z B|²` for each nonzero
+`z` with `|z_i| ≤ b_i`, at most 27 vectors.  Cauchy–Schwarz shows that a shorter vector `z B` would
+have `|z_i| ≤ b_i`.  [`certificates.py`](certificates.py) computes the certificates from an
+LLL-reduced basis `B`, its adjugate `A`, and Fincke–Pohst enumeration, and the theorems do not
+depend on it.
+
 | Theorem | Statement |
 |---------|-----------|
 | `minimalPeriod_affine_iff` | `minimalPeriod (affine a c) x = 2^64 ↔ a % 4 = 1 ∧ c % 2 = 1`, for every `a`, `c`, `x`. |
@@ -52,6 +77,10 @@ value `2^(64 - j)` times over a period, from the count of words with given top b
 | `periodic_testBit_iff`, `step_periodic_testBit_iff` | Bit `k` of the state, for `k < 64`, repeats after `p` steps if and only if `2^(k+1)` divides `p`. |
 | `jump_eq` | `jump n x = advance n x`. |
 | `advance_topBits` | For `j ≤ 64` and `v < 2^j`, exactly `2^(64 - j)` counts `n` give `(advance n x).toNat / 2^(64 - j) = v`. |
+| `dotStates_modEq` | For `s` in `Dual t`, `∑ s_k (step^[k] x).toNat ≡ ∑ s_k (step^[k] 0).toNat (mod 2^64)` for every word `x`. |
+| `hyperplanes` | For a nonzero `s` in `Dual t`, a set of at most `∑ \|s_k\|` integers contains `∑ s_k (step^[k] x).toNat` for every word `x`. |
+| `hyperplanes_two` to `hyperplanes_six` | The tuples of 2 to 6 successive states lie on at most 4,008,749,872, 2,903,512, 114,468, 12,288, and 2,296 hyperplanes. |
+| `spectral_two` to `spectral_six` | Every nonzero vector of `Dual t` has squared length at least `ν_t²`, and `shortest2` to `shortest6` attain it, for `t = 2, …, 6`. |
 | `lcg_advance` | The module's bytes decode to the module, whose `advance` export computes `advance` without a trap, and for all words `x` and `y` exactly one count `n` gives `advance n x = y`. |
 | `lcg_jump` | The module's bytes decode to the module, whose `jump` export computes `advance` without a trap. |
 
@@ -61,15 +90,17 @@ The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`. 
 ## Running it
 
 ```sh
-tools/leanrun --timeout 60m lake build Verified.Examples.Lcg
+tools/leanrun --timeout 60m lake build Verified.Examples.Lcg Examples.Lcg.Spectral
+uv run Examples/Lcg/certificates.py
 mkdir -p build/verified
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean Verified.Examples.Lcg \
   Verified.Examples.Lcg.compiled.module build/verified/lcg.wasm
 build/tools/leanexe-wasmtime-host call build/verified/lcg.wasm advance i64 i64:1 i64:0
 ```
 
-The commands build the proofs, write the module, and call `advance 1 0` in the Wasmtime host, with
-the setup of [the repository README](../../README.md#commands).  The call prints
+The commands build the proofs, print the certificates of the spectral test, write the module, and
+call `advance 1 0` in the Wasmtime host, with the setup of [the repository
+README](../../README.md#commands).  The call prints
 1442695040888963407, the increment, which one step adds to the state 0.  After
 `tools/leanrun --timeout 60m lake build Verified`,
 [`tests/verified/run.sh`](../../tests/verified/run.sh) writes every module of the verified compiler
@@ -94,5 +125,11 @@ the state into its output.
 - M. E. O'Neill, "PCG: A Family of Simple Fast Space-Efficient Statistically Good Algorithms for
   Random Number Generation," Harvey Mudd College, HMC-CS-2014-0905, 2014, and
   [`pcg_variants.h`](https://github.com/imneme/pcg-c/blob/master/include/pcg_variants.h).
+- U. Fincke and M. Pohst, "Improved Methods for Calculating Vectors of Short Length in a Lattice,
+  Including a Complexity Analysis," *Mathematics of Computation* 44(170):463–471, 1985,
+  [doi:10.1090/S0025-5718-1985-0777278-8](https://doi.org/10.1090/S0025-5718-1985-0777278-8).
+- A. K. Lenstra, H. W. Lenstra, Jr., and L. Lovász, "Factoring Polynomials with Rational
+  Coefficients," *Mathematische Annalen* 261(4):515–534, 1982,
+  [doi:10.1007/BF01457454](https://doi.org/10.1007/BF01457454).
 - F. B. Brown, "Random Number Generation with Arbitrary Strides," *Transactions of the American
   Nuclear Society* 71:202–203, 1994, [OSTI 89100](https://www.osti.gov/biblio/89100).

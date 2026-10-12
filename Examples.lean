@@ -115,8 +115,10 @@ import Examples.Increment.Cases
 import Examples.Increment.Program
 import Examples.Increment.Verify
 import Examples.Lcg.Jump
+import Examples.Lcg.Lattice
 import Examples.Lcg.Period
 import Examples.Lcg.Program
+import Examples.Lcg.Spectral
 import Examples.Lists.Cases
 import Examples.Lists.Module
 import Examples.Lists.Verify
