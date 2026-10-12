@@ -19,6 +19,11 @@ noncomputable def cDD (tab : Array UInt64) (o : UInt64) (k : ℕ) : ℝ :=
   value (Float.ofBits tab[o.toNat + 2 * k]!).toBits +
     value (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits
 
+/-- The bound on the low part of the first `fastTwoSum`, for `|tab[o + 2 (N - 1)]| ≤ Ch` and
+`|l| ≤ Lb`. -/
+noncomputable def polyT (Ch Lb : ℝ) : ℝ :=
+  ((Ch + Lb) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1073) / 2 ^ 52 + 1 / 2 ^ 1074
+
 /-- The low-part bound after the product of one step, for a state below the cap `Λ`. -/
 noncomputable def polyLow (X M Cl Λ : ℝ) : ℝ :=
   Cl + Λ * X * (1 + 1 / 2 ^ 51) + (M + 1) * X / 2 ^ 52 + 1 / 2 ^ 1071
@@ -87,34 +92,39 @@ theorem entry_eq (tab : Array UInt64) (i : UInt64) (k : ℕ) (h : i.toNat = k) :
   unfold entry
   rw [h]
 
-/-- **`polyDDD`** within `el + (Lb + Cl)/2^53 + (N - 1) polyEps` of the exact Horner value. -/
-theorem polyDDD_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt64) (x l : Float)
+/-- `polyDDD` within `el + (tB + Cl)/2^53 + (N - 1) polyEps` of the exact Horner value, for a bound
+`tB` on the low part of the first `fastTwoSum`: `Lb` or `polyT Ch Lb`. -/
+theorem polyDDD_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt64) (x l : Float)
     (hn1 : 1 ≤ n.toNat) (hon : o.toNat + 2 * n.toNat < 2 ^ 63)
     (hfh : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k]!).toBits)
     (hfl : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits)
-    (X M Ch Cl Λ L el Lb : ℝ)
+    (X M Ch Cl Λ L el Lb tB : ℝ)
     (hx : Finite x.toBits) (hX : |value x.toBits| ≤ X) (hX1 : X ≤ 1)
     (hCh : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k]!).toBits| ≤ Ch)
     (hCl : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits| ≤ Cl)
     (hl : Finite l.toBits) (hlL : |value l.toBits - L| ≤ el) (hLb : |value l.toBits| ≤ Lb)
     (htop : |value l.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 1)]!).toBits|)
     (hM : ∀ m, m + 1 ≤ n.toNat → |horner (cDD tab o) n.toNat L (value x.toBits) m| ≤ M)
-    (hcap : (Lb + Cl) * (1 + 1 / 2 ^ 53) + (n.toNat - 1 : ℕ) * polyGrow M Ch Cl Λ ≤ Λ)
-    (hsmall : el + (Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ 1)
+    (htBh : Lb ≤ tB ∨ polyT Ch Lb ≤ tB) (htB0 : 0 ≤ tB) (htBs : tB ≤ 2 ^ 797)
+    (hcap : (tB + Cl) * (1 + 1 / 2 ^ 53) + (n.toNat - 1 : ℕ) * polyGrow M Ch Cl Λ ≤ Λ)
+    (hsmall : el + (tB + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ 1)
     (hsize : Ch + M + 2 ≤ 2 ^ 797) (hLb1 : Lb + Cl ≤ 2 ^ 797) (hΛpos : 0 ≤ Λ) :
     Finite (polyDDD tab o n x l).1.toBits ∧ Finite (polyDDD tab o n x l).2.toBits ∧
       |value (polyDDD tab o n x l).1.toBits + value (polyDDD tab o n x l).2.toBits -
           horner (cDD tab o) n.toNat L (value x.toBits) (n.toNat - 1)| ≤
-        el + (Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ ∧
+        el + (tB + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ ∧
       |value (polyDDD tab o n x l).2.toBits| ≤ Λ := by
   set N := n.toNat with hN
   set vx := value x.toBits with hvx
   set ε := polyEps X M Ch Cl Λ with hε
   set g := polyGrow M Ch Cl Λ with hg
-  set E0 := el + (Lb + Cl) / 2 ^ 53 with hE0
-  set Λ0 := (Lb + Cl) * (1 + 1 / 2 ^ 53) with hΛ0
+  set E0 := el + (tB + Cl) / 2 ^ 53 with hE0
+  set Λ0 := (tB + Cl) * (1 + 1 / 2 ^ 53) with hΛ0
   obtain ⟨hit1, hit2, hn1eq⟩ := idx_top o n hn1 hon
   have hX0 : 0 ≤ X := (abs_nonneg _).trans hX
+  have hLb0' : 0 ≤ Lb := (abs_nonneg _).trans hLb
+  have hCh0' : 0 ≤ Ch := (abs_nonneg _).trans (hCh 0 (by omega))
+  have htB0' : 0 ≤ tB := htB0
   have hCh0 : 0 ≤ Ch := (abs_nonneg _).trans (hCh 0 (by omega))
   have hCl0 : 0 ≤ Cl := (abs_nonneg _).trans (hCl 0 (by omega))
   have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM 0 (by omega))
@@ -128,7 +138,7 @@ theorem polyDDD_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
     positivity
   have hΛ1 : Λ ≤ 1 := by
     have : 0 ≤ ((N - 1 : ℕ) : ℝ) * ε := by positivity
-    have : 0 ≤ E0 := by rw [hE0]; positivity
+    have : 0 ≤ E0 := add_nonneg hel0 (div_nonneg (add_nonneg htB0' hCl0) (by positivity))
     linarith
   -- the loop
   obtain ⟨f, hf⟩ : ∃ f : UInt64 → Float × Float → Float × Float, f = fun j s =>
@@ -164,16 +174,31 @@ theorem polyDDD_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
       have hlo := hfl (N - 1) (by omega)
       have hChi := hCh (N - 1) (by omega)
       have hClo := hCl (N - 1) (by omega)
-      obtain ⟨hsf, htf, hsum, htb, -⟩ := fastTwoSum_spec _ l hhi hl htop
+      obtain ⟨hsf, htf, hsum, htb4, htb5⟩ := fastTwoSum_spec _ l hhi hl htop
         (by linarith [(by norm_num : (2 : ℝ) ^ 797 < 2 ^ 900)])
+      have hsb := high_bound _ _ _ hsum htb5
       set t := (fastTwoSum (Float.ofBits tab[o.toNat + 2 * (N - 1)]!) l).2
       set lo := Float.ofBits tab[o.toNat + 2 * (N - 1) + 1]!
-      have hw0 := fapprox_add (fapprox_self t htf) (fapprox_self lo hlo) (Lb + Cl)
+      have htb' : |value t.toBits| ≤ tB := by
+        rcases htBh with hb | hb
+        · exact htb4.trans (hLb.trans hb)
+        refine le_trans ?_ hb
+        have h1 := abs_add_le (value (Float.ofBits tab[o.toNat + 2 * (N - 1)]!).toBits)
+          (value l.toBits)
+        have h2 := mul_le_mul_of_nonneg_right
+          (show |value (Float.ofBits tab[o.toNat + 2 * (N - 1)]!).toBits + value l.toBits| ≤ Ch + Lb
+            by linarith) (by positivity : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
+        rw [polyT]
+        have h3 : |value (fastTwoSum (Float.ofBits tab[o.toNat + 2 * (N - 1)]!) l).1.toBits| / 2 ^ 52 ≤
+            ((Ch + Lb) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1073) / 2 ^ 52 :=
+          div_le_div_of_nonneg_right (by linarith) (by norm_num)
+        linarith
+      have hw0 := fapprox_add (fapprox_self t htf) (fapprox_self lo hlo) (tB + Cl)
         (by
           simp only [add_zero]
           exact (abs_add_le _ _).trans (by linarith))
-        (by linarith [(by norm_num : (2 : ℝ) ^ 797 < 2 ^ 1023)])
-      have hw : |value (t + lo).toBits - (value t.toBits + value lo.toBits)| ≤ (Lb + Cl) / 2 ^ 53 := by
+        (by linarith [(by norm_num : (2 : ℝ) ^ 797 + 2 ^ 797 < 2 ^ 1023)])
+      have hw : |value (t + lo).toBits - (value t.toBits + value lo.toBits)| ≤ (tB + Cl) / 2 ^ 53 := by
         have := hw0.2
         simp only [zero_add] at this
         exact this
@@ -342,8 +367,77 @@ theorem polyDDD_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
   rw [hdef, hn1eq]
   refine ⟨h1, h2, h3, h4.trans hcap⟩
 
+/-- **`polyDDD`** within `el + (Lb + Cl)/2^53 + (N - 1) polyEps` of the exact Horner value. -/
+theorem polyDDD_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt64) (x l : Float)
+    (hn1 : 1 ≤ n.toNat) (hon : o.toNat + 2 * n.toNat < 2 ^ 63)
+    (hfh : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k]!).toBits)
+    (hfl : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits)
+    (X M Ch Cl Λ L el Lb : ℝ)
+    (hx : Finite x.toBits) (hX : |value x.toBits| ≤ X) (hX1 : X ≤ 1)
+    (hCh : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k]!).toBits| ≤ Ch)
+    (hCl : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits| ≤ Cl)
+    (hl : Finite l.toBits) (hlL : |value l.toBits - L| ≤ el) (hLb : |value l.toBits| ≤ Lb)
+    (htop : |value l.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 1)]!).toBits|)
+    (hM : ∀ m, m + 1 ≤ n.toNat → |horner (cDD tab o) n.toNat L (value x.toBits) m| ≤ M)
+    (hcap : (Lb + Cl) * (1 + 1 / 2 ^ 53) + (n.toNat - 1 : ℕ) * polyGrow M Ch Cl Λ ≤ Λ)
+    (hsmall : el + (Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ 1)
+    (hsize : Ch + M + 2 ≤ 2 ^ 797) (hLb1 : Lb + Cl ≤ 2 ^ 797) (hΛpos : 0 ≤ Λ) :
+    Finite (polyDDD tab o n x l).1.toBits ∧ Finite (polyDDD tab o n x l).2.toBits ∧
+      |value (polyDDD tab o n x l).1.toBits + value (polyDDD tab o n x l).2.toBits -
+          horner (cDD tab o) n.toNat L (value x.toBits) (n.toNat - 1)| ≤
+        el + (Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ ∧
+      |value (polyDDD tab o n x l).2.toBits| ≤ Λ := by
+  have hCl0 : 0 ≤ Cl := (abs_nonneg _).trans (hCl 0 (by omega))
+  have hLb0 : 0 ≤ Lb := (abs_nonneg _).trans hLb
+  exact polyDDD_core hF tab o n x l hn1 hon hfh hfl X M Ch Cl Λ L el Lb Lb hx hX hX1 hCh hCl hl hlL
+    hLb htop hM (Or.inl le_rfl) hLb0 (by linarith) hcap hsmall hsize hLb1 hΛpos
+
+/-- **`polyDDD`** with the low part of the first `fastTwoSum` below `2 ^ -52` of the top
+coefficient: within `el + (polyT Ch Lb + Cl)/2^53 + (N - 1) polyEps` of the exact Horner value. -/
+theorem polyDDD_tight (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt64) (x l : Float)
+    (hn1 : 1 ≤ n.toNat) (hon : o.toNat + 2 * n.toNat < 2 ^ 63)
+    (hfh : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k]!).toBits)
+    (hfl : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits)
+    (X M Ch Cl Λ L el Lb : ℝ)
+    (hx : Finite x.toBits) (hX : |value x.toBits| ≤ X) (hX1 : X ≤ 1)
+    (hCh : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k]!).toBits| ≤ Ch)
+    (hCl : ∀ k < n.toNat, |value (Float.ofBits tab[o.toNat + 2 * k + 1]!).toBits| ≤ Cl)
+    (hl : Finite l.toBits) (hlL : |value l.toBits - L| ≤ el) (hLb : |value l.toBits| ≤ Lb)
+    (htop : |value l.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 1)]!).toBits|)
+    (hM : ∀ m, m + 1 ≤ n.toNat → |horner (cDD tab o) n.toNat L (value x.toBits) m| ≤ M)
+    (hcap : (polyT Ch Lb + Cl) * (1 + 1 / 2 ^ 53) + (n.toNat - 1 : ℕ) * polyGrow M Ch Cl Λ ≤ Λ)
+    (hsmall : el + (polyT Ch Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ 1)
+    (hsize : Ch + M + 2 ≤ 2 ^ 797) (hLb1 : Lb + Cl ≤ 2 ^ 797) (hΛpos : 0 ≤ Λ) :
+    Finite (polyDDD tab o n x l).1.toBits ∧ Finite (polyDDD tab o n x l).2.toBits ∧
+      |value (polyDDD tab o n x l).1.toBits + value (polyDDD tab o n x l).2.toBits -
+          horner (cDD tab o) n.toNat L (value x.toBits) (n.toNat - 1)| ≤
+        el + (polyT Ch Lb + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ ∧
+      |value (polyDDD tab o n x l).2.toBits| ≤ Λ := by
+  have hCh0 : 0 ≤ Ch := (abs_nonneg _).trans (hCh 0 (by omega))
+  have hLb0 : 0 ≤ Lb := (abs_nonneg _).trans hLb
+  have ht0 : 0 ≤ polyT Ch Lb := by
+    rw [polyT]
+    apply add_nonneg _ (by positivity)
+    apply div_nonneg _ (by positivity)
+    exact add_nonneg (mul_nonneg (add_nonneg hCh0 hLb0) (by positivity)) (by positivity)
+  have hts : polyT Ch Lb ≤ 2 ^ 797 := by
+    rw [polyT]
+    have hCl0 : 0 ≤ Cl := (abs_nonneg _).trans (hCl 0 (by omega))
+    have hM0 : 0 ≤ M := (abs_nonneg _).trans (hM 0 (by omega))
+    have h1 : (Ch + Lb) * (1 + 1 / 2 ^ 51) ≤ 2 ^ 798 * 2 := by
+      have : Ch + Lb ≤ 2 ^ 798 := by linarith [(by norm_num : (2 : ℝ) ^ 797 + 2 ^ 797 = 2 ^ 798)]
+      nlinarith
+    have h2 : ((Ch + Lb) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1073) / 2 ^ 52 ≤ 2 ^ 796 := by
+      rw [div_le_iff₀ (by positivity)]
+      nlinarith [(by norm_num : (2 : ℝ) ^ 798 * 2 + 1 ≤ 2 ^ 796 * 2 ^ 52)]
+    linarith [(by norm_num : (2 : ℝ) ^ 796 + 1 ≤ 2 ^ 797)]
+  exact polyDDD_core hF tab o n x l hn1 hon hfh hfl X M Ch Cl Λ L el Lb (polyT Ch Lb) hx hX hX1 hCh
+    hCl hl hlL hLb htop hM (Or.inr le_rfl) ht0 hts hcap hsmall hsize hLb1 hΛpos
+
 #print axioms idx
 #print axioms idx_top
+#print axioms polyDDD_core
 #print axioms polyDDD_spec
+#print axioms polyDDD_tight
 
 end Verified.Examples.TgammaPolyDDD
