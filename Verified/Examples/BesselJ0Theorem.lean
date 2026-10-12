@@ -1,17 +1,17 @@
 import Verified.Examples.BesselJ0Large
-import Verified.Examples.BesselSmallJ0
+import Verified.Examples.BesselJ0Small
 import Verified.Examples.BesselModSmall
 
 /-!
 The accuracy theorem for `Bessel.j0`: for every finite `x`, the result lies within
 `10 · 2^-53 · √(J₀(|x|)² + Y₀(|x|)²)` of `J₀(x)` (`j0_accuracy`).  From `|x| = 2` on,
-`BesselJ0Large.j0_large` gives the bound; below 2, `BesselSmallJ0.j0_small` bounds the error by
-`(42/10) 2^-53` and `BesselModSmall.modulus0_half` the modulus below by `1/2`.  The exceptional
+`BesselJ0Large.j0_large` gives the bound; below 2, `BesselJ0Small.j0_small` bounds the error by
+`(235/100) 2^-53` and `BesselModSmall.modulus0_half` the modulus below by `1/2`.  The exceptional
 results are in `BesselSpecial`.
 -/
 
 namespace Verified.Examples.BesselJ0Theorem
-open CodeLib.IEEE64 LeanExe.ProofKit BesselJ0Large BesselSmallJ0 BesselModSmall
+open CodeLib.IEEE64 LeanExe.ProofKit BesselJ0Large BesselJ0Small BesselModSmall
 open LeanExe.ProofKit.Bessel (J0 Y0)
 
 local notation "𝐮" => unitRoundoff64
@@ -38,7 +38,7 @@ theorem j0_accuracy (x : Float) (hxf : Finite x.toBits) :
       exact h
     have hM := modulus0_half |value x.toBits| (abs_nonneg _) hlt.le
     have hu0 : 0 ≤ 𝐮 := by rw [hu]; positivity
-    calc |value (Bessel.j0 x).toBits - J0 (value x.toBits)| ≤ 42 / 10 * 𝐮 := hs
+    calc |value (Bessel.j0 x).toBits - J0 (value x.toBits)| ≤ 235 / 100 * 𝐮 := hs
       _ ≤ 10 * 𝐮 * (1 / 2) := by nlinarith
       _ ≤ 10 * 𝐮 * √(J0 |value x.toBits| ^ 2 + Y0 |value x.toBits| ^ 2) :=
           mul_le_mul_of_nonneg_left hM (by positivity)
