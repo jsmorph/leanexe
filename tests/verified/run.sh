@@ -168,4 +168,7 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.le
 tools/leanrun --timeout 30m lake env lean --run Verified/Examples/TgammaAccuracy.lean || exit 1
 tools/leanrun --timeout 30m lake env lean --run Verified/Examples/LgammaAccuracy.lean || exit 1
 tools/leanrun --timeout 30m lake env lean --run Verified/Examples/BesselAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.lean
+tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.lean || exit 1
+# The software fused multiply-add against the exact value rounded to the nearest double, in native
+# Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FmaAccuracy.lean || exit 1

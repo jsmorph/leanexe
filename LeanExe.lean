@@ -268,6 +268,7 @@ import LeanExe.ProofKit.FloatSqrtRounding
 import LeanExe.ProofKit.Frame
 import LeanExe.ProofKit.FreeListMemory
 import LeanExe.ProofKit.GammaBasic
+import LeanExe.ProofKit.GammaFits
 import LeanExe.ProofKit.GammaModels
 import LeanExe.ProofKit.GammaStirling
 import LeanExe.ProofKit.GammaThresholds
@@ -293,6 +294,7 @@ import LeanExe.ProofKit.RealRoundedError
 import LeanExe.ProofKit.RealRusanovError
 import LeanExe.ProofKit.RealSqrtError
 import LeanExe.ProofKit.Signed32
+import LeanExe.ProofKit.TaylorCheck
 import LeanExe.ProofKit.TaylorModel
 import LeanExe.ProofKit.TaylorRemainder
 import LeanExe.Runtime.Defs
