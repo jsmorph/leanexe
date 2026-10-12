@@ -29454,8 +29454,8 @@ The constant `1.033` is `1 + 1/32` with room for the product of the two errors. 
 
 - [x] Tight bound for `exp`.
 - [x] `cosh` within one step on every range.
-- [ ] `sinh`: tighten the path `k = 1` of `expm1`, and state three steps if two stay out of reach.
-- [ ] Exact results, byte theorems, and the file module for `sinh` and `cosh`.
+- [x] `sinh`: tighten the path `k = 1` of `expm1`, and state three steps if two stay out of reach.
+- [x] Exact results, byte theorems, and the file module for `sinh` and `cosh`.
 
 ### Hyperbolic cosine: one step
 
@@ -29480,6 +29480,34 @@ The middle range needed the tight bound for `exp`.  For `cosh x < 2` the error b
 | `8eda0238` | `CoshTheorem` |
 
 All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (logs `build/transcendentals/expm1-coshthm-2.log` and the module logs before it).
+
+### Hyperbolic sine: three steps
+
+`SinhTheorem.sinh_within_three` states `WithinSteps 3 (sinh x) (Sinh.sinh x).toBits` for every finite `x`, with `sinh_zero`, `sinh_pos_infinity`, `sinh_neg_infinity`, and `sinh_nan` for the exceptional results.  The code multiplies by `h = ± 0.5`, and `SinhSign.mul_negHalf` shows that the product with `-0.5` is the negation of the product with `0.5`, so each range states both signs and `SinhTheorem.by_sign` selects one.  Below 22 the code evaluates `f t = t + t/(1 + t)` for `t = expm1 abs(x)`, as `2 t - t t/(t + 1)` below 1 and as `t + t/(t + 1)` above, and `2 sinh a = f τ` with `τ = exp a - 1`.  `SinhCore.f_diff` writes `f T - f τ = (T - τ)(1 + 1/((1 + T)(1 + τ)))`, so the error of `t` enters with a factor below 2, and `F64NearestRelative.within_rel_of` gives three steps from a relative error below `2.9375 u`.
+
+| Range of `abs(x)` | Steps | Module | Bound on `t` |
+|---|---|---|---|
+| below `2 ^ -28` | 1 | `SinhRanges.tiny_sinh` | the result is `x`, within `4/3 abs(x) ^ 3` |
+| `2 ^ -28` to `θ1 ≈ 0.3466` | 3 | `SinhSmallCases` | `2 u τ`, from `CoshSmall.expm1_small` |
+| `θ1` to 1 | 3 | `SinhSmallCases` | `0.4802 u` below `0.443`, `0.7302 u` to `τ = 1.49`, `0.9802 u` above, plus the half spacing of `t` |
+| 1 to 22 | 3 | `SinhMidCases` | `1.9803 u` on `k = 1`, `u τ + 1.9605 u` on `k = 2`, `1.8501 u τ` from `k = 3` |
+| 22 to `709.7822265625` | 1 | `SinhRanges.sinh_large` | the half of `exp` from `CoshLarge` |
+| to `710.47607421875` | 1 | `SinhRanges.sinh_ldexp` | `SinhLdexp.ldexp_within`, with the exact product by `± 1` |
+| above | 1 | `SinhRanges.sinh_overflow` | `x · 1.0e+307` is the infinity of the sign of `x` (`SinhOverflow.mul_shuge`) |
+
+The new forms of `expm1` for positive arguments are `Expm1NearPos` (the path `k = 1` in both branches and the path `k = 2`) and `SinhExpm1`, which selects the branch of `Tanh.expm1`.  On the branch `x ≥ -1/4` of `k = 1`, the rounding of `x - e` lies within `2 ^ -56` when `exp a - 1 ≤ 1.49`, half the bound of `Expm1FormsOne.diff_spec`, which the margin needs.
+
+Two steps stay out of reach between `0.347` and `0.481`, as the budget found.  There `t` carries up to `0.73 u` before its last rounding and up to `u/2` from it, and the relative error of the exact difference reaches `2.55 u` at `abs(x) = 0.443`, which is `2.41` spacings of the binade of `sinh x`: the margin factor is `0.83` against the two spacings of two steps and `1.15` against the `2.9375 u` of three.  From 1 to 22 the worst relative error is `2.3 u` on the path `k = 2`, so the relative criterion gives three steps there, while the spacing count, at most `1.5`, would allow two with a criterion near the binade boundaries that the proof does not have.  The theorem states three steps throughout.
+
+`SinhBytes.sinh_bytes_accuracy` and `cosh_bytes_accuracy` state the byte theorems of functions 11 and 12 of `Sinh.compiled.module`, which read `Exp.expTable` at address 4096, and `sinh_module_accuracy` states both.  `SinhFile.sinh_file_decode` depends on `sinh_module_accuracy`, so its axiom report covers both byte theorems; the entry for `tests/verified/run.sh` is `sinh:SinhBytes:SinhFile`.  `SinhLdexp.ldexp_within` now also states that the result of `ldexpExp` is positive infinity or a finite word above `2 ^ -1022`, which the products by `± 1` need.
+
+| Commit | Content |
+|---|---|
+| `9790611a`, `4391a4fc`, `6100e2ad` | `Expm1NearPos`, `SinhExpm1` |
+| `994f8e00` | `SinhCore` |
+| `295e59dd`, `b61595d5`, `be016c4a` | `SinhSmall`, `SinhSmallCases`, `SinhMid`, `SinhMidCases` |
+| `8a0ce8c7`, `42504def`, `7c6d73dd` | `SinhSign`, `SinhOverflow`, the shape of the `ldexpExp` result |
+| `5ab11357` | `SinhRanges`, `SinhTheorem` |
 
 ## 2026-10-10: Ports of `log1p`, `atan`, `atan2`, `asin`, `acos`, and `tan`
 
