@@ -31384,7 +31384,7 @@ The test runs from `expm1-test-spoly1.log` to `expm1-test-ssin5.log` failed on c
 - [x] The branch structure and the exceptional values: 1, 2, the poles, the infinities, NaN, and the overflow thresholds (`LgammaBranches`, `LgammaSpecial`)
 - [x] The sign of `Γ` (`LgammaSign`)
 - [x] `Tgamma.asLogd` for normal arguments (`TgammaLogd`), for `tgamma` and `lgamma`: commit `c8f1d33a`
-- [x] `Tgamma.asSinpid` for `dx = n/2^53`, `0 < n < 2^53`: relative error `2^-58` and `|sl| ≤ |sh|/2^50` (`TgammaSinpid`), on branch `w/expm1`
+- [x] `Tgamma.asSinpid` for `dx = n/2^53`, `0 < n < 2^53`: relative error `2^-58` and `|sl| ≤ |sh|/2^50` (`TgammaSinpid`): commit `4c9198fe`
 - [ ] `asSinpid_gen` for `Lgamma.sinpiTable`: the word check and `SinpiFact` in the terms of `Ks` and `Kc`
 - [ ] `Lgamma.asLogd` with subnormal arguments, after widening `logTail_spec` to `|E| ≤ 1074`
 - [ ] The fast path: the reductions, the pieces, Stirling's series, the reflection, and the rounding test
