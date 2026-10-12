@@ -204,17 +204,30 @@ theorem atanh_nan (x : Float) (h : ¬ (Finite x.toBits ∧ |value x.toBits| ≤ 
   rw [atanh_out_eq x (out_condition x h), F64Bits.toBits_div, F64Bits.toBits_sub]
   exact AsinTheoremSpecial.self_quot_nan x.toBits
 
+/-- A finite nonzero word divided by `+0` is the infinity of its sign. -/
+theorem div_zero_word (w : UInt64) (hn : Wasm.IEEE64.isNaN w = false)
+    (hi : Wasm.IEEE64.isInfinite w = false) (hm : (Wasm.IEEE64.scaledMagnitude w == 0) = false) :
+    Wasm.IEEE64.div w 0 = Wasm.IEEE64.infinity (Wasm.IEEE64.sign w) := by
+  have h0n : Wasm.IEEE64.isNaN 0 = false := by decide
+  have h0i : Wasm.IEEE64.isInfinite 0 = false := by decide
+  have h0s : Wasm.IEEE64.sign 0 = false := by decide
+  have h0m : (Wasm.IEEE64.scaledMagnitude 0 == 0) = true := by decide
+  simp only [Wasm.IEEE64.div, hn, h0n, hi, h0i, h0s, hm, h0m, Bool.or_self, Bool.false_eq_true,
+    ite_false, ite_true, Bool.bne_false]
+
 theorem atanh_one (x : Float) (h : x.toBits = 0x3FF0000000000000) :
     (Asinh.atanh x).toBits = 0x7FF0000000000000 := by
   rw [atanh_one_eq x (by unfold ixOf lowBit; rw [h]; decide) (by unfold ixOf; rw [h]; decide),
-    F64Bits.toBits_div, h, show (0.0 : Float).toBits = 0 from rfl]
-  decide +kernel
+    F64Bits.toBits_div, h, show (0.0 : Float).toBits = 0 from rfl,
+    div_zero_word _ (by decide) (by decide) (by decide +kernel)]
+  decide
 
 theorem atanh_neg_one (x : Float) (h : x.toBits = 0xBFF0000000000000) :
     (Asinh.atanh x).toBits = 0xFFF0000000000000 := by
   rw [atanh_one_eq x (by unfold ixOf lowBit; rw [h]; decide) (by unfold ixOf; rw [h]; decide),
-    F64Bits.toBits_div, h, show (0.0 : Float).toBits = 0 from rfl]
-  decide +kernel
+    F64Bits.toBits_div, h, show (0.0 : Float).toBits = 0 from rfl,
+    div_zero_word _ (by decide) (by decide) (by decide +kernel)]
+  decide
 
 theorem atanh_zero (x : Float) (h : x.toBits = 0) : (Asinh.atanh x).toBits = 0 := by
   have hx : Finite x.toBits := by rw [h]; unfold CodeLib.IEEE64.Finite; decide

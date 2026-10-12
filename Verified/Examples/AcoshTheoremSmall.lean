@@ -80,7 +80,7 @@ theorem acosh_t (x : Float) (hx : Finite x.toBits) (h1 : 1 ≤ value x.toBits)
 /-- The computed root of `2t + t²` within `δs` of `S`, for `t ∈ [TL, TH]`. -/
 theorem acosh_s (t : Float) (ht : Finite t.toBits) (TL TH hr hs SLm : ℝ) (gr gs : ℕ)
     (hTL : TL ≤ value t.toBits) (hTH : value t.toBits ≤ TH) (hTL0 : 1 / 2 ^ 52 ≤ TL)
-    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023) (hgs : gs ≤ 1023)
+    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023)
     (hhr : 2 ^ gr / 2 / 2 ^ 1074 ≤ hr) (hhs : 2 ^ gs / 2 / 2 ^ 1074 ≤ hs)
     (hR : 2 * TH + TH * TH + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075) < 2 ^ (53 + gr) / 2 ^ 1074)
     (hSLm0 : 0 < SLm)
@@ -89,7 +89,8 @@ theorem acosh_s (t : Float) (ht : Finite t.toBits) (TL TH hr hs SLm : ℝ) (gr g
       (2 ^ (53 + gs) / 2 ^ 1074) ^ 2) :
     Finite (2.0 * t + t * t).sqrt.toBits ∧
       |value (2.0 * t + t * t).sqrt.toBits - Real.sqrt (2 * value t.toBits + value t.toBits * value t.toBits)| ≤
-        hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) := by
+        hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) ∧
+      SLm - hs ≤ value (2.0 * t + t * t).sqrt.toBits := by
   set T := value t.toBits with hT
   have hT0 : 0 < T := lt_of_lt_of_le (by positivity) (hTL0.trans hTL)
   have hTH0 : 0 ≤ TH := hT0.le.trans hTH
@@ -130,9 +131,12 @@ theorem acosh_s (t : Float) (ht : Finite t.toBits) (TL TH hr hs SLm : ℝ) (gr g
     linarith
   have hroot := F64SqrtHalf.sqrt_half _ hr0.1 hmag hsign gs hsq
   rw [← F64Bits.toBits_sqrt] at hroot
-  refine ⟨hroot.1, ?_⟩
-  -- `|√rc - S| ≤ er/(2 SLm)`
   have hS1 : SLm ≤ Real.sqrt rc := Real.le_sqrt_of_sq_le hrc0
+  refine ⟨hroot.1, ?_, ?_⟩
+  rotate_left
+  · have := (abs_le.mp hroot.2).1
+    linarith
+  -- `|√rc - S| ≤ er/(2 SLm)`
   have hS2 : SLm ≤ Real.sqrt (2 * T + T * T) := Real.le_sqrt_of_sq_le (by linarith)
   have hden : 2 * SLm ≤ Real.sqrt rc + Real.sqrt (2 * T + T * T) := by linarith
   have hprod : (Real.sqrt rc - Real.sqrt (2 * T + T * T)) *
@@ -202,7 +206,7 @@ theorem add_exact (t s : Float) (ht : Finite t.toBits) (hs : Finite s.toBits) (N
   push_cast
   ring
 
-theorem arcosh_eq (X : ℝ) (hX : 1 ≤ X) :
+theorem arcosh_eq (X : ℝ) :
     Real.arcosh X = Real.log (1 + ((X - 1) + Real.sqrt (2 * (X - 1) + (X - 1) * (X - 1)))) := by
   rw [Real.arcosh]
   congr 1
@@ -219,7 +223,7 @@ theorem acosh_core (x u : Float) (hu : Finite u.toBits) (TL TH SL SH δ E K YL :
       (value x.toBits - 1) * (value x.toBits - 1)))| ≤ δ)
     (hu29 : 1 / 2 ^ 29 ≤ TL + SL - δ)
     (hE : ∀ v : ℝ, TL + SL - δ ≤ v → v ≤ TH + SH + δ → errBound v ≤ E)
-    (hK : δ ≤ K * (1 + TL + SL - δ)) (hEK : E + K ≤ 1)
+    (hK : δ ≤ K * (1 + TL + SL - δ))
     (hYL : YL ≤ Real.log (1 + (TL + SL)))
     (hn1 : 1 ≤ n) (hn : n < 2047)
     (hB : value (UInt64.ofNat (n * 2 ^ 52)) + (E + K) ≤ YL)
@@ -244,9 +248,8 @@ theorem acosh_core (x u : Float) (hu : Finite u.toBits) (TL TH SL SH δ E K YL :
   have hK' : δ / (1 + TL + SL - δ) ≤ K := by
     rw [div_le_iff₀ hm]
     exact hK
-  have hX : 1 ≤ value x.toBits := by linarith
   have hY : Real.log (1 + (T + S)) = Real.arcosh (value x.toBits) := by
-    rw [arcosh_eq _ hX, ← hT', ← hSdef]
+    rw [arcosh_eq, ← hT', ← hSdef]
   rw [hY] at hN2
   have hN3 := hN2.mono (E' := E + K) (by linarith only [hK'])
   have hYL' : YL ≤ Real.arcosh (value x.toBits) := by
@@ -269,11 +272,38 @@ theorem acosh_core (x u : Float) (hu : Finite u.toBits) (TL TH SL SH δ E K YL :
   · rw [abs_of_nonneg hY0]
     linarith only [hYu, (by norm_num : (5 : ℝ) < 2 ^ 1023)]
 
+/-- A positive word above the predecessor of the start of binade `n` lies at or above that
+start. -/
+theorem ge_boundary (w : UInt64) (hw : 0 < value w) (n : ℕ) (hn2 : 2 ≤ n) (hn : n < 2047)
+    (h : 2 ^ (n - 1 + 51) / 2 ^ 1074 + (2 ^ 52 - 1 : ℕ) * (2 ^ (n - 1 - 1) / 2 ^ 1074) <
+      value w) :
+    2 ^ (n + 51) / 2 ^ 1074 ≤ value w := by
+  have hs : Wasm.IEEE64.sign w = false := F64Exact.sign_of_pos w hw
+  have hw63 : w.toNat < 2 ^ 63 := by
+    simpa only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le] using hs
+  have hpred := F64Compose.binade_word (n - 1) (2 ^ 52 - 1) (by omega) (by omega) (by omega)
+  have hB := F64PositiveSpacing.boundary_value n (by omega) (by omega)
+  rw [← hB]
+  by_contra hc
+  push Not at hc
+  have hlt : w.toNat < n * 2 ^ 52 := by
+    by_contra hc2
+    push Not at hc2
+    have hBt : (UInt64.ofNat (n * 2 ^ 52)).toNat = n * 2 ^ 52 :=
+      UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
+    have := (F64PositiveOrder.value_le_iff (by rw [hBt]; omega) hw63).mpr (by rw [hBt]; exact hc2)
+    linarith
+  have hPt : (UInt64.ofNat ((n - 1) * 2 ^ 52 + (2 ^ 52 - 1))).toNat = (n - 1) * 2 ^ 52 + (2 ^ 52 - 1) :=
+    UInt64.toNat_ofNat_of_lt' (by have : UInt64.size = 2 ^ 64 := rfl; omega)
+  have hle := (F64PositiveOrder.value_le_iff hw63 (by rw [hPt]; omega)).mpr (by rw [hPt]; omega)
+  rw [hpred] at hle
+  linarith
+
 /-- A range of `t` where `t + s` stays in the binade of `s` and is exact. -/
 theorem acosh_piece_exact (x : Float) (hx : Finite x.toBits)
     (TL TH hr hs SLm SL SH E K YL : ℝ) (gr gs n : ℕ)
     (hTL : TL ≤ value x.toBits - 1) (hTH : value x.toBits - 1 ≤ TH) (hTL0 : 1 / 2 ^ 52 ≤ TL)
-    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023) (hgs : gs ≤ 1022)
+    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023) (hgs1 : 1 ≤ gs) (hgs : gs ≤ 1022)
     (hhr : 2 ^ gr / 2 / 2 ^ 1074 ≤ hr) (hhs : 2 ^ gs / 2 / 2 ^ 1074 ≤ hs)
     (hR : 2 * TH + TH * TH + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075) < 2 ^ (53 + gr) / 2 ^ 1074)
     (hSLm0 : 0 < SLm)
@@ -282,8 +312,7 @@ theorem acosh_piece_exact (x : Float) (hx : Finite x.toBits)
       (2 ^ (53 + gs) / 2 ^ 1074) ^ 2)
     (hSL0 : 0 ≤ SL) (hSL : SL ^ 2 ≤ 2 * TL + TL * TL) (hSH0 : 0 ≤ SH)
     (hSH : 2 * TH + TH * TH ≤ SH ^ 2)
-    (hbin : (2 : ℝ) ^ (((gs + 1 : ℕ) : ℤ) - 1023) ≤
-      SL - (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm)))
+    (hbin : 2 ^ (gs + 51) / 2 ^ 1074 + (2 ^ 52 - 1 : ℕ) * (2 ^ (gs - 1) / 2 ^ 1074) + hs < SLm)
     (hsum : TH + SH + (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm)) <
       2 ^ (53 + gs) / 2 ^ 1074)
     (hu29 : 1 / 2 ^ 29 ≤ TL + SL - (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm)))
@@ -291,16 +320,23 @@ theorem acosh_piece_exact (x : Float) (hx : Finite x.toBits)
       v ≤ TH + SH + (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm)) → errBound v ≤ E)
     (hK : hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) ≤
       K * (1 + TL + SL - (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm))))
-    (hEK : E + K ≤ 1) (hYL : YL ≤ Real.log (1 + (TL + SL)))
+    (hYL : YL ≤ Real.log (1 + (TL + SL)))
     (hn1 : 1 ≤ n) (hn : n < 2047)
     (hB : value (UInt64.ofNat (n * 2 ^ 52)) + (E + K) ≤ YL)
     (hT : E + K < 2 * ((2 : ℝ) ^ (n - 1) / 2 ^ 1074)) :
     F64SignedRounding.WithinSteps 2 (Real.arcosh (value x.toBits))
       (Log1p.log1p ((x - 1.0) + (2.0 * (x - 1.0) + (x - 1.0) * (x - 1.0)).sqrt)).toBits := by
   obtain ⟨htf, htv, N, hN⟩ := acosh_t x hx (by linarith) (by linarith)
-  obtain ⟨hsf, hsd⟩ := acosh_s (x - 1.0) htf TL TH hr hs SLm gr gs (by rw [htv]; exact hTL)
-    (by rw [htv]; exact hTH) hTL0 hTH2 hgr (by omega) hhr hhs hR hSLm0 hSLm hS
+  obtain ⟨hsf, hsd, hslow⟩ := acosh_s (x - 1.0) htf TL TH hr hs SLm gr gs (by rw [htv]; exact hTL)
+    (by rw [htv]; exact hTH) hTL0 hTH2 hgr hhr hhs hR hSLm0 hSLm hS
   rw [htv] at hsd
+  have hsB := ge_boundary _ (by
+      linarith only [hslow, hbin, (by positivity : (0 : ℝ) < 2 ^ (gs + 51) / 2 ^ 1074),
+        (by positivity : (0 : ℝ) ≤ (2 ^ 52 - 1 : ℕ) * (2 ^ (gs - 1) / 2 ^ 1074))])
+    (gs + 1) (by omega) (by omega)
+    (by
+      rw [show gs + 1 - 1 + 51 = gs + 51 by omega, show gs + 1 - 1 - 1 = gs - 1 by omega]
+      linarith only [hslow, hbin])
   set δ := hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) with hδ
   set T := value x.toBits - 1 with hT'
   have hT0 : 0 < T := lt_of_lt_of_le (by positivity) (hTL0.trans hTL)
@@ -311,9 +347,16 @@ theorem acosh_piece_exact (x : Float) (hx : Finite x.toBits)
     nlinarith
   have hsda := abs_le.mp hsd
   obtain ⟨hadd, haddv⟩ := add_exact (x - 1.0) (2.0 * (x - 1.0) + (x - 1.0) * (x - 1.0)).sqrt
-    htf hsf N hN gs hgs (by linarith) (by rw [htv]; linarith)
+    htf hsf N hN gs hgs (by
+      rw [show (2 : ℝ) ^ (((gs + 1 : ℕ) : ℤ) - 1023) = 2 ^ (gs + 1 + 51) / 2 ^ 1074 by
+        rw [eq_div_iff (by positivity), ← zpow_natCast (2 : ℝ) 1074, ← zpow_add₀ two_ne_zero,
+          ← zpow_natCast (2 : ℝ) (gs + 1 + 51)]
+        congr 1
+        push_cast
+        ring]
+      exact hsB) (by rw [htv]; linarith)
   refine acosh_core x _ hadd TL TH SL SH δ E K YL n hTL hTH hTL0 hTH2 hSL0 hSL hSH0 hSH ?_ hu29 hE
-    hK hEK hYL hn1 hn hB hT
+    hK hYL hn1 hn hB hT
   rw [haddv, htv]
   rw [show T + value (2.0 * (x - 1.0) + (x - 1.0) * (x - 1.0)).sqrt.toBits -
       (T + Real.sqrt (2 * T + T * T)) =
@@ -324,7 +367,7 @@ theorem acosh_piece_exact (x : Float) (hx : Finite x.toBits)
 theorem acosh_piece_half (x : Float) (hx : Finite x.toBits)
     (TL TH hr hs hu SLm SL SH E K YL : ℝ) (gr gs gu n : ℕ)
     (hTL : TL ≤ value x.toBits - 1) (hTH : value x.toBits - 1 ≤ TH) (hTL0 : 1 / 2 ^ 52 ≤ TL)
-    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023) (hgs : gs ≤ 1023) (hgu : gu ≤ 1023)
+    (hTH2 : TH ≤ 2) (hgr : gr ≤ 1023) (hgu : gu ≤ 1023)
     (hhr : 2 ^ gr / 2 / 2 ^ 1074 ≤ hr) (hhs : 2 ^ gs / 2 / 2 ^ 1074 ≤ hs)
     (hhu : 2 ^ gu / 2 / 2 ^ 1074 ≤ hu)
     (hR : 2 * TH + TH * TH + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075) < 2 ^ (53 + gr) / 2 ^ 1074)
@@ -342,15 +385,15 @@ theorem acosh_piece_half (x : Float) (hx : Finite x.toBits)
       errBound v ≤ E)
     (hK : hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) + hu ≤
       K * (1 + TL + SL - (hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) + hu)))
-    (hEK : E + K ≤ 1) (hYL : YL ≤ Real.log (1 + (TL + SL)))
+    (hYL : YL ≤ Real.log (1 + (TL + SL)))
     (hn1 : 1 ≤ n) (hn : n < 2047)
     (hB : value (UInt64.ofNat (n * 2 ^ 52)) + (E + K) ≤ YL)
     (hT : E + K < 2 * ((2 : ℝ) ^ (n - 1) / 2 ^ 1074)) :
     F64SignedRounding.WithinSteps 2 (Real.arcosh (value x.toBits))
       (Log1p.log1p ((x - 1.0) + (2.0 * (x - 1.0) + (x - 1.0) * (x - 1.0)).sqrt)).toBits := by
   obtain ⟨htf, htv, N, hN⟩ := acosh_t x hx (by linarith) (by linarith)
-  obtain ⟨hsf, hsd⟩ := acosh_s (x - 1.0) htf TL TH hr hs SLm gr gs (by rw [htv]; exact hTL)
-    (by rw [htv]; exact hTH) hTL0 hTH2 hgr hgs hhr hhs hR hSLm0 hSLm hS
+  obtain ⟨hsf, hsd, -⟩ := acosh_s (x - 1.0) htf TL TH hr hs SLm gr gs (by rw [htv]; exact hTL)
+    (by rw [htv]; exact hTH) hTL0 hTH2 hgr hhr hhs hR hSLm0 hSLm hS
   rw [htv] at hsd
   set δs := hs + (TH * TH / 2 ^ 53 + 1 / 2 ^ 1075 + hr) / (2 * SLm) with hδ
   set T := value x.toBits - 1 with hT'
@@ -366,14 +409,47 @@ theorem acosh_piece_half (x : Float) (hx : Finite x.toBits)
     rw [abs_of_pos (by positivity : (0 : ℝ) < T + Real.sqrt (2 * T + T * T)), zero_add]
     linarith)
   refine acosh_core x _ hw.1 TL TH SL SH (δs + hu) E K YL n hTL hTH hTL0 hTH2 hSL0 hSL hSH0 hSH ?_
-    hu29 hE hK hEK hYL hn1 hn hB hT
+    hu29 hE hK hYL hn1 hn hB hT
   have := hw.2
   linarith
+
+theorem errQuad_le2 (v E V : ℝ) (h0 : 0 ≤ v) (h1 : v ≤ V)
+    (hE : 174 / 100 / 2 ^ 53 * V ^ 2 + V / 2 ^ 59 ≤ E) :
+    174 / 100 / 2 ^ 53 * v ^ 2 + v / 2 ^ 59 ≤ E := by
+  have h2 : v ^ 2 ≤ V ^ 2 := pow_le_pow_left₀ h0 h1 2
+  have h3 : 174 / 100 / 2 ^ 53 * v ^ 2 ≤ 174 / 100 / 2 ^ 53 * V ^ 2 :=
+    mul_le_mul_of_nonneg_left h2 (by norm_num)
+  have h4 : v / 2 ^ 59 ≤ V / 2 ^ 59 := div_le_div_of_nonneg_right h1 (by norm_num)
+  linarith
+
+theorem log_mono (X YL : ℝ) (q Lq : ℚ) (n : ℕ) (hX : ((1 + q : ℚ) : ℝ) ≤ X)
+    (hq : -1 / 2 ≤ q) (hq1 : q ≤ 1) (hL : Lq ≤ Log1pTheoremConst.logLo q n)
+    (hY : YL ≤ (Lq : ℝ)) : YL ≤ Real.log X := by
+  have h := Log1pTheoremConst.log_ge q Lq n hq hq1 hL
+  have hq' : (-1 / 2 : ℝ) ≤ q := by exact_mod_cast hq
+  have h2 : Real.log (1 + (q : ℝ)) ≤ Real.log X :=
+    Real.log_le_log (by linarith) (by push_cast at hX; exact hX)
+  linarith
+
+theorem log_mono2 (X YL : ℝ) (q Lq : ℚ) (n : ℕ) (hX : ((2 * (1 + q) : ℚ) : ℝ) ≤ X)
+    (hq : -1 / 2 ≤ q) (hq1 : q ≤ 1) (hL : Lq ≤ Log1pTheoremConst.logLo q n)
+    (hY : YL ≤ (Lq : ℝ) + 6931471803 / 10 ^ 10) : YL ≤ Real.log X := by
+  have h := Log1pTheoremConst.log_ge q Lq n hq hq1 hL
+  have h2 := Log1pTheoremTail.ln2_bounds
+  have hq' : (-1 / 2 : ℝ) ≤ q := by exact_mod_cast hq
+  have h3 : Real.log (2 * (1 + (q : ℝ))) ≤ Real.log X :=
+    Real.log_le_log (by linarith) (by push_cast at hX; exact hX)
+  rw [Real.log_mul (by norm_num) (by linarith)] at h3
+  linarith [h2.1]
 
 #print axioms grid_of_value
 #print axioms acosh_t
 #print axioms acosh_s
 #print axioms add_exact
+#print axioms ge_boundary
+#print axioms errQuad_le2
+#print axioms log_mono
+#print axioms log_mono2
 #print axioms acosh_core
 #print axioms acosh_piece_exact
 #print axioms acosh_piece_half
