@@ -137,6 +137,7 @@ import LeanExe.ProofKit.F64BinadeWord
 import LeanExe.ProofKit.F64Bits
 import LeanExe.ProofKit.F64Bounds
 import LeanExe.ProofKit.F64Compare
+import LeanExe.ProofKit.F64Compose
 import LeanExe.ProofKit.F64ConservativeReference
 import LeanExe.ProofKit.F64ConservativeUpdate
 import LeanExe.ProofKit.F64Convert
@@ -168,6 +169,8 @@ import LeanExe.ProofKit.F64Mul
 import LeanExe.ProofKit.F64MulBounds
 import LeanExe.ProofKit.F64MulEnclosure
 import LeanExe.ProofKit.F64MulFinite
+import LeanExe.ProofKit.F64Near
+import LeanExe.ProofKit.F64NearReal
 import LeanExe.ProofKit.F64NearestBand
 import LeanExe.ProofKit.F64NearestBinade
 import LeanExe.ProofKit.F64NearestDiv
@@ -203,6 +206,7 @@ import LeanExe.ProofKit.F64QuotientResidual
 import LeanExe.ProofKit.F64RationalBounds
 import LeanExe.ProofKit.F64RationalNormalize
 import LeanExe.ProofKit.F64RationalScale
+import LeanExe.ProofKit.F64RelError
 import LeanExe.ProofKit.F64RelativeStep
 import LeanExe.ProofKit.F64RelativeStepWide
 import LeanExe.ProofKit.F64RelativeSteps
@@ -217,6 +221,7 @@ import LeanExe.ProofKit.F64RounderEnclosure
 import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
 import LeanExe.ProofKit.F64RusanovResidual
+import LeanExe.ProofKit.F64Saturate
 import LeanExe.ProofKit.F64Sign
 import LeanExe.ProofKit.F64SignedRounding
 import LeanExe.ProofKit.F64Source
@@ -226,6 +231,7 @@ import LeanExe.ProofKit.F64SqrtComposition
 import LeanExe.ProofKit.F64SqrtCore
 import LeanExe.ProofKit.F64SqrtEnclosure
 import LeanExe.ProofKit.F64SqrtFinite
+import LeanExe.ProofKit.F64SqrtHalf
 import LeanExe.ProofKit.F64SqrtRounding
 import LeanExe.ProofKit.F64StageBounds
 import LeanExe.ProofKit.F64Sterbenz
@@ -233,6 +239,7 @@ import LeanExe.ProofKit.F64StrictOrder
 import LeanExe.ProofKit.F64Sub
 import LeanExe.ProofKit.F64SymmetricFaces
 import LeanExe.ProofKit.F64TwoSteps
+import LeanExe.ProofKit.F64TwoSum
 import LeanExe.ProofKit.F64UpperWord
 import LeanExe.ProofKit.F64WithinSelf
 import LeanExe.ProofKit.F64WithinZero
@@ -260,6 +267,10 @@ import LeanExe.ProofKit.FloatShift
 import LeanExe.ProofKit.FloatSqrtRounding
 import LeanExe.ProofKit.Frame
 import LeanExe.ProofKit.FreeListMemory
+import LeanExe.ProofKit.GammaBasic
+import LeanExe.ProofKit.GammaModels
+import LeanExe.ProofKit.GammaStirling
+import LeanExe.ProofKit.GammaThresholds
 import LeanExe.ProofKit.LogRatioRemainder
 import LeanExe.ProofKit.Memory
 import LeanExe.ProofKit.MemoryEnsure
@@ -270,6 +281,7 @@ import LeanExe.ProofKit.PolyCalc
 import LeanExe.ProofKit.PolyCalculus
 import LeanExe.ProofKit.PolyChecks
 import LeanExe.ProofKit.QuantizedInt32
+import LeanExe.ProofKit.RatExpLog
 import LeanExe.ProofKit.RealAffineError
 import LeanExe.ProofKit.RealErf
 import LeanExe.ProofKit.RealErfScaled
@@ -281,6 +293,7 @@ import LeanExe.ProofKit.RealRoundedError
 import LeanExe.ProofKit.RealRusanovError
 import LeanExe.ProofKit.RealSqrtError
 import LeanExe.ProofKit.Signed32
+import LeanExe.ProofKit.TaylorModel
 import LeanExe.ProofKit.TaylorRemainder
 import LeanExe.Runtime.Defs
 import LeanExe.Runtime.FreeList
