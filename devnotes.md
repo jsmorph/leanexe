@@ -29736,5 +29736,6 @@ The program constant `<program>.chain.func` grows quadratically with the number 
 - [x] `Fma.fma` with `verified_compile`, and its check.
 - [x] `Tgamma`, `Lgamma`, and `GammaReference`, and their checks without `verified_compile`.
 - [x] `Bessel` and `BesselReference`, built with `verified_compile` commented out, and a measuring run of the check.
-- [ ] The cause of the compiler's cost on long chains of pair lets, and the restructuring or the fix.
-- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel`, and the final checks and bounds.
+- [x] Commit the gamma and Bessel ports, references, and checks without `verified_compile`, at the coordinator's request, so that the log track can state the Bessel theorems.  `BesselAccuracy` passes with the final bounds (`ports-BesselAccuracy-7.log`), and the docstrings of `Tgamma`, `Lgamma`, and `Bessel` state that their `verified_compile` calls wait for the reflector.
+- [ ] The reflector change on `w/reflect` (the build host, a separate worktree), which the coordinator chose over restructuring the ports.
+- [ ] `verified_compile` for `Tgamma`, `Lgamma`, and `Bessel` after that change, and the final runs of their checks.
