@@ -30905,3 +30905,43 @@ The lock queue held these runs for about two hours behind the `exp2` track's `Po
 - [ ] Kernel tables: `as_logd`, `as_sinpid`, `as_sinpipid`, `as_expd`, and the splits of `π`, `log 2`, and `1024/log 2`.
 - [ ] Accurate paths, by comparison with the fast-path facts where the domains overlap, and the negative zeros of `lgamma` with divided-difference models.
 - [ ] Hard cases.
+
+## 2026-10-12: The approximation facts of `tgamma` and `lgamma` (track `erf`)
+
+The coordinator divided the gamma work on 2026-10-12.  Track `arc` takes the floating-point proof of `Tgamma.tgamma` and stated the eight approximation statements it takes as hypotheses in `Verified/Examples/TgammaApprox.lean` on branch `w/poly` (commit `b92f7941`, revised at `02c72fa9`, which relaxed the tolerances that depend on `π`).  Track `expm1` takes the floating-point proof of `Lgamma.lgammaR` and stated twelve statements in `Verified/Examples/LgammaApprox.lean` on branch `w/expm1` (commit `de1cbab5`).  Track `erf` proves both sets, each as a theorem whose type is the statement, the `tgamma` set first.
+
+The fact modules read the coefficient lists from the ports' tables with the definitions of the two statement files (`q`, `coeffs`, `ddCoeffs` in `TgammaFactsBase`), so that each theorem has the statement's type up to unfolding.  Each interval splits into pieces, and on each piece the kernel compares the polynomial with a Taylor model of the function: `GammaModels.gammaPieceOk` for `Γ`, `GammaFits.fit_piece` for the Stirling fits against `lgamma` and `GammaFits.fit_large` from 16 on against Stirling's series, `GammaScaled.gammaScaledOk` for the accurate path's ranges against `Γ / 2 ^ k` with a relative check (`GammaRel.relOk`), and `TaylorCheck.exprOk` for the kernels of the logarithm, the exponential, and the sine.  `GammaPi` takes `π` within `2 ^ -128` from `TrigPi` for the sine's tables and kernels, and the other models keep Mathlib's 20-digit bounds, where `π` enters only through `ln (2π)/2`.  `GammaDD` adds Taylor models of divided differences `(lgamma (x0 + s) - lgamma x0)/s` for the pieces of `lgamma` that contain the zeros 1 and 2.
+
+The runner's limits (`MemoryHigh` 4 GB, `MemoryMax` 6 GB, one cgroup per call) set the size of a piece.  `TgammaAsymFitB`, four pieces of degree 22 on `[8, 12]`, ran at about 10% CPU under reclaim with 8 GB resident and held the lock for 25 minutes before I stopped it (`erf-gamma-18.log`).  The Python model of the Taylor models counts coefficient operations per piece: pieces near 39,000 operations passed at about 25 seconds each (`TgammaAsymFitC`), pieces near 53,000 took 68 seconds each (`TgammaAsymFit`), and 58,000 stalled.  The modules now keep each piece near 35,000 operations or fewer: `TgammaAsymFit` has 16 pieces of radius `1/8` and degree 16, `TgammaAsymFitB` eight of radius `1/4` and degree 18, and the accurate ranges at `j = 8` and `j = 4`, which shift the argument 8 and 12 times, eight pieces of degree 18.  Each module now builds in its own runner call, since the modules of one `lake build` run in parallel in the same cgroup.
+
+The coordinator decided the precision of `lgamma`'s accurate path for `-17 < x < -10.5`.  There `as_lgamma_accurate` computes `-(lgamma (1 - x) + ln (sin (π φ)/π))` and has no polynomials about the zeros, so the result can be far smaller than the two terms.  `negzeros.py` in the track's scratch directory finds each zero by bisection in 80-digit decimal arithmetic and evaluates `lgamma` at the doubles next to it; the table gives the smallest values and the ratio `lgamma (1 - x)/lgamma x`.  From -17 down no double lies near a zero.  The coordinator chose bounds near `2 ^ -86` relative on the accurate Stirling fits, logarithm, and sine over a separate argument for the doubles near the zeros, and track `expm1` set `2 ^ -87` and `2 ^ -95` in `LgammaApprox`, with `CancelFact` bounding the ratio by `2 ^ 32` from -21/2 down.
+
+| Zero near | Smallest `\|lgamma\|` at a double | Ratio |
+|---|---|---|
+| -11 (both zeros) | `7.9 · 10^-9`, `2.7 · 10^-8` | `2^31.0`, `2^29.3` |
+| -12 | `4.8 · 10^-8`, `5.9 · 10^-8` | `2^28.6`, `2^28.3` |
+| -13 | `4.2 · 10^-6` | `2^22.4` |
+| -14 | `7.1 · 10^-5` | `2^18.4` |
+| -15 | `1.2 · 10^-3` | `2^14.6` |
+| -16 | `3.5 · 10^-3`, `3.4 · 10^-2` | `2^13.1`, `2^9.8` |
+
+`LgammaApprox.PieceFact` widens each piece by `2 ^ -50` at both ends, since the code selects the piece from a rounded `1 + x`, so the generated sub-pieces now cover `[border j - 2^-50, border (j + 1) + 2^-50]`.  The pieces 4 and 10 must hold at every real `x`, including those next to the zeros, where a divided-difference check fails since its remainder term grows like `1/|x - x0|`.  The plan uses the convexity of `log Γ` (Mathlib's `Real.convexOn_log_Gamma`): the divided difference is monotone in `s`, which bounds it for `|s| < τ` by its values at `±τ`, so the checks need to reach only `τ` near `2 ^ -70`.
+
+| Run | Result | Log |
+|---|---|---|
+| `GammaFits` | Passed, standard axioms | `erf-gamma-14.log` |
+| `GammaPi`, `TgammaFactsBase` | Passed | `erf-gamma-17.log` |
+| `TgammaPolyMain`, `TgammaPolySmall` | `gamma_main` and `gamma_small_fast` accepted; `gamma_main_ge` failed where `rw [← h3]` rewrote the 2 of `7/2`, and an extra `ring` followed a `field_simp` that closed the goal | `erf-gamma-17.log` |
+| `GammaDD` | Failed: a `rw` pattern, a `linarith` over `ℚ` facts for a real goal, and a projection `d.lg.a` that `rw` did not match | `erf-gamma-17.log` |
+| `TgammaAsymFit` | Passed in 548 s | `erf-gamma-18.log` |
+| `TgammaAsymFitC` | Kernel checks passed; the cover started at 23/2 in place of 11, and a cast was missing | `erf-gamma-18.log` |
+| `TgammaAsymFitB` | Stopped after 25 minutes under memory reclaim | `erf-gamma-18.log` |
+| `TaylorCheck`, `TgammaFactsBase`, `TgammaPolyMain`, `TgammaPolySmall`, `TgammaPolySmallAcc` | Passed, standard axioms | `erf-gamma-19.log` |
+| `GammaDD` | Failed: `linarith` saw `d.lg.a` and `d.x0` as different atoms, and a `calc` step had no type | `erf-gamma-19.log` |
+
+- [x] `SmallFact`, `MainFact`, `AccSmallFact` (`gamma_small_fast`, `gamma_main`, `gamma_small_acc`).
+- [ ] `StirlingFact`: `TgammaAsymFit`, `TgammaAsymFitB`, `TgammaAsymFitC`, regenerated with smaller pieces.
+- [ ] `AccRangeFact`: `TgammaAccRangeA` to `TgammaAccRangeC`.
+- [ ] `LogFact`, `ExpFact`, `SinFact`: `TgammaKernels`.
+- [ ] `TgammaFacts`, the proofs of the eight statements, tested against a copy of `TgammaApprox` until the statement file reaches `transcendentals`.
+- [ ] The twelve `lgamma` statements.
