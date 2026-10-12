@@ -31089,8 +31089,8 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 | `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | `03e57a7a` |
 | `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | `0a6b86e5` |
 | `ErfcAsymPoly` | the polynomial of `erfc_asympt_fast` | `136ce1f8` |
-| `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1` | the certificates of the rows of `T` and `Tacc` | accepted (`trig-asymcert-1.log`, `trig-rowst-1.log`, `trig-rowsa-1.log`) |
-| `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x` | written, not built |
+| `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1` | the certificates of the rows of `T` and `Tacc` | `7bfd657c` |
+| `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x` | accepted (`trig-asymz-1.log`, `trig-asymfast-3.log`) |
 | `ErfcEAccPoly`, `ErfcEAcc` | `exp_accurate`: `|eh + el - exp (X - K log 2)|` below `2^-76` of the value | written, not built |
 | `ErfcTrack5`, `ErfcTaccLoop`, `ErfcTaccData`, `ErfcAsymAccHL`, `ErfcAsymAccFin` | `asymptAccurate` within `2^-56 erfc x` before the scaling, and one step after `ldexp`, the subnormal correction included | written, not built |
 | `ErfcHardBase`, `ErfcHardRows`, `ErfcHardNeg`, `ErfcHardPos`, `ErfcHardAsym0`, `ErfcHardAsym1`, `ErfcHardAsym` | the 68 hard cases, one kernel check per row (`gen/hardgen.py`) | written, not built |
@@ -31100,7 +31100,7 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 - [x] `cr_erf_fast` below `1/16` (`ErfcFastTiny`).
 - [x] The two combinations of `cr_erfc_fast` for `x < 0` and `x ≤ 0x1.713786d9c7c09p+1` (`ErfcFastAll`, `ErfcFastPath`).
 - [x] `exp_1`, `q_1`, and the tables `T1` and `T2`.
-- [ ] `erfc_asympt_fast` and the six rows of `T`.
+- [x] `erfc_asympt_fast` and the six rows of `T`.
 - [x] `cr_erf_accurate` and its tiny case with the 47 rows of `C2`.
 - [ ] `exp_accurate` with `E2`; `erfc_asympt_accurate` with the ten rows of `Tacc` and the subnormal range.
 - [ ] The 68 hard cases and the special input, the special ranges and exact results, and the final theorem.
@@ -31122,6 +31122,8 @@ The modules of `exp_1` took ten runs (`trig-exp1-1` to `trig-exp1-10`).  The sta
 `trig-asympoly-1` accepted `ErfcAsymPoly` in 442 seconds with at most 2.2 GB of anonymous memory, without the split into pieces that `ErfcAccTiny` needed.  Its stages are those of `ErfcAccMain`, three `fma` steps in the high part, one `Erfc.sMul`, and eight steps of `Erfc.dMul` and `fast_two_sum`, so the generated bound structure and the chain of stage lemmas carried over.  The special input, the accurate and main paths, and the branches of `erfcWith` with the final theorem are now drafted (`ErfcSpecial`, `ErfcAccPath`, `ErfcMainPath`, `ErfcTheorem`), and none of them is built.
 
 The certificates of the asymptotic rows need the erf track's models of `erfcxN`, which this worktree had not compiled: `ErfTailBase` with `ErfKernelSmall` took 24 seconds (`trig-tail-1`), and `ErfTailCoeffs` and the eight modules `ErfTailPieces0` to `ErfTailPieces7`, a chain of imports, between 41 and 71 seconds each with at most 2.7 GB (`trig-tail-2`, `trig-tail-3`).  The linter reported three unused arguments of one `simp only` in `ErfcAsymPoly`, where `asymCore` has no loop to unfold; `trig-asymcert-1` rebuilt the module without them and accepted `ErfcAsymCert` and `ErfcAsymPlan`.  Every certificate passed as the Python plan predicted: the 28 checks of the six rows of `T` in 37 seconds (`trig-rowst-1`), and the 38 checks of the ten rows of `Tacc` in two modules of 48 seconds each (`trig-rowsa-1`), with at most 1.1 GB.
+
+`ErfcAsymZ` passed on its first run (`trig-asymz-1`) with three linter warnings, a `ring` after a `norm_num` that had closed the goal and a `<;>` where one goal remained; the same two lines in `ErfcAsymAccHL` are corrected before its first build.  The first build of `ErfcAsymFast` (`trig-asymfast-1`) exceeded the default limit of 200,000 heartbeats in the last three steps of `asym_fast_err`, where `linarith` searched a context of about a hundred hypotheses with terms of floating-point code.  With `linarith only` and the few facts each step needs, the module passes in 27 seconds under the default limit (`trig-asymfast-3`).
 
 ## 2026-10-11: Foundations for CORE-MATH's `tgamma` and `lgamma` (track `erf`)
 
