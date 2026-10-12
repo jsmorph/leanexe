@@ -97,7 +97,7 @@ The theorems are in [the error function's theorem module](ErfTheorem.lean) and [
 
 Each declaration of `ErfTheorem.lean` has a `#print axioms` line, and all eleven report `[propext, Classical.choice, Quot.sound]` in the merge build `opus-merge-arc-1.log` and in `opus-verified-tests-14.log`, a run of `tests/verified/run.sh`, both under `build/transcendentals/` of the primary checkout on the build host.  That script builds `Verified.Examples.ErfTheorem`, checks `ErfFile.lean` against the `erf.wasm` it has written, and fails unless both file theorems report exactly the three permitted axioms.  `opus-verified-tests-14.log` passed this check for its entry `erf:ErfTheorem:ErfFile`.  The proof was first built on the build host, where its logs are `erf-base-17.log` to `erf-base-24.log` for the paths and the theorem module and `erf-emit-1.log` and `erf-file-1.log` for the first `erf.wasm` of 7,016 bytes and its file theorems.
 
-The port of CORE-MATH's `erfc` has no theorem: [the plan](../../transcendentals.md#state-of-each-track) assigns its one-step proof to the track `trig`.
+The port of CORE-MATH's `erfc` has no accuracy theorem yet.  The track `trig` is proving `WithinSteps 1` for every finite input on the branch `w/trig`, with the hypothesis `FmaSpec.FmaNearest` until the track `expm1` proves it, as [the plan](../../transcendentals.md#state-of-each-track) assigns.  [The section on its proof](#the-proof-of-core-maths-erfc) lists the accepted lemma modules.
 
 ## Proof
 
@@ -175,6 +175,20 @@ The proof imports 80 ProofKit modules.  Beyond the arithmetic chain and the modu
 | The rounding conditions of the 74 small, 13 middle, and 30 tail intervals | `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfMiddle.ok0` to `ok12`, `ErfTailErf.tok0` to `tok29` and `tcrit0` to `tcrit29` |
 | The exceptional words and the export | `ErfTheorem.erf_pos_zero` to `erf_neg_infinity`, `erf_export` |
 | The file's bytes equal the encoder's | `ErfFile.erf_file` |
+
+### The proof of CORE-MATH's `erfc`
+
+The proof of `Erfc.erfc` is in progress on the branch `w/trig`, whose modules are not yet in `transcendentals` except `FmaSpec`.  It assumes `FmaSpec.FmaNearest`: for finite `a`, `b`, `c` with `|a b + c| ≤ 2^1023`, `Fma.fma a b c` is finite and nearest to `a b + c` among the finite doubles; the track `expm1` is proving it for the software fused multiply-add.  The proof ignores CORE-MATH's error bounds `err`: when the rounding test passes, the result is a nearest double of the fast path's `h + l`, so each path needs `|h + l - erfc x| ≤ (15/16) u erfc x` for one step through `F64NearestRelative.within_rel_of`, or an absolute error below `2^-1074` for subnormal results.  [The journal](../../devnotes.md#2026-10-12-core-maths-erfc-track-trig) records the plan, the measured margins, and the runs.
+
+| Module | Main results | Commit on `w/trig` |
+|---|---|---|
+| `FmaSpec` | `FmaNearest` | `b1c5f270`, merged |
+| `ErfcEft` | `fast_two_sum`: Dekker's sum is exact for finite `|b| ≤ |a| ≤ 2^1020` | `fba07475` |
+| `ErfcEft2` | `two_sum`: Knuth's sum is exact for `|a|, |b| ≤ 2^1018` | `52be491a` |
+| `ErfcOps` | the errors of sums, differences, products, `Fma.fma`, `Erfc.fastTwoSum`, `Erfc.twoSum`, and `Erfc.aMul` on Floats | `b0a10033` |
+| `ErfcTrack` | error tracking of floats and double-doubles through the stages of `cr_erf_fast` | `12e5ac82` |
+
+Each of these modules reports only `propext`, `Classical.choice`, and `Quot.sound`.  The polynomials of `C` are checked against the series of `erf` at 0 shifted to each row's center, with `2/√π` enclosed within `2^-160` from Machin's formula for `π` in `BesselConstants`.  The remaining parts are the rows of `C`, `C2`, `T`, and `Tacc`, `exp_1` and `exp_accurate` with their tables, the accurate path, the 68 hard cases, the special ranges, and the final theorem.
 
 ### History
 
