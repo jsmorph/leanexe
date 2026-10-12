@@ -1,0 +1,101 @@
+# The gamma function
+
+[The implementation](Tgamma.lean) exports `tgamma`, a port of CORE-MATH's correctly rounded `cr_tgamma` [1, 2] that calls [the software fused multiply-add](Fma.lean) wherever the C code calls `__builtin_fma`.  The decided bound is one representable step, `F64SignedRounding.WithinSteps 1`, from the nearest-even rounding of `Γ`, which is weaker than the correct rounding that CORE-MATH claims for its code.  The port is checked natively against an integer reference at 74,373 arguments, and every result equals the reference.  No theorem about `tgamma` exists in this checkout: the module's `verified_compile` call is commented out until a change of the compiler's reflector lets it finish, and the mathematical facts that the proof needs are in progress on track `erf`.
+
+## Specification
+
+`tgamma` computes `Γ` of the value of its argument.  [Mathlib's `Real.Gamma`](https://github.com/leanprover-community/mathlib4/blob/85e3a25e006c35636f0e53b0e9296caca2685bc0/Mathlib/Analysis/SpecialFunctions/Gamma/Basic.lean) is Euler's integral for positive arguments, extended to the other reals by the recurrence `Γ (s + 1) = s Γ (s)`, and it takes the value 0 at zero and the negative integers by convention (`Real.Gamma_neg_nat_eq_zero`) [5].  The poles are therefore outside the domain of the accuracy statement, and their results are exceptional values.  The domain of the bound is every finite double other than zero and the negative integers.
+
+The decided statement for such an `x` is `F64SignedRounding.WithinSteps 1 (Real.Gamma (value x.toBits)) (Tgamma.tgamma x).toBits`, with `WithinSteps` from [the signed rounding reference](../../LeanExe/ProofKit/F64SignedRounding.lean) as for the other functions: the word is not a NaN and its position on the ordered line of doubles lies within one step of the position of the signed nearest-even reference.  The reference is `±∞` beyond the overflow threshold `2^1024 - 2^970` of IEEE 754-2019 clause 4.3.1 [6], which `Γ` crosses at about 171.62, and `±0` below half the smallest subnormal, which happens for every non-integer `x ≤ -184`.  The bound is the decision of 2026-10-10 recorded in [the journal](../../devnotes.md#2026-10-10-decisions-after-the-review-of-gamma-bessel-and-worst-inputs) and in [the plan](../../transcendentals.md#decisions), and the review of the same day recommended the special values in the table.
+
+| Input | Result of the port | Source of the rule |
+|---|---|---|
+| `+0`, `-0` | `+∞`, `-∞` | C99 F.9.5.4 [7]; POSIX [8] |
+| a negative integer | the canonical NaN | C99 F.9.5.4; POSIX on IEC 60559 systems |
+| `-∞` | the canonical NaN | C99 F.9.5.4; POSIX |
+| `+∞` | `+∞` | C99 F.9.5.4; POSIX |
+| NaN | the canonical NaN | C99 F.9 paragraph 11; the deterministic profile of WebAssembly [9] |
+| `x ≥ 0x1.573fae561f648p+7` | `+∞`, as `0x1.fp1023 + 0x1.fp1023` | overflow, POSIX |
+| non-integer `x ≤ -184` | `±0` with the sign of `Γ x`, as `2^-1022 · (±2^-1022)` | underflow, POSIX |
+| `x = 2^-1024` | `+∞`, as `0x1.fffffffffffffp+1023 + 0x1p+970` | overflow: `Γ x` exceeds the threshold |
+
+IEEE 754-2019 lists no gamma function among its recommended operations [6], so C99's Annex F and POSIX fix the special values.  The port's NaN results are the canonical NaN, as every NaN result of the dialect is.  CORE-MATH sets `errno` and raises the underflow and invalid exceptions on these paths, and the port does neither.
+
+## Algorithm
+
+CORE-MATH's method evaluates `Γ` in double-double arithmetic, a pair `h + l` of doubles, with an explicit error bound `eps` for each path.  When `h + (l + eps)` and `h + (l - eps)` round to the same double, that double is the correctly rounded result, and the fast path returns it.  Otherwise an accurate path evaluates `Γ` to about 100 bits, and a table of 57 hard cases, inputs that even that path cannot round, supplies their results.  The project's paper states the aim of open-source correctly rounded functions that this code serves [3].  The structure described here comes from the source [1].
+
+| Range | Fast path |
+|---|---|
+| `\|x\| < 2^-112` | `1/x`, the leading term of `Γ x = 1/x - γ + ⋯`, and the correction for an exact `1/x` changes only the inexact flag and the directed roundings |
+| `2^-112 ≤ \|x\| < 1/4` | `1/x` plus a polynomial of degree 20 in `x`, whose constant term is `-γ` |
+| `-3 ≤ x ≤ 4`, not an integer | a polynomial of degree 17 in `d = x - (i + 3.5)` that approximates `Γ` on `[3, 4]`, divided by the product `x (x + 1) ⋯ (x + m - 1)` of the shifts that carry `x` there, the recurrence of DLMF 5.5.1 [4] |
+| positive integers | `(x - 1)!` as a product in double-double, rounded once |
+| `4 < x < 0x1.573fae561f648p+7` | `exp (lgamma x)`, with `lgamma` from Stirling's series (DLMF 5.11.1) by `as_lgamma_asym` and the exponential by `as_expd`, both in double-double |
+| `-184 < x < -3`, not an integer | the reflection `Γ x = π/(sin (π x) Γ (1 - x))` (DLMF 5.5.3), with `Γ (1 - x)` from Stirling's series and `sin (π x)` from `as_sinpid`.  Below -170 the result is subnormal, and the code rounds it at the subnormal position. |
+
+The accurate path `as_tgamma_accurate` uses polynomials in triple or double-double arithmetic, a series of 28 double-double terms below `1/4` and polynomials on nine ranges above it, and rounds once.  The fast path's error bounds, such as `1e-21` relative on `[-3, 4]` and `2e-21 + 1.84e-22 x` relative above 4, are constants of the source, not results proved here.  The one-step bound that the project decided needs a proof that every path's error stays below one and a half spacings of the result, a requirement far weaker than the bounds that the rounding test assumes.
+
+## Implementation
+
+The source is `src/binary64/tgamma/tgamma.c` of CORE-MATH at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8` [1], `Copyright (c) 2024 Alexei Sibidanov`, under the MIT license [2], and the module docstring of [the implementation](Tgamma.lean) repeats the notice.  The port follows the C code operation for operation in the Verified dialect, the subset of Lean that [the Verified compiler](../README.md) translates to WebAssembly.  The commented `verified_compile` call lists 40 functions: the 14 of `Fma` and 26 of this module, among them the double-double operations `fastTwoSum`, `twoSum`, `fastSum`, `sumDD`, `mulDD`, `mulDD3`, `mulDDD`, and `polyDDD`, the helpers `asLogd`, `asExpd`, `asSinpid`, and `asLgammaAsym` for the logarithm, the exponential, `sin (π x)`, and Stirling's series, `database`, `accurate`, `tgammaWith`, and `tgamma`.
+
+| C code | Port | Reason |
+|---|---|---|
+| a second result through a pointer | a pair result | The dialect has no pointers. |
+| global `static const` tables | eight `Array UInt64` tables passed by `tgamma` to `tgammaWith` | The tables become borrowed arrays of the module. |
+| integers `i`, `jm`, `ip`, `k` that count or select | integer-valued doubles | The dialect's words are unsigned 64-bit integers. |
+| `int` exponents `e`, `eoff` and the index of `as_expd` | two's complement words, with `sar` for the arithmetic shift | The same reason. |
+| `__builtin_fma` | `Fma.fma` | WebAssembly has no scalar fused multiply-add, and in the deterministic profile its relaxed SIMD multiply-add returns the unfused result [9]. |
+| `roundeven_finite`, `floor` | adding and subtracting `2^52`, and `floorF` from it | The dialect has no operation that rounds to an integer. |
+| the binary search of `as_tgamma_database` | a scan of all 57 rows | The scan finds the same row. |
+| `errno`, `raise_underflow`, `feraiseexcept` | omitted, with the expressions evaluated for their flags kept | WebAssembly has no floating-point status flags. |
+| `verified_compile` | commented out | The reflector's time and memory grow faster than linearly with a function's `let` bindings, and the call exceeds the build's memory limit. |
+
+The eight tables hold 1,551 words: `dbTable` (the 57 hard cases as rows `x`, `f`, `δ`), `accurateTable` (718 words of the accurate path), `smallTable`, `mainTable`, `logdTable` (`as_logd`'s `B`, `r1`, `r2`, `l1`, and `l2`), `sinpidTable`, `expdTable`, and `asymTable`.  Each word carries the C literal in a comment.  For this document a script compared the port with `tgamma.c` at the pinned commit, with the results in the table.
+
+| Check | Result |
+|---|---|
+| Floating-point literals of the C file | All 1,562 occurrences, 1,467 distinct values, occur in the port as words or decimal literals, nine of them with the opposite sign where the port writes a negation differently. |
+| `double` arrays | 38 of the 39 occur in order as contiguous runs of the port's tables, and the port writes the two-element `sgn` inline. |
+| `as_logd`'s integer pairs `B` | The 32 pairs equal the first 64 words of `logdTable`. |
+| Comments | All 1,506 words with a hexadecimal literal in their comment equal the bits of that literal. |
+
+No run compared the port with compiled CORE-MATH directly.  The journal records that the reference's Python model agreed with compiled CORE-MATH at 3,500 arguments.  The accuracy check below finds the port equal to the reference at every one of its arguments.
+
+## Theorems
+
+No theorem about `Tgamma.tgamma` exists in this checkout, and there is no axiom report to give.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` neither writes `tgamma.wasm` nor runs [the accuracy check](TgammaAccuracy.lean).  The intended results follow the other functions: `WithinSteps 1` against `Real.Gamma` on the domain above, exact words for the exceptional values in the table, a byte theorem of the form of `ExpTheorem.exp_bytes_accuracy` with the eight tables borrowed, and a file theorem.  [The software fused multiply-add](Fma.lean) compiles and is checked natively, but no theorem yet states that it returns the nearest-even rounding of `a · b + c`, a result every path of the port depends on.
+
+## Proof
+
+Nothing of the proof is in this checkout.  The plan has four parts.  First, a theorem for `Fma.fma`, which the review of 2026-10-10 proposed to prove once with ProofKit's rounding of scaled rationals ([the review](../../devnotes.md#2026-10-10-review-of-the-options-for-stages-7-and-8)).  Second, the mathematical facts that the algorithm uses, which Mathlib lacks: Mathlib has `Real.Gamma` with the recurrence and Euler's reflection formula (`Real.Gamma_mul_Gamma_one_sub`) [5] but no Stirling series with a remainder for `log Γ` at real arguments, so the proof needs Binet's or Euler and Maclaurin's remainder.  The decision of 2026-10-12 is to prove these facts only to the precision that a one-step bound needs, not to CORE-MATH's precision for correct rounding ([the integration notes](../../devnotes.md#2026-10-12-integration-of-expm1-tanh-erf-log1p-atan-atan2-asin-and-acos-first-push)), and track `erf` is doing that work.  Third, an error analysis of each fast path, the accurate path, and the 57 hard cases against one and a half spacings of the result, with the subnormal results below -170 and the overflow and underflow boundaries.  Fourth, the byte and file theorems, once `verified_compile` runs.
+
+The compilation failure determines the order of the work.  With its `verified_compile` call, the module's build ran 25 minutes of CPU time at the runner's limits of 4.2 GB of memory and 1 GB of swap before `tools/leanrun` stopped it.  Probes that chain `let (h, l) := mulDD …` bindings showed the objects of the generated program growing from 5,093 at 10 bindings to 15,413 at 20, while the distinct subterms grew from 491 to 851, and a probe of 40 bindings exhausted the memory.  The cause is `Ctx.ctx` in `Verified/Reflect/Command.lean`, which rebuilds the expression of the whole context at each of its 23 uses, so a function with `n` bindings costs `O(n²)`.  Opus chose to fix the reflector on branch `w/reflect` rather than split the port's functions, and the first change made the program term linear, but the kernel's checking of the generated proofs still grows faster than linearly ([the journal](../../devnotes.md#2026-10-11-a-software-fused-multiply-add-core-maths-gamma-functions-and-fdlibms-bessel-functions)).
+
+## Tests
+
+[The accuracy check](TgammaAccuracy.lean) compares `Tgamma.tgamma` natively with the double nearest to `Γ x` from [the gamma reference](GammaReference.lean), and it fails at the first result more than one step away.  Its 74,373 arguments are 30,001 evenly spaced values from -185 to 172 and 20,001 from -4 to 5, 20,000 hashed values over the exponents from `2^-1074` to `2^7` with both signs, the integers from -200 to 172, the five doubles at and around each integer from -190 to 172 and each half-integer from -189.5 to 172.5, the doubles around the thresholds `2^-112`, `1/4`, 3, 4, `0x1.573fae561f648p+7`, and -184 and their negations, the 57 hard cases and their neighbors, the ten inputs of `WorstCases.tgamma`, and 13 special values.  The ten worst-case inputs give the largest known `tgamma` errors in Tables 4 to 11 of Gladman, Innocente, Mather, Ozaki, and Zimmermann's report [10], whose Table 3 lists 0.500 units for GNU libc 2.44 and 1.03e3 for FreeBSD 15.1.  The check also calls `Tgamma.accurate` directly at every eighth ordinary argument from -184 to 171 and at the 57 hard cases, 7,002 arguments, since the fast paths rarely reach it.
+
+The reference computes `lgamma y` for `y > 0` as `lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, Stirling's series with 60 terms and a remainder below `2^-650`, and one logarithm of the exact product, and for `x < 0` the reflection with `Reference.sinCosTurns`.  `Γ` is the exponential of `lgamma` with the sign of `sin (π x)`.  The Bernoulli numbers come in exact fractions from the algorithm that the module attributes to Akiyama and Tanigawa, and a Python model of the reference at 600 bits gave the same doubles as compiled CORE-MATH at 3,500 arguments.  The truncation errors are stated in docstrings and are not proved.
+
+In `ports-TgammaAccuracy-1.log`, in the ports track's worktree, all 74,373 results equal the reference, so the largest measured distance is 0 steps against the decided bound of 1.  The 7,002 results of the accurate path also equal the reference.  The run used the module built without its `verified_compile` call, so it tests the Lean function that the compiler will translate, not compiled WebAssembly.
+
+## Limits
+
+Every result for `tgamma` is a test of the Lean function, and the decided theorems are open.  Until the reflector change is merged and `verified_compile` runs, no WebAssembly module exists.  After that, the limits of the compiled functions apply as for [the exponential](Exp.md#limits): Talos and the decoder are trusted, the file theorem trusts `binary_file%`, the theorems cover the canonical NaN argument only, and host actions between calls need their own theorem.  The port depends on `Fma.fma` at every path, and that function has only a native check, `FmaAccuracy.lean`, which found 763,816 operand triples equal to the exact value rounded to nearest.
+
+The decided bound allows one step where CORE-MATH's code is designed to be correctly rounded, so a proof of the bound will not establish CORE-MATH's claim.  A theorem of correct rounding would need CORE-MATH's search for hard cases as a verified input, which the review did not recommend.  The port drops `errno` and the floating-point exceptions, which C99 and POSIX specify for the poles, the overflow, and the underflow.
+
+## References
+
+1. CORE-MATH, [`src/binary64/tgamma/tgamma.c`](https://gitlab.inria.fr/core-math/core-math/-/blob/ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8/src/binary64/tgamma/tgamma.c), commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`.  Copyright (c) 2024 Alexei Sibidanov, MIT license.
+2. CORE-MATH, [`LICENSE`](https://gitlab.inria.fr/core-math/core-math/-/blob/ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8/LICENSE), same commit.
+3. A. Sibidanov, P. Zimmermann, and S. Glondu, "The CORE-MATH Project", *2022 IEEE 29th Symposium on Computer Arithmetic (ARITH)*, pp. 26–34, 2022, [doi:10.1109/ARITH54963.2022.00014](https://doi.org/10.1109/ARITH54963.2022.00014).  The bibliographic data were confirmed in Crossref and the abstract in Semantic Scholar's record.  HAL refused automated access, so the paper's text was not read.
+4. F. W. J. Olver, A. B. Olde Daalhuis, D. W. Lozier, B. I. Schneider, R. F. Boisvert, C. W. Clark, B. R. Miller, B. V. Saunders, H. S. Cohl, and M. A. McClain, eds., *NIST Digital Library of Mathematical Functions*, Release 1.2.8 of 2026-09-15: [§5.2](https://dlmf.nist.gov/5.2) (5.2.1, Euler's integral), [§5.5](https://dlmf.nist.gov/5.5) (5.5.1, the recurrence, and 5.5.3, the reflection), and [§5.11](https://dlmf.nist.gov/5.11) (5.11.1, Stirling's series, and 5.11(ii), its error bounds for real positive arguments).
+5. The Mathlib Community, Mathlib at commit `85e3a25e006c35636f0e53b0e9296caca2685bc0`: [`Mathlib/Analysis/SpecialFunctions/Gamma/Basic.lean`](https://github.com/leanprover-community/mathlib4/blob/85e3a25e006c35636f0e53b0e9296caca2685bc0/Mathlib/Analysis/SpecialFunctions/Gamma/Basic.lean) (`Real.Gamma`, `Real.Gamma_add_one`, `Real.Gamma_neg_nat_eq_zero`) and [`Mathlib/Analysis/SpecialFunctions/Gamma/Beta.lean`](https://github.com/leanprover-community/mathlib4/blob/85e3a25e006c35636f0e53b0e9296caca2685bc0/Mathlib/Analysis/SpecialFunctions/Gamma/Beta.lean) (`Real.Gamma_mul_Gamma_one_sub`).
+6. IEEE, *IEEE Standard for Floating-Point Arithmetic*, IEEE Std 754-2019, 2019, [doi:10.1109/IEEESTD.2019.8766229](https://doi.org/10.1109/IEEESTD.2019.8766229): clause 4.3.1 (the overflow threshold), clause 5.4.1 (`fusedMultiplyAdd`), and clause 9.2 (the recommended operations, which include no gamma function).
+7. ISO/IEC 9899:1999, *Programming languages — C*, Annex F, clauses F.9 and F.9.5.4, as consolidated in WG14 committee draft [N1256](https://www.open-std.org/jtc1/sc22/wg14/www/docs/n1256.pdf) (September 7, 2007).
+8. The Open Group, *The Open Group Base Specifications Issue 8*, IEEE Std 1003.1-2024, [`tgamma`](https://pubs.opengroup.org/onlinepubs/9799919799/functions/tgamma.html).
+9. WebAssembly Community Group, *WebAssembly Core Specification*, version 3.0: appendix [Profiles](https://webassembly.github.io/spec/core/appendix/profiles.html), in whose deterministic profile "All NaN values generated by floating-point instructions are canonical and positive", and [Numerics](https://webassembly.github.io/spec/core/exec/numerics.html), where for the relaxed multiply-add "In the deterministic profile, the unfused behaviour is used."
+10. B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, ["Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision"](https://members.loria.fr/PZimmermann/papers/accuracy.pdf), August 2026: Table 3 and Tables 4 to 11.
