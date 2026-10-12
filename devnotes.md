@@ -31807,3 +31807,50 @@ The branch `w/strconv` was fast-forwarded to `transcendentals` at `be5749df`, wh
 - [x] Stage 1: `StrconvGrammar`, `StrconvDecode`, `StrconvBinary32`, `StrconvRound`.
 - [x] Stage 1: `StrconvGrid`, `StrconvWords`, `StrconvRational`, `StrconvTruncate`, `StrconvInterval`.
 - [x] Stage 1: `StrconvOfScientific`, `StrconvOfScientific32`.
+
+## 2026-10-12: DFT numerical theorem (track `fourier`)
+
+The user requested concurrent Fourier development and approved resuming the existing quadratic DFT.  I fetched the committed primary revision `f00168a1c972ee768dade41f90d1e25dc2d5f83b` from the build host through Tailscale SSH and created a separate worktree, branch `w/fourier`, on the build host.  The new worktree has its own dependency cache.  Source edits stay in this worktree.
+
+### Approved statement
+
+The user approved finite used inputs, `n ≤ 2^32`, and `GA + H < 2^1022`, where `n = xs.size / 2`, `A` is the sum of the absolute real and imaginary parts, `u = 2^-53`, `η = 2^-1075`, `G = (1 + u)^(n + 2) (1 + 32u)`, and `H = 2n (1 + u)^(n + 1) η`.  Each component's absolute error is at most `(G - 1) A + H`.  The size premise prevents UInt64 index multiplication from wrapping and makes the phase's integer conversions exact.  The magnitude premise proves finiteness of the arithmetic intermediates from the existing operation lemmas.  An odd final float is ignored, as in the source.
+
+[The specification](Verified/Examples/FourierSpec.lean) defines the mathematical real and imaginary DFT coordinates, the input norm, the approved bounds, and `Admissible` and `Accuracy`.  [The numerical theorem](Verified/Examples/FourierTheorem.lean) proves `dft_accuracy (xs) (h : Admissible xs) : Accuracy xs`, including empty inputs.  Its proof combines the actual rounded angle and trigonometric results, the original signed-sine multiplication, complex products and sums, sequential summation, and exact loop/index correspondence.  The mathematical coordinates use the unreduced phase `2πjk/n`; [the periodicity proof](Verified/Examples/FourierMath.lean) equates it to the source's phase indexed by `jk % n`.
+
+The proof sources are `TrigNear`, `LogCoreBits.convert_exact`, `F64Approx`, `F64AddBounds`, `F64PowerScale`, `F64ExactProduct`, `F64NegateOps`, `LeanExe.IR.Combinators`, and Mathlib's trigonometric bounds and periodicity theorems.  The IEEE64 constants come from the pinned CodeLib modules `IEEE64.Roundoff` and `IEEE64.Operations`.
+
+### Accepted results
+
+| Module | Accepted result | Log under `build/fourier/` |
+|---|---|---|
+| `FourierMath` | Specification, phase periodicity, and input-norm nonnegativity | `math-003.log` |
+| `FourierTwiddle` | Each factor coordinate within `32u`, and exact real-value multiplication by minus one | `twiddle-005.log` |
+| `F64SequentialSum` | Finite sequential sum, error at most `((1 + u)^n - 1) B`, magnitude at most `(1 + u)^n B`, under the stated magnitude premise | `sum-build-04.log` |
+| `FourierLoop` | Original array/loop correspondence, size and entries, and nonwrapping indices | `loop-003.log` |
+| `FourierProduct` | The original complex-product coordinate errors and magnitudes | `product-003.log` |
+| `FourierTheorem` | Full approved DFT numerical statement | `theorem-002.log` |
+| `FourierBytes` | Bounds on the owned returned array through the encoded and decoded module | `bytes-numerical-001.log`, then `file-001.log` after the comment edit |
+| `FourierFile` | Kernel-checked equalities for the emitted file and its decoding | `file-001.log` |
+
+Each selected build completed with status zero.  The final numerical, byte, and file declarations report only `propext`, `Classical.choice`, and `Quot.sound`.  The byte theorem retains `Runs true`: a successful call returns an owned array with the numerical bounds and preserves the borrowed input, tables, and prior heap regions, while the theorem permits a trap at `unreachable`.  The input representation and allocator premises are explicit.
+
+`tools/Emit.lean` wrote `build/verified/fourier.wasm` after checking the encoding's decoder round trip.  The 7,811-byte file has SHA-256 `c240e10b64bab46efcabfbe8b75b5c54e5c00ac2eebd58d99f7335f7b1ed0a2a`, equal to the current file on the build host.  `tests/verified/run.sh` gains `fourier:FourierBytes:FourierFile` in its file-theorem loop.
+
+### Failures and corrections
+
+Early proof checks lacked a log directory or compiled imports.  Lake built the required imports before the source checks.  The first specification omitted the IEEE64 mathematical model; the subsequent check found that the sum body needed parentheses and that the underflow constant needed its defining import.  `CodeLib.IEEE64.Operations` supplies that constant.  One specification check reached the runner's lock-wait timeout while the trigonometric prerequisites built.  It executed no Lean target.
+
+The initial exact multiplication proof needed explicit fraction, exponent, and word facts.  The sequential-sum proof needed a typed accumulator, the correct absolute-value lemma, a qualified finiteness definition, and the correct addition-monotonicity orientation.  The loop proof needed a typed array invariant and rewriting after its local definitions reduced.  The complex-product proof needed direct inequalities for the underflow constant and an equality rewrite in the correct direction.  The first complete DFT check distributed the left sum before unfolding the right sum's input norm; changing that order resolved its sole diagnostic.  The failed logs remain beside the accepted logs.
+
+The parent response stream disconnected while the workers preserved their assigned files.  The workers left the complete numerical and byte drafts awaiting the parent's specification repair.  The user's retries resumed that check and integration.  No failed build is recorded as acceptance.
+
+### Remaining work
+
+The numerical theorems of `inverse` and `powerSpectrum` remain open.  An FFT implementation remains planned work.  A no-trap runtime theorem would require a memory-budget statement beyond the allocator premises used here.
+
+- [x] Prove the approved forward DFT theorem.
+- [x] Carry it through compiler correctness and decoding.
+- [x] Prove the emitted-file equalities and add their verification-driver entry.
+- [ ] Agree on and prove the inverse and power-spectrum bounds.
+- [ ] Select and develop an FFT implementation.
