@@ -31263,6 +31263,10 @@ The coordinator approved on 2026-10-12 the hypothesis `SubnormalGap`, which trac
 
 Track `erf` proved the gap as `GammaSubnormal.subnormal_gap` at commit `dc835927` on `w/erf`, with `2 ^ (-1022 : ℤ)` for `2^-1022`, and the reflection path states its hypothesis in that form.  Its tightest point is the double above, with a margin of `2^-52` against a model error below `2^-68`.  `TgammaExpLow.asExpd_low` bounds the low part of `asExpd` by `7.1 · 2^-53` of its high part.  The bounds of `TgammaDD` charge `2^-52` for the error of `fastTwoSum` and for the term `fma ch xh (-a)` of `mulDD`, twice the true `2^-53`, which put the first estimate at `8.03 · 2^-53`, above the `8 · 2^-53` of `2^-50`.  `kernel_low` therefore bounds the low part of `fastTwoSum 1 b1` as the rounding error of `1 + b1`, below `|1 + b1|/2^53` by `F64Approx.fapprox_add`, which gives the margin.  A `positivity` on a term with a table entry reached the maximum recursion depth (`gamma-explow-1.log`), and `div_nonneg` replaced it.
 
+`TgammaReflPath.reflPath_within` proves the path from -184 to -3.  `refl_real` bounds `rh` alone within `24 · 2^-53` of `T = |Γ x| 2^E` relative: about 18.4 units from `pl/ph` and `pil`, 5.1 from the roundings of `1/ph` and `rh`, and 0.08 from the approximations of `log Γ`, `exp`, and `sin`, which leaves 8 units of the gap of 32.  Below -170 the branch with `re ≤ E` then has `|Γ x| ≤ 2^-1022 (1 - 2^-48)` by the gap, so `ub` stays below `2^(E - 1021)`, and the nearest rounding of `ub` against the double `th` keeps it at or above `th`, which places `ub` in the binade of `th` (`sub_ub`).  The other branch has `|Γ x| ≥ 2^-1022 (1 + 2^-48)` and an exponent field of `ub` above `E` (`normal_branch`).  `F64RelativeStep.within_one_relative` needs `|y| ≥ 2^-1000`, while the results reach `2^-1022` near -170 and subnormals below, so `within_one_abs` applies `F64Approx.within_one_of_error` on the binade of the result, with the first binade below `2^-1021 · 4/3`, and `within_low` applies `F64RelativeSteps.within_steps_low` to the subnormal results.
+
+The first build of `sub_branch` exceeded the heartbeat limit of the declaration (`gamma-refl7-2.log`), and replacing its `nlinarith` calls by `linarith` with explicit products and moving the real bounds to `sub_x` and `sub_ub` brought it under.  In `TgammaRefl6` the statement `Finite (w &&& m)` was ambiguous between `CodeLib.IEEE64.Finite` and the root `Finite` (`gamma-refl6-3.log`), and the core lemma for the bits of `2^i a + b` is `Nat.testBit_two_pow_mul_add` (`gamma-bits-1.log`).  `SinpidSpec` states the specification of `asSinpid` in the form sent to track `expm1`, and the final theorem discharges it with that track's theorem, through a short adapter if the forms differ.
+
 In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a new line inside a `linarith` list ended the term at the line break, since the new line was not indented past the column of `linarith`, and `rw [← hWa]` with `hWa : |W| |D| = 1` rewrote every `1` of the goal.  `have` statements before the call and `rw [hWa] at` a stated inequality replaced them.
 
 ### Results
@@ -31307,7 +31311,8 @@ In the first build of `TgammaRefl2` (`gamma-refl1-2.log`), a term continued on a
 | `TgammaAsym6`: `asym_gen`, `lgamma_gt`, `asLgammaAsym_spec` | Committed in `54581917` | `gamma-asym6-2.log` |
 | `TgammaLarge`: `below_t0`, `scale_word`, `field_lower`, `mag_mul`, `mag_add`, `eps_bound`, `large_bound`, `scale_result`, `largePath_within` | Committed in `a5086d5a` | `gamma-large-3.log` |
 | `TgammaRefl1`: `refl_front`, `refl_dx`, `refl_odd`, `refl_gamma`; `TgammaRefl2`: `pi_head`, `pi_tail`, `pi_real`, `pi_div` | Committed in `fb8a7d88` | `gamma-refl1-2.log`, `gamma-refl2-3.log` |
-| `TgammaExpLow`: `tab_ratio`, `mul_lower`, `table_low`, `kernel_low`, `asExpd_low` | Committed with this entry | `gamma-explow-4.log` |
+| `TgammaExpLow`: `tab_ratio`, `mul_lower`, `table_low`, `kernel_low`, `asExpd_low` | Committed in `186f4ed0` | `gamma-explow-4.log` |
+| `TgammaRefl3`: `within_pos`, `within_one_abs`, `within_low`; `TgammaBits`: `and_high`, `and_low`, `field_eq`, `nonPositive_sub`, `value_normal`, `value_sub`, `scale_down`, `th_fields`, `mask_fields`; `TgammaRefl4`: `SinpidSpec`, `SubnormalGap`, `grid`, `sin_lower`, `exp_close`, `ratio_err`; `TgammaRefl5`: `prod_close`, `refl_real`; `TgammaRefl6`: `mag_upper`, `mag_lower`, `normal_branch`, `sign_iff`, `th_value`, `mask_value`; `TgammaRefl7`: `sub_x`, `sub_ub`, `sub_branch`; `TgammaRefl8`: `reflTail`, `refl_gen`, `eps_refl`, `tail_within`; `TgammaRefl9`: `pi_words`, `refl_core1`, `refl_core2`, `refl_gap`; `TgammaReflPath`: `reflPath_within` | Committed with this entry | `gamma-refl-all-1.log` |
 
 The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `| |a| - |b| |` does not parse, and `abs (…)` replaces it.  `push_cast` evaluates `(2 : ℝ) ^ 52` to a numeral, which defeated a later `rw`, so the proof states the power as `2 ^ (53 + g)` in `ℤ` before casting.  `rw [pow_succ]` rewrote the numeral `2 ^ 53` instead of `2 ^ (g + 1)`.
 
@@ -31330,7 +31335,7 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 - [x] The path above 4 (`largePath_within`, given `GammaBelowT0`)
 - [x] The front of the path below -3 and the quotient by `π` (`TgammaRefl1`, `TgammaRefl2`)
 - [x] The low part of `asExpd` below `2^-50` of its high part (`asExpd_low`)
-- [ ] The path below -3, given `SubnormalGap` and the specification of `asSinpid`
+- [x] The path below -3, given `SubnormalGap` and the specification of `asSinpid` (`reflPath_within`)
 - [ ] The accurate path and the database
 - [ ] `tgamma_within_one`
 
