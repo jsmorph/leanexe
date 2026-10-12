@@ -4,7 +4,7 @@
 # ///
 """Generate the piecewise error chains of the Bessel functions below 2.
 
-Usage: uv run tools/bessel/gensmall.py j0|j1|y0 OUTPUT
+Usage: uv run tools/bessel/gensmall.py j0|j1|y0|y1 OUTPUT
 
 The program models each step of `F64Approx` (`fapprox_mul`, `fapprox_div`, `fapprox_add_half`)
 in exact rationals, rounds every error up to a multiple of `u/1000` with `u = 2^-53`, and writes
@@ -162,7 +162,7 @@ def y0_log():
     """The main path for `2^-27 ≤ x ≤ 1/2` with `ℓ = |ln x|`, errors as `α u ℓ + β u`."""
     a = F(1, 2**27); b = F(1, 2)
     ez = b * b * U + ETA
-    lo = a * a * (1 - F(1, 2**50)); hi = b * b * (1 + F(1, 2**50))
+    lo = F(-1, 2**50); hi = b * b * (1 + F(1, 2**50))
     d = dict(k='log', a=a, b=b, lo=lo, hi=hi, ez=ez)
     uv_data(d, lo, hi, ez)
     eL = (F(6, 5) * U, F(1, 2**59))
@@ -508,6 +508,303 @@ theorem log_piece (x J L : Float) (hf : Finite x.toBits) (v : ℝ) (hv : value x
 ''' % d)
     return ''.join(out)
 
+def y1_words():
+    t = table('j1Table')
+    return t[92:97], t[97:102]
+
+def y1_pieces():
+    """`(a, b, c, r, ej, Lm)`: the piece, the check of `A₁` on it in `BesselModSmall1`, the error of
+    `j1` from `BesselJ1Small.j1Err`, and the bound on `ln x`."""
+    return [(F(1), F(9, 8), F(23178, 26795), F(509, 33511), F(174, 100), F(1, 8)),
+            (F(9, 8), F(5, 4), F(25193, 30227), F(1296, 78247), F(174, 100), F(1, 4)),
+            (F(5, 4), F(3, 2), F(64006, 82011), F(2943, 80320), F(226, 100), F(4432, 10000)),
+            (F(3, 2), F(7, 4), F(70216, 99813), F(3938, 97139), F(298, 100), F(5682, 10000)),
+            (F(7, 4), F(15, 8), F(46073, 71796), F(33, 1541), F(389, 100), F(6307, 10000)),
+            (F(15, 8), F(31, 16), F(17848, 29281), F(39, 3557), F(389, 100), F(662, 1000)),
+            (F(31, 16), F(2), F(3431, 5838), F(103, 9299), F(389, 100), F(6932, 10000))]
+
+def y1_piece(k, a, b, c, r, ejr, Lm):
+    """`x (U(z)/V(z)) + tpi (ĵ L̂ - 1/x)` for `a ≤ x ≤ b`."""
+    UW, VW = y1_words()
+    U1 = [wordval(w) for w in UW]; V1 = [F(1)] + [wordval(w) for w in VW]
+    ez = b * b * U + ETA
+    lo = a * a * (1 - F(1, 2**50)); hi = b * b * (1 + F(1, 2**50))
+    d = dict(k=k, a=a, b=b, lo=lo, hi=hi, ez=ez, Lm=Lm, ia=1 / a, ib=1 / b)
+    d.update(horner_data(U1, V1, lo, hi, ez))
+    d['euv'] = up(divE(d['eH'], d['eS'], d['MH'], d['mS']) / U) * U
+    d['Muv'] = up(d['MH'] / d['mS'], 10**6)
+    exuv = up(mulE(0, d['euv'], b, d['Muv']) / U) * U; Mxuv = up(b * d['Muv'], 10**6)
+    Jm = up(b / 2 * (c + r + F(1, 2**99)), 10**4)
+    ej = ejr * U; eLc = F(6, 5) * Lm; eL = eLc * U + F(1, 2**59)
+    ep = up(mulE(ej, eL, Jm, Lm) / U) * U; Mp = up(Jm * Lm, 10**6)
+    assert Mp - 1 / b <= 1 / a
+    einv = up(divE(0, 0, F(1), a) / U) * U
+    Md = 1 / a
+    ed = up((ep + einv + (Md + ep + einv) * U) / U) * U
+    et = up(mulE(TPI_E, ed, TPI_M, Md) / U) * U; Mt = up(TPI_M * Md, 10**6)
+    B = up(Mxuv + Mt + exuv + et, 10**6)
+    eres = up((exuv + et + B * U) / U) * U
+    d.update(exuv=exuv, Mxuv=Mxuv, Jm=Jm, ej=ej, eLc=eLc, ep=ep, Mp=Mp, einv=einv, Md=Md, ed=ed,
+             et=et, Mt=Mt, B=B, eres=eres)
+    return d
+
+VL = F(3679, 10000)   # x |ln x| ≤ 1/e on (0, 1]
+EJ1 = F(14, 10) * U   # BesselJ1Small.j1Err up to 1
+
+def y1_small():
+    """The main path for `2^-54 ≤ x ≤ 1`, errors as `α u/x + β u ℓ + γ u` with `ℓ = |ln x|`."""
+    UW, VW = y1_words()
+    U1 = [wordval(w) for w in UW]; V1 = [F(1)] + [wordval(w) for w in VW]
+    b = F(1)
+    ez = b * b * U + ETA
+    lo = F(-1, 2**50); hi = b * b * (1 + F(1, 2**50))
+    d = dict(k='small', a=F(1, 2**54), b=b, lo=lo, hi=hi, ez=ez)
+    d.update(horner_data(U1, V1, lo, hi, ez))
+    euv = up(divE(d['eH'], d['eS'], d['MH'], d['mS']) / U) * U
+    Muv = up(d['MH'] / d['mS'], 10**6)
+    d.update(euv=euv, Muv=Muv)
+    # x (u/v), with |x| ≤ x ≤ 1
+    cx = up((euv + (Muv + euv) * U + ETA) / U)
+    # ĵ L̂ with |J₁| ≤ 0.51 x, |ln x| = ℓ, x ℓ ≤ VL
+    eLa, eLb = F(6, 5) * U, F(1, 2**59)
+    Jc = F(51, 100)
+    pa = (EJ1 + EJ1 * eLa + EJ1 * (1 + eLa) * U) / U
+    pb = (VL * (Jc * eLa + Jc * (1 + eLa) * U) + Jc * eLb * (1 + U) + EJ1 * eLb * (1 + U) + ETA) / U
+    pa, pb = up(pa), up(pb)
+    # 1/x within (1001/1000) u/x
+    ia = F(1001, 1000)
+    # ĵ L̂ - 1/x, with |J₁ ln x - 1/x| ≤ 0.51 + 1/x
+    da = up(ia + (1 + ia * U))
+    dl = up(pa + pa * U)
+    dk = up(pb + F(51, 100) + pb * U)
+    # tpi (…), with |…| ≤ 0.51 + 1/x
+    te = F(36, 100); tm = TPI_M
+    ta = up(te + tm * da + te * U * da + (tm + te * U) * (1 + da * U))
+    tl = up(tm * dl + te * U * dl + (tm + te * U) * dl * U)
+    tk = up(te * F(51, 100) + tm * dk + te * U * dk + (tm + te * U) * (F(51, 100) + dk * U) + ETA / U)
+    # x (u/v) + tpi (…), with B = Muv + tm (0.51 + 1/x) + cx u + et
+    ra = up(ta + tm + ta * U)
+    rl = up(tl + tl * U)
+    rk = up(cx + tk + Muv + tm * F(51, 100) + cx * U + tk * U)
+    d.update(cx=cx, pa=pa, pb=pb, ia=ia, da=da, dl=dl, dk=dk, ta=ta, tl=tl, tk=tk, ra=ra, rl=rl, rk=rk)
+    return d
+
+def lean_y1(pieces, sm):
+    UW, VW = y1_words()
+    out = ['''import Verified.Examples.BesselSmallY0
+
+/-!
+The main path of `Bessel.y1` below 2, `x (U(z)/V(z)) + tpi (ĵ L̂ - 1/x)` with `z = x x`, for
+doubles `ĵ` and `L̂` within given errors of `J₁(x)` and `ln x`.  Each lemma `piece_k` follows it
+through `F64Approx` on one range of `x` from 1 to 2, with the Horner bounds that the kernel checks
+on that range (`facts_k`), `|J₁| ≤ Jm`, and `|ln x| ≤ Lm`; `small_piece` covers `2^-54 ≤ x ≤ 1`
+with the error as `α u/x + β u ℓ + γ u` for `ℓ = |ln x|`, from `|J₁(x)| ≤ 0.51 x` and
+`x ℓ ≤ 0.3679`.  `code_eq` reads the coefficients from `Bessel.j1Table`.  This file is generated
+by `tools/bessel/gensmall.py`.
+-/
+
+namespace Verified.Examples.BesselSmallY1
+open CodeLib.IEEE64 LeanExe.ProofKit PolyBound PolyCalculus F64Approx F64HalfUlp F64Horner
+  BesselPQEval BesselPQRange BesselCS BesselSmallEval BesselSmallApprox BesselJ0Large BesselSmallJ0
+  BesselCombine BesselSmallY0 Real
+open LeanExe.ProofKit.Bessel LeanExe.ProofKit.EntireSeries
+
+local notation "𝐮" => unitRoundoff64
+
+set_option exponentiation.threshold 2048
+
+def u1w : List UInt64 := [%s]
+def v1w : List UInt64 := [%s]
+
+theorem words : (∀ w ∈ u1w, Finite w) ∧ (∀ w ∈ v1w, Finite w) := by
+  unfold CodeLib.IEEE64.Finite
+  decide
+
+theorem lists : u1w.map ratOfWord = U1 ∧ 1 :: v1w.map ratOfWord = V1 := ⟨rfl, rfl⟩
+
+/-- The table entries 92 to 101 of `j1Table` as the Horner forms of `U` and `V`. -/
+theorem code_eq (z : Float) :
+    Bessel.entry Bessel.j1Table 92 + z * (Bessel.entry Bessel.j1Table 93 +
+        z * (Bessel.entry Bessel.j1Table 94 + z * (Bessel.entry Bessel.j1Table 95 +
+        z * Bessel.entry Bessel.j1Table 96))) = hornerF (u1w.map Float.ofBits) z ∧
+      1.0 + z * (Bessel.entry Bessel.j1Table 97 + z * (Bessel.entry Bessel.j1Table 98 +
+        z * (Bessel.entry Bessel.j1Table 99 + z * (Bessel.entry Bessel.j1Table 100 +
+        z * Bessel.entry Bessel.j1Table 101)))) = hornerF (1.0 :: v1w.map Float.ofBits) z :=
+  ⟨rfl, rfl⟩
+
+theorem uv_at (zf : Float) (hzf : Finite zf.toBits) (z δ : ℝ) (lo hi : ℚ)
+    (hR : hornerOK U1 lo hi = true) (hS : hornerOK V1 lo hi = true)
+    (h1 : (lo : ℝ) ≤ value zf.toBits) (h2 : value zf.toBits ≤ hi) (h3 : (lo : ℝ) ≤ z)
+    (h4 : z ≤ hi) (hδ : |value zf.toBits - z| ≤ δ) :
+    FApprox (hornerF (u1w.map Float.ofBits) zf) (eval U1 z)
+        (hornerErr U1 lo hi + magBound (derivP U1) lo hi * δ) ∧
+      FApprox (hornerF (1.0 :: v1w.map Float.ofBits) zf) (eval V1 z)
+        (hornerErr V1 lo hi + magBound (derivP V1) lo hi * δ) := by
+  obtain ⟨wr, ws⟩ := words
+  obtain ⟨b1, b2⟩ := words_rel u1w wr
+  obtain ⟨c1, c2⟩ := words_rel_one v1w ws
+  exact ⟨horner_at _ _ U1 b1 b2 (by decide) lo hi hR zf hzf z δ h1 h2 h3 h4 hδ,
+    horner_at _ _ V1 c1 c2 (by decide) lo hi hS zf hzf z δ h1 h2 h3 h4 hδ⟩
+''' % (', '.join('0x%016X' % w for w in UW), ', '.join('0x%016X' % w for w in VW))]
+    for p in pieces + [sm]:
+        d = fmt(p, rats=('lo', 'hi', 'LR', 'LS', 'MH', 'mS', 'eRh', 'eSh'))
+        out.append(facts_text('facts_%s' % p['k'], 'U1', 'V1', d))
+    head = '''  have hu : 𝐮 = 1 / 2 ^ 53 := rfl
+  have hu0 : (0 : ℝ) ≤ 𝐮 := by rw [hu]; positivity
+  obtain ⟨k1, k2, e1, e2, e3, e4, e5, e6⟩ := facts_%(k)s
+  have hx0 : FApprox x (value x.toBits) 0 := fapprox_exact x hf
+  subst hv
+  set v := value x.toBits
+  have hx : FApprox x v 0 := hx0
+  have hz := sq_near x hf %(br)s (by rw [abs_of_nonneg (by linarith)]; exact hb) (by norm_num)
+  set z := v ^ 2 with hzd
+  have hza : %(ar)s ^ 2 ≤ z := by nlinarith
+  have hzb : z ≤ %(br)s ^ 2 := by nlinarith
+  have hzv := abs_le.mp hz.2
+  obtain ⟨hR, hS⟩ := uv_at (x * x) hz.1 z _ %(loq)s %(hiq)s k1 k2
+    (by push_cast; norm_num at hzv hza ⊢; linarith) (by push_cast; norm_num at hzv hzb ⊢; linarith)
+    (by push_cast; norm_num at hza ⊢; linarith) (by push_cast; norm_num at hzb ⊢; linarith) hz.2
+'''
+    uvq = '''  have hq := fapprox_div hH hS' %(MHr)s %(mSr)s hHm hSm (by rw [hu]; norm_num) _ le_rfl
+    (by rw [hu]; norm_num)
+  have hq' : FApprox (hornerF (u1w.map Float.ofBits) (x * x) /
+      hornerF (1.0 :: v1w.map Float.ofBits) (x * x)) (eval U1 z / eval V1 z) (%(euvu)s) :=
+    fmono hq (by rw [hu]; norm_num)
+  have hqm : |eval U1 z / eval V1 z| ≤ %(Muvr)s := by
+    rw [abs_div]
+    exact (div_le_div₀ (by norm_num) hHm (by norm_num) hSm).trans (by norm_num)
+'''
+    for p in pieces:
+        d = fmt(p, reals=('a', 'b', 'MH', 'mS', 'Muv', 'Mxuv', 'Jm', 'Lm', 'Mp', 'Mt', 'B', 'eLc',
+                          'ia', 'ib'),
+                rats=('lo', 'hi', 'LR', 'LS', 'MH', 'mS', 'eRh', 'eSh'),
+                errs=('eH', 'eS', 'euv', 'exuv', 'ej', 'ep', 'einv', 'ed', 'et', 'eres'))
+        d['k'] = str(p['k'])
+        out.append('''
+/-- The main path of `y1` for `%(a)s ≤ x ≤ %(b)s`. -/
+theorem piece_%(k)s (x J L : Float) (hf : Finite x.toBits) (v : ℝ) (hv : value x.toBits = v)
+    (ha : %(ar)s ≤ v) (hb : v ≤ %(br)s) (hJ : FApprox J (J1 v) (%(eju)s)) (hJm : |J1 v| ≤ %(Jmr)s)
+    (hL : FApprox L (Real.log v) (%(eLcr)s * 𝐮 + 1 / 2 ^ 59)) (hLm : |Real.log v| ≤ %(Lmr)s)
+    (hp0 : 0 ≤ J1 v * Real.log v) :
+    FApprox (x * (hornerF (u1w.map Float.ofBits) (x * x) /
+        hornerF (1.0 :: v1w.map Float.ofBits) (x * x)) + Bessel.tpi * (J * L - 1.0 / x))
+      (v * (eval U1 (v ^ 2) / eval V1 (v ^ 2)) + 2 / π * (J1 v * Real.log v - 1 / v))
+      (%(eresu)s) := by
+''' % d)
+        out.append(head % d)
+        out.append(horner_steps('U1', 'V1', 'u1w', 'v1w', 'x * x', d))
+        out.append(uvq % d)
+        out.append('''  have hvb : |v| ≤ %(br)s := by rw [abs_of_nonneg (by linarith)]; exact hb
+  have hxq := fapprox_mul hx hq' %(br)s %(Muvr)s hvb hqm _ le_rfl (by rw [hu]; norm_num)
+  have hxq' : FApprox (x * (hornerF (u1w.map Float.ofBits) (x * x) /
+      hornerF (1.0 :: v1w.map Float.ofBits) (x * x))) (v * (eval U1 z / eval V1 z)) (%(exuvu)s) :=
+    fmono hxq (by rw [hu]; norm_num)
+  have hxqm : |v * (eval U1 z / eval V1 z)| ≤ %(Mxuvr)s := by
+    rw [abs_mul]; exact (mul_le_mul hvb hqm (abs_nonneg _) (by norm_num)).trans (by norm_num)
+  have hp := fapprox_mul hJ hL %(Jmr)s %(Lmr)s hJm hLm _ le_rfl (by rw [hu]; norm_num)
+  have hp' : FApprox (J * L) (J1 v * Real.log v) (%(epu)s) := fmono hp (by rw [hu]; norm_num)
+  have hpm : |J1 v * Real.log v| ≤ %(Mpr)s := by
+    rw [abs_mul]; exact (mul_le_mul hJm hLm (abs_nonneg _) (by norm_num)).trans (by norm_num)
+  have hinv := fapprox_div fapprox_one hx 1 %(ar)s (by norm_num)
+    (by rw [abs_of_pos (by linarith)]; exact ha) (by norm_num) _ le_rfl (by norm_num)
+  have hinv' : FApprox (1.0 / x) (1 / v) (%(einvu)s) := fmono hinv (by rw [hu]; norm_num)
+  have hiv1 : 1 / v ≤ %(iar)s := by
+    have := one_div_le_one_div_of_le (by norm_num) ha
+    norm_num at this ⊢; linarith
+  have hiv2 : %(ibr)s ≤ 1 / v := by
+    have := one_div_le_one_div_of_le (by linarith) hb
+    norm_num at this ⊢; linarith
+  have hdm : |J1 v * Real.log v - 1 / v| ≤ %(iar)s := by
+    have h1 := (abs_le.mp hpm).2
+    have h2 : %(Mpr)s - %(ibr)s ≤ %(iar)s := by norm_num
+    rw [abs_le]; constructor <;> linarith
+  have hd := fapprox_sub hp' hinv' (%(iar)s + (%(epu)s + %(einvu)s)) (by linarith)
+    (by rw [hu]; norm_num)
+  have hd' : FApprox (J * L - 1.0 / x) (J1 v * Real.log v - 1 / v) (%(edu)s) :=
+    fmono hd (by rw [hu]; norm_num)
+  have ht := fapprox_mul tpi_near hd' (6367 / 10000) %(iar)s tpi_le hdm _ le_rfl
+    (by rw [hu]; norm_num)
+  have ht' : FApprox (Bessel.tpi * (J * L - 1.0 / x)) (2 / π * (J1 v * Real.log v - 1 / v))
+      (%(etu)s) := fmono ht (by rw [hu]; norm_num)
+  have htm : |2 / π * (J1 v * Real.log v - 1 / v)| ≤ %(Mtr)s := by
+    rw [abs_mul]; exact (mul_le_mul tpi_le hdm (abs_nonneg _) (by norm_num)).trans (by norm_num)
+  have hres := fapprox_add hxq' ht' %(Br)s (by
+    have h1 := abs_add_le (v * (eval U1 z / eval V1 z)) (2 / π * (J1 v * Real.log v - 1 / v))
+    have h2 : %(exuvu)s + %(etu)s ≤ %(Br)s - (%(Mxuvr)s + %(Mtr)s) := by rw [hu]; norm_num
+    linarith) (by norm_num)
+  exact fmono hres (by rw [hu]; norm_num)
+''' % d)
+    d = fmt(sm, reals=('a', 'b', 'MH', 'mS', 'Muv', 'cx', 'pa', 'pb', 'ia', 'da', 'dl', 'dk', 'ta',
+                       'tl', 'tk', 'ra', 'rl', 'rk'),
+            rats=('lo', 'hi', 'LR', 'LS', 'MH', 'mS', 'eRh', 'eSh'), errs=('eH', 'eS', 'euv'))
+    d['k'] = 'small'
+    out.append('''
+/-- The main path of `y1` for `2^-54 ≤ x ≤ 1`, with `ℓ = |ln x|`. -/
+theorem small_piece (x J L : Float) (hf : Finite x.toBits) (v : ℝ) (hv : value x.toBits = v)
+    (ha : %(ar)s ≤ v) (hb : v ≤ %(br)s) (ℓ : ℝ) (hℓ : |Real.log v| = ℓ) (hℓ1 : ℓ ≤ 38)
+    (hvl : v * ℓ ≤ 3679 / 10000) (hJ : FApprox J (J1 v) (14 / 10 * 𝐮)) (hJm : |J1 v| ≤ 51 / 100 * v)
+    (hL : FApprox L (Real.log v) (6 / 5 * 𝐮 * ℓ + 1 / 2 ^ 59)) :
+    FApprox (x * (hornerF (u1w.map Float.ofBits) (x * x) /
+        hornerF (1.0 :: v1w.map Float.ofBits) (x * x)) + Bessel.tpi * (J * L - 1.0 / x))
+      (v * (eval U1 (v ^ 2) / eval V1 (v ^ 2)) + 2 / π * (J1 v * Real.log v - 1 / v))
+      (%(rar)s * 𝐮 * (1 / v) + %(rlr)s * 𝐮 * ℓ + %(rkr)s * 𝐮) := by
+  have hℓ0 : 0 ≤ ℓ := by rw [← hℓ]; exact abs_nonneg _
+  have hv0 : 0 < v := lt_of_lt_of_le (by norm_num) ha
+''' % d)
+    out.append(head % d)
+    out.append(horner_steps('U1', 'V1', 'u1w', 'v1w', 'x * x', d))
+    out.append(uvq % d)
+    out.append('''  have hy1 : 1 ≤ 1 / v := by rw [le_div_iff₀ hv0]; linarith
+  have hy54 : 1 / v ≤ 2 ^ 54 := by rw [div_le_iff₀ hv0]; norm_num at ha ⊢; linarith
+  have hvb : |v| ≤ v := le_of_eq (abs_of_pos hv0)
+  have hxq := fapprox_mul hx hq' v %(Muvr)s hvb hqm _ le_rfl (by rw [hu]; linarith)
+  have hxq' : FApprox (x * (hornerF (u1w.map Float.ofBits) (x * x) /
+      hornerF (1.0 :: v1w.map Float.ofBits) (x * x))) (v * (eval U1 z / eval V1 z)) (%(cxr)s * 𝐮) :=
+    fmono hxq (by rw [hu]; linarith)
+  have hxqm : |v * (eval U1 z / eval V1 z)| ≤ %(Muvr)s := by
+    rw [abs_mul, abs_of_pos hv0]
+    calc v * |eval U1 z / eval V1 z| ≤ 1 * %(Muvr)s :=
+          mul_le_mul hb hqm (abs_nonneg _) zero_le_one
+      _ = %(Muvr)s := one_mul _
+  have hp := fapprox_mul hJ hL (51 / 100 * v) ℓ hJm (le_of_eq hℓ) _ le_rfl (by rw [hu]; linarith)
+  have hp' : FApprox (J * L) (J1 v * Real.log v) (%(par)s * 𝐮 * ℓ + %(pbr)s * 𝐮) :=
+    fmono hp (by rw [hu]; linarith)
+  have hpm : |J1 v * Real.log v| ≤ 51 / 100 := by
+    rw [abs_mul, hℓ]
+    have := mul_le_mul_of_nonneg_right hJm hℓ0
+    linarith
+  have hinv := fapprox_div fapprox_one hx 1 v (by norm_num) (le_abs_self v) hv0 _ le_rfl (by
+      have : (1 + 0) / (v - 0) = 1 / v := by ring
+      rw [this]
+      linarith)
+  have hinv' : FApprox (1.0 / x) (1 / v) (%(iar)s * 𝐮 * (1 / v)) := by
+    refine fmono hinv ?_
+    calc _ = 1 / v / 2 ^ 53 + 1 / 2 ^ 1075 := by ring
+      _ ≤ %(iar)s * 𝐮 * (1 / v) := by rw [hu]; linarith
+  have hdm : |J1 v * Real.log v - 1 / v| ≤ 51 / 100 + 1 / v := by
+    have := abs_sub (J1 v * Real.log v) (1 / v)
+    rw [abs_of_pos (one_div_pos.mpr hv0)] at this
+    linarith
+  have hd := fapprox_sub hp' hinv'
+    (51 / 100 + 1 / v + (%(par)s * 𝐮 * ℓ + %(pbr)s * 𝐮 + %(iar)s * 𝐮 * (1 / v))) (by linarith)
+    (by rw [hu]; linarith)
+  have hd' : FApprox (J * L - 1.0 / x) (J1 v * Real.log v - 1 / v)
+      (%(dar)s * 𝐮 * (1 / v) + %(dlr)s * 𝐮 * ℓ + %(dkr)s * 𝐮) := fmono hd (by rw [hu]; linarith)
+  have ht := fapprox_mul tpi_near hd' (6367 / 10000) (51 / 100 + 1 / v) tpi_le hdm _ le_rfl
+    (by rw [hu]; linarith)
+  have ht' : FApprox (Bessel.tpi * (J * L - 1.0 / x)) (2 / π * (J1 v * Real.log v - 1 / v))
+      (%(tar)s * 𝐮 * (1 / v) + %(tlr)s * 𝐮 * ℓ + %(tkr)s * 𝐮) := fmono ht (by rw [hu]; linarith)
+  have htm : |2 / π * (J1 v * Real.log v - 1 / v)| ≤ 6367 / 10000 * (51 / 100 + 1 / v) := by
+    rw [abs_mul]; exact mul_le_mul tpi_le hdm (abs_nonneg _) (by norm_num)
+  have hres := fapprox_add hxq' ht'
+    (%(Muvr)s + 6367 / 10000 * (51 / 100 + 1 / v) +
+      (%(cxr)s * 𝐮 + (%(tar)s * 𝐮 * (1 / v) + %(tlr)s * 𝐮 * ℓ + %(tkr)s * 𝐮))) (by
+      have := abs_add_le (v * (eval U1 z / eval V1 z)) (2 / π * (J1 v * Real.log v - 1 / v))
+      linarith) (by rw [hu]; linarith)
+  exact fmono hres (by rw [hu]; linarith)
+''' % d)
+    return ''.join(out)
+
 def lean_j1(pieces):
     out = []
     out.append('''import Verified.Examples.BesselSmallJ0
@@ -689,6 +986,19 @@ end Verified.Examples.BesselSmallJ0Form2
 #print axioms log_piece
 
 end Verified.Examples.BesselSmallY0
+''' % '\n'.join('#print axioms piece_%d' % p['k'] for p in ps)
+        open(outp, 'w').write(src)
+    if which == 'y1':
+        ps = [y1_piece(k, *t) for k, t in enumerate(y1_pieces())]
+        sm = y1_small()
+        for p in ps:
+            print('y1 piece', p['k'], p['a'], p['b'], 'error %.3f u' % float(p['eres'] / U), file=sys.stderr)
+        print('y1 small piece: %.3f u/x + %.3f u l + %.3f u' % (sm['ra'], sm['rl'], sm['rk']), file=sys.stderr)
+        src = lean_y1(ps, sm) + '''
+%s
+#print axioms small_piece
+
+end Verified.Examples.BesselSmallY1
 ''' % '\n'.join('#print axioms piece_%d' % p['k'] for p in ps)
         open(outp, 'w').write(src)
     if which == 'j1':

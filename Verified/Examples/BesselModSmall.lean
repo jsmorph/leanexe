@@ -1,16 +1,16 @@
 import Verified.Examples.BesselSmallApprox
 
 /-!
-Lower bounds on the moduli below 2, sharper than those of `BesselModulus`, for the units of the
-theorems on `j0`, `y0`, `j1`, and `y1`.  The series with 18 terms become polynomials in `x`
-(`inx`, `J1x`), and kernel checks (`PolyBound.check`) bound them on pieces:
+Lower bounds on the modulus of order 0 below 2, sharper than those of `BesselModulus`, for the
+units of the theorems on `j0` and `y0`.  Kernel checks (`PolyBound.check`) bound the series `J₀`
+and `C₀` of `Y₀` with 18 terms as polynomials in `ζ = x²/4` on pieces:
 
 * `modulus0_half`: `√(J₀² + Y₀²) ≥ 1/2` on `[0, 2]`, from `J₀ ≥ 1/2` up to `3/2` and, on four
   pieces from `3/2` to 2, from lower bounds on `J₀`, on the series `C₀` of `Y₀`, and on
   `ln (x/2) + γ`;
-* `Y0_log`: `Y₀(x) ≤ 0.597 ln x` for `0 < x ≤ 1/2`, so the modulus grows with `|ln x|`;
-* `J1_pieces`: `J₁` at least `0.4397`, `0.5103`, `0.5576`, and `0.5764` on `[1, 5/4]`,
-  `[5/4, 3/2]`, `[3/2, 15/8]`, and `[15/8, 2]`.
+* `Y0_log`: `Y₀(x) ≤ 0.597 ln x` for `0 < x ≤ 1/2`, so the modulus grows with `|ln x|`.
+
+`BesselModSmall1` gives the bounds of order 1.
 -/
 
 namespace Verified.Examples.BesselModSmall
