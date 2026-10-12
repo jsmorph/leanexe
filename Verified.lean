@@ -66,6 +66,8 @@ import Verified.Examples.AsinBytes
 import Verified.Examples.TanTheorem
 import Verified.Examples.SinhBytes
 import Verified.Examples.SinpiTheorem
+import Verified.Examples.AsinhBytes
+import Verified.Examples.TgammaApprox
 import Verified.Examples.Tgamma
 import Verified.Examples.Lgamma
 import Verified.Examples.Bessel
@@ -73,3 +75,12 @@ import Verified.Examples.Erfc
 import Verified.Examples.FmaSpec
 import Verified.Examples.GammaReference
 import Verified.Examples.BesselReference
+import Verified.Examples.BesselJ0Theorem
+import Verified.Examples.BesselJ1Theorem
+import Verified.Examples.BesselY0Theorem
+import Verified.Examples.BesselY1Theorem
+import Verified.Examples.FmaSpecTheorem
+import Verified.Examples.LgammaApprox
+import Verified.Examples.LgammaSpecial
+import Verified.Examples.TgammaMul
+import Verified.Examples.TgammaSmallPath
