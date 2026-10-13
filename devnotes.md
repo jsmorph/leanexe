@@ -31495,3 +31495,23 @@ The kernel modules replaced `first | (field_simp; done) | (field_simp; ring)` wi
 | `TgammaLogTables` | Passed in 42 s | `erf-gamma-70.log` |
 | `TgammaExpTables` | Passed in 32 s | `erf-gamma-71.log` |
 | `TgammaApprox`, `TgammaFacts` | Passed; `allFacts` with the standard axioms | `erf-gamma-72.log` |
+
+## 2026-10-13: Recovery of track `erf` after two copies of its agent ran at once
+
+On 2026-10-12 two copies of the track's agent worked in a separate worktree at the same time.  The coordinator's message to the agent while its build queue was pending started a second copy from an old summary, and that copy overwrote `Verified/Examples/LgammaDb.lean` and created `Verified/Examples/LgammaCancel.lean` before it noticed the other copy.  It restored `LgammaDb.lean` to its committed version and deleted `LgammaCancel.lean`, so the queue's build of `LgammaCancel` (318) found no source.  The coordinator stopped the agent, and the user directed that the work continue without agents.
+
+The build queue of `erf-after198.sh` ran builds 256 to 324 unattended.  Fifty-nine modules built with only `propext`, `Classical.choice`, and `Quot.sound`, and this commit records them with `F64Grid` and `LgammaData`, which they import: `LgammaSmallFact` (`SmallFact`), `LgammaAccSmall` (the first clause of `AccPolyFact`), `LgammaPiece4` and `LgammaPiecesA` to `E` (the fast path's pieces other than 10), `LgammaSinpiAcc` (the kernels of `as_sinpipid_accurate`), `LgammaAsymMidA` to `C` and `LgammaAsymLowA` to `H` (the accurate Stirling fit from `15/4` to 48), and `LgammaRootC`, `LgammaRootE`, and `LgammaRootF` (`RootFact` on six of its ranges).  Ten modules failed and stay uncommitted.
+
+| Build | Module | Failure |
+|---|---|---|
+| 272 | `LgammaPiece10` | the last tactic has no goal left, so the module reports `sorryAx` |
+| 300 | `LgammaSinpiTables` | a `rewrite` finds no instance |
+| 301 | `LgammaLogAcc` | a `rewrite` finds no instance |
+| 315, 316 | `LgammaZerosA`, `LgammaZerosB` | the namespace `GammaThresholds` is opened without its import |
+| 317 | `LgammaCancelTail` | `linarith` fails |
+| 318 | `LgammaCancel` | the source file is missing |
+| 319, 320, 322 | `LgammaRootA`, `LgammaRootB`, `LgammaRootD` | the 20-minute limit |
+
+- [x] Commit the accepted modules with `Lgamma.md` and this entry.
+- [ ] Merge `transcendentals` at `e1fbb1ae` and prove `ExpFact` from `exp_poly_wide`.
+- [ ] Repair the ten failed modules, write `LgammaCancel` for the call in `LgammaFacts`, and build `LgammaFacts`.
