@@ -52,8 +52,8 @@ tables of hard cases are loops over all rows, with the same results since their 
 The dialect has no floating-point flags and no `errno`, so the tests and assignments of the
 underflow flag and of `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
-module has no `verified_compile` call: it waits for the change of the reflector that `Tgamma.lean`
-describes.  `ErfcAccuracy.lean` checks the results against `ErfReference`. -/
+`verified_compile` call at the end of the module needs about 5.25 GB, more than the runner's
+default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more.  `ErfcAccuracy.lean` checks the results against `ErfReference`. -/
 
 namespace Verified.Examples.Erfc
 

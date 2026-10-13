@@ -21,10 +21,9 @@ calls `Tgamma`'s double-double helpers, `roundEven`, `floorF`, and `asSinpid`, a
 The global `signgam` is the second result of `lgammaWith`.  C's 32-bit `unsigned` arithmetic of the
 piece index does not overflow for these arguments, so the port computes it in words, and the final
 test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask, masks with `0xFFFFFFFF`.
-The `verified_compile` call at the end of the module is commented out: it waits for a change of the
-reflector, whose time and memory for a function grow faster than linearly with its number of `let`
-bindings, so that this module's call exceeds the build's memory limit.  The journal records the
-measurements.  `LgammaAccuracy.lean` checks the results against a reference computed with Lean's
+The `verified_compile` call at the end of the module needs about 7.1 GB, more than the runner's
+default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more, and its
+elaboration needs more than the default 200,000 heartbeats.  The journal records the measurements.  `LgammaAccuracy.lean` checks the results against a reference computed with Lean's
 integers. -/
 
 namespace Verified.Examples.Lgamma
