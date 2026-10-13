@@ -31368,6 +31368,59 @@ The divided differences next to the zeros 1 and 2 need the logarithms of the shi
 | `TgammaAccRangeA` | Kernel checks passed; `norm_num` failed on `2 ^ 943` | `erf-gamma-59.log` |
 | `TgammaAccRangeA` | Passed in 405 s, with linter warnings | `erf-gamma-60.log` |
 | `TgammaAccRangeB` | Passed in 457 s | `erf-gamma-61.log` |
+| `TgammaAccRangeC`, with `GammaDD`, `GammaRel`, and `GammaScaled` rebuilt | Passed in 757 s | `erf-gamma-62.log` |
+| `GammaFitsX`, `GammaConvex`, `GammaReflect`, `GammaDDCover`, `LgammaRootBase`; `GammaRoot`; `F64Grid` | Passed; an `obtain` pattern with one bracket too many; an unreachable alternative after `field_simp` | `erf-gamma-63.log` |
+| `TgammaAccRangeA`, `TgammaAccRangeB` again | Passed in 400 s and 468 s, without warnings | `erf-gamma-65.log`, `erf-gamma-66.log` |
+
+- [x] `AccRangeFact`'s nine ranges (`TgammaAccRangeA` to `TgammaAccRangeC`).
+- [x] `LogFact`, `ExpFact`, `SinFact` (`TgammaLogTables`, `TgammaExpTables`, `TgammaSinTables`), and `TgammaFacts.allFacts`.
+
+Track `arc` widened the last conjunct of `ExpFact` to `|X| ≤ 5/8` at commit `ef012e60` on `w/poly`, since `asLogd`'s unnormalized low part reaches `asExpd`'s kernel.  `TgammaExpTables.exp_poly` now holds on `|X| ≤ 5/8`, where the Taylor model of degree 12 passes the bound `2 ^ -74` at depth 0 with a model error of `8 · 10 ^ -31`, and `TgammaFacts.exp_poly_wide` states the widened conjunct against `TgammaApprox.expPoly`.  The coordinator also asked for `Γ` at the double before the overflow threshold, which `GammaBelowT0.gamma_below_t0` bounds by `2 ^ 1024 (1 - 2 ^ -50)`.  Its kernel check compares an upper bound on `lgamma` there with `1024 ln 2 - 2 ^ -49`, and in 90-digit arithmetic `Γ` there is `2 ^ 1024 (1 - 4.79 · 10 ^ -14)`.
+
+`GammaBelowT0` passed on its third build (`erf-gamma-85.log`).  The first two failed at the kernel check of the upper bound on `ln (tp/128)` (`erf-gamma-73.log`, `erf-gamma-79.log`): the constant `logTpHi` paired the numerator of a bound scaled by `2 ^ 95` with the exponent `2 ^ -100`, so it stood at 0.0092 against `ln (tp/128) = 0.2933`.  With the numerator `371773994577497367164629430625` over `2 ^ 100` the series check of the exponential passes, and Stirling's bound lies `4.61 · 10 ^ -14` below `1024 ln 2 - 2 ^ -49` in exact rational arithmetic.
+
+The fast path's Stirling fit for `lgamma` does not meet `GammaFits.fit_large`'s bound from 16 on.  Its constant differs from `(ln (2π) - 1)/2` by `2 ^ -54.7`, and its polynomial differs from Stirling's twelve coefficients by an amount that offsets the constant near 16, so the two errors must be bounded together.  `GammaFitsX.fit_range` checks the single polynomial `(m - C0) + t (S - P) (t²)` in `t = 1/x` on a range `[1/X2, 1/X1]`, with `m` the center of the rational enclosure of `(ln (2π) - 1)/2`, and adds the enclosure's radius and Stirling's remainder at `X1`.  `LgammaStirLarge` covers `x ≥ 16` with ten ranges and makes each bound relative with a point value of `lgamma` at the range's left end.  In 70-digit arithmetic the error reaches 0.62 of the allowed `7 · 10 ^ -20 lgamma x` near `x = 96` and tends to the constant's gap divided by `lgamma x`.  The module's first build failed on two points (`erf-gamma-77.log`): the toolchain's Mathlib no longer has `le_or_lt`, which the modules now replace with `le_or_gt`, and `exact` did not unify the cast `((rel : ℚ) : ℝ)` in `range_rel`'s conclusion with the real literal of the statement, which left `x` a metavariable, so the cover now names `x` and normalizes both sides with `push_cast`.
+
+`RootFact` needs `lgamma` on intervals of negative numbers, and a bound at each zero, where no relative bound holds.  `GammaRoot.negVar` models `lgamma (-n - (δ + t))` through the reflection, with the sine's argument reduced as in `GammaReflect`, and `rootOk` checks `|T - U| ≤ s0 + ε σ T` and `σ T ≥ m0` for Taylor models `T` of `lgamma` and `U` of the polynomial, which gives `|lgamma x - Q x| ≤ ε' |lgamma x| + S`.  On each of the 17 ranges, values of `lgamma` at two points `A` and `B` beyond `±1.02 (1 + 2 ^ -40) afh` and at the end of the range away from the pole, with the convexity of `lgamma` between two poles, confine the hypothesis `|lgamma x| ≤ (1 + 2 ^ -40) afh` to `[A, B]` (`root_domain_dec`, `root_domain_inc`).  A model at 150 bits, with `log 2` within `2 ^ -150` and at least 55 after the shifts, bounds the polynomial within `2 ^ -120` absolutely where `|lgamma| ≤ 2 ^ -24` about the stored zero, and models at 120 bits with at least 22 after the shifts bound it within `2 ^ -63` relative on three to five pieces on each side.  In 80-digit arithmetic `lgamma` at the 17 stored zeros lies between `2 ^ -160` and `2 ^ -137`, and the absolute bounds of the center pieces are at most `2 ^ -121.7`.  `GammaRoot`'s first builds failed on an `obtain` pattern and on a `rw` that met the abbreviation `set` had introduced, and it passed once the proof rewrote with the abbreviation's definition first (`erf-gamma-74.log`, `erf-gamma-81.log`, `erf-gamma-86.log`).
+
+The pieces 4 and 10 reach a relative error of `7.8 · 10 ^ -20` at their left ends, where the divided difference is largest, so an absolute bound on the divided difference does not give `12 · 10 ^ -20` relative over the whole piece.  `LgammaPiece4` and `LgammaPiece10` check the divided difference relative to itself (`GammaRel.ddRelOk`) for `|s| ≥ 2 ^ -69`, and `GammaDDCover.dd_rel_fact` covers `|s| < 2 ^ -69` from the bounds at `±2 ^ -69` and the variation of the polynomial there.  The resulting bounds are `1.14 · 10 ^ -19` and `1.12 · 10 ^ -19` relative.  The piece next to zero on each side has radius `2 ^ -12` and degree 7 and needs about 70 shifts, since the Stirling remainder enters divided by `|s| ≥ 2 ^ -69`, and the outer pieces need 15 or 16.  As single modules the two pieces stopped at the memory limit with a third of a CPU, after two and five minutes (`erf-gamma-83.log`, `erf-gamma-84.log`).  A file with only the first outer check of piece 10 and one with only its inner check each finished within a minute of Lean time (`erf-gamma-87.log`, `erf-gamma-89.log`), the latter with `memory.current` at 3.6 GB, which suggests that the memory grows with the number of checks in a module.  The generator now writes a base module with the definitions, check modules of at most two checks, and a final module with the cover and the convexity argument.  `AccPolyFact`'s first clause on `|x| ≤ 1/4` uses the absolute divided-difference pieces of `SmallFact`, 16 pieces of degree 16, and its second clause two Taylor-model pieces of degree 22 about `3/2` (`LgammaAccMid`).
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaLogTables`, `TgammaExpTables`, `TgammaFacts` | Passed | `erf-gamma-70.log` to `erf-gamma-72.log` |
+| `GammaBelowT0` | Failed: the bound on `ln (tp/128)` was 32 times too small, and a `linarith` step | `erf-gamma-73.log` |
+| `GammaRoot` | Failed: a `rw` after `set` | `erf-gamma-74.log` |
+| `LgammaAccMid` | Passed in 129 s | `erf-gamma-75.log` |
+| `LgammaStirFast` | Passed in 464 s | `erf-gamma-76.log` |
+| `LgammaStirLarge` | Kernel checks passed; `le_or_lt` unknown, and a cast left `x` unassigned | `erf-gamma-77.log` |
+| `LgammaDb` | Passed in 99 s | `erf-gamma-78.log` |
+| `GammaBelowT0` | Failed at the bound on `ln (tp/128)` | `erf-gamma-79.log` |
+| `LgammaPieceBase` | Passed, with a linter warning on `<;>` | `erf-gamma-80.log` |
+| `GammaRoot` | Failed: the same `rw` | `erf-gamma-81.log` |
+| `LgammaStirLarge` | Passed in 46 s | `erf-gamma-82.log` |
+| `LgammaPiece4`, `LgammaPiece10`, one module each | Stopped by the watchdog at the memory limit | `erf-gamma-83.log`, `erf-gamma-84.log` |
+| `LgammaPieceBase` without the warning | Passed | `erf-gamma-84.log` |
+| `GammaBelowT0`, `GammaRoot` | Passed, standard axioms | `erf-gamma-85.log`, `erf-gamma-86.log` |
+| One outer check and the inner check of piece 10, each alone | Passed | `erf-gamma-87.log`, `erf-gamma-89.log` |
+
+- [x] `Γ` at the double before the overflow threshold (`GammaBelowT0.gamma_below_t0`).
+- [x] `DbFact` (`LgammaDb.db_fact`).
+- [x] `StirlingFact`'s two parts (`LgammaStirFast.cover`, `LgammaStirLarge.fast_large`), `AsymFact`'s first clause (`asym0_large`), and `AccPolyFact`'s second clause (`LgammaAccMid.acc_mid`).
+- [ ] The pieces 4 and 10 in twelve modules (`erf-gamma-90.log` to `erf-gamma-101.log`).
+- [ ] The other statements of `LgammaApprox` and `LgammaFacts.allFacts`.
+
+The coordinator asked for `SubnormalGap` on 2026-10-12: for every double `x = -m/2 ^ 45` in `(-184, -170)`, `|Γ x|` lies at most `2 ^ -1022 (1 - 2 ^ -48)` or at least `2 ^ -1022 (1 + 2 ^ -48)`, so that `tgamma`'s choice between the subnormal and the normal branch below -170 is correct.  `lgamma` is convex on each interval `(-n - 1, -n)`, so a point where `lgamma` exceeds a level next to a point below it bounds `lgamma` from below on the far side, and two points below a level bound it from above between them (`GammaConvex.convex_left`, `convex_right`, `convex_mid`).  `subgap.py` in the track's scratch directory finds, in 80-digit arithmetic, the doubles next to each crossing of `2 ^ -1022`: both crossings of each interval for `n` from 170 to 175, the crossing near -176 for `n = 176`, and none from 177 on, where `|Γ|` at the doubles next to both poles already lies below the level.  `GammaReflect.negPointOk` bounds `lgamma` at those 41 doubles with Mathlib's 20-digit `π`, with Taylor-model errors below `10 ^ -18` against margins of at least `2 ^ -52`; the smallest margin is at `-170.584302134743268`, where `|Γ| = 2 ^ -1022 (1 + 33.97 · 2 ^ -53)`.  The levels `tAbove = -1022 log2Lo + 2 ^ -48` and `tBelow = -1022 log2Hi - 2 ^ -48 - 2 ^ -95` of `lgamma` give the two bounds on `|Γ|` through `exp y ≥ 1 + y`.  The five ProofKit modules `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, and `GammaSubnormal` passed with only the standard axioms, each in under two minutes and at most 0.92 GB.
+
+The modules that import the ports `Verified.Examples.Lgamma` and `Tgamma` reached 3.3 to 3.9 GB of the runner's 4 GB within 30 s of starting, and the ProofKit modules without them stayed below 0.92 GB, which suggests why the divided-difference checks stall: a module of `LgammaPiece4` with two checks of 41,000 and 38,000 coefficient operations stopped at the limit, while modules with 57,000 to 63,000 passed in about a minute (`erf-gamma-91.log` to `erf-gamma-95.log`).  The generators now group checks up to 62,000 operations per module, and `AccPolyFact`'s first clause takes one check per module.
+
+| Run | Result | Log |
+|---|---|---|
+| `LgammaPiece4A`, two checks of 79,000 operations in all | Stopped at the memory limit | `erf-gamma-91.log`, `erf-gamma-95.log` |
+| `LgammaPiece4B` to `LgammaPiece4D`, `LgammaPiece10A` in the first grouping | Passed in 30 to 60 s | `erf-gamma-92.log` to `erf-gamma-94.log`, `erf-gamma-97.log` |
+| `GammaSubnormalBase` | Failed: `zpow_natCast` after `zpow_neg` found no cast, and a `rw [← e]` replaced every `T` | `erf-gamma-102.log`, `erf-gamma-103.log` |
+| `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, `GammaSubnormal` | Passed, standard axioms | `erf-gamma-104.log` to `erf-gamma-106.log` |
+
+- [x] `SubnormalGap` (`GammaSubnormal.subnormal_gap`).
 
 ## 2026-10-12: Integration of asinh, acosh, and atanh
 
@@ -31796,6 +31849,36 @@ The documents `Bessel.md`, `Fma.md`, `Lgamma.md`, `Tgamma.md`, `Log.md`, and `Tr
 
 The user asked for research on conversions between decimal strings and binary32 and binary64 values in both directions, with a design grounded in published work.  An agent wrote that report in `/home/somebody/src/machines/work/w-strconv/report.md` on the workstation, with 54 references.  It recommends exact big-integer arithmetic first, built on Cox's unrounded scaling `⟨x · 2^e · 10^p⟩` (2026) for both directions, with Schubfach's decision for shortest output, since no table-based method (Eisel-Lemire, Ryū, Schubfach as shipped, Dragonbox) has a machine-checked proof.  It also finds that Lean `v4.34.0-rc2` defines `Float.ofScientific` publicly, which Opus confirmed in the toolchain's `Init/Data/OfScientific.lean`, so a theorem about it would cover every decimal literal in the compiled programs.  The report lists fourteen decisions, and the user accepted every recommendation: two grammar modes (RFC 8259 and a C-like mode), unlimited input length with correct rounding, strings as one byte per word, binary32 results as words, shortest output as fewest digits then nearest then even, scientific and ECMAScript layouts, a flag and a word as the parser's result, exact `uscale` with Clinger's fast path first, a table-based stage only after measurement, fixed-precision and hexadecimal output later, placement in `Verified.Examples`, the prior Lean projects as references only, and a theorem about `Float.ofScientific`.  Opus created the worktree `/home/somebody/src/lt-strconv` on minideb2, branch `w/strconv` from `5688a840`, and started track `strconv` on the report's stages 1 to 4.
 
+The kernel modules replaced `first | (field_simp; done) | (field_simp; ring)` with the alternative that each goal needs.  At the four places in `TgammaKernelBase` where the goal has the form `a - b = c (a/c + -(b/c))`, `field_simp` leaves `a - b = a + -b` and `ring` must follow, which the first build without the alternative showed (`erf-gamma-67.log`).  Job 68 started before the corrected file reached debtop1 and repeated the failure.  The tables then built in 98 s (sine), 42 s (logarithm), and 32 s (exponential), and `TgammaFacts.allFacts` reports only `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaKernelBase`, `TgammaLogTables` | `field_simp` left goals for `ring` at three places | `erf-gamma-67.log` |
+| `TgammaExpTables` | The same failure, from the file before the correction | `erf-gamma-68.log` |
+| `TgammaKernelBase`, `TgammaSinTables` | Passed in 14 s and 98 s | `erf-gamma-69.log` |
+| `TgammaLogTables` | Passed in 42 s | `erf-gamma-70.log` |
+| `TgammaExpTables` | Passed in 32 s | `erf-gamma-71.log` |
+| `TgammaApprox`, `TgammaFacts` | Passed; `allFacts` with the standard axioms | `erf-gamma-72.log` |
+
+## 2026-10-13: Recovery of track `erf` after two copies of its agent ran at once
+
+On 2026-10-12 two copies of the track's agent worked in `/home/somebody/src/lt-erf` at the same time.  The coordinator's message to the agent while its build queue was pending started a second copy from an old summary, and that copy overwrote `Verified/Examples/LgammaDb.lean` and created `Verified/Examples/LgammaCancel.lean` before it noticed the other copy.  It restored `LgammaDb.lean` to its committed version and deleted `LgammaCancel.lean`, so the queue's build of `LgammaCancel` (318) found no source.  The coordinator stopped the agent, and the user directed that the work continue without agents.
+
+The build queue of `erf-after198.sh` ran builds 256 to 324 unattended.  Fifty-nine modules built with only `propext`, `Classical.choice`, and `Quot.sound`, and this commit records them with `F64Grid` and `LgammaData`, which they import: `LgammaSmallFact` (`SmallFact`), `LgammaAccSmall` (the first clause of `AccPolyFact`), `LgammaPiece4` and `LgammaPiecesA` to `E` (the fast path's pieces other than 10), `LgammaSinpiAcc` (the kernels of `as_sinpipid_accurate`), `LgammaAsymMidA` to `C` and `LgammaAsymLowA` to `H` (the accurate Stirling fit from `15/4` to 48), and `LgammaRootC`, `LgammaRootE`, and `LgammaRootF` (`RootFact` on six of its ranges).  Ten modules failed and stay uncommitted.
+
+| Build | Module | Failure |
+|---|---|---|
+| 272 | `LgammaPiece10` | the last tactic has no goal left, so the module reports `sorryAx` |
+| 300 | `LgammaSinpiTables` | a `rewrite` finds no instance |
+| 301 | `LgammaLogAcc` | a `rewrite` finds no instance |
+| 315, 316 | `LgammaZerosA`, `LgammaZerosB` | the namespace `GammaThresholds` is opened without its import |
+| 317 | `LgammaCancelTail` | `linarith` fails |
+| 318 | `LgammaCancel` | the source file is missing |
+| 319, 320, 322 | `LgammaRootA`, `LgammaRootB`, `LgammaRootD` | the 20-minute limit |
+
+- [x] Commit the accepted modules with `Lgamma.md` and this entry.
+- [x] Merge `transcendentals` at `e1fbb1ae` and prove `ExpFact` from `exp_poly_wide` (`opus-erf-facts-1.log`: `allFacts` reports only `propext`, `Classical.choice`, and `Quot.sound`).
+- [ ] Repair the ten failed modules, write `LgammaCancel` for the call in `LgammaFacts`, and build `LgammaFacts`.
 ## 2026-10-12: Decimal strings and binary floating point, plan and statements (track `strconv`, minideb2)
 
 The track `strconv` builds proved conversions between decimal strings and binary64 and binary32 values in both directions, on branch `w/strconv` from `transcendentals` at `5688a840`.  The design is the research report `work/w-strconv/report.md` of 2026-10-12, whose fourteen recommendations of section 10 the user accepted: two grammars selected by a parameter (RFC 8259's number, and a general grammar with `+`, leading zeros, `.5` and `5.`, hexadecimal significands with a required binary exponent, and `inf`, `infinity`, and `nan` in any case), inputs of any length with correct rounding, strings as `Array UInt64` with one byte per word and theorems stated on `List UInt8`, binary32 results as words, the shortest output defined as the fewest significant digits, then the nearest, then the even last digit, a scientific and an ECMAScript layout, the outputs `-0`, `NaN`, `Infinity`, and `-Infinity`, a parser result that pairs a flag with a word, an exact first stage with Clinger's fast path, and placement in `Verified.Examples`.  The algorithms are written from the papers: Cox's unrounded scaling [Cox 2026, research.swtch.com/fp], the Schubfach decision [Giulietti 2022], and Clinger's fast path [Clinger, PLDI 1990, doi:10.1145/93542.93557].  No third-party code is ported, and FloatLib, `ryu-lean4`, and `shortest-decimal` serve only as references.
