@@ -4,7 +4,7 @@ import Verified.Examples.TgammaAcc2
 The loop of `Tgamma.poly3`, the polynomial of the accurate path of `Tgamma` above `1/4`.  Step `k`
 of the loop multiplies the triple `t = t0 + t1 + t2` by `d` with `sprod`, adds `t0 c` to `s0`, and
 adds `c (t1 + t2)` to the double-double `s1 + s2`, for the next double coefficient `c`.  The
-coefficients are multiples of `2 ^ -17` below `2 ^ 18` in their numerators and `t0` a multiple of
+coefficients are multiples of `2 ^ -17` below `2 ^ 19` in their numerators and `t0` a multiple of
 `2 ^ -26` at most 2, so every product `t0 c` and every sum `s0` lies on the grid `2 ^ -43` with a
 numerator below `2 ^ 53`, and both are exact (`TgammaAcc1.grid_mul`, `TgammaAcc1.grid_add`).  The
 invariant `Inv` of `step_inv` keeps `t` within `k 2 ^ -76` of `d ^ k` and `s0 + s1 + s2` within
@@ -109,7 +109,7 @@ theorem s0_step (s0 r0 c : Float) (k : ℕ) (hk : k + 1 ≤ 13) (hs0f : Finite s
     (hr0f : Finite r0.toBits) (hcf : Finite c.toBits) (n z' m : ℤ)
     (hn : value s0.toBits = n / 2 ^ 43) (hs0b : |value s0.toBits| ≤ 8 * (k + 1))
     (hz' : value r0.toBits = z' / 2 ^ 26) (hr0b : |value r0.toBits| ≤ 2)
-    (hcm : value c.toBits = m / 2 ^ 17) (hm : m.natAbs < 2 ^ 18) (hc4 : |value c.toBits| ≤ 4) :
+    (hcm : value c.toBits = m / 2 ^ 17) (hm : m.natAbs < 2 ^ 19) (hc4 : |value c.toBits| ≤ 4) :
     Finite (s0 + r0 * c).toBits ∧
       (∃ n' : ℤ, value (s0 + r0 * c).toBits = n' / 2 ^ 43) ∧
       value (s0 + r0 * c).toBits = value s0.toBits + value r0.toBits * value c.toBits ∧
@@ -121,7 +121,7 @@ theorem s0_step (s0 r0 c : Float) (k : ℕ) (hk : k + 1 ≤ 13) (hs0f : Finite s
   have hz'n' : z'.natAbs ≤ 2 ^ 27 := by exact_mod_cast hz'n
   obtain ⟨hpf, hpv⟩ := grid_mul r0 c hr0f hcf z' m 26 17 hz' hcm
     (by calc z'.natAbs * m.natAbs ≤ 2 ^ 27 * m.natAbs := Nat.mul_le_mul_right _ hz'n'
-      _ < 2 ^ 27 * 2 ^ 18 := Nat.mul_lt_mul_of_pos_left hm (by norm_num)
+      _ < 2 ^ 27 * 2 ^ 19 := Nat.mul_lt_mul_of_pos_left hm (by norm_num)
       _ ≤ 2 ^ 53 := by norm_num) (by norm_num)
   have hpv' : value (r0 * c).toBits = ((z' * m : ℤ) : ℝ) / 2 ^ 43 := by
     rw [hpv, hz', hcm]; push_cast; ring
@@ -136,11 +136,11 @@ theorem s0_step (s0 r0 c : Float) (k : ℕ) (hk : k + 1 ≤ 13) (hs0f : Finite s
         rw [← Int.cast_abs, ← Nat.cast_natAbs]
         have : 8 * ((k : ℝ) + 1) * 2 ^ 43 ≤ 8 * 13 * 2 ^ 43 := by nlinarith
         exact_mod_cast hnb.trans this
-      have h5 : |(z' : ℝ) * m| ≤ 2 ^ 27 * 2 ^ 18 := by
+      have h5 : |(z' : ℝ) * m| ≤ 2 ^ 27 * 2 ^ 19 := by
         rw [abs_mul, ← Int.cast_abs, ← Int.cast_abs, ← Nat.cast_natAbs, ← Nat.cast_natAbs]
-        have hm' : (m.natAbs : ℝ) ≤ 2 ^ 18 := by exact_mod_cast hm.le
+        have hm' : (m.natAbs : ℝ) ≤ 2 ^ 19 := by exact_mod_cast hm.le
         exact mul_le_mul hz'n hm' (by positivity) (by positivity)
-      linarith [(by norm_num : (8 : ℝ) * 13 * 2 ^ 43 + 2 ^ 27 * 2 ^ 18 ≤ 2 ^ 53)]
+      linarith [(by norm_num : (8 : ℝ) * 13 * 2 ^ 43 + 2 ^ 27 * 2 ^ 19 ≤ 2 ^ 53)]
     rw [← Int.cast_abs] at h1
     exact_mod_cast h1
   obtain ⟨hs0f', hs0v'⟩ := grid_add s0 (r0 * c) hs0f hpf (n + z' * m) 43 hsum hnm (by norm_num)
@@ -253,7 +253,7 @@ theorem s12_step (hF : FmaSpec.FmaNearest) (c r1 r2 s1 s2 : Float) (k : ℕ) (hk
 theorem step_inv (hF : FmaSpec.FmaNearest) (d c : Float) (cs : ℕ → ℝ) (k : ℕ) (st : St)
     (hk : k + 1 ≤ 13) (hdf : Finite d.toBits) (hd : |value d.toBits| ≤ 1) (hcf : Finite c.toBits)
     (hcs : value c.toBits = cs (k + 1)) (m : ℤ) (hcm : value c.toBits = m / 2 ^ 17)
-    (hm : m.natAbs < 2 ^ 18) (hc4 : |value c.toBits| ≤ 4) (h : Inv d cs k st) :
+    (hm : m.natAbs < 2 ^ 19) (hc4 : |value c.toBits| ≤ 4) (h : Inv d cs k st) :
     Inv d cs (k + 1) (step d c st) := by
   obtain ⟨t0, t1, t2, s0, s1, s2⟩ := st
   obtain ⟨h0f, h1f, h2f, hs0f, hs1f, hs2f, ⟨z, hz⟩, h0b, h1b, h2b, hT, ⟨n, hn⟩, hs0b, hs1b, hs2b,
@@ -319,11 +319,11 @@ theorem idx1 (oh : UInt64) (k : ℕ) (h : oh.toNat + k + 1 < 2 ^ 63) :
   omega
 
 /-- The double coefficients of the loop: finite, multiples of `2 ^ -17` with numerators below
-`2 ^ 18`, and at most 4 in magnitude. -/
+`2 ^ 19`, and at most 4 in magnitude. -/
 structure Coeffs (tab : Array UInt64) (oh n : ℕ) : Prop where
   fin : ∀ k < n, Wasm.IEEE64.isFinite tab[oh + k]! = true
   grid : ∀ k < n, ∃ m : ℤ, ((PolyBound.ratOfWord tab[oh + k]! : ℚ) : ℝ) = m / 2 ^ 17 ∧
-    m.natAbs < 2 ^ 18
+    m.natAbs < 2 ^ 19
   mag : ∀ k < n, |((PolyBound.ratOfWord tab[oh + k]! : ℚ) : ℝ)| ≤ 4
 
 /-- The coefficient `i` of the loop, as a real number. -/
