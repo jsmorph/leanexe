@@ -3893,12 +3893,12 @@ def erfcWith (fastTab accTab expTab asymTab asymAccTab expAccTab excTab : Array 
 def erfc (x : Float) : Float :=
   erfcWith fastTable accTable expTable asymTable asymAccTable expAccTable excTable x
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---  Fma.fmaBits, Fma.fma, entry, roundEven, floorF, toWord, sar, pow2, ldexp, fastTwoSum, twoSum,
---  aMul, sMul, dMul, fastSum, erfFastTiny, erfFastMain, erfFast, mulZ2, tinyCoeff,
---  erfAccurateTiny, erfAccurate, q1, exp1, expAccurate, asymptIndex, erfcAsymptFast, erfcFast,
---  hardCase, asymptAccIndex, asymptAccurate, erfcAsymptAccurate, erfcAccurate, erfcMain, erfcWith,
---  erfc]
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+ Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+ Fma.fmaBits, Fma.fma, entry, roundEven, floorF, toWord, sar, pow2, ldexp, fastTwoSum, twoSum,
+ aMul, sMul, dMul, fastSum, erfFastTiny, erfFastMain, erfFast, mulZ2, tinyCoeff,
+ erfAccurateTiny, erfAccurate, q1, exp1, expAccurate, asymptIndex, erfcAsymptFast, erfcFast,
+ hardCase, asymptAccIndex, asymptAccurate, erfcAsymptAccurate, erfcAccurate, erfcMain, erfcWith,
+ erfc]
 
 end Verified.Examples.Erfc

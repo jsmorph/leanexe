@@ -506,10 +506,10 @@ def jn (n : UInt64) (x : Float) : Float :=
 def yn (n : UInt64) (x : Float) : Float :=
   ynWith Trig.invPi Trig.halfPi Log.logTable Log.logTable2 j0Table j1Table n x
 
--- verified_compile compiled := [Trig.kernelSin, Trig.kernelCos, Trig.remSmall, Trig.remMedium,
---  Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop, Trig.shiftTop, Trig.remLarge, Trig.remPio2,
---  Trig.sinWith, Trig.cosWith, Log.logNear1, Log.logCore, Log.logWith, entry, rangeOf, pAsym,
---  qRatio, invsqrtpi, tpi, asym0, j0With, y0With, asym1, j1With, y1With, order, phaseCos,
---  phaseSin, jnBackward, jnWith, ynWith, j0, j1, y0, y1, jn, yn]
+verified_compile compiled := [Trig.kernelSin, Trig.kernelCos, Trig.remSmall, Trig.remMedium,
+ Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop, Trig.shiftTop, Trig.remLarge, Trig.remPio2,
+ Trig.sinWith, Trig.cosWith, Log.logNear1, Log.logCore, Log.logWith, entry, rangeOf, pAsym,
+ qRatio, invsqrtpi, tpi, asym0, j0With, y0With, asym1, j1With, y1With, order, phaseCos,
+ phaseSin, jnBackward, jnWith, ynWith, j0, j1, y0, y1, jn, yn]
 
 end Verified.Examples.Bessel

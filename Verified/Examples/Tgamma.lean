@@ -2089,10 +2089,10 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
 def tgamma (x : Float) : Float :=
   tgammaWith dbTable accurateTable smallTable mainTable logdTable sinpidTable expdTable asymTable x
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---  Fma.fmaBits, Fma.fma, entry, fastTwoSum, twoSum, fastSum, sumDD, mulDD, mulDD3, mulDDD, polyDDD,
---  splt, sprod, poly3, roundEven, floorF, toWord, sar, nonPositive, asLogd, asSinpid, asExpd,
---  asLgammaAsym, database, accurateRange, accurate, tgammaWith, tgamma]
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+ Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+ Fma.fmaBits, Fma.fma, entry, fastTwoSum, twoSum, fastSum, sumDD, mulDD, mulDD3, mulDDD, polyDDD,
+ splt, sprod, poly3, roundEven, floorF, toWord, sar, nonPositive, asLogd, asSinpid, asExpd,
+ asLgammaAsym, database, accurateRange, accurate, tgammaWith, tgamma]
 
 end Verified.Examples.Tgamma
