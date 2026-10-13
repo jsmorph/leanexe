@@ -2522,15 +2522,24 @@ def lgammaR (x : Float) : Float × Float :=
   lgammaWith Tgamma.logdTable logAccurateTable sinpiTable asymTable accurateTable dbTable mainTable
     x
 
-/-- `lgamma x = ln |Γ x|`. -/
-def lgamma (x : Float) : Float := (lgammaR x).1
+/-- `ln |Γ x|`, the first component of `lgammaWith`, with the tables as parameters, so that
+`verified_compile` lists it as a definition. -/
+def lgammaFirstWith (logTab hTab sinTab asymTab accTab dbTab tab : Array UInt64) (x : Float) :
+    Float :=
+  (lgammaWith logTab hTab sinTab asymTab accTab dbTab tab x).1
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---   Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---   Fma.fmaBits, Fma.fma, Tgamma.entry, Tgamma.fastTwoSum, Tgamma.twoSum, Tgamma.fastSum,
---   Tgamma.sumDD, Tgamma.mulDD, Tgamma.mulDDD, Tgamma.roundEven, Tgamma.floorF, Tgamma.asSinpid,
---   copySign, polyDD, polyDDDFst, polyD, logReduce, asLogd, asLogdAccurate, asSinpipid,
---   asSinpipidAccurate, asLgammaAsymAccurate, database, rootRange, accurate, piece, piecePoly,
---   lgammaWith, lgammaR, lgamma]
+/-- `lgamma x = ln |Γ x|`. -/
+def lgamma (x : Float) : Float :=
+  lgammaFirstWith Tgamma.logdTable logAccurateTable sinpiTable asymTable accurateTable dbTable
+    mainTable x
+
+set_option maxHeartbeats 1000000 in
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+  Fma.fmaBits, Fma.fma, Tgamma.entry, Tgamma.fastTwoSum, Tgamma.twoSum, Tgamma.fastSum,
+  Tgamma.sumDD, Tgamma.mulDD, Tgamma.mulDDD, Tgamma.roundEven, Tgamma.floorF, Tgamma.asSinpid,
+  copySign, polyDD, polyDDDFst, polyD, logReduce, asLogd, asLogdAccurate, asSinpipid,
+  asSinpipidAccurate, asLgammaAsymAccurate, database, rootRange, accurate, piece, piecePoly,
+  lgammaWith, lgammaFirstWith, lgammaR, lgamma]
 
 end Verified.Examples.Lgamma
