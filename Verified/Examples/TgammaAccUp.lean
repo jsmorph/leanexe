@@ -482,11 +482,61 @@ theorem up_step (hF : FmaSpec.FmaNearest) (v : ℝ) (e0 : UInt64) (m : ℕ)
         (by positivity : (0 : ℝ) < 2 ^ 50) (by norm_num : (2 : ℝ) ^ 50 ≤ 2 ^ 51)
       linarith
 
+/-- The state before the loop: the factor and the product are `x`. -/
+theorem up_init (x : Float) (e0 : UInt64) (hx : Finite x.toBits) (z : ℤ)
+    (hz : value x.toBits = z / 2 ^ 54) (hq : 1 / 4 ≤ |value x.toBits|)
+    (h518 : |value x.toBits| ≤ 2 ^ 518) :
+    UpInv (value x.toBits) e0 0 (x, (0.0 : Float), x, (0.0 : Float), e0) := by
+  unfold UpInv
+  dsimp only
+  rw [TgammaMainRed.zero_value]
+  refine ⟨hx, TgammaMainRed.zero_finite, hx, TgammaMainRed.zero_finite, by simp, ⟨z, hz⟩,
+    ⟨0, by simp⟩, by norm_num, by simp; positivity, 0, le_rfl, by simp, ?_, by simp; positivity,
+    h518, ?_⟩
+  · simp [W]
+  · have hW0 : W (value x.toBits) 0 0 = value x.toBits := by simp [W]
+    have hS0 : S (value x.toBits) 0 = g (value x.toBits) 0 := by simp [S]
+    rw [hW0, hS0]
+    have : g (value x.toBits) 0 ≤ |value x.toBits| := by rw [g]; simp
+    have h0 : 0 ≤ g (value x.toBits) 0 := le_min zero_le_one (abs_nonneg _)
+    linarith
+
+/-- **The loop for `x < j`** after `m` steps. -/
+theorem up_loop (hF : FmaSpec.FmaNearest) (x : Float) (e0 : UInt64) (M : ℕ) (hM : M ≤ 186)
+    (hx : Finite x.toBits) (z : ℤ) (hz : value x.toBits = z / 2 ^ 54)
+    (hq : 1 / 4 ≤ |value x.toBits|) (hlo : -2 ^ 8 ≤ value x.toBits)
+    (hhi : value x.toBits + M ≤ 2 ^ 8)
+    (hv : ∀ n : ℤ, 1 / 2 ^ 54 ≤ |value x.toBits + n|) :
+    ∀ m, m ≤ M → UpInv (value x.toBits) e0 m
+      (LeanExe.loop (UInt64.ofNat m) (x, (0.0 : Float), x, (0.0 : Float), e0)
+        (fun _ s => upStep s)) := by
+  intro m
+  induction m with
+  | zero =>
+    intro _
+    have h0 : LeanExe.loop (UInt64.ofNat 0) (x, (0.0 : Float), x, (0.0 : Float), e0)
+        (fun _ s => upStep s) = (x, (0.0 : Float), x, (0.0 : Float), e0) := by
+      simp [LeanExe.loop]
+    rw [h0]
+    exact up_init x e0 hx z hz hq (by
+      rw [abs_le]; constructor <;> linarith [(by norm_num : (2 : ℝ) ^ 8 ≤ 2 ^ 518)])
+  | succ m ih =>
+    intro hm
+    have hst := ih (by omega)
+    rw [TgammaPoly.loop_succ m (by omega)]
+    have hm' : (m : ℝ) + 1 ≤ M := by exact_mod_cast hm
+    have hm0 : (0 : ℝ) ≤ m := Nat.cast_nonneg m
+    exact up_step hF (value x.toBits) e0 m _ (by omega) hv
+      (by rw [abs_le]; constructor <;> linarith)
+      (by rw [abs_le]; constructor <;> linarith) hst
+
 #print axioms prod_small
 #print axioms scale_down
 #print axioms prod_step
 #print axioms rescale
 #print axioms resc_real
 #print axioms up_step
+#print axioms up_init
+#print axioms up_loop
 
 end Verified.Examples.TgammaAccUp
