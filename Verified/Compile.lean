@@ -351,7 +351,7 @@ def callMoves (slots : List Slot) (live : Nat → Bool) {Γ : List Ty} {g : Sig}
   g.mode i == .owned &&
     match (args i).varIndex? with
     | some k => (slots.getD k default).mode == .owned && !live k &&
-        !(argsAny fun j => j != i && !(g.params.get j).scalar && (args j).uses k)
+        !(argsAny fun j => j != i && !(g.params.get j).scalar && (args j).usesFast k)
     | none => false
 
 /-- The instructions that push the words of a variable or a pair of such expressions, read in
@@ -456,51 +456,51 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | _, _, .float bits =>
     [.f64Const (if Wasm.IEEE64.isNaN bits then Wasm.IEEE64.canonicalNaN else bits)]
   | _, _, .fbin op left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       [op.instr]
   | _, _, .funary op e => op.code (e.code h slots base live)
   | _, _, .fcmp op left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       [op.instr, .extendUI32]
   | _, _, .toFloat op e => e.code h slots base live ++ op.code
   | _, _, .toWord op e => e.code h slots base live ++ [op.instr]
   | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       op.code base
   | _, _, .cmp op left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       [op.instr, .extendUI32]
   | _, _, .not e => e.code h slots base live ++ [.eqzI64, .extendUI32]
   | _, _, .and left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       [.andI64]
   | _, _, .or left right =>
-    left.code h slots base (fun i => live i || right.uses i) ++ right.code h slots base live ++
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
       [.orI64]
   | Γ, _, .ite (t := t) c thenE elseE =>
     let modes := slots.map Slot.mode
     let mode := (thenE.mode modes).join (elseE.mode modes)
-    let mid := fun i => live i || thenE.uses i || elseE.uses i
+    let mid := fun i => live i || thenE.usesFast i || elseE.usesFast i
     c.code h slots base mid ++
       [.eqzI64, .iff 0 0
-        (releaseWhere Γ slots (fun i => mid i && !(live i || elseE.uses i)) ++
+        (releaseWhere Γ slots (fun i => mid i && !(live i || elseE.usesFast i)) ++
           elseE.code h slots (base + t.width) live ++
           coerceCode h t (elseE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
-        (releaseWhere Γ slots (fun i => mid i && !(live i || thenE.uses i)) ++
+        (releaseWhere Γ slots (fun i => mid i && !(live i || thenE.usesFast i)) ++
           thenE.code h slots (base + t.width) live ++
           coerceCode h t (thenE.mode modes) mode (base + t.width) ++ storeCode h base t.types)
         [] []] ++
       loadCode h base t.types
   | _, _, .letE (s := s) value body =>
     let mode := value.mode (slots.map Slot.mode)
-    value.code h slots (base + s.width) (fun i => live i || body.uses (i + 1)) ++
+    value.code h slots (base + s.width) (fun i => live i || body.usesFast (i + 1)) ++
       storeCode h base s.types ++
-      (if mode = .owned ∧ body.uses 0 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode s base else []) ++
       body.code h (⟨base, mode⟩ :: slots) (base + s.width) (shift 1 live)
   | Γ, _, .call (g := g) f args =>
-    let all := fun i => live i || argsAny fun j => (args j).uses i
-    let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).uses i)
+    let all := fun i => live i || argsAny fun j => (args j).usesFast i
+    let kept := fun i => all i && !(argsAny fun j => callMoves slots live args j && (args j).usesFast i)
     (if g.depth then [.localGet 0, .constI64 1, .addI64] else []) ++
     argsCode (fun i =>
       if (g.params.get i).scalar then (args i).code h slots base all
@@ -511,36 +511,36 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
   | _, _, .pair (s := s) (t := t) first second =>
     let modes := slots.map Slot.mode
     let mode := (first.mode modes).join (second.mode modes)
-    first.code h slots base (fun i => live i || second.uses i) ++
+    first.code h slots base (fun i => live i || second.usesFast i) ++
       coerceCode h s (first.mode modes) mode base ++
       second.code h slots base live ++ coerceCode h t (second.mode modes) mode base
   | _, _, .letPair (s := s) (t := t) e body =>
     let mode := e.mode (slots.map Slot.mode)
-    e.code h slots (base + s.width + t.width) (fun i => live i || body.uses (i + 2)) ++
+    e.code h slots (base + s.width + t.width) (fun i => live i || body.usesFast (i + 2)) ++
       storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
-      (if mode = .owned ∧ body.uses 1 = false then releaseCode s base else []) ++
-      (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + s.width) else []) ++
+      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
       body.code h (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots) (base + s.width + t.width)
         (shift 2 live)
   | Γ, _, .loop (t := t) count init cond body =>
     let modes := slots.map Slot.mode
     let mode := (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-    let all := fun i => live i || cond.uses (i + 1) || body.uses (i + 2)
-    count.code h slots base (fun i => all i || init.uses i) ++
+    let all := fun i => live i || cond.usesFast (i + 1) || body.usesFast (i + 2)
+    count.code h slots base (fun i => all i || init.usesFast i) ++
       [.localSet base] ++ init.code h slots (base + 1) all ++
       coerceCode h t (init.mode modes) mode (base + 1) ++
       storeCode h (base + 2) t.types ++ [.constI64 0, .localSet (base + 1),
         .block 0 0 [.loop 0 0 ([.localGet (base + 1), .localGet base, .geUI64, .br_if 1] ++
           cond.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 2 + t.width)
             (fun j => j == 0 || shift 1 all j) ++ [.eqzI64, .br_if 1] ++
-          (if mode = .owned ∧ body.uses 0 = false then releaseCode t (base + 2) else []) ++
+          (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + 2) else []) ++
           body.code h (⟨base + 2, mode⟩ :: ⟨base + 1, .borrowed⟩ :: slots)
             (base + 2 + t.width) (shift 2 all) ++
           coerceCode h t (body.mode (mode :: .borrowed :: modes)) mode (base + 2 + t.width) ++
           storeCode h (base + 2) t.types ++
           [.localGet (base + 1), .constI64 1, .addI64, .localSet (base + 1), .br 0]) [] []]
           [] []] ++
-      releaseWhere Γ slots (fun i => (cond.uses (i + 1) || body.uses (i + 2)) && !live i) ++
+      releaseWhere Γ slots (fun i => (cond.usesFast (i + 1) || body.usesFast (i + 2)) && !live i) ++
       loadCode h (base + 2) t.types
   | _, _, .size (e := e) x =>
     [.localGet (slots.getD x.index default).loc, .wrapI64, .load64 0] ++ divCode e.width ++
@@ -556,7 +556,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode (.array e) (slots.getD x.index default).loc else [])
   | _, _, .set (e := e) x i v =>
-    i.code h slots base (fun j => live j || j == x.index || v.uses j) ++ [.localSet base] ++
+    i.code h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
       v.code h slots (base + 1) (fun j => live j || j == x.index) ++
       storeCode h (base + 1) e.types ++ x.ownedCode h slots (base + 1 + e.width) live ++
       [.localSet (base + 1 + e.width), .localGet base, .localGet (base + 1 + e.width), .wrapI64,
@@ -579,7 +579,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       copyIntoCode (slots.getD y.index default).loc (base + 4) base (base + 6) ++
       releaseWhere Γ slots (fun k => k == y.index && !live k) ++ [.localGet (base + 5)]
   | _, _, .insertAt (e := e) x i v =>
-    i.code h slots base (fun j => live j || j == x.index || v.uses j) ++ [.localSet base] ++
+    i.code h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++
       v.code h slots (base + 1) (fun j => live j || j == x.index) ++
       storeCode h (base + 1) e.types ++
       [.constI64 (wordCount e.width), .localSet (base + e.width + 1)] ++
@@ -610,7 +610,7 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
             .subI64, .store64 0]) [] [] [],
         .localGet (base + 1)]
   | Γ, _, .build (e := e) count elem =>
-    let all := fun i => live i || elem.uses (i + 1)
+    let all := fun i => live i || elem.usesFast (i + 1)
     count.code h slots base all ++
       [.localSet base, .localGet base,
         .constI64 (UInt64.ofNat ((536870912 + e.width - 1) / e.width)), .geUI64,
@@ -624,9 +624,9 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           storeWordsCode h (base + 1) (base + 3 + e.width) 0 (base + 3) e.types ++
           [.localGet (base + 2), .constI64 1, .addI64, .localSet (base + 2), .br 0])
           [] []] [] []] ++
-      releaseWhere Γ slots (fun i => elem.uses (i + 1) && !live i) ++ [.localGet (base + 1)]
+      releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i) ++ [.localGet (base + 1)]
   | _, _, .mk first second =>
-    first.code h slots base (fun i => live i || second.uses i) ++ second.code h slots base live
+    first.code h slots base (fun i => live i || second.usesFast i) ++ second.code h slots base live
   | _, _, .proj (e' := e') x p =>
     loadCode h ((slots.getD x.index default).loc + p.offset) e'.types
 
@@ -686,7 +686,7 @@ def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List M
     locals := List.replicate (body.width + copyWidth result) .i64 ++ List.replicate h .f64
     body := (if depth then guardCode else []) ++
       paramCopyCode h p0 (params.flatMap Ty.types) ++
-      releaseWhere params slots (fun i => !body.uses i) ++
+      releaseWhere params slots (fun i => !body.usesFast i) ++
       body.code h slots (p0 + widthSum params) (fun _ => false) ++
       coerceCode h result (body.mode (slots.map Slot.mode)) .owned
         (p0 + widthSum params + body.width)

@@ -76,7 +76,11 @@ extended array are owned, so a function copies a borrowed value that it returns.
 consumes the owned variables that die in it, those live before it and not after: an owned variable
 moves into the value where it dies and is copied where it stays live, a reader or a call releases an
 owned variable that dies there, and a branch, a binding, and a loop release the owned variables that
-die without a use.  A pair has one mode, and a loop's state is owned when its initial value or its
+die without a use.  The code generator learns which variables a subexpression reads from `Expr.usesFast`, which
+reads a bit of `Expr.useMask`, the set of those variables as a bitmask, and `Expr.usesFast_eq`
+equates it with `Expr.uses`.  The kernel runs the code generator in each program's byte theorem,
+and a mask is one number that it computes once per subexpression, while `Expr.uses` walks the
+subexpression for each variable that it is asked about.  A pair has one mode, and a loop's state is owned when its initial value or its
 body's value is owned, so a borrowed component or state is copied.  A copy allocates through the
 runtime's `alloc` and writes the length word and the elements.  A function's locals are its
 parameters, an i64 local for each further position, and an f64 local for every position.  A word of
