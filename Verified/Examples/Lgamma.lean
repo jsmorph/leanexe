@@ -21,10 +21,9 @@ calls `Tgamma`'s double-double helpers, `roundEven`, `floorF`, and `asSinpid`, a
 The global `signgam` is the second result of `lgammaWith`.  C's 32-bit `unsigned` arithmetic of the
 piece index does not overflow for these arguments, so the port computes it in words, and the final
 test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask, masks with `0xFFFFFFFF`.
-The `verified_compile` call at the end of the module is commented out: it waits for a change of the
-reflector, whose time and memory for a function grow faster than linearly with its number of `let`
-bindings, so that this module's call exceeds the build's memory limit.  The journal records the
-measurements.  `LgammaAccuracy.lean` checks the results against a reference computed with Lean's
+The `verified_compile` call at the end of the module needs about 7.1 GB, more than the runner's
+default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more, and its
+elaboration needs more than the default 200,000 heartbeats.  The journal records the measurements.  `LgammaAccuracy.lean` checks the results against a reference computed with Lean's
 integers. -/
 
 namespace Verified.Examples.Lgamma
@@ -2522,15 +2521,24 @@ def lgammaR (x : Float) : Float × Float :=
   lgammaWith Tgamma.logdTable logAccurateTable sinpiTable asymTable accurateTable dbTable mainTable
     x
 
-/-- `lgamma x = ln |Γ x|`. -/
-def lgamma (x : Float) : Float := (lgammaR x).1
+/-- `ln |Γ x|`, the first component of `lgammaWith`, with the tables as parameters, so that
+`verified_compile` lists it as a definition. -/
+def lgammaFirstWith (logTab hTab sinTab asymTab accTab dbTab tab : Array UInt64) (x : Float) :
+    Float :=
+  (lgammaWith logTab hTab sinTab asymTab accTab dbTab tab x).1
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---   Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---   Fma.fmaBits, Fma.fma, Tgamma.entry, Tgamma.fastTwoSum, Tgamma.twoSum, Tgamma.fastSum,
---   Tgamma.sumDD, Tgamma.mulDD, Tgamma.mulDDD, Tgamma.roundEven, Tgamma.floorF, Tgamma.asSinpid,
---   copySign, polyDD, polyDDDFst, polyD, logReduce, asLogd, asLogdAccurate, asSinpipid,
---   asSinpipidAccurate, asLgammaAsymAccurate, database, rootRange, accurate, piece, piecePoly,
---   lgammaWith, lgammaR, lgamma]
+/-- `lgamma x = ln |Γ x|`. -/
+def lgamma (x : Float) : Float :=
+  lgammaFirstWith Tgamma.logdTable logAccurateTable sinpiTable asymTable accurateTable dbTable
+    mainTable x
+
+set_option maxHeartbeats 1000000 in
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+  Fma.fmaBits, Fma.fma, Tgamma.entry, Tgamma.fastTwoSum, Tgamma.twoSum, Tgamma.fastSum,
+  Tgamma.sumDD, Tgamma.mulDD, Tgamma.mulDDD, Tgamma.roundEven, Tgamma.floorF, Tgamma.asSinpid,
+  copySign, polyDD, polyDDDFst, polyD, logReduce, asLogd, asLogdAccurate, asSinpipid,
+  asSinpipidAccurate, asLgammaAsymAccurate, database, rootRange, accurate, piece, piecePoly,
+  lgammaWith, lgammaFirstWith, lgammaR, lgamma]
 
 end Verified.Examples.Lgamma
