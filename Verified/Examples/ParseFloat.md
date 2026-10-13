@@ -84,7 +84,7 @@ Signed exponents are words with the bias `2 ^ 62`, which keeps every sum of expo
 
 ## Theorems
 
-Every theorem in the table is proved on branch `w/strconv` and reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+Every theorem in the table reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Module | Statement |
 |---|---|---|
