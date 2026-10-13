@@ -1,0 +1,17 @@
+data/strconv/parse-cases.txt
+
+Part of this file is derived from parse-number-fxx-test-data,
+https://github.com/nigeltao/parse-number-fxx-test-data at commit
+55d79b184b7d8fac2e143e89dc19b766ec4e54b8, Copyright 2020 The
+ParseNumberFxxTestData Authors (Google Inc.), licensed under the Apache
+License, Version 2.0; a copy of the license is in
+LICENSE-parse-number-fxx-test-data beside this file.
+
+Changes: tools/strconv/parse_cases.py selects lines from each file of the
+repository's data/ directory (the first lines, evenly spaced lines, the
+longest strings, and the subnormal, infinite, and zero results), drops the
+float16 field, writes each string's bytes in hexadecimal, and adds the
+grammar mode and the acceptance flag.  The other lines of the file, the
+decimal inputs of Vern Paxson's tables as reproduced in Go's
+src/internal/strconv/testdata/testfp.txt, strings next to midpoints, and
+grammar cases, are computed by that program.

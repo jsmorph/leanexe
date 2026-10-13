@@ -72,7 +72,7 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
     (hc0 : Finite c0.toBits) (hc1 : Finite c1.toBits) (hc2 : Finite c2.toBits)
     (hc3 : Finite c3.toBits) (hb0 : |value c0.toBits| ≤ 1 / 2) (hb1 : |value c1.toBits| ≤ 34 / 100)
     (hb2 : |value c2.toBits| ≤ 26 / 100) (hb3 : |value c3.toBits| ≤ 21 / 100)
-    (hed : Finite ed.toBits) (hve : sv ed.toBits = E * 2 ^ 1074) (hE : |E| ≤ 1023)
+    (hed : Finite ed.toBits) (hve : sv ed.toBits = E * 2 ^ 1074) (hE : |E| ≤ 1074)
     (hh1 : Finite h1.toBits) (hh2 : Finite h2.toBits) (hv1 : sv h1.toBits = z1 * 2 ^ 1040)
     (hv2 : sv h2.toBits = z2 * 2 ^ 1040) (hz1 : 10000 * |z1| ≤ 6932 * 2 ^ 34)
     (hz2 : 1000 * |z2| ≤ 21 * 2 ^ 34)
@@ -115,7 +115,7 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
     norm_num
   have hzlb : |zl| ≤ 1024 * 2 ^ 34 := by
     have := abs_le.mp hE
-    have h3 : |E * 11908177887| ≤ 12182065978401 := by
+    have h3 : |E * 11908177887| ≤ 12789383050638 := by
       rw [abs_mul, abs_of_pos (by norm_num : (0 : ℤ) < 11908177887)]; nlinarith
     have h4 := abs_add_le (z1 + z2) (E * 11908177887)
     have h5 := abs_add_le z1 z2
@@ -158,7 +158,7 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
   have hEv : value ed.toBits = E := by
     rw [value_eq, hve, Int.cast_mul, Int.cast_pow, Int.cast_ofNat, mul_div_assoc,
       div_self (by positivity), mul_one]
-  have hEr : |(E : ℝ)| ≤ 1023 := by exact_mod_cast hE
+  have hEr : |(E : ℝ)| ≤ 1074 := by exact_mod_cast hE
   have hs1 := fapprox_add (TgammaDD.fapprox_self g1 hg1) (TgammaDD.fapprox_self g2 hg2)
     (1 / 2 ^ 34) (by
       have := abs_add_le (value g1.toBits) (value g2.toBits)
@@ -166,11 +166,11 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
   have hs2 := fapprox_mul (TgammaDD.fapprox_self _ hlnf) (TgammaDD.fapprox_self ed hed)
     (1 / 2 ^ 35) |(E : ℝ)| hlnb (by rw [hEv]) (|(E : ℝ)| / 2 ^ 35) (by
       rw [add_zero, add_zero]; exact le_of_eq (by ring)) (by
-      have : |(E : ℝ)| / 2 ^ 35 ≤ 1023 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
-      linarith [(by norm_num : (1023 : ℝ) / 2 ^ 35 < 2 ^ 1022)])
+      have : |(E : ℝ)| / 2 ^ 35 ≤ 1074 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
+      linarith [(by norm_num : (1074 : ℝ) / 2 ^ 35 < 2 ^ 1022)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hs1 hs2
   rw [hEv] at hs2
-  have hE88 : |(E : ℝ)| / 2 ^ 35 / 2 ^ 53 ≤ 1023 / 2 ^ 88 := by
+  have hE88 : |(E : ℝ)| / 2 ^ 35 / 2 ^ 53 ≤ 1074 / 2 ^ 88 := by
     rw [div_div, div_le_div_iff₀ (by positivity) (by positivity)]
     nlinarith [abs_nonneg (E : ℝ)]
   have hs3 := fapprox_add hs1 hs2 (1 / 2 ^ 34 + |(E : ℝ)| / 2 ^ 35 + 1 / 2 ^ 76) (by
@@ -181,9 +181,9 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
       rw [abs_mul, div_eq_mul_one_div, mul_comm]
       exact mul_le_mul_of_nonneg_left hlnb (abs_nonneg _)
     linarith [(by norm_num : (1 / 2 ^ 35 + 1 / 2 ^ 35 : ℝ) = 1 / 2 ^ 34),
-      (by norm_num : (1 / 2 ^ 34 : ℝ) / 2 ^ 53 + 1023 / 2 ^ 88 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 76)]) (by
-      have : |(E : ℝ)| / 2 ^ 35 ≤ 1023 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
-      linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1023 / 2 ^ 35 + 1 / 2 ^ 76 < 2 ^ 1023)])
+      (by norm_num : (1 / 2 ^ 34 : ℝ) / 2 ^ 53 + 1074 / 2 ^ 88 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 76)]) (by
+      have : |(E : ℝ)| / 2 ^ 35 ≤ 1074 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
+      linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1074 / 2 ^ 35 + 1 / 2 ^ 76 < 2 ^ 1023)])
   have hs4 := fapprox_add hs3 (TgammaDD.fapprox_self dxl hdxl)
     (1 / 2 ^ 34 + |(E : ℝ)| / 2 ^ 35 + 1 / 2 ^ 51) (by
       have h1 := abs_add_le (value g1.toBits + value g2.toBits +
@@ -195,14 +195,14 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
         rw [abs_mul, div_eq_mul_one_div, mul_comm]
         exact mul_le_mul_of_nonneg_left hlnb (abs_nonneg _)
       have h5 : (1 / 2 ^ 34 + |(E : ℝ)| / 2 ^ 35 + 1 / 2 ^ 76) / 2 ^ 53 ≤ 1 / 2 ^ 77 := by
-        have : |(E : ℝ)| / 2 ^ 35 ≤ 1023 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
+        have : |(E : ℝ)| / 2 ^ 35 ≤ 1074 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
         rw [div_le_iff₀ (by positivity)]
-        linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1023 / 2 ^ 35 + 1 / 2 ^ 76 ≤ 1 / 2 ^ 77 * 2 ^ 53)]
+        linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1074 / 2 ^ 35 + 1 / 2 ^ 76 ≤ 1 / 2 ^ 77 * 2 ^ 53)]
       linarith [(by norm_num : (1 / 2 ^ 35 + 1 / 2 ^ 35 : ℝ) = 1 / 2 ^ 34),
-        (by norm_num : (1 / 2 ^ 34 : ℝ) / 2 ^ 53 + 1023 / 2 ^ 88 + 1 / 2 ^ 1075 + 1 / 2 ^ 77 +
+        (by norm_num : (1 / 2 ^ 34 : ℝ) / 2 ^ 53 + 1074 / 2 ^ 88 + 1 / 2 ^ 1075 + 1 / 2 ^ 77 +
           1 / 2 ^ 52 ≤ 1 / 2 ^ 51)]) (by
-      have : |(E : ℝ)| / 2 ^ 35 ≤ 1023 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
-      linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1023 / 2 ^ 35 + 1 / 2 ^ 51 < 2 ^ 1023)])
+      have : |(E : ℝ)| / 2 ^ 35 ≤ 1074 / 2 ^ 35 := div_le_div_of_nonneg_right hEr (by positivity)
+      linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) + 1074 / 2 ^ 35 + 1 / 2 ^ 51 < 2 ^ 1023)])
   -- the accumulated error of the low sums
   have hs4' := hs4.mono (show _ ≤ 1 / 2 ^ 85 + |(E : ℝ)| / 2 ^ 86 by
     have : 0 ≤ |(E : ℝ)| := abs_nonneg _
@@ -218,9 +218,9 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
       rw [div_mul_eq_mul_div, div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
     linarith [(by norm_num : (1 / 2 ^ 34 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1075 + 1 / 2 ^ 87 + 1 / 2 ^ 129 +
       0 + 1 / 2 ^ 87 + 1 / 2 ^ 104 ≤ 1 / 2 ^ 85)])
-  have hE25 : |(E : ℝ)| / 2 ^ 35 ≤ 1 / 2 ^ 25 := by
+  have hE24 : |(E : ℝ)| / 2 ^ 35 ≤ 1 / 2 ^ 24 := by
     rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
-  have hE86 : |(E : ℝ)| / 2 ^ 86 ≤ 1 / 2 ^ 76 := by
+  have hE86 : |(E : ℝ)| / 2 ^ 86 ≤ 1 / 2 ^ 75 := by
     rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
   obtain ⟨V4, hV4⟩ : ∃ V4, V4 = value g1.toBits + value g2.toBits +
       value (Float.ofBits 0x3DB1CF79ABC9E3B4).toBits * E + value dxl.toBits := ⟨_, rfl⟩
@@ -257,7 +257,7 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
     have h1 := abs_add_le (value ll0.toBits + V4) (value f.toBits)
     have h2 := abs_add_le (value ll0.toBits) V4
     linarith [(by norm_num : (1 / 2 ^ 41 : ℝ) + (1 / 2 ^ 34 + 1 / 2 ^ 25 + 1 / 2 ^ 52) + 1 / 2 ^ 23 +
-      (0 + (1 / 2 ^ 85 + 1 / 2 ^ 76) + 1 / 2 ^ 24 / 2 ^ 53 + 0) ≤ 1 / 2 ^ 22)]) (by norm_num)
+      (0 + (1 / 2 ^ 85 + 1 / 2 ^ 75) + 1 / 2 ^ 24 / 2 ^ 53 + 0) ≤ 1 / 2 ^ 22)]) (by norm_num)
   have hlle := hllf.2
   have hllff := hllf.1
   clear hs1 hs2 hs3 hs4 hs4' hll1 hllf
@@ -280,8 +280,8 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
       dxl) + f).toBits) (value ll0.toBits + V4 + value f.toBits)
     have h2 := abs_add_le (value ll0.toBits + V4) (value f.toBits)
     have h3 := abs_add_le (value ll0.toBits) V4
-    have hn : (1 / 2 ^ 34 : ℝ) + 1 / 2 ^ 25 + 1 / 2 ^ 52 + 1 / 2 ^ 23 + 1 / 2 ^ 100 +
-        (0 + (1 / 2 ^ 85 + 1 / 2 ^ 76) + 1 / 2 ^ 24 / 2 ^ 53 + 0 + 1 / 2 ^ 22 / 2 ^ 53) ≤
+    have hn : (1 / 2 ^ 34 : ℝ) + 1 / 2 ^ 24 + 1 / 2 ^ 52 + 1 / 2 ^ 23 + 1 / 2 ^ 100 +
+        (0 + (1 / 2 ^ 85 + 1 / 2 ^ 75) + 1 / 2 ^ 24 / 2 ^ 53 + 0 + 1 / 2 ^ 22 / 2 ^ 53) ≤
         1 / 2 ^ 22 := by norm_num
     have hll0c : |value ll0.toBits| ≤ |value lh.toBits| / 2 ^ 52 + 1 / 2 ^ 100 := by
       have : (1 : ℝ) / 2 ^ 1074 ≤ 1 / 2 ^ 100 := by norm_num
@@ -294,7 +294,7 @@ theorem logTail_spec (hF : FmaSpec.FmaNearest) (r t ed h1 h2 g1 g2 c0 c1 c2 c3 :
     generalize value f.toBits = vf at *
     generalize value lh.toBits = vh at *
     generalize |(E : ℝ)| = aE at *
-    linarith only [hn, h1, h2, h3, hll0c, hV4b, hfb, hlle, hE25, hE86]
+    linarith only [hn, h1, h2, h3, hll0c, hV4b, hfb, hlle, hE24, hE86]
 
 #print axioms logTail_eq
 #print axioms logTail_spec
