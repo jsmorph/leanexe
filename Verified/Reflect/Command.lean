@@ -648,9 +648,13 @@ def casesEq (app : MatcherApp) (fields : Lean.Expr → MetaM (Array Lean.Expr)) 
   let gen ← withLocalDeclD `h altTy fun h => withLocalDeclD `s dTy fun s => do
     let lhs := mkAppN h (← fields s)
     let rhs := { app with discrs := #[s], alts := #[h] }.toExpr
-    let goal ← mkFreshExprMVar (← mkEq lhs rhs)
+    let eq ← mkEq lhs rhs
+    let goal ← mkFreshExprMVar eq
     goal.mvarId!.refl
-    mkLambdaFVars #[h, s] (← instantiateMVars goal)
+    -- The statement is attached to the proof, whose own type is `lhs = lhs`: otherwise the type
+    -- of `gen alt d` has the alternative's body on both sides, and an equation that follows it
+    -- must relate that body to the match by unfolding the matcher, which evaluates `d`.
+    mkLambdaFVars #[h, s] (← mkExpectedTypeHint (← instantiateMVars goal) eq)
   return mkApp2 gen alt d
 
 /-- From `proof : X = flatValue a` and `eq : a = e`, the proof of `X = flatValue e`. -/
