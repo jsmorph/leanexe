@@ -46,21 +46,22 @@ theorem reflPath_within (hF : FmaSpec.FmaNearest) (hLog : TgammaAsym1.LogdSpec)
   subst he
   -- the fractional part and its sine
   obtain ⟨hff, hfv, hdf, hdv, hd0, hd1⟩ := refl_dx x hx h1 h2 hint
-  obtain ⟨hsf1, hsf2, hse, hslb⟩ := hSin (x - floorF x) hdf (by rw [hdv]; exact hd0)
-    (by rw [hdv]; exact hd1)
-  rw [hdv] at hse
-  generalize asSinpid sinpidTable (x - floorF x) = Sn at hsf1 hsf2 hse hslb ⊢
-  obtain ⟨sh, sl⟩ := Sn
-  dsimp only at hsf1 hsf2 hse hslb ⊢
-  have hs50 : 1 / 2 ^ 50 ≤ Real.sin (Real.pi * Int.fract (value x.toBits)) := by
-    obtain ⟨k, hk⟩ := grid x.toBits 1 (by norm_num)
-      (by rw [abs_of_neg (show value x.toBits < 0 by linarith)]; norm_num; linarith)
-    rw [show 52 - 1 = 51 from rfl] at hk
-    apply sin_lower _ (k - ⌊value x.toBits⌋ * 2 ^ 51) _ hd0 hd1
+  obtain ⟨k, hk⟩ := grid x.toBits 1 (by norm_num)
+    (by rw [abs_of_neg (show value x.toBits < 0 by linarith)]; norm_num; linarith)
+  rw [show 52 - 1 = 51 from rfl] at hk
+  have hj : Int.fract (value x.toBits) = ((k - ⌊value x.toBits⌋ * 2 ^ 51 : ℤ) : ℝ) / 2 ^ 51 := by
     rw [← Int.self_sub_floor, hk]
     push_cast
     field_simp
     ring
+  obtain ⟨hn0, hn1, hnv⟩ := fract_grid _ _ hj hd0 hd1
+  obtain ⟨hsf1, hsf2, hse, hslb⟩ := hSin (x - floorF x) _ hn0 hn1 hdf (by rw [hdv]; exact hnv)
+  rw [hdv] at hse
+  generalize asSinpid sinpidTable (x - floorF x) = Sn at hsf1 hsf2 hse hslb ⊢
+  obtain ⟨sh, sl⟩ := Sn
+  dsimp only at hsf1 hsf2 hse hslb ⊢
+  have hs50 : 1 / 2 ^ 50 ≤ Real.sin (Real.pi * Int.fract (value x.toBits)) :=
+    sin_lower _ (k - ⌊value x.toBits⌋ * 2 ^ 51) hj hd0 hd1
   -- the product
   have hh0 : 0 < value h.toBits := by linarith
   have hha : |value h.toBits| ≤ 5 / 2 := abs_le.mpr ⟨by linarith, hh2⟩

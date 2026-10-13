@@ -16,9 +16,11 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Approx Tgamma TgammaDD TgammaFloor
 
 set_option exponentiation.threshold 4096
 
-/-- The specification of `Tgamma.asSinpid` on `(0, 1)` in the form that track `expm1` proves. -/
+/-- The specification of `Tgamma.asSinpid` at the doubles `n / 2 ^ 53` of `(0, 1)`, the grid on
+which `TgammaSinpid.asSinpid_spec` proves it and which holds the fractional part of every double
+below `-2`. -/
 def SinpidSpec : Prop :=
-  ∀ d : Float, Finite d.toBits → 0 < value d.toBits → value d.toBits < 1 →
+  ∀ (d : Float) (n : ℕ), 0 < n → n < 2 ^ 53 → Finite d.toBits → value d.toBits = n / 2 ^ 53 →
     Finite (asSinpid sinpidTable d).1.toBits ∧ Finite (asSinpid sinpidTable d).2.toBits ∧
     |value (asSinpid sinpidTable d).1.toBits + value (asSinpid sinpidTable d).2.toBits -
         Real.sin (Real.pi * value d.toBits)| ≤ Real.sin (Real.pi * value d.toBits) / 2 ^ 58 ∧
@@ -30,6 +32,27 @@ def SubnormalGap : Prop :=
   ∀ m : ℕ, 170 * 2 ^ 45 < m → m < 184 * 2 ^ 45 →
     |Real.Gamma (-(m : ℝ) / 2 ^ 45)| ≤ 2 ^ (-1022 : ℤ) * (1 - 1 / 2 ^ 48) ∨
       2 ^ (-1022 : ℤ) * (1 + 1 / 2 ^ 48) ≤ |Real.Gamma (-(m : ℝ) / 2 ^ 45)|
+
+/-- A number `j / 2 ^ 51` of `(0, 1)` is `n / 2 ^ 53` for `n = 4 j`, with `0 < n < 2 ^ 53`. -/
+theorem fract_grid (f : ℝ) (j : ℤ) (hj : f = j / 2 ^ 51) (h0 : 0 < f) (h1 : f < 1) :
+    0 < (4 * j).toNat ∧ (4 * j).toNat < 2 ^ 53 ∧ f = ((4 * j).toNat : ℝ) / 2 ^ 53 := by
+  have hj0 : (0 : ℝ) < j := by
+    rw [hj] at h0
+    exact (div_pos_iff_of_pos_right (by positivity)).mp h0
+  have hj1 : (j : ℝ) < 2 ^ 51 := by
+    rw [hj, div_lt_one (by positivity)] at h1
+    exact h1
+  have hj0' : (0 : ℤ) < j := by exact_mod_cast hj0
+  have hj1' : j < 2251799813685248 := by
+    have : (j : ℝ) < 2251799813685248 := by norm_num at hj1 ⊢; exact hj1
+    exact_mod_cast this
+  have hn : ((4 * j).toNat : ℤ) = 4 * j := Int.toNat_of_nonneg (by omega)
+  refine ⟨by omega, ?_, ?_⟩
+  · rw [show (2 : ℕ) ^ 53 = 9007199254740992 by norm_num]
+    omega
+  · have hc : ((4 * j).toNat : ℝ) = 4 * (j : ℝ) := by exact_mod_cast hn
+    rw [hc, hj]
+    ring
 
 /-- A double of magnitude at least `2 ^ a` is a multiple of `2 ^ (a - 52)`. -/
 theorem grid (w : UInt64) (a : ℕ) (ha : a ≤ 52) (h : (2 : ℝ) ^ a ≤ |value w|) :
