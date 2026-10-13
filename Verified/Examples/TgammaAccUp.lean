@@ -2,6 +2,7 @@ import Verified.Examples.TgammaAccShift
 import LeanExe.ProofKit.F64Admissibility
 import LeanExe.ProofKit.F64PowerScale
 import LeanExe.ProofKit.F64NearestScale
+import Mathlib.Data.UInt
 
 /-!
 The loop of `Tgamma.accurate` for `x < j`, which multiplies the factors `x, x + 1, …` and divides
@@ -269,9 +270,223 @@ theorem rescale (p1 p2 : Float) (hp1f : Finite p1.toBits) (hp2f : Finite p2.toBi
     exact mul_le_mul_of_nonneg_left (by norm_num) (by positivity)
   linarith
 
+/-- `x (x + 1) ⋯ (x + m)` divided by `2 ^ (500 r)`. -/
+noncomputable def W (v : ℝ) (r m : ℕ) : ℝ := (∏ i ∈ Finset.range (m + 1), (v + i)) / 2 ^ (500 * r)
+
+/-- The product of `min 1 |x + i|` for `i ≤ m`. -/
+noncomputable def S (v : ℝ) (m : ℕ) : ℝ := ∏ i ∈ Finset.range (m + 1), g v i
+
+theorem eoff_step (e0 : UInt64) (r : ℕ) :
+    e0 - 500 * UInt64.ofNat r - 500 = e0 - 500 * UInt64.ofNat (r + 1) := by
+  rw [UInt64.ofNat_add, mul_add]
+  simp [sub_sub]
+
+/-- The state `(xph, xpl, wh, wl, eoff)` of the loop after `m` steps: the factor `x + m` exact on
+the grid `2 ^ -54`, and `wh + wl` within `m 2 ^ -95` of `W v r m` relative after `r` divisions
+by `2 ^ 500`. -/
+def UpInv (v : ℝ) (e0 : UInt64) (m : ℕ) (s : Float × Float × Float × Float × UInt64) : Prop :=
+  Finite s.1.toBits ∧ Finite s.2.1.toBits ∧ Finite s.2.2.1.toBits ∧ Finite s.2.2.2.1.toBits ∧
+    value s.1.toBits + value s.2.1.toBits = v + m ∧
+    (∃ z : ℤ, value s.1.toBits = z / 2 ^ 54) ∧ (∃ z : ℤ, value s.2.1.toBits = z / 2 ^ 54) ∧
+    |value s.2.1.toBits| ≤ 1 / 2 ^ 43 ∧
+    |value s.2.1.toBits| ≤ |value s.1.toBits| / 2 ^ 52 + 1 / 2 ^ 1074 ∧
+    ∃ r : ℕ, r ≤ m ∧ s.2.2.2.2 = e0 - 500 * UInt64.ofNat r ∧
+      |value s.2.2.1.toBits + value s.2.2.2.1.toBits - W v r m| ≤ m / 2 ^ 95 * |W v r m| ∧
+      |value s.2.2.2.1.toBits| ≤ |value s.2.2.1.toBits| / 2 ^ 50 ∧
+      |value s.2.2.1.toBits| ≤ 2 ^ 518 ∧ S v m / 4 ≤ |W v r m|
+
+/-- One step of the loop for `x < j`. -/
+def upStep (s : Float × Float × Float × Float × UInt64) : Float × Float × Float × Float × UInt64 :=
+  if (mulDD3 (fshift s.1 s.2.1).1 (fshift s.1 s.2.1).2 s.2.2.1 s.2.2.2.1).1.abs >
+      Float.ofBits 0x6050000000000000 then
+    ((fshift s.1 s.2.1).1, (fshift s.1 s.2.1).2,
+      (mulDD3 (fshift s.1 s.2.1).1 (fshift s.1 s.2.1).2 s.2.2.1 s.2.2.2.1).1 *
+        Float.ofBits 0x20B0000000000000,
+      (mulDD3 (fshift s.1 s.2.1).1 (fshift s.1 s.2.1).2 s.2.2.1 s.2.2.2.1).2 *
+        Float.ofBits 0x20B0000000000000, s.2.2.2.2 - 500)
+  else
+    ((fshift s.1 s.2.1).1, (fshift s.1 s.2.1).2,
+      (mulDD3 (fshift s.1 s.2.1).1 (fshift s.1 s.2.1).2 s.2.2.1 s.2.2.2.1).1,
+      (mulDD3 (fshift s.1 s.2.1).1 (fshift s.1 s.2.1).2 s.2.2.1 s.2.2.2.1).2, s.2.2.2.2)
+
+theorem W_succ (v : ℝ) (r m : ℕ) : W v r (m + 1) = (v + (m + 1 : ℕ)) * W v r m := by
+  rw [W, W, Finset.prod_range_succ]; ring
+
+theorem W_rescale (v : ℝ) (r m : ℕ) : W v (r + 1) m = W v r m / 2 ^ 500 := by
+  rw [W, W, show 500 * (r + 1) = 500 * r + 500 by ring, pow_add]; ring
+
+theorem S_succ (v : ℝ) (m : ℕ) : S v (m + 1) = S v m * g v ((m + 1 : ℕ) : ℤ) := by
+  rw [S, S, Finset.prod_range_succ]
+
+theorem S_le_one (v : ℝ) (m : ℕ) : S v m ≤ 1 :=
+  Finset.prod_le_one (fun _ _ => le_min zero_le_one (abs_nonneg _)) (fun _ _ => min_le_left _ _)
+
+theorem S_nonneg (v : ℝ) (m : ℕ) : 0 ≤ S v m :=
+  Finset.prod_nonneg (fun _ _ => le_min zero_le_one (abs_nonneg _))
+
+/-- The bounds after a division by `2 ^ 500`, on the real numbers. -/
+theorem resc_real (a b q2 Wn δ Sv : ℝ) (hδ0 : 0 ≤ δ)
+    (hpe : |a + b - Wn| ≤ (δ + 1 / 2 ^ 96) * |Wn|) (hp1b : |a| ≤ 4 * |Wn|)
+    (ht : 2 ^ 518 < |a|) (hq2e : |q2 - b / 2 ^ 500| ≤ |a| / 2 ^ 500 / 2 ^ 100)
+    (hWs : |Wn| ≤ 2 ^ 528) (hS : Sv ≤ 1) :
+    |a / 2 ^ 500 + q2 - Wn / 2 ^ 500| ≤ (δ + 1 / 2 ^ 95) * |Wn / 2 ^ 500| ∧
+      |a / 2 ^ 500| ≤ 2 ^ 518 ∧ Sv / 4 ≤ |Wn / 2 ^ 500| := by
+  have h500 : (0 : ℝ) < 2 ^ 500 := by positivity
+  rw [abs_div, abs_of_pos h500, abs_div, abs_of_pos h500]
+  refine ⟨?_, ?_, ?_⟩
+  · have e1 : a / 2 ^ 500 + q2 - Wn / 2 ^ 500 = (a + b - Wn) / 2 ^ 500 + (q2 - b / 2 ^ 500) := by
+      ring
+    rw [e1]
+    have h2 := abs_add_le ((a + b - Wn) / 2 ^ 500) (q2 - b / 2 ^ 500)
+    rw [abs_div, abs_of_pos h500] at h2
+    have h3 : |a| / 2 ^ 500 / 2 ^ 100 ≤ |Wn| / 2 ^ 500 / 2 ^ 98 := by
+      have := div_le_div_of_nonneg_right (div_le_div_of_nonneg_right hp1b h500.le)
+        (by positivity : (0 : ℝ) ≤ 2 ^ 100)
+      have e2 : 4 * |Wn| / 2 ^ 500 / 2 ^ 100 = |Wn| / 2 ^ 500 / 2 ^ 98 := by ring
+      linarith
+    have h4 : |a + b - Wn| / 2 ^ 500 ≤ (δ + 1 / 2 ^ 96) * |Wn| / 2 ^ 500 :=
+      div_le_div_of_nonneg_right hpe h500.le
+    have e3 : (δ + 1 / 2 ^ 95) * (|Wn| / 2 ^ 500) = (δ + 1 / 2 ^ 96) * |Wn| / 2 ^ 500 +
+        |Wn| / 2 ^ 500 / 2 ^ 96 := by ring
+    have h5 : |Wn| / 2 ^ 500 / 2 ^ 98 ≤ |Wn| / 2 ^ 500 / 2 ^ 96 :=
+      div_le_div_of_nonneg_left (by positivity) (by positivity) (by norm_num)
+    linarith
+  · rw [div_le_iff₀ h500]
+    linarith [(by norm_num : (4 : ℝ) * 2 ^ 528 ≤ 2 ^ 518 * 2 ^ 500)]
+  · rw [le_div_iff₀ h500]
+    have h6 : Sv / 4 * 2 ^ 500 ≤ 1 / 4 * 2 ^ 500 :=
+      mul_le_mul_of_nonneg_right (by linarith) h500.le
+    linarith [(by norm_num : (1 : ℝ) / 4 * 2 ^ 500 ≤ 2 ^ 518 / 4)]
+
+/-- **One step of the loop for `x < j`** keeps the invariant. -/
+theorem up_step (hF : FmaSpec.FmaNearest) (v : ℝ) (e0 : UInt64) (m : ℕ)
+    (s : Float × Float × Float × Float × UInt64) (hm : m + 1 ≤ 187)
+    (hv : ∀ n : ℤ, 1 / 2 ^ 54 ≤ |v + n|) (hX : |v + m + 1| ≤ 2 ^ 8) (hX0 : |v + m| ≤ 2 ^ 8)
+    (h : UpInv v e0 m s) : UpInv v e0 (m + 1) (upStep s) := by
+  obtain ⟨xph, xpl, wh, wl, e⟩ := s
+  obtain ⟨hphf, hplf, hwhf, hwlf, hsum, ⟨zh, hzh⟩, ⟨zl, hzl⟩, hpl43, hplr, r, hr, he, hWe, hwlb,
+    hwhb, hS⟩ := h
+  dsimp only at hphf hplf hwhf hwlf hsum hzh hzl hpl43 hplr he hWe hwlb hwhb
+  have hm' : (m : ℝ) + 1 ≤ 187 := by exact_mod_cast hm
+  have hm0 : (0 : ℝ) ≤ m := Nat.cast_nonneg m
+  -- the factor
+  obtain ⟨hf1f, hf2f, hfsum, hfg1, hfg2, hf243, hf2r⟩ := fshift_spec xph xpl hphf hplf zh zl hzh
+    hzl hpl43 (by rw [hsum]; exact hX) (by rw [hsum]; exact hX0)
+  set f := fshift xph xpl with hfdef
+  set X := v + ((m + 1 : ℕ) : ℝ) with hXdef
+  have hXv : value f.1.toBits + value f.2.toBits = X := by rw [hfsum, hsum, hXdef]; push_cast; ring
+  have hX54 : 1 / 2 ^ 54 ≤ |X| := by
+    have := hv ((m + 1 : ℕ) : ℤ)
+    rw [hXdef]; push_cast at this ⊢; exact this
+  have hX8 : |X| ≤ 2 ^ 8 := by rw [hXdef]; push_cast; rw [← add_assoc]; exact hX
+  have hf1lo : 1 / 2 ^ 56 ≤ |value f.1.toBits| := by
+    have := abs_add_le (value f.1.toBits) (value f.2.toBits)
+    rw [hXv] at this
+    nlinarith [abs_nonneg (value f.1.toBits)]
+  have hf2b : |value f.2.toBits| ≤ |value f.1.toBits| / 2 ^ 50 := by
+    have : (1 : ℝ) / 2 ^ 1074 ≤ |value f.1.toBits| / 2 ^ 52 := by
+      rw [le_div_iff₀ (by positivity)]
+      nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 1074 * 2 ^ 52 ≤ 1 / 2 ^ 56)]
+    have e : |value f.1.toBits| / 2 ^ 52 + |value f.1.toBits| / 2 ^ 52 ≤
+        |value f.1.toBits| / 2 ^ 50 := by
+      have e2 : |value f.1.toBits| / 2 ^ 52 + |value f.1.toBits| / 2 ^ 52 =
+          |value f.1.toBits| * (2 / 2 ^ 52) := by ring
+      have e3 : |value f.1.toBits| / 2 ^ 50 = |value f.1.toBits| * (1 / 2 ^ 50) := by ring
+      rw [e2, e3]; exact mul_le_mul_of_nonneg_left (by norm_num) (abs_nonneg _)
+    linarith
+  -- the product
+  have hSlo := prod_small v hv m
+  have hWlo : 1 / 2 ^ 57 ≤ |W v r m| := by
+    have : S v m = ∏ i ∈ Finset.range (m + 1), g v i := rfl
+    rw [← this] at hSlo
+    linarith [(by norm_num : (1 : ℝ) / 2 ^ 55 / 4 = 1 / 2 ^ 57)]
+  have hδ : (m : ℝ) / 2 ^ 95 ≤ 1 / 2 ^ 80 := by
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
+  obtain ⟨hp1f, hp2f, hpe, hp2b, hp1b, hp1b'⟩ := prod_step hF f.1 f.2 wh wl X (W v r m)
+    (m / 2 ^ 95) hf1f hf2f hwhf hwlf hXv hf2b hX54 hX8 hWe (by positivity) hδ hwlb hwhb hWlo
+  have hWs : X * W v r m = W v r (m + 1) := by rw [W_succ]
+  rw [hWs] at hpe hp1b hp1b'
+  set p := mulDD3 f.1 f.2 wh wl with hpdef
+  -- the size of `W` before the step
+  have hWhi : |W v r m| ≤ 2 ^ 520 := by
+    have h1 := abs_sub_abs_le_abs_sub (W v r m) (value wh.toBits + value wl.toBits)
+    rw [abs_sub_comm] at h1
+    have h2 := abs_add_le (value wh.toBits) (value wl.toBits)
+    have : (m : ℝ) / 2 ^ 95 * |W v r m| ≤ |W v r m| / 2 := by
+      have := mul_le_mul_of_nonneg_right hδ (abs_nonneg (W v r m))
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 80 ≤ 1 / 2), abs_nonneg (W v r m)]
+    have : |value wh.toBits| / 2 ^ 50 ≤ 2 ^ 518 := by
+      have := div_le_self (abs_nonneg (value wh.toBits)) (by norm_num : (1 : ℝ) ≤ 2 ^ 50)
+      linarith
+    linarith [(by norm_num : (2 : ℝ) ^ 518 + 2 ^ 518 + 2 ^ 519 ≤ 2 ^ 520)]
+  have hWs' : |W v r (m + 1)| ≤ 2 ^ 528 := by
+    rw [← hWs, abs_mul]
+    have := mul_le_mul hX8 hWhi (abs_nonneg _) (by norm_num)
+    linarith [(by norm_num : (2 : ℝ) ^ 8 * 2 ^ 520 = 2 ^ 528)]
+  -- the test against `2 ^ 518`
+  have hcw : Wasm.IEEE64.isFinite 0x6050000000000000 = true := by decide
+  have hcv : value (Float.ofBits 0x6050000000000000).toBits = 2 ^ 518 := by
+    rw [TgammaWords.ofBits_value _ hcw, show PolyBound.ratOfWord 0x6050000000000000 = 2 ^ 518
+      by decide +kernel]
+    norm_num
+  obtain ⟨hpaf, hpav⟩ := TgammaFloor.abs_float p.1 hp1f
+  have htest : p.1.abs > Float.ofBits 0x6050000000000000 ↔ 2 ^ 518 < |value p.1.toBits| := by
+    rw [GT.gt, F64UpperWord.float_lt_iff _ _ (TgammaWords.ofBits_finite _ hcw) hpaf, hcv, hpav]
+  have hstep : upStep (xph, xpl, wh, wl, e) =
+      if p.1.abs > Float.ofBits 0x6050000000000000 then
+        (f.1, f.2, p.1 * Float.ofBits 0x20B0000000000000, p.2 * Float.ofBits 0x20B0000000000000,
+          e - 500)
+      else (f.1, f.2, p.1, p.2, e) := rfl
+  rw [hstep]
+  have hS1 : S v (m + 1) / 4 ≤ |W v r (m + 1)| := by
+    rw [S_succ, ← hWs, abs_mul]
+    have hg : g v ((m + 1 : ℕ) : ℤ) ≤ |X| := by
+      rw [g, hXdef]; push_cast; exact min_le_right _ _
+    have hg0 : 0 ≤ g v ((m + 1 : ℕ) : ℤ) := le_min zero_le_one (abs_nonneg _)
+    have h7 : S v m / 4 * g v ((m + 1 : ℕ) : ℤ) ≤ |W v r m| * |X| :=
+      mul_le_mul hS hg hg0 (abs_nonneg _)
+    have e5 : S v m * g v ((m + 1 : ℕ) : ℤ) / 4 = S v m / 4 * g v ((m + 1 : ℕ) : ℤ) := by ring
+    rw [e5, mul_comm |X|]
+    exact h7
+  by_cases ht : p.1.abs > Float.ofBits 0x6050000000000000
+  · rw [ite_eq_left ht]
+    have ht' := htest.mp ht
+    obtain ⟨hq1f, hq2f, hq1v, hq2e, hq2b⟩ := rescale p.1 p.2 hp1f hp2f ht' hp2b
+    unfold UpInv
+    dsimp only
+    obtain ⟨hr1, hr2, hr3⟩ := resc_real _ _ _ _ _ _ (by positivity) hpe hp1b ht' hq2e hWs'
+      (S_le_one v (m + 1))
+    refine ⟨hf1f, hf2f, hq1f, hq2f, by rw [hXv, hXdef], hfg1, hfg2, hf243, hf2r, r + 1,
+      by omega, by rw [he, eoff_step], ?_, hq2b, by rw [hq1v]; exact hr2,
+      by rw [W_rescale]; exact hr3⟩
+    rw [W_rescale, hq1v]
+    refine hr1.trans (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _))
+    push_cast
+    have e4 : ((m : ℝ) + 1) / 2 ^ 95 = m / 2 ^ 95 + 1 / 2 ^ 95 := by ring
+    linarith
+  · rw [ite_eq_right ht]
+    have ht' : |value p.1.toBits| ≤ 2 ^ 518 := by
+      by_contra hc
+      exact ht (htest.mpr (lt_of_not_ge hc))
+    unfold UpInv
+    dsimp only
+    refine ⟨hf1f, hf2f, hp1f, hp2f, by rw [hXv, hXdef], hfg1, hfg2, hf243, hf2r, r,
+      by omega, he, ?_, ?_, ht', hS1⟩
+    · refine hpe.trans ?_
+      apply mul_le_mul_of_nonneg_right _ (abs_nonneg _)
+      push_cast
+      have : (1 : ℝ) / 2 ^ 96 ≤ 1 / 2 ^ 95 := by norm_num
+      have e4 : ((m : ℝ) + 1) / 2 ^ 95 = m / 2 ^ 95 + 1 / 2 ^ 95 := by ring
+      linarith
+    · have := div_le_div_of_nonneg_left (abs_nonneg (value p.1.toBits))
+        (by positivity : (0 : ℝ) < 2 ^ 50) (by norm_num : (2 : ℝ) ^ 50 ≤ 2 ^ 51)
+      linarith
+
 #print axioms prod_small
 #print axioms scale_down
 #print axioms prod_step
 #print axioms rescale
+#print axioms resc_real
+#print axioms up_step
 
 end Verified.Examples.TgammaAccUp
