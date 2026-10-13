@@ -100,7 +100,7 @@ theorem exp_poly_wide : ∀ X : ℝ, |X| ≤ 5 / 8 →
 theorem expFact : ExpFact := by
   unfold ExpFact
   exact ⟨TgammaExpTables.invLn2_close, TgammaExpTables.e0_close, TgammaExpTables.e1_close,
-    fun X hX => exp_poly_wide X (hX.trans (by norm_num))⟩
+    exp_poly_wide⟩
 
 theorem sinFact : SinFact := by
   unfold SinFact
