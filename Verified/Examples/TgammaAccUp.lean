@@ -119,7 +119,159 @@ theorem scale_down (w : Float) (hw : Finite w.toBits) (hlo : 2 ^ 518 < |value w.
   norm_num
   ring
 
+/-- **One product of the loop.**  The factor `f1 + f2 = X` times the product `wh + wl ≈ W`. -/
+theorem prod_step (hF : FmaSpec.FmaNearest) (f1 f2 wh wl : Float) (X W δ : ℝ)
+    (hf1 : Finite f1.toBits) (hf2 : Finite f2.toBits) (hwh : Finite wh.toBits)
+    (hwl : Finite wl.toBits) (hX : value f1.toBits + value f2.toBits = X)
+    (hf2b : |value f2.toBits| ≤ |value f1.toBits| / 2 ^ 50) (hX54 : 1 / 2 ^ 54 ≤ |X|)
+    (hX8 : |X| ≤ 2 ^ 8) (hW : |value wh.toBits + value wl.toBits - W| ≤ δ * |W|)
+    (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2 ^ 80) (hwlb : |value wl.toBits| ≤ |value wh.toBits| / 2 ^ 50)
+    (hwhb : |value wh.toBits| ≤ 2 ^ 518) (hWlo : 1 / 2 ^ 57 ≤ |W|) :
+    Finite (mulDD3 f1 f2 wh wl).1.toBits ∧ Finite (mulDD3 f1 f2 wh wl).2.toBits ∧
+      |value (mulDD3 f1 f2 wh wl).1.toBits + value (mulDD3 f1 f2 wh wl).2.toBits - X * W| ≤
+        (δ + 1 / 2 ^ 96) * |X * W| ∧
+      |value (mulDD3 f1 f2 wh wl).2.toBits| ≤ |value (mulDD3 f1 f2 wh wl).1.toBits| / 2 ^ 51 ∧
+      |value (mulDD3 f1 f2 wh wl).1.toBits| ≤ 4 * |X * W| ∧
+      |X * W| / 4 ≤ |value (mulDD3 f1 f2 wh wl).1.toBits| := by
+  set a := value f1.toBits
+  set b := value f2.toBits
+  set c := value wh.toBits
+  set e := value wl.toBits
+  have hXp : 0 < |X| := lt_of_lt_of_le (by positivity) hX54
+  have hWp : 0 < |W| := lt_of_lt_of_le (by positivity) hWlo
+  -- `|a|` and `|c|` within `2 ^ -49` of `|X|` and `|W|`
+  have ha1 : |a| ≤ |X| * (1 + 1 / 2 ^ 49) := by
+    have h1 := abs_add_le (a + b) (-b)
+    rw [show a + b + -b = a by ring, abs_neg, hX] at h1
+    have : |a| * (1 - 1 / 2 ^ 50) ≤ |X| := by nlinarith
+    nlinarith [abs_nonneg a]
+  have ha2 : |X| * (1 - 1 / 2 ^ 49) ≤ |a| := by
+    have h1 := abs_add_le a b
+    rw [hX] at h1
+    nlinarith [abs_nonneg a]
+  have hce : |c + e| ≤ |W| * (1 + δ) := by
+    have := abs_sub_abs_le_abs_sub (c + e) W
+    nlinarith
+  have hce' : |W| * (1 - δ) ≤ |c + e| := by
+    have := abs_sub_abs_le_abs_sub W (c + e)
+    rw [abs_sub_comm] at this
+    nlinarith
+  have hc1 : |c| ≤ |W| * (1 + 1 / 2 ^ 49) := by
+    have h1 := abs_add_le (c + e) (-e)
+    rw [show c + e + -e = c by ring, abs_neg] at h1
+    have : |c| * (1 - 1 / 2 ^ 50) ≤ |W| * (1 + δ) := by nlinarith
+    nlinarith [abs_nonneg c]
+  have hc2 : |W| * (1 - 1 / 2 ^ 49) ≤ |c| := by
+    have h1 := abs_add_le c e
+    nlinarith [abs_nonneg c]
+  have hP1 : |a| * |c| ≤ 2 * (|X| * |W|) := by
+    have := mul_le_mul ha1 hc1 (abs_nonneg _) (by positivity)
+    nlinarith [mul_pos hXp hWp]
+  have hP2 : |X| * |W| / 2 ≤ |a| * |c| := by
+    have := mul_le_mul ha2 hc2 (by positivity) (abs_nonneg _)
+    nlinarith [mul_pos hXp hWp]
+  obtain ⟨hp1f, hp2f, hpe, hp2b, hp1b, hp1b'⟩ := TgammaMulDD3.mulDD3_spec hF f1 f2 wh wl hf1 hf2 hwh
+    hwl hf2b hwlb (by
+      have : 1 / 2 ^ 54 * (1 / 2 ^ 57) ≤ |X| * |W| := mul_le_mul hX54 hWlo (by positivity)
+        (abs_nonneg _)
+      nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 900 ≤ 1 / 2 ^ 54 * (1 / 2 ^ 57) / 2)])
+    (by
+      have : |a| * |c| ≤ |X| * (1 + 1 / 2 ^ 49) * 2 ^ 518 :=
+        mul_le_mul ha1 hwhb (abs_nonneg _) (by positivity)
+      have : |X| * (1 + 1 / 2 ^ 49) * 2 ^ 518 ≤ 2 ^ 8 * (1 + 1 / 2 ^ 49) * 2 ^ 518 := by gcongr
+      linarith [(by norm_num : (2 : ℝ) ^ 8 * (1 + 1 / 2 ^ 49) * 2 ^ 518 ≤ 2 ^ 899)])
+  rw [abs_mul]
+  refine ⟨hp1f, hp2f, ?_, hp2b, by linarith, by linarith⟩
+  have e1 : value (mulDD3 f1 f2 wh wl).1.toBits + value (mulDD3 f1 f2 wh wl).2.toBits - X * W =
+      (value (mulDD3 f1 f2 wh wl).1.toBits + value (mulDD3 f1 f2 wh wl).2.toBits -
+        (a + b) * (c + e)) + X * (c + e - W) := by rw [hX]; ring
+  rw [e1]
+  have h2 := abs_add_le (value (mulDD3 f1 f2 wh wl).1.toBits +
+    value (mulDD3 f1 f2 wh wl).2.toBits - (a + b) * (c + e)) (X * (c + e - W))
+  have h3 : |X * (c + e - W)| ≤ |X| * (δ * |W|) := by
+    rw [abs_mul]; exact mul_le_mul_of_nonneg_left hW (abs_nonneg _)
+  have h4 : |a| * |c| / 2 ^ 98 ≤ 2 * (|X| * |W|) / 2 ^ 98 :=
+    div_le_div_of_nonneg_right hP1 (by norm_num)
+  have e2 : (δ + 1 / 2 ^ 96) * (|X| * |W|) = |X| * (δ * |W|) + (|X| * |W|) / 2 ^ 96 := by ring
+  have h5 : 2 * (|X| * |W|) / 2 ^ 98 ≤ (|X| * |W|) / 2 ^ 96 := by
+    have : 0 ≤ |X| * |W| := by positivity
+    linarith [(by ring : 2 * (|X| * |W|) / 2 ^ 98 = (|X| * |W|) / 2 ^ 97),
+      div_le_div_of_nonneg_left this (by norm_num : (0 : ℝ) < 2 ^ 96)
+        (by norm_num : (2 : ℝ) ^ 96 ≤ 2 ^ 97)]
+  linarith
+
+/-- **The division of the product by `2 ^ 500`.** -/
+theorem rescale (p1 p2 : Float) (hp1f : Finite p1.toBits) (hp2f : Finite p2.toBits)
+    (hp1 : 2 ^ 518 < |value p1.toBits|) (hp2 : |value p2.toBits| ≤ |value p1.toBits| / 2 ^ 51) :
+    Finite (p1 * Float.ofBits 0x20B0000000000000).toBits ∧
+      Finite (p2 * Float.ofBits 0x20B0000000000000).toBits ∧
+      value (p1 * Float.ofBits 0x20B0000000000000).toBits = value p1.toBits / 2 ^ 500 ∧
+      |value (p2 * Float.ofBits 0x20B0000000000000).toBits - value p2.toBits / 2 ^ 500| ≤
+        |value p1.toBits| / 2 ^ 500 / 2 ^ 100 ∧
+      |value (p2 * Float.ofBits 0x20B0000000000000).toBits| ≤
+        |value (p1 * Float.ofBits 0x20B0000000000000).toBits| / 2 ^ 50 := by
+  obtain ⟨hsf, hsv⟩ := scale_down p1 hp1f hp1
+  have hcw : Wasm.IEEE64.isFinite 0x20B0000000000000 = true := by decide
+  have hcv : value (Float.ofBits 0x20B0000000000000).toBits = 1 / 2 ^ 500 := by
+    rw [TgammaWords.ofBits_value _ hcw, show PolyBound.ratOfWord 0x20B0000000000000 = 1 / 2 ^ 500
+      by decide +kernel]
+    norm_num
+  have hc := fapprox_self _ (TgammaWords.ofBits_finite _ hcw)
+  rw [hcv] at hc
+  have hp1max : |value p1.toBits| ≤ 2 ^ 1024 := by
+    have := F64Admissibility.finite_exponent_bound p1.toBits hp1f
+    have := F64Magnitude.magnitude_lt p1.toBits 2047 1024 (by norm_num) (by norm_num) (by omega)
+    rw [show ((2 : ℝ) ^ (1024 : ℤ)) = 2 ^ 1024 by norm_num] at this
+    linarith
+  have hm := fapprox_mul (fapprox_self p2 hp2f) hc |value p2.toBits| (1 / 2 ^ 500) le_rfl
+    (by rw [abs_of_pos (by positivity)]) ((|value p2.toBits| + 0) * (1 / 2 ^ 500 + 0)) le_rfl
+    (by
+      have : |value p2.toBits| ≤ 2 ^ 1024 := by
+        have : |value p1.toBits| / 2 ^ 51 ≤ |value p1.toBits| := div_le_self (abs_nonneg _)
+          (by norm_num)
+        linarith
+      have : (|value p2.toBits| + 0) * (1 / 2 ^ 500 + 0) ≤ 2 ^ 1024 * (1 / 2 ^ 500) := by
+        simp only [add_zero]; exact mul_le_mul_of_nonneg_right this (by positivity)
+      linarith [(by norm_num : (2 : ℝ) ^ 1024 * (1 / 2 ^ 500) < 2 ^ 1022)])
+  simp only [zero_mul, mul_zero, add_zero, zero_add] at hm
+  have h2 := hm.2
+  have htiny : (1 : ℝ) / 2 ^ 1075 ≤ |value p1.toBits| / 2 ^ 500 / 2 ^ 101 := by
+    rw [div_div, le_div_iff₀ (by positivity)]
+    nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 * (2 ^ 500 * 2 ^ 101) ≤ 2 ^ 518)]
+  have hb : |value p2.toBits| * (1 / 2 ^ 500) / 2 ^ 53 ≤ |value p1.toBits| / 2 ^ 500 / 2 ^ 101 := by
+    have : |value p2.toBits| * (1 / 2 ^ 500) / 2 ^ 53 ≤ |value p1.toBits| / 2 ^ 51 * (1 / 2 ^ 500) /
+        2 ^ 53 := by gcongr
+    have e : |value p1.toBits| / 2 ^ 51 * (1 / 2 ^ 500) / 2 ^ 53 =
+        |value p1.toBits| / 2 ^ 500 / 2 ^ 104 := by ring
+    have : |value p1.toBits| / 2 ^ 500 / 2 ^ 104 ≤ |value p1.toBits| / 2 ^ 500 / 2 ^ 101 :=
+      div_le_div_of_nonneg_left (by positivity) (by positivity) (by norm_num)
+    linarith
+  have herr : |value (p2 * Float.ofBits 0x20B0000000000000).toBits - value p2.toBits / 2 ^ 500| ≤
+      |value p1.toBits| / 2 ^ 500 / 2 ^ 100 := by
+    rw [show value p2.toBits / 2 ^ 500 = value p2.toBits * (1 / 2 ^ 500) by ring]
+    have e : |value p1.toBits| / 2 ^ 500 / 2 ^ 101 + |value p1.toBits| / 2 ^ 500 / 2 ^ 101 =
+        |value p1.toBits| / 2 ^ 500 / 2 ^ 100 := by ring
+    linarith
+  refine ⟨hsf, hm.1, hsv, herr, ?_⟩
+  rw [hsv, abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 500)]
+  have := abs_sub_abs_le_abs_sub (value (p2 * Float.ofBits 0x20B0000000000000).toBits)
+    (value p2.toBits / 2 ^ 500)
+  rw [abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 500)] at this
+  have h3 : |value p2.toBits| / 2 ^ 500 ≤ |value p1.toBits| / 2 ^ 51 / 2 ^ 500 :=
+    div_le_div_of_nonneg_right hp2 (by positivity)
+  have e : |value p1.toBits| / 2 ^ 51 / 2 ^ 500 + |value p1.toBits| / 2 ^ 500 / 2 ^ 100 ≤
+      |value p1.toBits| / 2 ^ 500 / 2 ^ 50 := by
+    have e2 : |value p1.toBits| / 2 ^ 51 / 2 ^ 500 + |value p1.toBits| / 2 ^ 500 / 2 ^ 100 =
+        (|value p1.toBits| / 2 ^ 500) * (1 / 2 ^ 51 + 1 / 2 ^ 100) := by ring
+    have e3 : |value p1.toBits| / 2 ^ 500 / 2 ^ 50 =
+        (|value p1.toBits| / 2 ^ 500) * (1 / 2 ^ 50) := by ring
+    rw [e2, e3]
+    exact mul_le_mul_of_nonneg_left (by norm_num) (by positivity)
+  linarith
+
 #print axioms prod_small
 #print axioms scale_down
+#print axioms prod_step
+#print axioms rescale
 
 end Verified.Examples.TgammaAccUp
