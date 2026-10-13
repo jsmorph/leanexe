@@ -60,7 +60,7 @@ The tables `j0Table` (92 words) and `j1Table` (102 words) hold the coefficients 
 
 ## Theorems
 
-`transcendentals` contains no theorem about `Bessel.jn` or `Bessel.yn`.  Branch `w/log` contains accepted lemmas toward them, which [the proof of `jn` and `yn`](#proof-of-jn-and-yn-in-progress) lists.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` writes no `bessel.wasm` and runs [the accuracy check](BesselAccuracy.lean) natively.  The real-analysis results below are proved in `LeanExe/ProofKit`, which [the library's root import](../../LeanExe.lean) imports, and in the integration build `opus-merge-tan-1.log`, in `build/transcendentals` on the build host, each of them reports only `propext`, `Classical.choice`, and `Quot.sound`.
+`transcendentals` contains no theorem about `Bessel.jn` or `Bessel.yn`.  It contains accepted lemmas toward them, which [the proof of `jn` and `yn`](#proof-of-jn-and-yn-in-progress) lists.  The Lean module defines no `compiled` WebAssembly module, so there is no byte theorem and no file theorem, and `tests/verified/run.sh` writes no `bessel.wasm` and runs [the accuracy check](BesselAccuracy.lean) natively.  The real-analysis results below are proved in `LeanExe/ProofKit`, which [the library's root import](../../LeanExe.lean) imports, and in the integration build `opus-merge-tan-1.log`, in `build/transcendentals` on the build host, each of them reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Statement |
 |---|---|
@@ -206,7 +206,7 @@ The analysis supports the form `a + b |n|` on every path: the starting errors gi
 
 ### Proof of `jn` and `yn`, in progress
 
-Track `log` is proving the ranges of the decision of 2026-10-12 on branch `w/log`, and no theorem about `Bessel.jn` or `Bessel.yn` is accepted yet.  The proof defines `J_n` by the series 10.2.2 with ProofKit's `psum` and `Y_n` for `x > 0` from `Y0` and `Y1` by 10.6.1, carries each rounding error to order `n` by the exact formula of the analysis above, and bounds the result with the moduli.  The table lists the accepted modules on `w/log` with their main results, and the log of the runner's build on the build host, in which each reports only `propext`, `Classical.choice`, and `Quot.sound`.
+The proof of the ranges of the decision of 2026-10-12 is in progress, and no theorem about `Bessel.jn` or `Bessel.yn` is accepted yet.  The proof defines `J_n` by the series 10.2.2 with ProofKit's `psum` and `Y_n` for `x > 0` from `Y0` and `Y1` by 10.6.1, carries each rounding error to order `n` by the exact formula of the analysis above, and bounds the result with the moduli.  The table lists the accepted modules, merged into `transcendentals` from `w/log` at `a712bf7c`, with their main results, and the log of the runner's build on the build host, in which each reports only `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Module | Main results | Log |
 |---|---|---|
