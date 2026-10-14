@@ -51,36 +51,45 @@ theorem downBody_eq : downBody = fun _ s => downStep s := by
   obtain ⟨a, b, c, d⟩ := s
   rfl
 
-/-- The branch of `Tgamma.accurate` from `1/4`, with the loop bodies, the adjustment of the low
-part, and the final rounding as named functions. -/
-def accRangeVal (dbTab : Array UInt64) (x : Float) : Float :=
-  let ix := floorF x
-  let d := 2.0 * (x - (ix + 0.5))
-  let (oh, imax, ol, jmax, j, eoff) := accurateRange ix
-  let jm := j - ix
-  let (fh, fl) := poly3 accurateTable d oh imax ol jmax
-  let (wh, wl, eoff) :=
-    if jm > 0.0 then
-      let (_, _, wh, wl, eoff) := LeanExe.loop (jm - 1.0).toUInt64
-        (x, (0.0 : Float), x, (0.0 : Float), eoff) upBody
-      (wh, wl, eoff)
-    else if jm < 0.0 then
-      let (_, _, wh, wl) := LeanExe.loop (-1.0 - jm).toUInt64
-        (x - 1.0, (0.0 : Float), x - 1.0, (0.0 : Float)) downBody
-      (wh, wl, eoff)
-    else ((1.0 : Float), (0.0 : Float), eoff)
-  let (fh, fl) :=
-    if jm > 0.0 then
-      let rh := 1.0 / wh
-      mulDD3 fh fl rh ((Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
-    else if jm < 0.0 then mulDD3 fh fl wh wl
-    else (fh, fl)
+/-- The product `(wh, wl)` of `Tgamma.accurate` and its scale word. -/
+def stW (x jm : Float) (eoff : UInt64) : Float × Float × UInt64 :=
+  if jm > 0.0 then
+    let (_, _, wh, wl, eoff) := LeanExe.loop (jm - 1.0).toUInt64
+      (x, (0.0 : Float), x, (0.0 : Float), eoff) upBody
+    (wh, wl, eoff)
+  else if jm < 0.0 then
+    let (_, _, wh, wl) := LeanExe.loop (-1.0 - jm).toUInt64
+      (x - 1.0, (0.0 : Float), x - 1.0, (0.0 : Float)) downBody
+    (wh, wl, eoff)
+  else ((1.0 : Float), (0.0 : Float), eoff)
+
+/-- The quotient or product of the polynomial `fh + fl` and the product `wh + wl`. -/
+def stF (fh fl jm wh wl : Float) : Float × Float :=
+  if jm > 0.0 then
+    let rh := 1.0 / wh
+    mulDD3 fh fl rh ((Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
+  else if jm < 0.0 then mulDD3 fh fl wh wl
+  else (fh, fl)
+
+/-- The adjustment of the low part, the rounding test, and the final rounding. -/
+def stEnd (dbTab : Array UInt64) (x jm : Float) (eoff : UInt64) (f : Float × Float) : Float :=
+  let (fh, fl) := f
   let fl := adjLow fh fl jm
   let eps := Float.ofBits 0x398E000000000000 * fh
   let ub := fh + (fl + eps)
   let lb := fh + (fl - eps)
   if ub != lb then database dbTab x (Float.ofBits (finRes fh fl eoff))
   else Float.ofBits (finRes fh fl eoff)
+
+/-- The branch of `Tgamma.accurate` from `1/4` in three stages. -/
+def accRangeVal (dbTab : Array UInt64) (x : Float) : Float :=
+  let ix := floorF x
+  let d := 2.0 * (x - (ix + 0.5))
+  let (oh, imax, ol, jmax, j, eoff) := accurateRange ix
+  let jm := j - ix
+  let (fh, fl) := poly3 accurateTable d oh imax ol jmax
+  let (wh, wl, eoff) := stW x jm eoff
+  stEnd dbTab x jm eoff (stF fh fl jm wh wl)
 
 theorem accurate_range_eq (dbTab : Array UInt64) (x : Float) (h : ¬ x.abs < 0.25) :
     accurate accurateTable dbTab x = accRangeVal dbTab x := by
