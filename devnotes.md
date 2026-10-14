@@ -32514,3 +32514,16 @@ Three points from the builds.  The location list of `generalize ... at` must sta
 - [ ] `asSinpipidAccurate`, `asLgammaAsymAccurate`, the polynomials about the negative zeros, the hard cases, and the branches of the accurate path
 - [ ] Stirling's series from `2^800` to the overflow threshold
 - [ ] the theorem within one step
+
+## 2026-10-14: The accurate sine of `lgamma` (track `expm1`)
+
+`LgammaSinAcc.sinAcc_spec` (commit `fd0b4c3d`) puts `Lgamma.asSinpipidAccurate x` within `2^-85` of `sin (π x)/π`, relative, at every double `x = n/2^54` with `0 < n < 2^54`, with the low part at most `2^-47` of the high part.  The accurate path calls it at `x - ⌊x⌋` below -1/2, a multiple of `2^-53`, and at `-x` from -1/2 to -1/4, a multiple of `2^-54`.  The proof has five modules.  `LgammaSinAccRed.red54` (commit `67002871`) is `TgammaSinpidRed.red_spec` on the grid `2^-54`.  `LgammaPolyDDSteps.polyDD_steps` (commit `506b476f`) generalizes `polyDD_damped_core` to a bound per step, since the kernels' coefficients fall from `2.5 · 10^-2` to `5 · 10^-26` and one cap on the low parts breaks the dominance that each `fastSum` needs.  `LgammaSinAccKern` (commit `cdadff09`) checks those bounds in the kernel as powers of two, and `LgammaSinAccTail` (commits `d02526eb` and `1d49c1a7`) adapts `TgammaSinpidComb`'s lemmas to the smaller kernel errors.
+
+The budget for `ky ≤ 63` is `2^-100` from the cosine row, `2^-97` from the cosine kernel (`SinpiAccFact`'s `2^-95 d²` with `d² ≤ 1/4`), `2^-96` from the sine kernel (`2^-95 |d|` with `|d| ≤ 1/2`), and `1.5 · 2^-101` from the operations, about `25.8 · 2^-100 = 2^-95.3` in all.  There `y = 64 - 128 |x - 1/2| ≥ 1/2`, so `sin (π x)/π ≥ 1/(128 · 3.15)` and the relative error is at most `2^-86.6`.  For `ky = 64` the row `sh + sl` is 0 and `d = y ≥ 2^-47`, so every term is a multiple of `d` apart from `2^-1059`, and the relative error is at most `2^-87.3`.  The polynomials' errors move from `w = d2h + d2l` to `d²` through `TgammaPolyLip.eval_lip`, with Lipschitz constants `2^-25` and `2^-18` and `|w - d²| ≤ d²/2^106 + 2^-1074`.  The sine kernel's high part lies in `[0.0245, 0.02456]`, from its constant coefficient and a bound on the rest of its Horner value (`sin_c0`).
+
+Three points from the builds.  `exact_mod_cast` again failed to move `ℚ → ℝ` casts, here across `1/2^25`, and `Rat.cast_le` with `push_cast` worked.  `congr 1` on `sin a = sin b` reached the recursion limit, and a rewrite of the argument by an equation proved with `push_cast` and `ring` replaced it.  The equation of the code with `sinAccTail` holds by `rfl` after `rw` of `d`, and the module builds in about one minute.  The logs are `opus-sinaccred-1.log`, `opus-polyddsteps-1.log`, `opus-sinacckern-3.log`, `opus-sinacctail-5.log`, and `opus-sinacc-5.log` in `build/transcendentals` of a separate worktree, with the three axioms only.
+
+- [x] `asSinpipidAccurate`
+- [ ] `asLgammaAsymAccurate`, the polynomials about the negative zeros, the hard cases, and the branches of the accurate path
+- [ ] Stirling's series from `2^800` to the overflow threshold
+- [ ] the theorem within one step
