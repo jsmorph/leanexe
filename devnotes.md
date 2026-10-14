@@ -32543,3 +32543,17 @@ Four points from the builds.  `set et := 1/2^105 + ...` without a type elaborate
 - [ ] the polynomials of the accurate path's branches (`polyDDDFst`), the polynomials about the negative zeros, and the hard cases
 - [ ] Stirling's series from `2^800` to the overflow threshold
 - [ ] the theorem within one step
+
+## 2026-10-14: The polynomials of the accurate path of `lgamma` below 3.75 (track `expm1`, minideb2)
+
+`LgammaAccPoly` (commits `7ee522c4` and `98df548c`) bounds the two polynomials that `Lgamma.accurate` evaluates by `Lgamma.polyDDDFst` below 3.75, at a double point `|x| ≤ 1/4`.  The 34 pairs at offset 0 of `Lgamma.accurateTable`, the series of `log Γ (1 + x)/x`, come within `2^-89` of their polynomial with a low part below `2^-43` (`small_ok` with `acc_gen`).  The 30 pairs at offset 68, the series of `log Γ (3/2 + d)`, come within `9 · 2^-61` with a low part below `2^-40` and a high part below 1/4 (`mid_spec`).  `acc_gen` applies `LgammaPolyFst.polyFst_damped_core` with the bound `hbT` on each step's Horner value by the magnitudes of the remaining coefficients, and the kernel checks its conditions in rationals (`accOk`).
+
+The second polynomial needs a separate argument at its last two steps.  Its coefficient at offset 70 is `ψ (3/2) ≈ 0.0365`, and the product that `fastSum` adds to it reaches 0.127 for `|d| ≤ 1/4`, so the precondition of `fastTwoSum` fails and its result can be inexact by half a spacing of the larger operand.  `mid_split` separates the loop into the 28 steps that `acc_gen` covers (`mid_ok`) and the last two, and `fastSum_any` bounds a `fastSum` without order between its operands through `TgammaAcc2.fts_approx`, at `|b|/2^53` for the product `b`.  The last product by `|d| ≤ 1/4` scales that error, near `2^-56`, and the total comes to about `2^-57.9`, a factor near 3.7 below `2^-56`.  A script checked the bound in exact arithmetic before the proof.
+
+The list form of `range 28` in the step bounds exceeded `maxRecDepth` when unfolded, and `eval_map_range` with `Finset.sum_range_succ'` replaced it.  The build log is `opus-accpoly-7.log` in `build/transcendentals` of `/home/somebody/src/lt-expm1`, where `mid_spec` depends on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+- [x] the polynomials of the accurate path below 3.75
+- [ ] the accurate path's branches, which combine these polynomials with `asLogdAccurate` and the reflection
+- [ ] the polynomials about the negative zeros and the hard cases
+- [ ] Stirling's series from `2^800` to the overflow threshold
+- [ ] the theorem within one step
