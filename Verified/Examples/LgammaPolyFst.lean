@@ -6,7 +6,9 @@ import Verified.Examples.Lgamma
 `horner (cDD tab o) N L x m` of `TgammaPolyDDD`.  The loop is that of `Tgamma.polyDDD` with
 `fastSum` in place of `sumDD`, so the proof is `TgammaPolyDDD.polyDDD_damped_core` with one more
 hypothesis: each coefficient that `fastSum` adds dominates the product before it (`hdom`), which
-gives `fastSum` the order of `fastTwoSum` (`polyFst_damped_core`, `polyFst_spec`).
+gives `fastSum` the order of `fastTwoSum`.  `polyFst_damped_core` states the dominance at each step
+`m` with the exact Horner value of that step plus a margin `δ` for the error and the low part, and
+`polyFst_spec` with one bound `M` on all Horner values.
 -/
 
 namespace Verified.Examples.LgammaPolyFst
@@ -15,8 +17,10 @@ open Verified.Examples.Lgamma (polyDDDFst)
 
 set_option exponentiation.threshold 4096
 
+set_option maxHeartbeats 400000 in
 /-- `polyDDDFst` within `X ^ (N - 1) (el + (tB + Cl)/2^53) + (N - 1) polyEps` of the exact Horner
-value, when each coefficient that `fastSum` adds dominates the product. -/
+value, when the coefficient that `fastSum` adds at step `m` dominates `x` times the Horner value of
+step `m` plus `δ`. -/
 theorem polyFst_damped_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt64) (x l : Float)
     (hn1 : 1 ≤ n.toNat) (hon : o.toNat + 2 * n.toNat < 2 ^ 63)
     (hfh : ∀ k < n.toNat, Finite (Float.ofBits tab[o.toNat + 2 * k]!).toBits)
@@ -31,9 +35,11 @@ theorem polyFst_damped_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n 
     (htBh : Lb ≤ tB ∨ polyT Ch Lb ≤ tB) (htB0 : 0 ≤ tB) (htBs : tB ≤ 2 ^ 797)
     (hcap : (tB + Cl) * (1 + 1 / 2 ^ 53) + (n.toNat - 1 : ℕ) * polyGrow M Ch Cl Λ ≤ Λ)
     (hsmall : el + (tB + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ 1)
-    (hsize : Ch + M + 2 ≤ 2 ^ 797) (hLb1 : Lb + Cl ≤ 2 ^ 797) (hΛpos : 0 ≤ Λ)
-    (hdom : ∀ k, k + 2 ≤ n.toNat → (M + 1) * X * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 ≤
-      |value (Float.ofBits tab[o.toNat + 2 * k]!).toBits|) :
+    (hsize : Ch + M + 2 ≤ 2 ^ 797) (hLb1 : Lb + Cl ≤ 2 ^ 797) (hΛpos : 0 ≤ Λ) (δ : ℝ)
+    (hδ : el + (tB + Cl) / 2 ^ 53 + (n.toNat - 1 : ℕ) * polyEps X M Ch Cl Λ + Λ ≤ δ) (hδ1 : δ ≤ 1)
+    (hdom : ∀ m, m + 2 ≤ n.toNat →
+      (|horner (cDD tab o) n.toNat L (value x.toBits) m| + δ) * X * (1 + 1 / 2 ^ 53) +
+        1 / 2 ^ 1075 ≤ |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 2 - m)]!).toBits|) :
     Finite (polyDDDFst tab o n x l).1.toBits ∧ Finite (polyDDDFst tab o n x l).2.toBits ∧
       |value (polyDDDFst tab o n x l).1.toBits + value (polyDDDFst tab o n x l).2.toBits -
           horner (cDD tab o) n.toNat L (value x.toBits) (n.toNat - 1)| ≤
@@ -177,6 +183,14 @@ theorem polyFst_damped_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n 
           horner (cDD tab o) N L vx m - value s.2.toBits by ring] at h1
         have h2 := abs_sub (horner (cDD tab o) N L vx m) (value s.2.toBits)
         linarith
+      have hs1b' : |value s.1.toBits| ≤ |horner (cDD tab o) N L vx m| + δ := by
+        have h1 := abs_sub_abs_le_abs_sub (value s.1.toBits)
+          (value s.1.toBits + value s.2.toBits - horner (cDD tab o) N L vx m)
+        rw [show value s.1.toBits -
+            (value s.1.toBits + value s.2.toBits - horner (cDD tab o) N L vx m) =
+          horner (cDD tab o) N L vx m - value s.2.toBits by ring] at h1
+        have h2 := abs_sub (horner (cDD tab o) N L vx m) (value s.2.toBits)
+        linarith
       set Λm := Λ0 + m * g with hΛmdef
       have hH : |value s.1.toBits| * |vx| ≤ (M + 1) * X :=
         mul_le_mul hs1b hX (abs_nonneg _) (by linarith)
@@ -188,11 +202,18 @@ theorem polyFst_damped_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n 
       have hLmax : Λm * X ≤ 2 ^ 900 := by
         have : Λm * X ≤ Λm := mul_le_of_le_one_right (le_trans (abs_nonneg _) hsl) hX1
         linarith [(by norm_num : (1 : ℝ) < 2 ^ 900)]
+      have hH' : |value s.1.toBits| * |vx| ≤ (|horner (cDD tab o) N L vx m| + δ) * X :=
+        mul_le_mul hs1b' hX (abs_nonneg _) (le_trans (abs_nonneg _) hs1b')
+      have hHmax' : (|horner (cDD tab o) N L vx m| + δ) * X ≤ 2 ^ 900 := by
+        have : (|horner (cDD tab o) N L vx m| + δ) * X ≤ (M + 1) * X :=
+          mul_le_mul_of_nonneg_right (by linarith) hX0
+        linarith
       obtain ⟨hm1f, hm2f, hme, hm2b, hm1b⟩ := mulDDD_spec hF x s.1 s.2 hx hs1 hs2 _ _ hH hL
         hHmax hLmax
-      generalize mulDDD x s.1 s.2 = mm at hm1f hm2f hme hm2b hm1b ⊢
+      obtain ⟨-, -, -, -, hm1b'⟩ := mulDDD_spec hF x s.1 s.2 hx hs1 hs2 _ _ hH' hL hHmax' hLmax
+      generalize mulDDD x s.1 s.2 = mm at hm1f hm2f hme hm2b hm1b hm1b' ⊢
       obtain ⟨m1, m2⟩ := mm
-      simp only at hm1f hm2f hme hm2b hm1b ⊢
+      simp only at hm1f hm2f hme hm2b hm1b hm1b' ⊢
       set Lm := Cl + (Λm * X * (1 + 1 / 2 ^ 51) + (M + 1) * X / 2 ^ 52 + 1 / 2 ^ 1071) with hLm
       have hLsum : |value (Float.ofBits tab[o.toNat + 2 * i + 1]!).toBits| + |value m2.toBits| ≤ Lm := by
         rw [hLm]; linarith
@@ -214,11 +235,11 @@ theorem polyFst_damped_core (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n 
         mul_le_mul_of_nonneg_right hMX (by positivity)
       have hm1lim : |value m1.toBits| < 2 ^ 898 := by
         linarith [(by norm_num : (2 : ℝ) ^ 797 * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 < 2 ^ 898)]
-      have hdomi := hdom i (by omega)
-      have hm1c : |value m1.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * i]!).toBits| := by
-        have : (M + 1) * X * (1 + 1 / 2 ^ 53) ≥ |value s.1.toBits| * |vx| * (1 + 1 / 2 ^ 53) :=
-          mul_le_mul_of_nonneg_right hH (by positivity)
-        linarith
+      have hdomi : (|horner (cDD tab o) N L vx m| + δ) * X * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 ≤
+          |value (Float.ofBits tab[o.toNat + 2 * i]!).toBits| := hdom m (by omega)
+      have hm1c : |value m1.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * i]!).toBits| :=
+        hm1b'.trans hdomi
+      clear hm1b' hdomi hH' hHmax' hs1b'
       obtain ⟨htf, htlf, hte, htlb⟩ := fastSum_spec _ _ m1 m2 hhi hlo hm1f hm2f hm1c
         (by linarith [(by norm_num : (2 : ℝ) ^ 797 < 2 ^ 898)]) Lm hLsum
         (hLmle.trans hpolyLow)
@@ -338,9 +359,19 @@ theorem polyFst_spec (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
   have hLb0 : 0 ≤ Lb := (abs_nonneg _).trans hLb
   have hX0 : 0 ≤ X := (abs_nonneg _).trans hX
   have hel0 : 0 ≤ el := (abs_nonneg _).trans hlL
+  have hdom' : ∀ m, m + 2 ≤ n.toNat →
+      (|horner (cDD tab o) n.toNat L (value x.toBits) m| + 1) * X * (1 + 1 / 2 ^ 53) +
+        1 / 2 ^ 1075 ≤ |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 2 - m)]!).toBits| := by
+    intro m hm
+    have h1 := hdom (n.toNat - 2 - m) (by omega)
+    have h2 := hM m (by omega)
+    have h3 : (|horner (cDD tab o) n.toNat L (value x.toBits) m| + 1) * X * (1 + 1 / 2 ^ 53) ≤
+        (M + 1) * X * (1 + 1 / 2 ^ 53) :=
+      mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right (by linarith) hX0) (by positivity)
+    linarith
   obtain ⟨h1, h2, h3, h4⟩ := polyFst_damped_core hF tab o n x l hn1 hon hfh hfl X M Ch Cl Λ L el
     Lb Lb hx hX hX1 hCh hCl hl hlL hLb htop hM (Or.inl le_rfl) hLb0 (by linarith) hcap hsmall hsize
-    hLb1 hΛpos hdom
+    hLb1 hΛpos 1 hsmall le_rfl hdom'
   refine ⟨h1, h2, h3.trans ?_, h4⟩
   have hE : 0 ≤ el + (Lb + Cl) / 2 ^ 53 := add_nonneg hel0 (div_nonneg (add_nonneg hLb0 hCl0) (by positivity))
   have := mul_le_mul_of_nonneg_right (pow_le_one₀ hX0 hX1 : X ^ (n.toNat - 1) ≤ 1) hE
