@@ -137,7 +137,7 @@ theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : F
         |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 51 + 1 / 2 ^ 50 ∧
       |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.2.toBits| ≤
         |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 100 + 1 / 2 ^ 100 := by
-  obtain ⟨E, hEb, hRt, hRt1, hRt2, hRr, hRrv, hRrt, hRed, hRedv, hRi1, hRi2, hyv⟩ :=
+  obtain ⟨E, hEb, hRt, hRt1, hRt2, hRr, hRrv, hRrt, hRed, hRedv, hRi1, hRi2, hyv, -⟩ :=
     LgammaLogAccRed.reduce_spec y hy hpos
   obtain ⟨T, hT⟩ : ∃ T, Lgamma.asLogdAccurate Tgamma.logdTable H y = T := ⟨_, rfl⟩
   rw [hT]
