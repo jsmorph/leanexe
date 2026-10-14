@@ -91,7 +91,7 @@ theorem abs_sub_eq_of_close (c s : ℝ) (h : |c - s| ≤ |s| / 2) :
 
 /-- **A row of the database** within one step of `Γ`. -/
 theorem db_entry (hA : TgammaApprox.AccRangeFact) (wx wf wd : UInt64)
-    (hfx : Wasm.IEEE64.isFinite wx = true) (hff : Wasm.IEEE64.isFinite wf = true)
+    (hff : Wasm.IEEE64.isFinite wf = true)
     (hfd : Wasm.IEEE64.isFinite wd = true) (r : ℕ × ℕ × ℕ × ℕ × ℕ × ℕ)
     (hr : r ∈ TgammaApprox.accRanges) (n : ℤ) (hn1 : (n : ℚ) < ratOfWord wx)
     (hn2 : ratOfWord wx < n + 1)
@@ -238,7 +238,7 @@ theorem db_within (hA : TgammaApprox.AccRangeFact) : DbWithin := by
   obtain ⟨⟨⟨⟨⟨⟨⟨⟨hfx, hff⟩, hfd⟩, hr⟩, hn1⟩, hδ⟩, hS⟩, hE1⟩, hE2⟩ := h
   unfold entry
   rw [i0, i1, i2, TgammaWords.ofBits_bits _ hfx]
-  exact db_entry hA _ _ _ hfx hff hfd _ hr _ hn1 (Int.lt_floor_add_one _) hδ hS hE1 hE2
+  exact db_entry hA _ _ _ hff hfd _ hr _ hn1 (Int.lt_floor_add_one _) hδ hS hE1 hE2
 
 #print axioms gamma_kfac
 #print axioms db_entry
