@@ -99,7 +99,9 @@ theorem reduce_spec (x : Float) (hx : Finite x.toBits) (hpos : 0 < value x.toBit
       value (Lgamma.logReduce Tgamma.logdTable x).2.2.1.toBits = E ∧
       (Lgamma.logReduce Tgamma.logdTable x).2.2.2.1.toNat < 33 ∧
       (Lgamma.logReduce Tgamma.logdTable x).2.2.2.2.toNat < 32 ∧
-      value x.toBits = 2 ^ E * value (Lgamma.logReduce Tgamma.logdTable x).1.toBits := by
+      value x.toBits = 2 ^ E * value (Lgamma.logReduce Tgamma.logdTable x).1.toBits ∧
+      ∃ k : ℕ, k < 2 ^ 53 ∧
+        value (Lgamma.logReduce Tgamma.logdTable x).1.toBits = (k : ℝ) / 2 ^ 52 := by
   have hs := F64Exact.sign_of_pos _ hpos
   have hlt63 : x.toBits.toNat < 2 ^ 63 := by
     simpa only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le] using hs
@@ -130,7 +132,7 @@ theorem reduce_spec (x : Float) (hx : Finite x.toBits) (hpos : 0 < value x.toBit
     have hm52 : (x.toBits &&& 0xFFFFFFFFFFFFF).toNat < 2 ^ 52 := by rw [hm]; omega
     obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := core _ hm52 _ E hed
     refine ⟨E, by rw [hE, abs_le]; constructor <;> omega, h1, ?_, ?_, h3, h4, h5, h6, h7, h8, h9,
-      ?_⟩
+      ?_, ⟨2 ^ 52 + (x.toBits &&& 0xFFFFFFFFFFFFF).toNat, by omega, by rw [h2, eq_div_iff (by positivity)]; push_cast; ring⟩⟩
     · rw [h2]; have : (0 : ℝ) ≤ ((x.toBits &&& 0xFFFFFFFFFFFFF).toNat : ℝ) / 2 ^ 52 := by
         positivity
       linarith
@@ -162,7 +164,8 @@ theorem reduce_spec (x : Float) (hx : Finite x.toBits) (hpos : 0 < value x.toBit
         _ ≤ _ := Nat.mul_le_mul_right _ hp1
     obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := core _ hm52 _ ((P : ℤ) - 1074) ⟨hedf, hedsv⟩
     refine ⟨(P : ℤ) - 1074, by rw [abs_le]; constructor <;> omega, h1, ?_, ?_, h3, h4, h5, h6,
-      h7, h8, h9, ?_⟩
+      h7, h8, h9, ?_, ⟨2 ^ 52 + ((x.toBits <<< (63 - Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat,
+        by omega, by rw [h2, eq_div_iff (by positivity)]; push_cast; ring⟩⟩
     · rw [h2]; have : (0 : ℝ) ≤ (((x.toBits <<< (63 - Fma.msb64 x.toBits - 11)) &&&
           0xFFFFFFFFFFFFF).toNat : ℝ) / 2 ^ 52 := div_nonneg (Nat.cast_nonneg _) (by norm_num)
       linarith
