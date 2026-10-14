@@ -57,8 +57,10 @@ theorem polyDD_steps (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
     (hK : ∀ m, m + 2 ≤ n.toNat →
       |horner (cDD tab o) n.toNat L (value xh.toBits + value xl.toBits) m| + E m + Λ m ≤ K m)
     (hKsz : ∀ m, m + 2 ≤ n.toNat → K m ≤ 2 ^ 797 ∧ Λ m ≤ 2 ^ 797)
-    (hdom : ∀ m, m + 2 ≤ n.toNat → K m * Xh * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 ≤
-      |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 2 - m)]!).toBits|)
+    (hdom : ∀ m, m + 2 ≤ n.toNat →
+      (|horner (cDD tab o) n.toNat L (value xh.toBits + value xl.toBits) m| + E m + Λ m) *
+          |value xh.toBits| * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 ≤
+        |value (Float.ofBits tab[o.toNat + 2 * (n.toNat - 2 - m)]!).toBits|)
     (hEs : ∀ m, m + 2 ≤ n.toNat → (Xh + Xl) * E m +
       epsS Xh Xl (K m) (Λ m) (C (n.toNat - 2 - m)) (Cl (n.toNat - 2 - m)) ≤ E (m + 1))
     (hΛs : ∀ m, m + 2 ≤ n.toNat →
@@ -176,7 +178,7 @@ theorem polyDD_steps (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
       obtain ⟨hKsz', hΛsz⟩ := hKsz m (by omega)
       have hKm := hK m (by omega)
       have hΛm0 : 0 ≤ Λ m := le_trans (abs_nonneg _) hsl
-      have hs1b : |value s.1.toBits| ≤ K m := by
+      have hs1h : |value s.1.toBits| ≤ |horner (cDD tab o) N L vx m| + E m + Λ m := by
         have h1 := abs_sub_abs_le_abs_sub (value s.1.toBits)
           (value s.1.toBits + value s.2.toBits - horner (cDD tab o) N L vx m)
         rw [show value s.1.toBits -
@@ -184,9 +186,13 @@ theorem polyDD_steps (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
           horner (cDD tab o) N L vx m - value s.2.toBits by ring] at h1
         have h2 := abs_sub (horner (cDD tab o) N L vx m) (value s.2.toBits)
         linarith
+      have hs1b : |value s.1.toBits| ≤ K m := hs1h.trans hKm
       have hK0 : 0 ≤ K m := le_trans (abs_nonneg _) hs1b
-      have hH : |value s.1.toBits| * |value xh.toBits| ≤ K m * Xh :=
-        mul_le_mul hs1b hXh (abs_nonneg _) hK0
+      -- the bound on the product's high part at this point, below `K m * Xh`
+      set Hm := (|horner (cDD tab o) N L vx m| + E m + Λ m) * |value xh.toBits| with hHm
+      have hH : |value s.1.toBits| * |value xh.toBits| ≤ Hm :=
+        mul_le_mul_of_nonneg_right hs1h (abs_nonneg _)
+      have hHK : Hm ≤ K m * Xh := mul_le_mul hKm hXh (abs_nonneg _) hK0
       have hP1 : |value s.1.toBits| * |value xl.toBits| ≤ K m * Xl :=
         mul_le_mul hs1b hXl (abs_nonneg _) hK0
       have hP2 : |value s.2.toBits| * |value xh.toBits| ≤ Λ m * Xh :=
@@ -196,7 +202,7 @@ theorem polyDD_steps (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
       have hKX : K m * Xh ≤ K m := mul_le_of_le_one_right hK0 hXh1
       have hKXl : K m * Xl ≤ K m := mul_le_of_le_one_right hK0 hXl1
       have hΛX : Λ m * Xh ≤ Λ m := mul_le_of_le_one_right hΛm0 hXh1
-      have hHmax : K m * Xh ≤ 2 ^ 900 := by
+      have hHmax : Hm ≤ 2 ^ 900 := by
         linarith [(by norm_num : (2 : ℝ) ^ 797 < 2 ^ 900)]
       have hPmax : K m * Xl + Λ m * Xh ≤ 2 ^ 900 := by
         linarith [(by norm_num : (2 : ℝ) ^ 797 + 2 ^ 797 < 2 ^ 900)]
@@ -217,6 +223,9 @@ theorem polyDD_steps (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o n : UInt6
           1 / 2 ^ 1070 ≤ 2 ^ 800)]
       have hm1c : |value m1.toBits| ≤ |value (Float.ofBits tab[o.toNat + 2 * i]!).toBits| :=
         hm1b.trans (hdom m (by omega))
+      have hm1K : |value m1.toBits| ≤ K m * Xh * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 := by
+        have := mul_le_mul_of_nonneg_right hHK (by positivity : (0 : ℝ) ≤ 1 + 1 / 2 ^ 53)
+        linarith
       have hilim : |value (Float.ofBits tab[o.toNat + 2 * i]!).toBits| < 2 ^ 898 := by
         linarith [(by norm_num : (2 : ℝ) ^ 797 < 2 ^ 898)]
       obtain ⟨htf, htlf, hte, htlb⟩ := fastSum_spec _ _ m1 m2 hhi hlo hm1f hm2f hm1c hilim

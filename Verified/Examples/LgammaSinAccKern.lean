@@ -68,6 +68,14 @@ theorem growS_cast (a b c d e f : ℚ) :
 /-- The powers `1/2^k` of a list of exponents. -/
 def pw (l : List ℕ) : List ℚ := l.map fun k => 1 / 2 ^ k
 
+theorem pw_nonneg (l : List ℕ) (m : ℕ) : 0 ≤ (pw l).getD m 0 := by
+  induction l generalizing m with
+  | nil => simp [pw]
+  | cons a t ih =>
+    cases m with
+    | zero => simp only [pw, List.map_cons, List.getD_cons_zero]; positivity
+    | succ m => simpa only [pw, List.map_cons, List.getD_cons_succ] using ih m
+
 /-- The conditions of `polyDD_steps` for the kernel at `o` with `N` coefficients, the bounds `C`
 and `Cl` on the words, and the bounds `E`, `Λ`, and `K` of the steps. -/
 def stepsOk (o N : ℕ) (C Cl E Λ K : List ℚ) : Bool :=
@@ -161,7 +169,7 @@ theorem horner_hb (o' : UInt64) (o N : ℕ) (ho : o'.toNat = o) (hN : 1 ≤ N)
 /-- **A kernel from its check**: `polyDD` at the double-double `xh + xl` within `E (N - 1)` of the
 polynomial of its pairs, with the low part at most `Λ (N - 1)`. -/
 theorem kern_gen (hF : FmaSpec.FmaNearest) (o N : ℕ) (C Cl E Λ K : List ℚ)
-    (hok : stepsOk o N C Cl E Λ K = true) (o' n' : UInt64) (ho : o'.toNat = o) (hn : n'.toNat = N)
+    (hok : stepsOk o N C Cl E Λ K = true) (hK0 : ∀ m, 0 ≤ K.getD m 0) (o' n' : UInt64) (ho : o'.toNat = o) (hn : n'.toNat = N)
     (hN1 : 1 ≤ N) (hon : o + 2 * N < 2 ^ 63) (xh xl : Float) (hxh : Finite xh.toBits)
     (hxl : Finite xl.toBits) (hXh : |value xh.toBits| ≤ (XhQ : ℝ))
     (hXl : |value xl.toBits| ≤ (XlQ : ℝ)) :
@@ -225,11 +233,18 @@ theorem kern_gen (hF : FmaSpec.FmaNearest) (o N : ℕ) (C Cl E Λ K : List ℚ)
     (fun m hm => by
       rw [hn] at hm ⊢
       rw [ho, (hval (N - 2 - m) (by omega)).1, ← TgammaExpr.qabs_cast]
+      have hb := horner_hb o' o N ho hN1 hfin _ hXX m (by omega)
+      have hk : ((hbQ o N m + E.getD m 0 + Λ.getD m 0 : ℚ) : ℝ) ≤ (K.getD m 0 : ℝ) := by
+        exact_mod_cast (hs m (by omega)).1.1.1.1.1
       have := (hs m (by omega)).1.1.2
       have hc : ((K.getD m 0 * XhQ * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 : ℚ) : ℝ) ≤
           ((PolyBound.qabs (hiQ o (N - 2 - m)) : ℚ) : ℝ) := by exact_mod_cast this
-      push_cast at hc ⊢
-      exact hc)
+      push_cast at hk hc ⊢
+      have h1 : |horner (cDD T o') N 0 (value xh.toBits + value xl.toBits) m| + (E.getD m 0 : ℝ) +
+          (Λ.getD m 0 : ℝ) ≤ (K.getD m 0 : ℝ) := by linarith
+      have h2 := mul_le_mul h1 hXh (abs_nonneg _) (Rat.cast_nonneg.mpr (hK0 m))
+      have h3 := mul_le_mul_of_nonneg_right h2 (by positivity : (0 : ℝ) ≤ 1 + 1 / 2 ^ 53)
+      linarith)
     (fun m hm => by
       rw [hn] at hm ⊢
       have := (hs m (by omega)).1.2
