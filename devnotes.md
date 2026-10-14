@@ -32596,3 +32596,11 @@ Two findings concern the tools.  `linarith` failed in `lower_sxb` with hypothese
 - [ ] The walk of the first block of `accurate` and the theorem `accurate_within`.
 - [ ] The 14 window ends through the fast path's rounding test.
 - [ ] The range above `2^800`, and the theorem of `lgamma` with its byte theorem.
+
+## 2026-10-14: The theorem of the accurate path of `lgamma` (track `expm1`)
+
+`LgammaAccPath.accurate_within` states `Lgamma.accurate` within one step of `ln |Γ x|` at every non-integer double with `|x| ≤ 2^800` other than the 14 window ends, from the approximation facts and `2^-1000 ≤ |ln |Γ x|| ≤ 2^1020`, with only `propext`, `Classical.choice`, and `Quot.sound` (`diag/axpath.log` under `build/transcendentals`).  The proof walks the first block with `acc_step` and `spec_step`, and each leaf applies a lemma of the previous entry: `LgammaAccLow.tiny_spec` and `low_spec` below 1/4, the 14 window theorems with `win_pos`, `rel_pos`, and `win_small`, and Stirling's series with `asym_pos`, `asym_small`, and `asym_large`.  `past_windows` places the argument of Stirling's series at or above 15/4 when every window test fails and the argument is none of the window ends.  Three details of the walk needed a probe: `rw [Lgamma.accurate.eq_1]` already substitutes the two outer local definitions, so the walk starts at the first match; the change of the goal to the form `S e` must come after the `have` steps, which otherwise reduce it back; and the window tests give `c - 1/4 < x`, which `norm_num` turns into the window theorems' bounds.
+
+- [x] The walk of the first block of `accurate` and the theorem `accurate_within`.
+- [ ] The 14 window ends through the fast path's rounding test.
+- [ ] The range above `2^800`, the bounds `2^-1000 ≤ |ln |Γ x|| ≤ 2^1020`, and the theorem of `lgamma` with its byte theorem.
