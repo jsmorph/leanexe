@@ -32487,3 +32487,9 @@ The plan of the previous entry put a window about each of the eight zeros above 
 - [ ] Stirling's series from `2^800` to the overflow threshold, with a rounding test for the top binades
 - [ ] the walk of the fast path's block to `FastSpec`
 - [ ] the accurate path and the theorem within one step
+
+## 2026-10-14: Eighth integration: the fast path of `lgamma` through the reflection
+
+Opus merged `w/expm1` at `65b2f344` into `transcendentals` (`9063e731`).  The branch brings the 25 commits since the seventh integration: the seven modules of the fast path below 8.29541, the four modules of Stirling's series to `2^800`, the two branches of the sine, the five modules of the reflection, and the updated `Lgamma.md`, which the three journal entries of 2026-10-14 on track `expm1` describe.  `Verified.lean` imports the 17 new modules, and `LeanExe.lean` is unchanged.  The commits on the branch after `65b2f344`, from `bb69b9db` on, replace `LgammaFastNeg` by `LgammaLeaf` and wait for the next integration.
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 9,953 jobs with exit 0 (`opus-merge-batch8-1.log`), and no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`.  `tests/verified/run.sh` exits 0 (`opus-verified-tests-25.log`), and the 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`).
