@@ -52,8 +52,8 @@ tables of hard cases are loops over all rows, with the same results since their 
 The dialect has no floating-point flags and no `errno`, so the tests and assignments of the
 underflow flag and of `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
-module has no `verified_compile` call: it waits for the change of the reflector that `Tgamma.lean`
-describes.  `ErfcAccuracy.lean` checks the results against `ErfReference`. -/
+`verified_compile` call at the end of the module needs about 5.25 GB, more than the runner's
+default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more.  `ErfcAccuracy.lean` checks the results against `ErfReference`. -/
 
 namespace Verified.Examples.Erfc
 
@@ -3893,12 +3893,12 @@ def erfcWith (fastTab accTab expTab asymTab asymAccTab expAccTab excTab : Array 
 def erfc (x : Float) : Float :=
   erfcWith fastTable accTable expTable asymTable asymAccTable expAccTable excTable x
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---  Fma.fmaBits, Fma.fma, entry, roundEven, floorF, toWord, sar, pow2, ldexp, fastTwoSum, twoSum,
---  aMul, sMul, dMul, fastSum, erfFastTiny, erfFastMain, erfFast, mulZ2, tinyCoeff,
---  erfAccurateTiny, erfAccurate, q1, exp1, expAccurate, asymptIndex, erfcAsymptFast, erfcFast,
---  hardCase, asymptAccIndex, asymptAccurate, erfcAsymptAccurate, erfcAccurate, erfcMain, erfcWith,
---  erfc]
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+ Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+ Fma.fmaBits, Fma.fma, entry, roundEven, floorF, toWord, sar, pow2, ldexp, fastTwoSum, twoSum,
+ aMul, sMul, dMul, fastSum, erfFastTiny, erfFastMain, erfFast, mulZ2, tinyCoeff,
+ erfAccurateTiny, erfAccurate, q1, exp1, expAccurate, asymptIndex, erfcAsymptFast, erfcFast,
+ hardCase, asymptAccIndex, asymptAccurate, erfcAsymptAccurate, erfcAccurate, erfcMain, erfcWith,
+ erfc]
 
 end Verified.Examples.Erfc
