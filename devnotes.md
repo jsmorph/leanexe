@@ -32517,7 +32517,7 @@ The review of the design found five points.  The kernel still checks every claim
 - [x] `LeanExe/Encoding/Completeness/Writes.lean`: `Writes` and its lemmas.
 - [x] `verified_compile`: the literals, the theorems per function and for the other parts, and the bytes theorem from them.
 - [x] The file theorems of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, and their entries in `run.sh`.
-- [ ] `lake build Verified`, `run.sh` with byte-identical files, the peaks of the four modules' builds before and after, the journal, the plan, and the integration.
+- [x] `lake build Verified`, `run.sh` with byte-identical files, the peaks of the four modules' builds before and after, the journal, the plan, and the integration.
 
 ## 2026-10-14: The kernel check per function: implementation (track `ports`)
 
@@ -32646,7 +32646,7 @@ Opus merged `w/perfun` at `94444f0a` and `w/expm1` at `a66adca8` into `transcend
 The repairs of this session were these.  `ErfcAsymAccHL` rewrote the bound of a `Nat.fold` with `simp`, which cannot rewrite an argument on which the folded function's type depends, so `rw` replaced it, and a `have` whose stated type contained `_` for an error factor became a chain from the hypothesis that holds the factor.  `ErfcAsymAccFin` had 34 errors.  Most were lemma names of this Lean version (`UInt64.toNat_ofNat_of_lt'`, `abs_add_three`), casts between `ℤ` and `ℝ` that `linarith` treats as different terms, and the local definition `d` of `set`, which `linarith`'s preprocessing unfolds in some hypotheses and not in others.  Three were errors in the proof: `snear_dist` opened its absolute values with the wrong signs, `snear_scale` claimed a contradiction for a subnormal `v` that holds only with `K ≥ -1072`, which its caller supplies and which is now a hypothesis, and the bound `gx c ≤ 1025` needed 1026.  `ErfcSpecial` needed a `Decidable` instance for `AsymEncl`.  `ErfcTheorem.erfc_upper_neg` claimed `5.866 ≤ 0x1.7744f8f74e94bp2`, which is false since the word is 5.86358, and 5.863 suffices, since `5.863² > 34` and `0.57 e^-34/5.863 < 2^-52`.
 
 - [x] The accuracy theorem of `Erfc.erfc` for the Lean function.
-- [ ] The integration, `Erf.md`, and the byte theorem of the `erfc` module.
+- [x] The integration, `Erf.md`, and the byte theorem of the `erfc` module.
 
 ## 2026-10-14: The last steps of the accurate path of `lgamma` and its stages before the renormalization (track `expm1`)
 
@@ -32671,3 +32671,14 @@ Two findings concern the tools.  `linarith` failed in `lower_sxb` with hypothese
 - [x] The walk of the first block of `accurate` and the theorem `accurate_within`.
 - [ ] The 14 window ends through the fast path's rounding test.
 - [ ] The range above `2^800`, the bounds `2^-1000 ≤ |ln |Γ x|| ≤ 2^1020`, and the theorem of `lgamma` with its byte theorem.
+
+## 2026-10-14: Tenth integration: the accuracy theorem of CORE-MATH's `erfc`, the accurate path of `lgamma`, and the byte theorems of `erfc` and `tgamma`
+
+Opus merged `w/trig` at `2b55a627` (`0e36619d`) and `w/expm1` at `74707c70` (`6cec6431`) into `transcendentals`.  The first brings the 18 modules of `ErfcTheorem.erfc_within_one`, and the second the 19 modules of `LgammaAccPath.accurate_within`, which the three entries above describe.  `Verified.lean` imports the 37 new modules and the two byte modules below.
+
+`ErfcBytes.erfc_bytes_accuracy` and `TgammaBytes.tgamma_bytes_accuracy` follow `BesselBytes`.  A store is ready when the allocator invariant holds, each table of the module is a borrowed array at its address, and the memory cap is at most 65,535 pages.  A call of the export from a ready store returns the bits of the Lean function without a trap and leaves a ready store, and the accuracy clause comes from `erfc_within_one` or `TgammaWithin.tgamma_within`.  The `erfc` module writes seven tables from address 4096 and exports `erfc` as function 49, and the `tgamma` module writes eight tables from 4096 and exports `tgamma` as function 41.  `ErfcFile` and `TgammaFile` now take the module from the byte theorems, as `BesselFile` does, so the axiom check of `tests/verified/run.sh` covers the byte theorems.  A comment of `run.sh` said that these modules wait for the reflector fix, and it now describes their native checks.
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 10,021 jobs with exit 0 before the byte modules (`opus-merge-10.log`) and 10,023 jobs with exit 0 with them (`opus-merge-10b.log`), where `ErfcBytes` builds in 6.1 s and `TgammaBytes` in 6.3 s.  No theorem in either log depends on `sorryAx` or `Lean.ofReduceBool`, and the eight theorems of the two byte modules report only `propext`, `Classical.choice`, and `Quot.sound`.  `tests/verified/run.sh` exits 0 (`opus-run-10.log`): 15,837 tests pass and none fails, the 21 file theorems report only the three permitted axioms, the 44 files `build/verified/*.wasm` are byte-identical to those of `e42b5c22`, and `bessel.wasm`, `erfc.wasm`, `lgamma.wasm`, and `tgamma.wasm` are byte-identical to those of the run of `94444f0a`.  A first run, `opus-run-10-stopped.log`, was stopped at its start so that `ErfcFile` and `TgammaFile` could take the module from the byte theorems.
+
+- [x] The integration, the byte theorems of `erfc` and `tgamma`, `Erf.md`, `Tgamma.md`, and the plan.
+- [ ] The 14 window ends of `lgamma`, its range above `2^800`, its theorem, and its byte theorem.
