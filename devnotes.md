@@ -32455,3 +32455,21 @@ The logs are `opus-lgsmall-3.log`, `opus-lgpolyfst-5.log`, `opus-lgpiecepoly-2.l
 - [ ] Stirling's series from 8.29541
 - [ ] the reflection for negative `x`
 - [ ] the accurate path, then the walk and the theorem within one step
+
+## 2026-10-14: The Stirling leaves of `lgamma`, and the plan for its reflection (track `expm1`)
+
+Opus proved the fast path's Stirling series in four modules on branch `w/expm1` (commits `6a8c40a6` to `fdf904d3`).  `LgammaRecip.recip_big` bounds the corrected reciprocal `zh + (fma zh (-x) 1) zh` from 4 to `2^100` within `2^-100` of `1/x`, by the proof of `TgammaRecip.recip_corr` with the range of `1/|x|` moved from `[4, 2^900]` to `[2^-100, 1/4]`.  `LgammaStirSeries.series_spec` bounds the term `S (1/x²)/x` within `2^-65`.  The code squares `zh` in plain double arithmetic, so `w = zh zh` differs from `1/x²` by about `2^-50` of `1/x²`, and the Lipschitz bound `sE_lip` of the tail, `|a - b|/256` on `|w| ≤ 1/64`, carries that difference to the result.  `LgammaStir.stir_a` (8.29541 to `2^52`) and `stir_b` (`2^52` to `2^800`) put the series within `2 eps - |fh|/2^67` of `ln Γ x` for the code's `eps = 4.5 · 10^-20 |fh|`, from `StirlingFact`'s `7 · 10^-20`.  `log x - 1` and `x - 1/2` are exact because the subtrahend lies on the spacing of the minuend (`grid_sub`).  `LgammaFastPos` turns the pieces and these leaves into `FastSpec` at positive `x` up to `2^800`.
+
+`stir_b` stops at `2^800` because `TgammaDD.fastSum_spec` requires its low parts below `2^800`, and the low parts grow like `x/2^18`: `LgammaLogd.asLogd_spec` bounds the low part of the logarithm only by `2^-22 + |lh|/2^52`.  Above `2^800` two limits of ProofKit apply.  `F64NearReal.exists_near` and the rounding lemmas built on it require `|S| ≤ 2^1000`, and `LgammaRoundTest.round_test`, which `FastSpec` serves, requires `|fh| + 2^49 eps ≤ 2^1020`, while `ln Γ x` reaches `2^1024` at the overflow threshold `0x1.754d9278b51a6p+1014`.  The range from `2^800` to that threshold therefore needs rounding lemmas for the top binades and a rounding test there; it is an open item.
+
+The table's last word, at index 405, has no trailing comma in `Lgamma.lean`, and a parser in the scratch files that required the comma read `c405` as 0 when it is `-0.001617`.  The kernel check of `LgammaStirSeries.coef_ok` exposed the error, and the parser now accepts the missing comma.
+
+`LgammaSinpiAbs.asSinpipid_abs` states the two branches of `Lgamma.asSinpipid` apart: within `3/256` of an integer `2^-72` relative, elsewhere `1.14 · 2^-71` absolute.  The reflection `x < -1/2` needs this form.  It returns `-(fh + fl + lh + ll')` with `eps' = eps + 8 · 10^-22 |lh|`, where `fh + fl` is `ln Γ |x|` from a positive leaf and `lh + ll'` is `ln (|x| sin (π φ)/π)` for the fractional part `φ`.  The leaves leave a margin of `|fh|/2^65` (pieces) or `|fh|/2^67` (Stirling) under `2 eps`, and the absolute form of `FastSpec` holds when the errors of the sine and the logarithm stay below that margin plus `1.6 · 10^-21 |lh|`.  The relative form holds when `|ln |Γ x||` is at least about `0.002 + 0.006 |fh|`.
+
+From `|x| = 6` on, the zeros of `ln |Γ|` lie within `1/720` of the integers, where the sine has `2^-72` relative, and the absolute form holds there.  Away from the integers, `s = sin (π φ)/π ≥ 0.0117` and `ln Γ |x| + ln (|x| s) ≥ ln Γ |x| + ln |x| - 4.45 ≥ 2.1`, so the relative form holds.  Below 6 the zeros are -2.4570, -2.7477, -3.1436, -3.9553, -4.0394, -4.9915, -5.0082, and -5.9986.  At each the absolute form holds with a factor of at least 1.8, so the plan is a window about each zero where the absolute form holds and bounds on `|ln |Γ x||` outside the windows from the convexity of `ln |Γ|` between poles, as `LgammaZeroBase` does.
+
+- [x] `recip_big`, `series_spec`, `stir_a`, `stir_b`, `pos_piece_spec`, `pos_stir_spec`, `asSinpipid_abs`
+- [ ] the core of the reflection: the error of `-(fh + fl + lh + ll')` from a positive leaf's bound
+- [ ] the reflection from `|x| = 6` on, and the windows below 6
+- [ ] Stirling's series from `2^800` to the overflow threshold, with a rounding test for the top binades
+- [ ] the accurate path, the walk, and the theorem within one step
