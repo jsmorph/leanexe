@@ -130,7 +130,8 @@ theorem refl_core (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
     (hB : B = mulDDD (-x) A.1 A.2)
     (hC : C = Lgamma.asLogd Tgamma.logdTable B.1)
     (hD : D = sumDD fh fl C.1 (C.2 + B.2 / B.1)) :
-    Finite C.1.toBits ∧ Finite D.1.toBits ∧ Finite D.2.toBits ∧
+    Finite C.1.toBits ∧ Finite D.1.toBits ∧ Finite D.2.toBits ∧ |value C.1.toBits| ≤ 43 ∧
+      |value D.1.toBits| ≤ (|value fh.toBits| + 43) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1073 ∧
       |value C.1.toBits - Real.log (-value x.toBits *
         (Real.sin (Real.pi * Int.fract (value x.toBits)) / Real.pi))| ≤ 1 / 2 ^ 19 ∧
       |value D.2.toBits| ≤ (|value fl.toBits| + 1 / 2 ^ 20) * (1 + 1 / 2 ^ 51) +
@@ -462,7 +463,11 @@ theorem refl_core (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
     (|value fl.toBits| + 1 / 2 ^ 20) (by linarith)
     (by linarith [(by norm_num : (2 : ℝ) ^ 700 + 1 / 2 ^ 20 ≤ 2 ^ 800)])
   rw [← hD] at hD1 hD2 hDe hD2b hD1b
-  refine ⟨hC1, hD1, hD2, ?_, hD2b, ρ, ?_, ?_⟩
+  refine ⟨hC1, hD1, hD2, hlhb, ?_, ?_, hD2b, ρ, ?_, ?_⟩
+  · have := abs_add_le (value fh.toBits) lh
+    have := mul_le_mul_of_nonneg_right (show |value fh.toBits + lh| ≤ |value fh.toBits| + 43 by
+      linarith) (by norm_num : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
+    linarith
   · have := abs_sub_abs_le_abs_sub (lh - Real.log (av * s)) (-value ll'.toBits)
     rw [show lh - Real.log (av * s) - -value ll'.toBits = lh + value ll'.toBits - Real.log (av * s)
       by ring, abs_neg] at this
