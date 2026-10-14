@@ -32539,7 +32539,7 @@ The figures are peaks of anonymous memory under `tools/leanrun`, and every modul
 - [x] `verified_compile`: the literals, the theorems per function and for the other parts, and the bytes theorem from them.
 - [x] The file theorems of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, and their entries in `run.sh`.
 - [x] `lake build Verified`, `run.sh` with byte-identical files, the peaks, and the journal.
-- [ ] The ninth integration.
+- [x] The ninth integration.
 
 ## 2026-10-14: The walk of the fast path of `lgamma`, and the accurate logarithm (track `expm1`, minideb2)
 
@@ -32633,3 +32633,9 @@ Near a negative zero the reflection's high part `fh + lh` cancels exactly while 
 - [ ] the database step, the Stirling branch of negative arguments, and the lower bounds on `|log |Γ x||` outside the zones
 - [ ] the rounding test at the 14 ends of the windows
 - [ ] the walk of `Lgamma.accurate` and the theorem within one step
+
+## 2026-10-14: Ninth integration: the kernel check per function and the first parts of the accurate path of `lgamma`
+
+Opus merged `w/perfun` at `94444f0a` and `w/expm1` at `a66adca8` into `transcendentals`.  The first brings the kernel check per function of the entry above, which was pushed to GitHub as a fast-forward of `transcendentals` before this integration.  The second brings the 47 commits since the eighth integration: the walk of the fast path of `lgamma` to one step up to `2^800` (`LgammaLeaf`, `LgammaFastWalk`), the accurate logarithm and sine (`LgammaLogdOne`, `LgammaLogdAcc`, `LgammaLogAccKern`, `LgammaLogAccRed`, `LgammaLogAccTail`, `LgammaSinAcc`, `LgammaSinAccKern`, `LgammaSinAccRed`, `LgammaSinAccTail`), the bounds of the double-double polynomials (`LgammaPolyDD`, `LgammaPolyDDSteps`, `LgammaPolyIv`, `LgammaAccPoly`), Stirling's series of the accurate path (`LgammaAsymRecip`, `LgammaAsymSeries`, `LgammaAsymKern`, `LgammaAsymLog`, `LgammaAsymProd`, `LgammaAsymAcc`), the branches, windows, reflection, and renormalization of the accurate path (`LgammaAccLow`, `LgammaAccAdd`, `LgammaAccRange`, `LgammaAccWin`, `LgammaAccWinSmall`, `LgammaAccRefl`, `LgammaAccNorm`), and the evaluation of the polynomials about the negative zeros (`LgammaRootEval`, `LgammaRootPath`, `LgammaRootSpec`).  `Verified.lean` imports the 31 new modules.  It no longer imports `LgammaFastNeg`, which `bb69b9db` replaced by `LgammaLeaf`: the three-way merge kept that import, and the first build stopped on it.
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 9,984 jobs with exit 0 (`opus-merge-9b.log` on minideb1), and no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`.  The log `opus-merge-9.log` interleaves the build with the stale import, which continued after its error, and the restarted build, so `opus-merge-9b.log` repeats the build from the built modules.  `tests/verified/run.sh` exits 0 (`opus-run-9.log` on minideb1): 15,837 tests pass and none fails, the 44 files `build/verified/*.wasm` are byte-identical to those of `e42b5c22`, and `bessel.wasm`, `erfc.wasm`, `lgamma.wasm`, and `tgamma.wasm` are byte-identical to those of the run of `94444f0a`.
