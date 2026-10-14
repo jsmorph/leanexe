@@ -1,10 +1,11 @@
 import Verified.Examples.TgammaRecip
 
 /-!
-The reciprocal `zh = 1/x` with the correction `(fma zh (-x) 1) zh` of the fast path's Stirling series
-in `Lgamma.lgammaWith`, from 4 to `2 ^ 100`: the proof of `TgammaRecip.recip_corr` with the range of
-`1/|x|` moved from `[4, 2 ^ 900]` to `[2 ^ -100, 1/4]`, so the pair approximates `1/x` within
-`2 ^ -100` of `1/|x|` (`recip_big`).
+The reciprocal `zh = 1/x` with the correction `(fma zh (-x) 1) zh` of the Stirling series in
+`Lgamma.lgammaWith`, from 1 to `2 ^ 170`: the proof of `TgammaRecip.recip_corr` with the range of
+`1/|x|` moved from `[4, 2 ^ 900]` to `[2 ^ -170, 1]`, so the pair approximates `1/x` within
+`2 ^ -100` of `1/|x|` (`recip_wide`).  The fast path uses it from 4 to `2 ^ 100` (`recip_big`) and
+the accurate path from 3.75 to `2 ^ 120`.
 -/
 
 namespace Verified.Examples.LgammaRecip
@@ -12,9 +13,9 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Approx TgammaDD TgammaRecip
 
 set_option exponentiation.threshold 4096
 
-/-- **The corrected reciprocal** for `4 ≤ |x| ≤ 2 ^ 100`. -/
-theorem recip_big (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
-    (hlo : 4 ≤ |value x.toBits|) (hhi : |value x.toBits| ≤ 2 ^ 100) :
+/-- **The corrected reciprocal** for `1 ≤ |x| ≤ 2 ^ 170`. -/
+theorem recip_wide (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
+    (hlo : 1 ≤ |value x.toBits|) (hhi : |value x.toBits| ≤ 2 ^ 170) :
     Finite (1.0 / x).toBits ∧ Finite (Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits ∧
       |value (1.0 / x).toBits - 1 / value x.toBits| ≤ |1 / value x.toBits| / 2 ^ 52 ∧
       |value (Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits| ≤ |1 / value x.toBits| / 2 ^ 50 ∧
@@ -25,22 +26,22 @@ theorem recip_big (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
   have hvx0 : vx ≠ 0 := abs_pos.mp hx0
   set R := |1 / vx| with hR
   have hRv : R = 1 / |vx| := by rw [hR, abs_div, abs_one]
-  have hR4 : 1 / 2 ^ 100 ≤ R := by
+  have hR4 : 1 / 2 ^ 170 ≤ R := by
     rw [hRv, div_le_div_iff₀ (by positivity) hx0]
     linarith
-  have hR14 : R ≤ 1 / 4 := by
-    rw [hRv, div_le_div_iff₀ hx0 (by norm_num)]
-    linarith
-  have hRmax : R ≤ 2 ^ 900 := by linarith [(by norm_num : (1 : ℝ) / 4 ≤ 2 ^ 900)]
+  have hR14 : R ≤ 1 := by
+    rw [hRv, div_le_one hx0]
+    exact hlo
+  have hRmax : R ≤ 2 ^ 900 := by linarith [(by norm_num : (1 : ℝ) ≤ 2 ^ 900)]
   have hRvx : R * |vx| = 1 := by rw [hRv]; field_simp
   -- `fh = 1/x`
   have hfh0 := fapprox_div (fapprox_self _ one_finite) (fapprox_self x hx) 1 |vx|
     (by rw [one_value, abs_one]) le_rfl hx0 R (by rw [hRv]; simp) (by linarith [(by norm_num : (2 : ℝ) ^ 900 < 2 ^ 1022)])
   rw [one_value] at hfh0
   have htiny : (1 : ℝ) / 2 ^ 1075 ≤ R / 2 ^ 900 := by
-    have : (1 : ℝ) / 2 ^ 100 / 2 ^ 900 ≤ R / 2 ^ 900 :=
+    have : (1 : ℝ) / 2 ^ 170 / 2 ^ 900 ≤ R / 2 ^ 900 :=
       div_le_div_of_nonneg_right hR4 (by positivity)
-    linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1 / 2 ^ 100 / 2 ^ 900)]
+    linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1 / 2 ^ 170 / 2 ^ 900)]
   have hfh : FApprox (1.0 / x) (1 / vx) (R / 2 ^ 52) := by
     refine Approx.mono hfh0 ?_
     have : (0 + 1 * 0 / |vx|) / (|vx| - 0) = 0 := by simp
@@ -146,6 +147,17 @@ theorem recip_big (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
       nlinarith [(by norm_num : ((2 : ℝ) ^ 101 + 2 ^ 104) * 2 ^ 100 ≤ 2 ^ 104 * 2 ^ 101)]
     exact (abs_add_le _ _).trans (by linarith)
 
+/-- **The corrected reciprocal** for `4 ≤ |x| ≤ 2 ^ 100`. -/
+theorem recip_big (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
+    (hlo : 4 ≤ |value x.toBits|) (hhi : |value x.toBits| ≤ 2 ^ 100) :
+    Finite (1.0 / x).toBits ∧ Finite (Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits ∧
+      |value (1.0 / x).toBits - 1 / value x.toBits| ≤ |1 / value x.toBits| / 2 ^ 52 ∧
+      |value (Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits| ≤ |1 / value x.toBits| / 2 ^ 50 ∧
+      |value (1.0 / x).toBits + value (Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits -
+          1 / value x.toBits| ≤ |1 / value x.toBits| / 2 ^ 100 :=
+  recip_wide hF x hx (by linarith) (by linarith [(by norm_num : (2 : ℝ) ^ 100 ≤ 2 ^ 170)])
+
+#print axioms recip_wide
 #print axioms recip_big
 
 end Verified.Examples.LgammaRecip
