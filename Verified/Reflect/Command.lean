@@ -3,6 +3,7 @@ import Verified.Instantiate
 import Verified.Reflect.Lemmas
 import Verified.Reflect.Modes
 import LeanExe.Encoding.RoundTrip
+import LeanExe.Encoding.Completeness.Writes
 
 /-! The reflector.  `verified_compile p := [f, g, …]` reads the listed Lean definitions, writes
 each as a source function, and proves its equation `denote (reflect f) = f` from the lemmas of
@@ -481,6 +482,18 @@ def addDefinition (name : Name) (type value : Lean.Expr) : CoreM Unit :=
 
 def addTheorem (name : Name) (type value : Lean.Expr) : CoreM Unit :=
   addDecl <| .thmDecl { name, levelParams := [], type, value }
+
+/-- A definition for the kernel only, without compiled code, for the literal bytes of a module. -/
+def addLiteral (name : Name) (type value : Lean.Expr) : CoreM Unit :=
+  addDecl <| .defnDecl <| mkDefinitionValEx name [] type value (.regular 1) .safe [name]
+
+unsafe def evalModuleUnsafe (env : Environment) (opts : Options) (name : Name) :
+    Except String Wasm.Module :=
+  env.evalConst Wasm.Module opts name
+
+/-- The module of the constant `name`, from its compiled code. -/
+@[implemented_by evalModuleUnsafe]
+opaque evalModule (env : Environment) (opts : Options) (name : Name) : Except String Wasm.Module
 
 /-- The component of the tuple `x` along `steps`: `false` for a pair's first component and `true`
 for its second. -/
@@ -1998,8 +2011,11 @@ order, each of which may call those before it and, when recursive, itself; the m
 theorem `p.f.implements` that the module computes `f`, at the function's index, at its exported
 entry when its code takes the call depth, or, for a wrapper, at the wrapper's entry from a store
 that holds the tables; `p.initial`, that the store in which the module starts meets the
-allocator invariant and holds the tables; and `p.bytes`, the module's bytes with all the
-functions' theorems. -/
+allocator invariant and holds the tables; the module's bytes as the literals `p.sections`,
+`p.bodies`, and `p.data`, which a native evaluation of the encoder gives, with the theorems
+`p.func_ok_k` for each function `k` and `p.rest_ok` for the other parts, which the kernel checks one
+at a time, and `p.encoded`, that `encode p.module` is `p.encoding`; and `p.bytes`, the module's
+bytes with all the functions' theorems. -/
 @[command_elab verifiedCompile]
 def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
@@ -2173,14 +2189,72 @@ def elabVerifiedCompile : CommandElab
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
       j := j + 1
+    -- The encoding, part by part: the native encoder gives the bytes of each part, and the kernel
+    -- checks each function's body in its own theorem, so that one check holds one function.
+    let parts ← match evalModule (← getEnv) (← getOptions) (base ++ `module) with
+      | .ok m => match Wasm.Encoding.encodeParts m with
+        | .ok parts => pure parts
+        | .error e => throwError "verified_compile: the module does not encode: {e}"
+      | .error e => throwError "verified_compile: cannot evaluate the module: {e}"
+    let (secs, bodies, data) := parts
+    let bytesTy := mkApp (Lean.mkConst ``List [.zero]) (Lean.mkConst ``UInt8)
+    let bytesListTy := mkApp (Lean.mkConst ``List [.zero]) bytesTy
+    -- A literal of `n` bytes is a term nested `n` deep, which the kernel checks recursively.
+    let literalOptions := maxRecDepth.set (← getOptions) 100000
+    liftCoreM <| withReader (fun ctx => { ctx with maxRecDepth := 100000, options := literalOptions }) do
+      addLiteral (base ++ `sections) bytesListTy (toExpr secs)
+      addLiteral (base ++ `bodies) bytesListTy (toExpr bodies)
+      addLiteral (base ++ `data) bytesTy (toExpr data)
+    let sectionsId := mkIdent (base ++ `sections)
+    let bodiesId := mkIdent (base ++ `bodies)
+    let dataId := mkIdent (base ++ `data)
+    -- Declarations take names relative to the current namespace, as `bytes` does.
+    let restId := mkIdent (target.getId ++ `rest_ok)
+    let dataOkId := mkIdent (target.getId ++ `data_ok)
+    let countId := mkIdent (target.getId ++ `funcs_count)
+    let lengthId := mkIdent (target.getId ++ `funcs_length)
+    let codesId := mkIdent (target.getId ++ `codes_ok)
+    let nb := bodies.length
+    -- The kernel walks lists of bytes recursively, as the file theorems' comparisons do.
+    elabCommand (← `(set_option maxRecDepth 100000 in
+      theorem $restId : Wasm.Encoding.restOk $moduleId $sectionsId = true := by
+        decide +kernel))
+    elabCommand (← `(set_option maxRecDepth 100000 in
+      theorem $dataOkId : Wasm.Encoding.dataOk $moduleId $dataId = true := by
+        decide +kernel))
+    elabCommand (← `(theorem $countId : ($moduleId).funcs.length = $(Lean.quote nb) := by
+      decide +kernel))
+    elabCommand (← `(theorem $lengthId : ($moduleId).funcs.length = ($bodiesId).length := by
+      decide +kernel))
+    elabCommand (← `(set_option maxRecDepth 100000 in
+      theorem $codesId : Wasm.Encoding.codesOk $bodiesId = true := by
+        decide +kernel))
+    let P ← `(fun k : Nat => Wasm.Encoding.funcOk ($moduleId).funcs[k]! ($bodiesId)[k]! = true)
+    let mut chain ← `(Wasm.Encoding.forall_lt_zero $P)
+    for k in [0:nb] do
+      let funcId := mkIdent (target.getId ++ Name.mkSimple s!"func_ok_{k}")
+      elabCommand (← `(set_option maxRecDepth 100000 in
+        theorem $funcId :
+          Wasm.Encoding.funcOk ($moduleId).funcs[$(Lean.quote k)]! ($bodiesId)[$(Lean.quote k)]! =
+            true := by
+          decide +kernel))
+      chain ← `(Wasm.Encoding.forall_lt_succ (P := $P) (n := $(Lean.quote k)) $chain $funcId)
+    let encodingId := mkIdent (target.getId ++ `encoding)
+    let encodedId := mkIdent (target.getId ++ `encoded)
+    elabCommand (← `(noncomputable def $encodingId : List UInt8 :=
+      Wasm.Encoding.assemble $sectionsId $bodiesId $dataId))
+    elabCommand (← `(theorem $encodedId : Wasm.Encoding.encode $moduleId = .ok ⟨($encodingId).toArray⟩ ∧
+        ∀ f ∈ ($moduleId).funcs, f.locals.length ≤ Wasm.Encoding.Decoder.maxLocals :=
+      Wasm.Encoding.encode_of_parts $moduleId $sectionsId $bodiesId $dataId $restId $dataOkId $lengthId
+        $codesId
+        (by rw [$countId:ident]; exact $chain)))
     let bytesId := mkIdent (target.getId ++ `bytes)
     let conj ← claims.pop.foldrM (fun c acc => `($c ∧ $acc)) claims.back!
     let impls ← proofs.pop.foldrM (fun p acc => `(⟨$p, $acc⟩)) proofs.back!
     elabCommand (← `(theorem $bytesId : ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
         Wasm.Encoding.decode bytes = .ok $moduleId ∧ $conj := by
-      obtain ⟨bytes, success, decoded⟩ :=
-        Wasm.Encoding.round_trip $moduleId (by decide +kernel) (by decide +kernel)
-      exact ⟨bytes, success, decoded, $impls⟩))
+      obtain ⟨success, locals⟩ := $encodedId
+      exact ⟨_, success, Wasm.Encoding.decode_encode $moduleId _ locals success, $impls⟩))
   | _ => throwUnsupportedSyntax
 
 end Verified.Reflect

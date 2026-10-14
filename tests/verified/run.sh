@@ -51,7 +51,9 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
     Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
     Verified.Examples.ParseFloat:compiled.module:parsefloat \
-    Verified.Examples.Drone:compiled.module:drone; do
+    Verified.Examples.Drone:compiled.module:drone \
+    Verified.Examples.Bessel:compiled.module:bessel Verified.Examples.Tgamma:compiled.module:tgamma \
+    Verified.Examples.Lgamma:compiled.module:lgamma Verified.Examples.Erfc:compiled.module:erfc; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -65,7 +67,9 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
-    pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile; do
+    pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile \
+    bessel:BesselBytes:BesselFile tgamma:Tgamma:TgammaFile lgamma:Lgamma:LgammaFile \
+    erfc:Erfc:ErfcFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
