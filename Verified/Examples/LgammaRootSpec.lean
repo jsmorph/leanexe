@@ -3,10 +3,10 @@ import Verified.Examples.LgammaRootPath
 /-!
 **One range of the polynomials about the negative zeros** of `Lgamma.accurate`, from the shifted
 argument to the product `z P (2^E z)` (`root_spec`).  The code computes `z = sx + x0` as
-`zh + zl` within `|z|/2^71` (`LgammaRootPath.z_spec`), scales it exactly by `2^E`
+`zh + zl` within `|z|/2^62` (`LgammaRootPath.z_spec`), scales it exactly by `2^E`
 (`scale_exact`), evaluates the polynomial (`poly_part`), and multiplies by `mulDD`.  With
 `RootFact` and `RootMinFact` as hypotheses, `|log |Γ sx|| ≥ 2^-60` and the polynomial within
-`2^-63` relative plus `2^-120`, the result lies within `|log |Γ sx||/2^56`, given the range
+`2^-63` relative plus `2^-120`, the result lies within `|log |Γ sx||/2^55`, given the range
 `[Pmin, Pmax]` of `|P|` on `[-Xn, Xp]`, its Lipschitz constant, and the end bounds of the
 kernel check.
 -/
@@ -20,7 +20,7 @@ local notation "tab" => Lgamma.accurateTable
 local notation "q" => LgammaApprox.q Lgamma.accurateTable
 
 set_option maxHeartbeats 16000000 in
-/-- **One range**: the code's `mulDD zh zl fh fl` within `|log |Γ sx||/2^56` of `log |Γ sx|`. -/
+/-- **One range**: the code's `mulDD zh zl fh fl` within `|log |Γ sx||/2^55` of `log |Γ sx|`. -/
 theorem root_spec (hF : FmaSpec.FmaNearest)
     (O N k E p P : ℕ) (hN1 : 1 ≤ N) (hk1 : 1 ≤ k) (hE : E ≤ 30) (hp : p ≤ 10) (hP0 : 0 < P)
     (hon : O + 3 + 2 * N + 2 * k < 2 ^ 63)
