@@ -129,7 +129,7 @@ theorem down_step (hF : FmaSpec.FmaNearest) (v : ℝ) (k0 : ℤ) (g : ℕ) (hg :
   obtain ⟨hp1f, hp2f, hpe, hp2b, hp1b, -⟩ := prod_step hF f.1 f.2 wh wl X (D v m) (m / 2 ^ 95)
     hf1f hf2f hwhf hwlf hXv (by rw [hf2v, abs_zero]; positivity)
     (by rw [abs_of_pos (by linarith)]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 54 ≤ 4)])
-    (by rw [abs_of_pos (by linarith)]; linarith) hWe (by positivity) hδ hwlb hwhb
+    (by rw [abs_of_pos (by linarith)]; linarith) hWe hδ hwlb hwhb
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 57 ≤ 1)])
   have hDs : X * D v m = D v (m + 1) := by rw [D_succ]
   rw [hDs] at hpe hp1b

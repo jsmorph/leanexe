@@ -92,8 +92,7 @@ theorem fts_approx (a b : Float) (ha : Finite a.toBits) (hb : Finite b.toBits) (
 /-- **`sprod`**: the next power of `d` as a triple. -/
 theorem sprod_spec (hF : FmaSpec.FmaNearest) (x x0 x1 x2 : Float) (hxf : Finite x.toBits)
     (h0f : Finite x0.toBits) (h1f : Finite x1.toBits) (h2f : Finite x2.toBits)
-    (hx : |value x.toBits| ≤ 1) (k0 : ℤ) (h0 : value x0.toBits = k0 / 2 ^ 26)
-    (h0b : |value x0.toBits| ≤ 2) (h1b : |value x1.toBits| ≤ 1 / 2 ^ 20)
+    (hx : |value x.toBits| ≤ 1) (h0b : |value x0.toBits| ≤ 2) (h1b : |value x1.toBits| ≤ 1 / 2 ^ 20)
     (h2b : |value x2.toBits| ≤ 1 / 2 ^ 46) :
     Finite (sprod x x0 x1 x2).1.toBits ∧ Finite (sprod x x0 x1 x2).2.1.toBits ∧
       Finite (sprod x x0 x1 x2).2.2.toBits ∧

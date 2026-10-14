@@ -52,9 +52,8 @@ theorem num_le (w : UInt64) (z : ℤ) (g : ℕ) (B : ℝ) (hz : value w = z / 2 
 /-- The triple of one step: `sprod` multiplies `t` by `d`. -/
 theorem tri_step (hF : FmaSpec.FmaNearest) (d t0 t1 t2 : Float) (k : ℕ) (hk : k + 1 ≤ 13)
     (hdf : Finite d.toBits) (hd : |value d.toBits| ≤ 1) (h0f : Finite t0.toBits)
-    (h1f : Finite t1.toBits) (h2f : Finite t2.toBits) (z : ℤ) (hz : value t0.toBits = z / 2 ^ 26)
-    (h0b : |value t0.toBits| ≤ 2) (h1b : |value t1.toBits| ≤ k / 2 ^ 24)
-    (h2b : |value t2.toBits| ≤ k / 2 ^ 50)
+    (h1f : Finite t1.toBits) (h2f : Finite t2.toBits) (h0b : |value t0.toBits| ≤ 2)
+    (h1b : |value t1.toBits| ≤ k / 2 ^ 24) (h2b : |value t2.toBits| ≤ k / 2 ^ 50)
     (hT : |value t0.toBits + value t1.toBits + value t2.toBits - value d.toBits ^ k| ≤ k / 2 ^ 76) :
     Finite (sprod d t0 t1 t2).1.toBits ∧ Finite (sprod d t0 t1 t2).2.1.toBits ∧
       Finite (sprod d t0 t1 t2).2.2.toBits ∧
@@ -70,7 +69,7 @@ theorem tri_step (hF : FmaSpec.FmaNearest) (d t0 t1 t2 : Float) (k : ℕ) (hk : 
   set vd := value d.toBits with hvd
   have hd0 := abs_nonneg vd
   obtain ⟨hr0f, hr1f, hr2f, hz', hr0e, hr1b, hr2b, hrT⟩ := sprod_spec hF d t0 t1 t2 hdf h0f
-    h1f h2f hd z hz h0b (by linarith [(by norm_num : (12 : ℝ) / 2 ^ 24 ≤ 1 / 2 ^ 20)])
+    h1f h2f hd h0b (by linarith [(by norm_num : (12 : ℝ) / 2 ^ 24 ≤ 1 / 2 ^ 20)])
     (by linarith [(by norm_num : (12 : ℝ) / 2 ^ 50 ≤ 1 / 2 ^ 46)])
   generalize sprod d t0 t1 t2 = r at hr0f hr1f hr2f hz' hr0e hr1b hr2b hrT ⊢
   have hdt1 : |vd| * |value t1.toBits| ≤ k / 2 ^ 24 :=
@@ -256,13 +255,13 @@ theorem step_inv (hF : FmaSpec.FmaNearest) (d c : Float) (cs : ℕ → ℝ) (k :
     (hm : m.natAbs < 2 ^ 19) (hc4 : |value c.toBits| ≤ 4) (h : Inv d cs k st) :
     Inv d cs (k + 1) (step d c st) := by
   obtain ⟨t0, t1, t2, s0, s1, s2⟩ := st
-  obtain ⟨h0f, h1f, h2f, hs0f, hs1f, hs2f, ⟨z, hz⟩, h0b, h1b, h2b, hT, ⟨n, hn⟩, hs0b, hs1b, hs2b,
+  obtain ⟨h0f, h1f, h2f, hs0f, hs1f, hs2f, -, h0b, h1b, h2b, hT, ⟨n, hn⟩, hs0b, hs1b, hs2b,
     hE⟩ := h
-  dsimp only at h0f h1f h2f hs0f hs1f hs2f hz h0b h1b h2b hT hn hs0b hs1b hs2b hE
+  dsimp only at h0f h1f h2f hs0f hs1f hs2f h0b h1b h2b hT hn hs0b hs1b hs2b hE
   unfold step
   dsimp only
   obtain ⟨hr0f, hr1f, hr2f, ⟨z', hz'⟩, hr0b, hr1b, hr2b, hrT⟩ := tri_step hF d t0 t1 t2 k hk hdf hd
-    h0f h1f h2f z hz h0b h1b h2b hT
+    h0f h1f h2f h0b h1b h2b hT
   generalize sprod d t0 t1 t2 = r at hr0f hr1f hr2f hz' hr0b hr1b hr2b hrT ⊢
   obtain ⟨hs0f', hn', hs0v, hs0b'⟩ := s0_step s0 r.1 c k hk hs0f hr0f hcf n z' m hn hs0b hz' hr0b
     hcm hm hc4

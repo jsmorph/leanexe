@@ -46,9 +46,9 @@ theorem prod_small (v : ℝ) (hv : ∀ n : ℤ, 1 / 2 ^ 54 ≤ |v + n|) (m : ℕ
     | zero =>
       simp only [zero_add, Finset.prod_range_one, Nat.cast_zero]
       by_cases ha0 : a = 0
-      · rw [if_pos (by omega), if_neg (by omega), mul_one, ha0]
+      · rw [ite_eq_left (by omega), ite_eq_right (by omega), mul_one, ha0]
       · by_cases ha1 : a = -1
-        · rw [if_pos (by omega), if_pos (by omega)]
+        · rw [ite_eq_left (by omega), ite_eq_left (by omega)]
           have : g v (a + 1) = g v 0 := by rw [ha1]; norm_num
           rw [this]
           nlinarith [hg1 a, hg0 a, hg0 0]
@@ -62,12 +62,12 @@ theorem prod_small (v : ℝ) (hv : ∀ n : ℤ, 1 / 2 ^ 54 ≤ |v + n|) (m : ℕ
       have hcast : (((m + 1 : ℕ) : ℤ)) = (m : ℤ) + 1 := by push_cast; ring
       rw [hcast]
       by_cases h0 : (m : ℤ) + 1 = a
-      · rw [if_neg (by omega), if_neg (by omega), one_mul] at ih
-        rw [if_pos (by omega), if_neg (by omega), mul_one, ← h0]
+      · rw [ite_eq_right (by omega), ite_eq_right (by omega), one_mul] at ih
+        rw [ite_eq_left (by omega), ite_eq_right (by omega), mul_one, ← h0]
         nlinarith [hg0 ((m : ℤ) + 1)]
       · by_cases h1 : (m : ℤ) + 1 = a + 1
-        · rw [if_pos (by omega), if_neg (by omega), mul_one] at ih
-          rw [if_pos (by omega), if_pos (by omega), h1]
+        · rw [ite_eq_left (by omega), ite_eq_right (by omega), mul_one] at ih
+          rw [ite_eq_left (by omega), ite_eq_left (by omega), h1]
           exact mul_le_mul_of_nonneg_right ih (hg0 _)
         · rw [hone _ h0 h1, mul_one]
           have e1 : (a ≤ (m : ℤ) + 1) ↔ (a ≤ (m : ℤ)) := by omega
@@ -126,7 +126,7 @@ theorem prod_step (hF : FmaSpec.FmaNearest) (f1 f2 wh wl : Float) (X W δ : ℝ)
     (hwl : Finite wl.toBits) (hX : value f1.toBits + value f2.toBits = X)
     (hf2b : |value f2.toBits| ≤ |value f1.toBits| / 2 ^ 50) (hX54 : 1 / 2 ^ 54 ≤ |X|)
     (hX8 : |X| ≤ 2 ^ 8) (hW : |value wh.toBits + value wl.toBits - W| ≤ δ * |W|)
-    (hδ0 : 0 ≤ δ) (hδ : δ ≤ 1 / 2 ^ 80) (hwlb : |value wl.toBits| ≤ |value wh.toBits| / 2 ^ 50)
+    (hδ : δ ≤ 1 / 2 ^ 80) (hwlb : |value wl.toBits| ≤ |value wh.toBits| / 2 ^ 50)
     (hwhb : |value wh.toBits| ≤ 2 ^ 518) (hWlo : 1 / 2 ^ 57 ≤ |W|) :
     Finite (mulDD3 f1 f2 wh wl).1.toBits ∧ Finite (mulDD3 f1 f2 wh wl).2.toBits ∧
       |value (mulDD3 f1 f2 wh wl).1.toBits + value (mulDD3 f1 f2 wh wl).2.toBits - X * W| ≤
@@ -325,7 +325,7 @@ theorem S_nonneg (v : ℝ) (m : ℕ) : 0 ≤ S v m :=
   Finset.prod_nonneg (fun _ _ => le_min zero_le_one (abs_nonneg _))
 
 /-- The bounds after a division by `2 ^ 500`, on the real numbers. -/
-theorem resc_real (a b q2 Wn δ Sv : ℝ) (hδ0 : 0 ≤ δ)
+theorem resc_real (a b q2 Wn δ Sv : ℝ)
     (hpe : |a + b - Wn| ≤ (δ + 1 / 2 ^ 96) * |Wn|) (hp1b : |a| ≤ 4 * |Wn|)
     (ht : 2 ^ 518 < |a|) (hq2e : |q2 - b / 2 ^ 500| ≤ |a| / 2 ^ 500 / 2 ^ 100)
     (hWs : |Wn| ≤ 2 ^ 528) (hS : Sv ≤ 1) :
@@ -403,7 +403,7 @@ theorem up_step (hF : FmaSpec.FmaNearest) (v : ℝ) (e0 : UInt64) (m : ℕ)
   have hδ : (m : ℝ) / 2 ^ 95 ≤ 1 / 2 ^ 80 := by
     rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
   obtain ⟨hp1f, hp2f, hpe, hp2b, hp1b, hp1b'⟩ := prod_step hF f.1 f.2 wh wl X (W v r m)
-    (m / 2 ^ 95) hf1f hf2f hwhf hwlf hXv hf2b hX54 hX8 hWe (by positivity) hδ hwlb hwhb hWlo
+    (m / 2 ^ 95) hf1f hf2f hwhf hwlf hXv hf2b hX54 hX8 hWe hδ hwlb hwhb hWlo
   have hWs : X * W v r m = W v r (m + 1) := by rw [W_succ]
   rw [hWs] at hpe hp1b hp1b'
   set p := mulDD3 f.1 f.2 wh wl with hpdef
@@ -454,7 +454,7 @@ theorem up_step (hF : FmaSpec.FmaNearest) (v : ℝ) (e0 : UInt64) (m : ℕ)
     obtain ⟨hq1f, hq2f, hq1v, hq2e, hq2b⟩ := rescale p.1 p.2 hp1f hp2f ht' hp2b
     unfold UpInv
     dsimp only
-    obtain ⟨hr1, hr2, hr3⟩ := resc_real _ _ _ _ _ _ (by positivity) hpe hp1b ht' hq2e hWs'
+    obtain ⟨hr1, hr2, hr3⟩ := resc_real _ _ _ _ _ _ hpe hp1b ht' hq2e hWs'
       (S_le_one v (m + 1))
     refine ⟨hf1f, hf2f, hq1f, hq2f, by rw [hXv, hXdef], hfg1, hfg2, hf243, hf2r, r + 1,
       by omega, by rw [he, eoff_step], ?_, hq2b, by rw [hq1v]; exact hr2,

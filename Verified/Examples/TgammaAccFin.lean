@@ -374,14 +374,14 @@ theorem finRes_norm (fh fl : Float) (eoff : UInt64)
     finRes fh fl eoff = (fh + fl).toBits + (eoff <<< 52) := by
   unfold finRes
   dsimp only
-  rw [if_neg (by rw [h]; decide)]
+  rw [ite_eq_right (by rw [h]; decide)]
 
 theorem finRes_sub (fh fl : Float) (F : ℕ)
     (h : nonPositive ((((fh + fl).toBits >>> 52) &&& 0x7ff) + (0 - UInt64.ofNat F)) = true) :
     finRes fh fl (0 - UInt64.ofNat F) = subRes fh fl F := by
   unfold finRes subRes
   dsimp only
-  rw [if_pos h, sub_neg_shift]
+  rw [ite_eq_left h, sub_neg_shift]
 
 /-- The bounds of `S = fh + fl` from its distance to `g`, with the rounded sum. -/
 theorem sum_bounds (fh fl : Float) (g : ℝ) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
