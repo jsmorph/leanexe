@@ -166,7 +166,6 @@ theorem acc_gen (hF : FmaSpec.FmaNearest) (tab : Array UInt64) (o N : ℕ) (X M 
           linarith) (show (0 : ℝ) ≤ X * (1 + 1 / 2 ^ 53) by
             have : (0 : ℝ) ≤ X := by exact_mod_cast hX0
             positivity)
-      push_cast
       linarith [(by ring : ((hbT tab o N X m : ℝ) + δ) * (X * (1 + 1 / 2 ^ 53)) =
         ((hbT tab o N X m : ℝ) + δ) * X * (1 + 1 / 2 ^ 53)),
         (by ring : (|horner (cDD tab o') N 0 (value x.toBits) m| + (δ : ℝ)) * (X * (1 + 1 / 2 ^ 53)) =
@@ -352,7 +351,7 @@ theorem mid_eval (v : ℝ) :
 set_option maxHeartbeats 4000000 in
 /-- **The second polynomial** at `|d| ≤ 1/4`: within `9/2^61` of the polynomial of its pairs.  The
 step that adds the pair 1 has no order between its high parts, and `fastSum_any` bounds it by
-the half spacing of the product, near `2^-56`, which the last product by `d` halves twice. -/
+`|b|/2^53` for the product `b`, about `2^-56`, which the last product by `|d| ≤ 1/4` scales. -/
 theorem mid_spec (hF : FmaSpec.FmaNearest) (d : Float) (hd : Finite d.toBits)
     (hD : |value d.toBits| ≤ 1 / 4) :
     Finite (Lgamma.polyDDDFst Lgamma.accurateTable 68 30 d 0.0).1.toBits ∧
