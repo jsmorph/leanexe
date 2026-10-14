@@ -166,6 +166,129 @@ theorem z_spec (e0 e1 e2 sx : Float) (h0 : Finite e0.toBits) (h1 : Finite e1.toB
     linarith [(by norm_num : ((1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 100) / 2 ^ 53 + 1 / 2 ^ 1074 + 1 / 2 ^ 100 ≤
       1 / 2 ^ 99), abs_nonneg (value zh.toBits)]
 
+/-- The scaled magnitude of a finite word: a 53-bit integer times `2^(exponent - 1)`. -/
+theorem mag_form (w : UInt64) :
+    ∃ m : ℕ, Wasm.IEEE64.scaledMagnitude w = m * 2 ^ (Wasm.IEEE64.exponent w - 1) ∧
+      m < 2 ^ 53 := by
+  have hf : Wasm.IEEE64.fraction w < 2 ^ 52 := Nat.mod_lt _ (by positivity)
+  unfold Wasm.IEEE64.scaledMagnitude
+  by_cases he : Wasm.IEEE64.exponent w = 0
+  · exact ⟨Wasm.IEEE64.fraction w, by simp [he], by omega⟩
+  · exact ⟨2 ^ 52 + Wasm.IEEE64.fraction w, by simp [he], by omega⟩
+
+/-- **A product by the scale `2^E`** of a double of magnitude below 2 is exact. -/
+theorem scale_exact (x sc : Float) (hx : Finite x.toBits) (hsc : Finite sc.toBits) (E : ℕ)
+    (hE : E ≤ 30) (hscm : Wasm.IEEE64.scaledMagnitude sc.toBits = 2 ^ (1074 + E))
+    (hx2 : |value x.toBits| < 2) :
+    Finite (x * sc).toBits ∧ value (x * sc).toBits = value x.toBits * value sc.toBits := by
+  have hxe : Wasm.IEEE64.exponent x.toBits < 1024 := by
+    apply F64ExponentBounds.exponent_lt_of_magnitude_lt x.toBits 1024 (by norm_num)
+    show |value x.toBits| < |value (UInt64.ofNat (1024 * 2 ^ 52))|
+    rw [F64NearestBinade.boundary_power 1024 1 (by norm_num) (by norm_num) (by norm_num),
+      abs_of_pos (by norm_num : (0 : ℝ) < 2 ^ (1 : Int))]
+    exact lt_of_lt_of_le hx2 (le_of_eq (by norm_num))
+  obtain ⟨m, hm, hm53⟩ := mag_form x.toBits
+  have h := F64ExactProduct.mul_exact_scaled x.toBits sc.toBits hx hsc m 1
+    (Wasm.IEEE64.exponent x.toBits - 1) (1074 + E) hm (by rw [hscm]; ring) (by omega)
+    (by omega) (by omega)
+  rw [F64Bits.toBits_mul]
+  exact ⟨h.1, h.2.1⟩
+
+/-- The doubles of a tail as a list. -/
+def tailList (tab : Array UInt64) (o k : ℕ) : List ℚ :=
+  (List.range k).map fun i => PolyBound.ratOfWord tab[o + 2 * i]!
+
+theorem eval_tailList (tab : Array UInt64) (O N K : ℕ) (hK : 1 ≤ K) (t : ℝ) :
+    PolyBound.eval (tailList tab (O + 2 * N) K) t = LgammaRootEval.tailQ tab O N K t := by
+  rw [tailList, TgammaWords.eval_map_range, LgammaRootEval.tailQ, TgammaPoly.horner_eval _ K hK,
+    zero_mul, add_zero]
+
+set_option maxHeartbeats 4000000 in
+/-- **The tail of a root polynomial**: `sh · polyD (...)` within `X e + X (M + e)/2^53 +
+Lp |sl|` of `s Q (s)` for `s = sh + sl`, from the bound `(M, e)` of its Horner expression. -/
+theorem tail_spec (tab : Array UInt64) (o2 kU : UInt64) (O N K : ℕ) (ho2 : o2.toNat = O + 2 * N)
+    (hk : kU.toNat = K) (hK1 : 1 ≤ K) (hon : O + 2 * N + 2 * K < 2 ^ 63) (X R Lp : ℚ)
+    (hok : TgammaExpr.ok (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X = true)
+    (sh sl : Float) (hsh : Finite sh.toBits) (hX : |value sh.toBits| ≤ X)
+    (hR1 : |value sh.toBits| ≤ R) (hR2 : |value sh.toBits + value sl.toBits| ≤ R)
+    (hLp : TgammaPolyLip.lipQ R (0 :: tailList tab (O + 2 * N) K) ≤ Lp)
+    (hXb : X * ((TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).1 +
+      (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).2) ≤ 1) :
+    Finite (sh * Lgamma.polyD tab o2 kU sh).toBits ∧
+      |value (sh * Lgamma.polyD tab o2 kU sh).toBits -
+          (value sh.toBits + value sl.toBits) *
+            LgammaRootEval.tailQ tab O N K (value sh.toBits + value sl.toBits)| ≤
+        X * (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).2 +
+          X * ((TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).1 +
+            (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).2) / 2 ^ 53 +
+          1 / 2 ^ 1075 + Lp * |value sl.toBits| ∧
+      |value (sh * Lgamma.polyD tab o2 kU sh).toBits| ≤
+        X * ((TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).1 +
+          (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).2) *
+            (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 := by
+  set M := (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).1 with hM
+  set e := (TgammaExpr.bnd (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X).2 with he
+  have hX0 : (0 : ℝ) ≤ X := (abs_nonneg _).trans hX
+  have hX0q : (0 : ℚ) ≤ X := by exact_mod_cast hX0
+  have hR0q : (0 : ℚ) ≤ R := by exact_mod_cast (abs_nonneg _).trans hR1
+  obtain ⟨hMe0, hMe1⟩ := TgammaExpr.bnd_nonneg (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) X
+    hX0q
+  have hM0 : (0 : ℝ) ≤ M := by exact_mod_cast hMe0
+  have he0 : (0 : ℝ) ≤ e := by exact_mod_cast hMe1
+  rw [LgammaRootEval.polyD_eq tab o2 kU (by rw [hk]; exact hK1) (by rw [ho2, hk]; omega), ho2, hk]
+  obtain ⟨hD, hDb⟩ := TgammaExpr.evalF_approx _ X sh hsh hX hok
+  rw [← he] at hD
+  rw [← hM] at hDb
+  rw [LgammaRootEval.evalR_hornerE] at hD hDb
+  set Q := TgammaPoly.horner (fun i => (PolyBound.ratOfWord tab[O + 2 * N + 2 * i]! : ℝ)) K 0
+    (value sh.toBits) (K - 1) with hQ
+  have hp := fapprox_mul (fapprox_self sh hsh) hD (X : ℝ) (M : ℝ) hX hDb
+    ((X : ℝ) * ((M : ℝ) + e)) (by simp only [add_zero]; exact le_rfl)
+    (by have : ((X * (M + e) : ℚ) : ℝ) ≤ 1 := by exact_mod_cast hXb
+        push_cast at this
+        linarith [(by norm_num : (1 : ℝ) < 2 ^ 1022)])
+  obtain ⟨pf, pe⟩ := hp
+  simp only [zero_mul, zero_add, mul_zero, add_zero] at pe
+  -- the Lipschitz part
+  have hlip := TgammaPolyLip.eval_lip R hR0q (value sh.toBits) (value sh.toBits + value sl.toBits)
+    hR1 hR2 (0 :: tailList tab (O + 2 * N) K)
+  simp only [PolyBound.eval, eval_tailList tab O N K hK1] at hlip
+  push_cast at hlip
+  simp only [zero_add] at hlip
+  have hLp' : (TgammaPolyLip.lipQ R (0 :: tailList tab (O + 2 * N) K) : ℝ) ≤ Lp := by
+    exact_mod_cast hLp
+  rw [show value sh.toBits - (value sh.toBits + value sl.toBits) = -value sl.toBits by ring,
+    abs_neg] at hlip
+  have hQe : LgammaRootEval.tailQ tab O N K (value sh.toBits) = Q := rfl
+  rw [hQe] at hlip
+  have hlip' := hlip.trans (mul_le_mul_of_nonneg_right hLp' (abs_nonneg _))
+  refine ⟨pf, ?_, ?_⟩
+  · have k : value (sh * TgammaExpr.evalF (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) sh).toBits -
+        (value sh.toBits + value sl.toBits) *
+          LgammaRootEval.tailQ tab O N K (value sh.toBits + value sl.toBits) =
+        (value (sh * TgammaExpr.evalF (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) sh).toBits -
+          value sh.toBits * Q) +
+        (value sh.toBits * Q - (value sh.toBits + value sl.toBits) *
+          LgammaRootEval.tailQ tab O N K (value sh.toBits + value sl.toBits)) := by ring
+    rw [k]
+    have := abs_add_le (value (sh * TgammaExpr.evalF (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) sh).toBits -
+          value sh.toBits * Q)
+      (value sh.toBits * Q - (value sh.toBits + value sl.toBits) *
+          LgammaRootEval.tailQ tab O N K (value sh.toBits + value sl.toBits))
+    push_cast at pe ⊢
+    linarith
+  · have h1 := abs_sub_abs_le_abs_sub
+      (value (sh * TgammaExpr.evalF (LgammaRootEval.hornerE tab (O + 2 * N) K (K - 1)) sh).toBits)
+      (value sh.toBits * Q)
+    have h2 : |value sh.toBits * Q| ≤ (X : ℝ) * M := by
+      rw [abs_mul]; exact mul_le_mul hX hDb (abs_nonneg _) hX0
+    push_cast at pe ⊢
+    have h3 : (X : ℝ) * e + (X : ℝ) * ((M : ℝ) + e) / 2 ^ 53 ≤ (X : ℝ) * ((M : ℝ) + e) / 2 ^ 53 +
+        (X : ℝ) * e := by linarith
+    nlinarith
+
+#print axioms tail_spec
+#print axioms scale_exact
 #print axioms add_sterbenz
 #print axioms grid_p
 #print axioms z_spec
