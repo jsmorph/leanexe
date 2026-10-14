@@ -7,7 +7,7 @@ The product `(l - 1)(x - 1/2)` of `Lgamma.asLgammaAsymAccurate`, for the logarit
 the residuals with `sumDD`, and adds `(l0 - 1) wl` and `l1 wl` with a second `sumDD`; it drops
 `l2 wl`.  `l0 - 1` and, below `2^52`, `xh - 1/2` are exact (`one_sub_wide`, `half_sub_wide`), by
 `TgammaAsym1.sub_exact_binade` on the binade of the minuend (`binade_of`).  The largest error is
-the rounding of `(l0 - 1) wl`, at most `83 |wl|/2^53`.
+the rounding of `(l0 - 1) wl`, at most `559 |wl|/2^53`.
 -/
 
 namespace Verified.Examples.LgammaAsymProd
@@ -84,20 +84,20 @@ set_option maxHeartbeats 4000000 in
 /-- **The product** `(l - 1)(x - 1/2)` within `wh/2^95`. -/
 theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Finite l0.toBits)
     (h1f : Finite l1.toBits) (h2f : Finite l2.toBits) (hwf : Finite wh.toBits)
-    (hlf : Finite wl.toBits) (hl0lo : 1 ≤ value l0.toBits) (hl0hi : value l0.toBits ≤ 84)
-    (hl1 : |value l1.toBits| ≤ |value l0.toBits| / 2 ^ 50 + 1 / 2 ^ 49)
-    (hl2 : |value l2.toBits| ≤ |value l0.toBits| / 2 ^ 99 + 1 / 2 ^ 98)
+    (hlf : Finite wl.toBits) (hl0lo : 1 ≤ value l0.toBits) (hl0hi : value l0.toBits ≤ 560)
+    (hl1 : |value l1.toBits| ≤ |value l0.toBits| / 2 ^ 50 + 1 / 2 ^ 48)
+    (hl2 : |value l2.toBits| ≤ |value l0.toBits| / 2 ^ 99 + 1 / 2 ^ 97)
     (hwlo : 1 ≤ value wh.toBits) (hwhi : value wh.toBits ≤ 2 ^ 801)
     (hwl : |value wl.toBits| ≤ value wh.toBits / 2 ^ 50) :
     let P := prodCode l0 l1 l2 wh wl
     Finite P.1.toBits ∧ Finite P.2.1.toBits ∧ Finite P.2.2.toBits ∧
       |value P.1.toBits + value P.2.1.toBits + value P.2.2.toBits -
           (value l0.toBits + value l1.toBits + value l2.toBits - 1) *
-            (value wh.toBits + value wl.toBits)| ≤ value wh.toBits / 2 ^ 95 ∧
+            (value wh.toBits + value wl.toBits)| ≤ value wh.toBits / 2 ^ 92 ∧
       |value P.1.toBits - (value l0.toBits - 1) * value wh.toBits| ≤
-        84 * value wh.toBits / 2 ^ 53 ∧
-      |value P.2.1.toBits| ≤ value wh.toBits / 2 ^ 40 ∧
-      |value P.2.2.toBits| ≤ value wh.toBits / 2 ^ 86 := by
+        560 * value wh.toBits / 2 ^ 53 ∧
+      |value P.2.1.toBits| ≤ value wh.toBits / 2 ^ 37 ∧
+      |value P.2.2.toBits| ≤ value wh.toBits / 2 ^ 84 := by
   intro P
   set W := value wh.toBits with hWdef
   set a0 := value l0.toBits with ha0
@@ -105,30 +105,30 @@ theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Fini
   set a2 := value l2.toBits with ha2
   set b := value wl.toBits with hbdef
   have hW0 : 0 < W := by linarith
-  have ha0' : |a0| ≤ 84 := abs_le.mpr ⟨by linarith, hl0hi⟩
-  have ha1b : |a1| ≤ 1 / 2 ^ 43 := by
-    have : |a0| / 2 ^ 50 ≤ 84 / 2 ^ 50 := div_le_div_of_nonneg_right ha0' (by norm_num)
-    linarith [(by norm_num : (84 : ℝ) / 2 ^ 50 + 1 / 2 ^ 49 ≤ 1 / 2 ^ 43)]
-  have ha2b : |a2| ≤ 1 / 2 ^ 92 := by
-    have : |a0| / 2 ^ 99 ≤ 84 / 2 ^ 99 := div_le_div_of_nonneg_right ha0' (by norm_num)
-    linarith [(by norm_num : (84 : ℝ) / 2 ^ 99 + 1 / 2 ^ 98 ≤ 1 / 2 ^ 92)]
+  have ha0' : |a0| ≤ 560 := abs_le.mpr ⟨by linarith, hl0hi⟩
+  have ha1b : |a1| ≤ 1 / 2 ^ 40 := by
+    have : |a0| / 2 ^ 50 ≤ 560 / 2 ^ 50 := div_le_div_of_nonneg_right ha0' (by norm_num)
+    linarith [(by norm_num : (560 : ℝ) / 2 ^ 50 + 1 / 2 ^ 48 ≤ 1 / 2 ^ 40)]
+  have ha2b : |a2| ≤ 1 / 2 ^ 89 := by
+    have : |a0| / 2 ^ 99 ≤ 560 / 2 ^ 99 := div_le_div_of_nonneg_right ha0' (by norm_num)
+    linarith [(by norm_num : (560 : ℝ) / 2 ^ 99 + 1 / 2 ^ 97 ≤ 1 / 2 ^ 89)]
   -- `l0m = l0 - 1`, exact
   obtain ⟨hmf, hmv⟩ := one_sub_wide l0 h0f hl0lo (by linarith)
   set l0m := l0 - 1.0 with hl0m
   have hm0 : 0 ≤ value l0m.toBits := by rw [hmv]; linarith
-  have hm83 : value l0m.toBits ≤ 83 := by rw [hmv]; linarith
-  have hmabs : |value l0m.toBits| ≤ 83 := abs_le.mpr ⟨by linarith, hm83⟩
+  have hm83 : value l0m.toBits ≤ 559 := by rw [hmv]; linarith
+  have hmabs : |value l0m.toBits| ≤ 559 := abs_le.mpr ⟨by linarith, hm83⟩
   have hWabs : |W| ≤ W := le_of_eq (abs_of_pos hW0)
   have hWmax : W ≤ 2 ^ 801 := hwhi
   -- `l0x = l0m wh` and its residual
-  have hx0 := fapprox_mul (fapprox_self l0m hmf) (fapprox_self wh hwf) 83 W hmabs hWabs (83 * W)
-    (by simp only [add_zero]; exact le_rfl) (by linarith [(by norm_num : (83 : ℝ) * 2 ^ 801 < 2 ^ 1022)])
+  have hx0 := fapprox_mul (fapprox_self l0m hmf) (fapprox_self wh hwf) 559 W hmabs hWabs (559 * W)
+    (by simp only [add_zero]; exact le_rfl) (by linarith [(by norm_num : (559 : ℝ) * 2 ^ 801 < 2 ^ 1022)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hx0
   set l0x := l0m * wh with hl0x
-  have hx0b : |value l0x.toBits| ≤ 84 * W := by
+  have hx0b : |value l0x.toBits| ≤ 560 * W := by
     have := hx0.2
     have h1 := abs_sub_abs_le_abs_sub (value l0x.toBits) (value l0m.toBits * W)
-    have h2 : |value l0m.toBits * W| ≤ 83 * W := by
+    have h2 : |value l0m.toBits * W| ≤ 559 * W := by
       rw [abs_mul, abs_of_pos hW0]; exact mul_le_mul_of_nonneg_right hmabs hW0.le
     have h3 : (1 : ℝ) / 2 ^ 1075 ≤ W := by linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1)]
     linarith
@@ -139,29 +139,29 @@ theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Fini
   have hr0 := fma_approx hF l0m wh (-l0x) hmf hwf hnx0.1 (by
     rw [hnx0v, ← sub_eq_add_neg]
     have := hx0.2
-    have : 83 * W / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000 := by
-      linarith [(by norm_num : (83 : ℝ) * 2 ^ 801 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
-        div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 83))
+    have : 559 * W / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000 := by
+      linarith [(by norm_num : (559 : ℝ) * 2 ^ 801 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
+        div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 559))
           (by norm_num : (0 : ℝ) ≤ 2 ^ 53)]
     linarith [abs_sub_comm (value l0m.toBits * value wh.toBits) (value l0x.toBits)])
   rw [hnx0v, ← sub_eq_add_neg] at hr0
   set l0xl := Fma.fma l0m wh (-l0x) with hl0xl
   -- `l1x = l1 wh` and its residual
-  have hx1 := fapprox_mul (fapprox_self l1 h1f) (fapprox_self wh hwf) (1 / 2 ^ 43) W ha1b hWabs
-    (1 / 2 ^ 43 * W) (by simp only [add_zero]; exact le_rfl)
-    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 43 * 2 ^ 801 < 2 ^ 1022),
-      mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 43)])
+  have hx1 := fapprox_mul (fapprox_self l1 h1f) (fapprox_self wh hwf) (1 / 2 ^ 40) W ha1b hWabs
+    (1 / 2 ^ 40 * W) (by simp only [add_zero]; exact le_rfl)
+    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 40 * 2 ^ 801 < 2 ^ 1022),
+      mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 40)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hx1
   set l1x := l1 * wh with hl1x
-  have hx1b : |value l1x.toBits| ≤ W / 2 ^ 42 := by
+  have hx1b : |value l1x.toBits| ≤ W / 2 ^ 39 := by
     have := hx1.2
     have h1 := abs_sub_abs_le_abs_sub (value l1x.toBits) (a1 * W)
-    have h2 : |a1 * W| ≤ 1 / 2 ^ 43 * W := by
+    have h2 : |a1 * W| ≤ 1 / 2 ^ 40 * W := by
       rw [abs_mul, abs_of_pos hW0]; exact mul_le_mul_of_nonneg_right ha1b hW0.le
     have h3 : (1 : ℝ) / 2 ^ 1075 ≤ W / 2 ^ 100 := by
       have := div_le_div_of_nonneg_right hwlo (by norm_num : (0 : ℝ) ≤ 2 ^ 100)
       linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1 / 2 ^ 100)]
-    linarith [(by ring : W / 2 ^ 42 = 1 / 2 ^ 43 * W + 1 / 2 ^ 43 * W)]
+    linarith [(by ring : W / 2 ^ 39 = 1 / 2 ^ 40 * W + 1 / 2 ^ 40 * W)]
   have hnx1 := fapprox_neg (fapprox_self l1x hx1.1)
   have hnx1v : value (-l1x).toBits = -value l1x.toBits := by
     have h0 := abs_nonpos_iff.mp hnx1.2
@@ -169,219 +169,219 @@ theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Fini
   have hr1 := fma_approx hF l1 wh (-l1x) h1f hwf hnx1.1 (by
     rw [hnx1v, ← sub_eq_add_neg]
     have := hx1.2
-    have : 1 / 2 ^ 43 * W / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000 := by
-      linarith [(by norm_num : (1 : ℝ) / 2 ^ 43 * 2 ^ 801 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
-        div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 43))
+    have : 1 / 2 ^ 40 * W / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000 := by
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 40 * 2 ^ 801 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
+        div_le_div_of_nonneg_right (mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 40))
           (by norm_num : (0 : ℝ) ≤ 2 ^ 53)]
     linarith [abs_sub_comm (value l1.toBits * value wh.toBits) (value l1x.toBits)])
   rw [hnx1v, ← sub_eq_add_neg] at hr1
   set l1xl := Fma.fma l1 wh (-l1x) with hl1xl
   -- `l2x = l2 wh`
-  have hx2 := fapprox_mul (fapprox_self l2 h2f) (fapprox_self wh hwf) (1 / 2 ^ 92) W ha2b hWabs
-    (1 / 2 ^ 92 * W) (by simp only [add_zero]; exact le_rfl)
-    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 92 * 2 ^ 801 < 2 ^ 1022),
-      mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 92)])
+  have hx2 := fapprox_mul (fapprox_self l2 h2f) (fapprox_self wh hwf) (1 / 2 ^ 89) W ha2b hWabs
+    (1 / 2 ^ 89 * W) (by simp only [add_zero]; exact le_rfl)
+    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 89 * 2 ^ 801 < 2 ^ 1022),
+      mul_le_mul_of_nonneg_left hwhi (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 89)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hx2
   set l2x := l2 * wh with hl2x
   -- the small terms, relative to `W`
   have hη : (1 : ℝ) / 2 ^ 1075 ≤ W / 2 ^ 1000 := by
     have := div_le_div_of_nonneg_right hwlo (by norm_num : (0 : ℝ) ≤ 2 ^ 1000)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1 / 2 ^ 1000)]
-  have hr0b : |value l0xl.toBits - (value l0m.toBits * W - value l0x.toBits)| ≤ W / 2 ^ 99 := by
+  have hr0b : |value l0xl.toBits - (value l0m.toBits * W - value l0x.toBits)| ≤ W / 2 ^ 96 := by
     have h1 := hr0.2
-    have h2 : |value l0m.toBits * W - value l0x.toBits| ≤ 83 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
+    have h2 : |value l0m.toBits * W - value l0x.toBits| ≤ 559 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
       rw [abs_sub_comm]; exact hx0.2
     have h3 : |value l0m.toBits * W - value l0x.toBits| / 2 ^ 53 ≤
-        (83 * W / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 := div_le_div_of_nonneg_right h2 (by norm_num)
-    have h4 : (83 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 99 := by
-      have : (83 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 =
-          W * ((83 / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
+        (559 * W / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 := div_le_div_of_nonneg_right h2 (by norm_num)
+    have h4 : (559 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 96 := by
+      have : (559 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 =
+          W * ((559 / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : ((83 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 +
-        1 / 2 ^ 1000 ≤ 1 / 2 ^ 99) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 99) = W / 2 ^ 99)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : ((559 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 +
+        1 / 2 ^ 1000 ≤ 1 / 2 ^ 96) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 96) = W / 2 ^ 96)]
     linarith
   have hr1b : |value l1xl.toBits - (a1 * W - value l1x.toBits)| ≤ W / 2 ^ 140 := by
     have h1 := hr1.2
-    have h2 : |a1 * W - value l1x.toBits| ≤ 1 / 2 ^ 43 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
+    have h2 : |a1 * W - value l1x.toBits| ≤ 1 / 2 ^ 40 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
       rw [abs_sub_comm]; exact hx1.2
     have h3 : |a1 * W - value l1x.toBits| / 2 ^ 53 ≤
-        (1 / 2 ^ 43 * W / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 := div_le_div_of_nonneg_right h2 (by norm_num)
-    have h4 : (1 / 2 ^ 43 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
-      have : (1 / 2 ^ 43 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 =
-          W * ((1 / 2 ^ 43 / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
+        (1 / 2 ^ 40 * W / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 := div_le_div_of_nonneg_right h2 (by norm_num)
+    have h4 : (1 / 2 ^ 40 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
+      have : (1 / 2 ^ 40 * W / 2 ^ 53 + W / 2 ^ 1000) / 2 ^ 53 + W / 2 ^ 1000 =
+          W * ((1 / 2 ^ 40 / 2 ^ 53 + 1 / 2 ^ 1000) / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 43 / 2 ^ 53 + 1 / 2 ^ 1000) /
+      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 40 / 2 ^ 53 + 1 / 2 ^ 1000) /
         2 ^ 53 + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 140) hW0.le
       linarith [(by ring : W * (1 / 2 ^ 140) = W / 2 ^ 140)]
     linarith
-  have hl1xlb : |value l1xl.toBits| ≤ W / 2 ^ 95 := by
+  have hl1xlb : |value l1xl.toBits| ≤ W / 2 ^ 92 := by
     have h1 := abs_sub_abs_le_abs_sub (value l1xl.toBits) (a1 * W - value l1x.toBits)
-    have h2 : |a1 * W - value l1x.toBits| ≤ 1 / 2 ^ 43 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
+    have h2 : |a1 * W - value l1x.toBits| ≤ 1 / 2 ^ 40 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
       rw [abs_sub_comm]; exact hx1.2
-    have : 1 / 2 ^ 43 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 140 ≤ W / 2 ^ 95 := by
-      have : 1 / 2 ^ 43 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 140 =
-          W * (1 / 2 ^ 43 / 2 ^ 53 + 1 / 2 ^ 1000 + 1 / 2 ^ 140) := by ring
+    have : 1 / 2 ^ 40 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 140 ≤ W / 2 ^ 92 := by
+      have : 1 / 2 ^ 40 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 140 =
+          W * (1 / 2 ^ 40 / 2 ^ 53 + 1 / 2 ^ 1000 + 1 / 2 ^ 140) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 43 / 2 ^ 53 + 1 / 2 ^ 1000 +
-        1 / 2 ^ 140 ≤ 1 / 2 ^ 95) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 95) = W / 2 ^ 95)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 40 / 2 ^ 53 + 1 / 2 ^ 1000 +
+        1 / 2 ^ 140 ≤ 1 / 2 ^ 92) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 92) = W / 2 ^ 92)]
     linarith
-  have hl0xlb : |value l0xl.toBits| ≤ W / 2 ^ 45 := by
+  have hl0xlb : |value l0xl.toBits| ≤ W / 2 ^ 43 := by
     have h1 := abs_sub_abs_le_abs_sub (value l0xl.toBits) (value l0m.toBits * W - value l0x.toBits)
-    have h2 : |value l0m.toBits * W - value l0x.toBits| ≤ 83 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
+    have h2 : |value l0m.toBits * W - value l0x.toBits| ≤ 559 * W / 2 ^ 53 + 1 / 2 ^ 1075 := by
       rw [abs_sub_comm]; exact hx0.2
-    have : 83 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 99 ≤ W / 2 ^ 45 := by
-      have : 83 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 99 =
-          W * (83 / 2 ^ 53 + 1 / 2 ^ 1000 + 1 / 2 ^ 99) := by ring
+    have : 559 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 96 ≤ W / 2 ^ 43 := by
+      have : 559 * W / 2 ^ 53 + W / 2 ^ 1000 + W / 2 ^ 96 =
+          W * (559 / 2 ^ 53 + 1 / 2 ^ 1000 + 1 / 2 ^ 96) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (83 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1000 +
-        1 / 2 ^ 99 ≤ 1 / 2 ^ 45) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 45) = W / 2 ^ 45)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (559 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1000 +
+        1 / 2 ^ 96 ≤ 1 / 2 ^ 43) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 43) = W / 2 ^ 43)]
     linarith
-  have hl2xb : |value l2x.toBits| ≤ W / 2 ^ 91 := by
+  have hl2xb : |value l2x.toBits| ≤ W / 2 ^ 88 := by
     have h1 := abs_sub_abs_le_abs_sub (value l2x.toBits) (a2 * W)
-    have h2 : |a2 * W| ≤ 1 / 2 ^ 92 * W := by
+    have h2 : |a2 * W| ≤ 1 / 2 ^ 89 * W := by
       rw [abs_mul, abs_of_pos hW0]; exact mul_le_mul_of_nonneg_right ha2b hW0.le
     have h3 := hx2.2
-    have : 1 / 2 ^ 92 * W + (1 / 2 ^ 92 * W / 2 ^ 53 + W / 2 ^ 1000) ≤ W / 2 ^ 91 := by
-      have : 1 / 2 ^ 92 * W + (1 / 2 ^ 92 * W / 2 ^ 53 + W / 2 ^ 1000) =
-          W * (1 / 2 ^ 92 + (1 / 2 ^ 92 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
+    have : 1 / 2 ^ 89 * W + (1 / 2 ^ 89 * W / 2 ^ 53 + W / 2 ^ 1000) ≤ W / 2 ^ 88 := by
+      have : 1 / 2 ^ 89 * W + (1 / 2 ^ 89 * W / 2 ^ 53 + W / 2 ^ 1000) =
+          W * (1 / 2 ^ 89 + (1 / 2 ^ 89 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 92 + (1 / 2 ^ 92 / 2 ^ 53 +
-        1 / 2 ^ 1000) ≤ 1 / 2 ^ 91) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 91) = W / 2 ^ 91)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 89 + (1 / 2 ^ 89 / 2 ^ 53 +
+        1 / 2 ^ 1000) ≤ 1 / 2 ^ 88) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 88) = W / 2 ^ 88)]
     linarith
   -- the first `sumDD`
   have hlimA : |value l1x.toBits| < 2 ^ 898 := by
-    have : W / 2 ^ 42 ≤ 2 ^ 801 / 2 ^ 42 := div_le_div_of_nonneg_right hwhi (by norm_num)
-    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 42 < 2 ^ 898)]
+    have : W / 2 ^ 39 ≤ 2 ^ 801 / 2 ^ 39 := div_le_div_of_nonneg_right hwhi (by norm_num)
+    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 39 < 2 ^ 898)]
   have hlimB : |value l0xl.toBits| < 2 ^ 898 := by
-    have : W / 2 ^ 45 ≤ 2 ^ 801 / 2 ^ 45 := div_le_div_of_nonneg_right hwhi (by norm_num)
-    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 45 < 2 ^ 898)]
-  have hLA : |value l2x.toBits| + |value l1xl.toBits| ≤ W / 2 ^ 90 := by
-    linarith [(by ring : W / 2 ^ 90 = W / 2 ^ 91 + W / 2 ^ 91),
-      div_le_div_of_nonneg_left hW0.le (by norm_num : (0 : ℝ) < 2 ^ 91) (by norm_num :
-        (2 : ℝ) ^ 91 ≤ 2 ^ 95)]
+    have : W / 2 ^ 43 ≤ 2 ^ 801 / 2 ^ 43 := div_le_div_of_nonneg_right hwhi (by norm_num)
+    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 43 < 2 ^ 898)]
+  have hLA : |value l2x.toBits| + |value l1xl.toBits| ≤ W / 2 ^ 87 := by
+    linarith [(by ring : W / 2 ^ 87 = W / 2 ^ 88 + W / 2 ^ 88),
+      div_le_div_of_nonneg_left hW0.le (by norm_num : (0 : ℝ) < 2 ^ 88) (by norm_num :
+        (2 : ℝ) ^ 88 ≤ 2 ^ 92)]
   obtain ⟨sAf, sBf, sE, sB2, sB1⟩ := sumDD_spec l1x l2x l0xl l1xl hx1.1 hx2.1 hr0.1 hr1.1 hlimA hlimB
-    (W / 2 ^ 90) hLA (by
-      have : W / 2 ^ 90 ≤ 2 ^ 801 / 2 ^ 90 := div_le_div_of_nonneg_right hwhi (by norm_num)
-      linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 90 ≤ 2 ^ 800)])
+    (W / 2 ^ 87) hLA (by
+      have : W / 2 ^ 87 ≤ 2 ^ 801 / 2 ^ 87 := div_le_div_of_nonneg_right hwhi (by norm_num)
+      linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 87 ≤ 2 ^ 800)])
   set s := sumDD l1x l2x l0xl l1xl with hsdef
-  have hs1b : |value s.1.toBits| ≤ W / 2 ^ 41 := by
+  have hs1b : |value s.1.toBits| ≤ W / 2 ^ 38 := by
     have h1 := abs_add_le (value l1x.toBits) (value l0xl.toBits)
     have h2 := mul_le_mul_of_nonneg_right (show |value l1x.toBits + value l0xl.toBits| ≤
-      W / 2 ^ 42 + W / 2 ^ 45 by linarith) (by norm_num : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
-    have : (W / 2 ^ 42 + W / 2 ^ 45) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 ≤ W / 2 ^ 41 := by
-      have : (W / 2 ^ 42 + W / 2 ^ 45) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 =
-          W * ((1 / 2 ^ 42 + 1 / 2 ^ 45) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000) := by ring
+      W / 2 ^ 39 + W / 2 ^ 43 by linarith) (by norm_num : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
+    have : (W / 2 ^ 39 + W / 2 ^ 43) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 ≤ W / 2 ^ 38 := by
+      have : (W / 2 ^ 39 + W / 2 ^ 43) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 =
+          W * ((1 / 2 ^ 39 + 1 / 2 ^ 43) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 42 + 1 / 2 ^ 45) *
-        (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 41) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 41) = W / 2 ^ 41)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 39 + 1 / 2 ^ 43) *
+        (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 38) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 38) = W / 2 ^ 38)]
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1073 ≤ 1 / 2 ^ 1075 * 4), hη]
-  have hs2b : |value s.2.toBits| ≤ W / 2 ^ 88 := by
-    have h1 : |value s.1.toBits| / 2 ^ 51 ≤ W / 2 ^ 41 / 2 ^ 51 :=
+  have hs2b : |value s.2.toBits| ≤ W / 2 ^ 86 := by
+    have h1 : |value s.1.toBits| / 2 ^ 51 ≤ W / 2 ^ 38 / 2 ^ 51 :=
       div_le_div_of_nonneg_right hs1b (by norm_num)
-    have : W / 2 ^ 90 * (1 + 1 / 2 ^ 51) + W / 2 ^ 41 / 2 ^ 51 + W / 2 ^ 1000 ≤ W / 2 ^ 88 := by
-      have : W / 2 ^ 90 * (1 + 1 / 2 ^ 51) + W / 2 ^ 41 / 2 ^ 51 + W / 2 ^ 1000 =
-          W * (1 / 2 ^ 90 * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 41 / 2 ^ 51 + 1 / 2 ^ 1000) := by ring
+    have : W / 2 ^ 87 * (1 + 1 / 2 ^ 51) + W / 2 ^ 38 / 2 ^ 51 + W / 2 ^ 1000 ≤ W / 2 ^ 86 := by
+      have : W / 2 ^ 87 * (1 + 1 / 2 ^ 51) + W / 2 ^ 38 / 2 ^ 51 + W / 2 ^ 1000 =
+          W * (1 / 2 ^ 87 * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 38 / 2 ^ 51 + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 90 * (1 + 1 / 2 ^ 51) +
-        1 / 2 ^ 41 / 2 ^ 51 + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 88) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 88) = W / 2 ^ 88)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 87 * (1 + 1 / 2 ^ 51) +
+        1 / 2 ^ 38 / 2 ^ 51 + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 86) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 86) = W / 2 ^ 86)]
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1073 ≤ 1 / 2 ^ 1075 * 4), hη]
   have hsE : |value s.1.toBits + value s.2.toBits -
       (value l1x.toBits + value l2x.toBits + (value l0xl.toBits + value l1xl.toBits))| ≤
-      W / 2 ^ 140 := by
-    have h1 : |value s.1.toBits| / 2 ^ 52 ≤ W / 2 ^ 41 / 2 ^ 52 :=
+      W / 2 ^ 138 := by
+    have h1 : |value s.1.toBits| / 2 ^ 52 ≤ W / 2 ^ 38 / 2 ^ 52 :=
       div_le_div_of_nonneg_right hs1b (by norm_num)
-    have : (3 * (W / 2 ^ 90) + W / 2 ^ 41 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 ≤ W / 2 ^ 140 := by
-      have : (3 * (W / 2 ^ 90) + W / 2 ^ 41 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 =
-          W * ((3 / 2 ^ 90 + 1 / 2 ^ 41 / 2 ^ 52 + 1 / 2 ^ 1000) / 2 ^ 53) := by ring
+    have : (3 * (W / 2 ^ 87) + W / 2 ^ 38 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 ≤ W / 2 ^ 138 := by
+      have : (3 * (W / 2 ^ 87) + W / 2 ^ 38 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 =
+          W * ((3 / 2 ^ 87 + 1 / 2 ^ 38 / 2 ^ 52 + 1 / 2 ^ 1000) / 2 ^ 53) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : ((3 : ℝ) / 2 ^ 90 + 1 / 2 ^ 41 / 2 ^ 52 +
-        1 / 2 ^ 1000) / 2 ^ 53 ≤ 1 / 2 ^ 140) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 140) = W / 2 ^ 140)]
-    have h2 : (3 * (W / 2 ^ 90) + |value s.1.toBits| / 2 ^ 52 + 1 / 2 ^ 1074) / 2 ^ 53 ≤
-        (3 * (W / 2 ^ 90) + W / 2 ^ 41 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 :=
+      have := mul_le_mul_of_nonneg_left (by norm_num : ((3 : ℝ) / 2 ^ 87 + 1 / 2 ^ 38 / 2 ^ 52 +
+        1 / 2 ^ 1000) / 2 ^ 53 ≤ 1 / 2 ^ 138) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 138) = W / 2 ^ 138)]
+    have h2 : (3 * (W / 2 ^ 87) + |value s.1.toBits| / 2 ^ 52 + 1 / 2 ^ 1074) / 2 ^ 53 ≤
+        (3 * (W / 2 ^ 87) + W / 2 ^ 38 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 :=
       div_le_div_of_nonneg_right (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 1074 ≤ 1 / 2 ^ 1075 * 2)])
         (by norm_num)
     linarith
   -- `p0 = l0m wl`, `p1 = l1 wl`
   have hbW : |b| ≤ W / 2 ^ 50 := hwl
-  have hp0 := fapprox_mul (fapprox_self l0m hmf) (fapprox_self wl hlf) 83 (W / 2 ^ 50) hmabs hbW
-    (83 * (W / 2 ^ 50)) (by simp only [add_zero]; exact le_rfl)
+  have hp0 := fapprox_mul (fapprox_self l0m hmf) (fapprox_self wl hlf) 559 (W / 2 ^ 50) hmabs hbW
+    (559 * (W / 2 ^ 50)) (by simp only [add_zero]; exact le_rfl)
     (by
-      have : 83 * (W / 2 ^ 50) ≤ 83 * (2 ^ 801 / 2 ^ 50) :=
+      have : 559 * (W / 2 ^ 50) ≤ 559 * (2 ^ 801 / 2 ^ 50) :=
         mul_le_mul_of_nonneg_left (div_le_div_of_nonneg_right hwhi (by norm_num)) (by norm_num)
-      linarith [(by norm_num : (83 : ℝ) * (2 ^ 801 / 2 ^ 50) < 2 ^ 1022)])
+      linarith [(by norm_num : (559 : ℝ) * (2 ^ 801 / 2 ^ 50) < 2 ^ 1022)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hp0
-  have hp1 := fapprox_mul (fapprox_self l1 h1f) (fapprox_self wl hlf) (1 / 2 ^ 43) (W / 2 ^ 50) ha1b
-    hbW (1 / 2 ^ 43 * (W / 2 ^ 50)) (by simp only [add_zero]; exact le_rfl)
+  have hp1 := fapprox_mul (fapprox_self l1 h1f) (fapprox_self wl hlf) (1 / 2 ^ 40) (W / 2 ^ 50) ha1b
+    hbW (1 / 2 ^ 40 * (W / 2 ^ 50)) (by simp only [add_zero]; exact le_rfl)
     (by
-      have : 1 / 2 ^ 43 * (W / 2 ^ 50) ≤ 1 / 2 ^ 43 * (2 ^ 801 / 2 ^ 50) :=
+      have : 1 / 2 ^ 40 * (W / 2 ^ 50) ≤ 1 / 2 ^ 40 * (2 ^ 801 / 2 ^ 50) :=
         mul_le_mul_of_nonneg_left (div_le_div_of_nonneg_right hwhi (by norm_num)) (by norm_num)
-      linarith [(by norm_num : (1 : ℝ) / 2 ^ 43 * (2 ^ 801 / 2 ^ 50) < 2 ^ 1022)])
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 40 * (2 ^ 801 / 2 ^ 50) < 2 ^ 1022)])
   simp only [mul_zero, zero_mul, add_zero, zero_add] at hp1
   set p0 := l0m * wl with hp0def
   set p1 := l1 * wl with hp1def
-  have hp0b : |value p0.toBits| ≤ W / 2 ^ 43 := by
+  have hp0b : |value p0.toBits| ≤ W / 2 ^ 40 := by
     have h1 := abs_sub_abs_le_abs_sub (value p0.toBits) (value l0m.toBits * b)
-    have h2 : |value l0m.toBits * b| ≤ 83 * (W / 2 ^ 50) := by
+    have h2 : |value l0m.toBits * b| ≤ 559 * (W / 2 ^ 50) := by
       rw [abs_mul]; exact mul_le_mul hmabs hbW (abs_nonneg _) (by norm_num)
     have h3 := hp0.2
-    have : 83 * (W / 2 ^ 50) + (83 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) ≤ W / 2 ^ 43 := by
-      have : 83 * (W / 2 ^ 50) + (83 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) =
-          W * (83 / 2 ^ 50 + (83 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
+    have : 559 * (W / 2 ^ 50) + (559 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) ≤ W / 2 ^ 40 := by
+      have : 559 * (W / 2 ^ 50) + (559 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) =
+          W * (559 / 2 ^ 50 + (559 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (83 : ℝ) / 2 ^ 50 + (83 / 2 ^ 50 / 2 ^ 53 +
-        1 / 2 ^ 1000) ≤ 1 / 2 ^ 43) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 43) = W / 2 ^ 43)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (559 : ℝ) / 2 ^ 50 + (559 / 2 ^ 50 / 2 ^ 53 +
+        1 / 2 ^ 1000) ≤ 1 / 2 ^ 40) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 40) = W / 2 ^ 40)]
     linarith
-  have hp1b : |value p1.toBits| ≤ W / 2 ^ 92 := by
+  have hp1b : |value p1.toBits| ≤ W / 2 ^ 89 := by
     have h1 := abs_sub_abs_le_abs_sub (value p1.toBits) (a1 * b)
-    have h2 : |a1 * b| ≤ 1 / 2 ^ 43 * (W / 2 ^ 50) := by
+    have h2 : |a1 * b| ≤ 1 / 2 ^ 40 * (W / 2 ^ 50) := by
       rw [abs_mul]; exact mul_le_mul ha1b hbW (abs_nonneg _) (by norm_num)
     have h3 := hp1.2
-    have : 1 / 2 ^ 43 * (W / 2 ^ 50) + (1 / 2 ^ 43 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) ≤
-        W / 2 ^ 92 := by
-      have : 1 / 2 ^ 43 * (W / 2 ^ 50) + (1 / 2 ^ 43 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) =
-          W * (1 / 2 ^ 43 / 2 ^ 50 + (1 / 2 ^ 43 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
+    have : 1 / 2 ^ 40 * (W / 2 ^ 50) + (1 / 2 ^ 40 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) ≤
+        W / 2 ^ 89 := by
+      have : 1 / 2 ^ 40 * (W / 2 ^ 50) + (1 / 2 ^ 40 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000) =
+          W * (1 / 2 ^ 40 / 2 ^ 50 + (1 / 2 ^ 40 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000)) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 43 / 2 ^ 50 +
-        (1 / 2 ^ 43 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) ≤ 1 / 2 ^ 92) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 92) = W / 2 ^ 92)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 40 / 2 ^ 50 +
+        (1 / 2 ^ 40 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) ≤ 1 / 2 ^ 89) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 89) = W / 2 ^ 89)]
     linarith
   -- the second `sumDD`
   have hlimC : |value s.1.toBits| < 2 ^ 898 := by
-    have : W / 2 ^ 41 ≤ 2 ^ 801 / 2 ^ 41 := div_le_div_of_nonneg_right hwhi (by norm_num)
-    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 41 < 2 ^ 898)]
+    have : W / 2 ^ 38 ≤ 2 ^ 801 / 2 ^ 38 := div_le_div_of_nonneg_right hwhi (by norm_num)
+    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 38 < 2 ^ 898)]
   have hlimD : |value p0.toBits| < 2 ^ 898 := by
-    have : W / 2 ^ 43 ≤ 2 ^ 801 / 2 ^ 43 := div_le_div_of_nonneg_right hwhi (by norm_num)
-    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 43 < 2 ^ 898)]
-  have hLB : |value s.2.toBits| + |value p1.toBits| ≤ W / 2 ^ 87 := by
-    have : W / 2 ^ 92 ≤ W / 2 ^ 88 := div_le_div_of_nonneg_left hW0.le (by norm_num) (by norm_num)
-    linarith [(by ring : W / 2 ^ 87 = W / 2 ^ 88 + W / 2 ^ 88)]
+    have : W / 2 ^ 40 ≤ 2 ^ 801 / 2 ^ 40 := div_le_div_of_nonneg_right hwhi (by norm_num)
+    linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 40 < 2 ^ 898)]
+  have hLB : |value s.2.toBits| + |value p1.toBits| ≤ W / 2 ^ 85 := by
+    have : W / 2 ^ 89 ≤ W / 2 ^ 86 := div_le_div_of_nonneg_left hW0.le (by norm_num) (by norm_num)
+    linarith [(by ring : W / 2 ^ 85 = W / 2 ^ 86 + W / 2 ^ 86)]
   obtain ⟨tAf, tBf, tE, tB2, tB1⟩ := sumDD_spec s.1 s.2 p0 p1 sAf sBf hp0.1 hp1.1 hlimC hlimD
-    (W / 2 ^ 87) hLB (by
-      have : W / 2 ^ 87 ≤ 2 ^ 801 / 2 ^ 87 := div_le_div_of_nonneg_right hwhi (by norm_num)
-      linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 87 ≤ 2 ^ 800)])
+    (W / 2 ^ 85) hLB (by
+      have : W / 2 ^ 85 ≤ 2 ^ 801 / 2 ^ 85 := div_le_div_of_nonneg_right hwhi (by norm_num)
+      linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 85 ≤ 2 ^ 800)])
   have hP : P = (l0x, (sumDD s.1 s.2 p0 p1).1, (sumDD s.1 s.2 p0 p1).2) := rfl
   simp only [hP]
   set t1 := value (sumDD s.1 s.2 p0 p1).1.toBits with ht1
   set t2 := value (sumDD s.1 s.2 p0 p1).2.toBits with ht2
-  have ht1b : |t1| ≤ W / 2 ^ 40 := by
+  have ht1b : |t1| ≤ W / 2 ^ 37 := by
     have h1 := abs_add_le (value s.1.toBits) (value p0.toBits)
     have h2 := mul_le_mul_of_nonneg_right (show |value s.1.toBits + value p0.toBits| ≤
-      W / 2 ^ 41 + W / 2 ^ 43 by linarith) (by norm_num : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
-    have : (W / 2 ^ 41 + W / 2 ^ 43) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 ≤ W / 2 ^ 40 := by
-      have : (W / 2 ^ 41 + W / 2 ^ 43) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 =
-          W * ((1 / 2 ^ 41 + 1 / 2 ^ 43) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000) := by ring
+      W / 2 ^ 38 + W / 2 ^ 40 by linarith) (by norm_num : (0 : ℝ) ≤ 1 + 1 / 2 ^ 51)
+    have : (W / 2 ^ 38 + W / 2 ^ 40) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 ≤ W / 2 ^ 37 := by
+      have : (W / 2 ^ 38 + W / 2 ^ 40) * (1 + 1 / 2 ^ 51) + W / 2 ^ 1000 =
+          W * ((1 / 2 ^ 38 + 1 / 2 ^ 40) * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 41 + 1 / 2 ^ 43) *
-        (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 40) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 40) = W / 2 ^ 40)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : ((1 : ℝ) / 2 ^ 38 + 1 / 2 ^ 40) *
+        (1 + 1 / 2 ^ 51) + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 37) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 37) = W / 2 ^ 37)]
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1073 ≤ 1 / 2 ^ 1075 * 4), hη]
   refine ⟨hx0.1, tAf, tBf, ?_, ?_, ht1b, ?_⟩
   · -- the error
@@ -397,67 +397,64 @@ theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Fini
     rw [hm1, hid]
     have e1 : |t1 + t2 - (value s.1.toBits + value s.2.toBits + (value p0.toBits + value p1.toBits))| ≤
         W / 2 ^ 130 := by
-      have h1 : |t1| / 2 ^ 52 ≤ W / 2 ^ 40 / 2 ^ 52 := div_le_div_of_nonneg_right ht1b (by norm_num)
-      have h2 : (3 * (W / 2 ^ 87) + |t1| / 2 ^ 52 + 1 / 2 ^ 1074) / 2 ^ 53 ≤
-          (3 * (W / 2 ^ 87) + W / 2 ^ 40 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 :=
+      have h1 : |t1| / 2 ^ 52 ≤ W / 2 ^ 37 / 2 ^ 52 := div_le_div_of_nonneg_right ht1b (by norm_num)
+      have h2 : (3 * (W / 2 ^ 85) + |t1| / 2 ^ 52 + 1 / 2 ^ 1074) / 2 ^ 53 ≤
+          (3 * (W / 2 ^ 85) + W / 2 ^ 37 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 :=
         div_le_div_of_nonneg_right (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 1074 ≤ 1 / 2 ^ 1075 * 2)])
           (by norm_num)
-      have : (3 * (W / 2 ^ 87) + W / 2 ^ 40 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 ≤ W / 2 ^ 130 := by
-        have : (3 * (W / 2 ^ 87) + W / 2 ^ 40 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 =
-            W * ((3 / 2 ^ 87 + 1 / 2 ^ 40 / 2 ^ 52 + 1 / 2 ^ 1000) / 2 ^ 53) := by ring
+      have : (3 * (W / 2 ^ 85) + W / 2 ^ 37 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 ≤ W / 2 ^ 130 := by
+        have : (3 * (W / 2 ^ 85) + W / 2 ^ 37 / 2 ^ 52 + W / 2 ^ 1000) / 2 ^ 53 =
+            W * ((3 / 2 ^ 85 + 1 / 2 ^ 37 / 2 ^ 52 + 1 / 2 ^ 1000) / 2 ^ 53) := by ring
         rw [this]
-        have := mul_le_mul_of_nonneg_left (by norm_num : ((3 : ℝ) / 2 ^ 87 + 1 / 2 ^ 40 / 2 ^ 52 +
+        have := mul_le_mul_of_nonneg_left (by norm_num : ((3 : ℝ) / 2 ^ 85 + 1 / 2 ^ 37 / 2 ^ 52 +
           1 / 2 ^ 1000) / 2 ^ 53 ≤ 1 / 2 ^ 130) hW0.le
         linarith [(by ring : W * (1 / 2 ^ 130) = W / 2 ^ 130)]
       linarith
     have e5 : |value l2x.toBits - a2 * W| ≤ W / 2 ^ 140 := by
       have h := hx2.2
-      have : 1 / 2 ^ 92 * W / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
-        have : 1 / 2 ^ 92 * W / 2 ^ 53 + W / 2 ^ 1000 = W * (1 / 2 ^ 92 / 2 ^ 53 + 1 / 2 ^ 1000) := by
+      have : 1 / 2 ^ 89 * W / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
+        have : 1 / 2 ^ 89 * W / 2 ^ 53 + W / 2 ^ 1000 = W * (1 / 2 ^ 89 / 2 ^ 53 + 1 / 2 ^ 1000) := by
           ring
         rw [this]
-        have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 92 / 2 ^ 53 + 1 / 2 ^ 1000 ≤
+        have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 89 / 2 ^ 53 + 1 / 2 ^ 1000 ≤
           1 / 2 ^ 140) hW0.le
         linarith [(by ring : W * (1 / 2 ^ 140) = W / 2 ^ 140)]
       linarith
-    have e6 : |value p0.toBits - value l0m.toBits * b| ≤ W / 2 ^ 96 := by
+    have e6 : |value p0.toBits - value l0m.toBits * b| ≤ W / 2 ^ 93 := by
       have h := hp0.2
-      have : 83 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 96 := by
-        have : 83 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 = W * (83 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) := by
+      have : 559 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 93 := by
+        have : 559 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 = W * (559 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) := by
           ring
         rw [this]
-        have := mul_le_mul_of_nonneg_left (by norm_num : (83 : ℝ) / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000 ≤
-          1 / 2 ^ 96) hW0.le
-        linarith [(by ring : W * (1 / 2 ^ 96) = W / 2 ^ 96)]
+        have := mul_le_mul_of_nonneg_left (by norm_num : (559 : ℝ) / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000 ≤
+          1 / 2 ^ 93) hW0.le
+        linarith [(by ring : W * (1 / 2 ^ 93) = W / 2 ^ 93)]
       linarith
     have e7 : |value p1.toBits - a1 * b| ≤ W / 2 ^ 140 := by
       have h := hp1.2
-      have : 1 / 2 ^ 43 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
-        have : 1 / 2 ^ 43 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 =
-            W * (1 / 2 ^ 43 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
+      have : 1 / 2 ^ 40 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 ≤ W / 2 ^ 140 := by
+        have : 1 / 2 ^ 40 * (W / 2 ^ 50) / 2 ^ 53 + W / 2 ^ 1000 =
+            W * (1 / 2 ^ 40 / 2 ^ 50 / 2 ^ 53 + 1 / 2 ^ 1000) := by ring
         rw [this]
-        have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 43 / 2 ^ 50 / 2 ^ 53 +
+        have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 40 / 2 ^ 50 / 2 ^ 53 +
           1 / 2 ^ 1000 ≤ 1 / 2 ^ 140) hW0.le
         linarith [(by ring : W * (1 / 2 ^ 140) = W / 2 ^ 140)]
       linarith
-    have e8 : |a2 * b| ≤ W / 2 ^ 140 := by
+    have e8 : |a2 * b| ≤ W / 2 ^ 139 := by
       rw [abs_mul]
       have := mul_le_mul ha2b hbW (abs_nonneg _) (by norm_num)
-      have : 1 / 2 ^ 92 * (W / 2 ^ 50) ≤ W / 2 ^ 140 := by
-        have : 1 / 2 ^ 92 * (W / 2 ^ 50) = W * (1 / 2 ^ 142) := by ring
-        rw [this]
-        have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 142 ≤ 1 / 2 ^ 140) hW0.le
-        linarith [(by ring : W * (1 / 2 ^ 140) = W / 2 ^ 140)]
+      have : 1 / 2 ^ 89 * (W / 2 ^ 50) ≤ W / 2 ^ 139 := le_of_eq (by ring)
       linarith
-    have tot : W / 2 ^ 130 + W / 2 ^ 140 + W / 2 ^ 99 + W / 2 ^ 140 + W / 2 ^ 140 + W / 2 ^ 96 +
-        W / 2 ^ 140 + W / 2 ^ 140 ≤ W / 2 ^ 95 := by
-      have : W / 2 ^ 130 + W / 2 ^ 140 + W / 2 ^ 99 + W / 2 ^ 140 + W / 2 ^ 140 + W / 2 ^ 96 +
-          W / 2 ^ 140 + W / 2 ^ 140 = W * (1 / 2 ^ 130 + 5 / 2 ^ 140 + 1 / 2 ^ 99 + 1 / 2 ^ 96) := by
+    have tot : W / 2 ^ 130 + W / 2 ^ 138 + W / 2 ^ 96 + W / 2 ^ 140 + W / 2 ^ 140 + W / 2 ^ 93 +
+        W / 2 ^ 140 + W / 2 ^ 139 ≤ W / 2 ^ 92 := by
+      have : W / 2 ^ 130 + W / 2 ^ 138 + W / 2 ^ 96 + W / 2 ^ 140 + W / 2 ^ 140 + W / 2 ^ 93 +
+          W / 2 ^ 140 + W / 2 ^ 139 =
+          W * (1 / 2 ^ 130 + 1 / 2 ^ 138 + 3 / 2 ^ 140 + 1 / 2 ^ 139 + 1 / 2 ^ 96 + 1 / 2 ^ 93) := by
         ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 130 + 5 / 2 ^ 140 + 1 / 2 ^ 99 +
-        1 / 2 ^ 96 ≤ 1 / 2 ^ 95) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 95) = W / 2 ^ 95)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 130 + 1 / 2 ^ 138 + 3 / 2 ^ 140 +
+        1 / 2 ^ 139 + 1 / 2 ^ 96 + 1 / 2 ^ 93 ≤ 1 / 2 ^ 92) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 92) = W / 2 ^ 92)]
     have a1' := abs_add_le
       ((t1 + t2 - (value s.1.toBits + value s.2.toBits + (value p0.toBits + value p1.toBits))) +
         (value s.1.toBits + value s.2.toBits -
@@ -507,15 +504,15 @@ theorem prod_spec (hF : FmaSpec.FmaNearest) (l0 l1 l2 wh wl : Float) (h0f : Fini
   · have h := hx0.2
     rw [hmv] at h
     linarith [(by linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 ≤ 1 / 2 ^ 1000)] :
-      (1 : ℝ) / 2 ^ 1075 ≤ W / 2 ^ 53), (by ring : 84 * W / 2 ^ 53 = 83 * W / 2 ^ 53 + W / 2 ^ 53)]
-  · have h1 : |t1| / 2 ^ 51 ≤ W / 2 ^ 40 / 2 ^ 51 := div_le_div_of_nonneg_right ht1b (by norm_num)
-    have : W / 2 ^ 87 * (1 + 1 / 2 ^ 51) + W / 2 ^ 40 / 2 ^ 51 + W / 2 ^ 1000 ≤ W / 2 ^ 86 := by
-      have : W / 2 ^ 87 * (1 + 1 / 2 ^ 51) + W / 2 ^ 40 / 2 ^ 51 + W / 2 ^ 1000 =
-          W * (1 / 2 ^ 87 * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 40 / 2 ^ 51 + 1 / 2 ^ 1000) := by ring
+      (1 : ℝ) / 2 ^ 1075 ≤ W / 2 ^ 53), (by ring : 560 * W / 2 ^ 53 = 559 * W / 2 ^ 53 + W / 2 ^ 53)]
+  · have h1 : |t1| / 2 ^ 51 ≤ W / 2 ^ 37 / 2 ^ 51 := div_le_div_of_nonneg_right ht1b (by norm_num)
+    have : W / 2 ^ 85 * (1 + 1 / 2 ^ 51) + W / 2 ^ 37 / 2 ^ 51 + W / 2 ^ 1000 ≤ W / 2 ^ 84 := by
+      have : W / 2 ^ 85 * (1 + 1 / 2 ^ 51) + W / 2 ^ 37 / 2 ^ 51 + W / 2 ^ 1000 =
+          W * (1 / 2 ^ 85 * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 37 / 2 ^ 51 + 1 / 2 ^ 1000) := by ring
       rw [this]
-      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 87 * (1 + 1 / 2 ^ 51) +
-        1 / 2 ^ 40 / 2 ^ 51 + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 86) hW0.le
-      linarith [(by ring : W * (1 / 2 ^ 86) = W / 2 ^ 86)]
+      have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 85 * (1 + 1 / 2 ^ 51) +
+        1 / 2 ^ 37 / 2 ^ 51 + 1 / 2 ^ 1000 ≤ 1 / 2 ^ 84) hW0.le
+      linarith [(by ring : W * (1 / 2 ^ 84) = W / 2 ^ 84)]
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1073 ≤ 1 / 2 ^ 1075 * 4), hη]
 
 #print axioms prod_spec
