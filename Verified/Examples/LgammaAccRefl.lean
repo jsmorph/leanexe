@@ -216,7 +216,7 @@ theorem slog_spec (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
 set_option maxHeartbeats 4000000 in
 /-- **The reflection**: the negated sum of the triple of `log Γ (1 + |sx|)` and the logarithm of
 the accurate sine is within the triple's error plus `2^-84` and `addLog`'s error of
-`log |Γ sx|`. -/
+`log |Γ sx|`, with the values of the negated parts. -/
 theorem refl_spec (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
     (hSA : LgammaApprox.SinpiAccFact) (hLA : LgammaApprox.LogAccFact) (sx : Float)
     (hsx : Finite sx.toBits) (hneg : value sx.toBits < 0) (hint : ∀ n : ℤ, value sx.toBits ≠ n)
@@ -235,6 +235,8 @@ theorem refl_spec (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
     (h2 l2 : Float) (hP2 : twoSum fh lh = (h2, l2))
     (a3 b3 : Float) (hS3 : sumDD a1 b1 l2 0.0 = (a3, b3)) :
     Finite (-h2).toBits ∧ Finite (-a3).toBits ∧ Finite (-b3).toBits ∧
+      value (-h2).toBits = -value h2.toBits ∧ value (-a3).toBits = -value a3.toBits ∧
+      value (-b3).toBits = -value b3.toBits ∧
       |value (-h2).toBits + value (-a3).toBits + value (-b3).toBits -
           GammaBasic.lgamma (value sx.toBits)| ≤
         E + 1 / 2 ^ 84 + ((7 * Bll + (Bl + 1 / 2 ^ 40) / 2 ^ 47 + |value h2.toBits| / 2 ^ 100) /
@@ -260,7 +262,7 @@ theorem refl_spec (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
   obtain ⟨n2f, n2v⟩ := neg_float h2 f2
   obtain ⟨n3f, n3v⟩ := neg_float a3 f3
   obtain ⟨n4f, n4v⟩ := neg_float b3 f4
-  refine ⟨n2f, n3f, n4f, ?_, ?_, ha3, hb3⟩
+  refine ⟨n2f, n3f, n4f, n2v, n3v, n4v, ?_, ?_, ha3, hb3⟩
   · rw [n2v, n3v, n4v, hid]
     have k : -value h2.toBits + -value a3.toBits + -value b3.toBits -
         -(GammaBasic.lgamma (1 + |value sx.toBits|) +
