@@ -56,7 +56,8 @@ theorem scale_rel (A Γy c K : ℝ) (hc : 0 < c) (hΓ : 0 < Γy) (h : |Γy - c *
     rw [abs_div, abs_mul, abs_of_pos hΓ, abs_of_pos hc]
   rw [hL, hR, div_div, div_le_div_iff₀ hc (mul_pos hc (by positivity))]
   have h1 := mul_le_mul_of_nonneg_right h (abs_nonneg K)
-  have h2 := mul_le_mul_of_nonneg_right h1 (le_of_lt (mul_pos hc (by positivity : (0 : ℝ) < 2 ^ 62)))
+  have h2 := mul_le_mul_of_nonneg_right h1
+    (le_of_lt (mul_pos hc (by positivity : (0 : ℝ) < 2 ^ 62)))
   linarith
 
 /-- The size of `f1 + fl` and its parts from the size of `Q0`. -/

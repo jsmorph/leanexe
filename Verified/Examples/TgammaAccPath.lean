@@ -220,7 +220,8 @@ theorem accurate_range_within (hF : FmaSpec.FmaNearest) (hA : TgammaApprox.AccRa
       have := (gt_zero_iff jm hjmf).mp h
       rw [hjm'] at this
       linarith [(Nat.cast_nonneg M : (0 : ℝ) ≤ M)]
-    have hjlt : jm < 0.0 := (lt_zero_iff jm hjmf).mpr (by rw [hjm']; linarith [(Nat.cast_nonneg M : (0 : ℝ) ≤ M)])
+    have hjlt : jm < 0.0 := (lt_zero_iff jm hjmf).mpr
+      (by rw [hjm']; linarith [(Nat.cast_nonneg M : (0 : ℝ) ≤ M)])
     rw [ite_eq_right hn0, ite_eq_left hjlt, count_down jm hjmf M hjm' (by omega), downBody_eq]
     have hj4r : (4 : ℝ) ≤ jN := by exact_mod_cast hj4
     have hv5 : ((M + 1 : ℕ) : ℝ) + 4 ≤ v := by push_cast; linarith

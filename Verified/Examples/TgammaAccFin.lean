@@ -358,7 +358,8 @@ theorem res_spec (fh fl : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBit
   have h1 := abs_sub_abs_le_abs_sub (value fh.toBits + value fl.toBits) (value (fh + fl).toBits)
   rw [abs_sub_comm] at h1
   have h2 := hres.2
-  have h3 : |value fh.toBits + value fl.toBits| / 2 ^ 53 ≤ |value fh.toBits + value fl.toBits| / 2 :=
+  have h3 : |value fh.toBits + value fl.toBits| / 2 ^ 53 ≤
+      |value fh.toBits + value fl.toBits| / 2 :=
     div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
   linarith [(by norm_num : (1 : ℝ) / 2 ^ 1022 * 2 < 1 / 2 ^ 1000)]
 
