@@ -12,9 +12,11 @@ lock_timeout="${LEANRUN_LOCK_TIMEOUT:-900}"
 lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}"
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
+memory_high="${LEANRUN_MEMORY_HIGH:-4G}"
 
 usage() {
-  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--toolchain DIR] <command> [args]" >&2
+  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--toolchain DIR] <command> [args]" >&2
+  echo "SIZE is the scope's MemoryHigh in whole gibibytes with the suffix G (default 4G), and MemoryMax is 2G more." >&2
   exit 2
 }
 
@@ -28,6 +30,11 @@ while [ "$#" -gt 0 ]; do
     --lock-timeout)
       [ "$#" -ge 2 ] || usage
       lock_timeout="$2"
+      shift 2
+      ;;
+    --memory-high)
+      [ "$#" -ge 2 ] || usage
+      memory_high="$2"
       shift 2
       ;;
     --toolchain)
@@ -58,6 +65,18 @@ case "$lock_timeout" in
     exit 2
     ;;
 esac
+
+memory_high_gib="${memory_high%G}"
+case "$memory_high_gib" in
+  ''|0*|*[!0-9]*)
+    memory_high_gib=""
+    ;;
+esac
+if [ -z "$memory_high_gib" ] || [ "$memory_high" != "${memory_high_gib}G" ]; then
+  echo "leanrun: --memory-high must be whole gibibytes with the suffix G, such as 10G" >&2
+  exit 2
+fi
+memory_max_gib=$((memory_high_gib + 2))
 
 if [ -z "$run_timeout" ]; then
   echo "leanrun: --timeout must not be empty" >&2
@@ -94,8 +113,8 @@ if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
   cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
   cgroup_dir="/sys/fs/cgroup$cgroup_path"
   if [ ! -d "$cgroup_dir" ] ||
-     [ "$(cat "$cgroup_dir/memory.high")" != "4294967296" ] ||
-     [ "$(cat "$cgroup_dir/memory.max")" != "6442450944" ] ||
+     [ "$(cat "$cgroup_dir/memory.high")" != "$((memory_high_gib * 1073741824))" ] ||
+     [ "$(cat "$cgroup_dir/memory.max")" != "$((memory_max_gib * 1073741824))" ] ||
      [ "$(cat "$cgroup_dir/memory.swap.max")" != "1073741824" ] ||
      [ "$(cat "$cgroup_dir/cpu.max")" != "100000 100000" ]; then
     echo "leanrun: inherited scope does not have the required resource limits" >&2
@@ -138,9 +157,9 @@ if [ "$local_mode" = "1" ]; then
 fi
 
 exec systemd-run --user --scope --quiet --collect \
-  -p MemoryHigh=4G \
-  -p MemoryMax=6G \
+  -p MemoryHigh="${memory_high_gib}G" \
+  -p MemoryMax="${memory_max_gib}G" \
   -p MemorySwapMax=1G \
   -p CPUQuota=100% \
-  env LEANRUN_IN_SCOPE=1 nice -n 10 ionice -c 3 \
+  env LEANRUN_IN_SCOPE=1 LEANRUN_MEMORY_HIGH="$memory_high" nice -n 10 ionice -c 3 \
   timeout "$run_timeout" "$@"
