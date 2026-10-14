@@ -254,6 +254,69 @@ theorem root_iv_at (tab : Array UInt64) (o' : UInt64) (o N k P : ℕ) (ho : o'.t
   have h3 := mul_le_mul_of_nonneg_right hS (by positivity : (0 : ℝ) ≤ 1 + 1 / 2 ^ 53)
   exact ⟨by linarith, by linarith⟩
 
+/-- The check that the last Horner value of `c` lies in `[lo, hi]` on `[0, X]`. -/
+def rangeOk (c : ℕ → ℚ) (NK P : ℕ) (X lo hi : ℚ) : Bool :=
+  (List.range P).all fun p =>
+    decide (lo ≤ (hornerIv c NK (X * p / P) (X * (p + 1) / P) (NK - 1)).1) &&
+    decide ((hornerIv c NK (X * p / P) (X * (p + 1) / P) (NK - 1)).2 ≤ hi)
+
+theorem range_at (c : ℕ → ℚ) (NK P : ℕ) (X lo hi : ℚ) (hP : 0 < P) (hNK : 1 ≤ NK)
+    (hok : rangeOk c NK P X lo hi = true) (v : ℝ) (hv0 : 0 ≤ v) (hvX : v ≤ X) :
+    (lo : ℝ) ≤ horner (fun i => (c i : ℝ)) NK 0 v (NK - 1) ∧
+      horner (fun i => (c i : ℝ)) NK 0 v (NK - 1) ≤ hi := by
+  simp only [rangeOk, List.all_eq_true, List.mem_range, Bool.and_eq_true, decide_eq_true_eq] at hok
+  obtain ⟨p, hp, hpa, hpb⟩ := piece_cover (X : ℝ) P v hv0 P hP
+    (by rw [mul_div_assoc, div_self (by exact_mod_cast hP.ne'), mul_one]; exact hvX)
+  have hX0 : (0 : ℚ) ≤ X := by exact_mod_cast hv0.trans hvX
+  obtain ⟨h1, h2⟩ := horner_iv (fun i => (c i : ℝ)) c NK (fun _ _ => rfl) (X * p / P)
+    (X * (p + 1) / P) (by positivity) v (by push_cast; exact hpa) (by push_cast; exact hpb) (NK - 1)
+    (by omega)
+  obtain ⟨h3, h4⟩ := hok p hp
+  exact ⟨le_trans (by exact_mod_cast h3) h1, le_trans h2 (by exact_mod_cast h4)⟩
+
+/-- **The range of a root polynomial** on `[-Xn, Xp]`. -/
+theorem root_range (tab : Array UInt64) (o N k P : ℕ) (Xp Xn lo hi : ℚ) (hP : 0 < P) (hNK : 1 ≤ N + k)
+    (hpos : rangeOk (cf tab o N) (N + k) P Xp lo hi = true)
+    (hneg : rangeOk (cfNeg tab o N) (N + k) P Xn lo hi = true) (s : ℝ) (hs1 : -(Xn : ℝ) ≤ s)
+    (hs2 : s ≤ Xp) :
+    (lo : ℝ) ≤ horner (fun j => (cf tab o N j : ℝ)) (N + k) 0 s (N + k - 1) ∧
+      horner (fun j => (cf tab o N j : ℝ)) (N + k) 0 s (N + k - 1) ≤ hi := by
+  rcases le_total 0 s with h0 | h0
+  · exact range_at _ _ P Xp lo hi hP hNK hpos s h0 hs2
+  · have h := range_at _ _ P Xn lo hi hP hNK hneg (-s) (by linarith) (by linarith)
+    have hc : (fun i => ((cfNeg tab o N i : ℚ) : ℝ)) = (fun j => (-1) ^ j * (cf tab o N j : ℝ)) := by
+      funext i; simp only [cfNeg]; push_cast; ring
+    rw [hc, horner_neg (fun j => (cf tab o N j : ℝ)) (N + k) (-s) (N + k - 1) (by omega),
+      neg_neg, show N + k - 1 - (N + k - 1) = 0 by omega, pow_zero, one_mul] at h
+    exact h
+
+/-- The last Horner value of `cf` is the polynomial of `LgammaApprox.rootPoly`'s form. -/
+theorem horner_cf_eval (tab : Array UInt64) (o N k : ℕ) (hNK : 1 ≤ N + k)
+    (hf : ∀ i < N, Wasm.IEEE64.isFinite tab[o + 2 * i]! = true ∧
+      Wasm.IEEE64.isFinite tab[o + 2 * i + 1]! = true) (s : ℝ) :
+    horner (fun j => (cf tab o N j : ℝ)) (N + k) 0 s (N + k - 1) =
+      PolyBound.eval (LgammaApprox.ddCoeffs tab o N ++ LgammaApprox.coeffs tab (o + 2 * N) 2 k) s := by
+  rw [horner_eval _ (N + k) hNK, zero_mul, add_zero, TgammaWords.eval_append,
+    show LgammaApprox.ddCoeffs tab o N = (List.range N).map (fun j =>
+      LgammaApprox.q tab (o + 2 * j) + LgammaApprox.q tab (o + 2 * j + 1)) from rfl,
+    show LgammaApprox.coeffs tab (o + 2 * N) 2 k = (List.range k).map (fun j =>
+      LgammaApprox.q tab (o + 2 * N + 2 * j)) from rfl,
+    TgammaWords.eval_map_range, TgammaWords.eval_map_range, Finset.sum_range_add,
+    List.length_map, List.length_range, Finset.mul_sum]
+  congr 1
+  · apply Finset.sum_congr rfl
+    intro j hj
+    rw [Finset.mem_range] at hj
+    simp only [cf, ite_eq_left hj, cq, LgammaApprox.q]
+  · apply Finset.sum_congr rfl
+    intro j _
+    simp only [cf, ite_eq_right (show ¬ (N + j < N) by omega), LgammaApprox.q,
+      show N + j - N = j by omega, pow_add]
+    ring
+
+#print axioms root_range
+#print axioms horner_cf_eval
+
 #print axioms root_iv_at
 
 set_option maxHeartbeats 2000000 in
