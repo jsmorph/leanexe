@@ -155,3 +155,4 @@ import Verified.Examples.LgammaSmallFact
 import Verified.Examples.LgammaStirLarge
 import Verified.Examples.LgammaZeroBase
 import Verified.Examples.TgammaFacts
+import Verified.Examples.TgammaWithin
