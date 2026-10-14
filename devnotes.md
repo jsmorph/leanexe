@@ -32502,3 +32502,16 @@ The branch of the accurate path about `x = 2` adds `log (x - 1)` to `(x - 2) P�
 - [ ] `asSinpipidAccurate`, `asLgammaAsymAccurate`, the polynomials about the negative zeros, the hard cases, and the branches of the accurate path
 - [ ] Stirling's series from `2^800` to the overflow threshold
 - [ ] the theorem within one step
+
+## 2026-10-14: The accurate logarithm next to 1 (track `expm1`, minideb2)
+
+`LgammaLogdOne.acc_one` (commit `505d26e7`) puts `asLogdAccurate y` within `|log y|/2^78` of `log y` for every double `y ≠ 1` with `|log y| ≤ 2^-12`, with the middle part at most `|log y|/2^43 + 2^-84` and the low part 0.  The branch `|x - 2| < 1/4` of `Lgamma.accurate` calls it at `x - 1`, which is exact there.  The proof does not reuse `acc_abs`, whose `2^-88` comes from `1074 · 2^-100` for `ln 2` and from the table and does not shrink with `log y`.  Such a `y` lies in `[4095/4096, 4096/4095]` by `Real.log_le_sub_one_of_pos` and `Real.one_sub_inv_le_log_of_pos`, so `E` is 0 or -1.  A kernel check over the 1,056 products (`one_ok`) gives `r = 1` at `(i1, i2) = (0, 0)` only, `2r = 1` at `(32, 0)` only, and every other product and its double at least `6.79 · 10^-4` from 1, so `r = 1/2^g` with `E = -g`.  `reduce_spec` now also states that `t` lies on the grid `2^-52` (commit `da93b678`), so `r t` is exact by `grid_mul` and `X = y - 1` is a nonzero multiple of `2^-53`.  The `fma` for the low part of `X` returns 0, which follows from `FmaNearest` compared with the double 0.
+
+The table's terms cancel `E ln 2` in both cases.  The high parts sum to `g · 3048493539143/2^42` exactly, so `l₀ + s₂` is 0 and both renormalizations are exact by `fts_zero`.  The middle and low parts at `r1 = 1/2` differ from the middle and low parts of `ln 2` by `-5.7 · 10^-43`, within `2^-140` (`tab_one`, checked in the kernel and before that with exact rationals in Python).  `sumDD_spec` bounds the first double-double sum by `2^-136` in all, so every error is at most `2^-134` or a multiple of `|X|`, and `|X| ≥ 2^-53` turns the constant into `|X|/2^81`.  The total is about `1.5 · 2^-80 |X|`, and `abs_le_log` gives `|X| ≤ (2401/2400) |log (1 + X)|`.
+
+Three points from the builds.  The location list of `generalize ... at` must stay on one line: a continuation line ended the tactic and the parser read the next names as a command.  `exact_mod_cast` did not move a `ℚ → ℝ` cast across `1 - 679/10^6`, and `Rat.cast_le` with `push_cast` on both sides and `linarith` did.  A test of `linarith` with `2^1060` in a hypothesis failed at the default `exponentiation.threshold`, while the modules set it to 4096.  Its parser (`Mathlib/Tactic/Linarith/Parsing.lean`, `linearFormOfExpr`) multiplies sums and products as polynomials, so a sum times a constant needs no separate lemma.  The log is `opus-logdone-3.log` in `build/transcendentals` of `/home/somebody/src/lt-expm1`, with the three axioms only.
+
+- [x] the relative bound of `asLogdAccurate` next to 1
+- [ ] `asSinpipidAccurate`, `asLgammaAsymAccurate`, the polynomials about the negative zeros, the hard cases, and the branches of the accurate path
+- [ ] Stirling's series from `2^800` to the overflow threshold
+- [ ] the theorem within one step
