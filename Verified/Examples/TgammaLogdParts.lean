@@ -122,7 +122,7 @@ theorem sv_eq_of_value (w : UInt64) (z : ℤ) (h : value w = (z : ℝ) / 2 ^ 107
 
 /-- `E ln2h` is exact. -/
 theorem eln2_exact (ed : Float) (E : ℤ) (hf : Finite ed.toBits) (hv : sv ed.toBits = E * 2 ^ 1074)
-    (hE : |E| ≤ 1023) :
+    (hE : |E| ≤ 1074) :
     Finite (ed * Float.ofBits 0x3FE62E42FEF80000).toBits ∧
       sv (ed * Float.ofBits 0x3FE62E42FEF80000).toBits = (E * 11908177887) * 2 ^ 1040 := by
   have hw : (Float.ofBits 0x3FE62E42FEF80000).toBits = 0x3FE62E42FEF80000 := by
@@ -132,10 +132,10 @@ theorem eln2_exact (ed : Float) (E : ℤ) (hf : Finite ed.toBits) (hv : sv ed.to
     unfold CodeLib.IEEE64.Finite; decide
   have hma : Wasm.IEEE64.scaledMagnitude ed.toBits = E.natAbs * 2 ^ 1074 := by
     rw [mag_eq_natAbs, hv, Int.natAbs_mul]; simp
-  have hEn : E.natAbs ≤ 1023 := by have := abs_le.mp hE; omega
+  have hEn : E.natAbs ≤ 1074 := by have := abs_le.mp hE; omega
   obtain ⟨hf', hv', -, -⟩ := F64ExactProduct.mul_exact_scaled ed.toBits _ hf hlf _ _ _ _ hma
     ln2h_mag (by
-      calc E.natAbs * 11908177887 ≤ 1023 * 11908177887 := Nat.mul_le_mul_right _ hEn
+      calc E.natAbs * 11908177887 ≤ 1074 * 11908177887 := Nat.mul_le_mul_right _ hEn
         _ < 2 ^ 53 := by norm_num) (by norm_num) (by norm_num)
   refine ⟨hf', sv_eq_of_value _ _ ?_⟩
   rw [hv', value_eq, value_eq, hv, ln2h_sv]
@@ -151,7 +151,7 @@ theorem value_grid64 (w : UInt64) (k : ℤ) (h : sv w = 2 ^ 1010 * k) : value w 
 theorem lt_exact (h1 h2 ed : Float) (E z1 z2 : ℤ) (hf1 : Finite h1.toBits)
     (hf2 : Finite h2.toBits) (hv1 : sv h1.toBits = z1 * 2 ^ 1040) (hv2 : sv h2.toBits = z2 * 2 ^ 1040)
     (hz1 : |z1| ≤ 2 ^ 34) (hz2 : |z2| ≤ 2 ^ 34) (hed : Finite ed.toBits)
-    (hve : sv ed.toBits = E * 2 ^ 1074) (hE : |E| ≤ 1023) :
+    (hve : sv ed.toBits = E * 2 ^ 1074) (hE : |E| ≤ 1074) :
     Finite ((h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000).toBits ∧
       sv ((h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000).toBits =
         (z1 + z2 + E * 11908177887) * 2 ^ 1040 := by
