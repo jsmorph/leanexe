@@ -46,9 +46,9 @@ theorem kernels (hF : FmaSpec.FmaNearest) (d : Float) (hd : Finite d.toBits)
       |value Q.2.toBits| ≤ 1 / 2 ^ 55 := by
   intro P Q
   obtain ⟨f1, f2, b1, b2, e⟩ := sq_spec hF d hd hD
-  obtain ⟨p1, p2, pe, pl⟩ := kern_gen hF 143 5 cC cCl cE cΛ cK cos_ok 143 5 rfl rfl (by norm_num)
+  obtain ⟨p1, p2, pe, pl⟩ := kern_gen hF 143 5 cC cCl cE cΛ cK cos_ok (pw_nonneg _) 143 5 rfl rfl (by norm_num)
     (by norm_num) (d * d) (Fma.fma d d (-(d * d))) f1 f2 b1 b2
-  obtain ⟨q1, q2, qe, ql⟩ := kern_gen hF 153 6 sC sCl sE sΛ sK sin_ok 153 6 rfl rfl (by norm_num)
+  obtain ⟨q1, q2, qe, ql⟩ := kern_gen hF 153 6 sC sCl sE sΛ sK sin_ok (pw_nonneg _) 153 6 rfl rfl (by norm_num)
     (by norm_num) (d * d) (Fma.fma d d (-(d * d))) f1 f2 b1 b2
   rw [show Lgamma.polyDD T 143 5 (d * d) (Fma.fma d d (-(d * d))) 0.0 = P from rfl] at p1 p2 pe pl
   rw [show Lgamma.polyDD T 153 6 (d * d) (Fma.fma d d (-(d * d))) 0.0 = Q from rfl] at q1 q2 qe ql
