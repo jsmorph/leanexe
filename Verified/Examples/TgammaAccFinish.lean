@@ -49,7 +49,7 @@ theorem fin_err (f1 f2 fl Q Q0 g ε : ℝ) (hε0 : 0 ≤ ε) (hε : ε ≤ 18 / 
 theorem scale_rel (A Γy c K : ℝ) (hc : 0 < c) (hΓ : 0 < Γy) (h : |Γy - c * A| ≤ 1 / 2 ^ 62 * Γy) :
     |A * K - Γy * K / c| ≤ |Γy * K / c| / 2 ^ 62 := by
   have e : A * K - Γy * K / c = (c * A - Γy) * K / c := by
-    field_simp <;> ring
+    field_simp
   have hL : |A * K - Γy * K / c| = |Γy - c * A| * |K| / c := by
     rw [e, abs_div, abs_mul, abs_of_pos hc, abs_sub_comm]
   have hR : |Γy * K / c| = Γy * |K| / c := by

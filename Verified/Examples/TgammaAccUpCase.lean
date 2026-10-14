@@ -189,7 +189,7 @@ theorem up_case (hF : FmaSpec.FmaNearest) (hGap : TgammaRefl4.SubnormalGap) (x :
       omega
     have hg : Γy * (1 / Wv) / 2 ^ eoff = Real.Gamma v * 2 ^ (500 * r - eoff) := by
       rw [← hΓv, hpow]
-      field_simp <;> ring
+      field_simp
     rw [← hQ0, hg] at hsc
     exact finish_neg f.1 f.2 jm (500 * r - eoff) (Real.Gamma v) (P / Wd) (A / Wv) _ hf1f hf2f
       hjmf hjmb hf2r hfq hε0 hε hQ hsc hQ01 hQ02 (by omega) (by omega)
