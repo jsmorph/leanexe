@@ -6,7 +6,7 @@ the polynomial: the shifted argument `z = sx + x0` from the triple `e0 + e1 + e2
 (`z_spec`).  `e0 + sx` is exact by Sterbenz's lemma, since `sx` lies within `1/2` of `-e0`.
 Both lie in the binade `[2^p, 2^(p+1))` and are multiples of `2^(p - 52)`, so `e0 + sx` is zero or
 at least `2^(p - 52)`, and `fastTwoSum` with `|e1| ≤ 2^(p - 53)` is exact.  The low part then
-takes `e2` with one rounding, and `zh + zl` is within `|z|/2^71` of `z` for `|z| ≥ 2^-80`.
+takes `e2` with one rounding, and `zh + zl` is within `|z|/2^62` of `z` for `|z| ≥ 2^-90`.
 -/
 
 namespace Verified.Examples.LgammaRootPath
@@ -58,14 +58,14 @@ theorem z_spec (e0 e1 e2 sx : Float) (h0 : Finite e0.toBits) (h1 : Finite e1.toB
     (he0 : (2 : ℝ) ^ p ≤ value e0.toBits) (hsx1 : (2 : ℝ) ^ p ≤ -value sx.toBits)
     (hsx2 : -value sx.toBits < 2 ^ (p + 1))
     (hnear : |value e0.toBits + value sx.toBits| ≤ 1 / 2)
-    (he1 : |value e1.toBits| ≤ 2 ^ p / 2 ^ 53) (he2 : |value e2.toBits| ≤ 1 / 2 ^ 100)
-    (hz : 1 / 2 ^ 80 ≤ |value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits)|)
+    (he1 : |value e1.toBits| ≤ 2 ^ p / 2 ^ 53) (he2 : |value e2.toBits| ≤ 1 / 2 ^ 102)
+    (hz : 1 / 2 ^ 90 ≤ |value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits)|)
     (zh zl : Float) (hT : fastTwoSum (e0 + sx) e1 = (zh, zl)) :
     Finite zh.toBits ∧ Finite (zl + e2).toBits ∧
       |value zh.toBits + value (zl + e2).toBits -
           (value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits))| ≤
-        |value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits)| / 2 ^ 71 ∧
-      |value (zl + e2).toBits| ≤ |value zh.toBits| / 2 ^ 51 + 1 / 2 ^ 99 ∧
+        |value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits)| / 2 ^ 62 ∧
+      |value (zl + e2).toBits| ≤ |value zh.toBits| / 2 ^ 51 + 1 / 2 ^ 101 ∧
       |value zh.toBits| ≤ 1 := by
   have hpp : (1 : ℝ) ≤ 2 ^ p := one_le_pow₀ (by norm_num)
   have hp11 : (2 : ℝ) ^ (p + 1) ≤ 2 ^ 11 := pow_le_pow_right₀ (by norm_num) (by omega)
@@ -113,7 +113,7 @@ theorem z_spec (e0 e1 e2 sx : Float) (h0 : Finite e0.toBits) (h1 : Finite e1.toB
       exact ⟨f1, f2, by rw [v1, av], v2⟩
   set z := value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits) with hzdef
   -- the high part
-  have hzh : |value zh.toBits| ≤ |z| * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 99 := by
+  have hzh : |value zh.toBits| ≤ |z| * (1 + 1 / 2 ^ 51) + 1 / 2 ^ 101 := by
     have h3 := abs_sub_abs_le_abs_sub (value zh.toBits) (z - value e2.toBits)
     rw [show value zh.toBits - (z - value e2.toBits) = -value zl.toBits by rw [hzdef]; linarith,
       abs_neg] at h3
@@ -121,21 +121,21 @@ theorem z_spec (e0 e1 e2 sx : Float) (h0 : Finite e0.toBits) (h1 : Finite e1.toB
     have := abs_nonneg z
     nlinarith
   have hzh1 : |value zh.toBits| ≤ 1 := by
-    have : |z| ≤ 1 / 2 + 2 ^ p / 2 ^ 53 + 1 / 2 ^ 100 := by
+    have : |z| ≤ 1 / 2 + 2 ^ p / 2 ^ 53 + 1 / 2 ^ 102 := by
       rw [hzdef, show value sx.toBits + (value e0.toBits + value e1.toBits + value e2.toBits) =
         (value e0.toBits + value sx.toBits) + value e1.toBits + value e2.toBits by ring]
       have := abs_add_le (value e0.toBits + value sx.toBits + value e1.toBits) (value e2.toBits)
       have := abs_add_le (value e0.toBits + value sx.toBits) (value e1.toBits)
       linarith
     have := div_le_div_of_nonneg_right hp10 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)
-    nlinarith [(by norm_num : ((1 : ℝ) / 2 + 2 ^ 10 / 2 ^ 53 + 1 / 2 ^ 100) * (1 + 1 / 2 ^ 51) +
-      1 / 2 ^ 99 ≤ 1), abs_nonneg z]
+    nlinarith [(by norm_num : ((1 : ℝ) / 2 + 2 ^ 10 / 2 ^ 53 + 1 / 2 ^ 102) * (1 + 1 / 2 ^ 51) +
+      1 / 2 ^ 101 ≤ 1), abs_nonneg z]
   have hzl1 : |value zl.toBits| ≤ 1 / 2 ^ 51 := by
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 + 1 / 2 ^ 1074 ≤ 1 / 2 ^ 51),
       div_le_div_of_nonneg_right hzh1 (by norm_num : (0 : ℝ) ≤ 2 ^ 52)]
   have hr := fapprox_add (fapprox_self zl lf) (fapprox_self e2 h2)
     (|value zl.toBits| + |value e2.toBits|) (by simp only [add_zero]; exact abs_add_le _ _)
-    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 100 < 2 ^ 1023)])
+    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 102 < 2 ^ 1023)])
   obtain ⟨rf, re⟩ := hr
   simp only [zero_add] at re
   refine ⟨zf, rf, ?_, ?_, hzh1⟩
@@ -143,28 +143,28 @@ theorem z_spec (e0 e1 e2 sx : Float) (h0 : Finite e0.toBits) (h1 : Finite e1.toB
         value (zl + e2).toBits - (value zl.toBits + value e2.toBits) := by
       rw [hzdef]; linarith
     rw [k]
-    have h80 : (1 : ℝ) / 2 ^ 152 ≤ |z| / 2 ^ 72 := by
-      have := div_le_div_of_nonneg_right hz (by norm_num : (0 : ℝ) ≤ 2 ^ 72)
-      linarith [(by norm_num : (1 : ℝ) / 2 ^ 152 ≤ 1 / 2 ^ 80 / 2 ^ 72)]
-    have hzl' : |value zl.toBits| ≤ |z| / 2 ^ 51 + 1 / 2 ^ 150 := by
+    have h80 : (1 : ℝ) / 2 ^ 154 ≤ |z| / 2 ^ 64 := by
+      have := div_le_div_of_nonneg_right hz (by norm_num : (0 : ℝ) ≤ 2 ^ 64)
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 154 ≤ 1 / 2 ^ 90 / 2 ^ 64)]
+    have hzl' : |value zl.toBits| ≤ |z| / 2 ^ 51 + 1 / 2 ^ 152 := by
       have := div_le_div_of_nonneg_right hzh (by norm_num : (0 : ℝ) ≤ 2 ^ 52)
       have := abs_nonneg z
-      nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 99 / 2 ^ 52 + 1 / 2 ^ 1074 ≤ 1 / 2 ^ 150)]
-    have : (|value zl.toBits| + |value e2.toBits|) / 2 ^ 53 ≤ |z| / 2 ^ 104 + 1 / 2 ^ 152 := by
-      have h3 : |value zl.toBits| + |value e2.toBits| ≤ |z| / 2 ^ 51 + 1 / 2 ^ 99 := by
-        linarith [(by norm_num : (1 : ℝ) / 2 ^ 150 + 1 / 2 ^ 100 ≤ 1 / 2 ^ 99)]
+      nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 101 / 2 ^ 52 + 1 / 2 ^ 1074 ≤ 1 / 2 ^ 152)]
+    have : (|value zl.toBits| + |value e2.toBits|) / 2 ^ 53 ≤ |z| / 2 ^ 104 + 1 / 2 ^ 154 := by
+      have h3 : |value zl.toBits| + |value e2.toBits| ≤ |z| / 2 ^ 51 + 1 / 2 ^ 101 := by
+        linarith [(by norm_num : (1 : ℝ) / 2 ^ 152 + 1 / 2 ^ 102 ≤ 1 / 2 ^ 101)]
       have := div_le_div_of_nonneg_right h3 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)
-      linarith [(by norm_num : (1 : ℝ) / 2 ^ 99 / 2 ^ 53 = 1 / 2 ^ 152)]
-    have : |z| / 2 ^ 104 + |z| / 2 ^ 72 ≤ |z| / 2 ^ 71 := by
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 101 / 2 ^ 53 = 1 / 2 ^ 154)]
+    have : |z| / 2 ^ 104 + |z| / 2 ^ 64 ≤ |z| / 2 ^ 62 := by
       have := abs_nonneg z
       linarith
     linarith
   · have h3 := abs_sub_abs_le_abs_sub (value (zl + e2).toBits) (value zl.toBits + value e2.toBits)
     have h4 := abs_add_le (value zl.toBits) (value e2.toBits)
-    have h5 : (|value zl.toBits| + |value e2.toBits|) / 2 ^ 53 ≤ (1 / 2 ^ 51 + 1 / 2 ^ 100) / 2 ^ 53 :=
+    have h5 : (|value zl.toBits| + |value e2.toBits|) / 2 ^ 53 ≤ (1 / 2 ^ 51 + 1 / 2 ^ 102) / 2 ^ 53 :=
       div_le_div_of_nonneg_right (by linarith) (by norm_num)
-    linarith [(by norm_num : ((1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 100) / 2 ^ 53 + 1 / 2 ^ 1074 + 1 / 2 ^ 100 ≤
-      1 / 2 ^ 99), abs_nonneg (value zh.toBits)]
+    linarith [(by norm_num : ((1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 102) / 2 ^ 53 + 1 / 2 ^ 1074 + 1 / 2 ^ 102 ≤
+      1 / 2 ^ 101), abs_nonneg (value zh.toBits)]
 
 /-- The scaled magnitude of a finite word: a 53-bit integer times `2^(exponent - 1)`. -/
 theorem mag_form (w : UInt64) :

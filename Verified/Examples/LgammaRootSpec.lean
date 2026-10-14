@@ -56,15 +56,16 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
       LgammaApprox.coeffs tab (O + 3 + 2 * N) 2 k) ≤ Lp)
     -- the numeric conditions
     (A B : ℚ) (he0 : 2 ^ p ≤ q O) (he1 : PolyBound.qabs (q (O + 1)) ≤ 2 ^ p / 2 ^ 53)
-    (he2 : PolyBound.qabs (q (O + 2)) ≤ 1 / 2 ^ 100) (hB : 2 ^ p ≤ -B) (hA : -A < 2 ^ (p + 1))
+    (he2 : PolyBound.qabs (q (O + 2)) ≤ 1 / 2 ^ 102) (hB : 2 ^ p ≤ -B) (hA : -A < 2 ^ (p + 1))
     (hnA : -(1 / 2) ≤ q O + A) (hnB : q O + B ≤ 1 / 2)
     (hsA : -Xn + 1 / 2 ^ 40 ≤ 2 ^ E * (A + LgammaApprox.rootX0 O))
     (hsB : 2 ^ E * (B + LgammaApprox.rootX0 O) ≤ Xp - 1 / 2 ^ 40)
     (hX1 : Xp ≤ 1 ∧ Xn ≤ 1 ∧ 0 ≤ Xp ∧ 0 ≤ Xn)
-    (hXh : Xp + Xl ≤ Xh ∧ Xn + Xl ≤ Xh) (hXl : 2 ^ E * (1 / 2 ^ 51 + 1 / 2 ^ 99) ≤ Xl)
+    (hXh : Xp + Xl ≤ Xh ∧ Xn + Xl ≤ Xh)
+    (hXl : Xp / 2 ^ 50 + 2 ^ E / 2 ^ 99 ≤ Xl ∧ Xn / 2 ^ 50 + 2 ^ E / 2 ^ 99 ≤ Xl)
     (hXt : Xh ≤ Xt ∧ Xh ≤ Rt)
-    (hc1 : Pmax ≤ 2 ^ 10 * Pmin) (hc2 : Lp ≤ 2 ^ 10 * Pmin) (hc3 : Es.getD (N - 1) 0 ≤ Pmin / 2 ^ 70)
-    (hc4 : Λ.getD (N - 1) 0 ≤ Pmin / 2 ^ 40) (hc5 : Pmax ≤ 2 ^ 19)
+    (hc1 : Pmax ≤ 2 * Pmin) (hc2 : Lp ≤ Pmin) (hc3 : Es.getD (N - 1) 0 ≤ Pmin / 2 ^ 70)
+    (hc4 : Λ.getD (N - 1) 0 ≤ 1 / 2 ^ 15) (hc5 : Pmax ≤ 2 ^ 29) (hc6 : 1 ≤ Pmin)
     -- the argument and the approximation facts
     (sx : Float) (hsx : Finite sx.toBits) (hvA : (A : ℝ) ≤ value sx.toBits)
     (hvB : value sx.toBits ≤ B)
@@ -82,7 +83,7 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
       |value (mulDD zh (zl + entry tab (oU + 2)) fh fl).1.toBits +
           value (mulDD zh (zl + entry tab (oU + 2)) fh fl).2.toBits -
           GammaBasic.lgamma (value sx.toBits)| ≤
-        |GammaBasic.lgamma (value sx.toBits)| / 2 ^ 56 := by
+        |GammaBasic.lgamma (value sx.toBits)| / 2 ^ 55 := by
   -- the finite pairs of the double-double part
   have hfin : ∀ i < N, Wasm.IEEE64.isFinite tab[O + 3 + 2 * i]! = true ∧
       Wasm.IEEE64.isFinite tab[O + 3 + 2 * i + 1]! = true := by
@@ -151,8 +152,9 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
       have hb' : (Phi : ℝ) ≤ -Pmin := by exact_mod_cast hb
       rw [abs_of_neg (by linarith)]
       exact ⟨by linarith, by linarith⟩
-  have hc5' : (Pmax : ℝ) ≤ 2 ^ 19 := by exact_mod_cast hc5
-  have hc1' : (Pmax : ℝ) ≤ 2 ^ 10 * Pmin := by exact_mod_cast hc1
+  have hc5' : (Pmax : ℝ) ≤ 2 ^ 29 := by exact_mod_cast hc5
+  have hc1' : (Pmax : ℝ) ≤ 2 * Pmin := by exact_mod_cast hc1
+  have hc6' : (1 : ℝ) ≤ Pmin := by exact_mod_cast hc6
   -- `|z|` from below and above
   have hzP : |z * Ps| = |z| * |Ps| := abs_mul _ _
   have hLz : |L| ≤ |z| * |Ps| + 1 / 2 ^ 63 * |L| + 1 / 2 ^ 120 := by
@@ -162,12 +164,12 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
     have := abs_sub_abs_le_abs_sub (z * Ps) L
     rw [abs_sub_comm] at this
     linarith
-  have hz80 : 1 / 2 ^ 80 ≤ |z| := by
+  have hz80 : 1 / 2 ^ 90 ≤ |z| := by
     by_contra hc
     push Not at hc
-    have : |z| * |Ps| ≤ 1 / 2 ^ 80 * 2 ^ 19 :=
+    have : |z| * |Ps| ≤ 1 / 2 ^ 90 * 2 ^ 29 :=
       mul_le_mul hc.le (hPsb.2.trans hc5') (abs_nonneg _) (by positivity)
-    nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 80 * 2 ^ 19 < 1 / 2 ^ 60 * (1 - 1 / 2 ^ 63) - 1 / 2 ^ 120)]
+    nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 90 * 2 ^ 29 < 1 / 2 ^ 60 * (1 - 1 / 2 ^ 63) - 1 / 2 ^ 120)]
   have hzup : |z| * Pmin ≤ |L| * (1 + 1 / 2 ^ 59) := by
     have := mul_le_mul_of_nonneg_left hPsb.1 (abs_nonneg z)
     nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 120 ≤ 1 / 2 ^ 60 * (1 / 2 ^ 60))]
@@ -187,37 +189,54 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
   have he1' : |value (Float.ofBits tab[O + 1]!).toBits| ≤ 2 ^ p / 2 ^ 53 := by
     rw [v1, ← TgammaExpr.qabs_cast]
     have h := (Rat.cast_le (K := ℝ)).mpr he1; push_cast at h ⊢; linarith
-  have he2' : |value (Float.ofBits tab[O + 2]!).toBits| ≤ 1 / 2 ^ 100 := by
+  have he2' : |value (Float.ofBits tab[O + 2]!).toBits| ≤ 1 / 2 ^ 102 := by
     rw [v2, ← TgammaExpr.qabs_cast]
     have h := (Rat.cast_le (K := ℝ)).mpr he2; push_cast at h ⊢; linarith
   obtain ⟨zf, z2f, hze, hzl2, hzh1⟩ := z_spec _ _ _ sx e0f e1f e2f hsx p hp he0' hv1 hv2 hnear he1'
     he2' (by rw [← hzv]; exact hz80) zh zl hT
   rw [← hzv] at hze
   set zl2 := zl + Float.ofBits tab[O + 2]! with hzl2def
-  have hzl2b : |value zl2.toBits| ≤ 1 / 2 ^ 51 + 1 / 2 ^ 99 := by
+  have hzl2b : |value zl2.toBits| ≤ 1 / 2 ^ 51 + 1 / 2 ^ 101 := by
     linarith [div_le_div_of_nonneg_right hzh1 (by norm_num : (0 : ℝ) ≤ 2 ^ 51)]
   -- the exact scalings
   obtain ⟨shf, shv⟩ := scale_exact zh sc zf hscf E hE hscm (by linarith)
   obtain ⟨slf, slv⟩ := scale_exact zl2 sc z2f hscf E hE hscm
-    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 99 < 2)])
+    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 101 < 2)])
   rw [hscv] at shv slv
   have hsc_eq : value (zh * sc).toBits + value (zl2 * sc).toBits =
       2 ^ E * (value zh.toBits + value zl2.toBits) := by rw [shv, slv]; ring
-  have hsd : |value (zh * sc).toBits + value (zl2 * sc).toBits - 2 ^ E * z| ≤ 1 / 2 ^ 71 := by
+  have hsd : |value (zh * sc).toBits + value (zl2 * sc).toBits - 2 ^ E * z| ≤ 1 / 2 ^ 62 := by
     rw [hsc_eq, ← mul_sub, abs_mul, abs_of_pos hE2]
     have := mul_le_mul_of_nonneg_left hze hE2.le
-    have h2 : 2 ^ E * (|z| / 2 ^ 71) = |2 ^ E * z| / 2 ^ 71 := by
+    have h2 : 2 ^ E * (|z| / 2 ^ 62) = |2 ^ E * z| / 2 ^ 62 := by
       rw [abs_mul, abs_of_pos hE2]; ring
-    linarith [div_le_div_of_nonneg_right hs1 (by norm_num : (0 : ℝ) ≤ 2 ^ 71)]
+    linarith [div_le_div_of_nonneg_right hs1 (by norm_num : (0 : ℝ) ≤ 2 ^ 62)]
   have hs1c : -(Xn : ℝ) ≤ value (zh * sc).toBits + value (zl2 * sc).toBits := by
-    linarith [(abs_le.mp hsd).1, (by norm_num : (1 : ℝ) / 2 ^ 71 ≤ 1 / 2 ^ 40)]
+    linarith [(abs_le.mp hsd).1, (by norm_num : (1 : ℝ) / 2 ^ 62 ≤ 1 / 2 ^ 40)]
   have hs2c : value (zh * sc).toBits + value (zl2 * sc).toBits ≤ Xp := by
-    linarith [(abs_le.mp hsd).2, (by norm_num : (1 : ℝ) / 2 ^ 71 ≤ 1 / 2 ^ 40)]
+    linarith [(abs_le.mp hsd).2, (by norm_num : (1 : ℝ) / 2 ^ 62 ≤ 1 / 2 ^ 40)]
   have hXl' : |value (zl2 * sc).toBits| ≤ (Xl : ℝ) := by
-    have h := (Rat.cast_le (K := ℝ)).mpr hXl
-    push_cast at h
-    rw [slv, abs_mul, abs_of_pos hE2]
-    nlinarith [abs_nonneg (value zl2.toBits)]
+    obtain ⟨hXlp, hXln⟩ := hXl
+    have hp' := (Rat.cast_le (K := ℝ)).mpr hXlp
+    have hn' := (Rat.cast_le (K := ℝ)).mpr hXln
+    push_cast at hp' hn'
+    have hsl : |value (zl2 * sc).toBits| ≤ |value (zh * sc).toBits| / 2 ^ 51 + 2 ^ E / 2 ^ 101 := by
+      rw [slv, shv, abs_mul, abs_mul, abs_of_pos hE2]
+      have := mul_le_mul_of_nonneg_left hzl2 hE2.le
+      linarith
+    have hsh : |value (zh * sc).toBits| ≤ |value (zh * sc).toBits + value (zl2 * sc).toBits| +
+        |value (zl2 * sc).toBits| := by
+      have := abs_sub_abs_le_abs_sub (value (zh * sc).toBits)
+        (value (zh * sc).toBits + value (zl2 * sc).toBits)
+      rw [show value (zh * sc).toBits - (value (zh * sc).toBits + value (zl2 * sc).toBits) =
+        -value (zl2 * sc).toBits by ring, abs_neg] at this
+      linarith
+    have hE99 : (0 : ℝ) ≤ 2 ^ E / 2 ^ 99 := by positivity
+    rcases le_total 0 (value (zh * sc).toBits + value (zl2 * sc).toBits) with h0 | h0
+    · rw [abs_of_nonneg h0] at hsh
+      linarith
+    · rw [abs_of_nonpos h0] at hsh
+      linarith
   obtain ⟨hXhp, hXhn⟩ := hXh
   have hXhp' : (Xp : ℝ) + Xl ≤ Xh := by exact_mod_cast hXhp
   have hXhn' : (Xn : ℝ) + Xl ≤ Xh := by exact_mod_cast hXhn
@@ -242,7 +261,7 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
   set sc' := value (zh * sc).toBits + value (zl2 * sc).toBits with hsc'
   set Pc := LgammaApprox.rootPoly O (N + k) k sc' with hPc
   -- the Lipschitz step
-  have hlip : |Pc - Ps| ≤ (Lp : ℝ) * (1 / 2 ^ 71) := by
+  have hlip : |Pc - Ps| ≤ (Lp : ℝ) * (1 / 2 ^ 62) := by
     have h := TgammaPolyLip.eval_lip 1 (by norm_num) sc' (2 ^ E * z)
       (by push_cast; rw [abs_le]; constructor <;> linarith) (by push_cast; exact hs1)
       (LgammaApprox.ddCoeffs tab (O + 3) N ++ LgammaApprox.coeffs tab (O + 3 + 2 * N) 2 k)
@@ -259,12 +278,12 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
       rw [hPs, LgammaApprox.rootPoly, show N + k - k = N by omega]
     rw [e1, e2]
     calc _ ≤ _ := h
-      _ ≤ (Lp : ℝ) * (1 / 2 ^ 71) := mul_le_mul hLp' hsd (abs_nonneg _) (hL0.trans hLp')
+      _ ≤ (Lp : ℝ) * (1 / 2 ^ 62) := mul_le_mul hLp' hsd (abs_nonneg _) (hL0.trans hLp')
   -- magnitudes
-  have hc2' : (Lp : ℝ) ≤ 2 ^ 10 * Pmin := by exact_mod_cast hc2
+  have hc2' : (Lp : ℝ) ≤ Pmin := by exact_mod_cast hc2
   have hc3' : (Es.getD (N - 1) 0 : ℝ) ≤ Pmin / 2 ^ 70 := by
     have h := (Rat.cast_le (K := ℝ)).mpr hc3; push_cast at h; exact h
-  have hc4' : (Λ.getD (N - 1) 0 : ℝ) ≤ Pmin / 2 ^ 40 := by
+  have hc4' : (Λ.getD (N - 1) 0 : ℝ) ≤ 1 / 2 ^ 15 := by
     have h := (Rat.cast_le (K := ℝ)).mpr hc4; push_cast at h; exact h
   have hΛe0 : (0 : ℝ) ≤ Λ.getD (N - 1) 0 := (abs_nonneg _).trans hfl
   have hPmm : (Pmin : ℝ) ≤ Pmax := hPsb.1.trans hPsb.2
@@ -272,43 +291,40 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
     have h1 : (1 : ℝ) ≤ 2 ^ E := one_le_pow₀ (by norm_num)
     rw [abs_mul, abs_of_pos hE2] at hs1
     nlinarith [abs_nonneg z]
-  have hZc : |value zh.toBits + value zl2.toBits| ≤ |z| * (1 + 1 / 2 ^ 71) := by
+  have hZc : |value zh.toBits + value zl2.toBits| ≤ |z| * (1 + 1 / 2 ^ 62) := by
     have := abs_sub_abs_le_abs_sub (value zh.toBits + value zl2.toBits) z
     linarith
-  have h19 : (1 : ℝ) / 2 ^ 99 ≤ |z| / 2 ^ 19 := by
-    have := div_le_div_of_nonneg_right hz80 (by norm_num : (0 : ℝ) ≤ 2 ^ 19)
-    linarith [(by norm_num : (1 : ℝ) / 2 ^ 99 = 1 / 2 ^ 80 / 2 ^ 19)]
+  have h11 : (1 : ℝ) / 2 ^ 101 ≤ |z| / 2 ^ 11 := by
+    have := div_le_div_of_nonneg_right hz80 (by norm_num : (0 : ℝ) ≤ 2 ^ 11)
+    linarith [(by norm_num : (1 : ℝ) / 2 ^ 101 = 1 / 2 ^ 90 / 2 ^ 11)]
   have hzh2 : |value zh.toBits| ≤ 2 * |z| := by
     have := abs_sub_abs_le_abs_sub (value zh.toBits) (-value zl2.toBits)
     rw [sub_neg_eq_add, abs_neg] at this
     nlinarith [abs_nonneg z, abs_nonneg (value zh.toBits)]
-  have hzl2' : |value zl2.toBits| ≤ |z| / 2 ^ 18 := by
+  have hzl2' : |value zl2.toBits| ≤ 2 * |z| / 2 ^ 51 + 1 / 2 ^ 101 := by
     have := div_le_div_of_nonneg_right hzh2 (by norm_num : (0 : ℝ) ≤ 2 ^ 51)
-    nlinarith [abs_nonneg z]
-  have hPc : |Pc| ≤ Pmax + Lp / 2 ^ 71 := by
+    linarith
+  have hPc : |Pc| ≤ Pmax + Lp / 2 ^ 62 := by
     have := abs_sub_abs_le_abs_sub Pc Ps
     linarith [hPsb.2]
   have hfh : |value fh.toBits| ≤ 2 * Pmax := by
     have h1 := abs_sub_abs_le_abs_sub (value fh.toBits + value fl.toBits) Pc
     have h2 := abs_sub_abs_le_abs_sub (value fh.toBits) (-value fl.toBits)
     rw [sub_neg_eq_add, abs_neg] at h2
-    have : (Lp : ℝ) / 2 ^ 71 ≤ Pmax / 2 ^ 61 := by
-      have := div_le_div_of_nonneg_right (hc2'.trans (by nlinarith : (2 : ℝ) ^ 10 * Pmin ≤
-        2 ^ 10 * Pmax)) (by norm_num : (0 : ℝ) ≤ 2 ^ 71)
-      linarith
+    have : (Lp : ℝ) / 2 ^ 62 ≤ Pmax / 2 ^ 62 :=
+      div_le_div_of_nonneg_right (hc2'.trans hPmm) (by norm_num)
     nlinarith
   -- the product
-  have hW0 : (0 : ℝ) ≤ |z| * Pmin := by positivity
   obtain ⟨mf1, mf2, me, -, -⟩ := TgammaMul.mulDD_spec hF zh zl2 fh fl zf z2f fhf flf
-    (4 * Pmax * |z|) (2 * Pmax * (|z| / 2 ^ 18)) (Λ.getD (N - 1) 0 * (2 * |z|))
-    (Λ.getD (N - 1) 0 * (|z| / 2 ^ 18))
+    (4 * Pmax * |z|) (2 * Pmax * (2 * |z| / 2 ^ 51 + 1 / 2 ^ 101)) (Λ.getD (N - 1) 0 * (2 * |z|))
+    (Λ.getD (N - 1) 0 * (2 * |z| / 2 ^ 51 + 1 / 2 ^ 101))
     (by rw [show 4 * (Pmax : ℝ) * |z| = (2 * Pmax) * (2 * |z|) by ring]
         exact mul_le_mul hfh hzh2 (abs_nonneg _) (by linarith [abs_nonneg (value fh.toBits)]))
     (mul_le_mul hfh hzl2' (abs_nonneg _) (by linarith [abs_nonneg (value fh.toBits)]))
     (mul_le_mul hfl hzh2 (abs_nonneg _) hΛe0)
     (mul_le_mul hfl hzl2' (abs_nonneg _) hΛe0)
-    (by nlinarith [abs_nonneg z, (by norm_num : (4 : ℝ) * 2 ^ 19 ≤ 2 ^ 900)])
-    (by nlinarith [abs_nonneg z, (by norm_num : (2 : ℝ) * 2 ^ 19 + 2 ^ 19 ≤ 2 ^ 900)])
+    (by nlinarith [abs_nonneg z, (by norm_num : (4 : ℝ) * 2 ^ 29 ≤ 2 ^ 900)])
+    (by nlinarith [abs_nonneg z, (by norm_num : (2 : ℝ) * 2 ^ 29 * 2 + 2 ≤ 2 ^ 900)])
   refine ⟨mf1, mf2, ?_⟩
   -- the error
   set r1 := value (mulDD zh zl2 fh fl).1.toBits
@@ -319,41 +335,49 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
       (value zh.toBits + value zl2.toBits) * (Pc - Ps) +
       (value zh.toBits + value zl2.toBits - z) * Ps + (z * Ps - L) := by ring
   rw [k]
+  have hW0 : (0 : ℝ) ≤ |z| * Pmin := by positivity
   have t1 : |(value zh.toBits + value zl2.toBits) * (value fh.toBits + value fl.toBits - Pc)| ≤
-      |z| * Pmin * ((1 + 1 / 2 ^ 71) / 2 ^ 70) := by
+      |z| * Pmin * ((1 + 1 / 2 ^ 62) / 2 ^ 70) := by
     rw [abs_mul]
     have := mul_le_mul hZc (hfe.trans hc3') (abs_nonneg _) (by positivity)
     linarith
   have t2 : |(value zh.toBits + value zl2.toBits) * (Pc - Ps)| ≤
-      |z| * Pmin * ((1 + 1 / 2 ^ 71) * 2 ^ 10 / 2 ^ 71) := by
+      |z| * Pmin * ((1 + 1 / 2 ^ 62) / 2 ^ 62) := by
     rw [abs_mul]
     have h1 := mul_le_mul hZc hlip (abs_nonneg _) (by positivity)
-    have h2 := mul_le_mul_of_nonneg_left hc2' (by positivity : (0 : ℝ) ≤ |z| * (1 + 1 / 2 ^ 71))
+    have h2 := mul_le_mul_of_nonneg_left hc2' (by positivity : (0 : ℝ) ≤ |z| * (1 + 1 / 2 ^ 62))
     nlinarith
-  have t3 : |(value zh.toBits + value zl2.toBits - z) * Ps| ≤ |z| * Pmin * (2 ^ 10 / 2 ^ 71) := by
+  have t3 : |(value zh.toBits + value zl2.toBits - z) * Ps| ≤ |z| * Pmin * (2 / 2 ^ 62) := by
     rw [abs_mul]
     have h1 := mul_le_mul hze hPsb.2 (abs_nonneg _) (by positivity)
-    have h2 := mul_le_mul_of_nonneg_left hc1' (by positivity : (0 : ℝ) ≤ |z| / 2 ^ 71)
+    have h2 := mul_le_mul_of_nonneg_left hc1' (by positivity : (0 : ℝ) ≤ |z| / 2 ^ 62)
     nlinarith
   have t4 : |z * Ps - L| ≤ 1 / 2 ^ 63 * |L| + 1 / 2 ^ 120 := by rw [abs_sub_comm]; exact hRF
   have t5 : |r1 + r2 - (value zh.toBits + value zl2.toBits) * (value fh.toBits + value fl.toBits)| ≤
-      |z| * Pmin * (2 ^ 13 / 2 ^ 71 + 1 / 2 ^ 58 + 8 / 2 ^ 93 + 2 ^ 12 / 2 ^ 104) + 1 / 2 ^ 1070 := by
+      |z| * Pmin * (1 / 2 ^ 99 + 8 / 2 ^ 104) + |z| * (2 / 2 ^ 65) +
+        (1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070) := by
     have h1 := mul_le_mul_of_nonneg_right hc1' (by positivity : (0 : ℝ) ≤ |z|)
     have h2 := mul_le_mul_of_nonneg_right hc4' (by positivity : (0 : ℝ) ≤ |z|)
+    have h3 : (Λ.getD (N - 1) 0 : ℝ) * (1 / 2 ^ 101) ≤ 1 / 2 ^ 15 * (1 / 2 ^ 101) :=
+      mul_le_mul_of_nonneg_right hc4' (by norm_num)
+    have h4 : (Pmax : ℝ) * (1 / 2 ^ 101) ≤ 2 ^ 29 * (1 / 2 ^ 101) :=
+      mul_le_mul_of_nonneg_right hc5' (by norm_num)
     nlinarith
-  have hfin : |L| * (1 + 1 / 2 ^ 59) * (2 ^ 13 / 2 ^ 71 + 1 / 2 ^ 58 + 8 / 2 ^ 93 + 2 ^ 12 / 2 ^ 104 +
-      (1 + 1 / 2 ^ 71) / 2 ^ 70 + (1 + 1 / 2 ^ 71) * 2 ^ 10 / 2 ^ 71 + 2 ^ 10 / 2 ^ 71) + 1 / 2 ^ 1070 +
-      1 / 2 ^ 63 * |L| + 1 / 2 ^ 120 ≤ |L| / 2 ^ 56 := by
+  have hzW : |z| ≤ |z| * Pmin := by nlinarith [abs_nonneg z]
+  have hfin : |L| * (1 + 1 / 2 ^ 59) * ((1 + 1 / 2 ^ 62) / 2 ^ 70 + (1 + 1 / 2 ^ 62) / 2 ^ 62 +
+      2 / 2 ^ 62 + 1 / 2 ^ 99 + 8 / 2 ^ 104 + 2 / 2 ^ 65) +
+      (1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070) + 1 / 2 ^ 63 * |L| + 1 / 2 ^ 120 ≤ |L| / 2 ^ 55 := by
     have hL0 := abs_nonneg L
-    nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 1070 ≤ 1 / 2 ^ 60 * (1 / 2 ^ 1000)),
-      (by norm_num : (1 : ℝ) / 2 ^ 120 ≤ 1 / 2 ^ 60 * (1 / 2 ^ 60)),
-      (by norm_num : ((1 : ℝ) + 1 / 2 ^ 59) * (2 ^ 13 / 2 ^ 71 + 1 / 2 ^ 58 + 8 / 2 ^ 93 + 2 ^ 12 / 2 ^ 104 +
-        (1 + 1 / 2 ^ 71) / 2 ^ 70 + (1 + 1 / 2 ^ 71) * 2 ^ 10 / 2 ^ 71 + 2 ^ 10 / 2 ^ 71) +
-        1 / 2 ^ 1000 + 1 / 2 ^ 63 + 1 / 2 ^ 60 ≤ 1 / 2 ^ 56)]
-  have hWL : |z| * Pmin * (2 ^ 13 / 2 ^ 71 + 1 / 2 ^ 58 + 8 / 2 ^ 93 + 2 ^ 12 / 2 ^ 104 +
-      (1 + 1 / 2 ^ 71) / 2 ^ 70 + (1 + 1 / 2 ^ 71) * 2 ^ 10 / 2 ^ 71 + 2 ^ 10 / 2 ^ 71) ≤
-      |L| * (1 + 1 / 2 ^ 59) * (2 ^ 13 / 2 ^ 71 + 1 / 2 ^ 58 + 8 / 2 ^ 93 + 2 ^ 12 / 2 ^ 104 +
-      (1 + 1 / 2 ^ 71) / 2 ^ 70 + (1 + 1 / 2 ^ 71) * 2 ^ 10 / 2 ^ 71 + 2 ^ 10 / 2 ^ 71) :=
+    have habs : (1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070 : ℝ) + 1 / 2 ^ 120 ≤
+        |L| * (2 ^ 60 * (1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070 + 1 / 2 ^ 120)) := by
+      nlinarith [(by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070 + 1 / 2 ^ 120)]
+    nlinarith [(by norm_num : ((1 : ℝ) + 1 / 2 ^ 59) * ((1 + 1 / 2 ^ 62) / 2 ^ 70 +
+        (1 + 1 / 2 ^ 62) / 2 ^ 62 + 2 / 2 ^ 62 + 1 / 2 ^ 99 + 8 / 2 ^ 104 + 2 / 2 ^ 65) +
+        2 ^ 60 * (1 / 2 ^ 116 + 1 / 2 ^ 122 + 1 / 2 ^ 1070 + 1 / 2 ^ 120) + 1 / 2 ^ 63 ≤ 1 / 2 ^ 55)]
+  have hWL : |z| * Pmin * ((1 + 1 / 2 ^ 62) / 2 ^ 70 + (1 + 1 / 2 ^ 62) / 2 ^ 62 + 2 / 2 ^ 62 +
+      1 / 2 ^ 99 + 8 / 2 ^ 104 + 2 / 2 ^ 65) ≤
+      |L| * (1 + 1 / 2 ^ 59) * ((1 + 1 / 2 ^ 62) / 2 ^ 70 + (1 + 1 / 2 ^ 62) / 2 ^ 62 +
+        2 / 2 ^ 62 + 1 / 2 ^ 99 + 8 / 2 ^ 104 + 2 / 2 ^ 65) :=
     mul_le_mul_of_nonneg_right hzup (by positivity)
   have e1 := abs_add_le ((r1 + r2 - (value zh.toBits + value zl2.toBits) *
         (value fh.toBits + value fl.toBits)) +
@@ -371,6 +395,8 @@ theorem root_spec (hF : FmaSpec.FmaNearest)
   have e4 := abs_add_le (r1 + r2 - (value zh.toBits + value zl2.toBits) *
         (value fh.toBits + value fl.toBits))
       ((value zh.toBits + value zl2.toBits) * (value fh.toBits + value fl.toBits - Pc))
+  have hzz : |z| * (2 / 2 ^ 65) ≤ |z| * Pmin * (2 / 2 ^ 65) :=
+    mul_le_mul_of_nonneg_right hzW (by norm_num)
   linarith
 
 #print axioms root_spec
