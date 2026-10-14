@@ -502,7 +502,7 @@ theorem up_init (x : Float) (e0 : UInt64) (hx : Finite x.toBits) (z : ℤ)
     linarith
 
 /-- **The loop for `x < j`** after `m` steps. -/
-theorem up_loop (hF : FmaSpec.FmaNearest) (x : Float) (e0 : UInt64) (M : ℕ) (hM : M ≤ 186)
+theorem up_loop (hF : FmaSpec.FmaNearest) (x : Float) (e0 : UInt64) (M : ℕ) (hM : M ≤ 187)
     (hx : Finite x.toBits) (z : ℤ) (hz : value x.toBits = z / 2 ^ 54)
     (hq : 1 / 4 ≤ |value x.toBits|) (hlo : -2 ^ 8 ≤ value x.toBits)
     (hhi : value x.toBits + M ≤ 2 ^ 8)

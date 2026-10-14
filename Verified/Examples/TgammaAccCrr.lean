@@ -101,7 +101,7 @@ theorem mul_bound (a b : Float) (ha : Finite a.toBits) (hb : Finite b.toBits) (A
 
 /-- The sum or difference of `fl` with a term `t` at most `2 ^ -90 |fh|`. -/
 theorem add_small (fh fl t : Float) (hfl : Finite fl.toBits) (ht : Finite t.toBits)
-    (hfh2 : |value fh.toBits| ≤ 2 ^ 10) (hflb : |value fl.toBits| ≤ |value fh.toBits| / 2 ^ 30)
+    (hfh2 : |value fh.toBits| ≤ 2 ^ 900) (hflb : |value fl.toBits| ≤ |value fh.toBits| / 2 ^ 30)
     (htb : |value t.toBits| ≤ |value fh.toBits| / 2 ^ 90) :
     (Finite (fl + t).toBits ∧ |value (fl + t).toBits - value fl.toBits| ≤
         |value fh.toBits| / 2 ^ 81) ∧
@@ -114,7 +114,7 @@ theorem add_small (fh fl t : Float) (hfl : Finite fl.toBits) (ht : Finite t.toBi
     linarith [(by ring : F / 2 ^ 29 = F / 2 ^ 30 + F / 2 ^ 30)]
   have hBm : F / 2 ^ 29 < 2 ^ 1023 := by
     have : F / 2 ^ 29 ≤ F := div_le_self hF0 (by norm_num)
-    linarith [(by norm_num : (2 : ℝ) ^ 10 < 2 ^ 1023)]
+    linarith [(by norm_num : (2 : ℝ) ^ 900 < 2 ^ 1023)]
   have ha := fapprox_add (fapprox_self fl hfl) (fapprox_self t ht) _
     (by simp only [add_zero]; exact (abs_add_le _ _).trans hB) hBm
   have hs := fapprox_sub (fapprox_self fl hfl) (fapprox_self t ht) _
@@ -139,7 +139,7 @@ theorem add_small (fh fl t : Float) (hfl : Finite fl.toBits) (ht : Finite t.toBi
 /-- **The adjusted low part** moves by at most `2 ^ -81 |fh|`. -/
 theorem adj_low (fh fl jm : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
     (hjm : Finite jm.toBits) (hjmb : |value jm.toBits| ≤ 200)
-    (hfh1 : 1 / 2 ^ 900 ≤ |value fh.toBits|) (hfh2 : |value fh.toBits| ≤ 2 ^ 10)
+    (hfh1 : 1 / 2 ^ 900 ≤ |value fh.toBits|) (hfh2 : |value fh.toBits| ≤ 2 ^ 900)
     (hflb : |value fl.toBits| ≤ |value fh.toBits| / 2 ^ 30) :
     Finite (adjLow fh fl jm).toBits ∧
       |value (adjLow fh fl jm).toBits - value fl.toBits| ≤ |value fh.toBits| / 2 ^ 81 := by
@@ -152,7 +152,7 @@ theorem adj_low (fh fl jm : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toB
       Finite (fh * m).toBits ∧ |value (fh * m).toBits| ≤ F / 2 ^ 90 := by
     intro m hmf hmb
     obtain ⟨hpf, hpb⟩ := mul_bound fh m hfh hmf F (1 / 2 ^ 92) le_rfl hmb
-      (by nlinarith [(by norm_num : (2 : ℝ) ^ 10 * (1 / 2 ^ 92) ≤ 2 ^ 1000)])
+      (by nlinarith [(by norm_num : (2 : ℝ) ^ 900 * (1 / 2 ^ 92) ≤ 2 ^ 1000)])
     refine ⟨hpf, ?_⟩
     have e1 : 2 * (F * (1 / 2 ^ 92)) + F / 2 ^ 170 ≤ F / 2 ^ 90 := by
       have e2 : 2 * (F * (1 / 2 ^ 92)) + F / 2 ^ 170 = F * (2 / 2 ^ 92 + 1 / 2 ^ 170) := by ring

@@ -90,12 +90,12 @@ def DownInv (v : ℝ) (m : ℕ) (s : Float × Float × Float × Float) : Prop :=
 /-- **One step of the loop for `x ≥ j + 1`.** -/
 theorem down_step (hF : FmaSpec.FmaNearest) (v : ℝ) (k0 : ℤ) (g : ℕ) (hg : g ≤ 1074)
     (hv : v = k0 / 2 ^ g) (hk0 : |k0| ≤ 2 ^ 53) (m : ℕ) (s : Float × Float × Float × Float)
-    (hm : m + 2 ≤ 31) (hv4 : (m + 2 : ℕ) + 4 ≤ v) (hv8 : v ≤ 2 ^ 8) (h : DownInv v m s) :
+    (hm : m + 2 ≤ 32) (hv4 : (m + 2 : ℕ) + 4 ≤ v) (hv8 : v ≤ 2 ^ 8) (h : DownInv v m s) :
     DownInv v (m + 1) (downStep s) := by
   obtain ⟨xph, xpl, wh, wl⟩ := s
   obtain ⟨hphf, hplf, hwhf, hwlf, hph, hpl, hWe, hwlb, hwhb, hD1, hD2⟩ := h
   dsimp only at hphf hplf hwhf hwlf hph hpl hWe hwlb hwhb
-  have hm' : ((m + 2 : ℕ) : ℝ) ≤ 31 := by exact_mod_cast hm
+  have hm' : ((m + 2 : ℕ) : ℝ) ≤ 32 := by exact_mod_cast hm
   have hmm : (m : ℝ) + 2 = ((m + 2 : ℕ) : ℝ) := by push_cast; ring
   -- the factor
   have hkv : value xph.toBits - 1 = ((k0 - (m + 2 : ℕ) * 2 ^ g : ℤ) : ℝ) / 2 ^ g := by
@@ -124,7 +124,7 @@ theorem down_step (hF : FmaSpec.FmaNearest) (v : ℝ) (k0 : ℤ) (g : ℕ) (hg :
   have hX4 : 4 ≤ X := by rw [hXdef]; linarith
   -- the product
   have hδ : (m : ℝ) / 2 ^ 95 ≤ 1 / 2 ^ 80 := by
-    have : (m : ℝ) ≤ 31 := by push_cast at hm'; linarith
+    have : (m : ℝ) ≤ 32 := by push_cast at hm'; linarith
     rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith
   obtain ⟨hp1f, hp2f, hpe, hp2b, hp1b, -⟩ := prod_step hF f.1 f.2 wh wl X (D v m) (m / 2 ^ 95)
     hf1f hf2f hwhf hwlf hXv (by rw [hf2v, abs_zero]; positivity)
@@ -156,10 +156,10 @@ theorem down_step (hF : FmaSpec.FmaNearest) (v : ℝ) (k0 : ℤ) (g : ℕ) (hg :
   · have := div_le_div_of_nonneg_left (abs_nonneg (value (mulDD3 f.1 f.2 wh wl).1.toBits))
       (by positivity : (0 : ℝ) < 2 ^ 50) (by norm_num : (2 : ℝ) ^ 50 ≤ 2 ^ 51)
     linarith
-  · have h5 : |D v (m + 1)| ≤ 2 ^ 248 := by
+  · have h5 : |D v (m + 1)| ≤ 2 ^ 256 := by
       refine hD2'.trans (pow_le_pow_right₀ (by norm_num) ?_)
       omega
-    linarith [(by norm_num : (4 : ℝ) * 2 ^ 248 ≤ 2 ^ 518)]
+    linarith [(by norm_num : (4 : ℝ) * 2 ^ 256 ≤ 2 ^ 518)]
 
 /-- The state before the loop: the factor and the product are `x - 1`. -/
 theorem down_init (x : Float) (hx : Finite x.toBits) (k0 : ℤ) (g : ℕ) (hg : g ≤ 1074)
@@ -197,7 +197,7 @@ theorem down_init (x : Float) (hx : Finite x.toBits) (k0 : ℤ) (g : ℕ) (hg : 
 /-- **The loop for `x ≥ j + 1`** after `m` steps. -/
 theorem down_loop (hF : FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits) (k0 : ℤ) (g : ℕ)
     (hg : g ≤ 1074) (hv : value x.toBits = k0 / 2 ^ g) (hk0 : |k0| ≤ 2 ^ 53) (M : ℕ)
-    (hM : M + 1 ≤ 30) (hv5 : (M + 1 : ℕ) + 4 ≤ value x.toBits) (hv8 : value x.toBits ≤ 2 ^ 8) :
+    (hM : M + 1 ≤ 31) (hv5 : (M + 1 : ℕ) + 4 ≤ value x.toBits) (hv8 : value x.toBits ≤ 2 ^ 8) :
     ∀ m, m ≤ M → DownInv (value x.toBits) m
       (LeanExe.loop (UInt64.ofNat m) (x - 1.0, (0.0 : Float), x - 1.0, (0.0 : Float))
         (fun _ s => downStep s)) := by
