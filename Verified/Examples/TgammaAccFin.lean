@@ -328,9 +328,201 @@ theorem sub_acc (fh fl : Float) (F : ℕ) (G : ℝ) (hfh : Finite fh.toBits) (hf
       norm_num
     linarith
 
+/-- The result word of `Tgamma.accurate` from `fh + fl` and the scale word `eoff`. -/
+def finRes (fh fl : Float) (eoff : UInt64) : UInt64 :=
+  let res := (fh + fl).toBits
+  let re := (res >>> 52) &&& 0x7ff
+  if nonPositive (re + eoff) then
+    let r := (res - ((eoff + re - 1) <<< 52)) &&& 0xFFF0000000000000
+    let (fh, l) := fastTwoSum (Float.ofBits r) fh
+    (fh + (fl + l)).toBits &&& 0x800FFFFFFFFFFFFF
+  else res + (eoff <<< 52)
+
+/-- The rounded sum `fh + fl` within `2 ^ -53` of the sum, and its exponent field from 1. -/
+theorem res_spec (fh fl : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
+    (hS1 : 1 / 2 ^ 1000 ≤ |value fh.toBits + value fl.toBits|)
+    (hS2 : |value fh.toBits + value fl.toBits| ≤ 2 ^ 1000) :
+    Finite (fh + fl).toBits ∧
+      |value (fh + fl).toBits - (value fh.toBits + value fl.toBits)| ≤
+        |value fh.toBits + value fl.toBits| / 2 ^ 53 ∧
+      1 ≤ Wasm.IEEE64.exponent (fh + fl).toBits := by
+  have hres := fapprox_add (fapprox_self fh hfh) (fapprox_self fl hfl)
+    |value fh.toBits + value fl.toBits| (by simp only [add_zero]; exact le_rfl)
+    (by linarith [(by norm_num : (2 : ℝ) ^ 1000 < 2 ^ 1023)])
+  simp only [zero_add] at hres
+  refine ⟨hres.1, hres.2, ?_⟩
+  by_contra hc
+  have := F64Magnitude.magnitude_lt (fh + fl).toBits 1 (-1022) (by norm_num) (by norm_num)
+    (by omega)
+  rw [show ((2 : ℝ) ^ (-1022 : ℤ)) = 1 / 2 ^ 1022 by norm_num] at this
+  have h1 := abs_sub_abs_le_abs_sub (value fh.toBits + value fl.toBits) (value (fh + fl).toBits)
+  rw [abs_sub_comm] at h1
+  have h2 := hres.2
+  have h3 : |value fh.toBits + value fl.toBits| / 2 ^ 53 ≤ |value fh.toBits + value fl.toBits| / 2 :=
+    div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
+  linarith [(by norm_num : (1 : ℝ) / 2 ^ 1022 * 2 < 1 / 2 ^ 1000)]
+
+theorem nonPositive_add (a b : ℕ) (ha : a < 2 ^ 61) (hb : b < 2 ^ 61) :
+    nonPositive (UInt64.ofNat a + UInt64.ofNat b) = decide (a + b ≤ 0) := by
+  have h := nonPositive_sub (a + b) 0 (by norm_num at ha hb ⊢; omega) (by norm_num)
+  rw [show UInt64.ofNat 0 = (0 : UInt64) from rfl, sub_zero, UInt64.ofNat_add] at h
+  exact h
+
+theorem finRes_norm (fh fl : Float) (eoff : UInt64)
+    (h : nonPositive ((((fh + fl).toBits >>> 52) &&& 0x7ff) + eoff) = false) :
+    finRes fh fl eoff = (fh + fl).toBits + (eoff <<< 52) := by
+  unfold finRes
+  dsimp only
+  rw [if_neg (by rw [h]; decide)]
+
+theorem finRes_sub (fh fl : Float) (F : ℕ)
+    (h : nonPositive ((((fh + fl).toBits >>> 52) &&& 0x7ff) + (0 - UInt64.ofNat F)) = true) :
+    finRes fh fl (0 - UInt64.ofNat F) = subRes fh fl F := by
+  unfold finRes subRes
+  dsimp only
+  rw [if_pos h, sub_neg_shift]
+
+/-- The bounds of `S = fh + fl` from its distance to `g`, with the rounded sum. -/
+theorem sum_bounds (fh fl : Float) (g : ℝ) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
+    (hG1 : 1 / 2 ^ 999 ≤ |g|) (hG3 : |g| ≤ 2 ^ 999)
+    (hR : |value fh.toBits + value fl.toBits - g| ≤ 11 * |g| / 2 ^ 60) :
+    Finite (fh + fl).toBits ∧ 1 ≤ Wasm.IEEE64.exponent (fh + fl).toBits ∧
+      |value (fh + fl).toBits - g| ≤ 9 / 8 / 2 ^ 53 * |g| ∧
+      |g| * (1 - 1 / 2 ^ 52) ≤ |value (fh + fl).toBits| ∧
+      |value (fh + fl).toBits| ≤ |g| * (1 + 1 / 2 ^ 52) := by
+  set S := value fh.toBits + value fl.toBits with hSdef
+  have h11 : 11 * |g| / 2 ^ 60 ≤ |g| / 2 ^ 56 := by
+    rw [div_le_div_iff₀ (by positivity) (by positivity)]; nlinarith [abs_nonneg g]
+  have hSu : |S| ≤ |g| * (1 + 1 / 2 ^ 56) := by
+    have := abs_sub_abs_le_abs_sub S g
+    linarith [(by ring : |g| * (1 + 1 / 2 ^ 56) = |g| + |g| / 2 ^ 56)]
+  have hSl : |g| * (1 - 1 / 2 ^ 56) ≤ |S| := by
+    have := abs_sub_abs_le_abs_sub g S
+    rw [abs_sub_comm] at this
+    linarith [(by ring : |g| * (1 - 1 / 2 ^ 56) = |g| - |g| / 2 ^ 56)]
+  obtain ⟨hwf, hwS, he1⟩ := res_spec fh fl hfh hfl
+    (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 1000 ≤ 1 / 2 ^ 999 * (1 - 1 / 2 ^ 56))])
+    (by linarith [(by norm_num : (2 : ℝ) ^ 999 * (1 + 1 / 2 ^ 56) ≤ 2 ^ 1000)])
+  set w := (fh + fl).toBits with hwdef
+  have h2 : |S| / 2 ^ 53 ≤ |g| * (1 + 1 / 2 ^ 56) / 2 ^ 53 :=
+    div_le_div_of_nonneg_right hSu (by positivity)
+  have h3 := abs_sub_le (value w) S g
+  have h4 := abs_sub_abs_le_abs_sub (value w) g
+  have h5 := abs_sub_abs_le_abs_sub g (value w)
+  rw [abs_sub_comm] at h5
+  refine ⟨hwf, he1, ?_, ?_, ?_⟩ <;> linarith [abs_nonneg g]
+
+/-- **A normal result with a scale `E ≥ 0`**, for `|G| ≤ 2 ^ 1024 (1 - 2 ^ -50)`. -/
+theorem fin_pos (fh fl : Float) (E : ℕ) (G : ℝ) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
+    (hE : E ≤ 1500) (hG1 : 1 / 2 ^ 999 ≤ |G / 2 ^ E|) (hG3 : |G / 2 ^ E| ≤ 2 ^ 999)
+    (hG2 : |G| ≤ 2 ^ 1024 * (1 - 1 / 2 ^ 50))
+    (hR : |value fh.toBits + value fl.toBits - G / 2 ^ E| ≤ 11 * |G / 2 ^ E| / 2 ^ 60) :
+    F64SignedRounding.WithinSteps 1 G (Float.ofBits (finRes fh fl (UInt64.ofNat E))).toBits := by
+  have hP : (0 : ℝ) < 2 ^ E := by positivity
+  obtain ⟨g, hg⟩ : ∃ g, g = G / 2 ^ E := ⟨_, rfl⟩
+  rw [← hg] at hG1 hG3 hR
+  have hGg : |G| = |g| * 2 ^ E := by rw [hg, abs_div, abs_of_pos hP]; field_simp
+  obtain ⟨hwf, he1, herr, -, hwu⟩ := sum_bounds fh fl g hfh hfl hG1 hG3 hR
+  set w := (fh + fl).toBits with hwdef
+  have hlt : Wasm.IEEE64.exponent w < 2048 := Nat.mod_lt _ (by norm_num)
+  have hEx : Wasm.IEEE64.exponent w + E ≤ 2046 := by
+    by_contra hc
+    have hm := mag_lower w he1
+    rw [div_le_iff₀ (by positivity)] at hm
+    have h1 : (2 : ℝ) ^ 2047 ≤ 2 ^ Wasm.IEEE64.exponent w * 2 ^ E := by
+      rw [← pow_add]; exact pow_le_pow_right₀ (by norm_num) (by omega)
+    have h3 : (2 : ℝ) ^ Wasm.IEEE64.exponent w ≤ 2 ^ 1023 * (1 + 1 / 2 ^ 52) * |g| := by
+      linarith
+    have h4 := mul_le_mul_of_nonneg_right h3 hP.le
+    rw [mul_assoc, ← hGg] at h4
+    have h5 : (2 : ℝ) ^ 1023 * (1 + 1 / 2 ^ 52) * |G| ≤
+        2 ^ 1023 * (1 + 1 / 2 ^ 52) * (2 ^ 1024 * (1 - 1 / 2 ^ 50)) :=
+      mul_le_mul_of_nonneg_left hG2 (by positivity)
+    have h6 : (2 : ℝ) ^ 1023 * (1 + 1 / 2 ^ 52) * (2 ^ 1024 * (1 - 1 / 2 ^ 50)) < 2 ^ 2047 := by
+      norm_num
+    linarith
+  have hnp : nonPositive (((w >>> 52) &&& 0x7ff) + UInt64.ofNat E) = false := by
+    rw [field_eq, nonPositive_add _ _ (lt_of_lt_of_le hlt (by norm_num))
+      (lt_of_le_of_lt hE (by norm_num))]
+    simp only [decide_eq_false_iff_not]
+    omega
+  rw [finRes_norm _ _ _ hnp, ← hwdef]
+  obtain ⟨hcf, hcv⟩ := scale_signed w E he1 hEx
+  rw [TgammaWords.ofBits_bits _ hcf]
+  apply F64RelativeStep.within_one_relative G _ hcf
+  · rw [hGg]
+    have : (1 : ℝ) ≤ 2 ^ E := one_le_pow₀ (by norm_num)
+    nlinarith [abs_nonneg g]
+  · have hv : value (w + (UInt64.ofNat E <<< 52)) - G = (value w - g) * 2 ^ E := by
+      rw [hcv, hg]; field_simp
+    rw [hv, abs_mul, abs_of_pos hP, hGg, unitRoundoff64]
+    have : |value w - g| ≤ 11 / 8 * (1 / 2 ^ 53) * |g| := by linarith [abs_nonneg g]
+    calc |value w - g| * 2 ^ E ≤ 11 / 8 * (1 / 2 ^ 53) * |g| * 2 ^ E :=
+          mul_le_mul_of_nonneg_right this hP.le
+      _ = _ := by ring
+
+/-- **The result for a scale `-F`** with `1 ≤ F`: normal when the exponent field of `fh + fl`
+exceeds `F`, and subnormal otherwise, which the gap `hgap` around `2 ^ -1022` puts below
+`2 ^ -1022 (1 - 2 ^ -48)`. -/
+theorem fin_neg (fh fl : Float) (F : ℕ) (G : ℝ) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
+    (hF1 : 1 ≤ F) (hF : F ≤ 1500) (hG0 : G ≠ 0)
+    (hG1 : 1 / 2 ^ 999 ≤ |G * 2 ^ F|) (hG3 : |G * 2 ^ F| ≤ 2 ^ 999)
+    (hR : |value fh.toBits + value fl.toBits - G * 2 ^ F| ≤ 11 * |G * 2 ^ F| / 2 ^ 60)
+    (hflb : |value fl.toBits| ≤ |value fh.toBits| / 2 ^ 50)
+    (hgap : |G| ≤ 1 / 2 ^ 1022 * (1 - 1 / 2 ^ 48) ∨ 1 / 2 ^ 1022 * (1 + 1 / 2 ^ 48) ≤ |G|) :
+    F64SignedRounding.WithinSteps 1 G
+      (Float.ofBits (finRes fh fl (0 - UInt64.ofNat F))).toBits := by
+  have hP : (0 : ℝ) < 2 ^ F := by positivity
+  obtain ⟨g, hg⟩ : ∃ g, g = G * 2 ^ F := ⟨_, rfl⟩
+  have hR' := hR
+  rw [← hg] at hG1 hG3 hR
+  have hGg : |g| = |G| * 2 ^ F := by rw [hg, abs_mul, abs_of_pos hP]
+  obtain ⟨hwf, he1, herr, hwl, -⟩ := sum_bounds fh fl g hfh hfl hG1 hG3 hR
+  set w := (fh + fl).toBits with hwdef
+  have hlt : Wasm.IEEE64.exponent w < 2048 := Nat.mod_lt _ (by norm_num)
+  have hc : ((w >>> 52) &&& 0x7ff) + (0 - UInt64.ofNat F) =
+      UInt64.ofNat (Wasm.IEEE64.exponent w) - UInt64.ofNat F := by
+    rw [field_eq]; abel
+  have hnp := nonPositive_sub (Wasm.IEEE64.exponent w) F (lt_of_lt_of_le hlt (by norm_num))
+    (lt_of_le_of_lt hF (by norm_num))
+  rw [← hc] at hnp
+  by_cases hre : Wasm.IEEE64.exponent w ≤ F
+  · rw [decide_eq_true hre] at hnp
+    rw [finRes_sub _ _ _ hnp]
+    rcases hgap with hsm | hbig
+    · apply sub_acc fh fl F G hfh hfl hF1 hF hG0 hR' hflb
+      rw [abs_mul, abs_of_pos hP]
+      calc |G| * 2 ^ F ≤ 1 / 2 ^ 1022 * (1 - 1 / 2 ^ 48) * 2 ^ F :=
+            mul_le_mul_of_nonneg_right hsm hP.le
+        _ = _ := by ring
+    · exfalso
+      have hm := F64Magnitude.magnitude_lt w (F + 1) ((F : ℤ) - 1022) (by omega)
+        (by push_cast; ring) (by omega)
+      have hz : (2 : ℝ) ^ ((F : ℤ) - 1022) = 2 ^ F / 2 ^ 1022 := by
+        rw [zpow_sub₀ (by norm_num), zpow_natCast]; norm_num
+      rw [hz] at hm
+      have hb := mul_le_mul_of_nonneg_right hbig hP.le
+      rw [← hGg] at hb
+      linarith [(by ring : 1 / 2 ^ 1022 * (1 + 1 / 2 ^ 48) * (2 : ℝ) ^ F =
+        2 ^ F / 2 ^ 1022 * (1 + 1 / 2 ^ 48)), (by positivity : (0 : ℝ) < 2 ^ F / 2 ^ 1022)]
+  · rw [decide_eq_false hre] at hnp
+    rw [finRes_norm _ _ _ hnp, ← hwdef, add_neg_shift]
+    obtain ⟨hcf, hcv⟩ := scale_down w F hwf (by omega)
+    rw [TgammaWords.ofBits_bits _ hcf]
+    apply within_one_abs G _ hcf hG0
+    · have : (1 : ℝ) ≤ 2 ^ F := one_le_pow₀ (by norm_num)
+      nlinarith [abs_nonneg G]
+    · have hv : value (w - (UInt64.ofNat F <<< 52)) - G = (value w - g) / 2 ^ F := by
+        rw [← hcv, hg, ← sub_mul, mul_div_assoc, div_self hP.ne', mul_one]
+      rw [hv, abs_div, abs_of_pos hP, div_le_iff₀ hP]
+      calc |value w - g| ≤ 9 / 8 / 2 ^ 53 * |g| := herr
+        _ = 9 / 8 / 2 ^ 53 * |G| * 2 ^ F := by rw [hGg]; ring
+
 #print axioms add_neg_shift
 #print axioms sub_neg_shift
 #print axioms scale_signed
 #print axioms sub_acc
+#print axioms fin_pos
+#print axioms fin_neg
 
 end Verified.Examples.TgammaAccFin
