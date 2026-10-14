@@ -32427,3 +32427,12 @@ Opus merged `w/poly` at `8f102eaa` into `transcendentals` (`ffc1ebe0`).  The bra
 `tools/leanrun --memory-high 8G --timeout 900m lake build LeanExe Verified` completes 9,916 jobs with exit 0 (`opus-merge-batch6-1.log` on minideb1), no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`, and `TgammaWithin.tgamma_within` depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 `tests/verified/run.sh` exits 0 (`opus-verified-tests-23.log` on minideb1), and the 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`), as expected for a merge that changes no executable code.  `tests/verified/run.sh` has no entry for the theorem, which the build checks.
+
+
+## 2026-10-14: Seventh integration: the approximation facts of `lgamma`
+
+Opus merged `w/erf` at `17e819ba` into `transcendentals` (`d4579b74`).  The branch brings `LgammaFacts.allFacts`, the thirteen statements of `LgammaApprox.AllFacts`, with the repaired fact modules, `LgammaCancel`, and one module per root range, which the journal entry of 2026-10-13 on the ten failed modules describes, and the updated `Lgamma.md`.  `Verified.lean` imports `LgammaFacts`, which imports the others, and `LeanExe.lean` is unchanged.
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 9,936 jobs with exit 0 (`opus-merge-batch7-1.log` on minideb1), no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`, and `LgammaFacts.allFacts` depends on `propext`, `Classical.choice`, and `Quot.sound` only.  The limit is 10 GB because the kernel checks of the root ranges need up to 9.1 GB.  `LgammaRootB1` took 179 s under it, and a Lean process of the build reached 9.3 GB of resident memory on the 11 GB machine without swapping.
+
+`tests/verified/run.sh` exits 0 (`opus-verified-tests-24.log` on minideb1), and the 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`).
