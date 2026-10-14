@@ -4,7 +4,7 @@ import Verified.Examples.TgammaAsym3
 import Verified.Examples.TgammaFloor
 
 /-!
-The core of the fast path's reflection in `Lgamma.lgammaWith` for `x < -1/2`.  With `a = -x`, the
+The core of the fast path's reflection in `Lgamma.lgammaWith` for `x ≤ -1/2`.  With `a = -x`, the
 fractional part `φ = x - ⌊x⌋` (exact by Sterbenz's lemma, `refl_frac`), and `s = sin (π φ)/π`,
 the reflection formula gives `ln |Γ x| = -(ln Γ a + ln (a s))` (`refl_L`).  The code computes `s`
 (`asSinpipid`), `a s` (`mulDDD`), `ln (a s)` from the high part with the low part's quotient added
@@ -47,7 +47,7 @@ theorem refl_L (v : ℝ) (hv : v < 0) (hint : ∀ n : ℤ, v ≠ n) :
 /-- **The fractional part** `x - floorF x` of a double from `-2 ^ 52` to `-1/2`: exact, and
 `n/2^53` with `0 < n < 2^53`. -/
 theorem refl_frac (x : Float) (hx : Finite x.toBits) (h1 : -2 ^ 52 < value x.toBits)
-    (h2 : value x.toBits < -1 / 2) (hint : ∀ n : ℤ, value x.toBits ≠ n) :
+    (h2 : value x.toBits ≤ -1 / 2) (hint : ∀ n : ℤ, value x.toBits ≠ n) :
     Finite (floorF x).toBits ∧ value (floorF x).toBits = ⌊value x.toBits⌋ ∧
       Finite (x - floorF x).toBits ∧ value (x - floorF x).toBits = Int.fract (value x.toBits) ∧
       ∃ n : ℕ, 0 < n ∧ n < 2 ^ 53 ∧ Int.fract (value x.toBits) = n / 2 ^ 53 := by
@@ -77,26 +77,31 @@ theorem refl_frac (x : Float) (hx : Finite x.toBits) (h1 : -2 ^ 52 < value x.toB
   rw [← F64Bits.toBits_sub] at hsf hsv
   refine ⟨hff, hfv, hsf, by rw [hsv, hfv, hfd], ?_⟩
   -- `v` lies on the spacing `2 ^ -53`
-  obtain ⟨m, hm⟩ := LgammaFastMid.value_grid x.toBits
-  set e := Wasm.IEEE64.exponent x.toBits with hedef
-  have he : 1022 ≤ e := by
-    by_contra hn
-    have hhi := LgammaStir.binade_hi x.toBits e rfl (by omega)
-    have : (2 : ℝ) ^ (e + 52) ≤ 2 ^ 1073 := pow_le_pow_right₀ (by norm_num) (by omega)
-    have : (2 : ℝ) ^ (e + 52) / 2 ^ 1074 ≤ 2 ^ 1073 / 2 ^ 1074 :=
-      div_le_div_of_nonneg_right this (by positivity)
-    rw [abs_of_neg (by linarith)] at hhi
-    have : (2 : ℝ) ^ 1073 / 2 ^ 1074 = 1 / 2 := by norm_num
-    linarith
-  have hv53 : v * 2 ^ 53 = (m : ℝ) * 2 ^ (e - 1022) := by
-    have h5 : (0 : ℝ) < 2 ^ 1021 := by positivity
-    apply mul_right_cancel₀ h5.ne'
-    calc v * (2 : ℝ) ^ 53 * 2 ^ 1021 = v * (2 : ℝ) ^ 1074 := by rw [mul_assoc, ← pow_add]
-      _ = (m : ℝ) * 2 ^ (e - 1) := hm
-      _ = (m : ℝ) * 2 ^ (e - 1022) * 2 ^ 1021 := by rw [mul_assoc, ← pow_add]; congr 2; omega
-  set N : ℤ := m * 2 ^ (e - 1022) - ⌊v⌋ * 2 ^ 53 with hNdef
+  have hK : ∃ K : ℤ, v * 2 ^ 53 = K := by
+    rcases eq_or_lt_of_le h2 with heq | hlt
+    · exact ⟨-2 ^ 52, by rw [heq]; norm_num⟩
+    obtain ⟨m, hm⟩ := LgammaFastMid.value_grid x.toBits
+    set e := Wasm.IEEE64.exponent x.toBits with hedef
+    have he : 1022 ≤ e := by
+      by_contra hn
+      have hhi := LgammaStir.binade_hi x.toBits e rfl (by omega)
+      have : (2 : ℝ) ^ (e + 52) ≤ 2 ^ 1073 := pow_le_pow_right₀ (by norm_num) (by omega)
+      have : (2 : ℝ) ^ (e + 52) / 2 ^ 1074 ≤ 2 ^ 1073 / 2 ^ 1074 :=
+        div_le_div_of_nonneg_right this (by positivity)
+      rw [abs_of_neg (by linarith)] at hhi
+      have : (2 : ℝ) ^ 1073 / 2 ^ 1074 = 1 / 2 := by norm_num
+      linarith
+    have hv53 : v * 2 ^ 53 = (m : ℝ) * 2 ^ (e - 1022) := by
+      have h5 : (0 : ℝ) < 2 ^ 1021 := by positivity
+      apply mul_right_cancel₀ h5.ne'
+      calc v * (2 : ℝ) ^ 53 * 2 ^ 1021 = v * (2 : ℝ) ^ 1074 := by rw [mul_assoc, ← pow_add]
+        _ = (m : ℝ) * 2 ^ (e - 1) := hm
+        _ = (m : ℝ) * 2 ^ (e - 1022) * 2 ^ 1021 := by rw [mul_assoc, ← pow_add]; congr 2; omega
+    exact ⟨(m : ℤ) * 2 ^ (e - 1022), by rw [hv53]; push_cast; ring⟩
+  obtain ⟨K, hK⟩ := hK
+  set N : ℤ := K - ⌊v⌋ * 2 ^ 53 with hNdef
   have hN : Int.fract v * 2 ^ 53 = N := by
-    rw [hfd, sub_mul, hv53, hNdef]; push_cast; ring
+    rw [hfd, sub_mul, hK, hNdef]; push_cast; ring
   have hN0 : 0 < N := by
     have : (0 : ℝ) < N := by rw [← hN]; positivity
     exact_mod_cast this
@@ -122,7 +127,7 @@ set_option maxHeartbeats 4000000 in
 and `s = sin (π φ)/π`, given the double-double `fh + fl` of a positive leaf. -/
 theorem refl_core (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
     (hS : LgammaApprox.SinpiFact) (x : Float) (hx : Finite x.toBits)
-    (h1 : -2 ^ 52 < value x.toBits) (h2 : value x.toBits < -1 / 2)
+    (h1 : -2 ^ 52 < value x.toBits) (h2 : value x.toBits ≤ -1 / 2)
     (hint : ∀ n : ℤ, value x.toBits ≠ n) (fh fl : Float) (hfh : Finite fh.toBits)
     (hfl : Finite fl.toBits) (hfhb : |value fh.toBits| ≤ 2 ^ 897)
     (hflb : |value fl.toBits| ≤ 2 ^ 700) (A B C D : Float × Float)
@@ -216,7 +221,7 @@ theorem refl_core (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
   -- `B = (-x) A`
   obtain ⟨hnxf, hnxv⟩ := LgammaFastTiny.neg_float x hx
   set av := -v with havdef
-  have hav : 1 / 2 < av := by rw [havdef]; linarith
+  have hav : 1 / 2 ≤ av := by rw [havdef]; linarith
   have hav2 : av < 2 ^ 52 := by rw [havdef]; linarith
   have hH : |a1| * |value (-x).toBits| ≤ |a1| * av := by
     rw [hnxv, abs_of_pos (by linarith : (0 : ℝ) < -v)]
@@ -237,7 +242,7 @@ theorem refl_core (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
     have : 0 < s * (1 - 1 / 2 ^ 59) := mul_pos hs0 (by norm_num)
     linarith [hsa.1]
   have hsav : s / 4 ≤ av * (a1 + a2) := by
-    have h1' : 1 / 2 * (a1 + a2) ≤ av * (a1 + a2) := mul_le_mul_of_nonneg_right hav.le hapos.le
+    have h1' : 1 / 2 * (a1 + a2) ≤ av * (a1 + a2) := mul_le_mul_of_nonneg_right hav hapos.le
     have h2' : s * (1 - 1 / 2 ^ 59) ≤ a1 + a2 := hsa.1
     linarith
   have hz53 : (1 : ℝ) / 2 ^ 53 ≤ 1 / 2 - |φ - 1 / 2| := by
