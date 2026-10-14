@@ -32493,3 +32493,49 @@ The plan of the previous entry put a window about each of the eight zeros above 
 Opus merged `w/expm1` at `65b2f344` into `transcendentals` (`9063e731`).  The branch brings the 25 commits since the seventh integration: the seven modules of the fast path below 8.29541, the four modules of Stirling's series to `2^800`, the two branches of the sine, the five modules of the reflection, and the updated `Lgamma.md`, which the three journal entries of 2026-10-14 on track `expm1` describe.  `Verified.lean` imports the 17 new modules, and `LeanExe.lean` is unchanged.  The commits on the branch after `65b2f344`, from `bb69b9db` on, replace `LgammaFastNeg` by `LgammaLeaf` and wait for the next integration.
 
 `tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 9,953 jobs with exit 0 (`opus-merge-batch8-1.log`), and no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`.  `tests/verified/run.sh` exits 0 (`opus-verified-tests-25.log`), and the 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`).
+
+## 2026-10-14: The kernel check per function: measurements and design (track `ports`)
+
+The bytes theorem that `verified_compile` adds proves `(encode m).isOk` and the bound on each function's locals with two `decide +kernel` checks over the whole module, and each file theorem, such as `ExpFile.exp_file`, compares `encode m` with the file's bytes in one more.  One kernel check holds its whole evaluation, so its memory grows with the module, and `tests/verified/run.sh` has no file theorem for `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`.  The user decided on 2026-10-12 to check one function at a time.  This item was the next step of track `ports`, and it stayed open after the user stopped the agents on 2026-10-14 until the user asked about it.  The probes below ran against the module `Lgamma` of the eighth integration (`2f4cb07d`).  Each ran under `tools/leanrun --memory-high 8G` with a sampler of the anonymous resident memory of the Lean process (`build/transcendentals/diag/peak.sh`).
+
+| Probe (`build/transcendentals/diag/`) | Peak anonymous memory | Time |
+|---|---|---|
+| The import of `Verified.Examples.Lgamma` alone (`PerFun0`) | 0.15 GB | 4 s |
+| `(encode m).isOk`, the whole module (`PerFun2`) | 6.6 GB | 40 s |
+| `m.funcs.length = 45` and `(functionBody m.funcs[38]!).isOk`, the largest function (`PerFun1`) | 1.6 GB | 12 s |
+| `(functionBody m.funcs[k]!).isOk` for each of the 45 functions, one theorem each, one file (`PerFun3`) | 1.7 GB | 38 s |
+| The data section and the sections other than the code, two theorems (`PerFun4`) | 0.9 GB | 9 s |
+| The bytes of function 38 against a literal of its 3,405 bytes (`PerFun5`) | 1.7 GB | 11 s |
+
+The kernel evaluates only the element of `m.funcs` that a check reads: `Prog.functions` builds the list with appends whose elements stay unevaluated, so the check of function `k` runs the code generator for that function alone.  The memory of one theorem's check is released before the next, so 45 checks in one file peak at the largest one.  A native evaluation of function 38's encoding with `#eval` takes under a second, and the reflector adds its definitions with `addAndCompile`, so the command can evaluate the encoding itself.
+
+The design has four parts.  First, a relation `Writes result bytes`, that `result = .ok output` with `output.val = bytes`, beside `Produces`, with lemmas for `items`, `vector`, `sectionBytes`, `dataSection`, `module`, and `encode`, and a lemma that builds `List.Forall₂` from facts at each index `l[k]!`.  Second, `verified_compile` evaluates the encoding natively and adds the bytes of each function body and of the other parts of the module as literal constants, a theorem per function by `decide +kernel` that the body writes its literal and that its locals are within `Decoder.maxLocals`, and one theorem for the other sections and the data.  Third, the command assembles `encode m = .ok ⟨encoding.toArray⟩` for the literal `encoding` of the whole module, and the bytes theorem keeps its statement, with `decode_encode` and the locals bounds in place of `round_trip`'s two checks.  Fourth, a file theorem becomes the comparison of two literals, the file's bytes and `encoding`, and `run.sh` gains entries for the four modules.
+
+The review of the design found five points.  The kernel still checks every claim, and the literals from the native evaluation are inputs to those checks, so the trusted base does not change.  The statements of the bytes theorems stay the same, so the theorem modules that use them need no change, but every module that calls `verified_compile` rebuilds, and the 44 files of `run.sh` must stay byte-identical.  The per-function claims read `m.funcs[k]!` and the literal `bodies[k]!`, so the reflector never builds the terms of the elements, and the lemma for `List.Forall₂` needs only `m.funcs.length = bodies.length`, a check of the spine.  The data section and the other sections take 0.9 GB for `Lgamma`, and the tables of `Erfc` and `Tgamma` must be measured; a theorem per data segment is the fallback.  The literal of the file theorem must have the form that `binary_file%` gives, `toExpr` of the bytes, so that the kernel compares two equal terms by their structure.
+
+- [x] Measure one function, all functions, and the other parts of `Lgamma`.
+- [x] `LeanExe/Encoding/Completeness/Writes.lean`: `Writes` and its lemmas.
+- [x] `verified_compile`: the literals, the theorems per function and for the other parts, and the bytes theorem from them.
+- [x] The file theorems of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, and their entries in `run.sh`.
+- [ ] `lake build Verified`, `run.sh` with byte-identical files, the peaks of the four modules' builds before and after, the journal, the plan, and the integration.
+
+## 2026-10-14: The kernel check per function: implementation (track `ports`)
+
+The design of the previous entry is implemented on branch `w/perfun`, from `911abb51`.  `LeanExe/Encoding/Completeness/Writes.lean` defines `Writes result bytes` and its lemmas for `items`, the vectors, the sections, the data section, and the module, and `encode_of_parts` assembles `encode m = .ok ⟨encoding.toArray⟩` and the bound on each function's locals from the claims `restOk`, `dataOk`, `codesOk`, and one `funcOk` per function.  `encodeParts` computes the bytes of the sections, of each function body, and of the data.  `verified_compile` evaluates the module with `evalModule`, which reads the compiled constant through `Environment.evalConst`, and adds the three results as literal definitions without compiled code (`p.sections`, `p.bodies`, `p.data`).  It then adds `p.rest_ok`, `p.data_ok`, `p.funcs_count`, `p.funcs_length`, `p.codes_ok`, and `p.func_ok_k` for each function `k`, each by `decide +kernel`, and `p.encoded`, and the bytes theorem `p.bytes` keeps its statement, with `decode_encode` in place of `round_trip`'s two checks of the whole module.  The native evaluation only supplies the literals, and the kernel checks every claim about them, so the trusted base does not change.
+
+`LeanExe.Pipeline.encode_eq_of_encoding` turns a file theorem into a comparison of the literal `p.encoding` with the file's bytes.  The new file theorems `BesselFile`, `TgammaFile`, `LgammaFile`, and `ErfcFile` use it, and `tests/verified/run.sh` emits `bessel.wasm`, `tgamma.wasm`, `lgamma.wasm`, and `erfc.wasm` and checks the four theorems.  The full build (`opus-perfun-full-2.log`, in `build/transcendentals`) ran 9,954 jobs in 20,578 s with a peak of 5,783 MiB of anonymous memory, with no error and no `sorryAx` or `Lean.ofReduceBool` in an axiom report.  `run.sh` (`opus-perfun-run-1.log`) passed 15,837 tests with no failure, and its 44 earlier files are byte-identical to those of `e42b5c22`.
+
+| Module | Build before | Build after | File theorem |
+|---|---|---|---|
+| `Bessel` | 4.5 GB | 1.0 GB | 0.9 GB, 7 s |
+| `Tgamma` | 5.6 GB | 1.9 GB, 109 s | 1.1 GB, 8 s |
+| `Lgamma` | 7.1 GB | 2.1 GB, 104 s | 1.3 GB, 9 s |
+| `Erfc` | 5.25 GB | 2.7 GB, 74 s | 1.2 GB, 9 s |
+
+The figures are peaks of anonymous memory under `tools/leanrun`, and every module and file theorem now fits the runner's default limit of 4 GB.  The probe files in `build/transcendentals/diag` (`PerFun*.lean`, `DeepProbe*.lean`, `files.sh`, `two.sh`) are deleted, and their logs stay.  The documents of the four functions and `transcendentals.md` describe the file theorems.
+
+- [x] `Writes` and its lemmas.
+- [x] `verified_compile`: the literals, the theorems per function and for the other parts, and the bytes theorem from them.
+- [x] The file theorems of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, and their entries in `run.sh`.
+- [x] `lake build Verified`, `run.sh` with byte-identical files, the peaks, and the journal.
+- [ ] The ninth integration.

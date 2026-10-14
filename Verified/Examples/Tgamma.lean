@@ -22,9 +22,8 @@ arithmetic shift.  `roundeven_finite` adds and subtracts `2 ^ 52`, which rounds 
 with the same result.  The dialect has no floating-point flags and no `errno`, so `raise_underflow`
 and the assignments to `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
-`verified_compile` call at the end of the module needs about 5.6 GB, more than the runner's
-default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more.  The
-journal records the measurements.  `TgammaAccuracy.lean` checks the results against a reference computed with Lean's
+`verified_compile` call at the end of the module checks the encoding one function at a time and
+needs about 1.9 GB.  The journal records the measurements.  `TgammaAccuracy.lean` checks the results against a reference computed with Lean's
 integers. -/
 
 namespace Verified.Examples.Tgamma

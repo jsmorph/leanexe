@@ -11,6 +11,7 @@ import LeanExe.Encoding
 import LeanExe.Encoding.Completeness.Basic
 import LeanExe.Encoding.Completeness.Instructions
 import LeanExe.Encoding.Completeness.Modules
+import LeanExe.Encoding.Completeness.Writes
 import LeanExe.Encoding.Containers
 import LeanExe.Encoding.Correctness
 import LeanExe.Encoding.Decode
