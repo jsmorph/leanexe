@@ -79,6 +79,7 @@ import Verified.Examples.BesselJ0Theorem
 import Verified.Examples.BesselJ1Theorem
 import Verified.Examples.BesselY0Theorem
 import Verified.Examples.BesselY1Theorem
+import Verified.Examples.BesselBytes
 import Verified.Examples.FmaSpecTheorem
 import Verified.Examples.LgammaApprox
 import Verified.Examples.LgammaSpecial
