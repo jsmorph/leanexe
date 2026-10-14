@@ -22,10 +22,9 @@ arithmetic shift.  `roundeven_finite` adds and subtracts `2 ^ 52`, which rounds 
 with the same result.  The dialect has no floating-point flags and no `errno`, so `raise_underflow`
 and the assignments to `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
-`verified_compile` call at the end of the module is commented out: it waits for a change of the
-reflector, whose time and memory for a function grow faster than linearly with its number of `let`
-bindings, so that this module's call exceeds the build's memory limit.  The journal records the
-measurements.  `TgammaAccuracy.lean` checks the results against a reference computed with Lean's
+`verified_compile` call at the end of the module needs about 5.6 GB, more than the runner's
+default limit, so a build of this module takes `tools/leanrun --memory-high 8G` or more.  The
+journal records the measurements.  `TgammaAccuracy.lean` checks the results against a reference computed with Lean's
 integers. -/
 
 namespace Verified.Examples.Tgamma
@@ -2089,10 +2088,10 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
 def tgamma (x : Float) : Float :=
   tgammaWith dbTable accurateTable smallTable mainTable logdTable sinpidTable expdTable asymTable x
 
--- verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
---  Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
---  Fma.fmaBits, Fma.fma, entry, fastTwoSum, twoSum, fastSum, sumDD, mulDD, mulDD3, mulDDD, polyDDD,
---  splt, sprod, poly3, roundEven, floorF, toWord, sar, nonPositive, asLogd, asSinpid, asExpd,
---  asLgammaAsym, database, accurateRange, accurate, tgammaWith, tgamma]
+verified_compile compiled := [Fma.msb64, Fma.msb128, Fma.mul128, Fma.shl128, Fma.shr128,
+ Fma.lowBits128, Fma.sticky128, Fma.bit128, Fma.lt128, Fma.add128, Fma.sub128, Fma.roundPack,
+ Fma.fmaBits, Fma.fma, entry, fastTwoSum, twoSum, fastSum, sumDD, mulDD, mulDD3, mulDDD, polyDDD,
+ splt, sprod, poly3, roundEven, floorF, toWord, sar, nonPositive, asLogd, asSinpid, asExpd,
+ asLgammaAsym, database, accurateRange, accurate, tgammaWith, tgamma]
 
 end Verified.Examples.Tgamma

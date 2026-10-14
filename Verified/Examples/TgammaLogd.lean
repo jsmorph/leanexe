@@ -186,42 +186,31 @@ theorem rWord_lt (k : ℕ) (w : UInt64) (h : rWord k w = true) : w.toNat < 2 ^ 6
 #print axioms ix131
 
 set_option maxHeartbeats 4000000 in
-/-- **`asLogd` within `2^-69 + |log x| 2^-78` of `log x`** for every positive normal `x`, with the
-low part below `2^-22 + |lh|/2^52`. -/
-theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : Float)
-    (hx : Finite x.toBits) (hpos : 0 < value x.toBits) (hnorm : 1 ≤ Wasm.IEEE64.exponent x.toBits) :
-    Finite (Tgamma.asLogd Tgamma.logdTable x).1.toBits ∧
-      Finite (Tgamma.asLogd Tgamma.logdTable x).2.toBits ∧
-      |value (Tgamma.asLogd Tgamma.logdTable x).1.toBits +
-          value (Tgamma.asLogd Tgamma.logdTable x).2.toBits - Real.log (value x.toBits)| ≤
-        1 / 2 ^ 69 + |Real.log (value x.toBits)| / 2 ^ 78 ∧
-      |value (Tgamma.asLogd Tgamma.logdTable x).2.toBits| ≤
-        1 / 2 ^ 22 + |value (Tgamma.asLogd Tgamma.logdTable x).1.toBits| / 2 ^ 52 := by
-  obtain ⟨hlt63, he1, he2, hxv⟩ := decode x hx hpos hnorm
+/-- **The core of `asLogd`**: the code after the exponent and the mantissa, for any `X = 2^E (1 + m/2^52)`
+with `|E| ≤ 1074`, which covers the normal arguments of `Tgamma.asLogd` and, after
+`Lgamma.logReduce`, the subnormal ones of `Lgamma.asLogd`. -/
+theorem logd_core (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (m : UInt64)
+    (hm52 : m.toNat < 2 ^ 52) (ed : Float) (E : ℤ)
+    (hed : CodeLib.IEEE64.Finite ed.toBits ∧ sv ed.toBits = E * 2 ^ 1074) (hEb : |E| ≤ 1074)
+    (X : ℝ) (hX : X = (2 : ℝ) ^ E * (1 + (m.toNat : ℝ) / 2 ^ 52)) :
+    let j := jOf Tgamma.logdTable m
+    let t := Float.ofBits (m ||| 0x3FF0000000000000)
+    let i1 := j >>> 5
+    let i2 := j &&& 0x1f
+    let q := logTail (entry Tgamma.logdTable (64 + i1) * entry Tgamma.logdTable (97 + i2)) t ed
+      (entry Tgamma.logdTable (130 + 2 * i1 + 1)) (entry Tgamma.logdTable (196 + 2 * i2 + 1))
+      (entry Tgamma.logdTable (130 + 2 * i1)) (entry Tgamma.logdTable (196 + 2 * i2))
+      (entry Tgamma.logdTable 260) (entry Tgamma.logdTable 261) (entry Tgamma.logdTable 262)
+      (entry Tgamma.logdTable 263)
+    Finite q.1.toBits ∧ Finite q.2.toBits ∧
+      |value q.1.toBits + value q.2.toBits - Real.log X| ≤ 1 / 2 ^ 69 + |Real.log X| / 2 ^ 78 ∧
+      |value q.2.toBits| ≤ 1 / 2 ^ 22 + |value q.1.toBits| / 2 ^ 52 := by
+  intro j t i1 i2 q
   obtain ⟨T1, T2, T3, T4, T5, T6⟩ := tab_parts tabOK_logd
   have hcoef := coefOK_logd
   unfold coefOK at hcoef
   simp only [Bool.and_eq_true, decide_eq_true_eq] at hcoef
   obtain ⟨⟨⟨⟨⟨⟨⟨hf260, hf261⟩, hf262⟩, hf263⟩, hb260⟩, hb261⟩, hb262⟩, hb263⟩ := hcoef
-  obtain ⟨q, hq⟩ : ∃ q, Tgamma.asLogd Tgamma.logdTable x = q := ⟨_, rfl⟩
-  rw [hq]
-  rw [asLogd_eq] at hq
-  extract_lets u ex ed m j t i1 i2 at hq
-  -- the exponent and the mantissa
-  have hex : ex.toNat = x.toBits.toNat / 2 ^ 52 := by
-    show (x.toBits >>> 52).toNat = _
-    rw [UInt64.toNat_shiftRight]; simp only [UInt64.reduceToNat, Nat.reduceMod, Nat.shiftRight_eq_div_pow]
-  have hed : CodeLib.IEEE64.Finite ed.toBits ∧ sv ed.toBits = ((ex.toNat : ℤ) - 1023) * 2 ^ 1074 :=
-    ed_spec ex (by rw [hex]; exact he1) (by rw [hex]; exact he2)
-  rw [hex] at hed
-  obtain ⟨E, hE⟩ : ∃ E : ℤ, E = ((x.toBits.toNat / 2 ^ 52 : ℕ) : ℤ) - 1023 := ⟨_, rfl⟩
-  rw [← hE] at hed
-  have hEb : |E| ≤ 1023 := by rw [hE, abs_le]; constructor <;> omega
-  have hm : m.toNat = x.toBits.toNat % 2 ^ 52 := by
-    show (x.toBits &&& 0xFFFFFFFFFFFFF).toNat = _
-    rw [UInt64.toNat_and, show (0xFFFFFFFFFFFFF : UInt64).toNat = 2 ^ 52 - 1 by rfl,
-      Nat.and_two_pow_sub_one_eq_mod]
-  have hm52 : m.toNat < 2 ^ 52 := by rw [hm]; omega
   have ht : CodeLib.IEEE64.Finite t.toBits ∧ value t.toBits = 1 + (m.toNat : ℝ) / 2 ^ 52 :=
     t_value m hm52
   -- the reduction
@@ -349,8 +338,8 @@ theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : F
     hed.1 hed.2 hEb (by rw [e131]; exact hh1.1) (by rw [e197]; exact hh2.1) hv1 hv2 hz1b hz2b hsmall
     (by rw [e130]; exact hg1.1) (by rw [e196]; exact hg2.1) (by rw [e130]; exact hg1.2)
     (by rw [e196]; exact hg2.2)
-  rw [hq] at hT
-  obtain ⟨hqf1, hqf2, hqe, hql⟩ := hT
+  obtain ⟨hqf1, hqf2, hqe, hql⟩ : Finite q.1.toBits ∧ Finite q.2.toBits ∧
+      |value q.1.toBits + value q.2.toBits - _| ≤ _ ∧ |value q.2.toBits| ≤ _ := hT
   refine ⟨hqf1, hqf2, ?_, hql⟩
   -- the values of the words
   rw [e130, e196, hc0, hc1, hc2, hc3, hrval] at hqe
@@ -361,36 +350,30 @@ theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : F
   rw [← hvw1, ← hvw2, ← hτ] at hqe hz
   rw [← hvw1] at hw1p
   rw [← hvw2] at hw2p
-  have hτv : τ = 1 + ((x.toBits.toNat % 2 ^ 52 : ℕ) : ℝ) / 2 ^ 52 := by rw [hτ, ht.2, hm]
+  have hτv : τ = 1 + (m.toNat : ℝ) / 2 ^ 52 := by rw [hτ, ht.2]
   have hτ1 : 1 ≤ τ := by
     rw [hτv]
-    have : (0 : ℝ) ≤ ((x.toBits.toNat % 2 ^ 52 : ℕ) : ℝ) / 2 ^ 52 :=
-      div_nonneg (Nat.cast_nonneg _) (by norm_num)
+    have : (0 : ℝ) ≤ (m.toNat : ℝ) / 2 ^ 52 := div_nonneg (Nat.cast_nonneg _) (by norm_num)
     linarith
   have hτ2 : τ < 2 := by
     rw [hτv]
-    have h1 : ((x.toBits.toNat % 2 ^ 52 : ℕ) : ℝ) < 2 ^ 52 := by
-      exact_mod_cast Nat.mod_lt _ (by positivity)
-    have h2 : ((x.toBits.toNat % 2 ^ 52 : ℕ) : ℝ) / 2 ^ 52 < 1 := by
+    have h1 : (m.toNat : ℝ) < 2 ^ 52 := by exact_mod_cast hm52
+    have h2 : (m.toNat : ℝ) / 2 ^ 52 < 1 := by
       rw [div_lt_one (by positivity)]; exact h1
     linarith
   -- `log x = E log 2 + log τ`
-  have hEr : (E : ℝ) = ((x.toBits.toNat / 2 ^ 52 : ℕ) : ℝ) - 1023 := by
-    rw [hE, Int.cast_sub, Int.cast_natCast, Int.cast_ofNat]
-  have hlogx : Real.log (value x.toBits) = E * Real.log 2 + Real.log τ := by
-    rw [hxv, ← hτv, Real.log_mul (by positivity) (by linarith), Real.log_div (by positivity)
-      (by positivity), Real.log_pow, Real.log_pow, hEr]
-    push_cast; ring
+  have hlogx : Real.log X = E * Real.log 2 + Real.log τ := by
+    rw [hX, ← hτv, Real.log_mul (zpow_ne_zero _ two_ne_zero) (by linarith), Real.log_zpow]
   have hlτ0 : 0 ≤ Real.log τ := Real.log_nonneg hτ1
   have hlτ2 : Real.log τ < Real.log 2 := Real.log_lt_log (by linarith) hτ2
   have hl2a := Real.log_two_gt_d9
   have hl2b := Real.log_two_lt_d9
-  have hEl : |(E : ℝ)| * 0.6931471803 ≤ |Real.log (value x.toBits)| + 0.6931471808 := by
-    have h0 : (E : ℝ) * Real.log 2 = Real.log (value x.toBits) - Real.log τ := by
+  have hEl : |(E : ℝ)| * 0.6931471803 ≤ |Real.log X| + 0.6931471808 := by
+    have h0 : (E : ℝ) * Real.log 2 = Real.log X - Real.log τ := by
       rw [hlogx]; ring
-    have h1 : |(E : ℝ) * Real.log 2| ≤ |Real.log (value x.toBits)| + Real.log 2 := by
+    have h1 : |(E : ℝ) * Real.log 2| ≤ |Real.log X| + Real.log 2 := by
       rw [h0]
-      have := abs_sub (Real.log (value x.toBits)) (Real.log τ)
+      have := abs_sub (Real.log X) (Real.log τ)
       rw [abs_of_nonneg hlτ0] at this
       linarith
     rw [abs_mul, abs_of_pos (by linarith : (0 : ℝ) < Real.log 2)] at h1
@@ -435,7 +418,7 @@ theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : F
   rw [hzc] at hqe
   rw [hlog1] at hK
   -- the sum
-  obtain ⟨Lx, hLx⟩ : ∃ L, L = Real.log (value x.toBits) := ⟨_, rfl⟩
+  obtain ⟨Lx, hLx⟩ : ∃ L, L = Real.log X := ⟨_, rfl⟩
   rw [← hLx] at hEl hlogx ⊢
   have hEe : |(E : ℝ)| * (1 / 2 ^ 80) ≥ |(E : ℝ) * ((11908177887 / 2 ^ 34 +
       value (Float.ofBits 0x3DB1CF79ABC9E3B4).toBits) - Real.log 2)| := by
@@ -452,6 +435,45 @@ theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : F
   · linarith only [hq1, hK2, hT11, hT21, hEe1, hlogx, hEl, hE0, hL0]
   · linarith only [hq2, hK1, hT12, hT22, hEe2, hlogx, hEl, hE0, hL0]
 
+set_option maxHeartbeats 1000000 in
+/-- **`asLogd` within `2^-69 + |log x| 2^-78` of `log x`** for every positive normal `x`, with the
+low part below `2^-22 + |lh|/2^52`. -/
+theorem asLogd_spec (hF : FmaSpec.FmaNearest) (hL : TgammaApprox.LogFact) (x : Float)
+    (hx : Finite x.toBits) (hpos : 0 < value x.toBits) (hnorm : 1 ≤ Wasm.IEEE64.exponent x.toBits) :
+    Finite (Tgamma.asLogd Tgamma.logdTable x).1.toBits ∧
+      Finite (Tgamma.asLogd Tgamma.logdTable x).2.toBits ∧
+      |value (Tgamma.asLogd Tgamma.logdTable x).1.toBits +
+          value (Tgamma.asLogd Tgamma.logdTable x).2.toBits - Real.log (value x.toBits)| ≤
+        1 / 2 ^ 69 + |Real.log (value x.toBits)| / 2 ^ 78 ∧
+      |value (Tgamma.asLogd Tgamma.logdTable x).2.toBits| ≤
+        1 / 2 ^ 22 + |value (Tgamma.asLogd Tgamma.logdTable x).1.toBits| / 2 ^ 52 := by
+  obtain ⟨hlt63, he1, he2, hxv⟩ := decode x hx hpos hnorm
+  obtain ⟨q, hq⟩ : ∃ q, Tgamma.asLogd Tgamma.logdTable x = q := ⟨_, rfl⟩
+  rw [hq]
+  rw [asLogd_eq] at hq
+  extract_lets u ex ed m j t i1 i2 at hq
+  have hex : ex.toNat = x.toBits.toNat / 2 ^ 52 := by
+    show (x.toBits >>> 52).toNat = _
+    rw [UInt64.toNat_shiftRight]; simp only [UInt64.reduceToNat, Nat.reduceMod, Nat.shiftRight_eq_div_pow]
+  have hed : CodeLib.IEEE64.Finite ed.toBits ∧ sv ed.toBits = ((ex.toNat : ℤ) - 1023) * 2 ^ 1074 :=
+    ed_spec ex (by rw [hex]; exact he1) (by rw [hex]; exact he2)
+  rw [hex] at hed
+  obtain ⟨E, hE⟩ : ∃ E : ℤ, E = ((x.toBits.toNat / 2 ^ 52 : ℕ) : ℤ) - 1023 := ⟨_, rfl⟩
+  rw [← hE] at hed
+  have hEb : |E| ≤ 1074 := by rw [hE, abs_le]; constructor <;> omega
+  have hm : m.toNat = x.toBits.toNat % 2 ^ 52 := by
+    show (x.toBits &&& 0xFFFFFFFFFFFFF).toNat = _
+    rw [UInt64.toNat_and, show (0xFFFFFFFFFFFFF : UInt64).toNat = 2 ^ 52 - 1 by rfl,
+      Nat.and_two_pow_sub_one_eq_mod]
+  have hm52 : m.toNat < 2 ^ 52 := by rw [hm]; omega
+  have hX : value x.toBits = (2 : ℝ) ^ E * (1 + (m.toNat : ℝ) / 2 ^ 52) := by
+    rw [hxv, hm, hE, zpow_sub₀ two_ne_zero, zpow_natCast]
+    norm_num
+  have h := logd_core hF hL m hm52 ed E hed hEb (value x.toBits) hX
+  rw [← hq]
+  exact h
+
+#print axioms logd_core
 #print axioms asLogd_spec
 
 end Verified.Examples.TgammaLogd

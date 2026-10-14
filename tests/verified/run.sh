@@ -50,6 +50,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
     Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
     Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
+    Verified.Examples.ParseFloat:compiled.module:parsefloat \
     Verified.Examples.Drone:compiled.module:drone; do
   IFS=: read -r module constant name <<<"$entry"
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
@@ -64,7 +65,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
-    pow:PowBytes:PowFile; do
+    pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
@@ -175,3 +176,6 @@ tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.l
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FmaAccuracy.lean || exit 1
 # The limb arithmetic of the string conversions against Lean's natural numbers, in native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/UscaleCheck.lean || exit 1
+# The decimal parsers and printers against references computed with Lean's integers, in native Lean.
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ParseFloatAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PrintFloatAccuracy.lean || exit 1

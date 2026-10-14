@@ -26,9 +26,8 @@ special values are POSIX's: `j0 (±∞) = j1 (±∞) = 0`, `y0`, `y1`, and `yn` 
 negative `x` NaN, and NaN gives NaN.  The `while` loop of `jn` is a `LeanExe.repeatWhile` with
 `2 ^ 32 - 1` steps of fuel, more than it can take, and the constants are the bit patterns that
 fdlibm's comments give, which match its decimal literals.  The `verified_compile` call at the end of
-the module is commented out: it waits for a change of the reflector, whose time and memory for a
-function grow faster than linearly with its number of `let` bindings, so that this module's call
-exceeds the build's memory limit.  The journal records the measurements.  `BesselAccuracy.lean`
+the module needs about 4.5 GB, more than the runner's default limit, so a build of this module
+takes `tools/leanrun --memory-high 8G` or more.  The journal records the measurements.  `BesselAccuracy.lean`
 checks the results against references computed with Lean's integers. -/
 
 namespace Verified.Examples.Bessel
@@ -506,10 +505,10 @@ def jn (n : UInt64) (x : Float) : Float :=
 def yn (n : UInt64) (x : Float) : Float :=
   ynWith Trig.invPi Trig.halfPi Log.logTable Log.logTable2 j0Table j1Table n x
 
--- verified_compile compiled := [Trig.kernelSin, Trig.kernelCos, Trig.remSmall, Trig.remMedium,
---  Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop, Trig.shiftTop, Trig.remLarge, Trig.remPio2,
---  Trig.sinWith, Trig.cosWith, Log.logNear1, Log.logCore, Log.logWith, entry, rangeOf, pAsym,
---  qRatio, invsqrtpi, tpi, asym0, j0With, y0With, asym1, j1With, y1With, order, phaseCos,
---  phaseSin, jnBackward, jnWith, ynWith, j0, j1, y0, y1, jn, yn]
+verified_compile compiled := [Trig.kernelSin, Trig.kernelCos, Trig.remSmall, Trig.remMedium,
+ Trig.mul64, Trig.clz64, Trig.window, Trig.mulTop, Trig.shiftTop, Trig.remLarge, Trig.remPio2,
+ Trig.sinWith, Trig.cosWith, Log.logNear1, Log.logCore, Log.logWith, entry, rangeOf, pAsym,
+ qRatio, invsqrtpi, tpi, asym0, j0With, y0With, asym1, j1With, y1With, order, phaseCos,
+ phaseSin, jnBackward, jnWith, ynWith, j0, j1, y0, y1, jn, yn]
 
 end Verified.Examples.Bessel
