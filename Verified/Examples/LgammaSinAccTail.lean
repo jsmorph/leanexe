@@ -435,6 +435,106 @@ theorem combine_r (hF : FmaSpec.FmaNearest) (d sh sl : Float) (C2 : Float × Flo
       linarith only [k9]
 
 
+set_option maxHeartbeats 1000000 in
+/-- **The steps of the accurate sine after its kernels**: `R` within `|d|/2^101 + sh/2^101 +
+2^-1059` of `(sh + sl) + d ((ch + cl) Q + d P (sh + sl))`, with its low part at most `2^-47` of its
+high part. -/
+theorem tail_spec (hF : FmaSpec.FmaNearest) (d sh sl ch cl P1 P2 Q1 Q2 : Float)
+    (hd : Finite d.toBits) (hsh : Finite sh.toBits) (hsl : Finite sl.toBits)
+    (hch : Finite ch.toBits) (hcl : Finite cl.toBits) (hp1 : Finite P1.toBits)
+    (hp2 : Finite P2.toBits) (hq1 : Finite Q1.toBits) (hq2 : Finite Q2.toBits)
+    (hD : |value d.toBits| ≤ 1 / 2) (hSh0 : 0 ≤ value sh.toBits) (hSh1 : value sh.toBits ≤ 1)
+    (hslb : |value sl.toBits| ≤ value sh.toBits / 2 ^ 53) (hCh0 : 0 ≤ value ch.toBits)
+    (hCh1 : value ch.toBits ≤ 1) (hclb : |value cl.toBits| ≤ value ch.toBits / 2 ^ 53)
+    (hP1 : |value P1.toBits| ≤ 1 / 3299) (hP2 : |value P2.toBits| ≤ 1 / 2 ^ 61)
+    (hQ1 : 245 / 10 ^ 4 ≤ value Q1.toBits ∧ value Q1.toBits ≤ 2456 / 10 ^ 5)
+    (hQ2 : |value Q2.toBits| ≤ 1 / 2 ^ 55)
+    (hA : value ch.toBits = 0 ∨ (1 / 2 ^ 60 ≤ value ch.toBits ∧ value sh.toBits ≤ 100 * value ch.toBits))
+    (hB : value sh.toBits = 0 ∨ (1 / 2 ^ 60 ≤ value sh.toBits ∧
+      2 ^ 53 * |value sl.toBits| + value ch.toBits * (1535 / 10 ^ 4) ≤ value sh.toBits * (69 / 10)))
+    (hZ : value sh.toBits = 0 → 1 / 2 ^ 60 ≤ value ch.toBits ∧ 1 / 2 ^ 47 ≤ |value d.toBits|) :
+    let R := sinAccTail d sh sl ch cl P1 P2 Q1 Q2
+    Finite R.1.toBits ∧ Finite R.2.toBits ∧
+      |value R.1.toBits + value R.2.toBits - (value sh.toBits + value sl.toBits +
+          value d.toBits * ((value ch.toBits + value cl.toBits) * (value Q1.toBits + value Q2.toBits) +
+            value d.toBits * (value P1.toBits + value P2.toBits) *
+              (value sh.toBits + value sl.toBits)))| ≤
+        |value d.toBits| / 2 ^ 101 + value sh.toBits / 2 ^ 101 + 1 / 2 ^ 1059 ∧
+      |value R.2.toBits| ≤ |value R.1.toBits| / 2 ^ 47 := by
+  intro R
+  obtain ⟨a1, a2, ae, aa, ab⟩ := stepA hF d P1 P2 hd hp1 hp2 hD hP1 hP2
+  have hD0 := abs_nonneg (value d.toBits)
+  obtain ⟨b1, b2, be, ba, bb⟩ := stepB hF sh sl _ _ hsh hsl a1 a2 (value sh.toBits) rfl hSh0 hSh1
+    hslb (by linarith [(by norm_num : (1 : ℝ) / 2 / 3298 ≤ 1 / 6596)])
+    (by linarith [(by norm_num : (1 : ℝ) / 2 / 2 ^ 60 ≤ 1 / 2 ^ 61)])
+  obtain ⟨c1, c2, ce, ca, cb, clo⟩ := stepC hF ch cl Q1 Q2 hch hcl hq1 hq2 (value ch.toBits) rfl
+    hCh0 hCh1 hclb hQ1 hQ2
+  obtain ⟨g1, g2, ge, ga, gb, glo⟩ := combine_c2 (mulDD ch cl Q1 Q2)
+    (mulDD sh sl (mulDDD d P1 P2).1 (mulDDD d P1 P2).2) c1 c2 b1 b2 (value ch.toBits)
+    (value sh.toBits) _ _ hCh0 hCh1 hSh0 hSh1 ce ca cb clo be ba bb hA
+  obtain ⟨r1, r2, re, rl⟩ := combine_r hF d sh sl _ hd hsh hsl g1 g2 (value ch.toBits) _ hD hCh0
+    hCh1 hSh0 hSh1 hslb ge ga gb glo hB hZ
+  -- the results for `R`, which is the same term
+  have r1' : Finite R.1.toBits := r1
+  have r2' : Finite R.2.toBits := r2
+  have rl' : |value R.2.toBits| ≤ |value R.1.toBits| / 2 ^ 47 := rl
+  have re' : |value R.1.toBits + value R.2.toBits - (value sh.toBits + value sl.toBits +
+      value d.toBits * ((value ch.toBits + value cl.toBits) * (value Q1.toBits + value Q2.toBits) +
+        (value sh.toBits + value sl.toBits) * (value (mulDDD d P1 P2).1.toBits +
+          value (mulDDD d P1 P2).2.toBits)))| ≤
+      |value d.toBits| / 2 ^ 102 + value sh.toBits / 2 ^ 102 + 1 / 2 ^ 1060 := re
+  clear r1 r2 rl re
+  refine ⟨r1', r2', ?_, rl'⟩
+  -- the error of `A` through `d (sh + sl)`
+  have hS : |value sh.toBits + value sl.toBits| ≤ 2 := by
+    have := abs_add_le (value sh.toBits) (value sl.toBits)
+    rw [abs_of_nonneg hSh0] at this
+    linarith [div_le_div_of_nonneg_right hSh1 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)]
+  have hDA : |value d.toBits * ((value sh.toBits + value sl.toBits) *
+      (value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits)) -
+      value d.toBits * (value d.toBits * (value P1.toBits + value P2.toBits) *
+        (value sh.toBits + value sl.toBits))| ≤ 2 * (|value d.toBits| / 2 ^ 113 + 1 / 2 ^ 1073) := by
+    rw [show value d.toBits * ((value sh.toBits + value sl.toBits) *
+        (value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits)) -
+        value d.toBits * (value d.toBits * (value P1.toBits + value P2.toBits) *
+          (value sh.toBits + value sl.toBits)) =
+        (value sh.toBits + value sl.toBits) * (value d.toBits *
+          (value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits -
+            value d.toBits * (value P1.toBits + value P2.toBits))) by ring, abs_mul, abs_mul]
+    have k1 : |value d.toBits| * |value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits -
+        value d.toBits * (value P1.toBits + value P2.toBits)| ≤
+        |value d.toBits| / 2 ^ 113 + 1 / 2 ^ 1073 := by
+      have := mul_le_mul_of_nonneg_left ae hD0
+      have k := mul_le_mul_of_nonneg_left hD hD0
+      nlinarith [(by norm_num : (1 : ℝ) / 2 * (1 / 2 ^ 1072) ≤ 1 / 2 ^ 1073)]
+    exact mul_le_mul hS k1 (by positivity) (by norm_num)
+  have e := abs_add_le (value R.1.toBits + value R.2.toBits - (value sh.toBits + value sl.toBits +
+    value d.toBits * ((value ch.toBits + value cl.toBits) * (value Q1.toBits + value Q2.toBits) +
+      (value sh.toBits + value sl.toBits) * (value (mulDDD d P1 P2).1.toBits +
+        value (mulDDD d P1 P2).2.toBits))))
+    (value d.toBits * ((value sh.toBits + value sl.toBits) *
+      (value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits)) -
+      value d.toBits * (value d.toBits * (value P1.toBits + value P2.toBits) *
+        (value sh.toBits + value sl.toBits)))
+  rw [show value R.1.toBits + value R.2.toBits - (value sh.toBits + value sl.toBits +
+      value d.toBits * ((value ch.toBits + value cl.toBits) * (value Q1.toBits + value Q2.toBits) +
+        (value sh.toBits + value sl.toBits) * (value (mulDDD d P1 P2).1.toBits +
+          value (mulDDD d P1 P2).2.toBits))) +
+      (value d.toBits * ((value sh.toBits + value sl.toBits) *
+        (value (mulDDD d P1 P2).1.toBits + value (mulDDD d P1 P2).2.toBits)) -
+        value d.toBits * (value d.toBits * (value P1.toBits + value P2.toBits) *
+          (value sh.toBits + value sl.toBits))) =
+      value R.1.toBits + value R.2.toBits - (value sh.toBits + value sl.toBits +
+        value d.toBits * ((value ch.toBits + value cl.toBits) * (value Q1.toBits + value Q2.toBits) +
+          value d.toBits * (value P1.toBits + value P2.toBits) *
+            (value sh.toBits + value sl.toBits))) by ring] at e
+  linarith [(by norm_num : (1 : ℝ) / 2 ^ 102 + 2 / 2 ^ 113 ≤ 1 / 2 ^ 101),
+    (by norm_num : (1 : ℝ) / 2 ^ 1060 + 2 * (1 / 2 ^ 1073) ≤ 1 / 2 ^ 1059),
+    div_le_div_of_nonneg_left hSh0 (by norm_num : (0 : ℝ) < 2 ^ 101)
+      (by norm_num : (2 : ℝ) ^ 101 ≤ 2 ^ 102)]
+
+#print axioms tail_spec
+
 #print axioms stepA
 #print axioms stepB
 #print axioms stepC
