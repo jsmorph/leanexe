@@ -29023,6 +29023,8 @@ The full exponential theorem remains open.  The accepted theorem for the origina
 
 Minideb2 contributed supporting exact-arithmetic and rounding proofs.  Its later positive-branch diagnostic lacked the compiled exp import.  Its checkout lags the primary sources and was idle at this status check.  The proposed next split assigns positive scaling and compiler composition to minideb1 and exact negative-compensation arithmetic to minideb2, with one runner-controlled Lean slot per machine.  This update changes documentation.  It runs no Lean proof build or sampled test.
 
+`tools/leanrun --memory-high SIZE` sets the scope's `MemoryHigh` to SIZE, in whole gibibytes with the suffix `G`, and its `MemoryMax` to 2 GiB more.  Without the option the limits stay 4G and 6G, so every other build runs as before, and `MemorySwapMax=1G` and `CPUQuota=100%` do not change.  The runner passes the size into the scope as `LEANRUN_MEMORY_HIGH`, so that a nested call checks the inherited scope against it, and a nested call that names another size fails.  The coordinator assigned `--memory-high 10G` to the builds of `Bessel`, `Tgamma`, `Lgamma`, and `Erfc` on debtop1, which has 15 GB, one build at a time.
+
 ## 2026-10-09: Failure account and stopped GPT work
 
 
@@ -30936,6 +30938,116 @@ The `sinh` and `cosh` integration: Opus merged `w/expm1` at `b76268b2` (`be50832
 
 Four review agents checked the twenty function documents against the Lean sources at `698424f7`, the journal, the plan, the logs, and the pinned C sources, corrected the facts they could check, removed the narration of the writing and the references to the commit the documents were first written against, described the unmerged branch work by branch and commit, and fixed the language.  The documents were committed as `46f239d5` on `w/docs` and merged.  Their findings in Lean sources (the license notices of every fdlibm port and of the CORE-MATH ports, wrong docstring bounds in `Log2.lean`, `BesselAccuracy.lean`, and `Reference.lean`) are added to "Corrections found by the documentation review" in `transcendentals.md`.  The IEEE 754-2019 clause contents rest on one reading of the standard by the first documentation agent; the reviewers could not reach the paywalled text.
 
+## 2026-10-12: The cost of `verified_compile` on long functions (w/reflect)
+
+The ports of CORE-MATH's `tgamma` and `lgamma` and of fdlibm's Bessel functions did not compile: `verified_compile` on `Tgamma` ran past 35 minutes at the scope's 4 GB memory limit, and on `Bessel` past 21 minutes at 8 GB of resident memory.  The ports track measured the cause with small probes, each a function of `n` chained bindings, on minideb2 and debtop1 (the `w/ports` journal, section "A software fused multiply-add, CORE-MATH's gamma functions, and fdlibm's Bessel functions", has the first measurements).  With `set_option debug.skipKernelTC true` the whole command elaborates in 0.24 to 0.41 s for 12 to 24 bindings, and with `Elab.async` off a separate kernel check of each declaration showed that every one takes under 0.1 s except `p.bytes._proof_2`, the `decide +kernel` proof that `Wasm.Encoding.encode p.module` succeeds.  For it the kernel runs the code generator `compile p.program` by reduction, and its time grew from 1.42 s at 10 nested bindings to 11.0 s at 30, at 2.7 GB, while 40 bindings did not finish in 15 minutes.
+
+The cause is in the code generator, `Expr.code` in [the compiler](Verified/Compile.lean): the set of variables live after a subexpression is a closure that each binding, branch, and call extends with `fun i => live i || body.uses (i + 1)`, and `Expr.uses` walks the subexpression for each index it is asked about.  The kernel memoizes no part of that work, so every query of `live i` at depth `k` walks the rest of the function once for each of the `k` enclosing closures, and the generator asks at every variable, release, and call.  The kernel's unfolding counts at 12, 16, and 20 bindings agree: `Expr.uses` 1,019, 2,317, and 4,415 times.  A first change, which the coordinator chose before this measurement, keeps the expression of the context in the reflector's `Ctx` and extends it with one `List.cons` per binding (commit `a95ae82b`, "Share the context expressions in the reflector"): it makes the program constants linear, 2,048 and 3,968 objects at 10 and 20 pair bindings against 5,309 and 15,869, but leaves the time almost unchanged.
+
+The second change computes the variables a subexpression reads as data.  [The source language](Verified/Source.lean) adds `Expr.useMask`, a `Nat` whose bit `i` is set when the subexpression reads variable `i`, `argsMask` for the arguments of a call, and `Expr.usesFast e i := e.useMask.testBit i`, with `Expr.usesFast_eq : e.usesFast i = e.uses i`, proved by induction on the expression with `Nat.testBit_or`, `Nat.testBit_shiftRight`, and `testBit_one_shiftLeft`.  The code generator calls `usesFast` where it called `uses`, in `callMoves`, `Expr.code`, and `bodyFunction`, so it computes the same live sets and the same code, and the kernel computes each mask once per subexpression.  The proofs in `Verified/Correct.lean` and `Verified/Budget.lean` reason about `uses` as before: the simp sets that unfold `Expr.code`, `callMoves`, or `bodyFunction` add `Expr.usesFast_eq` where it rewrites a term, 21 sites in `Correct.lean` and 22 in `Budget.lean`, and the build leaves no warning about the lemma.
+
+| Probe (debtop1, the byte theorem's check) | Before | After |
+|---|---|---|
+| 10 chained bindings | | 1.73 s, 0.80 GB |
+| 20 chained bindings | | 2.03 s, 0.80 GB |
+| 30 chained bindings | 11.0 s, 2.7 GB (minideb2) | 2.47 s, 0.87 GB |
+| 40 chained bindings | did not finish in 15 minutes | 2.93 s, 0.92 GB |
+| Three functions of 10 bindings | 2.4 s, 1.0 GB (minideb2) | 2.31 s, 0.84 GB |
+
+The acceptance runs on debtop1: `lake build Verified` passed with all 9,362 jobs (`build/transcendentals/reflect-accept-build-1.log`), and the build leaves no warning about `Expr.usesFast_eq`.  The 43 modules that `tests/verified/run.sh` emits, written with `tools/Emit.lean`, have the same SHA-256 hashes after the change as before it (`build/reflect/emit-before.sha256` and `emit-after.sha256`), as the unchanged live sets require.  The theorem modules `ExpTheorem`, `LogTheorem`, `TrigTheorem`, `TanTheorem`, `Exp2Bytes`, `Log2Theorem`, `Log10Theorem`, `TanhBytes`, `ErfTheorem`, `Log1pBytes`, `AtanBytes`, `AsinBytes`, and `SinhBytes` build (`build/transcendentals/reflect-accept-<module>-1.log`).
+
+- [x] Merge `transcendentals` (`bb9002c0`) into `w/reflect`.
+- [x] Commit the shared contexts separately (`a95ae82b`).
+- [x] Compute the reads of each subexpression as a bitmask and repair the proofs.
+- [x] Acceptance: probes, `lake build Verified`, emitted modules byte for byte, and theorem modules.
+- [x] The elaboration times of `Repeat`, `Trig`, `Exp`, and `Log`, and the pair-binding probes.
+
+The elaboration of each module with `lake env lean` on debtop1, before the two changes and after them, by the shell's user time and the scope's CPU time and memory peak from systemd's accounting (`build/reflect/before-<module>.log` and `build/transcendentals/reflect-time-<module>-1.log`):
+
+| Module | Before | After |
+|---|---|---|
+| `Trig` | 42 s user, 44 s CPU, 3.9 GB | 29 s user, 30 s CPU, 1.9 GB |
+| `Exp` | 10 s user, 11 s CPU, 1.1 GB | 10 s user, 11 s CPU, 1.0 GB |
+| `Log` | 15 s user, 17 s CPU, 1.4 GB | 13 s user, 15 s CPU, 1.2 GB |
+| `Repeat` | stopped at 60 minutes, swapping at 6 GB of resident memory | stopped at 60 minutes, 3,600 s of CPU time at 2.5 to 2.6 GB |
+| Probe, 10 pair bindings | 8.3 s user, 1.0 GB | 5.8 s user, 0.82 GB (2.1 s for the byte theorem) |
+| Probe, 20 pair bindings | 17.3 s user, 1.8 GB | 7.5 s user, 0.91 GB (2.7 s) |
+| Probe, 40 pair bindings | stopped after 22 minutes at 8 GB | 11.9 s user, 1.0 GB (4.9 s) |
+
+`Repeat` stays slow for another reason: after the change it runs at full CPU without memory pressure (`reflect-time-Repeat-2.log`, watched each minute), while before it swapped.  The liveness change does not address its cost, whose cause remains unmeasured.  The cold baseline of 2026-10-09 recorded 1,684 s for it on minideb1.
+- [ ] `verified_compile` in `Tgamma`, `Lgamma`, `Bessel`, and `Erfc`, with their documents.
+
+The liveness change does not let these four modules compile.  With its `verified_compile` call enabled, `Tgamma` rose to 4.2 GB of memory in its scope within 2 minutes and then gained almost no CPU time, and the build was stopped (`build/transcendentals/reflect-compile-Tgamma-1.log`).  Probes divided the cost.  With `debug.skipKernelTC` the whole call elaborates in 29 s at 0.86 GB (`reflect-tgk-1.log`), and the subsets of its functions without `tgammaWith` compile in about a minute at 3.1 GB, while every function but the wrapper still stalls (`reflect-tgp1-1.log` to `reflect-tgp4-1.log`).  The check `(Wasm.Encoding.encode Tgamma.compiled.module).isOk = true` by `decide +kernel`, alone after a compilation without kernel checks, stalls at 4.3 GB (`reflect-tgk3-1.log`), so the remaining cost is this check, in which the kernel evaluates the code generator and then the encoder.  The section on the kernel's cost of the encoding check divides it.
+
+| Module | Encoded bytes | Kernel check of the encoding |
+|---|---|---|
+| `Fma` | 4,255 | 8.3 s |
+| `Exp` | 4,451 | |
+| `Trig` | 5,842 | 10.6 s (1.9 GB peak with `Fma`'s) |
+| `Bessel` | 18,853 | |
+| `Tgamma` | 26,286, of which 12,408 are the tables' 1,551 words | stalls at 4.3 GB |
+| `Lgamma` | 35,160 | |
+| `Erfc` | 39,368 | |
+
+The sizes come from `#eval` of the encoder on programs compiled without kernel checks (`reflect-tgk5-1.log` and `reflect-size<module>-<n>.log`).  `Lgamma` also needs a source change: its `lgamma x := (lgammaR x).1` calls a wrapper, which the reflector rejects, and a listed `lgammaFirstWith` with the tables as parameters, wrapped by `lgamma`, removes the call.  The coordinator set aside a cheaper encodability check, because the file theorems evaluate the whole encoder too, and asked for the measurements of the next section.
+- [ ] The Lean-source corrections of the documentation review.
+
+## 2026-10-12: The kernel's cost of the encoding check (w/reflect)
+
+The bytes theorem of `verified_compile` proves `(Wasm.Encoding.encode p.module).isOk = true` by `decide +kernel`, and `p.module` is `compileWith` applied to the reflected program, so one kernel check evaluates the code generator and then the encoder.  The file theorems (`<Module>File.lean`) evaluate the same terms and also compare every byte with the file, which is why the coordinator set aside a cheaper encodability predicate.  The probes on debtop1 (`build/transcendentals/enc*.lean`, logs `reflect-enc*-1.log`) separate the two parts.  A command evaluates `compiled.module` with the interpreter and defines `lit` as the resulting module literal through derived `ToExpr` instances, so that `(encode lit).isOk` measures the encoder alone, and a traversal by the size functions of `Wasm.Encoding.Size` forces the code generator's output without encoding it.  Time is the profiler's kernel time.  Memory is the peak of RssAnon plus VmSwap of the `lean` process, sampled every 0.5 s, less the RssAnon that the probe prints just before the check, which is 0.28 to 0.31 GB after the imports and 0.40 to 0.53 GB after a module compiled with `debug.skipKernelTC`, as the four modules without a `verified_compile` call are.
+
+| Module | Encoded bytes | Encoder alone | Code generator | Whole check |
+|---|---|---|---|---|
+| `Fma` | 4,255 | 3.97 s, 0.61 GB | | 8.57 s, 1.22 GB |
+| `Exp` | 4,451 | 2.41 s, 0.38 GB | | 3.83 s, 0.56 GB |
+| `Sinpi` | 5,806 | 4.71 s, 0.72 GB | | 10.4 s, 1.49 GB |
+| `Trig` | 5,842 | 4.27 s, 0.65 GB | | 12.2 s, 1.46 GB |
+| `Log` | 6,916 | 2.87 s, 0.45 GB | | 5.76 s, 0.76 GB |
+| `Asinh` | 9,315 | 4.96 s, 0.77 GB | | 12.3 s, 1.53 GB |
+| `Pow` | 11,156 | 5.27 s, 0.82 GB | 6.2 s, 0.77 GB | 10.5 s, 1.53 GB |
+| `Bessel` | 18,853 | 13.5 s, 1.67 GB | 16.9 s, 2.27 GB | about 30 s, 3.9 GB |
+| `Tgamma` | 26,286 | 16.4 s, 2.15 GB | 26.8 s, 2.86 GB | about 43 s, 5.0 GB |
+| `Lgamma` | 35,160 | 20.6 s, 3.01 GB | 54 s, 3.48 GB, swapping | about 75 s, 6.5 GB |
+| `Erfc` | 39,368 | 14.0 s, 2.07 GB | 23.5 s, 2.53 GB | about 38 s, 4.6 GB |
+
+The code generator's column is the size traversal of `compiled.module` less the size traversal of `lit`, which costs 1.2 to 4.8 s and 0.13 to 0.47 GB.  The whole check was measured for the seven modules that compile, and for the four others it is the sum of the two parts, which reproduces the measured whole check of `Pow` within 9 % in time and 4 % in memory.  Added to the memory before the check, the sums exceed the runner's `memory.high` of 4 GiB for all four modules, by 0.05 GB for `Bessel` and by 2.7 GB for `Lgamma`.  The other kernel check of the bytes theorem, that every function has at most `Decoder.maxLocals` locals, takes 8.1 s and 0.84 GB for `Tgamma`.
+
+The growth is linear with a large constant.  Over the eleven modules the encoder's memory is 10.4 KB per kernel step of `List.append` or `List.length` plus 0.10 GB (R² 0.996), and its time 75 µs per step (R² 0.97).  Against encoded bytes the fit is weaker (R² 0.87, 63 KB per byte), since a byte of code takes 11 to 14 list steps and a byte of a data segment about three.  The constant belongs to the kernel's evaluation of structural recursion on lists, as a check without the encoder shows (`syn-*.lean`): `(l ++ [1]).length` on a literal list of 40,000 bytes takes 3.9 s and 0.64 GB, ten nested appends take 23.9 s and 3.5 GB, and the element type and the diagnostics option do not change the cost.  Each step costs about 50 µs and 8 KB, and the samples show the memory rising until the check ends.  The same append and length written with `List.rec` instead of the compiled `brecOn` take 1.17 s and 0.19 GB, 3.3 times less.
+
+| Check on `lit` of `Pow` | Kernel time | Memory |
+|---|---|---|
+| The whole encoder | 5.27 s | 0.82 GB |
+| Code section (`vector functionBody`, `sectionBytes 10`) | 4.08 s | 0.63 GB |
+| `functionBody` of each function, without the section | 3.61 s | 0.56 GB |
+| `program` of each body, no byte forced | 1.52 s | 0.23 GB |
+| Data section, 6,160 bytes | 0.90 s | 0.09 GB |
+| Export, global, memory, and import sections | 0.13 s | 0.01 GB |
+| `shape`, the type and function sections, `funcs.length` | under 0.1 s each | under 0.01 GB |
+| Size traversal by `Wasm.Encoding.Size` | 1.22 s | 0.13 GB |
+| The whole encoder and the comparison with the file | 7.6 s | 1.20 GB |
+
+The code section holds most of the cost, in two parts.  Without forcing a byte, `program` costs about 0.75 ms and 110 KB for each of the 2,059 instructions, and the structurally recursive size traversal still costs 0.6 ms and 65 KB per instruction, so a match on `Wasm.Instruction` is expensive in the kernel whatever the recursion.  Its 250 constructors may be the reason, since every `casesOn` application carries all of their minor premises, but the probes do not isolate that.  Forcing the bytes in `sized` adds 2.1 s and 0.33 GB for 4,664 bytes of code through 37,237 append steps, eight per byte, because each level of `program`, `block`, `functionBody`, and `items` appends its part to the bytes of the level below, and `sized` and `sectionBytes` then force the lengths.  The `u32` checks, the 5,580 binds of the `Except` monad, and the proofs of `Encoded`, which the kernel never reduces, are minor.  `List.toArray` in `encode` is the constructor of `Array`, so the `ByteArray` costs nothing, and `isOk` never forces a byte's value.  The comparison with the file forces each value through the `DecidableEq` of `UInt8`, `BitVec`, and `Fin`, which adds 2.3 s and 0.38 GB to the encoder on `Pow`.  In the code generator the most frequent unfoldings are the casts `Eq.ndrec` and `Eq.rec` (102,000 to 157,000), `List.append` (36,000 to 60,000), `Bool` and `Decidable` from comparisons, and `Verified.Expr.rec` (22,000 to 33,000).
+
+An encoder that writes each byte once onto an accumulator and takes the sizes of `sized` and of the sections from `Wasm.Encoding.Size` (about 110 lines, in `build/transcendentals/encCF-<module>.lean` on debtop1) produces the same bytes as `encode` on `Pow`, `Bessel`, `Tgamma`, `Lgamma`, and `Erfc`, which `#eval` checks.  It reuses `Wasm.Encoding.instruction` for the instructions without bodies, so it keeps their cost per instruction.  It reduces the encoder's part by a factor of 1.8 to 2.3 in memory, but the code generator's part stays.  With it, the sums for the whole check, with the memory before the check, are 3.6 GB for `Bessel`, 4.1 GB for `Erfc`, 4.4 GB for `Tgamma`, and 5.3 GB for `Lgamma`, so that `Bessel` fits, `Erfc` reaches the limit, and `Tgamma` and `Lgamma` exceed it.
+
+| Module | `encode`, `isOk` | Accumulator, `isOk` |
+|---|---|---|
+| `Pow` | 5.27 s, 0.82 GB | 3.06 s, 0.43 GB |
+| `Bessel` | 13.5 s, 1.67 GB | 8.52 s, 0.94 GB |
+| `Tgamma` | 16.4 s, 2.15 GB | 9.70 s, 1.05 GB |
+| `Lgamma` | 20.6 s, 3.01 GB | 9.95 s, 1.29 GB |
+| `Erfc` | 14.0 s, 2.07 GB | 7.86 s, 1.06 GB |
+
+On `Pow` the comparison with the file costs 6.87 s and 0.88 GB with the accumulator against 7.6 s and 1.20 GB with `encode`.  Since the memory accumulates over one check, a check of one function bounds it: the largest function of `Lgamma`, the 3,405 bytes of function 38 of 45, takes 11.1 s and 1.23 GB with its code generation and encoding, and 3.83 s and 0.52 GB for the encoding of its literal.  Proving the bytes theorem from one kernel check per function, through `Wasm.Encoding.Ready` and the lemmas of `LeanExe/Encoding/Completeness`, and the file theorems from one comparison per function with a slice of the file, would keep each check near that size, but it changes `Verified/Reflect/Command.lean` and `LeanExe/Pipeline/FileBytes.lean`.
+
+| Option | Effect measured or estimated | Work |
+|---|---|---|
+| More memory for these builds | `memory.high` near 8 GB for the bytes theorems, more for the file theorems, whose comparison added 35 % on `Pow` | none in the code |
+| The accumulator encoder with a theorem that it agrees with `encode` | the encoder's part halves, `Erfc` reaches 4 GB and `Tgamma` and `Lgamma` exceed it | 1 to 2 days, a soundness proof of 300 to 500 lines from the completeness lemmas |
+| One kernel check per function | memory bounded by the largest function, 1.7 GB for `Lgamma` | 2 to 4 days, in the reflector's command and the file theorems |
+
+- [ ] The user decides how the four modules' checks fit: more memory, the encoder, or one check per function.
+
 ## 2026-10-12: `sinpi`, `cospi`, and `tanpi` (track `trig`)
 
 The three functions share `Sinpi.piProduct`, which forms `π x` as `w + t` from the 24-bit head of `x`, its exact tail, `π` as `pi_hi + pi_lo` with `pi_hi` of 26 bits, and a final two-sum.  `SinpiSingle.single_spec` shows that `toSingle` gives a finite word within `2 ^ -24` of `x` relative to its value with a magnitude of at most 24 significant bits; the carry case, where the fraction overflows into the exponent, has the significand `2 ^ 24` at the old scale.  `SinpiProduct.product_spec` places `w + t` within `x / 2 ^ 62` of `π x` and `t` within `|w| / 2 ^ 52` for `x` from `2 ^ -54` to `1/2`, with `|pi_hi + pi_lo - π| ≤ 2 ^ -66` from `Real.pi_gt_d20` and `Real.pi_lt_d20`.  `SinpiKernels.kernel_pair` and `SinpiTanKernel.kernel_tanpi` then apply the accepted kernels of `sin`, `cos`, and `tan`: from `2 ^ -54` to `1/4` for the first two, and below `1/2` for the third, which reflects through `1/2 - x` above `1/4` and uses `tan (π/2 - θ) = (tan θ)⁻¹`.
@@ -31256,6 +31368,59 @@ The divided differences next to the zeros 1 and 2 need the logarithms of the shi
 | `TgammaAccRangeA` | Kernel checks passed; `norm_num` failed on `2 ^ 943` | `erf-gamma-59.log` |
 | `TgammaAccRangeA` | Passed in 405 s, with linter warnings | `erf-gamma-60.log` |
 | `TgammaAccRangeB` | Passed in 457 s | `erf-gamma-61.log` |
+| `TgammaAccRangeC`, with `GammaDD`, `GammaRel`, and `GammaScaled` rebuilt | Passed in 757 s | `erf-gamma-62.log` |
+| `GammaFitsX`, `GammaConvex`, `GammaReflect`, `GammaDDCover`, `LgammaRootBase`; `GammaRoot`; `F64Grid` | Passed; an `obtain` pattern with one bracket too many; an unreachable alternative after `field_simp` | `erf-gamma-63.log` |
+| `TgammaAccRangeA`, `TgammaAccRangeB` again | Passed in 400 s and 468 s, without warnings | `erf-gamma-65.log`, `erf-gamma-66.log` |
+
+- [x] `AccRangeFact`'s nine ranges (`TgammaAccRangeA` to `TgammaAccRangeC`).
+- [x] `LogFact`, `ExpFact`, `SinFact` (`TgammaLogTables`, `TgammaExpTables`, `TgammaSinTables`), and `TgammaFacts.allFacts`.
+
+Track `arc` widened the last conjunct of `ExpFact` to `|X| ≤ 5/8` at commit `ef012e60` on `w/poly`, since `asLogd`'s unnormalized low part reaches `asExpd`'s kernel.  `TgammaExpTables.exp_poly` now holds on `|X| ≤ 5/8`, where the Taylor model of degree 12 passes the bound `2 ^ -74` at depth 0 with a model error of `8 · 10 ^ -31`, and `TgammaFacts.exp_poly_wide` states the widened conjunct against `TgammaApprox.expPoly`.  The coordinator also asked for `Γ` at the double before the overflow threshold, which `GammaBelowT0.gamma_below_t0` bounds by `2 ^ 1024 (1 - 2 ^ -50)`.  Its kernel check compares an upper bound on `lgamma` there with `1024 ln 2 - 2 ^ -49`, and in 90-digit arithmetic `Γ` there is `2 ^ 1024 (1 - 4.79 · 10 ^ -14)`.
+
+`GammaBelowT0` passed on its third build (`erf-gamma-85.log`).  The first two failed at the kernel check of the upper bound on `ln (tp/128)` (`erf-gamma-73.log`, `erf-gamma-79.log`): the constant `logTpHi` paired the numerator of a bound scaled by `2 ^ 95` with the exponent `2 ^ -100`, so it stood at 0.0092 against `ln (tp/128) = 0.2933`.  With the numerator `371773994577497367164629430625` over `2 ^ 100` the series check of the exponential passes, and Stirling's bound lies `4.61 · 10 ^ -14` below `1024 ln 2 - 2 ^ -49` in exact rational arithmetic.
+
+The fast path's Stirling fit for `lgamma` does not meet `GammaFits.fit_large`'s bound from 16 on.  Its constant differs from `(ln (2π) - 1)/2` by `2 ^ -54.7`, and its polynomial differs from Stirling's twelve coefficients by an amount that offsets the constant near 16, so the two errors must be bounded together.  `GammaFitsX.fit_range` checks the single polynomial `(m - C0) + t (S - P) (t²)` in `t = 1/x` on a range `[1/X2, 1/X1]`, with `m` the center of the rational enclosure of `(ln (2π) - 1)/2`, and adds the enclosure's radius and Stirling's remainder at `X1`.  `LgammaStirLarge` covers `x ≥ 16` with ten ranges and makes each bound relative with a point value of `lgamma` at the range's left end.  In 70-digit arithmetic the error reaches 0.62 of the allowed `7 · 10 ^ -20 lgamma x` near `x = 96` and tends to the constant's gap divided by `lgamma x`.  The module's first build failed on two points (`erf-gamma-77.log`): the toolchain's Mathlib no longer has `le_or_lt`, which the modules now replace with `le_or_gt`, and `exact` did not unify the cast `((rel : ℚ) : ℝ)` in `range_rel`'s conclusion with the real literal of the statement, which left `x` a metavariable, so the cover now names `x` and normalizes both sides with `push_cast`.
+
+`RootFact` needs `lgamma` on intervals of negative numbers, and a bound at each zero, where no relative bound holds.  `GammaRoot.negVar` models `lgamma (-n - (δ + t))` through the reflection, with the sine's argument reduced as in `GammaReflect`, and `rootOk` checks `|T - U| ≤ s0 + ε σ T` and `σ T ≥ m0` for Taylor models `T` of `lgamma` and `U` of the polynomial, which gives `|lgamma x - Q x| ≤ ε' |lgamma x| + S`.  On each of the 17 ranges, values of `lgamma` at two points `A` and `B` beyond `±1.02 (1 + 2 ^ -40) afh` and at the end of the range away from the pole, with the convexity of `lgamma` between two poles, confine the hypothesis `|lgamma x| ≤ (1 + 2 ^ -40) afh` to `[A, B]` (`root_domain_dec`, `root_domain_inc`).  A model at 150 bits, with `log 2` within `2 ^ -150` and at least 55 after the shifts, bounds the polynomial within `2 ^ -120` absolutely where `|lgamma| ≤ 2 ^ -24` about the stored zero, and models at 120 bits with at least 22 after the shifts bound it within `2 ^ -63` relative on three to five pieces on each side.  In 80-digit arithmetic `lgamma` at the 17 stored zeros lies between `2 ^ -160` and `2 ^ -137`, and the absolute bounds of the center pieces are at most `2 ^ -121.7`.  `GammaRoot`'s first builds failed on an `obtain` pattern and on a `rw` that met the abbreviation `set` had introduced, and it passed once the proof rewrote with the abbreviation's definition first (`erf-gamma-74.log`, `erf-gamma-81.log`, `erf-gamma-86.log`).
+
+The pieces 4 and 10 reach a relative error of `7.8 · 10 ^ -20` at their left ends, where the divided difference is largest, so an absolute bound on the divided difference does not give `12 · 10 ^ -20` relative over the whole piece.  `LgammaPiece4` and `LgammaPiece10` check the divided difference relative to itself (`GammaRel.ddRelOk`) for `|s| ≥ 2 ^ -69`, and `GammaDDCover.dd_rel_fact` covers `|s| < 2 ^ -69` from the bounds at `±2 ^ -69` and the variation of the polynomial there.  The resulting bounds are `1.14 · 10 ^ -19` and `1.12 · 10 ^ -19` relative.  The piece next to zero on each side has radius `2 ^ -12` and degree 7 and needs about 70 shifts, since the Stirling remainder enters divided by `|s| ≥ 2 ^ -69`, and the outer pieces need 15 or 16.  As single modules the two pieces stopped at the memory limit with a third of a CPU, after two and five minutes (`erf-gamma-83.log`, `erf-gamma-84.log`).  A file with only the first outer check of piece 10 and one with only its inner check each finished within a minute of Lean time (`erf-gamma-87.log`, `erf-gamma-89.log`), the latter with `memory.current` at 3.6 GB, which suggests that the memory grows with the number of checks in a module.  The generator now writes a base module with the definitions, check modules of at most two checks, and a final module with the cover and the convexity argument.  `AccPolyFact`'s first clause on `|x| ≤ 1/4` uses the absolute divided-difference pieces of `SmallFact`, 16 pieces of degree 16, and its second clause two Taylor-model pieces of degree 22 about `3/2` (`LgammaAccMid`).
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaLogTables`, `TgammaExpTables`, `TgammaFacts` | Passed | `erf-gamma-70.log` to `erf-gamma-72.log` |
+| `GammaBelowT0` | Failed: the bound on `ln (tp/128)` was 32 times too small, and a `linarith` step | `erf-gamma-73.log` |
+| `GammaRoot` | Failed: a `rw` after `set` | `erf-gamma-74.log` |
+| `LgammaAccMid` | Passed in 129 s | `erf-gamma-75.log` |
+| `LgammaStirFast` | Passed in 464 s | `erf-gamma-76.log` |
+| `LgammaStirLarge` | Kernel checks passed; `le_or_lt` unknown, and a cast left `x` unassigned | `erf-gamma-77.log` |
+| `LgammaDb` | Passed in 99 s | `erf-gamma-78.log` |
+| `GammaBelowT0` | Failed at the bound on `ln (tp/128)` | `erf-gamma-79.log` |
+| `LgammaPieceBase` | Passed, with a linter warning on `<;>` | `erf-gamma-80.log` |
+| `GammaRoot` | Failed: the same `rw` | `erf-gamma-81.log` |
+| `LgammaStirLarge` | Passed in 46 s | `erf-gamma-82.log` |
+| `LgammaPiece4`, `LgammaPiece10`, one module each | Stopped by the watchdog at the memory limit | `erf-gamma-83.log`, `erf-gamma-84.log` |
+| `LgammaPieceBase` without the warning | Passed | `erf-gamma-84.log` |
+| `GammaBelowT0`, `GammaRoot` | Passed, standard axioms | `erf-gamma-85.log`, `erf-gamma-86.log` |
+| One outer check and the inner check of piece 10, each alone | Passed | `erf-gamma-87.log`, `erf-gamma-89.log` |
+
+- [x] `Γ` at the double before the overflow threshold (`GammaBelowT0.gamma_below_t0`).
+- [x] `DbFact` (`LgammaDb.db_fact`).
+- [x] `StirlingFact`'s two parts (`LgammaStirFast.cover`, `LgammaStirLarge.fast_large`), `AsymFact`'s first clause (`asym0_large`), and `AccPolyFact`'s second clause (`LgammaAccMid.acc_mid`).
+- [ ] The pieces 4 and 10 in twelve modules (`erf-gamma-90.log` to `erf-gamma-101.log`).
+- [ ] The other statements of `LgammaApprox` and `LgammaFacts.allFacts`.
+
+The coordinator asked for `SubnormalGap` on 2026-10-12: for every double `x = -m/2 ^ 45` in `(-184, -170)`, `|Γ x|` lies at most `2 ^ -1022 (1 - 2 ^ -48)` or at least `2 ^ -1022 (1 + 2 ^ -48)`, so that `tgamma`'s choice between the subnormal and the normal branch below -170 is correct.  `lgamma` is convex on each interval `(-n - 1, -n)`, so a point where `lgamma` exceeds a level next to a point below it bounds `lgamma` from below on the far side, and two points below a level bound it from above between them (`GammaConvex.convex_left`, `convex_right`, `convex_mid`).  `subgap.py` in the track's scratch directory finds, in 80-digit arithmetic, the doubles next to each crossing of `2 ^ -1022`: both crossings of each interval for `n` from 170 to 175, the crossing near -176 for `n = 176`, and none from 177 on, where `|Γ|` at the doubles next to both poles already lies below the level.  `GammaReflect.negPointOk` bounds `lgamma` at those 41 doubles with Mathlib's 20-digit `π`, with Taylor-model errors below `10 ^ -18` against margins of at least `2 ^ -52`; the smallest margin is at `-170.584302134743268`, where `|Γ| = 2 ^ -1022 (1 + 33.97 · 2 ^ -53)`.  The levels `tAbove = -1022 log2Lo + 2 ^ -48` and `tBelow = -1022 log2Hi - 2 ^ -48 - 2 ^ -95` of `lgamma` give the two bounds on `|Γ|` through `exp y ≥ 1 + y`.  The five ProofKit modules `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, and `GammaSubnormal` passed with only the standard axioms, each in under two minutes and at most 0.92 GB.
+
+The modules that import the ports `Verified.Examples.Lgamma` and `Tgamma` reached 3.3 to 3.9 GB of the runner's 4 GB within 30 s of starting, and the ProofKit modules without them stayed below 0.92 GB, which suggests why the divided-difference checks stall: a module of `LgammaPiece4` with two checks of 41,000 and 38,000 coefficient operations stopped at the limit, while modules with 57,000 to 63,000 passed in about a minute (`erf-gamma-91.log` to `erf-gamma-95.log`).  The generators now group checks up to 62,000 operations per module, and `AccPolyFact`'s first clause takes one check per module.
+
+| Run | Result | Log |
+|---|---|---|
+| `LgammaPiece4A`, two checks of 79,000 operations in all | Stopped at the memory limit | `erf-gamma-91.log`, `erf-gamma-95.log` |
+| `LgammaPiece4B` to `LgammaPiece4D`, `LgammaPiece10A` in the first grouping | Passed in 30 to 60 s | `erf-gamma-92.log` to `erf-gamma-94.log`, `erf-gamma-97.log` |
+| `GammaSubnormalBase` | Failed: `zpow_natCast` after `zpow_neg` found no cast, and a `rw [← e]` replaced every `T` | `erf-gamma-102.log`, `erf-gamma-103.log` |
+| `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, `GammaSubnormal` | Passed, standard axioms | `erf-gamma-104.log` to `erf-gamma-106.log` |
+
+- [x] `SubnormalGap` (`GammaSubnormal.subnormal_gap`).
 
 ## 2026-10-12: Integration of asinh, acosh, and atanh
 
@@ -31684,6 +31849,36 @@ The documents `Bessel.md`, `Fma.md`, `Lgamma.md`, `Tgamma.md`, `Log.md`, and `Tr
 
 The user asked for research on conversions between decimal strings and binary32 and binary64 values in both directions, with a design grounded in published work.  An agent wrote that report in `/home/somebody/src/machines/work/w-strconv/report.md` on the workstation, with 54 references.  It recommends exact big-integer arithmetic first, built on Cox's unrounded scaling `⟨x · 2^e · 10^p⟩` (2026) for both directions, with Schubfach's decision for shortest output, since no table-based method (Eisel-Lemire, Ryū, Schubfach as shipped, Dragonbox) has a machine-checked proof.  It also finds that Lean `v4.34.0-rc2` defines `Float.ofScientific` publicly, which Opus confirmed in the toolchain's `Init/Data/OfScientific.lean`, so a theorem about it would cover every decimal literal in the compiled programs.  The report lists fourteen decisions, and the user accepted every recommendation: two grammar modes (RFC 8259 and a C-like mode), unlimited input length with correct rounding, strings as one byte per word, binary32 results as words, shortest output as fewest digits then nearest then even, scientific and ECMAScript layouts, a flag and a word as the parser's result, exact `uscale` with Clinger's fast path first, a table-based stage only after measurement, fixed-precision and hexadecimal output later, placement in `Verified.Examples`, the prior Lean projects as references only, and a theorem about `Float.ofScientific`.  Opus created the worktree `/home/somebody/src/lt-strconv` on minideb2, branch `w/strconv` from `5688a840`, and started track `strconv` on the report's stages 1 to 4.
 
+The kernel modules replaced `first | (field_simp; done) | (field_simp; ring)` with the alternative that each goal needs.  At the four places in `TgammaKernelBase` where the goal has the form `a - b = c (a/c + -(b/c))`, `field_simp` leaves `a - b = a + -b` and `ring` must follow, which the first build without the alternative showed (`erf-gamma-67.log`).  Job 68 started before the corrected file reached debtop1 and repeated the failure.  The tables then built in 98 s (sine), 42 s (logarithm), and 32 s (exponential), and `TgammaFacts.allFacts` reports only `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Run | Result | Log |
+|---|---|---|
+| `TgammaKernelBase`, `TgammaLogTables` | `field_simp` left goals for `ring` at three places | `erf-gamma-67.log` |
+| `TgammaExpTables` | The same failure, from the file before the correction | `erf-gamma-68.log` |
+| `TgammaKernelBase`, `TgammaSinTables` | Passed in 14 s and 98 s | `erf-gamma-69.log` |
+| `TgammaLogTables` | Passed in 42 s | `erf-gamma-70.log` |
+| `TgammaExpTables` | Passed in 32 s | `erf-gamma-71.log` |
+| `TgammaApprox`, `TgammaFacts` | Passed; `allFacts` with the standard axioms | `erf-gamma-72.log` |
+
+## 2026-10-13: Recovery of track `erf` after two copies of its agent ran at once
+
+On 2026-10-12 two copies of the track's agent worked in `/home/somebody/src/lt-erf` at the same time.  The coordinator's message to the agent while its build queue was pending started a second copy from an old summary, and that copy overwrote `Verified/Examples/LgammaDb.lean` and created `Verified/Examples/LgammaCancel.lean` before it noticed the other copy.  It restored `LgammaDb.lean` to its committed version and deleted `LgammaCancel.lean`, so the queue's build of `LgammaCancel` (318) found no source.  The coordinator stopped the agent, and the user directed that the work continue without agents.
+
+The build queue of `erf-after198.sh` ran builds 256 to 324 unattended.  Fifty-nine modules built with only `propext`, `Classical.choice`, and `Quot.sound`, and this commit records them with `F64Grid` and `LgammaData`, which they import: `LgammaSmallFact` (`SmallFact`), `LgammaAccSmall` (the first clause of `AccPolyFact`), `LgammaPiece4` and `LgammaPiecesA` to `E` (the fast path's pieces other than 10), `LgammaSinpiAcc` (the kernels of `as_sinpipid_accurate`), `LgammaAsymMidA` to `C` and `LgammaAsymLowA` to `H` (the accurate Stirling fit from `15/4` to 48), and `LgammaRootC`, `LgammaRootE`, and `LgammaRootF` (`RootFact` on six of its ranges).  Ten modules failed and stay uncommitted.
+
+| Build | Module | Failure |
+|---|---|---|
+| 272 | `LgammaPiece10` | the last tactic has no goal left, so the module reports `sorryAx` |
+| 300 | `LgammaSinpiTables` | a `rewrite` finds no instance |
+| 301 | `LgammaLogAcc` | a `rewrite` finds no instance |
+| 315, 316 | `LgammaZerosA`, `LgammaZerosB` | the namespace `GammaThresholds` is opened without its import |
+| 317 | `LgammaCancelTail` | `linarith` fails |
+| 318 | `LgammaCancel` | the source file is missing |
+| 319, 320, 322 | `LgammaRootA`, `LgammaRootB`, `LgammaRootD` | the 20-minute limit |
+
+- [x] Commit the accepted modules with `Lgamma.md` and this entry.
+- [x] Merge `transcendentals` at `e1fbb1ae` and prove `ExpFact` from `exp_poly_wide` (`opus-erf-facts-1.log`: `allFacts` reports only `propext`, `Classical.choice`, and `Quot.sound`).
+- [ ] Repair the ten failed modules, write `LgammaCancel` for the call in `LgammaFacts`, and build `LgammaFacts`.
 ## 2026-10-12: Decimal strings and binary floating point, plan and statements (track `strconv`, minideb2)
 
 The track `strconv` builds proved conversions between decimal strings and binary64 and binary32 values in both directions, on branch `w/strconv` from `transcendentals` at `5688a840`.  The design is the research report `work/w-strconv/report.md` of 2026-10-12, whose fourteen recommendations of section 10 the user accepted: two grammars selected by a parameter (RFC 8259's number, and a general grammar with `+`, leading zeros, `.5` and `5.`, hexadecimal significands with a required binary exponent, and `inf`, `infinity`, and `nan` in any case), inputs of any length with correct rounding, strings as `Array UInt64` with one byte per word and theorems stated on `List UInt8`, binary32 results as words, the shortest output defined as the fewest significant digits, then the nearest, then the even last digit, a scientific and an ECMAScript layout, the outputs `-0`, `NaN`, `Infinity`, and `-Infinity`, a parser result that pairs a flag with a word, an exact first stage with Clinger's fast path, and placement in `Verified.Examples`.  The algorithms are written from the papers: Cox's unrounded scaling [Cox 2026, research.swtch.com/fp], the Schubfach decision [Giulietti 2022], and Clinger's fast path [Clinger, PLDI 1990, doi:10.1145/93542.93557].  No third-party code is ported, and FloatLib, `ryu-lean4`, and `shortest-decimal` serve only as references.
@@ -32167,3 +32362,36 @@ The branch of `Tgamma.accurate` above `1/4` evaluates the polynomial `poly3` in 
 Two corrections came out of the builds.  The double coefficients of `poly3` need numerators below `2^19` on the grid `2^-17`: the largest has 18 significant bits on its own grid `2^-16` and 19 on `2^-17`.  `mulDD3_spec` takes a product at most `2^899`, where `fastTwoSum_spec` needs its high part below `2^900`.
 
 The rest of the branch, in order: the exact reduction `d` and the range of `⌊x⌋` (`accurateRange`); the composition with `AccRangeFact` and `Γ (x + n) = Γ x ∏ (x + k)`, with `Γ ≥ (j - 1)! ≥ 2^eoff/16` on each range; the reciprocal of the product (`TgammaRecipDD.recip_dd`) and a version of `mulDD3_spec` for low parts up to `2^-30` of their high parts, since the bound on the low part of `poly3` is coarse; the correction term with `crr`, whose magnitude is at most `2^-104` in any rounding; the final rounding with the scale `2^eoff`, including the subnormal results below `-170` through `SubnormalGap`; and the 57 rows of the database, each a kernel check that the stored value lies within one step of `Γ` at its argument.
+
+## 2026-10-13: The kernel's evaluation in a match on a call, and the four large modules (coordinator)
+
+The user decided on 2026-10-12, from the measurements of `82b45c47`, to raise the runner's memory for the four large modules now and to check one function at a time later.  `2d2a4940` adds `--memory-high SIZE` to `tools/leanrun`, with 4G as the default.  With `--memory-high 10G` on debtop1, `verified_compile` succeeded in `Tgamma` (136 s, 5.6 GB of anonymous memory) and in the `erfc` module (119 s, 5.25 GB), with the kernel's recursion limit raised to 4096 in front of each call.  `Lgamma` needed a listed definition for its export, since the reflector rejects `lgamma x := (lgammaR x).1`: `lgammaFirstWith` takes the tables as parameters and `lgamma` calls it.
+
+`Bessel` failed differently: within two minutes and 4.5 GB the kernel reported deep recursion, and with `maxRecDepth` raised to 4096 or 100,000 the same check ran on for 10 or more than 40 minutes at under 1 GB.  Probes located it in `ynWith.denote_eq`, and a five-line function reproduces it: a destructuring `let (n, neg) := order n0` of a call's result, followed by `LeanExe.repeatWhile 0xFFFFFFFF` whose condition uses `n`.  The same function with the loop in a helper compiles, which is why `jnWith`, whose loop is `jnBackward`, did.  A probe that re-checks each `Eq.trans` step of the proof with the kernel found the cost in one step: the function-level equation compared the reflected body's value, the inner match with `(order n0).1` substituted, with the definition's body, the outer match on `order n0`.  With two different matchers at the heads, the kernel unfolds one, reduces `order n0` to a constructor through its bitwise operations on a variable, and does not finish.
+
+The cause is in `casesEq`.  It proves `alt (fields d) = match d with …` once by `rfl` for variables `h` and `s` and applies the proof to `alt` and `d`, but the proof term `Eq.refl (h (fields s))` carried no statement, so its type was `h (fields s) = h (fields s)`, and the equation that `restate` built from it ended at the substituted body instead of the match.  Each later step then had to relate that body to the match through the kernel's reduction, which the docstring of `casesEq` meant to avoid.  The fix attaches the statement with `mkExpectedTypeHint`, so the kernel checks the `rfl` once with variables, where structure eta reduces the match without evaluating anything.  With it the reproducer compiles, and `Bessel` compiles in 109 s at 4.5 GB, with the default recursion limit.  The earlier `Lgamma` build had passed 10.8 GB and was throttled until its timeout, and with the fix it peaks at 7.1 GB.  Its elaboration then needs more than the default 200,000 heartbeats, so its call carries `set_option maxHeartbeats 1000000`, and with the fix none of the four modules needs a raised recursion limit.
+
+| Module | Build of the module | Peak anonymous memory |
+|---|---|---|
+| `Bessel` | 109 s | 4.5 GB |
+| `Tgamma` | 121 s | 5.6 GB |
+| `Erfc` | 115 s | 5.25 GB |
+| `Lgamma` | 159 s | 7.1 GB |
+
+The logs are `opus-bessel-compile-4.log` and `opus-three-compile-1.log` under `build/transcendentals/` of `/home/somebody/src/lt-reflect` on debtop1, and the probes `BesselProbe*.lean` and `opus-bessel-probe-*.log` beside them.  All four exceed the runner's default 4 GB, so their builds and every build that rebuilds them need `--memory-high 8G` or more.
+
+## 2026-10-13: Fifth integration: the compiler change and the gamma facts
+
+Opus merged two branches into `transcendentals`.  `w/reflect` at `9b737b37` (`1f045fa9`) brings the liveness of `Verified/Compile.lean` computed as data (`a95ae82b`, `baaadb36`), its measurements (`82b45c47`), the option `--memory-high SIZE` of `tools/leanrun` (`2d2a4940`), the statement attached to the match equation of `casesEq` (`60dc3383`), and `verified_compile` in `Bessel`, `Tgamma`, `Lgamma`, and `Erfc` (`4a5d849e`, `9b737b37`), which the preceding entry describes.  `w/erf` at `6c777fe2` (`1bbe4765`) brings `TgammaFacts.allFacts`, the eight facts of `TgammaApprox` against the `ExpFact` widened to `|X| ≤ 5/8`, `GammaBelowT0.gamma_below_t0`, `GammaSubnormal.subnormal_gap`, and the 59 `lgamma` fact modules that its recovery committed.  `Tgamma.md` conflicted: the merged text states that the four modules compile with `--memory-high 8G` and that `TgammaFacts.allFacts` proves the facts.  Opus also rewrote the statements in `Bessel.md`, `Lgamma.md`, and `Erf.md` that the compilation was commented out.
+
+`LeanExe.lean` gains the fifteen new ProofKit modules of track `erf`, and `Verified.lean` 36 leaf modules: the `lgamma` fact modules and `TgammaFacts`.  The build `tools/leanrun --memory-high 8G --timeout 900m lake build LeanExe Verified` completes 9,890 jobs with exit 0, and no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`.  `TgammaFacts.allFacts`, `GammaBelowT0.gamma_below_t0`, and `GammaSubnormal.subnormal_gap` depend on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+`tests/verified/run.sh` exits 0 (`build/transcendentals/opus-verified-tests-22.log` on minideb1).  The first attempt stopped with exit 127 at the first validation, because a command detached over `tailscale ssh` lacks `/home/somebody/.local/bin`, which holds `wasm-tools`.  The second attempt ran with that directory added to `PATH`.  The 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`), so the compiler change leaves the output of the existing examples unchanged.
+
+The fifth integration leaves three items for the next steps.  The file theorems of the four compiled modules need about 7 GB or more each in the kernel, so `tests/verified/run.sh` has no file entry for them until the kernel check runs one function at a time.  `Verified.lean` does not import the ten `lgamma` fact modules that failed in the recovery of track `erf`.  The `tgamma` hypotheses `LogdSpec`, `SinpidSpec`, `GammaBelowT0`, and `SubnormalGap` have proofs, and track `arc` is joining them to `tgamma_within_one`.
+
+## 2026-10-13: The byte theorems of `j0`, `j1`, `y0`, and `y1` (coordinator)
+
+`Verified/Examples/BesselBytes.lean` joins the compiled module of `Bessel.lean` to `BesselJ0Theorem.j0_accuracy`, `BesselJ1Theorem.j1_accuracy`, `BesselY0Theorem.y0_accuracy`, and `BesselY1Theorem.y1_positive`.  Its store predicate `Ready` holds the allocator invariant, the six tables as borrowed arrays (`Trig.invPi` at 4096, `Trig.halfPi` at 4264, `Bessel.j0Table` at 4288, `Bessel.j1Table` at 5032, `Log.logTable` at 5856, and `Log.logTable2` at 7912), and a memory cap of at most 65,535 pages.  `j0_bytes_accuracy`, `j1_bytes_accuracy`, `y0_bytes_accuracy`, and `y1_bytes_accuracy` state for functions 36 to 39 that the bytes decode to the module, that the function is the named export, and that a call from a ready store returns the bits of the Lean function's result within the accuracy bound and leaves a ready store, and `bessel_module_accuracy` states the four together.  The module was written and built on debtop1 in `lt-reflect` (`opus-besselbytes-1.log`, 23 s), and on minideb1 `tools/leanrun --memory-high 8G lake build Verified.Examples.BesselBytes` completes 3,804 jobs (`opus-besselbytes-m1.log`).  Each of the fourteen theorems depends on `propext`, `Classical.choice`, and `Quot.sound` only.
+
+`Verified.lean` imports the module, and `Bessel.md` and the plan describe the theorems.  `tests/verified/run.sh` gains no entry, since a file theorem for the module needs about 7 GB or more in the kernel and waits for the kernel check per function.  `jn` and `yn` (functions 40 and 41) have no byte theorem until their accuracy theorems exist.
