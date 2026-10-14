@@ -32557,3 +32557,11 @@ The list form of `range 28` in the step bounds exceeded `maxRecDepth` when unfol
 - [ ] the polynomials about the negative zeros and the hard cases
 - [ ] Stirling's series from `2^800` to the overflow threshold
 - [ ] the theorem within one step
+
+## 2026-10-14: The accurate path of `lgamma` at the ends of its windows (track `expm1`, minideb2)
+
+`Lgamma.accurate` selects a polynomial by the tests `|x - c| < 1/4` for `c` in 0.5, 2.5, 3.5, 1, 1.5, 2, and 3, after `x < 1/4`, and sends every other `|x|` to `asLgammaAsymAccurate`.  The tests are strict, so the seven doubles `|x|` = 0.25, 0.75, 1.25, 1.75, 2.25, 2.75, and 3.25 pass none of them and reach the Stirling sum, whose range starts at 3.75.  The C code of CORE-MATH has the same tests (`__builtin_fabs(x-0.5)<0x1p-2` and the six after it in `as_lgamma_accurate`).  A build of that code with `as_lgamma_accurate` exported returns `0x1.3f69af40ef58ep+153` at 0.25 and `0x1.4eee5709445cbp+68` at 0.75, and its results at ±0.25, ±0.75, ±1.25, -1.75, 1.75, 2.25, and 2.75 differ from the correctly rounded values.  The library is still correct at these 14 inputs: a counter in `cr_lgamma` shows that the fast path's rounding test passes at each of them, so the accurate path never runs there.
+
+The final theorem therefore cannot take the accurate path within one step at every input, as `LgammaFastWalk.fast_within` assumes through `hacc`.  The proof will bound the accurate path at every input except these 14 and prove that the rounding test passes at the 14.  A computation in 80-digit decimal arithmetic puts `log |Γ x|` at least `2.5 · 10^-18` relative from every midpoint between doubles at these inputs, with the smallest margins at -2.25 (0.0126 of a spacing) and 1.25 (0.045).  The fast path's bounds are near `10^-19` relative, so a rational enclosure of `log |Γ x|` from the approximation facts, with the leaf bound `eps ≤ |fh|/2^63 + 2^-78` of `LgammaLeaf.LeafSpec`, decides the test.  The tightest input is -2.75, next to the zero at -2.7477, where `|log |Γ x||` is 0.0045 and three times the bound on `eps` is `1.56 · 10^-19` against a distance of `1.8 · 10^-19`.  The probe programs are `probe.c` and `probe-acc.c` in `work/w-lgamma/bnd` on the workstation, with `dist.py` for the distances.
+
+- [ ] the rounding test at the 14 ends of the windows
