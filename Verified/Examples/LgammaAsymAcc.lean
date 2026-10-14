@@ -17,6 +17,7 @@ exact since the product's high part exceeds the rest, and the second is bounded 
 
 namespace Verified.Examples.LgammaAsymAcc
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx Tgamma TgammaDD TgammaMul LgammaLogAccKern
+  LgammaPolyIv LgammaAsymKern
 
 set_option exponentiation.threshold 4096
 
@@ -659,9 +660,487 @@ theorem asym_gen (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   linarith
 
 
+
+/-- A float comparison is the comparison of the values for finite floats. -/
+theorem fle_iff (a b : Float) (ha : Finite a.toBits) (hb : Finite b.toBits) :
+    a ≤ b ↔ value a.toBits ≤ value b.toBits := by
+  rw [F64Bits.le_iff]
+  simp only [Wasm.IEEE64.le, not_nan_of_finite ha, not_nan_of_finite hb, Bool.or_false,
+    Bool.false_eq_true, ite_false, decide_eq_true_eq, value]
+  rw [div_le_div_iff_of_pos_right (by positivity)]
+  exact_mod_cast Iff.rfl
+
+/-- **`x - 1/2` as the code's pair** `(wh, wl)`: `xh - 1/2` and `xl` below `2^52`, `xh` and the
+rounded `xl - 1/2` from `2^52` on. -/
+theorem w_spec (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
+    (hlo : 15 / 4 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 801)
+    (hlb : |value xl.toBits| ≤ value xh.toBits / 2 ^ 51) :
+    ∃ w1 w2 : Float,
+      (if xh.toBits >>> 52 > 0x3ff + 51 then (xh, xl - 0.5) else (xh - 0.5, xl)) = (w1, w2) ∧
+      Finite w1.toBits ∧ Finite w2.toBits ∧ value xh.toBits - 1 / 2 ≤ value w1.toBits ∧
+      value w1.toBits ≤ value xh.toBits ∧ |value w2.toBits| ≤ value w1.toBits / 2 ^ 50 ∧
+      |value w1.toBits + value w2.toBits - (value xh.toBits + value xl.toBits - 1 / 2)| ≤
+        value xh.toBits / 2 ^ 103 := by
+  have hx0 : 0 < value xh.toBits := by linarith
+  have hd0 : (0 : ℝ) ≤ value xh.toBits / 2 ^ 103 := by positivity
+  by_cases ht : xh.toBits >>> 52 > 0x3ff + 51
+  · have h52 := (big_test xh hxh hx0).mp ht
+    have hB : |value xl.toBits - value (0.5 : Float).toBits| + (0 + 0) ≤
+        value xh.toBits / 2 ^ 51 + 1 / 2 := by
+      rw [TgammaTiny.half_value]
+      simp only [add_zero]
+      have := abs_sub (value xl.toBits) (1 / 2)
+      rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at this
+      linarith
+    have hs := fapprox_sub (fapprox_self xl hxl) (fapprox_self _ TgammaTiny.half_finite)
+      (value xh.toBits / 2 ^ 51 + 1 / 2) hB (by
+        have : value xh.toBits / 2 ^ 51 ≤ 2 ^ 801 / 2 ^ 51 := div_le_div_of_nonneg_right hhi (by norm_num)
+        linarith [(by norm_num : (2 : ℝ) ^ 801 / 2 ^ 51 + 1 / 2 < 2 ^ 1023)])
+    rw [TgammaTiny.half_value] at hs
+    have he : |value (xl - 0.5).toBits - (value xl.toBits - 1 / 2)| ≤
+        (value xh.toBits / 2 ^ 51 + 1 / 2) / 2 ^ 53 := by
+      have := hs.2; simp only [zero_add] at this; exact this
+    have hhalf : (1 : ℝ) / 2 ≤ value xh.toBits / 2 ^ 53 := by
+      rw [le_div_iff₀ (by norm_num)]; linarith
+    have hBb : (value xh.toBits / 2 ^ 51 + 1 / 2) / 2 ^ 53 ≤ value xh.toBits / 2 ^ 103 := by
+      have h1 : value xh.toBits / 2 ^ 51 + 1 / 2 ≤ value xh.toBits / 2 ^ 50 := by
+        linarith [(by ring : value xh.toBits / 2 ^ 50 = value xh.toBits / 2 ^ 51 + value xh.toBits / 2 ^ 52
+          + value xh.toBits / 2 ^ 53 + value xh.toBits / 2 ^ 53),
+          (by positivity : (0 : ℝ) ≤ value xh.toBits / 2 ^ 52)]
+      have := div_le_div_of_nonneg_right h1 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)
+      linarith [(by ring : value xh.toBits / 2 ^ 50 / 2 ^ 53 = value xh.toBits / 2 ^ 103)]
+    refine ⟨xh, xl - 0.5, if_pos ht, hxh, hs.1, by linarith, le_rfl, ?_, ?_⟩
+    · have h1 := abs_sub_abs_le_abs_sub (value (xl - 0.5).toBits) (value xl.toBits - 1 / 2)
+      have h2 := abs_sub (value xl.toBits) (1 / 2)
+      rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at h2
+      have h3 : value xh.toBits / 2 ^ 103 ≤ value xh.toBits / 2 ^ 53 :=
+        div_le_div_of_nonneg_left hx0.le (by norm_num) (by norm_num)
+      linarith [(by ring : value xh.toBits / 2 ^ 50 = value xh.toBits / 2 ^ 51 + value xh.toBits / 2 ^ 52
+          + value xh.toBits / 2 ^ 53 + value xh.toBits / 2 ^ 53),
+        (by positivity : (0 : ℝ) ≤ value xh.toBits / 2 ^ 52)]
+    · rw [show value xh.toBits + value (xl - 0.5).toBits - (value xh.toBits + value xl.toBits - 1 / 2) =
+        value (xl - 0.5).toBits - (value xl.toBits - 1 / 2) by ring]
+      linarith
+  · have hlt : value xh.toBits < 2 ^ 52 := by
+      rcases lt_or_ge (value xh.toBits) (2 ^ 52) with h | h
+      · exact h
+      · exact absurd ((big_test xh hxh hx0).mpr h) ht
+    obtain ⟨hhf, hhv⟩ := LgammaAsymProd.half_sub_wide xh hxh (by linarith) hlt
+    refine ⟨xh - 0.5, xl, if_neg ht, hhf, hxl, by rw [hhv], by rw [hhv]; linarith, ?_, ?_⟩
+    · rw [hhv]
+      have : value xh.toBits / 2 ^ 51 ≤ (value xh.toBits - 1 / 2) / 2 ^ 50 := by
+        rw [div_le_div_iff₀ (by norm_num) (by norm_num)]; nlinarith
+      linarith
+    · rw [hhv, show value xh.toBits - 1 / 2 + value xl.toBits - (value xh.toBits + value xl.toBits - 1 / 2)
+        = 0 by ring, abs_zero]
+      exact hd0
+
+
+/-- The triangle inequality through CORE-MATH's sum. -/
+theorem combine (a b c τ e : ℝ) (h1 : |a - b| ≤ e) (h2 : |c - b| ≤ τ * c) : |a - c| ≤ τ * c + e := by
+  have := abs_sub_le a b c
+  rw [abs_sub_comm b c] at this
+  linarith
+
+theorem rat_abs_le (q M : ℚ) (h : |q| ≤ M) : |(q : ℝ)| ≤ (M : ℝ) := by
+  have := (Rat.cast_le (K := ℝ)).mpr h
+  push_cast at this
+  exact this
+
+theorem c48 : Finite (48.0 : Float).toBits ∧ value (48.0 : Float).toBits = 48 := by
+  rw [show (48.0 : Float).toBits = 0x4048000000000000 from rfl]
+  refine ⟨by unfold CodeLib.IEEE64.Finite; decide, ?_⟩
+  rw [← PolyBound.ratOfWord_cast, show PolyBound.ratOfWord 0x4048000000000000 = 48 by decide +kernel]
+  norm_num
+
+theorem c145 : Finite (14.5 : Float).toBits ∧ value (14.5 : Float).toBits = 29 / 2 := by
+  rw [show (14.5 : Float).toBits = 0x402D000000000000 from rfl]
+  refine ⟨by unfold CodeLib.IEEE64.Finite; decide, ?_⟩
+  rw [← PolyBound.ratOfWord_cast, show PolyBound.ratOfWord 0x402D000000000000 = 29 / 2 by
+    decide +kernel]
+  norm_num
+
+/-- The constants of the three ranges. -/
+theorem consts :
+    Wasm.IEEE64.isFinite Lgamma.asymTable[0]! = true ∧ Wasm.IEEE64.isFinite Lgamma.asymTable[0 + 1]! = true ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[0]!| ≤ 1 / 2 ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[0 + 1]!| ≤ 1 / 2 ^ 50 ∧
+    Wasm.IEEE64.isFinite Lgamma.asymTable[16]! = true ∧
+      Wasm.IEEE64.isFinite Lgamma.asymTable[16 + 1]! = true ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[16]!| ≤ 1 / 2 ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[16 + 1]!| ≤ 1 / 2 ^ 50 ∧
+    Wasm.IEEE64.isFinite Lgamma.asymTable[40]! = true ∧
+      Wasm.IEEE64.isFinite Lgamma.asymTable[40 + 1]! = true ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[40]!| ≤ 1 / 2 ∧
+      |PolyBound.ratOfWord Lgamma.asymTable[40 + 1]!| ≤ 1 / 2 ^ 50 := by
+  decide +kernel
+
+set_option maxHeartbeats 8000000 in
+/-- **`asLgammaAsymAccurate` below `2^120`** against `log Γ`, with the series that the code
+selects by `xh`: within `2^-87` relative plus `x (2^-88 + 2^-91)` below 48, and within `2^-63`
+relative plus the same from 48 on. -/
+theorem asym_ranges (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
+    (hAF : LgammaApprox.AsymFact) (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
+    (hlo : 15 / 4 ≤ value xh.toBits) (hhi : value xh.toBits < 2 ^ 120)
+    (hlb : |value xl.toBits| ≤ value xh.toBits / 2 ^ 51) :
+    let r := asymSmall Lgamma.asymTable (Lgamma.asLogdAccurate Tgamma.logdTable H xh) xh xl
+      (if xh ≥ 48.0 then (0, 7) else if xh ≥ 14.5 then (16, 11) else (40, 27))
+    Finite r.1.toBits ∧ Finite r.2.1.toBits ∧ Finite r.2.2.toBits ∧
+      |value r.1.toBits + value r.2.1.toBits + value r.2.2.toBits -
+          GammaBasic.lgamma (value xh.toBits + value xl.toBits)| ≤
+        (if value xh.toBits < 48 then 1 / 2 ^ 87 else 1 / 2 ^ 63) *
+            GammaBasic.lgamma (value xh.toBits + value xl.toBits) +
+          (value xh.toBits + value xl.toBits) * (1 / 2 ^ 88 + 1 / 2 ^ 91) ∧
+      0 < value r.1.toBits ∧ |value r.2.1.toBits| ≤ value r.1.toBits / 2 ^ 45 ∧
+      |value r.2.2.toBits| ≤ value r.1.toBits / 2 ^ 96 := by
+  intro r
+  have hx0 : 0 < value xh.toBits := by linarith
+  obtain ⟨w1, w2, hwdef, hw1f, hw2f, hw1lo, hw1hi, hw2, hw⟩ := w_spec xh xl hxh hxl hlo
+    (by linarith [(by norm_num : (2 : ℝ) ^ 120 ≤ 2 ^ 801)]) hlb
+  have hr : r = asymW Lgamma.asymTable (Lgamma.asLogdAccurate Tgamma.logdTable H xh) xh xl w1 w2
+      (if xh ≥ 48.0 then (0, 7) else if xh ≥ 14.5 then (16, 11) else (40, 27)) := by
+    show asymSmall _ _ _ _ _ = _
+    unfold asymSmall
+    rw [hwdef]
+  rw [hr]
+  have hXlo : value xh.toBits * (1 - 1 / 2 ^ 51) ≤ value xh.toBits + value xl.toBits := by
+    have := (abs_le.mp hlb).1; linarith
+  have hXhi : value xh.toBits + value xl.toBits ≤ value xh.toBits * (1 + 1 / 2 ^ 51) := by
+    have := (abs_le.mp hlb).2; linarith
+  obtain ⟨k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, k11, k12⟩ := consts
+  by_cases h48 : xh ≥ 48.0
+  · rw [if_pos h48]
+    have hv48 : 48 ≤ value xh.toBits := by
+      have := (fle_iff 48.0 xh c48.1 hxh).mp h48; rwa [c48.2] at this
+    rw [if_neg (not_lt.mpr hv48)]
+    obtain ⟨a, b, c, he, hpos, hb1, hb2⟩ := asym_gen hF hLA 0 7 1 (1 / 2300) (1 / 2300) (1 / 2 ^ 58)
+      (1 / 48) (831 / 10000) (834 / 10000) (1 / 2 ^ 8) a1C a1Cl a1E a1Λ a1K asym1_ok asym1_val asym1_lip
+      (pz_nonneg _) (pz_nonneg _) (by norm_num) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+      (by norm_num) (by norm_num) asym_ends.1 asym_ends.2.1 (by norm_num) (by norm_num) le_rfl k1 k2
+      (by have := rat_abs_le _ _ k3; push_cast at this; exact this) (by have := rat_abs_le _ _ k4; push_cast at this; exact this) 0 7 rfl rfl rfl rfl xh xl w1 w2 hxh hxl hw1f hw2f hlo hhi
+      (by push_cast; rw [div_le_div_iff₀ hx0 (by norm_num)]; linarith) hlb hw1lo hw1hi hw2 hw
+    have hfact := hAF.1 (value xh.toBits + value xl.toBits) (by nlinarith)
+    exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
+  · rw [if_neg h48]
+    have hv48 : value xh.toBits < 48 := by
+      rcases lt_or_ge (value xh.toBits) 48 with h | h
+      · exact h
+      · exact absurd ((fle_iff 48.0 xh c48.1 hxh).mpr (by rw [c48.2]; exact h)) h48
+    rw [if_pos hv48]
+    by_cases h145 : xh ≥ 14.5
+    · rw [if_pos h145]
+      have hv145 : 29 / 2 ≤ value xh.toBits := by
+        have := (fle_iff 14.5 xh c145.1 hxh).mp h145; rwa [c145.2] at this
+      obtain ⟨a, b, c, he, hpos, hb1, hb2⟩ := asym_gen hF hLA 16 11 1 (1 / 210) (1 / 210)
+        (1 / 2 ^ 54) (2 / 29) (831 / 10000) (834 / 10000) (1 / 2 ^ 8) a2C a2Cl a2E a2Λ a2K asym2_ok
+        asym2_val asym2_lip (pz_nonneg _) (pz_nonneg _) (by norm_num) (by norm_num) (by norm_num)
+        (by norm_num) (by norm_num) (by norm_num) (by norm_num) asym_ends.2.2.1 asym_ends.2.2.2.1
+        (by norm_num) (by norm_num) le_rfl k5 k6 (by have := rat_abs_le _ _ k7; push_cast at this; exact this) (by have := rat_abs_le _ _ k8; push_cast at this; exact this) 16 11 rfl rfl rfl
+        rfl xh xl w1 w2 hxh hxl hw1f hw2f hlo hhi
+        (by push_cast; rw [div_le_div_iff₀ hx0 (by norm_num)]; linarith) hlb hw1lo hw1hi hw2 hw
+      have hfact := hAF.2.1 (value xh.toBits + value xl.toBits) (by nlinarith) (by nlinarith)
+      exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
+    · rw [if_neg h145]
+      have hv145 : value xh.toBits < 29 / 2 := by
+        rcases lt_or_ge (value xh.toBits) (29 / 2) with h | h
+        · exact h
+        · exact absurd ((fle_iff 14.5 xh c145.1 hxh).mpr (by rw [c145.2]; exact h)) h145
+      obtain ⟨a, b, c, he, hpos, hb1, hb2⟩ := asym_gen hF hLA 40 27 8 (1 / 14) (1 / 14) (1 / 2 ^ 50)
+        (4 / 15) (831 / 10000) (834 / 10000) (1 / 2 ^ 8) a3C a3Cl a3E a3Λ a3K asym3_ok asym3_val
+        asym3_lip (pz_nonneg _) (pz_nonneg _) (by norm_num) (by norm_num) (by norm_num) (by norm_num)
+        (by norm_num) (by norm_num) (by norm_num) asym_ends.2.2.2.2.1 asym_ends.2.2.2.2.2 (by norm_num)
+        (by norm_num) le_rfl k9 k10 (by have := rat_abs_le _ _ k11; push_cast at this; exact this) (by have := rat_abs_le _ _ k12; push_cast at this; exact this) 40 27 rfl rfl rfl rfl
+        xh xl w1 w2 hxh hxl hw1f hw2f hlo hhi
+        (by push_cast; rw [div_le_div_iff₀ hx0 (by norm_num)]; linarith) hlb hw1lo hw1hi hw2 hw
+      have hfact := hAF.2.2 (value xh.toBits + value xl.toBits) (by nlinarith) (by nlinarith)
+      exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
+
+
+set_option maxHeartbeats 8000000 in
+/-- **`asLgammaAsymAccurate` from `2^120` on**: `(log xh - 1)(xh + xl - 1/2)` within `2^-63` of
+`log Γ x` relative plus `x/2^86`, since the constant and the series of the sum stay below 1/2 and
+`log xh` differs from `log x` by at most `2 |xl|/xh`. -/
+theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
+    (hAF : LgammaApprox.AsymFact) (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
+    (hlo : 2 ^ 120 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 801)
+    (hxl1 : |value xl.toBits| ≤ 1) :
+    let r := asymBig (Lgamma.asLogdAccurate Tgamma.logdTable H xh) xh xl
+    Finite r.1.toBits ∧ Finite r.2.1.toBits ∧ Finite r.2.2.toBits ∧
+      |value r.1.toBits + value r.2.1.toBits + value r.2.2.toBits -
+          GammaBasic.lgamma (value xh.toBits + value xl.toBits)| ≤
+        1 / 2 ^ 63 * GammaBasic.lgamma (value xh.toBits + value xl.toBits) +
+          (value xh.toBits + value xl.toBits) / 2 ^ 86 ∧
+      0 < value r.1.toBits ∧ |value r.2.1.toBits| ≤ value r.1.toBits / 2 ^ 40 ∧
+      |value r.2.2.toBits| ≤ value r.1.toBits / 2 ^ 80 := by
+  intro r
+  set vx := value xh.toBits with hvx
+  set vl := value xl.toBits with hvl
+  have hx0 : 0 < vx := by linarith [(by norm_num : (0 : ℝ) < 2 ^ 120)]
+  have hX0 : 0 < vx + vl := by have := (abs_le.mp hxl1).1; linarith [(by norm_num : (2 : ℝ) < 2 ^ 120)]
+  -- the logarithm of `xh`
+  obtain ⟨t1f, t2f, t3f, te, t2b, t3b⟩ := LgammaLogdAcc.acc_abs hF hLA xh hxh hx0
+  set T := Lgamma.asLogdAccurate Tgamma.logdTable H xh with hTdef
+  have hl2 := Real.log_two_gt_d9
+  have hl2' := Real.log_two_lt_d9
+  norm_num at hl2 hl2'
+  have hlx : 83 ≤ Real.log vx ∧ Real.log vx ≤ 556 := by
+    constructor
+    · have h1 := Real.log_le_log (by positivity) hlo
+      rw [Real.log_pow] at h1; push_cast at h1; linarith
+    · have h1 := Real.log_le_log hx0 hhi
+      rw [Real.log_pow] at h1; push_cast at h1; linarith
+  have hT1 : 82 ≤ value T.1.toBits ∧ value T.1.toBits ≤ 557 := by
+    have h1 := abs_le.mp te
+    have hb : |value T.1.toBits| ≤ 600 := by
+      by_contra hc
+      push Not at hc
+      have h2 := abs_sub_abs_le_abs_sub (value T.1.toBits)
+        (value T.1.toBits + value T.2.1.toBits + value T.2.2.toBits - Real.log vx)
+      rw [show value T.1.toBits - (value T.1.toBits + value T.2.1.toBits + value T.2.2.toBits -
+        Real.log vx) = Real.log vx - value T.2.1.toBits - value T.2.2.toBits by ring] at h2
+      have h3 := abs_sub (Real.log vx - value T.2.1.toBits) (value T.2.2.toBits)
+      have h4 := abs_sub (Real.log vx) (value T.2.1.toBits)
+      rw [abs_of_pos (show (0 : ℝ) < Real.log vx by linarith)] at h4
+      have : |value T.1.toBits| / 2 ^ 51 ≤ |value T.1.toBits| / 4 :=
+        div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
+      have : |value T.1.toBits| / 2 ^ 100 ≤ |value T.1.toBits| / 4 :=
+        div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 50 + 1 / 2 ^ 100 ≤ 1)]
+    have h5 : |value T.2.1.toBits| ≤ 1 / 2 ^ 40 := by
+      have : |value T.1.toBits| / 2 ^ 51 ≤ 600 / 2 ^ 51 := div_le_div_of_nonneg_right hb (by norm_num)
+      linarith [(by norm_num : (600 : ℝ) / 2 ^ 51 + 1 / 2 ^ 50 ≤ 1 / 2 ^ 40)]
+    have h6 : |value T.2.2.toBits| ≤ 1 / 2 ^ 90 := by
+      have : |value T.1.toBits| / 2 ^ 100 ≤ 600 / 2 ^ 100 := div_le_div_of_nonneg_right hb (by norm_num)
+      linarith [(by norm_num : (600 : ℝ) / 2 ^ 100 + 1 / 2 ^ 100 ≤ 1 / 2 ^ 90)]
+    have := abs_le.mp h5
+    have := abs_le.mp h6
+    constructor <;> linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 40 + 1 / 2 ^ 90 ≤ 1 / 2)]
+  -- `wl = xl - 1/2`
+  have hB : |vl - value (0.5 : Float).toBits| + (0 + 0) ≤ 2 := by
+    rw [TgammaTiny.half_value]; simp only [add_zero]
+    have := abs_sub vl (1 / 2)
+    rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at this
+    linarith
+  have hs := fapprox_sub (fapprox_self xl hxl) (fapprox_self _ TgammaTiny.half_finite) 2 hB
+    (by norm_num)
+  rw [TgammaTiny.half_value] at hs
+  set wl := xl - 0.5 with hwldef
+  have hwe : |value wl.toBits - (vl - 1 / 2)| ≤ 2 / 2 ^ 53 := by
+    have := hs.2; simp only [zero_add] at this; exact this
+  have hwb : |value wl.toBits| ≤ 2 := by
+    have := abs_sub_abs_le_abs_sub (value wl.toBits) (vl - 1 / 2)
+    have := abs_sub vl (1 / 2)
+    rw [abs_of_pos (by norm_num : (0 : ℝ) < 1 / 2)] at this
+    linarith [(by norm_num : (2 : ℝ) / 2 ^ 53 ≤ 1 / 2)]
+  -- the product
+  obtain ⟨p1f, p2f, p3f, hpe, hp1, hp2, hp3⟩ := LgammaAsymProd.prod_spec hF T.1 T.2.1 T.2.2 xh wl
+    t1f t2f t3f hxh hs.1 (by linarith [hT1.1]) (by linarith [hT1.2])
+    (by
+      have : |value T.1.toBits| / 2 ^ 51 ≤ |value T.1.toBits| / 2 ^ 50 :=
+        div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 50 ≤ 1 / 2 ^ 48)])
+    (by
+      have : |value T.1.toBits| / 2 ^ 100 ≤ |value T.1.toBits| / 2 ^ 99 :=
+        div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 100 ≤ 1 / 2 ^ 97)])
+    (by linarith [(by norm_num : (1 : ℝ) ≤ 2 ^ 120)]) hhi
+    (by
+      have : (2 : ℝ) ≤ vx / 2 ^ 50 := by
+        rw [le_div_iff₀ (by norm_num)]; linarith [(by norm_num : (2 : ℝ) * 2 ^ 50 ≤ 2 ^ 120)]
+      linarith)
+  have hr : r = LgammaAsymProd.prodCode T.1 T.2.1 T.2.2 xh wl := rfl
+  rw [hr]
+  set P := LgammaAsymProd.prodCode T.1 T.2.1 T.2.2 xh wl with hPdef
+  -- the bounds on the parts
+  have hP1 : 80 * vx ≤ value P.1.toBits := by
+    have := (abs_le.mp hp1).1
+    have h2 : 81 * vx ≤ (value T.1.toBits - 1) * vx := mul_le_mul_of_nonneg_right (by linarith [hT1.1])
+      hx0.le
+    have h3 : 560 * vx / 2 ^ 53 ≤ vx / 2 := by rw [div_le_iff₀ (by norm_num)]; nlinarith
+    linarith
+  refine ⟨p1f, p2f, p3f, ?_, by linarith, ?_, ?_⟩
+  · -- the error
+    set X := vx + vl with hXdef
+    have hXv : X ≤ vx * (1 + 1 / 2 ^ 100) := by
+      have := (abs_le.mp hxl1).2
+      have : (1 : ℝ) ≤ vx / 2 ^ 100 := by
+        rw [le_div_iff₀ (by norm_num)]; linarith [(by norm_num : (1 : ℝ) * 2 ^ 100 ≤ 2 ^ 120)]
+      nlinarith
+    have hvX : vx ≤ X * (1 + 1 / 2 ^ 100) := by
+      have := (abs_le.mp hxl1).1
+      have : (1 : ℝ) ≤ vx / 2 ^ 101 := by
+        rw [le_div_iff₀ (by norm_num)]; linarith [(by norm_num : (1 : ℝ) * 2 ^ 101 ≤ 2 ^ 120)]
+      nlinarith
+    have hX48 : 48 - 1 / 2 ^ 40 ≤ X := by
+      have := (abs_le.mp hxl1).1; linarith [(by norm_num : (49 : ℝ) ≤ 2 ^ 120)]
+    have hfact := hAF.1 X hX48
+    -- `log x` against `log xh`
+    have hlog : |Real.log X - Real.log vx| ≤ 2 / vx := by
+      have ht : |vl / vx| ≤ 1 / 2 := by
+        rw [abs_div, abs_of_pos hx0, div_le_iff₀ hx0]
+        linarith [(by norm_num : (2 : ℝ) ≤ 2 ^ 120)]
+      have h1 : |-(vl / vx)| < 1 := by rw [abs_neg]; linarith
+      have h2 := Real.abs_log_sub_add_sum_range_le h1 0
+      simp only [Finset.sum_range_zero, zero_add, pow_one, sub_neg_eq_add] at h2
+      have hX : X = vx * (1 + vl / vx) := by rw [hXdef]; field_simp
+      rw [hX, Real.log_mul hx0.ne' (by linarith [(abs_le.mp ht).1] : (1 : ℝ) + vl / vx ≠ 0).symm.symm,
+        show Real.log vx + Real.log (1 + vl / vx) - Real.log vx = Real.log (1 + vl / vx) by ring]
+      rw [abs_neg] at h2
+      have h3 : |vl / vx| / (1 - |vl / vx|) ≤ 2 * |vl / vx| := by
+        rw [div_le_iff₀ (by linarith)]; nlinarith [abs_nonneg (vl / vx)]
+      have h4 : 2 * |vl / vx| ≤ 2 / vx := by
+        rw [abs_div, abs_of_pos hx0]
+        have := div_le_div_of_nonneg_right hxl1 hx0.le
+        linarith [(by ring : 2 * (|vl| / vx) = 2 * |vl| / vx), (by ring : (2 : ℝ) / vx = 2 * (1 / vx))]
+      linarith
+    -- the constant and the series of the sum
+    obtain ⟨k1, k2, k3, k4, -⟩ := consts
+    have hc : |((LgammaApprox.q Lgamma.asymTable 0 + LgammaApprox.q Lgamma.asymTable (0 + 1) : ℚ) : ℝ)|
+        ≤ 1 / 2 + 1 / 2 ^ 50 := by
+      have h3 := rat_abs_le _ _ k3
+      have h4 := rat_abs_le _ _ k4
+      push_cast at h3 h4 ⊢
+      have := abs_add_le ((PolyBound.ratOfWord Lgamma.asymTable[0]! : ℚ) : ℝ)
+        ((PolyBound.ratOfWord Lgamma.asymTable[0 + 1]! : ℚ) : ℝ)
+      exact this.trans (by linarith)
+    have hX2 : 1 / X ^ 2 ≤ ((1 / 2300 : ℚ) : ℝ) := by
+      push_cast
+      rw [div_le_div_iff₀ (by positivity) (by norm_num)]
+      nlinarith
+    obtain ⟨hv1, hv2⟩ := LgammaAsymSeries.val_at Lgamma.asymTable 2 7 1 (1 / 2300) (831 / 10000)
+      (834 / 10000) (by norm_num) (by norm_num) asym1_val (1 / X ^ 2) (by positivity) hX2
+    have hser : |1 / X * PolyBound.eval (LgammaApprox.ddCoeffs Lgamma.asymTable (0 + 2) 7) (1 / X ^ 2)| ≤
+        1 / 100 := by
+      rw [abs_mul, abs_of_pos (by positivity : (0 : ℝ) < 1 / X)]
+      have h1 : |PolyBound.eval (LgammaApprox.ddCoeffs Lgamma.asymTable (0 + 2) 7) (1 / X ^ 2)| ≤ 1 := by
+        rw [abs_le]; push_cast at hv1 hv2; constructor <;> linarith
+      have h2 : 1 / X ≤ 1 / 100 := by
+        rw [div_le_div_iff₀ (by linarith) (by norm_num)]; linarith [(by norm_num : (101 : ℝ) ≤ 2 ^ 120)]
+      nlinarith [abs_nonneg (PolyBound.eval (LgammaApprox.ddCoeffs Lgamma.asymTable (0 + 2) 7)
+        (1 / X ^ 2))]
+    unfold LgammaApprox.asymAcc at hfact
+    -- the product against `(x - 1/2)(log x - 1)`
+    set Ls := value T.1.toBits + value T.2.1.toBits + value T.2.2.toBits with hLs
+    have hLx : |Ls - Real.log X| ≤ 1 / 2 ^ 88 + 2 / vx := by
+      have := abs_sub_le Ls (Real.log vx) (Real.log X)
+      rw [abs_sub_comm (Real.log vx) (Real.log X)] at this
+      linarith
+    have hwv : |vx + value wl.toBits| ≤ vx + 2 := by
+      have := abs_add_le vx (value wl.toBits); rw [abs_of_pos hx0] at this; linarith
+    have hlX : |Real.log X - 1| ≤ 557 := by
+      have h1 : Real.log X ≤ 557 := by
+        have := (abs_le.mp hlog).2; linarith [hlx.2, (by
+          have : 2 / vx ≤ 2 / 2 ^ 120 := div_le_div_of_nonneg_left (by norm_num) (by positivity) hlo
+          linarith [(by norm_num : (2 : ℝ) / 2 ^ 120 ≤ 1 / 2)] : 2 / vx ≤ 1 / 2)]
+      have h2 : 0 ≤ Real.log X - 1 := by
+        have := (abs_le.mp hlog).1
+        have : 2 / vx ≤ 1 := by rw [div_le_one hx0]; linarith [(by norm_num : (2 : ℝ) ≤ 2 ^ 120)]
+        linarith [hlx.1]
+      rw [abs_of_nonneg h2]; linarith
+    have hE2 : |(Ls - 1) * (vx + value wl.toBits) - (X - 1 / 2) * (Real.log X - 1)| ≤
+        vx / 2 ^ 88 + 3 := by
+      have hid : (Ls - 1) * (vx + value wl.toBits) - (X - 1 / 2) * (Real.log X - 1) =
+          (Ls - Real.log X) * (vx + value wl.toBits) +
+            (Real.log X - 1) * (value wl.toBits - (vl - 1 / 2)) := by rw [hXdef]; ring
+      rw [hid]
+      have h1 := abs_add_le ((Ls - Real.log X) * (vx + value wl.toBits))
+        ((Real.log X - 1) * (value wl.toBits - (vl - 1 / 2)))
+      have h2 : |(Ls - Real.log X) * (vx + value wl.toBits)| ≤ (1 / 2 ^ 88 + 2 / vx) * (vx + 2) := by
+        rw [abs_mul]; exact mul_le_mul hLx hwv (abs_nonneg _) (by positivity)
+      have h3 : |(Real.log X - 1) * (value wl.toBits - (vl - 1 / 2))| ≤ 557 * (2 / 2 ^ 53) := by
+        rw [abs_mul]; exact mul_le_mul hlX hwe (abs_nonneg _) (by norm_num)
+      have h4 : (1 / 2 ^ 88 + 2 / vx) * (vx + 2) = vx / 2 ^ 88 + 2 / 2 ^ 88 + 2 + 4 / vx := by
+        field_simp; ring
+      have h5 : 4 / vx ≤ 1 / 2 := by
+        rw [div_le_iff₀ hx0]; linarith [(by norm_num : (8 : ℝ) ≤ 2 ^ 120)]
+      linarith [(by norm_num : (2 : ℝ) / 2 ^ 88 + 557 * (2 / 2 ^ 53) ≤ 1 / 2)]
+    have hpe' : |value P.1.toBits + value P.2.1.toBits + value P.2.2.toBits -
+        (Ls - 1) * (vx + value wl.toBits)| ≤ vx / 2 ^ 92 := hpe
+    have hc' := abs_le.mp hc
+    have hser' := abs_le.mp hser
+    have hfact' := abs_le.mp hfact
+    have hpe'' := abs_le.mp hpe'
+    have hE2' := abs_le.mp hE2
+    rw [abs_le]
+    have hvX' : vx / 2 ^ 92 + vx / 2 ^ 88 + 4 ≤ X / 2 ^ 86 := by
+      have h1 : (4 : ℝ) ≤ X / 2 ^ 100 := by
+        rw [le_div_iff₀ (by norm_num)]; linarith [(by norm_num : (4 : ℝ) * 2 ^ 100 + 1 ≤ 2 ^ 120)]
+      have h2 : vx / 2 ^ 92 + vx / 2 ^ 88 ≤ X * (1 + 1 / 2 ^ 100) * (1 / 2 ^ 92 + 1 / 2 ^ 88) := by
+        have := mul_le_mul_of_nonneg_right hvX (by norm_num : (0 : ℝ) ≤ 1 / 2 ^ 92 + 1 / 2 ^ 88)
+        linarith [(by ring : vx * (1 / 2 ^ 92 + 1 / 2 ^ 88) = vx / 2 ^ 92 + vx / 2 ^ 88)]
+      have h3 : X * (1 + 1 / 2 ^ 100) * (1 / 2 ^ 92 + 1 / 2 ^ 88) + X / 2 ^ 100 ≤ X / 2 ^ 86 := by
+        have : X * (1 + 1 / 2 ^ 100) * (1 / 2 ^ 92 + 1 / 2 ^ 88) + X / 2 ^ 100 =
+            X * ((1 + 1 / 2 ^ 100) * (1 / 2 ^ 92 + 1 / 2 ^ 88) + 1 / 2 ^ 100) := by ring
+        rw [this]
+        have := mul_le_mul_of_nonneg_left (by norm_num : (1 + 1 / 2 ^ 100 : ℝ) * (1 / 2 ^ 92 +
+          1 / 2 ^ 88) + 1 / 2 ^ 100 ≤ 1 / 2 ^ 86) hX0.le
+        linarith [(by ring : X * (1 / 2 ^ 86) = X / 2 ^ 86)]
+      linarith
+    constructor <;> linarith
+  · have h1 : vx / 2 ^ 37 ≤ value P.1.toBits / 2 ^ 40 := by
+      rw [div_le_div_iff₀ (by norm_num) (by norm_num)]; nlinarith
+    linarith
+  · have h1 : vx / 2 ^ 84 ≤ value P.1.toBits / 2 ^ 80 := by
+      rw [div_le_div_iff₀ (by norm_num) (by norm_num)]; nlinarith
+    linarith
+
+
+theorem c120 : Finite (Float.ofBits 0x4770000000000000).toBits ∧
+    value (Float.ofBits 0x4770000000000000).toBits = 2 ^ 120 := by
+  have hf : Finite (0x4770000000000000 : UInt64) := by unfold CodeLib.IEEE64.Finite; decide
+  refine ⟨TgammaWords.ofBits_finite _ hf, ?_⟩
+  rw [TgammaWords.ofBits_value _ hf, show PolyBound.ratOfWord 0x4770000000000000 = 2 ^ 120 by
+    decide +kernel]
+  norm_num
+
+/-- **`Lgamma.asLgammaAsymAccurate`** from 15/4 to `2^801` against `log Γ`. -/
+theorem asym_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
+    (hAF : LgammaApprox.AsymFact) (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
+    (hlo : 15 / 4 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 801)
+    (hlb : |value xl.toBits| ≤ value xh.toBits / 2 ^ 51) (hxl1 : |value xl.toBits| ≤ 1) :
+    let r := Lgamma.asLgammaAsymAccurate Tgamma.logdTable H Lgamma.asymTable xh xl
+    Finite r.1.toBits ∧ Finite r.2.1.toBits ∧ Finite r.2.2.toBits ∧
+      |value r.1.toBits + value r.2.1.toBits + value r.2.2.toBits -
+          GammaBasic.lgamma (value xh.toBits + value xl.toBits)| ≤
+        (if value xh.toBits < 48 then 1 / 2 ^ 87 else 1 / 2 ^ 63) *
+            GammaBasic.lgamma (value xh.toBits + value xl.toBits) +
+          (value xh.toBits + value xl.toBits) *
+            (if value xh.toBits < 2 ^ 120 then 1 / 2 ^ 88 + 1 / 2 ^ 91 else 1 / 2 ^ 86) ∧
+      0 < value r.1.toBits ∧ |value r.2.1.toBits| ≤ value r.1.toBits / 2 ^ 40 ∧
+      |value r.2.2.toBits| ≤ value r.1.toBits / 2 ^ 80 := by
+  intro r
+  have hr := asym_eq Tgamma.logdTable H Lgamma.asymTable xh xl
+  by_cases h120 : value xh.toBits < 2 ^ 120
+  · have hc : xh < Float.ofBits 0x4770000000000000 :=
+      (F64UpperWord.float_lt_iff _ _ hxh c120.1).mpr (by rw [c120.2]; exact h120)
+    rw [if_pos hc] at hr
+    rw [show r = _ from hr, if_pos h120]
+    obtain ⟨a, b, c, e, p, q1, q2⟩ := asym_ranges hF hLA hAF xh xl hxh hxl hlo h120 hlb
+    refine ⟨a, b, c, e, p, ?_, ?_⟩
+    · have := div_le_div_of_nonneg_left p.le (by norm_num : (0 : ℝ) < 2 ^ 40)
+        (by norm_num : (2 : ℝ) ^ 40 ≤ 2 ^ 45)
+      linarith
+    · have := div_le_div_of_nonneg_left p.le (by norm_num : (0 : ℝ) < 2 ^ 80)
+        (by norm_num : (2 : ℝ) ^ 80 ≤ 2 ^ 96)
+      linarith
+  · have hge : 2 ^ 120 ≤ value xh.toBits := not_lt.mp h120
+    have hc : ¬ xh < Float.ofBits 0x4770000000000000 := fun h =>
+      h120 (by have := (F64UpperWord.float_lt_iff _ _ hxh c120.1).mp h; rwa [c120.2] at this)
+    rw [if_neg hc] at hr
+    rw [show r = _ from hr, if_neg h120,
+      if_neg (not_lt.mpr (le_trans (by norm_num : (48 : ℝ) ≤ 2 ^ 120) hge))]
+    obtain ⟨a, b, c, e, p, q1, q2⟩ := asym_big hF hLA hAF xh xl hxh hxl hge hhi hxl1
+    refine ⟨a, b, c, ?_, p, q1, q2⟩
+    linarith [(by ring : (value xh.toBits + value xl.toBits) * (1 / 2 ^ 86) =
+      (value xh.toBits + value xl.toBits) / 2 ^ 86)]
+
 #print axioms asym_eq
 #print axioms big_test
 #print axioms tail_spec
 #print axioms asym_gen
+#print axioms w_spec
+#print axioms asym_ranges
+#print axioms asym_big
+#print axioms asym_spec
 
 end Verified.Examples.LgammaAsymAcc
