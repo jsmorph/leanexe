@@ -5,46 +5,23 @@ import Verified.Examples.SinhWords
 
 /-!
 The two branches of `Lgamma.accurate` below `1/4`, at `x = |sx|`.  Below `2^-100` the code returns
-`-log x` from `asLogdAccurate` (`tiny`), and `log |Γ sx| + log |sx|` is at most `4 |sx|`
+`-log x` from `asLogdAccurate` (`tiny_spec`), and `log |Γ sx| + log |sx|` is at most `4 |sx|`
 (`GammaBasic.abs_lgamma_add_log_le`).  From `2^-100` to `1/4` it adds `sx P (sx)`, for the
-polynomial at offset 0 of `accurateTable` (`LgammaAccPoly.small_ok`), to `-log x` (`low`), since
-`log |Γ sx| = log Γ (1 + sx) - log |sx|`.  Both branches end with `adjust`: when `fh + 2 fl` is
-exact, so that `fh + fl` may lie halfway between two doubles, and the rounding is to nearest, the
-code multiplies `fl` by `1 ± 2^-52` with the sign of `fll`, which moves `fl` by at most `|fl|/2^51`.
-Each branch returns a pair within `2^-70` of `log |Γ sx|`, relative, whose high part has magnitude
-at least 1, so the polynomials about the negative zeros do not apply to it (`LowSpec`).
+polynomial at offset 0 of `accurateTable` (`LgammaAccPoly.small_ok`), to `-log x` (`low_spec`),
+since `log |Γ sx| = log Γ (1 + sx) - log |sx|`.  Both branches end with the same adjustment: when
+`fh + 2 fl` is exact, so that `fh + fl` may lie halfway between two doubles, and the rounding is to
+nearest, the code multiplies `fl` by `1 ± 2^-52` with the sign of `fll`, which moves `fl` by at
+most `|fl|/2^51` (`adjust_spec`).  Each branch returns a pair within `2^-70` of `log |Γ sx|`,
+relative, whose high part has magnitude at least 1, so the polynomials about the negative zeros do
+not apply to it (`LowSpec`).  The theorems take the intermediate results of the code as variables
+with their equations, the form in which `LgammaWalk.walk_step` leaves them, since the matchers of
+a copy of the code in another module differ from those of `Lgamma.accurate`.
 -/
 
 namespace Verified.Examples.LgammaAccLow
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx Tgamma TgammaDD LgammaLogAccKern
 
 set_option exponentiation.threshold 4096
-
-/-- The end of each branch of `Lgamma.accurate`: `fl` times `1 ± 2^-52` when `fh + 2 fl` is exact
-and the rounding is to nearest. -/
-def adjust (fh fl fll : Float) : Float × Float :=
-  let (_, e) := fastTwoSum fh (2.0 * fl)
-  let p54 := Float.ofBits 0x3C90000000000000  -- 0x1p-54
-  if e == 0.0 && 1.0 + p54 == 1.0 - p54 then
-    (fh, fl * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) fl * Lgamma.copySign 1.0 fll))
-  else (fh, fl)
-
-/-- The branch below `2^-100`. -/
-def tiny (logTab hTab : Array UInt64) (x : Float) : Float × Float :=
-  let (lh, ll, lll) := Lgamma.asLogdAccurate logTab hTab x
-  let (fh, fl) := fastTwoSum (-lh) (-ll)
-  let (fl, fll) := fastTwoSum fl (-lll)
-  adjust fh fl fll
-
-/-- The branch from `2^-100` to `1/4`. -/
-def low (logTab hTab accTab : Array UInt64) (sx x : Float) : Float × Float :=
-  let (fh, fl) := Lgamma.polyDDDFst accTab 0 34 sx 0.0
-  let (fh, fl) := mulDDD sx fh fl
-  let (lh, ll, lll) := Lgamma.asLogdAccurate logTab hTab x
-  let (fh, fl) := sumDD fh fl (-ll) (-lll)
-  let (fh, fll) := twoSum (-lh) fh
-  let (fl, fll) := twoSum fll fl
-  adjust fh fl fll
 
 /-- The bounds on the result of a branch below `1/4`. -/
 def LowSpec (L : ℝ) (p : Float × Float) : Prop :=
@@ -95,15 +72,17 @@ theorem factor (a b : Float) :
       show PolyBound.ratOfWord 0x3FEFFFFFFFFFFFFE = 1 - 1 / 2 ^ 52 by decide +kernel]
     norm_num
 
-/-- **`adjust`** keeps the high part and moves the low part by at most `|fl|/2^51 + 2^-1075`. -/
-theorem adjust_spec (fh fl fll : Float) (hfl : Finite fl.toBits) (hb : |value fl.toBits| ≤ 1) :
-    (adjust fh fl fll).1 = fh ∧ Finite (adjust fh fl fll).2.toBits ∧
-      |value (adjust fh fl fll).2.toBits - value fl.toBits| ≤
+/-- **The adjustment** keeps the high part and moves the low part by at most
+`|fl|/2^51 + 2^-1075`. -/
+theorem adjust_spec (c : Bool) (fh fl fll : Float) (hfl : Finite fl.toBits)
+    (hb : |value fl.toBits| ≤ 1) :
+    (if c = true then (fh, fl * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) fl *
+        Lgamma.copySign 1.0 fll)) else (fh, fl)).1 = fh ∧
+      Finite (if c = true then (fh, fl * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) fl *
+        Lgamma.copySign 1.0 fll)) else (fh, fl)).2.toBits ∧
+      |value (if c = true then (fh, fl * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) fl *
+        Lgamma.copySign 1.0 fll)) else (fh, fl)).2.toBits - value fl.toBits| ≤
         |value fl.toBits| / 2 ^ 51 + 1 / 2 ^ 1075 := by
-  unfold adjust
-  generalize fastTwoSum fh (2.0 * fl) = p
-  obtain ⟨a, e⟩ := p
-  dsimp only
   split_ifs
   · refine ⟨rfl, ?_⟩
     obtain ⟨hFf, hFv⟩ := factor fl fll
@@ -166,8 +145,13 @@ theorem log_low (v : ℝ) (h1 : 1 / 2 ^ 100 ≤ v) : -(6932 / 100) ≤ Real.log 
 set_option maxHeartbeats 4000000 in
 /-- **The branch below `2^-100`.** -/
 theorem tiny_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (sx : Float)
-    (hsx : Finite sx.toBits) (h0 : value sx.toBits ≠ 0) (hlt : |value sx.toBits| < 1 / 2 ^ 100) :
-    LowSpec (GammaBasic.lgamma (value sx.toBits)) (tiny Tgamma.logdTable H sx.abs) := by
+    (hsx : Finite sx.toBits) (h0 : value sx.toBits ≠ 0) (hlt : |value sx.toBits| < 1 / 2 ^ 100)
+    (lh ll lll : Float) (hT : Lgamma.asLogdAccurate Tgamma.logdTable H sx.abs = (lh, ll, lll))
+    (a b : Float) (hab0 : fastTwoSum (-lh) (-ll) = (a, b))
+    (c d : Float) (hcd0 : fastTwoSum b (-lll) = (c, d)) (C : Bool) :
+    LowSpec (GammaBasic.lgamma (value sx.toBits))
+      (if C = true then (a, c * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) c *
+        Lgamma.copySign 1.0 d)) else (a, c)) := by
   obtain ⟨haf, hav⟩ := SinhWords.abs_float sx hsx
   set vs := value sx.toBits with hvs
   have hpos : 0 < value sx.abs.toBits := by rw [hav]; exact abs_pos.mpr h0
@@ -176,10 +160,8 @@ theorem tiny_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (sx 
   have hhi := log_tiny |vs| (abs_pos.mpr h0) hlt
   obtain ⟨t1f, t2f, t3f, te, t2b, t3b⟩ := LgammaLogdAcc.acc_abs hF hLA sx.abs haf hpos
   rw [hav] at te
-  unfold tiny
-  generalize Lgamma.asLogdAccurate Tgamma.logdTable H sx.abs = T at t1f t2f t3f te t2b t3b
-  obtain ⟨lh, ll, lll⟩ := T
-  dsimp only at t1f t2f t3f te t2b t3b ⊢
+  rw [hT] at t1f t2f t3f te t2b t3b
+  dsimp only at t1f t2f t3f te t2b t3b
   set l0 := value lh.toBits
   set l1 := value ll.toBits
   set l2 := value lll.toBits
@@ -209,21 +191,20 @@ theorem tiny_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (sx 
   obtain ⟨n2f, n2v⟩ := neg_float lll t3f
   obtain ⟨af, bf, hab, hbb, -⟩ := fastTwoSum_spec (-lh) (-ll) n0f n1f
     (by rw [n0v, n1v, abs_neg, abs_neg]; linarith) (by rw [n0v, abs_neg]; linarith)
-  generalize fastTwoSum (-lh) (-ll) = P at af bf hab hbb
-  obtain ⟨a, b⟩ := P
-  dsimp only at af bf hab hbb ⊢
+  rw [hab0] at af bf hab hbb
+  dsimp only at af bf hab hbb
   rw [n0v, n1v] at hab
   rw [n1v, abs_neg] at hbb
   obtain ⟨cf, df, hcd, hcb, hdb⟩ := TgammaAcc2.fts_approx b (-lll) bf n2f (1 / 2 ^ 41)
     (1 / 2 ^ 90) (hbb.trans hl1) (by rw [n2v, abs_neg]; exact hl2) (by norm_num)
-  generalize fastTwoSum b (-lll) = Q at cf df hcd hcb hdb
-  obtain ⟨c, d⟩ := Q
-  dsimp only at cf df hcd hcb hdb ⊢
+  rw [hcd0] at cf df hcd hcb hdb
+  dsimp only at cf df hcd hcb hdb
   rw [n2v] at hcd
   have hcb' : |value c.toBits| ≤ 1 / 2 ^ 41 + 1 / 2 ^ 60 := by
     linarith [(by norm_num : (1 / 2 ^ 41 + 1 / 2 ^ 90 : ℝ) * (1 + 1 / 2 ^ 53) ≤ 1 / 2 ^ 41 + 1 / 2 ^ 60)]
-  obtain ⟨hr1, hr2f, hr2⟩ := adjust_spec a c d cf (hcb'.trans (by norm_num))
-  generalize adjust a c d = R at hr1 hr2f hr2
+  obtain ⟨hr1, hr2f, hr2⟩ := adjust_spec C a c d cf (hcb'.trans (by norm_num))
+  generalize (if C = true then (a, c * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) c *
+    Lgamma.copySign 1.0 d)) else (a, c)) = R at hr1 hr2f hr2 ⊢
   obtain ⟨r1, r2⟩ := R
   dsimp only at hr1 hr2f hr2
   subst hr1
@@ -282,9 +263,16 @@ set_option maxHeartbeats 8000000 in
 /-- **The branch from `2^-100` to `1/4`.** -/
 theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     (hAP : LgammaApprox.AccPolyFact) (sx : Float) (hsx : Finite sx.toBits)
-    (hge : 1 / 2 ^ 100 ≤ |value sx.toBits|) (hlt : |value sx.toBits| < 1 / 4) :
+    (hge : 1 / 2 ^ 100 ≤ |value sx.toBits|) (hlt : |value sx.toBits| < 1 / 4)
+    (p0 p1 : Float) (hP : Lgamma.polyDDDFst Lgamma.accurateTable 0 34 sx 0.0 = (p0, p1))
+    (m0 m1 : Float) (hM : mulDDD sx p0 p1 = (m0, m1))
+    (lh ll lll : Float) (hT : Lgamma.asLogdAccurate Tgamma.logdTable H sx.abs = (lh, ll, lll))
+    (s0 s1 : Float) (hS : sumDD m0 m1 (-ll) (-lll) = (s0, s1))
+    (u0 u1 : Float) (hU : twoSum (-lh) s0 = (u0, u1))
+    (v0 v1 : Float) (hV : twoSum u1 s1 = (v0, v1)) (C : Bool) :
     LowSpec (GammaBasic.lgamma (value sx.toBits))
-      (low Tgamma.logdTable H Lgamma.accurateTable sx sx.abs) := by
+      (if C = true then (u0, v0 * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) v0 *
+        Lgamma.copySign 1.0 v1)) else (u0, v0)) := by
   obtain ⟨haf, hav⟩ := SinhWords.abs_float sx hsx
   set vs := value sx.toBits with hvs
   have h0 : vs ≠ 0 := by
@@ -318,10 +306,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     rw [show -Real.log |vs| - L = -G by linarith, abs_neg, abs_neg,
       abs_of_neg (by linarith : Real.log |vs| < 0)] at h1
     linarith [(by norm_num : (1 : ℝ) / 4 * (95 / 100) + 1 / 4 / 2 ^ 70 ≤ 1386 / 1000 - 114 / 100)]
-  unfold low
-  generalize Lgamma.polyDDDFst Lgamma.accurateTable 0 34 sx 0.0 = P at p0f p1f hpe hp1
-  obtain ⟨p0, p1⟩ := P
-  dsimp only at p0f p1f hpe hp1 ⊢
+  rw [hP] at p0f p1f hpe hp1
+  dsimp only at p0f p1f hpe hp1
   -- the product `sx P (sx)`
   have hp0 : |value p0.toBits| ≤ 96 / 100 := by
     have := abs_sub_abs_le_abs_sub (value p0.toBits + value p1.toBits) ev
@@ -335,9 +321,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     (by linarith [(by norm_num : (96 : ℝ) / 100 * (1 / 4) ≤ 2 ^ 900)])
     (by linarith [(by norm_num : (1 : ℝ) / 4 / 2 ^ 43 ≤ 2 ^ 900)])
   try rw [← hvs] at hme
-  generalize mulDDD sx p0 p1 = M at m0f m1f hme hm1 hm0
-  obtain ⟨m0, m1⟩ := M
-  dsimp only at m0f m1f hme hm1 hm0 ⊢
+  rw [hM] at m0f m1f hme hm1 hm0
+  dsimp only at m0f m1f hme hm1 hm0
   have htiny : (1 : ℝ) / 2 ^ 1071 ≤ |vs| / 2 ^ 900 := by
     have := div_le_div_of_nonneg_right hge (by norm_num : (0 : ℝ) ≤ 2 ^ 900)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1071 ≤ 1 / 2 ^ 100 / 2 ^ 900)]
@@ -365,9 +350,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   -- the logarithm of `x = |sx|`
   obtain ⟨t1f, t2f, t3f, te, t2b, t3b⟩ := LgammaLogdAcc.acc_abs hF hLA sx.abs haf hpos
   rw [hav] at te
-  generalize Lgamma.asLogdAccurate Tgamma.logdTable H sx.abs = T at t1f t2f t3f te t2b t3b
-  obtain ⟨lh, ll, lll⟩ := T
-  dsimp only at t1f t2f t3f te t2b t3b ⊢
+  rw [hT] at t1f t2f t3f te t2b t3b
+  dsimp only at t1f t2f t3f te t2b t3b
   set l0 := value lh.toBits
   set l1 := value ll.toBits
   set l2 := value lll.toBits
@@ -395,9 +379,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     (by rw [n1v, abs_neg]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 44 < 2 ^ 898)])
     (1 / 2 ^ 43) (by rw [n2v, abs_neg]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 44 + 1 / 2 ^ 93 ≤
       1 / 2 ^ 43)]) (by norm_num)
-  generalize sumDD m0 m1 (-ll) (-lll) = S at s0f s1f hse hs1 hs0
-  obtain ⟨s0, s1⟩ := S
-  dsimp only at s0f s1f hse hs1 hs0 ⊢
+  rw [hS] at s0f s1f hse hs1 hs0
+  dsimp only at s0f s1f hse hs1 hs0
   rw [n1v, n2v] at hse
   rw [n1v] at hs0
   have hs0' : |value s0.toBits| ≤ 26 / 100 := by
@@ -416,9 +399,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   obtain ⟨u0f, u1f, hu, hu1⟩ := twoSum_spec (-lh) s0 n0f s0f
     (by rw [n0v, abs_neg]; linarith [(by norm_num : (70 : ℝ) < 2 ^ 900)])
     (by linarith [(by norm_num : (26 : ℝ) / 100 < 2 ^ 900)])
-  generalize twoSum (-lh) s0 = U at u0f u1f hu hu1
-  obtain ⟨u0, u1⟩ := U
-  dsimp only at u0f u1f hu hu1 ⊢
+  rw [hU] at u0f u1f hu hu1
+  dsimp only at u0f u1f hu hu1
   rw [n0v] at hu
   have hu0 : |value u0.toBits| ≤ 71 := by
     have h1 := abs_add_le (value u0.toBits + value u1.toBits) (-value u1.toBits)
@@ -433,9 +415,8 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   obtain ⟨v0f, v1f, hv, hv1⟩ := twoSum_spec u1 s1 u1f s1f
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 45 < 2 ^ 900)])
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 42 < 2 ^ 900)])
-  generalize twoSum u1 s1 = V at v0f v1f hv hv1
-  obtain ⟨v0, v1⟩ := V
-  dsimp only at v0f v1f hv hv1 ⊢
+  rw [hV] at v0f v1f hv hv1
+  dsimp only at v0f v1f hv hv1
   have hv0 : |value v0.toBits| ≤ 1 / 2 ^ 41 := by
     have h1 := abs_add_le (value v0.toBits + value v1.toBits) (-value v1.toBits)
     rw [add_neg_cancel_right, abs_neg, hv] at h1
@@ -445,8 +426,9 @@ theorem low_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     have := div_le_div_of_nonneg_right hv0 (by norm_num : (0 : ℝ) ≤ 2 ^ 52)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 41 / 2 ^ 52 + 1 / 2 ^ 1074 ≤ 1 / 2 ^ 92)]
   -- `adjust`
-  obtain ⟨hr1, hr2f, hr2⟩ := adjust_spec u0 v0 v1 v0f (hv0.trans (by norm_num))
-  generalize adjust u0 v0 v1 = R at hr1 hr2f hr2
+  obtain ⟨hr1, hr2f, hr2⟩ := adjust_spec C u0 v0 v1 v0f (hv0.trans (by norm_num))
+  generalize (if C = true then (u0, v0 * (1.0 + Lgamma.copySign (Float.ofBits 0x3CB0000000000000) v0 *
+    Lgamma.copySign 1.0 v1)) else (u0, v0)) = R at hr1 hr2f hr2 ⊢
   obtain ⟨r1, r2⟩ := R
   dsimp only at hr1 hr2f hr2
   subst hr1
