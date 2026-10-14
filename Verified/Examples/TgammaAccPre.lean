@@ -21,7 +21,8 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Approx Tgamma TgammaDD TgammaAccUp Tgamm
 set_option exponentiation.threshold 4096
 
 /-- The body of the loop of `Tgamma.accurate` for `x < j`, as the code writes it. -/
-def upBody : UInt64 → Float × Float × Float × Float × UInt64 → Float × Float × Float × Float × UInt64 :=
+def upBody :
+    UInt64 → Float × Float × Float × Float × UInt64 → Float × Float × Float × Float × UInt64 :=
   fun _ s =>
     let (xph, xpl, wh, wl, eoff) := s
     let (xph, l) := if xph.abs > 1.0 then fastTwoSum xph 1.0 else fastTwoSum 1.0 xph
