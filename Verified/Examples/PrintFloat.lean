@@ -95,76 +95,55 @@ def numDigits (t : UInt64) : UInt64 :=
 /-- Digit `i` of the `nd` digits of `t`, most significant first, as an ASCII byte. -/
 def digitAt (t nd i : UInt64) : UInt64 := (t / pow10Word (nd - 1 - i)) % 10 + 0x30
 
-/-- Byte `i` of the scientific layout of `(-1)^neg · t · 10^(xb - 2 ^ 62 - nd + 1)`: the `nd`
-digits of `t` with a point after the first when there are several, `e`, and the exponent `x` of
-the first digit, of `nx` digits, with `-` when negative. -/
-def sciAt (neg : Bool) (t nd xb nx i : UInt64) : UInt64 :=
-  let a : UInt64 := if neg then 1 else 0
-  let pt : UInt64 := if nd == 1 then 0 else 1
-  let pe := a + nd + pt
-  let xneg : Bool := xb < 0x4000000000000000
-  let xa := if xneg then 0x4000000000000000 - xb else xb - 0x4000000000000000
-  if i < a then 0x2D
-  else if i == a then digitAt t nd 0
-  else if i < a + 1 + pt then 0x2E
-  else if i < pe then digitAt t nd (i - a - pt)
-  else if i == pe then 0x65
-  else if xneg && i == pe + 1 then 0x2D
-  else digitAt xa nx (i - pe - 1 - (if xneg then 1 else 0))
+/-- The `cnt` digits of the `nd` digits of `t` from digit `s`, most significant first, as ASCII
+bytes. -/
+def digitsFrom (t nd s cnt : UInt64) : Array UInt64 :=
+  LeanExe.build cnt fun i => digitAt t nd (s + i)
 
-/-- The scientific layout of `(-1)^neg · t · 10^(kb - 2 ^ 62)` for `t ≥ 1`. -/
+/-- One byte. -/
+def byte1 (b : UInt64) : Array UInt64 := LeanExe.build 1 fun _ => b
+
+/-- No bytes. -/
+def noBytes : Array UInt64 := LeanExe.build 0 fun _ => 0
+
+/-- `n` zero digits. -/
+def zeros (n : UInt64) : Array UInt64 := LeanExe.build n fun _ => 0x30
+
+/-- The scientific layout of `(-1)^neg · t · 10^(kb - 2 ^ 62)` for `t ≥ 1`: the digits of `t`
+with a point after the first when there are several, `e`, and the exponent of the first digit,
+with `-` when it is negative. -/
 def sciLayoutW (neg : Bool) (t kb : UInt64) : Array UInt64 :=
   let nd := numDigits t
   let xb := kb + nd - 1
   let xneg : Bool := xb < 0x4000000000000000
   let xa := if xneg then 0x4000000000000000 - xb else xb - 0x4000000000000000
   let nx := numDigits xa
-  let len := (if neg then 1 else 0) + nd + (if nd == 1 then 0 else 1) + 1 +
-    (if xneg then 1 else 0) + nx
-  LeanExe.build len fun i => sciAt neg t nd xb nx i
+  (if neg then byte1 0x2D else noBytes) ++ digitsFrom t nd 0 1 ++
+    (if nd == 1 then noBytes else byte1 0x2E ++ digitsFrom t nd 1 (nd - 1)) ++ byte1 0x65 ++
+    (if xneg then byte1 0x2D else noBytes) ++ digitsFrom xa nx 0 nx
 
-/-- Byte `i` of ECMA-262's Number::toString layout of `(-1)^neg · t · 10^k` with `nd` digits and
-the point position `n = k + nd`, given biased as `nb`. -/
-def ecmaAt (neg : Bool) (t nd nb nx i : UInt64) : UInt64 :=
-  let a : UInt64 := if neg then 1 else 0
-  if i < a then 0x2D
-  else
-    let c := i - a
-    if nb ≥ 0x4000000000000000 + nd && nb ≤ 0x4000000000000015 then
-      if c < nd then digitAt t nd c else 0x30
-    else if nb > 0x4000000000000000 && nb ≤ 0x4000000000000015 then
-      let n := nb - 0x4000000000000000
-      if c < n then digitAt t nd c else if c == n then 0x2E else digitAt t nd (c - 1)
-    else if nb + 6 > 0x4000000000000000 && nb ≤ 0x4000000000000000 then
-      let z := 0x4000000000000000 - nb
-      if c == 0 then 0x30 else if c == 1 then 0x2E else if c < 2 + z then 0x30
-      else digitAt t nd (c - 2 - z)
-    else
-      let pt : UInt64 := if nd == 1 then 0 else 1
-      let pe := nd + pt
-      let xpos : Bool := nb ≥ 0x4000000000000001
-      let xa := if xpos then nb - 0x4000000000000001 else 0x4000000000000001 - nb
-      if c == 0 then digitAt t nd 0
-      else if c < 1 + pt then 0x2E
-      else if c < pe then digitAt t nd (c - pt)
-      else if c == pe then 0x65
-      else if c == pe + 1 then (if xpos then 0x2B else 0x2D)
-      else digitAt xa nx (c - pe - 2)
-
-/-- ECMA-262's Number::toString layout of `(-1)^neg · t · 10^(kb - 2 ^ 62)` for `t ≥ 1`. -/
+/-- ECMA-262's Number::toString layout of `(-1)^neg · t · 10^(kb - 2 ^ 62)` for `t ≥ 1`, with the
+point position `n = k + nd` biased as `nb`: plain digits and zeros for `nd ≤ n ≤ 21`, a point
+inside the digits for `0 < n ≤ 21`, `0.` and zeros for `-6 < n ≤ 0`, and otherwise an exponent
+with `+` or `-`. -/
 def ecmaLayoutW (neg : Bool) (t kb : UInt64) : Array UInt64 :=
   let nd := numDigits t
   let nb := kb + nd
   let xpos : Bool := nb ≥ 0x4000000000000001
   let xa := if xpos then nb - 0x4000000000000001 else 0x4000000000000001 - nb
   let nx := numDigits xa
-  let body :=
-    if nb ≥ 0x4000000000000000 + nd && nb ≤ 0x4000000000000015 then nb - 0x4000000000000000
-    else if nb > 0x4000000000000000 && nb ≤ 0x4000000000000015 then nd + 1
+  (if neg then byte1 0x2D else noBytes) ++
+    (if nb ≥ 0x4000000000000000 + nd && nb ≤ 0x4000000000000015 then
+      digitsFrom t nd 0 nd ++ zeros (nb - 0x4000000000000000 - nd)
+    else if nb > 0x4000000000000000 && nb ≤ 0x4000000000000015 then
+      digitsFrom t nd 0 (nb - 0x4000000000000000) ++ byte1 0x2E ++
+        digitsFrom t nd (nb - 0x4000000000000000) (nd - (nb - 0x4000000000000000))
     else if nb + 6 > 0x4000000000000000 && nb ≤ 0x4000000000000000 then
-      2 + (0x4000000000000000 - nb) + nd
-    else nd + (if nd == 1 then 0 else 1) + 2 + nx
-  LeanExe.build ((if neg then 1 else 0) + body) fun i => ecmaAt neg t nd nb nx i
+      byte1 0x30 ++ byte1 0x2E ++ zeros (0x4000000000000000 - nb) ++ digitsFrom t nd 0 nd
+    else
+      digitsFrom t nd 0 1 ++
+        (if nd == 1 then noBytes else byte1 0x2E ++ digitsFrom t nd 1 (nd - 1)) ++ byte1 0x65 ++
+        byte1 (if xpos then 0x2B else 0x2D) ++ digitsFrom xa nx 0 nx)
 
 /-- The bytes of a fixed word, packed least significant first, as an array of `len` words. -/
 def fixed (w len : UInt64) : Array UInt64 := LeanExe.build len fun i => (w >>> (8 * i)) &&& 0xFF
@@ -220,7 +199,7 @@ def print32Ecma (w : UInt64) : Array UInt64 := print32With true w
 
 verified_compile compiled := [limb, mulSmall, shl, cmpStep, le, sub, wordBits, bitLen, divStep,
   divBits, scaledQuot, pow10Word, mulPow10, limbsOf, quotAt, range, found, nearest, clamp, startExp,
-  shortest, numDigits, digitAt, sciAt, sciLayoutW, ecmaAt, ecmaLayoutW, fixed, special,
-  print64With, print32With, print64, print64Ecma, print32, print32Ecma]
+  shortest, numDigits, digitAt, digitsFrom, byte1, noBytes, zeros, sciLayoutW, ecmaLayoutW, fixed,
+  special, print64With, print32With, print64, print64Ecma, print32, print32Ecma]
 
 end Verified.Examples.PrintFloat
