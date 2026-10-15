@@ -178,6 +178,7 @@ import Verified.Examples.TgammaLogd
 import Verified.Examples.UscaleDiv
 import Verified.Examples.BesselMillerFinal
 import Verified.Examples.BesselJnTheorem
+import Verified.Examples.BesselYnSmallReal
 import Verified.Examples.BesselOrderHuge
 import Verified.Examples.ErfcAccAll
 import Verified.Examples.ErfcAsymFast
