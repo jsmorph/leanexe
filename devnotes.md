@@ -32708,3 +32708,16 @@ Opus fast-forwarded `transcendentals` to `w/expm1` at `8bd03e12`, whose commits 
 
 - [x] The integration of `lgamma_within` and `lgamma_bytes_accuracy`, `Lgamma.md`, and the plan in `transcendentals.md`.
 - [ ] The remaining items of `transcendentals.md`: the strconv stage 4, the consolidation, and the docstring and license corrections.
+
+## 2026-10-15: The accuracy theorem of `jn` (coordinating session, minideb1)
+
+`BesselJnTheorem.jn_accuracy` states that `Bessel.jn n x` lies within `(23 + 12 |N|) · 2^-53 · M_|N|(|x|)` of `J_N(x)` for every finite `x`, where `N` is C's `int` in the low 32 bits of `n` (`orderZ`) and `M_k = √(J_k² + Y_k²)`, outside the range `2 ≤ |x| < 2^302` with `|x| < 2 |N|` that the decision of 2026-10-12 leaves open.  Its axiom report lists only `propext`, `Classical.choice`, and `Quot.sound` (`bessel/jn-6.log` under `build/transcendentals` on minideb1).  The work continues in the integration checkout on minideb1, where every module is built, instead of the worktree of track `log`, whose branch has not followed `transcendentals` since 2026-10-13.
+
+The constant `23 + 12 |N|` covers every path: `10` and `12` of `j0` and `j1`, `11` of Hankel's term from `2^302`, `17 + 12 m` of the forward recurrence, and `23 + 8 m` of Miller's method.  Miller's method states its error relative to `J_m` plus `2^-1060`, and below 2 the cross product gives `M_m ≥ 2/(π x J_(m-1)) ≥ 1/8`, which absorbs that term into `4 m u M_m`.  Below `2^-30` the path returns a value of magnitude at most 2, and `M_m ≥ 2^59` makes any such value lie within `64 u M_m` of `J_m ≤ 5/3`.  `jn_eq` writes `Bessel.jn` as the reflection of the order and the argument followed by `j0`, `j1`, or `jnAbs`, a copy of the code's path for `|N| ≥ 2` at `|x|`, so that `rfl` closes the equation after the order is generalized.  The code negates the result when `|N|` is odd and the sign bit of the reflected argument, which it computes from the argument's high word with an exclusive or, is set, and `xor_sign` reads that bit through `Nat.testBit_xor`.
+
+Five builds failed before `jn-6.log`.  The lemma is `Nat.testBit_eq_decide_div_mod_eq`, and `TrigWords.shr_toNat` and `shl_toNat` leave the shift as `2 ^ (k % 64)`, which `Nat.reduceMod` must reduce before `omega` applies.  The zero case compared `w` with the word 0 in the wrong direction, `fapprox_self` is `BesselPQEval.fapprox_exact` in the Bessel modules, and the module imports no `abs_float`, so the absolute value takes `F64Sign.fields_abs` and `TrigSinCos.abs_value`.  `split_ifs` also split the `if` inside the condition of the code's sign test and left two goals for two bullets, and a single `by_cases` on the condition replaces it.
+
+- [x] The order decoding, the paths of `jn`, and `jn_accuracy`.
+- [ ] `yn` below 2 with the overflow to `-∞`, and `yn_accuracy`.
+- [ ] The exceptional arguments of `jn` and `yn`, and their byte theorems.
+- [ ] The feasibility analysis of a bound through the turning point.
