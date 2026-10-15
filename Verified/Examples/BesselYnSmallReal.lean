@@ -356,8 +356,7 @@ theorem j0y0_bounds (w : ℝ) (hw0 : 0 < w) (hw2 : w < 2) :
   have hza : |w ^ 2 / 4| ≤ 1 := by rw [abs_of_nonneg hz0]; exact hz1
   have ha := a0_remainder (w ^ 2 / 4) hza 2 (by norm_num)
   rw [a0_list2, abs_a0_2, abs_of_nonneg hz0] at ha
-  simp only [eval_cons, eval_nil, Rat.cast_one, Rat.cast_neg, Rat.cast_div, Rat.cast_ofNat,
-    mul_zero, add_zero] at ha
+  simp only [eval_cons, eval_nil, Rat.cast_one, Rat.cast_neg, mul_zero, add_zero] at ha
   have hc := c0_remainder (w ^ 2 / 4) hza 1 (by norm_num)
   rw [c0_list1, abs_c0_1, abs_of_nonneg hz0] at hc
   simp only [eval_cons, eval_nil, Rat.cast_zero, mul_zero, add_zero, pow_one, sub_zero] at hc
@@ -391,7 +390,8 @@ theorem j0y0_bounds (w : ℝ) (hw0 : 0 < w) (hw2 : w < 2) :
 
 theorem sqrt_le_add (a b : ℝ) : √(a ^ 2 + b ^ 2) ≤ |a| + |b| := by
   rw [Real.sqrt_le_left (by positivity)]
-  nlinarith [abs_nonneg a, abs_nonneg b, sq_abs a, sq_abs b, mul_nonneg (abs_nonneg a) (abs_nonneg b)]
+  nlinarith [abs_nonneg a, abs_nonneg b, sq_abs a, sq_abs b,
+    mul_nonneg (abs_nonneg a) (abs_nonneg b)]
 
 /-- `(π x/2) J₁ M₀ ≤ 10` below 2. -/
 theorem p2_bound (w : ℝ) (hw0 : 0 < w) (hw2 : w < 2) : π * w / 2 * Jn 1 w * modn w 0 ≤ 10 := by
@@ -518,7 +518,8 @@ theorem small_error (w : ℝ) (hw0 : 0 < w) (hw2 : w < 2) (N : ℕ) (hN : N ≤ 
       linarith
     have k2 : π * w / 2 * Jn 1 w * |e 0| ≤ 110 * 𝐮 := by
       have h := mul_le_mul_of_nonneg_left hE0 hP1
-      have : π * w / 2 * Jn 1 w * (11 * 𝐮 * modn w 0) = 11 * 𝐮 * (π * w / 2 * Jn 1 w * modn w 0) := by
+      have : π * w / 2 * Jn 1 w * (11 * 𝐮 * modn w 0) =
+          11 * 𝐮 * (π * w / 2 * Jn 1 w * modn w 0) := by
         ring
       rw [this] at h
       have := mul_le_mul_of_nonneg_left hp2 (show 0 ≤ 11 * 𝐮 by positivity)
@@ -715,7 +716,8 @@ theorem small_error (w : ℝ) (hw0 : 0 < w) (hw2 : w < 2) (N : ℕ) (hN : N ≤ 
   have hfin : (189 * 𝐮 + 1 / 2 ^ 1060) + 48 * 𝐮 + ((n : ℝ) - 2) * (117 / 10 * 𝐮 + 1 / 2 ^ 1060) ≤
       (250 + 12 * (n : ℝ)) * 𝐮 := by
     have ht : ((n : ℝ) - 2) * (1 / 2 ^ 1060) + 1 / 2 ^ 1060 ≤ 𝐮 := by
-      have : ((n : ℝ) - 2) * (1 / 2 ^ 1060) + 1 / 2 ^ 1060 ≤ (n : ℝ) * (1 / 2 ^ 1060) := by nlinarith
+      have : ((n : ℝ) - 2) * (1 / 2 ^ 1060) + 1 / 2 ^ 1060 ≤ (n : ℝ) * (1 / 2 ^ 1060) := by
+        nlinarith
       linarith
     have e : ((n : ℝ) - 2) * (117 / 10 * 𝐮 + 1 / 2 ^ 1060) =
         117 / 10 * ((n : ℝ) * 𝐮) - 117 / 5 * 𝐮 + ((n : ℝ) - 2) * (1 / 2 ^ 1060) := by ring

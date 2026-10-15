@@ -32734,3 +32734,18 @@ Two of the four builds failed.  In `ynr-1.log`, `a1_bounds` hit the heartbeat li
 
 - [x] The recurrence of `yn` below 2 on the reals (`small_error`).
 - [ ] The floating-point loop of `yn` below 2, with the stop at `-∞`, and `yn_accuracy`.
+
+## 2026-10-15: The loop of `yn` below 2 (coordinating session, minideb1)
+
+`BesselYnSmall.yn_small` proves the floating-point loop of `yn` for `0 < x < 2` and `2 ≤ n ≤ 2^31`: the result is `-∞` and `|Y_n(x)| > 2^1023`, or it is finite and within `(250 + 12 n) u |Y_n(x)|` of `Y_n(x)`.  `yn_small_inf` adds that the result is `-∞` from `|Y_n(x)| ≥ 2^1025` on, since a finite value within that bound lies below `2^1024`.  Together these are the statement of the decision of 2026-10-12 for this range.  `BesselYnSteps` holds the lemmas about one step at every magnitude.  The axiom reports list only `propext`, `Classical.choice`, and `Quot.sound` (`bessel/yns-6.log` under `build/transcendentals` on minideb1).
+
+The proof splits at `x = 2^-513`.  Below it, `y1` returns `-(tpi ⊘ x)` and the first quotient `2 ⊘ x` is `+∞` or at least `2^513`, so the first product is `-∞`: either `y1` is `-∞` and the loop does not start, or the first step gives `-∞`, while `|Y_n| ≥ |Y₂| ≥ 4/(π x²) > 2^1026`.  From `2^-513` on, `y0` and `y1` are finite and accurate, and every quotient `2k ⊘ x` stays below `2^546`.  `BesselYnSteps.step_fin` gives the step error of `small_error` for every finite step: a finite result forces a finite product and magnitudes below the overflow threshold (`mul_overflow`, `sub_overflow`), so the relative bounds of `F64TopMul.mul_real_top` and `F64TopPack.sub_real_relative_top` apply.  At the first value `f_K` that is not finite, the earlier values are accurate.  If `|Y_K| ≤ 2^1023`, then `λ_(K-1) |Y_(K-1)| = |Y_K| + |Y_(K-2)|` and `|Y_(K-2)| ≤ (3/4) |Y_K|` keep the product and the difference below `2^1024 - 2^1019`, and `step_mag` makes `f_K` finite.  Hence `|Y_K| > 2^1023`, `f_(K-1) < 0`, and a step that is not finite with a positive quotient and a negative `b` is `-∞` (`step_inf`), which stops the loop (`loop_stop`).
+
+The ratio `|Y_(K-2)| ≤ (3/4) |Y_K|` sets the threshold.  With only the monotonicity of `|Y_k|`, the product can reach `2 |Y_K|`, and the first version of the proof gave `2^1022` instead of the decided `2^1023`.  For `k ≥ 2`, `λ_(k+1) ≥ 3` gives `|Y_(k+2)| ≥ 2 |Y_k|` (`Y_double`).  For `k = 1`, `λ₂ = 4/x` approaches 2 as `x → 2`, and `Y31` uses `J₁ |Y₂| ≥ (J₁ + J₂) |Y₁|`, from the cross product and `(π x/2) J₁ |Y₁| ≤ 1`, with `J₂ ≥ 1/6` from `x = 12/7` on.  For `k = 0`, `|Y₀| ≤ 2^10` follows from `|Y₀(x)| ≤ -ln x + 2` below 1/2 (`Y0_log_abs`) and `x ≥ 2^-1074`.
+
+Six builds ran.  In `yns-1.log`, `simp` normalized `2^52` in the definition of `roundScaledMagnitude` to a numeral and then ignored the hypothesis `n < 2^52`, which the numeral form of the hypothesis fixed.  In `yns-2.log`, `by obtain rfl : j = 1 := by omega; exact hf1` parsed `exact hf1` into the inner `by`; `simp only at h1` made no progress, since the instances of `small_error` are already beta-reduced; and the bound `12 u M₁ ≤ 2^-30` was false, since `M₁` reaches `2^516` at `x = 2^-513`, so the proof uses `M₁ ≤ 1 + |Y₁|` with `λ₁ |Y₁| = |Y₂| + Y₀` instead.  `yns-3.log` to `yns-5.log` passed with the threshold `2^1022`, and the last two removed warnings and lines over 100 characters, three of them in `BesselYnSmallReal`.  `yns-6.log` passed with `2^1023`.
+
+- [x] The floating-point loop of `yn` below 2, with the stop at `-∞` (`yn_small`, `yn_small_inf`).
+- [ ] `yn_accuracy`: the order decoding, the exceptional arguments, and the paths of `yn`.
+- [ ] The exceptional arguments of `jn` and `yn`, and their byte theorems.
+- [ ] The feasibility analysis of a bound through the turning point.
