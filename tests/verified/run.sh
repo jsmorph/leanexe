@@ -51,6 +51,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
     Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
     Verified.Examples.ParseFloat:compiled.module:parsefloat \
+    Verified.Examples.PrintFloat:compiled.module:printfloat \
     Verified.Examples.Drone:compiled.module:drone \
     Verified.Examples.Bessel:compiled.module:bessel Verified.Examples.Tgamma:compiled.module:tgamma \
     Verified.Examples.Lgamma:compiled.module:lgamma Verified.Examples.Erfc:compiled.module:erfc; do
@@ -68,6 +69,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
     pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile \
+    printfloat:PrintFloatBytes:PrintFloatFile \
     bessel:BesselBytes:BesselFile tgamma:TgammaBytes:TgammaFile lgamma:LgammaBytes:LgammaFile \
     erfc:ErfcBytes:ErfcFile; do
   IFS=: read -r name theorem file <<<"$entry"

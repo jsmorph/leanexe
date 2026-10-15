@@ -1,6 +1,6 @@
 # Binary to decimal conversion: `print64` and `print32`
 
-The module `PrintFloat` exports `print64`, `print64Ecma`, `print32`, and `print32Ecma`, which write a binary64 word, or the binary32 pattern in the low 32 bits of a word, as a decimal string.  The digits are those of the shortest decimal that rounds back to the word, the one nearest to the word's value among the shortest, with an even last digit at a tie [1, 2, 3], written in a scientific layout (`1.5e3`) or in the layout of ECMA-262's Number::toString (`1500`) [3].  The method finds the largest decimal exponent `J` at which a multiple of `10 ^ J` lies in the word's rounding interval and takes the multiple nearest to the value, with exact integers of any size from [the limb module](Uscale.md).  The implementation compiles with the verified compiler and agrees with an independent search on 889 words.  `PrintFloatTheorem` proves the theorems of the specification below for every binary64 word and every binary32 pattern; the byte and file theorems of the compiled module remain.
+The module `PrintFloat` exports `print64`, `print64Ecma`, `print32`, and `print32Ecma`, which write a binary64 word, or the binary32 pattern in the low 32 bits of a word, as a decimal string.  The digits are those of the shortest decimal that rounds back to the word, the one nearest to the word's value among the shortest, with an even last digit at a tie [1, 2, 3], written in a scientific layout (`1.5e3`) or in the layout of ECMA-262's Number::toString (`1500`) [3].  The method finds the largest decimal exponent `J` at which a multiple of `10 ^ J` lies in the word's rounding interval and takes the multiple nearest to the value, with exact integers of any size from [the limb module](Uscale.md).  The implementation compiles with the verified compiler and agrees with an independent search on 889 words.  `PrintFloatTheorem` proves the theorems of the specification below for every binary64 word and every binary32 pattern, and `PrintFloatBytes` carries them to the compiled WebAssembly module.
 
 ## Specification
 
@@ -59,7 +59,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 ## Theorems
 
-[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  Every theorem in the table reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The byte and file theorems for the compiled module remain.
+[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  Every theorem in the table reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
 
 | Theorem | Module | Statement |
 |---|---|---|
@@ -76,6 +76,8 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 | `round32_iff`, `shortest32`, `print32_code`, `layout32`, `print32_low` | `PrintFloatWord32` | The same for binary32 patterns, which the printers read from the low 32 bits of their argument. |
 | `sci_derives`, `ecma_derives` | `PrintFloatDerive` | For `t ≥ 1` both layouts are numbers of RFC 8259's grammar of the value `t · 10 ^ k`, the plain ECMAScript layout with trailing zeros as `(t · 10 ^ k) · 10 ^ 0`. |
 | `print64_derives`, `print64_roundtrip`, `print64_json`, `print64_shortest`, `print64_layout`, and the forms for `print64Ecma`, `print32`, and `print32Ecma` | `PrintFloatTheorem` | The theorems of the specification.  The zeros, infinities, and NaNs print as fixed strings that the grammars derive, a decimal with trailing zeros is `Shortest64` when the decimal without them is (`shortest64_shift`), and every string is shorter than `2 ^ 32` bytes, the bound of `ParseFloatTheorem.parse64_accept`. |
+| `print64_bytes_accuracy`, `print64Ecma_bytes_accuracy`, `print32_bytes_accuracy`, `print32Ecma_bytes_accuracy` | `PrintFloatBytes` | Functions 35 to 38 of the compiled module are the four exports.  From a ready store a call traps at `unreachable` when memory runs out or returns a pointer to an owned array holding the words of a string with the properties of `derives64` or `derives32`, and leaves a ready store in which the heap's earlier regions keep their bytes and lie apart from the array. |
+| `print_file`, `print_file_decode` | `PrintFloatFile` | `build/verified/printfloat.wasm`, 14,178 bytes, holds the encoding of the module and decodes to it; `tests/verified/run.sh` writes the file, validates it with `wasm-tools validate`, and checks these theorems. |
 
 ## Tests
 
@@ -83,7 +85,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 
 ## Limits
 
-The theorems will trust Talos's semantics of WebAssembly and its decoder, as every theorem of the verified compiler does.  The printers write one byte per word, which costs eight bytes of memory per character.  Every NaN prints as `NaN`, since the grammar carries no payload, and the round trip recovers the canonical NaN.  The search costs about twenty exact quotients of integers of up to 18 limbs per word; the native check of 889 words, four strings and four parses each, takes 372 seconds under `lean --run`, and no faster method, such as Cox's or Schubfach's tables, is used.
+The byte theorems trust Talos's semantics of WebAssembly and its decoder, as every theorem of the verified compiler does.  The printers write one byte per word, which costs eight bytes of memory per character.  Every NaN prints as `NaN`, since the grammar carries no payload, and the round trip recovers the canonical NaN.  The search costs about twenty exact quotients of integers of up to 18 limbs per word; the native check of 889 words, four strings and four parses each, takes 372 seconds under `lean --run`, and no faster method, such as Cox's or Schubfach's tables, is used.
 
 ## References
 

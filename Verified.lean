@@ -210,7 +210,7 @@ import Verified.Examples.ErfcTrack5
 import Verified.Examples.LgammaLogd
 import Verified.Examples.LgammaSinpi
 import Verified.Examples.ParseFloatBytes
-import Verified.Examples.PrintFloatTheorem
+import Verified.Examples.PrintFloatBytes
 import Verified.Examples.TgammaFinal
 import Verified.Examples.LgammaAccMid
 import Verified.Examples.LgammaAccSmall
