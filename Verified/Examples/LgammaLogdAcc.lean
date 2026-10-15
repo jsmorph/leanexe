@@ -1,6 +1,7 @@
 import Verified.Examples.LgammaLogAccTail
 import Verified.Examples.TgammaMainRed
 import Verified.Examples.TgammaPolyLip
+import Verified.Examples.TgammaDDTop
 
 /-!
 **`Lgamma.asLogdAccurate` within `2^-88` of `log y`** for every positive finite double `y`
@@ -11,7 +12,11 @@ and the kernel `X · logAccPoly X` (`LgammaLogAccKern.kern_spec`).  The sum `E l
 high parts is exact on the grid `2^-42`, and it is 0 or at least `6.79 · 10^-4` in magnitude
 (`l0_ok`), larger than the rest, so the first renormalization is exact.  The error is
 `1074 · 2^-100` from `ln 2`, `2^-80 |X|` from the kernel's polynomial, `2 · 2^-96` from the table,
-and smaller roundings.
+and smaller roundings.  When `log y` lies from 1 to 1000, the high part of the result rounds a sum
+from 1/2 to 1024, so the middle part is at most `2^-44 + 2^-52` (`acc_half`): the high part lies
+within half a spacing of the doubles of `log y`, which keeps `x (log x - 1)` of
+`Lgamma.asLgammaAsymAccurate` below the overflow threshold up to the threshold `x1` of `lgamma`.
+`acc_core` proves both statements.
 -/
 
 namespace Verified.Examples.LgammaLogdAcc
@@ -122,9 +127,8 @@ theorem xpoly_lip (a b : ℝ) (ha : |a| ≤ 1 / 2399) (hb : |b| ≤ 1 / 2399) :
   nlinarith
 
 set_option maxHeartbeats 4000000 in
-/-- **`asLogdAccurate` within `2^-88` of `log y`** for a positive finite `y`, with bounds on the
-middle and low parts. -/
-theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : Float)
+/-- The statements of `acc_abs` and `acc_half` together. -/
+theorem acc_core (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : Float)
     (hy : Finite y.toBits) (hpos : 0 < value y.toBits) :
     Finite (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits ∧
       Finite (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits ∧
@@ -136,7 +140,9 @@ theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : F
       |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits| ≤
         |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 51 + 1 / 2 ^ 50 ∧
       |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.2.toBits| ≤
-        |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 100 + 1 / 2 ^ 100 := by
+        |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 100 + 1 / 2 ^ 100 ∧
+      (1 ≤ Real.log (value y.toBits) → Real.log (value y.toBits) ≤ 1000 →
+        |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits| ≤ 1 / 2 ^ 44 + 1 / 2 ^ 52) := by
   obtain ⟨E, hEb, hRt, hRt1, hRt2, hRr, hRrv, hRrt, hRed, hRedv, hRi1, hRi2, hyv, -⟩ :=
     LgammaLogAccRed.reduce_spec y hy hpos
   obtain ⟨T, hT⟩ : ∃ T, Lgamma.asLogdAccurate Tgamma.logdTable H y = T := ⟨_, rfl⟩
@@ -384,16 +390,16 @@ theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : F
     linarith [(by norm_num : (3 * (1 / 2 ^ 74 + 1 / 2 ^ 54) + 4186 / 10 ^ 7 / 2 ^ 52 + 1 / 2 ^ 1074 : ℝ) /
       2 ^ 53 ≤ 1 / 2 ^ 104)]
   -- `F₁`: exact
+  have hKb : |(K : ℝ)| ≤ 1074 * 3048493539143 + 2 * 3048493539143 := by
+    have : |K| ≤ 1074 * 3048493539143 + 2 * 3048493539143 := by rw [abs_le]; constructor <;> omega
+    exact_mod_cast this
+  have hl0'b : |value l0'.toBits| ≤ (1074 * 3048493539143 + 2 * 3048493539143) / 2 ^ 42 := by
+    rw [hl0'K, abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 2 ^ 42)]
+    exact div_le_div_of_nonneg_right hKb (by norm_num)
   have hF1spec : Finite F1.1.toBits ∧ Finite F1.2.toBits ∧
       value F1.1.toBits + value F1.2.toBits = value l0'.toBits + value S2.1.toBits ∧
       |value F1.2.toBits| ≤ |value F1.1.toBits| / 2 ^ 52 + 1 / 2 ^ 1074 ∧
       |value F1.1.toBits| ≤ 746 := by
-    have hKb : |(K : ℝ)| ≤ 1074 * 3048493539143 + 2 * 3048493539143 := by
-      have : |K| ≤ 1074 * 3048493539143 + 2 * 3048493539143 := by rw [abs_le]; constructor <;> omega
-      exact_mod_cast this
-    have hl0'b : |value l0'.toBits| ≤ (1074 * 3048493539143 + 2 * 3048493539143) / 2 ^ 42 := by
-      rw [hl0'K, abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 2 ^ 42)]
-      exact div_le_div_of_nonneg_right hKb (by norm_num)
     rcases l0_bound n1 n2 hRi1 hRi2 E hEb with hk0 | hk1
     · have hz : value l0'.toBits = 0 := by rw [hl0'K, show K = 0 from hk0]; simp
       obtain ⟨h1, h2, h3, h4⟩ := fts_zero l0' S2.1 hl0'f hS2f1 hz
@@ -521,8 +527,9 @@ theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : F
       div_le_div_of_nonneg_right (by linarith) (by norm_num)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 53 / 2 ^ 53 + (746 / 2 ^ 52 + 1 / 2 ^ 1074 + 1 / 2 ^ 53) /
       2 ^ 104 ≤ 1 / 2 ^ 100)]
-  refine ⟨hF1f1, hF2f1, hF2f2, ?_, ?_, ?_⟩
-  · rw [hlogy]
+  have herr : |value F1.1.toBits + value F2.1.toBits + value F2.2.toBits -
+      Real.log (value y.toBits)| ≤ 1 / 2 ^ 88 := by
+    rw [hlogy]
     have e1 := abs_le.mp hF2e'
     have e2 := abs_le.mp hS2err
     have e3 := abs_le.mp hS1err
@@ -534,11 +541,69 @@ theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : F
     have e9 := abs_le.mp hH2
     rw [abs_le]
     constructor <;> linarith
+  refine ⟨hF1f1, hF2f1, hF2f2, herr, ?_, ?_, ?_⟩
   · have h0 : 0 ≤ |value F1.1.toBits| := abs_nonneg _
     linarith [hF2h]
   · have h0 : 0 ≤ |value F1.1.toBits| := abs_nonneg _
     linarith [hF2l]
+  · -- the sum `l₀ + s₂ + S₂` that `F₁` rounds lies within `2^-52` of `log y`
+    intro hl1 hl2
+    have hs : |value l0'.toBits + value S2.1.toBits - Real.log (value y.toBits)| ≤ 1 / 2 ^ 52 := by
+      rw [← hF1sum]
+      have e1 := abs_le.mp hF2e'
+      have e2 := abs_le.mp herr
+      have e3 := abs_le.mp hS2lb
+      rw [abs_le]
+      constructor <;> linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 100 + 1 / 2 ^ 53 ≤
+        1 / 2 ^ 52)]
+    have hs' := abs_le.mp hs
+    rcases l0_bound n1 n2 hRi1 hRi2 E hEb with hk0 | hk1
+    · have hz : value l0'.toBits = 0 := by rw [hl0'K, show K = 0 from hk0]; simp
+      have := (abs_le.mp hS2hb).2
+      linarith [(by norm_num : (4186 : ℝ) / 10 ^ 7 + 1 / 2 ^ 52 < 1)]
+    · have hKr : (2987000000 : ℝ) ≤ |(K : ℝ)| := by exact_mod_cast hk1
+      have hl0'lo : 2987000000 / 2 ^ 42 ≤ |value l0'.toBits| := by
+        rw [hl0'K, abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 2 ^ 42)]
+        exact div_le_div_of_nonneg_right hKr (by norm_num)
+      have hhalf := TgammaDDTop.fts_half l0' S2.1 hl0'f hS2f1
+        (by linarith [(by norm_num : (4186 : ℝ) / 10 ^ 7 ≤ 2987000000 / 2 ^ 42)])
+        (by linarith [(by norm_num : ((1074 : ℝ) * 3048493539143 + 2 * 3048493539143) / 2 ^ 42 <
+          2 ^ 900)])
+        (by linarith [(by norm_num : (0 : ℝ) < 1 - 1 / 2 ^ 52)]) (by linarith)
+      rw [hF1] at hhalf
+      obtain ⟨-, -, -, hF2h', -⟩ := TgammaAcc2.fts_approx F1.2 S2.2 hF1f2 hS2f2 (1 / 2 ^ 44)
+        (1 / 2 ^ 53) hhalf hS2lb (by norm_num)
+      rw [hF2] at hF2h'
+      linarith [(by norm_num : ((1 : ℝ) / 2 ^ 44 + 1 / 2 ^ 53) * (1 + 1 / 2 ^ 53) ≤
+        1 / 2 ^ 44 + 1 / 2 ^ 52)]
+
+/-- **`asLogdAccurate` within `2^-88` of `log y`** for a positive finite `y`, with bounds on the
+middle and low parts. -/
+theorem acc_abs (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : Float)
+    (hy : Finite y.toBits) (hpos : 0 < value y.toBits) :
+    Finite (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits ∧
+      Finite (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits ∧
+      Finite (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.2.toBits ∧
+      |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits +
+          value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits +
+          value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.2.toBits -
+          Real.log (value y.toBits)| ≤ 1 / 2 ^ 88 ∧
+      |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits| ≤
+        |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 51 + 1 / 2 ^ 50 ∧
+      |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.2.toBits| ≤
+        |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).1.toBits| / 2 ^ 100 + 1 / 2 ^ 100 := by
+  obtain ⟨a, b, c, d, e, f, -⟩ := acc_core hF hLA y hy hpos
+  exact ⟨a, b, c, d, e, f⟩
+
+/-- **The middle part of `asLogdAccurate`** at most `2^-44 + 2^-52` when `log y` lies from 1 to
+1000. -/
+theorem acc_half (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact) (y : Float)
+    (hy : Finite y.toBits) (hpos : 0 < value y.toBits) (h1 : 1 ≤ Real.log (value y.toBits))
+    (h2 : Real.log (value y.toBits) ≤ 1000) :
+    |value (Lgamma.asLogdAccurate Tgamma.logdTable H y).2.1.toBits| ≤ 1 / 2 ^ 44 + 1 / 2 ^ 52 :=
+  (acc_core hF hLA y hy hpos).2.2.2.2.2.2 h1 h2
 
 #print axioms acc_abs
+#print axioms acc_half
 
 end Verified.Examples.LgammaLogdAcc

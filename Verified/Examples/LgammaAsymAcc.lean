@@ -496,7 +496,12 @@ theorem asym_gen (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   have hW1 : 3 ≤ value w1.toBits := by linarith
   obtain ⟨p1f, p2f, p3f, hpe, hp1, hp2, hp3⟩ := LgammaAsymProd.prod_spec hF T.1 L.1 L.2 w1 w2 t0f Lf1 Lf2
     hw1f hw2f (by linarith [hT1.1]) (by linarith [hT1.2]) hL1 hL2 (by linarith)
-    (by linarith [(by norm_num : (2 : ℝ) ^ 120 ≤ 2 ^ 801)]) hw2
+    (by linarith [(by norm_num : (2 : ℝ) ^ 120 ≤ 2 ^ 1015)])
+    (by
+      have hw1 : value w1.toBits ≤ 2 ^ 120 := by linarith
+      calc (value T.1.toBits - 1) * value w1.toBits ≤ 2 ^ 10 * 2 ^ 120 :=
+            mul_le_mul (by linarith [hT1.2]) hw1 (by linarith) (by norm_num)
+        _ ≤ 2 ^ 1024 - 13 * 2 ^ 968 := by norm_num) hw2
   set Pr := LgammaAsymProd.prodCode T.1 L.1 L.2 w1 w2 with hPrdef
   -- the series
   set R := 1 / value xh.toBits with hRdef
@@ -533,14 +538,14 @@ theorem asym_gen (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     have h1 := (abs_le.mp hp1).1
     have h2 : 309 / 1000 * value w1.toBits ≤ (value T.1.toBits - 1) * value w1.toBits :=
       mul_le_mul_of_nonneg_right (by linarith [hT1.1]) (by linarith)
-    have h3 : 560 * value w1.toBits / 2 ^ 53 ≤ 9 / 1000 * value w1.toBits := by
+    have h3 : 710 * value w1.toBits / 2 ^ 53 ≤ 9 / 1000 * value w1.toBits := by
       rw [div_le_iff₀ (by norm_num)]; nlinarith
     linarith
   have hP1hi : value Pr.1.toBits ≤ 561 * value w1.toBits := by
     have h1 := (abs_le.mp hp1).2
     have h2 : (value T.1.toBits - 1) * value w1.toBits ≤ 84 * value w1.toBits :=
       mul_le_mul_of_nonneg_right (by linarith [hT1.2]) (by linarith)
-    have h3 : 560 * value w1.toBits / 2 ^ 53 ≤ value w1.toBits := by
+    have h3 : 710 * value w1.toBits / 2 ^ 53 ≤ value w1.toBits := by
       rw [div_le_iff₀ (by norm_num)]; nlinarith
     linarith
   have hG1b : |value G.1.toBits| ≤ 1 / 2 ^ 4 := by
@@ -856,13 +861,32 @@ theorem asym_ranges (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
       exact ⟨a, b, c, combine _ _ _ _ _ he hfact, hpos, hb1, hb2⟩
 
 
+/-- Below `2^801`, `x (log x - 1 + 2^-44 + 2^-50)` stays far below the overflow threshold. -/
+theorem prod_below (v : ℝ) (h1 : 2 ^ 120 ≤ v) (h2 : v ≤ 2 ^ 801) :
+    v * (Real.log v - 1 + 1 / 2 ^ 44 + 1 / 2 ^ 50) ≤ 2 ^ 1024 - 13 * 2 ^ 968 := by
+  have hv : 0 < v := lt_of_lt_of_le (by positivity) h1
+  have hl := Real.log_le_log hv h2
+  have hl' := Real.log_le_log (by positivity) h1
+  rw [Real.log_pow] at hl hl'
+  push_cast at hl hl'
+  have hl2 := Real.log_two_gt_d9
+  have hl2' := Real.log_two_lt_d9
+  norm_num at hl2 hl2'
+  calc v * (Real.log v - 1 + 1 / 2 ^ 44 + 1 / 2 ^ 50) ≤ 2 ^ 801 * 556 :=
+        mul_le_mul h2 (by linarith) (by linarith) (by norm_num)
+    _ ≤ 2 ^ 1024 - 13 * 2 ^ 968 := by norm_num
+
 set_option maxHeartbeats 8000000 in
-/-- **`asLgammaAsymAccurate` from `2^120` on**: `(log xh - 1)(xh + xl - 1/2)` within `2^-63` of
-`log Γ x` relative plus `x/2^86`, since the constant and the series of the sum stay below 1/2 and
-`log xh` differs from `log x` by at most `2 |xl|/xh`. -/
+/-- **`asLgammaAsymAccurate` from `2^120` to `2^1015`**: `(log xh - 1)(xh + xl - 1/2)` within
+`2^-63` of `log Γ x` relative plus `x/2^86`, since the constant and the series of the sum stay
+below 1/2 and `log xh` differs from `log x` by at most `2 |xl|/xh`.  The hypothesis `hprod` keeps
+the product `(l0 - 1) xh` below the overflow threshold, for the high part `l0` of the logarithm,
+which lies within `2^-44 + 2^-50` of `log xh` (`LgammaLogdAcc.acc_half`). -/
 theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     (hAF : LgammaApprox.AsymFact) (xh xl : Float) (hxh : Finite xh.toBits) (hxl : Finite xl.toBits)
-    (hlo : 2 ^ 120 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 801)
+    (hlo : 2 ^ 120 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 1015)
+    (hprod : value xh.toBits * (Real.log (value xh.toBits) - 1 + 1 / 2 ^ 44 + 1 / 2 ^ 50) ≤
+      2 ^ 1024 - 13 * 2 ^ 968)
     (hxl1 : |value xl.toBits| ≤ 1) :
     let r := asymBig (Lgamma.asLogdAccurate Tgamma.logdTable H xh) xh xl
     Finite r.1.toBits ∧ Finite r.2.1.toBits ∧ Finite r.2.2.toBits ∧
@@ -871,7 +895,7 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
         1 / 2 ^ 63 * GammaBasic.lgamma (value xh.toBits + value xl.toBits) +
           (value xh.toBits + value xl.toBits) / 2 ^ 86 ∧
       0 < value r.1.toBits ∧ |value r.2.1.toBits| ≤ value r.1.toBits / 2 ^ 40 ∧
-      |value r.2.2.toBits| ≤ value r.1.toBits / 2 ^ 80 := by
+      |value r.2.2.toBits| ≤ value r.1.toBits / 2 ^ 80 ∧ 80 * value xh.toBits ≤ value r.1.toBits := by
   intro r
   set vx := value xh.toBits with hvx
   set vl := value xl.toBits with hvl
@@ -883,15 +907,15 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
   have hl2 := Real.log_two_gt_d9
   have hl2' := Real.log_two_lt_d9
   norm_num at hl2 hl2'
-  have hlx : 83 ≤ Real.log vx ∧ Real.log vx ≤ 556 := by
+  have hlx : 83 ≤ Real.log vx ∧ Real.log vx ≤ 704 := by
     constructor
     · have h1 := Real.log_le_log (by positivity) hlo
       rw [Real.log_pow] at h1; push_cast at h1; linarith
     · have h1 := Real.log_le_log hx0 hhi
       rw [Real.log_pow] at h1; push_cast at h1; linarith
-  have hT1 : 82 ≤ value T.1.toBits ∧ value T.1.toBits ≤ 557 := by
+  have hT1 : 82 ≤ value T.1.toBits ∧ value T.1.toBits ≤ 705 := by
     have h1 := abs_le.mp te
-    have hb : |value T.1.toBits| ≤ 600 := by
+    have hb : |value T.1.toBits| ≤ 800 := by
       by_contra hc
       push Not at hc
       have h2 := abs_sub_abs_le_abs_sub (value T.1.toBits)
@@ -907,14 +931,29 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
         div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
       linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 50 + 1 / 2 ^ 100 ≤ 1)]
     have h5 : |value T.2.1.toBits| ≤ 1 / 2 ^ 40 := by
-      have : |value T.1.toBits| / 2 ^ 51 ≤ 600 / 2 ^ 51 := div_le_div_of_nonneg_right hb (by norm_num)
-      linarith [(by norm_num : (600 : ℝ) / 2 ^ 51 + 1 / 2 ^ 50 ≤ 1 / 2 ^ 40)]
+      have : |value T.1.toBits| / 2 ^ 51 ≤ 800 / 2 ^ 51 := div_le_div_of_nonneg_right hb (by norm_num)
+      linarith [(by norm_num : (800 : ℝ) / 2 ^ 51 + 1 / 2 ^ 50 ≤ 1 / 2 ^ 40)]
     have h6 : |value T.2.2.toBits| ≤ 1 / 2 ^ 90 := by
-      have : |value T.1.toBits| / 2 ^ 100 ≤ 600 / 2 ^ 100 := div_le_div_of_nonneg_right hb (by norm_num)
-      linarith [(by norm_num : (600 : ℝ) / 2 ^ 100 + 1 / 2 ^ 100 ≤ 1 / 2 ^ 90)]
+      have : |value T.1.toBits| / 2 ^ 100 ≤ 800 / 2 ^ 100 := div_le_div_of_nonneg_right hb (by norm_num)
+      linarith [(by norm_num : (800 : ℝ) / 2 ^ 100 + 1 / 2 ^ 100 ≤ 1 / 2 ^ 90)]
     have := abs_le.mp h5
     have := abs_le.mp h6
     constructor <;> linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 40 + 1 / 2 ^ 90 ≤ 1 / 2)]
+  -- the product `(l0 - 1) xh` below the threshold
+  have hH : (value T.1.toBits - 1) * vx ≤ 2 ^ 1024 - 13 * 2 ^ 968 := by
+    have h5 := LgammaLogdAcc.acc_half hF hLA xh hxh hx0 (by linarith [hlx.1]) (by linarith [hlx.2])
+    have h6 : |value T.2.2.toBits| ≤ 1 / 2 ^ 90 := by
+      have : |value T.1.toBits| / 2 ^ 100 ≤ 705 / 2 ^ 100 :=
+        div_le_div_of_nonneg_right (abs_le.mpr ⟨by linarith [hT1.1], hT1.2⟩) (by norm_num)
+      linarith [(by norm_num : (705 : ℝ) / 2 ^ 100 + 1 / 2 ^ 100 ≤ 1 / 2 ^ 90)]
+    have h1 := abs_le.mp te
+    have h7 := abs_le.mp h5
+    have h8 := abs_le.mp h6
+    have h9 : value T.1.toBits - 1 ≤ Real.log vx - 1 + 1 / 2 ^ 44 + 1 / 2 ^ 50 := by
+      linarith [(by norm_num : (1 : ℝ) / 2 ^ 88 + 1 / 2 ^ 52 + 1 / 2 ^ 90 ≤ 1 / 2 ^ 50)]
+    calc (value T.1.toBits - 1) * vx ≤ (Real.log vx - 1 + 1 / 2 ^ 44 + 1 / 2 ^ 50) * vx :=
+          mul_le_mul_of_nonneg_right h9 hx0.le
+      _ ≤ 2 ^ 1024 - 13 * 2 ^ 968 := by rw [mul_comm]; exact hprod
   -- `wl = xl - 1/2`
   have hB : |vl - value (0.5 : Float).toBits| + (0 + 0) ≤ 2 := by
     rw [TgammaTiny.half_value]; simp only [add_zero]
@@ -943,7 +982,7 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
       have : |value T.1.toBits| / 2 ^ 100 ≤ |value T.1.toBits| / 2 ^ 99 :=
         div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num)
       linarith [(by norm_num : (1 : ℝ) / 2 ^ 100 ≤ 1 / 2 ^ 97)])
-    (by linarith [(by norm_num : (1 : ℝ) ≤ 2 ^ 120)]) hhi
+    (by linarith [(by norm_num : (1 : ℝ) ≤ 2 ^ 120)]) hhi hH
     (by
       have : (2 : ℝ) ≤ vx / 2 ^ 50 := by
         rw [le_div_iff₀ (by norm_num)]; linarith [(by norm_num : (2 : ℝ) * 2 ^ 50 ≤ 2 ^ 120)]
@@ -956,9 +995,9 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     have := (abs_le.mp hp1).1
     have h2 : 81 * vx ≤ (value T.1.toBits - 1) * vx := mul_le_mul_of_nonneg_right (by linarith [hT1.1])
       hx0.le
-    have h3 : 560 * vx / 2 ^ 53 ≤ vx / 2 := by rw [div_le_iff₀ (by norm_num)]; nlinarith
+    have h3 : 710 * vx / 2 ^ 53 ≤ vx / 2 := by rw [div_le_iff₀ (by norm_num)]; nlinarith
     linarith
-  refine ⟨p1f, p2f, p3f, ?_, by linarith, ?_, ?_⟩
+  refine ⟨p1f, p2f, p3f, ?_, by linarith, ?_, ?_, hP1⟩
   · -- the error
     set X := vx + vl with hXdef
     have hXv : X ≤ vx * (1 + 1 / 2 ^ 100) := by
@@ -1027,8 +1066,8 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
       linarith
     have hwv : |vx + value wl.toBits| ≤ vx + 2 := by
       have := abs_add_le vx (value wl.toBits); rw [abs_of_pos hx0] at this; linarith
-    have hlX : |Real.log X - 1| ≤ 557 := by
-      have h1 : Real.log X ≤ 557 := by
+    have hlX : |Real.log X - 1| ≤ 705 := by
+      have h1 : Real.log X ≤ 705 := by
         have := (abs_le.mp hlog).2; linarith [hlx.2, (by
           have : 2 / vx ≤ 2 / 2 ^ 120 := div_le_div_of_nonneg_left (by norm_num) (by positivity) hlo
           linarith [(by norm_num : (2 : ℝ) / 2 ^ 120 ≤ 1 / 2)] : 2 / vx ≤ 1 / 2)]
@@ -1047,13 +1086,13 @@ theorem asym_big (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
         ((Real.log X - 1) * (value wl.toBits - (vl - 1 / 2)))
       have h2 : |(Ls - Real.log X) * (vx + value wl.toBits)| ≤ (1 / 2 ^ 88 + 2 / vx) * (vx + 2) := by
         rw [abs_mul]; exact mul_le_mul hLx hwv (abs_nonneg _) (by positivity)
-      have h3 : |(Real.log X - 1) * (value wl.toBits - (vl - 1 / 2))| ≤ 557 * (2 / 2 ^ 53) := by
+      have h3 : |(Real.log X - 1) * (value wl.toBits - (vl - 1 / 2))| ≤ 705 * (2 / 2 ^ 53) := by
         rw [abs_mul]; exact mul_le_mul hlX hwe (abs_nonneg _) (by norm_num)
       have h4 : (1 / 2 ^ 88 + 2 / vx) * (vx + 2) = vx / 2 ^ 88 + 2 / 2 ^ 88 + 2 + 4 / vx := by
         field_simp; ring
       have h5 : 4 / vx ≤ 1 / 2 := by
         rw [div_le_iff₀ hx0]; linarith [(by norm_num : (8 : ℝ) ≤ 2 ^ 120)]
-      linarith [(by norm_num : (2 : ℝ) / 2 ^ 88 + 557 * (2 / 2 ^ 53) ≤ 1 / 2)]
+      linarith [(by norm_num : (2 : ℝ) / 2 ^ 88 + 705 * (2 / 2 ^ 53) ≤ 1 / 2)]
     have hpe' : |value P.1.toBits + value P.2.1.toBits + value P.2.2.toBits -
         (Ls - 1) * (vx + value wl.toBits)| ≤ vx / 2 ^ 92 := hpe
     have hc' := abs_le.mp hc
@@ -1129,7 +1168,8 @@ theorem asym_spec (hF : FmaSpec.FmaNearest) (hLA : LgammaApprox.LogAccFact)
     rw [if_neg hc] at hr
     rw [show r = _ from hr, if_neg h120,
       if_neg (not_lt.mpr (le_trans (by norm_num : (48 : ℝ) ≤ 2 ^ 120) hge))]
-    obtain ⟨a, b, c, e, p, q1, q2⟩ := asym_big hF hLA hAF xh xl hxh hxl hge hhi hxl1
+    obtain ⟨a, b, c, e, p, q1, q2, -⟩ := asym_big hF hLA hAF xh xl hxh hxl hge
+      (hhi.trans (by norm_num)) (prod_below _ hge hhi) hxl1
     refine ⟨a, b, c, ?_, p, q1, q2⟩
     linarith [(by ring : (value xh.toBits + value xl.toBits) * (1 / 2 ^ 86) =
       (value xh.toBits + value xl.toBits) / 2 ^ 86)]
