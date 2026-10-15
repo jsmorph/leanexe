@@ -32782,3 +32782,25 @@ Nicholson's integral (DLMF 10.9.30) proves the first observation: with `K₀` de
 
 - [x] The feasibility analysis.
 - [ ] The decision on proving the open range, which the user has not yet made.
+
+## 2026-10-15: Build and test run after the theorems of `jn` and `yn` (coordinating session, minideb1)
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 10,043 jobs with exit 0 at `d45ac2ab` (`opus-merge-12.log`), and no theorem in the log depends on `sorryAx` or `Lean.ofReduceBool`.  `tests/verified/run.sh` exits 0 (`opus-run-12.log`): 15,837 tests pass and none fails, and the file theorems report only the three permitted axioms, `BesselFile` among them with the extended `bessel_module_accuracy`.  The 48 files `build/verified/*.wasm` are byte-identical to the stored references, 44 to those of `e42b5c22` and 4 to those of `94444f0a`, so the proofs of this round changed no compiled code.
+
+- [x] The build and the test run after the theorems of `jn` and `yn`.
+
+## 2026-10-15: The printers' layouts and the binary64 words (coordinating session, minideb1)
+
+Stage 4 of the string conversions continues on the integration checkout.  `PrintFloat.lean` now builds the two layouts as concatenations of `digitsFrom`, `byte1`, `noBytes`, and `zeros`, the change an earlier agent made in place of one index function per layout, so that a proof compares each piece with the corresponding piece of `sciLayout` or `ecmaLayout`.  `verified_compile` takes 28 seconds for the module (`strconv-s4-print-3.log`), and the native check `PrintFloatAccuracy` passes again on all 889 words (`strconv-s4-praccuracy-1.log`).
+
+`PrintFloatDigits` proves that `numDigits` counts the digits of a word below `10 ^ 19`, that `digitAt` returns its digits as ASCII bytes, and that `decValue` reads `digitsOf t` back as `t`.  `PrintFloatLayout` proves `sci_spec` and `ecma_spec`: for `t < 10 ^ 19` and a biased exponent within `2 ^ 20` of `2 ^ 62`, `sciLayoutW` and `ecmaLayoutW` are the words of `sciLayout` and `ecmaLayout` (`strconv-s4-layout-7.log`).
+
+`PrintFloatWord` relates the binary64 words to the search.  For the magnitude bits `n` of a finite nonzero word, `sig64 n`, `bin64 n`, and `low64 n` are the significand, the binade, and the flag that `print64With` computes from the bits (`print64_code`), and `n = pack b64 (bin64 n) (sig64 n)`, so `StrconvInterval.interval_iff` gives `round64_iff`: a decimal rounds to the word exactly when it has the word's sign and its magnitude lies in the interval of `PrintFloatSearch`.  `shortest64` combines this with `PrintFloatShort.shortest_of_choice`, and `layout64` states that `print64` and `print64Ecma` lay out a decimal `t · 10 ^ k` with no trailing zero that is `Shortest64`.  Three builds failed: `StrconvInterval` was missing from the imports (`word-1`), `lower` named both `StrconvGrammar.lower` and `StrconvInterval.lower` (`word-3`), and `omega` treated `UInt64.size` as an unknown until a hypothesis gave its value (`word-5`).
+
+`PrintFloatDerive` proves `sci_derives` and `ecma_derives`: for `t ≥ 1` both layouts are numbers of RFC 8259's grammar of the value `t · 10 ^ k`, except the plain ECMAScript layout with trailing zeros, which denotes `(t · 10 ^ k) · 10 ^ 0`.  The first build failed because the constructors of `Exponent` take the marker list as an implicit argument (`derive-1`).  All theorems of the four modules report only `propext`, `Classical.choice`, and `Quot.sound` (`word-7`, `derive-2`).
+
+- [x] The layouts against `sciLayout` and `ecmaLayout`
+- [x] For binary64 words: the choice against `Shortest64`, the code's fields, and the layouts as numbers of the grammar
+- [ ] The zeros, infinities, and NaNs; `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, and their ECMAScript forms
+- [ ] The binary32 words and `print32_low`
+- [ ] Byte and file theorems, the `run.sh` entry, and `PrintFloat.md`
