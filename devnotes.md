@@ -32762,3 +32762,13 @@ Five builds ran.  `ynt-1.log` failed on a hypothesis already rewritten to `v`.  
 - [x] `yn_accuracy` and `yn_overflow`.
 - [ ] The exceptional arguments of `jn` and `yn`, and their byte theorems.
 - [ ] The feasibility analysis of a bound through the turning point.
+
+## 2026-10-15: The exceptional results and the byte theorems of `jn` and `yn` (coordinating session)
+
+`BesselNSpecial` proves the exceptional results of `jn` and `yn` that the table of `Bessel.md` lists.  Both functions return the canonical NaN at a NaN (`jn_nan`, `yn_nan`).  `jn` returns a signed zero at `±∞`, negative when `|N|` is odd and the argument after the change of sign for a negative order is `-∞` (`jn_infinity`), and the same at `±0` for `|N| ≥ 2` (`jn_zero_order`).  `yn` returns `-∞` at `±0` (`yn_zero`), the canonical NaN at a negative argument other than `-0` (`yn_negative`), and `+0` at `+∞` except `-0` for the order -1 (`yn_pos_infinity`).  The proofs unfold the code with `dsimp (config := { etaStruct := .none }) only`, the setting that `BesselYnTheorem.yn_eq` needs.  One build failed (`nsp-1.log`): a rewrite with `ite_eq_right` matched the reflected argument of `j0` instead of the sign of the result, which naming the condition fixed (`nsp-2.log`).
+
+`BesselBytes` adds `jn_bytes_accuracy` and `yn_bytes_accuracy` for functions 40 and 41, whose entries take the order and then the argument and read all six tables, and `bessel_module_accuracy` now states the six byte theorems.  `bytes-1.log` builds the module, and `lake env lean Verified/Examples/BesselFile.lean` checks the file theorem against `build/verified/bessel.wasm` (`file-1.log`).  All report only `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] The exceptional results of `jn` and `yn`, and their byte theorems.
+- [ ] The feasibility analysis of a bound through the turning point.
+- [ ] The integration run: `lake build LeanExe Verified` and `tests/verified/run.sh`.

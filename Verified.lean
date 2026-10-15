@@ -183,6 +183,7 @@ import Verified.Examples.BesselYnSteps
 import Verified.Examples.BesselYnSmall
 import Verified.Examples.BesselYnOrderOne
 import Verified.Examples.BesselYnTheorem
+import Verified.Examples.BesselNSpecial
 import Verified.Examples.BesselOrderHuge
 import Verified.Examples.ErfcAccAll
 import Verified.Examples.ErfcAsymFast
