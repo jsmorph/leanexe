@@ -83,6 +83,7 @@ import Verified.Examples.BesselY1Theorem
 import Verified.Examples.BesselBytes
 import Verified.Examples.TgammaBytes
 import Verified.Examples.ErfcBytes
+import Verified.Examples.ErfcNonfinite
 import Verified.Examples.FmaSpecTheorem
 import Verified.Examples.LgammaApprox
 import Verified.Examples.LgammaSpecial
@@ -174,6 +175,7 @@ import Verified.Examples.TgammaMainPath
 import Verified.Examples.TgammaPolyMainEdge
 import Verified.Examples.TgammaPolySmallAcc
 import Verified.Examples.PowBytes
+import Verified.Examples.PowZeroSign
 import Verified.Examples.TgammaAsym6
 import Verified.Examples.TgammaLogd
 import Verified.Examples.UscaleDiv

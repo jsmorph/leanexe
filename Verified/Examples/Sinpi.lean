@@ -2,26 +2,26 @@ import Verified.Examples.Tan
 
 /-! The forty-fourth program of the verified compiler: `sinpi`, `cospi`, and `tanpi`, the sine,
 cosine, and tangent of `π x`, ported from FreeBSD's `lib/msun/src` at commit
-`20381bce4b63975494a2f4bc84257f6932e6d379` (`s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and
-`k_cospi.h`, Copyright (c) 2017, 2023 Steven G. Kargl, BSD-2-Clause).  Below `2 ^ -29` in magnitude
-`sinpi` and `tanpi` give `π x` from `x` split at its high 32 bits and scaled by `2 ^ 53`, and
-`cospi` gives 1.  Below 1, the functions reflect `|x|` into `[0, 1/4]` and call kernels that form
-`π r` as `hi + lo`, from `r` split at single precision and `π` in two parts, and pass it to
-fdlibm's kernels: `Trig.kernelSin`, `Trig.kernelCos`, and `Tan.kernelTan`, which the module lists,
-so that the reflector compiles those Lean definitions into this module.  From 1 to `2 ^ 52`, the
-functions subtract the integer part of `|x|` and change the sign for an odd one, and from `2 ^ 52`
-on the arguments are integers, which give `±0`, `±1`, or `±0` by parity.  Kargl states no error
-bound.  The constants `pi_hi` and `pi_lo` are written as the bit patterns that the sources give
-beside their decimal values.  The dialect has no single precision: `toSingle` rounds the 52-bit
-fraction of `x` to 23 bits, ties to even, which is `(float) x` for zero and for every `x` whose
-single-precision value is normal, among them every argument of the kernels, from `2 ^ -54` to
-`1/2`.  The integer part of `|x|` is fdlibm's `FFLOOR`, and its parity comes from `toUInt64`, as
-`(uint64_t) x & 1` in `s_tanpi.c`.  `s_sinpi.c` and `s_cospi.c` convert to `uint32_t` after
-subtracting `2 ^ 30` from integers above `2 ^ 31`, a conversion that C leaves undefined above
+`20381bce4b63975494a2f4bc84257f6932e6d379` (`s_sinpi.c`, `s_cospi.c`, and `s_tanpi.c`, Copyright (c)
+2017, 2023 Steven G. Kargl, and `k_sinpi.h` and `k_cospi.h`, Copyright (c) 2017 Steven G. Kargl,
+BSD-2-Clause).  Below `2 ^ -29` in magnitude `sinpi` and `tanpi` give `π x` from `x` split at its
+high 32 bits and scaled by `2 ^ 53`, and `cospi` gives 1.  Below 1, the functions reflect `|x|` into
+`[0, 1/4]` and call kernels that form `π r` as `hi + lo`, from `r` split at single precision and `π`
+in two parts, and pass it to fdlibm's kernels: `Trig.kernelSin`, `Trig.kernelCos`, and
+`Tan.kernelTan`, which the module lists, so that the reflector compiles those Lean definitions into
+this module.  From 1 to `2 ^ 52`, the functions subtract the integer part of `|x|` and change the
+sign for an odd one, and from `2 ^ 52` on the arguments are integers, which give `±0`, `±1`, or `±0`
+by parity.  Kargl states no error bound.  The constants `pi_hi` and `pi_lo` are written as the bit
+patterns that the sources give beside their decimal values.  The dialect has no single precision:
+`toSingle` rounds the 52-bit fraction of `x` to 23 bits, ties to even, which is `(float) x` for zero
+and for every `x` whose single-precision value is normal, among them every argument of the kernels,
+from `2 ^ -54` to `1/2`.  The integer part of `|x|` is fdlibm's `FFLOOR`, and its parity comes from
+`toUInt64`, as `(uint64_t) x & 1` in `s_tanpi.c`.  `s_sinpi.c` and `s_cospi.c` convert to `uint32_t`
+after subtracting `2 ^ 30` from integers above `2 ^ 31`, a conversion that C leaves undefined above
 `2 ^ 32`, and the parity of the integer is what they intend.  The dialect has no floating-point
 flags: `vzero/vzero` is `0/0`, and `(int) ax == 0` is `ax.toUInt64 == 0`, true where it is
-evaluated.  fdlibm's high words are words, and the sign of `x` is its top bit.
-`SinpiAccuracy.lean` checks the results against references computed with Lean's integers.
+evaluated.  fdlibm's high words are words, and the sign of `x` is its top bit.  `SinpiAccuracy.lean`
+checks the results against references computed with Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 

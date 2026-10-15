@@ -6,7 +6,7 @@ The accuracy theorem for `Erf.erf`.  For every finite binary64 input the result 
 representable step of the signed nearest-even rounding of the real `erf x` (`erf_within_one`, from
 `ErfOdd.erfWith_within_one`).  The exceptional inputs give `erf (±0) = ±0`, `erf (±∞) = ±1`, and
 the canonical NaN for a NaN.  `erf_bytes_accuracy` carries the bound to the decoded bytes of the
-compiled module and to every call in a sequence of calls to its export `erf`, function 11, whose
+compiled module and to every call in a sequence of calls to its export `erf`, function 10, whose
 store borrows `Exp.expTable` at address 4096.  `erf_module_accuracy` collects the byte theorems of
 the module for the file theorem module `ErfFile`.
 -/
@@ -98,7 +98,7 @@ returns without a trap the bits of `Erf.erf x` and leaves a ready store, and eve
 heap before the call keeps its bytes and stays a region. -/
 theorem erf_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (x : Float)
     (h : Ready heap store) :
-    Runs false env Erf.compiled.module 11 store [.f64 x.toBits] fun final values =>
+    Runs false env Erf.compiled.module 10 store [.f64 x.toBits] fun final values =>
       values = [.f64 (Erf.erf x).toBits] ∧ ∃ heap' : Heap, Ready heap' final ∧
         ∀ r, heap.Region r → 0 < r.2 →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
@@ -126,11 +126,11 @@ theorem erf_entry_call (env : HostEnv Unit) (heap : Heap) (store : Store Unit) (
     memoryCap_le_of_caps hcaps hCap⟩, hkeep⟩
 
 /-- Function 11 of the module is its export `erf`. -/
-theorem erf_export : ({ name := "erf", funcIdx := 11 } : Wasm.Export) ∈ Erf.compiled.module.exports := by
+theorem erf_export : ({ name := "erf", funcIdx := 10 } : Wasm.Export) ∈ Erf.compiled.module.exports := by
   decide +kernel
 
 /-- The accuracy theorem for the compiled module's `erf`: its bytes decode to the module, whose
-function 11 is exported as `erf`, and the store in which the module starts is ready.  A call of
+function 10 is exported as `erf`, and the store in which the module starts is ready.  A call of
 that entry from a ready store returns without a trap a single `f64` whose bits are those of
 `Erf.erf x`, and it leaves a ready store in which every region of the heap before the call keeps
 its bytes.  The theorem therefore covers every call in a sequence of calls from the initial store.
@@ -139,11 +139,11 @@ For finite `x` the bits lie within one representable step of the nearest-even ro
 theorem erf_bytes_accuracy :
     ∃ bytes, Wasm.Encoding.encode Erf.compiled.module = .ok bytes ∧
       Wasm.Encoding.decode bytes = .ok Erf.compiled.module ∧
-      ({ name := "erf", funcIdx := 11 } : Wasm.Export) ∈ Erf.compiled.module.exports ∧
+      ({ name := "erf", funcIdx := 10 } : Wasm.Export) ∈ Erf.compiled.module.exports ∧
       Ready (Verified.initialHeap Erf.compiled.tables) Erf.compiled.module.initialStore ∧
       ∀ (env : Wasm.HostEnv Unit) (heap : LeanExe.Pipeline.Heap) (store : Wasm.Store Unit)
         (x : Float), Ready heap store →
-        Wasm.Runs false env Erf.compiled.module 11 store [.f64 x.toBits] (fun final values =>
+        Wasm.Runs false env Erf.compiled.module 10 store [.f64 x.toBits] (fun final values =>
           ∃ w : UInt64, values = [.f64 w] ∧ w = (Erf.erf x).toBits ∧
             (Finite x.toBits →
               F64SignedRounding.WithinSteps 1 (RealErf.erf (value x.toBits)) w) ∧
