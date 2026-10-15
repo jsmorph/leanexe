@@ -68,7 +68,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
     sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
     pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile \
-    bessel:BesselBytes:BesselFile tgamma:TgammaBytes:TgammaFile lgamma:Lgamma:LgammaFile \
+    bessel:BesselBytes:BesselFile tgamma:TgammaBytes:TgammaFile lgamma:LgammaBytes:LgammaFile \
     erfc:ErfcBytes:ErfcFile; do
   IFS=: read -r name theorem file <<<"$entry"
   tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
