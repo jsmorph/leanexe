@@ -336,7 +336,8 @@ theorem print64_code (ecma : Bool) (w : UInt64) (hf : Wasm.IEEE64.isFinite w = t
 /-- **The layouts of a finite nonzero binary64 word**: `print64` and `print64Ecma` lay out a
 decimal `t · 10 ^ k` with no trailing zero that is `Shortest64`. -/
 theorem layout64 (w : UInt64) (hf : Wasm.IEEE64.isFinite w = true) (hz : w.toNat % 2 ^ 63 ≠ 0) :
-    ∃ t k, t % 10 ≠ 0 ∧ 1 ≤ t ∧ Shortest64 w (Wasm.IEEE64.sign w) t k ∧
+    ∃ t k, t % 10 ≠ 0 ∧ 1 ≤ t ∧ t < 10 ^ 19 ∧ -1100 ≤ k ∧ k ≤ 700 ∧
+      Shortest64 w (Wasm.IEEE64.sign w) t k ∧
       print64 w = words (sciLayout (Wasm.IEEE64.sign w) t k) ∧
       print64Ecma w = words (ecmaLayout (Wasm.IEEE64.sign w) t k) := by
   have hfin := finite_bits w hf
@@ -352,7 +353,8 @@ theorem layout64 (w : UInt64) (hf : Wasm.IEEE64.isFinite w = true) (hz : w.toNat
   have hT2 := top_lt_start (low := low64 (w.toNat % 2 ^ 63)) hb.hQ hb.hE (by norm_num : 1 ≤ 1074)
   have hT3 := (jstart_le hb).1
   obtain ⟨hmod, hs⟩ := shortest64 w hf hz _ _ ht0 hin hc
-  refine ⟨(sh64 w).1.toNat, ((sh64 w).2.toNat : ℤ) - 2 ^ 62, hmod, ht0, hs, ?_, ?_⟩
+  refine ⟨(sh64 w).1.toNat, ((sh64 w).2.toNat : ℤ) - 2 ^ 62, hmod, ht0, by omega, by omega,
+    by omega, hs, ?_, ?_⟩
   · have h := sci_spec (Wasm.IEEE64.sign w) (sh64 w).1.toNat (sh64 w).2.toNat (by omega)
       (by omega) (by omega)
     rw [UInt64.ofNat_toNat, UInt64.ofNat_toNat] at h

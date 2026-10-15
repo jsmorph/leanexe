@@ -32804,3 +32804,15 @@ Stage 4 of the string conversions continues on the integration checkout.  `Print
 - [ ] The zeros, infinities, and NaNs; `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, and their ECMAScript forms
 - [ ] The binary32 words and `print32_low`
 - [ ] Byte and file theorems, the `run.sh` entry, and `PrintFloat.md`
+
+## 2026-10-15: The theorems of the printers' specification (coordinating session, minideb1)
+
+`PrintFloatWord32` repeats `PrintFloatWord` for binary32 patterns: the fields that `print32With` reads from the low 32 bits of `x.toUInt64`, `round32_iff`, `shortest32`, `print32_code`, and `layout32`, and `print32_low` and `print32Ecma_low` state that the printers read only those 32 bits (`strconv-s4-word32-1.log`, the first run).  `layout64` and `layout32` now also bound the decimal, `t < 10 ^ 19` and `-1100 ≤ k ≤ 700`, which bounds the length of the strings.
+
+`PrintFloatTheorem` proves the theorems of the specification in `PrintFloat.md` for both formats and both layouts: `print64_derives`, `print64_roundtrip`, `print64_json`, `print64_shortest`, and `print64_layout`, their forms for `print64Ecma`, and the binary32 forms on `x : UInt32` with the input `x.toUInt64`.  The zeros, infinities, and NaNs print fixed strings, which `decide` compares with `words` of their ASCII text, and the grammars derive them: the zeros as RFC 8259 numbers of value 0, `Infinity` and `NaN` in the general grammar.  The plain ECMAScript layout with trailing zeros denotes `(t · 10 ^ k) · 10 ^ 0`, which is `Shortest64` when `t · 10 ^ k` is (`shortest64_shift`), since `stripZeros` and the value do not change.  `parse64_accept` requires a string shorter than `2 ^ 32` bytes, and `sci_length` and `ecma_length` bound the layouts by the bounds on the decimal.
+
+The first build failed in three places (`strconv-s4-thm-1.log`): a `positivity` argument to `Nat.eq_of_mul_eq_mul_right` solved the wrong goal and needed the factor stated, `split_ifs` in `ecma_length` also split the sign and left `(ascii "-").length` unknown to `omega`, and a rewrite of the NaN case needed `isNaN w = true` first.  The second build passed (`strconv-s4-thm-2.log`), and all sixteen theorems report only `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] The zeros, infinities, and NaNs; `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, and their ECMAScript forms
+- [x] The binary32 words and `print32_low`
+- [ ] Byte and file theorems, and the `run.sh` entry
