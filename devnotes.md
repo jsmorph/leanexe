@@ -32815,3 +32815,12 @@ The first build failed in three places (`strconv-s4-thm-1.log`): a `positivity` 
 - [x] The zeros, infinities, and NaNs; `print64_derives`, `print64_roundtrip`, `print64_shortest`, `print64_layout`, and their ECMAScript forms
 - [x] The binary32 words and `print32_low`
 - [ ] Byte and file theorems, and the `run.sh` entry
+
+## 2026-10-15: The byte and file theorems of the printers (coordinating session)
+
+`PrintFloatBytes` proves `print64_bytes_accuracy`, `print64Ecma_bytes_accuracy`, `print32_bytes_accuracy`, and `print32Ecma_bytes_accuracy` for functions 35 to 38 of the compiled module, in the form of `ParseFloatBytes`.  The module holds no tables, so a store is ready when the allocator invariant holds and the memory cap is at most 65,535 pages; a call takes the word and returns a pointer to an array that the caller owns, and `entry_call` turns `ImplementsA` into a statement about that pointer, with the earlier regions of the heap kept and apart from the new array.  The string's properties come from `PrintFloatTheorem.derives64` and `derives32`, which now also state the layout of a finite nonzero word, so the byte theorems name the string without an injectivity lemma for `words`.  The binary32 entries read the pattern `w.toUInt32` from the low 32 bits of the argument (`print32_low`).
+
+`tools/Emit.lean` writes `build/verified/printfloat.wasm`, 14,178 bytes, which `wasm-tools validate` accepts, and `lake env lean Verified/Examples/PrintFloatFile.lean` checks that the file holds the module's encoding and decodes to it (`strconv-s4-emit-1.log`).  All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (`strconv-s4-bytes-1.log`, the first run).  `tests/verified/run.sh` gains the module in its list of written modules and the entry `printfloat:PrintFloatBytes:PrintFloatFile`, and `Verified.lean` imports `PrintFloatBytes` in place of `PrintFloatShortest`.
+
+- [x] Byte and file theorems, and the `run.sh` entry
+- [ ] The build of `LeanExe Verified` and the run of `tests/verified/run.sh` with the printers

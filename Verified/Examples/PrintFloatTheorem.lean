@@ -286,38 +286,43 @@ theorem print64_zero (ecma : Bool) (w : UInt64) (hz : w.toNat % 2 ^ 63 = 0) :
   simp only [e7, ez, Bool.false_eq_true, ↓reduceIte]
 
 /-- Both printers' strings of a binary64 word: a number of the general grammar that rounds to
-`canon64 w`, of RFC 8259's grammar for a finite word, and shorter than `2 ^ 32` bytes. -/
+`canon64 w`, of RFC 8259's grammar for a finite word, shorter than `2 ^ 32` bytes, and for a
+finite nonzero word the layout of a `Shortest64` decimal. -/
 theorem derives64 (ecma : Bool) (w : UInt64) :
     ∃ s n, print64With ecma w = words s ∧ Derives true s n ∧
       (Wasm.IEEE64.isFinite w = true → Derives false s n) ∧ round64 n = canon64 w ∧
-      s.length < 2 ^ 32 := by
+      s.length < 2 ^ 32 ∧
+      (Wasm.IEEE64.isFinite w = true → Wasm.IEEE64.scaledMagnitude w ≠ 0 →
+        ∃ neg t k, t % 10 ≠ 0 ∧ Shortest64 w neg t k ∧
+          s = if ecma then ecmaLayout neg t k else sciLayout neg t k) := by
   by_cases hf : Wasm.IEEE64.isFinite w = true
   · by_cases hz : w.toNat % 2 ^ 63 = 0
     · have hd := zero_derives (Wasm.IEEE64.sign w) ecma
       refine ⟨_, _, by rw [print64_zero ecma w hz, special_zero], derives_general hd,
-        fun _ => hd, ?_, zero_length _ _⟩
+        fun _ => hd, ?_, zero_length _ _,
+        fun _ hz' => absurd hz (PrintFloatWord.bits_ne_zero w hz')⟩
       rw [round64_zero, zero_word64 w hz, canon64_finite w hf]
-    · obtain ⟨t, k, -, ht1, ht19, hk1, hk2, hs, hp, he⟩ := PrintFloatWord.layout64 w hf hz
+    · obtain ⟨t, k, hmod, ht1, ht19, hk1, hk2, hs, hp, he⟩ := PrintFloatWord.layout64 w hf hz
       cases ecma
       · have hd := sci_derives (Wasm.IEEE64.sign w) t k ht1
         exact ⟨_, _, hp, derives_general hd, fun _ => hd, by rw [hs.1, canon64_finite w hf],
-          sci_length _ _ _ ht19 hk1 hk2⟩
+          sci_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, k, hmod, hs, rfl⟩⟩
       · rcases ecma_derives (Wasm.IEEE64.sign w) t k ht1 with hd | ⟨z, rfl, hd⟩
         · exact ⟨_, _, he, derives_general hd, fun _ => hd, by rw [hs.1, canon64_finite w hf],
-            ecma_length _ _ _ ht19 hk1 hk2⟩
+            ecma_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, k, hmod, hs, rfl⟩⟩
         · exact ⟨_, _, he, derives_general hd, fun _ => hd,
             by rw [(shortest64_shift w _ t z hs).1, canon64_finite w hf],
-            ecma_length _ _ _ ht19 hk1 hk2⟩
+            ecma_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, z, hmod, hs, rfl⟩⟩
   · have hfF : Wasm.IEEE64.isFinite w = false := by simpa using hf
     by_cases hnan : Wasm.IEEE64.isNaN w = true
     · refine ⟨_, _, by rw [print64_nonfinite ecma w hfF, hnan, special_nan], nan_derives,
-        fun h => absurd h hf, ?_, by decide⟩
+        fun h => absurd h hf, ?_, by decide, fun h => absurd h hf⟩
       unfold canon64
       rw [ite_eq_left hnan]
       rfl
     · have hnF : Wasm.IEEE64.isNaN w = false := by simpa using hnan
       refine ⟨_, _, by rw [print64_nonfinite ecma w hfF, hnF, special_inf], inf_derives _,
-        fun h => absurd h hf, ?_, ?_⟩
+        fun h => absurd h hf, ?_, ?_, fun h => absurd h hf⟩
       · unfold canon64
         rw [hnF, ite_eq_right Bool.false_ne_true]
         exact inf_word64 w hfF hnF
@@ -329,22 +334,22 @@ theorem derives64 (ecma : Bool) (w : UInt64) :
 the canonical NaN for a NaN. -/
 theorem print64_derives (w : UInt64) :
     ∃ s n, print64 w = words s ∧ Derives true s n ∧ round64 n = canon64 w := by
-  obtain ⟨s, n, h1, h2, -, h4, -⟩ := derives64 false w
+  obtain ⟨s, n, h1, h2, -, h4, -, -⟩ := derives64 false w
   exact ⟨s, n, h1, h2, h4⟩
 
 theorem print64Ecma_derives (w : UInt64) :
     ∃ s n, print64Ecma w = words s ∧ Derives true s n ∧ round64 n = canon64 w := by
-  obtain ⟨s, n, h1, h2, -, h4, -⟩ := derives64 true w
+  obtain ⟨s, n, h1, h2, -, h4, -, -⟩ := derives64 true w
   exact ⟨s, n, h1, h2, h4⟩
 
 /-- **The round trip**: the general parser reads `print64 w` back as `canon64 w`. -/
 theorem print64_roundtrip (w : UInt64) : parse64 true (print64 w) = (true, canon64 w) := by
-  obtain ⟨s, n, h1, h2, -, h4, h5⟩ := derives64 false w
+  obtain ⟨s, n, h1, h2, -, h4, h5, -⟩ := derives64 false w
   show parse64 true (print64With false w) = _
   rw [h1, parse64_accept true s n h5 h2, h4]
 
 theorem print64Ecma_roundtrip (w : UInt64) : parse64 true (print64Ecma w) = (true, canon64 w) := by
-  obtain ⟨s, n, h1, h2, -, h4, h5⟩ := derives64 true w
+  obtain ⟨s, n, h1, h2, -, h4, h5, -⟩ := derives64 true w
   show parse64 true (print64With true w) = _
   rw [h1, parse64_accept true s n h5 h2, h4]
 
@@ -352,8 +357,8 @@ theorem print64Ecma_roundtrip (w : UInt64) : parse64 true (print64Ecma w) = (tru
 theorem print64_json (w : UInt64) (hf : Wasm.IEEE64.isFinite w) :
     (∃ s n, print64 w = words s ∧ Derives false s n) ∧
       ∃ s n, print64Ecma w = words s ∧ Derives false s n := by
-  obtain ⟨s, n, h1, -, h3, -⟩ := derives64 false w
-  obtain ⟨s', n', h1', -, h3', -⟩ := derives64 true w
+  obtain ⟨s, n, h1, -, h3, -, -⟩ := derives64 false w
+  obtain ⟨s', n', h1', -, h3', -, -⟩ := derives64 true w
   exact ⟨⟨s, n, h1, h3 hf⟩, s', n', h1', h3' hf⟩
 
 /-- **The shortest decimal**: the string of a finite nonzero word is a number of RFC 8259's
@@ -471,34 +476,38 @@ theorem print32_zero (ecma : Bool) (x : UInt32) (hz : x.toNat % 2 ^ 31 = 0) :
 theorem derives32 (ecma : Bool) (x : UInt32) :
     ∃ s n, print32With ecma x.toUInt64 = words s ∧ Derives true s n ∧
       (Wasm.IEEE32.isFinite x = true → Derives false s n) ∧ round32 n = canon32 x ∧
-      s.length < 2 ^ 32 := by
+      s.length < 2 ^ 32 ∧
+      (Wasm.IEEE32.isFinite x = true → Wasm.IEEE32.scaledMagnitude x ≠ 0 →
+        ∃ neg t k, t % 10 ≠ 0 ∧ Shortest32 x neg t k ∧
+          s = if ecma then ecmaLayout neg t k else sciLayout neg t k) := by
   by_cases hf : Wasm.IEEE32.isFinite x = true
   · by_cases hz : x.toNat % 2 ^ 31 = 0
     · have hd := zero_derives (Wasm.IEEE32.sign x) ecma
       refine ⟨_, _, by rw [print32_zero ecma x hz, special_zero], derives_general hd,
-        fun _ => hd, ?_, zero_length _ _⟩
+        fun _ => hd, ?_, zero_length _ _,
+        fun _ hz' => absurd hz (PrintFloatWord32.bits_ne_zero x hz')⟩
       rw [round32_zero, zero_word32 x hz, canon32_finite x hf]
-    · obtain ⟨t, k, -, ht1, ht19, hk1, hk2, hs, hp, he⟩ := PrintFloatWord32.layout32 x hf hz
+    · obtain ⟨t, k, hmod, ht1, ht19, hk1, hk2, hs, hp, he⟩ := PrintFloatWord32.layout32 x hf hz
       cases ecma
       · have hd := sci_derives (Wasm.IEEE32.sign x) t k ht1
         exact ⟨_, _, hp, derives_general hd, fun _ => hd, by rw [hs.1, canon32_finite x hf],
-          sci_length _ _ _ ht19 hk1 hk2⟩
+          sci_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, k, hmod, hs, rfl⟩⟩
       · rcases ecma_derives (Wasm.IEEE32.sign x) t k ht1 with hd | ⟨z, rfl, hd⟩
         · exact ⟨_, _, he, derives_general hd, fun _ => hd, by rw [hs.1, canon32_finite x hf],
-            ecma_length _ _ _ ht19 hk1 hk2⟩
+            ecma_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, k, hmod, hs, rfl⟩⟩
         · exact ⟨_, _, he, derives_general hd, fun _ => hd,
             by rw [(shortest32_shift x _ t z hs).1, canon32_finite x hf],
-            ecma_length _ _ _ ht19 hk1 hk2⟩
+            ecma_length _ _ _ ht19 hk1 hk2, fun _ _ => ⟨_, t, z, hmod, hs, rfl⟩⟩
   · have hfF : Wasm.IEEE32.isFinite x = false := by simpa using hf
     by_cases hnan : Wasm.IEEE32.isNaN x = true
     · refine ⟨_, _, by rw [print32_nonfinite ecma x hfF, hnan, special_nan], nan_derives,
-        fun h => absurd h hf, ?_, by decide⟩
+        fun h => absurd h hf, ?_, by decide, fun h => absurd h hf⟩
       unfold canon32
       rw [ite_eq_left hnan]
       rfl
     · have hnF : Wasm.IEEE32.isNaN x = false := by simpa using hnan
       refine ⟨_, _, by rw [print32_nonfinite ecma x hfF, hnF, special_inf], inf_derives _,
-        fun h => absurd h hf, ?_, ?_⟩
+        fun h => absurd h hf, ?_, ?_, fun h => absurd h hf⟩
       · unfold canon32
         rw [hnF, ite_eq_right Bool.false_ne_true]
         exact inf_word32 x hfF hnF
@@ -508,31 +517,31 @@ theorem derives32 (ecma : Bool) (x : UInt32) :
 
 theorem print32_derives (x : UInt32) :
     ∃ s n, print32 x.toUInt64 = words s ∧ Derives true s n ∧ round32 n = canon32 x := by
-  obtain ⟨s, n, h1, h2, -, h4, -⟩ := derives32 false x
+  obtain ⟨s, n, h1, h2, -, h4, -, -⟩ := derives32 false x
   exact ⟨s, n, h1, h2, h4⟩
 
 theorem print32Ecma_derives (x : UInt32) :
     ∃ s n, print32Ecma x.toUInt64 = words s ∧ Derives true s n ∧ round32 n = canon32 x := by
-  obtain ⟨s, n, h1, h2, -, h4, -⟩ := derives32 true x
+  obtain ⟨s, n, h1, h2, -, h4, -, -⟩ := derives32 true x
   exact ⟨s, n, h1, h2, h4⟩
 
 theorem print32_roundtrip (x : UInt32) :
     parse32 true (print32 x.toUInt64) = (true, (canon32 x).toUInt64) := by
-  obtain ⟨s, n, h1, h2, -, h4, h5⟩ := derives32 false x
+  obtain ⟨s, n, h1, h2, -, h4, h5, -⟩ := derives32 false x
   show parse32 true (print32With false x.toUInt64) = _
   rw [h1, parse32_accept true s n h5 h2, h4]
 
 theorem print32Ecma_roundtrip (x : UInt32) :
     parse32 true (print32Ecma x.toUInt64) = (true, (canon32 x).toUInt64) := by
-  obtain ⟨s, n, h1, h2, -, h4, h5⟩ := derives32 true x
+  obtain ⟨s, n, h1, h2, -, h4, h5, -⟩ := derives32 true x
   show parse32 true (print32With true x.toUInt64) = _
   rw [h1, parse32_accept true s n h5 h2, h4]
 
 theorem print32_json (x : UInt32) (hf : Wasm.IEEE32.isFinite x) :
     (∃ s n, print32 x.toUInt64 = words s ∧ Derives false s n) ∧
       ∃ s n, print32Ecma x.toUInt64 = words s ∧ Derives false s n := by
-  obtain ⟨s, n, h1, -, h3, -⟩ := derives32 false x
-  obtain ⟨s', n', h1', -, h3', -⟩ := derives32 true x
+  obtain ⟨s, n, h1, -, h3, -, -⟩ := derives32 false x
+  obtain ⟨s', n', h1', -, h3', -, -⟩ := derives32 true x
   exact ⟨⟨s, n, h1, h3 hf⟩, s', n', h1', h3' hf⟩
 
 theorem print32_shortest (x : UInt32) (hf : Wasm.IEEE32.isFinite x)
