@@ -7,7 +7,7 @@ One step for `Log.logNear1`, the path of `Log.log` for arguments from `15/16` to
 and `265/4096`.  The code evaluates `r + B0 r ^ 2` as `hi + lo` with `r` split into 26-bit `rhi`
 and `rlo`, and `r ^ 3 (B1 + ... + B10 r ^ 9)` by Horner's rule in three groups.  Each operation is
 tracked with `F64ErrorTrack`, with errors proportional to `ρ`; the result before its final rounding
-is within `(1/16 + 1/14) u ρ` of `r · eval near1Kernel r`, and the polynomial is within
+is within `(1/15 + 1/13) u ρ` of `r · eval near1Kernel r`, and the polynomial is within
 `(15/16) 2 ^ -62 ρ` of `log (1 + r)`.  Since `|log (1 + r)| ≥ 0.93 ρ`, the sum stays below the
 `3/8` units of roundoff that `F64RelativeStep.within_one_relative` allows.
 -/

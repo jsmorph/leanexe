@@ -23,7 +23,32 @@ The dialect has no floating-point flags, and the expressions that fdlibm evaluat
 flags keep their values: the guards `huge + x > 1` and `huge + x > 0` stay, and `x/zero` is
 `x/0`.  fdlibm's signed high word `hx` is a word, so a comparison of `hx` with a positive bound
 also tests its sign bit.  `AsinhAccuracy.lean` checks the results against references computed
-with Lean's integers. -/
+with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_asinh.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+`e_acosh.c` and `e_atanh.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Asinh
 

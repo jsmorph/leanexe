@@ -2,23 +2,23 @@ import Verified.Examples.Exp
 
 /-! The thirty-eighth program of the verified compiler: `exp2` and `exp10`, ported from Arm's
 optimized-routines, `math/exp2.c`, `math/exp10.c`, and `math/exp_data.c` at commit
-`503fafe311c177de0e571c458c7c337b1ca5f522` (Copyright (c) 2018-2025 and 2023-2025, Arm Limited,
-SPDX-License-Identifier: MIT OR Apache-2.0 WITH LLVM-exception).  The configuration is that of
-`Exp.lean`: without rounding intrinsics or fused multiply-add, `EXP_TABLE_BITS` 7, so `N` is 128,
-`EXP2_POLY_ORDER` 5, and `EXP10_POLY_WIDE` 0.  Both write their argument as `k/N + r`, `exp2`
-with `k` the rounded `x N` and `exp10` with `k` the rounded `x N/log10 2` and `r` reduced by
-`log10 2/N` in two parts, and both take `2 ^ (k/N)` as `H j · (1 + T j)` from `__exp_data.tab`,
-which is `Exp.expTable` word for word, and a polynomial of degree 5 in `r` for the rest.  Arm
-states 0.511 units in the last place for `exp2` without fused multiply-add and about 0.513 for
-`exp10`.  Results near overflow and underflow go through `exp2SpecialCase`, which is
-`exp2.c`'s `specialcase` and `exp10.c`'s `special_case`, the same code, and which differs from
-`exp.c`'s in scaling a positive `k` by 2 rather than `2 ^ 1009`.  `exp2` and `exp10` pass
-`Exp.expTable` to `exp2With` and `exp10With`.  Each constant is written as the bit pattern of its
-value in Arm's source, the products and quotients by `N` included, and the results of
-`__math_oflow` and `__math_uflow` from `math/math_err.c` as the products that compute them.  The
-dialect has no floating-point flags, and the expressions that Arm evaluates only for its flags are
-left out, as in `Exp.lean`.  `Exp2Accuracy.lean` checks the results against references computed
-with Lean's integers. -/
+`503fafe311c177de0e571c458c7c337b1ca5f522` (`exp2.c` Copyright (c) 2018-2025, `exp10.c` Copyright
+(c) 2023-2025, and `exp_data.c` Copyright (c) 2018-2023, Arm Limited, SPDX-License-Identifier: MIT
+OR Apache-2.0 WITH LLVM-exception).  The configuration is that of `Exp.lean`: without rounding
+intrinsics or fused multiply-add, `EXP_TABLE_BITS` 7, so `N` is 128, `EXP2_POLY_ORDER` 5, and
+`EXP10_POLY_WIDE` 0.  Both write their argument as `k/N + r`, `exp2` with `k` the rounded `x N` and
+`exp10` with `k` the rounded `x N/log10 2` and `r` reduced by `log10 2/N` in two parts, and both
+take `2 ^ (k/N)` as `H j · (1 + T j)` from `__exp_data.tab`, which is `Exp.expTable` word for word,
+and a polynomial of degree 5 in `r` for the rest.  Arm states 0.511 units in the last place for
+`exp2` without fused multiply-add and about 0.513 for `exp10`.  Results near overflow and underflow
+go through `exp2SpecialCase`, which is `exp2.c`'s `specialcase` and `exp10.c`'s `special_case`, the
+same code, and which differs from `exp.c`'s in scaling a positive `k` by 2 rather than `2 ^ 1009`.
+`exp2` and `exp10` pass `Exp.expTable` to `exp2With` and `exp10With`.  Each constant is written as
+the bit pattern of its value in Arm's source, the products and quotients by `N` included, and the
+results of `__math_oflow` and `__math_uflow` from `math/math_err.c` as the products that compute
+them.  The dialect has no floating-point flags, and the expressions that Arm evaluates only for its
+flags are left out, as in `Exp.lean`.  `Exp2Accuracy.lean` checks the results against references
+computed with Lean's integers. -/
 
 namespace Verified.Examples.Exp2
 

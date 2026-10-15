@@ -15,7 +15,7 @@ the table of hard cases and the doubles next to them, the inputs of `WorstCases`
 largest known errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman,
 Innocente, Mather, Ozaki, and Zimmermann, and the special values.  The check also calls
 `Lgamma.accurate`, the path that the fast path falls back on, at every eighth finite argument other
-than 0, the integers below 3, and the magnitudes from `0x1.006df1bfac84ep+1015` up, where
+than 0, the integers below 3, and the magnitudes from `0x1.754d9278b51a6p+1014` up, where
 `cr_lgamma` returns before it, and at the table's inputs, and requires the same bound of it.  It
 exits with an error at the first result that fails.  Run with `lake env lean --run`. -/
 

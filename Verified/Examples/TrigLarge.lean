@@ -6,8 +6,8 @@ import Mathlib.Analysis.Real.Pi.Bounds
 /-!
 The accuracy of `Trig.remLarge`.  For a positive finite double `x` with exponent field from 1043
 on, the remainder `y0 + y1` lies within `2 ^ -72` relative of `x - N π/2` for an integer `N` with
-`N mod 4` the returned count, and that remainder is at least `2 ^ -62` and at most
-`π/4 + 2 ^ -130` in magnitude.
+`N mod 4` the returned count, and that remainder is at least `2 ^ -63` and at most
+`π/4 + 2 ^ -134` in magnitude (`TrigLargeSpec.remLarge_spec`).
 -/
 
 namespace Verified.Examples.TrigLarge

@@ -4,18 +4,34 @@ import Verified.Reflect.Command
 FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`e_asin.c` and
 `e_acos.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).
 Both use the quotient `w (z) = p (z)/q (z)` of `e_asin.c`, which approximates `(asin √z - √z)/√z`:
-`p (z) = z P (z)`, and fdlibm bounds `P/q` within `2 ^ -58.75` of `(asin √z - √z)/z^(3/2)`.  Below
-`1/2` in magnitude, `asin x = x + x w (x²)` and `acos x = π/2 - (x + x w (x²))`.  From `1/2` on,
-both use `asin √z = √z + √z w (z)`: `asin |x| = π/2 - 2 asin √z` with `z = (1 - |x|)/2`,
-`acos x = 2 asin √z` for positive `x`, and `acos x = π - 2 asin √z` with `z = (1 + x)/2` for
-negative `x`.  Where the result needs it, `√z` is split into its high 32 bits `f` and the correction
-`(z - f²)/(√z + f)`, and `π/2` comes in two parts.  fdlibm states no error bound for either
-function.  Each constant is written as the bit pattern that fdlibm's source gives beside its decimal
-value, and `1.0e+300` as the bits of that decimal.  The dialect has no floating-point flags, and the
-expressions that fdlibm evaluates only for their flags keep their values: the guard `huge + x > 1`
-stays.  fdlibm computes `p` and `q` in each branch, and here `asinRatio` computes `p/q` with the
-same operations.  fdlibm's signed high word `hx` is a word, so its sign is its top bit.
-`AsinAccuracy.lean` checks the results against a reference computed with Lean's integers. -/
+`p (z) = z P (z)`, and fdlibm's comment bounds `P/q` within `2 ^ -58.75` of
+`(asin √z - √z)/z^(3/2)`, a bound for exact coefficients: the stored `pS0` is `1/6` rounded, which
+alone gives about `2 ^ -56.58` (`AsinKernelPoly`).  Below `1/2` in magnitude,
+`asin x = x + x w (x²)` and `acos x = π/2 - (x + x w (x²))`.  From `1/2` on, both use
+`asin √z = √z + √z w (z)`: `asin |x| = π/2 - 2 asin √z` with `z = (1 - |x|)/2`, `acos x = 2 asin √z`
+for positive `x`, and `acos x = π - 2 asin √z` with `z = (1 + x)/2` for negative `x`.  Where the
+result needs it, `√z` is split into its high 32 bits `f` and the correction `(z - f²)/(√z + f)`, and
+`π/2` comes in two parts.  fdlibm states no error bound for either function.  Each constant is
+written as the bit pattern that fdlibm's source gives beside its decimal value, and `1.0e+300` as
+the bits of that decimal.  The dialect has no floating-point flags, and the expressions that fdlibm
+evaluates only for their flags keep their values: the guard `huge + x > 1` stays.  fdlibm computes
+`p` and `q` in each branch, and here `asinRatio` computes `p/q` with the same operations.  fdlibm's
+signed high word `hx` is a word, so its sign is its top bit.  `AsinAccuracy.lean` checks the results
+against a reference computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`e_asin.c` and `e_acos.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Asin
 

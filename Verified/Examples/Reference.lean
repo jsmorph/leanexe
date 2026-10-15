@@ -5,8 +5,9 @@ from reductions by them and Taylor series, `log` from `atanh`, and the rounding 
 double covers subnormals, zero, and overflow.  Each definition
 states the error that its truncations leave, which is below a relative `2 ^ -230` for every value
 that a check compares unit by unit.  A reference can round the wrong way only where the exact
-value lies that near a midpoint between doubles, and then the two doubles beside the midpoint are
-the only ones within one unit of it, so a check of one unit passes for the result either way. -/
+value lies that near a midpoint between doubles.  There it differs by one unit from the correctly
+rounded double, so a check of one unit could pass a result two units from that double or fail a
+result one unit from it. -/
 
 namespace Verified.Examples.Reference
 

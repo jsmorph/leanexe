@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 from fractions import Fraction as F
 import math
 u=F(1,2**53); eta=F(1,2**960)

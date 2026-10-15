@@ -16,7 +16,21 @@ overflow flags, as the bits of those decimals.  The dialect has no floating-poin
 expressions that fdlibm evaluates only for their flags keep their values: `x - ((huge + x) -
 (huge + x))` is `x`.  fdlibm's signed `k` is a sign and a magnitude here, since the dialect
 converts only between floats and unsigned words.  `TanhAccuracy.lean` checks the results against
-references computed with Lean's integers. -/
+references computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_expm1.c` and `s_tanh.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Tanh
 

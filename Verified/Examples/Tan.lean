@@ -22,7 +22,31 @@ kernel flag `iy = ±1` is the Boolean `odd`, its signed high word is a word, and
 reduction and kernel are odd in every rounding, so the negation gives fdlibm's result for the same
 reduction.  From `2 ^ 20 · π/2` on, `Trig.remPio2` is the Payne–Hanek reduction of `Trig.lean` in
 place of fdlibm's `__kernel_rem_pio2`.  `TanAccuracy.lean` checks the results against a reference
-computed with Lean's integers. -/
+computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_tan.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+`k_tan.c`:
+
+    ====================================================
+    Copyright 2004 Sun Microsystems, Inc.  All Rights Reserved.
+
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Tan
 

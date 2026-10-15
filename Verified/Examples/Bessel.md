@@ -37,7 +37,7 @@ From 2 up, the functions are `√(2/(π x)) (P cos θ ∓ Q sin θ)` and `√(2/
 
 ## Implementation
 
-The sources are FreeBSD's `lib/msun/src/e_j0.c`, `e_j1.c`, and `e_jn.c` at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1, 2, 3], each with the 1993 copyright notice of Sun Microsystems, which states that permission "to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Bessel.lean) gives the copyright line and paraphrases the permission as "freely distributable with this notice", the same defect that the plan records for the docstrings of `Erf.lean`, `Tanh.lean`, `Sinh.lean`, and `Asinh.lean`.  The port follows the C code operation for operation in the Verified dialect, and the `verified_compile` call lists 40 functions: 13 of [the trigonometric functions](Trig.lean), 3 of [the logarithm](Log.lean), and 24 of this module.
+The sources are FreeBSD's `lib/msun/src/e_j0.c`, `e_j1.c`, and `e_jn.c` at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1, 2, 3], each with the 1993 copyright notice of Sun Microsystems, which states that permission "to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Bessel.lean) quotes the notice verbatim, as the notice requires.  The port follows the C code operation for operation in the Verified dialect, and the `verified_compile` call lists 40 functions: 13 of [the trigonometric functions](Trig.lean), 3 of [the logarithm](Log.lean), and 24 of this module.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -136,7 +136,7 @@ The ProofKit chain, in dependency order, is `EntireSeries`, `Bessel`, `BesselPQ`
 | [The large-argument forms](../../LeanExe/ProofKit/BesselPQ.lean) | `P`, `Q`, the forms of DLMF 10.17, the moduli, and the system for `P` and `Q` |
 | [Exact polynomial evaluation](../../LeanExe/ProofKit/PolyCalc.lean) | Rational evaluation and differentiation of coefficient lists that the kernel computes |
 | [Euler's constant](../../LeanExe/ProofKit/EulerGamma.lean) | `γ` within `2^-84` from `H_n - ln n` with Euler–Maclaurin corrections at `n = 128`, and `ln 2` within `2^-100` |
-| [Constants](../../LeanExe/ProofKit/BesselConstants.lean) | Enclosure arithmetic, `π` by Machin's formula within `2^-190`, where the module's docstring states `2^-180`, and `cos 2` and `sin 2` |
+| [Constants](../../LeanExe/ProofKit/BesselConstants.lean) | Enclosure arithmetic, `π` by Machin's formula within `2^-190`, and `cos 2` and `sin 2` |
 | [The energy method](../../LeanExe/ProofKit/BesselEnergy.lean), [chains](../../LeanExe/ProofKit/BesselChain.lean), and [the asymptotic piece](../../LeanExe/ProofKit/BesselAsym.lean) | The growth of the error energy across a piece, the jumps between pieces, and the induction over the pieces |
 | [The start at 2](../../LeanExe/ProofKit/BesselStart.lean) | `P`, `Q`, and their derivatives at `x = 2` within `2^-86` of dyadic values, from the four series at `z = 1` |
 | [Order 0 on `[2, ∞)`](../../LeanExe/ProofKit/BesselLarge0.lean) and [order 1](../../LeanExe/ProofKit/BesselLarge1.lean) | The pieces, the kernel checks, and the `2^-80` bounds |

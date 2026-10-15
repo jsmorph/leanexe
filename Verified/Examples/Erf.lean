@@ -24,7 +24,21 @@ no floating-point flags, and the expressions that fdlibm evaluates only for thei
 values: `1 - tiny`, `tiny - 1`, `2 - tiny`, and `tiny · tiny` stay rounded sums and products.
 fdlibm's signed high word `hx` is a word, so a signed comparison with a positive bound also tests
 its sign bit.  `ErfAccuracy.lean` checks the results against references computed with Lean's
-integers. -/
+integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_erf.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Erf
 

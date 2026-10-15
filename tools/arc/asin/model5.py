@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open("model4.py").read().split("for xlo,xhi in")[0])
 def mulA(a,b):
     B=(a[0]+a[1])*(b[0]+b[1]); return (a[0]*b[0], a[1]*b[0]+a[0]*b[1]+a[1]*b[1]+B*u+F(1,2**1075))

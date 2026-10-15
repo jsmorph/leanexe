@@ -21,7 +21,7 @@ variable {Q E nu : ℕ} {low : Bool}
 
 /-! ### Floors as reals -/
 
-theorem floor_le (a d : ℕ) (hd : 0 < d) : ((a / d : ℕ) : ℝ) ≤ (a : ℝ) / d := Nat.cast_div_le
+theorem floor_le (a d : ℕ) (_hd : 0 < d) : ((a / d : ℕ) : ℝ) ≤ (a : ℝ) / d := Nat.cast_div_le
 
 theorem lt_floor (a d : ℕ) (hd : 0 < d) : (a : ℝ) / d < ((a / d : ℕ) : ℝ) + 1 := by
   have h : a < (a / d + 1) * d := (Nat.div_lt_iff_lt_mul hd).mp (Nat.lt_succ_self _)

@@ -15,7 +15,7 @@
 | `atan2 (±∞, x)`, finite `x` | `±π/2` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_y` |
 | `atan2 (y, ±∞)`, finite nonzero `y` | `±0` for `+∞`, `±π` rounded for `-∞`, with the sign of `y` | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_x` |
 | `atan2 (±∞, ±∞)` | `±π/4` and `±3π/4` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | `atan2_inf_both` |
-| `atan2` with a NaN argument | the canonical NaN in Talos, from `x + y` | IEEE 754-2019 9.2; C99 F.9 paragraph 11 | none |
+| `atan2` with a NaN argument | the canonical NaN in Talos, from `x + y` | IEEE 754-2019 9.2; C99 F.9 paragraph 11 | `atan2_nan` |
 | `atan2 (y, ±0)`, finite nonzero `y` | `±π/2` rounded | IEEE 754-2019 9.2.1; C99 F.9.1.4 | within two steps, `AtanTwoTheorem.xzero_case` |
 
 The rounded constants are the words `0x400921FB54442D18` (`π`), `0x3FF921FB54442D18` (`π/2`), `0x3FE921FB54442D18` (`π/4`), and `0x4002D97C7F3321D2` (`3π/4`), with the sign bit set for the negative results, and each is the nearest double to its value.  IEEE 754-2019 recommends both operations in clause 9.2, where a conforming implementation rounds correctly [5].  fdlibm states no error bound for either function, and the theorems say nothing about floating-point exceptions, which the port does not compute.
@@ -40,7 +40,7 @@ The polynomial is `aT0 z + ⋯ + aT10 z^11` in `z = t²`, split into the parts `
 
 ## Implementation
 
-The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1], each "Copyright (C) 1993 by Sun Microsystems, Inc." with the notice "Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Atan.lean) names the two files, the commit, and the copyright, and it paraphrases the notice as "freely distributable with this notice" without quoting it.  fdlibm is Sun's "Freely Distributable LIBM" [3].  The port follows the dialect of the Verified compiler as [the exponential document](Exp.md#implementation) describes: `verified_compile compiled := [atan, atan2]` generates a module whose functions are `alloc` (0), `release` (1), `atan` (2), and `atan2` (3), every named constant is `Float.ofBits` of its bit pattern, and the module reads no table.  The WebAssembly entry of `atan2` takes `y` and then `x`, as C's `atan2 (y, x)` does.
+The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1], each "Copyright (C) 1993 by Sun Microsystems, Inc." with the notice "Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved".  The module docstring of [the implementation](Atan.lean) names the two files and the commit and quotes their notices verbatim, as the notices require.  fdlibm is Sun's "Freely Distributable LIBM" [3].  The port follows the dialect of the Verified compiler as [the exponential document](Exp.md#implementation) describes: `verified_compile compiled := [atan, atan2]` generates a module whose functions are `alloc` (0), `release` (1), `atan` (2), and `atan2` (3), every named constant is `Float.ofBits` of its bit pattern, and the module reads no table.  The WebAssembly entry of `atan2` takes `y` and then `x`, as C's `atan2 (y, x)` does.
 
 | C code | Port | Reason |
 |---|---|---|
@@ -66,7 +66,7 @@ The sources are `lib/msun/src/s_atan.c` and `lib/msun/src/e_atan2.c` of FreeBSD 
 
 ## Theorems
 
-The theorems are in [the `atan` theorem](AtanTheorem.lean), [its exceptional values](AtanTheoremSpecial.lean), [the `atan2` theorem](AtanTwoTheorem.lean), [its exceptional values](AtanTwoSpecial.lean), [the byte theorems](AtanBytes.lean), and [the file theorem](AtanFile.lean).  `x` and `y` are Lean `Float`s, `a = value x.toBits`, and `b = value y.toBits`.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
+The theorems are in [the `atan` theorem](AtanTheorem.lean), [its exceptional values](AtanTheoremSpecial.lean), [the `atan2` theorem](AtanTwoTheorem.lean), [its exceptional values](AtanTwoSpecial.lean), [its NaN results](AtanTwoNaN.lean), [the byte theorems](AtanBytes.lean), and [the file theorem](AtanFile.lean).  `x` and `y` are Lean `Float`s, `a = value x.toBits`, and `b = value y.toBits`.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
 
 | Theorem | Statement |
 |---|---|
@@ -76,6 +76,7 @@ The theorems are in [the `atan` theorem](AtanTheorem.lean), [its exceptional val
 | `atan_nan` | A NaN gives `Wasm.IEEE64.canonicalNaN`. |
 | `AtanTwoTheorem.atan2_within_two` | For finite `y` and `x` with `b ≠ 0`, `WithinSteps 2 (Complex.arg (a + b i)) (Atan.atan2 y x).toBits`. |
 | `AtanTwoSpecial.atan2_zero`, `atan2_inf_y`, `atan2_inf_x`, `atan2_inf_both` | The words of the zero and infinite cases of the table above. |
+| `AtanTwoNaN.atan2_nan` | When `y` or `x` is a NaN, `(Atan.atan2 y x).toBits` is `Wasm.IEEE64.canonicalNaN`. |
 | `AtanBytes.ready_initial` | The initial store satisfies `Ready`: the allocator invariant and a memory cap of at most 65,535 pages. |
 | `AtanBytes.atan_entry_call`, `atan2_entry_call` | A call of function 2 or 3 from a `Ready` store returns, without a trap, the bits of the Lean function, and leaves a `Ready` store in which every heap region keeps its bytes. |
 | `AtanBytes.atan_bytes_accuracy`, `atan2_bytes_accuracy` | `Atan.compiled.module` encodes to bytes that decode to it, exports the function, starts in a `Ready` store, and every call from a `Ready` store returns the bits of the Lean function, within the decided bound on the domain of the accuracy theorem, and leaves a `Ready` store. |
@@ -105,7 +106,7 @@ The table lists the proof modules in dependency order.  The `atan` chain ends in
 | `AtanTheorem`, `AtanTheoremSpecial` | `atan_within_one` and the exceptional values. |
 | `AtanTwoBranches`, `AtanTwoQuot`, `AtanTwoErr`, `AtanTwoAtan` | The branches of `atan2`, the rounded quotient `q` within `2^-53 Q + 2^-1075` of `Q = \|y/x\|`, the change of `arctan` between them, and `atan_good` for every branch of `atan` at `q`. |
 | `AtanTwoArg`, `AtanTwoBits`, `AtanTwoTheorem` | `Complex.arg` through `arctan (y/x)`, the word tests of `atan2`, and `atan2_within_two`. |
-| `AtanTwoSpecial`, `AtanBytes`, `AtanFile` | Exceptional values, byte theorems, and the file theorem. |
+| `AtanTwoSpecial`, `AtanTwoNaN`, `AtanBytes`, `AtanFile` | Exceptional values, the NaN results of `atan2`, byte theorems, and the file theorem. |
 
 ### Kernel bound
 
@@ -175,7 +176,7 @@ In `opus-verified-tests-14.log` all 200,084 results of `atan` lie within one ste
 
 The limits of [the exponential theorem](Exp.md#limits) apply in the same way: the theorem is about Talos's semantics, the interpreter and the decoder are trusted, the file theorem trusts `binary_file%`, Talos implements the deterministic profile in which every NaN result is canonical [7], and the arguments are the bits of Lean `Float`s, whose only NaN is the canonical one (`F64Bits.toBits_canonical`), so the theorems cover only the canonical NaN among the NaN words a WebAssembly caller can pass.  The byte theorems cover sequences of calls to `atan` and `atan2`.  The module also exports `alloc`, `release`, its memory, and the counters `allocCount` and `freeCount`, and a host that calls `alloc` or `release` or writes the memory between calls needs a theorem that the action preserves `Ready`.  The module reads no table, so the store invariant has only the allocator invariant and the memory cap.
 
-No theorem states the result of `atan2` when an argument is a NaN, a gap that [the plan](../../transcendentals.md#corrections-found-by-the-documentation-review) lists.  The code returns `x + y` there, which is the canonical NaN in Talos, and `atan2_within_two` and the byte theorem exclude NaN arguments through their finiteness hypotheses.  For `y = ±0` and infinite arguments the byte theorem of `atan2` states only that the result is the word of `Atan.atan2 y x`, and `AtanTwoSpecial` gives those words for the Lean function.
+`atan2_within_two` and the bound in the byte theorem exclude NaN arguments through their finiteness hypotheses.  The code returns `x + y` there, which is the canonical NaN in Talos, and `AtanTwoNaN.atan2_nan` states that result for the Lean function.  For a NaN, `y = ±0`, and infinite arguments the byte theorem of `atan2` states only that the result is the word of `Atan.atan2 y x`, and `AtanTwoSpecial` and `AtanTwoNaN` give those words for the Lean function.
 
 ## References
 

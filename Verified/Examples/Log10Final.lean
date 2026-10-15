@@ -10,9 +10,9 @@ lemma, and `hi + lo` is within `1.2772 u σ` of `S (2 + Lg1 S² + ... )`, which
 `Log1pKernelPoly.log1p_kernel_error` puts within `2 ^ -58 σ` of `log (1 + f)`.  `hi ivln10hi` and
 `y log10_2hi` are exact products, `y log10_2hi - w` is exact, and the rounding error of
 `w = y log10_2hi + hi ivln10hi` returns in `valLo`, so the sum before the final rounding is within
-`0.71 u σ` of `k log10 2 + log10 (1 + f)`, plus terms in `|k|` below `2 ^ -80`.  That is below
+`0.7026 u σ` of `k log10 2 + log10 (1 + f)`, plus terms in `|k|` below `2 ^ -80`.  That is below
 `63/64` units of roundoff of the result, as `F64RoundedStep.within_one_add` requires: the result
-is at least `0.8684 σ` when `k = 0` and at least `0.15 |k|` otherwise.
+is at least `0.8684 σ` when `k = 0` and at least `0.1472 |k|` otherwise.
 -/
 
 namespace Verified.Examples.Log10Final
