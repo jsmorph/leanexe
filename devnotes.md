@@ -32824,3 +32824,11 @@ The first build failed in three places (`strconv-s4-thm-1.log`): a `positivity` 
 
 - [x] Byte and file theorems, and the `run.sh` entry
 - [ ] The build of `LeanExe Verified` and the run of `tests/verified/run.sh` with the printers
+
+## 2026-10-15: The index of seminumerical algorithms (coordinating session)
+
+`index.md` at the root of the repository lists the arithmetic and numerical algorithms of the repository with the strongest result proved for each.  The user set its scope on 2026-10-15: (a) an implementation under `Verified/` takes precedence, and one under `Examples/` appears only when `Verified/` has no equivalent; (b) only compiled implementations appear, which leaves out the multiple-precision references and the generators of `GENERATORS.md`; (c) the branch has no hash function, and the index has no section for one; (d) the discrete Fourier transform of `Verified/Examples/Fourier.lean` is included; and (e) the floating-point folds and the numerical demos have sections of their own.  The gcd row lists `Recursion.gcd`, whose theorem is the compiler's, and points to `Examples/Gcd`, which proves that its bytes compute `Nat.gcd`.
+
+A review against every `verified_compile` list and every directory of `Examples/` added the binary32 programs of `Examples/Binary32`, the word folds, and the histogram bucket.  The index leaves out programs that test data structures, control flow, or memory management, and the applications under `Examples/`: the Euler solver, GPT inference, and the WGSL kernels.  Every theorem the index names exists at `b2f73f24`, so the index does not wait for the correction batches.
+
+- [x] `index.md`, reviewed with the user and for completeness
