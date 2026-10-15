@@ -3,25 +3,25 @@ import Verified.Examples.WorstCases
 import Verified.Examples.ErfReference
 
 /-! A native check of `Erfc.erfc`, the port of CORE-MATH's `erfc`, against the reference of
-`ErfReference` rounded to the nearest double.  CORE-MATH's `erfc` is correctly rounded, and the check
-requires every result to equal the reference.  The reference is `ErfAccuracy.erfcReference`, repeated
-here since that module defines its own `main`.  The arguments are those of `ErfAccuracy`: evenly
-spaced values from -7 to 7 and from 6 to 28, hashed values over the exponents from `2 ^ -60` to
-`2 ^ 6` with both signs, the doubles from 27.2 to 27.3, and the special values, with the doubles next
-to the thresholds of CORE-MATH's code in place of fdlibm's: the bounds of the special ranges, the
-ends of the paths, the multiples of `1/16` and `1/8` that end the intervals of the polynomials of
-`erf`, the reciprocals of the bounds of the intervals of `1/x`, and the 69 inputs of the hard cases.
-They also include the inputs of `WorstCases`, which give the largest known errors of thirteen
-libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and
-Zimmermann.  The check also calls `Erfc.erfcAccurate`, the path that the fast path falls back on, at
-every eighth argument in its range and at the inputs of the hard cases, and requires the same.  It
-exits with an error at the first result unequal to the reference.  Run with `lake env lean --run`. -/
+`ErfReference` rounded to the nearest double.  CORE-MATH's `erfc` is correctly rounded, and the
+check requires every result to equal the reference.  The arguments are those of `ErfAccuracy`:
+evenly spaced values from -7 to 7 and from 6 to 28, hashed values over the exponents from `2 ^ -60`
+to `2 ^ 6` with both signs, the doubles from 27.2 to 27.3, and the special values, with the doubles
+next to the thresholds of CORE-MATH's code in place of fdlibm's: the bounds of the special ranges,
+the ends of the paths, the multiples of `1/16` and `1/8` that end the intervals of the polynomials
+of `erf`, the reciprocals of the bounds of the intervals of `1/x`, and the 69 inputs of the hard
+cases.  They also include the inputs of `WorstCases`, which give the largest known errors of
+thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki,
+and Zimmermann.  The check also calls `Erfc.erfcAccurate`, the path that the fast path falls back
+on, at every eighth argument in its range and at the inputs of the hard cases, and requires the
+same.  It exits with an error at the first result unequal to the reference.  Run with
+`lake env lean --run`. -/
 
 namespace Verified.Examples.ErfcAccuracy
 
 open Verified.Examples Reference ErfReference
 
-/-- The double nearest to `erfc x`, as `ErfAccuracy.erfcReference`.  Below 6 in magnitude it is
+/-- The double nearest to `erfc x`.  Below 6 in magnitude it is
 `1 ∓ erf |x|` at precision `P`, within a relative `2 ^ -330`, since `erfc x > 2 ^ -56` there.  From
 6 to 28 it is `e^(-x²) K/√π` from `Reference.exp`, `erfcFraction`, and `sqrtPi`, within a relative
 `2 ^ -385`.  From 28 on it is 0, since `erfc 28 < 2 ^ -1131`, and from -6 down it is 2, since

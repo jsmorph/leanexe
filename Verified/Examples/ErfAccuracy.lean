@@ -2,19 +2,18 @@ import Verified.Examples.Erf
 import Verified.Examples.WorstCases
 import Verified.Examples.ErfReference
 
-/-! A native check of `Erf.erf` and `Erf.erfc` against references computed with Lean's integers
-through `ErfReference`, rounded to the nearest double.  fdlibm states an error below one unit in the
-last place for `erf` below 0.84375 and nothing elsewhere, and the check requires the largest
-distances it finds: one unit in the last place for `erf` and four for `erfc`, which it reaches at
-`0x1.527f4fb0d9331p+0`, Musl's input in Table 7.  The arguments are evenly spaced values from -7 to
-7 and from 6 to 28, hashed values over the exponents from `2 ^ -60` to `2 ^ 6` with both signs, the
-doubles next to the high words that the code compares with, the doubles from 27.2 to 27.3, where
-`erfc` passes the least subnormal and rounds to 0 (it enters the subnormal range near 26.54), and
-the special values.  Lean has no binding of the C library's `erf` and `erfc`, so the check reports
-no library distance.  The arguments also include those of `WorstCases`, which give the largest known
-errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente,
-Mather, Ozaki, and Zimmermann.  It exits with an error at the first result further from the
-reference than its bound.  Run with `lake env lean --run`. -/
+/-! A native check of `Erf.erf` against references computed with Lean's integers through
+`ErfReference`, rounded to the nearest double.  fdlibm states an error below one unit in the last
+place for `erf` below 0.84375 and nothing elsewhere, and the check requires one unit in the last
+place everywhere, the bound that `ErfTheorem.erf_within_one` proves.  The arguments are evenly
+spaced values from -7 to 7 and from 6 to 28, hashed values over the exponents from `2 ^ -60` to
+`2 ^ 6` with both signs, the doubles next to the high words that the code and fdlibm's `erfc`
+compare with, the doubles from 27.2 to 27.3, where `erfc` passes the least subnormal and rounds to
+0, and the special values; `ErfcAccuracy` uses the same arguments.  Lean has no binding of the C
+library's `erf`, so the check reports no library distance.  The arguments also include those of
+`WorstCases`, which give the largest known errors of thirteen libraries in Tables 4 to 11 of the
+August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It exits with an error at
+the first result further from the reference than one unit.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.ErfAccuracy
 
@@ -30,26 +29,6 @@ def erfReference (x : Float) : Float :=
     let (m, e) := exactValue x.abs
     let v := m * erfFactor m.toNat e P
     toFloat (if x < 0.0 then -v else v) (e - P)
-
-/-- The double nearest to `erfc x`.  Below 6 in magnitude it is `1 ∓ erf |x|` at precision `P`,
-within a relative `2 ^ -330`, since `erfc x > 2 ^ -56` there.  From 6 to 28 it is
-`e^(-x²) K/√π` from `Reference.exp`, `erfcFraction`, and `sqrtPi`, within a relative `2 ^ -385`.
-From 28 on it is 0, since `erfc 28 < 2 ^ -1131`, and from -6 down it is 2, since
-`2 - erfc 6` lies above the midpoint `2 - 2 ^ -53` between 2 and the double below it. -/
-def erfcReference (x : Float) : Float :=
-  if x.isNaN then x
-  else if x == 0.0 then 1.0
-  else if x.isInf then if x < 0.0 then 2.0 else 0.0
-  else if x ≤ -6.0 then 2.0
-  else if x ≥ 28.0 then 0.0
-  else
-    let (m, e) := exactValue x.abs
-    if x.abs < 6.0 then
-      let erf := Reference.shift (m * erfFactor m.toNat e P) e
-      toFloat (if x < 0.0 then 2 ^ P + erf else 2 ^ P - erf) (-(P : Int))
-    else
-      let (v, k) := exp (-(Reference.shift (m * m) (2 * e + P))) P
-      toFloat (v * erfcFraction m.toNat e P / sqrtPi P) k
 
 /-- `x` and `-x` for each `x`. -/
 def both (xs : Array Float) : Array Float := xs.flatMap fun x => #[x, -x]
@@ -71,8 +50,7 @@ end Verified.Examples.ErfAccuracy
 
 open Verified.Examples Verified.Examples.Reference Verified.Examples.ErfAccuracy in
 def main : IO UInt32 := do
-  for (name, bound, f, reference) in
-      [("erf", 1, Erf.erf, erfReference), ("erfc", 4, Erf.erfc, erfcReference)] do
+  for (name, bound, f, reference) in [("erf", 1, Erf.erf, erfReference)] do
     let mut ours : Tally := {}
     for x in args do
       let ref := reference x

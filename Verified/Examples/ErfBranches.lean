@@ -5,7 +5,7 @@ import LeanExe.ProofKit.F64Sign
 import LeanExe.ProofKit.F64PositiveOrder
 
 /-!
-The paths of `Erf.erfWith` and `Erf.erfcWith` by the value of the argument.  The code compares the
+The paths of `Erf.erfWith` by the value of the argument.  The code compares the
 high word of `|x|`, `ix = (bits >>> 32) &&& 0x7fffffff`, with constants whose low words are zero, so
 `ix < T` holds exactly when the magnitude of `x` is below the double with high word `T`
 (`ix_lt_iff`).  Each threshold's value is computed from its bits.

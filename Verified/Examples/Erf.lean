@@ -1,30 +1,28 @@
 import Verified.Examples.Exp
 
-/-! The forty-third program of the verified compiler: `erf` and `erfc`, ported from fdlibm as
-FreeBSD's `lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_erf.c`,
-Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).  Below
-`0.84375` in magnitude, `erf x = x + x R (x²)` with a rational function `R` of degrees 4 and 5,
-within `2 ^ -57.90` of `(erf x - x)/x`, and `erfc` is `1 - erf x`, or `0.5 - (x R + (x - 0.5))` from
-`1/4` on.  Up to `1.25`, both use `erf |x| = c + P (s)/Q (s)` with `s = |x| - 1`, `c` the single
-precision `0.84506291151`, and a rational function of degrees 6 and 6 within `2 ^ -59.06`.  Up to
-28, `erfc |x| = exp (-x² - 0.5625 + R/S)/|x|` with `R/S` a rational function in `1/x²`, one below
-`1/0.35` and another above, within `2 ^ -62.57` and `2 ^ -61.52` of `log (x erfc x) + x² + 0.5625`,
-and `-x²` is split at the high 32 bits of `x` so that its first part is exact.  `erf` takes
-`1 - erfc |x|` with the sign of `x`, and `±1` from 6 on, and `erfc` takes `2 - erfc |x|` for a
-negative `x`, 2 from -6 down, and `1.0e-300²` from 28 up.  fdlibm states errors below one unit in
-the last place for `erf` on the first range and states none elsewhere.  fdlibm calls its own `exp`
-(`e_exp.c`), and the module calls `Exp.expWith` with the table `Exp.expTable`, Arm's `exp`, which
-the module lists, so that the reflector compiles it into this module.  Both state errors below one
-unit in the last place, and their results may differ in the last bit.  `erf` and `erfc` pass
-`Exp.expTable` to `erfWith` and `erfcWith`.  fdlibm computes the rational functions in each
-function, and here `erfSmall`, `erfMiddle`, `erfTail`, and `erfExp` compute them, and the two
-exponentials, with the same operations.  Each constant is written as the bit pattern that fdlibm's
-source gives beside its decimal value, and `1.0e-300` as the bits of that decimal.  The dialect has
-no floating-point flags, and the expressions that fdlibm evaluates only for their flags keep their
-values: `1 - tiny`, `tiny - 1`, `2 - tiny`, and `tiny · tiny` stay rounded sums and products.
-fdlibm's signed high word `hx` is a word, so a signed comparison with a positive bound also tests
-its sign bit.  `ErfAccuracy.lean` checks the results against references computed with Lean's
-integers.
+/-! The forty-third program of the verified compiler: `erf`, ported from fdlibm as FreeBSD's
+`lib/msun/src` has it at commit `20381bce4b63975494a2f4bc84257f6932e6d379` (`s_erf.c`, Copyright (C)
+1993 by Sun Microsystems, Inc., freely distributable with this notice).  Below `0.84375` in
+magnitude, `erf x = x + x R (x²)` with a rational function `R` of degrees 4 and 5, within
+`2 ^ -57.90` of `(erf x - x)/x`.  Up to `1.25`, `erf |x| = c + P (s)/Q (s)` with `s = |x| - 1`, `c`
+the single precision `0.84506291151`, and a rational function of degrees 6 and 6 within
+`2 ^ -59.06`.  Up to 6, `erf |x| = 1 - erfc |x|` with `erfc |x| = exp (-x² - 0.5625 + R/S)/|x|`,
+where `R/S` is a rational function in `1/x²`, one below `1/0.35` and another above, within
+`2 ^ -62.57` and `2 ^ -61.52` of `log (x erfc x) + x² + 0.5625`, and `-x²` is split at the high 32
+bits of `x` so that its first part is exact.  The result takes the sign of `x`, and it is `±1` from
+6 on.  fdlibm states errors below one unit in the last place on the first range and states none
+elsewhere.  fdlibm calls its own `exp` (`e_exp.c`), and the module calls `Exp.expWith` with the
+table `Exp.expTable`, Arm's `exp`, which the module lists, so that the reflector compiles it into
+this module.  Both state errors below one unit in the last place, and their results may differ in
+the last bit.  `erf` passes `Exp.expTable` to `erfWith`, and `erfSmall`, `erfMiddle`, `erfTail`, and
+`erfExp` compute the rational functions and the two exponentials with fdlibm's operations.
+`s_erf.c` also defines `erfc`, which the module exported until 2026-10-15 without a theorem.
+CORE-MATH's correctly rounded `erfc` in `Erfc.lean` replaces it.  Each constant is written as the
+bit pattern that fdlibm's source gives beside its decimal value, and `1.0e-300` as the bits of that
+decimal.  The dialect has no floating-point flags, and the expressions that fdlibm evaluates only
+for their flags keep their values: `1 - tiny` and `tiny - 1` stay rounded sums.  fdlibm's signed
+high word `hx` is a word, so a signed comparison with a positive bound also tests its sign bit.
+`ErfAccuracy.lean` checks the results against references computed with Lean's integers.
 
 The notices of the ported files follow verbatim, as their licenses require.
 
@@ -150,44 +148,10 @@ def erfWith (tab : Array UInt64) (x : Float) : Float :=
     let r := erfExp tab x R S
     if neg then r / x - 1.0 else 1.0 - r / x
 
-/-- fdlibm's `erfc` with the table `tab` of `Exp.expWith`.  `hx` is the high word of `x` and `ix`
-that of `|x|`.  NaN gives NaN, `+∞` gives 0 and `-∞` gives 2, as `0 + 1/x` and `2 + 1/x`.  Below
-`2 ^ -56` the result is `1 - x`. -/
-def erfcWith (tab : Array UInt64) (x : Float) : Float :=
-  let erx := Float.ofBits 0x3FEB0AC160000000   --  8.45062911510467529297e-01
-  let tiny := Float.ofBits 0x01A56E1FC2F8F359  --  1.0e-300
-  let hx := x.toBits >>> 32
-  let ix := hx &&& 0x7fffffff
-  let neg := hx >>> 31 == 1
-  if ix ≥ 0x7ff00000 then (if neg then 2.0 else 0.0) + 1.0 / x
-  else if ix < 0x3feb0000 then
-    if ix < 0x3c700000 then 1.0 - x
-    else
-      let y := erfSmall (x * x)
-      if neg || hx < 0x3fd00000 then 1.0 - (x + x * y)
-      else
-        let r := x * y
-        let r := r + (x - 0.5)
-        0.5 - r
-  else if ix < 0x3ff40000 then
-    let (P, Q) := erfMiddle (x.abs - 1.0)
-    if neg then 1.0 + (erx + P / Q) else (1.0 - erx) - P / Q
-  else if ix < 0x403c0000 then
-    if neg && ix ≥ 0x4006DB6D && ix ≥ 0x40180000 then 2.0 - tiny
-    else
-      let x := x.abs
-      let (R, S) := erfTail (1.0 / (x * x)) (ix < 0x4006DB6D)
-      let r := erfExp tab x R S
-      if neg then 2.0 - r / x else r / x
-  else if neg then 2.0 - tiny else tiny * tiny
-
 /-- `erf x`, with the table `Exp.expTable`. -/
 def erf (x : Float) : Float := erfWith Exp.expTable x
 
-/-- `erfc x`, with the table `Exp.expTable`. -/
-def erfc (x : Float) : Float := erfcWith Exp.expTable x
-
 verified_compile compiled := [Exp.specialCase, Exp.expCore, Exp.expWith, erfSmall, erfMiddle,
-  erfTail, erfExp, erfWith, erfcWith, erf, erfc]
+  erfTail, erfExp, erfWith, erf]
 
 end Verified.Examples.Erf
