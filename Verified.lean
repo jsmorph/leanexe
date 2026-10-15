@@ -62,6 +62,7 @@ import Verified.Examples.ErfTheorem
 import Verified.Examples.Log1pBytes
 import Verified.Examples.AtanBytes
 import Verified.Examples.AtanTwoSpecial
+import Verified.Examples.AtanTwoNaN
 import Verified.Examples.AsinBytes
 import Verified.Examples.TanTheorem
 import Verified.Examples.SinhBytes

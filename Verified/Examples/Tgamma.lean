@@ -23,8 +23,38 @@ with the same result.  The dialect has no floating-point flags and no `errno`, s
 and the assignments to `errno` are gone, and the expressions that C evaluates for their flags keep
 their values.  Each constant is the bit pattern of its value, with the C literal in a comment.  The
 `verified_compile` call at the end of the module checks the encoding one function at a time and
-needs about 1.9 GB.  The journal records the measurements.  `TgammaAccuracy.lean` checks the results against a reference computed with Lean's
-integers. -/
+needs about 1.9 GB.  The journal records the measurements.  `TgammaAccuracy.lean` checks the
+results against a reference computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`tgamma.c`:
+
+     Correctly-rounded true gamma function for binary64 value.
+
+    Copyright (c) 2024 Alexei Sibidanov <sibid@uvic.ca>.
+
+    This file is part of the CORE-MATH project
+    (https://core-math.gitlabpages.inria.fr/).
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+-/
 
 namespace Verified.Examples.Tgamma
 

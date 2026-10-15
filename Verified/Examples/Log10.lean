@@ -15,7 +15,21 @@ floating-point flags, and the expressions that fdlibm evaluates only for their f
 values: `-two54/vzero` is `-two54/0` and `(x - x)/zero` is `(x - x)/0`.  fdlibm's signed high word
 `hx` and its signed `k` are words here: a comparison of `hx` with a positive bound also tests its
 sign bit, and `k` is two's complement, converted to a double as `Log.logCore` converts its `k`.
-`Log2Accuracy.lean` checks the results against a reference computed with Lean's integers. -/
+`Log2Accuracy.lean` checks the results against a reference computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`e_log10.c` and `k_log.h`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Log10
 

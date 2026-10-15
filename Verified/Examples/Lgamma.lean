@@ -12,8 +12,9 @@ and 2 factored out, above it Stirling's series, and for a negative `x` the refle
 fails, `as_lgamma_accurate` evaluates to about 100 bits, with 17 polynomials about the zeros of
 `lgamma` from -10.5 to -2, and a table of 19 hard cases supplies the results that even that path
 cannot round.  `lgammaR` returns `signgam` as `±1.0`: `-1.0` for `-0` and the negative integers
-below `0x1.006df1bfac84ep+1015` in magnitude, where `lgamma` is `+∞`, `1.0` for the larger negative
-integers, the infinities, and NaN, and the sign of `Γ x` elsewhere.
+below `0x1.754d9278b51a6p+1014` in magnitude, where `lgamma` is `+∞`, `1.0` for the larger negative
+integers, the infinities, and NaN, and the sign of `Γ x` elsewhere.  That threshold is the value in
+the code, where CORE-MATH's comment gives `0x1.006df1bfac84ep+1015`.
 
 The port follows the C code operation for operation, with the changes of `Tgamma` and these.  It
 calls `Tgamma`'s double-double helpers, `roundEven`, `floorF`, and `asSinpid`, and the tables of
@@ -22,9 +23,39 @@ The global `signgam` is the second result of `lgammaWith`.  C's 32-bit `unsigned
 piece index does not overflow for these arguments, so the port computes it in words, and the final
 test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask, masks with `0xFFFFFFFF`.
 The `verified_compile` call at the end of the module checks the encoding one function at a time and
-needs about 2.1 GB, and its elaboration needs more than the default 200,000 heartbeats.  The
-journal records the measurements.  `LgammaAccuracy.lean` checks the results against a reference computed with Lean's
-integers. -/
+needs about 2.1 GB, and its elaboration needs more than the default 200,000 heartbeats.  The journal
+records the measurements.  `LgammaAccuracy.lean` checks the results against a reference computed
+with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`lgamma.c`:
+
+     Correctly-rounded natural logarithm of the gamma function for binary64 value.
+
+    Copyright (c) 2025 Alexei Sibidanov <sibid@uvic.ca>
+
+    This file is part of the CORE-MATH project
+    (https://core-math.gitlabpages.inria.fr/).
+
+    Permission is hereby granted, free of charge, to any person obtaining a copy
+    of this software and associated documentation files (the "Software"), to deal
+    in the Software without restriction, including without limitation the rights
+    to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+    copies of the Software, and to permit persons to whom the Software is
+    furnished to do so, subject to the following conditions:
+
+    The above copyright notice and this permission notice shall be included in all
+    copies or substantial portions of the Software.
+
+    THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+    IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+    FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+    AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+    LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+    OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+    SOFTWARE.
+-/
 
 namespace Verified.Examples.Lgamma
 

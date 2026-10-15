@@ -202,7 +202,7 @@ theorem same_digits (J : ℤ) (hJ : Top closed lo hi J) (a b : ℕ) (ha0 : 0 < a
 
 /-- A decimal of the interval below the top exponent has more digits than the multipliers at the
 top, unless they have one digit and it is a one-digit multiple of `10 ^ (J - 1)`. -/
-theorem more_digits (J : ℤ) (hJ : Top closed lo hi J) (hlo : 0 < lo) (h3 : hi ≤ 3 * lo)
+theorem more_digits (J : ℤ) (hJ : Top closed lo hi J) (_hlo : 0 < lo) (h3 : hi ≤ 3 * lo)
     (m : ℕ) (hm0 : 0 < m) (hm : Inside closed lo hi (dv m J)) (s : ℕ) (e : ℤ) (he : e ≤ J - 1)
     (hs : Inside closed lo hi (dv s e)) :
     nd m + 1 ≤ nd s ∨ (nd m = 1 ∧ e = J - 1 ∧ s ≤ 9) := by

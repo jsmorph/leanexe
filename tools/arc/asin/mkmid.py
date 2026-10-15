@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open('genmid.py').read().split('for alo,ahi,ch,n in')[0])
 def Q(x): return fmtq(x)
 U54=F(2)**-54

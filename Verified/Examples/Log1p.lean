@@ -7,23 +7,37 @@ import Verified.Reflect.Command
 `u = 1 + x` as the correction `c/u`, and for `k = 0` it takes `f = x`.  It computes `log1p f` from
 `s = f/(2 + f)` as `f - (f²/2 - s (f²/2 + R))`, where the polynomial `R` of degree 14 in `s`
 approximates `(log (1 + s) - log (1 - s))/s - 2` within `2 ^ -58.45`, and adds `k ln 2` with `ln 2`
-in two parts.  An `f` below `2 ^ -20` in magnitude takes `f²/2 (1 - 2f/3)` instead of `R`, and an
-`x` below `2 ^ -29` in magnitude gives `x - x²/2`, or `x` below `2 ^ -54`.  fdlibm states an error
-below one unit in the last place.  Each constant is written as the bit pattern that fdlibm's source
-gives beside its decimal value, and `0.66666666666666666` as the bits of the nearest double.  The
-dialect has no floating-point flags, and the expressions that fdlibm evaluates only for their flags
-keep their values: `-two54/vzero` is `-two54/0`, and the guard `two54 + x > 0` stays.  fdlibm's
-signed high word `hx` is a word here, so a comparison of `hx` with a positive bound also tests its
-sign bit, and its signed `k` is two's complement, converted to a double as `Log.logCore` converts
-its `k`.  `Log1pAccuracy.lean` checks the results against a reference computed with Lean's
-integers. -/
+in two parts.  When `k ≠ 0` and `f` lies in `[-3 · 2 ^ -21, 2 ^ -20)`, where fdlibm's comment says
+`|f| < 2 ^ -20`, the code takes `f²/2 (1 - 2f/3)` instead of `R`, and an `x` below `2 ^ -29` in
+magnitude gives `x - x²/2`, or `x` below `2 ^ -54`.  fdlibm states an error below one unit in the
+last place.  Each constant is written as the bit pattern that fdlibm's source gives beside its
+decimal value, and `0.66666666666666666` as the bits of the nearest double.  The dialect has no
+floating-point flags, and the expressions that fdlibm evaluates only for their flags keep their
+values: `-two54/vzero` is `-two54/0`, and the guard `two54 + x > 0` stays.  fdlibm's signed high
+word `hx` is a word here, so a comparison of `hx` with a positive bound also tests its sign bit, and
+its signed `k` is two's complement, converted to a double as `Log.logCore` converts its `k`.
+`Log1pAccuracy.lean` checks the results against a reference computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_log1p.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Log1p
 
 /-- The end of fdlibm's `log1p` for `1 + x = 2 ^ k (1 + f)`, with `k` in two's complement, the
 correction `c` divided by `u`, and `hu`, the high word of `1 + f` or of `(1 + f)/2` without its
-exponent, or the word that fdlibm derives from it, 0 when `|f| < 2 ^ -20`.  For `k = 0` the
-correction is not used. -/
+exponent, or the word that fdlibm derives from it, 0 only for `f` in `[-3 · 2 ^ -21, 2 ^ -20)`.  For
+`k = 0` the correction is not used. -/
 def log1pTail (f c : Float) (k hu : UInt64) : Float :=
   let ln2Hi := Float.ofBits 0x3FE62E42FEE00000  --  6.93147180369123816490e-01
   let ln2Lo := Float.ofBits 0x3DEA39EF35793C76  --  1.90821492927058770002e-10

@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open('genratio.py').read().split('if __name__')[0])
 head='''import Verified.Examples.AsinTheoremSupport
 

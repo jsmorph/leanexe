@@ -10,9 +10,9 @@ rational approximations.  From 2 up, all four are `(P cos θ ∓ Q sin θ)/√(�
 `x - 3π/4`, where rational approximations in `1/x²` on four ranges give `P` and `Q`, and `cos θ` and
 `sin θ` come from `sin x` and `cos x`, the one that cancels from `-cos (2 x)` divided by the other.
 `jn` uses the forward recurrence from `J 0` and `J 1` for `x ≥ n`, the leading term of the series
-below `2 ^ -29`, and otherwise a continued fraction and the backward recurrence, normalized by `J 0`
-or `J 1`, and `yn` the forward recurrence from `Y 0` and `Y 1`.  Above `2 ^ 302` both use the
-leading term of the asymptotic expansion.
+below `2 ^ -30`, where fdlibm's comment says `2 ^ -29`, and otherwise a continued fraction and the
+backward recurrence, normalized by `J 0` or `J 1`, and `yn` the forward recurrence from `Y 0` and
+`Y 1`.  Above `2 ^ 302` both use the leading term of the asymptotic expansion.
 
 The port calls the earlier ports where fdlibm calls the C library: `Trig.sinWith` and `Trig.cosWith`
 with the tables `Trig.invPi` and `Trig.halfPi` for `sincos` and `cos`, `Log.logWith` with
@@ -22,13 +22,27 @@ substitutions keep fdlibm's values, and the square root is correctly rounded in 
 is Arm's `log`, whose results may differ from fdlibm's in the last bit.  The order of `jn` and `yn`
 is C's `int` in the low 32 bits of the word, two's complement, with `J (-n) = (-1) ^ n J n` and
 `Y (-n) = (-1) ^ n Y n`, so that `|n| = 2 ^ 31` for `n = -2 ^ 31`, where C's `-n` overflows.  The
-special values are POSIX's: `j0 (±∞) = j1 (±∞) = 0`, `y0`, `y1`, and `yn` of `±0` are `-∞` and of a
-negative `x` NaN, and NaN gives NaN.  The `while` loop of `jn` is a `LeanExe.repeatWhile` with
-`2 ^ 32 - 1` steps of fuel, more than it can take, and the constants are the bit patterns that
-fdlibm's comments give, which match its decimal literals.  The `verified_compile` call at the end of
-the module checks the encoding one function at a time and needs about 1.0 GB.  The journal records
-the measurements.  `BesselAccuracy.lean`
-checks the results against references computed with Lean's integers. -/
+special values are those of POSIX.1-2017: `j0 (±∞) = j1 (±∞) = 0`, `y0`, `y1`, and `yn` of `±0` are
+`-∞` and of a negative `x` NaN, and NaN gives NaN.  The `while` loop of `jn` is a
+`LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel, more than it can take, and the constants are
+the bit patterns that fdlibm's comments give, which match its decimal literals.  The
+`verified_compile` call at the end of the module checks the encoding one function at a time and
+needs about 1.0 GB.  The journal records the measurements.  `BesselAccuracy.lean` checks the results
+against references computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`e_j0.c`, `e_j1.c`, and `e_jn.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Bessel
 
@@ -398,7 +412,7 @@ def phaseCos (k : UInt64) (s c : Float) : Float :=
 def phaseSin (k : UInt64) (s c : Float) : Float :=
   if k == 0 then s - c else if k == 1 then -s - c else if k == 2 then -s + c else s + c
 
-/-- The backward recurrence of `jn` for `2 ^ -29 ≤ x < n`: the continued fraction for
+/-- The backward recurrence of `jn` for `2 ^ -30 ≤ x < n`: the continued fraction for
 `J n/J (n - 1)`, with its depth `k` from the recurrence `Q`, the recurrence down to `J 0` and `J 1`,
 scaled by `1/b` when `b` exceeds `1e100` if `n ln (2 n/x)` reaches the overflow threshold, and the
 normalization by the larger of `j0 x` and `j1 x`. -/

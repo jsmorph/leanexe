@@ -27,7 +27,7 @@ Three paths shorten the work.  Below `2^-54` in magnitude the result is `x`, and
 
 ## Implementation
 
-The source is `lib/msun/src/s_log1p.c` of FreeBSD at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1].  Its notice reads "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Log1p.lean) names the copyright and summarizes the permission as "freely distributable with this notice", without the notice's full text.  fdlibm is Sun's "Freely Distributable LIBM" [3].
+The source is `lib/msun/src/s_log1p.c` of FreeBSD at commit `20381bce4b63975494a2f4bc84257f6932e6d379` [1].  Its notice reads "Copyright (C) 1993 by Sun Microsystems, Inc.  All rights reserved.  Developed at SunPro, a Sun Microsystems, Inc. business.  Permission to use, copy, modify, and distribute this software is freely granted, provided that this notice is preserved."  The module docstring of [the implementation](Log1p.lean) quotes the notice verbatim, as the notice requires.  fdlibm is Sun's "Freely Distributable LIBM" [3].
 
 The port follows the dialect of the Verified compiler as [the exponential document](Exp.md#implementation) describes.  `verified_compile compiled := [log1pTail, log1p]` generates a module whose functions are `alloc` (0), `release` (1), `log1pTail` (2), and `log1p` (3), every constant is `Float.ofBits` of its bit pattern, and the module reads no table.  The table lists the deviations from the C code.
 
@@ -150,7 +150,7 @@ In `opus-verified-tests-14.log` all 350,144 results lie within one step of the r
 
 The limits of [the exponential theorem](Exp.md#limits) apply in the same way: the theorem is about Talos's semantics, the interpreter and the decoder are trusted, the file theorem trusts `binary_file%`, Talos implements the deterministic profile in which every NaN result is canonical [7], and the argument is the bits of a Lean `Float`, so the theorem covers only the canonical NaN among the NaN words a WebAssembly caller can pass.  `log1p_bytes_accuracy` covers sequences of calls to `log1p`, and a host that calls `alloc`, `release`, or `log1pTail` or writes the memory between calls needs a theorem that the action preserves `Ready`.  The module reads no table, so the store invariant has only the allocator invariant and the memory cap.
 
-The docstring of `Log1p.lean`, following fdlibm's comment, says that the cubic path serves `|f| < 2^-20`.  The code's test `hu = 0` also selects it in the halved branch for `-3 · 2^-21 ≤ f < 0`, and the proof uses the bound `|f| ≤ 2^-19` (`Log1pTheoremReduce.main_reduce`).  The theorem therefore covers the path, the docstring's description is too narrow, and [the plan](../../transcendentals.md#corrections-found-by-the-documentation-review) lists its correction for the resumed work.
+fdlibm's comment says that the cubic path serves `|f| < 2^-20`.  The code's test `hu = 0` also selects it in the halved branch for `-3 · 2^-21 ≤ f < 0`, as the docstring of `Log1p.lean` states, and the proof uses the bound `|f| ≤ 2^-19` (`Log1pTheoremReduce.main_reduce`), so the theorem covers the whole path.
 
 ## References
 

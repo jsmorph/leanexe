@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open("lib.py").read())
 def hu(B):
     g=0

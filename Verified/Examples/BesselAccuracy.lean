@@ -15,12 +15,12 @@ largest of each order.  At NaN, the zeros, the infinities, and the negative argu
 and `yn` it requires the special values that `Bessel`'s docstring lists, with the signs of the zeros
 that fdlibm gives.  The arguments of the four functions of orders 0 and 1 are evenly spaced values
 from 0.001 to 2, from 2 to 40, and from 40 to 300, the doubles within three steps of the first two
-zeros of each function, hashed values from `2 ^ 9` to `2 ^ 201`, from `2 ^ 201` to `2 ^ 1024`, and
+zeros of each function, hashed values from `2 ^ 9` to `2 ^ 201`, from `2 ^ 201` to `2 ^ 1000`, and
 below 1, the inputs of `WorstCases`, which give the largest known errors of thirteen libraries in
 Tables 4 to 11 of the August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann, and
 the special values, with both signs for `j0` and `j1`.  `jn` and `yn` take the orders 2, 3, 5, 10,
 20, 50, and 100, -2, -3, and -7, and `2 ^ 32 + 5`, whose low 32 bits are 5, at evenly spaced values
-up to `2 n + 30`, hashed values from `2 ^ 9` to `2 ^ 60` and from `2 ^ 302` to `2 ^ 1024`, values
+up to `2 n + 30`, hashed values from `2 ^ 9` to `2 ^ 60` and from `2 ^ 302` to `2 ^ 1000`, values
 below `2 ^ -29`, and the special values.  It exits with an error at the first result that fails.
 Run with `lake env lean --run`. -/
 

@@ -9,11 +9,12 @@ distances it finds: one unit in the last place for `erf` and four for `erfc`, wh
 `0x1.527f4fb0d9331p+0`, Musl's input in Table 7.  The arguments are evenly spaced values from -7 to
 7 and from 6 to 28, hashed values over the exponents from `2 ^ -60` to `2 ^ 6` with both signs, the
 doubles next to the high words that the code compares with, the doubles from 27.2 to 27.3, where
-`erfc` enters the subnormal range, and the special values.  Lean has no binding of the C library's
-`erf` and `erfc`, so the check reports no library distance.  The arguments also include those of
-`WorstCases`, which give the largest known errors of thirteen libraries in Tables 4 to 11 of the
-August 2026 report by Gladman, Innocente, Mather, Ozaki, and Zimmermann.  It exits with an error at
-the first result further from the reference than its bound.  Run with `lake env lean --run`. -/
+`erfc` passes the least subnormal and rounds to 0 (it enters the subnormal range near 26.54), and
+the special values.  Lean has no binding of the C library's `erf` and `erfc`, so the check reports
+no library distance.  The arguments also include those of `WorstCases`, which give the largest known
+errors of thirteen libraries in Tables 4 to 11 of the August 2026 report by Gladman, Innocente,
+Mather, Ozaki, and Zimmermann.  It exits with an error at the first result further from the
+reference than its bound.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples.ErfAccuracy
 

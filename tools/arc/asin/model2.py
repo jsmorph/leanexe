@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open('model.py').read().split("for T0 in")[0])
 def pmax(coeffs,T0,N=4000):
     # max |sum c_k t^k| on [0,T0] sampled, plus margin

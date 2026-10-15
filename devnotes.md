@@ -32833,3 +32833,28 @@ The first build failed in three places (`strconv-s4-thm-1.log`): a `positivity` 
 A review against every `verified_compile` list and every directory of `Examples/` added the binary32 programs of `Examples/Binary32`, the word folds, and the histogram bucket.  The index leaves out programs that test data structures, control flow, or memory management, and the applications under `Examples/`: the Euler solver, GPT inference, and the WGSL kernels.  Every theorem the index names exists at `b2f73f24`, so the index does not wait for the correction batches.
 
 - [x] `index.md`, reviewed with the user and for completeness
+
+
+## 2026-10-15: Build and test run with the printers (coordinating session, minideb1)
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 10,050 jobs with exit 0 at `b2f73f24` (`opus-merge-13.log`), and no theorem in the log depends on `sorryAx` or `Lean.ofReduceBool`.  `tests/verified/run.sh` exits 0 (`opus-run-13.log`): 15,837 tests pass and none fails, `printfloat.wasm` passes `wasm-tools validate`, and its file theorem reports the three permitted axioms, as do the others.  The native checks pass, among them the 1,030 cases of the parsers and the 889 cases of the printers.  The 48 files that the previous run wrote are byte-identical to the stored references, and `build/transcendentals/wasm-ref-b2f73f24/` keeps `printfloat.wasm`.
+
+- [x] The build and the test run with the printers
+
+## 2026-10-15: The corrections of the documentation review (coordinating session, minideb1)
+
+The review of 2026-10-12 listed defects in Lean sources that the resumed work was to correct, since editing a Lean file rebuilds its dependents.  The corrections are made in one batch, checked against the code and the upstream sources first.  The 31 fdlibm files, the two CORE-MATH files, and Arm's `exp.c`, `exp_data.c`, `exp2.c`, and `exp10.c` in the working copies of the documentation review are byte-identical to the files at the pinned commits, fetched from GitHub and the CORE-MATH GitLab.
+
+| Item | Correction |
+|---|---|
+| License notices | The module docstrings of `Trig`, `Tan`, `Tanh`, `Log1p`, `Log10`, `Atan`, `Asin`, `Sinh`, `Asinh`, `Erf`, `Bessel`, `Sinpi`, `Tgamma`, and `Lgamma` quote each ported file's notice verbatim, grouped where files share one: Sun's notices with SunPro or SunSoft and with the 2004 notice of `k_tan.c`, the BSD-2-Clause conditions and disclaimer of `k_exp.c` and Kargl's files, and CORE-MATH's MIT notice.  `Exp` and `Exp2` give `exp_data.c` the years 2018-2023. |
+| Bounds | `LogNear1` `(1/15 + 1/13) u ρ`; `Log10Final` `0.7026 u σ` and `0.1472 |k|`; `TrigLarge` `2 ^ -63` and `π/4 + 2 ^ -134`; `BesselConstants` `2 ^ -190`, since the radius of the enclosure of `π` is about `2 ^ -190.4`; `Log1p` the cubic path for `f` in `[-3 · 2 ^ -21, 2 ^ -20)`, from the code's test `hu == 0` in both branches; `Asin` fdlibm's `2 ^ -58.75` as a bound for exact coefficients, with `2 ^ -56.58` from the rounded `pS0`; `Log2` degree 5. |
+| Other docstrings | `Trig` and `TrigAccuracy` say that `s_sin.c` and `s_cos.c` describe the results only as nearly rounded; `ErfAccuracy` puts 27.2 to 27.3 where `erfc` passes the least subnormal and rounds to 0, with the subnormal range from about 26.54; `BesselAccuracy` gives `2 ^ 1000` as the top of its hashed arguments, from `hashed`'s exponent `lo + span - 1`; `Reference` states that a reference rounded the wrong way can pass a result two units away or fail one a unit away; `Lgamma` and `LgammaAccuracy` give the code's threshold `0x1.754d9278b51a6p+1014`; `Sinpi.oddPart` subtracts `2 ^ 30` from `2 ^ 31` on; `PowAccuracy` cites C99's F.9.4.4; `Bessel` gives POSIX.1-2017 and the tiny threshold `2 ^ -30` of `jn`, where fdlibm's comment says `2 ^ -29`; `Tgamma` and `Lgamma` wrap their long lines. |
+| Coverage | `AtanTwoNaN.atan2_nan` states that `atan2` returns the canonical NaN when either argument is a NaN, from fdlibm's NaN test (`nan_test_nan`) and the sum `x + y`; the twelve Python scripts in `tools/arc/asin` gain the PEP 723 header. |
+| Documents | The function documents that described the old docstrings now describe the corrected ones, and `Atan.md` lists `atan2_nan`.  Every local link in the documents of `Verified/Examples` resolves, and the module names in `Sinh.md`, `Asinh.md`, `Pow.md`, `Sinpi.md`, and `Fma.md` name existing modules. |
+
+`PrintFloatShort.more_digits`, `PrintFloatSearch.ex_low`, and `PrintFloatChoice.floor_le` name their unused hypotheses with a leading underscore, which removes the three linter warnings of the printers' modules.
+
+`transcendentals.md` states that the checks of CORE-MATH's `erfc`, `tgamma`, and `lgamma` find every result equal to the reference (`opus-run-13.log`), where it said that every check other than those of `tanh`, `sinh`, and fdlibm's `erfc` reaches its bound.  The batch was built and tested together with the next one (the entry on build 15 below).
+
+- [x] The corrections of the documentation review

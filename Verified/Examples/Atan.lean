@@ -18,7 +18,32 @@ polynomial is 4 here, its four table entries are selected by comparisons, and it
 words are words, so a comparison with a positive bound also tests the sign bit.  `atan2`'s
 `k = (iy - ix) >> 20` is the arithmetic shift of the difference in two's complement, and
 `nan_mix (x, y)` is `x + y`.  `AtanAccuracy.lean` checks the results against a reference computed
-with Lean's integers. -/
+with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`s_atan.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+`e_atan2.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+-/
 
 namespace Verified.Examples.Atan
 

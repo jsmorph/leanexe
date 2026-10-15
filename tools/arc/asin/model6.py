@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 exec(open("alib.py").read())
 def ihorner(coeffs,lo,hi):
     L=U=coeffs[-1]; parts={len(coeffs)-1:(L,U)}

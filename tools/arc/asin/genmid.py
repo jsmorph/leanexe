@@ -1,3 +1,7 @@
+# /// script
+# requires-python = ">=3.12"
+# dependencies = []
+# ///
 from fractions import Fraction as F
 import math
 exec(open('genratio.py').read().split('if __name__')[0])

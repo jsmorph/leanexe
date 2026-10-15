@@ -2,7 +2,8 @@ import Verified.Reflect.Command
 
 /-! The twenty-eighth program of the verified compiler: `exp`, ported from Arm's
 optimized-routines, `math/exp.c` and `math/exp_data.c` at commit
-`503fafe311c177de0e571c458c7c337b1ca5f522` (Copyright (c) 2018-2025, Arm Limited,
+`503fafe311c177de0e571c458c7c337b1ca5f522` (`exp.c` Copyright (c) 2018-2025 and `exp_data.c`
+Copyright (c) 2018-2023, Arm Limited,
 SPDX-License-Identifier: MIT OR Apache-2.0 WITH LLVM-exception).  The configuration is the one
 for a target without rounding intrinsics or fused multiply-add: `EXP_TABLE_BITS` 7, so `N` is
 128, `EXP_POLY_ORDER` 5, `EXP_USE_TOINT_NARROW` 0, and the rounding of `x · N/ln 2` by adding

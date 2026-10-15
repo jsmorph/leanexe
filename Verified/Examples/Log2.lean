@@ -8,7 +8,7 @@ LLVM-exception).  The configuration is the one for a target without fused multip
 through `tab2`.  The code writes `x = 2 ^ k z` with `z` in `[0x1.6p-1, 0x1.6p0)`, picks the
 subinterval `i` of `z` among 64, and computes `log2 x = k + log2 c + log2 (1 + r)` with
 `r = z/c - 1` from the table entry `c` of the subinterval.  `r/ln 2` is formed from `r` split into
-its high 32 bits and the rest, times `1/ln 2` in two parts, and a polynomial of degree 6 in `r`
+its high 32 bits and the rest, times `1/ln 2` in two parts, and a polynomial of degree 5 in `r`
 times `r²` adds the rest.  Arguments from `1 - 0x1.5b51p-5` to below `1 + 0x1.6ab2p-5` take a
 polynomial of degree 11 in `x - 1` instead.  Arm states 0.55 units in the last place for each path
 without fused multiply-add.  The module holds the tables in data segments: `log2With` takes them as

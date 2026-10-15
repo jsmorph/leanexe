@@ -1,11 +1,11 @@
 import Verified.Reflect.Command
 
 /-! The twenty-third program of the verified compiler: `sin` and `cos`, ported from fdlibm as
-FreeBSD's `lib/msun/src` has it (`k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and
-`e_rem_pio2.c`, Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this
-notice).  An argument above `π/4` in magnitude is reduced by multiples of `π/2` to `y0 + y1` in
-`[-π/4, π/4]`, and the kernels evaluate fdlibm's minimax polynomials there.  fdlibm states an error
-below one unit in the last place.  Each constant is written as the bit pattern that fdlibm's source
+FreeBSD's `lib/msun/src` has it (`k_sin.c`, `k_cos.c`, `s_sin.c`, `s_cos.c`, and `e_rem_pio2.c`,
+Copyright (C) 1993 by Sun Microsystems, Inc., freely distributable with this notice).  An argument
+above `π/4` in magnitude is reduced by multiples of `π/2` to `y0 + y1` in `[-π/4, π/4]`, and the
+kernels evaluate fdlibm's minimax polynomials there.  fdlibm's `s_sin.c` and `s_cos.c` describe the
+results only as nearly rounded.  Each constant is written as the bit pattern that fdlibm's source
 gives beside its decimal value.  Lean's `Float.sin` is `@[extern "sin"]`, the C library's function,
 with no definition in Lean, so the compiler's theorem is about these definitions.
 
@@ -17,7 +17,45 @@ and `cos` pass them, as exported entries whose theorem assumes the tables at the
 reduction takes `|x|`, by
 `sin (-x) = -sin x` and `cos (-x) = cos x`, so its quadrant count is a word, where fdlibm reduces
 `x` itself with a signed count.  `TrigAccuracy.lean` checks, in native Lean, the words of `2/π` and
-`π/2` and the results against a reference computed with Lean's integers. -/
+`π/2` and the results against a reference computed with Lean's integers.
+
+The notices of the ported files follow verbatim, as their licenses require.
+
+`k_sin.c` and `k_cos.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+`s_sin.c` and `s_cos.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunPro, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+`e_rem_pio2.c`:
+
+    ====================================================
+    Copyright (C) 1993 by Sun Microsystems, Inc. All rights reserved.
+
+    Developed at SunSoft, a Sun Microsystems, Inc. business.
+    Permission to use, copy, modify, and distribute this
+    software is freely granted, provided that this notice
+    is preserved.
+    ====================================================
+
+    Optimized by Bruce D. Evans.
+-/
 
 namespace Verified.Examples.Trig
 

@@ -28,9 +28,9 @@ def integerKind (y : Float) : Bool × Bool :=
     let d := 2 ^ (-e).toNat
     if m.natAbs % d != 0 then (false, false) else (true, m.natAbs / d % 2 == 1)
 
-/-- The double nearest to `x ^ y`.  The special cases are those of C99's Annex F (F.10.4.4).  For a
-finite nonzero `x`, finite `y`, and a negative `x` only with an integer `y`, `|x| ^ y` is
-`exp (y log |x|)` from `PowerReference.powExponent` at precision 500, which lies within
+/-- The double nearest to `x ^ y`.  The special cases are those of C99's Annex F (F.9.4.4, F.10.4.4
+in C11).  For a finite nonzero `x`, finite `y`, and a negative `x` only with an integer `y`,
+`|x| ^ y` is `exp (y log |x|)` from `PowerReference.powExponent` at precision 500, which lies within
 `|y| · 2 ^ 13 + 1` units, and `Reference.exp`, with the sign of `x` for an odd `y`.  From 1100 in
 magnitude on, the exponent gives an infinity or a zero, with that sign.  Below that,
 `|y| < 1100 · 2 ^ 53`, since `|log x| ≥ 2 ^ -53` for every double other than 1, so that the

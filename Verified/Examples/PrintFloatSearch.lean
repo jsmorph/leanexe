@@ -143,7 +143,7 @@ theorem not_ex_of_big (hQ : 1 ≤ Q) (j : ℤ) (h : hi Q E nu < (10 : ℝ) ^ j) 
     linarith
 
 /-- Multiples of `10 ^ -nu` lie in the interval. -/
-theorem ex_low (hQ : 1 ≤ Q) (hE : 1 ≤ E) (hnu : 1 ≤ nu) : Ex Q E nu low (-(nu : ℤ)) := by
+theorem ex_low (hQ : 1 ≤ Q) (_hE : 1 ≤ E) (hnu : 1 ≤ nu) : Ex Q E nu low (-(nu : ℤ)) := by
   apply ex_of_small hQ
   rw [width_eq hQ]
   unfold rv
