@@ -32773,3 +32773,12 @@ Five builds ran.  `ynt-1.log` failed on a hypothesis already rewritten to `v`.  
 - [x] The exceptional results of `jn` and `yn`, and their byte theorems.
 - [ ] The feasibility analysis of a bound through the turning point.
 - [ ] The integration run: `lake build LeanExe Verified` and `tests/verified/run.sh`.
+
+## 2026-10-15: Feasibility of a bound through the turning point (coordinating session)
+
+The decision of 2026-10-12 left `2 ≤ |x| < 2^302` with `|n| > |x|/2` open for `jn` and `yn` until a feasibility analysis of a bound on `M_k(x) = √(J_k² + Y_k²)` through the turning point `k = x`.  [The Bessel document](Verified/Examples/Bessel.md#feasibility-of-a-bound-through-the-turning-point) records the analysis.  `tools/bessel/turning.py` computes the weights `(π x/2) M_k(x)²` from the 200-digit tables of `tools/bessel/ordern.py`, with the precision raised to `0.44 x + 80` digits.  For integer `x` from 10 to 2000 and every `k < x`, `(π/2) √(x² - k²) M_k(x)²` stays below 1, and the largest weight is `1.2572 x^(1/3)`, at `k = x`.
+
+Nicholson's integral (DLMF 10.9.30) proves the first observation: with `K₀` decreasing (DLMF 10.37), `sinh t ≥ t`, and the cosine transform of `K₀` at an imaginary argument (DLMF 10.43.20), `M_ν(x)² ≤ 2/(π √(x² - ν²))` for `x > ν`.  Watson's decrease of `x M_ν(x)²` for `ν > 1/2`, also from Nicholson's integral, bounds the weights up to the turning point by their value there.  These bounds make the weights of a forward recurrence to an order `n ≤ x` sum to `(π/2) x` plus a term of order `x^(2/3)`, which supports `a + b |n|`; past the turning point the signs `J_k > 0 > Y_k` (DLMF 10.21.3) allow the argument of `BesselYnSmallReal`.  The cost is Nicholson's integral for integer orders, with `K₀`, which neither ProofKit nor Mathlib provides; the remaining parts reuse the error formula of `BesselRecur` and the analysis of Miller's method.  Krasikov's Sonin-function bound on `J_ν` (LMS J. Comput. Math. 17 (2014), Theorem 3) covers `J_ν` alone, and the search found no elementary bound on `Y_ν` through the turning point.
+
+- [x] The feasibility analysis.
+- [ ] The decision on proving the open range, which the user has not yet made.
