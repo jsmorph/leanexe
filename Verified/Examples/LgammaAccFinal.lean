@@ -8,7 +8,8 @@ of hard cases at `x` when the rounding test of the code fails.  An error of `fh 
 `ρ |log |Γ x||` with `ρ ≤ 1/(2^53 + 1)` puts the rounded sum within one step (`sum_within`).  A row `(x, f, δ)` of
 `Lgamma.dbTable` holds a double `f` within `2^-60` relative of `log |Γ x|` (`LgammaApprox.DbFact`)
 and a correction `δ` with `|δ| ≤ |f|/2^54`, so `f + δ` is within one step as well (`db_entry`).
-`final_step` joins the two cases of the code's final `if`.
+`final_of_sum` joins the two cases of the code's final `if` for a rounded sum within one step, and
+`final_step` applies it with `sum_within`.
 -/
 
 namespace Verified.Examples.LgammaAccFinal
@@ -123,17 +124,12 @@ theorem db_entry (wx wf wd : UInt64) (hff : Wasm.IEEE64.isFinite wf = true)
     (by nlinarith [(by norm_num : (1 : ℝ) / 2 ^ 1021 ≤ 1 / 16 * (1 - 1 / 2 ^ 60))])
     (by nlinarith [(by norm_num : (16 : ℝ) * (1 + 1 / 2 ^ 60) < 2 ^ 1022)])
 
-/-- **The last step**: `fh + fl`, or the table's value at a hard case, within one step of
-`log |Γ x|`. -/
-theorem final_step (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) [Decidable c]
-    (fh fl : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
-    (hL1 : 1 / 2 ^ 1000 ≤ |lgamma (value x.toBits)|) (hL2 : |lgamma (value x.toBits)| ≤ 2 ^ 1020)
-    (ρ : ℝ) (hρ0 : 0 ≤ ρ) (hρ : ρ ≤ 1 / (2 ^ 53 + 1))
-    (h : |lgamma (value x.toBits) - (value fh.toBits + value fl.toBits)| ≤
-      ρ * |lgamma (value x.toBits)|) :
+/-- The code's final `if` within one step of `log |Γ x|` when the rounded sum `fh + fl` is. -/
+theorem final_of_sum (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) [Decidable c]
+    (fh fl : Float)
+    (hsum : F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits)) (fh + fl).toBits) :
     F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits))
       (if c then database dbTable x (fh + fl) else fh + fl).toBits := by
-  have hsum := sum_within fh fl hfh hfl _ hL1 hL2 ρ hρ0 hρ h
   split_ifs
   · rcases database_cases x (fh + fl) with h1 | ⟨k, hk, hck, h1⟩
     · rw [h1]
@@ -156,5 +152,17 @@ theorem final_step (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) 
       rw [ratOfWord_cast, ratOfWord_cast] at hk'
       exact db_entry _ _ _ hff hfd hd hf1 hf2 hk'
   · exact hsum
+
+/-- **The last step**: `fh + fl`, or the table's value at a hard case, within one step of
+`log |Γ x|`. -/
+theorem final_step (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) [Decidable c]
+    (fh fl : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
+    (hL1 : 1 / 2 ^ 1000 ≤ |lgamma (value x.toBits)|) (hL2 : |lgamma (value x.toBits)| ≤ 2 ^ 1020)
+    (ρ : ℝ) (hρ0 : 0 ≤ ρ) (hρ : ρ ≤ 1 / (2 ^ 53 + 1))
+    (h : |lgamma (value x.toBits) - (value fh.toBits + value fl.toBits)| ≤
+      ρ * |lgamma (value x.toBits)|) :
+    F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits))
+      (if c then database dbTable x (fh + fl) else fh + fl).toBits :=
+  final_of_sum hDb x hx c fh fl (sum_within fh fl hfh hfl _ hL1 hL2 ρ hρ0 hρ h)
 
 end Verified.Examples.LgammaAccFinal
