@@ -17467,7 +17467,6 @@ The artifact aggregate passed the complete Riemann package and refreshed outward
 
 The corrected frozen scan and complete scan-entry proofs pass.  The final `tools/artifact-proof.js check-all` run passes every registered binary package, behavioral specification, and declaration/axiom audit, including both complete GPT sessions.  The full source gate, complete Node execution suite, byte-I/O and running-sum gates, WAT/binary comparison, official conformance, quantized reference comparison, CLI test, and verifier identity test also pass.  The documentation identifies the merged binaries and preserves the historical benchmark and report revisions.  The running-sum universal WASM execution and memory proof remains an existing open boundary.
 
-
 ## correct and iogpt integration, 2026-09-25
 
 The user requested ciogpt from correct, merging iogpt and pushing for a later main
@@ -17516,7 +17515,6 @@ marXiv accepted the citation revision as `2609.00019v3`.  The final review has t
 The user requested an opening section on verification for practical applications with the repeated-ridges graph near the beginning.  The revised report places the context on page 1 and the graph at the top of page 2.  It explains the recorded run and distinguishes the drone's generated-model theorem, main's compiler result, and the physical assumptions.  The repeated-ridges plot now appears once, with a cross-reference from the later terrain discussion.  Two prose passes, metadata checks, and visual inspection passed for the 17-page PDF.
 
 marXiv accepted the opening-context revision as `2609.00019v4`.  The review retains two source-citation remarks and requests consolidation of the repeated binary-identification limitation.  The accepted archive PDF matches the submitted and local files.
-
 
 ## Drone/main integration, 2026-09-26
 
@@ -20063,7 +20061,6 @@ deviations.  The allocation bound of `topKBuffer`, `(n + 2) · (56 + 8k)` bytes 
 scores, counts every `insertTop` result although the loop releases each buffer it
 replaces, because `Live` credits no release.
 
-
 ## 2026-10-01: Plan: the file theorem, trap-tolerant `Implements`, and the generation theorem
 
 A review of the GPT-2 claims found three gaps.  No theorem connects `build/gpt/gpt.wasm`
@@ -21863,7 +21860,6 @@ it allocates and frees nothing beyond the host's records of the argument.  The L
 other trees the caller holds.  No present program passes a tree and holds another, so this
 is recorded for the step that composes calls on trees.
 
-
 ### Plan: Iteration 8, step 3, consumed recursion and `incr`
 
 `KeyTree.incr` adds 1 to every key: `leaf ↦ leaf`, `node l k r ↦ node l.incr (k + 1) r.incr`.
@@ -22008,7 +22004,6 @@ The count cases show one allocation for a new key and none for a present key, 27
 in all, and the depth cases cover `insert` on chains of 999 and 1,000 nodes, 10 in all.  The
 full build passed, and `trees`, `treeFrame`, `words`, and `lists` emit the same bytes.
 
-
 ### Plan: Iteration 8, step 5, releasing part of a consumed tree
 
 Programs: `KeyTree.dropRight` (`node l k r ↦ node l k leaf`) rebuilds the root and releases the
@@ -22106,7 +22101,6 @@ program that needs it: a form of `Heap.Rebuilt.node` with slot 2's call first; a
 function with a tree argument, which `translateCall` rejects; releasing an owned tree on a path
 that does not move it; a consumed tree together with a borrowed tree; and the caller's other
 trees in `Implements`, which says nothing about them.
-
 
 ## 2026-10-02: Plan: Iteration 9, in-place `set!`, `insertIdx!`, and `eraseIdxIfInBounds`
 
@@ -22255,7 +22249,6 @@ an address of element `k` inside memory, and `I (k + 1)` of the store with `w` w
 in place.  The erase loop reads the next element, and the forward insert loop carries the
 displaced element in a local, so both are instances.
 
-
 ### Iteration 9, step 9b: `eraseIdxIfInBounds` in place
 
 `Stmt.eraseInPlace src size k limit index` reads the length into `size` and, when `k` is below
@@ -22323,7 +22316,6 @@ templates, and `array-build` no longer lists the four CLOB theorems.
 Iteration 9 is complete.  Open items: in-place `push`, which would use the growth step as a
 reserve; and the three `*_eq_build` lemmas, which no CLOB theorem uses now, though the copying
 templates remain for borrowed arrays.
-
 
 ## 2026-10-02: Plan: Iteration 10, `push`, releases in branches, and calls with trees
 
@@ -22620,7 +22612,6 @@ Iteration 10 is complete.  These remain open, each waiting for a program that ne
 Whether `Implements` should state that a call keeps the caller's trees, as it does arrays, is
 the specification question of open item 4, for the user.
 
-
 ## 2026-10-02: Plan: Iteration 11, a region frame in `Implements`
 
 The user approved stating in `Implements` that a call keeps every region of the caller's heap
@@ -22716,7 +22707,6 @@ Open items, each waiting for a program that needs it:
 |------|---------------|
 | A caller that holds a borrowed tree across a call | the slot-region list and `NodeBorrowed.frame`, which the reviewer proved in a scratch file |
 | A function proved through `Heap.Rebuilt` that calls an `Implements` entry | dropping the page fields of `Heap.Rebuilt` and its relatives, or a page clause in `Implements` |
-
 
 ## 2026-10-02: Plan: Iteration 12, borrowed trees and page fields
 
@@ -22823,7 +22813,6 @@ comparisons, 46 count cases, and 12 depth cases, and `chunks.py` passed 360 case
 found every listed declaration.  Iteration 12 is complete, and the open items of Iteration 11 are
 closed.
 
-
 ## 2026-10-03: Plan: Iteration 13, the memory a call reads includes borrowed trees
 
 `Separate` keeps the consumed blocks apart from the regions in `Represent.reads`, which lists
@@ -22911,7 +22900,6 @@ host's exact-capacity array once and frees the old block; the tree costs no allo
 entry `region-frame` describes the premise.  Iteration 13 is complete.  `checkOwnedNodes` still
 rejects a definition that consumes one tree and borrows another, which the specification now
 allows.
-
 
 ## 2026-10-03: The remaining tree and ownership items
 
@@ -23057,7 +23045,6 @@ The `consumed-recursion` LTG entry describes the invariant-parameter rule and th
 argument, with `addAll_rec` as its worked proof.
 
 Item 1 is complete.
-
 
 ### Item 2: an owned tree where the callee borrows it, analysis
 
@@ -23644,7 +23631,6 @@ One reviewer checked the plan with scratch files.  I ran its `IR.lean`, `Rule.le
 LTG entry covers the push copy.  The full build passed with no `sorry`, every module emits
 the same bytes as before, `tests/modules/run.sh` passed 8,921 comparisons, 70 count cases, and
 16 depth cases, and `chunks.py` passed 360 cases.  Item 7 is complete.
-
 
 ### Item 8: a copy into an owned parameter at a use that is not the last, analysis
 
@@ -25000,7 +24986,6 @@ the kernel page no longer depends on `tests/wgsl/run.sh` and its native host; fr
 four minutes and produced files identical to `run.sh`'s.  `generate.py --export` writes the weight
 files and stops.
 
-
 ## 2026-10-04: Bringing main's Euler solver, analysis
 
 The user asked how to bring main's Euler development here, with measurements first.  Main holds
@@ -25100,7 +25085,6 @@ and `bools_bytes`, which carries them to the encoded bytes; twelve proofs evalua
 expression, and `anyEqual` uses `Stmt.loop_spec`.  `tests/modules/Cases.lean` adds 698 cases,
 which match native Lean, including NaN, the signed zeros, and the infinities in `floatSame` and
 `inRange`.
-
 
 ### E2 and E3: general arrays, analysis
 
@@ -26088,7 +26072,6 @@ pages, the call returns without a trap and memory does not grow.  The modules ha
 bytes, they return main's sample outputs, and their 16 module cases compare the bytes with
 `expected`; all 15,916 module cases pass.
 
-
 ### Module order and `Nat` parameters
 
 `leanexe_compile p := [f, g, …]` inferred owned parameters in list order, so a callee listed after
@@ -26325,7 +26308,6 @@ record main's runs of scripts that exist only on main.  `uv run
 paper/gpt2-quantized-report/check-evidence.py` starts under uv and then fails because it reads
 `proofs/artifacts/…/program.wasm`, which exists only on main, and `paper/drone-verification-report/build.py`
 was not run, since it rewrites the published PDF.
-
 
 ### Compiler correctness: analysis
 
@@ -29027,7 +29009,6 @@ Minideb2 contributed supporting exact-arithmetic and rounding proofs.  Its later
 
 ## 2026-10-09: Failure account and stopped GPT work
 
-
 The user ended GPT's work on 2026-10-09 after the session consumed their day and left the first full-domain numerical theorem unfinished.  The required result was a proved error bound for every finite binary64 input to the existing exponential, exact exceptional-value results, and composition with the Verified compiler and decoded-byte theorem.  The user approved at most one representable step from nearest-even rounding of the exact real exponential.
 
 ### Work performed and result left behind
@@ -31131,7 +31112,6 @@ The proof needs one property of `Fma.fma`: for finite `a`, `b`, `c` with `|a b +
 - [x] The parts of `Erf.md` on CORE-MATH's `erfc`.
 - [ ] The one-step proof: the double-double arithmetic with the `Fma.fma` interface, the polynomial approximations of `erf` and of `erfc (1/y) exp (1/y²)`, `exp_1` and `exp_accurate`, the hard cases, and the special ranges.
 
-
 ### The one-step proof (track `trig`)
 
 The coordinator accepted the plan below with one condition: the final theorem must not keep the hypothesis `FmaSpec.FmaNearest`.  The track `expm1` will prove it as a corollary of its theorem on `Fma.fma`, and until that corollary is merged the theorem is reported as conditional.  `w/trig` merged `transcendentals` at `72ca3ad4` (`93dfa79f`), which carries the port and `FmaSpec` and adds `TaylorModel` and `RatExpLog` for the exponential's enclosures.
@@ -32419,7 +32399,6 @@ The database holds for each of its 57 arguments a double `f` and a correction `�
 
 `tools/leanrun --memory-high 8G lake build Verified.Examples.TgammaWithin` completes the build in `lt-poly` (`opus-within-4.log` in its `build/transcendentals`), and `tgamma_within`, `accurate_within`, `db_within`, and `db_ok` depend on `propext`, `Classical.choice`, and `Quot.sound` only.  The byte and file theorems of `Tgamma` remain open, with those of `Lgamma` and `Erfc`, and `Tgamma.md` describes each module.  The next step is the integration of `w/poly` into `transcendentals`.
 
-
 ## 2026-10-13: Sixth integration: the accuracy theorem of `tgamma`
 
 Opus merged `w/poly` at `8f102eaa` into `transcendentals` (`ffc1ebe0`).  The branch brings `TgammaWithin.tgamma_within`, which states `Tgamma.tgamma` within one step of `Γ` for every finite argument other than 0 and the negative integers with no hypothesis, and the 25 new modules of its proof: `TgammaSpecs`, the accurate path below 1/4 (`TgammaAccSmall`, `TgammaAccSmallPath`), the accurate path from 1/4 (`TgammaAcc1` to `TgammaAccPath`), and the database of hard cases (`TgammaAccDbCheck`, `TgammaAccDb`).  It also restates `SinpidSpec` on the grid `n/2^53` in `TgammaRefl4` and `TgammaReflPath`.  The journal entries of track `arc` of 2026-10-13 describe the proof, and `Tgamma.md` lists the modules.  `Verified.lean` imports `TgammaWithin`, which imports the others, and `LeanExe.lean` is unchanged, since the branch adds no ProofKit module.
@@ -32427,7 +32406,6 @@ Opus merged `w/poly` at `8f102eaa` into `transcendentals` (`ffc1ebe0`).  The bra
 `tools/leanrun --memory-high 8G --timeout 900m lake build LeanExe Verified` completes 9,916 jobs with exit 0 (`opus-merge-batch6-1.log` on minideb1), no theorem in its log depends on `sorryAx` or `Lean.ofReduceBool`, and `TgammaWithin.tgamma_within` depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 `tests/verified/run.sh` exits 0 (`opus-verified-tests-23.log` on minideb1), and the 44 files `build/verified/*.wasm` are byte-identical to those of the fourth integration (`e42b5c22`), as expected for a merge that changes no executable code.  `tests/verified/run.sh` has no entry for the theorem, which the build checks.
-
 
 ## 2026-10-14: Seventh integration: the approximation facts of `lgamma`
 
@@ -32683,3 +32661,25 @@ Opus merged `w/trig` at `2b55a627` (`0e36619d`) and `w/expm1` at `74707c70` (`6c
 
 - [x] The integration, the byte theorems of `erfc` and `tgamma`, `Erf.md`, `Tgamma.md`, and the plan.
 - [ ] The 14 window ends of `lgamma`, its range above `2^800`, its theorem, and its byte theorem.
+
+## 2026-10-14: The fast path of `lgamma` at the ends of the accurate path's windows (track `expm1`, minideb2)
+
+`LgammaEnds.fast_ends` proves that at each of the 14 doubles `±1/4, ±3/4, …, ±13/4`, where the accurate path is not within one step, the fast path's rounding test passes and `lgammaR` returns a word within one step of `ln |Γ x|`.  It takes the approximation facts `LogFact`, `SinpiFact`, `PieceFact`, and `AccPolyFact` and the branch hypotheses of `LgammaFastWalk.fast_within`, and its axiom report lists only `propext`, `Classical.choice`, and `Quot.sound` (`ends/ends-4.log` under `build/transcendentals` on minideb2).  Three modules carry the proof.  `LgammaEndCell.test_pass` shows that both sums of the test round to a word `W` when the interval of radius `R + E + (F + E)/2^53` about `ln |Γ x|` lies in the rounding cell of `W`, for bounds `R` on the error of `fh + fl`, `E` on `eps`, and `F` on `|fl|`: a rounded value of a number in the cell is `W`, since every other magnitude lies at least as far as the next word.  `LgammaEndEncl` encloses `ln |Γ x|` at the 14 inputs within `4 · 10^-21`.  `AccPolyFact` gives `ln Γ` at 3/4, 5/4, and 7/4 within `2^-70` of polynomials that the kernel evaluates, the recurrence and the reflection formula with `sin (π/4) = √2/2` reduce the other inputs to these three values and seven logarithms, and `RatExpLog` bounds the logarithms with Taylor sums of `exp` of 40 terms and `GammaPi.pi_bounds128`.  `LgammaEnds` walks the fast path's block as `fast_within` does, reads `R`, `E`, and `F` from the leaf of each input (`LgammaFastMid.mid_bounds` at `±1/4`, `LeafSpec` at the positive inputs, and `LgammaReflCore.refl_core` at the negative ones), and checks the cell condition `CellOK` with `decide +kernel` at each input.
+
+`mid_bounds` takes the bounds of the path from `2^-5` to `1/2` out of `LgammaFastMid.mid_spec`, which now derives `FastSpec` from them.  `FastSpec` is a disjunction, and its absolute form has no upper bound on `eps`, so the walk needs the bounds themselves.  The tightest input is -2.75, where the budget `M = 1.595 · 10^-19` and the enclosure's radius `1.7 · 10^-21` leave `1.9 · 10^-20` of the distance `1.804 · 10^-19` from `ln |Γ x|` to the upper end of its cell.  The proof there uses the leaf's bound `eps ≤ |fh|/2^63 + 2^-78` with `|fh|` bounded through the enclosure of `ln Γ (2.75)`, and the reflection's `ρ` with `sin (π/4)/π ≥ 0.225`.  At the other 13 inputs the margin is at least `5.9 · 10^-19`.  `budget.py` and `encl.py` in `work/w-lgamma/ends` on the workstation compute the budgets and the enclosure data, and `gen_encl.py` and `gen_ends.py` write the literals into the two modules.
+
+Three details took further builds.  `exact_mod_cast` did not move a rational inequality with a literal power such as `1/2^54` to the reals, so the casts go through `Rat.cast_le` and `push_cast`.  `push_cast` rewrote `2 ^ 63` in a word index to its numeral, which broke a later rewrite, so the word facts of `CellOK` are cast with `simp only` and the cast lemmas.  `linarith` failed to combine those word facts with the enclosure and the budget in one step, for a reason I did not determine, and a `calc` of two inequalities, the first the word fact itself, succeeds.
+
+- [x] The 14 window ends through the fast path's rounding test (`LgammaEnds.fast_ends`).
+- [ ] The range above `2^800`, the bounds `2^-1000 ≤ |ln |Γ x|| ≤ 2^1020`, and the theorem of `lgamma` with its byte theorem.
+
+## 2026-10-14: `lgamma` within one step up to `2^800` (track `expm1`, minideb2)
+
+`LgammaWithin.lgamma_within_800` states that `(Lgamma.lgammaR x).1` lies within one step of the nearest-even rounding of `ln |Γ x|` at every finite `x` with `|x| ≤ 2^800` other than 0 and the negative integers, with no hypothesis, and its axiom report lists only `propext`, `Classical.choice`, and `Quot.sound` (`ends/within-2.log` under `build/transcendentals` on minideb2).  It joins `LgammaSpecial.lgamma_unit_steps` at 1 and 2, `LgammaEnds.fast_ends` at the 14 window ends, and `LgammaFastWalk.fast_within` with `LgammaAccPath.accurate_within` elsewhere, and it discharges the approximation facts with `LgammaFacts.allFacts` and the fused multiply-add with `FmaSpecTheorem.fma_nearest`.  Two pieces were missing.  `accurate_within` required a non-integer argument, although it uses that only for `x ≠ 0`, the reflection, and `|x| ≠ 1, 2`, so it now takes the hypotheses of `fast_within` (`x ≠ 0, 1, 2` and no negative integer) and covers the positive integers from 3.  `LgammaBounds.lgamma_bounds` proves the hypotheses `2^-1000 ≤ |ln |Γ x|| ≤ 2^1020` of `accurate_within`.
+
+The lower bound follows the accurate path's own ranges.  From `-21/2` to `-2` the 17 intervals of `LgammaApprox.rootRanges` cover every double other than the integers, the half-integers from `-19/2` to `-7/2`, and `sxBound`, so `RootMinFact`, `lower_half`, and `lower_sxb` give `2^-60` (`neg_root`).  Below `-21/2`, `CancelFact` bounds `|ln |Γ x||` below by `ln Γ (1 - x)/2^32` and `growth_large` bounds `ln Γ (1 - x)` below by 14.  Near 1 and 2 the convexity of `ln Γ` (`Real.convexOn_log_Gamma`) with the chords `gamma_upper` and `gamma_upper2` gives `|ln Γ x| ≥ 0.2274 |x - c|`, and a double other than 1 or 2 lies at least `2^-53` from it, which the neighboring words show (`gap_one`, `gap_two`).  Within `1/4` of 0 `ln |Γ x|` is `-ln |x|` within `4 |x|` (`GammaBasic.abs_lgamma_add_log_le`).  The upper bound uses `lgamma_upper` from 2, the recurrence below 2, and below 0 the reflection with Jordan's inequality, since the fractional part of a non-integer double lies from `2^-1074` to `1 - 2^-1074` (`fract_min`).
+
+Two builds of `LgammaBounds` and `LgammaWithin` failed.  In `fract_min`, `push_cast` evaluated the integer `2^1074` to its numeral before the cast lemmas applied, as it did with `2^63` in `LgammaEnds`, and rewrites with `Int.cast_sub`, `Int.cast_mul`, `Int.cast_pow`, and `Int.cast_ofNat` replace it.  The bound `2 · 745` on `|log (|x| sin (π φ)/π)|` in `upper_bound` fell short by 0.19: the bound `log 2 < 0.6932` gives `-1075 log 2 > -745.19` for the logarithm of the sine factor, so the bound is now `2 · 746`.  In `LgammaWithin`, two rewrites needed the equation of `set v` first, and one argument had its equation reversed.
+
+- [x] The bounds on `ln |Γ x|`, the positive integers in `accurate_within`, and the theorem up to `2^800`.
+- [ ] The range from `2^800` to the overflow threshold, the theorem of `lgamma` at every finite input, and its byte theorem.

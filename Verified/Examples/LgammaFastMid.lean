@@ -453,21 +453,31 @@ theorem mid_x (x : Float) (hlo : 0x3FA0000000000000 ≤ (F64Order.absBits x.toBi
         div_le_div_of_nonneg_right (pow_le_pow_right₀ (by norm_num) (by omega)) (by positivity)
   exact ⟨i, hi, hei, hl, hu, h5.trans hl, hm⟩
 
-/-- **The fast path from `2 ^ -5` to `1/2`.** -/
-theorem mid_spec (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
+/-- **The bounds of the fast path from `2 ^ -5` to `1/2`**: the result within `2^-59` of
+`ln |Γ x|`, `eps` from `2^-73` to `2^-62`, the low part below `2^-19`, and `|ln |Γ x||` from `1/10`
+to 5. -/
+theorem mid_bounds (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
     (hPF : LgammaApprox.PieceFact) (x : Float) (hx : Finite x.toBits)
     (hlo : 0x3FA0000000000000 ≤ (F64Order.absBits x.toBits).toNat)
     (hhi : (F64Order.absBits x.toBits).toNat < 0x3FE0000000000000)
-    (lh ll : Float) (h : Lgamma.asLogd Tgamma.logdTable x.abs = (lh, ll)) (sign : Float)
+    (lh ll : Float) (h : Lgamma.asLogd Tgamma.logdTable x.abs = (lh, ll))
     (jj : UInt64) (hjj : jj = Lgamma.piece Lgamma.mainTable ((fastTwoSum 1.0 x).1.toBits >>> 37))
     (P Q S : Float × Float)
     (hP : P = Lgamma.piecePoly Lgamma.mainTable jj
       (((fastTwoSum 1.0 x).1 - entry Lgamma.mainTable (20 + jj)) + (fastTwoSum 1.0 x).2))
     (hQ : Q = if jj == 4 then mulDDD (-x) P.1 P.2 else (P.1, P.2))
     (hS : S = sumDD (-lh) (-ll) Q.1 Q.2) :
-    FastSpec (Real.log (Real.Gamma (value x.toBits)))
-      (S.1, S.2, Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B +
-        lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F, sign) := by
+    Finite S.1.toBits ∧ Finite S.2.toBits ∧
+      Finite (Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B +
+        lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F).toBits ∧
+      1 / 2 ^ 73 ≤ value (Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B +
+        lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F).toBits ∧
+      value (Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B +
+        lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F).toBits ≤ 1 / 2 ^ 62 ∧
+      |value S.2.toBits| ≤ 1 / 2 ^ 19 ∧ 1 / 10 ≤ |Real.log (Real.Gamma (value x.toBits))| ∧
+      |Real.log (Real.Gamma (value x.toBits))| ≤ 5 ∧
+      |Real.log (Real.Gamma (value x.toBits)) - (value S.1.toBits + value S.2.toBits)| ≤
+        1 / 2 ^ 59 := by
   obtain ⟨i, hi, he, hve, hve', hv1, hv2⟩ := mid_x x hlo hhi
   obtain ⟨htf, hlf, hsum, hxl, htpos, k, hk8, hkj, hb0, hb1⟩ := mid_t x hx hv1 hv2
   rw [← hjj] at hkj
@@ -606,19 +616,42 @@ theorem mid_spec (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
   have hE2 : value E.toBits ≤ 1 / 2 ^ 62 := by
     norm_num at hev
     linarith [(by norm_num : (1 : ℝ) * (1 / 2 ^ 63) + 4 * (1 / 2 ^ 70) + 1 / 2 ^ 100 ≤ 1 / 2 ^ 62)]
+  have hS2 : |value S.2.toBits| ≤ 1 / 2 ^ 19 := by
+    have : (1 / 2 ^ 21 + 1 / 2 ^ 38) * (1 + 1 / 2 ^ 51) + 6 / 2 ^ 51 + 1 / 2 ^ 1073 ≤
+        (1 : ℝ) / 2 ^ 19 := by norm_num
+    have h5 : |value S.1.toBits| / 2 ^ 51 ≤ 6 / 2 ^ 51 :=
+      div_le_div_of_nonneg_right hs1b (by positivity)
+    linarith
+  exact ⟨hs1, hs2, hs.1, hE1, hE2, hS2, hL1, hL2, hE⟩
+
+/-- **The fast path from `2 ^ -5` to `1/2`.** -/
+theorem mid_spec (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
+    (hPF : LgammaApprox.PieceFact) (x : Float) (hx : Finite x.toBits)
+    (hlo : 0x3FA0000000000000 ≤ (F64Order.absBits x.toBits).toNat)
+    (hhi : (F64Order.absBits x.toBits).toNat < 0x3FE0000000000000)
+    (lh ll : Float) (h : Lgamma.asLogd Tgamma.logdTable x.abs = (lh, ll)) (sign : Float)
+    (jj : UInt64) (hjj : jj = Lgamma.piece Lgamma.mainTable ((fastTwoSum 1.0 x).1.toBits >>> 37))
+    (P Q S : Float × Float)
+    (hP : P = Lgamma.piecePoly Lgamma.mainTable jj
+      (((fastTwoSum 1.0 x).1 - entry Lgamma.mainTable (20 + jj)) + (fastTwoSum 1.0 x).2))
+    (hQ : Q = if jj == 4 then mulDDD (-x) P.1 P.2 else (P.1, P.2))
+    (hS : S = sumDD (-lh) (-ll) Q.1 Q.2) :
+    FastSpec (Real.log (Real.Gamma (value x.toBits)))
+      (S.1, S.2, Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B +
+        lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F, sign) := by
+  obtain ⟨hs1, hs2, hsE, hE1, hE2, hS2, hL1, hL2, hE⟩ :=
+    mid_bounds hF hL hPF x hx hlo hhi lh ll h jj hjj P Q S hP hQ hS
+  set L := Real.log (Real.Gamma (value x.toBits)) with hLdef
+  set E := Q.1.abs * Float.ofBits 0x3BF87F4D7D0AF16B + lh.abs * Float.ofBits 0x3B82E3B40A0E9B4F
+    with hEdef
   unfold FastSpec
   dsimp only
-  refine ⟨hs1, hs2, hs.1, le_trans (by norm_num) hE1, Or.inr ⟨?_, ?_, ?_, ?_⟩⟩
-  · linarith [(by norm_num : (1 : ℝ) / 2 ^ 21 + 1 / 2 ^ 38 ≤ 1)]
+  refine ⟨hs1, hs2, hsE, le_trans (by norm_num) hE1, Or.inr ⟨?_, ?_, ?_, ?_⟩⟩
+  · linarith [(by norm_num : (1 : ℝ) / 2 ^ 19 ≤ 1)]
   · linarith [(by norm_num : (1 : ℝ) / 2 ^ 1000 ≤ 1 / 10)]
   · linarith [(by norm_num : (5 : ℝ) ≤ 2 ^ 1020)]
-  · have h4 : (|value S.2.toBits| + value E.toBits) / 2 ^ 52 ≤ (1 / 2 ^ 19 + 1 / 2 ^ 62) / 2 ^ 52 := by
-      apply div_le_div_of_nonneg_right _ (by positivity)
-      have : (1 / 2 ^ 21 + 1 / 2 ^ 38) * (1 + 1 / 2 ^ 51) + 6 / 2 ^ 51 + 1 / 2 ^ 1073 ≤
-          (1 : ℝ) / 2 ^ 19 := by norm_num
-      have h5 : |value S.1.toBits| / 2 ^ 51 ≤ 6 / 2 ^ 51 :=
-        div_le_div_of_nonneg_right hs1b (by positivity)
-      linarith
+  · have h4 : (|value S.2.toBits| + value E.toBits) / 2 ^ 52 ≤ (1 / 2 ^ 19 + 1 / 2 ^ 62) / 2 ^ 52 :=
+      div_le_div_of_nonneg_right (by linarith) (by positivity)
     have h5 : (1 : ℝ) / 10 / 2 ^ 54 ≤ |L| / 2 ^ 54 := div_le_div_of_nonneg_right hL1 (by positivity)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 59 + 2 * (1 / 2 ^ 62) +
       (1 / 2 ^ 19 + 1 / 2 ^ 62) / 2 ^ 52 ≤ 1 / 10 / 2 ^ 54)]
@@ -627,6 +660,7 @@ theorem mid_spec (hF : FmaSpec.FmaNearest) (hL : LgammaApprox.LogFact)
 #print axioms mid_t
 #print axioms mid_z
 #print axioms mid_piece
+#print axioms mid_bounds
 #print axioms mid_spec
 
 end Verified.Examples.LgammaFastMid

@@ -3,13 +3,13 @@ import Verified.Examples.LgammaAccTests
 
 /-!
 **The accurate path of `lgamma`** within one step of `log |Γ x|` (`accurate_within`), for every
-non-integer double `x` with `|x| ≤ 2^800` other than the 14 ends of the windows, `±1/4` to `±13/4`
-in steps of `1/2`, given `2^-1000 ≤ |log |Γ x|| ≤ 2^1020`.  The proof walks the code's block with
-`acc_step` and `spec_step`: the branches below `1/4` give `LgammaAccTail.AccPair` through
-`LgammaAccLow`, the windows and Stirling's series give the triple of `LgammaAccPos.PosSpec` at a
-positive argument and of `NegW` at a negative one, the reflection and the renormalization give
-`AccPair` (`LgammaAccNeg.ready_pair`), and `tail_within` finishes.  `past_windows` places the
-argument of Stirling's series at or above 15/4.
+double `x` with `|x| ≤ 2^800` other than 0, 1, 2, the negative integers, and the 14 ends of the
+windows, `±1/4` to `±13/4` in steps of `1/2`, given `2^-1000 ≤ |log |Γ x|| ≤ 2^1020`.  The proof
+walks the code's block with `acc_step` and `spec_step`: the branches below `1/4` give
+`LgammaAccTail.AccPair` through `LgammaAccLow`, the windows and Stirling's series give the triple
+of `LgammaAccPos.PosSpec` at a positive argument and of `NegW` at a negative one, the reflection
+and the renormalization give `AccPair` (`LgammaAccNeg.ready_pair`), and `tail_within` finishes.
+`past_windows` places the argument of Stirling's series at or above 15/4.
 -/
 
 namespace Verified.Examples.LgammaAccPath
@@ -74,7 +74,9 @@ theorem accurate_within (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
     (hAP : LgammaApprox.AccPolyFact) (hAF : LgammaApprox.AsymFact)
     (hCF : LgammaApprox.CancelFact) (hRF : LgammaApprox.RootFact)
     (hRM : LgammaApprox.RootMinFact) (hDb : LgammaApprox.DbFact)
-    (sx : Float) (hsx : Finite sx.toBits) (hint : ∀ n : ℤ, value sx.toBits ≠ n)
+    (sx : Float) (hsx : Finite sx.toBits)
+    (hint : value sx.toBits < 0 → ∀ n : ℤ, value sx.toBits ≠ n)
+    (h0 : value sx.toBits ≠ 0) (h1 : value sx.toBits ≠ 1) (h2 : value sx.toBits ≠ 2)
     (hbig : |value sx.toBits| ≤ 2 ^ 800)
     (hends : ∀ k : ℕ, k < 7 → |value sx.toBits| ≠ (2 * k + 1) / 4)
     (hL1 : 1 / 2 ^ 1000 ≤ |GammaBasic.lgamma (value sx.toBits)|)
@@ -83,7 +85,6 @@ theorem accurate_within (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
       (Lgamma.accurate Tgamma.logdTable Lgamma.logAccurateTable Lgamma.sinpiTable
         Lgamma.asymTable Lgamma.accurateTable Lgamma.dbTable sx).toBits := by
   obtain ⟨hxf, hxv⟩ := TgammaFloor.abs_float sx hsx
-  have h0 : value sx.toBits ≠ 0 := fun h => hint 0 (by rw [h]; norm_num)
   have hneg_iff : sx < 0.0 ↔ value sx.toBits < 0 := lt_test sx 0.0 _ 0 hsx c00.1 rfl c00.2
   have hpos_iff : sx > 0.0 ↔ 0 < value sx.toBits := lt_test 0.0 sx 0 _ c00.1 hsx c00.2 rfl
   rw [Lgamma.accurate.eq_1]
@@ -175,12 +176,12 @@ theorem accurate_within (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
       acc_step; intro a3 b3 hS3
       rcases hW with ⟨hs, hsm⟩ | ⟨hl, hlg⟩
       · rw [hxv] at hsm hs
-        exact small_ready hF hS hSA hLA sx hsx hneg hint
+        exact small_ready hF hS hSA hLA sx hsx hneg (hint hneg)
           (by rw [abs_of_neg hneg] at hs; linarith)
           (by rw [hxv'] at hx14; linarith) fh fl fll hsm phi hphi
           sh sl hA lh ll lll hT ll2 hll2 a1 b1 hS1 h2 l2 hP2 a3 b3 hS3
       · rw [hxv] at hlg hl
-        exact large_ready hF hS hSA hLA hCF sx hsx hint
+        exact large_ready hF hS hSA hLA hCF sx hsx (hint hneg)
           (by rw [abs_of_neg hneg] at hl; linarith)
           (by have := (abs_le.mp hbig).1; linarith) fh fl fll hlg phi hphi
           sh sl hA lh ll lll hT ll2 hll2 a1 b1 hS1 h2 l2 hP2 a3 b3 hS3
@@ -369,9 +370,9 @@ theorem accurate_within (hF : FmaSpec.FmaNearest) (hS : LgammaApprox.SinpiFact)
       have := pos_ready _ sx _ hW
       rwa [hxv'] at this
     have hx1 : value sx.abs.toBits ≠ 1 := by
-      rw [hxv']; exact fun h => hint 1 (by rw [h]; norm_num)
+      rw [hxv']; exact h1
     have hx2 : value sx.abs.toBits ≠ 2 := by
-      rw [hxv']; exact fun h => hint 2 (by rw [h]; norm_num)
+      rw [hxv']; exact h2
     acc_step
     · intro hw
       obtain ⟨c1, c2⟩ := w05.mp hw
