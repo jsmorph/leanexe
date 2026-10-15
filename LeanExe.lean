@@ -240,6 +240,9 @@ import LeanExe.ProofKit.F64Sterbenz
 import LeanExe.ProofKit.F64StrictOrder
 import LeanExe.ProofKit.F64Sub
 import LeanExe.ProofKit.F64SymmetricFaces
+import LeanExe.ProofKit.F64TopMul
+import LeanExe.ProofKit.F64TopPack
+import LeanExe.ProofKit.F64TopTwoSum
 import LeanExe.ProofKit.F64TwoSteps
 import LeanExe.ProofKit.F64TwoSum
 import LeanExe.ProofKit.F64UpperWord

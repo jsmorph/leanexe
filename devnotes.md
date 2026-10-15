@@ -32698,3 +32698,12 @@ Two builds failed before the final one.  `asym_big` ran out of heartbeats becaus
 - [x] The fast path and the accurate path from `2^800` to `x1`, and `lgamma_within` at every finite input.
 - [x] The byte theorem `lgamma_bytes_accuracy` with the bound of `lgamma_within`.
 - [ ] The eleventh integration into `transcendentals`.
+
+## 2026-10-15: Eleventh integration: the accuracy theorem of `lgamma` and its byte theorem
+
+Opus fast-forwarded `transcendentals` to `w/expm1` at `8bd03e12`, whose commits `e7620a38` and `8bd03e12` the three entries above describe.  `Verified.lean` imports the ten new modules of `lgamma`, `LeanExe.lean` imports `F64TopMul`, `F64TopPack`, and `F64TopTwoSum`, and the entry `lgamma:LgammaBytes:LgammaFile` of `tests/verified/run.sh` builds the byte theorem before the file theorem, which takes the module from it.  The working tree held copies of the track's files from the builds of `top/acctop-2.log` and `top/bytes-2.log` under `build/transcendentals`, which a stash removed before the fast-forward and which matched the commits.
+
+`tools/leanrun --memory-high 10G --timeout 900m lake build LeanExe Verified` completes 10,036 jobs with exit 0 (`opus-merge-11.log`), and no theorem in the log depends on `sorryAx` or `Lean.ofReduceBool`.  `tests/verified/run.sh` exits 0 (`opus-run-11.log`): 15,837 tests pass and none fails, the 21 file theorems report only the three permitted axioms, `lgamma.wasm` holds the module of `LgammaBytes`, the 44 files `build/verified/*.wasm` are byte-identical to those of `e42b5c22`, and `bessel.wasm`, `erfc.wasm`, `lgamma.wasm`, and `tgamma.wasm` are byte-identical to those of the run of `94444f0a`.  The native check finds the 81,033 results of `lgamma` and the 9,234 results of its accurate path equal to the integer reference.
+
+- [x] The integration of `lgamma_within` and `lgamma_bytes_accuracy`, `Lgamma.md`, and the plan in `transcendentals.md`.
+- [ ] The remaining items of `transcendentals.md`: the strconv stage 4, the consolidation, and the docstring and license corrections.

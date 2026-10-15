@@ -243,3 +243,13 @@ import Verified.Examples.LgammaZeroBase
 import Verified.Examples.TgammaFacts
 import Verified.Examples.TgammaWithin
 import Verified.Examples.LgammaFacts
+import Verified.Examples.LgammaEndCell
+import Verified.Examples.LgammaEndEncl
+import Verified.Examples.LgammaEnds
+import Verified.Examples.LgammaBounds
+import Verified.Examples.TgammaDDTop
+import Verified.Examples.LgammaStirTop
+import Verified.Examples.LgammaFastTop
+import Verified.Examples.LgammaAccTop
+import Verified.Examples.LgammaWithin
+import Verified.Examples.LgammaBytes
