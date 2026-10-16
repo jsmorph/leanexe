@@ -54,7 +54,9 @@ The Bessel bound is relative to the modulus `√(J² + Y²)` of the order's func
 
 [`Verified/Examples/Fourier.lean`](Verified/Examples/Fourier.lean) computes the discrete Fourier transform of interleaved complex floats by the `n²` products of the definition, its inverse, and the power spectrum of real samples, with the factors from `Trig.cosWith` and `Trig.sinWith`.  The compiler's theorem states that the module computes these definitions bit for bit.  `FourierAccuracy.lean` checks the results in native Lean against an exact transform, and no theorem bounds their error.
 
-## Pseudorandom number generator
+## Pseudorandom number generators
+
+The verified compiler compiles the generators of [LCG](Examples/Lcg/README.md), [Park–Miller](Examples/ParkMiller/README.md), and [xorshift64](Examples/Xorshift/README.md).  Their byte theorems combine the compiler's result with the generators' period and orbit theorems.  LCG and xorshift64 also have compiled jump-ahead functions proved equal to repeated advancement and theorems counting their top-bit distributions over a period.  The LCG proofs give the hyperplane bounds and spectral test values for two to six successive states.  The linked documents state the parameters, domains, and memory conditions.
 
 [The `Examples/Prng` example](Examples/Prng/README.md) implements SplitMix64, the generator of Steele, Lea, and Flood in the form of Vigna's reference C code, and `unitFloat`, which maps a word to the binary64 value `(x >>> 11) / 2^53` in `[0, 1)`.  `splitMix_implements`, `unitFloat_implements`, and `prng_bytes` state that the compiled module computes the Lean definitions.  [The LTG entry](ltg/entries/splitmix64/README.md) lets other modules compile and call both functions.
 

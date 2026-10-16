@@ -2,8 +2,9 @@
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
 # compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
-# released must equal the field, the result's arrays and the host's arrays at borrowed parameters.  A seventh
-# field bounds the number of allocations, the host's included.  A case whose expected result is
+# released must equal the field, the result's arrays and the host's arrays at borrowed parameters.
+# A seventh field bounds the number of allocations, the host's included.  A case whose expected
+# result is
 # `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
 # module and checks its file theorem module, whose theorems state that the written file holds the
 # module of the function's byte theorem, and it fails unless both file theorems report only the

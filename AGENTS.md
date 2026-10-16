@@ -4,6 +4,7 @@
 
 - Run every `lean`, `lake`, and Lean compiler command through [`tools/leanrun`](tools/leanrun).  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
 - The runner acquires the same machine-wide lock as `../vq/tools/leanrun` and sets `LEAN_NUM_THREADS=1`.  Never bypass the runner or run Lean or Lake processes concurrently.
+- `--memory-high SIZE` selects a memory high limit in whole gibibytes, such as `10G`, and a maximum 2 GiB above it.  The default limits remain 4 GiB high and 6 GiB maximum.  The full numerical proof builds recorded in the journal use `10G` for the lgamma root-range proofs.
 - Add a reasonable `timeout` to diagnostic commands whose runtime is not intrinsically bounded.
 - After a target reaches its timeout without a diagnostic, do not run the unchanged target again.  First divide the proof or module, or add a verified reusable lemma that reduces the elaboration boundary.
 - Pass `--timeout` for a command-specific limit and `--lock-timeout` when the default 900-second lock wait is unsuitable.  Keep `tools/leanrun` as the first command token so one approval covers every Lean target.  If the runner cannot create its user scope or enforce the required cgroup properties, stop and ask the user; the only exception is the explicitly authorized local mode below.

@@ -34067,3 +34067,9 @@ another attempt, as the repository instructions require.
 The integration starts from `transcendentals` at `942aa695` and merges `verified` at `ea1e3381`.  The three consolidation commits after the planned reference are included.  The tested checkout is clean, and build 18 and run 18 both record exit 0.
 
 The integration uses a separate worktree, with copies of its compiled-project cache and host tools and the pinned dependency cache.  The reference WebAssembly files, hashes, and build/test logs are preserved under `build/integration/reference-transcendentals/`.  The first source changes combine the potential-based correctness rules with bitmask liveness, cached reflection contexts, and encoding checks per function.
+
+The source comparison against `942aa695` preserves every numerical Lean program and proof.  The changed examples are the bounds and generators from `verified`, and the Bessel document corrects its opening statement about the completed restricted theorems.  The manuals now describe the numerical results, encoding checks, and file proofs, and the numerical index includes the three compiled generators.
+
+The first rsync invocation passed `-l` to the SSH wrapper, which accepts the user in the host argument, and removing the explicit user from rsync's destination corrected that invocation.  The remote host lacked rsync, and builds awaited its installation.
+
+The project-cache copy occupies 5.7 GB in the integration worktree.  A following copy of `.lake/lakefile.olean` failed because that file is absent, and Lake will configure the package from its `lakefile.toml`.  The dependency check reports CodeLib at `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and Mathlib at `85e3a25e006c35636f0e53b0e9296caca2685bc0`, matching the pinned manifest.
