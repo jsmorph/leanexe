@@ -1,6 +1,6 @@
 import Verified.Examples.ErfTailKernel
 import Verified.Examples.ErfTailSplit
-import Verified.Examples.ExpRelative
+import Verified.Examples.ExpTightFloat
 
 /-!
 The rounding error of `s_erf.c`'s tail, `erfc x = exp (-z² - 0.5625) exp ((z - x)(z + x) + R/S)/x`

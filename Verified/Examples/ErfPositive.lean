@@ -9,7 +9,8 @@ One step for `Erf.erfWith Exp.expTable x` for every finite `x` with a clear sign
 path for each range of `x` (`ErfBits.sel_inf_free`) becomes a word expression through the
 `F64Bits` lemmas, and the range's theorem gives the step: `ErfSub` below `2^-1015`, `ErfEnds` below
 `2^-28` and from 6 on, `ErfSmall` below `0.84375`, `ErfMiddle` below 1.25, and `ErfTailErf` on the
-tail, where `ExpRelative.expWith_relative` supplies the exponentials' relative errors.
+tail, where `expWith_relative`, from `ExpTightFloat.exp_relative`, supplies the exponentials'
+relative errors.
 -/
 
 namespace Verified.Examples.ErfPositive
@@ -17,6 +18,20 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Horner RealErf ErfSmallBase ErfMiddleBas
   ErfTailEval ErfEnds ErfSub ErfBits
 
 set_option exponentiation.threshold 4096
+
+/-- `Exp.expWith Exp.expTable x` within `1.405 u exp x` for `|x| < 512`, the bound that the tail's
+theorems take, from the bound `1.033 u exp x` of `ExpTightFloat.exp_relative`. -/
+theorem expWith_relative (x : Float) (hxf : Finite x.toBits) (hx : |value x.toBits| < 512) :
+    Finite (Exp.expWith Exp.expTable x).toBits ∧
+      |value (Exp.expWith Exp.expTable x).toBits - Real.exp (value x.toBits)| ≤
+        (1405 / 1000) * unitRoundoff64 * Real.exp (value x.toBits) := by
+  have hb := abs_lt.mp hx
+  have h512 : (512 : ℝ) ≤ 7097827 / 10 ^ 4 := by norm_num
+  obtain ⟨hf, he⟩ := ExpTightFloat.exp_relative x hxf (by linarith) (by linarith)
+  have hE := Real.exp_pos (value x.toBits)
+  have hu : (0 : ℝ) < unitRoundoff64 := by norm_num [unitRoundoff64]
+  refine ⟨hf, he.trans ?_⟩
+  nlinarith [mul_pos hu hE]
 
 theorem abs_eq_self (b : UInt64) (hs : Wasm.IEEE64.sign b = false) : Wasm.IEEE64.abs b = b := by
   have hb := b.toNat_lt
@@ -107,7 +122,7 @@ theorem tail_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.to
           (Wasm.IEEE64.negate (zWord x.toBits)) (zWord x.toBits)) 0x3FE2000000000000)) := by
     intro hf hl
     rw [← ha1] at hf hl ⊢
-    exact ExpRelative.expWith_relative a1 hf hl
+    exact expWith_relative a1 hf hl
   have hdiv : ∀ (R S : Float), (1.0 - Erf.erfExp Exp.expTable x.abs R S / x.abs).toBits =
       Wasm.IEEE64.sub 0x3FF0000000000000 (Wasm.IEEE64.div (Wasm.IEEE64.mul
         (Exp.expWith Exp.expTable a1).toBits
@@ -137,7 +152,7 @@ theorem tail_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.to
     exact ErfTailErf.tail_erf_a x.toBits hxf hlo hn.le _ _ hE1 (by
       intro hf hl
       rw [← ha2] at hf hl ⊢
-      exact ExpRelative.expWith_relative a2 hf hl)
+      exact expWith_relative a2 hf hl)
   · have hnear : ¬ ((x.toBits >>> 32 &&& 0x7fffffff) < 0x4006DB6E) := fun h =>
       hn (by have := ((ix_conds x hxf).2.2.2.2.2.2).mp h; rwa [abs_of_nonneg (by linarith)] at this)
     simp only [hnear, decide_false]
@@ -157,7 +172,7 @@ theorem tail_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.to
     exact ErfTailErf.tail_erf_b x.toBits hxf (not_lt.mp hn) hhi.le _ _ hE1 (by
       intro hf hl
       rw [← ha2] at hf hl ⊢
-      exact ExpRelative.expWith_relative a2 hf hl)
+      exact expWith_relative a2 hf hl)
 
 /-- One step for `erf x` for every finite `x` with a clear sign bit. -/
 theorem erf_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toBits = false) :
@@ -220,6 +235,7 @@ theorem erf_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toB
       · rw [if_neg (fun h => h3 (hsix.mp h))]
         exact tail_pos x hxf hs (not_lt.mp h2) (not_le.mp h3)
 
+#print axioms expWith_relative
 #print axioms abs_eq_self
 #print axioms eq_zero_of_value
 #print axioms tail_pos
