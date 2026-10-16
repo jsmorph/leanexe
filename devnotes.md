@@ -32898,3 +32898,11 @@ The consolidation decided earlier also lists the removal of `ExpRelative`, which
 - [x] Merge the duplicate ProofKit results, build 16, and run 16
 - [ ] Remove `ExpRelative`
 - [ ] Move `TrigNearest`, `TrigFloatTools`, `TrigStep.unit_step`, `TrigTiny`, and `SinpiLowStep.within_low` into ProofKit
+
+## 2026-10-15: Removing `ExpRelative` (coordinating session)
+
+`ExpRelative.expWith_relative` bounded `Exp.expWith Exp.expTable` by `1.405 u exp x` for `|x| < 512`, and `ExpTightFloat.exp_relative` bounds the same function, `Exp.exp`, by `1.033 u exp x` on `-708 ≤ x ≤ 709.7827`.  `ErfPositive.expWith_relative` now derives the `1.405 u` form that the tail theorems of `ErfTailErf` take from `exp_relative`, `ErfTailEval` imports `ExpTightFloat` in place of `ExpRelative`, and the module is deleted.  `Exp.md` and `Erf.md` give the new source of the bound.  `Erf.md` now gives 148 for the ProofKit modules that the proof of `erf` depends on, counting indirect imports, where it gave 80, a count that no reading of the current imports reproduces.
+
+Build 17 completes `lake build LeanExe Verified` with exit 0 (`opus-merge-17.log`), its 4,094 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound` apart from the CodeLib example axiom, and run 17 exits 0 with 15,837 tests passed and none failed (`opus-run-17.log`).  The 49 written files are byte-identical to the stored references.
+
+- [x] Remove `ExpRelative`

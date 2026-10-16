@@ -4,7 +4,7 @@ import Mathlib.Analysis.Complex.ExponentialBounds
 /-!
 One step for `erf x` on an interval of the tail `[1.25, 6]`, from the words of the two computed
 exponentials.  `tail_erf_word` takes the exponentials' relative errors `1.405 u` as hypotheses,
-which `ExpRelative.expWith_relative` supplies, and combines `ErfTailSplit.arg1_exact`,
+which `ErfPositive.expWith_relative` supplies, and combines `ErfTailSplit.arg1_exact`,
 `ErfTailEval.tail_arg2`, `ErfTailCompose.tail_compose`, and `ErfTailCompose.tail_erf`.
 `erfc_lower` keeps `erfc x` above `2^-1000` up to 26, so that the product and the quotient stay
 normal.
