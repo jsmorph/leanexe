@@ -28,13 +28,16 @@ import Verified.Examples.Exp
 import Verified.Examples.Tanh
 import Verified.Examples.Log
 import Verified.Examples.Drone
+import Verified.Examples.Lcg
+import Verified.Examples.ParkMiller
+import Verified.Examples.Xorshift
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
 them, with a sixth field for the cases that check the allocation counters: the number of blocks
-live after the call, the host's array arguments and the arrays of the result, and a seventh field
-for the cases that bound the number of allocations, the host's included.  The expected result
-`trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
+live after the call, the arrays of the result and the host's arrays at borrowed parameters, and a
+seventh field for the cases that bound the number of allocations, the host's included.  The
+expected result `trap` stands for a trap at `unreachable`.  Run with `lake env lean --run`. -/
 
 namespace Verified.Examples
 
@@ -916,6 +919,12 @@ def main : IO Unit := do
     for n in [0, 1, 998, 999] do
       IO.println s!"recursion|deep|i64|i64:{n} i64:{a} i64:{b}|{Recursion.deep n a b}"
     IO.println s!"recursion|deep|i64|i64:1000 i64:{a} i64:{b}|trap"
+  for xs in floatArrays.take 3 do
+    for n in [0, 1, 5, 12] do
+      IO.println s!"recursion|spread|i64|i64:{n} {floatArrayArg xs}|{Recursion.spread n xs}|1"
+  for n in [0, 1, 500, 995] do
+    IO.println s!"recursion|countdown|i64|i64:{n}|{Recursion.countdown n}"
+  IO.println s!"recursion|countdown|i64|i64:996|trap"
   let bookKinds := "array-u64,array-u64,i64"
   let books : List Fields.Book :=
     [⟨#[], #[], 0⟩, ⟨#[5], #[3], 1⟩, Fields.mkBook 4, ⟨#[1, 2, 3], #[10], 7⟩]
@@ -934,6 +943,16 @@ def main : IO Unit := do
       let other := Fields.mkBook 2
       let r := bookOut (Fields.pickBook c b other)
       IO.println s!"fields|pickBook|list:{bookKinds}|{boolArg c} {bookArg b} {bookArg other}|{r}|6"
+    for n in [(0 : UInt64), 3, 1000] do
+      IO.println s!"fields|pushPrices|list:{bookKinds}|{bookArg b} i64:{n}|\
+        {bookOut (Fields.pushPrices b n)}|4"
+      IO.println s!"fields|heavyPick|list:{bookKinds}|{bookArg b} i64:{n}|\
+        {bookOut (Fields.heavyPick b n)}|4"
+  for t in [(⟨#[], 0⟩ : Fields.Tape), ⟨#[4, 5, 6], 1⟩] do
+    for k in [(0 : UInt64), 7] do
+      let r := Fields.moveHead t k
+      IO.println s!"fields|moveHead|list:array-u64,i64|{arrayArg t.marks} i64:{t.head} i64:{k}|\
+        {arrayOut r.marks} {r.head}|2"
   let grids : List Fields.Grid :=
     [⟨#[], 0.0, 0⟩, ⟨#[⟨1.5, 2⟩], 0.25, 3⟩,
       ⟨(Array.range 5).map fun i => ⟨i.toUInt64.toFloat, i.toUInt64⟩, -1.0, 7⟩]
@@ -963,3 +982,35 @@ def main : IO Unit := do
     for m in [0, 1, n / 8, n / 4, n / 2, n - 1, n, 3 * n + 1] do
       let (c, s) := Fourier.twiddle n m
       IO.println s!"fourier|twiddle|list:f64,f64|i64:{n} i64:{m}|{c.toBits} {s.toBits}"
+  for x in words do
+    IO.println s!"lcg|affine|i64|i64:{x} i64:{x * 3} i64:{x + 1}|\
+      {_root_.Examples.Lcg.affine x (x * 3) (x + 1)}"
+    IO.println s!"lcg|step|i64|i64:{x}|{_root_.Examples.Lcg.step x}"
+    IO.println s!"parkmiller|step|i64|i64:{x}|{_root_.Examples.ParkMiller.step x}"
+    IO.println s!"parkmiller|seed|i64|i64:{x}|{_root_.Examples.ParkMiller.seed x}"
+    IO.println s!"xorshift|step|i64|i64:{x}|{_root_.Examples.Xorshift.step x}"
+    for n in [(0 : UInt64), 1, 2, 1000] do
+      IO.println s!"lcg|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.advance n x}"
+      let s := _root_.Examples.ParkMiller.seed x
+      IO.println s!"parkmiller|advance|i64|i64:{n} i64:{s}|{_root_.Examples.ParkMiller.advance n s}"
+      IO.println s!"xorshift|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.advance n x}"
+  IO.println s!"parkmiller|advance|i64|i64:10000 i64:1|{_root_.Examples.ParkMiller.advance 10000 1}"
+  for s in [(2147483646 : UInt64), 2147483647, 2147483648, 4294967294, 4294967295] do
+    IO.println s!"parkmiller|seed|i64|i64:{s}|{_root_.Examples.ParkMiller.seed s}"
+  let cols := LeanExe.build 64 fun i => _root_.Examples.Xorshift.step ((1 : UInt64) <<< i)
+  for x in words do
+    for n in [(0 : UInt64), 1, 2, 1000, 123456789, 9223372036854775808, 18446744073709551615] do
+      IO.println s!"lcg|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.jump n x}"
+      IO.println s!"xorshift|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.jump n x}|0|65"
+    IO.println s!"xorshift|applyCols|i64|{arrayArg cols} i64:{x}|\
+      {_root_.Examples.Xorshift.applyCols cols x}|1|1"
+    for i in [(0 : UInt64), 5, 63] do
+      let st := (x, x * 3 + 1, 6364136223846793005, x ^^^ 1442695040888963407)
+      let r := _root_.Examples.Lcg.jumpPass 1000 i st
+      IO.println s!"lcg|jumpPass|list:i64,i64,i64,i64|i64:1000 i64:{i} i64:{st.1} i64:{st.2.1} \
+        i64:{st.2.2.1} i64:{st.2.2.2}|{r.1} {r.2.1} {r.2.2.1} {r.2.2.2}"
+      let p := _root_.Examples.Xorshift.jumpPass 1000 i (x, cols)
+      IO.println s!"xorshift|jumpPass|list:i64,array-u64|i64:1000 i64:{i} i64:{x} {arrayArg cols}|\
+        {p.1} {arrayOut p.2}|2|2"
+  IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
+    {arrayOut (_root_.Examples.Xorshift.square cols)}|2|2"

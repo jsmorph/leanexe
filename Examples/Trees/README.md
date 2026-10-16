@@ -32,9 +32,9 @@ The proofs are in [`Verify.lean`](Verify.lean), [`MovesVerify.lean`](MovesVerify
 [`Node.lean`](Node.lean), and [`Copy.lean`](Copy.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  `treeFrame.wasm` has no theorem: its `KeyTree.wide` holds 24
 values in its frame, the most the compiler accepts, and the depth test checks that it still returns
-at depth 999 and traps at 1,000.  [The manual](../../docs/manual.md#recursion) gives the rules for
-recursion, and [its section on ownership](../../docs/manual.md#ownership) the rules for moves and
-lending.
+at depth 999 and traps at 1,000.  [The LeanExe compiler
+manual](../../docs/leanexe-manual.md#recursion) gives the rules for recursion, and [its section on
+ownership](../../docs/leanexe-manual.md#ownership) the rules for moves and lending.
 
 ## Running it
 
@@ -73,5 +73,5 @@ an array.  [`Clob`](../Clob/README.md) has the same ownership rules for arrays. 
 
 - D. E. Knuth, *The Art of Computer Programming*, Vol. 3, *Sorting and Searching*, 2nd ed.,
   Addison-Wesley, 1998, section 6.2.2, on binary search trees and insertion.
-- [The manual's section on recursion](../../docs/manual.md#recursion), on the depth limit and the
-  frame size.
+- [The LeanExe compiler manual's section on recursion](../../docs/leanexe-manual.md#recursion), on
+  the depth limit and the frame size.

@@ -6,7 +6,10 @@ the fixed-point equation of its body.  The code of a recursive function, and of 
 calls one, takes the call depth and traps at `unreachable` at depth 1,000; the theorem for it holds
 at its exported entry, which starts at depth 0.  The programs recurse once and twice per call, on
 words, floats, a pair, a structure, an array of structures, and an owned array that each call
-extends and moves into the next, and one calls two of the others. -/
+extends and moves into the next.  One calls two of the others, one recursion calls another, and
+`spread` calls them inside loops, a build, conditions, and arguments.  `chain_fits` and
+`chain_trapFree` state from the reflector's equations that `chain n` needs `n + 1` frames and that
+the module computes it without a trap for every `n` below 1,000. -/
 
 namespace Verified.Examples.Recursion
 
@@ -175,8 +178,8 @@ def top1 (a b : UInt64) : UInt64 :=
     + x16 + x17 + x18 + x19 + x20 + x21 + x22 + x23 + x24 + x25
 
 /-- A recursion whose frame has 32 positions, as many as the reflector accepts in a function
-that takes the call depth, each holding a value live across the self-call, with `top1` and `top2`
-at the top of the chain: at `n = 999` it runs 1,000 nested frames in Wasmtime's default stack. -/
+that takes the call depth, 26 of them live across the self-call, with `top1` and `top2` at the top
+of the chain: at `n = 999` it runs 1,000 nested frames in Wasmtime's default stack. -/
 def deep (n a b : UInt64) : UInt64 :=
   if n = 0 then top1 a b else
     let x0 := a + b
@@ -214,7 +217,124 @@ decreasing_by
   simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at h ⊢
   omega
 
+/-- Twice `x`: a function without the call depth, to which `spread` passes a call of `chain`. -/
+def double (x : UInt64) : UInt64 := x * 2
+
+/-- Calls of functions that take the call depth in a loop's body, a build's elements, a
+`repeatWhile`'s condition, a destructured pair, an update, the argument of a function without the
+call depth, and the conditions of `if`s on a `Bool`, a float, and `≠`, and of `powGcd`, which takes
+the depth without recursion. -/
+def spread (n : UInt64) (xs : Array Float) : UInt64 :=
+  let total := LeanExe.loop n 0 fun i acc => acc + gcd i 12
+  let ys := LeanExe.build n fun i => chain (i % 4)
+  let r := LeanExe.repeatWhile n 0 (fun s => gcd s 6 < 3) fun s => s + 1
+  let (a, b) := fibPair (1, 1) (n % 8)
+  let zs := ys.set! (n % 4).toNat (pow a 2)
+  let c := double (chain (b % 5))
+  let d := if gcd a b == 1 then c else 0
+  let e := if sumRange xs 0 2 < 1.0 then d else d + 1
+  if powGcd a b ≠ 0 then total + zs.size.toUInt64 + r + e else e
+
+/-- `gcd 12 18` after `n` nested calls: a recursion that calls another function that takes the call
+depth, four calls deep, at its deepest frame. -/
+def countdown (n : UInt64) : UInt64 := if n = 0 then gcd 12 18 else countdown (n - 1)
+termination_by n.toNat
+decreasing_by
+  rename_i h
+  simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at h ⊢
+  omega
+
 verified_compile compiled := [gcd, pow, sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
-  top2, top1, deep]
+  top2, top1, deep, double, spread, countdown]
+
+/-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls find their frames
+exactly when `n < k`. -/
+theorem chain_fits : ∀ (k : Nat) (n : UInt64), compiled.chain.fits k n = true ↔ n.toNat < k
+  | 0, n => by simp [show compiled.chain.fits 0 n = false from rfl]
+  | k + 1, n => by
+    rw [compiled.chain.fits_eq]
+    by_cases h : n = 0
+    · simp [h]
+    · simp only [h, ↓reduceIte, chain_fits k (n - 1)]
+      have hn : n.toNat ≠ 0 := fun e => h (UInt64.toNat_inj.mp (by simpa using e))
+      simp only [UInt64.toNat_sub, UInt64.reduceToNat]
+      have := UInt64.toNat_lt n
+      omega
+
+/-- `chain` allocates nothing. -/
+theorem chain_bound : ∀ (k : Nat) (n : UInt64), compiled.chain.bound k n = 0
+  | 0, _ => rfl
+  | k + 1, n => by
+    rw [compiled.chain.bound_eq, chain_bound k]
+    simp
+
+/-- The module computes `chain n` without a trap for every `n` below 1,000 when `top` lies within
+the memory's cap, and it does not raise `top`. -/
+theorem chain_trapFree : LeanExe.Pipeline.ImplementsA false compiled.module 21 (fun x => chain x)
+    (fun x heap store => x.toNat < 1000 ∧ heap.Within store compiled.module 0)
+    (fun _ heap _ heap' _ => heap'.top.toNat ≤ heap.top.toNat) :=
+  compiled.chain.trapFree.mono
+    (fun x _ _ h => ⟨(chain_fits 1000 x).mpr h.1, by rw [chain_bound]; exact h.2⟩)
+    fun x _ _ _ _ _ h => by simpa [chain_bound] using h
+
+/-- Below `n`, `i + 1` does not wrap. -/
+theorem succ_toNat {i n : UInt64} (h : i < n) : (i + 1).toNat = i.toNat + 1 := by
+  rw [UInt64.lt_iff_toNat_lt] at h
+  have := UInt64.toNat_lt n
+  simp only [UInt64.toNat_add, UInt64.reduceToNat]
+  omega
+
+/-- `fill xs i n` makes `n - i` nested calls below its own when `i < n`, and none otherwise: with
+`k` frames available, its calls find their frames exactly when `n - i < k`, in `Nat`'s
+subtraction. -/
+theorem fill_fits : ∀ (k : Nat) (xs : Array UInt64) (i n : UInt64),
+    compiled.fill.fits k (⟨xs⟩, i, n) = true ↔ n.toNat - i.toNat < k
+  | 0, xs, i, n => by simp [show compiled.fill.fits 0 (⟨xs⟩, i, n) = false from rfl]
+  | k + 1, xs, i, n => by
+    rw [compiled.fill.fits_eq]
+    by_cases h : i < n
+    · simp only [h, ↓reduceIte, fill_fits k, succ_toNat h]
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+    · simp only [h, ↓reduceIte, true_iff]
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+
+/-- Each of the `n - i` pushes of `fill xs i n` extends the call's paid parameter, at a header and
+four times its 8 added bytes. -/
+theorem fill_cost : ∀ (k : Nat) (xs : Array UInt64) (i n : UInt64),
+    compiled.fill.cost k (⟨xs⟩, i, n) ≤ 80 * (n.toNat - i.toNat)
+  | 0, _, _, _ => Nat.zero_le _
+  | k + 1, xs, i, n => by
+    rw [compiled.fill.cost_eq]
+    by_cases h : i < n
+    · have := fill_cost k (xs.push i) (i + 1) n
+      simp only [h, ↓reduceIte, paidGrowCost_eq]
+      rw [succ_toNat h] at this
+      rw [UInt64.lt_iff_toNat_lt] at h
+      omega
+    · simp only [h, ↓reduceIte]
+      exact Nat.zero_le _
+
+/-- The module computes `fill xs i n` without a trap when it makes fewer than 1,000 nested calls
+and `top` can rise within the memory's cap by the credit of `xs`, 16 bytes for each of its words
+and its length, and 80 bytes for each pushed word, and it raises `top` by at most that sum. -/
+theorem fill_trapFree : ImplementsA false compiled.module 20
+    (fun (x : Moved (Array UInt64) × UInt64 × UInt64) => fill x.1.val x.2.1 x.2.2)
+    (fun x heap store => x.2.2.toNat - x.2.1.toNat < 1000 ∧
+      heap.Within store compiled.module
+        (16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat)))
+    (fun x heap _ heap' _ => heap'.top.toNat ≤
+      heap.top.toNat + (16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat))) :=
+  have hle : ∀ x : Moved (Array UInt64) × UInt64 × UInt64, compiled.fill.bound 1000 x ≤
+      16 * (x.1.val.size + 1) + 80 * (x.2.2.toNat - x.2.1.toNat) := by
+    rintro ⟨⟨xs⟩, i, n⟩
+    dsimp only
+    have := fill_cost 1000 xs i n
+    rw [compiled.fill.bound_eq, creditCost]
+    omega
+  compiled.fill.trapFree.mono
+    (fun x _ _ h => ⟨(fill_fits 1000 x.1.val x.2.1 x.2.2).mpr h.1, h.2.mono (hle x)⟩)
+    fun x _ _ _ _ _ h => Nat.le_trans h (Nat.add_le_add_left (hle x) _)
 
 end Verified.Examples.Recursion

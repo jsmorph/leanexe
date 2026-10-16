@@ -44,4 +44,15 @@ theorem build_get_out {α : Type} [Inhabited α] {n : UInt64} {f : UInt64 → α
     (h : ¬ m < n.toNat) : (LeanExe.build n f)[m]! = default := by
   simp [LeanExe.build, h]
 
+/-- Two builds agree when their functions agree below the count. -/
+theorem build_congr {α : Type} {f g : UInt64 → α} {n : UInt64}
+    (h : ∀ i : UInt64, i.toNat < n.toNat → f i = g i) :
+    LeanExe.build n f = LeanExe.build n g := by
+  unfold LeanExe.build
+  congr 1
+  funext j
+  apply h
+  rw [UInt64.toNat_ofNat', Nat.mod_eq_of_lt (lt_of_lt_of_le j.isLt (UInt64.toNat_lt n).le)]
+  exact j.isLt
+
 end LeanExe.IR

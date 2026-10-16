@@ -16,7 +16,7 @@ initial grid to the final one, in one call.
 
 The solvers use grids of records, a `LeanExe.repeatWhile` loop over time steps whose grids move from
 step to step, retries of rejected steps, and the sound-speed and flux arithmetic of each cell.
-Beyond the bytes theorem, the proofs establish complete execution: from a fresh instance with a
+Beyond the bytes theorem, the proofs establish total execution: from a fresh instance with a
 memory cap of at least 1,407 pages, both exports return without a trap and end within 1,407 pages,
 or 88 MiB.  They also prove properties of the Lean programs: positive density and pressure of the
 final states in exact arithmetic, hyperbolicity of the flux at those states, conservation up to a
@@ -72,7 +72,7 @@ on small grids.
 ## Related examples
 
 [`Grids`](../Grids/README.md) has arrays of records in the layout of the solvers' grids.
-[`Drone`](../Drone/README.md) is the other large program with complete execution and a memory bound,
+[`Drone`](../Drone/README.md) is the other large program with total execution and a memory bound,
 and [`Increment`](../Increment/README.md) the smallest.  The LTG entries
 [`repeat-while`](../../ltg/entries/repeat-while/README.md) and
 [`one-array-call`](../../ltg/entries/one-array-call/README.md) use this example's proofs as worked

@@ -1,0 +1,113 @@
+import Verified.Bound
+
+/-! Facts about the allocation bound for proofs that use it: names for the blocks that it charges,
+with their sizes in bytes, and the sums of `sumBelow` and `loopCost`.  `loopCost_le` bounds the
+cost of a loop by an invariant on its index and state. -/
+
+namespace Verified
+
+/-- The growth of `top` for a block of `words` words after its length word. -/
+def blockCost (words : Nat) : Nat := allocCost ((words + 1) * 8)
+
+/-- The growth of `top` for an owned array that is not paid and grows to `words` words, `ext` of
+them added: a block of twice the new length's bytes, and twice the added bytes, which the array
+passes on as potential. -/
+def growCost (words ext : Nat) : Nat := allocCost (16 * (words + 1)) + 16 * ext
+
+/-- The charge for a paid owned array that grows by `ext` words: a header and four times the added
+bytes, which with the array's potential pay for a move and pass the potential on. -/
+def paidGrowCost (ext : Nat) : Nat := allocCost (32 * ext)
+
+/-- The credit for a loop's initial state that is not paid, for an array of `words` words: the most
+potential that the array's block can hold. -/
+def creditCost (words : Nat) : Nat := 16 * (words + 1)
+
+theorem blockCost_eq (words : Nat) : blockCost words = 8 * words + 56 := by
+  simp only [blockCost, allocCost]; omega
+
+theorem growCost_eq (words ext : Nat) : growCost words ext = 16 * words + 16 * ext + 64 := by
+  simp only [growCost, allocCost]; omega
+
+theorem paidGrowCost_eq (ext : Nat) : paidGrowCost ext = 32 * ext + 48 := by
+  simp only [paidGrowCost, allocCost]; omega
+
+/-- `sumBelow` of terms that are all `0`, stated for any `f` so that the conclusion is the term it
+rewrites. -/
+theorem sumBelow_zero {f : Nat → Nat} (h : ∀ k, f k = 0) : ∀ n : Nat, sumBelow f n = 0
+  | 0 => rfl
+  | n + 1 => by simp only [sumBelow, sumBelow_zero h n, h, Nat.add_zero]
+
+theorem sumBelow_const (c : Nat) : ∀ n : Nat, sumBelow (fun _ => c) n = n * c
+  | 0 => by simp [sumBelow]
+  | n + 1 => by rw [sumBelow, sumBelow_const c n, Nat.succ_mul]
+
+theorem sumBelow_le {f g : Nat → Nat} : ∀ {n : Nat}, (∀ k, k < n → f k ≤ g k) →
+    sumBelow f n ≤ sumBelow g n
+  | 0, _ => Nat.le_refl _
+  | n + 1, h => by
+    have := sumBelow_le (n := n) fun k hk => h k (by omega)
+    have := h n (by omega)
+    simp only [sumBelow]
+    omega
+
+/-- `sumBelow` from its first term. -/
+theorem sumBelow_succ' (f : Nat → Nat) :
+    ∀ n : Nat, sumBelow f (n + 1) = f 0 + sumBelow (fun k => f (k + 1)) n
+  | 0 => by simp [sumBelow]
+  | n + 1 => by
+    have ih := sumBelow_succ' f n
+    simp only [sumBelow] at ih ⊢
+    omega
+
+/-- `loopCost` of a loop whose condition and body cost nothing, stated for any costs so that the
+conclusion is the term it rewrites. -/
+theorem loopCost_eq_zero {α : Type} {CA : α → Nat} {C : α → Bool}
+    {BA : UInt64 → α → Nat} {F : UInt64 → α → α} (hCA : ∀ s, CA s = 0) (hBA : ∀ i s, BA i s = 0) :
+    ∀ (n : Nat) (i : UInt64) (s : α), loopCost CA C BA F n i s = 0
+  | 0, _, _ => rfl
+  | n + 1, i, s => by
+    simp only [loopCost, loopCost_eq_zero hCA hBA n, hCA, hBA, Nat.zero_add, ite_self]
+
+/-- `loopCost` of a loop whose condition holds and costs nothing and whose passes cost `c` each. -/
+theorem loopCost_const {α : Type} {F : UInt64 → α → α} (c : Nat) :
+    ∀ (n : Nat) (i : UInt64) (s : α),
+      loopCost (fun _ => 0) (fun _ => true) (fun _ _ => c) F n i s = n * c
+  | 0, _, _ => by simp [loopCost]
+  | n + 1, i, s => by
+    simp only [loopCost, loopCost_const c n, ↓reduceIte, Nat.zero_add, Nat.succ_mul]
+    omega
+
+/-- A bound on the cost of a loop from an invariant `P` of its index and state: when each state
+that `P` admits at index `k` costs at most `cost k`, through the condition and, when the condition
+holds, the body, and the step keeps `P`, the loop costs at most the sum of `cost`. -/
+theorem loopCost_le {α : Type} {CA : α → Nat} {C : α → Bool} {BA : UInt64 → α → Nat}
+    {F : UInt64 → α → α} (P : Nat → α → Prop) (cost : Nat → Nat)
+    (hcost : ∀ k s, P k s → CA s + (if C s then BA (UInt64.ofNat k) s else 0) ≤ cost k)
+    (hstep : ∀ k s, P k s → C s = true → P (k + 1) (F (UInt64.ofNat k) s)) {n : Nat} {I : α}
+    (hI : P 0 I) : loopCost CA C BA F n 0 I ≤ sumBelow cost n := by
+  suffices h : ∀ n k s, P k s →
+      loopCost CA C BA F n (UInt64.ofNat k) s ≤ sumBelow (fun j => cost (k + j)) n by
+    simpa using h n 0 I hI
+  intro n
+  induction n with
+  | zero => intro _ _ _; simp [loopCost, sumBelow]
+  | succ n ih =>
+    intro k s hP
+    have hc := hcost k s hP
+    rw [sumBelow_succ']
+    cases hC : C s
+    · simp only [loopCost, hC, Bool.false_eq_true, ↓reduceIte, Nat.add_zero] at hc ⊢
+      omega
+    · simp only [loopCost, hC, ↓reduceIte, Nat.add_zero] at hc ⊢
+      have hk : UInt64.ofNat k + 1 = UInt64.ofNat (k + 1) := by
+        apply UInt64.toNat_inj.mp
+        simp only [UInt64.toNat_add, UInt64.toNat_ofNat', UInt64.reduceToNat]
+        omega
+      have hn := ih (k + 1) _ (hstep k s hP hC)
+      rw [← hk] at hn
+      have hsum : sumBelow (fun j => cost (k + 1 + j)) n =
+          sumBelow (fun j => cost (k + (j + 1))) n := by
+        congr 1; funext j; congr 1; omega
+      omega
+
+end Verified

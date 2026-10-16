@@ -54,7 +54,31 @@ def insertConserved (us : Array Conserved) (i : UInt64) (u : Conserved) : Array 
 
 def eraseConserved (us : Array Conserved) (i : UInt64) : Array Conserved := LeanExe.eraseAt us i
 
+/-- `n` copies of `u` pushed onto a built array of structures, a loop state whose credit is that of
+a flattened array. -/
+def pushConserved (n : UInt64) (u : Conserved) : Array Conserved :=
+  LeanExe.loop n (LeanExe.build 0 fun _ => u) fun _ acc => acc.push u
+
 verified_compile compiled := [insertParam, eraseParam, insertBuilt, eraseBuilt, insertKeep,
-  sortInsert, removeAll, pointTotal, insertConserved, eraseConserved]
+  sortInsert, removeAll, pointTotal, insertConserved, eraseConserved, pushConserved]
+
+/-- `sortInsert` inserts at most `xs.size` elements into a paid loop state, at a header and four
+times the 8 added bytes each, after the built array's block and its credit. -/
+theorem sortInsert_bound (xs : Array UInt64) :
+    compiled.sortInsert.bound xs ≤ 72 + 80 * xs.size := by
+  rw [compiled.sortInsert.bound_eq, loopCost_const]
+  simp only [LeanExe.build, Array.size_ofFn, blockCost_eq, creditCost, paidGrowCost_eq,
+    UInt64.toNat_zero, Nat.toUInt64, UInt64.toNat_ofNat']
+  have := Nat.mod_le xs.size (2 ^ 64)
+  omega
+
+/-- `pushConserved` pushes `n` structures of three words onto a paid loop state, at a header and
+four times the 24 added bytes each, after the built array's block and its credit. -/
+theorem pushConserved_bound (n : UInt64) (u : Conserved) :
+    compiled.pushConserved.bound (n, u) = 72 + 144 * n.toNat := by
+  rw [compiled.pushConserved.bound_eq, loopCost_const]
+  simp only [LeanExe.build, Array.size_ofFn, blockCost_eq, creditCost, paidGrowCost_eq,
+    UInt64.toNat_zero]
+  omega
 
 end Verified.Examples.Insert

@@ -50,8 +50,8 @@ last pairs, repeated keys, and inputs of 0, 20, and 22 words in Wasmtime against
 
 ## References
 
-- [The manual's section on loops and builds](../../docs/manual.md#loops-and-builds), which describes
-  `LeanExe.loop`.
+- [The LeanExe compiler manual's section on loops and
+  builds](../../docs/leanexe-manual.md#loops-and-builds), which describes `LeanExe.loop`.
 - [The Lean 4 reference on
   arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `xs[i]!` and its
   default.

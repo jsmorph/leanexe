@@ -2,7 +2,10 @@ import Verified.Source
 import Verified.Compile
 import Verified.State
 import Verified.Correct
+import Verified.BoundFacts
 import Verified.Reflect.Lemmas
+import Verified.Reflect.BoundLemmas
+import Verified.Reflect.FitsLemmas
 import Verified.Reflect.Command
 import Verified.Examples.Poly
 import Verified.Examples.Mix
@@ -49,6 +52,9 @@ import Verified.Examples.Pow
 import Verified.Examples.Sinpi
 import Verified.Examples.Erf
 import Verified.Examples.Drone
+import Verified.Examples.Lcg
+import Verified.Examples.ParkMiller
+import Verified.Examples.Xorshift
 import Verified.Examples.Reference
 import Verified.Examples.ArcReference
 import Verified.Examples.HyperbolicReference

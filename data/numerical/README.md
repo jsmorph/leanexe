@@ -1,6 +1,10 @@
 # Verified numerical WASM demonstrations
 
-This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes the current system's numerical programs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to
+source files point to commit `eef07963`, the last commit of that system, and its commands run only
+at that commit.  [The LeanExe compiler manual's list of
+examples](../../docs/leanexe-manual.md#worked-examples) describes the current system's numerical
+programs.
 
 The demonstrations accept binary64 words as sixteen-digit hexadecimal
 strings and run the numerical computation in Wasmtime.  Each theorem concerns
