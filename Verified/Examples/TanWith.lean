@@ -25,7 +25,7 @@ theorem toUInt64_small (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits|
     x.toUInt64 = 0 := by
   rw [F64Convert.toUInt64_eq]
   have hm : Wasm.IEEE64.scaledMagnitude x.toBits < 2 ^ 1074 := by
-    rw [TrigNearest.abs_value, div_lt_one (by positivity)] at h
+    rw [F64RoundNearest.abs_value, div_lt_one (by positivity)] at h
     exact_mod_cast h
   have hfin : Wasm.IEEE64.isFinite x.toBits = true := hxf
   have hnan : Wasm.IEEE64.isNaN x.toBits = false := not_nan_of_finite hxf
@@ -72,8 +72,8 @@ theorem tiny_tan (x : UInt64) (hxf : Finite x) (hx : |value x| < 1 / 2 ^ 27)
     F64SignedRounding.WithinSteps 1 (Real.tan (value x)) x := by
   by_cases h0 : value x = 0
   · rw [h0, Real.tan_zero]
-    exact TrigTiny.zero_step x (hA.mpr h0)
-  · refine TrigTiny.self_step x _ hxf h0 (hx.le.trans (by norm_num)) ?_
+    exact F64SelfStep.zero_step x (hA.mpr h0)
+  · refine F64SelfStep.self_step x _ hxf h0 (hx.le.trans (by norm_num)) ?_
     have hc := tan_cube (value x) (hx.le.trans (by norm_num))
     rw [abs_sub_comm]
     have h2 : |value x| ^ 2 ≤ 1 / 2 ^ 54 := by

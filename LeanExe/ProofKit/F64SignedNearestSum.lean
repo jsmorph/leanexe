@@ -1,6 +1,7 @@
-import Verified.Examples.TrigFloatTools
+import LeanExe.ProofKit.F64ValueExact
 import LeanExe.ProofKit.F64PackingModel
 import LeanExe.ProofKit.F64Magnitude
+import LeanExe.ProofKit.F64RoundNearest
 
 /-!
 Rounded sums and differences are nearest: no finite word lies closer to the exact result.  The
@@ -10,11 +11,11 @@ such a multiple.  From this follows fdlibm's compensated difference: for `|w| �
 `s = a - w` rounded, `a - s` and `(a - s) - w` are exact, so `s + ((a - s) - w) = a - w`.
 -/
 
-namespace Verified.Examples.TrigNearest
+namespace LeanExe.ProofKit.F64SignedNearestSum
 
 set_option exponentiation.threshold 4096
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools
+open CodeLib.IEEE64 F64ValueExact
 
 /-- `roundShift n s` is a nearest multiple of `2 ^ s`. -/
 theorem roundShift_near (n s : Nat) (hs : 1 ≤ s) (M : Int) :
@@ -257,20 +258,10 @@ theorem sub_nearest (a b : UInt64) (ha : Finite a) (hb : Finite b)
     (hbound : |value a - value b| < 2 ^ 1023) (v : UInt64) :
     |value (Wasm.IEEE64.sub a b) - (value a - value b)| ≤ |value v - (value a - value b)| := by
   have hn := F64Magnitude.negate_value b hb
-  have h := add_nearest a (Wasm.IEEE64.negate b) ha hn.1 (by rw [hn.2, ← sub_eq_add_neg]; exact hbound) v
+  have h := add_nearest a (Wasm.IEEE64.negate b) ha hn.1
+    (by rw [hn.2, ← sub_eq_add_neg]; exact hbound) v
   rw [hn.2, ← sub_eq_add_neg] at h
   exact h
-
-theorem abs_value (v : UInt64) :
-    |value v| = (Wasm.IEEE64.scaledMagnitude v : ℝ) / 2 ^ 1074 := by
-  have h := abs_scaled v
-  simp only [value]
-  rw [abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
-  have h' : |((Wasm.IEEE64.scaledValue v : Int) : ℝ)| = ((Wasm.IEEE64.scaledMagnitude v : Int) : ℝ) := by
-    rw [← Int.cast_abs, h]
-  rw [h']
-  push_cast
-  ring
 
 /-- A word is a multiple of `2 ^ (e - 1)` scaled units, `e` its exponent field. -/
 theorem grid_dvd (v : UInt64) :
@@ -292,7 +283,7 @@ theorem grid_dvd (v : UInt64) :
 /-- A word's magnitude is below `2 ^ (53 + e - 1)` scaled units. -/
 theorem grid_bound (v : UInt64) :
     |value v| < (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 := by
-  rw [abs_value, div_lt_div_iff_of_pos_right (by positivity)]
+  rw [F64RoundNearest.abs_value, div_lt_div_iff_of_pos_right (by positivity)]
   have hf : Wasm.IEEE64.fraction v < 2 ^ 52 := Nat.mod_lt _ (by positivity)
   have h : Wasm.IEEE64.scaledMagnitude v < 2 ^ (53 + (Wasm.IEEE64.exponent v - 1)) := by
     by_cases he : Wasm.IEEE64.exponent v = 0
@@ -308,7 +299,7 @@ theorem grid_bound (v : UInt64) :
 /-- A normal word's magnitude is at least `2 ^ (52 + e - 1)` scaled units. -/
 theorem grid_lower (v : UInt64) (he : 1 ≤ Wasm.IEEE64.exponent v) :
     (2 : ℝ) ^ (52 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 ≤ |value v| := by
-  rw [abs_value, div_le_div_iff_of_pos_right (by positivity)]
+  rw [F64RoundNearest.abs_value, div_le_div_iff_of_pos_right (by positivity)]
   have h : 2 ^ (52 + (Wasm.IEEE64.exponent v - 1)) ≤ Wasm.IEEE64.scaledMagnitude v := by
     simp only [Wasm.IEEE64.scaledMagnitude, show (Wasm.IEEE64.exponent v == 0) = false by
       simp; omega, Bool.false_eq_true, ite_false]
@@ -425,4 +416,4 @@ theorem small_two_diff (a w : UInt64) (ha : Finite a) (hw : Finite w)
 #print axioms grid_lower
 #print axioms small_two_diff
 
-end Verified.Examples.TrigNearest
+end LeanExe.ProofKit.F64SignedNearestSum

@@ -37,8 +37,8 @@ theorem pos_toNat (w : UInt64) (h : 0 < value w) : w.toNat < 2 ^ 63 := by
 `2 ^ -53` away from `1/2`. -/
 theorem below_one (v : UInt64) (h0 : 1 / 2 ≤ |value v|) (h1 : |value v| < 1) :
     |value v| ≤ 1 - 1 / 2 ^ 53 ∧ (|value v| = 1 / 2 ∨ 1 / 2 + 1 / 2 ^ 53 ≤ |value v|) := by
-  have hl := TrigNearest.grid_lower v
-  have hb := TrigNearest.grid_bound v
+  have hl := F64SignedNearestSum.grid_lower v
+  have hb := F64SignedNearestSum.grid_bound v
   have he1 : 1074 ≤ 53 + (Wasm.IEEE64.exponent v - 1) := by
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 ≤ 1 / 2 := by
@@ -55,7 +55,7 @@ theorem below_one (v : UInt64) (h0 : 1 / 2 ≤ |value v|) (h1 : |value v| < 1) :
   obtain ⟨m, hm, -⟩ := mag_split v
   have he : Wasm.IEEE64.exponent v - 1 = 1021 := by omega
   rw [he] at hm
-  rw [TrigNearest.abs_value, hm] at h0 h1 ⊢
+  rw [F64RoundNearest.abs_value, hm] at h0 h1 ⊢
   push_cast at h0 h1 ⊢
   rw [div_lt_iff₀ (by positivity)] at h1
   rw [le_div_iff₀ (by positivity)] at h0

@@ -1,6 +1,6 @@
 import Verified.Examples.TanMath
 import Verified.Examples.TanStep
-import Verified.Examples.TrigNearest
+import LeanExe.ProofKit.F64SignedNearestSum
 
 /-!
 The even path of `Tan.kernelTan` below `0x3FE59428`: `x + r` rounded, for `|x| = X ≤ 0.67434`
@@ -204,7 +204,7 @@ theorem even_within (x y : UInt64) (r X : ℝ) (hxf : Finite x) (hyf : Finite y)
   obtain ⟨hfin, -⟩ := F64AddBounds.add_real_relative x _ hxf hcf hb
   have hnear : ∀ v : UInt64, Finite v → |value (Wasm.IEEE64.add x (corrW x y)) -
       (value x + value (corrW x y))| ≤ |value v - (value x + value (corrW x y))| :=
-    fun v _ => TrigNearest.add_nearest x _ hxf hcf hb v
+    fun v _ => F64SignedNearestSum.add_nearest x _ hxf hcf hb v
   have hr6 : |r| ≤ 6745 / 10000 := by nlinarith
   have hpi := Real.pi_gt_three
   have hTa := abs_tan r (by linarith)

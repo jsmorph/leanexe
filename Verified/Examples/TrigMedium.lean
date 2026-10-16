@@ -12,7 +12,7 @@ The accuracy of `Trig.remMedium`.  For a positive double `x` with `1 ≤ x` and 
 
 namespace Verified.Examples.TrigMedium
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigSmall TrigMediumConst
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigSmall TrigMediumConst
   TrigMediumFn TrigMediumCases TrigMediumA TrigMediumB TrigMediumC
 
 /-- `remMedium` on words. -/

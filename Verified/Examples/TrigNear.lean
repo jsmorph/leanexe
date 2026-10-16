@@ -16,7 +16,7 @@ before the conversion to steps.
 namespace Verified.Examples.TrigNear
 
 open CodeLib.IEEE64 LeanExe.ProofKit TrigKernelWords TrigKernelSpec TrigCosKernel TrigReduce
-  TrigStep TrigTiny TrigQuadrant TrigSinCos F64Approx
+  TrigStep F64SelfStep TrigQuadrant TrigSinCos F64Approx
 
 local notation "𝐮" => unitRoundoff64
 

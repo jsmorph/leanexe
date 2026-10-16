@@ -83,18 +83,17 @@ Each module ends with `#print axioms` lines, and the logs below are in `build/tr
 
 ### Modules
 
-The proof has 32 modules in `Verified/Examples/`, and `TrigFile` adds the file theorem.  The table lists the 32 by stage, with the stages in dependency order: no module imports a module of a later row, and within a row no module imports a later one.  [The root `Verified` import](../../Verified.lean) includes `TrigTheorem`, so `lake build Verified` checks the 32, and `tests/verified/run.sh` builds `TrigTheorem` again before it checks `TrigFile`.
+The proof has 29 modules in `Verified/Examples/`, and `TrigFile` adds the file theorem.  The table lists the 29 by stage, with the stages in dependency order: no module imports a module of a later row, and within a row no module imports a later one.  [The root `Verified` import](../../Verified.lean) includes `TrigTheorem`, so `lake build Verified` checks the 32, and `tests/verified/run.sh` builds `TrigTheorem` again before it checks `TrigFile`.
 
 | Stage | Modules | Content |
 |---|---|---|
 | `π` and its tables | `TrigPi`, `TrigWindows` | `π` within `2^-1270` from Machin's formula, the two tables, and the windows of `invPi` for every exponent field from 1043 to 2046. |
-| Exact arithmetic | `TrigFloatTools`, `TrigNearest` | Exact sums on grids, and the nearest property of rounded sums that the compensated steps need. |
 | Kernel polynomials | `TrigKernelPoly`, `TrigKernelWide` | The polynomials against `sin` and `cos` on `\|x\| ≤ 0.7854` and on `\|x\| ≤ 0.78541`. |
 | Kernel rounding | `TrigApprox`, `TrigKernelWords`, `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec`, `TrigCosKernel` | Error tracking with magnitude bounds, the kernels on words, and the evaluated kernels against `sin (x + y)` and `cos (x + y)`. |
 | Distance | `TrigDistance` | `quadrant_distance`. |
 | Large reduction | `TrigWords`, `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | The word routines, the integer stages, the exact two-sum, and `remLarge_spec`. |
 | Small and medium reductions | `TrigSmall`, `TrigMediumConst`, `TrigMediumFn`, `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC`, `TrigMedium` | The one-step reduction for `k` from 1 to 4, the six pieces of `π/2`, the count, and the three outcomes of the medium reduction. |
-| Assembly | `TrigReduce`, `TrigStep`, `TrigTiny`, `TrigQuadrant`, `TrigSinCos`, `TrigTheorem` | `remPio2_spec`, the final steps, the quadrants, `sin_within`, `cos_within`, and the byte theorems. |
+| Assembly | `TrigReduce`, `TrigStep`, `TrigQuadrant`, `TrigSinCos`, `TrigTheorem` | `remPio2_spec`, the final steps, the quadrants, `sin_within`, `cos_within`, and the byte theorems. |
 
 ### Reduction
 
@@ -118,11 +117,11 @@ Let `u = 2^-53` and `X = |y0|`.  The polynomial bounds compare each kernel polyn
 | Evaluated cosine kernel, its last rounding included | `(7/5) u`, of which the omitted term `y1 (sin y0 - y0)` contributes up to `0.127 u` | `TrigCosKernel.cos_spec` |
 | Reduction | `\|r\|/2^60` | `TrigReduce.remPio2_spec` |
 
-The final steps use two criteria.  `F64RelativeStep.within_one_relative` accepts a word within `(11/8) u |y|` of `y`, which leaves `(3/8) u` beside the last rounding, and `TrigStep.unit_step` accepts a word within one and a half spacings of a number of magnitude from `1/2 + 2^-50` to 1, where the spacing below 1 is `u`.  The table gives the bound and the allowance of each path.
+The final steps use two criteria.  `F64RelativeStep.within_one_relative` accepts a word within `(11/8) u |y|` of `y`, which leaves `(3/8) u` beside the last rounding, and `F64UnitStep.unit_step` accepts a word within one and a half spacings of a number of magnitude from `1/2 + 2^-50` to 1, where the spacing below 1 is `u`.  The table gives the bound and the allowance of each path.
 
 | Inputs | Path | Bound | Allowance | Theorem |
 |---|---|---|---|---|
-| `sin`, `0 < \|x\| < 2^-26` | the result is `x` | `\|sin x - x\| ≤ \|x\|³/6 < 2^-54 \|x\|` | `2^-54` relative to the word | `TrigTiny.self_step` |
+| `sin`, `0 < \|x\| < 2^-26` | the result is `x` | `\|sin x - x\| ≤ \|x\|³/6 < 2^-54 \|x\|` | `2^-54` relative to the word | `F64SelfStep.self_step` |
 | `sin`, `\|r\| ≤ 0.54` | kernel, direct or reduced | `0.31 u \|sin r\|` before the last rounding | `(3/8) u \|sin r\|` | `TrigStep.sin_final` |
 | `sin`, `0.54 < \|r\| ≤ 0.78541` | kernel, direct or reduced | `1.44 u`, the last rounding included | `1.5 u` | `TrigStep.sin_final` through `unit_step` |
 | `cos`, `\|x\| < 0x3E46A09E00000000` | the result is 1 | `1 - cos x ≤ x²/2 ≤ u` | `1.5 u` | `TrigSinCos.cos_within` through `unit_step` |
@@ -132,7 +131,7 @@ The sine kernel's bound reaches `0.44 u` at `|r| = π/4`, above the `(3/8) u` of
 
 ### Shared modules
 
-The proof modules import 15 ProofKit modules directly and 96 with the ProofKit modules those import, most of them the arithmetic chain of `F64Add`, `F64Mul`, `F64Div`, `F32*`, and `F64Bits` that proves Lean's float operations equal to Talos's `IEEE64` functions.  The modules specific to the analysis are [the polynomial bound checked by the kernel](../../LeanExe/ProofKit/PolyBound.lean), [Taylor remainders of `sin`, `cos`, and other series](../../LeanExe/ProofKit/TaylorRemainder.lean), [error tracking of operations](../../LeanExe/ProofKit/F64ErrorTrack.lean), [the relative one-step criterion](../../LeanExe/ProofKit/F64RelativeStep.lean), [one step against the full reference](../../LeanExe/ProofKit/F64FullStep.lean), [the signed reference](../../LeanExe/ProofKit/F64SignedRounding.lean), [exact products by powers of two](../../LeanExe/ProofKit/F64ExactProduct.lean), [conversions between words and floats](../../LeanExe/ProofKit/F64Convert.lean), [grid exactness](../../LeanExe/ProofKit/F64GridExact.lean), [exponent, magnitude, and sign](../../LeanExe/ProofKit/F64Magnitude.lean), and [borrowed tables kept across calls](../../LeanExe/ProofKit/BorrowedKept.lean).  `TrigPi` takes Machin's formula from Mathlib's `Real.four_mul_arctan_inv_5_sub_arctan_inv_239` [15] and proves the alternating series bound of the arctangent.
+The proof modules import 17 ProofKit modules directly and 137 with the ProofKit modules those import, most of them the arithmetic chain of `F64Add`, `F64Mul`, `F64Div`, `F32*`, and `F64Bits` that proves Lean's float operations equal to Talos's `IEEE64` functions.  The modules specific to the analysis are [the polynomial bound checked by the kernel](../../LeanExe/ProofKit/PolyBound.lean), [Taylor remainders of `sin`, `cos`, and other series](../../LeanExe/ProofKit/TaylorRemainder.lean), [error tracking of operations](../../LeanExe/ProofKit/F64ErrorTrack.lean), [the relative one-step criterion](../../LeanExe/ProofKit/F64RelativeStep.lean), [one step near 1](../../LeanExe/ProofKit/F64UnitStep.lean), [one step from a word to itself](../../LeanExe/ProofKit/F64SelfStep.lean), [exact sums and differences stated with values](../../LeanExe/ProofKit/F64ValueExact.lean), [the nearest property of rounded sums and fdlibm's compensated difference](../../LeanExe/ProofKit/F64SignedNearestSum.lean), [one step against the full reference](../../LeanExe/ProofKit/F64FullStep.lean), [the signed reference](../../LeanExe/ProofKit/F64SignedRounding.lean), [exact products by powers of two](../../LeanExe/ProofKit/F64ExactProduct.lean), [conversions between words and floats](../../LeanExe/ProofKit/F64Convert.lean), [grid exactness](../../LeanExe/ProofKit/F64GridExact.lean), [exponent, magnitude, and sign](../../LeanExe/ProofKit/F64Magnitude.lean), and [borrowed tables kept across calls](../../LeanExe/ProofKit/BorrowedKept.lean).  `TrigPi` takes Machin's formula from Mathlib's `Real.four_mul_arctan_inv_5_sub_arctan_inv_239` [15] and proves the alternating series bound of the arctangent.
 
 ### Kernel-checked facts
 

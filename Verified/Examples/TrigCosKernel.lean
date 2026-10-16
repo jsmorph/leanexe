@@ -1,6 +1,6 @@
 import Verified.Examples.TrigSinTail
-import Verified.Examples.TrigNearest
-import Verified.Examples.TrigFloatTools
+import LeanExe.ProofKit.F64SignedNearestSum
+import LeanExe.ProofKit.F64ValueExact
 import LeanExe.ProofKit.F64ExactProduct
 
 /-!
@@ -26,7 +26,7 @@ theorem half_exact (z : UInt64) (hzf : Finite z) (hz : 1 / 2 ^ 1000 ≤ |value z
     Finite (Wasm.IEEE64.mul half z) ∧ value (Wasm.IEEE64.mul half z) = value z / 2 := by
   have he2 : 2 ≤ Wasm.IEEE64.exponent z := by
     by_contra h
-    have hb := TrigNearest.grid_bound z
+    have hb := F64SignedNearestSum.grid_bound z
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent z - 1)) / 2 ^ 1074 ≤ 1 / 2 ^ 1000 := by
       rw [div_le_div_iff₀ (by positivity) (by positivity), one_mul, ← pow_add]
       exact pow_le_pow_right₀ (by norm_num) (by omega)
@@ -37,7 +37,7 @@ theorem half_exact (z : UInt64) (hzf : Finite z) (hz : 1 / 2 ^ 1000 ≤ |value z
     exact h
   have hlt : Wasm.IEEE64.exponent z ≤ 1023 := by
     by_contra h
-    have hl := TrigNearest.grid_lower z (by omega)
+    have hl := F64SignedNearestSum.grid_lower z (by omega)
     have : (2 : ℝ) ≤ 2 ^ (52 + (Wasm.IEEE64.exponent z - 1)) / 2 ^ 1074 := by
       rw [le_div_iff₀ (by positivity), ← pow_succ']
       exact pow_le_pow_right₀ (by norm_num) (by omega)
@@ -61,11 +61,11 @@ theorem one_sub_exact (w : UInt64) (hwf : Finite w) (hw1 : 1 / 2 ≤ value w) (h
   obtain ⟨-, -, -, -, -, -, -, -, -, -, -, -, -, fo⟩ := words_finite
   have h1 : (2 : ℝ) ^ (52 + 1021) / 2 ^ 1074 = 1 / 2 := by norm_num
   have h2 : (2 : ℝ) ^ (53 + 1021) / 2 ^ 1074 = 1 := by norm_num
-  have hda := TrigFloatTools.dvd_of_value one fo 1021 (by rw [h1, value_one]; norm_num)
-  have hdb := TrigFloatTools.dvd_of_value w hwf 1021 (by
+  have hda := F64ValueExact.dvd_of_value one fo 1021 (by rw [h1, value_one]; norm_num)
+  have hdb := F64ValueExact.dvd_of_value w hwf 1021 (by
     rw [h1, abs_of_nonneg (by linarith)]
     exact hw1)
-  obtain ⟨hf, hv⟩ := TrigFloatTools.sub_exact one w fo hwf 1021 (by norm_num) hda hdb (by
+  obtain ⟨hf, hv⟩ := F64ValueExact.sub_exact one w fo hwf 1021 (by norm_num) hda hdb (by
     rw [h2, value_one, abs_le]
     constructor <;> linarith)
   exact ⟨hf, by rw [hv, value_one]⟩
@@ -206,7 +206,7 @@ theorem cos_spec (x y : UInt64) (X : ℝ) (hxf : Finite x) (hyf : Finite y) (hX 
     have : 𝐮 ≤ 1 / 100 := by rw [hu]; norm_num
     linarith [hwe'.1]
   have hw2 : value W ≤ 1 := by
-    have hn := TrigNearest.sub_nearest one HZ fo hhf hb1 one
+    have hn := F64SignedNearestSum.sub_nearest one HZ fo hhf hb1 one
     rw [value_one, show (1 : ℝ) - (1 - value HZ) = value HZ by ring,
       abs_of_nonneg hHZ0] at hn
     have := (abs_le.mp hn).2

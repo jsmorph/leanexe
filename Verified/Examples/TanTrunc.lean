@@ -1,6 +1,6 @@
 import Verified.Examples.TanWords
-import Verified.Examples.TrigNearest
-import Verified.Examples.TrigFloatTools
+import LeanExe.ProofKit.F64SignedNearestSum
+import LeanExe.ProofKit.F64ValueExact
 import Verified.Examples.TrigSmall
 import LeanExe.ProofKit.F64ExactProduct
 
@@ -172,13 +172,13 @@ theorem sterbenz (a b : UInt64) (ha : Finite a) (hb : Finite b) (hs : 0 ≤ valu
     (hea : Wasm.IEEE64.exponent a ≤ 2044) :
     Finite (Wasm.IEEE64.sub a b) ∧ value (Wasm.IEEE64.sub a b) = value a - value b := by
   obtain ⟨hda, hdb⟩ := same_sign_diff _ _ hs h1 h2
-  have hga := TrigNearest.grid_bound a
-  have hgb := TrigNearest.grid_bound b
+  have hga := F64SignedNearestSum.grid_bound a
+  have hgb := F64SignedNearestSum.grid_bound b
   set m := min (Wasm.IEEE64.exponent a) (Wasm.IEEE64.exponent b) with hm
   have hdiv (v : UInt64) (h : m ≤ Wasm.IEEE64.exponent v) :
       (2 : Int) ^ (m - 1) ∣ Wasm.IEEE64.scaledValue v :=
-    dvd_trans (pow_dvd_pow 2 (by omega)) (TrigNearest.grid_dvd v)
-  refine TrigFloatTools.sub_exact a b ha hb (m - 1) (by omega) (hdiv a (min_le_left _ _))
+    dvd_trans (pow_dvd_pow 2 (by omega)) (F64SignedNearestSum.grid_dvd v)
+  refine F64ValueExact.sub_exact a b ha hb (m - 1) (by omega) (hdiv a (min_le_left _ _))
     (hdiv b (min_le_right _ _)) ?_
   rcases min_choice (Wasm.IEEE64.exponent a) (Wasm.IEEE64.exponent b) with h | h
   · rw [hm, h]

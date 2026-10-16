@@ -102,7 +102,7 @@ theorem cospi_small (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 
     by_cases hh : |value x.toBits| = 1 / 2
     · rw [if_pos ((feq_iff _ _ hf (by rw [q5]; exact f5)).mpr (by rw [hv, q5, v5, hh])), hh,
         show Real.pi * (1 / 2) = Real.pi / 2 by ring, Real.cos_pi_div_two, (zero_bits').1]
-      exact TrigTiny.zero_step _ (by decide)
+      exact F64SelfStep.zero_step _ (by decide)
     · rw [if_neg (fun h' => hh (by
         have := (feq_iff _ _ hf (by rw [q5]; exact f5)).mp h'
         rw [hv, q5, v5] at this

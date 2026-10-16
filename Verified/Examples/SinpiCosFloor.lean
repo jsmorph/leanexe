@@ -33,7 +33,7 @@ theorem floor_frac (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toBi
   obtain ⟨hs, hf, hv, hn, hix, hlx⟩ := abs_facts x hxf
   have hpos : 0 < value x.abs.toBits := by rw [hv]; linarith
   have he1 : 1023 ≤ Wasm.IEEE64.exponent x.abs.toBits := by
-    have := TrigNearest.grid_bound x.abs.toBits
+    have := F64SignedNearestSum.grid_bound x.abs.toBits
     rw [abs_of_pos hpos, hv] at this
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 ≤ 1 := by
@@ -41,7 +41,7 @@ theorem floor_frac (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toBi
       exact pow_le_pow_right₀ (by norm_num) (by omega)
     linarith
   have he2 : Wasm.IEEE64.exponent x.abs.toBits ≤ 1074 := by
-    have := TrigNearest.grid_lower x.abs.toBits (by omega)
+    have := F64SignedNearestSum.grid_lower x.abs.toBits (by omega)
     rw [abs_of_pos hpos, hv] at this
     by_contra hc
     have : (2 : ℝ) ^ 52 ≤ 2 ^ (52 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 := by
@@ -70,7 +70,7 @@ theorem floor_frac (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toBi
   refine ⟨N, hN1, hN52, hNv, hflf, ?_, by rw [hab]; exact hdf, by rw [hab, hdv], ?_⟩
   · intro hj
     rw [hj0] at hj
-    have := TrigNearest.grid_lower x.abs.toBits (by omega)
+    have := F64SignedNearestSum.grid_lower x.abs.toBits (by omega)
     rw [abs_of_pos hpos, hv] at this
     have h31 : (2 : ℝ) ^ 31 ≤
         2 ^ (52 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 := by
@@ -182,7 +182,7 @@ theorem cospi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
         hshift, hh,
         show Real.pi * (1 / 2) = Real.pi / 2 by ring, Real.cos_pi_div_two, neg_zero, ite_self,
         (zero_bits').1]
-      exact TrigTiny.zero_step _ (by decide)
+      exact F64SelfStep.zero_step _ (by decide)
     · have hb : (x.abs - fl == 0.5) = false := by rw [beq_half _ hdf, hdv]; simpa using hh
       rw [hb, Bool.and_false, if_neg hff, frac_high _ F ha63 hdv hF0, hodd]
       have hc : F64SignedRounding.WithinSteps 1 (Real.cos (Real.pi * F))

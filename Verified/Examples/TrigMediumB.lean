@@ -8,7 +8,7 @@ the second stops, `y0 + y1 = R2 - W2'`, within `x / 2 ^ 118` of `r = x - N π/2`
 
 namespace Verified.Examples.TrigMediumB
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigSmall TrigMediumConst
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigSmall TrigMediumConst
   TrigMediumCases
 
 /-- The second step of the medium reduction, after the first cancels below `x / 2 ^ 16`:

@@ -1,4 +1,4 @@
-import Verified.Examples.TrigNearest
+import LeanExe.ProofKit.F64SignedNearestSum
 import Verified.Examples.FmaSpec
 import LeanExe.ProofKit.F64Sterbenz
 import LeanExe.ProofKit.F64GridExact
@@ -67,14 +67,15 @@ theorem onGrid_sub {r q : ℝ} {k : ℕ} (hr : OnGrid r k) (hq : OnGrid q k) : O
 def gx (w : UInt64) : ℕ := Wasm.IEEE64.exponent w - 1
 
 theorem onGrid_word (w : UInt64) : OnGrid (value w) (gx w) := by
-  obtain ⟨n, hn⟩ := TrigNearest.grid_dvd w
+  obtain ⟨n, hn⟩ := F64SignedNearestSum.grid_dvd w
   refine ⟨n, ?_⟩
   unfold gx
   rw [value, hn]
   push_cast
   ring
 
-theorem word_lt (w : UInt64) : |value w| < 2 ^ (53 + gx w) / 2 ^ 1074 := TrigNearest.grid_bound w
+theorem word_lt (w : UInt64) : |value w| < 2 ^ (53 + gx w) / 2 ^ 1074 :=
+  F64SignedNearestSum.grid_bound w
 
 /-- Discreteness: a grid number below `2 ^ 53 + 1` grid steps has at most 53 bits. -/
 theorem rep_of_onGrid {r : ℝ} {k : ℕ} (h : OnGrid r k) (hk : k ≤ 2043)
@@ -102,7 +103,7 @@ theorem gx_ge (w : UInt64) (k : ℕ) (h : 2 ^ (52 + k) / 2 ^ 1074 ≤ |value w|)
 
 /-- A normal word is at least `2 ^ (52 + gx w)` scaled units in magnitude. -/
 theorem word_ge (w : UInt64) (h : 1 ≤ Wasm.IEEE64.exponent w) :
-    2 ^ (52 + gx w) / 2 ^ 1074 ≤ |value w| := TrigNearest.grid_lower w h
+    2 ^ (52 + gx w) / 2 ^ 1074 ≤ |value w| := F64SignedNearestSum.grid_lower w h
 
 /-- A word of grid exponent `g` is at most `(2 ^ 53 - 1) 2 ^ g` scaled units. -/
 theorem word_le (w : UInt64) : |value w| ≤ (2 ^ 53 - 1) * 2 ^ gx w / 2 ^ 1074 := by
@@ -229,7 +230,8 @@ theorem add_near (a b : UInt64) (ha : Finite a) (hb : Finite b)
     Finite (Wasm.IEEE64.add a b) ∧ ∀ v : UInt64,
       |value (Wasm.IEEE64.add a b) - (value a + value b)| ≤ |value v - (value a + value b)| := by
   have h : |value a + value b| < 2 ^ 1023 := lt_of_le_of_lt hs (by norm_num)
-  exact ⟨(F64AddBounds.add_real_relative a b ha hb h).1, TrigNearest.add_nearest a b ha hb h⟩
+  exact ⟨(F64AddBounds.add_real_relative a b ha hb h).1,
+    F64SignedNearestSum.add_nearest a b ha hb h⟩
 
 /-- The rounded difference of two words with a difference below `2 ^ 1022`: finite and nearest. -/
 theorem sub_near (a b : UInt64) (ha : Finite a) (hb : Finite b)
@@ -237,7 +239,8 @@ theorem sub_near (a b : UInt64) (ha : Finite a) (hb : Finite b)
     Finite (Wasm.IEEE64.sub a b) ∧ ∀ v : UInt64,
       |value (Wasm.IEEE64.sub a b) - (value a - value b)| ≤ |value v - (value a - value b)| := by
   have h : |value a - value b| < 2 ^ 1023 := lt_of_le_of_lt hs (by norm_num)
-  exact ⟨(F64AddBounds.sub_real_relative a b ha hb h).1, TrigNearest.sub_nearest a b ha hb h⟩
+  exact ⟨(F64AddBounds.sub_real_relative a b ha hb h).1,
+    F64SignedNearestSum.sub_nearest a b ha hb h⟩
 
 /-- A difference that a word holds is computed exactly. -/
 theorem sub_exact_rep (a b : UInt64) (ha : Finite a) (hb : Finite b)

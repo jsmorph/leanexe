@@ -210,6 +210,7 @@ import LeanExe.ProofKit.F64RationalNormalize
 import LeanExe.ProofKit.F64RationalScale
 import LeanExe.ProofKit.F64RelError
 import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64RelativeStepLow
 import LeanExe.ProofKit.F64RelativeStepWide
 import LeanExe.ProofKit.F64RelativeSteps
 import LeanExe.ProofKit.F64RoundDouble
@@ -224,7 +225,9 @@ import LeanExe.ProofKit.F64RoundingResidual
 import LeanExe.ProofKit.F64RoundingScale
 import LeanExe.ProofKit.F64RusanovResidual
 import LeanExe.ProofKit.F64Saturate
+import LeanExe.ProofKit.F64SelfStep
 import LeanExe.ProofKit.F64Sign
+import LeanExe.ProofKit.F64SignedNearestSum
 import LeanExe.ProofKit.F64SignedRounding
 import LeanExe.ProofKit.F64Source
 import LeanExe.ProofKit.F64Sqrt
@@ -245,7 +248,9 @@ import LeanExe.ProofKit.F64TopPack
 import LeanExe.ProofKit.F64TopTwoSum
 import LeanExe.ProofKit.F64TwoSteps
 import LeanExe.ProofKit.F64TwoSum
+import LeanExe.ProofKit.F64UnitStep
 import LeanExe.ProofKit.F64UpperWord
+import LeanExe.ProofKit.F64ValueExact
 import LeanExe.ProofKit.F64WithinSelf
 import LeanExe.ProofKit.F64WithinZero
 import LeanExe.ProofKit.FixedArrayAllocate

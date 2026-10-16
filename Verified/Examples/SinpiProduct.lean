@@ -140,7 +140,8 @@ theorem two_sum (a b : UInt64) (ha : Finite a) (hb : Finite b) (hsmall : 4 * |va
       value (Wasm.IEEE64.add (Wasm.IEEE64.sub a (Wasm.IEEE64.add a b)) b) =
         value a + value b - value (Wasm.IEEE64.add a b) := by
   obtain ⟨hnf, hnv⟩ := F64Magnitude.negate_value b hb
-  have h := TrigNearest.small_two_diff a (Wasm.IEEE64.negate b) ha hnf (by rw [hnv, abs_neg]; exact hsmall) hbig
+  have h := F64SignedNearestSum.small_two_diff a (Wasm.IEEE64.negate b) ha hnf
+    (by rw [hnv, abs_neg]; exact hsmall) hbig
   rw [← add_eq_sub, hnv, sub_neg_eq_add] at h
   obtain ⟨h1, h2, -, -, h5, h6⟩ := h
   rw [← add_eq_sub] at h5 h6

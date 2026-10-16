@@ -1,5 +1,5 @@
 import Verified.Examples.TrigQuadrant
-import Verified.Examples.TrigTiny
+import LeanExe.ProofKit.F64SelfStep
 
 /-!
 The accuracy of `Trig.sin` and `Trig.cos`: for every finite `x`, the result lies within one
@@ -9,7 +9,7 @@ step of the nearest-even reference of `sin x` and `cos x`.
 namespace Verified.Examples.TrigSinCos
 
 open CodeLib.IEEE64 LeanExe.ProofKit TrigKernelWords TrigKernelSpec TrigCosKernel TrigReduce
-  TrigStep TrigTiny TrigQuadrant
+  TrigStep F64SelfStep TrigQuadrant
 
 local notation "𝐮" => unitRoundoff64
 
@@ -333,7 +333,7 @@ theorem cos_within (x : Float) (hxf : Finite x.toBits) :
         rw [← sq_abs]
         exact pow_le_pow_left₀ (abs_nonneg _) hhi.le 2
       have hx2' : value x.toBits ^ 2 ≤ 1 / 2 ^ 52 := hx2.trans (by norm_num)
-      refine unit_step _ one fo ?_ (Real.abs_cos_le_one _) ?_
+      refine F64UnitStep.unit_step _ one fo ?_ (Real.abs_cos_le_one _) ?_
       · rw [abs_of_nonneg (by linarith)]
         linarith
       · rw [value_one, abs_lt]

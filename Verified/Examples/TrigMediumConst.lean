@@ -1,5 +1,5 @@
 import Verified.Examples.TrigSmall
-import Verified.Examples.TrigNearest
+import LeanExe.ProofKit.F64SignedNearestSum
 import LeanExe.ProofKit.F64PowerScale
 import LeanExe.ProofKit.F64GridExact
 
@@ -13,7 +13,7 @@ the grid, `t - r` and `e` are exact, and `r - w'` equals `t - w - A` up to the r
 
 namespace Verified.Examples.TrigMediumConst
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigPi TrigSmall
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigPi TrigSmall
 
 def pio2_2 : UInt64 := 0x3DD0B4611A600000
 def pio2_2t : UInt64 := 0x3BA3198A2E037073

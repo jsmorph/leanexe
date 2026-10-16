@@ -70,7 +70,7 @@ theorem sign_neg (w : UInt64) (h : value w < 0) : Wasm.IEEE64.sign w = true := b
 
 /-- The sign of a word with a positive value. -/
 theorem sign_pos (w : UInt64) (h : 0 < value w) : Wasm.IEEE64.sign w = false :=
-  (SinpiLowStep.pos_word w h).1
+  (F64RelativeStepLow.pos_word w h).1
 
 /-- The parity of `|n|` is that of `n`. -/
 theorem parity_abs (n : Int) (N : Nat) (h : (N : ℤ) = |n|) :
