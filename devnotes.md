@@ -34018,14 +34018,14 @@ recorded for the lgamma root-range proofs on a machine with capacity for the res
 limit.  Confirm that resource choice before execution.  Divide a target that times out before
 another attempt, as the repository instructions require.
 
-- [x] Fetch the branches, establish the common ancestor and the 35/629 commit counts, inspect the
+- [x] Fetch the branches, establish the common ancestor and the 35/632 commit counts, inspect the
   new source and test records, and simulate the merge.
 - [x] Save the source revision, emitted bytes and hashes, theorem inventory, and build/test logs
   from the tested `transcendentals` checkout as the reference.  Establish that the artifacts
-  correspond to `32c92ebd`.  Keep its checkout and build records available while the integration
+  correspond to `942aa695`.  Keep its checkout and build records available while the integration
   runs elsewhere.  Reuse the pinned toolchain and dependencies and their existing caches.
 - [x] Prepare the integration worktree and resolve the six conflicts as above.  Audit its diff
-  against `transcendentals`, including all 1,016 numerical source files, and account for every
+  against `transcendentals`, including the complete numerical source tree, and account for every
   adaptation.  Audit its diff against `verified` for the bounds, frames, potential rules,
   generators, field equations, and two-manual documentation work.
 - [x] Build the compiler and reflector first.  Then build `Uscale`, `ParseFloat`, and `PrintFloat`,
@@ -34034,33 +34034,35 @@ another attempt, as the repository instructions require.
   their compile times and peak memory with the reference.  Retain the earlier measurements of
   `Repeat`, `Trig`, `Exp`, and `Log` as checks of context sharing and liveness.  Diagnose a
   failure at this stage before attempting the full proof build.
-- [ ] Build the default targets and all of `Verified`, with no `sorry` warnings.  Check the
+- [x] Build the default targets and all of `Verified`, with no `sorry` warnings.  Check the
   numerical theorem inventory, including the exceptional-value results and all 22 byte/file
   pairs, and compare the hypotheses and bounds with the reference.  Recheck `Prog.correct`,
   `Prog.correctWith`, the generators' theorems, and the numerical byte theorems for the permitted
   axioms.  Account for the recorded CodeLib example separately from the project's correctness
   theorems.
-- [ ] Check the current bound examples: `Grow`, `Insert`, `Recursion`, `Tables`, `Fields`, and
+- [x] Check the current bound examples: `Grow`, `Insert`, `Recursion`, `Tables`, `Fields`, and
   `Drone`.  Retain `evens_bound`, `repeated_bound`, `sortInsert_bound`, `chain_fits`, `fill_cost`,
   `fill_trapFree`, `pushSquare_bound`, `drone_trapFree`, and the named-field equations of
   `Fields`.  Build all three compiled generators and `Examples.Lcg.Spectral`.  Check the period,
   jump-ahead, distribution, and spectral theorems and xorshift's 36,920-byte jump bound.
-- [ ] Compare the emitted bytes against references from both pinned tips.  An unchanged program
+- [x] Compare the emitted bytes against references from both pinned tips.  An unchanged program
   must retain its bytes, including the generators from `verified` and the numerical modules from
-  `transcendentals`.  Compare `erf.wasm` with `32c92ebd`, whose recorded output already removes
+  `transcendentals`.  Compare `erf.wasm` with `942aa695`, whose recorded output already removes
   fdlibm's `erfc`.  Run the combined `tests/verified/run.sh`: retain all 16,345 current module
   cases and run every added byte/file proof and native check.  Record counts and failures.
-- [ ] Run [the full check](docs/leanexe-manual.md#the-full-check), including module, release,
+- [x] Run [the full check](docs/leanexe-manual.md#the-full-check), including module, release,
   depth-guard, chunk, drone, LTG, decoder, and both Vulkan-driver WGSL tests.  Run the GPT tests
   when its emitted module changes.  Preserve the build, byte comparisons, and test logs.
-- [ ] Review the merged manuals, numerical index, function documents, and status document against
+- [x] Review the merged manuals, numerical index, function documents, and status document against
   the code and theorem hypotheses.  Record the existing whitespace-check failures separately:
   several proof and Python files have whitespace errors, and two reported trailing spaces in
   `data/strconv/parse-cases.txt` introduce empty hexadecimal string fields.  Preserve those cases.
-- [ ] Review the integration diff and verify with `git merge-base --is-ancestor` that both pinned
-  tips are ancestors of the candidate.  After acceptance and the user's approval to merge,
-  fast-forward `main` to that tested commit and push `main`.  Keep the source branches and the
-  primary checkout's untracked data and paper artifacts.
+- [x] Review the integration diff and verify with `git merge-base --is-ancestor` that both pinned
+  tips are ancestors of the candidate.
+
+The approved publication step is a fast-forward of `main` to the accepted candidate and a push of
+`main`.  It preserves the source branches and the primary checkout's local notes, untracked data,
+and paper artifacts.
 
 ## 2026-10-16: Integrating the two compilers
 
@@ -34101,3 +34103,15 @@ The WGSL driver passed all 474 cases on each of SwiftShader and lavapipe.  The d
 `decoder-01` passed with 712 supported valid modules decoded, all equal to the WAT path and all round-tripped, and 676 malformed modules rejected.  It reports zero failures, with 1,502 valid modules and 35 malformed modules outside the supported subset.  `build-verified-01` now builds the full `Verified` library with 10G high, 12G maximum, and the 900-minute limit used by the reference proof build.  Its independent log and status preserve the result across SSH disconnection.  The focused axiom audit includes the compiler, retained bounds, generator periods and distributions, jump functions, and all five LCG spectral results.
 
 The review of the merged root found two imports each of the three compiled-generator modules.  `Verified.lean` now keeps one import of each, beside the other standard examples.  The active remote build retains its source snapshot, and the root will be rebuilt with this import cleanup after that run finishes.
+
+The full proof build has passed the complete `exp`, `erf`, tangent, hyperbolic, and `sinpi` theorem modules, the FMA specification theorem, and the Bessel `j0`, `j1`, `y0`, and `y1` theorems.  The three `tgamma` accuracy-range modules passed in 467, 288, and 255 seconds.  The `lgamma` root modules A through F and their split pieces passed, followed by all eight lower-range and three middle-range asymptotic components.  No numerical proof source change has been needed.  The complete log so far contains no error, `sorry` warning, or `sorryAx` report.
+
+At 4 hours 20 minutes into the run, its observed cgroup peak was 8.36 GiB, with no high-limit, maximum-limit, or OOM event.  The current process continued to accumulate CPU time during the long range proofs.  These observations support retaining the documented 10G high and 12G maximum for the full library build.  The compiler stress tests passed at the default limits.  The full-library result, file-theorem checks, emitted-byte comparison, and combined verified-compiler test driver remain pending.
+
+`build-verified-01` passed all 10,038 jobs.  The complete log contains 4,083 axiom reports, no error, and no `sorry` or `sorryAx` report.  Its only extra axiom belongs to the previously recorded CodeLib arithmetic example.  The observed cgroup peak reached 9.72 GiB, with no high-limit, maximum-limit, or OOM event in the sampled counters.  The cleaned root at `bda4a17b` then passed `build-verified-02`, which rebuilt `Verified` in 3 seconds and retained the 10,038-job result.  `axioms-01` passed all 37 focused reports, covering `Prog.correct`, `Prog.correctWith`, the retained bounds, recursive fits and cost, drone total execution, the 36,920-byte xorshift jump bound, and the generators' period, jump, distribution, lattice, spectral, and compiled-function theorems.  Every focused report uses only the permitted axioms or a subset.  The combined `tests/verified/run.sh` is now running on this source.
+
+The driver emitted and validated all 52 modules.  The first byte comparison assigned every preexisting example to the `transcendentals` reference and failed at `fields.wasm`.  That assignment overlooked the program additions retained from `verified`: `moveHead`, `pushPrices`, and `heavyPick` in `Fields`, `pushConserved` in `Insert`, `double`, `spread`, and `countdown` in `Recursion`, and `pushWith` and `pushSquare` in `Tables`.  These four complete Lean files equal their versions at `ea1e3381`, and their emitted bytes equal that branch's preserved files.  The corrected comparison passed all 52 modules: 45 match `942aa695`, and seven match `ea1e3381`, including those four examples and the three generators.  The failed comparison, corrected reference selection, and all 52 SHA-256 hashes are preserved under `build/integration-records/`.  The file-theorem and native test phases remain active.
+
+`verified-tests-01` exited 0.  All 22 byte/file proof pairs passed, each with two reports restricted to the three permitted axioms.  All 16,345 module cases passed, including allocation counters and expected traps.  The native case generator reported the expected 3,069 accesses past the end of an array.  Every native numerical accuracy check completed successfully.  The FMA check matched exact rounding on 763,816 results, limb arithmetic matched Lean's naturals on 4,026 results, all 1,030 parsing cases passed, and all 889 printing cases passed with round trips.  The complete log and its audit are preserved under `build/integration-records/`.
+
+This completes the planned gates for code revision `bda4a17b`, including the earlier LeanExe emissions, module, release, depth-guard, chunk, drone, LTG, decoder, and two-driver WGSL checks.  Both `ea1e3381` and `942aa695` are ancestors of that revision.  The closing acceptance commit changes only this journal.
