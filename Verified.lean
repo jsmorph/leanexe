@@ -52,9 +52,6 @@ import Verified.Examples.Pow
 import Verified.Examples.Sinpi
 import Verified.Examples.Erf
 import Verified.Examples.Drone
-import Verified.Examples.Lcg
-import Verified.Examples.ParkMiller
-import Verified.Examples.Xorshift
 import Verified.Examples.Reference
 import Verified.Examples.ArcReference
 import Verified.Examples.HyperbolicReference
