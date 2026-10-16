@@ -63,7 +63,9 @@ function's result, and a built, updated, or extended array are owned, so a funct
 borrowed value that it returns.  Each expression consumes the owned variables that die in it, those
 live before it and not after: an owned variable moves into the value where it dies and is copied
 where it stays live, a reader or a call releases an owned variable that dies there, and a branch, a
-binding, and a loop release the owned variables that die without a use.  A pair has one mode, and a
+binding, and a loop release the owned variables that die without a use.  The code generator learns
+which variables each subexpression reads from the bitmask `Expr.useMask` through `Expr.usesFast`, and
+`Expr.usesFast_eq` equates it with `Expr.uses`.  A pair has one mode, and a
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  A copy allocates through the runtime's `alloc` and writes the length word and
 the elements.  A function's locals are its parameters, an i64 local for each further position, and
@@ -325,6 +327,17 @@ rewritings leaves the meaning unchanged.  The reflector computes the bit pattern
 of `Float.ofBits` or `UInt64.toFloat` of a word literal, and of a negated literal, and the kernel
 checks by `decide` that the literal has it.  It rejects `=` and `≠` on floats, which compare bit
 patterns, so that `0.0 ≠ -0.0`, and which no f64 instruction computes.
+
+The reflector keeps the context expression in `Ctx.ctx` and extends it with one `consCtx` per
+binding.  The nested contexts share their tails, so a new binding does not copy the contexts of
+the earlier bindings.  Its bound and frames builders use the same contexts.
+
+The command evaluates the module and encoder natively to obtain literal byte lists `p.sections`,
+`p.bodies`, and `p.data`.  The kernel checks the encoding and locals bound of each function in
+`p.func_ok_k`, the remaining sections in `p.rest_ok` and `p.data_ok`, and the code-section bounds
+in `p.codes_ok`.  `p.encoded` assembles these proofs into the equation for `encode p.module`.
+`p.bytes` follows by `decode_encode`.  Native evaluation supplies the literals, and the kernel
+checks every claim about them.  It checks each function's encoding in a separate theorem.
 
 For each function of the program the reflector also adds `p.f.bound`, the function's allocation
 bound in bytes on the tuple of its arguments, with `Moved (Array α)` for an owned array and `Unit`

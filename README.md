@@ -40,9 +40,12 @@ trap when the allocator's `top` can rise by the bound `p.f.bound x` and, for rec
 every call stays below depth 1,000, and `p.f.bound_eq`, which states that bound as a Lean term in
 the parameters.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, arrays
 of these, records with array fields, recursion, constant tables, and array updates in place.  The
-examples include ports of `sin`, `cos`, `exp`, `log`, and `tanh` from fdlibm and Arm's
-optimized-routines, an order book, the drone planner, and three random-number generators with
-theorems about their periods.
+examples include elementary and special functions ported from fdlibm, Arm's optimized-routines,
+and CORE-MATH, decimal parsers and printers, an order book, the drone planner, and three
+random-number generators with theorems about their periods.  [The numerical index](index.md)
+lists the algorithms and their strongest proved results, including numerical accuracy, exact
+fused multiply-add, correctly rounded parsing, and shortest-decimal printing.  Each function's
+document states its theorem's domain and exceptional cases.
 
 ### Comparison
 
@@ -92,6 +95,7 @@ theorem covers the host or the I/O around a call.
 | [The verified compiler's internals](Verified/README.md) | Its code scheme, the structure of its proof, and the reflector. |
 | [The design document](docs/design.md) | The design, its decisions, what is proved and tested, and the open work. |
 | [The development journal](devnotes.md) | The record of the work. |
+| [The numerical index](index.md) | The compiled numerical algorithms and their proved results. |
 
 ## Layout
 

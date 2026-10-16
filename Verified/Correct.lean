@@ -203,7 +203,8 @@ theorem callMovesAt_eq {S : List Sig} {Γ : List Ty} {g : Sig} (slots : List Slo
     (live : Nat → Bool) (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) :
     callMovesAt (slots.map Slot.mode) live args = callMoves slots live args := by
   funext i
-  cases hv : (args i).varIndex? <;> simp only [callMovesAt, callMoves, Expr.usesFast_eq, hv, modeAt, Slot.modes_getD]
+  cases hv : (args i).varIndex? <;>
+    simp only [callMovesAt, callMoves, Expr.usesFast_eq, hv, modeAt, Slot.modes_getD]
 
 /-- The potential of a call's arguments after the call depth is that of the arguments. -/
 theorem Env.argPot_depthOf {store : Store Unit} {ps : List Ty} {sel : Nat → Bool}
