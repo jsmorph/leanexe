@@ -428,6 +428,36 @@ theorem q_asym (q₀ : ℚ) (ap : AsymPiece) (R S : List ℚ) (sE sW r e : ℕ) 
   rw [abs_div, abs_of_pos hW, div_le_iff₀ hW]
   exact hE
 
+/-- The boundary `0x4006DB6D00000000` of fdlibm's ranges. -/
+def b3 : ℚ := ratOfWord 0x4006DB6D00000000
+
+/-- The boundary `0x40122E8B00000000` of fdlibm's ranges. -/
+def b5 : ℚ := ratOfWord 0x40122E8B00000000
+
+/-- A segment lies in its piece, satisfies `ok`, and its polynomials lie within `2^-71` of the
+piece's. -/
+def segOk (q : Piece × Piece) : Bool :=
+  q.2.ok && decide (q.1.a ≤ q.2.a ∧ q.2.b ≤ q.1.b) &&
+    decide (absSum q.2.H (subP (shift (q.2.c - q.1.c) q.1.A) q.2.A) ≤ 1 / 2 ^ 71) &&
+    decide (absSum q.2.H (subP (shift (q.2.c - q.1.c) q.1.B) q.2.B) ≤ 1 / 2 ^ 71)
+
+theorem ends (lo c : ℚ) (L : ℤ) (t : ℕ) (h : (L : ℚ) / 2 ^ t = lo - c) (x : ℝ)
+    (hx : (lo : ℝ) ≤ x) : (L : ℝ) / 2 ^ t ≤ x - c := by
+  have := congrArg (fun q : ℚ => (q : ℝ)) h
+  push_cast at this
+  linarith
+
+theorem ends' (hi c : ℚ) (H : ℤ) (t : ℕ) (h : (H : ℚ) / 2 ^ t = hi - c) (x : ℝ)
+    (hx : x ≤ (hi : ℝ)) : x - c ≤ (H : ℝ) / 2 ^ t := by
+  have := congrArg (fun q : ℚ => (q : ℝ)) h
+  push_cast at this
+  linarith
+
+theorem one_div_le (x : ℝ) (hx : 30 ≤ x) : 1 / x ≤ ((35 : ℤ) : ℝ) / 2 ^ 10 := by
+  rw [div_le_div_iff₀ (by linarith) (by norm_num)]
+  push_cast
+  linarith
+
 #print axioms ratioCheckI_sound
 #print axioms p_piece
 #print axioms q_piece

@@ -725,7 +725,7 @@ theorem finish_d (f c : Float) (k : UInt64) (t et : ℝ) (hf : Finite f.toBits)
       norm_num at hG4 ⊢
       linarith
     exact_mod_cast this
-  obtain ⟨g, hg⟩ := magnitude_dvd Gf.toBits 1020 hGm
+  obtain ⟨g, hg⟩ := F64NearestSum.magnitude_dvd Gf.toBits 1020 hGm
   have hsG : ∃ g' : ℤ, Wasm.IEEE64.scaledValue Gf.toBits = g' * 2 ^ 1020 := by
     simp only [Wasm.IEEE64.scaledValue]
     split

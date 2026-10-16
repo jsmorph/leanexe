@@ -32873,3 +32873,28 @@ Build 14, which held the first batch alone, was stopped at 255 modules so that o
 `tests/verified/run.sh` exits 0 (`opus-run-15.log`): 15,837 tests pass and none fails, the check of `erf` covers `erf` alone with 222,136 results within one unit, and the parsers' 1,030 cases and the printers' 889 cases pass.  Of the 49 files that the run writes, `erf.wasm` shrinks from 7,016 to 6,369 bytes, since the module no longer holds fdlibm's `erfc`, and the other 48 are byte-identical to the stored references.  The new `erf.wasm` is kept as a reference with the commit's hash.
 
 - [x] Build 15 and run 15 with both batches
+
+## 2026-10-15: Merging the duplicate ProofKit results (coordinating session)
+
+The user agreed to merge the duplicate results of ProofKit after the correction batches.  A scan of the theorem statements of `LeanExe/ProofKit`, with binder names normalized, and of the bodies of its definitions found the groups in the table.  Two names that I had reported as duplicates, `steps_of_nearest` and `add_rounded`, each occur twice with different statements, and both pairs stay.  The duplicates between modules that `main` holds also stay, since this branch does not change `main`'s modules: `F32Compare` and `F64Compare`, `F32DivCore` and `F64DivCore`, `F32Normalize` and `F64Normalize`, `F64DyadicBounds` and `F64RoundFinish`, `F64NormalizeModel` and `F64NormalizedMagnitude`, and `F64PackRelative` and `F64PackingModel`.
+
+| Group | Change |
+|---|---|
+| Rounding to nearest | `F64NearestSum` keeps `magnitude_dvd`, `roundedMagnitude_nearest`, and `add_nearest`, and gains `rounded_nearest`, the form for the magnitude of any word.  `F64RoundNearest` drops its `magnitude_dvd`, `rounded_grid`, and `rounded_nearest`, and `F64AddNearest` drops its `roundedMagnitude_nearest` and `add_nearest`.  Both import `F64NearestSum`. |
+| Error tracking | `F64ErrorTrack` defined the same `Approx` as `F64Approx`.  It now imports `F64Approx` and re-exports `Approx` and `approx_self` with `export`, so its users keep their names.  `Approx.abs_le` moves to `F64Approx`, after `Approx.lower` and `Approx.upper`, whose proofs refer to Mathlib's `abs_le`.  The arithmetic rules of `F64ErrorTrack` state other bounds than those of `F64Approx` and stay. |
+| Binade boundaries | `F64RelativeStep.zpow_eq` and `boundary_pow` become public, and `F64RelativeStepWide`, `F64RelativeSteps`, and `F64RoundedStep` drop their copies, among them `F64RoundedStep.boundary`. |
+| Polynomial calculus | `PolyCalc` drops `derivP`, `hasDerivAt_eval`, and `continuous_eval` and imports `PolyCalculus`, which gains `continuous_eval`.  `GammaStirling` drops its `continuous_eval`, and `GammaFitsX` drops its `spread` and `eval_spread`. |
+| Bessel helpers | `BesselRatio` gains `b3`, `b5`, `segOk`, `ends`, `ends'`, and `one_div_le`, which `BesselSeg0`, `BesselSeg1`, and the four `BesselFd` modules each defined.  `BesselPQ0`, `BesselPQ1`, and `tools/bessel/genpq.py` name `BesselRatio.b3` and `BesselRatio.b5`. |
+| Small lemmas | `F64Magnitude.scaledMagnitude_pos` replaces `F64Near.nonzero_of_magnitude` and `F64RoundDouble.mag_pos`.  `F64NearestNonnegative.word_toNat`, formerly private, replaces `F64NearestSteps.word_toNat`.  `F64NearestScale` uses `F64Source.exponent_lt` and `fraction_lt`. |
+
+The first build of the 48 edited modules (`consol/consol-1.log`) failed in `F64Approx`: inside a declaration named `Approx.*`, the name `abs_le` resolved to the new `Approx.abs_le`, declared before `Approx.lower`.  Declaring it after `Approx.upper` fixed the failure.  When I stopped that build, I sent the signal to the process group of the build's wrapper shell, which was the group of the SSH daemon.  The SSH daemon survived, but every process of user somebody in that group received the signal, among them my SSH session and the wrapper.  The build continued in the group of `timeout`, which I then stopped.  Builds now start under `setsid`.
+
+`lake build LeanExe Verified` does not reach `Lcg`, `ParkMiller`, `Xorshift`, and `Orbit`, and `tests/verified/run.sh` does not build them, so no standard check covered their proofs.  They build at `b2f73f24` (`consol/generators-1.log`), and `Verified.lean` now imports the three generators, whose modules now report the axioms of the theorems that `GENERATORS.md` lists.
+
+The consolidation decided earlier also lists the removal of `ExpRelative`, which `ExpTightFloat` supersedes and only `ErfTailEval` imports, and the move of `TrigNearest`, `TrigFloatTools`, `TrigStep.unit_step`, `TrigTiny`, and `SinpiLowStep.within_low` into ProofKit.  Both remain, and `transcendentals.md` lists them.
+
+`lake build LeanExe Verified` with the consolidation completes 10,054 jobs with exit 0 at `b2f73f24` (`consol/consol-full-1.log`) and 10,057 jobs with exit 0 at `32c92ebd` (build 16, `opus-merge-16.log`).  The 4,095 axiom reports of build 16 name only `propext`, `Classical.choice`, and `Quot.sound`, apart from the CodeLib example axiom of runs 13 and 15, and 18 of them come from the generators.  `tests/verified/run.sh` exits 0 (`opus-run-16.log`): 15,837 tests pass and none fails, and the 49 files that the run writes are byte-identical to the stored references, so the consolidation changes no compiled module.
+
+- [x] Merge the duplicate ProofKit results, build 16, and run 16
+- [ ] Remove `ExpRelative`
+- [ ] Move `TrigNearest`, `TrigFloatTools`, `TrigStep.unit_step`, `TrigTiny`, and `SinpiLowStep.within_low` into ProofKit

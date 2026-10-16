@@ -152,7 +152,7 @@ theorem add_rounded_top (a b : UInt64) (ha : Finite a) (hb : Finite b)
   · intro v
     rw [F64RoundNearest.abs_value, F64RoundNearest.abs_value v, hmag, hSv, abs_div, abs_of_pos h2, hcast,
       ← sub_div, ← sub_div, abs_div, abs_div, abs_of_pos h2]
-    exact div_le_div_of_nonneg_right (F64RoundNearest.rounded_nearest _ v) h2.le
+    exact div_le_div_of_nonneg_right (F64NearestSum.rounded_nearest _ v) h2.le
 
 theorem rounded_dvd_top (c : UInt64) (S : ℝ) (hc : Rounded c S) (g : ℕ) (hg : g ≤ 2044)
     (hS : (2 : ℝ) ^ (53 + g) / 2 ^ 1074 ≤ |S|) :

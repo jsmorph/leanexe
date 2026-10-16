@@ -16,19 +16,6 @@ open CodeLib.IEEE64 F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
 
-private theorem zpow_eq (e : Nat) (he : 1 ≤ e) :
-    (2 : ℝ) ^ ((e : Int) - 1023) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
-  rw [eq_div_iff (by positivity), ← zpow_natCast (2 : ℝ) (e - 1), ← zpow_natCast (2 : ℝ) 1022,
-    ← zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0)]
-  congr 1
-  omega
-
-/-- The start of binade `e`. -/
-theorem boundary (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2048) :
-    value (UInt64.ofNat (e * 2 ^ 52)) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
-  rw [← zpow_eq e he1]
-  exact F64NearestBinade.boundary_power e ((e : Int) - 1023) he1 he2 (by ring)
-
 /-- The word after the start of binade `e`, one spacing `2 ^ (e - 1) / 2 ^ 1074` above it. -/
 theorem boundary_next (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2047) :
     value (UInt64.ofNat (e * 2 ^ 52 + 1)) =
@@ -74,7 +61,7 @@ theorem le_boundary (c : UInt64) (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2047)
       (by rw [hw]; simp only [Nat.reducePow]; omega) hc63).mpr (by rw [hw]; exact h)
     rw [boundary_next e he1 he2] at h2
     linarith
-  rw [← boundary e he1 (by omega)]
+  rw [← F64RelativeStep.boundary_pow e he1 (by omega)]
   exact (F64PositiveOrder.value_le_iff (by omega)
     (by rw [hw0]; simp only [Nat.reducePow]; omega)).mpr (by rw [hw0]; omega)
 
@@ -229,13 +216,17 @@ theorem one_step_rounded (y V : ℝ) (c : UInt64) (hc63 : c.toNat < 2 ^ 63) (e :
   rw [key 2] at hVhi
   simp only [Nat.reduceAdd, pow_one] at hVlo hclo hcV hVhi
   have hbA : value (UInt64.ofNat ((m + 2) * 2 ^ 52)) = 2 ^ 53 * T := by
-    rw [boundary (m + 2) (by omega) (by omega), show m + 2 - 1 = m + 1 by omega, key 1] <;> norm_num
+    rw [F64RelativeStep.boundary_pow (m + 2) (by omega) (by omega), show m + 2 - 1 = m + 1 by omega,
+      key 1] <;> norm_num
   have hbB : value (UInt64.ofNat ((m + 3) * 2 ^ 52)) = 2 ^ 54 * T := by
-    rw [boundary (m + 3) (by omega) (by omega), show m + 3 - 1 = m + 2 by omega, key 2] <;> norm_num
+    rw [F64RelativeStep.boundary_pow (m + 3) (by omega) (by omega), show m + 3 - 1 = m + 2 by omega,
+      key 2] <;> norm_num
   have hbB2 : value (UInt64.ofNat ((m + 4) * 2 ^ 52)) = 2 ^ 55 * T := by
-    rw [boundary (m + 4) (by omega) (by omega), show m + 4 - 1 = m + 3 by omega, key 3] <;> norm_num
+    rw [F64RelativeStep.boundary_pow (m + 4) (by omega) (by omega), show m + 4 - 1 = m + 3 by omega,
+      key 3] <;> norm_num
   have hbA1 : value (UInt64.ofNat ((m + 1) * 2 ^ 52)) = 2 ^ 52 * T := by
-    rw [boundary (m + 1) (by omega) (by omega), show m + 1 - 1 = m + 0 by omega, key 0] <;> norm_num
+    rw [F64RelativeStep.boundary_pow (m + 1) (by omega) (by omega), show m + 1 - 1 = m + 0 by omega,
+      key 0] <;> norm_num
   have hcV' := abs_le.mp hcV
   have hyV' := abs_le.mp hyV
   rw [hu] at hyV'

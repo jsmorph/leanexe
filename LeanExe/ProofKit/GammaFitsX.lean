@@ -14,18 +14,6 @@ namespace LeanExe.ProofKit.GammaFitsX
 
 open Real PolyBound GammaBasic GammaStirling GammaThresholds GammaFits
 
-/-- The polynomial `p (t²)` in `t`. -/
-def spread : List ℚ → List ℚ
-  | [] => []
-  | a :: p => a :: 0 :: spread p
-
-theorem eval_spread (p : List ℚ) (t : ℝ) : eval (spread p) t = eval p (t ^ 2) := by
-  induction p with
-  | nil => rfl
-  | cons a p ih =>
-    simp only [spread, eval_cons, ih, Rat.cast_zero, zero_add]
-    ring
-
 /-- The center and the radius of the enclosure of `(log (2 π) - 1)/2`. -/
 def halfLog2PiMid : ℚ := (halfLog2PiLo + halfLog2PiHi) / 2
 
@@ -34,7 +22,7 @@ def halfLog2PiRad : ℚ := (halfLog2PiHi - halfLog2PiLo) / 2
 /-- The kernel check that a fit is within `ε` of `lgamma` on `X ≤ x ≤ 1/lo`. -/
 def fitRangeOk (lo X C0 : ℚ) (P : List ℚ) (ε : ℚ) (depth : ℕ) : Bool :=
   decide (16 ≤ X) && decide (0 ≤ lo) &&
-    check ((halfLog2PiMid - C0) :: spread (subP stirCoeffs P)) lo (1 / X)
+    check ((halfLog2PiMid - C0) :: PolyCalculus.spread (subP stirCoeffs P)) lo (1 / X)
       (ε - halfLog2PiRad - 104001 / (25 * (X - 1) ^ 25)) depth
 
 theorem fit_range (lo X C0 : ℚ) (P : List ℚ) (ε : ℚ) (depth : ℕ)
@@ -54,7 +42,7 @@ theorem fit_range (lo X C0 : ℚ) (P : List ℚ) (ε : ℚ) (depth : ℕ)
     rw [one_div]
     exact inv_anti₀ hX0 hx
   have he := check_sound _ lo (1 / X) _ depth hc x⁻¹ ht1 ht2
-  rw [eval_cons, eval_spread, eval_subP] at he
+  rw [eval_cons, PolyCalculus.eval_spread, eval_subP] at he
   have hst := stirling_twelve hx16
   have hrem : 104001 / (25 * (x - 1) ^ 25) ≤ (104001 / (25 * ((X : ℝ) - 1) ^ 25) : ℝ) := by
     apply div_le_div_of_nonneg_left (by norm_num)
@@ -86,7 +74,6 @@ theorem fit_range (lo X C0 : ℚ) (P : List ℚ) (ε : ℚ) (depth : ℕ)
           x⁻¹ * (eval stirCoeffs (x⁻¹ ^ 2) - eval P (x⁻¹ ^ 2))| := abs_add_three _ _ _
     _ ≤ _ := by linarith
 
-#print axioms eval_spread
 #print axioms fit_range
 
 end LeanExe.ProofKit.GammaFitsX

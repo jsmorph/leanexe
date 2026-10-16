@@ -21,7 +21,8 @@ for `log 128 = 7 log 2`.  The enclosure is `gammaLo ≤ γ ≤ gammaHi`, of widt
 
 namespace LeanExe.ProofKit.EulerGamma
 
-open Real Finset Filter Topology PolyBound PolyChecks PolyCalc TaylorRemainder AsinRemainder
+open Real Finset Filter Topology PolyBound PolyChecks PolyCalc PolyCalculus TaylorRemainder
+  AsinRemainder
 
 /-- `log 2` from 100 terms of `-log (1 - x)` at `x = 1/2`. -/
 def logTwo : ℚ := -evalQ (log1pCoeffs 100) (-1 / 2)

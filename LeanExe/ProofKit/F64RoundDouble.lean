@@ -12,15 +12,6 @@ open CodeLib.IEEE64 F64NearestNonnegative F64RoundNearest
 
 set_option exponentiation.threshold 4096
 
-theorem mag_pos (w : UInt64) (h : value w ≠ 0) : 0 < Wasm.IEEE64.scaledMagnitude w := by
-  rcases Nat.eq_zero_or_pos (Wasm.IEEE64.scaledMagnitude w) with h0 | h0
-  · exfalso
-    apply h
-    have := abs_value w
-    rw [h0, Nat.cast_zero, zero_div] at this
-    exact abs_eq_zero.mp this
-  · exact h0
-
 /-- A rounded word of a number at or above the start of binade `a` in magnitude lies at or above
 that start in magnitude. -/
 theorem rounded_abs_ge (c : UInt64) (S : ℝ) (hc : Rounded c S) (a : ℕ) (ha : a < 2047)
@@ -86,8 +77,8 @@ theorem rounded_double (c : UInt64) (S : ℝ) (hc : Rounded c S) (hS : 1 / 2 ^ 1
   have hvd0 : value d ≠ 0 := by
     rw [hd]
     exact mul_ne_zero two_ne_zero hvc0
-  have hmc := mag_pos c hvc0
-  have hmd := mag_pos d hvd0
+  have hmc := F64Magnitude.scaledMagnitude_pos c hvc0
+  have hmd := F64Magnitude.scaledMagnitude_pos d hvd0
   have hw1 : value (UInt64.ofNat (1 * 2 ^ 52)) = 1 / 2 ^ 1022 := by
     rw [F64PositiveSpacing.boundary_value 1 (by norm_num) (by norm_num)]
     norm_num

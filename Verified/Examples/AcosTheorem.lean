@@ -97,7 +97,7 @@ theorem acos_within_one (x : Float) (hx : Finite x.toBits) (hdom : |value x.toBi
     intro h
     rw [h, abs_zero] at hge
     norm_num at hge
-  have hmag := F64RoundDouble.mag_pos x.toBits hv0
+  have hmag := F64Magnitude.scaledMagnitude_pos x.toBits hv0
   have hsgn := F64UpperWord.sign_test x.toBits
   cases hs : (x.toBits >>> 32 >>> 31 == 1)
   · rw [acos_pos_eq x h1 h2 hs]

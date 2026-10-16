@@ -21,7 +21,7 @@ Order 0 has `κ = 1/4 ≥ 0` and uses `energy0`; order 1 has `κ = -3/4` and use
 
 namespace LeanExe.ProofKit.BesselChain
 
-open Real Set PolyBound PolyChecks PolyCalc BesselEnergy AsinRemainder TaylorRemainder
+open Real Set PolyBound PolyChecks PolyCalc PolyCalculus BesselEnergy AsinRemainder TaylorRemainder
 
 /-- The system of the large-argument functions, for `x > 0`. -/
 def PQSystem (κ : ℝ) (P Q Pd Qd : ℝ → ℝ) : Prop :=

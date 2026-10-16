@@ -18,7 +18,7 @@ and `chainEnd1` give the bound at the end of the last piece.
 
 namespace LeanExe.ProofKit.BesselChain
 
-open Real Set PolyBound PolyChecks PolyCalc BesselEnergy AsinRemainder TaylorRemainder
+open Real Set PolyBound PolyChecks PolyCalc PolyCalculus BesselEnergy AsinRemainder TaylorRemainder
 
 /-- Polynomial approximations `A` and `B` in `t = 1/x` on `[X, ∞)`. -/
 structure AsymPiece where

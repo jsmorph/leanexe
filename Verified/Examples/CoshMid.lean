@@ -200,7 +200,7 @@ theorem cosh_mid (x : Float) (hxf : Finite x.toBits)
       rw [hY4] at hs
       have hel : (e + 2) * 2 ^ 52 < limit := by unfold limit; omega
       have hv := hn.2 (UInt64.ofNat ((e + 2) * 2 ^ 52)) (by
-        rw [F64NearestSteps.word_toNat _ hel]; exact hel)
+        rw [F64NearestNonnegative.word_toNat _ hel]; exact hel)
       rw [F64PositiveSpacing.boundary_value (e + 2) (by omega) (by omega),
         show e + 2 + 51 = 53 + e by omega, hY4,
         abs_of_nonpos (show 4 * Y0 - se ≤ 0 by linarith)] at hv

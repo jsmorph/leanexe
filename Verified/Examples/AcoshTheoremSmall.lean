@@ -125,7 +125,7 @@ theorem acosh_s (t : Float) (ht : Finite t.toBits) (TL TH hr hs SLm : ℝ) (gr g
   have hrcpos : 0 < rc := lt_of_lt_of_le (by positivity) hrc0
   have hsign : Wasm.IEEE64.sign (2.0 * t + t * t).toBits = false := F64Exact.sign_of_pos _ hrcpos
   have hmag : Wasm.IEEE64.scaledMagnitude (2.0 * t + t * t).toBits ≠ 0 :=
-    (F64Near.nonzero_of_magnitude _ hrcpos.ne').ne'
+    (F64Magnitude.scaledMagnitude_pos _ hrcpos.ne').ne'
   have hsq : Real.sqrt rc < 2 ^ (53 + gs) / 2 ^ 1074 := by
     rw [Real.sqrt_lt' (by positivity)]
     linarith

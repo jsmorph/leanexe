@@ -106,4 +106,9 @@ theorem advance_ne_zero {x : UInt64} (hx : x â‰  0) (n : UInt64) : advance n x â
   rw [advance_eq_iterate]
   exact iterate_ne_zero hx _
 
+#print axioms step_xor
+#print axioms step_bijective
+#print axioms iterate_ne_zero
+#print axioms advance_ne_zero
+
 end Verified.Examples.Xorshift

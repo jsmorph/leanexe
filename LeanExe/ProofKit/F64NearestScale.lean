@@ -1,4 +1,5 @@
 import LeanExe.ProofKit.F64NearestSteps
+import LeanExe.ProofKit.F64Source
 import LeanExe.ProofKit.F64NearestSum
 import LeanExe.ProofKit.F64PowerScale
 
@@ -22,9 +23,6 @@ theorem mul_comm_finite (a b : UInt64) (ha : Finite a) (hb : Finite b) :
       (Wasm.IEEE64.sign b != Wasm.IEEE64.sign a) := by
     cases Wasm.IEEE64.sign a <;> cases Wasm.IEEE64.sign b <;> rfl
   rw [mul_finite_rounder a b ha hb, mul_finite_rounder b a hb ha, Nat.mul_comm, hs]
-
-theorem exponent_lt (v : UInt64) : Wasm.IEEE64.exponent v < 2 ^ 11 := Nat.mod_lt _ (by norm_num)
-theorem fraction_lt (v : UInt64) : Wasm.IEEE64.fraction v < 2 ^ 52 := Nat.mod_lt _ (by norm_num)
 
 /-- Word arithmetic in clean contexts, where `omega` stays within its recursion limit. -/
 theorem exponent_pos_of (c : UInt64) (h : 2 ^ 52 ≤ c.toNat) (h' : c.toNat < 2 ^ 63) :
@@ -95,8 +93,8 @@ theorem scale_nearest (s : ℝ) (c : UInt64) (k : Nat) (hk : 1 ≤ k) (hk' : k �
     have hlt : (Wasm.IEEE64.encodeFinite false (Wasm.IEEE64.exponent c + (1023 + k) - 1023)
         (Wasm.IEEE64.fraction c)).toNat < limit := by
       apply F64Magnitude.lt_limit_of_finite
-      · exact finite_encodeFinite _ _ _ (by omega) (fraction_lt c)
-      · exact sign_encodeFinite _ _ _ (by omega) (fraction_lt c)
+      · exact finite_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt c)
+      · exact sign_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt c)
     exact hlt
   · intro v hv
     rw [hm.2]
@@ -110,7 +108,7 @@ theorem scale_nearest (s : ℝ) (c : UInt64) (k : Nat) (hk : 1 ≤ k) (hk' : k �
         rw [F64NearestSum.value_of_lt_limit v hv]
         have hm : Wasm.IEEE64.scaledMagnitude v < 2 ^ 52 * 2 ^ k := by
           unfold Wasm.IEEE64.scaledMagnitude
-          have hf := fraction_lt v
+          have hf := F64Source.fraction_lt v
           by_cases h0 : Wasm.IEEE64.exponent v = 0
           · simp only [h0, beq_self_eq_true, ite_true]
             have : 2 ^ 52 * 1 ≤ 2 ^ 52 * 2 ^ k := Nat.mul_le_mul_left _ Nat.one_le_two_pow
@@ -144,12 +142,12 @@ theorem scale_nearest (s : ℝ) (c : UInt64) (k : Nat) (hk : 1 ≤ k) (hk' : k �
       have hve' : Wasm.IEEE64.exponent v < 2047 := exponent_of_lt_limit v hv
       have hv'l : v'.toNat < limit := by
         apply F64Magnitude.lt_limit_of_finite
-        · exact finite_encodeFinite _ _ _ (by omega) (fraction_lt v)
-        · exact sign_encodeFinite _ _ _ (by omega) (fraction_lt v)
+        · exact finite_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt v)
+        · exact sign_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt v)
       have hv'e : Wasm.IEEE64.exponent v' = Wasm.IEEE64.exponent v - k :=
-        exponent_encodeFinite _ _ _ (by omega) (fraction_lt v)
+        exponent_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt v)
       have hv'f : Wasm.IEEE64.fraction v' = Wasm.IEEE64.fraction v :=
-        fraction_encodeFinite _ _ _ (by omega) (fraction_lt v)
+        fraction_encodeFinite _ _ _ (by omega) (F64Source.fraction_lt v)
       have hvv : value v = 2 ^ k * value v' := by
         rw [normal_value' v hv (by omega), normal_value' v' hv'l (by rw [hv'e]; omega), hv'e,
           hv'f]

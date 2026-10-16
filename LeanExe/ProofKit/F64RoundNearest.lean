@@ -1,4 +1,5 @@
 import LeanExe.ProofKit.F64FullStep
+import LeanExe.ProofKit.F64NearestSum
 import LeanExe.ProofKit.F64PackingFinite
 import LeanExe.ProofKit.F64Approx
 import LeanExe.ProofKit.F64SignedRounding
@@ -32,20 +33,6 @@ theorem abs_value (v : UInt64) :
     ← Int.cast_abs, Int.abs_eq_natAbs]
   norm_num
 
-theorem magnitude_dvd (v : UInt64) (g : ℕ) (h : 2 ^ (52 + g) ≤ Wasm.IEEE64.scaledMagnitude v) :
-    2 ^ g ∣ Wasm.IEEE64.scaledMagnitude v := by
-  obtain ⟨M, hM, he⟩ := F64Exact.magnitude_grid v
-  rw [he] at h ⊢
-  have hg : g ≤ Wasm.IEEE64.exponent v - 1 := by
-    by_contra hc
-    have hlt : M * 2 ^ (Wasm.IEEE64.exponent v - 1) < 2 ^ (52 + g) :=
-      calc M * 2 ^ (Wasm.IEEE64.exponent v - 1) < 2 ^ 53 * 2 ^ (Wasm.IEEE64.exponent v - 1) :=
-            Nat.mul_lt_mul_of_pos_right hM (by positivity)
-        _ = 2 ^ (53 + (Wasm.IEEE64.exponent v - 1)) := by rw [pow_add]
-        _ ≤ 2 ^ (52 + g) := Nat.pow_le_pow_right (by norm_num) (by omega)
-    omega
-  exact Dvd.dvd.mul_left (pow_dvd_pow 2 hg) M
-
 theorem magnitude_below (v : UInt64) (g : ℕ) (hg : 1 ≤ g)
     (h : Wasm.IEEE64.scaledMagnitude v < 2 ^ (52 + g)) :
     Wasm.IEEE64.scaledMagnitude v + 2 ^ (g - 1) ≤ 2 ^ (52 + g) := by
@@ -55,7 +42,7 @@ theorem magnitude_below (v : UInt64) (g : ℕ) (hg : 1 ≤ g)
     omega
   have hp : 0 < 2 ^ (g - 1) := by positivity
   by_cases hl : 2 ^ (52 + (g - 1)) ≤ Wasm.IEEE64.scaledMagnitude v
-  · obtain ⟨q, hq⟩ := magnitude_dvd v (g - 1) hl
+  · obtain ⟨q, hq⟩ := F64NearestSum.magnitude_dvd v (g - 1) hl
     rw [hq, h2] at h ⊢
     have hq53 : q < 2 ^ 53 := lt_of_mul_lt_mul_left h (Nat.zero_le _)
     have : q + 1 ≤ 2 ^ 53 := hq53
@@ -70,86 +57,6 @@ theorem magnitude_below (v : UInt64) (g : ℕ) (hg : 1 ≤ g)
       calc 2 ^ (g - 1) * 2 ^ 52 + 2 ^ (g - 1) = 2 ^ (g - 1) * (2 ^ 52 + 1) := by ring
         _ ≤ 2 ^ (g - 1) * 2 ^ 53 := Nat.mul_le_mul_left _ this
     omega
-
-/-- For `n ≥ 2 ^ 53`, the rounded magnitude is a multiple of `2 ^ g`, `g = log2 n - 52`, at
-least `2 ^ (52 + g)`. -/
-theorem rounded_grid (n : ℕ) (hn : 2 ^ 53 ≤ n) :
-    2 ^ (Nat.log2 n - 52) ∣ roundedMagnitude n ∧
-      2 ^ (52 + (Nat.log2 n - 52)) ≤ roundedMagnitude n := by
-  have hb := F64Packing.significand_bounds n hn
-  simp only at hb
-  have hn' : ¬ n < 2 ^ 53 := by omega
-  simp only [roundedMagnitude, hn', ite_false]
-  split
-  · refine ⟨Dvd.dvd.mul_left (pow_dvd_pow 2 (by omega)) _, ?_⟩
-    rw [← pow_add]
-    exact Nat.pow_le_pow_right (by norm_num) (by omega)
-  · refine ⟨Dvd.intro_left _ rfl, ?_⟩
-    rw [pow_add]
-    exact Nat.mul_le_mul_right _ hb.2.1
-
-/-- The rounded magnitude is at least as close to `n` as the magnitude of any word. -/
-theorem rounded_nearest (n : ℕ) (v : UInt64) :
-    |(roundedMagnitude n : ℝ) - n| ≤ |(Wasm.IEEE64.scaledMagnitude v : ℝ) - n| := by
-  by_cases hs : n < 2 ^ 53
-  · rw [roundedMagnitude, if_pos hs, sub_self, abs_zero]
-    exact abs_nonneg _
-  push Not at hs
-  have hn0 : n ≠ 0 := by positivity
-  have hlog : 53 ≤ Nat.log2 n := (Nat.le_log2 hn0).2 hs
-  set g := Nat.log2 n - 52 with hg
-  have hg1 : 1 ≤ g := by omega
-  have hlo : 2 ^ (52 + g) ≤ n := by
-    rw [show 52 + g = Nat.log2 n by omega]
-    exact Nat.log2_self_le hn0
-  obtain ⟨hdvd, hRlo⟩ := rounded_grid n hs
-  rw [← hg] at hdvd hRlo
-  have herr := F64Packing.roundedMagnitude_error n
-  rw [← hg] at herr
-  have hP : (2 : ℝ) ^ g / 2 = 2 ^ (g - 1) := by
-    rw [show g = g - 1 + 1 by omega, pow_succ]
-    simp
-  rw [hP] at herr
-  have hpos : (0 : ℝ) < 2 ^ (g - 1) := by positivity
-  by_cases hm : 2 ^ (52 + g) ≤ Wasm.IEEE64.scaledMagnitude v
-  · obtain ⟨q, hq⟩ := magnitude_dvd v g hm
-    obtain ⟨r, hr⟩ := hdvd
-    by_cases hqr : q = r
-    · rw [hq, hr, hqr]
-    · have hd : (2 : ℝ) ^ g ≤
-          |(Wasm.IEEE64.scaledMagnitude v : ℝ) - roundedMagnitude n| := by
-        rw [hq, hr]
-        push_cast
-        rw [show (2 : ℝ) ^ g * q - 2 ^ g * r = 2 ^ g * ((q : ℝ) - r) by ring, abs_mul,
-          abs_of_pos (by positivity : (0 : ℝ) < 2 ^ g)]
-        have h1 : (1 : ℝ) ≤ |(q : ℝ) - r| := by
-          have hz : ((q : ℤ) - r) ≠ 0 := sub_ne_zero.mpr (by exact_mod_cast hqr)
-          have h1 : (1 : ℤ) ≤ |(q : ℤ) - r| := Int.one_le_abs hz
-          have h2 : ((|(q : ℤ) - r| : ℤ) : ℝ) = |(q : ℝ) - r| := by push_cast; rfl
-          rw [← h2]
-          exact_mod_cast h1
-        nlinarith [pow_pos (two_pos : (0 : ℝ) < 2) g]
-      have h2g : (2 : ℝ) ^ g = 2 * 2 ^ (g - 1) := by
-        rw [← hP]
-        ring
-      have htri : |(Wasm.IEEE64.scaledMagnitude v : ℝ) - roundedMagnitude n| ≤
-          |(Wasm.IEEE64.scaledMagnitude v : ℝ) - n| + |(roundedMagnitude n : ℝ) - n| := by
-        calc _ = |((Wasm.IEEE64.scaledMagnitude v : ℝ) - n) - ((roundedMagnitude n : ℝ) - n)| := by
-              ring_nf
-          _ ≤ _ := abs_sub _ _
-      linarith
-  · push Not at hm
-    have hb := magnitude_below v g hg1 hm
-    have hb' : (Wasm.IEEE64.scaledMagnitude v : ℝ) + 2 ^ (g - 1) ≤ 2 ^ (52 + g) := by
-      exact_mod_cast hb
-    have hlo' : (2 : ℝ) ^ (52 + g) ≤ n := by exact_mod_cast hlo
-    have hRlo' : (2 : ℝ) ^ (52 + g) ≤ roundedMagnitude n := by exact_mod_cast hRlo
-    rw [abs_of_neg (by linarith : (Wasm.IEEE64.scaledMagnitude v : ℝ) - n < 0)]
-    rcases le_or_gt (roundedMagnitude n : ℝ) n with h | h
-    · rw [abs_of_nonpos (by linarith)]
-      linarith
-    · rw [abs_of_pos (by linarith)] at herr ⊢
-      linarith
 
 theorem add_rounded (a b : UInt64) (ha : Finite a) (hb : Finite b)
     (h0 : value a + value b ≠ 0) (hmax : |value a + value b| < 2 ^ 1023) :
@@ -201,7 +108,7 @@ theorem add_rounded (a b : UInt64) (ha : Finite a) (hb : Finite b)
   · intro v
     rw [abs_value, abs_value v, hmag, hSv, abs_div, abs_of_pos h2, hcast,
       ← sub_div, ← sub_div, abs_div, abs_div, abs_of_pos h2]
-    exact div_le_div_of_nonneg_right (rounded_nearest _ v) h2.le
+    exact div_le_div_of_nonneg_right (F64NearestSum.rounded_nearest _ v) h2.le
 
 theorem sub_rounded (a b : UInt64) (ha : Finite a) (hb : Finite b)
     (h0 : value a - value b ≠ 0) (hmax : |value a - value b| < 2 ^ 1023) :

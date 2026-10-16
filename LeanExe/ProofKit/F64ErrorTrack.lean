@@ -1,14 +1,15 @@
 import LeanExe.ProofKit.F64AddBounds
 import LeanExe.ProofKit.F64MulBounds
 import LeanExe.ProofKit.F64GridExact
+import LeanExe.ProofKit.F64Approx
 
 /-!
-Error tracking through chains of rounded operations.  `Approx w X e` states that the word `w` is
-finite and its value lies within `e` of the real number `X`.  The rules for addition,
-subtraction, and multiplication combine the operands' errors with the rounding of the operation,
-one unit of roundoff relative to a bound `S` on the computed operands' result, plus
-`multiplicationUnderflowEpsilon` for a product.  Sums and differences of words on a common grid
-of `2 ^ s` scaled units, small enough to fit in 53 bits on that grid, are exact.
+Error tracking through chains of rounded operations, with `F64Approx.Approx`: `Approx w X e`
+states that the word `w` is finite and its value lies within `e` of the real number `X`.  The
+rules for addition, subtraction, and multiplication combine the operands' errors with the
+rounding of the operation, one unit of roundoff relative to a bound `S` on the computed operands'
+result, plus `multiplicationUnderflowEpsilon` for a product.  Sums and differences of words on a
+common grid of `2 ^ s` scaled units, small enough to fit in 53 bits on that grid, are exact.
 -/
 
 namespace LeanExe.ProofKit.F64ErrorTrack
@@ -16,24 +17,7 @@ open CodeLib.IEEE64
 
 set_option exponentiation.threshold 4096
 
-/-- A finite word whose value lies within `e` of `X`. -/
-def Approx (w : UInt64) (X e : ℝ) : Prop := Finite w ∧ |value w - X| ≤ e
-
-theorem approx_self (w : UInt64) (hw : Finite w) : Approx w (value w) 0 :=
-  ⟨hw, by simp⟩
-
-theorem Approx.mono {w : UInt64} {X e e' : ℝ} (h : Approx w X e) (he : e ≤ e') :
-    Approx w X e' := ⟨h.1, h.2.trans he⟩
-
-theorem Approx.congr {w : UInt64} {X Y e : ℝ} (h : Approx w X e) (hXY : X = Y) :
-    Approx w Y e := by
-  rw [← hXY]
-  exact h
-
-theorem Approx.abs_le {w : UInt64} {X e M : ℝ} (h : Approx w X e) (hX : |X| ≤ M) :
-    |value w| ≤ M + e := by
-  have := abs_sub_abs_le_abs_sub (value w) X
-  linarith [h.2]
+export F64Approx (Approx approx_self)
 
 theorem add_approx {a b : UInt64} {A B ea eb : ℝ} (ha : Approx a A ea) (hb : Approx b B eb)
     (S : ℝ) (hS : |A + B| + ea + eb ≤ S) (hmax : S < 2 ^ 1023) :
@@ -164,8 +148,6 @@ theorem sub_exact_grid (a b : UInt64) (ha : Finite a) (hb : Finite b) (s : Nat)
   push_cast
   ring
 
-#print axioms approx_self
-#print axioms Approx.abs_le
 #print axioms add_approx
 #print axioms sub_approx
 #print axioms mul_approx

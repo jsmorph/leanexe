@@ -11,19 +11,6 @@ open CodeLib.IEEE64 F64NearestNonnegative F64Magnitude
 
 set_option exponentiation.threshold 4096
 
-/-- The power of two at the start of binade `e`, in natural powers. -/
-private theorem zpow_eq (e : Nat) (he : 1 ≤ e) :
-    (2 : ℝ) ^ ((e : Int) - 1023) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
-  rw [eq_div_iff (by positivity), ← zpow_natCast (2 : ℝ) (e - 1), ← zpow_natCast (2 : ℝ) 1022,
-    ← zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0)]
-  congr 1
-  omega
-
-private theorem boundary_pow (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2048) :
-    value (UInt64.ofNat (e * 2 ^ 52)) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
-  rw [← zpow_eq e he1]
-  exact F64NearestBinade.boundary_power e ((e : Int) - 1023) he1 he2 (by ring)
-
 /-- A finite word within `47/32` units of roundoff of a positive number `y`, relative to `y`, lies
 within one step of the nonnegative nearest-even reference of `y`. -/
 theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
@@ -52,7 +39,7 @@ theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
   set P : ℝ := (2 : ℝ) ^ (a - 1) / (2 : ℝ) ^ 1022 with hP
   have hPpos : 0 < P := by positivity
   have hcP : P ≤ value c := by
-    rw [hP, ← zpow_eq a hnorm.1]
+    rw [hP, ← F64RelativeStep.zpow_eq a hnorm.1]
     exact value_ge_of_exponent c a ((a : Int) - 1023) hnorm.1 hlt (by ring) hnorm.2 le_rfl
   have hpow1 : (2 : ℝ) ^ a = 2 * (2 : ℝ) ^ (a - 1) := by
     rw [show a = (a - 1) + 1 by omega, pow_succ]
@@ -61,7 +48,7 @@ theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
   have hc2P : value c < 2 * P := by
     have h := magnitude_lt c (a + 1) (((a + 1 : Nat) : Int) - 1023) (by omega) (by ring)
       (by omega)
-    rw [zpow_eq (a + 1) (by omega), Nat.add_sub_cancel, hpow1] at h
+    rw [F64RelativeStep.zpow_eq (a + 1) (by omega), Nat.add_sub_cancel, hpow1] at h
     rw [hP]
     have h2 : 2 * (2 : ℝ) ^ (a - 1) / (2 : ℝ) ^ 1022 = 2 * ((2 : ℝ) ^ (a - 1) / (2 : ℝ) ^ 1022) := by
       ring
@@ -71,9 +58,9 @@ theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
     have h := hnorm.2
     simp only [Wasm.IEEE64.sign, decide_eq_false_iff_not, not_le] at h
     exact h
-  have hbA : value (UInt64.ofNat (a * 2 ^ 52)) = P := boundary_pow a hnorm.1 hlt
+  have hbA : value (UInt64.ofNat (a * 2 ^ 52)) = P := F64RelativeStep.boundary_pow a hnorm.1 hlt
   have hbB1 : value (UInt64.ofNat ((a + 1) * 2 ^ 52)) = 2 * P := by
-    rw [boundary_pow (a + 1) (by omega) (by omega), Nat.add_sub_cancel, hpow1, hP]
+    rw [F64RelativeStep.boundary_pow (a + 1) (by omega) (by omega), Nat.add_sub_cancel, hpow1, hP]
     ring
   rcases le_or_gt P y with hPy | hyP
   · -- `y` in the binade of `c` or above it.
@@ -85,14 +72,14 @@ theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
       constructor <;> linarith
     rcases Nat.lt_or_ge (a + 2) 2047 with hb | hb
     · have hbB : value (UInt64.ofNat ((a + 2) * 2 ^ 52)) = 4 * P := by
-        rw [boundary_pow (a + 2) (by omega) (by omega), hP,
+        rw [F64RelativeStep.boundary_pow (a + 2) (by omega) (by omega), hP,
           show a + 2 - 1 = (a - 1) + 2 by omega, pow_add]
         ring
       exact F64FullStep.one_step_binades y c a (a + 2) (by omega) (by omega)
         (by rw [hbA]; exact hPy) (fun _ => by rw [hbB]; linarith) hc63 (by rw [hbA]; exact hcP)
         (by rw [hbB]; linarith) he
     · have hbB : value (UInt64.ofNat (2047 * 2 ^ 52)) = (2 : ℝ) ^ 1024 := by
-        rw [boundary_pow 2047 (by norm_num) (by norm_num)]
+        rw [F64RelativeStep.boundary_pow 2047 (by norm_num) (by norm_num)]
         norm_num
       have hP1 : 2 * P ≤ (2 : ℝ) ^ 1024 := by
         have h1 : (2 : ℝ) ^ a ≤ (2 : ℝ) ^ 2046 := pow_le_pow_right₀ (by norm_num) (by omega)
@@ -116,7 +103,7 @@ theorem one_step_wide (y : ℝ) (c : UInt64) (hcf : Finite c)
       rw [hspace, abs_lt]
       constructor <;> linarith
     have hbA' : value (UInt64.ofNat ((a - 1) * 2 ^ 52)) = P / 2 := by
-      rw [boundary_pow (a - 1) (by omega) (by omega), hP]
+      rw [F64RelativeStep.boundary_pow (a - 1) (by omega) (by omega), hP]
       have h2 : (2 : ℝ) ^ (a - 1) = 2 * (2 : ℝ) ^ (a - 1 - 1) := by
         rw [show a - 1 = (a - 1 - 1) + 1 by omega, pow_succ]
         simp only [Nat.add_sub_cancel]

@@ -239,8 +239,8 @@ def maintheorem(order, k, n):
         n['fdcall_p'] = '%s.%s_8 v (by push_cast; linarith)' % (n['Fd'], fdp)
         n['fdcall_q'] = '%s.%s_8 v (by push_cast; linarith)' % (n['Fd'], fdq)
     else:
-        lo_name = {3: '2', 2: '%s.b3' % n['Fd'], 1: '%s.b5' % n['Fd']}[k]
-        hi_name = {3: '%s.b3' % n['Fd'], 2: '%s.b5' % n['Fd'], 1: '8'}[k]
+        lo_name = {3: '2', 2: 'BesselRatio.b3', 1: 'BesselRatio.b5'}[k]
+        hi_name = {3: 'BesselRatio.b3', 2: 'BesselRatio.b5', 1: '8'}[k]
         n['fdcall_p'] = '%s.%s_%s v (by rw [hlo_q]; linarith) (by rw [hhi_q]; linarith)' % (n['Fd'], fdp, n['suf'])
         n['fdcall_q'] = '%s.%s_%s v (by rw [hlo_q]; linarith) (by rw [hhi_q]; linarith)' % (n['Fd'], fdq, n['suf'])
         n['lo_name'] = lo_name; n['hi_name'] = hi_name

@@ -107,7 +107,7 @@ theorem pos_of_sign (w : UInt64) (hs : Wasm.IEEE64.sign w = false) (h0 : value w
 
 theorem neg_of_sign (w : UInt64) (hs : Wasm.IEEE64.sign w = true) (h0 : value w ≠ 0) :
     value w < 0 :=
-  (F64Magnitude.sign_value w (F64RoundDouble.mag_pos w h0)).mp hs
+  (F64Magnitude.sign_value w (F64Magnitude.scaledMagnitude_pos w h0)).mp hs
 
 /-- `x = ±0`. -/
 theorem xzero_case (y : Float) (hy0 : value y.toBits ≠ 0) :
@@ -349,7 +349,7 @@ theorem quot_lt (y x : Float) (hy : Finite y.toBits) (hx0 : value x.toBits ≠ 0
       (by omega)
     have hxm : (1 : ℝ) / 2 ^ 1074 ≤ |value x.toBits| := by
       rw [F64RoundNearest.abs_value, div_le_div_iff_of_pos_right (by positivity)]
-      exact_mod_cast F64RoundDouble.mag_pos _ hx0
+      exact_mod_cast F64Magnitude.scaledMagnitude_pos _ hx0
     rw [show (2 : ℝ) ^ (-961 : ℤ) = 1 / 2 ^ 961 by norm_num] at hy62
     have h3 : (1 : ℝ) / 2 ^ 961 ≤ 2 ^ 1022 * (1 / 2 ^ 1074) := by norm_num
     have h4 := mul_le_mul_of_nonneg_left hxm (by positivity : (0 : ℝ) ≤ 2 ^ 1022)

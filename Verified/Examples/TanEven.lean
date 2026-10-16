@@ -96,7 +96,7 @@ theorem even_sum (x y : UInt64) (r X : ℝ) (hxf : Finite x) (hyf : Finite y)
   have h0 : 0 ≤ X := hX ▸ abs_nonneg _
   obtain ⟨⟨n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12⟩, ⟨d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11⟩, ⟨q1, q2, q3, q4, q5, q6, q7, q8, q9, q10⟩, hX1', hXX⟩ := pow_facts X h0 (by linarith)
   obtain ⟨M, ⟨⟨hcf, hce⟩, hcm⟩, hM⟩ := corr_AB x y X hxf hyf hX (by linarith) hy
-  have hcv := Approx.abs_le ⟨hcf, hce⟩ hcm
+  have hcv := F64Approx.Approx.abs_le ⟨hcf, hce⟩ hcm
   have hu : 𝐮 = 1 / 2 ^ 53 := rfl
   have hη : η = 1 / 2 ^ 1075 := rfl
   -- `|r|` against `X`.

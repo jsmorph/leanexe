@@ -17,14 +17,15 @@ open CodeLib.IEEE64 F64NearestNonnegative F64Magnitude
 set_option exponentiation.threshold 4096
 
 /-- The power of two at the start of binade `e`, in natural powers. -/
-private theorem zpow_eq (e : Nat) (he : 1 ≤ e) :
+theorem zpow_eq (e : Nat) (he : 1 ≤ e) :
     (2 : ℝ) ^ ((e : Int) - 1023) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
   rw [eq_div_iff (by positivity), ← zpow_natCast (2 : ℝ) (e - 1), ← zpow_natCast (2 : ℝ) 1022,
     ← zpow_add₀ (by norm_num : (2 : ℝ) ≠ 0)]
   congr 1
   omega
 
-private theorem boundary_pow (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2048) :
+/-- The value of the word at the start of binade `e`. -/
+theorem boundary_pow (e : Nat) (he1 : 1 ≤ e) (he2 : e < 2048) :
     value (UInt64.ofNat (e * 2 ^ 52)) = (2 : ℝ) ^ (e - 1) / (2 : ℝ) ^ 1022 := by
   rw [← zpow_eq e he1]
   exact F64NearestBinade.boundary_power e ((e : Int) - 1023) he1 he2 (by ring)
@@ -203,6 +204,8 @@ theorem within_one_relative (y : ℝ) (c : UInt64) (hcf : Finite c)
     exact F64SignedRounding.within_of_nonneg 1 y hy0.le c (lt_limit_of_finite c hcf hs).le
       hstep.1 hstep.2
 
+#print axioms zpow_eq
+#print axioms boundary_pow
 #print axioms one_step_relative
 #print axioms negate_negate
 #print axioms within_one_relative

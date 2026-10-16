@@ -1,15 +1,14 @@
 import LeanExe.ProofKit.F64AddBounds
 import LeanExe.ProofKit.F64RelativeSteps
+import LeanExe.ProofKit.F64NearestSum
 import Mathlib.Data.Int.Log
 
 /-!
-A rounded sum is a nearest binary64 value of the exact sum.  `roundShift n s` rounds `n / 2 ^ s` to
-an integer at least as close as any other (`roundShift_nearest`), and every finite magnitude at or
-above `2 ^ (52 + s)` is a multiple of `2 ^ s`, so `roundedMagnitude n` is at least as close to `n` as
-the magnitude of any finite word (`roundedMagnitude_nearest`).  `add_nearest` states it for a
-positive sum in the form of `F64NearestNonnegative.Nearest`.  `steps_of_nearest` then counts the
-steps between two nearest words from the distance of the numbers they round: the rounding of a
-number within `m` spacings of `y` lies within `m` steps of a nearest word of `y`.
+Steps between nearest words.  `roundShift n s` rounds `n / 2 ^ s` to an integer at least as close
+as any other (`roundShift_nearest`), and `F64NearestSum.add_nearest` states that a positive rounded
+sum is a nearest binary64 value of the exact sum.  `steps_of_nearest` counts the steps between two
+nearest words from the distance of the numbers they round: the rounding of a number within `m`
+spacings of `y` lies within `m` steps of a nearest word of `y`.
 -/
 
 namespace LeanExe.ProofKit.F64AddNearest
@@ -74,145 +73,6 @@ theorem roundShift_nearest (n s m : Nat) (hs : 1 ≤ s) :
     have h2' : (U : Int) ≤ 2 * r := by exact_mod_cast h2
     rcases hm with h | h <;> linarith
 
-/-- `roundedMagnitude n` is at least as close to `n` as the magnitude of any finite word. -/
-theorem roundedMagnitude_nearest (n : Nat) (hmax : n < 2 ^ 2097) (v : UInt64) (hv : Finite v) :
-    |(roundedMagnitude n : Int) - n| ≤ |(Wasm.IEEE64.scaledMagnitude v : Int) - n| := by
-  by_cases hsmall : n < 2 ^ 53
-  · rw [show roundedMagnitude n = n by rw [roundedMagnitude, if_pos hsmall]]
-    simp
-  have hmin : 2 ^ 53 ≤ n := by omega
-  have hn0 : n ≠ 0 := by omega
-  have hpar := F64PackRelative.rounding_parameters hmin hmax
-  simp only at hpar
-  obtain ⟨hs0, _, hq1, hq2⟩ := hpar
-  set s := Nat.log2 n - 52 with hs
-  have hlog1 : 2 ^ (52 + s) ≤ n := by
-    have h := Nat.log2_self_le hn0
-    rw [show 52 + s = Nat.log2 n by omega]
-    exact h
-  have hlog2 : n < 2 ^ (53 + s) := by
-    have h := Nat.lt_log2_self (n := n)
-    rw [show 53 + s = Nat.log2 n + 1 by omega]
-    exact h
-  have hround : (roundedMagnitude n : Int) = (Wasm.IEEE32.roundShift n s : Int) * 2 ^ s := by
-    simp only [roundedMagnitude, show ¬ n < 2 ^ 53 from hsmall, ite_false, ← hs]
-    split_ifs with h
-    · have h' : Wasm.IEEE32.roundShift n s = 2 ^ 53 := by simpa using h
-      rw [h']
-      push_cast
-      ring
-    · push_cast
-      ring
-  rw [hround]
-  -- the magnitude of `v`
-  have he : Wasm.IEEE64.exponent v < 2047 := by
-    have h := hv
-    simp only [CodeLib.IEEE64.Finite, Wasm.IEEE64.isFinite, bne_iff_ne, ne_eq] at h
-    have : Wasm.IEEE64.exponent v < 2048 := Nat.mod_lt _ (by norm_num)
-    omega
-  have hf : Wasm.IEEE64.fraction v < 2 ^ 52 := Nat.mod_lt _ (by positivity)
-  set W := Wasm.IEEE64.scaledMagnitude v with hW
-  rcases Nat.lt_or_ge W (2 ^ (52 + s)) with hlow | hhigh
-  · -- below the binade of `n`: the binade's start is closer
-    have h := roundShift_nearest n s (2 ^ 52) hs0
-    have h52 : ((2 ^ 52 : Nat) : Int) * 2 ^ s = 2 ^ (52 + s) := by
-      rw [pow_add]
-      norm_num
-    have hli' : (2 : Int) ^ (52 + s) ≤ n := by exact_mod_cast hlog1
-    have hb : |((2 ^ 52 : Nat) : Int) * 2 ^ s - n| = n - 2 ^ (52 + s) := by
-      rw [h52, abs_sub_comm, abs_of_nonneg (by linarith)]
-    rw [hb] at h
-    have hWi : (W : Int) < 2 ^ (52 + s) := by exact_mod_cast hlow
-    have hli : (2 : Int) ^ (52 + s) ≤ n := by exact_mod_cast hlog1
-    rw [abs_sub_comm (W : Int) (n : Int), abs_of_nonneg (show (0 : Int) ≤ (n : Int) - W by linarith)]
-    push_cast at h
-    linarith
-  · -- in or above the binade of `n`: a multiple of `2 ^ s`
-    have hep : 0 < Wasm.IEEE64.exponent v := by
-      by_contra h0
-      have h0' : Wasm.IEEE64.exponent v = 0 := by omega
-      have : W = Wasm.IEEE64.fraction v := by simp [hW, Wasm.IEEE64.scaledMagnitude, h0']
-      have : 2 ^ 52 ≤ 2 ^ (52 + s) := Nat.pow_le_pow_right (by norm_num) (by omega)
-      omega
-    have hWdef : W = (2 ^ 52 + Wasm.IEEE64.fraction v) * 2 ^ (Wasm.IEEE64.exponent v - 1) := by
-      simp [hW, Wasm.IEEE64.scaledMagnitude, Nat.pos_iff_ne_zero.mp hep]
-    have hes : s ≤ Wasm.IEEE64.exponent v - 1 := by
-      by_contra hlt
-      have hlt' : Wasm.IEEE64.exponent v - 1 + 1 ≤ s := by omega
-      have h1 : W < 2 ^ 53 * 2 ^ (Wasm.IEEE64.exponent v - 1) := by
-        rw [hWdef]
-        apply Nat.mul_lt_mul_of_pos_right _ (by positivity)
-        omega
-      have h2 : 2 ^ 53 * 2 ^ (Wasm.IEEE64.exponent v - 1) ≤ 2 ^ (52 + s) := by
-        rw [← pow_add]
-        exact Nat.pow_le_pow_right (by norm_num) (by omega)
-      omega
-    have hmul : W = ((2 ^ 52 + Wasm.IEEE64.fraction v) * 2 ^ (Wasm.IEEE64.exponent v - 1 - s)) *
-        2 ^ s := by
-      rw [hWdef, mul_assoc, ← pow_add, Nat.sub_add_cancel hes]
-    have h := roundShift_nearest n s
-      ((2 ^ 52 + Wasm.IEEE64.fraction v) * 2 ^ (Wasm.IEEE64.exponent v - 1 - s)) hs0
-    rw [hmul]
-    push_cast at h ⊢
-    exact h
-
-/-- A positive rounded sum is a nearest nonnegative binary64 value of the exact sum. -/
-theorem add_nearest (a b : UInt64) (ha : Finite a) (hb : Finite b)
-    (hpos : 0 < value a + value b) (hbound : value a + value b < (2 : ℝ) ^ 1023) :
-    Nearest (value a + value b) (Wasm.IEEE64.add a b) := by
-  have hz : 0 < Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b := by
-    have h : value a + value b = ((Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b : Int) : ℝ) /
-        (2 : ℝ) ^ 1074 := by simp only [value, Int.cast_add, add_div]
-    rw [h] at hpos
-    have := (div_pos_iff_of_pos_right (by positivity : (0 : ℝ) < 2 ^ 1074)).mp hpos
-    exact_mod_cast this
-  set n := (Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b).natAbs with hn
-  have hni : (n : Int) = Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b :=
-    Int.natAbs_of_nonneg hz.le
-  have hfin := F64AddBounds.add_real_relative a b ha hb
-    (by rw [abs_of_pos hpos]; exact hbound)
-  have hmax : n < 2 ^ 2097 := by
-    have h1 : ((n : Int) : ℝ) / 2 ^ 1074 < 2 ^ 1023 := by
-      rw [hni]; push_cast; simp only [value] at hbound; rw [add_div]; exact hbound
-    have h2 : ((n : Int) : ℝ) < 2 ^ 1023 * 2 ^ 1074 := by
-      rwa [div_lt_iff₀ (by positivity)] at h1
-    have h3 : (n : ℝ) < 2 ^ 2097 := by
-      have : (2 : ℝ) ^ 1023 * 2 ^ 1074 = 2 ^ 2097 := by norm_num
-      push_cast at h2
-      linarith
-    exact_mod_cast h3
-  have heq : Wasm.IEEE64.add a b = Wasm.IEEE64.roundScaledMagnitude false n := by
-    have hne : Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b ≠ 0 := hz.ne'
-    have hnn : ¬ Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b < 0 := not_lt.mpr hz.le
-    simp [Wasm.IEEE64.add, not_nan_of_finite ha, not_nan_of_finite hb,
-      not_infinite_of_finite ha, not_infinite_of_finite hb, hne, hnn, n]
-  obtain ⟨hcf, hcm, hsign⟩ := F64PackRelative.pack_spec false n hmax
-  rw [heq]
-  set c := Wasm.IEEE64.roundScaledMagnitude false n
-  have hcval : value c = (roundedMagnitude n : ℝ) / 2 ^ 1074 := by
-    simp only [value, Wasm.IEEE64.scaledValue, hsign, Bool.false_eq_true, ite_false, hcm]
-    push_cast
-    rfl
-  have hyval : value a + value b = (n : ℝ) / 2 ^ 1074 := by
-    have : ((n : Int) : ℝ) = (n : ℝ) := by push_cast; rfl
-    simp only [value, ← add_div]
-    rw [← this, hni]
-    push_cast
-    rfl
-  refine ⟨F64Magnitude.lt_limit_of_finite c hcf hsign, ?_⟩
-  intro v hv
-  have hvs : Wasm.IEEE64.sign v = false := (nearest_finite (value v) v ⟨hv, fun _ _ => by simp⟩).2
-  have hvf : Finite v := (nearest_finite (value v) v ⟨hv, fun _ _ => by simp⟩).1
-  have hvval : value v = (Wasm.IEEE64.scaledMagnitude v : ℝ) / 2 ^ 1074 := by
-    simp only [value, Wasm.IEEE64.scaledValue, hvs, Bool.false_eq_true, ite_false]
-    push_cast
-    rfl
-  rw [hcval, hyval, hvval, ← sub_div, ← sub_div, abs_div, abs_div,
-    abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
-  apply div_le_div_of_nonneg_right _ (by positivity)
-  have h := roundedMagnitude_nearest n hmax v hvf
-  exact_mod_cast h
-
 /-- Two nearest words of numbers within `m` spacings lie within `m` steps of each other. -/
 theorem steps_of_nearest (m : Nat) (hm : 1 ≤ m) (c w : UInt64) (v y d : ℝ) (L U : Nat)
     (hU : U ≤ limit) (hc : Nearest v c) (hw : Nearest y w)
@@ -267,8 +127,6 @@ theorem steps_of_nearest (m : Nat) (hm : 1 ≤ m) (c w : UInt64) (v y d : ℝ) (
   · exact key w c y v hw hc hwr hcr (by have := neg_abs_le (v - y); linarith)
 
 #print axioms roundShift_nearest
-#print axioms roundedMagnitude_nearest
-#print axioms add_nearest
 #print axioms steps_of_nearest
 
 /-- A nearest word lies at or above every word below the number it rounds. -/

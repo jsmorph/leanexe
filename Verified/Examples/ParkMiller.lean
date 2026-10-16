@@ -182,4 +182,12 @@ theorem advance_mem {x : UInt64} (hx : 0 < x ∧ x < 2147483647) (n : UInt64) :
 /-- The state 0 is a fixed point, which is why the seed must lie in `[1, 2^31 - 2]`. -/
 theorem step_zero : step 0 = 0 := rfl
 
+#print axioms prime_modulus
+#print axioms orderOf_multiplier
+#print axioms step_minimalPeriod
+#print axioms existsUnique_iterate
+#print axioms advance_existsUnique
+#print axioms advance_mem
+#print axioms step_zero
+
 end Verified.Examples.ParkMiller

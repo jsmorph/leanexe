@@ -290,7 +290,7 @@ theorem signed_two (x w : Float) (f : ℝ → ℝ) (hodd : ∀ v, f (-v) = -f v)
     (hw : F64SignedRounding.WithinSteps 2 (f |value x.toBits|) w.toBits) (hx0 : value x.toBits ≠ 0) :
     F64SignedRounding.WithinSteps 2 (f (value x.toBits))
       (if x.toBits >>> 32 >>> 31 == 0 then w else -w).toBits := by
-  have hmag := F64RoundDouble.mag_pos x.toBits hx0
+  have hmag := F64Magnitude.scaledMagnitude_pos x.toBits hx0
   rw [sign_zero_test]
   cases hs : Wasm.IEEE64.sign x.toBits
   · have hpos : 0 ≤ value x.toBits := AtanTwoErr.nonneg_of_sign _ hs
