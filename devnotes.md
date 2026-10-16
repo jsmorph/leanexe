@@ -34020,11 +34020,11 @@ another attempt, as the repository instructions require.
 
 - [x] Fetch the branches, establish the common ancestor and the 35/629 commit counts, inspect the
   new source and test records, and simulate the merge.
-- [ ] Save the source revision, emitted bytes and hashes, theorem inventory, and build/test logs
+- [x] Save the source revision, emitted bytes and hashes, theorem inventory, and build/test logs
   from the tested `transcendentals` checkout as the reference.  Establish that the artifacts
   correspond to `32c92ebd`.  Keep its checkout and build records available while the integration
   runs elsewhere.  Reuse the pinned toolchain and dependencies and their existing caches.
-- [ ] Prepare the integration worktree and resolve the six conflicts as above.  Audit its diff
+- [x] Prepare the integration worktree and resolve the six conflicts as above.  Audit its diff
   against `transcendentals`, including all 1,016 numerical source files, and account for every
   adaptation.  Audit its diff against `verified` for the bounds, frames, potential rules,
   generators, field equations, and two-manual documentation work.
@@ -34073,3 +34073,17 @@ The source comparison against `942aa695` preserves every numerical Lean program 
 The first rsync invocation passed `-l` to the SSH wrapper, which accepts the user in the host argument, and removing the explicit user from rsync's destination corrected that invocation.  The remote host lacked rsync, and builds awaited its installation.
 
 The project-cache copy occupies 5.7 GB in the integration worktree.  A following copy of `.lake/lakefile.olean` failed because that file is absent, and Lake will configure the package from its `lakefile.toml`.  The dependency check reports CodeLib at `87e3aa5e8f6e6f3b3eb5e7e4c5aba43071002d47` and Mathlib at `85e3a25e006c35636f0e53b0e9296caca2685bc0`, matching the pinned manifest.
+
+With rsync installed, the integration bundle and build driver transferred with rsync.  The candidate `0f2718e1` is checked out in the remote integration worktree, and `core-01` builds `Verified.Reflect.Command` through `tools/leanrun`, with the default 4G high and 6G maximum, a 20-minute command timeout, and a 7,200-second lock wait.  Its log and final status belong to `build/integration/core-01.log` and `core-01.status`.
+
+`core-01` passed all 3,491 jobs.  The accepted `Verified.Correct` proofs retain the potential, paid-parameter, and frames arguments from `verified`, with `Expr.usesFast_eq` at the reductions that expose bitmask liveness.  The combined reflector builds without an additional change, and `stress-01` now builds the seven numerical implementation modules specified by the plan.  Its log and status use the same directory, with the default memory limits and a 20-minute timeout.
+
+The local machine has the existing WebGPU host, SwiftShader, lavapipe, and uv, which the build host lacks.  A separate copy of the local machine's compiled-project cache and the pinned dependency cache prepares the local integration worktree for the GPU and Python checks.  Building `Examples.Binary32.Wgsl`, `Examples.Gpt32.Kernels`, and `Examples.Gpt32.Specs` through the runner passed all 3,521 jobs, using the unchanged cached dependencies.  The numerical proof build remains on the build host.
+
+The completed reference and source checks above use the updated `942aa695`, rather than the original plan's `32c92ebd`.  `stress-01` passed `Uscale` in 17 seconds, `Bessel` in 311 seconds, `Erfc` in 349 seconds, `PrintFloat` in 97 seconds, and `ParseFloat` in 111 seconds.  Its dependencies rebuilt `Fma`, `Log`, and `Trig` in 33, 13, and 52 seconds.  `Tgamma` failed after 102 seconds at `whnf`, with the default 200,000-heartbeat limit, and its dependent `Lgamma` did not build.  The scope's observed memory peak was about 1.6 GiB.  `tgamma-diagnostic-01` preserves the command trace and Lean's reduction diagnostics before any resource or source change.
+
+The local `Examples` build passed all 3,889 jobs.  The source scan finds 35 LeanExe compilation commands, including GPT, GPT32, Piecewise, and the three tree modules, and their existing bytes are preserved for comparison.  One local build approval included log redirection and became specific to that whole shell command despite the requested runner prefix.  Following the user's correction, later local runs keep the runner or repository driver as the first token and capture logs outside the shell command.
+
+`tgamma-diagnostic-01` locates the heartbeat failure in reflection, before the initial-store theorem and encoding.  Lean initializes the heartbeat count for each lift into `CoreM` in its [command elaborator](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Lean/Elab/Command.lean), and the reflector processes all listed definitions in one such lift.  The combined compiler generates each definition's bounds and frames proofs during that work.  `tgamma-diagnostic-02`, with the command-line limit of 1,000,000, passed every generated declaration and encoding theorem.  Its largest reported individual kernel check took 7.11 seconds, and its cumulative type-checking time was 292 seconds.  `Tgamma.lean` now scopes the same 1,000,000-heartbeat limit to its compilation command that `Lgamma.lean` already uses.  This is the sole numerical Lean source adaptation against `942aa695`, and the program definitions, theorem statements, and hypotheses retain their reference contents.
+
+The local LTG check passed, and `local-emit-02.log` records fresh emissions, wasm-tools validation, decoder round trips, and matching reference bytes for all 35 LeanExe modules.  The first emission attempt used the download directory as the validator path and stopped after writing `scale.wasm`.  The installed validator is `~/.cargo/bin/wasm-tools`, and the completed comparison used it.  The module-case driver is now running with a reusable approval for `tests/modules/run.sh`.
