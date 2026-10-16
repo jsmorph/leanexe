@@ -15,8 +15,7 @@ def Nearest (y : ℝ) (w : UInt64) : Prop :=
 def NearestEven (y : ℝ) (w : UInt64) : Prop :=
   Nearest y w ∧ ∀ v : UInt64, Nearest y v → w.toNat % 2 ≤ v.toNat % 2
 
-private theorem word_of_nat (n : Nat) (hn : n < limit) :
-    (UInt64.ofNat n).toNat = n :=
+theorem word_toNat (n : Nat) (hn : n < limit) : (UInt64.ofNat n).toNat = n :=
   UInt64.toNat_ofNat_of_lt' (hn.trans (by decide : limit < 2 ^ 64))
 
 theorem nearest_finite (y : ℝ) (w : UInt64) (hw : Nearest y w) :
@@ -36,7 +35,7 @@ theorem exists_nearest (y : ℝ) : ∃ w : UInt64, Nearest y w := by
   obtain ⟨n, hn, hm⟩ := Finset.exists_min_image s
     (fun n : Nat => |value (UInt64.ofNat n) - y|) hs
   have hnl : n < limit := Finset.mem_range.mp hn
-  refine ⟨UInt64.ofNat n, by rw [word_of_nat n hnl]; exact hnl, ?_⟩
+  refine ⟨UInt64.ofNat n, by rw [word_toNat n hnl]; exact hnl, ?_⟩
   intro v hv
   have h := hm v.toNat (Finset.mem_range.mpr hv)
   simpa only [UInt64.ofNat_toNat] using h
@@ -56,7 +55,7 @@ theorem exists_nearest_even (y : ℝ) : ∃ w : UInt64, NearestEven y w := by
   have hsw : w.toNat ∈ s := by
     apply Finset.mem_filter.mpr
     exact ⟨Finset.mem_range.mpr hw.1, by simpa only [UInt64.ofNat_toNat] using hw⟩
-  simpa only [word_of_nat n hnl] using hm w.toNat hsw
+  simpa only [word_toNat n hnl] using hm w.toNat hsw
 
 #print axioms nearest_finite
 #print axioms exists_nearest

@@ -327,7 +327,7 @@ theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UI
   have hql := (abs_lt.mp hqe).1
   have hqu := (abs_lt.mp hqe).2
   have hy : erf x = 1 - erfc x := by simp [erfc]
-  have hn := F64AddNearest.add_nearest _ _ ErfTailEval.one_finite hneg (by
+  have hn := F64NearestSum.add_nearest _ _ ErfTailEval.one_finite hneg (by
     rw [one_value, hnv]
     linarith [show (1 : ℝ) / 2 ^ 53 < 1 / 2 by norm_num]) (by
     rw [one_value, hnv]

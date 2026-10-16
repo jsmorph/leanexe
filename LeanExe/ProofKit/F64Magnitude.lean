@@ -219,6 +219,17 @@ theorem half_unit (g : Nat) (q : Int) (hq : (g : Int) = q + 1074 - 52) :
 #print axioms scaled_ge
 #print axioms scaled_lt
 #print axioms grid_value
+/-- A word of nonzero value has a positive scaled magnitude. -/
+theorem scaledMagnitude_pos (w : UInt64) (h : value w ≠ 0) :
+    0 < Wasm.IEEE64.scaledMagnitude w := by
+  rcases Nat.eq_zero_or_pos (Wasm.IEEE64.scaledMagnitude w) with h0 | h0
+  · exfalso
+    apply h
+    simp only [value, Wasm.IEEE64.scaledValue, h0]
+    split <;> simp
+  · exact h0
+
 #print axioms half_unit
+#print axioms scaledMagnitude_pos
 
 end LeanExe.ProofKit.F64Magnitude

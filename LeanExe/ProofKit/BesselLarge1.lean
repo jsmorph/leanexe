@@ -12,7 +12,8 @@ through the pieces, and `asym_bound1` from 30 to infinity.
 
 namespace LeanExe.ProofKit.BesselLarge1
 
-open Real Set BesselPQ BesselChain BesselStart BesselConstants BesselEnergy PolyCalc PolyBound
+open Real Set BesselPQ BesselChain BesselStart BesselConstants BesselEnergy PolyCalc PolyCalculus
+  PolyBound
 
 /-- `[2, 3]`. -/
 def piece1_0 : Piece where

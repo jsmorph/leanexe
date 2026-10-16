@@ -328,4 +328,12 @@ theorem step_periodic_testBit_iff {k : ℕ} (hk : k < 64) (x : UInt64) (p : ℕ)
     Periodic (fun n => (step^[n] x).toNat.testBit k) p ↔ 2 ^ (k + 1) ∣ p :=
   periodic_testBit_iff step_conditions.1 step_conditions.2 hk x p
 
+#print axioms minimalPeriod_affine_iff
+#print axioms step_minimalPeriod
+#print axioms step_bijective
+#print axioms advance_existsUnique
+#print axioms advance_ne_self
+#print axioms periodic_testBit_iff
+#print axioms step_periodic_testBit_iff
+
 end Verified.Examples.Lcg

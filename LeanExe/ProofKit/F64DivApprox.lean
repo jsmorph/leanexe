@@ -5,7 +5,7 @@ import LeanExe.ProofKit.F64PowerScale
 import LeanExe.ProofKit.F64Source
 
 /-!
-Error tracking through a rounded division, in the form of `F64ErrorTrack.Approx`, and the change
+Error tracking through a rounded division, in the form of `F64Approx.Approx`, and the change
 of a rational function between two nearby arguments.  `div_approx` bounds `a / b` against `A / B`
 from the operands' errors, a bound `MA` on `|A|`, and a lower bound `mB` on `B > 0`.
 `ratio_lipschitz` bounds `|P/Q (x) - P/Q (y)|` by `L |x - y|` on an interval where `Q` is positive and

@@ -187,15 +187,6 @@ theorem add_self_exact (a : Float) (ha : Finite a.toBits) (h1 : 1 / 2 ^ 1000 ≤
   rw [Rounded.exact hr (w := Wasm.IEEE64.mul 0x4000000000000000 a.toBits) (by rw [hwv]; ring)]
   ring
 
-theorem nonzero_of_magnitude (w : UInt64) (h : value w ≠ 0) :
-    0 < Wasm.IEEE64.scaledMagnitude w := by
-  rcases Nat.eq_zero_or_pos (Wasm.IEEE64.scaledMagnitude w) with h0 | h0
-  · exfalso
-    apply h
-    simp only [value, Wasm.IEEE64.scaledValue, h0]
-    split <;> simp
-  · exact h0
-
 /-- Halving a nearest rounding gives a nearest rounding of half the number, for
 `2 ^ -998 ≤ |S| < 2 ^ 1000`.  A word `v` compares through its double, which is exact, or lies far
 from `S/2`. -/
@@ -228,13 +219,14 @@ theorem Rounded.half {c : UInt64} {S : ℝ} (hc : Rounded c S) (hS : 1 / 2 ^ 998
   refine ⟨hhf, ?_, ?_, ?_⟩
   · intro hS0
     have hsc := hneg (by linarith)
-    have hv := (F64Magnitude.sign_value c (nonzero_of_magnitude c hcne)).mp hsc
-    exact (F64Magnitude.sign_value h (nonzero_of_magnitude h hhne)).mpr (by rw [hhv]; linarith)
+    have hv := (F64Magnitude.sign_value c (F64Magnitude.scaledMagnitude_pos c hcne)).mp hsc
+    exact (F64Magnitude.sign_value h (F64Magnitude.scaledMagnitude_pos h hhne)).mpr
+      (by rw [hhv]; linarith)
   · intro hS0
     have hsc := hpos (by linarith)
     have hv : 0 < value c := by
       rcases lt_or_gt_of_ne hcne with hl | hl
-      · have := (F64Magnitude.sign_value c (nonzero_of_magnitude c hcne)).mpr hl
+      · have := (F64Magnitude.sign_value c (F64Magnitude.scaledMagnitude_pos c hcne)).mpr hl
         rw [hsc] at this
         exact absurd this Bool.false_ne_true
       · exact hl

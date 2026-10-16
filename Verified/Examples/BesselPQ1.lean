@@ -117,8 +117,8 @@ theorem pq_r3 (y : Float) (hxf : Finite y.toBits) (hlo : 0x4000000000000000 ≤ 
   have hlo_q : (((2 : ℚ)) : ℝ) = (2 : ℝ) := by
     have : (2 : ℚ) = (2 : ℚ) := by decide +kernel
     rw [this]; push_cast; ring
-  have hhi_q : (((BesselFd1a.b3 : ℚ)) : ℝ) = (1497965 / 524288 : ℝ) := by
-    have : (BesselFd1a.b3 : ℚ) = (1497965 / 524288 : ℚ) := by decide +kernel
+  have hhi_q : (((BesselRatio.b3 : ℚ)) : ℝ) = (1497965 / 524288 : ℝ) := by
+    have : (BesselRatio.b3 : ℚ) = (1497965 / 524288 : ℚ) := by decide +kernel
     rw [this]; push_cast; ring
   set ρp := eval (pr3.map ratOfWord) (1 / v ^ 2) / eval (1 :: ps3.map ratOfWord) (1 / v ^ 2)
     with hρp
@@ -250,11 +250,11 @@ theorem pq_r2 (y : Float) (hxf : Finite y.toBits) (hlo : 0x4006DB6D00000000 ≤ 
     div_nonneg (eval_nonneg _ (by decide +kernel) _ (by positivity)) hSp.le
   have hqsg : eval (qr2.map ratOfWord) (1 / v ^ 2) / eval (1 :: qs2.map ratOfWord) (1 / v ^ 2) ≤ 0 :=
     div_nonpos_of_nonpos_of_nonneg (eval_nonpos _ (by decide +kernel) _ (by positivity)) hSq.le
-  have hlo_q : (((BesselFd1a.b3 : ℚ)) : ℝ) = (1497965 / 524288 : ℝ) := by
-    have : (BesselFd1a.b3 : ℚ) = (1497965 / 524288 : ℚ) := by decide +kernel
+  have hlo_q : (((BesselRatio.b3 : ℚ)) : ℝ) = (1497965 / 524288 : ℝ) := by
+    have : (BesselRatio.b3 : ℚ) = (1497965 / 524288 : ℚ) := by decide +kernel
     rw [this]; push_cast; ring
-  have hhi_q : (((BesselFd1a.b5 : ℚ)) : ℝ) = (1191563 / 262144 : ℝ) := by
-    have : (BesselFd1a.b5 : ℚ) = (1191563 / 262144 : ℚ) := by decide +kernel
+  have hhi_q : (((BesselRatio.b5 : ℚ)) : ℝ) = (1191563 / 262144 : ℝ) := by
+    have : (BesselRatio.b5 : ℚ) = (1191563 / 262144 : ℚ) := by decide +kernel
     rw [this]; push_cast; ring
   set ρp := eval (pr2.map ratOfWord) (1 / v ^ 2) / eval (1 :: ps2.map ratOfWord) (1 / v ^ 2)
     with hρp
@@ -386,8 +386,8 @@ theorem pq_r1 (y : Float) (hxf : Finite y.toBits) (hlo : 0x40122E8B00000000 ≤ 
     div_nonneg (eval_nonneg _ (by decide +kernel) _ (by positivity)) hSp.le
   have hqsg : eval (qr1.map ratOfWord) (1 / v ^ 2) / eval (1 :: qs1.map ratOfWord) (1 / v ^ 2) ≤ 0 :=
     div_nonpos_of_nonpos_of_nonneg (eval_nonpos _ (by decide +kernel) _ (by positivity)) hSq.le
-  have hlo_q : (((BesselFd1a.b5 : ℚ)) : ℝ) = (1191563 / 262144 : ℝ) := by
-    have : (BesselFd1a.b5 : ℚ) = (1191563 / 262144 : ℚ) := by decide +kernel
+  have hlo_q : (((BesselRatio.b5 : ℚ)) : ℝ) = (1191563 / 262144 : ℝ) := by
+    have : (BesselRatio.b5 : ℚ) = (1191563 / 262144 : ℚ) := by decide +kernel
     rw [this]; push_cast; ring
   have hhi_q : (((8 : ℚ)) : ℝ) = (8 : ℝ) := by
     have : (8 : ℚ) = (8 : ℚ) := by decide +kernel

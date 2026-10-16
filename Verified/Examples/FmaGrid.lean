@@ -123,7 +123,7 @@ theorem grid_or_below (v : UInt64) (E : ℕ) (hE : 1 ≤ E) :
     simp
   by_cases hm : 2 ^ (52 + (E - 1)) ≤ Wasm.IEEE64.scaledMagnitude v
   · left
-    obtain ⟨j, hj⟩ := F64RoundNearest.magnitude_dvd v (E - 1) hm
+    obtain ⟨j, hj⟩ := F64NearestSum.magnitude_dvd v (E - 1) hm
     refine ⟨j, ?_⟩
     rw [hj, hsp]
     ring

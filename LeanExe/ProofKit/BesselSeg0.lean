@@ -258,13 +258,6 @@ def seg0_6_3 : Piece where
   A := [1208824936920132851162349 / 2 ^ 80, 3472182134510345167 / 2 ^ 79, -358295696321604649 / 2 ^ 80, 16422259822556803 / 2 ^ 80, -705234266251885 / 2 ^ 80, 908022341985 / 2 ^ 75, -1163242886843 / 2 ^ 80, 45592024907 / 2 ^ 80, -1758012047 / 2 ^ 80, 66914227 / 2 ^ 80, -1260039 / 2 ^ 79, 94075 / 2 ^ 80, -1743 / 2 ^ 79, 1 / 2 ^ 73, -5 / 2 ^ 80, 0, 0]
   B := [-1301817478936904617403 / 2 ^ 78, 89656236881337774605 / 2 ^ 79, -6170394305324552035 / 2 ^ 80, 106093746353196305 / 2 ^ 79, -455736662275163 / 2 ^ 76, 31301754994505 / 2 ^ 77, -8594044098793 / 2 ^ 80, 294750554883 / 2 ^ 80, -5051311355 / 2 ^ 79, 173025731 / 2 ^ 79, -11846203 / 2 ^ 80, 12665 / 2 ^ 75, -13857 / 2 ^ 80, 237 / 2 ^ 79, -1 / 2 ^ 76, 1 / 2 ^ 80, 0]
 
-/-- A segment lies in its piece, satisfies `ok`, and its polynomials lie within `2^-71` of the
-piece's. -/
-def segOk (q : Piece × Piece) : Bool :=
-  q.2.ok && decide (q.1.a ≤ q.2.a ∧ q.2.b ≤ q.1.b) &&
-    decide (absSum q.2.H (subP (shift (q.2.c - q.1.c) q.1.A) q.2.A) ≤ 1 / 2 ^ 71) &&
-    decide (absSum q.2.H (subP (shift (q.2.c - q.1.c) q.1.B) q.2.B) ≤ 1 / 2 ^ 71)
-
 theorem segs_0_ok :
     segOk (piece0_0, seg0_0_0) = true ∧ segOk (piece0_0, seg0_0_1) = true ∧ segOk (piece0_0, seg0_0_2) = true ∧ segOk (piece0_0, seg0_0_3) = true := by
   decide +kernel
@@ -369,18 +362,6 @@ theorem near_asym (x : ℝ) (hx : 30 ≤ x) :
           simp only [AsymPiece.fB]; linarith
       _ ≤ 1 / 2 ^ 70 := by norm_num
 
-theorem ends (lo c : ℚ) (L : ℤ) (t : ℕ) (h : (L : ℚ) / 2 ^ t = lo - c) (x : ℝ) (hx : (lo : ℝ) ≤ x) :
-    (L : ℝ) / 2 ^ t ≤ x - c := by
-  have := congrArg (fun q : ℚ => (q : ℝ)) h
-  push_cast at this
-  linarith
-
-theorem ends' (hi c : ℚ) (H : ℤ) (t : ℕ) (h : (H : ℚ) / 2 ^ t = hi - c) (x : ℝ) (hx : x ≤ (hi : ℝ)) :
-    x - c ≤ (H : ℝ) / 2 ^ t := by
-  have := congrArg (fun q : ℚ => (q : ℝ)) h
-  push_cast at this
-  linarith
-
 /-- One segment of a comparison with `pFd R S`. -/
 theorem p_step (q : Piece × Piece) (hq : segOk q = true) (hpc : q.1 ∈ pieces ++ [last])
     (R S : List ℚ) (hR : R.length ≤ S.length + 1) (lo hi : ℚ) (sE sW e : ℕ) (L H : ℤ) (t : ℕ)
@@ -414,11 +395,6 @@ theorem q_step (q : Piece × Piece) (hq : segOk q = true) (hpc : q.1 ∈ pieces 
     (ends lo q.2.c L t hend.1 x hx.1) (ends' hi q.2.c H t hend.2 x hx.2) (lt_of_lt_of_le hs'.1 hx.1)
   calc |Q0 x - qFd (-1 / 8) R S x| ≤ |Q0 x - q.2.fB x| + |q.2.fB x - qFd (-1 / 8) R S x| := abs_sub_le _ _ _
     _ ≤ (e : ℝ) / 2 ^ 68 + 1 / 2 ^ 70 := by linarith
-
-theorem one_div_le (x : ℝ) (hx : 30 ≤ x) : 1 / x ≤ ((35 : ℤ) : ℝ) / 2 ^ 10 := by
-  rw [div_le_div_iff₀ (by linarith) (by norm_num)]
-  push_cast
-  linarith
 
 theorem p_asym_step (R S : List ℚ) (sE sW e : ℕ)
     (hs : isScaled sE (pEa casym R S) = true ∧ isScaled sW (sAsym S) = true)

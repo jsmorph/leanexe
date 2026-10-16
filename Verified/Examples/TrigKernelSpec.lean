@@ -28,7 +28,7 @@ theorem sinTail_spec (x y : UInt64) (X : ℝ) (hxf : Finite x) (hyf : Finite y)
   have h0 : 0 ≤ X := hX ▸ abs_nonneg _
   obtain ⟨⟨n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12⟩, ⟨d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11⟩, ⟨q1, q2, q3, q4, q5, q6, q7, q8, q9, q10⟩, hX1', hXX⟩ := pow_facts X h0 hX1
   obtain ⟨M, ⟨⟨hGf, hGe⟩, hGm⟩, hM⟩ := GW_AB x y X hxf hyf hX hX0 hX1 hy
-  have hGv := Approx.abs_le ⟨hGf, hGe⟩ hGm
+  have hGv := F64Approx.Approx.abs_le ⟨hGf, hGe⟩ hGm
   have hb : |value x - value (GW x y)| < 2 ^ 1023 := by
     refine lt_two_pow _ ?_
     have h1 := abs_le.mp (show |value x| ≤ 1 by rw [hX]; linarith)
@@ -66,7 +66,7 @@ theorem sinDirect_spec (x : UInt64) (X : ℝ) (hxf : Finite x)
   have h0 : 0 ≤ X := hX ▸ abs_nonneg _
   obtain ⟨⟨n1, n2, n3, n4, n5, n6, n7, n8, n9, n10, n11, n12⟩, ⟨d1, d2, d3, d4, d5, d6, d7, d8, d9, d10, d11⟩, ⟨q1, q2, q3, q4, q5, q6, q7, q8, q9, q10⟩, hX1', hXX⟩ := pow_facts X h0 hX1
   obtain ⟨M, ⟨⟨hLf, hLe⟩, hLm⟩, hM⟩ := LW_AB x X hxf hX hX0 hX1
-  have hLv := Approx.abs_le ⟨hLf, hLe⟩ hLm
+  have hLv := F64Approx.Approx.abs_le ⟨hLf, hLe⟩ hLm
   have hb : |value x + value (LW x)| < 2 ^ 1023 := by
     refine lt_two_pow _ ?_
     have h1 := abs_le.mp (show |value x| ≤ 1 by rw [hX]; linarith)

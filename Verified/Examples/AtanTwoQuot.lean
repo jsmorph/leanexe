@@ -17,7 +17,7 @@ theorem quot_facts (y x : Float) (hy : Finite y.toBits) (hx : Finite x.toBits)
     Finite (y / x).abs.toBits ∧
       |value (y / x).abs.toBits - (|value y.toBits / value x.toBits|)| ≤
         |value y.toBits / value x.toBits| / 2 ^ 53 + 1 / 2 ^ 1075 := by
-  have hm := F64RoundDouble.mag_pos x.toBits hx0
+  have hm := F64Magnitude.scaledMagnitude_pos x.toBits hx0
   obtain ⟨hdf, hde⟩ := F64DivBounds.div_real_mixed y.toBits x.toBits hy hx hm.ne' hQ
   rw [← F64Bits.toBits_div] at hdf hde
   obtain ⟨haf, hav⟩ := AtanTheoremReduce.abs_facts (y / x) hdf

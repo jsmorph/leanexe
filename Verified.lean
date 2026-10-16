@@ -27,6 +27,9 @@ import Verified.Examples.Recursion
 import Verified.Examples.Fields
 import Verified.Examples.Trig
 import Verified.Examples.Fourier
+import Verified.Examples.Lcg
+import Verified.Examples.ParkMiller
+import Verified.Examples.Xorshift
 import Verified.Examples.Insert
 import Verified.Examples.Clob
 import Verified.Examples.Tables

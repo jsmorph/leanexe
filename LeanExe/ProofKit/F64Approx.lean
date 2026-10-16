@@ -47,6 +47,11 @@ theorem Approx.upper {w : UInt64} {v e : ℝ} (h : Approx w v e) : value w ≤ v
   have := (abs_le.mp h.2).2
   linarith
 
+theorem Approx.abs_le {w : UInt64} {v e M : ℝ} (h : Approx w v e) (hv : |v| ≤ M) :
+    |value w| ≤ M + e := by
+  have := abs_sub_abs_le_abs_sub (value w) v
+  linarith [h.2]
+
 theorem approx_self (w : UInt64) (hw : Finite w) : Approx w (value w) 0 :=
   ⟨hw, by simp⟩
 

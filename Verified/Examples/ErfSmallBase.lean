@@ -416,7 +416,7 @@ theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
     have := (abs_le.mp herr).1
     have hy0' : 0 < erf x := lt_of_lt_of_le (by positivity) hyl
     nlinarith
-  have hn := F64AddNearest.add_nearest X _ hX hTf hvpos (by
+  have hn := F64NearestSum.add_nearest X _ hX hTf hvpos (by
     have := (abs_le.mp herr).2
     have := erf_lt_one x
     have h3 : 1 * (63 / 64) * unitRoundoff64 * erf x ≤ 1 / 2 * 1 :=
@@ -481,7 +481,7 @@ theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
   have hvu := (abs_le.mp herr).2
   have hy1 := erf_lt_one x
   have hvpos : 0 < x + value T := by linarith
-  have hn := F64AddNearest.add_nearest X T hX hTf hvpos (by
+  have hn := F64NearestSum.add_nearest X T hX hTf hvpos (by
     linarith [show (2 : ℝ) ≤ 2 ^ 1023 by norm_num])
   refine F64AddNearest.within_of_nearest 1 le_rfl (erf x) _ _ 1022 (by norm_num) (by norm_num)
     (by rw [hb]; linarith) (by rw [hb]; linarith) ?_ hn ?_

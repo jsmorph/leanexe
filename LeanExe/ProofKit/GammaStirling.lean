@@ -274,16 +274,6 @@ theorem inv_pow_le_telescope {y : ℝ} (hy : 1 < y) {p : ℕ} (hp : 0 < p) :
     div_le_div_iff₀ (by positivity) (by positivity)]
   nlinarith [mul_le_mul_of_nonneg_left key (le_of_lt (mul_pos hpr hY))]
 
-theorem continuous_eval (p : List ℚ) : Continuous (eval p) := by
-  induction p with
-  | nil => exact continuous_const
-  | cons a p ih =>
-    have : eval (a :: p) = fun x => (a : ℝ) + x * eval p x := by
-      funext x
-      rfl
-    rw [this]
-    exact continuous_const.add (continuous_id.mul ih)
-
 theorem tendsto_R (cs : List ℚ) {x : ℝ} (hx : 0 < x) :
     Tendsto (fun n : ℕ => R cs (x + n)) atTop (𝓝 0) := by
   have hg : Tendsto (fun n : ℕ => x + (n : ℝ)) atTop atTop :=

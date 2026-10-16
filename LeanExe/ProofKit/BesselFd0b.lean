@@ -15,12 +15,6 @@ namespace LeanExe.ProofKit.BesselFd0b
 
 open Set PolyBound PolyCalc BesselPQ BesselChain BesselRatio BesselLarge0 BesselSeg0
 
-/-- The boundary `0x4006DB6D00000000` of fdlibm's ranges. -/
-def b3 : ℚ := ratOfWord 0x4006DB6D00000000
-
-/-- The boundary `0x40122E8B00000000` of fdlibm's ranges. -/
-def b5 : ℚ := ratOfWord 0x40122E8B00000000
-
 /-- `pR8` of `e_j0.c`. -/
 def pR8 : List ℚ := [ratOfWord 0x0000000000000000, ratOfWord 0xBFB1FFFFFFFFFD32, ratOfWord 0xC02029D0B44FA779, ratOfWord 0xC07011027B19E863, ratOfWord 0xC0A36A6ECD4DCAFC, ratOfWord 0xC0B4850B36CC643D]
 /-- `pS8` of `e_j0.c`. -/

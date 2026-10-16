@@ -7,7 +7,8 @@ import LeanExe.ProofKit.F64SignedRounding
 Rounded addition gives the nearest binary64 value to the exact sum.  `roundedMagnitude_nearest`
 compares the rounded scaled magnitude with every scaled magnitude of a word: the rounding lies
 within half a unit of the binade of `n` on the grid of that binade, and every word in the binade
-lies on the grid.  `add_nearest` states, for a positive sum below `2 ^ 1023`, that the result is
+lies on the grid (`magnitude_dvd`), so `rounded_nearest` holds for the magnitude of every word.
+`add_nearest` states, for a positive sum below `2 ^ 1023`, that the result is
 `F64NearestNonnegative.Nearest` to the sum, and `add_nearest_neg` states it for the negation of a
 negative sum.  `add_half_spacing` bounds the error by half the spacing of the binade below a bound
 on the sum.
@@ -115,6 +116,11 @@ theorem roundedMagnitude_nearest (n m : Nat) (hm : ∀ g : Nat, 2 ^ (52 + g) ≤
       rw [abs_of_pos (by linarith : (0 : ℝ) < (m : ℝ) - n)]
       linarith
 
+/-- The rounded magnitude is at least as close to `n` as the scaled magnitude of any word. -/
+theorem rounded_nearest (n : Nat) (v : UInt64) :
+    |(roundedMagnitude n : ℝ) - n| ≤ |(Wasm.IEEE64.scaledMagnitude v : ℝ) - n| :=
+  roundedMagnitude_nearest n _ (fun g hg => magnitude_dvd v g hg)
+
 /-- The value of a nonnegative word below the limit is its scaled magnitude. -/
 theorem value_of_lt_limit (v : UInt64) (hv : v.toNat < F64NearestNonnegative.limit) :
     value v = (Wasm.IEEE64.scaledMagnitude v : ℝ) / 2 ^ 1074 := by
@@ -167,8 +173,7 @@ theorem nearest_of_magnitude (w : UInt64) (S : ℝ) (n : Nat)
   refine ⟨hw, fun v hv => ?_⟩
   rw [value_of_lt_limit w hw, value_of_lt_limit v hv, hwm, hS, ← sub_div, ← sub_div, abs_div,
     abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074)]
-  exact div_le_div_of_nonneg_right
-    (roundedMagnitude_nearest n _ (fun g hg => magnitude_dvd v g hg)) (by positivity)
+  exact div_le_div_of_nonneg_right (rounded_nearest n v) (by positivity)
 
 /-- A positive sum below `2 ^ 1023` rounds to the nearest nonnegative word. -/
 theorem add_nearest (a b : UInt64) (ha : Finite a) (hb : Finite b)
@@ -326,6 +331,7 @@ theorem sub_half_spacing (a b : UInt64) (ha : Finite a) (hb : Finite b) (g : Nat
 
 #print axioms magnitude_dvd
 #print axioms roundedMagnitude_nearest
+#print axioms rounded_nearest
 #print axioms add_spec
 #print axioms add_nearest
 #print axioms add_nearest_neg

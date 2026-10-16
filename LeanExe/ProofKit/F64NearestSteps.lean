@@ -19,9 +19,6 @@ open CodeLib.IEEE64 F64NearestNonnegative F64PositiveOrder F64NearestStep F64Pos
 set_option exponentiation.threshold 4096
 set_option maxRecDepth 100000
 
-theorem word_toNat (n : Nat) (hn : n < limit) : (UInt64.ofNat n).toNat = n :=
-  UInt64.toNat_ofNat_of_lt' (hn.trans (by decide : limit < 2 ^ 64))
-
 theorem limit_lt : limit < 2 ^ 63 := by decide
 
 /-- Two words above: `s - y` is at least half the distance from `w` to the second word above. -/

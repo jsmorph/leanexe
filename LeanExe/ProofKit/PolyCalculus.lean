@@ -31,6 +31,9 @@ theorem hasDerivAt_eval (p : List ℚ) (x : ℝ) : HasDerivAt (eval p) (eval (de
     simp only [derivP, eval_addP, eval_cons, Rat.cast_zero, id]
     ring
 
+theorem continuous_eval (p : List ℚ) : Continuous (eval p) :=
+  continuous_iff_continuousAt.mpr fun x => (hasDerivAt_eval p x).continuousAt
+
 theorem hasDerivAt_eval_sub (p : List ℚ) (c x : ℝ) :
     HasDerivAt (fun y => eval p (y - c)) (eval (derivP p) (x - c)) x := by
   have h := (hasDerivAt_eval p (x - c)).comp x ((hasDerivAt_id x).sub_const c)
@@ -114,6 +117,7 @@ theorem eval_hatP (c : List ℚ) (n : ℕ) (hc : c.length ≤ n + 1) (x : ℝ) (
       _ = x ^ (2 * n) * eval c (x ^ 2)⁻¹ := by rw [hpow]
 
 #print axioms hasDerivAt_eval
+#print axioms continuous_eval
 #print axioms eval_powP
 #print axioms eval_spread
 #print axioms eval_oddP

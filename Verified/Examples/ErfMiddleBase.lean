@@ -192,7 +192,7 @@ theorem middle_erf (slo shi : ℚ) (hok : middleOK slo shi = true) (X S : UInt64
   have herxf : Finite (0x3FEB0AC160000000 : UInt64) := by
     unfold CodeLib.IEEE64.Finite
     decide
-  have hn := F64AddNearest.add_nearest _ D herxf hDf (by linarith)
+  have hn := F64NearestSum.add_nearest _ D herxf hDf (by linarith)
     (by linarith [show (2 : ℝ) ≤ 2 ^ 1023 by norm_num])
   have hb : value (UInt64.ofNat (1022 * 2 ^ 52)) = 1 / 2 := by
     rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
