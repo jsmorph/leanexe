@@ -1,6 +1,6 @@
 import Verified.Examples.SinpiTinySplit
 import Verified.Examples.SinpiTinyReal
-import Verified.Examples.SinpiLowStep
+import LeanExe.ProofKit.F64RelativeStepLow
 import Verified.Examples.SinpiSin
 
 /-!
@@ -8,13 +8,13 @@ import Verified.Examples.SinpiSin
 `tan (π x)` for every finite `x`.  `±0` gives itself.  Otherwise `Sinpi.piTiny` lies within
 `(1 + 2 ^ -10) u` of `π x`, relative to the larger of `|π x|` and `2 ^ -1021`, plus `2 ^ -1085`,
 and `sin (π x)` and `tan (π x)` lie within `|π x| ^ 3` of `π x`, so that
-`SinpiLowStep.within_low` applies, subnormal results included.
+`F64RelativeStepLow.within_low` applies, subnormal results included.
 -/
 
 namespace Verified.Examples.SinpiTiny
 
 open CodeLib.IEEE64 LeanExe.ProofKit TanWords TanTrunc TanBigWords SinpiProduct SinpiTinyWords
-  SinpiTinySplit SinpiTinyReal SinpiLowStep SinpiCommon SinpiKernels SinpiSin
+  SinpiTinySplit SinpiTinyReal F64RelativeStepLow SinpiCommon SinpiKernels SinpiSin
 
 set_option exponentiation.threshold 1200
 
@@ -140,11 +140,11 @@ theorem tiny_spec (b : UInt64) (hbf : Finite b) (hb1 : |value b| < 1 / 2 ^ 29) :
 
 /-- A nonzero finite word is at least `2 ^ -1074` in magnitude. -/
 theorem abs_ge_min (w : UInt64) (h : value w ≠ 0) : 1 / 2 ^ 1074 ≤ |value w| := by
-  rw [TrigNearest.abs_value]
+  rw [F64RoundNearest.abs_value]
   have h0 : Wasm.IEEE64.scaledMagnitude w ≠ 0 := by
     intro h0
     apply h
-    rw [← abs_eq_zero, TrigNearest.abs_value, h0]
+    rw [← abs_eq_zero, F64RoundNearest.abs_value, h0]
     simp
   have : (1 : ℝ) ≤ Wasm.IEEE64.scaledMagnitude w := by
     exact_mod_cast Nat.one_le_iff_ne_zero.mpr h0
@@ -216,7 +216,7 @@ theorem sinpi_tiny (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 1
   rw [if_pos (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), if_pos (c29.mpr h)]
   by_cases h0 : value x.toBits = 0
   · rw [if_pos ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.sin_zero]
-    exact TrigTiny.zero_step _ ((TrigSinCos.zero_iff _).mpr h0)
+    exact F64SelfStep.zero_step _ ((TrigSinCos.zero_iff _).mpr h0)
   · rw [if_neg (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
     obtain ⟨hf, hb⟩ := tiny_spec x.toBits hxf h
     obtain ⟨p0, p1, p2⟩ := pi_x _ (abs_ge_min _ h0) h
@@ -233,7 +233,7 @@ theorem tanpi_tiny (x : Float) (hxf : Finite x.toBits) (h : |value x.toBits| < 1
   rw [if_pos (c1.mpr (by linarith [show (1 : ℝ) / 2 ^ 29 < 1 by norm_num])), if_pos (c29.mpr h)]
   by_cases h0 : value x.toBits = 0
   · rw [if_pos ((feq_iff x 0.0 hxf f0).mpr (by rw [h0, v0])), h0, mul_zero, Real.tan_zero]
-    exact TrigTiny.zero_step _ ((TrigSinCos.zero_iff _).mpr h0)
+    exact F64SelfStep.zero_step _ ((TrigSinCos.zero_iff _).mpr h0)
   · rw [if_neg (fun h' => h0 (by rw [(feq_iff x 0.0 hxf f0).mp h', v0])), tiny_bits x hxf]
     obtain ⟨hf, hb⟩ := tiny_spec x.toBits hxf h
     obtain ⟨p0, p1, p2⟩ := pi_x _ (abs_ge_min _ h0) h

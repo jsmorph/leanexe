@@ -87,9 +87,9 @@ theorem split_spec (b : UInt64) (hbf : Finite b) (hb1 : |value b| < 1) :
     rw [hLs, Int.cast_sub, sub_div]
   have hP : (0 : ℝ) < 2 ^ (k + 53) / 2 ^ 1074 := by positivity
   have hAa : |value A| = (m : ℝ) * (2 ^ (k + 53) / 2 ^ 1074) := by
-    rw [TrigNearest.abs_value, hAm, Nat.cast_mul, Nat.cast_pow, Nat.cast_ofNat, mul_div_assoc]
+    rw [F64RoundNearest.abs_value, hAm, Nat.cast_mul, Nat.cast_pow, Nat.cast_ofNat, mul_div_assoc]
   have hHa : |value H| = ((m / 2 ^ 32 * 2 ^ 32 : ℕ) : ℝ) * (2 ^ (k + 53) / 2 ^ 1074) := by
-    rw [TrigNearest.abs_value, hHm, Nat.cast_mul, Nat.cast_pow, Nat.cast_ofNat, mul_div_assoc]
+    rw [F64RoundNearest.abs_value, hHm, Nat.cast_mul, Nat.cast_pow, Nat.cast_ofNat, mul_div_assoc]
   have hLa : |value (Wasm.IEEE64.sub A H)| =
       ((m % 2 ^ 32 : ℕ) : ℝ) * (2 ^ (k + 53) / 2 ^ 1074) := by
     rw [TrigSmall.value_of_scaled, hLs, hdiff, Int.cast_mul, Int.cast_pow, Int.cast_ofNat,

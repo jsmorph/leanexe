@@ -35,7 +35,7 @@ theorem big_parity (x : Float) (hxf : Finite x.toBits) (h1 : 2 ^ 52 ≤ |value x
     rw [hv]; linarith [show (0 : ℝ) < 2 ^ 52 by positivity]
   have he1 : 1075 ≤ Wasm.IEEE64.exponent x.abs.toBits := by
     by_contra hc
-    have h := TrigNearest.grid_bound x.abs.toBits
+    have h := F64SignedNearestSum.grid_bound x.abs.toBits
     rw [abs_of_pos hpos, hv] at h
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 ≤ 2 ^ 52 := by
       rw [div_le_iff₀ (by positivity), ← pow_add]
@@ -43,7 +43,7 @@ theorem big_parity (x : Float) (hxf : Finite x.toBits) (h1 : 2 ^ 52 ≤ |value x
     linarith
   have he2 : Wasm.IEEE64.exponent x.abs.toBits ≤ 1075 := by
     by_contra hc
-    have h := TrigNearest.grid_lower x.abs.toBits (by omega)
+    have h := F64SignedNearestSum.grid_lower x.abs.toBits (by omega)
     rw [abs_of_pos hpos, hv] at h
     have : (2 : ℝ) ^ 53 ≤ 2 ^ (52 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 := by
       rw [le_div_iff₀ (by positivity), ← pow_add]
@@ -56,7 +56,7 @@ theorem big_parity (x : Float) (hxf : Finite x.toBits) (h1 : 2 ^ 52 ≤ |value x
       show Wasm.IEEE64.exponent x.abs.toBits - 1 = 1074 by omega]
   have hfr : Wasm.IEEE64.fraction x.abs.toBits = x.abs.toBits.toNat % 2 ^ 52 := rfl
   refine ⟨2 ^ 52 + Wasm.IEEE64.fraction x.abs.toBits, ?_, ?_⟩
-  · rw [← hv, ← abs_of_pos hpos, TrigNearest.abs_value, hm, Nat.cast_mul, Nat.cast_pow,
+  · rw [← hv, ← abs_of_pos hpos, F64RoundNearest.abs_value, hm, Nat.cast_mul, Nat.cast_pow,
       Nat.cast_ofNat, mul_div_cancel_right₀ _ (by positivity)]
   · have hl : (x.toBits &&& 0xFFFFFFFF &&& 1).toNat = x.abs.toBits.toNat % 2 := by
       rw [UInt64.toNat_and, hlx, show (1 : UInt64).toNat = 1 from rfl, Nat.and_one_is_mod]
@@ -67,7 +67,7 @@ theorem big_parity (x : Float) (hxf : Finite x.toBits) (h1 : 2 ^ 52 ≤ |value x
 
 /-- From `2 ^ 53` on, a finite word is an even integer. -/
 theorem big_even (w : UInt64) (h : 2 ^ 53 ≤ |value w|) : ∃ n : Nat, |value w| = 2 * n := by
-  have hl := TrigNearest.grid_bound w
+  have hl := F64SignedNearestSum.grid_bound w
   have he : 1076 ≤ Wasm.IEEE64.exponent w := by
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent w - 1)) / 2 ^ 1074 ≤ 2 ^ 53 := by
@@ -78,7 +78,7 @@ theorem big_even (w : UInt64) (h : 2 ^ 53 ≤ |value w|) : ∃ n : Nat, |value w
   obtain ⟨k, hk⟩ : ∃ k, Wasm.IEEE64.exponent w - 1 = k + 1075 :=
     ⟨_, (Nat.sub_add_cancel (by omega)).symm⟩
   refine ⟨m * 2 ^ k, ?_⟩
-  rw [TrigNearest.abs_value, hm, hk, pow_add]
+  rw [F64RoundNearest.abs_value, hm, hk, pow_add]
   push_cast
   ring
 
@@ -112,7 +112,7 @@ theorem cospi_big (x : Float) (hxf : Finite x.toBits) (h : 2 ^ 52 ≤ |value x.t
 /-- A word of `±0` is within one step of 0. -/
 theorem pm_zero (w : UInt64) (h : w = 0 ∨ w = 0x8000000000000000) :
     F64SignedRounding.WithinSteps 1 0 w := by
-  rcases h with h | h <;> rw [h] <;> exact TrigTiny.zero_step _ (by decide)
+  rcases h with h | h <;> rw [h] <;> exact F64SelfStep.zero_step _ (by decide)
 
 /-- `tanpi` from `2 ^ 52` on. -/
 theorem tanpi_big (x : Float) (hxf : Finite x.toBits) (h : 2 ^ 52 ≤ |value x.toBits|) :

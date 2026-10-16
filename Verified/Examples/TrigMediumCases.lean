@@ -10,7 +10,7 @@ The three outcomes of fdlibm's medium reduction on words.  With `N` the count an
 
 namespace Verified.Examples.TrigMediumCases
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigSmall TrigMediumConst
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigSmall TrigMediumConst
   TrigMediumFn
 
 def R1 (X F : UInt64) : UInt64 := Wasm.IEEE64.sub X (Wasm.IEEE64.mul F pio2_1)

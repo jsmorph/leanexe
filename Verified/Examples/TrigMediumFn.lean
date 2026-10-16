@@ -1,4 +1,4 @@
-import Verified.Examples.TrigNearest
+import LeanExe.ProofKit.F64SignedNearestSum
 import Verified.Examples.TrigLargeFloat
 import Verified.Examples.TrigPi
 import LeanExe.ProofKit.F64ArithmeticBounds
@@ -13,7 +13,7 @@ in rounded arithmetic is the integer `N` nearest to the rounded product: the sum
 
 namespace Verified.Examples.TrigMediumFn
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigPi
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigPi
 
 /-- 53 bits of `2/π`. -/
 def invpio2 : UInt64 := 0x3FE45F306DC9C883

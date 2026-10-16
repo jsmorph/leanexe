@@ -1,5 +1,5 @@
 import Verified.Examples.TrigMedium
-import Verified.Examples.TrigTiny
+import LeanExe.ProofKit.F64SelfStep
 import Mathlib.Data.Int.Log
 
 /-!

@@ -32,8 +32,8 @@ theorem zero_choice (c : Bool) :
     F64SignedRounding.WithinSteps 1 0 (if c = true then -(0.0 : Float) else 0.0).toBits := by
   obtain ⟨z1, z2⟩ := zero_bits'
   split
-  · rw [z2]; exact TrigTiny.zero_step _ (by decide)
-  · rw [z1]; exact TrigTiny.zero_step _ (by decide)
+  · rw [z2]; exact F64SelfStep.zero_step _ (by decide)
+  · rw [z1]; exact F64SelfStep.zero_step _ (by decide)
 
 /-- The sign of `x` and the value of `|x|`. -/
 theorem sign_cases (x : Float) (hxf : Finite x.toBits) (h0 : value x.toBits ≠ 0) :
@@ -85,7 +85,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
   -- The exponent of `|x|`.
   have hpos : 0 < value x.abs.toBits := by rw [hv]; linarith
   have he1 : 1023 ≤ Wasm.IEEE64.exponent x.abs.toBits := by
-    have := TrigNearest.grid_bound x.abs.toBits
+    have := F64SignedNearestSum.grid_bound x.abs.toBits
     rw [abs_of_pos hpos, hv] at this
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 ≤ 1 := by
@@ -93,7 +93,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
       exact pow_le_pow_right₀ (by norm_num) (by omega)
     linarith
   have he2 : Wasm.IEEE64.exponent x.abs.toBits ≤ 1074 := by
-    have := TrigNearest.grid_lower x.abs.toBits (by omega)
+    have := F64SignedNearestSum.grid_lower x.abs.toBits (by omega)
     rw [abs_of_pos hpos, hv] at this
     by_contra hc
     have : (2 : ℝ) ^ 52 ≤ 2 ^ (52 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 := by
@@ -146,7 +146,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
       show Real.pi * (N : ℝ) = (N : ℝ) * Real.pi by ring, Real.sin_nat_mul_pi]
     obtain ⟨z1, -⟩ := zero_bits'
     rw [z1]
-    exact TrigTiny.zero_step _ (by decide)
+    exact F64SelfStep.zero_step _ (by decide)
   · -- A fraction from `2 ^ -52` on.
     have hF0 : 1 / 2 ^ 52 ≤ |value x.toBits| - N := by linarith
     have hdpos : 0 < value (x.abs - fl).toBits := by
@@ -173,7 +173,7 @@ theorem sinpi_floor (x : Float) (hxf : Finite x.toBits) (h1 : 1 ≤ |value x.toB
     rw [oddPart_spec fl j0 N hflf hNv hN1 hN52 (by
       intro hj
       rw [hj0] at hj
-      have := TrigNearest.grid_lower x.abs.toBits (by omega)
+      have := F64SignedNearestSum.grid_lower x.abs.toBits (by omega)
       rw [abs_of_pos hpos, hv] at this
       have h31 : (2 : ℝ) ^ 31 ≤ 2 ^ (52 + (Wasm.IEEE64.exponent x.abs.toBits - 1)) / 2 ^ 1074 := by
         rw [le_div_iff₀ (by positivity), ← pow_add]

@@ -70,7 +70,7 @@ Each proof module has `#print axioms` lines for its results.  The builds that ac
 
 ### Modules
 
-The proof adds 16 modules in `Verified/Examples/` to the chain of [the sine and cosine proof](Trig.md#modules), and `TanFile` holds the file theorems.  From that chain it takes the reduction (`TrigReduce.remPio2_spec`), the final step for tiny inputs (`TrigTiny.self_step`), the error tracking (`TrigApprox`), the exact sums (`TrigNearest`, `TrigFloatTools`), and the facts about high words (`TrigSinCos`, `TrigTheorem`).  The table lists the modules by stage, in dependency order within each stage.  `TanWith` imports `TrigTheorem`, so building `Verified.Examples.TanTheorem` builds the whole trigonometric chain as well.
+The proof adds 16 modules in `Verified/Examples/` to the chain of [the sine and cosine proof](Trig.md#modules), and `TanFile` holds the file theorems.  From that chain it takes the reduction (`TrigReduce.remPio2_spec`), the final step for tiny inputs (`F64SelfStep.self_step`), the error tracking (`TrigApprox`), the exact sums (`F64SignedNearestSum`, `F64ValueExact`), and the facts about high words (`TrigSinCos`, `TrigTheorem`).  The table lists the modules by stage, in dependency order within each stage.  `TanWith` imports `TrigTheorem`, so building `Verified.Examples.TanTheorem` builds the whole trigonometric chain as well.
 
 | Stage | Modules | Content |
 |---|---|---|
@@ -90,7 +90,7 @@ The final steps use the error of a real `t` to which the result is a nearest wor
 
 | Inputs | Path | Bound on `t` | Allowance | Theorem |
 |---|---|---|---|---|
-| `0 < \|x\| < 2^-27` | the result is `x` | `\|tan x - x\| ≤ \|x\|³` | `2^-54` relative to the word | `TanWith.tiny_tan` through `TrigTiny.self_step` |
+| `0 < \|x\| < 2^-27` | the result is `x` | `\|tan x - x\| ≤ \|x\|³` | `2^-54` relative to the word | `TanWith.tiny_tan` through `F64SelfStep.self_step` |
 | even `N` or no reduction, `X < 0.4643` | `y0 + c` | `0.6 u X` (`TanOddStep.even_err_odd`) | `0.74 u \|tan r\|` | `TanEven.even_within` through `near_rel` |
 | even `N` or no reduction, `0.4643 ≤ X < 0.67434` | `y0 + c` | at most `0.9397 u` (`TanOddStep.err_b4`), below one spacing of `[1/2, 1)` | one spacing, `u` | `TanEven.even_within` through `near_bin` |
 | odd `N`, `X < 0.4643` | the compensated reciprocal | within the allowance, from `even_err ≤ 0.6 u X` and `odd_spec` | `0.74 u \|tan r\|^-1` | `TanOddStep.odd_within` through `near_rel` |

@@ -28,8 +28,8 @@ theorem zero_prop (p : Prop) [Decidable p] :
     F64SignedRounding.WithinSteps 1 0 (if p then -(0.0 : Float) else 0.0).toBits := by
   obtain ⟨z1, z2⟩ := zero_bits'
   by_cases h : p
-  · rw [if_pos h, z2]; exact TrigTiny.zero_step _ (by decide)
-  · rw [if_neg h, z1]; exact TrigTiny.zero_step _ (by decide)
+  · rw [if_pos h, z2]; exact F64SelfStep.zero_step _ (by decide)
+  · rw [if_neg h, z1]; exact F64SelfStep.zero_step _ (by decide)
 
 /-- A signed result from a nonnegative one: `tan (π x)` is odd. -/
 theorem signed_tan (x : Float) (hxf : Finite x.toBits) (h0 : value x.toBits ≠ 0) (s : Float)

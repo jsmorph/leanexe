@@ -81,14 +81,14 @@ Each module has `#print axioms` lines.  The build `sinpi-theorem-1.log` (9,067 j
 
 ### Modules
 
-The proof adds 23 modules in `Verified/Examples/`, above the chains of [the sine and cosine proof](Trig.md#modules) and [the tangent proof](Tan.md#modules).  From those chains it takes fdlibm's kernels with their final steps (`TrigKernelSpec.sinTail_spec`, `TrigCosKernel.cos_spec`, `TrigStep.sin_final`, `cos_final`, and `TanWith.kernel_within`), Sterbenz's lemma (`TanTrunc.sterbenz`), and facts about words from `TrigReduce`, `TrigNearest`, and `TrigTiny`.  The table lists the modules by stage, in dependency order within each stage.
+The proof adds 22 modules in `Verified/Examples/`, above the chains of [the sine and cosine proof](Trig.md#modules) and [the tangent proof](Tan.md#modules).  From those chains it takes fdlibm's kernels with their final steps (`TrigKernelSpec.sinTail_spec`, `TrigCosKernel.cos_spec`, `TrigStep.sin_final`, `cos_final`, and `TanWith.kernel_within`), Sterbenz's lemma (`TanTrunc.sterbenz`), and facts about words from `TrigReduce` and from ProofKit's `F64SignedNearestSum` and `F64SelfStep`.  The table lists the modules by stage, in dependency order within each stage.
 
 | Stage | Modules | Content |
 |---|---|---|
 | Product and kernels | `SinpiSingle`, `SinpiProduct`, `SinpiKernels`, `SinpiTanKernel` | `toSingle` within `2^-24` of its argument, relative, with at most 24 significant bits (`single_spec`), `piProduct r` within `r/2^62` of `π r` (`product_spec`), and the kernels within one step of `sin (π x)` and `cos (π x)` from `2^-54` to `1/4` and of `tan (π x)` from `2^-54` below `1/2` (`kernel_pair`, `kernel_tanpi`). |
 | Reflections and words | `SinpiReflect`, `SinpiBits`, `SinpiFloor`, `SinpiPieces`, `SinpiCommon` | The exact reflections (`half_sub`, `sub_half`, `one_sub`), `ax` as `\|x\|` and `neg` as the sign bit (`ax_abs`, `neg_flag`), `ffloor` as the integer part and `oddPart` as its parity (`ffloor_bits`, `floor_spec`, `oddPart_spec`), the reflected chains below 1 (`sin_chain`, `cos_pieces`, `tan_pieces`), the thresholds of the high word, and the integer value of every input from `2^52` on (`abs_thresholds`, `big_integer`). |
 | Branches | `SinpiSin`, `SinpiCos`, `SinpiCosFloor`, `SinpiTanpi` | `sinpi_mid`, `sinpi_floor`, `sinpi_big`, `cospi_small`, `floor_frac`, `cospi_floor`, `tanpi_mid`, and `tanpi_floor`. |
-| Tiny path | `SinpiLowStep`, `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | `within_low`, the exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), the error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
+| Tiny path | `SinpiTinyWords`, `SinpiTinySplit`, `SinpiTinyReal`, `SinpiTiny` | The exact head and tail of `x 2^53` (`tiny_bits`, `split_spec`), the error of `piTiny` (`sum_error`, `final_error`, `tiny_spec`), `sinpi_tiny`, and `tanpi_tiny`. |
 | Assembly | `SinpiWithin`, `SinpiExact`, `SinpiExactTan`, `SinpiTheorem`, `SinpiFile` | `cospi_big`, `tanpi_big`, the three accuracy theorems, the exact rules, the byte theorems, and the file theorems. |
 
 ### Error budget
@@ -111,7 +111,7 @@ The margin of the tiny path is about 10 percent of its allowance.  The paths thr
 
 ### Shared modules
 
-The analysis of the `π x` functions uses [the wide relative step](../../LeanExe/ProofKit/F64RelativeStepWide.lean), [one step by binades](../../LeanExe/ProofKit/F64FullStep.lean) for subnormal results, [grid exactness](../../LeanExe/ProofKit/F64GridExact.lean) for the tails, [exact products by powers of two](../../LeanExe/ProofKit/F64ExactProduct.lean) for the scaling by `2^53` and `2^-53`, and the rounding bounds of [products](../../LeanExe/ProofKit/F64MulBounds.lean) and [sums](../../LeanExe/ProofKit/F64AddBounds.lean).  `SinpiProduct.pi_parts` takes `π` from Mathlib's `Real.pi_gt_d20` and `Real.pi_lt_d20`, and `SinpiCos.cos_tiny` uses `Real.one_sub_sq_div_two_le_cos` [9].  The plan moves `SinpiLowStep.within_low` into ProofKit, with other general lemmas, after the tracks finish ([the decisions not yet acted on](../../transcendentals.md#decisions-taken-and-not-yet-acted-on)).
+The analysis of the `π x` functions uses [the wide relative step](../../LeanExe/ProofKit/F64RelativeStepWide.lean) and its extension below `2^-1000` (`F64RelativeStepLow.within_low`), [one step by binades](../../LeanExe/ProofKit/F64FullStep.lean) for subnormal results, [grid exactness](../../LeanExe/ProofKit/F64GridExact.lean) for the tails, [exact products by powers of two](../../LeanExe/ProofKit/F64ExactProduct.lean) for the scaling by `2^53` and `2^-53`, and the rounding bounds of [products](../../LeanExe/ProofKit/F64MulBounds.lean) and [sums](../../LeanExe/ProofKit/F64AddBounds.lean).  `SinpiProduct.pi_parts` takes `π` from Mathlib's `Real.pi_gt_d20` and `Real.pi_lt_d20`, and `SinpiCos.cos_tiny` uses `Real.one_sub_sq_div_two_le_cos` [9].
 
 ### Kernel-checked facts
 

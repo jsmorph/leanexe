@@ -88,7 +88,7 @@ theorem trunc_mag (b : UInt64) : ∃ m : Nat, m < 2 ^ 53 ∧
 /-- A word below 1 in magnitude has exponent field at most 1022. -/
 theorem exp_small (b : UInt64) (h : |value b| < 1) : Wasm.IEEE64.exponent b ≤ 1022 := by
   by_contra hc
-  have h1 := TrigNearest.grid_lower b (by omega)
+  have h1 := F64SignedNearestSum.grid_lower b (by omega)
   have : (1 : ℝ) ≤ 2 ^ (52 + (Wasm.IEEE64.exponent b - 1)) / 2 ^ 1074 := by
     rw [le_div_iff₀ (by positivity), one_mul]
     exact pow_le_pow_right₀ (by norm_num) (by omega)
@@ -139,7 +139,7 @@ theorem mul_down (s : UInt64) (hsf : Finite s) (hs1 : |value s| < 2 ^ 30) :
   refine ⟨hf, fun hn => ?_, fun hn => ?_⟩
   · have he : 54 ≤ Wasm.IEEE64.exponent s := by
       by_contra hc
-      have h1 := TrigNearest.grid_bound s
+      have h1 := F64SignedNearestSum.grid_bound s
       have h2 : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent s - 1)) / 2 ^ 1074 ≤ 2 ^ 105 / 2 ^ 1074 :=
         div_le_div_of_nonneg_right (pow_le_pow_right₀ (by norm_num) (by omega)) (by positivity)
       rw [abs_div, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 53), le_div_iff₀ (by positivity)] at hn

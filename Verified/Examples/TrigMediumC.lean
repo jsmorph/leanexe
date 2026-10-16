@@ -8,7 +8,7 @@ the second difference is exact, and `y0 + y1 = R3 - W3'` lies within `x / 2 ^ 15
 
 namespace Verified.Examples.TrigMediumC
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigSmall TrigMediumConst
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigSmall TrigMediumConst
   TrigMediumCases TrigMediumB
 
 theorem caseC (X F : UInt64) (N : Nat) (h : Med X F N)

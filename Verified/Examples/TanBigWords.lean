@@ -291,7 +291,7 @@ theorem chain_spec (x' v r w ww den q e1 f g h : UInt64) (X : ℝ)
     linarith
   have hdm : Wasm.IEEE64.scaledMagnitude den ≠ 0 := by
     intro h0
-    have := TrigNearest.abs_value den
+    have := F64RoundNearest.abs_value den
     rw [h0, Nat.cast_zero, zero_div] at this
     linarith
   have hwwb : |value ww| ≤ 149 / 10000 := by
@@ -349,7 +349,8 @@ theorem chain_spec (x' v r w ww den q e1 f g h : UInt64) (X : ℝ)
     linarith
   obtain ⟨hhf, -⟩ := F64AddBounds.sub_real_relative v g hvf hgf hb
   rw [hh] at hhf
-  refine ⟨hE, hhf, fun u => by rw [← hh]; exact TrigNearest.sub_nearest v g hvf hgf hb u, ?_,
+  refine ⟨hE, hhf,
+    fun u => by rw [← hh]; exact F64SignedNearestSum.sub_nearest v g hvf hgf hb u, ?_,
     hvv, hW, ?_⟩
   rotate_left
   · rw [hgv]

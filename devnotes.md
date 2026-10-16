@@ -32907,3 +32907,25 @@ The consolidation decided earlier also lists the removal of `ExpRelative`, which
 Build 17 completes `lake build LeanExe Verified` with exit 0 (`opus-merge-17.log`), its 4,094 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound` apart from the CodeLib example axiom, and run 17 exits 0 with 15,837 tests passed and none failed (`opus-run-17.log`).  The 49 written files are byte-identical to the stored references.
 
 - [x] Remove `ExpRelative`
+
+## 2026-10-15: Decisions on the open items (coordinating session)
+
+The user accepted the two recommendations of the status report of 2026-10-15.  The bound of `jn` and `yn` through the turning point, on `2 ≤ |x| < 2^302` with `|n| > |x|/2`, becomes a separate project, since its proof needs `K₀` and Nicholson's integral, which neither ProofKit nor Mathlib provides, and the theorems keep that range as an explicit hypothesis.  The consolidation of ProofKit follows the correction batches, as the entries on the consolidation record.
+
+## 2026-10-15: Moving the general Trig and Sinpi lemmas into ProofKit (coordinating session, minideb1)
+
+The last item of the consolidation moves the general results of the trigonometric and pi-scaled proofs into ProofKit, under names that state what they prove.  None of the five modules depends on a program of `Verified/Examples`, so ProofKit can hold them.
+
+| From | To |
+|---|---|
+| `TrigFloatTools` | `F64ValueExact` |
+| `TrigNearest` | `F64SignedNearestSum`, which uses `F64RoundNearest.abs_value` in place of its copy |
+| `TrigStep.unit_step_pos` and `unit_step` | `F64UnitStep` |
+| `TrigTiny` | `F64SelfStep` |
+| `SinpiLowStep` | `F64RelativeStepLow`, which uses `F64RelativeStep.zpow_eq` and `boundary_pow` in place of its copies |
+
+Thirty-seven Lean files change their imports, qualified names, and `open` lists, and `LeanExe.lean` imports the five modules.  `Trig.md`, `Tan.md`, and `Sinpi.md` give the new names and the module counts: the trigonometric proof has 29 modules in `Verified/Examples/` and imports 17 ProofKit modules directly and 137 in all, where `Trig.md` gave 96, and the proof of the pi-scaled functions has 22.  `transcendentals.md` drops the consolidation from the decisions not yet completed.
+
+The first build 18 (`opus-merge-18a.log`) failed in `F64SignedNearestSum`: two uses of `abs_value` inside `rw [...]` kept the old name, since the replacement required a space after it.  With them renamed, build 18 completes `lake build LeanExe Verified` with exit 0 (`opus-merge-18.log`), its 4,095 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound` apart from the CodeLib example axiom, and run 18 exits 0 with 15,837 tests passed and none failed (`opus-run-18.log`).  The 49 written files are byte-identical to the stored references.
+
+- [x] Move `TrigNearest`, `TrigFloatTools`, `TrigStep.unit_step`, `TrigTiny`, and `SinpiLowStep.within_low` into ProofKit

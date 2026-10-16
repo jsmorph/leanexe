@@ -27,8 +27,8 @@ theorem quarter_facts : (0.25 : Float).toBits = 0x3FD0000000000000 ∧
 /-- A positive word from `1/4` below `1/2` lies at most `1/2 - 2 ^ -54`. -/
 theorem below_half (v : UInt64) (h0 : 1 / 4 ≤ |value v|) (h1 : |value v| < 1 / 2) :
     |value v| ≤ 1 / 2 - 1 / 2 ^ 54 := by
-  have hl := TrigNearest.grid_lower v
-  have hb := TrigNearest.grid_bound v
+  have hl := F64SignedNearestSum.grid_lower v
+  have hb := F64SignedNearestSum.grid_bound v
   have he1 : 1073 ≤ 53 + (Wasm.IEEE64.exponent v - 1) := by
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 ≤ 1 / 4 := by
@@ -45,7 +45,7 @@ theorem below_half (v : UInt64) (h0 : 1 / 4 ≤ |value v|) (h1 : |value v| < 1 /
   obtain ⟨m, hm, -⟩ := mag_split v
   have he : Wasm.IEEE64.exponent v - 1 = 1020 := by omega
   rw [he] at hm
-  rw [TrigNearest.abs_value, hm] at h1 ⊢
+  rw [F64RoundNearest.abs_value, hm] at h1 ⊢
   push_cast at h1 ⊢
   rw [div_lt_iff₀ (by positivity)] at h1
   rw [div_le_iff₀ (by positivity)]

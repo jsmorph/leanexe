@@ -1,6 +1,6 @@
 import Verified.Examples.Trig
 import Verified.Examples.TrigPi
-import Verified.Examples.TrigFloatTools
+import LeanExe.ProofKit.F64ValueExact
 import LeanExe.ProofKit.F64Bits
 import Mathlib.Analysis.Real.Pi.Bounds
 
@@ -13,7 +13,7 @@ within `2 ^ -60` relative of `x - k π/2`.
 
 namespace Verified.Examples.TrigSmall
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigPi
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact TrigPi
 
 set_option exponentiation.threshold 4096
 

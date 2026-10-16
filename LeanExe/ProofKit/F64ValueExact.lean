@@ -7,9 +7,9 @@ Exactness of sums and differences stated with values.  A finite word of magnitud
 such multiples within `2 ^ (53 + s)` scaled units is exact.
 -/
 
-namespace Verified.Examples.TrigFloatTools
+namespace LeanExe.ProofKit.F64ValueExact
 
-open CodeLib.IEEE64 LeanExe.ProofKit
+open CodeLib.IEEE64
 
 theorem scaled_eq (v : UInt64) : (Wasm.IEEE64.scaledValue v : ℝ) = value v * 2 ^ 1074 := by
   simp only [value]
@@ -46,7 +46,8 @@ theorem dvd_of_value (v : UInt64) (hv : Finite v) (s : Nat)
           exact Nat.pow_le_pow_right (by norm_num) (by omega)
         omega
       exact Dvd.dvd.mul_left (Nat.pow_dvd_pow 2 hse) _
-  have hz : ((2 : Nat) ^ s : Int) ∣ (Wasm.IEEE64.scaledMagnitude v : Int) := Int.natCast_dvd_natCast.mpr hdvd
+  have hz : ((2 : Nat) ^ s : Int) ∣ (Wasm.IEEE64.scaledMagnitude v : Int) :=
+    Int.natCast_dvd_natCast.mpr hdvd
   push_cast at hz
   unfold Wasm.IEEE64.scaledValue
   split
@@ -64,8 +65,8 @@ theorem sub_exact (a b : UInt64) (ha : Finite a) (hb : Finite b) (s : Nat) (hs :
   have hr : |((Wasm.IEEE64.scaledValue a - Wasm.IEEE64.scaledValue b : Int) : ℝ)| ≤
       (2 : ℝ) ^ 53 * 2 ^ s := by
     push_cast
-    rw [scaled_eq, scaled_eq, ← sub_mul, abs_mul, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074),
-      ← pow_add]
+    rw [scaled_eq, scaled_eq, ← sub_mul, abs_mul,
+      abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074), ← pow_add]
     rwa [le_div_iff₀ (by positivity)] at hbound
   exact_mod_cast hr
 
@@ -79,8 +80,8 @@ theorem add_exact (a b : UInt64) (ha : Finite a) (hb : Finite b) (s : Nat) (hs :
   have hr : |((Wasm.IEEE64.scaledValue a + Wasm.IEEE64.scaledValue b : Int) : ℝ)| ≤
       (2 : ℝ) ^ 53 * 2 ^ s := by
     push_cast
-    rw [scaled_eq, scaled_eq, ← add_mul, abs_mul, abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074),
-      ← pow_add]
+    rw [scaled_eq, scaled_eq, ← add_mul, abs_mul,
+      abs_of_pos (by positivity : (0 : ℝ) < 2 ^ 1074), ← pow_add]
     rwa [le_div_iff₀ (by positivity)] at hbound
   exact_mod_cast hr
 
@@ -123,4 +124,4 @@ theorem add_rel (a b : UInt64) (ha : Finite a) (hb : Finite b)
 #print axioms sub_rel
 #print axioms add_rel
 
-end Verified.Examples.TrigFloatTools
+end LeanExe.ProofKit.F64ValueExact

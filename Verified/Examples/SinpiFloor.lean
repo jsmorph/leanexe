@@ -110,7 +110,7 @@ theorem toUInt64_int (x : Float) (N : Nat) (hf : Finite x.toBits) (hv : value x.
       linarith
     · exact h
   have hm : Wasm.IEEE64.scaledMagnitude x.toBits = N * 2 ^ 1074 := by
-    have h := TrigNearest.abs_value x.toBits
+    have h := F64RoundNearest.abs_value x.toBits
     rw [abs_of_pos hpos, hv, eq_div_iff (by positivity)] at h
     exact_mod_cast h.symm
   have hfin : Wasm.IEEE64.isFinite x.toBits = true := hf

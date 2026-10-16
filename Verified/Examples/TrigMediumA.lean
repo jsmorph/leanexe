@@ -8,7 +8,7 @@ The first outcome of the medium reduction: when the exponent of `y0 = R1 - W1` i
 
 namespace Verified.Examples.TrigMediumA
 
-open CodeLib.IEEE64 LeanExe.ProofKit TrigFloatTools TrigNearest TrigSmall TrigMediumConst
+open CodeLib.IEEE64 LeanExe.ProofKit F64ValueExact F64SignedNearestSum TrigSmall TrigMediumConst
   TrigMediumCases
 
 theorem caseA (X F : UInt64) (N : Nat) (h : Med X F N)

@@ -88,7 +88,7 @@ theorem sub_self_zero (a b : UInt64) (ha : Finite a) (hb : Finite b)
 
 /-- From `2 ^ 52` on, a finite word has an integer value. -/
 theorem big_integer (w : UInt64) (h : 2 ^ 52 ≤ |value w|) : ∃ n : Int, value w = n := by
-  have hl := TrigNearest.grid_bound w
+  have hl := F64SignedNearestSum.grid_bound w
   have he : 1075 ≤ Wasm.IEEE64.exponent w := by
     by_contra hc
     have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent w - 1)) / 2 ^ 1074 ≤ 2 ^ 52 := by

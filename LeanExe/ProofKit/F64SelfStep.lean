@@ -1,19 +1,21 @@
-import Verified.Examples.TrigStep
-import Verified.Examples.TrigNearest
+import LeanExe.ProofKit.F64RelativeStep
+import LeanExe.ProofKit.F64SignedNearestSum
 
 /-!
 A finite word within `2 ^ -54` of a number, relative to the word, lies within one step of the
-number's nearest-even reference, and a zero word lies within one step of zero.  `sin` returns
-`x` itself for `|x| < 2 ^ -26`, where `|sin x - x| ≤ |x| ^ 3 / 6` meets the first bound.
+number's nearest-even reference, and a zero word lies within one step of zero.  The ports of
+`sin` and `tan` return `x` itself for tiny `x`, where `|sin x - x| ≤ |x| ^ 3 / 6` and
+`|tan x - x| ≤ |x| ^ 3` meet the first bound.
 -/
 
-namespace Verified.Examples.TrigTiny
+namespace LeanExe.ProofKit.F64SelfStep
 
-open CodeLib.IEEE64 LeanExe.ProofKit
+open CodeLib.IEEE64
 
 set_option exponentiation.threshold 1200
 
-theorem pow_div (n : Nat) : (2 : ℝ) ^ (n + 54) / 2 ^ 1074 / 2 ^ 54 = (2 : ℝ) ^ n / 2 ^ 1074 := by
+theorem pow_div (n : Nat) :
+    (2 : ℝ) ^ (n + 54) / 2 ^ 1074 / 2 ^ 54 = (2 : ℝ) ^ n / 2 ^ 1074 := by
   rw [pow_add]
   field_simp
 
@@ -23,11 +25,11 @@ theorem self_step_pos (c : UInt64) (y : ℝ) (hcf : Finite c) (hc0 : 0 < value c
     F64SignedRounding.WithinSteps 1 y c := by
   set a := Wasm.IEEE64.exponent c with ha
   have hlt : a < 2048 := Nat.mod_lt _ (by norm_num)
-  have hcb := TrigNearest.grid_bound c
+  have hcb := F64SignedNearestSum.grid_bound c
   rw [abs_of_pos hc0] at hcb
   have ha1023 : a ≤ 1023 := by
     by_contra h
-    have hl := TrigNearest.grid_lower c (by omega)
+    have hl := F64SignedNearestSum.grid_lower c (by omega)
     rw [abs_of_pos hc0] at hl
     have : (2 : ℝ) ≤ 2 ^ (52 + (a - 1)) / 2 ^ 1074 := by
       rw [le_div_iff₀ (by positivity), ← pow_succ']
@@ -77,7 +79,7 @@ theorem self_step_pos (c : UInt64) (y : ℝ) (hcf : Finite c) (hc0 : 0 < value c
         constructor <;> linarith)
     exact F64SignedRounding.within_of_nonneg 1 y hy0 c (by rw [hlim] at hc63; omega) h.1 h.2
   · -- `c` in binade `a ≥ 2`: binade `a - 1` lies below `c / 2`.
-    have hl := TrigNearest.grid_lower c (by omega)
+    have hl := F64SignedNearestSum.grid_lower c (by omega)
     rw [abs_of_pos hc0] at hl
     have hL := F64PositiveSpacing.boundary_value (a - 1) (by omega) (by omega)
     have hLc : 2 ^ (a - 1 + 51) / 2 ^ 1074 ≤ value c / 2 := by
@@ -143,4 +145,4 @@ theorem zero_step (c : UInt64) (hc : c.toNat % 2 ^ 63 = 0) :
 #print axioms self_step
 #print axioms zero_step
 
-end Verified.Examples.TrigTiny
+end LeanExe.ProofKit.F64SelfStep

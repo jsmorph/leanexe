@@ -42,7 +42,7 @@ theorem oddW_eq (x r w z a t : UInt64) (hw : Wasm.IEEE64.add x r = w) (hz : cano
 
 theorem exp_two (v : UInt64) (h : 1 / 2 ^ 1000 ≤ |value v|) : 2 ≤ Wasm.IEEE64.exponent v := by
   by_contra hc
-  have hb := TrigNearest.grid_bound v
+  have hb := F64SignedNearestSum.grid_bound v
   have : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 ≤ 1 / 2 ^ 1000 := by
     rw [div_le_div_iff₀ (by positivity) (by positivity), one_mul, ← pow_add]
     exact pow_le_pow_right₀ (by norm_num) (by omega)
@@ -51,7 +51,7 @@ theorem exp_two (v : UInt64) (h : 1 / 2 ^ 1000 ≤ |value v|) : 2 ≤ Wasm.IEEE6
 theorem exp_upper (v : UInt64) (n : ℕ) (h : |value v| < 2 ^ n) :
     Wasm.IEEE64.exponent v ≤ n + 1023 := by
   by_contra hc
-  have hl := TrigNearest.grid_lower v (by omega)
+  have hl := F64SignedNearestSum.grid_lower v (by omega)
   have : (2 : ℝ) ^ n ≤ 2 ^ (52 + (Wasm.IEEE64.exponent v - 1)) / 2 ^ 1074 := by
     rw [le_div_iff₀ (by positivity), ← pow_add]
     exact pow_le_pow_right₀ (by norm_num) (by omega)
@@ -63,8 +63,8 @@ theorem exp_sum (a w : UInt64) (h : 1 / 2 ≤ |value a * value w|) :
   have hp : |value a * value w| < 2 ^ (53 + (Wasm.IEEE64.exponent a - 1)) / 2 ^ 1074 *
       (2 ^ (53 + (Wasm.IEEE64.exponent w - 1)) / 2 ^ 1074) := by
     rw [abs_mul]
-    exact mul_lt_mul'' (TrigNearest.grid_bound a) (TrigNearest.grid_bound w) (abs_nonneg _)
-      (abs_nonneg _)
+    exact mul_lt_mul'' (F64SignedNearestSum.grid_bound a) (F64SignedNearestSum.grid_bound w)
+      (abs_nonneg _) (abs_nonneg _)
   have hk : (2 : ℝ) ^ (53 + (Wasm.IEEE64.exponent a - 1)) *
       2 ^ (53 + (Wasm.IEEE64.exponent w - 1)) ≤ 2 ^ 1117 := by
     rw [← pow_add]
@@ -240,7 +240,7 @@ theorem a_spec (w : UInt64) (hwf : Finite w) (hw0 : 1 / 2 ^ 72 ≤ |value w|)
   have hwp : 0 < |value w| := lt_of_lt_of_le (by positivity) hw0
   have hwm : Wasm.IEEE64.scaledMagnitude w ≠ 0 := by
     intro h0
-    have := TrigNearest.abs_value w
+    have := F64RoundNearest.abs_value w
     rw [h0, Nat.cast_zero, zero_div] at this
     linarith
   have hab : |value negOne / value w| < 2 ^ 1022 := by
@@ -497,7 +497,7 @@ theorem odd_spec (x r : UInt64) (X : ℝ) (hxf : Finite x) (hrf : Finite r) (hX 
   obtain ⟨hmf, hse, hqe, hoe, hme, hcb⟩ := tail_spec t p vv a s q o m hs hq ho hm
     htf hpf hvf haf hpb htv hab (htb.trans hab)
   refine ⟨(F64AddBounds.add_real_relative t m htf hmf hcb).1, value t + value m,
-    fun v => TrigNearest.add_nearest t m htf hmf hcb v, ?_⟩
+    fun v => F64SignedNearestSum.add_nearest t m htf hmf hcb v, ?_⟩
   rw [hpv] at hse
   exact odd_real _ _ _ _ _ _ _ _ _ _ hw0 hw1 hwe hwl hα htd hzd hve hse hqe hoe hme
 
