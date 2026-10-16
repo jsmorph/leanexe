@@ -24,7 +24,7 @@ array, the empty one included.
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  The length is a word of the array's layout, which [the
-manual](../../docs/manual.md#arrays) describes.  The result is the mean of the rounded sum, and the
+manual](../../docs/leanexe-manual.md#arrays) describes.  The result is the mean of the rounded sum, and the
 theorem says nothing about its error relative to the exact mean.
 
 ## Running it

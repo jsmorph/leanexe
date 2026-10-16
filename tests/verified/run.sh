@@ -2,7 +2,7 @@
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
 # compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
-# released must equal the field, the host's array arguments and the result's arrays.  A seventh
+# released must equal the field, the result's arrays and the host's arrays at borrowed parameters.  A seventh
 # field bounds the number of allocations, the host's included.  A case whose expected result is
 # `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
 # module and checks its file theorem module, whose theorems state that the written file holds the
@@ -53,6 +53,9 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.ParseFloat:compiled.module:parsefloat \
     Verified.Examples.PrintFloat:compiled.module:printfloat \
     Verified.Examples.Drone:compiled.module:drone \
+    Verified.Examples.Lcg:compiled.module:lcg \
+    Verified.Examples.ParkMiller:compiled.module:parkmiller \
+    Verified.Examples.Xorshift:compiled.module:xorshift \
     Verified.Examples.Bessel:compiled.module:bessel Verified.Examples.Tgamma:compiled.module:tgamma \
     Verified.Examples.Lgamma:compiled.module:lgamma Verified.Examples.Erfc:compiled.module:erfc; do
   IFS=: read -r module constant name <<<"$entry"

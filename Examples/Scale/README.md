@@ -9,11 +9,11 @@ definition](Module.lean) compiles `scale` into the 1,397-byte `scale.wasm`, whic
 
 ## What it shows
 
-The IR's division tests the divisor and gives 0 for 0, as [the manual's table of word
-operations](../../docs/manual.md#words-and-booleans) states, so `scale 6 7 0` is 1 in Lean and in
-WebAssembly.  `scale_implements` follows from `Func.implements`, the rule for a body without loops
-or calls, and one `simp` call that evaluates the body, with a case split on the divisor.
-`scale_bytes` carries the theorem to the bytes through the encoder's round trip.
+The IR's division tests the divisor and gives 0 for 0, as [the LeanExe compiler manual's table of
+word operations](../../docs/leanexe-manual.md#words-and-booleans) states, so `scale 6 7 0` is 1 in
+Lean and in WebAssembly.  `scale_implements` follows from `Func.implements`, the rule for a body
+without loops or calls, and one `simp` call that evaluates the body, with a case split on the
+divisor.  `scale_bytes` carries the theorem to the bytes through the encoder's round trip.
 
 | Theorem | Statement |
 |---------|-----------|
@@ -21,9 +21,10 @@ or calls, and one `simp` call that evaluates the body, with a case split on the 
 | `scale_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `scale`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/manual.md#the-implements-family)
-defines `Implements`.  Functions 0 and 1 of every module are the runtime's `alloc` and `release`, so
-the first compiled function is function 2.
+`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
+manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`.  Functions 0 and 1
+of every module are the runtime's `alloc` and `release`, so the first compiled function is function
+2.
 
 ## Running it
 

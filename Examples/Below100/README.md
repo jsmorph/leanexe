@@ -53,8 +53,8 @@ main loops.  The LTG entries [`repeat-while`](../../ltg/entries/repeat-while/REA
 
 ## References
 
-- [The manual's section on loops and builds](../../docs/manual.md#loops-and-builds), which describes
-  `LeanExe.repeatWhile`.
+- [The LeanExe compiler manual's section on loops and
+  builds](../../docs/leanexe-manual.md#loops-and-builds), which describes `LeanExe.repeatWhile`.
 - [The Lean 4 reference on
   arrays](https://lean-lang.org/doc/reference/4.34.0-rc2/Basic-Types/Arrays/), for `Array.filter`
   and `Array.push`.

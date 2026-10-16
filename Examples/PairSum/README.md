@@ -23,9 +23,10 @@ show that it is: one allocation and one free per call.
 | `pairSum_bytes` | `encode` succeeds on the module, and the module that `decode` reads from the bytes implements `pairSum`. |
 
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
-`Classical.choice`, and `Quot.sound`.  [The manual](../../docs/manual.md#the-implements-family)
-defines `Implements`.  [Its section on proofs](../../docs/manual.md#structure-of-a-proof) describes
-the structure of a proof that follows the statements of a body.
+`Classical.choice`, and `Quot.sound`.  [The LeanExe compiler
+manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`.  [Its section on
+proofs](../../docs/leanexe-manual.md#structure-of-a-proof) describes the structure of a proof that
+follows the statements of a body.
 
 ## Running it
 
@@ -52,8 +53,8 @@ fold rule `Func.foldl_implements`.  The LTG entries
 
 ## References
 
-- [The manual's section on arrays](../../docs/manual.md#arrays), which gives the heap layout of an
-  array: a header, a length word, and the elements.
+- [The LeanExe compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays), which
+  gives the heap layout of an array: a header, a length word, and the elements.
 - WebAssembly Core Specification, [memory
   instructions](https://webassembly.github.io/spec/core/syntax/instructions.html#memory-instructions),
   which the allocator and the array code use.

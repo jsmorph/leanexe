@@ -6,7 +6,10 @@ arrays are passed and returned as a tuple's arrays are.  The programs build reco
 fields and elements, also past the end, update a field with `{ r with … }` on a borrowed
 parameter, which copies the array, and in a loop's state, which updates it in place, pass a record
 to a call, take one apart with `match`, choose one with `if`, return one in a pair, and hold one
-record in another. -/
+record in another.  `Tape`'s `Flat` instance takes the record apart with a pattern, `pushPrices`
+extends a field's array in a loop whose state is the record, and `heavyPick` returns either its
+borrowed argument or a call's result.  The bound equations of all the functions write the records'
+arrays as fields, such as `b.prices.size`. -/
 
 namespace Verified.Examples.Fields
 
@@ -87,7 +90,26 @@ def worldLevel (w : World) : Float := gridLevel w.grid + w.label.toFloat
 
 def relabel (w : World) (k : UInt64) : World := { w with label := w.label + k }
 
+/-- A record whose `Flat` instance takes it apart with a pattern. -/
+structure Tape where
+  marks : Array UInt64
+  head : UInt64
+  deriving Inhabited
+
+instance : Flat Tape (Array UInt64 × UInt64) := ⟨fun | ⟨m, h⟩ => (m, h)⟩
+
+/-- `t` with its head moved by `k`. -/
+def moveHead (t : Tape) (k : UInt64) : Tape := { t with head := t.head + k }
+
+/-- `b` with `0, 1, …, n - 1` pushed onto its prices, by a loop whose state is the record. -/
+def pushPrices (b : Book) (n : UInt64) : Book :=
+  LeanExe.loop n b fun i s => { s with prices := s.prices.push i }
+
+/-- `b` when its total exceeds `n`, and otherwise `fillOrder b 0 n`.  The bound includes the copy
+of `b` that the first branch returns. -/
+def heavyPick (b : Book) (n : UInt64) : Book := if bookTotal b > n then b else fillOrder b 0 n
+
 verified_compile compiled := [mkBook, bookTotal, fillOrder, bookValue, pickBook, bookShape,
-  withTotal, advance, gridLevel, gridCells, worldLevel, relabel]
+  withTotal, advance, gridLevel, gridCells, worldLevel, relabel, moveHead, pushPrices, heavyPick]
 
 end Verified.Examples.Fields

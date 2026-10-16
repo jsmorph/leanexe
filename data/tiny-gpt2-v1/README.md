@@ -1,6 +1,10 @@
 # Four-byte GPT-2 checkpoint and inference
 
-This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The manual's list of examples](../../docs/manual.md#worked-examples) describes the current system's GPT-2 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to
+source files point to commit `eef07963`, the last commit of that system, and its commands run only
+at that commit.  [The LeanExe compiler manual's list of
+examples](../../docs/leanexe-manual.md#worked-examples) describes the current system's GPT-2
+programs, `Gpt` in binary64 and `Gpt32` on WGSL.
 
 This directory contains a trained GPT-2-style model, its WASM inference
 modules, and numerical evidence.  The model takes four byte tokens and

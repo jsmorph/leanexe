@@ -27863,13 +27863,229 @@ meanings.  The theorem rests on Talos's model, in which `memory.grow` succeeds w
 allows it, and a real engine may refuse earlier.
 
 - [x] Review of this design.
-- [ ] `allocCost`, `Ty.copyCost`, `Expr.allocs`, `Bounds`, and `Prog.bounds`.
-- [ ] `wp_alloc` and the copy lemmas of `Heap.lean` with the allowance and the growth of `top`.
-- [ ] The rules, the new `CodeSpec`, `FunSpec`, and `Prog.correct`; the old rules removed.
-- [ ] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
-- [ ] `p.f.bound` with a plain Lean equation, and `p.f.trapFree`, in the reflector.
+- [x] `allocCost`, `Ty.copyCost`, `Expr.allocs`, `Bounds`, and `Prog.bounds`.
+- [x] `wp_alloc` and the copy lemmas of `Heap.lean` with the allowance and the growth of `top`.
+- [x] The rules, the new `CodeSpec`, `FunSpec`, and `Prog.correct`; the old rules removed.
+- [x] The transfer lemmas and `ImplementsTables` with `Pre` and `Post`.
+- [x] `p.f.bound` as the compiler's bound, and `p.f.trapFree`, in the reflector.
+- [ ] `p.f.bound_eq`, the bound as a plain Lean equation.
+- [x] Wrappers with the bound.
 - [ ] A page bound for the drone.
 - [ ] Recursion, with a bound on the depth.
+
+### Trap-free theorems: implementation
+
+The budgeted rules were written beside the old ones in a separate file, one construct per commit,
+and each of those commits built.  When the induction over expressions and the function and program theorems
+were proved, the old rules went: a Lean script walked the constants that the kept declarations use,
+from the examples, the reflector, the budgeted theorems, and the program-level theorems, and found
+that only seven helpers besides the 54 old declarations had no other use.  The budgeted names then
+took the old ones, so `CodeSpec`, `FunSpec`, `Calls`, `CallsAt`, the `spec_` rules, and
+`Prog.calls` are the budgeted statements.  [`Correct.lean`](Verified/Correct.lean) holds the rules
+and the theorem, [`After.lean`](Verified/After.lean) the facts that the rules share, and
+[`Bound.lean`](Verified/Bound.lean) the bound.
+
+Three things differ from the design.  `Prog.correct` does not keep its statement: it states
+`Calls (compile prog) funs (prog.bounds funs)`, from which `ImplementsB.implementsA` gives the old
+`ImplementsA aborts` with trivial conditions, so `Examples/Tuples.lean` names the bounds.
+`wp_requestCode` gained an upper bound on the bytes it requests, the larger of what the new length
+needs and twice the capacity, which the growth of an owned array needs to stay within its charge of
+`allocCost (16 · (len' + 1))`.  A function's bound is `bodyBound` of its modes and body, which
+`Func.bound` names, since `body_code_spec` and `bodyFunction_runs` take a body and its modes, as
+recursive functions need.
+
+`ImplementsB.trapFree` gives `ImplementsA false` under `heap.Within store m (bound x)`, with the
+postcondition that `top` rises by at most the bound, and `ImplementsB.noTrap` gives the same
+postcondition without a precondition for a function whose `aborts` is false.  The reflector emits
+`p.f.bound`, the compiler's bound composed with the flattening of Lean's argument tuple, and
+`p.f.trapFree` for every function whose code takes no call depth.  `wrapper_runs` gives a wrapper
+the callee's trap flag and bound, `Wrapper.bound`, from which `wrapper_correct` keeps its statement
+and `wrapper_trapFree` and `wrapper_noTrap` give the bounded forms, so the reflector emits `bound`
+and `trapFree` for wrappers as well.
+The first version added `p.f.bound` with the reducibility height 1 that the reflector's
+`addDefinition` gives every definition.  The kernel unfolds the side of greater height first, so
+when it matched the statement with the proof it unfolded the compiler's bound over the reflected
+body instead of `p.f.bound`, and `Examples/Exp.lean` ran for an hour without finishing.  With the
+height of its value plus one, the kernel unfolds `p.f.bound` first, and `Exp.lean` builds in 8
+seconds.
+Evaluated, `Grow.compiled.evens.bound n` is `8 n² + 72 n + 56` for `n` up to 5, as the research
+below derived by hand.
+
+A research agent compared ways to state the bound as a plain Lean equation: the compiler's bound
+alone, a reflected term that mirrors the user's definition with an equation proved per Lean form as
+for meanings, and coarser forms.  It recommended the compiler's bound first and the mirrored
+equation `p.f.bound_eq` second, at an estimated 1,000 to 2,000 lines, since a numeric bound from the
+compiler's bound alone means unfolding `Expr.allocs` over the reflected code in every user proof.
+It derived by hand that the drone's `compute` has the bound `540 c² + 612 c + 56` bytes for `c`
+stations, at most 2,251,064 for the 64 stations that `compute` accepts, since the drone has no
+`push` and builds every array.  Evaluated with `#eval`, `compiled.compute.bound` equals that
+formula at 1, 2, 3, 4, 6, 8, 12, and 64 stations, 2,251,064 bytes at 64, and it is 1,192 bytes for
+65 stations, which `compute` rejects.  The evaluation interprets `Expr.allocs` over the reflected
+program and takes 414 seconds at 64 stations.  The bound charges a loop of `n` pushes about `8 n²`
+bytes and counts total rather than peak allocation, which a later program may need to change.
+
+A fresh reviewer found no defect in the statements: `Expr.allocs` charges every allocation of the
+compiled code, the allowance matches the design, and the old guarantees follow.  It found stale
+documentation, now fixed: this checklist, the doc comments of `Prog.correct` and four allocation
+lemmas, the README's undefined `cap`, and the README's list of the definitions a reader must check,
+which now names `Heap.Within`.  It suggested the precondition-free theorem for functions that cannot
+trap, which the reflector now emits, a bounded wrapper theorem, a bound on memory pages, which no
+theorem gives since the postcondition bounds `top`, and documentation of units, the cap of 65,535
+pages, and Talos's model of `memory.grow` for each `trapFree`.
+
+Commit `7c42e31c` holds only the file renames and does not build, and `e9f20f39` completes it.  A
+full build of `Verified` takes about 1,600 seconds, longer than the 900 seconds that
+`tools/leanrun` allows by default, and `Examples/Repeat.lean` alone takes more than 900, so long
+builds run with `--timeout`.  The suite passes 15,837 cases after the replacement.
+
+### Bound equations: design
+
+`p.f.bound` is the compiler's bound, so a numeric fact about it means unfolding `Expr.allocs` over
+the reflected code.  `p.f.bound_eq` will state it as a Lean term in the definition's parameters
+that mirrors the definition: the user's loop counts, initial states, steps, conditions, and call
+arguments, `blockCost` and `growCost` for each block that the modes and live sets call for,
+`loopCost` and `sumBelow` for loops and builds, and `p.g.bound` at Lean arguments for callees.  The
+term mentions no mode, live set, source expression, or environment, it substitutes `let` values,
+and it drops the zero summands that its own lemmas produce, so a function that allocates nothing
+gets `p.f.bound … = 0`.
+
+The bound depends on the parameter modes and the live sets, which the reflector knows only after it
+has reflected the whole body.  Each constructing case of `reflect` therefore returns, besides the
+source and its meaning proof, a builder: a meta function that takes the modes and the live set as
+terms and returns the cost with a proof that the source's `Expr.allocs` equals it.  The builders run
+after the mode choice, from the root with the entry modes and `fun _ => false`.  Each applies one
+lemma per source constructor, from a new file `Reflect/BoundLemmas.lean`, and picks the variant
+whose side condition holds, such as `modeAt modes k = .owned` or `live k = false`, which it decides
+with `kernelWhnf` and proves by `Eq.refl`.  A condition that does not reduce stops the build with
+an error.  Pass-through cases such as `restate`, `reflectAs`, and `reflectVia` return their child's
+builder, since they change only the meaning proof.  Binder cases save their variables' declarations
+and reopen them with `withExistingLocalDecls`.  `p.f.bound_func` relates `Func.bound` of the source
+function to `p.f.bound` through a chain of `Bounds.get` steps, as `getChain` does for meanings, and
+callers use it to name their callees' bounds.  The kernel never unfolds `Expr.allocs`,
+`Prog.bounds`, the user's definitions, or loops: each lemma is proved once with variables, and
+every junction between two equations meets under a shared head.
+
+Two alternatives were rejected.  Generic lemmas over all modes and live sets, composed in the
+meaning pass, leave closed conditions inside the user's terms and under binders, which a later walk
+would have to resolve with markers and `funext`.  A second run of `reflect` with the modes known
+would repeat all of reflection.  A mode-free over-approximation would remove only the decisions,
+the cheapest part, and turn every lemma into an inequality.
+
+A fresh reviewer found the lemma statements correct against `Expr.allocs` and the variant sets
+exhaustive, and it confirmed the drone's right-hand sides and `loopCost_le`.  It found four defects,
+now part of the design.  The meaning proofs state the forms of the meaning lemmas, such as
+`BinOp.apply BinOp.add a b` and `Env.get (Env.cons …) (Var.ofIndex …)`, so each value that enters
+the term must be restated to the user's term at its constructing site.  Several junctions are not
+syntactic: `Func.body` of the function constant, the `id` hints of flattenings, beta-redexes from
+instantiated lambdas, `Func.sig` in chain steps, and `Env.ofArgs` against an environment of
+meaning values.  The guard that keeps a builder's mistake from becoming an hour-long kernel search
+therefore compares terms modulo those named reductions.  `projReduce` reduces only at the head, so
+a deep traversal removes the projections that substitution leaves inside callee tuples.  The root
+builder runs outside the telescope of the parameters, so `Reflected` stores their declarations.
+The reviewer also expects `bound_eq` to cost about twice the kernel time of `denote_eq`, since it
+embeds the meaning proofs, which increment 1 measures.
+
+The drone needs no array updates and no wrappers, so the order puts its theorem third.
+
+The implementation differs from this design in two points.  No `bound_func` exists: `p.f.bound`
+is defined as `Func.bound` of the function among those before it, with a height above its value's,
+and the builder of a call relates `Bounds.get` to the callee's `p.g.bound` with `boundsChain` in
+place.  The root builder runs inside the parameters' telescope in `reflectDefinition`, so
+`Reflected` stores no declarations.
+
+- [x] Design and review.
+- [x] `ImplementsA.mono` and `BoundFacts.lean`: `blockCost`, `growCost`, `loopCost_le`, and sums.
+- [x] 1: `Reflection` with a builder at every return site, the lemmas and builders for leaves,
+  variables, copies, coercions, operators, `if`, `let`, pairs, reads, and calls, and `bound_eq`
+  for bodies of these forms.
+- [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
+- [x] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.  Importing
+  `Examples.Drone.Extend` into the example changed the compiled program: `getUnfoldEqnFor?`
+  returns `f.eq_def` whenever the environment holds it, also for a definition that is not
+  recursive, and the proofs of `Extend.lean` generate `extend.eq_def`.  The reflector now tests
+  `isRecursiveDefinition` first.
+- [x] 4: `set!`, `push`, `++`, `insertAt`, and `eraseAt`: every function of Updates, Grow, Insert,
+  and Clob has a `bound_eq`.
+- [x] 5: wrappers: `p.w.bound_eq` states the callee's bound at the tables and the arguments, by
+  the chain of `Prog.bounds` behind a hint, or the numeral of the callee's equation.
+
+### Bound equations: kernel evaluation of loops
+
+After increments 1 and 2, the build of `Verified/Examples/Repeat.lean` rose from 1,308 s to 5,140 s.
+A copy of `sumTo` with 10,000 iterations isolates the cause: the kernel checks
+`compiled.sumTo.bound_eq` in 7.2 s, ten times the 1,000-iteration copy's time squared, and every
+other declaration of the copy in under 1 s except `denote_eq` (0.7 s).  Bisection of the proof term
+finds the time at one `Eq.trans`, whose two arguments each check in under 6 ms.  Its middle term is
+the closed sum `0 + 0 + 0 + loopCost (fun a => 0) … (fun a b => 0) …` from `loop_bound`, and the
+left side of its second argument is the conclusion of `loopCost_eq_zero`, whose lambdas have the
+binder type `Ty.denote (Ty.elem (Elem.word.prod Elem.word))` where the term has `UInt64 × UInt64`.
+
+The [kernel's definitional equality check](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/kernel/type_checker.cpp)
+explains the cost.  `lazy_delta_reduction` tries `reduce_nat` on terms without free variables before
+it compares the arguments of two applications with the same head, and `reduce_bin_nat_op` puts both
+operands of `Nat.add` in weak head normal form.  `HAdd.hAdd` has abbreviation hints, so the
+argument comparison does not apply to it at all: both sides unfold to `Nat.add`, and the kernel
+evaluates `loopCost` to a numeral, re-deriving each state from the start because nothing shares the
+states, which makes the time quadratic in the iterations.  Any syntactic difference inside a closed
+`Nat` sum has this effect, whatever its kind.  Two kinds occur.  A lemma conclusion that builds a
+lambda, as `loopCost_eq_zero` does, differs from the term in binder types.  A lemma conclusion that
+applies a function argument, as `letE_bound` does with `BA V`, contains a beta-redex in the type
+that the kernel infers, since the kernel instantiates without beta reduction, while `inferType`,
+`instantiateMVars`, and `mkEqTrans` reduce it, so the middle terms that the pass builds are the
+reduced forms.  With the zero rule disabled, the second kind still costs 1,001 unfoldings of
+`loopCost` for 1,000 iterations.  The projection reduction of `boundOf`, an `id` hint over a whole
+equation, is a third instance.
+
+A difference at the top of a compared pair costs nothing when it is a beta-redex or a primitive
+projection of a constructor: `is_def_eq_core` applies `whnf_core` before `lazy_delta_reduction`.  A
+first design kept every junction syntactic by computing each cost from the type the kernel infers
+and joining proofs through congruences down to each difference.  A fresh reviewer confirmed the
+diagnosis against the kernel source and found that design incomplete: congruence cannot pass a
+binder without `funext` or a dependent argument such as the condition of an `if`, where the kernel
+would still compare closed branches.  It recommended removing the redexes at their source, which
+this design adopts:
+
+1. Every bound lemma builds its conclusion from its arguments, without applying an argument or
+   building a lambda.  `letE`, `letE_flat`, `letPair`, and `letPair_flat` take the body's equation
+   at the value, which the builder obtains by applying the body's proof, and `build` takes the
+   element's equation at `UInt64.ofNat k`.  `loopCost_eq_zero` and `sumBelow_zero` take the
+   hypotheses `∀ s, CA s = 0` and `∀ k, f k = 0`.  The type that `inferType` computes for each
+   proof is then the type the kernel infers, so the existing joins are syntactic.
+2. A projection of a constructor application is reduced, behind a hint, only where it holds a
+   variable of the context at the hint.  The kernel checks the hint by comparing pairs of which one
+   holds that variable, and `lazy_delta_reduction` applies `reduce_nat` only when both terms of a
+   pair are closed.  A variable that a lambda inside the cost binds, such as a loop's state in its
+   step, does not count: at the hint it is bound, and a reduction under it would leave two closed
+   sums that differ inside `loopCost`.  The review of the implementation found that the first
+   version counted such variables, since `Meta.transform` instantiates binders with new free
+   variables.
+   `boundOf` reduces such projections in every cost, which removes those that the reflection's
+   tuple views leave while their components are variables.  `Bound.at` substitutes values for a
+   binder's variables: when a value is built in place, its leaves, the maximal parts that are not
+   constructor applications, become new variables, the projections are reduced, and the proof,
+   abstracted over the variables, is applied to the leaves, which the kernel instantiates without
+   comparing anything.
+3. `normCost` builds its congruences from the term's own parts.  `sumNorm` and `normSum`, which
+   have no callers, are removed.
+
+The meaning pass had a related cost that predates the bound pass: `denote_eq` evaluated
+`LeanExe.repeatWhile.go` 1,001 times for the 1,000-iteration copy.  `casesEq` proves
+`alt s.1 s.2 = match s with …` for variables by `MVarId.refl`, whose proof `Eq.refl (alt s.1 s.2)`
+does not record the match, so the final restatement of `denote_eq` compared `X.2 + k` with the
+`match` on the loop `X`, and the kernel evaluated `X` to reduce the match.  A hint now states the
+equation, and the 10,000-iteration copy checks `denote_eq` in under 20 ms instead of 724 ms.
+
+- [x] Diagnosis.
+- [x] Review of the design.
+- [x] `casesEq` states its equation.
+- [x] Lemmas with conclusions built from their arguments, and their builders.
+- [x] Projection reduction on variables.
+- [x] `normCost` with explicit congruences, and numerals from `evalNat` in the form of the lemma
+  statements, since the kernel's `whnf` returns raw literals.
+- [x] The 10,000-iteration copy checks `bound_eq` in under 20 ms instead of 6.9 s.  The full build
+  of `Verified` takes 241 s, and `Verified/Examples/Repeat.lean` builds in 6.3 s instead of
+  5,140 s, and in less than the 1,308 s it took before the bound pass, through the `casesEq` fix.
+  The suite passes 15,837 checks.
 
 ## 2026-10-06: Euler results of commit `eef07963` ported
 
@@ -32928,3 +33144,926 @@ Thirty-seven Lean files change their imports, qualified names, and `open` lists,
 The first build 18 (`opus-merge-18a.log`) failed in `F64SignedNearestSum`: two uses of `abs_value` inside `rw [...]` kept the old name, since the replacement required a space after it.  With them renamed, build 18 completes `lake build LeanExe Verified` with exit 0 (`opus-merge-18.log`), its 4,095 axiom reports name only `propext`, `Classical.choice`, and `Quot.sound` apart from the CodeLib example axiom, and run 18 exits 0 with 15,837 tests passed and none failed (`opus-run-18.log`).  The 49 written files are byte-identical to the stored references.
 
 - [x] Move `TrigNearest`, `TrigFloatTools`, `TrigStep.unit_step`, `TrigTiny`, and `SinpiLowStep.within_low` into ProofKit
+
+## 2026-10-10: Decisions on the generators, the merge, and the order of work
+
+The user decided seven questions that the generator work and the trap-free work left open.  The
+LCG keeps the increment `1442695040888963407` of O'Neill's PCG library: Knuth's
+[`rsixfour.c`](https://mmix.cs.hm.edu/tools/rsixfour.c) gives the multiplier with a citation of
+Volume 2, Section 3.3.4, and its own increment `9754186451795953191` as "some random start value",
+so no source prescribes the increment, and the theorems hold for any odd one.  Park–Miller keeps
+the direct product in 64-bit words, which is exact below `2^46`, and seeds by the rule of the C++
+standard's [`linear_congruential_engine`](https://eel.is/c++draft/rand.eng.lcong), which
+`std::minstd_rand0` instantiates with these parameters: the state is the seed modulo `2^31 - 1`, or
+1 when that is 0.
+
+| Decision | Answer |
+|----------|--------|
+| LCG increment | PCG's `1442695040888963407` |
+| Park–Miller arithmetic | direct 64-bit product |
+| Park–Miller seeds | C++ rule: `s % (2^31 - 1)`, and 1 for 0, with a theorem that every seed reaches the range |
+| Location | `Examples/Lcg/`, `Examples/ParkMiller/`, `Examples/Xorshift/`, and the shared lemmas in `Examples/Orbit/` |
+| xorshift period | the orbit computation of the state 1 by matrix jump-ahead |
+| Further properties | equidistribution over a period, jump-ahead, the LCG's lattice structure, and the spectral test values of the multiplier |
+| Merge | run `main`'s default build and checks on `verified`, then fast-forward `main` |
+| Order | the merge checks, then task 66 (an amortized charge for `push` and a recursion depth bound), then the generators, then record fields in `bound_eq` |
+
+- [x] Merge checks and fast-forward.  The manual's full check passed on `verified`: the build with
+  no `sorry`, the same bytes for the 33 modules, 16,039 module cases, 77 release-count cases, 20
+  depth-guard cases, 360 chunk cases, 1,975 drone calls and 116 drone terrains, LTG, the decoder
+  test with no failure, and 474 WGSL cases on each of SwiftShader and lavapipe.  The GPT module's
+  bytes did not change, so the GPT tests did not run.  `main` had no commits after `33f15752`, so
+  it fast-forwards to `verified`.
+- [x] Amortized push charge and recursion depth bound.
+- [x] Generators: move, seed rule, compile, xorshift period, equidistribution, jump-ahead, lattice
+  structure, spectral test values.
+- [x] Record fields in `bound_eq`.
+
+### Amortized growth and recursion: design
+
+Task 66 extends the trap-free theorems in two directions.  A research agent wrote the design and a
+fresh reviewer checked it against the code; the user decided its two open questions.
+
+**Recursion.**  A function whose code takes the call depth starts with `guardCode`, which traps at
+`unreachable` when the depth reaches `depthLimit = 1000`, and callers push depth plus one, entries
+and wrappers depth 0.  Every function's bound takes the frames available, `k = 1000 − d`.
+`Prog.bounds` branches on `Func.depth`: a depth function's bound is defined by structural recursion
+on `k`, with `B 0 = 0` and `B (k + 1)` its body's bound with the callees, itself included, at fuel
+`k`, and any other function keeps its bound at every fuel.  The guard makes fuel 0 trap, so the
+bound on `top` holds on every return, and `Prog.calls` keeps its induction on `1000 − d`, which
+supplies the self entry at the next fuel.  The user chose a separate condition for the depth over
+folding it into the bound with `B 0 = 2^32`: `Expr.fits` mirrors `Expr.allocs` with `&&` in place
+of `+`, a depth function has `F 0 = false`, and `p.f.fits k x` states that the run at `x` needs at
+most `k` frames.  `CodeSpec`'s trap flag becomes `!fits || (allocating && !Within)`, callee `fits`
+entries sit beside the bounds, and the reflector generates `p.f.bound`, `p.f.bound_eq`, `p.f.fits`,
+`p.f.fits_eq`, and `p.f.trapFree` under `p.f.fits 1000 x ∧ Within (p.f.bound 1000 x)` for each depth
+function.  A recursive function needs its own bound definition and a chain lemma for `FVar.here`
+under `Prog.consRec`, which `boundsChain` lacks, and the `fits` builders follow the rule that lemma
+conclusions are built from their arguments.
+
+**Growth.**  `roomCode` extends an owned array that dies in place when its block, whose capacity
+`c` the header records, has room, and otherwise requests `2c`, `2^32`, or the new length's bytes,
+copies, and releases the old block.  With `u = 8 · (n + 1)`, the potential `Φ = 4u ∸ 2c` lies in
+`[0, 2u]`, and the theorem takes the form `top' + Φ(result) ≤ top + Φ(consumed) + bound`.  A growth
+of an array whose potential is counted then costs `48 + 32 · ext`, and one whose potential is not
+counted costs today's `growCost` plus `16 · ext`; the reviewer checked every case, including reuse
+of a free block, the request of `2^32`, the `2^29`-word trap, and `insertAt` past the end.  When
+`top` rises, the new block's capacity equals the request, which removes the rounding term without
+changing `Heap.At`.  `wp_requestCode` needs the lower bound `min(2c, 2^32) ≤ r`, `spec_room` the new
+block's capacity, and `set` and `eraseAt` in place the unchanged capacity.
+
+The user chose flags over a potential on every array, which would triple the charge of every
+creation and the drone's bound.  The flags are bound data and leave the compiled code unchanged.
+The review fixed their rules: a value whose type holds no array counts as paid, borrowed values
+carry no potential, and a loop state or parameter is paid only when a growth on some path of its
+body spends the credit, so loops and functions without growth keep today's bounds.  A loop converts
+an unpaid initial state at `2u` per array, a caller converts an unpaid argument for a paid parameter
+at the same cost, a paid result passes its credit to the caller, and a recursive function's result
+flag is computed by checking an assumed flag, as for loops.  `FunSpec`'s bounded part needs a new
+predicate with the potential, and `FunSpec.runs`, `bodyFunction_implements`, `wrapper_runs`,
+`entry_correct`, `Prog.correct`, and the reflector's extraction of the bound change with it; the
+user-facing `p.f.bound` adds `2u` per array of each paid owned parameter, so `p.f.trapFree` keeps
+its statement.
+
+The README must state at each step what changes: recursive functions get bounds, `trapFree` covers
+code with the call depth, and an extension is charged by its flag.  Every `trapFree` holds in
+Talos's semantics, which has no stack limit, and the tests cover frames of at most 32 positions at
+1,000 nested calls on Wasmtime 44 for aarch64.  Neither part changes the compiled code, so module
+bytes and the test suite stay as they are, and the drone is rebuilt after each step to confirm that
+its theorem stands.
+
+- [x] Design, review, and the user's two decisions.
+- [x] B1: fuel-indexed bounds, `fits`, the new trap flag, and `trapFree` for depth functions;
+  theorem: `Recursion.chain` returns without a trap for `n.toNat < 1000`.  Its steps:
+  - [x] `Fits`, `Expr.fits`, `loopFits`, `allBelow`, `argsAll`, `Prog.boundsAt`, and
+    `Prog.fitsAt` in `Bound.lean`, unused by the proofs.
+  - [x] `CodeSpec` with a `Fits` argument, the trap flag `!e.fits || (allocating && !Within)`,
+    and the bound on `top` under `e.fits`, in place of `e.depthCalls`, with every rule converted.
+    `seq_spec` and `TrapOK.part` keep their shapes, since "the whole fits" implies "the part
+    fits" as "the part calls a depth function" implied "the whole does".  The loop's invariant
+    carries `Expr.loopFitsRest`, whether the remaining passes find their frames, beside
+    `Expr.loopRest`, and the build reads the elements' frames from `allBelow`.
+  - [x] `ImplementsF`, `ImplementsB` with a frames condition, for the depth branch of `FunSpec`,
+    `Calls` and `CallsAt` with the bounds and frames at `framesAt d = 1000 − d`, and `Prog.calls`
+    by its induction on the frames left.  A function whose code takes no call depth takes its
+    bound with its callees at 0 frames: it calls no depth function, so the frames do not change
+    the value, and a depth function at 0 frames claims nothing, its frames condition false.
+    `Prog.boundsAt` replaces `Prog.bounds`, and the reflector reads the fuel from the bound it
+    rewrites.  `Expr.fits_of_depthCalls` gives the frames of code without depth calls.  The
+    compiled code is unchanged.
+  - [x] The reflector: `p.f.bound`, `p.f.fits`, their equations, and `p.f.trapFree` for depth
+    functions, with a builder family for `fits`.
+  - [x] `Recursion.chain`'s theorem and the README.
+  - [x] A review by a fresh agent, and the changes it called for.  The verified suite passes:
+    15,854 cases, none failed.
+- [x] Remove the `Option` from `BoundBuilder`, which no longer returns `none`.
+- [x] A1: the potential and its heap lemmas, `CodeSpec` with the potential, and flags for `let`
+  slots and growth results; theorem: `Grow.pushTwo`'s second push charged `48 + 32`.
+- [x] A2: loop states; theorem: `Grow.evens` bounded linearly, and `sortInsert` and `repeated`.
+- [ ] A3: parameters and results; theorem: `Recursion.fill` bounded linearly with its `fits`
+  condition `n − i < 1000` in `Nat`.
+
+### Bounds and frames of recursion: implementation
+
+Every function of a program now has a bound, and a wrapper of a function whose code takes the call
+depth still has none.  The reflector reflects each body in a context whose `Tables` hold the bounds
+and frames conditions of the callees at a local variable `k`, the frames available, and, in a
+recursive definition, the definition's own entries `RecFunc.boundAt … k` and `RecFunc.fitsAt … k`
+first.  `tableChain` proves the entry of a callee from the program's chain: a function whose code
+takes no call depth gives `f.bound fs (rest.boundsAt fs 0)` at every `k`, and one whose code takes
+it gives `f.boundAt` or `f.fitsAt` at `k`.  A definition whose code takes no call depth gets its
+equation with `k` replaced by 0, the substitution of a closed term for a variable, so its statements
+keep their form.  A definition whose code takes the depth gets `p.f.bound` and `p.f.fits` as
+functions of `k` and of Lean's argument tuple, and `bound_eq` and `fits_eq` at `k + 1`, from
+`funcAt_bound`, `recFuncAt_bound`, `funcAt_fits`, and `recFuncAt_fits`.  These lemmas take the
+function's value, a `Func.mk` or `RecFunc.mk`, as `func_bound` does: the reflector checks lemma
+arguments at reducible transparency, which does not unfold the constant `p.f.func`, while the
+projections of the value reduce.
+
+Each reflection carries a frames builder beside its bound builder, with one lemma of
+`Reflect/FitsLemmas.lean` per source form with parts.  `LemmaApp.childFits` first tries
+`Expr.fits_of_depthCalls`, whose side condition `e.depthCalls = false` the kernel evaluates, so a
+part without a call of a depth function, a leaf among them, contributes `true` and no lemma chain.
+`normFits` drops the operands `true` of `&&` and reduces an `allBelow` or a `loopFits` whose parts
+are `true`.  A call chooses between `call_depth_fits` and `call_fits` by the callee's signature.
+`p.f.trapFree` comes from `Prog.entry_trapFreeWith`, with the table entries `bounds.get f` and
+`fits.get f` replaced by the function's own entries at 1,000 frames through `rewriteEntry`, which
+the theorems of the other functions use as well.
+
+In `Recursion.lean`, `chain_fits` proves `compiled.chain.fits k n = true ↔ n.toNat < k` by induction
+on `k` from `fits_eq` and `rfl` at 0.  `chain_trapFree` states that the module computes `chain n`
+without a trap for `n.toNat < 1000` when `top` lies within the cap, from `chain_bound`, the bound 0.
+The equations read as the definitions do, for example
+`compiled.gcd.fits (k + 1) (a, b) = if b = 0 then true else compiled.gcd.fits k (b, a % b)`.
+
+A fresh agent reviewed the change and found no defect in the meta code.  It found the paths that no
+example exercised: a depth call inside a loop, a build, a `repeatWhile` condition, a destructured
+pair, an update, the argument of a function without the call depth, and conditions on a `Bool`, a
+float, and `≠`, and a recursion that calls another depth function.  `spread` and `countdown` in
+`Recursion.lean` exercise them, and the cases run them in WebAssembly.  The review's other points
+were dead code, duplication, and text, which the follow-up changes address.  A wrapper of a
+function whose code takes the call depth gets no `trapFree`, since `wrapper_trapFree` requires
+`w.depth = false`, and no example has one.
+
+### Growth potential for straight-line code: plan
+
+A1 adds the potential of the design to `CodeSpec` with paid flags for `let` slots and growth
+results, and leaves parameters, results of functions, loop states, pairs, and `if`s unpaid, which
+A2 and A3 extend.  An owned array of `n` words at `p` has the potential
+`Φ = 4u ∸ 2c`, with `u = 8 (n + 1)` and `c = capacityAt store p`, and `Ty.pot` sums it over the
+arrays of a value.  The flags form a list `paid` beside the modes: `Expr.paid` is true for a growth
+of an owned array that dies, for a moved variable whose slot is paid, and for a `let` whose body is
+paid, and a `let` slot takes its value's flag.  `CodeSpec` takes `paid`, allows a trap when `top`
+cannot rise by the potential of the paid owned variables that die plus `Expr.allocs`, and states
+`top' + Φ(result) ≤ top + Φ(dying) + Expr.allocs` when the result is paid, and the same without
+`Φ(result)` otherwise.  At a function's entry every flag is false and the result's potential is
+dropped, so `FunSpec`, `ImplementsB`, and every `p.f.bound` of a function without growth keep their
+statements.
+
+The arithmetic of `roomCode`, with `u'` the new length's bytes, `E = u' - u`, and `A` the request
+rounded by `allocSize` to a multiple of 8: in place, `Φ' ≤ Φ + 4E`.  A move that raises `top`
+costs `48 + A` with capacity `A`.  For the request `2c`, `Φ' = 4u' - 2A`, since `2A > 4u'` would
+give `A ≥ 2u' + 8 > 2c + 7`, so the cost and `Φ'` total at most `48 + 4u' - 2c ≤ 48 + 4E + Φ`.  For
+the request `u' > 2c` they total `48 + 3u' ≤ 48 + 4E + Φ`.  A move into a reused block costs 0 and
+leaves `Φ' ≤ 4u' - 2r`, and the request `2^32` cannot complete.  A paid growth is then charged
+`48 + 32 · ext`, with `ext` words added, and an unpaid one today's `48 + 16 (len' + 1)` plus
+`16 · ext`, which covers its paid result's `Φ'` since `c ≥ u`.  A copy keeps today's charge and an
+unpaid result.
+
+- [x] The allocation fact that a block either reuses free memory, with `top` unchanged and a
+  capacity of at least the request, or raises `top` by `48 + allocSize r` with exactly that
+  capacity, through `wp_allocBlock` and `wp_allocCopy`.
+- [x] `Ty.pot`, its invariance under steps that keep a block, and `spec_room` with the potential.
+- [x] `Expr.paid`, `paid` in `Expr.allocs` and `Var.roomCost`, `CodeSpec` with the potential, and
+  every rule.
+- [x] The reflector: the lemmas with `paid`, the paid and unpaid growth lemmas, and a `let` slot's
+  flag by kernel evaluation of `Expr.paid`.
+- [x] `Grow.pushTwo`'s `bound_eq`, whose second push is charged `48 + 32`, the README, and a
+  review.  The reviewer found no defect in the statements, the arithmetic, or the reflector, and
+  seven docstrings that the change had made inaccurate, which are fixed.  The verified suite
+  passes: 15,854 cases, none failed.
+
+### Growth potential for straight-line code: implementation
+
+`AllocShape` in `Heap.lean` states the two outcomes of an allocation, and `wp_allocBlock` and
+`wp_allocCopy` pass it on.  `Potential.lean` defines `arrayPot`, `Ty.pot`, `Env.pot`, and
+`dyingPot`, the potential of the paid owned variables that die between two live sets, with the
+lemmas that split it along a sequence and keep it across a step that keeps the variables' blocks.
+`CodeSpec` takes the flags `paid`, and each rule splits the whole's `dyingPot` into its parts'.  A
+rule whose value is an array that grows needs the array's capacity after the code that writes the
+element or copies the other array, so `wp_storeWordsCode` states that the writes keep the capacity,
+`After.release` states that the release keeps the value's regions, and `spec_insertAt` and
+`spec_append` take the capacity from `Heap.Owned.rewrite`.  A request of `2^32` bytes follows a
+block of more than `2^31` bytes below `top`, which leaves room for neither charge, as `room_huge`
+states.  At a function's entry the flags are empty, so `dyingPot_nil` removes the potential and
+`FunSpec` keeps its statement.
+
+The reflector's builders take the flags beside the modes and the live set, and a `let` slot's flag
+is the Boolean that the kernel computes for `Expr.paid` of the value, which `letE_bound` takes as
+the hypothesis `hp`.  `BoundFacts.lean` names the charges: `growCost words ext` for an array that
+is not paid and `paidGrowCost ext` for a paid one.  The room lemmas state the new length as
+`len + ext` with `len` the length in words, `n` for elements of one word, which removes the congruence
+that `roomEq` built after the fact.  `Grow.pushTwo_bound` states that the second push of
+`pushTwo` is charged `48 + 32` bytes.
+
+### Potential for loop states: plan
+
+A2 lets a loop's state carry potential.  The state is paid when the loop's mode is owned, the body
+extends an array (`Expr.grows`), and the body's value is paid when the state's slot is, which
+`Expr.statePaid` checks by computing `body.paid` with the flag `true` for the state.  The check
+makes the flag consistent: a paid state's body returns a paid value, which becomes the next
+state.  `Expr.paid` of the loop is `Expr.statePaid`, so a variable that `let` binds to the value
+of a loop with a paid state is paid.
+`Expr.grows` is true when an expression holds `push`, `++`, or `insertAt`, so a loop whose body
+extends nothing keeps its bound.  A call's growth counts in A3.
+
+`Expr.allocs` of a loop gives the body the flags `ps :: false :: paid`, with `ps` the state's flag,
+and charges `Ty.credit` of the initial state when `ps` holds and the initial value is not paid.
+`Ty.credit` is `16 (u + 1)` bytes for each array of `u` words, since an owned array's block holds
+at least its length word and words, `8 (u + 1)` bytes, so its potential is at most `2 · 8 (u + 1)`.  `creditCost` in
+`BoundFacts.lean` names it for `bound_eq`.
+
+The proof of `spec_loop` adds the state's potential, `if ps then Ty.pot …`, to the left side of
+the invariant, and each step of the proof carries it:
+
+- The entry: the initial value's potential when it is paid, which the coercion keeps, since a paid
+  value is owned and the coercion of an owned value is the identity, and otherwise the credit, by
+  `Ty.pot_le_credit` for a value held in owned mode.  `After.coerce` states that a coercion from
+  the owned mode keeps the store and the words.
+- The condition: `After.test_regions` states that the condition keeps the state's regions, so
+  `Ty.pot_of_regions` keeps its potential.
+- The body: its `dyingPot` is at most the state's potential when `ps` holds, by
+  `dyingPot_le_head`, and `ps` gives `body.paid`, so the body's postcondition bounds the next
+  state's potential.  `Expr.mode_of_paid` shows that a paid value is owned, so its coercion is the
+  identity.  A state that the body does not use is released, and its potential dropped.
+- The exit: `After.release` keeps the state's regions, so the loop's value has the potential of
+  the last state, and `Expr.paid` of the loop is `ps`.
+
+The reflector evaluates `Expr.statePaid` and `init.paid` in the kernel, gives `loop_bound` the
+flags, and states the credit with `creditCost` or drops it.
+
+A reviewer found the rule sound at every step of `spec_loop` and the credit a bound on the
+potential of any value held in owned mode.  Two changes follow the review.  An `if` is paid when
+both branches are, since both values are then owned and the coercion is the identity, so a body
+such as `if c then acc.push x else acc` gives a paid state.  The loop lemmas take the state's flag
+`ps` and the credit `CR` as arguments, so an unpaid state gives the equation it gave before A2 after
+`normCost`
+drops the summand `0`, and the credit reflects through `ValueCost.eq`, which also gives the copy
+cost, so a flattened state works, as `Insert.pushConserved` shows with an array of structures.  No
+example has a paid pair state, since a pair is not paid.
+
+- [x] `Expr.grows`, `Expr.statePaid`, `Expr.paid` and `Expr.allocs` of a loop, `Ty.credit`, and
+  `creditCost`.
+- [x] `After.test_regions`, `After.coerce` with the identity fact, `Ty.pot_le_credit`, and
+  `Expr.mode_of_paid`.
+- [x] `spec_loop` with the state's potential, and `ite_branch` with a paid `if`.
+- [x] The reflector's loop lemmas and builder.
+- [x] Theorems: `Grow.evens_bound`, `72 + 80 n`, `Grow.repeated_bound`, `72 + n (32 |xs| + 48)`,
+  `Insert.sortInsert_bound`, at most `72 + 80 |xs|`, and `Insert.pushConserved_bound`,
+  `72 + 144 n`; the README.
+- [x] A review of the change, and the suite.  The reviewer found no defect in the statements or
+  the reflector and asked for docstring and README corrections, which are made.  The verified
+  suite passes: 15,854 cases, none failed.
+
+### Potential for loop states: implementation
+
+The proof follows the plan with these lemmas.  `After.test_regions` gives the regions that the
+condition keeps, and `Ty.pot_of_regions` the potential of a value in owned mode whose regions a
+step keeps.  `loop_entry_pot` bounds the first state's potential by a paid initial value's or the
+credit, and `loop_body_pot` carries the potential through a pass and the coercion.  The body's
+dying potential is at most the state's, by `dyingPot_le_head` with `loop_body_dies`, which shows
+that no paid variable other than the state dies in the body.  `pot_keep` carries a paid `if`'s
+potential through its branch.  `loopCost_const` evaluates a loop whose passes cost the same, which
+the example theorems use.
+
+### Potential for parameters and results: plan
+
+A3 lets a function's owned array parameters and its result carry potential.  The flags of a
+function form a table `Flags S`, beside `Bounds S` and `Fits S`, with a list of parameter flags and
+a result flag for each signature, and `Prog.flags` computes it from the bodies.  A parameter is
+paid when its mode is owned, its type holds an array, and the body extends an array
+(`Expr.grows`).  The result is paid when the body's value is paid with the parameters' flags.  A
+recursive function's result flag assumes its own flag `true` for the calls of itself and checks
+that the body's value is then paid, as `Expr.statePaid` does for a loop, and its body's bound uses
+the flag that the check gives.
+
+`Expr.paid` and `Expr.allocs` take the table.  A call is paid when the callee's result flag is
+true.  The call charges `Ty.credit` of each argument at a paid parameter unless the argument is a
+paid owned variable that the call moves, whose potential the caller's dying variables already
+hold.  The callee's specification, a predicate `ImplementsP` beside `ImplementsB` and
+`ImplementsF`, allows a trap when `top` cannot rise by the potential of the paid arguments plus
+the bound, and states that `top` after the call, plus the result's potential when the result is
+paid, is at most `top` before it plus the potential of the paid arguments plus the bound.  A
+function whose code takes the call depth gets the same potentials in `ImplementsF`.  At a
+function's entry the body's flags are the parameter flags, and `dyingPot` holds the paid
+parameters' potential.
+
+The user-facing `p.f.bound` adds `Ty.credit` of each paid argument, and `ImplementsB` follows from
+`ImplementsP`, since an owned argument's potential is at most its credit and the result's potential
+is at least 0, so `p.f.trapFree` keeps its statement.  A function without paid parameters gets
+the bound it gets today.
+
+- [x] `Flags`, `Prog.flags`, the parameter and result flags, and `Expr.paid` and `Expr.allocs`
+  with the table and the call's credits.
+- [x] `ImplementsP`, `FunSpec` with it, `FunSpec.runs`, `Calls`, `CallsAt`, and `Prog.calls`.
+- [x] `spec_call` with the moved arguments' potential, the credits, and the result's potential;
+  `body_code_spec` with the parameter flags.
+- [x] `ImplementsB` from `ImplementsP`, the entry and wrapper theorems, and `Prog.correct`.
+- [x] The reflector: the table, the call lemmas, and `p.f.bound` with the credits.
+- [x] Theorem: `Recursion.fill` bounded linearly, with its frames condition `n − i < 1000` in
+  `Nat`; the README; a review.
+
+A reviewer found the flag rules sound: any choice of parameter flags is sound, since a callee uses
+only the potential that its callers supply, and the result flag is the only flag a proof depends
+on.  When a recursive function's check fails, its body's bound and `RecFunc.boundAt` use `false`.
+The review changes the plan in these points.  One predicate with the flags, the potentials, `pre`,
+and `fits` replaces `ImplementsF` and serves both branches of `FunSpec`, and `ImplementsB` follows
+from it for users.  A call counts in `Expr.grows` when it passes an argument to a paid parameter,
+with a recursive function's call of itself ignored.  `args_spec` states that a moved argument's
+words are its variable's.  A call is paid only when the callee's result holds an array, since
+`Expr.mode_of_paid` needs a paid value owned.  The reflector computes a recursive function's
+result flag before it reflects the body.  The table of bounds must hold the bound without the
+credits, since a call charges the credits and callers' equations name the callee's entry.
+
+The user chose the names: `p.f.bound` stays the bound on how far `top` rises during a call, with
+the credits, so `p.f.trapFree` keeps its statement for every function.  A function with a paid
+parameter also gets `p.f.cost`, the table's entry without the credits, with
+`p.f.bound x = credit x + p.f.cost x` and `p.f.cost_eq`.  A caller's equation names `p.g.cost` for
+such a callee and `p.g.bound` for any other.
+
+### Potential for parameters and results: implementation notes
+
+`Correct.lean` carries the flags through `CodeSpec`, `FunSpec`, and `Calls`.  `ImplementsP` replaces
+`ImplementsF` and serves both branches of `FunSpec`.  `args_spec` bounds the potential of the
+arguments at the paid owned parameters by `Expr.paramPot`, a moved paid variable's own potential
+or a credit.  `spec_call` turns that bound into the moved variables' share of `dyingPot` by
+`Env.pot_argsSum` and `Env.pot_step`, plus `callCredits`.  `body_code_spec` counts the paid
+parameters' potential at entry, `Env.pot_paramSlots` reads it from the argument words, and
+`FunSpec.implementsB`, `entry_trapFree`, and `Wrapper.bound` add the credits to the user's bound.
+
+The reflector's steps:
+
+- [x] `BoundPass` and the argument positions of `Expr.allocs`, which now takes the flags.
+- [x] `Tables.flags`: `Prog.flags` of the functions before a definition, and for a recursive one
+  a table whose own entry holds the flags that the reflector computes from the body.
+- [x] The call's credits, by `ArgsCredit` and a condition per argument that the kernel evaluates.
+- [x] `func_bound`, `funcAt_bound`, and `recFuncAt_bound` with the parameter flags.
+- [x] Names: a function with a paid parameter gets `p.f.cost`, the table's entry, and `p.f.bound`,
+  the credits plus `p.f.cost`.  Callers' equations name `p.g.cost` for such a callee.
+- [x] `trapFree` by `FunSpec.implementsB` and a variant for unpaid parameters that keeps today's
+  statement, and the same for entries and wrappers.
+- [x] Theorems: `Recursion.fill_fits`, `fill_cost`, and `fill_trapFree`, and `Tables.pushSquare`,
+  a wrapper of a callee with a paid parameter, with `pushSquare_bound`.
+- [x] The README.
+- [x] A review by a fresh agent, the verified suite, and the commit.
+
+The `implements` and `trapFree` theorems of a function without paid parameters come from
+`FunSpec.implementsB_unpaid` and `Prog.entry_trapFreeWith_unpaid`, whose condition that no
+parameter flag holds the kernel evaluates, so their statements have no credits.  A function with a
+paid parameter states them with `p.f.bound`, which the kernel unfolds to the credits plus
+`p.f.cost` when it checks the statement against the proof.  A wrapper's `bound_eq` names the
+callee's `p.g.bound` when the callee has a paid parameter, and otherwise its entry, from
+`Env.credit_eq_zero`.
+
+The review asked whether a parameter should be paid only when its own value reaches an extension.
+The charges satisfy `creditCost u + paidGrowCost k = growCost (u + k) k = 16 u + 32 k + 64`, so a
+single extension costs the same whether the parameter is paid or not.  A paid flag lowers the bound
+when the argument is a moved paid variable, which carries potential without a credit.  For a
+parameter that the body does not extend, the current rule charges a credit that only a caller's
+later extension of a paid result recovers, and the per-parameter rule loses a moved argument's
+potential when the parameter is returned.  Each difference is at most one credit per array per call,
+no example has such a parameter, and the user chose to keep the current rule.
+
+`Flags.params` and `Flags.result` look up a function's flags by `FVar.index` in `Flags.toList`.
+The first definition matched `Flags S` and `FVar S g` together, and the kernel reduced that match in
+40 to 130 ms per `.there` step on the program of `Trig.lean`: a lookup at depth 10 took 0.5 s, while
+the lookup by index takes under 5 ms.  The reflector evaluates the flags at every argument of every
+call, and the elaborator counts the kernel's allocations as heartbeats, so `verified_compile` of
+`Trig.lean`, whose reflection runs in one `TermElabM` block, exceeded the 200,000 heartbeats.  With
+the lookup by index the module builds in 33 s.
+
+## 2026-10-11: The generators
+
+Task 70 compiles the generators of `Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` in
+`Verified/Examples/` with the verified compiler, moves them and the lemmas of `Orbit.lean` to
+`Examples/`, and proves the properties that the user chose on 2026-10-10.  G1 and G3 add modules
+with cases, and G2, G4, and G5 add theorems about the programs.  G3 appends its programs to the
+`verified_compile` lists of G1, so the entries and cases of G1 keep their indices.
+
+| Stage | Content |
+|-------|---------|
+| G1 | Move the programs and proofs to `Examples/`, add Park–Miller's seed rule, compile the three generators, with theorems that the module's bytes compute them and the properties of `advance`, and add their cases |
+| G2 | The xorshift period `2^64 - 1` by the orbit of the state 1 with matrix jump-ahead |
+| G3 | Jump-ahead programs for the LCG and xorshift, compiled, with theorems that they equal `advance`, and the equidistribution of the top `j` bits of the LCG's and of xorshift's states over a period |
+| G4 | The LCG's lattice structure |
+| G5 | The spectral test values of the LCG's multiplier |
+
+### G1: plan
+
+Each generator gets a directory in `Examples/`, as the drone planner has: `Program.lean` holds the
+programs in the dialect, without Mathlib, and `Period.lean` the theorems, with Mathlib, which the
+`Examples` library already imports.  The shared lemmas move to `Examples/Orbit/Basic.lean`, with a
+short `README.md`.  The namespaces become `Examples.Lcg`, `Examples.ParkMiller`,
+`Examples.Xorshift`, and `Examples.Orbit`, and `Examples.lean` imports the new modules.  The
+content of `Verified/Examples/GENERATORS.md` moves into the `README.md` of each directory, with the
+commands that build the modules and run their cases, and without the decided questions or the later
+candidates.
+
+Park–Miller's `seed s` follows the decision of 2026-10-10: the state is `s % (2^31 - 1)`, or 1 when
+that is 0, which [rand.eng.lcong] gives for `c = 0`.  `seed_mem` states `0 < seed s ∧ seed s <
+2147483647`, the hypothesis of `advance_existsUnique` and `advance_mem`.  The standard's seed has
+type `uint_fast32_t`, which glibc defines as `unsigned long`, 64 bits on 64-bit platforms, and which
+may have 32 bits elsewhere, so the rule matches the standard for every seed below `2^32`, and for
+every seed where the type has 64 bits.  `check_value` states Park and Miller's value `advance 10000
+1 = 1043618065`, which [rand.predef] also requires of `minstd_rand0`, by `decide +kernel`.
+
+`Verified/Examples/Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` compile the programs, as
+`Verified/Examples/Drone.lean` compiles the planner, and `Verified.lean` imports them.  The lists
+are `[affine, step, advance]`, since the reflector compiles a call of `affine` only when `affine`
+is listed before `step`, `[step, advance, seed]`, and `[step, advance]`.  None allocates, so each
+function's theorem is `ImplementsA false`.  `lcg_advance`, `parkMiller_advance`, and
+`xorshift_advance` state, as `drone_compute` does, that the bytes decode to the module, that the
+module computes `advance`, and the property of `advance`: each word once per period for the LCG,
+and a nonzero state never becomes 0 for xorshift.  `parkMiller_advance` also states that the module
+computes `seed`, and that from every seeded state each state of the range occurs once per period.
+`Verified/Examples/Cases.lean` gets cases for each function, among them `advance 10000 1`, and
+`tests/verified/run.sh` the three modules.  The `compiled.bytes` row of `Verified/README.md` and
+the table of examples in `docs/manual.md` list the generators.
+
+- [x] The move, the READMEs, and the seed rule with `seed_mem` and `check_value`.
+- [x] The three compiled modules and the theorems about their bytes.
+- [x] The cases, the suite, and the documents.  The verified suite passes 16,064 cases, none failed.
+- [x] A review by a fresh agent, and the commit.
+
+A second fresh agent reviewed the implementation.  It confirmed the indices, the export names, the
+statements, and the moved proofs, and it found the outside references of the former
+`GENERATORS.md` missing, claims of a period theorem for xorshift before G2, stale docstrings, and
+gaps in the READMEs' commands.  The fixes restore the references in each README, state the
+theorems as they stand, put `seed_mem` into `parkMiller_advance`, and give each README the output
+of its command, which the module prints.
+
+The kernel's evaluation of `advance n 1` grows about eightfold when `n` doubles: 0.8 s at 1,000
+steps, 4.3 s at 2,000, and 37 s at 4,000, and at 10,000 it ran for more than 20 minutes.
+`LeanExe.loop` is `Nat.fold`, whose definition passes its function, with a proof `i < n`, to the
+recursive call wrapped in one more lambda, so the function at depth `k` is `k` lambdas deep, which
+is the likely cause.  `check_value` therefore rewrites `advance` to `step^[n]` by
+`advance_eq_iterate`, and the kernel evaluates `Nat.iterate` for 10,000 steps in 0.6 s.
+
+A fresh agent reviewed the first version of this plan.  It found that `affine` must be listed, that
+`Verified.lean` must import the modules for `tests/verified/run.sh`, that `parkMiller_advance` needs
+the module's `seed`, and that a case compares the module with native Lean only, so Park and Miller's
+value needs a theorem.  It confirmed the seed rule against [rand.eng.lcong] and found the forms
+that the programs use among those that the reflector supports.
+
+### G2: representation
+
+The kernel computes the jump-ahead tables of xorshift: the 64 columns of the step, 63 squarings,
+and a product per exponent.  On `UInt64` words it took 1.2 s per squaring, and on `Nat` words, where
+the kernel computes `^^^`, `/`, and `%` on literals, 63 squarings took 16 s.  G2 therefore states
+the tables over `Nat`: `applyList c x` is the xor of the columns `c` at the set bits of `x`, and for
+a map `f` that distributes over xor, `applyList (cols f 64) x = f x` for `x < 2^64`, by induction
+on the bits.  The step on `Nat` is `fun y => (step y.toUInt64).toNat`, which distributes over xor
+by `step_xor`.  A prototype proves the lemmas and checks `step^[2^64 - 1] 1 = 1` and
+`step^[(2^64 - 1) / q] 1 ≠ 1` for the seven primes `q` with one `decide +kernel` in 18 s.  The
+compiled jump-ahead of G3 works on `UInt64` words and arrays, and a lemma on `toNat` relates it to
+the tables of G2.
+
+### G2: the xorshift period
+
+- [x] `Examples/Xorshift/Columns.lean`: columns, squares, and jump-ahead on natural numbers.
+- [x] `orbitCheck_eq`, `minimalPeriod_one`, `step_minimalPeriod`, and `advance_existsUnique` from
+  every nonzero state, with `Orbit.minimalPeriod_eq_of_primes`.
+- [x] `xorshift_advance` with the period, the README, and the manual.
+- [x] A review by a fresh agent, and the commit.
+
+The final file checks `orbitCheck_eq` in about 20 seconds, the time between the file's last save
+and its build output.  The period uses `Orbit.minimalPeriod_eq_of_primes`, with the hypotheses of
+Mathlib's `orderOf_eq_of_pow_and_pow_div_prime`, which Mathlib states for the order of a monoid
+element and not for `minimalPeriod`.  A fresh agent reviewed the stage and found no soundness
+problem.  It asked for the lemma's hypothesis in Mathlib's form, for `jumpList_tables` at every
+state, which G3 needs, for the name `jumpList`, which leaves `jump` to G3's program, and for
+corrections to the READMEs and docstrings.
+
+### G3: plan
+
+G3 appends jump-ahead programs to the generators' modules and proves the equidistribution of the
+top bits over a period.  The LCG's `jump n x` runs 64 passes of `jumpPass n i`.  At pass `i` the
+state holds the coefficients `(am, ap)` of `step^[n % 2^i]` and `(cm, cp)` of `step^[2^i]`.  When
+bit `i` of `n` is set, the pass applies `step^[2^i]` after the first map, giving
+`(am * cm, ap * cm + cp)`, and it squares the second to `(cm * cm, (cm + 1) * cp)`, the step of
+`doubled`.  `jump_eq` follows from `iterate_two_pow` and `Nat.mod_pow_succ` by induction on the
+passes.  xorshift's `applyCols c x` is the xor of the words of the array `c` at the set bits of
+`x`, `square c` the array of `applyCols c c[i]`, and `jump n x` 64 passes of `jumpPass n i`, whose
+state holds the word `step^[n % 2^i] x` and the columns of `step^[2^i]`.  The columns start as
+`LeanExe.build 64 fun k => step (1 <<< k)`, and each pass replaces them with `square c`.  `jump_eq`
+follows from a decomposition of a word into its bits on `UInt64` and from the linearity of `step`,
+which are new lemmas, and it needs no lemma that relates the program's arrays to the tables of G2,
+which stay on natural numbers for the kernel's evaluation.  The named pass functions let the proofs
+unfold each program by `rfl` to a `Nat.fold` of the pass, and scratch prototypes proved `jump_eq`
+for both generators before the plan's review.
+
+| File | Content |
+|------|---------|
+| `Examples/Orbit/Basic.lean` | the bit test `(n >>> k) &&& 1 != 0` as `Nat.testBit`, `(1 <<< i).toNat = 2^i`, and the count of words with given top bits |
+| `Examples/Lcg/Program.lean`, `Jump.lean` | `multiplier`, `increment`, `jumpPass`, `jump`, and `jump_eq` |
+| `Examples/Xorshift/Program.lean`, `Jump.lean` | `applyCols`, `square`, `jumpPass`, `jump`, and `jump_eq`, with `LeanExe.IR.build_get` and `build_congr` |
+| `Examples/Lcg/Period.lean`, `Examples/Xorshift/Period.lean` | `advance_topBits` |
+| `Verified/Examples/Lcg.lean`, `Xorshift.lean` | `lcg_jump`, `xorshift_jump`, and `jump_bound` |
+
+The lists become `[affine, step, advance, jumpPass, jump]` and
+`[step, advance, applyCols, square, jumpPass, jump]`, so the entries of G1 keep their indices.
+`lcg_jump` states that the module's function 6 computes `advance` without a trap, by `jump_eq`.
+xorshift's `jump` allocates: the compiler's bound on the growth of `top` charges 568 bytes for each
+of 65 blocks of 64 words, the first columns and one `square` per pass, `65 · 568 = 36920` bytes,
+and the code releases each pass's old columns.  The last pass squares columns that no pass uses,
+which the uniform loop accepts for one block.  `jump_bound` states
+`compiled.jump.bound x = 36920`, and `xorshift_jump` that function 7 computes `advance` without a
+trap when `top` can rise by 36,920 bytes within the cap.  The cases cover `jump` at the words of
+the other cases and at large counts, with native `jump` as the reference and the allocation fields
+`0` and `65`, xorshift's `applyCols`, `square`, and `jumpPass` at the columns of the step with their
+allocation fields, and the LCG's `jumpPass` at other states.
+
+For the LCG, `n ↦ advance n x` is a bijection of the words, so for `j ≤ 64` and `v < 2^j` exactly
+`2^(64 - j)` counts give `(advance n x).toNat / 2^(64 - j) = v`.  For xorshift from a nonzero `x`,
+the counts below `2^64 - 1` map one to one onto the nonzero words, so the top `j` bits take each
+nonzero value `2^(64 - j)` times and the value 0 `2^(64 - j) - 1` times.  The edge cases hold:
+at `j = 0` only `v = 0` occurs, and at `j = 64` each word occurs once.  Both follow from the count
+of words with given top bits, `2^(64 - j)`, and the bijections of G1 and G2, by `Finset.card_bij`.
+
+- [x] The LCG's `jumpPass`, `jump`, `jump_eq`, and `lcg_jump`.
+- [x] xorshift's programs, `jump_eq`, `jump_bound`, and `xorshift_jump`.
+- [x] Equidistribution for both generators.
+- [x] Cases, the suite, the READMEs, and the manual.  The verified suite passes 16,317 cases, none
+  failed.
+- [x] A review by a fresh agent, and the commit.
+
+The LCG's pass is `jumpPass`, as xorshift's is: `open _root_.Examples.Lcg` made `pass` ambiguous
+with `MonadWriter.pass`.  The first proof of the LCG's count rewrote `2^(64 - j)` by the count of
+words with given top bits, which also rewrote the `2^(64 - j)` inside the filter's predicate and
+sent the elaborator past its recursion limit, so the proofs end with `Eq.trans` instead.  In the
+Lean core of this toolchain the class of `^^^` is `XorOp`, and `Linear` takes it, so one
+`Linear.iterate` serves the maps on natural numbers and on words.
+
+A fresh agent reviewed the first version of this plan.  It confirmed the invariants, the counts and
+their edge cases, and the bound of 65 blocks, and it found that the plan cited a `UInt64`
+decomposition that no file held, omitted the bound's value, the files, and the indices, and
+described the passes unclearly.  A second fresh agent reviewed the implementation.  It confirmed
+the statements, the indices, and the cases, and it asked for the general lemmas `build_congr` and
+`toNat_one_shiftLeft` outside the example, named constants for the LCG's coefficients, one
+definition of linearity, the allocation fields of xorshift's `jumpPass`, and precise wording about
+the bound, which counts the growth of `top` and not the words allocated.
+
+### G4 and G5: plan
+
+G4 and G5 describe the lattice of the LCG's points: the `t`-tuples of successive states
+`(x, step x, …, step^[t-1] x)`.  An integer vector `s = (s_0, …, s_{t-1})` lies in the dual lattice
+`Dual t` when `∑_k s_k a^k ≡ 0 (mod 2^64)`, with `a` the multiplier and `k = 0, …, t - 1`.  Since
+`step^[k] x = a^k x + step^[k] 0` in words, `∑_k s_k (step^[k] x).toNat ≡ d (mod 2^64)` for every
+`x`, with `d = ∑_k s_k (step^[k] 0).toNat`, so every tuple lies on one of the parallel hyperplanes
+`s · y = d + j 2^64`.  For `s ≠ 0` with `S = ∑_k |s_k|`, `s · y` lies for `y` in `[0, 2^64)^t` in a
+closed interval of length `(2^64 - 1) S`, which holds at most `S` members of one residue class, so
+at most `S` hyperplanes hold all the tuples.  The proof states the hyperplanes explicitly, as
+`j` in an interval of `S` integers, which `omega` checks since `2^64` is a literal, and the
+congruence comes from the ring homomorphism `reduce` of `Period.lean`.  G4 states the hyperplane
+bound for every nonzero `s` in `Dual t` and bounds the number of hyperplanes for 2 to 6 successive
+states by the vectors below: 4,008,749,872, 2,903,512, 114,468, 12,288, and, for six, 2,296, from
+the vector `(1502, 30, 36, -6, -264, -458)` of `Dual 6`, whose sum of magnitudes is smaller than
+that of the shortest vector.
+
+G5 states the spectral test values `ν_t² = min {∑ s_k² : s ∈ Dual t, s ≠ 0}` for `t = 2, …, 6`,
+which exact LLL reduction and an enumeration computed, and which the plan's reviewer recomputed
+independently with LLL, Fincke–Pohst enumeration, and, for `t = 2`, Gauss–Lagrange reduction:
+
+| t | `ν_t²` | `log2 ν_t` | shortest `s` |
+|---|--------|-----------|--------------|
+| 2 | 8810664174654508192 | 31.47 | (1381628436, 2627121436) |
+| 3 | 6398304806574 | 21.27 | (-2498093, -397201, 8218) |
+| 4 | 4112636266 | 15.97 | (28729, 22523, -11836, 51380) |
+| 5 | 45662836 | 12.72 | (1079, -547, 5024, -4057, 1581) |
+| 6 | 1846368 | 10.41 | (801, -177, 290, 952, 345, 253) |
+
+`decide` checks that each shortest vector lies in `Dual t` and has squared length `ν_t²`.  The
+lower bound rests on a lemma proved once for every `t`: every `s` in `Dual t` is `y C` for an
+integer `y`, where `C` has the rows `(2^64, 0, …, 0)` and, for `k = 1, …, t - 1`,
+`-(a^k mod 2^64) e_0 + e_k`, with `e_k` the unit vector at coordinate `k`, `y_k = s_k` for `k ≥ 1`,
+and `y_0 = (s_0 + ∑_{k ≥ 1} s_k (a^k mod 2^64)) / 2^64`, an exact division.  A certificate for `t`
+then needs four facts, which the kernel checks: integer matrices `U` and `B` with `U B = C`, an
+integer matrix `A` and an integer `δ` with `B A = δ I`, bounds `b_i` with
+`(ν_t² - 1) ∑_k A_{k i}² < (b_i + 1)² δ²`, and `ν_t² ≤ |z B|²` for every nonzero `z` with
+`|z_i| ≤ b_i`.  From `s = y C = (y U) B = z B` and `δ z_i = (s A)_i`, Cauchy–Schwarz gives
+`(δ z_i)² ≤ (∑ s_k²)(∑_k A_{k i}²)`, so a vector with `∑ s_k² < ν_t²` has `|z_i| ≤ b_i` and,
+by the last fact, `∑ s_k² ≥ ν_t²` unless `z = 0`.  The certificates take `B` as an LLL-reduced basis
+of `Dual t`, `A` as its adjugate, and `δ = det B = ±2^64`, which the lemma does not use, and the
+boxes then hold 3, 9, 27, 27, and 27 vectors.  Vectors are `Fin t → ℤ` and matrices
+`Matrix (Fin t) (Fin t) ℤ`, with the box as `Fintype.piFinset fun i => Finset.Icc (-b i) (b i)`;
+a prototype at `t = 6` measures the kernel's checks first, with Bool checkers over lists of
+integers and one soundness lemma as the alternative if the instances of `Finset` are slow.  A script
+with PEP 723 metadata, run with `uv run`, computes the certificates, and the kernel checks each of
+them, so the theorems do not depend on the script.
+
+| File | Content |
+|------|---------|
+| `Examples/Lcg/Lattice.lean` | `Dual`, `iterate_affine_eq`, the congruence of the tuples, the hyperplane bound, and the instances for `t = 2, …, 6` |
+| `Examples/Lcg/Spectral.lean` | `s = y C`, the certificate lemma, and the values for `t = 2, …, 6` |
+| `Examples/Lcg/certificates.py` | the computation of the certificates |
+
+- [x] G4: `Dual`, the congruence, the hyperplane bound, and the instances for `t = 2, …, 6`.  The
+  file checks in a few seconds.
+- [x] G5: `s = y C`, the certificate lemma, the five values, the script, and their README text.  The
+  kernel checks the five certificates, with Mathlib's `Matrix` and `Fintype.piFinset`, in 1.8 s
+  for the whole file, so the proofs use no Bool checkers over lists.  `shortest2` to `shortest6`
+  live in `Lattice.lean`, and the script prints the rest of `Spectral.lean` after its last section
+  header.
+- [x] A review by a fresh agent of each stage, and one commit for both.
+
+The review of G4 confirmed the statements and the vectors, found that a README sentence credited the
+six-state bound to the spectral test's vector, and asked for clearer docstrings.  The review of G5
+checked in Python every fact that the kernel checks and the script's output against the file, found
+no soundness defect, and asked for the build of `Examples.Lcg.Spectral` in the README's commands,
+Knuth's reading of `1 / ν_t` over all families of hyperplanes, one docstring per certificate, and
+one definition of the shortest vectors.
+
+A fresh agent reviewed the first version of this plan.  It found that the hyperplane bound needs
+`s ≠ 0`, that the plan left `d`, the ranges of `k`, and the lemma `s = y C` unstated, and that the
+certificate needs only the four facts above.  It recomputed the five values and vectors and found
+them unique up to sign, and it gave the vector of `Dual 6` with the smaller sum of magnitudes.
+
+Later candidates: SplitMix64 advances a Weyl sequence, the case `a = 1` of the LCG theorems, and
+its output mixer is a bijection.  PCG combines an LCG state with an output permutation and has the
+LCG's period.  xoshiro256** has period `2^256 - 1`, which requires the primitivity of a polynomial
+of degree 256 over GF(2).
+
+## 2026-10-11: Record fields in `bound_eq`
+
+The bound equations showed a record's arrays through its flattening: `compiled.fillOrder.bound_eq`
+in `Verified/Examples/Fields.lean` stated `blockCost (Flat.flat b).1.size + blockCost
+(Flat.flat b).2.1.size` where the definition reads `b.prices` and `b.sizes`.  The reflector builds a
+value's bound from its source value, its flattening.  The `Flat` instance of a structure whose
+tuple holds arrays is a tuple of its fields: `flatTree` checks that the leaves are distinct fields,
+and `shapeOf` that every field is present.  So `(Flat.flat x).path` is, by structure eta and the
+instance's unfolding, the field at the leaf `path`.
+
+A first plan rewrote these terms behind one type hint.  A fresh agent's review found that the hint
+would let the kernel evaluate the term that holds the record when it is a call, such as
+`relabel w k` in `relabel`'s bound, the copy of a borrowed result.  The kernel's `is_def_eq_core`
+tries `lazy_delta_reduction` before structure eta, so it unfolds a call to reach a constructor
+([type_checker.cpp](https://github.com/leanprover/lean4/blob/master/src/kernel/type_checker.cpp)).
+
+`addEquation` now runs `fieldTerms`.  A lemma `p.flat_field.R.f : ∀ v, (Flat.flat v).path = v.f`,
+added once per program, record type, and field and proved by `rfl` with `v` free, rewrites each
+component by congruence on the term with the occurrence abstracted, innermost first.  The
+abstraction runs at reducible transparency, as `rw` does, so that it never matches a term that only
+unfolds to the occurrence.  A component of a variable or its projection, also under a binder, such
+as a loop's state, becomes `x.f` behind a type hint, which the kernel checks with the variable free.
+A last step reduces the projections of constructor applications and applies the eta of pairs and
+structures when the result is a variable or its projection, which turns
+`{ prices := b.prices, sizes := b.sizes, fills := b.fills }` into `b`.  The projections are
+projection functions, so the statements print `b.prices` and match what a user writes.  A record
+with parameters keeps the flattened form, so that each lemma, named after the structure, belongs to
+one type.
+
+`fillOrder`'s bound became `blockCost b.prices.size + blockCost b.sizes.size`, `advance`'s
+`blockCost (g.cells.size * 2)`, and `relabel`'s `blockCost ((relabel w k).grid.cells.size * 2)`.
+`Fields.lean` gained `Tape`, whose `Flat` instance is a pattern, `pushPrices`, which extends a
+field's array in a loop whose state is the record, and `heavyPick`, which returns either its
+borrowed argument or a call's result.  Their equations name the fields, `pushPrices`'s step cost
+included, and their cases check the blocks live after each call.
+
+- [x] `fieldTerms` in `addEquation`, the lemmas, the three examples, their cases, and the README.
+- [x] A review by a fresh agent, the suite, and the commit.  The verified suite passes 16,345
+  cases, none failed.
+
+A second fresh agent reviewed the implementation.  It found that structure eta and pair eta could
+produce a call, which the final hint would make the kernel unfold, and that `kabstract` ran at
+default transparency.  Eta now applies only to a variable or its projection, and the abstraction
+runs at reducible transparency with a check that it reproduces the term.
+
+## 2026-10-11: Documentation for two compilers
+
+A review of the README and the documents found that they presented the LeanExe compiler as the
+system and the verified compiler as a side library.  The README described only `leanexe_compile`,
+the full check omitted `lake build Verified` and `tests/verified/run.sh`, and no manual covered the
+verified compiler: its usage lived in `Verified/README.md` beside the code scheme and the proof.  The
+design document's decisions still said that per-program proofs carry more of the burden, and its
+open work listed records with array fields, which the verified compiler supports.
+
+The verified compiler does not yet cover everything the LeanExe compiler does.  It lacks `Float32`
+and the WGSL path, lists and other recursive types, sum types with fields, tail recursion as a loop,
+`Array.foldl`, and composition through `ImplementsPure`, and GPT-2 and the Euler solvers have no
+port to it.  It adds records with array fields, constant tables, and a theorem that
+excludes a trap for every function, under a bound computed from the code.  Both
+compilers stay, and the documents now describe both.
+
+- [x] `docs/manual.md` became [the LeanExe compiler manual](docs/leanexe-manual.md), with its links
+  updated and a seventh step of the full check for the verified compiler.
+- [x] [The verified compiler manual](docs/verified-manual.md): the dialect, the restrictions, the
+  declarations that `verified_compile` adds, bounds, recursion, tests, and examples.
+- [x] The README compares the two compilers, and `Verified/README.md` keeps the internals: the
+  source language, the code, the theorem, the reflector, and a table of the examples.
+- [x] The design document describes the verified compiler's components and decisions, and its open
+  work lists each compiler's items.
+- [x] A review by a fresh agent and the commit.
+
+The review found errors that the fixes correct: the manual stated the paid-parameter rule as
+per-parameter, listed arrays of tuples as parameter and result types although Lean has no
+`Represent` instance for them, said that every definition with `sorry` is rejected where only
+recursive ones are, and omitted the `Separate` premise, `p.flat_injective`, the wrappers'
+`ImplementsTables`, and the `mkdir` before `Emit.lean`.  The detailed table of examples moved from
+the internals to the manual.
+
+A second review by two fresh agents checked every claim against the code.  It found errors in the
+new text and in older text of the design document and the LeanExe compiler manual.
+
+The corrections cover these points:
+
+- `ImplementsA.mono` strengthens a precondition.
+- The bound equations of a recursive function with a paid parameter use `p.g.cost` and
+  `creditCost`.
+- A call leaves allocated the result's arrays and the host's arrays at borrowed parameters.
+- `deep` holds 26 values live across the self-call in its 32 positions, and 1,000 such frames take
+  at most 272,000 bytes of stack.
+- `aborts` is a syntactic property of the code.
+- `Prog.correctWith` is the theorem for modules with tables.
+- The LeanExe compiler places a fold before the value that contains it.
+- A build element may call functions of scalars.
+- The LeanExe compiler emits `f64.reinterpret_i64` for `Float.ofBits`, and the proof must exclude a
+  NaN pattern.
+- The Decisions table is now split into decisions that cover both compilers, the LeanExe
+  compiler, and the verified compiler.
+
+`Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop` have no LTG entry, and the
+open work lists them.  `#print axioms` on `Prog.correct`, `Prog.correctWith`, and each example's
+`compiled.bytes` and named theorems reports only `propext`, `Classical.choice`, and `Quot.sound`,
+or a subset of them.  The documents also replace figurative verbs ("enters", "rests on", "carries",
+"joins", "walks", "pays for") with literal statements.
+
+## 2026-10-15: Plan to merge `transcendentals` into `main`
+
+### Revisions and evidence
+
+The user requested a merge plan that includes the work on `verified`.  Fetching `main`,
+`verified`, and `transcendentals` from `origin` gives these revisions:
+
+| Reference | Commit | Relationship |
+|---|---|---|
+| `main`, `verified`, `origin/main`, `origin/verified` | `ea1e338121d987d6e57bc649629bcbd9f3ba198a` | All four agree. |
+| `origin/transcendentals` | `32c92ebd7796f54deea2a16a446f46a102c861ab` | 629 commits after the common ancestor. |
+| Common ancestor | `14c863ff89afdc50755a30aa0bd3cb7914554255` | October 9, before the completion of the budgeted rules. |
+
+`verified` has 35 commits absent from the history of `transcendentals`.  They complete the
+budgeted correctness rules, generate bounds and trap-free theorems, add recursion-frame conditions
+and amortized array-growth accounting, compile and prove the generators, print record fields in
+bound equations, and document both compilers in separate manuals.  An integration commit must have
+both compared tips as ancestors, and its source and tests must retain these results.
+
+The [transcendental status document](https://github.com/jsmorph/leanexe/blob/32c92ebd7796f54deea2a16a446f46a102c861ab/transcendentals.md)
+and [numerical index](https://github.com/jsmorph/leanexe/blob/32c92ebd7796f54deea2a16a446f46a102c861ab/index.md)
+describe numerical accuracy proofs for the elementary and special functions, software fused
+multiply-add, correctly rounded decimal parsing, shortest-decimal printing, and theorems about the
+decoded bytes and emitted files.  The compiler changes compute liveness with bitmasks, share
+reflection contexts, attach the statement to a match proof, and check the encoding one function at
+a time.  The toolchain and Lake dependency files agree between the two tips.
+
+The latest journal entry on `transcendentals` records a successful `LeanExe Verified` build and
+15,837 module cases, with 49 emitted modules, the parser's 1,030 cases, and the printer's 889 cases.
+The build used `tools/leanrun --memory-high 10G --timeout 900m`.  Its axiom reports list the three
+permitted axioms except for a named native-decision axiom in CodeLib's arithmetic example.
+These are records from that branch, rather than tests performed for this plan.  The last verified
+suite recorded here passed 16,345 cases.  `transcendentals` leaves `Cases.lean` unchanged from the
+common ancestor, and the simulated merge keeps the complete `verified` version.
+
+`git merge-tree --write-tree verified origin/transcendentals` produced the simulated tree
+`70891fa000aefb2dced2bcdef6bdee9e662248a5` and reported conflicts in six files.  The initial attempt
+failed because the sandbox could not write temporary Git objects.  The approved retry produced the
+tree.  A detached worktree at a temporary worktree holds the fetched source for
+inspection.  The branch pointers and the primary checkout's source remain at `ea1e3381`.
+
+### Proposed integration
+
+The first proposal started the integration branch at `main`.  After the user asked for
+reconsideration, the second inspection counted 1,008 added files and eight modified files under
+`LeanExe/ProofKit` and `Verified/Examples` on `transcendentals`.  None of the 1,008 added paths is
+changed on `verified`.  The eight modified files are `Exp`, `ExpAccuracy`, `LogAccuracy`,
+`Reference`, `Tanh`, `TanhAccuracy`, `Trig`, and `TrigAccuracy`, all under `Verified/Examples`.
+The numerical work therefore has a source-preservation check: all 1,016 files can start with
+their exact contents from `32c92ebd`.  The fixtures, generators, notices, function documents,
+status document, and numerical index belong to the same reference revision.
+
+The revised proposal starts a separate integration branch and worktree at `transcendentals`
+`32c92ebd`, then merges `verified` `ea1e3381` into it with both histories as parents.  Refresh the
+comparisons if either remote tip changes before that operation.  Merge direction leaves the common
+ancestor and compiler conflicts the same.  Using `transcendentals` as the reference for the
+candidate makes each adaptation of the numerical work visible in the integration diff.
+
+Retain the numerical implementations and proofs with their existing statements, domains, error
+bounds, exceptional-value results, and axiom dependencies.  Compare the candidate's source with
+the pinned revision before building.  If the compiler integration requires an edit to a numerical
+proof, record the file, the failed proof step, and the reason for the edit, and check that its
+statement keeps the same assumptions and conclusion.  A theorem's name and a successful build
+alone do not establish that its statement has been preserved.
+
+The numerical proof and file checks are acceptance requirements in their own right.  The driver
+has 22 theorem/file pairs: `exp`, `log`, `exp2`, `trig`, `log2`, `log10`, `tanh`, `erf`, `log1p`,
+`atan`, `asin`, `tan`, `sinh`, `sinpi`, `asinh`, `pow`, `parsefloat`, `printfloat`, `bessel`,
+`tgamma`, `lgamma`, and `erfc`.  Their conjunctions cover several exports each.  Also retain the
+Lean-level proofs of fused multiply-add, limb arithmetic, `Float.ofScientific` and
+`Float32.ofScientific`, the mathematical functions, approximation bounds, and rounding lemmas
+that those exported theorems use.  Check the accepted theorem inventory against the numerical
+index, each function's document, the root imports, and the driver's 22 pairs.
+
+The compiler's build behavior also needs a comparison.  The journal records a 40-binding probe
+exhausting memory before context sharing, repeated liveness evaluation in the code generator,
+and whole-module encoding checks using up to 7.1 GB.  The shared contexts, bitmask liveness,
+match-proof statement hint, and encoding checks per function are required by the tested numerical
+programs.  The current `verified` reflector adds bounds and frames to each reflected expression,
+so carrying these four changes through it needs measurements on the numerical programs.  The
+per-function encoding change reduced the four large compiler modules to 1.0–2.7 GB and their file
+proofs to 0.9–1.3 GB in the recorded runs.  A recorded full integration build took 20,578 seconds.
+
+The following resolutions combine the current compiler API with those requirements:
+
+| File with a conflict | Proposed resolution |
+|---|---|
+| `Verified/Budget.lean` | Keep its deletion.  Apply its `Expr.usesFast_eq` proof adjustments to the current budgeted proofs in `Verified/Correct.lean`, including `callMovesAt_eq`. |
+| `Verified/Correct.lean` | Start from the current potential-based rules.  Adapt their reductions of `Expr.code`, `callMoves`, and `bodyFunction` to the bitmask implementation through `Expr.usesFast_eq`.  Retain the paid-parameter policy, the credits, and the recursion-frame conditions. |
+| `Verified/Reflect/Command.lean` | Combine bound and frames builders, paid flags, wrappers, and `fieldTerms` with the shared context and per-function encoding checks.  Carry the shared context alongside `Ctx.tables` through every binder and recursive reflection, including the new bound and frames paths.  Preserve the match-proof statement hint. |
+| `Verified/README.md` | Retain the internals document and the two-manual organization.  Add the liveness and encoding implementation details and links to the numerical documents. |
+| `tests/verified/run.sh` | Retain all existing entries and allocation checks, add the numerical entries, and retain the byte/file theorem and axiom checks and native accuracy checks.  The combined module list has 52 entries: the 49 from `transcendentals` and the three generators. |
+| `devnotes.md` | Preserve the dated records from both branches, their decisions, failures, and test evidence, and add the integration results. |
+
+Review the automatically merged files as well.  `Verified.lean` must import both sets of examples
+and the numerical theorem modules.  `Examples.lean` must retain the generator proofs, including
+the spectral test.  The simulated tree preserves the current bounds modules, generator files,
+drone bound, field examples, and case list, but the changed code generator requires their proofs
+to build against the combined source.
+
+Keep [the LeanExe compiler manual](docs/leanexe-manual.md),
+[the verified compiler manual](docs/verified-manual.md), and the current README comparison.
+Extend them with the new declarations and numerical work.  Add LCG, Park–Miller, and xorshift to
+the new numerical index, which currently lists SplitMix64 alone under generators.  Correct the
+Bessel document's opening statement that the `jn` and `yn` accuracy theorems are open: the later
+sections state the proved restricted theorems.  Update the resource-limit documentation to explain
+the runner's memory option and its default limits.
+
+The numerical limits remain explicit.  The `jn` and `yn` theorems exclude
+`2 ≤ |x| < 2^302` with `|n| > |x|/2`, and `yn` permits an infinity in the documented band near
+overflow.  The turning-point proof and the consolidation of overlapping arithmetic lemmas remain
+separate work.  The merge preserves the replacement of fdlibm's `erfc` by CORE-MATH's port.
+
+### Acceptance checks and order
+
+Run the checks in order, with one Lean process per machine through `tools/leanrun`.  The existing
+repository drivers retain their own runner calls.  A full proof build needs the memory allowance
+recorded for the lgamma root-range proofs on a machine with capacity for the resulting 12G hard
+limit.  Confirm that resource choice before execution.  Divide a target that times out before
+another attempt, as the repository instructions require.
+
+- [x] Fetch the branches, establish the common ancestor and the 35/629 commit counts, inspect the
+  new source and test records, and simulate the merge.
+- [ ] Save the source revision, emitted bytes and hashes, theorem inventory, and build/test logs
+  from the tested `transcendentals` checkout as the reference.  Establish that the artifacts
+  correspond to `32c92ebd`.  Keep its checkout and build records available while the integration
+  runs elsewhere.  Reuse the pinned toolchain and dependencies and their existing caches.
+- [ ] Prepare the integration worktree and resolve the six conflicts as above.  Audit its diff
+  against `transcendentals`, including all 1,016 numerical source files, and account for every
+  adaptation.  Audit its diff against `verified` for the bounds, frames, potential rules,
+  generators, field equations, and two-manual documentation work.
+- [ ] Build the compiler and reflector first.  Then build `Uscale`, `ParseFloat`, and `PrintFloat`,
+  which exercise array growth inside the new numerical code, and `Bessel`, `Tgamma`, `Lgamma`,
+  and `Erfc`, which exercise the large reflected functions, tables, and encoding checks.  Compare
+  their compile times and peak memory with the reference.  Retain the earlier measurements of
+  `Repeat`, `Trig`, `Exp`, and `Log` as checks of context sharing and liveness.  Diagnose a
+  failure at this stage before attempting the full proof build.
+- [ ] Build the default targets and all of `Verified`, with no `sorry` warnings.  Check the
+  numerical theorem inventory, including the exceptional-value results and all 22 byte/file
+  pairs, and compare the hypotheses and bounds with the reference.  Recheck `Prog.correct`,
+  `Prog.correctWith`, the generators' theorems, and the numerical byte theorems for the permitted
+  axioms.  Account for the recorded CodeLib example separately from the project's correctness
+  theorems.
+- [ ] Check the current bound examples: `Grow`, `Insert`, `Recursion`, `Tables`, `Fields`, and
+  `Drone`.  Retain `evens_bound`, `repeated_bound`, `sortInsert_bound`, `chain_fits`, `fill_cost`,
+  `fill_trapFree`, `pushSquare_bound`, `drone_trapFree`, and the named-field equations of
+  `Fields`.  Build all three compiled generators and `Examples.Lcg.Spectral`.  Check the period,
+  jump-ahead, distribution, and spectral theorems and xorshift's 36,920-byte jump bound.
+- [ ] Compare the emitted bytes against references from both pinned tips.  An unchanged program
+  must retain its bytes, including the generators from `verified` and the numerical modules from
+  `transcendentals`.  Compare `erf.wasm` with `32c92ebd`, whose recorded output already removes
+  fdlibm's `erfc`.  Run the combined `tests/verified/run.sh`: retain all 16,345 current module
+  cases and run every added byte/file proof and native check.  Record counts and failures.
+- [ ] Run [the full check](docs/leanexe-manual.md#the-full-check), including module, release,
+  depth-guard, chunk, drone, LTG, decoder, and both Vulkan-driver WGSL tests.  Run the GPT tests
+  when its emitted module changes.  Preserve the build, byte comparisons, and test logs.
+- [ ] Review the merged manuals, numerical index, function documents, and status document against
+  the code and theorem hypotheses.  Record the existing whitespace-check failures separately:
+  several proof and Python files have whitespace errors, and two reported trailing spaces in
+  `data/strconv/parse-cases.txt` introduce empty hexadecimal string fields.  Preserve those cases.
+- [ ] Review the integration diff and verify with `git merge-base --is-ancestor` that both pinned
+  tips are ancestors of the candidate.  After acceptance and the user's approval to merge,
+  fast-forward `main` to that tested commit and push `main`.  Keep the source branches and the
+  primary checkout's untracked data and paper artifacts.
+
+## 2026-10-16: Integrating the two compilers
+
+The integration starts from `transcendentals` at `942aa695` and merges `verified` at `ea1e3381`.  The three consolidation commits after the planned reference are included.  The tested checkout is clean, and build 18 and run 18 both record exit 0.
+
+The integration uses a separate worktree, with copies of its compiled-project cache and host tools and the pinned dependency cache.  The reference WebAssembly files, hashes, and build/test logs are preserved under `build/integration/reference-transcendentals/`.  The first source changes combine the potential-based correctness rules with bitmask liveness, cached reflection contexts, and encoding checks per function.
