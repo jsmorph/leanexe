@@ -31,6 +31,7 @@ document](../../docs/design.md#floating-point) lists the three differences and t
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Piecewise.Verify
+mkdir -p build/piecewise
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Piecewise.Module Examples.Piecewise.piecewise.module build/piecewise/piecewise.wasm
 build/tools/leanexe-wasmtime-host call build/piecewise/piecewise.wasm piecewise f64 \

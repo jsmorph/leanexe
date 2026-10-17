@@ -2,12 +2,18 @@
 
 ## Scope and conclusion
 
-Reviewed on 2026-09-27: the four binary specification modules, their use by
+First reviewed on 2026-09-27: the four binary specification modules, their use by
 `encode_correct` and `encode_complete`, and their correspondence with the pinned
 Talos syntax.  The reviewed grammar selects permitted encodings for its scalar
 WASM domain.  The integer, opcode, control, section, and field checks below
 support that conclusion.  The reference snapshot contains the discrepancies
 recorded under [Reference discrepancies](#reference-discrepancies).
+
+The 2026-10-17 review covers the current 83 instruction forms and active data
+segments.  It compares the added binary64 comparisons, absolute value,
+unsigned conversion, and saturating truncation with the [rendered instruction
+grammar][current-instructions], and data segments with the [data section
+grammar][current-data].  The source digests below identify this revision.
 
 The comparison uses WebAssembly 3.0, dated 2026-09-21, and its [specification
 source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].  The [dated
@@ -68,7 +74,7 @@ The [type rules](Spec/Types.lean) were compared with [binary types][types].
 | `BlockType` | `40` denotes no parameters or results.  A numeric type byte denotes no parameters and one result. |
 | `FuncType` | `60`, parameter vector, result vector.  Result order and multiple function results are preserved. |
 | `Limits` | Flags `00` and `01` select 32-bit memory with a minimum and an optional maximum. |
-| `Memory` | The record fixes `is64 = false` and empty data. |
+| `Memory` | The memory-section record fixes `is64 = false` and empty data.  The data section encodes the segments separately. |
 | `Mutability` | `00` is immutable and `01` is mutable. |
 | `Global` | Declared type, mutability, matching integer constant, and terminating `0b`. |
 
@@ -87,9 +93,10 @@ evaluation therefore yields the recorded initial value.
 
 ### Instructions
 
-All 71 instruction forms in the [instruction rules](Spec/Instructions.lean)
-were compared with the [official instruction grammar][instructions]: 52
-`Plain` rules, eight indexed rules, six memory rules, two constants, and three
+All 83 instruction forms in the [instruction rules](Spec/Instructions.lean)
+were compared with the [official instruction grammar][instructions] and its
+[rendered rules][current-instructions]: 62 `Plain` rules, eight indexed rules,
+six memory rules, four constants, and three
 structured controls.  Hexadecimal byte mappings are listed below.  Names are
 WASM instruction names, with a common type prefix shown once per group.
 
@@ -100,10 +107,10 @@ WASM instruction names, with a common type prefix shown once per group.
 | `i64` comparisons | `eqz=50`, `eq=51`, `ne=52`, `lt_u=54`, `le_u=58`, `ge_u=5a` |
 | `i32` arithmetic | `add=6a`, `and=71` |
 | `i64` arithmetic | `add=7c`, `sub=7d`, `mul=7e`, `div_u=80`, `rem_u=82`, `and=83`, `or=84`, `xor=85`, `shl=86`, `shr_u=88` |
-| `f32` operations | `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95`, and, compared on 2026-10-03, `eq=5b`, `lt=5d`, `le=5f`, `abs=8b` |
-| `f64` operations | `sqrt=9f`, `add=a0`, `sub=a1`, `mul=a2`, `div=a3` |
+| `f32` operations | `eq=5b`, `lt=5d`, `le=5f`, `abs=8b`, `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95` |
+| `f64` operations | `eq=61`, `lt=63`, `le=65`, `abs=99`, `sqrt=9f`, `add=a0`, `sub=a1`, `mul=a2`, `div=a3` |
 | Integer conversion | `i32.wrap_i64=a7`, `i64.extend_i32_u=ad`, `i32.extend8_s=c0` |
-| Numeric conversion | `f32.convert_i32_s=b2`, `f32.demote_f64=b6`, `f64.promote_f32=bb`, `i32.trunc_sat_f32_s=fc 00` |
+| Numeric conversion | `f32.convert_i32_s=b2`, `f32.demote_f64=b6`, `f64.convert_i64_u=ba`, `f64.promote_f32=bb`, `i32.trunc_sat_f32_s=fc 00`, `i64.trunc_sat_f64_u=fc 07` |
 | Reinterpretation | `i32.reinterpret_f32=bc`, `i64.reinterpret_f64=bd`, `f32.reinterpret_i32=be`, `f64.reinterpret_i64=bf` |
 | Indexed instructions | `br=0c`, `br_if=0d`, `call=10`, `local.get=20`, `local.set=21`, `local.tee=22`, `global.get=23`, `global.set=24` |
 | Loads | `i32.load=28`, `i64.load=29`, `i32.load8_u=2d` |
@@ -112,17 +119,13 @@ WASM instruction names, with a common type prefix shown once per group.
 | Constants | `i32.const=41` with signed 32-bit immediate.  `i64.const=42` with signed 64-bit immediate.  `f32.const=43` with four bytes and `f64.const=44` with eight bytes, least significant first. |
 | Structured control | `block=02`, `loop=03`, `if=04`, `else=05`, `end=0b` |
 
-The counts above date from the first review.  On 2026-10-03 the rules numbered
-58 `Plain` rules, eight indexed rules, six memory rules, four constants, and
-three structured controls, and then 62 `Plain` rules after the binary32
-comparisons and `f32.abs`.  That day `f32.const` was added and compared, with
-`f64.const`, which the encoder already had, against lines 194 and 195 of the
-[instruction grammar][instructions], `0x43 p:Bf32` and `0x44 p:Bf64`, and `BfN`
-in the [binary values][values], N/8 bytes through `$inv_fbytes_`.  The `Plain`
-rules added after the first review have not been compared in this record.
+The 2026-09-27 review covered 71 forms.  The 2026-10-03 review added the
+floating-point constants and binary32 comparisons and absolute value.  The
+2026-10-17 review completes the comparison for the current inventory.
+Floating-point constants use N/8 bytes in the [binary value rules][values].
 
-Indexed immediates use `u32`.  In `fc 00`, the second byte encodes unsigned
-subopcode zero.  The trailing zero in `memory.size` and `memory.grow` encodes
+Indexed immediates use `u32`.  In `fc 00` and `fc 07`, the second byte encodes
+unsigned subopcode zero or seven.  The trailing zero in `memory.size` and `memory.grow` encodes
 memory index zero.
 
 For loads and stores, alignment exponents are bounded by 2, 3, or 0 for
@@ -160,7 +163,8 @@ The eight fields represented by sections are `types`, `imports`, `funcs`,
 `Shape` accounts for the other thirteen `Wasm.Module` fields: canonical
 `gcTypes`; empty additional memories, tables, elements, imported non-function
 entities, table exports, tag exports, and tags; absent start function; and
-`dataWithoutMemory = false`.  Memory declarations also require empty data.
+`dataWithoutMemory = false`.  The memory-section declaration omits the data
+segments that the data section carries.
 Every field of the pinned Talos module record is accounted for.
 
 Declared function type indices remain unchanged.  An imported function has
@@ -189,13 +193,13 @@ Core 3 snapshot would exceed this review.
 
 ## Reviewed source identity
 
-The SHA-256 digests of the reviewed files are:
+The SHA-256 digests of the files reviewed on 2026-10-17 are:
 
 ```text
 6f69b201e8e22e1febee88b6e97a093b32af26d44266ca2781222d08b7c62d76  Spec/Values.lean
-42db024325fd510cbd6ceb4bb06d60c96e78c65139ee4490f7890381a11debf2  Spec/Types.lean
-83fb5522de0a21f4381d4219827cba83e7dbf308ac0b33ebca2bf8940fba477c  Spec/Instructions.lean
-8e7f6a904ff2c4edd8697cc5fb839c701f2f67f9959d17e065fd111eb04258db  Spec/Modules.lean
+0116708ee6aff512eacc69065ccb81bdad88b27e557579c843458b54b638e2bd  Spec/Types.lean
+6bffce505e556dccc5cc767bfaeb47b479af301c6cbec655bc399888601f8098  Spec/Instructions.lean
+e7ac862d6eb41655d094b8f5cd762a312b24cf23983c38e33307688c497a76b1  Spec/Modules.lean
 ```
 
 [spec]:
@@ -207,6 +211,8 @@ https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d3
 https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.2-binary.types.spectec
 [instructions]:
 https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.3-binary.instructions.spectec
+[current-instructions]: https://webassembly.github.io/spec/core/binary/instructions.html
+[current-data]: https://webassembly.github.io/spec/core/binary/modules.html#data-section
 [modules]:
 https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/5.4-binary.modules.spectec
 [decoder]:

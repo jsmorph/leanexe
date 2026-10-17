@@ -40,8 +40,10 @@ ownership](../../docs/leanexe-manual.md#ownership) the rules for moves and lendi
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Trees.Verify Examples.Trees.MovesVerify
+mkdir -p build/trees
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Trees.Module Examples.Trees.trees.module build/trees/trees.wasm
+mkdir -p build/treeMoves
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Trees.Moves Examples.Trees.treeMoves.module build/treeMoves/treeMoves.wasm
 build/tools/leanexe-wasmtime-host call build/trees/trees.wasm size i64 tree-u64:5,1,.,.,9,.,.

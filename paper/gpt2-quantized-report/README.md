@@ -1,8 +1,10 @@
 # Quantized GPT-2 inference report
 
+This report describes the earlier compiler at its recorded source revision.  Its reproduction commands require that revision.  [The current compiler manuals](../../README.md#documentation) describe the merged system.
+
 The [twenty-page report](main.pdf) describes LeanExe's grouped INT8 GPT-2 implementation, exact WebAssembly/session proofs, checkpoint correspondence, retained accuracy and timing experiments, conditional numerical bounds, and observed-logit certificates.  It fixes source revision `c655d35b5011c1703dfd22bcceaec4e5bee17088` and the 28,315-byte binary with SHA-256 `9082c12c3b73aa6998a6d8ca0d97b509710e8a035afbf93587d80659ce773075`.
 
-At its cited source revision, the manuscript distinguishes the completed quantized component from unfinished repository-wide checks.  The [development status](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/status.md) records subsequent verification.  The report records zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](http://127.0.0.1:8405/abs/2609.00018v2) on 24 September 2026 with no remarks.
+At its cited source revision, the manuscript distinguishes the completed quantized component from unfinished repository-wide checks.  The [development status](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/docs/status.md) records subsequent verification.  The report records zero forward-bound token certificates and 232 common-offset certificates derived from observed logit pairs.  Jamie Stephens, Morphism, is the author.  marXiv accepted [version two](main.pdf) on 24 September 2026 with no remarks.
 
 ## Manuscript and evidence
 
@@ -16,7 +18,7 @@ The [evidence inventory](evidence/inventory.json) contains 67 file identities at
 uv run paper/gpt2-quantized-report/check-evidence.py
 ```
 
-The current archive [acceptance requirements](evidence/marxiv-standards.md) and [style manual](evidence/marxiv-style.md) were fetched and read before drafting.  The [cited-source record](evidence/cited-sources.json) identifies the primary literature used.
+The archive [acceptance requirements](evidence/marxiv-standards.md) and [style manual](evidence/marxiv-style.md) were fetched and read before drafting.  The [cited-source record](evidence/cited-sources.json) identifies the primary literature used.
 
 ## PDF build
 
@@ -41,7 +43,7 @@ The final build has no undefined citations or references, overfull boxes, or Bib
 
 ## Component reproduction
 
-These commands check the current implementation from the repository root.  The report's binary and proof belong to the source revision stated above.  The current exact-binary package check is:
+These commands check the earlier implementation from its repository root.  The report's binary and proof belong to the source revision stated above.  The recorded exact-binary package check is:
 
 ```sh
 tools/artifact-proof.js check proofs/artifacts/gpt2_quantized_cached/87026cf4bd73cc7ae793195ccc1a6e0469d2eb3d007d1e01cad676e551176aa8/program.wasm Project.Gpt2QuantizedCached.ArtifactTranslation

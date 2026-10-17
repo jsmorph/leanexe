@@ -44,6 +44,7 @@ same words from `drone.wasm`.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Drone.Verify Examples.Drone.Total
+mkdir -p build/drone
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Drone.Module Examples.Drone.drone.module build/drone/drone.wasm
 build/tools/leanexe-wasmtime-host call build/drone/drone.wasm compute array-u64 \

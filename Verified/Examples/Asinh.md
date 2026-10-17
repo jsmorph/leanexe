@@ -1,6 +1,6 @@
 # The inverse hyperbolic functions
 
-[The implementation](Asinh.lean) exports `asinh`, `acosh`, and `atanh`, ports of fdlibm's `s_asinh.c`, `e_acosh.c`, and `e_atanh.c` as FreeBSD's msun has them at commit `20381bce` [1, 2, 3].  Each writes its function as a logarithm of an algebraic expression and evaluates it with [the logarithm](Log.lean), [the logarithm of one plus its argument](Log1p.lean), and the square root, in a form chosen for each range.  The decided bound is two steps for each function ([the plan](../../transcendentals.md#functions)), which allowed three steps for `acosh` on `1 < x ≤ 2` if two could not be proved there.  `transcendentals` proves all three within two steps, with their exceptional values, the byte theorems of the three exports, and the file theorem of `asinh.wasm`, which `tests/verified/run.sh` checks.
+[The implementation](Asinh.lean) ports fdlibm's `asinh`, `acosh`, and `atanh` from FreeBSD msun at commit `20381bce` [1, 2, 3].  It uses [the logarithm](Log.md), [the logarithm of one plus its argument](Log1p.md), and square root.  The accuracy theorems prove two representable steps from nearest-even rounding for every finite input in each function's domain.  [The byte theorems](AsinhBytes.lean) carry these bounds to the three exports, and [the file theorems](AsinhFile.lean) identify `build/verified/asinh.wasm`.
 
 ## Specification
 
@@ -65,7 +65,7 @@ A script that compares the port with the C sources at the pinned commit finds th
 
 ## Theorems
 
-`verified_compile` generates `Asinh.compiled` with its `bytes`, `initial`, and `implements` theorems, which state that the compiled module computes the Lean definitions, as [the compiler's documentation](../README.md#running-it) describes.  `tests/verified/run.sh` writes and validates `asinh.wasm`, runs the accuracy check, and checks the file theorems through its entry `asinh:AsinhBytes:AsinhFile`.
+`verified_compile` generates `Asinh.compiled` with its `bytes`, `initial`, and `implements` theorems, which state that the compiled module computes the Lean definitions, as [the compiler's documentation](../../docs/verified-manual.md#generated-declarations) describes.  `tests/verified/run.sh` writes and validates `asinh.wasm`, runs the accuracy check, and checks the file theorems through its entry `asinh:AsinhBytes:AsinhFile`.
 
 The theorems of the table come from branch `w/poly` and were merged into `transcendentals` on 2026-10-12 ([the integration entry](../../devnotes.md#2026-10-12-integration-of-asinh-acosh-and-atanh)).  `x` is a Lean `Float` and `a = value x.toBits` its real value.  Each theorem reports only `propext`, `Classical.choice`, and `Quot.sound`.  `arc-clean-1.log`, the build of `AsinhBytes`, lists the axiom report of every module of the chain, and `arc-file-7.log` lists that of `AsinhFile`, both under `build/transcendentals/` of the worktree `/home/somebody/src/lt-poly` on minideb2.  On minideb1, `opus-merge-asinh-1.log` is the build of the merge and `opus-verified-tests-18.log` its test run.
 

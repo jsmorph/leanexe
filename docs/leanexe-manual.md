@@ -586,7 +586,7 @@ uv run tests/modules/chunks.py
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
 6. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh) on both Vulkan drivers.
-7. `tools/leanrun --timeout 60m lake build Verified`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, and programs of `Examples/`, some of which import the LeanExe compiler.
+7. `tools/leanrun --memory-high 10G --timeout 12h lake build Verified`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, and programs of `Examples/`, some of which import the LeanExe compiler.
 
 The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder/DecodeTest.lean "$(command -v wasm-tools)" build/decode-test`, runs the decoder over the WebAssembly testsuite: each valid module in the supported subset must decode to the reference module and round-trip, and each malformed module must be rejected.  It expects `build/decode-test` to hold the `wasm-tools json-from-wast` output of the testsuite scripts in the CodeLib checkout.  [The encoding notes](../LeanExe/Encoding/README.md) describe the encoder's theorems and the review of its specification against the published WebAssembly rules.
 

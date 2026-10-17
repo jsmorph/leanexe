@@ -32,6 +32,7 @@ operations differ.  None of the three occurs in this program.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Axpy.Verify
+mkdir -p build/axpy
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Axpy.Module Examples.Axpy.axpy.module build/axpy/axpy.wasm
 build/tools/leanexe-wasmtime-host call build/axpy/axpy.wasm axpy f64 \

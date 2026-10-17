@@ -33,6 +33,7 @@ operations and when each one copies.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Updates.Verify
+mkdir -p build/updates
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Updates.Module Examples.Updates.updates.module build/updates/updates.wasm
 build/tools/leanexe-wasmtime-host call build/updates/updates.wasm pushTwo array-u64 \

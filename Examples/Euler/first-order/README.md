@@ -80,7 +80,8 @@ and the peak resident size.
 
 ```sh
 tools/build-wasmtime-host.sh
-tools/leanrun --lock-timeout 1200 lake env lean --run tools/Emit.lean \
+tools/leanrun --timeout 60m lake build Examples.Euler.Verify Examples.Euler.Total
+tools/leanrun --timeout 10m --lock-timeout 1200 lake env lean --run tools/Emit.lean \
   Examples.Euler.Module Examples.Euler.euler.module euler.wasm
 uv run tools/euler-run.py euler.wasm first 192 new-192-directory
 uv run tools/euler-run.py euler.wasm first 800 new-800-directory

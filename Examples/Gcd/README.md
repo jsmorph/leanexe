@@ -29,6 +29,7 @@ second argument.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Gcd.Verify
+mkdir -p build/gcd
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Gcd.Module Examples.Gcd.gcd.module build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:60 i64:42

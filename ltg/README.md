@@ -1,8 +1,8 @@
 # LTG knowledge base
 
-This directory holds proof knowledge for the pipeline: lemmas, tactics, and
-guidelines that a prover can use on a compiled program.  Each entry is a
-directory under [`entries/`](entries/) with two files.  `entry.json` names the entry's
+This directory holds lemmas, tactics, and proof guidance for the LeanExe compiler and the shared
+pipeline.  The verified compiler's general correctness theorem covers its source constructs.
+Each entry is a directory under [`entries/`](entries/) with two files.  `entry.json` names the entry's
 modules, declarations, premises, result, and the hint rules (`annotationKinds`)
 that select it, and `README.md` explains when and how to apply it.
 

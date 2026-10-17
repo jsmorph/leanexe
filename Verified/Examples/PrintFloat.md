@@ -64,7 +64,7 @@ In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the valu
 | Theorem | Module | Statement |
 |---|---|---|
 | `same_digits`, `more_digits`, `shortest_of_choice` | `PrintFloatShort` | The analysis above. |
-| `quotAt_spec`, `range_spec`, `inside_iff` | `PrintFloatQuot` | `quotAt` is the quotient of `N · 2 ^ sn · 10 ^ -j` by `2 ^ sd · 10 ^ j` with its remainder flag, and `range` gives the least multiplier of `10 ^ j` in the interval and the greatest plus one. |
+| `quotAt_spec`, `range_spec`, `inside_iff` | `PrintFloatQuot` | `quotAt` returns the floor of the real value `(N · 2 ^ sn / 2 ^ sd) · 10 ^ (-j)` and whether that value has a nonzero fractional part.  `range` gives the least multiplier of `10 ^ j` in the interval and the greatest plus one. |
 | `nearest_spec`, `clamp_spec` | `PrintFloatQuot` | `nearest` rounds `y` to the nearest integer, the even one at a tie, from `⌊2 y⌋` and its remainder flag, and `clamp` of that integer into a run is the nearest member of the run. |
 | `top_top`, `width_le`, `quot_bound` | `PrintFloatSearch` | The top exponent `J` has no multiple of a power of ten above it in the interval, the interval is at most `10 ^ (J + 1)` wide, and the quotients from `J - 1` on stay below `2 ^ 62`. |
 | `startExp_spec`, `found_iff`, `search_spec` | `PrintFloatPick` | The search starts above the interval's upper end, `found` decides whether a multiple lies in the interval, and the search returns `J`. |

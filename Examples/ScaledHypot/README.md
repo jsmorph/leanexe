@@ -28,6 +28,7 @@ statement about its error relative to the exact length.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.ScaledHypot.Verify
+mkdir -p build/scaledHypot
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.ScaledHypot.Module Examples.ScaledHypot.scaledHypot.module \
   build/scaledHypot/scaledHypot.wasm

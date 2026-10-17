@@ -32,6 +32,7 @@ records.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Lists.Verify
+mkdir -p build/lists
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Lists.Module Examples.Lists.lists.module build/lists/lists.wasm
 build/tools/leanexe-wasmtime-host call build/lists/lists.wasm listRange chain-u64 i64:4

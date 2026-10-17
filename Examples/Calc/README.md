@@ -34,6 +34,7 @@ types.  Its [section on representations](../../docs/leanexe-manual.md#representa
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Calc.Verify
+mkdir -p build/calculator
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Calc.Module Examples.Calc.calculator.module build/calculator/calculator.wasm
 build/tools/leanexe-wasmtime-host call build/calculator/calculator.wasm calcRun \

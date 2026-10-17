@@ -38,6 +38,7 @@ and borrowed arguments, using `fillTuple` from this example.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Clob.Verify
+mkdir -p build/clob
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Clob.Module Examples.Clob.clob.module build/clob/clob.wasm
 build/tools/leanexe-wasmtime-host call build/clob/clob.wasm addBid list:array-u64,array-u64 \

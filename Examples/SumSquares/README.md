@@ -30,6 +30,7 @@ manual](../../docs/leanexe-manual.md#folds) lists the folds the compiler accepts
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumSquares.Verify
+mkdir -p build/sumSquares
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.SumSquares.Module Examples.SumSquares.sumSquares.module \
   build/sumSquares/sumSquares.wasm

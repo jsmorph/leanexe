@@ -33,6 +33,7 @@ defines.  The Euler solvers store their grids in this layout.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Grids.Verify
+mkdir -p build/grids
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Grids.Module Examples.Grids.grids.module build/grids/grids.wasm
 build/tools/leanexe-wasmtime-host call build/grids/grids.wasm flags array-u64 i64:6

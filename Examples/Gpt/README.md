@@ -44,6 +44,7 @@ function.
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Gpt.Bytes Examples.Gpt.Causal Examples.Gpt.Exact \
   Examples.Gpt.Generation
+mkdir -p build/gpt
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Gpt.Module Examples.Gpt.gpt.module build/gpt/gpt.wasm
 tools/leanrun --timeout 20m lake env lean Examples/Gpt/File.lean

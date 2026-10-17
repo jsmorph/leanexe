@@ -34,6 +34,7 @@ types.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Shape.Verify
+mkdir -p build/shapes
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Shape.Module Examples.Shape.shapes.module build/shapes/shapes.wasm
 build/tools/leanexe-wasmtime-host call build/shapes/shapes.wasm totalArea f64 \

@@ -32,6 +32,7 @@ or result appears to the module.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Bools.Verify
+mkdir -p build/bools
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Bools.Module Examples.Bools.bools.module build/bools/bools.wasm
 build/tools/leanexe-wasmtime-host call build/bools/bools.wasm anyEqual i64 i64:10 i64:3

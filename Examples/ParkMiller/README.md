@@ -51,7 +51,7 @@ build/tools/leanexe-wasmtime-host call build/verified/parkmiller.wasm advance i6
 
 The commands build the proofs, write the module, and call `advance 10000 1` in the Wasmtime host,
 with the setup of [the repository README](../../README.md#commands).  The call prints 1043618065,
-the value of `check_value`.  After `tools/leanrun --timeout 60m lake build Verified`,
+the value of `check_value`.  After `tools/leanrun --memory-high 10G --timeout 12h lake build Verified`,
 [`tests/verified/run.sh`](../../tests/verified/run.sh) writes every module of the verified compiler
 and compares the cases of [`Verified/Examples/Cases.lean`](../../Verified/Examples/Cases.lean)
 between the module and native Lean.

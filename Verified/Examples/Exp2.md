@@ -4,7 +4,7 @@
 
 ## Specification
 
-`exp2` computes `(2 : ℝ) ^ a` and `exp10` computes `(10 : ℝ) ^ a`, where `a` is the value of the argument and `^` is Mathlib's real power `Real.rpow`, which `Real.rpow_def_of_pos` equates with `exp (log b · a)` for a positive base `b` [14].  Every finite double is in the domain of both.  The results overflow to `+∞` from the threshold `2^1024 - 2^970` of clause 4.3.1 of IEEE 754-2019 [10], which `exp2` reaches from `a = 1024` on and `exp10` from `a = 0x1.34413509f79ffp8` on, and they round to `+0` at or below `2^-1075`, which `exp2` reaches at `a = -1075` and `exp10` near `a = -323.6`.
+`exp2` computes `(2 : ℝ) ^ a` and `exp10` computes `(10 : ℝ) ^ a`, where `a` is the value of the argument and `^` is Mathlib's real power `Real.rpow`, which `Real.rpow_def_of_pos` equates with `exp (log b · a)` for a positive base `b` [14].  Every finite double is in the domain of both.  The nearest-even references overflow to `+∞` from the threshold `2^1024 - 2^970` of clause 4.3.1 of IEEE 754-2019 [10], which `exp2` reaches from `a = 1024` on and `exp10` from `a = 0x1.34413509f79ffp8` on, and they round to `+0` at or below `2^-1075`, which `exp2` reaches at `a = -1075` and `exp10` near `a = -323.6`.
 
 The bound is `F64SignedRounding.WithinSteps 1`, defined in [the signed rounding reference](../../LeanExe/ProofKit/F64SignedRounding.lean).  `WithinSteps n y w` states that the word `w` is not a NaN and that its position differs by at most `n` from the position of the nearest-even reference of `y`, where `position` places both zeros at 0 and the infinities next to the largest finite doubles.  `F64SignedRounding.within_of_nonneg` derives it, for a nonnegative `y`, from the three encoding inequalities in which `ExpTheorem.exp_one_step` states `exp`'s bound.
 
@@ -14,7 +14,7 @@ The bound is `F64SignedRounding.WithinSteps 1`, defined in [the signed rounding 
 | `+∞` | `+∞` | `+∞` | the same clauses | `exp2_pos_infinity`, `exp10_pos_infinity` |
 | `-∞` | `+0` | `+0` | the same clauses | `exp2_neg_infinity`, `exp10_neg_infinity` |
 | NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [13] | `exp2_nan`, `exp10_nan` |
-| finite, result at least `2^1024 - 2^970` | `+∞` | `+∞` | IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
+| finite, exact result at least `2^1024 - 2^970` | `+∞` or the largest finite double | the same | The one-step bounds, with the reference `+∞` from IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
 | finite, result at most `2^-1075` | `+0`, or the smallest subnormal within the bound | the same | IEEE 754-2019 4.3.1 | `exp2_within`, `exp10_within` |
 
 C99 has `exp2` but no `exp10`.  C23 adds `exp10` in clause 7.12.6.2, with its special values in F.10.3.2, as the WG14 working draft N3220 gives them [12].  IEEE 754-2019 lists both among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [10], and Arm states worst errors of 0.511 units for `exp2` and about 0.513 units for `exp10`, so neither port is correctly rounded [3, 2].
@@ -131,7 +131,7 @@ On the negative special path `ArmSpecial.negative_within` applies `ExpSpecialNeg
 
 ### Shared modules
 
-The proof imports 71 ProofKit modules.  Beyond those of the exponential's proof, it uses [the signed rounding reference](../../LeanExe/ProofKit/F64SignedRounding.lean), [error tracking through chains of rounded operations](../../LeanExe/ProofKit/F64ErrorTrack.lean), [exact products of words](../../LeanExe/ProofKit/F64ExactProduct.lean), [the bits of a word from its scaled value](../../LeanExe/ProofKit/F64BinadeWord.lean), [one step from a relative bound of 11/8 units of roundoff](../../LeanExe/ProofKit/F64RelativeStep.lean), [the borrowed-table frame](../../LeanExe/ProofKit/BorrowedKept.lean), and `ratOfWord` from [the kernel-checked polynomial bound](../../LeanExe/ProofKit/PolyBound.lean).  This proof added `F64BinadeWord` to ProofKit.  `F64ErrorTrack.Approx` carries the evaluation's rounding errors through `exp2`'s polynomial.
+Beyond the ProofKit modules of the exponential's proof, it uses [the signed rounding reference](../../LeanExe/ProofKit/F64SignedRounding.lean), [error tracking through chains of rounded operations](../../LeanExe/ProofKit/F64ErrorTrack.lean), [exact products of words](../../LeanExe/ProofKit/F64ExactProduct.lean), [the bits of a word from its scaled value](../../LeanExe/ProofKit/F64BinadeWord.lean), [one step from a relative bound of 11/8 units of roundoff](../../LeanExe/ProofKit/F64RelativeStep.lean), [the borrowed-table frame](../../LeanExe/ProofKit/BorrowedKept.lean), and `ratOfWord` from [the kernel-checked polynomial bound](../../LeanExe/ProofKit/PolyBound.lean).  This proof added `F64BinadeWord` to ProofKit.  `F64ErrorTrack.Approx` carries the evaluation's rounding errors through `exp2`'s polynomial.
 
 ### Kernel-checked facts
 

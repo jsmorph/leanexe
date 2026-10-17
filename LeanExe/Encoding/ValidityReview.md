@@ -9,6 +9,12 @@ typing constructor has a derivation under the official scalar WASM rules.
 The module conditions supply the required context, declaration, and export
 checks.  The conditions are sufficient for the selected binary forms.
 
+The 2026-10-17 review includes the added binary64 operations and active data
+segments.  The [rendered numeric instruction rules][current-instructions]
+give the unary, comparison, and conversion types recorded below.  The
+[data-segment validation rules][current-data] require an existing memory and
+a constant offset expression of its address type.
+
 The comparison uses the official [instruction rules][instructions], [type
 rules][types], and [module rules][modules] at revision
 `608711107b7f1edb13efd57b7d79b49477462d36`.  The [binary
@@ -59,11 +65,12 @@ binary review.
 | Integer comparisons and `eqz` | Consume the stated integer type and produce `i32`.  Binary comparisons consume two operands. |
 | Integer binary arithmetic | `[iN, iN] -> [iN]`, for the declared width. |
 | Float binary arithmetic | `[fN, fN] -> [fN]`. |
-| Float unary arithmetic | `[fN] -> [fN]` for `f32.nearest`, `f32.sqrt`, `f32.abs`, and `f64.sqrt`. |
-| Float comparisons | `[fN, fN] -> [i32]` for `f32.eq`, `f32.lt`, and `f32.le` (2026-10-03). |
+| Float unary arithmetic | `[fN] -> [fN]` for `f32.nearest`, `f32.sqrt`, `f32.abs`, `f64.sqrt`, and `f64.abs`. |
+| Float comparisons | `[fN, fN] -> [i32]` for `eq`, `lt`, and `le` at both widths. |
 | Wrap and unsigned extension | `i64 -> i32` and `i32 -> i64`, respectively. |
 | Signed byte extension | `i32 -> i32`. |
 | Signed conversion and saturating truncation | `i32 -> f32` and `f32 -> i32`, respectively. |
+| Unsigned conversion and saturating truncation | `i64 -> f64` and `f64 -> i64`, respectively. |
 | Demotion and promotion | `f64 -> f32` and `f32 -> f64`, respectively. |
 | Four reinterpretations | Preserve width and change between the corresponding integer and float types. |
 | `localGet`, `localSet`, `localTee` | Require a successful local lookup and use exactly that local's type. |
@@ -126,9 +133,10 @@ rule and its declaration rules.
 
 Function bodies see all function signatures, allowing mutual recursion.
 Global initializers contain one integer constant, so their validity is
-independent of the preceding-global context.  The fixed empty fields discharge
-the remaining table, element, data, tag, non-function-import, and start
-obligations.
+independent of the preceding-global context.  Each active data segment targets
+the declared memory, and its `i32.const` offset is a constant expression of the
+memory's address type.  The fixed empty fields discharge the remaining table,
+element, tag, non-function-import, and start obligations.
 
 The combined claim uses both `Encodes m bytes` and `Spec.Validity.Module m`.
 The encoding derivation supplies binary bounds on type vectors, names,
@@ -141,8 +149,8 @@ division is sufficient for `ValidBinary` as defined in the
 
 The predicates describe the chosen scalar representation.  They require
 explicit function type indices, canonical type metadata and integer global
-initializers, empty memory data, zero control parameters, and zero or one
-control result.  `Function` additionally requires parameters plus locals to
+initializers, active data segments at constant offsets in memory 0, zero
+control parameters, and zero or one control result.  `Function` additionally requires parameters plus locals to
 total less than `2^32`, and `Module` places the same bound on imported plus
 defined functions.  These are explicit restrictions of the stated theorems.
 
@@ -160,19 +168,21 @@ of those application proofs.  Applying the combined theorem to an application
 requires its `Ready`, validity, and behavioral proofs.  The current concrete
 premise proofs cover the constant example.
 
-The proof target and six public axiom reports were checked again during this
-review through [`tools/leanrun`](../../tools/leanrun).  All six reports contain
-only `propext`, `Classical.choice`, and `Quot.sound`.  The specification and
-theorem sources retain their reviewed contents.
+The proof target and six public axiom reports were checked on 2026-09-27
+through [`tools/leanrun`](../../tools/leanrun).  Those six reports contain only
+`propext`, `Classical.choice`, and `Quot.sound`.  The 2026-10-17 update records a
+manual specification comparison.
 
-The reviewed validity source has SHA-256:
+The validity source reviewed on 2026-10-17 has SHA-256:
 
 ```text
-f37db1d2be31008d85698c1c983509259d590edadc55b956f354c0aad589527e  Spec/Validity.lean
+a6a8963b16e9198dc7c57ea6817b4efd05e37deef3fe4232caf1d9793a4c02bc  Spec/Validity.lean
 ```
 
 [instructions]:
 https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.3-validation.instructions.spectec
+[current-instructions]: https://webassembly.github.io/spec/core/valid/instructions.html#numeric-instructions
+[current-data]: https://webassembly.github.io/spec/core/valid/modules.html#data-segments
 [types]:
 https://github.com/WebAssembly/spec/blob/608711107b7f1edb13efd57b7d79b49477462d36/specification/wasm-3.0/2.1-validation.types.spectec
 [modules]:
