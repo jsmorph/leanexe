@@ -34,6 +34,7 @@ and `EncodeSlotted`.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Words.Verify
+mkdir -p build/words
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Words.Module Examples.Words.words.module build/words/words.wasm
 build/tools/leanexe-wasmtime-host call build/words/words.wasm range chain-u64 i64:4

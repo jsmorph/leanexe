@@ -52,6 +52,7 @@ on the 192 and 800 grids.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Euler.Verify Examples.Euler.Total
+mkdir -p build/euler
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Euler.Module Examples.Euler.euler.module build/euler/euler.wasm
 build/tools/leanexe-wasmtime-host call build/euler/euler.wasm solve array-u64 i64:2

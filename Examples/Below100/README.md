@@ -33,6 +33,7 @@ specification.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Below100.Verify
+mkdir -p build/below100
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Below100.Module Examples.Below100.below100.module build/below100/below100.wasm
 build/tools/leanexe-wasmtime-host call build/below100/below100.wasm compute array-u64 \

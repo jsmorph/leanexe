@@ -35,10 +35,11 @@ has a meaning in Lean, `denote`, and the theorem `Prog.correctWith` states that 
 program computes the program's meaning.  The command `verified_compile p := [f, …]` translates
 ordinary Lean definitions to the source language, proves with kernel-checked equations that each
 translation means its definition, and adds for each definition `f` the theorem `p.f.implements` that
-the module computes `f`.  It also adds `p.f.trapFree`, which states that the call returns without a
-trap when the allocator's `top` can rise by the bound `p.f.bound x` and, for recursive code, when
-every call stays below depth 1,000, and `p.f.bound_eq`, which states that bound as a Lean term in
-the parameters.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, arrays
+the module computes `f`.  For each source function it also adds `p.f.trapFree`, which states that
+the call returns without a trap when the allocator's `top` can rise by the bound `p.f.bound x`
+and, for recursive code, when every call stays below depth 1,000, and `p.f.bound_eq`, which states that bound as a Lean term in
+the parameters.  Wrappers whose callees take no call depth receive the corresponding bound and
+trap-free theorem.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, arrays
 of these, records with array fields, recursion, constant tables, and array updates in place.  The
 examples include elementary and special functions ported from fdlibm, Arm's optimized-routines,
 and CORE-MATH, decimal parsers and printers, an order book, the drone planner, and three
@@ -51,9 +52,9 @@ document states its theorem's domain and exceptional cases.
 
 | Topic | LeanExe compiler | Verified compiler |
 |---|---|---|
-| Correctness proof | A theorem per program, from rule lemmas and hints | One theorem, `Prog.correct`, for every program |
+| Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctWith` for programs with tables and wrappers, and `Prog.correct` without tables |
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
-| Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for every function, under the bound `p.f.bound` and, for recursive code, a frames condition |
+| Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for recursive code, a frames condition |
 | `Float32` and WGSL kernels | Supported | Outside the dialect |
 | Lists and recursive types | `List UInt64` and user recursive types | Outside the dialect |
 | Sum types | Supported, with fields | Enumerations only |
@@ -66,8 +67,9 @@ document states its theorem's domain and exceptional cases.
 | Loops, builds, and calls in loop bodies and branches | Subject to placement rules | Any expression of the dialect |
 | Composition across modules | `ImplementsPure` for functions that keep the store | Within one program |
 
-A program within the verified compiler's dialect needs no proof of its own, and each of its
-functions has a theorem that excludes a trap under an allocation bound.  A program that needs
+A program within the verified compiler's dialect needs no proof of its own.  The generated
+trap-free theorems cover source functions and wrappers without call depth under their allocation
+bounds and, for recursive source functions, their frames conditions.  A program that needs
 `Float32`, WGSL kernels, lists or trees, sum types with fields, `Array.foldl`, `insertIdx!`, or
 `eraseIdxIfInBounds` compiles only with the LeanExe compiler.  GPT-2 and the Euler solvers are
 compiled with the LeanExe compiler, and neither has a port to the verified compiler.  [The
@@ -121,16 +123,24 @@ theorem covers the host or the I/O around a call.
 
 ## Commands
 
+Commands run from the repository root.  Lean uses the version in [the toolchain file](lean-toolchain)
+and the dependencies in [the Lake manifest](lake-manifest.json).  The examples need `wasm-tools`
+at the version in [the version file](.wasm-tools-version), a C compiler for the Wasmtime host, and
+`uv` for the Python tests.  On Linux, the runner needs a systemd user session with cgroup controls.
+[The manual](docs/leanexe-manual.md#the-wasmtime-host) also describes the macOS setup.
+
 Every Lean or Lake command runs through [`tools/leanrun`](tools/leanrun), as [the repository
-instructions](AGENTS.md) require.  The commands below build the three libraries, write the bytes of
+instructions](AGENTS.md) require.  The commands below build the host and three libraries, write the bytes of
 the LeanExe compiler's `gcd`, validate them, run them in Wasmtime, check the LTG entries, and test
 every module of the verified compiler against native Lean.  The manuals list the other tests and the
 full check.
 
 ```sh
 export PATH="$HOME/.elan/bin:$HOME/.cargo/bin:$PATH"
+tools/download-wasmtime.sh
+tools/build-wasmtime-host.sh
 tools/leanrun --timeout 60m lake build
-tools/leanrun --timeout 60m lake build Verified
+tools/leanrun --memory-high 10G --timeout 12h lake build Verified
 mkdir -p build/gcd
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Gcd.Module Examples.Gcd.gcd.module build/gcd/gcd.wasm
@@ -140,8 +150,12 @@ tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 tests/verified/run.sh
 ```
 
-[`tools/build-wasmtime-host.sh`](tools/build-wasmtime-host.sh) builds the Wasmtime host after
-[`tools/download-wasmtime.sh`](tools/download-wasmtime.sh) fetches the pinned C API.
+The full `Verified` build includes the numerical proofs and can take several hours.  Its lgamma
+root-range proofs use `--memory-high 10G`, which sets the memory maximum to 12 GiB.  Focused
+builds, such as `tools/leanrun --timeout 60m lake build Verified.Examples.Lcg`, build the selected
+example and its imports.  [The verified compiler manual](docs/verified-manual.md#the-full-check)
+describes the full check.
+
 [`tests/modules/run.sh`](tests/modules/run.sh) compares every module of the LeanExe compiler except
 `gpt`, `gpt32`, and `prng` with native Lean on the cases in each example's `Cases.lean`, which
 [`tests/modules/Cases.lean`](tests/modules/Cases.lean) runs in turn, and

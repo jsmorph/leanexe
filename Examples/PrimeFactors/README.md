@@ -32,6 +32,7 @@ concerns the Lean program alone.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.PrimeFactors.Verify
+mkdir -p build/primeFactors
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.PrimeFactors.Module Examples.PrimeFactors.primeFactors.module \
   build/primeFactors/primeFactors.wasm

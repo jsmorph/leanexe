@@ -10499,8 +10499,8 @@ artifact verification, and the numerical run remain pending.
 ### 2026-09-11: mathematical language specification
 
 At the user's request, a separate agent wrote the [Type Theory of the
-LeanExe Fragment](docs/leanexe-type-theory.md) and the [Formal Specification
-of Compilation and Execution](docs/leanexe-formal-specification.md).
+LeanExe Fragment](https://github.com/jsmorph/leanexe/blob/6d3a0d4d31847eb7f4719cb1c6be729ffa0083aa/docs/leanexe-type-theory.md) and the [Formal Specification
+of Compilation and Execution](https://github.com/jsmorph/leanexe/blob/6d3a0d4d31847eb7f4719cb1c6be729ffa0083aa/docs/leanexe-formal-specification.md).
 The documents include explicit typing and layout rules, primitive
 signatures, operational equations, and function-graph definitions for the
 compiler's shape-sensitive acceptance rules.  Independent recursor rules,
@@ -28159,7 +28159,7 @@ These are the thresholds and counts in the checked sources and documentation.  T
 session inspected the sources and created the branch.  It ran no Lean build or numerical test
 on this branch.
 
-As [the compiler README](Verified/README.md#running-it) explains, the generated
+As [the compiler README](docs/verified-manual.md#compiling-and-running) explains, the generated
 `denote_eq`, `implements`, and `bytes` proofs establish that the decoded WebAssembly computes
 the Lean definitions.  The scalar routines avoid allocation and recursion.  Their compiler
 theorems allow no trap, subject to the runtime invariant and, for wrappers, the table premises
@@ -29737,7 +29737,7 @@ The dialect has no floating-point flags, so the expressions that fdlibm evaluate
 | `atan` | The index `id = -1` of the direct polynomial is 4, and comparisons select the entries of `atanhi` and `atanlo`.  The volatile read of `atanlo[3]` is its value. |
 | `atan2` | `nan_mix (x, y)`, a `long double` sum in C, is `x + y`.  A NaN result is the canonical NaN in the deterministic profile either way.  `k = (iy - ix) >> 20` is the arithmetic shift of the 64-bit two's complement difference, with the signed tests on its sign bit.  `switch` statements are comparisons. |
 | `asin`, `acos` | `asinRatio` computes `p/q` with fdlibm's operations, where fdlibm writes them out in each branch.  `SET_LOW_WORD (w, 0)` is a mask. |
-| `tan` | The reduction is `Trig.remPio2` of `|x|`, and the result is negated for a negative `x`, as `Trig.sinWith` does.  fdlibm reduces `x` itself, and every operation of its reduction and kernel is odd under round-to-nearest, so the negation gives fdlibm's result for the same reduction.  From `2 ^ 20 · π/2` on, `Trig.remPio2` is the Payne–Hanek reduction of `Trig.lean` in place of fdlibm's `__kernel_rem_pio2`, so there the reduced argument may differ from fdlibm's in its last bits.  The kernel's `iy = ±1` is the Boolean `odd`, and `(double)(1 - ((hx >> 30) & 2))` is the sign of `x` as `±1`.  `(int) x == 0` is `x.toUInt64 == 0`: both truncations give 0 for every `x` below `2 ^ -27` in magnitude, where the test runs. |
+| `tan` | The reduction is `Trig.remPio2` of `\|x\|`, and the result is negated for a negative `x`, as `Trig.sinWith` does.  fdlibm reduces `x` itself, and every operation of its reduction and kernel is odd under round-to-nearest, so the negation gives fdlibm's result for the same reduction.  From `2 ^ 20 · π/2` on, `Trig.remPio2` is the Payne–Hanek reduction of `Trig.lean` in place of fdlibm's `__kernel_rem_pio2`, so there the reduced argument may differ from fdlibm's in its last bits.  The kernel's `iy = ±1` is the Boolean `odd`, and `(double)(1 - ((hx >> 30) & 2))` is the sign of `x` as `±1`.  `(int) x == 0` is `x.toUInt64 == 0`: both truncations give 0 for every `x` below `2 ^ -27` in magnitude, where the test runs. |
 
 ### Reuse of the trigonometric reduction
 
@@ -29918,7 +29918,7 @@ The computed error is about `1.9 · 2 ^ -60`.  The rounding of `r = ((z - chi) -
 | `LeanExe/ProofKit/F64RelativeStep.lean` | `one_step_relative` and `within_one_relative`: one step from a relative error of `11/8` units of roundoff, for numbers of magnitude at least `2 ^ -1000`, and `negate_negate`. |
 | `LeanExe/ProofKit/F64ErrorTrack.lean` | `Approx w X e` and its rules for rounded sums, differences, and products, and exact sums and differences on a grid. |
 | `Verified/Examples/LogBranches.lean` | The paths of `Log.logWith` by argument bits, and the invalid path's canonical NaN. |
-| `Verified/Examples/LogTables.lean` | For each of the 128 entries, by `decide +kernel` in 18 seconds: finiteness, `|c invc - 1| ≤ 2 ^ -100`, the reduced argument within `0.0039` over the subinterval, the grids of `chi` and `logc`, `|clo| ≤ 2 ^ -50`, and `|logc - log c| ≤ 2 ^ -64` from a Taylor bracket of `exp`. |
+| `Verified/Examples/LogTables.lean` | For each of the 128 entries, by `decide +kernel` in 18 seconds: finiteness, `\|c invc - 1\| ≤ 2 ^ -100`, the reduced argument within `0.0039` over the subinterval, the grids of `chi` and `logc`, `\|clo\| ≤ 2 ^ -50`, and `\|logc - log c\| ≤ 2 ^ -64` from a Taylor bracket of `exp`. |
 | `Verified/Examples/LogCoreBits.lean` | `logCore_eq`, which restates `Log.logCore` through `reduced` and `finalOf`, the words of `i`, `k`, and `z` for an argument `E · 2 ^ 52 + f` modulo `2 ^ 64`, and the exact value of `kd`. |
 | `Verified/Examples/LogCoreFinal.lean` | `final_error`: the arithmetic after `r` within `(5/4) 2 ^ -61` before its final rounding. |
 | `Verified/Examples/LogCoreStep.lean` | `reduced_error`, `ln2_error`, `target_close`, and `core_within`, one step for `Log.logCore` on every argument word that reaches it, subnormals scaled by `2 ^ 52` included. |
@@ -29973,7 +29973,7 @@ Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log
 | Run | Result and cause |
 |---|---|
 | `log-sub-1` | `simp` in `mul_exact_scaled` reached the recursion limit under `exponentiation.threshold 4096`; the file uses the default threshold and an explicit sign table.  `log-sub-2`, `-3`: a shift literal needed the type `UInt64`, and a rewrite hit the wrong `value`.  `log-sub-4` passed. |
-| `log-near-1` | `near1_bounds` failed because `|B8| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
+| `log-near-1` | `near1_bounds` failed because `\|B8\| ≤ 1/10` is false: `B8 = -0.1000049`.  The bound became `101/1000`. |
 | `log-near-3`, `-4` | One theorem for the whole path ran past 200,000 heartbeats.  It was split into `poly_error`, `split_error`, and `near1_error` over named words. |
 | `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
 | `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
@@ -30013,12 +30013,12 @@ A Python script read the constants and tables from Arm's sources as hexadecimal 
 | `x = 1` | 1, or `x + y` for a signaling NaN `y` |
 | `x` or `y` NaN | `x + y` |
 | `x = -1` and `y = ±∞` | 1 |
-| `y = ±∞` otherwise | 0 when `|x| < 1` and `y = +∞` or `|x| > 1` and `y = -∞`, and `y · y = +∞` otherwise |
+| `y = ±∞` otherwise | 0 when `\|x\| < 1` and `y = +∞` or `\|x\| > 1` and `y = -∞`, and `y · y = +∞` otherwise |
 | `x` zero or infinite, `y` finite and nonzero | `x²`, or `1/x²` for a negative `y`, negated for a negative `x` and an odd integer `y` |
 | `x` negative and finite, `y` not an integer | NaN, as `(x - x)/(x - x)` |
-| `x` negative and finite, `y` an odd integer | the result for `|x|` with the sign bit set through the bias `0x800 << 7` |
-| `|y|` below `2 ^ -65` | 1 for `|x| = 1`, `1 + y` for `|x| > 1`, `1 - y` for `|x| < 1` |
-| `|y|` from `2 ^ 63` on | 1 for `|x| = 1`, and otherwise the overflow product when `|x| > 1` and `y > 0` or `|x| < 1` and `y < 0`, and the underflow product otherwise |
+| `x` negative and finite, `y` an odd integer | the result for `\|x\|` with the sign bit set through the bias `0x800 << 7` |
+| `\|y\|` below `2 ^ -65` | 1 for `\|x\| = 1`, `1 + y` for `\|x\| > 1`, `1 - y` for `\|x\| < 1` |
+| `\|y\|` from `2 ^ 63` on | 1 for `\|x\| = 1`, and otherwise the overflow product when `\|x\| > 1` and `y > 0` or `\|x\| < 1` and `y < 0`, and the underflow product otherwise |
 | `x` subnormal | normalized by `2 ^ 52` before the logarithm |
 
 `checkint` returns 0 for a non-integer, 1 for an odd integer, and 2 for an even one.  The results agree with C99's Annex F, F.10.4.4, which the reference of `PowAccuracy.lean` implements separately.  The deterministic profile canonicalizes every NaN result, and Lean's `Float` holds no signaling NaN, so the `issignaling` tests matter only to a WebAssembly caller that passes one.
@@ -30075,15 +30075,15 @@ The track works in a separate worktree on the build host, branch `w/exp2`, a wor
 | File | Content |
 |---|---|
 | `LeanExe/ProofKit/F64BinadeWord.lean` | The bits `(g + 1) · 2 ^ 52 + (R - 2 ^ 52)` of a nonnegative word with scaled value `R · 2 ^ g`. |
-| `Exp2Selection.lean` | The shifted sum in the binade `[2 ^ 45, 2 ^ 46)`, its bits, `k` within `1/2` of `128 x`, the exact `k / 128`, and the exact residual with `|r| ≤ 1/256`. |
+| `Exp2Selection.lean` | The shifted sum in the binade `[2 ^ 45, 2 ^ 46)`, its bits, `k` within `1/2` of `128 x`, the exact `k / 128`, and the exact residual with `\|r\| ≤ 1/256`. |
 | `Exp2Approximation.lean` | The coefficients against `(log 2) ^ n / n!` on the enclosure of `log 2` (kernel checks on rationals), and the polynomial within `2 ^ -58` of `2 ^ r - 1`. |
 | `Exp2Evaluation.lean` | The rounded evaluation, with `F64ErrorTrack.Approx`, within `2 ^ -56` of `t + 2 ^ r - 1` and at most `1/64`. |
 | `ArmReconstruction.lean` | `presum_general` and `reconstruction_general` for any polynomial word, `table_general`, `target_range`, and `ordinary_within`. |
 | `ArmSpecial.lean` | `positive_within` (lowered scale doubled, below `2 ^ 1024 - 2 ^ 980`) and `negative_within` (scaled down by `2 ^ -1022`, compensated below 1). |
 | `ArmScale.lean` | The scale word's value for every normal binade, and the lowered scale `2 ^ (q - 1) H j`. |
 | `Exp2Core.lean` | The key, the float-to-word identities, the state of `exp2Core`, `2 ^ x = 2 ^ q exp (j log 2 / 128) 2 ^ r`, and `319/320 ≤ 2 ^ r ≤ 257/256`. |
-| `Exp2Paths.lean` | One step on the three paths: `|x| ≤ 928`, `928 < x ≤ 1024 - 2 ^ -43`, `-1075 < x < -928`. |
-| `Exp2Branches.lean` | The branches of `exp2With`, the special flag as `|x| > 928`, and the bound below 1024. |
+| `Exp2Paths.lean` | One step on the three paths: `\|x\| ≤ 928`, `928 < x ≤ 1024 - 2 ^ -43`, `-1075 < x < -928`. |
+| `Exp2Branches.lean` | The branches of `exp2With`, the special flag as `\|x\| > 928`, and the bound below 1024. |
 | `Exp2Theorem.lean` | The tiny, overflow, and underflow cases, `exp2_within`, and the exceptional values. |
 
 The accepted statements are `Exp2Theorem.exp2_within : Finite x.toBits → F64SignedRounding.WithinSteps 1 ((2 : ℝ) ^ value x.toBits) (Exp2.exp2 x).toBits`, and `exp2_pos_zero`, `exp2_neg_zero` (`0x3FF0000000000000`), `exp2_pos_infinity` (`0x7FF0000000000000`), `exp2_neg_infinity` (`0`), and `exp2_nan` (the canonical NaN).  Every theorem in these modules reports only `propext`, `Classical.choice`, and `Quot.sound` in `exp2-theorem-3.log`, and the modules build without warnings.
@@ -30118,8 +30118,8 @@ The coordinator assigned the full theorems for `Log2.log2` and `Log10.log10` aft
 
 | Path | Inputs | Error before the final rounding | Allowance |
 |---|---|---|---|
-| Main (`log2Core`) | outside `[1 - 0x1.5b51p-5, 1 + 0x1.6ab2p-5)`, where `|log2 x| ≥ 31/500` | `2 ^ -64 + 0.0241 u` | `(15/32) u |y|` with `F64RelativeStepWide` |
-| Near 1 (`log2Near1`) | inside that interval, other than 1 | `u ρ / 9 + 2 ^ -61 ρ` for `ρ = |x - 1|` | `(3/8) u |y|` with `|y| ≥ 1.35 ρ` |
+| Main (`log2Core`) | outside `[1 - 0x1.5b51p-5, 1 + 0x1.6ab2p-5)`, where `\|log2 x\| ≥ 31/500` | `2 ^ -64 + 0.0241 u` | `(15/32) u \|y\|` with `F64RelativeStepWide` |
+| Near 1 (`log2Near1`) | inside that interval, other than 1 | `u ρ / 9 + 2 ^ -61 ρ` for `ρ = \|x - 1\|` | `(3/8) u \|y\|` with `\|y\| ≥ 1.35 ρ` |
 
 On the main path the generic `11/8` bound of `F64RelativeStep` did not suffice: at subinterval 42 the error reached 1.39 of the allowance.  Two facts closed the gap: `t3 - hi` is exact by Sterbenz's lemma (`F64Sterbenz`), since `|kd + logc| ≥ 1/20` outside the seven subintervals around 1, and the factor `47/32` of `F64RelativeStepWide` leaves `15/32` of a unit before the final rounding.  `t1 = rhi invln2hi` is exact because `rhi` has 21 significant bits (`F64HighWord`) and `invln2hi` 32.  Near 1, `hi = rhi invln2hi` is exact for the same reason, `hi - y` is exact by Sterbenz's lemma, and the remaining errors are proportional to `ρ`, so the path has ample margin.  The polynomial checks of `Log2KernelPoly` compare the Taylor polynomial of `log (1 + r)` with `S` times the code's polynomial, where `S` is the split of `log 2` from `ExpReductionBounds`, and divide by `log 2` at the end.
 
@@ -30218,7 +30218,7 @@ The ports track reviewed the implementation options for stages 7 and 8 (its jour
 | `erfc` | Four steps with the fdlibm port | The worst known case is 4.08 units.  CORE-MATH's `erfc` with the software fused multiply-add remains an option. |
 | Accuracy checks | Every check gains Zimmermann's worst inputs and enforces the decided bound | The sampled arguments missed the worst cases of three functions. |
 | `tgamma`, `lgamma` | CORE-MATH (MIT) with a software fused multiply-add proved correct once, one step | fdlibm's `lgamma` errs by up to 4.45e15 units next to its negative zeros, and FreeBSD's `tgamma` by 1,030 units between -184 and -170.  WebAssembly has no deterministic fused multiply-add. |
-| `lgamma` API | `lgammaR : Float → Float × Float` returning `log |Γ x|` and the sign as ±1, and `lgamma x := (lgammaR x).1` | The sign as `lgamma_r` defines it, without global state. |
+| `lgamma` API | `lgammaR : Float → Float × Float` returning `log \|Γ x\|` and the sign as ±1, and `lgamma x := (lgammaR x).1` | The sign as `lgamma_r` defines it, without global state. |
 | `j0`, `j1`, `y0`, `y1` | fdlibm, with a bound in units of the modulus `√(J² + Y²)` | No permissively licensed implementation reaches a step bound next to the zeros, and a step bound would need the distance of every zero from its nearest doubles.  Measured against the modulus, fdlibm stays within 3.01 units. |
 | `jn`, `yn` | fdlibm, with a modulus bound that grows with the order, and the order as C's 32-bit `int` in a `UInt64` | The error grows with the order, to about 30 units at order 100. |
 
@@ -30237,10 +30237,10 @@ The constants need `log 10`, which `log 10 = 3 log 2 + log (5/4)` gives from `Ex
 | File | Content |
 |---|---|
 | `Exp10Constants.lean` | The enclosure of `log 10` and the rational checks. |
-| `Exp10Evaluation.lean` | The polynomial within `2 ^ -57` of `10 ^ r - 1` on `|r| ≤ 1/850`, and its evaluation within `2 ^ -58`. |
+| `Exp10Evaluation.lean` | The polynomial within `2 ^ -57` of `10 ^ r - 1` on `\|r\| ≤ 1/850`, and its evaluation within `2 ^ -58`. |
 | `Exp10Reduction.lean` | `k`, the key, the exact high part, and the computed residual within `2 ^ -61` of the ideal one. |
 | `Exp10Core.lean` | The float-to-word identities, `add_comm_finite`, and the state of `exp10Core`. |
-| `Exp10Paths.lean` | One step on the three paths: `|x| < 256`, `256 ≤ x ≤ 0x1.34413509f79fep8`, `-350 ≤ x ≤ -256`. |
+| `Exp10Paths.lean` | One step on the three paths: `\|x\| < 256`, `256 ≤ x ≤ 0x1.34413509f79fep8`, `-350 ≤ x ≤ -256`. |
 | `Exp10Theorem.lean` | The branches of `exp10With`, the tiny, overflow, and underflow cases, `exp10_within`, and the exceptional values. |
 | `Exp2Bytes.lean` | `Ready` (the allocator invariant, `Exp.expTable` borrowed at 4096, the memory cap), the entry calls of functions 7 and 8, `exp2_bytes_accuracy`, `exp10_bytes_accuracy`, and `exp2_module_accuracy`, their conjunction. |
 | `Exp2File.lean` | `exp2_file` and `exp2_file_decode`, which obtains the bytes from `exp2_module_accuracy`, so its axiom report covers both byte theorems. |
@@ -30330,9 +30330,9 @@ The pinned Mathlib has `Real.Gamma` with Euler's reflection formula, log-convexi
 | Function | Algorithm | Bound | API |
 |---|---|---|---|
 | `tgamma` | CORE-MATH's `cr_tgamma`, MIT, with the verified software `fma` | `WithinSteps 1`, from the error analysis of its fast path, accurate path, and table of hard cases.  Correct rounding as a theorem would need CORE-MATH's search for hard cases as a verified input, which the review does not recommend | `Gamma.tgamma : Float → Float`, the C99 name, since BSD's `gamma` meant `lgamma`.  NaN at the negative integers and `-∞`, `±∞` at `±0`, `+∞` above about 171.62, and `±0` with the sign of `Γ` below about -184. |
-| `lgamma` | CORE-MATH's `cr_lgamma`, MIT, with the verified `fma` | `WithinSteps 1` everywhere, with `lgamma 1 = lgamma 2 = +0` exactly.  CORE-MATH keeps relative accuracy next to the negative zeros | `Gamma.lgammaR : Float → Float × Float`, `(log |Γ x|, ±1)`, the sign as POSIX `lgamma_r` returns it through its pointer and CORE-MATH stores in `signgam`: the sign of `Γ x`, 1 at the poles, and the sign of `x` at `±0`.  `Gamma.lgamma x := (lgammaR x).1`. |
+| `lgamma` | CORE-MATH's `cr_lgamma`, MIT, with the verified `fma` | `WithinSteps 1` everywhere, with `lgamma 1 = lgamma 2 = +0` exactly.  CORE-MATH keeps relative accuracy next to the negative zeros | `Gamma.lgammaR : Float → Float × Float`, `(log \|Γ x\|, ±1)`, the sign as POSIX `lgamma_r` returns it through its pointer and CORE-MATH stores in `signgam`: the sign of `Γ x`, 1 at the poles, and the sign of `x` at `±0`.  `Gamma.lgamma x := (lgammaR x).1`. |
 | `j0`, `j1`, `y0`, `y1` | fdlibm's `e_j0.c` and `e_j1.c`, which need only double arithmetic, `sincos`, `sqrt`, and `log`, like the ports already done | No step bound: no permissively licensed implementation achieves one, and a proof would need the distance from every zero to its nearest doubles, which nobody has computed for these functions.  The recommended bound: the error at most 4 units in the last place of the modulus `M (x) = √(J (x)² + Y (x)²)`, with the order's `J` and `Y`.  FreeBSD measures at most 3.01. | `Bessel.j0`, `j1`, `y0`, `y1 : Float → Float`, with C's special values: `j0 (±0) = 1`, `y0 (+0) = -∞`, `y0` and `y1` of a negative `x` NaN. |
-| `jn`, `yn` | fdlibm's `e_jn.c` after the four above | A bound in units of the modulus that grows with the order, such as `4 + |n|/3` units, to be fixed by the proof, since FreeBSD reaches 30 units at order 100 | `Bessel.jn`, `yn : UInt64 → Float → Float`, the order as C's `int` in the low 32 bits, two's complement, `J_(-n) = (-1)^n J_n`, `J_n (-x) = (-1)^n J_n x`, NaN for `yn` of a negative `x`, and `yn n (±0) = -∞` for every `n`, as POSIX specifies, although the limit is `+∞` for a negative odd `n`. |
+| `jn`, `yn` | fdlibm's `e_jn.c` after the four above | A bound in units of the modulus that grows with the order, such as `4 + \|n\|/3` units, to be fixed by the proof, since FreeBSD reaches 30 units at order 100 | `Bessel.jn`, `yn : UInt64 → Float → Float`, the order as C's `int` in the low 32 bits, two's complement, `J_(-n) = (-1)^n J_n`, `J_n (-x) = (-1)^n J_n x`, NaN for `yn` of a negative `x`, and `yn n (±0) = -∞` for every `n`, as POSIX specifies, although the limit is `+∞` for a negative odd `n`. |
 
 A relative bound for the Bessel functions over a finite range, for example the first few hundred zeros, is a later option: expansions about each zero, stored to triple precision and checked by the kernel, give relative accuracy there.  Above `2 ^ 60` the zeros of `J0` lie within `2 ^ -63` of `(k + 3/4) π`, so the distance problem becomes the trigonometric track's.  Between those ranges the problem is open.
 
@@ -30392,17 +30392,17 @@ The track works in a separate worktree on branch `w/trig`.  The reduction comes 
 | Module | Result |
 |---|---|
 | `TrigPi` | `π` within `2 ^ -1270` from Machin's formula, with the alternating arctangent remainder `arctan_error` and partial sums checked by `decide +kernel`.  `table_bounds`: `Trig.invPi` is `2/π` truncated to 1216 bits.  `half_bounds`: `Trig.halfPi` is `π · 2 ^ 126` truncated.  The module builds in 10 seconds. |
-| `TrigDistance` | `quadrant_distance`: for every exponent field from 1022 to 2046 and every 53-bit significand, `x · 2/π` lies more than `2 ^ -63` from every integer.  One certificate per binade, a convergent `p/q` of the binade's `β = 2 ^ (E - 1075) · invPi` modulo 1 with `q ≥ 2 ^ 53`, gives `|m β - n| ≥ 1/q - 2 ^ 53 |β - p/q| > 2 ^ -62`, since `q` cannot divide `m p` for `0 < m < q`.  The 1025 certificates were computed offline with Python and are checked by the kernel; the smallest bound, `2 ^ -61.54`, belongs to exponent field 1872, the binade of the known worst case `6381956970095103 · 2 ^ 797`. |
+| `TrigDistance` | `quadrant_distance`: for every exponent field from 1022 to 2046 and every 53-bit significand, `x · 2/π` lies more than `2 ^ -63` from every integer.  One certificate per binade, a convergent `p/q` of the binade's `β = 2 ^ (E - 1075) · invPi` modulo 1 with `q ≥ 2 ^ 53`, gives `\|m β - n\| ≥ 1/q - 2 ^ 53 \|β - p/q\| > 2 ^ -62`, since `q` cannot divide `m p` for `0 < m < q`.  The 1025 certificates were computed offline with Python and are checked by the kernel; the smallest bound, `2 ^ -61.54`, belongs to exponent field 1872, the binade of the known worst case `6381956970095103 · 2 ^ 797`. |
 | `TrigWords` | Natural-number specifications of `mul64`, `mulTop`, `clz64`, and `shiftTop`, and `or_shift` for disjoint shifted words. |
 | `TrigWindows` | The three words that `remLarge` reads from `invPi` for each exponent field from 1043 to 2046, checked by the kernel in 10 seconds. |
-| `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | `remLarge_spec`: for positive finite `x` with exponent field from 1043, an integer `N` congruent to the returned count modulo 4 has `r = x - N π/2` with `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -134`, `|y0 + y1 - r| ≤ |r| / 2 ^ 72`, and `|y1| ≤ |y0| / 2 ^ 53`.  `remLarge_eq` splits the routine into five stages proved separately; the last is an exact two-sum. |
+| `TrigLargeInt`, `TrigLargeFloat`, `TrigLarge`, `TrigLargeSpec` | `remLarge_spec`: for positive finite `x` with exponent field from 1043, an integer `N` congruent to the returned count modulo 4 has `r = x - N π/2` with `2 ^ -63 ≤ \|r\| ≤ π/4 + 2 ^ -134`, `\|y0 + y1 - r\| ≤ \|r\| / 2 ^ 72`, and `\|y1\| ≤ \|y0\| / 2 ^ 53`.  `remLarge_eq` splits the routine into five stages proved separately; the last is an exact two-sum. |
 | `TrigFloatTools` | Exact sums and differences stated with values, on grids found from magnitudes. |
-| `TrigSmall` | `remSmallW_spec`: fdlibm's one-step reduction for `k` from 1 to 4 lies within `2 ^ -60` relative of `x - k π/2` when `2 ^ -22 ≤ |x - k π/2| ≤ π/4 + 2 ^ -17`. |
-| `TrigNearest` | `add_nearest` and `sub_nearest`: no word lies closer to the exact sum than the rounded sum.  `small_two_diff`: for `4 |w| ≤ |a|` and `s` the rounded `a - w`, `a - s` and `(a - s) - w` are exact. |
+| `TrigSmall` | `remSmallW_spec`: fdlibm's one-step reduction for `k` from 1 to 4 lies within `2 ^ -60` relative of `x - k π/2` when `2 ^ -22 ≤ \|x - k π/2\| ≤ π/4 + 2 ^ -17`. |
+| `TrigNearest` | `add_nearest` and `sub_nearest`: no word lies closer to the exact sum than the rounded sum.  `small_two_diff`: for `4 \|w\| ≤ \|a\|` and `s` the rounded `a - w`, `a - s` and `(a - s) - w` are exact. |
 | `TrigMediumFn`, `TrigMediumConst` | `fn_spec`: for `1 ≤ x` and `x · 2/π ≤ 2 ^ 20`, the rounded `x · invpio2` plus and minus `1.5 · 2 ^ 52` is an integer `N` within `1/2 + 2 ^ -30` of `x · 2/π`.  The six words of `π/2` are checked against `π`, and `comp_step` covers fdlibm's compensated step `r = t - w`, `w' = A - ((t - r) - w)`. |
-| `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC` | `caseA`, `caseB`, and `caseC`: each outcome of the two exponent tests gives `y0 + y1` within `|r| / 2 ^ 60` of `r = x - N π/2`, with `|y1| ≤ |y0| / 2 ^ 52`. |
-| `TrigMedium` | `remMedium_spec`: the same for `Trig.remMedium` on a positive double with word from `0x3FF0000000000000` to below `0x413921FB00000000`, with the returned count equal to `N` and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -28`. |
-| `TrigReduce` | `remPio2_spec`: for a positive finite double with word from `0x3FE921FC00000000`, the result of `Trig.remPio2 invPi halfPi` satisfies `Reduced`: some `N` congruent to the count modulo 4 has `|y0 + y1 - r| ≤ |r| / 2 ^ 60`, `|y1| ≤ |y0| / 2 ^ 52`, and `2 ^ -63 ≤ |r| ≤ π/4 + 2 ^ -17`. |
+| `TrigMediumCases`, `TrigMediumA`, `TrigMediumB`, `TrigMediumC` | `caseA`, `caseB`, and `caseC`: each outcome of the two exponent tests gives `y0 + y1` within `\|r\| / 2 ^ 60` of `r = x - N π/2`, with `\|y1\| ≤ \|y0\| / 2 ^ 52`. |
+| `TrigMedium` | `remMedium_spec`: the same for `Trig.remMedium` on a positive double with word from `0x3FF0000000000000` to below `0x413921FB00000000`, with the returned count equal to `N` and `2 ^ -63 ≤ \|r\| ≤ π/4 + 2 ^ -28`. |
+| `TrigReduce` | `remPio2_spec`: for a positive finite double with word from `0x3FE921FC00000000`, the result of `Trig.remPio2 invPi halfPi` satisfies `Reduced`: some `N` congruent to the count modulo 4 has `\|y0 + y1 - r\| ≤ \|r\| / 2 ^ 60`, `\|y1\| ≤ \|y0\| / 2 ^ 52`, and `2 ^ -63 ≤ \|r\| ≤ π/4 + 2 ^ -17`. |
 
 Several failures recurred and have one cause each.  `omega` and `positivity` reach the maximum recursion depth when the context or the goal holds powers such as `2 ^ 128` or `2 ^ 1088` together with other arithmetic, and `congr 1` does so when it tries to close goals with large numerals; clearing unrelated hypotheses, evaluating powers to numerals first, and replacing `positivity` with explicit lemmas fixed every case.  `generalize` and `rw` reach the same limit when two different natural-number expressions of the same shape, such as `a2 * 2 ^ 128 + a1 * 2 ^ 64 + a0` and `w2 * 2 ^ 128 + w1 * 2 ^ 64 + l2`, meet in one hypothesis: the unifier unfolds `Nat.add` and `Nat.mul` on the large literals.  Lemmas stated with a named variable and proved by `subst` avoid the comparison.  A first `rfl` proof of `remLarge_eq` with projections timed out; the version with pattern-matching `let` and the stage definitions unfolded first takes under a second.  `exponentiation.threshold 4096` made Lean evaluate powers such as `2 ^ 1278` during unification, and removing it from `TrigLarge` removed several recursion failures.
 
@@ -30437,7 +30437,7 @@ The cosine kernel needs two exact operations: `0.5 * z` (`F64ExactProduct.mul_ex
 
 | Module | Result |
 |---|---|
-| `TrigKernelWide` | `sin_kernel_error_wide`, `cos_kernel_error_wide` on `|x| ≤ 0.78541`. |
+| `TrigKernelWide` | `sin_kernel_error_wide`, `cos_kernel_error_wide` on `\|x\| ≤ 0.78541`. |
 | `TrigApprox` | `AB.mul`, `AB.add`, `AB.sub`: error tracking with magnitude bounds. |
 | `TrigKernelWords` | The kernels on words, coefficient bounds, and `sinR_AB`, `cosR_AB`. |
 | `TrigSinTail`, `TrigSinDirect`, `TrigKernelSpec` | `sinTail_spec`, `sinDirect_spec`. |
@@ -30490,7 +30490,7 @@ Each product of two error bounds that shrink with `σ` takes one factor in a for
 
 | Module | Content |
 |---|---|
-| `Log10Consts` | The enclosure of `log 10`, the split constants, and `|log (1 + f)| ≥ 2 (1 - 2 ^ -58) |s|` |
+| `Log10Consts` | The enclosure of `log 10`, the split constants, and `\|log (1 + f)\| ≥ 2 (1 - 2 ^ -58) \|s\|` |
 | `Log10Bits` | `kLog1p` and the tail on words, the reduction of the argument word, and the path lemmas |
 | `Log10Kernel` | The errors of `hfsq` and of `k_log1p` |
 | `Log10Final` | One step for the tail after `f` and `y` (`tail10`) |
@@ -30540,10 +30540,10 @@ The `erf` track works in a separate worktree, branch `w/erf`, a worktree of a se
 | Theorem | Statement |
 |---|---|
 | `exp_nonpos_remainder` | For `y ≤ 0`, the exponential's Taylor polynomial of degree `n - 1` errs by at most `(-y)^n/n!`.  The proof is an induction in which `B ± (exp - T)` is antitone on `(-∞, 0]`. |
-| `erf_series` | For every real `x`, `|erf x - (2/√π) x Σ k < n, (-1)^k x^(2k)/(k! (2k + 1))| ≤ (2/√π) |x|^(2n+1)/(n! (2n + 1))`, with the partial sum as `x * eval (erfCoeffs n) (x^2)` for `PolyBound`.  The bound integrates `exp_nonpos_remainder` at `-t²` by the same monotonicity argument, so it holds beyond `|x| ≤ 1`, which the kernel range up to 1.25 needs. |
+| `erf_series` | For every real `x`, `\|erf x - (2/√π) x Σ k < n, (-1)^k x^(2k)/(k! (2k + 1))\| ≤ (2/√π) \|x\|^(2n+1)/(n! (2n + 1))`, with the partial sum as `x * eval (erfCoeffs n) (x^2)` for `PolyBound`.  The bound integrates `exp_nonpos_remainder` at `-t²` by the same monotonicity argument, so it holds beyond `\|x\| ≤ 1`, which the kernel range up to 1.25 needs. |
 | `erfc_asym`, `erfcx_asym` | For `x > 0` and every `N`, `0 ≤ (-1)^N (erfc x - asym N x)`, where `asym N x = (1/√π) exp (-x²) Σ n < N, a_n x^(-2n-1)` and `a_n = (-1)^n (2n-1)!!/2^n`.  The derivative of `erfc - asym N` is `-(2/√π) a_N exp (-x²) x^(-2N)`, whose sign makes `(-1)^N (erfc - asym N)` antitone, and both functions tend to 0. |
 | `hasDerivAt_erfcx` | `erfcx' = 2 x erfcx - 2/√π`. |
-| `erfcx_backward` | If `|p' - 2 x p + 2/√π| ≤ η` on `[a, b]` with `0 ≤ a` and `|erfcx b - p b| ≤ σ`, then `|erfcx x - p x| ≤ σ + η (b - x)` on `[a, b]`.  The equation's solutions grow like `exp (x²)`, so errors shrink toward smaller `x`, and an enclosure from the asymptotic bounds at a large `x` can be carried down to 1.25 piece by piece. |
+| `erfcx_backward` | If `\|p' - 2 x p + 2/√π\| ≤ η` on `[a, b]` with `0 ≤ a` and `\|erfcx b - p b\| ≤ σ`, then `\|erfcx x - p x\| ≤ σ + η (b - x)` on `[a, b]`.  The equation's solutions grow like `exp (x²)`, so errors shrink toward smaller `x`, and an enclosure from the asymptotic bounds at a large `x` can be carried down to 1.25 piece by piece. |
 
 The tail rational functions of `s_erf.c` approximate `log (x erfc x) + x² + 0.5625` in `s = 1/x²` on `[1.25, 28)`.  Below about 8 the asymptotic series is too inaccurate, and the power series loses the result to cancellation, so the plan for that range is polynomial models of `erfcx` on pieces, checked against its differential equation with `PolyBound` and chained downward with `erfcx_backward` from the asymptotic enclosure.
 
@@ -30564,8 +30564,8 @@ The coordinator approved the plan for the tail kernels and asked for the `erfc` 
 
 | Theorem | Statement | Largest error, source's statement | Run |
 |---|---|---|---|
-| `ErfKernelSmall.small_kernel_error` | `|erf x - x - x (pp/qq)(x²)| ≤ (21/32) 2^-55 |x|` for `|x| ≤ 0.84375` | `2^-55.86` at `z = 0`, where `pp0` is `2/√π - 1` rounded one unit below `efx`.  The source states `2^-57.90`, which leaves this out. | `erf-small-2.log`, 41 s |
-| `ErfKernelMiddle.middle_kernel_error` | `|erf (1 + s) - erx - P (s)/Q (s)| ≤ (21/16) 2^-58` for `-5/32 ≤ s ≤ 1/4` | `2^-58.20` at `s = 1/4`.  The source states `2^-59.06`. | `erf-middle-1.log`, 173 s |
+| `ErfKernelSmall.small_kernel_error` | `\|erf x - x - x (pp/qq)(x²)\| ≤ (21/32) 2^-55 \|x\|` for `\|x\| ≤ 0.84375` | `2^-55.86` at `z = 0`, where `pp0` is `2/√π - 1` rounded one unit below `efx`.  The source states `2^-57.90`, which leaves this out. | `erf-small-2.log`, 41 s |
+| `ErfKernelMiddle.middle_kernel_error` | `\|erf (1 + s) - erx - P (s)/Q (s)\| ≤ (21/16) 2^-58` for `-5/32 ≤ s ≤ 1/4` | `2^-58.20` at `s = 1/4`.  The source states `2^-59.06`. | `erf-middle-1.log`, 173 s |
 
 Each check compares `Q ((2/√π)_lo T - c) - P` with `ε Q` through `PolyChecks.abs_le_weighted`, where `T` is the series partial sum from `erf_series`, with 20 terms for the small range and 26 for the middle, shifted to `s` by `PolyBound.shift` for the middle range.  The enclosure of `2/√π` adds `3/2^68` times the partial sum.  The middle checks have degree 57 and numbers of about 930 bits, split into eight declarations per side, and took about 10 s each.  The first small run (`erf-small-1.log`) failed on a wrong value of `20! · 41` in the remainder bound and on a goal that `gcongr` had already closed.
 
@@ -30581,10 +30581,10 @@ A first-order model of the `erfc` tail, which counts each rounding as half a uni
 |---|---|
 | Models | 32 pieces from 28 down to 1.25, each with a polynomial `p_j` of degree 16 in `t = x - c_j` that approximates `erfcxN`. |
 | Start | At 28, `erfcxN_asym` with 20 and 21 terms encloses `erfcxN` within about `10^-60`. |
-| Chain | `defectP p c = p' - 2 (c + t) p + 1` is checked below `eD_j` on the piece, and `ode_backward` gives `|erfcxN - p_j| ≤ s_j + eD_j (b_j - x)`.  At each junction the next piece's start bound `s_{j+1}` covers the previous model's error and the difference of the two polynomials. |
+| Chain | `defectP p c = p' - 2 (c + t) p + 1` is checked below `eD_j` on the piece, and `ode_backward` gives `\|erfcxN - p_j\| ≤ s_j + eD_j (b_j - x)`.  At each junction the next piece's start bound `s_{j+1}` covers the previous model's error and the difference of the two polynomials. |
 | Kernel error | The derivative of `tailF` is `N(x)/(x² S(1/x²))² · ... - (1/x + 2 x - 1/erfcxN)`.  A check of degree 46 to 50 bounds its distance from the model's version on each piece, and `anchor_bound` evaluates `tailF` at 41 anchor points, with `exp` through a Taylor polynomial of 24 terms and its remainder.  Each sub-interval bound then follows from the anchor value and the derivative bound. |
 
-| Kernel | Proved | Largest sampled `|tailF|` | Source's statement |
+| Kernel | Proved | Largest sampled `\|tailF\|` | Source's statement |
 |---|---|---|---|
 | `R_a/S_a` on `[1.25, tailB2]` | `2^-56` | `2^-58.27` at `x ≈ 1.455` | `2^-62.57` |
 | `R_b/S_b` on `[tailB1, 28]` | `2^-56` | `2^-59.34` at `x = 28` | `2^-61.52` |
@@ -30605,7 +30605,7 @@ The samples (`sample_tail.py`, 401 points per kernel, `erfc` from the series in 
 
 The proof gives one step through the nearest rounding of the code's final sum wherever the plain relative bound is too weak.  `F64AddNearest.add_nearest` shows that a rounded positive sum is a nearest value of the exact sum, and `within_of_nearest` and `within_nearest_relative` give `m` steps when the exact sum lies within `m` spacings of the reference, or within `(63/64) m` units of roundoff relative to it.  The other ranges use `F64RelativeSteps.within_steps_relative`, which tolerates `(m + 3/8) u` relative to `|y|` down to `17/16 · 2^-1022`, and `within_steps_low` for absolute errors below `(2m + 1)/2 · 2^-1074`.
 
-| Range of `|x|` | Code | Method | Margin |
+| Range of `\|x\|` | Code | Method | Margin |
 |---|---|---|---|
 | `0` | `(8 x + efx8 x)/8` | the word, computed | exact |
 | `(0, 2^-1022)` | `(8 x + efx8 x)/8` | absolute error below `1.26 · 2^-1074` against `1.5 · 2^-1074` (`ErfSub.erf_subnormal`) | 16% |
@@ -30627,7 +30627,7 @@ The small range is the tightest.  The rigorous Horner bound (`F64Horner.hornerEr
 | `LeanExe/ProofKit/F64AddNearest.lean` | `add_nearest`, `steps_of_nearest`, `within_of_nearest`, `within_nearest_relative` |
 | `LeanExe/ProofKit/F64RelativeSteps.lean` | `within_steps_relative`, `within_steps_low` |
 | `LeanExe/ProofKit/F64NegateOps.lean` | rounded operations under negation |
-| `Verified/Examples/ExpRelative.lean` | `|expWith x - e^x| ≤ 1.405 u e^x` for `|x| < 512` |
+| `Verified/Examples/ExpRelative.lean` | `\|expWith x - e^x\| ≤ 1.405 u e^x` for `\|x\| < 512` |
 | `ErfSmallBase`, `ErfSmallPieces0`, `ErfSmallPieces1`, `ErfSmall` | small range |
 | `ErfMiddleBase`, `ErfMiddle` | middle range |
 | `ErfTailSplit`, `ErfTailEval`, `ErfTailCompose`, `ErfTailErfBase`, `ErfTailErf` | tail: exact split of `x²`, the argument of the second exponential, composition with `x erfc x = exp (-z² - 9/16) exp (t - tailF)` |
@@ -30716,8 +30716,8 @@ The targets are `WithinSteps 2` against `Real.arsinh`, `Real.arcosh`, and `Real.
 
 | Branch | Method | State |
 |---|---|---|
-| `asinh`, `atanh` below `2 ^ -28` | The result is `x`; `arsinh x` and `artanh x` lie within `|x|³` and `2|x|³` of `x` | Committed in `c4cf80e2` |
-| `asinh` from `2 ^ 28`, `acosh` from `2 ^ 28` | `Log.log |x| + ln2`: the error of `log` from `error_of_within`, then the nearest rounding of the sum (`AsinhTheoremLarge.log_ln2`) | Committed in `a5077186` |
+| `asinh`, `atanh` below `2 ^ -28` | The result is `x`; `arsinh x` and `artanh x` lie within `\|x\|³` and `2\|x\|³` of `x` | Committed in `c4cf80e2` |
+| `asinh` from `2 ^ 28`, `acosh` from `2 ^ 28` | `Log.log \|x\| + ln2`: the error of `log` from `error_of_within`, then the nearest rounding of the sum (`AsinhTheoremLarge.log_ln2`) | Committed in `a5077186` |
 | `asinh` on `[2, 2 ^ 29]`, `acosh` on `[2, 2 ^ 28]` | Argument within `1.315 · 2 ^ -53` and `1.765 · 2 ^ -53` relative, then `within_two_of_close` in `[1, 2)` | Committed in `5ede907a`, `f8d93194` |
 | `asinh` on `[2 ^ -28, 2]`, `acosh` on `(1, 2]`, `atanh` on `[2 ^ -28, 1/2)` | `log1p` at a computed argument | Committed: `atanh` in `5e37bd91` and `b3d93058`, `asinh` in `8fc2f7de` and `e91fcfd9`, `acosh` in `781438a2` |
 
@@ -30725,7 +30725,7 @@ An analysis with dense sampling and per-operation worst cases (scripts in a dire
 
 A proof therefore needs the internal bounds of `log1p`.  These bound the exact value `S` of its last operation, whose result is the nearest word of `S`, so two steps follow when `|S - Y| < 2` spacings (`F64TwoSteps.within_two_of_rounded`), where `Y` is the target.  The table lists the worst cases in spacings of the target's binade.
 
-| Branch | Worst `|log(1 + u_c) - Y|` | `E` of `log1p` there | Sum |
+| Branch | Worst `\|log(1 + u_c) - Y\|` | `E` of `log1p` there | Sum |
 |---|---|---|---|
 | `atanh` small | 1.02 | at most 0.93 | 1.95, two steps |
 | `asinh` small | 1.16, at `Y` just below 1/2, `u ≈ 0.64` | 0.93, the uniform bound of the case `K = 1`, `f < -0.175` | 2.09 |
@@ -30768,8 +30768,8 @@ The compositions bound `|S - Y| ≤ errBound w + |w - W|/(1 + W - |w - W|)` for 
 | `atanh`, `a < 0.1244` | Relative bound `ρ (2 ^ 52 + 1) < 1` in four ranges (`atanh_piece_rel`) | `ρ = 1.892 · 2 ^ -53` |
 | `atanh`, `0.1244 ≤ a < 1/2` | Four ranges with constant `E` and an argument term convex in `a`, checked at the ends (`atanh_piece`, `quad_le`) | 0.973 |
 | `atanh`, `1/2 ≤ a < 1` | `2a` and `1 - a` exact, one division; `2 artanh a ≥ log 3` | 0.42; above a quotient of `2 ^ 53` the binade `[16, 32)` |
-| `asinh`, `|x| < 0.2526` | Five relative ranges (`asinh_piece_rel`) | `ρ = 1.966 · 2 ^ -53` |
-| `asinh`, `0.2526 ≤ |x| ≤ 2 (1 + 2 ^ -20)` | Twenty ranges with constant chains (`asinh_e`) and constant bounds (`asinh_piece`) | 0.981 at `|x| ∈ [1.155, 1.1753]`, below `arsinh = 1` |
+| `asinh`, `\|x\| < 0.2526` | Five relative ranges (`asinh_piece_rel`) | `ρ = 1.966 · 2 ^ -53` |
+| `asinh`, `0.2526 ≤ \|x\| ≤ 2 (1 + 2 ^ -20)` | Twenty ranges with constant chains (`asinh_e`) and constant bounds (`asinh_piece`) | 0.981 at `\|x\| ∈ [1.155, 1.1753]`, below `arsinh = 1` |
 
 The constants of every range come from `near/atanh_inst.py` and `near/asinh_inst.py` in the scratch directory, which check each hypothesis of the range lemmas in exact rational arithmetic before emitting the Lean text.  The `asinh` ranges are separate theorems (`AsinhTheoremSmallCases.piece0` to `piece24`), since one declaration holding all of them exceeded the default heartbeat limit.  Two elaboration costs appeared: `set` with a numeric real body, such as `set ρ := 30001 / 10000 / 2 ^ 53`, and `set w :=` on a float expression made later `isDefEq` checks unfold real and float arithmetic until the heartbeat limit (`arc-atanh-4.log` to `arc-atanh-7.log`); the lemmas now take such constants as parameters and name expressions with `obtain ⟨w, hw⟩ : ∃ w, w = e`.  `nlinarith` and `linarith` over a context with `2 ^ 1074` and many hypotheses also ran out of heartbeats, and the proofs give them explicit products or use `linarith only`.
 
@@ -30944,8 +30944,8 @@ The functions are series in `z = x²/4`, as [DLMF 10.2.2, 10.8.1, and 10.8.2](ht
 | `Bessel.hasDerivAt_Y0`, `hasDerivAt_Y1` | `Y0' = -Y1` and `Y1' = Y0 - Y1/x` for `x ≠ 0` |
 | `Bessel.wronskian` | `J1 x Y0 x - J0 x Y1 x = 2/(π x)` for `x ≠ 0` |
 | `Bessel.Y0_sub_log`, `Y1_sub_log` | `Y0 - (2/π) J0 ln x` and `Y1 - (2/π) (J1 ln x - 1/x)` as series in `z` with the constant `γ - ln 2`, the parts that fdlibm approximates below 2 |
-| `Bessel.a0_remainder` and the three others | for `|z| ≤ 1`, so `|x| ≤ 2`, and `N ≥ 1`, each series lies within `2 |a_N| |z|^N` of its partial sum of `N` terms |
-| `EulerGamma.gamma_close`, `gamma_rad_small` | `|γ - gammaMid| ≤ gammaRad < 2^-84` for a rational `gammaMid` |
+| `Bessel.a0_remainder` and the three others | for `\|z\| ≤ 1`, so `\|x\| ≤ 2`, and `N ≥ 1`, each series lies within `2 \|a_N\| \|z\|^N` of its partial sum of `N` terms |
+| `EulerGamma.gamma_close`, `gamma_rad_small` | `\|γ - gammaMid\| ≤ gammaRad < 2^-84` for a rational `gammaMid` |
 | `EulerGamma.log_two_close` | `log 2` within `2^-100` of a rational |
 
 The derivatives reduce to four identities between the coefficient sequences, such as `(k+1) c1_k = a1_k - 2 c0_k`, which `field_simp` and `ring` check for every `k`.  For the Wronskian, the logarithm terms cancel and `x (J1 Y0 - J0 Y1) = (2/π) F (x²/4)` with `F = A0 + 2 z A1 C0 + z A0 C1` in terms of the four series.  The same identities give `F' = 0` on all of `ℝ`, so `F` equals `F 0 = 1`, and no limit at 0 is needed.  The ratio bounds use `H_(k+1) ≤ 2 H_k` for `k ≥ 1`, which is why the remainder theorems ask for `N ≥ 1`.
@@ -30977,7 +30977,7 @@ The bounds avoid an integral representation.  With `U = √(πx/2) J` and `V = �
 | Module | Content |
 |---|---|
 | `BesselPQ` | `P0 = √(πx/2) (J0 cos θ0 + Y0 sin θ0)`, `Q0 = √(πx/2) (Y0 cos θ0 - J0 sin θ0)` with `θ0 = x - π/4`, and the same for order 1 with `θ1 = x - 3π/4`; the large-argument forms of `J` and `Y` (`J0_large` and the others), the moduli `J² + Y² = (2/(πx)) (P² + Q²)`, and the system `P'' = 2Q' - (κ/x²) P`, `Q'' = -2P' - (κ/x²) Q` with explicit derivatives (`P0_system`, `P1_system`) |
-| `BesselEnergy` | For `κ ≥ 0`, `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` has `(√E)' ≤ |r₁| + |r₂|`; for `κ < 0` and `1 + κ/x² ≥ 81/100`, the energy with the first two terms divided by `1 + κ/x²` has `(√E)' ≤ (10/9)(|r₁| + |r₂|)` |
+| `BesselEnergy` | For `κ ≥ 0`, `E = (p' - q)² + (q' + p)² + (1 + κ/x²)(p² + q²)` has `(√E)' ≤ \|r₁\| + \|r₂\|`; for `κ < 0` and `1 + κ/x² ≥ 81/100`, the energy with the first two terms divided by `1 + κ/x²` has `(√E)' ≤ (10/9)(\|r₁\| + \|r₂\|)` |
 | `BesselChain`, `BesselAsym` | Pieces in `x - c` and the asymptotic piece in `1/x`; residuals as kernel-computed polynomials, jumps at the junctions as rational bounds, and the induction over the pieces (`chain0_sound`, `chain1_sound`) |
 | `BesselConstants` | Enclosure arithmetic (`Encl`), `π` by Machin's formula within `2^-190`, `cos 2` and `sin 2` |
 | `BesselStart` | `P`, `Q`, and their derivatives at 2 within `2^-86` of dyadic centers, from the four series at `z = 1`, `γ`, `1/π`, `√(π/2)`, `cos 2`, and `sin 2` |
@@ -31038,7 +31038,7 @@ The checks run on short polynomials.  `BesselSeg0` and `BesselSeg1` split each p
 | Theorem | Statement | Proof |
 |---|---|---|
 | `modulus_product` | `(2/(πx))² ≤ M₀² M₁²` for `x > 0` | The Wronskian and Lagrange's identity `M₀² M₁² - (J1 Y0 - J0 Y1)² = (J0 J1 + Y0 Y1)²` |
-| `near0`, `near1` | `|P - 1| ≤ 1/10 + 2^-80` and `|Q| ≤ 1/5 + 2^-80` for `x ≥ 2`, both orders | The piece bounds and kernel bounds on the polynomials (`shapeOk`) |
+| `near0`, `near1` | `\|P - 1\| ≤ 1/10 + 2^-80` and `\|Q\| ≤ 1/5 + 2^-80` for `x ≥ 2`, both orders | The piece bounds and kernel bounds on the polynomials (`shapeOk`) |
 | `modulus0_large`, `modulus1_large` | `(3/4)(2/(πx)) ≤ M² ≤ (13/10)(2/(πx))` for `x ≥ 2` | `M² = (2/(πx))(P² + Q²)` |
 | `modulus0_small` | `1/25 ≤ M₀²` for `0 < x ≤ 2` | `J0 x ≥ 1/5` from 10 terms of the series and a polynomial check |
 | `modulus1_small` | `4/25 ≤ M₁²` for `0 < x ≤ 2` | `J1 x ≥ 2/5` on `[1, 2]` from the series, and `Y1 x ≤ -2/(πx)` on `(0, 1]` because `ln (x/2) + γ < 0`, `J1 ≥ 0`, and the series of `Y1` is positive there |
@@ -31083,7 +31083,7 @@ A Python model of the word algorithm (`py/fma.py` in the scratch directory) agre
 
 The first run of `BesselAccuracy` (`ports-BesselAccuracy-3.log`), with the bound of `jn` and `yn` raised to measure, found these largest errors in units of the modulus: 2.617 for `j0` (at 23.48), 2.764 for `j1` (at 11.63), 3.171 for `y0` (at 187.68), 3.243 for `y1` (at 10.64), and 10.408 for `jn` (order 50 at `1.37e13`).  It stopped at `yn 2` at the smallest subnormal, where the reference's recurrence divided by `x · 2 ^ g` with too few bits for `x`, which truncated to 0.  The recurrence now adds the leading zero bits of `x` to its precision, and the rerun (`ports-BesselAccuracy-6.log`, the module built without `verified_compile`) passed with these largest errors of each order, in units of the modulus.
 
-| Order | `jn` | `yn` | `4 + |n|/6` | `4 + |n|/3` |
+| Order | `jn` | `yn` | `4 + \|n\|/6` | `4 + \|n\|/3` |
 |---|---|---|---|---|
 | 2, -2 | 2.648 | 2.420 | 4.33 | 4.67 |
 | 3, -3 | 2.030 | 2.323 | 4.50 | 5.00 |
@@ -31340,8 +31340,8 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | Module | Content | State |
 |---|---|---|
 | `FmaSpec` | `FmaNearest`, the property of `Fma.fma` that the proof assumes | accepted, `b1c5f270` |
-| `ErfcEft` | Dekker's `fast_two_sum` is exact for `|b| ≤ |a| ≤ 2^1020` | accepted, `fba07475` |
-| `ErfcEft2` | Knuth's `two_sum` is exact for `|a|, |b| ≤ 2^1018` | accepted, `52be491a` |
+| `ErfcEft` | Dekker's `fast_two_sum` is exact for `\|b\| ≤ \|a\| ≤ 2^1020` | accepted, `fba07475` |
+| `ErfcEft2` | Knuth's `two_sum` is exact for `\|a\|, \|b\| ≤ 2^1018` | accepted, `52be491a` |
 | `ErfcOps` | error bounds of the operations on Floats: `add_f`, `sub_f`, `mul_f`, `fma_f`, `fastTwoSum_f`, `twoSum_f`, `aMul_f` | accepted, `b0a10033` |
 | `ErfcTrack` | `Tr`, `Pr`, and the stages `pr_fts`, `pr_add`, `pr_mulB`, `pr_mulC`, `pr_mulD` | accepted (`trig-fastmain-1.log`), committed with this section |
 | `ErfcTrack2` | the stages of `cr_erf_fast` below `1/16`, `Pr.shift`, and the cast tactic `qcast` | accepted (`trig-fastmain-5.log`) |
@@ -31353,11 +31353,11 @@ Each polynomial of `C` is checked against the series of `erf` at 0 (`RealErf.erf
 | `ErfcFastRow` | `row_err`: one row of `erfFastMain` within its target of `erf x`, with the certificate of `ErfcSeriesI` | accepted (`trig-rowsI-1.log`) |
 | `ErfcFastPlan`, `ErfcFastRows0` to `ErfcFastRows11` | the certificate parameters and targets of the 94 rows of `C`, and their checks in twelve groups of at most eight rows, from 9 seconds for rows 1 to 8 to 119 seconds for rows 89 to 94 | accepted (`trig-rowsI-1.log` to `trig-rowsI-4.log`) |
 | `ErfcTrack3` | the stages of `cr_erf_accurate` and its tiny case | accepted (`trig-fastrow-2.log`) |
-| `ErfcFastTiny` | `tiny_err`: `erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `|z| ≤ 1/16` | accepted (`trig-fastrow-1.log`) |
+| `ErfcFastTiny` | `tiny_err`: `erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `\|z\| ≤ 1/16` | accepted (`trig-fastrow-1.log`) |
 
 | Run | Result |
 |---|---|
-| `erfc-ops-1`, `erfc-ops-2`, `trig-erfcops-3` | `ErfcOps`: `|a - |b||` does not parse, then passed; the third run replaced the deprecated `if_neg` |
+| `erfc-ops-1`, `erfc-ops-2`, `trig-erfcops-3` | `ErfcOps`: `\|a - \|b\|\|` does not parse, then passed; the third run replaced the deprecated `if_neg` |
 | `trig-track-1` to `trig-track-3` | `ErfcTrack`: `norm_num` left `2^1000 ≤ 2^1022` unevaluated below the default exponentiation threshold, then passed |
 | `trig-shift-1`, `trig-shift-2` | The first found `PolyCalculus` unbuilt in this worktree; the second timed the series shifts |
 | `trig-fastmain-1` | `ErfcTrack` passed with its axiom report; `ErfcFastMain` failed on the instance search for `MainHyp`'s 75 conjuncts and an unindented line |
@@ -31394,12 +31394,12 @@ On the accurate path the result is `h + (t ± l)` rounded once after the exact `
 |---|---|---|
 | `ErfcCast`, `ErfcFastAll`, `ErfcFastPath` | `cr_erf_fast` on `[0, 95/16)` and `cr_erfc_fast` below `0x1.713786d9c7c09p+1` | accepted after the hold (`trig-fastpath-5.log`) |
 | `ErfcAccMain`, `ErfcAccTiny`, `ErfcAccRow`, `ErfcAccPlan`, `ErfcAccRows0` to `ErfcAccRows5`, `ErfcAccAll` | `cr_erf_accurate` with the 47 rows of `C2`, and its tiny case with `n = 8`, `J = 15`, `ε = 2^-62` (`cert/taplan.py`: the bound is `2^-15.7` of the target) | `ErfcAccMain` at `f2ed6982`, `ErfcAccTiny` at `a39c9426`, the rest and `ErfcSeriesZ` at `f0eb4ea4` |
-| `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `|eh + el - exp X| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | `03e57a7a` |
+| `ErfcTrack4`, `ErfcExpBits`, `ErfcExpTab`, `ErfcExp1Red`, `ErfcQ1`, `ErfcExp1` | `exp_1`: `\|eh + el - exp X\| ≤ 2^-60 exp X` for `-700 ≤ xh ≤ -8` | `03e57a7a` |
 | `ErfcRecip`, `ErfcRel`, `ErfcAsymIdx` | `1/x` and `1/x²` as double-doubles, the relative product, the row indices | `0a6b86e5` |
 | `ErfcAsymPoly` | the polynomial of `erfc_asympt_fast` | `136ce1f8` |
 | `ErfcAsymCert`, `ErfcAsymPlan`, `ErfcAsymRowsT`, `ErfcAsymRowsA0`, `ErfcAsymRowsA1` | the certificates of the rows of `T` and `Tacc` | `7bfd657c` |
 | `ErfcAsymZ`, `ErfcAsymFast` | `erfc_asympt_fast` within `2^-57 erfc x` | accepted (`trig-asymz-1.log`, `trig-asymfast-3.log`) |
-| `ErfcEAccPoly`, `ErfcEAcc` | `exp_accurate`: `|eh + el - exp (X - K log 2)|` below `2^-76` of the value | written, not built |
+| `ErfcEAccPoly`, `ErfcEAcc` | `exp_accurate`: `\|eh + el - exp (X - K log 2)\|` below `2^-76` of the value | written, not built |
 | `ErfcTrack5`, `ErfcTaccLoop`, `ErfcTaccData`, `ErfcAsymAccHL`, `ErfcAsymAccFin` | `asymptAccurate` within `2^-56 erfc x` before the scaling, and one step after `ldexp`, the subnormal correction included | written, not built |
 | `ErfcHardBase`, `ErfcHardRows`, `ErfcHardNeg`, `ErfcHardPos`, `ErfcHardAsym0`, `ErfcHardAsym1`, `ErfcHardAsym` | the 68 hard cases, one kernel check per row (`gen/hardgen.py`) | written, not built |
 | `ErfcSpecial`, `ErfcAccPath`, `ErfcMainPath`, `ErfcTheorem` | the special input, the accurate and main paths, the branches of `erfcWith`, and the final theorem | written, not built |
@@ -31445,13 +31445,13 @@ The C code states no error for any single polynomial or table.  It states only t
 | `Γ k = (k - 1)!`, `lgamma 1 = lgamma 2 = 0`, poles | 722-739 | 896-907 |
 | Reflection `Γ x Γ (1 - x) = π / sin (π x)` and the sign `(-1) ^ ⌊x⌋` | 753-798, 741-751 | 1009-1018, 341-357 |
 | Overflow of `Γ` from `0x1.573fae561f648p+7`; underflow below 2^-1078 for `x ≤ -184` | 709-716, 741-751 | |
-| `Γ x - 1/x` for `|x| < 2^-112`; `lgamma x + log |x|` for `|x| < 2^-75` and `2^-100` | 650-681 | 915-918, 235-243 |
-| `lgamma` overflow at `|x| ≥ 0x1.754d9278b51a6p+1014` and its two special words | | 874-895 |
-| `Γ x - 1/x` on `|x| < 1/4`: degree 20 fast, degree 35 accurate | 682-706, 306-345 | |
-| `Γ (3.5 + d)` on `|d| ≤ 1/2`, degree 17 | 812-855 | |
+| `Γ x - 1/x` for `\|x\| < 2^-112`; `lgamma x + log \|x\|` for `\|x\| < 2^-75` and `2^-100` | 650-681 | 915-918, 235-243 |
+| `lgamma` overflow at `\|x\| ≥ 0x1.754d9278b51a6p+1014` and its two special words | | 874-895 |
+| `Γ x - 1/x` on `\|x\| < 1/4`: degree 20 fast, degree 35 accurate | 682-706, 306-345 | |
+| `Γ (3.5 + d)` on `\|d\| ≤ 1/2`, degree 17 | 812-855 | |
 | Stirling fits of `as_lgamma_asym` for `x > 11.5` and `4 < x ≤ 11.5` | 1058-1105 | |
 | `2^-eoff Γ (b + 1/2 + d/2)` for nine bases `b` from 4 to 160, degrees 25 to 33 | 347-612 | |
-| `lgamma (1 + x)/x` on `|x| < 1/32`; 19 pieces on `[0.5, 8.29541]`; Stirling fit above | | 919-1008 |
+| `lgamma (1 + x)/x` on `\|x\| < 1/32`; 19 pieces on `[0.5, 8.29541]`; Stirling fit above | | 919-1008 |
 | Accurate `lgamma (1 + x)/x`, `lgamma (1.5 + x)`, three Stirling fits | | 194-340, 1365-1454 |
 | 16 negative zeros of `lgamma` with `lgamma x = (x - x0) P (s (x - x0))` | | 364-752 |
 | `as_logd`, `as_logd_accurate`, `sin (π k/128)` and `sin (π k/128)/π` tables, `as_expd` tables, `π` split | 858-1056, 760 | 1032-1362 |
@@ -31465,8 +31465,8 @@ The one-step target needs one correction for `lgamma`.  Near the negative zeros,
 
 | Module | Main results |
 |---|---|
-| `LeanExe/ProofKit/GammaBasic.lean` | `gamma_add_nat`, `gamma_eq_div`, `gamma_nat_prod` (`Γ (k + 1) = 1 · 2 ⋯ k`), `lgamma_add_one`, `lgamma_one`, `lgamma_two`, `gamma_reflect`, `lgamma_reflect`, `gamma_pos_of_even`, `gamma_neg_of_odd` (the sign `(-1) ^ ⌊x⌋` for non-integer `x < 1`), `two_mul_abs_sub_round_le` (`|sin (π x)| ≥ 2 |x - round x|`), `abs_gamma_le`, `gamma_underflow` (`|Γ x| < 2 ^ -1078` for `x ≤ -184` at distance at least `2 ^ -45` from the integers), `gamma_sub_inv_bounds` (`-8/5 ≤ Γ x - 1/x ≤ 0` on `[-1/2, 1] \ {0}`), `abs_lgamma_add_log_le` (`|lgamma x + log |x|| ≤ 4 |x|` for `0 < |x| ≤ 1/4`) |
-| `LeanExe/ProofKit/GammaStirling.lean` | `F_sub_succ`, `tendsto_F`, `rho_identity`, `abs_rho_le`, `abs_remainder_le` (the general remainder theorem), `stirling_twelve` (`|lgamma x - lead x - series stirCoeffs x| ≤ 104001 / (25 (x - 1) ^ 25)` for `x ≥ 16`) |
+| `LeanExe/ProofKit/GammaBasic.lean` | `gamma_add_nat`, `gamma_eq_div`, `gamma_nat_prod` (`Γ (k + 1) = 1 · 2 ⋯ k`), `lgamma_add_one`, `lgamma_one`, `lgamma_two`, `gamma_reflect`, `lgamma_reflect`, `gamma_pos_of_even`, `gamma_neg_of_odd` (the sign `(-1) ^ ⌊x⌋` for non-integer `x < 1`), `two_mul_abs_sub_round_le` (`\|sin (π x)\| ≥ 2 \|x - round x\|`), `abs_gamma_le`, `gamma_underflow` (`\|Γ x\| < 2 ^ -1078` for `x ≤ -184` at distance at least `2 ^ -45` from the integers), `gamma_sub_inv_bounds` (`-8/5 ≤ Γ x - 1/x ≤ 0` on `[-1/2, 1] \ {0}`), `abs_lgamma_add_log_le` (`\|lgamma x + log \|x\|\| ≤ 4 \|x\|` for `0 < \|x\| ≤ 1/4`) |
+| `LeanExe/ProofKit/GammaStirling.lean` | `F_sub_succ`, `tendsto_F`, `rho_identity`, `abs_rho_le`, `abs_remainder_le` (the general remainder theorem), `stirling_twelve` (`\|lgamma x - lead x - series stirCoeffs x\| ≤ 104001 / (25 (x - 1) ^ 25)` for `x ≥ 16`) |
 | `LeanExe/ProofKit/RatExpLog.lean` | `abs_exp_sub_le`, `le_log`, `log_le`, `qeval_cast` |
 | `LeanExe/ProofKit/GammaThresholds.lean` | `gamma_overflow` (`Γ x ≥ 2 ^ 1024` from `0x1.573fae561f648p+7`), `lgamma_x1`, `lgamma_x2` (`lgamma` at `0x1.754d9278b51a6p+1014` and the next double within `3/5` and `1/5` of the spacing `2 ^ 971` from the two largest doubles), `lgamma_overflow` (`lgamma x ≥ 2 ^ 1024 - 2 ^ 970` from the double after them), `lgamma_mono`, `lgamma_between`, and the words of the thresholds |
 | `LeanExe/ProofKit/TaylorModel.lean` | `tm_sound` |
@@ -31915,7 +31915,7 @@ The coordinator assigned the correctness proof of the ports track's `Verified/Ex
 |---|---|---|
 | `fma_toBits` | `FmaTheorem` | `∀ a b c : Float, (Fma.fma a b c).toBits = fmaReference a.toBits b.toBits c.toBits` |
 | `fmaBits_spec` | `FmaTheorem` | `(if isNaN (Fma.fmaBits a b c) then canonicalNaN else Fma.fmaBits a b c) = fmaReference a b c` for all words |
-| `fma_nearest` | `FmaSpecTheorem` | `FmaSpec.FmaNearest`: for finite operands with `|a · b + c| ≤ 2 ^ 1023`, the result is finite and no finite word is closer to `a · b + c` |
+| `fma_nearest` | `FmaSpecTheorem` | `FmaSpec.FmaNearest`: for finite operands with `\|a · b + c\| ≤ 2 ^ 1023`, the result is finite and no finite word is closer to `a · b + c` |
 | `fmaBits_nan_a`, `fmaBits_nan_b`, `fmaBits_nan_c` | `FmaSpecial` | the word result for a NaN operand is the first NaN operand with bit 51 set |
 
 ### The proof
@@ -32308,14 +32308,14 @@ The logarithm uses `OFF = 0x3fe6955500000000` and 128 subintervals; entries 74 a
 | `PowExpCore.lean` | `core_eq`, `tmp_bits`, `ideal_tight`, `target_eq`, `core_state`. |
 | `PowExpBranches.lean` | The branches of `powExp` with `signBias = 0`, and the overflow and underflow products. |
 | `PowExpPaths.lean` | `tiny_within`, `ordinary_within`, `positive_bits`, `negative_eq`, `negative_bits`. |
-| `PowExpSpecial.lean` | `positive_within`, `negative_within` for `512 ≤ |x| ≤ 768`. |
-| `PowExpFar.lean` | `far_positive`, `far_negative` for `768 < |x| < 1024`. |
+| `PowExpSpecial.lean` | `positive_within`, `negative_within` for `512 ≤ \|x\| ≤ 768`. |
+| `PowExpFar.lean` | `far_positive`, `far_negative` for `768 < \|x\| < 1024`. |
 | `PowExpTheorem.lean` | `powExp_within`. |
 | `PowLogBits.lean` | `powLog_eq`, `fields`, `fields_upper`, `fields_lower`, `zhi_toNat`. |
 | `PowLogTable.lean` | The entry checks, `log_table`, `kernel_error`, `kernel_eval`. |
 | `PowLogReduce.lean` | `word_fields`, `split_state`, `reduce_state`. |
 | `PowLogSum.lean` | `grid_sum`, `t1_exact`, `half_exact`, `square_exact`, `lo1_error`, `ln2_words`. |
-| `PowLogPoly.lean` | `p_error`: the word `p` within `(7/4) u |r| ^ 3 + 5 μ` of `poly r`. |
+| `PowLogPoly.lean` | `p_error`: the word `p` within `(7/4) u \|r\| ^ 3 + 5 μ` of `poly r`. |
 | `PowLogSums.lean` | `lo3_error`, `sum5`, `ytail`. |
 | `PowLogEval.lean` | `logWords` and `finalOf_bits`: `powLog`'s arithmetic on words. |
 | `PowBranches.lean` | The guards of `powWith` for a positive `x`, `main_selected`, `positive_special`. |
@@ -33063,7 +33063,7 @@ The review of 2026-10-12 listed defects in Lean sources that the resumed work wa
 | Item | Correction |
 |---|---|
 | License notices | The module docstrings of `Trig`, `Tan`, `Tanh`, `Log1p`, `Log10`, `Atan`, `Asin`, `Sinh`, `Asinh`, `Erf`, `Bessel`, `Sinpi`, `Tgamma`, and `Lgamma` quote each ported file's notice verbatim, grouped where files share one: Sun's notices with SunPro or SunSoft and with the 2004 notice of `k_tan.c`, the BSD-2-Clause conditions and disclaimer of `k_exp.c` and Kargl's files, and CORE-MATH's MIT notice.  `Exp` and `Exp2` give `exp_data.c` the years 2018-2023. |
-| Bounds | `LogNear1` `(1/15 + 1/13) u ρ`; `Log10Final` `0.7026 u σ` and `0.1472 |k|`; `TrigLarge` `2 ^ -63` and `π/4 + 2 ^ -134`; `BesselConstants` `2 ^ -190`, since the radius of the enclosure of `π` is about `2 ^ -190.4`; `Log1p` the cubic path for `f` in `[-3 · 2 ^ -21, 2 ^ -20)`, from the code's test `hu == 0` in both branches; `Asin` fdlibm's `2 ^ -58.75` as a bound for exact coefficients, with `2 ^ -56.58` from the rounded `pS0`; `Log2` degree 5. |
+| Bounds | `LogNear1` `(1/15 + 1/13) u ρ`; `Log10Final` `0.7026 u σ` and `0.1472 \|k\|`; `TrigLarge` `2 ^ -63` and `π/4 + 2 ^ -134`; `BesselConstants` `2 ^ -190`, since the radius of the enclosure of `π` is about `2 ^ -190.4`; `Log1p` the cubic path for `f` in `[-3 · 2 ^ -21, 2 ^ -20)`, from the code's test `hu == 0` in both branches; `Asin` fdlibm's `2 ^ -58.75` as a bound for exact coefficients, with `2 ^ -56.58` from the rounded `pS0`; `Log2` degree 5. |
 | Other docstrings | `Trig` and `TrigAccuracy` say that `s_sin.c` and `s_cos.c` describe the results only as nearly rounded; `ErfAccuracy` puts 27.2 to 27.3 where `erfc` passes the least subnormal and rounds to 0, with the subnormal range from about 26.54; `BesselAccuracy` gives `2 ^ 1000` as the top of its hashed arguments, from `hashed`'s exponent `lo + span - 1`; `Reference` states that a reference rounded the wrong way can pass a result two units away or fail one a unit away; `Lgamma` and `LgammaAccuracy` give the code's threshold `0x1.754d9278b51a6p+1014`; `Sinpi.oddPart` subtracts `2 ^ 30` from `2 ^ 31` on; `PowAccuracy` cites C99's F.9.4.4; `Bessel` gives POSIX.1-2017 and the tiny threshold `2 ^ -30` of `jn`, where fdlibm's comment says `2 ^ -29`; `Tgamma` and `Lgamma` wrap their long lines. |
 | Coverage | `AtanTwoNaN.atan2_nan` states that `atan2` returns the canonical NaN when either argument is a NaN, from fdlibm's NaN test (`nan_test_nan`) and the sum `x + y`; the twelve Python scripts in `tools/arc/asin` gain the PEP 723 header. |
 | Documents | The function documents that described the old docstrings now describe the corrected ones, and `Atan.md` lists `atan2_nan`.  Every local link in the documents of `Verified/Examples` resolves, and the module names in `Sinh.md`, `Asinh.md`, `Pow.md`, `Sinpi.md`, and `Fma.md` name existing modules. |
@@ -34115,3 +34115,23 @@ The driver emitted and validated all 52 modules.  The first byte comparison assi
 `verified-tests-01` exited 0.  All 22 byte/file proof pairs passed, each with two reports restricted to the three permitted axioms.  All 16,345 module cases passed, including allocation counters and expected traps.  The native case generator reported the expected 3,069 accesses past the end of an array.  Every native numerical accuracy check completed successfully.  The FMA check matched exact rounding on 763,816 results, limb arithmetic matched Lean's naturals on 4,026 results, all 1,030 parsing cases passed, and all 889 printing cases passed with round trips.  The complete log and its audit are preserved under `build/integration-records/`.
 
 This completes the planned gates for code revision `bda4a17b`, including the earlier LeanExe emissions, module, release, depth-guard, chunk, drone, LTG, decoder, and two-driver WGSL checks.  Both `ea1e3381` and `942aa695` are ancestors of that revision.  The closing acceptance commit changes only this journal.
+
+## 2026-10-17: Documentation review after integration
+
+The review uses a separate worktree on `docs-main-review`, based on the accepted main revision `04dd39f6`.  It covers the root README, both compiler manuals, the design document, numerical index and function guides, encoding reviews, example guides, LTG guidance, dataset guides, and paper navigation.  All 185 tracked Markdown files enter the link, fence, and table checks.  Published manuscripts, numerical evidence, and submission records retain their recorded contents.  The primary `verified` checkout retains its local notes and untracked files.
+
+The numerical index now states the input domains, representable-step metric, Bessel constants and excluded turning-point range, and the `yn` overflow alternative.  Its theorem names link to the Lean sources.  The conversion entries state the parser's length bound and the printer's NaN canonicalization.  The harmonic-number description accounts for the denominator stopping at `2^53`, and the Fourier description confines its measured error to the tested inputs.
+
+The function guides correct several claims against the accepted theorem statements: one-step bounds permit the largest finite value beside an infinite reference, `atan2` has a NaN theorem, and the gamma and CORE-MATH `erfc` proofs are complete.  The printer's quotient formula applied the decimal scaling twice.  It now agrees with `PrintFloatQuot.quotAt_spec`.  The hyperbolic margin descriptions state the ratio of the two-step allowance to the composed error bound.  The guides retain the named proof modules and remove dependency counts that had changed as shared imports grew.
+
+The README and manuals distinguish generated trap-free results for source functions from those for wrappers without call depth.  The full numerical build uses the measured 10 GiB high and 12 GiB maximum limits, with a twelve-hour timeout.  The compilation example builds its selected LCG module.  Emission examples create their output directories, and the Euler reproduction commands build the proof targets before emission.  The LTG entries correct the permitted scalar calls in a build, the call graph's self-recursion, the list-cell restriction, and the binary32 conversion restriction.
+
+The encoding reviews now cover all 83 instruction forms and active data segments.  The manual comparison checked the added binary64 opcodes against the [official binary instruction rules](https://webassembly.github.io/spec/core/binary/instructions.html), their types against the [numeric validation rules](https://webassembly.github.io/spec/core/valid/instructions.html#numeric-instructions), and active segments against the [binary data rules](https://webassembly.github.io/spec/core/binary/modules.html#data-section) and [data validation rules](https://webassembly.github.io/spec/core/valid/modules.html#data-segments).  The reviews record current source digests and date the earlier axiom reports separately from this comparison.
+
+Paper guides identify the earlier compiler revision required by their reproduction commands and link to tracked copies of the accepted PDFs.  Historical journal links to removed documents now select their last source revision.  Markdown table expressions escape literal pipes, including those in the journal, so absolute values and command pipes stay within their cells.
+
+- [x] Check local links and heading anchors across all tracked Markdown files, with no unresolved target.
+- [x] Check all 591 Markdown tables, 113 shell examples, 146 build and program targets, and the encoding-review digests.  The shell examples pass `bash -n`, and `git diff --check` passes.
+- [x] Request all 629 external targets after removing fragments and excluding local service addresses.  There are 613 HTTP 200 responses, five empty IEEE HTTP 202 responses, and eleven publisher HTTP 403 responses.  The sixteen publisher targets remain unverified.  The existing references remain in place.
+
+The review changes documentation and one build-instruction comment in `tests/verified/run.sh`.  Validation uses the static checks above.  The accepted proof builds and execution tests remain those recorded in the preceding integration entry.  Link reports, HTTP responses, and the review scripts are retained under `build/integration-records/docs-review/` in the primary checkout.

@@ -18,7 +18,7 @@ For finite `a`, `b`, and `c`, `fma a b c` is the nearest-even rounding of the re
 | a nonzero exact result that rounds to zero | the zero with the exact result's sign | 6.3 |
 | an exact result at or beyond the overflow threshold | the infinity with its sign | 4.3.1 |
 
-IEEE 754 leaves the NaN of an invalid operation and the choice of a propagated payload to the implementation, and the port's choices are those of the table.  The function raises no flags, since the dialect has none.  For `0 · ∞ + c` with a quiet NaN `c`, clause 7.2 (c) leaves the invalid flag to the implementation, and the port returns `c`, quieted, as it does for every NaN operand.
+IEEE 754 leaves the NaN of an invalid operation and the choice of a propagated payload to the implementation, and the port's choices are those of the table.  This table describes `fmaBits` on raw words.  The `fma` wrapper takes Lean `Float` arguments and canonicalizes NaN results through `Float.ofBits`.  The function raises no flags, since the dialect has none.  For `0 · ∞ + c` with a quiet NaN `c`, clause 7.2 (c) leaves the invalid flag to the implementation, and the port returns `c`, quieted, as it does for every NaN operand.
 
 ## Algorithm
 
@@ -60,10 +60,10 @@ The theorems come from commit `72655383` of branch `w/expm1`, merged into `trans
 |---|---|---|
 | `fma_toBits` | [`FmaTheorem`](FmaTheorem.lean) | For all `a b c : Float`, `(Fma.fma a b c).toBits = fmaReference a.toBits b.toBits c.toBits`: IEEE 754's fusedMultiplyAdd with roundTiesToEven, signed zeros, subnormal results, overflow, and every NaN and infinity case, with the canonical NaN. |
 | `fmaBits_spec` | [`FmaTheorem`](FmaTheorem.lean) | For all words, `fmaBits a b c` with a NaN result replaced by the canonical NaN is `fmaReference a b c`. |
-| `fma_nearest` | [`FmaSpecTheorem`](FmaSpecTheorem.lean) | `FmaSpec.FmaNearest`: for finite operands with `|a · b + c| ≤ 2^1023` the result is finite and no finite double lies closer to `a · b + c`. |
+| `fma_nearest` | [`FmaSpecTheorem`](FmaSpecTheorem.lean) | `FmaSpec.FmaNearest`: for finite operands with `\|a · b + c\| ≤ 2^1023` the result is finite and no finite double lies closer to `a · b + c`. |
 | `fmaBits_nan_a`, `fmaBits_nan_b`, `fmaBits_nan_c` | [`FmaSpecial`](FmaSpecial.lean) | For a NaN operand, `fmaBits` returns the first NaN of `a`, `b`, and `c` with bit 51 set. |
 
-`verified_compile` generates the compiler's theorems for the module, `Fma.compiled` with its `denote_eq`, `implements`, `initial`, and `bytes` results, which state that the decoded module computes the Lean functions, and [the Verified compiler's documentation](../README.md) describes them.  The root `Verified` import reaches `Fma` through `Tgamma`, so `lake build Verified` builds these generated theorems, as the integration build `opus-merge-tan-1.log` in `build/transcendentals` on the build host did.  No byte theorem or file theorem is planned for `Fma`, which serves as a helper of the gamma and `erfc` modules, and `tests/verified/run.sh` neither writes its module nor checks a file theorem for it, but runs its accuracy check.  The theorems of `tgamma`, `lgamma`, and `erfc` are open, and they can use `fma_nearest` at every call.
+`verified_compile` generates the compiler's theorems for the module, `Fma.compiled` with its `denote_eq`, `implements`, `initial`, and `bytes` results, which state that the decoded module computes the Lean functions, and [the Verified compiler's documentation](../README.md) describes them.  The root `Verified` import reaches `Fma` through `Tgamma`, so `lake build Verified` builds these generated theorems, as the integration build `opus-merge-tan-1.log` in `build/transcendentals` on the build host did.  No byte theorem or file theorem is planned for `Fma`, which serves as a helper of the gamma and `erfc` modules, and `tests/verified/run.sh` neither writes its module nor checks a file theorem for it, but runs its accuracy check.  The completed proofs of [gamma](Tgamma.md), [log-gamma](Lgamma.md), and [the error function complement](Erf.md) use `fma_nearest` at their fused multiply-add calls.
 
 ## Proof
 

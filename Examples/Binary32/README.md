@@ -38,10 +38,12 @@ base.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Binary32.Verify Examples.Binary32.Wgsl
+mkdir -p build/binary32
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Binary32.Module Examples.Binary32.binary32.module build/binary32/binary32.wasm
 build/tools/leanexe-wasmtime-host call build/binary32/binary32.wasm axpy32 f32 \
   f32:1073741824 f32:1077936128 f32:1065353216
+mkdir -p build/wgsl
 tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
   Examples.Binary32.Wgsl Examples.Binary32.scaleKernel build/wgsl/scale.wgsl
 tests/wgsl/run.sh

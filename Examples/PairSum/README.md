@@ -32,6 +32,7 @@ follows the statements of a body.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.PairSum.Verify
+mkdir -p build/pairSum
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.PairSum.Module Examples.PairSum.pairSum.module build/pairSum/pairSum.wasm
 build/tools/leanexe-wasmtime-host call-stats build/pairSum/pairSum.wasm pairSum i64 i64:2 i64:40

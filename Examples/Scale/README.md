@@ -30,6 +30,7 @@ of every module are the runtime's `alloc` and `release`, so the first compiled f
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Scale.Verify
+mkdir -p build/scale
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Scale.Module Examples.Scale.scale.module build/scale/scale.wasm
 build/tools/leanexe-wasmtime-host call build/scale/scale.wasm scale i64 i64:6 i64:7 i64:4

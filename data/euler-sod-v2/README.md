@@ -2,9 +2,10 @@
 
 This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
-Stationary Sod initial data on [0,1], discontinuity at0.5, gamma1.4,
-transmissive boundaries, first-order Rusanov flux, no reconstruction,
-100 cells to t=0.2 in93 accepted steps.
+The run uses stationary Sod initial data on `[0, 1]`, a discontinuity at 0.5,
+an ideal-gas ratio of 1.4, transmissive boundaries, and first-order Rusanov
+flux without reconstruction.  It advances 100 cells to `t = 0.2` in 93
+accepted steps.
 
 ![Five profiles and grid refinement](cell-averages.png)
 

@@ -12,7 +12,7 @@ The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.le
 
 `p.f.implements` states `ImplementsA aborts p.module k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)), where `k` is the index of `f`'s function or entry in the module.  From any heap and store with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent `x`, whose moved blocks lie apart from one another and from the memory that the call reads, a run returns words that represent `f x` and that the caller owns.  The run keeps the allocator invariant and the cap, keeps every region of the caller's heap that lies apart from the moved blocks, and places the result apart from those regions.  When `aborts` is true, a run may instead trap at `unreachable`, which the code does only when an allocation finds no memory, an array would hold `2^29` words or more, or a recursion reaches depth 1,000.  `aborts` is true when the function's result holds arrays, a parameter is owned, the body builds, updates, extends, inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose code takes the call depth, whose result holds arrays, or which owns a parameter.  Otherwise `aborts` is false, and the theorem excludes a trap.
 
-`p.f.trapFree` states `ImplementsA false` for every function, and `ImplementsTables false` for a wrapper whose callee takes no call depth: the call returns `f x` without a trap and raises `top` by at most the function's allocation bound.  When `aborts` is true, the theorem requires a store in which `top` can rise by the bound within the memory cap.  For a function whose code takes the call depth, it also requires a frames condition, which states that every call of the run to a function of this kind happens below depth 1,000.  The reflector also states the bound and the frames condition as Lean terms in the function's parameters, so a concrete bound follows by rewriting, as [Bounds](#bounds-and-total-execution) describes.
+`p.f.trapFree` states `ImplementsA false` for each source function, and `ImplementsTables false` for a wrapper whose callee takes no call depth: the call returns `f x` without a trap and raises `top` by at most the function's allocation bound.  When `aborts` is true, the theorem requires a store in which `top` can rise by the bound within the memory cap.  For a function whose code takes the call depth, it also requires a frames condition, which states that every call of the run to a function of this kind happens below depth 1,000.  The reflector also states the bound and the frames condition as Lean terms in the function's parameters, so a concrete bound follows by rewriting, as [Bounds](#bounds-and-total-execution) describes.
 
 ### Trusted base
 
@@ -173,7 +173,7 @@ Functions 0 and 1 of the module are the runtime's `alloc` and `release`, and fun
 
 ```sh
 export PATH="$HOME/.elan/bin:$HOME/.cargo/bin:$PATH"
-tools/leanrun --timeout 60m lake build Verified
+tools/leanrun --timeout 60m lake build Verified.Examples.Lcg
 mkdir -p build/verified
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Verified.Examples.Lcg Verified.Examples.Lcg.compiled.module build/verified/lcg.wasm
@@ -236,7 +236,9 @@ The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integ
 
 ### The full check
 
-After a change to the verified compiler or its examples, `tools/leanrun --timeout 60m lake build Verified` must finish with no `sorry` warning, and `tests/verified/run.sh` must pass with no failed case.  A new example needs an import in [`Verified.lean`](../Verified.lean), an entry in the module list of `tests/verified/run.sh`, and cases in `Cases.lean`.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
+The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.
+
+After a change to the verified compiler or its examples, `tools/leanrun --memory-high 10G --timeout 12h lake build Verified` must finish with no `sorry` warning, and `tests/verified/run.sh` must pass with no failed case.  A new example needs an import in [`Verified.lean`](../Verified.lean), an entry in the module list of `tests/verified/run.sh`, and cases in `Cases.lean`.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
 
 ## Examples
 

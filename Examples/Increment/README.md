@@ -29,6 +29,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Increment.Verify
+mkdir -p build/increment
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Increment.Module Examples.Increment.increment.module build/increment/increment.wasm
 build/tools/leanexe-wasmtime-host call build/increment/increment.wasm compute array-u64 \

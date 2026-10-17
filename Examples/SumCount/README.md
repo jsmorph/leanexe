@@ -30,6 +30,7 @@ ownership](../../docs/leanexe-manual.md#ownership) gives the rules for who relea
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumCount.Verify
+mkdir -p build/sumCount
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.SumCount.Module Examples.SumCount.sumCount.module build/sumCount/sumCount.wasm
 build/tools/leanexe-wasmtime-host call-stats build/sumCount/sumCount.wasm sumCount array-u64 \

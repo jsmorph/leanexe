@@ -102,7 +102,7 @@ The commands build the proofs, print the certificates of the spectral test, writ
 call `advance 1 0` in the Wasmtime host, with the setup of [the repository
 README](../../README.md#commands).  The call prints
 1442695040888963407, the increment, which one step adds to the state 0.  After
-`tools/leanrun --timeout 60m lake build Verified`,
+`tools/leanrun --memory-high 10G --timeout 12h lake build Verified`,
 [`tests/verified/run.sh`](../../tests/verified/run.sh) writes every module of the verified compiler
 and compares the cases of [`Verified/Examples/Cases.lean`](../../Verified/Examples/Cases.lean)
 between the module and native Lean.

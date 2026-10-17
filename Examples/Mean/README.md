@@ -31,6 +31,7 @@ theorem says nothing about its error relative to the exact mean.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Mean.Verify
+mkdir -p build/mean
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Mean.Module Examples.Mean.mean.module build/mean/mean.wasm
 build/tools/leanexe-wasmtime-host call build/mean/mean.wasm mean f64 \

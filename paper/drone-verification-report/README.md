@@ -1,10 +1,12 @@
 # Verified Terrain-Following Flight Planning in LeanExe
 
+This report describes the earlier compiler at its recorded source revision.  Its reproduction commands require that revision.  [The current compiler manuals](../../README.md#documentation) describe the merged system.
+
 The report opens with the goal of end-to-end verification for practical applications and the repeated-ridges run.  It describes the drone planner's finite-graph optimum, continuous point-mass safety, and generated-WASM-model execution proof.  Its stand-alone LeanExe section includes the scalar and bounded-loop compiler-correctness results on main.
 
 The drone proof subject is revision `820b3958`.  The LeanExe overview and compiler theorem use main at `8dbb8e8a`.  The report distinguishes the generated drone model from an exact-byte artifact theorem and states the physical and heap assumptions.
 
-- [Accepted marXiv version](http://127.0.0.1:8405/abs/2609.00019v4)
+- [Accepted marXiv version](main.pdf)
 - [Editorial review](submission-04/review.txt)
 - [Report source](main.tex)
 - [Report PDF](main.pdf)
@@ -19,7 +21,7 @@ Build from this directory with the installed TeX tools:
 uv run build.py
 ```
 
-The proof check uses the current drone checkout:
+At the recorded revision, the proof check uses:
 
 ```sh
 tools/leanrun --timeout 15m lake -q -d proofs/talos/lean build Project.Drone.Spec Project.Drone.SourceChecks

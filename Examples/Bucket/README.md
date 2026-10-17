@@ -4,7 +4,7 @@
 
 [The program](Program.lean) returns the index of the histogram bucket that holds `x`, for buckets of
 width `width` starting at `lo`: `((x - lo) / width).toUInt64`.  Lean's `Float.toUInt64` saturates,
-so values below `lo` and NaN fall in bucket 0, and values beyond the last word give 2^64 − 1.  [The
+so a negative or NaN quotient gives bucket 0, and a quotient beyond the word range gives 2^64 − 1.  For a positive width, values below `lo` give bucket 0.  [The
 module definition](Module.lean) compiles `bucket` into the 1,374-byte `bucket.wasm`, which takes
 three `f64` arguments and returns an `i64`.
 
@@ -29,6 +29,7 @@ gives an infinite or NaN quotient, which the conversion maps to 2^64 − 1 or 0.
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Bucket.Verify
+mkdir -p build/bucket
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Bucket.Module Examples.Bucket.bucket.module build/bucket/bucket.wasm
 build/tools/leanexe-wasmtime-host call build/bucket/bucket.wasm bucket i64 \

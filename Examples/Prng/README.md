@@ -33,6 +33,7 @@ scalars that leave the store unchanged.  The proofs step through straight-line s
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Prng.Verify
+mkdir -p build/prng
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
   Examples.Prng.Module Examples.Prng.prng.module build/prng/prng.wasm
 build/tools/leanexe-wasmtime-host call build/prng/prng.wasm splitMix list:i64,i64 i64:0

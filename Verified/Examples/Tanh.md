@@ -12,7 +12,7 @@
 | `+∞` | `+∞` | `1` | IEEE 754-2019 9.2.1; C99 F.9.3.3 and F.9.2.6 | `expm1_pos_infinity`, `tanh_pos_infinity` |
 | `-∞` | `-1` (`0xBFF0000000000000`) | `-1` | IEEE 754-2019 9.2.1; C99 F.9.3.3 and F.9.2.6 | `expm1_neg_infinity`, `tanh_neg_infinity` |
 | NaN | the canonical NaN | the canonical NaN | IEEE 754-2019 9.2; C99 F.9 paragraph 11; the deterministic profile of WebAssembly [7] | `expm1_nan`, `tanh_nan` |
-| finite, `exp a - 1 ≥ 2^1024 - 2^970` | `+∞` | | IEEE 754-2019 4.3.1 | `Expm1Theorem.expm1_within_one` |
+| finite, `exp a - 1 ≥ 2^1024 - 2^970` | `+∞` or the largest finite double within the one-step bound | | IEEE 754-2019 4.3.1 gives the reference `+∞` | `Expm1Theorem.expm1_within_one` |
 
 IEEE 754-2019 lists `expm1` and `tanh` among the recommended operations of clause 9.2, which a conforming implementation rounds correctly [5].  fdlibm states an error below one unit in the last place for `expm1` and no bound for `tanh` [1, 2].  The theorems say nothing about floating-point exceptions or `errno`, which the port does not compute.
 
