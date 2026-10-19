@@ -788,6 +788,9 @@ def wrapperFunction (addrs : List UInt64) (params : List Ty) (result : Ty) (dept
 def wordToWord : FuncType := { params := [.i64], results := [.i64] }
 def wordToNone : FuncType := { params := [.i64], results := [] }
 
+def TailFunc.type (func : TailFunc S) : FuncType :=
+  { params := codeParams func.params func.depth, results := func.result.types }
+
 def tailSig (params : List Ty) (result : Ty) (modes : List Mode) : Sig :=
   ⟨params, result, true, modes, false⟩
 
@@ -877,11 +880,13 @@ def Prog.functions : {S : List Sig} → Prog S → List Wasm.Function
   | _, .nil => []
   | _, .cons (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
   | _, .consRec (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
+  | _, .consTail (S := S) f rest => rest.functions ++ [f.function (2 + S.length)]
 
 def Prog.types : {S : List Sig} → Prog S → List FuncType
   | _, .nil => []
   | _, .cons f rest => rest.types ++ [f.type]
   | _, .consRec f rest => rest.types ++ [f.type]
+  | _, .consTail f rest => rest.types ++ [f.type]
 
 /-- The functions whose code takes the call depth, in module order: each one's index, parameter
 types, and result type. -/
@@ -890,6 +895,8 @@ def Prog.depthFuns : {S : List Sig} → Prog S → List (Nat × List Ty × Ty)
   | _, .cons (S := S) f rest =>
     rest.depthFuns ++ (if f.depth then [(2 + S.length, f.params, f.result)] else [])
   | _, .consRec (S := S) f rest => rest.depthFuns ++ [(2 + S.length, f.params, f.result)]
+  | _, .consTail (S := S) f rest =>
+    rest.depthFuns ++ (if f.depth then [(2 + S.length, f.params, f.result)] else [])
 
 /-- The entries of the functions that take the call depth, after the `n` functions of the program,
 each with the type of its own index. -/
@@ -906,6 +913,8 @@ def Prog.exports (n : Nat) : {S : List Sig} → Prog S → List Export
     [{ name := f.name, funcIdx := if f.depth then 2 + n + rest.depthFuns.length else 2 + S.length }]
   | _, .consRec f rest => rest.exports n ++
     [{ name := f.name, funcIdx := 2 + n + rest.depthFuns.length }]
+  | _, .consTail (S := S) f rest => rest.exports n ++
+    [{ name := f.name, funcIdx := if f.depth then 2 + n + rest.depthFuns.length else 2 + S.length }]
 
 /-- The module of a program with constant tables `tables` and the wrappers `wrappers`, each
 function exported under its name.  Functions 0 and 1 are the runtime's `alloc` and `release`, the
@@ -939,6 +948,7 @@ theorem Prog.functions_length (prog : Prog S) : prog.functions.length = S.length
   | nil => rfl
   | cons f rest ih => simp [Prog.functions, ih]
   | consRec f rest ih => simp [Prog.functions, ih]
+  | consTail f rest ih => simp [Prog.functions, ih]
 
 theorem compileWith_funcs (prog : Prog S) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {k : Nat} (hk : k < S.length) :

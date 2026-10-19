@@ -838,6 +838,7 @@ inductive Prog : List Sig → Type where
   | nil : Prog []
   | cons (f : Func S) (rest : Prog S) : Prog (f.sig :: S)
   | consRec (f : RecFunc S) (rest : Prog S) : Prog (f.sig :: S)
+  | consTail (f : TailFunc S) (rest : Prog S) : Prog (f.sig :: S)
 
 instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
   | .elem e => e.instInhabited
@@ -849,6 +850,7 @@ def Prog.recFree : {S : List Sig} → Prog S → Bool
   | _, .nil => true
   | _, .cons _ rest => rest.recFree
   | _, .consRec _ _ => false
+  | _, .consTail _ _ => false
 
 /-- The Lean functions that a program's functions mean, for a program without recursion.  A
 recursive function has no meaning by its body alone, and gets the default value here; its meaning
@@ -857,6 +859,7 @@ def Prog.funs : {S : List Sig} → Prog S → Funs S
   | _, .nil => .nil
   | _, .cons f rest => .cons (f.denote rest.funs) rest.funs
   | _, .consRec f rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
+  | _, .consTail f rest => .cons (fun _ => @default _ (Ty.instInhabited f.result)) rest.funs
 
 /-- `funs` are the Lean functions that a program's functions mean: a function's meaning is its
 body's at the meanings of the functions after it, and a recursive function's meaning is any `M`
@@ -870,12 +873,17 @@ inductive Prog.Meaning : {S : List Sig} → Prog S → Funs S → Prop
     (M : Env f.params → f.result.denote) : Prog.Meaning rest funs →
     (∀ env, M env = f.body.denote (.cons (g := f.sig) M funs) env) →
     Prog.Meaning (Prog.consRec f rest) (.cons M funs)
+  | consTail {S : List Sig} {f : TailFunc S} {rest : Prog S} {funs : Funs S}
+    (M : Env f.params → f.result.denote) : Prog.Meaning rest funs → f.Decreases funs →
+    (∀ env, M env = (f.body.denote funs env).elim M id) →
+    Prog.Meaning (Prog.consTail f rest) (.cons M funs)
 
 theorem Prog.meaning_funs : {S : List Sig} → (prog : Prog S) → prog.recFree = true →
     prog.Meaning prog.funs
   | _, .nil, _ => .nil
   | _, .cons _ rest, h => .cons (rest.meaning_funs h)
   | _, .consRec _ _, h => nomatch h
+  | _, .consTail _ _, h => nomatch h
 
 theorem Prog.get_here {S : List Sig} (f : Func S) (rest : Prog S) (env : Env f.params) :
     (Prog.cons f rest).funs.get .here env = f.denote rest.funs env := rfl
