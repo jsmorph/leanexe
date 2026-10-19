@@ -36,7 +36,7 @@ partial def sourceExprEq (left right : Lean.Expr) : MetaM Lean.Expr := do
   let af := a.getAppFn
   let bf := b.getAppFn
   unless af.isConst && af == bf && af.constName!.getPrefix == ``Verified.Expr do
-    throwError "verified_compile: different source constructors:\n{a}\n{b}"
+    throwError "verified_compile: different source constructors {af} and {bf}"
   let mut args := a.getAppArgs
   let target := b.getAppArgs
   unless args.size == target.size do
