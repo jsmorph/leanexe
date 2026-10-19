@@ -307,7 +307,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [ ] Verified compiler: sum types with fields.
-- [ ] Verified compiler: lists and other recursive types.
+- [ ] Verified compiler: lists and other recursive types.  [The typed-tree foundations](../Verified/Tree.lean) prove the record encoding, the two list conversion laws, and agreement with the existing list encoding.  Source operations and compiler integration remain pending.
 - [ ] Verified compiler: the WGSL path and binary32 GPT.  Float32 values, arrays, arithmetic, comparisons, and word conversions are supported.  Lists precede WGSL and GPT in the remaining work.
 - [ ] Verified compiler: owned record and pair parameters.
 
