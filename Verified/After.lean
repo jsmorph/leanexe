@@ -440,6 +440,23 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
     · have := ihE modes (by simpa using h1)
       simp only [Bool.or_eq_true] at this; tauto
     · exact Or.inr h1
+  | fold x init body ihI ihB =>
+    intro modes h
+    simp only [Expr.mode] at h
+    have : init.mode modes = .owned ∨
+        body.mode (.borrowed :: .borrowed :: .borrowed :: modes) = .owned := by
+      cases ha : init.mode modes <;>
+        cases hb : body.mode (.borrowed :: .borrowed :: .borrowed :: modes) <;>
+        simp_all [Mode.join]
+    rcases this with h' | h'
+    · have := ihI modes h'
+      simp only [Expr.aborts, Bool.or_eq_true] at this ⊢
+      tauto
+    · have := ihB _ h'
+      simp only [List.any_cons, Bool.or_eq_true] at this
+      simp only [Expr.aborts, Bool.or_eq_true]
+      simp_all
+      tauto
   | loop count init cond body _ ihI _ ihB =>
     intro modes h
     simp only [Expr.mode] at h

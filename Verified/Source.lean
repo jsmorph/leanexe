@@ -288,7 +288,10 @@ the value of `init`, for each index 0 to `count - 1` it applies `body` to a stat
 and the index as variable 1 of `body`.  `cond` does not see the index, so a state that fails it
 stays for the remaining indices.  `LeanExe.loop` is the loop whose `cond` is `true`, and
 `LeanExe.repeatWhile` is the one whose `body` ignores the index.  `size x` is the number of
-elements of the array variable `x` as a word, and `get x i` is element `i` of `x`, or the element
+elements of the array variable `x` as a word.  `fold x init body` folds over every element of
+`x`, with the element, accumulator, and `UInt64` index as variables 0, 1, and 2 of `body`.
+The compiled fold uses the represented array's word-sized length.  `get x i` is element `i`
+of `x`, or the element
 type's default value when `i` is not below the size, as Lean's `x[i.toNat]!` gives.
 `build count elem` is `LeanExe.build`: the array of `count` elements whose element `i` is the
 value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
@@ -317,6 +320,8 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | letPair (e : Expr S Γ (.pair s t)) (body : Expr S (t :: s :: Γ) u) : Expr S Γ u
   | loop (count : Expr S Γ .word) (init : Expr S Γ t) (cond : Expr S (t :: Γ) .bool)
       (body : Expr S (t :: .word :: Γ) t) : Expr S Γ t
+  | fold (x : Var Γ (.array e)) (init : Expr S Γ t)
+      (body : Expr S (.elem e :: t :: .word :: Γ) t) : Expr S Γ t
   | size (x : Var Γ (.array e)) : Expr S Γ .word
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
   | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
@@ -355,6 +360,14 @@ abbrev Expr.app {S : List Sig} {Γ : List Ty} {g : Sig} (i : Nat) (args : Args S
     (h : S[i]? = some g := by rfl) : Expr S Γ g.result :=
   .call (FVar.ofIndex S i h) args.get
 
+def Expr.foldStep (x : Var Γ (.array e)) (body : Expr S (.elem e :: t :: .word :: Γ) t) :
+    Expr S (t :: .word :: Γ) t :=
+  .letE (.get (.there (.there x)) (.var (.there .here))) body
+
+def Expr.foldExpand (x : Var Γ (.array e)) (init : Expr S Γ t)
+    (body : Expr S (.elem e :: t :: .word :: Γ) t) : Expr S Γ t :=
+  .loop (.size x) init (.bool true) (Expr.foldStep x body)
+
 /-- The value of an expression for the functions `funs` and the values `env` of its
 variables. -/
 def Expr.denote (funs : Funs S) :
@@ -380,6 +393,10 @@ def Expr.denote (funs : Funs S) :
       fun i acc =>
         bif cond.denote funs (.cons acc env) then body.denote funs (.cons acc (.cons i env))
         else acc
+  | _, _, .fold (t := t) x init body, env =>
+    ((env.get x).foldl (fun (state : UInt64 × t.denote) value =>
+      (state.1 + 1, body.denote funs (.cons value (.cons state.2 (.cons state.1 env)))))
+      (0, init.denote funs env)).2
   | _, _, .size x, env => (env.get x).size.toUInt64
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
   | _, _, .build count elem, env =>
@@ -427,6 +444,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .pair first second => first.aborts || second.aborts
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
+  | _, _, .fold _ init body => init.aborts || body.aborts
   | _, _, .size _ => false
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
@@ -451,6 +469,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letPair e body => e.depthCalls || body.depthCalls
   | _, _, .loop count init cond body =>
     count.depthCalls || init.depthCalls || cond.depthCalls || body.depthCalls
+  | _, _, .fold _ init body => init.depthCalls || body.depthCalls
   | _, _, .size _ => false
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
@@ -479,6 +498,8 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .letPair e body, i => e.uses i || body.uses (i + 2)
   | _, _, .loop count init cond body, i =>
     count.uses i || init.uses i || cond.uses (i + 1) || body.uses (i + 2)
+  | _, _, .fold x init body, i =>
+    (i == x.index) || init.uses i || body.uses (i + 3)
   | _, _, .size x, i => i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
@@ -516,6 +537,8 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .letPair e body => e.useMask ||| body.useMask >>> 2
   | _, _, .loop count init cond body =>
     count.useMask ||| init.useMask ||| cond.useMask >>> 1 ||| body.useMask >>> 2
+  | _, _, .fold x init body =>
+    (1 <<< x.index) ||| init.useMask ||| body.useMask >>> 3
   | _, _, .size x => 1 <<< x.index
   | _, _, .get x k => 1 <<< x.index ||| k.useMask
   | _, _, .build count elem => count.useMask ||| elem.useMask >>> 1
@@ -591,6 +614,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letPair e body => e.placeArgs && body.placeArgs
   | _, _, .loop count init cond body =>
     count.placeArgs && init.placeArgs && cond.placeArgs && body.placeArgs
+  | _, _, .fold _ init body => init.placeArgs && body.placeArgs
   | _, _, .get _ i => i.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.placeArgs && v.placeArgs

@@ -1,4 +1,5 @@
 import Verified.Potential
+import Verified.ArrayFold
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
@@ -1162,7 +1163,8 @@ theorem spec_size (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
     exact LocalsHold.word hold
   have hnk : (env.get x).size * e.width < 536870912 := by
     have := hA.1; rw [Elem.words_size] at this; omega
-  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, Var.sizeCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
+    List.nil_append]
   simp only [wp_localGet_cons, hPtr, wp_wrapI64_cons, wp_load64_cons, wrap_toUInt32,
     UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
   rw [ite_eq_right (by omega), hA.lengthRead, Elem.words_size, wp_divCode e.width_pos,
@@ -1189,7 +1191,8 @@ theorem spec_get (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
   have hi : i.width ≤ max i.width 2 := Nat.le_max_left ..
   have h2 : 2 ≤ max i.width 2 := Nat.le_max_right ..
   simp only [Expr.placeArgs] at hPlace
-  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, getCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
+    List.nil_append]
   have hIn : ∀ k, ((live k || k == x.index) || i.uses k) = true →
       (live k || (Expr.get x i).uses k) = true := fun k h => by
     simp only [Expr.uses]; exact live_assoc _ _ _ h
@@ -3178,7 +3181,8 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
       simp only [Expr.fits, Bool.and_eq_true] at hd
       exact ⟨hd.1.1, hd.1.2, hd.2⟩
   have hT := Expr.allocs_loop funs flags bounds (slots.map Slot.mode) paid live count init cond body env
-  simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
+  simp only [Expr.code, loopCode, Expr.usesFast_eq, List.append_assoc, List.cons_append,
+    List.nil_append]
   -- The count, in local `base`.
   have hCountIn : ∀ i, ((live i || cond.uses (i + 1) || body.uses (i + 2) || init.uses i) ||
       count.uses i) = true → (live i || (Expr.loop count init cond body).uses i) = true :=
@@ -3809,6 +3813,30 @@ theorem spec_loop (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} {count : Expr S Γ
   · have := UInt64.lt_iff_toNat_lt.mp hlt
     simp only [hget8]
     omega
+
+theorem spec_fold (hm : Runtime m) {Γ' : List Ty} {e : Elem} {t : Ty}
+    (x : Var Γ' (.array e)) {init : Expr S Γ' t}
+    {body : Expr S (.elem e :: t :: .word :: Γ') t}
+    (initSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv init env
+      slots paid live)
+    (bodySpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv body env
+      slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.fold x init body)
+      env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+    hPlace rest Q hTrap hNext
+  obtain ⟨_, _, _, hRep⟩ := hVars.1 _ x (by simp [Expr.uses])
+  have hValue := Expr.foldExpand_denote x init body funs env hRep.array_size_lt
+  have hLoop : CodeSpec m funs flags bounds fits host pv (Expr.foldExpand x init body)
+      env slots paid live :=
+    spec_loop hm (spec_size hm x) initSpec (spec_bool true)
+      (spec_letE hm (spec_get hm (.there (.there x)) (spec_var hm (.there .here))) bodySpec)
+      env slots paid live
+  simp only [CodeSpec, trapFlag, Expr.foldExpand_uses, Expr.foldExpand_width,
+    Expr.foldExpand_placeArgs, Expr.foldExpand_aborts, Expr.foldExpand_allocs,
+    Expr.foldExpand_fits, Expr.foldExpand_mode, Expr.foldExpand_paid, Expr.foldExpand_code,
+    hValue] at hLoop
+  exact hLoop h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
 
 /-- `LeanExe.build`: the count in local `base`, a trap at `unreachable` when it is `2 ^ 29` or
 more, a new owned array at the address in local `base + 1`, and the index in local `base + 2`.
@@ -6045,6 +6073,10 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
     exact spec_loop hm (countSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (initSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (condSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | fold x init body initSpec bodySpec =>
+    intro hD
+    exact spec_fold hm x (initSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
   | size x => intro _; exact spec_size hm x
   | get x i iSpec =>
