@@ -2237,9 +2237,16 @@ where
     | (``Eq, #[α, _, _]) | (``Ne, #[α, _, _]) =>
       if (← whnfR α).isConstOf ``Bool then
         let d ← mkAppOptM ``Decidable.decide #[some p, some inst]
-        let T ← mkAppM ``ite #[← mkEq d (mkConst ``Bool.true), a, b]
-        return ← reflectVia T (← mkAppOptM ``ite_decide_eq
-          #[some (← inferType a), some p, some inst, some a, some b])
+        let rc ← reflect c d
+        let h ← mkAppM ``ite_eq #[rc.proof, ra.proof, rb.proof]
+        let A ← flatValue a
+        let B ← flatValue b
+        let eq ← mkAppOptM ``ite_decide_eq
+          #[some (← inferType A), some p, some inst, some A, some B]
+        return ⟨← mkAppM ``Expr.ite #[rc.src, ra.src, rb.src],
+          ← mkEqTrans h eq, ra.ty, a,
+          iteBound ``ite_bound [(`c, rc.src)] [(`hc, rc)] rc.bound,
+          iteFits ``ite_fits [(`c, rc.src)] [(`hc, rc)] rc.fits⟩
     | _ => pure ()
     if let some (op, l, r) ← fcomparison? p then
       let rl ← reflect c l
