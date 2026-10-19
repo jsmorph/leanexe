@@ -47,6 +47,8 @@ namespace Verified.Reflect
 
 open Lean Meta Elab Command Term
 
+initialize registerTraceClass `Verified.reflect
+
 def elemOf? (type : Lean.Expr) : MetaM (Option Elem) := do
   let type ← whnfR type
   if type.isConstOf ``UInt64 then return some .word
@@ -3809,6 +3811,7 @@ def elabVerifiedCompile : CommandElab
       let mut wraps : Array (Reflected × Callee × List Nat) := #[]
       let mut tableNames : Array Name := #[]
       for name in names do
+        trace[Verified.reflect] "reflect {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
         let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
         let fbase := base ++ Name.mkSimple name.getString!
         -- A wrapper passes constant tables to a listed function; it is no function of the
@@ -3852,6 +3855,7 @@ def elabVerifiedCompile : CommandElab
         let some bound := r.bound? | throwError "verified_compile: the bound of {name}"
         callees := { name := name, sig := sig, denoteEq := r.meaningEq, bound } :: callees
         out := out.push r
+        trace[Verified.reflect] "reflected {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
       let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
       addDefinition (base ++ `funs) (mkApp (Lean.mkConst ``Funs) sigsExpr) funs
@@ -3902,6 +3906,7 @@ def elabVerifiedCompile : CommandElab
     let mut entries := 0
     for k in [0:n] do
       let r := reflected[k]!
+      trace[Verified.reflect] "prove {r.name}"
       let simple := Name.mkSimple r.name.getString!
       let implName := base ++ simple ++ `implements
       let fvar ← fvarStx (n - 1 - k)
@@ -4136,6 +4141,7 @@ def elabVerifiedCompile : CommandElab
     let P ← `(fun k : Nat => Wasm.Encoding.funcOk ($moduleId).funcs[k]! ($bodiesId)[k]! = true)
     let mut chain ← `(Wasm.Encoding.forall_lt_zero $P)
     for k in [0:nb] do
+      trace[Verified.reflect] "encode function {k}"
       let funcId := mkIdent (target.getId ++ Name.mkSimple s!"func_ok_{k}")
       elabCommand (← `(set_option maxRecDepth 100000 in
         theorem $funcId :
