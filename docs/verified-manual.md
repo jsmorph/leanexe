@@ -54,7 +54,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | Float arithmetic | `+`, `-`, `*`, `/`, `Float.sqrt`, `Float.abs`, negation, `min`, `max`, literals |
 | Float comparisons | `==`, `!=`, `<`, `≤`, `>`, `≥` |
 | Conversions | `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, `Float.ofBits` |
-| `Bool` operations | `!`, `&&`, `\|\|`, `decide` |
+| `Bool` operations | `!`, `&&`, `\|\|`, `==`, `!=`, `decide` |
 | Bindings | `let`, and `match` on a pair, a tuple, or a structure |
 | Conditionals | `if` on a `Bool` or a comparison, `if h : c` whose branches do not use `h`, and `match` on an enumeration |
 | Calls | A listed definition applied to all its arguments, or an unfolded `@[inline]` helper |
@@ -62,7 +62,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 
-Every construct has Lean's meaning.  Division by zero gives 0, the remainder by zero is the dividend, a shift uses its amount modulo 64, and an update, an insertion, or a removal past the end of an array leaves the array unchanged.  `min` and `max` are Lean's definitions, `if a ≤ b`, which on floats differ from `f64.min` and `f64.max` on NaN and on zeros of opposite sign.  `=` and `≠` on floats compare bit patterns, so `0.0 ≠ -0.0`, and no f64 instruction computes them, so the reflector rejects them and accepts `==` and `!=`.  Lean's other float functions, such as `Float.exp` and `Float.sin`, are opaque, so a program computes them with definitions of its own, as the ports of fdlibm and of Arm's optimized-routines among the examples do.
+Every construct has Lean's meaning.  Division by zero gives 0, the remainder by zero is the dividend, a shift uses its amount modulo 64, and an update, an insertion, or a removal past the end of an array leaves the array unchanged.  Boolean equality supports `==`, `!=`, decisions of `=` and `≠`, and `if` on either proposition.  `==` and `!=` on `Bool` require `LawfulBEq Bool`.  `min` and `max` are Lean's definitions, `if a ≤ b`, which on floats differ from `f64.min` and `f64.max` on NaN and on zeros of opposite sign.  `=` and `≠` on floats compare bit patterns, so `0.0 ≠ -0.0`, and no f64 instruction computes them, so the reflector rejects them and accepts `==` and `!=`.  Lean's other float functions, such as `Float.exp` and `Float.sin`, are opaque, so a program computes them with definitions of its own, as the ports of fdlibm and of Arm's optimized-routines among the examples do.
 
 ### Loops and builds
 
@@ -114,7 +114,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 | `Lean has no Represent instance for …, so no theorem can be stated for it` | A parameter or result whose type has no instance, such as an array of tuples | Keep such an array local, or use an array of structures with a `Flat` instance. |
 | `an array holds elements, not …` | An array of arrays, or of records with array fields | Store the inner arrays in one array at computed positions. |
 | ``the `Flat` instance of … is not a tuple of its fields``, ``… repeats a field``, ``… does not hold all its fields`` | A `Flat` instance other than the tuple of the structure's fields | Map the structure to the tuple of its fields, each once. |
-| `comparisons apply to words, floats, and enumerations, not …` | A comparison of other values | Compare the components. |
+| `unsupported comparison on …` | A comparison outside the supported word, float, enumeration, and Boolean equality forms | Compare supported scalar components. |
 | `unsupported negation …` | `-x` on words | Write `0 - x`. |
 | `… has universe parameters` | A universe-polymorphic definition | Define the function at one universe. |
 | `a match on several values is not supported`, `` `match h : …` is not supported `` | A `match` with several discriminants or a named hypothesis | Nest the matches, and use `if` for tests. |
@@ -260,7 +260,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [`Select`](../Verified/Examples/Select.lean) | `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
-| [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct in-bounds array methods, and empty arrays of words, floats, and records, including a record without an `Inhabited` instance. |
+| [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct in-bounds array methods, empty arrays of words, floats, and records, including a record without an `Inhabited` instance, and Boolean equality, decisions, and conditions with operand calls that consume arrays. |
 | [Binary64 GPT-2](../Verified/Examples/Gpt.lean) | The 48 unchanged functions of [the GPT example](../Examples/Gpt/README.md), including full-sequence inference, cached steps, and sampling.  The compiler derives each function's execution, allocation-bound, and trap-free theorems and the module's bytes theorem. |
 | [`Loops`](../Verified/Examples/Loops.lean) | Loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition. |
 | [`Arrays`](../Verified/Examples/Arrays.lean) | Sums, a dot product, a count, and a search over arrays in loops, reads at computed positions, a pair of arrays passed to calls, and an array chosen by an `if` and bound with `let`. |

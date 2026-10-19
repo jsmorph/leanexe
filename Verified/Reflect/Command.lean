@@ -33,7 +33,7 @@ source instances along `φ`.  Its body may use literals, its parameters, `let`, 
 comparison, also as `if h : c` with branches that do not use `h`, pairs built with `(a, b)` and
 taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
-`match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
+`match` and comparisons on enumerations, Boolean equality and inequality, `LeanExe.loop`,
 `LeanExe.repeatWhile`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
@@ -67,6 +67,9 @@ def elemZero : Elem → MetaM Lean.Expr
   | .bool => pure (mkConst ``Bool.false)
   | .float => mkAppM ``Float.ofBits #[toExpr (0 : UInt64)]
   | .prod a b => do mkAppM ``Prod.mk #[← elemZero a, ← elemZero b]
+
+def boolEqTerm (a b : Lean.Expr) : MetaM Lean.Expr := do
+  mkAppM ``ite #[← mkEq a (mkConst ``Bool.true), b, ← mkAppM ``not #[b]]
 
 /-- The path along the steps `steps`, from the outside in, of a component of an element of type
 `e`: `false` for the first part and `true` for the second.  Also the component's type. -/
@@ -1529,16 +1532,27 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       let notEq ← mkAppOptM ``decide_not #[some (← mkEq a b), none, some inst]
       let T ← mkAppM ``not #[← mkDecide (← mkEq a b)]
       return ← reflectVia T (← mkExpectedTypeHint (← mkEqSymm notEq) (← mkEq T e))
+    if let (``Eq, #[α, a, b]) := p.consumeMData.getAppFnArgs then
+      if (← whnfR α).isConstOf ``Bool then
+        return ← reflectVia (← boolEqTerm a b)
+          (← mkAppOptM ``bool_decide_eq #[some a, some b, some inst])
     if let some r ← enumDecide? p inst then return r
     if let some (op, a, b) ← fcomparison? p then return (← reflectFCmp op a b).as' e
     let some (op, a, b) ← comparison? p
       | throwError "verified_compile: unsupported decision {p}"
     return (← reflectCmp op a b).as' e
   | ``BEq.beq, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Bool then
+      let lawful ← enumLawful α inst
+      return ← reflectVia (← boolEqTerm a b)
+        (← mkAppOptM ``bool_beq_eq #[some inst, some lawful, some a, some b])
     if let some r ← enumBEq? ``BEq.beq ``flat_beq α inst a b then return r
     let r ← if ← isFloat α then reflectFCmp .eq a b else reflectCmp .eq a b
     return r.as' e
   | ``bne, #[α, inst, a, b] =>
+    if (← whnfR α).isConstOf ``Bool then
+      return ← reflectAs (← mkAppM ``not #[← mkAppOptM ``BEq.beq
+        #[some α, some inst, some a, some b]]) e
     if let some r ← enumBEq? ``bne ``flat_bne α inst a b then return r
     if ← isFloat α then
       let r ← reflectFCmp .eq a b
@@ -1617,7 +1631,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     reflectAs (← mkAppOptM ``ite #[some α, some p, some inst, some ta, some tb]) e
   | ``ite, #[α, p, inst, a, b] =>
     if let some r ← enumIte? α p inst a b then return r
-    let r ← reflectIte p a b
+    let r ← reflectIte p inst a b
     let some φ := (← shapeOf α).flat | return r.as' e
     -- The `if` of the flattenings is the flattening of the `if`.
     let comm ← mkAppOptM ``apply_ite #[none, none, some φ, some p, some inst, some a, some b]
@@ -2185,7 +2199,7 @@ where
       reflectVia chainReal eq
   /-- An `if` on the condition `p` between `a` and `b`, whose meaning is the `if` of their
   flattenings. -/
-  reflectIte (p a b : Lean.Expr) : MetaM Reflection := do
+  reflectIte (p inst a b : Lean.Expr) : MetaM Reflection := do
     let ra ← reflect c a
     let rb ← reflect c b
     let iteBound (thm : Name) (condArgs : List (Name × Lean.Expr))
@@ -2218,6 +2232,14 @@ where
           ← mkAppM ``ite_eq #[rc.proof, ra.proof, rb.proof], ra.ty, a,
           iteBound ``ite_bound [(`c, rc.src)] [(`hc, rc)] rc.bound,
           iteFits ``ite_fits [(`c, rc.src)] [(`hc, rc)] rc.fits⟩
+    | _ => pure ()
+    match p.consumeMData.getAppFnArgs with
+    | (``Eq, #[α, _, _]) | (``Ne, #[α, _, _]) =>
+      if (← whnfR α).isConstOf ``Bool then
+        let d ← mkAppOptM ``Decidable.decide #[some p, some inst]
+        let T ← mkAppM ``ite #[← mkEq d (mkConst ``Bool.true), a, b]
+        return ← reflectVia T (← mkAppOptM ``ite_decide_eq
+          #[some (← inferType a), some p, some inst, some a, some b])
     | _ => pure ()
     if let some (op, l, r) ← fcomparison? p then
       let rl ← reflect c l
@@ -2574,8 +2596,7 @@ where
   reflectCmp (op : CmpOp) (a b : Lean.Expr) : MetaM Reflection := do
     let rl ← reflect c a
     unless rl.ty == .word do
-      throwError "verified_compile: comparisons apply to words, floats, and enumerations, not \
-        {← inferType a}"
+      throwError "verified_compile: unsupported comparison on {← inferType a}"
     let rr ← reflect c b
     return ⟨← mkAppM ``Expr.cmp #[cmpExpr op, rl.src, rr.src],
       ← mkAppM ``cmp_eq #[cmpExpr op, rl.proof, rr.proof], .bool, a,
