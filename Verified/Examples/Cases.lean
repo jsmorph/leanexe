@@ -3,6 +3,7 @@ import Verified.Examples.Mix
 import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
+import Verified.Examples.Frontend
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
@@ -364,6 +365,24 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for x in words do
+    IO.println s!"frontend|inlineScalar|i64|i64:{x}|{Frontend.inlineScalar x}"
+    IO.println s!"frontend|listedCall|i64|i64:{x}|{Frontend.listedCall x}"
+  for n in counts do
+    IO.println s!"frontend|inlineLoop|i64|i64:{n}|{Frontend.inlineLoop n}"
+  for xs in arrays do
+    let positions := ([(0 : UInt64), 1, xs.size.toUInt64, (xs.size + 1).toUInt64,
+      18446744073709551615]).eraseDups
+    for i in positions do
+      let a := arrayArg xs
+      IO.println s!"frontend|setDirect|array-u64|{a} i64:{i} i64:9|\
+        {arrayOut (Frontend.setDirect xs i 9)}|1|1"
+      IO.println s!"frontend|insertDirect|array-u64|{a} i64:{i} i64:9|\
+        {arrayOut (Frontend.insertDirect xs i 9)}|1|2"
+      IO.println s!"frontend|eraseDirect|array-u64|{a} i64:{i}|\
+        {arrayOut (Frontend.eraseDirect xs i)}|1|1"
+      IO.println s!"frontend|inlineArray|array-u64|{a} i64:{i} i64:9|\
+        {arrayOut (Frontend.inlineArray xs i 9)}|1|2"
   for (a, b, c) in polyCases do
     IO.println s!"poly|poly|i64|i64:{a} i64:{b} i64:{c}|{Poly.poly a b c}"
   for (a, b, c) in mixCases do

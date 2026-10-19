@@ -36,7 +36,8 @@ and taken apart with their fields or `match`, enumeration constructors, `Flat.fl
 `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
 `LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
-constants whose type holds no array, as their values, calls of the listed definitions before it,
+constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
+`eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
 and, in a recursive definition, calls of itself.  A definition
 `f x := g T₁ … Tₖ x` that applies a listed definition `g` to constants `Tᵢ` of type `Array UInt64`
 before its own parameters is a wrapper: the module holds the tables `Tᵢ` in data segments and
@@ -1666,6 +1667,16 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         return (← mkLambdaFVars uc.xs b.term, ← mkLambdaFVars uc.xs b.proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u rc.src α init cnd hc F (some uc.fits)⟩
+  | ``Array.setIfInBounds, #[α, xs, k, v] =>
+    reflectAs (← mkAppOptM ``Array.set! #[some α, some xs, some k, some v]) e
+  | ``Array.insertIdxIfInBounds, #[α, xs, k, v] =>
+    let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
+      | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
+    reflectAs (← mkAppOptM ``LeanExe.insertAt #[some α, some xs, some i, some v]) e
+  | ``Array.eraseIdxIfInBounds, #[α, xs, k] =>
+    let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
+      | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
+    reflectAs (← mkAppOptM ``LeanExe.eraseAt #[some α, some xs, some i]) e
   | ``Array.set!, setArgs@#[α, xs, k, v] =>
     let se ← shapeOf α
     let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
@@ -1917,7 +1928,12 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       some (← se.fn β), some hd, some x, some xs, none, none, some (← arrayEq x xs),
       some ri.proof]
     return ⟨src, proof, .elem el, e, bound, fits⟩
-  | _, _ => throwError "verified_compile: unsupported term {e}"
+  | _, _ =>
+    if let .const fn _ := e.getAppFn then
+      if Lean.Compiler.hasInlineAttribute (← getEnv) fn then
+        if let some unfolded ← unfoldDefinition? e then
+          return ← reflectAs unfolded.headBeta e
+    throwError "verified_compile: unsupported term {e}"
 where
   /-- The proof by `rfl` that the source value of the array variable `xs` is its flattening. -/
   arrayEq (x xs : Lean.Expr) : MetaM Lean.Expr := do

@@ -12,16 +12,27 @@
 # checks compare the transcendental functions with references computed with Lean's integers, each
 # within the bound its docstring states, and Verified/Examples/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified` first.  Usage: tests/verified/run.sh
+# Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified` first.
+# Usage: tests/verified/run.sh [--cases MODULE]
 set -euo pipefail
+case_module=""
+if [ "$#" -ne 0 ]; then
+  if [ "$#" -ne 2 ] || [ "$1" != "--cases" ] || [ -z "$2" ]; then
+    echo "usage: tests/verified/run.sh [--cases MODULE]" >&2
+    exit 2
+  fi
+  case_module=$2
+fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
+emitted=0
 for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:compiled.module:mix \
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
+    Verified.Examples.Frontend:compiled.module:frontend \
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
     Verified.Examples.Owned:compiled.module:owned \
@@ -60,13 +71,23 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Bessel:compiled.module:bessel Verified.Examples.Tgamma:compiled.module:tgamma \
     Verified.Examples.Lgamma:compiled.module:lgamma Verified.Examples.Erfc:compiled.module:erfc; do
   IFS=: read -r module constant name <<<"$entry"
+  if [ -n "$case_module" ]; then
+    [ "$name" = "$case_module" ] || continue
+    tools/leanrun --timeout 15m lake build "$module"
+  fi
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
+  emitted=$((emitted + 1))
 done
+if [ "$emitted" -eq 0 ]; then
+  echo "fail: unknown module $case_module" >&2
+  exit 2
+fi
 # Each entry names the written module, the theorem module, and the file theorem module.  The file
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers
 # them all.
+if [ -z "$case_module" ]; then
 for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2File \
     trig:TrigTheorem:TrigFile log2:Log2Theorem:Log2File log10:Log10Theorem:Log10File \
     tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
@@ -92,6 +113,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
   fi
   echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
 done
+fi
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
@@ -119,6 +141,9 @@ echo "native Lean: $reads accesses past the end, as the cases expect"
 passed=0
 failed=0
 while IFS='|' read -r name export result args expected live allocsMax; do
+  if [ -n "$case_module" ] && [ "$name" != "$case_module" ]; then
+    continue
+  fi
   read -ra argv <<<"$args"
   if [ "$expected" = "trap" ]; then
     if "$host" call "$out/$name.wasm" "$export" "$result" "${argv[@]}" >/dev/null 2>"$errors"; then
@@ -153,6 +178,9 @@ while IFS='|' read -r name export result args expected live allocsMax; do
 done <"$cases"
 echo "verified: passed $passed failed $failed"
 [ "$passed" -gt 0 ] && [ "$failed" -eq 0 ] || exit 1
+if [ -n "$case_module" ]; then
+  exit 0
+fi
 # The accuracy of Trig.sin and Trig.cos against a reference computed with Lean's integers, in
 # native Lean.
 tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
