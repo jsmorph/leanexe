@@ -1,4 +1,5 @@
 import Verified.State
+import Verified.Rename
 
 namespace Verified
 
@@ -43,8 +44,26 @@ theorem Ty.Rep.array_fold_eq_loop {mode : Mode} {heap : Heap} {store : Store Uni
       (fun i acc => step acc xs[i.toNat]!) :=
   Verified.array_fold_eq_loop xs step init h.array_size_lt
 
+/-- The loop implementation of a fold body whose variables 0 and 1 are the element and
+accumulator. -/
+def Expr.foldLoop (x : Var Γ (.array e)) (init : Expr S Γ t)
+    (body : Expr S (.elem e :: t :: Γ) t) : Expr S Γ t :=
+  .loop (.size x) init (.bool true)
+    (.letE (.get (.there (.there x)) (.var (.there .here)))
+      (body.rename (Renaming.lift (Renaming.lift (fun x => .there x)))))
+
+theorem Expr.denote_foldLoop (x : Var Γ (.array e)) (init : Expr S Γ t)
+    (body : Expr S (.elem e :: t :: Γ) t) (funs : Funs S) (env : Env Γ)
+    (hSize : (env.get x).size < UInt64.size) :
+    (Expr.foldLoop x init body).denote funs env =
+      (env.get x).foldl (fun acc value => body.denote funs (.cons value (.cons acc env)))
+        (init.denote funs env) := by
+  rw [array_fold_eq_loop (env.get x) _ _ hSize]
+  simp [Expr.foldLoop, Expr.denote, Expr.denote_rename, Env.get]
+
 #print axioms array_fold_eq_loop
 #print axioms Ty.Rep.array_size_lt
 #print axioms Ty.Rep.array_fold_eq_loop
+#print axioms Expr.denote_foldLoop
 
 end Verified
