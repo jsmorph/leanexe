@@ -33,6 +33,16 @@ theorem fcmp_fits (op : FCmpOp) {l r : Expr S Γ .float} {L R : Bool}
     (Expr.fcmp op l r).fits funs fits env = (L && R) := by
   subst hl hr; rfl
 
+theorem fbin32_fits (op : FBinOp) {l r : Expr S Γ .float32} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.fbin32 op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
+theorem fcmp32_fits (op : FCmpOp) {l r : Expr S Γ .float32} {L R : Bool}
+    (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
+    (Expr.fcmp32 op l r).fits funs fits env = (L && R) := by
+  subst hl hr; rfl
+
 theorem and_fits {l r : Expr S Γ .bool} {L R : Bool}
     (hl : l.fits funs fits env = L) (hr : r.fits funs fits env = R) :
     (Expr.and l r).fits funs fits env = (L && R) := by
@@ -67,6 +77,18 @@ theorem toFloat_fits (op : ToFloat) {e : Expr S Γ .word} {E : Bool}
 
 theorem toWord_fits (op : ToWord) {e : Expr S Γ .float} {E : Bool}
     (h : e.fits funs fits env = E) : (Expr.toWord op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem funary32_fits (op : F32UnOp) {e : Expr S Γ .float32} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.funary32 op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem toFloat32_fits (op : ToFloat32) {e : Expr S Γ .word} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.toFloat32 op e).fits funs fits env = E := by
+  subst h; rfl
+
+theorem toWord32_fits (op : ToWord32) {e : Expr S Γ .float32} {E : Bool}
+    (h : e.fits funs fits env = E) : (Expr.toWord32 op e).fits funs fits env = E := by
   subst h; rfl
 
 theorem get_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
@@ -146,6 +168,22 @@ theorem ite_fle_fits {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R 
     (Expr.ite (.fcmp .le l r) a b).fits funs fits env = (CF && if L ≤ R then AF else BF) := by
   rw [ite_fits rfl hcf haf hbf]
   subst hl hr; simp [Expr.denote, FCmpOp.apply]
+
+theorem ite_flt32_fits {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {CF AF BF : Bool} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (hcf : (Expr.fcmp32 .lt l r).fits funs fits env = CF)
+    (haf : a.fits funs fits env = AF) (hbf : b.fits funs fits env = BF) :
+    (Expr.ite (.fcmp32 .lt l r) a b).fits funs fits env = (CF && if L < R then AF else BF) := by
+  rw [ite_fits rfl hcf haf hbf]
+  subst hl hr; simp [Expr.denote, FCmpOp.apply32]
+
+theorem ite_fle32_fits {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {CF AF BF : Bool} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (hcf : (Expr.fcmp32 .le l r).fits funs fits env = CF)
+    (haf : a.fits funs fits env = AF) (hbf : b.fits funs fits env = BF) :
+    (Expr.ite (.fcmp32 .le l r) a b).fits funs fits env = (CF && if L ≤ R then AF else BF) := by
+  rw [ite_fits rfl hcf haf hbf]
+  subst hl hr; simp [Expr.denote, FCmpOp.apply32]
 
 /-! `let`, destructuring, and calls. -/
 

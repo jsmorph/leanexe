@@ -22,11 +22,13 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .float _, _, _, _ | _, _, .float32 _, _, _, _ => false
   | _, _, .bin _ left right, live, _, k | _, _, .cmp _ left right, live, _, k
   | _, _, .and left right, live, _, k | _, _, .or left right, live, _, k
-  | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k =>
+  | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k
+  | _, _, .fbin32 _ left right, live, _, k | _, _, .fcmp32 _ left right, live, _, k =>
     left.demands (fun i => live i || right.uses i) false k || right.demands live false k
   | _, _, .not e, live, _, k | _, _, .funary _ e, live, _, k => e.demands live false k
   | _, _, .toFloat _ e, live, _, k => e.demands live false k
-  | _, _, .toWord _ e, live, _, k => e.demands live false k
+  | _, _, .toWord _ e, live, _, k | _, _, .funary32 _ e, live, _, k
+  | _, _, .toFloat32 _ e, live, _, k | _, _, .toWord32 _ e, live, _, k => e.demands live false k
   | _, _, .mk first second, live, _, k =>
     first.demands (fun i => live i || second.uses i) false k || second.demands live false k
   | _, _, .proj _ _, _, _, _ => false

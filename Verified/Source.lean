@@ -385,6 +385,11 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | fcmp (op : FCmpOp) (left right : Expr S Γ .float) : Expr S Γ .bool
   | toFloat (op : ToFloat) (e : Expr S Γ .word) : Expr S Γ .float
   | toWord (op : ToWord) (e : Expr S Γ .float) : Expr S Γ .word
+  | fbin32 (op : FBinOp) (left right : Expr S Γ .float32) : Expr S Γ .float32
+  | funary32 (op : F32UnOp) (e : Expr S Γ .float32) : Expr S Γ .float32
+  | fcmp32 (op : FCmpOp) (left right : Expr S Γ .float32) : Expr S Γ .bool
+  | toFloat32 (op : ToFloat32) (e : Expr S Γ .word) : Expr S Γ .float32
+  | toWord32 (op : ToWord32) (e : Expr S Γ .float32) : Expr S Γ .word
   | mk (first : Expr S Γ (.elem a)) (second : Expr S Γ (.elem b)) : Expr S Γ (.elem (.prod a b))
   | proj (x : Var Γ (.elem e)) (p : Path e e') : Expr S Γ (.elem e')
 
@@ -476,6 +481,11 @@ def Expr.denote (funs : Funs S) :
   | _, _, .fcmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .toFloat op e, env => op.apply (e.denote funs env)
   | _, _, .toWord op e, env => op.apply (e.denote funs env)
+  | _, _, .fbin32 op left right, env => op.apply32 (left.denote funs env) (right.denote funs env)
+  | _, _, .funary32 op e, env => op.apply (e.denote funs env)
+  | _, _, .fcmp32 op left right, env => op.apply32 (left.denote funs env) (right.denote funs env)
+  | _, _, .toFloat32 op e, env => op.apply (e.denote funs env)
+  | _, _, .toWord32 op e, env => op.apply (e.denote funs env)
   | _, _, .mk first second, env => (first.denote funs env, second.denote funs env)
   | _, _, .proj x p, env => p.get (env.get x)
 
@@ -491,12 +501,13 @@ copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ | _, _, .float32 _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
-  | _, _, .fcmp _ left right => left.aborts || right.aborts
-  | _, _, .toFloat _ e => e.aborts
-  | _, _, .toWord _ e => e.aborts
+  | _, _, .fcmp _ left right | _, _, .fbin32 _ left right
+  | _, _, .fcmp32 _ left right => left.aborts || right.aborts
+  | _, _, .toFloat _ e | _, _, .toFloat32 _ e => e.aborts
+  | _, _, .toWord _ e | _, _, .toWord32 _ e => e.aborts
   | _, _, .mk first second => first.aborts || second.aborts
   | _, _, .proj _ _ => false
-  | _, _, .funary _ e => e.aborts
+  | _, _, .funary _ e | _, _, .funary32 _ e => e.aborts
   | _, _, .not e => e.aborts
   | _, _, .and left right | _, _, .or left right => left.aborts || right.aborts
   | _, _, .ite c thenE elseE => c.aborts || thenE.aborts || elseE.aborts
@@ -517,12 +528,13 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ | _, _, .float32 _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
-  | _, _, .fcmp _ left right => left.depthCalls || right.depthCalls
-  | _, _, .toFloat _ e => e.depthCalls
-  | _, _, .toWord _ e => e.depthCalls
+  | _, _, .fcmp _ left right | _, _, .fbin32 _ left right
+  | _, _, .fcmp32 _ left right => left.depthCalls || right.depthCalls
+  | _, _, .toFloat _ e | _, _, .toFloat32 _ e => e.depthCalls
+  | _, _, .toWord _ e | _, _, .toWord32 _ e => e.depthCalls
   | _, _, .mk first second => first.depthCalls || second.depthCalls
   | _, _, .proj _ _ => false
-  | _, _, .funary _ e => e.depthCalls
+  | _, _, .funary _ e | _, _, .funary32 _ e => e.depthCalls
   | _, _, .not e => e.depthCalls
   | _, _, .and left right | _, _, .or left right => left.depthCalls || right.depthCalls
   | _, _, .ite c thenE elseE => c.depthCalls || thenE.depthCalls || elseE.depthCalls
@@ -546,12 +558,13 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ => false
   | _, _, .var x, i => i == x.index
   | _, _, .bin _ left right, i | _, _, .cmp _ left right, i | _, _, .fbin _ left right, i
-  | _, _, .fcmp _ left right, i => left.uses i || right.uses i
-  | _, _, .toFloat _ e, i => e.uses i
-  | _, _, .toWord _ e, i => e.uses i
+  | _, _, .fcmp _ left right, i | _, _, .fbin32 _ left right, i
+  | _, _, .fcmp32 _ left right, i => left.uses i || right.uses i
+  | _, _, .toFloat _ e, i | _, _, .toFloat32 _ e, i => e.uses i
+  | _, _, .toWord _ e, i | _, _, .toWord32 _ e, i => e.uses i
   | _, _, .mk first second, i => first.uses i || second.uses i
   | _, _, .proj x _, i => i == x.index
-  | _, _, .funary _ e, i => e.uses i
+  | _, _, .funary _ e, i | _, _, .funary32 _ e, i => e.uses i
   | _, _, .not e, i => e.uses i
   | _, _, .and left right, i | _, _, .or left right, i => left.uses i || right.uses i
   | _, _, .ite c thenE elseE, i => c.uses i || thenE.uses i || elseE.uses i
@@ -586,12 +599,13 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .float _ | _, _, .float32 _ => 0
   | _, _, .var x => 1 <<< x.index
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
-  | _, _, .fcmp _ left right => left.useMask ||| right.useMask
-  | _, _, .toFloat _ e => e.useMask
-  | _, _, .toWord _ e => e.useMask
+  | _, _, .fcmp _ left right | _, _, .fbin32 _ left right
+  | _, _, .fcmp32 _ left right => left.useMask ||| right.useMask
+  | _, _, .toFloat _ e | _, _, .toFloat32 _ e => e.useMask
+  | _, _, .toWord _ e | _, _, .toWord32 _ e => e.useMask
   | _, _, .mk first second => first.useMask ||| second.useMask
   | _, _, .proj x _ => 1 <<< x.index
-  | _, _, .funary _ e => e.useMask
+  | _, _, .funary _ e | _, _, .funary32 _ e => e.useMask
   | _, _, .not e => e.useMask
   | _, _, .and left right | _, _, .or left right => left.useMask ||| right.useMask
   | _, _, .ite c thenE elseE => c.useMask ||| thenE.useMask ||| elseE.useMask
@@ -662,12 +676,13 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _ | _, _, .float32 _
   | _, _, .leSize _ _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
-  | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs
-  | _, _, .toFloat _ e => e.placeArgs
-  | _, _, .toWord _ e => e.placeArgs
+  | _, _, .fcmp _ left right | _, _, .fbin32 _ left right
+  | _, _, .fcmp32 _ left right => left.placeArgs && right.placeArgs
+  | _, _, .toFloat _ e | _, _, .toFloat32 _ e => e.placeArgs
+  | _, _, .toWord _ e | _, _, .toWord32 _ e => e.placeArgs
   | _, _, .mk first second => first.placeArgs && second.placeArgs
   | _, _, .proj _ _ => true
-  | _, _, .funary _ e => e.placeArgs
+  | _, _, .funary _ e | _, _, .funary32 _ e => e.placeArgs
   | _, _, .not e => e.placeArgs
   | _, _, .and left right | _, _, .or left right => left.placeArgs && right.placeArgs
   | _, _, .ite c thenE elseE => c.placeArgs && thenE.placeArgs && elseE.placeArgs

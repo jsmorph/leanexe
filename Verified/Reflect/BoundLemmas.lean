@@ -130,6 +130,18 @@ theorem fcmp_bound (op : FCmpOp) {l r : Expr S Γ .float} {L R : Nat}
     (Expr.fcmp op l r).allocs funs flags bounds modes paid live env = L + R := by
   subst hl hr; rfl
 
+theorem fbin32_bound (op : FBinOp) {l r : Expr S Γ .float32} {L R : Nat}
+    (hl : l.allocs funs flags bounds modes paid (fun i => live i || r.uses i) env = L)
+    (hr : r.allocs funs flags bounds modes paid live env = R) :
+    (Expr.fbin32 op l r).allocs funs flags bounds modes paid live env = L + R := by
+  subst hl hr; rfl
+
+theorem fcmp32_bound (op : FCmpOp) {l r : Expr S Γ .float32} {L R : Nat}
+    (hl : l.allocs funs flags bounds modes paid (fun i => live i || r.uses i) env = L)
+    (hr : r.allocs funs flags bounds modes paid live env = R) :
+    (Expr.fcmp32 op l r).allocs funs flags bounds modes paid live env = L + R := by
+  subst hl hr; rfl
+
 theorem and_bound {l r : Expr S Γ .bool} {L R : Nat}
     (hl : l.allocs funs flags bounds modes paid (fun i => live i || r.uses i) env = L)
     (hr : r.allocs funs flags bounds modes paid live env = R) :
@@ -166,6 +178,21 @@ theorem toFloat_bound (op : ToFloat) {e : Expr S Γ .word} {E : Nat}
 theorem toWord_bound (op : ToWord) {e : Expr S Γ .float} {E : Nat}
     (h : e.allocs funs flags bounds modes paid live env = E) :
     (Expr.toWord op e).allocs funs flags bounds modes paid live env = E := by
+  subst h; rfl
+
+theorem funary32_bound (op : F32UnOp) {e : Expr S Γ .float32} {E : Nat}
+    (h : e.allocs funs flags bounds modes paid live env = E) :
+    (Expr.funary32 op e).allocs funs flags bounds modes paid live env = E := by
+  subst h; rfl
+
+theorem toFloat32_bound (op : ToFloat32) {e : Expr S Γ .word} {E : Nat}
+    (h : e.allocs funs flags bounds modes paid live env = E) :
+    (Expr.toFloat32 op e).allocs funs flags bounds modes paid live env = E := by
+  subst h; rfl
+
+theorem toWord32_bound (op : ToWord32) {e : Expr S Γ .float32} {E : Nat}
+    (h : e.allocs funs flags bounds modes paid live env = E) :
+    (Expr.toWord32 op e).allocs funs flags bounds modes paid live env = E := by
   subst h; rfl
 
 /-! `if`, one lemma per form of condition that the reflector produces. -/
@@ -269,6 +296,35 @@ theorem ite_fle_bound {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R
       CA + if L ≤ R then AA else BA := by
   rw [ite_bound hM rfl ha hb hca haa hba]
   subst hl hr; simp [Expr.denote, FCmpOp.apply]
+
+theorem ite_flt32_bound {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    (hM : (a.mode modes).join (b.mode modes) = M)
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B)
+    (hca : (Expr.fcmp32 .lt l r).allocs funs flags bounds modes paid
+      (fun i => live i || a.uses i || b.uses i) env = CA)
+    (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (Expr.ite (.fcmp32 .lt l r) a b).allocs funs flags bounds modes paid live env =
+      CA + if L < R then AA else BA := by
+  rw [ite_bound hM rfl ha hb hca haa hba]
+  subst hl hr; simp [Expr.denote, FCmpOp.apply32]
+
+/-- `ite_bound` for a condition `L ≤ R` on floats. -/
+theorem ite_fle32_bound {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {A B : t.denote} {M : Mode} {CA AA BA : Nat}
+    (hM : (a.mode modes).join (b.mode modes) = M)
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B)
+    (hca : (Expr.fcmp32 .le l r).allocs funs flags bounds modes paid
+      (fun i => live i || a.uses i || b.uses i) env = CA)
+    (haa : a.allocs funs flags bounds modes paid live env + coerceCost t (a.mode modes) M A = AA)
+    (hba : b.allocs funs flags bounds modes paid live env + coerceCost t (b.mode modes) M B = BA) :
+    (Expr.ite (.fcmp32 .le l r) a b).allocs funs flags bounds modes paid live env =
+      CA + if L ≤ R then AA else BA := by
+  rw [ite_bound hM rfl ha hb hca haa hba]
+  subst hl hr; simp [Expr.denote, FCmpOp.apply32]
 
 /-! `let`, pairs, and destructuring. -/
 

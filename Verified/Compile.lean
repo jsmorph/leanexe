@@ -28,7 +28,7 @@ def Ty.types : Ty → List ValueType
   | .pair a b => a.types ++ b.types
 
 /-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
-in an array: a float's bit pattern moves from an f64 to an i64. -/
+in an array: an f64 becomes an i64 bit pattern, and an f32 bit pattern is zero-extended to i64. -/
 def toWordCode : ValueType → Program
   | .f64 => [.i64ReinterpretF64]
   | .f32 => [.i32ReinterpretF32, .extendUI32]
@@ -98,6 +98,34 @@ def FCmpOp.instr : FCmpOp → Instruction
   | .lt => .f64Lt
   | .le => .f64Le
   | .eq => .f64Eq
+
+def FBinOp.instr32 : FBinOp → Instruction
+  | .add => .f32Add
+  | .sub => .f32Sub
+  | .mul => .f32Mul
+  | .div => .f32Div
+
+def FCmpOp.instr32 : FCmpOp → Instruction
+  | .lt => .f32Lt
+  | .le => .f32Le
+  | .eq => .f32Eq
+
+def F32UnOp.code (op : F32UnOp) (operand : Program) : Program :=
+  match op with
+  | .sqrt => operand ++ [.f32Sqrt]
+  | .abs => operand ++ [.f32Abs]
+  | .neg => .f32Const 0x80000000 :: operand ++ [.f32Sub]
+  | .nearest => operand ++ [.f32Nearest]
+
+def ToFloat32.code : ToFloat32 → Program
+  | .convert => [.f32ConvertI64U]
+  | .ofBits => [.wrapI64, .f32ReinterpretI32, .f32Const 0x80000000, .f32Add]
+  | .signed32 => [.wrapI64, .f32ConvertI32S]
+
+def ToWord32.code : ToWord32 → Program
+  | .truncate => [.i64TruncSatF32U]
+  | .toBits => [.i32ReinterpretF32, .extendUI32]
+  | .signed32 => [.i32TruncSatF32S, .extendUI32]
 
 /-- The instructions of an operation on one float after the code of its operand.  The negation
 subtracts from negative zero, since Talos's `f64.neg` keeps a NaN's payload and flips its sign
@@ -360,11 +388,12 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
   | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right
-  | _, _, .fbin _ left right | _, _, .fcmp _ left right =>
+  | _, _, .fbin _ left right | _, _, .fcmp _ left right
+  | _, _, .fbin32 _ left right | _, _, .fcmp32 _ left right =>
     max left.width right.width
-  | _, _, .not e | _, _, .funary _ e => e.width
-  | _, _, .toFloat _ e => e.width
-  | _, _, .toWord _ e => e.width
+  | _, _, .not e | _, _, .funary _ e | _, _, .funary32 _ e => e.width
+  | _, _, .toFloat _ e | _, _, .toFloat32 _ e => e.width
+  | _, _, .toWord _ e | _, _, .toWord32 _ e => e.width
   | _, _, .ite (t := t) c thenE elseE =>
     max c.width (t.width + max (max thenE.width elseE.width) (copyWidth t))
   | _, _, .letE (s := s) value body => s.width + max value.width body.width
@@ -495,6 +524,15 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
       [op.instr, .extendUI32]
   | _, _, .toFloat op e => e.code h slots base live ++ op.code
   | _, _, .toWord op e => e.code h slots base live ++ [op.instr]
+  | _, _, .fbin32 op left right =>
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+      [op.instr32]
+  | _, _, .funary32 op e => op.code (e.code h slots base live)
+  | _, _, .fcmp32 op left right =>
+    left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++
+      [op.instr32, .extendUI32]
+  | _, _, .toFloat32 op e => e.code h slots base live ++ op.code
+  | _, _, .toWord32 op e => e.code h slots base live ++ op.code
   | _, _, .var x => x.code h slots base live
   | _, _, .bin op left right =>
     left.code h slots base (fun i => live i || right.usesFast i) ++ right.code h slots base live ++

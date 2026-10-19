@@ -159,9 +159,11 @@ of a function with a paid parameter, given the flags `flags`. -/
 def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .push _ _ | _, _, .append _ _ | _, _, .insertAt _ _ _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
-  | _, _, .fcmp _ left right | _, _, .and left right | _, _, .or left right
+  | _, _, .fcmp _ left right | _, _, .fbin32 _ left right
+  | _, _, .fcmp32 _ left right | _, _, .and left right | _, _, .or left right
   | _, _, .mk left right | _, _, .pair left right => left.grows flags || right.grows flags
-  | _, _, .not e | _, _, .funary _ e | _, _, .toFloat _ e | _, _, .toWord _ e => e.grows flags
+  | _, _, .not e | _, _, .funary _ e | _, _, .toFloat _ e | _, _, .toWord _ e
+  | _, _, .funary32 _ e | _, _, .toFloat32 _ e | _, _, .toWord32 _ e => e.grows flags
   | _, _, .ite c thenE elseE => c.grows flags || thenE.grows flags || elseE.grows flags
   | _, _, .letE value body | _, _, .letPair value body => value.grows flags || body.grows flags
   | _, _, .call f args =>
@@ -305,12 +307,14 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
   | _, _, .var x, env => x.cost modes live (env.get x)
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
+  | _, _, .fbin32 _ left right, env | _, _, .fcmp32 _ left right, env
   | _, _, .and left right, env | _, _, .or left right, env
   | _, _, .mk left right, env =>
     left.allocs funs flags bounds modes paid (fun i => live i || right.uses i) env +
       right.allocs funs flags bounds modes paid live env
   | _, _, .not e, env | _, _, .funary _ e, env | _, _, .toFloat _ e, env
-  | _, _, .toWord _ e, env => e.allocs funs flags bounds modes paid live env
+  | _, _, .toWord _ e, env | _, _, .funary32 _ e, env
+  | _, _, .toFloat32 _ e, env | _, _, .toWord32 _ e, env => e.allocs funs flags bounds modes paid live env
   | _, _, .ite (t := t) c thenE elseE, env =>
     let mode := (thenE.mode modes).join (elseE.mode modes)
     c.allocs funs flags bounds modes paid (fun i => live i || thenE.uses i || elseE.uses i) env +
@@ -526,11 +530,13 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ | _, _, .var _, _ => true
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
+  | _, _, .fbin32 _ left right, env | _, _, .fcmp32 _ left right, env
   | _, _, .and left right, env | _, _, .or left right, env
   | _, _, .mk left right, env | _, _, .pair left right, env =>
     left.fits funs fits env && right.fits funs fits env
   | _, _, .not e, env | _, _, .funary _ e, env | _, _, .toFloat _ e, env
-  | _, _, .toWord _ e, env => e.fits funs fits env
+  | _, _, .toWord _ e, env | _, _, .funary32 _ e, env
+  | _, _, .toFloat32 _ e, env | _, _, .toWord32 _ e, env => e.fits funs fits env
   | _, _, .ite c thenE elseE, env =>
     c.fits funs fits env &&
       if c.denote funs env then thenE.fits funs fits env else elseE.fits funs fits env

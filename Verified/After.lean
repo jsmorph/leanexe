@@ -789,9 +789,7 @@ theorem wp_ofWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs :
     {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
     wp m (ofWordCode ty ++ rest) Q st { s with values := .i64 w :: vs } env' ↔
       wp m rest Q st { s with values := typedValue ty w :: vs } env' := by
-  cases ty <;> simp [ofWordCode, typedValue]
-  rw [← wrap_toUInt32 w]
-  rfl
+  cases ty <;> simp [ofWordCode, typedValue, wrap_toUInt32_num]
 
 theorem wp_toWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
     {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
@@ -1210,6 +1208,9 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
   | _, .insertAt _ _ _, hp, _, _, _, _, _ | _, .eraseAt _ _, hp, _, _, _, _, _
+  | _, .fbin32 _ _ _, hp, _, _, _, _, _ | _, .fcmp32 _ _ _, hp, _, _, _, _, _
+  | _, .funary32 _ _, hp, _, _, _, _, _ | _, .toFloat32 _ _, hp, _, _, _, _, _
+  | _, .toWord32 _ _, hp, _, _, _, _, _
   | _, .float32 _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _

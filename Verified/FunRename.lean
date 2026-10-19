@@ -38,6 +38,11 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .fcmp op a b => .fcmp op (a.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .toFloat op a => .toFloat op (a.renameFuns ρ)
   | _, _, .toWord op a => .toWord op (a.renameFuns ρ)
+  | _, _, .fbin32 op a b => .fbin32 op (a.renameFuns ρ) (b.renameFuns ρ)
+  | _, _, .funary32 op a => .funary32 op (a.renameFuns ρ)
+  | _, _, .fcmp32 op a b => .fcmp32 op (a.renameFuns ρ) (b.renameFuns ρ)
+  | _, _, .toFloat32 op a => .toFloat32 op (a.renameFuns ρ)
+  | _, _, .toWord32 op a => .toWord32 op (a.renameFuns ρ)
   | _, _, .mk a b => .mk (a.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .proj x p => .proj x p
 
