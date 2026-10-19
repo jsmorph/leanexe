@@ -120,6 +120,12 @@ the facts that the proof shares, and [`Correct.lean`](Correct.lean) the theorem.
 module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions
 0 and 1.
 
+[`ArrayFold.lean`](ArrayFold.lean) proves that `Array.foldl` equals a `UInt64`-indexed
+`LeanExe.loop` when the array length fits in a word.  `Ty.Rep.array_size_lt` derives that
+bound for every represented element type from the flattened array's heap bound and the
+positive element width.  These lemmas prepare the array-fold compiler rule.  The reflector
+does not yet accept `Array.foldl`.
+
 ## Recursion
 
 A recursive function's meaning is a solution `M` of its body's equation, `M env = body.denote
