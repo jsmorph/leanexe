@@ -267,7 +267,10 @@ tables as parameters.
 ## The reflector
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
-writes ordinary Lean definitions as a source program.  For each definition `f` it adds the source
+writes ordinary Lean definitions as a source program.  [Definition reflection](Reflect/Definitions.lean)
+holds the expression translation, bound builders, and shared recursive-parameter flattening.
+The command assembles the program, wrappers, byte proofs, and exported theorems.
+For each definition `f` it adds the source
 function `p.f.func`, the equation `p.f.denote_eq` that it means `f`, and `p.f.implements`, which
 states that function `2 + k` of the module `p.module`, or the entry `2 + n + j` of the `j`-th
 function whose code takes the call depth, computes `f` on the tuple of its arguments, with the
