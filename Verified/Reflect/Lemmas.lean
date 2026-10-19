@@ -121,6 +121,28 @@ theorem float32_eq {bits : UInt32} {x : Float32} (h : x.toBits = bits) :
   show Float32.ofBits bits = x
   rw [← h, LeanExe.ProofKit.F32Bits.ofBits_toBits]
 
+theorem fbin32_eq (op : FBinOp) {l r : Expr S Γ .float32} {L R : Float32}
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R) :
+    (Expr.fbin32 op l r).denote funs env = op.apply32 L R := by
+  subst hl hr; rfl
+
+theorem funary32_eq (op : F32UnOp) {e : Expr S Γ .float32} {E : Float32}
+    (h : e.denote funs env = E) : (Expr.funary32 op e).denote funs env = op.apply E := by
+  subst h; rfl
+
+theorem toFloat32_eq (op : ToFloat32) {e : Expr S Γ .word} {E : UInt64}
+    (h : e.denote funs env = E) : (Expr.toFloat32 op e).denote funs env = op.apply E := by
+  subst h; rfl
+
+theorem toWord32_eq (op : ToWord32) {e : Expr S Γ .float32} {E : Float32}
+    (h : e.denote funs env = E) : (Expr.toWord32 op e).denote funs env = op.apply E := by
+  subst h; rfl
+
+theorem fcmp32_eq (op : FCmpOp) {l r : Expr S Γ .float32} {L R : Float32}
+    (hl : l.denote funs env = L) (hr : r.denote funs env = R) :
+    (Expr.fcmp32 op l r).denote funs env = op.apply32 L R := by
+  subst hl hr; rfl
+
 theorem ite_flt_eq {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
     {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
     (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
@@ -132,6 +154,18 @@ theorem ite_fle_eq {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : 
     (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
     (Expr.ite (.fcmp .le l r) a b).denote funs env = if L ≤ R then A else B := by
   subst hl hr ha hb; simp [Expr.denote, FCmpOp.apply]
+
+theorem ite_flt32_eq {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
+    (Expr.ite (.fcmp32 .lt l r) a b).denote funs env = if L < R then A else B := by
+  subst hl hr ha hb; simp [Expr.denote, FCmpOp.apply32]
+
+theorem ite_fle32_eq {t : Ty} {l r : Expr S Γ .float32} {a b : Expr S Γ t} {L R : Float32}
+    {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)
+    (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
+    (Expr.ite (.fcmp32 .le l r) a b).denote funs env = if L ≤ R then A else B := by
+  subst hl hr ha hb; simp [Expr.denote, FCmpOp.apply32]
 
 theorem letE_eq {s t : Ty} {v : Expr S Γ s} {b : Expr S (s :: Γ) t} {V : s.denote}
     {B : s.denote → t.denote} (hv : v.denote funs env = V)

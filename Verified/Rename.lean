@@ -78,6 +78,11 @@ def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S �
   | _, _, _, ρ, .fcmp op a b => .fcmp op (a.rename ρ) (b.rename ρ)
   | _, _, _, ρ, .toFloat op a => .toFloat op (a.rename ρ)
   | _, _, _, ρ, .toWord op a => .toWord op (a.rename ρ)
+  | _, _, _, ρ, .fbin32 op a b => .fbin32 op (a.rename ρ) (b.rename ρ)
+  | _, _, _, ρ, .funary32 op a => .funary32 op (a.rename ρ)
+  | _, _, _, ρ, .fcmp32 op a b => .fcmp32 op (a.rename ρ) (b.rename ρ)
+  | _, _, _, ρ, .toFloat32 op a => .toFloat32 op (a.rename ρ)
+  | _, _, _, ρ, .toWord32 op a => .toWord32 op (a.rename ρ)
   | _, _, _, ρ, .mk a b => .mk (a.rename ρ) (b.rename ρ)
   | _, _, _, ρ, .proj x p => .proj (ρ x) p
 

@@ -137,6 +137,9 @@ theorem wrap_toUInt32 (a : UInt64) : UInt32.ofNat (a.toNat % 2 ^ 32) = a.toUInt3
   apply UInt32.toNat_inj.mp
   simp [UInt64.toNat_toUInt32]
 
+theorem wrap_toUInt32_num (a : UInt64) :
+    UInt32.ofNat (a.toNat % 4294967296) = a.toUInt32 := wrap_toUInt32 a
+
 /-- The address of element `k` of the array at `ptr`. -/
 theorem element_address (ptr : UInt64) (k : Nat) :
     (ptr + (UInt64.ofNat k + 1) * 8).toUInt32 = UInt64Array.wordAddress ptr (k + 1) := by

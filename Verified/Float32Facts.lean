@@ -58,13 +58,12 @@ theorem toUInt64_eq (x : Float32) : x.toUInt64 = Wasm.IEEE32.truncSatI64U x.toBi
   rw [F32Bits.toModel_eq, truncSat_eq]
 
 theorem signed32_toFloat (x : UInt64) :
-    (ToFloat32.apply .signed32 x).toBits = Wasm.IEEE32.convertI32S x.toUInt32 :=
+    (Int32.ofUInt32 x.toUInt32).toFloat32.toBits = Wasm.IEEE32.convertI32S x.toUInt32 :=
   F32Convert.ofInt32Bits_eq x.toUInt32
 
 theorem to_signed32 (x : Float32) :
-    ToWord32.apply .signed32 x = (Wasm.IEEE32.truncSatI32S x.toBits).toUInt64 := by
+    x.toInt32.toUInt32.toUInt64 = (Wasm.IEEE32.truncSatI32S x.toBits).toUInt64 := by
   rw [← F32TruncSat.toInt32Bits_eq, LeanExe.Float32.toInt32Bits, F32Bits.ofBits_toBits]
-  rfl
 
 theorem add_negZero (x : UInt32) :
     Wasm.IEEE32.add x 0x80000000 =
