@@ -28,7 +28,7 @@ The theorems hold in Talos's semantics, which bounds no call depth and grows mem
 
 ### Programs and definitions
 
-A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]`.  A definition may call the definitions before it in the list and, when it is recursive, itself, so the only cycles are a definition's calls of itself.  The reflector does not unfold helpers, so a call of a definition that is not in the list is an unsupported term.  A named constant that holds no array is reflected as its value.  The reflector reads a recursive definition through its unfolding equation `f.eq_def`, so it accepts structural and well-founded recursion, and it rejects a definition with universe parameters and a recursive definition that uses `sorry`.
+A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]`.  A definition may call the definitions before it in the list and, when it is recursive, itself, so the only cycles are a definition's calls of itself.  When no source rule covers a term, the reflector unfolds a helper marked `@[inline]`, including an `abbrev`, and checks the equation for its expanded body.  A listed helper compiles as a function and takes precedence over unfolding.  A named constant that holds no array is reflected as its value.  The reflector reads a recursive definition through its unfolding equation `f.eq_def`, so it accepts structural and well-founded recursion, and it rejects a definition with universe parameters and a recursive definition that uses `sorry`.
 
 ### Types
 
@@ -57,9 +57,9 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | `Bool` operations | `!`, `&&`, `\|\|`, `decide` |
 | Bindings | `let`, and `match` on a pair, a tuple, or a structure |
 | Conditionals | `if` on a `Bool` or a comparison, `if h : c` whose branches do not use `h`, and `match` on an enumeration |
-| Calls | A listed definition applied to all its arguments |
+| Calls | A listed definition applied to all its arguments, or an unfolded `@[inline]` helper |
 | Combinators | `LeanExe.loop`, `LeanExe.repeatWhile`, `LeanExe.build` |
-| Arrays | `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`, `xs ++ ys`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
+| Arrays | `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 
 Every construct has Lean's meaning.  Division by zero gives 0, the remainder by zero is the dividend, a shift uses its amount modulo 64, and an update, an insertion, or a removal past the end of an array leaves the array unchanged.  `min` and `max` are Lean's definitions, `if a ≤ b`, which on floats differ from `f64.min` and `f64.max` on NaN and on zeros of opposite sign.  `=` and `≠` on floats compare bit patterns, so `0.0 ≠ -0.0`, and no f64 instruction computes them, so the reflector rejects them and accepts `==` and `!=`.  Lean's other float functions, such as `Float.exp` and `Float.sin`, are opaque, so a program computes them with definitions of its own, as the ports of fdlibm and of Arm's optimized-routines among the examples do.
@@ -107,7 +107,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 
 | Message | Cause | Rewrite |
 |---|---|---|
-| `unsupported term …` | A term that no rule covers: a call of a definition that is not listed, `Array.foldl`, `for`, or an opaque float function | List the callee before its callers, use the combinators, or define the float function. |
+| `unsupported term …` | A term that no rule covers: an unlisted helper without `@[inline]`, `Array.foldl`, `for`, or an opaque float function | List the callee before its callers, mark a helper `@[inline]`, use the combinators, or define the float function. |
 | `the type … is not UInt64, Bool, Float, a structure with a Flat instance, an array, or a pair` | A parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
 | `= and ≠ on Float compare bit patterns; use == and !=` | `=` or `≠` on floats | Use `==` or `!=`. |
 | ``an index must be `i.toNat` for a word `i` ``, ``a position must be `i.toNat` for a word `i` `` | A read or an update at a position that is not a word's `toNat` | Index with `i.toNat` for `i : UInt64`. |
@@ -226,6 +226,8 @@ For a function whose code takes the call depth, `p.f.bound k x` and `p.f.fits k 
 
 [`tests/verified/run.sh`](../tests/verified/run.sh) writes each example's module to `build/verified/`, validates it with `wasm-tools`, and compares every case of [`Verified/Examples/Cases.lean`](../Verified/Examples/Cases.lean) between the Wasmtime host and native Lean.  `Cases.lean` prints one line per case, `module|export|result kind|host arguments|expected result`, computed by native Lean, with an optional sixth field, the number of blocks that must stay allocated after the call, and a seventh, a bound on the number of allocations, the host's included.  The expected result `trap` requires a trap at `unreachable`.  Native Lean writes a panic message for each read or update past the end, and the script counts these messages and fails on any other output to standard error.  The script needs `lake build Verified` first, the Wasmtime host `build/tools/leanexe-wasmtime-host`, and `~/.cargo/bin` on `PATH` for `wasm-tools`.
 
+`tests/verified/run.sh --cases frontend` builds and emits the selected module, validates it, and compares its checked cases, including allocation counters.  The full invocation also runs the numerical byte/file proofs and native accuracy checks.  The selected module's cases belong in `Cases.lean`, and its module entry belongs in the driver.
+
 The cases cover words near 0, `2^32`, `2^63`, and `2^64`, zero divisors, shift amounts of 64 or more, loop counts of 0, 1, and up to 65,537, empty arrays, reads and updates past the end, and floats that are zeros of both signs, infinities, NaN, and the smallest subnormal.  Native Lean returns the canonical NaN for every NaN result, and the host enables Cranelift's NaN canonicalization, so the cases compare float results bit for bit.  The release counts show that a call leaves allocated exactly the result's arrays and the host's arrays at borrowed parameters.  The allocation counts show the updates in place and the growth by doubling: a loop of `n` pushes allocates at most `2 + log₂ (n + 1)` blocks, and an insertion sort of `n` elements at most `3 + log₂ (n + 1)` with the host's array.  One case asks for an array of `2^29` words and must trap.  A recursion case runs `deep`, whose frame has 32 positions, 26 of them live across the self-call, to depth 999, where its deepest frame calls `top1` and `top2`, two functions without the call depth that hold many values live.  The drone's cases include the 116 terrains of [`tests/drone/corpus.txt`](../tests/drone/corpus.txt).
 
 ### Accuracy checks
@@ -254,6 +256,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [`Select`](../Verified/Examples/Select.lean) | `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
+| [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, and direct in-bounds array methods. |
 | [`Loops`](../Verified/Examples/Loops.lean) | Loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition. |
 | [`Arrays`](../Verified/Examples/Arrays.lean) | Sums, a dot product, a count, and a search over arrays in loops, reads at computed positions, a pair of arrays passed to calls, and an array chosen by an `if` and bound with `let`. |
 | [`Owned`](../Verified/Examples/Owned.lean) | Array results, copies of parameters, owned call results that a reader, a call, a branch, or an unused binding releases, a moved result, a loop whose state is an owned array, a pair of owned arrays taken apart, and arrays built with `LeanExe.build`, one whose element builds and releases an array of its own and one whose element reads an owned array that the code releases after the build. |

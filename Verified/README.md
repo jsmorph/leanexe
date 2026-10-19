@@ -237,6 +237,10 @@ instance, which is not definitionally the source's test of a `Bool`.  A call of 
 definition becomes a source call, proved from the callee's equation, `LeanExe.loop` becomes a loop
 whose condition is `true` and whose body is the reflection of the loop function's body, and
 `LeanExe.repeatWhile` becomes a loop with the reflections of its condition and its step.
+An unlisted `@[inline]` helper is unfolded when no source rule covers its application, and its
+expanded body's equation gives the equation for the application.  Listed definitions retain
+their source calls.  `setIfInBounds`, `insertIdxIfInBounds`, and `eraseIdxIfInBounds` use the
+existing set, insertion, and removal expressions through definitional equalities.
 `repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose function applies the
 step to a state that satisfies the condition and keeps any other.  The reflector chooses the
 parameter modes with `Expr.paramChoice` in [`Reflect/Modes.lean`](Reflect/Modes.lean): an array
