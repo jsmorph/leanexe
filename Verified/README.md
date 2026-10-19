@@ -179,7 +179,9 @@ and remaining bounds.  [The function-entry theorem](TailEntry.lean) proves the W
 function's behavior from its initial arguments.  `Prog.consTail` includes the tail function,
 and its `Prog.Meaning` proof supplies the fixed-point equation and decreasing rank.
 `Prog.calls` uses the tail-function specification in the same induction as ordinary and
-guarded functions.  Reflection and execution tests remain pending.
+guarded functions.  [The typed-source example](Examples/TailCore.lean) grows an owned array
+from a borrowed weight array.  Its twenty [checked execution cases](Examples/Cases.lean)
+include 4,096 iterations and allocation counts.  Reflection remains pending.
 
 ## The theorem
 

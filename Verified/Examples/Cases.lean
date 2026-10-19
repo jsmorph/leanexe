@@ -5,6 +5,7 @@ import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Fold
+import Verified.Examples.TailCore
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
@@ -80,6 +81,12 @@ def selectCases : List (UInt64 × UInt64 × UInt64) :=
 /-- Loop counts: none, one, a few, and enough to wrap the Fibonacci numbers and the powers.
 `sumPowers` takes time quadratic in its count and runs only on the counts up to 100. -/
 def counts : List UInt64 := [0, 1, 2, 3, 7, 8, 64, 65, 100, 1000, 65537]
+
+def tailCoreCases : List (UInt64 × Array UInt64 × Array UInt64) :=
+  ([0, 1, 2, 7, 63, 999, 1000, 1024, 4096].flatMap fun n : Nat =>
+    let weights := (List.range n).toArray.map fun i => UInt64.ofNat (3 * i + 1)
+    [(UInt64.ofNat n, #[], weights), (UInt64.ofNat n, #[3, 4, 5], weights)]) ++
+      [(3, #[9], #[]), (3, #[], #[7])]
 
 /-- Arrays: empty, one element, a few, the words, and 100 elements. -/
 def arrays : List (Array UInt64) :=
@@ -366,6 +373,9 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for (n, xs, weights) in tailCoreCases do
+    IO.println s!"tailcore|grow|array-u64|i64:{n} {arrayArg xs} {arrayArg weights}|\
+      {arrayOut (TailCore.growNative n xs weights)}|2|32"
   for xs in arrays do
     for seed in [(0 : UInt64), 7, 18446744073709551615] do
       IO.println s!"fold|words|i64|{arrayArg xs} i64:{seed}|{Fold.words xs seed}|1|1"
