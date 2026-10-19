@@ -39,6 +39,14 @@ structure TailAfter {Γ params : List Ty} {result : Ty} (env : Env Γ) (slots : 
   frame : Frame stateBase s s'
   rep : TailRep modes stateBase resultBase heap' store' s' words value
 
+def TailAfter.congr {Γ params : List Ty} {result : Ty} {env : Env Γ} {slots : List Slot}
+    {live : Nat → Bool} {modes : List Mode} {stateBase resultBase : Nat}
+    {heap heap' : Heap} {store store' : Store Unit} {s s' : Locals}
+    {value value' : Sum (Env params) result.denote} (eq : value = value')
+    (a : TailAfter env slots live modes stateBase resultBase heap store s value heap' store' s') :
+    TailAfter env slots live modes stateBase resultBase heap store s value' heap' store' s' :=
+  ⟨a.words, by rw [← eq]; exact a.step, a.frame, by rw [← eq]; exact a.rep⟩
+
 def TailAfter.prepend {Γ params : List Ty} {result : Ty} {env : Env Γ} {slots : List Slot}
     {L0 L1 : Nat → Bool} {modes : List Mode} {base stateBase resultBase : Nat}
     {heap heap1 heap2 : Heap} {store store1 store2 : Store Unit} {s s1 s2 : Locals}
