@@ -505,7 +505,7 @@ theorem Evolves.values {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L :
     {base : Nat} {heap heap' : Heap} {store store' : Store Unit} {s s' : Locals}
     (e : Evolves env slots L0 L base heap store s heap' store' s') (vs : List Value) :
     Evolves env slots L0 L base heap store s heap' store' { s' with values := vs } :=
-  ⟨e.step, ⟨e.frame.params, e.frame.length, e.frame.below⟩, e.holds.agree Frame.ofValues⟩
+  ⟨e.step, e.frame.trans Frame.ofValues, e.holds.agree Frame.ofValues⟩
 
 /-- `After` for more variables live before the code, when they include those that die in it. -/
 theorem After.liveIn {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L0' L : Nat → Bool}
@@ -768,7 +768,7 @@ theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L 
     {base : Nat} {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals} {mode : Mode}
     {v : UInt64} {vs : List Value} {loc : Nat} {rest : Program} {Q : Assertion Unit}
     (a : After env slots L0 L base heap store s .word mode v heap1 store1 s1 [.i64 v])
-    (hLoc : base ≤ loc) (hLow : s.params.length ≤ loc) (hHigh : loc < s.half)
+    (hLoc : base ≤ loc) (hLow : s.params.length ≤ loc) (hHigh : loc < s.positions)
     (hNext : Evolves env slots L0 L base heap store s heap1 store1
         (setLocal { s1 with values := vs } loc (.i64 v)) →
       (setLocal { s1 with values := vs } loc (.i64 v)).get loc = some (.i64 v) →
@@ -776,8 +776,8 @@ theorem After.storeWord {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 L 
     wp m (.localSet loc :: rest) Q store1 { s1 with values := [.i64 v].reverse ++ vs } host := by
   have hLow1 : ({ s1 with values := vs } : Locals).params.length ≤ loc := by
     show s1.params.length ≤ loc; rw [a.frame.params]; exact hLow
-  have hHigh1 : loc < ({ s1 with values := vs } : Locals).half := by
-    rw [Locals.half_values, a.frame.half]; exact hHigh
+  have hHigh1 : loc < ({ s1 with values := vs } : Locals).positions := by
+    rw [Locals.positions_values, a.frame.positions]; exact hHigh
   refine wp_localSet_local hLow1 (Locals.lt_total hHigh1) ?_
   have e := a.toEvolves rfl
   have f : Frame base s1 (setLocal { s1 with values := vs } loc (.i64 v)) :=
@@ -943,7 +943,7 @@ theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 
     (j src : Nat) → (tys : List ValueType) → (words : List UInt64) → (ws : Array UInt64) →
     (store1 : Store Unit) → (s : Locals) →
     After env slots L0 L base heap store0 s0 (.array .word) .owned ws heap1 store1 s [.i64 p] →
-    s.half = h → s.get ptr = some (.i64 p) → s.get w0 = some (.i64 w) →
+    s.positions = h → s.get ptr = some (.i64 p) → s.get w0 = some (.i64 w) →
     LocalsHold s src tys (List.zipWith typedValue tys words) → words.length = tys.length →
     w.toNat + j + tys.length ≤ ws.size →
     (∀ store2, After env slots L0 L base heap store0 s0 (.array .word) .owned
@@ -1164,7 +1164,7 @@ theorem Apart.append {store : Store Unit} {l1 l2 : List UInt64} {r : Nat × Nat}
 hold, which represent its value as borrowed, and changes nothing else.  A region apart from the
 regions of its variables lies apart from its arrays' words. -/
 theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat → Bool}
-    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} (hh : s.half = h)
+    {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals} (hh : s.positions = h)
     (hVars : Holds env slots L base heap store s) :
     {t : Ty} → (e : Expr S Γ t) → e.isPlace = true → (∀ i, e.uses i = true → L i = true) →
     ∀ {rest : Program} {Q : Assertion Unit} {vs : List Value},

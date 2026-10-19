@@ -73,9 +73,10 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
         func.result.types)))) by simp only [TailFunc.function, List.append_assoc]]
   have hl0 : ((func.function pos).toLocals
       ((if func.depth then [Value.i64 d] else []) ++ ws)).locals.length =
-      widthSum func.params + func.result.width + func.body.width func.modes + func.positions := by
+      widthSum func.params + func.result.width + func.body.width func.modes +
+        func.positions + func.positions := by
     simp only [Function.toLocals, TailFunc.function, List.length_map, List.length_append,
-      List.length_replicate]
+      List.length_replicate, Nat.add_assoc]
   have hHead : func.depth = true →
       ((if func.depth then [Value.i64 d] else []) ++ ws).head? = some (.i64 d) := by
     intro hd
@@ -106,16 +107,17 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
   generalize (if func.depth then 1 else 0) = p0 at hdv hNum hPos ⊢
   generalize (if func.depth then [Value.i64 d] else []) = dv at hdv hHead hp0 ⊢
   generalize func.positions = h at hPos hl0 ⊢
-  have hLocals : s0.params.length + s0.locals.length = h + h := by
+  have hLocals : s0.params.length + s0.locals.length = h + h + h := by
     rw [hp0, hl0, List.length_append, hdv, hLength]
     omega
   refine wp_paramCopyCode (func.params.flatMap Ty.types) p0
     (by rw [flatMap_types_length, hp0, List.length_append, hdv, hLength])
-    (by rw [hp0, List.length_append, hdv, hLength]; omega) (by rw [hLocals])
-    fun s1 hp1 hl1 hv1 low1 copy1 => ?_
-  have hh1 : s1.half = h := by
-    simp only [Locals.half, hp1, hl1, hLocals]
-    omega
+    (by rw [hp0, List.length_append, hdv, hLength]; omega)
+    (by simp only [Locals.positions, hLocals]; omega)
+    fun s1 frame1 hv1 copy1 => ?_
+  have hp1 := frame1.params
+  have hh1 : s1.positions = h := by
+    rw [frame1.positions, Locals.positions, hLocals]; omega
   have hParam : ∀ j (hj : j < ws.length), s0.get (p0 + j) = some ws[j] := by
     intro j hj
     have hlt : p0 + j < (dv ++ ws).length := by rw [List.length_append, hdv]; omega
@@ -124,7 +126,7 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
       List.getElem?_eq_getElem hj]
   have hold1 := LocalsHold.afterParamCopy
     (tys := func.params.flatMap Ty.types) (by rw [flatMap_types_length]; exact hLength)
-    (by omega) hh1 hParam low1 copy1
+    hh1 hParam copy1
   refine wp_loadCode ws (by rw [flatMap_types_length]; exact hLength) hh1 hold1 ?_
   rw [storeParamsCode_eq]
   refine wp_storeCode ws h (p0 + widthSum func.params) (func.params.flatMap Ty.types) s1 s1.values
@@ -136,7 +138,7 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
     (TailBody.code_spec m funs flags bounds fits host hm hCalls' func.modes func.body fun hd => ?_)
     h (p0 + widthSum func.params) (p0 + widthSum func.params + widthSum func.params)
     (p0 + widthSum func.params + widthSum func.params + func.result.width) args heap store
-    { s2 with values := s1.values } ws (frame2.half.trans hh1) rfl hRep hSep hold2 hAt hCap
+    { s2 with values := s1.values } ws (frame2.positions.trans hh1) rfl hRep hSep hold2 hAt hCap
     (by change s2.params.length ≤ p0 + widthSum func.params
         rw [frame2.params, hp1, hp0, List.length_append, hdv, hLength])
     le_rfl le_rfl (by omega) _
@@ -162,7 +164,7 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
     rw [← List.append_nil (loadCode h (p0 + widthSum func.params + widthSum func.params)
       func.result.types)]
     refine wp_loadCode words (s := { s' with values := s1.values }) rep.typed
-      (frame.half.trans (frame2.half.trans hh1)) hold ?_
+      (frame.positions.trans (frame2.positions.trans hh1)) hold ?_
     rw [wp_nil]
     have hValues : (words.reverse ++ s1.values).take (func.function pos).results.length ++
         (dv ++ ws).reverse.drop (func.function pos).numParams = words.reverse := by

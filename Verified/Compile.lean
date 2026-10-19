@@ -131,10 +131,11 @@ def FVar.callIndex {S : List Sig} {g : Sig} (f : FVar S g) : Nat :=
   2 + (S.length - 1 - f.index)
 
 /-- The local that holds a word of type `ty` at position `p` of a function with `h` positions:
-local `p` for an i64, and local `p + h` for an f64.  A function's locals are its parameters, an
-i64 local for each further position, and an f64 local for every position. -/
+local `p` for an i64, `p + h` for an f64, and `p + 2 * h` for an f32.  Each bank
+has one local per position, with the parameters occupying the beginning of the first bank. -/
 def slotIndex (h p : Nat) : ValueType → Nat
   | .f64 => p + h
+  | .f32 => p + 2 * h
   | _ => p
 
 /-- The instructions that push the words of types `tys` at positions `loc` on, in order. -/
@@ -665,11 +666,11 @@ def RecFunc.type (func : RecFunc S) : FuncType :=
   { params := codeParams func.params true
     results := func.result.types }
 
-/-- The instructions that copy each parameter word of type f64, at position `p` on among words of
-types `tys`, from its parameter local to the f64 local of its position. -/
+/-- The instructions that copy each floating parameter word to its position's typed local. -/
 def paramCopyCode (h : Nat) : Nat → List ValueType → Program
   | _, [] => []
   | p, .f64 :: tys => [.localGet p, .localSet (p + h)] ++ paramCopyCode h (p + 1) tys
+  | p, .f32 :: tys => [.localGet p, .localSet (p + 2 * h)] ++ paramCopyCode h (p + 1) tys
   | p, _ :: tys => paramCopyCode h (p + 1) tys
 
 /-- The call depth at which the code of a function that takes the depth traps at `unreachable`. -/
@@ -688,9 +689,9 @@ def positions {S : List Sig} {params : List Ty} {result : Ty} (body : Expr S par
 
 /-- The code of a function with parameters `params`, whose modes `modes` chose, and body `body`:
 the call depth when `depth` holds, then the words of the arguments, are its first positions, and
-the positions that the body needs follow them; an i64 local for each of those and an f64 local for
-every position follow the parameters.  The code tests the depth, copies the f64 parameter words to
-their positions' f64 locals, releases the owned parameters that the body does not use, and runs
+the positions that the body needs follow them.  An i64 local for each remaining position and
+f64 and f32 locals for every position follow the parameters.  The code tests the depth, copies
+floating parameters to their typed locals, releases the owned parameters that the body does not use, and runs
 the body, which leaves the words of the result on the stack. -/
 def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List Mode)
     (body : Expr S params result) (depth : Bool) (typeIdx : Nat) : Wasm.Function :=
@@ -698,7 +699,8 @@ def bodyFunction {S : List Sig} {params : List Ty} {result : Ty} (modes : List M
   let slots := paramSlots params modes p0
   let h := positions body depth
   { params := codeParams params depth
-    locals := List.replicate (body.width + copyWidth result) .i64 ++ List.replicate h .f64
+    locals := List.replicate (body.width + copyWidth result) .i64 ++
+      List.replicate h .f64 ++ List.replicate h .f32
     body := (if depth then guardCode else []) ++
       paramCopyCode h p0 (params.flatMap Ty.types) ++
       releaseWhere params slots (fun i => !body.usesFast i) ++
@@ -863,7 +865,7 @@ def TailFunc.function (func : TailFunc S) (typeIdx : Nat) : Wasm.Function :=
   { params := codeParams func.params func.depth
     locals := List.replicate
       (widthSum func.params + func.result.width + func.body.width func.modes) .i64 ++
-      List.replicate h .f64
+      List.replicate h .f64 ++ List.replicate h .f32
     body := (if func.depth then guardCode else []) ++
       paramCopyCode h p0 (func.params.flatMap Ty.types) ++
       loadCode h p0 (func.params.flatMap Ty.types) ++ storeParamsCode h stateBase func.params ++

@@ -101,7 +101,7 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
       simpa only [Ty.pot, ite_self, Nat.add_zero] using ht
     refine bSpec env slots paid nextPaid resultPaid h stateBase resultBase base
       (exitLabel + 1) (nextLabel + 1) heap2 store2 { s1 with values := s.values }
-      (e1.frame.half.trans hh) (e1.frame.params.trans hpv) e2.holds e2.step.at_
+      (e1.frame.positions.trans hh) (e1.frame.params.trans hpv) e2.holds e2.step.at_
       (by rw [e2.step.cap m, e1.step.cap m]; exact hCap)
       (by change s1.params.length ≤ stateBase; rw [e1.frame.params]; exact hLow)
       hState hResult (by omega) hPlaceB hPaidB _

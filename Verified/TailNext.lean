@@ -141,9 +141,9 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
     (fun i hi => by simp only [Sig.paidSel, Bool.and_eq_true, beq_iff_eq] at hi; exact hi.2)
   rw [storeParamsCode_eq]
   refine wp_storeCode ws1 h stateBase (params.flatMap Ty.types) s1 s.values
-    (by rw [rep1.length, flatMap_types_length]) (frame1.half.trans hh)
+    (by rw [rep1.length, flatMap_types_length]) (frame1.positions.trans hh)
     (by rw [frame1.params]; exact hLow)
-    (by rw [flatMap_types_length, frame1.half, hh]; omega) fun s2 frame2 hold2 _ => ?_
+    (by rw [flatMap_types_length, frame1.positions, hh]; omega) fun s2 frame2 hold2 _ => ?_
   rw [wp_br_cons]
   refine hNext heap2 store2 s2
     ⟨ws1, finalStep, (frame1.mono (by omega)).trans frame2, rep2, separate2, hold2⟩ ?_

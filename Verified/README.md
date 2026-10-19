@@ -69,9 +69,10 @@ which variables each subexpression reads from the bitmask `Expr.useMask` through
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  A copy allocates through the runtime's `alloc` and writes the length word and
 the elements.  A function's locals are its parameters, an i64 local for each further position, and
-an f64 local for every position.  A word of type f64 occupies its position's f64 local and any other
-word its i64 local, and a function copies its f64 parameter words to their positions' f64 locals at
-entry.  Negation compiles to the subtraction of the operand from −0, which is Lean's negation on
+f64 and f32 locals for every position.  Each word occupies the local for its type.  A function
+copies floating-point parameters to their typed locals at entry.  The f32 bank prepares the local
+layout for binary32 support.  The source dialect currently accepts binary64 floats.  Negation
+compiles to the subtraction of the operand from −0, which is Lean's negation on
 every input, since `f64.neg` turns the canonical NaN into a NaN with the sign bit set.
 `Float.ofBits` compiles to `f64.reinterpret_i64` followed by the addition of −0, which gives the
 canonical NaN for a NaN pattern and leaves every other float unchanged.  A float constant's code
