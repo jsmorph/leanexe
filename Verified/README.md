@@ -202,6 +202,9 @@ extensionality when function renaming and argument packing differ.  The public b
 native step charges with `Tail.costAt`, and its frames equation uses `Tail.fitsAt`.
 Zero charges give bound 0 without evaluating the rank.  [The command example](Examples/Tail.lean)
 includes owned growth, rotation, replacement, aliases, and calls between tail and guarded functions.
+[The condition examples](Examples/TailConditions.lean) cover Boolean coercions, inequality,
+proof-named conditionals, destructuring, and borrowed pair and record states.  The native step
+uses the existing field-normalization pass, so the termination proof sees native record fields.
 
 ## The theorem
 

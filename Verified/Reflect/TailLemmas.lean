@@ -2,6 +2,14 @@ import Verified.TailSource
 
 namespace Verified.Reflect
 
+theorem tail_bool_decide_true (value : Bool) [Decidable (value = true)] :
+    value = decide (value = true) := by
+  cases value <;> simp
+
+theorem tail_word_decide_ne (left right : UInt64) [Decidable (left ≠ right)] :
+    (left != right) = decide (left ≠ right) := by
+  by_cases h : left = right <;> simp [h]
+
 theorem tail_ite_fixed {α β : Type} (meaning : α → β) (P : Prop) [Decidable P]
     {yes no : Sum α β} {Y N : β}
     (hy : Y = yes.elim meaning id) (hn : N = no.elim meaning id) :

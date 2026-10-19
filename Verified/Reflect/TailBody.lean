@@ -44,6 +44,19 @@ def tailLemma (name : Name) (t : TailContext) (c : Ctx)
     app.assign name (← mkExpectedTypeHint proof (← app.hypType name))
   app.finish
 
+def reflectTailCondition (c : Ctx) (p inst : Lean.Expr) : MetaM Reflection := do
+  let test ← mkAppOptM ``Decidable.decide #[some p, some inst]
+  if let (``Eq, #[type, value, tru]) := p.consumeMData.getAppFnArgs then
+    if (← whnfR type).isConstOf ``Bool && tru.isConstOf ``Bool.true then
+      let r ← reflect c value
+      let h ← mkAppOptM ``tail_bool_decide_true #[some value, some inst]
+      return r.as (← transHint r.proof h) test
+  if let some (.ne, left, right) ← comparison? p then
+    let r ← reflect.reflectCmp c .ne left right
+    let h ← mkAppOptM ``tail_word_decide_ne #[some left, some right, some inst]
+    return r.as (← transHint r.proof h) test
+  reflect c test
+
 mutual
 
 partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
@@ -103,19 +116,27 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
     if app.discrs.size == 1 && app.alts.size == 1 &&
         !app.discrInfos.any (·.hName?.isSome) then
       let d := app.discrs[0]!
-      if let .pair _ _ ← tyOf (← inferType d) then
-        let view ← pairView c.base (← inferType d)
-        let r ← destructureTail t c [] d fun a b => do
-          return app.alts[0]!.beta (← matchFields app (← view.rebuild a b))
-        return ← r.restate (← casesEq app (matchFields app))
-      let fieldsOf (x : Lean.Expr) : MetaM (Array Lean.Expr) := do
-        if let some (_, fields) ← structOf? (← inferType d) then
-          fields.mapM (mkProjection x)
-        else matchFields app x
-      let expanded ← if ← isPlace d then pure (app.alts[0]!.beta (← fieldsOf d))
-        else withLetDecl `value (← inferType d) d fun x => do
-          mkLetFVars #[x] (app.alts[0]!.beta (← fieldsOf x))
-      return ← (← reflectTailBody t c expanded).restate (← casesEq app fieldsOf)
+      if (← projReduce d).isAppOf ``Prod.mk && app.altNumParams[0]! == 2 then
+        let fields ← matchFields app d
+        let expanded ← withLetDecl `first (← inferType fields[0]!) fields[0]! fun a => do
+          withLetDecl `second (← inferType fields[1]!) fields[1]! fun b =>
+            mkLetFVars #[a, b] (app.alts[0]!.beta #[a, b])
+        return ← reflectTailBody t c expanded
+      if let some (_, fields) ← structOf? (← inferType d) then
+        let fieldsOf (x : Lean.Expr) : MetaM (Array Lean.Expr) := fields.mapM (mkProjection x)
+        let expanded ← if ← isPlace d then pure (app.alts[0]!.beta (← fieldsOf d))
+          else withLetDecl `value (← inferType d) d fun x => do
+            mkLetFVars #[x] (app.alts[0]!.beta (← fieldsOf x))
+        return ← (← reflectTailBody t c expanded).restate (← casesEq app fieldsOf)
+      if let .elem _ ← tyOf (← inferType d) then
+        let expanded ← if (← projReduce d).isFVar then
+            pure (app.alts[0]!.beta (← matchFields app d))
+          else withLetDecl `value (← inferType d) d fun x => do
+            mkLetFVars #[x] (app.alts[0]!.beta (← matchFields app x))
+        return ← (← reflectTailBody t c expanded).restate (← casesEq app (matchFields app))
+      let r ← destructureTail t c [] d fun a b => do
+        return app.alts[0]!.beta (← matchFields app (← mkAppM ``Prod.mk #[a, b]))
+      return ← r.restate (← casesEq app (matchFields app))
   match e.getAppFnArgs with
   | (``dite, #[α, p, inst, yes, no]) =>
     let .lam _ _ y _ := yes.consumeMData
@@ -126,7 +147,7 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
       throwError "verified_compile: tail branches cannot use the condition's proof"
     reflectTailBody t c (← mkAppOptM ``ite #[some α, some p, some inst, some y, some n])
   | (``ite, #[_, p, inst, yes, no]) =>
-    let rc ← reflect c (← mkAppOptM ``Decidable.decide #[some p, some inst])
+    let rc ← reflectTailCondition c p inst
     let ry ← reflectTailBody t c yes
     let rn ← reflectTailBody t c no
     let step ← mkAppOptM ``ite

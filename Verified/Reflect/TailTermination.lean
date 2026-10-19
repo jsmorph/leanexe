@@ -23,7 +23,8 @@ def deriveTailAcc (name stepName : Name) (params : Array Lean.Expr)
     fun_induction $app <;>
       (refine Acc.intro _ ?_; intro next hs; simp_all [$stepId:ident])))
   unless remaining.isEmpty do
-    throwError "verified_compile: the tail transition of {name} has unproved induction cases"
+    let goals := MessageData.joinSep (remaining.map MessageData.ofGoal) "\n"
+    throwError "verified_compile: the tail transition of {name} has unproved induction cases:\n{goals}"
   let proof ← instantiateMVars goal
   if proof.hasExprMVar then
     throwError "verified_compile: the termination proof of {name} has unresolved arguments"

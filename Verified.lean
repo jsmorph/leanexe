@@ -16,6 +16,7 @@ import Verified.Examples.Frontend
 import Verified.Examples.Fold
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
+import Verified.Examples.TailConditions
 import Verified.Examples.TailReflection
 import Verified.Examples.Gpt
 import Verified.Examples.Euler

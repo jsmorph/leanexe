@@ -72,7 +72,11 @@ def reflectTailSource (base name eqName : Name) (sigs funs rest : Lean.Expr)
     let tupleValues (x : Lean.Expr) : MetaM (List Lean.Expr) :=
       argProjsE x (types.map fun _ => .borrowed) types.length
     let step ← withLocalDeclD `state state.type fun x => do
-      mkLambdaFVars #[x] (stepFn.beta (← tupleValues x).toArray)
+      let body := stepFn.beta (← tupleValues x).toArray
+      let native ← fieldTerms base.getPrefix ⟨body, ← mkEqRefl body⟩
+      unless ← kernelDefEq body native.term do
+        throwError "verified_compile: tail state fields of {name} changed their meaning"
+      mkLambdaFVars #[x] native.term
     addDefinition (base ++ `step) (← inferType step) step
     enableRealizationsForConst (base ++ `step)
     let step := mkConst (base ++ `step)

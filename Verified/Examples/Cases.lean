@@ -7,6 +7,7 @@ import Verified.Examples.Frontend
 import Verified.Examples.Fold
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
+import Verified.Examples.TailConditions
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
@@ -374,6 +375,22 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
+    for acc in [(0 : UInt64), 18446744073709551615] do
+      IO.println s!"tailconditions|boolCount|i64|i64:{n} i64:{acc}|\
+        {TailConditions.boolCount n acc}|0|0"
+      IO.println s!"tailconditions|neCount|i64|i64:{n} i64:{acc}|\
+        {TailConditions.neCount n acc}|0|0"
+      IO.println s!"tailconditions|diteCount|i64|i64:{n} i64:{acc}|\
+        {TailConditions.diteCount n acc}|0|0"
+    let (word, value) := TailConditions.tupleCount n (7, -2.5)
+    IO.println s!"tailconditions|tupleCount|list:i64,f64|i64:{n} i64:7 {floatArg (-2.5)}|\
+      {word} {value.toBits}|0|0"
+    let xs := (List.range n.toNat).toArray.map fun i => UInt64.ofNat (3 * i + 1)
+    IO.println s!"tailconditions|pairRead|i64|i64:{n} {arrayArg xs} i64:7|\
+      {TailConditions.pairRead n (xs, 7)}|1|1"
+    IO.println s!"tailconditions|recordRead|i64|i64:{n} {arrayArg xs} i64:7|\
+      {TailConditions.recordRead n ⟨xs, 7⟩}|1|1"
   for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
     for acc in [(0 : UInt64), 18446744073709551615] do
       IO.println s!"tail|tailCount|i64|i64:{n} i64:{acc}|{TailReflection.tailCount n acc}|0|0"
