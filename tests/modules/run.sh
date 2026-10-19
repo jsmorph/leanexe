@@ -1,9 +1,21 @@
 #!/usr/bin/env bash
 # Compares every case of tests/modules/Cases.lean between the Wasmtime host running
-# build/MODULE/MODULE.wasm and native Lean.  Usage: tests/modules/run.sh [build directory]
+# build/MODULE/MODULE.wasm and native Lean.
+# Usage: tests/modules/run.sh [build directory] | --module NAME WASM
 set -euo pipefail
 root=$(cd "$(dirname "$0")/../.." && pwd)
-build=${1:-$root/build}
+case_module=""
+case_wasm=""
+build=$root/build
+if [ "$#" -le 1 ] && [ "${1:-}" != "--module" ]; then
+  build=${1:-$build}
+elif [ "$#" -eq 3 ] && [ "$1" = "--module" ] && [ -n "$2" ] && [ -n "$3" ]; then
+  case_module=$2
+  case_wasm=$3
+else
+  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM" >&2
+  exit 2
+fi
 host=$root/build/tools/leanexe-wasmtime-host
 cases=$(mktemp)
 errors=$(mktemp)
@@ -32,8 +44,12 @@ echo "native Lean: $reads reads past the end and $inserts insertIdx! past the en
 declare -A passed
 failed=0
 while IFS='|' read -r module name result args expected; do
+  if [ -n "$case_module" ] && [ "$module" != "$case_module" ]; then
+    continue
+  fi
+  wasm=${case_wasm:-$build/$module/$module.wasm}
   read -ra argv <<<"$args"
-  out=$("$host" call "$build/$module/$module.wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ' | paste -sd, -)
+  out=$("$host" call "$wasm" "$name" "$result" "${argv[@]}" | tr -d '[] ' | paste -sd, -)
   if [ "$out" = "$expected" ]; then
     passed[$module.$name]=$((${passed[$module.$name]:-0} + 1))
   else
@@ -47,6 +63,12 @@ for name in $(printf '%s\n' "${!passed[@]}" | sort); do
   total=$((total + ${passed[$name]}))
 done
 echo "passed $total failed $failed"
+if [ -n "$case_module" ]; then
+  if [ "$total" -eq 0 ] || [ "$failed" -ne 0 ]; then
+    exit 1
+  fi
+  exit 0
+fi
 # The CLOB functions that consume their arrays release them inside the call on the paths that
 # do not return them.  The host releases nothing, so the counters show those frees.  Each line
 # is an export, its arguments, and the expected allocations and frees.

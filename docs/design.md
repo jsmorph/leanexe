@@ -162,6 +162,11 @@ binary64 GPT functions, including cached inference and sampling.  `verified_comp
 their execution theorems from `Prog.correctWith`, their allocation bounds, their trap-free
 theorems under those bounds, and the module's bytes theorem.
 
+[The verified compiler's Euler module](../Verified/Examples/Euler.lean) compiles the 55 unchanged
+functions of both solvers with the same generated theorems.  Its trap-free results use the
+generated allocation bounds.  `euler_solve_total` and its 1,407-page bound apply to the LeanExe
+compiler's module.
+
 ## Tested
 
 [`tests/modules/run.sh`](../tests/modules/run.sh) compares every case of each module's `Cases.lean` between Wasmtime and native Lean.  For `scale`, the cases include a zero divisor and products that wrap.  For `gcd`, they include zero arguments, consecutive Fibonacci numbers, and `(2^64-1, 2^64-59)`.  For `sumArray`, `pairSum`, and `sumCount`, the host allocates the input through `alloc`, and the allocation and free counters show every block freed after the host releases the result and the input.  A `pairSum` session shows the second call reusing the block the first freed, and releasing an array whose child mask marks its one element as a pointer frees both the array and the child.
@@ -300,7 +305,6 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [ ] Verified compiler: tail recursion compiled as a loop, without the depth limit.
 - [ ] Verified compiler: sum types with fields.
-- [ ] Verified compiler: the Euler programs.
 - [ ] Verified compiler: lists and other recursive types.
 - [ ] Verified compiler: `Float32` and the WGSL path.
 - [ ] Verified compiler: owned record and pair parameters.

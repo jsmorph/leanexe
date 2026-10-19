@@ -34,6 +34,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
     Verified.Examples.Frontend:compiled.module:frontend \
     Verified.Examples.Gpt:compiled.module:gpt \
+    Verified.Examples.Euler:compiled.module:euler \
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
     Verified.Examples.Owned:compiled.module:owned \
@@ -89,6 +90,12 @@ if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
   tests/gpt/run.sh "$out/gpt.wasm"
   tests/gpt/sessions.sh "$out/gpt.wasm"
   if [ "$case_module" = "gpt" ]; then
+    exit 0
+  fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "euler" ]; then
+  tests/modules/run.sh --module euler "$out/euler.wasm"
+  if [ "$case_module" = "euler" ]; then
     exit 0
   fi
 fi

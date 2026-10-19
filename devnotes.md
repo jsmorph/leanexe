@@ -34143,7 +34143,7 @@ The user approved the capability order below, with frequent updates, commits, an
 
 - [ ] Add helper unfolding, direct array methods, and `Array.foldl` through checked source equations and existing source constructs where their meanings agree.
 - [ ] Compile tail recursion as loops, with ownership, allocation, and termination proofs.
-- [ ] Port Euler and binary64 GPT as application checks of the first two phases.
+- [x] Port Euler and binary64 GPT as application checks.  Their accepted compilations use the existing source language.  Fold and tail-loop support remain pending.
 - [ ] Add binary32 types, operations, reflection, and compiler correctness.  Port binary32 GPT as an application check.
 - [ ] Add the verified compiler's WGSL path and check the GPT kernels.
 - [ ] Add sum constructors with fields, matching, and ownership rules.
@@ -34193,3 +34193,7 @@ The frontend addition reflects an empty array as the existing zero-length build 
 `frontend-bool-01` accepted the three new lemmas and the reflector, then failed on the Boolean proposition condition in `boolIf`.  The new condition path called the existing word-only comparison recognizer, which skips Boolean propositions.  The corrected path recognizes `Eq` and `Ne` on `Bool` before the word and float paths.  `frontend-bool-02` checks this correction through the same corpus.
 
 `frontend-bool-02` passed all 3,492 build jobs and all 168 native-versus-Wasmtime cases.  The eight axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The expanded example took eleven seconds.  The forty new cases cover the five equality forms at every input pair and calls on five arrays whose operands consume the array.  Every allocation check passed, with no retained block and at most four allocations for those calls.  The reviewed proof uses the existing conditional and negation rules through the three new logical equations.  `euler-cases-02` retries the unchanged Euler program with this frontend support.
+
+`84c48f9d` published the Boolean support.  `euler-cases-02` passed all 3,495 build jobs.  The Euler example took 564 seconds and compiled all 55 unchanged functions, including both solvers.  Its five axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  The emitted 27,618-byte module has SHA-256 `80ab6a9a00f76bd7b8b37a55a13f0288392a707ce9430819e09f20090e393da5` and passes `wasm-tools validate`.  All 3,096 existing Euler cases passed against native Lean.  The driver now accepts `tests/modules/run.sh --module NAME WASM`, and `tests/verified/run.sh --cases euler` uses that path with the existing corpus.  The generated trap-free theorems require room for their allocation bounds.  The existing `euler_solve_total` theorem and its 1,407-page bound continue to describe the LeanExe compiler's module.  The application guide, README, manual, and design document record that distinction.
+
+The user approved the array-fold source operation with a `UInt64` compiled counter.  Executable lengths and loop counts remain `UInt64`.  The correctness proof will use the represented array's size bound to relate the compiled loop to Lean's `Array.foldl`.
