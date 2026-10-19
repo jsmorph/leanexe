@@ -34135,3 +34135,18 @@ Paper guides identify the earlier compiler revision required by their reproducti
 - [x] Request all 629 external targets after removing fragments and excluding local service addresses.  There are 613 HTTP 200 responses, five empty IEEE HTTP 202 responses, and eleven publisher HTTP 403 responses.  The sixteen publisher targets remain unverified.  The existing references remain in place.
 
 The review changes documentation and one build-instruction comment in `tests/verified/run.sh`.  Validation uses the static checks above.  The accepted proof builds and execution tests remain those recorded in the preceding integration entry.  Link reports, HTTP responses, and the review scripts are retained under `build/integration-records/docs-review/` in the primary checkout.
+
+## 2026-10-19: Extending the verified compiler
+
+The user approved the capability order below, with frequent updates, commits, and pushes.  Development starts from `main` at `b26bd36c` on `verified-capabilities`.  Tested increments go to that branch, and completed phases enter `main` after the repository checks pass.  The clean build worktree is a separate checkout, with the accepted integration cache at `bda4a17b`.  The primary local machine checkout retains the user's local notes and untracked artifacts.
+
+- [ ] Add helper unfolding, direct array methods, and `Array.foldl` through checked source equations and existing source constructs where their meanings agree.
+- [ ] Compile tail recursion as loops, with ownership, allocation, and termination proofs.
+- [ ] Port Euler and binary64 GPT as application checks of the first two phases.
+- [ ] Add binary32 types, operations, reflection, and compiler correctness.  Port binary32 GPT as an application check.
+- [ ] Add the verified compiler's WGSL path and check the GPT kernels.
+- [ ] Add sum constructors with fields, matching, and ownership rules.
+- [ ] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.
+- [ ] Add proof composition across modules, starting with scalar calls that preserve memory.
+
+The first source review compares the reflector with the pinned Lean definitions and the LeanExe compiler.  `Array.setIfInBounds`, `Array.insertIdxIfInBounds`, and `Array.eraseIdxIfInBounds` have existing verified source operations with the same meanings.  `Array.insertIdx!` instead returns the empty array after an out-of-bounds panic.  Its support must preserve that result.  The [pinned array definitions](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/Array/Basic.lean) and `LeanExe.Compiler.Scalar` record the distinction.  Helper unfolding follows the existing compiler's `@[inline]` rule and retains the kernel-checked equation between each reflected expression and its Lean definition.
