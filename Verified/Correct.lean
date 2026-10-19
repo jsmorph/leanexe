@@ -2230,7 +2230,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           (fun _ => false) store s r →
         Apart store' (Env.moves modes ws (Env.ofFn fun i => (args i).denote funs env)) r) →
       (∀ r, Holds.ApartFrom env slots
-          (fun k => argsAny fun i => !(ps.get i).scalar && (args i).uses k) store s r →
+          (fun k => argsAny fun i =>
+            modes i == .borrowed && !(ps.get i).scalar && (args i).uses k) store s r →
         ∀ c ∈ Env.reads modes ws (Env.ofFn fun i => (args i).denote funs env),
           regionsDisjoint r c) →
       (d = false → heap'.top.toNat ≤ heap.top.toNat +
@@ -2276,7 +2277,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         (∀ q ∈ (match modes 0 with | .owned => p.pointers ws0 | .borrowed => []),
           Holds.ApartFrom env slots (fun k => argsAny fun i : Fin ps.length =>
             !(ps.get i).scalar && (args i.succ).uses k) store1 s1 (block store1 q)) →
-        (∀ r, Holds.ApartFrom env slots (fun k => !p.scalar && (args ⟨0, by simp⟩).uses k)
+        (∀ r, Holds.ApartFrom env slots
+            (fun k => modes 0 == .borrowed && !p.scalar && (args ⟨0, by simp⟩).uses k)
             store s r →
           ∀ c ∈ (match modes 0 with
             | .owned => []
@@ -2365,7 +2367,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         simp only [Bool.and_eq_true, Bool.not_eq_true'] at hk'
         refine ⟨hUses _ _ hk'.2, fun he => ?_⟩
         rw [he, hxy] at hk'
-        have := hNot0 hk'.1
+        have := hNot0 hk'.1.2
         rw [hk'.2] at this
         exact nomatch this
       have e := hNext heap2 store2 s2 (ws0 ++ ws2) (F0 ++ F2)
@@ -2410,7 +2412,14 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           · refine Apart.append (fun q hq => ?_) (hSep2.2 c hc)
             obtain ⟨hEq, -⟩ := hBlock q hq
             rw [hEq]
-            exact regionsDisjoint_symm (hY2 _ (h5c q hq) c hc)
+            have hApart : Holds.ApartFrom env slots
+                (fun k => argsAny fun i : Fin ps.length =>
+                  modes (i + 1) == .borrowed && !(ps.get i).scalar && (args i.succ).uses k)
+                store1 s1 (block store1 q) := (h5c q hq).mono fun k hk => by
+              obtain ⟨j, hj⟩ := argsAny_true.mp hk
+              simp only [Bool.and_eq_true] at hj
+              exact le_argsAny _ j (by simp only [Bool.and_eq_true]; exact ⟨hj.1.2, hj.2⟩)
+            exact regionsDisjoint_symm (hY2 _ hApart c hc)
       · -- A region apart from the copies and the moved variables lies apart from every owned
         -- argument's blocks.
         intro r hr hk
@@ -2439,12 +2448,14 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         rw [hReads] at hc
         rcases List.mem_append.mp hc with hc | hc
         · exact h6b r (hr.mono fun i h => le_argsAny (fun j : Fin (p :: ps).length =>
-            !((p :: ps).get j).scalar && (args j).uses i) ⟨0, by simp⟩ h) c hc
+            modes j == .borrowed && !((p :: ps).get j).scalar && (args j).uses i)
+              ⟨0, by simp⟩ h) c hc
         · refine hY2 r ((Holds.ApartFrom.iff hVars hStep1 hF1
             (fun k hk => ?_)).mpr (hr.mono fun i h => by
               obtain ⟨j, hj⟩ := argsAny_true.mp h
               exact le_argsAny (fun j : Fin (p :: ps).length =>
-                !((p :: ps).get j).scalar && (args j).uses i) j.succ hj)) c hc
+                modes j == .borrowed && !((p :: ps).get j).scalar && (args j).uses i)
+                  j.succ hj)) c hc
           obtain ⟨j, hj⟩ := argsAny_true.mp hk
           simp only [Bool.and_eq_true] at hj
           exact hUses _ _ hj.2
@@ -2618,7 +2629,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
               (fun r hr c hc => by
                 rw [hmd] at hc
                 exact hReads1 r (hr.mono fun k h => by
-                  rw [Bool.and_eq_true]; exact ⟨by simpa using hp, h⟩) c hc)
+                  simp only [Bool.and_eq_true]
+                  exact ⟨⟨by simp [hmd], by simpa using hp⟩, h⟩) c hc)
               fun hmo => by rw [hmd] at hmo; exact nomatch hmo
 
 /-- The release of the owned variables that `sel` selects after an expression's code, those live
@@ -2839,16 +2851,9 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs flags 
       ∀ wy, LocalsHold s1 (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ c ∈ u.regions (slots.getD y.index default).mode store1 wy (env.get y),
         Apart store1 (Env.moves sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env)) c := by
-    intro u y hy wy hwy hly c hc
-    have hyAll := hKeptAll _ hy
-    have hwy' := (hVars.hold_agree hF1 hyAll hly).mp hwy
-    obtain ⟨hSame, hFresh⟩ := hVars.regions_after hStep1 hyAll hwy' hly fun _ _ => trivial
-    rw [hSame] at hc
-    refine hX1 c (hFresh c hc) fun t x hx _ hmx wx hwx hlx b hb => ?_
-    obtain ⟨hxAll, hxKept⟩ := hMovedDie _ hx
-    have hne : x.index ≠ y.index := fun he => by rw [he, hy] at hxKept; exact nomatch hxKept
-    exact regionsDisjoint_symm
-      (hVars.2 t u x y hxAll hyAll hne hmx wx wy hwx hlx hwy' hly b hb c hc)
+    exact args_moves_apart_kept sig.mode args
+      (fun i k hi => by simp only [Bool.or_eq_true]; exact Or.inr (le_argsAny _ i hi))
+      hKeptAll hVars hStep1 hF1 hX1
   have aCall : After env slots (fun i => live i || (Expr.call g args).uses i)
       (fun i => (live i || argsAny fun j => (args j).uses i) &&
         !(argsAny fun j => callMoves slots live args j && (args j).uses i)) base heap store s

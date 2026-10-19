@@ -18,6 +18,11 @@ import Verified.Examples.Gpt
 import Verified.Examples.Euler
 import Verified.ArrayFold
 import Verified.TailRun
+import Verified.TailArgs
+import Verified.TailCorrect
+import Verified.TailTransport
+import Verified.Reflect.TailModes
+import Verified.Reflect.TailLemmas
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
