@@ -308,7 +308,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [ ] Verified compiler: sum types with fields.
 - [ ] Verified compiler: lists and other recursive types.
-- [ ] Verified compiler: Float32 arithmetic and the WGSL path.  Native Float32 values and arrays are supported.
+- [ ] Verified compiler: the WGSL path and binary32 GPT.  Float32 values, arrays, arithmetic, comparisons, and word conversions are supported.  Lists precede WGSL and GPT in the remaining work.
 - [ ] Verified compiler: owned record and pair parameters.
 
 The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Verified/Examples/Exp.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.

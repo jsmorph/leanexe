@@ -9,11 +9,15 @@ WASM domain.  The integer, opcode, control, section, and field checks below
 support that conclusion.  The reference snapshot contains the discrepancies
 recorded under [Reference discrepancies](#reference-discrepancies).
 
-The 2026-10-17 review covers the current 83 instruction forms and active data
+The 2026-10-17 review covers 83 instruction forms and active data
 segments.  It compares the added binary64 comparisons, absolute value,
 unsigned conversion, and saturating truncation with the [rendered instruction
 grammar][current-instructions], and data segments with the [data section
 grammar][current-data].  The source digests below identify this revision.
+
+The 2026-10-19 review adds `f32.convert_i64_u` at `b5` and
+`i64.trunc_sat_f32_u` at `fc 05`, bringing the inventory to 85 forms.  Both
+match the [rendered numeric instruction grammar][current-instructions].
 
 The comparison uses WebAssembly 3.0, dated 2026-09-21, and its [specification
 source at revision 608711107b7f1edb13efd57b7d79b49477462d36][spec].  The [dated
@@ -93,9 +97,9 @@ evaluation therefore yields the recorded initial value.
 
 ### Instructions
 
-All 83 instruction forms in the [instruction rules](Spec/Instructions.lean)
+All 85 instruction forms in the [instruction rules](Spec/Instructions.lean)
 were compared with the [official instruction grammar][instructions] and its
-[rendered rules][current-instructions]: 62 `Plain` rules, eight indexed rules,
+[rendered rules][current-instructions]: 64 `Plain` rules, eight indexed rules,
 six memory rules, four constants, and three
 structured controls.  Hexadecimal byte mappings are listed below.  Names are
 WASM instruction names, with a common type prefix shown once per group.
@@ -110,7 +114,7 @@ WASM instruction names, with a common type prefix shown once per group.
 | `f32` operations | `eq=5b`, `lt=5d`, `le=5f`, `abs=8b`, `nearest=90`, `sqrt=91`, `add=92`, `sub=93`, `mul=94`, `div=95` |
 | `f64` operations | `eq=61`, `lt=63`, `le=65`, `abs=99`, `sqrt=9f`, `add=a0`, `sub=a1`, `mul=a2`, `div=a3` |
 | Integer conversion | `i32.wrap_i64=a7`, `i64.extend_i32_u=ad`, `i32.extend8_s=c0` |
-| Numeric conversion | `f32.convert_i32_s=b2`, `f32.demote_f64=b6`, `f64.convert_i64_u=ba`, `f64.promote_f32=bb`, `i32.trunc_sat_f32_s=fc 00`, `i64.trunc_sat_f64_u=fc 07` |
+| Numeric conversion | `f32.convert_i32_s=b2`, `f32.convert_i64_u=b5`, `f32.demote_f64=b6`, `f64.convert_i64_u=ba`, `f64.promote_f32=bb`, `i32.trunc_sat_f32_s=fc 00`, `i64.trunc_sat_f32_u=fc 05`, `i64.trunc_sat_f64_u=fc 07` |
 | Reinterpretation | `i32.reinterpret_f32=bc`, `i64.reinterpret_f64=bd`, `f32.reinterpret_i32=be`, `f64.reinterpret_i64=bf` |
 | Indexed instructions | `br=0c`, `br_if=0d`, `call=10`, `local.get=20`, `local.set=21`, `local.tee=22`, `global.get=23`, `global.set=24` |
 | Loads | `i32.load=28`, `i64.load=29`, `i32.load8_u=2d` |
@@ -121,11 +125,12 @@ WASM instruction names, with a common type prefix shown once per group.
 
 The 2026-09-27 review covered 71 forms.  The 2026-10-03 review added the
 floating-point constants and binary32 comparisons and absolute value.  The
-2026-10-17 review completes the comparison for the current inventory.
+2026-10-17 review covers the remaining binary64 operations, and the
+2026-10-19 review adds the two binary32 conversions.
 Floating-point constants use N/8 bytes in the [binary value rules][values].
 
-Indexed immediates use `u32`.  In `fc 00` and `fc 07`, the second byte encodes
-unsigned subopcode zero or seven.  The trailing zero in `memory.size` and `memory.grow` encodes
+Indexed immediates use `u32`.  In `fc 00`, `fc 05`, and `fc 07`, the second byte encodes
+unsigned subopcode zero, five, or seven.  The trailing zero in `memory.size` and `memory.grow` encodes
 memory index zero.
 
 For loads and stores, alignment exponents are bounded by 2, 3, or 0 for
@@ -193,12 +198,12 @@ Core 3 snapshot would exceed this review.
 
 ## Reviewed source identity
 
-The SHA-256 digests of the files reviewed on 2026-10-17 are:
+The SHA-256 digests of the files reviewed on 2026-10-19 are:
 
 ```text
 6f69b201e8e22e1febee88b6e97a093b32af26d44266ca2781222d08b7c62d76  Spec/Values.lean
 0116708ee6aff512eacc69065ccb81bdad88b27e557579c843458b54b638e2bd  Spec/Types.lean
-6bffce505e556dccc5cc767bfaeb47b479af301c6cbec655bc399888601f8098  Spec/Instructions.lean
+b3441af27be77f91c8a932a033dba750194f611b9b7d64d0965b3b8f603b1b23  Spec/Instructions.lean
 e7ac862d6eb41655d094b8f5cd762a312b24cf23983c38e33307688c497a76b1  Spec/Modules.lean
 ```
 
