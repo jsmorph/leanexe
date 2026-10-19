@@ -2147,7 +2147,9 @@ where
     app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
     app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
     app.childFits `hif ri.fits
-    app.childFits `hbf u.fits
+    let bf ← u.fits
+    app.assign `BF bf.term
+    app.assign `hbf (← mkExpectedTypeHint bf.proof (← app.hypType `hbf))
     fitsOf (← app.finish)
   /-- The frames builder of a loop, with the parts that `loopBound` takes and the builder
   `condFits` of the condition's frames under its state, or `none` for the condition `true`. -/

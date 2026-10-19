@@ -373,6 +373,7 @@ def main : IO Unit := do
     let (sum, ys) := Fold.pair xs
     let bound := 3 + Nat.log2 (xs.size + 1)
     IO.println s!"fold|pair|list:i64,array-u64|{arrayArg xs}|{sum} {arrayOut ys}|2|{bound}"
+    IO.println s!"fold|selfSeed|array-u64|{arrayArg xs}|{arrayOut (Fold.selfSeed xs)}|2|{bound}"
     for seed in arrays do
       IO.println s!"fold|owned|array-u64|{arrayArg xs} {arrayArg seed}|\
         {arrayOut (Fold.owned xs seed)}|2|{bound}"
@@ -388,6 +389,9 @@ def main : IO Unit := do
     let r := Fold.records es
     IO.println s!"fold|records|list:i64,f64,i64|{arrayArg ws}|\
       {r.key} {r.price.toBits} {bit r.active}|1|1"
+  for xs in [#[], #[0], #[1, 2, 3], #[998]] do
+    IO.println s!"fold|recursiveCalls|i64|{arrayArg xs}|{Fold.recursiveCalls xs}|1|1"
+  IO.println "fold|recursiveCalls|i64|array-u64:999|trap"
   for a in [false, true] do
     for b in [false, true] do
       let args := s!"{boolArg a} {boolArg b}"
