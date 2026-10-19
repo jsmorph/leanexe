@@ -23,6 +23,7 @@ import Verified.TailCorrect
 import Verified.TailNext
 import Verified.TailBranch
 import Verified.TailBind
+import Verified.TailCode
 import Verified.TailTransport
 import Verified.Reflect.TailModes
 import Verified.Reflect.TailLemmas
