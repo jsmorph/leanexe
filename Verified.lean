@@ -27,6 +27,7 @@ import Verified.TailCode
 import Verified.TailStep
 import Verified.TailWhile
 import Verified.TailEntryFacts
+import Verified.TailEntry
 import Verified.TailTransport
 import Verified.Reflect.TailModes
 import Verified.Reflect.TailLemmas
