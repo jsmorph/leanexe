@@ -8,11 +8,6 @@ namespace Examples.Euler
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
-instance : Flat Faces (UInt64 × Conserved × Conserved × Float) :=
-  ⟨fun f => (f.status, f.left, f.right, f.factor)⟩
-
-instance : Flat Slope (UInt64 × Conserved) := ⟨fun s => (s.status, s.state)⟩
-
 /-- `eval_ir` with a larger step limit, for bodies that test several state guards. -/
 macro "eval_ir_large" "[" args:Lean.Parser.Tactic.simpLemma,* "]" : tactic =>
   `(tactic| simp (config := { maxSteps := 2000000 }) [Stmt.run, Expr.eval, Func.state,
