@@ -7,8 +7,6 @@ namespace Examples.Euler
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Euler
 
-instance : Flat Checked (UInt64 × Float) := ⟨fun c => (c.status, c.value)⟩
-
 /-- The magnitude bits of a Lean float are the bits of a Lean float: a NaN's are the canonical
 NaN's. -/
 theorem toBits_ofBits_abs (x : Float) :
