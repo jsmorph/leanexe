@@ -15,6 +15,7 @@ import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Gpt
 import Verified.Examples.Euler
+import Verified.ArrayFold
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
