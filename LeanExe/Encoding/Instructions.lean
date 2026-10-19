@@ -70,6 +70,7 @@ mutual
     | .wrapI64 => .ok ⟨[0xa7], .plain _ _ .wrapI64⟩
     | .extendUI32 => .ok ⟨[0xad], .plain _ _ .extendUI32⟩
     | .f32ConvertI32S => .ok ⟨[0xb2], .plain _ _ .f32ConvertI32S⟩
+    | .f32ConvertI64U => .ok ⟨[0xb5], .plain _ _ .f32ConvertI64U⟩
     | .f32DemoteF64 => .ok ⟨[0xb6], .plain _ _ .f32DemoteF64⟩
     | .f64PromoteF32 => .ok ⟨[0xbb], .plain _ _ .f64PromoteF32⟩
     | .i32ReinterpretF32 => .ok ⟨[0xbc], .plain _ _ .i32ReinterpretF32⟩
@@ -78,6 +79,7 @@ mutual
     | .f64ReinterpretI64 => .ok ⟨[0xbf], .plain _ _ .f64ReinterpretI64⟩
     | .extend8S => .ok ⟨[0xc0], .plain _ _ .extend8S⟩
     | .i32TruncSatF32S => .ok ⟨[0xfc, 0x00], .plain _ _ .i32TruncSatF32S⟩
+    | .i64TruncSatF32U => .ok ⟨[0xfc, 0x05], .plain _ _ .i64TruncSatF32U⟩
     | .i64TruncSatF64U => .ok ⟨[0xfc, 0x07], .plain _ _ .i64TruncSatF64U⟩
     | .memorySize => .ok ⟨[0x3f, 0x00], .plain _ _ .memorySize⟩
     | .memoryGrow => .ok ⟨[0x40, 0x00], .plain _ _ .memoryGrow⟩

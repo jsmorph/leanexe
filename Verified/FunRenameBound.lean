@@ -49,7 +49,8 @@ theorem Expr.paid_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (result : ∀ {g : Sig} (f : FVar S g), target.result (ρ f) = flags.result f)
     (e : Expr S Γ t) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) :
     (e.renameFuns ρ).paid target modes paid live = e.paid flags modes paid live := by
-  induction e generalizing modes paid live <;>
+  induction e generalizing modes paid live <;> try rfl
+  all_goals
     simp_all [Expr.renameFuns, Expr.paid, Expr.mode_renameFuns, Expr.uses_renameFuns,
       Expr.grows_renameFuns ρ flags target params, Expr.foldStep_renameFuns]
 

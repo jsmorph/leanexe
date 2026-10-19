@@ -15,6 +15,10 @@ give the unary, comparison, and conversion types recorded below.  The
 [data-segment validation rules][current-data] require an existing memory and
 a constant offset expression of its address type.
 
+The 2026-10-19 review adds `f32.convert_i64_u : i64 -> f32` and
+`i64.trunc_sat_f32_u : f32 -> i64` under the same
+[numeric conversion typing rule][current-instructions].
+
 The comparison uses the official [instruction rules][instructions], [type
 rules][types], and [module rules][modules] at revision
 `608711107b7f1edb13efd57b7d79b49477462d36`.  The [binary
@@ -70,7 +74,7 @@ binary review.
 | Wrap and unsigned extension | `i64 -> i32` and `i32 -> i64`, respectively. |
 | Signed byte extension | `i32 -> i32`. |
 | Signed conversion and saturating truncation | `i32 -> f32` and `f32 -> i32`, respectively. |
-| Unsigned conversion and saturating truncation | `i64 -> f64` and `f64 -> i64`, respectively. |
+| Unsigned conversion and saturating truncation | `i64 -> fN` and `fN -> i64`, respectively, for `N = 32` or `64`. |
 | Demotion and promotion | `f64 -> f32` and `f32 -> f64`, respectively. |
 | Four reinterpretations | Preserve width and change between the corresponding integer and float types. |
 | `localGet`, `localSet`, `localTee` | Require a successful local lookup and use exactly that local's type. |
@@ -173,10 +177,10 @@ through [`tools/leanrun`](../../tools/leanrun).  Those six reports contain only
 `propext`, `Classical.choice`, and `Quot.sound`.  The 2026-10-17 update records a
 manual specification comparison.
 
-The validity source reviewed on 2026-10-17 has SHA-256:
+The validity source reviewed on 2026-10-19 has SHA-256:
 
 ```text
-a6a8963b16e9198dc7c57ea6817b4efd05e37deef3fe4232caf1d9793a4c02bc  Spec/Validity.lean
+03c4135fdda9139c2953b46704b7dbc30cd3793b982709b7c3db3f6c713b867c  Spec/Validity.lean
 ```
 
 [instructions]:

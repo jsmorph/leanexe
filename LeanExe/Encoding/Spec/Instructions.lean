@@ -54,6 +54,7 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | wrapI64 : Plain [0xa7] .wrapI64
   | extendUI32 : Plain [0xad] .extendUI32
   | f32ConvertI32S : Plain [0xb2] .f32ConvertI32S
+  | f32ConvertI64U : Plain [0xb5] .f32ConvertI64U
   | f32DemoteF64 : Plain [0xb6] .f32DemoteF64
   | f64PromoteF32 : Plain [0xbb] .f64PromoteF32
   | i32ReinterpretF32 : Plain [0xbc] .i32ReinterpretF32
@@ -62,6 +63,7 @@ inductive Plain : Bytes → Wasm.Instruction → Prop
   | f64ReinterpretI64 : Plain [0xbf] .f64ReinterpretI64
   | extend8S : Plain [0xc0] .extend8S
   | i32TruncSatF32S : Plain [0xfc, 0x00] .i32TruncSatF32S
+  | i64TruncSatF32U : Plain [0xfc, 0x05] .i64TruncSatF32U
   | i64TruncSatF64U : Plain [0xfc, 0x07] .i64TruncSatF64U
   | memorySize : Plain [0x3f, 0x00] .memorySize
   | memoryGrow : Plain [0x40, 0x00] .memoryGrow

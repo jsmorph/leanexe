@@ -285,6 +285,7 @@ def plain : UInt8 → Option Instruction
   | 0xa7 => some .wrapI64
   | 0xad => some .extendUI32
   | 0xb2 => some .f32ConvertI32S
+  | 0xb5 => some .f32ConvertI64U
   | 0xb6 => some .f32DemoteF64
   | 0xbb => some .f64PromoteF32
   | 0xbc => some .i32ReinterpretF32
@@ -370,6 +371,7 @@ where
     | 0xfc => do
         match ← unsigned 32 with
         | 0 => return .i32TruncSatF32S
+        | 5 => return .i64TruncSatF32U
         | 7 => return .i64TruncSatF64U
         | _ => unsupported "0xfc instruction"
     | _ => unsupported s!"opcode {opcode}"

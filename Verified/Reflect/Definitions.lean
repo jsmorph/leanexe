@@ -335,7 +335,9 @@ def fbinOp? : Name → Option Lean.Expr
   | ``HDiv.hDiv => some (mkConst ``FBinOp.div)
   | _ => none
 
-def isFloat (α : Lean.Expr) : MetaM Bool := return (← whnfR α).isConstOf ``Float
+def isFloat (α : Lean.Expr) : MetaM Bool := do
+  let α ← whnfR α
+  return α.isConstOf ``Float || α.isConstOf ``Float32
 
 /-- A comparison of floats as a `Prop`: its operation and its operands, with `>` and `≥` as `<`
 and `≤` on swapped operands.  `=` and `≠` on floats compare bit patterns, which `==` and `!=` do
@@ -348,7 +350,7 @@ def fcomparison? (p : Lean.Expr) : MetaM (Option (FCmpOp × Lean.Expr × Lean.Ex
   | (``GE.ge, #[α, _, a, b]) => if ← isFloat α then return some (.le, b, a) else return none
   | (``Eq, #[α, _, _]) | (``Ne, #[α, _, _]) =>
     if ← isFloat α then
-      throwError "verified_compile: = and ≠ on Float compare bit patterns; use == and !="
+      throwError "verified_compile: = and ≠ on {α} compare bit patterns; use == and !="
     return none
   | _ => return none
 
@@ -1575,12 +1577,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   if let some op := binOp? fn then
     if args.size == 6 && (← isFloat args[0]!) then
       let some fop := fbinOp? fn
-        | throwError "verified_compile: unsupported operation {fn} on Float"
+        | throwError "verified_compile: unsupported operation {fn} on {args[0]!}"
       let rl ← reflect c args[4]!
       let rr ← reflect c args[5]!
-      return ⟨← mkAppM ``Expr.fbin #[fop, rl.src, rr.src],
-        ← mkAppM ``fbin_eq #[fop, rl.proof, rr.proof], .float, e,
-        binBound c ``fbin_bound [(`op, fop)] rl rr, binFits c ``fbin_fits [(`op, fop)] rl rr⟩
+      let fp32 := rl.ty == .float32
+      return ⟨← mkAppM (if fp32 then ``Expr.fbin32 else ``Expr.fbin) #[fop, rl.src, rr.src],
+        ← mkAppM (if fp32 then ``fbin32_eq else ``fbin_eq) #[fop, rl.proof, rr.proof],
+        (if fp32 then .float32 else .float), e,
+        binBound c (if fp32 then ``fbin32_bound else ``fbin_bound) [(`op, fop)] rl rr,
+        binFits c (if fp32 then ``fbin32_fits else ``fbin_fits) [(`op, fop)] rl rr⟩
     if args.size == 6 then
       let rl ← reflect c args[4]!
       let rr ← reflect c args[5]!
@@ -1623,8 +1628,42 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     return (← reflectCmp .ne a b).as' e
   | ``Neg.neg, #[α, _, x] =>
     unless ← isFloat α do throwError "verified_compile: unsupported negation {e}"
-    return (← reflectFUnary (mkConst ``FUnOp.neg) x).as' e
+    let op := if (← whnfR α).isConstOf ``Float32 then ``F32UnOp.neg else ``FUnOp.neg
+    return (← reflectFUnary (mkConst op) x).as' e
   | ``Float.sqrt, #[x] => return (← reflectFUnary (mkConst ``FUnOp.sqrt) x).as' e
+  | ``Float32.sqrt, #[x] => return (← reflectFUnary (mkConst ``F32UnOp.sqrt) x).as' e
+  | ``Float32.abs, #[x] => return (← reflectFUnary (mkConst ``F32UnOp.abs) x).as' e
+  | ``LeanExe.Float32.nearest, #[x] =>
+    return (← reflectFUnary (mkConst ``F32UnOp.nearest) x).as' e
+  | ``UInt64.toFloat32, #[x] =>
+    return (← reflectConv ``Expr.toFloat32 ``toFloat32_eq ``toFloat32_bound ``toFloat32_fits
+      (mkConst ``ToFloat32.convert) x .float32).as' e
+  | ``Float32.ofBits, #[bits] =>
+    let (``UInt64.toUInt32, #[x]) := bits.consumeMData.getAppFnArgs
+      | throwError "verified_compile: Float32.ofBits expects a UInt64 converted to UInt32"
+    return (← reflectConv ``Expr.toFloat32 ``toFloat32_eq ``toFloat32_bound ``toFloat32_fits
+      (mkConst ``ToFloat32.ofBits) x .float32).as' e
+  | ``Int32.toFloat32, #[value] =>
+    let (``Int32.ofUInt32, #[bits]) := value.consumeMData.getAppFnArgs
+      | throwError "verified_compile: Int32.toFloat32 expects the low bits of a UInt64"
+    let (``UInt64.toUInt32, #[x]) := bits.consumeMData.getAppFnArgs
+      | throwError "verified_compile: Int32.toFloat32 expects a UInt64 converted to UInt32"
+    return (← reflectConv ``Expr.toFloat32 ``toFloat32_eq ``toFloat32_bound ``toFloat32_fits
+      (mkConst ``ToFloat32.signed32) x .float32).as' e
+  | ``Float32.toUInt64, #[x] =>
+    return (← reflectConv ``Expr.toWord32 ``toWord32_eq ``toWord32_bound ``toWord32_fits
+      (mkConst ``ToWord32.truncate) x .word).as' e
+  | ``UInt32.toUInt64, #[bits] =>
+    match bits.consumeMData.getAppFnArgs with
+    | (``Float32.toBits, #[x]) =>
+      return (← reflectConv ``Expr.toWord32 ``toWord32_eq ``toWord32_bound ``toWord32_fits
+        (mkConst ``ToWord32.toBits) x .word).as' e
+    | (``Int32.toUInt32, #[value]) =>
+      let (``Float32.toInt32, #[x]) := value.consumeMData.getAppFnArgs
+        | throwError "verified_compile: unsupported UInt32 conversion {e}"
+      return (← reflectConv ``Expr.toWord32 ``toWord32_eq ``toWord32_bound ``toWord32_fits
+        (mkConst ``ToWord32.signed32) x .word).as' e
+    | _ => throwError "verified_compile: unsupported UInt32 conversion {e}"
   | ``UInt64.toFloat, #[x] =>
     return (← reflectConv ``Expr.toFloat ``toFloat_eq ``toFloat_bound ``toFloat_fits
       (mkConst ``ToFloat.convert) x .float).as' e
@@ -2447,17 +2486,20 @@ where
     if let some (op, l, r) ← fcomparison? p then
       let rl ← reflect c l
       let rr ← reflect c r
-      let cond ← mkAppM ``Expr.fcmp #[fcmpExpr op, rl.src, rr.src]
-      let (thm, bthm, fthm) ← match op with
-        | .lt => pure (``ite_flt_eq, ``ite_flt_bound, ``ite_flt_fits)
-        | .le => pure (``ite_fle_eq, ``ite_fle_bound, ``ite_fle_fits)
-        | .eq => throwError "verified_compile: unsupported condition {p}"
+      let fp32 := rl.ty == .float32
+      let cond ← mkAppM (if fp32 then ``Expr.fcmp32 else ``Expr.fcmp) #[fcmpExpr op, rl.src, rr.src]
+      let (thm, bthm, fthm) ← match op, fp32 with
+        | .lt, false => pure (``ite_flt_eq, ``ite_flt_bound, ``ite_flt_fits)
+        | .le, false => pure (``ite_fle_eq, ``ite_fle_bound, ``ite_fle_fits)
+        | .lt, true => pure (``ite_flt32_eq, ``ite_flt32_bound, ``ite_flt32_fits)
+        | .le, true => pure (``ite_fle32_eq, ``ite_fle32_bound, ``ite_fle32_fits)
+        | .eq, _ => throwError "verified_compile: unsupported condition {p}"
       return ⟨← mkAppM ``Expr.ite #[cond, ra.src, rb.src],
         ← mkAppM thm #[rl.proof, rr.proof, ra.proof, rb.proof], ra.ty, a,
         iteBound bthm [(`l, rl.src), (`r, rr.src)] [(`hl, rl), (`hr, rr)]
-          (binBound c ``fcmp_bound [(`op, fcmpExpr op)] rl rr),
+          (binBound c (if fp32 then ``fcmp32_bound else ``fcmp_bound) [(`op, fcmpExpr op)] rl rr),
         iteFits fthm [(`l, rl.src), (`r, rr.src)] [(`hl, rl), (`hr, rr)]
-          (binFits c ``fcmp_fits [(`op, fcmpExpr op)] rl rr)⟩
+          (binFits c (if fp32 then ``fcmp32_fits else ``fcmp_fits) [(`op, fcmpExpr op)] rl rr)⟩
     let some (op, l, r) ← comparison? p
       | throwError "verified_compile: unsupported condition {p}"
     let rl ← reflect c l
@@ -2827,14 +2869,19 @@ where
   reflectFCmp (op : FCmpOp) (a b : Lean.Expr) : MetaM Reflection := do
     let rl ← reflect c a
     let rr ← reflect c b
-    return ⟨← mkAppM ``Expr.fcmp #[fcmpExpr op, rl.src, rr.src],
-      ← mkAppM ``fcmp_eq #[fcmpExpr op, rl.proof, rr.proof], .bool, a,
-      binBound c ``fcmp_bound [(`op, fcmpExpr op)] rl rr,
-      binFits c ``fcmp_fits [(`op, fcmpExpr op)] rl rr⟩
+    let fp32 := rl.ty == .float32
+    return ⟨← mkAppM (if fp32 then ``Expr.fcmp32 else ``Expr.fcmp) #[fcmpExpr op, rl.src, rr.src],
+      ← mkAppM (if fp32 then ``fcmp32_eq else ``fcmp_eq) #[fcmpExpr op, rl.proof, rr.proof], .bool, a,
+      binBound c (if fp32 then ``fcmp32_bound else ``fcmp_bound) [(`op, fcmpExpr op)] rl rr,
+      binFits c (if fp32 then ``fcmp32_fits else ``fcmp_fits) [(`op, fcmpExpr op)] rl rr⟩
   reflectFUnary (op x : Lean.Expr) : MetaM Reflection := do
     let r ← reflect c x
-    return ⟨← mkAppM ``Expr.funary #[op, r.src], ← mkAppM ``funary_eq #[op, r.proof], .float,
-      x, unBound c ``funary_bound [(`op, op)] r, unFits c ``funary_fits [(`op, op)] r⟩
+    let fp32 := r.ty == .float32
+    return ⟨← mkAppM (if fp32 then ``Expr.funary32 else ``Expr.funary) #[op, r.src],
+      ← mkAppM (if fp32 then ``funary32_eq else ``funary_eq) #[op, r.proof],
+      (if fp32 then .float32 else .float), x,
+      unBound c (if fp32 then ``funary32_bound else ``funary_bound) [(`op, op)] r,
+      unFits c (if fp32 then ``funary32_fits else ``funary_fits) [(`op, op)] r⟩
   reflectConv (ctor thm bthm fthm : Name) (op x : Lean.Expr) (t : Ty) : MetaM Reflection := do
     let r ← reflect c x
     return ⟨← mkAppM ctor #[op, r.src], ← mkAppM thm #[op, r.proof], t, x,

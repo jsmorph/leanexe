@@ -37,7 +37,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | `UInt64` | One i64 word | Arithmetic wraps modulo `2^64`. |
 | `Bool` | One i64 word, 1 or 0 | |
 | `Float` | One f64 word, its bit pattern | Lean's binary64, which equals Talos's `IEEE64` on bit patterns. |
-| `Float32` | One f32 word, its bit pattern | Parameters, results, tuples, arrays, and loop state.  Arithmetic reflection remains pending. |
+| `Float32` | One f32 word, its bit pattern | Parameters, results, tuples, arrays, and loop state, with binary32 operations. |
 | A pair of types without arrays | The first component's words, then the second's | Nested pairs are tuples. |
 | A structure with a `Flat` instance whose tuple is its fields | Its fields' words | A nested structure is flattened in turn. |
 | An enumeration with a `Flat` instance to a word | One word | An inductive type whose constructors have no fields. |
@@ -52,9 +52,11 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 |---|---|
 | Word arithmetic | `+`, `-`, `*`, `/`, `%`, `&&&`, `\|\|\|`, `^^^`, `<<<`, `>>>`, `min`, `max` |
 | Word comparisons, unsigned | `==`, `!=`, `<`, `≤`, `>`, `≥`, `=`, `≠` |
-| Float arithmetic | `+`, `-`, `*`, `/`, `Float.sqrt`, `Float.abs`, negation, `min`, `max`, literals |
+| Float arithmetic, both widths | `+`, `-`, `*`, `/`, `sqrt`, `abs`, negation, `min`, `max`, literals |
+| Binary32 rounding | `LeanExe.Float32.nearest` |
 | Float comparisons | `==`, `!=`, `<`, `≤`, `>`, `≥` |
 | Conversions | `UInt64.toFloat`, `Float.toUInt64`, `Float.toBits`, `Float.ofBits` |
+| Binary32 conversions | `w.toFloat32`, `Float32.ofBits w.toUInt32`, `x.toUInt64`, `x.toBits.toUInt64`, `(Int32.ofUInt32 w.toUInt32).toFloat32`, `x.toInt32.toUInt32.toUInt64`, with `w : UInt64` and `x : Float32` |
 | `Bool` operations | `!`, `&&`, `\|\|`, `==`, `!=`, `decide` |
 | Bindings | `let`, and `match` on a pair, a tuple, or a structure |
 | Conditionals | `if` on a `Bool` or a comparison, `if h : c` whose branches do not use `h`, and `match` on an enumeration |
@@ -64,7 +66,9 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 
-Every construct has Lean's meaning.  Division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount modulo 64.  Each insertion accepts indices from 0 through the array's length.  Beyond the length, `insertIdx!` returns `#[]`, and `insertIdxIfInBounds` and `LeanExe.insertAt` return the input array.  Updates and removals leave the array unchanged at indices greater than or equal to its length.  Boolean equality supports `==`, `!=`, decisions of `=` and `≠`, and `if` on either proposition.  `==` and `!=` on `Bool` require `LawfulBEq Bool`.  `min` and `max` are Lean's definitions, `if a ≤ b`, which on floats differ from `f64.min` and `f64.max` on NaN and on zeros of opposite sign.  `=` and `≠` on floats compare bit patterns, so `0.0 ≠ -0.0`, and no f64 instruction computes them, so the reflector rejects them and accepts `==` and `!=`.  Lean's other float functions, such as `Float.exp` and `Float.sin`, are opaque, so a program computes them with definitions of its own, as the ports of fdlibm and of Arm's optimized-routines among the examples do.
+Every construct has Lean's meaning.  Word division by zero gives 0, the remainder by zero is the dividend, and a shift uses its amount modulo 64.  Each insertion accepts indices from 0 through the array's length.  Beyond the length, `insertIdx!` returns `#[]`, and `insertIdxIfInBounds` and `LeanExe.insertAt` return the input array.  Updates and removals leave the array unchanged at indices greater than or equal to its length.  Boolean equality supports `==`, `!=`, decisions of `=` and `≠`, and `if` on either proposition.  `==` and `!=` on `Bool` require `LawfulBEq Bool`.
+
+`min` and `max` use Lean's comparison and conditional at both float widths, preserving its NaN and signed-zero results.  Float comparisons `==` and `!=` use IEEE value equality.  The reflector rejects the bit-pattern propositions `=` and `≠` on floats.  Both `Float.ofBits` and `Float32.ofBits` canonicalize NaNs as Lean does.  Binary32 signed conversion interprets the low 32 bits of a `UInt64` as an `Int32`, and signed truncation returns the resulting `Int32` bit pattern zero-extended to `UInt64`.  Only the listed conversion forms accept the intermediate `UInt32` and `Int32` terms.  Conversions between `Float` and `Float32` remain outside the dialect.  Lean's opaque float functions, such as `Float.exp` and `Float.sin`, require definitions of their own, as the numerical examples provide.
 
 ### Loops and builds
 
@@ -291,7 +295,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [`Grow`](../Verified/Examples/Grow.lean) | `push` and `++` on parameters, built arrays, and loop states, onto an array that stays live, an array appended to itself, and an owned right operand. |
 | [`Modes`](../Verified/Examples/Modes.lean) | Parameters that a function returns, updates, or moves into an owned parameter, also from a loop's state and before a later argument reads the array, and parameters that stay borrowed because the body uses them again.  Its `byHand`, written without the reflector, has an owned parameter that the body never reads and one that it reads last. |
 | [`Floats`](../Verified/Examples/Floats.lean) | A piecewise function, a scaled hypotenuse, float comparisons as conditions and as `Bool` values, `min`, `max`, negation, a loop over a pair of floats, a function with a word, a float, an array, and a pair as parameters and a pair result with a float, a call of float functions, the conversions between words and floats, a power of two built from its exponent field, and literal NaN patterns. |
-| [Binary32 values](../Verified/Examples/Floats32.lean) | Mixed f32, f64, and word parameters and results, scalar and record-array reads, borrowed and owned updates, whole-array fold, build, literals, and a Float32 tail-loop state. |
+| [Binary32 operations](../Verified/Examples/Floats32.lean) | Arithmetic, comparisons, conditional branches, square root, signs, nearest, unsigned and signed word conversions, bit-pattern conversions, mixed f32/f64 parameters and results, arrays, updates, folds, builds, and tail loops.  Guarded recursion includes a proved 32-position mixed-format frame. |
 | [`Records`](../Verified/Examples/Records.lean) | Structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and used as a loop's state, with theorems stated for the structures. |
 | [`Tuples`](../Verified/Examples/Tuples.lean) | Arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, written without the reflector, with an `example` per function stating by `rfl` that it means a Lean function. |
 | [`Grids`](../Verified/Examples/Grids.lean) | Arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs. |
