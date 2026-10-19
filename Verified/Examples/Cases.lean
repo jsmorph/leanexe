@@ -710,15 +710,51 @@ def main : IO Unit := do
       IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
   for tag in ([0, 1, 2, 3, 4, 5, 6, 18446744073709551615] : List UInt64) do
     IO.println s!"floats32|literal|f32|i64:{tag}|{(Floats32.literal tag).toBits}|0|0"
+  for w in ([0, 1, 16777215, 16777216, 16777217, 16777219, 0x7fffffff, 0x80000000,
+      0xffffffff, 0x100000001, 0x7f800001, 0xffc00001, 0xffffffffffffffff] : List UInt64) do
+    IO.println s!"floats32|convert|f32|i64:{w}|{(Floats32.convert w).toBits}|0|0"
+    IO.println s!"floats32|ofBits|f32|i64:{w}|{(Floats32.ofBits w).toBits}|0|0"
+    IO.println s!"floats32|signedConvert|f32|i64:{w}|{(Floats32.signedConvert w).toBits}|0|0"
+    IO.println s!"floats32|roundTrip|i64|i64:{w}|{Floats32.roundTrip w}|0|0"
+  for x in floats32 ++ [-2.5, -1.5, -0.5, 0.5, 1.5, 2.5, 3.5,
+      2147483520, 2147483648, -2147483648, -2147483904, 18446744073709551616] do
+    let a := float32Arg x
+    IO.println s!"floats32|nearest|f32|{a}|{(Floats32.nearest x).toBits}|0|0"
+    IO.println s!"floats32|truncate|i64|{a}|{Floats32.truncate x}|0|0"
+    IO.println s!"floats32|signedTruncate|i64|{a}|{Floats32.signedTruncate x}|0|0"
+  for n in ([0, 1, 7, 999] : List UInt64) do
+    IO.println s!"floats32|guarded|f32|i64:{n} f32:1065353216|\
+      {(Floats32.guarded n 1).toBits}|0|0"
+    let (a, b, c) := Floats32.deep n 1.25 (-2.5)
+    IO.println s!"floats32|deep|list:f32,f64,i64|i64:{n} f32:1067450368 f64:13836183955189006336|\
+      {a.toBits} {b.toBits} {c}|0|0"
+  IO.println "floats32|guarded|f32|i64:1000 f32:1065353216|trap"
+  IO.println "floats32|deep|list:f32,f64,i64|i64:1000 f32:1067450368 f64:13836183955189006336|trap"
   for x in floats32 do
     let a := float32Arg x
     IO.println s!"floats32|identity|f32|{a}|{(Floats32.identity x).toBits}|0|0"
+    IO.println s!"floats32|negate|f32|{a}|{(Floats32.negate x).toBits}|0|0"
+    IO.println s!"floats32|absolute|f32|{a}|{(Floats32.absolute x).toBits}|0|0"
+    IO.println s!"floats32|bits|i64|{a}|{Floats32.bits x}|0|0"
+    for y in floats32 do
+      let args := s!"{a} {float32Arg y}"
+      IO.println s!"floats32|least|f32|{args}|{(Floats32.least x y).toBits}|0|0"
+      IO.println s!"floats32|most|f32|{args}|{(Floats32.most x y).toBits}|0|0"
+      for z in [(0 : Float32), 1.5] do
+        let triple := s!"{args} {float32Arg z}"
+        IO.println s!"floats32|arithmetic|f32|{triple}|{(Floats32.arithmetic x y z).toBits}|0|0"
+        IO.println s!"floats32|hypot|f32|{triple}|{(Floats32.hypot x y z).toBits}|0|0"
+        IO.println s!"floats32|piecewise|f32|{triple}|{(Floats32.piecewise x y z).toBits}|0|0"
+        IO.println s!"floats32|inBand|i64|{triple}|{bit (Floats32.inBand x y z)}|0|0"
+        IO.println s!"floats32|clamp|f32|{triple}|{(Floats32.clamp x y z).toBits}|0|0"
     for y in [(0.0 : Float), -3.25] do
       let (f, value, word) := Floats32.mixed x y 18446744073709551615
       IO.println s!"floats32|mixed|list:f64,f32,i64|{a} {floatArg y} \
         i64:18446744073709551615|{f.toBits} {value.toBits} {word}|0|0"
     for n in ([0, 1, 2, 7, 1024, 4096] : List UInt64) do
       IO.println s!"floats32|count|f32|i64:{n} {a}|{(Floats32.count n x).toBits}|0|0"
+      IO.println s!"floats32|tailSign|f32|i64:{n} {a}|{(Floats32.tailSign n x).toBits}|0|0"
+      IO.println s!"floats32|indexSum|f32|i64:{n} {a}|{(Floats32.indexSum n x).toBits}|0|0"
     for n in ([0, 1, 7, 64] : List UInt64) do
       IO.println s!"floats32|build|array-u64|i64:{n} {a}|\
         {arrayOut (float32Words (Floats32.build n x))}|1|1"
@@ -736,6 +772,12 @@ def main : IO Unit := do
       {arrayOut (float32Words first)} {arrayOut (float32Words second)}|2|2"
     IO.println s!"floats32|collect|array-u64|{a}|\
       {arrayOut (float32Words (Floats32.collect xs))}|2"
+    for seed in [(0 : Float32), -1.25] do
+      IO.println s!"floats32|total|f32|{a} {float32Arg seed}|\
+        {(Floats32.total xs seed).toBits}|1|1"
+      let result := Floats32.affine xs seed 0.5
+      IO.println s!"floats32|affine|array-u64|{a} {float32Arg seed} f32:1056964608|\
+        {arrayOut (float32Words result)}|2|2"
     for i in [0, 1, xs.size.toUInt64, 18446744073709551615] do
       IO.println s!"floats32|read|f32|{a} i64:{i}|{(Floats32.read xs i).toBits}|1|1"
     for x in floats32 do
