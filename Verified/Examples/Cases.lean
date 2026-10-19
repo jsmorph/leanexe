@@ -365,6 +365,17 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for a in [false, true] do
+    for b in [false, true] do
+      let args := s!"{boolArg a} {boolArg b}"
+      IO.println s!"frontend|boolEq|i64|{args}|{bit (Frontend.boolEq a b)}"
+      IO.println s!"frontend|boolNe|i64|{args}|{bit (Frontend.boolNe a b)}"
+      IO.println s!"frontend|boolDecide|i64|{args}|{bit (Frontend.boolDecide a b)}"
+      IO.println s!"frontend|boolIf|i64|{args}|{Frontend.boolIf a b}"
+      IO.println s!"frontend|boolIfNe|i64|{args}|{Frontend.boolIfNe a b}"
+      for xs in arrays do
+        IO.println s!"frontend|boolCalls|i64|{arrayArg xs} {args}|\
+          {bit (Frontend.boolCalls xs a b)}|0|4"
   IO.println s!"frontend|emptyWords|array-u64||{arrayOut Frontend.emptyWords}|1|1"
   IO.println s!"frontend|emptyFloats|array-u64||{floatArrayOut Frontend.emptyFloats}|1|1"
   for n in [(0 : UInt64), 1, 3] do

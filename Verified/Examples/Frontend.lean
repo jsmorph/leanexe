@@ -46,8 +46,25 @@ def entries (n : UInt64) : UInt64 × Array Entry :=
   if n == 0 then (1, #[])
   else (0, LeanExe.build n fun i => ⟨i, i.toFloat, i % 2 == 0⟩)
 
+def boolEq (a b : Bool) : Bool := a == b
+
+def boolNe (a b : Bool) : Bool := a != b
+
+def boolDecide (a b : Bool) : Bool := decide (a = b)
+
+def boolIf (a b : Bool) : UInt64 := if a = b then 7 else 9
+
+def boolIfNe (a b : Bool) : UInt64 := if a ≠ b then 7 else 9
+
+def boolOwn (xs : Array UInt64) (flag : Bool) : Bool :=
+  let ys := xs.push 7
+  flag && 0 < ys.size.toUInt64
+
+def boolCalls (xs : Array UInt64) (a b : Bool) : Bool := boolOwn xs a == boolOwn xs b
+
 verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, insertDirect,
-  eraseDirect, listed, listedCall, emptyWords, emptyFloats, entries]
+  eraseDirect, listed, listedCall, emptyWords, emptyFloats, entries, boolEq, boolNe, boolDecide,
+  boolIf, boolIfNe, boolOwn, boolCalls]
 
 #print axioms compiled.inlineScalar.denote_eq
 #print axioms compiled.inlineArray.implements
@@ -55,6 +72,7 @@ verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, 
 #print axioms compiled.insertDirect.implements
 #print axioms compiled.eraseDirect.implements
 #print axioms compiled.entries.implements
+#print axioms compiled.boolCalls.implements
 #print axioms compiled.bytes
 
 end Verified.Examples.Frontend

@@ -38,6 +38,19 @@ theorem or_eq {l r : Expr S Γ .bool} {L R : Bool}
     (Expr.or l r).denote funs env = (L || R) := by
   subst hl hr; rfl
 
+theorem bool_beq_eq [BEq Bool] [LawfulBEq Bool] (a b : Bool) :
+    (if a then b else !b) = (a == b) := by
+  rw [Bool.beq_eq_decide_eq]
+  cases a <;> cases b <;> rfl
+
+theorem bool_decide_eq (a b : Bool) [Decidable (a = b)] :
+    (if a then b else !b) = decide (a = b) := by
+  cases a <;> cases b <;> simp
+
+theorem ite_decide_eq {α : Type} (p : Prop) [Decidable p] (a b : α) :
+    (if decide p then a else b) = (if p then a else b) := by
+  by_cases h : p <;> simp [h]
+
 theorem ite_eq {t : Ty} {c : Expr S Γ .bool} {a b : Expr S Γ t} {C : Bool} {A B : t.denote}
     (hc : c.denote funs env = C) (ha : a.denote funs env = A) (hb : b.denote funs env = B) :
     (Expr.ite c a b).denote funs env = if C then A else B := by
