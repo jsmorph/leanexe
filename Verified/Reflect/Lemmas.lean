@@ -215,6 +215,28 @@ theorem loop_flat_eq {t : Ty} {α : Type} (φ : α → t.denote) (I : α) (F : U
   rw [hi]
   exact loop_map φ _ I F _ hb
 
+theorem fold_flat_eq {e : Elem} {t : Ty} {α β : Type} (φ : β → t.denote)
+    (ψ : α → e.denote) (xs : Array α) (initValue : β) (step : β → α → β)
+    {x : Var Γ (.array e)} {init : Expr S Γ t}
+    {body : Expr S (.elem e :: t :: .word :: Γ) t}
+    (hx : env.get x = xs.map ψ) (hi : init.denote funs env = φ initValue)
+    (hb : ∀ i acc value,
+      body.denote funs (.cons (ψ value) (.cons (φ acc) (.cons i env))) = φ (step acc value)) :
+    (Expr.fold x init body).denote funs env = φ (xs.foldl step initValue) := by
+  simp only [Expr.denote, hx, hi, Array.foldl_map]
+  have h := Array.foldl_hom (fun state : UInt64 × β => (state.1, φ state.2))
+    (xs := xs) (init := (0, initValue))
+    (g₁ := fun state value => (state.1 + 1, step state.2 value))
+    (g₂ := fun state value => (state.1 + 1,
+      body.denote funs (.cons (ψ value) (.cons state.2 (.cons state.1 env)))))
+    (by intro state value; simp only [hb])
+  rw [h]
+  have hs := Array.foldl_hom (fun state : UInt64 × β => state.2)
+    (xs := xs) (init := (0, initValue))
+    (g₁ := fun state value => (state.1 + 1, step state.2 value)) (g₂ := step)
+    (by intro state value; rfl)
+  exact congrArg φ hs.symm
+
 /-- `LeanExe.repeatWhile` is the loop over its fuel whose function applies `step` to a state
 that satisfies `cond` and keeps any other. -/
 theorem repeatWhile_eq_loop {α : Type} (fuel : UInt64) (init : α) (cond : α → Bool)

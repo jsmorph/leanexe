@@ -59,6 +59,11 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
     count.demands (fun i => all i || init.uses i) false k || init.demands all state k ||
       cond.demands (fun j => j == 0 || shift 1 all j) false (k + 1) ||
       body.demands inner state (k + 2)
+  | _, _, .fold x init body, live, owned, k =>
+    let all := fun i => live i || (Expr.foldStep x body).uses (i + 2)
+    let inner := shift 1 (shift 2 all)
+    let state := owned || body.demands inner false 1 || body.mode [.borrowed] == .owned
+    init.demands all state k || body.demands inner state (k + 3)
   | _, _, .get x i, live, _, k => i.demands (fun j => live j || j == x.index) false k
   | _, _, .build count elem, live, _, k =>
     let all := fun i => live i || elem.uses (i + 1)

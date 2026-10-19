@@ -4,6 +4,7 @@ import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Frontend
+import Verified.Examples.Fold
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
@@ -365,6 +366,28 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for xs in arrays do
+    for seed in [(0 : UInt64), 7, 18446744073709551615] do
+      IO.println s!"fold|words|i64|{arrayArg xs} i64:{seed}|{Fold.words xs seed}|1|1"
+    IO.println s!"fold|calls|i64|{arrayArg xs}|{Fold.calls xs}|1|1"
+    let (sum, ys) := Fold.pair xs
+    let bound := 3 + Nat.log2 (xs.size + 1)
+    IO.println s!"fold|pair|list:i64,array-u64|{arrayArg xs}|{sum} {arrayOut ys}|2|{bound}"
+    for seed in arrays do
+      IO.println s!"fold|owned|array-u64|{arrayArg xs} {arrayArg seed}|\
+        {arrayOut (Fold.owned xs seed)}|2|{bound}"
+  for xs in floatArrays do
+    for seed in someFloats do
+      IO.println s!"fold|floats|f64|{floatArrayArg xs} {floatArg seed}|\
+        {(Fold.floats xs seed).toBits}|1|1"
+  for n in [(0 : UInt64), 1, 3, 8] do
+    let xs := LeanExe.build n fun i => i % 5
+    IO.println s!"fold|nested|i64|{arrayArg xs}|{Fold.nested xs}|1|10"
+    let es : Array Fold.Entry := LeanExe.build n fun i => ⟨i, i.toFloat, i % 2 == 0⟩
+    let ws := es.flatMap fun e => #[e.key, e.price.toBits, if e.active then 1 else 0]
+    let r := Fold.records es
+    IO.println s!"fold|records|list:i64,f64,i64|{arrayArg ws}|\
+      {r.key} {r.price.toBits} {bit r.active}|1|1"
   for a in [false, true] do
     for b in [false, true] do
       let args := s!"{boolArg a} {boolArg b}"

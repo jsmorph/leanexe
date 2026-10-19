@@ -59,7 +59,7 @@ document states its theorem's domain and exceptional cases.
 | Lists and recursive types | `List UInt64` and user recursive types | Outside the dialect |
 | Sum types | Supported, with fields | Enumerations only |
 | Tail recursion | Compiled as a loop | Compiled as recursion, under a depth limit of 1,000 |
-| Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Outside the dialect |
+| Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Whole-array `Array.foldl` over every element type, with an accumulator of any dialect type |
 | Array updates | `set!`, `setIfInBounds`, `insertIdx!`, `eraseIdxIfInBounds`, and `push` on `Array UInt64`, and `++` with an owned left operand | `set!`, `setIfInBounds`, `push`, `++`, `insertIdxIfInBounds`, `eraseIdxIfInBounds`, `LeanExe.insertAt`, and `LeanExe.eraseAt` on arrays of every element type |
 | `@[inline]` helpers | Unfolded at their use | Unfolded at their use.  A listed helper compiles as a function. |
 | Records with array fields | Outside the dialect | Supported |
@@ -70,7 +70,7 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for recursive source functions, their frames conditions.  A program that needs
-`Float32`, WGSL kernels, lists or trees, sum types with fields, `Array.foldl`, or `insertIdx!`
+`Float32`, WGSL kernels, lists or trees, sum types with fields, or `insertIdx!`
 compiles only with the LeanExe compiler.  Binary64 GPT-2 and the Euler solvers compile with both
 compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified
