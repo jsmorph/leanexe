@@ -314,29 +314,6 @@ def Var.roomCode (slots : List Slot) (b : Nat) (live : Nat → Bool) {Γ : List 
     [.localGet (b + 2), .constI64 1, .addI64, .constI64 8, .mulI64] ++
       allocBlockCode (b + 2) (b + 4) ++ copyIntoCode b (b + 4) (b + 1) (b + 5)
 
-/-- The mode that holds both of two values' arrays: owned when either is owned. -/
-def Mode.join : Mode → Mode → Mode
-  | .borrowed, .borrowed => .borrowed
-  | _, _ => .owned
-
-/-- The mode of an expression's value, given the modes of the variables: owned when it holds
-arrays that its holder must consume, which a call's result, a built, updated, or extended array, a
-moved or copied variable, and a join of an owned value do. -/
-def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Mode
-  | _, _, .var x => modes.getD x.index .borrowed
-  | _, _, .ite _ thenE elseE => (thenE.mode modes).join (elseE.mode modes)
-  | _, _, .letE value body => body.mode (value.mode modes :: modes)
-  | _, _, .call (g := g) _ _ => if g.result.scalar then .borrowed else .owned
-  | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
-  | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => .owned
-  | _, _, .pair first second => (first.mode modes).join (second.mode modes)
-  | _, _, .letPair e body => body.mode (e.mode modes :: e.mode modes :: modes)
-  | _, _, .loop _ init _ body =>
-    (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
-  | _, _, .fold _ init body =>
-    (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
-  | _, _, _ => .borrowed
-
 /-- The instructions that push the words of an argument at an owned parameter, a variable, as an
 owned value. -/
 def Expr.ownedCode (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
@@ -810,6 +787,90 @@ def wrapperFunction (addrs : List UInt64) (params : List Ty) (result : Ty) (dept
 /-- Parameter and result types of the runtime functions.  Copied from `LeanExe.IR`. -/
 def wordToWord : FuncType := { params := [.i64], results := [.i64] }
 def wordToNone : FuncType := { params := [.i64], results := [] }
+
+def tailSig (params : List Ty) (result : Ty) (modes : List Mode) : Sig :=
+  ⟨params, result, true, modes, false⟩
+
+def TailBody.width (targetModes : List Mode) :
+    {Γ : List Ty} → TailBody S params result Γ → Nat
+  | _, .ret value => max value.width (copyWidth result)
+  | _, .next args =>
+    argsMax fun i =>
+      if paramMode params targetModes i = .owned then copyWidth (params.get i) else (args i).width
+  | _, .ite cond yes no => max cond.width (max (yes.width targetModes) (no.width targetModes))
+  | _, .letE (t := t) value body => t.width + max value.width (body.width targetModes)
+  | _, .letPair (s := s) (t := t) value body =>
+    s.width + t.width + max value.width (body.width targetModes)
+
+def storeParamsCode (h base : Nat) : List Ty → Program
+  | [] => []
+  | t :: ts => storeParamsCode h (base + t.width) ts ++ storeCode h base t.types
+
+def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat) :
+    {Γ : List Ty} → TailBody S params result Γ → List Slot → Nat → Nat → Nat → Program
+  | _, .ret value, slots, base, exitLabel, _ =>
+    value.code h slots base (fun _ => false) ++
+      coerceCode h result (value.mode (slots.map Slot.mode)) .owned base ++
+      storeCode h resultBase result.types ++ [.br exitLabel]
+  | Γ, .next args, slots, base, _, nextLabel =>
+    let g := tailSig params result targetModes
+    let all := fun i => argsAny fun j => (args j).usesFast i
+    let kept := fun i =>
+      all i && !(argsAny fun j => callMoves slots (fun _ => false) (g := g) args j &&
+        (args j).usesFast i)
+    argsCode (fun i =>
+      if (params.get i).scalar then (args i).code h slots base all
+      else if paramMode params targetModes i = .owned then (args i).ownedCode h slots base kept
+      else (args i).placeCode h slots) ++
+      releaseWhere Γ slots kept ++ storeParamsCode h p0 params ++ [.br nextLabel]
+  | Γ, .ite cond yes no, slots, base, exitLabel, nextLabel =>
+    let mid := fun i => yes.usesFast i || no.usesFast i
+    cond.code h slots base mid ++
+      [.eqzI64, .iff 0 0
+        (releaseWhere Γ slots (fun i => mid i && !no.usesFast i) ++
+          no.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
+        (releaseWhere Γ slots (fun i => mid i && !yes.usesFast i) ++
+          yes.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1)) [] []]
+  | _, .letE (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    value.code h slots (base + t.width) (fun i => body.usesFast (i + 1)) ++
+      storeCode h base t.types ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t base else []) ++
+      body.code targetModes h p0 resultBase (⟨base, mode⟩ :: slots) (base + t.width)
+        exitLabel nextLabel
+  | _, .letPair (s := s) (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    value.code h slots (base + s.width + t.width) (fun i => body.usesFast (i + 2)) ++
+      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
+      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
+      body.code targetModes h p0 resultBase (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots)
+        (base + s.width + t.width) exitLabel nextLabel
+
+def TailFunc.positions (func : TailFunc S) : Nat :=
+  (if func.depth then 1 else 0) + 2 * widthSum func.params + func.result.width +
+    func.body.width func.modes
+
+def TailFunc.function (func : TailFunc S) (typeIdx : Nat) : Wasm.Function :=
+  let p0 := if func.depth then 1 else 0
+  let stateBase := p0 + widthSum func.params
+  let slots := paramSlots func.params func.modes stateBase
+  let h := func.positions
+  let resultBase := stateBase + widthSum func.params
+  { params := codeParams func.params func.depth
+    locals := List.replicate
+      (widthSum func.params + func.result.width + func.body.width func.modes) .i64 ++
+      List.replicate h .f64
+    body := (if func.depth then guardCode else []) ++
+      paramCopyCode h p0 (func.params.flatMap Ty.types) ++
+      loadCode h p0 (func.params.flatMap Ty.types) ++ storeParamsCode h stateBase func.params ++
+      [.block 0 0 [.loop 0 0
+        (releaseWhere func.params slots (fun i => !func.body.usesFast i) ++
+          func.body.code func.modes h stateBase resultBase slots
+            (resultBase + func.result.width) 1 0)
+        [] []] [] []] ++ loadCode h resultBase func.result.types
+    results := func.result.types
+    typeIdx := some typeIdx }
 
 /-- A program's functions in module order, the last of the list first, from position 2. -/
 def Prog.functions : {S : List Sig} → Prog S → List Wasm.Function
