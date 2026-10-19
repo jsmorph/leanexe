@@ -30,14 +30,31 @@ def eraseDirect (xs : Array UInt64) (i : UInt64) : Array UInt64 :=
 
 def listedCall (x : UInt64) : UInt64 := listed x + 1
 
+def emptyWords : Array UInt64 := #[]
+
+def emptyFloats : Array Float := #[]
+
+structure Entry where
+  key : UInt64
+  price : Float
+  active : Bool
+
+instance : LeanExe.Pipeline.Flat Entry (UInt64 × Float × Bool) :=
+  ⟨fun e => (e.key, e.price, e.active)⟩
+
+def entries (n : UInt64) : UInt64 × Array Entry :=
+  if n == 0 then (1, #[])
+  else (0, LeanExe.build n fun i => ⟨i, i.toFloat, i % 2 == 0⟩)
+
 verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, insertDirect,
-  eraseDirect, listed, listedCall]
+  eraseDirect, listed, listedCall, emptyWords, emptyFloats, entries]
 
 #print axioms compiled.inlineScalar.denote_eq
 #print axioms compiled.inlineArray.implements
 #print axioms compiled.inlineLoop.trapFree
 #print axioms compiled.insertDirect.implements
 #print axioms compiled.eraseDirect.implements
+#print axioms compiled.entries.implements
 #print axioms compiled.bytes
 
 end Verified.Examples.Frontend
