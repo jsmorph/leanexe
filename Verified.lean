@@ -31,6 +31,7 @@ import Verified.TailEntryFacts
 import Verified.TailEntry
 import Verified.FunRenameBound
 import Verified.TailExpand
+import Verified.TailAllocExpand
 import Verified.TailTransport
 import Verified.Reflect.TailModes
 import Verified.Reflect.TailLemmas
