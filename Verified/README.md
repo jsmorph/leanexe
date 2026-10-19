@@ -120,14 +120,18 @@ the facts that the proof shares, and [`Correct.lean`](Correct.lean) the theorem.
 module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions
 0 and 1.
 
-[`ArrayFold.lean`](ArrayFold.lean) proves that `Array.foldl` equals a `UInt64`-indexed
-`LeanExe.loop` when the array length fits in a word.  `Ty.Rep.array_size_lt` derives that
-bound for every represented element type from the flattened array's heap bound and the
-positive element width.  `Expr.foldLoop` constructs the loop expression from an array
-variable, an initial value, and a body whose first two variables are the element and
-accumulator.  [Variable renaming](Rename.lean) places that body under the loop's index
-binding and proves that the renaming preserves its meaning.  These declarations prepare
-the array-fold compiler rule.  The reflector does not yet accept `Array.foldl`.
+`Expr.fold` has the full `Array.foldl` meaning, with its element, accumulator, and `UInt64`
+index as variables 0, 1, and 2 of its body.  The reflector accepts whole-array folds and
+leaves the index unused.  [The fold proofs](ArrayFold.lean) equate the source operation
+with `Expr.foldExpand`, a word-counted loop that reads each element before its body.
+`Ty.Rep.array_size_lt` derives the required size bound for every represented element type
+from the flattened array's heap bound and positive element width.  `Cases.spec_fold`
+composes the existing size, read, binding, and loop rules.  The expansion has the same
+code, liveness, mode, allocation bound, frames condition, and local width as the fold.
+[The reflection lemmas](Reflect/FoldLemmas.lean) express its allocation and frames
+conditions with `foldCost` and `foldFits` on the user's array and accumulator types.
+`Expr.foldLoop` and [variable renaming](Rename.lean) also give a loop construction for a
+body that takes only the element and accumulator.
 
 ## Recursion
 

@@ -3,6 +3,7 @@ import Verified.Instantiate
 import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
+import Verified.Reflect.FoldLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
 
@@ -34,7 +35,8 @@ comparison, also as `if h : c` with branches that do not use `h`, pairs built wi
 taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
 `match` and comparisons on enumerations, Boolean equality and inequality, `LeanExe.loop`,
-`LeanExe.repeatWhile`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
+`LeanExe.repeatWhile`, whole-array `Array.foldl`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`,
+`xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
@@ -858,6 +860,9 @@ partial def normCost (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
     let some (a, h) ← mulOne? x | return (e, none)
     let f := e.getAppFn
     return (mkApp f a, some (← congrArgOn f x a h))
+  | (``foldCost, #[_, _, xs, init, step, cost]) =>
+    unless ← lambdaTelescope cost (fun _ body => pure (isNatZero body)) do return (e, none)
+    return (natZero, some (← mkAppM ``foldCost_zero #[xs, init, step]))
   | _ => return (e, none)
 
 /-- `e` with its head reduced once when it projects an application of a structure's constructor,
@@ -996,6 +1001,10 @@ partial def normFits (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
       mkLambdaFVars #[j, x] (← mkEqRefl (mkConst ``Bool.true))
     return (mkConst ``Bool.true, some (← mkAppOptM ``loopFits_true
       #[some α, some cf, some C, some bf, some F, some hc, some hb, some n, some i, some s]))
+  | (``Verified.foldFits, #[_, _, xs, init, step, fits]) =>
+    unless ← lambdaTelescope fits (fun _ body => pure (body.isConstOf ``Bool.true)) do
+      return (e, none)
+    return (mkConst ``Bool.true, some (← mkAppM ``foldFits_true #[xs, init, step]))
   | _ => return (e, none)
 
 /-- The frames condition that `p : fits = rhs` gives, with `rhs` normalized by `normFits` and its
@@ -1663,6 +1672,37 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           return (← mkLambdaFVars xs natZero, ← mkLambdaFVars xs proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u cs α init condTrue hc f none⟩
+  | ``Array.foldl, foldArgs@#[α, β, f, init, xs, start, stop] =>
+    unless ← kernelDefEq start natZero do
+      throwError "verified_compile: Array.foldl requires start = 0, in {e}"
+    unless ← kernelDefEq stop (← mkAppM ``Array.size #[xs]) do
+      throwError "verified_compile: Array.foldl requires stop = xs.size, in {e}"
+    let se ← shapeOf α
+    let .elem el := se.ty | throwError "verified_compile: unsupported array {e}"
+    let xs ← projReduce xs
+    unless xs.isFVar do
+      return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a => do
+        let args := (foldArgs.set! 4 a).set! 6 (← mkAppM ``Array.size #[a])
+        mkLetFVars #[a] (mkAppN e.getAppFn args)) e
+    let (x, t) ← varOf c xs
+    unless t == .array el do throwError "verified_compile: {xs} is not an array variable"
+    let ri ← reflect c init
+    let u ← reflectUnder3 c (mkConst ``UInt64) β α .word ri.ty (.elem el)
+      fun _ acc value => return f.beta #[acc, value]
+    let src ← mkAppM ``Expr.fold #[x, ri.src, u.r.src]
+    let vx ← mkAppOptM ``Expr.var
+      #[some c.sigs, some c.ctx, some (tyExpr (.array el)), some x]
+    let hx ← rflProof c vx (← flatValue xs)
+    let hx ← if se.flat.isNone then
+        mkEqTrans hx (← mkEqSymm (← mkAppM ``Array.map_id #[xs]))
+      else pure hx
+    let hx ← mkExpectedTypeHint hx
+      (← mkEq (← mkAppM ``Env.get #[c.env, x]) (← mkAppM ``Array.map #[← se.fn α, xs]))
+    let sb ← shapeOf β
+    let proof ← mkAppM ``fold_flat_eq
+      #[← sb.fn β, ← se.fn α, xs, init, f, hx, ri.proof, u.r.proof]
+    return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
+      ri.ty, e, foldBound ri u α β xs init f x hx, foldFits ri u α β xs init f x hx⟩
   | ``LeanExe.repeatWhile, #[α, n, init, cnd, step] =>
     let rn ← reflect c n
     let ri ← reflect c init
@@ -2042,6 +2082,73 @@ where
     app.assign `BA cost
     app.assign `hba proof
     boundOf (← app.finish)
+  foldBound (ri : Reflection) (u : Under) (α β xs init F x hx : Lean.Expr) :
+      BoundBuilder := fun modes paid live => do
+    let sa ← shapeOf α
+    let sb ← shapeOf β
+    let app ← LemmaApp.start ``fold_flat_bound
+      (boundArgs c (c.tables.table false) modes paid live ++
+        [(`φ, ← sb.fn β), (`ψ, ← sa.fn α), (`xs, xs), (`I, init), (`F, F), (`x, x),
+          (`init, ri.src), (`body, u.r.src), (`hx, hx)])
+    let some (_, _, allRhs) := (← app.hypType `hall).eq?
+      | throwError "verified_compile: the fold's live variables"
+    app.assign `all allRhs
+    app.assign `hall (← mkEqRefl allRhs)
+    let _ ← assignMode app `M `hM
+    let some (_, statePaid, _) := (← app.hypType `hps).eq?
+      | throwError "verified_compile: the fold's state flag"
+    let ps := boolConst (← evalBool m!"whether the state of a fold is paid" statePaid)
+    app.assign `ps ps
+    app.assign `hps (← evalEq statePaid ps)
+    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
+    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    let _ ← app.child `hia ri.bound
+    let _ ← assignCoerce c.base app `hka ri.ty init
+    let some (_, credit, _) := (← app.hypType `hcr).eq?
+      | throwError "verified_compile: the fold's credit"
+    let (``ite, #[_, charged, _, creditTerm, _]) := credit.getAppFnArgs
+      | throwError "verified_compile: the fold's credit {credit}"
+    let (``Eq, #[_, chargedFlag, _]) := charged.getAppFnArgs
+      | throwError "verified_compile: the fold's credit {credit}"
+    if ← evalBool m!"whether a fold is charged a credit" chargedFlag then
+      let (``Ty.credit, #[_, v]) := creditTerm.getAppFnArgs
+        | throwError "verified_compile: the fold's credit {creditTerm}"
+      let (CR, hcr) ← ValueCost.credit.eq c.base ri.ty v init
+      app.assign `CR CR
+      app.assign `hcr (← mkAppM ``credit_some #[← evalEq chargedFlag (boolConst true), hcr])
+    else
+      app.assign `CR natZero
+      app.assign `hcr (← mkAppOptM ``credit_none
+        #[some chargedFlag, some creditTerm, some (← evalEq chargedFlag (boolConst false))])
+    let hbaTy ← app.hypType `hba
+    let (cost, proof) ← withExistingLocalDecls u.decls do
+      let ty ← u.instantiate hbaTy
+      let some (_, lhs, _) := ty.eq? | throwError "verified_compile: the fold's body"
+      let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
+        | throwError "verified_compile: the fold's body"
+      let args := allocs.getAppArgs
+      let b ← u.r.bound args[4]! args[5]! args[6]!
+      let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
+        | throwError "verified_compile: the fold's body"
+      let value ← projReduce (F.beta #[u.xs[1]!, u.xs[2]!])
+      let (K, hk) ← coerceEq c.base ri.ty s M v value
+      let b ← boundOf
+        (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
+      return (← mkLambdaFVars u.xs b.term, ← mkLambdaFVars u.xs b.proof)
+    app.assign `BA cost
+    app.assign `hba proof
+    boundOf (← app.finish)
+  foldFits (ri : Reflection) (u : Under) (α β xs init F x hx : Lean.Expr) : FitsBuilder := do
+    let sa ← shapeOf α
+    let sb ← shapeOf β
+    let app ← LemmaApp.start ``fold_flat_fits
+      (fitsArgs c ++ [(`φ, ← sb.fn β), (`ψ, ← sa.fn α), (`xs, xs), (`I, init), (`F, F),
+        (`x, x), (`init, ri.src), (`body, u.r.src), (`hx, hx)])
+    app.assign `hi (← mkExpectedTypeHint ri.proof (← app.hypType `hi))
+    app.assign `hb (← mkExpectedTypeHint u.r.proof (← app.hypType `hb))
+    app.childFits `hif ri.fits
+    app.childFits `hbf u.fits
+    fitsOf (← app.finish)
   /-- The frames builder of a loop, with the parts that `loopBound` takes and the builder
   `condFits` of the condition's frames under its state, or `none` for the condition `true`. -/
   loopFits (rn ri : Reflection) (u : Under) (cond α init C : Lean.Expr)
@@ -2321,6 +2428,25 @@ where
       let r ← reflectSplit c' (b :: a :: rest) (← body a b)
       let proof ← mkLambdaFVars #[a, b] r.proof
       return ⟨{ r with proof }, #[a, b], [← a.fvarId!.getDecl, ← b.fvarId!.getDecl]⟩
+  reflectUnder3 (c : Ctx) (α β γ : Lean.Expr) (s t u : Ty)
+      (body : Lean.Expr → Lean.Expr → Lean.Expr → MetaM Lean.Expr) : MetaM Under :=
+    withLocalDeclD `i α fun i => withLocalDeclD `a β fun a => withLocalDeclD `v γ fun v => do
+      let envI ← mkAppOptM ``Env.cons
+        #[some c.ctx, some (tyExpr s), some (← flatValue i), some c.env]
+      let ctxI := consCtx s c.ctx
+      let envA ← mkAppOptM ``Env.cons
+        #[some ctxI, some (tyExpr t), some (← flatValue a), some envI]
+      let ctxA := consCtx t ctxI
+      let envV ← mkAppOptM ``Env.cons
+        #[some ctxA, some (tyExpr u), some (← flatValue v), some envA]
+      let c' : Ctx := { c with
+        vars := (v, u) :: (a, t) :: (i, s) :: c.vars
+        env := envV
+        ctx := consCtx u ctxA }
+      let r ← reflectSplit c' [v, a, i] (← body i a v)
+      let proof ← mkLambdaFVars #[i, a, v] r.proof
+      return ⟨{ r with proof }, #[i, a, v],
+        [← i.fvarId!.getDecl, ← a.fvarId!.getDecl, ← v.fvarId!.getDecl]⟩
   /-- A component of a tuple or a field of a structure, `e`, a chain of `Prod.fst`, `Prod.snd`,
   and structure projections: the projection of a variable along a path, with a value that is not
   a variable bound with `let` first.  Besides the base and the path, the walk returns the chain as
