@@ -365,6 +365,12 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  IO.println s!"frontend|emptyWords|array-u64||{arrayOut Frontend.emptyWords}|1|1"
+  IO.println s!"frontend|emptyFloats|array-u64||{floatArrayOut Frontend.emptyFloats}|1|1"
+  for n in [(0 : UInt64), 1, 3] do
+    let (status, xs) := Frontend.entries n
+    let ws := xs.flatMap fun e => #[e.key, e.price.toBits, if e.active then 1 else 0]
+    IO.println s!"frontend|entries|list:i64,array-u64|i64:{n}|{status} {arrayOut ws}|1|1"
   for x in words do
     IO.println s!"frontend|inlineScalar|i64|i64:{x}|{Frontend.inlineScalar x}"
     IO.println s!"frontend|listedCall|i64|i64:{x}|{Frontend.listedCall x}"

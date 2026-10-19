@@ -34,7 +34,7 @@ comparison, also as `if h : c` with branches that do not use `h`, pairs built wi
 taken apart with `.1`, `.2`, or `match`, structures built with their constructor or `{ s with … }`
 and taken apart with their fields or `match`, enumeration constructors, `Flat.flat` of enumerations,
 `match` on enumerations, and `==`, `!=`, `decide`, and `if` on them, `LeanExe.loop`,
-`LeanExe.repeatWhile`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
+`LeanExe.repeatWhile`, `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.push v`,
 `xs ++ ys`, `LeanExe.build`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i`, safe named
 constants whose type holds no array, as their values, `setIfInBounds`, `insertIdxIfInBounds`,
 `eraseIdxIfInBounds`, unfolded `@[inline]` helpers, calls of the listed definitions before it,
@@ -61,6 +61,12 @@ def elemExpr : Elem → Lean.Expr
   | .bool => mkConst ``Elem.bool
   | .float => mkConst ``Elem.float
   | .prod a b => mkApp2 (mkConst ``Elem.prod) (elemExpr a) (elemExpr b)
+
+def elemZero : Elem → MetaM Lean.Expr
+  | .word => pure (toExpr (0 : UInt64))
+  | .bool => pure (mkConst ``Bool.false)
+  | .float => mkAppM ``Float.ofBits #[toExpr (0 : UInt64)]
+  | .prod a b => do mkAppM ``Prod.mk #[← elemZero a, ← elemZero b]
 
 /-- The path along the steps `steps`, from the outside in, of a component of an element of type
 `e`: `false` for the first part and `true` for the second.  Also the component's type. -/
@@ -1669,6 +1675,15 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         return (← mkLambdaFVars uc.xs b.term, ← mkLambdaFVars uc.xs b.proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u rc.src α init cnd hc F (some uc.fits)⟩
+  | ``Array.mk, #[α, xs] =>
+    unless xs.consumeMData.isAppOfArity ``List.nil 1 do
+      throwError "verified_compile: unsupported term {e}"
+    let .elem el := (← shapeOf α).ty | throwError "verified_compile: unsupported array {e}"
+    let value ← elemZero el
+    let f ← withLocalDeclD `i (mkConst ``UInt64) fun i => mkLambdaFVars #[i] value
+    let r ← reflect c (← mkAppM ``LeanExe.build #[toExpr (0 : UInt64), f])
+    return r.as (← mkExpectedTypeHint r.proof
+      (← mkEq (← denoteExpr c r.src) (← flatValue e))) e
   | ``Array.setIfInBounds, #[α, xs, k, v] =>
     reflectAs (← mkAppOptM ``Array.set! #[some α, some xs, some k, some v]) e
   | ``Array.insertIdxIfInBounds, #[α, xs, k, v] =>
