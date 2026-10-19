@@ -2,7 +2,7 @@ import Verified.Potential
 
 namespace Verified
 
-open Wasm LeanExe.Pipeline
+open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem callMoves_owned {S : List Sig} {Γ : List Ty} {g : Sig} {slots : List Slot}
     {live : Nat → Bool} {args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)}
@@ -237,6 +237,41 @@ theorem args_pot_le_credits {S : List Sig} {Γ : List Ty} {sig : Sig} {funs : Fu
         exact nomatch this
       exact absurd (hi'.trans hj'.symm) hij
 
+theorem args_moves_apart_kept {S : List Sig} {Γ ps : List Ty} {funs : Funs S}
+    (modes : Nat → Mode) (args : (i : Fin ps.length) → Expr S Γ (ps.get i))
+    {env : Env Γ} {slots : List Slot} {all kept : Nat → Bool} {base : Nat}
+    {heap heap1 : Heap} {store store1 : Store Unit} {s s1 : Locals}
+    {words : List Value} {fresh : List (Nat × Nat)}
+    (uses : ∀ i k, (args i).uses k = true → all k = true)
+    (keptAll : ∀ k, kept k = true → all k = true)
+    (vars : Holds env slots all base heap store s)
+    (step : Step heap store (fun _ => True) heap1 store1 fresh) (frame : Frame base s s1)
+    (apart : ∀ r, (∀ b ∈ fresh, regionsDisjoint r b) →
+      Holds.KeepDying env slots
+        (fun k => argsAny fun i => modes i == .owned && (args i).uses k && !kept k)
+        (fun _ => false) store s r →
+      Apart store1 (Env.moves modes words (Env.ofFn fun i => (args i).denote funs env)) r) :
+    ∀ (t : Ty) (x : Var Γ t), kept x.index = true →
+      ∀ wx, LocalsHold s1 (slots.getD x.index default).loc t.types wx → wx.length = t.width →
+      ∀ r ∈ t.regions (slots.getD x.index default).mode store1 wx (env.get x),
+        Apart store1 (Env.moves modes words (Env.ofFn fun i => (args i).denote funs env)) r := by
+  intro t x hx wx hold length r hr
+  have hxAll := keptAll _ hx
+  have hold' := (vars.hold_agree frame hxAll length).mp hold
+  obtain ⟨same, freshApart⟩ := vars.regions_after step hxAll hold' length fun _ _ => trivial
+  rw [same] at hr
+  refine apart r (freshApart r hr) ?_
+  intro u y hy _ hyOwned wy holdY lengthY b hb
+  obtain ⟨i, hi⟩ := argsAny_true.mp hy
+  simp only [Bool.and_eq_true, Bool.not_eq_true'] at hi
+  have hyAll := uses i y.index hi.1.2
+  have different : y.index ≠ x.index := fun he => by
+    rw [he, hx] at hi
+    exact nomatch hi.2
+  exact regionsDisjoint_symm
+    (vars.2 u t y x hyAll hxAll different hyOwned wy wx holdY lengthY hold' length b hb r hr)
+
 #print axioms args_pot_le_credits
+#print axioms args_moves_apart_kept
 
 end Verified

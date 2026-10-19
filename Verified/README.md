@@ -167,6 +167,14 @@ and prove that the allocation sums and frames conditions stabilize past the fini
 length.  [The indexed Wasm loop rule](TailLoop.lean) uses the least rank represented by its
 invariant to prove that each continuing iteration decreases the rank.
 
+[Typed tail bodies](TailSource.lean) have return, continue, conditional, and binding nodes.
+[Their code template](TailCompile.lean) copies the initial parameters into mutable locals
+and stores each continuation there.  [The bounds](TailBound.lean) sum per-step charges
+over the finite run.  Parameter modes stay fixed, with owned continuation arguments
+propagated by [mode inference](Reflect/TailModes.lean).  [The return rule](TailCorrect.lean)
+preserves the paid result's potential.  Continuation, whole-loop, and program correctness
+rules remain pending.
+
 ## The theorem
 
 The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
