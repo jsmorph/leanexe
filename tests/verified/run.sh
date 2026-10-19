@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Writes the modules of the verified compiler's examples, validates them with wasm-tools, and
-# compares every case of Verified/Examples/Cases.lean between the Wasmtime host and native Lean.
+# compares their checked cases between the Wasmtime host and native Lean.
 # A case with a sixth field also checks the allocation counters: the blocks allocated less those
 # released must equal the field, the result's arrays and the host's arrays at borrowed parameters.
 # A seventh field bounds the number of allocations, the host's included.  A case whose expected
@@ -33,6 +33,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
     Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
     Verified.Examples.Frontend:compiled.module:frontend \
+    Verified.Examples.Gpt:compiled.module:gpt \
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
     Verified.Examples.Owned:compiled.module:owned \
@@ -83,6 +84,13 @@ done
 if [ "$emitted" -eq 0 ]; then
   echo "fail: unknown module $case_module" >&2
   exit 2
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
+  tests/gpt/run.sh "$out/gpt.wasm"
+  tests/gpt/sessions.sh "$out/gpt.wasm"
+  if [ "$case_module" = "gpt" ]; then
+    exit 0
+  fi
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.  The file
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers

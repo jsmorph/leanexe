@@ -67,6 +67,12 @@ seconds, and `--top-k`, `--temperature`, and `--seed` select top-k sampling.
 
 ## Related examples
 
+[The verified compiler's GPT module](../../Verified/Examples/Gpt.lean) compiles the same 48
+functions with `verified_compile`.  Its generated theorems establish execution, allocation
+bounds, trap-free execution under those bounds, and the module's encoded bytes.
+`tests/verified/run.sh --cases gpt` builds and emits that module and runs the existing GPT corpus
+and session checks against it.
+
 [`Gpt32`](../Gpt32/README.md) is GPT-2 in binary32 on WGSL kernels.  [`Prng`](../Prng/README.md)
 supplies the sampler's generator, and [`SumSquares`](../SumSquares/README.md) and
 [`Clob`](../Clob/README.md) show the fold and `Live` rules at a small scale.  The LTG entries

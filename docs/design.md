@@ -157,6 +157,11 @@ Masked attention uses `nh` heads of width `dh` on rows of width `d = nh · dh`, 
 
 `Prog.correctWith` states that the verified compiler's module of every program of its source language, with its tables and wrappers, computes the program's meaning, in the sense of `ImplementsP`, with the flags, bounds, and frames conditions that the compiler computes.  `Prog.correct` is its case for a program without tables.  `compileWith_initialStore` states that the store in which a module with tables starts meets the allocator invariant, caps the memory at 65,535 pages, and holds each table at its address, when the tables end below 65,535 pages.  For each example other than `Tuples.lean`, which builds its program without the reflector, `verified_compile` states that the bytes decode to the module and that the module computes each definition, with a theorem that excludes a trap under the definition's bound.  `drone_trapFree` bounds the drone planner's allocation by 2,251,064 bytes, `chain_trapFree` and `fill_trapFree` cover recursions below depth 1,000, `lcg_advance`, `parkMiller_advance`, and `xorshift_advance` state the generators' bytes together with their period theorems, and the order book's theorems show that a command stream run in two chunks gives the book of one run.  [The verified compiler manual](verified-manual.md#examples) lists the examples.
 
+[The verified compiler's GPT module](../Verified/Examples/Gpt.lean) compiles the 48 unchanged
+binary64 GPT functions, including cached inference and sampling.  `verified_compile` derives
+their execution theorems from `Prog.correctWith`, their allocation bounds, their trap-free
+theorems under those bounds, and the module's bytes theorem.
+
 ## Tested
 
 [`tests/modules/run.sh`](../tests/modules/run.sh) compares every case of each module's `Cases.lean` between Wasmtime and native Lean.  For `scale`, the cases include a zero divisor and products that wrap.  For `gcd`, they include zero arguments, consecutive Fibonacci numbers, and `(2^64-1, 2^64-59)`.  For `sumArray`, `pairSum`, and `sumCount`, the host allocates the input through `alloc`, and the allocation and free counters show every block freed after the host releases the result and the input.  A `pairSum` session shows the second call reusing the block the first freed, and releasing an array whose child mask marks its one element as a pointer frees both the array and the child.
@@ -295,7 +300,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [ ] Verified compiler: tail recursion compiled as a loop, without the depth limit.
 - [ ] Verified compiler: sum types with fields.
-- [ ] Verified compiler: the GPT-2 and Euler programs.
+- [ ] Verified compiler: the Euler programs.
 - [ ] Verified compiler: lists and other recursive types.
 - [ ] Verified compiler: `Float32` and the WGSL path.
 - [ ] Verified compiler: owned record and pair parameters.

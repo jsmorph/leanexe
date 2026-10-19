@@ -2,13 +2,33 @@
 # Compares every case of tests/gpt/Cases.lean between the Wasmtime host running
 # gpt.wasm and native Lean.  Usage: tests/gpt/run.sh [path/to/gpt.wasm]
 set -euo pipefail
+if [ "$#" -gt 1 ]; then
+  echo "usage: tests/gpt/run.sh [path/to/gpt.wasm]" >&2
+  exit 2
+fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 wasm=${1:-$root/build/gpt/gpt.wasm}
 host=$root/build/tools/leanexe-wasmtime-host
 cases=$(mktemp)
-trap 'rm -f "$cases"' EXIT
-# Out-of-bounds reads with `!` print panic messages from native Lean; they are expected.
-(cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/gpt/Cases.lean) >"$cases" 2>/dev/null
+errors=$(mktemp)
+trap 'rm -f "$cases" "$errors"' EXIT
+if ! (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/gpt/Cases.lean) \
+    >"$cases" 2>"$errors"; then
+  cat "$errors" >&2
+  echo "fail: native Lean exited with an error" >&2
+  exit 1
+fi
+counts=$(awk '
+  $0 == "Error: index out of bounds" { reads++; next }
+  $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
+  { others++; print > "/dev/stderr" }
+  END { print reads + 0, others + 0 }' "$errors")
+read -r reads others <<<"$counts"
+if [ "$others" -ne 0 ]; then
+  echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
+  exit 1
+fi
+echo "native Lean: $reads accesses past the end, as the cases expect"
 declare -A passed
 failed=0
 while IFS='|' read -r name result args expected; do

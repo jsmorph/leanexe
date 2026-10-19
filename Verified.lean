@@ -13,6 +13,7 @@ import Verified.Examples.Lets
 import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Frontend
+import Verified.Examples.Gpt
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
