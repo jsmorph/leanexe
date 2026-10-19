@@ -15,6 +15,7 @@ import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Fold
 import Verified.Examples.TailCore
+import Verified.Examples.TailReflection
 import Verified.Examples.Gpt
 import Verified.Examples.Euler
 import Verified.ArrayFold
@@ -35,6 +36,7 @@ import Verified.TailAllocExpand
 import Verified.TailTransport
 import Verified.Reflect.TailModes
 import Verified.Reflect.TailLemmas
+import Verified.Reflect.TailBoundLemmas
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays

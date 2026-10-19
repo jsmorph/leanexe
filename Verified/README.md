@@ -181,7 +181,16 @@ and its `Prog.Meaning` proof supplies the fixed-point equation and decreasing ra
 `Prog.calls` uses the tail-function specification in the same induction as ordinary and
 guarded functions.  [The typed-source example](Examples/TailCore.lean) grows an owned array
 from a borrowed weight array.  Its twenty [checked execution cases](Examples/Cases.lean)
-include 4,096 iterations and allocation counts.  Reflection remains pending.
+include 4,096 iterations and allocation counts.
+
+[The tail-body reflector](Reflect/TailBody.lean) constructs a native return-or-continue
+step and proves its agreement with the typed body and the recursive definition's fixed-point
+equation.  [Termination reflection](Reflect/TailTermination.lean) derives a well-founded
+continuing transition from Lean's generated induction theorem.  [State flattening](Reflect/TailState.lean)
+proves both inverse laws for the tuple of native parameters and its source environment.
+[The reflection examples](Examples/TailReflection.lean) check these proofs for word accumulation,
+array growth with fixed weights, scalar pairs, and arrays of records.  Selection through
+`verified_compile` and its user-level bound equations remain pending.
 
 ## The theorem
 
