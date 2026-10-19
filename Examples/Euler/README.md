@@ -72,6 +72,13 @@ on small grids.
 
 ## Related examples
 
+[The verified compiler's Euler module](../../Verified/Examples/Euler.lean) compiles the same 55
+functions with `verified_compile`.  Its generated execution and byte theorems compute both
+solvers, and its trap-free theorems require room for their generated allocation bounds.
+`euler_solve_total`, with the 1,407-page bound stated above, applies to the LeanExe compiler's
+module.  `tests/verified/run.sh --cases euler` builds and emits the verified compiler's module and
+runs the existing corpus against it.
+
 [`Grids`](../Grids/README.md) has arrays of records in the layout of the solvers' grids.
 [`Drone`](../Drone/README.md) is the other large program with total execution and a memory bound,
 and [`Increment`](../Increment/README.md) the smallest.  The LTG entries
