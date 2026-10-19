@@ -13,6 +13,8 @@ the module computes it without a trap for every `n` below 1,000. -/
 
 namespace Verified.Examples.Recursion
 
+set_option verified.tailLoops false
+
 open LeanExe.Pipeline
 
 /-- Euclid's algorithm. -/

@@ -4,6 +4,7 @@ import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
 import Verified.Reflect.FoldLemmas
+import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
 
@@ -1354,12 +1355,26 @@ partial def tableChain (fits : Bool) (prog funs fv env k : Lean.Expr) : MetaM Le
     return mkAppN (mkConst ``bounds_get_here) #[S, f, rest, F, fs, k, hd, env]
   | (``FVar.here, _), (``Prog.consRec, #[_, f, rest]) =>
     return mkAppN (pick ``bounds_get_hereRec ``fits_get_hereRec) #[S, f, rest, F, fs, k, env]
+  | (``FVar.here, _), (``Prog.consTail, #[_, f, rest]) =>
+    let d := mkApp2 (mkConst ``TailFunc.depth) S f
+    let depth ← evalBool m!"whether the tail function {f} takes the call depth" d
+    let hd ← evalEq d (boolConst depth)
+    if depth then
+      return mkAppN (pick ``bounds_get_hereTailDepth ``fits_get_hereTailDepth)
+        #[S, f, rest, F, fs, k, hd, env]
+    if fits then
+      throwError "verified_compile: the frames condition of tail function {f}, whose code takes no call depth"
+    return mkAppN (mkConst ``bounds_get_hereTail) #[S, f, rest, F, fs, k, hd, env]
   | (``FVar.there, #[_, g, _, v]), (``Prog.cons, #[_, f, rest]) =>
     transHint (mkAppN (pick ``bounds_get_there ``fits_get_there) #[S, g, f, rest, F, fs, k, v, env])
       (← tableChain fits rest fs v env k)
   | (``FVar.there, #[_, g, _, v]), (``Prog.consRec, #[_, f, rest]) =>
     transHint
       (mkAppN (pick ``bounds_get_thereRec ``fits_get_thereRec) #[S, g, f, rest, F, fs, k, v, env])
+      (← tableChain fits rest fs v env k)
+  | (``FVar.there, #[_, g, _, v]), (``Prog.consTail, #[_, f, rest]) =>
+    transHint
+      (mkAppN (pick ``bounds_get_thereTail ``fits_get_thereTail) #[S, g, f, rest, F, fs, k, v, env])
       (← tableChain fits rest fs v env k)
   | _, _ => throwError "verified_compile: the function reference {fv} in {prog}"
 

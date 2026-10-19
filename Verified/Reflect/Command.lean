@@ -1,4 +1,6 @@
 import Verified.Reflect.Definitions
+import Verified.Reflect.TailDefinition
+import Verified.Reflect.TailOptions
 
 namespace Verified.Reflect
 
@@ -297,15 +299,32 @@ def elabVerifiedCompile : CommandElab
             prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, prog]
             pure r
           | some eqName =>
-            let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
-            checkPositions name (mkApp2 (mkConst ``RecFunc.body) sigsExpr f)
-            let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-            let M := Lean.mkConst (fbase ++ `meaning)
-            meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consRec)
-              #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `fixed)]
-            funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
-            prog := mkAppN (Lean.mkConst ``Prog.consRec) #[sigsExpr, f, prog]
-            pure r
+            if verified.tailLoops.get (← getOptions) && (← isTailDefinition name eqName) then
+              let r ← reflectTailSource fbase name eqName sigsExpr funs prog callees
+              if r.depth then
+                let positions ← kernelWhnf (← mkAppM ``TailFunc.positions #[f])
+                let some n := natOf positions
+                  | throwError "verified_compile: cannot evaluate the tail positions of {name}"
+                if n > depthPositions then
+                  throwError "verified_compile: tail function {name} takes call depth and needs {n} positions, more than {depthPositions}"
+              let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+              let M := Lean.mkConst (fbase ++ `meaning)
+              meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consTail)
+                #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `decreases),
+                  Lean.mkConst (fbase ++ `fixed)]
+              funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
+              prog := mkAppN (Lean.mkConst ``Prog.consTail) #[sigsExpr, f, prog]
+              pure r
+            else
+              let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
+              checkPositions name (mkApp2 (mkConst ``RecFunc.body) sigsExpr f)
+              let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+              let M := Lean.mkConst (fbase ++ `meaning)
+              meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consRec)
+                #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `fixed)]
+              funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
+              prog := mkAppN (Lean.mkConst ``Prog.consRec) #[sigsExpr, f, prog]
+              pure r
         let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
         sigs := sig :: sigs
         let some bound := r.bound? | throwError "verified_compile: the bound of {name}"

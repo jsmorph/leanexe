@@ -45,4 +45,44 @@ theorem TailFunc.fits_native {α β : Type} (func : TailFunc S)
 #print axioms TailFunc.bound_native
 #print axioms TailFunc.fits_native
 
+namespace Reflect
+
+theorem bounds_get_hereTail (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = false)
+    (env : Env f.params) :
+    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get .here env =
+      f.bound fs rest.flags (rest.boundsAt fs 0) env := by
+  rw [Prog.boundsAt_consTail_here, hd]
+  rfl
+
+theorem bounds_get_hereTailDepth (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = true)
+    (env : Env f.params) :
+    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get .here env =
+      f.boundAt fs rest.flags (rest.boundsAt fs) k env := by
+  rw [Prog.boundsAt_consTail_here, hd]
+  rfl
+
+theorem bounds_get_thereTail {g : Sig} (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
+    (env : Env g.params) :
+    (Prog.boundsAt (.consTail f rest) (.cons F fs) k).get (.there v) env =
+      (rest.boundsAt fs k).get v env := rfl
+
+theorem fits_get_hereTailDepth (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (hd : f.depth = true)
+    (env : Env f.params) :
+    (Prog.fitsAt (.consTail f rest) (.cons F fs) k).get .here env =
+      f.fitsAt fs (rest.fitsAt fs) k env := by
+  rw [Prog.fitsAt_consTail_here, hd]
+  rfl
+
+theorem fits_get_thereTail {g : Sig} (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (fs : Funs S) (k : Nat) (v : FVar S g)
+    (env : Env g.params) :
+    (Prog.fitsAt (.consTail f rest) (.cons F fs) k).get (.there v) env =
+      (rest.fitsAt fs k).get v env := rfl
+
+end Reflect
+
 end Verified

@@ -36,6 +36,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Frontend:compiled.module:frontend \
     Verified.Examples.Fold:compiled.module:fold \
     Verified.Examples.TailCore:module:tailcore \
+    Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.Gpt:compiled.module:gpt \
     Verified.Examples.Euler:compiled.module:euler \
     Verified.Examples.Loops:compiled.module:loops \

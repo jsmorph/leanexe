@@ -2,6 +2,8 @@ import Verified.Reflect.Command
 
 namespace Verified.Examples.Fold
 
+set_option verified.tailLoops false
+
 def words (xs : Array UInt64) (seed : UInt64) : UInt64 :=
   xs.foldl (fun acc value => acc * 3 + value) seed
 

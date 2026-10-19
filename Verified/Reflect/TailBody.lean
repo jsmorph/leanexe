@@ -104,8 +104,9 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
         !app.discrInfos.any (·.hName?.isSome) then
       let d := app.discrs[0]!
       if let .pair _ _ ← tyOf (← inferType d) then
+        let view ← pairView c.base (← inferType d)
         let r ← destructureTail t c [] d fun a b => do
-          return app.alts[0]!.beta (← matchFields app (← mkAppM ``Prod.mk #[a, b]))
+          return app.alts[0]!.beta (← matchFields app (← view.rebuild a b))
         return ← r.restate (← casesEq app (matchFields app))
       let fieldsOf (x : Lean.Expr) : MetaM (Array Lean.Expr) := do
         if let some (_, fields) ← structOf? (← inferType d) then
