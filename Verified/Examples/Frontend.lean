@@ -26,6 +26,22 @@ def insertDirect (xs : Array UInt64) (i v : UInt64) : Array UInt64 :=
 def eraseDirect (xs : Array UInt64) (i : UInt64) : Array UInt64 :=
   xs.eraseIdxIfInBounds i.toNat
 
+def insertChecked (xs : Array UInt64) (i v : UInt64) : Array UInt64 :=
+  xs.insertIdx! i.toNat v
+
+def insertFresh (xs : Array UInt64) (i v : UInt64) : Array UInt64 :=
+  (xs.push 7).insertIdx! (i + 1).toNat v
+
+def insertBorrowed (xs : Array UInt64) (i v : UInt64) : Array UInt64 × Array UInt64 :=
+  (xs.insertIdx! i.toNat v, xs)
+
+def insertRead (xs : Array UInt64) (i v : UInt64) : Array UInt64 × UInt64 :=
+  let ys := xs.insertIdx! i.toNat v
+  (ys, xs.size.toUInt64)
+
+def insertFloat (xs : Array Float) (i : UInt64) (v : Float) : Array Float :=
+  xs.insertIdx! i.toNat v
+
 @[inline] def listed (x : UInt64) : UInt64 := x * 7
 
 def listedCall (x : UInt64) : UInt64 := listed x + 1
@@ -41,6 +57,9 @@ structure Entry where
 
 instance : LeanExe.Pipeline.Flat Entry (UInt64 × Float × Bool) :=
   ⟨fun e => (e.key, e.price, e.active)⟩
+
+def insertRecord (xs : Array Entry) (i key : UInt64) : Array Entry :=
+  xs.insertIdx! i.toNat ⟨key, key.toFloat, true⟩
 
 def entries (n : UInt64) : UInt64 × Array Entry :=
   if n == 0 then (1, #[])
@@ -70,7 +89,10 @@ def boolRecords (a b : Bool) : Array Entry :=
 
 verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, insertDirect,
   eraseDirect, listed, listedCall, emptyWords, emptyFloats, entries, boolEq, boolNe, boolDecide,
-  boolIf, boolIfNe, boolOwn, boolCalls, boolRecord, boolRecords]
+  boolIf, boolIfNe, boolOwn, boolCalls, boolRecord, boolRecords, insertChecked, insertFresh,
+  insertBorrowed, insertFloat, insertRecord, insertRead]
+
+example : compiled.insertRead.func.modes = [.borrowed, .borrowed, .borrowed] := rfl
 
 #print axioms compiled.inlineScalar.denote_eq
 #print axioms compiled.inlineArray.implements
@@ -79,6 +101,10 @@ verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, 
 #print axioms compiled.eraseDirect.implements
 #print axioms compiled.entries.implements
 #print axioms compiled.boolCalls.implements
+#print axioms compiled.insertChecked.denote_eq
+#print axioms compiled.insertBorrowed.trapFree
+#print axioms compiled.insertRead.trapFree
+#print axioms compiled.insertRecord.implements
 #print axioms compiled.bytes
 
 end Verified.Examples.Frontend

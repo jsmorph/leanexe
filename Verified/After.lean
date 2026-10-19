@@ -1198,6 +1198,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .letE _ _, hp, _, _, _, _, _ | _, .call _ _, hp, _, _, _, _, _
   | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _ _, hp, _, _, _, _, _
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
+  | _, .leSize _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
   | _, .insertAt _ _ _, hp, _, _, _, _, _ | _, .eraseAt _ _, hp, _, _, _, _, _

@@ -133,6 +133,13 @@ conditions with `foldCost` and `foldFits` on the user's array and accumulator ty
 `Expr.foldLoop` and [variable renaming](Rename.lean) also give a loop construction for a
 body that takes only the element and accumulator.
 
+`Expr.insertIdx` composes a logical length comparison, the existing insertion, and an empty
+build to implement `Array.insertIdx!`, including its `#[]` result beyond the end.  The typed
+predicate `Expr.leSize` compares a word index with the array's full logical length.  Its
+compiled comparison uses the word-sized length, justified by `Ty.Rep.array_size_lt`.
+[The insertion equations](InsertIdx.lean) relate this comparison to the existing comparison
+rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocation proof.
+
 ## Recursion
 
 A recursive function's meaning is a solution `M` of its body's equation, `M env = body.denote
@@ -155,7 +162,10 @@ two functions without the depth parameter.
 [The tail-run lemmas](TailRun.lean) model a step that continues with another state or returns a
 value.  They prove uniqueness of the result and run length, agreement with a fixed-point
 meaning, and existence of a finite run from a well-founded transition relation.  These are
-the termination lemmas for the planned tail-loop rule.
+the termination lemmas for the planned tail-loop rule.  They define a natural-valued rank
+and prove that the allocation sums and frames conditions stabilize past the finite run's
+length.  [The indexed Wasm loop rule](TailLoop.lean) uses the least rank represented by its
+invariant to prove that each continuing iteration decreases the rank.
 
 ## The theorem
 
@@ -259,6 +269,8 @@ An unlisted `@[inline]` helper is unfolded when no source rule covers its applic
 expanded body's equation gives the equation for the application.  Listed definitions retain
 their source calls.  `setIfInBounds`, `insertIdxIfInBounds`, and `eraseIdxIfInBounds` use the
 existing set, insertion, and removal expressions through definitional equalities.
+`insertIdx!` expands to the proved conditional form, after binding its array and index when
+either is an expression.
 `repeatWhile_eq_loop` states that `repeatWhile` is the loop over its fuel whose function applies the
 step to a state that satisfies the condition and keeps any other.  The reflector chooses the
 parameter modes with `Expr.paramChoice` in [`Reflect/Modes.lean`](Reflect/Modes.lean): an array

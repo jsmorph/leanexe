@@ -373,7 +373,8 @@ value's words and the scratch of each `push` and `append`, and the locals of eac
 of the expression.  A call's arguments, a pair's components, and a tuple's components leave their
 words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
-  | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ => 0
+  | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _
+  | _, _, .leSize _ _ => 0
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
   | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right
@@ -588,6 +589,9 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
           storeCode h base e.types ++
           body.code h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live))
   | _, _, .size x => x.sizeCode slots live
+  | _, _, .leSize x i =>
+    i.code h slots base (fun j => live j || j == x.index) ++
+      x.sizeCode slots live ++ [.leUI64, .extendUI32]
   | _, _, .get x i => getCode slots base live x (fun live => i.code h slots base live)
   | _, _, .set (e := e) x i v =>
     i.code h slots base (fun j => live j || j == x.index || v.usesFast j) ++ [.localSet base] ++

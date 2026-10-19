@@ -1,6 +1,7 @@
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.InsertErase
+import LeanExe.Dialect.Float32
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
@@ -55,6 +56,12 @@ def FBinOp.apply : FBinOp → Float → Float → Float
   | .mul, a, b => a * b
   | .div, a, b => a / b
 
+def FBinOp.apply32 : FBinOp → Float32 → Float32 → Float32
+  | .add, a, b => a + b
+  | .sub, a, b => a - b
+  | .mul, a, b => a * b
+  | .div, a, b => a / b
+
 /-- An operation on one float: the square root, the absolute value, and the negation. -/
 inductive FUnOp where
   | sqrt | abs | neg
@@ -65,12 +72,27 @@ def FUnOp.apply : FUnOp → Float → Float
   | .abs, a => a.abs
   | .neg, a => -a
 
+inductive F32UnOp where
+  | sqrt | abs | neg | nearest
+  deriving Repr, DecidableEq
+
+def F32UnOp.apply : F32UnOp → Float32 → Float32
+  | .sqrt, a => a.sqrt
+  | .abs, a => a.abs
+  | .neg, a => -a
+  | .nearest, a => LeanExe.Float32.nearest a
+
 /-- A comparison of floats, false when an operand is NaN. -/
 inductive FCmpOp where
   | lt | le | eq
   deriving Repr, DecidableEq
 
 def FCmpOp.apply : FCmpOp → Float → Float → Bool
+  | .lt, a, b => decide (a < b)
+  | .le, a, b => decide (a ≤ b)
+  | .eq, a, b => a == b
+
+def FCmpOp.apply32 : FCmpOp → Float32 → Float32 → Bool
   | .lt, a, b => decide (a < b)
   | .le, a, b => decide (a ≤ b)
   | .eq, a, b => a == b
@@ -94,6 +116,24 @@ inductive ToWord where
 def ToWord.apply : ToWord → Float → UInt64
   | .truncate, a => a.toUInt64
   | .toBits, a => a.toBits
+
+inductive ToFloat32 where
+  | convert | ofBits | signed32
+  deriving Repr, DecidableEq
+
+def ToFloat32.apply : ToFloat32 → UInt64 → Float32
+  | .convert, a => a.toFloat32
+  | .ofBits, a => Float32.ofBits a.toUInt32
+  | .signed32, a => (Int32.ofUInt32 a.toUInt32).toFloat32
+
+inductive ToWord32 where
+  | truncate | toBits | signed32
+  deriving Repr, DecidableEq
+
+def ToWord32.apply : ToWord32 → Float32 → UInt64
+  | .truncate, a => a.toUInt64
+  | .toBits, a => a.toBits.toUInt64
+  | .signed32, a => a.toInt32.toUInt32.toUInt64
 
 /-- The types of the values that hold no arrays and that an array may hold: words, `Bool`s,
 floats, and tuples of these. -/
@@ -291,8 +331,8 @@ stays for the remaining indices.  `LeanExe.loop` is the loop whose `cond` is `tr
 elements of the array variable `x` as a word.  `fold x init body` folds over every element of
 `x`, with the element, accumulator, and `UInt64` index as variables 0, 1, and 2 of `body`.
 The compiled fold uses the represented array's word-sized length.  `get x i` is element `i`
-of `x`, or the element
-type's default value when `i` is not below the size, as Lean's `x[i.toNat]!` gives.
+of `x`, or the element type's default value when `i` is not below the size, as Lean's
+`x[i.toNat]!` gives.  `leSize x i` compares word variable `i` with the full logical length of `x`.
 `build count elem` is `LeanExe.build`: the array of `count` elements whose element `i` is the
 value of `elem` with `i` as variable 0.  `set x i v` is `x.set! i.toNat v`: the array of `x` with
 element `i` replaced by `v`, or `x` when `i` is not below the size.  `push x v` is `x.push v`,
@@ -323,6 +363,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | fold (x : Var Γ (.array e)) (init : Expr S Γ t)
       (body : Expr S (.elem e :: t :: .word :: Γ) t) : Expr S Γ t
   | size (x : Var Γ (.array e)) : Expr S Γ .word
+  | leSize (x : Var Γ (.array e)) (i : Var Γ .word) : Expr S Γ .bool
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
   | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
   | set (x : Var Γ (.array e)) (i : Expr S Γ .word) (v : Expr S Γ (.elem e)) :
@@ -368,6 +409,19 @@ def Expr.foldExpand (x : Var Γ (.array e)) (init : Expr S Γ t)
     (body : Expr S (.elem e :: t :: .word :: Γ) t) : Expr S Γ t :=
   .loop (.size x) init (.bool true) (Expr.foldStep x body)
 
+def Elem.zeroExpr {S : List Sig} {Γ : List Ty} : (e : Elem) → Expr S Γ (.elem e)
+  | .word => .word 0
+  | .bool => .bool false
+  | .float => .float 0
+  | .prod a b => .mk a.zeroExpr b.zeroExpr
+
+def Expr.insertIdx (x : Var Γ (.array e)) (i : Var Γ .word)
+    (value : Expr S Γ (.elem e)) : Expr S Γ (.array e) :=
+  .ite (.leSize x i) (.insertAt x (.var i) value) (.build (.word 0) e.zeroExpr)
+
+def Expr.leSizeExpand (x : Var Γ (.array e)) (i : Var Γ .word) : Expr S Γ .bool :=
+  .cmp .le (.var i) (.size x)
+
 /-- The value of an expression for the functions `funs` and the values `env` of its
 variables. -/
 def Expr.denote (funs : Funs S) :
@@ -398,6 +452,7 @@ def Expr.denote (funs : Funs S) :
       (state.1 + 1, body.denote funs (.cons value (.cons state.2 (.cons state.1 env)))))
       (0, init.denote funs env)).2
   | _, _, .size x, env => (env.get x).size.toUInt64
+  | _, _, .leSize x i, env => decide ((env.get i).toNat ≤ (env.get x).size)
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
   | _, _, .build count elem, env =>
     LeanExe.build (count.denote funs env) fun i => elem.denote funs (.cons i env)
@@ -445,7 +500,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
   | _, _, .fold _ init body => init.aborts || body.aborts
-  | _, _, .size _ => false
+  | _, _, .size _ | _, _, .leSize _ _ => false
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
   | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
@@ -470,7 +525,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .loop count init cond body =>
     count.depthCalls || init.depthCalls || cond.depthCalls || body.depthCalls
   | _, _, .fold _ init body => init.depthCalls || body.depthCalls
-  | _, _, .size _ => false
+  | _, _, .size _ | _, _, .leSize _ _ => false
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.depthCalls || v.depthCalls
@@ -501,6 +556,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .fold x init body, i =>
     (i == x.index) || init.uses i || body.uses (i + 3)
   | _, _, .size x, i => i == x.index
+  | _, _, .leSize x k, i => i == k.index || i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
   | _, _, .set x k v, i | _, _, .insertAt x k v, i => i == x.index || k.uses i || v.uses i
@@ -540,6 +596,7 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .fold x init body =>
     (1 <<< x.index) ||| init.useMask ||| body.useMask >>> 3
   | _, _, .size x => 1 <<< x.index
+  | _, _, .leSize x i => (1 <<< i.index) ||| (1 <<< x.index)
   | _, _, .get x k => 1 <<< x.index ||| k.useMask
   | _, _, .build count elem => count.useMask ||| elem.useMask >>> 1
   | _, _, .set x k v | _, _, .insertAt x k v => 1 <<< x.index ||| k.useMask ||| v.useMask
@@ -594,7 +651,8 @@ def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 pair of such arguments, and a variable at an owned parameter.  The reflector binds any other such
 argument with `let`. -/
 def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _ => true
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _
+  | _, _, .leSize _ _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs
   | _, _, .toFloat _ e => e.placeArgs

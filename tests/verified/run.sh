@@ -15,6 +15,7 @@
 # Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified` first.
 # Usage: tests/verified/run.sh [--cases MODULE]
 set -euo pipefail
+export PATH="$PATH:$HOME/.cargo/bin"
 case_module=""
 if [ "$#" -ne 0 ]; then
   if [ "$#" -ne 2 ] || [ "$1" != "--cases" ] || [ -z "$2" ]; then
@@ -130,13 +131,14 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
   echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
 done
 fi
+tools/leanrun --timeout 30m lake build Verified.Examples.Cases
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
 # Native Lean panics on the reads and updates past the end of an array that the cases exercise: it
-# writes a message and a backtrace to standard error, and a read returns Lean's default value and
-# an update the array unchanged.  The run fails when Lean exits with an error or writes any other
-# message.
+# writes a message and a backtrace to standard error.  A read returns Lean's default element,
+# an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
+# with an error or writes any other message.
 if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lean \
     >"$cases" 2>"$errors"; then
   cat "$errors" >&2
@@ -145,15 +147,16 @@ if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lea
 fi
 counts=$(awk '
   $0 == "Error: index out of bounds" { reads++; next }
+  /^PANIC at Array\.insertIdx! Init\.Data\.Array\.Basic:[0-9]+:[0-9]+: invalid index$/ { inserts++; next }
   $0 == "backtrace:" || /\[0x[0-9a-f]+\]$/ { next }
   { others++; print > "/dev/stderr" }
-  END { print reads + 0, others + 0 }' "$errors")
-read -r reads others <<<"$counts"
+  END { print reads + 0, inserts + 0, others + 0 }' "$errors")
+read -r reads inserts others <<<"$counts"
 if [ "$others" -ne 0 ]; then
   echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
   exit 1
 fi
-echo "native Lean: $reads accesses past the end, as the cases expect"
+echo "native Lean: $reads accesses past the end and $inserts insertIdx! past the end, as the cases expect"
 passed=0
 failed=0
 while IFS='|' read -r name export result args expected live allocsMax; do

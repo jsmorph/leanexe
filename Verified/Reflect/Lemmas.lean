@@ -1,4 +1,5 @@
 import Verified.Source
+import Verified.InsertIdx
 import LeanExe.Dialect.RepeatWhile
 import LeanExe.Pipeline.Implements
 import LeanExe.ProofKit.F64Bits
@@ -13,6 +14,12 @@ which is not definitionally the source's `if decide (a < b) = true`. -/
 namespace Verified.Reflect
 
 variable {S : List Sig} {Γ : List Ty} {funs : Funs S} {env : Env Γ}
+
+theorem leSize_map_eq {e : Elem} {α : Type} (φ : α → e.denote)
+    (x : Var Γ (.array e)) (i : Var Γ .word) (xs : Array α) (index : UInt64)
+    (hx : env.get x = xs.map φ) (hi : env.get i = index) :
+    (Expr.leSize x i).denote funs env = arrayIndexLeSize xs index := by
+  simp [Expr.denote, arrayIndexLeSize, hx, hi]
 
 theorem bin_eq (op : BinOp) {l r : Expr S Γ .word} {L R : UInt64}
     (hl : l.denote funs env = L) (hr : r.denote funs env = R) :

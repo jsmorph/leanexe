@@ -1744,6 +1744,40 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
     reflectAs (← mkAppOptM ``LeanExe.insertAt #[some α, some xs, some i, some v]) e
+  | ``Array.insertIdx!, insertArgs@#[α, xs, k, v] =>
+    let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
+      | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"
+    let xs ← projReduce xs
+    unless xs.isFVar do
+      return ← reflectAs (← withLetDecl `a (← inferType xs) xs fun a =>
+        mkLetFVars #[a] (mkAppN e.getAppFn (insertArgs.set! 1 a))) e
+    let i ← projReduce i
+    unless i.isFVar do
+      return ← reflectAs (← withLetDecl `index (mkConst ``UInt64) i fun index => do
+        let k ← mkAppM ``UInt64.toNat #[index]
+        mkLetFVars #[index] (mkAppN e.getAppFn (insertArgs.set! 2 k))) e
+    let term ← mkAppM ``arrayInsertIdx #[xs, i, v]
+    let some expanded ← unfoldDefinition? term
+      | throwError "verified_compile: cannot unfold {term}"
+    return ← reflectVia expanded.headBeta
+      (← mkExpectedTypeHint (← mkAppM ``arrayInsertIdx_eq #[xs, i, v]) (← mkEq expanded.headBeta e))
+  | ``arrayIndexLeSize, #[α, xs, index] =>
+    let (x, t) ← varOf c xs
+    let .array el := t | throwError "verified_compile: {xs} is not an array variable"
+    let (i, ti) ← varOf c index
+    unless ti == .word do throwError "verified_compile: {index} is not a word variable"
+    let src ← mkAppOptM ``Expr.leSize #[some c.sigs, some c.ctx, none, some x, some i]
+    let se ← shapeOf α
+    let hx ← arrayEq x xs
+    let hx ← if se.flat.isNone then
+        mkEqTrans hx (← mkEqSymm (← mkAppM ``Array.map_id #[xs]))
+      else pure hx
+    let proof ← mkAppOptM ``leSize_map_eq
+      #[some c.sigs, some c.ctx, some c.funs, some c.env, some (elemExpr el), some α,
+        some (← se.fn α), some x, some i, some xs, some index, some hx, some (← rflProof c
+          (← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr .word), some i]) index)]
+    return ⟨src, proof, .bool, e, leafBound c ``leSize_bound [(`x, x), (`i, i)],
+      leafFits c src⟩
   | ``Array.eraseIdxIfInBounds, #[α, xs, k] =>
     let (``UInt64.toNat, #[i]) := k.consumeMData.getAppFnArgs
       | throwError "verified_compile: a position must be `i.toNat` for a word `i`, in {e}"

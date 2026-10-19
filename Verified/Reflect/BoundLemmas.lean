@@ -34,6 +34,9 @@ theorem float_bound (bits : UInt64) :
 theorem size_bound {e : Elem} (x : Var Γ (.array e)) :
     (Expr.size x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
 
+theorem leSize_bound {e : Elem} (x : Var Γ (.array e)) (i : Var Γ .word) :
+    (Expr.leSize x i : Expr S Γ .bool).allocs funs flags bounds modes paid live env = 0 := rfl
+
 theorem proj_bound {e e' : Elem} (x : Var Γ (.elem e)) (p : Path e e') :
     (Expr.proj x p : Expr S Γ (.elem e')).allocs funs flags bounds modes paid live env = 0 := rfl
 
