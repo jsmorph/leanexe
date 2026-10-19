@@ -16,6 +16,7 @@ import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
+import Verified.Examples.Floats32
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
@@ -123,6 +124,18 @@ def bands : List (Float × Float) :=
     (0.0 / 0.0, 1.0)]
 
 def floatArg (x : Float) : String := s!"f64:{x.toBits}"
+
+def floats32 : List Float32 :=
+  ([0, 0x80000000, 1, 0x007fffff, 0x00800000, 0x3f000000, 0x3f800000, 0xbf800000,
+    0x7f7fffff, 0xff7fffff, 0x7f800000, 0xff800000, 0x7fc00000] : List UInt32).map Float32.ofBits
+
+def float32Arg (x : Float32) : String := s!"f32:{x.toBits}"
+
+def float32Words (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits.toUInt64
+
+def float32Arrays : List (Array Float32) :=
+  [#[], #[Float32.ofBits 1], floats32.toArray,
+    (List.range 64).toArray.map fun i => Float32.ofBits (UInt32.ofNat (0x3f000000 + i))]
 
 /-- Arrays of floats: empty, one element, a few, the special floats, and 50 elements. -/
 def floatArrays : List (Array Float) :=
@@ -695,6 +708,47 @@ def main : IO Unit := do
       IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|4|4"
       let (b1, b2) := Modes.both xs ys
       IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
+  for tag in ([0, 1, 2, 3, 4, 5, 6, 18446744073709551615] : List UInt64) do
+    IO.println s!"floats32|literal|f32|i64:{tag}|{(Floats32.literal tag).toBits}|0|0"
+  for x in floats32 do
+    let a := float32Arg x
+    IO.println s!"floats32|identity|f32|{a}|{(Floats32.identity x).toBits}|0|0"
+    for y in [(0.0 : Float), -3.25] do
+      let (f, value, word) := Floats32.mixed x y 18446744073709551615
+      IO.println s!"floats32|mixed|list:f64,f32,i64|{a} {floatArg y} \
+        i64:18446744073709551615|{f.toBits} {value.toBits} {word}|0|0"
+    for n in ([0, 1, 2, 7, 1024, 4096] : List UInt64) do
+      IO.println s!"floats32|count|f32|i64:{n} {a}|{(Floats32.count n x).toBits}|0|0"
+    for n in ([0, 1, 7, 64] : List UInt64) do
+      IO.println s!"floats32|build|array-u64|i64:{n} {a}|\
+        {arrayOut (float32Words (Floats32.build n x))}|1|1"
+    let pairs : Array Floats32.PairValue := #[⟨x, -2.5⟩, ⟨x, 1.0⟩]
+    let pairWords := (pairs.toList.flatMap fun p => [p.lo.toBits.toUInt64, p.hi.toBits]).toArray
+    for i in ([0, 1, 2, 18446744073709551615] : List UInt64) do
+      let pair := Floats32.paired pairs i
+      IO.println s!"floats32|paired|list:f32,f64|{arrayArg pairWords} i64:{i}|\
+        {pair.lo.toBits} {pair.hi.toBits}|1|1"
+  for xs in float32Arrays do
+    let a := arrayArg (float32Words xs)
+    IO.println s!"floats32|same|array-u64|{a}|{arrayOut (float32Words (Floats32.same xs))}|1|1"
+    let (first, second) := Floats32.duplicate xs
+    IO.println s!"floats32|duplicate|list:array-u64,array-u64|{a}|\
+      {arrayOut (float32Words first)} {arrayOut (float32Words second)}|2|2"
+    IO.println s!"floats32|collect|array-u64|{a}|\
+      {arrayOut (float32Words (Floats32.collect xs))}|2"
+    for i in [0, 1, xs.size.toUInt64, 18446744073709551615] do
+      IO.println s!"floats32|read|f32|{a} i64:{i}|{(Floats32.read xs i).toBits}|1|1"
+    for x in floats32 do
+      let args := s!"{a} {float32Arg x}"
+      IO.println s!"floats32|push|array-u64|{args}|\
+        {arrayOut (float32Words (Floats32.push xs x))}|1|2"
+      let (values, size) := Floats32.borrowedPush xs x
+      IO.println s!"floats32|borrowedPush|list:array-u64,i64|{args}|\
+        {arrayOut (float32Words values)} {size}|2|2"
+    for i in [0, 1, xs.size.toUInt64, xs.size.toUInt64 + 1, 18446744073709551615] do
+      for x in [Float32.ofBits 0, Float32.ofBits 0x7fc00000] do
+        IO.println s!"floats32|replace|array-u64|{a} i64:{i} {float32Arg x}|\
+          {arrayOut (float32Words (Floats32.replace xs i x))}|1|1"
   for x in floats do
     let a := floatArg x
     IO.println s!"floats|negate|f64|{a}|{(Floats.negate x).toBits}"

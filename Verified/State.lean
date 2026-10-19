@@ -109,7 +109,7 @@ theorem Frame.setValues {base : Nat} {s : Locals} {vs : List Value} {i : Nat} {v
     Frame base s (setLocal { s with values := vs } i v) :=
   Frame.ofValues.trans (@Frame.set base { s with values := vs } i v hLow hBase hHigh)
 
-/-- Locals that differ from `s` at most in local `index`, at or above `base` and below the half,
+/-- Locals that differ from `s` at most in local `index`, at or above `base` and below the position bound,
 agree with `s` below `base`. -/
 theorem Frame.ofOthers {base index : Nat} {s s' : Locals} (hp : s'.params = s.params)
     (hl : s'.locals.length = s.locals.length) (hOther : ∀ j, j ≠ index → s'.get j = s.get j)
@@ -123,7 +123,7 @@ theorem Frame.setSlot {base p : Nat} {s : Locals} {v : Value} (ty : ValueType)
   refine ⟨rfl, by simp [setLocal], (fun j hj => ⟨?_, ?_⟩), (fun j hj => ?_)⟩ <;>
     apply Locals.get_setLocal_ne hLow <;> cases ty <;> simp only [slotIndex] <;> omega
 
-/-- A position below the half has its i64 local among the locals. -/
+/-- A position below the position bound has its i64 local among the locals. -/
 theorem Locals.lt_total {s : Locals} {i : Nat} (h : i < s.positions) :
     i < s.params.length + s.locals.length := by
   simp only [Locals.positions] at h; omega
@@ -182,7 +182,7 @@ theorem wp_loadCode {m : Module} {Q : Assertion α} {store : Store α} {host : H
       · simpa [List.append_assoc] using hk
 
 /-- Storing the top words `vals` of the stack, of types `tys`, at positions `loc` on leaves them
-there, keeps the frame below `loc`, and changes no position above them below the half. -/
+there, keeps the frame below `loc`, and changes no position above them below the position bound. -/
 theorem wp_storeCode {m : Module} {Q : Assertion α} {store : Store α} {host : HostEnv α}
     {rest : Program} (vals : List Value) (h loc : Nat) (tys : List ValueType) (s : Locals)
     (vs : List Value) (hw : vals.length = tys.length) (hh : s.positions = h)
@@ -338,6 +338,7 @@ def Elem.words : (e : Elem) → Array e.denote → Array UInt64
   | .word, xs => xs
   | .bool, xs => flatWords xs
   | .float, xs => xs.map Float.toBits
+  | .float32, xs => xs.map fun x : Float32 => x.toBits.toUInt64
   | .prod a b, xs => (xs.toList.flatMap (Elem.toWords (.prod a b))).toArray
 
 theorem Elem.words_eq : (e : Elem) → (xs : Array e.denote) →
@@ -353,27 +354,23 @@ theorem Elem.words_eq : (e : Elem) → (xs : Array e.denote) →
     show (xs.toList.flatMap fun x => (Scalar.values x).map Value.word).toArray = _
     rw [show (fun x : Bool => (Scalar.values x).map Value.word) = Elem.toWords .bool from
       funext fun b => by cases b <;> rfl]
-  | .float, xs => by
+  | .float, xs | .float32, xs => by
     apply Array.ext'
-    rw [List.toList_toArray]
-    show (xs.map Float.toBits).toList = xs.toList.flatMap fun x => [x.toBits]
-    rw [Array.toList_map]
-    induction xs.toList with
-    | nil => rfl
-    | cons x l ih => rw [List.map_cons, List.flatMap_cons, ih]; rfl
+    simp only [Elem.words, Array.toList_map, List.toList_toArray, Elem.toWords]
+    exact List.map_eq_flatMap
   | .prod _ _, _ => rfl
 
 theorem Elem.width_pos : (e : Elem) → 0 < e.width
-  | .word | .bool | .float => Nat.one_pos
+  | .word | .bool | .float | .float32 => Nat.one_pos
   | .prod a _ => by have := a.width_pos; simp only [Elem.width]; omega
 
 theorem Elem.toWords_length : (e : Elem) → (v : e.denote) → (e.toWords v).length = e.width
-  | .word, _ | .bool, _ | .float, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ => rfl
   | .prod a b, v => by
     simp only [Elem.toWords, List.length_append, a.toWords_length, b.toWords_length, Elem.width]
 
 theorem Elem.types_length : (e : Elem) → e.types.length = e.width
-  | .word | .bool | .float => rfl
+  | .word | .bool | .float | .float32 => rfl
   | .prod a b => by simp only [Elem.types, List.length_append, a.types_length, b.types_length,
       Elem.width]
 
@@ -435,22 +432,24 @@ theorem Elem.words_push (e : Elem) (xs : Array e.denote) (v : e.denote) :
 theorem Elem.toWords_default : (e : Elem) → e.toWords default = List.replicate e.width 0
   | .word | .bool => rfl
   | .float => by decide
+  | .float32 => by decide
   | .prod a b => by
     show a.toWords default ++ b.toWords default = _
     rw [a.toWords_default, b.toWords_default, Elem.width, List.replicate_add]
 
-/-- The value of type `ty` with the bits of the word `w`: an f64 for a float word, and an i64
-otherwise. -/
+/-- The value of type `ty` with the bits of `w`: an f64, an f32 from the low 32 bits, or an i64. -/
 def typedValue : ValueType → UInt64 → Value
   | .f64, w => .f64 w
+  | .f32, w => .f32 w.toUInt32
   | _, w => .i64 w
 
-/-- The values that hold an element, in order: a word or a `Bool` in an i64, a float in an f64,
+/-- The values that hold an element, in order: a word or a `Bool` in an i64, a float in its native type,
 and a tuple as its first part's values followed by its second's. -/
 def Elem.values : (e : Elem) → e.denote → List Value
   | .word, x => [.i64 x]
   | .bool, b => [.i64 (boolWord b)]
   | .float, x => [.f64 x.toBits]
+  | .float32, x => [.f32 x.toBits]
   | .prod a b, v => a.values v.1 ++ b.values v.2
 
 @[simp] theorem Elem.values_word (x : UInt64) : Elem.values .word x = [.i64 x] := rfl
@@ -459,13 +458,14 @@ def Elem.values : (e : Elem) → e.denote → List Value
 
 theorem Elem.values_length (e : Elem) (v : e.denote) : (e.values v).length = e.width := by
   induction e with
-  | word | bool | float => rfl
+  | word | bool | float | float32 => rfl
   | prod a b iha ihb => simp only [Elem.values, List.length_append, iha, ihb, Elem.width]
 
 /-- An element's values are its words with its types. -/
 theorem Elem.values_typed : (e : Elem) → (v : e.denote) →
     List.zipWith typedValue e.types (e.toWords v) = e.values v
   | .word, _ | .bool, _ | .float, _ => rfl
+  | .float32, v => by simp [Elem.types, Elem.toWords, Elem.values, typedValue]
   | .prod a b, v => by
     simp only [Elem.types, Elem.toWords, Elem.values]
     rw [List.zipWith_append (by rw [a.types_length, a.toWords_length]), a.values_typed,
@@ -568,9 +568,13 @@ theorem Elem.words_push_into (e : Elem) {xs : Array e.denote} {ws : Array UInt64
 
 /-- An element's words are the bits of its values. -/
 theorem Elem.values_words : (e : Elem) → (v : e.denote) → (e.values v).map Value.word = e.toWords v
-  | .word, _ | .bool, _ | .float, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ => rfl
   | .prod a b, v => by
     simp only [Elem.values, Elem.toWords, List.map_append, a.values_words, b.values_words]
+
+theorem Elem.typed_words (e : Elem) (v : e.denote) :
+    (List.zipWith typedValue e.types (e.toWords v)).map Value.word = e.toWords v := by
+  rw [e.values_typed, e.values_words]
 
 /-- The blocks of the objects that an owned value's arrays occupy, each as its start and
 length. -/
@@ -1447,11 +1451,12 @@ types follows from them, for every signature, without a proof per signature. -/
   | .word => instScalarUInt64
   | .bool => @instScalarOfFlat Bool UInt64 instFlatBoolUInt64 instScalarUInt64
   | .float => instScalarFloat
+  | .float32 => instScalarFloat32
   | .prod a b => @instScalarProd a.denote b.denote a.scalarInst b.scalarInst
 
 theorem Elem.scalar_values : (e : Elem) → (v : e.denote) →
     @Scalar.values _ e.scalarInst v = e.values v
-  | .word, _ | .bool, _ | .float, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ => rfl
   | .prod a b, v => by
     show @Scalar.values _ a.scalarInst v.1 ++ @Scalar.values _ b.scalarInst v.2 = _
     rw [a.scalar_values, b.scalar_values]
@@ -1482,6 +1487,7 @@ and floats, and `wordsInst` for arrays of tuples. -/
   | .word => instRepresentArrayUInt64
   | .bool => @instRepresentArrayOfFlatOfScalar Bool UInt64 instFlatBoolUInt64 instScalarUInt64
   | .float => instRepresentArrayFloat
+  | .float32 => instRepresentArrayFloat32
   | .prod a b => Elem.wordsInst (.prod a b)
 
 /-- The `Represent` instance for an owned array argument of element type `e`. -/
@@ -1489,54 +1495,55 @@ and floats, and `wordsInst` for arrays of tuples. -/
   | .word => instRepresentMovedArrayUInt64
   | .bool => @instRepresentMovedArrayOfFlatOfScalar Bool UInt64 instFlatBoolUInt64 instScalarUInt64
   | .float => instRepresentMovedArrayFloat
+  | .float32 => instRepresentMovedArrayFloat32
   | .prod a b => Elem.movedWordsInst (.prod a b)
 
 theorem Elem.arrayInst_borrowed {heap : Heap} {store : Store Unit} {ws : List Value} :
     (e : Elem) → {xs : Array e.denote} →
       (@Represent.borrowed _ e.arrayInst heap store ws xs ↔
         (Ty.array e).Rep .borrowed heap store ws xs)
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => Iff.rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => Iff.rfl
 
 theorem Elem.arrayInst_owned {heap : Heap} {store : Store Unit} {ws : List Value} :
     (e : Elem) → {xs : Array e.denote} →
       (@Represent.owned _ e.arrayInst heap store ws xs ↔ (Ty.array e).Rep .owned heap store ws xs)
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => Iff.rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => Iff.rfl
 
 theorem Elem.arrayInst_width : (e : Elem) → (xs : Array e.denote) →
     @Represent.width _ e.arrayInst xs = 1
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.arrayInst_blocks {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Array e.denote} →
       @Represent.blocks _ e.arrayInst store ws xs = (Ty.array e).blocks store ws xs
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.arrayInst_reads {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Array e.denote} → @Represent.reads _ e.arrayInst store ws xs = (Ty.array e).reads ws xs
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.arrayInst_moves {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Array e.denote} → @Represent.moves _ e.arrayInst store ws xs = []
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.movedInst_borrowed {heap : Heap} {store : Store Unit} {ws : List Value} :
     (e : Elem) → {xs : Moved (Array e.denote)} →
       (@Represent.borrowed _ e.movedInst heap store ws xs ↔
         (Ty.array e).Rep .owned heap store ws xs.val)
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => Iff.rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => Iff.rfl
 
 theorem Elem.movedInst_width : (e : Elem) → (xs : Moved (Array e.denote)) →
     @Represent.width _ e.movedInst xs = 1
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.movedInst_moves {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Moved (Array e.denote)} →
       @Represent.moves _ e.movedInst store ws xs = (Ty.array e).pointers ws
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.movedInst_reads {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Moved (Array e.denote)} → @Represent.reads _ e.movedInst store ws xs = []
-  | .word, _ | .bool, _ | .float, _ | .prod _ _, _ => rfl
+  | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 /-- The `Scalar` instance that Lean synthesizes for a type without arrays. -/
 @[instance_reducible] def Ty.scalarInst : (t : Ty) → t.scalar = true → Scalar t.denote

@@ -48,6 +48,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Modes:compiled.module:modes \
     Verified.Examples.Modes:byHandModule:byhand \
     Verified.Examples.Floats:compiled.module:floats \
+    Verified.Examples.Floats32:compiled.module:floats32 \
     Verified.Examples.Elements:compiled.module:elements \
     Verified.Examples.Tuples:module:tuples \
     Verified.Examples.Records:compiled.module:records \

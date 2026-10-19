@@ -301,7 +301,7 @@ def loopAlloc (funs : Funs S) (flags : Flags S) (modes : List Mode) (paid : List
 def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : List Mode)
     (paid : List Bool)
     (live : Nat → Bool) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
-  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ => 0
+  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ => 0
   | _, _, .var x, env => x.cost modes live (env.get x)
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
@@ -523,7 +523,7 @@ calls find theirs as `fits` states: whether every call that the run makes of a f
 takes the call depth finds its frames.  It follows `Expr.allocs`, with `&&` in place of `+`. -/
 def Expr.fits (funs : Funs S) (fits : Fits S) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Bool
-  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .var _, _ => true
+  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ | _, _, .var _, _ => true
   | _, _, .bin _ left right, env | _, _, .cmp _ left right, env
   | _, _, .fbin _ left right, env | _, _, .fcmp _ left right, env
   | _, _, .and left right, env | _, _, .or left right, env

@@ -790,12 +790,16 @@ theorem wp_ofWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs :
     wp m (ofWordCode ty ++ rest) Q st { s with values := .i64 w :: vs } env' ↔
       wp m rest Q st { s with values := typedValue ty w :: vs } env' := by
   cases ty <;> simp [ofWordCode, typedValue]
+  rw [← wrap_toUInt32 w]
+  rfl
 
 theorem wp_toWordCode {st : Store Unit} {env' : HostEnv Unit} {s : Locals} {vs : List Value}
     {rest : Program} {Q : Assertion Unit} (ty : ValueType) (w : UInt64) :
     wp m (toWordCode ty ++ rest) Q st { s with values := typedValue ty w :: vs } env' ↔
-      wp m rest Q st { s with values := .i64 w :: vs } env' := by
-  cases ty <;> simp [toWordCode, typedValue]
+      wp m rest Q st { s with values := .i64 (Value.word (typedValue ty w)) :: vs } env' := by
+  cases ty <;> simp [toWordCode, typedValue, Value.word]
+  rw [UInt64.ofNat_mod w.toNat_lt (by decide), UInt64.ofNat_toNat]
+  rfl
 
 theorem wordCount_toNat (k : Nat) : (wordCount k).toNat = min k 536870912 :=
   UInt64.toNat_ofNat_of_lt' (by rw [show UInt64.size = 18446744073709551616 from rfl]; omega)
@@ -945,15 +949,19 @@ theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 
     After env slots L0 L base heap store0 s0 (.array .word) .owned ws heap1 store1 s [.i64 p] →
     s.positions = h → s.get ptr = some (.i64 p) → s.get w0 = some (.i64 w) →
     LocalsHold s src tys (List.zipWith typedValue tys words) → words.length = tys.length →
+    (List.zipWith typedValue tys words).map Value.word = words →
     w.toNat + j + tys.length ≤ ws.size →
     (∀ store2, After env slots L0 L base heap store0 s0 (.array .word) .owned
         (writeWords ws (w.toNat + j) words) heap1 store2 s [.i64 p] →
       capacityAt store2 p = capacityAt store1 p → wp m rest Q store2 s host) →
     wp m (storeWordsCode h ptr w0 j src tys ++ rest) Q store1 s host
-  | _, _, [], words, ws, store1, s, a, _, _, _, _, hl, _, hk => by
+  | _, _, [], words, ws, store1, s, a, _, _, _, _, hl, _, _, hk => by
     obtain rfl : words = [] := List.eq_nil_of_length_eq_zero (by simpa using hl)
     simpa [storeWordsCode, writeWords] using hk store1 a rfl
-  | j, src, ty :: tys, v :: words, ws, store1, s, a, hh, hP, hW, hold, hl, hFit, hk => by
+  | j, src, ty :: tys, v :: words, ws, store1, s, a, hh, hP, hW, hold, hl, normal, hFit, hk => by
+    have normal' : Value.word (typedValue ty v) = v ∧
+        (List.zipWith typedValue tys words).map Value.word = words := by
+      simpa only [List.zipWith_cons_cons, List.map_cons, List.cons.injEq] using normal
     simp only [List.length_cons, Nat.add_right_cancel_iff] at hl
     simp only [List.length_cons] at hFit
     have hn : w.toNat + j < ws.size := by omega
@@ -973,11 +981,11 @@ theorem wp_storeWordsCode {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L0 
     simp only [storeWordsCode, wordAddrCode, List.append_assoc, List.cons_append,
       List.nil_append, wp_localGet_cons, Locals.get_values, hP, hW, wp_constI64_cons,
       wp_addI64_cons, wp_mulI64_cons, wp_wrapI64_cons, wrap_toUInt32, hOffset, hv]
-    rw [wp_toWordCode]
+    rw [wp_toWordCode, normal'.1]
     simp only [wp_store64_cons, UInt32.toNat_zero, Nat.add_zero, UInt32.add_zero]
     rw [ite_eq_right (by omega)]
     refine wp_storeWordsCode (j + 1) (src + 1) tys words _ _ s (a.writeElement hn v) hh hP hW
-      holdRest hl (by rw [Array.size_set]; omega) fun store2 a2 hc =>
+      holdRest hl normal'.2 (by rw [Array.size_set]; omega) fun store2 a2 hc =>
         hk store2 ?_ (hc.trans (capacityAt_writeElement hOwned hn v))
     have hSet : ws.set (w.toNat + j) v hn = ws.set! (w.toNat + j) v := by
       simp [Array.set!_eq_setIfInBounds, Array.setIfInBounds, hn]
@@ -1202,6 +1210,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
   | _, .insertAt _ _ _, hp, _, _, _, _, _ | _, .eraseAt _ _, hp, _, _, _, _, _
+  | _, .float32 _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _
   | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by

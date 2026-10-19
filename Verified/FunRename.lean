@@ -32,6 +32,7 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .insertAt x i v => .insertAt x (i.renameFuns ρ) (v.renameFuns ρ)
   | _, _, .eraseAt x i => .eraseAt x (i.renameFuns ρ)
   | _, _, .float n => .float n
+  | _, _, .float32 n => .float32 n
   | _, _, .fbin op a b => .fbin op (a.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .funary op a => .funary op (a.renameFuns ρ)
   | _, _, .fcmp op a b => .fcmp op (a.renameFuns ρ) (b.renameFuns ρ)

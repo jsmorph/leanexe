@@ -31,6 +31,9 @@ theorem bool_bound (v : Bool) :
 theorem float_bound (bits : UInt64) :
     (Expr.float bits : Expr S Γ .float).allocs funs flags bounds modes paid live env = 0 := rfl
 
+theorem float32_bound (bits : UInt32) :
+    (Expr.float32 bits : Expr S Γ .float32).allocs funs flags bounds modes paid live env = 0 := rfl
+
 theorem size_bound {e : Elem} (x : Var Γ (.array e)) :
     (Expr.size x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
 

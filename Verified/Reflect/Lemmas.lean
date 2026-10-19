@@ -3,6 +3,7 @@ import Verified.InsertIdx
 import LeanExe.Dialect.RepeatWhile
 import LeanExe.Pipeline.Implements
 import LeanExe.ProofKit.F64Bits
+import LeanExe.ProofKit.F32Bits
 
 /-! The lemmas from which the reflector builds the equation `denote (reflect f) = f` of a Lean
 definition: one lemma per Lean form.  Each states the meaning of a source expression whose parts
@@ -114,6 +115,11 @@ theorem float_eq {bits : UInt64} {x : Float} (h : x.toBits = bits) :
     (Expr.float bits : Expr S Γ .float).denote funs env = x := by
   show Float.ofBits bits = x
   rw [← h, LeanExe.ProofKit.F64Bits.ofBits_toBits]
+
+theorem float32_eq {bits : UInt32} {x : Float32} (h : x.toBits = bits) :
+    (Expr.float32 bits : Expr S Γ .float32).denote funs env = x := by
+  show Float32.ofBits bits = x
+  rw [← h, LeanExe.ProofKit.F32Bits.ofBits_toBits]
 
 theorem ite_flt_eq {t : Ty} {l r : Expr S Γ .float} {a b : Expr S Γ t} {L R : Float}
     {A B : t.denote} (hl : l.denote funs env = L) (hr : r.denote funs env = R)

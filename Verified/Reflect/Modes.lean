@@ -19,7 +19,7 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .var x, live, owned, k => owned && k == x.index && !live k
   | _, _, .word _, _, _, _ | _, _, .bool _, _, _, _ | _, _, .size _, _, _, _
   | _, _, .leSize _ _, _, _, _
-  | _, _, .float _, _, _, _ => false
+  | _, _, .float _, _, _, _ | _, _, .float32 _, _, _, _ => false
   | _, _, .bin _ left right, live, _, k | _, _, .cmp _ left right, live, _, k
   | _, _, .and left right, live, _, k | _, _, .or left right, live, _, k
   | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k =>

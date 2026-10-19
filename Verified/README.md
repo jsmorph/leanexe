@@ -30,7 +30,7 @@ signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads 
 scope, and calls only functions that exist.  The constructs are those of [the manual's
 dialect](../docs/verified-manual.md#the-dialect), each with Lean's meaning, with tuples built by
 `Expr.mk` and read by `Expr.proj`, which follows a path of first and second steps from a tuple
-variable.  A float operation has the meaning of Lean's `Float`, which
+variable.  A binary64 operation has the meaning of Lean's `Float`, which
 [`F64Bits.lean`](../LeanExe/ProofKit/F64Bits.lean) proves equal on bit patterns to Talos's `IEEE64`
 functions, the semantics of WebAssembly's f64 instructions in the deterministic profile, in which
 every NaN result is the canonical NaN.  The source expresses `LeanExe.loop` and
@@ -44,13 +44,16 @@ read, the update, and the extensions take array variables, and a call's argument
 is a place, a variable or a pair of places, and a variable at an owned parameter.
 
 A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
-float as its bit pattern in an f64 word, a tuple or a pair as its first component's words followed
-by its second's, and an array as the address of its length word and its elements' words in memory.
-An element of `k` words occupies `k` consecutive words, a `Bool` as 1 or 0 and a float as its bit
-pattern, and the length word counts words.  `Elem.words` gives these words, the identity for an
-array of words, as Lean's instances for `Array UInt64`, `Array Float`, and arrays of `Flat` types
-such as `Bool` store them; Lean has no instance for an array of tuples, and `Elem.wordsInst` stores
-one in the same way.  A structure whose `Flat` tuple holds arrays is represented as that tuple, by
+float as its bit pattern in an f64 or f32 word, a tuple or a pair as its first component's words
+followed by its second's, and an array as the address of its length word and its elements' words
+in memory.  An element of `k` words occupies `k` consecutive eight-byte words, with a `Bool` as
+1 or 0 and a float as its bit pattern.  A Float32 pattern occupies the low 32 bits of its word.
+The length word counts words.  `Elem.words` gives these words, the identity for an array of
+words, as Lean's instances for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat`
+types such as `Bool` store them.  Lean has no instance for an array of tuples, and `Elem.wordsInst`
+stores one in the same way.  `Elem.typed_words` states that decoding an element's words into
+typed values and extracting their bits recovers those words.  The word-store proof uses this
+equation for both float formats and tuples.  A structure whose `Flat` tuple holds arrays is represented as that tuple, by
 the instance `instRepresentOfFlat` of [`FlatRecords.lean`](../LeanExe/Pipeline/FlatRecords.lean),
 and the reflector treats it as a pair whose components are the tuple's.  Such a record may be a
 parameter, a result, a local value, or a loop state.  A record parameter is always borrowed, so a
@@ -70,9 +73,8 @@ loop's state is owned when its initial value or its body's value is owned, so a 
 or state is copied.  A copy allocates through the runtime's `alloc` and writes the length word and
 the elements.  A function's locals are its parameters, an i64 local for each further position, and
 f64 and f32 locals for every position.  Each word occupies the local for its type.  A function
-copies floating-point parameters to their typed locals at entry.  The f32 bank prepares the local
-layout for binary32 support.  The source dialect currently accepts binary64 floats.  Negation
-compiles to the subtraction of the operand from −0, which is Lean's negation on
+copies floating-point parameters to their typed locals at entry.  Arithmetic reflection remains
+binary64.  Negation compiles to the subtraction of the operand from −0, which is Lean's negation on
 every input, since `f64.neg` turns the canonical NaN into a NaN with the sign bit set.
 `Float.ofBits` compiles to `f64.reinterpret_i64` followed by the addition of −0, which gives the
 canonical NaN for a NaN pattern and leaves every other float unchanged.  A float constant's code
