@@ -17,6 +17,7 @@ import Verified.Examples.Fold
 import Verified.Examples.Gpt
 import Verified.Examples.Euler
 import Verified.ArrayFold
+import Verified.TailRun
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays

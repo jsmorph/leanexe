@@ -152,6 +152,11 @@ functions without the depth parameter at the top of the chain.  The tests run `d
 has 32 positions, 26 of them live across the self-call, to depth 999, where its deepest frame calls
 two functions without the depth parameter.
 
+[The tail-run lemmas](TailRun.lean) model a step that continues with another state or returns a
+value.  They prove uniqueness of the result and run length, agreement with a fixed-point
+meaning, and existence of a finite run from a well-founded transition relation.  These are
+the termination lemmas for the planned tail-loop rule.
+
 ## The theorem
 
 The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
