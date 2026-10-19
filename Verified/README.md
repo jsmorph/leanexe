@@ -123,8 +123,11 @@ module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `re
 [`ArrayFold.lean`](ArrayFold.lean) proves that `Array.foldl` equals a `UInt64`-indexed
 `LeanExe.loop` when the array length fits in a word.  `Ty.Rep.array_size_lt` derives that
 bound for every represented element type from the flattened array's heap bound and the
-positive element width.  These lemmas prepare the array-fold compiler rule.  The reflector
-does not yet accept `Array.foldl`.
+positive element width.  `Expr.foldLoop` constructs the loop expression from an array
+variable, an initial value, and a body whose first two variables are the element and
+accumulator.  [Variable renaming](Rename.lean) places that body under the loop's index
+binding and proves that the renaming preserves its meaning.  These declarations prepare
+the array-fold compiler rule.  The reflector does not yet accept `Array.foldl`.
 
 ## Recursion
 
