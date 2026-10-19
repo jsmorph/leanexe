@@ -144,11 +144,11 @@ rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocat
 
 ## Recursion
 
-A recursive function's meaning is a solution `M` of its body's equation, `M env = body.denote
+A guarded recursive function's meaning is a solution `M` of its body's equation, `M env = body.denote
 (Funs.cons M funs) env`, and `Prog.Meaning prog funs` states that `funs` are such meanings for every
 function of the program, `Func.denote` for the others.  `Prog.funs` gives the meanings of a program
 without recursion, and the reflector gives a recursive definition's meaning as the definition
-itself.  The code of a recursive function, and of every function that calls one, takes the call
+itself.  The code of a guarded recursive function, and of every function that calls one, takes the call
 depth as a first parameter, traps at `unreachable` when the depth reaches `depthLimit`, 1,000, and
 passes the depth plus one to the functions of this kind that it calls.  After the program's
 functions the module holds an entry for each such function, exported under its name, which calls it
@@ -163,8 +163,7 @@ two functions without the depth parameter.
 
 [The tail-run lemmas](TailRun.lean) model a step that continues with another state or returns a
 value.  They prove uniqueness of the result and run length, agreement with a fixed-point
-meaning, and existence of a finite run from a well-founded transition relation.  These are
-the termination lemmas for the tail-loop rule.  They define a natural-valued rank
+meaning, and existence of a finite run from a well-founded transition relation.  They define a natural-valued rank
 and prove that the allocation sums and frames conditions stabilize past the finite run's
 length.  [The indexed Wasm loop rule](TailLoop.lean) uses the least rank represented by its
 invariant to prove that each continuing iteration decreases the rank.
@@ -177,8 +176,10 @@ propagated by [mode inference](Reflect/TailModes.lean).  [The body theorem](Tail
 covers return, continuation, conditional, and binding code, including paid result potential.
 [The whole-loop theorem](TailWhile.lean) composes the represented states, kept regions,
 and remaining bounds.  [The function-entry theorem](TailEntry.lean) proves the Wasm
-function's behavior from its initial arguments.  Program integration, reflection, and
-execution tests remain pending.
+function's behavior from its initial arguments.  `Prog.consTail` includes the tail function,
+and its `Prog.Meaning` proof supplies the fixed-point equation and decreasing rank.
+`Prog.calls` uses the tail-function specification in the same induction as ordinary and
+guarded functions.  Reflection and execution tests remain pending.
 
 ## The theorem
 

@@ -468,6 +468,7 @@ def Prog.flags : {S : List Sig} → Prog S → Flags S
   | _, .nil => .nil
   | _, .cons f rest => .cons (f.paidParams rest.flags) (f.paidResult rest.flags) rest.flags
   | _, .consRec f rest => f.flags rest.flags
+  | _, .consTail f rest => f.flags rest.flags
 
 /-- Whether a call of each function with the signatures `S` finds the frames it needs, as
 `Bounds S` holds their bounds. -/
@@ -733,6 +734,9 @@ def Prog.fitsAt : {S : List Sig} → Prog S → Funs S → Nat → Fits S
       (rest.fitsAt funs k)
   | _, .consRec f rest, .cons M funs, k =>
     .cons (f.fitsAt (.cons M funs) (rest.fitsAt funs) k) (rest.fitsAt funs k)
+  | _, .consTail f rest, .cons _ funs, k =>
+    .cons (if f.depth then f.fitsAt funs (rest.fitsAt funs) k else fun _ => true)
+      (rest.fitsAt funs k)
 
 /-- The bounds of a program's functions, for the meanings `funs`, when their calls have `k`
 frames available.  A function whose code takes no call depth calls no function that does, so its
@@ -744,6 +748,9 @@ def Prog.boundsAt : {S : List Sig} → Prog S → Funs S → Nat → Bounds S
       else f.bound funs rest.flags (rest.boundsAt funs 0)) (rest.boundsAt funs k)
   | _, .consRec f rest, .cons M funs, k =>
     .cons (f.boundAt (.cons M funs) rest.flags (rest.boundsAt funs) k) (rest.boundsAt funs k)
+  | _, .consTail f rest, .cons _ funs, k =>
+    .cons (if f.depth then f.boundAt funs rest.flags (rest.boundsAt funs) k
+      else f.bound funs rest.flags (rest.boundsAt funs 0)) (rest.boundsAt funs k)
 
 theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
@@ -754,6 +761,17 @@ theorem Prog.boundsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params �
 theorem Prog.fitsAt_cons_here (f : Func S) (rest : Prog S) (F : Env f.params → f.result.denote)
     (funs : Funs S) (k : Nat) :
     (Prog.fitsAt (.cons f rest) (.cons F funs) k).get .here =
+      if f.depth then f.fitsAt funs (rest.fitsAt funs) k else fun _ => true := rfl
+
+theorem Prog.boundsAt_consTail_here (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (funs : Funs S) (k : Nat) :
+    (Prog.boundsAt (.consTail f rest) (.cons F funs) k).get .here =
+      if f.depth then f.boundAt funs rest.flags (rest.boundsAt funs) k
+      else f.bound funs rest.flags (rest.boundsAt funs 0) := rfl
+
+theorem Prog.fitsAt_consTail_here (f : TailFunc S) (rest : Prog S)
+    (F : Env f.params → f.result.denote) (funs : Funs S) (k : Nat) :
+    (Prog.fitsAt (.consTail f rest) (.cons F funs) k).get .here =
       if f.depth then f.fitsAt funs (rest.fitsAt funs) k else fun _ => true := rfl
 
 end Verified

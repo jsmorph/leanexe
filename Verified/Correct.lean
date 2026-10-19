@@ -67,6 +67,44 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
     | there g' =>
       rw [FVar.callIndex_there]
       exact hRest g' d
+  | @consTail S' f rest funs' M _ hDecreases hM ih =>
+    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') :=
+      ih fun k hk => by
+      rw [hFuncs k (by simp; omega)]
+      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    have hpos : m.funcs[2 + S'.length]? = some (f.function (2 + S'.length)) := by
+      rw [hFuncs _ (by simp)]
+      simp [Prog.functions, rest.functions_length]
+    intro g fv d
+    cases fv with
+    | here =>
+      rw [FVar.callIndex_here]
+      refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, f.function_numParams _⟩
+      · have hdep' : f.depth = false := hdep
+        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 :=
+          Calls.at (@hRest) 999
+        rw [Prog.boundsAt_consTail_here]
+        simp only [hdep', Bool.false_eq_true, ↓reduceIte]
+        exact f.function_implements funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
+          hDecreases M hM m _ hm hpos hC hdep'
+      · have hdep' : f.depth = true := hdep
+        subst hd'
+        refine f.function_depth funs' rest.flags (rest.boundsAt funs' (framesAt (d' + 1)))
+          (rest.fitsAt funs' (framesAt (d' + 1))) hDecreases M hM m _ hm hpos hdep' d'
+          (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
+        · by_cases hlt : d' < depthLimit
+          · rw [framesAt_succ hlt, Prog.fitsAt_consTail_here]
+            simp only [hdep', ↓reduceIte, hlt, decide_true, Bool.true_and]
+            rfl
+          · rw [framesAt_eq_zero hlt, Prog.fitsAt_consTail_here]
+            simp only [hdep', ↓reduceIte, hlt, decide_false, Bool.false_and]
+            rfl
+        · rw [framesAt_succ hlt, Prog.boundsAt_consTail_here]
+          simp only [hdep', ↓reduceIte]
+          rfl
+    | there g' =>
+      rw [FVar.callIndex_there]
+      exact hRest g' d
   | @consRec S' f rest funs' M _ hM ih =>
     have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') :=
       ih fun k hk => by
