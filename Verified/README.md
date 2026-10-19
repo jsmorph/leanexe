@@ -115,9 +115,11 @@ divisor, and return Lean's result for zero.  [`Source.lean`](Source.lean) define
 `Func.denote`, [`Compile.lean`](Compile.lean) the compiler, [`State.lean`](State.lean) the
 representation of values in the heap and the facts about variables, [`Heap.lean`](Heap.lean) the
 specifications of the allocation, copy, and release code, [`Bound.lean`](Bound.lean) the allocation
-bound, [`Potential.lean`](Potential.lean) the potential of owned arrays, [`After.lean`](After.lean)
-the facts that the proof shares, and [`Correct.lean`](Correct.lean) the theorem.  The compiled
-module has the layout of `LeanExe`'s modules, with the runtime's `alloc` and `release` at functions
+bound, [`Potential.lean`](Potential.lean) the potential of owned arrays, and [`After.lean`](After.lean)
+the facts that the proof shares.  [The expression rules](ExprCorrect.lean) prove expression and
+ordinary-function compilation, and [the program theorem](Correct.lean) combines the function
+rules.  The compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc`
+and `release` at functions
 0 and 1.
 
 `Expr.fold` has the full `Array.foldl` meaning, with its element, accumulator, and `UInt64`

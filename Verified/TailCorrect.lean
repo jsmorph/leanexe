@@ -1,4 +1,4 @@
-import Verified.Correct
+import Verified.ExprCorrect
 import Verified.TailPaid
 import Verified.TailState
 import Verified.TailLoop
