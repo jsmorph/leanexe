@@ -359,7 +359,7 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
       (fun modes paid live env =>
         body.allocs funs flags bounds (.borrowed :: modes) (false :: paid) (shift 1 live)
           (.cons ((env.get (.there (.there x)))[(env.get (.there .here)).toNat]!) env)) env
-  | _, _, .size _, _ | _, _, .proj _ _, _ => 0
+  | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _ => 0
   | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
     i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
@@ -525,7 +525,8 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
         (fun i s => body.fits funs fits (.cons ((env.get x)[i.toNat]!) (.cons s (.cons i env))))
         (fun i s => body.denote funs (.cons ((env.get x)[i.toNat]!) (.cons s (.cons i env))))
         (env.get x).size.toUInt64.toNat 0 (init.denote funs env)
-  | _, _, .size _, _ | _, _, .proj _ _, _ | _, _, .append _ _, _ => true
+  | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _
+  | _, _, .append _ _, _ => true
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
   | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
     i.fits funs fits env && v.fits funs fits env

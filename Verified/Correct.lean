@@ -1,5 +1,6 @@
-import Verified.Potential
+import Verified.ArgPot
 import Verified.ArrayFold
+import Verified.InsertIdx
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
@@ -191,21 +192,6 @@ theorem Calls.at {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
     (d0 : UInt64) :
     CallsAt m funs flags (bounds (framesAt (d0 + 1))) (fits (framesAt (d0 + 1))) d0 :=
   fun f => h f (d0 + 1)
-
-/-- An argument that a call moves is at an owned parameter. -/
-theorem callMoves_owned {S : List Sig} {Γ : List Ty} {g : Sig} {slots : List Slot}
-    {live : Nat → Bool} {args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)}
-    {i : Fin g.params.length} (h : callMoves slots live args i = true) : g.mode i = .owned := by
-  simp only [callMoves, Bool.and_eq_true, beq_iff_eq] at h
-  exact h.1
-
-/-- `callMoves` reads only the slots' modes. -/
-theorem callMovesAt_eq {S : List Sig} {Γ : List Ty} {g : Sig} (slots : List Slot)
-    (live : Nat → Bool) (args : (i : Fin g.params.length) → Expr S Γ (g.params.get i)) :
-    callMovesAt (slots.map Slot.mode) live args = callMoves slots live args := by
-  funext i
-  cases hv : (args i).varIndex? <;>
-    simp only [callMovesAt, callMoves, Expr.usesFast_eq, hv, modeAt, Slot.modes_getD]
 
 /-- The potential of a call's arguments after the call depth is that of the arguments. -/
 theorem Env.argPot_depthOf {store : Store Unit} {ps : List Ty} {sel : Nat → Bool}
@@ -1173,6 +1159,22 @@ theorem spec_size (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
   exact hNext heap' store' s [.i64 (env.get x).size.toUInt64]
     (After.ofScalar rfl ev.step rfl ev.frame ev.holds rfl)
     fun _ => top_unpaid_le rfl (by rw [hTop]; omega)
+
+theorem spec_leSize (hm : Runtime m) {Γ' : List Ty} {e : Elem}
+    (x : Var Γ' (.array e)) (i : Var Γ' .word) :
+    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv
+      (Expr.leSize (S := S) x i) env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+    hPlace rest Q hTrap hNext
+  obtain ⟨_, _, _, hRep⟩ := hVars.1 _ x (by simp [Expr.uses])
+  have hValue := Expr.leSizeExpand_denote x i funs env hRep.array_size_lt
+  have hCmp : CodeSpec m funs flags bounds fits host pv (Expr.leSizeExpand x i)
+      env slots paid live := spec_cmp .le (spec_var hm i) (spec_size hm x) env slots paid live
+  simp only [CodeSpec, trapFlag, Expr.leSizeExpand_uses, Expr.leSizeExpand_width,
+    Expr.leSizeExpand_placeArgs, Expr.leSizeExpand_aborts, Expr.leSizeExpand_allocs,
+    Expr.leSizeExpand_fits, Expr.leSizeExpand_mode, Expr.leSizeExpand_paid,
+    Expr.leSizeExpand_code, hValue] at hCmp
+  exact hCmp h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
 
 /-- A read of an array variable: the position in local `base`, a comparison of it with the
 array's size as a flag in local `base + 1`, the position of the element's first word in local
@@ -2184,31 +2186,6 @@ theorem spec_letPair (hm : Runtime m) {Γ' : List Ty} {sTy tTy uTy : Ty}
       rw [hSplitL]
       simp only [Expr.allocs]; omega)
 
-/-- The potential that argument `e` of a call brings to a paid owned parameter: a paid variable
-that the call moves, one outside `kept`, brings its own, read from its slot, and any other
-argument at most its credit. -/
-def Expr.paramPot (funs : Funs S) (store : Store Unit) (s : Locals) {Γ : List Ty} (env : Env Γ)
-    (slots : List Slot) (paid : List Bool) (kept : Nat → Bool) : {t : Ty} → Expr S Γ t → Nat
-  | t, .var x =>
-    if (!kept x.index && paidAt paid x.index) = true then env.potOf store s slots x
-    else t.credit (env.get x)
-  | t, e => t.credit (e.denote funs env)
-
-/-- `Expr.paramPot` reads only the slots of the variables, which a frame keeps. -/
-theorem Expr.paramPot_frame {Γ : List Ty} {env : Env Γ} {slots : List Slot} {paid : List Bool}
-    {kept all : Nat → Bool} {base : Nat} {heap : Heap} {store st : Store Unit} {s s' : Locals}
-    (hVars : Holds env slots all base heap store s) (hF : Frame base s s') {t : Ty}
-    (e : Expr S Γ t) (hu : ∀ k, e.uses k = true → all k = true) :
-    e.paramPot funs st s' env slots paid kept = e.paramPot funs st s env slots paid kept := by
-  cases e
-  case var x =>
-    have hx := hu x.index (by simp [Expr.uses])
-    obtain ⟨-, ws, hold, hRep⟩ := hVars.get x hx
-    have hold' := (hVars.hold_agree hF hx hRep.length).mpr hold
-    have hl : ws.length = t.types.length := by rw [hRep.length, Ty.types_length]
-    simp only [Expr.paramPot, Env.potOf, hold.read_eq hl, hold'.read_eq hl]
-  all_goals rfl
-
 /-- The code of a call's arguments pushes words that represent their values in the modes
 `modes`, in order.  An argument without arrays runs its code with the variables `all` live after
 it, so that no argument consumes a variable.  A borrowed argument with arrays, a place, loads its
@@ -2738,29 +2715,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs flags 
       have := le_argsAny (fun i => !(args i).placeArgs) i (by simp [hi])
       rw [hB] at this
       exact nomatch this
-  -- The variables that the call consumes: those that an argument moves.
-  have hMoved : ∀ k, (argsAny fun j => callMoves slots live args j && (args j).uses k) = true →
-      ∃ j x, args j = .var x ∧ x.index = k ∧ sig.mode j = .owned ∧
-        (slots.getD k default).mode = .owned ∧ live k = false ∧
-        ∀ j', j' ≠ j → (sig.params.get j').scalar = false → (args j').uses k = false := by
-    intro k hk
-    obtain ⟨j, hj⟩ := argsAny_true.mp hk
-    simp only [Bool.and_eq_true, callMoves, Expr.usesFast_eq, beq_iff_eq] at hj
-    obtain ⟨⟨hmo, hj⟩, hu⟩ := hj
-    obtain ⟨x, hx⟩ := hVar j hmo
-    rw [hx] at hj hu
-    simp only [Expr.varIndex?, Bool.and_eq_true, beq_iff_eq, Bool.not_eq_true'] at hj
-    simp only [Expr.uses, beq_iff_eq] at hu
-    subst hu
-    obtain ⟨⟨hmx, hlx⟩, hOthers⟩ := hj
-    refine ⟨j, x, hx, rfl, hmo, hmx, hlx, fun j' hj' hs => ?_⟩
-    cases hu : (args j').uses x.index with
-    | false => rfl
-    | true =>
-      have := le_argsAny (fun j' => j' != j && !(sig.params.get j').scalar &&
-        (args j').uses x.index) j' (by rw [hs, hu]; simp [hj'])
-      rw [hOthers] at this
-      exact nomatch this
+  have hMoved := callMoves_moved slots live args hVar
   have hAllocs : (Expr.call g args).allocs funs flags bounds (slots.map Slot.mode) paid live env =
       argsSum (argCost funs flags bounds (slots.map Slot.mode) paid
         (fun i => live i || argsAny fun j => (args j).uses i)
@@ -2816,136 +2771,15 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs flags 
   simp only [Holds.keepDying_values] at hX1
   have hRun := FunSpec.runs (hCalls g) hm host hStep1.at_ hRep1 hSep1
     (by rw [hStep1.cap m]; exact hCap) (d := d0 + 1) (fun _ => rfl) s.values
-  -- An argument at an owned parameter is a variable, which the call moves exactly when it is
-  -- outside the variables kept live.
-  have hKeptMoves : ∀ (i : Fin sig.params.length) (x : Var Γ' (sig.params.get i)),
-      sig.mode i = .owned → args i = .var x →
-      (!((live x.index || argsAny fun j => (args j).uses x.index) &&
-        !(argsAny fun j => callMoves slots live args j && (args j).uses x.index))) =
-        callMoves slots live args i := by
-    intro i x hmo hx
-    have hux : (args i).uses x.index = true := by rw [hx]; simp [Expr.uses]
-    have hAll : (argsAny fun j => (args j).uses x.index) = true := le_argsAny _ i hux
-    simp only [hAll, Bool.or_true, Bool.true_and, Bool.not_not]
-    cases hc : callMoves slots live args i
-    · cases hm' : argsAny fun j => callMoves slots live args j && (args j).uses x.index
-      · rfl
-      · obtain ⟨j, hj⟩ := argsAny_true.mp hm'
-        obtain ⟨j', y, -, -, -, -, -, hOthers⟩ := hMoved _ hm'
-        simp only [Bool.and_eq_true] at hj
-        have hji : j = i := by
-          by_contra hne
-          by_cases hj'i : j' = i
-          · subst hj'i
-            have := hOthers j hne (paramMode_owned (callMoves_owned hj.1))
-            rw [hj.2] at this
-            exact nomatch this
-          · have := hOthers i (Ne.symm hj'i) (paramMode_owned hmo)
-            rw [hux] at this
-            exact nomatch this
-        subst hji
-        rw [hj.1] at hc
-        exact nomatch hc
-    · exact le_argsAny (fun j => callMoves slots live args j && (args j).uses x.index) i
-        (by rw [hc, hux]; rfl)
-  -- The potential of the paid arguments: that of the paid variables that the call moves, which
-  -- die here, and the credits that the call charges for the others.
   have hPArgs : Env.argPot store1 (sig.paidSel (flags.params g)) ws1
         (Env.ofFn fun i => (args i).denote funs env) ≤
       dyingPot store s env slots paid (fun i => live i || (Expr.call g args).uses i) live +
         callCredits funs flags (slots.map Slot.mode) paid live g args env := by
-    let msel : Fin sig.params.length → Nat → Bool := fun i k =>
-      sig.paidSel (flags.params g) i && callMoves slots live args i && (args i).paidVar paid &&
-        (args i).uses k
-    have h1 := hPot1 (sig.paidSel (flags.params g)) fun i h => by
-      simp only [Sig.paidSel, Bool.and_eq_true, beq_iff_eq] at h; exact h.2
-    refine h1.trans ?_
-    have hTerm : ∀ i : Fin sig.params.length,
-        (if sig.paidSel (flags.params g) i = true then
-          (args i).paramPot funs store1 { s with values := (if sig.depth then [.i64 (d0 + 1)]
-            else []) ++ s.values } env slots paid
-            (fun i => (live i || argsAny fun j => (args j).uses i) &&
-              !(argsAny fun j => callMoves slots live args j && (args j).uses i)) else 0) ≤
-        env.pot store1 s slots (msel i) +
-          (if sig.paidSel (flags.params g) i &&
-              !(callMovesAt (slots.map Slot.mode) live args i && (args i).paidVar paid) then
-            (sig.params.get i).credit ((args i).denote funs env) else 0) := by
-      intro i
-      cases hps : sig.paidSel (flags.params g) i
-      · simp only [Bool.false_eq_true, ↓reduceIte, Bool.false_and]; exact Nat.zero_le _
-      have hmo : sig.mode i = .owned := by
-        simp only [Sig.paidSel, Bool.and_eq_true, beq_iff_eq] at hps; exact hps.2
-      obtain ⟨x, hx⟩ := hVar i hmo
-      have hk := hKeptMoves i x hmo hx
-      rw [callMovesAt_eq]
-      simp only [↓reduceIte, Bool.true_and]
-      rw [hx]
-      simp only [Expr.paramPot, Expr.paidVar, hk]
-      by_cases hmp : (callMoves slots live args i && paidAt paid x.index) = true
-      · -- A paid variable that the call moves: its own potential.
-        have hsel : msel i = fun k => k == x.index := by
-          funext k
-          simp only [Bool.and_eq_true] at hmp
-          simp only [msel, hps, hmp.1, hx, Expr.paidVar, hmp.2, Expr.uses, Bool.true_and]
-        rw [if_pos hmp, hsel, Env.pot_single]
-        simp only [hmp, Bool.not_true, Bool.false_eq_true, ↓reduceIte, Nat.add_zero]
-        exact Nat.le_refl _
-      · rw [if_neg hmp]
-        simp only [Bool.not_eq_true] at hmp
-        simp only [hmp, Bool.not_false, ↓reduceIte]
-        exact Nat.le_add_left _ _
-    refine (argsSum_le hTerm).trans ?_
-    rw [argsSum_add]
-    refine Nat.add_le_add ?_ (Nat.le_of_eq rfl)
-    rw [Env.pot_argsSum env slots msel fun i j k hij hi => ?_]
-    · -- The moved paid variables keep their potential across the arguments' code, and die here.
-      rw [Env.pot_step (hVars.live_mono fun i h => h) (hStep1.mono (fun _ _ => trivial)
-          fun _ h => h) (Frame.refl base s) (fun i h => h) _ fun k hk => ?_]
-      · refine Env.pot_mono env slots _ _ fun k hk => ?_
-        obtain ⟨i, hi⟩ := argsAny_true.mp hk
-        simp only [msel, Bool.and_eq_true] at hi
-        obtain ⟨⟨⟨hps, hcm⟩, hpv'⟩, huk⟩ := hi
-        obtain ⟨j, y, hy, hyk, -, hmy, hly, -⟩ := hMoved k
-          (le_argsAny (fun j => callMoves slots live args j && (args j).uses k) i
-            (by rw [hcm, huk]; rfl))
-        have hxk : ∃ x : Var Γ' (sig.params.get i), args i = .var x ∧ x.index = k := by
-          obtain ⟨x, hx⟩ := hVar i (callMoves_owned hcm)
-          refine ⟨x, hx, ?_⟩
-          rw [hx] at huk
-          exact (by simpa [Expr.uses] using huk : k = x.index).symm
-        obtain ⟨x, hx, rfl⟩ := hxk
-        rw [hx] at hpv'
-        simp only [Expr.paidVar] at hpv'
-        simp only [Bool.and_eq_true, Bool.not_eq_true', beq_iff_eq]
-        refine ⟨⟨⟨?_, hly⟩, hpv'⟩, hmy⟩
-        simp only [Expr.uses, Bool.or_eq_true]
-        exact Or.inr (le_argsAny _ i (by rw [hx]; simp [Expr.uses]))
-      · obtain ⟨i, hi⟩ := argsAny_true.mp hk
-        simp only [msel, Bool.and_eq_true] at hi
-        obtain ⟨⟨⟨-, hcm⟩, -⟩, huk⟩ := hi
-        obtain ⟨-, -, -, -, -, hmy, -, -⟩ := hMoved k
-          (le_argsAny (fun j => callMoves slots live args j && (args j).uses k) i
-            (by rw [hcm, huk]; rfl))
-        exact ⟨by simp only [Bool.or_eq_true]; exact Or.inr (le_argsAny _ i huk), hmy⟩
-    · -- Two arguments that the call moves are different variables.
-      simp only [msel, Bool.and_eq_true] at hi
-      obtain ⟨⟨⟨-, hcm⟩, -⟩, huk⟩ := hi
-      obtain ⟨j', y, -, -, -, -, -, hOthers⟩ := hMoved k
-        (le_argsAny (fun j => callMoves slots live args j && (args j).uses k) i
-          (by rw [hcm, huk]; rfl))
-      cases hj : msel j k
-      · rfl
-      · simp only [msel, Bool.and_eq_true] at hj
-        obtain ⟨⟨⟨-, hcmj⟩, -⟩, hukj⟩ := hj
-        have hi' : i = j' := by
-          by_contra hne
-          have := hOthers i hne (paramMode_owned (callMoves_owned hcm))
-          rw [huk] at this; exact nomatch this
-        have hj' : j = j' := by
-          by_contra hne
-          have := hOthers j hne (paramMode_owned (callMoves_owned hcmj))
-          rw [hukj] at this; exact nomatch this
-        exact absurd (hi'.trans hj'.symm) hij
+    simpa only [callCredits, Expr.uses] using
+      args_pot_le_credits (pf := flags.params g) (slots := slots) (live := live)
+        (paid := paid) (env := env) (s := s) (ws := ws1) (funs := funs) (base := base)
+        args hVar hVars hStep1 (fun sel hsel => by
+          simpa only [Expr.paramPot_values] using hPot1 sel hsel)
   have hsd : (Expr.call g args).fits funs fits env = true →
       (sig.depth && !fits.get g (Env.ofFn fun i => (args i).denote funs env)) = false :=
     fun hf => by
@@ -6079,6 +5913,9 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
     exact spec_fold hm x (initSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
   | size x => intro _; exact spec_size hm x
+  | leSize x i =>
+    intro _
+    exact spec_leSize hm x i
   | get x i iSpec =>
     intro hD; exact spec_get hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | build count elem countSpec elemSpec =>

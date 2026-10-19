@@ -63,6 +63,7 @@ def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S �
   | _, _, _, ρ, .fold x a b =>
     .fold (ρ x) (a.rename ρ) (b.rename (Renaming.lift (Renaming.lift (Renaming.lift ρ))))
   | _, _, _, ρ, .size x => .size (ρ x)
+  | _, _, _, ρ, .leSize x i => .leSize (ρ x) (ρ i)
   | _, _, _, ρ, .get x i => .get (ρ x) (i.rename ρ)
   | _, _, _, ρ, .build n e => .build (n.rename ρ) (e.rename ρ.lift)
   | _, _, _, ρ, .set x i v => .set (ρ x) (i.rename ρ) (v.rename ρ)

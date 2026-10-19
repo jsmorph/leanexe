@@ -429,6 +429,25 @@ def main : IO Unit := do
         {arrayOut (Frontend.setDirect xs i 9)}|1|1"
       IO.println s!"frontend|insertDirect|array-u64|{a} i64:{i} i64:9|\
         {arrayOut (Frontend.insertDirect xs i 9)}|1|2"
+      IO.println s!"frontend|insertChecked|array-u64|{a} i64:{i} i64:9|\
+        {arrayOut (Frontend.insertChecked xs i 9)}|1|2"
+      IO.println s!"frontend|insertFresh|array-u64|{a} i64:{i} i64:9|\
+        {arrayOut (Frontend.insertFresh xs i 9)}|1|3"
+      let (inserted, original) := Frontend.insertBorrowed xs i 9
+      IO.println s!"frontend|insertBorrowed|list:array-u64,array-u64|{a} i64:{i} i64:9|\
+        {arrayOut inserted} {arrayOut original}|2|3"
+      let (readInserted, length) := Frontend.insertRead xs i 9
+      IO.println s!"frontend|insertRead|list:array-u64,i64|{a} i64:{i} i64:9|\
+        {arrayOut readInserted} {length}|2|2"
+      let fs := xs.map UInt64.toFloat
+      IO.println s!"frontend|insertFloat|array-u64|{floatArrayArg fs} i64:{i} {floatArg (-2.5)}|\
+        {floatArrayOut (Frontend.insertFloat fs i (-2.5))}|1|2"
+      let rs := xs.map fun key => Frontend.Entry.mk key key.toFloat (key % 2 == 0)
+      let ws := rs.flatMap fun r => #[r.key, r.price.toBits, if r.active then 1 else 0]
+      let result := (Frontend.insertRecord rs i 9).flatMap fun r =>
+        #[r.key, r.price.toBits, if r.active then 1 else 0]
+      IO.println s!"frontend|insertRecord|array-u64|{arrayArg ws} i64:{i} i64:9|\
+        {arrayOut result}|1|2"
       IO.println s!"frontend|eraseDirect|array-u64|{a} i64:{i}|\
         {arrayOut (Frontend.eraseDirect xs i)}|1|1"
       IO.println s!"frontend|inlineArray|array-u64|{a} i64:{i} i64:9|\
