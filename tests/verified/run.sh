@@ -81,7 +81,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
   IFS=: read -r module constant name <<<"$entry"
   if [ -n "$case_module" ]; then
     [ "$name" = "$case_module" ] || continue
-    tools/leanrun --timeout 15m lake build "$module"
+    tools/leanrun --timeout 15m lake --log-level error build "$module"
   fi
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
     "$out/$name.wasm"
@@ -119,7 +119,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     bessel:BesselBytes:BesselFile tgamma:TgammaBytes:TgammaFile lgamma:LgammaBytes:LgammaFile \
     erfc:ErfcBytes:ErfcFile; do
   IFS=: read -r name theorem file <<<"$entry"
-  tools/leanrun --timeout 30m lake build "Verified.Examples.$theorem"
+  tools/leanrun --timeout 30m lake --log-level error build "Verified.Examples.$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
     echo "$reports"
     echo "fail: Verified/Examples/$file.lean does not check against $out/$name.wasm" >&2
@@ -135,7 +135,7 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
   echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
 done
 fi
-tools/leanrun --timeout 30m lake build Verified.Examples.Cases
+tools/leanrun --timeout 30m lake --log-level error build Verified.Examples.Cases
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
