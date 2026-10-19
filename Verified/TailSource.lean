@@ -4,28 +4,6 @@ import Verified.TailRun
 
 namespace Verified
 
-inductive TailBody (S : List Sig) (params : List Ty) (result : Ty) : List Ty → Type where
-  | ret (value : Expr S Γ result) : TailBody S params result Γ
-  | next (args : (i : Fin params.length) → Expr S Γ (params.get i)) :
-      TailBody S params result Γ
-  | ite (cond : Expr S Γ .bool) (yes no : TailBody S params result Γ) :
-      TailBody S params result Γ
-  | letE (value : Expr S Γ t) (body : TailBody S params result (t :: Γ)) :
-      TailBody S params result Γ
-  | letPair (value : Expr S Γ (.pair s t)) (body : TailBody S params result (t :: s :: Γ)) :
-      TailBody S params result Γ
-
-def TailBody.denote (funs : Funs S) : {Γ : List Ty} → TailBody S params result Γ →
-    Env Γ → Sum (Env params) result.denote
-  | _, .ret value, env => .inr (value.denote funs env)
-  | _, .next args, env => .inl (Env.ofFn fun i => (args i).denote funs env)
-  | _, .ite cond yes no, env =>
-    if cond.denote funs env then yes.denote funs env else no.denote funs env
-  | _, .letE value body, env => body.denote funs (.cons (value.denote funs env) env)
-  | _, .letPair value body, env =>
-    let pair := value.denote funs env
-    body.denote funs (.cons pair.2 (.cons pair.1 env))
-
 def TailBody.toExpr (g : Sig) (hp : g.params = params) (hr : g.result = result) :
     {Γ : List Ty} → TailBody S params result Γ → Expr (g :: S) Γ result
   | _, .ret value => value.renameFuns (fun f => .there f)
@@ -59,23 +37,6 @@ theorem TailBody.toExpr_denote (body : TailBody S params result Γ) (g : Sig)
   | letPair value body ih => simp [TailBody.toExpr, Expr.denote, Expr.denote_weakenFuns,
       TailBody.denote, ih]
 
-def TailBody.uses : {Γ : List Ty} → TailBody S params result Γ → Nat → Bool
-  | _, .ret value, i => value.uses i
-  | _, .next args, i => argsAny fun j => (args j).uses i
-  | _, .ite cond yes no, i => cond.uses i || yes.uses i || no.uses i
-  | _, .letE value body, i => value.uses i || body.uses (i + 1)
-  | _, .letPair value body, i => value.uses i || body.uses (i + 2)
-
-def TailBody.useMask : {Γ : List Ty} → TailBody S params result Γ → Nat
-  | _, .ret value => value.useMask
-  | _, .next args => argsMask fun j => (args j).useMask
-  | _, .ite cond yes no => cond.useMask ||| yes.useMask ||| no.useMask
-  | _, .letE value body => value.useMask ||| body.useMask >>> 1
-  | _, .letPair value body => value.useMask ||| body.useMask >>> 2
-
-def TailBody.usesFast (body : TailBody S params result Γ) (i : Nat) : Bool :=
-  body.useMask.testBit i
-
 theorem TailBody.usesFast_eq (body : TailBody S params result Γ) (i : Nat) :
     body.usesFast i = body.uses i := by
   unfold TailBody.usesFast
@@ -84,46 +45,6 @@ theorem TailBody.usesFast_eq (body : TailBody S params result Γ) (i : Nat) :
   induction body generalizing i <;>
     simp_all [TailBody.useMask, TailBody.uses, argsMask_testBit, Nat.testBit_or,
       Nat.testBit_shiftRight, hExpr, Nat.add_comm]
-
-def TailBody.depthCalls : {Γ : List Ty} → TailBody S params result Γ → Bool
-  | _, .ret value => value.depthCalls
-  | _, .next args => argsAny fun i => (args i).depthCalls
-  | _, .ite cond yes no => cond.depthCalls || yes.depthCalls || no.depthCalls
-  | _, .letE value body | _, .letPair value body => value.depthCalls || body.depthCalls
-
-def TailBody.aborts : {Γ : List Ty} → TailBody S params result Γ → Bool
-  | _, .ret value => value.aborts
-  | _, .next args => argsAny fun i => (args i).aborts
-  | _, .ite cond yes no => cond.aborts || yes.aborts || no.aborts
-  | _, .letE value body | _, .letPair value body => value.aborts || body.aborts
-
-def TailBody.placeArgs (targetModes : List Mode) (modes : List Mode) :
-    {Γ : List Ty} → TailBody S params result Γ → Bool
-  | _, .ret value => value.placeArgs
-  | _, .next args =>
-    !(argsAny fun i => !(args i).placeArgs) &&
-      !(argsAny fun i =>
-        !(params.get i).scalar &&
-          if paramMode params targetModes i == .owned then (args i).varIndex?.isNone
-          else !(args i).isPlace || (args i).mode modes != .borrowed)
-  | _, .ite cond yes no =>
-    cond.placeArgs && yes.placeArgs targetModes modes && no.placeArgs targetModes modes
-  | _, .letE value body =>
-    value.placeArgs && body.placeArgs targetModes (value.mode modes :: modes)
-  | _, .letPair value body =>
-    value.placeArgs && body.placeArgs targetModes (value.mode modes :: value.mode modes :: modes)
-
-structure TailFunc (S : List Sig) where
-  name : String
-  params : List Ty
-  result : Ty
-  modes : List Mode
-  body : TailBody S params result params
-  placeArgs : body.placeArgs modes (paramModes params modes) = true
-  rank : Funs S → Env params → Nat
-
-def TailFunc.Decreases (func : TailFunc S) (funs : Funs S) : Prop :=
-  ∀ state next, func.body.denote funs state = .inl next → func.rank funs next < func.rank funs state
 
 theorem TailFunc.exists_run (func : TailFunc S) (funs : Funs S) (h : func.Decreases funs)
     (state : Env func.params) :

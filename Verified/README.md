@@ -162,18 +162,21 @@ two functions without the depth parameter.
 [The tail-run lemmas](TailRun.lean) model a step that continues with another state or returns a
 value.  They prove uniqueness of the result and run length, agreement with a fixed-point
 meaning, and existence of a finite run from a well-founded transition relation.  These are
-the termination lemmas for the planned tail-loop rule.  They define a natural-valued rank
+the termination lemmas for the tail-loop rule.  They define a natural-valued rank
 and prove that the allocation sums and frames conditions stabilize past the finite run's
 length.  [The indexed Wasm loop rule](TailLoop.lean) uses the least rank represented by its
 invariant to prove that each continuing iteration decreases the rank.
 
-[Typed tail bodies](TailSource.lean) have return, continue, conditional, and binding nodes.
-[Their code template](TailCompile.lean) copies the initial parameters into mutable locals
-and stores each continuation there.  [The bounds](TailBound.lean) sum per-step charges
+[Typed tail bodies](Source.lean) have return, continue, conditional, and binding nodes.
+[Their code template](Compile.lean) copies the initial parameters into mutable locals
+and stores each continuation there.  [The bounds](Bound.lean) sum per-step charges
 over the finite run.  Parameter modes stay fixed, with owned continuation arguments
-propagated by [mode inference](Reflect/TailModes.lean).  [The return rule](TailCorrect.lean)
-preserves the paid result's potential.  Continuation, whole-loop, and program correctness
-rules remain pending.
+propagated by [mode inference](Reflect/TailModes.lean).  [The body theorem](TailCode.lean)
+covers return, continuation, conditional, and binding code, including paid result potential.
+[The whole-loop theorem](TailWhile.lean) composes the represented states, kept regions,
+and remaining bounds.  [The function-entry theorem](TailEntry.lean) proves the Wasm
+function's behavior from its initial arguments.  Program integration, reflection, and
+execution tests remain pending.
 
 ## The theorem
 
