@@ -42,7 +42,7 @@ the parameters.  Wrappers whose callees take no call depth receive the correspon
 trap-free theorem.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, arrays
 of these, records with array fields, recursion, constant tables, and array updates in place.  The
 examples include elementary and special functions ported from fdlibm, Arm's optimized-routines,
-and CORE-MATH, decimal parsers and printers, an order book, the drone planner, and three
+and CORE-MATH, decimal parsers and printers, binary64 GPT-2, an order book, the drone planner, and three
 random-number generators with theorems about their periods.  [The numerical index](index.md)
 lists the algorithms and their strongest proved results, including numerical accuracy, exact
 fused multiply-add, correctly rounded parsing, and shortest-decimal printing.  Each function's
@@ -70,9 +70,9 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for recursive source functions, their frames conditions.  A program that needs
-`Float32`, WGSL kernels, lists or trees, sum types with fields, `Array.foldl`, `insertIdx!`, or
-`eraseIdxIfInBounds` compiles only with the LeanExe compiler.  GPT-2 and the Euler solvers are
-compiled with the LeanExe compiler, and neither has a port to the verified compiler.  [The
+`Float32`, WGSL kernels, lists or trees, sum types with fields, `Array.foldl`, or `insertIdx!`
+compiles only with the LeanExe compiler.  Binary64 GPT-2 compiles with both compilers, and the
+Euler solvers compile with the LeanExe compiler.  [The
 verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified
 compiler has its own definitions of the IR parts it needs, and nothing in `LeanExe` or `Examples`
