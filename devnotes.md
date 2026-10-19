@@ -34295,7 +34295,9 @@ The focused execution driver built the selected module but interpreted a case ge
 
 The remaining tail integration steps are:
 
-- [ ] Separate the expression rules from the program theorem so it can use the tail-function specifications.
+- [x] Separate the expression rules from the program theorem so it can use the tail-function specifications.
 - [ ] Add tail functions to `Prog`, its compilation, bounds, and correctness induction.
 - [ ] Recognize tail recursion, derive its decreasing rank from Lean's induction theorem, and add user-level bound and frames equations.
 - [ ] Test the default loop path, the guarded option, ownership transfers, and runs beyond the old depth limit.
+
+`2ca9c8cc` published the definition move.  `ExprCorrect` now holds the expression rules and ordinary-function templates, and `Correct` imports the tail-function specifications before its program induction.  The first split check accepted the expression proof in 53 seconds and the depth-taking tail specification, then found that simplification had changed the no-depth bound premise to `True`.  Supplying `trivial` corrected that premise.  `local-tail-split-02` passed all 3,521 jobs, including both tail specifications in 3.6 seconds, the program theorem in 6.9 seconds, the reflector in seventeen seconds, and the frontend in fourteen.  Both new specification reports contain only the three permitted axioms.  The reviewed specifications keep the depth guard and allocation conditions of `FunSpec` while using a loop for the function's own continuing steps.  The documentation audit passed 185 files and 3,257 links.
