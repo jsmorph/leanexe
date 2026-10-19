@@ -373,6 +373,12 @@ def main : IO Unit := do
       IO.println s!"frontend|boolDecide|i64|{args}|{bit (Frontend.boolDecide a b)}"
       IO.println s!"frontend|boolIf|i64|{args}|{Frontend.boolIf a b}"
       IO.println s!"frontend|boolIfNe|i64|{args}|{Frontend.boolIfNe a b}"
+      let r := Frontend.boolRecord a b
+      IO.println s!"frontend|boolRecord|list:i64,f64,i64|{args}|\
+        {r.key} {r.price.toBits} {bit r.active}|0|0"
+      let rs := (Frontend.boolRecords a b).flatMap fun e =>
+        #[e.key, e.price.toBits, if e.active then 1 else 0]
+      IO.println s!"frontend|boolRecords|array-u64|{args}|{arrayOut rs}|1|1"
       for xs in arrays do
         IO.println s!"frontend|boolCalls|i64|{arrayArg xs} {args}|\
           {bit (Frontend.boolCalls xs a b)}|0|4"

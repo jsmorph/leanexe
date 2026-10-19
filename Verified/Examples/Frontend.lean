@@ -62,9 +62,15 @@ def boolOwn (xs : Array UInt64) (flag : Bool) : Bool :=
 
 def boolCalls (xs : Array UInt64) (a b : Bool) : Bool := boolOwn xs a == boolOwn xs b
 
+def boolRecord (a b : Bool) : Entry :=
+  if a = b then ⟨7, 1.5, true⟩ else ⟨9, -2.5, false⟩
+
+def boolRecords (a b : Bool) : Array Entry :=
+  if a ≠ b then LeanExe.build 1 fun _ => ⟨7, 1.5, true⟩ else #[]
+
 verified_compile compiled := [inlineScalar, inlineArray, inlineLoop, setDirect, insertDirect,
   eraseDirect, listed, listedCall, emptyWords, emptyFloats, entries, boolEq, boolNe, boolDecide,
-  boolIf, boolIfNe, boolOwn, boolCalls]
+  boolIf, boolIfNe, boolOwn, boolCalls, boolRecord, boolRecords]
 
 #print axioms compiled.inlineScalar.denote_eq
 #print axioms compiled.inlineArray.implements
