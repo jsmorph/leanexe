@@ -14,7 +14,7 @@ theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Modu
     (hPaid : rf = true → body.paidResult flags (entryModes params modes) pf = true)
     (h stateBase resultBase base exitLabel nextLabel : Nat) (env : Env params)
     (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
-    (hh : s.half = h) (hpv : s.params = pv)
+    (hh : s.positions = h) (hpv : s.params = pv)
     (hRep : Env.Rep (paramMode params modes) heap store ws env)
     (hSep : Separate store (Env.moves (paramMode params modes) ws env)
       (Env.reads (paramMode params modes) ws env))

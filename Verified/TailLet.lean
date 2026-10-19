@@ -44,8 +44,8 @@ theorem tail_let_spec {S : List Sig} {Γ params : List Ty} {result valueTy : Ty}
     fun heap1 store1 s1 ws1 a1 top1 => ?_
   have vars0 : Holds env slots input base heap store s := by rw [hInput]; exact hVars
   have a1' := a1.lower vars0 (Nat.le_add_right _ _) hMid
-  refine wp_storeCode ws1 h base valueTy.types s1 s.values a1.rep.typed (a1.frame.half.trans hh)
-    (by rw [a1.frame.params]; omega) (by rw [Ty.types_length, a1.frame.half, hh]; omega)
+  refine wp_storeCode ws1 h base valueTy.types s1 s.values a1.rep.typed (a1.frame.positions.trans hh)
+    (by rw [a1.frame.params]; omega) (by rw [Ty.types_length, a1.frame.positions, hh]; omega)
     fun s2 frame2 hold2 _ => ?_
   have f2 : Frame base s1 { s2 with values := s.values } := frame2.trans Frame.ofValues
   have hold2' : LocalsHold { s2 with values := s.values } base valueTy.types ws1 := hold2
@@ -96,7 +96,7 @@ theorem tail_let_spec {S : List Sig} {Γ params : List Ty} {result valueTy : Ty}
     exact hf.2
   refine bodySpec _ _ (value.paid flags (slots.map Slot.mode) paid mid :: paid) nextPaid resultPaid
     h stateBase resultBase (base + valueTy.width) exitLabel nextLabel heap2 store2
-    { s2 with values := s.values } (f2.half.trans (a1.frame.half.trans hh))
+    { s2 with values := s.values } (f2.positions.trans (a1.frame.positions.trans hh))
     (f2.params.trans (a1.frame.params.trans hpv)) release'.holds release'.step.at_
     (by rw [release'.step.cap m, a1.step.cap m]; exact hCap)
     (by change s2.params.length ≤ stateBase; rw [frame2.params, a1.frame.params]; exact hLow)

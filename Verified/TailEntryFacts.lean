@@ -7,23 +7,16 @@ open Wasm
 
 theorem LocalsHold.afterParamCopy {tys : List ValueType} {s s' : Locals}
     {p h : Nat} {ws : List Value} (length : ws.length = tys.length)
-    (room : p + ws.length ≤ h) (half : s'.half = h)
+    (positions : s'.positions = h)
     (params : ∀ j (hj : j < ws.length), s.get (p + j) = some ws[j])
-    (low : ∀ j < h + p, s'.get j = s.get j)
-    (copy : ∀ q, p ≤ q → q < p + tys.length → tys.getD (q - p) .i64 = .f64 →
-      s'.get (q + h) = s.get q) : LocalsHold s' p tys ws := by
+    (copy : ∀ q, p ≤ q → q < p + tys.length →
+      s'.get (slotIndex h q (tys.getD (q - p) .i64)) = s.get q) :
+    LocalsHold s' p tys ws := by
   intro k hk
-  rw [half]
-  by_cases hf : tys.getD k .i64 = .f64
-  · rw [hf]
-    change s'.get (p + k + h) = some ws[k]
-    rw [copy (p + k) (by omega) (by omega) (by simpa using hf)]
-    exact params k hk
-  · have index : slotIndex h (p + k) (tys.getD k .i64) = p + k := by
-      generalize tys.getD k .i64 = ty at hf ⊢
-      cases ty <;> first | rfl | exact absurd rfl hf
-    rw [index, low (p + k) (by omega)]
-    exact params k hk
+  rw [positions]
+  have h := copy (p + k) (by omega) (by omega)
+  rw [Nat.add_sub_cancel_left] at h
+  exact h.trans (params k hk)
 
 theorem TailFunc.function_numParams (func : TailFunc S) (typeIdx : Nat) :
     (func.function typeIdx).numParams = (if func.depth then 1 else 0) + widthSum func.params := by

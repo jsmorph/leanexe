@@ -89,18 +89,18 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
   have lenSecond := repSecond.length
   rw [List.reverse_append, List.append_assoc]
   refine wp_storeCode wSecond h (base + firstTy.width) secondTy.types s1
-    (wFirst.reverse ++ s.values) repSecond.typed (a1.frame.half.trans hh)
-    (by rw [a1.frame.params]; omega) (by rw [Ty.types_length, a1.frame.half, hh]; omega)
+    (wFirst.reverse ++ s.values) repSecond.typed (a1.frame.positions.trans hh)
+    (by rw [a1.frame.params]; omega) (by rw [Ty.types_length, a1.frame.positions, hh]; omega)
     fun s2 frame2 holdSecond _ => ?_
   refine wp_storeCode wFirst h base firstTy.types s2 s.values repFirst.typed
-    (frame2.half.trans (a1.frame.half.trans hh))
+    (frame2.positions.trans (a1.frame.positions.trans hh))
     (by rw [frame2.params, a1.frame.params]; omega)
-    (by rw [Ty.types_length, frame2.half, a1.frame.half, hh]; omega)
+    (by rw [Ty.types_length, frame2.positions, a1.frame.positions, hh]; omega)
     fun s3 frame3 holdFirst above3 => ?_
   have holdFirst' : LocalsHold { s3 with values := s.values } base firstTy.types wFirst := holdFirst
   have holdSecond' : LocalsHold { s3 with values := s.values } (base + firstTy.width)
-      secondTy.types wSecond := holdSecond.keep frame3.half above3 (by rw [Ty.types_length])
-        (by rw [lenSecond, frame2.half, a1.frame.half, hh]; omega)
+      secondTy.types wSecond := holdSecond.keep frame3.positions above3 (by rw [Ty.types_length])
+        (by rw [lenSecond, frame2.positions, a1.frame.positions, hh]; omega)
   have f3 : Frame base s1 { s3 with values := s.values } :=
     (frame2.mono (by omega)).trans (frame3.trans Frame.ofValues)
   have vars1 := a1'.holds.agree f3
@@ -160,7 +160,7 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
     exact hf.2
   refine bodySpec _ _ (false :: false :: paid) nextPaid resultPaid h stateBase resultBase
     (base + firstTy.width + secondTy.width) exitLabel nextLabel heap2 store2
-    { s3 with values := s.values } (f3.half.trans (a1.frame.half.trans hh))
+    { s3 with values := s.values } (f3.positions.trans (a1.frame.positions.trans hh))
     (f3.params.trans (a1.frame.params.trans hpv)) release'.holds release'.step.at_
     (by rw [release'.step.cap m, a1.step.cap m]; exact hCap)
     (by change s3.params.length ≤ stateBase; rw [frame3.params, frame2.params, a1.frame.params]; exact hLow)

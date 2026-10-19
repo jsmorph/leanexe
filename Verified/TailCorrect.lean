@@ -86,7 +86,7 @@ def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
   ∀ (env : Env Γ) (slots : List Slot) (paid : List Bool) (nextPaid : List Bool) (resultPaid : Bool)
     (h stateBase resultBase base exitLabel nextLabel : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals),
-    s.half = h → s.params = pv →
+    s.positions = h → s.params = pv →
     Holds env slots body.uses base heap store s → heap.At store → store.memoryCap m 0 ≤ 65535 →
     s.params.length ≤ stateBase → stateBase + widthSum params ≤ resultBase →
     resultBase + result.width ≤ base → base + body.width targetModes ≤ h →
@@ -134,7 +134,7 @@ theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
       (value.mode (slots.map Slot.mode)) (value.denote funs env) heap1 store1 s1 ws1 := by
     simpa only [Bool.false_or] using after1
   refine After.coerce hm after1' (fun _ => rfl) (Nat.le_refl _)
-    (by rw [after1'.frame.params]; omega) (after1'.frame.half.trans hh) (by omega)
+    (by rw [after1'.frame.params]; omega) (after1'.frame.positions.trans hh) (by omega)
     (by rw [after1'.step.cap m]; exact hCap)
     (fun hs _ hScalar => hTrap.alloc (by simp [hScalar]) fun hd hw =>
       hw.of_le (by
@@ -144,8 +144,8 @@ theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
         omega) (after1'.step.cap m))
     fun heap2 store2 s2 ws2 after2 hTop2 hSame2 => ?_
   refine wp_storeCode ws2 h resultBase result.types s2 s.values after2.rep.typed
-    (after2.frame.half.trans hh) (by rw [after2.frame.params]; omega)
-    (by rw [Ty.types_length, after2.frame.half, hh]; omega) fun s3 frame3 hold3 _ => ?_
+    (after2.frame.positions.trans hh) (by rw [after2.frame.params]; omega)
+    (by rw [Ty.types_length, after2.frame.positions, hh]; omega) fun s3 frame3 hold3 _ => ?_
   rw [wp_br_cons]
   refine hNext heap2 store2 s3
     ⟨ws2, after2.step,

@@ -942,14 +942,14 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
     (hc : allocCost (8 * (xs.size + 1)) ≤ c) (hTrap : TrapOK (!decide (heap.Within store m c)) Q)
     (hB : heap.Borrowed store ptr xs) (hSrc : s.get src = some (.i64 ptr)) (hSrcBase : src < base)
-    (hBase : s.params.length ≤ base) (hRoom : base + 3 ≤ s.half)
+    (hBase : s.params.length ≤ base) (hRoom : base + 3 ≤ s.positions)
     (hNext : ∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ptr' : UInt64),
       Step heap store (fun _ => True) heap' store' [block store' ptr'] →
       heap'.Owned store' ptr' xs → Frame base s s' → heap'.top.toNat ≤ heap.top.toNat + c →
       wp m rest Q store' { s' with values := .i64 ptr' :: s.values } host) :
     wp m (copyArrayCode src base ++ rest) Q store s host := by
-  have hTot : 2 * s.half ≤ s.params.length + s.locals.length := by
-    simp only [Locals.half]; omega
+  have hTot : 2 * s.positions ≤ s.params.length + s.locals.length := by
+    simp only [Locals.positions]; omega
   have hA := hB.values
   have hLen := hA.lengthBound
   have hFitA := hA.1
@@ -988,9 +988,12 @@ theorem wp_copyArray {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     exact hPrefix j h2
   subst hWords
   have hF : Frame base s s2 := by
-    refine ⟨hp2, by rw [hl2]; simp [s1, setLocal], fun j hj => ⟨?_, ?_⟩⟩
+    refine ⟨hp2, by rw [hl2]; simp [s1, setLocal], (fun j hj => ⟨?_, ?_⟩), fun j hj => ?_⟩
     · rw [hOther2 j (by omega) (by omega)]
       show s1.get j = s.get j
+      rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
+    · rw [hOther2 _ (by omega) (by omega)]
+      show s1.get _ = s.get _
       rw [Locals.get_setLocal_ne hLow1 (by omega), Locals.get_values]
     · rw [hOther2 _ (by omega) (by omega)]
       show s1.get _ = s.get _
@@ -1031,9 +1034,9 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     (t : Ty) → ∀ {heap : Heap} {store : Store Unit} {s : Locals} {h src base : Nat} {mode : Mode}
       {ws : List Value} {v : t.denote} {rest : Program} {Q : Assertion Unit},
     heap.At store → store.memoryCap m 0 ≤ 65535 →
-    TrapOK (!decide (heap.Within store m (t.copyCost v))) Q → s.half = h →
+    TrapOK (!decide (heap.Within store m (t.copyCost v))) Q → s.positions = h →
     t.Rep mode heap store ws v → LocalsHold s src t.types ws → src + t.width ≤ base →
-    s.params.length ≤ base → base + t.copyScratch ≤ s.half →
+    s.params.length ≤ base → base + t.copyScratch ≤ s.positions →
     (∀ (heap' : Heap) (store' : Store Unit) (s' : Locals) (ws' : List Value),
       Step heap store (fun _ => True) heap' store' (t.blocks store' ws' v) →
       t.Rep .owned heap' store' ws' v → Frame base s s' →
@@ -1079,13 +1082,13 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     have hR2 := (h2.step hStep1 fun _ _ => trivial).1
     refine wp_copyCode hm b hStep1.at_ (by rw [hStep1.cap m]; exact hCap)
       (hTrap.within fun hw => Heap.Within.after hw hTop1 (hStep1.cap m))
-      (s := { s1 with values := ws1.reverse ++ s.values }) (by simp [hF1.half, hh]) hR2
+      (s := { s1 with values := ws1.reverse ++ s.values }) (by simp [hF1.positions, hh]) hR2
       ((LocalsHold.frame (s' := { s1 with values := ws1.reverse ++ s.values })
         (hF1.trans Frame.ofValues) (h2.length.trans b.types_length.symm)
         (by rw [Ty.types_length]; simp [Ty.width] at hSrc; omega)).mpr hold2)
       (by simp [Ty.width] at hSrc; omega)
       (by show s1.params.length ≤ base; rw [hF1.params]; exact hBase)
-      (by simp only [Locals.half_values, hF1.half]; have := hScratch b (Or.inr rfl); omega)
+      (by simp only [Locals.positions_values, hF1.positions]; have := hScratch b (Or.inr rfl); omega)
       fun heap2 store2 s2 ws2 hStep2 hRep2 hF2 hTop2 => ?_
     obtain ⟨hRep1', hSame1, hFresh1⟩ := hRep1.step hStep2 fun _ _ => trivial
     have hBlocks1 : a.blocks store2 ws1 v.1 = a.blocks store1 ws1 v.1 := hSame1

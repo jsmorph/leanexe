@@ -15,7 +15,7 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime
 /-- The words of types `tys` at the positions from `loc` on. -/
 def _root_.Wasm.Locals.read (s : Locals) (loc : Nat) (tys : List ValueType) : List Value :=
   (List.range tys.length).map fun k =>
-    (s.get (slotIndex s.half (loc + k) (tys.getD k .i64))).getD (.i64 0)
+    (s.get (slotIndex s.positions (loc + k) (tys.getD k .i64))).getD (.i64 0)
 
 theorem _root_.Wasm.Locals.read_length (s : Locals) (loc : Nat) (tys : List ValueType) :
     (s.read loc tys).length = tys.length := by

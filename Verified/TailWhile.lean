@@ -12,7 +12,7 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
     (bodySpec : TailCodeSpec m funs flags bounds fits host pv func.modes func.body)
     (h stateBase resultBase base : Nat) (env : Env func.params)
     (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
-    (hh : s.half = h) (hpv : s.params = pv)
+    (hh : s.positions = h) (hpv : s.params = pv)
     (hRep : Env.Rep (paramMode func.params func.modes) heap store ws env)
     (hSep : Separate store (Env.moves (paramMode func.params func.modes) ws env)
       (Env.reads (paramMode func.params func.modes) ws env))
@@ -102,7 +102,7 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
   refine tail_step_spec hm func.modes func.body bodySpec
     (by simpa only [entryModes, paramSlots_modes] using func.placeArgs)
     pf (func.paidResult flags) hPaid h stateBase resultBase base 1 0 state heap1 store1 s1 words1
-    (frame1.half.trans hh) (frame1.params.trans hpv) rep1 sep1 hold1 before.at_
+    (frame1.positions.trans hh) (frame1.params.trans hpv) rep1 sep1 hold1 before.at_
     (by rw [before.cap m]; exact hCap)
     (by rw [frame1.params]; exact hLow) hState hResult hRoom _
     ((hTrap.imp (Q' := Qstep) (fun _ ht => ht)).part
