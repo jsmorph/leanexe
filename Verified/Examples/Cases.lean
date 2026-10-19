@@ -6,6 +6,7 @@ import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Fold
 import Verified.Examples.TailCore
+import Verified.Examples.Tail
 import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
@@ -373,6 +374,37 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
+    for acc in [(0 : UInt64), 18446744073709551615] do
+      IO.println s!"tail|tailCount|i64|i64:{n} i64:{acc}|{TailReflection.tailCount n acc}|0|0"
+    IO.println s!"tail|callsTail|i64|i64:{n} i64:7|{Tail.callsTail n 7}|0|0"
+    IO.println s!"tail|guardLoop|i64|i64:{n} i64:7|{Tail.guardLoop n 7}|0|0"
+    let left := #[1, 2, 3]
+    let right := #[9, 8]
+    IO.println s!"tail|rotate|array-u64|i64:{n} {arrayArg left} {arrayArg right}|\
+      {arrayOut (Tail.rotate n left right)}|1|2"
+    IO.println s!"tail|replace|array-u64|i64:{n} {arrayArg left}|\
+      {arrayOut (Tail.replace n left)}|1|{n.toNat + 1}"
+    let weights := (List.range (n.toNat + 1)).toArray.map fun i => UInt64.ofNat (3 * i + 1)
+    for xs in [#[], left] do
+      IO.println s!"tail|tailGrow|array-u64|{arrayArg weights} i64:{n} {arrayArg xs}|\
+        {arrayOut (TailReflection.tailGrow weights n xs)}|2|32"
+    IO.println s!"tail|sharedSeed|array-u64|i64:{n} {arrayArg weights}|\
+      {arrayOut (Tail.sharedSeed n weights)}|2|32"
+    let seed : Array TailReflection.Entry := #[⟨7, -2.5⟩]
+    let entryWords := fun xs : Array TailReflection.Entry =>
+      xs.flatMap fun e => #[e.key, e.value.toBits]
+    IO.println s!"tail|tailEntries|array-u64|i64:{n} {arrayArg (entryWords seed)}|\
+      {arrayOut (entryWords (TailReflection.tailEntries n seed))}|1|32"
+    for f in [0.0, -0.0, 1.0 / 0.0, 0.0 / 0.0] do
+      let (word, value) := TailReflection.tailScalarPair n (7, f)
+      IO.println s!"tail|tailScalarPair|list:i64,f64|i64:{n} i64:7 {floatArg f}|\
+        {word} {value.toBits}|0|0"
+  for (n, xs, weights) in [(3, #[9], #[]), (3, #[], #[7])] do
+    IO.println s!"tail|tailGrow|array-u64|{arrayArg weights} i64:{n} {arrayArg xs}|\
+      {arrayOut (TailReflection.tailGrow weights n xs)}|2|32"
+  IO.println s!"tail|guardedCount|i64|i64:999|{Tail.guardedCount 999}|0|0"
+  IO.println "tail|guardedCount|i64|i64:1000|trap"
   for (n, xs, weights) in tailCoreCases do
     IO.println s!"tailcore|grow|array-u64|i64:{n} {arrayArg xs} {arrayArg weights}|\
       {arrayOut (TailCore.growNative n xs weights)}|2|32"

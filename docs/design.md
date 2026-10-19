@@ -33,7 +33,7 @@ The verified compiler shares the runtime, `Implements`, the encoding, and the tr
 | Reflector | `verified_compile`, meta code that writes Lean definitions as source functions and proves each equation from one lemma per Lean form.  The kernel checks every equation, so the reflector is not trusted. |
 | Modes | `Expr.paramChoice` chooses each array parameter's mode, borrowed or owned.  The theorem holds for every choice. |
 | Bounds | `Expr.allocs` follows the code with the same modes and live sets, and an owned array has a potential, a number of bytes that covers its later moves to larger blocks. |
-| Recursion | The code of a recursive function, and of every function that calls one, takes the call depth, traps at depth 1,000, and has at most 32 positions per frame.  An entry starts each such function at depth 0. |
+| Recursion | Recognized tail recursion uses a loop with a proved decreasing rank.  Other recursion and its callers take the call depth, trap at depth 1,000, and have at most 32 positions per frame.  An entry starts each depth-taking function at depth 0. |
 | Tables | Data segments from the heap base, read as borrowed parameters, with wrappers that pass their addresses and `compileWith_initialStore` for the initial store. |
 
 ## Files
@@ -265,7 +265,8 @@ The decoder test runs the official testsuite: every valid module in the decoder'
 | `Array.insertIdx!` uses a typed full-length comparison, the existing insertion, and an empty build.  The comparison's compiled word-sized length is justified by the heap representation. | Lean returns `#[]` for an index beyond the length.  The source preserves this result on every logical array, and the compiler reuses its conditional, comparison, insertion, and build rules. |
 | A function's theorem is `ImplementsA aborts`, with `aborts` false when the code cannot allocate and takes no call depth. | Such a function gets a theorem that excludes a trap with no further proof. |
 | `Expr.paramChoice` chooses each array parameter's mode, and an owned array at its last use is updated, extended, or shifted in its own block. | The theorem holds for every choice of modes, so the choice needs no trust and affects only the code's cost. |
-| The code of a recursive function, and of every function that calls one, takes the call depth, traps at depth 1,000, and has at most 32 positions per frame. | Talos bounds no call depth, and Wasmtime's stack is finite.  At 8 bytes for each value live across a call and 16 bytes per frame, 1,000 frames of 32 positions take at most 272,000 bytes of Wasmtime's 512 KiB default stack. |
+| Recognized tail recursion uses typed return and continue nodes, fixed parameter modes, and a Wasm loop.  The reflector derives a rank from Lean's generated induction theorem.  `set_option verified.tailLoops false` retains guarded recursion. | The fixed-point equation establishes meaning, and the decreasing rank establishes termination.  Continuing steps move or copy the next state under the same ownership rules as calls.  Native step charges give the public allocation bound. |
+| Guarded recursive functions and their callers take the call depth, trap at depth 1,000, and have at most 32 positions per frame.  A tail loop takes depth when it calls guarded code and preserves that depth between iterations. | Talos bounds no call depth, and Wasmtime's stack is finite.  At 8 bytes for each value live across a call and 16 bytes per frame, 1,000 frames of 32 positions take at most 272,000 bytes of Wasmtime's 512 KiB default stack. |
 | The verified compiler computes an allocation bound from the code, and `p.f.trapFree` excludes a trap when `top` can rise by the bound within the memory cap.  `p.f.bound_eq` states the bound in the function's parameters. | `ImplementsA true` holds of a module that always traps.  A bound computed from the code needs no budget proof per program, and the equation lets a user prove a concrete bound by rewriting. |
 | An owned array has the potential `4 · 8 (n + 1) ∸ 2c`, and every owned array parameter of a function whose body extends an array is paid: the caller charges its credit. | The potential covers the bytes of a growing array's moves to larger blocks, so a loop of `n` pushes has a bound linear in `n`.  A rule that pays a parameter only when its own value is extended differs by at most one credit per array per call, and neither rule gives the smaller bound for every program. |
 | Constant tables are data segments, read as borrowed parameters, and wrappers pass their addresses. | A table needs no allocation and no copy, so `Trig.sinWith` and `Trig.cosWith` keep `ImplementsA false`, and the wrappers `Trig.sin` and `Trig.cos` keep `ImplementsTables false`. |
@@ -305,13 +306,12 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: a proof of the I/O adapter.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
-- [ ] Verified compiler: tail recursion compiled as a loop, without the depth limit.
 - [ ] Verified compiler: sum types with fields.
 - [ ] Verified compiler: lists and other recursive types.
 - [ ] Verified compiler: `Float32` and the WGSL path.
 - [ ] Verified compiler: owned record and pair parameters.
 
-The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Verified/Examples/Exp.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth, and the recursive code of both compilers traps at depth 1,000.
+The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Verified/Examples/Exp.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.
 
 ## Commands
 
