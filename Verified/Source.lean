@@ -138,7 +138,7 @@ def ToWord32.apply : ToWord32 → Float32 → UInt64
 /-- The types of the values that hold no arrays and that an array may hold: words, `Bool`s,
 floats, and tuples of these. -/
 inductive Elem where
-  | word | bool | float
+  | word | bool | float | float32
   | prod (first second : Elem)
   deriving Repr, DecidableEq, Inhabited
 
@@ -153,12 +153,14 @@ inductive Ty where
 @[match_pattern] abbrev Ty.word : Ty := .elem .word
 @[match_pattern] abbrev Ty.bool : Ty := .elem .bool
 @[match_pattern] abbrev Ty.float : Ty := .elem .float
+@[match_pattern] abbrev Ty.float32 : Ty := .elem .float32
 
 /-- The Lean type of an element. -/
 abbrev Elem.denote : Elem → Type
   | .word => UInt64
   | .bool => Bool
   | .float => Float
+  | .float32 => Float32
   | .prod a b => a.denote × b.denote
 
 /-- The Lean type of a value. -/
@@ -172,6 +174,7 @@ instance Elem.instInhabited : (e : Elem) → Inhabited e.denote
   | .word => inferInstanceAs (Inhabited UInt64)
   | .bool => inferInstanceAs (Inhabited Bool)
   | .float => inferInstanceAs (Inhabited Float)
+  | .float32 => inferInstanceAs (Inhabited Float32)
   | .prod a b => ⟨(@default _ a.instInhabited, @default _ b.instInhabited)⟩
 
 /-- The word that holds a `Bool`: 1 or 0, as `Implements` passes a `Bool`. -/
@@ -179,12 +182,13 @@ def boolWord (b : Bool) : UInt64 := cond b 1 0
 
 /-- The number of words that hold an element. -/
 def Elem.width : Elem → Nat
-  | .word | .bool | .float => 1
+  | .word | .bool | .float | .float32 => 1
   | .prod a b => a.width + b.width
 
 @[simp] theorem Elem.width_word : Elem.width .word = 1 := rfl
 @[simp] theorem Elem.width_bool : Elem.width .bool = 1 := rfl
 @[simp] theorem Elem.width_float : Elem.width .float = 1 := rfl
+@[simp] theorem Elem.width_float32 : Elem.width .float32 = 1 := rfl
 
 /-- The words that hold an element in an array, in order: a word as itself, a `Bool` as 1 or 0,
 a float as its bit pattern, and a tuple as its first part's words followed by its second's. -/
@@ -192,6 +196,7 @@ def Elem.toWords : (e : Elem) → e.denote → List UInt64
   | .word, x => [x]
   | .bool, b => [boolWord b]
   | .float, x => [x.toBits]
+  | .float32, x => [x.toBits.toUInt64]
   | .prod a b, v => a.toWords v.1 ++ b.toWords v.2
 
 /-- A component of type `e'` of an element of type `e`: the element, or a component of its first
@@ -374,6 +379,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       Expr S Γ (.array e)
   | eraseAt (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.array e)
   | float (bits : UInt64) : Expr S Γ .float
+  | float32 (bits : UInt32) : Expr S Γ .float32
   | fbin (op : FBinOp) (left right : Expr S Γ .float) : Expr S Γ .float
   | funary (op : FUnOp) (e : Expr S Γ .float) : Expr S Γ .float
   | fcmp (op : FCmpOp) (left right : Expr S Γ .float) : Expr S Γ .bool
@@ -413,6 +419,7 @@ def Elem.zeroExpr {S : List Sig} {Γ : List Ty} : (e : Elem) → Expr S Γ (.ele
   | .word => .word 0
   | .bool => .bool false
   | .float => .float 0
+  | .float32 => .float32 0
   | .prod a b => .mk a.zeroExpr b.zeroExpr
 
 def Expr.insertIdx (x : Var Γ (.array e)) (i : Var Γ .word)
@@ -463,6 +470,7 @@ def Expr.denote (funs : Funs S) :
     LeanExe.insertAt (env.get x) (i.denote funs env) (v.denote funs env)
   | _, _, .eraseAt x i, env => LeanExe.eraseAt (env.get x) (i.denote funs env)
   | _, _, .float bits, _ => Float.ofBits bits
+  | _, _, .float32 bits, _ => Float32.ofBits bits
   | _, _, .fbin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .funary op e, env => op.apply (e.denote funs env)
   | _, _, .fcmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
@@ -481,7 +489,7 @@ which may allocate, or calls a function that may trap, whose code takes the call
 at the depth limit, that returns arrays, or that owns a parameter, whose argument the call may
 copy, since only these allocate. -/
 def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ | _, _, .float32 _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.aborts || right.aborts
   | _, _, .toFloat _ e => e.aborts
@@ -507,7 +515,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 
 /-- Whether an expression calls a function whose code takes the call depth. -/
 def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ => false
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .float _ | _, _, .float32 _ => false
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.depthCalls || right.depthCalls
   | _, _, .toFloat _ e => e.depthCalls
@@ -535,7 +543,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
-  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ => false
+  | _, _, .word _, _ | _, _, .bool _, _ | _, _, .float _, _ | _, _, .float32 _, _ => false
   | _, _, .var x, i => i == x.index
   | _, _, .bin _ left right, i | _, _, .cmp _ left right, i | _, _, .fbin _ left right, i
   | _, _, .fcmp _ left right, i => left.uses i || right.uses i
@@ -575,7 +583,7 @@ the same subexpression, and the kernel evaluates the code generator in every pro
 theorem, so it computes the mask of a subexpression once instead of walking the subexpression
 for each variable. -/
 def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
-  | _, _, .word _ | _, _, .bool _ | _, _, .float _ => 0
+  | _, _, .word _ | _, _, .bool _ | _, _, .float _ | _, _, .float32 _ => 0
   | _, _, .var x => 1 <<< x.index
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.useMask ||| right.useMask
@@ -623,7 +631,7 @@ theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     e.usesFast i = e.uses i := by
   unfold Expr.usesFast
   induction e generalizing i with
-  | word | bool | float => simp [Expr.useMask, Expr.uses]
+  | word | bool | float | float32 => simp [Expr.useMask, Expr.uses]
   | var x | proj x _ | size x =>
     simp [Expr.useMask, Expr.uses, testBit_one_shiftLeft, -Nat.testBit_shiftLeft]
   | call f args ih =>
@@ -651,7 +659,7 @@ def Expr.isPlace : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
 pair of such arguments, and a variable at an owned parameter.  The reflector binds any other such
 argument with `let`. -/
 def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
-  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _
+  | _, _, .word _ | _, _, .bool _ | _, _, .var _ | _, _, .size _ | _, _, .float _ | _, _, .float32 _
   | _, _, .leSize _ _ => true
   | _, _, .bin _ left right | _, _, .cmp _ left right | _, _, .fbin _ left right
   | _, _, .fcmp _ left right => left.placeArgs && right.placeArgs

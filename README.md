@@ -55,7 +55,7 @@ document states its theorem's domain and exceptional cases.
 | Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctWith` for programs with tables and wrappers, and `Prog.correct` without tables |
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for code that calls guarded recursion, a frames condition |
-| `Float32` and WGSL kernels | Supported | Outside the dialect |
+| `Float32` and WGSL kernels | Supported | Float32 values and arrays.  Arithmetic and WGSL remain pending. |
 | Lists and recursive types | `List UInt64` and user recursive types | Outside the dialect |
 | Sum types | Supported, with fields | Enumerations only |
 | Tail recursion | Compiled as a loop | Recognized tail recursion compiles as a loop.  Other recursion uses a depth limit of 1,000. |
@@ -70,7 +70,7 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for code that calls guarded recursion, its frames condition.  A program that needs
-`Float32`, WGSL kernels, lists or trees, or sum types with fields
+`Float32` arithmetic, WGSL kernels, lists or trees, or sum types with fields
 compiles only with the LeanExe compiler.  Binary64 GPT-2 and the Euler solvers compile with both
 compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified

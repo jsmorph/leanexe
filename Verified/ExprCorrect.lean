@@ -1,6 +1,7 @@
 import Verified.ArgPot
 import Verified.ArrayFold
 import Verified.InsertIdx
+import LeanExe.ProofKit.F32Bits
 
 /-! Correctness of expression code and ordinary function templates. -/
 
@@ -600,6 +601,20 @@ theorem spec_float {Γ : List Ty} (bits : UInt64) :
     hNext0 store s [.f64 (Float.ofBits bits).toBits] (After.refl hAt hVars
       (by intro i h; simp [h]) rfl (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .float rfl] at hb; exact nomatch hb)
+
+
+/-- A float constant, from its bit pattern. -/
+theorem spec_float32 {Γ : List Ty} (bits : UInt32) :
+    ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv (Expr.float32 (S := S) (Γ := Γ) bits) env slots
+          paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+  have hNext0 := fun store' s' ws a =>
+    hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
+  simpa [Expr.code, Expr.usesFast_eq, Expr.denote, F32Bits.toBits_ofBits] using
+    hNext0 store s [.f32 (Float32.ofBits bits).toBits] (After.refl hAt hVars
+      (by intro i h; simp [h]) rfl (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
+        rw [Ty.regions_scalar .float32 rfl] at hb; exact nomatch hb)
 
 
 /-- An operation on words; division and remainder save their operands to test the divisor. -/
@@ -4039,7 +4054,7 @@ theorem spec_build (hm : Runtime m) {Γ' : List Ty} {e : Elem} {count : Expr S �
     (e.toWords (elem.denote funs (.cons (UInt64.ofNat i) env))) words stE s7
     (aI2.reframe ((f6.mono (by omega)).trans (f7.mono (by omega)))) hh7
     (by rw [hget7 (base + 1) (by omega)]; exact hRooti) hW7 hold7
-    (by rw [e.toWords_length, e.types_length]) (by rw [hik64, e.types_length]; omega)
+    (by rw [e.toWords_length, e.types_length]) (e.typed_words _) (by rw [hik64, e.types_length]; omega)
     fun store8 a8 _ => ?_
   rw [hik64, Nat.add_zero] at a8
   -- The next index, in local `base + 2`.
@@ -4297,7 +4312,7 @@ theorem spec_set (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arra
       e.types)]
     refine wp_storeWordsCode 0 (base + 1) e.types (e.toWords (v.denote funs env))
       (e.words (env.get x)) store3 s5 (a4.toWords.reframe (hF5.mono (by omega)))
-      (hF5.positions.trans hh4) hP5 hW5 hold5 (by rw [e.toWords_length, e.types_length])
+      (hF5.positions.trans hh4) hP5 hW5 hold5 (by rw [e.toWords_length, e.types_length]) (e.typed_words _)
       (by rw [hik64, e.types_length, Elem.words_size]
           have := Nat.mul_le_mul_right e.width (Nat.succ_le_of_lt hc)
           rw [Nat.succ_mul] at this; omega)
@@ -4993,7 +5008,7 @@ theorem spec_push (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (.arr
       (by rw [e.values_length, e.types_length]) (by rw [e.types_length])).mpr hold2
   -- The writes of the element's words after the array's words.
   refine wp_storeWordsCode 0 base e.types (e.toWords (v.denote funs env)) words store2 s3 aR
-    (aR.frame.positions.trans hh2) hQ3 hN3 hold3 (by rw [e.toWords_length, e.types_length])
+    (aR.frame.positions.trans hh2) hQ3 hN3 hold3 (by rw [e.toWords_length, e.types_length]) (e.typed_words _)
     (by rw [hL64, e.types_length, hSize]; omega) fun store4 a4 hCap4 => ?_
   rw [hL64] at a4
   simp only [Nat.add_zero] at a4
@@ -5826,7 +5841,7 @@ theorem spec_insertAt (hm : Runtime m) {Γ' : List Ty} {e : Elem} (x : Var Γ' (
     refine wp_storeWordsCode 0 (base + 1) e.types (e.toWords (v.denote funs env))
       (shiftUp words ((i.denote funs env).toNat * e.width) ((env.get x).size * e.width) e.width)
       store7 s7 aS (hFrame7.positions.trans hh4) hQ7 hW7' hold7
-      (by rw [e.toWords_length, e.types_length])
+      (by rw [e.toWords_length, e.types_length]) (e.typed_words _)
       (by rw [hW64, e.types_length, shiftUp_size, hSize]; omega) fun store8 a8 hCap8 => ?_
     rw [hW64] at a8
     simp only [Nat.add_zero] at a8
@@ -5943,6 +5958,7 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
   | eraseAt x i iSpec =>
     intro hD; exact spec_eraseAt hm x (iSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | float bits => intro _; exact spec_float bits
+  | float32 bits => intro _; exact spec_float32 bits
   | fbin op left right leftSpec rightSpec =>
     intro hD
     exact spec_fbin op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))

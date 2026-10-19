@@ -37,13 +37,14 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | `UInt64` | One i64 word | Arithmetic wraps modulo `2^64`. |
 | `Bool` | One i64 word, 1 or 0 | |
 | `Float` | One f64 word, its bit pattern | Lean's binary64, which equals Talos's `IEEE64` on bit patterns. |
+| `Float32` | One f32 word, its bit pattern | Parameters, results, tuples, arrays, and loop state.  Arithmetic reflection remains pending. |
 | A pair of types without arrays | The first component's words, then the second's | Nested pairs are tuples. |
 | A structure with a `Flat` instance whose tuple is its fields | Its fields' words | A nested structure is flattened in turn. |
 | An enumeration with a `Flat` instance to a word | One word | An inductive type whose constructors have no fields. |
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, or enumeration | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
 
-`Nat`, `Int`, `Float32`, `String`, `Option`, `List`, recursive types, sum types with fields, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, so a structure's default must take each field's default and an enumeration's default must have the word 0.
+`Nat`, `Int`, `String`, `Option`, `List`, recursive types, sum types with fields, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, so a structure's default must take each field's default and an enumeration's default must have the word 0.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
 ### Expressions
 
@@ -290,6 +291,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [`Grow`](../Verified/Examples/Grow.lean) | `push` and `++` on parameters, built arrays, and loop states, onto an array that stays live, an array appended to itself, and an owned right operand. |
 | [`Modes`](../Verified/Examples/Modes.lean) | Parameters that a function returns, updates, or moves into an owned parameter, also from a loop's state and before a later argument reads the array, and parameters that stay borrowed because the body uses them again.  Its `byHand`, written without the reflector, has an owned parameter that the body never reads and one that it reads last. |
 | [`Floats`](../Verified/Examples/Floats.lean) | A piecewise function, a scaled hypotenuse, float comparisons as conditions and as `Bool` values, `min`, `max`, negation, a loop over a pair of floats, a function with a word, a float, an array, and a pair as parameters and a pair result with a float, a call of float functions, the conversions between words and floats, a power of two built from its exponent field, and literal NaN patterns. |
+| [Binary32 values](../Verified/Examples/Floats32.lean) | Mixed f32, f64, and word parameters and results, scalar and record-array reads, borrowed and owned updates, whole-array fold, build, literals, and a Float32 tail-loop state. |
 | [`Records`](../Verified/Examples/Records.lean) | Structures with a nested structure and a `Bool` field, built, updated with `{ s with … }`, read field by field, taken apart with `match`, chosen with `if`, passed to calls, and used as a loop's state, with theorems stated for the structures. |
 | [`Tuples`](../Verified/Examples/Tuples.lean) | Arrays of tuples of a float and a word and of a nested tuple, built, read along a path, updated in place, extended, and appended, written without the reflector, with an `example` per function stating by `rfl` that it means a Lean function. |
 | [`Grids`](../Verified/Examples/Grids.lean) | Arrays of the structures of `Records.lean`, built, read element by element and field by field, also past the end, updated in place in a loop, extended with a new structure, appended, counted, reduced to a total and a `Bool`, and returned in a pair with a total, and a local array of pairs. |

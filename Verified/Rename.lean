@@ -72,6 +72,7 @@ def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S �
   | _, _, _, ρ, .insertAt x i v => .insertAt (ρ x) (i.rename ρ) (v.rename ρ)
   | _, _, _, ρ, .eraseAt x i => .eraseAt (ρ x) (i.rename ρ)
   | _, _, _, _, .float n => .float n
+  | _, _, _, _, .float32 n => .float32 n
   | _, _, _, ρ, .fbin op a b => .fbin op (a.rename ρ) (b.rename ρ)
   | _, _, _, ρ, .funary op a => .funary op (a.rename ρ)
   | _, _, _, ρ, .fcmp op a b => .fcmp op (a.rename ρ) (b.rename ρ)

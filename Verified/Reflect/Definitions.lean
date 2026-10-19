@@ -57,18 +57,21 @@ def elemOf? (type : Lean.Expr) : MetaM (Option Elem) := do
   if type.isConstOf ``UInt64 then return some .word
   if type.isConstOf ``Bool then return some .bool
   if type.isConstOf ``Float then return some .float
+  if type.isConstOf ``Float32 then return some .float32
   return none
 
 def elemExpr : Elem → Lean.Expr
   | .word => mkConst ``Elem.word
   | .bool => mkConst ``Elem.bool
   | .float => mkConst ``Elem.float
+  | .float32 => mkConst ``Elem.float32
   | .prod a b => mkApp2 (mkConst ``Elem.prod) (elemExpr a) (elemExpr b)
 
 def elemZero : Elem → MetaM Lean.Expr
   | .word => pure (toExpr (0 : UInt64))
   | .bool => pure (mkConst ``Bool.false)
   | .float => mkAppM ``Float.ofBits #[toExpr (0 : UInt64)]
+  | .float32 => mkAppM ``Float32.ofBits #[toExpr (0 : UInt32)]
   | .prod a b => do mkAppM ``Prod.mk #[← elemZero a, ← elemZero b]
 
 def boolEqTerm (a b : Lean.Expr) : MetaM Lean.Expr := do
@@ -91,6 +94,7 @@ def tyExpr : Ty → Lean.Expr
   | .bool => mkConst ``Ty.bool
   | .pair a b => mkApp2 (mkConst ``Ty.pair) (tyExpr a) (tyExpr b)
   | .float => mkConst ``Ty.float
+  | .float32 => mkConst ``Ty.float32
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
 
@@ -191,7 +195,7 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
     let f ← withLocalDeclD `x type fun x => do
       mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
     return ⟨sβ.ty, some f⟩
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, a structure with a \
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Float32, a structure with a \
     `Flat` instance, an array, or a pair"
 
 def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
@@ -379,6 +383,29 @@ partial def floatLit? (e : Lean.Expr) : MetaM (Option UInt64) := do
   | (``UInt64.toFloat, #[w]) => return (← wordLit? w).map Wasm.IEEE64.convertI64U
   | (``Neg.neg, #[_, _, x]) =>
     return (← floatLit? x).map fun b => canonical (b ^^^ 0x8000000000000000)
+  | _ => return none
+
+def word32Lit? (e : Lean.Expr) : MetaM (Option UInt32) := do
+  let (``OfNat.ofNat, #[α, n, _]) := e.consumeMData.getAppFnArgs | return none
+  unless (← whnfR α).isConstOf ``UInt32 do return none
+  return (natOf (← instantiateMVars n)).map UInt32.ofNat
+
+partial def float32Lit? (e : Lean.Expr) : MetaM (Option UInt32) := do
+  let canonical (w : UInt32) := if Wasm.IEEE32.isNaN w then Wasm.IEEE32.canonicalNaN else w
+  match e.consumeMData.getAppFnArgs with
+  | (``OfScientific.ofScientific, #[_, _, m, sgn, ex]) =>
+    let some m := natOf (← instantiateMVars m) | return none
+    let some ex := natOf (← instantiateMVars ex) | return none
+    if sgn.isConstOf ``Bool.true then return some (Float32.ofScientific m true ex).toBits
+    if sgn.isConstOf ``Bool.false then return some (Float32.ofScientific m false ex).toBits
+    return none
+  | (``OfNat.ofNat, #[_, n, _]) =>
+    let some n := natOf (← instantiateMVars n) | return none
+    return some (Float32.ofNat n).toBits
+  | (``Float32.ofBits, #[w]) => return (← word32Lit? w).map canonical
+  | (``UInt64.toFloat32, #[w]) => return (← wordLit? w).map Wasm.IEEE32.convertI64U
+  | (``Neg.neg, #[_, _, x]) =>
+    return (← float32Lit? x).map fun b => canonical (b ^^^ 0x80000000)
   | _ => return none
 
 /-- A comparison of words as a `Prop`: its operation and its operands, with `>` and `≥` as `<`
@@ -1432,6 +1459,17 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         let proof ← mkAppOptM ``float_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
           some (toExpr bits), some e, some h]
         return ⟨src, proof, .float, e, leafBound c ``float_bound [(`bits, toExpr bits)],
+          leafFits c src⟩
+    | .float32 =>
+      if let some bits ← float32Lit? e then
+        let src ← mkAppOptM ``Expr.float32 #[some c.sigs, some c.ctx, some (toExpr bits)]
+        let prop ← mkEq (← mkAppM ``Float32.toBits #[e]) (toExpr bits)
+        let dec ← mkDecide prop
+        let h := mkApp3 (mkConst ``of_decide_eq_true) prop dec.appArg!
+          (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+        let proof ← mkAppOptM ``float32_eq #[some c.sigs, some c.ctx, some c.funs, some c.env,
+          some (toExpr bits), some e, some h]
+        return ⟨src, proof, .float32, e, leafBound c ``float32_bound [(`bits, toExpr bits)],
           leafFits c src⟩
     | .elem (.prod _ _) | .pair _ _ | .array _ => pure ()
   -- A named constant that holds no array is its value, which the kernel unfolds to it.

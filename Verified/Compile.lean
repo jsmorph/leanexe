@@ -13,11 +13,13 @@ open Wasm
 def Elem.types : Elem → List ValueType
   | .word | .bool => [.i64]
   | .float => [.f64]
+  | .float32 => [.f32]
   | .prod a b => a.types ++ b.types
 
 @[simp] theorem Elem.types_word : Elem.types .word = [.i64] := rfl
 @[simp] theorem Elem.types_bool : Elem.types .bool = [.i64] := rfl
 @[simp] theorem Elem.types_float : Elem.types .float = [.f64] := rfl
+@[simp] theorem Elem.types_float32 : Elem.types .float32 = [.f32] := rfl
 
 /-- The WebAssembly types of the words that hold a value of type `t`, in order. -/
 def Ty.types : Ty → List ValueType
@@ -29,12 +31,14 @@ def Ty.types : Ty → List ValueType
 in an array: a float's bit pattern moves from an f64 to an i64. -/
 def toWordCode : ValueType → Program
   | .f64 => [.i64ReinterpretF64]
+  | .f32 => [.i32ReinterpretF32, .extendUI32]
   | _ => []
 
 /-- The instructions that turn the i64 that holds a word of type `ty` in an array into the
 word. -/
 def ofWordCode : ValueType → Program
   | .f64 => [.f64ReinterpretI64]
+  | .f32 => [.wrapI64, .f32ReinterpretI32]
   | _ => []
 
 /-- The word count `k` of an element as the code uses it, at most `2 ^ 29`.  An element of
@@ -351,7 +355,7 @@ value's words and the scratch of each `push` and `append`, and the locals of eac
 of the expression.  A call's arguments, a pair's components, and a tuple's components leave their
 words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
-  | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _
+  | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ | _, _, .float32 _
   | _, _, .leSize _ _ => 0
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
@@ -478,6 +482,8 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
   | _, _, .bool value => [.constI64 (boolWord value)]
+  | _, _, .float32 bits =>
+    [.f32Const (if Wasm.IEEE32.isNaN bits then Wasm.IEEE32.canonicalNaN else bits)]
   | _, _, .float bits =>
     [.f64Const (if Wasm.IEEE64.isNaN bits then Wasm.IEEE64.canonicalNaN else bits)]
   | _, _, .fbin op left right =>

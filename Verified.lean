@@ -47,6 +47,7 @@ import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
+import Verified.Examples.Floats32
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
