@@ -44,8 +44,9 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | A sum with scalar fields and a `Flat` instance | A word tag and the constructor fields' words | The tag occupies the tuple's first leaf.  Each constructor's fields occur once. |
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, enumeration, or sum | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
+| `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, identity, duplication, tuples, and calls.  Matching and folds remain pending. |
 
-`Nat`, `Int`, `String`, `Option`, `List`, recursive types, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
+`Nat`, `Int`, `String`, `Option`, other recursive types, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
 ### Expressions
 

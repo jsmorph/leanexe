@@ -4,6 +4,7 @@ import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
 import Verified.Reflect.FoldLemmas
+import Verified.Reflect.TreeLemmas
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
@@ -89,13 +90,14 @@ def pathExpr : Elem → List Bool → MetaM (Lean.Expr × Elem)
     return (mkApp4 (mkConst ``Path.snd) (elemExpr b) (elemExpr t) (elemExpr a) p, t)
   | _, _ :: _ => throwError "verified_compile: a projection of an element that is not a tuple"
 
-def reflectedTreeShape (fields : List Bool)
+abbrev reflectedTreeShape (fields : List Bool)
     (valid : decide (fields ≠ [] ∧ fields.length ≤ 64) = true) : TreeShape :=
   ⟨fields, (of_decide_eq_true valid).1, (of_decide_eq_true valid).2⟩
 
 def treeShapeExpr (shape : TreeShape) : Lean.Expr :=
-  mkApp2 (mkConst ``reflectedTreeShape) (toExpr shape.fields)
-    (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+  if shape = listShape then mkConst ``listShape else
+    mkApp2 (mkConst ``reflectedTreeShape) (toExpr shape.fields)
+      (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
@@ -172,6 +174,9 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
 partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let some e ← elemOf? type then return ⟨.elem e, none⟩
   let type ← whnfR type
+  if let (``List, #[el]) := type.getAppFnArgs then
+    if (← whnfR el).isConstOf ``UInt64 then
+      return ⟨.tree listShape, some (mkConst ``Tree.ofList)⟩
   if let (``Prod, #[a, b]) := type.getAppFnArgs then
     let sa ← shapeOf a
     let sb ← shapeOf b
@@ -1798,6 +1803,40 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let rr ← reflect c b
     return ⟨← mkAppM ``Expr.or #[rl.src, rr.src], ← mkAppM ``or_eq #[rl.proof, rr.proof],
       .bool, e, binBound c ``or_bound [] rl rr, binFits c ``or_fits [] rl rr⟩
+  | ``List.nil, #[α] =>
+    unless (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: lists require UInt64 elements, in {e}"
+    let src ← mkAppOptM ``Expr.treeNil
+      #[some c.sigs, some c.ctx, some (treeShapeExpr listShape)]
+    return ⟨src, ← rflProof c src (← flatValue e), .tree listShape, e,
+      leafBound c ``treeNil_bound [(`shape, treeShapeExpr listShape)], leafFits c src⟩
+  | ``List.cons, #[α, a, b] =>
+    unless (← whnfR α).isConstOf ``UInt64 do
+      throwError "verified_compile: lists require UInt64 elements, in {e}"
+    let ra ← reflect c a
+    let rb ← reflect c b
+    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader listShape))
+    let reuse ← mkAppOptM ``Option.none #[some header]
+    let family (r : Reflection) : MetaM Lean.Expr :=
+      withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
+        mkLambdaFVars #[i] r.src
+    let src ← mkAppM ``Expr.treeNode #[reuse, ← family ra, ← family rb]
+    let parts := [(`reuse, reuse), (`head, ra.src), (`tail, rb.src)]
+    let proof ← (← LemmaApp.start ``listCons_eq
+      ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts ++
+        [(`hh, ra.proof), (`ht, rb.proof)])).finish
+    let bound : BoundBuilder := fun modes paid live => do
+      let app ← LemmaApp.start ``listCons_bound
+        (boundArgs c (c.tables.table false) modes paid live ++ parts)
+      let _ ← app.child `hh ra.bound
+      let _ ← app.child `ht rb.bound
+      let _ ← assignCoerce c.base app `hk (.tree listShape) b
+      let some (_, parent, _) := (← app.hypType `hp).eq?
+        | throwError "verified_compile: malformed parent allocation equation"
+      app.assign `hp (← evalEq parent (← evalNat parent))
+      boundOf (← app.finish)
+    return ⟨src, proof, .tree listShape, e, bound,
+      formFits c ``listCons_fits parts [(`hh, ra), (`ht, rb)]⟩
   | ``Prod.mk, #[_, _, a, b] =>
     let ra ← reflect c a
     let rb ← reflect c b
@@ -3085,6 +3124,8 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
     let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
     return ← agreeScalar userT inst src (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h) φ
   match t, (← whnfR userT).getAppFnArgs with
+  | .tree _, (``List, #[_]) =>
+    agreeAs userT inst src φ (mkConst ``Agree.listTree)
   | .array _, (``Array, #[el]) =>
     if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
     let (_, proof) ← agreeArray ``Agree.flatArray el
@@ -3108,6 +3149,9 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
   let src := (mkApp2 (mkConst ``Ty.argTy) (tyExpr t) (modeExpr m),
     mkApp2 (mkConst ``Ty.argInst) (tyExpr t) (modeExpr m))
   match t, m, (← whnfR userT).getAppFnArgs with
+  | .tree _, .owned, (``LeanExe.Pipeline.Moved, #[_]) =>
+    let proof : Lean.Expr := mkConst ``Agree.movedListTree
+    return (← Core.betaReduce (← inferType proof).appArg!, proof)
   | .array _, .owned, (``LeanExe.Pipeline.Moved, #[a]) =>
     let (``Array, #[el]) := (← whnfR a).getAppFnArgs
       | throwError "verified_compile: {a} is not an array"
@@ -3657,6 +3701,11 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
   let src := mkApp (mkConst ``Ty.denote) (tyExpr sh.ty)
   let inverse (u : Lean.Expr) (left right : Lean.Expr → MetaM Lean.Expr) : Inverse :=
     ⟨u, left, right⟩
+  if let (``List, #[el]) := type.getAppFnArgs then
+    if (← whnfR el).isConstOf ``UInt64 then
+      return some (inverse (mkConst ``Tree.toList)
+        (fun x => mkAppM ``Tree.toList_ofList #[x])
+        (fun v => mkAppM ``Tree.ofList_toList #[v]))
   if let (``Prod, #[a, b]) := type.getAppFnArgs then
     let ia ← inverseOf? a
     let ib ← inverseOf? b
