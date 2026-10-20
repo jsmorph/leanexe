@@ -48,15 +48,8 @@ theorem wp_treeCopyAllocate {m : Module} (hm : Runtime m) {host : HostEnv Unit}
   have hRoom := allocated_capacity (8 * UInt64.ofNat shape.fields.length) heap.free
   have hStorage : RecordStorage shape heap' store' ptr :=
     RecordStorage.ofBlock hBlock (by rw [hBytes] at hRoom; exact hRoom)
-  have hStep : Step heap store (fun _ => True) heap' store' [block store' ptr] := by
-    refine ⟨hAt.allocate 1 hFits, heap.allocateStore_memoryCaps store _ 1, ?_⟩
-    intro r hr _ _
-    obtain ⟨hRegion, hBytes, hApart⟩ := hr.allocate 1 hAt hFits
-    refine ⟨hBytes, hRegion, fun b hb => ?_⟩
-    rw [List.mem_singleton] at hb
-    subst b
-    dsimp only [store', ptr]
-    simpa only [block, hBlock.capacity_eq] using hApart
+  have hStep : Step heap store (fun _ => True) heap' store' [block store' ptr] :=
+    Step.allocate 1 hAt hFits
   exact wp_localSet_local hLow hHigh (hNext heap' store' ptr hStep hStorage hTop)
 
 #print axioms wp_treeCopyAllocate

@@ -9,6 +9,8 @@ def treeNodes : KeyTree → Nat
   | .node left _ right => 1 + treeNodes left + treeNodes right
 
 def cases : IO Unit := do
+  IO.println "treecopy|headerWidth1|i64|i64:0|1|0|1"
+  IO.println "treecopy|headerWidth64|i64|i64:0|64|0|1"
   let lists := wordArrays ++ ([63, 999, 1000, 4096] : List Nat).map fun n =>
     (List.range n).map fun i => rw (n + i)
   for xs in lists do
@@ -16,6 +18,7 @@ def cases : IO Unit := do
         ("discardList", xs.length)] do
       IO.println s!"treecopy|{name}|chain-u64|{chain xs}|[{", ".intercalate (xs.map toString)}]|{live}|{2 * xs.length}"
     IO.println s!"treecopy|releaseList|i64|{chain xs}|0|0|{2 * xs.length}"
+    IO.println s!"treecopy|headerAfterList|i64|{chain xs}|0|0|{xs.length + 1}"
   let trees := [.leaf, .node .leaf 0 .leaf,
     .node (.node .leaf maxU .leaf) 7 (.node .leaf 0 .leaf)] ++
     ([63, 999, 1000, 4096] : List Nat).map KeyTree.chain ++

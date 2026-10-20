@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Records
 
 namespace Verified
 
-open Wasm LeanExe.Pipeline LeanExe.Runtime
+open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 /-- A step from `heap` at `store` to `heap'` at `store'`: the allocator invariant holds after it,
 the memory caps are unchanged, and every region of `heap` in `keep` keeps its bytes, is a region
@@ -74,7 +74,38 @@ theorem owned (h : Step heap store keep heap1 store1 fresh) {p : UInt64} {xs : A
   obtain ⟨hBytes, hRegion, hFresh⟩ := h.keeps _ hp.region (by simp [block]) hk
   exact ⟨hp.keepIn h.at_ hBytes hRegion, hFresh⟩
 
-end Step
+theorem allocate {heap : Heap} {store : Store Unit} {need : UInt64} (stride : UInt64)
+    (hAt : heap.At store) (hFits : heap.Fits need) :
+    Step heap store (fun _ => True) (heap.allocate need) (heap.allocateStore store need stride)
+      [block (heap.allocateStore store need stride) (FixedArrayAllocate.root heap.top need heap.free)] := by
+  have hBlock := hAt.allocate_block stride hFits
+  refine ⟨hAt.allocate stride hFits, heap.allocateStore_memoryCaps store need stride, ?_⟩
+  intro r hr _ _
+  obtain ⟨hRegion, hBytes, hApart⟩ := hr.allocate stride hAt hFits
+  refine ⟨hBytes, hRegion, fun b hb => ?_⟩
+  rw [List.mem_singleton] at hb
+  subst b
+  simpa only [block, hBlock.capacity_eq] using hApart
 
+theorem ofWritesRange {heap : Heap} {store store' : Store Unit}
+    {start stop : Nat} {region : Nat × Nat} (hAt : heap.At store')
+    (hWrites : Memory.WritesRange store store' start stop)
+    (hLow : region.1 ≤ start) (hHigh : stop ≤ region.1 + region.2) :
+    Step heap store (fun r => regionsDisjoint r region) heap store' [] := by
+  refine ⟨hAt, by rw [hWrites.1], fun r hr _ hApart => ⟨?_, hr, nofun⟩⟩
+  intro a hLeft hRight
+  apply hWrites.2.2
+  simp only [regionsDisjoint] at hApart
+  omega
+
+theorem writeFresh {heap0 heap : Heap} {initial store store' : Store Unit}
+    {fresh : List (Nat × Nat)} {region : Nat × Nat}
+    (h : Step heap0 initial (fun _ => True) heap store fresh)
+    (hWrite : Step heap store (fun r => regionsDisjoint r region) heap store' [])
+    (hFresh : region ∈ fresh) : Step heap0 initial (fun _ => True) heap store' fresh := by
+  simpa using h.transBoth hWrite
+    (fun _ _ => ⟨trivial, fun hApart => hApart region hFresh⟩)
+
+end Step
 
 end Verified

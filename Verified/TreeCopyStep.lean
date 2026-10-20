@@ -6,25 +6,6 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 
-theorem Step.ofWritesRange {heap : Heap} {store store' : Store Unit}
-    {start stop : Nat} {region : Nat × Nat} (hAt : heap.At store')
-    (hWrites : Memory.WritesRange store store' start stop)
-    (hLow : region.1 ≤ start) (hHigh : stop ≤ region.1 + region.2) :
-    Step heap store (fun r => regionsDisjoint r region) heap store' [] := by
-  refine ⟨hAt, by rw [hWrites.1], fun r hr _ hApart => ⟨?_, hr, nofun⟩⟩
-  intro a hLeft hRight
-  apply hWrites.2.2
-  simp only [regionsDisjoint] at hApart
-  omega
-
-theorem Step.writeFresh {heap0 heap : Heap} {initial store store' : Store Unit}
-    {fresh : List (Nat × Nat)} {region : Nat × Nat}
-    (h : Step heap0 initial (fun _ => True) heap store fresh)
-    (hWrite : Step heap store (fun r => regionsDisjoint r region) heap store' [])
-    (hFresh : region ∈ fresh) : Step heap0 initial (fun _ => True) heap store' fresh := by
-  simpa using h.transBoth hWrite
-    (fun _ _ => ⟨trivial, fun hApart => hApart region hFresh⟩)
-
 theorem Step.nodeBorrowed {heap heap' : Heap} {store store' : Store Unit}
     {fresh : List (Nat × Nat)} {p : UInt64} {value : Node}
     (h : Step heap store (fun _ => True) heap' store' fresh)

@@ -6,6 +6,22 @@ namespace Verified
 open LeanExe.Pipeline
 
 mutual
+theorem Node.blocks_length (store : Wasm.Store Unit) (ptr : UInt64) :
+    (value : Node) → (value.blocks store ptr).length = value.records
+  | .null => rfl
+  | .record slots => by
+    simp only [Node.blocks, List.length_cons, Node.records, slotsBlocks_length]
+    omega
+
+theorem slotsBlocks_length (store : Wasm.Store Unit) (ptr : UInt64) (i : Nat) :
+    (slots : List Slot) → (slotsBlocks store ptr i slots).length = slotsRecords slots
+  | [] => rfl
+  | .word _ :: rest => slotsBlocks_length store ptr (i + 1) rest
+  | .child value :: rest => by
+    simp only [slotsBlocks, List.length_append, Node.blocks_length, slotsBlocks_length, slotsRecords]
+end
+
+mutual
 def NodeLayout (shape : TreeShape) : Node → Prop
   | .null => True
   | .record slots => slots.length = shape.fields.length ∧ maskOf slots = shape.mask ∧
