@@ -172,6 +172,12 @@ The bound charges `48 + 8 * w` bytes for a header of `w` fields.
 [Payload writes](TreeFieldsState.lean) preserve the allocator invariant, capacity, and header words.
 [Field locations](TreeFieldLocs.lean) and [field values](TreeFieldValues.lean) relate the grouped
 word and child locals to their physical order and establish ownership of the stored slots.
+
+[Field evaluation](FieldsExpr.lean) proves the ordered evaluation and local storage of fields,
+including owned coercions, pairwise block separation, preservation of live variables, and the
+combined allocation bound.  [Owned value lists](OwnedValues.lean) and
+[field ownership composition](FieldsAfter.lean) preserve completed fields as later fields execute.
+The [owned-expression rule](OwnedExpr.lean) combines expression correctness with result coercion.
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
 give these proofs interfaces independent of the source language.  Source construction, matching,
 reflection, and compiler integration remain pending.
