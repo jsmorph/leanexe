@@ -14,6 +14,7 @@ import Verified.TreeFieldsState
 import Verified.TreeFieldValues
 import Verified.TreeFieldLocs
 import Verified.FieldsExpr
+import Verified.CoercedRelease
 import Verified.FieldsAdvance
 import Verified.BindPrefix
 import Verified.ContextHEq
