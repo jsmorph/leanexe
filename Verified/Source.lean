@@ -258,6 +258,12 @@ def Env.ofFn : {Γ : List Ty} → ((i : Fin Γ.length) → (Γ.get i).denote) �
   | [], _ => .nil
   | _ :: _, f => .cons (f ⟨0, by simp⟩) (Env.ofFn fun i => f i.succ)
 
+def Env.prependRepeat (t : Ty) : (n : Nat) → (Fin n → t.denote) → Env Γ →
+    Env (List.replicate n t ++ Γ)
+  | 0, _, env => env
+  | n + 1, values, env =>
+    .cons (values 0) (prependRepeat t n (fun i => values i.succ) env)
+
 /-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
 which its holder must consume. -/
 inductive Mode where

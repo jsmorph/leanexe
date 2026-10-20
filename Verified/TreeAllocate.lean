@@ -31,6 +31,7 @@ theorem wp_treeCopyAllocate {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     (hNext : ∀ heap' store' ptr,
       Step heap store (fun _ => True) heap' store' [block store' ptr] →
       RecordStorage shape heap' store' ptr →
+      store'.mem.read64 (ptr - 40).toUInt32 = 1 →
       heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * shape.fields.length) →
       wp m rest Q store' (setLocal s dst (.i64 ptr)) host) :
     wp m (treeCopyAllocate shape dst ++ rest) Q store s host := by
@@ -50,7 +51,7 @@ theorem wp_treeCopyAllocate {m : Module} (hm : Runtime m) {host : HostEnv Unit}
     RecordStorage.ofBlock hBlock (by rw [hBytes] at hRoom; exact hRoom)
   have hStep : Step heap store (fun _ => True) heap' store' [block store' ptr] :=
     Step.allocate 1 hAt hFits
-  exact wp_localSet_local hLow hHigh (hNext heap' store' ptr hStep hStorage hTop)
+  exact wp_localSet_local hLow hHigh (hNext heap' store' ptr hStep hStorage hBlock.fresh.2.1 hTop)
 
 #print axioms wp_treeCopyAllocate
 

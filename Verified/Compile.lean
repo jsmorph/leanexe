@@ -154,9 +154,9 @@ def argsMax : {ps : List Ty} → ((i : Fin ps.length) → Nat) → Nat
   | _ :: _, w => max (w ⟨0, by simp⟩) (argsMax fun i => w i.succ)
 
 /-- The instructions of the arguments, in order. -/
-def argsCode : {ps : List Ty} → ((i : Fin ps.length) → Program) → Program
-  | [], _ => []
-  | _ :: _, c => c ⟨0, by simp⟩ ++ argsCode fun i => c i.succ
+def argsCode : {n : Nat} → ((i : Fin n) → Program) → Program
+  | 0, _ => []
+  | _ + 1, c => c ⟨0, by omega⟩ ++ argsCode fun i => c i.succ
 
 /-- The module index of a function that an expression calls: the functions `S` occupy the module
 positions from 2, the last of `S` first. -/
