@@ -244,6 +244,112 @@ def fvarStx {m : Type → Type} [Monad m] [MonadQuotation m] : Nat → m Term
   | 0 => `(Verified.FVar.here)
   | k + 1 => do `(Verified.FVar.there $(← fvarStx k))
 
+private structure ProgramReflection where
+  sigs : List Sig := []
+  prog : Lean.Expr := Lean.mkConst ``Prog.nil
+  funs : Lean.Expr := Lean.mkConst ``Funs.nil
+  meaning : Lean.Expr := Lean.mkConst ``Prog.Meaning.nil
+  out : Array Reflected := #[]
+  callees : List Callee := []
+  wraps : Array (Reflected × Callee × List Nat) := #[]
+  tableNames : Array Name := #[]
+
+private def closedReflectionExpr (e : Lean.Expr) : MetaM Lean.Expr := do
+  let e ← instantiateMVars e
+  if e.hasExprMVar || e.hasLevelMVar || e.hasFVar then
+    throwError "verified_compile: an expression remains open between definitions: {e}"
+  return e
+
+private def closeReflected (r : Reflected) : MetaM Reflected := do
+  return { r with
+    argsType := ← closedReflectionExpr r.argsType
+    resultType := ← closedReflectionExpr r.resultType
+    flatArgs := ← closedReflectionExpr r.flatArgs
+    flatResult := ← closedReflectionExpr r.flatResult }
+
+private def closeReflection (state : ProgramReflection) : MetaM ProgramReflection := do
+  return { state with
+    prog := ← closedReflectionExpr state.prog
+    funs := ← closedReflectionExpr state.funs
+    meaning := ← closedReflectionExpr state.meaning
+    out := ← state.out.mapM closeReflected
+    wraps := ← state.wraps.mapM fun (r, callee, indices) => do
+      return (← closeReflected r, callee, indices) }
+
+private def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
+    TermElabM ProgramReflection := do
+  let mut sigs := state.sigs
+  let mut prog := state.prog
+  let mut funs := state.funs
+  let mut meaning := state.meaning
+  let mut out := state.out
+  let mut callees := state.callees
+  let mut wraps := state.wraps
+  let mut tableNames := state.tableNames
+  trace[Verified.reflect] "reflect {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
+  let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
+  let fbase := base ++ Name.mkSimple name.getString!
+  -- A wrapper passes constant tables to a listed function; it is no function of the
+  -- program, and the module exports it after the entries.
+  if let some (callee, tnames) ← wrapperShape? name callees then
+    let mut idxs := #[]
+    for t in tnames do
+      match tableNames.findIdx? (· == t) with
+      | some i => idxs := idxs.push i
+      | none =>
+        idxs := idxs.push tableNames.size
+        tableNames := tableNames.push t
+    wraps := wraps.push (← reflectWrapper fbase name callee tnames, callee, idxs.toList)
+    return ← closeReflection { sigs, prog, funs, meaning, out, callees, wraps, tableNames }
+  let f := Lean.mkConst (fbase ++ `func)
+  -- `getUnfoldEqnFor?` also returns the unfolding equation of a definition that is not
+  -- recursive when an imported module has generated it, so recursion is tested first.
+  let eqn? ← if ← isRecursiveDefinition name then getUnfoldEqnFor? name else pure none
+  let r ← match eqn? with
+    | none =>
+      let r ← reflectDefinition fbase name sigsExpr funs prog callees
+      if r.depth then checkPositions name (mkApp2 (mkConst ``Func.body) sigsExpr f)
+      let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+      meaning := mkAppN (Lean.mkConst ``Prog.Meaning.cons) #[sigsExpr, f, prog, funs, meaning]
+      funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig,
+        mkAppN (Lean.mkConst ``Func.denote) #[sigsExpr, f, funs], funs]
+      prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, prog]
+      pure r
+    | some eqName =>
+      if verified.tailLoops.get (← getOptions) && (← isTailDefinition name eqName) then
+        let r ← reflectTailSource fbase name eqName sigsExpr funs prog callees
+        if r.depth then
+          let positions ← kernelWhnf (← mkAppM ``TailFunc.positions #[f])
+          let some n := natOf positions
+            | throwError "verified_compile: cannot evaluate the tail positions of {name}"
+          if n > depthPositions then
+            throwError "verified_compile: tail function {name} takes call depth and needs {n} positions, more than {depthPositions}"
+        let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+        let M := Lean.mkConst (fbase ++ `meaning)
+        meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consTail)
+          #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `decreases),
+            Lean.mkConst (fbase ++ `fixed)]
+        funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
+        prog := mkAppN (Lean.mkConst ``Prog.consTail) #[sigsExpr, f, prog]
+        pure r
+      else
+        let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
+        checkPositions name (mkApp2 (mkConst ``RecFunc.body) sigsExpr f)
+        let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+        let M := Lean.mkConst (fbase ++ `meaning)
+        meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consRec)
+          #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `fixed)]
+        funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
+        prog := mkAppN (Lean.mkConst ``Prog.consRec) #[sigsExpr, f, prog]
+        pure r
+  let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
+  sigs := sig :: sigs
+  let some bound := r.bound? | throwError "verified_compile: the bound of {name}"
+  callees := { name := name, sig := sig, denoteEq := r.meaningEq, bound } :: callees
+  out := out.push r
+  trace[Verified.reflect] "reflected {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
+  closeReflection { sigs, prog, funs, meaning, out, callees, wraps, tableNames }
+
 syntax (name := verifiedCompile) "verified_compile " ident " := " "[" ident,* "]" : command
 
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
@@ -261,78 +367,17 @@ def elabVerifiedCompile : CommandElab
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
     prepareRecursiveTypes names
+    let mut state : ProgramReflection := {}
+    for name in names do
+      state ← liftTermElabM (reflectProgramFunction base name state)
     let (reflected, wraps, tableNames, funsVal) ← liftTermElabM do
-      let mut sigs : List Sig := []
-      let mut prog := Lean.mkConst ``Prog.nil
-      let mut funs := Lean.mkConst ``Funs.nil
-      let mut meaning := Lean.mkConst ``Prog.Meaning.nil
-      let mut out : Array Reflected := #[]
-      let mut callees : List Callee := []
-      let mut wraps : Array (Reflected × Callee × List Nat) := #[]
-      let mut tableNames : Array Name := #[]
-      for name in names do
-        trace[Verified.reflect] "reflect {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
-        let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
-        let fbase := base ++ Name.mkSimple name.getString!
-        -- A wrapper passes constant tables to a listed function; it is no function of the
-        -- program, and the module exports it after the entries.
-        if let some (callee, tnames) ← wrapperShape? name callees then
-          let mut idxs := #[]
-          for t in tnames do
-            match tableNames.findIdx? (· == t) with
-            | some i => idxs := idxs.push i
-            | none =>
-              idxs := idxs.push tableNames.size
-              tableNames := tableNames.push t
-          wraps := wraps.push (← reflectWrapper fbase name callee tnames, callee, idxs.toList)
-          continue
-        let f := Lean.mkConst (fbase ++ `func)
-        -- `getUnfoldEqnFor?` also returns the unfolding equation of a definition that is not
-        -- recursive when an imported module has generated it, so recursion is tested first.
-        let eqn? ← if ← isRecursiveDefinition name then getUnfoldEqnFor? name else pure none
-        let r ← match eqn? with
-          | none =>
-            let r ← reflectDefinition fbase name sigsExpr funs prog callees
-            if r.depth then checkPositions name (mkApp2 (mkConst ``Func.body) sigsExpr f)
-            let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-            meaning := mkAppN (Lean.mkConst ``Prog.Meaning.cons) #[sigsExpr, f, prog, funs, meaning]
-            funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig,
-              mkAppN (Lean.mkConst ``Func.denote) #[sigsExpr, f, funs], funs]
-            prog := mkAppN (Lean.mkConst ``Prog.cons) #[sigsExpr, f, prog]
-            pure r
-          | some eqName =>
-            if verified.tailLoops.get (← getOptions) && (← isTailDefinition name eqName) then
-              let r ← reflectTailSource fbase name eqName sigsExpr funs prog callees
-              if r.depth then
-                let positions ← kernelWhnf (← mkAppM ``TailFunc.positions #[f])
-                let some n := natOf positions
-                  | throwError "verified_compile: cannot evaluate the tail positions of {name}"
-                if n > depthPositions then
-                  throwError "verified_compile: tail function {name} takes call depth and needs {n} positions, more than {depthPositions}"
-              let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-              let M := Lean.mkConst (fbase ++ `meaning)
-              meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consTail)
-                #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `decreases),
-                  Lean.mkConst (fbase ++ `fixed)]
-              funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
-              prog := mkAppN (Lean.mkConst ``Prog.consTail) #[sigsExpr, f, prog]
-              pure r
-            else
-              let r ← reflectRecursive fbase name eqName sigsExpr funs prog meaning callees
-              checkPositions name (mkApp2 (mkConst ``RecFunc.body) sigsExpr f)
-              let sig := sigExpr ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-              let M := Lean.mkConst (fbase ++ `meaning)
-              meaning := mkAppN (Lean.mkConst ``Prog.Meaning.consRec)
-                #[sigsExpr, f, prog, funs, M, meaning, Lean.mkConst (fbase ++ `fixed)]
-              funs := mkAppN (Lean.mkConst ``Funs.cons) #[sigsExpr, sig, M, funs]
-              prog := mkAppN (Lean.mkConst ``Prog.consRec) #[sigsExpr, f, prog]
-              pure r
-        let sig : Sig := ⟨r.params, r.result, r.aborts, r.modes, r.depth⟩
-        sigs := sig :: sigs
-        let some bound := r.bound? | throwError "verified_compile: the bound of {name}"
-        callees := { name := name, sig := sig, denoteEq := r.meaningEq, bound } :: callees
-        out := out.push r
-        trace[Verified.reflect] "reflected {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
+      let sigs := state.sigs
+      let prog := state.prog
+      let funs := state.funs
+      let meaning := state.meaning
+      let out := state.out
+      let wraps := state.wraps
+      let tableNames := state.tableNames
       let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
       addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
       addDefinition (base ++ `funs) (mkApp (Lean.mkConst ``Funs) sigsExpr) funs
