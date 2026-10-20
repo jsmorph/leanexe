@@ -759,6 +759,7 @@ structure Releasing (heap0 : Heap) (initial : Store Unit) (tree : List (Nat × N
     (∀ a, r.1 ≤ a → a < r.1 + r.2 → store.mem.bytes a = initial.mem.bytes a) ∧ heap.Region r ∧
       ∀ b ∈ forestBlocks store items, regionsDisjoint r b
   caps : store.memoryCaps = initial.memoryCaps
+  top : heap.top = heap0.top
 
 theorem mem_blocks_record (store : Store Unit) (k : UInt64 × List Slot) :
     block store k.1 ∈ Node.blocks store k.1 (.record k.2) := by
@@ -1043,7 +1044,7 @@ theorem Releasing.next {heap0 heap : Heap} {initial store : Store Unit}
       (forestBlocks store (kids ++ rest)) := by
     rw [forestBlocks_append, forestBlocks_append]
     exact ((List.reverse_perm kids).flatMap_right _).append_right _
-  refine ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_, ?_, ?_⟩
+  refine ⟨Heap.At.release hAt1 hObj1, ?_, fun k hk => (hFrame k (hMem k hk)).1, ?_, ?_, ?_, h.top⟩
   · have hChain1 := linkChildren_chain store.mem next kids rest h.chain.2
       (fun k hk => by
         have := (hItem k hk).1.base
@@ -1117,7 +1118,7 @@ theorem Releasing.start {heap : Heap} {store : Store Unit} {p : UInt64} {slots :
     simp only [forestBlocks, List.flatMap_cons, List.flatMap_nil, List.append_nil, Node.blocks,
       block_eq hCapEq, hBlocksEq]
   refine ⟨hAt1, ⟨rfl, ?_⟩, fun k hk => ?_, by rw [hTree]; exact hDisjoint, fun r hr hSize hr' => ?_,
-    rfl⟩
+    rfl, rfl⟩
   · simp only [releaseEntry, PendingAt]
     exact Memory.read64_write64 _ _ _
   · simp only [List.mem_singleton] at hk
@@ -1142,12 +1143,13 @@ theorem Releasing.done {heap0 heap : Heap} {initial store : Store Unit}
 tree: it returns, the allocator invariant holds for some heap, the memory caps are
 unchanged, and every region of positive size of the old heap apart from the tree keeps its
 bytes and stays a region.  The null pointer returns at once. -/
-theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+theorem release_tree_run_top {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
     (store : Store Unit) (p : UInt64) (n : Node) (hHeap : heap.At store)
     (hOwned : NodeOwned heap store p n) (hDisjoint : (n.blocks store p).Pairwise regionsDisjoint) :
     TerminatesWith env m 1 store [.i64 p] fun final out => out = [] ∧
-      ∃ heap' : Heap, heap'.At final ∧ final.memoryCaps = store.memoryCaps ∧
+      ∃ heap' : Heap, heap'.At final ∧ heap'.top = heap.top ∧
+        final.memoryCaps = store.memoryCaps ∧
         ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ n.blocks store p, regionsDisjoint r b) →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
             heap'.Region r := by
@@ -1161,7 +1163,7 @@ theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
       wp_simp]
     refine wp_iff_cons rfl ?_
     simp [wp_simp]
-    exact ⟨heap, hHeap, fun a b hr _ _ => hr⟩
+    exact ⟨heap, hHeap, rfl, fun a b hr _ _ => hr⟩
   | record slots =>
     obtain ⟨hHeader, hSlots⟩ := hOwned
     have hBase := hHeader.base
@@ -1209,7 +1211,7 @@ theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
       obtain ⟨hPending, hAt', hCaps', hFrame'⟩ := hR.done
       subst hPending
       simp [ReleaseVars.toLocals, wp_simp]
-      exact ⟨heap', hAt', hCaps', fun a b hr hb hT =>
+      exact ⟨heap', hAt', hR.top, hCaps', fun a b hr hb hT =>
         hFrame' (a, b) hr hb fun x hx => hT x.1 x.2 hx⟩
     | cons item rest =>
       obtain ⟨q, qslots⟩ := item
@@ -1240,5 +1242,20 @@ theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = []
           simp only [ReleaseVars.atPlace]
           rw [hPend']
           exact hR'⟩
+
+theorem release_tree_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (releaseFunction typeIdx)) (env : HostEnv Unit) (heap : Heap)
+    (store : Store Unit) (p : UInt64) (n : Node) (hHeap : heap.At store)
+    (hOwned : NodeOwned heap store p n) (hDisjoint : (n.blocks store p).Pairwise regionsDisjoint) :
+    TerminatesWith env m 1 store [.i64 p] fun final out => out = [] ∧
+      ∃ heap' : Heap, heap'.At final ∧ final.memoryCaps = store.memoryCaps ∧
+        ∀ r, heap.Region r → 0 < r.2 → (∀ b ∈ n.blocks store p, regionsDisjoint r b) →
+          (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
+            heap'.Region r :=
+  (release_tree_run_top hImports hFunc env heap store p n hHeap hOwned hDisjoint).mono
+    fun _ _ ⟨hOut, heap', hAt, _, hCaps, hRegion⟩ =>
+      ⟨hOut, heap', hAt, hCaps, hRegion⟩
+
+#print axioms release_tree_run_top
 
 end LeanExe.Pipeline
