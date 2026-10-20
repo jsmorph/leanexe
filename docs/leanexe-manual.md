@@ -377,7 +377,7 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 | `array-u64` | The elements, as `[a, b, …]`. |
 | `chain-u64`, `tree-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header. |
 | `file-u64:PATH` | The array, written to a file. |
-| `list:K1,K2,…` | Several results, one line each. |
+| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, or `tree-u64`. |
 | `slots:N` | `N` words on one line. |
 | `bytes` | Two results, a pointer and a length, printed as the bytes in hexadecimal. |
 

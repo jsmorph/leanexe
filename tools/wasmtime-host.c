@@ -745,6 +745,11 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
           printf("%" PRIu64, read_u64_at(runtime, ptr + 8 + j * 8));
         }
         printf("]\n");
+      } else if (strcmp(kind, "chain-u64") == 0) {
+        if (!runtime->has_memory) {
+          die("List UInt64 result requires exported memory");
+        }
+        print_u64_chain(runtime, (uint64_t)results[i].of.i64);
       } else if (strcmp(kind, "tree-u64") == 0) {
         if (!runtime->has_memory) {
           die("tree result requires exported memory");
