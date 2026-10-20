@@ -95,6 +95,26 @@ theorem RecordStorage.frame {shape : TreeShape} {heap heap' : Heap}
   change store'.mem.bytes (p.toNat - 48 + i) = store.mem.bytes (p.toNat - 48 + i)
   exact hBytes _ (by omega) (by omega)
 
+def recordHeaderWrite (store : Store Unit) (p back value : UInt64) : Store Unit :=
+  { store with mem := store.mem.write64 (p - back).toUInt32 value }
+
+theorem RecordStorage.writeHeader {shape : TreeShape} {heap : Heap} {store : Store Unit}
+    {p back value : UInt64} (h : RecordStorage shape heap store p) (hHeap : heap.At store)
+    (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40) :
+    heap.At (recordHeaderWrite store p back value) ∧
+      RecordStorage shape heap (recordHeaderWrite store p back value) p ∧
+      capacityAt (recordHeaderWrite store p back value) p = capacityAt store p := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hBounds : 8 ≤ back.toNat ∧ back.toNat ≤ 40 ∧ (back.toNat ≤ 24 ∨ back.toNat = 40) := by
+    rcases hBack with rfl | rfl | rfl | rfl <;> decide
+  have hAddr : (p - back).toUInt32.toNat = p.toNat - back.toNat :=
+    headerAddress_toNat (by omega) (by omega)
+  apply h.write hHeap
+    (Memory.WritesRange.write64 _ _ _ (p.toNat - back.toNat) (p.toNat - back.toNat + 8)
+      (by rw [hAddr]) (by rw [hAddr]))
+  all_goals omega
+
 theorem RecordStorage.record {shape : TreeShape} {heap : Heap} {store : Store Unit}
     {p : UInt64} {slots : List Slot} (h : RecordStorage shape heap store p)
     (hLength : slots.length = shape.fields.length)
@@ -112,5 +132,6 @@ theorem RecordStorage.record {shape : TreeShape} {heap : Heap} {store : Store Un
 #print axioms RecordStorage.write
 #print axioms RecordStorage.record
 #print axioms RecordStorage.frame
+#print axioms RecordStorage.writeHeader
 
 end Verified
