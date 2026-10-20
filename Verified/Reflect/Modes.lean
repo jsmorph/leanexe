@@ -84,6 +84,11 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
     let inner := shift 1 (shift 2 all)
     let state := owned || body.demands inner false 1 || body.mode [.borrowed] == .owned
     init.demands all state k || body.demands inner state (k + 3)
+  | _, _, .listFold (e := e) (captures := captures) args _, live, _, k =>
+    argsAny fun i =>
+      if ((ListFold.params e captures).get i).scalar then
+        (args i).demands (fun j => live j || argsAny fun j' => (args j').uses j) false k
+      else false
   | _, _, .get x i, live, _, k => i.demands (fun j => live j || j == x.index) false k
   | _, _, .build count elem, live, _, k =>
     let all := fun i => live i || elem.uses (i + 1)

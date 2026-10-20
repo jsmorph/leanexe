@@ -42,8 +42,39 @@ def change (mode : Mode) : Func S :=
     params := [.word, .tree listShape], result := .tree listShape
     modes := [.borrowed, mode], body := changeExpr, placeArgs := rfl }
 
+def foldWord (mode : Mode) : Func S :=
+  { name := if mode = .owned then "foldWordOwned" else "foldWord"
+    params := [.tree listShape, .word], result := .word
+    modes := [mode, .borrowed]
+    body := .listFold (e := .word) (captures := [])
+      (Args.cons (.v 0) (.cons (.v 1) .nil)).get
+      (.bin .add (.bin .mul (.v 4) (.word 3)) (.v 1))
+    placeArgs := rfl }
+
+def foldLookup (mode : Mode) : Func S :=
+  { name := if mode = .owned then "foldLookupOwned" else "foldLookup"
+    params := [.tree listShape, .word, .array .word], result := .word
+    modes := [mode, .borrowed, mode]
+    body := .listFold (e := .word) (captures := [.array .word])
+      (Args.cons (.v 0) (.cons (.v 1) (.cons (.v 2) .nil))).get
+      (.bin .add (.v 4) (.get (Var.ofIndex _ 5 rfl) (.v 1)))
+    placeArgs := rfl }
+
+def foldBuild (mode : Mode) : Func S :=
+  { name := if mode = .owned then "foldBuildOwned" else "foldBuild"
+    params := [.tree listShape, .word], result := .word
+    modes := [mode, .borrowed]
+    body := .listFold (e := .word) (captures := [])
+      (Args.cons (.v 0) (.cons (.v 1) .nil)).get
+      (.letE (.build (.word 2) (.bin .add (.v 0) (.v 2)))
+        (.bin .add (.v 5) (.get .here (.word 1))))
+    placeArgs := rfl }
+
 def prog :=
-  Prog.cons (change .owned) <| .cons (change .borrowed) <|
+  Prog.cons (foldBuild .owned) <| .cons (foldBuild .borrowed) <|
+  .cons (foldLookup .owned) <| .cons (foldLookup .borrowed) <|
+  .cons (foldWord .owned) <| .cons (foldWord .borrowed) <|
+  .cons (change .owned) <| .cons (change .borrowed) <|
   .cons (duplicate .owned) <| .cons (duplicate .borrowed) <|
   .cons (rebuild .owned) <| .cons (rebuild .borrowed) <|
   .cons (rest .owned) <| .cons (rest .borrowed) <|

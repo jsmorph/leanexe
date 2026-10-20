@@ -1,13 +1,18 @@
 import Verified.ContextAppend
-import Verified.TreeFold
+import Verified.ListFoldDefs
 import Verified.Rename
 
 namespace Verified
 
-def Args.vars {S : List Sig} {Γ : List Ty} :
-    (ps : List Ty) → Renaming ps Γ → Args S Γ ps
-  | [], _ => .nil
-  | _ :: ps, vars => .cons (.var (vars .here)) (Args.vars ps fun x => vars (.there x))
+theorem Args.vars_get_ofFin {S : List Sig} {Γ : List Ty} (ps : List Ty)
+    (vars : Renaming ps Γ) (i : Fin ps.length) :
+    (Args.vars (S := S) ps vars).get i = .var (vars (Var.ofFin ps i)) := by
+  induction ps with
+  | nil => exact Fin.elim0 i
+  | cons p ps ih =>
+    refine Fin.cases ?_ (fun j => ?_) i
+    · rfl
+    · exact ih (fun x => vars (.there x)) j
 
 theorem Args.vars_get_image {S : List Sig} {Γ : List Ty} (ps : List Ty)
     (vars : Renaming ps Γ) (i : Fin ps.length) :
@@ -40,23 +45,23 @@ theorem Args.vars_denote {S : List Sig} {Γ : List Ty} (ps : List Ty)
 
 namespace ListFold
 
-abbrev params (e : Elem) (captures : List Ty) : List Ty :=
-  .tree listShape :: .elem e :: captures
+theorem nextArgs_get {S : List Sig} (e : Elem) (captures : List Ty)
+    (i : Fin (params e captures).length) :
+    (nextArgs (S := S) e captures).get i = .var (nextVar e captures i) := by
+  refine Fin.cases ?_ (fun j => ?_) i
+  · rfl
+  · refine Fin.cases ?_ (fun k => ?_) j
+    · rfl
+    · exact Args.vars_get_ofFin captures _ k
 
-abbrev context (e : Elem) (captures : List Ty) : List Ty :=
-  listShape.context (params e captures)
-
-def nextArgs {S : List Sig} (e : Elem) (captures : List Ty) :
-    Args S (.elem e :: context e captures) (params e captures) :=
-  .cons (.var (.there (.there (.there .here))))
-    (.cons (.var .here)
-      (Args.vars captures fun x => x.suffix
-        [.elem e, .treeHeader listShape, .word, .tree listShape, .tree listShape, .elem e]))
-
-def tailBody {S : List Sig} {e : Elem} {captures : List Ty}
-    (body : Expr S (context e captures) (.elem e)) :
-    TailBody S (params e captures) (.elem e) (params e captures) :=
-  .treeCase .here (.ret (.var (.there .here))) (.letE body (.next (nextArgs e captures).get))
+theorem next_uses {S : List Sig} {e : Elem} {captures : List Ty} (i : Nat) :
+    (TailBody.next (result := .elem e) (nextArgs (S := S) e captures).get).uses (i + 1) =
+      bodyLive e captures i := by
+  simp only [TailBody.uses, bodyLive]
+  congr 1
+  funext j
+  rw [nextArgs_get]
+  rfl
 
 theorem nextArgs_get_var {S : List Sig} (e : Elem) (captures : List Ty)
     (i : Fin (params e captures).length) :
@@ -66,14 +71,6 @@ theorem nextArgs_get_var {S : List Sig} (e : Elem) (captures : List Ty)
   · refine Fin.cases ?_ (fun k => ?_) j
     · exact ⟨.here, rfl⟩
     · exact Args.vars_get_var captures _ k
-
-def meaning {S : List Sig} {e : Elem} {captures : List Ty}
-    (body : Expr S (context e captures) (.elem e)) (funs : Funs S) :
-    Env (params e captures) → e.denote
-  | .cons root (.cons init captured) =>
-    root.foldlWith (fun cell head tail acc =>
-      body.denote funs (Env.treeFields listShape (fun _ => head) (fun _ => tail)
-        (.cons cell (.cons acc captured)))) init
 
 theorem nextArgs_denote {S : List Sig} {e : Elem} {captures : List Ty}
     (funs : Funs S) (root tail : Tree listShape) (head : UInt64)
@@ -136,7 +133,7 @@ theorem fixed {S : List Sig} {e : Elem} {captures : List Ty}
       cases root with
       | nil => rfl
       | node words children =>
-        simp only [meaning, Sum.elim_inl]
+        simp only [meaning, denoteWith, Sum.elim_inl]
         congr 2
 
 theorem decreases {S : List Sig} {e : Elem} {captures : List Ty}

@@ -53,7 +53,7 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
     obtain ⟨i, hi⟩ := argsAny_true.mp hk
     simp only [Bool.and_eq_true] at hi
     exact hUses i k hi.1.2
-  simp only [TailBody.code, Expr.usesFast_eq, List.append_assoc]
+  simp only [TailBody.code, TailBody.codeWith, Expr.usesFast_eq, List.append_assoc]
   refine args_spec hm (paid := paid) (all := all) (kept := kept) (d := d) (a := a)
     g.mode args argsSpec hUses
     hKept (fun i hi => paramMode_owned hi) (fun i hs hi => (hProps.2.2 i hs hi).1)

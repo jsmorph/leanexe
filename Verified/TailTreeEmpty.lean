@@ -50,7 +50,7 @@ theorem tail_treeCase_empty {S : List Sig} {Γ params : List Ty} {result : Ty}
       TailBody.allocs, TailBody.fits, hNil, L0, outer] using hTrap
   have hValue : empty.denote funs env = outer.denote funs env := by
     simp only [outer, TailBody.denote, hNil]
-  simp only [TailBody.code, TailBody.usesFast_eq, List.append_assoc, List.cons_append,
+  simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq, List.append_assoc, List.cons_append,
     List.nil_append, wp_localGet_cons, hGet, wp_eqzI64_cons]
   rw [wp_iff_control_types]
   refine wp_iff_cons rfl ?_

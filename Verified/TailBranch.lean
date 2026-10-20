@@ -37,7 +37,7 @@ theorem tail_ite_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
   simp only [TailBody.width] at hRoom
   simp only [TailBody.placeArgs, Bool.and_eq_true] at hPlace
   obtain ⟨⟨hCondPlace, hYesPlace⟩, hNoPlace⟩ := hPlace
-  simp only [TailBody.code, TailBody.usesFast_eq]
+  simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq]
   refine condSpec env slots paid mid h base heap store s hh hpv
     (hVars.live_mono fun i hi => by rw [← hCond]; exact hi) hAt hCap (by omega)
     (by omega) hCondPlace _ _

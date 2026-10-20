@@ -230,7 +230,19 @@ their constructor cases.  [Generated branch equations](Reflect/RecursiveMatch.le
 denotation, allocation bounds, and frames conditions.  The
 [native-type example](Examples/RecursiveTypes.lean) checks the existing `Words` and `KeyTree`
 layouts, including subtree release and header reuse.  Native tail matching uses the same field
-context and branch equations as expression matching.  List folds remain pending.
+context and branch equations as expression matching.
+
+The typed `Expr.listFold` traverses a list with a scalar accumulator and borrowed captures.
+Its state contains the list pointer, accumulator, and captures.  Null returns the accumulator,
+and a record supplies the head and next pointer for a step.  A structural tree measure proves
+termination.  The [tail-code generator](Compile.lean) accepts the step's expression code, so
+folds and tail functions share their control instructions.  The
+[expression rule](ListFoldCorrect.lean) composes argument evaluation, the
+[loop rule](ListFoldLoop.lean), and release of owned outer values after the fold.
+[Resource equations](ListFoldResource.lean) sum the step's allocation charges and frames
+conditions along the traversal.  [Fold agreement](TreeFold.lean) proves the full Lean
+`List.foldl` meaning under the accumulator encoding.  Reflection of ordinary `List.foldl`
+remains pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
@@ -239,8 +251,10 @@ and header allocation from memory reused after releasing a list.
 [copy test module](Examples/TreeCopy.lean) with native Lean and checks allocation and live-block counts.
 The [typed constructor and matching module](Examples/TreeCore.lean) derives its correctness from
 the universal compiler theorem.  Its [cases](Examples/TreeCases.lean) exercise owned and borrowed
-construction, field access, rebuilding, duplication, and word updates, including retained aliases
-and last-use header reuse.  `tests/verified/run.sh --cases treecore` runs those cases.
+construction, field access, rebuilding, duplication, word updates, and typed folds, including
+retained aliases and last-use header reuse.  The fold cases cover wrapping arithmetic, captured
+array reads, per-step allocation, and release of owned inputs.  `tests/verified/run.sh --cases treecore`
+runs those cases.
 The [list-tail cases](Examples/ListTailCases.lean) check borrowed summation and consumed reversal
 through 4,096 cells, beyond the guarded call-depth limit.  Reversal reuses each matched header.
 `tests/verified/run.sh --cases listtail` checks their results, allocations, and retained blocks.
