@@ -37,6 +37,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Fold:compiled.module:fold \
     Verified.Examples.TailCore:module:tailcore \
     Verified.Examples.TreeCopy:module:treecopy \
+    Verified.Examples.TreeCore:module:treecore \
     Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.TailConditions:compiled.module:tailconditions \
     Verified.Examples.Gpt:compiled.module:gpt \
@@ -145,6 +146,9 @@ cases_source=Verified/Examples/Cases.lean
 if [ "$case_module" = "treecopy" ]; then
   cases_module=Verified.Examples.TreeCopyCasesMain
   cases_source=Verified/Examples/TreeCopyCasesMain.lean
+elif [ "$case_module" = "treecore" ]; then
+  cases_module=Verified.Examples.TreeCasesMain
+  cases_source=Verified/Examples/TreeCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

@@ -14,8 +14,8 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
     (heap : Heap) (store : Store Unit) (s : Locals) (ws : List Value)
     (hh : s.positions = h) (hpv : s.params = pv)
     (hRep : Env.Rep (paramMode func.params func.modes) heap store ws env)
-    (hSep : Separate store (Env.moves (paramMode func.params func.modes) ws env)
-      (Env.reads (paramMode func.params func.modes) ws env))
+    (hSep : Separate store (Env.moves store (paramMode func.params func.modes) ws env)
+      (Env.reads store (paramMode func.params func.modes) ws env))
     (hold : LocalsHold s stateBase (func.params.flatMap Ty.types) ws)
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
     (hLow : s.params.length ≤ stateBase)
@@ -27,7 +27,7 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
         (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
         ws env + func.bound funs flags bounds env)))) Q)
     (hNext : ∀ heap' store' s' words,
-      Step heap store (Apart store (Env.moves (paramMode func.params func.modes) ws env))
+      Step heap store (Apart store (Env.moves store (paramMode func.params func.modes) ws env))
         heap' store' (func.result.blocks store' words (meaning env)) →
       Frame stateBase s s' → func.result.Rep .owned heap' store' words (meaning env) →
       LocalsHold s' resultBase func.result.types words →
@@ -46,16 +46,16 @@ theorem tail_loop_spec {S : List Sig} {m : Module} {funs : Funs S} {flags : Flag
   let pf := func.paidParams flags
   let sel := fun i => paidAt pf i && paramMode func.params func.modes i == .owned
   let budget := heap.top.toNat + Env.argPot store sel ws env + func.bound funs flags bounds env
-  let keep := Apart store (Env.moves (paramMode func.params func.modes) ws env)
+  let keep := Apart store (Env.moves store (paramMode func.params func.modes) ws env)
   let Inv : (Env func.params × Heap × List Value) → AssertionF Unit := fun q st ss =>
     let state := q.1
     let hp := q.2.1
     let words := q.2.2
     Step heap store keep hp st
-        ((Env.moves (paramMode func.params func.modes) words state).map (block st)) ∧
+        ((Env.moves st (paramMode func.params func.modes) words state).map (block st)) ∧
       Env.Rep (paramMode func.params func.modes) hp st words state ∧
-      Separate st (Env.moves (paramMode func.params func.modes) words state)
-        (Env.reads (paramMode func.params func.modes) words state) ∧
+      Separate st (Env.moves st (paramMode func.params func.modes) words state)
+        (Env.reads st (paramMode func.params func.modes) words state) ∧
       LocalsHold ss stateBase (func.params.flatMap Ty.types) words ∧
       Frame stateBase s ss ∧ ss.values = s.values ∧ meaning state = meaning env ∧
       (func.fits funs fits env = true → func.fits funs fits state = true ∧

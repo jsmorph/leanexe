@@ -250,11 +250,11 @@ theorem args_moves_apart_kept {S : List Sig} {Γ ps : List Ty} {funs : Funs S}
       Holds.KeepDying env slots
         (fun k => argsAny fun i => modes i == .owned && (args i).uses k && !kept k)
         (fun _ => false) store s r →
-      Apart store1 (Env.moves modes words (Env.ofFn fun i => (args i).denote funs env)) r) :
+      Apart store1 (Env.moves store1 modes words (Env.ofFn fun i => (args i).denote funs env)) r) :
     ∀ (t : Ty) (x : Var Γ t), kept x.index = true →
       ∀ wx, LocalsHold s1 (slots.getD x.index default).loc t.types wx → wx.length = t.width →
       ∀ r ∈ t.regions (slots.getD x.index default).mode store1 wx (env.get x),
-        Apart store1 (Env.moves modes words (Env.ofFn fun i => (args i).denote funs env)) r := by
+        Apart store1 (Env.moves store1 modes words (Env.ofFn fun i => (args i).denote funs env)) r := by
   intro t x hx wx hold length r hr
   have hxAll := keptAll _ hx
   have hold' := (vars.hold_agree frame hxAll length).mp hold

@@ -2,6 +2,7 @@ import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
+import Verified.Tree
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
@@ -148,6 +149,8 @@ inductive Ty where
   | elem (e : Elem)
   | pair (first second : Ty)
   | array (e : Elem)
+  | tree (shape : TreeShape)
+  | treeHeader (shape : TreeShape)
   deriving Repr, DecidableEq, Inhabited
 
 @[match_pattern] abbrev Ty.word : Ty := .elem .word
@@ -168,6 +171,8 @@ abbrev Ty.denote : Ty → Type
   | .elem e => e.denote
   | .pair a b => a.denote × b.denote
   | .array e => Array e.denote
+  | .tree shape => Tree shape
+  | .treeHeader shape => TreeHeader shape
 
 /-- Lean's default value of an element type, which a read past the end of an array gives. -/
 instance Elem.instInhabited : (e : Elem) → Inhabited e.denote
@@ -221,13 +226,15 @@ def Path.offset : {e e' : Elem} → Path e e' → Nat
 def Ty.width : Ty → Nat
   | .elem e => e.width
   | .array _ => 1
+  | .tree _ | .treeHeader _ => 1
   | .pair a b => a.width + b.width
 
-/-- Whether a type holds no arrays. -/
+/-- Whether a value needs no heap storage. -/
 def Ty.scalar : Ty → Bool
   | .elem _ => true
   | .pair a b => a.scalar && b.scalar
   | .array _ => false
+  | .tree _ | .treeHeader _ => false
 
 /-- A variable of type `t` in the context `Γ`, by its distance from the front of `Γ`. -/
 inductive Var : List Ty → Ty → Type where
@@ -264,16 +271,27 @@ def Env.prependRepeat (t : Ty) : (n : Nat) → (Fin n → t.denote) → Env Γ �
   | n + 1, values, env =>
     .cons (values 0) (prependRepeat t n (fun i => values i.succ) env)
 
+def TreeShape.bindCount (shape : TreeShape) : Nat := 1 + shape.words + shape.children
+
+def TreeShape.context (shape : TreeShape) (Γ : List Ty) : List Ty :=
+  .treeHeader shape :: (List.replicate shape.words .word ++
+    (List.replicate shape.children (.tree shape) ++ Γ))
+
+def Env.treeFields (shape : TreeShape) (words : Fin shape.words → UInt64)
+    (children : Fin shape.children → Tree shape) (env : Env Γ) : Env (shape.context Γ) :=
+  .cons .unit (prependRepeat .word shape.words words
+    (prependRepeat (.tree shape) shape.children children env))
+
 /-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
 which its holder must consume. -/
 inductive Mode where
   | borrowed | owned
   deriving DecidableEq, Repr, Inhabited
 
-/-- The mode of a parameter of type `t` for which the mode `m` was chosen: only an array
-parameter is owned. -/
+/-- The chosen mode for an array, tree, or tree-header parameter.  Other parameters are borrowed. -/
 def Ty.paramMode : Ty → Mode → Mode
   | .array _, m => m
+  | .tree _, m | .treeHeader _, m => m
   | _, _ => .borrowed
 
 /-- The modes of parameters of types `ts` for which the modes `ms` were chosen, in order, a missing
@@ -357,6 +375,12 @@ floats.  `mk first second` is the tuple of two elements, and
 inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | word (value : UInt64) : Expr S Γ .word
   | bool (value : Bool) : Expr S Γ .bool
+  | treeNil (shape : TreeShape) : Expr S Γ (.tree shape)
+  | treeNode {shape : TreeShape} (reuse : Option (Var Γ (.treeHeader shape)))
+      (words : Fin shape.words → Expr S Γ .word)
+      (children : Fin shape.children → Expr S Γ (.tree shape)) : Expr S Γ (.tree shape)
+  | treeCase {shape : TreeShape} (x : Var Γ (.tree shape)) (empty : Expr S Γ t)
+      (node : Expr S (shape.context Γ) t) : Expr S Γ t
   | var (x : Var Γ t) : Expr S Γ t
   | bin (op : BinOp) (left right : Expr S Γ .word) : Expr S Γ .word
   | cmp (op : CmpOp) (left right : Expr S Γ .word) : Expr S Γ .bool
@@ -446,6 +470,13 @@ def Expr.denote (funs : Funs S) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → t.denote
   | _, _, .word value, _ => value
   | _, _, .bool value, _ => value
+  | _, _, .treeNil _, _ => .nil
+  | _, _, .treeNode _ words children, env =>
+    .node (fun i => (words i).denote funs env) (fun i => (children i).denote funs env)
+  | _, _, .treeCase x empty node, env =>
+    match env.get x with
+    | .nil => empty.denote funs env
+    | .node words children => node.denote funs (env.treeFields _ words children)
   | _, _, .var x, env => env.get x
   | _, _, .bin op left right, env => op.apply (left.denote funs env) (right.denote funs env)
   | _, _, .cmp op left right, env => op.apply (left.denote funs env) (right.denote funs env)
@@ -529,6 +560,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
   | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
+  | _, _, .treeNil _ | _, _, .treeNode _ _ _ | _, _, .treeCase _ _ _ => true
 
 /-- Whether an expression calls a function whose code takes the call depth. -/
 def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
@@ -558,6 +590,20 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .eraseAt _ i => i.depthCalls
   | _, _, .push _ v => v.depthCalls
   | _, _, .append _ _ => false
+  | _, _, .treeNil _ => false
+  | _, _, .treeNode _ words children =>
+    (argsAny fun i => (words i).depthCalls) || argsAny fun i => (children i).depthCalls
+  | _, _, .treeCase _ empty node => empty.depthCalls || node.depthCalls
+
+def optionVarUses (value : Option (Var Γ t)) (i : Nat) : Bool :=
+  match value with
+  | none => false
+  | some x => i == x.index
+
+def optionVarMask (value : Option (Var Γ t)) : Nat :=
+  match value with
+  | none => 0
+  | some x => 1 <<< x.index
 
 /-- The variables that an expression reads, by index. -/
 def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
@@ -590,6 +636,12 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .eraseAt x k, i => i == x.index || k.uses i
   | _, _, .push x v, i => i == x.index || v.uses i
   | _, _, .append x y, i => i == x.index || i == y.index
+  | _, _, .treeNil _, _ => false
+  | _, _, .treeNode reuse words children, i =>
+    optionVarUses reuse i || (argsAny fun j => (words j).uses i) ||
+      argsAny fun j => (children j).uses i
+  | _, _, .treeCase (shape := shape) x empty node, i =>
+    (i == x.index) || empty.uses i || node.uses (i + shape.bindCount)
 
 /-- The union of the bitmasks `b i`, as `argsAny` is the disjunction of the values. -/
 def argsMask : {n : Nat} → ((i : Fin n) → Nat) → Nat
@@ -631,6 +683,12 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .eraseAt x k => 1 <<< x.index ||| k.useMask
   | _, _, .push x v => 1 <<< x.index ||| v.useMask
   | _, _, .append x y => 1 <<< x.index ||| 1 <<< y.index
+  | _, _, .treeNil _ => 0
+  | _, _, .treeNode reuse words children =>
+    optionVarMask reuse ||| (argsMask fun j => (words j).useMask) |||
+      argsMask fun j => (children j).useMask
+  | _, _, .treeCase (shape := shape) x empty node =>
+    (1 <<< x.index) ||| empty.useMask ||| node.useMask >>> shape.bindCount
 
 /-- `Expr.uses` read from `Expr.useMask`, which the code generator calls. -/
 def Expr.usesFast (e : Expr S Γ t) (i : Nat) : Bool := e.useMask.testBit i
@@ -647,11 +705,16 @@ theorem argsMask_testBit : {n : Nat} → (b : (i : Fin n) → Nat) → (i : Nat)
   | _ + 1, b, i => by
     simp only [argsMask, argsAny, Nat.testBit_or, argsMask_testBit (fun j => b j.succ) i]
 
+theorem optionVarMask_testBit (value : Option (Var Γ t)) (i : Nat) :
+    (optionVarMask value).testBit i = optionVarUses value i := by
+  cases value <;> simp [optionVarMask, optionVarUses, testBit_one_shiftLeft,
+    -Nat.testBit_shiftLeft]
+
 theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     e.usesFast i = e.uses i := by
   unfold Expr.usesFast
   induction e generalizing i with
-  | word | bool | float | float32 => simp [Expr.useMask, Expr.uses]
+  | word | bool | float | float32 | treeNil => simp [Expr.useMask, Expr.uses]
   | var x | proj x _ | size x =>
     simp [Expr.useMask, Expr.uses, testBit_one_shiftLeft, -Nat.testBit_shiftLeft]
   | call f args ih =>
@@ -659,6 +722,9 @@ theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     congr 1
     funext j
     exact ih j i
+  | treeNode reuse words children wordIh childIh =>
+    simp_all only [Expr.useMask, Expr.uses, Nat.testBit_or, argsMask_testBit,
+      optionVarMask_testBit]
   | _ =>
     simp_all [Expr.useMask, Expr.uses, Nat.testBit_or, Nat.testBit_shiftRight,
       testBit_one_shiftLeft, Nat.add_comm, -Nat.testBit_shiftLeft]
@@ -708,6 +774,10 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .eraseAt _ i => i.placeArgs
   | _, _, .push _ v => v.placeArgs
   | _, _, .append _ _ => true
+  | _, _, .treeNil _ => true
+  | _, _, .treeNode _ words children =>
+    !(argsAny fun i => !(words i).placeArgs) && !(argsAny fun i => !(children i).placeArgs)
+  | _, _, .treeCase _ empty node => empty.placeArgs && node.placeArgs
 
 /-- A function named `name`, whose parameters have the types `params`, in order, and whose body
 has type `result` and may call the functions `S`.  Parameter `i` is variable `i` of the body, held
@@ -756,6 +826,10 @@ def Mode.join : Mode → Mode → Mode
   | .borrowed, .borrowed => .borrowed
   | _, _ => .owned
 
+def TreeShape.modes (shape : TreeShape) (mode : Mode) (modes : List Mode) : List Mode :=
+  mode :: (List.replicate shape.words .borrowed ++
+    (List.replicate shape.children mode ++ modes))
+
 /-- The mode of an expression's value, given the modes of the variables: owned when it holds
 arrays that its holder must consume, which a call's result, a built, updated, or extended array, a
 moved or copied variable, and a join of an owned value do. -/
@@ -772,6 +846,9 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: modes))
   | _, _, .fold _ init body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
+  | _, _, .treeNil _ | _, _, .treeNode _ _ _ => .owned
+  | _, _, .treeCase (shape := shape) x empty node =>
+    (empty.mode modes).join (node.mode (shape.modes (modes.getD x.index .borrowed) modes))
   | _, _, _ => .borrowed
 
 inductive TailBody (S : List Sig) (params : List Ty) (result : Ty) : List Ty → Type where
@@ -873,6 +950,8 @@ instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
   | .elem e => e.instInhabited
   | .pair a b => ⟨(@default _ (Ty.instInhabited a), @default _ (Ty.instInhabited b))⟩
   | .array _ => ⟨#[]⟩
+  | .tree _ => ⟨.nil⟩
+  | .treeHeader _ => ⟨.unit⟩
 
 /-- Whether a program has no recursive function. -/
 def Prog.recFree : {S : List Sig} → Prog S → Bool

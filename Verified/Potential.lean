@@ -37,6 +37,7 @@ def arrayPot (store : Store Unit) (ptr : UInt64) (n : Nat) : Nat :=
 /-- The potential of the arrays of a value with the words `ws`. -/
 def Ty.pot (store : Store Unit) : (t : Ty) → List Value → t.denote → Nat
   | .elem _, _, _ => 0
+  | .tree _, _, _ | .treeHeader _, _, _ => 0
   | .pair a b, ws, p => a.pot store (ws.take a.width) p.1 + b.pot store (ws.drop a.width) p.2
   | .array e, ws, xs => match ws with
     | [.i64 ptr] => arrayPot store ptr (e.words xs).size
@@ -48,6 +49,7 @@ theorem Ty.pot_le_credit {heap : Heap} {store : Store Unit} :
     (t : Ty) → (ws : List Value) → (v : t.denote) → t.Rep .owned heap store ws v →
       t.pot store ws v ≤ t.credit v
   | .elem _, _, _, _ => Nat.le_refl 0
+  | .tree _, _, _, _ | .treeHeader _, _, _, _ => Nat.le_refl 0
   | .pair a b, _, p, ⟨first, second, h, ha, hb, _⟩ => by
     subst h
     simp only [Ty.pot, Ty.credit, List.take_left' ha.length, List.drop_left' ha.length]
@@ -116,9 +118,14 @@ theorem Ty.blocks_length (store store' : Store Unit) :
   | .elem _, _, _ => rfl
   | .pair a b, _, _ => by
     simp [Ty.blocks, Ty.blocks_length store store' a, Ty.blocks_length store store' b]
-  | .array _, ws, _ => by
+  | .array _, ws, _ | .treeHeader _, ws, _ => by
     simp only [Ty.blocks]
     split <;> rfl
+  | .tree _, ws, value => by
+    simp only [Ty.blocks]
+    split
+    · rw [Node.blocks_length, Node.blocks_length]
+    · rfl
 
 /-- A change of store that keeps a value's blocks keeps its potential, since the blocks hold the
 capacities. -/
@@ -126,6 +133,7 @@ theorem Ty.pot_of_blocks {store store' : Store Unit} :
     (t : Ty) → (ws : List Value) → (v : t.denote) →
     t.blocks store' ws v = t.blocks store ws v → t.pot store' ws v = t.pot store ws v
   | .elem _, _, _, _ => rfl
+  | .tree _, _, _, _ | .treeHeader _, _, _, _ => rfl
   | .pair a b, _, _, h => by
     simp only [Ty.blocks] at h
     obtain ⟨h1, h2⟩ := List.append_inj h (Ty.blocks_length store store' a _ _)

@@ -89,6 +89,14 @@ def pathExpr : Elem → List Bool → MetaM (Lean.Expr × Elem)
     return (mkApp4 (mkConst ``Path.snd) (elemExpr b) (elemExpr t) (elemExpr a) p, t)
   | _, _ :: _ => throwError "verified_compile: a projection of an element that is not a tuple"
 
+def reflectedTreeShape (fields : List Bool)
+    (valid : decide (fields ≠ [] ∧ fields.length ≤ 64) = true) : TreeShape :=
+  ⟨fields, (of_decide_eq_true valid).1, (of_decide_eq_true valid).2⟩
+
+def treeShapeExpr (shape : TreeShape) : Lean.Expr :=
+  mkApp2 (mkConst ``reflectedTreeShape) (toExpr shape.fields)
+    (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
   | .bool => mkConst ``Ty.bool
@@ -97,6 +105,8 @@ def tyExpr : Ty → Lean.Expr
   | .float32 => mkConst ``Ty.float32
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
+  | .tree shape => mkApp (mkConst ``Ty.tree) (treeShapeExpr shape)
+  | .treeHeader shape => mkApp (mkConst ``Ty.treeHeader) (treeShapeExpr shape)
 
 /-- How a Lean type is flattened into a source type: the source type, and the function `φ` from
 the Lean type to the source type's meaning, `none` for the identity.  A structure with a `Flat`
@@ -1080,6 +1090,7 @@ partial def ValueCost.eq (k : ValueCost) (base : Name) (t : Ty) (v u : Lean.Expr
   let lhs := mkApp2 (mkConst k.fn) (tyExpr t) v
   match t with
   | .elem _ => return (natZero, ← evalEq lhs natZero)
+  | .tree _ | .treeHeader _ => return (lhs, ← mkEqRefl lhs)
   | .array e =>
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
     let w ← evalNat width
@@ -1555,7 +1566,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           some (toExpr bits), some e, some h]
         return ⟨src, proof, .float32, e, leafBound c ``float32_bound [(`bits, toExpr bits)],
           leafFits c src⟩
-    | .elem (.prod _ _) | .pair _ _ | .array _ => pure ()
+    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ => pure ()
   -- A named constant that holds no array is its value, which the kernel unfolds to it.
   if let .const name lvls := e then
     if let .defnInfo info ← getConstInfo name then

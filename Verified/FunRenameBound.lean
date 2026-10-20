@@ -37,7 +37,7 @@ theorem Expr.grows_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (flags : Flags S) (target : Flags T)
     (params : ∀ {g : Sig} (f : FVar S g), target.params (ρ f) = flags.params f)
     (e : Expr S Γ t) : (e.renameFuns ρ).grows target = e.grows flags := by
-  induction e <;> simp_all [Expr.renameFuns, Expr.grows]
+  induction e <;> simp_all only [Expr.renameFuns, Expr.grows, params]
 
 theorem Expr.foldStep_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (x : Var Γ (.array e)) (body : Expr S (.elem e :: t :: .word :: Γ) t) :

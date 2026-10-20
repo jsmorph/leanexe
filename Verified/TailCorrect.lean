@@ -13,14 +13,14 @@ def TailRep {params : List Ty} {result : Ty} (modes : List Mode)
     (words : List Value) : Sum (Env params) result.denote → Prop
   | .inl state =>
     Env.Rep (paramMode params modes) heap store words state ∧
-      Separate store (Env.moves (paramMode params modes) words state)
-        (Env.reads (paramMode params modes) words state) ∧
+      Separate store (Env.moves store (paramMode params modes) words state)
+        (Env.reads store (paramMode params modes) words state) ∧
       LocalsHold s stateBase (params.flatMap Ty.types) words
   | .inr value => result.Rep .owned heap store words value ∧ LocalsHold s resultBase result.types words
 
 def tailFresh {params : List Ty} {result : Ty} (modes : List Mode) (store : Store Unit)
     (words : List Value) : Sum (Env params) result.denote → List (Nat × Nat)
-  | .inl state => (Env.moves (paramMode params modes) words state).map (block store)
+  | .inl state => (Env.moves store (paramMode params modes) words state).map (block store)
   | .inr value => result.blocks store words value
 
 def tailPot {params : List Ty} {result : Ty} (modes : List Mode) (paid : List Bool) (resultPaid : Bool)

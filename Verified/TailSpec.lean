@@ -49,13 +49,13 @@ theorem TailFunc.function_depth {S : List Sig} (func : TailFunc S)
     change depth = d at hd
     subst hd
     obtain ⟨ws, rfl, rep⟩ := Env.rep_depth.mp hRep
-    have separate : Separate store (Env.moves (paramMode func.params func.modes) ws args)
-        (Env.reads (paramMode func.params func.modes) ws args) := by
+    have separate : Separate store (Env.moves store (paramMode func.params func.modes) ws args)
+        (Env.reads store (paramMode func.params func.modes) ws args) := by
       have hs := hSep
       change Separate store
-        (Env.moves (paramMode (.word :: func.params) (.borrowed :: func.modes))
+        (Env.moves store (paramMode (.word :: func.params) (.borrowed :: func.modes))
           (.i64 depth :: ws) (.cons (t := .word) depth args))
-        (Env.reads (paramMode (.word :: func.params) (.borrowed :: func.modes))
+        (Env.reads store (paramMode (.word :: func.params) (.borrowed :: func.modes))
           (.i64 depth :: ws) (.cons (t := .word) depth args)) at hs
       rw [Env.moves_depth, Env.reads_depth] at hs
       exact hs
@@ -71,7 +71,7 @@ theorem TailFunc.function_depth {S : List Sig} (func : TailFunc S)
       fun final values ⟨heap', at_, owned, caps, regions, top⟩ =>
         ⟨heap', at_, owned, caps, fun r hr hp ha => regions r hr hp (by
           change Apart store
-            (Env.moves (paramMode (.word :: func.params) (.borrowed :: func.modes))
+            (Env.moves store (paramMode (.word :: func.params) (.borrowed :: func.modes))
               (.i64 depth :: ws) (.cons (t := .word) depth args)) r at ha
           rw [Env.moves_depth] at ha
           exact ha), fun hf => ?_⟩

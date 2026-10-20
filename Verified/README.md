@@ -196,14 +196,26 @@ The [owned-expression rule](OwnedExpr.lean) combines expression correctness with
 the typed argument list.  [Record assembly](TreeAssembleCode.lean) composes payload stores and
 header writes, preserving child ownership and proving the completed record's exact block list.
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
-give these proofs interfaces independent of the source language.  Source construction, matching,
-reflection, and compiler integration remain pending.
+give these proofs interfaces independent of the source language.
+
+The source types `Ty.tree` and `Ty.treeHeader` record the layout.  The
+[constructor rule](TreeNodeCorrect.lean) composes field evaluation, parent allocation or reuse,
+and record assembly.  The [matching rule](TreeCaseCorrect.lean) handles null and nonempty values,
+loads the fields, detaches an owned header, releases unused bindings, and composes the branch's
+ownership and allocation bound.  Both rules enter `Expr.code_spec` and the whole-program
+correctness theorems.  Borrowed aliases retain their regions, and moving or copying a recursive
+value uses its exact record blocks at the current store.  Ordinary Lean reflection, list folds,
+and matching in tail-loop bodies remain pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
 and header allocation from memory reused after releasing a list.
 `tests/verified/run.sh --cases treecopy` compares the
 [copy test module](Examples/TreeCopy.lean) with native Lean and checks allocation and live-block counts.
+The [typed constructor and matching module](Examples/TreeCore.lean) derives its correctness from
+the universal compiler theorem.  Its [cases](Examples/TreeCases.lean) exercise owned and borrowed
+construction, field access, rebuilding, duplication, and word updates, including retained aliases
+and last-use header reuse.  `tests/verified/run.sh --cases treecore` runs those cases.
 
 ## Recursion
 

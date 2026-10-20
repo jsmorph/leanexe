@@ -1,6 +1,8 @@
 import Verified.ExprSpec
 import Verified.VarCorrect
 import Verified.Float32Correct
+import Verified.TreeNodeCorrect
+import Verified.TreeCaseCorrect
 
 /-! Correctness of expression code and ordinary function templates. -/
 
@@ -27,6 +29,20 @@ theorem spec_word {Γ : List Ty} (value : UInt64) :
       (Mode.fresh_scalar rfl _ _) fun _ _ _ _ _ _ _ b hb => by
         rw [Ty.regions_scalar .word rfl] at hb; exact nomatch hb)
 
+
+theorem spec_treeNil {Γ : List Ty} (shape : TreeShape) :
+    ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv (Expr.treeNil (S := S) (Γ := Γ) shape)
+        env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+  have hRep : (Ty.tree shape).Rep .owned heap store [.i64 0] Tree.nil :=
+    ⟨0, rfl, rfl, List.Pairwise.nil⟩
+  have hAfter : After env slots (fun i => live i || (Expr.treeNil shape).uses i) live base
+      heap store s (.tree shape) .owned .nil heap store s [.i64 0] :=
+    After.refl hAt hVars (by intro i hi; simp [hi]) hRep rfl
+      (fun _ _ _ _ _ _ _ _ hb => nomatch hb)
+  have hRun := hNext heap store s [.i64 0] hAfter (fun _ => Nat.le_add_right _ _)
+  simpa [Expr.code, Expr.denote] using hRun
 
 /-- A constant `Bool`. -/
 theorem spec_bool {Γ : List Ty} (value : Bool) :
@@ -1521,17 +1537,17 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
     (∀ heap' store' s' ws F, Step heap store (fun _ => True) heap' store' F →
       Frame base s s' → Holds env slots all base heap' store' s' →
       Env.Rep modes heap' store' ws (Env.ofFn fun i => (args i).denote funs env) →
-      Separate store' (Env.moves modes ws (Env.ofFn fun i => (args i).denote funs env))
-        (Env.reads modes ws (Env.ofFn fun i => (args i).denote funs env)) →
+      Separate store' (Env.moves store' modes ws (Env.ofFn fun i => (args i).denote funs env))
+        (Env.reads store' modes ws (Env.ofFn fun i => (args i).denote funs env)) →
       (∀ r, (∀ b ∈ F, regionsDisjoint r b) →
         Holds.KeepDying env slots
           (fun k => argsAny fun i => modes i == .owned && (args i).uses k && !kept k)
           (fun _ => false) store s r →
-        Apart store' (Env.moves modes ws (Env.ofFn fun i => (args i).denote funs env)) r) →
+        Apart store' (Env.moves store' modes ws (Env.ofFn fun i => (args i).denote funs env)) r) →
       (∀ r, Holds.ApartFrom env slots
           (fun k => argsAny fun i =>
             modes i == .borrowed && !(ps.get i).scalar && (args i).uses k) store s r →
-        ∀ c ∈ Env.reads modes ws (Env.ofFn fun i => (args i).denote funs env),
+        ∀ c ∈ Env.reads store' modes ws (Env.ofFn fun i => (args i).denote funs env),
           regionsDisjoint r c) →
       (d = false → heap'.top.toNat ≤ heap.top.toNat +
         argsSum (argCost funs flags bounds (slots.map Slot.mode) paid all kept modes args env)) →
@@ -1571,9 +1587,9 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           Holds.KeepDying env slots
             (fun k => modes 0 == .owned && (args ⟨0, by simp⟩).uses k && !kept k)
             (fun _ => false) store s r →
-          ∀ q ∈ (match modes 0 with | .owned => p.pointers ws0 | .borrowed => []),
+          ∀ q ∈ (match modes 0 with | .owned => p.pointers store1 ws0 ((args ⟨0, by simp⟩).denote funs env) | .borrowed => []),
             regionsDisjoint r (block store1 q)) →
-        (∀ q ∈ (match modes 0 with | .owned => p.pointers ws0 | .borrowed => []),
+        (∀ q ∈ (match modes 0 with | .owned => p.pointers store1 ws0 ((args ⟨0, by simp⟩).denote funs env) | .borrowed => []),
           Holds.ApartFrom env slots (fun k => argsAny fun i : Fin ps.length =>
             !(ps.get i).scalar && (args i.succ).uses k) store1 s1 (block store1 q)) →
         (∀ r, Holds.ApartFrom env slots
@@ -1581,7 +1597,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
             store s r →
           ∀ c ∈ (match modes 0 with
             | .owned => []
-            | .borrowed => p.reads ws0 ((args ⟨0, by simp⟩).denote funs env)),
+            | .borrowed => p.reads store1 ws0 ((args ⟨0, by simp⟩).denote funs env)),
             regionsDisjoint r c) →
         (modes 0 = .owned → ∀ x : Var Γ ((p :: ps).get ⟨0, by simp⟩),
           args ⟨0, by simp⟩ = .var x → kept x.index = false →
@@ -1612,7 +1628,13 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           (fun he => hj (Fin.succ_injective _ he)) hs⟩⟩
       -- The first argument's value and its regions in the final state.
       obtain ⟨hR0, hSame0, hFresh0⟩ := hR1.step hStep2 fun _ _ => trivial
-      have hBlock : ∀ q ∈ (match modes 0 with | .owned => p.pointers ws0 | .borrowed => []),
+      have hPointers (hm : modes 0 = .owned) :
+          p.pointers store2 ws0 ((args ⟨0, by simp⟩).denote funs env) =
+            p.pointers store1 ws0 ((args ⟨0, by simp⟩).denote funs env) := by
+        have hOwned : p.Rep .owned heap1 store1 ws0 ((args ⟨0, by simp⟩).denote funs env) := by
+          rw [← hm]; exact hR1
+        exact hOwned.pointers_step hStep2 fun _ _ => trivial
+      have hBlock : ∀ q ∈ (match modes 0 with | .owned => p.pointers store1 ws0 ((args ⟨0, by simp⟩).denote funs env) | .borrowed => []),
           block store2 q = block store1 q ∧ ∀ b ∈ F2, regionsDisjoint (block store1 q) b := by
         intro q hq
         cases hmd : modes 0 with
@@ -1620,25 +1642,38 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         | owned =>
           rw [hmd] at hq hSame0 hFresh0
           simp only [Ty.regions, Ty.blocks_pointers] at hSame0 hFresh0
+          rw [hPointers hmd] at hSame0
           exact ⟨List.map_inj_left.mp hSame0 q hq, hFresh0 _ (List.mem_map_of_mem hq)⟩
-      have hMoves : Env.moves modes (ws0 ++ ws2)
+      have hMoves : Env.moves store2 modes (ws0 ++ ws2)
           (Env.ofFn fun i : Fin (p :: ps).length => (args i).denote funs env) =
-          (match modes 0 with | .owned => p.pointers ws0 | .borrowed => []) ++
-            Env.moves (fun i => modes (i + 1)) ws2
+          (match modes 0 with | .owned => p.pointers store1 ws0 ((args ⟨0, by simp⟩).denote funs env) | .borrowed => []) ++
+            Env.moves store2 (fun i => modes (i + 1)) ws2
               (Env.ofFn fun i : Fin ps.length => (args i.succ).denote funs env) :=
-        Env.moves_cons hl0
-      have hReads : Env.reads modes (ws0 ++ ws2)
+        by
+          simp only [Env.ofFn]
+          rw [Env.moves_cons hl0]
+          congr 1
+          cases hm : modes 0
+          · rfl
+          · exact hPointers hm
+      have hReads : Env.reads store2 modes (ws0 ++ ws2)
           (Env.ofFn fun i : Fin (p :: ps).length => (args i).denote funs env) =
           (match modes 0 with
             | .owned => []
-            | .borrowed => p.reads ws0 ((args ⟨0, by simp⟩).denote funs env)) ++
-            Env.reads (fun i => modes (i + 1)) ws2
+            | .borrowed => p.reads store1 ws0 ((args ⟨0, by simp⟩).denote funs env)) ++
+            Env.reads store2 (fun i => modes (i + 1)) ws2
               (Env.ofFn fun i : Fin ps.length => (args i.succ).denote funs env) :=
-        Env.reads_cons hl0
+        by
+          simp only [Env.ofFn]
+          rw [Env.reads_cons hl0]
+          congr 1
+          cases hm : modes 0
+          · simpa only [Ty.regions, hm] using hSame0
+          · rfl
       -- A variable that a later owned argument moves is apart from the first argument's arrays.
       have hMovedRest : ∀ c ∈ (match modes 0 with
           | .owned => []
-          | .borrowed => p.reads ws0 ((args ⟨0, by simp⟩).denote funs env)),
+          | .borrowed => p.reads store1 ws0 ((args ⟨0, by simp⟩).denote funs env)),
           Holds.KeepDying env slots (fun k => argsAny fun i : Fin ps.length =>
             modes (i + 1) == .owned && (args i.succ).uses k && !kept k) (fun _ => false) store1
             { s1 with values := ws0.reverse ++ s.values } c := by
@@ -1684,7 +1719,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
             | owned =>
               rw [hmd] at hR0
               have := hR0.pairwise
-              rwa [Ty.blocks_pointers] at this
+              rwa [Ty.blocks_pointers, hPointers hmd] at this
           · obtain ⟨q, hq, rfl⟩ := List.mem_map.mp ha
             obtain ⟨q', hq', rfl⟩ := List.mem_map.mp hb
             obtain ⟨hEq, hF⟩ := hBlock q hq
@@ -1863,11 +1898,11 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
             (Frame.refl base s) hVars (by rw [hmd, hv, ← hmx]; exact hRep)
             (fun r _ hr q hq => ?_) (fun q hq => ?_) (fun _ _ c hc => ?_)
             (fun _ x' hx' _ => by rw [hx] at hx'; cases hx'; exact hold))
-          · rw [hmd] at hq
+          · rw [hmd, hv] at hq
             refine hr _ x (by simp only [hmd, hux, hkx]; rfl) rfl hmx ws hold hRep.length _ ?_
             rw [Ty.blocks_pointers]
             exact List.mem_map_of_mem hq
-          · rw [hmd] at hq
+          · rw [hmd, hv] at hq
             refine Holds.ApartFrom.owned hVars hAllX hmx hold hRep.length (fun k hk' => ?_) _
               (by rw [Ty.blocks_pointers]; exact List.mem_map_of_mem hq)
             obtain ⟨j, hj⟩ := argsAny_true.mp hk'
@@ -1906,9 +1941,9 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
             (by rw [hmd, hv]; exact a1.rep) (fun r hr _ q hq => ?_) (fun q hq => ?_)
             (fun _ _ c hc => ?_) (fun _ x' hx' hk' => by
               rw [hx] at hx'; cases hx'; rw [hkx] at hk'; exact nomatch hk')
-          · rw [hmd] at hq
+          · rw [hmd, hv] at hq
             exact hr _ (by rw [Ty.blocks_pointers]; exact List.mem_map_of_mem hq)
-          · rw [hmd] at hq
+          · rw [hmd, hv] at hq
             intro u y hy wy hwy hly c hc
             obtain ⟨j, hj⟩ := argsAny_true.mp hy
             simp only [Bool.and_eq_true] at hj
@@ -2121,7 +2156,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs flags 
     · exact Ty.Rep.borrow hOwned
     · exact hOwned
   have hStepC : Step heap1 store1
-      (Apart store1 (Env.moves sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env))) heap'
+      (Apart store1 (Env.moves store1 sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env))) heap'
       st' (((Expr.call g args).mode (slots.map Slot.mode)).fresh st' sig.result out.reverse
         (funs.get g (Env.ofFn fun i => (args i).denote funs env))) :=
     ⟨hAt', hCaps, fun r hr hpos hA => by
@@ -2149,7 +2184,7 @@ theorem spec_call (hm : Runtime m) {d0 : UInt64} (hCalls : CallsAt m funs flags 
         !(argsAny fun j => callMoves slots live args j && (args j).uses y.index)) = true →
       ∀ wy, LocalsHold s1 (slots.getD y.index default).loc u.types wy → wy.length = u.width →
       ∀ c ∈ u.regions (slots.getD y.index default).mode store1 wy (env.get y),
-        Apart store1 (Env.moves sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env)) c := by
+        Apart store1 (Env.moves store1 sig.mode ws1 (Env.ofFn fun i => (args i).denote funs env)) c := by
     exact args_moves_apart_kept sig.mode args
       (fun i k hi => by simp only [Bool.or_eq_true]; exact Or.inr (le_argsAny _ i hi))
       hKeptAll hVars hStep1 hF1 hX1
@@ -5175,6 +5210,21 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
   | word value => intro _; exact spec_word value
   | bool value => intro _; exact spec_bool value
   | var x => intro _; exact spec_var hm x
+  | treeNil shape => intro _; exact spec_treeNil shape
+  | treeNode reuse words children wordSpec childSpec =>
+    intro hD
+    exact spec_treeNode hm reuse words children
+      (fun i => wordSpec i fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inl (le_argsAny _ i hd)))
+      (fun i => childSpec i fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inr (le_argsAny _ i hd)))
+  | treeCase x empty node emptySpec nodeSpec =>
+    intro hD
+    exact spec_treeCase hm x empty node
+      (emptySpec fun hd => hD (by simp [Expr.depthCalls, hd]))
+      (nodeSpec fun hd => hD (by simp [Expr.depthCalls, hd]))
   | bin op left right leftSpec rightSpec =>
     intro hD
     exact spec_bin op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))
@@ -5433,8 +5483,8 @@ theorem bodyFunction_runs {S : List Sig} {params : List Ty} {result : Ty} (modes
     (host : HostEnv Unit) (store : Store Unit) (heap : Heap) (ws : List Value)
     (args : Env params) (hAt : heap.At store)
     (hRep : Env.Rep (paramMode params modes) heap store ws args)
-    (hSep : Separate store (Env.moves (paramMode params modes) ws args)
-      (Env.reads (paramMode params modes) ws args))
+    (hSep : Separate store (Env.moves store (paramMode params modes) ws args)
+      (Env.reads store (paramMode params modes) ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) :
     Runs ((depth && !(decide (d < depthLimit) && body.fits funs fits args)) ||
         (aborts && !decide (heap.Within store m
@@ -5445,7 +5495,7 @@ theorem bodyFunction_runs {S : List Sig} {params : List Ty} {result : Ty} (modes
         result.Rep .owned heap' final values.reverse (body.denote funs args) ∧
         final.memoryCaps = store.memoryCaps ∧
         (∀ r, heap.Region r → 0 < r.2 →
-          Apart store (Env.moves (paramMode params modes) ws args) r →
+          Apart store (Env.moves store (paramMode params modes) ws args) r →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
           heap'.Region r ∧
           ∀ b ∈ result.blocks final values.reverse (body.denote funs args), regionsDisjoint r b) ∧
@@ -5688,13 +5738,13 @@ theorem bodyFunction_depth {S : List Sig} {params : List Ty} {result : Ty} (mode
     change d' = d at hd
     subst hd
     obtain ⟨ws, rfl, hRep'⟩ := Env.rep_depth.mp hRep
-    have hSep' : Separate store (Env.moves (paramMode params modes) ws args)
-        (Env.reads (paramMode params modes) ws args) := by
+    have hSep' : Separate store (Env.moves store (paramMode params modes) ws args)
+        (Env.reads store (paramMode params modes) ws args) := by
       have := hSep
       change Separate store
-        (Env.moves (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
+        (Env.moves store (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
           (.cons (t := .word) d' args))
-        (Env.reads (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
+        (Env.reads store (paramMode (.word :: params) (.borrowed :: modes)) (.i64 d' :: ws)
           (.cons (t := .word) d' args)) at this
       rw [Env.moves_depth, Env.reads_depth] at this
       exact this
@@ -5710,7 +5760,7 @@ theorem bodyFunction_depth {S : List Sig} {params : List Ty} {result : Ty} (mode
     refine (hRun.of_imp fun h => ?_).mono
       fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
         ⟨heap', hAt', hOwned, hCaps, fun r hr hpos hA' => hRegions r hr hpos (by
-          change Apart store (Env.moves (paramMode (.word :: params) (.borrowed :: modes))
+          change Apart store (Env.moves store (paramMode (.word :: params) (.borrowed :: modes))
             (.i64 d' :: ws) (.cons (t := .word) d' args)) r at hA'
           rw [Env.moves_depth] at hA'
           exact hA'), fun hf => ?_⟩

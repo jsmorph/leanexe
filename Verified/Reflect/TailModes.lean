@@ -38,7 +38,7 @@ def TailBody.paramChoice (body : TailBody S params result params) (modes : List 
     List Mode :=
   (List.finRange params.length).map fun i =>
     match params.get i with
-    | .array _ =>
+    | .array _ | .tree _ | .treeHeader _ =>
       if modes.getD i .borrowed == .owned || body.demands modes (paramModes params modes) i ||
           body.receivesOwned (paramModes params modes) i then .owned else .borrowed
     | _ => .borrowed

@@ -1,5 +1,8 @@
 import Verified.Locals
 import Verified.HeapStep
+import Verified.TreeHeader
+import LeanExe.Pipeline.Rebuilt
+import LeanExe.Pipeline.RecordPointers
 import LeanExe.Pipeline.Allocation
 import LeanExe.TalosCompat
 
@@ -271,25 +274,46 @@ def Ty.blocks (store : Store Unit) : (t : Ty) → List Value → t.denote → Li
   | .elem _, _, _ => []
   | .pair a b, ws, p =>
     a.blocks store (ws.take a.width) p.1 ++ b.blocks store (ws.drop a.width) p.2
-  | .array _, ws, _ => match ws with
+  | .array _, ws, _ | .treeHeader _, ws, _ => match ws with
     | [.i64 ptr] => [block store ptr]
+    | _ => []
+  | .tree _, ws, value => match ws with
+    | [.i64 ptr] => value.toNode.blocks store ptr
     | _ => []
 
 /-- The addresses of a value's arrays. -/
-def Ty.pointers : (t : Ty) → List Value → List UInt64
-  | .elem _, _ => []
-  | .pair a b, ws => a.pointers (ws.take a.width) ++ b.pointers (ws.drop a.width)
-  | .array _, ws => match ws with
+def Ty.pointers (store : Store Unit) : (t : Ty) → List Value → t.denote → List UInt64
+  | .elem _, _, _ => []
+  | .pair a b, ws, value =>
+    a.pointers store (ws.take a.width) value.1 ++ b.pointers store (ws.drop a.width) value.2
+  | .array _, ws, _ | .treeHeader _, ws, _ => match ws with
     | [.i64 ptr] => [ptr]
+    | _ => []
+  | .tree _, ws, value => match ws with
+    | [.i64 ptr] => value.toNode.pointers store ptr
     | _ => []
 
 /-- The regions of a borrowed value's arrays: each array's length word and elements. -/
-def Ty.reads : (t : Ty) → List Value → t.denote → List (Nat × Nat)
+def Ty.reads (store : Store Unit) : (t : Ty) → List Value → t.denote → List (Nat × Nat)
   | .elem _, _, _ => []
-  | .pair a b, ws, p => a.reads (ws.take a.width) p.1 ++ b.reads (ws.drop a.width) p.2
+  | .pair a b, ws, p =>
+    a.reads store (ws.take a.width) p.1 ++ b.reads store (ws.drop a.width) p.2
   | .array e, ws, xs => match ws with
     | [.i64 ptr] => [(ptr.toNat, 8 * ((e.words xs).size + 1))]
     | _ => []
+  | .tree _, ws, value => match ws with
+    | [.i64 ptr] => value.toNode.slotRegions store ptr
+    | _ => []
+  | .treeHeader _, _, _ => []
+
+def Mode.node : Mode → Heap → Store Unit → UInt64 → Node → Prop
+  | .borrowed, heap, store, ptr, value => NodeBorrowed heap store ptr value
+  | .owned, heap, store, ptr, value =>
+    NodeOwned heap store ptr value ∧ (value.blocks store ptr).Pairwise regionsDisjoint
+
+def Mode.header : Mode → TreeShape → Heap → Store Unit → UInt64 → Prop
+  | .borrowed, _, _, _, _ => True
+  | .owned, shape, heap, store, ptr => TreeHeader.Owned shape heap store ptr
 
 /-- The regions that a value occupies: its blocks when owned, and its arrays' regions when
 borrowed. -/
@@ -297,7 +321,7 @@ def Ty.regions (mode : Mode) (store : Store Unit) (t : Ty) (ws : List Value) (v 
     List (Nat × Nat) :=
   match mode with
   | .owned => t.blocks store ws v
-  | .borrowed => t.reads ws v
+  | .borrowed => t.reads store ws v
 
 /-- The words `ws` represent the value `v` of type `t` in `heap` at `store`, with the arrays that
 the value contains held in mode `mode`: a word as itself, a `Bool` as 1 or 0, a pair as its first
@@ -312,6 +336,8 @@ def Ty.Rep (mode : Mode) (heap : Heap) (store : Store Unit) :
       (mode = .owned → ∀ x ∈ a.blocks store first p.1, ∀ y ∈ b.blocks store second p.2,
         regionsDisjoint x y)
   | .array e, ws, xs => ∃ ptr, ws = [.i64 ptr] ∧ mode.array heap store ptr (e.words xs)
+  | .tree _, ws, value => ∃ ptr, ws = [.i64 ptr] ∧ mode.node heap store ptr value.toNode
+  | .treeHeader shape, ws, _ => ∃ ptr, ws = [.i64 ptr] ∧ mode.header shape heap store ptr
 
 theorem Mode.array.borrow {mode : Mode} {heap : Heap} {store : Store Unit} {ptr : UInt64}
     {xs : Array UInt64} (h : mode.array heap store ptr xs) : heap.Borrowed store ptr xs := by
@@ -334,7 +360,8 @@ theorem Ty.Rep.length {mode : Mode} {heap : Heap} {store : Store Unit} :
   | .elem e, _, v, h => by subst h; exact e.values_length v
   | .pair _ _, _, _, ⟨_, _, h, h1, h2, _⟩ => by
     subst h; simp [Ty.width, h1.length, h2.length]
-  | .array _, _, _, ⟨_, h, _⟩ => by subst h; rfl
+  | .array _, _, _, ⟨_, h, _⟩ | .tree _, _, _, ⟨_, h, _⟩
+  | .treeHeader _, _, _, ⟨_, h, _⟩ => by subst h; rfl
 
 theorem Ty.blocks_append {store : Store Unit} {a b : Ty} {first second : List Value}
     {p : a.denote × b.denote} (h : first.length = a.width) :
@@ -342,9 +369,9 @@ theorem Ty.blocks_append {store : Store Unit} {a b : Ty} {first second : List Va
       a.blocks store first p.1 ++ b.blocks store second p.2 := by
   simp [Ty.blocks, ← h]
 
-theorem Ty.reads_append {a b : Ty} {first second : List Value} {p : a.denote × b.denote}
+theorem Ty.reads_append {store : Store Unit} {a b : Ty} {first second : List Value} {p : a.denote × b.denote}
     (h : first.length = a.width) :
-    (Ty.pair a b).reads (first ++ second) p = a.reads first p.1 ++ b.reads second p.2 := by
+    (Ty.pair a b).reads store (first ++ second) p = a.reads store first p.1 ++ b.reads store second p.2 := by
   simp [Ty.reads, ← h]
 
 theorem Ty.regions_append {mode : Mode} {store : Store Unit} {a b : Ty}
@@ -378,31 +405,37 @@ theorem Ty.regions_scalar {mode : Mode} {store : Store Unit} :
     · exact Ty.blocks_scalar _ h ws p
   | .array _, h, _, _ => absurd h Bool.false_ne_true
 
-theorem Ty.reads_scalar :
-    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.reads ws v = []
+theorem Ty.reads_scalar {store : Store Unit} :
+    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.reads store ws v = []
   | .elem _, _, _, _ => rfl
   | .pair a b, h, ws, p => by
     simp only [Ty.reads, a.reads_scalar (Ty.scalar_pair h).1 _ p.1,
       b.reads_scalar (Ty.scalar_pair h).2 _ p.2, List.append_nil]
   | .array _, h, _, _ => absurd h Bool.false_ne_true
 
-theorem Ty.pointers_scalar : (t : Ty) → t.scalar = true → (ws : List Value) → t.pointers ws = []
-  | .elem _, _, _ => rfl
-  | .pair a b, h, ws => by
+theorem Ty.pointers_scalar {store : Store Unit} :
+    (t : Ty) → t.scalar = true → (ws : List Value) → (v : t.denote) → t.pointers store ws v = []
+  | .elem _, _, _, _ => rfl
+  | .pair a b, h, ws, v => by
     simp only [Ty.pointers, a.pointers_scalar (Ty.scalar_pair h).1,
       b.pointers_scalar (Ty.scalar_pair h).2, List.append_nil]
-  | .array _, h, _ => absurd h Bool.false_ne_true
+  | .array _, h, _, _ => absurd h Bool.false_ne_true
 
 /-- A value's blocks are those at its arrays' addresses. -/
 theorem Ty.blocks_pointers {store : Store Unit} :
     (t : Ty) → (ws : List Value) → (v : t.denote) →
-      t.blocks store ws v = (t.pointers ws).map (block store)
+      t.blocks store ws v = (t.pointers store ws v).map (block store)
   | .elem _, _, _ => rfl
   | .pair a b, ws, p => by
     simp only [Ty.blocks, Ty.pointers, List.map_append, a.blocks_pointers, b.blocks_pointers]
-  | .array _, ws, _ => by
+  | .array _, ws, _ | .treeHeader _, ws, _ => by
     simp only [Ty.blocks, Ty.pointers]
     split <;> rfl
+  | .tree _, ws, value => by
+    simp only [Ty.blocks, Ty.pointers]
+    split
+    · exact (Node.pointers_blocks ..).symm
+    · rfl
 
 /-- The blocks of an owned value are pairwise disjoint. -/
 theorem Ty.Rep.pairwise {heap : Heap} {store : Store Unit} :
@@ -414,12 +447,14 @@ theorem Ty.Rep.pairwise {heap : Heap} {store : Store Unit} :
     rw [Ty.blocks_append h1.length]
     exact List.pairwise_append.mpr ⟨h1.pairwise, h2.pairwise, hd rfl⟩
   | .array _, _, _, ⟨_, h, _⟩ => by subst h; simp [Ty.blocks]
+  | .tree _, _, _, ⟨_, rfl, h⟩ => h.2
+  | .treeHeader _, _, _, ⟨_, rfl, _⟩ => by simp [Ty.blocks]
 
 /-- A region apart from a value's regions lies apart from its arrays' words. -/
 theorem Ty.Rep.reads_apart {mode : Mode} {heap : Heap} {store : Store Unit} :
     {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep mode heap store ws v →
       ∀ r, (∀ c ∈ t.regions mode store ws v, regionsDisjoint r c) →
-      ∀ c ∈ t.reads ws v, regionsDisjoint r c
+      ∀ c ∈ t.reads store ws v, regionsDisjoint r c
   | .elem _, _, _, _, _, _, _, hc => by
     simp [Ty.reads] at hc
   | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩, r, hr, c, hc => by
@@ -437,6 +472,12 @@ theorem Ty.Rep.reads_apart {mode : Mode} {heap : Heap} {store : Store Unit} :
     · exact hr _ (by simp [Ty.regions, Ty.reads])
     · have := hr (block store ptr) (by simp [Ty.regions, Ty.blocks])
       exact regionsDisjoint_symm (Heap.Owned.region_apart ha (regionsDisjoint_symm this))
+  | .tree _, _, value, ⟨ptr, rfl, ha⟩, r, hr, c, hc => by
+    cases mode
+    · exact hr c hc
+    · exact regionsDisjoint_symm (NodeOwned.slotRegions_apart ptr value.toNode ha.1
+        (fun b hb => regionsDisjoint_symm (hr b hb)) c hc)
+  | .treeHeader _, _, _, _, _, _, _, hc => nomatch hc
 
 /-- A value read where a borrowed one suffices. -/
 theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
@@ -446,6 +487,12 @@ theorem Ty.Rep.borrow {mode : Mode} {heap : Heap} {store : Store Unit} :
   | .pair _ _, _, _, ⟨first, second, h, h1, h2, _⟩ =>
     ⟨first, second, h, h1.borrow, h2.borrow, nofun⟩
   | .array _, _, _, ⟨ptr, h, ha⟩ => ⟨ptr, h, ha.borrow⟩
+  | .tree _, _, _, ⟨ptr, h, ha⟩ => by
+    refine ⟨ptr, h, ?_⟩
+    cases mode
+    · exact ha
+    · exact ha.1.borrowed
+  | .treeHeader _, _, _, ⟨ptr, h, _⟩ => ⟨ptr, h, trivial⟩
 
 /-- A value whose type holds no arrays has the same words in either mode. -/
 theorem Ty.Rep.owned {mode : Mode} {heap : Heap} {store : Store Unit} :
@@ -468,37 +515,37 @@ def Env.Rep (modes : Nat → Mode) (heap : Heap) (store : Store Unit) :
 
 /-- The addresses of the arrays of the owned values among the words `ws` of a context's values,
 in order. -/
-def Env.moves (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List UInt64
+def Env.moves (store : Store Unit) (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List UInt64
   | _, _, .nil => []
-  | _, ws, .cons (t := t) _ env =>
+  | _, ws, .cons (t := t) v env =>
     (match modes 0 with
-      | .owned => t.pointers (ws.take t.width)
-      | .borrowed => []) ++ Env.moves (fun i => modes (i + 1)) (ws.drop t.width) env
+      | .owned => t.pointers store (ws.take t.width) v
+      | .borrowed => []) ++ Env.moves store (fun i => modes (i + 1)) (ws.drop t.width) env
 
 /-- The regions of the arrays of the borrowed values among the words `ws` of a context's values,
 in order. -/
-def Env.reads (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List (Nat × Nat)
+def Env.reads (store : Store Unit) (modes : Nat → Mode) : {Γ : List Ty} → List Value → Env Γ → List (Nat × Nat)
   | _, _, .nil => []
   | _, ws, .cons (t := t) v env =>
     (match modes 0 with
       | .owned => []
-      | .borrowed => t.reads (ws.take t.width) v) ++
-      Env.reads (fun i => modes (i + 1)) (ws.drop t.width) env
+      | .borrowed => t.reads store (ws.take t.width) v) ++
+      Env.reads store (fun i => modes (i + 1)) (ws.drop t.width) env
 
-theorem Env.moves_cons {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
+theorem Env.moves_cons {store : Store Unit} {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
     {first rest : List Value} (h : first.length = t.width) :
-    Env.moves modes (first ++ rest) (.cons v env) =
+    Env.moves store modes (first ++ rest) (.cons v env) =
       (match modes 0 with
-        | .owned => t.pointers first
-        | .borrowed => []) ++ Env.moves (fun i => modes (i + 1)) rest env := by
+        | .owned => t.pointers store first v
+        | .borrowed => []) ++ Env.moves store (fun i => modes (i + 1)) rest env := by
   simp [Env.moves, ← h]
 
-theorem Env.reads_cons {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
+theorem Env.reads_cons {store : Store Unit} {modes : Nat → Mode} {t : Ty} {Γ : List Ty} {v : t.denote} {env : Env Γ}
     {first rest : List Value} (h : first.length = t.width) :
-    Env.reads modes (first ++ rest) (.cons v env) =
+    Env.reads store modes (first ++ rest) (.cons v env) =
       (match modes 0 with
         | .owned => []
-        | .borrowed => t.reads first v) ++ Env.reads (fun i => modes (i + 1)) rest env := by
+        | .borrowed => t.reads store first v) ++ Env.reads store (fun i => modes (i + 1)) rest env := by
   simp [Env.reads, ← h]
 
 theorem widthSum_cons (t : Ty) (ts : List Ty) : widthSum (t :: ts) = t.width + widthSum ts := by
@@ -520,8 +567,8 @@ owned values' arrays. -/
   borrowed heap store vs env := Env.Rep (paramMode Γ ms) heap store vs env
   owned heap store vs env := Env.Rep (paramMode Γ ms) heap store vs env
   blocks _ _ _ := []
-  reads _ vs env := Env.reads (paramMode Γ ms) vs env
-  moves _ vs env := Env.moves (paramMode Γ ms) vs env
+  reads store vs env := Env.reads store (paramMode Γ ms) vs env
+  moves store vs env := Env.moves store (paramMode Γ ms) vs env
 
 /-- How the verified compiler returns a value: as its words, owned by the caller. -/
 @[instance_reducible] def Ty.represent (t : Ty) : Represent t.denote where
@@ -586,10 +633,71 @@ theorem Ty.Rep.step {mode : Mode} {heap heap' : Heap} {store store' : Store Unit
   | .array _, _, _, ⟨ptr, rfl, ha⟩, hKeep => by
     obtain ⟨h1, h2, h3⟩ := ha.step hStep hKeep
     exact ⟨⟨ptr, rfl, h1⟩, h2, h3⟩
+  | .tree shape, _, value, ⟨ptr, rfl, ha⟩, hKeep => by
+    cases mode
+    · have hKept := fun r (hr : r ∈ value.toNode.slotRegions store ptr) =>
+        hStep.keeps r (NodeBorrowed.regions ptr value.toNode ha r hr)
+          (Node.slotRegions_pos value.toNode_slotted r hr) (hKeep r hr)
+      obtain ⟨hNode, hRegions⟩ := NodeBorrowed.frame ptr value.toNode ha
+        (fun r hr => ⟨(hKept r hr).1, (hKept r hr).2.1⟩)
+      exact ⟨⟨ptr, rfl, hNode⟩, hRegions, fun r hr => (hKept r hr).2.2⟩
+    · have hKept := fun r (hr : r ∈ value.toNode.blocks store ptr) =>
+        hStep.keeps r (NodeOwned.regions ptr value.toNode ha.1 r hr)
+          (Node.blocks_pos store ptr value.toNode r hr) (hKeep r hr)
+      obtain ⟨hNode, hBlocks⟩ := NodeOwned.frame ptr value.toNode ha.1
+        (fun r hr => ⟨(hKept r hr).1, (hKept r hr).2.1⟩)
+      exact ⟨⟨ptr, rfl, hNode, by rw [hBlocks]; exact ha.2⟩, hBlocks,
+        fun r hr => (hKept r hr).2.2⟩
+  | .treeHeader shape, _, _, ⟨ptr, rfl, ha⟩, hKeep => by
+    cases mode
+    · exact ⟨⟨ptr, rfl, trivial⟩, rfl, nofun⟩
+    · have hKept := hStep.keeps (block store ptr) ha.region
+        (by simp [block]) (hKeep _ (List.mem_singleton_self _))
+      obtain ⟨words, hLength, hHead, hSlots⟩ := ha
+      have hBase := hHead.base
+      obtain ⟨hHeader, hCapacity⟩ :=
+        TreeHeader.Owned.frame ⟨words, hLength, hHead, hSlots⟩
+          (fun a hLow hHigh => hKept.1 a (by simp only [block]; omega)
+            (by simp only [block]; omega)) hKept.2.1
+      refine ⟨⟨ptr, rfl, hHeader⟩, ?_, ?_⟩
+      · simp only [Ty.regions, Ty.blocks, block_eq hCapacity]
+      · intro r hr
+        change r ∈ [block store ptr] at hr
+        rw [List.mem_singleton] at hr
+        subst r
+        exact hKept.2.2
+
+theorem Ty.Rep.pointers_from_blocks {heap : Heap} {store : Store Unit} :
+    {t : Ty} → {ws : List Value} → {v : t.denote} → t.Rep .owned heap store ws v →
+      (t.blocks store ws v).map (fun b => UInt64.ofNat (b.1 + 48)) = t.pointers store ws v
+  | .elem _, _, _, _ => rfl
+  | .pair a b, _, value, ⟨first, second, rfl, ha, hb, _⟩ => by
+    simp only [Ty.blocks, Ty.pointers, List.take_left' ha.length, List.drop_left' ha.length,
+      List.map_append, ha.pointers_from_blocks, hb.pointers_from_blocks]
+  | .array _, _, _, ⟨ptr, rfl, hOwned⟩ => by
+    have hBase := hOwned.base
+    simp only [Ty.blocks, Ty.pointers, List.map_cons, List.map_nil,
+      block_pointer (by omega : 48 ≤ ptr.toNat)]
+  | .tree _, _, value, ⟨ptr, rfl, hOwned, _⟩ =>
+    NodeOwned.pointers_from_blocks ptr value.toNode hOwned
+  | .treeHeader _, _, _, ⟨ptr, rfl, words, _, hHeader, _⟩ => by
+    have hBase := hHeader.base
+    simp only [Ty.blocks, Ty.pointers, List.map_cons, List.map_nil,
+      block_pointer (by omega : 48 ≤ ptr.toNat)]
+
+theorem Ty.Rep.pointers_step {heap heap' : Heap} {store store' : Store Unit}
+    {keep : Nat × Nat → Prop} {fresh : List (Nat × Nat)} {t : Ty} {ws : List Value}
+    {v : t.denote} (hRep : t.Rep .owned heap store ws v)
+    (hStep : Step heap store keep heap' store' fresh)
+    (hKeep : ∀ r ∈ t.blocks store ws v, keep r) :
+    t.pointers store' ws v = t.pointers store ws v := by
+  obtain ⟨hRep', hSame, _⟩ := hRep.step hStep hKeep
+  change t.blocks store' ws v = t.blocks store ws v at hSame
+  rw [← hRep'.pointers_from_blocks, ← hRep.pointers_from_blocks, hSame]
 
 theorem Ty.types_length : (t : Ty) → t.types.length = t.width
   | .elem e => e.types_length
-  | .array _ => rfl
+  | .array _ | .tree _ | .treeHeader _ => rfl
   | .pair a b => by simp [Ty.types, Ty.width, a.types_length, b.types_length]
 
 theorem Ty.Rep.typed {mode : Mode} {heap : Heap} {store : Store Unit} {t : Ty} {ws : List Value}
@@ -1138,7 +1246,7 @@ theorem Elem.arrayInst_blocks {store : Store Unit} {ws : List Value} : (e : Elem
   | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.arrayInst_reads {store : Store Unit} {ws : List Value} : (e : Elem) →
-    {xs : Array e.denote} → @Represent.reads _ e.arrayInst store ws xs = (Ty.array e).reads ws xs
+    {xs : Array e.denote} → @Represent.reads _ e.arrayInst store ws xs = (Ty.array e).reads store ws xs
   | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.arrayInst_moves {store : Store Unit} {ws : List Value} : (e : Elem) →
@@ -1157,7 +1265,7 @@ theorem Elem.movedInst_width : (e : Elem) → (xs : Moved (Array e.denote)) →
 
 theorem Elem.movedInst_moves {store : Store Unit} {ws : List Value} : (e : Elem) →
     {xs : Moved (Array e.denote)} →
-      @Represent.moves _ e.movedInst store ws xs = (Ty.array e).pointers ws
+      @Represent.moves _ e.movedInst store ws xs = (Ty.array e).pointers store ws xs.val
   | .word, _ | .bool, _ | .float, _ | .float32, _ | .prod _ _, _ => rfl
 
 theorem Elem.movedInst_reads {store : Store Unit} {ws : List Value} : (e : Elem) →
@@ -1180,6 +1288,8 @@ without arrays, and the instances for pairs and arrays otherwise. -/
       @instRepresentOfScalar _ ((Ty.pair a b).scalarInst h)
     else @instRepresentProd _ _ a.leanInst b.leanInst
   | .array e => e.arrayInst
+  | .tree shape => inferInstanceAs (Represent (Tree shape))
+  | .treeHeader shape => inferInstanceAs (Represent (TreeHeader shape))
 
 /-- The words of a value of a type without arrays. -/
 theorem Ty.scalar_rep {mode : Mode} {heap : Heap} {store : Store Unit} :
@@ -1211,6 +1321,10 @@ theorem Ty.leanInst_borrowed {heap : Heap} {store : Store Unit} :
       (@Represent.borrowed _ t.leanInst heap store ws v ↔ t.Rep .borrowed heap store ws v)
   | .elem e, _, _ => Ty.scalar_rep (.elem e) rfl
   | .array e, _, _ => e.arrayInst_borrowed
+  | .tree _, _, _ => Iff.rfl
+  | .treeHeader _, _, _ => by
+    change (∃ p, _ = [Value.i64 p]) ↔ ∃ p, _ = [Value.i64 p] ∧ True
+    simp only [and_true]
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1238,6 +1352,7 @@ theorem Ty.scalarInst_length : (t : Ty) → (h : t.scalar = true) → (v : t.den
 theorem Ty.leanInst_width : (t : Ty) → (v : t.denote) → @Represent.width _ t.leanInst v = t.width
   | .elem e, v => (Ty.elem e).scalarInst_length rfl v
   | .array e, xs => e.arrayInst_width xs
+  | .tree _, _ | .treeHeader _, _ => rfl
   | .pair a b, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1253,6 +1368,7 @@ theorem Ty.leanInst_blocks {store : Store Unit} :
       @Represent.blocks _ t.leanInst store ws v = t.blocks store ws v
   | .elem _, _, _ => rfl
   | .array e, _, _ => e.arrayInst_blocks
+  | .tree _, _, _ | .treeHeader _, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h, Ty.blocks_scalar _ h]
@@ -1269,6 +1385,7 @@ theorem Ty.leanInst_owned {heap : Heap} {store : Store Unit} :
       (@Represent.owned _ t.leanInst heap store ws v ↔ t.Rep .owned heap store ws v)
   | .elem e, _, _ => Ty.scalar_rep (.elem e) rfl
   | .array e, _, _ => e.arrayInst_owned
+  | .tree _, _, _ | .treeHeader _, _, _ => Iff.rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1292,6 +1409,7 @@ theorem Ty.leanInst_moves {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} → @Represent.moves _ t.leanInst store ws v = []
   | .elem _, _, _ => rfl
   | .array e, _, _ => e.arrayInst_moves
+  | .tree _, _, _ | .treeHeader _, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h]
@@ -1304,9 +1422,10 @@ theorem Ty.leanInst_moves {store : Store Unit} :
 
 theorem Ty.leanInst_reads {store : Store Unit} :
     (t : Ty) → {ws : List Value} → {v : t.denote} →
-      @Represent.reads _ t.leanInst store ws v = t.reads ws v
+      @Represent.reads _ t.leanInst store ws v = t.reads store ws v
   | .elem _, _, _ => rfl
   | .array e, _, _ => e.arrayInst_reads
+  | .tree _, _, _ | .treeHeader _, _, _ => rfl
   | .pair a b, ws, p => by
     by_cases h : (Ty.pair a b).scalar = true
     · rw [(Ty.pair a b).leanInst_scalar h, Ty.reads_scalar _ h]
@@ -1325,12 +1444,16 @@ theorem Ty.paramMode_scalar : (t : Ty) → t.scalar = true → (m : Mode) → t.
 `Moved` for an owned array. -/
 abbrev Ty.argTy : Ty → Mode → Type
   | .array e, .owned => Moved (Array e.denote)
+  | .tree shape, .owned => Moved (Tree shape)
+  | .treeHeader shape, .owned => Moved (TreeHeader shape)
   | t, _ => t.denote
 
 /-- The value of an argument. -/
 def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array _, .owned, x => x.val
   | .array _, .borrowed, x => x
+  | .tree _, .owned, x | .treeHeader _, .owned, x => x.val
+  | .tree _, .borrowed, x | .treeHeader _, .borrowed, x => x
   | .elem _, _, x | .pair _ _, _, x => x
 
 /-- The `Represent` instance that Lean synthesizes for an argument. -/
@@ -1339,6 +1462,10 @@ def Ty.argVal : (t : Ty) → (m : Mode) → t.argTy m → t.denote
   | .array e, .borrowed => Ty.leanInst (.array e)
   | .elem e, _ => Ty.leanInst (.elem e)
   | .pair a b, _ => Ty.leanInst (.pair a b)
+  | .tree shape, .owned => inferInstanceAs (Represent (Moved (Tree shape)))
+  | .tree shape, .borrowed => Ty.leanInst (.tree shape)
+  | .treeHeader shape, .owned => inferInstanceAs (Represent (Moved (TreeHeader shape)))
+  | .treeHeader shape, .borrowed => Ty.leanInst (.treeHeader shape)
 
 /-- The `Scalar` instance that Lean synthesizes for an argument without arrays. -/
 @[instance_reducible] def Ty.argScalarInst : (t : Ty) → (m : Mode) → t.scalar = true →
@@ -1361,6 +1488,7 @@ theorem Ty.argInst_width : (t : Ty) → (m : Mode) → (x : t.argTy m) →
     @Represent.width _ (t.argInst m) x = t.width
   | .array e, .owned, x => e.movedInst_width x
   | .array e, .borrowed, x => e.arrayInst_width x
+  | .tree _, _, _ | .treeHeader _, _, _ => by cases ‹Mode› <;> rfl
   | .elem _, _, x | .pair _ _, _, x => Ty.leanInst_width _ x
 
 /-- Lean's instance for an argument agrees with the verified compiler's representation. -/
@@ -1370,16 +1498,22 @@ theorem Ty.argInst_borrowed {heap : Heap} {store : Store Unit} :
         t.Rep (t.paramMode m) heap store ws (t.argVal m x))
   | .array e, .owned, _, _ => e.movedInst_borrowed
   | .array e, .borrowed, _, _ => e.arrayInst_borrowed
+  | .tree shape, .owned, _, _ | .treeHeader shape, .owned, _, _ => Iff.rfl
+  | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_borrowed
+  | .treeHeader shape, .borrowed, _, _ => (Ty.treeHeader shape).leanInst_borrowed
   | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_borrowed _
 
 theorem Ty.argInst_moves {store : Store Unit} :
     (t : Ty) → (m : Mode) → {ws : List Value} → {x : t.argTy m} →
       @Represent.moves _ (t.argInst m) store ws x =
         match t.paramMode m with
-        | .owned => t.pointers ws
+        | .owned => t.pointers store ws (t.argVal m x)
         | .borrowed => []
   | .array e, .owned, _, _ => e.movedInst_moves
   | .array e, .borrowed, _, _ => e.arrayInst_moves
+  | .tree _, .owned, _, _ | .treeHeader _, .owned, _, _ => rfl
+  | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_moves
+  | .treeHeader shape, .borrowed, _, _ => (Ty.treeHeader shape).leanInst_moves
   | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_moves _
 
 theorem Ty.argInst_reads {store : Store Unit} :
@@ -1387,9 +1521,12 @@ theorem Ty.argInst_reads {store : Store Unit} :
       @Represent.reads _ (t.argInst m) store ws x =
         match t.paramMode m with
         | .owned => []
-        | .borrowed => t.reads ws (t.argVal m x)
+        | .borrowed => t.reads store ws (t.argVal m x)
   | .array e, .owned, _, _ => e.movedInst_reads
   | .array e, .borrowed, _, _ => (Ty.array e).leanInst_reads
+  | .tree _, .owned, _, _ | .treeHeader _, .owned, _, _ => rfl
+  | .tree shape, .borrowed, _, _ => (Ty.tree shape).leanInst_reads
+  | .treeHeader shape, .borrowed, _, _ => (Ty.treeHeader shape).leanInst_reads
   | .elem _, _, _, _ | .pair _ _, _, _, _ => Ty.leanInst_reads _
 
 /-- The Lean type of a function's arguments, for parameters of types `ps` for which the modes `ms`
@@ -1483,8 +1620,8 @@ theorem argsInst_borrowed {heap : Heap} {store : Store Unit} :
         exact ⟨first, rest, rfl, (t.argInst_borrowed _).mpr h1,
           (argsInst_borrowed (u :: ts) ms.tail).mpr h2⟩
 
-theorem Env.moves_scalar : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
-    (ws : List Value) → (env : Env ps) → Env.moves (paramMode ps ms) ws env = []
+theorem Env.moves_scalar {store : Store Unit} : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
+    (ws : List Value) → (env : Env ps) → Env.moves store (paramMode ps ms) ws env = []
   | [], _, _, _, .nil => rfl
   | t :: _, ms, h, ws, .cons _ env => by
     simp only [List.all_cons, Bool.and_eq_true] at h
@@ -1492,8 +1629,8 @@ theorem Env.moves_scalar : {ps : List Ty} → (ms : List Mode) → ps.all Ty.sca
       t.paramMode_scalar h.1, List.nil_append]
     exact Env.moves_scalar ms.tail h.2 _ env
 
-theorem Env.reads_scalar : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
-    (ws : List Value) → (env : Env ps) → Env.reads (paramMode ps ms) ws env = []
+theorem Env.reads_scalar {store : Store Unit} : {ps : List Ty} → (ms : List Mode) → ps.all Ty.scalar = true →
+    (ws : List Value) → (env : Env ps) → Env.reads store (paramMode ps ms) ws env = []
   | [], _, _, _, .nil => rfl
   | t :: _, ms, h, ws, .cons v env => by
     simp only [List.all_cons, Bool.and_eq_true] at h
@@ -1505,7 +1642,7 @@ theorem argsInst_moves {store : Store Unit} :
     (ps : List Ty) → (ms : List Mode) → {ws : List Value} → {y : argsTy ps ms} →
       ws.length = widthSum ps →
       @Represent.moves _ (argsInst ps ms) store ws y =
-        Env.moves (paramMode ps ms) ws (Env.ofArgs ps ms y)
+        Env.moves store (paramMode ps ms) ws (Env.ofArgs ps ms y)
   | [], _, _, _, _ => rfl
   | [t], ms, ws, y, hl => by
     rw [show (@Represent.moves _ (argsInst [t] ms) store ws y) =
@@ -1529,7 +1666,7 @@ theorem argsInst_reads {store : Store Unit} :
     (ps : List Ty) → (ms : List Mode) → {ws : List Value} → {y : argsTy ps ms} →
       ws.length = widthSum ps →
       @Represent.reads _ (argsInst ps ms) store ws y =
-        Env.reads (paramMode ps ms) ws (Env.ofArgs ps ms y)
+        Env.reads store (paramMode ps ms) ws (Env.ofArgs ps ms y)
   | [], _, _, _, _ => rfl
   | [t], ms, ws, y, hl => by
     rw [show (@Represent.reads _ (argsInst [t] ms) store ws y) =
@@ -1548,5 +1685,10 @@ theorem argsInst_reads {store : Store Unit} :
       rw [t.argInst_width, t.argInst_reads, argsInst_reads (u :: ts) ms.tail
         (by rw [List.length_drop, hl, widthSum_cons]; omega)]
       rfl
+
+#print axioms Ty.Rep.step
+#print axioms Ty.blocks_pointers
+#print axioms Ty.argInst_borrowed
+#print axioms argsInst_moves
 
 end Verified

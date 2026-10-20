@@ -100,7 +100,7 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
     dsimp (config := { instances := true }) only [tailCredits, all, nextEnv, g, tailSig] at hp ⊢
     simpa only [Bool.false_or] using hp
   have prepared : Step heap store (Holds.KeepDying env slots all (fun _ => false) store s)
-      heap1 store1 ((Env.moves g.mode ws1 nextEnv).map (block store1)) := by
+      heap1 store1 ((Env.moves store1 g.mode ws1 nextEnv).map (block store1)) := by
     refine ⟨step1.at_, step1.caps, fun r hr hp hk => ?_⟩
     obtain ⟨bytes, region, freshApart⟩ := step1.keeps r hr hp trivial
     refine ⟨bytes, region, fun b hb => ?_⟩
@@ -112,18 +112,21 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
   have releaseStep : Step heap1 store1 (Holds.KeepDying env slots kept (fun _ => false) store1 s1)
       heap2 store2 [] :=
     release'.step.mono (fun _ hr => Holds.keepDying_values.mpr hr) (fun _ hb => hb)
-  have keepOwned : ∀ q ∈ Env.moves g.mode ws1 nextEnv,
+  have keepOwned : ∀ q ∈ Env.moves store1 g.mode ws1 nextEnv,
       Holds.KeepDying env slots kept (fun _ => false) store1 s1 (block store1 q) := by
     intro q hq t x hx _ hxOwned wx hold length b hb
     have hb' : b ∈ t.regions (slots.getD x.index default).mode store1 wx (env.get x) := by
       rw [hxOwned]; exact hb
     exact regionsDisjoint_symm (keptApart t x hx wx hold length b hb' q hq)
-  have keepBorrowed : ∀ r ∈ Env.reads g.mode ws1 nextEnv,
+  have keepBorrowed : ∀ r ∈ Env.reads store1 g.mode ws1 nextEnv,
       Holds.KeepDying env slots kept (fun _ => false) store1 s1 r := by
     intro r hr t x hx _ hxOwned wx hold length b hb
     exact regionsDisjoint_symm (borrowedApart t x (hKept _ hx) hxOwned wx hold length b hb r hr)
-  obtain ⟨rep2, sameBlocks⟩ := Env.Rep.step releaseStep nextEnv g.mode ws1 rep1 keepOwned keepBorrowed
-  have separate2 := Separate.of_block_eq separate1 sameBlocks
+  obtain ⟨rep2, sameBlocks, sameMoves, sameReads⟩ := Env.Rep.step releaseStep nextEnv g.mode ws1 rep1 keepOwned keepBorrowed
+  have separate2 : Separate store2 (Env.moves store2 g.mode ws1 nextEnv)
+      (Env.reads store2 g.mode ws1 nextEnv) := by
+    rw [sameMoves, sameReads]
+    exact Separate.of_block_eq separate1 sameBlocks
   have keepRelease : ∀ r, Holds.KeepDying env slots all (fun _ => false) store s r →
       Holds.KeepDying env slots kept (fun _ => false) store1 s1 r := by
     intro r hr
@@ -132,10 +135,12 @@ theorem tail_next_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : M
       (fun i hi _ => hKept i hi) (hr.mono fun i hi _ => ⟨hKept i hi, rfl⟩)
   have combined := prepared.transBoth releaseStep (keep := Holds.KeepDying env slots all
       (fun _ => false) store s) fun r hr => ⟨hr, fun _ => keepRelease r hr⟩
-  have sameFresh : (Env.moves g.mode ws1 nextEnv).map (block store2) =
-      (Env.moves g.mode ws1 nextEnv).map (block store1) := List.map_congr_left sameBlocks
+  have sameFresh : (Env.moves store2 g.mode ws1 nextEnv).map (block store2) =
+      (Env.moves store1 g.mode ws1 nextEnv).map (block store1) := by
+    rw [sameMoves]
+    exact List.map_congr_left sameBlocks
   have finalStep : Step heap store (Holds.KeepDying env slots all (fun _ => false) store s)
-      heap2 store2 ((Env.moves g.mode ws1 nextEnv).map (block store2)) := by
+      heap2 store2 ((Env.moves store2 g.mode ws1 nextEnv).map (block store2)) := by
     simpa only [List.append_nil, sameFresh] using combined
   have samePot := Env.argPot_of_blocks nextEnv g.mode ws1 rep1 sameBlocks (g.paidSel nextPaid)
     (fun i hi => by simp only [Sig.paidSel, Bool.and_eq_true, beq_iff_eq] at hi; exact hi.2)

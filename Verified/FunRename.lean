@@ -9,6 +9,10 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .word n => .word n
   | _, _, .bool b => .bool b
   | _, _, .var x => .var x
+  | _, _, .treeNil shape => .treeNil shape
+  | _, _, .treeNode reuse words children =>
+    .treeNode reuse (fun i => (words i).renameFuns ρ) (fun i => (children i).renameFuns ρ)
+  | _, _, .treeCase x empty node => .treeCase x (empty.renameFuns ρ) (node.renameFuns ρ)
   | _, _, .bin op a b => .bin op (a.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .cmp op a b => .cmp op (a.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .not a => .not (a.renameFuns ρ)
