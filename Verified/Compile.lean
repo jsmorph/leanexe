@@ -1,4 +1,5 @@
 import Verified.Source
+import Verified.ListFoldDefs
 import Verified.LocalFrame
 import Verified.TreeCopyCode
 import Verified.TreeHeaderCode
@@ -382,6 +383,17 @@ def TreeShape.slots (shape : TreeShape) (base : Nat) (mode : Mode) (rest : List 
   ⟨base, mode⟩ :: ((List.range shape.words).map (fun i => ⟨base + 1 + i, .borrowed⟩) ++
     ((List.range shape.children).map (fun i => ⟨base + 1 + shape.words + i, mode⟩) ++ rest))
 
+/-- The slots of parameters of types `ts` for which the modes `ms` were chosen: parameter `i` starts
+after the words of the parameters before it. -/
+def paramSlots : List Ty → List Mode → Nat → List Slot
+  | [], _, _ => []
+  | t :: ts, ms, loc =>
+    ⟨loc, t.paramMode (ms.headD .borrowed)⟩ :: paramSlots ts ms.tail (loc + t.width)
+
+def storeParamsCode (h base : Nat) : List Ty → Program
+  | [] => []
+  | t :: ts => storeParamsCode h (base + t.width) ts ++ storeCode h base t.types
+
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
 and `letPair` value and of each `ite` result, two for each division or remainder, the count, the
 index, and the state of each loop, the position of each read, the count, the address, and the
@@ -416,6 +428,10 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .fold (e := e) (t := t) _ init body =>
     max (1 + max init.width (copyWidth t))
       (2 + t.width + max (e.width + max 2 body.width) (copyWidth t))
+  | _, _, .listFold (e := e) (captures := captures) args body =>
+    max (argsMax fun i => (args i).width)
+      (widthSum (ListFold.params e captures) + e.width + 3 +
+        max treeCopyScratch (e.width + max body.width treeCopyScratch))
   | _, _, .get _ i => max i.width 2
   | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
   | _, _, .set (e := e) _ i v =>
@@ -474,6 +490,89 @@ def loopCode (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool)
         [] []] ++
     releaseWhere Γ slots (fun i => (cond.usesFast (i + 1) || body.usesFast (i + 2)) && !live i) ++
     loadCode h (base + 2) t.types
+
+def tailSig (params : List Ty) (result : Ty) (modes : List Mode) : Sig :=
+  ⟨params, result, true, modes, false⟩
+
+def TailBody.codeWith
+    (exprCode : {Γ : List Ty} → {t : Ty} → Expr S Γ t →
+      List Slot → Nat → (Nat → Bool) → Program) (targetModes : List Mode) (h p0 resultBase : Nat) :
+    {Γ : List Ty} → TailBody S params result Γ → List Slot → Nat → Nat → Nat → Program
+  | _, .ret value, slots, base, exitLabel, _ =>
+    exprCode value slots base (fun _ => false) ++
+      coerceCode h result (value.mode (slots.map Slot.mode)) .owned base ++
+      storeCode h resultBase result.types ++ [.br exitLabel]
+  | Γ, .next args, slots, base, _, nextLabel =>
+    let g := tailSig params result targetModes
+    let all := fun i => argsAny fun j => (args j).usesFast i
+    let kept := fun i =>
+      all i && !(argsAny fun j => callMoves slots (fun _ => false) (g := g) args j &&
+        (args j).usesFast i)
+    argsCode (fun i =>
+      if (params.get i).scalar then exprCode (args i) slots base all
+      else if paramMode params targetModes i = .owned then (args i).ownedCode h slots base kept
+      else (args i).placeCode h slots) ++
+      releaseWhere Γ slots kept ++ storeParamsCode h p0 params ++ [.br nextLabel]
+  | Γ, .ite cond yes no, slots, base, exitLabel, nextLabel =>
+    let mid := fun i => yes.usesFast i || no.usesFast i
+    exprCode cond slots base mid ++
+      [.eqzI64, .iff 0 0
+        (releaseWhere Γ slots (fun i => mid i && !no.usesFast i) ++
+          no.codeWith exprCode targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
+        (releaseWhere Γ slots (fun i => mid i && !yes.usesFast i) ++
+          yes.codeWith exprCode targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1)) [] []]
+  | _, .letE (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    exprCode value slots (base + t.width) (fun i => body.usesFast (i + 1)) ++
+      storeCode h base t.types ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t base else []) ++
+      body.codeWith exprCode targetModes h p0 resultBase (⟨base, mode⟩ :: slots) (base + t.width)
+        exitLabel nextLabel
+  | _, .letPair (s := s) (t := t) value body, slots, base, exitLabel, nextLabel =>
+    let mode := value.mode (slots.map Slot.mode)
+    exprCode value slots (base + s.width + t.width) (fun i => body.usesFast (i + 2)) ++
+      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
+      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
+      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
+      body.codeWith exprCode targetModes h p0 resultBase (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots)
+        (base + s.width + t.width) exitLabel nextLabel
+  | Γ, .treeCase (shape := shape) x empty node, slots, base, exitLabel, nextLabel =>
+    let rootMode := (slots.getD x.index default).mode
+    let scratch := base + shape.bindCount
+    let nodeLive := fun i => node.usesFast (i + shape.bindCount)
+    let mid := fun i => decide (i = x.index) || empty.usesFast i || nodeLive i
+    [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
+      (releaseWhere Γ slots (fun i => mid i && !empty.usesFast i) ++
+        empty.codeWith exprCode targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
+      (releaseWhere Γ slots (fun i => mid i && !(nodeLive i || decide (i = x.index))) ++
+        x.code h slots scratch nodeLive ++ [.localSet base] ++
+        treeLoadFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
+        (if rootMode = .owned then
+          LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
+        releaseWhere (shape.context Γ) (shape.slots base rootMode slots)
+          (fun i => decide (i < shape.bindCount) && !node.usesFast i) ++
+        node.codeWith exprCode targetModes h p0 resultBase (shape.slots base rootMode slots) scratch
+          (exitLabel + 1) (nextLabel + 1)) [] []]
+
+def ListFold.leafCode {S : List Sig} (h : Nat)
+    (bodyCode : List Slot → Nat → (Nat → Bool) → Program)
+    {Γ : List Ty} {t : Ty} (value : Expr S Γ t) (slots : List Slot)
+    (base : Nat) (live : Nat → Bool) : Program :=
+  match value with
+  | .var x => x.code h slots base live
+  | _ => bodyCode slots base live
+
+def ListFold.loopCode {S : List Sig} {e : Elem} {captures : List Ty}
+    (body : Expr S (ListFold.context e captures) (.elem e)) (h stateBase : Nat)
+    (bodyCode : List Slot → Nat → (Nat → Bool) → Program) : Program :=
+  let stateSlots := paramSlots (ListFold.params e captures) [] stateBase
+  let resultBase := stateBase + widthSum (ListFold.params e captures)
+  let tail := ListFold.tailBody body
+  [.block 0 0 [.loop 0 0
+    (releaseWhere (ListFold.params e captures) stateSlots (fun i => !tail.usesFast i) ++
+      tail.codeWith (ListFold.leafCode h bodyCode) [] h stateBase resultBase stateSlots
+        (resultBase + e.width) 1 0)
+    [] []] [] []]
 
 /-- The instructions that push the words that hold the value of an expression.  Variable `x`
 starts at position `(slots.getD x.index default).loc`, the positions from `base` on are free, `h`
@@ -673,6 +772,15 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
               h slots (base + e.width) live (.there .here)) ++
           storeCode h base e.types ++
           body.code h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live))
+  | Γ, _, .listFold (e := e) (captures := captures) args body =>
+    let all := fun i => live i || argsAny fun j => (args j).usesFast i
+    argsCode (fun i =>
+      if ((ListFold.params e captures).get i).scalar then (args i).code h slots base all
+      else (args i).placeCode h slots) ++
+      storeParamsCode h base (ListFold.params e captures) ++
+      ListFold.loopCode body h base (fun slots base live => body.code h slots base live) ++
+      releaseWhere Γ slots (fun i => all i && !live i) ++
+      loadCode h (base + widthSum (ListFold.params e captures)) e.types
   | _, _, .size x => x.sizeCode slots live
   | _, _, .leSize x i =>
     i.code h slots base (fun j => live j || j == x.index) ++
@@ -752,13 +860,6 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     first.code h slots base (fun i => live i || second.usesFast i) ++ second.code h slots base live
   | _, _, .proj (e' := e') x p =>
     loadCode h ((slots.getD x.index default).loc + p.offset) e'.types
-
-/-- The slots of parameters of types `ts` for which the modes `ms` were chosen: parameter `i` starts
-after the words of the parameters before it. -/
-def paramSlots : List Ty → List Mode → Nat → List Slot
-  | [], _, _ => []
-  | t :: ts, ms, loc =>
-    ⟨loc, t.paramMode (ms.headD .borrowed)⟩ :: paramSlots ts ms.tail (loc + t.width)
 
 /-- The parameter types of a function's code: its parameters' words, after the call depth when
 the code takes it. -/
@@ -900,9 +1001,6 @@ def wordToNone : FuncType := { params := [.i64], results := [] }
 def TailFunc.type (func : TailFunc S) : FuncType :=
   { params := codeParams func.params func.depth, results := func.result.types }
 
-def tailSig (params : List Ty) (result : Ty) (modes : List Mode) : Sig :=
-  ⟨params, result, true, modes, false⟩
-
 def TailBody.width (targetModes : List Mode) :
     {Γ : List Ty} → TailBody S params result Γ → Nat
   | _, .ret value => max value.width (copyWidth result)
@@ -917,67 +1015,11 @@ def TailBody.width (targetModes : List Mode) :
     max (empty.width targetModes)
       (shape.bindCount + max treeCopyScratch (node.width targetModes))
 
-def storeParamsCode (h base : Nat) : List Ty → Program
-  | [] => []
-  | t :: ts => storeParamsCode h (base + t.width) ts ++ storeCode h base t.types
-
-def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat) :
-    {Γ : List Ty} → TailBody S params result Γ → List Slot → Nat → Nat → Nat → Program
-  | _, .ret value, slots, base, exitLabel, _ =>
-    value.code h slots base (fun _ => false) ++
-      coerceCode h result (value.mode (slots.map Slot.mode)) .owned base ++
-      storeCode h resultBase result.types ++ [.br exitLabel]
-  | Γ, .next args, slots, base, _, nextLabel =>
-    let g := tailSig params result targetModes
-    let all := fun i => argsAny fun j => (args j).usesFast i
-    let kept := fun i =>
-      all i && !(argsAny fun j => callMoves slots (fun _ => false) (g := g) args j &&
-        (args j).usesFast i)
-    argsCode (fun i =>
-      if (params.get i).scalar then (args i).code h slots base all
-      else if paramMode params targetModes i = .owned then (args i).ownedCode h slots base kept
-      else (args i).placeCode h slots) ++
-      releaseWhere Γ slots kept ++ storeParamsCode h p0 params ++ [.br nextLabel]
-  | Γ, .ite cond yes no, slots, base, exitLabel, nextLabel =>
-    let mid := fun i => yes.usesFast i || no.usesFast i
-    cond.code h slots base mid ++
-      [.eqzI64, .iff 0 0
-        (releaseWhere Γ slots (fun i => mid i && !no.usesFast i) ++
-          no.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
-        (releaseWhere Γ slots (fun i => mid i && !yes.usesFast i) ++
-          yes.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1)) [] []]
-  | _, .letE (t := t) value body, slots, base, exitLabel, nextLabel =>
-    let mode := value.mode (slots.map Slot.mode)
-    value.code h slots (base + t.width) (fun i => body.usesFast (i + 1)) ++
-      storeCode h base t.types ++
-      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t base else []) ++
-      body.code targetModes h p0 resultBase (⟨base, mode⟩ :: slots) (base + t.width)
-        exitLabel nextLabel
-  | _, .letPair (s := s) (t := t) value body, slots, base, exitLabel, nextLabel =>
-    let mode := value.mode (slots.map Slot.mode)
-    value.code h slots (base + s.width + t.width) (fun i => body.usesFast (i + 2)) ++
-      storeCode h (base + s.width) t.types ++ storeCode h base s.types ++
-      (if mode = .owned ∧ body.usesFast 1 = false then releaseCode s base else []) ++
-      (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
-      body.code targetModes h p0 resultBase (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots)
-        (base + s.width + t.width) exitLabel nextLabel
-  | Γ, .treeCase (shape := shape) x empty node, slots, base, exitLabel, nextLabel =>
-    let rootMode := (slots.getD x.index default).mode
-    let scratch := base + shape.bindCount
-    let nodeLive := fun i => node.usesFast (i + shape.bindCount)
-    let mid := fun i => decide (i = x.index) || empty.usesFast i || nodeLive i
-    [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
-      (releaseWhere Γ slots (fun i => mid i && !empty.usesFast i) ++
-        empty.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
-      (releaseWhere Γ slots (fun i => mid i && !(nodeLive i || decide (i = x.index))) ++
-        x.code h slots scratch nodeLive ++ [.localSet base] ++
-        treeLoadFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
-        (if rootMode = .owned then
-          LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
-        releaseWhere (shape.context Γ) (shape.slots base rootMode slots)
-          (fun i => decide (i < shape.bindCount) && !node.usesFast i) ++
-        node.code targetModes h p0 resultBase (shape.slots base rootMode slots) scratch
-          (exitLabel + 1) (nextLabel + 1)) [] []]
+def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat)
+    {Γ : List Ty} (body : TailBody S params result Γ) (slots : List Slot)
+    (base exitLabel nextLabel : Nat) : Program :=
+  body.codeWith (fun value slots base live => value.code h slots base live)
+    targetModes h p0 resultBase slots base exitLabel nextLabel
 
 def TailFunc.positions (func : TailFunc S) : Nat :=
   (if func.depth then 1 else 0) + 2 * widthSum func.params + func.result.width +

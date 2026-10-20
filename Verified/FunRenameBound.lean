@@ -37,7 +37,19 @@ theorem Expr.grows_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (flags : Flags S) (target : Flags T)
     (params : ∀ {g : Sig} (f : FVar S g), target.params (ρ f) = flags.params f)
     (e : Expr S Γ t) : (e.renameFuns ρ).grows target = e.grows flags := by
-  induction e <;> simp_all only [Expr.renameFuns, Expr.grows, params]
+  induction e with
+  | call f args ih =>
+    exact congrArg₂ Bool.or (congrArg argsAny (funext ih))
+      (congrArg (fun values : List Bool => values.any id) (params f))
+  | treeNode reuse words children hw hc =>
+    exact congrArg₂ Bool.or (congrArg argsAny (funext hw)) (congrArg argsAny (funext hc))
+  | listFold args body ha hb =>
+    exact congrArg₂ Bool.or (congrArg argsAny (funext ha)) hb
+  | loop count init cond body hn hi hc hb =>
+    exact congrArg₂ Bool.or (congrArg₂ Bool.or (congrArg₂ Bool.or hn hi) hc) hb
+  | ite cond yes no hc hy hn =>
+    exact congrArg₂ Bool.or (congrArg₂ Bool.or hc hy) hn
+  | _ => first | rfl | assumption | apply congrArg₂ Bool.or <;> assumption
 
 theorem Expr.foldStep_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (x : Var Γ (.array e)) (body : Expr S (.elem e :: t :: .word :: Γ) t) :
@@ -95,7 +107,16 @@ theorem Expr.allocs_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (e : Expr S Γ t) (modes : List Mode) (paid : List Bool) (live : Nat → Bool) (env : Env Γ) :
     (e.renameFuns ρ).allocs targetFuns targetFlags targetBounds modes paid live env =
       e.allocs funs flags bounds modes paid live env := by
-  induction e generalizing modes paid live <;>
+  induction e generalizing modes paid live with
+  | listFold args body ha hb =>
+    have hd : (body.renameFuns ρ).denote targetFuns = body.denote funs :=
+      funext (fun env => Expr.denote_renameFuns ρ funs targetFuns functions body env)
+    have hc (ms : List Mode) (pf : List Bool) (lf : Nat → Bool) :
+        (body.renameFuns ρ).allocs targetFuns targetFlags targetBounds ms pf lf =
+          body.allocs funs flags bounds ms pf lf := funext (hb ms pf lf)
+    simp only [Expr.renameFuns, Expr.allocs, Expr.uses_renameFuns, ha, hd, hc,
+      Expr.denote_renameFuns ρ funs targetFuns functions]
+  | _ =>
     simp_all
       [Expr.renameFuns, Expr.allocs, loopAlloc, Expr.foldStep_renameFuns, Expr.statePaid,
       Expr.mode_renameFuns, Expr.uses_renameFuns, Expr.ownedCost_renameFuns,
@@ -103,7 +124,7 @@ theorem Expr.allocs_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
       Expr.grows_renameFuns ρ flags targetFlags params, callMovesAt_renameFuns,
       callCredits_renameFuns ρ funs targetFuns functions flags targetFlags params,
       Expr.denote_renameFuns ρ funs targetFuns functions, Expr.denote]
-  all_goals rfl
+    all_goals rfl
 
 theorem Expr.fits_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (funs : Funs S) (targetFuns : Funs T)
@@ -112,7 +133,14 @@ theorem Expr.fits_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (frames : ∀ {g : Sig} (f : FVar S g) env, targetFits.get (ρ f) env = fits.get f env)
     (e : Expr S Γ t) (env : Env Γ) :
     (e.renameFuns ρ).fits targetFuns targetFits env = e.fits funs fits env := by
-  induction e <;>
+  induction e with
+  | listFold args body ha hb =>
+    have hd : (body.renameFuns ρ).denote targetFuns = body.denote funs :=
+      funext (fun env => Expr.denote_renameFuns ρ funs targetFuns functions body env)
+    have hf : (body.renameFuns ρ).fits targetFuns targetFits = body.fits funs fits := funext hb
+    simp only [Expr.renameFuns, Expr.fits, ha, hd, hf,
+      Expr.denote_renameFuns ρ funs targetFuns functions]
+  | _ =>
     simp_all [Expr.renameFuns, Expr.fits, Expr.denote_renameFuns ρ funs targetFuns functions]
 
 #print axioms Expr.useMask_renameFuns

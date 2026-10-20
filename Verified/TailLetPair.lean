@@ -70,7 +70,7 @@ theorem tail_letPair_spec {S : List Sig} {Γ params : List Ty} {result firstTy s
   have hbWidth := Nat.le_max_right value.width (body.width targetModes)
   simp only [TailBody.width] at hRoom
   simp only [TailBody.placeArgs, Bool.and_eq_true] at hPlace
-  simp only [TailBody.code, TailBody.usesFast_eq, List.append_assoc]
+  simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq, List.append_assoc]
   refine valueSpec env slots paid mid h (base + firstTy.width + secondTy.width) heap store s hh hpv
     ((hVars.mono (by omega)).live_mono fun i hi => by rw [← hInput]; exact hi)
     hAt hCap (by omega) (by omega) hPlace.1 _ _

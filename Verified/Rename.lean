@@ -108,6 +108,7 @@ def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S �
       (b.rename (Renaming.lift (Renaming.lift ρ)))
   | _, _, _, ρ, .fold x a b =>
     .fold (ρ x) (a.rename ρ) (b.rename (Renaming.lift (Renaming.lift (Renaming.lift ρ))))
+  | _, _, _, ρ, .listFold args body => .listFold (fun i => (args i).rename ρ) body
   | _, _, _, ρ, .size x => .size (ρ x)
   | _, _, _, ρ, .leSize x i => .leSize (ρ x) (ρ i)
   | _, _, _, ρ, .get x i => .get (ρ x) (i.rename ρ)
@@ -140,6 +141,11 @@ theorem Expr.denote_rename (e : Expr S Γ t) (ρ : Renaming Γ Δ) (funs : Funs 
     congr 2
     funext i
     exact ih i ρ env
+  | listFold args body ihArgs _ =>
+    simp only [Expr.rename, Expr.denote]
+    congr 2
+    funext i
+    exact ihArgs i ρ env
   | treeNil => rfl
   | treeNode reuse words children ihWords ihChildren =>
     simp only [Expr.rename, Expr.denote]

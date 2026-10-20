@@ -93,7 +93,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
       (P' := heap.Within store m (dyingPot store s env slots paid L0 L1 + rootCost))
       nofun (fun _ hw => hw.mono (by omega))
     simpa only [Expr.fits, Expr.allocs, hValue, rootCost, Bool.not_true] using hb
-  simp only [TailBody.code, TailBody.usesFast_eq, List.append_assoc, List.cons_append,
+  simp only [TailBody.code, TailBody.codeWith, TailBody.usesFast_eq, List.append_assoc, List.cons_append,
     List.nil_append, wp_localGet_cons, hGet, wp_eqzI64_cons, hNonzero, ↓reduceIte]
   rw [wp_iff_control_types]
   refine wp_iff_cons rfl ?_
@@ -219,7 +219,7 @@ theorem tail_treeCase_node {S : List Sig} {Γ params : List Ty} {result : Ty}
               exact done))
       simpa only [List.append_assoc] using hOpen)
   convert hRun using 1 <;>
-    simp only [QB, nodeCode, Expr.code, Expr.uses, TailBody.uses, L1, scratch, boundSlots,
+    simp only [QB, nodeCode, TailBody.code, Expr.code, Expr.uses, TailBody.uses, L1, scratch, boundSlots,
       rootMode, storeCode, slotIndex, List.append_assoc, List.cons_append,
       List.nil_append, nat_beq_decide]
   funext cont

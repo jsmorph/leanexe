@@ -4,6 +4,7 @@ import Verified.VarCorrect
 import Verified.Float32Correct
 import Verified.TreeNodeCorrect
 import Verified.TreeCaseCorrect
+import Verified.ListFoldCorrect
 
 /-! Correctness of expression code and ordinary function templates. -/
 
@@ -4695,6 +4696,13 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
     intro hD
     exact spec_fold hm x (initSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (bodySpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | listFold args body argsSpec bodySpec =>
+    intro hD
+    exact spec_listFold hm args body
+      (fun i => argsSpec i fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inl (le_argsAny _ i hd)))
+      (bodySpec fun hd => hD (by simp [Expr.depthCalls, hd]))
   | size x => intro _; exact spec_size hm x
   | leSize x i =>
     intro _

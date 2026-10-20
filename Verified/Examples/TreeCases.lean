@@ -11,6 +11,17 @@ def cases : IO Unit := do
     (List.range n).map fun i => rw (n + i)
   for xs in lists do
     let n := xs.length
+    for seed in [0, 1, maxU] do
+      let hash := xs.foldl (fun acc value => acc * 3 + value) seed
+      let built := xs.foldl (fun acc value => acc + (value + 1)) seed
+      for (name, live) in [("foldWord", n), ("foldWordOwned", 0)] do
+        IO.println s!"treecore|{name}|i64|{chain xs} {u seed}|{hash}|{live}|{n}"
+      for (name, live) in [("foldBuild", n), ("foldBuildOwned", 0)] do
+        IO.println s!"treecore|{name}|i64|{chain xs} {u seed}|{built}|{live}|{2 * n}"
+      for values in [[], [maxU], [0, 3, maxU, 7]] do
+        let total := xs.foldl (fun acc value => acc + values.toArray.getD value.toNat 0) seed
+        for (name, live) in [("foldLookup", n + 1), ("foldLookupOwned", 0)] do
+          IO.println s!"treecore|{name}|i64|{chain xs} {u seed} {arrU values}|{total}|{live}|{n + 1}"
     for (name, live) in [("first", n), ("firstOwned", 0)] do
       IO.println s!"treecore|{name}|i64|{chain xs}|{xs.headD 0}|{live}|{n}"
     for (name, live) in [("rest", n + (n - 1)), ("restOwned", n - 1)] do

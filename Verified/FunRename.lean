@@ -26,6 +26,7 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .loop n a c b =>
     .loop (n.renameFuns ρ) (a.renameFuns ρ) (c.renameFuns ρ) (b.renameFuns ρ)
   | _, _, .fold x a b => .fold x (a.renameFuns ρ) (b.renameFuns ρ)
+  | _, _, .listFold args body => .listFold (fun i => (args i).renameFuns ρ) (body.renameFuns ρ)
   | _, _, .size x => .size x
   | _, _, .leSize x i => .leSize x i
   | _, _, .get x i => .get x (i.renameFuns ρ)
@@ -61,6 +62,13 @@ theorem Expr.denote_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     congr 2
     funext i
     exact ih i env
+  | listFold args body ha hb =>
+    simp only [Expr.renameFuns, Expr.denote]
+    have hbody : (body.renameFuns ρ).denote target = body.denote funs := funext hb
+    rw [hbody]
+    congr 2
+    funext i
+    exact ha i env
   | _ => simp_all [Expr.renameFuns, Expr.denote]
 
 theorem Expr.denote_weakenFuns {g : Sig} (e : Expr S Γ t) (M : Env g.params → g.result.denote)

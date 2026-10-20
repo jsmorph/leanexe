@@ -172,6 +172,7 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
   | _, _, .loop count init cond body =>
     count.grows flags || init.grows flags || cond.grows flags || body.grows flags
   | _, _, .fold _ init body => init.grows flags || body.grows flags
+  | _, _, .listFold args body => (argsAny fun i => (args i).grows flags) || body.grows flags
   | _, _, .build count elem => count.grows flags || elem.grows flags
   | _, _, .get _ i | _, _, .eraseAt _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
@@ -304,6 +305,40 @@ def loopAlloc (funs : Funs S) (flags : Flags S) (modes : List Mode) (paid : List
       (fun i s => body.denote funs (.cons s (.cons i env)))
       (count.denote funs env).toNat 0 (init.denote funs env)
 
+def ListFold.costWith {e : Elem} {captures : List Ty}
+    (body : Env (ListFold.context e captures) → e.denote)
+    (charge : Env (ListFold.context e captures) → Nat) : Env (ListFold.params e captures) → Nat
+  | .cons root (.cons init captured) =>
+    root.foldCostWith (fun cell head tail acc =>
+      body (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+        (.cons cell (.cons acc captured))))
+      (fun cell head tail acc =>
+        charge (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+          (.cons cell (.cons acc captured)))) init
+
+def ListFold.fitsWith {e : Elem} {captures : List Ty}
+    (body : Env (ListFold.context e captures) → e.denote)
+    (valid : Env (ListFold.context e captures) → Bool) : Env (ListFold.params e captures) → Bool
+  | .cons root (.cons init captured) =>
+    root.foldFitsWith (fun cell head tail acc =>
+      body (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+        (.cons cell (.cons acc captured))))
+      (fun cell head tail acc =>
+        valid (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+          (.cons cell (.cons acc captured)))) init
+
+theorem ListFold.fitsWith_true {e : Elem} {captures : List Ty}
+    (body : Env (ListFold.context e captures) → e.denote)
+    (valid : Env (ListFold.context e captures) → Bool) (h : ∀ env, valid env = true)
+    (env : Env (ListFold.params e captures)) : ListFold.fitsWith body valid env = true := by
+  cases env with
+  | cons root env =>
+    cases env with
+    | cons init captured =>
+      have he : valid = fun _ => true := funext h
+      simp only [fitsWith, he, Tree.foldFitsWith_true]
+      rfl
+
 def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : List Mode)
     (paid : List Bool)
     (live : Nat → Bool) : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Env Γ → Nat
@@ -395,6 +430,18 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
       (fun modes paid live env =>
         body.allocs funs flags bounds (.borrowed :: modes) (false :: paid) (shift 1 live)
           (.cons ((env.get (.there (.there x)))[(env.get (.there .here)).toNat]!) env)) env
+  | _, _, .listFold (e := e) (captures := captures) args body, env =>
+    let all := fun i => live i || argsAny fun j => (args j).uses i
+    (argsSum fun i =>
+      if ((ListFold.params e captures).get i).scalar then
+        (args i).allocs funs flags bounds modes paid all env else 0) +
+      ListFold.costWith (body.denote funs)
+        (body.allocs funs flags bounds
+          (listShape.modes .borrowed (paramModes (ListFold.params e captures) []))
+          (List.replicate listShape.bindCount false ++
+            List.replicate (ListFold.params e captures).length false)
+          (ListFold.bodyLive e captures))
+        (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _ => 0
   | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
@@ -601,6 +648,10 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
         (fun i s => body.fits funs fits (.cons ((env.get x)[i.toNat]!) (.cons s (.cons i env))))
         (fun i s => body.denote funs (.cons ((env.get x)[i.toNat]!) (.cons s (.cons i env))))
         (env.get x).size.toUInt64.toNat 0 (init.denote funs env)
+  | _, _, .listFold args body, env =>
+    (argsAll fun i => (args i).fits funs fits env) &&
+      ListFold.fitsWith (body.denote funs) (body.fits funs fits)
+        (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _
   | _, _, .append _ _, _ => true
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
@@ -656,6 +707,12 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, hi hd.1, Bool.true_and]
     exact loopFits_true (fun _ => rfl) (fun i s => hb hd.2 _) _ _ _
+  | listFold args body ha hb =>
+    intro hd env
+    simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
+    simp only [Expr.fits, Bool.and_eq_true]
+    exact ⟨argsAll_true (fun i => ha i (argsAny_eq_false hd.1 i) env),
+      ListFold.fitsWith_true _ _ (hb hd.2) _⟩
   | build count elem hc he =>
     intro hd env
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd

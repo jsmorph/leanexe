@@ -98,7 +98,7 @@ theorem tailBody_placeArgs {S : List Sig} {e : Elem} {captures : List Ty}
   exact next_placeArgs (S := S) (e := e) (captures := captures)
     (body.mode (listShape.modes .borrowed modes)) _ fields
 
-def func {S : List Sig} {e : Elem} {captures : List Ty}
+abbrev func {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true) : TailFunc S :=
   { name := "listFold"
     params := params e captures
@@ -112,6 +112,24 @@ theorem func_decreases {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true)
     (funs : Funs S) : (func body place).Decreases funs :=
   decreases body funs
+
+@[simp] theorem func_paidParams {S : List Sig} {e : Elem} {captures : List Ty}
+    (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true)
+    (flags : Flags S) : (func body place).paidParams flags =
+      List.replicate (params e captures).length false := by
+  simp only [func, TailFunc.paidParams, paramFlags, entryModes, paramSlots_modes,
+    paramModes_default, List.map_replicate]
+  rfl
+
+@[simp] theorem func_paidResult {S : List Sig} {e : Elem} {captures : List Ty}
+    (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true)
+    (flags : Flags S) : (func body place).paidResult flags = false := by
+  rfl
+
+@[simp] theorem func_aborts {S : List Sig} {e : Elem} {captures : List Ty}
+    (body : Expr S (context e captures) (.elem e)) (place : body.placeArgs = true) :
+    (func body place).aborts = true := by
+  rfl
 
 end ListFold
 end Verified

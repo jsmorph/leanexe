@@ -129,7 +129,7 @@ theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
   simp only [TailBody.placeArgs] at hPlace
   simp only [TailBody.paidResult] at hPaid
   simp only [tailTrapFlag, TailBody.aborts, TailBody.fits, TailBody.allocs, TailBody.uses] at hTrap
-  simp only [TailBody.code, List.append_assoc]
+  simp only [TailBody.code, TailBody.codeWith, List.append_assoc]
   refine valueSpec env slots paid (fun _ => false) h base heap store s hh hpv
     (by simpa [TailBody.uses] using hVars) hAt hCap (by omega) (by omega) hPlace _ _
     (hTrap.part id (fun ha => by

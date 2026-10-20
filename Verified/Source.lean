@@ -3,6 +3,7 @@ import LeanExe.Dialect.Build
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
 import Verified.Tree
+import Verified.TreeFold
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
@@ -282,6 +283,34 @@ def Env.treeFields (shape : TreeShape) (words : Fin shape.words → UInt64)
   .cons .unit (prependRepeat .word shape.words words
     (prependRepeat (.tree shape) shape.children children env))
 
+def Var.ofFin : (Γ : List Ty) → (i : Fin Γ.length) → Var Γ (Γ.get i)
+  | _ :: _, ⟨0, _⟩ => .here
+  | _ :: Γ, ⟨i + 1, h⟩ => .there (Var.ofFin Γ ⟨i, by simpa using h⟩)
+
+namespace ListFold
+
+abbrev params (e : Elem) (captures : List Ty) : List Ty :=
+  .tree listShape :: .elem e :: captures
+
+abbrev context (e : Elem) (captures : List Ty) : List Ty :=
+  listShape.context (params e captures)
+
+def nextVar (e : Elem) (captures : List Ty) :
+    (i : Fin (params e captures).length) → Var (.elem e :: context e captures) ((params e captures).get i)
+  | ⟨0, _⟩ => .there (.there (.there .here))
+  | ⟨1, _⟩ => .here
+  | ⟨i + 2, h⟩ => .there (.there (.there (.there (.there (.there
+      (Var.ofFin captures ⟨i, by simpa [params] using h⟩))))))
+
+def denoteWith {e : Elem} {captures : List Ty}
+    (body : Env (context e captures) → e.denote) : Env (params e captures) → e.denote
+  | .cons root (.cons init captured) =>
+    root.foldlWith (fun cell head tail acc =>
+      body (Env.treeFields listShape (fun _ => head) (fun _ => tail)
+        (.cons cell (.cons acc captured)))) init
+
+end ListFold
+
 /-- How a variable holds an array: borrowed, readable while the variable is in scope, or owned,
 which its holder must consume. -/
 inductive Mode where
@@ -397,6 +426,10 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       (body : Expr S (t :: .word :: Γ) t) : Expr S Γ t
   | fold (x : Var Γ (.array e)) (init : Expr S Γ t)
       (body : Expr S (.elem e :: t :: .word :: Γ) t) : Expr S Γ t
+  | listFold {e : Elem} {captures : List Ty}
+      (args : (i : Fin (ListFold.params e captures).length) →
+        Expr S Γ ((ListFold.params e captures).get i))
+      (body : Expr S (ListFold.context e captures) (.elem e)) : Expr S Γ (.elem e)
   | size (x : Var Γ (.array e)) : Expr S Γ .word
   | leSize (x : Var Γ (.array e)) (i : Var Γ .word) : Expr S Γ .bool
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
@@ -500,6 +533,8 @@ def Expr.denote (funs : Funs S) :
     ((env.get x).foldl (fun (state : UInt64 × t.denote) value =>
       (state.1 + 1, body.denote funs (.cons value (.cons state.2 (.cons state.1 env)))))
       (0, init.denote funs env)).2
+  | _, _, .listFold args body, env =>
+    ListFold.denoteWith (body.denote funs) (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size x, env => (env.get x).size.toUInt64
   | _, _, .leSize x i, env => decide ((env.get i).toNat ≤ (env.get x).size)
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
@@ -531,6 +566,9 @@ def argsAny : {n : Nat} → ((i : Fin n) → Bool) → Bool
   | 0, _ => false
   | _ + 1, b => b 0 || argsAny fun i => b i.succ
 
+def ListFold.bodyLive (e : Elem) (captures : List Ty) (i : Nat) : Bool :=
+  argsAny fun j => (i + 1) == (ListFold.nextVar e captures j).index
+
 /-- Whether the code of an expression may trap: whether it builds, updates, or extends an array,
 which may allocate, or calls a function that may trap, whose code takes the call depth, which traps
 at the depth limit, that returns arrays, or that owns a parameter, whose argument the call may
@@ -556,6 +594,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .letPair e body => e.aborts || body.aborts
   | _, _, .loop count init cond body => count.aborts || init.aborts || cond.aborts || body.aborts
   | _, _, .fold _ init body => init.aborts || body.aborts
+  | _, _, .listFold _ _ => true
   | _, _, .size _ | _, _, .leSize _ _ => false
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
@@ -583,6 +622,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .loop count init cond body =>
     count.depthCalls || init.depthCalls || cond.depthCalls || body.depthCalls
   | _, _, .fold _ init body => init.depthCalls || body.depthCalls
+  | _, _, .listFold args body => (argsAny fun i => (args i).depthCalls) || body.depthCalls
   | _, _, .size _ | _, _, .leSize _ _ => false
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
@@ -628,6 +668,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
     count.uses i || init.uses i || cond.uses (i + 1) || body.uses (i + 2)
   | _, _, .fold x init body, i =>
     (i == x.index) || init.uses i || body.uses (i + 3)
+  | _, _, .listFold args _, i => argsAny fun j => (args j).uses i
   | _, _, .size x, i => i == x.index
   | _, _, .leSize x k, i => i == k.index || i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
@@ -675,6 +716,7 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
     count.useMask ||| init.useMask ||| cond.useMask >>> 1 ||| body.useMask >>> 2
   | _, _, .fold x init body =>
     (1 <<< x.index) ||| init.useMask ||| body.useMask >>> 3
+  | _, _, .listFold args _ => argsMask fun i => (args i).useMask
   | _, _, .size x => 1 <<< x.index
   | _, _, .leSize x i => (1 <<< i.index) ||| (1 <<< x.index)
   | _, _, .get x k => 1 <<< x.index ||| k.useMask
@@ -722,6 +764,11 @@ theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     congr 1
     funext j
     exact ih j i
+  | listFold args body ihArgs _ =>
+    simp only [Expr.useMask, Expr.uses, argsMask_testBit]
+    congr 1
+    funext j
+    exact ihArgs j i
   | treeNode reuse words children wordIh childIh =>
     simp_all only [Expr.useMask, Expr.uses, Nat.testBit_or, argsMask_testBit,
       optionVarMask_testBit]
@@ -768,6 +815,9 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .loop count init cond body =>
     count.placeArgs && init.placeArgs && cond.placeArgs && body.placeArgs
   | _, _, .fold _ init body => init.placeArgs && body.placeArgs
+  | _, _, .listFold (e := e) (captures := captures) args body =>
+    !(argsAny fun i => !((ListFold.params e captures).get i).scalar && !(args i).isPlace) &&
+      !(argsAny fun i => !(args i).placeArgs) && body.placeArgs
   | _, _, .get _ i => i.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.placeArgs && v.placeArgs
