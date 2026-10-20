@@ -179,6 +179,10 @@ combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 [field ownership composition](FieldsAfter.lean) preserve completed fields as later fields execute.
 [Field advancement](FieldsAdvance.lean) preserves those results through a further heap step.
 [Variable correctness](VarCorrect.lean) proves reading, moving, and copying a variable.
+[Context composition](ContextAppend.lean) combines represented variable contexts and removes a
+prefix of bound variables.  [Binding composition](BindPrefix.lean) composes a value's execution
+with a body that binds any number of fields.  [Field positions](TreeFieldPositions.lean) relate
+each packed word or child field to its assigned local.
 The [owned-expression rule](OwnedExpr.lean) combines expression correctness with result coercion.
 [Field grouping](FieldsArgs.lean) relates the constructor's finite word and child families to
 the typed argument list.  [Record assembly](TreeAssembleCode.lean) composes payload stores and
