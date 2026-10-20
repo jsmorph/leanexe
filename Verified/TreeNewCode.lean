@@ -27,7 +27,7 @@ theorem wp_treeCopyNew {m : Module} (hm : Runtime m) {host : HostEnv Unit}
       Q store s host := by
   rw [List.append_assoc]
   refine wp_treeCopyAllocate hm hAt hCap hTrap hLow hHigh ?_
-  intro heap' store' ptr hStep hRaw hTop
+  intro heap' store' ptr hStep hRaw _ hTop
   obtain ⟨hRecord, hAll⟩ := CopyRecord.Holds.beginRecord hLayout hSource hStep hRaw
     (parent := parentValue)
   have hPtr := Locals.get_setLocal_same (s := s) (v := .i64 ptr) hLow hHigh

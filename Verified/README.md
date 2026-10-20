@@ -178,6 +178,9 @@ including owned coercions, pairwise block separation, preservation of live varia
 combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 [field ownership composition](FieldsAfter.lean) preserve completed fields as later fields execute.
 The [owned-expression rule](OwnedExpr.lean) combines expression correctness with result coercion.
+[Field grouping](FieldsArgs.lean) relates the constructor's finite word and child families to
+the typed argument list.  [Record assembly](TreeAssembleCode.lean) composes payload stores and
+header writes, preserving child ownership and proving the completed record's exact block list.
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
 give these proofs interfaces independent of the source language.  Source construction, matching,
 reflection, and compiler integration remain pending.
