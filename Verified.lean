@@ -14,6 +14,8 @@ import Verified.TreeFieldsState
 import Verified.TreeFieldValues
 import Verified.TreeFieldLocs
 import Verified.FieldsExpr
+import Verified.FieldsAdvance
+import Verified.VarCorrect
 import Verified.FieldsArgs
 import Verified.TreeAssembleCode
 import Verified.TreePackedBlocks
