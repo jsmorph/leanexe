@@ -4,6 +4,41 @@ namespace LeanExe.Pipeline
 
 open Wasm
 
+def Slot.ValueOwned (heap : Heap) (store : Store Unit) (word : UInt64) : Slot → Prop
+  | .word value => word = value
+  | .child value => NodeOwned heap store word value
+
+def Slot.valueBlocks (store : Store Unit) (word : UInt64) : Slot → List (Nat × Nat)
+  | .word _ => []
+  | .child value => value.blocks store word
+
+theorem Slot.ValueOwned.frame {heap heap' : Heap} {store store' : Store Unit}
+    {word : UInt64} {slot : Slot} (h : slot.ValueOwned heap store word)
+    (hRegions : ∀ b ∈ slot.valueBlocks store word,
+      (∀ a, b.1 ≤ a → a < b.1 + b.2 → store'.mem.bytes a = store.mem.bytes a) ∧
+        heap'.Region b) :
+    slot.ValueOwned heap' store' word ∧
+      slot.valueBlocks store' word = slot.valueBlocks store word := by
+  cases slot with
+  | word value => exact ⟨h, rfl⟩
+  | child value => exact NodeOwned.frame word value h hRegions
+
+theorem Slot.ValueOwned.regions {heap : Heap} {store : Store Unit}
+    {word : UInt64} {slot : Slot} (h : slot.ValueOwned heap store word) :
+    ∀ b ∈ slot.valueBlocks store word, heap.Region b := by
+  cases slot with
+  | word value => exact nofun
+  | child value => exact NodeOwned.regions word value h
+
+theorem Slot.ValueOwned.singleton {heap : Heap} {store : Store Unit}
+    {word p : UInt64} {slot : Slot} {i : Nat} (h : slot.ValueOwned heap store word)
+    (hRead : store.mem.read64 (slotAddress p i) = word) :
+    SlotsOwned heap store p i [slot] ∧
+      slotsBlocks store p i [slot] = slot.valueBlocks store word := by
+  cases slot <;> simp only [SlotsOwned, slotsBlocks, hRead, Node.blocks, List.append_nil]
+  · exact ⟨⟨h, trivial⟩, rfl⟩
+  · exact ⟨⟨h, trivial⟩, rfl⟩
+
 theorem SlotsOwned.append_iff {heap : Heap} {store : Store Unit} {p : UInt64}
     (first : List Slot) : ∀ second i,
       SlotsOwned heap store p i (first ++ second) ↔
@@ -61,5 +96,7 @@ theorem SlotsBorrowed.get {heap : Heap} {store : Store Unit} {p : UInt64} :
 #print axioms SlotsOwned.append_iff
 #print axioms SlotsOwned.get
 #print axioms SlotsBorrowed.get
+#print axioms Slot.ValueOwned.frame
+#print axioms Slot.ValueOwned.singleton
 
 end LeanExe.Pipeline
