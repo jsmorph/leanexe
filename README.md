@@ -39,7 +39,7 @@ the module computes `f`.  For each source function it also adds `p.f.trapFree`, 
 the call returns without a trap when the allocator's `top` can rise by the bound `p.f.bound x`
 and, for code that calls guarded recursion, when every call stays below depth 1,000, and `p.f.bound_eq`, which states that bound as a Lean term in
 the parameters.  Wrappers whose callees take no call depth receive the corresponding bound and
-trap-free theorem.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, arrays
+trap-free theorem.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, sums with scalar fields, arrays
 of these, records with array fields, recursion, constant tables, and array updates in place.  The
 examples include elementary and special functions ported from fdlibm, Arm's optimized-routines,
 and CORE-MATH, decimal parsers and printers, binary64 GPT-2, two Euler solvers, an order book,
@@ -57,7 +57,7 @@ document states its theorem's domain and exceptional cases.
 | Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for code that calls guarded recursion, a frames condition |
 | `Float32` and WGSL kernels | Supported | Float32 values, arrays, arithmetic, comparisons, and word conversions.  WGSL remains pending. |
 | Lists and recursive types | `List UInt64` and user recursive types | Outside the dialect |
-| Sum types | Supported, with fields | Enumerations only |
+| Sum types | Supported, with fields | Enumerations and sums with scalar fields |
 | Tail recursion | Compiled as a loop | Recognized tail recursion compiles as a loop.  Other recursion uses a depth limit of 1,000. |
 | Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Whole-array `Array.foldl` over every element type, with an accumulator of any dialect type |
 | Array updates | `set!`, `setIfInBounds`, `insertIdx!`, `eraseIdxIfInBounds`, and `push` on `Array UInt64`, and `++` with an owned left operand | `set!`, `setIfInBounds`, `push`, `++`, `insertIdx!`, `insertIdxIfInBounds`, `eraseIdxIfInBounds`, `LeanExe.insertAt`, and `LeanExe.eraseAt` on arrays of every element type |
@@ -70,7 +70,7 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for code that calls guarded recursion, its frames condition.  A program that needs
-WGSL kernels, lists or trees, or sum types with fields
+WGSL kernels, lists, or trees
 compiles only with the LeanExe compiler.  Binary64 GPT-2 and the Euler solvers compile with both
 compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified
