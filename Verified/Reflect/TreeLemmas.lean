@@ -74,4 +74,48 @@ theorem listCase_eq {t : Ty} (x : Var Γ (.tree listShape))
   | nil => simpa only [Expr.denote, hx, Tree.ofList] using he
   | cons y ys => simpa only [Expr.denote, hx, Tree.ofList] using hn y ys
 
+theorem varCost_eq {t : Ty} (x : Var Γ t) {C : Nat}
+    (h : (Expr.var x).allocs funs flags bounds modes paid live env = C) :
+    x.cost modes live (env.get x) = C := h
+
+theorem listCase_bound {t : Ty} (x : Var Γ (.tree listShape))
+    (empty : Expr S Γ t) (node : Expr S (listShape.context Γ) t)
+    {xs : List UInt64} {C E : Nat} {N : UInt64 → List UInt64 → Nat}
+    (hx : env.get x = Tree.ofList xs)
+    (hc : x.cost modes (fun i => live i || node.uses (i + listShape.bindCount)) (env.get x) = C)
+    (he : empty.allocs funs flags bounds modes paid live env +
+      coerceCost t (empty.mode modes)
+        ((empty.mode modes).join (node.mode (listShape.modes (modeAt modes x.index) modes)))
+        (empty.denote funs env) = E)
+    (hn : ∀ y ys,
+      node.allocs funs flags bounds (listShape.modes (modeAt modes x.index) modes)
+        (List.replicate listShape.bindCount false ++ paid) (shift listShape.bindCount live)
+        (Env.treeFields listShape (fun _ => y) (fun _ => Tree.ofList ys) env) +
+      coerceCost t (node.mode (listShape.modes (modeAt modes x.index) modes))
+        ((empty.mode modes).join (node.mode (listShape.modes (modeAt modes x.index) modes)))
+        (node.denote funs (Env.treeFields listShape (fun _ => y)
+          (fun _ => Tree.ofList ys) env)) = N y ys) :
+    (Expr.treeCase x empty node).allocs funs flags bounds modes paid live env =
+      xs.casesOn E (fun y ys => C + N y ys) := by
+  cases xs with
+  | nil => simpa only [Expr.allocs, hx, Tree.ofList] using he
+  | cons y ys =>
+    have hc' := hc
+    rw [hx] at hc'
+    simp only [Tree.ofList] at hc'
+    simp only [Expr.allocs, hx, Tree.ofList]
+    rw [hc', Nat.add_assoc, hn]
+
+theorem listCase_fits {t : Ty} (x : Var Γ (.tree listShape))
+    (empty : Expr S Γ t) (node : Expr S (listShape.context Γ) t)
+    {xs : List UInt64} {E : Bool} {N : UInt64 → List UInt64 → Bool}
+    (hx : env.get x = Tree.ofList xs)
+    (he : empty.fits funs fits env = E)
+    (hn : ∀ y ys, node.fits funs fits
+      (Env.treeFields listShape (fun _ => y) (fun _ => Tree.ofList ys) env) = N y ys) :
+    (Expr.treeCase x empty node).fits funs fits env = xs.casesOn E N := by
+  cases xs with
+  | nil => simpa only [Expr.fits, hx, Tree.ofList] using he
+  | cons y ys => simpa only [Expr.fits, hx, Tree.ofList] using hn y ys
+
 end Verified.Reflect

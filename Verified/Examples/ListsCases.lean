@@ -15,11 +15,15 @@ def cases : IO Unit := do
     let n := xs.length
     IO.println s!"lists|keep|chain-u64|{chain xs}|{render (keep xs)}|{n}|{n}"
     IO.println s!"lists|keepViaCall|chain-u64|{chain xs}|{render (keepViaCall xs)}|{n}|{n}"
+    IO.println s!"lists|first|i64|{chain xs}|{first xs}|{n}|{n}"
+    IO.println s!"lists|rest|chain-u64|{chain xs}|{render (rest xs)}|{n - 1}|{n}"
+    IO.println s!"lists|rebuild|chain-u64|{chain xs}|{render (rebuild xs)}|{n}|{n}"
     let result := duplicate xs
     IO.println s!"lists|duplicate|list:chain-u64,chain-u64|{chain xs}|{render result.1} {render result.2}|{2 * n}|{2 * n}"
     for x in [0, 7, maxU] do
       IO.println s!"lists|cons|chain-u64|{u x} {chain xs}|{render (cons x xs)}|{n + 1}|{n + 1}"
       let y := maxU - x
       IO.println s!"lists|consTwice|chain-u64|{u x} {u y} {chain xs}|{render (consTwice x y xs)}|{n + 2}|{n + 2}"
+      IO.println s!"lists|change|chain-u64|{u x} {chain xs}|{render (change x xs)}|{n}|{n}"
 
 end Verified.Examples.Lists
