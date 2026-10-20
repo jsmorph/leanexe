@@ -115,6 +115,38 @@ theorem RecordStorage.writeHeader {shape : TreeShape} {heap : Heap} {store : Sto
       (by rw [hAddr]) (by rw [hAddr]))
   all_goals omega
 
+theorem RecordStorage.writeHeader_range {shape : TreeShape} {heap : Heap} {store : Store Unit}
+    {p back value : UInt64} (h : RecordStorage shape heap store p)
+    (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40) :
+    Memory.WritesRange store (recordHeaderWrite store p back value) (p.toNat - 40) p.toNat := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hBounds : 8 ≤ back.toNat ∧ back.toNat ≤ 40 := by
+    rcases hBack with rfl | rfl | rfl | rfl <;> decide
+  have hAddr := headerAddress_toNat (ptr := p) (k := back) (by omega) (by omega)
+  exact Memory.WritesRange.write64 _ _ _ _ _ (by rw [hAddr]; omega) (by rw [hAddr]; omega)
+
+theorem RecordStorage.readHeader_write {shape : TreeShape} {heap : Heap} {store : Store Unit}
+    {p back other value : UInt64} (h : RecordStorage shape heap store p)
+    (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40)
+    (hOther : other = 8 ∨ other = 16 ∨ other = 24 ∨ other = 40) (hNe : back ≠ other) :
+    (recordHeaderWrite store p back value).mem.read64 (p - other).toUInt32 =
+      store.mem.read64 (p - other).toUInt32 := by
+  have hBase := h.base
+  have hAddress := h.address
+  have hb : back.toNat ≤ 40 := by rcases hBack with rfl | rfl | rfl | rfl <;> decide
+  have ho : other.toNat ≤ 40 := by rcases hOther with rfl | rfl | rfl | rfl <;> decide
+  have hAddr (k : UInt64) (hk : k.toNat ≤ 40) :
+      (p - k).toUInt32.toNat = p.toNat - k.toNat :=
+    headerAddress_toNat (by omega) (by omega)
+  have hWrites : Memory.WritesRange store (recordHeaderWrite store p back value)
+      (p.toNat - back.toNat) (p.toNat - back.toNat + 8) :=
+    Memory.WritesRange.write64 _ _ _ _ _ (by rw [hAddr back hb]) (by rw [hAddr back hb])
+  apply hWrites.read64
+  rw [hAddr other ho]
+  rcases hBack with rfl | rfl | rfl | rfl <;>
+    rcases hOther with rfl | rfl | rfl | rfl <;> simp_all [UInt64.reduceToNat] <;> omega
+
 theorem RecordStorage.record {shape : TreeShape} {heap : Heap} {store : Store Unit}
     {p : UInt64} {slots : List Slot} (h : RecordStorage shape heap store p)
     (hLength : slots.length = shape.fields.length)
@@ -133,5 +165,6 @@ theorem RecordStorage.record {shape : TreeShape} {heap : Heap} {store : Store Un
 #print axioms RecordStorage.record
 #print axioms RecordStorage.frame
 #print axioms RecordStorage.writeHeader
+#print axioms RecordStorage.readHeader_write
 
 end Verified
