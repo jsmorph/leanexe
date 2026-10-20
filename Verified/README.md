@@ -177,6 +177,8 @@ word and child locals to their physical order and establish ownership of the sto
 including owned coercions, pairwise block separation, preservation of live variables, and the
 combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 [field ownership composition](FieldsAfter.lean) preserve completed fields as later fields execute.
+[Field advancement](FieldsAdvance.lean) preserves those results through a further heap step.
+[Variable correctness](VarCorrect.lean) proves reading, moving, and copying a variable.
 The [owned-expression rule](OwnedExpr.lean) combines expression correctness with result coercion.
 [Field grouping](FieldsArgs.lean) relates the constructor's finite word and child families to
 the typed argument list.  [Record assembly](TreeAssembleCode.lean) composes payload stores and
