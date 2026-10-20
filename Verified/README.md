@@ -183,6 +183,9 @@ combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 prefix of bound variables.  [Binding composition](BindPrefix.lean) composes a value's execution
 with a body that binds any number of fields.  [Field positions](TreeFieldPositions.lean) relate
 each packed word or child field to its assigned local.
+[Context equalities](ContextHEq.lean) preserve the environment and execution facts when
+equivalent context expressions have different associations.  [Child-region enumeration](TreeMatchBlocks.lean)
+relates a record's packed child slots to the grouped child bindings' blocks and read regions.
 The [owned-expression rule](OwnedExpr.lean) combines expression correctness with result coercion.
 [Field grouping](FieldsArgs.lean) relates the constructor's finite word and child families to
 the typed argument list.  [Record assembly](TreeAssembleCode.lean) composes payload stores and
