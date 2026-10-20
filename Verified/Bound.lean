@@ -1,4 +1,5 @@
 import Verified.Compile
+import Verified.AllocCost
 import Verified.TailRun
 
 /-! The allocation bound: the bytes by which the code of an expression can raise the allocator's
@@ -13,9 +14,6 @@ it extends in place.  A paid one is charged a header and four times the added by
 its potential pay for its growth.  The bound ignores the reuse of freed blocks. -/
 
 namespace Verified
-
-/-- The growth of `top` for an allocation of `bytes` payload bytes that no free block supplies. -/
-def allocCost (bytes : Nat) : Nat := 48 + bytes
 
 /-- The bytes that a copy of a value of type `t` costs: a block for each of its arrays, whose
 length word counts words. -/

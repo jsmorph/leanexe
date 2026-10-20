@@ -6,6 +6,8 @@ import Verified.TreeAttach
 import Verified.TreeStorage
 import Verified.TreeRestore
 import Verified.TreeInitialize
+import Verified.TreeCopy
+import Verified.TreeRelease
 import Verified.TreeLayout
 import Verified.TreeCopyWork
 import Verified.TreeNodeLayout
