@@ -5,6 +5,7 @@ import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
 import Verified.Reflect.FoldLemmas
 import Verified.Reflect.TreeLemmas
+import Verified.Reflect.NativeList
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
@@ -1174,23 +1175,26 @@ def assignCoerce (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (u : Lean
   app.assign name hk
   return ⟨K, hk⟩
 
-/-- Assigns the branch argument `name` of `app`, `a.allocs … + coerceCost t s M A = AA`, from the
-branch's bound and its coercion. -/
-def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Reflection) :
+/-- The branch bound from an allocation equation and its result coercion. -/
+def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
     MetaM Bound := do
-  let ty ← app.hypType name
   let some (_, lhs, _) := ty.eq?
-    | throwError "verified_compile: the argument {name} of {app.name} is not an equation"
+    | throwError "verified_compile: the branch bound is not an equation: {ty}"
   let (``HAdd.hAdd, #[_, _, _, _, allocs, coerce]) := lhs.getAppFnArgs
-    | throwError "verified_compile: the argument {name} of {app.name} is not a branch"
+    | throwError "verified_compile: the branch bound has no result coercion: {ty}"
   let (``Expr.allocs, #[_, _, _, _, modes, paid, live, _, _, _, _]) := allocs.getAppFnArgs
-    | throwError "verified_compile: the argument {name} of {app.name} is not a bound"
+    | throwError "verified_compile: the branch bound has no allocation term: {ty}"
   let b ← r.bound modes paid live
   let (``coerceCost, #[_, s, M, v]) := coerce.getAppFnArgs
-    | throwError "verified_compile: the argument {name} of {app.name} has no coercion"
+    | throwError "verified_compile: the branch bound has an invalid coercion: {ty}"
   let (K, hk) ← coerceEq base t s M v r.lean
-  let b ← boundOf
+  boundOf
     (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
+
+/-- Assigns a branch's allocation bound, including its result coercion. -/
+def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Reflection) :
+    MetaM Bound := do
+  let b ← branchBound base (← app.hypType name) t r
   app.assign name b.proof
   return b
 
@@ -1639,6 +1643,8 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       throwError "verified_compile: a match on several values is not supported, in {e}"
     if app.discrInfos.any (·.hName?.isSome) then
       throwError "verified_compile: `match h : …` is not supported, in {e}"
+    if let (``List, #[el]) := (← whnfR (← inferType app.discrs[0]!)).getAppFnArgs then
+      if (← whnfR el).isConstOf ``UInt64 then return ← reflectListMatch app
     if let some (n, _) ← enumFlat? (← inferType app.discrs[0]!) then
       return ← reflectDataMatch app n
     if let some name ← sumName? (← inferType app.discrs[0]!) then
@@ -1816,7 +1822,11 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let ra ← reflect c a
     let rb ← reflect c b
     let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader listShape))
-    let reuse ← mkAppOptM ``Option.none #[some header]
+    let reuse ← match c.vars.find? (fun (_, ty) => ty == .treeHeader listShape) with
+      | none => mkAppOptM ``Option.none #[some header]
+      | some (value, _) => do
+        let (x, _) ← varOf c value
+        mkAppOptM ``Option.some #[some header, some x]
     let family (r : Reflection) : MetaM Lean.Expr :=
       withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
         mkLambdaFVars #[i] r.src
@@ -2511,6 +2521,72 @@ where
       some x, some y]
     let test ← mkAppM rel #[mkApp flat a, mkApp flat b]
     return some (← reflectVia (← mkAppM ``ite #[test, x, y]) (← mkEqSymm eq))
+  reflectListMatch (app : MatcherApp) : MetaM Reflection := do
+    let xs := app.discrs[0]!
+    unless (← projReduce xs).isFVar do
+      return ← reflectAs (← withLetDecl `xs (← inferType xs) xs fun value =>
+        mkLetFVars #[value] { app with discrs := #[value] }.toExpr) app.toExpr
+    unless app.remaining.isEmpty do
+      throwError "verified_compile: a list match cannot be applied to further arguments"
+    let (empty, branch, nativeEq) ← listMatcherCases app
+    let (x, _) ← varOf c xs
+    let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
+    let re ← reflect c empty
+    let shape := treeShapeExpr listShape
+    let ctx ← mkAppM ``TreeShape.context #[shape, c.ctx]
+    let marker ← mkAppOptM ``TreeHeader.unit #[some shape]
+    let listType ← inferType xs
+    let ub ← withLocalDeclD `head (mkConst ``UInt64) fun head =>
+      withLocalDeclD `tail listType fun tail => do
+        let family (value : Lean.Expr) : MetaM Lean.Expr :=
+          withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
+            mkLambdaFVars #[i] value
+        let env ← mkAppM ``Env.treeFields
+          #[shape, ← family head, ← family (← flatValue tail), c.env]
+        let inner := { c with ctx, env, vars :=
+          [(marker, .treeHeader listShape), (head, .word), (tail, .tree listShape)] ++ c.vars }
+        let rn ← reflect inner (branch.beta #[head, tail])
+        unless rn.ty == re.ty do
+          throwError "verified_compile: list branches have different source types"
+        pure (⟨{ rn with proof := ← userProof inner rn }, #[head, tail],
+          [← head.fvarId!.getDecl, ← tail.fvarId!.getDecl]⟩ : Under)
+    let src ← mkAppM ``Expr.treeCase #[x, re.src, ub.r.src]
+    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env),
+      (`x, x), (`empty, re.src), (`node, ub.r.src), (`xs, xs), (`hx, hx)]
+    let proof ← withExistingLocalDecls ub.decls do
+      let hn ← mkLambdaFVars ub.xs ub.r.proof
+      let rule ← LemmaApp.start ``listCase_eq (common ++
+        [(`flatten, ← (← shapeOf (← inferType empty)).fn (← inferType empty)),
+          (`a, empty), (`b, branch)])
+      rule.assign `he (← mkExpectedTypeHint (← userProof c re) (← rule.hypType `he))
+      rule.assign `hn (← mkExpectedTypeHint hn (← rule.hypType `hn))
+      rule.finish
+    let bound : BoundBuilder := fun modes paid live => do
+      let app ← LemmaApp.start ``listCase_bound
+        (boundArgs c (c.tables.table false) modes paid live ++ common)
+      let some (_, rootCost, _) := (← app.hypType `hc).eq?
+        | throwError "verified_compile: malformed list root cost"
+      let (``Var.cost, #[_, rootLive, _, _, _, _]) := rootCost.getAppFnArgs
+        | throwError "verified_compile: malformed list root liveness"
+      let root ← LemmaApp.start ``varCost_eq
+        (boundArgs c (c.tables.table false) modes paid rootLive ++ [(`x, x)])
+      let _ ← root.child `h (varBound c x (.tree listShape) xs)
+      app.assign `hc (← root.finish)
+      let _ ← assignBranch c.base app `he re.ty re
+      let nodeBound ← withExistingLocalDecls ub.decls do
+        let b ← branchBound c.base (← ub.instantiate (← app.hypType `hn)) re.ty ub.r
+        pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
+      app.assign `N nodeBound.term
+      app.assign `hn nodeBound.proof
+      boundOf (← app.finish)
+    let fits : FitsBuilder := do
+      let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
+      app.childFits `he re.fits
+      let nb ← ub.fits
+      app.assign `N nb.term
+      app.assign `hn nb.proof
+      fitsOf (← app.finish)
+    return ⟨src, ← restate proof nativeEq, re.ty, app.toExpr, bound, fits⟩
   reflectDataMatch (app : MatcherApp) (name : Name) : MetaM Reflection := do
     let d := app.discrs[0]!
     unless (← projReduce d).isFVar do
