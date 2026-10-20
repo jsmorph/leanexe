@@ -54,7 +54,7 @@ def natMul : Lean.Expr :=
 
 /-- The names of the binders of a `∀` type. -/
 def binderNames : Lean.Expr → List Name
-  | .forallE n _ b _ => n :: binderNames b
+  | .forallE n _ b _ => n.eraseMacroScopes :: binderNames b
   | _ => []
 
 /-- A lemma being applied: its arguments are metavariables, which the builder assigns by name. -/

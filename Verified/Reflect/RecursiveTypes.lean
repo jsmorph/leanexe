@@ -1,4 +1,5 @@
 import Verified.Reflect.Definitions
+import Verified.Reflect.RecursiveMatch
 import Mathlib.Tactic.FinCases
 
 namespace Verified.Reflect
@@ -77,5 +78,6 @@ def prepareRecursiveTypes (names : Array Name) : CommandElabM Unit := do
         types := type :: types
         if let some layout ← liftTermElabM (recursiveLayout? (mkConst type)) then
           deriveRecursiveType layout
+          deriveRecursiveMatch layout
 
 end Verified.Reflect

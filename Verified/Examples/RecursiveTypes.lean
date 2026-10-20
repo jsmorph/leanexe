@@ -23,7 +23,8 @@ def emptyTree : KeyTree := .leaf
 def nodeTree (left : KeyTree) (key : UInt64) (right : KeyTree) : KeyTree := .node left key right
 
 verified_compile compiled := [keepWords, duplicateWords, keepTree, duplicateTree,
-  emptyWords, prependWords, emptyTree, nodeTree]
+  emptyWords, prependWords, emptyTree, nodeTree, Words.first, KeyTree.setKey,
+  KeyTree.leftChild, KeyTree.splitRoot, KeyTree.size, KeyTree.incr, Words.range]
 
 #print axioms compiled.keepWords.implements
 #print axioms compiled.duplicateWords.implements
