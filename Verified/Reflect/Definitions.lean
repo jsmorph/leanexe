@@ -2577,14 +2577,14 @@ where
         let b ← branchBound c.base (← ub.instantiate (← app.hypType `hn)) re.ty ub.r
         pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
       app.assign `N nodeBound.term
-      app.assign `hn nodeBound.proof
+      app.assign `hn (← mkExpectedTypeHint nodeBound.proof (← app.hypType `hn))
       boundOf (← app.finish)
     let fits : FitsBuilder := do
       let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
       app.childFits `he re.fits
       let nb ← ub.fits
       app.assign `N nb.term
-      app.assign `hn nb.proof
+      app.assign `hn (← mkExpectedTypeHint nb.proof (← app.hypType `hn))
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, re.ty, app.toExpr, bound, fits⟩
   reflectDataMatch (app : MatcherApp) (name : Name) : MetaM Reflection := do

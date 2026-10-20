@@ -39,6 +39,8 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.TreeCopy:module:treecopy \
     Verified.Examples.TreeCore:module:treecore \
     Verified.Examples.Lists:compiled.module:lists \
+    Verified.Examples.ListRecursion:compiled.module:listrecursion \
+    Verified.Examples.ListLoops:compiled.module:listloops \
     Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.TailConditions:compiled.module:tailconditions \
     Verified.Examples.Gpt:compiled.module:gpt \
@@ -153,6 +155,12 @@ elif [ "$case_module" = "treecore" ]; then
 elif [ "$case_module" = "lists" ]; then
   cases_module=Verified.Examples.ListsCasesMain
   cases_source=Verified/Examples/ListsCasesMain.lean
+elif [ "$case_module" = "listrecursion" ]; then
+  cases_module=Verified.Examples.ListRecursionCasesMain
+  cases_source=Verified/Examples/ListRecursionCasesMain.lean
+elif [ "$case_module" = "listloops" ]; then
+  cases_module=Verified.Examples.ListLoopsCasesMain
+  cases_source=Verified/Examples/ListLoopsCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

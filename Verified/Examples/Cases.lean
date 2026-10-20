@@ -8,6 +8,8 @@ import Verified.Examples.Fold
 import Verified.Examples.TreeCopyCases
 import Verified.Examples.TreeCases
 import Verified.Examples.ListsCases
+import Verified.Examples.ListRecursionCases
+import Verified.Examples.ListLoopsCases
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
@@ -419,6 +421,8 @@ def main : IO Unit := do
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases
+  Verified.Examples.ListRecursion.cases
+  Verified.Examples.ListLoops.cases
   for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
     for acc in [(0 : UInt64), 18446744073709551615] do
       IO.println s!"tailconditions|boolCount|i64|i64:{n} i64:{acc}|\
