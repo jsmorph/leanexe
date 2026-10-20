@@ -16,6 +16,8 @@ import Verified.TreeFieldLocs
 import Verified.FieldsExpr
 import Verified.FieldsAdvance
 import Verified.BindPrefix
+import Verified.ContextHEq
+import Verified.TreeMatchBlocks
 import Verified.TreeFieldPositions
 import Verified.VarCorrect
 import Verified.FieldsArgs
