@@ -34146,9 +34146,9 @@ The user approved the capability order below, with frequent updates, commits, an
 - [x] Add binary32 types, operations, reflection, and compiler correctness.  The focused execution corpus passed 2,777 cases.  The full-library and execution gates passed at `0959520b3`.
 - [x] Add sum constructors with scalar fields, matching, and array ownership rules.  The focused execution corpus passed 514 cases.  The full-library and execution gates passed at `0959520b3`.
 - [ ] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.
+- [ ] Add proof composition across modules, starting with scalar calls that preserve memory.
 - [ ] Add the verified compiler's WGSL path and check the GPT kernels.
 - [ ] Port binary32 GPT as an application check.
-- [ ] Add proof composition across modules, starting with scalar calls that preserve memory.
 
 The first source review compares the reflector with the pinned Lean definitions and the LeanExe compiler.  `Array.setIfInBounds`, `Array.insertIdxIfInBounds`, and `Array.eraseIdxIfInBounds` have existing verified source operations with the same meanings.  `Array.insertIdx!` instead returns the empty array after an out-of-bounds panic.  Its support must preserve that result.  The [pinned array definitions](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/Array/Basic.lean) and `LeanExe.Compiler.Scalar` record the distinction.  Helper unfolding follows the existing compiler's `@[inline]` rule and retains the kernel-checked equation between each reflected expression and its Lean definition.
 
@@ -34397,7 +34397,7 @@ Lists and recursive types require a source extension.  The user approved a typed
 - [ ] Extend liveness, allocation bounds, copying, release, record reuse, loops, and tail recursion to the recursive source.
 - [ ] Reflect lists and supported user-defined recursive types, including `List.foldl`.
 - [ ] Test native results, allocation and release counts, aliases, reuse, and guarded depth limits.
-- [ ] Continue with WGSL and binary32 GPT after lists.
+- [ ] Complete proof composition across modules, then WGSL and binary32 GPT.
 
 `e864c41d` published the binary32 arithmetic frontend and the two added encodings.  `f32-cases-03` then passed all 2,777 native-versus-Wasmtime cases, with no failed allocation or retained-block check.  The 5,963-byte module validates and has SHA-256 `b70ec90aff68f43f79a4481c8f314123f349d2c0c36bcb931b7ba495f4d3b794`.  The native generator rebuilt all 3,702 jobs and reported the expected 3,147 accesses and 55 insertions past the end.  The corpus covers signed zeros, subnormals, infinities, NaNs, arithmetic and conversion boundaries, nearest ties, array arithmetic and folds, Float32 tail conditions, and guarded mixed-format recursion at the 32-position limit.  Depth 999 returns and depth 1,000 traps at `unreachable`.  The documentation audit passed 185 Markdown files and 3,279 links.
 
@@ -34500,3 +34500,7 @@ The detached-header copy proof passed in 3.3 seconds.  It allocates one record, 
 The source-rule checks found two proof boundaries.  A record's base bound is `4096 + 48`, so the pointer reconstruction theorem needs the weaker `48` bound stated explicitly.  Polymorphic context renamings also needed explicit typed arguments before Lean could compose their environment equations.  The corrected shared pointer proof passed in 5.1 seconds and the typed state proof in 8.7 seconds.  Replacing broad simplification in the expression-renaming theorem with its required equations reduced the accepted check to sixteen seconds.  `tree-source-rules-05` passed all 3,521 jobs, including renaming, ownership composition, potential, and the expression specification.  The typed tree's expression and whole-program correctness remain pending.
 
 The fourteen-theorem source-rule axiom audit passed.  The shared [record pointer rules](LeanExe/Pipeline/RecordPointers.lean) reconstruct an owned tree's pointer list from the starts of its allocation blocks.  Their three reports use only `propext` and `Quot.sound`.  The typed rule then derives pointer preservation from block preservation, so a later argument's code keeps an earlier owned argument's consumption list.  This commit publishes the shared rules.  Their typed use remains part of the compiler draft.
+
+The user revised the remaining capability order: complete lists, recursive types, and proof composition across modules before WGSL and binary32 GPT.  WGSL and binary32 GPT are the final capability work.
+
+`tree-expr-cases-02` passed the existing expression rules against the typed tree extension, including calls, loops, coercion, and array operations, and accepted the empty-tree rule.  The diagnostic checks the expression rules before the universal theorem, which still needs construction and matching.  The call proof now states consumed pointers and borrowed regions at their stores and uses the shared pointer-preservation rule.  The environment step preserves these lists through kept regions.  `Verified.EnvStep` passed in 4.1 seconds.  The function-renaming bound proofs passed after restricting their growth simplification to the required equations.  Construction and matching now need the field-store and field-load rules and their ownership composition.
