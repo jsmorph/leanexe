@@ -1,6 +1,7 @@
 import Verified.Source
 import Verified.Tree
 import Verified.TreeHeader
+import Verified.TreeDetach
 import Verified.Compile
 import Verified.State
 import Verified.Correct
