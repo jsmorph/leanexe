@@ -97,6 +97,8 @@ instance {shape : TreeShape} : EncodeSlotted (Tree shape) := ⟨Tree.toNode_slot
 
 def listShape : TreeShape := ⟨[false, true], by decide, by decide⟩
 
+instance : Inhabited TreeShape := ⟨listShape⟩
+
 def Tree.ofList : List UInt64 → Tree listShape
   | [] => .nil
   | x :: xs => .node (fun _ => x) (fun _ => ofList xs)
