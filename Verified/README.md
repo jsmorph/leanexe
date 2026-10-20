@@ -381,12 +381,23 @@ compiled as written.  An enumeration, an inductive type whose constructors have 
 constructor becomes its word.  A `match` on an enumeration becomes a chain of `if`s on the word that
 chooses each constructor's alternative, which `reduceMatcher?` reads off the match.  The equation of
 the chain and the match is proved by `casesOn` on a variable for the value, with variables for the
-alternatives, so the kernel evaluates only the tests.  `==`, `!=`, `decide`, and `if` on
+alternatives, so the kernel evaluates the tests and field projections.  `==`, `!=`, `decide`, and `if` on
 enumerations become the same comparisons of words, by `flat_beq`, `flat_bne`, `flat_decide`,
 `flat_ite`, and `flat_ite_ne` from a theorem, added once per program and enumeration, that the
 flattening is injective, which follows from a decoder by one case per constructor.  `==` needs
 `LawfulBEq`, which `deriving DecidableEq` gives, and `decide (a ≠ b)` becomes `!decide (a = b)` by
-`decide_not`.  A variable that holds a pair or a record with arrays is split into the components of
+`decide_not`.
+
+Sums with scalar fields use the same match translation.  `SumLayout` checks each constructor's
+constant tag and the tuple path of each field in its `Flat` instance.  `reflectDataMatch` builds
+the conditional chain, projects the selected fields, and proves the chain's equation by constructor
+cases.  A wildcard may bind the original value.  Constructor translation reduces the `Flat` tuple
+while preserving its scalar terms for ordinary reflection.  The source expressions are tuples,
+projections, and conditionals, and arrays use the existing element representation and ownership
+rules.  [The sum example](Examples/Sums.lean) checks these forms with binary64 shapes and a sum
+with binary32 and enumeration fields.
+
+A variable that holds a pair or a record with arrays is split into the components of
 its pair, and the body at the value rebuilt from them is the body at the variable by `pair_eta` or
 by `p.flat_eta.R`, a theorem added once per program and record and proved by `rfl` with the body and
 the variable free, so the kernel unfolds only the `Flat` instance.  Wherever the reflector reflects

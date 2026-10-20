@@ -1,4 +1,5 @@
 import Verified.Source
+import Verified.Tree
 import Verified.Compile
 import Verified.State
 import Verified.Correct
@@ -48,6 +49,7 @@ import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Floats32
+import Verified.Examples.Sums
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records

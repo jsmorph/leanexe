@@ -1421,6 +1421,87 @@ def Tables.get (t : Tables) (fits : Bool) (fv env : Lean.Expr) : MetaM Lean.Expr
       #[t.sigs, g, h, own, t.rest fits, v, env]) (← tableChain fits t.prog t.funs v env t.fuel)
   | _ => throwError "verified_compile: the function reference {fv}"
 
+structure SumCtorLayout where
+  name : Name
+  tag : UInt64
+  fields : Array (List Bool)
+
+structure SumLayout where
+  name : Name
+  flatType : Lean.Expr
+  inst : Lean.Expr
+  tagPath : List Bool
+  ctors : Array SumCtorLayout
+
+def projectTuple (value : Lean.Expr) : List Bool → MetaM Lean.Expr
+  | [] => pure value
+  | false :: rest => do projectTuple (← mkAppM ``Prod.fst #[value]) rest
+  | true :: rest => do projectTuple (← mkAppM ``Prod.snd #[value]) rest
+
+def sumName? (type : Lean.Expr) : MetaM (Option Name) := do
+  let .const name _ ← whnfR type | return none
+  let some (.inductInfo info) := (← getEnv).find? name | return none
+  unless info.numParams == 0 && info.numIndices == 0 && !info.isRec &&
+      !isStructure (← getEnv) name do return none
+  if ← isEnumType name then return none
+  return some name
+
+partial def firstTuplePath (type : Lean.Expr) : MetaM (List Bool) := do
+  if let (``Prod, #[a, _]) := (← whnfR type).getAppFnArgs then
+    return false :: (← firstTuplePath a)
+  unless (← whnfR type).isConstOf ``UInt64 do
+    throwError "verified_compile: a sum's Flat tuple must start with a UInt64 tag"
+  return []
+
+partial def sumLayout (type : Lean.Expr) (name : Name) : MetaM SumLayout := do
+  let some (β, inst) ← flatInstance? type
+    | throwError "verified_compile: {type} needs a Flat instance"
+  let .elem _ := (← shapeOf β).ty
+    | throwError "verified_compile: a sum's Flat tuple must hold scalar fields"
+  let tagPath ← firstTuplePath β
+  let info ← getConstInfoInduct name
+  let ctors ← info.ctors.toArray.mapM fun ctorName => do
+    let ctor ← getConstInfoCtor ctorName
+    forallTelescope ctor.type fun fields _ => do
+      let value := mkAppN (mkConst ctorName) fields
+      let flat := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst value
+      let tagTerm ← projectTuple flat tagPath
+      let tagNat ← kernelWhnf (← mkAppM ``UInt64.toNat #[tagTerm])
+      let some tag := natOf tagNat
+        | throwError "verified_compile: the tag of {ctorName} is not a constant UInt64"
+      let rec paths (value ty : Lean.Expr) (path : List Bool) :
+          MetaM (List (Nat × List Bool)) := do
+        let value ← whnf value
+        if let some i := fields.findIdx? (· == value) then return [(i, path)]
+        if let (``Prod, #[a, b]) := (← whnfR ty).getAppFnArgs then
+          return (← paths (← mkAppM ``Prod.fst #[value]) a (path ++ [false])) ++
+            (← paths (← mkAppM ``Prod.snd #[value]) b (path ++ [true]))
+        return []
+      let found ← paths flat β []
+      let slots ← fields.mapIdxM fun i field => do
+        let occurrences := found.filter (·.1 == i)
+        let [(_, path)] := occurrences
+          | throwError "verified_compile: the Flat instance of {type} must keep each field of \
+              {ctorName} exactly once"
+        if path == tagPath then
+          throwError "verified_compile: the Flat instance of {type} uses a field as its tag"
+        let .elem _ := (← shapeOf (← inferType field)).ty
+          | throwError "verified_compile: a sum field must be scalar: {field}"
+        return path
+      return ({ name := ctorName, tag := UInt64.ofNat tag, fields := slots } : SumCtorLayout)
+  unless (ctors.toList.map (·.tag)).eraseDups.length == ctors.size do
+    throwError "verified_compile: the Flat instance of {type} repeats a constructor tag"
+  return ⟨name, β, inst, tagPath, ctors⟩
+
+partial def reduceTuple (value type : Lean.Expr) : MetaM Lean.Expr := do
+  if let (``Prod, #[a, b]) := (← whnfR type).getAppFnArgs then
+    let value ← whnf value
+    return ← mkAppM ``Prod.mk
+      #[← reduceTuple (← mkAppM ``Prod.fst #[value]) a,
+        ← reduceTuple (← mkAppM ``Prod.snd #[value]) b]
+  return ← projReduce value
+
+
 /-- The source expression for the Lean term `e`, with the proof that it means `e`, its type, and
 the builder of its bound.  An array that a reader reads and an argument with arrays that is not a
 place are bound with `let` first.  A `let` of a place is replaced by its body with the place for
@@ -1433,6 +1514,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return ⟨src, ← rflProof c src (← flatValue e), t, e, varBound c x t e, leafFits c src⟩
   if let some r := ← reflectCall? e then return r
+  if let some r := ← reflectSumConstructor? e then return r
   if let some r := ← reflectStruct? e then return r
   let shape ← shapeOf (← inferType e)
   if let some w ← enumWord? e then
@@ -1541,8 +1623,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       throwError "verified_compile: a match on several values is not supported, in {e}"
     if app.discrInfos.any (·.hName?.isSome) then
       throwError "verified_compile: `match h : …` is not supported, in {e}"
-    if let some (n, inst) ← enumFlat? (← inferType app.discrs[0]!) then
-      return ← reflectEnumMatch app n inst
+    if let some (n, _) ← enumFlat? (← inferType app.discrs[0]!) then
+      return ← reflectDataMatch app n
+    if let some name ← sumName? (← inferType app.discrs[0]!) then
+      return ← reflectDataMatch app name
     if app.alts.size == 1 then
       let alt := app.alts[0]!
       let d := app.discrs[0]!
@@ -1713,7 +1797,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       .pair ra.ty rb.ty, e, pairBound ra rb,
       formFits c ``pair_fits [(`a, ra.src), (`b, rb.src)] [(`ha, ra), (`hb, rb)]⟩
   | ``LeanExe.Pipeline.Flat.flat, #[α, _, inst, a] =>
-    let some (_, flatInst) ← enumFlat? α | throwError "verified_compile: unsupported term {e}"
+    let some (_, flatInst) ← flatInstance? α | throwError "verified_compile: unsupported term {e}"
     unless ← kernelDefEq inst flatInst do
       throwError "verified_compile: {e} uses a `Flat` instance other than {flatInst}"
     return (← reflect c a).as' e
@@ -2313,6 +2397,17 @@ where
     let _ ← app.child `hba rb.bound
     let _ ← assignCoerce c.base app `hkb rb.ty rb.lean
     boundOf (← app.finish)
+  reflectSumConstructor? (e : Lean.Expr) : MetaM (Option Reflection) := do
+    let .const ctorName _ := e.getAppFn | return none
+    let some (.ctorInfo ctor) := (← getEnv).find? ctorName | return none
+    let type ← inferType e
+    let some name ← sumName? type | return none
+    unless e.getAppNumArgs == ctor.numFields do return none
+    let layout ← sumLayout type name
+    let flat := mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type layout.flatType layout.inst e
+    let r ← reflect c (← reduceTuple flat layout.flatType)
+    return some (r.as (← mkExpectedTypeHint r.proof
+      (← mkEq (← denoteExpr c r.src) (← flatValue e))) e)
   /-- A structure built with its constructor: the tuple that its `Flat` instance makes of the
   fields, reflected as a tuple, whose meaning is the structure's flattening. -/
   reflectStruct? (e : Lean.Expr) : MetaM (Option Reflection) := do
@@ -2366,11 +2461,7 @@ where
       some x, some y]
     let test ← mkAppM rel #[mkApp flat a, mkApp flat b]
     return some (← reflectVia (← mkAppM ``ite #[test, x, y]) (← mkEqSymm eq))
-  /-- A `match` on an enumeration value `d`: the chain of `if`s on its word that chooses each
-  constructor's alternative, proved equal to the match by cases on a variable for `d`, with
-  variables for the alternatives, so that the kernel evaluates only the tests.  A value that is
-  not a variable is bound with `let` first. -/
-  reflectEnumMatch (app : MatcherApp) (n : Name) (inst : Lean.Expr) : MetaM Reflection := do
+  reflectDataMatch (app : MatcherApp) (name : Name) : MetaM Reflection := do
     let d := app.discrs[0]!
     unless (← projReduce d).isFVar do
       return ← reflectAs (← withLetDecl `t (← inferType d) d fun y => do
@@ -2381,57 +2472,63 @@ where
       | throwError "verified_compile: the match {app.toExpr} has an unexpected motive"
     if resultTy.hasLooseBVars then
       throwError "verified_compile: the type of the match {app.toExpr} depends on its value"
-    let .inductInfo info ← getConstInfo n | throwError "verified_compile: {n} is not an enumeration"
-    let E := Lean.mkConst n
-    let flat := enumFlat n inst
+    let type ← inferType d
+    let layout ← sumLayout type name
+    let flat := mkApp3 (mkConst ``LeanExe.Pipeline.Flat.flat) type layout.flatType layout.inst
     let altTys ← app.alts.mapM inferType
     let hyps := (List.range app.alts.size).toArray.map fun i => (Name.mkSimple s!"h{i}", altTys[i]!)
-    withLocalDeclsDND hyps fun hs => withLocalDeclD `x E fun x => do
-      -- The alternative that each constructor reaches, with its arguments.
-      let choices ← info.ctors.mapM fun k => do
-        let r ← reduceMatcher? { app with discrs := #[mkConst k], alts := hs }.toExpr
-        let .reduced v := r
-          | throwError "verified_compile: cannot reduce the match {app.toExpr} at {k}"
-        let some j := hs.findIdx? (· == v.getAppFn)
-          | throwError "verified_compile: the match {app.toExpr} at {k} gives {v}"
-        let args ← v.getAppArgs.mapM fun a => do
-          if a.isConstOf ``Unit.unit then return a
-          if a.isConstOf k then return x
-          throwError "verified_compile: the match {app.toExpr} at {k} passes {a}"
-        return (k, j, args)
-      -- The alternatives in order, each with the constructors that reach it.  An alternative
-      -- before the last is reached by one constructor: a constructor pattern names one, and a
-      -- variable or a wildcard takes all the remaining ones, after which Lean admits no other.
-      let groups := (List.range app.alts.size).filterMap fun j =>
-        match choices.filter (·.2.1 == j) with
-        | [] => none
-        | cs@((_, _, args) :: _) => some (cs.map (·.1), j, args)
+    withLocalDeclsDND hyps fun hs => withLocalDeclD `x type fun x => do
+      let choices ← layout.ctors.toList.mapM fun ctor => do
+        let info ← getConstInfoCtor ctor.name
+        forallTelescope info.type fun fields _ => do
+          let value := mkAppN (mkConst ctor.name) fields
+          let .reduced v ← reduceMatcher? { app with discrs := #[value], alts := hs }.toExpr
+            | throwError "verified_compile: cannot reduce the match {app.toExpr} at {ctor.name}"
+          let some j := hs.findIdx? (· == v.getAppFn)
+            | throwError "verified_compile: the match {app.toExpr} at {ctor.name} gives {v}"
+          let replacements ← ctor.fields.mapM (projectTuple (mkApp flat x))
+          let args := v.getAppArgs.map fun arg =>
+            (arg.replace fun term => if term == value then some x else none).replaceFVars
+              fields replacements
+          return (ctor.tag, j, args)
+      let groups ← (List.range app.alts.size).filterMapM fun j => do
+        let cs := choices.filter (·.2.1 == j)
+        let (_, _, args) :: _ := cs | return none
+        for (_, _, other) in cs do
+          unless args.size == other.size do
+            throwError "verified_compile: inconsistent alternative arguments in {app.toExpr}"
+          for i in [:args.size] do
+            unless ← kernelDefEq args[i]! other[i]! do
+              throwError "verified_compile: an alternative of {app.toExpr} binds different fields"
+        return some (cs.map (·.1), j, args)
+      let tag ← projectTuple (mkApp flat x) layout.tagPath
       let rec chain (alts : Array Lean.Expr) (beta : Bool) :
-          List (List Name × Nat × Array Lean.Expr) → MetaM Lean.Expr
+          List (List UInt64 × Nat × Array Lean.Expr) → MetaM Lean.Expr
         | [] => throwError "verified_compile: the match {app.toExpr} has no alternatives"
         | [(_, j, args)] => return if beta then alts[j]!.beta args else mkAppN alts[j]! args
-        | ([k], j, args) :: rest => do
-          let test ← mkAppM ``BEq.beq #[mkApp flat x, mkApp flat (Lean.mkConst k)]
+        | ([w], j, args) :: rest => do
+          let test ← mkAppM ``BEq.beq #[tag, toExpr w]
           let branch := if beta then alts[j]!.beta args else mkAppN alts[j]! args
           mkAppM ``ite #[← mkEq test (mkConst ``Bool.true), branch, ← chain alts beta rest]
-        | (ks, _, _) :: _ =>
-          throwError "verified_compile: the alternative of {ks} in {app.toExpr} is not the last"
+        | _ :: _ => throwError "verified_compile: a wildcard alternative must be last in {app.toExpr}"
       let chainAbs ← chain hs false groups
       let matchAbs := { app with discrs := #[x], alts := hs }.toExpr
       let motive ← mkLambdaFVars #[x] (← mkEq chainAbs matchAbs)
-      let minors ← info.ctors.toArray.mapM fun k => do
-        let lhs := chainAbs.replaceFVar x (mkConst k)
-        let rhs := matchAbs.replaceFVar x (mkConst k)
-        unless ← kernelDefEq lhs rhs do
-          throwError "verified_compile: the tests on the words of {n} do not choose the \
-            alternative of {k}; the flattening may map two constructors to one word"
-        mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs)
-      let cases := mkAppN (mkConst (n ++ `casesOn) [Level.zero]) (#[motive, x] ++ minors)
+      let minors ← layout.ctors.mapM fun ctor => do
+        let info ← getConstInfoCtor ctor.name
+        forallTelescope info.type fun fields _ => do
+          let value := mkAppN (mkConst ctor.name) fields
+          let lhs := chainAbs.replaceFVar x value
+          let rhs := matchAbs.replaceFVar x value
+          unless ← kernelDefEq lhs rhs do
+            throwError "verified_compile: the Flat fields of {ctor.name} do not reproduce its match"
+          mkLambdaFVars fields (← mkExpectedTypeHint (← mkEqRefl lhs) (← mkEq lhs rhs))
+      let cases := mkAppN (mkConst (name ++ `casesOn) [Level.zero]) (#[motive, x] ++ minors)
       let gen ← mkLambdaFVars (hs.push x) cases
       let eq := mkAppN gen (app.alts.push d)
-      -- The chain with the actual alternatives and value, reflected.
       let chainReal := (← chain app.alts true groups).replaceFVar x d
       reflectVia chainReal eq
+
   /-- An `if` on the condition `p` between `a` and `b`, whose meaning is the `if` of their
   flattenings. -/
   reflectIte (p inst a b : Lean.Expr) : MetaM Reflection := do
@@ -2590,6 +2687,12 @@ where
         let (base, steps, chain) ← walk p (path ++ steps)
         return (base, steps, fun y => do step (← chain y))
       match e.getAppFnArgs with
+      | (``LeanExe.Pipeline.Flat.flat, #[α, β, inst, p]) =>
+        let some (_, flatInst) ← flatInstance? α
+          | throwError "verified_compile: unsupported Flat projection {e}"
+        unless ← kernelDefEq inst flatInst do
+          throwError "verified_compile: {e} uses a different Flat instance"
+        down p [] (fun y => pure (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) α β inst y))
       | (``Prod.fst, #[_, _, p]) =>
         if let .elem _ ← tyOf (← inferType p) then down p [false] (mkAppM ``Prod.fst #[·])
         else return (e, steps, pure)
