@@ -18,9 +18,14 @@ private partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := 
     if containsSelf name value then return false
     return ← withLocalDeclD n type fun x => tailCallsOnly name (body.instantiate1 x)
   if let some app ← matchMatcherApp? e then
-    if app.discrs.size == 1 && app.alts.size == 1 && app.remaining.isEmpty &&
+    if app.discrs.size == 1 && app.remaining.isEmpty &&
         !app.discrInfos.any (·.hName?.isSome) && !containsSelf name app.discrs[0]! then
-      return ← lambdaTelescope app.alts[0]! fun _ body => tailCallsOnly name body
+      if app.alts.size == 1 then
+        return ← lambdaTelescope app.alts[0]! fun _ body => tailCallsOnly name body
+      if let (``List, #[el]) := (← whnfR (← inferType app.discrs[0]!)).getAppFnArgs then
+        if (← whnfR el).isConstOf ``UInt64 then
+          return ← app.alts.allM fun alt =>
+            lambdaTelescope alt fun _ body => tailCallsOnly name body
     return false
   match e.getAppFnArgs with
   | (``ite, #[_, p, _, yes, no]) =>

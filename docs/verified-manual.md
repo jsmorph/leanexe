@@ -44,7 +44,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | A sum with scalar fields and a `Flat` instance | A word tag and the constructor fields' words | The tag occupies the tuple's first leaf.  Each constructor's fields occur once. |
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, enumeration, or sum | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
-| `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, and calls.  Folds and matching in tail-loop bodies remain pending. |
+| `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, and tail recursion.  Folds remain pending. |
 
 `Nat`, `Int`, `String`, `Option`, other recursive types, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
@@ -115,7 +115,7 @@ A sum's `Flat` instance maps it to a scalar tuple with a distinct constant word 
 
 ### Calls and recursion
 
-A call passes its arguments' words and receives its result's words, a pair or a record as several WebAssembly results.  The command compiles recognized tail recursion as a Wasm loop: a step returns a result or continues with new parameter values.  It recognizes self-calls in tail position under bindings and conditionals, including single-alternative destructuring matches.  Continuation arguments cannot contain a self-call.  Array parameter modes stay fixed across iterations, and mode inference propagates ownership from continuation arguments.  The reflector derives a decreasing rank from Lean's generated induction theorem.  The rank occurs in proofs and bound calculations.  Executable parameters and indices retain their dialect types.
+A call passes its arguments' words and receives its result's words, a pair or a record as several WebAssembly results.  The command compiles recognized tail recursion as a Wasm loop: a step returns a result or continues with new parameter values.  It recognizes self-calls in tail position under bindings, conditionals, list matches, and single-alternative destructuring matches.  Continuation arguments cannot contain a self-call.  Parameter modes stay fixed across iterations, and mode inference propagates ownership from continuation arguments.  The reflector derives a decreasing rank from Lean's generated induction theorem.  The rank occurs in proofs and bound calculations.  Executable parameters and indices retain their dialect types.
 
 Other recursion uses a call-depth parameter, and `set_option verified.tailLoops false` selects that path for every recursive definition in the command.  Guarded functions and their callers trap at `unreachable` when the depth reaches 1,000 and pass depth plus one to each depth-taking callee.  A tail loop takes the depth only when its body calls guarded code, and continuing iterations preserve it.  An exported entry starts a depth-taking function at depth 0.  Such a function may use at most 32 positions, including its depth, parameters, and locals.  Wasmtime keeps 8 bytes per value live across a call and 16 bytes per frame, so 1,000 frames of 32 positions take at most 272,000 bytes of its 512 KiB default stack.  The reflector supplies each recursive definition as its source meaning, with a fixed-point proof and, for a tail loop, a termination proof.  Recursive parameter types require an inverse of their flattening on every source value.  Enumerations and sums remain excluded from recursive parameter types because invalid tags and inactive field values prevent that inverse.
 
@@ -271,6 +271,9 @@ host's input cells.
 Depth 999 returns, and depth 1,000 traps at `unreachable`.  Increment reuses each consumed cell.
 `tests/verified/run.sh --cases listloops` checks list construction and extension in word-counted
 loops through 4,096 iterations, including empty and nonempty seeds.
+`tests/verified/run.sh --cases listtail` checks borrowed tail summation and consumed reversal
+through 4,096 cells.  Both compile as loops.  Reversal reuses the input headers and retains the
+input and accumulator cells in its result.
 
 `tests/verified/run.sh --cases gpt` tests binary64 GPT with the existing corpus in [`tests/gpt/Cases.lean`](../tests/gpt/Cases.lean) and the release and cache-growth checks of [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh).  `tests/verified/run.sh --cases euler` uses [the existing Euler corpus](../Examples/Euler/Cases.lean) through `tests/modules/run.sh --module euler PATH`.  The full invocation includes both application checks.
 
@@ -307,6 +310,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [Lists of words](../Verified/Examples/Lists.lean) | Construction, identity, duplication, nested calls, matching, head and tail access, reconstruction, and head updates.  Allocation counts check last-use header reuse. |
 | [Guarded list recursion](../Verified/Examples/ListRecursion.lean) | Summation, recursive increment with header reuse, and the depth boundary. |
 | [List loops](../Verified/Examples/ListLoops.lean) | Construction and extension of list state in word-counted loops. |
+| [List tail recursion](../Verified/Examples/ListTail.lean) | Borrowed summation and consumed reversal with header reuse, including chains beyond the guarded call-depth limit. |
 | [Tail loops](../Verified/Examples/Tail.lean) | Word accumulation, scalar pairs, record arrays, owned growth, swapped and replaced array parameters, aliases, calls between tail functions, and a guarded callee.  The byte theorem covers ten functions. |
 | [Tail conditions and borrowed states](../Verified/Examples/TailConditions.lean) | Boolean and inequality conditions, a proof-named conditional, tuple destructuring, and borrowed pair and record parameters. |
 | [Binary64 GPT-2](../Verified/Examples/Gpt.lean) | The 48 unchanged functions of [the GPT example](../Examples/Gpt/README.md), including full-sequence inference, cached steps, and sampling.  The compiler derives each function's execution, allocation-bound, and trap-free theorems and the module's bytes theorem. |

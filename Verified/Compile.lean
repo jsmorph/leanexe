@@ -913,6 +913,9 @@ def TailBody.width (targetModes : List Mode) :
   | _, .letE (t := t) value body => t.width + max value.width (body.width targetModes)
   | _, .letPair (s := s) (t := t) value body =>
     s.width + t.width + max value.width (body.width targetModes)
+  | _, .treeCase (shape := shape) _ empty node =>
+    max (empty.width targetModes)
+      (shape.bindCount + max treeCopyScratch (node.width targetModes))
 
 def storeParamsCode (h base : Nat) : List Ty → Program
   | [] => []
@@ -958,6 +961,23 @@ def TailBody.code (targetModes : List Mode) (h p0 resultBase : Nat) :
       (if mode = .owned ∧ body.usesFast 0 = false then releaseCode t (base + s.width) else []) ++
       body.code targetModes h p0 resultBase (⟨base + s.width, mode⟩ :: ⟨base, mode⟩ :: slots)
         (base + s.width + t.width) exitLabel nextLabel
+  | Γ, .treeCase (shape := shape) x empty node, slots, base, exitLabel, nextLabel =>
+    let rootMode := (slots.getD x.index default).mode
+    let scratch := base + shape.bindCount
+    let nodeLive := fun i => node.usesFast (i + shape.bindCount)
+    let mid := fun i => decide (i = x.index) || empty.usesFast i || nodeLive i
+    [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
+      (releaseWhere Γ slots (fun i => mid i && !empty.usesFast i) ++
+        empty.code targetModes h p0 resultBase slots base (exitLabel + 1) (nextLabel + 1))
+      (releaseWhere Γ slots (fun i => mid i && !(nodeLive i || decide (i = x.index))) ++
+        x.code h slots scratch nodeLive ++ [.localSet base] ++
+        treeLoadFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
+        (if rootMode = .owned then
+          LeanExe.Runtime.headerStore base 8 [.constI64 0] else []) ++
+        releaseWhere (shape.context Γ) (shape.slots base rootMode slots)
+          (fun i => decide (i < shape.bindCount) && !node.usesFast i) ++
+        node.code targetModes h p0 resultBase (shape.slots base rootMode slots) scratch
+          (exitLabel + 1) (nextLabel + 1)) [] []]
 
 def TailFunc.positions (func : TailFunc S) : Nat :=
   (if func.depth then 1 else 0) + 2 * widthSum func.params + func.result.width +

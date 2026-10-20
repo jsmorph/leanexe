@@ -6,7 +6,7 @@ import Verified.Tree
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
-words, `Bool`s, floats, tuples of these, pairs, and arrays, and an expression of type `t` in a
+words, `Bool`s, floats, tuples of these, pairs, arrays, and fixed-layout recursive trees.  An expression of type `t` in a
 context `Γ` that may call functions
 with the signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only
 variables in scope, and calls only functions that exist.  Each operation means Lean's operation:
@@ -861,6 +861,9 @@ inductive TailBody (S : List Sig) (params : List Ty) (result : Ty) : List Ty →
       TailBody S params result Γ
   | letPair (value : Expr S Γ (.pair s t)) (body : TailBody S params result (t :: s :: Γ)) :
       TailBody S params result Γ
+  | treeCase {shape : TreeShape} (x : Var Γ (.tree shape))
+      (empty : TailBody S params result Γ)
+      (node : TailBody S params result (shape.context Γ)) : TailBody S params result Γ
 
 def TailBody.denote (funs : Funs S) : {Γ : List Ty} → TailBody S params result Γ →
     Env Γ → Sum (Env params) result.denote
@@ -872,6 +875,10 @@ def TailBody.denote (funs : Funs S) : {Γ : List Ty} → TailBody S params resul
   | _, .letPair value body, env =>
     let pair := value.denote funs env
     body.denote funs (.cons pair.2 (.cons pair.1 env))
+  | _, .treeCase x empty node, env =>
+    match env.get x with
+    | .nil => empty.denote funs env
+    | .node words children => node.denote funs (Env.treeFields _ words children env)
 
 def TailBody.uses : {Γ : List Ty} → TailBody S params result Γ → Nat → Bool
   | _, .ret value, i => value.uses i
@@ -879,6 +886,8 @@ def TailBody.uses : {Γ : List Ty} → TailBody S params result Γ → Nat → B
   | _, .ite cond yes no, i => cond.uses i || yes.uses i || no.uses i
   | _, .letE value body, i => value.uses i || body.uses (i + 1)
   | _, .letPair value body, i => value.uses i || body.uses (i + 2)
+  | _, .treeCase (shape := shape) x empty node, i =>
+    (i == x.index) || empty.uses i || node.uses (i + shape.bindCount)
 
 def TailBody.useMask : {Γ : List Ty} → TailBody S params result Γ → Nat
   | _, .ret value => value.useMask
@@ -886,6 +895,8 @@ def TailBody.useMask : {Γ : List Ty} → TailBody S params result Γ → Nat
   | _, .ite cond yes no => cond.useMask ||| yes.useMask ||| no.useMask
   | _, .letE value body => value.useMask ||| body.useMask >>> 1
   | _, .letPair value body => value.useMask ||| body.useMask >>> 2
+  | _, .treeCase (shape := shape) x empty node =>
+    (1 <<< x.index) ||| empty.useMask ||| node.useMask >>> shape.bindCount
 
 def TailBody.usesFast (body : TailBody S params result Γ) (i : Nat) : Bool :=
   body.useMask.testBit i
@@ -895,12 +906,14 @@ def TailBody.depthCalls : {Γ : List Ty} → TailBody S params result Γ → Boo
   | _, .next args => argsAny fun i => (args i).depthCalls
   | _, .ite cond yes no => cond.depthCalls || yes.depthCalls || no.depthCalls
   | _, .letE value body | _, .letPair value body => value.depthCalls || body.depthCalls
+  | _, .treeCase _ empty node => empty.depthCalls || node.depthCalls
 
 def TailBody.aborts : {Γ : List Ty} → TailBody S params result Γ → Bool
   | _, .ret value => value.aborts
   | _, .next args => argsAny fun i => (args i).aborts
   | _, .ite cond yes no => cond.aborts || yes.aborts || no.aborts
   | _, .letE value body | _, .letPair value body => value.aborts || body.aborts
+  | _, .treeCase _ _ _ => true
 
 def TailBody.placeArgs (targetModes : List Mode) (modes : List Mode) :
     {Γ : List Ty} → TailBody S params result Γ → Bool
@@ -917,6 +930,9 @@ def TailBody.placeArgs (targetModes : List Mode) (modes : List Mode) :
     value.placeArgs && body.placeArgs targetModes (value.mode modes :: modes)
   | _, .letPair value body =>
     value.placeArgs && body.placeArgs targetModes (value.mode modes :: value.mode modes :: modes)
+  | _, .treeCase (shape := shape) x empty node =>
+    empty.placeArgs targetModes modes &&
+      node.placeArgs targetModes (shape.modes (modes.getD x.index .borrowed) modes)
 
 structure TailFunc (S : List Sig) where
   name : String

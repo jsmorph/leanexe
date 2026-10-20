@@ -14,6 +14,7 @@ def TailBody.toExpr (g : Sig) (hp : g.params = params) (hr : g.result = result) 
     .ite (cond.renameFuns (fun f => .there f)) (yes.toExpr g hp hr) (no.toExpr g hp hr)
   | _, .letE value body => .letE (value.renameFuns (fun f => .there f)) (body.toExpr g hp hr)
   | _, .letPair value body => .letPair (value.renameFuns (fun f => .there f)) (body.toExpr g hp hr)
+  | _, .treeCase x empty node => .treeCase x (empty.toExpr g hp hr) (node.toExpr g hp hr)
 
 theorem TailBody.toExpr_denote (body : TailBody S params result Γ) (g : Sig)
     (hp : g.params = params) (hr : g.result = result)
@@ -36,6 +37,11 @@ theorem TailBody.toExpr_denote (body : TailBody S params result Γ) (g : Sig)
       TailBody.denote, ih]
   | letPair value body ih => simp [TailBody.toExpr, Expr.denote, Expr.denote_weakenFuns,
       TailBody.denote, ih]
+  | treeCase x empty node he hn =>
+    simp only [TailBody.toExpr, Expr.denote, TailBody.denote]
+    cases env.get x with
+    | nil => exact he env
+    | node words children => exact hn (Env.treeFields _ words children env)
 
 theorem TailBody.usesFast_eq (body : TailBody S params result Γ) (i : Nat) :
     body.usesFast i = body.uses i := by
@@ -44,7 +50,8 @@ theorem TailBody.usesFast_eq (body : TailBody S params result Γ) (i : Nat) :
     fun e i => e.usesFast_eq i
   induction body generalizing i <;>
     simp_all [TailBody.useMask, TailBody.uses, argsMask_testBit, Nat.testBit_or,
-      Nat.testBit_shiftRight, hExpr, Nat.add_comm]
+      Nat.testBit_shiftRight, hExpr, Nat.add_comm,
+      testBit_one_shiftLeft, -Nat.testBit_shiftLeft]
 
 theorem TailFunc.exists_run (func : TailFunc S) (funs : Funs S) (h : func.Decreases funs)
     (state : Env func.params) :

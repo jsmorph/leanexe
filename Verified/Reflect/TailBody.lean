@@ -1,5 +1,5 @@
 import Verified.Reflect.Definitions
-import Verified.Reflect.TailLemmas
+import Verified.Reflect.TailListLemmas
 import Verified.Reflect.TailModes
 
 namespace Verified.Reflect
@@ -113,6 +113,10 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
         [(`hv, rv.proof), (`hb, proofFn)]
       return ⟨src, step, fixed, proof⟩
   if let some app ← matchMatcherApp? e then
+    if app.discrs.size == 1 then
+      if let (``List, #[el]) := (← whnfR (← inferType app.discrs[0]!)).getAppFnArgs then
+        if (← whnfR el).isConstOf ``UInt64 then
+          return ← reflectTailListMatch t c app
     if app.discrs.size == 1 && app.alts.size == 1 &&
         !app.discrInfos.any (·.hName?.isSome) then
       let d := app.discrs[0]!
@@ -167,6 +171,37 @@ partial def reflectTailBody (t : TailContext) (c : Ctx) (e : Lean.Expr) :
     let proof ← tailLemma ``tail_ret_eq t c
       [(`ψ, t.flattenResult), (`value, r.src), (`V, e)] [(`hv, r.proof)]
     return ⟨src, step, ← rflEq e (← t.outcome step), proof⟩
+
+partial def reflectTailListMatch (t : TailContext) (c : Ctx) (app : MatcherApp) :
+    MetaM TailReflection := do
+  let xs := app.discrs[0]!
+  unless (← projReduce xs).isFVar do
+    let expanded ← withLetDecl `xs (← inferType xs) xs fun value =>
+      mkLetFVars #[value] { app with discrs := #[value] }.toExpr
+    return ← (← reflectTailBody t c expanded).restate (← bareEq expanded app.toExpr)
+  unless app.remaining.isEmpty do
+    throwError "verified_compile: a tail list match cannot be applied to further arguments"
+  let (empty, branch, nativeEq) ← listMatcherCases app
+  let (x, _) ← varOf c xs
+  let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
+  let re ← reflectTailBody t c empty
+  let (node, nodeStep, nodeFixed, nodeProof) ←
+    withListCaseFields c xs fun inner head tail => do
+      let rn ← reflectTailBody t inner (branch.beta #[head, tail])
+      return (rn.src, ← mkLambdaFVars #[head, tail] rn.step,
+        ← mkLambdaFVars #[head, tail] rn.fixed, ← mkLambdaFVars #[head, tail] rn.proof)
+  let step ← mkAppOptM ``List.casesOn
+    #[some (mkConst ``UInt64),
+      some (Lean.mkLambda `xs .default (← inferType xs) (← t.sumType)),
+      some xs, some re.step, some nodeStep]
+  let fixed ← mkAppM ``tail_listCase_fixed
+    #[t.meaning, xs, empty, branch, re.step, nodeStep, re.fixed, nodeFixed]
+  let proof ← tailLemma ``tail_listCase_eq t c
+    [(`φ, t.flattenState), (`ψ, t.flattenResult), (`x, x), (`empty, re.src),
+      (`node, node), (`xs, xs), (`emptyStep, re.step), (`nodeStep, nodeStep)]
+    [(`hx, hx), (`he, re.proof), (`hn, nodeProof)]
+  let r : TailReflection := ⟨← mkAppM ``TailBody.treeCase #[x, re.src, node], step, fixed, proof⟩
+  r.restate nativeEq
 
 partial def reflectTailSplit (t : TailContext) (c : Ctx) (xs : List Lean.Expr)
     (body : Lean.Expr) : MetaM TailReflection := do

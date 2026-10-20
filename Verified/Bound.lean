@@ -476,6 +476,7 @@ def TailBody.grows (flags : Flags S) : {Γ : List Ty} → TailBody S params resu
   | _, .next args => argsAny fun i => (args i).grows flags
   | _, .ite cond yes no => cond.grows flags || yes.grows flags || no.grows flags
   | _, .letE value body | _, .letPair value body => value.grows flags || body.grows flags
+  | _, .treeCase _ empty node => empty.grows flags || node.grows flags
 
 def TailFunc.paidParams (func : TailFunc S) (flags : Flags S) : List Bool :=
   paramFlags func.params func.modes (func.body.grows flags)
@@ -490,6 +491,7 @@ def TailBody.paidResult (flags : Flags S) (modes : List Mode) (paid : List Bool)
       (value.paid flags modes paid (fun i => body.uses (i + 1)) :: paid)
   | _, .letPair value body =>
     body.paidResult flags (value.mode modes :: value.mode modes :: modes) (false :: false :: paid)
+  | _, .treeCase _ _ _ => false
 
 def TailFunc.paidResult (func : TailFunc S) (flags : Flags S) : Bool :=
   !func.result.scalar && func.body.paidResult flags (entryModes func.params func.modes)
@@ -718,6 +720,13 @@ def TailBody.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
     value.allocs funs flags bounds modes paid (fun i => body.uses (i + 2)) env +
       body.allocs funs flags bounds targetModes targetPaid (mode :: mode :: modes)
         (false :: false :: paid) (.cons pair.2 (.cons pair.1 env))
+  | _, .treeCase (shape := shape) x empty node, modes, paid, env =>
+    match env.get x with
+    | .nil => empty.allocs funs flags bounds targetModes targetPaid modes paid env
+    | .node words children =>
+      x.cost modes (fun i => node.uses (i + shape.bindCount)) (env.get x) +
+      node.allocs funs flags bounds targetModes targetPaid (shape.modes (modeAt modes x.index) modes)
+        (List.replicate shape.bindCount false ++ paid) (Env.treeFields shape words children env)
 
 def TailBody.fits (funs : Funs S) (fits : Fits S) :
     {Γ : List Ty} → TailBody S params result Γ → Env Γ → Bool
@@ -731,6 +740,10 @@ def TailBody.fits (funs : Funs S) (fits : Fits S) :
   | _, .letPair value body, env =>
     let pair := value.denote funs env
     value.fits funs fits env && body.fits funs fits (.cons pair.2 (.cons pair.1 env))
+  | _, .treeCase x empty node, env =>
+    match env.get x with
+    | .nil => empty.fits funs fits env
+    | .node words children => node.fits funs fits (Env.treeFields _ words children env)
 
 def TailFunc.bound (func : TailFunc S) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
     (state : Env func.params) : Nat :=

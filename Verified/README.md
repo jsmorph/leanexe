@@ -216,7 +216,11 @@ proves that borrowed and consumed lists use the typed tree's encoding.  The
 The [match equations](Reflect/TreeLemmas.lean) preserve both branch meanings and their allocation
 and frames conditions.  [Matcher normalization](Reflect/NativeList.lean) derives the equation from
 Lean's elaborated match to its two list cases, which the kernel checks with the generated theorem.
-Reflection of user-defined recursive types, list folds, and matching in tail-loop bodies remain pending.
+The [tail-match rule](TailTreeCase.lean) enters `TailBody.code_spec` and the whole-loop theorem.
+Its branches preserve the enclosing loop's return and continue labels.  The
+[list-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
+and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
+Reflection of user-defined recursive types and list folds remains pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
@@ -227,6 +231,9 @@ The [typed constructor and matching module](Examples/TreeCore.lean) derives its 
 the universal compiler theorem.  Its [cases](Examples/TreeCases.lean) exercise owned and borrowed
 construction, field access, rebuilding, duplication, and word updates, including retained aliases
 and last-use header reuse.  `tests/verified/run.sh --cases treecore` runs those cases.
+The [list-tail cases](Examples/ListTailCases.lean) check borrowed summation and consumed reversal
+through 4,096 cells, beyond the guarded call-depth limit.  Reversal reuses each matched header.
+`tests/verified/run.sh --cases listtail` checks their results, allocations, and retained blocks.
 
 ## Recursion
 

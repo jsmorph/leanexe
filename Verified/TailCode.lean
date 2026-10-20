@@ -1,5 +1,6 @@
 import Verified.TailBranch
 import Verified.TailLetPair
+import Verified.TailTreeCase
 
 namespace Verified
 
@@ -40,6 +41,11 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
       (Expr.code_spec m funs flags bounds fits host hm hCalls value fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (bodySpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
+  | treeCase x empty node emptySpec nodeSpec =>
+    intro hDepth
+    exact tail_treeCase_spec hm targetModes x empty node
+      (emptySpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
+      (nodeSpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
 
 #print axioms TailBody.code_spec
 
