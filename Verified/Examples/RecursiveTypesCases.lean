@@ -21,6 +21,12 @@ def cases : IO Unit := do
     IO.println s!"recursivetypes|duplicateWords|list:chain-u64,chain-u64|{chain xs}|{render pair.1.toList} {render pair.2.toList}|{2 * n}|{2 * n}"
     for head in [0, 7, maxU] do
       IO.println s!"recursivetypes|prependWords|chain-u64|{u head} {chain xs}|{render (prependWords head value).toList}|{n + 1}|{n + 1}"
+    for acc in [0, maxU] do
+      IO.println s!"recursivetypes|sumAcc|i64|{u acc} {chain xs}|{Words.sumAcc acc value}|{n}|{n}"
+    for acc in [[], [maxU], [0, maxU, 7]] do
+      let blocks := n + acc.length
+      let result := reverseWords value (Words.ofList acc)
+      IO.println s!"recursivetypes|reverseWords|chain-u64|{chain xs} {chain acc}|{render result.toList}|{blocks}|{blocks}"
   let trees := [.leaf, KeyTree.chain 4096, KeyTree.chain 999, KeyTree.chain 1000] ++
     (List.range 20).map fun i => KeyTree.arbitrary (3 * i) i
   for tree in trees do
@@ -35,6 +41,9 @@ def cases : IO Unit := do
     let split := tree.splitRoot
     let live := split.1.size.toNat + split.2.size.toNat
     IO.println s!"recursivetypes|splitRoot|list:tree-u64,tree-u64|tree-u64:{tree.describe}|{split.1.describe} {split.2.describe}|{live}|{n}"
+    for count in [0, 1, 7, 999, 1000, 4096, maxU] do
+      let result := followRight count tree
+      IO.println s!"recursivetypes|followRight|tree-u64|{u count} tree-u64:{tree.describe}|{result.describe}|{result.size}|{n}"
     if tree.height < 1000 then
       IO.println s!"recursivetypes|size|i64|tree-u64:{tree.describe}|{tree.size}|{n}|{n}"
       IO.println s!"recursivetypes|incr|tree-u64|tree-u64:{tree.describe}|{tree.incr.describe}|{n}|{n}"

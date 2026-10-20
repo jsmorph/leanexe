@@ -218,19 +218,19 @@ and frames conditions.  [Matcher normalization](Reflect/NativeList.lean) derives
 Lean's elaborated match to its two list cases, which the kernel checks with the generated theorem.
 The [tail-match rule](TailTreeCase.lean) enters `TailBody.code_spec` and the whole-loop theorem.
 Its branches preserve the enclosing loop's return and continue labels.  The
-[list-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
+[recursive-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
 and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
 For a user-defined recursive type with one empty constructor and one record constructor,
 the reflector derives conversions to and from the typed tree and proves both inverse laws and
 agreement with the type's `Encode` instance.  Record fields may be words or recursive children,
 with at most 64 fields.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
-matching, guarded recursion, identity, duplication, tuples, calls, and loop state.
+matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state.
 [Native matcher normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving
 their constructor cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve
 denotation, allocation bounds, and frames conditions.  The
 [native-type example](Examples/RecursiveTypes.lean) checks the existing `Words` and `KeyTree`
-layouts, including subtree release and header reuse.  Native tail matching and list folds remain
-pending.
+layouts, including subtree release and header reuse.  Native tail matching uses the same field
+context and branch equations as expression matching.  List folds remain pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields

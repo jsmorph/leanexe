@@ -56,7 +56,7 @@ document states its theorem's domain and exceptional cases.
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for code that calls guarded recursion, a frames condition |
 | `Float32` and WGSL kernels | Supported | Float32 values, arrays, arithmetic, comparisons, and word conversions.  WGSL remains pending. |
-| Lists and recursive types | `List UInt64` and user recursive types | Lists, including matching and tail loops, with copying, release, and header reuse.  User-defined recursive construction, matching, guarded recursion, identity, and duplication.  Native tail matching and list folds remain pending. |
+| Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse.  List folds remain pending. |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
 | Tail recursion | Compiled as a loop | Recognized tail recursion compiles as a loop.  Other recursion uses a depth limit of 1,000. |
 | Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Whole-array `Array.foldl` over every element type, with an accumulator of any dialect type |

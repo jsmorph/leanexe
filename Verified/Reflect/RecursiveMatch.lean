@@ -1,4 +1,5 @@
 import Verified.Reflect.Definitions
+import Verified.Reflect.TailListLemmas
 
 namespace Verified.Reflect
 
@@ -100,5 +101,32 @@ def deriveRecursiveMatch (layout : RecursiveLayout) : CommandElabM Unit :=
       (he : empty.fits funs fits env = E) (hn : $nodeFits) :
       (Verified.Expr.treeCase x empty node).fits funs fits env = $fitsCase := by
     cases value <;> simp_all only [Verified.Expr.fits, $flatten:term]))
+  let tailEqName := mkIdent (layout.decl `tail_case_eq)
+  let tailFixedName := mkIdent (layout.decl `tail_case_fixed)
+  let sumType ← `(Sum α β)
+  let stepBranch ← arrows sumType
+  let stepCase ← primitive sumType (← `(value)) (← `(emptyStep)) (← `(nodeStep))
+  let nodeStepEq ← bindAll (← `(
+    node.denote funs $boundEnv = Sum.map φ ψ (nodeStep $fields*)))
+  elabCommand (← `(theorem $tailEqName
+      {S : List Verified.Sig} {Γ params : List Verified.Ty} {result : Verified.Ty}
+      {funs : Verified.Funs S} {env : Verified.Env Γ} {α β : Type}
+      (φ : α → Verified.Env params) (ψ : β → result.denote)
+      (x : Verified.Var Γ (.tree $shape))
+      (empty : Verified.TailBody S params result Γ)
+      (node : Verified.TailBody S params result (($shape).context Γ))
+      (value : $native) (emptyStep : Sum α β) (nodeStep : $stepBranch)
+      (hx : env.get x = $flatten value)
+      (he : empty.denote funs env = Sum.map φ ψ emptyStep) (hn : $nodeStepEq) :
+      (Verified.TailBody.treeCase x empty node).denote funs env = Sum.map φ ψ $stepCase := by
+    cases value <;> simp_all only [Verified.TailBody.denote, $flatten:term]))
+  let bodyCase ← primitive β (← `(value)) (← `(empty)) (← `(node))
+  let nodeFixed ← bindAll (← `(node $fields* = (nodeStep $fields*).elim meaning id))
+  elabCommand (← `(theorem $tailFixedName {α β : Type} (meaning : α → β)
+      (value : $native) (empty : β) (node : $branchType)
+      (emptyStep : Sum α β) (nodeStep : $stepBranch)
+      (he : empty = emptyStep.elim meaning id) (hn : $nodeFixed) :
+      $bodyCase = ($stepCase).elim meaning id := by
+    cases value <;> simp_all only []))
 
 end Verified.Reflect

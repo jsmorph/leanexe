@@ -4,6 +4,13 @@ namespace Verified.Reflect
 
 open Lean Meta
 
+def RecursiveLayout.nativeCases (layout : RecursiveLayout) (motive value empty node : Lean.Expr) :
+    MetaM Lean.Expr := do
+  let info ← getConstInfoInduct layout.name
+  let minors := info.ctors.toArray.map fun name =>
+    some (if name == layout.empty then empty else node)
+  mkAppOptM (layout.name ++ `casesOn) (#[some motive, some value] ++ minors)
+
 def treeMatcherCases (layout : RecursiveLayout) (app : MatcherApp) :
     MetaM (Lean.Expr × Lean.Expr × Lean.Expr) := do
   unless app.discrs.size == 1 && !app.discrInfos.any (·.hName?.isSome) do
@@ -14,12 +21,8 @@ def treeMatcherCases (layout : RecursiveLayout) (app : MatcherApp) :
     | throwError "verified_compile: malformed recursive match motive"
   if resultType.hasLooseBVars then
     throwError "verified_compile: a recursive match cannot have a dependent result type"
-  let info ← getConstInfoInduct layout.name
   let ctor ← getConstInfoCtor layout.node
-  let minors (empty node : Lean.Expr) : Array (Option Lean.Expr) :=
-    info.ctors.toArray.map fun name => some (if name == layout.empty then empty else node)
-  let casesOn (motive value empty node : Lean.Expr) : MetaM Lean.Expr :=
-    mkAppOptM (layout.name ++ `casesOn) (#[some motive, some value] ++ minors empty node)
+  let casesOn := layout.nativeCases
   let altTypes ← app.alts.mapM inferType
   let decls := altTypes.mapIdx fun i ty => (Name.mkSimple s!"branch{i}", ty)
   withLocalDeclsDND decls fun hs => do

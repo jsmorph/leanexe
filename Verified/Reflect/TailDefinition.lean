@@ -26,6 +26,9 @@ private partial def tailCallsOnly (name : Name) (e : Lean.Expr) : MetaM Bool := 
         if (← whnfR el).isConstOf ``UInt64 then
           return ← app.alts.allM fun alt =>
             lambdaTelescope alt fun _ body => tailCallsOnly name body
+      if (← recursiveLayout? (← inferType app.discrs[0]!)).isSome then
+        return ← app.alts.allM fun alt =>
+          lambdaTelescope alt fun _ body => tailCallsOnly name body
     return false
   match e.getAppFnArgs with
   | (``ite, #[_, p, _, yes, no]) =>
