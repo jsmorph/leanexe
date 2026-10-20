@@ -185,6 +185,9 @@ with a body that binds any number of fields.  [Field positions](TreeFieldPositio
 each packed word or child field to its assigned local.
 The binding rule also accepts an initial heap step whose consumed value has been decomposed
 into fields.  The field-load rule preserves the operand stack.
+[Expression coercion](OwnedExpr.lean) preserves an expression's execution facts as its result
+mode changes.  [Release and coercion](CoercedRelease.lean) adds release of unused variables and
+accounts for the allocation allowance of the remaining expression.
 [Context equalities](ContextHEq.lean) preserve the environment and execution facts when
 equivalent context expressions have different associations.  [Child-region enumeration](TreeMatchBlocks.lean)
 relates a record's packed child slots to the grouped child bindings' blocks and read regions.
