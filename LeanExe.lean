@@ -64,6 +64,7 @@ import LeanExe.Pipeline.FileBytes
 import LeanExe.Pipeline.FlatRecords
 import LeanExe.Pipeline.Implements
 import LeanExe.Pipeline.Records
+import LeanExe.Pipeline.RecordSlots
 import LeanExe.Pipeline.ReleaseTree
 import LeanExe.Pipeline.Runtime
 import LeanExe.Pipeline.RuntimeSpec
