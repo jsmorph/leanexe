@@ -17,6 +17,8 @@ import Verified.Examples.Grow
 import Verified.Examples.Modes
 import Verified.Examples.Floats
 import Verified.Examples.Floats32
+import Verified.Examples.Sums
+import Examples.Shape.Cases
 import Verified.Examples.Elements
 import Verified.Examples.Tuples
 import Verified.Examples.Records
@@ -136,6 +138,29 @@ def float32Words (xs : Array Float32) : Array UInt64 := xs.map fun x => x.toBits
 def float32Arrays : List (Array Float32) :=
   [#[], #[Float32.ofBits 1], floats32.toArray,
     (List.range 64).toArray.map fun i => Float32.ofBits (UInt32.ofNat (0x3f000000 + i))]
+
+def sumShapes : List _root_.Examples.Shape.Shape :=
+  [.circle 0, .circle (-0.0), .circle (0.0 / 0.0),
+    .rect 7 9, .rect 18446744073709551615 2, .point]
+
+def sumShapeArg (s : _root_.Examples.Shape.Shape) : String :=
+  " ".intercalate (_root_.Examples.Shape.shapeArgs s)
+
+def sumShapeOut (s : _root_.Examples.Shape.Shape) : String :=
+  " ".intercalate ((_root_.Examples.Shape.shapeWords s).map toString)
+
+def sumShapeWords (xs : Array _root_.Examples.Shape.Shape) : Array UInt64 :=
+  (xs.toList.flatMap _root_.Examples.Shape.shapeWords).toArray
+
+def sumPacketArg : Sums.Packet → String
+  | .value x mode => s!"i64:0 {float32Arg x} i64:{if mode == .raw then 0 else 9} i64:0"
+  | .word x => s!"i64:1 f32:0 i64:0 i64:{x}"
+  | .empty => "i64:2 f32:0 i64:0 i64:0"
+
+def sumPacketOut : Sums.Packet → String
+  | .value x mode => s!"0 {x.toBits} {if mode == .raw then 0 else 9} 0"
+  | .word x => s!"1 0 0 {x}"
+  | .empty => "2 0 0 0"
 
 /-- Arrays of floats: empty, one element, a few, the special floats, and 50 elements. -/
 def floatArrays : List (Array Float) :=
@@ -708,6 +733,33 @@ def main : IO Unit := do
       IO.println s!"modes|swapPair|{kinds}|{a} {c}|{arrayOut s1} {arrayOut s2}|4|4"
       let (b1, b2) := Modes.both xs ys
       IO.println s!"modes|both|{kinds}|{a} {c}|{arrayOut b1} {arrayOut b2}|2|2"
+  for s in sumShapes do
+    for n in ([0, 1, 2, 17, 1000] : List UInt64) do
+      IO.println s!"sums|spin|list:i64,f64,i64,i64|i64:{n} {sumShapeArg s}|\
+        {sumShapeOut (Sums.spin n s)}|0|0"
+  for xs in [#[], #[_root_.Examples.Shape.Shape.point], sumShapes.toArray] do
+    let a := arrayArg (sumShapeWords xs)
+    IO.println s!"sums|areaSum|f64|{a}|{(Sums.areaSum xs).toBits}|1|1"
+    for i in [0, 1, xs.size.toUInt64, 18446744073709551615] do
+      IO.println s!"sums|read|list:i64,f64,i64,i64|{a} i64:{i}|{sumShapeOut (Sums.read xs i)}|1|1"
+    for s in sumShapes do
+      IO.println s!"sums|push|array-u64|{a} {sumShapeArg s}|\
+        {arrayOut (sumShapeWords (Sums.push xs s))}|1|2"
+      for i in [0, 1, xs.size.toUInt64, 18446744073709551615] do
+        IO.println s!"sums|replace|array-u64|{a} i64:{i} {sumShapeArg s}|\
+          {arrayOut (sumShapeWords (Sums.replace xs i s))}|1|1"
+  let packets := Sums.Packet.empty :: words.map Sums.Packet.word ++
+    floats32.flatMap fun x => [Sums.Packet.value x .raw, .value x .rounded]
+  for p in packets do
+    let a := sumPacketArg p
+    IO.println s!"sums|packetRead|f32|{a}|{(Sums.packetRead p).toBits}|0|0"
+    IO.println s!"sums|packetTurn|list:i64,f32,i64,i64|{a}|{sumPacketOut (Sums.packetTurn p)}|0|0"
+    IO.println s!"sums|packetDefault|i64|{a}|{Sums.packetDefault p}|0|0"
+  for k in ([0, 1, 2, 18446744073709551615] : List UInt64) do
+    for x in [(0 : Float32), -1.5, Float32.ofBits 0x7fc00000] do
+      for w in ([0, 7, 18446744073709551615] : List UInt64) do
+        IO.println s!"sums|packetMake|list:i64,f32,i64,i64|i64:{k} {float32Arg x} i64:{w}|\
+          {sumPacketOut (Sums.packetMake k x w)}|0|0"
   for tag in ([0, 1, 2, 3, 4, 5, 6, 18446744073709551615] : List UInt64) do
     IO.println s!"floats32|literal|f32|i64:{tag}|{(Floats32.literal tag).toBits}|0|0"
   for w in ([0, 1, 16777215, 16777216, 16777217, 16777219, 0x7fffffff, 0x80000000,
