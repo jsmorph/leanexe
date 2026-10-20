@@ -4,6 +4,7 @@ import Verified.Reflect.Lemmas
 import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
 import Verified.Reflect.FoldLemmas
+import Verified.Reflect.ListFoldLemmas
 import Verified.Reflect.TreeLemmas
 import Verified.Reflect.TreeNodeLemmas
 import Verified.Reflect.NativeList
@@ -973,6 +974,9 @@ partial def normCost (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
   | (``foldCost, #[_, _, xs, init, step, cost]) =>
     unless ← lambdaTelescope cost (fun _ body => pure (isNatZero body)) do return (e, none)
     return (natZero, some (← mkAppM ``foldCost_zero #[xs, init, step]))
+  | (``ListFold.nativeCost, #[_, step, cost, xs, init]) =>
+    unless ← lambdaTelescope cost (fun _ body => pure (isNatZero body)) do return (e, none)
+    return (natZero, some (← mkAppM ``ListFold.nativeCost_zero #[step, xs, init]))
   | _ => return (e, none)
 
 /-- `e` with its head reduced once when it projects an application of a structure's constructor,
@@ -1115,6 +1119,10 @@ partial def normFits (e : Lean.Expr) : MetaM (Lean.Expr × Option Lean.Expr) := 
     unless ← lambdaTelescope fits (fun _ body => pure (body.isConstOf ``Bool.true)) do
       return (e, none)
     return (mkConst ``Bool.true, some (← mkAppM ``foldFits_true #[xs, init, step]))
+  | (``ListFold.nativeFits, #[_, step, fits, xs, init]) =>
+    unless ← lambdaTelescope fits (fun _ body => pure (body.isConstOf ``Bool.true)) do
+      return (e, none)
+    return (mkConst ``Bool.true, some (← mkAppM ``ListFold.nativeFits_true #[step, xs, init]))
   | _ => return (e, none)
 
 /-- The frames condition that `p : fits = rhs` gives, with `rhs` normalized by `normFits` and its
@@ -2015,6 +2023,80 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           return (← mkLambdaFVars xs natZero, ← mkLambdaFVars xs proof))
     return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
       ri.ty, e, bound, loopFits rn ri u cs α init condTrue hc f none⟩
+  | ``List.foldl, foldArgs@#[α, β, f, init, xs] =>
+    unless β.isConstOf ``UInt64 do
+      throwError "verified_compile: List.foldl requires List UInt64, in {e}"
+    let xs ← projReduce xs
+    unless xs.isFVar do
+      return ← reflectAs (← withLetDecl `xs (← inferType xs) xs fun value =>
+        mkLetFVars #[value] (mkAppN e.getAppFn (foldArgs.set! 4 value))) e
+    let shape ← shapeOf α
+    let .elem el := shape.ty
+      | throwError "verified_compile: List.foldl requires a scalar accumulator, in {e}"
+    let ri ← reflect c init
+    let captured := c.vars.filter fun (value, _) =>
+      (value.find? fun part => part.isFVar && f.containsFVar part.fvarId!).isSome
+    let captureTypes := ctxExpr (captured.map (·.2))
+    let capturedEnv ← envExpr captured
+    let reflections ← (xs :: init :: captured.map (·.1)).mapM (reflect c)
+    let nilArgs ← mkAppOptM ``Args.nil #[some c.sigs, some c.ctx]
+    let argList ← reflections.foldrM (fun r rest => mkAppM ``Args.cons #[r.src, rest]) nilArgs
+    let args ← mkAppM ``Args.get #[argList]
+    let nilEq ← mkAppOptM ``ofFn_nil_eq #[some c.sigs, some c.ctx, some c.funs, some c.env]
+    let hargs ← reflections.foldrM (fun r rest => mkAppM ``ofFn_cons_eq #[r.proof, rest]) nilEq
+    let u ← withLocalDeclD `current (← inferType xs) fun current =>
+      withLocalDeclD `acc α fun acc => do
+        let vars := [(current, .tree listShape), (acc, .elem el)] ++ captured
+        let (ctx, env) ← ctxEnvExpr vars
+        withListCaseFields { c with vars, ctx, env } current fun inner head tail => do
+          let r ← reflect inner (f.beta #[acc, head])
+          let binders := #[current, acc, head, tail]
+          pure (⟨{ r with proof := ← userProof inner r }, binders,
+            ← binders.toList.mapM fun value => value.fvarId!.getDecl⟩ : Under)
+    let specialize (term : Lean.Expr) : MetaM Lean.Expr := withExistingLocalDecls u.decls do
+      let current ← mkAppM ``List.cons #[u.xs[2]!, u.xs[3]!]
+      mkLambdaFVars #[u.xs[2]!, u.xs[3]!, u.xs[1]!]
+        (term.replaceFVars #[u.xs[0]!] #[current])
+    let hstep ← specialize u.r.proof
+    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env),
+      (`flatten, ← shape.fn α), (`args, args), (`argList, argList), (`body, u.r.src),
+      (`xs, xs), (`init, init), (`step, f), (`captured, capturedEnv)]
+    let rule (name : Name) (extra : List (Name × Lean.Expr)) : MetaM LemmaApp := do
+      let app ← LemmaApp.start name (extra ++ common)
+      app.assign `hargs (← mkExpectedTypeHint hargs (← app.hypType `hargs))
+      app.assign `hstep (← mkExpectedTypeHint hstep (← app.hypType `hstep))
+      return app
+    let src ← mkAppM ``Expr.listFold #[args, u.r.src]
+    let proof ← (← rule ``listFold_eq []).finish
+    let bound : BoundBuilder := fun modes paid live => do
+      let app ← rule ``listFold_bound (boundArgs c (c.tables.table false) modes paid live)
+      let some (_, lhs, _) := (← app.hypType `hI).eq?
+        | throwError "verified_compile: the list fold's argument bound"
+      let parts := lhs.getAppArgs
+      let hI ← argsCostBound (c.tables.table false) modes paid
+        parts[parts.size - 6]! parts[parts.size - 5]! parts[parts.size - 3]!
+        (reflections.map fun r => (r, r.ty)) argList
+      app.assign `I (← boundOf hI).term
+      app.assign `hI (← boundOf hI).proof
+      let bodyModes := modesExpr (List.replicate (listShape.bindCount + 2 + captured.length) .borrowed)
+      let bodyPaid := listExpr (mkConst ``Bool)
+        (List.replicate (listShape.bindCount + 2 + captured.length) (boolConst false))
+      let bodyLive := mkApp2 (mkConst ``ListFold.bodyLive) (elemExpr el) captureTypes
+      let b ← withExistingLocalDecls u.decls do u.r.bound bodyModes bodyPaid bodyLive
+      app.assign `B (← specialize b.term)
+      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      boundOf (← app.finish)
+    let fits : FitsBuilder := do
+      let app ← rule ``listFold_fits (fitsArgs c)
+      let initial ← fitsOf (← argsFits reflections argList)
+      app.assign `I initial.term
+      app.assign `hI initial.proof
+      let b ← withExistingLocalDecls u.decls do u.r.fits
+      app.assign `B (← specialize b.term)
+      app.assign `hB (← mkExpectedTypeHint (← specialize b.proof) (← app.hypType `hB))
+      fitsOf (← app.finish)
+    return ⟨src, ← mkExpectedTypeHint proof (← mkEq (← denoteExpr c src) (← flatValue e)),
+      ri.ty, e, bound, fits⟩
   | ``Array.foldl, foldArgs@#[α, β, f, init, xs, start, stop] =>
     unless ← kernelDefEq start natZero do
       throwError "verified_compile: Array.foldl requires start = 0, in {e}"

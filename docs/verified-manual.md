@@ -44,7 +44,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | A sum with scalar fields and a `Flat` instance | A word tag and the constructor fields' words | The tag occupies the tuple's first leaf.  Each constructor's fields occur once. |
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, enumeration, or sum | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
-| `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, and tail recursion.  Folds remain pending. |
+| `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
 | A recursive type with one empty and one record constructor | Null for the empty constructor, otherwise a fixed-layout record | At most 64 fields, each `UInt64` or a recursive child.  Construction, matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
@@ -66,6 +66,7 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | Calls | A listed definition applied to all its arguments, or an unfolded `@[inline]` helper |
 | Combinators | `LeanExe.loop`, `LeanExe.repeatWhile`, `LeanExe.build` |
 | Array folds | `xs.foldl step init`, with the default bounds `start = 0` and `stop = xs.size` |
+| List folds | `xs.foldl step init` over `List UInt64`, with scalar state |
 | Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 | Lists of words | `[]`, `x :: xs`, and `match xs with \| [] => empty \| x :: ys => node` |
@@ -76,9 +77,11 @@ Every construct has Lean's meaning.  Word division by zero gives 0, the remainde
 
 ### Loops and builds
 
-`LeanExe.loop n init f` applies `f` to the indices `0` to `n - 1` in order, starting from the state `init`.  `LeanExe.repeatWhile fuel init cond step` applies `step` while `cond` holds, at most `fuel` times, and `LeanExe.build n f` is the array of `n` elements whose element `i` is `f i`.  The modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) define the three, and the LeanExe compiler accepts them as well.  A state may have any type of the dialect, records with array fields included, and each part of a loop or a build is an expression of the dialect, which may hold further loops, builds, and calls.  `for`, `while`, `do` notation, and `List.foldl` are outside the dialect.  Recognized tail recursion compiles as a loop.
+`LeanExe.loop n init f` applies `f` to the indices `0` to `n - 1` in order, starting from the state `init`.  `LeanExe.repeatWhile fuel init cond step` applies `step` while `cond` holds, at most `fuel` times, and `LeanExe.build n f` is the array of `n` elements whose element `i` is `f i`.  The modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) define the three, and the LeanExe compiler accepts them as well.  A state may have any type of the dialect, records with array fields included, and each part of a loop or a build is an expression of the dialect, which may hold further loops, builds, and calls.  `for`, `while`, and `do` notation are outside the dialect.  Recognized tail recursion compiles as a loop.
 
 `xs.foldl step init` accepts every array element type and any accumulator type of the dialect.  The step may contain loops, builds, calls, and further folds, and an array accumulator may grow in place under the ownership rules.  The reflector requires the full-array bounds, `start = 0` and `stop = xs.size`.  Its source operation has Lean's full fold meaning.  Compiled lengths and indices use `UInt64`, and the heap representation bounds the array size below `UInt64.size`, which the compiler proof uses to equate the word-counted loop with the fold.  Folding over a record needs no default value or `Inhabited` instance for that record.
+
+`List.foldl` accepts `List UInt64` and a scalar accumulator: words, Booleans, floats of either width, and their tuples, flat structures, enumerations, or sums.  The loop follows each cell's tail pointer and ends at null.  The step may contain calls, allocation, nested folds, and reads from captured values.  Captures remain borrowed during the fold, and ownership releases a constructed list or an owned capture after its last use.  A structural traversal computes allocation bounds and frames conditions.  A fold that calls guarded code retains that code's depth limit.  [The list example](../Verified/Examples/Lists.lean) and its [execution cases](../Verified/Examples/ListsCases.lean) cover these forms.
 
 ### Ownership
 

@@ -56,10 +56,10 @@ document states its theorem's domain and exceptional cases.
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for code that calls guarded recursion, a frames condition |
 | `Float32` and WGSL kernels | Supported | Float32 values, arrays, arithmetic, comparisons, and word conversions.  WGSL remains pending. |
-| Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse.  List folds remain pending. |
+| Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
 | Tail recursion | Compiled as a loop | Recognized tail recursion compiles as a loop.  Other recursion uses a depth limit of 1,000. |
-| Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Whole-array `Array.foldl` over every element type, with an accumulator of any dialect type |
+| Folds | `Array.foldl` over `Array UInt64` and `Array Float` with a `UInt64` or `Float` accumulator, and `List.foldl` over `List UInt64` | Whole-array `Array.foldl` over every element type, with an accumulator of any dialect type.  `List.foldl` over `List UInt64` with a scalar accumulator and borrowed captures. |
 | Array updates | `set!`, `setIfInBounds`, `insertIdx!`, `eraseIdxIfInBounds`, and `push` on `Array UInt64`, and `++` with an owned left operand | `set!`, `setIfInBounds`, `push`, `++`, `insertIdx!`, `insertIdxIfInBounds`, `eraseIdxIfInBounds`, `LeanExe.insertAt`, and `LeanExe.eraseAt` on arrays of every element type |
 | `@[inline]` helpers | Unfolded at their use | Unfolded at their use.  A listed helper compiles as a function. |
 | Records with array fields | Outside the dialect | Supported |
@@ -70,7 +70,7 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for code that calls guarded recursion, its frames condition.  A program that needs
-WGSL kernels or list folds
+WGSL kernels
 compiles only with the LeanExe compiler.  Binary64 GPT-2 and the Euler solvers compile with both
 compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified

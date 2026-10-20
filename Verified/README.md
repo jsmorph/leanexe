@@ -241,8 +241,12 @@ folds and tail functions share their control instructions.  The
 [loop rule](ListFoldLoop.lean), and release of owned outer values after the fold.
 [Resource equations](ListFoldResource.lean) sum the step's allocation charges and frames
 conditions along the traversal.  [Fold agreement](TreeFold.lean) proves the full Lean
-`List.foldl` meaning under the accumulator encoding.  Reflection of ordinary `List.foldl`
-remains pending.
+`List.foldl` meaning under the accumulator encoding.  The reflector selects the step's free
+variables as borrowed captures and proves its meaning, allocation charge, and frames condition
+with the [native-fold equations](Reflect/ListFoldLemmas.lean).  Captured values need only a
+forward encoding.  The [native list example](Examples/Lists.lean) covers encoded sums, tuple and
+Boolean state, both float widths, nested folds, allocating steps, constructed inputs, and guarded
+calls in a step.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields

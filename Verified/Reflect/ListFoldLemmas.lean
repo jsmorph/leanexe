@@ -1,4 +1,5 @@
 import Verified.ListFoldResource
+import Verified.Reflect.FitsLemmas
 
 namespace Verified.ListFold
 
@@ -84,48 +85,52 @@ theorem listFold_eq {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty
 theorem listFold_bound {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty} {α : Type}
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : List Mode) (paid : List Bool)
     (live : Nat → Bool) (env : Env Γ) (flatten : α → e.denote)
-    (args : (i : Fin (ListFold.params e captures).length) →
-      Expr S Γ ((ListFold.params e captures).get i))
+    (argList : Args S Γ (ListFold.params e captures))
     (body : Expr S (ListFold.context e captures) (.elem e))
     (xs : List UInt64) (init : α) (step : α → UInt64 → α) (captured : Env captures)
     (I : Nat) (B : UInt64 → List UInt64 → α → Nat)
-    (hargs : Env.ofFn (fun i => (args i).denote funs env) =
+    (hargs : Env.ofFn (fun i => (argList.get i).denote funs env) =
       .cons (Tree.ofList xs) (.cons (flatten init) captured))
     (hstep : ∀ head tail acc, body.denote funs
       (Env.treeFields listShape (fun _ => head) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = flatten (step acc head))
-    (hI : (argsSum fun i => if ((ListFold.params e captures).get i).scalar then
-      (args i).allocs funs flags bounds modes paid
-        (fun k => live k || argsAny fun j => (args j).uses k) env else 0) = I)
+    (hI : ArgsCost funs flags bounds modes paid
+      (fun k => live k || argsAny fun j => (argList.get j).uses k) live env
+      (fun _ => .borrowed) argList = I)
     (hB : ∀ head tail acc, body.allocs funs flags bounds
       (listShape.modes .borrowed (paramModes (ListFold.params e captures) []))
       (List.replicate listShape.bindCount false ++ List.replicate (ListFold.params e captures).length false)
       (ListFold.bodyLive e captures)
       (Env.treeFields listShape (fun _ => head) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = B head tail acc) :
-    (Expr.listFold args body).allocs funs flags bounds modes paid live env =
+    (Expr.listFold argList.get body).allocs funs flags bounds modes paid live env =
       I + ListFold.nativeCost step B xs init := by
-  rw [Expr.allocs, hI, hargs]
+  rw [Expr.allocs]
+  have hi := argsSum_eq_argsCost (funs := funs) (flags := flags) (bounds := bounds)
+    (modes := modes) (paid := paid)
+    (all := fun k => live k || argsAny fun j => (argList.get j).uses k)
+    (kept := live) (env := env) (fun _ => .borrowed) argList
+  simp only [reduceCtorEq, ite_false] at hi
+  rw [hi, hI, hargs]
   exact congrArg (I + ·) (ListFold.cost_ofList flatten _ step _ B hstep hB xs init)
 
 theorem listFold_fits {S : List Sig} {Γ : List Ty} {e : Elem} {captures : List Ty} {α : Type}
     (funs : Funs S) (fits : Fits S) (env : Env Γ) (flatten : α → e.denote)
-    (args : (i : Fin (ListFold.params e captures).length) →
-      Expr S Γ ((ListFold.params e captures).get i))
+    (argList : Args S Γ (ListFold.params e captures))
     (body : Expr S (ListFold.context e captures) (.elem e))
     (xs : List UInt64) (init : α) (step : α → UInt64 → α) (captured : Env captures)
     (I : Bool) (B : UInt64 → List UInt64 → α → Bool)
-    (hargs : Env.ofFn (fun i => (args i).denote funs env) =
+    (hargs : Env.ofFn (fun i => (argList.get i).denote funs env) =
       .cons (Tree.ofList xs) (.cons (flatten init) captured))
     (hstep : ∀ head tail acc, body.denote funs
       (Env.treeFields listShape (fun _ => head) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = flatten (step acc head))
-    (hI : (argsAll fun i => (args i).fits funs fits env) = I)
+    (hI : ArgsFits funs fits env argList = I)
     (hB : ∀ head tail acc, body.fits funs fits
       (Env.treeFields listShape (fun _ => head) (fun _ => Tree.ofList tail)
         (.cons (Tree.ofList (head :: tail)) (.cons (flatten acc) captured))) = B head tail acc) :
-    (Expr.listFold args body).fits funs fits env = (I && ListFold.nativeFits step B xs init) := by
-  rw [Expr.fits, hI, hargs]
+    (Expr.listFold argList.get body).fits funs fits env = (I && ListFold.nativeFits step B xs init) := by
+  rw [Expr.fits, argsAll_eq_argsFits, hI, hargs]
   exact congrArg (fun value => I && value) (ListFold.fits_ofList flatten _ step _ B hstep hB xs init)
 
 #print axioms listFold_eq
