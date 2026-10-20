@@ -17,6 +17,25 @@ def SlotsLayout (shape : TreeShape) : List Slot → Prop
   | .child value :: rest => NodeLayout shape value ∧ SlotsLayout shape rest
 end
 
+mutual
+theorem NodeLayout.slotted {shape : TreeShape} :
+    ∀ {value : Node}, NodeLayout shape value → value.Slotted
+  | .null, _ => trivial
+  | .record slots, h => by
+    refine ⟨?_, SlotsLayout.slotted (slots := slots) h.2.2⟩
+    intro hEmpty
+    have hLength := h.1
+    rw [hEmpty] at hLength
+    exact shape.nonempty (List.eq_nil_of_length_eq_zero hLength.symm)
+
+theorem SlotsLayout.slotted {shape : TreeShape} :
+    ∀ {slots : List Slot}, SlotsLayout shape slots → slotsSlotted slots
+  | [], _ => trivial
+  | .word _ :: rest, h => SlotsLayout.slotted (slots := rest) h
+  | .child value :: rest, h =>
+    ⟨NodeLayout.slotted (value := value) h.1, SlotsLayout.slotted (slots := rest) h.2⟩
+end
+
 theorem treeSlots_layout (shape : TreeShape) (fields : List Bool) :
     ∀ words children, (∀ i, NodeLayout shape (children i)) →
       SlotsLayout shape (treeSlots fields words children) := by
@@ -73,5 +92,6 @@ theorem Tree.toNode_records {shape : TreeShape} (value : Tree shape) :
 
 #print axioms Tree.toNode_layout
 #print axioms Tree.toNode_records
+#print axioms NodeLayout.slotted
 
 end Verified
