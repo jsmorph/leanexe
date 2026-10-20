@@ -185,6 +185,8 @@ with a body that binds any number of fields.  [Field positions](TreeFieldPositio
 each packed word or child field to its assigned local.
 The binding rule also accepts an initial heap step whose consumed value has been decomposed
 into fields.  The field-load rule preserves the operand stack.
+[Tail binding composition](TailBindPrefix.lean) removes a field prefix after a return or
+continuation, preserving the remaining parameter or result ownership and the state frame.
 [Expression coercion](OwnedExpr.lean) preserves an expression's execution facts as its result
 mode changes.  [Release and coercion](CoercedRelease.lean) adds release of unused variables and
 accounts for the allocation allowance of the remaining expression.
