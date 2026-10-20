@@ -49,6 +49,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Modes:byHandModule:byhand \
     Verified.Examples.Floats:compiled.module:floats \
     Verified.Examples.Floats32:compiled.module:floats32 \
+    Verified.Examples.Sums:compiled.module:sums \
     Verified.Examples.Elements:compiled.module:elements \
     Verified.Examples.Tuples:module:tuples \
     Verified.Examples.Records:compiled.module:records \
@@ -104,6 +105,9 @@ if [ -z "$case_module" ] || [ "$case_module" = "euler" ]; then
   if [ "$case_module" = "euler" ]; then
     exit 0
   fi
+fi
+if [ -z "$case_module" ] || [ "$case_module" = "sums" ]; then
+  tests/modules/run.sh --module shapes "$out/sums.wasm"
 fi
 # Each entry names the written module, the theorem module, and the file theorem module.  The file
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers
