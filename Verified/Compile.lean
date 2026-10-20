@@ -1,4 +1,5 @@
 import Verified.Source
+import Verified.LocalFrame
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
@@ -161,14 +162,6 @@ def argsCode : {ps : List Ty} → ((i : Fin ps.length) → Program) → Program
 positions from 2, the last of `S` first. -/
 def FVar.callIndex {S : List Sig} {g : Sig} (f : FVar S g) : Nat :=
   2 + (S.length - 1 - f.index)
-
-/-- The local that holds a word of type `ty` at position `p` of a function with `h` positions:
-local `p` for an i64, `p + h` for an f64, and `p + 2 * h` for an f32.  Each bank
-has one local per position, with the parameters occupying the beginning of the first bank. -/
-def slotIndex (h p : Nat) : ValueType → Nat
-  | .f64 => p + h
-  | .f32 => p + 2 * h
-  | _ => p
 
 /-- The instructions that push the words of types `tys` at positions `loc` on, in order. -/
 def loadCode (h loc : Nat) : List ValueType → Program

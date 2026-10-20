@@ -5,6 +5,7 @@ import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Fold
+import Verified.Examples.TreeCopyCases
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
@@ -413,6 +414,7 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  Verified.Examples.TreeCopy.cases
   for n in ([0, 1, 2, 7, 999, 1000, 1024, 4096] : List UInt64) do
     for acc in [(0 : UInt64), 18446744073709551615] do
       IO.println s!"tailconditions|boolCount|i64|i64:{n} i64:{acc}|\

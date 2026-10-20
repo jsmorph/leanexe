@@ -7,7 +7,7 @@ that the command adds, the bounds, the tests, and the examples for a program's a
 shares the trusted base and the statement of correctness with `LeanExe`: Talos's semantics, the
 encoder and decoder with `decode_encode`, `Implements` and its relatives in
 [`LeanExe/Pipeline/`](../LeanExe/Pipeline/), and the runtime.  The statements add definitions of
-their own: `Heap.Within` in [`Heap.lean`](Heap.lean), the allocation bound of
+their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
 the initial store.  The compiler and its proof have their own definitions of the IR parts they need
 and import no part of the LeanExe compiler, and nothing in `LeanExe` or `Examples` imports the
@@ -73,9 +73,9 @@ loop's state is owned when its initial value or its body's value is owned, so a 
 or state is copied.  A copy allocates through the runtime's `alloc` and writes the length word and
 the elements.  A function's locals are its parameters, an i64 local for each further position, and
 f64 and f32 locals for every position.  Each word occupies the local for its type.  A function
-copies floating-point parameters to their typed locals at entry.  Arithmetic reflection remains
-binary64.  Negation compiles to the subtraction of the operand from −0, which is Lean's negation on
-every input, since `f64.neg` turns the canonical NaN into a NaN with the sign bit set.
+copies floating-point parameters to their typed locals at entry.  Arithmetic reflection selects
+binary32 or binary64 from the operand type.  Negation subtracts the operand from negative zero in
+its format, matching Lean's result on every input, including canonical NaN.
 `Float.ofBits` compiles to `f64.reinterpret_i64` followed by the addition of −0, which gives the
 canonical NaN for a NaN pattern and leaves every other float unchanged.  A float constant's code
 holds its canonical bit pattern, which the compiler computes with integer operations, so the bytes
@@ -146,6 +146,31 @@ predicate `Expr.leSize` compares a word index with the array's full logical leng
 compiled comparison uses the word-sized length, justified by `Ty.Rep.array_size_lt`.
 [The insertion equations](InsertIdx.lean) relate this comparison to the existing comparison
 rule, and `Cases.spec_leSize` reuses that rule's ownership, release, and allocation proof.
+
+## Recursive records
+
+The [tree model](Tree.lean) has a null value and records with a fixed layout of at most 64
+fields.  Each field holds a `UInt64` or a child with the same layout.  The model proves the
+conversion laws for `List UInt64` and uses the shared runtime's record encoding.
+
+The [copy theorem](TreeCopy.lean), `wp_copyTree`, covers every borrowed value with that layout.
+It proves termination, ownership and pairwise separation of the copied records, preservation of
+every initial heap region and the memory caps, and an allocation bound of `N * (48 + 8 * w)`
+bytes for `N` records of `w` fields.  It permits a trap at `unreachable` only when that bound
+does not fit within the memory cap.  The emitted loop uses six scratch locals.  It keeps parent
+links, source pointers, and slot indices in new headers, restoring each completed header before
+returning to its parent.  Its decreasing traversal measure and allocation count belong to the proof.
+
+[Header detachment](TreeDetach.lean) and [attachment](TreeAttach.lean) preserve child ownership
+across the mask changes needed for record reuse.  The [release rules](TreeRelease.lean) apply the shared release
+runtime to a whole owned tree or a detached header and prove that `top` stays unchanged.
+[Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
+give these proofs interfaces independent of the source language.  Source construction, matching,
+reflection, and compiler integration remain pending.
+
+The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
+words, and chains through 4,096 records.  `tests/verified/run.sh --cases treecopy` compares the
+[copy test module](Examples/TreeCopy.lean) with native Lean and checks allocation and live-block counts.
 
 ## Recursion
 

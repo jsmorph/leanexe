@@ -36,6 +36,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Frontend:compiled.module:frontend \
     Verified.Examples.Fold:compiled.module:fold \
     Verified.Examples.TailCore:module:tailcore \
+    Verified.Examples.TreeCopy:module:treecopy \
     Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.TailConditions:compiled.module:tailconditions \
     Verified.Examples.Gpt:compiled.module:gpt \
@@ -139,7 +140,13 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
   echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
 done
 fi
-tools/leanrun --timeout 30m lake --log-level error build Verified.Examples.Cases
+cases_module=Verified.Examples.Cases
+cases_source=Verified/Examples/Cases.lean
+if [ "$case_module" = "treecopy" ]; then
+  cases_module=Verified.Examples.TreeCopyCasesMain
+  cases_source=Verified/Examples/TreeCopyCasesMain.lean
+fi
+tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT
@@ -147,7 +154,7 @@ trap 'rm -f "$cases" "$errors"' EXIT
 # writes a message and a backtrace to standard error.  A read returns Lean's default element,
 # an update the array unchanged, and insertIdx! an empty array.  The run fails when Lean exits
 # with an error or writes any other message.
-if ! tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Cases.lean \
+if ! tools/leanrun --timeout 10m lake env lean --run "$cases_source" \
     >"$cases" 2>"$errors"; then
   cat "$errors" >&2
   echo "fail: native Lean exited with an error" >&2
