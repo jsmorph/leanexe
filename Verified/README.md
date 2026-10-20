@@ -204,8 +204,12 @@ and record assembly.  The [matching rule](TreeCaseCorrect.lean) handles null and
 loads the fields, detaches an owned header, releases unused bindings, and composes the branch's
 ownership and allocation bound.  Both rules enter `Expr.code_spec` and the whole-program
 correctness theorems.  Borrowed aliases retain their regions, and moving or copying a recursive
-value uses its exact record blocks at the current store.  Ordinary Lean reflection, list folds,
-and matching in tail-loop bodies remain pending.
+value uses its exact record blocks at the current store.  The reflector supports `List UInt64`
+construction, identity, duplication, tuples, and calls.  [Representation agreement](TreeAgree.lean)
+proves that borrowed and consumed lists use the typed tree's encoding.  The
+[list example](Examples/Lists.lean) derives execution theorems for ordinary Lean definitions.
+Reflection of matching and user-defined recursive types, list folds, and matching in tail-loop
+bodies remain pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
