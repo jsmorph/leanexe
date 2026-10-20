@@ -11,6 +11,12 @@ def recordLoadLocals (store : Store Unit) (p : UInt64) : Nat → List Nat → Lo
   | i, dst :: rest, s => recordLoadLocals store p (i + 1) rest
       (setLocal s dst (.i64 (store.mem.read64 (slotAddress p i))))
 
+theorem recordLoadLocals_values (store : Store Unit) (p : UInt64) :
+    ∀ i dsts s, (recordLoadLocals store p i dsts s).values = s.values
+  | _, [], _ => rfl
+  | i, dst :: dsts, s => recordLoadLocals_values store p (i + 1) dsts
+      (setLocal s dst (.i64 (store.mem.read64 (slotAddress p i))))
+
 theorem wp_recordLoadCode {m : Module} {host : HostEnv Unit} {store : Store Unit}
     {ptr : Nat} {p : UInt64} {rest : Program} {Q : Assertion Unit} :
     ∀ (i : Nat) (dsts : List Nat) (s : Locals),

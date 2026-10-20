@@ -183,6 +183,8 @@ combined allocation bound.  [Owned value lists](OwnedValues.lean) and
 prefix of bound variables.  [Binding composition](BindPrefix.lean) composes a value's execution
 with a body that binds any number of fields.  [Field positions](TreeFieldPositions.lean) relate
 each packed word or child field to its assigned local.
+The binding rule also accepts an initial heap step whose consumed value has been decomposed
+into fields.  The field-load rule preserves the operand stack.
 [Context equalities](ContextHEq.lean) preserve the environment and execution facts when
 equivalent context expressions have different associations.  [Child-region enumeration](TreeMatchBlocks.lean)
 relates a record's packed child slots to the grouped child bindings' blocks and read regions.
