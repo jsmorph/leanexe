@@ -49,6 +49,7 @@ import Verified.Examples.Lists
 import Verified.Examples.ListRecursion
 import Verified.Examples.ListLoops
 import Verified.Examples.ListTail
+import Verified.Examples.RecursiveTypes
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions

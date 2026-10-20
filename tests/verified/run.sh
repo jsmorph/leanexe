@@ -42,6 +42,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.ListRecursion:compiled.module:listrecursion \
     Verified.Examples.ListLoops:compiled.module:listloops \
     Verified.Examples.ListTail:compiled.module:listtail \
+    Verified.Examples.RecursiveTypes:compiled.module:recursivetypes \
     Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.TailConditions:compiled.module:tailconditions \
     Verified.Examples.Gpt:compiled.module:gpt \
@@ -165,6 +166,9 @@ elif [ "$case_module" = "listloops" ]; then
 elif [ "$case_module" = "listtail" ]; then
   cases_module=Verified.Examples.ListTailCasesMain
   cases_source=Verified/Examples/ListTailCasesMain.lean
+elif [ "$case_module" = "recursivetypes" ]; then
+  cases_module=Verified.Examples.RecursiveTypesCasesMain
+  cases_source=Verified/Examples/RecursiveTypesCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

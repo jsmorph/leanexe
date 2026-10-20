@@ -5,7 +5,9 @@ import Verified.Reflect.BoundPass
 import Verified.Reflect.Modes
 import Verified.Reflect.FoldLemmas
 import Verified.Reflect.TreeLemmas
+import Verified.Reflect.TreeNodeLemmas
 import Verified.Reflect.NativeList
+import Verified.Reflect.RecursiveLayout
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
 import LeanExe.Encoding.Completeness.Writes
@@ -178,6 +180,9 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let (``List, #[el]) := type.getAppFnArgs then
     if (← whnfR el).isConstOf ``UInt64 then
       return ⟨.tree listShape, some (mkConst ``Tree.ofList)⟩
+  if let some layout ← recursiveLayout? type then
+    let flatten := layout.decl `toTree
+    if (← getEnv).contains flatten then return ⟨.tree layout.shape, some (mkConst flatten)⟩
   if let (``Prod, #[a, b]) := type.getAppFnArgs then
     let sa ← shapeOf a
     let sb ← shapeOf b
@@ -242,6 +247,24 @@ def listExpr (α : Lean.Expr) : List Lean.Expr → Lean.Expr
   | x :: xs => mkApp3 (mkConst ``List.cons [Level.zero]) α x (listExpr α xs)
 
 def ctxExpr (Γ : List Ty) : Lean.Expr := listExpr (mkConst ``Ty) (Γ.map tyExpr)
+
+def finiteFn (type : Lean.Expr) (values : List Lean.Expr) : MetaM Lean.Expr :=
+  mkAppOptM ``List.get #[some type, some (listExpr type values)]
+
+def finiteIndex (n i : Nat) : MetaM Lean.Expr := do
+  mkAppM ``Fin.mk #[mkNatLit i, ← mkDecideProof (← mkLt (mkNatLit i) (mkNatLit n))]
+
+partial def finiteForall (n : Nat) (P : Lean.Expr) (prove : Lean.Expr → MetaM Lean.Expr) :
+    MetaM Lean.Expr := do
+  if n == 0 then
+    withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 0)) fun i => do
+      mkLambdaFVars #[i] (mkApp2 (mkConst ``Fin.elim0 [Level.zero]) (mkApp P i) i)
+  else
+    let first ← prove (← finiteIndex n 0)
+    let rest ← withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit (n - 1))) fun i => do
+      let shifted ← mkLambdaFVars #[i] (mkApp P (← mkAppM ``Fin.succ #[i]))
+      finiteForall (n - 1) shifted fun j => do prove (← mkAppM ``Fin.succ #[j])
+    mkAppOptM ``Fin.cases #[some (mkNatLit (n - 1)), some P, some first, some rest]
 
 /-- The context `t :: Γ` for the expression `Γ` of a context, which it shares. -/
 def consCtx (t : Ty) (Γ : Lean.Expr) : Lean.Expr :=
@@ -1207,6 +1230,46 @@ def branchBound (base : Name) (ty : Lean.Expr) (t : Ty) (r : Reflection) :
   boundOf
     (← congr2 lhs.appFn!.appFn! allocs b.term coerce K (some b.proof) (some hk))
 
+def assignFiniteEquation (app : LemmaApp) (valueName proofName : Name)
+    (type : Lean.Expr) (values : List Bound) : MetaM Lean.Expr := do
+  let family ← finiteFn type (values.map (·.term))
+  app.assign valueName (← mkExpectedTypeHint family (← app.hypType valueName))
+  let expected ← app.hypType proofName
+  let .forallE name domain body _ := expected
+    | throwError "verified_compile: a finite field equation must quantify its index"
+  let P := Lean.mkLambda name .default domain body
+  let proof ← finiteForall values.length P fun i => do
+    let some j := natOf (← kernelWhnf (← mkAppM ``Fin.val #[i]))
+      | throwError "verified_compile: a finite field index is not a numeral"
+    let some value := values[j]?
+      | throwError "verified_compile: finite field index {j} is out of range"
+    mkExpectedTypeHint value.proof (P.beta #[i])
+  app.assign proofName (← mkExpectedTypeHint proof expected)
+  return family
+
+def finiteFieldBounds (app : LemmaApp) (name : Name) (fields : List Reflection) :
+    MetaM (List Bound) :=
+  fields.zipIdx.mapM fun (field, i) => do
+    let expected ← instantiateForall (← app.hypType name) #[← finiteIndex fields.length i]
+    let some (_, lhs, _) := expected.eq?
+      | throwError "verified_compile: finite allocation field is not an equation"
+    let (``Expr.allocs, #[_, _, _, _, modes, paid, live, _, _, _, _]) := lhs.getAppFnArgs
+      | throwError "verified_compile: finite allocation field has no allocation expression"
+    field.bound modes paid live
+
+def finiteSumBound (values : List Bound) : MetaM Bound := do
+  let family ← finiteFn (mkConst ``Nat) (values.map (·.term))
+  let sum ← mkAppM ``argsSum #[family]
+  let term := values.foldr (fun value acc => mkApp2 natAdd value.term acc) natZero
+  boundOf (← evalEq sum term)
+
+def finiteAllFits (values : List Bound) : MetaM Bound := do
+  let family ← finiteFn (mkConst ``Bool) (values.map (·.term))
+  let all ← mkAppM ``argsAll #[family]
+  let term := values.foldr (fun value acc => mkApp2 (mkConst ``Bool.and) value.term acc)
+    (mkConst ``Bool.true)
+  fitsOf (← evalEq all term)
+
 /-- Assigns a branch's allocation bound, including its result coercion. -/
 def assignBranch (base : Name) (app : LemmaApp) (name : Name) (t : Ty) (r : Reflection) :
     MetaM Bound := do
@@ -1550,6 +1613,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return ⟨src, ← rflProof c src (← flatValue e), t, e, varBound c x t e, leafFits c src⟩
   if let some r := ← reflectCall? e then return r
+  if let some r := ← reflectRecursiveConstructor? e then return r
   if let some r := ← reflectSumConstructor? e then return r
   if let some r := ← reflectStruct? e then return r
   let shape ← shapeOf (← inferType e)
@@ -2473,6 +2537,89 @@ where
     let _ ← app.child `hba rb.bound
     let _ ← assignCoerce c.base app `hkb rb.ty rb.lean
     boundOf (← app.finish)
+  reflectRecursiveConstructor? (e : Lean.Expr) : MetaM (Option Reflection) := do
+    let .const ctor _ := e.getAppFn | return none
+    let some (.ctorInfo info) := (← getEnv).find? ctor | return none
+    let some layout ← recursiveLayout? (mkConst info.induct) | return none
+    let name := e.getAppFn.constName?
+    unless name == some layout.empty || name == some layout.node do return none
+    let shape := treeShapeExpr layout.shape
+    let ty := Ty.tree layout.shape
+    if name == some layout.empty then
+      let src ← mkAppOptM ``Expr.treeNil #[some c.sigs, some c.ctx, some shape]
+      return some ⟨src, ← rflProof c src (← flatValue e), ty, e,
+        leafBound c ``treeNil_bound [(`shape, shape)], leafFits c src⟩
+    let fields ← e.getAppArgs.toList.mapM (reflect c)
+    unless fields.length == layout.shape.fields.length do
+      throwError "verified_compile: incomplete recursive constructor {e}"
+    let words := (fields.zip layout.shape.fields).filterMap fun (r, child) =>
+      if child then none else some r
+    let children := (fields.zip layout.shape.fields).filterMap fun (r, child) =>
+      if child then some r else none
+    let sourceType (t : Ty) := mkApp3 (mkConst ``Expr) c.sigs c.ctx (tyExpr t)
+    let wordFn ← mkExpectedTypeHint (← finiteFn (sourceType .word) (words.map (·.src)))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape])) (sourceType .word))
+    let childFn ← mkExpectedTypeHint (← finiteFn (sourceType ty) (children.map (·.src)))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape])) (sourceType ty))
+    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape))
+    let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape) with
+      | none => mkAppOptM ``Option.none #[some header]
+      | some (value, _) => do
+        let (x, _) ← varOf c value
+        mkAppOptM ``Option.some #[some header, some x]
+    let src ← mkAppM ``Expr.treeNode #[reuse, wordFn, childFn]
+    let parts := [(`shape, shape), (`reuse, reuse), (`words, wordFn), (`children, childFn)]
+    let app ← LemmaApp.start ``treeNode_eq
+      ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts)
+    let values (rs : List Reflection) : MetaM (List Bound) :=
+      rs.mapM fun r => return ⟨← flatValue r.lean, ← userProof c r⟩
+    let _ ← assignFiniteEquation app `wordValues `hw (mkConst ``UInt64) (← values words)
+    let _ ← assignFiniteEquation app `childValues `hc (mkApp (mkConst ``Tree) shape)
+      (← values children)
+    let proof ← app.finish
+    let (_, value) ← eqSides proof
+    let proof ← transHint proof (← bareEq value (← flatValue e))
+    let addBounds (a b : Bound) : MetaM Bound := do
+      let (left, _) ← eqSides a.proof
+      let (right, _) ← eqSides b.proof
+      boundOf (← congr2 natAdd left a.term right b.term (some a.proof) (some b.proof))
+    let bound : BoundBuilder := fun modes paid live => do
+      let app ← LemmaApp.start ``treeNode_bound
+        (boundArgs c (c.tables.table false) modes paid live ++ parts)
+      let wb ← finiteFieldBounds app `hw words
+      let cb ← finiteFieldBounds app `hc children
+      let kb ← children.zipIdx.mapM fun (r, i) => do
+        let expected ← instantiateForall (← app.hypType `hk) #[← finiteIndex children.length i]
+        let some (_, lhs, _) := expected.eq?
+          | throwError "verified_compile: recursive child coercion is not an equation"
+        let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
+          | throwError "verified_compile: recursive child coercion has an invalid form"
+        let (cost, proof) ← coerceEq c.base ty s M value r.lean
+        return (⟨cost, proof⟩ : Bound)
+      let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
+      let _ ← assignFiniteEquation app `C `hc (mkConst ``Nat) cb
+      let _ ← assignFiniteEquation app `K `hk (mkConst ``Nat) kb
+      let some (_, parent, _) := (← app.hypType `hp).eq?
+        | throwError "verified_compile: recursive parent cost is not an equation"
+      let p ← evalNat parent
+      app.assign `hp (← evalEq parent p)
+      let total ← addBounds (← addBounds (← finiteSumBound wb)
+        (← addBounds (← finiteSumBound cb) (← finiteSumBound kb))) ⟨p, ← mkEqRefl p⟩
+      boundOf (← transHint (← app.finish) total.proof)
+    let fits : FitsBuilder := do
+      let app ← LemmaApp.start ``treeNode_fits (fitsArgs c ++ parts)
+      let wb ← words.mapM (·.fits)
+      let cb ← children.mapM (·.fits)
+      let _ ← assignFiniteEquation app `W `hw (mkConst ``Bool) wb
+      let _ ← assignFiniteEquation app `C `hc (mkConst ``Bool) cb
+      let w ← finiteAllFits wb
+      let ch ← finiteAllFits cb
+      let (left, _) ← eqSides w.proof
+      let (right, _) ← eqSides ch.proof
+      fitsOf (← transHint (← app.finish)
+        (← congr2 (mkConst ``Bool.and) left w.term right ch.term
+          (some w.proof) (some ch.proof)))
+    return some ⟨src, proof, ty, e, bound, fits⟩
   reflectSumConstructor? (e : Lean.Expr) : MetaM (Option Reflection) := do
     let .const ctorName _ := e.getAppFn | return none
     let some (.ctorInfo ctor) := (← getEnv).find? ctorName | return none
@@ -3206,6 +3353,11 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
   match t, (← whnfR userT).getAppFnArgs with
   | .tree _, (``List, #[_]) =>
     agreeAs userT inst src φ (mkConst ``Agree.listTree)
+  | .tree _, _ =>
+    let some layout ← recursiveLayout? userT
+      | throwError "verified_compile: no recursive layout for {userT}"
+    agreeAs userT inst src φ
+      (← mkAppM ``Agree.encode #[φ, mkConst (layout.decl `encoding)])
   | .array _, (``Array, #[el]) =>
     if (← shapeOf el).flat.isNone then return ← agreeRefl userT inst src
     let (_, proof) ← agreeArray ``Agree.flatArray el
@@ -3229,8 +3381,13 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
   let src := (mkApp2 (mkConst ``Ty.argTy) (tyExpr t) (modeExpr m),
     mkApp2 (mkConst ``Ty.argInst) (tyExpr t) (modeExpr m))
   match t, m, (← whnfR userT).getAppFnArgs with
-  | .tree _, .owned, (``LeanExe.Pipeline.Moved, #[_]) =>
-    let proof : Lean.Expr := mkConst ``Agree.movedListTree
+  | .tree _, .owned, (``LeanExe.Pipeline.Moved, #[native]) =>
+    let proof ← if (← whnfR native).isAppOf ``List then pure (Lean.mkConst ``Agree.movedListTree)
+      else do
+        let some layout ← recursiveLayout? native
+          | throwError "verified_compile: no recursive layout for {native}"
+        mkAppM ``Agree.movedEncode
+          #[mkConst (layout.decl `toTree), mkConst (layout.decl `encoding)]
     return (← Core.betaReduce (← inferType proof).appArg!, proof)
   | .array _, .owned, (``LeanExe.Pipeline.Moved, #[a]) =>
     let (``Array, #[el]) := (← whnfR a).getAppFnArgs
@@ -3786,6 +3943,10 @@ partial def inverseOf? (type : Lean.Expr) : MetaM (Option Inverse) := do
       return some (inverse (mkConst ``Tree.toList)
         (fun x => mkAppM ``Tree.toList_ofList #[x])
         (fun v => mkAppM ``Tree.ofList_toList #[v]))
+  if let some layout ← recursiveLayout? type then
+    return some (inverse (mkConst (layout.decl `fromTree))
+      (fun x => pure (mkApp (mkConst (layout.decl `from_to)) x))
+      (fun v => pure (mkApp (mkConst (layout.decl `to_from)) v)))
   if let (``Prod, #[a, b]) := type.getAppFnArgs then
     let ia ← inverseOf? a
     let ib ← inverseOf? b

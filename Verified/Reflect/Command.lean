@@ -1,6 +1,7 @@
 import Verified.Reflect.Definitions
 import Verified.Reflect.TailDefinition
 import Verified.Reflect.TailOptions
+import Verified.Reflect.RecursiveTypes
 
 namespace Verified.Reflect
 
@@ -259,6 +260,7 @@ def elabVerifiedCompile : CommandElab
   | `(verified_compile $target := [$sources,*]) => do
     let names ← sources.getElems.mapM fun s => liftCoreM <| realizeGlobalConstNoOverloadWithInfo s
     let base := (← getCurrNamespace) ++ target.getId
+    prepareRecursiveTypes names
     let (reflected, wraps, tableNames, funsVal) ← liftTermElabM do
       let mut sigs : List Sig := []
       let mut prog := Lean.mkConst ``Prog.nil

@@ -220,7 +220,13 @@ The [tail-match rule](TailTreeCase.lean) enters `TailBody.code_spec` and the who
 Its branches preserve the enclosing loop's return and continue labels.  The
 [list-tail reflector](Reflect/TailBody.lean) shares the expression reflector's field context,
 and [its equations](Reflect/TailListLemmas.lean) connect the native step to the typed match.
-Reflection of user-defined recursive types and list folds remains pending.
+For a user-defined recursive type with one empty constructor and one record constructor,
+the reflector derives conversions to and from the typed tree and proves both inverse laws and
+agreement with the type's `Encode` instance.  Record fields may be words or recursive children,
+with at most 64 fields.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
+identity, duplication, tuples, and calls.  The [native-type example](Examples/RecursiveTypes.lean)
+checks the existing `Words` and `KeyTree` layouts.  Native-type matching and recursion, and list
+folds, remain pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
