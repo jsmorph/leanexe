@@ -1,5 +1,6 @@
 import Verified.TailWhile
 import Verified.TailEntryFacts
+import Verified.TailCode
 
 namespace Verified
 

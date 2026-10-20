@@ -2,6 +2,7 @@ import Verified.TailTreeEmpty
 import Verified.TailBindPrefix
 import Verified.TailAllocExpand
 import Verified.TreeMatchPotential
+import Verified.ReleasedExpr
 
 namespace Verified
 

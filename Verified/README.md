@@ -311,6 +311,11 @@ uses the existing field-normalization pass, so the termination proof sees native
 
 ## The theorem
 
+[`ArgsCorrect.lean`](ArgsCorrect.lean) proves argument evaluation, release after a call, and
+parameter-potential accounting independently of universal expression correctness.  The generic
+tail-loop rules use these shared lemmas.  [`TailCode.lean`](TailCode.lean) combines those rules
+with the expression theorem when it proves correctness for every typed tail body.
+
 The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
 [`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean).  From any heap and store
 with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent
