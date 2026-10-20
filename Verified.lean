@@ -13,6 +13,7 @@ import Verified.TreeFieldsLoad
 import Verified.TreeFieldsState
 import Verified.TreeFieldValues
 import Verified.TreeFieldLocs
+import Verified.FieldsExpr
 import Verified.TreeRelease
 import Verified.TreeLayout
 import Verified.TreeCopyWork
