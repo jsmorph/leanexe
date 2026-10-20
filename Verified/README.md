@@ -167,6 +167,11 @@ runtime to a whole owned tree or a detached header and prove that `top` stays un
 [Detached-header copying](TreeHeaderCopyCode.lean) allocates one record, sets its kind and width,
 and retains the allocator's zero child mask.  Its arbitrary payload words represent no children.
 The bound charges `48 + 8 * w` bytes for a header of `w` fields.
+[Field stores](TreeFieldsStore.lean) write local values to consecutive payload slots, and
+[field loads](TreeFieldsLoad.lean) recover them in distinct locals while preserving the frame.
+[Payload writes](TreeFieldsState.lean) preserve the allocator invariant, capacity, and header words.
+[Field locations](TreeFieldLocs.lean) and [field values](TreeFieldValues.lean) relate the grouped
+word and child locals to their physical order and establish ownership of the stored slots.
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
 give these proofs interfaces independent of the source language.  Source construction, matching,
 reflection, and compiler integration remain pending.
