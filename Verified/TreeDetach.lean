@@ -73,4 +73,32 @@ theorem TreeHeader.clearMask_spec {shape : TreeShape} {heap : Heap}
 
 #print axioms TreeHeader.clearMask_spec
 
+theorem TreeHeader.detach_spec {shape : TreeShape} {heap : Heap}
+    {store : Store Unit} {p : UInt64} {slots : List Slot}
+    (hHeap : heap.At store) (hNode : NodeOwned heap store p (.record slots))
+    (hLength : slots.length = shape.fields.length)
+    (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
+    heap.At (clearMask store p) ∧ Owned shape heap (clearMask store p) p ∧
+      SlotsOwned heap (clearMask store p) p 0 slots ∧
+      slotsBlocks (clearMask store p) p 0 slots = slotsBlocks store p 0 slots ∧
+      (block (clearMask store p) p :: slotsBlocks (clearMask store p) p 0 slots).Pairwise
+        regionsDisjoint := by
+  obtain ⟨hHead, hSlots⟩ := hNode
+  obtain ⟨hWrites, hHeap', hHeader, hCapacity⟩ := clearMask_spec hHeap hHead hLength
+  have hAddress := hHead.address
+  have hRoom := hHead.capacity
+  have hBase := hHead.base
+  have hSeparate := (List.pairwise_cons.mp hApart).1
+  obtain ⟨hSlots', hBlocks⟩ := SlotsOwned.frame p 0 slots hSlots (by omega)
+    (fun a hLow _ => hWrites.2.2 a (.inr (by omega)))
+    (fun b hb => ⟨fun a hLow hHigh => hWrites.2.2 a (by
+      have := hSeparate b hb
+      simp only [regionsDisjoint, block] at this
+      omega), SlotsOwned.regions p 0 slots hSlots b hb⟩)
+  refine ⟨hHeap', hHeader, hSlots', hBlocks, ?_⟩
+  rw [block_eq hCapacity, hBlocks]
+  exact hApart
+
+#print axioms TreeHeader.detach_spec
+
 end Verified
