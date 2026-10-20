@@ -4,21 +4,6 @@ namespace Verified.Reflect
 
 open Lean Meta
 
-partial def finiteForall (n : Nat) (P : Lean.Expr) (prove : Lean.Expr → MetaM Lean.Expr) :
-    MetaM Lean.Expr := do
-  if n == 0 then
-    withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 0)) fun i => do
-      mkLambdaFVars #[i] (mkApp2 (mkConst ``Fin.elim0 [Level.zero]) (mkApp P i) i)
-  else
-    let zero ← mkAppM ``Fin.mk
-      #[mkNatLit 0, ← mkDecideProof (← mkLt (mkNatLit 0) (mkNatLit n))]
-    let first ← prove zero
-    let rest ← withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit (n - 1))) fun i => do
-      let shifted ← mkLambdaFVars #[i] (mkApp P (← mkAppM ``Fin.succ #[i]))
-      let h ← finiteForall (n - 1) shifted fun j => do prove (← mkAppM ``Fin.succ #[j])
-      pure h
-    mkAppOptM ``Fin.cases #[some (mkNatLit (n - 1)), some P, some first, some rest]
-
 partial def sourceExprEq (left right : Lean.Expr) : MetaM Lean.Expr := do
   if ← kernelDefEq left right then return ← rflEq left right
   let type ← kernelWhnf (← inferType left)
