@@ -164,12 +164,17 @@ returning to its parent.  Its decreasing traversal measure and allocation count 
 [Header detachment](TreeDetach.lean) and [attachment](TreeAttach.lean) preserve child ownership
 across the mask changes needed for record reuse.  The [release rules](TreeRelease.lean) apply the shared release
 runtime to a whole owned tree or a detached header and prove that `top` stays unchanged.
+[Detached-header copying](TreeHeaderCopyCode.lean) allocates one record, sets its kind and width,
+and retains the allocator's zero child mask.  Its arbitrary payload words represent no children.
+The bound charges `48 + 8 * w` bytes for a header of `w` fields.
 [Local-state rules](LocalFrame.lean), [heap steps](HeapStep.lean), and [runtime rules](RuntimeFacts.lean)
 give these proofs interfaces independent of the source language.  Source construction, matching,
 reflection, and compiler integration remain pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
-words, and chains through 4,096 records.  `tests/verified/run.sh --cases treecopy` compares the
+words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields
+and header allocation from memory reused after releasing a list.
+`tests/verified/run.sh --cases treecopy` compares the
 [copy test module](Examples/TreeCopy.lean) with native Lean and checks allocation and live-block counts.
 
 ## Recursion
