@@ -224,9 +224,13 @@ For a user-defined recursive type with one empty constructor and one record cons
 the reflector derives conversions to and from the typed tree and proves both inverse laws and
 agreement with the type's `Encode` instance.  Record fields may be words or recursive children,
 with at most 64 fields.  [The derivation](Reflect/RecursiveTypes.lean) supports construction,
-identity, duplication, tuples, and calls.  The [native-type example](Examples/RecursiveTypes.lean)
-checks the existing `Words` and `KeyTree` layouts.  Native-type matching and recursion, and list
-folds, remain pending.
+matching, guarded recursion, identity, duplication, tuples, calls, and loop state.
+[Native matcher normalization](Reflect/NativeTree.lean) abstracts the alternatives before proving
+their constructor cases.  [Generated branch equations](Reflect/RecursiveMatch.lean) preserve
+denotation, allocation bounds, and frames conditions.  The
+[native-type example](Examples/RecursiveTypes.lean) checks the existing `Words` and `KeyTree`
+layouts, including subtree release and header reuse.  Native tail matching and list folds remain
+pending.
 
 The [copy cases](Examples/TreeCopyCases.lean) cover lists, branching trees, null children, arbitrary
 words, and chains through 4,096 records.  They also check detached headers with 1 and 64 fields

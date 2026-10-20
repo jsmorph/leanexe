@@ -7,6 +7,7 @@ import Verified.Reflect.FoldLemmas
 import Verified.Reflect.TreeLemmas
 import Verified.Reflect.TreeNodeLemmas
 import Verified.Reflect.NativeList
+import Verified.Reflect.NativeTree
 import Verified.Reflect.RecursiveLayout
 import Verified.Reflect.TailBoundLemmas
 import LeanExe.Encoding.RoundTrip
@@ -488,21 +489,45 @@ def ctxEnvExpr : List (Lean.Expr × Ty) → MetaM (Lean.Expr × Lean.Expr)
 def envExpr (vars : List (Lean.Expr × Ty)) : MetaM Lean.Expr :=
   return (← ctxEnvExpr vars).2
 
-def withListCaseFields {α : Type} (c : Ctx) (xs : Lean.Expr)
-    (k : Ctx → Lean.Expr → Lean.Expr → MetaM α) : MetaM α := do
-  let shape := treeShapeExpr listShape
+def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
+    (types : List (Lean.Expr × Ty)) (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α := do
+  let shape := treeShapeExpr shapeValue
   let ctx ← mkAppM ``TreeShape.context #[shape, c.ctx]
   let marker ← mkAppOptM ``TreeHeader.unit #[some shape]
-  withLocalDeclD `head (mkConst ``UInt64) fun head => do
-    withLocalDeclD `tail (← inferType xs) fun tail => do
-      let family (value : Lean.Expr) : MetaM Lean.Expr :=
-        withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
-          mkLambdaFVars #[i] value
-      let env ← mkAppM ``Env.treeFields
-        #[shape, ← family head, ← family (← flatValue tail), c.env]
-      let inner := { c with ctx, env, vars :=
-        [(marker, .treeHeader listShape), (head, .word), (tail, .tree listShape)] ++ c.vars }
-      k inner head tail
+  let decls := types.toArray.mapIdx fun i (type, _) => (Name.mkSimple s!"field{i}", type)
+  let rec bindFields (decls : List (Name × Lean.Expr)) (fields : Array Lean.Expr)
+      (body : Array Lean.Expr → MetaM α) : MetaM α :=
+    match decls with
+    | [] => body fields
+    | (name, type) :: rest =>
+      withLocalDeclD name type fun field => bindFields rest (fields.push field) body
+  bindFields decls.toList #[] fun fields => do
+    let values := fields.toList.zip (types.map (·.2))
+    let words := values.filter fun (_, ty) => ty == .word
+    let children := values.filter fun (_, ty) => ty == .tree shapeValue
+    let wordFn ← mkExpectedTypeHint
+      (← finiteFn (mkConst ``UInt64) (words.map (·.1)))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape]))
+        (mkConst ``UInt64))
+    let childFn ← mkExpectedTypeHint
+      (← finiteFn (mkApp (mkConst ``Tree) shape) (← children.mapM fun (x, _) => flatValue x))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape]))
+        (mkApp (mkConst ``Tree) shape))
+    let env ← mkAppM ``Env.treeFields #[shape, wordFn, childFn, c.env]
+    let inner := { c with ctx, env, vars :=
+      [(marker, .treeHeader shapeValue)] ++ words ++ children ++ c.vars }
+    k inner fields
+
+def withListCaseFields {α : Type} (c : Ctx) (xs : Lean.Expr)
+    (k : Ctx → Lean.Expr → Lean.Expr → MetaM α) : MetaM α := do
+  withTreeCaseFields c listShape
+    [(mkConst ``UInt64, .word), (← inferType xs, .tree listShape)]
+    fun inner fields => k inner fields[0]! fields[1]!
+
+def withRecursiveCaseFields {α : Type} (c : Ctx) (layout : RecursiveLayout)
+    (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α :=
+  withTreeCaseFields c layout.shape (layout.shape.fields.map fun child =>
+    if child then (mkConst layout.name, .tree layout.shape) else (mkConst ``UInt64, .word)) k
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
@@ -1724,7 +1749,9 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     if app.discrInfos.any (·.hName?.isSome) then
       throwError "verified_compile: `match h : …` is not supported, in {e}"
     if let (``List, #[el]) := (← whnfR (← inferType app.discrs[0]!)).getAppFnArgs then
-      if (← whnfR el).isConstOf ``UInt64 then return ← reflectListMatch app
+      if (← whnfR el).isConstOf ``UInt64 then return ← reflectTreeMatch app none
+    if let some layout ← recursiveLayout? (← inferType app.discrs[0]!) then
+      return ← reflectTreeMatch app (some layout)
     if let some (n, _) ← enumFlat? (← inferType app.discrs[0]!) then
       return ← reflectDataMatch app n
     if let some name ← sumName? (← inferType app.discrs[0]!) then
@@ -2684,36 +2711,45 @@ where
       some x, some y]
     let test ← mkAppM rel #[mkApp flat a, mkApp flat b]
     return some (← reflectVia (← mkAppM ``ite #[test, x, y]) (← mkEqSymm eq))
-  reflectListMatch (app : MatcherApp) : MetaM Reflection := do
+  reflectTreeMatch (app : MatcherApp) (layout : Option RecursiveLayout) : MetaM Reflection := do
     let xs := app.discrs[0]!
     unless (← projReduce xs).isFVar do
       return ← reflectAs (← withLetDecl `xs (← inferType xs) xs fun value =>
         mkLetFVars #[value] { app with discrs := #[value] }.toExpr) app.toExpr
     unless app.remaining.isEmpty do
       throwError "verified_compile: a list match cannot be applied to further arguments"
-    let (empty, branch, nativeEq) ← listMatcherCases app
+    let (empty, branch, nativeEq) ← match layout with
+      | none => listMatcherCases app
+      | some layout => treeMatcherCases layout app
+    let shapeValue := (layout.map (·.shape)).getD listShape
+    let eqName := (layout.map (·.decl `case_eq)).getD ``listCase_eq
+    let boundName := (layout.map (·.decl `case_bound)).getD ``listCase_bound
+    let fitsName := (layout.map (·.decl `case_fits)).getD ``listCase_fits
     let (x, _) ← varOf c xs
     let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
     let re ← reflect c empty
-    let ub ← withListCaseFields c xs fun inner head tail => do
-        let rn ← reflect inner (branch.beta #[head, tail])
+    let reflectNode (inner : Ctx) (fields : Array Lean.Expr) : MetaM Under := do
+        let rn ← reflect inner (branch.beta fields)
         unless rn.ty == re.ty do
-          throwError "verified_compile: list branches have different source types"
-        pure (⟨{ rn with proof := ← userProof inner rn }, #[head, tail],
-          [← head.fvarId!.getDecl, ← tail.fvarId!.getDecl]⟩ : Under)
+          throwError "verified_compile: recursive branches have different source types"
+        pure ⟨{ rn with proof := ← userProof inner rn }, fields,
+          ← fields.toList.mapM fun field => field.fvarId!.getDecl⟩
+    let ub ← match layout with
+      | none => withListCaseFields c xs fun inner head tail => reflectNode inner #[head, tail]
+      | some layout => withRecursiveCaseFields c layout reflectNode
     let src ← mkAppM ``Expr.treeCase #[x, re.src, ub.r.src]
     let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env),
-      (`x, x), (`empty, re.src), (`node, ub.r.src), (`xs, xs), (`hx, hx)]
+      (`x, x), (`empty, re.src), (`node, ub.r.src), (`xs, xs), (`value, xs), (`hx, hx)]
     let proof ← withExistingLocalDecls ub.decls do
       let hn ← mkLambdaFVars ub.xs ub.r.proof
-      let rule ← LemmaApp.start ``listCase_eq (common ++
+      let rule ← LemmaApp.start eqName (common ++
         [(`flatten, ← (← shapeOf (← inferType empty)).fn (← inferType empty)),
           (`a, empty), (`b, branch)])
       rule.assign `he (← mkExpectedTypeHint (← userProof c re) (← rule.hypType `he))
       rule.assign `hn (← mkExpectedTypeHint hn (← rule.hypType `hn))
       rule.finish
     let bound : BoundBuilder := fun modes paid live => do
-      let app ← LemmaApp.start ``listCase_bound
+      let app ← LemmaApp.start boundName
         (boundArgs c (c.tables.table false) modes paid live ++ common)
       let some (_, rootCost, _) := (← app.hypType `hc).eq?
         | throwError "verified_compile: malformed list root cost"
@@ -2721,7 +2757,7 @@ where
         | throwError "verified_compile: malformed list root liveness"
       let root ← LemmaApp.start ``varCost_eq
         (boundArgs c (c.tables.table false) modes paid rootLive ++ [(`x, x)])
-      let _ ← root.child `h (varBound c x (.tree listShape) xs)
+      let _ ← root.child `h (varBound c x (.tree shapeValue) xs)
       app.assign `hc (← root.finish)
       let _ ← assignBranch c.base app `he re.ty re
       let nodeBound ← withExistingLocalDecls ub.decls do
@@ -2731,7 +2767,7 @@ where
       app.assign `hn (← mkExpectedTypeHint nodeBound.proof (← app.hypType `hn))
       boundOf (← app.finish)
     let fits : FitsBuilder := do
-      let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
+      let app ← LemmaApp.start fitsName (fitsArgs c ++ common)
       app.childFits `he re.fits
       let nb ← ub.fits
       app.assign `N nb.term
