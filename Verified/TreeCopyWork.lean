@@ -53,6 +53,13 @@ theorem CopyWork.Step.allocations {before after : CopyWork} (h : Step before aft
   cases h <;> simp only [CopyWork.allocations, CopyWork.allocates, slotsRecords,
     Node.records, List.map_cons, List.sum_cons, List.map_nil, List.sum_nil] <;> omega
 
+theorem CopyWork.Step.allocation_bound {before after : CopyWork} (h : Step before after)
+    {top top' cost limit : Nat} (hTop : top' ≤ top + cost * before.allocates)
+    (hBudget : top + cost * before.allocations ≤ limit) :
+    top' + cost * after.allocations ≤ limit := by
+  rw [h.allocations, Nat.mul_add] at hBudget
+  omega
+
 theorem CopyWork.next (slots : List Slot) (parents : List (List Slot)) :
     ∃ after, Step (.current slots parents) after := by
   cases slots with
@@ -99,6 +106,7 @@ theorem CopyWork.terminates_allocations (before : CopyWork) :
 
 #print axioms CopyWork.Step.decreases
 #print axioms CopyWork.Step.allocations
+#print axioms CopyWork.Step.allocation_bound
 #print axioms CopyWork.terminates_allocations
 
 end Verified
