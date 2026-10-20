@@ -22,9 +22,21 @@ def emptyTree : KeyTree := .leaf
 
 def nodeTree (left : KeyTree) (key : UInt64) (right : KeyTree) : KeyTree := .node left key right
 
+def reverseWords (xs acc : Words) : Words :=
+  match xs with
+  | .nil => acc
+  | .cons head tail => reverseWords tail (.cons head acc)
+
+def followRight (n : UInt64) (tree : KeyTree) : KeyTree :=
+  if n = 0 then tree
+  else match tree with
+  | .leaf => .leaf
+  | .node _ _ right => followRight (n - 1) right
+
 verified_compile compiled := [keepWords, duplicateWords, keepTree, duplicateTree,
   emptyWords, prependWords, emptyTree, nodeTree, Words.first, KeyTree.setKey,
-  KeyTree.leftChild, KeyTree.splitRoot, KeyTree.size, KeyTree.incr, Words.range]
+  KeyTree.leftChild, KeyTree.splitRoot, KeyTree.size, KeyTree.incr, Words.range,
+  Words.sumAcc, reverseWords, followRight]
 
 #print axioms compiled.keepWords.implements
 #print axioms compiled.duplicateWords.implements
