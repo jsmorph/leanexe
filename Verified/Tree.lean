@@ -18,6 +18,12 @@ inductive Tree (shape : TreeShape) where
   | nil
   | node (words : Fin shape.words → UInt64) (children : Fin shape.children → Tree shape)
 
+instance {shape : TreeShape} : Inhabited (Tree shape) := ⟨.nil⟩
+
+inductive TreeHeader (shape : TreeShape) where
+  | unit
+  deriving DecidableEq, Inhabited
+
 def treeSlots : (fields : List Bool) →
     (Fin (fields.count false) → UInt64) → (Fin (fields.count true) → Node) → List Slot
   | [], _, _ => []
@@ -48,6 +54,27 @@ theorem treeSlots_slotted (fields : List Bool) :
     cases bit <;> intro words children hc <;> simp only [treeSlots, slotsSlotted]
     · exact ih _ _ (fun i => hc _)
     · exact ⟨hc _, ih _ _ (fun i => hc _)⟩
+
+theorem treeSlots_mask (fields : List Bool) :
+    ∀ words children words' children',
+      maskOf (treeSlots fields words children) = maskOf (treeSlots fields words' children') := by
+  induction fields with
+  | nil => intros; rfl
+  | cons bit rest ih =>
+    cases bit <;> intro words children words' children'
+    · exact congrArg (fun mask : UInt64 => 2 * mask + 0) (ih _ _ _ _)
+    · exact congrArg (fun mask : UInt64 => 2 * mask + 1) (ih _ _ _ _)
+
+def TreeShape.mask (shape : TreeShape) : UInt64 :=
+  maskOf (treeSlots shape.fields (fun _ => 0) (fun _ => .null))
+
+theorem TreeShape.mask_eq (shape : TreeShape) (words children) :
+    maskOf (treeSlots shape.fields words children) = shape.mask :=
+  treeSlots_mask shape.fields _ _ _ _
+
+def Tree.nodes {shape : TreeShape} : Tree shape → Nat
+  | .nil => 0
+  | .node _ children => 1 + (List.ofFn fun i => (children i).nodes).sum
 
 def Tree.toNode {shape : TreeShape} : Tree shape → Node
   | .nil => .null
