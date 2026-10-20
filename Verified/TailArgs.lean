@@ -63,13 +63,13 @@ theorem args_reads_apart_owned {S : List Sig} {Γ ps : List Ty} {funs : Funs S}
     (step : Step heap store (fun _ => True) heap1 store1 fresh) (frame : Frame base s s1)
     (reads : ∀ r, Holds.ApartFrom env slots
       (fun k => argsAny fun i => modes i == .borrowed && !(ps.get i).scalar && (args i).uses k)
-      store s r → ∀ c ∈ Env.reads modes words (Env.ofFn fun i => (args i).denote funs env),
+      store s r → ∀ c ∈ Env.reads store1 modes words (Env.ofFn fun i => (args i).denote funs env),
         regionsDisjoint r c) :
     ∀ (t : Ty) (x : Var Γ t), all x.index = true →
       (slots.getD x.index default).mode = .owned →
       ∀ wx, LocalsHold s1 (slots.getD x.index default).loc t.types wx → wx.length = t.width →
       ∀ r ∈ t.blocks store1 wx (env.get x),
-        ∀ c ∈ Env.reads modes words (Env.ofFn fun i => (args i).denote funs env),
+        ∀ c ∈ Env.reads store1 modes words (Env.ofFn fun i => (args i).denote funs env),
           regionsDisjoint r c := by
   intro t x hx hm wx hold length r hr c hc
   have hold' := (vars.hold_agree frame hx length).mp hold

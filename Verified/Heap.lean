@@ -1,6 +1,9 @@
 import Verified.State
-import Verified.RuntimeFacts
 import Verified.Bound
+import Verified.RuntimeFacts
+import Verified.TreeRelease
+import Verified.TreeCopy
+import Verified.TreeHeaderCopyCode
 import LeanExe.Pipeline.RuntimeSpec
 import LeanExe.Pipeline.ReleaseTree
 import LeanExe.ProofKit.ArrayPrefix
@@ -920,6 +923,27 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       (by simp [Ty.width] at hSrc; omega) hBase
       (by simpa [Ty.copyScratch, Ty.scalar] using hRoom) fun heap' store' s' ptr' hStep hOwned hF
         hTop => hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned⟩ hF hTop
+  | .tree shape, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, hRep,
+      hold, hSrc, hBase, hRoom, hNext => by
+    obtain ⟨ptr, rfl, hBorrow⟩ := hRep.borrow
+    have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
+    have hCost : allocCost (8 * shape.fields.length) * v.toNode.records =
+        (Ty.tree shape).copyCost v := by
+      rw [Tree.toNode_records]
+      exact Nat.mul_comm _ _
+    simp only [copyCode]
+    refine wp_copyTree hm hAt hCap v.toNode_layout hBorrow (by rw [hCost]; exact hTrap) h0
+      (by simp only [Ty.width] at hSrc; omega) hBase
+      (by simpa only [Ty.copyScratch, treeCopyScratch] using hRoom) ?_
+    intro heap' store' s' ptr' hStep hOwned hApart hFrame hTop
+    rw [hCost] at hTop
+    exact hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned, hApart⟩ hFrame hTop
+  | .treeHeader shape, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, _, _,
+      _, hBase, hRoom, hNext => by
+    simp only [copyCode]
+    exact wp_copyTreeHeader hm hAt hCap hTrap hBase hRoom
+      (fun heap' store' s' ptr hStep hOwned hFrame hTop =>
+        hNext heap' store' s' [.i64 ptr] hStep ⟨ptr, rfl, hOwned⟩ hFrame hTop)
   | .pair a b, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, hh, hRep,
       hold, hSrc, hBase, hRoom, hNext => by
     obtain ⟨first, second, rfl, h1, h2, -⟩ := hRep
@@ -930,11 +954,9 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     simp only [copyCode, List.append_assoc]
     have hScratch : ∀ c : Ty, (c = a ∨ c = b) → c.copyScratch ≤ (Ty.pair a b).copyScratch := by
       intro c hc
-      unfold Ty.copyScratch
-      by_cases hp : (Ty.pair a b).scalar = true
-      · have := Ty.scalar_pair hp
-        rcases hc with rfl | rfl <;> simp_all
-      · rw [ite_eq_right hp]; split <;> omega
+      rcases hc with rfl | rfl
+      · exact Nat.le_max_left _ _
+      · exact Nat.le_max_right _ _
     refine wp_copyCode hm a hAt hCap (hTrap.within fun hw => hw.mono (Nat.le_add_right _ _)) hh
       h1 hold1 (by simp [Ty.width] at hSrc; omega) hBase
       (by have := hScratch a (Or.inl rfl); omega) fun heap1 store1 s1 ws1 hStep1 hRep1 hF1 hTop1 =>
@@ -984,6 +1006,19 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     have := hNext _ _ ((releaseStep hAt hOwned).mono (fun r hr => hr _ (List.mem_singleton_self _))
       (fun _ h => h)) rfl
     simpa using this
+  | .tree _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
+    obtain ⟨ptr, rfl, hOwned, hApart⟩ := hRep
+    have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
+    simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
+    exact wp_releaseNode hm hAt hOwned hApart fun heap' store' hStep hTop =>
+      hNext heap' store' hStep hTop
+  | .treeHeader _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
+    obtain ⟨ptr, rfl, hOwned⟩ := hRep
+    have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
+    simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
+    refine wp_releaseHeader hm hAt hOwned fun heap' store' hStep hTop => ?_
+    exact hNext heap' store'
+      (hStep.mono (fun r hr => hr _ (List.mem_singleton_self _)) (fun _ h => h)) hTop
   | .pair a b, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨first, second, rfl, h1, h2, hd⟩ := hRep
     have hl1 := h1.length

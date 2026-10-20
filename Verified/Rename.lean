@@ -8,6 +8,16 @@ def Renaming.lift {s : Ty} (ρ : Renaming Γ Δ) : Renaming (s :: Γ) (s :: Δ)
   | _, .here => .here
   | _, .there x => .there (ρ x)
 
+def Renaming.liftRepeat (t : Ty) : (n : Nat) → Renaming Γ Δ →
+    Renaming (List.replicate n t ++ Γ) (List.replicate n t ++ Δ)
+  | 0, ρ => ρ
+  | n + 1, ρ => Renaming.lift (Renaming.liftRepeat t n ρ)
+
+def Renaming.treeFields (shape : TreeShape) (ρ : Renaming Γ Δ) :
+    Renaming (shape.context Γ) (shape.context Δ) :=
+  Renaming.lift (Renaming.liftRepeat .word shape.words
+    (Renaming.liftRepeat (.tree shape) shape.children ρ))
+
 def Env.remap : {Γ Δ : List Ty} → Renaming Γ Δ → Env Δ → Env Γ
   | [], _, _, _ => .nil
   | _ :: _, _, ρ, env => .cons (env.get (ρ .here)) (env.remap fun x => ρ (.there x))
@@ -43,10 +53,46 @@ theorem Env.ext_get {env env' : Env Γ} (h : ∀ {t} (x : Var Γ t), env.get x =
   intro t x
   simp [Env.get]
 
+@[simp] theorem Env.remap_prependRepeat (t : Ty) (n : Nat) (values : Fin n → t.denote)
+    (env : Env Δ) (ρ : Renaming Γ Δ) :
+    (env.prependRepeat t n values).remap (ρ.liftRepeat t n) =
+      (env.remap ρ).prependRepeat t n values := by
+  induction n with
+  | zero => rfl
+  | succ n ih => simp only [Env.prependRepeat, Renaming.liftRepeat, Env.remap_lift, ih]
+
+@[simp] theorem Env.remap_treeFields (shape : TreeShape) (words : Fin shape.words → UInt64)
+    (children : Fin shape.children → Tree shape) (env : Env Δ) (ρ : Renaming Γ Δ) :
+    (env.treeFields shape words children).remap (ρ.treeFields shape) =
+      (env.remap ρ).treeFields shape words children := by
+  let rc : Renaming (List.replicate shape.children (.tree shape) ++ Γ)
+      (List.replicate shape.children (.tree shape) ++ Δ) :=
+    Renaming.liftRepeat (.tree shape) shape.children ρ
+  let rwds : Renaming (List.replicate shape.words .word ++
+      (List.replicate shape.children (.tree shape) ++ Γ))
+      (List.replicate shape.words .word ++
+      (List.replicate shape.children (.tree shape) ++ Δ)) :=
+    Renaming.liftRepeat .word shape.words rc
+  exact (Env.remap_lift (s := .treeHeader shape) rwds
+    (Env.prependRepeat .word shape.words words
+      (env.prependRepeat (.tree shape) shape.children children))
+    (TreeHeader.unit (shape := shape))).trans
+    (congrArg (Env.cons (t := .treeHeader shape) TreeHeader.unit)
+      ((Env.remap_prependRepeat .word shape.words words
+        (env.prependRepeat (.tree shape) shape.children children) rc).trans
+        (congrArg (Env.prependRepeat .word shape.words words)
+          (Env.remap_prependRepeat (.tree shape) shape.children children env ρ))))
+
 def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S Γ t → Expr S Δ t
   | _, _, _, _, .word n => .word n
   | _, _, _, _, .bool b => .bool b
   | _, _, _, ρ, .var x => .var (ρ x)
+  | _, _, _, _, .treeNil shape => .treeNil shape
+  | _, _, _, ρ, .treeNode reuse words children =>
+    .treeNode (reuse.map fun x => ρ x) (fun i => (words i).rename ρ)
+      (fun i => (children i).rename ρ)
+  | _, _, _, ρ, .treeCase (shape := shape) x empty node =>
+    .treeCase (ρ x) (empty.rename ρ) (node.rename (ρ.treeFields shape))
   | _, _, _, ρ, .bin op a b => .bin op (a.rename ρ) (b.rename ρ)
   | _, _, _, ρ, .cmp op a b => .cmp op (a.rename ρ) (b.rename ρ)
   | _, _, _, ρ, .not a => .not (a.rename ρ)
@@ -94,7 +140,24 @@ theorem Expr.denote_rename (e : Expr S Γ t) (ρ : Renaming Γ Δ) (funs : Funs 
     congr 2
     funext i
     exact ih i ρ env
-  | _ => simp_all [Expr.rename, Expr.denote]
+  | treeNil => rfl
+  | treeNode reuse words children ihWords ihChildren =>
+    simp only [Expr.rename, Expr.denote]
+    congr 1
+    · funext i
+      exact ihWords i ρ env
+    · funext i
+      exact ihChildren i ρ env
+  | treeCase x empty node ihEmpty ihNode =>
+    simp only [Expr.rename, Expr.denote, Env.get_remap]
+    cases hv : env.get (ρ x) with
+    | nil => exact ihEmpty ρ env
+    | node words children =>
+      change (node.rename (ρ.treeFields _)).denote funs (env.treeFields _ words children) =
+        node.denote funs ((env.remap ρ).treeFields _ words children)
+      exact (ihNode (ρ.treeFields _) (env.treeFields _ words children)).trans
+        (congrArg (node.denote funs) (Env.remap_treeFields _ words children env ρ))
+  | _ => simp_all only [Expr.rename, Expr.denote, Env.get_remap, Env.remap_lift]
 
 #print axioms Expr.denote_rename
 

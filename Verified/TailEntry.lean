@@ -15,8 +15,8 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
     (host : HostEnv Unit) (store : Store Unit) (heap : Heap) (ws : List Value)
     (args : Env func.params) (hAt : heap.At store)
     (hRep : Env.Rep (paramMode func.params func.modes) heap store ws args)
-    (hSep : Separate store (Env.moves (paramMode func.params func.modes) ws args)
-      (Env.reads (paramMode func.params func.modes) ws args))
+    (hSep : Separate store (Env.moves store (paramMode func.params func.modes) ws args)
+      (Env.reads store (paramMode func.params func.modes) ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) :
     Runs ((func.depth && !(decide (d < depthLimit) && func.fits funs fits args)) ||
       (func.aborts && !decide (heap.Within store m
@@ -28,7 +28,7 @@ theorem TailFunc.function_runs {S : List Sig} (func : TailFunc S)
         func.result.Rep .owned heap' final values.reverse (meaning args) ∧
         final.memoryCaps = store.memoryCaps ∧
         (∀ r, heap.Region r → 0 < r.2 →
-          Apart store (Env.moves (paramMode func.params func.modes) ws args) r →
+          Apart store (Env.moves store (paramMode func.params func.modes) ws args) r →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
           heap'.Region r ∧
           ∀ b ∈ func.result.blocks final values.reverse (meaning args), regionsDisjoint r b) ∧

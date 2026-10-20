@@ -84,7 +84,6 @@ theorem After.coerce (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Lis
 
 end
 
-
 /-- The traps that the code of `e` may have from `heap` at `store`: any, when a call that it makes
 of a function whose code takes the call depth may lack its frames, as `fits` false states, and
 otherwise those of allocation, when it may allocate and `top` cannot rise by `bound` within the
@@ -289,7 +288,7 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
     (host : HostEnv Unit)
     {heap : Heap} {store : Store Unit} {ws : List Value} {args : Env g.params}
     (hAt : heap.At store) (hRep : Env.Rep g.mode heap store ws args)
-    (hSep : Separate store (Env.moves g.mode ws args) (Env.reads g.mode ws args))
+    (hSep : Separate store (Env.moves store g.mode ws args) (Env.reads store g.mode ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) {d : UInt64} (hd : g.depth = true → D d)
     (rest : List Value) :
     Runs ((g.depth && !Fi args) ||
@@ -299,7 +298,7 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
       fun final values => ∃ out, values = out ++ rest ∧ ∃ heap' : Heap, heap'.At final ∧
         g.result.Rep .owned heap' final out.reverse (F args) ∧
         final.memoryCaps = store.memoryCaps ∧
-        (∀ r, heap.Region r → 0 < r.2 → Apart store (Env.moves g.mode ws args) r →
+        (∀ r, heap.Region r → 0 < r.2 → Apart store (Env.moves store g.mode ws args) r →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
           heap'.Region r ∧
           ∀ b ∈ g.result.blocks final out.reverse (F args), regionsDisjoint r b) ∧
@@ -316,9 +315,9 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
     exact hRun.mono fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
       ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, fun _ => hTop rfl⟩
   · have hSep' : Separate store
-        (Env.moves (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
+        (Env.moves store (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
           (.cons (t := .word) d args))
-        (Env.reads (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
+        (Env.reads store (paramMode (.word :: g.params) (.borrowed :: g.modes)) (.i64 d :: ws)
           (.cons (t := .word) d args)) := by
       rw [Env.moves_depth, Env.reads_depth]; exact hSep
     have hRun := (hTrue hdep d (hd hdep) host store heap (.i64 d :: ws)
@@ -332,7 +331,7 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
     exact hRun.mono fun final values ⟨out, hv, heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
       ⟨out, hv, heap', hAt', hOwned, hCaps, fun r hr hpos hA =>
         hRegions r hr hpos (by
-          show Apart store (Env.moves (paramMode (.word :: g.params) (.borrowed :: g.modes))
+          show Apart store (Env.moves store (paramMode (.word :: g.params) (.borrowed :: g.modes))
             (.i64 d :: ws) (.cons (t := .word) d args)) r
           rw [Env.moves_depth]; exact hA), fun h => hTop (fits_of_not h)⟩
 

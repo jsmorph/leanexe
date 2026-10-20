@@ -1,5 +1,8 @@
 import Verified.Source
 import Verified.LocalFrame
+import Verified.TreeCopyCode
+import Verified.TreeHeaderCode
+import Verified.TreeFieldsCode
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
@@ -25,7 +28,7 @@ def Elem.types : Elem → List ValueType
 /-- The WebAssembly types of the words that hold a value of type `t`, in order. -/
 def Ty.types : Ty → List ValueType
   | .elem e => e.types
-  | .array _ => [.i64]
+  | .array _ | .tree _ | .treeHeader _ => [.i64]
   | .pair a b => a.types ++ b.types
 
 /-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
@@ -149,9 +152,9 @@ def ToWord.instr : ToWord → Instruction
   | .toBits => .i64ReinterpretF64
 
 /-- The largest of the numbers `w i`, or 0. -/
-def argsMax : {ps : List Ty} → ((i : Fin ps.length) → Nat) → Nat
-  | [], _ => 0
-  | _ :: _, w => max (w ⟨0, by simp⟩) (argsMax fun i => w i.succ)
+def argsMax : {n : Nat} → ((i : Fin n) → Nat) → Nat
+  | 0, _ => 0
+  | _ + 1, w => max (w ⟨0, by omega⟩) (argsMax fun i => w i.succ)
 
 /-- The instructions of the arguments, in order. -/
 def argsCode : {n : Nat} → ((i : Fin n) → Program) → Program
@@ -255,21 +258,28 @@ def copyCode (h : Nat) : Ty → Nat → Nat → Program
   | .elem e, src, _ => loadCode h src e.types
   | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array _, src, base => copyArrayCode src base
+  | .tree shape, src, base => treeCopyCode shape src base
+  | .treeHeader shape, _, base => treeHeaderCopyCode shape base
 
 /-- The instructions that release the arrays of the owned value of type `t` whose words locals
 `src` on hold. -/
 def releaseCode : Ty → Nat → Program
   | .elem _, _ => []
   | .pair a b, src => releaseCode a src ++ releaseCode b (src + a.width)
-  | .array _, src => [.localGet src, .call 1]
+  | .array _, src | .tree _, src | .treeHeader _, src => [.localGet src, .call 1]
 
 /-- The locals that a copy of a value of type `t` uses: three for each array's copy, and none
 for a value without arrays. -/
-def Ty.copyScratch (t : Ty) : Nat := if t.scalar then 0 else 3
+def Ty.copyScratch : Ty → Nat
+  | .elem _ => 0
+  | .array _ => 3
+  | .tree _ => treeCopyScratch
+  | .treeHeader _ => 1
+  | .pair a b => max a.copyScratch b.copyScratch
 
 /-- The locals that turning a borrowed value of type `t` on the stack into an owned copy needs:
 its words, and three for the copy of each array. -/
-def copyWidth (t : Ty) : Nat := if t.scalar then 0 else t.width + 3
+def copyWidth (t : Ty) : Nat := if t.scalar then 0 else t.width + t.copyScratch
 
 /-- The instructions that turn the value of type `t` on top of the stack, held in mode `source`,
 into one held in mode `target`: a borrowed value that must be owned is stored in the locals from
@@ -367,6 +377,11 @@ def Expr.placeCode (h : Nat) (slots : List Slot) :
   | _, _, .pair first second => first.placeCode h slots ++ second.placeCode h slots
   | _, _, _ => []
 
+def TreeShape.slots (shape : TreeShape) (base : Nat) (mode : Mode) (rest : List Slot) :
+    List Slot :=
+  ⟨base, mode⟩ :: ((List.range shape.words).map (fun i => ⟨base + 1 + i, .borrowed⟩) ++
+    ((List.range shape.children).map (fun i => ⟨base + 1 + shape.words + i, mode⟩) ++ rest))
+
 /-- The locals that an expression needs from its first free local on: the words of each `letE`
 and `letPair` value and of each `ite` result, two for each division or remainder, the count, the
 index, and the state of each loop, the position of each read, the count, the address, and the
@@ -411,6 +426,13 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .eraseAt _ i => max i.width 8
   | _, _, .mk first second => max first.width second.width
   | _, _, .proj _ _ => 0
+  | _, _, .treeNil _ => 0
+  | _, _, .treeNode (shape := shape) _ words children =>
+    shape.bindCount + max (argsMax fun i => (words i).width)
+      (argsMax fun i => max (children i).width (copyWidth (.tree shape)))
+  | _, _, .treeCase (shape := shape) (t := t) _ empty node =>
+    t.width + max (max empty.width (copyWidth t))
+      (shape.bindCount + max treeCopyScratch (max node.width (copyWidth t)))
 
 def Var.sizeCode (slots : List Slot) (live : Nat → Bool) {Γ : List Ty} {e : Elem}
     (x : Var Γ (.array e)) : Program :=
@@ -503,6 +525,54 @@ component from the tuple variable's positions. -/
 def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
+  | _, _, .treeNil _ => [.constI64 0]
+  | _, _, .treeNode (shape := shape) reuse words children =>
+    let modes := slots.map Slot.mode
+    let scratch := base + shape.bindCount
+    let kept := fun k => live k || optionVarUses reuse k
+    argsCode (fun i =>
+      (words i).code h slots scratch (fun k => kept k ||
+        (argsAny fun j => decide (i.val < j.val) && (words j).usesFast k) ||
+        (argsAny fun j => (children j).usesFast k)) ++ [.localSet (base + 1 + i.val)]) ++
+    argsCode (fun i =>
+      (children i).code h slots scratch (fun k => kept k ||
+        (argsAny fun j => decide (i.val < j.val) && (children j).usesFast k)) ++
+      coerceCode h (.tree shape) ((children i).mode modes) .owned scratch ++
+      [.localSet (base + 1 + shape.words + i.val)]) ++
+    (match reuse with
+      | some x =>
+        if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+          [.localGet (slots.getD x.index default).loc, .localSet base]
+        else [.constI64 (UInt64.ofNat (8 * shape.fields.length)), .call 0, .localSet base]
+      | none => [.constI64 (UInt64.ofNat (8 * shape.fields.length)), .call 0, .localSet base]) ++
+    treeStoreFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
+    LeanExe.Runtime.headerStore base 24 [.constI64 1] ++
+    LeanExe.Runtime.headerStore base 16 [.constI64 (UInt64.ofNat shape.fields.length)] ++
+    LeanExe.Runtime.headerStore base 8 [.constI64 shape.mask] ++ [.localGet base]
+  | Γ, _, .treeCase (shape := shape) (t := t) x empty node =>
+    let modes := slots.map Slot.mode
+    let rootMode := (slots.getD x.index default).mode
+    let nodeModes := shape.modes rootMode modes
+    let resultMode := (empty.mode modes).join (node.mode nodeModes)
+    let fieldBase := base + t.width
+    let scratch := fieldBase + shape.bindCount
+    let nodeLive := fun i => live i || node.usesFast (i + shape.bindCount)
+    let mid := fun i => live i || decide (i = x.index) || empty.usesFast i ||
+      node.usesFast (i + shape.bindCount)
+    [.localGet (slots.getD x.index default).loc, .eqzI64, .iff 0 0
+      (releaseWhere Γ slots (fun i => mid i && !(live i || empty.usesFast i)) ++
+        empty.code h slots fieldBase live ++
+        coerceCode h t (empty.mode modes) resultMode fieldBase ++ storeCode h base t.types)
+      (releaseWhere Γ slots (fun i => mid i && !(nodeLive i || decide (i = x.index))) ++
+        x.code h slots scratch nodeLive ++ [.localSet fieldBase] ++
+        treeLoadFields fieldBase (fieldBase + 1) (fieldBase + 1 + shape.words) 0 shape.fields ++
+        (if rootMode = .owned then
+          LeanExe.Runtime.headerStore fieldBase 8 [.constI64 0] else []) ++
+        releaseWhere (shape.context Γ) (shape.slots fieldBase rootMode slots)
+          (fun i => decide (i < shape.bindCount) && !node.usesFast i) ++
+        node.code h (shape.slots fieldBase rootMode slots) scratch (shift shape.bindCount live) ++
+        coerceCode h t (node.mode nodeModes) resultMode scratch ++ storeCode h base t.types)
+      [] []] ++ loadCode h base t.types
   | _, _, .bool value => [.constI64 (boolWord value)]
   | _, _, .float32 bits =>
     [.f32Const (if Wasm.IEEE32.isNaN bits then Wasm.IEEE32.canonicalNaN else bits)]

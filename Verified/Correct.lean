@@ -759,12 +759,12 @@ theorem Env.withTables_rep {tables : List (Array UInt64)} {Γ : List Ty} :
     · exact Env.withTables_rep ks (modes := fun i => modes (i + 1))
         (fun i hi => hB (i + 1) (by simp; omega)) (fun k' hk => hT k' (by simp [hk])) h
 
-theorem Env.withTables_moves {tables : List (Array UInt64)} {Γ : List Ty} :
+theorem Env.withTables_moves {store : Store Unit} {tables : List (Array UInt64)} {Γ : List Ty} :
     (ks : List (Fin tables.length)) → {modes : Nat → Mode} →
     (∀ i < ks.length, modes i = .borrowed) → {ws : List Value} → {env : Env Γ} →
-    Env.moves modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+    Env.moves store modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
         (Env.withTables tables ks env) =
-      Env.moves (fun i => modes (i + ks.length)) ws env
+      Env.moves store (fun i => modes (i + ks.length)) ws env
   | [], _, _, _, _ => rfl
   | k :: ks, modes, hB, ws, env => by
     simp only [List.map_cons, List.cons_append]
@@ -772,21 +772,21 @@ theorem Env.withTables_moves {tables : List (Array UInt64)} {Γ : List Ty} :
         ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)) =
         [Value.i64 (tableAddr tables k.val)] ++
           ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws) from rfl]
-    show Env.moves modes ([Value.i64 (tableAddr tables k.val)] ++
+    show Env.moves store modes ([Value.i64 (tableAddr tables k.val)] ++
         ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws))
         (.cons (t := .array .word) tables[k] (Env.withTables tables ks env)) = _
     rw [Env.moves_cons rfl, hB 0 (by simp), List.nil_append]
     exact Env.withTables_moves ks (modes := fun i => modes (i + 1))
       (fun i hi => hB (i + 1) (by simp; omega))
 
-theorem Env.withTables_reads {tables : List (Array UInt64)} {Γ : List Ty} :
+theorem Env.withTables_reads {store : Store Unit} {tables : List (Array UInt64)} {Γ : List Ty} :
     (ks : List (Fin tables.length)) → {modes : Nat → Mode} →
     (∀ i < ks.length, modes i = .borrowed) → {ws : List Value} → {env : Env Γ} →
-    Env.reads modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+    Env.reads store modes ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
         (Env.withTables tables ks env) =
       (ks.map fun k : Fin tables.length =>
           ((tableAddr tables k.val).toNat, 8 * (tables[k].size + 1))) ++
-        Env.reads (fun i => modes (i + ks.length)) ws env
+        Env.reads store (fun i => modes (i + ks.length)) ws env
   | [], _, _, _, _ => rfl
   | k :: ks, modes, hB, ws, env => by
     simp only [List.map_cons, List.cons_append]
@@ -794,7 +794,7 @@ theorem Env.withTables_reads {tables : List (Array UInt64)} {Γ : List Ty} :
         ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)) =
         [Value.i64 (tableAddr tables k.val)] ++
           ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws) from rfl]
-    show Env.reads modes ([Value.i64 (tableAddr tables k.val)] ++
+    show Env.reads store modes ([Value.i64 (tableAddr tables k.val)] ++
         ((ks.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws))
         (.cons (t := .array .word) tables[k] (Env.withTables tables ks env)) = _
     rw [Env.reads_cons rfl, hB 0 (by simp)]
@@ -839,11 +839,11 @@ theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
     {args : Env w.params} (hAt : heap.At store)
     (hTables : ∀ t ∈ w.tables.map fun k => (tableAddr tables k.val, tables[k]),
       heap.Borrowed store t.1 t.2 ∧
-        Apart store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args)
+        Apart store (Env.moves store (paramMode w.params (w.modes.drop w.tables.length)) ws args)
           (t.1.toNat, 8 * (t.2.size + 1)))
     (hRep : Env.Rep (paramMode w.params (w.modes.drop w.tables.length)) heap store ws args)
-    (hSep : Separate store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args)
-      (Env.reads (paramMode w.params (w.modes.drop w.tables.length)) ws args))
+    (hSep : Separate store (Env.moves store (paramMode w.params (w.modes.drop w.tables.length)) ws args)
+      (Env.reads store (paramMode w.params (w.modes.drop w.tables.length)) ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) :
     Runs ((w.depth && !(fits (framesAt 0)).get w.callee (Env.withTables tables w.tables args)) ||
         ((w.aborts || w.depth) &&
@@ -854,7 +854,7 @@ theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
           (funs.get w.callee (Env.withTables tables w.tables args)) ∧
         final.memoryCaps = store.memoryCaps ∧
         (∀ r, heap.Region r → 0 < r.2 →
-          Apart store (Env.moves (paramMode w.params (w.modes.drop w.tables.length)) ws args) r →
+          Apart store (Env.moves store (paramMode w.params (w.modes.drop w.tables.length)) ws args) r →
           (∀ a, r.1 ≤ a → a < r.1 + r.2 → final.mem.bytes a = store.mem.bytes a) ∧
           heap'.Region r ∧
           ∀ b ∈ w.result.blocks final values.reverse
@@ -872,14 +872,14 @@ theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
   have hT : ∀ k ∈ w.tables, heap.Borrowed store (tableAddr tables k.val) tables[k] := fun k hk =>
     (hTables _ (List.mem_map.mpr ⟨k, hk, rfl⟩)).1
   have hRep' := Env.withTables_rep w.tables hB hT (by rw [hShift]; exact hRep)
-  have hMoves := Env.withTables_moves (tables := tables) w.tables hB (ws := ws) (env := args)
-  have hReads := Env.withTables_reads (tables := tables) w.tables hB (ws := ws) (env := args)
+  have hMoves := Env.withTables_moves (store := store) (tables := tables) w.tables hB (ws := ws) (env := args)
+  have hReads := Env.withTables_reads (store := store) (tables := tables) w.tables hB (ws := ws) (env := args)
   rw [hShift] at hMoves hReads
   have hSep' : Separate store
-      (Env.moves (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
+      (Env.moves store (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
         ((w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
         (Env.withTables tables w.tables args))
-      (Env.reads (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
+      (Env.reads store (paramMode (List.replicate w.tables.length (.array .word) ++ w.params) w.modes)
         ((w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
         (Env.withTables tables w.tables args)) := by
     rw [hMoves, hReads]

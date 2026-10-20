@@ -36,8 +36,8 @@ theorem LocalsHold.var {Γ : List Ty} {s : Locals} {base : Nat} {ws : List Value
 theorem Holds.ofEnvRep {Γ : List Ty} {modes : List Mode} {heap : Heap} {store : Store Unit}
     {ws : List Value} {env : Env Γ} {s : Locals} {base : Nat}
     (hRep : Env.Rep (paramMode Γ modes) heap store ws env)
-    (hSep : Separate store (Env.moves (paramMode Γ modes) ws env)
-      (Env.reads (paramMode Γ modes) ws env))
+    (hSep : Separate store (Env.moves store (paramMode Γ modes) ws env)
+      (Env.reads store (paramMode Γ modes) ws env))
     (hold : LocalsHold s base (Γ.flatMap Ty.types) ws) :
     Holds env (paramSlots Γ modes base) (fun _ => true) (base + widthSum Γ) heap store s := by
   have hWords : ∀ {t : Ty} (x : Var Γ t),

@@ -45,6 +45,8 @@ theorem Ty.copyCost_of_scalar (t : Ty) (v : t.denote) (h : t.scalar = true) : t.
   induction t with
   | elem e => rfl
   | array e => simp [Ty.scalar] at h
+  | tree shape => simp [Ty.scalar] at h
+  | treeHeader shape => simp [Ty.scalar] at h
   | pair a b ha hb =>
     simp only [Ty.scalar, Bool.and_eq_true] at h
     simp only [Ty.copyCost, ha v.1 h.1, hb v.2 h.2, Nat.add_zero]

@@ -66,21 +66,21 @@ theorem Env.rep_depth {ts : List Ty} {ms : List Mode} {heap : Heap} {store : Sto
   · rintro ⟨ws, rfl, h⟩
     exact ⟨[.i64 d], ws, rfl, rfl, by simpa only [paramMode_succ] using h⟩
 
-theorem Env.moves_depth {ts : List Ty} {ms : List Mode} {ws : List Value} {d : UInt64}
+theorem Env.moves_depth {store : Store Unit} {ts : List Ty} {ms : List Mode} {ws : List Value} {d : UInt64}
     {args : Env ts} :
-    Env.moves (paramMode (.word :: ts) (.borrowed :: ms)) (.i64 d :: ws)
+    Env.moves store (paramMode (.word :: ts) (.borrowed :: ms)) (.i64 d :: ws)
         (.cons (t := .word) d args) =
-      Env.moves (paramMode ts ms) ws args := by
+      Env.moves store (paramMode ts ms) ws args := by
   rw [show (.i64 d :: ws : List Value) = [.i64 d] ++ ws from rfl, Env.moves_cons rfl,
     show (fun i => paramMode (.word :: ts) (.borrowed :: ms) (i + 1)) = paramMode ts ms from
       funext fun i => paramMode_succ _ _ _ _ i]
   rfl
 
-theorem Env.reads_depth {ts : List Ty} {ms : List Mode} {ws : List Value} {d : UInt64}
+theorem Env.reads_depth {store : Store Unit} {ts : List Ty} {ms : List Mode} {ws : List Value} {d : UInt64}
     {args : Env ts} :
-    Env.reads (paramMode (.word :: ts) (.borrowed :: ms)) (.i64 d :: ws)
+    Env.reads store (paramMode (.word :: ts) (.borrowed :: ms)) (.i64 d :: ws)
         (.cons (t := .word) d args) =
-      Env.reads (paramMode ts ms) ws args := by
+      Env.reads store (paramMode ts ms) ws args := by
   rw [show (.i64 d :: ws : List Value) = [.i64 d] ++ ws from rfl, Env.reads_cons rfl,
     show (fun i => paramMode (.word :: ts) (.borrowed :: ms) (i + 1)) = paramMode ts ms from
       funext fun i => paramMode_succ _ _ _ _ i]
@@ -109,11 +109,11 @@ theorem wp_depthCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
       wp_constI64_cons, wp_addI64_cons] at h ⊢
     exact h
 
-theorem le_argsMax : {ps : List Ty} → (w : (i : Fin ps.length) → Nat) →
-    (i : Fin ps.length) → w i ≤ argsMax w
-  | _ :: _, w, ⟨0, _⟩ => Nat.le_max_left _ _
-  | _ :: _, w, ⟨i + 1, h⟩ =>
-    (le_argsMax (fun j => w j.succ) ⟨i, by simpa using h⟩).trans (Nat.le_max_right _ _)
+theorem le_argsMax : {n : Nat} → (w : Fin n → Nat) →
+    (i : Fin n) → w i ≤ argsMax w
+  | _ + 1, w, ⟨0, _⟩ => Nat.le_max_left _ _
+  | _ + 1, w, ⟨i + 1, h⟩ =>
+    (le_argsMax (fun j => w j.succ) ⟨i, by omega⟩).trans (Nat.le_max_right _ _)
 
 theorem le_argsAny : {n : Nat} → (b : (i : Fin n) → Bool) → (i : Fin n) → b i = true →
     argsAny b = true
@@ -475,7 +475,8 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact Or.inr h1
   | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
-  | eraseAt _ _ _ => intro _ _; simp [Expr.aborts]
+  | eraseAt _ _ _ | treeNil _ | treeNode _ _ _ | treeCase _ _ _ =>
+    intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
 theorem Slot.any_map (slots : List Slot) :
@@ -1102,8 +1103,16 @@ theorem live_released : ∀ m x : Bool, (x = true → m = true) → (m && !(m &&
   decide
 
 theorem Ty.copyScratch_le (t : Ty) : t.copyScratch ≤ copyWidth t := by
-  unfold Ty.copyScratch copyWidth
-  split <;> omega
+  by_cases h : t.scalar = true
+  · have : t.copyScratch = 0 := by
+      induction t with
+      | elem _ => rfl
+      | pair a b ha hb =>
+        simp only [Ty.scalar, Bool.and_eq_true] at h
+        simp only [Ty.copyScratch, ha h.1, hb h.2, Nat.max_self]
+      | array _ | tree _ | treeHeader _ => exact nomatch h
+    simp [copyWidth, h, this]
+  · simp [copyWidth, h]
 
 /-- The region `r` lies apart from the regions of the variables that `sel` selects. -/
 def Holds.ApartFrom {Γ : List Ty} (env : Env Γ) (slots : List Slot) (sel : Nat → Bool)
@@ -1176,7 +1185,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
     ∀ {rest : Program} {Q : Assertion Unit} {vs : List Value},
     (∀ ws, t.Rep .borrowed heap store ws (e.denote funs env) →
       (∀ r, Holds.ApartFrom env slots e.uses store s r →
-        ∀ c ∈ t.reads ws (e.denote funs env), regionsDisjoint r c) →
+        ∀ c ∈ t.reads store ws (e.denote funs env), regionsDisjoint r c) →
       wp m rest Q store { s with values := ws.reverse ++ vs } host) →
     wp m (e.placeCode h slots ++ rest) Q store { s with values := vs } host
   | _, .var x, _, hL, _, _, _, hNext => by
@@ -1212,6 +1221,8 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .funary32 _ _, hp, _, _, _, _, _ | _, .toFloat32 _ _, hp, _, _, _, _, _
   | _, .toWord32 _ _, hp, _, _, _, _, _
   | _, .float32 _, hp, _, _, _, _, _
+  | _, .treeNil _, hp, _, _, _, _, _ | _, .treeNode _ _ _, hp, _, _, _, _, _
+  | _, .treeCase _ _ _, hp, _, _, _, _, _
   | _, .float _, hp, _, _, _, _, _ | _, .fbin _ _ _, hp, _, _, _, _, _
   | _, .funary _ _, hp, _, _, _, _, _ | _, .fcmp _ _ _, hp, _, _, _, _, _
   | _, .toFloat _ _, hp, _, _, _, _, _ | _, .toWord _ _, hp, _, _, _, _, _ => by
@@ -1358,8 +1369,8 @@ theorem Env.Rep.var {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty} (
 /-- The addresses of an owned variable's arrays are among those that the call consumes. -/
 theorem Env.moves_var {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty} (x : Var Γ t) :
     ∀ {modes : Nat → Mode} {ws : List Value} {env : Env Γ}, Env.Rep modes heap store ws env →
-      modes x.index = .owned → ∀ q ∈ t.pointers ((ws.drop x.offset).take t.width),
-        q ∈ Env.moves modes ws env := by
+      modes x.index = .owned → ∀ q ∈ t.pointers store ((ws.drop x.offset).take t.width) (env.get x),
+        q ∈ Env.moves store modes ws env := by
   induction x with
   | here =>
     intro modes ws env h hm q hq
@@ -1383,8 +1394,8 @@ theorem Env.moves_var {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty}
 /-- The regions of a borrowed variable's arrays are among those that the call reads. -/
 theorem Env.reads_var {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty} (x : Var Γ t) :
     ∀ {modes : Nat → Mode} {ws : List Value} {env : Env Γ}, Env.Rep modes heap store ws env →
-      modes x.index = .borrowed → ∀ c ∈ t.reads ((ws.drop x.offset).take t.width) (env.get x),
-        c ∈ Env.reads modes ws env := by
+      modes x.index = .borrowed → ∀ c ∈ t.reads store ((ws.drop x.offset).take t.width) (env.get x),
+        c ∈ Env.reads store modes ws env := by
   induction x with
   | here =>
     intro modes ws env h hm c hc
@@ -1409,7 +1420,7 @@ theorem Env.reads_var {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty}
 blocks of each owned argument lie apart from the regions of every other argument. -/
 theorem Env.Rep.apart {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty} (x : Var Γ t) :
     ∀ {modes : Nat → Mode} {ws : List Value} {env : Env Γ}, Env.Rep modes heap store ws env →
-    Separate store (Env.moves modes ws env) (Env.reads modes ws env) →
+    Separate store (Env.moves store modes ws env) (Env.reads store modes ws env) →
     ∀ {u : Ty} (y : Var Γ u), x.index ≠ y.index → modes x.index = .owned →
     ∀ b ∈ t.blocks store ((ws.drop x.offset).take t.width) (env.get x),
     ∀ c ∈ u.regions (modes y.index) store ((ws.drop y.offset).take u.width) (env.get y),
@@ -1472,8 +1483,8 @@ theorem Env.Rep.apart {heap : Heap} {store : Store Unit} {Γ : List Ty} {t : Ty}
             (List.mem_append_right _ hq'))
       | there y' =>
         rw [Var.words_there h1.length] at hc
-        have hSep' : Separate store (Env.moves (fun i => modes (i + 1)) rest' rest)
-            (Env.reads (fun i => modes (i + 1)) rest' rest) := by
+        have hSep' : Separate store (Env.moves store (fun i => modes (i + 1)) rest' rest)
+            (Env.reads store (fun i => modes (i + 1)) rest' rest) := by
           refine ⟨?_, fun r hr q hq => hSep.2 r (List.mem_append_right _ hr) q
             (List.mem_append_right _ hq)⟩
           have := hSep.1
