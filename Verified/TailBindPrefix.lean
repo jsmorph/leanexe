@@ -48,11 +48,22 @@ def TailAfter.ofHEq {Γ Δ params : List Ty} {result : Ty} {first : Env Γ} {sec
     (after : TailAfter first slots live modes stateBase resultBase heap store s
       value heap' store' s') :
     TailAfter second slots live modes stateBase resultBase heap store s value heap' store' s' := by
+  refine ⟨after.words, ?_, after.frame, after.rep⟩
   cases hΓ
   cases h
-  exact after
+  exact after.step
+
+def TailAfter.withSlots {Γ params : List Ty} {result : Ty} {env : Env Γ}
+    {slots slots' : List Slot} (eq : slots = slots') {live : Nat → Bool}
+    {modes : List Mode} {stateBase resultBase : Nat} {heap heap' : Heap}
+    {store store' : Store Unit} {s s' : Locals} {value : Sum (Env params) result.denote}
+    (after : TailAfter env slots live modes stateBase resultBase heap store s
+      value heap' store' s') :
+    TailAfter env slots' live modes stateBase resultBase heap store s value heap' store' s' :=
+  ⟨after.words, by rw [← eq]; exact after.step, after.frame, after.rep⟩
 
 #print axioms TailAfter.bindPrefixStep
 #print axioms TailAfter.ofHEq
+#print axioms TailAfter.withSlots
 
 end Verified

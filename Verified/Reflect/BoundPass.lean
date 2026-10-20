@@ -122,7 +122,11 @@ set that the argument states, and assigns its proof. -/
 def LemmaApp.child (a : LemmaApp) (name : Name) (b : BoundBuilder) : MetaM Bound := do
   let (modes, paid, live) ← a.allocsArgs name
   let r ← b modes paid live
-  a.assign name r.proof
+  let some (_, _, rhs) := (← a.hypType name).eq?
+    | throwError "verified_compile: the bound argument {name} of {a.name} is not an equation"
+  unless ← withReducible (isDefEq rhs r.term) do
+    throwError "verified_compile: the bound result for {name} of {a.name} differs from {r.term}"
+  a.assign name (← mkExpectedTypeHint r.proof (← a.hypType name))
   return r
 
 /-- The left and right sides of the equation that `p` proves. -/

@@ -465,6 +465,22 @@ def ctxEnvExpr : List (Lean.Expr × Ty) → MetaM (Lean.Expr × Lean.Expr)
 def envExpr (vars : List (Lean.Expr × Ty)) : MetaM Lean.Expr :=
   return (← ctxEnvExpr vars).2
 
+def withListCaseFields {α : Type} (c : Ctx) (xs : Lean.Expr)
+    (k : Ctx → Lean.Expr → Lean.Expr → MetaM α) : MetaM α := do
+  let shape := treeShapeExpr listShape
+  let ctx ← mkAppM ``TreeShape.context #[shape, c.ctx]
+  let marker ← mkAppOptM ``TreeHeader.unit #[some shape]
+  withLocalDeclD `head (mkConst ``UInt64) fun head => do
+    withLocalDeclD `tail (← inferType xs) fun tail => do
+      let family (value : Lean.Expr) : MetaM Lean.Expr :=
+        withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
+          mkLambdaFVars #[i] value
+      let env ← mkAppM ``Env.treeFields
+        #[shape, ← family head, ← family (← flatValue tail), c.env]
+      let inner := { c with ctx, env, vars :=
+        [(marker, .treeHeader listShape), (head, .word), (tail, .tree listShape)] ++ c.vars }
+      k inner head tail
+
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
 replaced by the component, and each pair `(y.1, y.2)` of the components of `y` replaced by `y`,
 from the inside out.  Each step is a reduction or eta for pairs, so the result is equal to `e` by
@@ -2532,19 +2548,7 @@ where
     let (x, _) ← varOf c xs
     let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
     let re ← reflect c empty
-    let shape := treeShapeExpr listShape
-    let ctx ← mkAppM ``TreeShape.context #[shape, c.ctx]
-    let marker ← mkAppOptM ``TreeHeader.unit #[some shape]
-    let listType ← inferType xs
-    let ub ← withLocalDeclD `head (mkConst ``UInt64) fun head =>
-      withLocalDeclD `tail listType fun tail => do
-        let family (value : Lean.Expr) : MetaM Lean.Expr :=
-          withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
-            mkLambdaFVars #[i] value
-        let env ← mkAppM ``Env.treeFields
-          #[shape, ← family head, ← family (← flatValue tail), c.env]
-        let inner := { c with ctx, env, vars :=
-          [(marker, .treeHeader listShape), (head, .word), (tail, .tree listShape)] ++ c.vars }
+    let ub ← withListCaseFields c xs fun inner head tail => do
         let rn ← reflect inner (branch.beta #[head, tail])
         unless rn.ty == re.ty do
           throwError "verified_compile: list branches have different source types"

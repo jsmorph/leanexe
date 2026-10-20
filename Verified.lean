@@ -43,6 +43,12 @@ import Verified.Examples.Select
 import Verified.Examples.Calls
 import Verified.Examples.Frontend
 import Verified.Examples.Fold
+import Verified.Examples.TreeCopy
+import Verified.Examples.TreeCore
+import Verified.Examples.Lists
+import Verified.Examples.ListRecursion
+import Verified.Examples.ListLoops
+import Verified.Examples.ListTail
 import Verified.Examples.TailCore
 import Verified.Examples.Tail
 import Verified.Examples.TailConditions
