@@ -79,11 +79,11 @@ def tailTrapFlag {S : List Sig} {Γ params : List Ty} {result : Ty}
     (paramModes params modes).any (· == .owned) || slots.any (·.mode == .owned)) &&
       !decide (heap.Within store m cost))
 
-def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
+def TailCodeSpecAt {S : List Sig} {Γ params : List Ty} {result : Ty}
     (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
-    (body : TailBody S params result Γ) : Prop :=
-  ∀ (env : Env Γ) (slots : List Slot) (paid : List Bool) (nextPaid : List Bool) (resultPaid : Bool)
+    (body : TailBody S params result Γ) (env : Env Γ) : Prop :=
+  ∀ (slots : List Slot) (paid : List Bool) (nextPaid : List Bool) (resultPaid : Bool)
     (h stateBase resultBase base exitLabel nextLabel : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals),
     s.positions = h → s.params = pv →
@@ -107,6 +107,12 @@ def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
       Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel)) store'
         { s' with values := s.values })) →
     wp m (body.code targetModes h stateBase resultBase slots base exitLabel nextLabel) Q store s host
+
+def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
+    (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
+    (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
+    (body : TailBody S params result Γ) : Prop :=
+  ∀ env, TailCodeSpecAt m funs flags bounds fits host pv targetModes body env
 
 theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
