@@ -436,7 +436,8 @@ meaning theorem and store-independent execution.  [Sequence rules](ScalarTranspo
 return their Lean results and preserve the whole store, starting from any store in a module
 with the library prefix.  [Proof generation](Reflect/ScalarProof.lean) adds `p.f.uniform` and
 `p.f.pure` for scalar functions whose instructions and callees have these store-preservation
-rules.  The [automatic example](Examples/ScalarComposition.lean) covers branches, division,
+rules.  It scans each instruction sequence and joins its proofs with balanced applications of
+the append rules.  The [automatic example](Examples/ScalarComposition.lean) covers branches, division,
 tail loops, both float widths, and call chains.
 
 [Program append](ProgramAppend.lean) combines two typed programs and their meaning proofs.
