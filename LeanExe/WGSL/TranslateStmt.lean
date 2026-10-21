@@ -2,9 +2,10 @@ import LeanExe.WGSL.Translate
 import LeanExe.IR.DenoteStmt
 
 /-!
-The translation of IR statements built from assignments, sequences, and the compiler's loops into
+The translation of IR statements built from assignments, sequences, conditionals, and the compiler's loops into
 WGSL, and its simulation lemma.  An assignment becomes the expression's `let` statements and an
-assignment to the local's `var`; a loop on `ltU (get index) (get limit)` becomes a `while` on
+assignment to the local's `var`.  A conditional runs its selected branch and drops that branch's
+declarations while retaining assignments to outer variables.  A loop on `ltU (get index) (get limit)` becomes a `while` on
 `lt64`, which runs in lockstep with the denotation's loop under the same bound.
 -/
 
@@ -44,11 +45,29 @@ def trStmt (F : Layout) : LeanExe.IR.Stmt → Nat → Option (List Stmt × Nat)
       let (sa, n1) ← trStmt F a next
       let (sb, n2) ← trStmt F b n1
       pure (sa ++ sb, n2)
+  | .ite c a b, next => do
+      let (sc, res, n1) ← trExpr F c next
+      let (sa, n2) ← trStmt F a n1
+      let (sb, n3) ← trStmt F b n1
+      pure (sc ++ [.ite (.var res) sa sb], max n2 n3)
   | .while c body, next => do
       let ce ← trCond F c
       let (sb, n1) ← trStmt F body next
       pure ([.while_ ce sb], n1)
   | _, _ => none
+
+theorem trStmt_ite_inv {F : Layout} {c : LeanExe.IR.Expr .bool} {a b : LeanExe.IR.Stmt}
+    {next next' : Nat} {stmts : List Stmt}
+    (h : trStmt F (.ite c a b) next = some (stmts, next')) :
+    ∃ sc res n1 sa n2 sb n3, trExpr F c next = some (sc, res, n1) ∧
+      trStmt F a n1 = some (sa, n2) ∧ trStmt F b n1 = some (sb, n3) ∧
+      sc ++ [.ite (.var res) sa sb] = stmts ∧ max n2 n3 = next' := by
+  simp only [trStmt, Option.bind_eq_bind] at h
+  obtain ⟨⟨sc, res, n1⟩, hc, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨⟨sa, n2⟩, ha, h⟩ := Option.bind_eq_some_iff.mp h
+  obtain ⟨⟨sb, n3⟩, hb, h⟩ := Option.bind_eq_some_iff.mp h
+  simp only [Option.pure_def, Option.some.injEq, Prod.mk.injEq] at h
+  exact ⟨sc, res, n1, sa, n2, sb, n3, hc, ha, hb, h⟩
 
 /-- Every variable of the layout is below `n`. -/
 def Layout.Below (F : Layout) (n : Nat) : Prop :=
@@ -256,6 +275,13 @@ theorem trStmt_mono (F : Layout) :
             Prod.mk.injEq] at h
           have := ih _ _ _ hb
           omega
+  | ite c a b iha ihb =>
+      intro next stmts next' h
+      obtain ⟨sc, res, n1, sa, n2, sb, n3, hc, ha, hb, _, rfl⟩ := trStmt_ite_inv h
+      have := trExpr_mono F c _ _ _ _ hc
+      have := iha _ _ _ ha
+      have := ihb _ _ _ hb
+      omega
   | _ =>
       intro next stmts next' h
       simp [trStmt] at h
@@ -502,6 +528,52 @@ theorem trStmt_sim (F : Layout) (hD : F.Distinct) (arrays : Nat → Option (Arra
           obtain ⟨E', hrun, hS, hA', hW'⟩ := key loopBound L env (Env.Shape.refl _) hA hW hden
           refine ⟨[], E', ?_, hS, by simp, hA', hW'⟩
           simp [Stmt.execList, exec_while, hrun]
+  | ite c a b iha ihb =>
+      intro next stmts next' htr hB L L' hden env hA hW hFresh
+      obtain ⟨sc, res, n1, sa, n2, sb, n3, hc, ha, hb, rfl, rfl⟩ := trStmt_ite_inv htr
+      simp only [LeanExe.IR.Stmt.denote, Option.bind_eq_bind, Option.bind_eq_some_iff] at hden
+      obtain ⟨cv, hcd, hden⟩ := hden
+      obtain ⟨added, hrun, hNames, _, _, mutable, hfind⟩ :=
+        trExpr_sim F L arrays ctx writes c next sc res n1 hc cv hcd env hA hFresh
+      have hle := trExpr_mono F c next sc res n1 hc
+      have hEnv : ∀ x ∈ env, x.1 < next := names_lt hFresh
+      have hA1 : F.Agrees L arrays ctx (added ++ env) := hA.extend added fun x hx =>
+        find_none_of_names hEnv x.1 (hNames x hx).1
+      have hW1 := hW.extend hB fun x hx => (hNames x hx).1
+      have hFresh1 : ∀ n, n1 ≤ n → Env.find (added ++ env) n = none :=
+        find_none_of_names fun x hx => by
+          rcases List.mem_append.mp hx with hx | hx
+          · exact (hNames x hx).2
+          · have := hEnv x hx; omega
+      have selected : StmtSim F L' arrays ctx (added ++ env) writes
+          (if cv then sa else sb) n1 (if cv then n2 else n3) := by
+        cases cv <;> simp only [Bool.false_eq_true, ↓reduceIte] at hden ⊢
+        · exact ihb n1 sb n3 hb (hB.mono hle) L L' hden (added ++ env) hA1 hW1 hFresh1
+        · exact iha n1 sa n2 ha (hB.mono hle) L L' hden (added ++ env) hA1 hW1 hFresh1
+      obtain ⟨inner, E, hbranch, hShape, _, hAE, hWE⟩ := selected
+      have hdrop : List.drop (inner.length + E.length - (added ++ env).length) (inner ++ E) =
+          E := by
+        rw [hShape.length, Nat.add_sub_cancel, List.drop_left]
+      have htest : Expr.eval ctx (added ++ env) (.var res) = some (.bool cv) := by
+        simp [Expr.eval, hfind, wgslValue]
+      have hBranchRun : Stmt.execList ctx ⟨added ++ env, writes, false⟩
+          [.ite (.var res) sa sb] = some ⟨E, writes, false⟩ := by
+        simp only [List.length_append] at hdrop
+        cases cv <;> simp only [Bool.false_eq_true, ↓reduceIte] at hbranch ⊢ <;>
+          simp [Stmt.execList, Stmt.exec, htest, hbranch, Option.bind_eq_bind, hdrop]
+      obtain ⟨A, B, rfl, hSA, hSB⟩ := hShape.split
+      have hAnames : ∀ x ∈ A, next ≤ x.1 ∧ x.1 < n1 := fun x hx => by
+        obtain ⟨y, hy, hxy⟩ := hSA.names x hx
+        have := hNames y hy
+        omega
+      have hle2 := trStmt_mono F a n1 sa n2 ha
+      have hle3 := trStmt_mono F b n1 sb n3 hb
+      refine ⟨A, B, ?_, hSB, ?_, hAE.drop hB fun x hx => (hAnames x hx).1,
+        hWE.drop hB fun x hx => (hAnames x hx).1⟩
+      · rw [execList_append, hrun, Option.bind_some, hBranchRun]
+      · intro x hx
+        have := hAnames x hx
+        exact ⟨this.1, by omega⟩
   | _ =>
       intro next stmts next' htr
       simp [trStmt] at htr
@@ -546,6 +618,13 @@ theorem trStmt_writes (F : Layout) :
         | none => simp [hc, hb] at h
         | some rb => exact ih _ _ _ hb j hj
   | skip => intro next stmts next' _ j hj; simp [LeanExe.IR.Stmt.writes] at hj
+  | ite c a b iha ihb =>
+      intro next stmts next' h j hj
+      obtain ⟨sc, res, n1, sa, n2, sb, n3, _, ha, hb, _, _⟩ := trStmt_ite_inv h
+      simp only [LeanExe.IR.Stmt.writes, List.mem_append] at hj
+      rcases hj with hj | hj
+      · exact iha _ _ _ ha j hj
+      · exact ihb _ _ _ hb j hj
   | _ => intro next stmts next' h; simp [trStmt] at h
 
 theorem Env.find_of_mem {env : Env} (hnd : (env.map (·.1)).Nodup) {w : Nat} {v : Value} {m : Bool}

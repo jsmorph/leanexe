@@ -120,4 +120,23 @@ def Code.bind {ctx : Context Γ} {base : Nat}
       (fun j hj => unused j (Nat.le_trans a.grows hj))
     exact ⟨last, by simp [LeanExe.IR.Stmt.denote, ha, hb], hvb⟩
 
+def Code.contextMap {ctx : Context Γ} {base : Nat}
+    {value : Funs S → Verified.Env Γ → s.denote} (a : Code ctx base value)
+    (meaning : Funs S → Verified.Env Γ → t.denote) (result : Rep t)
+    (bound : result.locals ≤ a.next)
+    (holds : ∀ funs env locals arrays, ctx.Agrees env locals arrays →
+      a.result.Holds locals arrays (value funs env) →
+      result.Holds locals arrays (meaning funs env)) : Code ctx base meaning where
+  next := a.next
+  body := a.body
+  result := result
+  vars := a.vars
+  grows := a.grows
+  writes := a.writes
+  resultBound := bound
+  correct := by
+    intro ctxBound funs env locals arrays agree unused
+    obtain ⟨last, hBody, hValue⟩ := a.correct ctxBound funs env locals arrays agree unused
+    exact ⟨last, hBody, holds funs env last arrays (agree.frame ctxBound (a.frame hBody)) hValue⟩
+
 end Verified.WGSL
