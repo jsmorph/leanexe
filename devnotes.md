@@ -34665,9 +34665,17 @@ The scalar-composition draft separates the compiler’s meaning theorem from a p
 The remaining module-composition steps are:
 
 - [x] Prove the fixed-prefix API and check native word/float calls in a larger module.
-- [ ] Check the scalar calibration, primitive, sequence, control, and call rules against current imports.
+- [x] Check the scalar calibration, primitive, sequence, control, and call rules against current imports.
 - [ ] Derive store-preserving execution theorems for compiled scalar functions and test their reuse.
 - [ ] Add library reuse and relocation with checked source and meaning transport.
 - [ ] Run the phase’s full gates before publication to main.
 
 WGSL and binary32 GPT remain after these steps.
+
+The current-source scalar checks passed after the raw instruction proofs were split into calibration, sequence, primitive, call, and control modules.  The calibration took 1.4 seconds, sequences 1.6 seconds, primitives 2.6 seconds, calls 1.8 seconds, and typed blocks and loops 1.7 seconds.  The word-addition and float-scaling examples passed all 3,680 build jobs.  Their `ImplementsPureA false` theorems start from every store, preserve that whole store, and derive the returned Lean value from the universal compiler theorem.  They apply in every module with the runtime and the library prefix.  Automatic proof generation and relocation remain required.
+
+The instruction proofs use explicit interpreter equations at fuel zero and for an empty sequence.  A call-table binding needed its full `Calls` type to keep Lean from inserting the signature and function arguments.  The loop rewrite initially instantiated the helper’s optional type metadata to empty lists.  Supplying both metadata lists explicitly accepted the fuel-induction proof.  The reviewed proofs share sequence, call, and control rules rather than repeating the interpreter argument in each function.  No external proof agent or LTG retrieval was used.
+
+The workstation default build passed all 4,182 jobs.  The existing WGSL gate passed all 474 cases on each of the SwiftShader and Lavapipe Vulkan drivers.  The frozen list phase’s full Verified build remains active on minideb1.
+
+The scalar-store audit accepted all 38 reports with only `propext`, `Classical.choice`, and `Quot.sound`.  It covers calibration, sequence composition, the primitive, call, block, and loop rules, both library theorems, and the shared prefix lookups.

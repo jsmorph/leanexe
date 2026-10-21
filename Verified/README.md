@@ -426,8 +426,16 @@ The [library example](Examples/CompositionBase.lean) compiles word addition and 
 The [larger module](Examples/Composition.lean) reuses that program, adds typed callers, and
 derives the library functions' execution theorems from prefix composition.  Its
 [cases](Examples/CompositionCases.lean) check results and zero allocation through
-`tests/verified/run.sh --cases composition`.  Automatic library reuse, function relocation, and
-store-preservation theorems remain pending.
+`tests/verified/run.sh --cases composition`.
+
+[Scalar calibration](ScalarCalibration.lean) derives `ImplementsPureA` from the compiler's
+meaning theorem and store-independent execution.  [Sequence rules](ScalarTransport.lean),
+[primitive rules](ScalarAtoms.lean), [call rules](ScalarCalls.lean), and
+[block and loop rules](ScalarControl.lean) compose the execution proof.  The
+[scalar library proofs](Examples/CompositionPure.lean) establish that addition and scaling
+return their Lean results and preserve the whole store, starting from any store in a module
+with the library prefix.  Automatic generation of these proofs, library reuse, and function
+relocation remain pending.
 
 ## The reflector
 

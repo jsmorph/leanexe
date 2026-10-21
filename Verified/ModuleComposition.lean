@@ -4,17 +4,20 @@ namespace Verified
 
 open Wasm
 
-theorem Prog.calls_prefix {S : List Sig} (prog : Prog S) (funs : Funs S)
-    (hMeaning : prog.Meaning funs) (m : Module) (hm : Runtime m)
-    (hPrefix : prog.functions <+: m.funcs.drop 2) :
-    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) := by
-  apply prog.calls funs hMeaning m hm
-  intro k hk
+theorem Prog.functions_prefix_lookup {S : List Sig} (prog : Prog S) (m : Module)
+    (hPrefix : prog.functions <+: m.funcs.drop 2) {k : Nat} (hk : k < S.length) :
+    m.funcs[2 + k]? = prog.functions[k]? := by
   obtain ⟨suffix, hPrefix⟩ := hPrefix
   have h := congrArg (fun fs : List Function => fs[k]?) hPrefix
   have hLeft : (prog.functions ++ suffix)[k]? = prog.functions[k]? :=
     List.getElem?_append_left (by simpa only [prog.functions_length] using hk)
   exact List.getElem?_drop.symm.trans (h.symm.trans hLeft)
+
+theorem Prog.calls_prefix {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (hMeaning : prog.Meaning funs) (m : Module) (hm : Runtime m)
+    (hPrefix : prog.functions <+: m.funcs.drop 2) :
+    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) :=
+  prog.calls funs hMeaning m hm fun _ hk => prog.functions_prefix_lookup m hPrefix hk
 
 theorem Prog.functions_prefix_cons {S : List Sig} (prog : Prog S) (f : Func S) :
     prog.functions <+: (Prog.cons f prog).functions :=
