@@ -1,13 +1,13 @@
 # Scale: word arithmetic and division by zero
 
-## What it is
+## `a * b / c + 1` on words
 
 [The program](Program.lean) computes `a * b / c + 1` on 64-bit words, with wrapping multiplication
 and addition.  Lean defines `a / 0 = 0`, while WebAssembly's `i64.div_u` traps on a zero divisor, so
 the compiled code must test the divisor to compute the Lean function.  [The module
 definition](Module.lean) compiles `scale` into the 1,397-byte `scale.wasm`, which exports `scale`.
 
-## What it shows
+## The divisor test and its proof
 
 The IR's division tests the divisor and gives 0 for 0, as [the LeanExe compiler manual's table of
 word operations](../../docs/leanexe-manual.md#words-and-booleans) states, so `scale 6 7 0` is 1 in
@@ -26,7 +26,7 @@ manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`
 of every module are the runtime's `alloc` and `release`, so the first compiled function is function
 2.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Scale.Verify

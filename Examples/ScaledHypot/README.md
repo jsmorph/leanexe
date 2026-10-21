@@ -1,13 +1,13 @@
 # ScaledHypot: square root and division
 
-## What it is
+## `sqrt (x * x + y * y) / s` in binary64
 
 [The program](Program.lean) computes `sqrt (x * x + y * y) / s` in binary64, the length of the
 vector `(x, y)` divided by a scale.  It uses the textbook formula, so `x * x` overflows to infinity
 for `|x|` above about 1.34e154, where a library `hypot` would rescale first.  [The module
 definition](Module.lean) compiles `scaledHypot` into the 1,384-byte `scaledHypot.wasm`.
 
-## What it shows
+## Bit-for-bit equality, overflow included
 
 The theorem covers every input bit for bit, including the overflow, a zero scale, and NaN.  The
 compiled code uses `f64.sqrt` and `f64.div`, and the ProofKit lemmas `F64Bits.toBits_sqrt` and
@@ -24,7 +24,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 describes the binary64 equality proofs.  The theorem concerns the rounded computation, with no
 statement about its error relative to the exact length.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.ScaledHypot.Verify

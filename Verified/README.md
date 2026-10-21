@@ -241,7 +241,7 @@ includes owned growth, rotation, replacement, aliases, and calls between tail an
 proof-named conditionals, destructuring, and borrowed pair and record states.  The native step
 uses the existing field-normalization pass, so the termination proof sees native record fields.
 
-## The theorem
+## Theorem statement, allocation bounds, and tables
 
 The theorem for each function is `ImplementsA aborts`, the heap form of `Implements` in
 [`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean).  From any heap and store

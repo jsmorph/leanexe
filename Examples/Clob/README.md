@@ -1,6 +1,6 @@
 # Clob: an order book
 
-## What it is
+## The bid side of an order book
 
 [The program](Program.lean) is the bid side of a central limit order book, held as two arrays of
 words: the prices in descending order and the size at each price.  `addBid` adds size at a price, to
@@ -10,7 +10,7 @@ words each, and `runOut` also records the best bid after each command.  `marketB
 against ask levels, and `depth` totals the size at or above a price.  [The module
 definition](Module.lean) compiles the fifteen functions into the 4,957-byte `clob.wasm`.
 
-## What it shows
+## In-place array updates and command streams
 
 The CLOB uses most of the array rules.  `fillLevel`, `insertLevel`, `setLevel`, and
 `removeLevel` update arrays with `set!`, `insertIdx!`, and `eraseIdxIfInBounds`, in place when the
@@ -34,7 +34,7 @@ that the module computes `runCommands` and `runOut`, they hold for its results. 
 compiler manual's section on ownership](../../docs/leanexe-manual.md#ownership) explains consumed
 and borrowed arguments, using `fillTuple` from this example.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Clob.Verify

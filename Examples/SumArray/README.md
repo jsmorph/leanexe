@@ -1,6 +1,6 @@
 # Folds: sum, product, and exclusive or
 
-## What it is
+## Request and programs
 
 This example computes three folds of an array of words: the wrapping sum, the wrapping product, and
 the bitwise exclusive or.  [The request](request.txt) asks for the three folds over an array of any
@@ -13,7 +13,7 @@ accumulator, then a loop that loads each element and applies the operation.  [Th
 definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `productArray` and
 `xorArray` into a 1,534-byte `folds.wasm` that exports both.
 
-## What it shows
+## One fold rule for three programs
 
 | Theorem | Statement |
 |---------|-----------|
@@ -25,7 +25,7 @@ definitions](Module.lean) compile `sumArray` alone into `sumArray.wasm`, and `pr
 theorem applies it with its operation and initial value.  The theorems are in [the
 proofs](Verify.lean).  They use only `propext`, `Classical.choice`, and `Quot.sound`.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumArray.Verify

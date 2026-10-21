@@ -1,6 +1,6 @@
 # ParkMiller: the minimal standard generator
 
-## What it is
+## The generator, its range, and its seed
 
 [The program](Program.lean) is the generator that Park and Miller proposed as a minimal standard in
 1988, after Lewis, Goodman, and Miller: `step x = 16807 * x % 2147483647`, with the state in
@@ -14,7 +14,7 @@ platforms, so `seed` agrees with the standard for every seed below `2^32`, and f
 platforms where that type has 64 bits.  [The compiled module](../../Verified/Examples/ParkMiller.lean) is the verified compiler's
 module of the three functions.
 
-## What it shows
+## A primitive root and the full period
 
 The modulus `p = 2^31 - 1` is prime, and `p - 1 = 2 · 3^2 · 7 · 11 · 31 · 151 · 331`.  Mathlib's
 `lucas_primality` proves the primality of `p` from a witness `a` with `a^(p-1) = 1` in `ZMod p`
@@ -39,7 +39,7 @@ period.  [The proofs](Period.lean) use only the axioms `propext`, `Classical.cho
 | `step_zero` | 0 is a fixed point of `step`, and `seed` never returns it. |
 | `parkMiller_advance` | The module's bytes decode to the module, whose exports compute `advance` and `seed` without a trap, every seed gives a state in the range, and from that state each state in the range occurs at exactly one count below `2^31 - 2`. |
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Verified.Examples.ParkMiller

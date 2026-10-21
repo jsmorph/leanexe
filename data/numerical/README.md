@@ -1,7 +1,7 @@
 # Verified numerical WASM demonstrations
 
 This record describes a run of the earlier system, made with its compiler and proofs.  Its links to
-source files point to commit `eef07963`, the last commit of that system, and its commands run only
+source files point to the last commit of that system, and its commands run only
 at that commit.  [The numerical index](../../index.md) describes the current system's compiled algorithms and numerical theorems.
 
 The demonstrations accept binary64 words as sixteen-digit hexadecimal

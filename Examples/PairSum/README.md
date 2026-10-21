@@ -1,13 +1,13 @@
 # PairSum: a temporary array
 
-## What it is
+## `a + b` by a fold over `#[a, b]`
 
 [The program](Program.lean) returns `a + b` by folding addition over the array literal `#[a, b]`.
 The array exists only inside the call: the compiled code allocates it on the module's heap, folds
 over it, and releases it before returning.  [The module definition](Module.lean) compiles `pairSum`
 into the 1,479-byte `pairSum.wasm`, which exports `pairSum`.
 
-## What it shows
+## Proof of a body that allocates and frees
 
 This is the smallest program that allocates and frees memory.  The IR body is four statements: the
 array literal, the accumulator's initial value, the fold, and the release of the array.  The proof
@@ -28,7 +28,7 @@ manual](../../docs/leanexe-manual.md#the-implements-family) defines `Implements`
 proofs](../../docs/leanexe-manual.md#structure-of-a-proof) describes the structure of a proof that
 follows the statements of a body.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.PairSum.Verify

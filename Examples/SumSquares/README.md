@@ -1,13 +1,13 @@
 # SumSquares: a fold over binary64 values
 
-## What it is
+## A sum of squares with two roundings per step
 
 [The program](Program.lean) returns the sum of the squares of an array of `Float` values,
 accumulated from the left: `xs.foldl (fun acc x => acc + x * x) 0.0`.  Each step rounds twice, once
 after the square and once after the sum, so the result depends on the order of the elements.  [The
 module definition](Module.lean) compiles `sumSquares` into the 1,450-byte `sumSquares.wasm`.
 
-## What it shows
+## Lean's bits in the program's order of summation
 
 The compiler translates `Array.foldl` to a loop over the array's words, and the fold rule
 `Stmt.fold_spec` proves the loop for any step function on words.  The step here is `IEEE64.add a
@@ -26,7 +26,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 the host passes the array as words.  [The LeanExe compiler
 manual](../../docs/leanexe-manual.md#folds) lists the folds the compiler accepts.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumSquares.Verify

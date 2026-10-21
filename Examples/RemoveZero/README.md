@@ -1,21 +1,18 @@
 # Remove the first zero
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks for an array of at
-most eight words without its first zero, with the other words in order, for the input itself when
-it has no zero, and for the empty array when the input is longer.  [The specification](Spec.lean)
-states that behavior with `Array.findIdx?` and `Array.eraseIdx!`.
-
-The dialect compiles neither `Array.findIdx?`, which returns an `Option`, nor `Array.eraseIdx!`, so
-[the program](Program.lean) computes the same array another way.  `firstZero` is a loop over the
-first `count` words that keeps the index of the first zero, or `count` when there is none, and
-`compute` builds the result by copying the words before that index and shifting the rest down by
-one.  [The module definition](Module.lean) compiles both functions into a 1,742-byte
+[The request](request.txt) asks for an array of at most eight words without its first zero, with the
+other words in order, for the input itself when it has no zero, and for the empty array when the
+input is longer.  [The specification](Spec.lean) states that behavior with `Array.findIdx?` and
+`Array.eraseIdx!`.  The dialect compiles neither `Array.findIdx?`, which returns an `Option`, nor
+`Array.eraseIdx!`, so [the program](Program.lean) computes the same array another way.  `firstZero`
+is a loop over the first `count` words that keeps the index of the first zero, or `count` when there
+is none, and `compute` builds the result by copying the words before that index and shifting the
+rest down by one.  [The module definition](Module.lean) compiles both functions into a 1,742-byte
 `removeZero.wasm` that exports `firstZero` and `compute`.
 
-## What it shows
+## The bytes remove the first zero
 
 | Theorem | Statement |
 |---------|-----------|
@@ -28,7 +25,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 through the core lemmas `Array.findIdx?_eq_some_iff_getElem` and `Array.getElem_eraseIdx`.  The
 theorem allows a trap, and the [increment example](../Increment/README.md) shows the total form.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.RemoveZero.Verify

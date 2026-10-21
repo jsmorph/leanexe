@@ -1,20 +1,17 @@
 # Prime factors: a count with multiplicity
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks for the number of
-prime factors of a word, counted with multiplicity, with 0 for 0 and 1.  [The
-specification](Spec.lean) states that count with Mathlib's `Nat.primeFactorsList`.
+[The request](request.txt) asks for the number of prime factors of a word, counted with
+multiplicity, with 0 for 0 and 1.  [The specification](Spec.lean) states that count with Mathlib's
+`Nat.primeFactorsList`.  [The program](Program.lean) divides out each divisor in increasing order
+while the divisor is at most the remaining value divided by it, and then counts what remains, which
+is 1 or a prime.  `countFactors` is tail recursive and terminates by a measure of the remaining
+value and the distance from the divisor to it, so it needs no fuel parameter.  [The module
+definition](Module.lean) compiles `countFactors` and `compute` into a 1,613-byte `primeFactors.wasm`
+that exports both.
 
-[The program](Program.lean) divides out each divisor in increasing order while the divisor is at
-most the remaining value divided by it, and then counts what remains, which is 1 or a prime.
-`countFactors` is tail recursive and terminates by a measure of the remaining value and the distance
-from the divisor to it, so it needs no fuel parameter.
-[The module definition](Module.lean) compiles `countFactors` and `compute` into a 1,613-byte
-`primeFactors.wasm` that exports both.
-
-## What it shows
+## The bytes count prime factors
 
 | Theorem | Statement |
 |---------|-----------|
@@ -28,7 +25,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 one theorem about a run of the loop body, and the number theory stays in `countFactors_eq`, which
 concerns the Lean program alone.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.PrimeFactors.Verify

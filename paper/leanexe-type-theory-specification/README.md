@@ -12,7 +12,7 @@ The report is accepted as [marXiv:2609.00005v6](v9/pass-01/main.pdf).  It specif
 | [Extracted text](v9/text.txt) | Text used to compare the PDF with its submission metadata. |
 | [Publication record](publication-record.md) | Submission history, review results, checks, and evidence limits. |
 | [Earlier source evidence](evidence/source-excerpts.md) | Declarations supporting the first report checkpoint. |
-| [Source identities](evidence/source-identities-v3.json) | File digests at checkpoint `df70a0a56dd909ce2a4685faba5498bdcaf01e81`. |
+| [Source identities](evidence/source-identities-v3.json) | File digests at [a fixed source revision](https://github.com/jsmorph/leanexe/commit/df70a0a56dd909ce2a4685faba5498bdcaf01e81). |
 | [Completeness review](v6/revision-notes.md) | Compiler operations, theorem scope, and remaining obligations at the report checkpoint. |
 | [Editorial clarification evidence](evidence/editorial-clarifications-v2.md) | Declaration identities supporting the second version. |
 | [Publication file list](publication-files.txt) | Exact repository-relative files selected for the Git checkpoint. |

@@ -18,7 +18,7 @@ tools/leanrun --timeout 10m lake env lean --run ltg/Check.lean ltg/entries
 The 37 entries are of three kinds.  A compiler-rule entry is proved for every function its rule
 produces, and a proof applies the entry's rule lemma where a hint names the rule.  A lemma entry
 holds general facts that rule proofs and hand proofs use, and the library entry is a proved
-function that any module can compile and call.  The table groups the entries by subject.
+function that any module can compile and call.
 
 | Group | Entries |
 |---|---|

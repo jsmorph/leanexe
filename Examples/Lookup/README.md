@@ -1,20 +1,17 @@
 # Lookup: the first of ten pairs
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks, for 21 words
-`[query, key1, value1, …, key10, value10]`, for `[value, 1]` from the first pair whose key equals
-the query, and for `[0, 0]` when no key matches or the input has another length.  [The
-specification](Spec.lean) states it with ten ordered comparisons.
+[The request](request.txt) asks, for 21 words `[query, key1, value1, …, key10, value10]`, for
+`[value, 1]` from the first pair whose key equals the query, and for `[0, 0]` when no key matches or
+the input has another length.  [The specification](Spec.lean) states it with ten ordered
+comparisons.  [The program](Program.lean) runs a loop over the ten pairs with a found flag and the
+value of the first match as its state, and it returns a two-word array literal.  The reads past the
+end of a shorter input return 0, which Lean's `xs[i]!` also returns, and the length test selects
+`[0, 0]` for such an input.  [The module definition](Module.lean) compiles it into a 1,689-byte
+`lookup.wasm` that exports `compute`.
 
-[The program](Program.lean) runs a loop over the ten pairs with a found flag and the value of the
-first match as its state, and it returns a two-word array literal.  The reads past the end of a
-shorter input return 0, which Lean's `xs[i]!` also returns, and the length test selects `[0, 0]` for
-such an input.  [The module definition](Module.lean) compiles it into a 1,689-byte `lookup.wasm`
-that exports `compute`.
-
-## What it shows
+## The bytes return the first match
 
 | Theorem | Statement |
 |---------|-----------|
@@ -25,7 +22,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 `Quot.sound`.  The loop rule and the array-literal rule prove `Implements` for the program.  With
 `compute_eq`, proved by ten case splits, `Implements.congr` states it for the specification.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Lookup.Verify

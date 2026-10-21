@@ -1,6 +1,6 @@
 # Grids: arrays of records
 
-## What it is
+## Fourteen functions on arrays of records
 
 [The program](Program.lean) has fourteen functions on arrays whose elements are records: `Cell`, a
 structure with a nested `Conserved` structure, floats, words, a `Bool`, and a `Phase` enumeration;
@@ -9,7 +9,7 @@ build arrays of records with `LeanExe.build`, update fields with `{ c with … }
 a loop.  The types mirror the cell states of a fluid solver.  [The module definition](Module.lean)
 compiles the fourteen functions into the 3,249-byte `grids.wasm`.
 
-## What it shows
+## The flat layout and default records
 
 An array of records of `k` components stores each element's components in order, one word each, so
 element `i` occupies words `i · k` to `i · k + k − 1`, and the length word holds `n · k`.  A field
@@ -29,7 +29,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 `flatWords xs`, which [the LeanExe compiler manual](../../docs/leanexe-manual.md#representations)
 defines.  The Euler solvers store their grids in this layout.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Grids.Verify

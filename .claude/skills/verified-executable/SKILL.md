@@ -113,10 +113,11 @@ Examples.Name.Verify`.
 1. Run `tools/demo-check NAME`.  It must print the theorem line, the module, and
    `samples: N passed, 0 failed`.
 2. Write `README.md` in the form of [the prime-factor example's
-   README](../../../Examples/PrimeFactors/README.md), with its five sections: "What it is" (the
-   request, the specification and its decisions, and the program), "What it shows" (a table of the
-   theorems and the axioms), "Running it" (the commands, their output, and the tests), "Related
-   examples", and "References".
+   README](../../../Examples/PrimeFactors/README.md), with its five sections: "Request,
+   specification, and program" (the request, the specification and its decisions, and the
+   program), a section whose heading states the main theorem, such as "The bytes count prime
+   factors" (a table of the theorems and the axioms), "Building, running, and testing" (the
+   commands, their output, and the tests), "Related examples", and "References".
 3. Write `Cases.lean`, which prints the samples in the format of the module tests:
 
    ```lean

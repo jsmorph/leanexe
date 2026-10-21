@@ -1,6 +1,6 @@
 # Bucket: a float to word conversion
 
-## What it is
+## A histogram bucket index
 
 [The program](Program.lean) returns the index of the histogram bucket that holds `x`, for buckets of
 width `width` starting at `lo`: `((x - lo) / width).toUInt64`.  Lean's `Float.toUInt64` saturates,
@@ -8,7 +8,7 @@ so a negative or NaN quotient gives bucket 0, and a quotient beyond the word ran
 module definition](Module.lean) compiles `bucket` into the 1,374-byte `bucket.wasm`, which takes
 three `f64` arguments and returns an `i64`.
 
-## What it shows
+## The saturating conversion
 
 WebAssembly has a trapping conversion, `i64.trunc_f64_u`, and a saturating one,
 `i64.trunc_sat_f64_u`.  The compiler emits the saturating form, whose results for NaN, negative
@@ -25,7 +25,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 operations](../../docs/leanexe-manual.md#words-and-booleans) lists the conversion.  A width of 0
 gives an infinite or NaN quotient, which the conversion maps to 2^64 − 1 or 0.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Bucket.Verify

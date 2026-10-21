@@ -1,6 +1,6 @@
 # Gpt32: GPT-2 in binary32 on WGSL
 
-## What it is
+## One GPT-2 step as WGSL kernels
 
 [The program](Program.lean) is one generation step of GPT-2 124M in Lean `Float32`, binary32,
 written for GPU kernels: every array is a build element by element, and the helpers that kernels
@@ -11,7 +11,7 @@ kernels.  [The host program](HostProgram.lean) is the list of commands that runs
 definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`,
 which the browser page runs on the CPU for comparison.
 
-## What it shows
+## The host theorem and device measurements
 
 `generate_host` states that the host's commands, run from the loaded weights for a prompt and one
 more token, end with the scores of `step32`, the Lean step, in the output buffers, and that every
@@ -38,7 +38,7 @@ design document](../../docs/design.md#gpu) states what the device model adds to 
 and [the description of the pages](../../tests/web/README.md) states what is proved about the
 browser page.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Gpt32.Compose
