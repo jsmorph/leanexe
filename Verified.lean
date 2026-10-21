@@ -50,6 +50,8 @@ import Verified.Examples.Composition
 import Verified.Examples.CompositionPure
 import Verified.Examples.ScalarComposition
 import Verified.Examples.Relocation
+import Verified.WGSL.Compile
+import Verified.Examples.WgslProof
 import Verified.Examples.ListRecursion
 import Verified.Examples.ListLoops
 import Verified.Examples.ListTail

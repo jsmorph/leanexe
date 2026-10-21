@@ -42,6 +42,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Composition:module:composition \
     Verified.Examples.ScalarComposition:compiled.module:scalarcomposition \
     Verified.Examples.Relocation:module:relocation \
+    Verified.Examples.Wgsl:compiled.module:wgsl \
     Verified.Examples.ListRecursion:compiled.module:listrecursion \
     Verified.Examples.ListLoops:compiled.module:listloops \
     Verified.Examples.ListTail:compiled.module:listtail \
@@ -169,6 +170,9 @@ elif [ "$case_module" = "scalarcomposition" ]; then
 elif [ "$case_module" = "relocation" ]; then
   cases_module=Verified.Examples.RelocationCasesMain
   cases_source=Verified/Examples/RelocationCasesMain.lean
+elif [ "$case_module" = "wgsl" ]; then
+  cases_module=Verified.Examples.WgslWasmCasesMain
+  cases_source=Verified/Examples/WgslWasmCasesMain.lean
 elif [ "$case_module" = "listrecursion" ]; then
   cases_module=Verified.Examples.ListRecursionCasesMain
   cases_source=Verified/Examples/ListRecursionCasesMain.lean
