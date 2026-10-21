@@ -157,8 +157,8 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 |---|---|---|
 | `unsupported term …` | A term that no rule covers: an unlisted helper without `@[inline]`, `for`, or an opaque float function | List the callee before its callers, mark a helper `@[inline]`, use the combinators, or define the float function. |
 | `Array.foldl requires start = 0`, `Array.foldl requires stop = xs.size` | A fold over part of an array | Use a word-counted `LeanExe.loop` for that range. |
-| `the type … is not UInt64, Bool, Float, a structure with a Flat instance, an array, or a pair` | A parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
-| `= and ≠ on Float compare bit patterns; use == and !=` | `=` or `≠` on floats | Use `==` or `!=`. |
+| ``the type … is not UInt64, Bool, Float, Float32, a structure with a `Flat` instance, an array, or a pair`` | A parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
+| `= and ≠ on … compare bit patterns; use == and !=` | `=` or `≠` on `Float` or `Float32` | Use `==` or `!=`. |
 | ``an index must be `i.toNat` for a word `i` ``, ``a position must be `i.toNat` for a word `i` `` | A read or an update at a position that is not a word's `toNat` | Index with `i.toNat` for `i : UInt64`. |
 | `Lean has no Represent instance for …, so no theorem can be stated for it` | A parameter or result whose type has no instance, such as an array of tuples | Keep such an array local, or use an array of structures with a `Flat` instance. |
 | `an array holds elements, not …` | An array of arrays, or of records with array fields | Store the inner arrays in one array at computed positions. |
