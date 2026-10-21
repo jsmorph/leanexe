@@ -312,7 +312,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: a proof of the I/O adapter.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
-- [x] Verified compiler: typed program composition, call relocation, meaning transport, and scalar calls that preserve the whole store.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#module-composition) gives the composition API and tests.  The phase's full gates remain required before publication to main.
+- [x] Verified compiler: typed program composition, call relocation, meaning transport, and scalar calls that preserve the whole store.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#module-composition) gives the composition API and tests.  The full gates passed at `838979b2`, now on `main`.
 - [ ] Verified compiler: complete the full gates for the WGSL path and binary32 GPT.  [Source lowering](../Verified/WGSL/Compile.lean), all thirteen [binary32 kernels](../Verified/Examples/Gpt32.lean), and [their host-generation theorem](../Verified/Examples/Gpt32Host.lean) are implemented.  Focused proofs, the kernel axiom audit, and 220 Wasm cases pass.
 - [ ] Verified compiler: owned record and pair parameters.
 
