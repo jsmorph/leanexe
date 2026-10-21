@@ -36,7 +36,9 @@ with strict binary32 arithmetic, race-free dispatch, and error-free execution.
 
 ### Outside the proofs
 
-The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.  `p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables, and no theorem covers the host or the I/O around a call.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the numerical index](../index.md) and each function's document.
+The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.
+
+`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the numerical index](../index.md) and each function's document.
 
 ## The dialect
 

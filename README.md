@@ -84,8 +84,8 @@ The theorems of both compilers depend on Lean's kernel with the axioms `propext`
 WebAssembly testsuite tests, and the step from a module constant to a file.  Neither compiler is
 trusted, since the kernel checks every theorem and a wrong translation makes a proof fail.  The
 floating-point theorems describe the WebAssembly deterministic profile, which the Wasmtime host
-matches by enabling NaN canonicalization, and the WGSL theorems hold under a model of the GPU.  No
-theorem covers the host or the I/O around a call.
+matches by enabling NaN canonicalization, and the WGSL theorems hold under a model of the GPU.
+The host executables and their I/O remain outside the proofs.
 
 ## Documentation
 

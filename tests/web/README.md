@@ -88,15 +88,20 @@ address takes the controls as parameters, such as
 `?mode=both&power=high-performance&tokens=32&seed=42&run=1`, where `run=1` loads and generates
 without clicks.
 
-## What Is Proved
+## Proofs
 
-`generate_host` proves that, on a device with strict binary32 arithmetic, the commands of the setup
-and of each step leave in the score buffers exactly the bits of `step32`, the binary32 GPT-2 step of
-[`Examples/Gpt32/Program.lean`](../../Examples/Gpt32/Program.lean).  `sampleTopK_implements` proves
-that `sampleTopK` in `gpt.wasm` computes the Lean function of the same name.  The JavaScript hosts,
-the generation loop, the server, the tokenizer, and the browser's WebGPU implementation are
-unproved, and the kernels of `gpt32.wasm` have no WebAssembly theorem.  On a device outside the
-strict profile, no theorem applies, and the compared mode measures the difference.
+Under its shape, token, loaded-weight, and device assumptions, `generate_host` proves that the
+setup and step commands leave the bits of native `step32` in the score buffers and that every
+dispatch is race-free.  [The program](../../Examples/Gpt32/Program.lean) defines that binary32
+GPT-2 step.  `sampleTopK_implements` proves that `sampleTopK` in `gpt.wasm` computes the Lean
+function of the same name.  The page uses the original compiler's `build/gpt32/gpt32.wasm`.
+That module, the JavaScript hosts, the generation loop, the server, the tokenizer, and the
+browser's WebGPU implementation remain outside those proofs.  The
+[Verified version](../../Examples/Gpt32/README.md#verified-compiler) has Wasm
+execution theorems for its own module and a host-command theorem for its kernels.  The compared
+mode measures differences between the page's GPU and Wasm results.
+
+These browser measurements used the shared translation before arithmetic-NaN normalization:
 
 | Device | Kernel tests | GPT-2, compared mode |
 |---|---|---|
