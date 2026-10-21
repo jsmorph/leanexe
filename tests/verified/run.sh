@@ -39,6 +39,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.TreeCopy:module:treecopy \
     Verified.Examples.TreeCore:module:treecore \
     Verified.Examples.Lists:compiled.module:lists \
+    Verified.Examples.Composition:module:composition \
     Verified.Examples.ListRecursion:compiled.module:listrecursion \
     Verified.Examples.ListLoops:compiled.module:listloops \
     Verified.Examples.ListTail:compiled.module:listtail \
@@ -157,6 +158,9 @@ elif [ "$case_module" = "treecore" ]; then
 elif [ "$case_module" = "lists" ]; then
   cases_module=Verified.Examples.ListsCasesMain
   cases_source=Verified/Examples/ListsCasesMain.lean
+elif [ "$case_module" = "composition" ]; then
+  cases_module=Verified.Examples.CompositionCasesMain
+  cases_source=Verified/Examples/CompositionCasesMain.lean
 elif [ "$case_module" = "listrecursion" ]; then
   cases_module=Verified.Examples.ListRecursionCasesMain
   cases_source=Verified/Examples/ListRecursionCasesMain.lean

@@ -413,6 +413,22 @@ each table at its address, so the theorems apply to the first call.  The reflect
 each program as `p.initial`.  A wrapper is no function of the program, so other functions pass
 tables as parameters.
 
+## Module composition
+
+[Prefix composition](ModuleComposition.lean) carries a program's correctness into any module
+that keeps its functions at their original indices and provides the shared runtime.
+`Prog.calls_prefix` requires the program's function list to be a prefix after the two runtime
+functions.  `Prog.calls_extension` applies that rule to a larger compiled program, including its
+tables and wrappers.  The original program's meaning proof, allocation bounds, and frames
+conditions apply in the larger module.
+
+The [library example](Examples/CompositionBase.lean) compiles word addition and float scaling.
+The [larger module](Examples/Composition.lean) reuses that program, adds typed callers, and
+derives the library functions' execution theorems from prefix composition.  Its
+[cases](Examples/CompositionCases.lean) check results and zero allocation through
+`tests/verified/run.sh --cases composition`.  Automatic library reuse, function relocation, and
+store-preservation theorems remain pending.
+
 ## The reflector
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
