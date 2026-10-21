@@ -3,20 +3,19 @@ import LeanExe.WGSL.Semantics
 namespace LeanExe.WGSL
 
 def nanBits (bits : UInt32) : Bool :=
-  (decide ((0x7f800000 : UInt32) < bits) && decide (bits < 0x80000000)) ||
-    decide ((0xff800000 : UInt32) < bits)
+  decide ((0xff000000 : UInt32) < bits * 2)
 
 theorem nanBits_eq (bits : UInt32) : nanBits bits = Wasm.IEEE32.isNaN bits := by
   apply Bool.eq_iff_iff.mpr
-  simp only [nanBits, Bool.or_eq_true, Bool.and_eq_true, decide_eq_true_eq,
-    UInt32.lt_iff_toNat_lt, UInt32.reduceToNat, Wasm.IEEE32.isNaN, Wasm.IEEE32.exponent,
+  simp only [nanBits, decide_eq_true_eq, Bool.and_eq_true,
+    UInt32.lt_iff_toNat_lt, UInt32.toNat_mul, UInt32.reduceToNat,
+    Wasm.IEEE32.isNaN, Wasm.IEEE32.exponent,
     Wasm.IEEE32.fraction, beq_iff_eq, bne_iff_ne]
   have := bits.toNat_lt
   omega
 
 def nanExpr (bits : Expr) : Expr :=
-  .bin .or (.bin .and (.bin .lt (.lit 0x7f800000) bits) (.bin .lt bits (.lit 0x80000000)))
-    (.bin .lt (.lit 0xff800000) bits)
+  .bin .lt (.lit 0xff000000) (.bin .mul bits (.lit 2))
 
 def canonical32 (bits : UInt32) : UInt32 :=
   if Wasm.IEEE32.isNaN bits then Wasm.IEEE32.canonicalNaN else bits
@@ -28,10 +27,7 @@ theorem eval_nanExpr (ctx : Context) (env : Env) (e : Expr) (bits : UInt32)
     (h : e.eval ctx env = some (.u32 bits)) :
     (nanExpr e).eval ctx env = some (.bool (Wasm.IEEE32.isNaN bits)) := by
   rw [← nanBits_eq bits]
-  cases h1 : decide ((0x7f800000 : UInt32) < bits) <;>
-    cases h2 : decide (bits < (0x80000000 : UInt32)) <;>
-    cases h3 : decide ((0xff800000 : UInt32) < bits) <;>
-    simp [nanExpr, nanBits, Expr.eval, BinOp.apply, h, h1, h2, h3]
+  simp [nanExpr, nanBits, Expr.eval, BinOp.apply, h]
 
 theorem eval_canonicalF32 (ctx : Context) (env : Env) (e : Expr) (bits : UInt32)
     (h : e.eval ctx env = some (.f32 bits)) :
