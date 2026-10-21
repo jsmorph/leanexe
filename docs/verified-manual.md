@@ -8,6 +8,10 @@ This manual describes the verified compiler, the library `Verified`: the Lean di
 
 The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  One theorem, `Prog.correctWith` in [`Verified/Correct.lean`](../Verified/Correct.lean), states that the module of every program of the source language, with its tables and wrappers, computes the program's meaning, so no program needs a proof of its own.  `Prog.correct` states the same for a program without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.
 
+`Verified.WGSL.compile` also translates supported typed array builds to WGSL and returns a kernel
+with proofs of its translation and local layout.  [The WGSL section](#wgsl-kernels) describes
+that subset and its dispatch theorem.
+
 ### What the theorems state
 
 `p.f.implements` states `ImplementsA aborts p.module k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)), where `k` is the index of `f`'s function or entry in the module.  From any heap and store with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent `x`, whose moved blocks lie apart from one another and from the memory that the call reads, a run returns words that represent `f x` and that the caller owns.  The run keeps the allocator invariant and the cap, keeps every region of the caller's heap that lies apart from the moved blocks, and places the result apart from those regions.  When `aborts` is true, a run may instead trap at `unreachable`, which the code does only when an allocation finds no memory, an array would hold `2^29` words or more, or a recursion reaches depth 1,000.  `aborts` is true when the function's result holds arrays, a parameter is owned, the body builds, updates, extends, inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose code takes the call depth, whose result holds arrays, or which owns a parameter.  List construction and matching also enable `aborts`.  The compiler uses this flag conservatively.  A generated `trapFree` theorem excludes a trap under its allocation bound and frames condition.
@@ -26,6 +30,9 @@ theorems for both float widths, word division, tail recursion, and call chains.
 ### Trusted base
 
 The trusted base is that of the LeanExe compiler: Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [`tools/Emit.lean`](../tools/Emit.lean) performs.  [The LeanExe compiler manual](leanexe-manual.md#trusted-base) describes each part.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [`Verified/Heap.lean`](../Verified/Heap.lean), which states that `top` plus a bound fits within the memory cap, the allocation bound of [`Verified/Bound.lean`](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The compiler, the reflector, and the bound equations are not trusted, since the kernel checks every theorem they produce.
+
+WGSL dispatch uses the shared [device model](leanexe-manual.md#wgsl-kernels-and-the-browser-pages),
+with strict binary32 arithmetic, race-free dispatch, and error-free execution.
 
 ### Outside the proofs
 
@@ -236,6 +243,44 @@ combined module.  `Prog.correct` applies to the combined meaning proof, includin
 functions and new callers.  The scalar proof generator also accepts a composed module.
 [The relocation example](../Verified/Examples/Relocation.lean) gives native and whole-store
 theorems for a retained function, a relocated tail loop, and a caller of both libraries.
+
+### WGSL kernels
+
+[`Verified.WGSL.compile`](../Verified/WGSL/Compile.lean) translates a reflected function's typed
+body to a WGSL kernel.  The body must be an outer `LeanExe.build`, whose count is a word
+parameter or an input array's length.  Parameters and array elements are words, Booleans, or
+binary32 values.  The per-element subset includes borrowed reads, scalar bindings, conditional
+branches, and counted loops with word, Boolean, or binary32 state.  Helpers marked `@[inline]`
+can unfold into the element expression.  Source calls, heap operations inside an element,
+binary64 values, and composite parameter or element types are outside this subset.
+
+Word arithmetic includes addition, subtraction, multiplication, and division or remainder by a
+constant power of two from 2 through 2³¹.  Binary32 operations include arithmetic, comparisons,
+square root, absolute value, negation, nearest-even rounding, and conversion to or from bit
+patterns.  The shared WGSL translation normalizes arithmetic NaNs to `0x7fc00000`.
+
+After `verified_compile compiled := [scale]`, the typed API constructs the kernel as follows:
+
+```lean
+import Verified.WGSL.Compile
+
+def gpu := (Verified.WGSL.compile (e := .float32) compiled.scale.func.body).get (by decide +kernel)
+def kernel : LeanExe.WGSL.Module := gpu.module
+```
+
+Compilation returns `none` when translation or the local-layout check fails.  Each successful
+result carries their proofs.  `gpu.dispatch_eq` states that dispatch returns the source array,
+encoded as words, and that the dispatch is race-free.  Its conditions include input arrays and
+an output count below 2²⁹, the count's agreement with its parameter or array, an output buffer
+with the length header and room for every element, and enough invocations to cover the output.
+The theorem uses the existing device model of strict binary32 arithmetic and error-free
+execution.  [The kernel examples](../Verified/Examples/Wgsl.lean) compile ordinary Lean
+definitions with both backends.  [Their native-value proofs](../Verified/Examples/WgslProof.lean)
+combine the generic dispatch theorem with the generated `denote_eq` equations.
+
+`tools/EmitWgsl.lean` emits the resulting module through the existing printer/parser check.
+`tests/wgsl/run.sh --verified` compares the checked cases on SwiftShader and Lavapipe.
+`tests/verified/run.sh --cases wgsl` compares the same cases in Wasmtime and checks allocations.
 
 ### Emitting and running
 

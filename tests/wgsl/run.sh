@@ -3,12 +3,22 @@
 # tools/EmitWgsl.lean prints, and compares the output words with native Lean's.  The kernels
 # and the cases stay in the build directory's wgsl/, where tests/web/serve.py serves them to the
 # browser page of tests/wgsl/browser.
-# Usage: tests/wgsl/run.sh [build directory]
+# Usage: tests/wgsl/run.sh [--verified] [build directory]
 set -euo pipefail
+verified=0
+if [ "${1:-}" = "--verified" ]; then
+  verified=1
+  shift
+fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 build=${1:-$root/build}
 host=$root/build/tools/leanexe-webgpu-host
 mkdir -p "$build/wgsl"
+case_source=tests/wgsl/Cases.lean
+if [ "$verified" -eq 1 ]; then
+  case_source=Verified/Examples/WgslCasesMain.lean
+  (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain)
+fi
 for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wgsl:Examples.Binary32:axpyArray \
     Examples.Binary32.Wgsl:Examples.Binary32:matVec Examples.Binary32.Wgsl:Examples.Binary32:condMix \
     Examples.Gpt32.Kernels:Examples.Gpt32:exp Examples.Gpt32.Specs:Examples.Gpt32:embed \
@@ -17,21 +27,41 @@ for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wg
     Examples.Gpt32.Specs:Examples.Gpt32:headMax Examples.Gpt32.Specs:Examples.Gpt32:headSum \
     Examples.Gpt32.Specs:Examples.Gpt32:probs Examples.Gpt32.Specs:Examples.Gpt32:mix \
     Examples.Gpt32.Specs:Examples.Gpt32:add Examples.Gpt32.Specs:Examples.Gpt32:gelu \
-    Examples.Gpt32.Specs:Examples.Gpt32:logits; do
+    Examples.Gpt32.Specs:Examples.Gpt32:logits \
+    Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedScale \
+    Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedBranch \
+    Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedFlags \
+    Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedWords \
+    Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedRoots; do
   IFS=: read -r module namespace kernel <<<"$entry"
+  if [ "$verified" -eq 1 ]; then
+    [ "$module" = "Verified.Examples.Wgsl" ] || continue
+  elif [ "$module" = "Verified.Examples.Wgsl" ]; then
+    continue
+  fi
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/EmitWgsl.lean \
     "$module" "$namespace.${kernel}Kernel" "$build/wgsl/$kernel.wgsl")
 done
 cases=$build/wgsl/cases.txt
 # Reads past the end of a shorter array with `!` print panic messages from native Lean, which then
 # returns the default 0; they are expected.
-(cd "$root" && tools/leanrun --timeout 10m lake env lean --run tests/wgsl/Cases.lean) >"$cases" \
-  2>/dev/null
+if (cd "$root" && tools/leanrun --timeout 10m lake env lean --run "$case_source") >"$cases" \
+    2>"$build/wgsl/cases.stderr.log"; then
+  true
+else
+  result=$?
+  cat "$build/wgsl/cases.stderr.log" >&2
+  exit "$result"
+fi
 status=0
 for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/lvp_icd.json; do
   passed=0
   failed=0
+  case_number=0
+  failures=$build/wgsl/$(basename "$driver" .json).failures.txt
+  : >"$failures"
   while IFS='|' read -r kernel groups output inputs expected; do
+    case_number=$((case_number + 1))
     read -ra argv <<<"$inputs"
     out=$(VK_ICD_FILENAMES=$driver "$host" run "$build/wgsl/$kernel.wgsl" main "$groups" \
       "$output" "${argv[@]}")
@@ -39,7 +69,10 @@ for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/
       passed=$((passed + 1))
     else
       failed=$((failed + 1))
-      echo "fail: $kernel on $(basename "$driver") with $groups workgroups: $out, expected $expected"
+      printf '%s|%s|%s|%s|%s|%s\n' "$case_number" "$kernel" "$groups" "$output" "$inputs" \
+        "$expected" >>"$failures"
+      printf 'actual|%s\n' "$out" >>"$failures"
+      echo "fail: $kernel on $(basename "$driver") case $case_number; values in $failures"
     fi
   done <"$cases"
   echo "$(basename "$driver" .json): passed $passed failed $failed"

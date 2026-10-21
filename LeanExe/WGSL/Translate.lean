@@ -1,5 +1,6 @@
 import LeanExe.WGSL.Pair
 import LeanExe.IR.Denote
+import LeanExe.WGSL.F32Result
 
 /-!
 The translation of IR expressions of the kernel subset into WGSL `let` statements, one per node,
@@ -28,6 +29,22 @@ def F32UnOp.wgsl : LeanExe.IR.F32UnOp → Expr → Expr
   | .sqrt, e => .sqrt e
   | .nearest, e => .round e
   | .abs, e => .abs e
+
+def F32UnOp.finish : LeanExe.IR.F32UnOp → Expr → Expr
+  | .abs, e => e
+  | _, e => canonicalF32 e
+
+theorem F32UnOp.finish_eval (op : LeanExe.IR.F32UnOp) (ctx : Context) (env : Env)
+    (e : Expr) (bits : UInt32) (h : e.eval ctx env = some (.f32 (op.apply bits))) :
+    (F32UnOp.finish op e).eval ctx env = some (.f32 (op.apply bits)) := by
+  cases op with
+  | abs => exact h
+  | sqrt =>
+      have hc := eval_canonicalF32 ctx env e _ h
+      simpa only [F32UnOp.finish, LeanExe.IR.F32UnOp.apply, canonical_f32_sqrt] using hc
+  | nearest =>
+      have hc := eval_canonicalF32 ctx env e _ h
+      simpa only [F32UnOp.finish, LeanExe.IR.F32UnOp.apply, canonical_f32_nearest] using hc
 
 /-- The exponent `s` of a constant `2^s` with `1 ≤ s ≤ 31`. -/
 def pow2Exp? (c : UInt64) : Option Nat :=
@@ -128,10 +145,12 @@ def trExpr (F : Layout) : {type : LeanExe.IR.ScalarType} → LeanExe.IR.Expr typ
   | .f32, .binF32 op left right, next => do
       let (sl, vl, n1) ← trExpr F left next
       let (sr, vr, n2) ← trExpr F right n1
-      pure (sl ++ sr ++ [.let_ n2 .f32 (.bin (F32Op.wgsl op) (.var vl) (.var vr))], n2, n2 + 1)
+      pure (sl ++ sr ++ [.let_ n2 .f32 (.bin (F32Op.wgsl op) (.var vl) (.var vr)),
+        .let_ (n2 + 1) .f32 (canonicalF32 (.var n2))], n2 + 1, n2 + 2)
   | .f32, .unF32 op operand, next => do
       let (so, vo, n1) ← trExpr F operand next
-      pure (so ++ [.let_ n1 .f32 (F32UnOp.wgsl op (.var vo))], n1, n1 + 1)
+      pure (so ++ [.let_ n1 .f32 (F32UnOp.wgsl op (.var vo)),
+        .let_ (n1 + 1) .f32 (F32UnOp.finish op (.var n1))], n1 + 1, n1 + 2)
   | .f32, .ofBits32 operand, next => do
       let (so, vo, n1) ← trExpr F operand next
       pure (so ++ [.let_ n1 .f32 (.toF32 (.fst vo))], n1, n1 + 1)
@@ -986,7 +1005,7 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
             | some rv =>
               simp only [hdl, hdr, Option.bind_some, Option.some.injEq] at hden
               subst hden
-              exact simulates_bin .f32 (.bin (F32Op.wgsl op) (.var vl) (.var vr))
+              have hRaw := simulates_bin .f32 (.bin (F32Op.wgsl op) (.var vl) (.var vr))
                 (wgslValue .f32 (op.apply lv rv))
                 (ihl next sl vl n1 hl lv hdl env hAgree hFresh)
                 (fun added hb hle => ihr n1 sr vr n2 hr rv hdr (added ++ env)
@@ -998,6 +1017,14 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
                   cases op <;> simp [Expr.eval, h1, h2, F32Op.wgsl, BinOp.apply,
                     LeanExe.IR.F32Op.apply, wgslValue])
                 rfl
+              have hFinal := simulates_step .f32 (canonicalF32 (.var n2))
+                (wgslValue .f32 (op.apply lv rv)) hRaw hFresh
+                (fun added _ _ hfr => by
+                  have hv : Expr.eval ctx (added ++ env) (.var n2) =
+                      some (.f32 (op.apply lv rv)) := by simp [Expr.eval, hfr, wgslValue]
+                  have hc := eval_canonicalF32 ctx (added ++ env) (.var n2) _ hv
+                  simpa only [canonical_f32_bin, wgslValue] using hc) rfl
+              simpa only [List.append_assoc, List.cons_append, List.nil_append] using hFinal
   | unF32 op operand ih =>
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr
@@ -1013,13 +1040,18 @@ theorem trExpr_sim (F : Layout) (locals : Nat → Option Wasm.Value)
         | some w =>
           simp only [hd, Option.map_some, Option.some.injEq] at hden
           subst hden
-          exact simulates_step .f32 (F32UnOp.wgsl op (.var vo)) (wgslValue .f32 (op.apply w))
+          have hRaw := simulates_step .f32 (F32UnOp.wgsl op (.var vo)) (wgslValue .f32 (op.apply w))
             (ih next so vo n1 ho w hd env hAgree hFresh) hFresh
             (fun added _ _ hfr => by
               simp only [wgslValue] at hfr
               cases op <;> simp [Expr.eval, hfr, F32UnOp.wgsl, LeanExe.IR.F32UnOp.apply,
                 wgslValue])
             rfl
+          have hFinal := simulates_step .f32 (F32UnOp.finish op (.var n1))
+            (wgslValue .f32 (op.apply w)) hRaw hFresh
+            (fun added _ _ hfr => F32UnOp.finish_eval op ctx (added ++ env) (.var n1) w
+              (by simp [Expr.eval, hfr, wgslValue])) rfl
+          simpa only [List.append_assoc, List.cons_append, List.nil_append] using hFinal
   | ofBits32 operand ih =>
       intro next stmts res next' htr v hden env hAgree hFresh
       simp only [trExpr, Option.bind_eq_bind, Option.pure_def] at htr

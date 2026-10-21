@@ -55,7 +55,7 @@ document states its theorem's domain and exceptional cases.
 | Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctWith` for programs with tables and wrappers, and `Prog.correct` without tables |
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | Total execution | `ImplementsA false` with a memory budget, proved for the Euler solvers, the drone planner, and the increment example | `p.f.trapFree` for source functions and wrappers without call depth, under the allocation bound and, for code that calls guarded recursion, a frames condition |
-| `Float32` and WGSL kernels | Supported | Float32 values, arrays, arithmetic, comparisons, and word conversions.  WGSL remains pending. |
+| `Float32` and WGSL kernels | Supported | Float32 values, arrays, arithmetic, comparisons, and word conversions, with a proved WGSL path for word, Boolean, and binary32 build kernels |
 | Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
 | Tail recursion | Compiled as a loop | Recognized tail recursion compiles as a loop.  Other recursion uses a depth limit of 1,000. |
@@ -70,12 +70,10 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for code that calls guarded recursion, its frames condition.  A program that needs
-WGSL kernels
-compiles only with the LeanExe compiler.  Binary64 GPT-2 and the Euler solvers compile with both
-compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
+WGSL kernels can use either compiler's proved path.  Binary64 GPT-2 and the Euler solvers compile
+with both compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified
-compiler has its own definitions of the IR parts it needs, and nothing in `LeanExe` or `Examples`
-imports `Verified`, so a change to either compiler's code leaves the other compiler unchanged.
+compiler uses its own IR for Wasm and the shared IR-to-WGSL translation for kernels.
 
 ### Trusted base
 

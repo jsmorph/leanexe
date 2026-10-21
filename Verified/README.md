@@ -450,6 +450,28 @@ reuses two separately reflected libraries and adds a caller of both.  Its native
 whole-store theorems apply at the combined module's indices, and its
 [cases](Examples/RelocationCases.lean) reuse the scalar corpus after relocation.
 
+## WGSL kernels
+
+[The WGSL compiler](WGSL/Compile.lean) translates an outer typed array build to the existing
+IR and WGSL subset.  [Typed representations](WGSL/Context.lean) relate source values to scalar
+expressions and borrowed input buffers.  [Lowering](WGSL/Lower.lean) recursively constructs
+[code with a denotation proof](WGSL/Code.lean), using shared rules for bindings, branches, and
+counted loops.  Parameters, loop state, and output elements use words, Booleans, or binary32
+values.  Unsupported expressions return `none`.
+
+[Kernel construction](WGSL/Kernel.lean) checks the local layout and WGSL translation and retains
+their proofs.  [Dispatch correctness](WGSL/Dispatch.lean) combines the lowered element theorem
+with the existing generic dispatch theorem.  Every accepted source build computes its source
+array and has a race-free dispatch under that theorem's buffer, count, coverage, and device
+conditions.  [The manual's WGSL section](../docs/verified-manual.md#wgsl-kernels) states the
+accepted subset and API.  [The examples](Examples/Wgsl.lean) and
+[native-value proofs](Examples/WgslProof.lean) specialize the result to reflected Lean functions.
+
+The shared WGSL translation normalizes binary arithmetic, square root, and nearest-even results
+with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean).
+[Result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
+strict-model result.  The original and verified compilers use this translation.
+
 ## The reflector
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),
