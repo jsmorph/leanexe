@@ -47,9 +47,9 @@ def pushFlag (bs : Array Bool) (b : Bool) : Array Bool := bs.push b
 /-- The flags of the composite numbers below `n`, from a sieve of Eratosthenes. -/
 def sieve (n : UInt64) : Array Bool :=
   LeanExe.loop n (LeanExe.build n fun _ => false) fun i acc =>
-    if i < 2 then acc
+    if i < 2 || acc[i.toNat]! then acc
     else LeanExe.loop n acc fun j flags =>
-      if j ≥ 2 && i * j < n then flags.set! (i * j).toNat true else flags
+      if j ≥ i && i * j < n then flags.set! (i * j).toNat true else flags
 
 verified_compile compiled := [total, dot, largest, grid, axpy, extend, negatives, countTrue,
   select, flip, pushFlag, sieve]
