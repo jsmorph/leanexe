@@ -1,9 +1,24 @@
 #!/usr/bin/env bash
 # Compares every case of tests/modules/Cases.lean between the Wasmtime host running
 # build/MODULE/MODULE.wasm and native Lean.
-# Usage: tests/modules/run.sh [build directory] | --module NAME WASM
+# Usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY
 set -euo pipefail
+export PATH="$PATH:$HOME/.cargo/bin"
 root=$(cd "$(dirname "$0")/../.." && pwd)
+if [ "$#" -eq 2 ] && [ "$1" = "--check-bytes" ] && [ -n "$2" ]; then
+  scratch=$2
+  cd "$root"
+  while IFS=: read -r namespace module name; do
+    mkdir -p "$scratch/$name"
+    tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
+      "Examples.$namespace.$module" "Examples.$namespace.$name.module" \
+      "$scratch/$name/$name.wasm"
+    wasm-tools validate "$scratch/$name/$name.wasm"
+    cmp "$scratch/$name/$name.wasm" "$root/build/$name/$name.wasm"
+    echo "$name: bytes unchanged"
+  done <"$root/tests/modules/modules.txt"
+  exit 0
+fi
 case_module=""
 case_wasm=""
 build=$root/build
@@ -13,7 +28,7 @@ elif [ "$#" -eq 3 ] && [ "$1" = "--module" ] && [ -n "$2" ] && [ -n "$3" ]; then
   case_module=$2
   case_wasm=$3
 else
-  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM" >&2
+  echo "usage: tests/modules/run.sh [build directory] | --module NAME WASM | --check-bytes DIRECTORY" >&2
   exit 2
 fi
 host=$root/build/tools/leanexe-wasmtime-host
