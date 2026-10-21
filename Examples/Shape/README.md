@@ -1,6 +1,6 @@
 # Shape: a sum type
 
-## What it is
+## `Shape`, a sum of three constructors
 
 [The program](Program.lean) declares `Shape`, a sum of three constructors with different fields: a
 circle of float radius, a rectangle of word sides, and a point.  Its functions compute an area with
@@ -9,7 +9,7 @@ rectangle, and normalize a point into an empty rectangle.  `totalArea` sums the 
 that an array encodes, three words each, in a loop with a float state.  [The module
 definition](Module.lean) compiles the seven functions into the 2,232-byte `shapes.wasm`.
 
-## What it shows
+## Sums as tuples of slots
 
 The compiler represents a sum as a tuple: the constructor index, then one slot for each field of
 each constructor, with zeros in the slots of the other constructors.  For `Shape` that is a word, a
@@ -30,7 +30,7 @@ closed by `decide +kernel`, and the float operations by the binary64 lemmas of
 manual](../../docs/leanexe-manual.md#records-and-user-types) describes the representation of user
 types.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Shape.Verify

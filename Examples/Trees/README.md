@@ -1,6 +1,6 @@
 # Trees: recursion, moves, and records on the heap
 
-## What it is
+## `KeyTree` and three modules
 
 [The program](Program.lean) declares `KeyTree`, a binary tree with a word at each node, and about
 thirty functions on it.  A leaf is the null pointer, and `node l k r` is a record of three slots:
@@ -11,7 +11,7 @@ them: [`Module.lean`](Module.lean) gives the 3,166-byte `trees.wasm` of function
 tree, [`Moves.lean`](Moves.lean) the 3,758-byte `treeMoves.wasm` of functions that consume it, and
 [`Frame.lean`](Frame.lean) the 1,686-byte `treeFrame.wasm`, which exists for the depth test only.
 
-## What it shows
+## Recursion depth, moves, and copies
 
 A definition that calls itself other than in tail position compiles to an entry function and an
 internal function `f.rec` with a depth parameter, which traps at `unreachable` at depth 1,000 so
@@ -36,7 +36,7 @@ at depth 999 and traps at 1,000.  [The LeanExe compiler
 manual](../../docs/leanexe-manual.md#recursion) gives the rules for recursion, and [its section on
 ownership](../../docs/leanexe-manual.md#ownership) the rules for moves and lending.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Trees.Verify Examples.Trees.MovesVerify

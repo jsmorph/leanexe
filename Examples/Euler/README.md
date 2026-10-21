@@ -1,6 +1,6 @@
 # Euler: two finite-volume solvers for the 2D Euler equations
 
-## What it is
+## Two solvers on a four-quadrant Riemann problem
 
 This example holds two solvers for the compressible Euler equations of an ideal gas on the unit
 square, run on the four-quadrant Riemann problem with interfaces at x = y = 0.8 to time 0.8, the
@@ -12,7 +12,7 @@ only.  [The module definition](Module.lean) compiles both into one 23,012-byte m
 `euler.wasm`, whose `solve` and `reconstructedSolve` exports run a whole calculation, from the
 initial grid to the final one, in one call.
 
-## What it shows
+## Theorems about the bytes and the solvers
 
 The solvers use grids of records, a `LeanExe.repeatWhile` loop over time steps whose grids move from
 step to step, retries of rejected steps, and the sound-speed and flux arithmetic of each cell.
@@ -48,7 +48,7 @@ is unproved.  The two run records, [the first-order record](first-order/README.m
 reconstructed record](reconstructed/README.md), give the full statements, the figures, and the runs
 on the 192 and 800 grids.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Euler.Verify Examples.Euler.Total

@@ -6,7 +6,7 @@ The repository is one Lake package at its root, with the libraries `LeanExe` (th
 
 Two compilers translate Lean functions to Talos modules, and `encode` produces the bytes.  The LeanExe compiler translates a Lean function to an IR, `compile` translates the IR to a `Wasm.Module`, and a per-program proof shows that the module computes the Lean function exactly.  The verified compiler translates a typed source program with `compileWith`, and one theorem shows for every program that the module computes the program's meaning.  A binary decoder, tested against the official WebAssembly testsuite, defines what the bytes mean, and `decode_encode` gives each theorem for the module that the decoder reads from the bytes.  The system is kept small, and the work proceeds in increments that each produce bytes and a theorem.
 
-## Design
+## Components of the two compilers
 
 The LeanExe compiler is not verified as a whole.  Each of its rules gets its own theorem and an entry in the LTG knowledge base, so per-program proofs shrink while the trusted base stays the same.  Per-program proofs, using the LTG entries, cover what the rules do not.  [The `Verified` library](../Verified/README.md) is a second compiler, written as a Lean function over a typed source language, whose one theorem covers every program it accepts.
 
@@ -23,7 +23,7 @@ The LeanExe compiler is not verified as a whole.  Each of its rules gets its own
 
 [The LeanExe compiler manual](leanexe-manual.md) describes what each component covers.  The trusted base is Lean's kernel, Talos's semantics, the decoder, the step from a module constant to a file, and any I/O adapter.  The LeanExe compiler's dialect has fixed-width integers and IEEE floats, compiles `panic` to `default`, allows recursive values, and does I/O through a pure step function driven by a fixed adapter.  Rule lemmas state what their templates leave unchanged, meaning the locals they do not write and the memory outside the blocks they allocate or write, because lemmas for nested templates do not compose otherwise.
 
-The verified compiler shares the runtime, `Implements`, the encoding, and the trusted base, and it has these components of its own.  Its one theorem replaces the LeanExe compiler's per-program proofs and hints.  [The verified compiler manual](verified-manual.md) describes its dialect and theorems, and [its internals](../Verified/README.md) describe the code and the proof.
+The verified compiler shares the runtime, `Implements`, the encoding, and the trusted base.  Its one theorem replaces the LeanExe compiler's per-program proofs and hints.  [The verified compiler manual](verified-manual.md) describes its dialect and theorems, and [its internals](../Verified/README.md) describe the code and the proof.
 
 | Component | Design |
 |---|---|

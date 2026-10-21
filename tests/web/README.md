@@ -88,7 +88,7 @@ address takes the controls as parameters, such as
 `?mode=both&power=high-performance&tokens=32&seed=42&run=1`, where `run=1` loads and generates
 without clicks.
 
-## What Is Proved
+## Theorems and device results
 
 `generate_host` proves that, on a device with strict binary32 arithmetic, the commands of the setup
 and of each step leave in the score buffers exactly the bits of `step32`, the binary32 GPT-2 step of

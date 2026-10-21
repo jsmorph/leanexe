@@ -1,21 +1,18 @@
 # Below 100: a filter of at most eight words
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks for the elements of
-an array of at most eight words that are less than 100, in their original order, and for the empty
-array when the input is longer.  [The specification](Spec.lean) states it with `Array.filter`.
+[The request](request.txt) asks for the elements of an array of at most eight words that are less
+than 100, in their original order, and for the empty array when the input is longer.  [The
+specification](Spec.lean) states it with `Array.filter`.  [The program](Program.lean) repeats `keep`
+with `LeanExe.repeatWhile` over the first `count` elements, where `count` is the input's size when
+it is at most eight and 0 otherwise.  `keep` takes the input, an index, and the output array, which
+it consumes: it pushes the element onto the output in place when the element is less than 100.  The
+dialect has no `Array.filter`, so the program builds the output with `push`, which moves the output
+to a larger block when the block is full.  [The module definition](Module.lean) compiles `keep` and
+`compute` into a 1,831-byte `below100.wasm` that exports both.
 
-[The program](Program.lean) repeats `keep` with `LeanExe.repeatWhile` over the first `count`
-elements, where `count` is the input's size when it is at most eight and 0 otherwise.  `keep` takes
-the input, an index, and the output array, which it consumes: it pushes the element onto the output
-in place when the element is less than 100.  The dialect has no `Array.filter`, so the program
-builds the output with `push`, which moves the output to a larger block when the block is full.
-[The module definition](Module.lean) compiles `keep` and `compute` into a 1,831-byte `below100.wasm`
-that exports both.
-
-## What it shows
+## The bytes compute the filter
 
 | Theorem | Statement |
 |---------|-----------|
@@ -29,7 +26,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 `Implements` for the program.  With `compute_eq`, `Implements.congr` states it for the
 specification.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Below100.Verify

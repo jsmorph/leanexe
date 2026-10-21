@@ -74,7 +74,7 @@ complete-execution theorem takes the allocator state of a fresh instance as a hy
 theorem connects that state to the module's instantiation.  Convergence to a solution of the
 continuous Euler equations remains unproved.
 
-## Data
+## Runs and reproduction
 
 | Grid | Runtime | Density range | Pressure range | Data | Export figures |
 |------|--------:|--------------:|---------------:|------|----------------|

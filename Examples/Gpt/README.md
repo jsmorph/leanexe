@@ -1,6 +1,6 @@
 # Gpt: GPT-2 in binary64
 
-## What it is
+## The model, cached generation, and sampling
 
 [The program](Program.lean) is the GPT-2 language model in Lean `Float`, binary64: token and
 position embeddings, a loop over transformer blocks of multi-head causal attention and an MLP with
@@ -11,7 +11,7 @@ token by top-k sampling, with SplitMix64 from [`Prng`](../Prng/README.md) as its
 module definition](Module.lean) compiles 48 functions into the 14,141-byte `gpt.wasm`, which runs
 the GPT-2 124M weights.
 
-## What it shows
+## Compiled functions, causality, and cached steps
 
 Every function of the module, from `dot` to `sampleTopK`, has an `Implements` theorem, so the bytes
 compute the Lean model bit for bit, including the cached generation.  `Live` carries the proofs of
@@ -39,7 +39,7 @@ The proofs are in [`Verify.lean`](Verify.lean), [`Composites.lean`](Composites.l
 generation.  [The design document](../../docs/design.md#proved) gives the construction of each
 function.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Gpt.Bytes Examples.Gpt.Causal Examples.Gpt.Exact \

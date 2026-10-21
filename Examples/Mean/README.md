@@ -1,13 +1,13 @@
 # Mean: a fold, a length, and a conversion
 
-## What it is
+## The mean of an array of floats
 
 [The program](Program.lean) returns the arithmetic mean of an array of `Float` values: the sum,
 accumulated from the left, divided by the length converted to `Float`.  The mean of the empty array
 is `0.0 / 0.0`, which is NaN.  [The module definition](Module.lean) compiles `mean` into the
 1,455-byte `mean.wasm`.
 
-## What it shows
+## Bits of the mean for every array
 
 The body combines three compiled forms: the fold over the elements, the load of the array's length
 word, and `UInt64.toFloat`, which compiles to `f64.convert_i64_u`.  `sum_bits` proves that the fold
@@ -27,7 +27,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 manual](../../docs/leanexe-manual.md#arrays) describes.  The result is the mean of the rounded sum, and the
 theorem says nothing about its error relative to the exact mean.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Mean.Verify
