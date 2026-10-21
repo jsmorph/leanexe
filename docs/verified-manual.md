@@ -213,6 +213,30 @@ The command adds the program, the module, and every theorem in one step, and the
 
 Functions 0 and 1 of the module are the runtime's `alloc` and `release`, and function `2 + k` is the `k`-th listed definition that is not a wrapper, counted from 0.  In a program of `n` such definitions, the entry of the `j`-th definition whose code takes the call depth is function `2 + n + j`, and the wrappers follow the entries.  The module exports each definition under its name, at its entry when its code takes the call depth.
 
+### Module composition
+
+The typed API combines separately reflected programs with `Prog.append`:
+
+```lean
+def program := source.program.append library.program
+def funs := source.funs.append library.funs
+theorem meaning : program.Meaning funs := source.meaning.append library.meaning
+def module := Verified.compile program
+```
+
+The library's functions keep their indices.  Each source function and each call between source
+functions moves by the library's function count.  `FVar.appendLeft` refers to a relocated source
+function, and `FVar.appendRight` refers to a retained library function.  A new typed function can
+call both.  The generic append theorem carries the existing meaning proofs through ordinary,
+guarded-recursive, and tail-recursive functions.  The tail rank changes only in the proof.
+Function export names must be unique.  Tables and wrappers remain arguments of `compileWith`.
+
+`Prog.calls_append` reuses the library's execution, allocation, and frames theorems in the
+combined module.  `Prog.correct` applies to the combined meaning proof, including relocated
+functions and new callers.  The scalar proof generator also accepts a composed module.
+[The relocation example](../Verified/Examples/Relocation.lean) gives native and whole-store
+theorems for a retained function, a relocated tail loop, and a caller of both libraries.
+
 ### Emitting and running
 
 ```sh
@@ -286,6 +310,10 @@ For guarded recursion, `p.f.bound k x` and `p.f.fits k x` take the number of fra
 functions: division, conditional calls, tail recursion through 4,096 iterations, float call
 chains, and binary32 bit conversion and nearest-even rounding.  Every case checks zero
 allocations and retained blocks.
+
+`tests/verified/run.sh --cases relocation` reuses that scalar corpus after moving its library
+behind another compiled program.  It also checks the retained library function and a new
+caller that invokes functions from both libraries.
 
 `tests/verified/run.sh --cases lists` checks construction, duplication, nested calls, matching,
 head and tail access, reconstruction, and head updates on lists through 4,096 cells.  It checks

@@ -437,8 +437,17 @@ return their Lean results and preserve the whole store, starting from any store 
 with the library prefix.  [Proof generation](Reflect/ScalarProof.lean) adds `p.f.uniform` and
 `p.f.pure` for scalar functions whose instructions and callees have these store-preservation
 rules.  The [automatic example](Examples/ScalarComposition.lean) covers branches, division,
-tail loops, both float widths, and call chains.  Library reuse and function relocation remain
-pending.
+tail loops, both float widths, and call chains.
+
+[Program append](ProgramAppend.lean) combines two typed programs and their meaning proofs.
+`source.append target` keeps the target's functions first and relocates the source's calls by
+the target's function count.  [Function relocation](FunRelocation.lean) and
+[tail relocation](TailRelocation.lean) preserve signatures, argument placement, meanings, and
+the tail rank.  [The module rules](ProgramAppendCorrect.lean) prove both call-index equations
+and preservation of the target prefix.  The [relocation example](Examples/Relocation.lean)
+reuses two separately reflected libraries and adds a caller of both.  Its native theorems and
+whole-store theorems apply at the combined module's indices, and its
+[cases](Examples/RelocationCases.lean) reuse the scalar corpus after relocation.
 
 ## The reflector
 

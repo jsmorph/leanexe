@@ -50,14 +50,10 @@ partial def scalarCodeProof (m code : Lean.Expr) (callees : Nat → Option Lean.
   return some (← mkAppM ``Wasm.CodeUniform.cons #[first, next],
     ← mkAppM ``Wasm.CodeNoReturnCall.cons #[firstSafe, nextSafe])
 
-def addScalarProof (base : Name) (r : Reflected) (index : Nat)
-    (callees : Nat → Option Lean.Expr) : TermElabM (Option Lean.Expr) := do
-  unless r.params.all (fun t => match t with | .elem _ => true | _ => false) &&
-      (match r.result with | .elem _ => true | _ => false) do return none
-  let m := Lean.mkConst (base ++ `module)
-  let lookup ← elabTerm (← `(($((mkIdent (base ++ `module)))).funcs[$(quote index)]?)) none
-  synthesizeSyntheticMVarsNoPostponing
-  let lookup ← instantiateMVars lookup
+def scalarEntryProof (m : Lean.Expr) (index : Nat)
+    (callees : Nat → Option Lean.Expr) : MetaM (Option Lean.Expr) := do
+  let functions ← mkAppM ``Wasm.Module.funcs #[m]
+  let lookup ← mkAppM ``GetElem?.getElem? #[functions, mkNatLit index]
   let someFunction ← kernelWhnf lookup
   let (``Option.some, #[_, function]) := someFunction.getAppFnArgs
     | throwError "verified_compile: missing scalar function {index}: {someFunction}"
@@ -67,7 +63,14 @@ def addScalarProof (base : Name) (r : Reflected) (index : Nat)
   let emptyImports := listExpr (Lean.mkConst ``Wasm.ImportDecl) []
   let hImports ← mkExpectedTypeHint (← mkEqRefl emptyImports) (← mkEq imports emptyImports)
   let hLookup ← mkExpectedTypeHint (← mkEqRefl someFunction) (← mkEq lookup someFunction)
-  let proof ← mkAppM ``Wasm.EntryUniform.of_code #[hImports, hLookup, uniform, safe]
+  return some (← mkAppM ``Wasm.EntryUniform.of_code #[hImports, hLookup, uniform, safe])
+
+def addScalarProof (base : Name) (r : Reflected) (index : Nat)
+    (callees : Nat → Option Lean.Expr) : TermElabM (Option Lean.Expr) := do
+  unless r.params.all (fun t => match t with | .elem _ => true | _ => false) &&
+      (match r.result with | .elem _ => true | _ => false) do return none
+  let m := Lean.mkConst (base ++ `module)
+  let some proof ← scalarEntryProof m index callees | return none
   let name := base ++ Name.mkSimple r.name.getString!
   let claim ← mkAppM ``Wasm.EntryUniform #[m, mkNatLit index]
   addTheorem (name ++ `uniform) claim proof
