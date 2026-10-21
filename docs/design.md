@@ -306,7 +306,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: a proof of the I/O adapter.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
-- [ ] Verified compiler: proof composition across modules, starting with scalar calls that preserve memory.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#recursive-records) gives their layouts, proof structure, and tests.
+- [x] Verified compiler: typed program composition, call relocation, meaning transport, and scalar calls that preserve the whole store.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#module-composition) gives the composition API and tests.  The phase's full gates remain required before publication to main.
 - [ ] Verified compiler: the WGSL path and binary32 GPT.  Float32 values, arrays, arithmetic, comparisons, and word conversions are supported.  Lists, recursive types, and composition across modules precede WGSL and binary32 GPT.
 - [ ] Verified compiler: owned record and pair parameters.
 
