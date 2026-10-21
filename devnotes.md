@@ -34146,7 +34146,7 @@ The user approved the capability order below, with frequent updates, commits, an
 - [x] Port Euler and binary64 GPT as application checks.
 - [x] Add binary32 types, operations, reflection, and compiler correctness.  The focused execution corpus passed 2,777 cases.  The full-library and execution gates passed at `0959520b3`.
 - [x] Add sum constructors with scalar fields, matching, and array ownership rules.  The focused execution corpus passed 514 cases.  The full-library and execution gates passed at `0959520b3`.
-- [ ] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.
+- [x] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.  The full gates passed, and `2e354fff` published the phase to `main`.
 - [ ] Add proof composition across modules, starting with scalar calls that preserve memory.
 - [ ] Add the verified compiler's WGSL path and check the GPT kernels.
 - [ ] Port binary32 GPT as an application check.
@@ -34212,7 +34212,7 @@ The remaining fold work is:
 - [x] Add the typed source operation with full `Array.foldl` meaning and `Expr.foldExpand` as its compiled loop.  The two-argument `Expr.foldLoop` construction remains a proved example.
 - [x] Extend allocation, frames, liveness, and correctness proofs using the represented array's size bound.
 - [x] Reflect whole-array folds and test word, float, tuple, and owned accumulator results through the existing driver.
-- [ ] Run the full repository checks before promoting the completed first phase to `main`.
+- [x] Run the full repository checks before promoting the completed first phase to `main`.
 
 The user requires the entire agenda to continue through completion.  The new `Expr.fold` traverses the full logical array with `Array.foldl`.  Its body receives the element, the accumulator, and the `UInt64` iteration index.  `Expr.foldExpand` gives its word-counted loop with an element binding.  The source counter also uses `UInt64`, including its wraparound on logical arrays beyond the representable size.  Reflection of `Array.foldl` will ignore that index.  Shared `loopCode`, `getCode`, and `loopAlloc` definitions retain the existing loop, read, and allocation calculations and let the fold use their templates without changing structural recursion.
 
@@ -34395,9 +34395,9 @@ Lists and recursive types require a source extension.  The user approved a typed
 
 - [x] Check scalar sum layouts, constructors, matches, arrays, and calls.
 - [x] Add the approved typed recursive source, representation, construction, matching, and compiler proof.
-- [ ] Extend liveness, allocation bounds, copying, release, record reuse, loops, and tail recursion to the recursive source.
-- [ ] Reflect lists and supported user-defined recursive types, including `List.foldl`.
-- [ ] Test native results, allocation and release counts, aliases, reuse, and guarded depth limits.
+- [x] Extend liveness, allocation bounds, copying, release, record reuse, loops, and tail recursion to the recursive source.
+- [x] Reflect lists and supported user-defined recursive types, including `List.foldl`.
+- [x] Test native results, allocation and release counts, aliases, reuse, and guarded depth limits.
 - [ ] Complete proof composition across modules, then WGSL and binary32 GPT.
 
 `e864c41d` published the binary32 arithmetic frontend and the two added encodings.  `f32-cases-03` then passed all 2,777 native-versus-Wasmtime cases, with no failed allocation or retained-block check.  The 5,963-byte module validates and has SHA-256 `b70ec90aff68f43f79a4481c8f314123f349d2c0c36bcb931b7ba495f4d3b794`.  The native generator rebuilt all 3,702 jobs and reported the expected 3,147 accesses and 55 insertions past the end.  The corpus covers signed zeros, subnormals, infinities, NaNs, arithmetic and conversion boundaries, nearest ties, array arithmetic and folds, Float32 tail conditions, and guarded mixed-format recursion at the 32-position limit.  Depth 999 returns and depth 1,000 traps at `unreachable`.  The documentation audit passed 185 Markdown files and 3,279 links.
@@ -34774,4 +34774,4 @@ The composition full build continues at `838979b2` on minideb1.  A checked conti
 
 The documentation review distinguishes the formal host-command theorem from executable hosts and their I/O, and encoded-module theorems from emitted-file theorems.  The browser and binary32 application guides identify their original Wasm module and date historical measurements relative to arithmetic-NaN normalization.  The manual's type and comparison diagnostics now include Float32, matching the reflector's messages.  The full-check procedure names the two Verified GPU modes and the complete-generation test.  The numerical index includes both new compiler paths.  The local-link check passed 185 Markdown files and 3,287 links before these journal additions.
 
-A snapshot of the full composition log contains no error or `sorry` warning and 3,270 axiom reports.  One report, `CodeLib.IEEE64.arithmetic_examples`, includes `arithmetic_examples._native.native_decide.ax_1_1`.  The pinned dependency proves that example's three constant checks with `native_decide`.  Its only reference in CodeLib is its own axiom-print command, and the project has no reference to it.  The other 3,269 reports use only `propext`, `Classical.choice`, and `Quot.sound`, including the compiler and the dependency's arithmetic-operation theorems.  The snapshot is retained in `build/capabilities/remote-composition-verified-live.log`.  The final audit must distinguish this unused dependency example from the theorem roots that state compiler correctness.
+A snapshot of the full composition log contains no error or `sorry` warning, 3,270 reports of axiom dependencies, and eighteen reports with no axioms.  One report, `CodeLib.IEEE64.arithmetic_examples`, includes `arithmetic_examples._native.native_decide.ax_1_1`.  The pinned dependency proves that example's three constant checks with `native_decide`.  Its only reference in CodeLib is its own axiom-print command, and the project has no reference to it.  The other 3,269 dependency reports use only `propext`, `Classical.choice`, and `Quot.sound`, including the compiler and the dependency's arithmetic-operation theorems.  The snapshot is retained in `build/capabilities/remote-composition-verified-live.log`.  The final audit must distinguish this unused dependency example from the theorem roots that state compiler correctness.
