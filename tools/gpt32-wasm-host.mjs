@@ -27,4 +27,5 @@ for await (const line of createInterface({ input: process.stdin })) {
   } else throw Error(`unknown command: ${line}`);
   process.stdout.write('ok\n');
 }
+process.stdin.destroy();
 host.close();
