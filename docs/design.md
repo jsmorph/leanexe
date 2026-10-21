@@ -27,14 +27,15 @@ The verified compiler shares the runtime, `Implements`, the encoding, and the tr
 
 | Component | Design |
 |---|---|
-| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values are words, `Bool`s, floats, tuples, arrays of these, and pairs that hold arrays, and `LeanExe.loop` and `LeanExe.repeatWhile` are one loop with a condition. |
+| Source language | `Expr S Γ t`, typed by the callees' signatures `S` and the context `Γ`, with a meaning `denote` in Lean.  Values include words, `Bool`s, binary32 and binary64 floats, scalar tuples and sums, flat arrays, records with array fields, `List UInt64`, and fixed-layout recursive types.  `LeanExe.loop` and `LeanExe.repeatWhile` use one loop construct with a condition. |
 | Compiler | `compileWith`, a Lean function from a program, its tables, and its wrappers to a module with the layout and runtime of the LeanExe compiler's modules. |
 | Theorem | `Prog.correct`, by induction on the program, with one lemma per construct, such as `spec_word` and `spec_eraseAt`, combined through the facts of `After`.  It states `ImplementsP`, from which `ImplementsA aborts` and the bounded `ImplementsB` follow. |
 | Reflector | `verified_compile`, meta code that writes Lean definitions as source functions and proves each equation from one lemma per Lean form.  The kernel checks every equation, so the reflector is not trusted. |
-| Modes | `Expr.paramChoice` chooses each array parameter's mode, borrowed or owned.  The theorem holds for every choice. |
+| Modes | `Expr.paramChoice` chooses each array or recursive-value parameter's mode, borrowed or owned.  The theorem holds for every choice. |
 | Bounds | `Expr.allocs` follows the code with the same modes and live sets, and an owned array has a potential, a number of bytes that covers its later moves to larger blocks. |
 | Recursion | Recognized tail recursion uses a loop with a proved decreasing rank.  Other recursion and its callers take the call depth, trap at depth 1,000, and have at most 32 positions per frame.  An entry starts each depth-taking function at depth 0. |
 | Tables | Data segments from the heap base, read as borrowed parameters, with wrappers that pass their addresses and `compileWith_initialStore` for the initial store. |
+| Composition | Typed program reuse and call relocation transport source meanings across modules.  Generated scalar store-preservation proofs support calls from other compiled programs.  [The composition API](../Verified/README.md#module-composition) describes the rules and examples. |
 
 ## Files
 
@@ -312,8 +313,6 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: a proof of the I/O adapter.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
-- [x] Verified compiler: typed program composition, call relocation, meaning transport, and scalar calls that preserve the whole store.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#module-composition) gives the composition API and tests.  The full gates passed at `838979b2`, now on `main`.
-- [ ] Verified compiler: complete the full gates for the WGSL path and binary32 GPT.  [Source lowering](../Verified/WGSL/Compile.lean), all thirteen [binary32 kernels](../Verified/Examples/Gpt32.lean), and [their host-generation theorem](../Verified/Examples/Gpt32Host.lean) are implemented.  Focused proofs, the kernel axiom audit, and 220 Wasm cases pass.
 - [ ] Verified compiler: owned record and pair parameters.
 
 The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Verified/Examples/Exp.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.
