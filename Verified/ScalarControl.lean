@@ -93,4 +93,65 @@ theorem OneNoReturnCall.loop {m : Module} {body : Program}
     | ReturnCall entry state values => simp only [h, Continuation.noReturnCall, Bool.false_eq_true] at hSafe
     | Throwing tag values state after => rfl
 
+theorem CodeUniform.ite {m : Module} {first second : Program} {condition : Prop}
+    [Decidable condition] (hFirst : CodeUniform m first) (hSecond : CodeUniform m second) :
+    CodeUniform m (if condition then first else second) := by
+  split <;> assumption
+
+theorem CodeNoReturnCall.ite {m : Module} {first second : Program} {condition : Prop}
+    [Decidable condition] (hFirst : CodeNoReturnCall m first)
+    (hSecond : CodeNoReturnCall m second) :
+    CodeNoReturnCall m (if condition then first else second) := by
+  split <;> assumption
+
+theorem OneUniform.iff {m : Module} {first second : Program}
+    (hFirst : CodeUniform m first) (hSecond : CodeUniform m second)
+    (params results : Nat) (paramTypes resultTypes : List ValueType) :
+    OneUniform m (.iff params results first second paramTypes resultTypes) := by
+  intro fuel host store reference locals
+  cases fuel with
+  | zero => simp only [execOne.eq_def, Continuation.withStore]
+  | succ fuel =>
+    simp only [execOne.eq_def]
+    split
+    next _ condition values _ =>
+      rw [(CodeUniform.ite hFirst hSecond) fuel host store reference]
+      cases h : exec fuel m reference { locals with values := values }
+          (if condition ≠ 0 then first else second) host with
+      | Fallthrough state after => rfl
+      | Break label state after => cases label <;> rfl
+      | Return state values => rfl
+      | Trap state message => rfl
+      | Invalid message => rfl
+      | OutOfFuel => rfl
+      | ReturnCall entry state values => rfl
+      | Throwing tag values state after => rfl
+    next => rfl
+
+theorem OneNoReturnCall.iff {m : Module} {first second : Program}
+    (hFirst : CodeNoReturnCall m first) (hSecond : CodeNoReturnCall m second)
+    (params results : Nat) (paramTypes resultTypes : List ValueType) :
+    OneNoReturnCall m (.iff params results first second paramTypes resultTypes) := by
+  intro fuel host store locals
+  cases fuel with
+  | zero => simp only [execOne.eq_def, Continuation.noReturnCall]
+  | succ fuel =>
+    simp only [execOne.eq_def]
+    split
+    next _ condition values _ =>
+      have hSafe := (CodeNoReturnCall.ite (condition := condition ≠ 0) hFirst hSecond) fuel host store
+        { locals with values := values }
+      cases h : exec fuel m store { locals with values := values }
+          (if condition ≠ 0 then first else second) host with
+      | Fallthrough state after => rfl
+      | Break label state after => cases label <;> rfl
+      | Return state values => rfl
+      | Trap state message => rfl
+      | Invalid message => rfl
+      | OutOfFuel => rfl
+      | ReturnCall entry state values =>
+        simp only [h, Continuation.noReturnCall, Bool.false_eq_true] at hSafe
+      | Throwing tag values state after => rfl
+    next => rfl
+
 end Wasm

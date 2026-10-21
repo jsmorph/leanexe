@@ -434,8 +434,11 @@ meaning theorem and store-independent execution.  [Sequence rules](ScalarTranspo
 [block and loop rules](ScalarControl.lean) compose the execution proof.  The
 [scalar library proofs](Examples/CompositionPure.lean) establish that addition and scaling
 return their Lean results and preserve the whole store, starting from any store in a module
-with the library prefix.  Automatic generation of these proofs, library reuse, and function
-relocation remain pending.
+with the library prefix.  [Proof generation](Reflect/ScalarProof.lean) adds `p.f.uniform` and
+`p.f.pure` for scalar functions whose instructions and callees have these store-preservation
+rules.  The [automatic example](Examples/ScalarComposition.lean) covers branches, division,
+tail loops, both float widths, and call chains.  Library reuse and function relocation remain
+pending.
 
 ## The reflector
 

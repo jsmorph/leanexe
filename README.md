@@ -65,7 +65,7 @@ document states its theorem's domain and exceptional cases.
 | Records with array fields | Outside the dialect | Supported |
 | Constant arrays | Array literals of words, allocated at each call | Tables in data segments, passed by wrappers |
 | Loops, builds, and calls in loop bodies and branches | Subject to placement rules | Any expression of the dialect |
-| Composition across modules | `ImplementsPure` for functions that keep the store | Within one program |
+| Composition across modules | `ImplementsPure` for functions that keep the store | Prefix reuse and generated scalar store-preservation proofs.  Function relocation remains pending. |
 
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation

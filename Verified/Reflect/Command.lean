@@ -2,6 +2,7 @@ import Verified.Reflect.Definitions
 import Verified.Reflect.TailDefinition
 import Verified.Reflect.TailOptions
 import Verified.Reflect.RecursiveTypes
+import Verified.Reflect.ScalarProof
 
 namespace Verified.Reflect
 
@@ -426,6 +427,7 @@ def elabVerifiedCompile : CommandElab
     let mut claims : Array Term := #[]
     let mut proofs : Array Term := #[]
     let mut entries := 0
+    let mut scalarCallees : List (Nat × Lean.Expr) := []
     for k in [0:n] do
       let r := reflected[k]!
       trace[Verified.reflect] "prove {r.name}"
@@ -464,6 +466,9 @@ def elabVerifiedCompile : CommandElab
           |>.set! 5 (mkConst (base ++ `module)) |>.set! 6 (mkNatLit index)
           |>.set! 8 (← Core.betaReduce args[8]!) |>.set! 9 (← Core.betaReduce args[9]!))
         addTheorem implName claim proof
+      let uniform? ← liftTermElabM <| addScalarProof base r index fun i =>
+        (scalarCallees.find? (fun pair => pair.1 == i)).map Prod.snd
+      if let some uniform := uniform? then scalarCallees := (index, uniform) :: scalarCallees
       claims := claims.push (← `(type_of% $(mkIdent implName)))
       proofs := proofs.push (mkIdent implName)
       -- The theorem without a trap, with the growth of `top` bounded by the function's bound on

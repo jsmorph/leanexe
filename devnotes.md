@@ -34665,7 +34665,7 @@ The remaining module-composition steps are:
 
 - [x] Prove the fixed-prefix API and check native word/float calls in a larger module.
 - [x] Check the scalar calibration, primitive, sequence, control, and call rules against current imports.
-- [ ] Derive store-preserving execution theorems for compiled scalar functions and test their reuse.
+- [x] Derive store-preserving execution theorems for compiled scalar functions and test their reuse.
 - [ ] Add library reuse and relocation with checked source and meaning transport.
 - [ ] Run the phase’s full gates before publication to main.
 
@@ -34678,3 +34678,9 @@ The instruction proofs use explicit interpreter equations at fuel zero and for a
 The local machine default build passed all 4,182 jobs.  The existing WGSL gate passed all 474 cases on each of the SwiftShader and Lavapipe Vulkan drivers.  The frozen list phase’s full Verified build remains active.
 
 The scalar-store audit accepted all 38 reports with only `propext`, `Classical.choice`, and `Quot.sound`.  It covers calibration, sequence composition, the primitive, call, block, and loop rules, both library theorems, and the shared prefix lookups.
+
+The reflector now generates `p.f.uniform` and `p.f.pure` for scalar code covered by the shared instruction rules.  It builds a proof from the compiled instructions and earlier store-preserving callees.  Unsupported heap instructions or guarded self-calls omit these optional declarations.  A covered instruction proof that fails aborts the command.  The kernel checks both the instruction proof and its agreement with the compiled function.  The value theorem still comes from universal compiler correctness.
+
+The automatic example passed all 3,682 build jobs and all 174 execution cases with zero allocations and retained blocks.  It covers division and remainder by zero, conditional calls, a tail loop and its caller through 4,096 iterations, float call chains, both float widths, bit conversions, signed zeros, subnormals, infinities, and NaNs.  Its module has SHA-256 `b0368e71764fca549cf996c5786cae77fdff04fad6e507083bebedc88b6ea9a9`.  The 134-report audit accepted only the permitted axioms.  The existing float, binary32, tail, frontend, and prefix examples also passed the 3,689-job integration build.
+
+The first numeric tactic unfolded the no-pending-call predicate before splitting the operand stack, which exposed an impossible return-call outcome.  The accepted tactic splits the instruction’s own matches first.  The conditional proof needed every generated stack-match binder named, and the module lookup needed synthetic instances solved before kernel evaluation.  The first binary32 example used ordinary rounding, which the dialect rejects.  It now uses the documented nearest-even operation.  No external proof agent or LTG retrieval was used.  Instruction rules, shared control proofs, and generated calls reduced the function examples to their definitions and axiom reports.  Library reuse and relocation remain the open composition steps.
