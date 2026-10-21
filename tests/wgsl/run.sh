@@ -63,8 +63,17 @@ for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/
   while IFS='|' read -r kernel groups output inputs expected; do
     case_number=$((case_number + 1))
     read -ra argv <<<"$inputs"
-    out=$(VK_ICD_FILENAMES=$driver "$host" run "$build/wgsl/$kernel.wgsl" main "$groups" \
-      "$output" "${argv[@]}")
+    printf '%s|%s|%s|%s|%s|%s\n' "$case_number" "$kernel" "$groups" "$output" "$inputs" \
+      "$expected" >"$build/wgsl/current-case.txt"
+    if out=$(VK_ICD_FILENAMES=$driver "$host" run "$build/wgsl/$kernel.wgsl" main "$groups" \
+        "$output" "${argv[@]}" 2>"$build/wgsl/host.stderr.log"); then
+      true
+    else
+      result=$?
+      cat "$build/wgsl/host.stderr.log" >&2
+      echo "host failed: $kernel on $(basename "$driver") case $case_number, status $result; input in $build/wgsl/current-case.txt" >&2
+      exit "$result"
+    fi
     if [ "$out" = "$expected" ]; then
       passed=$((passed + 1))
     else
