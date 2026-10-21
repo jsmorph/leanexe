@@ -472,6 +472,14 @@ with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean).
 [Result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
 strict-model result.  The original and verified compilers use this translation.
 
+[Binary32 GPT](Examples/Gpt32.lean) compiles the existing program's thirteen kernel functions
+without changing them.  [The native dispatch proofs](Examples/Gpt32Dispatch.lean) combine
+`Compiled.dispatch_value` with each generated denotation equation and the buffer bounds.
+[The host instance](Examples/Gpt32Host.lean) supplies those theorems to the existing typed item,
+layer, and generation proofs.  Its kernel map also runs through the existing generation driver.
+[The application guide](../Examples/Gpt32/README.md#verified-compiler) describes the tests and the
+separate Wasm and device-model claims.
+
 ## The reflector
 
 The reflector, `verified_compile p := [f, g, …]` in [`Reflect/Command.lean`](Reflect/Command.lean),

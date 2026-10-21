@@ -278,9 +278,20 @@ execution.  [The kernel examples](../Verified/Examples/Wgsl.lean) compile ordina
 definitions with both backends.  [Their native-value proofs](../Verified/Examples/WgslProof.lean)
 combine the generic dispatch theorem with the generated `denote_eq` equations.
 
+[Binary32 GPT](../Verified/Examples/Gpt32.lean) compiles the thirteen unchanged kernel functions
+of the existing application.  [Its dispatch proofs](../Verified/Examples/Gpt32Dispatch.lean)
+reuse `Compiled.dispatch_value`, which transports source correctness through a native
+denotation equation.  [Its host theorem](../Verified/Examples/Gpt32Host.lean) instantiates the
+existing typed generation proof with the new kernel map.  It states the native step's scores
+and race freedom under the same device model and shape, token, and weight bounds.
+
 `tools/EmitWgsl.lean` emits the resulting module through the existing printer/parser check.
 `tests/wgsl/run.sh --verified` compares the checked cases on SwiftShader and Lavapipe.
 `tests/verified/run.sh --cases wgsl` compares the same cases in Wasmtime and checks allocations.
+`tests/wgsl/run.sh --verified-gpt32` checks the GPT kernels on both drivers.
+`tests/verified/run.sh --cases gpt32` checks their Wasm results and allocations.
+`tests/gpt32/native.sh --verified` compares complete generation steps with native Lean on Wasm
+and both GPU drivers, using the existing three random-model configurations.
 
 ### Emitting and running
 
@@ -413,6 +424,7 @@ Each example is a file of [`Verified/Examples/`](../Verified/Examples/) with one
 | [Tail loops](../Verified/Examples/Tail.lean) | Word accumulation, scalar pairs, record arrays, owned growth, swapped and replaced array parameters, aliases, calls between tail functions, and a guarded callee.  The byte theorem covers ten functions. |
 | [Tail conditions and borrowed states](../Verified/Examples/TailConditions.lean) | Boolean and inequality conditions, a proof-named conditional, tuple destructuring, and borrowed pair and record parameters. |
 | [Binary64 GPT-2](../Verified/Examples/Gpt.lean) | The 48 unchanged functions of [the GPT example](../Examples/Gpt/README.md), including full-sequence inference, cached steps, and sampling.  The compiler derives each function's execution, allocation-bound, and trap-free theorems and the module's bytes theorem. |
+| [Binary32 GPT-2](../Examples/Gpt32/README.md#verified-compiler) | Thirteen unchanged kernel functions, with generated Wasm execution and byte theorems, proved WGSL lowering, native dispatch theorems, and the existing host-generation proof instantiated with the new kernels. |
 | [Euler solvers](../Verified/Examples/Euler.lean) | The 55 unchanged functions of [the Euler example](../Examples/Euler/README.md), including both solvers.  The generated trap-free theorems require room for their allocation bounds.  `Examples.Euler.euler_solve_total`, with its 1,407-page bound, applies to the LeanExe compiler's module. |
 | [`Loops`](../Verified/Examples/Loops.lean) | Loops over a word, over a pair, and over a pair with a `Bool`, a loop inside a loop, a loop whose body branches, and a loop whose body calls an earlier definition. |
 | [`Arrays`](../Verified/Examples/Arrays.lean) | Sums, a dot product, a count, and a search over arrays in loops, reads at computed positions, a pair of arrays passed to calls, and an array chosen by an `if` and bound with `let`. |

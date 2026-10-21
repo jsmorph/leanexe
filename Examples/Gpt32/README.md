@@ -1,6 +1,6 @@
 # Gpt32: GPT-2 in binary32 on WGSL
 
-## What it is
+## Program
 
 [The program](Program.lean) is one generation step of GPT-2 124M in Lean `Float32`, binary32,
 written for GPU kernels: every array is a build element by element, and the helpers that kernels
@@ -11,7 +11,7 @@ kernels.  [The host program](HostProgram.lean) is the list of commands that runs
 definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`,
 which the browser page runs on the CPU for comparison.
 
-## What it shows
+## Proofs
 
 `generate_host` states that the host's commands, run from the loaded weights for a prompt and one
 more token, end with the scores of `step32`, the Lean step, in the output buffers, and that every
@@ -62,6 +62,39 @@ meaning of death" in 10.6 seconds on llvmpipe, with a largest relative score dif
 and the same token as Hugging Face's model at every step.
 [`tests/web/serve.py`](../../tests/web/serve.py) serves the kernel test page and the GPT-2 page on
 http://127.0.0.1:8000/.
+
+## Verified compiler
+
+[The Verified compilation](../../Verified/Examples/Gpt32.lean) compiles the same thirteen
+functions to Wasm and passes their typed source bodies to the proved WGSL compiler.
+`compiled.f.implements`, `compiled.f.trapFree`, and `compiled.f.bound_eq` state execution,
+trap-free execution under the allocation bound, and that bound for each function `f`.
+`compiled.bytes` connects the encoding to the module.  These theorems cover the module emitted
+as `build/verified/gpt32.wasm`.  The original compiler's `build/gpt32/gpt32.wasm`, described
+above, remains a separate module.
+
+[The native dispatch theorems](../../Verified/Examples/Gpt32Dispatch.lean) reuse the generic
+source theorem and each generated denotation equation.  The thirteen kernels share the
+IR-to-WGSL translation, including its NaN normalization.  [The host
+instance](../../Verified/Examples/Gpt32Host.lean) supplies the twelve generation kernels to
+the existing item and layer proofs.  `Verified.Examples.Gpt32.generate_host` states that the
+commands return the native step's scores and that each dispatch is race-free, under the same
+device model, loaded-weight conditions, and bounds as the original theorem.  The host processes,
+file I/O, and browser remain outside those proofs.
+
+```sh
+tools/leanrun --timeout 20m lake build Verified.Examples.Gpt32Host
+tests/verified/run.sh --cases gpt32
+tests/wgsl/run.sh --verified-gpt32
+tests/gpt32/native.sh --verified
+```
+
+[The checked kernel corpus](../../Verified/Examples/Gpt32Cases.lean) compares Wasm and GPU
+results with native Lean, including empty and short arrays, signed zeros, subnormals,
+infinities, and NaNs.  The Wasm cases also check allocations and retained blocks.  The
+generation driver runs the existing three random models through Wasm and both GPU drivers,
+comparing every score bit and each greedy token with native `step32`.  Its Wasm session adapter
+uses [the browser's existing Wasm host](../../tests/gpt32/browser/hosts.js).
 
 ## Related examples
 
