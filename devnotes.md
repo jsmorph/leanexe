@@ -34148,8 +34148,8 @@ The user approved the capability order below, with frequent updates, commits, an
 - [x] Add sum constructors with scalar fields, matching, and array ownership rules.  The focused execution corpus passed 514 cases.  The full-library and execution gates passed at `0959520b3`.
 - [x] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.  The full gates passed, and `2e354fff` published the phase to `main`.
 - [x] Add proof composition across modules, starting with scalar calls that preserve memory.  The full gates passed, and `838979b2` published the phase to `main`.
-- [ ] Add the verified compiler's WGSL path and check the GPT kernels.
-- [ ] Port binary32 GPT as an application check.
+- [x] Add the verified compiler's WGSL path and check the GPT kernels.  The full gates passed at `60be1412`, including both installed GPU drivers.
+- [x] Port binary32 GPT as an application check.  Kernel cases and complete generation match native Lean on Wasm and both GPU drivers, and the full gates passed at `60be1412`.
 
 The first source review compares the reflector with the pinned Lean definitions and the LeanExe compiler.  `Array.setIfInBounds`, `Array.insertIdxIfInBounds`, and `Array.eraseIdxIfInBounds` have existing verified source operations with the same meanings.  `Array.insertIdx!` instead returns the empty array after an out-of-bounds panic.  Its support must preserve that result.  The [pinned array definitions](https://github.com/leanprover/lean4/blob/v4.34.0-rc2/src/Init/Data/Array/Basic.lean) and `LeanExe.Compiler.Scalar` record the distinction.  Helper unfolding follows the existing compiler's `@[inline]` rule and retains the kernel-checked equation between each reflected expression and its Lean definition.
 
@@ -34398,7 +34398,7 @@ Lists and recursive types require a source extension.  The user approved a typed
 - [x] Extend liveness, allocation bounds, copying, release, record reuse, loops, and tail recursion to the recursive source.
 - [x] Reflect lists and supported user-defined recursive types, including `List.foldl`.
 - [x] Test native results, allocation and release counts, aliases, reuse, and guarded depth limits.
-- [ ] Complete proof composition across modules, then WGSL and binary32 GPT.
+- [x] Complete proof composition across modules, then WGSL and binary32 GPT.
 
 `e864c41d` published the binary32 arithmetic frontend and the two added encodings.  `f32-cases-03` then passed all 2,777 native-versus-Wasmtime cases, with no failed allocation or retained-block check.  The 5,963-byte module validates and has SHA-256 `b70ec90aff68f43f79a4481c8f314123f349d2c0c36bcb931b7ba495f4d3b794`.  The native generator rebuilt all 3,702 jobs and reported the expected 3,147 accesses and 55 insertions past the end.  The corpus covers signed zeros, subnormals, infinities, NaNs, arithmetic and conversion boundaries, nearest ties, array arithmetic and folds, Float32 tail conditions, and guarded mixed-format recursion at the 32-position limit.  Depth 999 returns and depth 1,000 traps at `unreachable`.  The documentation audit passed 185 Markdown files and 3,279 links.
 
@@ -34717,8 +34717,8 @@ The WGSL steps remain:
 - [x] Prove typed representations, fresh-local framing, and shared code-composition rules.
 - [x] Lower scalar operations, input reads, bindings, and counted loops.
 - [x] Connect accepted source kernels to dispatch, emission, and reflection.
-- [ ] Test emitted kernels on both installed WebGPU drivers and complete the library gates.
-- [ ] Compile and test binary32 GPT after the WGSL capability.
+- [x] Test emitted kernels on both installed WebGPU drivers and complete the library gates.
+- [x] Compile and test binary32 GPT after the WGSL capability.
 
 The scalar lowering rules now cover words, Booleans, binary32 arithmetic and comparisons, square root, absolute value, negation, nearest-even rounding, and bit conversions.  Bit reinterpretation adds negative zero to match Lean's canonical NaN result.  Borrowed reads cover word, Boolean, and binary32 arrays and preserve their default value past the end.  Bindings store scalar results in fresh locals.  A shared typed cell supplies the input expression, stored value, and result read for bindings, branches, and loop state.
 
@@ -34792,4 +34792,10 @@ The checked continuation verified the bundle and frozen source, then started the
 
 The complete final Verified build passed all 10,318 jobs at `60be1412`.  The build-log audit found no error or `sorry` warning.  The default log has 951 reports of axiom dependencies and four reports with no axioms.  The Verified log has 4,417 dependency reports and nineteen reports with no axioms.  Each contains the previously reviewed unused CodeLib arithmetic example.  Every other dependency report uses only the permitted axioms.  The completed logs and `build/capabilities/final-build-audit-01.json` retain the evidence.
 
-The shared WGSL lowering modules took 2.4 to 3.3 seconds each, and generic dispatch took eleven seconds.  The thirteen-function GPT compilation took 28 seconds, its native dispatch proofs 27 seconds, and its host instance 4.6 seconds.  Review confirms that the native results use the generic dispatch theorem and generated denotation equations, while the host instance reuses the typed item, layer, and generation proofs.  No external proof agent or LTG retrieval was used.  The final execution and accuracy driver is emitting and validating its modules.  Its result remains required before publication to main.
+The shared WGSL lowering modules took 2.4 to 3.3 seconds each, and generic dispatch took eleven seconds.  The thirteen-function GPT compilation took 28 seconds, its native dispatch proofs 27 seconds, and its host instance 4.6 seconds.  Review confirms that the native results use the generic dispatch theorem and generated denotation equations, while the host instance reuses the typed item, layer, and generation proofs.  No external proof agent or LTG retrieval was used.
+
+The final execution and accuracy driver completed on minideb1 at 2026-10-21 22:40:51 UTC.  The default build, complete Verified build, and execution driver each returned status zero at `60be1412742847895d9de6b852763e677860a52e`.  All 26,821 general Wasm cases passed, including the 233 WGSL-source cases and 220 binary32 GPT cases.  The binary64 GPT corpus passed 2,733 cases, eleven allocation sessions, and the cache-growth check.  Euler passed 3,096 cases, and the reused sum-type corpus passed 226.  Native case generation reported 12,236 expected accesses and 55 expected insertions past the end.  All numerical file proofs passed their strict axiom checks.  The native accuracy checks passed, including 763,816 exact-rounding FMA results, 4,026 limb results, 1,030 parser fixtures, and 889 printer fixtures.  The completed output is retained in `build/capabilities/full-final-tests-01.log`.
+
+The other full-check components passed at the same code revision: thirty-five byte-identical modules, 16,039 module cases, 77 release-count cases, twenty depth-guard cases, 360 chunk cases, 1,975 drone calls and 116 terrains, the LTG check, and the decoder check.  The generic source kernels passed 233 cases on each GPU driver.  The combined existing and binary32 GPT corpus passed 694 cases on each driver.  Complete generation compared every score bit and greedy token over fifteen steps on each of Wasm, SwiftShader, and Lavapipe.  The final 49-report kernel and host axiom audit passed.
+
+All nine approved capability items have passed their gates.  Subsequent commits change only documentation and the journal, so the frozen-code results cover the completed feature branch.  The documentation review includes the numerical index, source and theorem scope, test commands, and local links and anchors.  The final local-link check passed for 185 Markdown files and 3,285 links, and `git diff --check` passed.  The completed branch is ready for fast-forward publication to main.
