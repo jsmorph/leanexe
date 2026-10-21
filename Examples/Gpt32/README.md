@@ -20,8 +20,9 @@ dispatch along the way is race-free.  It composes the dispatch theorem of each k
 gives the commands their meaning, and [`Compose.lean`](Compose.lean), which follows the eighteen
 kernel calls of a layer.  The theorems hold under a device model with strict binary32 arithmetic,
 race-free dispatch, and no dynamic errors.  A GPU may flush subnormal values and fuse multiply-adds,
-as the WGSL specification permits.  In headless Chromium with SwiftShader, the kernels' scores
-equaled those of `gpt32.wasm` bit for bit at all 16 steps of one run, and on an Apple GPU they
+as the WGSL specification permits.  Before arithmetic-NaN normalization, the kernels' scores in
+headless Chromium with SwiftShader equaled those of `gpt32.wasm` bit for bit at all 16 steps of
+one run, and on an Apple GPU they
 differed by up to 5.2e-5 of the largest score, while greedy generation chose the same token at all
 32 steps.
 
