@@ -38,7 +38,7 @@ Raw100-cell outputs and per-step raw time/ratio/speed words are retained.
 [RunnerExecution](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/RunnerExecution.lean)
 proves the generic actual-call trace and intermediate-grid safety under the
 explicit host-preparation preconditions; [ArtifactRunner](https://github.com/jsmorph/leanexe/blob/eef07963d28004e9333876d8ef0673cbe09ff69a/proofs/talos/lean/Project/EulerGridStep/ArtifactRunner.lean)
-attaches that contract to the frozen bytes. Host time selection, memory growth,
+attaches that statement to the frozen bytes. Host time selection, memory growth,
 copying, diagnostic accumulation, scientific reference and rendering remain
 outside the formal theorem. The runtime assertions check the host obligations;
 this does not constitute a formal proof of the JavaScript driver.

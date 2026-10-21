@@ -69,8 +69,8 @@ http://127.0.0.1:8000/.
 functions to Wasm and passes their typed source bodies to the proved WGSL compiler.
 `compiled.f.implements`, `compiled.f.trapFree`, and `compiled.f.bound_eq` state execution,
 trap-free execution under the allocation bound, and that bound for each function `f`.
-`compiled.bytes` connects the encoding to the module.  These theorems cover the module emitted
-as `build/verified/gpt32.wasm`.  The original compiler's `build/gpt32/gpt32.wasm`, described
+`compiled.bytes` connects the encoding to the module.  The driver emits that module as
+`build/verified/gpt32.wasm`.  The original compiler's `build/gpt32/gpt32.wasm`, described
 above, remains a separate module.
 
 [The native dispatch theorems](../../Verified/Examples/Gpt32Dispatch.lean) reuse the generic
