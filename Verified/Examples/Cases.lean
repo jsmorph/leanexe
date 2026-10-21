@@ -9,6 +9,7 @@ import Verified.Examples.TreeCopyCases
 import Verified.Examples.TreeCases
 import Verified.Examples.ListsCases
 import Verified.Examples.CompositionCases
+import Verified.Examples.ScalarCompositionCases
 import Verified.Examples.ListRecursionCases
 import Verified.Examples.ListLoopsCases
 import Verified.Examples.ListTailCases
@@ -425,6 +426,7 @@ def main : IO Unit := do
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases
   Verified.Examples.Composition.cases
+  Verified.Examples.ScalarComposition.cases
   Verified.Examples.ListRecursion.cases
   Verified.Examples.ListLoops.cases
   Verified.Examples.ListTail.cases

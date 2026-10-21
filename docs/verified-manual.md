@@ -14,6 +14,15 @@ The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.le
 
 `p.f.trapFree` states `ImplementsA false` for each source function, and `ImplementsTables false` for a wrapper whose callee takes no call depth: the call returns `f x` without a trap and raises `top` by at most the function's allocation bound.  When `aborts` is true, the theorem requires a store in which `top` can rise by the bound within the memory cap.  For a function whose code takes the call depth, it also requires a frames condition, which states that every call of the run to a function of this kind happens below depth 1,000.  The reflector also states the bound and the frames condition as Lean terms in the function's parameters, so a concrete bound follows by rewriting, as [Bounds](#bounds-and-total-execution) describes.
 
+For scalar arguments and results, `p.f.pure` states `ImplementsPureA aborts`: every sufficiently
+fueled call returns the Lean result and preserves the whole store, or takes the permitted trap.
+It starts from any store.  The command generates this theorem when its instruction rules prove
+store-independent execution.  Those rules cover scalar arithmetic and conversions, local
+variables, branches, loops, and calls to earlier functions with generated store-preservation
+proofs.  Heap operations and guarded self-calls fall outside this proof generator.  The
+[scalar composition example](../Verified/Examples/ScalarComposition.lean) contains generated
+theorems for both float widths, word division, tail recursion, and call chains.
+
 ### Trusted base
 
 The trusted base is that of the LeanExe compiler: Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [`tools/Emit.lean`](../tools/Emit.lean) performs.  [The LeanExe compiler manual](leanexe-manual.md#trusted-base) describes each part.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [`Verified/Heap.lean`](../Verified/Heap.lean), which states that `top` plus a bound fits within the memory cap, the allocation bound of [`Verified/Bound.lean`](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The compiler, the reflector, and the bound equations are not trusted, since the kernel checks every theorem they produce.
@@ -191,6 +200,7 @@ The command adds the program, the module, and every theorem in one step, and the
 | `p.encoded` | `encode p.module = .ok ⟨p.encoding.toArray⟩`, with the bound on each function's locals that `decode_encode` requires. |
 | `p.f.func`, `p.f.denote_eq` | The source function and its body equation.  A tail body's equation describes its return-or-continue step.  A wrapper has no source function, and its equation relates it to its callee at the tables and parameters. |
 | `p.f.implements` | `ImplementsA aborts p.module k f` with Lean's instances for the argument tuple and the result, or `ImplementsTables` for a wrapper. |
+| `p.f.uniform`, `p.f.pure` | For eligible scalar functions: raw execution is independent of the store, and `ImplementsPureA aborts` computes the Lean result while preserving the whole store. |
 | `p.f.argsAgree`, `p.f.resultAgree` | Lean's instances represent the arguments and the result as the source's instances represent their flattenings. |
 | `p.f.bound`, `p.f.bound_eq` | The allocation bound in bytes on the argument tuple, and its equation in the parameters.  For a function whose code takes the call depth, the bound takes the number of frames first. |
 | `p.f.cost`, `p.f.cost_eq` | For a function with a paid parameter: the bound without the credits of the paid arguments, and its equation. |
@@ -271,6 +281,11 @@ For guarded recursion, `p.f.bound k x` and `p.f.fits k x` take the number of fra
 `tests/verified/run.sh --cases tail` checks default loop compilation through 4,096 iterations, scalar pairs and exceptional floats, record arrays, owned-array growth, swapping and replacement, an aliased seed, calls between tail functions, and a guarded callee.  It checks retained blocks and allocation counts.  The Recursion and Fold examples set `verified.tailLoops` to false to retain their guarded-depth tests.
 
 `tests/verified/run.sh --cases tailconditions` checks Boolean coercions, word inequality, a proof-named conditional, destructured scalar tuples, and borrowed pair and record states through 4,096 iterations.  The borrowed-state cases require one retained input block and no additional allocation.
+
+`tests/verified/run.sh --cases scalarcomposition` checks generated store-preserving scalar
+functions: division, conditional calls, tail recursion through 4,096 iterations, float call
+chains, and binary32 bit conversion and nearest-even rounding.  Every case checks zero
+allocations and retained blocks.
 
 `tests/verified/run.sh --cases lists` checks construction, duplication, nested calls, matching,
 head and tail access, reconstruction, and head updates on lists through 4,096 cells.  It checks
