@@ -34703,3 +34703,19 @@ The large-program check found a recursion-depth failure in FMA after scalar-stor
 FMA passed all 3,682 build jobs at the original recursion and heartbeat limits, taking 31 seconds.  All 43 axiom reports passed for its fourteen execution, uniformity, and whole-store theorems and its bytes theorem.  The scalar composition corpus again passed 174 cases, and the relocated corpus passed 189.  Both module hashes remain unchanged.  The proof review found shared append rules at each sequence boundary and no repeated interpreter derivation.  No external proof agent or LTG retrieval was used.  The full composition gate follows at the frozen corrected revision.
 
 The saved approvals work through normal execution for Git, SSH, the Lean runner, repository test drivers, and the documentation checker.  The repository instructions now record that execution rule and require reusable driver or command-category prefixes when a sandbox failure requires escalation.
+
+## Verified source to WGSL
+
+The list phase was fast-forwarded to main at `2e354fff` and pushed after its complete gate passed.  Composition is frozen at `838979b2` on minideb1.  Its default build passed all 4,182 jobs, and its full Verified build is running.  The following WGSL work uses the workstation, under the approved separate-host rule, without changing the frozen source.
+
+The source bridge reuses [the existing WGSL dispatch proof](LeanExe/WGSL/Build.lean).  Typed representations relate word, Boolean, and binary32 expressions and borrowed input arrays to source values.  Local bounds and a shared expression-frame theorem allow later statements to assign fresh locals while retaining those representations.  `Code` carries the generated statement, result representation, fresh-local range, and a proof of its source meaning.  Its atom, unary, binary, and binding constructors compose denotation proofs and the existing statement-frame theorem.  Unsupported source forms will return failure.  This adds no source operation or device assumption.
+
+The expression-frame theorem passed all 3,418 build jobs.  Contexts passed 3,432 jobs in 2.4 seconds, and code composition passed 3,460 jobs in 1.5 seconds.  The first frame proof referred to a natural-number maximum lemma outside its imports.  A private arithmetic equivalence proved by `omega` avoids adding that dependency.  The first code check omitted explicit source-type variables before using their `denote` projections.  Declaring those variables resolved the elaboration errors.  All eleven axiom reports contain only `propext`, `Classical.choice`, and `Quot.sound`.  Reviewing the accepted proofs confirms that binary operands execute in order and that binding extends the represented environment with the first result.  No external proof agent or LTG retrieval was used.
+
+The WGSL steps remain:
+
+- [x] Prove typed representations, fresh-local framing, and shared code-composition rules.
+- [ ] Lower scalar operations, input reads, bindings, and counted loops.
+- [ ] Connect accepted source kernels to dispatch, emission, and reflection.
+- [ ] Test emitted kernels on both installed WebGPU drivers and complete the library gates.
+- [ ] Compile and test binary32 GPT after the WGSL capability.
