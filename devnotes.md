@@ -34147,7 +34147,7 @@ The user approved the capability order below, with frequent updates, commits, an
 - [x] Add binary32 types, operations, reflection, and compiler correctness.  The focused execution corpus passed 2,777 cases.  The full-library and execution gates passed at `0959520b3`.
 - [x] Add sum constructors with scalar fields, matching, and array ownership rules.  The focused execution corpus passed 514 cases.  The full-library and execution gates passed at `0959520b3`.
 - [x] Add lists and supported user-defined recursive types, copying, release, record reuse, and `List.foldl`.  The full gates passed, and `2e354fff` published the phase to `main`.
-- [ ] Add proof composition across modules, starting with scalar calls that preserve memory.
+- [x] Add proof composition across modules, starting with scalar calls that preserve memory.  The full gates passed, and `838979b2` published the phase to `main`.
 - [ ] Add the verified compiler's WGSL path and check the GPT kernels.
 - [ ] Port binary32 GPT as an application check.
 
@@ -34668,7 +34668,7 @@ The remaining module-composition steps are:
 - [x] Check the scalar calibration, primitive, sequence, control, and call rules against current imports.
 - [x] Derive store-preserving execution theorems for compiled scalar functions and test their reuse.
 - [x] Add library reuse and relocation with checked source and meaning transport.
-- [ ] Run the phase’s full gates before publication to main.
+- [x] Run the phase’s full gates before publication to main.
 
 WGSL and binary32 GPT remain after these steps.
 
@@ -34784,4 +34784,6 @@ The frozen composition revision `838979b2` passed the default build's 4,182 jobs
 
 The scalar-proof generator passed the larger numerical programs at their existing command limits.  `Uscale` took twenty seconds, `PrintFloat` 122 seconds, and `ParseFloat` 143 seconds.  Review of the accepted generator confirms that it composes shared instruction, control, and call rules, joins instruction-sequence proofs through balanced append rules, and derives native values from universal compiler correctness.  The parser and printer required no program-specific store proof.  No external proof agent or LTG retrieval was used.
 
-The full execution and accuracy driver is emitting and validating the modules before the application corpora, numerical file proofs, module cases, and accuracy checks.  Its result remains required for composition publication.  The checked continuation will then validate the frozen final code at `60be1412`.  Later commits change only documentation and the journal.
+The full execution and accuracy driver completed at 2026-10-21 21:40:43 UTC with status zero.  All 26,368 general Wasm cases, 2,733 GPT cases, 3,096 Euler cases, 226 reused sum-type cases, eleven GPT allocation sessions, and the cache-growth check passed.  Every numerical file proof reported the permitted axioms.  The native accuracy checks passed, including 763,816 exact-rounding FMA results, 4,026 limb results, 1,030 parser fixtures, and 889 printer fixtures.  `838979b2` is now pushed to `main`.
+
+The checked continuation verified the bundle and frozen source, then started the final code at `60be1412` at 21:40:56 UTC.  Its default build passed all 4,185 jobs.  Its complete Verified build and execution and accuracy gate remain required before publishing WGSL and binary32 GPT to main.  Later feature-branch commits change only documentation and the journal.
