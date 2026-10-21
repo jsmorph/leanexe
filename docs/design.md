@@ -307,7 +307,7 @@ No work on items 2 and 3 is planned.
 - [ ] LeanExe compiler: `Array Float` literals.
 - [ ] LeanExe compiler: LTG entries for `Stmt.append_spec`, `Stmt.repeatWhile_pure_spec`, and `Live.tupleLoop`.
 - [x] Verified compiler: typed program composition, call relocation, meaning transport, and scalar calls that preserve the whole store.  Lists, fixed-layout recursive types, and scalar-state list folds have typed source operations and universal correctness proofs.  [The backend description](../Verified/README.md#module-composition) gives the composition API and tests.  The phase's full gates remain required before publication to main.
-- [ ] Verified compiler: the WGSL path and binary32 GPT.  Float32 values, arrays, arithmetic, comparisons, and word conversions are supported.  Lists, recursive types, and composition across modules precede WGSL and binary32 GPT.
+- [ ] Verified compiler: complete the full gates for the WGSL path and binary32 GPT.  [Source lowering](../Verified/WGSL/Compile.lean), all thirteen [binary32 kernels](../Verified/Examples/Gpt32.lean), and [their host-generation theorem](../Verified/Examples/Gpt32Host.lean) are implemented.  Focused proofs, the kernel axiom audit, and 220 Wasm cases pass.
 - [ ] Verified compiler: owned record and pair parameters.
 
 The interpreter testsuite run recorded on 2026-10-10 passed 64,751 commands, with 346 skips and 27 decode errors on unsupported text forms.  [The exponential guide](../Verified/Examples/Exp.md#limits) and the journal record its scope.  The interpreter remains trusted.  Talos bounds no call depth.  Guarded recursive calls in both compilers trap at depth 1,000.  Tail continuations use loop branches.

@@ -1,6 +1,7 @@
 import Examples.Gpt32.HostProgram
 import Examples.Gpt32.Proofs
 import LeanExe.IR.Combinators
+import LeanExe.WGSL.Workgroup
 
 /-!
 The meaning of the programs of `Examples/Gpt32/HostProgram.lean`.
@@ -35,7 +36,9 @@ def outputWords (n : Nat) : Array UInt32 :=
   Array.ofFn (n := 2 + 2 * n) fun i =>
     if i.val = 0 then UInt32.ofNat n else if i.val = 1 then UInt32.ofNat (n / 2 ^ 32) else 0
 
-def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) : Cmd → Option HostStore
+def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) (c : Cmd)
+    (modules : KernelName → Module := KernelName.module) : Option HostStore :=
+  match c with
   | .load b path => (files path).map (s.set b)
   | .words b ws => some (s.set b ws.toArray)
   | .output b n => some (s.set b (outputWords n))
@@ -44,22 +47,29 @@ def Cmd.exec (files : String → Option (Array UInt32)) (s : HostStore) : Cmd �
     else do
       let bufs ← ins.mapM s
       let o ← s out
-      let o' ← k.module.dispatch bufs o (k.module.workgroupSize * w)
+      let o' ← (modules k).dispatch bufs o ((modules k).workgroupSize * w)
       pure (s.set out o')
 
-def Cmd.RaceFree (s : HostStore) : Cmd → Prop
+def Cmd.RaceFree (s : HostStore) (c : Cmd)
+    (modules : KernelName → Module := KernelName.module) : Prop :=
+  match c with
   | .run k w out ins => ∀ bufs o, ins.mapM s = some bufs → s out = some o →
-      k.module.RaceFree bufs o.size (k.module.workgroupSize * w)
+      (modules k).RaceFree bufs o.size ((modules k).workgroupSize * w)
   | _ => True
 
-def Cmd.execAll (files : String → Option (Array UInt32)) : HostStore → List Cmd → Option HostStore
-  | s, [] => some s
-  | s, c :: cs => (c.exec files s).bind fun s' => Cmd.execAll files s' cs
+def Cmd.execAll (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
+    (modules : KernelName → Module := KernelName.module) : Option HostStore :=
+  match cs with
+  | [] => some s
+  | c :: cs => (c.exec files s modules).bind fun s' => Cmd.execAll files s' cs modules
 
 /-- Every dispatch of `cs`, run from `s`, is race-free. -/
-def Cmd.AllRaceFree (files : String → Option (Array UInt32)) : HostStore → List Cmd → Prop
-  | _, [] => True
-  | s, c :: cs => c.RaceFree s ∧ ∀ s', c.exec files s = some s' → Cmd.AllRaceFree files s' cs
+def Cmd.AllRaceFree (files : String → Option (Array UInt32)) (s : HostStore) (cs : List Cmd)
+    (modules : KernelName → Module := KernelName.module) : Prop :=
+  match cs with
+  | [] => True
+  | c :: cs => c.RaceFree s modules ∧
+      ∀ s', c.exec files s modules = some s' → Cmd.AllRaceFree files s' cs modules
 
 inductive Val where
   | arr (xs : Array Float32)
@@ -130,18 +140,6 @@ def Item.execAll (files : String → Option Val) : Store → List Item → Optio
 def Item.allCmds (items : List Item) : List Cmd := items.flatMap Item.cmds
 
 /-! ### Typed calls and host commands -/
-
-theorem Spec.module_workgroupSize {K : Spec} {m : Module} (h : K.module = some m) :
-    m.workgroupSize = 64 := by
-  unfold Spec.module at h
-  cases h1 : trStmt K.layout K.body (1 + K.width) with
-  | none => simp [h1] at h
-  | some a =>
-    cases h2 : trExpr K.layout K.element a.2 with
-    | none => simp [h1, h2] at h
-    | some b =>
-      simp only [h1, h2, bind, Option.bind, pure, Option.some.injEq] at h
-      rw [← h]
 
 theorem KernelName.workgroupSize (k : KernelName) : k.module.workgroupSize = 64 := by
   cases k
@@ -225,6 +223,19 @@ theorem KernelName.apply_dispatch {k : KernelName} {vs : List Val} {ys : Array F
     exact ⟨h3, logitsKernel_dispatch _ _ _ _ h1 h2 h3 _ (outputWords_size _)
       (outputWords_zero _) (outputWords_one (by omega)) _ (by omega) (by omega)⟩
 
+structure KernelBackend where
+  module : KernelName → Module
+  workgroupSize : ∀ k, (module k).workgroupSize = 64
+  apply_dispatch : ∀ {k vs ys}, k.apply vs = some ys →
+    ys.size < 2 ^ 29 ∧
+      (module k).dispatch (vs.map Val.buffer) (outputWords ys.size)
+          (64 * ((ys.size + 63) / 64)) = some (Val.buffer (.arr ys)) ∧
+      (module k).RaceFree (vs.map Val.buffer) (outputWords ys.size).size
+        (64 * ((ys.size + 63) / 64))
+
+def KernelBackend.original : KernelBackend :=
+  ⟨KernelName.module, KernelName.workgroupSize, KernelName.apply_dispatch⟩
+
 def hostFiles (files : String → Option Val) : String → Option (Array UInt32) :=
   fun path => (files path).map Val.buffer
 
@@ -276,9 +287,9 @@ theorem Store.host_set (s : Store) (b : Buf) (v : Val) :
   split <;> rfl
 
 theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
-    (h : i.exec files s = some s') :
-    Cmd.execAll (hostFiles files) s.host i.cmds = some s'.host ∧
-      Cmd.AllRaceFree (hostFiles files) s.host i.cmds := by
+    (h : i.exec files s = some s') (backend : KernelBackend := .original) :
+    Cmd.execAll (hostFiles files) s.host i.cmds backend.module = some s'.host ∧
+      Cmd.AllRaceFree (hostFiles files) s.host i.cmds backend.module := by
   cases i with
   | call k n out ins =>
     simp only [Item.exec] at h
@@ -296,9 +307,9 @@ theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
         · rename_i hn
           simp only [Option.some.injEq] at h
           subst hn h
-          have hW := k.workgroupSize
+          have hW := backend.workgroupSize k
           obtain ⟨hsmall, hd, hr⟩ :=
-            KernelName.apply_dispatch hk
+            backend.apply_dispatch hk
           have hins : ins.mapM (s.host.set out (outputWords ys.size)) =
               some (vs.map Val.buffer) := by
             rw [HostStore.mapM_set hout]
@@ -340,21 +351,23 @@ theorem Item.exec_sim (files : String → Option Val) {s s' : Store} {i : Item}
       exact ⟨by simp [Item.cmds, Cmd.execAll, Cmd.exec, hostFiles, hf, Store.host_set],
         trivial, fun _ _ => trivial⟩
 
-theorem Cmd.execAll_append (files : String → Option (Array UInt32)) :
+theorem Cmd.execAll_append (files : String → Option (Array UInt32))
+    {modules : KernelName → Module} :
     ∀ (s : HostStore) (cs ds : List Cmd),
-      Cmd.execAll files s (cs ++ ds) = (Cmd.execAll files s cs).bind fun s' =>
-        Cmd.execAll files s' ds
+      Cmd.execAll files s (cs ++ ds) modules = (Cmd.execAll files s cs modules).bind fun s' =>
+        Cmd.execAll files s' ds modules
   | s, [], ds => rfl
   | s, c :: cs, ds => by
     simp only [List.cons_append, Cmd.execAll]
-    cases c.exec files s with
+    cases c.exec files s modules with
     | none => rfl
     | some s' => exact Cmd.execAll_append files s' cs ds
 
-theorem Cmd.allRaceFree_append (files : String → Option (Array UInt32)) :
-    ∀ (s : HostStore) (cs ds : List Cmd), Cmd.AllRaceFree files s cs →
-      (∀ s', Cmd.execAll files s cs = some s' → Cmd.AllRaceFree files s' ds) →
-      Cmd.AllRaceFree files s (cs ++ ds)
+theorem Cmd.allRaceFree_append (files : String → Option (Array UInt32))
+    {modules : KernelName → Module} :
+    ∀ (s : HostStore) (cs ds : List Cmd), Cmd.AllRaceFree files s cs modules →
+      (∀ s', Cmd.execAll files s cs modules = some s' → Cmd.AllRaceFree files s' ds modules) →
+      Cmd.AllRaceFree files s (cs ++ ds) modules
   | s, [], ds, _, h => h s rfl
   | s, c :: cs, ds, ⟨hc, hcs⟩, h => ⟨hc, fun s' hs' =>
       Cmd.allRaceFree_append files s' cs ds (hcs s' hs') fun s'' h'' =>
@@ -362,22 +375,23 @@ theorem Cmd.allRaceFree_append (files : String → Option (Array UInt32)) :
 
 /-- A run of typed items is a run of their host commands, from the encoded store to the encoded
 result, with every dispatch race-free. -/
-theorem Item.execAll_sim (files : String → Option Val) :
-    ∀ (items : List Item) (s s' : Store), Item.execAll files s items = some s' →
-      Cmd.execAll (hostFiles files) s.host (Item.allCmds items) = some s'.host ∧
-        Cmd.AllRaceFree (hostFiles files) s.host (Item.allCmds items)
-  | [], s, s', h => by
+theorem Item.execAll_sim (files : String → Option Val) (items : List Item) (s s' : Store)
+    (h : Item.execAll files s items = some s') (backend : KernelBackend := .original) :
+    Cmd.execAll (hostFiles files) s.host (Item.allCmds items) backend.module = some s'.host ∧
+      Cmd.AllRaceFree (hostFiles files) s.host (Item.allCmds items) backend.module := by
+  induction items generalizing s with
+  | nil =>
     simp only [Item.execAll, Option.some.injEq] at h
     subst h
     exact ⟨rfl, trivial⟩
-  | i :: is, s, s', h => by
+  | cons i is ih =>
     simp only [Item.execAll] at h
     cases hi : i.exec files s with
     | none => simp [hi] at h
     | some s1 =>
       simp only [hi, Option.bind_some] at h
-      obtain ⟨he, hr⟩ := Item.exec_sim files hi
-      obtain ⟨he', hr'⟩ := Item.execAll_sim files is s1 s' h
+      obtain ⟨he, hr⟩ := Item.exec_sim files hi backend
+      obtain ⟨he', hr'⟩ := ih s1 h
       have hcat : Item.allCmds (i :: is) = i.cmds ++ Item.allCmds is := by
         simp [Item.allCmds]
       rw [hcat]

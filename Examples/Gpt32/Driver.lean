@@ -15,11 +15,12 @@ open Examples.Gpt32 LeanExe.WGSL
 
 /-- The WGSL text of kernel `k`, after checking that the parser reads it back as the kernel, as
 `tools/EmitWgsl.lean` does. -/
-def kernelText (k : KernelName) : Except String String :=
-  let text := k.module.print
+def kernelText (k : KernelName) (modules : KernelName → Module := KernelName.module) :
+    Except String String :=
+  let text := (modules k).print
   match Module.parse text with
   | some parsed =>
-    if toString (repr parsed) == toString (repr k.module) then .ok text
+    if toString (repr parsed) == toString (repr (modules k)) then .ok text
     else .error s!"{k.name}: the text parses to a different kernel"
   | none => .error s!"{k.name}: the text does not parse"
 
@@ -71,12 +72,13 @@ def readScores (h : HostProcess) (s : Shape32) (tmp : String) : IO (List (Array 
 /-- Generates `n` tokens after `prompt`, calling `seen` with the scores of each step from the last
 prompt position on, and returns the prompt followed by the generated tokens. -/
 def generate (host weights wgsl tmp : String) (s : Shape32) (prompt : List Nat) (n : Nat)
-    (seen : List (Array Float32) → IO Unit) : IO (List Nat) := do
+    (seen : List (Array Float32) → IO Unit)
+    (modules : KernelName → Module := KernelName.module) : IO (List Nat) := do
   IO.FS.createDirAll wgsl
   let h ← startHost host
   for k in KernelName.all do
     let path := s!"{wgsl}/{k.name}.wgsl"
-    IO.FS.writeFile path (← IO.ofExcept (kernelText k))
+    IO.FS.writeFile path (← IO.ofExcept (kernelText k modules))
     send h s!"shader {k.shader} {path}"
   sendItems h (setupItems s weights)
   let mut ids := prompt.toArray

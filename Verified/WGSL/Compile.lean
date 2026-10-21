@@ -33,4 +33,17 @@ theorem Compiled.dispatch_eq (c : Compiled source) (funs : Funs S) (env : Verifi
   have h := c.kernel.dispatch_eq funs env n fits output hOut hL0 hL1 count hCover h32
   simpa only [Compiled.module, Compiled.args, Compiled.encode, hValue] using h
 
+theorem Compiled.dispatch_value (c : Compiled source) (funs : Funs S) (env : Verified.Env Γ)
+    (value : Array e.denote) (meaning : source.denote funs env = value) (n : Nat)
+    (fits : c.spec.Fits (c.args env) n)
+    (output : Array UInt32) (hOut : output.size = 2 + 2 * n)
+    (hL0 : output[0]? = some (UInt32.ofNat n)) (hL1 : output[1]? = some 0)
+    (count : Nat) (hCover : n ≤ count) (h32 : count ≤ 2 ^ 32) :
+    c.module.dispatch ((c.args env).map LeanExe.WGSL.Arg.buffer) output count =
+        some (LeanExe.WGSL.arrayWords (value.map c.encode)) ∧
+      c.module.RaceFree ((c.args env).map LeanExe.WGSL.Arg.buffer) output.size count := by
+  have h := c.dispatch_eq funs env n fits output hOut hL0 hL1 count hCover h32
+  exact ⟨h.1.trans (congrArg (fun result =>
+    some (LeanExe.WGSL.arrayWords (result.map c.encode))) meaning), h.2⟩
+
 end Verified.WGSL

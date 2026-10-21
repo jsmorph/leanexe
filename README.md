@@ -42,7 +42,7 @@ the parameters.  Wrappers whose callees take no call depth receive the correspon
 trap-free theorem.  The dialect covers words, `Bool`s, floats, tuples, structures, enumerations, sums with scalar fields, arrays
 of these, records with array fields, recursion, constant tables, and array updates in place.  The
 examples include elementary and special functions ported from fdlibm, Arm's optimized-routines,
-and CORE-MATH, decimal parsers and printers, binary64 GPT-2, two Euler solvers, an order book,
+and CORE-MATH, decimal parsers and printers, binary64 and binary32 GPT-2, two Euler solvers, an order book,
 the drone planner, and three random-number generators with theorems about their periods.  [The numerical index](index.md)
 lists the algorithms and their strongest proved results, including numerical accuracy, exact
 fused multiply-add, correctly rounded parsing, and shortest-decimal printing.  Each function's
@@ -70,8 +70,10 @@ document states its theorem's domain and exceptional cases.
 A program within the verified compiler's dialect needs no proof of its own.  The generated
 trap-free theorems cover source functions and wrappers without call depth under their allocation
 bounds and, for code that calls guarded recursion, its frames condition.  A program that needs
-WGSL kernels can use either compiler's proved path.  Binary64 GPT-2 and the Euler solvers compile
-with both compilers.  [The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
+WGSL kernels can use either compiler's proved path.  Both GPT-2 programs and the Euler solvers
+compile with both compilers.  [The binary32 guide](Examples/Gpt32/README.md#verified-compiler)
+describes the verified compiler's Wasm and WGSL theorems and generation tests.
+[The verified-executable skill](.claude/skills/verified-executable/SKILL.md), which takes a request in
 English to a program and a theorem about its bytes, uses the LeanExe compiler.  The verified
 compiler uses its own IR for Wasm and the shared IR-to-WGSL translation for kernels.
 

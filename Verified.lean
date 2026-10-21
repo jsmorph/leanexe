@@ -61,6 +61,7 @@ import Verified.Examples.Tail
 import Verified.Examples.TailConditions
 import Verified.Examples.TailReflection
 import Verified.Examples.Gpt
+import Verified.Examples.Gpt32Host
 import Verified.Examples.Euler
 import Verified.ArrayFold
 import Verified.TailRun

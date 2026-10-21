@@ -887,13 +887,14 @@ theorem generate_host (files : String → Option Val) (dir : String) (s : Shape3
     (W : Weights32) (ts : List UInt64) (t : UInt64) (st : Store)
     (hnh : s.nh.toNat ≤ 64) (hf : s.f.toNat < 2 ^ 29) (hlen : ts.length < 1024)
     (hts : ∀ t' ∈ t :: ts, (t' / s.chunk).toNat < s.rows.length)
-    (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[]))) :
+    (hL : Loaded files dir W) (hF : Fits s W (List.replicate s.layers (#[], #[])))
+    (backend : KernelBackend := .original) :
     let cmds := Item.allCmds (setupItems s dir ++ stepsItems s ts 0 ++
       stepItems s t (UInt64.ofNat ts.length))
     let scores := (step32 s W t (UInt64.ofNat ts.length)
       (cachesAfter s W ts 0 (List.replicate s.layers (#[], #[])))).2
-    ∃ st' : Store, Cmd.execAll (hostFiles files) st.host cmds = some st'.host ∧
-      Cmd.AllRaceFree (hostFiles files) st.host cmds ∧
+    ∃ st' : Store, Cmd.execAll (hostFiles files) st.host cmds backend.module = some st'.host ∧
+      Cmd.AllRaceFree (hostFiles files) st.host cmds backend.module ∧
       scores.length = s.rows.length ∧
       ∀ c < s.rows.length, st'.host (.z c) = some (Val.arr scores[c]!).buffer := by
   intro cmds scores
@@ -907,7 +908,7 @@ theorem generate_host (files : String → Option Val) (dir : String) (s : Shape3
       stepItems s t (UInt64.ofNat ts.length)) = some st3 := by
     rw [Item.execAll_append, Item.execAll_append, he1, Option.bind_some, he2, Option.bind_some,
       he3]
-  obtain ⟨hc, hr⟩ := Item.execAll_sim files _ st st3 he
+  obtain ⟨hc, hr⟩ := Item.execAll_sim files _ st st3 he backend
   exact ⟨st3, hc, hr, hlen3, fun c hc' => by simp [Store.host, hz3 c hc', scores]⟩
 
 end Examples.Gpt32

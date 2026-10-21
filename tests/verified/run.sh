@@ -50,6 +50,7 @@ for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:c
     Verified.Examples.Tail:compiled.module:tail \
     Verified.Examples.TailConditions:compiled.module:tailconditions \
     Verified.Examples.Gpt:compiled.module:gpt \
+    Verified.Examples.Gpt32:compiled.module:gpt32 \
     Verified.Examples.Euler:compiled.module:euler \
     Verified.Examples.Loops:compiled.module:loops \
     Verified.Examples.Arrays:compiled.module:arrays \
@@ -173,6 +174,9 @@ elif [ "$case_module" = "relocation" ]; then
 elif [ "$case_module" = "wgsl" ]; then
   cases_module=Verified.Examples.WgslWasmCasesMain
   cases_source=Verified/Examples/WgslWasmCasesMain.lean
+elif [ "$case_module" = "gpt32" ]; then
+  cases_module=Verified.Examples.Gpt32WasmCasesMain
+  cases_source=Verified/Examples/Gpt32WasmCasesMain.lean
 elif [ "$case_module" = "listrecursion" ]; then
   cases_module=Verified.Examples.ListRecursionCasesMain
   cases_source=Verified/Examples/ListRecursionCasesMain.lean
