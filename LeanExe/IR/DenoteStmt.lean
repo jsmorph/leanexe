@@ -2,7 +2,7 @@ import LeanExe.IR.Denote
 import LeanExe.IR.Loop
 
 /-!
-The memory-free denotation of statements built from assignments, sequences, and loops, over the
+The memory-free denotation of statements built from assignments, sequences, conditionals, and loops, over the
 locals and arrays of `Expr.denote`.  A loop tests its condition at most `loopBound` times.
 `Stmt.denote_spec` shows that the compiled code of a statement whose denotation succeeds ends in
 a state that holds the denoted locals, and `Stmt.denote_loop` gives the denotation of the
@@ -41,6 +41,8 @@ def Stmt.denote (arrays : Nat → Option (Array UInt64)) :
         (e.denote locals arrays).map fun v i => if i = j then some (type.value v) else locals i
       else none
   | .seq a b, locals => (Stmt.denote arrays a locals).bind (Stmt.denote arrays b)
+  | .ite c a b, locals => do
+      if (← c.denote locals arrays) then a.denote arrays locals else b.denote arrays locals
   | .while c body, locals =>
       loopIter (fun l => c.denote l arrays) (Stmt.denote arrays body) loopBound locals
   | _, _ => none
@@ -97,6 +99,16 @@ theorem Stmt.denote_frame (arrays : Nat → Option (Array UInt64)) :
       obtain ⟨L1, h1, h2⟩ := h
       simp only [Stmt.writes, List.mem_append, not_or] at hj
       rw [ihb L1 L' h2 j hj.2, iha L L1 h1 j hj.1]
+  | ite c a b iha ihb =>
+      intro L L' h j hj
+      simp only [Stmt.denote, Option.bind_eq_bind] at h
+      simp only [Stmt.writes, List.mem_append, not_or] at hj
+      cases hc : c.denote L arrays with
+      | none => simp [hc] at h
+      | some v =>
+          cases v <;> simp only [hc, Option.bind_some, Bool.false_eq_true, ↓reduceIte] at h
+          · exact ihb L L' h j hj.2
+          · exact iha L L' h j hj.1
   | «while» c body ih =>
       intro L L' h j hj
       simp only [Stmt.writes] at hj
@@ -174,6 +186,35 @@ theorem Stmt.denote_spec {arrays : Nat → Option (Array UInt64)} {store : Store
       rintro st s2 ⟨rfl, hF2, hA2⟩
       exact ⟨rfl, (hF1.weaken fun j hj => List.mem_append_left _ hj).trans
         (hF2.weaken fun j hj => List.mem_append_right _ hj), hA2⟩
+  | ite c a b iha ihb =>
+      intro L L' state hAgree h hW hRoom
+      simp only [Stmt.denote, Option.bind_eq_bind, Option.bind_eq_some_iff] at h
+      obtain ⟨cv, hc, h⟩ := h
+      obtain ⟨after, hEval⟩ := Expr.eval_denote c scratch state cv hAgree
+        (by simp only [Stmt.scratchWidth] at hRoom; omega) hc
+      have hFC := Expr.eval_frame (a.writes ++ b.writes) c store.mem scratch state after cv hEval
+      have hA := hAgree.frame fun j hj =>
+        Expr.eval_preserves_below c store.mem scratch state after cv j hEval hj
+      refine (Stmt.ite_spec
+        (PThen := fun st s => cv = true ∧ st = store ∧ s = after)
+        (PElse := fun st s => cv = false ∧ st = store ∧ s = after) ?_ ?_).mono ?_
+        (fun _ _ h => h)
+      · apply Triple.of_forall
+        rintro st s ⟨rfl, rfl, rfl⟩
+        refine (iha L L' s hA h (fun j hj => hW j (by simp [Stmt.writes, hj]))
+          (by rw [hFC.params, hFC.locals]; simp only [Stmt.scratchWidth] at hRoom; omega)).mono
+          (fun _ _ h => h) ?_
+        rintro st s ⟨rfl, hF, hA⟩
+        exact ⟨rfl, hFC.trans (hF.weaken fun j hj => List.mem_append_left _ hj), hA⟩
+      · apply Triple.of_forall
+        rintro st s ⟨rfl, rfl, rfl⟩
+        refine (ihb L L' s hA h (fun j hj => hW j (by simp [Stmt.writes, hj]))
+          (by rw [hFC.params, hFC.locals]; simp only [Stmt.scratchWidth] at hRoom; omega)).mono
+          (fun _ _ h => h) ?_
+        rintro st s ⟨rfl, hF, hA⟩
+        exact ⟨rfl, hFC.trans (hF.weaken fun j hj => List.mem_append_right _ hj), hA⟩
+      · rintro st s ⟨rfl, rfl⟩
+        exact ⟨cv, after, hEval, by cases cv <;> simp⟩
   | «while» c body ih =>
       intro L L' state hAgree h hW hRoom
       classical
