@@ -257,7 +257,9 @@ binary64 values, and composite parameter or element types are outside this subse
 Word arithmetic includes addition, subtraction, multiplication, and division or remainder by a
 constant power of two from 2 through 2³¹.  Binary32 operations include arithmetic, comparisons,
 square root, absolute value, negation, nearest-even rounding, and conversion to or from bit
-patterns.  The shared WGSL translation normalizes arithmetic NaNs to `0x7fc00000`.
+patterns.  The translation accepts finite float literals.  Parameters, input arrays, and runtime
+bit conversions can carry infinities and NaNs.  The shared WGSL translation normalizes arithmetic
+NaNs to `0x7fc00000`.
 
 After `verified_compile compiled := [scale]`, the typed API constructs the kernel as follows:
 

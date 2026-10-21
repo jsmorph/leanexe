@@ -581,7 +581,7 @@ uv run tests/modules/chunks.py
 [The journal](../devnotes.md) records a full check after each change to the compiler or the pipeline, with the counts of the cases that passed.  The build comes first, and the byte comparison and the tests follow it, so that they use the modules of the built source.  Each step must pass before the next one runs.
 
 1. `tools/leanrun --timeout 60m lake build`, with no `sorry` warning.
-2. Emit every module with `Emit.lean` into a scratch directory and compare its bytes with `build/NAME/NAME.wasm`.  A module whose source did not change must have the same bytes, and a changed module's new file replaces the old one before the tests.
+2. Emit every module with `Emit.lean` into a scratch directory and compare its bytes with `build/NAME/NAME.wasm`.  `tests/modules/run.sh --check-bytes build/byte-check` emits and compares every module in [the checked module list](../tests/modules/modules.txt).  A module whose source did not change must have the same bytes, and a changed module's new file replaces the old one before the tests.
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
