@@ -1,3 +1,4 @@
+import Library.Arrays.Filter.Program
 import Verified.Reflect.Command
 
 /-! The eighteenth program of the verified compiler: `LeanExe.repeatWhile`, a loop that stops when
@@ -8,6 +9,8 @@ evaluate loops whose conditions read only literal data: a pair result that holds
 `match` on a loop's result and on a call with literal arguments, and a closed loop. -/
 
 namespace Verified.Examples.Repeat
+
+export Library.Arrays.Filter (below clearUntil)
 
 /-- The number of steps of the Collatz map from `n` to 1, at most 1,000. -/
 def collatzSteps (n : UInt64) : UInt64 :=
@@ -22,19 +25,6 @@ def firstMultiple (k start : UInt64) : UInt64 :=
 /-- Newton's iteration for the square root of `a`, from `a`, until the residual is small. -/
 def newtonSqrt (a : Float) : Float :=
   LeanExe.repeatWhile 64 a (fun x => 1e-12 * a < (x * x - a).abs) fun x => 0.5 * (x + a / x)
-
-/-- The elements of `xs` below `limit`, in order, gathered until `count` of them are found. -/
-def below (xs : Array UInt64) (limit count : UInt64) : Array UInt64 :=
-  (LeanExe.repeatWhile xs.size.toUInt64 ((0 : UInt64), LeanExe.build 0 fun i => i)
-    (fun s => s.2.size.toUInt64 < count)
-    fun s => (s.1 + 1, if xs[s.1.toNat]! < limit then s.2.push xs[s.1.toNat]! else s.2)).2
-
-/-- `xs` with its elements set to 0 from the start up to the first element equal to `v`, in
-place. -/
-def clearUntil (xs : Array UInt64) (v : UInt64) : Array UInt64 :=
-  (LeanExe.repeatWhile xs.size.toUInt64 ((0 : UInt64), xs)
-    (fun s => s.1 < s.2.size.toUInt64 && s.2[s.1.toNat]! != v)
-    fun s => (s.1 + 1, s.2.set! s.1.toNat 0)).2
 
 structure Fall where
   height : Float
@@ -76,7 +66,7 @@ def fallSteps (k : UInt64) : UInt64 :=
 def offset (x : UInt64) : UInt64 :=
   x + LeanExe.repeatWhile 18446744073709551615 (0 : UInt64) (· < 100000) (· + 1)
 
-verified_compile compiled := [collatzSteps, firstMultiple, newtonSqrt, below, clearUntil, fall,
+verified_compile compiled := [collatzSteps, firstMultiple, newtonSqrt, Library.Arrays.Filter.below, Library.Arrays.Filter.clearUntil, fall,
   countUp, sumTo, rest, fallSteps, offset]
 
 end Verified.Examples.Repeat

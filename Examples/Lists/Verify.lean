@@ -12,7 +12,7 @@ namespace Examples.Lists
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime
 
 theorem listSum_implements :
-    Implements lists.module 2 Examples.Lists.listSum := by
+    Implements lists.module 2 Library.Lists.Word.listSum := by
   refine Func.implements lists.funcs 0 lists.listSum.ir "listSum" rfl _
     (by rintro _ _ _ _ ⟨ptr, rfl, -⟩; rfl) ?_
   rintro xs heap initial _ hHeap ⟨ptr, rfl, hBorrowed⟩
@@ -145,7 +145,7 @@ theorem sumRange_implements :
 `listSum`, `listRange`, and `sumRange` exactly. -/
 theorem lists_bytes : ∃ bytes, Wasm.Encoding.encode lists.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
-      Implements m 2 Examples.Lists.listSum ∧
+      Implements m 2 Library.Lists.Word.listSum ∧
       Implements m 3 Examples.Lists.listRange ∧
       Implements m 4 Examples.Lists.sumRange := by
   obtain ⟨bytes, success, decoded⟩ :=

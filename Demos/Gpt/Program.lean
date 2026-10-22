@@ -1,19 +1,11 @@
+import Library.Numerics.LinearAlgebra.Float64.Program
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Build
 import Library.Random.SplitMix64.Program
 
 namespace Demos.Gpt
 
-/-- The dot product of `xs` and `ys` over the length of `xs`, with 0 for each
-missing element of `ys`. -/
-def dot (xs ys : Array Float) : Float :=
-  LeanExe.loop xs.size.toUInt64 0.0 fun i acc => acc + xs[i.toNat]! * ys[i.toNat]!
-
-/-- The product of the `rows × cols` matrix `m`, stored by rows, and the vector
-`v`, with 0 for each missing element. -/
-def matVec (m v : Array Float) (rows cols : UInt64) : Array Float :=
-  LeanExe.build rows fun r =>
-    LeanExe.loop cols 0.0 fun c acc => acc + m[(r * cols + c).toNat]! * v[c.toNat]!
+export Library.Numerics.LinearAlgebra.Float64 (matVec matMul matMulT add dot)
 
 /-- The layer normalization of `xs` with gain `g` and bias `b`, with `eps` added to
 the variance and 0 for each missing gain or bias. -/
@@ -54,14 +46,8 @@ def softmax (xs : Array Float) : Array Float :=
 `d` columns and `w2` has `d` rows and `hidden` columns.  The intermediate vector
 is a temporary array. -/
 def matVec2 (w1 w2 x : Array Float) (hidden d : UInt64) : Array Float :=
-  let h := matVec w1 x hidden d
-  matVec w2 h d hidden
-
-/-- The product of the `n × k` matrix `a` and the `k × m` matrix `b`, both stored by
-rows, as an `n × m` matrix stored by rows, with 0 for each missing element. -/
-def matMul (a b : Array Float) (n k m : UInt64) : Array Float :=
-  LeanExe.build (n * m) fun e =>
-    LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(c * m + e % m).toNat]!
+  let h := Library.Numerics.LinearAlgebra.Float64.matVec w1 x hidden d
+  Library.Numerics.LinearAlgebra.Float64.matVec w2 h d hidden
 
 /-- The linear layer `x · w + b` for the `n × k` matrix `x` stored by rows, with layer
 `l` of the weights: `w` holds one `k × m` matrix stored by rows for each layer, one after
@@ -73,11 +59,6 @@ def linear (x w b : Array Float) (l n k m : UInt64) : Array Float :=
     LeanExe.loop k 0.0 (fun c acc =>
         acc + x[(e / m * k + c).toNat]! * w[(l * (k * m) + (c * m + e % m)).toNat]!) +
       b[(l * m + e % m).toNat]!
-
-/-- The element-wise sum of `a` and `b` over the length of `a`, with 0 for each
-missing element of `b`. -/
-def add (a b : Array Float) : Array Float :=
-  LeanExe.build a.size.toUInt64 fun i => a[i.toNat]! + b[i.toNat]!
 
 /-- `tanh z` as `1 - 2 / (e^(2z) + 1)`, which gives 1 and -1 at the two ends of the
 range.  Near 0 it loses relative accuracy through cancellation. -/
@@ -200,22 +181,16 @@ def block (x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj : Array Flo
     (l t nh dh f : UInt64) (eps : Float) : Array Float :=
   let h1 := layerNormRows x g1 b1 l t (nh * dh) eps
   let a := attention h1 wq bq wk bk wv bv wo bo l t nh dh
-  let r := add x a
+  let r := Library.Numerics.LinearAlgebra.Float64.add x a
   let h2 := layerNormRows r g2 b2 l t (nh * dh) eps
   let m := mlp h2 wfc bfc wproj bproj l t (nh * dh) f
-  add r m
+  Library.Numerics.LinearAlgebra.Float64.add r m
 
 /-- The embeddings of `t` tokens as `t` rows of width `d`: row `i` is row
 `tokens[i]` of `wte` plus row `i` of `wpe`, with 0 for each missing element. -/
 def embed (tokens : Array UInt64) (wte wpe : Array Float) (t d : UInt64) : Array Float :=
   LeanExe.build (t * d) fun e =>
     wte[(tokens[(e / d).toNat]! * d + e % d).toNat]! + wpe[e.toNat]!
-
-/-- The product of the `n × k` matrix `a` and the transpose of the `m × k` matrix
-`b`, both stored by rows, as an `n × m` matrix stored by rows. -/
-def matMulT (a b : Array Float) (n k m : UInt64) : Array Float :=
-  LeanExe.build (n * m) fun e =>
-    LeanExe.loop k 0.0 fun c acc => acc + a[(e / m * k + c).toNat]! * b[(e % m * k + c).toNat]!
 
 /-- The forward pass of a GPT-2 model with `layers` blocks in binary64 arithmetic on
 `t` tokens, with `nh` heads of width `dh`, hidden width `f`, and `vocab` token
@@ -229,7 +204,7 @@ def forward (tokens : Array UInt64) (wte wpe : Array Float)
   let x := LeanExe.loop layers x0 fun l x =>
     block x g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj l t nh dh f eps
   let h := layerNormRows x gf bf 0 t (nh * dh) eps
-  matMulT h wte t (nh * dh) vocab
+  Library.Numerics.LinearAlgebra.Float64.matMulT h wte t (nh * dh) vocab
 
 /-! The cached step.  A cache holds one block of `bsize = (2 · layers + 1) · d` values per
 position: the position's final hidden row, then its key and value for each layer.  `step`
@@ -313,10 +288,10 @@ def layerStep (s cache g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj :
   let pw := stepSoftmax sc nh (p + 1)
   let o := stepMix pw v cache l p nh dh bsize
   let a := linear o wo bo l 1 (nh * dh) (nh * dh)
-  let r := add x a
+  let r := Library.Numerics.LinearAlgebra.Float64.add x a
   let h2 := layerNormRows r g2 b2 l 1 (nh * dh) eps
   let m := mlp h2 wfc bfc wproj bproj l 1 (nh * dh) f
-  let y := add r m
+  let y := Library.Numerics.LinearAlgebra.Float64.add r m
   writeBlock s y k v l (nh * dh)
 
 /-- The cache after `token`: `cache` followed by the block of the next position, whose
@@ -335,7 +310,7 @@ def scores (cache wte gf bf : Array Float) (layers nh dh vocab : UInt64) (eps : 
     Array Float :=
   let x := lastHidden cache (nh * dh) ((2 * layers + 1) * (nh * dh))
   let h := layerNormRows x gf bf 0 1 (nh * dh) eps
-  matMulT h wte 1 (nh * dh) vocab
+  Library.Numerics.LinearAlgebra.Float64.matMulT h wte 1 (nh * dh) vocab
 
 /-! Top-k sampling.  `sampleTopK` keeps every token whose score is at least the `k`-th
 largest score, counted with repeats, as Hugging Face's `TopKLogitsWarper` does, and draws

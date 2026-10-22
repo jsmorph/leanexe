@@ -61,7 +61,7 @@ describes the compiler and its universal proof.
 
 Both compilers compile the [Euler solvers](Demos/Euler/README.md),
 [binary64 GPT-2](Demos/Gpt/README.md), [binary32 GPT-2](Demos/Gpt32/README.md), and
-[drone planner](Demos/Drone/README.md).  Their numerical examples add proofs of accuracy,
+[drone planner](Demos/Drone/README.md).  Their numerical libraries add proofs of accuracy,
 exceptional values, exact fused multiply-add, correctly rounded parsing, shortest-decimal printing,
 and generator periods.  [The numerical index](index.md) lists each algorithm and its strongest
 proved result, with links to the theorem statements and their domains.
@@ -95,6 +95,8 @@ states these proof limits.
 | [The verified compiler's internals](Verified/README.md) | Its code scheme, the structure of its proof, and the reflector. |
 | [The design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [The development journal](devnotes.md) | The record of the work. |
+| [The algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
+| [The application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
 | [The numerical index](index.md) | The compiled numerical algorithms and their proved results. |
 
 ## Layout
@@ -103,8 +105,8 @@ states these proof limits.
 |---|---|
 | [Shared libraries and LeanExe compiler](LeanExe) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, and shared WGSL translation. |
 | [Verified compiler](Verified) | The typed source language, compiler, universal proof, reflector, WGSL lowering, and compiled examples. |
-| [Reusable algorithms](Library) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
-| [Application demos](Demos) | Euler solvers, GPT-2, the drone planner, and the order book, with application proofs and host programs. |
+| [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
+| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, and the order book, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | The compiler manuals and design document. |
 | [Proof guidance](ltg) | The LTG knowledge base and its declaration checker. |

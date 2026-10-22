@@ -34,8 +34,8 @@ theorem speed_implements {a : Bool} : ImplementsPureA a drone.module 4 speed :=
       eval_body [drone.speed.ir, speed]
 
 set_option maxHeartbeats 4000000 in
-theorem ceilSqrt_implements {a : Bool} : ImplementsPureA a drone.module 5 ceilSqrt :=
-  Func.implementsPureA drone.funcs 3 drone.ceilSqrt.ir "ceilSqrt" rfl ceilSqrt
+theorem ceilSqrt_implements {a : Bool} : ImplementsPureA a drone.module 5 Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt :=
+  Func.implementsPureA drone.funcs 3 drone.ceilSqrt.ir "ceilSqrt" rfl Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt
     (fun _ => rfl) fun n initial => by
       refine Stmt.seq_run ?_
       eval_body [drone.ceilSqrt.ir]
@@ -59,7 +59,7 @@ theorem ceilSqrt_implements {a : Bool} : ImplementsPureA a drone.module 5 ceilSq
           exact State.Frame.refl _ _ _
         · simp [State.Holds, Scalar.values, sqrtStep, hLength]
       · rintro store state ⟨rfl, -, hHolds⟩
-        have h1 : state.get 1 = some (.i64 (ceilSqrt n)) := by
+        have h1 : state.get 1 = some (.i64 (Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt n)) := by
           rw [ceilSqrt_loop]
           exact (by simpa [State.Holds, Scalar.values] using hHolds :
             _ ∧ state.get 2 = _).1

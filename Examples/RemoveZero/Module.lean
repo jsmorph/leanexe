@@ -5,6 +5,6 @@ namespace Examples.RemoveZero
 
 open Examples.RemoveZero
 
-leanexe_compile removeZero := [firstZero, compute]
+leanexe_compile removeZero := [Library.Arrays.Search.firstZero, compute]
 
 end Examples.RemoveZero

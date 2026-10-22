@@ -83,7 +83,7 @@ def reconstructedCases : IO Unit := do
      c.pressure.toBits, c.status]
   let gridArg (g : Array Cell) : String := arrU (g.toList.flatMap cellWords)
   let gridWords (g : Array Cell) : String := words (g.toList.flatMap cellWords)
-  let checked (c : Checked) : String := words [c.status, c.value.toBits]
+  let checked (c : Library.Numerics.Bounds.Checked) : String := words [c.status, c.value.toBits]
   let stateArgs (q : Conserved) : List String := [fl q.density, fl q.mx, fl q.my, fl q.energy]
   let stateWords (q : Conserved) : List UInt64 :=
     [q.density.toBits, q.mx.toBits, q.my.toBits, q.energy.toBits]
@@ -108,12 +108,12 @@ def reconstructedCases : IO Unit := do
     for b in [1.0, -2.5, 0.0, 3e-310, 1e308] do
       for up in [false, true] do
         let w := u (if up then 1 else 0)
-        line "euler" "endpoint" "list:i64,f64" [w, fl a] (checked (endpoint up a))
-        line "euler" "outAdd" "list:i64,f64" [w, fl a, fl b] (checked (outAdd up a b))
-        line "euler" "outSub" "list:i64,f64" [w, fl a, fl b] (checked (outSub up a b))
-        line "euler" "outMul" "list:i64,f64" [w, fl a, fl b] (checked (outMul up a b))
-        line "euler" "outDiv" "list:i64,f64" [w, fl a, fl b] (checked (outDiv up a b))
-        line "euler" "outSqrt" "list:i64,f64" [w, fl a] (checked (outSqrt up a))
+        line "euler" "endpoint" "list:i64,f64" [w, fl a] (checked (Library.Numerics.Bounds.endpoint up a))
+        line "euler" "outAdd" "list:i64,f64" [w, fl a, fl b] (checked (Library.Numerics.Bounds.outAdd up a b))
+        line "euler" "outSub" "list:i64,f64" [w, fl a, fl b] (checked (Library.Numerics.Bounds.outSub up a b))
+        line "euler" "outMul" "list:i64,f64" [w, fl a, fl b] (checked (Library.Numerics.Bounds.outMul up a b))
+        line "euler" "outDiv" "list:i64,f64" [w, fl a, fl b] (checked (Library.Numerics.Bounds.outDiv up a b))
+        line "euler" "outSqrt" "list:i64,f64" [w, fl a] (checked (Library.Numerics.Bounds.outSqrt up a))
   for i in [:80] do
     let q := state i
     line "euler" "speedUpper" "list:i64,f64" (stateArgs q)

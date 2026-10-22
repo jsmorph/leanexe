@@ -29,7 +29,7 @@ theorem enclosure_gap {x : ℝ} {w : UInt64} (hf : Finite w)
   unfold gap
   constructor <;> linarith [h.1, h.2]
 
-theorem finite_bits {x : Float} (h : finite x = true) : Finite x.toBits :=
+theorem finite_bits {x : Float} (h : Library.Numerics.Bounds.finite x = true) : Finite x.toBits :=
   (F64Order.finiteBits_iff x.toBits).mp h
 
 /-- The rounding bound of `update`. -/

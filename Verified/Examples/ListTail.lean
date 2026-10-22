@@ -1,18 +1,11 @@
+import Library.Lists.Word.Program
 import Verified.Reflect.Command
 
 namespace Verified.Examples.ListTail
 
-def sum (xs : List UInt64) (acc : UInt64) : UInt64 :=
-  match xs with
-  | [] => acc
-  | x :: tail => sum tail (acc + x)
+export Library.Lists.Word (sum reverse)
 
-def reverse (xs acc : List UInt64) : List UInt64 :=
-  match xs with
-  | [] => acc
-  | x :: tail => reverse tail (x :: acc)
-
-verified_compile compiled := [sum, reverse]
+verified_compile compiled := [Library.Lists.Word.sum, Library.Lists.Word.reverse]
 
 example : compiled.sum.func.modes = [.borrowed, .borrowed] := rfl
 example : compiled.reverse.func.modes = [.owned, .owned] := rfl

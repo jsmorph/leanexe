@@ -117,7 +117,7 @@ theorem component_error (alpha fluxL fluxR stateL stateR : Float)
     have h := magnitude_of_error _ _ _ _ eresult bresult
     change |value result| ≤ 65 * M^5 + arithmeticEpsilon * (65 * M^5) at h
     nlinarith only [h, heps5, hM5]
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   have hc : component alpha fluxL fluxR stateL stateR =
       ⟨0, 0.5 * (fluxL + fluxR) - 0.5 * (alpha * (stateR - stateL))⟩ := by
     unfold component

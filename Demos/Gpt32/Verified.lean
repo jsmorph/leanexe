@@ -6,8 +6,8 @@ namespace Demos.Gpt32.Verified
 
 open _root_.Demos.Gpt32
 
-verified_compile compiled := [expArray32, embed32, layerNorm32, linear32, append32, scores32,
-  headMax32, headSum32, probs32, mix32, add32, geluArray32, logits32]
+verified_compile compiled := [expArray32, embed32, layerNorm32, Library.Numerics.LinearAlgebra.Binary32.linear32, append32, scores32,
+  headMax32, headSum32, probs32, mix32, Library.Numerics.LinearAlgebra.Binary32.add32, geluArray32, logits32]
 
 def expGpu :=
   (Verified.WGSL.compile (e := .float32) compiled.expArray32.func.body).get (by decide +kernel)

@@ -1,3 +1,4 @@
+import Library.Numerics.Reductions.Float64.Program
 import Verified.Reflect.Command
 
 /-! The twenty-first program of the verified compiler: recursion.  Each definition recurses by
@@ -12,6 +13,8 @@ extends and moves into the next.  One calls two of the others, one recursion cal
 the module computes it without a trap for every `n` below 1,000. -/
 
 namespace Verified.Examples.Recursion
+
+export Library.Numerics.Reductions.Float64 (sumRange)
 
 set_option verified.tailLoops false
 
@@ -39,22 +42,6 @@ decreasing_by
   have he : e.toNat ≠ 0 := fun e' => h (UInt64.toNat_inj.mp (by simpa using e'))
   simp_wf
   omega
-
-/-- The sum of the elements of `xs` from `lo` up to `hi`, by halves. -/
-def sumRange (xs : Array Float) (lo hi : UInt64) : Float :=
-  if hi - lo ≤ 1 then (if hi - lo = 1 then xs[lo.toNat]! else 0.0)
-  else
-    let mid := lo + (hi - lo) / 2
-    sumRange xs lo mid + sumRange xs mid hi
-termination_by (hi - lo).toNat
-decreasing_by
-  all_goals
-    rename_i h
-    have := UInt64.toNat_lt lo
-    have := UInt64.toNat_lt hi
-    simp only [UInt64.le_iff_toNat_le, UInt64.toNat_sub, UInt64.toNat_add, UInt64.toNat_div,
-      UInt64.reduceToNat] at h ⊢
-    omega
 
 /-- `xs` extended by the words from `i` up to `n`. -/
 def fill (xs : Array UInt64) (i n : UInt64) : Array UInt64 :=
@@ -234,7 +221,7 @@ def spread (n : UInt64) (xs : Array Float) : UInt64 :=
   let zs := ys.set! (n % 4).toNat (pow a 2)
   let c := double (chain (b % 5))
   let d := if gcd a b == 1 then c else 0
-  let e := if sumRange xs 0 2 < 1.0 then d else d + 1
+  let e := if Library.Numerics.Reductions.Float64.sumRange xs 0 2 < 1.0 then d else d + 1
   if powGcd a b ≠ 0 then total + zs.size.toUInt64 + r + e else e
 
 /-- `gcd 12 18` after `n` nested calls: a recursion that calls another function that takes the call
@@ -246,7 +233,7 @@ decreasing_by
   simp only [← UInt64.toNat_inj, UInt64.toNat_sub, UInt64.reduceToNat] at h ⊢
   omega
 
-verified_compile compiled := [gcd, pow, sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
+verified_compile compiled := [gcd, pow, Library.Numerics.Reductions.Float64.sumRange, fill, chain, fibPair, walk, sumXs, powGcd,
   top2, top1, deep, double, spread, countdown]
 
 /-- `chain n` makes `n + 1` nested calls: with `k` frames available, its calls find their frames

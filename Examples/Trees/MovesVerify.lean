@@ -17,7 +17,7 @@ namespace Examples.Trees
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Trees
 
 /-- `setKey` with its two arguments as one pair, the tree consumed. -/
-def setKeyMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.setKey x.1 x.2.val
+def setKeyMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := Library.Trees.WordTree.KeyTree.setKey x.1 x.2.val
 
 theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
   refine Func.implements_moves treeMoves.funcs 0 treeMoves.setKey.ir "setKey" rfl _
@@ -127,10 +127,10 @@ theorem setKey_implements : Implements treeMoves.module 2 setKeyMoved := by
 
 /-- The bound at `insert_rec`'s store into slot 0. -/
 theorem insertLeft_bound {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 x : UInt64}
-    {l r : KeyTree} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
+    {l r : Library.Trees.WordTree.KeyTree} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (h1 : heap.Rebuilt initial (Node.blocks initial (initial.mem.read64 (slotAddress p 0))
-      (encode l)) heap1 store1 q1 (encode (KeyTree.insert x l))) :
+      (encode l)) heap1 store1 q1 (encode (Library.Trees.WordTree.KeyTree.insert x l))) :
     p.toNat + 24 ≤ store1.mem.pages * 65536 := by
   obtain ⟨hHead, -, -, -, -⟩ := hOwned
   rw [blocks_node] at hDisjoint
@@ -144,7 +144,7 @@ theorem insertLeft_bound {heap heap1 : Heap} {initial store1 : Store Unit} {p k 
 /-- The bound at `insert_rec`'s store into slot 2, and at the stores after
 the release in `dropRight` and `trim`, where the result is the null pointer. -/
 theorem right_bound {heap heap2 : Heap} {initial store2 : Store Unit} {p k q2 : UInt64}
-    {l r : KeyTree} {n : Node} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
+    {l r : Library.Trees.WordTree.KeyTree} {n : Node} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (h2 : heap.Rebuilt initial (Node.blocks initial (initial.mem.read64 (slotAddress p 2))
       (encode r)) heap2 store2 q2 n) :
@@ -163,14 +163,14 @@ theorem incr_leaf {heap : Heap} {initial : Store Unit} {p : UInt64} (hHeap : hea
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk KeyTree.leaf)) :
     p = 0 ∧ heap.Rebuilt initial
       ((Represent.moves initial [.i64 p] (Moved.mk KeyTree.leaf)).map (block initial))
-      heap initial 0 (Encode.encode (KeyTree.incr .leaf)) := by
+      heap initial 0 (Encode.encode (Library.Trees.WordTree.KeyTree.incr .leaf)) := by
   obtain ⟨p', hp, hOwned, -⟩ := hArg
   simp only [List.cons.injEq, Value.i64.injEq, and_true] at hp
   subst hp
   exact ⟨hOwned, Heap.Rebuilt.null hHeap⟩
 
 /-- `incr` with its argument consumed. -/
-def incrMoved (t : Moved KeyTree) : KeyTree := t.val.incr
+def incrMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.incr
 
 /-- The internal function of `incr`, at any depth, consumes its tree and returns the tree with
 every key incremented, rebuilt in the same records. -/
@@ -338,13 +338,13 @@ theorem incr_implements : Implements treeMoves.module 3 incrMoved :=
     incr_rec
 
 /-- The consumed blocks of a word and a moved tree are the tree's blocks. -/
-theorem pair_gone (store : Store Unit) (x q : UInt64) (t : KeyTree) :
+theorem pair_gone (store : Store Unit) (x q : UInt64) (t : Library.Trees.WordTree.KeyTree) :
     (Represent.moves store [.i64 x, .i64 q] (x, Moved.mk t)).map (block store) =
       Node.blocks store q (encode t) :=
   Node.pointers_blocks store q (encode t)
 
 /-- A word and an owned tree with disjoint blocks are a borrowed pair with separate moves. -/
-theorem pair_args {heap : Heap} {store : Store Unit} {x q : UInt64} {t : KeyTree}
+theorem pair_args {heap : Heap} {store : Store Unit} {x q : UInt64} {t : Library.Trees.WordTree.KeyTree}
     (h : NodeOwned heap store q (encode t))
     (hd : (Node.blocks store q (encode t)).Pairwise regionsDisjoint) :
     Represent.borrowed heap store [.i64 x, .i64 q] (x, Moved.mk t) ∧
@@ -373,13 +373,13 @@ theorem newLeafNode {heap heap' : Heap} {initial store : Store Unit} {ptr x : UI
 
 /-- `insert`'s path into the left child: the call's result stored into slot 0. -/
 theorem insert_left {heap heap1 : Heap} {initial store1 : Store Unit} {p x k q1 : UInt64}
-    {l r : KeyTree} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
+    {l r : Library.Trees.WordTree.KeyTree} (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (h1 : heap.Rebuilt initial (Node.blocks initial (initial.mem.read64 (slotAddress p 0))
-      (encode l)) heap1 store1 q1 (encode (KeyTree.insert x l))) :
+      (encode l)) heap1 store1 q1 (encode (Library.Trees.WordTree.KeyTree.insert x l))) :
     heap.Rebuilt initial (Node.blocks initial p (encode (.node l k r))) heap1
       { store1 with mem := store1.mem.write64 (slotAddress p 0) q1 } p
-      (.record [.child (encode (KeyTree.insert x l)), .word k, .child (encode r)]) := by
+      (.record [.child (encode (Library.Trees.WordTree.KeyTree.insert x l)), .word k, .child (encode r)]) := by
   obtain ⟨-, -, hr, hPr⟩ := node_children hOwned hDisjoint
   have hRecord := hOwned
   obtain ⟨hHead, -, hk, -, -⟩ := hRecord
@@ -410,14 +410,14 @@ theorem insert_left {heap heap1 : Heap} {initial store1 : Store Unit} {p x k q1 
 
 /-- `insert`'s path into the right child: the call's result stored into slot 2. -/
 theorem insert_right {heap heap2 : Heap} {initial store2 : Store Unit} {p x k q2 : UInt64}
-    {l r : KeyTree} (hHeap : heap.At initial)
+    {l r : Library.Trees.WordTree.KeyTree} (hHeap : heap.At initial)
     (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (h2 : heap.Rebuilt initial (Node.blocks initial (initial.mem.read64 (slotAddress p 2))
-      (encode r)) heap2 store2 q2 (encode (KeyTree.insert x r))) :
+      (encode r)) heap2 store2 q2 (encode (Library.Trees.WordTree.KeyTree.insert x r))) :
     heap.Rebuilt initial (Node.blocks initial p (encode (.node l k r))) heap2
       { store2 with mem := store2.mem.write64 (slotAddress p 2) q2 } p
-      (.record [.child (encode l), .word k, .child (encode (KeyTree.insert x r))]) := by
+      (.record [.child (encode l), .word k, .child (encode (Library.Trees.WordTree.KeyTree.insert x r))]) := by
   obtain ⟨hl, hPl, -, -⟩ := node_children hOwned hDisjoint
   have hRecord := hOwned
   obtain ⟨hHead, -, hk, -, -⟩ := hRecord
@@ -443,7 +443,7 @@ theorem insert_right {heap heap2 : Heap} {initial store2 : Store Unit} {p x k q2
     ((hKeep 1 (by omega)).trans hk) (Memory.read64_write64 _ _ _)
 
 /-- `insert` with its tree consumed. -/
-def insertMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.insert x.1 x.2.val
+def insertMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := Library.Trees.WordTree.KeyTree.insert x.1 x.2.val
 
 /-- The internal function of `insert`, at any depth, consumes its tree and returns the tree with
 the key, rebuilt in the same records and one new record when the key is new. -/
@@ -591,9 +591,9 @@ theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 19) insertMo
               exact ⟨rfl, rfl⟩
           · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
             rintro s st ⟨rfl, rfl⟩
-            have hGoal : goal = .record [.child (encode (KeyTree.insert x l)), .word k,
+            have hGoal : goal = .record [.child (encode (Library.Trees.WordTree.KeyTree.insert x l)), .word k,
                 .child (encode r)] := by
-              simp [goal, insertMoved, KeyTree.insert, hlt, encode, Encode.encode]
+              simp [goal, insertMoved, Library.Trees.WordTree.KeyTree.insert, hlt, encode, Encode.encode]
             exact ⟨p, sf 0 0 a 0 0, sf 0 p a 0 0, rfl, rfl, heap1, a, 0, 0, rfl,
               hGoal ▸ insert_left hOwned hDisjoint hR1⟩
         · refine Triple.of_forall fun s st ⟨hs, hst, hlt⟩ => ?_
@@ -632,15 +632,15 @@ theorem insert_rec : ∀ x, Rebuilds (compile treeMoves.funcs) (2 + 19) insertMo
               · refine Stmt.assign_spec.mono ?_ fun _ _ h => h
                 rintro s st ⟨rfl, rfl⟩
                 have hGoal : goal = .record [.child (encode l), .word k,
-                    .child (encode (KeyTree.insert x r))] := by
-                  simp [goal, insertMoved, KeyTree.insert, hlt, hgt, encode, Encode.encode]
+                    .child (encode (Library.Trees.WordTree.KeyTree.insert x r))] := by
+                  simp [goal, insertMoved, Library.Trees.WordTree.KeyTree.insert, hlt, hgt, encode, Encode.encode]
                 exact ⟨p, sf 0 0 0 0 c, sf 0 0 0 p c, rfl, rfl, heap2, c, rfl,
                   hGoal ▸ insert_right hHeap hOwned hDisjoint hR2⟩
             · -- The key is present: the tree as it is.
               refine Stmt.assign_spec.mono ?_ fun _ _ h => h
               rintro s st ⟨rfl, rfl, hgt⟩
               have hGoal : goal = encode (.node l k r) := by
-                simp [goal, insertMoved, KeyTree.insert, hlt, hgt, Encode.encode]
+                simp [goal, insertMoved, Library.Trees.WordTree.KeyTree.insert, hlt, hgt, Encode.encode]
               exact ⟨p, sf 0 0 0 0 0, sf 0 0 0 p 0, rfl, rfl, heap, 0, rfl,
                 hGoal ▸ Heap.Rebuilt.refl hHeap hOwned hDisjoint⟩
             · rintro s st ⟨rfl, rfl, -⟩
@@ -679,7 +679,7 @@ theorem insert_implements : Implements treeMoves.module 4 insertMoved :=
 /-- `leftChild`'s node case over `KeyTree`: the result `encode l` at the old slot-0 pointer,
 rebuilt from the consumed blocks of `node l k r`. -/
 theorem leftChild_node {heap heap' : Heap} {initial final : Store Unit} {p k : UInt64}
-    {l r : KeyTree} (hHeap : heap.At initial)
+    {l r : Library.Trees.WordTree.KeyTree} (hHeap : heap.At initial)
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
     (hAt : heap'.At final) (hCaps : final.memoryCaps = initial.memoryCaps)
     (hRegion : ∀ q, heap.Region q → 0 < q.2 →
@@ -698,7 +698,7 @@ theorem leftChild_node {heap heap' : Heap} {initial final : Store Unit} {p k : U
   exact Heap.Rebuilt.leftChild hHeap hOwned hDisjoint hAt hCaps hRegion
 
 /-- `dropRight` with its tree consumed. -/
-def dropRightMoved (t : Moved KeyTree) : KeyTree := t.val.dropRight
+def dropRightMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.dropRight
 
 theorem dropRight_implements : Implements treeMoves.module 5 dropRightMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 3 treeMoves.dropRight.ir "dropRight" rfl _
@@ -791,7 +791,7 @@ theorem dropRight_implements : Implements treeMoves.module 5 dropRightMoved := b
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `leftChild` with its tree consumed. -/
-def leftChildMoved (t : Moved KeyTree) : KeyTree := t.val.leftChild
+def leftChildMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.leftChild
 
 theorem leftChild_implements : Implements treeMoves.module 6 leftChildMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 4 treeMoves.leftChild.ir "leftChild" rfl _
@@ -884,7 +884,7 @@ theorem leftChild_implements : Implements treeMoves.module 6 leftChildMoved := b
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `keepIf` with its two arguments as one pair, the tree consumed. -/
-def keepIfMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.keepIf x.1 x.2.val
+def keepIfMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.keepIf x.1 x.2.val
 
 theorem keepIf_implements : Implements treeMoves.module 7 keepIfMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 5 treeMoves.keepIf.ir "keepIf" rfl _
@@ -928,7 +928,7 @@ theorem keepIf_implements : Implements treeMoves.module 7 keepIfMoved := by
     · exact ⟨false, start, by simp [Expr.eval, start, State.get, hc], rfl, rfl, hc⟩
 
 /-- `trim` with its tree consumed. -/
-def trimMoved (t : Moved KeyTree) : KeyTree := t.val.trim
+def trimMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.trim
 
 theorem trim_implements : Implements treeMoves.module 8 trimMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 6 treeMoves.trim.ir "trim" rfl _
@@ -1075,7 +1075,7 @@ theorem trim_implements : Implements treeMoves.module 8 trimMoved := by
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `insertTwo` with its three arguments as one tuple, the tree consumed. -/
-def insertTwoMoved (x : UInt64 × UInt64 × Moved KeyTree) : KeyTree :=
+def insertTwoMoved (x : UInt64 × UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree :=
   KeyTree.insertTwo x.1 x.2.1 x.2.2.val
 
 /-- `insertTwo` calls `insert` on its tree and then on the first call's result, which the
@@ -1101,7 +1101,7 @@ theorem insertTwo_implements : Implements treeMoves.module 9 insertTwoMoved := b
     (Option.some.inj (hSet1.symm.trans rfl))
   obtain ⟨hB2, hSep2⟩ := pair_args (x := b) hOwned1 hDisjoint1
   refine (Stmt.callImplements_spec insert_implements rfl hFunc rfl
-    (results := [4]) (x := (b, Moved.mk (KeyTree.insert a t))) rfl hAt1 hB2 hSep2
+    (results := [4]) (x := (b, Moved.mk (Library.Trees.WordTree.KeyTree.insert a t))) rfl hAt1 hB2 hSep2
     (memoryCap_le_of_caps hCaps1 hCap) (by rintro _ _ _ ⟨q, rfl, -⟩; exact ⟨_, rfl⟩)).mono
       (fun _ _ h => h) ?_
   rintro s2 st2 ⟨heap2, _, hAt2, ⟨q2, rfl, hOwned2, hDisjoint2⟩, hCaps2, hK2, hSet2⟩
@@ -1112,7 +1112,7 @@ theorem insertTwo_implements : Implements treeMoves.module 9 insertTwoMoved := b
     hK1.trans hK2 fun _ _ hFresh c hc => hFresh c (by rw [pair_gone] at hc; exact hc)⟩
 
 /-- `addRoot` with its two arguments as one pair, the second tree consumed. -/
-def addRootMoved (x : KeyTree × Moved KeyTree) : KeyTree := KeyTree.addRoot x.1 x.2.val
+def addRootMoved (x : Library.Trees.WordTree.KeyTree × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.addRoot x.1 x.2.val
 
 /-- `addRoot` reads the root key of its borrowed tree and writes the sum into the root record
 of its consumed tree. -/
@@ -1309,21 +1309,21 @@ theorem addRoot_implements : Implements treeMoves.module 10 addRootMoved := by
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- The root key of a tree, 0 for a leaf. -/
-def rootKeyOf : KeyTree → UInt64
+def rootKeyOf : Library.Trees.WordTree.KeyTree → UInt64
   | .leaf => 0
   | .node _ ak _ => ak
 
 /-- `addAll` with its two arguments as one pair, the second tree consumed. -/
-def addAllMoved (x : KeyTree × Moved KeyTree) : KeyTree := KeyTree.addAll x.1 x.2.val
+def addAllMoved (x : Library.Trees.WordTree.KeyTree × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.addAll x.1 x.2.val
 
-theorem addAll_node (a l r : KeyTree) (k : UInt64) :
+theorem addAll_node (a l r : Library.Trees.WordTree.KeyTree) (k : UInt64) :
     KeyTree.addAll a (.node l k r) =
       .node (KeyTree.addAll a l) (k + rootKeyOf a) (KeyTree.addAll a r) := by
   cases a <;> rfl
 
 /-- A borrowed tree at `pa` and a consumed tree at `q`, whose blocks lie apart from the borrowed
 tree's slot regions, are a borrowed pair with separate moves and reads. -/
-theorem treePair_args {heap : Heap} {store : Store Unit} {pa q : UInt64} {a t : KeyTree}
+theorem treePair_args {heap : Heap} {store : Store Unit} {pa q : UInt64} {a t : Library.Trees.WordTree.KeyTree}
     (hA : NodeBorrowed heap store pa (encode a)) (hOwned : NodeOwned heap store q (encode t))
     (hDisjoint : (Node.blocks store q (encode t)).Pairwise regionsDisjoint)
     (hApart : ∀ s ∈ Node.slotRegions store pa (encode a), ∀ c ∈ Node.blocks store q (encode t),
@@ -1347,7 +1347,7 @@ theorem treePair_args {heap : Heap} {store : Store Unit} {pa q : UInt64} {a t : 
 /-- The bound at the three stores after a node's two children are rebuilt in turn: the root's
 block, kept by both rebuilds, lies inside the memory after them. -/
 theorem rebuilt_bound {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
-    {p k q1 q2 : UInt64} {l r ml mr : KeyTree}
+    {p k q1 q2 : UInt64} {l r ml mr : Library.Trees.WordTree.KeyTree}
     (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (h1 : heap.Rebuilt initial
@@ -1669,7 +1669,7 @@ theorem addAll_implements : Implements treeMoves.module 11 addAllMoved :=
     addAll_rec
 
 /-- `addLeft` with its tree consumed. -/
-def addLeftMoved (t : Moved KeyTree) : KeyTree := t.val.addLeft
+def addLeftMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.addLeft
 
 /-- `addLeft` lends its left child to `addRoot`, which consumes the right child.  The left
 child's slot regions lie inside its blocks, which lie apart from the right child's
@@ -1788,9 +1788,9 @@ theorem addLeft_implements : Implements treeMoves.module 12 addLeftMoved := by
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `leftSpine` with its two arguments as one pair, the second tree consumed. -/
-def leftSpineMoved (x : KeyTree × Moved KeyTree) : KeyTree := KeyTree.leftSpine x.1 x.2.val
+def leftSpineMoved (x : Library.Trees.WordTree.KeyTree × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.leftSpine x.1 x.2.val
 
-theorem leftSpine_node (g l r : KeyTree) (k : UInt64) :
+theorem leftSpine_node (g l r : Library.Trees.WordTree.KeyTree) (k : UInt64) :
     KeyTree.leftSpine g (.node l k r) =
       .node (KeyTree.leftSpine r l) (k + rootKeyOf g) .leaf := by
   cases g <;> rfl
@@ -2075,11 +2075,11 @@ theorem leftSpine_implements : Implements treeMoves.module 13 leftSpineMoved :=
     leftSpine_rec
 
 /-- `pickPair` with its three arguments as one tuple, both trees consumed. -/
-def pickPairMoved (x : UInt64 × Moved KeyTree × Moved KeyTree) : KeyTree × KeyTree :=
+def pickPairMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree :=
   KeyTree.pickPair x.1 x.2.1.val x.2.2.val
 
 /-- Two owned trees whose blocks lie apart are an owned pair. -/
-theorem treePair_owned {heap : Heap} {store : Store Unit} {pa pb : UInt64} {a b : KeyTree}
+theorem treePair_owned {heap : Heap} {store : Store Unit} {pa pb : UInt64} {a b : Library.Trees.WordTree.KeyTree}
     (hA : NodeOwned heap store pa (encode a))
     (hDa : (Node.blocks store pa (encode a)).Pairwise regionsDisjoint)
     (hB : NodeOwned heap store pb (encode b))
@@ -2089,7 +2089,7 @@ theorem treePair_owned {heap : Heap} {store : Store Unit} {pa pb : UInt64} {a b 
     Represent.owned heap store [.i64 pa, .i64 pb] (a, b) :=
   ⟨[.i64 pa], [.i64 pb], rfl, ⟨pa, rfl, hA, hDa⟩, ⟨pb, rfl, hB, hDb⟩, fun x hx y hy => hAB x hx y hy⟩
 
-theorem treePair_blocks (store : Store Unit) (pa pb : UInt64) (a b : KeyTree) :
+theorem treePair_blocks (store : Store Unit) (pa pb : UInt64) (a b : Library.Trees.WordTree.KeyTree) :
     Represent.blocks store [.i64 pa, .i64 pb] (a, b) =
       Node.blocks store pa (encode a) ++ Node.blocks store pb (encode b) := rfl
 
@@ -2171,7 +2171,7 @@ def clearedBoth (initial : Store Unit) (p : UInt64) : Store Unit :=
 at the old slot pointers, form an owned pair, and the step keeps every region apart from the
 record's blocks. -/
 theorem splitRoot_children {heap heap' : Heap} {initial final : Store Unit} {p k : UInt64}
-    {l r : KeyTree} (hHeap : heap.At initial)
+    {l r : Library.Trees.WordTree.KeyTree} (hHeap : heap.At initial)
     (hOwned : NodeOwned heap initial p (encode (.node l k r)))
     (hDisjoint : (Node.blocks initial p (encode (.node l k r))).Pairwise regionsDisjoint)
     (hRegion : ∀ q, heap.Region q → 0 < q.2 →
@@ -2243,9 +2243,9 @@ theorem splitRoot_children {heap heap' : Heap} {initial final : Store Unit} {p k
   exact hGone b (List.mem_cons_of_mem _ hb)
 
 /-- `splitRoot` with its tree consumed. -/
-def splitRootMoved (t : Moved KeyTree) : KeyTree × KeyTree := t.val.splitRoot
+def splitRootMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := t.val.splitRoot
 /-- `rootAndRest` with its tree consumed. -/
-def rootAndRestMoved (t : Moved KeyTree) : UInt64 × KeyTree := t.val.rootAndRest
+def rootAndRestMoved (t : Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree := t.val.rootAndRest
 
 theorem splitRoot_implements : Implements treeMoves.module 15 splitRootMoved := by
   refine Func.implements_moves treeMoves.funcs 13 treeMoves.splitRoot.ir "splitRoot" rfl _
@@ -2468,7 +2468,7 @@ theorem rootAndRest_implements : Implements treeMoves.module 16 rootAndRestMoved
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `splitOr` with its two trees consumed. -/
-def splitOrMoved (x : Moved KeyTree × Moved KeyTree) : KeyTree × KeyTree :=
+def splitOrMoved (x : Moved Library.Trees.WordTree.KeyTree × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree :=
   KeyTree.splitOr x.1.val x.2.val
 
 /-- `splitOr` returns `b` with a leaf when `a` is a leaf.  Otherwise it moves `a`'s children into
@@ -2652,7 +2652,7 @@ theorem splitOr_implements : Implements treeMoves.module 17 splitOrMoved := by
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `keepOld` with its tree consumed. -/
-def keepOldMoved (t : Moved KeyTree) : KeyTree × KeyTree := t.val.keepOld
+def keepOldMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := t.val.keepOld
 
 /-- `keepOld` copies its consumed tree, passes the copy to `incr`, which consumes it, and returns
 `incr`'s result and the tree: the copy and `incr` leave the tree's records as they were. -/

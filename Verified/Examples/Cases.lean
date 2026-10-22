@@ -1,3 +1,4 @@
+import TestSupport.LibraryCases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -425,6 +426,7 @@ end Verified.Examples
 
 open Verified.Examples in
 def main : IO Unit := do
+  TestSupport.LibraryCases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

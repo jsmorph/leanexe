@@ -82,7 +82,7 @@ theorem insertTop_implements : Implements gpt.module 46 insertTopTuple := by
   show Triple _ (.seq (.assign 4 (.ofBits (.read 1 (.get 2))))
     (.seq (.assign 5 (.const 0))
     (.seq (.loop 6 7 (.get 3) (.seq (.assign 8 (.ite (.ltF (.ofBits (.read 0 (.get 7))) (.getF 4))
-        (.get 5) (.bin .add (.get 5) (.const 1)))) (.assign 5 (.get 8))))
+        (.get 5) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 5) (.const 1)))) (.assign 5 (.get 8))))
     (.seq (.assign 9 (.get 5))
     (.build 10 11 12 (.get 3) (.toBits (.iteF (.ltU (.get 12) (.get 9)) (.ofBits (.read 0 (.get 12)))
       (.iteF (.eq (.get 12) (.get 9)) (.getF 4)
@@ -220,7 +220,7 @@ def pickBody : Stmt :=
   .seq (.call 5 [⟨.f64, .binF .div (.binF .sub (.ofBits (.read 0 (.get 23))) (.getF 6)) (.getF 3)⟩]
     [24])
   (.seq (.assign 25 (.iteF (.leF (.getF 5) (.ofBits (.read 0 (.get 23))))
-    (.binF .add (.getF 19) (.getF 24)) (.getF 19)))
+    (.binF .Library.Numerics.LinearAlgebra.Float64.add (.getF 19) (.getF 24)) (.getF 19)))
   (.seq (.assign 26 (.getF 25))
   (.seq (.assign 27 (.ite (.leF (.getF 5) (.ofBits (.read 0 (.get 23))))
     (.ite (.eq (.get 20) (.get 8)) (.ite (.ltF (.getF 18) (.getF 25)) (.get 23) (.get 20)) (.get 20))

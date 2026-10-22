@@ -1,3 +1,4 @@
+import Library.Numerics.Bounds.Program
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.RepeatWhile
@@ -16,6 +17,8 @@ totality of the float operations allows.  `energyGuard` computes `F64Admissibili
 
 namespace Demos.Euler
 
+export Library.Numerics.Bounds (absBits finite)
+
 structure Conserved where
   density : Float
   mx : Float
@@ -29,22 +32,17 @@ structure Cell where
   status : UInt64
   deriving Inhabited
 
-abbrev absBits (bits : UInt64) : UInt64 := bits &&& 0x7FFFFFFFFFFFFFFF
-
-/-- Neither infinite nor NaN. -/
-abbrev finite (x : Float) : Bool := absBits x.toBits < 0x7FF0000000000000
-
 /-- Positive and finite: a positive subnormal or normal number. -/
 abbrev positive (x : Float) : Bool := 0 < x.toBits && x.toBits < 0x7FF0000000000000
 
 /-- A state whose momenta are at most its density in magnitude and whose energy exceeds its
 density has positive internal energy. -/
 abbrev narrowGuard (rho momentum transverse energy : Float) : Bool :=
-  positive rho && finite momentum && finite transverse && positive energy &&
-    absBits momentum.toBits ≤ rho.toBits && absBits transverse.toBits ≤ rho.toBits &&
+  positive rho && Library.Numerics.Bounds.finite momentum && Library.Numerics.Bounds.finite transverse && positive energy &&
+    Library.Numerics.Bounds.absBits momentum.toBits ≤ rho.toBits && Library.Numerics.Bounds.absBits transverse.toBits ≤ rho.toBits &&
     rho.toBits < energy.toBits
 
-abbrev exponentBits (bits : UInt64) : UInt64 := absBits bits >>> 52
+abbrev exponentBits (bits : UInt64) : UInt64 := Library.Numerics.Bounds.absBits bits >>> 52
 
 abbrev maxWord (a b : UInt64) : UInt64 := if a < b then b else a
 
@@ -53,7 +51,7 @@ abbrev topExponent (rho mx my energy : Float) : UInt64 :=
     (maxWord (exponentBits my.toBits) (exponentBits energy.toBits))
 
 abbrev normalizable (x : Float) (top : UInt64) : Bool :=
-  absBits x.toBits == 0 ||
+  Library.Numerics.Bounds.absBits x.toBits == 0 ||
     (0 < exponentBits x.toBits && top < exponentBits x.toBits + 1021)
 
 /-- `x` scaled by a power of two so that the largest exponent among the four components is
@@ -62,7 +60,7 @@ exponent field lies from 1 to 1021; any other word with an exponent field of all
 so the value is never built from a NaN pattern. -/
 def normalized (x : Float) (top : UInt64) : Float :=
   let w := (exponentBits x.toBits + 1021 - top) <<< 52 + (x.toBits &&& 0x000FFFFFFFFFFFFF)
-  if absBits x.toBits == 0 || (w >>> 52) &&& 0x7FF == 0x7FF then 0 else Float.ofBits w
+  if Library.Numerics.Bounds.absBits x.toBits == 0 || (w >>> 52) &&& 0x7FF == 0x7FF then 0 else Float.ofBits w
 
 abbrev energyResidual (rho mx my energy : Float) : Float :=
   rho * energy - 0.5 * (mx * mx + my * my)
@@ -73,7 +71,7 @@ def energyGuard (rho mx my energy : Float) : Bool :=
   let top := topExponent rho mx my energy
   let result := energyResidual (normalized rho top) (normalized mx top) (normalized my top)
     (normalized energy top)
-  (positive rho && finite mx && finite my && positive energy) &&
+  (positive rho && Library.Numerics.Bounds.finite mx && Library.Numerics.Bounds.finite my && positive energy) &&
     (normalizable rho top && normalizable mx top && normalizable my top &&
       normalizable energy top) &&
     (positive result && 0x3CE0000000000000 < result.toBits)
@@ -114,12 +112,12 @@ def side (rho momentum transverse energy : Float) : Side :=
   let enthalpy := energy + pressure
   let energyFlux := velocity * enthalpy
   if stateGuard rho momentum transverse energy &&
-      (finite velocity && finite transport && finite transverseVelocity &&
-        finite transverseTransport && finite kineticSum && finite halfKinetic &&
+      (Library.Numerics.Bounds.finite velocity && Library.Numerics.Bounds.finite transport && Library.Numerics.Bounds.finite transverseVelocity &&
+        Library.Numerics.Bounds.finite transverseTransport && Library.Numerics.Bounds.finite kineticSum && Library.Numerics.Bounds.finite halfKinetic &&
         positive internal) &&
       (positive pressure && positive pressureOverDensity && positive radicand) &&
-      (positive soundSpeed && positive speed && finite momentumFlux &&
-        finite transverseFlux && finite enthalpy && finite energyFlux) then
+      (positive soundSpeed && positive speed && Library.Numerics.Bounds.finite momentumFlux &&
+        Library.Numerics.Bounds.finite transverseFlux && Library.Numerics.Bounds.finite enthalpy && Library.Numerics.Bounds.finite energyFlux) then
     ⟨0, velocity, pressure, speed, momentum, momentumFlux, transverseFlux, energyFlux⟩
   else rejectedSide
 
@@ -138,9 +136,9 @@ def component (alpha fluxL fluxR stateL stateR : Float) : Component :=
   let viscosity := alpha * jump
   let halfViscosity := 0.5 * viscosity
   let value := mean - halfViscosity
-  if (positive alpha && finite fluxL && finite fluxR && finite stateL && finite stateR) &&
-      (finite sum && finite mean && finite jump && finite viscosity && finite halfViscosity &&
-        finite value) then ⟨0, value⟩
+  if (positive alpha && Library.Numerics.Bounds.finite fluxL && Library.Numerics.Bounds.finite fluxR && Library.Numerics.Bounds.finite stateL && Library.Numerics.Bounds.finite stateR) &&
+      (Library.Numerics.Bounds.finite sum && Library.Numerics.Bounds.finite mean && Library.Numerics.Bounds.finite jump && Library.Numerics.Bounds.finite viscosity && Library.Numerics.Bounds.finite halfViscosity &&
+        Library.Numerics.Bounds.finite value) then ⟨0, value⟩
   else rejectedComponent
 
 structure Flux where
@@ -174,8 +172,8 @@ def update (ratio state fluxL fluxR : Float) : Component :=
   let difference := fluxR - fluxL
   let increment := ratio * difference
   let value := state - increment
-  if (positive ratio && finite state && finite fluxL && finite fluxR) &&
-      (finite difference && finite increment && finite value) then ⟨0, value⟩
+  if (positive ratio && Library.Numerics.Bounds.finite state && Library.Numerics.Bounds.finite fluxL && Library.Numerics.Bounds.finite fluxR) &&
+      (Library.Numerics.Bounds.finite difference && Library.Numerics.Bounds.finite increment && Library.Numerics.Bounds.finite value) then ⟨0, value⟩
   else rejectedComponent
 
 structure Updated where

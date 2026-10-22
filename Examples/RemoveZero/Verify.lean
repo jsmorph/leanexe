@@ -20,8 +20,8 @@ def firstZeroStep (xs : Array UInt64) (count i k : UInt64) : UInt64 :=
 /-- `firstZero` gives `count` when the first `count` words hold no zero, and otherwise the index
 of the first zero. -/
 theorem firstZero_cases (xs : Array UInt64) (count : UInt64) :
-    (firstZero xs count = count ∧ ∀ j < count.toNat, xs[j]! ≠ 0) ∨
-    (∃ j < count.toNat, firstZero xs count = UInt64.ofNat j ∧ xs[j]! = 0 ∧
+    (Library.Arrays.Search.firstZero xs count = count ∧ ∀ j < count.toNat, xs[j]! ≠ 0) ∨
+    (∃ j < count.toNat, Library.Arrays.Search.firstZero xs count = UInt64.ofNat j ∧ xs[j]! = 0 ∧
       ∀ i < j, xs[i]! ≠ 0) := by
   have hc := count.toNat_lt
   refine loop_induction (P := fun m k => (k = count ∧ ∀ j < m, xs[j]! ≠ 0) ∨
@@ -81,7 +81,7 @@ theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = exp
           rw [getElem!_pos xs i (by omega)] at this
           simpa using this
       have hjt : (UInt64.ofNat j).toNat = j := UInt64.toNat_ofNat_of_lt' (Nat.lt_trans hjs h)
-      have hklt : firstZero xs xs.size.toUInt64 < xs.size.toUInt64 := by
+      have hklt : Library.Arrays.Search.firstZero xs xs.size.toUInt64 < xs.size.toUInt64 := by
         rw [hk, UInt64.lt_iff_toNat_lt, hjt, hn]; exact hjs
       have hm : (xs.size.toUInt64 - 1).toNat = xs.size - 1 := by
         rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hn]; simp; omega), hn]; rfl
@@ -95,12 +95,12 @@ theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = exp
           UInt64.toNat_ofNat_of_lt' (Nat.lt_trans (by omega : i < xs.size) h)
         rw [← getElem!_pos (LeanExe.build _ _) i (by rw [build_size, hm]; exact hi),
           build_get (by rw [hm]; exact hi), Array.getElem_eraseIdx]
-        have hlt : UInt64.ofNat i < firstZero xs xs.size.toUInt64 ↔ i < j := by
+        have hlt : UInt64.ofNat i < Library.Arrays.Search.firstZero xs xs.size.toUInt64 ↔ i < j := by
           rw [hk, UInt64.lt_iff_toNat_lt, hit, hjt]
         by_cases hij : i < j
         · simp only [hlt.mpr hij, ite_true, hit, hij, dite_true]
           exact getElem!_pos xs i (by omega)
-        · simp only [show ¬ UInt64.ofNat i < firstZero xs xs.size.toUInt64 from
+        · simp only [show ¬ UInt64.ofNat i < Library.Arrays.Search.firstZero xs xs.size.toUInt64 from
             fun h' => hij (hlt.mp h'), ite_false, hij, dite_false]
           have : (UInt64.ofNat i + 1).toNat = i + 1 := by
             rw [UInt64.toNat_add, hit]; simp; omega
@@ -110,7 +110,7 @@ theorem compute_eq (xs : Array UInt64) (h : xs.size < 2 ^ 64) : compute xs = exp
     simp only [hle, ite_false, hs]
     rfl
 
-def firstZeroTuple : Array UInt64 × UInt64 → UInt64 := fun (xs, count) => firstZero xs count
+def firstZeroTuple : Array UInt64 × UInt64 → UInt64 := fun (xs, count) => Library.Arrays.Search.firstZero xs count
 
 set_option maxHeartbeats 2000000 in
 theorem firstZero_implements : Implements removeZero.module 2 firstZeroTuple := by
@@ -151,8 +151,8 @@ theorem firstZero_implements : Implements removeZero.module 2 firstZeroTuple := 
     · simp [State.Holds, hLength, firstZeroStep]
   · rintro store state ⟨rfl, -, hHolds⟩
     refine ⟨rfl, _, state, ?_, rfl⟩
-    have g2 : state.get 2 = some (.i64 (firstZero xs count)) := by
-      rw [show firstZero xs count = LeanExe.loop count count (firstZeroStep xs count) from rfl]
+    have g2 : state.get 2 = some (.i64 (Library.Arrays.Search.firstZero xs count)) := by
+      rw [show Library.Arrays.Search.firstZero xs count = LeanExe.loop count count (firstZeroStep xs count) from rfl]
       simpa [State.Holds, Scalar.values] using hHolds
     simp [removeZero.firstZero.ir, Func.scratch, Expr.evalResults, Expr.eval, g2, Scalar.values,
       firstZeroTuple]
@@ -170,7 +170,7 @@ theorem compute_implements : Implements removeZero.module 3 compute := by
   have hGet0 : start.get 0 = some (.i64 ptr) := rfl
   let n := xs.size.toUInt64
   let count : UInt64 := if n ≤ 8 then n else 0
-  let k := firstZero xs count
+  let k := Library.Arrays.Search.firstZero xs count
   let s1 := start.update 1 (.i64 (UInt64.ofNat xs.size))
   let s2 := s1.update 2 (.i64 (UInt64.ofNat xs.size))
   let s3 := s2.update 3 (.i64 count)

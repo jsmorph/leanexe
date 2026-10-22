@@ -1,3 +1,4 @@
+import Library.Arrays.Word.Program
 import Verified.Reflect.Command
 
 /-! The ninth program of the verified compiler: values that own arrays.  A function returns an owned
@@ -10,6 +11,8 @@ allocate and release arrays of its own, and an owned variable that only the elem
 released after the array is complete. -/
 
 namespace Verified.Examples.Owned
+
+export Library.Arrays.Word (scaled)
 
 def sum (xs : Array UInt64) : UInt64 :=
   LeanExe.loop xs.size.toUInt64 0 fun i acc => acc + xs[i.toNat]!
@@ -53,9 +56,6 @@ def swap (xs ys : Array UInt64) : Array UInt64 × Array UInt64 :=
 
 def squares (n : UInt64) : Array UInt64 := LeanExe.build n fun i => i * i
 
-def scaled (xs : Array UInt64) (k : UInt64) : Array UInt64 :=
-  LeanExe.build xs.size.toUInt64 fun i => xs[i.toNat]! * k
-
 def sumSquares (n : UInt64) : UInt64 := sum (squares n)
 
 def rowSums (n : UInt64) : Array UInt64 :=
@@ -70,6 +70,6 @@ def bothSides (xs : Array UInt64) : Array UInt64 :=
   LeanExe.build ys.size.toUInt64 fun i => ys[i.toNat]! + 1
 
 verified_compile compiled := [sum, copy, pick, twice, withSize, sizeOfCopy, sumCopy, firstOfCopy,
-  unused, branch, moved, grow, swap, squares, scaled, sumSquares, rowSums, onlyInside, bothSides]
+  unused, branch, moved, grow, swap, squares, Library.Arrays.Word.scaled, sumSquares, rowSums, onlyInside, bothSides]
 
 end Verified.Examples.Owned

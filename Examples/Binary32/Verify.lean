@@ -60,7 +60,7 @@ theorem ratio32_implements : Implements binary32.module 4 ratio32Tuple :=
 
 /-- `matVec32` with its four arguments as one tuple. -/
 def matVec32Tuple (x : Array Float32 × Array Float32 × UInt64 × UInt64) : Array Float32 :=
-  matVec32 x.1 x.2.1 x.2.2.1 x.2.2.2
+  Library.Numerics.LinearAlgebra.Binary32.matVec32 x.1 x.2.1 x.2.2.1 x.2.2.2
 
 /-- One step of the loop over row `r`. -/
 def rowStep32 (m v : Array Float32) (cols r c : UInt64) (acc : Float32) : Float32 :=
@@ -71,7 +71,7 @@ def row32 (m v : Array Float32) (cols r : UInt64) : Float32 :=
   LeanExe.loop cols 0.0 (rowStep32 m v cols r)
 
 theorem matVec32_eq (m v : Array Float32) (rows cols : UInt64) :
-    matVec32 m v rows cols = LeanExe.build rows (row32 m v cols) := rfl
+    Library.Numerics.LinearAlgebra.Binary32.matVec32 m v rows cols = LeanExe.build rows (row32 m v cols) := rfl
 
 /-- The compiled loop body over a row. -/
 def rowBody32 : Stmt :=
@@ -241,7 +241,7 @@ theorem scaleElement_denote (a : Float32) (x : Array Float32) (k : Nat) (hk : k 
     F32Bits.toBits_mul]
 
 /-- `scale32` with its two arguments as one pair. -/
-def scale32Pair (v : Float32 × Array Float32) : Array Float32 := scale32 v.1 v.2
+def scale32Pair (v : Float32 × Array Float32) : Array Float32 := Library.Numerics.LinearAlgebra.Binary32.scale32 v.1 v.2
 
 theorem scale32_implements : Implements binary32.module 7 scale32Pair := by
   refine Func.implements_heap binary32.funcs 5 binary32.scale32.ir "scale32" rfl scale32Pair
@@ -307,7 +307,7 @@ theorem scale32_implements : Implements binary32.module 7 scale32Pair := by
   refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [binary32.scale32.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
-  rw [scale32Pair, show scale32 a x = LeanExe.build (UInt64.ofNat x.size)
+  rw [scale32Pair, show Library.Numerics.LinearAlgebra.Binary32.scale32 a x = LeanExe.build (UInt64.ofNat x.size)
     (fun i => a * x[i.toNat]!) from rfl, build_map]
   exact hNew.owned
 
@@ -329,7 +329,7 @@ theorem axpyArrayElement_denote (a : Float32) (x y : Array Float32) (k : Nat) (h
 
 /-- `axpyArray32` with its three arguments as one tuple. -/
 def axpyArray32Tuple (v : Float32 × Array Float32 × Array Float32) : Array Float32 :=
-  axpyArray32 v.1 v.2.1 v.2.2
+  Library.Numerics.LinearAlgebra.Binary32.axpyArray32 v.1 v.2.1 v.2.2
 
 theorem axpyArray32_implements : Implements binary32.module 8 axpyArray32Tuple := by
   refine Func.implements_heap binary32.funcs 6 binary32.axpyArray32.ir "axpyArray32" rfl
@@ -404,7 +404,7 @@ theorem axpyArray32_implements : Implements binary32.module 8 axpyArray32Tuple :
   refine ⟨_, hNew.at_, hNew.caps, [.i64 ptr], state,
     by simp [binary32.axpyArray32.ir, Func.scratch, Expr.evalResults, Expr.eval, hPtr],
     ⟨ptr, rfl, ?_⟩, hNew.keeps⟩
-  rw [axpyArray32Tuple, show axpyArray32 a x y = LeanExe.build (UInt64.ofNat x.size)
+  rw [axpyArray32Tuple, show Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x y = LeanExe.build (UInt64.ofNat x.size)
     (fun i => a * x[i.toNat]! + y[i.toNat]!) from rfl, build_map]
   exact hNew.owned
 

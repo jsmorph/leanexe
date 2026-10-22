@@ -52,7 +52,7 @@ theorem update_error (ratio state fluxL fluxR : Float)
   obtain ⟨hd, hi, hv, herr⟩ := F64AffineUpdate.difference_update ratio.toBits state.toBits
     fluxL.toBits fluxR.toBits hp.1 hs hl hh hp.2.le hr1 M (132 * M^5) hM (by linarith only [hM5])
     hmax bs bd
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   have hu : update ratio state fluxL fluxR = ⟨0, state - ratio * (fluxR - fluxL)⟩ := by
     unfold update
     dsimp only

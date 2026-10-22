@@ -116,7 +116,7 @@ noncomputable def sideFluxErrorBound (rho mx my energy : Float) : Fin 4 → ℝ 
 
 theorem side_reference_words (rho mx my energy : UInt64) (hrho : Finite rho) (hmx : Finite mx)
     (hmy : Finite my) (henergy : Finite energy) (hpos : 0 < value rho)
-    (finite : SideFinite rho mx my energy) :
+    (hfinite : SideFinite rho mx my energy) :
     let u := Wasm.IEEE64.div mx rho
     let v := Wasm.IEEE64.div my rho
     let tx := Wasm.IEEE64.mul mx u
@@ -133,7 +133,7 @@ theorem side_reference_words (rho mx my energy : UInt64) (hrho : Finite rho) (hm
     |value (Wasm.IEEE64.mul u (Wasm.IEEE64.add energy pressure)) -
       (value energy + (2 / 5) * I) * (value mx / value rho)| ≤ bound.energy := by
   obtain ⟨hu, hv, htx, hty, htotal, hkinetic, hi, hp, hnormal, htransverse, henthalpy, heflux⟩ :=
-    finite
+    hfinite
   have hr0 : Wasm.IEEE64.scaledMagnitude rho ≠ 0 := by
     intro hz
     have hzValue : value rho = 0 := by
@@ -231,7 +231,7 @@ its fluxes are `fluxValues`. -/
 theorem side_accepted {rho mx my energy : Float} (h : (side rho mx my energy).status = 0) :
     stateGuard rho mx my energy = true ∧ SideFinite rho.toBits mx.toBits my.toBits energy.toBits ∧
       ∀ i, sideComponents (side rho mx my energy) i = fluxValues rho mx my energy i := by
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   unfold side at h ⊢
   dsimp only at h ⊢
   have hc := rejectedSide_status h
@@ -249,7 +249,7 @@ theorem outwardSide_accepted {rho mx my energy : Float}
     (h : (outwardSide rho mx my energy).status = 0) :
     stateGuard rho mx my energy = true ∧ SideFinite rho.toBits mx.toBits my.toBits energy.toBits ∧
       ∀ i, sideComponents (outwardSide rho mx my energy) i = fluxValues rho mx my energy i := by
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   have hg := outwardSide_guard h
   unfold outwardSide at h ⊢
   dsimp only at h ⊢
@@ -286,7 +286,7 @@ theorem component_accepted {alpha fluxL fluxR stateL stateR : Float}
     0 < real alpha ∧ F64RusanovResidual.Certificate 0x3FE0000000000000 alpha.toBits
       fluxL.toBits fluxR.toBits stateL.toBits stateR.toBits
       (component alpha fluxL fluxR stateL stateR).value.toBits := by
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   unfold component at h ⊢
   dsimp only at h ⊢
   have hc := rejectedComponent_status h

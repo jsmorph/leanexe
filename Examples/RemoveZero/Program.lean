@@ -1,3 +1,4 @@
+import Library.Arrays.Search.Program
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 
@@ -10,13 +11,12 @@ is none, and the result copies the elements before that index and shifts the res
 
 namespace Examples.RemoveZero
 
-def firstZero (xs : Array UInt64) (count : UInt64) : UInt64 :=
-  LeanExe.loop count count fun i k => if k == count && xs[i.toNat]! == 0 then i else k
+export Library.Arrays.Search (firstZero)
 
 def compute (xs : Array UInt64) : Array UInt64 :=
   let n := xs.size.toUInt64
   let count := if n ≤ 8 then n else 0
-  let k := firstZero xs count
+  let k := Library.Arrays.Search.firstZero xs count
   LeanExe.build (if k < count then count - 1 else count) fun i =>
     if i < k then xs[i.toNat]! else xs[(i + 1).toNat]!
 

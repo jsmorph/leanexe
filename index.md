@@ -1,6 +1,6 @@
 # Seminumerical algorithms
 
-This index lists the compiled arithmetic and numerical algorithms and their theorems.  The [verified compiler](docs/verified-manual.md) compiles the implementations in `Verified/Examples/` and the generators of [Section 5](#5-pseudorandom-number-generators) in `Examples/Lcg/`, `Examples/ParkMiller/`, and `Examples/Xorshift/`.  The other entries in `Examples/` use the [LeanExe compiler](docs/leanexe-manual.md) and a separate proof for each program.  Four applications have their own guides: [the Euler solvers](Demos/Euler/README.md), [GPT-2 in binary64](Demos/Gpt/README.md), [GPT-2 in binary32 and its WGSL kernels](Demos/Gpt32/README.md), and [the drone planner](Demos/Drone/README.md).
+This index lists the compiled arithmetic and numerical algorithms and their theorems.  The [algorithm library](Library/README.md) groups native implementations, compilation modules, and mathematical proofs by family.  Both the [verified compiler](docs/verified-manual.md) and the [LeanExe compiler](docs/leanexe-manual.md) compile library definitions.  The [application guides](Demos/README.md) cover the Euler solvers, GPT-2 in binary64 and binary32, the drone planner, and the order book.
 
 The compiler's theorem for a module states that the module computes its Lean definition.  A byte theorem combines that result with a theorem about the definition, such as an accuracy bound, to state the same property of the module's bytes.  A file theorem states that a file in `build/verified/` holds the module's encoding.  The theorems hold in Talos's semantics of WebAssembly with the deterministic floating-point profile, and they assume the allocator invariant and, for some functions, borrowed tables and bounds on memory and recursion depth.  Each linked document states these premises, the exceptional inputs, and the assumptions about the host.  [The transcendental development record](transcendentals.md) gives the history of the proofs and the open range of the Bessel theorems of [Section 1.1](#11-bessel-functions).
 
@@ -74,11 +74,11 @@ For a string of fewer than `2^32` bytes, the parsers' theorems state that the re
 |---|---|---|
 | Fused multiply-add | [The software fused multiply-add](Library/Numerics/Arithmetic/Fma/README.md): [`Fma.fma`](Library/Numerics/Arithmetic/Fma/Program.lean), with 128-bit products and shifts in 64-bit words | [`FmaTheorem.fma_toBits`](Library/Numerics/Arithmetic/Fma/FmaTheorem.lean): the result equals IEEE 754's fusedMultiplyAdd with roundTiesToEven for all operands.  The modules of `erfc`, `tgamma`, and `lgamma` in [Section 1](#1-elementary-and-special-functions) include it. |
 | Natural numbers of any size and Cox's unrounded scaling | [Natural numbers on limbs](Library/Numerics/Arithmetic/Uscale/README.md): `Uscale`, on 32-bit limbs in 64-bit words, with multiplication by a word, shifts, comparison, subtraction, division, and powers of 10 | A theorem for each routine states its result as a natural number.  The decimal parsers and printers of [Section 2](#2-conversion-between-decimal-strings-and-binary-floating-point) call these routines. |
-| Greatest common divisor | `gcd` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean), Euclid's remainder recursion | The compiler's theorem.  [The `Examples/Gcd` example](Library/Numerics/Arithmetic/Gcd/README.md) compiles the same recursion, and `gcd_eq` and `gcd_bytes` prove that its bytes compute `Nat.gcd`. |
-| Number of prime factors with multiplicity | [The `Examples/PrimeFactors` example](Library/Numerics/Arithmetic/PrimeFactors/README.md), trial division in increasing order | `compute_eq` and `primeFactors_bytes`: the module's bytes compute the length of Mathlib's `Nat.primeFactorsList`. |
+| Greatest common divisor | [Euclid's remainder recursion](Library/Numerics/Arithmetic/Gcd/README.md) | `gcd_eq` proves equality with `Nat.gcd`.  `gcd_bytes` proves that the compiled bytes compute it. |
+| Number of prime factors with multiplicity | [Factor counting](Library/Numerics/Arithmetic/PrimeFactors/README.md), trial division in increasing order | `compute_eq` and `primeFactors_bytes`: the module's bytes compute the length of Mathlib's `Nat.primeFactorsList`. |
 | Sieve of Eratosthenes | `sieve` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean), which marks the multiples of each prime `p` from `p²` and returns the flags of the composite numbers below `n` | The compiler's theorem. |
 | Power modulo `2^64` by squaring | `pow` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean) | The compiler's theorem. |
-| Integer ceiling square root | `ceilSqrt` in [the drone planner](Demos/Drone/README.md), by 17 halvings of a bracket.  [`Demos/Drone/Verified.lean`](Demos/Drone/Verified.lean) compiles it unchanged. | `Demos.Drone.ceilSqrt_correct`: the exact ceiling square root for arguments up to `2^32`. |
+| Integer ceiling square root | [Bracket halving](Library/Numerics/Arithmetic/CeilSqrt/README.md), in 17 steps | `Sqrt.ceilSqrt_correct`: the exact ceiling square root for arguments up to `2^32`. |
 
 ## 4. Discrete Fourier transform
 
@@ -103,26 +103,26 @@ Each fold performs its operations in the order that the table gives and rounds a
 
 | Fold | Implementation | Order |
 |---|---|---|
-| Sum | `total` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | Left to right |
-| Pairwise sum | `sumRange` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean) | Recursive halves of the index range |
-| Sum of the flagged elements | `select` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | Left to right |
-| Sum of squares | [The `Examples/SumSquares` example](Library/Numerics/Statistics/SumSquares/README.md) | Left to right (`sumSquares_bytes`) |
-| Mean | [The `Examples/Mean` example](Library/Numerics/Statistics/Mean/README.md) | The left-to-right sum divided by the length, NaN for an empty array (`mean_bytes`) |
+| Sum | `total` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right |
+| Pairwise sum | `sumRange` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Recursive halves of the index range |
+| Sum of the flagged elements | `select` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right |
+| Sum of squares | [Sum of squares](Library/Numerics/Statistics/SumSquares/README.md) | Left to right (`sumSquares_bytes`) |
+| Mean | [Mean](Library/Numerics/Statistics/Mean/README.md) | The left-to-right sum divided by the length, NaN for an empty array (`mean_bytes`) |
 | Harmonic number | `harmonic` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `1/1 + 1/2 + ⋯ + 1/n` left to right.  The denominator is a binary64 value, so from `2^53` on, adding 1 leaves it unchanged. |
-| Dot product | `dot` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | Left to right, with the second array read as 0 past its end |
-| Matrix-vector product in binary32 | `matVec32` in [the `Examples/Binary32` example](Examples/Binary32/README.md) | Each row's dot product left to right (`matVec32_implements`, `binary32_bytes`) |
-| Maximum | `largest` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | Left to right, negative infinity for an empty array |
+| Dot product | `dot` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | Left to right, with the second array read as 0 past its end |
+| Matrix-vector product in binary32 | `matVec32` in [the binary32 library](Library/Numerics/LinearAlgebra/Binary32/Program.lean) | Each row's dot product left to right (`matVec32_implements`, `binary32_bytes`) |
+| Maximum | `largest` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right, negative infinity for an empty array |
 
 ## 7. Demonstration programs
 
-These programs test the compilers on numerical code.  The theorem for each states that the compiled module computes the Lean definition bit for bit: the verified compiler's theorem for a program in `Verified/`, and the example's theorem for a program in `Examples/`.  Arithmetic on words wraps modulo `2^64`.
+These programs exercise numerical compilation.  Their theorems state that the compiled module computes the Lean definition bit for bit.  Reusable definitions live in `Library`, application-specific functions in `Demos`, and compiler fixtures in `Examples` and `Verified/Examples`.  Arithmetic on words wraps modulo `2^64`.
 
 | Program | Implementation | Computation |
 |---|---|---|
 | Scaled hypotenuse | `hypot` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `sqrt (x * x + y * y) / s`.  The sum of squares can overflow even when the exact result is finite. |
 | Newton's square root | `newtonSqrt` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | `x ↦ (x + a/x)/2` from `x = a` until `\|x² - a\| ≤ 10^-12 a`, for at most 64 steps |
-| `axpy` | `axpy` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | `a * x + y` for each element, written over `y` |
-| Grid | `grid` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean) | The points `x0 + i * dx` for `0 ≤ i < n` |
+| `axpy` | `axpy` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | `a * x + y` for each element, written over `y` |
+| Grid | `grid` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | The points `x0 + i * dx` for `0 ≤ i < n` |
 | Scaling by a power of two | `scaleByPower` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `x * 2^k` for `k` from 0 to 1023, with the power built from its exponent field |
 | Mean of the indices | `mean` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `(0 + 1 + ⋯ + (n - 1))/n` in binary64, NaN for `n = 0` |
 | Falling body | `fall` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | Explicit Euler steps under gravity until the height reaches 0, for at most 100,000 steps |
@@ -132,5 +132,5 @@ These programs test the compilers on numerical code.  The theorem for each state
 | Binary32 GPT-2 | [The binary32 program](Demos/Gpt32/README.md#verified-compiler), [its Verified compilation](Demos/Gpt32/Verified.lean), and [its host proof](Demos/Gpt32/VerifiedHost.lean) | Thirteen unchanged functions with generated Wasm execution, allocation-bound, trap-free, and byte theorems.  Under the device model, WGSL generation returns the native step's scores, with every dispatch race-free. |
 | Triangle numbers, Fibonacci numbers, powers, sums of powers | `triangle`, `fib`, `power`, and `sumPowers` in [`Verified/Examples/Loops.lean`](Verified/Examples/Loops.lean) | Loops on words |
 | Fibonacci pairs | `fibPair` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean) | Recursion on a pair of words |
-| Word folds | `sum` and `dot` in [`Verified/Examples/Arrays.lean`](Verified/Examples/Arrays.lean), and the product and exclusive or in [the `Examples/SumArray` example](Examples/SumArray/README.md) | Left folds over arrays of words (`productArray_implements`, `xorArray_implements`) |
+| Word folds | [Sum, product, and exclusive or](Library/Numerics/Reductions/Word/Program.lean), with the word dot product in [the array compiler fixture](Verified/Examples/Arrays.lean) | Left folds over arrays of words (`productArray_implements`, `xorArray_implements`) |
 | Collatz map | `collatz` in [`Verified/Examples/Loops.lean`](Verified/Examples/Loops.lean) and `collatzSteps` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | `n` iterations of the map from `x`, and the number of steps to reach 1, counted up to 1,000 |

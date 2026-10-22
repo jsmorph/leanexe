@@ -89,7 +89,7 @@ theorem restSeconds_bounds (d : UInt64) (hd : d.toNat ≤ heightLimit) :
   unfold restSeconds
   simp only
   rw [max_nat, max_nat, hr]
-  let q := (ceilSqrt ((3 * d + 1) / 2)).toNat
+  let q := (Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt ((3 * d + 1) / 2)).toNat
   have hq : q ≤ 65536 := hs.1
   have hqs : (3 * d.toNat + 1) / 2 ≤ q * q := by rw [← ha]; exact hs.2.1
   let t := max 25 (max ((3 * d.toNat + 39) / 40) q)

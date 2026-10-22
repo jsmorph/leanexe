@@ -1,3 +1,4 @@
+import Library.Numerics.LinearAlgebra.Binary32.Program
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Float32
@@ -9,6 +10,8 @@ each kernel.
 -/
 
 namespace Demos.Gpt32
+
+export Library.Numerics.LinearAlgebra.Binary32 (add32 linear32)
 
 /-- `e^x` in binary32.  The argument is clamped to `[-104, 89]`, which maps a NaN to 89;
 `k = nearest (c · log₂ e)` and `r = c - k · ln 2` with `ln 2` in two parts, the first with nine
@@ -57,12 +60,6 @@ def layerNorm32 (x g b : Array Float32) (d : UInt64) (nf : Float32) : Array Floa
     let var := LeanExe.loop d 0.0 (fun i acc => acc + (x[i.toNat]! - mean) * (x[i.toNat]! - mean)) / nf
     (x[c.toNat]! - mean) * (1.0 / (var + 0.00001).sqrt) * g[c.toNat]! + b[c.toNat]!
 
-/-- The row `x` of `k` elements times the `k × m` matrix `w`, stored by rows, plus the bias
-`b`. -/
-def linear32 (x w b : Array Float32) (k m : UInt64) : Array Float32 :=
-  LeanExe.build m fun c =>
-    LeanExe.loop k 0.0 (fun i acc => acc + x[i.toNat]! * w[(i * m + c).toNat]!) + b[c.toNat]!
-
 /-- `cache` of `base` elements followed by `row`, `n` elements in all. -/
 def append32 (cache row : Array Float32) (base n : UInt64) : Array Float32 :=
   LeanExe.build n fun e => if e < base then cache[e.toNat]! else row[(e - base).toNat]!
@@ -99,10 +96,6 @@ of the values of positions `0` to `p` in `vc`, rows of `d` elements. -/
 def mix32 (pw vc : Array Float32) (p d : UInt64) : Array Float32 :=
   LeanExe.build d fun c =>
     LeanExe.loop (p + 1) 0.0 (fun j acc => acc + pw[(c / 64 * 1024 + j).toNat]! * vc[(j * d + c).toNat]!)
-
-/-- The element-wise sum of `a` and `b`. -/
-def add32 (a b : Array Float32) : Array Float32 :=
-  LeanExe.build a.size.toUInt64 fun i => a[i.toNat]! + b[i.toNat]!
 
 /-- `gelu32` of each element of `x`. -/
 def geluArray32 (x : Array Float32) : Array Float32 :=
@@ -161,9 +154,9 @@ def layerStep32 (nh f p : UInt64) (w : Layer32) (x kc vc : Array Float32) :
     Array Float32 × Array Float32 × Array Float32 :=
   let d := 64 * nh
   let h1 := layerNorm32 x w.g1 w.b1 d d.toFloat32
-  let q := linear32 h1 w.wq w.bq d d
-  let k := linear32 h1 w.wk w.bk d d
-  let v := linear32 h1 w.wv w.bv d d
+  let q := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wq w.bq d d
+  let k := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wk w.bk d d
+  let v := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wv w.bv d d
   let kc' := append32 kc k (p * d) ((p + 1) * d)
   let vc' := append32 vc v (p * d) ((p + 1) * d)
   let sc := scores32 q kc' p d (nh * 1024)
@@ -171,10 +164,10 @@ def layerStep32 (nh f p : UInt64) (w : Layer32) (x kc vc : Array Float32) :
   let sm := headSum32 sc mx p nh
   let pw := probs32 sc mx sm p (nh * 1024)
   let o := mix32 pw vc' p d
-  let r := add32 x (linear32 o w.wo w.bo d d)
+  let r := Library.Numerics.LinearAlgebra.Binary32.add32 x (Library.Numerics.LinearAlgebra.Binary32.linear32 o w.wo w.bo d d)
   let h2 := layerNorm32 r w.g2 w.b2 d d.toFloat32
-  let g := geluArray32 (linear32 h2 w.wfc w.bfc d f)
-  (add32 r (linear32 g w.wproj w.bproj f d), kc', vc')
+  let g := geluArray32 (Library.Numerics.LinearAlgebra.Binary32.linear32 h2 w.wfc w.bfc d f)
+  (Library.Numerics.LinearAlgebra.Binary32.add32 r (Library.Numerics.LinearAlgebra.Binary32.linear32 g w.wproj w.bproj f d), kc', vc')
 
 /-- The layers in order: the row after the last, and each layer's extended caches. -/
 def layers32 (nh f p : UInt64) : List Layer32 → List (Array Float32 × Array Float32) →

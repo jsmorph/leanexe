@@ -1,130 +1,91 @@
 #!/usr/bin/env node
 import fs from 'node:fs';
-import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 
-if (process.argv[2] === '--apply') {
-  await import('../build/reorg/apply.mjs');
-  process.exit(0);
-}
-if (process.argv[2] === '--fix-names') {
-  await import('../build/reorg/fix-names.mjs');
-  process.exit(0);
-}
-if (process.argv[2] === '--check') {
-  await import('../build/reorg/check.mjs');
-  process.exit(0);
-}
-if (process.argv[2] === '--fix-links') {
-  await import('../build/reorg/fix-links.mjs');
-  process.exit(0);
-}
-if (process.argv[2] === '--drivers') {
-  await import('../build/reorg/drivers.mjs');
-  process.exit(0);
+if (process.argv.length !== 2) {
+  console.error('usage: tools/source-layout');
+  process.exit(2);
 }
 
-const tracked = execFileSync('git', ['ls-files'], { encoding: 'utf8' }).trim().split('\n');
-const moves = {};
-const modules = {};
-const namespaces = {};
-const primary = {};
-const families = [
-  ['Expm1', 'Tanh'], ['Exp10', 'Exp2'], ['Exp2', 'Exp2'], ['Exp', 'Exp'],
-  ['Log10', 'Log10'], ['Log1p', 'Log1p'], ['Log2', 'Log2'], ['Log', 'Log'],
-  ['Tanh', 'Tanh'], ['Sinh', 'Sinh'], ['Cosh', 'Sinh'],
-  ['Asinh', 'Asinh'], ['Acosh', 'Asinh'], ['Atanh', 'Asinh'],
-  ['Atan', 'Atan'], ['Asin', 'Asin'], ['Acos', 'Asin'],
-  ['Sinpi', 'Sinpi'], ['Trig', 'Trig'], ['Tan', 'Tan'], ['Pow', 'Pow'],
-  ['Erfc', 'Erfc'], ['Erf', 'Erf'], ['Tgamma', 'Tgamma'], ['Lgamma', 'Lgamma'],
-  ['Bessel', 'Bessel'], ['Fma', 'Arithmetic/Fma'], ['Uscale', 'Arithmetic/Uscale'],
-  ['ParseFloat', 'Decimal/ParseFloat'], ['PrintFloat', 'Decimal/PrintFloat'],
-  ['Strconv', 'Decimal/Shared'], ['Arm', 'Exp'], ['GammaPi', 'Tgamma'],
-  ['Fourier', 'Fourier']
-];
-const mains = new Set(['Exp','Exp2','Log','Log1p','Log2','Log10','Tanh','Sinh','Asinh',
-  'Atan','Asin','Sinpi','Trig','Tan','Pow','Erfc','Erf','Tgamma','Lgamma','Bessel',
-  'Fma','Uscale','ParseFloat','PrintFloat','Fourier']);
-const testRefs = new Set(['Reference','ArcReference','HyperbolicReference','PowerReference',
-  'ErfReference','GammaReference','BesselReference','WorstCases']);
-const exampleDirs = {
-  Lcg:'Library/Random/Lcg', ParkMiller:'Library/Random/ParkMiller',
-  Xorshift:'Library/Random/Xorshift', Prng:'Library/Random/SplitMix64',
-  Orbit:'Library/Random/Orbit', Gcd:'Library/Numerics/Arithmetic/Gcd',
-  PrimeFactors:'Library/Numerics/Arithmetic/PrimeFactors',
-  Mean:'Library/Numerics/Statistics/Mean', SumSquares:'Library/Numerics/Statistics/SumSquares',
-  Euler:'Demos/Euler', Gpt:'Demos/Gpt', Gpt32:'Demos/Gpt32',
-  Drone:'Demos/Drone', Clob:'Demos/Clob'
-};
-const numRoot = family => 'Library/Numerics/' +
-  (family.includes('/') || family === 'Fourier' ? family : 'Float64/' + family);
-for (const file of tracked) {
-  let dest;
-  if (file === 'Examples/Host.lean') dest = 'tests/TestSupport/Host.lean';
-  else if (file.startsWith('Examples/')) {
-    const parts = file.split('/');
-    if (exampleDirs[parts[1]]) {
-      dest = exampleDirs[parts[1]] + '/' + parts.slice(2).join('/');
-      if (parts[1] === 'Euler' && /^(first-order|reconstructed)\/\d+-run\//.test(parts.slice(2).join('/')))
-        dest = 'data/euler/' + parts.slice(2).join('/');
-      if (dest.startsWith('Library/') && parts[2] === 'Cases.lean')
-        dest = 'tests/TestSupport/Modules/' + parts[1] + '.lean';
-    }
-  } else if (file.startsWith('Verified/Examples/')) {
-    const name = path.basename(file, path.extname(file));
-    if (testRefs.has(name) || name.endsWith('Accuracy'))
-      dest = 'tests/TestSupport/Numerics/' + path.basename(file);
-    else if (name === 'Lcg' || name === 'ParkMiller' || name === 'Xorshift')
-      dest = `Library/Random/${name}/Verified.lean`;
-    else if (/^(Gpt32|Gpt|Euler|Drone|Clob)/.test(name)) {
-      const demo = ['Gpt32','Gpt','Euler','Drone','Clob'].find(n => name.startsWith(n));
-      dest = `Demos/${demo}/Verified${name.slice(demo.length)}${path.extname(file)}`;
-    } else {
-      const entry = families.find(([prefix]) => name.startsWith(prefix));
-      if (entry) {
-        const root = numRoot(entry[1]);
-        dest = path.extname(file) === '.md' ? root + '/README.md' :
-          root + '/' + (mains.has(name) ? 'Program.lean' : path.basename(file));
-        if (mains.has(name) && file.endsWith('.lean')) primary[file] = {
-          program: dest, compiled: root + '/Compiled.lean', family:root
-        };
-      }
-    }
-  }
-  if (!dest) continue;
-  if (Object.values(moves).includes(dest)) throw new Error('Duplicate destination: ' + dest);
-  moves[file] = dest;
-  if (file.endsWith('.lean')) {
-    const oldMod = file.slice(0, -5).replaceAll('/', '.');
-    const newMod = (primary[file]?.compiled ?? dest).replace(/^tests\//, '').slice(0, -5).replaceAll('/', '.');
-    modules[oldMod] = newMod;
-    const source = fs.readFileSync(file, 'utf8');
-    for (const m of source.matchAll(/^namespace ((?:Examples|Verified\.Examples)\.[\w.]+)\s*$/gm)) {
-      const old = m[1];
-      let ns;
-      if (old.startsWith('Examples.')) {
-        const p=old.split('.');
-        ns = old === 'Examples.Host' ? 'TestSupport.Host' :
-          exampleDirs[p[1]]?.replaceAll('/', '.') + (p.length > 2 ? '.' + p.slice(2).join('.') : '');
-      } else {
-        const short=old.slice('Verified.Examples.'.length);
-        const demo = ['Gpt32','Gpt','Euler','Drone','Clob'].find(n => short.startsWith(n));
-        const family = families.find(([prefix]) => short.startsWith(prefix));
-        ns = demo ? `Demos.${demo}.Verified${short.slice(demo.length)}` :
-          ['Lcg','ParkMiller','Xorshift'].includes(short) ? 'Library.Random.' + short :
-          testRefs.has(short) || short.endsWith('Accuracy') ? 'TestSupport.Numerics.' + short :
-          family ? numRoot(family[1]).replaceAll('/','.') +
-            (short === family[1] ? '' : '.' + short.replace(new RegExp('^'+family[1]+'\\.'),'')) :
-          dest.replace(/^tests\//,'').slice(0,-5).replaceAll('/','.');
-      }
-      if (ns && ns !== 'undefined') {
-        if (namespaces[old] && namespaces[old] !== ns) throw new Error('Conflicting namespace: ' + old);
-        namespaces[old] = ns;
-      }
+const files = [...new Set(execFileSync('git',
+  ['ls-files', '--cached', '--others', '--exclude-standard'], { encoding: 'utf8' })
+  .trim().split('\n'))].filter(f => fs.existsSync(f));
+const active = files.filter(f => f.endsWith('.lean') && !/^(paper|data)\//.test(f));
+const internal = /^(LeanExe|Verified|Examples|Library|Demos|TestSupport)(\.|$)/;
+const modulePath = m => (m.startsWith('TestSupport') ? 'tests/' : '') +
+  m.replaceAll('.', '/') + '.lean';
+const imports = new Map();
+const errors = [];
+for (const file of active) {
+  const names = [...fs.readFileSync(file, 'utf8').matchAll(/^import ([\w.]+)/gm)]
+    .map(m => m[1]).filter(m => internal.test(m));
+  imports.set(file, names.map(modulePath));
+  for (const name of names) {
+    if (!fs.existsSync(modulePath(name))) errors.push(`${file}: missing import ${name}`);
+    if (file.startsWith('Library/') && /^(Examples|Demos|TestSupport)(\.|$)/.test(name)) {
+      errors.push(`${file}: library imports ${name}`);
     }
   }
 }
-fs.writeFileSync('build/reorg/plan.json',JSON.stringify({base:execFileSync('git',['rev-parse','HEAD'],{encoding:'utf8'}).trim(), moves,modules,namespaces,primary},null,2)+'\n');
-console.log(JSON.stringify({moves:Object.keys(moves).length,primary:Object.keys(primary).length,
-  byRoot:Object.values(moves).reduce((a,p)=>(a[p.split('/').slice(0,2).join('/')]=(a[p.split('/').slice(0,2).join('/') ]??0)+1,a),{}),
-  unmovedNumerical:tracked.filter(f=>/^Verified\/Examples\/(?:Gamma|Power|Hyperbolic|Arc|Arm|Strconv)/.test(f)&&!moves[f])},null,2));
+
+const visited = new Set();
+const pending = new Set();
+function visit(file) {
+  if (pending.has(file)) { errors.push(`${file}: import cycle`); return; }
+  if (visited.has(file)) return;
+  pending.add(file);
+  for (const dependency of imports.get(file) ?? []) visit(dependency);
+  pending.delete(file);
+  visited.add(file);
+}
+for (const file of active) visit(file);
+
+const programs = active.filter(f => f.startsWith('Library/') && f.endsWith('/Program.lean'));
+for (const program of programs) {
+  const seen = new Set();
+  function check(file) {
+    if (seen.has(file)) return;
+    seen.add(file);
+    if (/^(Verified\/|LeanExe\/(Compiler|IR)\/)/.test(file)) {
+      errors.push(`${program}: native import reaches ${file}`);
+      return;
+    }
+    for (const dependency of imports.get(file) ?? []) check(dependency);
+  }
+  check(program);
+  if (!imports.get('Library/Native.lean')?.includes(program)) {
+    errors.push(`${program}: missing from Library.Native`);
+  }
+}
+
+const verifiedNames = new Set();
+let modules = 0;
+for (const registry of ['tests/modules/modules.txt', 'tests/verified/modules.txt']) {
+  const names = new Set();
+  for (const line of fs.readFileSync(registry, 'utf8').trim().split('\n')) {
+    const [module, constant, name, extra] = line.split(':');
+    if (!module || !constant || !name || extra || !fs.existsSync(modulePath(module))) {
+      errors.push(`${registry}: invalid entry ${line}`);
+    }
+    if (names.has(name)) errors.push(`${registry}: duplicate output ${name}`);
+    names.add(name);
+    modules++;
+  }
+  if (registry.includes('/verified/')) for (const name of names) verifiedNames.add(name);
+}
+for (const line of fs.readFileSync('tests/verified/library-cases.txt', 'utf8').trim().split('\n')) {
+  const [source, sourceExport, target, targetExport, extra] = line.split('|');
+  if (!verifiedNames.has(source) || !verifiedNames.has(target) ||
+      !sourceExport || !targetExport || extra) errors.push(`Invalid library case mapping: ${line}`);
+}
+for (const line of fs.readFileSync('tests/verified/numerics.txt', 'utf8').trim().split('\n')) {
+  const [name, theorem, file, extra] = line.split(':');
+  if (!verifiedNames.has(name) || !theorem || !fs.existsSync(modulePath(theorem)) ||
+      !file || !fs.existsSync(file) || extra) errors.push(`Invalid numerical entry: ${line}`);
+}
+if (errors.length) {
+  for (const error of errors) console.error(error);
+  process.exitCode = 1;
+} else {
+  console.log(`Layout: ${active.length} Lean files, ${programs.length} native programs, ${modules} registered modules`);
+}

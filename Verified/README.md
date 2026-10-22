@@ -11,9 +11,10 @@ encoder and decoder with `decode_encode`, `Implements` and its relatives in
 their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
 the initial store.  The compiler and its proof have their own definitions of the IR parts they need
-and import no part of the LeanExe compiler, and nothing in `LeanExe` or `Examples` imports the
-library.  The drone and xorshift examples import programs of `Examples/` that depend on the LeanExe
-compiler and its IR lemmas.  The proofs use only the axioms `propext`, `Classical.choice`, and
+and import no part of the LeanExe compiler.  Native algorithm definitions live in
+[the library](../Library/README.md), compiler fixtures in `Verified/Examples`, and application
+compilations in [the demos](../Demos/README.md).  Separate compilation and mathematical proof
+modules import the compiler or proof rules they use.  The proofs use only the axioms `propext`, `Classical.choice`, and
 `Quot.sound`.
 
 ## Source language and code

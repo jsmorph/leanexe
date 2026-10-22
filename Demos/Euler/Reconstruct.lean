@@ -31,12 +31,12 @@ theorem slope_implements {a : Bool} : ImplementsPureA a euler.module 37 slopeTup
       eval_ir [euler.slope.ir]
       iterate 7 (refine Stmt.seq_run ?_; eval_ir [])
       refine Stmt.run_triple ?_
-      eval_ir [slopeTuple, slope, finite, absBits, word_and, word_eq_one, F64Bits.toBits_sub,
+      eval_ir [slopeTuple, slope, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, word_and, word_eq_one, F64Bits.toBits_sub,
         zero_toBits]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
       · rw [ite_eq_left h]
-        eval_ir [minmod, absBits, toBits_ite, F64Bits.toBits_sub, zero_toBits, word_eq_word]
+        eval_ir [Library.Numerics.Limiters.Minmod.minmod, Library.Numerics.Bounds.absBits, toBits_ite, F64Bits.toBits_sub, zero_toBits, word_eq_word]
       · rw [ite_eq_right h]
         eval_ir [zero_toBits]
 
@@ -63,7 +63,7 @@ theorem candidate_implements {a : Bool} : ImplementsPureA a euler.module 38 cand
         (x := (right.density, right.mx, right.my, right.energy)) ?_
       eval_ir [energyGuardTuple, right, offset, F64Bits.toBits_add, F64Bits.toBits_mul]
       refine Stmt.run_triple ?_
-      eval_ir [candidateTuple, candidate, finite, absBits, admissibleState, stateGuard,
+      eval_ir [candidateTuple, candidate, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, admissibleState, stateGuard,
         narrowGuard, positive, rejectedFaces, zeroState, word_and, word_or, word_eq_one, word_beq_one,
         cond_eq_ite, F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, zero_toBits]
       simp only [and_assoc]
@@ -194,7 +194,7 @@ theorem reconstruct_implements {a : Bool} : ImplementsPureA a euler.module 42 re
       eval_ir [energyGuardTuple]
       refine Stmt.run_triple ?_
       eval_ir_large [reconstructTuple, reconstruct, admissibleState, stateGuard, narrowGuard,
-        positive, finite, absBits, rejectedFaces, zeroState, word_and, word_or, word_eq_one,
+        positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, rejectedFaces, zeroState, word_and, word_or, word_eq_one,
         word_beq_one, cond_eq_ite, zero_toBits, delta]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)

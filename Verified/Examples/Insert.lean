@@ -1,3 +1,5 @@
+import Library.Sorting.Insertion.Program
+import Library.Arrays.Filter.Program
 import Verified.Examples.Records
 
 /-! The twenty-fifth program of the verified compiler: `LeanExe.insertAt` and `LeanExe.eraseAt`.
@@ -10,6 +12,10 @@ the array unchanged.  The programs insert into and remove from parameters, built
 state, a local array of pairs, and arrays of structures. -/
 
 namespace Verified.Examples.Insert
+
+export Library.Sorting.Insertion (sortInsert)
+
+export Library.Arrays.Filter (removeAll)
 
 open Verified.Examples.Records
 
@@ -26,21 +32,6 @@ def eraseBuilt (n i : UInt64) : Array UInt64 := LeanExe.eraseAt (LeanExe.build n
 def insertKeep (n i v : UInt64) : Array UInt64 × Array UInt64 :=
   let ys := LeanExe.build n fun j => j
   (LeanExe.insertAt ys i v, ys)
-
-/-- Insertion sort: each value goes in at the number of smaller values before it, in a loop whose
-state grows in its own block. -/
-def sortInsert (xs : Array UInt64) : Array UInt64 :=
-  LeanExe.loop xs.size.toUInt64 (LeanExe.build 0 fun _ => 0) fun i acc =>
-    let v := xs[i.toNat]!
-    let k := LeanExe.loop acc.size.toUInt64 0 fun j c => if acc[j.toNat]! < v then c + 1 else c
-    LeanExe.insertAt acc k v
-
-/-- The array without the elements equal to `v`, removed one at a time from the first. -/
-def removeAll (xs : Array UInt64) (v : UInt64) : Array UInt64 :=
-  LeanExe.loop xs.size.toUInt64 xs fun _ acc =>
-    let n := acc.size.toUInt64
-    let k := LeanExe.loop n n fun j k => if k == n && acc[j.toNat]! == v then j else k
-    LeanExe.eraseAt acc k
 
 /-- An insertion into and a removal from a local array of pairs, two words per element, read back
 as a weighted total of the words. -/
@@ -60,7 +51,7 @@ def pushConserved (n : UInt64) (u : Conserved) : Array Conserved :=
   LeanExe.loop n (LeanExe.build 0 fun _ => u) fun _ acc => acc.push u
 
 verified_compile compiled := [insertParam, eraseParam, insertBuilt, eraseBuilt, insertKeep,
-  sortInsert, removeAll, pointTotal, insertConserved, eraseConserved, pushConserved]
+  Library.Sorting.Insertion.sortInsert, Library.Arrays.Filter.removeAll, pointTotal, insertConserved, eraseConserved, pushConserved]
 
 /-- `sortInsert` inserts at most `xs.size` elements into a paid loop state, at a header and four
 times the 8 added bytes each, after the built array's block and its credit. -/

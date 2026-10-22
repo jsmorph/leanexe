@@ -1,0 +1,15 @@
+# Word trees
+
+[The native type](WordTree/Program.lean), `KeyTree`, has an empty constructor and a node with two
+children and a word key.  Its functions count nodes, sum keys, compute height, increment keys,
+replace a root key, insert a key by binary-search-tree comparisons, select the left child, and
+split the root into its children.  Word results wrap modulo `2^64`.
+
+[The encoding](WordTree/Encoding.lean) represents an empty tree by null and a node by a record
+with fixed word and child fields.  [The compiled module](WordTree/Compiled.lean) proves execution
+under the verified compiler's representation, ownership, memory, and recursion premises.
+Ordering and membership proofs for search-tree insertion remain future work.
+
+[The compiler examples](../../Examples/Trees/README.md) add traversal variants, moves, copies,
+header reuse, and their worked proofs.  Their test support constructs and renders arbitrary
+trees, including trees that exceed the guarded recursion limit.

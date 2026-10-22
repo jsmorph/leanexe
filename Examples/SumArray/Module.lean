@@ -3,9 +3,9 @@ import LeanExe.Compiler.Command
 
 namespace Examples.SumArray
 
-leanexe_compile sumArray := Examples.SumArray.sumArray
+leanexe_compile sumArray := Library.Numerics.Reductions.Word.sumArray
 
-leanexe_compile folds := [Examples.SumArray.productArray,
-  Examples.SumArray.xorArray]
+leanexe_compile folds := [Library.Numerics.Reductions.Word.productArray,
+  Library.Numerics.Reductions.Word.xorArray]
 
 end Examples.SumArray

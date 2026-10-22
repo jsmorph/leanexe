@@ -36,8 +36,8 @@ theorem reconstructedRunFrom_loop (n trials : UInt64) :
   refine ⟨_, _, ?_, ?_, rfl⟩ <;> intro _ <;> rfl
 
 /-- A selection between a checked value and `rejectedChecked` with status 0 selects the value. -/
-theorem rejectedChecked_status {c : Prop} [Decidable c] {u : Checked}
-    (h : (if c then u else rejectedChecked).status = 0) : c := by
+theorem rejectedChecked_status {c : Prop} [Decidable c] {u : Library.Numerics.Bounds.Checked}
+    (h : (if c then u else Library.Numerics.Bounds.rejectedChecked).status = 0) : c := by
   by_cases hc : c
   · exact hc
   · rw [ite_eq_right hc] at h

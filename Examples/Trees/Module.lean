@@ -4,7 +4,7 @@ import LeanExe.Compiler.Command
 namespace Examples.Trees
 
 open Examples.Trees in
-leanexe_compile trees := [KeyTree.size, KeyTree.sum, KeyTree.height, KeyTree.sizeSum,
+leanexe_compile trees := [Library.Trees.WordTree.KeyTree.size, Library.Trees.WordTree.KeyTree.sum, Library.Trees.WordTree.KeyTree.height, KeyTree.sizeSum,
   KeyTree.pushSum, KeyTree.dropSmall,
   KeyTree.sizeDrop, KeyTree.sizeDropNext, KeyTree.sizeAfterDrop, KeyTree.sizeDropSmall,
   KeyTree.sizeFirst, KeyTree.droppedSize, KeyTree.dropWithSize, KeyTree.leftSizes,

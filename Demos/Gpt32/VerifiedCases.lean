@@ -59,7 +59,7 @@ def runCases (gpu : Bool := false) : IO Unit := do
       emit gpu "layerNorm" "layerNorm32"
         [arr x, arr g, arr b, .word d.toUInt64, .float d.toFloat.toFloat32.toBits]
         (layerNorm32 x g b d.toUInt64 d.toFloat.toFloat32)
-      emit gpu "add" "add32" [arr g, arr x] (add32 g x)
+      emit gpu "add" "add32" [arr g, arr x] (Library.Numerics.LinearAlgebra.Binary32.add32 g x)
       emit gpu "append" "append32" [arr x, arr b, .word d.toUInt64, .word (d + 2).toUInt64]
         (append32 x b d.toUInt64 (d + 2).toUInt64)
       for k in [0, 1, 7] do
@@ -68,7 +68,7 @@ def runCases (gpu : Bool := false) : IO Unit := do
           let w := values (if short then k * m / 2 else k * m) 8
           let bias := values (if short then m / 2 else m) 9
           emit gpu "linear" "linear32" [arr a, arr w, arr bias, .word k.toUInt64, .word m.toUInt64]
-            (linear32 a w bias k.toUInt64 m.toUInt64)
+            (Library.Numerics.LinearAlgebra.Binary32.linear32 a w bias k.toUInt64 m.toUInt64)
       for rows in [0, 1, 3] do
         emit gpu "logits" "logits32" [arr x, arr wte, .word rows, .word d.toUInt64]
           (logits32 x wte rows d.toUInt64)

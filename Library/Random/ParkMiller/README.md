@@ -23,7 +23,7 @@ powers and `orderOf_eq_of_pow_and_pow_div_prime` give 16807 the order `p - 1`, s
 primitive root.  Mathlib's `reduce_mod_char` evaluates each power by repeated squaring with a
 proof, and `decide +kernel` checks the seven inequalities between residues.  For a state `x` in
 the range, `n` steps give `16807^n * x % p`, so `x` returns exactly when the order divides `n`, and
-the orbit lemma of [`Examples/Orbit`](../Orbit/README.md) gives each state in the range once per
+the orbit lemma of [`Library/Random/Orbit`](../Orbit/README.md) gives each state in the range once per
 period.  [The proofs](Period.lean) use only the axioms `propext`, `Classical.choice`, and
 `Quot.sound`.
 
