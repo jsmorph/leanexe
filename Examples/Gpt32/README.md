@@ -18,8 +18,9 @@ more token, end with the scores of `step32`, the Lean step, in the output buffer
 dispatch along the way is race-free.  It composes the dispatch theorem of each kernel in
 [`Proofs.lean`](Proofs.lean) and [`Kernels.lean`](Kernels.lean) with [`Exec.lean`](Exec.lean), which
 gives the commands their meaning, and [`Compose.lean`](Compose.lean), which follows the eighteen
-kernel calls of a layer.  The theorems hold under a device model with strict binary32 arithmetic,
-race-free dispatch, and no dynamic errors.  A GPU may flush subnormal values and fuse multiply-adds,
+kernel calls of a layer.  The theorems prove successful execution and race freedom in a device
+model with strict binary32 arithmetic, under their shape, buffer, and token bounds.
+A GPU may flush subnormal values and fuse multiply-adds,
 as the WGSL specification permits.  Before arithmetic-NaN normalization, the kernels' scores in
 headless Chromium with SwiftShader equaled those of `gpt32.wasm` bit for bit at all 16 steps of
 one run, and on an Apple GPU they

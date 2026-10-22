@@ -26,7 +26,7 @@ The reduction has three regimes [4].  Up to `9π/4` the high word of `x` fixes `
 
 From `2^20 · π/2` on, the reduction follows Payne and Hanek [7] as K. C. Ng's report describes the method [8].  For `x = m · 2^e` with an integer `m < 2^53`, the bits of `2/π` of weight at least `2^(2-e)` contribute multiples of 4 to `x · 2/π` and can be dropped, and the bits far below contribute less than the needed precision, so a window of `2/π` selected by the exponent gives `x · 2/π` modulo 4.  The port computes that product in 64-bit words, as Go's `math.trigReduce` does [9]: the 192-bit window of `2/π` from bit `e - 1` on times `m` gives `x · 2/π` modulo 4 with 190 bits of fraction, exact to `2^-137`.  The fraction is rounded to the nearer quadrant, normalized, multiplied by `π/2` held as a 128-bit integer, and the top 106 bits of the product become `y0 + y1` by an exact two-sum.
 
-A relative bound on `r` needs a lower bound on `|r|`.  Ng reports that Kahan and McDonald's continued-fraction search found the double closest to a multiple of `π/2`, `6381956970095103 · 2^797`, with fractional quadrant `f ≈ 2.98 · 10^-19 > 2^-62` [8].  The proof replaces that search with `TrigDistance.quadrant_distance`, which proves the bound `2^-63` from 1,025 certificates that the kernel checks, one per binade, and the smallest certified bound, `2^-61.54`, falls in the binade of Ng's worst case, which agrees with Ng's `f`.
+A relative bound on `r` needs a lower bound on `|r|`.  Ng reports that Kahan and McDonald's continued-fraction search found the double closest to a multiple of `π/2`, `6381956970095103 · 2^797`, with fractional quadrant `f ≈ 2.98 · 10^-19 > 2^-62` [8].  The proof replaces that search with `TrigDistance.quadrant_distance`, which proves the bound `2^-63` from 1,025 rational approximations that the kernel checks, one per binade, and the smallest checked bound, `2^-61.54`, falls in the binade of Ng's worst case, which agrees with Ng's `f`.
 
 ## Implementation
 
@@ -138,7 +138,7 @@ The proof uses ProofKit, including the arithmetic chain of `F64Add`, `F64Mul`, `
 | Fact | Declaration |
 |---|---|
 | Machin's partial sums with 275 and 82 terms bound `π` within `2^-1270`, and the two tables against those bounds | `TrigPi.checked`, `tableNum_eq`, `halfNum_eq` |
-| The 1,025 distance certificates and their count | `TrigDistance.certs_checked`, `certs_length` |
+| The 1,025 rational approximations and their count | `TrigDistance.certs_checked`, `certs_length` |
 | The windows of `invPi` for exponent fields 1043 to 2046 | `TrigWindows.windows_eq` |
 | `pio2_1 + pio2_1t` within `2^-86` of `π/2`, and the sums of the six pieces within `2^-121` and `2^-157` | `TrigSmall.pio2_checked`, `TrigMediumConst.pio2_sums_checked` |
 | The fields of the six pieces of `π/2` | `TrigMediumConst.consts_checked` |

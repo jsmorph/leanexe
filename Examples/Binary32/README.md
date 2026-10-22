@@ -18,7 +18,8 @@ of the IR and emits one kernel invocation per element.  Each kernel has three th
 translation succeeds, the parser reads the printed text back as the kernel, and a dispatch over at
 least as many invocations as elements writes the Lean function's result into the output buffer, with
 distinct invocations storing to distinct words.  The dispatch theorems hold under a device model
-with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.
+with strict binary32 arithmetic.  They prove successful modeled execution and race freedom under
+their buffer and invocation bounds.
 
 | Theorem | Statement |
 |---------|-----------|

@@ -1,7 +1,8 @@
 # Verified Compiler Internals
 
-This document describes how the verified compiler works: its source language, the code that it
-produces, the statement and structure of its theorem, and the reflector behind `verified_compile`.
+The verified compiler consists of a typed source language, a Lean function that compiles it, and
+a universal correctness proof.  `verified_compile` reflects ordinary Lean definitions into that
+language and derives their execution theorems.
 [The verified compiler manual](../docs/verified-manual.md) describes the dialect, the declarations
 that the command adds, the bounds, the tests, and the examples for a program's author.  The library
 shares the trusted base and the statement of correctness with `LeanExe`: Talos's semantics, the
@@ -20,12 +21,16 @@ compiler and its IR lemmas.  The proofs use only the axioms `propext`, `Classica
 A program is a list of functions in which each function may call the functions after it in the list
 and, when it is recursive, itself, so the only cycles are a function's calls of itself.  The list
 holds the definitions of a `verified_compile` command in reverse order, so that a definition calls
-the definitions before it in the command.  A function's parameters and result are 64-bit words,
-`Bool`s, floats, tuples of these, arrays of any of these, and pairs that hold arrays, and its body
-is a typed expression.  The element types, `Elem`, are words, `Bool`s, floats, and tuples of element
-types, and `Ty.elem` embeds them in the types: `Ty.elem e` is the type of an element, `Ty.array e`
-the type of an array of elements, and `Ty.pair` the type of a pair, so an array never holds an
-array.  An expression of type `t` over a context `Γ` of types that may call functions with the
+the definitions before it in the command.  A function's body is a typed expression.
+
+### Types and expressions
+
+The element types, `Elem`, are 64-bit words, `Bool`s, binary64 and binary32 floats, and tuples of
+element types.  `Ty.elem e` embeds an element type, `Ty.array e` holds an array of elements, and
+`Ty.pair` combines any two value types.  `Ty.tree shape` holds a recursive value with the fixed
+layout `shape`, and `Ty.treeHeader shape` holds a detached record header during matching and
+reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
+this tree model.  An expression of type `t` over a context `Γ` that may call functions with
 signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only variables in
 scope, and calls only functions that exist.  The constructs are those of [the manual's
 dialect](../docs/verified-manual.md#the-dialect), each with Lean's meaning, with tuples built by
@@ -43,6 +48,8 @@ function's body, a loop's condition has the state as variable 0, its body has th
 read, the update, and the extensions take array variables, and a call's argument that holds arrays
 is a place, a variable or a pair of places, and a variable at an owned parameter.
 
+### Values and ownership
+
 A value is carried as words, as `Implements` passes it: a word as itself, a `Bool` as 1 or 0, a
 float as its bit pattern in an f64 or f32 word, a tuple or a pair as its first component's words
 followed by its second's, and an array as the address of its length word and its elements' words
@@ -56,9 +63,9 @@ typed values and extracting their bits recovers those words.  The word-store pro
 equation for both float formats and tuples.  A structure whose `Flat` tuple holds arrays is represented as that tuple, by
 the instance `instRepresentOfFlat` of [`FlatRecords.lean`](../LeanExe/Pipeline/FlatRecords.lean),
 and the reflector treats it as a pair whose components are the tuple's.  Such a record may be a
-parameter, a result, a local value, or a loop state.  A record parameter is always borrowed, so a
-callee that updates one of its arrays copies the array.  A function with a pair result returns
-several WebAssembly results.  Each value holds its arrays in a mode, borrowed or owned, which
+parameter, a result, a local value, or a loop state.  A parameter of a record with array fields is
+borrowed, so a callee that updates one of its arrays copies the array.  A function with a pair result
+returns several WebAssembly results.  Each value holds its arrays in a mode, borrowed or owned, which
 `Expr.mode` computes from the modes of the variables.  A function's signature gives each array
 parameter a mode.  The function reads a borrowed parameter and leaves it in place, and it consumes
 an owned parameter's array, releasing it at entry when the body does not use it.  A call's result, a
@@ -66,12 +73,17 @@ function's result, and a built, updated, or extended array are owned, so a funct
 borrowed value that it returns.  Each expression consumes the owned variables that die in it, those
 live before it and not after: an owned variable moves into the value where it dies and is copied
 where it stays live, a reader or a call releases an owned variable that dies there, and a branch, a
-binding, and a loop release the owned variables that die without a use.  The code generator learns
-which variables each subexpression reads from the bitmask `Expr.useMask` through `Expr.usesFast`, and
-`Expr.usesFast_eq` equates it with `Expr.uses`.  A pair has one mode, and a
+binding, and a loop release the owned variables that die without a use.  Recursive values also have
+borrowed and owned modes, with copying, release, and reuse described [below](#recursive-records).
+The code generator learns which variables each subexpression reads from the bitmask `Expr.useMask`
+through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  A pair has one mode, and a
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
-or state is copied.  A copy allocates through the runtime's `alloc` and writes the length word and
-the elements.  A function's locals are its parameters, an i64 local for each further position, and
+or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
+the elements.
+
+### Scalar code and control flow
+
+A function's locals are its parameters, an i64 local for each further position, and
 f64 and f32 locals for every position.  Each word occupies the local for its type.  A function
 copies floating-point parameters to their typed locals at entry.  Arithmetic reflection selects
 binary32 or binary64 from the operand type.  Negation subtracts the operand from negative zero in
@@ -89,32 +101,45 @@ releases the owned variables that die there and that it does not consume.  An `i
 of its value in locals in each branch and loads them after it, because the encoder writes block
 types of at most one result.  A loop keeps its count, its index, and its state in locals, compares
 the index with the count at the top of a WebAssembly `loop` inside a `block`, and branches out of
-the block when the index reaches the count.  A build keeps its count, the array's address, and the
-index in locals, traps at `unreachable` when the count's words would be `2^29` or more, since the
+the block when the index reaches the count.
+
+### Array code
+
+A build keeps its count, the array's address, and the index in locals.  It traps at `unreachable`
+when the count's words would be `2^29` or more, since the
 array would not fit in 32-bit memory, allocates the array and writes its length word, and stores
 each element after the element's code runs.  The outer variables that only the element reads stay
-live through the loop and are released after it.  An update runs its position's and value's code
+live through the loop and are released after it.
+
+An update runs its position's and value's code
 first and then takes the array in an owned position: an owned array that dies there is updated in
 its own block, and any other array is copied first.  An extension takes the array with room for the
 result: an owned array that dies there grows in its own block when the block has room and otherwise
 moves to a block of at least twice its capacity, which releases the old block, and any other array
 is copied once into a block with room.  `push` then writes the new element, and `++` copies the
 other array's elements after the first's and releases the other array when it is owned and dies
-there.  An insertion takes the array with room for one more element in the same way, moves the words
+there.
+
+An insertion takes the array with room for one more element in the same way, moves the words
 from the position to the end up by one element, from the last word down, and writes the new element
 at the position.  A removal takes the array as an update does, moves the words after the element
 down by one element, from the first word up, and writes the shorter length.  Each move stays inside
-one block, and its order reads every word before it overwrites it.  An insertion past the end writes
-the old length back, after the code has copied or moved the array with room, and traps where the
-longer array would not fit in memory.  A read keeps the position in a local, compares it with the
-array's size, the length word divided by the element's word count, and keeps the result as a flag.
-It then loads each of the element's words under the flag, 0 past the end, and converts each float
-word to an f64 with `f64.reinterpret_i64`.  An update, a push, and a build store the element's words
-in locals and write each, converting a float word with `i64.reinterpret_f64`.  The code uses `min k
-2^29` as the word count `k` of an element: an element of `2^29` words or more is in no array that
+one block, and its order reads every word before it overwrites it.  The primitive `Expr.insertAt`
+returns the input value past the end after its ownership and capacity handling.  `Expr.insertIdx`
+checks the length first and selects an empty build past the end, preserving `Array.insertIdx!`.
+
+A read keeps the position in a local, compares it with the array's size, the length word divided
+by the element's word count, and keeps the result as a flag.
+It then loads each of the element's words under the flag, 0 past the end.  A binary64 read uses
+`f64.reinterpret_i64`; a binary32 read wraps the word to i32 and uses `f32.reinterpret_i32`.
+An update, a push, and a build store the element's words in locals and write each.  Binary64 stores
+use `i64.reinterpret_f64`; binary32 stores use `i32.reinterpret_f32` and zero-extension to i64.
+The code uses `min k 2^29` as the word count `k` of an element: an element of `2^29` words or more is in no array that
 memory holds, and the bound keeps the count positive and below `2^64`.  WebAssembly traps on a zero
 divisor, so the compiled division and remainder save their operands in scratch locals, test the
-divisor, and return Lean's result for zero.  [`Source.lean`](Source.lean) defines the syntax and
+divisor, and return Lean's result for zero.
+
+[`Source.lean`](Source.lean) defines the syntax and
 `Func.denote`, [`Compile.lean`](Compile.lean) the compiler, [`State.lean`](State.lean) the
 representation of values in the heap and the facts about variables, [`Heap.lean`](Heap.lean) the
 specifications of the allocation, copy, and release code, [`Bound.lean`](Bound.lean) the allocation
@@ -126,6 +151,8 @@ ordinary-function compilation, and [the program theorem](Correct.lean) combines 
 rules.  The compiled module has the layout of `LeanExe`'s modules, with the runtime's `alloc`
 and `release` at functions
 0 and 1.
+
+### Folds and checked insertion
 
 `Expr.fold` has the full `Array.foldl` meaning, with its element, accumulator, and `UInt64`
 index as variables 0, 1, and 2 of its body.  The reflector accepts whole-array folds and
@@ -341,11 +368,9 @@ with the allocator invariant, a memory cap of at most 65,535 pages, and argument
 function returns words that represent `f x` and own its arrays, keeps the allocator invariant and
 the memory caps, keeps every region of the caller's heap that lies apart from the moved blocks, and
 places the result's arrays apart from those regions.  `aborts` is part of each function's signature.
-It is true when the result holds arrays, a parameter is owned, the body builds, updates, extends,
-inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose
-result holds arrays, or which owns a parameter, since only then can the function allocate, and an
-allocation traps at `unreachable` when memory runs out.  A call of a function whose code takes the
-call depth makes `aborts` true as well.  A function whose `aborts` is false returns without a trap.
+The flag is conservative: array results and updates, owned parameters, recursive construction and
+matching, and calls that may trap enable it.  Allocation may trap when memory runs out, and guarded
+calls may trap at the depth limit.  A function whose `aborts` is false returns without a trap.
 The theorem for a function whose code takes the call depth holds at its entry, with a trap allowed,
 and its internal function meets `ImplementsP`, below, at each depth from the arguments that follow
 the depth word.
@@ -376,7 +401,7 @@ whose potential the caller holds.  Pairs and the results of `build`, `set`, and 
 paid.  A function's bound is its body's plus the copy of a borrowed result.  `ImplementsB aborts m e
 f bound` is the theorem with the bound: the call traps only when `aborts` holds and `heap.Within
 store m (bound x)` fails, and it raises `top` by at most `bound x`.  `Heap.Within`, defined in
-[`Heap.lean`](Heap.lean), states that `top + bound x` is at most `65536` times the memory's cap in
+the [runtime facts](RuntimeFacts.lean), states that `top + bound x` is at most `65536` times the memory's cap in
 pages, which `ImplementsA` requires to be at most 65,535, so the bound must fit in 4,294,901,760
 bytes.  `ImplementsB.trapFree` turns it into `ImplementsA false`, with the precondition that the
 bound fits and the postcondition that `top` rises by at most the bound, and
@@ -687,8 +712,51 @@ for an `allBelow` or a `loopFits` whose parts are `true`.
 | `Prog.correct_wrapper` | A wrapper computes its callee's meaning at the tables and its own arguments in the sense of `ImplementsTables`, from `wrapper_correct`: the entry's words are the tables' addresses and its arguments, the tables are borrowed arguments of the callee, `Env.withTables_moves` shows that they move no block, and `Env.withTables_reads` that the arguments' reads include their regions.  The theorem `ImplementsTables.lean` states it with Lean's instances. |
 | `Prog.calls` | By induction on the program.  Ordinary and tail functions use the specifications of the functions before them.  A guarded recursive function meets its specification at depth `d` by strong induction on `depthLimit - d`, since its self-calls happen at `d + 1` and the guard traps at the limit.  The tail-function rule uses its decreasing rank and whole-loop theorem. |
 | `bodyFunction_runs` | A function's code, with or without the depth parameter, in a module whose functions at the call indices compute the functions it calls at the next depth, computes the body's meaning.  `Env.Rep.apart` turns the callee's `Separate` into the facts of `Holds` for the parameters at entry. |
-| `Expr.code_spec` | From any heap and store with the allocator invariant, in which the variables live before an expression hold words that represent their values in their modes and the blocks of the owned ones lie apart from the other variables' arrays, the code of the expression ends with words that represent the expression's value in its mode.  The step of the heap and store consumes only the blocks of the owned variables that die in the expression, the variables live after it hold their values, an owned value's blocks are new, and the value lies apart from the variables live after it.  The code changes no parameter and no local below the locals it uses.  It traps only when `Expr.fits` fails, or, when it may allocate, when `top` cannot rise by the potential of the paid owned variables that die in the expression plus `Expr.allocs` within the cap, and when `Expr.fits` holds, `top` after the code, plus the potential of a paid value, is at most `top` before it plus that sum.  Each construct's lemma gives a part the allowance with `TrapOK.part`: when the whole's bound fits, the part's bound fits at its start, since `top` has risen by at most the bounds of the parts before it.  `wp_alloc` uses the allowance at each allocation.  One lemma per construct proves it, such as `spec_word` and `spec_eraseAt`; `After.seq`, `After.bind`, `After.bind2`, and `After.release` combine the facts of consecutive codes, of a binding and its body, and of a release.  The loop case uses `wp_loop_cons` with an invariant: the index `i` is at most the count, the state locals hold the state after `i` passes with the facts of `After` for the variables live in the loop, and `top` plus the state's potential, when the state is paid, plus the remaining passes' bound is at most the loop's allowance.  Each pass runs the condition with the state as a borrowed variable, in which no variable dies, so `After.test` keeps the invariant at the condition's heap and `After.test_regions` the state's regions, from which `Ty.pot_of_regions` gives its potential, and a false condition leaves with the state, which `loopState_stop` shows is the loop's value.  At entry the state's potential is that of a paid initial value, which the coercion of an owned value keeps, or at most the credit, by `Ty.pot_le_credit`.  The body counts the state's potential among its dying variables and, since the state is paid only when the body's value is, passes it to the next state.  At the exit `After.release` keeps the state's regions, so the loop's value has the last state's potential.  The build case's invariant is an owned array of the count's length whose elements below the index are built, with the facts of `After`; `wp_allocArray` gives the array, and `After.writeElement` stores each element in place.  The update case takes the array with `spec_ownedVar`, which moves an owned variable that dies and copies any other, and writes the element with `After.writeElement`.  The extension cases take the array with `spec_room`, which proves the growth in place, the move to a larger block with `After.replace`, and the copy, with the potential's arithmetic in `room_inplace_paid` through `room_move_unpaid`; `wp_allocCopy` and `wp_copyInto` give the allocation and the copy loop that the copy of a value also uses, and `After.rewrite` the writes inside an owned block.  The insertion case takes the array with `spec_room` and the removal case with `spec_ownedVar`.  `wp_shiftUp` and `wp_copyDown` prove the moves inside the block by loop invariants under which the words still to read are unchanged, and `After.rewriteRange` gives the array after the moves, the writes, and a shorter length.  `Elem.words_insertIdx` and `Elem.words_eraseIdx` show that the words are those of Lean's `insertIdx` and `eraseIdx`.  The call case pushes the next call depth when the callee takes it, which `FunSpec.runs` turns into the callee's run, and takes the arguments with `args_spec`, which proves that the owned arguments' blocks lie apart from one another and from the borrowed arguments' arrays, as the callee's `Separate` requires, and that the caller's live variables lie apart from the blocks that the call consumes.  `args_spec` also bounds the potential of the arguments at the callee's paid parameters by `Expr.paramPot`: a moved paid variable's own potential, which the caller's dying variables hold, or the credit that `Expr.allocs` charges.  A paid result keeps the potential that the callee's `ImplementsP` states. |
+| `Expr.code_spec` | Expression code computes its source value, consumes dying owned values, preserves live values and the local frame, and meets its allocation and call-depth bounds.  The proof is described below. |
 | `ImplementsA.lean` | This theorem of [`Correct.lean`](Correct.lean), with `ImplementsA.transferAgree` there and `Ty.leanInst` and `argsInst` of [`State.lean`](State.lean): a function's theorem for the verified compiler's representation gives the theorem with the instances that Lean synthesizes for its argument tuple and result, in which an owned array parameter has type `Moved (Array α)`.  The instances for arrays and their `Moved` forms are those of [`Implements.lean`](../LeanExe/Pipeline/Implements.lean) for `Array UInt64`, `Array Float`, `Array Float32`, and arrays of `Flat` types, which include `Bool`.  `Ty.leanInst`, `Ty.argInst`, and `argsInst` rebuild those instances by recursion over the types and modes, so no signature needs a proof of its own. |
+
+### Expression proof
+
+`Expr.code_spec` starts from represented live variables whose owned blocks are separate from the
+other variables' heap data.  It proves that the code computes the source value in its stated mode,
+consumes the owned variables that die in the expression, and preserves the live variables.
+Parameters and locals below the code's reserved range keep their values.  The result's owned
+blocks lie apart from the values that remain live.
+
+The allocation argument tracks `top` and the potential of paid values.  When `Expr.fits` holds,
+`top` after execution plus the result's potential is at most the sum of the initial `top`, the
+dying paid variables' potential, and `Expr.allocs`.  A trap requires a failed frames condition or,
+for code that may allocate, insufficient room for that allowance.  `TrapOK.part` gives each
+subexpression its share of the allowance.  `After.seq`, `After.bind`, `After.bind2`, and
+`After.release` compose the execution and heap facts.
+
+The loop rule uses `wp_loop_cons`.  Its invariant states that the index is at most the count, the
+state locals represent the state after that many passes, live variables retain their values, and
+the remaining allocation allowance covers the state potential and remaining passes.  The
+condition borrows the state.  `After.test` and `After.test_regions` preserve it, and
+`loopState_stop` identifies the result when the condition is false.  A paid initial state brings
+its potential.  An unpaid initial state receives credit covering its potential, by
+`Ty.pot_le_credit`.  Each pass
+transfers the paid state's potential to the next state, and `After.release` preserves it at exit.
+
+For a build, `wp_allocArray` supplies an owned array of the result length.  The invariant describes
+the initialized prefix, and `After.writeElement` extends it by one element.  An update uses
+`spec_ownedVar` to move an owned array at its last use or copy another array, then writes the new
+element.  Extension uses `spec_room` for growth in place, a move to a larger block, or a copy.
+`After.replace`, the potential lemmas, `wp_allocCopy`, and `wp_copyInto` establish those cases.
+`After.rewrite` preserves the array representation through the writes.
+
+Insertion uses `spec_room`, and removal uses `spec_ownedVar`.  `wp_shiftUp` and `wp_copyDown`
+preserve every word until it has been read.  `After.rewriteRange` gives the array after shifting
+and changing its length.  `Elem.words_insertIdx` and `Elem.words_eraseIdx` identify the resulting
+words with Lean's arrays.  Recursive construction and matching use the field, ownership, and
+header rules described in [Recursive records](#recursive-records).
+
+For a call, `args_spec` proves separation between consumed arguments, borrowed data, and the
+caller's live values.  A depth-taking callee receives the next depth, and `FunSpec.runs` supplies
+its execution theorem.  `Expr.paramPot` accounts for paid arguments: a moved paid variable brings
+its potential, and another argument receives the credit charged by `Expr.allocs`.  A paid result
+retains the potential stated by the callee's `ImplementsP` theorem.
 
 ## Related work
 

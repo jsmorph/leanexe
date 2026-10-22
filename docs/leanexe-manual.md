@@ -31,7 +31,7 @@ No theorem covers the host, the instantiation of a module, or the I/O around a c
 
 The floating-point theorems describe the WebAssembly deterministic profile, which Talos implements.  [`tools/wasmtime-host.c`](../tools/wasmtime-host.c) enables Cranelift's NaN canonicalization to match it, and browsers do not implement the profile.  The accuracy of the Lean definitions `exp` and `tanh` of the GPT example is measured by tests, while the theorems prove only that the compiled code computes those definitions bit for bit.
 
-The tests, the hints, the LTG entries, the Python and JavaScript tools, and the C hosts are unproved.  The comparisons with native Lean test, on concrete inputs, the hosts and engines that the theorems do not cover.  The WGSL path proves its kernels under a device model with strict binary32 arithmetic and race-free dispatch, and a GPU outside that profile falls outside every theorem (see [WGSL kernels](#wgsl-kernels-and-the-browser-pages)).
+The tests, the hints, the LTG entries, the Python and JavaScript tools, and the C hosts are unproved.  The comparisons with native Lean test, on concrete inputs, the hosts and engines that the theorems do not cover.  The WGSL path proves kernel results and race freedom in a device model with strict binary32 arithmetic, under buffer and invocation bounds (see [WGSL kernels](#wgsl-kernels-and-the-browser-pages)).
 
 ## The dialect
 
@@ -148,7 +148,7 @@ An array argument at a borrowed position must be an array variable.  At an owned
 
 ### Folds
 
-`xs.foldl f init` compiles to a counted loop (`Stmt.fold`) when the element is `UInt64` or `Float` and the accumulator is `UInt64` or `Float`.  The fold must use the default bounds, starting at index 0 and stopping at the size of its array, and it runs over an array variable or an `Array UInt64` literal, which becomes a temporary that the code releases after the fold.  `xs.foldl f init` over a `List UInt64` runs over a list variable or a call that returns a list, which the code releases after the fold.  The body `f acc x` is an expression, so it may not contain calls, folds, loops, or array sizes.
+`xs.foldl f init` compiles to a counted loop (`Stmt.fold`) when the element is `UInt64` or `Float` and the accumulator is `UInt64` or `Float`.  The fold must use the default bounds, starting at index 0 and stopping at the size of its array, and it runs over an array variable or an `Array UInt64` literal, which becomes a temporary that the code releases after the fold.  `xs.foldl f init` over a `List UInt64` uses a `UInt64` or `Float` accumulator and runs over a list variable or a call that returns a list, which the code releases after the fold.  The body `f acc x` is an expression, so it may not contain calls, folds, loops, or array sizes.
 
 A fold may not appear in a branch of a value-level conditional, a fold or loop body, or a recursive definition, since its statements run before the value that contains it.  A fold over an array of records gives ``a fold over an array of records is written as `LeanExe.loop` over its indices, reading `xs[i.toNat]!` ``, and that loop form is the dialect's only fold over such an array.  `Float32` folds and folds with tuple accumulators are not covered, and `LeanExe.loop` with a tuple state replaces them.
 
@@ -402,7 +402,7 @@ A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake e
 
 ### WGSL kernels and the browser pages
 
-[`LeanExe/WGSL/`](../LeanExe/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Examples/Gpt32/`](../Examples/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
+[`LeanExe/WGSL/`](../LeanExe/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Examples/Gpt32/`](../Examples/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), in a device model with strict binary32 arithmetic.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
 
 `uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/.  The kernel page runs the WGSL kernel cases on the browser's WebGPU and compares every word with native Lean's, and the GPT-2 page runs GPT-2 124M in binary32 with its kernels on WebGPU, in `gpt32.wasm`, or on both with their scores compared.  The GPT-2 page needs the weights that `uv run tests/gpt32/generate.py --export` writes, and [the description of the pages](../tests/web/README.md) covers the setup, the controls, and what is proved about the pages.
 
@@ -594,7 +594,7 @@ The decoder test, `tools/leanrun --timeout 60m lake env lean --run tests/decoder
 
 An example is a directory `Examples/<Name>/`: `Program.lean` holds the program, `Spec.lean` the specification where the example has one apart from the program, `Module.lean` the `leanexe_compile` command, `Verify.lean` the theorems, and `Cases.lean` the module cases, except in `Gpt`, `Gpt32`, and `Prng`, whose tests are under [`tests/`](../tests/).  Each example's `README.md` says what the example is and what it shows, gives the commands that build, write, and run it, and links related examples and outside references.  A program imports only the modules of [`LeanExe/Dialect/`](../LeanExe/Dialect/) and the programs it builds on, as `gpt` builds on `prng` and the reconstructed Euler solver on the first-order one.  Larger examples split their proofs over more files, such as `Total.lean` in [`Examples/Euler`](../Examples/Euler/) and [`Examples/Drone`](../Examples/Drone/) for total execution.  The directories `Lcg`, `ParkMiller`, and `Xorshift` hold programs, which the verified compiler compiles, and theorems about them, `Orbit` holds the lemmas that they share, and [the verified compiler manual](verified-manual.md#examples) lists them.  The module column gives the name that `leanexe_compile` assigns, which the tests use.
 
-| Example | Module | Demonstrates |
+| Example | Module | Features |
 |---|---|---|
 | [`Scale`](../Examples/Scale/README.md) | `scale` | Word arithmetic and Lean's division by zero, proved with `Func.implements` and one `simp` call. |
 | [`Gcd`](../Examples/Gcd/README.md) | `gcd` | Tail recursion as a loop, proved with `Func.tail_implements` and a one-iteration obligation, and `gcd_eq`, equality with Lean's `Nat.gcd`. |
