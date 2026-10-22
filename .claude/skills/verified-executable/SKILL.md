@@ -24,7 +24,7 @@ asks.  The run does not ask the user to approve the specification.
 
 ## Names and files
 
-Choose a module name `NAME` in lower camel case, such as `primeFactors`.  `Name` is `NAME`
+Choose a module name `NAME` in lower camel case, such as `treeLookup`.  `Name` is `NAME`
 capitalized, and every file of the run is in `Examples/Name/`.
 
 | File | Contents |
@@ -32,7 +32,7 @@ capitalized, and every file of the run is in `Examples/Name/`.
 | `request.txt` | The request, as the user wrote it. |
 | `Spec.lean` | `Examples.Name.expected` in ordinary Lean.  Mathlib is allowed. |
 | `Samples.lean` | `Examples.Name.samples : List α`, core Lean only. |
-| `Program.lean` | The program in `Examples.Name`, with entry `compute`.  It imports only the modules of `LeanExe/Dialect/`. |
+| `Program.lean` | The program in `Examples.Name`, with entry `compute`.  It imports the dialect and any native library programs it uses. |
 | `Module.lean` | `leanexe_compile NAME := [f, …, compute]` or `leanexe_compile NAME := compute`. |
 | `Verify.lean` | `compute_eq`, the `Implements` theorems, and `NAME_bytes`. |
 | `Cases.lean` | The module cases, printed from the samples. |
@@ -94,12 +94,12 @@ example whose program has the same shape.
 
 | Program shape | Example |
 |---------------|---------|
-| Tail recursion on words | [`Library/Numerics/Arithmetic/PrimeFactors/Verify.lean`](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean), [`Library/Numerics/Arithmetic/Gcd/Verify.lean`](../../../Library/Numerics/Arithmetic/Gcd/Verify.lean) (`Func.tail_implements`, one theorem per run of the loop body) |
-| Fold over an array | [`Examples/SumArray/Verify.lean`](../../../Examples/SumArray/Verify.lean) (`Func.foldl_implements`) |
-| `LeanExe.loop` with a tuple state, then an array literal | [`Examples/Lookup/Verify.lean`](../../../Examples/Lookup/Verify.lean) (`Stmt.loop_spec`, `Stmt.arrayLiteral_spec`) |
-| `LeanExe.build` | [`Examples/Increment/Verify.lean`](../../../Examples/Increment/Verify.lean), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Stmt.build_spec`) |
-| `LeanExe.repeatWhile` over a function that pushes | [`Examples/Below100/Verify.lean`](../../../Examples/Below100/Verify.lean) (`Live.repeatWhileOne`, `Stmt.pushInPlace_spec`) |
-| Calls between listed functions | [`Library/Numerics/Arithmetic/PrimeFactors/Verify.lean`](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
+| Tail recursion on words | [Prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean), [GCD proof](../../../Library/Numerics/Arithmetic/Gcd/Verify.lean) (`Func.tail_implements`, one theorem per run of the loop body) |
+| Fold over an array | [Array-fold proofs](../../../Examples/SumArray/Verify.lean) (`Func.foldl_implements`) |
+| `LeanExe.loop` with a tuple state, then an array literal | [Lookup proof](../../../Examples/Lookup/Verify.lean) (`Stmt.loop_spec`, `Stmt.arrayLiteral_spec`) |
+| `LeanExe.build` | [Increment proof](../../../Examples/Increment/Verify.lean), [Zero-removal proof](../../../Examples/RemoveZero/Verify.lean) (`Stmt.build_spec`) |
+| `LeanExe.repeatWhile` over a function that pushes | [Bounded-build proof](../../../Examples/Below100/Verify.lean) (`Live.repeatWhileOne`, `Stmt.pushInPlace_spec`) |
+| Calls between listed functions | [Prime-factor proof](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [Zero-removal proof](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
 
 Print the IR of each function first, as `#eval NAME.f.ir.body`, and write the proof against it.
 [The LeanExe compiler manual's section on proving](../../../docs/leanexe-manual.md#proving)
@@ -138,6 +138,8 @@ Examples.Name.Verify`.
    Examples.Name.Cases` to [`Examples.lean`](../../../Examples.lean), and add `import
    Examples.Name.Cases` and the call `Examples.Name.cases` to
    [`tests/modules/Cases.lean`](../../../tests/modules/Cases.lean).
+   Add `Examples.Name.Module:Examples.Name.NAME.module:NAME` to the
+   [module registry](../../../tests/modules/modules.txt).
 4. Report the result to the user with the theorem line and the sample count.  Commit only when the
    user's instructions call for it, after [the LeanExe compiler manual's full
    check](../../../docs/leanexe-manual.md#the-full-check).

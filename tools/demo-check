@@ -7,7 +7,7 @@
 #   tools/demo-check --run NAME [EXPORT]    emit the module and run the samples, without proofs
 #   tools/demo-check NAME [EXPORT]          check the hashes, the theorem, and the samples
 #
-# NAME is the module name, such as primeFactors.  Its files are in Examples/<Name>/, with <Name>
+# NAME is the module name, such as treeLookup.  Its files are in Examples/<Name>/, with <Name>
 # the capitalized NAME: Program.lean, Spec.lean, Samples.lean, Module.lean, Verify.lean, and the
 # request, review, README, and hash record.  EXPORT, compute by default, is
 # the export whose function index K the theorem names.  The check states
