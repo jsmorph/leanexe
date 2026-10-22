@@ -23,7 +23,7 @@ the properties of the resulting WebAssembly.
 | [Arithmetic bounds](Numerics/Bounds/README.md) | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | Minmod and its real slope and face properties. |
 
-Hashing is a future category.  The [numerical index](../index.md) states the mathematical results
+Hashing is a future category.  The [algorithm index](../index.md) states the mathematical results
 and domains of the numerical families.
 
 ## Modules and imports

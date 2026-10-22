@@ -8,5 +8,5 @@
 Each family's `Compiled` module proves that its Wasm code computes these Lean definitions.
 Floating-point results preserve the specified operation order, including NaNs and signed zero.
 Missing flags read as false, and missing numeric entries read as zero.  These modules have no
-summation-error theorem.  [The numerical index](../../../index.md#6-floating-point-folds) also lists
+summation-error theorem.  [The algorithm index](../../../index.md#6-floating-point-folds) also lists
 mean and sum of squares.

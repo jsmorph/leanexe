@@ -39,7 +39,7 @@ under their buffer, count, and invocation bounds.
 
 The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.
 
-`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the numerical index](../index.md) and each function's document.
+`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
 
 ## The dialect
 
@@ -407,9 +407,11 @@ After a change to the verified compiler or its examples, `tools/leanrun --memory
 
 ## Examples
 
-[The numerical index](../index.md) lists the elementary and special functions, software fused multiply-add, limb arithmetic, decimal parsers and printers, and their numerical and byte theorems.  Each numerical function has a document beside its implementation with the proof modules, exceptional values, and limits.
+[The algorithm index](../index.md) lists the elementary and special functions, software fused multiply-add, limb arithmetic, decimal parsers and printers, and their numerical and byte theorems.  Each numerical function has a document beside its implementation with the proof modules, exceptional values, and limits.
 
-Each example is a file of [`Verified/Examples/`](../Verified/Examples) with one `verified_compile` command, of its own definitions or of a program in `Examples/` that it imports, and its `compiled.bytes` states that the module's bytes decode to the module, which computes the example's definitions.  `Tuples.lean` is the exception: it builds its program in the source language without the reflector.  The generators' directories in `Examples/` hold their programs in `Program.lean` and their theorems in `Period.lean` and the files beside it, and [`Library/Random/Orbit`](../Library/Random/Orbit/README.md) holds the lemmas about iterates that they share.
+The [compiler fixtures](../Verified/Examples) compile their own definitions or import native programs from `Examples` and `Library`.  A fixture can use `verified_compile` or construct a typed source program directly, as [the tuple example](../Verified/Examples/Tuples.lean) does.  Its byte theorem states that the emitted bytes decode to the module that computes those definitions.
+
+Reusable implementations and their compilations live in [the library](../Library/README.md), and application ports live in [the demos](../Demos/README.md).  The LCG, Park–Miller, and xorshift64 families under `Library/Random/` hold native definitions in `Program.lean`, compilation in `Verified.lean`, and period and other mathematical results in separate proof modules.  [The shared orbit theory](../Library/Random/Orbit/README.md) proves facts about their iterates.
 
 | Example | Contents |
 |---|---|
