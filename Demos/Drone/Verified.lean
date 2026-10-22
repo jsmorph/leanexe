@@ -80,7 +80,7 @@ theorem compute_bound (terrain : Array UInt64) : compiled.compute.bound terrain 
       simp only [Bool.and_eq_true, decide_eq_true_eq] at h
       exact UInt64.le_iff_toNat_le.mp h.1.2
     · simp
-  refine Nat.le_trans (Nat.add_le_add (Nat.add_le_add_left (loopCost_le
+  refine Nat.le_trans (Nat.add_le_add (Nat.add_le_add_left (_root_.Verified.loopCost_le
     (fun k (s : UInt64 × UInt64 × Array Choice) =>
       (s.1 = 0 ∧ s.2.1.toNat = k + 1 ∧ s.2.2.size = 45 * (k + 1) ∧ k + 1 ≤ 64) ∨ s.1 = 1)
     (fun k => if k + 1 < c.toNat then 1080 * (k + 2) + 56 else 0) ?hcost ?hstep ?hI) _)
