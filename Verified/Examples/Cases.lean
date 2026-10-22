@@ -40,18 +40,18 @@ import Verified.Examples.Repeat
 import Verified.Examples.Enums
 import Verified.Examples.Recursion
 import Verified.Examples.Fields
-import Library.Numerics.Float64.Trig.Compiled
-import Library.Numerics.Fourier.Compiled
+import Library.Numerics.Float64.Trig.Program
+import Library.Numerics.Fourier.Program
 import Verified.Examples.Insert
 import Demos.Clob.Verified
 import Verified.Examples.Tables
-import Library.Numerics.Float64.Exp.Compiled
-import Library.Numerics.Float64.Tanh.Compiled
-import Library.Numerics.Float64.Log.Compiled
-import Demos.Drone.Verified
-import Library.Random.Lcg.Verified
-import Library.Random.ParkMiller.Verified
-import Library.Random.Xorshift.Verified
+import Library.Numerics.Float64.Exp.Program
+import Library.Numerics.Float64.Tanh.Program
+import Library.Numerics.Float64.Log.Program
+import Demos.Drone.Program
+import Library.Random.Lcg.Program
+import Library.Random.ParkMiller.Program
+import Library.Random.Xorshift.Program
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
