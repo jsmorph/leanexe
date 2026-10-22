@@ -24,7 +24,7 @@ theorem piece_neg (n : ℕ) (ly : LogData) (s0 R τ : ℚ) (depth : ℕ)
     (h : ddPieceOk cfg_neg ⟨(1), n, log2Lo, log2Hi, ly⟩ s0 R τ
       (PolyBound.shift s0 smallList) (1 / 2 ^ 71) depth = true)
     (t : ℝ) (ht : |t| ≤ ((63 : ℝ) / 2 ^ 14)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) -
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) -
       eval smallList (s0 + t)| ≤ ((1 : ℝ) / 2 ^ 71) := by
   have hb := ddPieceOk_sound cfg_neg _ s0 R τ _ _ depth cfg_neg_pi h
     (t := t) (by simp only [cfg_neg]; push_cast; exact ht) hτ
@@ -40,7 +40,7 @@ theorem piece_negc (n : ℕ) (ly : LogData) (s0 R τ : ℚ) (depth : ℕ)
     (h : ddPieceOk cfg_negc ⟨(1), n, log2Lo, log2Hi, ly⟩ s0 R τ
       (PolyBound.shift s0 smallList) (1 / 2 ^ 71) depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) -
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) -
       eval smallList (s0 + t)| ≤ ((1 : ℝ) / 2 ^ 71) := by
   have hb := ddPieceOk_sound cfg_negc _ s0 R τ _ _ depth cfg_negc_pi h
     (t := t) (by simp only [cfg_negc]; push_cast; exact ht) hτ
@@ -56,7 +56,7 @@ theorem piece_pos (n : ℕ) (ly : LogData) (s0 R τ : ℚ) (depth : ℕ)
     (h : ddPieceOk cfg_pos ⟨(1), n, log2Lo, log2Hi, ly⟩ s0 R τ
       (PolyBound.shift s0 smallList) (1 / 2 ^ 71) depth = true)
     (t : ℝ) (ht : |t| ≤ ((63 : ℝ) / 2 ^ 14)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) -
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) -
       eval smallList (s0 + t)| ≤ ((1 : ℝ) / 2 ^ 71) := by
   have hb := ddPieceOk_sound cfg_pos _ s0 R τ _ _ depth cfg_pos_pi h
     (t := t) (by simp only [cfg_pos]; push_cast; exact ht) hτ
@@ -72,7 +72,7 @@ theorem piece_posc (n : ℕ) (ly : LogData) (s0 R τ : ℚ) (depth : ℕ)
     (h : ddPieceOk cfg_posc ⟨(1), n, log2Lo, log2Hi, ly⟩ s0 R τ
       (PolyBound.shift s0 smallList) (1 / 2 ^ 71) depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) -
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) -
       eval smallList (s0 + t)| ≤ ((1 : ℝ) / 2 ^ 71) := by
   have hb := ddPieceOk_sound cfg_posc _ s0 R τ _ _ depth cfg_posc_pi h
     (t := t) (by simp only [cfg_posc]; push_cast; exact ht) hτ

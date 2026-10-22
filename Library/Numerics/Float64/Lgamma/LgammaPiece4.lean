@@ -22,15 +22,15 @@ open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFit
 
 theorem side_neg : ∀ s : ℝ, ((-135033771786241 : ℝ) / 2 ^ 50) ≤ s → s ≤ (0 : ℝ) → ((1 : ℝ) / 2 ^ 69)
     ≤ |s| →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
-        |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
+        |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s| := by
   intro s hlo hhi hτ
   rcases le_or_gt s ((-405651071172611 : ℝ) / 2 ^ 52) with hhi | hlo
   · refine cover_pieces (K := 3) (by norm_num) (lo := ((-135033771786241 : ℝ) / 2 ^ 50))
       (r := ((134484015972353 : ℝ) / 27021597764222976))
       (by norm_num)
-          (fun s => |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
-          |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
+          (fun s => |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
+          |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
           (by norm_num; linarith)
     intro k hk t ht
     interval_cases k
@@ -63,8 +63,8 @@ theorem side_neg : ∀ s : ℝ, ((-135033771786241 : ℝ) / 2 ^ 50) ≤ s → s 
   · refine cover_pieces (K := 3) (by norm_num) (lo := ((-405651071172611 : ℝ) / 2 ^ 52))
       (r := ((134484015972353 : ℝ) / 2 ^ 53))
       (by norm_num)
-          (fun s => |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
-          |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
+          (fun s => |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
+          |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
           (by norm_num; linarith)
     intro k hk t ht
     interval_cases k
@@ -106,8 +106,8 @@ theorem side_neg : ∀ s : ℝ, ((-135033771786241 : ℝ) / 2 ^ 50) ≤ s → s 
 
 theorem side_pos : ∀ s : ℝ, (0 : ℝ) ≤ s → s ≤ ((26938034880513 : ℝ) / 2 ^ 50) → ((1 : ℝ) / 2 ^ 69) ≤
     |s| →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
-        |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
+        |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s| := by
   intro s hlo hhi hτ
   rcases le_or_gt s ((1 : ℝ) / 2048) with hhi | hlo
   · have ht : |s - ((1 : ℝ) / 4096)| ≤ ((1 : ℝ) / 4096) := by
@@ -124,8 +124,8 @@ theorem side_pos : ∀ s : ℝ, (0 : ℝ) ≤ s → s ≤ ((26938034880513 : ℝ
   refine cover_pieces (K := 3) (by norm_num) (lo := ((1 : ℝ) / 2048))
       (r := ((26388279066625 : ℝ) / 6755399441055744))
     (by norm_num)
-        (fun s => |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
-        |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
+        (fun s => |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤ εout *
+        |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s|) ?_ s (by norm_num; linarith)
         (by norm_num; linarith)
   intro k hk t ht
   interval_cases k
@@ -182,8 +182,8 @@ theorem q_m : check (subP q4 [(-374634385445665104589703316360057 / 2 ^ 109)]) (
 /-- The relative bound on the divided difference over the widened piece, `0` excluded. -/
 theorem dd_rel : ∀ s : ℝ, ((-135033771786241 : ℝ) / 2 ^ 50) ≤ s → s ≤
     ((26938034880513 : ℝ) / 2 ^ 50) → s ≠ 0 →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval q4 s| ≤
-      12 / 10 ^ 20 * |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval q4 s| ≤
+      12 / 10 ^ 20 * |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s| := by
   have hsp := check_sound _ _ _ _ _ q_p ((1 : ℝ) / 2 ^ 69) (by norm_num) (by norm_num)
   have hsm := check_sound _ _ _ _ _ q_m (-((1 : ℝ) / 2 ^ 69)) (by norm_num) (by norm_num)
   rw [eval_subP] at hsp hsm
@@ -207,7 +207,7 @@ theorem dd_rel : ∀ s : ℝ, ((-135033771786241 : ℝ) / 2 ^ 50) ≤ s → s �
 
 /-- Piece 4 of `PieceFact`. -/
 theorem piece4 : ∀ x : ℝ, (border 4 : ℝ) - 1 / 2 ^ 50 ≤ x → x ≤ (border 5 : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - (1 - x) * eval (pieceP 4) (x - off 4)| ≤ 12 / 10 ^ 20 * |lgamma x| := by
+    |GammaBasic.lgamma x - (1 - x) * eval (pieceP 4) (x - off 4)| ≤ 12 / 10 ^ 20 * |GammaBasic.lgamma x| := by
   intro x h1 h2
   have hb1 : border 4 = (14419 / 2 ^ 14) := by decide +kernel
   have hb2 : border 5 = (2097 / 2048) := by decide +kernel
@@ -225,19 +225,19 @@ theorem piece4 : ∀ x : ℝ, (border 4 : ℝ) - 1 / 2 ^ 50 ≤ x → x ≤ (bor
     push_cast
     ring_nf
   rw [hq] at hd
-  have k1 : |lgamma x - (1 - x) * eval (pieceP 4) (x - off 4)| =
-      |x - 1| * |lgamma x / (x - 1) - -eval (pieceP 4) (x - off 4)| := by
+  have k1 : |GammaBasic.lgamma x - (1 - x) * eval (pieceP 4) (x - off 4)| =
+      |x - 1| * |GammaBasic.lgamma x / (x - 1) - -eval (pieceP 4) (x - off 4)| := by
     rw [← abs_mul]
     congr 1
-    rw [mul_sub, mul_comm (x - 1) (lgamma x / (x - 1)), div_mul_cancel₀ _ h0]
+    rw [mul_sub, mul_comm (x - 1) (GammaBasic.lgamma x / (x - 1)), div_mul_cancel₀ _ h0]
     ring
-  have k2 : |lgamma x| = |x - 1| * |lgamma x / (x - 1)| := by
+  have k2 : |GammaBasic.lgamma x| = |x - 1| * |GammaBasic.lgamma x / (x - 1)| := by
     rw [← abs_mul, mul_comm, div_mul_cancel₀ _ h0]
   rw [k1, k2]
-  calc |x - 1| * |lgamma x / (x - 1) - -eval (pieceP 4) (x - off 4)|
-      ≤ |x - 1| * (12 / 10 ^ 20 * |lgamma x / (x - 1)|) :=
+  calc |x - 1| * |GammaBasic.lgamma x / (x - 1) - -eval (pieceP 4) (x - off 4)|
+      ≤ |x - 1| * (12 / 10 ^ 20 * |GammaBasic.lgamma x / (x - 1)|) :=
         mul_le_mul_of_nonneg_left hd (abs_nonneg _)
-    _ = 12 / 10 ^ 20 * (|x - 1| * |lgamma x / (x - 1)|) := by ring
+    _ = 12 / 10 ^ 20 * (|x - 1| * |GammaBasic.lgamma x / (x - 1)|) := by ring
 
 #print axioms piece4
 

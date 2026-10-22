@@ -172,9 +172,9 @@ theorem l11_2 : rootOk cfgL11 7
   decide +kernel
 
 theorem range11 : ∀ x : ℝ, ((-8 : ℚ) : ℝ) < x → x < ((-15 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
-    |lgamma x - (x + rootX0 665) * eval (rootList 665 27 6) (2 ^ 17 * (x + rootX0 665))| ≤
-      1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120 := by
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x - (x + rootX0 665) * eval (rootList 665 27 6) (2 ^ 17 * (x + rootX0 665))| ≤
+      1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120 := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC76B0000000000 = (5995 / 2 ^ 15) := by decide +kernel
   rw [hw] at hxc
@@ -197,9 +197,9 @@ theorem range11 : ∀ x : ℝ, ((-8 : ℚ) : ℝ) < x → x < ((-15 / 2 : ℚ) :
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-11691985211942933361775558284628061281793410059551 : ℝ) / 2 ^ 160))
       (r := ((1 : ℝ) / 2 ^ 20)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 665) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 665) *
           eval (rootList 665 27 6) (2 ^ 17 * (x + rootX0 665))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at hA ⊢; linarith) (by norm_num at h1 ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -230,9 +230,9 @@ theorem range11 : ∀ x : ℝ, ((-8 : ℚ) : ℝ) < x → x < ((-15 / 2 : ℚ) :
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-11691976849160825456800310376987901424537284627743 : ℝ) / 2 ^ 160))
       (r := ((1 : ℝ) / 2 ^ 20)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 665) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 665) *
           eval (rootList 665 27 6) (2 ^ 17 * (x + rootX0 665))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at h2 ⊢; linarith) (by norm_num at hB ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht

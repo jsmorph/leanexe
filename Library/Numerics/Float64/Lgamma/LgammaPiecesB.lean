@@ -59,7 +59,7 @@ theorem p5_3 : lgammaRelOk (cfgJ 5) (sub 5 3 15
 by `2 ^ -50` at each end. -/
 theorem piece5 : ∀ x : ℝ, (border 5 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (5 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 5) (x - off 5)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 5) (x - off 5)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 5 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 5 0 15 _ _ _ _ _ p5_0 t ht using 3 <;> norm_num
@@ -115,7 +115,7 @@ theorem p6_3 : lgammaRelOk (cfgJ 6) (sub 6 3 15
 by `2 ^ -50` at each end. -/
 theorem piece6 : ∀ x : ℝ, (border 6 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (6 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 6) (x - off 6)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 6) (x - off 6)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 6 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 6 0 15 _ _ _ _ _ p6_0 t ht using 3 <;> norm_num
@@ -171,7 +171,7 @@ theorem p7_3 : lgammaRelOk (cfgJ 7) (sub 7 3 15
 by `2 ^ -50` at each end. -/
 theorem piece7 : ∀ x : ℝ, (border 7 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (7 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 7) (x - off 7)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 7) (x - off 7)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 7 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 7 0 15 _ _ _ _ _ p7_0 t ht using 3 <;> norm_num
@@ -227,7 +227,7 @@ theorem p8_3 : lgammaRelOk (cfgJ 8) (sub 8 3 15
 by `2 ^ -50` at each end. -/
 theorem piece8 : ∀ x : ℝ, (border 8 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (8 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 8) (x - off 8)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 8) (x - off 8)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 8 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 8 0 15 _ _ _ _ _ p8_0 t ht using 3 <;> norm_num

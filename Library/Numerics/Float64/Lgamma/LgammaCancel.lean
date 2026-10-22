@@ -16,8 +16,8 @@ open Real LeanExe.ProofKit GammaBasic GammaThresholds RatExpLog CodeLib.IEEE64
 
 /-- `lgamma (m + 1) = log m!` is at most `k` when `m! ≤ 2 ^ k`. -/
 theorem lgamma_fact_le (m k : ℕ) (hk : ((Nat.factorial m : ℕ) : ℝ) ≤ 2 ^ k) :
-    lgamma ((m : ℝ) + 1) ≤ k := by
-  rw [lgamma, Real.Gamma_nat_eq_factorial]
+    GammaBasic.lgamma ((m : ℝ) + 1) ≤ k := by
+  rw [GammaBasic.lgamma, Real.Gamma_nat_eq_factorial]
   have h1 := Real.log_le_log (by positivity) hk
   rw [Real.log_pow] at h1
   have h2 : Real.log 2 < 1 := by
@@ -27,30 +27,30 @@ theorem lgamma_fact_le (m k : ℕ) (hk : ((Nat.factorial m : ℕ) : ℝ) ≤ 2 ^
   have h3 := mul_le_mul_of_nonneg_left h2.le (Nat.cast_nonneg k : (0 : ℝ) ≤ k)
   linarith
 
-theorem lgamma_18 : lgamma 18 ≤ 49 := by
+theorem lgamma_18 : GammaBasic.lgamma 18 ≤ 49 := by
   have h := lgamma_fact_le 17 49 (by norm_num [Nat.factorial])
   norm_num at h
   exact h
 
-theorem lgamma_12 : lgamma 12 ≤ 26 := by
+theorem lgamma_12 : GammaBasic.lgamma 12 ≤ 26 := by
   have h := lgamma_fact_le 11 26 (by norm_num [Nat.factorial])
   norm_num at h
   exact h
 
 /-- **The cancellation of the reflection** from -21/2 down. -/
 theorem cancel_fact (w : UInt64) (hv : value w ≤ -21 / 2) (hni : ∀ n : ℤ, value w ≠ n) :
-    |lgamma (1 - value w)| ≤ 2 ^ 32 * |lgamma (value w)| := by
+    |GammaBasic.lgamma (1 - value w)| ≤ 2 ^ 32 * |GammaBasic.lgamma (value w)| := by
   rcases lt_or_ge (value w) (-17) with h17 | h17
   · exact LgammaCancelTail.cancel_tail w h17 hni
   have hgt : ∀ k : ℤ, (k : ℝ) ≤ value w → (k : ℝ) < value w := fun k hk =>
     lt_of_le_of_ne hk (fun h => hni k h.symm)
   have h17' := hgt (-17) (by push_cast; exact h17)
   push_cast at h17'
-  have hpos : 0 ≤ lgamma (1 - value w) := by
+  have hpos : 0 ≤ GammaBasic.lgamma (1 - value w) := by
     have := lgamma_mono (le_refl 2) (by linarith : (2 : ℝ) ≤ 1 - value w)
     rwa [lgamma_two] at this
   rw [abs_of_nonneg hpos]
-  have h18 : lgamma (1 - value w) ≤ 49 :=
+  have h18 : GammaBasic.lgamma (1 - value w) ≤ 49 :=
     (lgamma_mono (by linarith) (by linarith)).trans lgamma_18
   rcases lt_or_ge (value w) (-16) with h16 | h16
   · have hb := LgammaZerosB.bound16 w (by push_cast; linarith) (by push_cast; linarith)
@@ -101,7 +101,7 @@ theorem cancel_fact (w : UInt64) (hv : value w ≤ -21 / 2) (hni : ∀ n : ℤ, 
   have h11' := hgt (-11) (by push_cast; exact h11)
   push_cast at h11'
   have hb := LgammaZerosB.bound10cut w (by push_cast; linarith) hv
-  have h12l : lgamma (1 - value w) ≤ 26 :=
+  have h12l : GammaBasic.lgamma (1 - value w) ≤ 26 :=
     (lgamma_mono (by linarith) (by linarith)).trans lgamma_12
   have hm : (26 : ℝ) / 2 ^ 32 ≤
       min ((267 / 34359738368) : ℝ) (min ((133 / 2147483648) : ℝ) (477 / 32)) := by

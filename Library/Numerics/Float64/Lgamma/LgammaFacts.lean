@@ -60,9 +60,9 @@ theorem pieceApprox_plain (j : ℕ) (h4 : j ≠ 4) (h10 : j ≠ 10) (x : ℝ) :
   rfl
 
 theorem piece_weak {x : ℝ} {j : ℕ}
-    (h : |lgamma x - eval (LgammaPieceBase.pieceP j) (x - LgammaPieceBase.off j)| ≤
-      LgammaPieceBase.εout * |lgamma x|) (h4 : j ≠ 4) (h10 : j ≠ 10) :
-    |lgamma x - pieceApprox j x| ≤ 12 / 10 ^ 20 * |lgamma x| := by
+    (h : |GammaBasic.lgamma x - eval (LgammaPieceBase.pieceP j) (x - LgammaPieceBase.off j)| ≤
+      LgammaPieceBase.εout * |GammaBasic.lgamma x|) (h4 : j ≠ 4) (h10 : j ≠ 10) :
+    |GammaBasic.lgamma x - pieceApprox j x| ≤ 12 / 10 ^ 20 * |GammaBasic.lgamma x| := by
   rw [pieceApprox_plain j h4 h10]
   refine h.trans (mul_le_mul_of_nonneg_right ?_ (abs_nonneg _))
   norm_num [LgammaPieceBase.εout]
@@ -222,7 +222,7 @@ theorem rootFact : RootFact := by
 
 /-- A bound `B ≥ 2 ^ -60` from `LgammaZerosA` or `LgammaZerosB` on a pole interval that contains
 the range. -/
-theorem min_of {v B : ℝ} (hB : 1 / 2 ^ 60 ≤ B) (h : B ≤ |lgamma v|) : 1 / 2 ^ 60 ≤ |lgamma v| :=
+theorem min_of {v B : ℝ} (hB : 1 / 2 ^ 60 ≤ B) (h : B ≤ |GammaBasic.lgamma v|) : 1 / 2 ^ 60 ≤ |GammaBasic.lgamma v| :=
   hB.trans h
 
 theorem rootMinFact : RootMinFact := by

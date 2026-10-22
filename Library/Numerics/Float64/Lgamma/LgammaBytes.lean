@@ -1,3 +1,4 @@
+import Library.Numerics.Float64.Lgamma.Compiled
 import Library.Numerics.Float64.Lgamma.LgammaWithin
 import LeanExe.ProofKit.BorrowedKept
 

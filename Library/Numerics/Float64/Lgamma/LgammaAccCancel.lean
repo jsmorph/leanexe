@@ -13,8 +13,8 @@ namespace Library.Numerics.Float64.Lgamma.LgammaAccCancel
 open Real LeanExe.ProofKit GammaBasic CodeLib.IEEE64
 
 /-- `log Γ 33 = log 32! ≥ 69`. -/
-theorem lgamma_33 : 69 ≤ lgamma 33 := by
-  unfold lgamma
+theorem lgamma_33 : 69 ≤ GammaBasic.lgamma 33 := by
+  unfold GammaBasic.lgamma
   have h : Gamma 33 = (Nat.factorial 32 : ℝ) := by
     rw [show (33 : ℝ) = (32 : ℕ) + 1 by norm_num, Gamma_nat_eq_factorial]
   rw [h]
@@ -32,15 +32,15 @@ theorem lgamma_33 : 69 ≤ lgamma 33 := by
 integers. -/
 theorem cancel32 (v : ℝ) (hv : v ≤ -32) (hint : ∀ n : ℤ, v ≠ n)
     (hd : 1 / 2 ^ 47 ≤ |v - round v|) :
-    lgamma (1 + |v|) ≤ 2 * |lgamma v| ∧ 69 ≤ lgamma (1 + |v|) := by
+    GammaBasic.lgamma (1 + |v|) ≤ 2 * |GammaBasic.lgamma v| ∧ 69 ≤ GammaBasic.lgamma (1 + |v|) := by
   have hav : |v| = -v := abs_of_neg (by linarith)
   rw [hav, show 1 + -v = 1 - v by ring]
-  have hT : 69 ≤ lgamma (1 - v) := by
+  have hT : 69 ≤ GammaBasic.lgamma (1 - v) := by
     have hm := Gamma_strictMonoOn_Ici.monotoneOn (show (33 : ℝ) ∈ Set.Ici 2 by
       rw [Set.mem_Ici]; norm_num) (show 1 - v ∈ Set.Ici 2 by rw [Set.mem_Ici]; linarith)
       (by linarith : (33 : ℝ) ≤ 1 - v)
     have h33 := lgamma_33
-    unfold lgamma at h33 ⊢
+    unfold GammaBasic.lgamma at h33 ⊢
     have := Real.log_le_log (Gamma_pos_of_pos (by norm_num)) hm
     linarith
   have hR := lgamma_reflect hint
@@ -61,15 +61,15 @@ theorem cancel32 (v : ℝ) (hv : v ≤ -32) (hint : ∀ n : ℤ, v ≠ n)
   have hpi2 : Real.log π ≤ 43 / 20 := by
     have := Real.log_le_sub_one_of_pos pi_pos
     linarith [pi_lt_d2]
-  have hneg : lgamma v < 0 := by linarith
+  have hneg : GammaBasic.lgamma v < 0 := by linarith
   rw [abs_of_neg hneg]
   constructor <;> linarith
 
 /-- **The cancellation at a double `v ≤ -32`**: the double is a multiple of `2^-47`. -/
 theorem cancel_double (sx : Float) (hsx : Finite sx.toBits) (h32 : value sx.toBits ≤ -32)
     (hint : ∀ n : ℤ, value sx.toBits ≠ n) :
-    lgamma (1 + |value sx.toBits|) ≤ 2 * |lgamma (value sx.toBits)| ∧
-      69 ≤ lgamma (1 + |value sx.toBits|) := by
+    GammaBasic.lgamma (1 + |value sx.toBits|) ≤ 2 * |GammaBasic.lgamma (value sx.toBits)| ∧
+      69 ≤ GammaBasic.lgamma (1 + |value sx.toBits|) := by
   apply cancel32 _ h32 hint
   obtain ⟨K, hK⟩ := LgammaRootPath.grid_p sx.toBits hsx 5 (by norm_num)
     (by rw [abs_of_neg (by linarith)]; norm_num; linarith)

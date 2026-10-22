@@ -26,7 +26,7 @@ theorem range_rel (n : ℕ) (ly lp : LogData) (lo X C0 Lq e ε rel : ℚ) (P : L
     (hf : fitRangeOk lo X C0 P ε depth = true)
     (hp : lgammaDiffOk cfgZ ⟨X, n, log2Lo, log2Hi, ly, lp⟩ (.const Lq) e 0 = true)
     (hε : (ε : ℝ) ≤ rel * (Lq - e)) (hrel : (0 : ℝ) ≤ rel) {x : ℝ} (hx : (X : ℝ) ≤ x)
-    (hlo : (lo : ℝ) * x ≤ 1) : |lgamma x - fit C0 P x| ≤ rel * lgamma x := by
+    (hlo : (lo : ℝ) * x ≤ 1) : |GammaBasic.lgamma x - fit C0 P x| ≤ rel * GammaBasic.lgamma x := by
   have h1 := fit_range lo X C0 P ε depth hf hx hlo
   have h2 := lgammaDiffOk_sound cfgZ ⟨X, n, log2Lo, log2Hi, ly, lp⟩ (.const Lq) e 0 cfgZ_pi hp
     (t := 0) (by simp [cfgZ])
@@ -35,11 +35,11 @@ theorem range_rel (n : ℕ) (ly lp : LogData) (lo X C0 Lq e ε rel : ℚ) (P : L
     simp only [fitRangeOk, Bool.and_eq_true, decide_eq_true_eq] at hf
     have : (16 : ℝ) ≤ X := by exact_mod_cast hf.1.1
     linarith
-  have hm : lgamma X ≤ lgamma x := lgamma_mono hX2 hx
+  have hm : GammaBasic.lgamma X ≤ GammaBasic.lgamma x := lgamma_mono hX2 hx
   have h2' := (abs_le.mp h2).1
-  calc |lgamma x - fit C0 P x| ≤ ε := h1
+  calc |GammaBasic.lgamma x - fit C0 P x| ≤ ε := h1
     _ ≤ rel * (Lq - e) := hε
-    _ ≤ rel * lgamma x := mul_le_mul_of_nonneg_left (by linarith) hrel
+    _ ≤ rel * GammaBasic.lgamma x := mul_le_mul_of_nonneg_left (by linarith) hrel
 
 theorem rf_0 :
     fitRangeOk (1 / 24) (16) c0Fast pFast (604408439 / 2 ^ 88) 1 = true := by
@@ -197,7 +197,7 @@ theorem pa_0 : lgammaDiffOk cfgZ ⟨(52776558133247 / 2 ^ 40), 0, log2Lo, log2Hi
 
 /-- The fast path's fit within `7 · 10 ^ -20` of `lgamma`, relative, from 16 on. -/
 theorem fast_large : ∀ x : ℝ, (16 : ℝ) ≤ x →
-    |lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * lgamma x := by
+    |GammaBasic.lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * GammaBasic.lgamma x := by
   intro x hx
   rcases le_or_gt x (24 : ℝ) with h0 | h0
   · have h := range_rel 0 _ _ (1 / 24) (16) c0Fast (251294296416348363 / 2 ^ 53)
@@ -262,7 +262,7 @@ theorem fast_large : ∀ x : ℝ, (16 : ℝ) ≤ x →
 /-- The accurate path's first fit within `2 ^ -63` of `lgamma`, relative, from
 `48 - 2 ^ -40` on. -/
 theorem asym0_large : ∀ x : ℝ, ((52776558133247 : ℝ) / 2 ^ 40) ≤ x →
-    |lgamma x - fit c0Asym0 pAsym0 x| ≤ (1 / 2 ^ 63) * lgamma x := by
+    |GammaBasic.lgamma x - fit c0Asym0 pAsym0 x| ≤ (1 / 2 ^ 63) * GammaBasic.lgamma x := by
   intro x hx
   have h := range_rel 0 _ _ (0) (52776558133247 / 2 ^ 40) c0Asym0 (616104690692716537 / 2 ^ 52)
     (616104690692716537 / 2 ^ 102) (1147584413 / 2 ^ 86) (1 / 2 ^ 63) pAsym0 0 ra_0 pa_0

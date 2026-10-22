@@ -104,31 +104,31 @@ theorem gap_two (w : UInt64) (h0 : 0 < value w) (hne : value w ≠ 2) :
 /-! ### Near 1 and 2 -/
 
 theorem lgamma_le_chord (u c : ℝ) (hu : 0 < u) (hG : Gamma u ≤ 1 - c) (hc : c < 1) :
-    lgamma u ≤ -c := by
+    GammaBasic.lgamma u ≤ -c := by
   have hg := Real.Gamma_pos_of_pos hu
   have h1 := Real.log_le_log hg hG
   have h2 := Real.log_le_sub_one_of_pos (by linarith : (0 : ℝ) < 1 - c)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   linarith
 
 theorem slope (x y z : ℝ) (hx : 0 < x) (hxy : x < y) (hyz : y < z) :
-    (lgamma y - lgamma x) / (y - x) ≤ (lgamma z - lgamma y) / (z - y) :=
+    (GammaBasic.lgamma y - GammaBasic.lgamma x) / (y - x) ≤ (GammaBasic.lgamma z - GammaBasic.lgamma y) / (z - y) :=
   Real.convexOn_log_Gamma.slope_mono_adjacent (Set.mem_Ioi.mpr hx)
     (Set.mem_Ioi.mpr (by linarith)) hxy hyz
 
-theorem lg54 : lgamma (5 / 4) ≤ -(2274 / 10000 / 4) :=
+theorem lg54 : GammaBasic.lgamma (5 / 4) ≤ -(2274 / 10000 / 4) :=
   lgamma_le_chord (5 / 4) (2274 / 10000 / 4) (by norm_num)
     (by have := LgammaAccLower.gamma_upper (5 / 4) (by norm_num) (by norm_num); linarith)
     (by norm_num)
 
-theorem lg74 : lgamma (7 / 4) ≤ -(2274 / 10000 / 4) :=
+theorem lg74 : GammaBasic.lgamma (7 / 4) ≤ -(2274 / 10000 / 4) :=
   lgamma_le_chord (7 / 4) (2274 / 10000 / 4) (by norm_num)
     (by have := LgammaAccLower.gamma_upper2 (7 / 4) (by norm_num) (by norm_num); linarith)
     (by norm_num)
 
 /-- `|ln Γ x| ≥ 0.2274 |x - 1|` from 3/4 to 5/4. -/
 theorem near_one (x : ℝ) (h1 : 3 / 4 ≤ x) (h2 : x ≤ 5 / 4) :
-    2274 / 10000 * |x - 1| ≤ |lgamma x| := by
+    2274 / 10000 * |x - 1| ≤ |GammaBasic.lgamma x| := by
   rcases lt_trichotomy x 1 with h | h | h
   · have hs := slope x 1 (5 / 4) (by linarith) h (by norm_num)
     rw [lgamma_one] at hs
@@ -136,7 +136,7 @@ theorem near_one (x : ℝ) (h1 : 3 / 4 ≤ x) (h2 : x ≤ 5 / 4) :
     rw [div_le_div_iff₀ hd (by norm_num)] at hs
     have := lg54
     rw [abs_of_neg (by linarith : x - 1 < 0)]
-    have hpos : 0 ≤ lgamma x := by nlinarith
+    have hpos : 0 ≤ GammaBasic.lgamma x := by nlinarith
     rw [abs_of_nonneg hpos]
     nlinarith
   · rw [h, sub_self, abs_zero, mul_zero]
@@ -150,7 +150,7 @@ theorem near_one (x : ℝ) (h1 : 3 / 4 ≤ x) (h2 : x ≤ 5 / 4) :
 
 /-- `|ln Γ x| ≥ 0.2274 |x - 2|` from 7/4 to 9/4. -/
 theorem near_two (x : ℝ) (h1 : 7 / 4 ≤ x) (h2 : x ≤ 9 / 4) :
-    2274 / 10000 * |x - 2| ≤ |lgamma x| := by
+    2274 / 10000 * |x - 2| ≤ |GammaBasic.lgamma x| := by
   rcases lt_trichotomy x 2 with h | h | h
   · have hc := lgamma_le_chord x (2274 / 10000 * (2 - x)) (by linarith)
       (LgammaAccLower.gamma_upper2 x (by linarith) h) (by nlinarith)
@@ -166,7 +166,7 @@ theorem near_two (x : ℝ) (h1 : 7 / 4 ≤ x) (h2 : x ≤ 9 / 4) :
     rw [div_le_div_iff₀ (by norm_num) hd] at hs
     have := lg74
     rw [abs_of_pos hd]
-    have hpos : 0 ≤ lgamma x := by nlinarith
+    have hpos : 0 ≤ GammaBasic.lgamma x := by nlinarith
     rw [abs_of_nonneg hpos]
     nlinarith
 
@@ -177,7 +177,7 @@ ends, which are integers, half-integers, and `sxBound`: `|ln |Γ x|| ≥ 2^-60` 
 non-integer double there. -/
 theorem neg_root (hRM : LgammaApprox.RootMinFact) (w : UInt64) (hw : Finite w)
     (hint : ∀ n : ℤ, value w ≠ n) (h1 : -(21 / 2) < value w) (h2 : value w < -2) :
-    1 / 2 ^ 60 ≤ |lgamma (value w)| := by
+    1 / 2 ^ 60 ≤ |GammaBasic.lgamma (value w)| := by
   set v := value w with hv
   by_cases hI0 : ((PolyBound.ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ) < v
   · exact hRM 0x3FB7400000000000 (PolyBound.ratOfWord 0xC004E147AE147AE1) (-2) 128 26 6 3
@@ -385,7 +385,7 @@ theorem abs_log_le (y : ℝ) (h1 : 1 / 2 ^ 1074 ≤ y) (h2 : y ≤ 2 ^ 52) :
 
 /-- Within `1/4` of 0, `ln |Γ x|` is `-ln |x|` within `4 |x|`. -/
 theorem small (x : ℝ) (h0 : x ≠ 0) (hx : |x| ≤ 1 / 4) (hmin : 1 / 2 ^ 1074 ≤ |x|) :
-    1 / 4 ≤ |lgamma x| ∧ |lgamma x| ≤ 746 := by
+    1 / 4 ≤ |GammaBasic.lgamma x| ∧ |GammaBasic.lgamma x| ≤ 746 := by
   have h := abs_le.mp (abs_lgamma_add_log_le h0 hx)
   have hl : Real.log x = Real.log |x| := (Real.log_abs x).symm
   have hlog := Real.log_le_log (abs_pos.mpr h0) hx
@@ -395,7 +395,7 @@ theorem small (x : ℝ) (h0 : x ≠ 0) (hx : |x| ≤ 1 / 4) (hmin : 1 / 2 ^ 1074
   have hb := abs_log_le |x| hmin (by linarith [(by norm_num : (1 : ℝ) / 4 ≤ 2 ^ 52)])
   have hb' := abs_le.mp hb
   rw [hl] at h
-  have hpos : 0 ≤ lgamma x := by linarith
+  have hpos : 0 ≤ GammaBasic.lgamma x := by linarith
   rw [abs_of_nonneg hpos]
   constructor <;> linarith
 
@@ -403,7 +403,7 @@ theorem small (x : ℝ) (h0 : x ≠ 0) (hx : |x| ≤ 1 / 4) (hmin : 1 / 2 ^ 1074
 theorem lower_bound (hRM : LgammaApprox.RootMinFact) (hCF : LgammaApprox.CancelFact)
     (w : UInt64) (hw : Finite w) (hint : value w < 0 → ∀ n : ℤ, value w ≠ n)
     (h0 : value w ≠ 0) (h1 : value w ≠ 1) (h2 : value w ≠ 2) :
-    1 / 2 ^ 1000 ≤ |lgamma (value w)| := by
+    1 / 2 ^ 1000 ≤ |GammaBasic.lgamma (value w)| := by
   have hmin := abs_min w h0
   set v := value w with hv
   rcases lt_or_gt_of_ne h0 with hneg | hpos
@@ -423,10 +423,10 @@ theorem lower_bound (hRM : LgammaApprox.RootMinFact) (hCF : LgammaApprox.CancelF
     push Not at hC
     have hc := hCF w hw (by linarith) hint'
     have hg := LgammaAccGrowth.growth_large (1 - v) (by linarith)
-    have : (14 : ℝ) ≤ |lgamma (1 - v)| := by
+    have : (14 : ℝ) ≤ |GammaBasic.lgamma (1 - v)| := by
       rw [abs_of_nonneg (by linarith)]
       linarith
-    have h32 : (14 : ℝ) / 2 ^ 32 ≤ |lgamma v| := by
+    have h32 : (14 : ℝ) / 2 ^ 32 ≤ |GammaBasic.lgamma v| := by
       rw [div_le_iff₀ (by positivity)]
       linarith
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1000 ≤ 14 / 2 ^ 32)]
@@ -460,13 +460,13 @@ theorem lower_bound (hRM : LgammaApprox.RootMinFact) (hCF : LgammaApprox.CancelF
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1000 ≤ 1 / 20)]
 
 /-- `ln Γ` from `1/4` on, up to `2^802`, lies within `2^812`. -/
-theorem pos_upper (y : ℝ) (h1 : 1 / 4 < y) (h2 : y ≤ 2 ^ 802) : |lgamma y| ≤ 2 ^ 812 := by
+theorem pos_upper (y : ℝ) (h1 : 1 / 4 < y) (h2 : y ≤ 2 ^ 802) : |GammaBasic.lgamma y| ≤ 2 ^ 812 := by
   by_cases hy : 2 ≤ y
   · have hu := LgammaAccGrowth.lgamma_upper y hy h2
     have hm := Real.Gamma_strictMonoOn_Ici.monotoneOn (Set.mem_Ici.mpr (le_refl (2 : ℝ)))
       (Set.mem_Ici.mpr hy) hy
     rw [Real.Gamma_two] at hm
-    have hl : 0 ≤ lgamma y := Real.log_nonneg hm
+    have hl : 0 ≤ GammaBasic.lgamma y := Real.log_nonneg hm
     rw [abs_of_nonneg hl]
     exact hu
   push Not at hy
@@ -483,8 +483,8 @@ theorem pos_upper (y : ℝ) (h1 : 1 / 4 < y) (h2 : y ≤ 2 ^ 802) : |lgamma y| �
     rw [show (4 : ℝ) = (3 : ℕ) + 1 by norm_num, Real.Gamma_nat_eq_factorial]
     norm_num [Nat.factorial]
   rw [h4] at hm2
-  have g0 : 0 ≤ lgamma (y + 1 + 1) := Real.log_nonneg hm1
-  have g1 : lgamma (y + 1 + 1) ≤ Real.log 6 :=
+  have g0 : 0 ≤ GammaBasic.lgamma (y + 1 + 1) := Real.log_nonneg hm1
+  have g1 : GammaBasic.lgamma (y + 1 + 1) ≤ Real.log 6 :=
     Real.log_le_log (Real.Gamma_pos_of_pos (by linarith)) hm2
   have l6 : Real.log 6 ≤ 2 := by
     have := Real.log_le_sub_one_of_pos (by norm_num : (0 : ℝ) < 6 / 4)
@@ -502,7 +502,7 @@ theorem pos_upper (y : ℝ) (h1 : 1 / 4 < y) (h2 : y ≤ 2 ^ 802) : |lgamma y| �
 /-- **The upper bound** at a nonzero double up to `2^800` in magnitude other than the negative
 integers. -/
 theorem upper_bound (w : UInt64) (hw : Finite w) (hint : value w < 0 → ∀ n : ℤ, value w ≠ n)
-    (h0 : value w ≠ 0) (hbig : |value w| ≤ 2 ^ 800) : |lgamma (value w)| ≤ 2 ^ 1020 := by
+    (h0 : value w ≠ 0) (hbig : |value w| ≤ 2 ^ 800) : |GammaBasic.lgamma (value w)| ≤ 2 ^ 1020 := by
   have hmin := abs_min w h0
   set v := value w with hv
   by_cases hs : |v| ≤ 1 / 4
@@ -550,7 +550,7 @@ theorem upper_bound (w : UInt64) (hw : Finite w) (hint : value w < 0 → ∀ n :
       constructor <;> nlinarith
     show |Real.log (Real.Gamma v)| ≤ 2 ^ 1020
     rw [hr, abs_neg]
-    have := abs_add_le (lgamma (-v)) (Real.log (-v * (Real.sin (π * φ) / π)))
+    have := abs_add_le (GammaBasic.lgamma (-v)) (Real.log (-v * (Real.sin (π * φ) / π)))
     linarith [(by norm_num : (2 : ℝ) ^ 812 + 2 * 746 ≤ 2 ^ 1020)]
   · rw [abs_of_pos hpos] at hs hbig
     have := pos_upper v hs (by linarith [(by norm_num : (2 : ℝ) ^ 800 ≤ 2 ^ 802)])
@@ -561,7 +561,7 @@ other than 0, 1, 2, and the negative integers. -/
 theorem lgamma_bounds (hRM : LgammaApprox.RootMinFact) (hCF : LgammaApprox.CancelFact)
     (w : UInt64) (hw : Finite w) (hint : value w < 0 → ∀ n : ℤ, value w ≠ n)
     (h0 : value w ≠ 0) (h1 : value w ≠ 1) (h2 : value w ≠ 2) (hbig : |value w| ≤ 2 ^ 800) :
-    1 / 2 ^ 1000 ≤ |lgamma (value w)| ∧ |lgamma (value w)| ≤ 2 ^ 1020 :=
+    1 / 2 ^ 1000 ≤ |GammaBasic.lgamma (value w)| ∧ |GammaBasic.lgamma (value w)| ≤ 2 ^ 1020 :=
   ⟨lower_bound hRM hCF w hw hint h0 h1 h2, upper_bound w hw hint h0 hbig⟩
 
 #print axioms gap_one

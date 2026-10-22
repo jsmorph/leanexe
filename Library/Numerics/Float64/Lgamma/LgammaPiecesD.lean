@@ -59,7 +59,7 @@ theorem p13_3 : lgammaRelOk (cfgJ 13) (sub 13 3 13
 by `2 ^ -50` at each end. -/
 theorem piece13 : ∀ x : ℝ, (border 13 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (13 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 13) (x - off 13)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 13) (x - off 13)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 13 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 13 0 13 _ _ _ _ _ p13_0 t ht using 3 <;> norm_num
@@ -115,7 +115,7 @@ theorem p14_3 : lgammaRelOk (cfgJ 14) (sub 14 3 13
 by `2 ^ -50` at each end. -/
 theorem piece14 : ∀ x : ℝ, (border 14 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (14 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 14) (x - off 14)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 14) (x - off 14)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 14 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 14 0 13 _ _ _ _ _ p14_0 t ht using 3 <;> norm_num
@@ -171,7 +171,7 @@ theorem p15_3 : lgammaRelOk (cfgJ 15) (sub 15 3 12
 by `2 ^ -50` at each end. -/
 theorem piece15 : ∀ x : ℝ, (border 15 : ℝ) - 1 / 2 ^ 50 ≤ x →
     x ≤ (border (15 + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - eval (pieceP 15) (x - off 15)| ≤ εout * |lgamma x| := by
+    |GammaBasic.lgamma x - eval (pieceP 15) (x - off 15)| ≤ εout * |GammaBasic.lgamma x| := by
   refine piece_of_subs 15 (by decide +kernel) fun k hk t ht => ?_
   interval_cases k
   · convert sub_bound 15 0 12 _ _ _ _ _ p15_0 t ht using 3 <;> norm_num

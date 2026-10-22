@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Lgamma.Compiled
+import Library.Numerics.Float64.Lgamma.Program
 import LeanExe.ProofKit.PolyBound
 import LeanExe.ProofKit.GammaBasic
 
@@ -53,7 +53,7 @@ noncomputable def smallPoly : ℝ → ℝ :=
   eval (ddCoeffs Lgamma.mainTable 381 4 ++ coeffs Lgamma.mainTable 389 1 8)
 
 def SmallFact : Prop :=
-  ∀ x : ℝ, |x| ≤ 1 / 32 → |lgamma (1 + x) - x * smallPoly x| ≤ 1 / 2 ^ 70 * |x|
+  ∀ x : ℝ, |x| ≤ 1 / 32 → |GammaBasic.lgamma (1 + x) - x * smallPoly x| ≤ 1 / 2 ^ 70 * |x|
 
 /-- The border `j ≤ 19` of the pieces, the double whose top bits are `ubrd j`. -/
 def border (j : ℕ) : ℚ := ratOfWord (Lgamma.mainTable[j]! <<< 37)
@@ -72,7 +72,7 @@ noncomputable def pieceApprox (j : ℕ) (x : ℝ) : ℝ :=
 
 def PieceFact : Prop :=
   ∀ j < 19, ∀ x : ℝ, (border j : ℝ) - 1 / 2 ^ 50 ≤ x → x ≤ (border (j + 1) : ℝ) + 1 / 2 ^ 50 →
-    |lgamma x - pieceApprox j x| ≤ 12 / 10 ^ 20 * |lgamma x|
+    |GammaBasic.lgamma x - pieceApprox j x| ≤ 12 / 10 ^ 20 * |GammaBasic.lgamma x|
 
 /-- Stirling's series from 8.29541 on: `(x - 1/2) (log x - 1) + c + S (1/x²)/x`. -/
 noncomputable def stirFast (x : ℝ) : ℝ :=
@@ -81,7 +81,7 @@ noncomputable def stirFast (x : ℝ) : ℝ :=
       coeffs Lgamma.mainTable 401 1 5) (1 / x ^ 2)
 
 def StirlingFact : Prop :=
-  ∀ x : ℝ, (border 19 : ℝ) - 1 / 2 ^ 40 ≤ x → |lgamma x - stirFast x| ≤ 7 / 10 ^ 20 * lgamma x
+  ∀ x : ℝ, (border 19 : ℝ) - 1 / 2 ^ 40 ≤ x → |GammaBasic.lgamma x - stirFast x| ≤ 7 / 10 ^ 20 * GammaBasic.lgamma x
 
 /-- The kernel of `asLogd`: `log (1 + z) ≈ z + z² logPoly z`. -/
 noncomputable def logPoly : ℝ → ℝ := eval (coeffs Tgamma.logdTable 260 1 4)
@@ -139,8 +139,8 @@ noncomputable def accSmallPoly : ℝ → ℝ := eval (ddCoeffs Lgamma.accurateTa
 noncomputable def accMidPoly : ℝ → ℝ := eval (ddCoeffs Lgamma.accurateTable 68 30)
 
 def AccPolyFact : Prop :=
-  (∀ x : ℝ, |x| ≤ 1 / 4 → |lgamma (1 + x) - x * accSmallPoly x| ≤ 1 / 2 ^ 70 * |x|) ∧
-    ∀ d : ℝ, |d| ≤ 1 / 4 → |lgamma (3 / 2 + d) - accMidPoly d| ≤ 1 / 2 ^ 70
+  (∀ x : ℝ, |x| ≤ 1 / 4 → |GammaBasic.lgamma (1 + x) - x * accSmallPoly x| ≤ 1 / 2 ^ 70 * |x|) ∧
+    ∀ d : ℝ, |d| ≤ 1 / 4 → |GammaBasic.lgamma (3 / 2 + d) - accMidPoly d| ≤ 1 / 2 ^ 70
 
 /-- `as_lgamma_asym_accurate` with the constant at `o` and `n` coefficients after it. -/
 noncomputable def asymAcc (o n : ℕ) (x : ℝ) : ℝ :=
@@ -148,11 +148,11 @@ noncomputable def asymAcc (o n : ℕ) (x : ℝ) : ℝ :=
     1 / x * eval (ddCoeffs Lgamma.asymTable (o + 2) n) (1 / x ^ 2)
 
 def AsymFact : Prop :=
-  (∀ x : ℝ, 48 - 1 / 2 ^ 40 ≤ x → |lgamma x - asymAcc 0 7 x| ≤ 1 / 2 ^ 63 * lgamma x) ∧
+  (∀ x : ℝ, 48 - 1 / 2 ^ 40 ≤ x → |GammaBasic.lgamma x - asymAcc 0 7 x| ≤ 1 / 2 ^ 63 * GammaBasic.lgamma x) ∧
     (∀ x : ℝ, 29 / 2 - 1 / 2 ^ 40 ≤ x → x ≤ 48 + 1 / 2 ^ 40 →
-      |lgamma x - asymAcc 16 11 x| ≤ 1 / 2 ^ 87 * lgamma x) ∧
+      |GammaBasic.lgamma x - asymAcc 16 11 x| ≤ 1 / 2 ^ 87 * GammaBasic.lgamma x) ∧
     ∀ x : ℝ, 15 / 4 - 1 / 2 ^ 40 ≤ x → x ≤ 29 / 2 + 1 / 2 ^ 40 →
-      |lgamma x - asymAcc 40 27 x| ≤ 1 / 2 ^ 87 * lgamma x
+      |GammaBasic.lgamma x - asymAcc 40 27 x| ≤ 1 / 2 ^ 87 * GammaBasic.lgamma x
 
 /-- The kernel of `asLogdAccurate`: `log (1 + X) ≈ X · logAccPoly X`. -/
 noncomputable def logAccPoly : ℝ → ℝ :=
@@ -221,29 +221,29 @@ noncomputable def rootPoly (o n k : ℕ) : ℝ → ℝ :=
 
 def RootFact : Prop :=
   ∀ afh lo hi o n k e, (afh, lo, hi, o, n, k, e) ∈ rootRanges →
-    ∀ x : ℝ, (lo : ℝ) < x → x < hi → |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ratOfWord afh →
-      |lgamma x - (x + rootX0 o) * rootPoly o n k (2 ^ e * (x + rootX0 o))| ≤
-        1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120
+    ∀ x : ℝ, (lo : ℝ) < x → x < hi → |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ratOfWord afh →
+      |GammaBasic.lgamma x - (x + rootX0 o) * rootPoly o n k (2 ^ e * (x + rootX0 o))| ≤
+        1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120
 
 /-- Every double inside a range of `rootRanges` lies where `|log |Γ|| ≥ 2^-60`; the smallest value
 is about `5.6 · 10^-17`, next to the zero at -2.457. -/
 def RootMinFact : Prop :=
   ∀ afh lo hi o n k e, (afh, lo, hi, o, n, k, e) ∈ rootRanges →
     ∀ w : UInt64, CodeLib.IEEE64.Finite w → (lo : ℝ) < CodeLib.IEEE64.value w →
-      CodeLib.IEEE64.value w < hi → 1 / 2 ^ 60 ≤ |lgamma (CodeLib.IEEE64.value w)|
+      CodeLib.IEEE64.value w < hi → 1 / 2 ^ 60 ≤ |GammaBasic.lgamma (CodeLib.IEEE64.value w)|
 
 /-- The hard cases of `Lgamma.database`: the argument and the double nearest to `log |Γ|`. -/
 def dbX (k : ℕ) : ℚ := q Lgamma.dbTable (3 * k)
 def dbF (k : ℕ) : ℚ := q Lgamma.dbTable (3 * k + 1)
 
-def DbFact : Prop := ∀ k < 19, |lgamma (dbX k) - dbF k| ≤ 1 / 2 ^ 60 * |(dbF k : ℝ)|
+def DbFact : Prop := ∀ k < 19, |GammaBasic.lgamma (dbX k) - dbF k| ≤ 1 / 2 ^ 60 * |(dbF k : ℝ)|
 
 /-- At every non-integer double `x` from -21/2 down, the reflection
 `log |Γ x| = -(log Γ (1 - x) + log (|sin (π x)|/π))` cancels by at most `2^32`. -/
 def CancelFact : Prop :=
   ∀ w : UInt64, CodeLib.IEEE64.Finite w → CodeLib.IEEE64.value w ≤ -21 / 2 →
     (∀ n : ℤ, CodeLib.IEEE64.value w ≠ n) →
-      |lgamma (1 - CodeLib.IEEE64.value w)| ≤ 2 ^ 32 * |lgamma (CodeLib.IEEE64.value w)|
+      |GammaBasic.lgamma (1 - CodeLib.IEEE64.value w)| ≤ 2 ^ 32 * |GammaBasic.lgamma (CodeLib.IEEE64.value w)|
 
 /-- Every approximation statement of the proof. -/
 def AllFacts : Prop :=

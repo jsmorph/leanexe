@@ -64,9 +64,9 @@ theorem m_3 : lgammaDiffOk cfgM ⟨(27 / 16), 15, log2Lo, log2Hi,
     (.polyOf accMidList (.poly [(3 / 16), 1])) (1 / 2 ^ 70) 0 = true := by
   decide +kernel
 
-theorem acc_mid : ∀ d : ℝ, |d| ≤ 1 / 4 → |lgamma (3 / 2 + d) - eval accMidList d| ≤ 1 / 2 ^ 70 := by
+theorem acc_mid : ∀ d : ℝ, |d| ≤ 1 / 4 → |GammaBasic.lgamma (3 / 2 + d) - eval accMidList d| ≤ 1 / 2 ^ 70 := by
   have hc := cover_pieces (K := 4) (by norm_num) (lo := (5 / 4 : ℝ)) (r := (1 / 16 : ℝ))
-    (by norm_num) (fun x => |lgamma x - eval accMidList (x - 3 / 2)| ≤ 1 / 2 ^ 70) ?_
+    (by norm_num) (fun x => |GammaBasic.lgamma x - eval accMidList (x - 3 / 2)| ≤ 1 / 2 ^ 70) ?_
   · intro d hd
     have hd' := abs_le.mp hd
     have h := hc (3 / 2 + d) (by linarith) (by norm_num; linarith)

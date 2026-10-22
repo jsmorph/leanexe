@@ -85,7 +85,7 @@ theorem p10_3 : negPointOk cfgZ 10 (155133815 / 562949953421312)
   decide +kernel
 
 theorem v10_0 :
-    ((267 / 34359738368) : ℝ) ≤ lgamma ((-6192449473531348 : ℤ) / 2 ^ (52 - 3)) := by
+    ((267 / 34359738368) : ℝ) ≤ GammaBasic.lgamma ((-6192449473531348 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 10 _ _ _ _ _ _ 0 cfgZ_pi p10_0).1
   have e : ((-6192449473531348 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((10 : ℕ) : ℝ) - (((140737484829557 / 140737488355328) : ℚ) : ℝ) := by
@@ -94,7 +94,7 @@ theorem v10_0 :
   exact le_trans (by norm_num) h
 
 theorem v10_1 :
-    lgamma ((-6192449473531347 : ℤ) / 2 ^ (52 - 3)) ≤ -((133 / 2147483648) : ℝ) := by
+    GammaBasic.lgamma ((-6192449473531347 : ℤ) / 2 ^ (52 - 3)) ≤ -((133 / 2147483648) : ℝ) := by
   have h := (negPointOk_sound cfgZ 10 _ _ _ _ _ _ 0 cfgZ_pi p10_1).2
   have e : ((-6192449473531347 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((10 : ℕ) : ℝ) - (((562949939318227 / 562949953421312) : ℚ) : ℝ) := by
@@ -103,7 +103,7 @@ theorem v10_1 :
   exact le_trans h (by norm_num)
 
 theorem v10_2 :
-    lgamma ((-5629499689346936 : ℤ) / 2 ^ (52 - 3)) ≤ -((175 / 34359738368) : ℝ) := by
+    GammaBasic.lgamma ((-5629499689346936 : ℤ) / 2 ^ (52 - 3)) ≤ -((175 / 34359738368) : ℝ) := by
   have h := (negPointOk_sound cfgZ 10 _ _ _ _ _ _ 0 cfgZ_pi p10_2).2
   have e : ((-5629499689346936 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((10 : ℕ) : ℝ) - (((19391727 / 70368744177664) : ℚ) : ℝ) := by
@@ -112,7 +112,7 @@ theorem v10_2 :
   exact le_trans h (by norm_num)
 
 theorem v10_3 :
-    ((171 / 137438953472) : ℝ) ≤ lgamma ((-5629499689346935 : ℤ) / 2 ^ (52 - 3)) := by
+    ((171 / 137438953472) : ℝ) ≤ GammaBasic.lgamma ((-5629499689346935 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 10 _ _ _ _ _ _ 0 cfgZ_pi p10_3).1
   have e : ((-5629499689346935 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((10 : ℕ) : ℝ) - (((155133815 / 562949953421312) : ℚ) : ℝ) := by
@@ -185,7 +185,7 @@ theorem p11_3 : negPointOk cfgZ 11 (7051541 / 281474976710656)
   decide +kernel
 
 theorem v11_0 :
-    ((53 / 67108864) : ℝ) ≤ lgamma ((-6755399439880488 : ℤ) / 2 ^ (52 - 3)) := by
+    ((53 / 67108864) : ℝ) ≤ GammaBasic.lgamma ((-6755399439880488 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 11 _ _ _ _ _ _ 0 cfgZ_pi p11_0).1
   have e : ((-6755399439880488 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((11 : ℕ) : ℝ) - (((70368744030757 / 70368744177664) : ℚ) : ℝ) := by
@@ -194,7 +194,7 @@ theorem v11_0 :
   exact le_trans (by norm_num) h
 
 theorem v11_1 :
-    lgamma ((-6755399439880487 : ℤ) / 2 ^ (52 - 3)) ≤ -((405 / 8589934592) : ℝ) := by
+    GammaBasic.lgamma ((-6755399439880487 : ℤ) / 2 ^ (52 - 3)) ≤ -((405 / 8589934592) : ℝ) := by
   have h := (negPointOk_sound cfgZ 11 _ _ _ _ _ _ 0 cfgZ_pi p11_1).2
   have e : ((-6755399439880487 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((11 : ℕ) : ℝ) - (((562949952246055 / 562949953421312) : ℚ) : ℝ) := by
@@ -203,7 +203,7 @@ theorem v11_1 :
   exact le_trans h (by norm_num)
 
 theorem v11_2 :
-    lgamma ((-6192449501737515 : ℤ) / 2 ^ (52 - 3)) ≤ -((23 / 536870912) : ℝ) := by
+    GammaBasic.lgamma ((-6192449501737515 : ℤ) / 2 ^ (52 - 3)) ≤ -((23 / 536870912) : ℝ) := by
   have h := (negPointOk_sound cfgZ 11 _ _ _ _ _ _ 0 cfgZ_pi p11_2).2
   have e : ((-6192449501737515 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((11 : ℕ) : ℝ) - (((14103083 / 562949953421312) : ℚ) : ℝ) := by
@@ -212,7 +212,7 @@ theorem v11_2 :
   exact le_trans h (by norm_num)
 
 theorem v11_3 :
-    ((231 / 8589934592) : ℝ) ≤ lgamma ((-6192449501737514 : ℤ) / 2 ^ (52 - 3)) := by
+    ((231 / 8589934592) : ℝ) ≤ GammaBasic.lgamma ((-6192449501737514 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 11 _ _ _ _ _ _ 0 cfgZ_pi p11_3).1
   have e : ((-6192449501737514 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((11 : ℕ) : ℝ) - (((7051541 / 281474976710656) : ℚ) : ℝ) := by
@@ -285,7 +285,7 @@ theorem p12_3 : negPointOk cfgZ 12 (146907 / 70368744177664)
   decide +kernel
 
 theorem v12_0 :
-    ((277 / 67108864) : ℝ) ≤ lgamma ((-7318349394386652 : ℤ) / 2 ^ (52 - 3)) := by
+    ((277 / 67108864) : ℝ) ≤ GammaBasic.lgamma ((-7318349394386652 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 12 _ _ _ _ _ _ 0 cfgZ_pi p12_0).1
   have e : ((-7318349394386652 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((12 : ℕ) : ℝ) - (((140737488332727 / 140737488355328) : ℚ) : ℝ) := by
@@ -294,7 +294,7 @@ theorem v12_0 :
   exact le_trans (by norm_num) h
 
 theorem v12_1 :
-    lgamma ((-7318349394386651 : ℤ) / 2 ^ (52 - 3)) ≤ -((453 / 67108864) : ℝ) := by
+    GammaBasic.lgamma ((-7318349394386651 : ℤ) / 2 ^ (52 - 3)) ≤ -((453 / 67108864) : ℝ) := by
   have h := (negPointOk_sound cfgZ 12 _ _ _ _ _ _ 0 cfgZ_pi p12_1).2
   have e : ((-7318349394386651 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((12 : ℕ) : ℝ) - (((562949953330907 / 562949953421312) : ℚ) : ℝ) := by
@@ -303,7 +303,7 @@ theorem v12_1 :
   exact le_trans h (by norm_num)
 
 theorem v12_2 :
-    lgamma ((-6755399442231001 : ℤ) / 2 ^ (52 - 3)) ≤ -((495 / 8589934592) : ℝ) := by
+    GammaBasic.lgamma ((-6755399442231001 : ℤ) / 2 ^ (52 - 3)) ≤ -((495 / 8589934592) : ℝ) := by
   have h := (negPointOk_sound cfgZ 12 _ _ _ _ _ _ 0 cfgZ_pi p12_2).2
   have e : ((-6755399442231001 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((12 : ℕ) : ℝ) - (((1175257 / 562949953421312) : ℚ) : ℝ) := by
@@ -312,7 +312,7 @@ theorem v12_2 :
   exact le_trans h (by norm_num)
 
 theorem v12_3 :
-    ((209 / 268435456) : ℝ) ≤ lgamma ((-6755399442231000 : ℤ) / 2 ^ (52 - 3)) := by
+    ((209 / 268435456) : ℝ) ≤ GammaBasic.lgamma ((-6755399442231000 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 12 _ _ _ _ _ _ 0 cfgZ_pi p12_3).1
   have e : ((-6755399442231000 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((12 : ℕ) : ℝ) - (((146907 / 70368744177664) : ℚ) : ℝ) := by
@@ -385,7 +385,7 @@ theorem p13_3 : negPointOk cfgZ 13 (22601 / 140737488355328)
   decide +kernel
 
 theorem v13_0 :
-    ((291 / 4194304) : ℝ) ≤ lgamma ((-7881299347891911 : ℤ) / 2 ^ (52 - 3)) := by
+    ((291 / 4194304) : ℝ) ≤ GammaBasic.lgamma ((-7881299347891911 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 13 _ _ _ _ _ _ 0 cfgZ_pi p13_0).1
   have e : ((-7881299347891911 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((13 : ℕ) : ℝ) - (((562949953414855 / 562949953421312) : ℚ) : ℝ) := by
@@ -394,7 +394,7 @@ theorem v13_0 :
   exact le_trans (by norm_num) h
 
 theorem v13_1 :
-    lgamma ((-7881299347891910 : ℤ) / 2 ^ (52 - 3)) ≤ -((347 / 4194304) : ℝ) := by
+    GammaBasic.lgamma ((-7881299347891910 : ℤ) / 2 ^ (52 - 3)) ≤ -((347 / 4194304) : ℝ) := by
   have h := (negPointOk_sound cfgZ 13 _ _ _ _ _ _ 0 cfgZ_pi p13_1).2
   have e : ((-7881299347891910 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((13 : ℕ) : ℝ) - (((281474976707427 / 281474976710656) : ℚ) : ℝ) := by
@@ -403,7 +403,7 @@ theorem v13_1 :
   exact le_trans h (by norm_num)
 
 theorem v13_2 :
-    lgamma ((-7318349394567461 : ℤ) / 2 ^ (52 - 3)) ≤ -((453 / 67108864) : ℝ) := by
+    GammaBasic.lgamma ((-7318349394567461 : ℤ) / 2 ^ (52 - 3)) ≤ -((453 / 67108864) : ℝ) := by
   have h := (negPointOk_sound cfgZ 13 _ _ _ _ _ _ 0 cfgZ_pi p13_2).2
   have e : ((-7318349394567461 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((13 : ℕ) : ℝ) - (((90405 / 562949953421312) : ℚ) : ℝ) := by
@@ -412,7 +412,7 @@ theorem v13_2 :
   exact le_trans h (by norm_num)
 
 theorem v13_3 :
-    ((277 / 67108864) : ℝ) ≤ lgamma ((-7318349394567460 : ℤ) / 2 ^ (52 - 3)) := by
+    ((277 / 67108864) : ℝ) ≤ GammaBasic.lgamma ((-7318349394567460 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 13 _ _ _ _ _ _ 0 cfgZ_pi p13_3).1
   have e : ((-7318349394567460 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((13 : ℕ) : ℝ) - (((22601 / 140737488355328) : ℚ) : ℝ) := by
@@ -485,7 +485,7 @@ theorem p14_3 : negPointOk cfgZ 14 (6457 / 562949953421312)
   decide +kernel
 
 theorem v14_0 :
-    ((149 / 131072) : ℝ) ≤ lgamma ((-8444249301319250 : ℤ) / 2 ^ (52 - 3)) := by
+    ((149 / 131072) : ℝ) ≤ GammaBasic.lgamma ((-8444249301319250 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 14 _ _ _ _ _ _ 0 cfgZ_pi p14_0).1
   have e : ((-8444249301319250 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((14 : ℕ) : ℝ) - (((281474976710441 / 281474976710656) : ℚ) : ℝ) := by
@@ -494,7 +494,7 @@ theorem v14_0 :
   exact le_trans (by norm_num) h
 
 theorem v14_1 :
-    lgamma ((-8444249301319249 : ℤ) / 2 ^ (52 - 3)) ≤ -((301 / 262144) : ℝ) := by
+    GammaBasic.lgamma ((-8444249301319249 : ℤ) / 2 ^ (52 - 3)) ≤ -((301 / 262144) : ℝ) := by
   have h := (negPointOk_sound cfgZ 14 _ _ _ _ _ _ 0 cfgZ_pi p14_1).2
   have e : ((-8444249301319249 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((14 : ℕ) : ℝ) - (((562949953420881 / 562949953421312) : ℚ) : ℝ) := by
@@ -503,7 +503,7 @@ theorem v14_1 :
   exact le_trans h (by norm_num)
 
 theorem v14_2 :
-    lgamma ((-7881299347904826 : ℤ) / 2 ^ (52 - 3)) ≤ -((87 / 1048576) : ℝ) := by
+    GammaBasic.lgamma ((-7881299347904826 : ℤ) / 2 ^ (52 - 3)) ≤ -((87 / 1048576) : ℝ) := by
   have h := (negPointOk_sound cfgZ 14 _ _ _ _ _ _ 0 cfgZ_pi p14_2).2
   have e : ((-7881299347904826 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((14 : ℕ) : ℝ) - (((3229 / 281474976710656) : ℚ) : ℝ) := by
@@ -512,7 +512,7 @@ theorem v14_2 :
   exact le_trans h (by norm_num)
 
 theorem v14_3 :
-    ((291 / 4194304) : ℝ) ≤ lgamma ((-7881299347904825 : ℤ) / 2 ^ (52 - 3)) := by
+    ((291 / 4194304) : ℝ) ≤ GammaBasic.lgamma ((-7881299347904825 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 14 _ _ _ _ _ _ 0 cfgZ_pi p14_3).1
   have e : ((-7881299347904825 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((14 : ℕ) : ℝ) - (((6457 / 562949953421312) : ℚ) : ℝ) := by
@@ -585,7 +585,7 @@ theorem p15_3 : negPointOk cfgZ 15 (215 / 281474976710656)
   decide +kernel
 
 theorem v15_0 :
-    ((69 / 2048) : ℝ) ≤ lgamma ((-9007199254740966 : ℤ) / 2 ^ (52 - 3)) := by
+    ((69 / 2048) : ℝ) ≤ GammaBasic.lgamma ((-9007199254740966 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 15 _ _ _ _ _ _ 0 cfgZ_pi p15_0).1
   have e : ((-9007199254740966 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((15 : ℕ) : ℝ) - (((281474976710643 / 281474976710656) : ℚ) : ℝ) := by
@@ -594,7 +594,7 @@ theorem v15_0 :
   exact le_trans (by norm_num) h
 
 theorem v15_1 :
-    lgamma ((-9007199254740965 : ℤ) / 2 ^ (52 - 3)) ≤ -((449 / 131072) : ℝ) := by
+    GammaBasic.lgamma ((-9007199254740965 : ℤ) / 2 ^ (52 - 3)) ≤ -((449 / 131072) : ℝ) := by
   have h := (negPointOk_sound cfgZ 15 _ _ _ _ _ _ 0 cfgZ_pi p15_1).2
   have e : ((-9007199254740965 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((15 : ℕ) : ℝ) - (((562949953421285 / 562949953421312) : ℚ) : ℝ) := by
@@ -603,7 +603,7 @@ theorem v15_1 :
   exact le_trans h (by norm_num)
 
 theorem v15_2 :
-    lgamma ((-8444249301320111 : ℤ) / 2 ^ (52 - 3)) ≤ -((301 / 262144) : ℝ) := by
+    GammaBasic.lgamma ((-8444249301320111 : ℤ) / 2 ^ (52 - 3)) ≤ -((301 / 262144) : ℝ) := by
   have h := (negPointOk_sound cfgZ 15 _ _ _ _ _ _ 0 cfgZ_pi p15_2).2
   have e : ((-8444249301320111 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((15 : ℕ) : ℝ) - (((431 / 562949953421312) : ℚ) : ℝ) := by
@@ -612,7 +612,7 @@ theorem v15_2 :
   exact le_trans h (by norm_num)
 
 theorem v15_3 :
-    ((149 / 131072) : ℝ) ≤ lgamma ((-8444249301320110 : ℤ) / 2 ^ (52 - 3)) := by
+    ((149 / 131072) : ℝ) ≤ GammaBasic.lgamma ((-8444249301320110 : ℤ) / 2 ^ (52 - 3)) := by
   have h := (negPointOk_sound cfgZ 15 _ _ _ _ _ _ 0 cfgZ_pi p15_3).1
   have e : ((-8444249301320110 : ℤ) : ℝ) / 2 ^ (52 - 3) =
       -((15 : ℕ) : ℝ) - (((215 / 281474976710656) : ℚ) : ℝ) := by
@@ -669,7 +669,7 @@ theorem p16_3 : negPointOk cfgZ 16 (13 / 281474976710656)
   decide +kernel
 
 theorem v16_1 :
-    lgamma ((-4785074604081151 : ℤ) / 2 ^ (52 - 4)) ≤ -((471 / 2048) : ℝ) := by
+    GammaBasic.lgamma ((-4785074604081151 : ℤ) / 2 ^ (52 - 4)) ≤ -((471 / 2048) : ℝ) := by
   have h := (negPointOk_sound cfgZ 16 _ _ _ _ _ _ 0 cfgZ_pi p16_1).2
   have e : ((-4785074604081151 : ℤ) : ℝ) / 2 ^ (52 - 4) =
       -((16 : ℕ) : ℝ) - (((281474976710655 / 281474976710656) : ℚ) : ℝ) := by
@@ -678,7 +678,7 @@ theorem v16_1 :
   exact le_trans h (by norm_num)
 
 theorem v16_2 :
-    lgamma ((-4503599627370510 : ℤ) / 2 ^ (52 - 4)) ≤ -((321 / 8192) : ℝ) := by
+    GammaBasic.lgamma ((-4503599627370510 : ℤ) / 2 ^ (52 - 4)) ≤ -((321 / 8192) : ℝ) := by
   have h := (negPointOk_sound cfgZ 16 _ _ _ _ _ _ 0 cfgZ_pi p16_2).2
   have e : ((-4503599627370510 : ℤ) : ℝ) / 2 ^ (52 - 4) =
       -((16 : ℕ) : ℝ) - (((7 / 140737488355328) : ℚ) : ℝ) := by
@@ -687,7 +687,7 @@ theorem v16_2 :
   exact le_trans h (by norm_num)
 
 theorem v16_3 :
-    ((69 / 2048) : ℝ) ≤ lgamma ((-4503599627370509 : ℤ) / 2 ^ (52 - 4)) := by
+    ((69 / 2048) : ℝ) ≤ GammaBasic.lgamma ((-4503599627370509 : ℤ) / 2 ^ (52 - 4)) := by
   have h := (negPointOk_sound cfgZ 16 _ _ _ _ _ _ 0 cfgZ_pi p16_3).1
   have e : ((-4503599627370509 : ℤ) : ℝ) / 2 ^ (52 - 4) =
       -((16 : ℕ) : ℝ) - (((13 / 281474976710656) : ℚ) : ℝ) := by
@@ -698,7 +698,7 @@ theorem v16_3 :
 /-- `|lgamma|` at the doubles of `(-11, -10)`. -/
 theorem bound10 (w : UInt64) (hlo : -(10 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(10 : ℕ)) :
     min (min ((267 / 34359738368) : ℝ) (133 / 2147483648))
-      (min ((175 / 34359738368) : ℝ) (171 / 137438953472)) ≤ |lgamma (value w)| :=
+      (min ((175 / 34359738368) : ℝ) (171 / 137438953472)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 10 3 (by norm_num) (by norm_num) (-6192449473531348) (-5629499689346936)
     (by norm_num) (by norm_num) (by norm_num) v10_0
     (by rw [cast_succ_eq]; exact v10_1)
@@ -709,7 +709,7 @@ theorem bound10 (w : UInt64) (hlo : -(10 : ℕ) - (1 : ℝ) < value w) (hhi : va
 /-- `|lgamma|` at the doubles of `(-12, -11)`. -/
 theorem bound11 (w : UInt64) (hlo : -(11 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(11 : ℕ)) :
     min (min ((53 / 67108864) : ℝ) (405 / 8589934592))
-      (min ((23 / 536870912) : ℝ) (231 / 8589934592)) ≤ |lgamma (value w)| :=
+      (min ((23 / 536870912) : ℝ) (231 / 8589934592)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 11 3 (by norm_num) (by norm_num) (-6755399439880488) (-6192449501737515)
     (by norm_num) (by norm_num) (by norm_num) v11_0
     (by rw [cast_succ_eq]; exact v11_1)
@@ -720,7 +720,7 @@ theorem bound11 (w : UInt64) (hlo : -(11 : ℕ) - (1 : ℝ) < value w) (hhi : va
 /-- `|lgamma|` at the doubles of `(-13, -12)`. -/
 theorem bound12 (w : UInt64) (hlo : -(12 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(12 : ℕ)) :
     min (min ((277 / 67108864) : ℝ) (453 / 67108864))
-      (min ((495 / 8589934592) : ℝ) (209 / 268435456)) ≤ |lgamma (value w)| :=
+      (min ((495 / 8589934592) : ℝ) (209 / 268435456)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 12 3 (by norm_num) (by norm_num) (-7318349394386652) (-6755399442231001)
     (by norm_num) (by norm_num) (by norm_num) v12_0
     (by rw [cast_succ_eq]; exact v12_1)
@@ -731,7 +731,7 @@ theorem bound12 (w : UInt64) (hlo : -(12 : ℕ) - (1 : ℝ) < value w) (hhi : va
 /-- `|lgamma|` at the doubles of `(-14, -13)`. -/
 theorem bound13 (w : UInt64) (hlo : -(13 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(13 : ℕ)) :
     min (min ((291 / 4194304) : ℝ) (347 / 4194304))
-      (min ((453 / 67108864) : ℝ) (277 / 67108864)) ≤ |lgamma (value w)| :=
+      (min ((453 / 67108864) : ℝ) (277 / 67108864)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 13 3 (by norm_num) (by norm_num) (-7881299347891911) (-7318349394567461)
     (by norm_num) (by norm_num) (by norm_num) v13_0
     (by rw [cast_succ_eq]; exact v13_1)
@@ -742,7 +742,7 @@ theorem bound13 (w : UInt64) (hlo : -(13 : ℕ) - (1 : ℝ) < value w) (hhi : va
 /-- `|lgamma|` at the doubles of `(-15, -14)`. -/
 theorem bound14 (w : UInt64) (hlo : -(14 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(14 : ℕ)) :
     min (min ((149 / 131072) : ℝ) (301 / 262144))
-      (min ((87 / 1048576) : ℝ) (291 / 4194304)) ≤ |lgamma (value w)| :=
+      (min ((87 / 1048576) : ℝ) (291 / 4194304)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 14 3 (by norm_num) (by norm_num) (-8444249301319250) (-7881299347904826)
     (by norm_num) (by norm_num) (by norm_num) v14_0
     (by rw [cast_succ_eq]; exact v14_1)
@@ -753,7 +753,7 @@ theorem bound14 (w : UInt64) (hlo : -(14 : ℕ) - (1 : ℝ) < value w) (hhi : va
 /-- `|lgamma|` at the doubles of `(-16, -15)`. -/
 theorem bound15 (w : UInt64) (hlo : -(15 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(15 : ℕ)) :
     min (min ((69 / 2048) : ℝ) (449 / 131072))
-      (min ((301 / 262144) : ℝ) (149 / 131072)) ≤ |lgamma (value w)| :=
+      (min ((301 / 262144) : ℝ) (149 / 131072)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound 15 3 (by norm_num) (by norm_num) (-9007199254740966) (-8444249301320111)
     (by norm_num) (by norm_num) (by norm_num) v15_0
     (by rw [cast_succ_eq]; exact v15_1)
@@ -765,7 +765,7 @@ theorem bound15 (w : UInt64) (hlo : -(15 : ℕ) - (1 : ℝ) < value w) (hhi : va
 double. -/
 theorem bound16 (w : UInt64) (hlo : -(16 : ℕ) - (1 : ℝ) < value w) (hhi : value w < -(16 : ℕ)) :
     min ((471 / 2048) : ℝ) (min ((321 / 8192) : ℝ) (69 / 2048)) ≤
-      |lgamma (value w)| :=
+      |GammaBasic.lgamma (value w)| :=
   interval_bound_right 16 4 (by norm_num) (by norm_num) (-4785074604081152) (-4503599627370510)
     (by norm_num) (by norm_num) (by norm_num)
     (by rw [cast_succ_eq]; exact v16_1)
@@ -789,7 +789,7 @@ theorem p10_e : negPointOk cfgZ 10 (1 / 2)
     (-2200415364017319608009 / 147573952589676412928) 0 = true := by
   decide +kernel
 
-theorem v10_e : lgamma (-21 / 2) ≤ -((477 / 32) : ℝ) := by
+theorem v10_e : GammaBasic.lgamma (-21 / 2) ≤ -((477 / 32) : ℝ) := by
   have h := (negPointOk_sound cfgZ 10 _ _ _ _ _ _ 0 cfgZ_pi p10_e).2
   have e : (-21 / 2 : ℝ) = -((10 : ℕ) : ℝ) - (((1 / 2) : ℚ) : ℝ) := by
     norm_num
@@ -799,7 +799,7 @@ theorem v10_e : lgamma (-21 / 2) ≤ -((477 / 32) : ℝ) := by
 /-- `|lgamma|` at the doubles of `(-11, -21/2]`, from the doubles next to the zero near -11 and
 the value at `-21/2`. -/
 theorem bound10cut (w : UInt64) (hlo : -(10 : ℕ) - (1 : ℝ) < value w) (hhi : value w ≤ -21 / 2) :
-    min ((267 / 34359738368) : ℝ) (min ((133 / 2147483648) : ℝ) (477 / 32)) ≤ |lgamma (value w)| :=
+    min ((267 / 34359738368) : ℝ) (min ((133 / 2147483648) : ℝ) (477 / 32)) ≤ |GammaBasic.lgamma (value w)| :=
   interval_bound_cut 10 3 (by norm_num) (by norm_num) (-6192449473531348)
     (by norm_num) (by norm_num) (by norm_num) v10_0
     (by rw [cast_succ_eq]; exact v10_1)
