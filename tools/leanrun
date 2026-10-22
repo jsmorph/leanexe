@@ -13,9 +13,10 @@ lock_dir="${LEANRUN_LOCKDIR:-${VQ_LOCKDIR:-${TMPDIR:-/tmp}/vq-leanrun.$(id -u)}}
 cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
 memory_high="${LEANRUN_MEMORY_HIGH:-4G}"
+log_file=""
 
 usage() {
-  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--toolchain DIR] <command> [args]" >&2
+  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--log FILE] [--toolchain DIR] <command> [args]" >&2
   echo "SIZE is the scope's MemoryHigh in whole gibibytes with the suffix G (default 4G), and MemoryMax is 2G more." >&2
   exit 2
 }
@@ -35,6 +36,11 @@ while [ "$#" -gt 0 ]; do
     --memory-high)
       [ "$#" -ge 2 ] || usage
       memory_high="$2"
+      shift 2
+      ;;
+    --log)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || usage
+      log_file="$2"
       shift 2
       ;;
     --toolchain)
@@ -57,6 +63,12 @@ done
 
 if [ "$#" -eq 0 ]; then
   usage
+fi
+
+if [ -n "$log_file" ]; then
+  mkdir -p "$(dirname -- "$log_file")"
+  printf 'leanrun: log %s\n' "$log_file" >&2
+  exec >"$log_file" 2>&1
 fi
 
 case "$lock_timeout" in

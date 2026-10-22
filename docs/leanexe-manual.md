@@ -630,6 +630,8 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS=1`, and takes a machine-wide lock, so the machine runs one Lean process at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
 
+`--log FILE` writes standard output and standard error to a file and preserves the command’s exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.
+
 ```sh
 export PATH="$HOME/.elan/bin:$PATH"
 tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
