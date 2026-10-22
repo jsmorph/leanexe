@@ -46,7 +46,7 @@ with native Lean, including the empty array and sums that wrap.
 
 [`PairSum`](../PairSum/README.md) builds an array literal and releases it inside the call.
 [`SumArray`](../SumArray/README.md) has the fold alone, with a word result.
-[`Updates`](../Updates/README.md) and [`Clob`](../Clob/README.md) return arrays that they build by
+[`Updates`](../Updates/README.md) and [`Clob`](../../Demos/Clob/README.md) return arrays that they build by
 updating their inputs.  The LTG entries
 [`array-literal`](../../ltg/entries/array-literal/README.md),
 [`array-size`](../../ltg/entries/array-size/README.md), and

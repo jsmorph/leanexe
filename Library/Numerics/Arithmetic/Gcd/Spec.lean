@@ -1,0 +1,10 @@
+import Mathlib.Data.Nat.GCD.Basic
+
+/-! The specification: the greatest
+common divisor of two words, as Lean's `Nat.gcd` defines it for natural numbers. -/
+
+namespace Library.Numerics.Arithmetic.Gcd
+
+def expected (x : UInt64 × UInt64) : UInt64 := UInt64.ofNat (Nat.gcd x.1.toNat x.2.toNat)
+
+end Library.Numerics.Arithmetic.Gcd

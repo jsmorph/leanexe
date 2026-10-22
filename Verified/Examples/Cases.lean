@@ -12,7 +12,7 @@ import Verified.Examples.CompositionCases
 import Verified.Examples.ScalarCompositionCases
 import Verified.Examples.RelocationCases
 import Verified.Examples.WgslCases
-import Verified.Examples.Gpt32Cases
+import Demos.Gpt32.VerifiedCases
 import Verified.Examples.ListRecursionCases
 import Verified.Examples.ListLoopsCases
 import Verified.Examples.ListTailCases
@@ -39,18 +39,18 @@ import Verified.Examples.Repeat
 import Verified.Examples.Enums
 import Verified.Examples.Recursion
 import Verified.Examples.Fields
-import Verified.Examples.Trig
-import Verified.Examples.Fourier
+import Library.Numerics.Float64.Trig.Compiled
+import Library.Numerics.Fourier.Compiled
 import Verified.Examples.Insert
-import Verified.Examples.Clob
+import Demos.Clob.Verified
 import Verified.Examples.Tables
-import Verified.Examples.Exp
-import Verified.Examples.Tanh
-import Verified.Examples.Log
-import Verified.Examples.Drone
-import Verified.Examples.Lcg
-import Verified.Examples.ParkMiller
-import Verified.Examples.Xorshift
+import Library.Numerics.Float64.Exp.Compiled
+import Library.Numerics.Float64.Tanh.Compiled
+import Library.Numerics.Float64.Log.Compiled
+import Demos.Drone.Verified
+import Library.Random.Lcg.Verified
+import Library.Random.ParkMiller.Verified
+import Library.Random.Xorshift.Verified
 
 /-! The cases of the verified compiler's examples, computed by native Lean, one line per case:
 `module|export|result kind|host arguments|expected result`, as `tests/verified/run.sh` reads
@@ -314,7 +314,7 @@ def gridArg (g : Fields.Grid) : String :=
 def gridOut (g : Fields.Grid) : String :=
   s!"{arrayOut (fieldCellWords g.cells)} {g.time.toBits} {g.steps}"
 
-/-- Arguments for `Trig.sin` and `Trig.cos`: zeros, infinities, NaN, the smallest subnormal, the
+/-- Arguments for `Library.Numerics.Float64.Trig.sin` and `Library.Numerics.Float64.Trig.cos`: zeros, infinities, NaN, the smallest subnormal, the
 doubles at and around the high words where fdlibm's branches change, the doubles next to
 `k · π/2` for `k` up to 8, large arguments up to the largest double, among them the double closest
 to a multiple of `π/2`, hashed values spread over the exponents from `2 ^ -30` to `2 ^ 21` and from
@@ -342,18 +342,18 @@ def trigArgs : List Float :=
   let all := special ++ thresholds ++ multiples ++ hashed ++ huge
   all ++ all.map (- ·)
 
-open _root_.Examples.Drone in
+open _root_.Demos.Drone in
 /-- The words of an array of choices, three for each. -/
 def choiceWords (cs : Array Choice) : Array UInt64 :=
   (cs.toList.flatMap fun c => [c.time, c.excess, c.parent]).toArray
 
-open _root_.Examples.Drone in
+open _root_.Demos.Drone in
 def choiceArg (c : Choice) : String := s!"i64:{c.time} i64:{c.excess} i64:{c.parent}"
 
-open _root_.Examples.Drone in
+open _root_.Demos.Drone in
 def choiceOut (c : Choice) : String := s!"{c.time} {c.excess} {c.parent}"
 
-open _root_.Examples.Drone in
+open _root_.Demos.Drone in
 /-- The cases of the drone planner: `compute` on the terrains of `tests/drone/corpus.txt`, which
 leave the host's terrain and the result live, and each other export on terrains, rows, and tables
 from native runs of the planner. -/
@@ -432,7 +432,7 @@ def main : IO Unit := do
   Verified.Examples.ScalarComposition.cases
   Verified.Examples.Relocation.cases
   Verified.Examples.WgslCases.runCases false
-  Verified.Examples.Gpt32Cases.runCases false
+  Demos.Gpt32.VerifiedCases.runCases false
   Verified.Examples.ListRecursion.cases
   Verified.Examples.ListLoops.cases
   Verified.Examples.ListTail.cases
@@ -940,47 +940,47 @@ def main : IO Unit := do
   for (i, (p, s)) in (List.range clobBooks.length).zip clobBooks do
     let (ap, as) := (arrayArg p, arrayArg s)
     let q := clobBelow 60 i
-    let (filled, cost) := Clob.marketBuy p s q
+    let (filled, cost) := Demos.Clob.Verified.marketBuy p s q
     IO.println s!"clob|marketBuy|list:i64,i64|{ap} {as} i64:{q}|{filled} {cost}"
     for k in [0, p.size / 2, p.size, p.size + 2].map UInt64.ofNat do
       let a := clobBelow 8 (i + k.toNat)
-      IO.println s!"clob|fillLevel|array-u64|{as} i64:{k} i64:{a}|{arrayOut (Clob.fillLevel s k a)}"
-      let r := arrayOut (Clob.fillTwice s k a 1)
+      IO.println s!"clob|fillLevel|array-u64|{as} i64:{k} i64:{a}|{arrayOut (Demos.Clob.Verified.fillLevel s k a)}"
+      let r := arrayOut (Demos.Clob.Verified.fillTwice s k a 1)
       IO.println s!"clob|fillTwice|array-u64|{as} i64:{k} i64:{a} i64:1|{r}"
-      IO.println s!"clob|fillKeep|{two}|{as} i64:{k} i64:{a}|{pairOut (Clob.fillKeep s k a)}"
-      let r := pairOut (Clob.insertLevel p s k 97 3)
+      IO.println s!"clob|fillKeep|{two}|{as} i64:{k} i64:{a}|{pairOut (Demos.Clob.Verified.fillKeep s k a)}"
+      let r := pairOut (Demos.Clob.Verified.insertLevel p s k 97 3)
       IO.println s!"clob|insertLevel|{two}|{ap} {as} i64:{k} i64:97 i64:3|{r}"
-      IO.println s!"clob|setLevel|{two}|{ap} {as} i64:{k} i64:9|{pairOut (Clob.setLevel p s k 9)}"
-      IO.println s!"clob|removeLevel|{two}|{ap} {as} i64:{k}|{pairOut (Clob.removeLevel p s k)}"
+      IO.println s!"clob|setLevel|{two}|{ap} {as} i64:{k} i64:9|{pairOut (Demos.Clob.Verified.setLevel p s k 9)}"
+      IO.println s!"clob|removeLevel|{two}|{ap} {as} i64:{k}|{pairOut (Demos.Clob.Verified.removeLevel p s k)}"
     let top := if p.isEmpty then [] else [p[0]!, p[p.size - 1]!, p[0]! + 1]
     for price in [0, 99, 100, 150, 18446744073709551615] ++ top do
-      IO.println s!"clob|findLevel|i64|{ap} i64:{price}|{Clob.findLevel p price}"
-      IO.println s!"clob|depth|i64|{ap} {as} i64:{price}|{Clob.depth p s price}"
-      let r := pairOut (Clob.addBid p s price 4)
+      IO.println s!"clob|findLevel|i64|{ap} i64:{price}|{Demos.Clob.Verified.findLevel p price}"
+      IO.println s!"clob|depth|i64|{ap} {as} i64:{price}|{Demos.Clob.Verified.depth p s price}"
+      let r := pairOut (Demos.Clob.Verified.addBid p s price 4)
       IO.println s!"clob|addBid|{two}|{ap} {as} i64:{price} i64:4|{r}"
       let c := clobBelow 12 (i + price.toNat)
-      let r := pairOut (Clob.cancelBid p s price c)
+      let r := pairOut (Demos.Clob.Verified.cancelBid p s price c)
       IO.println s!"clob|cancelBid|{two}|{ap} {as} i64:{price} i64:{c}|{r}"
       for kind in [0, 1, 2] do
-        let r := pairOut (Clob.applyCommand p s kind price 5)
+        let r := pairOut (Demos.Clob.Verified.applyCommand p s kind price 5)
         IO.println s!"clob|applyCommand|{two}|{ap} {as} i64:{kind} i64:{price} i64:5|{r}"
         let o := clobOutputs i
-        let r := tripleOut (Clob.stepCommand p s o kind price 5)
+        let r := tripleOut (Demos.Clob.Verified.stepCommand p s o kind price 5)
         let args := s!"{ap} {as} {arrayArg o} i64:{kind} i64:{price} i64:5"
         IO.println s!"clob|stepCommand|{three}|{args}|{r}"
     -- Command streams, the last with a trailing partial command, which the runs ignore.
     for cs in [0, 1, 4, 13].map (clobCommands p · i) ++ [clobCommands p 2 i ++ #[0, 5]] do
       let o := clobOutputs i
-      let r := pairOut (Clob.runCommands p s cs)
+      let r := pairOut (Demos.Clob.Verified.runCommands p s cs)
       IO.println s!"clob|runCommands|{two}|{ap} {as} {arrayArg cs}|{r}"
-      let r := tripleOut (Clob.runOut p s o cs)
+      let r := tripleOut (Demos.Clob.Verified.runOut p s o cs)
       IO.println s!"clob|runOut|{three}|{ap} {as} {arrayArg o} {arrayArg cs}|{r}"
   -- `exp` over its whole range, at its thresholds, and at the special values.
   let expArgs := floats ++ [-746.0, -745.2, -740.0, -708.5, -708.3, -100.0, -1.0, -0.5, 1e-20,
     -1e-20, 0.5, 1.0, 2.0, 10.0, 100.0, 511.9, 512.0, 600.0, 709.7, 709.8, 710.0, 1023.0,
     1024.0] ++ (List.range 300).map fun i => -750.0 + i.toFloat * 4.9
   for x in expArgs do
-    IO.println s!"exp|exp|f64|{floatArg x}|{(Exp.exp x).toBits}"
+    IO.println s!"exp|exp|f64|{floatArg x}|{(Library.Numerics.Float64.Exp.exp x).toBits}"
   -- `expm1` and `tanh` at the thresholds of the code, where `k` changes the form of `expm1`'s
   -- result, and over their ranges.
   let tanhArgs := floats ++ [1e-300, -1e-300, 1e-17, 3e-9, -3e-9, 0.2, 0.3466, -0.3466, 0.44,
@@ -988,8 +988,8 @@ def main : IO Unit := do
     -39.0, 40.0, 700.0, 709.4, 709.78, 709.79, -800.0] ++
     (List.range 200).map fun i => -45.0 + i.toFloat * 0.47
   for x in tanhArgs do
-    IO.println s!"tanh|expm1|f64|{floatArg x}|{(Tanh.expm1 x).toBits}"
-    IO.println s!"tanh|tanh|f64|{floatArg x}|{(Tanh.tanh x).toBits}"
+    IO.println s!"tanh|expm1|f64|{floatArg x}|{(Library.Numerics.Float64.Tanh.expm1 x).toBits}"
+    IO.println s!"tanh|tanh|f64|{floatArg x}|{(Library.Numerics.Float64.Tanh.tanh x).toBits}"
   -- `log` near 1, at the ends of that path, over the exponents, at subnormals, and at the special
   -- values.
   let logArgs := floats ++ [0.9375, 0.93749999999999989, 1.0646972656249998, 1.064697265625,
@@ -998,7 +998,7 @@ def main : IO Unit := do
     (List.range 200).map fun i =>
       Float.ofBits (((UInt64.ofNat i * 10 + 13) <<< 52) + 0x8765432112345)
   for x in logArgs do
-    IO.println s!"log|log|f64|{floatArg x}|{(Log.log x).toBits}"
+    IO.println s!"log|log|f64|{floatArg x}|{(Library.Numerics.Float64.Log.log x).toBits}"
   droneCases
   -- Constant tables, read in range and past the end, and an update of an owned array from one.
   for k in [0, 1, 3, 5, 7, 8, 100, 18446744073709551615] do
@@ -1289,47 +1289,47 @@ def main : IO Unit := do
       let r := s!"{gridOut w'.grid} {w'.label}"
       IO.println s!"fields|relabel|list:array-u64,f64,i64,i64|{gridArg g} i64:{label} i64:3|{r}|2"
   for x in trigArgs do
-    IO.println s!"trig|sin|f64|{floatArg x}|{(Trig.sin x).toBits}"
-    IO.println s!"trig|cos|f64|{floatArg x}|{(Trig.cos x).toBits}"
-  for xs in floatArrays ++ [0, 1, 2, 3, 4, 5, 7, 8, 12, 16, 31, 64, 100].map (Fourier.signal · 1) do
+    IO.println s!"trig|sin|f64|{floatArg x}|{(Library.Numerics.Float64.Trig.sin x).toBits}"
+    IO.println s!"trig|cos|f64|{floatArg x}|{(Library.Numerics.Float64.Trig.cos x).toBits}"
+  for xs in floatArrays ++ [0, 1, 2, 3, 4, 5, 7, 8, 12, 16, 31, 64, 100].map (Library.Numerics.Fourier.signal · 1) do
     let a := floatArrayArg xs
-    IO.println s!"fourier|dft|array-u64|{a}|{floatArrayOut (Fourier.dft xs)}|2|3"
-    IO.println s!"fourier|inverse|array-u64|{a}|{floatArrayOut (Fourier.inverse xs)}|2|3"
-    let p := floatArrayOut (Fourier.powerSpectrum xs)
+    IO.println s!"fourier|dft|array-u64|{a}|{floatArrayOut (Library.Numerics.Fourier.dft xs)}|2|3"
+    IO.println s!"fourier|inverse|array-u64|{a}|{floatArrayOut (Library.Numerics.Fourier.inverse xs)}|2|3"
+    let p := floatArrayOut (Library.Numerics.Fourier.powerSpectrum xs)
     IO.println s!"fourier|powerSpectrum|array-u64|{a}|{p}|2|5"
   for n in [(1 : UInt64), 2, 3, 4, 8, 12, 360, 1000] do
     for m in [0, 1, n / 8, n / 4, n / 2, n - 1, n, 3 * n + 1] do
-      let (c, s) := Fourier.twiddle n m
+      let (c, s) := Library.Numerics.Fourier.twiddle n m
       IO.println s!"fourier|twiddle|list:f64,f64|i64:{n} i64:{m}|{c.toBits} {s.toBits}"
   for x in words do
     IO.println s!"lcg|affine|i64|i64:{x} i64:{x * 3} i64:{x + 1}|\
-      {_root_.Examples.Lcg.affine x (x * 3) (x + 1)}"
-    IO.println s!"lcg|step|i64|i64:{x}|{_root_.Examples.Lcg.step x}"
-    IO.println s!"parkmiller|step|i64|i64:{x}|{_root_.Examples.ParkMiller.step x}"
-    IO.println s!"parkmiller|seed|i64|i64:{x}|{_root_.Examples.ParkMiller.seed x}"
-    IO.println s!"xorshift|step|i64|i64:{x}|{_root_.Examples.Xorshift.step x}"
+      {_root_.Library.Random.Lcg.affine x (x * 3) (x + 1)}"
+    IO.println s!"lcg|step|i64|i64:{x}|{_root_.Library.Random.Lcg.step x}"
+    IO.println s!"parkmiller|step|i64|i64:{x}|{_root_.Library.Random.ParkMiller.step x}"
+    IO.println s!"parkmiller|seed|i64|i64:{x}|{_root_.Library.Random.ParkMiller.seed x}"
+    IO.println s!"xorshift|step|i64|i64:{x}|{_root_.Library.Random.Xorshift.step x}"
     for n in [(0 : UInt64), 1, 2, 1000] do
-      IO.println s!"lcg|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.advance n x}"
-      let s := _root_.Examples.ParkMiller.seed x
-      IO.println s!"parkmiller|advance|i64|i64:{n} i64:{s}|{_root_.Examples.ParkMiller.advance n s}"
-      IO.println s!"xorshift|advance|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.advance n x}"
-  IO.println s!"parkmiller|advance|i64|i64:10000 i64:1|{_root_.Examples.ParkMiller.advance 10000 1}"
+      IO.println s!"lcg|advance|i64|i64:{n} i64:{x}|{_root_.Library.Random.Lcg.advance n x}"
+      let s := _root_.Library.Random.ParkMiller.seed x
+      IO.println s!"parkmiller|advance|i64|i64:{n} i64:{s}|{_root_.Library.Random.ParkMiller.advance n s}"
+      IO.println s!"xorshift|advance|i64|i64:{n} i64:{x}|{_root_.Library.Random.Xorshift.advance n x}"
+  IO.println s!"parkmiller|advance|i64|i64:10000 i64:1|{_root_.Library.Random.ParkMiller.advance 10000 1}"
   for s in [(2147483646 : UInt64), 2147483647, 2147483648, 4294967294, 4294967295] do
-    IO.println s!"parkmiller|seed|i64|i64:{s}|{_root_.Examples.ParkMiller.seed s}"
-  let cols := LeanExe.build 64 fun i => _root_.Examples.Xorshift.step ((1 : UInt64) <<< i)
+    IO.println s!"parkmiller|seed|i64|i64:{s}|{_root_.Library.Random.ParkMiller.seed s}"
+  let cols := LeanExe.build 64 fun i => _root_.Library.Random.Xorshift.step ((1 : UInt64) <<< i)
   for x in words do
     for n in [(0 : UInt64), 1, 2, 1000, 123456789, 9223372036854775808, 18446744073709551615] do
-      IO.println s!"lcg|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Lcg.jump n x}"
-      IO.println s!"xorshift|jump|i64|i64:{n} i64:{x}|{_root_.Examples.Xorshift.jump n x}|0|65"
+      IO.println s!"lcg|jump|i64|i64:{n} i64:{x}|{_root_.Library.Random.Lcg.jump n x}"
+      IO.println s!"xorshift|jump|i64|i64:{n} i64:{x}|{_root_.Library.Random.Xorshift.jump n x}|0|65"
     IO.println s!"xorshift|applyCols|i64|{arrayArg cols} i64:{x}|\
-      {_root_.Examples.Xorshift.applyCols cols x}|1|1"
+      {_root_.Library.Random.Xorshift.applyCols cols x}|1|1"
     for i in [(0 : UInt64), 5, 63] do
       let st := (x, x * 3 + 1, 6364136223846793005, x ^^^ 1442695040888963407)
-      let r := _root_.Examples.Lcg.jumpPass 1000 i st
+      let r := _root_.Library.Random.Lcg.jumpPass 1000 i st
       IO.println s!"lcg|jumpPass|list:i64,i64,i64,i64|i64:1000 i64:{i} i64:{st.1} i64:{st.2.1} \
         i64:{st.2.2.1} i64:{st.2.2.2}|{r.1} {r.2.1} {r.2.2.1} {r.2.2.2}"
-      let p := _root_.Examples.Xorshift.jumpPass 1000 i (x, cols)
+      let p := _root_.Library.Random.Xorshift.jumpPass 1000 i (x, cols)
       IO.println s!"xorshift|jumpPass|list:i64,array-u64|i64:1000 i64:{i} i64:{x} {arrayArg cols}|\
         {p.1} {arrayOut p.2}|2|2"
   IO.println s!"xorshift|square|array-u64|{arrayArg cols}|\
-    {arrayOut (_root_.Examples.Xorshift.square cols)}|2|2"
+    {arrayOut (_root_.Library.Random.Xorshift.square cols)}|2|2"

@@ -1,12 +1,12 @@
 import Examples.RemoveZero.Spec
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `removeZero`, the bytes against the specification `expected`, one
 line per case in the format of `tests/modules/run.sh`. -/
 
 namespace Examples.RemoveZero
 
-open Examples.Host
+open TestSupport.Host
 
 def cases : IO Unit := do
   for xs in [[], [0], [0, 0], [1, 0], [7, 0, 9, 0], [1, 2, 3], [1, 2, 3, 4, 5, 6, 7, 0],

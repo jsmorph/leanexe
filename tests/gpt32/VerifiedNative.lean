@@ -1,6 +1,6 @@
-import Examples.Gpt32.NativeCases
-import Verified.Examples.Gpt32Kernels
+import Demos.Gpt32.NativeCases
+import Demos.Gpt32.VerifiedKernels
 
 def main : List String → IO Unit
-  | [host, dir] => Examples.Gpt32.NativeCases.run host dir Verified.Examples.Gpt32.kernelMap
+  | [host, dir] => Demos.Gpt32.NativeCases.run host dir Demos.Gpt32.Verified.kernelMap
   | _ => throw <| IO.userError "usage: VerifiedNative.lean HOST DIR"

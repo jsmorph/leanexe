@@ -44,7 +44,7 @@ prints 1.  [`tests/modules/run.sh`](../../tests/modules/run.sh) compares 49 case
 
 ## Related examples
 
-[`Gcd`](../Gcd/README.md) uses `%`, which the IR tests in the same way (`a % 0 = a`), inside a
+[`Gcd`](../../Library/Numerics/Arithmetic/Gcd/README.md) uses `%`, which the IR tests in the same way (`a % 0 = a`), inside a
 tail-recursive loop.  [`PairSum`](../PairSum/README.md) and [`SumCount`](../SumCount/README.md) add
 arrays to straight-line code.  [`Axpy`](../Axpy/README.md) is the same kind of program on binary64
 values.

@@ -1,0 +1,11 @@
+import Demos.Drone.Program
+import LeanExe.Compiler.Command
+
+namespace Demos.Drone
+
+open Demos.Drone
+
+leanexe_compile drone := [distance, altitude, speed, ceilSqrt, restSeconds, edgeTicks,
+  choose, predecessor, advance, initial, validHeights, extend, forward, output, compute]
+
+end Demos.Drone

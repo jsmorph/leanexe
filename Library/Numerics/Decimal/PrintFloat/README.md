@@ -1,0 +1,96 @@
+# Binary to decimal conversion: `print64` and `print32`
+
+The module `PrintFloat` exports `print64`, `print64Ecma`, `print32`, and `print32Ecma`, which write a binary64 word, or the binary32 pattern in the low 32 bits of a word, as a decimal string.  For finite nonzero inputs, the digits are those of the shortest decimal that rounds back to the word, the one nearest to the word's value among the shortest, with an even last digit at a tie [1, 2, 3], written in a scientific layout (`1.5e3`) or in the layout of ECMA-262's Number::toString (`1500`) [3].  The method finds the largest decimal exponent `J` at which a multiple of `10 ^ J` lies in the word's rounding interval and takes the multiple nearest to the value, with exact integers of any size from [the limb module](../../Arithmetic/Uscale/README.md).  The implementation compiles with the verified compiler and agrees with an independent search on 889 words.  `PrintFloatTheorem` proves the theorems of the specification below for every binary64 word and every binary32 pattern, and `PrintFloatBytes` carries them to the compiled WebAssembly module.
+
+## Specification
+
+A finite nonzero word `w` with sign `neg`, significand `Q`, and binade `E` rounds back from exactly the reals of its rounding interval (`StrconvInterval.interval_iff`), and `StrconvRound.Shortest64 w neg d e` states that `(-1)^neg · d · 10^e` lies in it, has the fewest significant digits among the decimals that do, the least distance from the value of `w` among those with as many digits, and an even last digit at an equal distance from a different decimal with as many digits.  This is ECMA-262's rule for Number::toString with the choice its Note 2 recommends, and the rule of Python's `repr` [3, 4]; Java's `Double.toString` differs, since it allows a two-digit decimal where the shortest has one digit [5].
+
+| Word | `print64`, `print32` | `print64Ecma`, `print32Ecma` |
+|---|---|---|
+| finite nonzero, shortest `t · 10^k` with `t` not divisible by 10 | `sciLayout neg t k`: the digits of `t` with a point after the first when there are several, `e`, and the exponent of the first digit, with `-` when negative: `1.5e3`, `5e-324`, `-1.25e-1` | `ecmaLayout neg t k`: plain notation when the point position `n = k + digits` lies from -5 to 21, otherwise an exponent with `+` or `-`: `1500`, `0.000001`, `1e-7`, `1.5e+21` |
+| `+0`, `-0` | `0e0`, `-0e0` | `0`, `-0` |
+| infinities | `Infinity`, `-Infinity` | the same |
+| NaNs | `NaN` | the same |
+
+ECMA-262 prints negative zero as `0`; the printers print `-0`, so that the round trip through the parsers recovers every word (decision 7 of the research report).  The strings of finite words are numbers of RFC 8259's grammar, and every string is a number of the general grammar of [the parser document](../ParseFloat/README.md).  The theorems of `PrintFloatTheorem`, for every word `w`:
+
+```lean
+theorem print64_derives (w : UInt64) :
+    ∃ s n, print64 w = words s ∧ Derives true s n ∧ round64 n = canon64 w
+theorem print64_roundtrip (w : UInt64) : parse64 true (print64 w) = (true, canon64 w)
+theorem print64_json (w : UInt64) (hf : Wasm.IEEE64.isFinite w) :
+    (∃ s n, print64 w = words s ∧ Derives false s n) ∧
+      ∃ s n, print64Ecma w = words s ∧ Derives false s n
+theorem print64_shortest (w : UInt64) (hf : Wasm.IEEE64.isFinite w)
+    (hz : Wasm.IEEE64.scaledMagnitude w ≠ 0) :
+    ∃ s neg d e, print64 w = words s ∧ Derives false s (.dec neg d e) ∧ Shortest64 w neg d e
+theorem print64_layout (w : UInt64) (hf : Wasm.IEEE64.isFinite w)
+    (hz : Wasm.IEEE64.scaledMagnitude w ≠ 0) :
+    ∃ neg t k, t % 10 ≠ 0 ∧ Shortest64 w neg t k ∧
+      print64 w = words (sciLayout neg t k) ∧ print64Ecma w = words (ecmaLayout neg t k)
+-- print64Ecma_derives, print64Ecma_roundtrip, and print64Ecma_shortest state the same for
+-- print64Ecma.  print32_* and print32Ecma_* take x : UInt32 with the input x.toUInt64, round32,
+-- Shortest32, and canon32, and PrintFloatWord32.print32_low states
+-- print32 w = print32 w.toUInt32.toUInt64, print32Ecma_low the same for print32Ecma.
+```
+
+## Algorithm
+
+In quarter units of the least subnormal `2 ^ -ν` (`ν` = 1074 or 149), the value of a word with significand `Q` in binade `E` is `4 Q · 2 ^ (E - 1)`, and its rounding interval runs from `(4 Q - 2) · 2 ^ (E - 1)` to `(4 Q + 2) · 2 ^ (E - 1)`, with the lower end `(4 Q - 1) · 2 ^ (E - 1)` at the start of a normal binade (`E ≥ 2`, `Q = 2 ^ (p - 1)`), where the previous value lies at half the spacing; the ends belong to the interval when `Q` is even, since a tie rounds to the even significand.  Let `J` be the largest exponent for which some multiple of `10 ^ J` lies in the interval.  The multiples of `10 ^ J` in the interval form a run of consecutive integers `m` that contains no multiple of 10, so they all have the same number `D` of digits, and every other decimal in the interval has more digits, except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`.  The printers therefore take the multiple of `10 ^ J` nearest to the value, the even one at a tie, and when it has one digit compare it with the nearest one-digit multiple of `10 ^ (J - 1)` in the interval.  The second case arises only for subnormal words with a significand below 10, as `9e-46` and `1e-45` both lie in the interval of the least binary32 subnormal, and there the multiple of `10 ^ J` is nearer; the printers make the comparison in every case rather than rely on such a count.
+
+`shortest` searches for `J` from an exponent above the interval: the upper end is below `2 ^ B` with `B` the bit length of `4 Q + 2` plus `E - 1 - ν - 2`, and `10 ^ (j - 1) ≥ 2 ^ B` for `j = ⌈31 B / 100⌉` when `B ≥ 0` and `j = -⌊3 |B| / 10⌋` otherwise, since `2 ^ 100 < 10 ^ 31` and `10 ^ 3 < 2 ^ 10`.  At each exponent `j` the least and greatest multipliers in the interval are the quotients of the ends by `10 ^ j`, rounded up and down with the remainder flags of `Uscale.scaledQuot`, and the nearest multiplier to the value comes from `⌊2 v / 10 ^ j⌋` and its remainder flag; the clamp of that nearest integer into the run of multipliers is the nearest multiplier in the interval.  Signed exponents are words with the bias `2 ^ 62`, as in the parsers.
+
+## Implementation
+
+[`PrintFloat.lean`](Program.lean) holds the printers in the verified dialect, written for this project from the definitions above; no third-party code is ported.  The module compiles with `verified_compile` together with the routines of `Uscale.lean` it calls, in 28 seconds.  The layouts are concatenations of arrays of digits, single bytes, and zeros, so that the proofs compare them with `sciLayout` and `ecmaLayout` piece by piece; the first version built each layout from a function of the index.
+
+| Function | Role |
+|---|---|
+| `limbsOf`, `quotAt` | A word as limbs, and the quotient of `N · 2 ^ sn` by `2 ^ sd · 10 ^ j` with its remainder flag, for a decimal exponent `j` of either sign |
+| `range`, `found` | The least multiplier and the greatest plus one at exponent `j`, and whether there is one |
+| `nearest`, `clamp` | The integer nearest to `v` from `⌊2 v⌋` and its remainder flag, and its clamp into a run |
+| `startExp`, `shortest` | The start of the search, the search for `J`, and the choice of the decimal |
+| `numDigits`, `digitAt` | The number of digits of a word and its digit `i` as an ASCII byte |
+| `digitsFrom`, `byte1`, `noBytes`, `zeros` | A run of the digits of a word, one byte, no bytes, and a run of zeros, as arrays |
+| `sciLayoutW`, `ecmaLayoutW` | The two layouts as concatenations of those arrays |
+| `fixed`, `special` | The strings of the non-finite words and the zeros |
+| `print64With`, `print32With` | The fields of the word and the dispatch |
+
+## Theorems
+
+[The shortest-decimal module](PrintFloatShort.lean) proves the analysis of significant digits for any interval of positive reals from `lo` to `hi` with `hi ≤ 3 lo`.  `same_digits` shows that the multipliers at the top exponent `J` have one number `D` of digits, `more_digits` that a decimal of the interval below `J` has more digits except a one-digit multiple of `10 ^ (J - 1)` when `D = 1`, and `shortest_of_choice` that the printers' choice (`Choice`) has the fewest significant digits, the least distance among those, and an even last digit at a tie, in the order of `Shortest64`.  Every theorem in the table reports only the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+
+| Theorem | Module | Statement |
+|---|---|---|
+| `same_digits`, `more_digits`, `shortest_of_choice` | `PrintFloatShort` | The analysis above. |
+| `quotAt_spec`, `range_spec`, `inside_iff` | `PrintFloatQuot` | `quotAt` returns the floor of the real value `(N · 2 ^ sn / 2 ^ sd) · 10 ^ (-j)` and whether that value has a nonzero fractional part.  `range` gives the least multiplier of `10 ^ j` in the interval and the greatest plus one. |
+| `nearest_spec`, `clamp_spec` | `PrintFloatQuot` | `nearest` rounds `y` to the nearest integer, the even one at a tie, from `⌊2 y⌋` and its remainder flag, and `clamp` of that integer into a run is the nearest member of the run. |
+| `top_top`, `width_le`, `quot_bound` | `PrintFloatSearch` | The top exponent `J` has no multiple of a power of ten above it in the interval, the interval is at most `10 ^ (J + 1)` wide, and the quotients from `J - 1` on stay below `2 ^ 62`. |
+| `startExp_spec`, `found_iff`, `search_spec` | `PrintFloatPick` | The search starts above the interval's upper end, `found` decides whether a multiple lies in the interval, and the search returns `J`. |
+| `no_tie` | `PrintFloatChoice` | A one-digit multiple of `10 ^ J` and one of `10 ^ (J - 1)` in the interval are never at the same distance from the value: a tie would need `5 ^ (1 - J)` to divide a number below 100. |
+| `shortest_spec` | `PrintFloatShortest` | `shortest` returns a decimal of the interval at `J` or `J - 1` that is the printers' choice, so `shortest_of_choice` applies. |
+| `numDigits_spec`, `digitAt_spec`, `decValue_digitsOf` | `PrintFloatDigits` | `numDigits` counts the decimal digits of a word below `10 ^ 19`, `digitAt` returns its digit `i` as an ASCII byte, and `decValue` reads `digitsOf t` back as `t`. |
+| `sci_spec`, `ecma_spec` | `PrintFloatLayout` | `sciLayoutW` and `ecmaLayoutW` of `t < 10 ^ 19` and a biased exponent within `2 ^ 20` of `2 ^ 62` are the words of `sciLayout` and `ecmaLayout`. |
+| `round64_iff`, `shortest64`, `print64_code`, `layout64` | `PrintFloatWord` | A decimal rounds to a finite nonzero binary64 word exactly when it has the word's sign and its magnitude lies in the interval of `PrintFloatSearch`, the code's choice is `Shortest64`, `print64With` lays out the result of `shortest` for the word's fields, and `print64` and `print64Ecma` lay out a decimal with no trailing zero that is `Shortest64`. |
+| `round32_iff`, `shortest32`, `print32_code`, `layout32`, `print32_low` | `PrintFloatWord32` | The same for binary32 patterns, which the printers read from the low 32 bits of their argument. |
+| `sci_derives`, `ecma_derives` | `PrintFloatDerive` | For `t ≥ 1` both layouts are numbers of RFC 8259's grammar of the value `t · 10 ^ k`, the plain ECMAScript layout with trailing zeros as `(t · 10 ^ k) · 10 ^ 0`. |
+| `print64_derives`, `print64_roundtrip`, `print64_json`, `print64_shortest`, `print64_layout`, and the forms for `print64Ecma`, `print32`, and `print32Ecma` | `PrintFloatTheorem` | The theorems of the specification.  The zeros, infinities, and NaNs print as fixed strings that the grammars derive, a decimal with trailing zeros is `Shortest64` when the decimal without them is (`shortest64_shift`), and every string is shorter than `2 ^ 32` bytes, the bound of `ParseFloatTheorem.parse64_accept`. |
+| `print64_bytes_accuracy`, `print64Ecma_bytes_accuracy`, `print32_bytes_accuracy`, `print32Ecma_bytes_accuracy` | `PrintFloatBytes` | Functions 35 to 38 of the compiled module are the four exports.  From a ready store a call traps at `unreachable` when memory runs out or returns a pointer to an owned array holding the words of a string with the properties of `derives64` or `derives32`, and leaves a ready store in which the heap's earlier regions keep their bytes and lie apart from the array. |
+| `print_file`, `print_file_decode` | `PrintFloatFile` | `build/verified/printfloat.wasm`, 14,178 bytes, holds the encoding of the module and decodes to it; `tests/verified/run.sh` writes the file, validates it with `wasm-tools validate`, and checks these theorems. |
+
+## Tests
+
+[`PrintFloatAccuracy.lean`](../../../../tests/TestSupport/Numerics/PrintFloatAccuracy.lean) runs the compiled native code of the four printers on the 889 words of [`data/strconv/print-cases.txt`](../../../../data/strconv/print-cases.txt), 563 binary64 and 326 binary32, and requires each string to equal the expected one, both strings of each word to read back through `ParseFloat.parse64` or `parse32` in the general grammar as the word (every NaN as the canonical NaN), and the strings of finite words to be numbers of RFC 8259's grammar.  [`tools/strconv/print_cases.py`](../../../../tools/strconv/print_cases.py) computes the expected strings by a search over the number of significant digits with exact rationals: for each count from 1 upward it collects every decimal of that many digits in the rounding interval at every exponent the interval reaches, and the first count with a candidate gives the nearest, with an even last digit at a tie.  This search does not use the largest exponent `J`, and for binary64 the program also checks the digits and exponent against Python's `repr`.  The words are the zeros, infinities, and NaNs, the twelve smallest subnormals, the largest subnormal, the smallest normal, starts and ends of binades across the exponent range, the largest finite word, the neighbors of powers of ten, values at the limits of the ECMAScript layout, and 180 words from a fixed seed.  All 889 cases agree, in 372 seconds through `lake env lean --run`, and they agree again after the layouts became concatenations.
+
+## Limits
+
+The byte theorems trust Talos's semantics of WebAssembly and its decoder, as every theorem of the verified compiler does.  The printers write one byte per word, which costs eight bytes of memory per character.  Every NaN prints as `NaN`, since the grammar carries no payload, and the round trip recovers the canonical NaN.  The search costs about twenty exact quotients of integers of up to 18 limbs per word; the native check of 889 words, four strings and four parses each, takes 372 seconds under `lean --run`, and no faster method, such as Cox's or Schubfach's tables, is used.
+
+## References
+
+1. R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast (Floating Point Formatting, Part 3)", 19 January 2026, [research.swtch.com/fp](https://research.swtch.com/fp).  Not peer reviewed.
+2. R. Giulietti, "The Schubfach way to render doubles", revision of 20 March 2022, self-published, [PDF on Google Drive](https://drive.google.com/file/d/1gp5xv4CAa78SVgCeWfGqqI4FfYYYuNFb), CC BY-SA 4.0.  Not peer reviewed.
+3. Ecma International, ECMA-262, *ECMAScript 2027 Language Specification*, draft of 9 October 2026, [tc39.es/ecma262](https://tc39.es/ecma262/): 6.1.6.1.20 (Number::toString) with Notes 1 to 3.
+4. Python Software Foundation, Python documentation, [`sys.float_repr_style`](https://docs.python.org/3/library/sys.html#sys.float_repr_style) and [What's New in Python 3.1](https://docs.python.org/3/whatsnew/3.1.html).
+5. Oracle, Java SE 21 API, [`Double.toString(double)`](https://docs.oracle.com/en/java/javase/21/docs/api/java.base/java/lang/Double.html#toString(double)).

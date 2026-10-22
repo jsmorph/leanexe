@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs tests/gpt32/Native.lean on SwiftShader and llvmpipe: small random models through the Lean
-# driver of Examples/Gpt32/Generate.lean, with every step's scores compared bit for bit with
+# driver of Demos/Gpt32/Generate.lean, with every step's scores compared bit for bit with
 # native Lean's step32.
 # Usage: tests/gpt32/native.sh [--verified] [build directory]
 set -euo pipefail
@@ -17,17 +17,17 @@ source=tests/gpt32/Native.lean
 if [ "$verified" -eq 1 ]; then
   source=tests/gpt32/VerifiedNative.lean
   (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
-    Examples.Gpt32.NativeCases Verified.Examples.Gpt32Kernels)
+    Demos.Gpt32.NativeCases Verified.Examples.Gpt32Kernels)
   mkdir -p "$build/gpt32-native"
   wasm=$build/gpt32-native/gpt32.wasm
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-    Verified.Examples.Gpt32 Verified.Examples.Gpt32.compiled.module "$wasm")
+    Demos.Gpt32.Verified Demos.Gpt32.Verified.compiled.module "$wasm")
   wasm-tools validate "$wasm"
   echo "wasm:"
   (cd "$root" && LEANEXE_GPT32_WASM="$wasm" tools/leanrun --timeout 30m lake env lean --run \
     "$source" "$root/tools/gpt32-wasm-host.mjs" "$build/gpt32-wasm")
 else
-  (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build Examples.Gpt32.NativeCases)
+  (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build Demos.Gpt32.NativeCases)
 fi
 for driver in /usr/lib/chromium/vk_swiftshader_icd.json /usr/share/vulkan/icd.d/lvp_icd.json; do
   echo "$(basename "$driver" .json):"

@@ -94,12 +94,12 @@ example whose program has the same shape.
 
 | Program shape | Example |
 |---------------|---------|
-| Tail recursion on words | [`Examples/PrimeFactors/Verify.lean`](../../../Examples/PrimeFactors/Verify.lean), [`Examples/Gcd/Verify.lean`](../../../Examples/Gcd/Verify.lean) (`Func.tail_implements`, one theorem per run of the loop body) |
+| Tail recursion on words | [`Library/Numerics/Arithmetic/PrimeFactors/Verify.lean`](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean), [`Library/Numerics/Arithmetic/Gcd/Verify.lean`](../../../Library/Numerics/Arithmetic/Gcd/Verify.lean) (`Func.tail_implements`, one theorem per run of the loop body) |
 | Fold over an array | [`Examples/SumArray/Verify.lean`](../../../Examples/SumArray/Verify.lean) (`Func.foldl_implements`) |
 | `LeanExe.loop` with a tuple state, then an array literal | [`Examples/Lookup/Verify.lean`](../../../Examples/Lookup/Verify.lean) (`Stmt.loop_spec`, `Stmt.arrayLiteral_spec`) |
 | `LeanExe.build` | [`Examples/Increment/Verify.lean`](../../../Examples/Increment/Verify.lean), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Stmt.build_spec`) |
 | `LeanExe.repeatWhile` over a function that pushes | [`Examples/Below100/Verify.lean`](../../../Examples/Below100/Verify.lean) (`Live.repeatWhileOne`, `Stmt.pushInPlace_spec`) |
-| Calls between listed functions | [`Examples/PrimeFactors/Verify.lean`](../../../Examples/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
+| Calls between listed functions | [`Library/Numerics/Arithmetic/PrimeFactors/Verify.lean`](../../../Library/Numerics/Arithmetic/PrimeFactors/Verify.lean) (`Stmt.callImplements_spec`), [`Examples/RemoveZero/Verify.lean`](../../../Examples/RemoveZero/Verify.lean) (`Live.callScalar_seq`) |
 
 Print the IR of each function first, as `#eval NAME.f.ir.body`, and write the proof against it.
 [The LeanExe compiler manual's section on proving](../../../docs/leanexe-manual.md#proving)
@@ -123,12 +123,12 @@ Examples.Name.Verify`.
    ```lean
    import Examples.Name.Spec
    import Examples.Name.Samples
-   import Examples.Host
+   import TestSupport.Host
 
    namespace Examples.Name
 
    def cases : IO Unit := do
-     for l in Examples.Host.lines "NAME" "compute" expected samples do
+     for l in TestSupport.Host.lines "NAME" "compute" expected samples do
        IO.println l
 
    end Examples.Name

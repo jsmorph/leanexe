@@ -313,7 +313,7 @@ theorem mid_{name} (x : Float) (hx : Finite x.toBits) (h1 : {Q(alo)} ≤ |value 
     linarith
 '''
 out=open('../AsinTheoremMid.lean','w')
-out.write('''import Verified.Examples.AsinTheoremBig
+out.write('''import Library.Numerics.Float64.Asin.AsinTheoremBig
 
 /-!
 `Asin.asin x` for `1/2 ≤ |x| < 0.975`: with `t = (1 - |x|)/2`, `s = √t`, `w` the high part of
@@ -323,7 +323,7 @@ up to the constants, and `w + c` lies within `2 ^ -70` of `√t`.  The three ran
 chains `A1`, `A2`, and `A3` of `AsinTheoremRatio`.
 -/
 
-namespace Verified.Examples.AsinTheoremMid
+namespace Library.Numerics.Float64.Asin.AsinTheoremMid
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx F64RoundNearest F64HalfUlp PolyBound
   AsinTheoremSupport AsinTheoremRatio AsinTheoremBranches AsinTheoremSmall AsinTheoremHalf
   AsinTheoremBig
@@ -333,5 +333,5 @@ set_option exponentiation.threshold 4096
 out.write(emit("A",F(1,2),F(6,10),("A1",F(1,5),F(1,4)),1022,F(196,100)*U54))
 out.write(emit("B",F(6,10),F(9,10),("A2",F(1,20),F(1,5)),1022,F(196,100)*U54))
 out.write(emit("C",F(9,10),F(975,1000),("A3",F(1,80),F(1,20)),1023,F(25,10)*U54))
-out.write("\nend Verified.Examples.AsinTheoremMid\n")
+out.write("\nend Library.Numerics.Float64.Asin.AsinTheoremMid\n")
 out.close()

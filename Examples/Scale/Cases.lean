@@ -1,12 +1,12 @@
 import Examples.Scale.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `scale`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Scale
 
-open Examples.Host
+open TestSupport.Host
 
 def scaleCases : IO Unit := do
   let chosen : List (UInt64 × UInt64 × UInt64) :=

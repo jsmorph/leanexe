@@ -9,7 +9,7 @@ sums, products, quotients, and square roots of enclosed values are enclosed by r
 the kernel computes.
 
 * `π` from Machin's formula `π = 16 arctan (1/5) - 4 arctan (1/239)` with 40 and 12 terms of the
-  alternating arctangent series, the method of `Verified.Examples.TrigPi` with fewer terms, within
+  alternating arctangent series, the method of `Library.Numerics.Float64.Trig.TrigPi` with fewer terms, within
   `2 ^ -190`.
 * `cos 1` and `sin 1` from 20 terms of their series (`TaylorRemainder`), and `cos 2` and `sin 2`
   from the double-angle formulas.

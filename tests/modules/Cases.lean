@@ -1,5 +1,5 @@
 import Examples.Scale.Cases
-import Examples.Gcd.Cases
+import TestSupport.Modules.Gcd
 import Examples.SumArray.Cases
 import Examples.PairSum.Cases
 import Examples.SumCount.Cases
@@ -7,10 +7,10 @@ import Examples.Axpy.Cases
 import Examples.ScaledHypot.Cases
 import Examples.Binary32.Cases
 import Examples.Piecewise.Cases
-import Examples.SumSquares.Cases
-import Examples.Mean.Cases
+import TestSupport.Modules.SumSquares
+import TestSupport.Modules.Mean
 import Examples.Bucket.Cases
-import Examples.Clob.Cases
+import Demos.Clob.Cases
 import Examples.Calc.Cases
 import Examples.Shape.Cases
 import Examples.Lists.Cases
@@ -19,11 +19,11 @@ import Examples.Trees.Cases
 import Examples.Updates.Cases
 import Examples.Bools.Cases
 import Examples.Grids.Cases
-import Examples.Euler.Cases
-import Examples.Drone.Cases
+import Demos.Euler.Cases
+import Demos.Drone.Cases
 import Examples.Increment.Cases
 import Examples.RemoveZero.Cases
-import Examples.PrimeFactors.Cases
+import TestSupport.Modules.PrimeFactors
 import Examples.Lookup.Cases
 import Examples.Below100.Cases
 import Examples.TreeLookup.Cases
@@ -37,7 +37,7 @@ patterns and a pair of arrays as the two arrays' words joined by a comma.
 
 def main : IO Unit := do
   Examples.Scale.cases
-  Examples.Gcd.cases
+  Library.Numerics.Arithmetic.Gcd.cases
   Examples.SumArray.cases
   Examples.PairSum.cases
   Examples.SumCount.cases
@@ -45,10 +45,10 @@ def main : IO Unit := do
   Examples.ScaledHypot.cases
   Examples.Binary32.cases
   Examples.Piecewise.cases
-  Examples.SumSquares.cases
-  Examples.Mean.cases
+  Library.Numerics.Statistics.SumSquares.cases
+  Library.Numerics.Statistics.Mean.cases
   Examples.Bucket.cases
-  Examples.Clob.cases
+  Demos.Clob.cases
   Examples.Calc.cases
   Examples.Shape.cases
   Examples.Lists.cases
@@ -57,11 +57,11 @@ def main : IO Unit := do
   Examples.Updates.cases
   Examples.Bools.cases
   Examples.Grids.cases
-  Examples.Euler.cases
-  Examples.Drone.cases
+  Demos.Euler.cases
+  Demos.Drone.cases
   Examples.Increment.cases
   Examples.RemoveZero.cases
-  Examples.PrimeFactors.cases
+  Library.Numerics.Arithmetic.PrimeFactors.cases
   Examples.Lookup.cases
   Examples.Below100.cases
   Examples.TreeLookup.cases

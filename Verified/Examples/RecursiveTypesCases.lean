@@ -4,7 +4,7 @@ import Examples.Trees.Cases
 
 namespace Verified.Examples.RecursiveTypes
 
-open Examples.Host Examples.Words Examples.Trees
+open TestSupport.Host Examples.Words Examples.Trees
 
 def render (xs : List UInt64) : String := s!"[{", ".intercalate (xs.map toString)}]"
 

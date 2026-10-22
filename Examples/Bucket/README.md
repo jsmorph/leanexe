@@ -44,7 +44,7 @@ quotients near and beyond 2^64.
 
 ## Related examples
 
-[`Mean`](../Mean/README.md) converts a word to a float with `UInt64.toFloat`.
+[`Mean`](../../Library/Numerics/Statistics/Mean/README.md) converts a word to a float with `UInt64.toFloat`.
 [`Shape`](../Shape/README.md) converts words to floats inside a sum type.  The LTG entry
 [`float-arithmetic`](../../ltg/entries/float-arithmetic/README.md) describes the rules for float
 expressions.

@@ -1,12 +1,12 @@
 import Examples.Bools.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `bools`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Bools
 
-open Examples.Host
+open TestSupport.Host
 
 def boolsCases : IO Unit := do
   let b (x : Bool) : String := s!"i64:{if x then 1 else 0}"

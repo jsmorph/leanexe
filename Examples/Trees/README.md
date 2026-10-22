@@ -63,7 +63,7 @@ functions, and runs the depth test on chains of 999 and 1,000 nodes.
 
 [`Words`](../Words/README.md) and [`Lists`](../Lists/README.md) have records with one child and tail
 recursion or loops.  [`TreeLookup`](../TreeLookup/README.md) searches a binary search tree stored in
-an array.  [`Clob`](../Clob/README.md) has the same ownership rules for arrays.  The LTG entries
+an array.  [`Clob`](../../Demos/Clob/README.md) has the same ownership rules for arrays.  The LTG entries
 [`recursive-calls`](../../ltg/entries/recursive-calls/README.md),
 [`consumed-recursion`](../../ltg/entries/consumed-recursion/README.md),
 [`record-reuse`](../../ltg/entries/record-reuse/README.md),

@@ -22,7 +22,7 @@ and `Q₁d` are explicit, so the energy bounds of `BesselEnergy` apply to them.
 
 namespace LeanExe.ProofKit.BesselPQ
 
-open Real Bessel
+open Real Library.Numerics.Float64.Bessel
 
 /-- `√(π x / 2)`. -/
 noncomputable def amp (x : ℝ) : ℝ := √(π * x / 2)

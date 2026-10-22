@@ -59,9 +59,9 @@ describes the compiler and its universal proof.
 | Loops, builds, and calls in loop bodies and branches | Subject to placement rules | Any expression of the dialect |
 | Composition across modules | `ImplementsPure` for functions that keep the store | Typed program reuse and call relocation, transported meaning proofs, and generated scalar store-preservation proofs |
 
-Both compilers compile the [Euler solvers](Examples/Euler/README.md),
-[binary64 GPT-2](Examples/Gpt/README.md), [binary32 GPT-2](Examples/Gpt32/README.md), and
-[drone planner](Examples/Drone/README.md).  Their numerical examples add proofs of accuracy,
+Both compilers compile the [Euler solvers](Demos/Euler/README.md),
+[binary64 GPT-2](Demos/Gpt/README.md), [binary32 GPT-2](Demos/Gpt32/README.md), and
+[drone planner](Demos/Drone/README.md).  Their numerical examples add proofs of accuracy,
 exceptional values, exact fused multiply-add, correctly rounded parsing, shortest-decimal printing,
 and generator periods.  [The numerical index](index.md) lists each algorithm and its strongest
 proved result, with links to the theorem statements and their domains.
@@ -101,14 +101,16 @@ states these proof limits.
 
 | Directory | Contents |
 |---|---|
-| [Shared libraries and LeanExe compiler](LeanExe/) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, and shared WGSL translation. |
-| [Verified compiler](Verified/) | The typed source language, compiler, universal proof, reflector, WGSL lowering, and compiled examples. |
-| [Programs and proofs](Examples/) | Programs, per-program proofs, cases, and guides.  The three generator directories also hold programs and period proofs used by the verified compiler. |
-| [Manuals and design](docs/) | The compiler manuals and design document. |
-| [Proof guidance](ltg/) | The LTG knowledge base and its declaration checker. |
-| [Tools](tools/) | The Lean runner, module and shader emitters, execution hosts, build scripts, and application tools. |
-| [Tests](tests/) | Module, decoder, numerical, allocation, GPU, and complete-generation tests, plus the browser pages. |
-| [Run records](data/), [reports](paper/) | Measurements, reproduction records, papers, and their review history. |
+| [Shared libraries and LeanExe compiler](LeanExe) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, and shared WGSL translation. |
+| [Verified compiler](Verified) | The typed source language, compiler, universal proof, reflector, WGSL lowering, and compiled examples. |
+| [Reusable algorithms](Library) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
+| [Application demos](Demos) | Euler solvers, GPT-2, the drone planner, and the order book, with application proofs and host programs. |
+| [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
+| [Manuals and design](docs) | The compiler manuals and design document. |
+| [Proof guidance](ltg) | The LTG knowledge base and its declaration checker. |
+| [Tools](tools) | The Lean runner, module and shader emitters, execution hosts, build scripts, and application tools. |
+| [Tests](tests) | Module, decoder, numerical, allocation, GPU, and complete-generation tests, plus the browser pages. |
+| [Run records](data), [reports](paper) | Measurements, reproduction records, papers, and their review history. |
 
 ## Commands
 
@@ -124,25 +126,25 @@ The GCD example builds its program and proof, writes the module, validates it, a
 export PATH="$HOME/.elan/bin:$HOME/.cargo/bin:$PATH"
 tools/download-wasmtime.sh
 tools/build-wasmtime-host.sh
-tools/leanrun --timeout 60m lake build Examples.Gcd.Verify
+tools/leanrun --timeout 60m lake build Library.Numerics.Arithmetic.Gcd.Verify
 mkdir -p build/gcd
 tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-  Examples.Gcd.Module Examples.Gcd.gcd.module build/gcd/gcd.wasm
+  Library.Numerics.Arithmetic.Gcd.Module Library.Numerics.Arithmetic.Gcd.gcd.module build/gcd/gcd.wasm
 wasm-tools validate build/gcd/gcd.wasm
 build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:48 i64:18
 ```
 
 The call prints `6`.  Every Lean or Lake command uses [the resource-limited runner](tools/leanrun),
 as [the repository instructions](AGENTS.md) require.  A focused verified-compiler build, such as
-`tools/leanrun --timeout 60m lake build Verified.Examples.Lcg`, builds that example and its imports.
+`tools/leanrun --timeout 60m lake build Library.Random.Lcg.Verified`, builds that example and its imports.
 
-The default build covers `LeanExe` and `Examples`.  The complete `Verified` build includes the
-numerical proofs and can take several hours.  Its lgamma root-range proofs use a 10 GiB memory
+The default build covers `LeanExe`, `Examples`, and `Demos`.  The complete `Library` build includes
+the numerical proofs and can take several hours.  Its lgamma root-range proofs use a 10 GiB memory
 high limit and a 12 GiB maximum:
 
 ```sh
 tools/leanrun --timeout 60m lake build
-tools/leanrun --memory-high 10G --timeout 12h lake build Verified
+tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library
 tests/verified/run.sh
 ```
 

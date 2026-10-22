@@ -1,12 +1,12 @@
 import Examples.Shape.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `shapes`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Shape
 
-open Examples.Host
+open TestSupport.Host
 
 /-- A shape as the host's four slots: the constructor index, the circle's radius as its bit
 pattern, and the rectangle's sides, with zeros in the slots of the other constructors. -/

@@ -60,8 +60,8 @@ training/gpt2/.venv/bin/python training/gpt2/quantized.py export-model
 cp data/gpt2-quantized-v1/candidates/4fab215a51e58996b78dc3b988182eadcf47532f60556db7dd5d8d35468483ac/program.wasm build/gpt2-quantized-session.wasm
 training/gpt2/.venv/bin/python training/gpt2/test_quantized_session.py build/gpt2-quantized-session.wasm build/gpt2-124m/quantized/weights.bin
 training/gpt2/.venv/bin/python training/gpt2/test_quantized_model.py
-tools/leanrun --timeout 60s lake build LeanExe.Examples.Prng
-tools/leanrun --timeout 60s .lake/build/bin/lean-wasm compile --module LeanExe.Examples.Prng --entry LeanExe.Examples.Prng.generate --out build/prng/prng.wasm
+tools/leanrun --timeout 60s lake build LeanExe.Library.Random.SplitMix64
+tools/leanrun --timeout 60s .lake/build/bin/lean-wasm compile --module LeanExe.Library.Random.SplitMix64 --entry LeanExe.Library.Random.SplitMix64.generate --out build/prng/prng.wasm
 training/gpt2/.venv/bin/python training/gpt2/compare_quantized_text.py
 ```
 

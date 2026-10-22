@@ -3,7 +3,7 @@ import Examples.Trees.Cases
 
 namespace Verified.Examples.ListLoops
 
-open Examples.Host
+open TestSupport.Host
 
 def render (xs : List UInt64) : String := s!"[{", ".intercalate (xs.map toString)}]"
 

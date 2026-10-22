@@ -11,7 +11,7 @@ the server writes what is missing from build/: the kernel texts and the cases in
 gpt32.wasm, the sampler's module gpt.wasm, and the program printer `gpt32-lines`.  The GPT-2 page
 also needs the weight files that `uv run tests/gpt32/generate.py --export` writes to
 build/gpt2-32.  tests/web/README.md describes the pages.  The GPT-2 page gets each step's host commands from
-`gpt32-lines`, which prints the programs of Examples/Gpt32/HostProgram.lean, and the server tokenizes
+`gpt32-lines`, which prints the programs of Demos/Gpt32/HostProgram.lean, and the server tokenizes
 and decodes with the pinned GPT-2 tokenizer.  Browsers expose WebGPU only to secure contexts,
 which include http://127.0.0.1 and http://localhost; a browser on another machine needs an SSH
 tunnel (`ssh -L 8000:127.0.0.1:8000 THIS-HOST`) or, in Chrome, the address in
@@ -43,8 +43,8 @@ SHAPE = ['12', '3072', '12565', '50257', '12']
 # The kernels of both pages, as tests/wgsl/run.sh emits them: (Lean module, namespace, kernel).
 KERNELS = ([('Examples.Binary32.Wgsl', 'Examples.Binary32', k)
             for k in ['scale', 'axpyArray', 'matVec', 'condMix']] +
-           [('Examples.Gpt32.Kernels', 'Examples.Gpt32', 'exp')] +
-           [('Examples.Gpt32.Specs', 'Examples.Gpt32', k)
+           [('Demos.Gpt32.Kernels', 'Demos.Gpt32', 'exp')] +
+           [('Demos.Gpt32.Specs', 'Demos.Gpt32', k)
             for k in ['embed', 'layerNorm', 'linear', 'append', 'scores', 'headMax', 'headSum',
                       'probs', 'mix', 'add', 'gelu', 'logits']])
 TYPES = {'.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8',
@@ -70,8 +70,8 @@ def prepare():
             subprocess.run([str(ROOT / 'tools/leanrun'), '--timeout', '30m', 'lake', 'env', 'lean',
                             '--run', 'tests/wgsl/Cases.lean'], cwd=ROOT, check=True, stdout=out,
                            stderr=subprocess.DEVNULL)
-    for path, module in [(WASM, 'Examples.Gpt32.Module:Examples.Gpt32.gpt32.module'),
-                         (SAMPLER, 'Examples.Gpt.Module:Examples.Gpt.gpt.module')]:
+    for path, module in [(WASM, 'Demos.Gpt32.Module:Demos.Gpt32.gpt32.module'),
+                         (SAMPLER, 'Demos.Gpt.Module:Demos.Gpt.gpt.module')]:
         if not path.is_file():
             path.parent.mkdir(parents=True, exist_ok=True)
             leanrun('lake', 'env', 'lean', '--run', 'tools/Emit.lean',

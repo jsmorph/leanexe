@@ -1,5 +1,5 @@
 import Verified.Examples.Composition
-import Examples.Host
+import TestSupport.Host
 
 namespace Verified.Examples.Composition
 

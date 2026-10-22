@@ -2,7 +2,7 @@
 
 This directory holds lemmas, tactics, and proof guidance for the LeanExe compiler and the shared
 pipeline.  The verified compiler's general correctness theorem covers its source constructs.
-Each entry is a directory under [`entries/`](entries/) with two files.  `entry.json` names the entry's
+Each entry is a directory under [`entries/`](entries) with two files.  `entry.json` names the entry's
 modules, declarations, premises, result, and the hint rules (`annotationKinds`)
 that select it, and `README.md` explains when and how to apply it.
 
@@ -32,6 +32,6 @@ function that any module can compile and call.
 | Kernels and library | `wgsl-kernel`, `splitmix64` |
 
 No entry yet describes the abort-flag rules and heap budgets of complete execution (`ImplementsA`,
-`Heap.Budget`, and `Heap.Bounded`).  [`Examples/Euler/Total.lean`](../Examples/Euler/Total.lean),
-[`Examples/Drone/Total.lean`](../Examples/Drone/Total.lean), and
+`Heap.Budget`, and `Heap.Bounded`).  [`Demos/Euler/Total.lean`](../Demos/Euler/Total.lean),
+[`Demos/Drone/Total.lean`](../Demos/Drone/Total.lean), and
 [`Examples/Increment/Verify.lean`](../Examples/Increment/Verify.lean) show their use.

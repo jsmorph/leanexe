@@ -63,7 +63,7 @@ tests/web/serve.py` serves a page that runs them on a browser's WebGPU.
 
 [`Axpy`](../Axpy/README.md), [`ScaledHypot`](../ScaledHypot/README.md), and
 [`Piecewise`](../Piecewise/README.md) are the binary64 forms of the scalar functions.
-[`Gpt32`](../Gpt32/README.md) applies the same translation to the kernels of GPT-2 in binary32.  The
+[`Gpt32`](../../Demos/Gpt32/README.md) applies the same translation to the kernels of GPT-2 in binary32.  The
 LTG entries [`binary32-arithmetic`](../../ltg/entries/binary32-arithmetic/README.md) and
 [`wgsl-kernel`](../../ltg/entries/wgsl-kernel/README.md) describe the rules.
 

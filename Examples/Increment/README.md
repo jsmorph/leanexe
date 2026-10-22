@@ -41,7 +41,7 @@ request's samples and edge cases in Wasmtime against `expected`.
 ## Related examples
 
 [`RemoveZero`](../RemoveZero/README.md) also builds its result with `LeanExe.build`.
-[`Euler`](../Euler/README.md) and [`Drone`](../Drone/README.md) have complete-execution theorems
+[`Euler`](../../Demos/Euler/README.md) and [`Drone`](../../Demos/Drone/README.md) have complete-execution theorems
 with memory bounds of the same form as `increment_total`.  The LTG entry
 [`array-build`](../../ltg/entries/array-build/README.md) describes the build template.
 

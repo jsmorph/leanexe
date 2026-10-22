@@ -43,7 +43,7 @@ def compileKernel (count : Verified.Expr S Γ .word)
     (element : Verified.Expr S (.word :: Γ) (.elem e)) : Option (Kernel count element) := do
   let params ← Params.ofTypes Γ
   let counter ← Counter.ofExpr params count
-  let output ← Output.ofElem e
+  let output ← Demos.Drone.Output.ofElem e
   let code ← lower element (kernelContext params counter.count) (Γ.length + 2)
     (kernelContext_bound params counter.count counter.sizeBound)
   let plan : KernelPlan count element := { params, counter, output, code }

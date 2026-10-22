@@ -1,5 +1,5 @@
 import Verified.Examples.ScalarComposition
-import Examples.Host
+import TestSupport.Host
 
 namespace Verified.Examples.ScalarComposition
 

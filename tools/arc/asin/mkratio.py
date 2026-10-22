@@ -3,7 +3,7 @@
 # dependencies = []
 # ///
 exec(open('genratio.py').read().split('if __name__')[0])
-head='''import Verified.Examples.AsinTheoremSupport
+head='''import Library.Numerics.Float64.Asin.AsinTheoremSupport
 
 /-!
 The rational function of `Asin.asinRatio`, `t (pS0 + ... + pS5 t ^ 5)/(1 + qS1 t + ... + qS4 t ^ 4)`
@@ -14,7 +14,7 @@ the denominator's lower bound comes from the same check.  The input `t` may carr
 error, as `x * x` does.
 -/
 
-namespace Verified.Examples.AsinTheoremRatio
+namespace Library.Numerics.Float64.Asin.AsinTheoremRatio
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx PolyBound AsinTheoremSupport
 
 set_option exponentiation.threshold 4096
@@ -29,5 +29,5 @@ for name,lo,hi,etk,slo in [("S1",F(0),F(1,8),F(10001,10000),54),("S2",F(1,8),F(1
     body+=txt+"\n"
     res[name]=(r,mq)
     print(name,float(lo),float(hi),"Mr",r[0],"er/u",r[1]/u,float(r[1]/u),"mq",float(mq))
-body+="end Verified.Examples.AsinTheoremRatio\n"
+body+="end Library.Numerics.Float64.Asin.AsinTheoremRatio\n"
 open('../AsinTheoremRatio.lean','w').write(body)
