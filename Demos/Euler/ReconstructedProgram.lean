@@ -1,3 +1,5 @@
+import Library.Numerics.Bounds.Program
+import Library.Numerics.Limiters.Minmod.Program
 import Demos.Euler.Program
 
 /-!
@@ -16,91 +18,49 @@ operations allows.
 
 namespace Demos.Euler
 
+export Library.Numerics.Bounds (Checked rejectedChecked nextUpBits nextDownBits endpoint outAdd outSub outMul outDiv outSqrt)
+
+export Library.Numerics.Limiters.Minmod (minmod)
+
 /-! Outward rounding. -/
 
-/-- A checked value: status 0 with a value, or status 1. -/
-structure Checked where
-  status : UInt64
-  value : Float
-  deriving Inhabited
-
-abbrev rejectedChecked : Checked := ⟨1, 0⟩
-
-/-- The next binary64 word above `bits` in value. -/
-abbrev nextUpBits (bits : UInt64) : UInt64 :=
-  if bits == 0x8000000000000000 then 1 else if bits < 0x8000000000000000 then bits + 1
-  else bits - 1
-
-/-- The next binary64 word below `bits` in value. -/
-abbrev nextDownBits (bits : UInt64) : UInt64 :=
-  if bits == 0 then 0x8000000000000001 else if bits < 0x8000000000000000 then bits - 1
-  else bits + 1
-
-/-- A rounded result moved one step up or down, when the result and the step are finite. -/
-def endpoint (up : Bool) (rounded : Float) : Checked :=
-  let bits := if up then nextUpBits rounded.toBits else nextDownBits rounded.toBits
-  if finite rounded && absBits bits < 0x7FF0000000000000 then ⟨0, Float.ofBits bits⟩
-  else rejectedChecked
-
-def outAdd (up : Bool) (a b : Float) : Checked :=
-  let e := endpoint up (a + b)
-  if finite a && finite b && e.status == 0 then e else rejectedChecked
-
-def outSub (up : Bool) (a b : Float) : Checked :=
-  let e := endpoint up (a - b)
-  if finite a && finite b && e.status == 0 then e else rejectedChecked
-
-def outMul (up : Bool) (a b : Float) : Checked :=
-  let e := endpoint up (a * b)
-  if finite a && finite b && e.status == 0 then e else rejectedChecked
-
-def outDiv (up : Bool) (a b : Float) : Checked :=
-  let e := endpoint up (a / b)
-  if finite a && finite b && 0 < absBits b.toBits && e.status == 0 then e else rejectedChecked
-
-def outSqrt (up : Bool) (a : Float) : Checked :=
-  let e := endpoint up a.sqrt
-  if finite a && a.toBits ≤ 0x8000000000000000 && e.status == 0 then e else rejectedChecked
-
-/-! Outward speed bounds. -/
-
 /-- A lower bound on the kinetic energy `(mx² + my²) / (2ρ)`. -/
-def kineticLower (rho mx my : Float) : Checked :=
-  let xx := outMul false mx mx
-  let yy := outMul false my my
-  let sum := outAdd false xx.value yy.value
-  let half := outMul false 0.5 sum.value
-  let kinetic := outDiv false half.value rho
+def kineticLower (rho mx my : Float) : Library.Numerics.Bounds.Checked :=
+  let xx := Library.Numerics.Bounds.outMul false mx mx
+  let yy := Library.Numerics.Bounds.outMul false my my
+  let sum := Library.Numerics.Bounds.outAdd false xx.value yy.value
+  let half := Library.Numerics.Bounds.outMul false 0.5 sum.value
+  let kinetic := Library.Numerics.Bounds.outDiv false half.value rho
   if xx.status == 0 && yy.status == 0 && sum.status == 0 && half.status == 0 &&
       kinetic.status == 0 then kinetic
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-- An upper bound on the pressure. -/
-def pressureUpper (rho mx my energy : Float) : Checked :=
+def pressureUpper (rho mx my energy : Float) : Library.Numerics.Bounds.Checked :=
   let kinetic := kineticLower rho mx my
-  let internal := outSub true energy kinetic.value
-  let pressure := outMul true 0.4 internal.value
+  let internal := Library.Numerics.Bounds.outSub true energy kinetic.value
+  let pressure := Library.Numerics.Bounds.outMul true 0.4 internal.value
   if kinetic.status == 0 && internal.status == 0 && pressure.status == 0 then pressure
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-- An upper bound on the sound speed. -/
-def soundUpper (rho mx my energy : Float) : Checked :=
+def soundUpper (rho mx my energy : Float) : Library.Numerics.Bounds.Checked :=
   let pressure := pressureUpper rho mx my energy
-  let ratio := outDiv true pressure.value rho
-  let radicand := outMul true 1.4000000000000001 ratio.value
-  let sound := outSqrt true radicand.value
+  let ratio := Library.Numerics.Bounds.outDiv true pressure.value rho
+  let radicand := Library.Numerics.Bounds.outMul true 1.4000000000000001 ratio.value
+  let sound := Library.Numerics.Bounds.outSqrt true radicand.value
   if pressure.status == 0 && ratio.status == 0 && radicand.status == 0 && sound.status == 0 then
     sound
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-- An upper bound on the signal speed `|u| + c` in the direction of `mx`. -/
-def speedUpper (rho mx my energy : Float) : Checked :=
-  let velocity := outDiv true (Float.ofBits (absBits mx.toBits)) rho
+def speedUpper (rho mx my energy : Float) : Library.Numerics.Bounds.Checked :=
+  let velocity := Library.Numerics.Bounds.outDiv true (Float.ofBits (Library.Numerics.Bounds.absBits mx.toBits)) rho
   let sound := soundUpper rho mx my energy
-  let speed := outAdd true velocity.value sound.value
+  let speed := Library.Numerics.Bounds.outAdd true velocity.value sound.value
   if stateGuard rho mx my energy && velocity.status == 0 && sound.status == 0 &&
       speed.status == 0 then speed
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-! Fluxes and the update of a cell from its faces. -/
 
@@ -120,11 +80,11 @@ def outwardSide (rho momentum transverse energy : Float) : Side :=
   let enthalpy := energy + pressure
   let energyFlux := velocity * enthalpy
   if speed.status == 0 &&
-      (finite velocity && finite transport && finite transverseVelocity &&
-        finite transverseTransport && finite kineticSum && finite halfKinetic &&
+      (Library.Numerics.Bounds.finite velocity && Library.Numerics.Bounds.finite transport && Library.Numerics.Bounds.finite transverseVelocity &&
+        Library.Numerics.Bounds.finite transverseTransport && Library.Numerics.Bounds.finite kineticSum && Library.Numerics.Bounds.finite halfKinetic &&
         positive internal) &&
-      (positive pressure && finite momentumFlux && finite transverseFlux && finite enthalpy &&
-        finite energyFlux) then
+      (positive pressure && Library.Numerics.Bounds.finite momentumFlux && Library.Numerics.Bounds.finite transverseFlux && Library.Numerics.Bounds.finite enthalpy &&
+        Library.Numerics.Bounds.finite energyFlux) then
     ⟨0, velocity, pressure, speed.value, momentum, momentumFlux, transverseFlux, energyFlux⟩
   else rejectedSide
 
@@ -156,7 +116,7 @@ def faceStep (ratio rho momentum transverse energy
   let right := outwardFlux rightInnerRho rightInnerMomentum rightInnerTransverse rightInnerEnergy
     rightOuterRho rightOuterMomentum rightOuterTransverse rightOuterEnergy
   let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha
-  let courant := outMul true ratio alpha
+  let courant := Library.Numerics.Bounds.outMul true ratio alpha
   let nextDensity := update ratio rho left.mass right.mass
   let nextMomentum := update ratio momentum left.momentum right.momentum
   let nextTransverse := update ratio transverse left.transverse right.transverse
@@ -186,15 +146,9 @@ abbrev zeroState : Conserved := ⟨0, 0, 0, 0⟩
 abbrev rejectedFaces : Faces := ⟨1, zeroState, zeroState, 0⟩
 
 abbrev finiteState (q : Conserved) : Bool :=
-  finite q.density && finite q.mx && finite q.my && finite q.energy
+  Library.Numerics.Bounds.finite q.density && Library.Numerics.Bounds.finite q.mx && Library.Numerics.Bounds.finite q.my && Library.Numerics.Bounds.finite q.energy
 
 abbrev admissibleState (q : Conserved) : Bool := stateGuard q.density q.mx q.my q.energy
-
-/-- The smaller of two words of the same sign in magnitude, or 0. -/
-abbrev minmod (a b : Float) : Float :=
-  if (a.toBits < 0x8000000000000000) == (b.toBits < 0x8000000000000000) then
-    if absBits a.toBits ≤ absBits b.toBits then a else b
-  else 0
 
 /-- A minmod slope, with status 0 when both differences are finite. -/
 structure Slope where
@@ -208,8 +162,8 @@ def slope (left center right : Conserved) : Slope :=
   let forward : Conserved := ⟨right.density - center.density, right.mx - center.mx,
     right.my - center.my, right.energy - center.energy⟩
   if finiteState backward && finiteState forward then
-    ⟨0, ⟨minmod backward.density forward.density, minmod backward.mx forward.mx,
-      minmod backward.my forward.my, minmod backward.energy forward.energy⟩⟩
+    ⟨0, ⟨Library.Numerics.Limiters.Minmod.minmod backward.density forward.density, Library.Numerics.Limiters.Minmod.minmod backward.mx forward.mx,
+      Library.Numerics.Limiters.Minmod.minmod backward.my forward.my, Library.Numerics.Limiters.Minmod.minmod backward.energy forward.energy⟩⟩
   else ⟨1, zeroState⟩
 
 /-- The faces `center ∓ factor · delta`, with status 0 when they pass the state checks. -/
@@ -220,7 +174,7 @@ def candidate (center delta : Conserved) (factor : Float) : Faces :=
     center.my - offset.my, center.energy - offset.energy⟩
   let right : Conserved := ⟨center.density + offset.density, center.mx + offset.mx,
     center.my + offset.my, center.energy + offset.energy⟩
-  if finite factor && finiteState offset && admissibleState left && admissibleState right then
+  if Library.Numerics.Bounds.finite factor && finiteState offset && admissibleState left && admissibleState right then
     ⟨0, left, right, factor⟩
   else rejectedFaces
 
@@ -303,19 +257,19 @@ def reconstructedStepGrid (n trials : UInt64) (ratio : Float) (grid : Array Cell
 
 /-! Timesteps. -/
 
-abbrev mergeChecked (a b : Checked) : Checked :=
+abbrev mergeChecked (a b : Library.Numerics.Bounds.Checked) : Library.Numerics.Bounds.Checked :=
   if a.status == 0 && b.status == 0 then
     ⟨0, if a.value.toBits ≤ b.value.toBits then b.value else a.value⟩
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-- The larger of the speed bounds of a state in both directions. -/
-def cellUpper (rho mx my energy : Float) : Checked :=
+def cellUpper (rho mx my energy : Float) : Library.Numerics.Bounds.Checked :=
   let x := speedUpper rho mx my energy
   let y := speedUpper rho my mx energy
   mergeChecked x y
 
 /-- The largest speed bound over the grid, or status 1 when a cell fails. -/
-def gridUpper (grid : Array Cell) : Checked :=
+def gridUpper (grid : Array Cell) : Library.Numerics.Bounds.Checked :=
   match LeanExe.loop grid.size.toUInt64 ((0 : UInt64), (0 : Float)) fun i acc =>
       let q := grid[i.toNat]!.state
       let c := cellUpper q.density q.mx q.my q.energy
@@ -327,14 +281,14 @@ def gridUpper (grid : Array Cell) : Checked :=
 
 /-- The ratio `dt / h`, bounded above, with status 0 when the Courant number, bounded above, is
 at most 1/2. -/
-def gridRatio (n : UInt64) (dt alpha : Float) : Checked :=
-  let spacing := outDiv false 1 n.toFloat
-  let ratio := outDiv true dt spacing.value
-  let courant := outMul true ratio.value alpha
+def gridRatio (n : UInt64) (dt alpha : Float) : Library.Numerics.Bounds.Checked :=
+  let spacing := Library.Numerics.Bounds.outDiv false 1 n.toFloat
+  let ratio := Library.Numerics.Bounds.outDiv true dt spacing.value
+  let courant := Library.Numerics.Bounds.outMul true ratio.value alpha
   if 2 ≤ n && n ≤ 800 && spacing.status == 0 && positive dt && positive spacing.value &&
       positive alpha && ratio.status == 0 && courant.status == 0 &&
       courant.value.toBits ≤ 0x3FE0000000000000 then ratio
-  else rejectedChecked
+  else Library.Numerics.Bounds.rejectedChecked
 
 /-- One try of a timestep with the given ratio: status 0 with the new grid, which replaces
 `grid`, or 9 to retry with half the timestep, keeping `grid`. -/

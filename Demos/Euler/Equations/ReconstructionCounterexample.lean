@@ -25,7 +25,7 @@ theorem inputs_admissible : Admissible left ∧ Admissible center ∧ Admissible
 
 theorem reconstructed_right : rightFace left center right = ![1, 3/2, 0, 7/8] := by
   funext i
-  fin_cases i <;> norm_num [rightFace, slope, minmod, left, center, right]
+  fin_cases i <;> norm_num [rightFace, slope, Library.Numerics.Limiters.Minmod.Real.minmod, left, center, right]
 
 theorem negative_internal_energy : internalEnergy (rightFace left center right) = -1/4 := by
   rw [reconstructed_right]

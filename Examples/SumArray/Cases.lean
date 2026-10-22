@@ -10,10 +10,10 @@ open TestSupport.Host
 
 def sumArrayCases : IO Unit := do
   for xs in wordArrays do
-    line "sumArray" "sumArray" "i64" [arrU xs] (toString (Examples.SumArray.sumArray xs.toArray))
+    line "sumArray" "sumArray" "i64" [arrU xs] (toString (Library.Numerics.Reductions.Word.sumArray xs.toArray))
     line "folds" "productArray" "i64" [arrU xs]
-      (toString (Examples.SumArray.productArray xs.toArray))
-    line "folds" "xorArray" "i64" [arrU xs] (toString (Examples.SumArray.xorArray xs.toArray))
+      (toString (Library.Numerics.Reductions.Word.productArray xs.toArray))
+    line "folds" "xorArray" "i64" [arrU xs] (toString (Library.Numerics.Reductions.Word.xorArray xs.toArray))
 
 def cases : IO Unit := do
   sumArrayCases

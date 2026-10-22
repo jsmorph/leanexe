@@ -40,7 +40,7 @@ and it squares the map of `2^i` steps to `(cm * cm, (cm + 1) * cp)`, the squarin
 [the jump proof](Jump.lean) follows from `iterate_two_pow` by induction on the passes.  Since
 `n ↦ advance n x` is a bijection of the words, the top `j` bits of the state take each
 value `2^(64 - j)` times over a period, from the count of words with given top bits in
-[`Examples/Orbit`](../Orbit/README.md).
+[`Library/Random/Orbit`](../Orbit/README.md).
 
 [The lattice proofs](Lattice.lean) describe the tuples `(x, step x, …, step^[t-1] x)` of `t`
 successive states.  An integer vector `s` lies in the dual lattice `Dual t` when

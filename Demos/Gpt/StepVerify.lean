@@ -62,7 +62,7 @@ theorem lastHidden_implements : Implements gpt.module 39 lastHiddenTuple := by
   let s1 := start.update 3 (.i64 (UInt64.ofNat cache.size))
   let s2 := s1.update 4 (.i64 (UInt64.ofNat cache.size))
   show Triple _ (.seq (.arraySize 3 0) (.seq (.assign 4 (.get 3)) (.build 5 6 7 (.get 1)
-      (.toBits (.ofBits (.read 0 (.bin .add (.bin .sub (.get 4) (.get 2)) (.get 7)))))))) 8
+      (.toBits (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .sub (.get 4) (.get 2)) (.get 7)))))))) 8
     (fun store state => store = initial ∧ state = start) _
   refine Stmt.seq_spec (Stmt.run_spec (final := s1) (by
     simp [Stmt.run, Stmt.arraySize, Expr.eval, hGet0, hLength, hA.lengthRead,
@@ -113,8 +113,8 @@ theorem embedBlock_implements : Implements gpt.module 30 embedBlockTuple := by
     { params := [.i64 pt, .i64 pp, .i64 token, .i64 p, .i64 d, .i64 bsize]
       locals := [.i64 0, .i64 0, .i64 0, .i64 0] }
   show Triple _ (.build 6 7 8 (.get 5) (.toBits (.iteF (.ltU (.get 8) (.get 4))
-      (.binF .add (.ofBits (.read 0 (.bin .add (.bin .mul (.get 2) (.get 4)) (.get 8))))
-        (.ofBits (.read 1 (.bin .add (.bin .mul (.get 3) (.get 4)) (.get 8)))))
+      (.binF .Library.Numerics.LinearAlgebra.Float64.add (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 2) (.get 4)) (.get 8))))
+        (.ofBits (.read 1 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 3) (.get 4)) (.get 8)))))
       (.constF 0)))) 9
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.build_spec (n := bsize) (fun e => (if e < d then
@@ -155,8 +155,8 @@ def headMaxStep (x : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 /-- The compiled loop body of `rowMax`. -/
 def headMaxBody : Stmt :=
   .seq (.assign 9 (.iteF
-    (.leF (.getF 6) (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 2)) (.get 8)))))
-    (.ofBits (.read 0 (.bin .add (.bin .mul (.get 5) (.get 2)) (.get 8)))) (.getF 6)))
+    (.leF (.getF 6) (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 5) (.get 2)) (.get 8)))))
+    (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 5) (.get 2)) (.get 8)))) (.getF 6)))
     (.assign 6 (.getF 9))
 
 theorem headMaxBody_run {initial : Store Unit} {px : UInt64} {x : Array Float}
@@ -254,9 +254,9 @@ def headSumStep (x mx : Array Float) (w r c : UInt64) (acc : Float) : Float :=
 /-- The compiled loop body of `rowSumExp`. -/
 def headSumBody : Stmt :=
   .seq (.call 5 [⟨.f64, .binF .sub
-      (.ofBits (.read 0 (.bin .add (.bin .mul (.get 6) (.get 3)) (.get 9))))
+      (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 6) (.get 3)) (.get 9))))
       (.ofBits (.read 1 (.get 6)))⟩] [10])
-    (.seq (.assign 11 (.binF .add (.getF 7) (.getF 10))) (.assign 7 (.getF 11)))
+    (.seq (.assign 11 (.binF .Library.Numerics.LinearAlgebra.Float64.add (.getF 7) (.getF 10))) (.assign 7 (.getF 11)))
 
 theorem headSumBody_spec {initial : Store Unit} {px pm : UInt64} {x mx : Array Float}
     (hX : UInt64Array.At initial px (x.map Float.toBits))
@@ -481,16 +481,16 @@ def stepScoreStep (q k cache : Array Float) (l p nh dh bsize e c : UInt64) (acc 
 
 /-- The compiled loop body of `stepScores`. -/
 def stepScoreBody : Stmt :=
-  .seq (.assign 15 (.binF .add (.getF 12) (.binF .mul
-    (.ofBits (.read 0 (.bin .add (.bin .mul (.bin .divU (.get 11) (.bin .add (.get 4) (.const 1)))
+  .seq (.assign 15 (.binF .Library.Numerics.LinearAlgebra.Float64.add (.getF 12) (.binF .mul
+    (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.bin .divU (.get 11) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1)))
       (.get 6)) (.get 14))))
-    (.iteF (.ltU (.bin .remU (.get 11) (.bin .add (.get 4) (.const 1))) (.get 4))
-      (.ofBits (.read 2 (.bin .add (.bin .add
-        (.bin .mul (.bin .remU (.get 11) (.bin .add (.get 4) (.const 1))) (.get 7))
-        (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 3)) (.const 1)) (.bin .mul (.get 5) (.get 6))))
-        (.bin .add (.bin .mul (.bin .divU (.get 11) (.bin .add (.get 4) (.const 1))) (.get 6))
+    (.iteF (.ltU (.bin .remU (.get 11) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1))) (.get 4))
+      (.ofBits (.read 2 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .Library.Numerics.LinearAlgebra.Float64.add
+        (.bin .mul (.bin .remU (.get 11) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1))) (.get 7))
+        (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 3)) (.const 1)) (.bin .mul (.get 5) (.get 6))))
+        (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.bin .divU (.get 11) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1))) (.get 6))
           (.get 14)))))
-      (.ofBits (.read 1 (.bin .add (.bin .mul (.bin .divU (.get 11) (.bin .add (.get 4) (.const 1)))
+      (.ofBits (.read 1 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.bin .divU (.get 11) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1)))
         (.get 6)) (.get 14))))))))
     (.assign 12 (.getF 15))
 
@@ -539,7 +539,7 @@ theorem stepScores_implements : Implements gpt.module 32 stepScoresTuple := by
         .f64 scale.toBits]
       locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0,
         .i64 0] }
-  show Triple _ (.buildWith 9 10 11 (.bin .mul (.get 5) (.bin .add (.get 4) (.const 1)))
+  show Triple _ (.buildWith 9 10 11 (.bin .mul (.get 5) (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1)))
       (.seq (.assign 12 (.constF 0)) (.loop 13 14 (.get 6) stepScoreBody))
       (.toBits (.binF .mul (.getF 12) (.getF 8)))) 16
     (fun store state => store = initial ∧ state = start) _
@@ -627,12 +627,12 @@ def stepMixStep (pw v cache : Array Float) (l p nh dh bsize c j : UInt64) (acc :
 
 /-- The compiled loop body of `stepMix`. -/
 def stepMixBody : Stmt :=
-  .seq (.assign 14 (.binF .add (.getF 11) (.binF .mul
-    (.ofBits (.read 0 (.bin .add (.bin .mul (.bin .divU (.get 10) (.get 6))
-      (.bin .add (.get 4) (.const 1))) (.get 13))))
+  .seq (.assign 14 (.binF .Library.Numerics.LinearAlgebra.Float64.add (.getF 11) (.binF .mul
+    (.ofBits (.read 0 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.bin .divU (.get 10) (.get 6))
+      (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1))) (.get 13))))
     (.iteF (.ltU (.get 13) (.get 4))
-      (.ofBits (.read 2 (.bin .add (.bin .add (.bin .mul (.get 13) (.get 7))
-        (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 3)) (.const 2))
+      (.ofBits (.read 2 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.get 13) (.get 7))
+        (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 3)) (.const 2))
           (.bin .mul (.get 5) (.get 6)))) (.get 10))))
       (.ofBits (.read 1 (.get 10)))))))
     (.assign 11 (.getF 14))
@@ -681,7 +681,7 @@ theorem stepMix_implements : Implements gpt.module 36 stepMixTuple := by
       locals := [.i64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0, .f64 0, .i64 0, .i64 0,
         .i64 0] }
   show Triple _ (.buildWith 8 9 10 (.bin .mul (.get 5) (.get 6))
-      (.seq (.assign 11 (.constF 0)) (.loop 12 13 (.bin .add (.get 4) (.const 1)) stepMixBody))
+      (.seq (.assign 11 (.constF 0)) (.loop 12 13 (.bin .Library.Numerics.LinearAlgebra.Float64.add (.get 4) (.const 1)) stepMixBody))
       (.toBits (.getF 11))) 15
     (fun store state => store = initial ∧ state = start) _
   refine (Stmt.buildWith_spec (writes := [11, 12, 13, 14]) (n := nh * dh)
@@ -761,15 +761,15 @@ def writeAt (s x k v : Array Float) (l d e : UInt64) : Float :=
 /-- The compiled element of `writeBlock`. -/
 def writeElem : Expr .u64 :=
   .toBits (.iteF (.ltU (.get 9) (.get 5)) (.ofBits (.read 1 (.get 9)))
-    (.iteF (.ltU (.get 9) (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 4)) (.const 1))
+    (.iteF (.ltU (.get 9) (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 4)) (.const 1))
       (.get 5))) (.ofBits (.read 0 (.get 9)))
-    (.iteF (.ltU (.get 9) (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 4)) (.const 2))
+    (.iteF (.ltU (.get 9) (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 4)) (.const 2))
       (.get 5)))
-      (.ofBits (.read 2 (.bin .sub (.get 9) (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 4))
+      (.ofBits (.read 2 (.bin .sub (.get 9) (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 4))
         (.const 1)) (.get 5)))))
-    (.iteF (.ltU (.get 9) (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 4)) (.const 3))
+    (.iteF (.ltU (.get 9) (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 4)) (.const 3))
       (.get 5)))
-      (.ofBits (.read 3 (.bin .sub (.get 9) (.bin .mul (.bin .add (.bin .mul (.const 2) (.get 4))
+      (.ofBits (.read 3 (.bin .sub (.get 9) (.bin .mul (.bin .Library.Numerics.LinearAlgebra.Float64.add (.bin .mul (.const 2) (.get 4))
         (.const 2)) (.get 5)))))
       (.ofBits (.read 0 (.get 9)))))))
 

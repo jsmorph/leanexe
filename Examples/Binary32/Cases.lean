@@ -54,9 +54,9 @@ def binary32Cases : IO Unit := do
       let y := (List.range (if k % 3 = 1 then n / 2 else n)).map fun i => small32 (3 * i + k)
       let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
       line "binary32" "scale32" "array-u64" [fl32 a, arrU (words32 x)]
-        (words (words32 (Examples.Binary32.scale32 a x.toArray).toList))
+        (words (words32 (Library.Numerics.LinearAlgebra.Binary32.scale32 a x.toArray).toList))
       line "binary32" "axpyArray32" "array-u64" [fl32 a, arrU (words32 x), arrU (words32 y)]
-        (words (words32 (Examples.Binary32.axpyArray32 a x.toArray y.toArray).toList))
+        (words (words32 (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x.toArray y.toArray).toList))
   -- Matrices stored by rows with the vectors they multiply, including short matrices and vectors,
   -- whose missing elements count as 0.
   let words32 (xs : List Float32) : List UInt64 := xs.map fun x => x.toBits.toUInt64
@@ -68,7 +68,7 @@ def binary32Cases : IO Unit := do
   for (rows, cols, mLen, vLen) in shapes do
     let m := vals mLen (rows * 31 + cols)
     let v := vals vLen (rows * 17 + cols * 5 + 1000)
-    let r := Examples.Binary32.matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64
+    let r := Library.Numerics.LinearAlgebra.Binary32.matVec32 m.toArray v.toArray rows.toUInt64 cols.toUInt64
     line "binary32" "matVec32" "array-u64"
       [arrU (words32 m), arrU (words32 v), u rows.toUInt64, u cols.toUInt64]
       (words (words32 r.toList))

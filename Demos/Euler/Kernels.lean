@@ -49,7 +49,7 @@ def updateTuple : Float × Float × Float × Float → Component :=
 theorem update_implements {a : Bool} : ImplementsPureA a euler.module 7 updateTuple :=
   Func.implementsPureA euler.funcs 5 euler.update.ir "update" rfl updateTuple
     (fun _ => rfl) fun ⟨ratio, state, fluxL, fluxR⟩ initial => by
-      evaluate_pure [euler.update.ir, updateTuple, update, positive, finite, absBits,
+      evaluate_pure [euler.update.ir, updateTuple, update, positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits,
         rejectedComponent]
 
 def componentTuple : Float × Float × Float × Float × Float → Component :=
@@ -59,7 +59,7 @@ set_option maxHeartbeats 2000000 in
 theorem component_implements {a : Bool} : ImplementsPureA a euler.module 5 componentTuple :=
   Func.implementsPureA euler.funcs 3 euler.component.ir "component" rfl componentTuple
     (fun _ => rfl) fun ⟨alpha, fluxL, fluxR, stateL, stateR⟩ initial => by
-      evaluate_pure [euler.component.ir, componentTuple, component, positive, finite, absBits,
+      evaluate_pure [euler.component.ir, componentTuple, component, positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits,
         rejectedComponent]
 
 def normalizedTuple : Float × UInt64 → Float := fun (x, top) => normalized x top
@@ -73,7 +73,7 @@ theorem normalized_implements {a : Bool} : ImplementsPureA a euler.module 2 norm
         Stmt.scratchWidth, Expr.scratchWidth, State.set?_eq_update, State.get,
         State.update, U64Op.apply, F64Op.apply, Scalar.values, ScalarType.valueType,
         Expr.evalResults, ScalarType.value, euler.normalized.ir, normalizedTuple, normalized,
-        absBits, exponentBits, zero_toBits, word_or, word_eq_one, or_iff_not_imp_left]
+        Library.Numerics.Bounds.absBits, exponentBits, zero_toBits, word_or, word_eq_one, or_iff_not_imp_left]
       split_ifs with h
       · simp [zero_toBits]
       · rw [F64Bits.toBits_ofBits, not_nan_of_exponent fun hb => h fun _ => hb]
@@ -110,7 +110,7 @@ theorem energyGuard_implements {a : Bool} : ImplementsPureA a euler.module 3 ene
       refine Stmt.seq_callPure hN rfl rfl rfl (x := (my, topExponent rho mx my energy)) ?_
       eval_ir [normalizedTuple]
       refine Stmt.run_triple ?_
-      eval_ir [energyGuardTuple, energyGuard, positive, finite, absBits, normalizable,
+      eval_ir [energyGuardTuple, energyGuard, positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, normalizable,
         exponentBits, topExponent, maxWord, energyResidual, word_and, word_or, word_eq_one,
         F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul, half_toBits, cond_eq_ite,
         or_iff_not_imp_left]
@@ -129,7 +129,7 @@ theorem side_implements {a : Bool} : ImplementsPureA a euler.module 4 sideTuple 
       refine Stmt.seq_callPure hG rfl rfl rfl (x := (rho, momentum, transverse, energy)) ?_
       eval_ir [energyGuardTuple]
       refine Stmt.run_triple ?_
-      eval_ir [sideTuple, side, stateGuard, narrowGuard, positive, finite, absBits, rejectedSide,
+      eval_ir [sideTuple, side, stateGuard, narrowGuard, positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, rejectedSide,
         word_and, word_or, word_eq_one, F64Bits.toBits_add, F64Bits.toBits_sub,
         F64Bits.toBits_mul, F64Bits.toBits_div, F64Bits.toBits_sqrt, F64Bits.toBits_abs,
         half_toBits, twoFifths_toBits, sevenFifths_toBits, zero_toBits, cond_eq_ite]

@@ -174,16 +174,16 @@ theorem layerNormRows_rows {x x' g b : Array Float} {l t t' d : UInt64} {eps : F
   normalizeRows_rows hT hd h (rowMeans_rows hT hd h)
     (rowInvStd_rows hT hd h (rowMeans_rows hT hd h))
 
-theorem add_size {a b : Array Float} (h : a.size < 2 ^ 64) : (add a b).size = a.size := by
-  simp [add, LeanExe.build]
+theorem add_size {a b : Array Float} (h : a.size < 2 ^ 64) : (Library.Numerics.LinearAlgebra.Float64.add a b).size = a.size := by
+  simp [Library.Numerics.LinearAlgebra.Float64.add, LeanExe.build]
   omega
 
 theorem add_rows {a a' b b' : Array Float} {w i : Nat} (ha : (i + 1) * w ≤ a.size)
     (ha' : (i + 1) * w ≤ a'.size) (hs : a.size < 2 ^ 64) (hs' : a'.size < 2 ^ 64)
-    (hA : RowsAgree w i a a') (hB : RowsAgree w i b b') : RowsAgree w i (add a b) (add a' b') := by
+    (hA : RowsAgree w i a a') (hB : RowsAgree w i b b') : RowsAgree w i (Library.Numerics.LinearAlgebra.Float64.add a b) (Library.Numerics.LinearAlgebra.Float64.add a' b') := by
   have hn : a.size.toUInt64.toNat = a.size := UInt64.toNat_ofNat_of_lt' hs
   have hn' : a'.size.toUInt64.toNat = a'.size := UInt64.toNat_ofNat_of_lt' hs'
-  unfold add
+  unfold Library.Numerics.LinearAlgebra.Float64.add
   refine rows_of_build (by rw [hn]; exact ha) (by rw [hn']; exact ha') fun m hm => ?_
   have hM : (UInt64.ofNat m).toNat = m := toNat_ofNat_lt (n := a.size.toUInt64) (by omega)
   rw [hM, hA m hm, hB m hm]
@@ -439,12 +439,12 @@ theorem causalMatMul_rows {p p' v v' : Array Float} {t t' nh dh : UInt64} {i : N
 
 theorem matMulT_rows {a a' b : Array Float} {t t' k m : UInt64} {i : Nat} (hT : Lengths i t t')
     (hk : k.toNat < 2 ^ 32) (hm : m.toNat < 2 ^ 32) (h : RowsAgree k.toNat i a a') :
-    RowsAgree m.toNat i (matMulT a b t k m) (matMulT a' b t' k m) := by
+    RowsAgree m.toNat i (Library.Numerics.LinearAlgebra.Float64.matMulT a b t k m) (Library.Numerics.LinearAlgebra.Float64.matMulT a' b t' k m) := by
   have ht := hT.small
   have ht' := hT.small'
   have hi := hT.lt
   have hr := rows_le (n := t) (by omega) hm hT.lt
-  unfold matMulT
+  unfold Library.Numerics.LinearAlgebra.Float64.matMulT
   refine rows_of_build hr (rows_le (by omega) hm hT.lt') fun e he =>
     loop_congr fun c hc acc => ?_
   obtain ⟨-, hRow, -, hri, -, -⟩ := element_facts (n := t) (by omega) hm he (by omega)
@@ -567,8 +567,8 @@ theorem forward_causal {tokens tokens' : Array UInt64}
     refine forward_prefix (i := t.toNat - 1) ⟨by omega, by omega, ht, ht⟩ hn hdh hf hv
       (fun m hm => h m (by omega)) m ?_
     rwa [Nat.sub_add_cancel ht0]
-  · show (matMulT _ wte t (nh * dh) vocab)[m]! = (matMulT _ wte t (nh * dh) vocab)[m]!
-    unfold matMulT
+  · show (Library.Numerics.LinearAlgebra.Float64.matMulT _ wte t (nh * dh) vocab)[m]! = (Library.Numerics.LinearAlgebra.Float64.matMulT _ wte t (nh * dh) vocab)[m]!
+    unfold Library.Numerics.LinearAlgebra.Float64.matMulT
     rw [build_get_out hmt, build_get_out hmt]
 
 end Demos.Gpt.Causal

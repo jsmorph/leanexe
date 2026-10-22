@@ -10,14 +10,14 @@ namespace Examples.Trees
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Examples.Trees
 
 /-- The blocks of a node: its record's, then its subtrees'. -/
-theorem blocks_node (store : Store Unit) (p k : UInt64) (l r : KeyTree) :
+theorem blocks_node (store : Store Unit) (p k : UInt64) (l r : Library.Trees.WordTree.KeyTree) :
     Node.blocks store p (encode (.node l k r)) = block store p ::
       (Node.blocks store (store.mem.read64 (slotAddress p 0)) (encode l) ++
         Node.blocks store (store.mem.read64 (slotAddress p 2)) (encode r)) := by
   simp [encode, Node.blocks, slotsBlocks]
 
 /-- The consumed blocks of a moved tree are its blocks. -/
-theorem gone_eq (store : Store Unit) (p : UInt64) (t : KeyTree) :
+theorem gone_eq (store : Store Unit) (p : UInt64) (t : Library.Trees.WordTree.KeyTree) :
     (Represent.moves store [.i64 p] (Moved.mk t)).map (block store) =
       Node.blocks store p (encode t) :=
   Node.pointers_blocks store p (encode t)
@@ -26,7 +26,7 @@ theorem gone_eq (store : Store Unit) (p : UInt64) (t : KeyTree) :
 root's block, kept by both rebuilds, is a region of `heap2`, which lies in `store2`'s
 memory. -/
 theorem node_bound {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit}
-    {p k q1 q2 : UInt64} {l r ml mr : KeyTree}
+    {p k q1 q2 : UInt64} {l r ml mr : Library.Trees.WordTree.KeyTree}
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
     (h1 : heap.Rebuilt initial
       ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
@@ -57,7 +57,7 @@ theorem node_bound {heap heap1 heap2 : Heap} {initial store1 store2 : Store Unit
   omega
 
 /-- The premises of the first self-call, from the internal function's own premises. -/
-theorem node_call1 {heap : Heap} {initial : Store Unit} {p k : UInt64} {l r : KeyTree}
+theorem node_call1 {heap : Heap} {initial : Store Unit} {p k : UInt64} {l r : Library.Trees.WordTree.KeyTree}
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r))) :
     Represent.borrowed heap initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l) ∧
       Separate initial
@@ -76,7 +76,7 @@ theorem node_call1 {heap : Heap} {initial : Store Unit} {p k : UInt64} {l r : Ke
 
 /-- The premises of the second self-call, from the first call's result. -/
 theorem node_call2 {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 : UInt64}
-    {l r ml : KeyTree}
+    {l r ml : Library.Trees.WordTree.KeyTree}
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
     (h1 : heap.Rebuilt initial
       ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
@@ -104,7 +104,7 @@ theorem node_call2 {heap heap1 : Heap} {initial store1 : Store Unit} {p k q1 : U
 
 /-- The node case: the record rebuilt from the two calls' results and the three slot writes. -/
 theorem node_rebuilt {heap heap1 heap2 : Heap} {initial store1 store2 final : Store Unit}
-    {p k k' q1 q2 : UInt64} {l r ml mr : KeyTree}
+    {p k k' q1 q2 : UInt64} {l r ml mr : Library.Trees.WordTree.KeyTree}
     (hArg : Represent.borrowed heap initial [.i64 p] (Moved.mk (KeyTree.node l k r)))
     (h1 : heap.Rebuilt initial
       ((Represent.moves initial [.i64 (initial.mem.read64 (slotAddress p 0))] (Moved.mk l)).map
@@ -139,7 +139,7 @@ theorem writes3 (store : Store Unit) (p a b c : UInt64) (hAddress : p.toNat + 24
     (Memory.WritesRange.write64 _ _ c _ _ (by omega) (by omega))
 
 /-- The children of an owned node with disjoint blocks are owned with disjoint blocks. -/
-theorem node_children {heap : Heap} {store : Store Unit} {p k : UInt64} {l r : KeyTree}
+theorem node_children {heap : Heap} {store : Store Unit} {p k : UInt64} {l r : Library.Trees.WordTree.KeyTree}
     (h : NodeOwned heap store p (encode (.node l k r)))
     (hd : (Node.blocks store p (encode (.node l k r))).Pairwise regionsDisjoint) :
     NodeOwned heap store (store.mem.read64 (slotAddress p 0)) (encode l) ∧
@@ -156,7 +156,7 @@ theorem node_children {heap : Heap} {store : Store Unit} {p k : UInt64} {l r : K
 
 /-- A rebuilt tree paired with a word is the owned pair, with the rebuild's frame. -/
 theorem Heap.Rebuilt.wordPair {heap heap' : Heap} {initial store : Store Unit}
-    {gone : List (Nat × Nat)} {w q : UInt64} {u : KeyTree}
+    {gone : List (Nat × Nat)} {w q : UInt64} {u : Library.Trees.WordTree.KeyTree}
     (h : heap.Rebuilt initial gone heap' store q (encode u)) :
     Represent.owned heap' store [.i64 w, .i64 q] (w, u) ∧
       heap.Keeps initial gone heap' store (Represent.blocks store [.i64 w, .i64 q] (w, u)) :=

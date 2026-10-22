@@ -1,3 +1,5 @@
+import Library.Arrays.Repeat.Program
+import Library.Arrays.Range.Program
 import Verified.Reflect.Command
 
 /-! The eleventh program of the verified compiler: arrays that grow with `xs.push v` and
@@ -7,6 +9,10 @@ elements a number of times logarithmic in the final length.  Any other array is 
 block with room for the result. -/
 
 namespace Verified.Examples.Grow
+
+export Library.Arrays.Repeat (repeated)
+
+export Library.Arrays.Range (evens)
 
 def pushParam (xs : Array UInt64) (v : UInt64) : Array UInt64 := xs.push v
 
@@ -21,9 +27,6 @@ def pushSize (n : UInt64) : Array UInt64 :=
 def pushKeep (n v : UInt64) : Array UInt64 × Array UInt64 :=
   let ys := LeanExe.build n fun i => i
   (ys.push v, ys)
-
-def evens (n : UInt64) : Array UInt64 :=
-  LeanExe.loop n (LeanExe.build 0 fun _ => 0) fun i acc => acc.push (2 * i)
 
 def appendParams (xs ys : Array UInt64) : Array UInt64 := xs ++ ys
 
@@ -42,11 +45,8 @@ def appendSelfOwned (n : UInt64) : Array UInt64 :=
 def appendOwnedRight (xs : Array UInt64) (n : UInt64) : Array UInt64 :=
   xs ++ LeanExe.build n fun i => i
 
-def repeated (xs : Array UInt64) (n : UInt64) : Array UInt64 :=
-  LeanExe.loop n (LeanExe.build 0 fun _ => 0) fun _ acc => acc ++ xs
-
-verified_compile compiled := [pushParam, pushBuilt, pushTwo, pushSize, pushKeep, evens,
-  appendParams, appendBuilt, appendRoom, appendSelf, appendSelfOwned, appendOwnedRight, repeated]
+verified_compile compiled := [pushParam, pushBuilt, pushTwo, pushSize, pushKeep, Library.Arrays.Range.evens,
+  appendParams, appendBuilt, appendRoom, appendSelf, appendSelfOwned, appendOwnedRight, Library.Arrays.Repeat.repeated]
 
 /-- The first push of `pushTwo` is charged a block of twice the bytes of its new length and twice
 its 8 added bytes, and the second, which grows the paid result of the first, a header and four times

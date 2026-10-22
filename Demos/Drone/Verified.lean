@@ -23,7 +23,7 @@ namespace Demos.Drone.Verified
 
 open _root_.Demos.Drone
 
-verified_compile compiled := [distance, altitude, speed, floorAt, ceilSqrt, restSeconds,
+verified_compile compiled := [distance, altitude, speed, floorAt, Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt, restSeconds,
   edgeTicks, choose, predecessor, best, advance, initial, validHeights, extend, forward, output,
   compute]
 

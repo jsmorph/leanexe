@@ -8,7 +8,7 @@
 # `trap` must trap at `unreachable`.  After writing the modules, it builds each function's theorem
 # module and checks its file theorem module, whose theorems state that the written file holds the
 # module of the function's byte theorem, and it fails unless both file theorems report only the
-# axioms propext, Classical.choice, and Quot.sound.  Last, the Verified/Examples/*Accuracy.lean
+# axioms propext, Classical.choice, and Quot.sound.  Last, the tests/TestSupport/Numerics/*Accuracy.lean
 # checks compare the transcendental functions with references computed with Lean's integers, each
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
@@ -30,7 +30,8 @@ out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
 emitted=0
-while IFS=: read -r module constant name; do  if [ -n "$case_module" ]; then
+while IFS=: read -r module constant name; do
+  if [ -n "$case_module" ]; then
     [ "$name" = "$case_module" ] || continue
     tools/leanrun --timeout 15m lake --log-level error build "$module"
   fi
@@ -63,7 +64,8 @@ fi
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers
 # them all.
 if [ -z "$case_module" ]; then
-while IFS=: read -r name theorem file; do  tools/leanrun --timeout 30m lake --log-level error build "$theorem"
+while IFS=: read -r name theorem file; do
+  tools/leanrun --timeout 30m lake --log-level error build "$theorem"
   reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
     echo "$reports"
     echo "fail: $file does not check against $out/$name.wasm" >&2
@@ -143,6 +145,15 @@ if [ "$others" -ne 0 ]; then
   echo "fail: native Lean wrote $others unexpected lines to standard error, shown above" >&2
   exit 1
 fi
+awk -F'|' '
+  BEGIN { OFS = FS }
+  NR == FNR { targets[$1 FS $2] = $3 FS $4; next }
+  { print; key = $1 FS $2 }
+  key in targets {
+    split(targets[key], target, FS)
+    $1 = target[1]; $2 = target[2]; print
+  }' "$root/tests/verified/library-cases.txt" "$cases" >"$cases.library"
+mv "$cases.library" "$cases"
 echo "native Lean: $reads accesses past the end and $inserts insertIdx! past the end, as the cases expect"
 passed=0
 failed=0

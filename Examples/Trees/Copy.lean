@@ -15,7 +15,7 @@ tree aborts or returns a pointer to an equal tree in new records, and keeps ever
 heap. -/
 theorem copy_rec (funcs : List (Func × String)) (i : Nat) (name : String)
     (hFunc : funcs[i]? = some (Func.copy [true, false, true] (2 + i), name)) :
-    ∀ t : KeyTree, Rebuilds (compile funcs) (2 + i) (fun t : KeyTree => t) t := by
+    ∀ t : Library.Trees.WordTree.KeyTree, Rebuilds (compile funcs) (2 + i) (fun t : Library.Trees.WordTree.KeyTree => t) t := by
   have hCallee : (compile funcs).funcs[2 + i - (compile funcs).imports.length]? =
       some ((Func.copy [true, false, true] (2 + i)).function (2 + i)) := compile_funcs hFunc
   have hMemory32 : (compile funcs).memIs64 = false := rfl

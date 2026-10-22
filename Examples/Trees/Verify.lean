@@ -20,7 +20,7 @@ match: a leaf assigns `c` to the result, and a node loads its fields, calls the 
 both subtrees into locals 6 and 7, and runs `combine`, which leaves `g (f l) k (f r)` in the
 result.  At any depth, a call aborts or keeps the store and returns `f t`. -/
 theorem treeRec {i : Nat} {func : Func} {name : String} (hFunc : trees.funcs[i]? = some (func, name))
-    (f : KeyTree → UInt64) (c : UInt64) (g : UInt64 → UInt64 → UInt64 → UInt64)
+    (f : Library.Trees.WordTree.KeyTree → UInt64) (c : UInt64) (g : UInt64 → UInt64 → UInt64 → UInt64)
     (hLeaf : f .leaf = c) (hNode : ∀ l k r, f (.node l k r) = g (f l) k (f r))
     (extra : Nat) (combine : Stmt)
     (hBody : func.body = .seq (.ite (.ltU (.const 999) (.get 1)) .abort .skip)
@@ -140,8 +140,8 @@ theorem treeRec {i : Nat} {func : Func} {name : String} (hFunc : trees.funcs[i]?
     · rintro s st ⟨rfl, rfl⟩
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
-theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 17) KeyTree.size t :=
-  treeRec (i := 17) rfl KeyTree.size 0 (fun a _ b => a + 1 + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 17) Library.Trees.WordTree.KeyTree.size t :=
+  treeRec (i := 17) rfl Library.Trees.WordTree.KeyTree.size 0 (fun a _ b => a + 1 + b) rfl (fun _ _ _ => rfl) 0 _ rfl
     rfl rfl rfl rfl fun initial p d pl k pr a b => by
       refine Stmt.assign_spec.mono ?_ fun _ _ h => h
       rintro s st ⟨rfl, rfl⟩
@@ -151,8 +151,8 @@ theorem size_rec : ∀ t, Keeps (compile trees.funcs) (2 + 17) KeyTree.size t :=
       exact ⟨a + 1 + b, _, next, rfl, rfl, rfl, next,
         by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
 
-theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 18) KeyTree.sum t :=
-  treeRec (i := 18) rfl KeyTree.sum 0 (fun a k b => a + k + b) rfl (fun _ _ _ => rfl) 0 _ rfl
+theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 18) Library.Trees.WordTree.KeyTree.sum t :=
+  treeRec (i := 18) rfl Library.Trees.WordTree.KeyTree.sum 0 (fun a k b => a + k + b) rfl (fun _ _ _ => rfl) 0 _ rfl
     rfl rfl rfl rfl fun initial p d pl k pr a b => by
       refine Stmt.assign_spec.mono ?_ fun _ _ h => h
       rintro s st ⟨rfl, rfl⟩
@@ -162,8 +162,8 @@ theorem sum_rec : ∀ t, Keeps (compile trees.funcs) (2 + 18) KeyTree.sum t :=
       exact ⟨a + k + b, _, next, rfl, rfl, rfl, next,
         by simp [Expr.evalResults, Expr.eval, State.get, next]⟩
 
-theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 19) KeyTree.height t :=
-  treeRec (i := 19) rfl KeyTree.height 0 (fun a _ b => max a b + 1) rfl (fun _ _ _ => rfl) 2 _
+theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 19) Library.Trees.WordTree.KeyTree.height t :=
+  treeRec (i := 19) rfl Library.Trees.WordTree.KeyTree.height 0 (fun a _ b => max a b + 1) rfl (fun _ _ _ => rfl) 2 _
     rfl rfl rfl rfl rfl fun initial p d pl k pr a b => by
       let s1 : State :=
         { params := [.i64 p, .i64 d]
@@ -191,8 +191,8 @@ theorem height_rec : ∀ t, Keeps (compile trees.funcs) (2 + 19) KeyTree.height 
         rw [show max a b = if a ≤ b then b else a from rfl]
         by_cases h : a ≤ b <;> simp [h]
 
-theorem size_implements : Implements trees.module 2 KeyTree.size :=
-  Func.entry_implements trees.funcs 0 trees.size.ir "size" rfl KeyTree.size
+theorem size_implements : Implements trees.module 2 Library.Trees.WordTree.KeyTree.size :=
+  Func.entry_implements trees.funcs 0 trees.size.ir "size" rfl Library.Trees.WordTree.KeyTree.size
     (g := trees.size.rec.ir.function (2 + 17)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
     (compile_funcs (i := 17) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -202,8 +202,8 @@ theorem size_implements : Implements trees.module 2 KeyTree.size :=
       | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.size.ir, Func.locals]⟩)
     size_rec
 
-theorem sum_implements : Implements trees.module 3 KeyTree.sum :=
-  Func.entry_implements trees.funcs 1 trees.sum.ir "sum" rfl KeyTree.sum
+theorem sum_implements : Implements trees.module 3 Library.Trees.WordTree.KeyTree.sum :=
+  Func.entry_implements trees.funcs 1 trees.sum.ir "sum" rfl Library.Trees.WordTree.KeyTree.sum
     (g := trees.sum.rec.ir.function (2 + 18)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
     (compile_funcs (i := 18) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -213,8 +213,8 @@ theorem sum_implements : Implements trees.module 3 KeyTree.sum :=
       | [a], _ => exact ⟨_, rfl, by simp [State.get, Func.state, trees.sum.ir, Func.locals]⟩)
     sum_rec
 
-theorem height_implements : Implements trees.module 4 KeyTree.height :=
-  Func.entry_implements trees.funcs 2 trees.height.ir "height" rfl KeyTree.height
+theorem height_implements : Implements trees.module 4 Library.Trees.WordTree.KeyTree.height :=
+  Func.entry_implements trees.funcs 2 trees.height.ir "height" rfl Library.Trees.WordTree.KeyTree.height
     (g := trees.height.rec.ir.function (2 + 19)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
     (compile_funcs (i := 19) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -256,7 +256,7 @@ theorem sizeSum_implements : Implements trees.module 5 KeyTree.sizeSum := by
     hK1.trans hK2 fun _ _ _ _ hb => nomatch hb⟩
 
 /-- `pushSum` with its two arguments as one pair, the array handed over. -/
-def pushSumMoved (x : Moved (Array UInt64) × KeyTree) : Array UInt64 × UInt64 :=
+def pushSumMoved (x : Moved (Array UInt64) × Library.Trees.WordTree.KeyTree) : Array UInt64 × UInt64 :=
   KeyTree.pushSum x.1.val x.2
 
 /-- `pushSum` pushes onto its array in place and then calls `sum` on its borrowed tree.  The
@@ -332,7 +332,7 @@ theorem pushSum_implements : Implements trees.module 6 pushSumMoved := by
     simpa [Represent.blocks, Represent.width] using hb
 
 /-- `dropSmall` with its two arguments as one pair, the tree consumed. -/
-def dropSmallMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.dropSmall x.1 x.2.val
+def dropSmallMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.dropSmall x.1 x.2.val
 
 /-- `dropSmall` lends its owned tree to `size` (`NodeOwned.borrowed`), takes it back owned from
 `size`'s frame (`Heap.Keeps.node`), and then releases or returns it. -/
@@ -404,7 +404,7 @@ theorem dropSmall_implements : Implements trees.module 7 dropSmallMoved := by
     · exact ⟨false, s1, by simp [Expr.eval, s1, State.get, hc], rfl, rfl, hc⟩
 
 /-- `sizeDrop` with its two arguments as one pair, the tree consumed. -/
-def sizeDropMoved (x : UInt64 × Moved KeyTree) : UInt64 × KeyTree := KeyTree.sizeDrop x.1 x.2.val
+def sizeDropMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree := KeyTree.sizeDrop x.1 x.2.val
 
 /-- `sizeDrop` lends its tree to `size` through a word `let`, then releases it on the path whose
 pair holds a leaf and returns it in the pair on the other. -/
@@ -500,7 +500,7 @@ theorem sizeDrop_implements : Implements trees.module 8 sizeDropMoved := by
 
 /-- The call of `sizeDrop` at the top of a caller whose parameters are a word `n` and a consumed
 tree at `p`: the word result lands in local 2 and the tree, owned, in local 3. -/
-theorem sizeDrop_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : KeyTree}
+theorem sizeDrop_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : Library.Trees.WordTree.KeyTree}
     {scratch : Nat} {rest : List Value} (hHeap : heap.At initial)
     (hOwned : NodeOwned heap initial p (encode t))
     (hDisjoint : (Node.blocks initial p (encode t)).Pairwise regionsDisjoint)
@@ -542,7 +542,7 @@ theorem sizeDrop_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : K
     (Option.some.inj ((hSetAll _ _).symm.trans hSet)).symm⟩
 
 /-- `sizeDropNext` with its two arguments as one pair, the tree consumed. -/
-def sizeDropNextMoved (x : UInt64 × Moved KeyTree) : UInt64 × KeyTree :=
+def sizeDropNextMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree :=
   KeyTree.sizeDropNext x.1 x.2.val
 
 /-- `sizeDropNext` passes the tree component of `sizeDrop`'s result through to its own. -/
@@ -569,7 +569,7 @@ theorem sizeDropNext_implements : Implements trees.module 9 sizeDropNextMoved :=
       exact hb⟩
 
 /-- `sizeAfterDrop` with its two arguments as one pair, the tree consumed. -/
-def sizeAfterDropMoved (x : UInt64 × Moved KeyTree) : UInt64 := KeyTree.sizeAfterDrop x.1 x.2.val
+def sizeAfterDropMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 := KeyTree.sizeAfterDrop x.1 x.2.val
 
 /-- `sizeAfterDrop` releases the tree component of `sizeDrop`'s result at its end. -/
 theorem sizeAfterDrop_implements : Implements trees.module 10 sizeAfterDropMoved := by
@@ -602,7 +602,7 @@ theorem sizeAfterDrop_implements : Implements trees.module 10 sizeAfterDropMoved
     (hK1.trans hK2 fun _ _ hFresh => hFresh).mono (fun _ h => h) fun _ hb => nomatch hb⟩
 
 /-- `sizeDropSmall` with its two arguments as one pair, the tree consumed. -/
-def sizeDropSmallMoved (x : UInt64 × Moved KeyTree) : KeyTree := KeyTree.sizeDropSmall x.1 x.2.val
+def sizeDropSmallMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := KeyTree.sizeDropSmall x.1 x.2.val
 
 /-- `sizeDropSmall` passes the tree component of `sizeDrop`'s result to `dropSmall`, which
 consumes it. -/
@@ -645,7 +645,7 @@ theorem sizeDropSmall_implements : Implements trees.module 11 sizeDropSmallMoved
   exact ⟨⟨q2, rfl, hQ2, hDQ2⟩, hK1.trans hK2 fun _ _ hFresh => hFresh⟩
 
 /-- `sizeFirst` with its two arguments as one pair, the tree consumed. -/
-def sizeFirstMoved (x : UInt64 × Moved KeyTree) : UInt64 := KeyTree.sizeFirst x.1 x.2.val
+def sizeFirstMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 := KeyTree.sizeFirst x.1 x.2.val
 
 /-- `sizeFirst` projects the word component of `sizeDrop`'s result and releases the tree
 component right after the call. -/
@@ -674,7 +674,7 @@ theorem sizeFirst_implements : Implements trees.module 12 sizeFirstMoved := by
 
 /-- The call of `dropSmall` at the top of a caller whose parameters are a word `n` and a consumed
 tree at `p`: the result, owned, lands in local 2. -/
-theorem dropSmall_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : KeyTree}
+theorem dropSmall_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : Library.Trees.WordTree.KeyTree}
     {scratch : Nat} {rest : List Value} (hHeap : heap.At initial)
     (hOwned : NodeOwned heap initial p (encode t))
     (hDisjoint : (Node.blocks initial p (encode t)).Pairwise regionsDisjoint)
@@ -711,7 +711,7 @@ theorem dropSmall_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : 
     (Option.some.inj ((hSetAll q).symm.trans hSet)).symm⟩
 
 /-- `droppedSize` with its two arguments as one pair, the tree consumed. -/
-def droppedSizeMoved (x : UInt64 × Moved KeyTree) : UInt64 := KeyTree.droppedSize x.1 x.2.val
+def droppedSizeMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 := KeyTree.droppedSize x.1 x.2.val
 
 /-- `droppedSize` binds `dropSmall`'s result with `let`, lends it to `size`, and releases it. -/
 theorem droppedSize_implements : Implements trees.module 13 droppedSizeMoved := by
@@ -758,7 +758,7 @@ theorem droppedSize_implements : Implements trees.module 13 droppedSizeMoved := 
   rwa [hBlocks2] at hb
 
 /-- `dropWithSize` with its two arguments as one pair, the tree consumed. -/
-def dropWithSizeMoved (x : UInt64 × Moved KeyTree) : UInt64 × KeyTree :=
+def dropWithSizeMoved (x : UInt64 × Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree :=
   KeyTree.dropWithSize x.1 x.2.val
 
 /-- `dropWithSize` binds `dropSmall`'s result with `let`, lends it to `size`, and returns it. -/
@@ -796,8 +796,8 @@ theorem dropWithSize_implements : Implements trees.module 14 dropWithSizeMoved :
   exact List.mem_append_left _ hb'
 
 /-- `size`'s entry keeps the store: one call of its internal function, which keeps it. -/
-theorem size_keeps : ∀ t, KeepsEntry (compile trees.funcs) (2 + 0) KeyTree.size t :=
-  Func.entry_keeps trees.funcs 0 trees.size.ir "size" rfl KeyTree.size
+theorem size_keeps : ∀ t, KeepsEntry (compile trees.funcs) (2 + 0) Library.Trees.WordTree.KeyTree.size t :=
+  Func.entry_keeps trees.funcs 0 trees.size.ir "size" rfl Library.Trees.WordTree.KeyTree.size
     (g := trees.size.rec.ir.function (2 + 17)) (by rintro _ _ _ _ ⟨p, rfl, -⟩; rfl) rfl rfl rfl
     (compile_funcs (i := 17) rfl) rfl
     (by rintro _ _ _ _ ⟨p, rfl, -⟩; simp [Expr.evalResults, Expr.eval, Func.state, State.get])
@@ -808,7 +808,7 @@ theorem size_keeps : ∀ t, KeepsEntry (compile trees.funcs) (2 + 0) KeyTree.siz
     size_rec
 
 /-- `leftSizes` with its tree consumed. -/
-def leftSizesMoved (t : Moved KeyTree) : KeyTree := t.val.leftSizes
+def leftSizesMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.leftSizes
 
 /-- The internal function of `leftSizes`, at any depth, consumes its tree and rewrites each
 record in place.  A record branch lends its left child to `size`'s internal function at the
@@ -882,7 +882,7 @@ theorem leftSizes_rec : ∀ t, Rebuilds (compile trees.funcs) (2 + 20) leftSizes
     let pl := initial.mem.read64 (slotAddress p 0)
     let pr := initial.mem.read64 (slotAddress p 2)
     let ps : List Value := [.i64 p, .i64 d]
-    let c := KeyTree.size l
+    let c := Library.Trees.WordTree.KeyTree.size l
     let s1 : State := { params := ps, locals := [z, .i64 pl, z, z, z, z, z, z] }
     let s2 : State := { params := ps, locals := [z, .i64 pl, .i64 k, z, z, z, z, z] }
     let s3 : State := { params := ps, locals := [z, .i64 pl, .i64 k, .i64 pr, z, z, z, z] }
@@ -1060,8 +1060,8 @@ theorem leftHeavy_rec : ∀ t, Keeps (compile trees.funcs) (2 + 21) KeyTree.left
     let pl := initial.mem.read64 (slotAddress p 0)
     let pr := initial.mem.read64 (slotAddress p 2)
     let ps : List Value := [.i64 p, .i64 d]
-    let sl := KeyTree.size l
-    let sr := KeyTree.size r
+    let sl := Library.Trees.WordTree.KeyTree.size l
+    let sr := Library.Trees.WordTree.KeyTree.size r
     let hl' := KeyTree.leftHeavy l
     let hr' := KeyTree.leftHeavy r
     let s1 : State := { params := ps, locals := [z, .i64 pl, z, z, z, z, z, z] }
@@ -1128,7 +1128,7 @@ theorem leftHeavy_implements : Implements trees.module 16 KeyTree.leftHeavy :=
     leftHeavy_rec
 
 /-- `sumSizes` with its two arguments as one pair. -/
-def sumSizesPair (x : UInt64 × KeyTree) : UInt64 := KeyTree.sumSizes x.1 x.2
+def sumSizesPair (x : UInt64 × Library.Trees.WordTree.KeyTree) : UInt64 := KeyTree.sumSizes x.1 x.2
 
 /-- `sumSizes` lends its tree to `size` in every iteration of its loop.  `size`'s entry keeps
 the store (`size_keeps`), so the loop body keeps it, and `Stmt.loop_spec` applies with no
@@ -1150,7 +1150,7 @@ theorem sumSizes_implements : Implements trees.module 17 sumSizesPair := by
   · simp [Stmt.run, Expr.eval, State.set?_eq_update, hParams, hLocals, s1]
   have hS1 : s1.params.length = 2 ∧ s1.locals.length = 5 := by simp [s1, hParams, hLocals]
   refine (Stmt.loop_spec (vars := [2]) (writes := [2, 5, 6]) (init := (0 : UInt64)) (n := n)
-    (fun _ acc => acc + KeyTree.size t) (by decide) (by decide) (by decide) (by decide)
+    (fun _ acc => acc + Library.Trees.WordTree.KeyTree.size t) (by decide) (by decide) (by decide) (by decide)
     (by decide) (by simp [hS1.1, hS1.2]) ⟨s1, by simp [Expr.eval, s1, start]; rfl⟩
     (by simp [State.Holds, Scalar.values, s1, hParams, hLocals]) ?_).mono (fun _ _ h => h) ?_
   · intro k acc state hk hFrame hHolds hIndex hLimit
@@ -1160,9 +1160,9 @@ theorem sumSizes_implements : Implements trees.module 17 sumSizesPair := by
       (hFrame.get 1 (by decide) (by decide)).trans (by simp [s1, start]; rfl)
     have g2 : state.get 2 = some (.i64 acc) := by
       simpa [State.Holds, Scalar.values] using hHolds
-    let a := state.update 5 (.i64 (KeyTree.size t))
-    let b := a.update 6 (.i64 (acc + KeyTree.size t))
-    let c := b.update 2 (.i64 (acc + KeyTree.size t))
+    let a := state.update 5 (.i64 (Library.Trees.WordTree.KeyTree.size t))
+    let b := a.update 6 (.i64 (acc + Library.Trees.WordTree.KeyTree.size t))
+    let c := b.update 2 (.i64 (acc + Library.Trees.WordTree.KeyTree.size t))
     -- The call keeps the store: `t` is borrowed in `initial` in every iteration.
     refine Stmt.seq_spec (Stmt.callKeeps_spec (before := state) (afterArgs := state) (next := a)
       rfl (compile_funcs (i := 0) rfl) rfl (size_keeps t) hHeap ⟨p, rfl, hNode⟩
@@ -1263,8 +1263,8 @@ theorem keyPair_implements : Implements trees.module 18 KeyTree.keyPair := by
 `KeyTree.dropWithSize`, `KeyTree.leftSizes`, `KeyTree.leftHeavy`, `KeyTree.sumSizes`, and
 `KeyTree.keyPair` exactly. -/
 theorem trees_bytes : ∃ bytes, Wasm.Encoding.encode trees.module = .ok bytes ∧
-    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 KeyTree.size ∧
-      Implements m 3 KeyTree.sum ∧ Implements m 4 KeyTree.height ∧
+    ∃ m, Wasm.Encoding.decode bytes = .ok m ∧ Implements m 2 Library.Trees.WordTree.KeyTree.size ∧
+      Implements m 3 Library.Trees.WordTree.KeyTree.sum ∧ Implements m 4 Library.Trees.WordTree.KeyTree.height ∧
       Implements m 5 KeyTree.sizeSum ∧ Implements m 6 pushSumMoved ∧
       Implements m 7 dropSmallMoved ∧ Implements m 8 sizeDropMoved ∧
       Implements m 9 sizeDropNextMoved ∧ Implements m 10 sizeAfterDropMoved ∧

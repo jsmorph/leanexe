@@ -6,10 +6,10 @@ import LeanExe.Compiler.Command
 namespace Examples.Trees
 
 open Examples.Trees in
-leanexe_compile treeMoves := [KeyTree.setKey, KeyTree.incr, KeyTree.insert, KeyTree.dropRight,
-  KeyTree.leftChild, KeyTree.keepIf, KeyTree.trim, KeyTree.insertTwo, KeyTree.addRoot,
+leanexe_compile treeMoves := [Library.Trees.WordTree.KeyTree.setKey, Library.Trees.WordTree.KeyTree.incr, Library.Trees.WordTree.KeyTree.insert, KeyTree.dropRight,
+  Library.Trees.WordTree.KeyTree.leftChild, KeyTree.keepIf, KeyTree.trim, KeyTree.insertTwo, KeyTree.addRoot,
   KeyTree.addAll, KeyTree.addLeft, KeyTree.leftSpine,
-  KeyTree.pickPair, KeyTree.splitRoot, KeyTree.rootAndRest, KeyTree.splitOr,
+  KeyTree.pickPair, Library.Trees.WordTree.KeyTree.splitRoot, KeyTree.rootAndRest, KeyTree.splitOr,
   KeyTree.keepOld, KeyTree.addSelf]
 
 end Examples.Trees

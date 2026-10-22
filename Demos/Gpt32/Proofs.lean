@@ -134,7 +134,7 @@ theorem linearKernel_dispatch (x w b : Array Float32) (k m : UInt64) (hx : x.siz
     (count : Nat) (hCover : m.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
     linearKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
         (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output count =
-        some (arrayWords (floatWords (linear32 x w b k m))) ∧
+        some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m))) ∧
       linearKernel.RaceFree [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
         (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output.size
         count := by
@@ -149,9 +149,9 @@ theorem linearKernel_dispatch (x w b : Array Float32) (k m : UInt64) (hx : x.siz
       (fun j h1 _ => arrays_none _ j (by simp; omega)))
     output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
   simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
-  rw [show floatWords (linear32 x w b k m) = LeanExe.build m
+  rw [show floatWords (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m) = LeanExe.build m
     (fun c => (linearAt x w b k m c).toBits.toUInt64) by
-      simp [linear32, linearAt, floatWords, LeanExe.IR.build_map]]
+      simp [Library.Numerics.LinearAlgebra.Binary32.linear32, linearAt, floatWords, LeanExe.IR.build_map]]
   exact h
 
 /-! ### `logits32` -/
@@ -436,7 +436,7 @@ theorem addKernel_dispatch (a b : Array Float32) (ha : a.size < 2 ^ 29) (hb : b.
     (hL0 : output[0]? = some (UInt32.ofNat a.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : a.size ≤ count) (h32 : count ≤ 2 ^ 32) :
     addKernel.dispatch [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
-        output count = some (arrayWords (floatWords (add32 a b))) ∧
+        output count = some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.add32 a b))) ∧
       addKernel.RaceFree [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
         output.size count := by
   have hfits : addSpec.Fits [.array (floatWords a), .array (floatWords b)] (floatWords a).size :=
@@ -448,9 +448,9 @@ theorem addKernel_dispatch (a b : Array Float32) (ha : a.size < 2 ^ 29) (hb : b.
         getElem!_map_toBits32, F32Op.apply, F32Bits.toBits_add]⟩)
     output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
   simp only [List.map_cons, List.map_nil] at h
-  rw [show floatWords (add32 a b) = LeanExe.build (UInt64.ofNat (floatWords a).size)
+  rw [show floatWords (Library.Numerics.LinearAlgebra.Binary32.add32 a b) = LeanExe.build (UInt64.ofNat (floatWords a).size)
     (fun i => (a[i.toNat]! + b[i.toNat]!).toBits.toUInt64) by
-      simp [add32, floatWords, LeanExe.IR.build_map]]
+      simp [Library.Numerics.LinearAlgebra.Binary32.add32, floatWords, LeanExe.IR.build_map]]
   exact h
 
 def embedSpec : Spec :=

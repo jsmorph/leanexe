@@ -16,8 +16,8 @@ theorem apply_dispatch {k : KernelName} {vs : List Val} {ys : Array Float32}
         (64 * ((ys.size + 63) / 64)) := by
   unfold KernelName.apply at h
   split at h <;> (try split at h) <;> simp only [Option.some.injEq, reduceCtorEq] at h <;>
-    subst h <;> rename_i hb <;> simp only [kernelMap, build_size, embed32, layerNorm32, linear32,
-      append32, scores32, headMax32, headSum32, probs32, mix32, add32, geluArray32,
+    subst h <;> rename_i hb <;> simp only [kernelMap, build_size, embed32, layerNorm32, Library.Numerics.LinearAlgebra.Binary32.linear32,
+      append32, scores32, headMax32, headSum32, probs32, mix32, Library.Numerics.LinearAlgebra.Binary32.add32, geluArray32,
       logits32]
   · obtain ⟨h1, h2, h3⟩ := hb
     exact ⟨h3, embedKernel_dispatch _ _ _ _ _ h1 h2 h3 _ (outputWords_size _)

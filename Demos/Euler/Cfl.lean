@@ -209,7 +209,7 @@ theorem gridRatio_le {n : UInt64} {dt alpha : Float} (h : (gridRatio n dt alpha)
   refine ⟨hn2, hn800, hdt', hal', ?_, le_trans bco hcourant⟩
   refine le_trans ?_ br
   rw [le_div_iff₀ hsp']
-  have : value (outDiv false 1 n.toFloat).value.toBits * n.toNat ≤ 1 := by
+  have : value (Library.Numerics.Bounds.outDiv false 1 n.toFloat).value.toBits * n.toNat ≤ 1 := by
     rwa [le_div_iff₀ hnpos] at bsp
   nlinarith
 

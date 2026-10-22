@@ -1,3 +1,4 @@
+import Library.Numerics.Limiters.Minmod.Proof
 import Demos.Euler.RealState
 import Demos.Euler.ReconstructedProgram
 import Demos.Euler.Equations.Minmod
@@ -14,6 +15,8 @@ faces are exactly `center ∓ slope / 2`. -/
 
 namespace Demos.Euler
 
+export Library.Numerics.Limiters.Minmod (value_nonnegative value_nonpositive real_minmod)
+
 open LeanExe.ProofKit
 open CodeLib.IEEE64 (value Finite)
 open LeanExe.ProofKit.F64RoundingResidual (radius)
@@ -26,7 +29,7 @@ def componentWords (q : Conserved) : Fin 4 → UInt64 :=
 theorem vec_eq_value (q : Conserved) (i : Fin 4) : vec q i = value (componentWords q i) := by
   fin_cases i <;> rfl
 
-theorem finite_iff (x : Float) : finite x = true ↔ Finite x.toBits :=
+theorem finite_iff (x : Float) : Library.Numerics.Bounds.finite x = true ↔ Finite x.toBits :=
   F64Order.finiteBits_iff x.toBits
 
 theorem finiteState_iff (q : Conserved) :
@@ -41,7 +44,7 @@ theorem finiteState_iff (q : Conserved) :
 theorem admissibleState_finite {q : Conserved} (h : admissibleState q = true) :
     finiteState q = true := by
   have key : ∀ x : Float, decide (0 < x.toBits) = true →
-      decide (x.toBits < 0x7FF0000000000000) = true → finite x = true :=
+      decide (x.toBits < 0x7FF0000000000000) = true → Library.Numerics.Bounds.finite x = true :=
     fun x h1 h2 => finite_of_positive (by simp only [positive, h1, h2, Bool.and_self])
   simp only [admissibleState, stateGuard, narrowGuard, energyGuard, Bool.or_eq_true,
     Bool.and_eq_true] at h
@@ -51,65 +54,6 @@ theorem admissibleState_finite {q : Conserved} (h : admissibleState q = true) :
       key _ h.1.1.1.2.1 h.1.1.1.2.2⟩
   · exact ⟨⟨⟨key _ h.1.1.1.1.1.1 h.1.1.1.1.1.2, h.1.1.1.1.2⟩, h.1.1.1.2⟩,
       key _ h.1.1.2.1 h.1.1.2.2⟩
-
-/-! The rounded minmod is the exact minmod of the inputs' values. -/
-
-theorem value_nonnegative (word : UInt64) (h : word < 0x8000000000000000) : 0 ≤ value word := by
-  rw [F64Adjacent.unsigned_word_value word (UInt64.lt_iff_toNat_lt.mp h)]
-  positivity
-
-theorem value_nonpositive (word : UInt64) (h : ¬word < 0x8000000000000000) : value word ≤ 0 := by
-  have hn : 2^63 ≤ word.toNat := by
-    have hn : ¬word.toNat < 2^63 := UInt64.lt_iff_toNat_lt.not.mp h
-    exact Nat.le_of_not_gt hn
-  rw [F64Adjacent.negative_word_value word hn]
-  exact div_nonpos_of_nonpos_of_nonneg (neg_nonpos.mpr (Nat.cast_nonneg _)) (by positivity)
-
-theorem real_minmod (a b : Float) :
-    real (minmod a b) = Equations.Minmod.minmod (real a) (real b) := by
-  have hzero : value (0 : UInt64) = 0 := by
-    norm_num [value, Wasm.IEEE64.scaledValue, Wasm.IEEE64.scaledMagnitude,
-      Wasm.IEEE64.sign, Wasm.IEEE64.exponent, Wasm.IEEE64.fraction]
-  have horder : ¬absBits a.toBits ≤ absBits b.toBits → absBits b.toBits ≤ absBits a.toBits := by
-    intro h
-    rw [UInt64.le_iff_toNat_le] at h ⊢
-    omega
-  have hmono : ∀ x y : UInt64, absBits x ≤ absBits y → |value x| ≤ |value y| :=
-    fun x y h => F64Order.abs_value_mono x y h
-  simp only [real, minmod]
-  by_cases ha : a.toBits < 0x8000000000000000 <;> by_cases hb : b.toBits < 0x8000000000000000
-  · have hva := value_nonnegative _ ha
-    have hvb := value_nonnegative _ hb
-    simp only [ha, hb, decide_true, beq_self_eq_true, ite_true]
-    split_ifs with hab
-    · have hv := hmono _ _ hab
-      rw [abs_of_nonneg hva, abs_of_nonneg hvb] at hv
-      simp [Equations.Minmod.minmod, min_eq_left hv, max_eq_right hv, hva, hvb]
-    · have hv := hmono _ _ (horder hab)
-      rw [abs_of_nonneg hvb, abs_of_nonneg hva] at hv
-      simp [Equations.Minmod.minmod, min_eq_right hv, max_eq_left hv, hva, hvb]
-  · have hva := value_nonnegative _ ha
-    have hvb := value_nonpositive _ hb
-    simp [ha, hb, zero_toBits, hzero, Equations.Minmod.minmod, min_eq_right (hvb.trans hva),
-      max_eq_left (hvb.trans hva), hva, hvb]
-  · have hva := value_nonpositive _ ha
-    have hvb := value_nonnegative _ hb
-    simp [ha, hb, zero_toBits, hzero, Equations.Minmod.minmod, min_eq_left (hva.trans hvb),
-      max_eq_right (hva.trans hvb), hva, hvb]
-  · have hva := value_nonpositive _ ha
-    have hvb := value_nonpositive _ hb
-    simp only [ha, hb, decide_false, beq_self_eq_true, ite_true]
-    split_ifs with hab
-    · have hv := hmono _ _ hab
-      rw [abs_of_nonpos hva, abs_of_nonpos hvb] at hv
-      have hba : value b.toBits ≤ value a.toBits := by linarith
-      simp [Equations.Minmod.minmod, min_eq_right hba, max_eq_left hba, hva, hvb]
-    · have hv := hmono _ _ (horder hab)
-      rw [abs_of_nonpos hvb, abs_of_nonpos hva] at hv
-      have hab : value a.toBits ≤ value b.toBits := by linarith
-      simp [Equations.Minmod.minmod, min_eq_left hab, max_eq_right hab, hva, hvb]
-
-/-! The slope. -/
 
 /-- The componentwise difference that `slope` computes. -/
 def difference (a b : Conserved) : Conserved :=
@@ -122,7 +66,7 @@ theorem componentWords_difference (a b : Conserved) (i : Fin 4) :
 
 /-- The componentwise minmod that `slope` computes. -/
 def minmodState (a b : Conserved) : Conserved :=
-  ⟨minmod a.density b.density, minmod a.mx b.mx, minmod a.my b.my, minmod a.energy b.energy⟩
+  ⟨Library.Numerics.Limiters.Minmod.minmod a.density b.density, Library.Numerics.Limiters.Minmod.minmod a.mx b.mx, Library.Numerics.Limiters.Minmod.minmod a.my b.my, Library.Numerics.Limiters.Minmod.minmod a.energy b.energy⟩
 
 theorem value_minmodState (a b : Conserved) (i : Fin 4) :
     value (componentWords (minmodState a b) i) =
@@ -160,11 +104,11 @@ noncomputable def slopeRadius (left center right : Conserved) (i : Fin 4) : ℝ 
   max (radius (Wasm.IEEE64.sub (componentWords center i) (componentWords left i)))
     (radius (Wasm.IEEE64.sub (componentWords right i) (componentWords center i)))
 
-theorem minmod_finite {a b : Float} (ha : finite a = true) (hb : finite b = true) :
-    finite (minmod a b) = true := by
-  have hZero : finite (0 : Float) = true := by
-    simp only [finite, zero_toBits, absBits]; decide
-  unfold minmod
+theorem minmod_finite {a b : Float} (ha : Library.Numerics.Bounds.finite a = true) (hb : Library.Numerics.Bounds.finite b = true) :
+    Library.Numerics.Bounds.finite (Library.Numerics.Limiters.Minmod.minmod a b) = true := by
+  have hZero : Library.Numerics.Bounds.finite (0 : Float) = true := by
+    simp only [Library.Numerics.Bounds.finite, zero_toBits, Library.Numerics.Bounds.absBits]; decide
+  unfold Library.Numerics.Limiters.Minmod.minmod
   split_ifs <;> assumption
 
 theorem slope_finite (left center right : Conserved) (h : (slope left center right).status = 0) :
@@ -219,7 +163,7 @@ theorem candidate_accepted (center delta : Conserved) (factor : Float)
     candidate center delta factor =
         ⟨0, difference center (offset factor delta), sumState center (offset factor delta),
           factor⟩ ∧
-      finite factor = true ∧ finiteState (offset factor delta) = true ∧
+      Library.Numerics.Bounds.finite factor = true ∧ finiteState (offset factor delta) = true ∧
       admissibleState (difference center (offset factor delta)) = true ∧
       admissibleState (sumState center (offset factor delta)) = true := by
   unfold candidate at h ⊢

@@ -19,7 +19,7 @@ function computes its Lean definition exactly. -/
 theorem drone_bytes : ∃ bytes, Wasm.Encoding.encode drone.module = .ok bytes ∧
     ∃ m, Wasm.Encoding.decode bytes = .ok m ∧
       ImplementsPure m 2 distanceTuple ∧ ImplementsPure m 3 altitudeTuple ∧
-      ImplementsPure m 4 speed ∧ ImplementsPure m 5 ceilSqrt ∧
+      ImplementsPure m 4 speed ∧ ImplementsPure m 5 Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt ∧
       ImplementsPure m 6 restSeconds ∧ ImplementsPure m 7 edgeTicksTuple ∧
       ImplementsPure m 8 chooseTuple ∧ ImplementsPure m 9 predecessorTuple ∧
       Implements m 10 advanceTuple ∧ Implements m 11 initialUnit ∧

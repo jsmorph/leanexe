@@ -10,12 +10,12 @@ open TestSupport.Host
 
 /-- The host's preorder description of a tree: `.` for a leaf, and a node's key followed by
 its subtrees. -/
-def KeyTree.describe : KeyTree → String
+def KeyTree.describe : Library.Trees.WordTree.KeyTree → String
   | .leaf => "."
   | .node l k r => s!"{k},{KeyTree.describe l},{KeyTree.describe r}"
 
 /-- A tree of `n` nodes whose shape and keys follow the arbitrary words from `seed`. -/
-def KeyTree.arbitrary : Nat → Nat → KeyTree
+def KeyTree.arbitrary : Nat → Nat → Library.Trees.WordTree.KeyTree
   | 0, _ => .leaf
   | n + 1, seed =>
     let left := (rw seed).toNat % (n + 1)
@@ -27,12 +27,12 @@ decreasing_by
     omega
 
 /-- A chain of `n` nodes, each with a leaf on the left. -/
-def KeyTree.chain : Nat → KeyTree
+def KeyTree.chain : Nat → Library.Trees.WordTree.KeyTree
   | 0 => .leaf
   | n + 1 => .node .leaf (UInt64.ofNat n) (KeyTree.chain n)
 
 def treeCases : IO Unit := do
-  let trees : List KeyTree := [.leaf, .node .leaf 5 .leaf, .node (.node .leaf 1 .leaf) maxU .leaf,
+  let trees : List Library.Trees.WordTree.KeyTree := [.leaf, .node .leaf 5 .leaf, .node (.node .leaf 1 .leaf) maxU .leaf,
     KeyTree.chain 999] ++ (List.range 20).map fun i => KeyTree.arbitrary (i * 3) i
   for t in trees do
     line "trees" "size" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.size)
@@ -122,7 +122,7 @@ def treeCases : IO Unit := do
           [u c, s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
           s!"{KeyTree.describe r.1},{KeyTree.describe r.2}"
   -- Trees whose root's key is 0, for `trim`'s other path.
-  let zeroRoots : List KeyTree := [.node .leaf 0 .leaf, .node (.node .leaf 1 .leaf) 0 (.node .leaf 2 .leaf),
+  let zeroRoots : List Library.Trees.WordTree.KeyTree := [.node .leaf 0 .leaf, .node (.node .leaf 1 .leaf) 0 (.node .leaf 2 .leaf),
     .node (KeyTree.arbitrary 5 1) 0 (KeyTree.arbitrary 6 2)]
   for t in trees ++ zeroRoots do
     for c in [0, 1, maxU] do

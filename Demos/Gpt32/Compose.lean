@@ -15,7 +15,7 @@ theorem embed32_size (wte wpe : Array Float32) (row p d : UInt64) :
 theorem layerNorm32_size (x g b : Array Float32) (d : UInt64) (nf : Float32) :
     (layerNorm32 x g b d nf).size = d.toNat := build_size _ _
 theorem linear32_size (x w b : Array Float32) (k m : UInt64) :
-    (linear32 x w b k m).size = m.toNat := build_size _ _
+    (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m).size = m.toNat := build_size _ _
 theorem append32_size (cache row : Array Float32) (base n : UInt64) :
     (append32 cache row base n).size = n.toNat := build_size _ _
 theorem scores32_size (q kc : Array Float32) (p d n : UInt64) :
@@ -29,8 +29,8 @@ theorem probs32_size (s mx sm : Array Float32) (p n : UInt64) :
 theorem mix32_size (pw vc : Array Float32) (p d : UInt64) :
     (mix32 pw vc p d).size = d.toNat := build_size _ _
 theorem add32_size {a : Array Float32} (b : Array Float32) (h : a.size < 2 ^ 29) :
-    (add32 a b).size = a.size := by
-  rw [add32, build_size, size_toUInt64 h]
+    (Library.Numerics.LinearAlgebra.Binary32.add32 a b).size = a.size := by
+  rw [Library.Numerics.LinearAlgebra.Binary32.add32, build_size, size_toUInt64 h]
 theorem geluArray32_size {x : Array Float32} (h : x.size < 2 ^ 29) :
     (geluArray32 x).size = x.size := by
   rw [geluArray32, build_size, size_toUInt64 h]
@@ -195,9 +195,9 @@ theorem layer_exec (files : String → Option Val) {s : Shape32} {p : UInt64} (l
   generalize hb0 : (p % 2).toNat = b at *
   generalize hb1' : ((p + 1) % 2).toNat = b' at *
   let h1 := layerNorm32 x w.g1 w.b1 D D.toFloat32
-  let q := linear32 h1 w.wq w.bq D D
-  let k := linear32 h1 w.wk w.bk D D
-  let v := linear32 h1 w.wv w.bv D D
+  let q := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wq w.bq D D
+  let k := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wk w.bk D D
+  let v := Library.Numerics.LinearAlgebra.Binary32.linear32 h1 w.wv w.bv D D
   let kc' := append32 kc k (p * D) ((p + 1) * D)
   let vc' := append32 vc v (p * D) ((p + 1) * D)
   let sc := scores32 q kc' p D (s.nh * 1024)
@@ -205,13 +205,13 @@ theorem layer_exec (files : String → Option Val) {s : Shape32} {p : UInt64} (l
   let sm := headSum32 sc mx p s.nh
   let pw := probs32 sc mx sm p (s.nh * 1024)
   let o := mix32 pw vc' p D
-  let a := linear32 o w.wo w.bo D D
-  let r := add32 x a
+  let a := Library.Numerics.LinearAlgebra.Binary32.linear32 o w.wo w.bo D D
+  let r := Library.Numerics.LinearAlgebra.Binary32.add32 x a
   let h2 := layerNorm32 r w.g2 w.b2 D D.toFloat32
-  let m1 := linear32 h2 w.wfc w.bfc D s.f
+  let m1 := Library.Numerics.LinearAlgebra.Binary32.linear32 h2 w.wfc w.bfc D s.f
   let g := geluArray32 m1
-  let m2 := linear32 g w.wproj w.bproj s.f D
-  let y := add32 r m2
+  let m2 := Library.Numerics.LinearAlgebra.Binary32.linear32 g w.wproj w.bproj s.f D
+  let y := Library.Numerics.LinearAlgebra.Binary32.add32 r m2
   have zh1 : h1.size = 64 * s.nh.toNat := by simp only [h1, layerNorm32_size, hd]
   have zq : q.size = 64 * s.nh.toNat := by simp only [q, linear32_size, hd]
   have zk : k.size = 64 * s.nh.toNat := by simp only [k, linear32_size, hd]

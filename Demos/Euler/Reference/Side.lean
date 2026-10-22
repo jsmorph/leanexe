@@ -32,7 +32,7 @@ theorem abs_eq_absBits (x : UInt64) : Wasm.IEEE64.abs x = F64Order.absBits x := 
     Wasm.IEEE64.fraction, Bool.false_eq_true, ite_false, Nat.zero_add, UInt64.toNat_ofNat']
   omega
 
-theorem finite_of_bits {x : Float} (h : Finite x.toBits) : finite x = true :=
+theorem finite_of_bits {x : Float} (h : Finite x.toBits) : Library.Numerics.Bounds.finite x = true :=
   (F64Order.finiteBits_iff x.toBits).mpr h
 
 /-- A state in the range `M` with a margin of internal energy, accepted by the state check. -/
@@ -141,7 +141,7 @@ theorem side_accepted_of_bounds (rho mx my energy : Float) (M : ℝ) (hM : 1 ≤
     br bx byy be hmarginStrict
   simp only [Bool.and_eq_true] at hg1
   obtain ⟨⟨⟨⟨⟨⟨g1, g2⟩, g3⟩, g4⟩, g5⟩, g6⟩, g7⟩ := hg1
-  have hBits : ∀ x : Float, finite x = finiteBits x.toBits := fun _ => rfl
+  have hBits : ∀ x : Float, Library.Numerics.Bounds.finite x = finiteBits x.toBits := fun _ => rfl
   have hfmB : finiteBits momentumFlux = true := (finiteBits_iff _).mpr hfm
   have hftB : finiteBits transverseFlux = true := (finiteBits_iff _).mpr hft
   have hfhB : finiteBits enthalpy = true := (finiteBits_iff _).mpr hfh

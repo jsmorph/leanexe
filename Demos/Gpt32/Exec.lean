@@ -100,7 +100,7 @@ def KernelName.apply : KernelName → List Val → Option (Array Float32)
   | .layerNorm, [.arr x, .arr g, .arr b, .word d, .float nf] =>
     if Small x ∧ Small g ∧ Small b ∧ SmallWord d then some (layerNorm32 x g b d nf) else none
   | .linear, [.arr x, .arr w, .arr b, .word k, .word m] =>
-    if Small x ∧ Small w ∧ Small b ∧ SmallWord m then some (linear32 x w b k m) else none
+    if Small x ∧ Small w ∧ Small b ∧ SmallWord m then some (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m) else none
   | .append, [.arr cache, .arr row, .word base, .word n] =>
     if Small cache ∧ Small row ∧ SmallWord n then some (append32 cache row base n) else none
   | .scores, [.arr q, .arr kc, .word p, .word d, .word n] =>
@@ -114,7 +114,7 @@ def KernelName.apply : KernelName → List Val → Option (Array Float32)
   | .mix, [.arr pw, .arr vc, .word p, .word d] =>
     if Small pw ∧ Small vc ∧ SmallWord d then some (mix32 pw vc p d) else none
   | .add, [.arr a, .arr b] =>
-    if Small a ∧ Small b then some (add32 a b) else none
+    if Small a ∧ Small b then some (Library.Numerics.LinearAlgebra.Binary32.add32 a b) else none
   | .gelu, [.arr x] =>
     if Small x then some (geluArray32 x) else none
   | .logits, [.arr h, .arr wte, .word rows, .word d] =>
@@ -182,8 +182,8 @@ theorem KernelName.apply_dispatch {k : KernelName} {vs : List Val} {ys : Array F
         (64 * ((ys.size + 63) / 64)) := by
   unfold KernelName.apply at h
   split at h <;> (try split at h) <;> simp only [Option.some.injEq, reduceCtorEq] at h <;>
-    subst h <;> rename_i hb <;> simp only [build_size, embed32, layerNorm32, linear32,
-      append32, scores32, headMax32, headSum32, probs32, mix32, add32, geluArray32,
+    subst h <;> rename_i hb <;> simp only [build_size, embed32, layerNorm32, Library.Numerics.LinearAlgebra.Binary32.linear32,
+      append32, scores32, headMax32, headSum32, probs32, mix32, Library.Numerics.LinearAlgebra.Binary32.add32, geluArray32,
       logits32]
   · obtain ⟨h1, h2, h3⟩ := hb
     exact ⟨h3, embedKernel_dispatch _ _ _ _ _ h1 h2 h3 _ (outputWords_size _)

@@ -1,3 +1,4 @@
+import Library.Numerics.Arithmetic.CeilSqrt.Program
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.Loop
 import LeanExe.Dialect.RepeatWhile
@@ -19,6 +20,8 @@ code with no stations, which returns `#[]`.
 
 namespace Demos.Drone
 
+export Library.Numerics.Arithmetic.CeilSqrt (ceilSqrt)
+
 abbrev stateCount : UInt64 := 45
 abbrev infinity : UInt64 := 1000000000000
 
@@ -33,19 +36,10 @@ def speed (state : UInt64) : UInt64 := state % 5 * 5
   let size := terrain.size.toUInt64
   terrain[i.toNat]! + if i == 0 || i + 1 == size then 0 else 100
 
-/-- The least `r` with `n ≤ r * r`, for `n ≤ 2^32`, by 17 halvings of the bracket
-`[0, 65536]`. -/
-def ceilSqrt (n : UInt64) : UInt64 :=
-  match LeanExe.loop 17 ((0 : UInt64), (65536 : UInt64)) fun _ bracket =>
-      let mid := (bracket.1 + bracket.2) / 2
-      (if bracket.1 < bracket.2 && mid * mid < n then mid + 1 else bracket.1,
-        if bracket.1 < bracket.2 && n ≤ mid * mid then mid else bracket.2) with
-  | (lo, _) => lo
-
 /-- The least whole number of seconds for a rest-to-rest segment with height change `dh`
 that keeps the horizontal and vertical speed and acceleration limits. -/
 def restSeconds (dh : UInt64) : UInt64 :=
-  let root := ceilSqrt ((3 * dh + 1) / 2)
+  let root := Library.Numerics.Arithmetic.CeilSqrt.ceilSqrt ((3 * dh + 1) / 2)
   max 25 (max ((3 * dh + 39) / 40) root)
 
 /-- The ticks of the segment from altitude `z0` over floor `r0` at speed `u` to altitude `z1`

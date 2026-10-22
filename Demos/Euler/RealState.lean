@@ -47,13 +47,13 @@ theorem exponentBits_toNat' (b : UInt64) :
   rw [exponentBits_eq, F64Normalize.exponentBits, UInt64.toNat_div, F64Order.absBits_toNat]
   rfl
 
-theorem normalized_toBits {x : Float} {top : UInt64} (hf : finite x = true)
+theorem normalized_toBits {x : Float} {top : UInt64} (hf : Library.Numerics.Bounds.finite x = true)
     (hn : normalizable x top = true) (hle : (exponentBits x.toBits).toNat ≤ top.toNat) :
     (normalized x top).toBits = F64Normalize.normalizedMagnitude x.toBits top := by
-  have hA : (absBits x.toBits).toNat = x.toBits.toNat % 2 ^ 63 := F64Order.absBits_toNat _
+  have hA : (Library.Numerics.Bounds.absBits x.toBits).toNat = x.toBits.toNat % 2 ^ 63 := F64Order.absBits_toNat _
   have hE := exponentBits_toNat' x.toBits
   have hf' : x.toBits.toNat % 2 ^ 63 < 0x7FF0000000000000 := by
-    rw [← hA]; exact UInt64.lt_iff_toNat_lt.mp (by simpa [finite] using hf)
+    rw [← hA]; exact UInt64.lt_iff_toNat_lt.mp (by simpa [Library.Numerics.Bounds.finite] using hf)
   have hn' : x.toBits.toNat % 2 ^ 63 = 0 ∨ (0 < x.toBits.toNat % 2 ^ 63 / 2 ^ 52 ∧
       top.toNat < x.toBits.toNat % 2 ^ 63 / 2 ^ 52 + 1021) := by
     simp only [normalizable, Bool.or_eq_true, beq_iff_eq, Bool.and_eq_true, decide_eq_true_eq] at hn
@@ -68,11 +68,11 @@ theorem normalized_toBits {x : Float} {top : UInt64} (hf : finite x = true)
   rw [hE] at hle
   unfold normalized F64Normalize.normalizedMagnitude
   dsimp only
-  rw [← exponentBits_eq, show F64Order.absBits x.toBits = absBits x.toBits from rfl]
+  rw [← exponentBits_eq, show F64Order.absBits x.toBits = Library.Numerics.Bounds.absBits x.toBits from rfl]
   rcases hn' with h0 | ⟨h1, h2⟩
-  · have hz : absBits x.toBits = 0 := UInt64.toNat_inj.mp (by rw [hA, h0]; rfl)
+  · have hz : Library.Numerics.Bounds.absBits x.toBits = 0 := UInt64.toNat_inj.mp (by rw [hA, h0]; rfl)
     simp [hz, zero_toBits]
-  · have hz : ¬absBits x.toBits = 0 := fun h => by
+  · have hz : ¬Library.Numerics.Bounds.absBits x.toBits = 0 := fun h => by
       have := congrArg UInt64.toNat h
       rw [hA] at this
       simp only [UInt64.toNat_zero] at this
@@ -93,7 +93,7 @@ theorem normalized_toBits {x : Float} {top : UInt64} (hf : finite x = true)
       simp only [Nat.reducePow, UInt64.reduceToNat, Nat.reduceMod] at *
       omega
     generalize (k <<< 52) + (x.toBits &&& 0x000FFFFFFFFFFFFF) = w at hw ⊢
-    have hc : ¬(absBits x.toBits == 0 || (w >>> 52) &&& 0x7FF == 0x7FF) = true := by
+    have hc : ¬(Library.Numerics.Bounds.absBits x.toBits == 0 || (w >>> 52) &&& 0x7FF == 0x7FF) = true := by
       simp only [Bool.or_eq_true, beq_iff_eq, not_or]
       refine ⟨hz, fun h => ?_⟩
       have := congrArg UInt64.toNat h
@@ -127,9 +127,9 @@ theorem normalizable_eq (x : Float) (top : UInt64) :
   simp only [← exponentBits_eq]
   rfl
 
-theorem finite_of_positive {x : Float} (h : positive x = true) : finite x = true := by
-  simp only [positive, finite, Bool.and_eq_true, decide_eq_true_eq, UInt64.lt_iff_toNat_lt] at h ⊢
-  rw [show (absBits x.toBits).toNat = x.toBits.toNat % 2 ^ 63 from F64Order.absBits_toNat _]
+theorem finite_of_positive {x : Float} (h : positive x = true) : Library.Numerics.Bounds.finite x = true := by
+  simp only [positive, Library.Numerics.Bounds.finite, Bool.and_eq_true, decide_eq_true_eq, UInt64.lt_iff_toNat_lt] at h ⊢
+  rw [show (Library.Numerics.Bounds.absBits x.toBits).toNat = x.toBits.toNat % 2 ^ 63 from F64Order.absBits_toNat _]
   simp only [UInt64.reduceToNat] at *
   omega
 

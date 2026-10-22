@@ -76,7 +76,7 @@ theorem scaleKernel_dispatch (a : Float32) (x : Array Float32) (hx : x.size < 2 
     (hL0 : output[0]? = some (UInt32.ofNat x.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
     scaleKernel.dispatch [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer] output
-        count = some (arrayWords (floatWords (scale32 a x))) ∧
+        count = some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.scale32 a x))) ∧
       scaleKernel.RaceFree [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer]
         output.size count := by
   have hfits : scaleSpec.Fits [.float a.toBits, .array (floatWords x)] (floatWords x).size :=
@@ -92,9 +92,9 @@ theorem scaleKernel_dispatch (a : Float32) (x : Array Float32) (hx : x.size < 2 
         (by simp [Spec.locals, scaleSpec]) (by simp [Spec.arrays]))
     output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
   simp only [List.map_cons, List.map_nil] at h
-  rw [show floatWords (scale32 a x) = LeanExe.build (UInt64.ofNat (floatWords x).size)
+  rw [show floatWords (Library.Numerics.LinearAlgebra.Binary32.scale32 a x) = LeanExe.build (UInt64.ofNat (floatWords x).size)
     (fun i => (a * x[i.toNat]!).toBits.toUInt64) by
-      simp [scale32, floatWords, build_map]]
+      simp [Library.Numerics.LinearAlgebra.Binary32.scale32, floatWords, build_map]]
   exact h
 
 /-- The kernel computes `axpyArray32 a x y`, under the conditions of `scaleKernel_dispatch`. -/
@@ -104,7 +104,7 @@ theorem axpyArrayKernel_dispatch (a : Float32) (x y : Array Float32) (hx : x.siz
     (count : Nat) (hCover : x.size ≤ count) (h32 : count ≤ 2 ^ 32) :
     axpyArrayKernel.dispatch [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer,
         (Arg.array (floatWords y)).buffer] output count =
-        some (arrayWords (floatWords (axpyArray32 a x y))) ∧
+        some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x y))) ∧
       axpyArrayKernel.RaceFree [(Arg.float a.toBits).buffer, (Arg.array (floatWords x)).buffer,
         (Arg.array (floatWords y)).buffer] output.size count := by
   have hfits : axpyArraySpec.Fits [.float a.toBits, .array (floatWords x), .array (floatWords y)]
@@ -121,9 +121,9 @@ theorem axpyArrayKernel_dispatch (a : Float32) (x y : Array Float32) (hx : x.siz
         (by simp [Spec.locals, axpyArraySpec]) (by simp [Spec.arrays]) (by simp [Spec.arrays]))
     output (by simpa using hOut) (by simpa using hL0) hL1 count (by simpa using hCover) h32
   simp only [List.map_cons, List.map_nil] at h
-  rw [show floatWords (axpyArray32 a x y) = LeanExe.build (UInt64.ofNat (floatWords x).size)
+  rw [show floatWords (Library.Numerics.LinearAlgebra.Binary32.axpyArray32 a x y) = LeanExe.build (UInt64.ofNat (floatWords x).size)
     (fun i => (a * x[i.toNat]! + y[i.toNat]!).toBits.toUInt64) by
-      simp [axpyArray32, floatWords, build_map]]
+      simp [Library.Numerics.LinearAlgebra.Binary32.axpyArray32, floatWords, build_map]]
   exact h
 
 /-- The kernel computes `matVec32 m v rows cols`: with buffers holding `m`, `v`, `rows`, and
@@ -137,7 +137,7 @@ theorem matVecKernel_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m
     (count : Nat) (hCover : rows.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
     matVecKernel.dispatch [(Arg.array (floatWords m)).buffer, (Arg.array (floatWords v)).buffer,
         (Arg.word rows).buffer, (Arg.word cols).buffer] output count =
-        some (arrayWords (floatWords (matVec32 m v rows cols))) ∧
+        some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.matVec32 m v rows cols))) ∧
       matVecKernel.RaceFree [(Arg.array (floatWords m)).buffer, (Arg.array (floatWords v)).buffer,
         (Arg.word rows).buffer, (Arg.word cols).buffer] output.size count := by
   have hfits : matVecSpec.Fits [.array (floatWords m), .array (floatWords v), .word rows,
@@ -154,7 +154,7 @@ theorem matVecKernel_dispatch (m v : Array Float32) (rows cols : UInt64) (hm : m
         rw [List.getElem?_eq_none (by simp; omega)]))
     output hOut hL0 hL1 count hCover h32
   simp only [List.map_cons, List.map_nil, UInt64.ofNat_toNat] at h
-  rw [show floatWords (matVec32 m v rows cols) = LeanExe.build rows
+  rw [show floatWords (Library.Numerics.LinearAlgebra.Binary32.matVec32 m v rows cols) = LeanExe.build rows
     (fun r => (row32 m v cols r).toBits.toUInt64) by
       simp [matVec32_eq, floatWords, build_map]]
   exact h

@@ -72,13 +72,13 @@ theorem linear_row {x X w b : Array Float} {l T k m : UInt64} {p : Nat} (hp : p 
 
 theorem matMulT_row {x X b : Array Float} {T k m : UInt64} {p : Nat} (hp : p < T.toNat)
     (hT : T.toNat < 2 ^ 16) (hk : k.toNat < 2 ^ 32) (hm : m.toNat < 2 ^ 32)
-    (h : RowIs k.toNat p x X) : RowIs m.toNat p (matMulT x b 1 k m) (matMulT X b T k m) := by
+    (h : RowIs k.toNat p x X) : RowIs m.toNat p (Library.Numerics.LinearAlgebra.Float64.matMulT x b 1 k m) (Library.Numerics.LinearAlgebra.Float64.matMulT X b T k m) := by
   intro c hc
   have hE := row_lt (m := m) hp (by omega) hm hc
   obtain ⟨hd1, hm1⟩ := col_div hc
   obtain ⟨hdP, hmP⟩ := row_div hc hE
   have hP : (UInt64.ofNat p).toNat = p := toNat_ofNat_lt (n := T) hp
-  unfold matMulT
+  unfold Library.Numerics.LinearAlgebra.Float64.matMulT
   rw [build_get (one_lt hc), build_get hE, hd1, hm1, hdP, hmP]
   refine loop_congr fun j hj acc => ?_
   have hJ : (UInt64.ofNat j).toNat = j := toNat_ofNat_lt hj
@@ -138,7 +138,7 @@ theorem layerNormRows_row {x X g b : Array Float} {l T d : UInt64} {eps : Float}
 
 theorem add_row {x X a A : Array Float} {w p : Nat} (hx : x.size = w) (hX : (p + 1) * w ≤ X.size)
     (hX64 : X.size < 2 ^ 64) (h : RowIs w p x X) (ha : RowIs w p a A) :
-    RowIs w p (add x a) (add X A) := by
+    RowIs w p (Library.Numerics.LinearAlgebra.Float64.add x a) (Library.Numerics.LinearAlgebra.Float64.add X A) := by
   intro c hc
   have hcX : p * w + c < X.size := by
     calc p * w + c < (p + 1) * w := by rw [Nat.succ_mul]; omega
@@ -148,7 +148,7 @@ theorem add_row {x X a A : Array Float} {w p : Nat} (hx : x.size = w) (hX : (p +
       have : w ≤ (p + 1) * w := Nat.le_mul_of_pos_left w (by omega)
       omega)
   have hN : X.size.toUInt64.toNat = X.size := UInt64.toNat_ofNat_of_lt' hX64
-  unfold add
+  unfold Library.Numerics.LinearAlgebra.Float64.add
   rw [build_get (by rw [hn, hx]; exact hc), build_get (by rw [hN]; exact hcX),
     toNat_ofNat_lt (n := X.size.toUInt64) (by rw [hN]; omega),
     toNat_ofNat_lt (n := X.size.toUInt64) (by rw [hN]; exact hcX), h c hc, ha c hc]
@@ -490,7 +490,7 @@ theorem layerStep_row
   have ho := stepMix_row hp hT hn hdh hpw hv hV
   have ha := linear_row (w := wo) (b := bo) (l := UInt64.ofNat lN) hp hT hW hW ho
   have hr := add_row hxs hXrows hX64 hx ha
-  have hrs : (add (firstRow s (nh * dh)) (linear (stepMix (stepSoftmax (stepScores
+  have hrs : (Library.Numerics.LinearAlgebra.Float64.add (firstRow s (nh * dh)) (linear (stepMix (stepSoftmax (stepScores
       (linear (layerNormRows (firstRow s (nh * dh)) g1 b1 (UInt64.ofNat lN) 1 (nh * dh) eps) wq bq
         (UInt64.ofNat lN) 1 (nh * dh) (nh * dh))
       (linear (layerNormRows (firstRow s (nh * dh)) g1 b1 (UInt64.ofNat lN) 1 (nh * dh) eps) wk bk
@@ -500,7 +500,7 @@ theorem layerStep_row
         (UInt64.ofNat lN) 1 (nh * dh) (nh * dh)) C (UInt64.ofNat lN) (UInt64.ofNat p) nh dh B)
       wo bo (UInt64.ofNat lN) 1 (nh * dh) (nh * dh))).size = (nh * dh).toNat := by
     rw [add_size (by rw [hxs]; omega), hxs]
-  have hR64 : ∀ A : Array Float, (add X A).size = X.size := fun _ => add_size hX64
+  have hR64 : ∀ A : Array Float, (Library.Numerics.LinearAlgebra.Float64.add X A).size = X.size := fun _ => add_size hX64
   have hh2 := layerNormRows_row (g := g2) (b := b2) (l := UInt64.ofNat lN) (eps := eps) hp hT hW hr
   have hm := mlp_row (wfc := wfc) (bfc := bfc) (wproj := wproj) (bproj := bproj)
     (l := UInt64.ofNat lN) hp hT hW hf hh2
@@ -920,11 +920,11 @@ theorem steps_exact {tokens : Array UInt64}
       (cacheAfter_cache hT hn hdh hn0 hdh0 hf hL hall (p + 1) hp)
   have hVF : (forward tokens wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj bproj gf bf
       layers T nh dh f vocab eps).size = T.toNat * vocab.toNat := by
-    simp only [forward, matMulT, LeanExe.build, Array.size_ofFn]
+    simp only [forward, Library.Numerics.LinearAlgebra.Float64.matMulT, LeanExe.build, Array.size_ofFn]
     exact mul_toNat (by omega) hv
   have hS : (scores (cacheAfter tokens wte wpe g1 b1 wq bq wk bk wv bv wo bo g2 b2 wfc bfc wproj
       bproj layers nh dh f eps (p + 1)) wte gf bf layers nh dh vocab eps).size = vocab.toNat := by
-    simp only [scores, matMulT, LeanExe.build, Array.size_ofFn, one_toNat]
+    simp only [scores, Library.Numerics.LinearAlgebra.Float64.matMulT, LeanExe.build, Array.size_ofFn, one_toNat]
   have hle : (p + 1) * vocab.toNat ≤ T.toNat * vocab.toNat := Nat.mul_le_mul_right _ hp
   have hpv : (p + 1) * vocab.toNat = p * vocab.toNat + vocab.toNat := by ring
   apply Array.ext

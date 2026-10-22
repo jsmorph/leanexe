@@ -19,7 +19,7 @@ theorem outwardSide_implements {a : Bool} : ImplementsPureA a euler.module 34 ou
       eval_ir [euler.outwardSide.ir, speedUpperTuple]
       iterate 12 (refine Stmt.seq_run ?_; eval_ir [])
       refine Stmt.run_triple ?_
-      eval_ir [outwardSideTuple, outwardSide, positive, finite, absBits, rejectedSide, word_and,
+      eval_ir [outwardSideTuple, outwardSide, positive, Library.Numerics.Bounds.finite, Library.Numerics.Bounds.absBits, rejectedSide, word_and,
         word_eq_one, F64Bits.toBits_add, F64Bits.toBits_sub, F64Bits.toBits_mul,
         F64Bits.toBits_div, half_toBits, twoFifths_toBits, zero_toBits]
       simp only [and_assoc]
@@ -92,7 +92,7 @@ theorem faceStep_implements {a : Bool} : ImplementsPureA a euler.module 36 faceS
       let left := outwardFlux a1 a2 a3 a4 b1 b2 b3 b4
       let right := outwardFlux c1 c2 c3 c4 d1 d2 d3 d4
       let alpha := if left.alpha.toBits ≤ right.alpha.toBits then right.alpha else left.alpha
-      let courant := outMul true ratio alpha
+      let courant := Library.Numerics.Bounds.outMul true ratio alpha
       let nextDensity := update ratio rho left.mass right.mass
       let nextMomentum := update ratio momentum left.momentum right.momentum
       let nextTransverse := update ratio transverse left.transverse right.transverse

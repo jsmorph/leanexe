@@ -1,3 +1,4 @@
+import Library.Numerics.Arithmetic.Gcd.Proof
 import Library.Numerics.Arithmetic.Gcd.Module
 import Library.Numerics.Arithmetic.Gcd.Spec
 import LeanExe.IR.TailLoop
@@ -9,15 +10,6 @@ open Wasm LeanExe.Pipeline LeanExe.IR
 
 /-- `gcd` with its two arguments as one pair. -/
 def gcdTuple (x : UInt64 × UInt64) : UInt64 := Library.Numerics.Arithmetic.Gcd.gcd x.1 x.2
-
-theorem source_zero (a : UInt64) : Library.Numerics.Arithmetic.Gcd.gcd a 0 = a := by
-  rw [Library.Numerics.Arithmetic.Gcd.gcd.eq_def]
-  simp
-
-theorem source_step (a b : UInt64) (h : b ≠ 0) :
-    Library.Numerics.Arithmetic.Gcd.gcd a b = Library.Numerics.Arithmetic.Gcd.gcd b (a % b) := by
-  rw [Library.Numerics.Arithmetic.Gcd.gcd.eq_def]
-  simp [h]
 
 theorem gcdTuple_injective (x y : UInt64 × UInt64) (h : Scalar.values x = Scalar.values y) :
     x = y := by
@@ -52,23 +44,6 @@ theorem gcd_step {m : Module} : TailStep (α := UInt64 × UInt64) m
 theorem gcd_implements : Implements gcd.module 2 gcdTuple :=
   Func.tail_implements [(gcd.ir, "gcd")] 0 gcd.ir "gcd" rfl gcdTuple (fun x => x.2.toNat) _ (fun _ => rfl)
     gcdTuple_injective (k := 2) rfl rfl rfl gcd_step
-
-/-- Euclid's algorithm on words computes the greatest common divisor. -/
-theorem gcd_eq (a b : UInt64) : Library.Numerics.Arithmetic.Gcd.gcd a b = expected (a, b) := by
-  by_cases hb : b = 0
-  · subst hb
-    simp [source_zero, expected]
-  · rw [source_step a b hb, gcd_eq b (a % b)]
-    simp only [expected, UInt64.toNat_mod]
-    rw [Nat.gcd_comm b.toNat (a.toNat % b.toNat), ← Nat.gcd_rec b.toNat a.toNat,
-      Nat.gcd_comm b.toNat a.toNat]
-termination_by b.toNat
-decreasing_by
-  rw [UInt64.toNat_mod]
-  apply Nat.mod_lt
-  apply Nat.pos_of_ne_zero
-  intro hZero
-  exact hb (UInt64.toNat_inj.mp (by simpa using hZero))
 
 /-- `encode` succeeds on `gcd.module`, and its bytes decode to a module that computes the
 specification `expected`. -/

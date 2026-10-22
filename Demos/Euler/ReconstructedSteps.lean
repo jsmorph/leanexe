@@ -8,7 +8,7 @@ namespace Demos.Euler
 
 open Wasm LeanExe.Pipeline LeanExe.IR LeanExe.Runtime LeanExe.ProofKit Demos.Euler
 
-def cellUpperTuple : Float × Float × Float × Float → Checked :=
+def cellUpperTuple : Float × Float × Float × Float → Library.Numerics.Bounds.Checked :=
   fun (rho, mx, my, energy) => cellUpper rho mx my energy
 
 set_option maxHeartbeats 2000000 in
@@ -20,21 +20,21 @@ theorem cellUpper_implements {a : Bool} : ImplementsPureA a euler.module 47 cell
       refine Stmt.seq_callPure speedUpper_implements rfl rfl rfl (x := (rho, my, mx, energy)) ?_
       eval_ir [speedUpperTuple]
       refine Stmt.run_triple ?_
-      eval_ir [cellUpperTuple, cellUpper, mergeChecked, rejectedChecked, word_and, word_eq_one,
+      eval_ir [cellUpperTuple, cellUpper, mergeChecked, Library.Numerics.Bounds.rejectedChecked, word_and, word_eq_one,
         toBits_ite]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
       · eval_ir [h, toBits_ite]
       · eval_ir [h, zero_toBits, and_assoc]
 
-def gridRatioTuple : UInt64 × Float × Float → Checked :=
+def gridRatioTuple : UInt64 × Float × Float → Library.Numerics.Bounds.Checked :=
   fun (n, dt, alpha) => gridRatio n dt alpha
 
 set_option maxHeartbeats 2000000 in
 theorem gridRatio_implements {a : Bool} : ImplementsPureA a euler.module 49 gridRatioTuple :=
   Func.implementsPureA euler.funcs 47 euler.gridRatio.ir "gridRatio" rfl gridRatioTuple
     (fun _ => rfl) fun ⟨n, dt, alpha⟩ initial => by
-      let spacing := outDiv false 1 n.toFloat
-      let ratio := outDiv true dt spacing.value
+      let spacing := Library.Numerics.Bounds.outDiv false 1 n.toFloat
+      let ratio := Library.Numerics.Bounds.outDiv true dt spacing.value
       refine Stmt.seq_callPure outDiv_implements rfl rfl rfl (x := (false, 1, n.toFloat)) ?_
       eval_ir [euler.gridRatio.ir, outDivTuple, one_toBits, F64Convert.toBits_toFloat]
       refine Stmt.seq_callPure outDiv_implements rfl rfl rfl (x := (true, dt, spacing.value)) ?_
@@ -42,7 +42,7 @@ theorem gridRatio_implements {a : Bool} : ImplementsPureA a euler.module 49 grid
       refine Stmt.seq_callPure outMul_implements rfl rfl rfl (x := (true, ratio.value, alpha)) ?_
       eval_ir [outMulTuple, ratio, spacing]
       refine Stmt.run_triple ?_
-      eval_ir [gridRatioTuple, gridRatio, positive, rejectedChecked, word_and, word_eq_one]
+      eval_ir [gridRatioTuple, gridRatio, positive, Library.Numerics.Bounds.rejectedChecked, word_and, word_eq_one]
       simp only [and_assoc]
       refine exists_ite_some (fun h => ?_) (fun h => ?_)
       · eval_ir [h]

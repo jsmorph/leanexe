@@ -54,7 +54,7 @@ theorem linearKernel_dispatch (x w b : Array Float32) (k m : UInt64) (hx : x.siz
     (count : Nat) (hCover : m.toNat ≤ count) (h32 : count ≤ 2 ^ 32) :
     linearKernel.dispatch [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
         (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output count =
-        some (arrayWords (floatWords (linear32 x w b k m))) ∧
+        some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.linear32 x w b k m))) ∧
       linearKernel.RaceFree [(Arg.array (floatWords x)).buffer, (Arg.array (floatWords w)).buffer,
         (Arg.array (floatWords b)).buffer, (Arg.word k).buffer, (Arg.word m).buffer] output.size
         count := by
@@ -138,7 +138,7 @@ theorem addKernel_dispatch (a b : Array Float32) (ha : a.size < 2 ^ 29) (hb : b.
     (hL0 : output[0]? = some (UInt32.ofNat a.size)) (hL1 : output[1]? = some 0)
     (count : Nat) (hCover : a.size ≤ count) (h32 : count ≤ 2 ^ 32) :
     addKernel.dispatch [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
-        output count = some (arrayWords (floatWords (add32 a b))) ∧
+        output count = some (arrayWords (floatWords (Library.Numerics.LinearAlgebra.Binary32.add32 a b))) ∧
       addKernel.RaceFree [(Arg.array (floatWords a)).buffer, (Arg.array (floatWords b)).buffer]
         output.size count := by
   let env : Env compiled.add32.func.sig.params := .cons a (.cons b (.nil))
