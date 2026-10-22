@@ -9,7 +9,7 @@ import Library.Numerics.Float64.Sinpi.SinpiKernels
 namespace Library.Numerics.Float64.Sinpi.SinpiTanKernel
 
 open CodeLib.IEEE64 LeanExe.ProofKit SinpiProduct SinpiKernels Library.Numerics.Float64.Tan.TanWith Library.Numerics.Float64.Tan.TanBigWords Library.Numerics.Float64.Tan.TanTrunc
-  TrigSinCos
+  Library.Numerics.Float64.Trig.TrigSinCos
 
 set_option exponentiation.threshold 1200
 

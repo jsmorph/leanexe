@@ -10,7 +10,7 @@ with the subnormal arguments of `LgammaLogd.subnormal_parts`.
 
 namespace Library.Numerics.Float64.Lgamma.LgammaLogAccRed
 open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Tgamma.TgammaLogdTab Library.Numerics.Float64.Tgamma.TgammaLogdParts Library.Numerics.Float64.Tgamma.TgammaLogdTail Library.Numerics.Float64.Tgamma.TgammaLogdRed
-  TgammaLogd
+  Library.Numerics.Float64.Tgamma.TgammaLogd
 
 set_option exponentiation.threshold 4096
 

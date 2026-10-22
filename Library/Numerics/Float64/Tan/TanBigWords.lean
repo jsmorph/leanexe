@@ -13,7 +13,7 @@ before the sign is nearest, within `4.8 u |x'|` and a few `η` of `v - 2 W v/(W 
 namespace Library.Numerics.Float64.Tan.TanBigWords
 
 open CodeLib.IEEE64 LeanExe.ProofKit TanWords TanOdd TanEven TanPoly TanTrunc TanBigReal
-  TrigKernelWords TrigApprox
+  Library.Numerics.Float64.Trig.TrigKernelWords Library.Numerics.Float64.Trig.TrigApprox
 
 local notation "𝐮" => unitRoundoff64
 local notation "η" => multiplicationUnderflowEpsilon

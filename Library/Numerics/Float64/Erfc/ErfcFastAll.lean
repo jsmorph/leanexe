@@ -23,7 +23,7 @@ bound of `ErfcFastTiny` below `1/16`.  `zTarget_abs` bounds that by `(7/8) u`, a
 namespace Library.Numerics.Float64.Erfc.ErfcFastAll
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcFastMain ErfcSeries ErfcRound
-  ErfcFastRow ErfcFastPlan ErfcFastTiny FmaSpec PolyBound PolyCalc RealErf
+  ErfcFastRow ErfcFastPlan ErfcFastTiny Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound PolyCalc RealErf
 
 set_option exponentiation.threshold 2200
 

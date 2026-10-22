@@ -16,7 +16,7 @@ in magnitude puts both values beyond the overflow threshold or below half the le
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatValue
 open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound
-  ParseFloatScan ParseFloatDigits ParseFloatDec StrconvOfScientific
+  ParseFloatScan ParseFloatDigits ParseFloatDec Library.Numerics.Decimal.Shared.StrconvOfScientific
 
 set_option exponentiation.threshold 4096
 

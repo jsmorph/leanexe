@@ -15,7 +15,7 @@ the computed double-double from `erf x` by `T`.
 namespace Library.Numerics.Float64.Erfc.ErfcFastRow
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps ErfcTrack ErfcFastMain ErfcSeries
-  ErfcRound ErfcSeriesI FmaSpec PolyBound RealErf
+  ErfcRound ErfcSeriesI Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

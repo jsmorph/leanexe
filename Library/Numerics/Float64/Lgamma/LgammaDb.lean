@@ -10,7 +10,7 @@ check of the reflection at the point (`GammaReflect.negPointOk`).
 namespace Library.Numerics.Float64.Lgamma.LgammaDb
 
 open Real LeanExe.ProofKit TaylorModel GammaBasic GammaModels GammaReflect GammaThresholds
-  TgammaFactsBase LgammaRootBase
+  Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaRootBase
 
 /-- The hard cases: the argument and the double nearest to `log |Γ|`. -/
 def dbX (k : ℕ) : ℚ := q Lgamma.dbTable (3 * k)

@@ -16,7 +16,7 @@ computed double-double from the polynomial when `AccHyp` holds.
 namespace Library.Numerics.Float64.Erfc.ErfcAccMain
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcTrack3 ErfcFastMain ErfcRound
-  FmaSpec PolyBound
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

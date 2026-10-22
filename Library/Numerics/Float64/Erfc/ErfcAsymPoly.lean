@@ -14,7 +14,7 @@ distance of the computed double-double from `Z (U)` when `AsymHyp` holds.
 namespace Library.Numerics.Float64.Erfc.ErfcAsymPoly
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcTrack4 ErfcFastMain ErfcRound
-  FmaSpec PolyBound
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

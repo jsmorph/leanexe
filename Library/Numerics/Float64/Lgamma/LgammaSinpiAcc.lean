@@ -11,7 +11,7 @@ kernel's six double-double coefficients in `d²` lie within `2 ^ -95 d²` and `2
 namespace Library.Numerics.Float64.Lgamma.LgammaSinpiAcc
 
 open Real LeanExe.ProofKit PolyBound TaylorModel TaylorRemainder TaylorCheck RatExpLog
-  GammaThresholds TgammaFactsBase TgammaKernelBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase Library.Numerics.Float64.Tgamma.TgammaKernelBase
 
 /-- The kernels of `as_sinpipid_accurate` in `d²`. -/
 def accCosList : List ℚ := ddCoeffs Lgamma.sinpiTable 143 5

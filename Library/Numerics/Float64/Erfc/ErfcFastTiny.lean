@@ -16,7 +16,7 @@ against the series of `erf`, and `tiny_err` bounds the distance from `erf z` by
 namespace Library.Numerics.Float64.Erfc.ErfcFastTiny
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcFastMain ErfcSeries ErfcRound
-  FmaSpec PolyBound RealErf
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

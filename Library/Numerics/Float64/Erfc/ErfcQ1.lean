@@ -14,7 +14,7 @@ bounds the distance of the computed double-double from that polynomial when `Q1H
 namespace Library.Numerics.Float64.Erfc.ErfcQ1
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcTrack4 ErfcFastMain ErfcRound
-  FmaSpec PolyBound
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

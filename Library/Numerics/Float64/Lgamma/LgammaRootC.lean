@@ -13,7 +13,7 @@ the pieces on both sides (`GammaRoot.rootOk`).
 namespace Library.Numerics.Float64.Lgamma.LgammaRootC
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaReflect GammaRoot
-  GammaThresholds TgammaFactsBase LgammaRootBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaRootBase
 
 /-! ### The range `(-11 / 2, -5)` -/
 

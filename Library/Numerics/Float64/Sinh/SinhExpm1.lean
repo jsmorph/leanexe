@@ -15,7 +15,7 @@ bound is `0.4802 u`.
 
 namespace Library.Numerics.Float64.Sinh.SinhExpm1
 open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Tanh.Expm1Branches Library.Numerics.Float64.Tanh.Expm1ReduceConst Library.Numerics.Float64.Tanh.Expm1PathsReduced
-  Expm1Theorem F64NearestNonnegative
+  Library.Numerics.Float64.Tanh.Expm1Theorem F64NearestNonnegative
 
 set_option exponentiation.threshold 4096
 

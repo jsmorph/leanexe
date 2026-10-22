@@ -9,7 +9,7 @@ module with those of its other two ranges, and its docstring states the method.
 namespace Library.Numerics.Float64.Lgamma.LgammaRootB
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaReflect GammaRoot
-  GammaThresholds TgammaFactsBase LgammaRootBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaRootBase
 
 /-! ### The range `(-5, -9 / 2)` -/
 

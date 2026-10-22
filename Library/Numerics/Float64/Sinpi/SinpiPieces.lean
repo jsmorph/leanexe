@@ -9,7 +9,7 @@ four branches of the sine chain, the four pieces of the cosine, and the two of t
 namespace Library.Numerics.Float64.Sinpi.SinpiPieces
 
 open CodeLib.IEEE64 LeanExe.ProofKit SinpiProduct SinpiKernels SinpiTanKernel SinpiReflect
-  TanWith TanBigWords TanTrunc TrigSinCos TrigKernelWords
+  Library.Numerics.Float64.Tan.TanWith Library.Numerics.Float64.Tan.TanBigWords Library.Numerics.Float64.Tan.TanTrunc Library.Numerics.Float64.Trig.TrigSinCos Library.Numerics.Float64.Trig.TrigKernelWords
 
 set_option exponentiation.threshold 1200
 

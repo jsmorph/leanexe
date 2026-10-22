@@ -14,7 +14,7 @@ bound relative (`piece_rel`).
 namespace Library.Numerics.Float64.Lgamma.LgammaAsymMidA
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFits GammaThresholds
-  TgammaFactsBase
+  Library.Numerics.Float64.Tgamma.TgammaFactsBase
 
 /-- `as_lgamma_asym_accurate`'s fit on `[29/2 - 2 ^ -40, 48 + 2 ^ -40]`: the constant and the
 coefficients. -/

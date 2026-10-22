@@ -14,7 +14,7 @@ when the test passes.
 namespace Library.Numerics.Float64.Erfc.ErfcFastPath
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps ErfcTrack ErfcSeries ErfcRound
-  ErfcFastPlan ErfcFastAll ErfcTest FmaSpec PolyBound PolyCalc RealErf
+  ErfcFastPlan ErfcFastAll ErfcTest Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound PolyCalc RealErf
 
 set_option exponentiation.threshold 2200
 

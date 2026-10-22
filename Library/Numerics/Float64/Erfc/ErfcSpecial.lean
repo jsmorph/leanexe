@@ -15,7 +15,7 @@ and within one step (`ErfcAsymAccFin.within_small`).
 namespace Library.Numerics.Float64.Erfc.ErfcSpecial
 
 open Real Set CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcRound ErfcHardRows ErfcAsymAccFin
-  FmaSpec PolyBound RealErf
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 4096
 

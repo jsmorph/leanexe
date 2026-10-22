@@ -23,7 +23,7 @@ scaling `finA`, and `aa_hl` bounds `(h + l) 2^K` within `2^-56 erfc x`.
 namespace Library.Numerics.Float64.Erfc.ErfcAsymAccHL
 
 open Real Set CodeLib.IEEE64 LeanExe.ProofKit ErfcEft2 ErfcOps ErfcTrack ErfcTrack5 ErfcRound ErfcTaccLoop
-  ErfcTaccRows ErfcAsymPlan ErfcAsymZ ErfcAsymIdx ErfcRecip ErfcRel ErfcEAcc ErfcAccMain FmaSpec
+  ErfcTaccRows ErfcAsymPlan ErfcAsymZ ErfcAsymIdx ErfcRecip ErfcRel ErfcEAcc ErfcAccMain Library.Numerics.Arithmetic.Fma.FmaSpec
   PolyBound PolyCalculus RealErf
 
 set_option exponentiation.threshold 2200

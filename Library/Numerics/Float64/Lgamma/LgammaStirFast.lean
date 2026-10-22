@@ -13,7 +13,7 @@ left end, and the monotony of `lgamma` above 2 makes the bound relative (`piece_
 namespace Library.Numerics.Float64.Lgamma.LgammaStirFast
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFits GammaThresholds
-  TgammaFactsBase
+  Library.Numerics.Float64.Tgamma.TgammaFactsBase
 
 /-- The fast path's Stirling fit from 8.29541 on: the constant and the coefficients. -/
 def c0Fast : ℚ := q Lgamma.mainTable 397 + q Lgamma.mainTable 398

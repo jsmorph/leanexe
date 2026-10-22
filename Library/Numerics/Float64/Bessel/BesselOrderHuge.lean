@@ -17,7 +17,7 @@ then gives `10 u M` against the pattern, and the deviation adds less than `u M` 
 
 namespace Library.Numerics.Float64.Bessel.BesselOrderHuge
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx PolyBound BesselPQEval BesselCombine BesselCase
-  BesselLarge BesselJ0Large BesselY1Large BesselCS TrigNear Real BesselOrderN BesselRecur
+  BesselLarge BesselJ0Large BesselY1Large BesselCS Library.Numerics.Float64.Trig.TrigNear Real BesselOrderN BesselRecur
 open LeanExe.ProofKit.Bessel (J0 J1 Y0 Y1)
 open LeanExe.ProofKit.BesselPQ (P0 Q0 P1 Q1 modulus0 modulus1)
 

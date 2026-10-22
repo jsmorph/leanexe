@@ -13,7 +13,7 @@ of `π x`.  Above `1/4`, `kernelTanpi` takes `-(-1/tan (π (1/2 - x)))`, which i
 namespace Library.Numerics.Float64.Sinpi.SinpiKernels
 
 open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Trig.TrigKernelWords Library.Numerics.Float64.Trig.TrigKernelSpec Library.Numerics.Float64.Trig.TrigCosKernel Library.Numerics.Float64.Trig.TrigStep
-  SinpiProduct SinpiSingle TanWith TanBigWords TanStep
+  SinpiProduct SinpiSingle Library.Numerics.Float64.Tan.TanWith Library.Numerics.Float64.Tan.TanBigWords Library.Numerics.Float64.Tan.TanStep
 
 local notation "𝐮" => unitRoundoff64
 

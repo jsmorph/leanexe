@@ -14,7 +14,7 @@ holds.
 namespace Library.Numerics.Float64.Erfc.ErfcAccTiny
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcTrack3 ErfcFastMain ErfcRound
-  ErfcAccMain ErfcSeries FmaSpec PolyBound RealErf
+  ErfcAccMain ErfcSeries Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

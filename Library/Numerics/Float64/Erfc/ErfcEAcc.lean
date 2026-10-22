@@ -17,7 +17,7 @@ with errors near `2^-91`, so that `Y = yh + yl` lies within `2^-80` of `xh + xl 
 namespace Library.Numerics.Float64.Erfc.ErfcEAcc
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft2 ErfcEft ErfcOps ErfcTrack ErfcTrack4 ErfcRound ErfcEAccPoly
-  FmaSpec PolyBound
+  Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

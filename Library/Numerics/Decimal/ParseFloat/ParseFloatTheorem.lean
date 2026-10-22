@@ -15,8 +15,8 @@ string of fewer than `2 ^ 32` bytes through `decode`, and `parse64_accept`, `par
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
 open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode
-  StrconvRound ParseFloatRound ParseFloatScan ParseFloatDigits ParseFloatDec ParseFloatDecParse
-  ParseFloatHexParse ParseFloatFast ParseFloatValue StrconvOfScientific StrconvTruncate
+  Library.Numerics.Decimal.Shared.StrconvRound ParseFloatRound ParseFloatScan ParseFloatDigits ParseFloatDec ParseFloatDecParse
+  ParseFloatHexParse ParseFloatFast ParseFloatValue Library.Numerics.Decimal.Shared.StrconvOfScientific Library.Numerics.Decimal.Shared.StrconvTruncate
 
 set_option exponentiation.threshold 4096
 

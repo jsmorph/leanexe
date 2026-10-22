@@ -10,7 +10,7 @@ method.
 namespace Library.Numerics.Float64.Lgamma.LgammaRootA
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaReflect GammaRoot
-  GammaThresholds TgammaFactsBase LgammaRootBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaRootBase
 
 /-! ### The range `(ratOfWord 0xC004E147AE147AE1, -2)` -/
 

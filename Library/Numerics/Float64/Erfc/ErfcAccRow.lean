@@ -17,7 +17,7 @@ distance of the computed double-double from `erf x` by `T`, as `ErfcFastRow.row_
 namespace Library.Numerics.Float64.Erfc.ErfcAccRow
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps ErfcTrack ErfcFastMain ErfcSeries
-  ErfcRound ErfcAccMain ErfcFastRow ErfcSeriesI ErfcSeriesZ FmaSpec PolyBound RealErf
+  ErfcRound ErfcAccMain ErfcFastRow ErfcSeriesI ErfcSeriesZ Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

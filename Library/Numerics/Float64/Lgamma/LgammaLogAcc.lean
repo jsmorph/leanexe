@@ -13,7 +13,7 @@ kernel `log (1 + X) ≈ X P (X)` holds within `2 ^ -80 |X|` on `|X| ≤ 1/2400`.
 namespace Library.Numerics.Float64.Lgamma.LgammaLogAcc
 
 open Real LeanExe.ProofKit PolyBound TaylorModel TaylorRemainder TaylorCheck RatExpLog
-  GammaThresholds TgammaFactsBase TgammaKernelBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase Library.Numerics.Float64.Tgamma.TgammaKernelBase
 
 /-- `as_logd_accurate`'s logarithms `h1 ≈ -log r1` and `h2 ≈ -log r2`, as triple-doubles. -/
 def h1 (i : ℕ) : ℚ :=

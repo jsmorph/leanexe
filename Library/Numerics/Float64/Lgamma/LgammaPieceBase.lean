@@ -21,7 +21,7 @@ elsewhere.
 namespace Library.Numerics.Float64.Lgamma.LgammaPieceBase
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaModels GammaFits GammaRel GammaThresholds
-  TgammaFactsBase
+  Library.Numerics.Float64.Tgamma.TgammaFactsBase
 
 /-- The left border of piece `j`: `ubrd [j]` as the top bits of a double. -/
 def border (j : ℕ) : ℚ := ratOfWord (Lgamma.mainTable[j]! <<< 37)

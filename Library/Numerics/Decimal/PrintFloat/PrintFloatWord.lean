@@ -16,8 +16,8 @@ choice is `Shortest64` and has no trailing zero.
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatWord
 open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvGrid
-  StrconvWords StrconvInterval PrintFloatShort PrintFloatQuot PrintFloatSearch PrintFloatPick
-  PrintFloatShortest PrintFloatLayout ParseFloatTheorem
+  Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvInterval PrintFloatShort PrintFloatQuot PrintFloatSearch PrintFloatPick
+  PrintFloatShortest PrintFloatLayout Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
 
 set_option exponentiation.threshold 4096
 
