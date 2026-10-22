@@ -78,7 +78,7 @@ above, remains a separate module.
 [The native dispatch theorems](VerifiedDispatch.lean) reuse the generic
 source theorem and each generated denotation equation.  The thirteen kernels share the
 IR-to-WGSL translation, including its NaN normalization.  [The host
-instance](../../Verified/Examples/Gpt32Host.lean) supplies the twelve generation kernels to
+instance](VerifiedHost.lean) supplies the twelve generation kernels to
 the existing item and layer proofs.  `Demos.Gpt32.Verified.generate_host` states that the
 commands return the native step's scores and that each dispatch is race-free, under the same
 device model, loaded-weight conditions, and bounds as the original theorem.  The host processes,

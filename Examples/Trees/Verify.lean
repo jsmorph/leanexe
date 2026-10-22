@@ -509,11 +509,11 @@ theorem sizeDrop_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : L
       (fun store state => store = initial ∧ state = ⟨[.i64 n, .i64 p], [.i64 0, .i64 0] ++ rest⟩)
       (fun store state => ∃ (heap' : Heap) (q : UInt64), heap'.At store ∧
         store.memoryCaps = initial.memoryCaps ∧
-        NodeOwned heap' store q (encode (t.sizeDrop n).2) ∧
-        (Node.blocks store q (encode (t.sizeDrop n).2)).Pairwise regionsDisjoint ∧
+        NodeOwned heap' store q (encode (KeyTree.sizeDrop n t).2) ∧
+        (Node.blocks store q (encode (KeyTree.sizeDrop n t).2)).Pairwise regionsDisjoint ∧
         heap.Keeps initial (Node.blocks initial p (encode t)) heap' store
-          (Node.blocks store q (encode (t.sizeDrop n).2)) ∧
-        state = ⟨[.i64 n, .i64 p], [.i64 (t.sizeDrop n).1, .i64 q] ++ rest⟩) := by
+          (Node.blocks store q (encode (KeyTree.sizeDrop n t).2)) ∧
+        state = ⟨[.i64 n, .i64 p], [.i64 (KeyTree.sizeDrop n t).1, .i64 q] ++ rest⟩) := by
   have hGone : (Represent.moves initial [.i64 n, .i64 p] (n, Moved.mk t)).map (block initial) =
       Node.blocks initial p (encode t) := Node.pointers_blocks initial p (encode t)
   -- Locals 2 and 3 are the first two locals, before `rest`.
@@ -532,11 +532,11 @@ theorem sizeDrop_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : L
     ⟨by rw [hGone]; exact hDisjoint, fun _ h => by simp [Represent.reads] at h⟩ hCap ?_).mono
     (fun _ _ h => h) ?_
   · rintro _ _ _ ⟨first, second, rfl, hFirst, ⟨q, rfl, -⟩, -⟩
-    obtain rfl : first = [.i64 (t.sizeDrop n).1] := hFirst
+    obtain rfl : first = [.i64 (KeyTree.sizeDrop n t).1] := hFirst
     exact ⟨_, hSetAll _ _⟩
   rintro store state ⟨heap', values, hAt, ⟨first, second, rfl, hFirst, ⟨q, rfl, hQ, hDQ⟩, -⟩,
     hCaps, hK, hSet⟩
-  obtain rfl : first = [.i64 (t.sizeDrop n).1] := hFirst
+  obtain rfl : first = [.i64 (KeyTree.sizeDrop n t).1] := hFirst
   rw [hGone] at hK
   exact ⟨heap', q, hAt, hCaps, hQ, hDQ, hK.mono (fun _ h => h) fun _ hb => hb,
     (Option.some.inj ((hSetAll _ _).symm.trans hSet)).symm⟩
@@ -559,9 +559,9 @@ theorem sizeDropNext_implements : Implements trees.module 9 sizeDropNextMoved :=
       state = { params := [.i64 n, .i64 p], locals := [.i64 0, .i64 0] ++ [] }) _
   refine (sizeDrop_call hHeap hOwned hDisjoint hCap).mono (fun _ _ h => h) ?_
   rintro store state ⟨heap', q, hAt, hCaps, hQ, hDQ, hK, rfl⟩
-  have hv : sizeDropNextMoved (n, ⟨t⟩) = ((t.sizeDrop n).1 + 1, (t.sizeDrop n).2) := by
+  have hv : sizeDropNextMoved (n, ⟨t⟩) = ((KeyTree.sizeDrop n t).1 + 1, (KeyTree.sizeDrop n t).2) := by
     simp only [sizeDropNextMoved, KeyTree.sizeDropNext]
-  refine ⟨heap', hAt, hCaps, [.i64 ((t.sizeDrop n).1 + 1), .i64 q], _, rfl, ?_⟩
+  refine ⟨heap', hAt, hCaps, [.i64 ((KeyTree.sizeDrop n t).1 + 1), .i64 q], _, rfl, ?_⟩
   rw [hv]
   exact ⟨⟨[.i64 _], [.i64 q], rfl, rfl, ⟨q, rfl, hQ, hDQ⟩, fun _ hb => nomatch hb⟩,
     hK.mono (fun _ h => h) fun b hb => by
@@ -582,7 +582,7 @@ theorem sizeAfterDrop_implements : Implements trees.module 10 sizeAfterDropMoved
     (block initial) = Node.blocks initial p (encode t) from Node.pointers_blocks initial p (encode t)]
   have hImports : (compile trees.funcs).imports = [] := rfl
   have hRelease : (compile trees.funcs).funcs[1]? = some (releaseFunction 1) := rfl
-  let c := (t.sizeDrop n).1
+  let c := (KeyTree.sizeDrop n t).1
   show Triple _ (.seq (.call 8 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2, 3])
       (.seq (.assign 4 (.get 2)) (.release 3))) 5
     (fun store state => store = initial ∧
@@ -614,8 +614,8 @@ theorem sizeDropSmall_implements : Implements trees.module 11 sizeDropSmallMoved
   change (Node.blocks initial p (encode t)).Pairwise regionsDisjoint at hDisjoint
   rw [show (Represent.moves initial (Scalar.values n ++ [.i64 p]) (n, Moved.mk t)).map
     (block initial) = Node.blocks initial p (encode t) from Node.pointers_blocks initial p (encode t)]
-  let c := (t.sizeDrop n).1
-  let u := (t.sizeDrop n).2
+  let c := (KeyTree.sizeDrop n t).1
+  let u := (KeyTree.sizeDrop n t).2
   show Triple _ (.seq (.call 8 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2, 3])
       (.call 7 [⟨.u64, .bin .add (.get 2) (.const 1)⟩, ⟨.u64, .get 3⟩] [4])) 5
     (fun store state => store = initial ∧
@@ -659,7 +659,7 @@ theorem sizeFirst_implements : Implements trees.module 12 sizeFirstMoved := by
     (block initial) = Node.blocks initial p (encode t) from Node.pointers_blocks initial p (encode t)]
   have hImports : (compile trees.funcs).imports = [] := rfl
   have hRelease : (compile trees.funcs).funcs[1]? = some (releaseFunction 1) := rfl
-  let c := (t.sizeDrop n).1
+  let c := (KeyTree.sizeDrop n t).1
   show Triple _ (.seq (.call 8 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2, 3]) (.release 3)) 4
     (fun store state => store = initial ∧
       state = { params := [.i64 n, .i64 p], locals := [.i64 0, .i64 0] ++ [] }) _
@@ -683,10 +683,10 @@ theorem dropSmall_call {heap : Heap} {initial : Store Unit} {n p : UInt64} {t : 
       (fun store state => store = initial ∧ state = ⟨[.i64 n, .i64 p], .i64 0 :: rest⟩)
       (fun store state => ∃ (heap' : Heap) (q : UInt64), heap'.At store ∧
         store.memoryCaps = initial.memoryCaps ∧
-        NodeOwned heap' store q (encode (t.dropSmall n)) ∧
-        (Node.blocks store q (encode (t.dropSmall n))).Pairwise regionsDisjoint ∧
+        NodeOwned heap' store q (encode (KeyTree.dropSmall n t)) ∧
+        (Node.blocks store q (encode (KeyTree.dropSmall n t))).Pairwise regionsDisjoint ∧
         heap.Keeps initial (Node.blocks initial p (encode t)) heap' store
-          (Node.blocks store q (encode (t.dropSmall n))) ∧
+          (Node.blocks store q (encode (KeyTree.dropSmall n t))) ∧
         state = ⟨[.i64 n, .i64 p], .i64 q :: rest⟩) := by
   have hGone : (Represent.moves initial [.i64 n, .i64 p] (n, Moved.mk t)).map (block initial) =
       Node.blocks initial p (encode t) := Node.pointers_blocks initial p (encode t)
@@ -724,7 +724,7 @@ theorem droppedSize_implements : Implements trees.module 13 droppedSizeMoved := 
     (block initial) = Node.blocks initial p (encode t) from Node.pointers_blocks initial p (encode t)]
   have hImports : (compile trees.funcs).imports = [] := rfl
   have hRelease : (compile trees.funcs).funcs[1]? = some (releaseFunction 1) := rfl
-  let u := t.dropSmall n
+  let u := (KeyTree.dropSmall n t)
   show Triple _ (.seq (.call 7 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2])
       (.seq (.call 2 [⟨.u64, .get 2⟩] [3]) (.seq (.assign 4 (.get 3)) (.release 2)))) 5
     (fun store state => store = initial ∧ state = ⟨[.i64 n, .i64 p], .i64 0 :: [.i64 0, .i64 0]⟩) _
@@ -770,7 +770,7 @@ theorem dropWithSize_implements : Implements trees.module 14 dropWithSizeMoved :
   change (Node.blocks initial p (encode t)).Pairwise regionsDisjoint at hDisjoint
   rw [show (Represent.moves initial (Scalar.values n ++ [.i64 p]) (n, Moved.mk t)).map
     (block initial) = Node.blocks initial p (encode t) from Node.pointers_blocks initial p (encode t)]
-  let u := t.dropSmall n
+  let u := (KeyTree.dropSmall n t)
   show Triple _ (.seq (.call 7 [⟨.u64, .get 0⟩, ⟨.u64, .get 1⟩] [2])
       (.call 2 [⟨.u64, .get 2⟩] [3])) 4
     (fun store state => store = initial ∧ state = ⟨[.i64 n, .i64 p], .i64 0 :: [.i64 0]⟩) _
@@ -808,7 +808,7 @@ theorem size_keeps : ∀ t, KeepsEntry (compile trees.funcs) (2 + 0) Library.Tre
     size_rec
 
 /-- `leftSizes` with its tree consumed. -/
-def leftSizesMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.leftSizes
+def leftSizesMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := (KeyTree.leftSizes t.val)
 
 /-- The internal function of `leftSizes`, at any depth, consumes its tree and rewrites each
 record in place.  A record branch lends its left child to `size`'s internal function at the

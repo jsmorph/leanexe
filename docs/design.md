@@ -41,7 +41,10 @@ The verified compiler shares the runtime, `Implements`, the encoding, and the tr
 
 | File | Role |
 |---|---|
-| [`Examples/`](../Examples) | A directory for each example of the LeanExe compiler, which holds the program, the module, the proofs, the module cases, and a README, and in some examples a specification, a request, and run records.  The directories `Lcg`, `ParkMiller`, and `Xorshift` hold programs, which the verified compiler compiles, and theorems about them, and `Orbit` holds lemmas that they share. |
+| [Compiler fixtures](../Examples) | Programs, specifications, compilations, worked proofs, and cases for individual compiler features. |
+| [Algorithm library](../Library/README.md) | Native algorithms and their mathematical and compilation proofs, grouped by family. |
+| [Application demos](../Demos/README.md) | Application definitions, proofs, and host programs. |
+| [Test support](../tests/TestSupport) | Shared cases, formatting, and numerical reference calculators. |
 | [`LeanExe/Dialect/`](../LeanExe/Dialect) | The modules a program may import: `LeanExe.loop`, the dialect's index loop, `LeanExe.build`, an array computed by index, `LeanExe.repeatWhile`, `LeanExe.insertAt` and `LeanExe.eraseAt`, which insert and remove an element at a position, and `LeanExe.Float32.nearest`. |
 | [`LeanExe/Dialect/Float32.lean`](../LeanExe/Dialect/Float32.lean), [`LeanExe/ProofKit/Float64.lean`](../LeanExe/ProofKit/Float64.lean), [`Signed32.lean`](../LeanExe/ProofKit/Signed32.lean) | Raw-bit wrappers that the binary32 and binary64 equality proofs state their results about. |
 | [`LeanExe/IR/Expr.lean`](../LeanExe/IR/Expr.lean) | IR expressions, the IR state, `Expr.eval`, the expression rule `Expr.program_spec`, and `State.Frame` with `Expr.eval_frame`.  `State.Frame` says a state changed only given locals and scratch locals. |

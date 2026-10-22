@@ -38,41 +38,41 @@ def treeCases : IO Unit := do
     line "trees" "size" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.size)
     line "trees" "sum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.sum)
     line "trees" "height" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.height)
-    line "trees" "sizeSum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.sizeSum)
+    line "trees" "sizeSum" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString (KeyTree.sizeSum t))
     line "trees" "leftSizes" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
-      (KeyTree.describe t.leftSizes)
-    line "trees" "leftHeavy" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.leftHeavy)
-    let kp := t.keyPair
+      (KeyTree.describe (KeyTree.leftSizes t))
+    line "trees" "leftHeavy" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString (KeyTree.leftHeavy t))
+    let kp := (KeyTree.keyPair t)
     line "trees" "keyPair" "list:i64,i64" [s!"tree-u64:{KeyTree.describe t}"] s!"{kp.1},{kp.2}"
     for n in ([0, 1, 3, 10] : List UInt64) do
       line "trees" "sumSizes" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (toString (t.sumSizes n))
+        (toString (KeyTree.sumSizes n t))
     for xs in ([[], [7], [1, 2, 3]] : List (List UInt64)) do
-      let r := t.pushSum xs.toArray
+      let r := (KeyTree.pushSum xs.toArray t)
       line "trees" "pushSum" "list:array-u64,i64" [arrU xs, s!"tree-u64:{KeyTree.describe t}"]
         s!"{words r.1.toList},{r.2}"
     for n in [0, 1, 3, 10, maxU] do
       line "trees" "dropSmall" "tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (t.dropSmall n))
-      let r := t.sizeDrop n
+        (KeyTree.describe (KeyTree.dropSmall n t))
+      let r := (KeyTree.sizeDrop n t)
       line "trees" "sizeDrop" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         s!"{r.1},{KeyTree.describe r.2}"
-      let r2 := t.sizeDropNext n
+      let r2 := (KeyTree.sizeDropNext n t)
       line "trees" "sizeDropNext" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         s!"{r2.1},{KeyTree.describe r2.2}"
       line "trees" "sizeAfterDrop" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (toString (t.sizeAfterDrop n))
+        (toString (KeyTree.sizeAfterDrop n t))
       line "trees" "sizeDropSmall" "tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (t.sizeDropSmall n))
+        (KeyTree.describe (KeyTree.sizeDropSmall n t))
       line "trees" "sizeFirst" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (toString (t.sizeFirst n))
+        (toString (KeyTree.sizeFirst n t))
       line "trees" "droppedSize" "i64" [u n, s!"tree-u64:{KeyTree.describe t}"]
-        (toString (t.droppedSize n))
-      let r3 := t.dropWithSize n
+        (toString (KeyTree.droppedSize n t))
+      let r3 := (KeyTree.dropWithSize n t)
       line "trees" "dropWithSize" "list:i64,tree-u64" [u n, s!"tree-u64:{KeyTree.describe t}"]
         s!"{r3.1},{KeyTree.describe r3.2}"
   for t in trees.take 10 do
-    line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString t.wide)
+    line "treeFrame" "wide" "i64" [s!"tree-u64:{KeyTree.describe t}"] (toString (KeyTree.wide t))
   for t in trees do
     for k in [0, 7, maxU] do
       line "treeMoves" "setKey" "tree-u64" [u k, s!"tree-u64:{KeyTree.describe t}"]
@@ -83,35 +83,35 @@ def treeCases : IO Unit := do
       line "treeMoves" "insert" "tree-u64" [u x, s!"tree-u64:{KeyTree.describe t}"]
         (KeyTree.describe (t.insert x))
     line "treeMoves" "dropRight" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
-      (KeyTree.describe t.dropRight)
+      (KeyTree.describe (KeyTree.dropRight t))
     line "treeMoves" "addLeft" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
-      (KeyTree.describe t.addLeft)
+      (KeyTree.describe (KeyTree.addLeft t))
     let sr := t.splitRoot
     line "treeMoves" "splitRoot" "list:tree-u64,tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       s!"{KeyTree.describe sr.1},{KeyTree.describe sr.2}"
-    let rr := t.rootAndRest
+    let rr := (KeyTree.rootAndRest t)
     line "treeMoves" "rootAndRest" "list:i64,tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       s!"{rr.1},{KeyTree.describe rr.2}"
-    let ko := t.keepOld
+    let ko := (KeyTree.keepOld t)
     line "treeMoves" "keepOld" "list:tree-u64,tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       s!"{KeyTree.describe ko.1},{KeyTree.describe ko.2}"
     line "treeMoves" "addSelf" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
-      (KeyTree.describe t.addSelf)
+      (KeyTree.describe (KeyTree.addSelf t))
     line "treeMoves" "leftChild" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
       (KeyTree.describe t.leftChild)
     for (a, b) in ([(0, 1), (7, 7), (500, maxU)] : List (UInt64 × UInt64)) do
       line "treeMoves" "insertTwo" "tree-u64" [u a, u b, s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (t.insertTwo a b))
+        (KeyTree.describe (KeyTree.insertTwo a b t))
     for a in trees.take 4 do
       line "treeMoves" "addRoot" "tree-u64"
         [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (a.addRoot t))
+        (KeyTree.describe (KeyTree.addRoot a t))
       line "treeMoves" "addAll" "tree-u64"
         [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (a.addAll t))
+        (KeyTree.describe (KeyTree.addAll a t))
       line "treeMoves" "leftSpine" "tree-u64"
         [s!"tree-u64:{KeyTree.describe a}", s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (a.leftSpine t))
+        (KeyTree.describe (KeyTree.leftSpine a t))
       let so := KeyTree.splitOr t a
       line "treeMoves" "splitOr" "list:tree-u64,tree-u64"
         [s!"tree-u64:{KeyTree.describe t}", s!"tree-u64:{KeyTree.describe a}"]
@@ -127,9 +127,9 @@ def treeCases : IO Unit := do
   for t in trees ++ zeroRoots do
     for c in [0, 1, maxU] do
       line "treeMoves" "keepIf" "tree-u64" [u c, s!"tree-u64:{KeyTree.describe t}"]
-        (KeyTree.describe (t.keepIf c))
+        (KeyTree.describe (KeyTree.keepIf c t))
     line "treeMoves" "trim" "tree-u64" [s!"tree-u64:{KeyTree.describe t}"]
-      (KeyTree.describe t.trim)
+      (KeyTree.describe (KeyTree.trim t))
 
 def cases : IO Unit := do
   treeCases

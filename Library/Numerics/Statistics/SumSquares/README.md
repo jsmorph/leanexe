@@ -24,7 +24,7 @@ summation, including overflow to infinity and NaN.
 The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `propext`,
 `Classical.choice`, and `Quot.sound`.  An `Array Float` is stored as the elements' bit patterns, so
 the host passes the array as words.  [The LeanExe compiler
-manual](../../docs/leanexe-manual.md#folds) lists the folds the compiler accepts.
+manual](../../../../docs/leanexe-manual.md#folds) lists the folds the compiler accepts.
 
 ## Building, running, and testing
 

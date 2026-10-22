@@ -269,3 +269,4 @@ import Library.Trees.WordTree.Compiled
 import Library.Numerics.Arithmetic.CeilSqrt.Proof
 import Library.Numerics.Bounds.Proof
 import Library.Numerics.Limiters.Minmod.Proof
+import Library.Arrays.Search.Proof

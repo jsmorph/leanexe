@@ -24,7 +24,7 @@ if [ "$verified" -eq 1 ]; then
   (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain)
 elif [ "$gpt32" -eq 1 ]; then
   (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
-    Demos.Gpt32.Verified Verified.Examples.Gpt32GpuCasesMain)
+    Demos.Gpt32.Verified Demos.Gpt32.VerifiedGpuCasesMain)
 fi
 for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wgsl:Examples.Binary32:axpyArray \
     Examples.Binary32.Wgsl:Examples.Binary32:matVec Examples.Binary32.Wgsl:Examples.Binary32:condMix \

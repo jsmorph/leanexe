@@ -32,7 +32,7 @@ function anchors(file) {
 
 for (const file of files) {
   const text = content(file).replace(/^```[^\n]*\n[\s\S]*?^```[^\n]*$/gm, '');
-  const targets = [...text.matchAll(/\[[^\]\n]*\]\(([^)\n]+)\)/g)].map(m => m[1]);
+  const targets = [...text.matchAll(/\[[^\]]*\]\(([^)\n]+)\)/g)].map(m => m[1]);
   targets.push(...[...text.matchAll(/^\[[^\]\n]+\]:\s*(\S+)/gm)].map(m => m[1]));
   for (let target of targets) {
     links++;

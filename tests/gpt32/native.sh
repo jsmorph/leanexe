@@ -17,7 +17,7 @@ source=tests/gpt32/Native.lean
 if [ "$verified" -eq 1 ]; then
   source=tests/gpt32/VerifiedNative.lean
   (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
-    Demos.Gpt32.NativeCases Verified.Examples.Gpt32Kernels)
+    Demos.Gpt32.NativeCases Demos.Gpt32.VerifiedKernels)
   mkdir -p "$build/gpt32-native"
   wasm=$build/gpt32-native/gpt32.wasm
   (cd "$root" && tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
