@@ -2,7 +2,7 @@ import Library.Numerics.Decimal.PrintFloat.PrintFloatBytes
 import LeanExe.Pipeline.FileBytes
 
 /-! Checked after `build/verified/printfloat.wasm` is written by `tools/Emit.lean`, with
-`tools/leanrun --timeout 10m lake env lean Verified/Examples/PrintFloatFile.lean`: the file holds
+`tools/leanrun --timeout 10m lake env lean Library/Numerics/Decimal/PrintFloat/PrintFloatFile.lean`: the file holds
 `encode PrintFloat.compiled.module`, so it decodes to the module of the four byte theorems of
 `PrintFloatBytes`. -/
 
