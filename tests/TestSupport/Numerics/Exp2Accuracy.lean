@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Exp2.Compiled
+import Library.Numerics.Float64.Exp2.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.PowerReference
 
@@ -19,7 +19,7 @@ result further than one unit from the reference.  Run with `lake env lean --run`
 
 namespace TestSupport.Numerics.Exp2Accuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `2 ^ x`, within a relative `2 ^ -390` at precision `P`.  From 1100 on in
 magnitude the result overflows or underflows to 0. -/
@@ -72,7 +72,7 @@ def exp10Args : Array Float :=
 
 end TestSupport.Numerics.Exp2Accuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.Exp2Accuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.Exp2Accuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   let mut library : Tally := {}

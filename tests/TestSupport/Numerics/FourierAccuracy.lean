@@ -1,4 +1,4 @@
-import Library.Numerics.Fourier.Compiled
+import Library.Numerics.Fourier.Program
 import TestSupport.Numerics.Reference
 
 /-! A native check that `Library.Numerics.Fourier.dft`, `Library.Numerics.Fourier.inverse`, and `Library.Numerics.Fourier.powerSpectrum` behave as
@@ -23,7 +23,7 @@ transform as a multiple of `τ`.  The waves are the doubles nearest to `cos` and
 
 namespace TestSupport.Numerics.FourierAccuracy
 
-open Verified.Examples
+open TestSupport.Numerics
 
 def ε : Float := Float.ofBits 0x3CA0000000000000
 
@@ -72,7 +72,7 @@ def check (name : String) (ok : Bool) : IO Unit := do
 
 end TestSupport.Numerics.FourierAccuracy
 
-open Verified.Examples TestSupport.Numerics.FourierAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.FourierAccuracy in
 def main : IO UInt32 := do
   try
     let mut count := 0

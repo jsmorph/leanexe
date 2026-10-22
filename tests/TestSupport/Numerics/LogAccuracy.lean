@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Log.Compiled
+import Library.Numerics.Float64.Log.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -18,7 +18,7 @@ at the first result further than one unit from the reference.  Run with `lake en
 
 namespace TestSupport.Numerics.LogAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `log x`. -/
 def reference (x : Float) : Float :=
@@ -63,7 +63,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.LogAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.LogAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.LogAccuracy in
 def main : IO UInt32 := do
   unless (List.range 128).all tableEntryOk do
     IO.eprintln "fail: a table entry differs from its center"

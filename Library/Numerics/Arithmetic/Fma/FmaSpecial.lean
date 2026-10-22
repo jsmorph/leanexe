@@ -10,7 +10,7 @@ the default NaN or a signed infinity for an infinite factor (`fmaBits_inf`), `c`
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaSpecial
-open Verified.Examples FmaWords FmaDecode FmaParts FmaCombine FmaGeneral FmaGrid FmaRound
+open Library.Numerics.Arithmetic.Fma FmaWords FmaDecode FmaParts FmaCombine FmaGeneral FmaGrid FmaRound
 open FmaNearestEven CodeLib.IEEE64 LeanExe.ProofKit
 
 theorem quiet_nan (x : UInt64) (hx : Wasm.IEEE64.isNaN x = true) :

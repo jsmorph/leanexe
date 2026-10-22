@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Sinh.Compiled
+import Library.Numerics.Float64.Sinh.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.HyperbolicReference
 
@@ -18,7 +18,7 @@ error at the first result further from the reference than its bound.  Run with
 
 namespace TestSupport.Numerics.SinhAccuracy
 
-open Verified.Examples Reference HyperbolicReference
+open TestSupport.Numerics Reference HyperbolicReference
 
 /-- The double nearest to `sinh x`, at the precision of `x` plus 8 bits, below a relative
 `2 ^ -390`.  From 1100 on in magnitude the result overflows. -/
@@ -55,7 +55,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.SinhAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.SinhAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.SinhAccuracy in
 def main : IO UInt32 := do
   let mut sinhs : Tally := {}
   let mut coshs : Tally := {}

@@ -1,4 +1,4 @@
-import Library.Numerics.Decimal.ParseFloat.Compiled
+import Library.Numerics.Decimal.ParseFloat.Program
 import Library.Numerics.Decimal.Shared.StrconvDecode
 
 /-! A native check of `Library.Numerics.Decimal.ParseFloat.parse64` and `parse32` on the cases of

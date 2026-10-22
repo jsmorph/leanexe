@@ -9,7 +9,7 @@ zero sum and the signed nearest-even reference of `a · b + c` for any other sum
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaGeneral
-open Verified.Examples FmaWords FmaDecode FmaParts FmaCombine CodeLib.IEEE64 LeanExe.ProofKit
+open Library.Numerics.Arithmetic.Fma FmaWords FmaDecode FmaParts FmaCombine CodeLib.IEEE64 LeanExe.ProofKit
 
 theorem finite_exponent (x : UInt64) (hx : Finite x) :
     ((x >>> 52) &&& 0x7FF == 0x7FF) = false := by

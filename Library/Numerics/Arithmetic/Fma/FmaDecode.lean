@@ -13,7 +13,7 @@ expressions of `fmaBits` compute these fields, the sign bits, and the tests for 
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaDecode
-open Verified.Examples FmaWords CodeLib.IEEE64
+open Library.Numerics.Arithmetic.Fma FmaWords CodeLib.IEEE64
 
 set_option exponentiation.threshold 4096
 

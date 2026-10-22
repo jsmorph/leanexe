@@ -15,7 +15,7 @@ result of `fmaBits` is a quiet NaN, which `Float.toBits` returns as the canonica
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaTheorem
-open Verified.Examples FmaWords FmaDecode FmaParts FmaCombine FmaGeneral FmaSpecial
+open Library.Numerics.Arithmetic.Fma FmaWords FmaDecode FmaParts FmaCombine FmaGeneral FmaSpecial
 open CodeLib.IEEE64 LeanExe.ProofKit
 
 /-- IEEE 754 fusedMultiplyAdd(`a`, `b`, `c`) with roundTiesToEven on the bits of the operands,

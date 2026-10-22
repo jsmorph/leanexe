@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Trig.Compiled
+import Library.Numerics.Float64.Trig.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -21,7 +21,7 @@ the first result further than one unit from the reference, or at a NaN.  Run wit
 
 namespace TestSupport.Numerics.TrigAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The words of `2/π · 2 ^ 1216` from `piWide`, the integer part first. -/
 def invPiWords : List UInt64 :=
@@ -58,7 +58,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.TrigAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.TrigAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.TrigAccuracy in
 def main : IO UInt32 := do
   unless invPiWords == Library.Numerics.Float64.Trig.invPi.toList && halfPiWords == Library.Numerics.Float64.Trig.halfPi.toList do
     IO.eprintln "fail: the words of 2/π or π/2 differ from those of Machin's formula"

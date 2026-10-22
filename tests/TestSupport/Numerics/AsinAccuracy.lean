@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Asin.Compiled
+import Library.Numerics.Float64.Asin.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.ArcReference
 
@@ -16,7 +16,7 @@ than one unit from the reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.AsinAccuracy
 
-open Verified.Examples Reference ArcReference
+open TestSupport.Numerics Reference ArcReference
 
 /-- The double nearest to `v · 2 ^ -q` with the sign `neg`. -/
 def signed (neg : Bool) (v : Int) (q : Nat) : Float :=
@@ -61,7 +61,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.AsinAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.AsinAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.AsinAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   let mut library : Tally := {}

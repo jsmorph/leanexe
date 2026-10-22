@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Sinpi.Compiled
+import Library.Numerics.Float64.Sinpi.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -21,7 +21,7 @@ Zimmermann.  It exits with an error at the first result that fails.  Run with
 
 namespace TestSupport.Numerics.SinpiAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- For a finite `x`: whether `|x|` is an integer, whether it is an integer plus `1/2`, and the
 integer part of `|x|`. -/
@@ -111,7 +111,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.SinpiAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.SinpiAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.SinpiAccuracy in
 def main : IO UInt32 := do
   for (name, f, reference) in
       [("sinpi", Library.Numerics.Float64.Sinpi.sinpi, sinpiReference), ("cospi", Library.Numerics.Float64.Sinpi.cospi, cospiReference),

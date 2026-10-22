@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Tgamma.Compiled
+import Library.Numerics.Float64.Tgamma.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.GammaReference
 
@@ -19,7 +19,7 @@ It exits with an error at the first result further than one unit from the refere
 
 namespace TestSupport.Numerics.TgammaAccuracy
 
-open Verified.Examples Reference GammaReference
+open TestSupport.Numerics Reference GammaReference
 
 def args : Array Float :=
   let integers := (Array.range 373).map fun i => (UInt64.ofNat i).toFloat - 200.0
@@ -37,7 +37,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.TgammaAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.GammaReference
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.GammaReference
   TestSupport.Numerics.TgammaAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}

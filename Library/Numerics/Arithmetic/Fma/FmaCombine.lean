@@ -14,7 +14,7 @@ exact sum at its scale, so that `FmaGrid.roundsTo_transfer` carries the rounding
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaCombine
-open Verified.Examples FmaWords FmaGrid FmaRound FmaRoundPack FmaNearestEven FmaAlign FmaParts
+open Library.Numerics.Arithmetic.Fma FmaWords FmaGrid FmaRound FmaRoundPack FmaNearestEven FmaAlign FmaParts
 open CodeLib.IEEE64 LeanExe.ProofKit
 
 /-- The sign `±1` of a sign bit. -/

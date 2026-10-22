@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Erf.Compiled
+import Library.Numerics.Float64.Erf.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.ErfReference
 
@@ -17,7 +17,7 @@ the first result further from the reference than one unit.  Run with `lake env l
 
 namespace TestSupport.Numerics.ErfAccuracy
 
-open Verified.Examples Reference ErfReference
+open TestSupport.Numerics Reference ErfReference
 
 /-- The double nearest to `erf x`: below 6 in magnitude `x · erfFactor` at precision `P`, within a
 relative `2 ^ -393`, and `±1` from 6 on, where `erfc x < erfc 6 < 2 ^ -54` puts `1 - erfc x` above
@@ -48,7 +48,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.ErfAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.ErfAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.ErfAccuracy in
 def main : IO UInt32 := do
   for (name, bound, f, reference) in [("erf", 1, Library.Numerics.Float64.Erf.erf, erfReference)] do
     let mut ours : Tally := {}

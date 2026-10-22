@@ -1,5 +1,7 @@
 import Library.Numerics.Bounds.Program
 import Library.Numerics.Limiters.Minmod.Program
+import Library.Numerics.Reductions.Word.Program
+import Library.Arrays.Search.Program
 import TestSupport.Host
 
 namespace TestSupport.LibraryCases
@@ -10,6 +12,15 @@ private def checked (name : String) (args : List String) (result : Checked) : IO
   line "libbounds" name "list:i64,f64" args s!"{result.status} {result.value.toBits}"
 
 def cases : IO Unit := do
+  for xs in wordArrays do
+    let values := xs.toArray
+    line "libwordreductions" "productArray" "i64" [arrU xs]
+      (toString (Library.Numerics.Reductions.Word.productArray values))
+    line "libwordreductions" "xorArray" "i64" [arrU xs]
+      (toString (Library.Numerics.Reductions.Word.xorArray values))
+    for count in [0, xs.length.toUInt64, xs.length.toUInt64 + 1] do
+      line "libsearch" "firstZero" "i64" [arrU xs, u count]
+        (toString (Library.Arrays.Search.firstZero values count))
   for a in specialFloats do
     for up in [false, true] do
       let direction := u (if up then 1 else 0)

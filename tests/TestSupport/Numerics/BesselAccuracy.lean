@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Bessel.Compiled
+import Library.Numerics.Float64.Bessel.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.BesselReference
 
@@ -26,7 +26,7 @@ Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.BesselAccuracy
 
-open Verified.Examples Reference ArcReference BesselReference
+open TestSupport.Numerics Reference ArcReference BesselReference
 
 /-- The error of `y` from `v · 2 ^ -q` in thousandths of the unit `2 ^ (⌊log₂ M⌋ - 52)`, rounded
 down, for the modulus `M = isqrt (j² + w²) · 2 ^ -q`.  An infinite `y` has error 0 where
@@ -93,7 +93,7 @@ def argsN (n : Nat) (seed : UInt64) : Array Float :=
 
 end TestSupport.Numerics.BesselAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.BesselReference
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.BesselReference
   TestSupport.Numerics.BesselAccuracy in
 def main (argv : List String) : IO UInt32 := do
   let bound01 : Nat := 4

@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Tanh.Compiled
+import Library.Numerics.Float64.Tanh.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -22,7 +22,7 @@ reference than its bound.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.TanhAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `expm1 x`. -/
 def expm1Reference (x : Float) : Float :=
@@ -78,7 +78,7 @@ def tanhArgs : Array Float :=
 
 end TestSupport.Numerics.TanhAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.TanhAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.TanhAccuracy in
 def main : IO UInt32 := do
   let mut expm1s : Tally := {}
   for x in expm1Args do

@@ -13,7 +13,7 @@ with both signs. -/
 
 namespace TestSupport.Numerics.GammaReference
 
-open Verified.Examples Reference
+open Reference
 
 /-- `a/b` in lowest terms for `b > 0`. -/
 def reduce (a : Int) (b : Nat) : Int × Nat :=

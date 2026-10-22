@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Pow.Compiled
+import Library.Numerics.Float64.Pow.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.PowerReference
 
@@ -18,7 +18,7 @@ reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.PowAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- Whether the finite `y = m · 2 ^ e` is an integer, and whether it is an odd one. -/
 def integerKind (y : Float) : Bool × Bool :=
@@ -103,7 +103,7 @@ def pairs : Array (Float × Float) :=
 
 end TestSupport.Numerics.PowAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.PowAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.PowAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   let mut library : Tally := {}

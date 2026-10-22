@@ -11,7 +11,7 @@ length of the shift and the biased exponent), the significand (`sig`), and the p
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaRound
-open Verified.Examples FmaWords FmaGrid
+open Library.Numerics.Arithmetic.Fma FmaWords FmaGrid
 
 set_option exponentiation.threshold 4096
 

@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Exp.Compiled
+import Library.Numerics.Float64.Exp.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -16,7 +16,7 @@ further than one unit from the reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.ExpAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `exp x`. -/
 def reference (x : Float) : Float :=
@@ -52,7 +52,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.ExpAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.ExpAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.ExpAccuracy in
 def main : IO UInt32 := do
   unless (List.range 128).all tableEntryOk do
     IO.eprintln "fail: a table entry differs from 2 ^ (j/128)"

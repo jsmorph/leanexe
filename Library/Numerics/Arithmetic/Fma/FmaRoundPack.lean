@@ -10,7 +10,7 @@ bit lies above bit 127 (`sub_far`), is exact for `w = 1326` (`sub_exact`), and i
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaRoundPack
-open Verified.Examples FmaWords FmaGrid FmaRound
+open Library.Numerics.Arithmetic.Fma FmaWords FmaGrid FmaRound
 
 set_option exponentiation.threshold 4096
 
