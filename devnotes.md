@@ -5750,7 +5750,7 @@ The move changes no definition body or theorem statement after namespace resolut
 
 ## 2026-07-14: CLOB `findBest` proof scaffold
 
-The `clob_find_best` Talos case now pins the compiled `LeanExe.Examples.Clob.findBest` export.  The artifact is 3,462 bytes of WASM and 42,412 bytes of printed WAT, with the public wrapper at function 8, the fuel loop at function 7, scalar decision helpers at functions 1, 4, 5, and 6, and runtime functions at indices 9 through 12.  The runtime definitions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
+The `clob_find_best` Talos case now pins the compiled `LeanExe.Demos.Clob.findBest` export.  The artifact is 3,462 bytes of WASM and 42,412 bytes of printed WAT, with the public wrapper at function 8, the fuel loop at function 7, scalar decision helpers at functions 1, 4, 5, and 6, and runtime functions at indices 9 through 12.  The runtime definitions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
 
 `Project.ClobFindBest.Model` restates opposite-side selection, crossing, eligibility, better-price comparison, fuel recursion, and the public two-word `Option Nat` result.  `Project.ClobFindBest.Helpers` proves the four scalar helpers over arbitrary orders and stores, including the short-circuit path that skips the crossing call when side or trader eligibility fails.  The helper build completed 3,006 jobs without a warning after unused simplification arguments were removed.
 
@@ -5780,7 +5780,7 @@ The branch gate now checks all five `validOrder` failure paths, the `findBest` c
 
 ## 2026-07-14: CLOB `postOnly` proof scaffold
 
-The `clob_post_only` case now pins the compiled `LeanExe.Examples.Clob.postOnly` export.  The artifact is 5,915 bytes of WASM and 70,775 bytes of WAT, with the public wrapper at function 17 and runtime functions at indices 18 through 21.  The runtime functions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
+The `clob_post_only` case now pins the compiled `LeanExe.Demos.Clob.postOnly` export.  The artifact is 5,915 bytes of WASM and 70,775 bytes of WAT, with the public wrapper at function 17 and runtime functions at indices 18 through 21.  The runtime functions match the shared allocator, reset, retain, and index-parametrized release definitions by reduction.
 
 `Project.ClobPostOnly.Model` states the five validity conditions and the invalid, would-cross, and appended source outcomes over the shared order representation.  Invalid and would-cross results borrow the input book and allocate one empty trade array.  The successful result allocates both the appended book and an empty trade array, so its artifact theorem requires a separate two-allocation postcondition.
 
@@ -26193,17 +26193,17 @@ two drivers.
 Step 2 moved 240 files into `Examples/<Name>/` and renamed each example's namespaces,
 `Project.<Name>` and `LeanExe.Examples.<Name>`, to `Examples.<Name>`, so that module names and
 declaration names share one prefix.  The program of `<Name>` is `Program.lean`, and the
-reconstructed Euler solver is `ReconstructedProgram.lean` in `Examples.Euler.Reconstructed`.
+reconstructed Euler solver is `ReconstructedProgram.lean` in `Demos.Euler.Reconstructed`.
 Several problems came up.  The host programs of the GPT-2 WGSL example, `Project/Gpt32/Program.lean`,
 collided with the example's program and became `HostProgram.lean`.  Fifteen references such as
 `IR.Stmt.scratchWidth` had resolved only inside the `Project` namespace and now name `Project.IR`
-in full.  In `Examples.Gpt.StepVerify`, `block` came to mean the transformer block of the program,
+in full.  In `Demos.Gpt.StepVerify`, `block` came to mean the transformer block of the program,
 which is now in the current namespace, instead of `Project.Pipeline.block`.  `EulerReal` became
-`Examples/Euler/Equations/`, since a namespace `Examples.Euler.Real` would shadow Mathlib's `Real`.
+`Examples/Euler/Equations/`, since a namespace `Demos.Euler.Real` would shadow Mathlib's `Real`.
 The module cases moved from one file into each example's `Cases.lean`, with the shared helpers in
-`Examples/Host.lean`.  The script that split them left the increment cases outside `cases`, which
+`tests/TestSupport/Host.lean`.  The script that split them left the increment cases outside `cases`, which
 Lean accepted, and the count of 16,033 cases against 16,039 exposed it.  The LTG entries listed a
-program module as `Examples.Prng`, which is `Examples.Prng.Program`, and the WGSL scripts named the
+program module as `Library.Random.SplitMix64`, which is `Library.Random.SplitMix64.Program`, and the WGSL scripts named the
 binary32 kernels by their old namespace.  The renamed specification of `treeLookup` was frozen again
 with its new hashes.
 
@@ -27400,7 +27400,7 @@ expanded into its pairs and proves by `cases` on each component.
   matches, so `TrigAccuracy.lean` checks that argument and 300 huge ones, with their negatives,
   against an exact reference in Lean's integers: all 1,220 results lie within one unit, 42 of them
   one unit from the correctly rounded value.  Against glibc, 360,002 results lie within one unit.
-- [x] Step 4: the Fourier demo, `Verified/Examples/Fourier.lean`: `transform dir xs` over `n`
+- [x] Step 4: the Fourier demo, `Library/Numerics/Fourier/Program.lean`: `transform dir xs` over `n`
   complex values as `2 n` interleaved floats, by the `n²` products of the definition with a local
   table of factors `(Trig.cos θ, Trig.sin θ)`, `θ = 2 π m / n`, and the output as an outer loop's
   state updated in place; `dft`, `inverse`, and `powerSpectrum` of real samples.  The program lists
@@ -27475,7 +27475,7 @@ every local that the code writes after taking the array at or above the base of 
 
 The CLOB port changes three things in the program: `marketBuy` returns a pair, the conditions use
 `&&` and `==`, and the level updates use the new functions.  The command-stream lemmas of
-`Examples/Clob/Verify.lean` moved to `Examples/Clob/Commands.lean`, so that both versions state
+`Demos/Clob/Verify.lean` moved to `Demos/Clob/Commands.lean`, so that both versions state
 their chunking theorems with the same lemmas.
 
 - [x] Dialect functions and source constructors.
@@ -27583,7 +27583,7 @@ the dialect has no fused operation, and each constant appears as its bit pattern
 at commit `503fafe3`, and [FreeBSD `lib/msun/src`](https://github.com/freebsd/freebsd-src/tree/20381bce4b63975494a2f4bc84257f6932e6d379/lib/msun/src)
 at commit `20381bce`.
 
-`Verified/Examples/Reference.lean` holds the exact references for the accuracy checks in Lean's
+`tests/TestSupport/Numerics/Reference.lean` holds the exact references for the accuracy checks in Lean's
 integers: `ln 2` from `2 atanh (1/3)` at 2,400 bits, `exp` by reduction and Taylor series,
 `expm1` and `tanh` from `exp`, and rounding to the nearest double with subnormals and overflow.
 Each definition states the error its truncations leave.  `precision x` raises the working
@@ -27714,12 +27714,12 @@ arguments, and the same holds for `exp`, `expm1`, and `tanh`.  On 2026-10-08, wi
 aarch64, none of the four differed.
 
 ```lean
-import Verified.Examples.Exp
-import Verified.Examples.Tanh
-import Verified.Examples.Log
-import Verified.Examples.Reference
+import Library.Numerics.Float64.Exp.Compiled
+import Library.Numerics.Float64.Tanh.Compiled
+import Library.Numerics.Float64.Log.Compiled
+import TestSupport.Numerics.Reference
 
-open Verified.Examples Verified.Examples.Reference
+open Verified.Examples TestSupport.Numerics.Reference
 
 def args : Array Float :=
   hashed 300000 23 0 2047 ++ evenly 100000 (-40.0) 40.0 ++ evenly 100000 0.9 1.1
@@ -27774,10 +27774,10 @@ the constant by `rfl`.  The case comes after the calls of listed definitions, so
 definition without parameters, such as `initial`, stays a call, and arrays stay out, since a
 constant array is a table that a wrapper passes.  An error inside the value names the constant.
 The `Flat Choice` instance moved from `Rows.lean` of the `LeanExe` proof chain to
-`Examples/Drone/Flat.lean`, which both pipelines import, and the `LeanExe` drone proofs rebuild.
+`Demos/Drone/Flat.lean`, which both pipelines import, and the `LeanExe` drone proofs rebuild.
 
-`Verified/Examples/Drone.lean` lists the 17 functions, with `floorAt` and `best`, which `LeanExe`
-inlines.  `drone_compute` and `drone_safe` state the claims of `Examples/Drone/Verify.lean` for the
+`Demos/Drone/Verified.lean` lists the 17 functions, with `floorAt` and `best`, which `LeanExe`
+inlines.  `drone_compute` and `drone_safe` state the claims of `Demos/Drone/Verify.lean` for the
 module's bytes: entry 18 computes `compute`, and with the planner's `compute_correct` and
 `compute_safe` its results are optimal and safe flights.  `Implements` and `ImplementsA true` with
 trivial conditions are equivalent, so the statements match those of `Verify.lean`.  The
@@ -28000,7 +28000,7 @@ place.  The root builder runs inside the parameters' telescope in `reflectDefini
   for bodies of these forms.
 - [x] 2: loops and builds, `loopCost_map`, and all seventeen drone functions.
 - [x] 3: the drone's `compute_bound` and its theorem with 2,251,064 bytes.  Importing
-  `Examples.Drone.Extend` into the example changed the compiled program: `getUnfoldEqnFor?`
+  `Demos.Drone.Extend` into the example changed the compiled program: `getUnfoldEqnFor?`
   returns `f.eq_def` whenever the environment holds it, also for a definition that is not
   recursive, and the proofs of `Extend.lean` generate `extend.eq_def`.  The reflector now tests
   `isRecursiveDefinition` first.
@@ -28150,10 +28150,10 @@ The current definitions and numerical tests are:
 
 | Functions | Implementation | Sampled accuracy threshold |
 |---|---|---|
-| `sin`, `cos` | [Trigonometric functions](Verified/Examples/Trig.lean): fdlibm kernels, Cody–Waite reduction, and a word-based Payne–Hanek reduction | One representable step from the integer reference, across 360,022 results |
-| `exp` | [Exponential](Verified/Examples/Exp.lean): Arm's degree-five polynomial and 128-bin table, without FMA | One step, across 180,085 results |
-| `expm1`, `tanh` | [Exponential minus one and hyperbolic tangent](Verified/Examples/Tanh.lean): fdlibm | One step for 184,589 `expm1` results.  Two steps for 160,073 `tanh` results |
-| `log` | [Natural logarithm](Verified/Examples/Log.lean): Arm's table reduction and separate polynomial near one, without FMA | One step, across 340,066 results |
+| `sin`, `cos` | [Trigonometric functions](Library/Numerics/Float64/Trig/Program.lean): fdlibm kernels, Cody–Waite reduction, and a word-based Payne–Hanek reduction | One representable step from the integer reference, across 360,022 results |
+| `exp` | [Exponential](Library/Numerics/Float64/Exp/Program.lean): Arm's degree-five polynomial and 128-bin table, without FMA | One step, across 180,085 results |
+| `expm1`, `tanh` | [Exponential minus one and hyperbolic tangent](Library/Numerics/Float64/Tanh/Program.lean): fdlibm | One step for 184,589 `expm1` results.  Two steps for 160,073 `tanh` results |
+| `log` | [Natural logarithm](Library/Numerics/Float64/Log/Program.lean): Arm's table reduction and separate polynomial near one, without FMA | One step, across 340,066 results |
 
 These are the thresholds and counts in the checked sources and documentation.  This planning
 session inspected the sources and created the branch.  It ran no Lean build or numerical test
@@ -28166,7 +28166,7 @@ theorems allow no trap, subject to the runtime invariant and, for wrappers, the 
 that `compiled.initial` establishes at instantiation.
 
 Universal error bounds against the real functions remain to be proved for these six routines.
-The truncation bounds in [the integer reference](Verified/Examples/Reference.lean) are comments
+The truncation bounds in [the integer reference](tests/TestSupport/Numerics/Reference.lean) are comments
 beside executable definitions.  They need Lean theorem statements and proofs where reference
 accuracy supports a test's claimed tolerance.
 
@@ -29139,7 +29139,7 @@ The resource limits remain unchanged.  The next gate has a three-minute limit.
 The separated gate accepts the positive Float intermediate-error theorem in
 2.6 seconds with the three standard axioms.  The new positive-case equality
 module still consumes excessive memory before producing a diagnostic.  The
-diagnostic on the build host cannot import `Verified.Examples.Exp` because that checkout
+diagnostic in the second checkout cannot import `Library.Numerics.Float64.Exp.Compiled` because that checkout
 has no compiled object for it.  Its log is
 `build/transcendentals/exp-positive-case-diagnostic.log`.  I do not infer a proof
 result from either diagnostic.
@@ -29252,7 +29252,7 @@ I expanded the proposed function agenda while the first full numerical theorem r
 | Incomplete correction of the shared prefix | After changing the quotient to an existential witness, I removed one stale `dsimp[q]` use and missed another.  The next run failed on the second occurrence.  Both failed shared-prefix logs remain saved. |
 | Missed diagnostics | A scale-encoding journal entry missed two helper diagnostics in truncated output.  The following entry corrected the record and the third build accepted the complete module.  See `exp-scale-encoding-build.log`, `exp-scale-encoding-build-2.log`, and `exp-scale-encoding-build-3.log`. |
 | Positive-branch elaboration stalls | Implicit unfolding and equality matching stalled with excessive memory use.  I terminated stalled processes, and two subsequent combined runs reached three-minute timeouts.  Explicit unfolding, proved guard facts, `ite_true`, and the missing Float integer helper resolved the equality after more attempts.  The original log and numbered `exp-special-positive-core-build` logs preserve the failures. |
-| Unprepared diagnostic on the build host | I attempted to import `Verified.Examples.Exp` in a checkout lacking its compiled object.  The diagnostic failed before checking its proof.  the build host's `build/transcendentals/exp-positive-case-diagnostic.log` records the missing `Exp.olean`. |
+| Unprepared diagnostic in the second checkout | I attempted to import `Library.Numerics.Float64.Exp.Compiled` in a checkout lacking its compiled object.  The diagnostic failed before checking its proof.  That checkout's `build/transcendentals/exp-positive-case-diagnostic.log` records the missing `Exp.olean`. |
 | Incomplete full-range reduction analysis | The exact high-product lemma assumes an integer magnitude at most 189000.  I established reachable bounds for the restricted proof domains, while the remaining finite regions and their required exactness or rounding arguments stayed open. |
 
 The cold baseline build also spent 1684 seconds in the module `Verified.Examples.Repeat`, as recorded in `verified-baseline-build.log`.  The cause of that module's long build remained unidentified.  This timing is an individual module duration.  The records do not provide a complete allocation of the session's elapsed time.
@@ -29292,7 +29292,7 @@ The cutoff 768 is a proof split chosen by GPT.  Precise analysis is needed only 
 
 - [x] Step 1: review GPT's statements and fix the namespace.
 - [x] Library: [one step against the full reference](LeanExe/ProofKit/F64FullStep.lean), overflow included, and [multiplication by a power of two](LeanExe/ProofKit/F64PowerScale.lean), which also holds `dyadic_shifted_exact`, moved from `ExpReductionExact`.
-- [x] Step 2: [the positive special path](Verified/Examples/ExpSpecialPositive.lean) for `512 ≤ x ≤ 768`, through [the shared one-step lemma for reconstructions](Verified/Examples/ExpOneStep.lean).
+- [x] Step 2: [the positive special path](Library/Numerics/Float64/Exp/ExpSpecialPositive.lean) for `512 ≤ x ≤ 768`, through [the shared one-step lemma for reconstructions](Library/Numerics/Float64/Exp/ExpOneStep.lean).
 - [x] Step 3: the negative special path with `y ≥ 1`, through the same lemma.
 - [x] Step 4: the compensated subnormal path with `y < 1`.
 - [x] Step 5: `768 < abs(x) < 1024`: scale encoding to `abs(k) ≤ 189097`, a residual bound with the rounded high product, then infinity and zero.
@@ -29310,7 +29310,7 @@ Proof failures so far came from `linarith` failing to match a word value inside 
 
 ### Negative special path
 
-`ExpSpecialNegative.negative_one_step`, in [the negative path's final module](Verified/Examples/ExpNegativeFinal.lean), proves the one-step bound for finite `-768 ≤ x ≤ -512`, and the build reports only the three permitted axioms.  When the reconstruction `y` is at least 1, the result is the exact product `2^-1022 y` and the proof reuses `ExpOneStep.one_step_of_error`.  When `y < 1`, [the compensated sequence's lemmas](Verified/Examples/ExpSpecialNegative.lean) show that `hi + lo` rounds onto the grid of `2^-52` in `[1, 2]` within `2u + 3u^2 + u s / 8` of `1 + s + p`, that `z - 1` and its product with `2^-1022` are exact, and that the result lies within `3u · 2^-1022` of `exp a`.  The proof needs only relative rounding bounds and two exact subtractions, as Arm's comment in `specialcase` anticipates.
+`ExpSpecialNegative.negative_one_step`, in [the negative path's final module](Library/Numerics/Float64/Exp/ExpNegativeFinal.lean), proves the one-step bound for finite `-768 ≤ x ≤ -512`, and the build reports only the three permitted axioms.  When the reconstruction `y` is at least 1, the result is the exact product `2^-1022 y` and the proof reuses `ExpOneStep.one_step_of_error`.  When `y < 1`, [the compensated sequence's lemmas](Library/Numerics/Float64/Exp/ExpSpecialNegative.lean) show that `hi + lo` rounds onto the grid of `2^-52` in `[1, 2]` within `2u + 3u^2 + u s / 8` of `1 + s + p`, that `z - 1` and its product with `2^-1022` are exact, and that the result lies within `3u · 2^-1022` of `exp a`.  The proof needs only relative rounding bounds and two exact subtractions, as Arm's comment in `specialcase` anticipates.
 
 GPT's exact-addition lemmas moved from `ExpReductionExact` into [the grid exactness library](LeanExe/ProofKit/F64GridExact.lean), together with `add_binade`, which rounds a positive sum within one binade using CodeLib's half-ulp bound `roundedMagnitude_error`.  `ExpReconstructionBounds.reconstruction_error` now uses `presum_error`, the bound on `s + s w` before the final addition, and `ExpTableReconstruction.presum_scaled_error` carries it to `2^1022 exp a`.
 
@@ -29318,13 +29318,13 @@ Two failures in this step had specific causes.  A `simp` call that combined `←
 
 ### Far range, saturation, and the final theorem
 
-[The far-range module](Verified/Examples/ExpFarRange.lean) covers `768 < abs(x) < 1024` with coarse bounds.  `far_state` and `far_residual` repeat the reduction for `abs(x) ≤ 1024` and bound the residual by `1/256` while charging every rounding, so the inexact high product at `abs(k) = 189097` needs no special case.  With `log 2 ≤ 0.6932` from GPT's rational enclosure, the quotient satisfies `q ≥ 1107` for `x ≥ 768` and `q ≤ -1108` for `x ≤ -768`.  The positive scale then exceeds `2^98`, so the final product is infinity, and `exp x ≥ exp 768` exceeds the overflow threshold.  The negative scale is below `2^-85`, and `compensated_one_step`, now stated with the absolute bound `(11/16) u`, gives one step against the zero reference.
+[The far-range module](Library/Numerics/Float64/Exp/ExpFarRange.lean) covers `768 < abs(x) < 1024` with coarse bounds.  `far_state` and `far_residual` repeat the reduction for `abs(x) ≤ 1024` and bound the residual by `1/256` while charging every rounding, so the inexact high product at `abs(k) = 189097` needs no special case.  With `log 2 ≤ 0.6932` from GPT's rational enclosure, the quotient satisfies `q ≥ 1107` for `x ≥ 768` and `q ≤ -1108` for `x ≤ -768`.  The positive scale then exceeds `2^98`, so the final product is infinity, and `exp x ≥ exp 768` exceeds the overflow threshold.  The negative scale is below `2^-85`, and `compensated_one_step`, now stated with the absolute bound `(11/16) u`, gives one step against the zero reference.
 
 GPT's lemmas had narrower hypotheses than their proofs need.  `ideal_residual_bound` now takes `abs(x) ≤ 1024` and an integer error of `1/2 + 2^-34`, `special_exponent` takes `abs(x) < 1024`, the scale-value lemmas take `q ≤ 2008` and `q ≥ -2022`, and `sign_guard` takes `abs(k) ≤ 2^30`.  Their callers pass the narrower bounds through `trans`.
 
-[The theorem module](Verified/Examples/ExpTheorem.lean) splits finite inputs by exponent field: below 1032 it uses GPT's `exp_small_one_step`, at 1032 the special and far lemmas, and from 1033 the saturated products, which kernel evaluation shows to be `0` and `0x7FF0000000000000`.  `exp_one_step` is the bound for every finite input.  `exp_entry_first_call` instantiates the generated `ImplementsTables` theorem at the module's initial store: `compiled.initial` supplies the heap invariant, the memory cap, and the table at address 4096, and a `Float` argument is a scalar, so the moved and read regions are empty.  `exp_bytes_accuracy` adds the byte round trip from `compiled.bytes` and the export of function 5 as `exp`.
+[The theorem module](Library/Numerics/Float64/Exp/ExpTheorem.lean) splits finite inputs by exponent field: below 1032 it uses GPT's `exp_small_one_step`, at 1032 the special and far lemmas, and from 1033 the saturated products, which kernel evaluation shows to be `0` and `0x7FF0000000000000`.  `exp_one_step` is the bound for every finite input.  `exp_entry_first_call` instantiates the generated `ImplementsTables` theorem at the module's initial store: `compiled.initial` supplies the heap invariant, the memory cap, and the table at address 4096, and a `Float` argument is a scalar, so the moved and read regions are empty.  `exp_bytes_accuracy` adds the byte round trip from `compiled.bytes` and the export of function 5 as `exp`.
 
-Two errors in this stage had specific causes.  A `norm_num` claim that `2^-53 · 2^11 + ε ≤ 2^-42` was false, and the bound became `2^-41`.  `linarith` treated `k · (a - b)` as one atom, so the far residual first hit the heartbeat limit through `nlinarith`, and expanding the products with `mul_sub` and `mul_neg` let `linarith` finish in seconds.  Accepted builds on the build host: `build/transcendentals/opus-far-1.log` and `build/transcendentals/opus-theorem-4.log`.  The final theorem builds with `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem`.
+Two errors in this stage had specific causes.  A `norm_num` claim that `2^-53 · 2^11 + ε ≤ 2^-42` was false, and the bound became `2^-41`.  `linarith` treated `k · (a - b)` as one atom, so the far residual first hit the heartbeat limit through `nlinarith`, and expanding the products with `mul_sub` and `mul_neg` let `linarith` finish in seconds.  Accepted builds: `build/transcendentals/opus-far-1.log` and `build/transcendentals/opus-theorem-4.log`.  The final theorem builds with `tools/leanrun --timeout 30m lake build Library.Numerics.Float64.Exp.ExpTheorem`.
 
 The same 48 changed source files were copied to another build host, and their compiled outputs there were deleted, so Lake recompiled every exponential proof module and new library module from source.  The build, `build/transcendentals/opus-fresh-1.log`, completed and reports only `propext`, `Classical.choice`, and `Quot.sound` for `exp_one_step` and `exp_bytes_accuracy`.  The base `Exp` module and the compiler were not recompiled in that run.
 
@@ -29342,7 +29342,7 @@ The review found four limits, which [the project notes](transcendentals.md#limit
 | `Heap.Keeps.implements` restates the frame as `Heap.Keeps`, `Heap.Keeps.borrowed` carries a borrowed array across a call, and `memoryCap_le_of_caps` carries the cap.  The invariant proof needs no new library lemma. | `LeanExe/Pipeline/Implements.lean`, `LeanExe/Pipeline/Allocation.lean` |
 | The module exports the functions `alloc` (0), `release` (1), `specialCase` (2), `expCore` (3), `expWith` (4), and `exp` (5), its memory as `memory`, and the globals `allocCount` and `freeCount`.  A host can therefore write the table at 4096 between calls. | `#eval` of the function exports, and `wasm-tools print` of `exp.wasm` |
 | `Float.toBits` compiles to `i64.reinterpret_f64`, which keeps a NaN payload, and `Float.ofBits` to a reinterpretation followed by an addition of `-0.0`.  Talos's `IEEE64.add` returns the canonical NaN for a NaN operand. | `ToWord.instr` and `ToFloat.code` in `Verified/Compile.lean`, CodeLib `Interpreter/Wasm/IEEE64.lean` |
-| No theorem covers module files other than `gpt.wasm`.  `gpt_file` proves `encode gpt.module = .ok (binary_file% "../../build/gpt/gpt.wasm")` by `decide +kernel`. | [The design notes](docs/design.md#scope-of-the-theorem), `Examples/Gpt/File.lean` |
+| No theorem covers module files other than `gpt.wasm`.  `gpt_file` proves `encode gpt.module = .ok (binary_file% "../../build/gpt/gpt.wasm")` by `decide +kernel`. | [The design notes](docs/design.md#scope-of-the-theorem), `Demos/Gpt/File.lean` |
 | `tests/verified/run.sh` needs a built `Verified`, `wasm-tools` on `PATH`, and `build/tools/leanexe-wasmtime-host`.  The host exists, and `wasm-tools` 1.251.0 is in `build/tools` but is not on the `PATH` of a non-interactive shell.  CodeLib's `just testsuite` recipe needs `just`, which the build host lacks, and the package's `interpreter/testsuite_report.txt` is empty. | a build host |
 
 The user chose this order.
@@ -29362,9 +29362,9 @@ The first attempt applied `Heap.Borrowed.keepIn` to the concrete table and stopp
 
 With the pinned `wasm-tools` 1.251.0 from `build/tools` on `PATH`, `tests/verified/run.sh` passed after `lake build Verified`.  It reported 15,837 cases passed and none failed, and its `exp` accuracy check found all 180,085 results within one unit of the reference, 147 of them unequal to it.  The run took 7 minutes 21 seconds, and its log is `build/transcendentals/opus-verified-tests-1.log`.
 
-[The file module](Verified/Examples/ExpFile.lean) proves `exp_file`, that `build/verified/exp.wasm` holds `encode Exp.compiled.module`, by the kernel's comparison of byte lists, as `gpt_file` does.  `exp_file_decode` combines it with `exp_bytes_accuracy` to show that the file decodes to the module of the theorem.  Both report only `propext`, `Classical.choice`, and `Quot.sound`, in `build/transcendentals/opus-exp-file-1.log`.
+[The file module](Library/Numerics/Float64/Exp/ExpFile.lean) proves `exp_file`, that `build/verified/exp.wasm` holds `encode Exp.compiled.module`, by the kernel's comparison of byte lists, as `gpt_file` does.  `exp_file_decode` combines it with `exp_bytes_accuracy` to show that the file decodes to the module of the theorem.  Both report only `propext`, `Classical.choice`, and `Quot.sound`, in `build/transcendentals/opus-exp-file-1.log`.
 
-Opus first copied GPT's `encode_eq_of_toList` into the file module, because `build/gpt/gpt.wasm` did not exist and `Examples/Gpt/File.lean` could not be rechecked.  The user pointed out that the file can be built.  The lemma now lives in `LeanExe/Pipeline/FileBytes.lean`, which imports `LeanExe.Encoding.Modules` for it, and both file modules use it.  The GPT proof modules were built for the first time on the build host (`opus-file-build-1.log`), `Emit.lean` wrote the 14,141-byte `gpt.wasm` (`opus-gpt-emit-1.log`), and `gpt_file` checked with the moved lemma (`opus-gpt-file-1.log`).
+Opus first copied GPT's `encode_eq_of_toList` into the file module, because `build/gpt/gpt.wasm` did not exist and `Demos/Gpt/File.lean` could not be rechecked.  The user pointed out that the file can be built.  The lemma now lives in `LeanExe/Pipeline/FileBytes.lean`, which imports `LeanExe.Encoding.Modules` for it, and both file modules use it.  The GPT proof modules were built for the first time (`opus-file-build-1.log`), `Emit.lean` wrote the 14,141-byte `gpt.wasm` (`opus-gpt-emit-1.log`), and `gpt_file` checked with the moved lemma (`opus-gpt-file-1.log`).
 
 The interpreter testsuite cannot run yet.  CodeLib's `vendor/testsuite` submodule, `https://github.com/WebAssembly/testsuite` at `9233a0a8`, is not initialized in the package checkout, and no copy of the testsuite exists on the host.  CodeLib's `just testsuite` recipe runs `scripts/testsuite.sh`, which calls `lake -d interpreter exe testsuite` and ignores its exit status with `|| true`.  A run on this machine would also need `tools/leanrun` around the Lean build.
 
@@ -29382,7 +29382,7 @@ The runner converts each module to text with `wasm-tools print` and reads it wit
 
 ### Test driver
 
-The user chose to check the exponential theorem in `tests/verified/run.sh` and to leave `Verified.lean` unchanged.  `lake build` covers the default targets `LeanExe` and `Examples`, and `lake build Verified` covers the modules that `Verified.lean` imports, so neither build checked the theorem.  The 48 proof modules took 178 seconds of module time to build from source on the build host.  After writing the modules, `run.sh` now builds `Verified.Examples.ExpTheorem` and checks `Verified/Examples/ExpFile.lean` against the `exp.wasm` it has just written.  It fails unless `exp_file` and `exp_file_decode` both report exactly `propext`, `Classical.choice`, and `Quot.sound`.  `exp_file_decode` depends on `exp_bytes_accuracy`, so the report covers the theorem.  The axiom check catches a `sorry`, which `lake build` reports only as a warning.
+The user chose to check the exponential theorem in `tests/verified/run.sh` and to leave `Verified.lean` unchanged.  `lake build` covers the default targets `LeanExe` and `Examples`, and `lake build Verified` covers the modules that `Verified.lean` imports, so neither build checked the theorem.  The 48 proof modules took 178 seconds of module time to build from source.  After writing the modules, `run.sh` now builds `Library.Numerics.Float64.Exp.ExpTheorem` and checks `Library/Numerics/Float64/Exp/ExpFile.lean` against the `exp.wasm` it has just written.  It fails unless `exp_file` and `exp_file_decode` both report exactly `propext`, `Classical.choice`, and `Quot.sound`.  `exp_file_decode` depends on `exp_bytes_accuracy`, so the report covers the theorem.  The axiom check catches a `sorry`, which `lake build` reports only as a warning.
 
 The script passed (`opus-verified-tests-2.log`).  A negative test flipped one bit of the last byte of `exp.wasm`, and the file check failed at `decide` (`opus-exp-file-negative-1.log`).  The original file was then restored with the same hash.
 
@@ -29399,7 +29399,7 @@ General lemmas sit in exp-specific files, and some appear twice: `ExpTinyError.o
 - [x] `RealExpError.lean`: `exp_int_mul` and `exp_pow_two`.
 - [x] Remove `floatEvaluation_error`, `floatEvaluation_exp_error`, `floatReconstruction_error`, and `floatResidual_bounds`.
 - [x] Import the new ProofKit modules from `LeanExe.lean`, as the other ProofKit modules are.
-- [x] Rebuild `Verified.Examples.ExpTheorem` and `LeanExe`, run `tests/verified/run.sh`, and copy the sources to the build host.
+- [x] Rebuild `Library.Numerics.Float64.Exp.ExpTheorem` and `LeanExe`, run `tests/verified/run.sh`, and copy the sources to another build host.
 
 ### Consolidation results
 
@@ -29412,10 +29412,10 @@ Several duplicates remain in the exp-specific chain.  `ExpSpecialNegative.one_va
 | Check | Result | Log |
 |---|---|---|
 | `F64Magnitude` alone | The first run failed: `F64NearestBinade` does not import `F64ExponentBounds`, so `F64ExponentBounds.boundary` was unknown.  The second, with the import added, passed. | `opus-magnitude-1.log`, `opus-magnitude-2.log` |
-| `lake build Verified.Examples.ExpTheorem` after each group | Passed, with no `sorryAx` | `opus-consolidate-1.log`, `opus-consolidate-2.log` |
+| `lake build Library.Numerics.Float64.Exp.ExpTheorem` after each group | Passed, with no `sorryAx` | `opus-consolidate-1.log`, `opus-consolidate-2.log` |
 | `lake build`, the default targets | Passed, 3,897 jobs, no `sorry` warning.  It also compiled `Examples` modules not built before in this checkout. | `opus-default-build-1.log` |
 | `tests/verified/run.sh` | Passed: the file check, 15,837 cases, and the accuracy checks | `opus-verified-tests-3.log` |
-| the build host, the same sources, `lake build Verified.Examples.ExpTheorem` | Passed, compiling the 35 changed or dependent modules, with no `sorryAx` | the build host `opus-consolidate-m2-1.log` |
+| The second checkout, the same sources, `lake build Library.Numerics.Float64.Exp.ExpTheorem` | Passed, compiling the 35 changed or dependent modules, with no `sorryAx` | `opus-consolidate-m2-1.log` in the second checkout |
 
 The removed GPT lemmas are `floatEvaluation_error` and `floatEvaluation_exp_error` in `ExpEvaluationFloat`, `floatReconstruction_error` in `ExpReconstructionBounds`, and `floatResidual_bounds` in `ExpResidualFloat`.  No declaration used them.  The second checkout's copy of GPT's warning in `AGENTS.md` was removed as in the primary one.
 
@@ -29436,7 +29436,7 @@ The user directed Opus to build out all the transcendental functions, to prove t
 
 ### Work division
 
-Each agent works in its own Git worktree, a separate worktree on branch `w/<track>`, so that builds and edits do not interfere.  The primary checkouts are themselves worktrees of the main checkout on each machine, so a plain `cp -a` copy would share the primary's HEAD and index.  Each worker worktree is therefore created with `git worktree add --no-checkout`, filled with the primary's files and build by `tar` without `.git`, and reset to its branch.  The copied build is current: `lake build --no-build Verified.Examples.ExpTheorem LeanExe` reported all 3,655 jobs up to date in both worktrees on the build host.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their worktrees, and Opus resolves conflicts in `devnotes.md` at each merge with `git merge-file --union`, since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, `Verified.lean`, and `tests/verified/run.sh`.
+Each agent works in its own Git worktree, a separate worktree on branch `w/<track>`, so that builds and edits do not interfere.  The primary checkouts are themselves worktrees of the main checkout on each machine, so a plain `cp -a` copy would share the primary's HEAD and index.  Each worker worktree is therefore created with `git worktree add --no-checkout`, filled with the primary's files and build by `tar` without `.git`, and reset to its branch.  The copied build is current: `lake build --no-build Library.Numerics.Float64.Exp.ExpTheorem LeanExe` reported all 3,655 jobs up to date in both worktrees on the build host.  The runner's lock still allows one Lean process per machine, so agents on the same machine take turns, with `--lock-timeout` raised to wait for each other.  Agents append to this journal in their worktrees, and Opus resolves conflicts in `devnotes.md` at each merge with `git merge-file --union`, since the journal only grows.  Only Opus edits `transcendentals.md`, `LeanExe.lean`, `Verified.lean`, and `tests/verified/run.sh`.
 
 | Track | Machine | Work |
 |---|---|---|
@@ -29480,8 +29480,8 @@ The sine kernel's largest error relative to `x` on `[0, 0.7854]` is about `2 ^ -
 |---|---|---|
 | `LeanExe.ProofKit.PolyBound` | Passed on the first run | `poly-bound-1.log` |
 | `LeanExe.ProofKit.TaylorRemainder` | The first run failed: `nlinarith` did not prove `2 m! ≤ (m + 2)!`, `field_simp` left `(1/2) ^ k 2 ^ k`, and `linarith` did not match `2 a / b` with `a / b * 2`.  The second passed. | `poly-taylor-1.log`, `poly-taylor-2.log` |
-| `Verified.Examples.TrigKernelPoly` | Both kernel checks passed on the first run.  Two numeral casts failed under `exact_mod_cast` and passed with `norm_num`. | `poly-trig-kernel-1.log`, `poly-trig-kernel-2.log` |
-| `Verified.Examples.LogKernelPoly`, with `TaylorRemainder` rebuilt after adding `log1pQuotCoeffs` | Passed on the first run | `poly-log-kernel-1.log` |
+| `Library.Numerics.Float64.Trig.TrigKernelPoly` | Both kernel checks passed on the first run.  Two numeral casts failed under `exact_mod_cast` and passed with `norm_num`. | `poly-trig-kernel-1.log`, `poly-trig-kernel-2.log` |
+| `Library.Numerics.Float64.Log.LogKernelPoly`, with `TaylorRemainder` rebuilt after adding `log1pQuotCoeffs` | Passed on the first run | `poly-log-kernel-1.log` |
 
 Every theorem in the four modules reports only `propext`, `Classical.choice`, and `Quot.sound`, and the builds produced no warnings in these files.  All 28 coefficient words of the two demonstrations appear in `Trig.lean` and `Log.lean`.  The `expm1` kernel is a rational function of `r`, so its bound needs a polynomial inequality between a numerator and a denominator, which this checker states after multiplying out.  That case is left to the `expm1` track.
 
@@ -29496,8 +29496,8 @@ The track proves `WithinSteps 1` for `Tanh.expm1` and `WithinSteps 2` for `Tanh.
 
 | Module | Content | Log |
 |---|---|---|
-| `Verified/Examples/Expm1Words.lean` | The kernel on bit patterns, `kernel`, and `kernel_bits`, its equality with `Tanh.expm1Kernel` | `expm1-words-1.log` |
-| `Verified/Examples/Expm1KernelPoly.lean` | `kernel_approx`: the kernel in exact arithmetic is within `2 ^ -62 abs(r) ^ 3` of `exp r - 1` for `abs(r) ≤ 0.3466`.  The error's numerator, with the exponential's Taylor polynomial of degree 17, is `r ^ 3` times a polynomial of degree 26 that `PolyBound.check` bounds by `2 ^ -60` in 21 pieces; its maximum is about `2 ^ -61.74`. | `expm1-kernelpoly-1.log` (a wrong remainder constant and an `abs_add_le` rewrite), `expm1-kernelpoly-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1Words.lean` | The kernel on bit patterns, `kernel`, and `kernel_bits`, its equality with `Tanh.expm1Kernel` | `expm1-words-1.log` |
+| `Library/Numerics/Float64/Tanh/Expm1KernelPoly.lean` | `kernel_approx`: the kernel in exact arithmetic is within `2 ^ -62 abs(r) ^ 3` of `exp r - 1` for `abs(r) ≤ 0.3466`.  The error's numerator, with the exponential's Taylor polynomial of degree 17, is `r ^ 3` times a polynomial of degree 26 that `PolyBound.check` bounds by `2 ^ -60` in 21 pieces; its maximum is about `2 ^ -61.74`. | `expm1-kernelpoly-1.log` (a wrong remainder constant and an `abs_add_le` rewrite), `expm1-kernelpoly-2.log` |
 | `LeanExe/ProofKit/F64NearestSum.lean` | `add_nearest`, `add_nearest_neg`, `sub_nearest`, `sub_nearest_neg`: a rounded sum below `2 ^ 1023` is `Nearest` to the exact sum, or its negation to the negated sum.  `add_half_spacing`, `sub_half_spacing`: the error is at most half the spacing of the binade below a bound on the sum. | `expm1-nearestsum-1.log` to `-4.log` |
 | `LeanExe/ProofKit/F64NearestSteps.lean` | `one_step_of_nearest` and the corollaries `within_of_interior`, `within_of_relative`, `within_of_tiny`: a nearest word of `s` lies within one step of the reference of `y` when `abs(s - y)` is below the spacing, with the near-bottom case of a binade handled by a relative bound below `(1 - 2 ^ -50) u y` | `expm1-steps-1.log` to `-4.log` |
 | `LeanExe/ProofKit/F64ApproxStages.lean` | `mul_approx`, `add_approx`, `sub_approx`, `div_approx`: one rounded operation on approximations of real numbers | `expm1-stages-1.log`, `-2.log` |
@@ -29524,9 +29524,9 @@ Arithmetic with `unitRoundoff64` and `multiplicationUnderflowEpsilon` failed in 
 
 | Module | Log |
 |---|---|
-| `Verified/Examples/Expm1KernelInner.lean` | `expm1-inner-1.log` to `-4.log` |
-| `Verified/Examples/Expm1KernelE0.lean` | `expm1-e0-1.log` to `-4.log` (a square bound of `0.12013` below `0.3466 ^ 2`, and a product bound of `1.1` below `0.3466 · 3.1737`) |
-| `Verified/Examples/Expm1KernelOuter.lean` | `expm1-outer-1.log` to `-7.log` |
+| `Library/Numerics/Float64/Tanh/Expm1KernelInner.lean` | `expm1-inner-1.log` to `-4.log` |
+| `Library/Numerics/Float64/Tanh/Expm1KernelE0.lean` | `expm1-e0-1.log` to `-4.log` (a square bound of `0.12013` below `0.3466 ^ 2`, and a product bound of `1.1` below `0.3466 · 3.1737`) |
+| `Library/Numerics/Float64/Tanh/Expm1KernelOuter.lean` | `expm1-outer-1.log` to `-7.log` |
 | `LeanExe/ProofKit/F64NearestScale.lean` | `expm1-scale-1.log` to `-4.log` |
 | `LeanExe/ProofKit/F64NearestSteps.lean`, extended | `expm1-steps-5.log` |
 
@@ -29540,17 +29540,17 @@ The reduction follows the code.  For `k = ±1`, `hi = x ∓ ln2Hi` is exact beca
 
 | Module | Content | Log |
 |---|---|---|
-| `Verified/Examples/Expm1Branches.lean` | Branch selection: `select_reduced_one`, `select_reduced_neg`, `select_reduced_pos`, `select_middle`, `select_tiny`, `select_overflow`, `select_saturated`, `select_nonfinite` | `expm1-branches-1.log` to `-4.log` |
-| `Verified/Examples/Expm1FormWords.lean` | The words `2 ^ k`, `2 ^ -k`, and `1 - 2 ^ -k` of the forms, and `mul_negTwo` | `expm1-formwords-1.log` to `-3.log` |
-| `Verified/Examples/Expm1SubOne.lean` | `sub_one_large`: subtracting 1 from a positive word at or above `2 ^ 55` returns the word | `expm1-subone-1.log` to `-5.log` |
-| `Verified/Examples/Expm1FormBase.lean` | `common`, `within_of_level` | `expm1-formbase-1.log`, `-2.log` |
-| `Verified/Examples/Expm1FormsOne.lean` | `k = -1`, and `k = 1` with `y < -1/4` and with `y ≥ -1/4` | `expm1-formsone-1.log` to `-3.log` |
-| `Verified/Examples/Expm1FormsTwo.lean` | `-56 ≤ k ≤ -2`, `57 ≤ k ≤ 1023`, and `k = 1024` with `exp r ≤ 1 - 2 ^ -46` | `expm1-formstwo-1.log` to `-5.log` |
-| `Verified/Examples/Expm1FormsMid.lean` | `2 ≤ k < 20` and `20 ≤ k ≤ 56` | `expm1-formsmid-1.log` to `-3.log` |
-| `Verified/Examples/Expm1ReduceConst.lean` | `ln2_split` (`2 ^ -86`) and `invln2_bound` (`2 ^ -55`) from `ExpReductionBounds.log_two_enclosure` | `expm1-reduceconst-1.log` |
-| `Verified/Examples/Expm1ReduceWords.lean` | `diff_exact`, `sum_exact`, `mul_ln2Hi`, `convert_spec`, `truncSat_spec` | `expm1-reducewords-1.log` to `-4.log` |
-| `Verified/Examples/Expm1ReduceOne.lean` | `yc_spec`, `reduce_one_pos`, `reduce_one_neg` | `expm1-reduceone-1.log`, `-2.log` |
-| `Verified/Examples/Expm1ReduceK.lean` | `quotient_spec`, `reduce_k_pos` (`1 ≤ k ≤ 1024`), `reduce_k_neg` (`1 ≤ -k ≤ 56`) | `expm1-reducek-1.log` to `-7.log` |
+| `Library/Numerics/Float64/Tanh/Expm1Branches.lean` | Branch selection: `select_reduced_one`, `select_reduced_neg`, `select_reduced_pos`, `select_middle`, `select_tiny`, `select_overflow`, `select_saturated`, `select_nonfinite` | `expm1-branches-1.log` to `-4.log` |
+| `Library/Numerics/Float64/Tanh/Expm1FormWords.lean` | The words `2 ^ k`, `2 ^ -k`, and `1 - 2 ^ -k` of the forms, and `mul_negTwo` | `expm1-formwords-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/Expm1SubOne.lean` | `sub_one_large`: subtracting 1 from a positive word at or above `2 ^ 55` returns the word | `expm1-subone-1.log` to `-5.log` |
+| `Library/Numerics/Float64/Tanh/Expm1FormBase.lean` | `common`, `within_of_level` | `expm1-formbase-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1FormsOne.lean` | `k = -1`, and `k = 1` with `y < -1/4` and with `y ≥ -1/4` | `expm1-formsone-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/Expm1FormsTwo.lean` | `-56 ≤ k ≤ -2`, `57 ≤ k ≤ 1023`, and `k = 1024` with `exp r ≤ 1 - 2 ^ -46` | `expm1-formstwo-1.log` to `-5.log` |
+| `Library/Numerics/Float64/Tanh/Expm1FormsMid.lean` | `2 ≤ k < 20` and `20 ≤ k ≤ 56` | `expm1-formsmid-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/Expm1ReduceConst.lean` | `ln2_split` (`2 ^ -86`) and `invln2_bound` (`2 ^ -55`) from `ExpReductionBounds.log_two_enclosure` | `expm1-reduceconst-1.log` |
+| `Library/Numerics/Float64/Tanh/Expm1ReduceWords.lean` | `diff_exact`, `sum_exact`, `mul_ln2Hi`, `convert_spec`, `truncSat_spec` | `expm1-reducewords-1.log` to `-4.log` |
+| `Library/Numerics/Float64/Tanh/Expm1ReduceOne.lean` | `yc_spec`, `reduce_one_pos`, `reduce_one_neg` | `expm1-reduceone-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1ReduceK.lean` | `quotient_spec`, `reduce_k_pos` (`1 ≤ k ≤ 1024`), `reduce_k_neg` (`1 ≤ -k ≤ 56`) | `expm1-reducek-1.log` to `-7.log` |
 
 The form for `k = 1024` first assumed `exp r ≤ 1 - 2 ^ -40`, which the reduction cannot supply: at the overflow threshold `x - 1024 log 2` is only about `-2.37e-14`, so the hypothesis became `exp r ≤ 1 - 2 ^ -46`.  `omega` failed on goals of the form `abs(k) ≤ 1024` for an integer cast of a natural number (`expm1-reducek-4.log`), since it treats `abs` as an atom, and `Nat.abs_cast` with `exact_mod_cast` replaced it.  Lean elaborates `((-(k : ℤ)) : ℝ)` as `-((k : ℤ) : ℝ)`, so statements about the cast of `-k` needed `push_cast` on both sides (`expm1-reducek-6.log`).
 
@@ -29565,10 +29565,10 @@ The form for `k = 1024` first assumed `exp r ≤ 1 - 2 ^ -40`, which the reducti
 
 | Module | Log |
 |---|---|
-| `Verified/Examples/Expm1PathsReduced.lean` | `expm1-pathsreduced-1.log` (`omega` on a `let` variable against its unfolded value), `-2.log` |
-| `Verified/Examples/Expm1PathsEdge.lean` | `expm1-pathsedge-1.log`, `-2.log` (no result within 40 and 15 minutes), probes `expm1-probe-1` to `-7`, then built in `expm1-theorem-3.log` to `-6.log` |
-| `Verified/Examples/Expm1Theorem.lean` | `expm1-theorem-1.log` to `-6.log` |
-| `Verified/Examples/Expm1Special.lean` | `expm1-special-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1PathsReduced.lean` | `expm1-pathsreduced-1.log` (`omega` on a `let` variable against its unfolded value), `-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1PathsEdge.lean` | `expm1-pathsedge-1.log`, `-2.log` (no result within 40 and 15 minutes), probes `expm1-probe-1` to `-7`, then built in `expm1-theorem-3.log` to `-6.log` |
+| `Library/Numerics/Float64/Tanh/Expm1Theorem.lean` | `expm1-theorem-1.log` to `-6.log` |
+| `Library/Numerics/Float64/Tanh/Expm1Special.lean` | `expm1-special-1.log`, `-2.log` |
 
 `Expm1PathsEdge` compiled for 40 and then 15 minutes without a result or a diagnostic.  Output of `lake env lean` redirected to a file appears only at exit, so a probe stopped by the timeout shows nothing; the probes therefore append a marker to a file with `IO.FS.withFile` before and after each theorem.  They located the hang in `path_middle`, at `rfl` for `kernel x c false 0 = sub x (sub (mul x (e0 x)) (hxs x))`: `simp [Expm1Words.kernel]` proves the same equation at once, while `rfl` did not finish in six minutes (`expm1-probe-6`).  The first version of `within_rel` also called `omega` in a context that held `n < 2 ^ 2098`; it was rewritten before the probes, with the index arithmetic in `binade_index`, so its share of the delay is unknown.
 
@@ -29595,17 +29595,17 @@ The analysis of `-t/(t + 2)` needs two facts beyond `WithinSteps 1` of `expm1`. 
 |---|---|
 | `LeanExe/ProofKit/F64NearestDiv.lean` | `expm1-neardiv-1.log` (a cast order in `grid_nearest`, an `if` with equal branches, and a zero divisor), `-2.log` |
 | `LeanExe/ProofKit/F64NearestRelative.lean` | `expm1-neardiv-2.log` |
-| `Verified/Examples/Expm1NearForms.lean` | `expm1-nearforms-1.log`, `-2.log` |
-| `Verified/Examples/Expm1Near.lean` | `expm1-near-1.log` to `-3.log` |
-| `Verified/Examples/TanhBranches.lean` | `tanh-words-1.log` (`simp_all` left `if 1072693248 ≤ ix` against a hypothesis `ix < 1072693248`), `-2.log` |
-| `Verified/Examples/TanhWords.lean` | `tanh-words-2.log` to `-4.log` |
-| `Verified/Examples/TanhSmall.lean` | `tanh-small-1.log` to `-3.log` |
-| `Verified/Examples/TanhLarge.lean` | `tanh-large-1.log` to `-3.log` |
-| `Verified/Examples/TanhTheorem.lean` | `tanh-theorem-1.log` to `-3.log` |
-| `Verified/Examples/TanhMain.lean` | `tanh-main-1.log`, `-2.log` |
-| `Verified/Examples/TanhSpecial.lean` | `tanh-special-1.log`, `-2.log` |
-| `Verified/Examples/TanhBytes.lean` | `tanh-bytes-1.log` |
-| `Verified/Examples/TanhFile.lean` | `tanh-emit-1.log`, `tanh-filebytes-1.log`, `tanh-file-1.log` (`LeanExe.Pipeline.FileBytes` was not built in the worktree), `tanh-file-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1NearForms.lean` | `expm1-nearforms-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/Expm1Near.lean` | `expm1-near-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/TanhBranches.lean` | `tanh-words-1.log` (`simp_all` left `if 1072693248 ≤ ix` against a hypothesis `ix < 1072693248`), `-2.log` |
+| `Library/Numerics/Float64/Tanh/TanhWords.lean` | `tanh-words-2.log` to `-4.log` |
+| `Library/Numerics/Float64/Tanh/TanhSmall.lean` | `tanh-small-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/TanhLarge.lean` | `tanh-large-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/TanhTheorem.lean` | `tanh-theorem-1.log` to `-3.log` |
+| `Library/Numerics/Float64/Tanh/TanhMain.lean` | `tanh-main-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/TanhSpecial.lean` | `tanh-special-1.log`, `-2.log` |
+| `Library/Numerics/Float64/Tanh/TanhBytes.lean` | `tanh-bytes-1.log` |
+| `Library/Numerics/Float64/Tanh/TanhFile.lean` | `tanh-emit-1.log`, `tanh-filebytes-1.log`, `tanh-file-1.log` (`LeanExe.Pipeline.FileBytes` was not built in the worktree), `tanh-file-2.log` |
 
 `Expm1NearForms` and `Expm1Near` export the paths that `tanh` uses.  For `x < 0` the result is `-w` for a word `w` within `u S` and `u/2` of a positive `S`, and `S` lies within `0.56 u abs(x) + 16 η` of `1 - exp x` without reduction (`near_middle`), within `0.2451 u` for `k = -1` (`near_one`), and within `0.3726 u` for `abs(x)` from 1.0397 to 38 (`near_k`).  For `2 ≤ x ≤ 44` the result lies within `u S` of a positive `S` within `0.85 u (exp x - 1)` of `exp x - 1` (`near_pos`).  Two failures recurred here.  `linarith` normalizes a hypothesis with a numeric quotient through `norm_num`, which also rewrites the threshold word `UInt64.ofNat (C * 2 ^ 32)` to a literal, so the same word became two atoms (`expm1-near-1.log`); `set` now names each threshold value before the arithmetic.  Rewriting the count `m` to 1 in a goal also rewrote `m` inside the reduced arguments, and unifying them with the unrewritten ones exceeded the recursion limit; `neg_one_near_m` takes `m.toNat = 1` instead.
 
@@ -29745,7 +29745,7 @@ The dialect has no floating-point flags, so the expressions that fdlibm evaluate
 
 ### References and checks
 
-`Verified/Examples/ArcReference.lean` adds `isqrt`, the half-angle step, `atanFixed` (two half-angle steps and the alternating series below `1/5`), `atanQuotient` for `atan (num/den)`, `asinFixed` (`2 atan (x/(1 + √(1 - x²)))`), and `acosFixed` (`2 atan √((1 - x)/(1 + x))`), each with the error that its truncations leave.  The references of `log1p` (`2 atanh (x/(2 + x))` from `Reference.atanhFixed` near 0 and `Reference.log` of the exact `1 + x` elsewhere) and of `tan` (the quotient of `Reference.sinCosFixed` below 1 and of `Reference.sinCos` above) sit in their checks.  Before the Lean runs, Python models of the ports and of the references ran over about 40,000 arguments per function: each port lay within one unit of its reference, and the C library within one unit except `tan` at `6381956970095103 · 2 ^ 797`, 14 units away.  The models also caught one error in the draft reference of `atan2`, which gave `π/2` instead of `π/4` and `3π/4` for two infinite arguments.
+`tests/TestSupport/Numerics/ArcReference.lean` adds `isqrt`, the half-angle step, `atanFixed` (two half-angle steps and the alternating series below `1/5`), `atanQuotient` for `atan (num/den)`, `asinFixed` (`2 atan (x/(1 + √(1 - x²)))`), and `acosFixed` (`2 atan √((1 - x)/(1 + x))`), each with the error that its truncations leave.  The references of `log1p` (`2 atanh (x/(2 + x))` from `Reference.atanhFixed` near 0 and `Reference.log` of the exact `1 + x` elsewhere) and of `tan` (the quotient of `Reference.sinCosFixed` below 1 and of `Reference.sinCos` above) sit in their checks.  Before the Lean runs, Python models of the ports and of the references ran over about 40,000 arguments per function: each port lay within one unit of its reference, and the C library within one unit except `tan` at `6381956970095103 · 2 ^ 797`, 14 units away.  The models also caught one error in the draft reference of `atan2`, which gave `π/2` instead of `π/4` and `3π/4` for two infinite arguments.
 
 The final run (`ports-build-3.log` and the checks' `-3` logs) built the five modules without warnings and ran the four checks on the final sources, each in under a minute once it held the machine's lock.  The earlier passing runs of `log1p` and `tan` (`ports-Log1pAccuracy-1.log`, `ports-TanAccuracy-2.log`) used the same definitions with earlier docstrings and gave the same counts.  The C library's `tan` lies 14 units from the reference at `6381956970095103 · 2 ^ 797`, the double closest to a multiple of `π/2`, where the port and a Python model with an exact reduction agree with the reference.
 
@@ -29772,12 +29772,12 @@ Every check found at most one unit, so the recommendation is `WithinSteps 1` for
 The coordinator adds the four modules and `ArcReference` to `Verified.lean`, so that `lake build Verified` builds the checks' imports.  `tests/verified/run.sh` needs the four `emit` entries and the four checks below, and the `LogAccuracy.lean` line, no longer the last check, needs `|| exit 1`.  Cases for the Wasmtime host in `Verified/Examples/Cases.lean` would compare the compiled modules with native Lean, as the cases of the existing ports do.
 
 ```bash
-    Verified.Examples.Log1p:compiled.module:log1p Verified.Examples.Atan:compiled.module:atan \
-    Verified.Examples.Asin:compiled.module:asin Verified.Examples.Tan:compiled.module:tan \
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log1pAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AtanAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean
+    Library.Numerics.Float64.Log1p.Compiled:compiled.module:log1p Library.Numerics.Float64.Atan.Compiled:compiled.module:atan \
+    Library.Numerics.Float64.Asin.Compiled:compiled.module:asin Library.Numerics.Float64.Tan.Compiled:compiled.module:tan \
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log1pAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AtanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TanAccuracy.lean
 ```
 
 - [x] Fetch the sources and audit the constants.
@@ -29826,7 +29826,7 @@ The deviations follow those of stage 3.  Flag-only expressions keep their values
 
 ### References and checks
 
-`Verified/Examples/HyperbolicReference.lean` adds `sinhFixed` and `coshFixed` from `Reference.expm1`, `asinhFixed` (`2 atanh (y/(1 + √(1 + y²)))` below 0.4 and `Reference.log` of `y + √(y² + 1)` above), `acoshFixed` (`Reference.log` of `y + √(y² - 1)`), and `atanhLog` (`(log (1 + y) - log (1 - y))/2` above `1/5`, with `Reference.atanhFixed` below).  Python models of these references agreed with a 120-digit decimal computation of the functions at 3,000 random arguments each, 15,000 in all.  Python models of the ports, with the C library standing in for `exp`, `log`, `expm1`, and `log1p`, found two units for `sinh`, `acosh`, and `atanh` and one for `cosh` and `asinh`.  The Lean checks with the Lean helpers found the same distances.
+`tests/TestSupport/Numerics/HyperbolicReference.lean` adds `sinhFixed` and `coshFixed` from `Reference.expm1`, `asinhFixed` (`2 atanh (y/(1 + √(1 + y²)))` below 0.4 and `Reference.log` of `y + √(y² + 1)` above), `acoshFixed` (`Reference.log` of `y + √(y² - 1)`), and `atanhLog` (`(log (1 + y) - log (1 - y))/2` above `1/5`, with `Reference.atanhFixed` below).  Python models of these references agreed with a 120-digit decimal computation of the functions at 3,000 random arguments each, 15,000 in all.  Python models of the ports, with the C library standing in for `exp`, `log`, `expm1`, and `log1p`, found two units for `sinh`, `acosh`, and `atanh` and one for `cosh` and `asinh`.  The Lean checks with the Lean helpers found the same distances.
 
 | Check | Results | Largest distance | Unequal | C library, for information | Log |
 |---|---|---|---|---|---|
@@ -29851,9 +29851,9 @@ The first build (`ports-s4-build-1.log`) failed in `Sinh.frexpExp`: in `hx &&& 0
 The coordinator adds `Sinh`, `Asinh`, and `HyperbolicReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on the line of whichever check is no longer last.
 
 ```bash
-    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean
+    Library.Numerics.Float64.Sinh.Compiled:compiled.module:sinh Library.Numerics.Float64.Asinh.Compiled:compiled.module:asinh \
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinhAccuracy.lean
 ```
 
 - [x] Fetch the sources and the helper `k_exp.c`, and audit the constants.
@@ -29903,7 +29903,7 @@ Opus merged `w/ports` at `f8d17857` (stage 4) and `w/poly` at `d539b111` (the st
 
 ## 2026-10-10: Logarithm theorem, main path (track `log`)
 
-Opus works on the theorem for `Verified.Examples.Log.log` in a separate worktree on the build host, branch `w/log`.  The target is `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits)) (Log.log x).toBits` for every finite positive `x`, the exact results outside the domain and at 1, and the byte and file theorems.  This entry covers the main path, `Log.logCore`, which every positive normal or subnormal argument outside `[15/16, 1 + 265/4096)` takes.
+Opus works on the theorem for `Library.Numerics.Float64.Log.log` in a separate worktree, branch `w/log`.  The target is `F64SignedRounding.WithinSteps 1 (Real.log (value x.toBits)) (Log.log x).toBits` for every finite positive `x`, the exact results outside the domain and at 1, and the byte and file theorems.  This entry covers the main path, `Log.logCore`, which every positive normal or subnormal argument outside `[15/16, 1 + 265/4096)` takes.
 
 ### Error budget
 
@@ -29917,12 +29917,12 @@ The computed error is about `1.9 · 2 ^ -60`.  The rounding of `r = ((z - chi) -
 |---|---|
 | `LeanExe/ProofKit/F64RelativeStep.lean` | `one_step_relative` and `within_one_relative`: one step from a relative error of `11/8` units of roundoff, for numbers of magnitude at least `2 ^ -1000`, and `negate_negate`. |
 | `LeanExe/ProofKit/F64ErrorTrack.lean` | `Approx w X e` and its rules for rounded sums, differences, and products, and exact sums and differences on a grid. |
-| `Verified/Examples/LogBranches.lean` | The paths of `Log.logWith` by argument bits, and the invalid path's canonical NaN. |
-| `Verified/Examples/LogTables.lean` | For each of the 128 entries, by `decide +kernel` in 18 seconds: finiteness, `\|c invc - 1\| ≤ 2 ^ -100`, the reduced argument within `0.0039` over the subinterval, the grids of `chi` and `logc`, `\|clo\| ≤ 2 ^ -50`, and `\|logc - log c\| ≤ 2 ^ -64` from a Taylor bracket of `exp`. |
-| `Verified/Examples/LogCoreBits.lean` | `logCore_eq`, which restates `Log.logCore` through `reduced` and `finalOf`, the words of `i`, `k`, and `z` for an argument `E · 2 ^ 52 + f` modulo `2 ^ 64`, and the exact value of `kd`. |
-| `Verified/Examples/LogCoreFinal.lean` | `final_error`: the arithmetic after `r` within `(5/4) 2 ^ -61` before its final rounding. |
-| `Verified/Examples/LogCoreStep.lean` | `reduced_error`, `ln2_error`, `target_close`, and `core_within`, one step for `Log.logCore` on every argument word that reaches it, subnormals scaled by `2 ^ 52` included. |
-| `Verified/Examples/LogMain.lean` | `log_normal_within`: `Log.log` on a positive normal argument outside the path near 1. |
+| `Library/Numerics/Float64/Log/LogBranches.lean` | The paths of `Log.logWith` by argument bits, and the invalid path's canonical NaN. |
+| `Library/Numerics/Float64/Log/LogTables.lean` | For each of the 128 entries, by `decide +kernel` in 18 seconds: finiteness, `\|c invc - 1\| ≤ 2 ^ -100`, the reduced argument within `0.0039` over the subinterval, the grids of `chi` and `logc`, `\|clo\| ≤ 2 ^ -50`, and `\|logc - log c\| ≤ 2 ^ -64` from a Taylor bracket of `exp`. |
+| `Library/Numerics/Float64/Log/LogCoreBits.lean` | `logCore_eq`, which restates `Log.logCore` through `reduced` and `finalOf`, the words of `i`, `k`, and `z` for an argument `E · 2 ^ 52 + f` modulo `2 ^ 64`, and the exact value of `kd`. |
+| `Library/Numerics/Float64/Log/LogCoreFinal.lean` | `final_error`: the arithmetic after `r` within `(5/4) 2 ^ -61` before its final rounding. |
+| `Library/Numerics/Float64/Log/LogCoreStep.lean` | `reduced_error`, `ln2_error`, `target_close`, and `core_within`, one step for `Log.logCore` on every argument word that reaches it, subnormals scaled by `2 ^ 52` included. |
+| `Library/Numerics/Float64/Log/LogMain.lean` | `log_normal_within`: `Log.log` on a positive normal argument outside the path near 1. |
 
 Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-main-1.log`, which replays all of them, has no `sorry`).
 
@@ -29963,10 +29963,10 @@ The path near 1 needs a bound relative to `ρ = |x - 1|`, between `2 ^ -53` and 
 |---|---|
 | `LeanExe/ProofKit/F64ExactProduct.lean` | `mul_exact_scaled`, the exact product of words with scaled magnitudes `ma 2 ^ sa` and `mb 2 ^ sb` when `ma mb < 2 ^ 53`, and `int_mul_exact` for a word holding an integer.  `LogCoreFinal.ln2hi_mul_exact` now uses it. |
 | `LeanExe/ProofKit/BorrowedKept.lean` | `borrowed_kept`, the lemma of `ExpTheorem` in a shared module. |
-| `Verified/Examples/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
-| `Verified/Examples/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
-| `Verified/Examples/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
-| `Verified/Examples/LogFile.lean` | `log_file` and `log_file_decode`. |
+| `Library/Numerics/Float64/Log/LogMain.lean` | `log_subnormal_within`, added after `log_normal_within`. |
+| `Library/Numerics/Float64/Log/LogNear1.lean` | `near1Word`, `near1_bits`, `poly_error`, `split_error`, and `near1_error`. |
+| `Library/Numerics/Float64/Log/LogTheorem.lean` | `near1_within`, `log_within_one`, the exceptional values, `Ready`, `log_entry_call`, and `log_bytes_accuracy`. |
+| `Library/Numerics/Float64/Log/LogFile.lean` | `log_file` and `log_file_decode`. |
 
 Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log-thm-2.log` replays the chain with no `sorry`; `log-file-1.log` for the file theorems, which took 24 seconds).  Flipping one bit of the last byte of `log.wasm` made `log_file` fail at `decide` (`log-file-negative-1.log`), and the original file was restored with hash `342b0f5c…90f2`.
 
@@ -29978,7 +29978,7 @@ Every theorem reports only `propext`, `Classical.choice`, and `Quot.sound` (`log
 | `log-near-5` to `-7` | `linarith only` needed `0 < ρ`; a docstring must follow `set_option ... in`; `w2W r` and its unfolded word were different atoms until the `Approx` facts were ascribed the names.  `log-near-8` passed. |
 | `log-thm-1` | `field_simp` left `1 + R - 1 = R`; `push_cast` expanded `2 ^ 1021` under the large threshold; `ready_initial` needed `maxRecDepth` to compute the second table's address.  `log-thm-2` passed. |
 
-`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Verified.Examples.LogTheorem`, check `Verified/Examples/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
+`tests/verified/run.sh` needs the logarithm's file check after the exponential's, in the same form: build `Library.Numerics.Float64.Log.LogTheorem`, check `Library/Numerics/Float64/Log/LogFile.lean`, and require two permitted axiom reports.  `LeanExe.lean` needs the imports of `F64RelativeStep`, `F64ErrorTrack`, `F64ExactProduct`, and `BorrowedKept`.
 
 - [x] Subnormal arguments.
 - [x] `logNear1` and the path near 1.
@@ -30054,11 +30054,11 @@ The first build (`ports-s5-build-1.log`) failed in `Pow.lean`: `0x800 <<< 7` and
 The coordinator adds `Exp2`, `Log2`, `Log10`, `Pow`, and `PowerReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on whichever check line is no longer last.
 
 ```bash
-    Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
-    Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean
+    Library.Numerics.Float64.Exp2.Compiled:compiled.module:exp2 Library.Numerics.Float64.Log2.Compiled:compiled.module:log2 \
+    Library.Numerics.Float64.Log10.Compiled:compiled.module:log10 Library.Numerics.Float64.Pow.Compiled:compiled.module:pow \
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Exp2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/PowAccuracy.lean
 ```
 
 - [x] Fetch the sources, extract the constants and tables, and compare `__exp_data.tab` with `Exp.expTable`.
@@ -30068,7 +30068,7 @@ tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.le
 
 ## 2026-10-11: The `exp2` theorem (track `exp2`)
 
-The track works in a separate worktree on the build host, branch `w/exp2`, a worktree of a separate clone, started from `transcendentals` at `c9ff162d`.  Its task is the full theorem for Arm's `exp2` and `exp10` as `Verified/Examples/Exp2.lean` ports them, with byte theorems.  The first milestone, `exp2` for every finite input, is done.  The real function is `Real.rpow 2`, written `(2 : ℝ) ^ a`, which reads as the statement intends; `Real.rpow_def_of_pos` turns it into `exp (log 2 · a)` where the proofs need it.
+The track works in a separate worktree, branch `w/exp2`, a worktree of a separate clone, started from `transcendentals` at `c9ff162d`.  Its task is the full theorem for Arm's `exp2` and `exp10` as `Library/Numerics/Float64/Exp2/Program.lean` ports them, with byte theorems.  The first milestone, `exp2` for every finite input, is done.  The real function is `Real.rpow 2`, written `(2 : ℝ) ^ a`, which reads as the statement intends; `Real.rpow_def_of_pos` turns it into `exp (log 2 · a)` where the proofs need it.
 
 `Exp2.exp2Core` shares Arm's table, scale arithmetic, and `specialcase` structure with `Exp.expCore`, but three parts differ: the reduction adds `0x1.8p52 / 128` to `x` instead of rounding `x · N/ln 2`, the polynomial approximates `2 ^ r - 1` with `C1 r` in place of `r`, and the positive special case lowers the scale by one binade and doubles, where `exp` lowers it by 1009 and multiplies by `2 ^ 1009`.  The exponential proof's reconstruction lemmas are stated for `exp`'s residual and evaluation words, so they do not apply directly.  The plan generalized them over any polynomial word `w` that approximates `T + ρ - 1`, with `ρ` the real factor (`2 ^ r` here, `10 ^ r` for `exp10`), and reused the exp table, scale encoding, one-step, and compensated-subnormal lemmas unchanged.  The shifted key `ki = 0x42C8000000000000 + k` of `exp2` raised by `7 · 2 ^ 52` has the form `0x4338000000000000 + k` of `exp`'s key with the same low 19 bits, so `ExpScaleBits` and `ExpSpecialScale` apply to it.
 
@@ -30171,7 +30171,7 @@ The kernels round their argument to single precision with `(float) x`, and the d
 
 ### References and checks
 
-`Verified/Examples/ErfReference.lean` computes `erf` below 6 from the series of positive terms `erf x = (2/√π) x e^(-x²) Σ (2 x²)^n/(2 n + 1)!!`, which converges everywhere and has no cancellation, at 64 bits above the result's precision, and `erfc = 1 - erf` there.  From 6 on it computes `erfc` from Laplace's continued fraction `√π e^(x²) erfc x = 1/(x + (1/2)/(x + 1/(x + (3/2)/(x + ⋯))))` in exact integer arithmetic.  For `x = u/v`, the equivalence transformation that multiplies each level by `2 v` gives integer elements, `2 v`, `2 v² (k - 1)`, and `2 u`.  The elements are positive, so successive convergents lie on alternate sides of the value, and the loop stops when two of them agree within a relative `2 ^ -(q + 2)`, which bounds the error of the result.  `erf` is `±1` from 6 on, since `erfc 6 < 2 ^ -54`, and `erfc` is 0 from 28 on and 2 from -6 down.  The first draft used the continued fraction from 3 on, where it needs 1,173 levels at 400 bits, against 347 at 6, so the series covers everything below 6.  Python models of these references agreed exactly with 260-digit decimal computations of `erf` and `erfc` at 750 arguments, and the continued fraction reproduced the C library's `erfc` at 2, 3, and 6.
+`tests/TestSupport/Numerics/ErfReference.lean` computes `erf` below 6 from the series of positive terms `erf x = (2/√π) x e^(-x²) Σ (2 x²)^n/(2 n + 1)!!`, which converges everywhere and has no cancellation, at 64 bits above the result's precision, and `erfc = 1 - erf` there.  From 6 on it computes `erfc` from Laplace's continued fraction `√π e^(x²) erfc x = 1/(x + (1/2)/(x + 1/(x + (3/2)/(x + ⋯))))` in exact integer arithmetic.  For `x = u/v`, the equivalence transformation that multiplies each level by `2 v` gives integer elements, `2 v`, `2 v² (k - 1)`, and `2 u`.  The elements are positive, so successive convergents lie on alternate sides of the value, and the loop stops when two of them agree within a relative `2 ^ -(q + 2)`, which bounds the error of the result.  `erf` is `±1` from 6 on, since `erfc 6 < 2 ^ -54`, and `erfc` is 0 from 28 on and 2 from -6 down.  The first draft used the continued fraction from 3 on, where it needs 1,173 levels at 400 bits, against 347 at 6, so the series covers everything below 6.  Python models of these references agreed exactly with 260-digit decimal computations of `erf` and `erfc` at 750 arguments, and the continued fraction reproduced the C library's `erfc` at 2, 3, and 6.
 
 The references of `sinpi`, `cospi`, and `tanpi` in `SinpiAccuracy.lean` take `Reference.sinCosTurns` at `|x|/2` turns, at 64 bits above the precision of `x`.  The exact zeros and poles come from rules rather than from the series: an integer, or an integer plus `1/2`, gives the value and the sign that IEEE 754 and the sources specify.  The check requires those signs bit for bit, which `Reference.distance` alone ignores, since it places both zeros at one position.  Python models of these references agreed exactly with 260-digit decimal computations at 1,353 arguments that are neither integers nor integers plus `1/2`.
 
@@ -30198,9 +30198,9 @@ The first build (`ports-s6-build-1.log`) failed in `Sinpi.kernelTanpi`: a line t
 The coordinator adds `Sinpi`, `Erf`, and `ErfReference` to `Verified.lean`, and these lines to `tests/verified/run.sh`, with `|| exit 1` on whichever check line is no longer last.
 
 ```bash
-    Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean
+    Library.Numerics.Float64.Sinpi.Compiled:compiled.module:sinpi Library.Numerics.Float64.Erf.Compiled:compiled.module:erf \
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinpiAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ErfAccuracy.lean
 ```
 
 - [x] Fetch the sources, audit the constants, and compare the trigonometric kernels with `Trig.lean`.
@@ -30226,7 +30226,7 @@ Mathlib has `Real.Gamma` with reflection and Stirling's formula for factorials, 
 
 ## 2026-10-10: Integration of the logarithm theorem and the stage 6 ports
 
-Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Verified.Examples.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
+Opus merged `w/log` at `b35b5c70`, the full logarithm theorem, and `w/ports` at `52186fa8`, stage 6, into `transcendentals`, keeping both sides of the journal.  `LeanExe.lean` now imports `F64ExactProduct` and `BorrowedKept`, and `Verified.lean` imports `Sinpi`, `Erf`, and `ErfReference`.  `tests/verified/run.sh` now checks the file theorems in a loop over entries of the form `name:TheoremModule:FileModule`, with `exp` and `log` so far, and its header describes the checks without listing every function.  `lake build LeanExe Verified Library.Numerics.Float64.Log.LogTheorem` passed with 3,849 jobs, and `log_bytes_accuracy` reports only the permitted axioms (`opus-merge-log-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-7.log`): both file checks, 15,837 cases, and every accuracy check, among them 204,609 results each of `sinpi`, `cospi`, and `tanpi` and 222,117 of `erf` within one unit and of `erfc` within two.  The `erfc` check enforces two units, below the decided four steps, and passes because its arguments miss the worst cases; the ports track is adding those inputs.
 
 ## 2026-10-11: The `exp10` theorem and the byte theorems (track `exp2`)
 
@@ -30351,7 +30351,7 @@ The coordinator decided the bounds after the review of stages 7 and 8: two steps
 
 ### Inputs
 
-`Verified/Examples/WorstCases.lean` lists the double-precision inputs of Tables 4 to 11 of B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision", August 2026 (https://members.loria.fr/PZimmermann/papers/accuracy.pdf).  Each table entry is the input with the largest known error of one function in one of thirteen libraries: GNU libc 2.44, the Intel Math Library, AMD LibM, Newlib, OpenLibm, Musl, Apple's library, LLVM libc, MSVC, FreeBSD 15.1, the Arm Performance Library, CUDA, and ROCm.  A scratch script extracted the entries from the text of the PDF, where each table's caption follows its body, and wrote one array of bit patterns per function, with the report's hexadecimal input and its tables in a comment.  The module has 33 arrays with 5 to 12 distinct inputs each: the 27 functions of the earlier ports and `lgamma`, `tgamma`, `j0`, `j1`, `y0`, and `y1`, whose checks will use them with the ports of items 3 and 4.  The pairs of `atan2` and `pow` keep the report's order, the first and second arguments of the C function, and the check of `atan2` adds each pair in both orders.
+`tests/TestSupport/Numerics/WorstCases.lean` lists the double-precision inputs of Tables 4 to 11 of B. Gladman, V. Innocente, J. Mather, K. Ozaki, and P. Zimmermann, "Accuracy of Mathematical Functions in Single, Double, Double Extended, and Quadruple Precision", August 2026 (https://members.loria.fr/PZimmermann/papers/accuracy.pdf).  Each table entry is the input with the largest known error of one function in one of thirteen libraries: GNU libc 2.44, the Intel Math Library, AMD LibM, Newlib, OpenLibm, Musl, Apple's library, LLVM libc, MSVC, FreeBSD 15.1, the Arm Performance Library, CUDA, and ROCm.  A scratch script extracted the entries from the text of the PDF, where each table's caption follows its body, and wrote one array of bit patterns per function, with the report's hexadecimal input and its tables in a comment.  The module has 33 arrays with 5 to 12 distinct inputs each: the 27 functions of the earlier ports and `lgamma`, `tgamma`, `j0`, `j1`, `y0`, and `y1`, whose checks will use them with the ports of items 3 and 4.  The pairs of `atan2` and `pow` keep the report's order, the first and second arguments of the C function, and the check of `atan2` adds each pair in both orders.
 
 Each of the 15 checks imports the module, appends its function's arrays to its arguments, and cites the report in its docstring.  The bounds of `atan2` and `asinh` went from one step to two, and that of `erfc` from two to four, with their docstrings.  In `AtanAccuracy` and `PowAccuracy` the arguments end with a `flatMap` over the special values, whose lambda would absorb an appended `++`, so the worst-case pairs are bound to `worst` and placed before it.
 
@@ -30518,7 +30518,7 @@ The ports track measured why `verified_compile` did not finish on the CORE-MATH 
 
 The Bessel ports measured, in units of the modulus `√(J² + Y²)`, largest errors of 2.617 (`j0`), 2.764 (`j1`), 3.171 (`y0`), 3.243 (`y1`), 10.41 (`jn` at order 50), and 15.38 (`yn` at order 100).  Opus set the bound to 4 units for `j0`, `j1`, `y0`, and `y1`, and to `a + b |n|` units for `jn` and `yn`, with the constants that the proof reaches; the data fit `4 + |n|/6`.  `lgamma`'s check found all 81,033 results equal to its integer reference.
 
-On the build host a build of `Verified/Examples/TanOdd.lean` (track `trig`) held the runner's lock for 26 minutes of its 40-minute timeout while its scope sat above `memory.high` (4.76 GB against 4.29 GB, swap full, 57,071 high events, about 4 seconds of CPU per minute).  Opus stopped the Lean process and told the track to treat it as a timeout without a diagnostic and to divide the module before building it again.
+On the build host a build of `Library/Numerics/Float64/Tan/TanOdd.lean` (track `trig`) held the runner's lock for 26 minutes of its 40-minute timeout while its scope sat above `memory.high` (4.76 GB against 4.29 GB, swap full, 57,071 high events, about 4 seconds of CPU per minute).  Opus stopped the Lean process and told the track to treat it as a timeout without a diagnostic and to divide the module before building it again.
 
 The log10 integration: Opus merged `w/log` at `315ad465` (659d6c95), added `Log10Theorem` to `Verified.lean` and `log10:Log10Theorem:Log10File` to the file loop of `tests/verified/run.sh`.  The build passed with 3,907 jobs, and `log10_bytes_accuracy` reports only the permitted axioms (`opus-merge-log10-1.log`).  `tests/verified/run.sh` passed (`opus-verified-tests-10.log`) with six file checks: `exp`, `log`, `exp2`, `trig`, `log2`, and `log10`.
 
@@ -30551,7 +30551,7 @@ The tail rational functions of `s_erf.c` approximate `log (x erfc x) + x² + 0.5
 
 | Run | Result | Log |
 |---|---|---|
-| First build of `Verified.Examples.Erf`, `TaylorRemainder`, and `PolyChecks` in this worktree | Passed, 3,630 jobs | `erf-port-build-1.log` |
+| First build of `Library.Numerics.Float64.Erf.Compiled`, `TaylorRemainder`, and `PolyChecks` in this worktree | Passed, 3,630 jobs | `erf-port-build-1.log` |
 | `RealErf`, first draft | 21 errors.  `convert ... using 1` on `HasDerivAt` left goals that equate instance paths, `IntegrableOn` and `intervalIntegral_tendsto_integral_Ioi` needed `open MeasureTheory`, `left_mem_Ici` and `right_mem_Iic` are `self_mem_Ici` and `self_mem_Iic` here, `ge_of_tendsto` was the wrong direction for `le_of_tendsto`, and `positivity` cannot use a hypothesis for `(-1)^N a_N ≥ 0`. | `erf-real-1.log` |
 | Second draft, with `HasDerivAt.congr_deriv` in place of `convert` | Five errors: a power identity, two `linarith` steps whose products needed the factor `2/√π` pulled out, an inverse-power identity, and `(erfcx - p) u`, which `ring` treats as one atom until `Pi.sub_apply` rewrites it | `erf-real-2.log` |
 | Third draft | Two `linarith` failures: the hints `le_abs_self` and `neg_abs_le` were swapped between the two signs | `erf-real-3.log` |
@@ -31055,23 +31055,23 @@ The coordinator's decisions 3 and 4 after the review: port CORE-MATH's `tgamma` 
 
 ### The fused multiply-add
 
-`Verified/Examples/Fma.lean` computes `fma a b c`, the double nearest to the exact `a · b + c` with ties to even, from the bit patterns with 64-bit words alone.  The product of the two significands is a pair of words from the products of their 32-bit halves.  The product and the significand of `c` are shifted so that each has its highest bit at bit 125 of a 128-bit pair, and the smaller is shifted right to the other's scale with its lost bits ORed into bit 0.  Every operand has bits 0 to 19 clear after the first shift, so a shift of 20 or less loses nothing and the sum is exact, and a longer shift leaves at least 72 bits below the rounding position, where the odd sticky bit cannot change the rounding.  `roundPack` rounds the sum at bit `m - 52`, or at the bit of weight `2 ^ -1074` for a subnormal result, and writes `(e - 1) · 2 ^ 52 + q`, which absorbs a carry of the rounding into the exponent and turns an overflow into infinity.
+`Library/Numerics/Arithmetic/Fma/Program.lean` computes `fma a b c`, the double nearest to the exact `a · b + c` with ties to even, from the bit patterns with 64-bit words alone.  The product of the two significands is a pair of words from the products of their 32-bit halves.  The product and the significand of `c` are shifted so that each has its highest bit at bit 125 of a 128-bit pair, and the smaller is shifted right to the other's scale with its lost bits ORed into bit 0.  Every operand has bits 0 to 19 clear after the first shift, so a shift of 20 or less loses nothing and the sum is exact, and a longer shift leaves at least 72 bits below the rounding position, where the odd sticky bit cannot change the rounding.  `roundPack` rounds the sum at bit `m - 52`, or at the bit of weight `2 ^ -1074` for a subnormal result, and writes `(e - 1) · 2 ^ 52 + q`, which absorbs a carry of the rounding into the exponent and turns an overflow into infinity.
 
 IEEE 754 leaves the NaN of an invalid operation and the payload of a propagated NaN to the implementation.  The port returns the first NaN operand of `a`, `b`, and `c`, quieted, which keeps an input's payload as clause 6.2.3 recommends, and the default `0x7FF8000000000000` for `0 · ∞` and for infinities of opposite signs.  An exact zero sum is `+0` unless the product and `c` are both zeros of negative sign, and a nonzero sum that rounds to zero keeps its sign.  The function raises no flags, since the dialect has none.
 
-A Python model of the word algorithm (`py/fma.py` in the scratch directory) agreed with an exact rational reference and with the C library's `fma` at 309,261 operand triples: every triple of 21 special values and random operands of six kinds, cancellation, subnormal results, overflow, and exact products.  `Verified/Examples/FmaAccuracy.lean` checks the Lean function against `Reference.toFloat` of the exact integer `a · b + c` at every triple of 24 special values and at hashed operands of six kinds: all exponents, products near 1 with `c` the negated rounded product and its neighbors, exact zero sums, subnormal results, overflow, and ties.
+A Python model of the word algorithm (`py/fma.py` in the scratch directory) agreed with an exact rational reference and with the C library's `fma` at 309,261 operand triples: every triple of 21 special values and random operands of six kinds, cancellation, subnormal results, overflow, and exact products.  `tests/TestSupport/Numerics/FmaAccuracy.lean` checks the Lean function against `Reference.toFloat` of the exact integer `a · b + c` at every triple of 24 special values and at hashed operands of six kinds: all exponents, products near 1 with `c` the negated rounded product and its neighbors, exact zero sums, subnormal results, overflow, and ties.
 
 ### tgamma and lgamma
 
-`Verified/Examples/Tgamma.lean` ports `src/binary64/tgamma/tgamma.c` and `Verified/Examples/Lgamma.lean` ports `src/binary64/lgamma/lgamma.c` of CORE-MATH (https://gitlab.inria.fr/core-math/core-math) at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, MIT license, by Alexei Sibidanov.  Both evaluate in double-double arithmetic with an error bound and return when `h + (l + eps)` and `h + (l - eps)` round alike, fall back to an accurate path of about 100 bits, and end in a table of hard cases.  The ports follow the C code operation for operation and call `Fma.fma` for each `__builtin_fma`, so their results should equal CORE-MATH's bit for bit.  The changes are mechanical: out-parameters become pair results, the tables become arrays of words passed by the wrappers, C's selecting and counting integers become integer-valued doubles or two's complement words with `sar` for the arithmetic shift, `roundeven_finite` adds and subtracts `2 ^ 52`, `floor` follows from it, `__builtin_clzll` is `63 - Fma.msb64`, and the binary searches of the hard-case tables become full scans with the same result.  The flags, `errno`, and `raise_underflow` are gone, and `signgam` is the second result of `Lgamma.lgammaWith`.  `Lgamma` reuses `Tgamma`'s double-double helpers, `asSinpid`, and the table of `as_logd`, which `lgamma.c` repeats; a comparison of the extracted tables confirmed that the repeated arrays are equal.
+`Library/Numerics/Float64/Tgamma/Program.lean` ports `src/binary64/tgamma/tgamma.c` and `Library/Numerics/Float64/Lgamma/Program.lean` ports `src/binary64/lgamma/lgamma.c` of CORE-MATH (https://gitlab.inria.fr/core-math/core-math) at commit `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, MIT license, by Alexei Sibidanov.  Both evaluate in double-double arithmetic with an error bound and return when `h + (l + eps)` and `h + (l - eps)` round alike, fall back to an accurate path of about 100 bits, and end in a table of hard cases.  The ports follow the C code operation for operation and call `Fma.fma` for each `__builtin_fma`, so their results should equal CORE-MATH's bit for bit.  The changes are mechanical: out-parameters become pair results, the tables become arrays of words passed by the wrappers, C's selecting and counting integers become integer-valued doubles or two's complement words with `sar` for the arithmetic shift, `roundeven_finite` adds and subtracts `2 ^ 52`, `floor` follows from it, `__builtin_clzll` is `63 - Fma.msb64`, and the binary searches of the hard-case tables become full scans with the same result.  The flags, `errno`, and `raise_underflow` are gone, and `signgam` is the second result of `Lgamma.lgammaWith`.  `Lgamma` reuses `Tgamma`'s double-double helpers, `asSinpid`, and the table of `as_logd`, which `lgamma.c` repeats; a comparison of the extracted tables confirmed that the repeated arrays are equal.
 
-`Verified/Examples/GammaReference.lean` computes `lgamma y` for `y > 0` as `lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, Stirling's series with 60 terms whose Bernoulli numbers come from the Akiyama–Tanigawa algorithm in exact fractions, and one logarithm of the exact product, and for `x < 0` the reflection formula with `Reference.sinCosTurns`.  `Γ` is `Reference.exp` of `lgamma` with the sign of `sin (π x)`.  A Python model of this reference at 600 bits gave the same doubles as the compiled CORE-MATH at 3,500 arguments, 7,000 results, compiled with `gcc -O2 -ffp-contract=off`, before the Lean version was written.  `TgammaAccuracy.lean` and `LgammaAccuracy.lean` check the ports against it, `lgammaR`'s sign included, and also call the accurate paths directly at an eighth of the arguments and at the hard cases, since the fast paths rarely reach them.
+`tests/TestSupport/Numerics/GammaReference.lean` computes `lgamma y` for `y > 0` as `lgamma (y + N) - ln (y (y + 1) ⋯ (y + N - 1))` with `y + N ≥ 300`, Stirling's series with 60 terms whose Bernoulli numbers come from the Akiyama–Tanigawa algorithm in exact fractions, and one logarithm of the exact product, and for `x < 0` the reflection formula with `Reference.sinCosTurns`.  `Γ` is `Reference.exp` of `lgamma` with the sign of `sin (π x)`.  A Python model of this reference at 600 bits gave the same doubles as the compiled CORE-MATH at 3,500 arguments, 7,000 results, compiled with `gcc -O2 -ffp-contract=off`, before the Lean version was written.  `TgammaAccuracy.lean` and `LgammaAccuracy.lean` check the ports against it, `lgammaR`'s sign included, and also call the accurate paths directly at an eighth of the arguments and at the hard cases, since the fast paths rarely reach them.
 
 ### The Bessel functions
 
-`Verified/Examples/Bessel.lean` ports FreeBSD's `e_j0.c`, `e_j1.c`, and `e_jn.c` at `20381bce4b63975494a2f4bc84257f6932e6d379`.  fdlibm's calls become `Trig.sinWith` and `Trig.cosWith` for `sincos` and `cos`, `Log.logWith` for `log`, and `Float.sqrt` for `sqrt`.  FreeBSD's `sincos` evaluates the same kernel formulas as its `sin` and `cos` (`k_sincos.h` against `k_sin.c` and `k_cos.c`, with `y/2` for `half*y` and `z/2` for `0.5*z`, which are exact), and the four functions call it only from 2 up, where both take the same reduction, so the first two substitutions keep FreeBSD's values.  The square root is correctly rounded on both sides, and only `Log.logWith`, Arm's `log`, may differ from fdlibm's `log` in the last bit.  The 205 constants come from the bit patterns in fdlibm's comments, which a script checked against the rounding of each decimal literal.  `jn` and `yn` read the order as C's `int` in the low 32 bits, and the `while` loop of `jn` that sizes its continued fraction is a `LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel.
+`Library/Numerics/Float64/Bessel/Program.lean` ports FreeBSD's `e_j0.c`, `e_j1.c`, and `e_jn.c` at `20381bce4b63975494a2f4bc84257f6932e6d379`.  fdlibm's calls become `Trig.sinWith` and `Trig.cosWith` for `sincos` and `cos`, `Log.logWith` for `log`, and `Float.sqrt` for `sqrt`.  FreeBSD's `sincos` evaluates the same kernel formulas as its `sin` and `cos` (`k_sincos.h` against `k_sin.c` and `k_cos.c`, with `y/2` for `half*y` and `z/2` for `0.5*z`, which are exact), and the four functions call it only from 2 up, where both take the same reduction, so the first two substitutions keep FreeBSD's values.  The square root is correctly rounded on both sides, and only `Log.logWith`, Arm's `log`, may differ from fdlibm's `log` in the last bit.  The 205 constants come from the bit patterns in fdlibm's comments, which a script checked against the rounding of each decimal literal.  `jn` and `yn` read the order as C's `int` in the low 32 bits, and the `while` loop of `jn` that sizes its continued fraction is a `LeanExe.repeatWhile` with `2 ^ 32 - 1` steps of fuel.
 
-`Verified/Examples/BesselReference.lean` computes `J 0`, `J 1`, `Y 0`, and `Y 1` below 300 from their power series, with Euler's constant by Brent and McMillan's algorithm B1, and from 300 up from Hankel's expansions, `J n` from its series below `max 300 n` and by the forward recurrence above, and `Y n` by the forward recurrence, all as in the Python references of the review.  `BesselAccuracy.lean` measures each result in units of the modulus with the definition the review used for FreeBSD's 3.01, which the proof track can state as follows.  For order `n`, let `J` and `Y` be the references at `q` bits, `M = isqrt (J² + Y²) · 2 ^ -q`, and `u = 2 ^ (⌊log₂ M⌋ - 52)`, with no clamp at the subnormal range.  The error of a result `y` for the function `F` is `|y - F|/u`, computed exactly.  In terms of real numbers, the bound `B` means `|y - F (x)| ≤ B · 2 ^ (⌊log₂ √(J n (x)² + Y n (x)²)⌋ - 52)`.
+`tests/TestSupport/Numerics/BesselReference.lean` computes `J 0`, `J 1`, `Y 0`, and `Y 1` below 300 from their power series, with Euler's constant by Brent and McMillan's algorithm B1, and from 300 up from Hankel's expansions, `J n` from its series below `max 300 n` and by the forward recurrence above, and `Y n` by the forward recurrence, all as in the Python references of the review.  `BesselAccuracy.lean` measures each result in units of the modulus with the definition the review used for FreeBSD's 3.01, which the proof track can state as follows.  For order `n`, let `J` and `Y` be the references at `q` bits, `M = isqrt (J² + Y²) · 2 ^ -q`, and `u = 2 ^ (⌊log₂ M⌋ - 52)`, with no clamp at the subnormal range.  The error of a result `y` for the function `F` is `|y - F|/u`, computed exactly.  In terms of real numbers, the bound `B` means `|y - F (x)| ≤ B · 2 ^ (⌊log₂ √(J n (x)² + Y n (x)²)⌋ - 52)`.
 
 ### Results
 
@@ -31283,7 +31283,7 @@ The exact rules are bit equalities for finite `x`.  `sinpi_int` gives `±0` with
 | `sinpi-within-1`, `sinpi-exact-1` | `SinpiWithin`, `SinpiExact`, `SinpiExactTan`. |
 | `sinpi-theorem-1`, `sinpi-emit-1`, `sinpi-file-1` | `SinpiTheorem`, the module `sinpi.wasm`, `SinpiFile`. |
 
-`SinpiTheorem` states `sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy` for functions 13, 14, and 15, the exports `sinpi`, `cospi`, and `tanpi`.  The module has no tables, and its entries are `ImplementsA` with trivial pre- and postconditions, so `Ready` consists of the allocator invariant and the memory cap.  `SinpiFile.sinpi_file_decode` takes the bytes from the conjunction of the three byte theorems, so its axiom report covers all three.  `tools/Emit.lean` wrote `build/verified/sinpi.wasm`, 5,806 bytes, which `wasm-tools validate` accepts, and `lake env lean Verified/Examples/SinpiFile.lean` prints two axiom lines, each `[propext, Classical.choice, Quot.sound]`.  Every theorem of these modules reports at most these three axioms.
+`SinpiTheorem` states `sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy` for functions 13, 14, and 15, the exports `sinpi`, `cospi`, and `tanpi`.  The module has no tables, and its entries are `ImplementsA` with trivial pre- and postconditions, so `Ready` consists of the allocator invariant and the memory cap.  `SinpiFile.sinpi_file_decode` takes the bytes from the conjunction of the three byte theorems, so its axiom report covers all three.  `tools/Emit.lean` wrote `build/verified/sinpi.wasm`, 5,806 bytes, which `wasm-tools validate` accepts, and `lake env lean Library/Numerics/Float64/Sinpi/SinpiFile.lean` prints two axiom lines, each `[propext, Classical.choice, Quot.sound]`.  Every theorem of these modules reports at most these three axioms.
 
 - [x] The product, the kernels, the reflections, and the integer part.
 - [x] The reflected chains (`SinpiPieces`).
@@ -31299,7 +31299,7 @@ The user resumed the work and asked that each track document its functions as it
 
 The coordinator assigned CORE-MATH's binary64 `erfc` in place of fdlibm's, whose worst case of 4.08 units at `0x1.527f4fb0d9331p+0` cannot be proved within four steps: port it with `Fma.fma`, leave `verified_compile` out until the reflector changes, check it against `ErfReference` and the worst inputs, and prove `WithinSteps 1` against `RealErf.erfc` for every finite input with the exact results.  The port follows `src/binary64/erfc/erfc.c` at `ff2f71f635e95d395a6646b7e7b2c72e7b03a5d8`, the commit of the `tgamma` and `lgamma` ports, fetched from `https://gitlab.inria.fr/core-math/core-math/-/raw/<commit>/src/binary64/erfc/erfc.c`.  The file has the same MD5 sum, `624fbb7ff5a2a3ce4ac60d5e8653f62d`, as the copy that the documentation review downloaded without a commit.  `w/trig` merged `transcendentals` twice, at `be50832f` and at `bb9002c0`, before the port; both merges conflicted only in this journal, and the merges keep both sides.
 
-`Verified/Examples/Erfc.lean` follows the C code operation for operation, and its docstring and the document `Erf.md` list the changes: tuples for results through pointers, seven arrays of words for the tables, `sar` for C's arithmetic shift, `ldexp` as products with powers of two, comparison chains for the searches of the thresholds, full scans of the tables of hard cases, and no flags or `errno`.  The module docstring quotes the MIT notice in full, which the review found missing from `Tgamma.lean` and `Lgamma.lean`.  A Python script, `py/gen.py` in the scratch directory, wrote the tables from the C source, checking that each hexadecimal literal is exactly a double, and `py/audit.py` compared the port with the source.
+`Library/Numerics/Float64/Erfc/Program.lean` follows the C code operation for operation, and its docstring and the document `Erf.md` list the changes: tuples for results through pointers, seven arrays of words for the tables, `sar` for C's arithmetic shift, `ldexp` as products with powers of two, comparison chains for the searches of the thresholds, full scans of the tables of hard cases, and no flags or `errno`.  The module docstring quotes the MIT notice in full, which the review found missing from `Tgamma.lean` and `Lgamma.lean`.  A Python script, `py/gen.py` in the scratch directory, wrote the tables from the C source, checking that each hexadecimal literal is exactly a double, and `py/audit.py` compared the port with the source.
 
 | Audit item | Result |
 |---|---|
@@ -31309,7 +31309,7 @@ The coordinator assigned CORE-MATH's binary64 `erfc` in place of fdlibm's, whose
 | Elements of `c0`, `p`, `Q_1`, and the two `threshold` arrays in the code | all present except `0x1.63p-2` and `0x1.3p-1`, the last thresholds, which bound `1/x` in their domains (`0x1.62fffffffffffp-2` and `0x1.2b81f34bfce35p-1` at most) |
 | Hexadecimal literals of the C code outside the tables | 25, all present except `0x1.a8b12fc6e4892p+4`, the bound of the removed test of the underflow flag |
 
-The first build of `Erfc` (`erfc-port-1`) stopped when this track's memory guard, set at 3 GB, killed the build of the dependency `Fma`, whose `verified_compile` needs about 4 GB of anonymous memory; the guard now follows the runner's limit of 6 GB.  The second failed because `at` is a keyword, and the third and fourth passed.  `Verified/Examples/ErfcAccuracy.lean` checks `Erfc.erfc` against `ErfAccuracy.erfcReference`, repeated in the file since `ErfAccuracy` has its own `main`, and requires equality.  In `erfc-check-2.log` all 223,592 results equal the reference, and so do the 24,895 direct calls of the accurate path at every eighth argument in its range and at the 69 inputs of the hard cases.  The check is not in `tests/verified/run.sh`, which this track does not edit.
+The first build of `Erfc` (`erfc-port-1`) stopped when this track's memory guard, set at 3 GB, killed the build of the dependency `Fma`, whose `verified_compile` needs about 4 GB of anonymous memory; the guard now follows the runner's limit of 6 GB.  The second failed because `at` is a keyword, and the third and fourth passed.  `tests/TestSupport/Numerics/ErfcAccuracy.lean` checks `Erfc.erfc` against `ErfAccuracy.erfcReference`, repeated in the file since `ErfAccuracy` has its own `main`, and requires equality.  In `erfc-check-2.log` all 223,592 results equal the reference, and so do the 24,895 direct calls of the accurate path at every eighth argument in its range and at the 69 inputs of the hard cases.  The check is not in `tests/verified/run.sh`, which this track does not edit.
 
 A C harness compiled `erfc.c` with `gcc -O2 -ffp-contract=off` on the local machine and printed the fast path's `h`, `l`, and `err`, and a Python reference with the decimal module at 120 digits measured the error.  Without the rounding test, the fast path returns `h + (l - err)` rounded, and `TanStep.near_rel` gives one step when `h + (l - err)`, to which the result is the nearest double up to the rounding of `l - err`, lies within `0.74 u |erfc x|` of `erfc x`.  At 3,000 random arguments per range, the measured `(|h + l - erfc x| + err)/(u |erfc x|)` stays below 0.0001 for `x < 0`, reaches 0.36 near `0x1.713786d9c7c09p+1`, where `err` makes nearly all of it, and stays below 0.06 on the asymptotic range.  The proof can therefore ignore the test if it bounds `|h + l - erfc x|` by about `0.38 u erfc x` near the top of the second range, an absolute `2^-68.8`, while the measured error there is about `2^-75`.
 
@@ -31499,7 +31499,7 @@ The CORE-MATH `erfc` port and the gamma foundations: Opus merged `w/trig` at `b1
 
 ## 2026-10-12: The approximation facts of `tgamma` and `lgamma` (track `erf`)
 
-The coordinator divided the gamma work on 2026-10-12.  Track `arc` takes the floating-point proof of `Tgamma.tgamma` and stated the eight approximation statements it takes as hypotheses in `Verified/Examples/TgammaApprox.lean` on branch `w/poly` (commit `b92f7941`, revised at `02c72fa9`, which relaxed the tolerances that depend on `π`).  Track `expm1` takes the floating-point proof of `Lgamma.lgammaR` and stated twelve statements in `Verified/Examples/LgammaApprox.lean` on branch `w/expm1` (commit `de1cbab5`).  Track `erf` proves both sets, each as a theorem whose type is the statement, the `tgamma` set first.
+The coordinator divided the gamma work on 2026-10-12.  Track `arc` takes the floating-point proof of `Tgamma.tgamma` and stated the eight approximation statements it takes as hypotheses in `Library/Numerics/Float64/Tgamma/TgammaApprox.lean` on branch `w/poly` (commit `b92f7941`, revised at `02c72fa9`, which relaxed the tolerances that depend on `π`).  Track `expm1` takes the floating-point proof of `Lgamma.lgammaR` and stated twelve statements in `Library/Numerics/Float64/Lgamma/LgammaApprox.lean` on branch `w/expm1` (commit `de1cbab5`).  Track `erf` proves both sets, each as a theorem whose type is the statement, the `tgamma` set first.
 
 The fact modules read the coefficient lists from the ports' tables with the definitions of the two statement files (`q`, `coeffs`, `ddCoeffs` in `TgammaFactsBase`), so that each theorem has the statement's type up to unfolding.  Each interval splits into pieces, and on each piece the kernel compares the polynomial with a Taylor model of the function: `GammaModels.gammaPieceOk` for `Γ`, `GammaFits.fit_piece` for the Stirling fits against `lgamma` and `GammaFits.fit_large` from 16 on against Stirling's series, `GammaScaled.gammaScaledOk` for the accurate path's ranges against `Γ / 2 ^ k` with a relative check (`GammaRel.relOk`), and `TaylorCheck.exprOk` for the kernels of the logarithm, the exponential, and the sine.  `GammaPi` takes `π` within `2 ^ -128` from `TrigPi` for the sine's tables and kernels, and the other models keep Mathlib's 20-digit bounds, where `π` enters only through `ln (2π)/2`.  `GammaDD` adds Taylor models of divided differences `(lgamma (x0 + s) - lgamma x0)/s` for the pieces of `lgamma` that contain the zeros 1 and 2.
 
@@ -31606,7 +31606,7 @@ The pieces 4 and 10 reach a relative error of `7.8 · 10 ^ -20` at their left en
 
 The coordinator asked for `SubnormalGap` on 2026-10-12: for every double `x = -m/2 ^ 45` in `(-184, -170)`, `|Γ x|` lies at most `2 ^ -1022 (1 - 2 ^ -48)` or at least `2 ^ -1022 (1 + 2 ^ -48)`, so that `tgamma`'s choice between the subnormal and the normal branch below -170 is correct.  `lgamma` is convex on each interval `(-n - 1, -n)`, so a point where `lgamma` exceeds a level next to a point below it bounds `lgamma` from below on the far side, and two points below a level bound it from above between them (`GammaConvex.convex_left`, `convex_right`, `convex_mid`).  `subgap.py` in the track's scratch directory finds, in 80-digit arithmetic, the doubles next to each crossing of `2 ^ -1022`: both crossings of each interval for `n` from 170 to 175, the crossing near -176 for `n = 176`, and none from 177 on, where `|Γ|` at the doubles next to both poles already lies below the level.  `GammaReflect.negPointOk` bounds `lgamma` at those 41 doubles with Mathlib's 20-digit `π`, with Taylor-model errors below `10 ^ -18` against margins of at least `2 ^ -52`; the smallest margin is at `-170.584302134743268`, where `|Γ| = 2 ^ -1022 (1 + 33.97 · 2 ^ -53)`.  The levels `tAbove = -1022 log2Lo + 2 ^ -48` and `tBelow = -1022 log2Hi - 2 ^ -48 - 2 ^ -95` of `lgamma` give the two bounds on `|Γ|` through `exp y ≥ 1 + y`.  The five ProofKit modules `GammaSubnormalBase`, `GammaSubnormalA` to `GammaSubnormalC`, and `GammaSubnormal` passed with only the standard axioms, each in under two minutes and at most 0.92 GB.
 
-The modules that import the ports `Verified.Examples.Lgamma` and `Tgamma` reached 3.3 to 3.9 GB of the runner's 4 GB within 30 s of starting, and the ProofKit modules without them stayed below 0.92 GB, which suggests why the divided-difference checks stall: a module of `LgammaPiece4` with two checks of 41,000 and 38,000 coefficient operations stopped at the limit, while modules with 57,000 to 63,000 passed in about a minute (`erf-gamma-91.log` to `erf-gamma-95.log`).  The generators now group checks up to 62,000 operations per module, and `AccPolyFact`'s first clause takes one check per module.
+The modules that import the ports `Library.Numerics.Float64.Lgamma.Compiled` and `Tgamma` reached 3.3 to 3.9 GB of the runner's 4 GB within 30 s of starting, and the ProofKit modules without them stayed below 0.92 GB, which suggests why the divided-difference checks stall: a module of `LgammaPiece4` with two checks of 41,000 and 38,000 coefficient operations stopped at the limit, while modules with 57,000 to 63,000 passed in about a minute (`erf-gamma-91.log` to `erf-gamma-95.log`).  The generators now group checks up to 62,000 operations per module, and `AccPolyFact`'s first clause takes one check per module.
 
 | Run | Result | Log |
 |---|---|---|
@@ -31728,7 +31728,7 @@ The generator's modes `y0` and `y1` write `BesselSmallY0` and `BesselSmallY1`, a
 
 ## 2026-10-12: Bessel functions of integer order, the analysis of `jn` and `yn` (track `log`)
 
-The coordinator asked for the accuracy theorems of `jn` and `yn` in the form `|w - J_n(x)| ≤ (a + b |n|) · 2^-53 · √(J_n² + Y_n²)`, with the step form `F64SignedRounding.WithinSteps` where the modulus form cannot hold, and for the analysis in `Bessel.md` and here before any Lean.  The analysis is the subsection "Analysis of `jn` and `yn`" of [the Bessel document](Verified/Examples/Bessel.md#analysis-of-jn-and-yn), and `uv run tools/bessel/ordern.py` reproduces its numbers from 200-digit values of `J_k(x)` and `Y_k(x)`.  The DLMF equations it cites (3.6(iii), 10.4.1, 10.5.2, 10.6.1, 10.9.30, 10.18.6, 10.18.17, 10.21.3, 10.74(iv)) and the comments of FreeBSD's `e_jn.c` at `20381bce` were read online on 2026-10-12.
+The coordinator asked for the accuracy theorems of `jn` and `yn` in the form `|w - J_n(x)| ≤ (a + b |n|) · 2^-53 · √(J_n² + Y_n²)`, with the step form `F64SignedRounding.WithinSteps` where the modulus form cannot hold, and for the analysis in `Bessel.md` and here before any Lean.  The analysis is the subsection "Analysis of `jn` and `yn`" of [the Bessel document](Library/Numerics/Float64/Bessel/README.md#analysis-of-jn-and-yn), and `uv run tools/bessel/ordern.py` reproduces its numbers from 200-digit values of `J_k(x)` and `Y_k(x)`.  The DLMF equations it cites (3.6(iii), 10.4.1, 10.5.2, 10.6.1, 10.9.30, 10.18.6, 10.18.17, 10.21.3, 10.74(iv)) and the comments of FreeBSD's `e_jn.c` at `20381bce` were read online on 2026-10-12.
 
 The error of each recurrence has an exact form: a rounding `δ_k` at step `k` reaches index `n` as `δ_k (π x/2)(Y_k J_n - J_k Y_n)`, from 10.6.1 and the cross product 10.5.2.  In the oscillatory range `k < x` the weight `(π x/2) M_k²` follows `x/√(x² - k²)` and reaches `1.257 x^(1/3)` at `k = x`, so the propagated rounding of the forward recurrence of `jn` is about `2.8 n u M_n` at `n = x`.  Above `x`, `J_k > 0 > Y_k` and the exact kernels keep the forward recurrence of `yn` near `3.7 n u M_n`, while the Cauchy–Schwarz bound `M_k M_n` of the kernels grows without bound there.  Miller's method of `jn` for `x < n` meets the same weights below `x`, its continued fraction stops at `Q(k) > 10^9`, and its normalization by the larger of `j0 x` and `j1 x` costs at most `18.4 u` relative on the samples from 2 to 202.
 
@@ -31905,7 +31905,7 @@ The first build of `F64TwoSum` failed on three points (`gamma-twosum-1.log`).  `
 
 ## 2026-10-12: The software fused multiply-add theorem (track `expm1`)
 
-The coordinator assigned the correctness proof of the ports track's `Verified/Examples/Fma.lean` to this track: `(Fma.fma a b c).toBits` must equal IEEE 754's fusedMultiplyAdd with roundTiesToEven for every triple of words, with signed zeros, subnormal results, overflow, and every NaN and infinity combination, and with the canonical NaN for NaN results.  CORE-MATH's `erfc`, `tgamma`, and `lgamma` rest on this function, and the trig track asked for the corollary `FmaSpec.FmaNearest` in the form its `erfc` proof uses.  The worktree merged `transcendentals` at `bb9002c0` (`3ad72205`) before the work and at `a55d2cfd` (`98703f8a`), which adds `FmaSpec.lean`, during it.  No input was found on which the port is wrong: the theorem covers every triple of words.
+The coordinator assigned the correctness proof of the ports track's `Library/Numerics/Arithmetic/Fma/Program.lean` to this track: `(Fma.fma a b c).toBits` must equal IEEE 754's fusedMultiplyAdd with roundTiesToEven for every triple of words, with signed zeros, subnormal results, overflow, and every NaN and infinity combination, and with the canonical NaN for NaN results.  CORE-MATH's `erfc`, `tgamma`, and `lgamma` rest on this function, and the trig track asked for the corollary `FmaSpec.FmaNearest` in the form its `erfc` proof uses.  The worktree merged `transcendentals` at `bb9002c0` (`3ad72205`) before the work and at `a55d2cfd` (`98703f8a`), which adds `FmaSpec.lean`, during it.  No input was found on which the port is wrong: the theorem covers every triple of words.
 
 ### The reference and the theorems
 
@@ -31946,7 +31946,7 @@ A proof of `fmaBits_eq` by `rfl` exceeded 4,000,000 heartbeats, while `dsimp onl
 
 ### Logs and axioms
 
-`expm1-fma-all-3.log` in `build/transcendentals` on builds on the build host `Verified.Examples.FmaSpecTheorem` and every module before it, 3,555 jobs, with no warning in the new files.  Its 66 `#print axioms` reports in the `Fma*` modules name only `propext`, `Classical.choice`, and `Quot.sound`, and `fma_toBits`, `fmaBits_spec`, and `fma_nearest` depend on exactly these three.  The module logs of the last successful runs are `expm1-fmawords-3.log`, `expm1-fmagrid-4.log`, `expm1-fmanearesteven-b2.log`, `expm1-fmaround-b3.log`, `expm1-fmaroundpack-b3.log`, `expm1-fmadecode-b2.log`, `expm1-fmaalign-b2.log`, `expm1-fmaparts-b6.log`, `expm1-fmacombine-b8.log`, `expm1-fmageneral-b1.log`, `expm1-fmaspecial-b2.log`, `expm1-fmatheorem-b3.log`, and `expm1-fmaspectheorem-b4.log`.
+`expm1-fma-all-3.log` in `build/transcendentals` builds `Library.Numerics.Arithmetic.Fma.FmaSpecTheorem` and every module before it, 3,555 jobs, with no warning in the new files.  Its 66 `#print axioms` reports in the `Fma*` modules name only `propext`, `Classical.choice`, and `Quot.sound`, and `fma_toBits`, `fmaBits_spec`, and `fma_nearest` depend on exactly these three.  The module logs of the last successful runs are `expm1-fmawords-3.log`, `expm1-fmagrid-4.log`, `expm1-fmanearesteven-b2.log`, `expm1-fmaround-b3.log`, `expm1-fmaroundpack-b3.log`, `expm1-fmadecode-b2.log`, `expm1-fmaalign-b2.log`, `expm1-fmaparts-b6.log`, `expm1-fmacombine-b8.log`, `expm1-fmageneral-b1.log`, `expm1-fmaspecial-b2.log`, `expm1-fmatheorem-b3.log`, and `expm1-fmaspectheorem-b4.log`.
 
 - [x] Word lemmas (`FmaWords`)
 - [x] The rounding of a number in units of `2 ^ -2400` (`FmaGrid`, `FmaNearestEven`)
@@ -31961,7 +31961,7 @@ The theorem does not cover the NaN payload of `Fma.fma`: `Float.toBits` returns 
 
 ## 2026-10-12: The floating-point proof of `lgamma` (track `expm1`)
 
-The coordinator assigned the floating-point proof of `Lgamma.lgammaR` and `Lgamma.lgamma` to this track: `F64SignedRounding.WithinSteps 1` against `log |Γ x|` for every finite non-pole input, the sign of `Γ x` as the second result (CORE-MATH's -1 at the negative integers), the exact results at 1, 2, the poles, the infinities, and NaN, and the overflow thresholds of `GammaThresholds`.  Track `erf` proves the approximation facts, and this track proves the floating-point analysis that consumes them, with `FmaSpecTheorem.fma_nearest` at every fused multiply-add.  The first step states the facts in a module of definitions only, `Verified/Examples/LgammaApprox.lean`, as track `arc` did in `TgammaApprox.lean` for `tgamma`.
+The coordinator assigned the floating-point proof of `Lgamma.lgammaR` and `Lgamma.lgamma` to this track: `F64SignedRounding.WithinSteps 1` against `log |Γ x|` for every finite non-pole input, the sign of `Γ x` as the second result (CORE-MATH's -1 at the negative integers), the exact results at 1, 2, the poles, the infinities, and NaN, and the overflow thresholds of `GammaThresholds`.  Track `erf` proves the approximation facts, and this track proves the floating-point analysis that consumes them, with `FmaSpecTheorem.fma_nearest` at every fused multiply-add.  The first step states the facts in a module of definitions only, `Library/Numerics/Float64/Lgamma/LgammaApprox.lean`, as track `arc` did in `TgammaApprox.lean` for `tgamma`.
 
 ### The approximation facts
 
@@ -32057,7 +32057,7 @@ The kernel modules replaced `first | (field_simp; done) | (field_simp; ring)` wi
 
 ## 2026-10-13: Recovery of track `erf` after two copies of its agent ran at once
 
-On 2026-10-12 two copies of the track's agent worked in a separate worktree at the same time.  The coordinator's message to the agent while its build queue was pending started a second copy from an old summary, and that copy overwrote `Verified/Examples/LgammaDb.lean` and created `Verified/Examples/LgammaCancel.lean` before it noticed the other copy.  It restored `LgammaDb.lean` to its committed version and deleted `LgammaCancel.lean`, so the queue's build of `LgammaCancel` (318) found no source.  The coordinator stopped the agent, and the user directed that the work continue without agents.
+On 2026-10-12 two copies of the track's agent worked in a separate worktree at the same time.  The coordinator's message to the agent while its build queue was pending started a second copy from an old summary, and that copy overwrote `Library/Numerics/Float64/Lgamma/LgammaDb.lean` and created `Library/Numerics/Float64/Lgamma/LgammaCancel.lean` before it noticed the other copy.  It restored `LgammaDb.lean` to its committed version and deleted `LgammaCancel.lean`, so the queue's build of `LgammaCancel` (318) found no source.  The coordinator stopped the agent, and the user directed that the work continue without agents.
 
 The build queue of `erf-after198.sh` ran builds 256 to 324 unattended.  Fifty-nine modules built with only `propext`, `Classical.choice`, and `Quot.sound`, and this commit records them with `F64Grid` and `LgammaData`, which they import: `LgammaSmallFact` (`SmallFact`), `LgammaAccSmall` (the first clause of `AccPolyFact`), `LgammaPiece4` and `LgammaPiecesA` to `E` (the fast path's pieces other than 10), `LgammaSinpiAcc` (the kernels of `as_sinpipid_accurate`), `LgammaAsymMidA` to `C` and `LgammaAsymLowA` to `H` (the accurate Stirling fit from `15/4` to 48), and `LgammaRootC`, `LgammaRootE`, and `LgammaRootF` (`RootFact` on six of its ranges).  Ten modules failed and stay uncommitted.
 
@@ -32468,7 +32468,7 @@ Opus repaired the ten modules that the build queue of track `erf` had left, with
 
 `LgammaRootA`, `LgammaRootB`, and `LgammaRootD` had each passed the 20-minute limit of a build.  Each now imports three modules, one per range (`LgammaRootA0` to `LgammaRootD2`), whose declarations stay in the namespace of the original module, so `LgammaFacts` names them unchanged.  The cause of the timeouts was memory.  With a limit of 12 GB, each range module takes 4 to 6 minutes (`opus-lgroots-2.log`), while under the runner's default limit of 4 GB the builds swapped: `LgammaRootB1`, the range `(-9/2, -4)`, ran 26 minutes with 5 minutes of CPU time.  It peaks at 9.1 GB, and its two halves peaked at 9.1 and 8.3 GB, so a single check needs that memory, and the module stays whole.  The split into ranges keeps each build near 5 minutes, and the integration build needs `--memory-high 10G` or more for these modules.
 
-`tools/leanrun --memory-high 12G lake build Verified.Examples.LgammaFacts` completes 3,850 jobs (`opus-lgfacts-4.log` in `build/transcendentals` of `lt-erf`), and `LgammaFacts.allFacts`, the thirteen statements of `LgammaApprox.AllFacts`, depends on `propext`, `Classical.choice`, and `Quot.sound` only.  The runner of `lt-erf` predates the option `--memory-high`, so the builds used the runner of a separate checkout.
+`tools/leanrun --memory-high 12G lake build Library.Numerics.Float64.Lgamma.LgammaFacts` completes 3,850 jobs (`opus-lgfacts-4.log` in `build/transcendentals` of `lt-erf`), and `LgammaFacts.allFacts`, the thirteen statements of `LgammaApprox.AllFacts`, depends on `propext`, `Classical.choice`, and `Quot.sound` only.  The runner of `lt-erf` predates the option `--memory-high`, so the builds used the runner of the updated checkout a separate clone.
 
 ## 2026-10-12: Bessel functions of integer order, the proof of `jn` and `yn` (track `log`)
 
@@ -32598,7 +32598,7 @@ The fifth integration leaves three items for the next steps.  The file theorems 
 
 ## 2026-10-13: The byte theorems of `j0`, `j1`, `y0`, and `y1` (coordinator)
 
-`Verified/Examples/BesselBytes.lean` joins the compiled module of `Bessel.lean` to `BesselJ0Theorem.j0_accuracy`, `BesselJ1Theorem.j1_accuracy`, `BesselY0Theorem.y0_accuracy`, and `BesselY1Theorem.y1_positive`.  Its store predicate `Ready` holds the allocator invariant, the six tables as borrowed arrays (`Trig.invPi` at 4096, `Trig.halfPi` at 4264, `Bessel.j0Table` at 4288, `Bessel.j1Table` at 5032, `Log.logTable` at 5856, and `Log.logTable2` at 7912), and a memory cap of at most 65,535 pages.  `j0_bytes_accuracy`, `j1_bytes_accuracy`, `y0_bytes_accuracy`, and `y1_bytes_accuracy` state for functions 36 to 39 that the bytes decode to the module, that the function is the named export, and that a call from a ready store returns the bits of the Lean function's result within the accuracy bound and leaves a ready store, and `bessel_module_accuracy` states the four together.  The module was written and built on the build host in `lt-reflect` (`opus-besselbytes-1.log`, 23 s), and on the build host `tools/leanrun --memory-high 8G lake build Verified.Examples.BesselBytes` completes 3,804 jobs (`opus-besselbytes-m1.log`).  Each of the fourteen theorems depends on `propext`, `Classical.choice`, and `Quot.sound` only.
+`Library/Numerics/Float64/Bessel/BesselBytes.lean` joins the compiled module of `Bessel.lean` to `BesselJ0Theorem.j0_accuracy`, `BesselJ1Theorem.j1_accuracy`, `BesselY0Theorem.y0_accuracy`, and `BesselY1Theorem.y1_positive`.  Its store predicate `Ready` holds the allocator invariant, the six tables as borrowed arrays (`Trig.invPi` at 4096, `Trig.halfPi` at 4264, `Bessel.j0Table` at 4288, `Bessel.j1Table` at 5032, `Log.logTable` at 5856, and `Log.logTable2` at 7912), and a memory cap of at most 65,535 pages.  `j0_bytes_accuracy`, `j1_bytes_accuracy`, `y0_bytes_accuracy`, and `y1_bytes_accuracy` state for functions 36 to 39 that the bytes decode to the module, that the function is the named export, and that a call from a ready store returns the bits of the Lean function's result within the accuracy bound and leaves a ready store, and `bessel_module_accuracy` states the four together.  The module was written and built in `lt-reflect` (`opus-besselbytes-1.log`, 23 s), and `tools/leanrun --memory-high 8G lake build Library.Numerics.Float64.Bessel.BesselBytes` completes 3,804 jobs (`opus-besselbytes-m1.log`).  Each of the fourteen theorems depends on `propext`, `Classical.choice`, and `Quot.sound` only.
 
 `Verified.lean` imports the module, and `Bessel.md` and the plan describe the theorems.  `tests/verified/run.sh` gains no entry, since a file theorem for the module needs about 7 GB or more in the kernel and waits for the kernel check per function.  `jn` and `yn` (functions 40 and 41) have no byte theorem until their accuracy theorems exist.
 
@@ -32612,7 +32612,7 @@ Two steps failed on the size of the branch's term.  `generalize` reached the max
 
 The database holds for each of its 57 arguments a double `f` and a correction `δ` of about a quarter of a unit in the last place of `f`, which points toward `Γ x` for CORE-MATH's directed roundings.  A first check asked for `f + δ` within `2 ^ -58` of the approximation `E` of `Γ x` and failed on every row, with `|f + δ - E|` from `2 ^ -55` to `2 ^ -54` of `|E|` (`build/transcendentals/opus-dbeval-1.log` in `lt-poly`).  The proof uses instead that the rounded sum is a nearest double to `f + δ` (`F64RoundNearest.add_rounded`) and that `f` is a double, so the rounded sum lies within `|δ|` of `f + δ`, and the check asks for `|δ| + |f + δ - E| ≤ (5/4) 2 ^ -53 |E|`.  One kernel check of all 57 rows thrashed at the 4 GB limit with 33 s of CPU time in 11 minutes, and one check per row takes 1 to 4 s (`opus-dbkernel-2.log`).
 
-`tools/leanrun --memory-high 8G lake build Verified.Examples.TgammaWithin` completes the build in `lt-poly` (`opus-within-4.log` in its `build/transcendentals`), and `tgamma_within`, `accurate_within`, `db_within`, and `db_ok` depend on `propext`, `Classical.choice`, and `Quot.sound` only.  The byte and file theorems of `Tgamma` remain open, with those of `Lgamma` and `Erfc`, and `Tgamma.md` describes each module.  The next step is the integration of `w/poly` into `transcendentals`.
+`tools/leanrun --memory-high 8G lake build Library.Numerics.Float64.Tgamma.TgammaWithin` completes the build in `lt-poly` (`opus-within-4.log` in its `build/transcendentals`), and `tgamma_within`, `accurate_within`, `db_within`, and `db_ok` depend on `propext`, `Classical.choice`, and `Quot.sound` only.  The byte and file theorems of `Tgamma` remain open, with those of `Lgamma` and `Erfc`, and `Tgamma.md` describes each module.  The next step is the integration of `w/poly` into `transcendentals`.
 
 ## 2026-10-13: Sixth integration: the accuracy theorem of `tgamma`
 
@@ -32694,7 +32694,7 @@ The bytes theorem that `verified_compile` adds proves `(encode m).isOk` and the 
 
 | Probe (`build/transcendentals/diag/`) | Peak anonymous memory | Time |
 |---|---|---|
-| The import of `Verified.Examples.Lgamma` alone (`PerFun0`) | 0.15 GB | 4 s |
+| The import of `Library.Numerics.Float64.Lgamma.Compiled` alone (`PerFun0`) | 0.15 GB | 4 s |
 | `(encode m).isOk`, the whole module (`PerFun2`) | 6.6 GB | 40 s |
 | `m.funcs.length = 45` and `(functionBody m.funcs[38]!).isOk`, the largest function (`PerFun1`) | 1.6 GB | 12 s |
 | `(functionBody m.funcs[k]!).isOk` for each of the 45 functions, one theorem each, one file (`PerFun3`) | 1.7 GB | 38 s |
@@ -32983,7 +32983,7 @@ Five builds ran.  `ynt-1.log` failed on a hypothesis already rewritten to `v`.  
 
 `BesselNSpecial` proves the exceptional results of `jn` and `yn` that the table of `Bessel.md` lists.  Both functions return the canonical NaN at a NaN (`jn_nan`, `yn_nan`).  `jn` returns a signed zero at `±∞`, negative when `|N|` is odd and the argument after the change of sign for a negative order is `-∞` (`jn_infinity`), and the same at `±0` for `|N| ≥ 2` (`jn_zero_order`).  `yn` returns `-∞` at `±0` (`yn_zero`), the canonical NaN at a negative argument other than `-0` (`yn_negative`), and `+0` at `+∞` except `-0` for the order -1 (`yn_pos_infinity`).  The proofs unfold the code with `dsimp (config := { etaStruct := .none }) only`, the setting that `BesselYnTheorem.yn_eq` needs.  One build failed (`nsp-1.log`): a rewrite with `ite_eq_right` matched the reflected argument of `j0` instead of the sign of the result, which naming the condition fixed (`nsp-2.log`).
 
-`BesselBytes` adds `jn_bytes_accuracy` and `yn_bytes_accuracy` for functions 40 and 41, whose entries take the order and then the argument and read all six tables, and `bessel_module_accuracy` now states the six byte theorems.  `bytes-1.log` builds the module, and `lake env lean Verified/Examples/BesselFile.lean` checks the file theorem against `build/verified/bessel.wasm` (`file-1.log`).  All report only `propext`, `Classical.choice`, and `Quot.sound`.
+`BesselBytes` adds `jn_bytes_accuracy` and `yn_bytes_accuracy` for functions 40 and 41, whose entries take the order and then the argument and read all six tables, and `bessel_module_accuracy` now states the six byte theorems.  `bytes-1.log` builds the module, and `lake env lean Library/Numerics/Float64/Bessel/BesselFile.lean` checks the file theorem against `build/verified/bessel.wasm` (`file-1.log`).  All report only `propext`, `Classical.choice`, and `Quot.sound`.
 
 - [x] The exceptional results of `jn` and `yn`, and their byte theorems.
 - [ ] The feasibility analysis of a bound through the turning point.
@@ -32991,7 +32991,7 @@ Five builds ran.  `ynt-1.log` failed on a hypothesis already rewritten to `v`.  
 
 ## 2026-10-15: Feasibility of a bound through the turning point (coordinating session)
 
-The decision of 2026-10-12 left `2 ≤ |x| < 2^302` with `|n| > |x|/2` open for `jn` and `yn` until a feasibility analysis of a bound on `M_k(x) = √(J_k² + Y_k²)` through the turning point `k = x`.  [The Bessel document](Verified/Examples/Bessel.md#feasibility-of-a-bound-through-the-turning-point) records the analysis.  `tools/bessel/turning.py` computes the weights `(π x/2) M_k(x)²` from the 200-digit tables of `tools/bessel/ordern.py`, with the precision raised to `0.44 x + 80` digits.  For integer `x` from 10 to 2000 and every `k < x`, `(π/2) √(x² - k²) M_k(x)²` stays below 1, and the largest weight is `1.2572 x^(1/3)`, at `k = x`.
+The decision of 2026-10-12 left `2 ≤ |x| < 2^302` with `|n| > |x|/2` open for `jn` and `yn` until a feasibility analysis of a bound on `M_k(x) = √(J_k² + Y_k²)` through the turning point `k = x`.  [The Bessel document](Library/Numerics/Float64/Bessel/README.md#feasibility-of-a-bound-through-the-turning-point) records the analysis.  `tools/bessel/turning.py` computes the weights `(π x/2) M_k(x)²` from the 200-digit tables of `tools/bessel/ordern.py`, with the precision raised to `0.44 x + 80` digits.  For integer `x` from 10 to 2000 and every `k < x`, `(π/2) √(x² - k²) M_k(x)²` stays below 1, and the largest weight is `1.2572 x^(1/3)`, at `k = x`.
 
 Nicholson's integral (DLMF 10.9.30) proves the first observation: with `K₀` decreasing (DLMF 10.37), `sinh t ≥ t`, and the cosine transform of `K₀` at an imaginary argument (DLMF 10.43.20), `M_ν(x)² ≤ 2/(π √(x² - ν²))` for `x > ν`.  Watson's decrease of `x M_ν(x)²` for `ν > 1/2`, also from Nicholson's integral, bounds the weights up to the turning point by their value there.  These bounds make the weights of a forward recurrence to an order `n ≤ x` sum to `(π/2) x` plus a term of order `x^(2/3)`, which supports `a + b |n|`; past the turning point the signs `J_k > 0 > Y_k` (DLMF 10.21.3) allow the argument of `BesselYnSmallReal`.  The cost is Nicholson's integral for integer orders, with `K₀`, which neither ProofKit nor Mathlib provides; the remaining parts reuse the error formula of `BesselRecur` and the analysis of Miller's method.  Krasikov's Sonin-function bound on `J_ν` (LMS J. Comput. Math. 17 (2014), Theorem 3) covers `J_ν` alone, and the search found no elementary bound on `Y_ν` through the turning point.
 
@@ -33036,14 +33036,14 @@ The first build failed in three places (`strconv-s4-thm-1.log`): a `positivity` 
 
 `PrintFloatBytes` proves `print64_bytes_accuracy`, `print64Ecma_bytes_accuracy`, `print32_bytes_accuracy`, and `print32Ecma_bytes_accuracy` for functions 35 to 38 of the compiled module, in the form of `ParseFloatBytes`.  The module holds no tables, so a store is ready when the allocator invariant holds and the memory cap is at most 65,535 pages; a call takes the word and returns a pointer to an array that the caller owns, and `entry_call` turns `ImplementsA` into a statement about that pointer, with the earlier regions of the heap kept and apart from the new array.  The string's properties come from `PrintFloatTheorem.derives64` and `derives32`, which now also state the layout of a finite nonzero word, so the byte theorems name the string without an injectivity lemma for `words`.  The binary32 entries read the pattern `w.toUInt32` from the low 32 bits of the argument (`print32_low`).
 
-`tools/Emit.lean` writes `build/verified/printfloat.wasm`, 14,178 bytes, which `wasm-tools validate` accepts, and `lake env lean Verified/Examples/PrintFloatFile.lean` checks that the file holds the module's encoding and decodes to it (`strconv-s4-emit-1.log`).  All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (`strconv-s4-bytes-1.log`, the first run).  `tests/verified/run.sh` gains the module in its list of written modules and the entry `printfloat:PrintFloatBytes:PrintFloatFile`, and `Verified.lean` imports `PrintFloatBytes` in place of `PrintFloatShortest`.
+`tools/Emit.lean` writes `build/verified/printfloat.wasm`, 14,178 bytes, which `wasm-tools validate` accepts, and `lake env lean Library/Numerics/Decimal/PrintFloat/PrintFloatFile.lean` checks that the file holds the module's encoding and decodes to it (`strconv-s4-emit-1.log`).  All theorems report only `propext`, `Classical.choice`, and `Quot.sound` (`strconv-s4-bytes-1.log`, the first run).  `tests/verified/run.sh` gains the module in its list of written modules and the entry `printfloat:PrintFloatBytes:PrintFloatFile`, and `Verified.lean` imports `PrintFloatBytes` in place of `PrintFloatShortest`.
 
 - [x] Byte and file theorems, and the `run.sh` entry
 - [ ] The build of `LeanExe Verified` and the run of `tests/verified/run.sh` with the printers
 
 ## 2026-10-15: The index of seminumerical algorithms (coordinating session)
 
-`index.md` at the root of the repository lists the arithmetic and numerical algorithms of the repository with the strongest result proved for each.  The user set its scope on 2026-10-15: (a) an implementation under `Verified/` takes precedence, and one under `Examples/` appears only when `Verified/` has no equivalent; (b) only compiled implementations appear, which leaves out the multiple-precision references and the generators of `GENERATORS.md`; (c) the branch has no hash function, and the index has no section for one; (d) the discrete Fourier transform of `Verified/Examples/Fourier.lean` is included; and (e) the floating-point folds and the numerical demos have sections of their own.  The gcd row lists `Recursion.gcd`, whose theorem is the compiler's, and points to `Examples/Gcd`, which proves that its bytes compute `Nat.gcd`.
+`index.md` at the root of the repository lists the arithmetic and numerical algorithms of the repository with the strongest result proved for each.  The user set its scope on 2026-10-15: (a) an implementation under `Verified/` takes precedence, and one under `Examples/` appears only when `Verified/` has no equivalent; (b) only compiled implementations appear, which leaves out the multiple-precision references and the generators of `GENERATORS.md`; (c) the branch has no hash function, and the index has no section for one; (d) the discrete Fourier transform of `Library/Numerics/Fourier/Program.lean` is included; and (e) the floating-point folds and the numerical demos have sections of their own.  The gcd row lists `Recursion.gcd`, whose theorem is the compiler's, and points to `Examples/Gcd`, which proves that its bytes compute `Nat.gcd`.
 
 A review against every `verified_compile` list and every directory of `Examples/` added the binary32 programs of `Examples/Binary32`, the word folds, and the histogram bucket.  The index leaves out programs that test data structures, control flow, or memory management, and the applications under `Examples/`: the Euler solver, GPT inference, and the WGSL kernels.  Every theorem the index names exists at `b2f73f24`, so the index does not wait for the correction batches.
 
@@ -33562,9 +33562,9 @@ with cases, and G2, G4, and G5 add theorems about the programs.  G3 appends its 
 
 Each generator gets a directory in `Examples/`, as the drone planner has: `Program.lean` holds the
 programs in the dialect, without Mathlib, and `Period.lean` the theorems, with Mathlib, which the
-`Examples` library already imports.  The shared lemmas move to `Examples/Orbit/Basic.lean`, with a
-short `README.md`.  The namespaces become `Examples.Lcg`, `Examples.ParkMiller`,
-`Examples.Xorshift`, and `Examples.Orbit`, and `Examples.lean` imports the new modules.  The
+`Examples` library already imports.  The shared lemmas move to `Library/Random/Orbit/Basic.lean`, with a
+short `README.md`.  The namespaces become `Library.Random.Lcg`, `Library.Random.ParkMiller`,
+`Library.Random.Xorshift`, and `Library.Random.Orbit`, and `Examples.lean` imports the new modules.  The
 content of `Verified/Examples/GENERATORS.md` moves into the `README.md` of each directory, with the
 commands that build the modules and run their cases, and without the decided questions or the later
 candidates.
@@ -33577,8 +33577,8 @@ may have 32 bits elsewhere, so the rule matches the standard for every seed belo
 every seed where the type has 64 bits.  `check_value` states Park and Miller's value `advance 10000
 1 = 1043618065`, which [rand.predef] also requires of `minstd_rand0`, by `decide +kernel`.
 
-`Verified/Examples/Lcg.lean`, `ParkMiller.lean`, and `Xorshift.lean` compile the programs, as
-`Verified/Examples/Drone.lean` compiles the planner, and `Verified.lean` imports them.  The lists
+`Library/Random/Lcg/Verified.lean`, `ParkMiller.lean`, and `Xorshift.lean` compile the programs, as
+`Demos/Drone/Verified.lean` compiles the planner, and `Verified.lean` imports them.  The lists
 are `[affine, step, advance]`, since the reflector compiles a call of `affine` only when `affine`
 is listed before `step`, `[step, advance, seed]`, and `[step, advance]`.  None allocates, so each
 function's theorem is `ImplementsA false`.  `lcg_advance`, `parkMiller_advance`, and
@@ -33630,7 +33630,7 @@ the tables of G2.
 
 ### G2: the xorshift period
 
-- [x] `Examples/Xorshift/Columns.lean`: columns, squares, and jump-ahead on natural numbers.
+- [x] `Library/Random/Xorshift/Columns.lean`: columns, squares, and jump-ahead on natural numbers.
 - [x] `orbitCheck_eq`, `minimalPeriod_one`, `step_minimalPeriod`, and `advance_existsUnique` from
   every nonzero state, with `Orbit.minimalPeriod_eq_of_primes`.
 - [x] `xorshift_advance` with the period, the README, and the manual.
@@ -33664,11 +33664,11 @@ for both generators before the plan's review.
 
 | File | Content |
 |------|---------|
-| `Examples/Orbit/Basic.lean` | the bit test `(n >>> k) &&& 1 != 0` as `Nat.testBit`, `(1 <<< i).toNat = 2^i`, and the count of words with given top bits |
-| `Examples/Lcg/Program.lean`, `Jump.lean` | `multiplier`, `increment`, `jumpPass`, `jump`, and `jump_eq` |
-| `Examples/Xorshift/Program.lean`, `Jump.lean` | `applyCols`, `square`, `jumpPass`, `jump`, and `jump_eq`, with `LeanExe.IR.build_get` and `build_congr` |
-| `Examples/Lcg/Period.lean`, `Examples/Xorshift/Period.lean` | `advance_topBits` |
-| `Verified/Examples/Lcg.lean`, `Xorshift.lean` | `lcg_jump`, `xorshift_jump`, and `jump_bound` |
+| `Library/Random/Orbit/Basic.lean` | the bit test `(n >>> k) &&& 1 != 0` as `Nat.testBit`, `(1 <<< i).toNat = 2^i`, and the count of words with given top bits |
+| `Library/Random/Lcg/Program.lean`, `Jump.lean` | `multiplier`, `increment`, `jumpPass`, `jump`, and `jump_eq` |
+| `Library/Random/Xorshift/Program.lean`, `Jump.lean` | `applyCols`, `square`, `jumpPass`, `jump`, and `jump_eq`, with `LeanExe.IR.build_get` and `build_congr` |
+| `Library/Random/Lcg/Period.lean`, `Library/Random/Xorshift/Period.lean` | `advance_topBits` |
+| `Library/Random/Lcg/Verified.lean`, `Xorshift.lean` | `lcg_jump`, `xorshift_jump`, and `jump_bound` |
 
 The lists become `[affine, step, advance, jumpPass, jump]` and
 `[step, advance, applyCols, square, jumpPass, jump]`, so the entries of G1 keep their indices.
@@ -33697,7 +33697,7 @@ of words with given top bits, `2^(64 - j)`, and the bijections of G1 and G2, by 
   failed.
 - [x] A review by a fresh agent, and the commit.
 
-The LCG's pass is `jumpPass`, as xorshift's is: `open _root_.Examples.Lcg` made `pass` ambiguous
+The LCG's pass is `jumpPass`, as xorshift's is: `open _root_.Library.Random.Lcg` made `pass` ambiguous
 with `MonadWriter.pass`.  The first proof of the LCG's count rewrote `2^(64 - j)` by the count of
 words with given top bits, which also rewrote the `2^(64 - j)` inside the filter's predicate and
 sent the elaborator past its recursion limit, so the proofs end with `Eq.trans` instead.  In the
@@ -33763,9 +33763,9 @@ them, so the theorems do not depend on the script.
 
 | File | Content |
 |------|---------|
-| `Examples/Lcg/Lattice.lean` | `Dual`, `iterate_affine_eq`, the congruence of the tuples, the hyperplane bound, and the instances for `t = 2, …, 6` |
-| `Examples/Lcg/Spectral.lean` | `s = y C`, the certificate lemma, and the values for `t = 2, …, 6` |
-| `Examples/Lcg/certificates.py` | the computation of the certificates |
+| `Library/Random/Lcg/Lattice.lean` | `Dual`, `iterate_affine_eq`, the congruence of the tuples, the hyperplane bound, and the instances for `t = 2, …, 6` |
+| `Library/Random/Lcg/Spectral.lean` | `s = y C`, the certificate lemma, and the values for `t = 2, …, 6` |
+| `Library/Random/Lcg/certificates.py` | the computation of the certificates |
 
 - [x] G4: `Dual`, the congruence, the hyperplane bound, and the instances for `t = 2, …, 6`.  The
   file checks in a few seconds.
@@ -33779,7 +33779,7 @@ them, so the theorems do not depend on the script.
 The review of G4 confirmed the statements and the vectors, found that a README sentence credited the
 six-state bound to the spectral test's vector, and asked for clearer docstrings.  The review of G5
 checked in Python every fact that the kernel checks and the script's output against the file, found
-no soundness defect, and asked for the build of `Examples.Lcg.Spectral` in the README's commands,
+no soundness defect, and asked for the build of `Library.Random.Lcg.Spectral` in the README's commands,
 Knuth's reading of `1 / ν_t` over all families of hyperplanes, one docstring per certificate, and
 one definition of the shortest vectors.
 
@@ -34043,7 +34043,7 @@ another attempt, as the repository instructions require.
 - [x] Check the current bound examples: `Grow`, `Insert`, `Recursion`, `Tables`, `Fields`, and
   `Drone`.  Retain `evens_bound`, `repeated_bound`, `sortInsert_bound`, `chain_fits`, `fill_cost`,
   `fill_trapFree`, `pushSquare_bound`, `drone_trapFree`, and the named-field equations of
-  `Fields`.  Build all three compiled generators and `Examples.Lcg.Spectral`.  Check the period,
+  `Fields`.  Build all three compiled generators and `Library.Random.Lcg.Spectral`.  Check the period,
   jump-ahead, distribution, and spectral theorems and xorshift's 36,920-byte jump bound.
 - [x] Compare the emitted bytes against references from both pinned tips.  An unchanged program
   must retain its bytes, including the generators from `verified` and the numerical modules from
@@ -34080,7 +34080,7 @@ With rsync installed, the integration bundle and build driver transferred with r
 
 `core-01` passed all 3,491 jobs.  The accepted `Verified.Correct` proofs retain the potential, paid-parameter, and frames arguments from `verified`, with `Expr.usesFast_eq` at the reductions that expose bitmask liveness.  The combined reflector builds without an additional change, and `stress-01` now builds the seven numerical implementation modules specified by the plan.  Its log and status use the same directory, with the default memory limits and a 20-minute timeout.
 
-The local machine has the existing WebGPU host, SwiftShader, lavapipe, and uv, which the build host lacks.  A separate copy of the local machine's compiled-project cache and the pinned dependency cache prepares the local integration worktree for the GPU and Python checks.  Building `Examples.Binary32.Wgsl`, `Examples.Gpt32.Kernels`, and `Examples.Gpt32.Specs` through the runner passed all 3,521 jobs, using the unchanged cached dependencies.  The numerical proof build remains on the build host.
+The local machine has the existing WebGPU host, SwiftShader, lavapipe, and uv, which the build host lacks.  A separate copy of the local machine's compiled-project cache and the pinned dependency cache prepares the local integration worktree for the GPU and Python checks.  Building `Examples.Binary32.Wgsl`, `Demos.Gpt32.Kernels`, and `Demos.Gpt32.Specs` through the runner passed all 3,521 jobs, using the unchanged cached dependencies.  The numerical proof build remains.
 
 The completed reference and source checks above use the updated `942aa695`, rather than the original plan's `32c92ebd`.  `stress-01` passed `Uscale` in 17 seconds, `Bessel` in 311 seconds, `Erfc` in 349 seconds, `PrintFloat` in 97 seconds, and `ParseFloat` in 111 seconds.  Its dependencies rebuilt `Fma`, `Log`, and `Trig` in 33, 13, and 52 seconds.  `Tgamma` failed after 102 seconds at `whnf`, with the default 200,000-heartbeat limit, and its dependent `Lgamma` did not build.  The scope's observed memory peak was about 1.6 GiB.  `tgamma-diagnostic-01` preserves the command trace and Lean's reduction diagnostics before any resource or source change.
 
@@ -34182,7 +34182,7 @@ The verified target in `euler-01` failed after 52 seconds while reflecting `run`
 
 The frontend addition reflects an empty array as the existing zero-length build over the flattened element type.  Its unused element expression contains zeros, `false`, and pairs, so constructing it requires no `Inhabited` instance for the user's record.  The kernel checks that the reflected build equals the original empty array's flattening.  Five new corpus cases cover empty word and float arrays and a conditional pair containing an array of records with a float and a Boolean.  The focused frontend gate will test it after the current build releases the Lean slot.
 
-`euler-01` finished with exit 1 for the verified target's empty-array failure.  Both existing targets, `Examples.Euler.Verify` and `Examples.Euler.Total`, passed after the layout extraction.  The changed proof dependencies passed, including `Kernels` in 317 seconds, `Arrays` in 175, `Reconstruct` in 331, and `ReconstructedSteps` in 224.  `euler_solve_total` reports only the three permitted axioms.  The reviewed source changes move the nine `Flat` instances with their field orders unchanged.  The byte comparison will check the existing Euler module before the focused frontend gate and a second verified Euler attempt.  The retry scopes one million heartbeats to its 55-function command, whose first nineteen functions used about 95,000 in the initial trace, and keeps the default cgroup limits.
+`euler-01` finished with exit 1 for the verified target's empty-array failure.  Both existing targets, `Demos.Euler.Verify` and `Demos.Euler.Total`, passed after the layout extraction.  The changed proof dependencies passed, including `Kernels` in 317 seconds, `Arrays` in 175, `Reconstruct` in 331, and `ReconstructedSteps` in 224.  `euler_solve_total` reports only the three permitted axioms.  The reviewed source changes move the nine `Flat` instances with their field orders unchanged.  The byte comparison will check the existing Euler module before the focused frontend gate and a second verified Euler attempt.  The retry scopes one million heartbeats to its 55-function command, whose first nineteen functions used about 95,000 in the initial trace, and keeps the default cgroup limits.
 
 `layout-bytes-01` emitted and validated the existing Euler module, then its comparison failed because the build host has no `build/euler/euler.wasm` reference.  The emitted file was copied to the local machine and compared with the accepted 23,012-byte module in the integration worktree.  `cmp` passed, and both files have SHA-256 `87efa8a8e63a1e6eda1f6d8a8c668c57e2aeafeaadd4e73c06ac28266b8c794b`.  Together with the accepted existing proofs, this verifies the shared-layout extraction.  `frontend-empty-01` now runs the focused frontend gate against the new empty-array rule.
 
@@ -34751,7 +34751,7 @@ The branchless classifier passed its all-pattern equivalence proof in 815 millis
 
 All thirteen native GPT dispatch theorems passed in thirteen seconds.  The shared workgroup-size lemma moved from the old example to `LeanExe.WGSL.Workgroup`, so the new kernel map can use it without importing the old program's proof.  The generalized host and its Verified instance passed all 3,756 jobs, with the instance taking 2.9 seconds.  The first instance check resolved `Fits` to the source compiler's predicate.  It now names the application's shape predicate explicitly.  The 49-report audit covers the classifier, shared native-value and item rules, thirteen execution and trap-free theorems, the bytes theorem, thirteen dispatch theorems, the kernel map, and host generation.  Every report contains only permitted axioms.  Review confirms that each dispatch composes the generic source theorem with its native equation.  The host instance reuses the existing typed layer and generation proofs.
 
-The checked binary32 corpus passed all 220 Wasm cases, including allocation and retained-block counts.  It generated 7,036 expected reads past the end.  GPU output for that corpus is under test.  The complete-generation test reuses the existing three random models.  Its helpers moved into `Examples.Gpt32.NativeCases`, and the original entry point retains its defaults.  The generation driver accepts the kernel map.  A Node session adapter reuses the browser's Wasm host so the same models can compare native Lean with Wasm as well as both GPU drivers.  The shell and JavaScript syntax checks passed.  The first attempted helper move was rejected before editing because the edit also tried to recreate its old path in the same operation.  The move and replacement were then performed separately.
+The checked binary32 corpus passed all 220 Wasm cases, including allocation and retained-block counts.  It generated 7,036 expected reads past the end.  GPU output for that corpus is under test.  The complete-generation test reuses the existing three random models.  Its helpers moved into `Demos.Gpt32.NativeCases`, and the original entry point retains its defaults.  The generation driver accepts the kernel map.  A Node session adapter reuses the browser's Wasm host so the same models can compare native Lean with Wasm as well as both GPU drivers.  The shell and JavaScript syntax checks passed.  The first attempted helper move was rejected before editing because the edit also tried to recreate its old path in the same operation.  The move and replacement were then performed separately.
 
 The guides and numerical index now describe the thirteen-function module, native dispatch proofs, host instance, test commands, and the difference between the original and Verified Wasm modules.  The documentation checker initially failed because the sandbox blocked its Git subprocess.  Reusable approval for `node tools/check-doc-links.mjs` was saved, and the checker passed all 185 Markdown files and 3,282 links.  The generation comparisons, reuse of the existing GPU corpus with the new kernels, full library gates, and main publication remain required.
 
@@ -34886,7 +34886,7 @@ The proposed library root is `Numerics/`, with one directory per algorithm famil
 | `tests/` | Shared host formatting, accuracy-test entry points, and the reference calculators those tests use. |
 | `data/` | The Euler run outputs now stored beside the source.  The demo guides would link to those records and figures. |
 
-Existing reuse supports the library boundary: [GPT](Examples/Gpt/README.md) imports the [SplitMix64 implementation and proofs](Examples/Prng/README.md), and all three period developments import [the orbit lemmas](Examples/Orbit/README.md).  The small arithmetic programs that demonstrate an expression or allocation form can remain worked examples.  Library promotion would preserve each routine's current specification and proof scope.
+Existing reuse supports the library boundary: [GPT](Demos/Gpt/README.md) imports the [SplitMix64 implementation and proofs](Library/Random/SplitMix64/README.md), and all three period developments import [the orbit lemmas](Library/Random/Orbit/README.md).  The small arithmetic programs that demonstrate an expression or allocation form can remain worked examples.  Library promotion would preserve each routine's current specification and proof scope.
 
 Import inspection also found proof dependencies with test-like names.  `LgammaAccPath` imports `LgammaAccTests`, whose theorems interpret floating-point branch conditions over the reals.  `TgammaLogdTab` imports the kernel-checked table bounds in `TgammaLogdCheck`.  These modules belong with the accuracy proofs.  Numerical test programs and their reference calculators have separate roles.
 
@@ -34914,16 +34914,16 @@ The review read the candidate definitions, their callers, and the relevant theor
 | `Library/Numerics/Float64/` | The elementary and special functions under `Verified/Examples/`, grouped by family.  [The function index](index.md#1-elementary-and-special-functions) states their domains and bounds. | The existing accuracy, exceptional-value, byte, and file theorems would accompany their implementations.  The documented open Bessel range remains part of their proof scope. |
 | `Library/Numerics/Arithmetic/` | Software FMA and limb arithmetic with unrounded scaling.  [The arithmetic index](index.md#3-arithmetic) identifies their statements. | FMA has an all-operands IEEE result theorem.  The limb routines have natural-number specifications.  Decimal conversion uses the limb routines. |
 | `Library/Numerics/Decimal/` and `Library/Numerics/Fourier/` | Decimal parsers and printers, and the DFT, inverse transform, and power spectrum. | Decimal conversion has rounding and shortest-output theorems.  Fourier has compiler correctness and numerical tests.  These retain the different guarantees recorded in the index. |
-| `Library/Numerics/Arithmetic/` | `Examples.Gcd.gcd`, `Examples.PrimeFactors.compute`, and `Drone.ceilSqrt`.  [GCD](Examples/Gcd/README.md), [factor counting](Examples/PrimeFactors/README.md), and [the square-root proof](Examples/Drone/Sqrt.lean) supply the specifications. | `gcd_eq` gives `Nat.gcd`, `compute_eq` gives the number of prime factors with multiplicity, and `ceilSqrt_correct` gives the exact ceiling square root for inputs at most `2^32`.  The bounded square root would retain that bound in its API and theorem.  Request-specific drivers can remain worked examples that import these definitions. |
+| `Library/Numerics/Arithmetic/` | `Library.Numerics.Arithmetic.Gcd.gcd`, `Library.Numerics.Arithmetic.PrimeFactors.compute`, and `Drone.ceilSqrt`.  [GCD](Library/Numerics/Arithmetic/Gcd/README.md), [factor counting](Library/Numerics/Arithmetic/PrimeFactors/README.md), and [the square-root proof](Demos/Drone/Sqrt.lean) supply the specifications. | `gcd_eq` gives `Nat.gcd`, `compute_eq` gives the number of prime factors with multiplicity, and `ceilSqrt_correct` gives the exact ceiling square root for inputs at most `2^32`.  The bounded square root would retain that bound in its API and theorem.  Request-specific drivers can remain worked examples that import these definitions. |
 | `Library/Sorting/` | `Insert.sortInsert` in [the insertion examples](Verified/Examples/Insert.lean). | Compiler correctness and `sortInsert_bound` are present.  The algorithm scans and shifts the growing output and takes quadratic work.  Sortedness and preservation of the input multiset are required mathematical statements for the library entry. |
 | `Library/Arrays/` | `Arrays.count`, `Arrays.firstAbove`, and `RemoveZero.firstZero` in [the array readers](Verified/Examples/Arrays.lean) and [the zero-search program](Examples/RemoveZero/Program.lean). | The first two have compiler correctness.  `firstZero_cases` proves the first-match or sentinel result for the supplied prefix count.  A public entry needs explicit prefix bounds because missing elements read as zero.  A predicate-parameter API would be a separate design. |
 | `Library/Arrays/` | `Insert.removeAll`, `Repeat.below`, and `Repeat.clearUntil` in [the insertion examples](Verified/Examples/Insert.lean) and [the conditional-loop examples](Verified/Examples/Repeat.lean). | Compiler correctness is present.  The library specifications need ordered removal, collection of at most the requested number of matches, and clearing the prefix before the first match, respectively.  `removeAll` performs repeated scans and shifts. |
 | `Library/Arrays/` | `Grow.repeated`, `Grow.evens`, `Owned.scaled`, and `Elements.grid` in [the growth examples](Verified/Examples/Grow.lean), [the owned-array examples](Verified/Examples/Owned.lean), and [the element examples](Verified/Examples/Elements.lean). | Compiler correctness is present, with an allocation bound for `repeated`.  Repetition, range, scaling, and grid specifications would describe word arithmetic, floating-point operation order, and output lengths.  The surrounding aliasing and allocation demonstrations can import these operations. |
 | `Library/Lists/` | `Lists.listSum`, `Lists.listRange`, `ListLoops.range`, `ListTail.sum`, `ListTail.reverse`, and `ListRecursion.increment`.  [The list guide](Examples/Lists/README.md) and [tail-recursive definitions](Verified/Examples/ListTail.lean) describe the implementations. | Compilation and ownership results are present.  The proposed public forms need equations for wrapping sum, range, increment, and `reverse xs acc = xs.reverse ++ acc`.  The two range implementations have the same body.  A shared implementation would retain both compiler demonstrations. |
 | `Library/Numerics/Reductions/` and `Library/Numerics/Statistics/` | Word sum, product, and xor from `SumArray`; binary64 `Elements.total`, `Elements.largest`, `Elements.select`, `Recursion.sumRange`, `Mean.mean`, and `SumSquares.sumSquares`.  [The fold index](index.md#6-floating-point-folds) records their operation order. | Existing proofs give the computed word or floating-point result.  The library needs explicit empty-input, missing-flag, NaN, and rounding-order rules.  Pairwise sum needs an ordered index range and its execution-depth premises.  The future variance and quantile work follows these entries. |
-| `Library/Numerics/LinearAlgebra/` | `Elements.dot`, `Elements.axpy`, GPT's `dot`, `matVec`, `matMul`, `matMulT`, and `add`, and Binary32's `scale32`, `axpyArray32`, and `matVec32`.  [GPT's primitives](Examples/Gpt/Program.lean) and [the binary32 primitives](Examples/Binary32/Program.lean) give the layouts. | Compiler proofs are present.  Several binary32 builds also have WGSL dispatch proofs.  The library needs dimensions, index-overflow premises, short-array behavior, and operation order stated per function.  Binary64 `Elements.axpy` returns the length of `ys`, while `axpyArray32` returns the length of `x`. |
-| `Library/Numerics/Bounds/` | Euler's `Checked`, `endpoint`, `outAdd`, `outSub`, `outMul`, `outDiv`, and `outSqrt` in [the reconstructed solver](Examples/Euler/ReconstructedProgram.lean). | [The enclosure proofs](Examples/Euler/Enclosure.lean) connect these executable functions to the shared word-level outward operations and prove one-sided real bounds when status is zero.  The compiled-kernel proofs are in [the outward-operation proofs](Examples/Euler/Outward.lean).  The extracted API would preserve rejection and finiteness checks.  Neighbor-word helpers would remain part of this implementation. |
-| `Library/Numerics/Limiters/` | Euler's scalar `minmod` operation and the parameterized real slope and face theory in [the minmod development](Examples/Euler/Equations/Minmod.lean). | The real theory proves symmetry, bounds, constant and linear preservation, face averaging, and a perturbation bound.  The theorem `real_minmod` in [the reconstruction accuracy proofs](Examples/Euler/ReconstructionAccuracy.lean) connects the executable operation to minmod on the interpreted real values.  Euler's fluid states, positivity checks, and complete reconstruction belong with the demo. |
+| `Library/Numerics/LinearAlgebra/` | `Elements.dot`, `Elements.axpy`, GPT's `dot`, `matVec`, `matMul`, `matMulT`, and `add`, and Binary32's `scale32`, `axpyArray32`, and `matVec32`.  [GPT's primitives](Demos/Gpt/Program.lean) and [the binary32 primitives](Examples/Binary32/Program.lean) give the layouts. | Compiler proofs are present.  Several binary32 builds also have WGSL dispatch proofs.  The library needs dimensions, index-overflow premises, short-array behavior, and operation order stated per function.  Binary64 `Elements.axpy` returns the length of `ys`, while `axpyArray32` returns the length of `x`. |
+| `Library/Numerics/Bounds/` | Euler's `Checked`, `endpoint`, `outAdd`, `outSub`, `outMul`, `outDiv`, and `outSqrt` in [the reconstructed solver](Demos/Euler/ReconstructedProgram.lean). | [The enclosure proofs](Demos/Euler/Enclosure.lean) connect these executable functions to the shared word-level outward operations and prove one-sided real bounds when status is zero.  The compiled-kernel proofs are in [the outward-operation proofs](Demos/Euler/Outward.lean).  The extracted API would preserve rejection and finiteness checks.  Neighbor-word helpers would remain part of this implementation. |
+| `Library/Numerics/Limiters/` | Euler's scalar `minmod` operation and the parameterized real slope and face theory in [the minmod development](Demos/Euler/Equations/Minmod.lean). | The real theory proves symmetry, bounds, constant and linear preservation, face averaging, and a perturbation bound.  The theorem `real_minmod` in [the reconstruction accuracy proofs](Demos/Euler/ReconstructionAccuracy.lean) connects the executable operation to minmod on the interpreted real values.  Euler's fluid states, positivity checks, and complete reconstruction belong with the demo. |
 
 ### Candidates requiring further API or specification work
 
@@ -34960,3 +34960,13 @@ The proposed next steps are:
 - [ ] Update compilation targets, imports, generated declarations, tests, manuals, and links.  Compare exports and emitted bytes and run the existing gates for each extraction.
 
 The review changed the journal after source and theorem inspection.  The local-link and whitespace checks passed.
+
+## 2026-10-22: Implementing the library layout
+
+The user approved the library organization and requested that Lean checks wait until the layout is in place.  Work is on `library-layout`, from `158b77c2`.  The initial move groups the numerical families under `Library/Numerics/`, the PRNGs and orbit theory under `Library/Random/`, and the five applications under `Demos/`.  Numerical test programs and reference calculators now use `TestSupport` modules under `tests/`.  Euler run outputs moved to `data/euler/`.
+
+Twenty-five numerical implementation modules now have separate native `Program` and verified-compilation `Compiled` modules.  The native modules import the dialect and required algorithms.  Compilation declarations and generated proofs remain separate imports.  Existing theorem, data, and helper modules retain their proof boundaries within each family.  The source plan maps 1,121 files and preserves the original root-import coverage across `Examples`, `Verified`, `Library`, `Demos`, and `TestSupport`.
+
+The drivers now read full module and constant names from checked registries.  The verified registry has 73 emitted modules, and its numerical registry has 22 file-proof checks.  This removes the old common-prefix assumption from those paths.  The 25 native numerical programs have no direct compiler imports.  The source-import check found no missing active repository imports.  The local documentation check passed 185 Markdown files and 3,352 link occurrences, and driver shell syntax passed.  The sandbox blocked Node's Git subprocess during planning and one documentation check.  The repository drivers now have reusable approvals, and their approved executions completed.
+
+No Lean run has started.  The next work extracts the reviewed functions from mixed compiler examples and application files, finishes the library guides and build descriptions, and checks the source and driver paths before the first Lean build.  Emitted Wasm files from the passed integration worktree are saved under `build/reorg/baseline/` for comparisons after compilation.

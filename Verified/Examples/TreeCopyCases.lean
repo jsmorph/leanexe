@@ -2,7 +2,7 @@ import Examples.Trees.Cases
 
 namespace Verified.Examples.TreeCopy
 
-open Examples.Host Examples.Trees
+open TestSupport.Host Examples.Trees
 
 def treeNodes : KeyTree → Nat
   | .leaf => 0

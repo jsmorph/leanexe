@@ -15,7 +15,7 @@ the result of another update, as in `(xs.push a).push b`, so the intermediate ar
 a separate copy.  A push that runs out of room moves the array to a block of twice the capacity
 first.  When the code uses the array again, as `pushCopy` does, the compiler copies it through the
 copying template, and `pushCopy_implements` proves that case.  The in-place templates that the other
-three functions use have rule theorems, which [`Clob`](../Clob/README.md) applies, and this example
+three functions use have rule theorems, which [`Clob`](../../Demos/Clob/README.md) applies, and this example
 tests the three functions by execution only.
 
 | Theorem | Statement |
@@ -50,9 +50,9 @@ second inserts 9 at position 1 and then removes position 0, and prints `[9, 2, 3
 
 ## Related examples
 
-[`Clob`](../Clob/README.md) proves functions that update their arrays in place, with `set!`,
+[`Clob`](../../Demos/Clob/README.md) proves functions that update their arrays in place, with `set!`,
 `insertIdx!`, `eraseIdxIfInBounds`, and `push`.  [`SumCount`](../SumCount/README.md) returns a new
-array without updating one.  The GPT-2 cache in [`Gpt`](../Gpt/README.md) grows by `++` in place.
+array without updating one.  The GPT-2 cache in [`Gpt`](../../Demos/Gpt/README.md) grows by `++` in place.
 The LTG entries [`in-place-update`](../../ltg/entries/in-place-update/README.md) and
 [`array-build`](../../ltg/entries/array-build/README.md) describe the in-place and copying
 templates.

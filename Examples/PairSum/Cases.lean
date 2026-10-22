@@ -1,12 +1,12 @@
 import Examples.PairSum.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `pairSum`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.PairSum
 
-open Examples.Host
+open TestSupport.Host
 
 def pairSumCases : IO Unit := do
   let chosen : List (UInt64 × UInt64) := [(3, 4), (maxU, 2), (0, 0), (maxU, maxU)]

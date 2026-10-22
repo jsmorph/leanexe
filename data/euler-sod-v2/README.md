@@ -1,6 +1,6 @@
 # Checked Sod shock tube — Wasmtime revision
 
-This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Demos/Euler/first-order/README.md) and [the reconstructed record](../../Demos/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
 The run uses stationary Sod initial data on `[0, 1]`, a discontinuity at 0.5,
 an ideal-gas ratio of 1.4, transmissive boundaries, and first-order Rusanov

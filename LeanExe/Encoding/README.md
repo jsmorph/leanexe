@@ -36,7 +36,7 @@ existing behavioral theorem about that module.
 
 ## Representation and specification
 
-The grammar in [the specification directory](Spec/) imports Talos syntax and
+The grammar in [the specification directory](Spec) imports Talos syntax and
 Lean's core library.  It defines binary relations without calling the encoder.
 These definitions and their correspondence with the published WASM rules form
 the trusted specification.  Lean checks proofs relative to those definitions.

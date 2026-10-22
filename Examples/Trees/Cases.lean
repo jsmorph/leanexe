@@ -1,12 +1,12 @@
 import Examples.Trees.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `trees and treeMoves`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Trees
 
-open Examples.Host
+open TestSupport.Host
 
 /-- The host's preorder description of a tree: `.` for a leaf, and a node's key followed by
 its subtrees. -/

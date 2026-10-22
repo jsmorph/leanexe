@@ -3,7 +3,7 @@ import LeanExe.Pipeline.Allocation
 /-!
 A borrowed array stays borrowed through a call that keeps the bytes and regions of the heap.  The
 lemma is stated for any array, so that checking it never evaluates the size of a literal table.
-It is `ExpTheorem.borrowed_kept` in a shared module, for every entry whose module reads tables.
+It is `Library.Numerics.Float64.Exp.ExpTheorem.borrowed_kept` in a shared module, for every entry whose module reads tables.
 -/
 
 namespace LeanExe.ProofKit.BorrowedKept

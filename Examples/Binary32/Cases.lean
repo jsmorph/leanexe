@@ -1,12 +1,12 @@
 import Examples.Binary32.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `binary32`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Binary32
 
-open Examples.Host
+open TestSupport.Host
 
 def fl32 (x : Float32) : String := s!"f32:{x.toBits}"
 

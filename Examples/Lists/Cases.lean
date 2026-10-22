@@ -1,12 +1,12 @@
 import Examples.Lists.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `lists`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Lists
 
-open Examples.Host
+open TestSupport.Host
 
 def listCases : IO Unit := do
   let chosen : List (List UInt64) :=

@@ -1,12 +1,12 @@
 import Examples.Below100.Spec
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `below100`, the bytes against the specification `expected`, one
 line per case in the format of `tests/modules/run.sh`. -/
 
 namespace Examples.Below100
 
-open Examples.Host
+open TestSupport.Host
 
 def cases : IO Unit := do
   let max : UInt64 := 18446744073709551615

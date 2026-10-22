@@ -1,12 +1,12 @@
 import Examples.SumArray.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `sumArray and folds`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.SumArray
 
-open Examples.Host
+open TestSupport.Host
 
 def sumArrayCases : IO Unit := do
   for xs in wordArrays do

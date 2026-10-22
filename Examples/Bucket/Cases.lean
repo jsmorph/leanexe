@@ -1,12 +1,12 @@
 import Examples.Bucket.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `bucket`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Bucket
 
-open Examples.Host
+open TestSupport.Host
 
 def bucketCases : IO Unit := do
   let chosen : List (Float × Float × Float) :=

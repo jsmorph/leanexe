@@ -10,9 +10,9 @@
 # module of the function's byte theorem, and it fails unless both file theorems report only the
 # axioms propext, Classical.choice, and Quot.sound.  Last, the Verified/Examples/*Accuracy.lean
 # checks compare the transcendental functions with references computed with Lean's integers, each
-# within the bound its docstring states, and Verified/Examples/FourierAccuracy.lean checks that
+# within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified` first.
+# Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` first.
 # Usage: tests/verified/run.sh [--cases MODULE]
 set -euo pipefail
 export PATH="$PATH:$HOME/.cargo/bin"
@@ -30,77 +30,15 @@ out=$root/build/verified
 mkdir -p "$out"
 cd "$root"
 emitted=0
-for entry in Verified.Examples.Poly:compiled.module:poly Verified.Examples.Mix:compiled.module:mix \
-    Verified.Examples.Lets:compiled.module:lets Verified.Examples.Select:compiled.module:select \
-    Verified.Examples.Calls:compiled.module:calls Verified.Examples.Pairs:compiled.module:pairs \
-    Verified.Examples.Frontend:compiled.module:frontend \
-    Verified.Examples.Fold:compiled.module:fold \
-    Verified.Examples.TailCore:module:tailcore \
-    Verified.Examples.TreeCopy:module:treecopy \
-    Verified.Examples.TreeCore:module:treecore \
-    Verified.Examples.Lists:compiled.module:lists \
-    Verified.Examples.Composition:module:composition \
-    Verified.Examples.ScalarComposition:compiled.module:scalarcomposition \
-    Verified.Examples.Relocation:module:relocation \
-    Verified.Examples.Wgsl:compiled.module:wgsl \
-    Verified.Examples.ListRecursion:compiled.module:listrecursion \
-    Verified.Examples.ListLoops:compiled.module:listloops \
-    Verified.Examples.ListTail:compiled.module:listtail \
-    Verified.Examples.RecursiveTypes:compiled.module:recursivetypes \
-    Verified.Examples.Tail:compiled.module:tail \
-    Verified.Examples.TailConditions:compiled.module:tailconditions \
-    Verified.Examples.Gpt:compiled.module:gpt \
-    Verified.Examples.Gpt32:compiled.module:gpt32 \
-    Verified.Examples.Euler:compiled.module:euler \
-    Verified.Examples.Loops:compiled.module:loops \
-    Verified.Examples.Arrays:compiled.module:arrays \
-    Verified.Examples.Owned:compiled.module:owned \
-    Verified.Examples.Updates:compiled.module:updates \
-    Verified.Examples.Grow:compiled.module:grow \
-    Verified.Examples.Modes:compiled.module:modes \
-    Verified.Examples.Modes:byHandModule:byhand \
-    Verified.Examples.Floats:compiled.module:floats \
-    Verified.Examples.Floats32:compiled.module:floats32 \
-    Verified.Examples.Sums:compiled.module:sums \
-    Verified.Examples.Elements:compiled.module:elements \
-    Verified.Examples.Tuples:module:tuples \
-    Verified.Examples.Records:compiled.module:records \
-    Verified.Examples.Grids:compiled.module:grids \
-    Verified.Examples.Repeat:compiled.module:repeat \
-    Verified.Examples.Enums:compiled.module:enums \
-    Verified.Examples.Recursion:compiled.module:recursion \
-    Verified.Examples.Fields:compiled.module:fields \
-    Verified.Examples.Trig:compiled.module:trig \
-    Verified.Examples.Fourier:compiled.module:fourier \
-    Verified.Examples.Insert:compiled.module:insert \
-    Verified.Examples.Clob:compiled.module:clob \
-    Verified.Examples.Tables:compiled.module:tables \
-    Verified.Examples.Exp:compiled.module:exp Verified.Examples.Tanh:compiled.module:tanh \
-    Verified.Examples.Log:compiled.module:log \
-    Verified.Examples.Log1p:compiled.module:log1p Verified.Examples.Atan:compiled.module:atan \
-    Verified.Examples.Asin:compiled.module:asin Verified.Examples.Tan:compiled.module:tan \
-    Verified.Examples.Sinh:compiled.module:sinh Verified.Examples.Asinh:compiled.module:asinh \
-    Verified.Examples.Exp2:compiled.module:exp2 Verified.Examples.Log2:compiled.module:log2 \
-    Verified.Examples.Log10:compiled.module:log10 Verified.Examples.Pow:compiled.module:pow \
-    Verified.Examples.Sinpi:compiled.module:sinpi Verified.Examples.Erf:compiled.module:erf \
-    Verified.Examples.ParseFloat:compiled.module:parsefloat \
-    Verified.Examples.PrintFloat:compiled.module:printfloat \
-    Verified.Examples.Drone:compiled.module:drone \
-    Verified.Examples.Lcg:compiled.module:lcg \
-    Verified.Examples.ParkMiller:compiled.module:parkmiller \
-    Verified.Examples.Xorshift:compiled.module:xorshift \
-    Verified.Examples.Bessel:compiled.module:bessel Verified.Examples.Tgamma:compiled.module:tgamma \
-    Verified.Examples.Lgamma:compiled.module:lgamma Verified.Examples.Erfc:compiled.module:erfc; do
-  IFS=: read -r module constant name <<<"$entry"
-  if [ -n "$case_module" ]; then
+while IFS=: read -r module constant name; do  if [ -n "$case_module" ]; then
     [ "$name" = "$case_module" ] || continue
     tools/leanrun --timeout 15m lake --log-level error build "$module"
   fi
-  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$module.$constant" \
+  tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
   emitted=$((emitted + 1))
-done
+done <"$root/tests/verified/modules.txt"
 if [ "$emitted" -eq 0 ]; then
   echo "fail: unknown module $case_module" >&2
   exit 2
@@ -125,20 +63,10 @@ fi
 # module's second theorem depends on every byte theorem of the module, so its axiom report covers
 # them all.
 if [ -z "$case_module" ]; then
-for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2File \
-    trig:TrigTheorem:TrigFile log2:Log2Theorem:Log2File log10:Log10Theorem:Log10File \
-    tanh:TanhBytes:TanhFile erf:ErfTheorem:ErfFile log1p:Log1pBytes:Log1pFile \
-    atan:AtanBytes:AtanFile asin:AsinBytes:AsinFile tan:TanTheorem:TanFile \
-    sinh:SinhBytes:SinhFile sinpi:SinpiTheorem:SinpiFile asinh:AsinhBytes:AsinhFile \
-    pow:PowBytes:PowFile parsefloat:ParseFloatBytes:ParseFloatFile \
-    printfloat:PrintFloatBytes:PrintFloatFile \
-    bessel:BesselBytes:BesselFile tgamma:TgammaBytes:TgammaFile lgamma:LgammaBytes:LgammaFile \
-    erfc:ErfcBytes:ErfcFile; do
-  IFS=: read -r name theorem file <<<"$entry"
-  tools/leanrun --timeout 30m lake --log-level error build "Verified.Examples.$theorem"
-  reports=$(tools/leanrun --timeout 10m lake env lean "Verified/Examples/$file.lean") || {
+while IFS=: read -r name theorem file; do  tools/leanrun --timeout 30m lake --log-level error build "$theorem"
+  reports=$(tools/leanrun --timeout 10m lake env lean "$file") || {
     echo "$reports"
-    echo "fail: Verified/Examples/$file.lean does not check against $out/$name.wasm" >&2
+    echo "fail: $file does not check against $out/$name.wasm" >&2
     exit 1
   }
   permitted=$(grep -c "depends on axioms: \[propext, Classical.choice, Quot.sound\]$" \
@@ -148,8 +76,8 @@ for entry in exp:ExpTheorem:ExpFile log:LogTheorem:LogFile exp2:Exp2Bytes:Exp2Fi
     echo "fail: the theorems of $file.lean must report only the three permitted axioms" >&2
     exit 1
   fi
-  echo "$name: $name.wasm holds the module of Verified.Examples.$theorem, with the permitted axioms"
-done
+  echo "$name: $name.wasm holds the module of $theorem, with the permitted axioms"
+done <"$root/tests/verified/numerics.txt"
 fi
 cases_module=Verified.Examples.Cases
 cases_source=Verified/Examples/Cases.lean
@@ -175,8 +103,8 @@ elif [ "$case_module" = "wgsl" ]; then
   cases_module=Verified.Examples.WgslWasmCasesMain
   cases_source=Verified/Examples/WgslWasmCasesMain.lean
 elif [ "$case_module" = "gpt32" ]; then
-  cases_module=Verified.Examples.Gpt32WasmCasesMain
-  cases_source=Verified/Examples/Gpt32WasmCasesMain.lean
+  cases_module=Demos.Gpt32.VerifiedWasmCasesMain
+  cases_source=Demos/Gpt32/VerifiedWasmCasesMain.lean
 elif [ "$case_module" = "listrecursion" ]; then
   cases_module=Verified.Examples.ListRecursionCasesMain
   cases_source=Verified/Examples/ListRecursionCasesMain.lean
@@ -261,37 +189,37 @@ if [ -n "$case_module" ]; then
 fi
 # The accuracy of Trig.sin and Trig.cos against a reference computed with Lean's integers, in
 # native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TrigAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TrigAccuracy.lean || exit 1
 # The behavior of the Fourier transforms, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FourierAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/FourierAccuracy.lean || exit 1
 # The accuracy of exp, expm1, tanh, log, log1p, atan, atan2, asin, acos, tan, sinh, cosh, asinh,
 # acosh, atanh, exp2, exp10, log2, log10, pow, sinpi, cospi, tanpi, erf, and erfc against
 # references computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ExpAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/LogAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log1pAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AtanAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/TanAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/AsinhAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Exp2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/Log2Accuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PowAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/SinpiAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ErfAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ExpAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TanhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/LogAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log1pAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AtanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/TanAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/AsinhAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Exp2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/Log2Accuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/PowAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/SinpiAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ErfAccuracy.lean || exit 1
 # The accuracy of tgamma, lgamma, the Bessel functions, and CORE-MATH's erfc against references
 # computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/TgammaAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/LgammaAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/BesselAccuracy.lean || exit 1
-tools/leanrun --timeout 30m lake env lean --run Verified/Examples/ErfcAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/TgammaAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/LgammaAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/BesselAccuracy.lean || exit 1
+tools/leanrun --timeout 30m lake env lean --run tests/TestSupport/Numerics/ErfcAccuracy.lean || exit 1
 # The software fused multiply-add against the exact value rounded to the nearest double, in native
 # Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/FmaAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/FmaAccuracy.lean || exit 1
 # The limb arithmetic of the string conversions against Lean's natural numbers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/UscaleCheck.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run Library/Numerics/Arithmetic/Uscale/UscaleCheck.lean || exit 1
 # The decimal parsers and printers against references computed with Lean's integers, in native Lean.
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/ParseFloatAccuracy.lean || exit 1
-tools/leanrun --timeout 10m lake env lean --run Verified/Examples/PrintFloatAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/ParseFloatAccuracy.lean || exit 1
+tools/leanrun --timeout 10m lake env lean --run tests/TestSupport/Numerics/PrintFloatAccuracy.lean || exit 1

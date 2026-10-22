@@ -2,7 +2,7 @@ import Verified.Examples.TreeCopyCases
 
 namespace Verified.Examples.TreeCore
 
-open Examples.Host
+open TestSupport.Host
 
 def render (xs : List UInt64) : String := s!"[{", ".intercalate (xs.map toString)}]"
 

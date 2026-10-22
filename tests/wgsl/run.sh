@@ -24,17 +24,17 @@ if [ "$verified" -eq 1 ]; then
   (cd "$root" && tools/leanrun --timeout 10m lake --log-level error build Verified.Examples.WgslCasesMain)
 elif [ "$gpt32" -eq 1 ]; then
   (cd "$root" && tools/leanrun --timeout 20m lake --log-level error build \
-    Verified.Examples.Gpt32 Verified.Examples.Gpt32GpuCasesMain)
+    Demos.Gpt32.Verified Verified.Examples.Gpt32GpuCasesMain)
 fi
 for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wgsl:Examples.Binary32:axpyArray \
     Examples.Binary32.Wgsl:Examples.Binary32:matVec Examples.Binary32.Wgsl:Examples.Binary32:condMix \
-    Examples.Gpt32.Kernels:Examples.Gpt32:exp Examples.Gpt32.Specs:Examples.Gpt32:embed \
-    Examples.Gpt32.Specs:Examples.Gpt32:layerNorm Examples.Gpt32.Specs:Examples.Gpt32:linear \
-    Examples.Gpt32.Specs:Examples.Gpt32:append Examples.Gpt32.Specs:Examples.Gpt32:scores \
-    Examples.Gpt32.Specs:Examples.Gpt32:headMax Examples.Gpt32.Specs:Examples.Gpt32:headSum \
-    Examples.Gpt32.Specs:Examples.Gpt32:probs Examples.Gpt32.Specs:Examples.Gpt32:mix \
-    Examples.Gpt32.Specs:Examples.Gpt32:add Examples.Gpt32.Specs:Examples.Gpt32:gelu \
-    Examples.Gpt32.Specs:Examples.Gpt32:logits \
+    Demos.Gpt32.Kernels:Demos.Gpt32:exp Demos.Gpt32.Specs:Demos.Gpt32:embed \
+    Demos.Gpt32.Specs:Demos.Gpt32:layerNorm Demos.Gpt32.Specs:Demos.Gpt32:linear \
+    Demos.Gpt32.Specs:Demos.Gpt32:append Demos.Gpt32.Specs:Demos.Gpt32:scores \
+    Demos.Gpt32.Specs:Demos.Gpt32:headMax Demos.Gpt32.Specs:Demos.Gpt32:headSum \
+    Demos.Gpt32.Specs:Demos.Gpt32:probs Demos.Gpt32.Specs:Demos.Gpt32:mix \
+    Demos.Gpt32.Specs:Demos.Gpt32:add Demos.Gpt32.Specs:Demos.Gpt32:gelu \
+    Demos.Gpt32.Specs:Demos.Gpt32:logits \
     Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedScale \
     Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedBranch \
     Verified.Examples.Wgsl:Verified.Examples.Wgsl:verifiedFlags \
@@ -43,9 +43,9 @@ for entry in Examples.Binary32.Wgsl:Examples.Binary32:scale Examples.Binary32.Wg
   IFS=: read -r module namespace kernel <<<"$entry"
   if [ "$gpt32" -eq 1 ]; then
     case "$module" in
-      Examples.Gpt32.Kernels|Examples.Gpt32.Specs)
-        module=Verified.Examples.Gpt32
-        namespace=Verified.Examples.Gpt32
+      Demos.Gpt32.Kernels|Demos.Gpt32.Specs)
+        module=Demos.Gpt32.Verified
+        namespace=Demos.Gpt32.Verified
         ;;
       Examples.Binary32.Wgsl) true ;;
       *) continue ;;
@@ -71,7 +71,7 @@ else
 fi
 if [ "$gpt32" -eq 1 ]; then
   if (cd "$root" && tools/leanrun --timeout 10m lake env lean --run \
-      Verified/Examples/Gpt32GpuCasesMain.lean) >>"$cases" \
+      Demos/Gpt32/VerifiedGpuCasesMain.lean) >>"$cases" \
       2>"$build/wgsl/gpt32-cases.stderr.log"; then
     true
   else

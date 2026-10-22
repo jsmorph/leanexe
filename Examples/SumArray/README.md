@@ -42,7 +42,7 @@ Wasmtime against native Lean for each export, including the empty array and word
 
 ## Related examples
 
-[`SumSquares`](../SumSquares/README.md) and [`Mean`](../Mean/README.md) fold over arrays of floats.
+[`SumSquares`](../../Library/Numerics/Statistics/SumSquares/README.md) and [`Mean`](../../Library/Numerics/Statistics/Mean/README.md) fold over arrays of floats.
 [`PairSum`](../PairSum/README.md) folds over a temporary array, and [`Lists`](../Lists/README.md)
 folds over a list.  The LTG entry [`array-fold-loop`](../../ltg/entries/array-fold-loop/README.md)
 describes the rule.

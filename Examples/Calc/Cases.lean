@@ -1,12 +1,12 @@
 import Examples.Calc.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `calculator`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Calc
 
-open Examples.Host
+open TestSupport.Host
 
 /-- A calculator state as the host's three result words. -/
 def calcWords (c : Calc) : String := s!"{c.value},{c.steps},{c.last.ctorIdx}"

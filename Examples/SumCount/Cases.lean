@@ -1,12 +1,12 @@
 import Examples.SumCount.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `sumCount`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.SumCount
 
-open Examples.Host
+open TestSupport.Host
 
 def sumCountCases : IO Unit := do
   for xs in wordArrays do

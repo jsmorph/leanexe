@@ -45,7 +45,7 @@ tests](../../tests/modules/run.sh) of [`Cases.lean`](Cases.lean) run nine inputs
 ## Related examples
 
 [`Updates`](../Updates/README.md) has chains of pushes and other in-place updates.
-[`Euler`](../Euler/README.md) and [`Drone`](../Drone/README.md) use `LeanExe.repeatWhile` for their
+[`Euler`](../../Demos/Euler/README.md) and [`Drone`](../../Demos/Drone/README.md) use `LeanExe.repeatWhile` for their
 main loops.  The LTG entries [`repeat-while`](../../ltg/entries/repeat-while/README.md) and
 [`in-place-update`](../../ltg/entries/in-place-update/README.md) describe the rules.
 

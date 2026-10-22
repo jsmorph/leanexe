@@ -1,12 +1,12 @@
 import Examples.Piecewise.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `piecewise`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Piecewise
 
-open Examples.Host
+open TestSupport.Host
 
 def piecewiseCases : IO Unit := do
   let chosen : List (Float × Float × Float) :=

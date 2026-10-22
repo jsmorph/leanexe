@@ -7,7 +7,7 @@ language and derives their execution theorems.
 that the command adds, the bounds, the tests, and the examples for a program's author.  The library
 shares the trusted base and the statement of correctness with `LeanExe`: Talos's semantics, the
 encoder and decoder with `decode_encode`, `Implements` and its relatives in
-[`LeanExe/Pipeline/`](../LeanExe/Pipeline/), and the runtime.  The statements add definitions of
+[`LeanExe/Pipeline/`](../LeanExe/Pipeline), and the runtime.  The statements add definitions of
 their own: `Heap.Within` in [the runtime rules](RuntimeFacts.lean), the allocation bound of
 [`Bound.lean`](Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr` for
 the initial store.  The compiler and its proof have their own definitions of the IR parts they need
@@ -497,12 +497,12 @@ with [integer tests of their bit patterns](../LeanExe/WGSL/F32Canonical.lean).
 [Result lemmas](../LeanExe/WGSL/F32Result.lean) prove that normalization preserves each operation's
 strict-model result.  The original and verified compilers use this translation.
 
-[Binary32 GPT](Examples/Gpt32.lean) compiles the existing program's thirteen kernel functions
-without changing them.  [The native dispatch proofs](Examples/Gpt32Dispatch.lean) combine
+[Binary32 GPT](../Demos/Gpt32/Verified.lean) compiles the existing program's thirteen kernel functions
+without changing them.  [The native dispatch proofs](../Demos/Gpt32/VerifiedDispatch.lean) combine
 `Compiled.dispatch_value` with each generated denotation equation and the buffer bounds.
-[The host instance](Examples/Gpt32Host.lean) supplies those theorems to the existing typed item,
+[The host instance](../Demos/Gpt32/VerifiedHost.lean) supplies those theorems to the existing typed item,
 layer, and generation proofs.  Its kernel map also runs through the existing generation driver.
-[The application guide](../Examples/Gpt32/README.md#verified-compiler) describes the tests and the
+[The application guide](../Demos/Gpt32/README.md#verified-compiler) describes the tests and the
 separate Wasm and device-model claims.
 
 ## The reflector

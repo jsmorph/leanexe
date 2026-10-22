@@ -1,12 +1,12 @@
 import Examples.Grids.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `grids`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Grids
 
-open Examples.Host
+open TestSupport.Host
 
 def gridsCases : IO Unit := do
   let b (x : Bool) : String := toString (if x then 1 else 0)

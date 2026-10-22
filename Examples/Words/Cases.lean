@@ -1,12 +1,12 @@
 import Examples.Words.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `words`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Words
 
-open Examples.Host
+open TestSupport.Host
 
 def Words.ofList : List UInt64 → Words
   | [] => .nil

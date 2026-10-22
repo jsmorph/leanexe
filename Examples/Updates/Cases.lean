@@ -1,12 +1,12 @@
 import Examples.Updates.Program
-import Examples.Host
+import TestSupport.Host
 
 /-! The module cases of `updates`, one line per case in the format of
 `tests/modules/run.sh`. -/
 
 namespace Examples.Updates
 
-open Examples.Host
+open TestSupport.Host
 
 /-- Chains of updates and a borrowed `push`, at positions inside and past the end of each array. -/
 def updatesCases : IO Unit := do

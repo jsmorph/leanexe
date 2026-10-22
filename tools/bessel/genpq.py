@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Generate Verified/Examples/BesselPQ0.lean and BesselPQ1.lean.
+"""Generate Library/Numerics/Float64/Bessel/BesselPQ0.lean and BesselPQ1.lean.
 
 Usage: uv run tools/bessel/genpq.py ORDER OUTPUT
 
@@ -107,7 +107,7 @@ def gen(order):
     P = 'P0' if order == 0 else 'P1'; Qf = 'Q0' if order == 0 else 'Q1'
     pre = 'BesselFd%d' % order
     out = []
-    out.append('''import Verified.Examples.BesselPQRange
+    out.append('''import Library.Numerics.Float64.Bessel.BesselPQRange
 import LeanExe.ProofKit.BesselFd%(o)da
 import LeanExe.ProofKit.BesselFd%(o)db
 

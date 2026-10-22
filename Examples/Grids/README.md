@@ -50,7 +50,7 @@ The commands build the proofs, write the module, and call it in the Wasmtime hos
 
 ## Related examples
 
-[`Euler`](../Euler/README.md) stores its grids of cells in this layout and updates them in loops.
+[`Euler`](../../Demos/Euler/README.md) stores its grids of cells in this layout and updates them in loops.
 [`Calc`](../Calc/README.md) and [`Shape`](../Shape/README.md) have records in locals instead of
 arrays.  [`Bools`](../Bools/README.md) has `Bool` values outside arrays.  The LTG entries
 [`record-read`](../../ltg/entries/record-read/README.md) and

@@ -30,8 +30,8 @@ tools/leanrun --timeout 15m lake -q -d proofs/talos/lean build Project.Drone.Spe
 The five figures use fresh Wasmtime results, each compared with native Lean.  The figure driver saves complete inputs, outputs, timing derived from the returned words, and plotting samples.  It uses the repository's Wasmtime host and routes native Lean through the resource runner.  Reproduce the runs from the repository root after creating `build/drone-report`:
 
 ```sh
-tools/leanrun --timeout 15m lake -q build lean-wasm LeanExe.Examples.Drone
-tools/leanrun --timeout 2m .lake/build/bin/lean-wasm compile --module LeanExe.Examples.Drone --entry LeanExe.Examples.Drone.compute --out build/drone-report/program.wasm
+tools/leanrun --timeout 15m lake -q build lean-wasm LeanExe.Demos.Drone
+tools/leanrun --timeout 2m .lake/build/bin/lean-wasm compile --module LeanExe.Demos.Drone --entry LeanExe.Demos.Drone.compute --out build/drone-report/program.wasm
 node paper/drone-verification-report/run-figures.js
 uv run paper/drone-verification-report/build.py
 ```

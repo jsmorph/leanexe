@@ -8,10 +8,10 @@ root=$(cd "$(dirname "$0")/../.." && pwd)
 if [ "$#" -eq 2 ] && [ "$1" = "--check-bytes" ] && [ -n "$2" ]; then
   scratch=$2
   cd "$root"
-  while IFS=: read -r namespace module name; do
+  while IFS=: read -r module constant name; do
     mkdir -p "$scratch/$name"
     tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
-      "Examples.$namespace.$module" "Examples.$namespace.$name.module" \
+      "$module" "$constant" \
       "$scratch/$name/$name.wasm"
     wasm-tools validate "$scratch/$name/$name.wasm"
     cmp "$scratch/$name/$name.wasm" "$root/build/$name/$name.wasm"

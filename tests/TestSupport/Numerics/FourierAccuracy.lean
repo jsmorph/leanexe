@@ -1,0 +1,135 @@
+import Library.Numerics.Fourier.Compiled
+import TestSupport.Numerics.Reference
+
+/-! A native check that `Library.Numerics.Fourier.dft`, `Library.Numerics.Fourier.inverse`, and `Library.Numerics.Fourier.powerSpectrum` behave as
+their mathematical counterparts, on finite values.  Some facts hold exactly in floating point: an
+empty signal gives an empty result, an odd last float is ignored, an impulse at 0 gives 1 at every
+frequency, `X 0` is the sum of the values from left to right, so that one value transforms to
+itself under `==`, and a constant 1 gives `n` at frequency 0.  With
+`τ = 2 (n + 8) ε Σ j, (|a j| + |b j|)`, `ε = 2 ^ -53`, and `a j + i b j` the values, the result
+lies within `τ` of the transform computed exactly with Lean's integers from the factors of
+`Reference.sinCosTurns`, which lie within `2 ^ -292` of `cos` and `sin`, and rounded to the
+nearest doubles, the constant gives at most `τ` away
+from frequency 0, a single frequency gives `n` there and nearly 0 elsewhere within `τ`, `inverse`
+undoes `dft` within `2 τ`, and Parseval's identity holds within `4 τ √(n Σ |x j| ²)`.  For the
+power spectrum `P` of the real wave `sin (2 π · 5 j / 64)`, `√(P k)` lies within `2 τ` of the
+magnitude 32 at frequency 5 and of 0 elsewhere, which covers the bound `√2 τ` on the magnitude
+from `τ` on each part and the roundings of the squares and the root.  `τ` follows the error bound
+of recursive summation, `n` roundings in a sum of `n` terms, with room for the factors' errors, and
+is a test tolerance, not a proved bound.  The check reports the largest distance from the exact
+transform as a multiple of `τ`.  The waves are the doubles nearest to `cos` and `sin` from
+`Reference.sinCosTurns`.  The check exits with an error at the first failure.  Run with
+`lake env lean --run`. -/
+
+namespace TestSupport.Numerics.FourierAccuracy
+
+open Verified.Examples
+
+def ε : Float := Float.ofBits 0x3CA0000000000000
+
+def tolerance (xs : Array Float) : Float :=
+  let n := (xs.size / 2).toFloat
+  2.0 * (n + 8.0) * ε * xs.foldl (fun s v => s + v.abs) 0.0
+
+/-- The forward transform of `xs` with factors from `Reference.sinCosTurns` at 300 bits, rounded to
+the nearest doubles.  A value `m · 2 ^ e` times a factor is an integer at the scale
+`2 ^ -(300 + 1074)`, so that the sums are exact up to the factors' errors, which are below
+`2 ^ -292` each. -/
+def exact (xs : Array Float) : Array Float := Id.run do
+  let n := xs.size / 2
+  let factors := (Array.range n).map fun m => Reference.sinCosTurns m n 300
+  let parts := (Array.range (2 * n)).map fun i =>
+    let (m, e) := Reference.exactValue xs[i]!
+    m * 2 ^ (e + 1074).toNat
+  let mut out := #[]
+  for k in [0:n] do
+    let mut re : Int := 0
+    let mut im : Int := 0
+    for j in [0:n] do
+      let (sn, cs) := factors[j * k % n]!
+      let a := parts[2 * j]!
+      let b := parts[2 * j + 1]!
+      re := re + a * cs + b * sn
+      im := im + b * cs - a * sn
+    out := (out.push (Reference.toFloat re (-1374))).push (Reference.toFloat im (-1374))
+  return out
+
+/-- The largest distance between `xs` and `ys` part by part, as a multiple of `t`. -/
+def distanceIn (xs ys : Array Float) (t : Float) : Float :=
+  (List.range xs.size).foldl (fun d i => max d ((xs[i]! - ys[i]!).abs / t)) 0.0
+
+/-- The doubles nearest to `cos (2 π m / n)` and `sin (2 π m / n)`. -/
+def cosSin (m n : Nat) : Float × Float :=
+  let (sn, cs) := Reference.sinCosTurns m n 300
+  (Reference.toFloat cs (-300), Reference.toFloat sn (-300))
+
+/-- Whether `xs` and `ys` have the same size and agree within `t` part by part. -/
+def near (xs ys : Array Float) (t : Float) : Bool :=
+  xs.size == ys.size && (List.range xs.size).all fun i => (xs[i]! - ys[i]!).abs ≤ t
+
+def check (name : String) (ok : Bool) : IO Unit := do
+  unless ok do throw <| IO.userError s!"fail: {name}"
+
+end TestSupport.Numerics.FourierAccuracy
+
+open Verified.Examples TestSupport.Numerics.FourierAccuracy in
+def main : IO UInt32 := do
+  try
+    let mut count := 0
+    let mut worst : Float := 0.0
+    check "an empty signal" (Library.Numerics.Fourier.dft #[] == #[])
+    for n in [1, 2, 3, 4, 5, 7, 8, 12, 16, 31, 64, 100, 256] do
+      let xs := Library.Numerics.Fourier.signal n 1
+      let X := Library.Numerics.Fourier.dft xs
+      let t := tolerance xs
+      check s!"an odd last float, n = {n}" ((Library.Numerics.Fourier.dft (xs.push 0.5)).map Float.toBits ==
+        X.map Float.toBits)
+      -- `X 0` is the sum of the values from left to right.
+      let (sa, sb) := (List.range n).foldl
+        (fun (sa, sb) j => (sa + xs[2 * j]!, sb + xs[2 * j + 1]!)) ((0.0 : Float), (0.0 : Float))
+      check s!"X 0 as the sum, n = {n}" (X[0]! == sa && X[1]! == sb)
+      -- An impulse at 0.
+      let impulse := (Array.range (2 * n)).map fun i => if i == 0 then 1.0 else 0.0
+      check s!"an impulse, n = {n}"
+        ((Library.Numerics.Fourier.dft impulse).toList.zipIdx.all fun (v, i) => v == if i % 2 == 0 then 1.0 else 0.0)
+      -- A constant.
+      let constant := (Array.range (2 * n)).map fun i => if i % 2 == 0 then 1.0 else 0.0
+      let C := Library.Numerics.Fourier.dft constant
+      check s!"a constant, n = {n}" (C[0]! == n.toFloat && C[1]! == 0.0 &&
+        (List.range (2 * n - 2)).all fun i => C[i + 2]!.abs ≤ tolerance constant)
+      -- The inverse, Parseval's identity, and the reference transform.
+      check s!"the round trip, n = {n}" (near (Library.Numerics.Fourier.inverse X) xs (2.0 * t))
+      let energy := xs.foldl (fun s v => s + v * v) 0.0
+      let energyX := X.foldl (fun s v => s + v * v) 0.0
+      check s!"Parseval's identity, n = {n}"
+        ((energyX - n.toFloat * energy).abs ≤ 4.0 * t * Float.sqrt (n.toFloat * energy))
+      let d := distanceIn X (exact xs) t
+      check s!"the exact transform, n = {n}" (X.size == 2 * n && d ≤ 1.0)
+      worst := max worst d
+      count := count + 1
+    -- A single frequency `f`.
+    for (n, f) in [(8, 1), (12, 5), (64, 3), (100, 33), (256, 128)] do
+      let wave := (Array.range n).foldl (fun acc j =>
+        let (c, s) := cosSin (j * f % n) n
+        (acc.push c).push s) #[]
+      let X := Library.Numerics.Fourier.dft wave
+      let t := tolerance wave
+      let d := distanceIn X (exact wave) t
+      check s!"the exact transform of a single frequency {f}, n = {n}" (d ≤ 1.0)
+      worst := max worst d
+      check s!"a single frequency {f}, n = {n}" ((List.range n).all fun k =>
+        let target := if k == f then n.toFloat else 0.0
+        (X[2 * k]! - target).abs ≤ t && X[2 * k + 1]!.abs ≤ t)
+      count := count + 1
+    -- The power spectrum of a real wave.
+    let samples := (Array.range 64).map fun j => (cosSin (j * 5 % 64) 64).2
+    let P := Library.Numerics.Fourier.powerSpectrum samples
+    let t := tolerance (samples.flatMap fun v => #[v, 0.0])
+    check "the power spectrum of a real wave" (P.size == 33 &&
+      (List.range 33).all fun k => (Float.sqrt P[k]! - if k == 5 then 32.0 else 0.0).abs ≤ 2.0 * t)
+    IO.println s!"fourier accuracy: {count + 2} signals behave as their transforms should, and the \
+      largest distance from the exact transform is {worst} τ"
+    return 0
+  catch e =>
+    IO.eprintln e
+    return 1
