@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Certificates for the spectral test of the LCG of Examples/Lcg/Program.lean.
+"""Certificates for the spectral test of the LCG of Library/Random/Lcg/Program.lean.
 
 For t = 2, ..., 6 the script reduces the canonical basis C of the dual lattice
 {s : s_0 + s_1 a + ... + s_(t-1) a^(t-1) = 0 (mod 2^64)} with exact LLL, finds the shortest vector

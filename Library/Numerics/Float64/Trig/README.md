@@ -83,7 +83,7 @@ Each module ends with `#print axioms` lines.  `tests/verified/run.sh` builds `Li
 
 ### Modules
 
-The table groups the proof modules in `Verified/Examples/` by stage.  `TrigFile` adds the file theorem.  [The root `Verified` import](../../../../Verified.lean) includes `TrigTheorem`, and `tests/verified/run.sh` builds it before checking `TrigFile`.
+The table groups the proof modules in `Library/Numerics/Float64/Trig/` by stage.  `TrigFile` adds the file theorem.  [The library aggregate](../../../../Library.lean) includes `TrigTheorem`, and `tests/verified/run.sh` builds it before checking `TrigFile`.
 
 | Stage | Modules | Content |
 |---|---|---|

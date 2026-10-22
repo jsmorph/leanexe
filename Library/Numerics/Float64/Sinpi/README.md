@@ -57,7 +57,7 @@ The sources are `s_sinpi.c`, `s_cospi.c`, `s_tanpi.c`, `k_sinpi.h`, and `k_cospi
 
 ## Theorems
 
-The theorems are in the modules `SinpiWithin`, `SinpiExact`, `SinpiExactTan`, `SinpiTheorem`, and `SinpiFile` of `Verified/Examples/`.  In the table, `x` is a Lean `Float`, `a = value x.toBits` its real value, and a word is the `UInt64` bit pattern of a double.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
+The theorems are in the modules `SinpiWithin`, `SinpiExact`, `SinpiExactTan`, `SinpiTheorem`, and `SinpiFile` of `Library/Numerics/Float64/Sinpi/`.  In the table, `x` is a Lean `Float`, `a = value x.toBits` its real value, and a word is the `UInt64` bit pattern of a double.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
 
 | Theorem | Statement |
 |---|---|
@@ -81,7 +81,7 @@ Each module has `#print axioms` lines.  They print `[propext, Classical.choice, 
 
 ### Modules
 
-The proof adds 22 modules in `Verified/Examples/`, above the chains of [the sine and cosine proof](../Trig/README.md#modules) and [the tangent proof](../Tan/README.md#modules).  From those chains it takes fdlibm's kernels with their final steps (`TrigKernelSpec.sinTail_spec`, `TrigCosKernel.cos_spec`, `TrigStep.sin_final`, `cos_final`, and `TanWith.kernel_within`), Sterbenz's lemma (`TanTrunc.sterbenz`), and facts about words from `TrigReduce` and from ProofKit's `F64SignedNearestSum` and `F64SelfStep`.  The table lists the modules by stage, in dependency order within each stage.
+The proof adds 22 modules in `Library/Numerics/Float64/Sinpi/`, above the chains of [the sine and cosine proof](../Trig/README.md#modules) and [the tangent proof](../Tan/README.md#modules).  From those chains it takes fdlibm's kernels with their final steps (`TrigKernelSpec.sinTail_spec`, `TrigCosKernel.cos_spec`, `TrigStep.sin_final`, `cos_final`, and `TanWith.kernel_within`), Sterbenz's lemma (`TanTrunc.sterbenz`), and facts about words from `TrigReduce` and from ProofKit's `F64SignedNearestSum` and `F64SelfStep`.  The table lists the modules by stage, in dependency order within each stage.
 
 | Stage | Modules | Content |
 |---|---|---|

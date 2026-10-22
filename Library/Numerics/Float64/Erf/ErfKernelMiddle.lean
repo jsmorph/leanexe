@@ -119,7 +119,7 @@ theorem eval_middleT (s : ℝ) : eval middleT s = (1 + s) * eval (erfCoeffs 26) 
 
 /-- `|erf (1 + s) - erx - P (s)/Q (s)| ≤ (21/16) 2^-58` for `-5/32 ≤ s ≤ 1/4`. -/
 theorem middle_kernel_error (s : ℝ) (hs0 : -5 / 32 ≤ s) (hs1 : s ≤ 1 / 4) :
-    |erf (1 + s) - erx - eval erfPA s / eval erfQA s| ≤ (21 / 16) / 2 ^ 58 := by
+    |RealErf.erf (1 + s) - erx - eval erfPA s / eval erfQA s| ≤ (21 / 16) / 2 ^ 58 := by
   have hq := qa_pos s hs0 hs1
   have hw := abs_le_weighted middleA erfQA middleEps (-5 / 32) (1 / 4) middleM middleM
     (bounded_of_covers _ _ _ _ _ _ middle_up_covers)
@@ -163,8 +163,8 @@ theorem middle_kernel_error (s : ℝ) (hs0 : -5 / 32 ≤ s) (hs1 : s ≤ 1 / 4) 
     calc scale * (x ^ (2 * 26 + 1) / 21374447439710098685952000000) ≤ 2 * ((5 / 4) ^ (2 * 26 + 1) / 21374447439710098685952000000) := by
           gcongr
       _ ≤ 1 / 2 ^ 70 := by norm_num
-  have hsplit : erf x - erx - eval erfPA s / eval erfQA s =
-      (erf x - scale * (x * eval (erfCoeffs 26) (x ^ 2))) +
+  have hsplit : RealErf.erf x - erx - eval erfPA s / eval erfQA s =
+      (RealErf.erf x - scale * (x * eval (erfCoeffs 26) (x ^ 2))) +
         (scale - kappaLo) * (x * eval (erfCoeffs 26) (x ^ 2)) +
         ((kappaLo : ℝ) * (x * eval (erfCoeffs 26) (x ^ 2)) - erx -
           eval erfPA s / eval erfQA s) := by ring
@@ -175,7 +175,7 @@ theorem middle_kernel_error (s : ℝ) (hs0 : -5 / 32 ≤ s) (hs1 : s ≤ 1 / 4) 
     calc x * |eval (erfCoeffs 26) (x ^ 2)| ≤ (5 / 4) * 1 :=
           mul_le_mul hx1 hE (abs_nonneg _) (by norm_num)
       _ = 5 / 4 := by norm_num
-  have hsum := abs_add_three (erf x - scale * (x * eval (erfCoeffs 26) (x ^ 2)))
+  have hsum := abs_add_three (RealErf.erf x - scale * (x * eval (erfCoeffs 26) (x ^ 2)))
     ((scale - kappaLo) * (x * eval (erfCoeffs 26) (x ^ 2)))
     ((kappaLo : ℝ) * (x * eval (erfCoeffs 26) (x ^ 2)) - erx - eval erfPA s / eval erfQA s)
   have heps : (middleEps : ℝ) = (5 / 4) / 2 ^ 58 := by simp [middleEps]

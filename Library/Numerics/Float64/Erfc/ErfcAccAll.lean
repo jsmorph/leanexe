@@ -122,7 +122,7 @@ theorem tacc_ok : TAccEntQ taccQ ∧ TAccHyp taccQ (1 / 8) (taccB taccQ (1 / 8))
 /-- `Erfc.erfAccurateTiny` within `(7/8) u erfcLo (1/8)` of `erf z` for `|z| ≤ 1/8`. -/
 theorem tacc_err (hF : FmaNearest) (z : Float) (hz : ff z) (hzR : |fv z| ≤ 1 / 8) :
     ff (Erfc.erfAccurateTiny z).1 ∧ ff (Erfc.erfAccurateTiny z).2 ∧
-      |fv (Erfc.erfAccurateTiny z).1 + fv (Erfc.erfAccurateTiny z).2 - erf (fv z)| ≤
+      |fv (Erfc.erfAccurateTiny z).1 + fv (Erfc.erfAccurateTiny z).2 - RealErf.erf (fv z)| ≤
         ((7 / 8 * (1 / 2 ^ 53) * erfcLo 80 (1 / 8) : ℚ) : ℝ) ∧
       |fv (Erfc.erfAccurateTiny z).2| ≤ 2 * (1 / 2 ^ 53) := by
   obtain ⟨hent, hyp, hchk, htot, hL, -⟩ := tacc_ok
@@ -135,7 +135,7 @@ theorem tacc_err (hF : FmaNearest) (z : Float) (hz : ff z) (hzR : |fv z| ≤ 1 /
   have htot' : ((taccB taccQ (1 / 8)).fine : ℝ) + (rowBound 8 15 0 (1 / 8) (1 / 2 ^ 62) : ℝ) ≤
       ((7 / 8 * (1 / 2 ^ 53) * erfcLo 80 (1 / 8) : ℚ) : ℝ) := by qc htot
   have := abs_add_le (fv (Erfc.erfAccurateTiny z).1 + fv (Erfc.erfAccurateTiny z).2 -
-    eval (taccPoly taccQ) (fv z)) (eval (taccPoly taccQ) (fv z) - erf (fv z))
+    eval (taccPoly taccQ) (fv z)) (eval (taccPoly taccQ) (fv z) - RealErf.erf (fv z))
   rw [sub_add_sub_cancel] at this
   linarith [hp.2.2.1]
 
@@ -150,7 +150,7 @@ theorem erfAcc_err (hF : FmaNearest) (z : Float) (hz : ff z) (h0 : 0 ≤ fv z)
     ff (Erfc.erfAccurate Erfc.accTable z).1 ∧ ff (Erfc.erfAccurate Erfc.accTable z).2 ∧
       |fv (Erfc.erfAccurate Erfc.accTable z).2| ≤ 2 * (1 / 2 ^ 53) ∧
       |fv (Erfc.erfAccurate Erfc.accTable z).1 + fv (Erfc.erfAccurate Erfc.accTable z).2 -
-        erf (fv z)| ≤ aTarget (fv z) := by
+        RealErf.erf (fv z)| ≤ aTarget (fv z) := by
   have f125 := lit_vals8.2.2.2.2.1
   have v125 := lit_vals8.2.2.2.2.2
   unfold aTarget
@@ -195,7 +195,7 @@ theorem aTarget_abs (z : ℝ) (h0 : 0 ≤ z) (h1 : z < 47 / 8) : aTarget z ≤ 7
 theorem xAcc_val : (xAcc : ℝ) = 7698779147895436 / 2 ^ 52 := by unfold xAcc; push_cast; ring
 
 theorem aTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xAcc) :
-    aTarget z ≤ 7 / 8 * (1 / 2 ^ 53) * erfc z := by
+    aTarget z ≤ 7 / 8 * (1 / 2 ^ 53) * RealErf.erfc z := by
   obtain ⟨-, -, -, -, -, hpos⟩ := tacc_ok
   have hxm : (xAcc : ℝ) < 14 / 8 := by rw [xAcc_val]; norm_num
   unfold aTarget
@@ -204,7 +204,7 @@ theorem aTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xAcc) :
     have h := hpos 0 (by norm_num)
     rw [show min (((0 + 1 : ℕ) : ℚ) / 8) xAcc = 1 / 8 by unfold xAcc; norm_num] at h
     have hg := erfc_ge 80 (1 / 8) (by norm_num) h
-    have hm : erfc ((1 / 8 : ℚ) : ℝ) ≤ erfc z :=
+    have hm : RealErf.erfc ((1 / 8 : ℚ) : ℝ) ≤ RealErf.erfc z :=
       erfc_strictAnti.antitone (by push_cast; linarith)
     push_cast at hg hm ⊢
     nlinarith

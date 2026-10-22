@@ -52,7 +52,7 @@ The journal records a conversion of each decimal constant of the source to binar
 
 ## Theorems
 
-The theorems are in [the accuracy theorem](Log1pTheorem.lean), [the exceptional values](Log1pTheoremSpecial.lean), [the byte theorem](Log1pBytes.lean), and [the file theorem](Log1pFile.lean), each in the namespace `Verified.Examples` followed by the module's name.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  The byte theorem uses `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
+The theorems are in [the accuracy theorem](Log1pTheorem.lean), [the exceptional values](Log1pTheoremSpecial.lean), [the byte theorem](Log1pBytes.lean), and [the file theorem](Log1pFile.lean), each in the namespace `Library.Numerics.Float64.Log1p` followed by the module's name.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  The byte theorem uses `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
 
 | Theorem | Statement |
 |---|---|
@@ -73,7 +73,7 @@ The theorems are in [the accuracy theorem](Log1pTheorem.lean), [the exceptional 
 
 ### Modules
 
-The chain has 12 modules of its own, listed in dependency order below.  It reuses `LogCoreBits.kd_value` of [the logarithm's proof](../Log/LogCoreBits.lean) for the conversion of `k`, and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules below them, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the root `Verified` import](../../../../Verified.lean) also includes.
+The chain has 12 modules of its own, listed in dependency order below.  It reuses `LogCoreBits.kd_value` of [the logarithm's proof](../Log/LogCoreBits.lean) for the conversion of `k`, and `AtanTheoremConst` and `AtanTheoremReduce` of [the arctangent's proof](../Atan/README.md), with the modules below them, for rational evaluation and word facts.  `tests/verified/run.sh` builds the chain through `Library.Numerics.Float64.Log1p.Log1pBytes`, which [the library aggregate](../../../../Library.lean) also includes.
 
 | Module | Content |
 |---|---|

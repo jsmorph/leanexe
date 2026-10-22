@@ -1,7 +1,7 @@
 import Library.Random.Xorshift.Period
 import LeanExe.IR.Combinators
 
-/-! `jump` of `Examples/Xorshift/Program.lean` computes `advance`.  A map on words that distributes
+/-! `jump` of `Library/Random/Xorshift/Program.lean` computes `advance`.  A map on words that distributes
 over xor is the xor of its columns, the images of `2^i`, at the set bits of its argument, which the
 decomposition of a word into its bits gives, so `applyCols` of the columns of such a map computes
 it and `square` gives the columns of its square.  After `k` passes, `jump`'s state holds

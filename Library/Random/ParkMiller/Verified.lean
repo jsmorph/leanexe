@@ -2,9 +2,9 @@ import Verified.Reflect.Command
 import Library.Random.ParkMiller.Period
 
 /-! The thirty-third program of the verified compiler: Park and Miller's generator of
-`Examples/ParkMiller/Program.lean`, compiled unchanged.  None of `step`, `advance`, and `seed`
+`Library/Random/ParkMiller/Program.lean`, compiled unchanged.  None of `step`, `advance`, and `seed`
 allocates, so the compiler's theorem states that the module computes each of them without a trap.
-`parkMiller_advance` adds the theorems of `Examples/ParkMiller/Period.lean` that every seed gives a
+`parkMiller_advance` adds the theorems of `Library/Random/ParkMiller/Period.lean` that every seed gives a
 state in `[1, 2^31 - 2]` and that from such a state each state of the range occurs at exactly one
 count below the period `2^31 - 2`. -/
 

@@ -5,10 +5,10 @@ import Mathlib.Data.Fintype.Card
 import Mathlib.Dynamics.PeriodicPts.Lemmas
 import Mathlib.Tactic.NormNum.Prime
 
-/-! The period of Marsaglia's xorshift64 generator of `Examples/Xorshift/Program.lean`.  Each of
+/-! The period of Marsaglia's xorshift64 generator of `Library/Random/Xorshift/Program.lean`.  Each of
 the three operations of a step distributes over xor and is injective, so the step is a bijection
 on words that maps 0 to 0, and a nonzero state never becomes 0.  The kernel checks, with the
-jump-ahead tables of `Examples/Xorshift/Columns.lean`, that the state 1 returns after `2^64 - 1`
+jump-ahead tables of `Library/Random/Xorshift/Columns.lean`, that the state 1 returns after `2^64 - 1`
 steps and after no `(2^64 - 1) / q` steps for the seven prime factors `q` of `2^64 - 1`.  Its orbit
 therefore holds all `2^64 - 1` nonzero words, and every nonzero state has the period `2^64 - 1`. -/
 

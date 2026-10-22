@@ -8,7 +8,7 @@ import Mathlib.Dynamics.PeriodicPts.Lemmas
 import Mathlib.Tactic.LinearCombination
 import Mathlib.Tactic.Ring
 
-/-! The periods of the linear congruential generator of `Examples/Lcg/Program.lean`.  From any
+/-! The periods of the linear congruential generator of `Library/Random/Lcg/Program.lean`.  From any
 word, `affine a c` returns to that word after `2^64` steps and not before if and only if
 `a % 4 = 1` and `c % 2 = 1`, which are Hull and Dobell's conditions for the modulus `2^64`.  Under
 these conditions, `2^k` steps complement bit `k` of the state, so the periods of bit `k` are the

@@ -2,10 +2,10 @@ import Verified.Reflect.Command
 import Library.Random.Lcg.Jump
 
 /-! The thirty-second program of the verified compiler: the linear congruential generator of
-`Examples/Lcg/Program.lean`, compiled unchanged.  None of its functions allocates, so the compiler's
+`Library/Random/Lcg/Program.lean`, compiled unchanged.  None of its functions allocates, so the compiler's
 theorem states that the module computes each of them without a trap.  `lcg_advance` adds the
-theorem of `Examples/Lcg/Period.lean` that from every word each word occurs at exactly one count,
-and `lcg_jump` the theorem of `Examples/Lcg/Jump.lean` that `jump` computes `advance`. -/
+theorem of `Library/Random/Lcg/Period.lean` that from every word each word occurs at exactly one count,
+and `lcg_jump` the theorem of `Library/Random/Lcg/Jump.lean` that `jump` computes `advance`. -/
 
 namespace Library.Random.Lcg
 

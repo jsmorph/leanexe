@@ -120,8 +120,8 @@ theorem asym_fast_err (hF : FmaNearest) (x : Float) (hx : ff x)
     ff (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).1 ∧
       ff (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).2 ∧
       |fv (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).1 +
-        fv (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).2 - erfc (fv x)| ≤
-          erfc (fv x) / 2 ^ 57 ∧
+        fv (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).2 - RealErf.erfc (fv x)| ≤
+          RealErf.erfc (fv x) / 2 ^ 57 ∧
       |fv (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).1| ≤ 1 ∧
       |fv (asymFastHL Erfc.expTable Erfc.asymTable 1.0 2.0 x).2| ≤ 1 := by
   -- the range of `x`
@@ -249,7 +249,7 @@ theorem asym_fast_err (hF : FmaNearest) (x : Float) (hx : ff x)
   set G := fv x * erfcx (fv x) with hGdef
   set E0 := Real.exp (-(fv x) ^ 2) with hE0
   have hE00 : 0 < E0 := Real.exp_pos _
-  have herfc : erfc (fv x) = E0 / fv x * G := by
+  have herfc : RealErf.erfc (fv x) = E0 / fv x * G := by
     rw [erfc_eq, hGdef, hE0]
     field_simp
   set δ := fv x * fv x - (fv (Erfc.aMul x x).1 + fv (Erfc.aMul x x).2) with hδdef

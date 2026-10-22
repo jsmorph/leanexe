@@ -369,7 +369,7 @@ theorem tail_erf_a (X : UInt64) (hX : Finite X) (hlo : 5 / 4 ≤ value X) (hhi :
         (Wasm.IEEE64.mul (Wasm.IEEE64.sub (zWord X) X) (Wasm.IEEE64.add (zWord X) X))
         (Wasm.IEEE64.div (hornerW raW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X)))
           (hornerW saW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X))))))) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.sub 0x3FF0000000000000 (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X)) := by
   rcases le_or_gt (value X) ((678327 / 524288 : ℚ) : ℝ) with h0 | h0
   · exact tail_erf_word tailRA tailSA raW saW ra_rel sa_rel (by simp [tailRA]) (by simp [tailSA]) _ _ _ _ tok0 tcrit0
@@ -494,7 +494,7 @@ theorem tail_erf_b (X : UInt64) (hX : Finite X) (hlo : (tailB2 : ℝ) ≤ value 
         (Wasm.IEEE64.mul (Wasm.IEEE64.sub (zWord X) X) (Wasm.IEEE64.add (zWord X) X))
         (Wasm.IEEE64.div (hornerW rbW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X)))
           (hornerW sbW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X))))))) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.sub 0x3FF0000000000000 (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X)) := by
   rcases le_or_gt (value X) ((847569 / 262144 : ℚ) : ℝ) with h24 | h24
   · exact tail_erf_word tailRB tailSB rbW sbW rb_rel sb_rel (by simp [tailRB]) (by simp [tailSB]) _ _ _ _ tok24 tcrit24

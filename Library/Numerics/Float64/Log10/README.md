@@ -73,7 +73,7 @@ Every theorem in the table has a `#print axioms` line, and `log10_bytes_accuracy
 
 ### Modules
 
-The proof has six modules in `Verified/Examples/` above the implementation, besides the file module.  It reuses the guards of `LogBranches`, the subnormal and power lemmas of the `log2` proof, and `Log1pKernelPoly` for the polynomial.  The table lists them in dependency order, and [the root `Verified` import](../../../../Verified.lean) includes `Log10Theorem`.
+The proof has six modules in `Library/Numerics/Float64/Log10/` above the implementation, besides the file module.  It reuses the guards of `LogBranches`, the subnormal and power lemmas of the `log2` proof, and `Log1pKernelPoly` for the polynomial.  The table lists them in dependency order, and [the library aggregate](../../../../Library.lean) includes `Log10Theorem`.
 
 | Module | Content |
 |---|---|

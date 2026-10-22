@@ -80,7 +80,7 @@ Each public declaration of `ExpTheorem.lean` has a `#print axioms` line.  `tests
 
 ### Modules
 
-The table lists the proof modules by stage, in dependency order within each stage.  [The root `Verified` import](../../../../Verified.lean) reaches `ExpTheorem` and `ExpFarRange` through the numerical proofs.  `tests/verified/run.sh` also names `Library.Numerics.Float64.Exp.ExpTheorem` as a target before checking its emitted file.  Three modules declare their theorems in the namespace of an earlier module: `ExpEvaluationFloat` in `ExpEvaluationBounds`, `ExpResidualFloat` in `ExpResidualBounds`, and `ExpNegativeFinal` in `ExpSpecialNegative`.
+The table lists the proof modules by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) reaches `ExpTheorem` and `ExpFarRange` through the numerical proofs.  `tests/verified/run.sh` also names `Library.Numerics.Float64.Exp.ExpTheorem` as a target before checking its emitted file.  Three modules declare their theorems in the namespace of an earlier module: `ExpEvaluationFloat` in `ExpEvaluationBounds`, `ExpResidualFloat` in `ExpResidualBounds`, and `ExpNegativeFinal` in `ExpSpecialNegative`.
 
 | Stage | Modules | Content |
 |---|---|---|

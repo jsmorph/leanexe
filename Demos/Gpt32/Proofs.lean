@@ -3,7 +3,7 @@ import Demos.Gpt32.Specs
 
 /-!
 The element lemmas and dispatch theorems of the binary32 GPT-2 kernels of
-`Examples/Gpt32/Specs.lean`.  `dotLoop_denote` gives the denotation of the compiler's loop that
+`Demos/Gpt32/Specs.lean`.  `dotLoop_denote` gives the denotation of the compiler's loop that
 accumulates products, which four kernels share.
 -/
 

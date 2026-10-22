@@ -4,7 +4,7 @@ import LeanExe.IR.Combinators
 import LeanExe.WGSL.Workgroup
 
 /-!
-The meaning of the programs of `Examples/Gpt32/HostProgram.lean`.
+The meaning of the programs of `Demos/Gpt32/HostProgram.lean`.
 
 A host command acts on a store of named buffers of 32-bit words as `leanexe-webgpu-host session`
 does: `load` reads a file, `words` and `output` make a buffer, replacing any buffer of that name,

@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Generate data/strconv/parse-cases.txt, the cases of Verified/Examples/ParseFloatAccuracy.lean.
+"""Generate data/strconv/parse-cases.txt, the cases of tests/TestSupport/Numerics/ParseFloatAccuracy.lean.
 
 Usage: uv run tools/strconv/parse_cases.py TAO_DATA_DIR GO_TESTFP OUTPUT
 

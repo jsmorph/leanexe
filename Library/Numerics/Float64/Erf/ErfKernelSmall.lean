@@ -95,7 +95,7 @@ theorem series_bounds (z : ℝ) (hz0 : 0 ≤ z) (hz : z ≤ 729 / 1024) :
 /-- The kernel's error relative to `|x|`: `|erf x - x - x R (x²)| ≤ (21/32) 2^-55 |x|` for
 `|x| ≤ 0.84375`. -/
 theorem small_kernel_error (x : ℝ) (hx : |x| ≤ 27 / 32) :
-    |erf x - x - x * (eval erfPP (x ^ 2) / eval erfQQ (x ^ 2))| ≤
+    |RealErf.erf x - x - x * (eval erfPP (x ^ 2) / eval erfQQ (x ^ 2))| ≤
       |x| * ((21 / 32) / 2 ^ 55) := by
   have hz0 : 0 ≤ x ^ 2 := sq_nonneg x
   have hz : x ^ 2 ≤ 729 / 1024 := by
@@ -125,8 +125,8 @@ theorem small_kernel_error (x : ℝ) (hx : |x| ≤ 27 / 32) :
             |x| * (2 * (27 / 32) ^ 40 / 99748982335242240000) by ring]
           apply mul_le_mul_of_nonneg_left _ hax
           norm_num
-  have hsplit : erf x - x - x * (eval erfPP (x ^ 2) / eval erfQQ (x ^ 2)) =
-      (erf x - scale * (x * eval (erfCoeffs 20) (x ^ 2))) +
+  have hsplit : RealErf.erf x - x - x * (eval erfPP (x ^ 2) / eval erfQQ (x ^ 2)) =
+      (RealErf.erf x - scale * (x * eval (erfCoeffs 20) (x ^ 2))) +
         x * ((scale - kappaLo) * eval (erfCoeffs 20) (x ^ 2)) +
         x * ((kappaLo : ℝ) * eval (erfCoeffs 20) (x ^ 2) - 1 -
           eval erfPP (x ^ 2) / eval erfQQ (x ^ 2)) := by ring
@@ -141,7 +141,7 @@ theorem small_kernel_error (x : ℝ) (hx : |x| ≤ 27 / 32) :
       eval erfPP (x ^ 2) / eval erfQQ (x ^ 2))| ≤ |x| * smallEps := by
     rw [abs_mul]
     exact mul_le_mul_of_nonneg_left hp hax
-  have hsum := abs_add_three (erf x - scale * (x * eval (erfCoeffs 20) (x ^ 2)))
+  have hsum := abs_add_three (RealErf.erf x - scale * (x * eval (erfCoeffs 20) (x ^ 2)))
     (x * ((scale - kappaLo) * eval (erfCoeffs 20) (x ^ 2)))
     (x * ((kappaLo : ℝ) * eval (erfCoeffs 20) (x ^ 2) - 1 -
       eval erfPP (x ^ 2) / eval erfQQ (x ^ 2)))

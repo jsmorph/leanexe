@@ -5,7 +5,7 @@ import Mathlib.NumberTheory.LucasPrimality
 import Mathlib.Tactic.ReduceModChar
 import Mathlib.Tactic.NormNum.Prime
 
-/-! The period of Park and Miller's generator of `Examples/ParkMiller/Program.lean`.  The modulus
+/-! The period of Park and Miller's generator of `Library/Random/ParkMiller/Program.lean`.  The modulus
 `2^31 - 1` is prime, by Lucas's test with the witness 16807, and 16807 has order `2^31 - 2` modulo
 it, so from every state in `[1, 2^31 - 2]` the generator returns after `2^31 - 2` steps and not
 before, and it reaches each state in the range once per period.  The finite checks are eight powers

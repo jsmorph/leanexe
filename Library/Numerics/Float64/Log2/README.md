@@ -67,7 +67,7 @@ Every theorem in the table has a `#print axioms` line.  `log2_bytes_accuracy` re
 
 ### Modules
 
-The proof has ten modules in `Verified/Examples/` above the implementation, besides the file module, and it reuses the logarithm's modules for the word arithmetic, the branch guards, the table method, and the subnormal scaling.  The table lists them by stage, in dependency order within each stage.  [The root `Verified` import](../../../../Verified.lean) includes `Log2Theorem` and `Log2Power`.
+The proof has ten modules in `Library/Numerics/Float64/Log2/` above the implementation, besides the file module, and it reuses the logarithm's modules for the word arithmetic, the branch guards, the table method, and the subnormal scaling.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) includes `Log2Theorem` and `Log2Power`.
 
 | Stage | Modules | Content |
 |---|---|---|

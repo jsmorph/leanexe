@@ -5,12 +5,12 @@ import Demos.Drone.Flat
 import Demos.Drone.WholeFlight
 
 /-! The thirty-first program of the verified compiler: the drone planner of
-`Examples/Drone/Program.lean`, compiled unchanged.  The planner finds the flight of least duration
+`Demos/Drone/Program.lean`, compiled unchanged.  The planner finds the flight of least duration
 over up to 64 stations of terrain, with the altitude above the floors as the second criterion,
 among 45 states per station, and returns the altitude and speed at each station.  The program
 lists `floorAt` and `best`, which `LeanExe` inlines, as functions, and the reflector reflects the
 named constants `stateCount`, `infinity`, and `unreachable` as their values.  `Choice` is
-represented as its three words by the instance of `Examples/Drone/Flat.lean`.  The compiler's
+represented as its three words by the instance of `Demos/Drone/Flat.lean`.  The compiler's
 theorem states that the module computes `compute`, or traps at `unreachable`, which it allows on
 any input since an allocation traps when memory runs out.  With the planner's own theorems,
 `compute_correct` and `compute_safe`, which concern the Lean definition, `drone_compute` and

@@ -76,7 +76,7 @@ Each constant is written as `Float.ofBits` of its bit pattern with fdlibm's deci
 
 ## Theorems
 
-The theorems are in [the expm1 theorem](Expm1Theorem.lean), [its exceptional values](Expm1Special.lean), [the tanh theorem](TanhMain.lean), [its exceptional values](TanhSpecial.lean), [the byte theorems](TanhBytes.lean), and [the file module](TanhFile.lean), each in the namespace `Verified.Examples` followed by the module's name.  `x` is a Lean `Float`, `a = value x.toBits`, and a word is the `UInt64` bit pattern of a double.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
+The theorems are in [the expm1 theorem](Expm1Theorem.lean), [its exceptional values](Expm1Special.lean), [the tanh theorem](TanhMain.lean), [its exceptional values](TanhSpecial.lean), [the byte theorems](TanhBytes.lean), and [the file module](TanhFile.lean), each in the namespace `Library.Numerics.Float64.Tanh` followed by the module's name.  `x` is a Lean `Float`, `a = value x.toBits`, and a word is the `UInt64` bit pattern of a double.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
 
 | Theorem | Statement |
 |---|---|
@@ -97,7 +97,7 @@ Each of these theorems has a `#print axioms` line.  In a run of `tests/verified/
 
 ### Modules
 
-The proof has 31 modules in `Verified/Examples/` above the implementation, and it uses `ExpReductionBounds` from the exponential's proof for an enclosure of `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The root `Verified` import](../../../../Verified.lean) includes `TanhBytes` and `Expm1Near`, so `lake build Verified Library` builds the chain.
+The proof has 31 modules in `Library/Numerics/Float64/Tanh/` above the implementation, and it uses `ExpReductionBounds` from the exponential's proof for an enclosure of `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) includes `TanhBytes` and `Expm1Near`, so `lake build Verified Library` builds the chain.
 
 | Stage | Modules | Content |
 |---|---|---|

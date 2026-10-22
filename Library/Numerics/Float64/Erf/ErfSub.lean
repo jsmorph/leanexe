@@ -94,7 +94,7 @@ theorem efx8_mul (X : UInt64) (hX : Finite X) (hx0 : 0 < value X) (hx1 : value X
 /-- One step for `erf x` on `[2^-1022, 2^-1015]`. -/
 theorem erf_sub_normal (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1022 ≤ value X)
     (hhi : value X ≤ 1 / 2 ^ 1015) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.div (Wasm.IEEE64.add (Wasm.IEEE64.mul 0x4020000000000000 X)
         (Wasm.IEEE64.mul 0x3FF06EBA8214DB69 X)) 0x4020000000000000) := by
   set x := value X with hxdef
@@ -158,7 +158,7 @@ theorem erf_sub_normal (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1022 ≤ valu
     have : x ^ 2 ≤ (1 / 2 ^ 1015) ^ 2 := pow_le_pow_left₀ hx0.le hhi 2
     norm_num at this ⊢
     linarith
-  have hylo : (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 2030 / 3) ≤ erf x := by
+  have hylo : (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 2030 / 3) ≤ RealErf.erf x := by
     rcases erf_ge x hx0.le with h | h
     · have hf : (1 - 1 / 2 ^ 2030 / 3 : ℝ) ≤ 1 - x ^ 2 / 3 := by linarith
       have := mul_le_mul_of_nonneg_left hf (by positivity : (0 : ℝ) ≤
@@ -173,7 +173,7 @@ theorem erf_sub_normal (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1022 ≤ valu
       _ ≤ 2 * (x * (1 / 2 ^ 2030) / 3) :=
           mul_le_mul h2 (div_le_div_of_nonneg_right h1 (by norm_num)) (by positivity) (by norm_num)
       _ = 2 * (1 / 2 ^ 2030 / 3) * x := by ring
-  apply F64RelativeSteps.within_steps_relative 1 le_rfl (by norm_num) (erf x) _ hcf
+  apply F64RelativeSteps.within_steps_relative 1 le_rfl (by norm_num) (RealErf.erf x) _ hcf
   · rw [abs_of_pos (lt_of_lt_of_le (by positivity) hylo)]
     have h1 : (333038747416263463341 / 2 ^ 68 : ℝ) * (1 / 2 ^ 1022) * (1 - 1 / 2 ^ 2030 / 3) ≤
         (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 2030 / 3) := by gcongr
@@ -181,13 +181,13 @@ theorem erf_sub_normal (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1022 ≤ valu
         (333038747416263463341 / 2 ^ 68 : ℝ) * (1 / 2 ^ 1022) * (1 - 1 / 2 ^ 2030 / 3) := by
       norm_num
     linarith
-  · have hy0 : 0 < erf x := lt_of_lt_of_le (by positivity) hylo
+  · have hy0 : 0 < RealErf.erf x := lt_of_lt_of_le (by positivity) hylo
     rw [abs_of_pos hy0, hu, hcv]
-    have hdec : value S / 8 - erf x = (value S - (8 * x + value B)) / 8 +
-        (value B - 8 * efxQ * x) / 8 + (x + efxQ * x - erf x) := by ring
+    have hdec : value S / 8 - RealErf.erf x = (value S - (8 * x + value B)) / 8 +
+        (value B - 8 * efxQ * x) / 8 + (x + efxQ * x - RealErf.erf x) := by ring
     rw [hdec]
     have h1 := abs_add_le ((value S - (8 * x + value B)) / 8 + (value B - 8 * efxQ * x) / 8)
-      (x + efxQ * x - erf x)
+      (x + efxQ * x - RealErf.erf x)
     have h2 := abs_add_le ((value S - (8 * x + value B)) / 8) ((value B - 8 * efxQ * x) / 8)
     have h3 : |(value S - (8 * x + value B)) / 8| ≤ 1 / 2 ^ 53 * (8 * x + value B) / 8 := by
       rw [abs_div, abs_of_pos (by norm_num : (0 : ℝ) < 8)]
@@ -204,14 +204,14 @@ theorem erf_sub_normal (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1022 ≤ valu
       nlinarith
     have h6 : ((1 : ℕ) + 3 / 8) * (1 / (2 : ℝ) ^ 53) *
         ((333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 2030 / 3)) ≤
-        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * erf x :=
+        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * RealErf.erf x :=
       mul_le_mul_of_nonneg_left hylo (by positivity)
     linarith
 
 /-- One step for `erf x` below `2^-1022`. -/
 theorem erf_subnormal (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hhi : value X < 1 / 2 ^ 1022) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.div (Wasm.IEEE64.add (Wasm.IEEE64.mul 0x4020000000000000 X)
         (Wasm.IEEE64.mul 0x3FF06EBA8214DB69 X)) 0x4020000000000000) := by
   set x := value X with hxdef
@@ -317,16 +317,16 @@ theorem erf_subnormal (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     have h2 : (1120 / 10000 : ℝ) * (1 / 2 ^ 53) * (1 / 2 ^ 1022) = 1120 / 10000 * (1 / 2 ^ 1075) := by
       norm_num
     linarith
-  have hy0 : 0 ≤ erf x := by
+  have hy0 : 0 ≤ RealErf.erf x := by
     have := erf_strictMono.monotone hx0.le
     rwa [erf_zero] at this
-  have herr : |value c - erf x| < (2 * 1 + 1) * (1 / 2 ^ 1074) / 2 := by
-    have hdec : value c - erf x = (value c - value S / 8) +
+  have herr : |value c - RealErf.erf x| < (2 * 1 + 1) * (1 / 2 ^ 1074) / 2 := by
+    have hdec : value c - RealErf.erf x = (value c - value S / 8) +
         (value S - (8 * x + value B)) / 8 + (value B - 8 * efxQ * x) / 8 +
-        (x + efxQ * x - erf x) := by ring
+        (x + efxQ * x - RealErf.erf x) := by ring
     rw [hdec]
     have h1 := abs_add_le ((value c - value S / 8) + (value S - (8 * x + value B)) / 8 +
-      (value B - 8 * efxQ * x) / 8) (x + efxQ * x - erf x)
+      (value B - 8 * efxQ * x) / 8) (x + efxQ * x - RealErf.erf x)
     have h2 := abs_add_le ((value c - value S / 8) + (value S - (8 * x + value B)) / 8)
       ((value B - 8 * efxQ * x) / 8)
     have h3 := abs_add_le (value c - value S / 8) ((value S - (8 * x + value B)) / 8)
@@ -391,10 +391,10 @@ theorem erf_subnormal (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     rw [div_finite_rounder S _ hSf eight_finite hb0]
     rw [(F64RationalBounds.rational_relative _ _ _ hb0 hbound).2.1, hSs, hes]
     rfl
-  have herr' : |value c - erf x| < (2 * ((1 : ℕ) : ℝ) + 1) * (1 / 2 ^ 1074) / 2 := by
+  have herr' : |value c - RealErf.erf x| < (2 * ((1 : ℕ) : ℝ) + 1) * (1 / 2 ^ 1074) / 2 := by
     rw [Nat.cast_one]
     exact herr
-  exact F64RelativeSteps.within_steps_low 1 le_rfl (by norm_num) (erf x) hy0 c hcf hcs herr'
+  exact F64RelativeSteps.within_steps_low 1 le_rfl (by norm_num) (RealErf.erf x) hy0 c hcf hcs herr'
 
 #print axioms sign_false_of_pos
 #print axioms eight_mul

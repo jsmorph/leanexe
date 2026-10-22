@@ -140,7 +140,7 @@ structure Weights32 where
 
 /-- The shape of the model: the heads, the width of the MLP, the rows of a chunk of the token
 embedding, the rows of each chunk, and the number of layers, which `step32` takes from the
-weights and the programs of `Examples/Gpt32/Program.lean` from here. -/
+weights and the programs of `Demos/Gpt32/Program.lean` from here. -/
 structure Shape32 where
   nh : UInt64
   f : UInt64

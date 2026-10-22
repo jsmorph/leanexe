@@ -163,7 +163,7 @@ theorem erfFast_err (hF : FmaNearest) (z : Float) (hz : ff z) (h0 : 0 ≤ fv z)
       |fv (Erfc.erfFast Erfc.fastTable z).2.2| ≤ 1 / 2 ^ 60 ∧
       |fv (Erfc.erfFast Erfc.fastTable z).2.1| ≤ 2 * (1 / 2 ^ 53) ∧
       |fv (Erfc.erfFast Erfc.fastTable z).1 + fv (Erfc.erfFast Erfc.fastTable z).2.1 -
-        erf (fv z)| ≤ zTarget (fv z) := by
+        RealErf.erf (fv z)| ≤ zTarget (fv z) := by
   obtain ⟨hL, htL, -⟩ := aux_ok
   obtain ⟨e1f, e1v, e2f, e2v⟩ := err_words
   have f0625 := (ErfcFastRow.lit_vals).2.2.2.2.1
@@ -215,7 +215,7 @@ theorem zTarget_abs (z : ℝ) (h0 : 0 ≤ z) (h1 : z < 95 / 16) : zTarget z ≤ 
 theorem xMax_val : (xMax : ℝ) = 0x1713786d9c7c09 / 2 ^ 51 := by unfold xMax; push_cast; ring
 
 theorem zTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xMax) :
-    zTarget z ≤ 7 / 8 * (1 / 2 ^ 53) * erfc z := by
+    zTarget z ≤ 7 / 8 * (1 / 2 ^ 53) * RealErf.erfc z := by
   obtain ⟨-, -, hpos⟩ := aux_ok
   have hxm : (xMax : ℝ) < 47 / 16 := by rw [xMax_val]; norm_num
   unfold zTarget
@@ -224,7 +224,7 @@ theorem zTarget_rel (z : ℝ) (h0 : 0 ≤ z) (h1 : z ≤ xMax) :
     have h := hpos 0 (by norm_num)
     rw [show min (((0 + 1 : ℕ) : ℚ) / 16) xMax = 1 / 16 by unfold xMax; norm_num] at h
     have hg := erfc_ge 80 (1 / 16) (by norm_num) h
-    have hm : erfc ((1 / 16 : ℚ) : ℝ) ≤ erfc z :=
+    have hm : RealErf.erfc ((1 / 16 : ℚ) : ℝ) ≤ RealErf.erfc z :=
       erfc_strictAnti.antitone (by push_cast; linarith)
     push_cast at hg hm ⊢
     nlinarith

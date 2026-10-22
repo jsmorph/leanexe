@@ -2,7 +2,7 @@ import Demos.Gpt32.Specs
 import LeanExe.WGSL.Parse
 
 /-!
-Runs the programs of `Examples/Gpt32/HostProgram.lean` on `leanexe-webgpu-host session`.  The driver
+Runs the programs of `Demos/Gpt32/HostProgram.lean` on `leanexe-webgpu-host session`.  The driver
 writes each kernel's WGSL text, starts the host, sends the shader commands and then the lines of
 `setupItems` and of `stepItems` for each position, which are the commands of
 `Demos.Gpt32.generate_host`, and reads the scores after each step from the last prompt position

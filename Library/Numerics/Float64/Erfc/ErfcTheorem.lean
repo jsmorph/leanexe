@@ -35,7 +35,7 @@ theorem exp_neg_nat_le (n : ℕ) : exp (-(n : ℝ)) ≤ ((10 ^ 10 / 27182818283 
 
 /-- `erfc z ≤ exp (-n) · 0.57 / z` for `z ≥ 2` and `n ≤ z²`. -/
 theorem erfc_le_exp (z : ℝ) (h2 : 2 ≤ z) (n : ℕ) (hn : (n : ℝ) ≤ z ^ 2) :
-    erfc z ≤ ((10 ^ 10 / 27182818283 : ℚ) : ℝ) ^ n * (57 / 100) / z := by
+    RealErf.erfc z ≤ ((10 ^ 10 / 27182818283 : ℚ) : ℝ) ^ n * (57 / 100) / z := by
   have hG := G_bounds z h2
   have hz0 : 0 < z := by linarith
   have hE : exp (-z ^ 2) ≤ ((10 ^ 10 / 27182818283 : ℚ) : ℝ) ^ n :=
@@ -47,7 +47,7 @@ theorem erfc_le_exp (z : ℝ) (h2 : 2 ≤ z) (n : ℕ) (hn : (n : ℝ) ≤ z ^ 2
 
 /-- `erfc z < 2^-52` for `z ≥ 0x1.7744f8f74e94bp2`. -/
 theorem erfc_upper_neg (z : ℝ) (hz : (ratOfWord 0x4017744F8F74E94B : ℝ) ≤ z) :
-    erfc z < 1 / 2 ^ 52 := by
+    RealErf.erfc z < 1 / 2 ^ 52 := by
   have k : (5863 / 1000 : ℚ) ≤ ratOfWord 0x4017744F8F74E94B ∧
       (10 ^ 10 / 27182818283 : ℚ) ^ 34 * (57 / 100) / (5863 / 1000) < 1 / 2 ^ 52 := by
     decide +kernel
@@ -63,7 +63,7 @@ theorem erfc_upper_neg (z : ℝ) (hz : (ratOfWord 0x4017744F8F74E94B : ℝ) ≤ 
 
 /-- `erfc z < 2^-1074` for `z ≥ 0x1.b39dc41e48bfdp+4`. -/
 theorem erfc_upper_big (z : ℝ) (hz : (ratOfWord 0x403B39DC41E48BFD : ℝ) ≤ z) :
-    erfc z < 1 / 2 ^ 1074 := by
+    RealErf.erfc z < 1 / 2 ^ 1074 := by
   have k : (27226 / 1000 : ℚ) ≤ ratOfWord 0x403B39DC41E48BFD ∧
       (10 ^ 10 / 27182818283 : ℚ) ^ 741 * (57 / 100) / (27226 / 1000) < 1 / 2 ^ 1074 := by
     decide +kernel
@@ -79,7 +79,7 @@ theorem erfc_upper_big (z : ℝ) (hz : (ratOfWord 0x403B39DC41E48BFD : ℝ) ≤ 
 
 /-- `erf z` for `0 ≤ z ≤ T` is at most the series bound at `T` with one term. -/
 theorem tiny_erf (z : ℝ) (T : ℚ) (h0 : 0 ≤ z) (hT : z ≤ T) :
-    erf z ≤ ((sHi * evalQ (ser 1) T + sHi * serRem 1 T : ℚ) : ℝ) := by
+    RealErf.erf z ≤ ((sHi * evalQ (ser 1) T + sHi * serRem 1 T : ℚ) : ℝ) := by
   have hT0 : (0 : ℝ) ≤ T := h0.trans hT
   have hS : 0 ≤ evalQ (ser 1) T := by
     have : evalQ (ser 1) T = T := by
@@ -174,7 +174,7 @@ theorem range_words :
 
 /-- One step for every finite `x`, given `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`. -/
 theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.erfcWith Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable Erfc.asymAccTable
         Erfc.expAccTable Erfc.excTable x).toBits := by
   obtain ⟨wn, fn, fp, fc, vc, bn, bp, n0, p0, n1, p1, w47, wbig, wl1, wl2⟩ := range_words
@@ -212,7 +212,7 @@ theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
         have hz := (mag_le x _ wl1).mp hm
         rw [habs, ← ratOfWord_cast] at hz
         have hup := erfc_upper_neg (-fv x) hz
-        have hy : erfc (fv x) = 2 - erfc (-fv x) := by
+        have hy : RealErf.erfc (fv x) = 2 - RealErf.erfc (-fv x) := by
           rw [show fv x = -(-fv x) by ring, erfc_neg, neg_neg]
         have hw : (2.0 - Float.ofBits 0x3C90000000000000).toBits = 0x4000000000000000 := by
           rw [F64Bits.toBits_sub, F64Bits.toBits_ofBits,
@@ -226,7 +226,7 @@ theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
         refine word_within _ _ (by decide) 1023 (by norm_num) (by norm_num) ?_ ?_ ?_
         · norm_num; linarith
         · linarith [show (2 : ℝ) < 2 ^ 1023 by norm_num]
-        · rw [hv2, show (2 : ℝ) - (2 - erfc (-fv x)) = erfc (-fv x) by ring, abs_of_pos hp]
+        · rw [hv2, show (2 : ℝ) - (2 - RealErf.erfc (-fv x)) = RealErf.erfc (-fv x) by ring, abs_of_pos hp]
           norm_num; linarith
     · rename_i h1
       have h1' : x.toBits.toNat < (0xC017744F8F74E94B : UInt64).toNat := by
@@ -250,8 +250,8 @@ theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
           rw [tv, wn] at this; push_cast at this; exact this
         have herf := tiny_erf (-fv x) _ (by linarith) (by linarith)
         have herf0 := erf_nonneg (-fv x) (by linarith)
-        have hy : erfc (fv x) = 1 + erf (-fv x) := by
-          unfold erfc; rw [erf_neg]; ring
+        have hy : RealErf.erfc (fv x) = 1 + RealErf.erf (-fv x) := by
+          unfold RealErf.erfc; rw [erf_neg]; ring
         have k1 : ((ratOfWord 0x3C9C5BF891B4EF6A / 2 ^ 54 +
             (sHi * evalQ (ser 1) (ratOfWord 0x3C9C5BF891B4EF6A) +
               sHi * serRem 1 (ratOfWord 0x3C9C5BF891B4EF6A)) : ℚ) : ℝ) < ((1 / 2 ^ 53 : ℚ) : ℝ) := by
@@ -307,7 +307,7 @@ theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
         rw [hw]
         have hp := erfc_pos (fv x)
         refine within_small 0 (by unfold CodeLib.IEEE64.Finite; decide) (by
-          rw [F64Magnitude.value_zero]) _ hp.le (by unfold erfc; linarith) ?_
+          rw [F64Magnitude.value_zero]) _ hp.le (by unfold RealErf.erfc; linarith) ?_
         rw [F64Magnitude.value_zero, zero_sub, abs_neg, abs_of_pos hp]
         exact hup
     · rename_i h1
@@ -336,7 +336,7 @@ theorem erfcWith_within (hF : FmaNearest) (x : Float) (hx : ff x) :
         have hc := nearest_of_fma hF (-x) (Float.ofBits 0x3C90000000000000) 1.0 nf cf of
           (by rw [hs]; nlinarith) (by rw [hs]; nlinarith)
         rw [hs] at hc
-        have hy : erfc (fv x) = 1 - erf (fv x) := rfl
+        have hy : RealErf.erfc (fv x) = 1 - RealErf.erf (fv x) := rfl
         rw [hy]
         refine F64NearestSteps.within_of_interior _ _ _ 1022 (by norm_num) (by norm_num)
           (by norm_num; nlinarith)

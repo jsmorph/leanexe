@@ -57,8 +57,8 @@ theorem encl : AsymEncl Library.Numerics.Float64.Erf.ErfTailPieces0.p0 Library.N
     Library.Numerics.Float64.Erf.ErfTailPieces0.eD0 30 los his (ratOfWord 0x403A8F7BFBD15495) yLo yHi := by
   decide +kernel
 
-theorem erfc_encl : (yLo : ℝ) ≤ erfc (ratOfWord 0x403A8F7BFBD15495 : ℚ) ∧
-    erfc (ratOfWord 0x403A8F7BFBD15495 : ℚ) ≤ yHi :=
+theorem erfc_encl : (yLo : ℝ) ≤ RealErf.erfc (ratOfWord 0x403A8F7BFBD15495 : ℚ) ∧
+    RealErf.erfc (ratOfWord 0x403A8F7BFBD15495 : ℚ) ≤ yHi :=
   asym_encl _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces0.model0 encl
 
 theorem conds : Finite (0x0000000000000001 : UInt64) ∧ Finite (0x000667BD620FD95B : UInt64) ∧
@@ -74,7 +74,7 @@ theorem conds : Finite (0x0000000000000001 : UInt64) ∧ Finite (0x000667BD620FD
 /-- One step for `erfc_asympt_accurate`'s result at `0x1.a8f7bfbd15495p+4`. -/
 theorem special_within (hF : FmaNearest) (x : Float) (hx : ff x)
     (heq : (x == Float.ofBits 0x403A8F7BFBD15495) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Library.Numerics.Arithmetic.Fma.fma (Float.ofBits 0x0000000000000001) (-0.25)
         (Float.ofBits 0x000667BD620FD95B)).toBits := by
   obtain ⟨f1, fc, fq, fx, v1, vq, d1, d2, d3, d4, d5⟩ := conds

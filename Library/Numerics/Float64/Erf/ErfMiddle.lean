@@ -51,7 +51,7 @@ theorem ok12 : middleOK (7 / 32 : ℚ) (1 / 4 : ℚ) = true := by
 
 /-- One step for `erf x` with `x` in `[27/32, 5/4]`, from the word `x - 1`. -/
 theorem middle_erf_all (X : UInt64) (hX : Finite X) (hlo : 27 / 32 ≤ value X) (hhi : value X ≤ 5 / 4) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add 0x3FEB0AC160000000
         (Wasm.IEEE64.div (hornerW paW (Wasm.IEEE64.sub X 0x3FF0000000000000))
           (hornerW qaW (Wasm.IEEE64.sub X 0x3FF0000000000000)))) := by

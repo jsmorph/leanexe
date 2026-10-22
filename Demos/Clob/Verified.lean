@@ -3,7 +3,7 @@ import Demos.Clob.Commands
 
 /-! The twenty-sixth program of the verified compiler: the bid side of a central limit order book,
 held as two arrays of words, the prices in descending order and the size at each price.  The
-definitions are those of `Examples/Clob/Program.lean` with three changes.  `marketBuy` returns the
+definitions are those of `Demos/Clob/Program.lean` with three changes.  `marketBuy` returns the
 filled quantity and its cost as a pair, since the verified compiler has no array literals.  The
 conditions of `addBid` and `cancelBid` compare words with `&&` and `==`.  `insertLevel` and
 `removeLevel` use `LeanExe.insertAt` and `LeanExe.eraseAt`, which update an owned side in place,

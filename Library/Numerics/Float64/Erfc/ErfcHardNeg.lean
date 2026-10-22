@@ -118,8 +118,8 @@ theorem row16 : HardSerOK 66 16 55 true 0x3FFFEAA166E384C9
 /-- `Erfc.hardCase` on the table at offset 66: one step for every row, and the fallback `f`
 otherwise. -/
 theorem table (x f : Float) (hx : ff x)
-    (hf : F64SignedRounding.WithinSteps 1 (erfc (fv x)) f.toBits) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    (hf : F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x)) f.toBits) :
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.hardCase Erfc.excTable 66 17 x f).toBits := by
   rcases hardCase_cases Erfc.excTable 66 17 x f with h | ⟨k, hk, heq, h⟩
   · rw [h]; exact hf

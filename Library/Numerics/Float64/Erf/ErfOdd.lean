@@ -14,7 +14,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Horner RealErf ErfSmallBase ErfMiddleBas
 set_option exponentiation.threshold 4096
 
 /-- `erf p` lies in `[2^-1073, 2]` for `p ≥ 2^-28`. -/
-theorem erf_range (p : ℝ) (hp : 1 / 2 ^ 28 ≤ p) : 2 / 2 ^ 1074 ≤ erf p ∧ erf p ≤ 2 := by
+theorem erf_range (p : ℝ) (hp : 1 / 2 ^ 28 ≤ p) : 2 / 2 ^ 1074 ≤ RealErf.erf p ∧ RealErf.erf p ≤ 2 := by
   constructor
   · have hm := erf_strictMono.monotone hp
     have hl := ErfSmallBase.erf_lower (1 / 2 ^ 28) (by positivity)
@@ -95,7 +95,7 @@ theorem erf_neg_bits (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign 
       simp only [F64Bits.toBits_add, F64Bits.toBits_mul, erfSmall_bits] at hpos ⊢
       rw [hbn, mul_negate_self (-x).toBits hPf]
       obtain ⟨hy1, hy2⟩ := erf_range (value (-x).toBits) (not_lt.mp h2)
-      have hy0 : 0 ≤ erf (value (-x).toBits) := le_trans (by positivity) hy1
+      have hy0 : 0 ≤ RealErf.erf (value (-x).toBits) := le_trans (by positivity) hy1
       generalize hR : Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul (-x).toBits (-x).toBits))
         (hornerW qqW (Wasm.IEEE64.mul (-x).toBits (-x).toBits)) = R at hpos ⊢
       have hTf := finite_of_within_add (-x).toBits _ hPf _ hy0 hy2 hpos
@@ -115,7 +115,7 @@ theorem erf_neg_bits (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign 
     · simp only [hmid.mpr h2, ↓reduceIte] at hpos ⊢
       have hP28 : 1 / 2 ^ 28 ≤ value (-x).toBits := le_trans (by norm_num) (not_lt.mp h1)
       obtain ⟨hy1, hy2⟩ := erf_range (value (-x).toBits) hP28
-      have hy0 : 0 ≤ erf (value (-x).toBits) := le_trans (by positivity) hy1
+      have hy0 : 0 ≤ RealErf.erf (value (-x).toBits) := le_trans (by positivity) hy1
       simp only [F64Bits.toBits_sub]
       rw [neg_ofBits _ ne]
       simp only [F64Bits.toBits_add, F64Bits.toBits_div, F64Bits.toBits_ofBits, ne,
@@ -136,7 +136,7 @@ theorem erf_neg_bits (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign 
       · simp only [show ¬ _ from fun h => h3 (hsix.mp h), ↓reduceIte] at hpos ⊢
         have hP28 : 1 / 2 ^ 28 ≤ value (-x).toBits := le_trans (by norm_num) (not_lt.mp h1)
         obtain ⟨hy1, hy2⟩ := erf_range (value (-x).toBits) hP28
-        have hy0 : 0 ≤ erf (value (-x).toBits) := le_trans (by positivity) hy1
+        have hy0 : 0 ≤ RealErf.erf (value (-x).toBits) := le_trans (by positivity) hy1
         simp only [F64Bits.toBits_sub, one_bits] at hpos ⊢
         generalize hq : (Erf.erfExp Exp.expTable (-x).abs
           (Erf.erfTail (1.0 / ((-x).abs * (-x).abs))
@@ -153,7 +153,7 @@ theorem erf_neg_bits (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign 
 
 /-- One step for `Erf.erfWith Exp.expTable x` for every finite `x`. -/
 theorem erfWith_within_one (x : Float) (hxf : Finite x.toBits) :
-    F64SignedRounding.WithinSteps 1 (erf (value x.toBits)) (Erf.erfWith Exp.expTable x).toBits := by
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value x.toBits)) (Erf.erfWith Exp.expTable x).toBits := by
   cases hs : Wasm.IEEE64.sign x.toBits
   · exact erf_pos x hxf hs
   · rw [erf_neg_bits x hxf hs]

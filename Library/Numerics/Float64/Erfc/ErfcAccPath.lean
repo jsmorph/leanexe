@@ -30,7 +30,7 @@ local notation "u" => (1 / 2 ^ 53 : ℝ)
 /-- The fallback of `cr_erfc_accurate` for `-47/8 < x < 0`: `1 + erf (-x)`. -/
 theorem neg_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
     (hlo : -(47 / 8) < fv x) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       ((Erfc.fastTwoSum 1.0 (Erfc.erfAccurate Erfc.accTable (-x)).1).1 +
         ((Erfc.fastTwoSum 1.0 (Erfc.erfAccurate Erfc.accTable (-x)).1).2 +
           (Erfc.erfAccurate Erfc.accTable (-x)).2)).toBits := by
@@ -39,8 +39,8 @@ theorem neg_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
   have hT := aTarget_abs (fv (-x)) (by rw [nv]; linarith) (by rw [nv]; linarith)
   have herf0 := erf_nonneg (fv (-x)) (by rw [nv]; linarith)
   have herf1 := erf_lt_one (fv (-x))
-  have hy : erfc (fv x) = 1 + erf (fv (-x)) := by
-    rw [nv, show fv x = -(-fv x) by ring, erfc_neg, erfc]; ring
+  have hy : RealErf.erfc (fv x) = 1 + RealErf.erf (fv (-x)) := by
+    rw [nv, show fv x = -(-fv x) by ring, erfc_neg, RealErf.erfc]; ring
   set hE := (Erfc.erfAccurate Erfc.accTable (-x)).1
   set lE := (Erfc.erfAccurate Erfc.accTable (-x)).2
   have hd := ce.trans hT
@@ -64,21 +64,21 @@ theorem neg_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
   refine near_within _ _ _ sn ?_ ?_ ?_
   · linarith [show (1 : ℝ) / 2 ^ 1021 ≤ 1 by norm_num]
   · linarith [show (2 : ℝ) ≤ 2 ^ 1022 by norm_num]
-  · have e1 : fv h + fv (t + lE) - (1 + erf (fv (-x))) =
-        (fv hE + fv lE - erf (fv (-x))) + (fv (t + lE) - (fv t + fv lE)) := by linarith
+  · have e1 : fv h + fv (t + lE) - (1 + RealErf.erf (fv (-x))) =
+        (fv hE + fv lE - RealErf.erf (fv (-x))) + (fv (t + lE) - (fv t + fv lE)) := by linarith
     rw [e1]
     refine (abs_add_le _ _).trans ?_
     nlinarith
 
 /-- `erfc` at `0x1.b59ffb450828cp+0` is above `2^-15`. -/
-theorem erfc_xacc (z : ℝ) (hz : z ≤ xAcc) : (1 / 2 ^ 15 : ℝ) ≤ erfc z := by
+theorem erfc_xacc (z : ℝ) (hz : z ≤ xAcc) : (1 / 2 ^ 15 : ℝ) ≤ RealErf.erfc z := by
   have hx : (xAcc : ℝ) ≤ xMax := by rw [xAcc_val, xMax_val]; norm_num
   exact erfc_xmax.trans (erfc_strictAnti.antitone (hz.trans hx))
 
 /-- The fallback of `cr_erfc_accurate` for `0 ≤ x ≤ 0x1.b59ffb450828cp+0`: `1 - erf x`. -/
 theorem pos_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv x)
     (hhi : fv x ≤ xAcc) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       ((Erfc.fastTwoSum 1.0 (-(Erfc.erfAccurate Erfc.accTable x).1)).1 +
         ((Erfc.fastTwoSum 1.0 (-(Erfc.erfAccurate Erfc.accTable x).1)).2 -
           (Erfc.erfAccurate Erfc.accTable x).2)).toBits := by
@@ -86,19 +86,19 @@ theorem pos_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
   obtain ⟨c1, c2, cl, ce⟩ := erfAcc_err hF x hx hpos (by linarith)
   have hT := aTarget_rel (fv x) hpos hhi
   have herf0 := erf_nonneg (fv x) hpos
-  have hey : erfc (fv x) = 1 - erf (fv x) := rfl
+  have hey : RealErf.erfc (fv x) = 1 - RealErf.erf (fv x) := rfl
   have hy0 := erfc_xacc (fv x) hhi
-  have hy1 : erfc (fv x) ≤ 1 := by rw [hey]; linarith
+  have hy1 : RealErf.erfc (fv x) ≤ 1 := by rw [hey]; linarith
   set hE := (Erfc.erfAccurate Erfc.accTable x).1
   set lE := (Erfc.erfAccurate Erfc.accTable x).2
   have hd := ce.trans hT
   have hu : (0 : ℝ) < u := by norm_num
-  have hdu : 7 / 8 * u * erfc (fv x) ≤ u := by nlinarith
+  have hdu : 7 / 8 * u * RealErf.erfc (fv x) ≤ u := by nlinarith
   have hhe1 : -1 ≤ fv hE := by
     have := (abs_le.mp hd).1; have := (abs_le.mp cl).2; linarith
   have hhe2 : fv hE ≤ 1 := by
     have := (abs_le.mp hd).2; have := (abs_le.mp cl).1
-    have : erf (fv x) ≤ 1 - 1 / 2 ^ 15 := by rw [hey] at hy0; linarith
+    have : RealErf.erf (fv x) ≤ 1 - 1 / 2 ^ 15 := by rw [hey] at hy0; linarith
     linarith [show 2 * u + u < 1 / 2 ^ 15 by norm_num]
   obtain ⟨nf, nv⟩ := neg_f hE c1
   obtain ⟨s1, s2, ssum, st⟩ := fts_unit (-hE) nf (by rw [nv]; linarith) (by rw [nv]; linarith)
@@ -125,7 +125,7 @@ theorem pos_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
   · linarith [show (1 : ℝ) / 2 ^ 1021 ≤ 1 / 2 ^ 15 by norm_num]
   · linarith [show (1 : ℝ) ≤ 2 ^ 1022 by norm_num]
   · rw [hey]
-    have e1 : fv h + fv (t - lE) - (1 - erf (fv x)) = -(fv hE + fv lE - erf (fv x)) +
+    have e1 : fv h + fv (t - lE) - (1 - RealErf.erf (fv x)) = -(fv hE + fv lE - RealErf.erf (fv x)) +
         (fv (t - lE) - (fv t - fv lE)) := by
       rw [nv] at ssum; linarith
     rw [e1]
@@ -140,7 +140,7 @@ theorem pos_fallback (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
 theorem asym_within (hF : FmaNearest) (x : Float) (hx : ff x)
     (hlo : (ratOfWord 0x3FFB59FFB450828C : ℝ) < fv x)
     (hhi : fv x < ratOfWord 0x403B39DC41E48BFD) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.erfcAsymptAccurate Erfc.expAccTable Erfc.asymAccTable Erfc.excTable x).toBits := by
   unfold Erfc.erfcAsymptAccurate
   split
@@ -151,15 +151,15 @@ theorem asym_within (hF : FmaNearest) (x : Float) (hx : ff x)
     obtain ⟨K, hK1, hK2, ef, ev, hf, lf, herr, hlh, hh1, hh2⟩ := aa_hl hF x hx hlo hhi
     have k1 : (0 : ℚ) < ratOfWord 0x3FFB59FFB450828C := by decide +kernel
     have hx0 : 0 < fv x := lt_trans (by qc k1) hlo
-    have hy1 : erfc (fv x) ≤ 1 := by
+    have hy1 : RealErf.erfc (fv x) ≤ 1 := by
       have := erf_nonneg (fv x) hx0.le
-      unfold erfc; linarith
+      unfold RealErf.erfc; linarith
     exact finA_within _ _ _ K _ hK1 hK2 ef ev hf lf herr hlh hh1 hh2 (erfc_pos _) hy1
 
 /-- `cr_erfc_accurate` for `-47/8 < x < 0` and `0 < x < 0x1.b39dc41e48bfdp+4`. -/
 theorem acc_within (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < fv x)
     (h0 : fv x ≠ 0) (hhi : fv x < ratOfWord 0x403B39DC41E48BFD) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.erfcAccurate Erfc.accTable Erfc.expAccTable Erfc.asymAccTable Erfc.excTable x).toBits := by
   obtain ⟨z0f, z0v⟩ := zero_val
   have fA : Finite (0x3FFB59FFB450828C : UInt64) := by

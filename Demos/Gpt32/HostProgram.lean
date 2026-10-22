@@ -4,7 +4,7 @@ import Demos.Gpt32.Program
 The programs that run GPT-2's binary32 step on `leanexe-webgpu-host session`.  A program is a
 list of typed items over named buffers: a kernel call, a word, a float, an empty array, or a
 file.  Each item becomes one or two host commands, and `Cmd.line` prints a command as the host
-reads it.  `Examples/Gpt32/Exec.lean` gives both levels their meaning.
+reads it.  `Demos/Gpt32/Exec.lean` gives both levels their meaning.
 
 Word constants have names by role and are written at the start of each step.  The caches of a
 layer alternate between two names by the parity of the position, so the `append` of position `p`

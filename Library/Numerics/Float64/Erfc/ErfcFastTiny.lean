@@ -258,7 +258,7 @@ theorem tiny_ok : TinyHyp tinyQ (1 / 16) (tinyB tinyQ (1 / 16)) ∧
 /-- `Erfc.erfFastTiny` within `(7/8) u erfcLo (1/16)` of `erf z` for `|z| ≤ 1/16`. -/
 theorem tiny_err (hF : FmaNearest) (z : Float) (hz : ff z) (hzR : |fv z| ≤ 1 / 16) :
     ff (Erfc.erfFastTiny z).1 ∧ ff (Erfc.erfFastTiny z).2 ∧
-      |fv (Erfc.erfFastTiny z).1 + fv (Erfc.erfFastTiny z).2 - erf (fv z)| ≤
+      |fv (Erfc.erfFastTiny z).1 + fv (Erfc.erfFastTiny z).2 - RealErf.erf (fv z)| ≤
         ((7 / 8 * (1 / 2 ^ 53) * erfcLo 80 (1 / 16) : ℚ) : ℝ) ∧
       |fv (Erfc.erfFastTiny z).2| ≤ (tinyB tinyQ (1 / 16)).s3L := by
   obtain ⟨hyp, hchk, htot⟩ := tiny_ok
@@ -270,7 +270,7 @@ theorem tiny_err (hF : FmaNearest) (z : Float) (hz : ff z) (hzR : |fv z| ≤ 1 /
   have htot' : ((tinyB tinyQ (1 / 16)).s3e : ℝ) + (rowBound 7 13 0 (1 / 16) (1 / 2 ^ 56) : ℝ) ≤
       ((7 / 8 * (1 / 2 ^ 53) * erfcLo 80 (1 / 16) : ℚ) : ℝ) := by exact_mod_cast htot
   have := abs_add_le (fv (Erfc.erfFastTiny z).1 + fv (Erfc.erfFastTiny z).2 - eval tinyPoly (fv z))
-    (eval tinyPoly (fv z) - erf (fv z))
+    (eval tinyPoly (fv z) - RealErf.erf (fv z))
   rw [sub_add_sub_cancel] at this
   linarith
 

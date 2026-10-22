@@ -15,8 +15,8 @@ open Real Set CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcHardBase ErfcHardRows 
 set_option exponentiation.threshold 4096
 
 theorem table (x f : Float) (hx : ff x)
-    (hf : F64SignedRounding.WithinSteps 1 (erfc (fv x)) f.toBits) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    (hf : F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x)) f.toBits) :
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.hardCase Erfc.excTable 0 22 x f).toBits := by
   rcases hardCase_cases Erfc.excTable 0 22 x f with h | ⟨k, hk, heq, h⟩
   · rw [h]; exact hf

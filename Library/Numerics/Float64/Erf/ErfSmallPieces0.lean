@@ -24,7 +24,7 @@ theorem crit0 : smallRelOK (1 / 268435456 : ℚ) (1 / 134217728 : ℚ)
 
 theorem erf0 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 268435456 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 134217728 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok0 crit0 X hX hx0 hxl hxh
@@ -41,7 +41,7 @@ theorem crit1 : smallRelOK (1 / 134217728 : ℚ) (1 / 67108864 : ℚ)
 
 theorem erf1 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 134217728 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 67108864 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok1 crit1 X hX hx0 hxl hxh
@@ -58,7 +58,7 @@ theorem crit2 : smallRelOK (1 / 67108864 : ℚ) (1 / 33554432 : ℚ)
 
 theorem erf2 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 67108864 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 33554432 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok2 crit2 X hX hx0 hxl hxh
@@ -75,7 +75,7 @@ theorem crit3 : smallRelOK (1 / 33554432 : ℚ) (1 / 16777216 : ℚ)
 
 theorem erf3 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 33554432 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 16777216 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok3 crit3 X hX hx0 hxl hxh
@@ -92,7 +92,7 @@ theorem crit4 : smallRelOK (1 / 16777216 : ℚ) (1 / 8388608 : ℚ)
 
 theorem erf4 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 16777216 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 8388608 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok4 crit4 X hX hx0 hxl hxh
@@ -109,7 +109,7 @@ theorem crit5 : smallRelOK (1 / 8388608 : ℚ) (1 / 4194304 : ℚ)
 
 theorem erf5 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 8388608 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 4194304 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok5 crit5 X hX hx0 hxl hxh
@@ -126,7 +126,7 @@ theorem crit6 : smallRelOK (1 / 4194304 : ℚ) (1 / 2097152 : ℚ)
 
 theorem erf6 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 4194304 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 2097152 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok6 crit6 X hX hx0 hxl hxh
@@ -143,7 +143,7 @@ theorem crit7 : smallRelOK (1 / 2097152 : ℚ) (1 / 1048576 : ℚ)
 
 theorem erf7 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 2097152 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 1048576 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok7 crit7 X hX hx0 hxl hxh
@@ -160,7 +160,7 @@ theorem crit8 : smallRelOK (1 / 1048576 : ℚ) (1 / 524288 : ℚ)
 
 theorem erf8 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 1048576 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 524288 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok8 crit8 X hX hx0 hxl hxh
@@ -177,7 +177,7 @@ theorem crit9 : smallRelOK (1 / 524288 : ℚ) (1 / 262144 : ℚ)
 
 theorem erf9 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 524288 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 262144 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok9 crit9 X hX hx0 hxl hxh
@@ -194,7 +194,7 @@ theorem crit10 : smallRelOK (1 / 262144 : ℚ) (1 / 131072 : ℚ)
 
 theorem erf10 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 262144 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 131072 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok10 crit10 X hX hx0 hxl hxh
@@ -211,7 +211,7 @@ theorem crit11 : smallRelOK (1 / 131072 : ℚ) (1 / 65536 : ℚ)
 
 theorem erf11 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 131072 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 65536 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok11 crit11 X hX hx0 hxl hxh
@@ -228,7 +228,7 @@ theorem crit12 : smallRelOK (1 / 65536 : ℚ) (1 / 32768 : ℚ)
 
 theorem erf12 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 65536 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 32768 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok12 crit12 X hX hx0 hxl hxh
@@ -245,7 +245,7 @@ theorem crit13 : smallRelOK (1 / 32768 : ℚ) (1 / 16384 : ℚ)
 
 theorem erf13 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 32768 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 16384 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok13 crit13 X hX hx0 hxl hxh
@@ -262,7 +262,7 @@ theorem crit14 : smallRelOK (1 / 16384 : ℚ) (1 / 8192 : ℚ)
 
 theorem erf14 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 16384 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 8192 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok14 crit14 X hX hx0 hxl hxh
@@ -279,7 +279,7 @@ theorem crit15 : smallRelOK (1 / 8192 : ℚ) (1 / 4096 : ℚ)
 
 theorem erf15 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 8192 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 4096 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok15 crit15 X hX hx0 hxl hxh
@@ -296,7 +296,7 @@ theorem crit16 : smallRelOK (1 / 4096 : ℚ) (1 / 2048 : ℚ)
 
 theorem erf16 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 4096 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 2048 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok16 crit16 X hX hx0 hxl hxh
@@ -313,7 +313,7 @@ theorem crit17 : smallRelOK (1 / 2048 : ℚ) (1 / 1024 : ℚ)
 
 theorem erf17 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 2048 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 1024 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok17 crit17 X hX hx0 hxl hxh
@@ -330,7 +330,7 @@ theorem crit18 : smallRelOK (1 / 1024 : ℚ) (1 / 512 : ℚ)
 
 theorem erf18 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 1024 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 512 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok18 crit18 X hX hx0 hxl hxh
@@ -347,7 +347,7 @@ theorem crit19 : smallRelOK (1 / 512 : ℚ) (1 / 256 : ℚ)
 
 theorem erf19 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 512 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 256 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok19 crit19 X hX hx0 hxl hxh
@@ -364,7 +364,7 @@ theorem crit20 : smallRelOK (1 / 256 : ℚ) (1 / 128 : ℚ)
 
 theorem erf20 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 256 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 128 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok20 crit20 X hX hx0 hxl hxh
@@ -381,7 +381,7 @@ theorem crit21 : smallRelOK (1 / 128 : ℚ) (1 / 64 : ℚ)
 
 theorem erf21 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 128 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok21 crit21 X hX hx0 hxl hxh
@@ -398,7 +398,7 @@ theorem crit22 : smallRelOK (1 / 64 : ℚ) (1 / 32 : ℚ)
 
 theorem erf22 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 32 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok22 crit22 X hX hx0 hxl hxh
@@ -415,7 +415,7 @@ theorem crit23 : smallRelOK (1 / 32 : ℚ) (1 / 16 : ℚ)
 
 theorem erf23 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 32 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 16 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok23 crit23 X hX hx0 hxl hxh
@@ -432,7 +432,7 @@ theorem crit24 : smallRelOK (1 / 16 : ℚ) (1 / 8 : ℚ)
 
 theorem erf24 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 16 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 8 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok24 crit24 X hX hx0 hxl hxh
@@ -449,7 +449,7 @@ theorem crit25 : smallRelOK (1 / 8 : ℚ) (1 / 4 : ℚ)
 
 theorem erf25 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 8 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((1 / 4 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok25 crit25 X hX hx0 hxl hxh
@@ -466,7 +466,7 @@ theorem crit26 : smallRelOK (1 / 4 : ℚ) (17 / 64 : ℚ)
 
 theorem erf26 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((1 / 4 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((17 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok26 crit26 X hX hx0 hxl hxh
@@ -483,7 +483,7 @@ theorem crit27 : smallRelOK (17 / 64 : ℚ) (9 / 32 : ℚ)
 
 theorem erf27 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((17 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((9 / 32 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok27 crit27 X hX hx0 hxl hxh
@@ -500,7 +500,7 @@ theorem crit28 : smallRelOK (9 / 32 : ℚ) (19 / 64 : ℚ)
 
 theorem erf28 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((9 / 32 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((19 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok28 crit28 X hX hx0 hxl hxh
@@ -517,7 +517,7 @@ theorem crit29 : smallRelOK (19 / 64 : ℚ) (5 / 16 : ℚ)
 
 theorem erf29 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((19 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((5 / 16 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok29 crit29 X hX hx0 hxl hxh
@@ -534,7 +534,7 @@ theorem crit30 : smallRelOK (5 / 16 : ℚ) (21 / 64 : ℚ)
 
 theorem erf30 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((5 / 16 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((21 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok30 crit30 X hX hx0 hxl hxh
@@ -551,7 +551,7 @@ theorem crit31 : smallRelOK (21 / 64 : ℚ) (11 / 32 : ℚ)
 
 theorem erf31 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((21 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((11 / 32 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok31 crit31 X hX hx0 hxl hxh
@@ -568,7 +568,7 @@ theorem crit32 : smallRelOK (11 / 32 : ℚ) (23 / 64 : ℚ)
 
 theorem erf32 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((11 / 32 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((23 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok32 crit32 X hX hx0 hxl hxh
@@ -585,7 +585,7 @@ theorem crit33 : smallRelOK (23 / 64 : ℚ) (3 / 8 : ℚ)
 
 theorem erf33 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((23 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((3 / 8 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok33 crit33 X hX hx0 hxl hxh
@@ -602,7 +602,7 @@ theorem crit34 : smallRelOK (3 / 8 : ℚ) (25 / 64 : ℚ)
 
 theorem erf34 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((3 / 8 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((25 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok34 crit34 X hX hx0 hxl hxh
@@ -619,7 +619,7 @@ theorem crit35 : smallRelOK (25 / 64 : ℚ) (13 / 32 : ℚ)
 
 theorem erf35 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((25 / 64 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((13 / 32 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok35 crit35 X hX hx0 hxl hxh
@@ -636,7 +636,7 @@ theorem crit36 : smallRelOK (13 / 32 : ℚ) (27 / 64 : ℚ)
 
 theorem erf36 (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : ((13 / 32 : ℚ) : ℝ) ≤ value X) (hxh : value X ≤ ((27 / 64 : ℚ) : ℝ)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) :=
   small_erf_rel _ _ _ _ ok36 crit36 X hX hx0 hxl hxh

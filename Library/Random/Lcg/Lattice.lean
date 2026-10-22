@@ -4,7 +4,7 @@ import Mathlib.Data.Int.Interval
 import Mathlib.Tactic.Linarith
 import Mathlib.Data.Fin.VecNotation
 
-/-! These lemmas describe the lattice structure of the LCG of `Examples/Lcg/Program.lean`.  An
+/-! These lemmas describe the lattice structure of the LCG of `Library/Random/Lcg/Program.lean`.  An
 integer vector `s` of length `t` lies in `Dual t` when `∑ s_k a^k ≡ 0 (mod 2^64)`, for `a` the
 multiplier.  Since `k` steps from `x` give `a^k x` plus `k` steps from 0, `∑ s_k y_k` at the tuple
 `y` of `t` successive states from any word is congruent modulo `2^64` to its value `d` at the tuple
@@ -120,7 +120,7 @@ theorem hyperplanes {t : Nat} {s : Fin t → ℤ} (hs : Dual t s) (h0 : s ≠ 0)
 
 /-! ### Two to six successive states
 
-`shortest2` to `shortest6` are the shortest vectors of `Dual t`, which `Examples/Lcg/Spectral.lean`
+`shortest2` to `shortest6` are the shortest vectors of `Dual t`, which `Library/Random/Lcg/Spectral.lean`
 proves, and by computation `shortest2` to `shortest5` also have the smallest sums of magnitudes.
 `plane6` has the sum of magnitudes 2,296, smaller than the 2,818 of `shortest6`. -/
 

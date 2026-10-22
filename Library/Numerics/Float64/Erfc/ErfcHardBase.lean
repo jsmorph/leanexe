@@ -50,8 +50,8 @@ theorem hardCase_cases (tab : Array UInt64) (o n : UInt64) (x f : Float) :
 
 /-- `erf q` between rational bounds from the series of `n` terms. -/
 theorem erf_encl (n : ℕ) (q : ℚ) (hq : 0 ≤ q) (hS : 0 ≤ evalQ (ser n) q) :
-    ((sLo * evalQ (ser n) q - sHi * serRem n q : ℚ) : ℝ) ≤ erf q ∧
-      erf q ≤ ((sHi * evalQ (ser n) q + sHi * serRem n q : ℚ) : ℝ) := by
+    ((sLo * evalQ (ser n) q - sHi * serRem n q : ℚ) : ℝ) ≤ RealErf.erf q ∧
+      RealErf.erf q ≤ ((sHi * evalQ (ser n) q + sHi * serRem n q : ℚ) : ℝ) := by
   have h := erf_ser n (q : ℝ) q (le_of_eq (abs_of_nonneg (by qc hq)))
   have hqv : eval (ser n) (q : ℝ) = (evalQ (ser n) q : ℝ) := (PolyCalc.evalQ_cast _ _).symm
   rw [hqv] at h
@@ -110,8 +110,8 @@ theorem erfc_model_encl (x : ℚ) (hx : 0 < x) (p : List ℚ) (a b c s eD : ℚ)
     (hab : a ≤ x ∧ x ≤ b) (Elo Ehi : ℚ) (hE : (Elo : ℝ) ≤ exp (-(x : ℝ) ^ 2) ∧
       exp (-(x : ℝ) ^ 2) ≤ Ehi) (hElo : 0 ≤ Elo)
     (hPD : 0 ≤ evalQ p (x - c) - (s + eD * (b - x))) :
-    ((Elo * sLo * (evalQ p (x - c) - (s + eD * (b - x))) : ℚ) : ℝ) ≤ erfc x ∧
-      erfc x ≤ ((Ehi * sHi * (evalQ p (x - c) + (s + eD * (b - x))) : ℚ) : ℝ) := by
+    ((Elo * sLo * (evalQ p (x - c) - (s + eD * (b - x))) : ℚ) : ℝ) ≤ RealErf.erfc x ∧
+      RealErf.erfc x ≤ ((Ehi * sHi * (evalQ p (x - c) + (s + eD * (b - x))) : ℚ) : ℝ) := by
   have hm := hmodel x ⟨by qc hab.1, by qc hab.2⟩
   have hpv : eval p ((x : ℝ) - c) = (evalQ p (x - c) : ℝ) := by
     rw [PolyCalc.evalQ_cast]; push_cast; ring_nf
@@ -128,7 +128,7 @@ theorem erfc_model_encl (x : ℚ) (hx : 0 < x) (p : List ℚ) (a b c s eD : ℚ)
   have hsl0 : (0 : ℝ) ≤ sLo := by
     have : (0 : ℚ) ≤ sLo := by decide +kernel
     qc this
-  have hErfc : erfc x = exp (-(x : ℝ) ^ 2) * (scale * erfcxN x) := by
+  have hErfc : RealErf.erfc x = exp (-(x : ℝ) ^ 2) * (scale * erfcxN x) := by
     rw [erfc_eq, erfcx_eq]
   have hElo' : (0 : ℝ) ≤ Elo := by qc hElo
   rw [hErfc]
