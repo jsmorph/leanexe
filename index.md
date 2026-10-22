@@ -1,8 +1,8 @@
-# Seminumerical algorithms
+# Algorithms and applications
 
-This index lists the compiled arithmetic and numerical algorithms and their theorems.  The [algorithm library](Library/README.md) groups native implementations, compilation modules, and mathematical proofs by family.  Both the [verified compiler](docs/verified-manual.md) and the [LeanExe compiler](docs/leanexe-manual.md) compile library definitions.  The [application guides](Demos/README.md) cover the Euler solvers, GPT-2 in binary64 and binary32, the drone planner, and the order book.
+This index covers the reusable algorithms in [the library](Library/README.md), the applications in [the demos](Demos/README.md), and the algorithms retained as compiler examples.  It lists their implementations, proved results, and open mathematical work.  Library families contain native definitions in `Program`, compilation modules in `Compiled`, `Module`, or `Verified`, and proofs in `Proof`, `Verify`, or named theorem modules.  [The native aggregate](Library/Native.lean) imports the implementations.  The [verified compiler manual](docs/verified-manual.md) and [LeanExe compiler manual](docs/leanexe-manual.md) describe their compilation and proof premises.
 
-The compiler's theorem for a module states that the module computes its Lean definition.  A byte theorem combines that result with a theorem about the definition, such as an accuracy bound, to state the same property of the module's bytes.  A file theorem states that a file in `build/verified/` holds the module's encoding.  The theorems hold in Talos's semantics of WebAssembly with the deterministic floating-point profile, and they assume the allocator invariant and, for some functions, borrowed tables and bounds on memory and recursion depth.  Each linked document states these premises, the exceptional inputs, and the assumptions about the host.  [The transcendental development record](transcendentals.md) gives the history of the proofs and the open range of the Bessel theorems of [Section 1.1](#11-bessel-functions).
+The compiler's theorem for a module states that the module computes its Lean definition.  A byte theorem states execution or a further property, such as an accuracy bound, for the encoded module.  A file theorem states that an emitted file holds that encoding.  Execution theorems use Talos's semantics of WebAssembly with the deterministic floating-point profile.  They assume the allocator invariant and, for some functions, borrowed tables and bounds on memory and recursion depth.  An `implements` theorem can permit a trap at `unreachable`.  A trap-free theorem proves a return under its allocation and depth conditions.  Each linked document states these premises, the exceptional inputs, and the assumptions about the host.  [The transcendental development record](transcendentals.md) gives the history of the proofs and the open range of the Bessel theorems of [Section 1.1](#11-bessel-functions).
 
 ## Contents
 
@@ -13,7 +13,13 @@ The compiler's theorem for a module states that the module computes its Lean def
 - [4. Discrete Fourier transform](#4-discrete-fourier-transform)
 - [5. Pseudorandom number generators](#5-pseudorandom-number-generators)
 - [6. Floating-point folds](#6-floating-point-folds)
-- [7. Demonstration programs](#7-demonstration-programs)
+  - [6.1. Word reductions](#61-word-reductions)
+  - [6.2. Statistics](#62-statistics)
+- [7. Sorting, arrays, lists, and trees](#7-sorting-arrays-lists-and-trees)
+- [8. Linear algebra](#8-linear-algebra)
+- [9. Outward rounding and limiters](#9-outward-rounding-and-limiters)
+- [10. Applications](#10-applications)
+- [11. Compiler examples](#11-compiler-examples)
 
 ## 1. Elementary and special functions
 
@@ -74,11 +80,11 @@ For a string of fewer than `2^32` bytes, the parsers' theorems state that the re
 |---|---|---|
 | Fused multiply-add | [The software fused multiply-add](Library/Numerics/Arithmetic/Fma/README.md): [`Fma.fma`](Library/Numerics/Arithmetic/Fma/Program.lean), with 128-bit products and shifts in 64-bit words | [`FmaTheorem.fma_toBits`](Library/Numerics/Arithmetic/Fma/FmaTheorem.lean): the result equals IEEE 754's fusedMultiplyAdd with roundTiesToEven for all operands.  The modules of `erfc`, `tgamma`, and `lgamma` in [Section 1](#1-elementary-and-special-functions) include it. |
 | Natural numbers of any size and Cox's unrounded scaling | [Natural numbers on limbs](Library/Numerics/Arithmetic/Uscale/README.md): `Uscale`, on 32-bit limbs in 64-bit words, with multiplication by a word, shifts, comparison, subtraction, division, and powers of 10 | A theorem for each routine states its result as a natural number.  The decimal parsers and printers of [Section 2](#2-conversion-between-decimal-strings-and-binary-floating-point) call these routines. |
-| Greatest common divisor | [Euclid's remainder recursion](Library/Numerics/Arithmetic/Gcd/README.md) | `gcd_eq` proves equality with `Nat.gcd`.  `gcd_bytes` proves that the compiled bytes compute it. |
-| Number of prime factors with multiplicity | [Factor counting](Library/Numerics/Arithmetic/PrimeFactors/README.md), trial division in increasing order | `compute_eq` and `primeFactors_bytes`: the module's bytes compute the length of Mathlib's `Nat.primeFactorsList`. |
-| Sieve of Eratosthenes | `sieve` in [`Verified/Examples/Elements.lean`](Verified/Examples/Elements.lean), which marks the multiples of each prime `p` from `p²` and returns the flags of the composite numbers below `n` | The compiler's theorem. |
-| Power modulo `2^64` by squaring | `pow` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean) | The compiler's theorem. |
-| Integer ceiling square root | [Bracket halving](Library/Numerics/Arithmetic/CeilSqrt/README.md), in 17 steps | `Sqrt.ceilSqrt_correct`: the exact ceiling square root for arguments up to `2^32`. |
+| Greatest common divisor | [Euclid's remainder recursion](Library/Numerics/Arithmetic/Gcd/README.md) | [`gcd_eq`](Library/Numerics/Arithmetic/Gcd/Proof.lean) proves equality with `Nat.gcd`.  [`gcd_bytes`](Library/Numerics/Arithmetic/Gcd/Verify.lean) proves that the compiled bytes compute it. |
+| Number of prime factors with multiplicity | [Factor counting](Library/Numerics/Arithmetic/PrimeFactors/README.md), trial division in increasing order | [`compute_eq`](Library/Numerics/Arithmetic/PrimeFactors/Proof.lean) proves equality with the length of Mathlib's `Nat.primeFactorsList`.  [`primeFactors_bytes`](Library/Numerics/Arithmetic/PrimeFactors/Verify.lean) states that result for the bytes. |
+| Sieve of Eratosthenes | `sieve` in [the array-element examples](Verified/Examples/Elements.lean), which marks the multiples of each prime `p` from `p²` and returns the flags of the composite numbers below `n` | The compiler's theorem. |
+| Power modulo `2^64` by squaring | `pow` in [the recursion examples](Verified/Examples/Recursion.lean) | The compiler's theorem. |
+| Integer ceiling square root | [Bracket halving](Library/Numerics/Arithmetic/CeilSqrt/README.md), in 17 steps | [`Sqrt.ceilSqrt_correct`](Library/Numerics/Arithmetic/CeilSqrt/Proof.lean) proves the least integer whose square is at least the input, for `n ≤ 2^32`.  [The compiled module](Library/Numerics/Arithmetic/CeilSqrt/Compiled.lean) proves execution of the word definition. |
 
 ## 4. Discrete Fourier transform
 
@@ -97,40 +103,107 @@ Each generator keeps its state in a `UInt64`.  The linked guides state the param
 
 SplitMix64's module also exports `unitFloat`, which maps a word `x` to the binary64 value `(x >>> 11) / 2^53` in `[0, 1)`.  The theorem `prng_bytes` covers both functions.  The reusable proofs `splitMix_pure` and `unitFloat_pure`, described in [the SplitMix64 guide](Library/Random/SplitMix64/README.md) and [the `splitmix64` entry of the LTG knowledge base](ltg/entries/splitmix64/README.md), let other modules compile and call them.
 
+[The orbit lemmas](Library/Random/Orbit/README.md) provide the shared facts about iteration, minimal periods, unique visits, and top-bit counts used by the LCG, Park–Miller, and xorshift proofs.
+
 ## 6. Floating-point folds
 
-Each fold performs its operations in the order that the table gives and rounds after each one, so its result depends on that order.  The theorem for each fold states that the compiled module computes the Lean definition bit for bit.  No theorem bounds a fold's error against the exact result.
+The floating-point operations follow the stated order.  [The reduction compilation](Library/Numerics/Reductions/Float64/Compiled.lean) proves that its Wasm module computes the Lean definitions bit for bit, including their NaNs and signed zeros.  Summation-error bounds remain future work.
 
 | Fold | Implementation | Order |
 |---|---|---|
-| Sum | `total` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right |
-| Pairwise sum | `sumRange` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Recursive halves of the index range |
-| Sum of the flagged elements | `select` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right |
-| Sum of squares | [Sum of squares](Library/Numerics/Statistics/SumSquares/README.md) | Left to right (`sumSquares_bytes`) |
-| Mean | [Mean](Library/Numerics/Statistics/Mean/README.md) | The left-to-right sum divided by the length, NaN for an empty array (`mean_bytes`) |
-| Harmonic number | `harmonic` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `1/1 + 1/2 + ⋯ + 1/n` left to right.  The denominator is a binary64 value, so from `2^53` on, adding 1 leaves it unchanged. |
-| Dot product | `dot` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | Left to right, with the second array read as 0 past its end |
-| Matrix-vector product in binary32 | `matVec32` in [the binary32 library](Library/Numerics/LinearAlgebra/Binary32/Program.lean) | Each row's dot product left to right (`matVec32_implements`, `binary32_bytes`) |
-| Maximum | `largest` in [the library implementation](Library/Numerics/Reductions/Float64/Program.lean) | Left to right, negative infinity for an empty array |
+| Sum | `total` in [binary64 reductions](Library/Numerics/Reductions/Float64/Program.lean) | Left to right from zero |
+| Pairwise sum | `sumRange` in [binary64 reductions](Library/Numerics/Reductions/Float64/Program.lean) | Recursive halves of `[lo, hi)` for an ordered word-indexed range.  Missing entries read as zero. |
+| Sum of flagged elements | `select` in [binary64 reductions](Library/Numerics/Reductions/Float64/Program.lean) | Left to right over the numeric array.  Missing flags read as false. |
+| Maximum | `largest` in [binary64 reductions](Library/Numerics/Reductions/Float64/Program.lean) | Lean's `max`, left to right from negative infinity |
+| Sum of squares | [Sum of squares](Library/Numerics/Statistics/SumSquares/README.md) | Left to right from zero, with separate multiplication and addition.  [`sumSquares_bytes`](Library/Numerics/Statistics/SumSquares/Verify.lean) proves execution. |
+| Mean | [Mean](Library/Numerics/Statistics/Mean/README.md) | The left-to-right sum divided by the length converted to binary64.  The empty array gives NaN.  [`mean_bytes`](Library/Numerics/Statistics/Mean/Verify.lean) proves execution. |
 
-## 7. Demonstration programs
+The [linear-algebra functions](#8-linear-algebra) also accumulate their dot products left to right.
 
-These programs exercise numerical compilation.  Their theorems state that the compiled module computes the Lean definition bit for bit.  Reusable definitions live in `Library`, application-specific functions in `Demos`, and compiler fixtures in `Examples` and `Verified/Examples`.  Arithmetic on words wraps modulo `2^64`.
+### 6.1. Word reductions
+
+[The word reductions](Library/Numerics/Reductions/README.md) fold `Array UInt64` from the left.  `sumArray` starts from zero, `productArray` from one, and `xorArray` from zero.  Addition and multiplication wrap modulo `2^64`.  [Their compiled module](Library/Numerics/Reductions/Word/Compiled.lean) supplies execution, allocation, and trap-free theorems under the verified compiler's premises.  The [array examples](Verified/Examples/Arrays.lean) retain a word dot product as a compiler fixture.
+
+### 6.2. Statistics
+
+The reusable statistical functions are mean and sum of squares.  Related computations remain in their callers: [the selection examples](Verified/Examples/Select.lean) contain a median of three words, [the array-update examples](Verified/Examples/Updates.lean) contain a histogram of residues modulo a requested bucket count, and [the GPT layer normalizations](Demos/Gpt/Program.lean) compute population variance in their floating-point evaluation order.  [The binary32 model](Demos/Gpt32/Program.lean) has its own layer normalization.  Their compilation proofs establish execution of those definitions.
+
+[The statistics plan](devnotes.md#2026-10-22-statistics-work-and-the-generator-index) records variance and standard deviation, incremental and merged moments, generalized sample quantiles, weighted quantiles, covariance, correlation, and dispersion measures as future work.  Empty samples, exceptional values, probability and weight domains, and numerical-error bounds require specifications.
+
+## 7. Sorting, arrays, lists, and trees
+
+These algorithms use `UInt64` words, counts, and indices.  Word arithmetic wraps modulo `2^64`.  Each family has native definitions and a separate verified-compiler module.  The generated theorems prove execution, allocation bounds, and trap-free execution under their representation, ownership, memory, and recursion premises.
+
+| Family | Functions and behavior | Proofs and limits |
+|---|---|---|
+| [Insertion sort](Library/Sorting/README.md) | `sortInsert` inserts each element at the count of smaller accumulated elements.  It takes quadratic time. | [The compiled module](Library/Sorting/Insertion/Compiled.lean) and [the allocation-bound example](Verified/Examples/Insert.lean).  Sortedness and permutation theorems remain future work. |
+| [Array search](Library/Arrays/Search/Program.lean) | `count` counts equal words.  `firstAbove` returns the first index above a limit and a success flag.  `firstZero` searches a specified prefix and returns the prefix length when it finds no zero.  Reads past the array's end return zero. | [The compiled module](Library/Arrays/Search/Compiled.lean).  [`firstZero_cases`](Library/Arrays/Search/Proof.lean) proves that the result is the first zero in the requested prefix, or that the prefix has none. |
+| [Array filtering](Library/Arrays/Filter/Program.lean) | `removeAll` removes matching words in order by repeated searches and shifts.  `below` gathers at most a specified count of words below a limit.  `clearUntil` zeros the prefix before the first matching word. | [The compiled module](Library/Arrays/Filter/Compiled.lean).  `removeAll` takes quadratic time. |
+| [Array repetition](Library/Arrays/Repeat/Program.lean) | `repeated` concatenates a specified number of copies. | [The compiled module](Library/Arrays/Repeat/Compiled.lean). |
+| [Even-word range](Library/Arrays/Range/Program.lean) | `evens n` builds `n` words, with element `i` equal to `2 * i`. | [The compiled module](Library/Arrays/Range/Compiled.lean). |
+| [Word-array scaling](Library/Arrays/Word/Program.lean) | `scaled` multiplies each element by a scalar. | [The compiled module](Library/Arrays/Word/Compiled.lean). |
+| [Word lists](Library/Lists/README.md) | `range` builds `0` through `n - 1`.  `listSum` folds from zero, `sum` adds to a supplied accumulator, `reverse` reverses onto a supplied list, and `increment` adds one to each element. | [The compiled module](Library/Lists/Word/Compiled.lean).  Sum and reversal use tail loops.  Increment uses guarded structural recursion. |
+| [Word trees](Library/Trees/README.md) | `KeyTree` stores a word and two children at each node.  `size`, `sum`, `height`, `incr`, `setKey`, `insert`, `leftChild`, and `splitRoot` provide structural operations and insertion by binary-search-tree comparisons. | [The compiled module](Library/Trees/WordTree/Compiled.lean), with [the fixed-layout encoding](Library/Trees/WordTree/Encoding.lean).  Search-tree ordering and membership theorems remain future work. |
+
+[The array guide](Library/Arrays/README.md) gives the common array conventions.  [The list-tail cases](Verified/Examples/ListTailCases.lean) and [tree examples](Examples/Trees/README.md) check ownership, copying, header reuse, allocation counts, and the guarded recursion limit.  [The library case registry](tests/verified/library-cases.txt) reuses compiler-fixture cases for the extracted modules, with [supplementary native cases](tests/TestSupport/LibraryCases.lean).  Hashing remains a future library category.
+
+## 8. Linear algebra
+
+[The linear-algebra library](Library/Numerics/LinearAlgebra/README.md) provides the vector and matrix operations used by both GPT demos.  Matrices use row-major flat arrays and `UInt64` dimensions.  Index and dimension arithmetic wraps modulo `2^64`, and missing entries read as zero.  Dot products accumulate left to right with separate multiplication and addition.
+
+| Precision | Native functions | Shape and operation rules | Compilation |
+|---|---|---|---|
+| [Binary64](Library/Numerics/LinearAlgebra/Float64/Program.lean) | `dot`, `axpy`, `grid`, `matVec`, `matMul`, `matMulT`, `add` | `dot` uses the first array's length.  `axpy` writes `a * x + y` over the length of `y`.  `grid` returns `x0 + i * dx`.  `matVec` returns the requested row count.  `matMul` and `matMulT` return the word product of their output dimensions.  `add` uses the first array's length. | [Binary64 compiled module](Library/Numerics/LinearAlgebra/Float64/Compiled.lean) |
+| [Binary32](Library/Numerics/LinearAlgebra/Binary32/Program.lean) | `scale32`, `axpyArray32`, `matVec32`, `add32`, `linear32` | `scale32` and `axpyArray32` use the length of `x`.  `matVec32` returns the requested row count.  `add32` uses the first array's length.  `linear32` computes a row-vector times a matrix, then adds the bias. | [Binary32 compiled module](Library/Numerics/LinearAlgebra/Binary32/Compiled.lean) |
+
+The compilation theorems preserve this floating-point evaluation order.  Numerical-error bounds for these operations remain future work.
+
+## 9. Outward rounding and limiters
+
+| Family | Operations | Mathematical results and compilation |
+|---|---|---|
+| [Checked outward rounding](Library/Numerics/Bounds/README.md) | `outAdd`, `outSub`, `outMul`, `outDiv`, and `outSqrt` return a `Checked` endpoint.  Status zero accepts a finite endpoint, and status one rejects it.  `endpoint` moves the rounded result one adjacent value in the requested direction.  `absBits`, `finite`, `nextUpBits`, and `nextDownBits` provide the word operations. | [`outAdd_accepted` and the other accepted-operation theorems](Library/Numerics/Bounds/Proof.lean) prove real lower or upper bounds on accepted results.  Division checks a nonzero denominator, and square root checks a nonnegative input.  [The compiled module](Library/Numerics/Bounds/Compiled.lean) proves execution with [the flat status-and-value encoding](Library/Numerics/Bounds/Encoding.lean). |
+| [Minmod](Library/Numerics/Limiters/README.md) | `minmod` returns the input with smaller word magnitude when the sign bits agree, and zero when they differ. | [`real_minmod`](Library/Numerics/Limiters/Minmod/Proof.lean) relates the implementation through `CodeLib.IEEE64.value` to [real minmod](Library/Numerics/Limiters/Minmod/Real.lean).  The real theory proves symmetry, sign reversal, bounds, a Lipschitz bound, and constant- and linear-profile reconstruction properties.  [The compiled module](Library/Numerics/Limiters/Minmod/Compiled.lean) proves execution. |
+
+The checked operations reject nonfinite inputs, results, or endpoints.  Interpreting `nextUpBits` and `nextDownBits` as adjacent real values requires their finite-input conditions.  [The Euler enclosure proofs](Demos/Euler/Enclosure.lean) use the checked operations, and [the reconstruction analysis](Demos/Euler/ReconstructionAccuracy.lean) uses minmod to bound the differences and faces computed from rounded inputs.
+
+## 10. Applications
+
+Application definitions and proofs live in `Demos`, with shared algorithms imported from `Library`.  The linked guides state the full domains, execution premises, and host assumptions.
+
+| Application | Computation | Proved results |
+|---|---|---|
+| [Euler solvers](Demos/Euler/README.md) | First-order Rusanov and minmod-reconstructed finite-volume solvers for the two-dimensional Euler equations. | [Execution](Demos/Euler/Verify.lean) and [total execution within 1,407 pages](Demos/Euler/Total.lean) for the LeanExe module under its fresh-store and cap premises.  The solver proofs establish admissibility, hyperbolicity, conservation with rounding residuals, flux and update error bounds, and a reconstructed CFL bound.  [The verified compilation](Demos/Euler/Verified.lean) computes the same solvers under its generated bounds.  Convergence to a continuous solution remains open. |
+| [Binary64 GPT-2](Demos/Gpt/README.md) | Full-sequence inference, cached generation, layer normalization, causal attention, an MLP, and top-k sampling using SplitMix64. | [The byte theorem](Demos/Gpt/Bytes.lean) covers the Lean model's operations.  [`forward_causal`](Demos/Gpt/Causal.lean) proves causality, [`steps_exact`](Demos/Gpt/Exact.lean) proves bit-for-bit equivalence of cached steps and full inference, and [the generation proof](Demos/Gpt/Generation.lean) composes the host's calls.  [The verified compilation](Demos/Gpt/Verified.lean) adds generated allocation and trap-free theorems under their bounds. |
+| [Binary32 GPT-2](Demos/Gpt32/README.md) | Thirteen kernels for a cached generation step, compiled to Wasm and WGSL, with a modeled host program. | [The dispatch proofs](Demos/Gpt32/Proofs.lean) and [`generate_host`](Demos/Gpt32/Compose.lean) prove the native step's scores and race-free dispatch under strict binary32 device semantics and shape, buffer, and token bounds.  [The verified compilation](Demos/Gpt32/Verified.lean) proves Wasm execution and supplies the proved WGSL path.  [Its host theorem](Demos/Gpt32/VerifiedHost.lean) reuses the application proof. |
+| [Drone planner](Demos/Drone/README.md) | Dynamic programming over station altitudes and speeds, minimizing duration and then excess altitude. | [The byte theorems](Demos/Drone/Verify.lean) prove optimality and safety in the ideal point-mass model for valid terrain.  [Total execution](Demos/Drone/Total.lean) uses at most 70 pages under its initial-allocator and cap premises.  [The verified compilation](Demos/Drone/Verified.lean) transports the safety and optimality results and proves trap-free execution under its bounds. |
+| [Order book](Demos/Clob/README.md) | Level insertion and cancellation, market fills, depth, and command streams over word arrays. | [The byte theorem](Demos/Clob/Verify.lean) proves the fifteen functions' execution.  [The command-stream theorems](Demos/Clob/Commands.lean) prove chunk equivalence and equality of the books returned by `runOut` and `runCommands`.  [The verified version](Demos/Clob/Verified.lean) has its own typed definitions and command-stream proofs. |
+
+The GPU theorems concern the modeled device and host commands.  The application guides describe the host processes, file I/O, engines, and GPU arithmetic conditions that execution tests check.
+
+## 11. Compiler examples
+
+These algorithms remain in `Examples` or `Verified/Examples` because they demonstrate language forms, ownership, or proof procedures.  Their compiler theorems state that the module computes the Lean definition under the linked compiler's premises.  Word arithmetic wraps modulo `2^64`.
 
 | Program | Implementation | Computation |
 |---|---|---|
-| Scaled hypotenuse | `hypot` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `sqrt (x * x + y * y) / s`.  The sum of squares can overflow even when the exact result is finite. |
-| Newton's square root | `newtonSqrt` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | `x ↦ (x + a/x)/2` from `x = a` until `\|x² - a\| ≤ 10^-12 a`, for at most 64 steps |
-| `axpy` | `axpy` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | `a * x + y` for each element, written over `y` |
-| Grid | `grid` in [the library implementation](Library/Numerics/LinearAlgebra/Float64/Program.lean) | The points `x0 + i * dx` for `0 ≤ i < n` |
-| Scaling by a power of two | `scaleByPower` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `x * 2^k` for `k` from 0 to 1023, with the power built from its exponent field |
-| Mean of the indices | `mean` in [`Verified/Examples/Floats.lean`](Verified/Examples/Floats.lean) | `(0 + 1 + ⋯ + (n - 1))/n` in binary64, NaN for `n = 0` |
-| Falling body | `fall` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | Explicit Euler steps under gravity until the height reaches 0, for at most 100,000 steps |
-| Histogram bucket | [The `Examples/Bucket` example](Examples/Bucket/README.md) | `((x - lo) / width).toUInt64`, with Lean's saturating conversion (`bucket_bytes`) |
-| Arithmetic in binary32 | `axpy32`, `hypot32`, `ratio32`, `scale32`, and `axpyArray32` in [the `Examples/Binary32` example](Examples/Binary32/README.md) | Scalar and elementwise operations on `Float32` (an `implements` theorem for each, and `binary32_bytes`) |
+| Fixed-table lookup | [The lookup example](Examples/Lookup/README.md) | The first match among ten key-value pairs, encoded after the query in 21 words.  A miss or another input length gives `[0, 0]`.  [`lookup_bytes`](Examples/Lookup/Verify.lean) proves equality with the independent specification. |
+| Fixed-tree lookup | [The tree-lookup example](Examples/TreeLookup/README.md) | Three comparisons through a seven-node tree in a 15-word array.  A miss or another input length gives `[0, 0]`.  [`treeLookup_bytes`](Examples/TreeLookup/Verify.lean) proves equality with the specified traversal. |
+| Bounded filtering | [The below-100 example](Examples/Below100/README.md) | The words below 100 in their original order for an input of at most eight words.  Longer inputs give an empty array.  [`below100_bytes`](Examples/Below100/Verify.lean) proves equality with the filtering specification. |
+| Bounded increment | [The increment example](Examples/Increment/README.md) | One added to each word for an input of at most eight words.  Longer inputs give an empty array.  [`increment_bytes` and `increment_total`](Examples/Increment/Verify.lean) prove the specification and trap-free execution under the stated 16-page memory premises. |
+| First-zero removal | [The removal example](Examples/RemoveZero/README.md) | Remove the first zero from at most eight words while preserving the other words' order.  An input without a zero is unchanged, and a longer input gives an empty array.  [`removeZero_bytes`](Examples/RemoveZero/Verify.lean) proves the independent specification. |
+| Scalar multiply-add | [The binary64 arithmetic example](Examples/Axpy/README.md) | `a * x + y` with separate multiplication and addition |
+| Scaled hypotenuse | `hypot` in [the binary64 examples](Verified/Examples/Floats.lean) | `sqrt (x * x + y * y) / s`.  The sum of squares can overflow even when the exact result is finite. |
+| Newton's square root | `newtonSqrt` in [the bounded-repeat examples](Verified/Examples/Repeat.lean) | `x ↦ (x + a/x)/2` from `x = a` until `\|x² - a\| ≤ 10^-12 a`, for at most 64 steps |
+| Scaling by a power of two | `scaleByPower` in [the binary64 examples](Verified/Examples/Floats.lean) | `x * 2^k` for `k` from 0 to 1023, with the power built from its exponent field |
+| Mean of the indices | `mean` in [the binary64 examples](Verified/Examples/Floats.lean) | `(0 + 1 + ⋯ + (n - 1))/n` in binary64, NaN for `n = 0` |
+| Harmonic number | `harmonic` in [the binary64 examples](Verified/Examples/Floats.lean) | `1/1 + 1/2 + ⋯ + 1/n` left to right.  The binary64 denominator stops increasing at `2^53`. |
+| Falling body | `fall` in [the bounded-repeat examples](Verified/Examples/Repeat.lean) | Explicit Euler steps under gravity until the height reaches 0, for at most 100,000 steps |
+| Histogram bucket | [The bucket example](Examples/Bucket/README.md) | `((x - lo) / width).toUInt64`, with Lean's saturating conversion (`bucket_bytes`) |
+| Arithmetic in binary32 | [The binary32 example](Examples/Binary32/README.md) | Scalar `axpy32`, `hypot32`, and `ratio32`, plus imported library scaling and matrix-vector products.  Each has an execution theorem in the example, and `binary32_bytes` covers its module. |
 | Verified WGSL kernels | [The kernel examples](Verified/Examples/Wgsl.lean) and [native-value dispatch proofs](Verified/Examples/WgslProof.lean) | Binary32 scaling and a conditional sum with a loop in one branch, Boolean arrays, a word scan, and square root after nearest-even rounding.  Wasm correctness and, under the device model, correct and race-free WGSL dispatch. |
-| Binary32 GPT-2 | [The binary32 program](Demos/Gpt32/README.md#verified-compiler), [its Verified compilation](Demos/Gpt32/Verified.lean), and [its host proof](Demos/Gpt32/VerifiedHost.lean) | Thirteen unchanged functions with generated Wasm execution, allocation-bound, trap-free, and byte theorems.  Under the device model, WGSL generation returns the native step's scores, with every dispatch race-free. |
-| Triangle numbers, Fibonacci numbers, powers, sums of powers | `triangle`, `fib`, `power`, and `sumPowers` in [`Verified/Examples/Loops.lean`](Verified/Examples/Loops.lean) | Loops on words |
-| Fibonacci pairs | `fibPair` in [`Verified/Examples/Recursion.lean`](Verified/Examples/Recursion.lean) | Recursion on a pair of words |
-| Word folds | [Sum, product, and exclusive or](Library/Numerics/Reductions/Word/Program.lean), with the word dot product in [the array compiler fixture](Verified/Examples/Arrays.lean) | Left folds over arrays of words (`productArray_implements`, `xorArray_implements`) |
-| Collatz map | `collatz` in [`Verified/Examples/Loops.lean`](Verified/Examples/Loops.lean) and `collatzSteps` in [`Verified/Examples/Repeat.lean`](Verified/Examples/Repeat.lean) | `n` iterations of the map from `x`, and the number of steps to reach 1, counted up to 1,000 |
+| Triangle numbers, Fibonacci numbers, powers, sums of powers | `triangle`, `fib`, `power`, and `sumPowers` in [the counted-loop examples](Verified/Examples/Loops.lean) | Loops on words |
+| Fibonacci pairs | `fibPair` in [the recursion examples](Verified/Examples/Recursion.lean) | Recursion on a pair of words |
+| Collatz map | `collatz` in [the counted-loop examples](Verified/Examples/Loops.lean) and `collatzSteps` in [the bounded-repeat examples](Verified/Examples/Repeat.lean) | `n` iterations of the map from `x`, and the number of steps to reach 1, counted up to 1,000 |
+
+[The LeanExe worked examples](docs/leanexe-manual.md#worked-examples) and [the verified compiler examples](docs/verified-manual.md#examples) also index the language and ownership examples: scalar tuples and sums, records, arrays, calls, module composition, lists, and recursive types.

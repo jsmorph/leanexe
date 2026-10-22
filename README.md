@@ -63,7 +63,7 @@ Both compilers compile the [Euler solvers](Demos/Euler/README.md),
 [binary64 GPT-2](Demos/Gpt/README.md), [binary32 GPT-2](Demos/Gpt32/README.md), and
 [drone planner](Demos/Drone/README.md).  Their numerical libraries add proofs of accuracy,
 exceptional values, exact fused multiply-add, correctly rounded parsing, shortest-decimal printing,
-and generator periods.  [The numerical index](index.md) lists each algorithm and its strongest
+and generator periods.  [The algorithm index](index.md) lists each algorithm and its strongest
 proved result, with links to the theorem statements and their domains.
 
 ### Trusted base
@@ -97,7 +97,7 @@ states these proof limits.
 | [The development journal](devnotes.md) | The record of the work. |
 | [The algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
 | [The application demos](Demos/README.md) | Application definitions, proofs, host programs, and tests. |
-| [The numerical index](index.md) | The compiled numerical algorithms and their proved results. |
+| [The algorithm index](index.md) | Algorithms, applications, compiler examples, and their proved results. |
 
 ## Layout
 
