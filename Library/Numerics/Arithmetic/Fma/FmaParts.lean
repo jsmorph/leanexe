@@ -10,7 +10,7 @@ shifted left by `S`, with its highest bit at 125 and bits 0 to 19 clear, and its
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaParts
-open Verified.Examples FmaWords FmaDecode
+open Library.Numerics.Arithmetic.Fma FmaWords FmaDecode
 
 /-- The significand word of an operand. -/
 def sigWord (x : UInt64) : UInt64 :=

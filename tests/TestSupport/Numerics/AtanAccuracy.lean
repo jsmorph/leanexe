@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Atan.Compiled
+import Library.Numerics.Float64.Atan.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.ArcReference
 
@@ -19,7 +19,7 @@ bound.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.AtanAccuracy
 
-open Verified.Examples Reference ArcReference
+open TestSupport.Numerics Reference ArcReference
 
 /-- The double nearest to `v · 2 ^ -q` with the sign `neg`. -/
 def signed (neg : Bool) (v : Int) (q : Nat) : Float :=
@@ -103,7 +103,7 @@ def atan2Args : Array (Float × Float) :=
 
 end TestSupport.Numerics.AtanAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.AtanAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.AtanAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   let mut library : Tally := {}

@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Tan.Compiled
+import Library.Numerics.Float64.Tan.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -17,7 +17,7 @@ with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.TanAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `tan x`, as the quotient of the sine and cosine of `Reference`.  Below 1
 in magnitude they come from `sinCosFixed` at the precision of `x` plus 8 bits, where `|ρ| ≤ 1`, so
@@ -65,7 +65,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.TanAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.TanAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.TanAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   let mut library : Tally := {}

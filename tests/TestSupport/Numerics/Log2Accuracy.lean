@@ -1,6 +1,6 @@
-import Library.Numerics.Float64.Log2.Compiled
+import Library.Numerics.Float64.Log2.Program
 import TestSupport.Numerics.WorstCases
-import Library.Numerics.Float64.Log10.Compiled
+import Library.Numerics.Float64.Log10.Program
 import TestSupport.Numerics.PowerReference
 
 /-! A native check of `Library.Numerics.Float64.Log2.log2` and `Library.Numerics.Float64.Log10.log10` against references computed with Lean's integers
@@ -23,7 +23,7 @@ It exits with an error at the first result further than one unit from the refere
 
 namespace TestSupport.Numerics.Log2Accuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `log2 x` or `log10 x`, as `base` gives it, at precision 500, within
 `2 ^ 14` units, a relative error below `2 ^ -420`, since `|log x|` is at least `2 ^ -53` for every
@@ -75,7 +75,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.Log2Accuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.Log2Accuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.Log2Accuracy in
 def main : IO UInt32 := do
   unless (List.range 64).all tableEntryOk do
     IO.eprintln "fail: a table entry of log2 differs from its center"

@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Log1p.Compiled
+import Library.Numerics.Float64.Log1p.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.Reference
 
@@ -16,7 +16,7 @@ from the reference.  Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.Log1pAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `log (1 + x)`.  From -1/4 to 1/4 it is `2 atanh (x/(2 + x))` from
 `Reference.atanhFixed` at the precision of `x` plus 8 bits, where `x/(2 + x) = m/(2 ^ (1 - e) + m)`
@@ -60,7 +60,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.Log1pAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.Log1pAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.Log1pAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   for x in args do

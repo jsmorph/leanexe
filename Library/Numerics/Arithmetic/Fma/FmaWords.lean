@@ -11,7 +11,7 @@ the sum and the difference.
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaWords
-open Verified.Examples
+open Library.Numerics.Arithmetic.Fma
 
 /-- The number held by the pair of words `(h, l)`. -/
 def pair (h l : UInt64) : ℕ := h.toNat * 2 ^ 64 + l.toNat

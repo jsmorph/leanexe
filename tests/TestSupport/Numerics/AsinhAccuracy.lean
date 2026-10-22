@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Asinh.Compiled
+import Library.Numerics.Float64.Asinh.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.HyperbolicReference
 
@@ -18,7 +18,7 @@ first result further from the reference than its bound.  Run with `lake env lean
 
 namespace TestSupport.Numerics.AsinhAccuracy
 
-open Verified.Examples Reference HyperbolicReference
+open TestSupport.Numerics Reference HyperbolicReference
 
 /-- The double nearest to `v · 2 ^ -q` with the sign `neg`. -/
 def signed (neg : Bool) (v : Int) (q : Nat) : Float :=
@@ -85,7 +85,7 @@ def atanhArgs : Array Float :=
 
 end TestSupport.Numerics.AsinhAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.AsinhAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.AsinhAccuracy in
 def main : IO UInt32 := do
   let checks : List (String × Nat × Array Float × (Float → Float) × (Float → Float) ×
       (Float → Float)) :=

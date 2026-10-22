@@ -1,4 +1,4 @@
-import Library.Numerics.Arithmetic.Fma.Compiled
+import Library.Numerics.Arithmetic.Fma.Program
 import TestSupport.Numerics.Reference
 
 /-! A native check of `Library.Numerics.Arithmetic.Fma.fma` against the exact value of `a · b + c`, an integer times a power of
@@ -18,7 +18,7 @@ Run with `lake env lean --run`. -/
 
 namespace TestSupport.Numerics.FmaAccuracy
 
-open Verified.Examples Reference
+open TestSupport.Numerics Reference
 
 /-- The double nearest to `a · b + c`, with IEEE 754's special values and signed zeros. -/
 def fmaReference (a b c : Float) : Float :=
@@ -90,7 +90,7 @@ def triples : Array (Float × Float × Float) :=
 
 end TestSupport.Numerics.FmaAccuracy
 
-open Verified.Examples TestSupport.Numerics.FmaAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.FmaAccuracy in
 def main : IO UInt32 := do
   let args := triples
   let mut unequal := 0

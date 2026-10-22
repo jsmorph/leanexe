@@ -1,5 +1,5 @@
-import Library.Numerics.Decimal.PrintFloat.Compiled
-import Library.Numerics.Decimal.ParseFloat.Compiled
+import Library.Numerics.Decimal.PrintFloat.Program
+import Library.Numerics.Decimal.ParseFloat.Program
 import Library.Numerics.Decimal.Shared.StrconvRound
 
 /-! A native check of `Library.Numerics.Decimal.PrintFloat.print64`, `print64Ecma`, `print32`, and `print32Ecma` on the

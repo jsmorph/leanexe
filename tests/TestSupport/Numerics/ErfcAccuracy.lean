@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Erfc.Compiled
+import Library.Numerics.Float64.Erfc.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.ErfReference
 
@@ -19,7 +19,7 @@ same.  It exits with an error at the first result unequal to the reference.  Run
 
 namespace TestSupport.Numerics.ErfcAccuracy
 
-open Verified.Examples Reference ErfReference
+open TestSupport.Numerics Reference ErfReference
 
 /-- The double nearest to `erfc x`.  Below 6 in magnitude it is
 `1 ∓ erf |x|` at precision `P`, within a relative `2 ^ -330`, since `erfc x > 2 ^ -56` there.  From
@@ -72,7 +72,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.ErfcAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.ErfcAccuracy in
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.ErfcAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
   for x in args do

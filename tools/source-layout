@@ -34,7 +34,7 @@ for (const file of active) {
     if (compiler && /^(Library|Demos|Examples|TestSupport)(\.|$)/.test(name)) {
       errors.push(`${file}: compiler imports ${name}`);
     }
-    if (file.startsWith('Library/') && /^(Examples|Demos|TestSupport)(\.|$)/.test(name)) {
+    if (file.startsWith('Library/') && /^(Examples|Demos|TestSupport|Verified\.Examples)(\.|$)/.test(name)) {
       errors.push(`${file}: library imports ${name}`);
     }
   }

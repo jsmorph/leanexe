@@ -13,7 +13,7 @@ least `√(2/(π x))/2` for these orders, so each reference works at `Q` bits pl
 
 namespace TestSupport.Numerics.BesselReference
 
-open Verified.Examples Reference ArcReference
+open Reference ArcReference
 
 /-- Euler's constant `γ · 2 ^ q` by Brent and McMillan's algorithm B1, `A/B - ln n` with
 `n = q/5 + 10`, whose error is below `π e ^ (-4 n) < 2 ^ (-q - 50)`.  The sums at `q + 40` bits

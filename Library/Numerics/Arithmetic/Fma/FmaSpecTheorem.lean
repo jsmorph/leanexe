@@ -10,7 +10,7 @@ nearest-even word of `a · b + c` below the overflow threshold, which is finite 
 -/
 
 namespace Library.Numerics.Arithmetic.Fma.FmaSpecTheorem
-open Verified.Examples FmaTheorem CodeLib.IEEE64 LeanExe.ProofKit F64NearestNonnegative
+open Library.Numerics.Arithmetic.Fma FmaTheorem CodeLib.IEEE64 LeanExe.ProofKit F64NearestNonnegative
 
 set_option exponentiation.threshold 4096
 

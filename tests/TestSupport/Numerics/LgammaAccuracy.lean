@@ -1,4 +1,4 @@
-import Library.Numerics.Float64.Lgamma.Compiled
+import Library.Numerics.Float64.Lgamma.Program
 import TestSupport.Numerics.WorstCases
 import TestSupport.Numerics.GammaReference
 
@@ -21,7 +21,7 @@ exits with an error at the first result that fails.  Run with `lake env lean --r
 
 namespace TestSupport.Numerics.LgammaAccuracy
 
-open Verified.Examples Reference GammaReference
+open TestSupport.Numerics Reference GammaReference
 
 /-- The sign of `Γ x` that `lgammaR` returns. -/
 def signReference (x : Float) : Float :=
@@ -57,7 +57,7 @@ def args : Array Float :=
 
 end TestSupport.Numerics.LgammaAccuracy
 
-open Verified.Examples TestSupport.Numerics.Reference TestSupport.Numerics.GammaReference
+open TestSupport.Numerics TestSupport.Numerics.Reference TestSupport.Numerics.GammaReference
   TestSupport.Numerics.LgammaAccuracy in
 def main : IO UInt32 := do
   let mut ours : Tally := {}
