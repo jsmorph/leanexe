@@ -22,7 +22,7 @@ local notation "u" => (1 / 2 ^ 53 : ℝ)
 local notation "η" => (1 / 2 ^ 1075 : ℝ)
 
 /-- `erfc z` lies above `2^-1021` for `2 ≤ z < 25.86`. -/
-theorem erfc_lower (z : ℝ) (h2 : 2 ≤ z) (hz : z < 2586 / 100) : 1 / 2 ^ 1021 ≤ erfc z := by
+theorem erfc_lower (z : ℝ) (h2 : 2 ≤ z) (hz : z < 2586 / 100) : 1 / 2 ^ 1021 ≤ RealErf.erfc z := by
   have hG := G_bounds z h2
   have hz0 : 0 < z := by linarith
   have hE := exp_lower2 (-z ^ 2) (by nlinarith)
@@ -68,7 +68,7 @@ theorem fast_words : ff (Float.ofBits 0x4039DB1BB14E15CA) ∧
 /-- The fast path above `0x1.713786d9c7c09p+1`. -/
 theorem fast_ok_asym (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : (xMax : ℝ) < fv x)
     (hhi : fv x < ratOfWord 0x4039DB1BB14E15CA) :
-    FastOK (erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
+    FastOK (RealErf.erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
   obtain ⟨z0f, z0v⟩ := zero_val
   obtain ⟨xf, xv⟩ := xmax_word
   obtain ⟨tf, tv, cf2, cb2, cf3, cb3, -, -, k5⟩ := fast_words
@@ -100,7 +100,7 @@ theorem fast_ok_asym (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : (xMax : �
     by rw [fin_fst]; linarith, by rw [fin_snd]; exact hb2, he.2, ?_⟩
   rw [fin_fst, fin_snd]
   refine herr.trans ?_
-  have : (0 : ℝ) ≤ erfc (fv x) := hy.le
+  have : (0 : ℝ) ≤ RealErf.erfc (fv x) := hy.le
   have : (1 : ℝ) / 2 ^ 57 ≤ 15 / 16 * u := by norm_num
   nlinarith
 
@@ -113,17 +113,17 @@ theorem fast_cases (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < 
       (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x).1 +
         ((Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x).2.1 +
           (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x).2.2)) = true) :
-    FastOK (erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) ∧
-      1 / 2 ^ 1021 ≤ erfc (fv x) := by
+    FastOK (RealErf.erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) ∧
+      1 / 2 ^ 1021 ≤ RealErf.erfc (fv x) := by
   obtain ⟨z0f, z0v⟩ := zero_val
   obtain ⟨xf, xv⟩ := xmax_word
   obtain ⟨tf, tv, -, -, -, -, k2, k3, -⟩ := fast_words
   by_cases hneg : fv x < 0
   · refine ⟨erfcFast_neg hF x hx hneg (by linarith), ?_⟩
-    have h1 : erf (fv x) ≤ 0 := by
+    have h1 : RealErf.erf (fv x) ≤ 0 := by
       have := erf_nonneg (-fv x) (by linarith)
       rw [erf_neg] at this; linarith
-    unfold erfc; linarith [show (1 : ℝ) / 2 ^ 1021 ≤ 1 by norm_num]
+    unfold RealErf.erfc; linarith [show (1 : ℝ) / 2 ^ 1021 ≤ 1 by norm_num]
   by_cases hm : fv x ≤ xMax
   · refine ⟨erfcFast_pos hF x hx (by linarith) hm, ?_⟩
     exact (show (1 : ℝ) / 2 ^ 1021 ≤ 1 / 2 ^ 15 by norm_num).trans
@@ -154,7 +154,7 @@ theorem fast_cases (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < 
 `x ≠ 0`. -/
 theorem main_within (hF : FmaNearest) (x : Float) (hx : ff x) (hlo : -(47 / 8) < fv x)
     (h0 : fv x ≠ 0) (hhi : fv x < ratOfWord 0x403B39DC41E48BFD) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.erfcMain Erfc.fastTable Erfc.accTable Erfc.expTable Erfc.asymTable Erfc.asymAccTable
         Erfc.expAccTable Erfc.excTable x).toBits := by
   unfold Erfc.erfcMain

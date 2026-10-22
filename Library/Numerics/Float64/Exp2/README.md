@@ -84,7 +84,7 @@ Every theorem in the table has a `#print axioms` line.  The journal records only
 
 ### Modules
 
-The proof adds 18 modules in `Verified/Examples/` to the chain of `ExpTheorem`, whose table, scale, one-step, and compensated-subnormal lemmas it reuses.  The table lists them by stage, in dependency order within each stage.  [The root `Verified` import](../../../../Verified.lean) does not reach them, so `tests/verified/run.sh` builds `Library.Numerics.Float64.Exp2.Exp2Bytes` as a separate target.
+The proof adds 18 modules in `Library/Numerics/Float64/Exp2/` to the chain of `ExpTheorem`, whose table, scale, one-step, and compensated-subnormal lemmas it reuses.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) does not reach them, so `tests/verified/run.sh` builds `Library.Numerics.Float64.Exp2.Exp2Bytes` as a separate target.
 
 | Stage | Modules | Content |
 |---|---|---|

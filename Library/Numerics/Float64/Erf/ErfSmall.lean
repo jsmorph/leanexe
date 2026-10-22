@@ -10,7 +10,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit F64Horner ErfSmallBase RealErf ErfSmallPiec
 
 theorem small_erf (X : UInt64) (hX : Finite X) (hlo : 1 / (2 : ℝ) ^ 28 ≤ value X)
     (hhi : value X ≤ 27 / 32) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
         (hornerW qqW (Wasm.IEEE64.mul X X))))) := by
   have hx0 : 0 < value X := lt_of_lt_of_le (by positivity) hlo

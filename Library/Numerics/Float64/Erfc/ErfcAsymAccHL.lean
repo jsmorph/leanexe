@@ -323,7 +323,7 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
       ff (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).2.1 ∧
       |(fv (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).1 +
         fv (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).2.1) * (2 : ℝ) ^ K -
-          erfc (fv x)| ≤ erfc (fv x) / 2 ^ 56 ∧
+          RealErf.erfc (fv x)| ≤ RealErf.erfc (fv x) / 2 ^ 56 ∧
       |fv (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).2.1| ≤
         |fv (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).1| / 2 ^ 40 ∧
       1 / 200 ≤ fv (aaHL Erfc.expAccTable Erfc.asymAccTable 1.0 2.0 x).1 ∧
@@ -572,7 +572,7 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
   have hXne : fv x ≠ 0 := hX0.ne'
   set E0 := Real.exp (-(fv x) ^ 2) with hE0
   have hE00 : 0 < E0 := Real.exp_pos _
-  have herfc : erfc (fv x) = E0 / fv x * G := by
+  have herfc : RealErf.erfc (fv x) = E0 / fv x * G := by
     rw [erfc_eq, hGdef, hE0]
     field_simp
   set δ := fv x * fv x - (fv (Erfc.aMul x x).1 + fv (Erfc.aMul x x).2) with hδdef

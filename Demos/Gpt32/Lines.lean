@@ -1,7 +1,7 @@
 import Demos.Gpt32.HostProgram
 
 /-!
-`gpt32-lines NH F CHUNK VOCAB LAYERS` prints the host commands of `Examples/Gpt32/HostProgram.lean`
+`gpt32-lines NH F CHUNK VOCAB LAYERS` prints the host commands of `Demos/Gpt32/HostProgram.lean`
 for the shape `shapeOf NH F CHUNK VOCAB LAYERS`, for the GPT-2 page that `tests/web/serve.py`
 serves.  It reads requests from standard input, one per line, and answers each with the command lines
 followed by a line `end`: `setup DIR` gives a `shader` command for each kernel, with its text at
@@ -16,7 +16,7 @@ namespace Demos.Gpt32
 open Demos.Gpt32
 
 /-- The shape with `nh` heads, an MLP of width `f`, `layers` layers, and a vocabulary of `vocab`
-tokens in chunks of `chunk` rows, as `Examples/Gpt32/Driver.lean` builds it. -/
+tokens in chunks of `chunk` rows, as `Demos/Gpt32/Driver.lean` builds it. -/
 def linesShape (nh f chunk vocab layers : Nat) : Shape32 :=
   { nh := UInt64.ofNat nh, f := UInt64.ofNat f, chunk := UInt64.ofNat chunk, layers,
     rows := (List.range ((vocab + chunk - 1) / chunk)).map fun c =>

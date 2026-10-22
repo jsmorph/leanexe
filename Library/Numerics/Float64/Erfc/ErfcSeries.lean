@@ -88,7 +88,7 @@ theorem eval_take_drop (k : ℕ) : ∀ (q : List ℚ) (z : ℝ),
 def serRem (n : ℕ) (X : ℚ) : ℚ := X ^ (2 * n + 1) / ((n.factorial * (2 * n + 1) : ℕ) : ℚ)
 
 theorem erf_ser (n : ℕ) (x : ℝ) (X : ℚ) (hX : |x| ≤ X) :
-    |erf x - scale * eval (ser n) x| ≤ scale * (serRem n X : ℝ) := by
+    |RealErf.erf x - scale * eval (ser n) x| ≤ scale * (serRem n X : ℝ) := by
   have h := erf_series n x
   rw [ser, eval_oddP]
   refine h.trans ?_
@@ -111,7 +111,7 @@ def rowCheck (n J : ℕ) (c r ε : ℚ) (P : List ℚ) (d : ℕ) : Bool :=
 
 theorem row_sound (n J : ℕ) (c r ε : ℚ) (P : List ℚ) (d : ℕ) (hr : 0 ≤ r)
     (hc : rowCheck n J c r ε P d = true) (z : ℝ) (hz : |z| ≤ r) :
-    |eval P z - erf (c + z)| ≤ (rowBound n J c r ε : ℝ) := by
+    |eval P z - RealErf.erf (c + z)| ≤ (rowBound n J c r ε : ℝ) := by
   unfold rowBound
   push_cast
   set Q := shift c (ser n)
@@ -137,9 +137,9 @@ theorem row_sound (n J : ℕ) (c r ε : ℚ) (P : List ℚ) (d : ℕ) (hr : 0 �
   have hrem0 : (0 : ℝ) ≤ (serRem n (qabs c + r) : ℚ) := by
     unfold serRem; have : (0 : ℚ) ≤ qabs c := by unfold qabs; split <;> linarith
     positivity
-  have e1 : eval P z - erf (c + z) = (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * eval lo z) +
+  have e1 : eval P z - RealErf.erf (c + z) = (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * eval lo z) +
       ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * eval lo z -
-      scale * (z ^ (J + 1) * eval hi z) + (scale * eval (ser n) (c + z) - erf (c + z)) := by
+      scale * (z ^ (J + 1) * eval hi z) + (scale * eval (ser n) (c + z) - RealErf.erf (c + z)) := by
     rw [← hQ, hsplit]; ring
   rw [e1]
   have k1 : |(((sLo + sHi) / 2 : ℚ) : ℝ) - scale| * |eval lo z| ≤
@@ -151,12 +151,12 @@ theorem row_sound (n J : ℕ) (c r ε : ℚ) (P : List ℚ) (d : ℕ) (hr : 0 �
     mul_le_mul hsh k2 (abs_nonneg _) (by linarith [scale_pos])
   have k4 : scale * (serRem n (qabs c + r) : ℝ) ≤ (sHi : ℝ) * (serRem n (qabs c + r) : ℝ) :=
     mul_le_mul_of_nonneg_right hsh hrem0
-  have k5 : |scale * eval (ser n) (c + z) - erf (c + z)| ≤ scale * (serRem n (qabs c + r) : ℝ) := by
+  have k5 : |scale * eval (ser n) (c + z) - RealErf.erf (c + z)| ≤ scale * (serRem n (qabs c + r) : ℝ) := by
     rw [abs_sub_comm]; exact hser
   set A := eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * eval lo z
   set B := ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * eval lo z
   have t1 := abs_add_le (A + B - scale * (z ^ (J + 1) * eval hi z))
-    (scale * eval (ser n) (c + z) - erf (c + z))
+    (scale * eval (ser n) (c + z) - RealErf.erf (c + z))
   have t2 : |A + B - scale * (z ^ (J + 1) * eval hi z)| ≤
       |A + B| + |scale * (z ^ (J + 1) * eval hi z)| := by
     have := abs_add_le (A + B) (-(scale * (z ^ (J + 1) * eval hi z)))
@@ -175,17 +175,17 @@ theorem row_sound (n J : ℕ) (c r ε : ℚ) (P : List ℚ) (d : ℕ) (hr : 0 �
 def erfcLo (n : ℕ) (x : ℚ) : ℚ := 1 - sHi * (evalQ (ser n) x + serRem n x)
 
 theorem erfc_ge (n : ℕ) (x : ℚ) (hx : 0 ≤ x) (hpos : 0 ≤ evalQ (ser n) x + serRem n x) :
-    (erfcLo n x : ℝ) ≤ erfc x := by
+    (erfcLo n x : ℝ) ≤ RealErf.erfc x := by
   have h := erf_ser n (x : ℝ) x (le_of_eq (abs_of_nonneg (by exact_mod_cast hx)))
   have hq : eval (ser n) (x : ℝ) = (evalQ (ser n) x : ℝ) := (PolyCalc.evalQ_cast _ _).symm
   rw [hq] at h
   have hp : (0 : ℝ) ≤ (evalQ (ser n) x : ℝ) + (serRem n x : ℝ) := by exact_mod_cast hpos
-  have h1 : erf x ≤ scale * ((evalQ (ser n) x : ℝ) + (serRem n x : ℝ)) := by
+  have h1 : RealErf.erf x ≤ scale * ((evalQ (ser n) x : ℝ) + (serRem n x : ℝ)) := by
     have := (abs_le.mp h).2; linarith
   have h2 : scale * ((evalQ (ser n) x : ℝ) + (serRem n x : ℝ)) ≤
       (sHi : ℝ) * ((evalQ (ser n) x : ℝ) + (serRem n x : ℝ)) :=
     mul_le_mul_of_nonneg_right scale_hi hp
-  unfold erfc erfcLo
+  unfold RealErf.erfc erfcLo
   push_cast
   linarith
 

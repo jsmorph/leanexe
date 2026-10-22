@@ -75,7 +75,7 @@ The C sources annotate none of these constants with bit patterns, and each decim
 
 ## Theorems
 
-The theorems are in [the cosh theorem module](CoshTheorem.lean), [the sinh theorem module](SinhTheorem.lean), [the byte theorems](SinhBytes.lean), and [the file module](SinhFile.lean), each in the namespace `Verified.Examples` followed by the module's name.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
+The theorems are in [the cosh theorem module](CoshTheorem.lean), [the sinh theorem module](SinhTheorem.lean), [the byte theorems](SinhBytes.lean), and [the file module](SinhFile.lean), each in the namespace `Library.Numerics.Float64.Sinh` followed by the module's name.  `x` is a Lean `Float` and `a = value x.toBits` its real value.  The byte theorems use `Wasm.Runs false`, which requires every run with enough fuel to return without a trap.
 
 | Theorem | Statement |
 |---|---|
@@ -95,7 +95,7 @@ Each theorem of the table has a `#print axioms` line.  The library build and a r
 
 ### Modules
 
-The proof has 23 modules of its own in `Verified/Examples/`, and it builds on the chains of [the exponential](../Exp/README.md) and of [the exponential minus one and the hyperbolic tangent](../Tanh/README.md).  The table lists them by stage, in dependency order.  [The root `Verified` import](../../../../Verified.lean) includes `SinhBytes`, so `lake build Verified Library` builds the chain.
+The proof has 23 modules of its own in `Library/Numerics/Float64/Sinh/`, and it builds on the chains of [the exponential](../Exp/README.md) and of [the exponential minus one and the hyperbolic tangent](../Tanh/README.md).  The table lists them by stage, in dependency order.  [The library aggregate](../../../../Library.lean) includes `SinhBytes`, so `lake build Verified Library` builds the chain.
 
 | Stage | Modules | Content |
 |---|---|---|

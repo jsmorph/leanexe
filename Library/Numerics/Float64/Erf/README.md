@@ -102,7 +102,7 @@ Each declaration of `ErfTheorem.lean` has a `#print axioms` line, and all eleven
 
 ### Modules
 
-The chain of `erf`'s proof has 33 modules of its own in `Verified/Examples/`, and it imports the exponential's chain and `ExpTightFloat`.  The table lists them by stage, each stage in dependency order.  [The root `Verified` import](../../../../Verified.lean) includes `ErfTheorem`, and the file check of `tests/verified/run.sh` builds it as well.
+The chain of `erf`'s proof has 33 modules of its own in `Library/Numerics/Float64/Erf/`, and it imports the exponential's chain and `ExpTightFloat`.  The table lists them by stage, each stage in dependency order.  [The library aggregate](../../../../Library.lean) includes `ErfTheorem`, and the file check of `tests/verified/run.sh` builds it as well.
 
 | Stage | Modules | Content |
 |---|---|---|

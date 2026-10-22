@@ -1,6 +1,6 @@
 import Library.Random.Lcg.Period
 
-/-! `jump` of `Examples/Lcg/Program.lean` computes `advance`: after `k` passes its state holds the
+/-! `jump` of `Library/Random/Lcg/Program.lean` computes `advance`: after `k` passes its state holds the
 coefficients of the steps of the low `k` bits of `n` and the coefficients `doubled a c k` of `2^k`
 steps. -/
 

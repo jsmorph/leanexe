@@ -22,7 +22,7 @@ def tailEps (k d : ℚ) : ℚ := (1 + k) ^ 2 * (1 + uQ) ^ 2 * (1 + d + d ^ 2) - 
 
 /-- `x erfc x` in terms of the tail model. -/
 theorem x_erfc (R S : List ℚ) (x z : ℝ) (hx : 0 < x) :
-    x * erfc x = Real.exp (-z ^ 2 - 9 / 16) *
+    x * RealErf.erfc x = Real.exp (-z ^ 2 - 9 / 16) *
       Real.exp ((z - x) * (z + x) + eval R (x ^ 2)⁻¹ / eval S (x ^ 2)⁻¹ - tailF R S x) := by
   have hpos : 0 < x * erfcx x := mul_pos hx (erfcx_pos x)
   have h1 : (z - x) * (z + x) + eval R (x ^ 2)⁻¹ / eval S (x ^ 2)⁻¹ - tailF R S x =
@@ -65,15 +65,15 @@ theorem exp_near_one (w d : ℝ) (hw : |w| ≤ d) (hd : d ≤ 1) : |Real.exp w -
 /-- The relative error of the tail quotient. -/
 theorem tail_compose (R S : List ℚ) (k d : ℚ) (hk : 0 ≤ k) (hd0 : 0 ≤ d) (hd : d ≤ 1 / 2)
     (hk1 : k ≤ 1 / 2 ^ 40) (X Z A1 A2 E1 E2 : UInt64) (hX : Finite X) (hx1 : 1 ≤ value X)
-    (hx32 : value X ≤ 32) (hy : 1 / 2 ^ 1000 ≤ erfc (value X))
+    (hx32 : value X ≤ 32) (hy : 1 / 2 ^ 1000 ≤ RealErf.erfc (value X))
     (hA1 : value A1 = -(value Z) ^ 2 - 9 / 16)
     (hE1 : Finite E1 ∧ |value E1 - Real.exp (value A1)| ≤ k * Real.exp (value A1))
     (hE2 : Finite E2 ∧ |value E2 - Real.exp (value A2)| ≤ k * Real.exp (value A2))
     (hA2 : |value A2 - ((value Z - value X) * (value Z + value X) +
       eval R (value X ^ 2)⁻¹ / eval S (value X ^ 2)⁻¹)| + |tailF R S (value X)| ≤ d) :
     Finite (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X) ∧
-      |value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X) - erfc (value X)| ≤
-        (tailEps k d : ℝ) * erfc (value X) := by
+      |value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X) - RealErf.erfc (value X)| ≤
+        (tailEps k d : ℝ) * RealErf.erfc (value X) := by
   have hu : unitRoundoff64 = ((uQ : ℚ) : ℝ) := uQ_eq.symm
   have hu0 : (uQ : ℝ) = 1 / 2 ^ 53 := by simp [uQ]
   set x := value X
@@ -93,7 +93,7 @@ theorem tail_compose (R S : List ℚ) (k d : ℚ) (hk : 0 ≤ k) (hd0 : 0 ≤ d)
   set C := Real.exp (T - tailF R S x)
   have hC : 0 < C := Real.exp_pos _
   have hA1p : 0 < Real.exp (value A1) := Real.exp_pos _
-  have hxe : x * erfc x = Real.exp (value A1) * C := by
+  have hxe : x * RealErf.erfc x = Real.exp (value A1) * C := by
     rw [hA1, x_erfc R S x z hx0]
   -- the second exponential against `C`
   have hw : |value A2 - (T - tailF R S x)| ≤ d := by
@@ -145,11 +145,11 @@ theorem tail_compose (R S : List ℚ) (k d : ℚ) (hk : 0 ≤ k) (hd0 : 0 ≤ d)
     have h1 : (1 : ℝ) ≤ (1 + (k : ℝ)) ^ 2 := one_le_pow₀ (by linarith only [hk'])
     have := one_le_mul_of_one_le_of_one_le h1 hq1
     linarith only [this]
-  set y := x * erfc x
-  have hey : 0 < erfc x := erfc_pos x
+  set y := x * RealErf.erfc x
+  have hey : 0 < RealErf.erfc x := erfc_pos x
   have hy0 : 0 < y := mul_pos hx0 hey
   have hyl : 1 / 2 ^ 1000 ≤ y := by
-    have : erfc x ≤ x * erfc x := le_mul_of_one_le_left hey.le hx1
+    have : RealErf.erfc x ≤ x * RealErf.erfc x := le_mul_of_one_le_left hey.le hx1
     linarith only [this, hy]
   have hyu : y ≤ 64 := by
     have h1 := mul_le_mul hx32 (erfc_lt_two x).le hey.le (by norm_num)
@@ -230,27 +230,27 @@ theorem tail_compose (R S : List ℚ) (k d : ℚ) (hk : 0 ≤ k) (hd0 : 0 ≤ d)
     have h1 := mul_le_mul_of_nonneg_left hy hx0.le
     have h2 : (1 : ℝ) / 2 ^ 1022 ≤ 1 / 2 ^ 1000 / 6 := by norm_num
     have h3 := mul_le_mul_of_nonneg_left h2 hx0.le
-    have hyx : y = x * erfc x := rfl
+    have hyx : y = x * RealErf.erfc x := rfl
     linarith only [h1, h3, hrl, hyx]
   rw [max_eq_left hrxm] at hqe
-  have hrxe : |r / x - erfc x| ≤ K2 * erfc x := by
-    have h : r / x - erfc x = (r - y) / x := by
+  have hrxe : |r / x - RealErf.erfc x| ≤ K2 * RealErf.erfc x := by
+    have h : r / x - RealErf.erfc x = (r - y) / x := by
       simp only [y]
       field_simp
     rw [h, abs_div, abs_of_pos hx0, div_le_iff₀ hx0]
-    have hyx : K2 * y = K2 * erfc x * x := by simp only [y]; ring
+    have hyx : K2 * y = K2 * RealErf.erfc x * x := by simp only [y]; ring
     linarith only [hry, hyx]
-  have hrxa : |r / x| ≤ (1 + K2) * erfc x := by
-    have := abs_sub_abs_le_abs_sub (r / x) (erfc x)
+  have hrxa : |r / x| ≤ (1 + K2) * RealErf.erfc x := by
+    have := abs_sub_abs_le_abs_sub (r / x) (RealErf.erfc x)
     rw [abs_of_pos hey] at this
     linarith only [this, hrxe]
-  have htot : |value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X) - erfc x| ≤
-      ((1 + K2) * (1 + unitRoundoff64) - 1) * erfc x := by
-    have h1 := abs_sub_le (value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X)) (r / x) (erfc x)
-    have h2 : unitRoundoff64 * |r / x| ≤ unitRoundoff64 * ((1 + K2) * erfc x) :=
+  have htot : |value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X) - RealErf.erfc x| ≤
+      ((1 + K2) * (1 + unitRoundoff64) - 1) * RealErf.erfc x := by
+    have h1 := abs_sub_le (value (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X)) (r / x) (RealErf.erfc x)
+    have h2 : unitRoundoff64 * |r / x| ≤ unitRoundoff64 * ((1 + K2) * RealErf.erfc x) :=
       mul_le_mul_of_nonneg_left hrxa hu'
-    have h3 : ((1 + K2) * (1 + unitRoundoff64) - 1) * erfc x =
-        K2 * erfc x + unitRoundoff64 * ((1 + K2) * erfc x) := by ring
+    have h3 : ((1 + K2) * (1 + unitRoundoff64) - 1) * RealErf.erfc x =
+        K2 * RealErf.erfc x + unitRoundoff64 * ((1 + K2) * RealErf.erfc x) := by ring
     rw [h3]
     linarith only [h1, hqe, h2, hrxe]
   refine htot.trans (le_of_eq ?_)
@@ -260,7 +260,7 @@ theorem tail_compose (R S : List ℚ) (k d : ℚ) (hk : 0 ≤ k) (hd0 : 0 ≤ d)
   ring
 
 /-- `erfc 1.25 ≤ 0.0772`, from 20 terms of `erf_series`. -/
-theorem erfc_five_fourths : erfc (5 / 4) ≤ 772 / 10000 := by
+theorem erfc_five_fourths : RealErf.erfc (5 / 4) ≤ 772 / 10000 := by
   have hs := erf_series 20 (5 / 4)
   have hk := scale_bounds
   have hc := ErfTailBase.eval_cast (erfCoeffs 20) (25 / 16)
@@ -291,19 +291,19 @@ theorem erfc_five_fourths : erfc (5 / 4) ≤ 772 / 10000 := by
   have h3 : scale * (((5 : ℝ) / 4) ^ (2 * 20 + 1) / 99748982335242240000) ≤
       (333038747416263463344 / 2 ^ 68) * ((5 / 4) ^ 41 / 99748982335242240000) :=
     mul_le_mul_of_nonneg_right hk.2 (by positivity)
-  simp only [erfc]
+  simp only [RealErf.erfc]
   norm_num at h1 h3 hcheck' ⊢
   linarith
 
 /-- The criterion for one step of `erf` from a relative error of `erfc` on `[xlo, xhi] ⊆ [1.25, 6]`. -/
 theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UInt64) (hX : Finite X)
     (hx : 5 / 4 ≤ value X) (hqf : Finite q)
-    (hq : |value q - erfc (value X)| ≤ (eps : ℝ) * erfc (value X)) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    (hq : |value q - RealErf.erfc (value X)| ≤ (eps : ℝ) * RealErf.erfc (value X)) :
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.sub 0x3FF0000000000000 q) := by
   set x := value X
-  have hey : 0 < erfc x := erfc_pos x
-  have he54 : erfc x ≤ 772 / 10000 :=
+  have hey : 0 < RealErf.erfc x := erfc_pos x
+  have he54 : RealErf.erfc x ≤ 772 / 10000 :=
     (erfc_strictAnti.antitone hx).trans erfc_five_fourths
   have heps' : (eps : ℝ) * (772 / 10000) < 1 / 2 ^ 53 := by
     have h := (Rat.cast_lt (K := ℝ)).mpr heps
@@ -312,11 +312,11 @@ theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UI
   have heps0 : (0 : ℝ) ≤ eps := by
     by_contra h
     push_neg at h
-    have h1 := abs_nonneg (value q - erfc x)
+    have h1 := abs_nonneg (value q - RealErf.erfc x)
     have h2 := mul_neg_of_neg_of_pos h hey
     linarith only [h1, h2, hq]
-  have hqe : |value q - erfc x| < 1 / 2 ^ 53 := by
-    have : (eps : ℝ) * erfc x ≤ eps * (772 / 10000) := mul_le_mul_of_nonneg_left he54 heps0
+  have hqe : |value q - RealErf.erfc x| < 1 / 2 ^ 53 := by
+    have : (eps : ℝ) * RealErf.erfc x ≤ eps * (772 / 10000) := mul_le_mul_of_nonneg_left he54 heps0
     linarith
   have hneg := F64NegateOps.finite_negate q hqf
   have hnv : value (Wasm.IEEE64.negate q) = -value q := by
@@ -326,7 +326,7 @@ theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UI
   rw [hsub]
   have hql := (abs_lt.mp hqe).1
   have hqu := (abs_lt.mp hqe).2
-  have hy : erf x = 1 - erfc x := by simp [erfc]
+  have hy : RealErf.erf x = 1 - RealErf.erfc x := by simp [RealErf.erfc]
   have hn := F64NearestSum.add_nearest _ _ ErfTailEval.one_finite hneg (by
     rw [one_value, hnv]
     linarith [show (1 : ℝ) / 2 ^ 53 < 1 / 2 by norm_num]) (by
@@ -336,7 +336,7 @@ theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UI
   have hb : value (UInt64.ofNat (1022 * 2 ^ 52)) = 1 / 2 := by
     rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
     norm_num
-  refine F64AddNearest.within_of_nearest 1 le_rfl (erf x) _ _ 1022 (by norm_num) (by norm_num)
+  refine F64AddNearest.within_of_nearest 1 le_rfl (RealErf.erf x) _ _ 1022 (by norm_num) (by norm_num)
     (by rw [hb, hy]; linarith) (by rw [hb]; linarith [show (1 : ℝ) / 2 ^ 53 < 1 / 4 by norm_num])
     ?_ hn ?_
   · have := erf_lt_one x
@@ -347,7 +347,7 @@ theorem tail_erf (eps : ℚ) (heps : eps * (772 / 10000) < 1 / 2 ^ 53) (X q : UI
   · have hsp2 : ((1 : Nat) : ℝ) * ((2 : ℝ) ^ (1022 - 1) / (2 : ℝ) ^ 1074) = 1 / 2 ^ 53 := by
       norm_num
     rw [hsp2, hy]
-    have : 1 + -value q - (1 - erfc x) = -(value q - erfc x) := by ring
+    have : 1 + -value q - (1 - RealErf.erfc x) = -(value q - RealErf.erfc x) := by ring
     rw [this, abs_neg]
     exact hqe
 

@@ -172,14 +172,14 @@ theorem c102 : ff (Float.ofBits 0x3994000000000000) ∧
     have : |ratOfWord 0x3974000000000000| ≤ 1 / 2 ^ 60 := by decide +kernel
     qc this
 
-theorem erf_nonneg (y : ℝ) (hy : 0 ≤ y) : 0 ≤ erf y := by
+theorem erf_nonneg (y : ℝ) (hy : 0 ≤ y) : 0 ≤ RealErf.erf y := by
   have := erf_strictMono.monotone hy
   rwa [erf_zero] at this
 
 /-- The fast path of `cr_erfc` for `-95/16 < x < 0`. -/
 theorem erfcFast_neg (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
     (hlo : -(95 / 16) < fv x) :
-    FastOK (erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
+    FastOK (RealErf.erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
   obtain ⟨z0f, z0v⟩ := zero_val
   obtain ⟨cf, cb, -, -⟩ := c102
   have hxneg : x < 0.0 := (flt_iff _ _ hx z0f).mpr (by rw [z0v]; exact hneg)
@@ -189,8 +189,8 @@ theorem erfcFast_neg (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
   have hT := zTarget_abs (fv (-x)) (by rw [nv]; linarith) (by rw [nv]; linarith)
   have herf0 := erf_nonneg (fv (-x)) (by rw [nv]; linarith)
   have herf1 := erf_lt_one (fv (-x))
-  have hy : erfc (fv x) = 1 + erf (fv (-x)) := by
-    rw [nv, show fv x = -(-fv x) by ring, erfc_neg, erfc]; ring
+  have hy : RealErf.erfc (fv x) = 1 + RealErf.erf (fv (-x)) := by
+    rw [nv, show fv x = -(-fv x) by ring, erfc_neg, RealErf.erfc]; ring
   unfold Erfc.erfcFast
   rw [ite_eq_left hxneg]
   dsimp only
@@ -216,7 +216,7 @@ theorem erfcFast_neg (hF : FmaNearest) (x : Float) (hx : ff x) (hneg : fv x < 0)
     linarith [show (3 : ℝ) * u ≤ 1 by norm_num]
   · rw [hy]
     have e1 : fv (Erfc.fastTwoSum 1.0 he).1 + fv ((Erfc.fastTwoSum 1.0 he).2 + le) -
-        (1 + erf (fv (-x))) = (fv he + fv le - erf (fv (-x))) +
+        (1 + RealErf.erf (fv (-x))) = (fv he + fv le - RealErf.erf (fv (-x))) +
           (fv ((Erfc.fastTwoSum 1.0 he).2 + le) - (fv (Erfc.fastTwoSum 1.0 he).2 + fv le)) := by
       linarith
     rw [e1]
@@ -234,7 +234,7 @@ theorem xmax_word : ff (Float.ofBits 0x400713786D9C7C09) ∧
   exact ⟨a1, by rw [b1, show ratOfWord 0x400713786D9C7C09 = xMax by decide +kernel]⟩
 
 /-- `erfc` at `0x1.713786d9c7c09p+1` is above `2^-15`. -/
-theorem erfc_xmax : (1 / 2 ^ 15 : ℝ) ≤ erfc xMax := by
+theorem erfc_xmax : (1 / 2 ^ 15 : ℝ) ≤ RealErf.erfc xMax := by
   have h : (0 : ℚ) ≤ evalQ (ser 80) xMax + serRem 80 xMax ∧ 1 / 2 ^ 15 ≤ erfcLo 80 xMax := by
     decide +kernel
   have := erfc_ge 80 xMax (by unfold xMax; norm_num) h.1
@@ -245,7 +245,7 @@ theorem erfc_xmax : (1 / 2 ^ 15 : ℝ) ≤ erfc xMax := by
 /-- The fast path of `cr_erfc` for `0 ≤ x ≤ 0x1.713786d9c7c09p+1`. -/
 theorem erfcFast_pos (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv x)
     (hhi : fv x ≤ xMax) :
-    FastOK (erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
+    FastOK (RealErf.erfc (fv x)) (Erfc.erfcFast Erfc.fastTable Erfc.expTable Erfc.asymTable x) := by
   obtain ⟨z0f, z0v⟩ := zero_val
   obtain ⟨cf, cb, cf2, cb2⟩ := c102
   obtain ⟨xf, xv⟩ := xmax_word
@@ -257,10 +257,10 @@ theorem erfcFast_pos (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
   have hT := zTarget_rel (fv x) hpos hhi
   have herf0 := erf_nonneg (fv x) hpos
   have herf1 := erf_lt_one (fv x)
-  have hey : erfc (fv x) = 1 - erf (fv x) := rfl
-  have hy0 : (1 / 2 ^ 15 : ℝ) ≤ erfc (fv x) :=
+  have hey : RealErf.erfc (fv x) = 1 - RealErf.erf (fv x) := rfl
+  have hy0 : (1 / 2 ^ 15 : ℝ) ≤ RealErf.erfc (fv x) :=
     erfc_xmax.trans (erfc_strictAnti.antitone hhi)
-  have hy1 : erfc (fv x) ≤ 1 := by rw [hey]; linarith
+  have hy1 : RealErf.erfc (fv x) ≤ 1 := by rw [hey]; linarith
   unfold Erfc.erfcFast
   rw [ite_eq_right hxnot, ite_eq_left hxle]
   dsimp only
@@ -270,12 +270,12 @@ theorem erfcFast_pos (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
   have hd := c6.trans hT
   have hle := c5
   have hu : (0 : ℝ) < u := by norm_num
-  have hdu : 7 / 8 * u * erfc (fv x) ≤ u := by nlinarith
+  have hdu : 7 / 8 * u * RealErf.erfc (fv x) ≤ u := by nlinarith
   have hhe1 : -1 ≤ fv he := by
     have := (abs_le.mp hd).1; have := (abs_le.mp hle).2; linarith
   have hhe2 : fv he ≤ 1 := by
     have := (abs_le.mp hd).2; have := (abs_le.mp hle).1
-    have : erf (fv x) ≤ 1 - 1 / 2 ^ 15 := by rw [hey] at hy0; linarith
+    have : RealErf.erf (fv x) ≤ 1 - 1 / 2 ^ 15 := by rw [hey] at hy0; linarith
     linarith [show 2 * u + u < 1 / 2 ^ 15 by norm_num]
   obtain ⟨nf, nv⟩ := neg_f he c1
   obtain ⟨s1, s2, ssum, st⟩ := fts_unit (-he) nf (by rw [nv]; linarith) (by rw [nv]; linarith)
@@ -287,10 +287,10 @@ theorem erfcFast_pos (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
   obtain ⟨m1, mb, e1, eb⟩ := err_small ee he _ c3 c1 cf2 c4
     (by rw [abs_le]; constructor <;> linarith) cb2
   have main : |fv (Erfc.fastTwoSum 1.0 (-he)).1 + fv ((Erfc.fastTwoSum 1.0 (-he)).2 - le) -
-      erfc (fv x)| ≤ 15 / 16 * u * erfc (fv x) := by
+      RealErf.erfc (fv x)| ≤ 15 / 16 * u * RealErf.erfc (fv x) := by
     rw [hey]
     have e1 : fv (Erfc.fastTwoSum 1.0 (-he)).1 + fv ((Erfc.fastTwoSum 1.0 (-he)).2 - le) -
-        (1 - erf (fv x)) = -(fv he + fv le - erf (fv x)) +
+        (1 - RealErf.erf (fv x)) = -(fv he + fv le - RealErf.erf (fv x)) +
           (fv ((Erfc.fastTwoSum 1.0 (-he)).2 - le) -
             (fv (Erfc.fastTwoSum 1.0 (-he)).2 - fv le)) := by
       rw [nv] at ssum; linarith
@@ -318,9 +318,9 @@ theorem erfcFast_pos (hF : FmaNearest) (x : Float) (hx : ff x) (hpos : 0 ≤ fv 
 
 /-- When the rounding test passes on the fast path below `0x1.713786d9c7c09p+1`, the result lies
 within one step of `erfc x`. -/
-theorem fast_within (x : Float) (r : Float × Float × Float) (hr : FastOK (erfc (fv x)) r)
-    (hy : 1 / 2 ^ 1021 ≤ erfc (fv x)) (htest : (r.1 + (r.2.1 - r.2.2) == r.1 + (r.2.1 + r.2.2)) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x)) (r.1 + (r.2.1 - r.2.2)).toBits := by
+theorem fast_within (x : Float) (r : Float × Float × Float) (hr : FastOK (RealErf.erfc (fv x)) r)
+    (hy : 1 / 2 ^ 1021 ≤ RealErf.erfc (fv x)) (htest : (r.1 + (r.2.1 - r.2.2) == r.1 + (r.2.1 + r.2.2)) = true) :
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x)) (r.1 + (r.2.1 - r.2.2)).toBits := by
   obtain ⟨h1, h2, h3, hb1, hb2, hb3, hd⟩ := hr
   have hn := test_near r.1 r.2.1 r.2.2 h1 h2 h3 hb1 hb2 hb3 htest
   have hy0 := erfc_pos (fv x)

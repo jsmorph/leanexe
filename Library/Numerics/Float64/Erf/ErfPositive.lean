@@ -85,7 +85,7 @@ theorem within_zero : F64SignedRounding.WithinSteps 1 0 0 := by
 /-- The tail, with the words of the code. -/
 theorem tail_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toBits = false)
     (hlo : 5 / 4 ≤ value x.toBits) (hhi : value x.toBits < 6) :
-    F64SignedRounding.WithinSteps 1 (erf (value x.toBits))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value x.toBits))
       (1.0 - Erf.erfExp Exp.expTable x.abs
         (Erf.erfTail (1.0 / (x.abs * x.abs)) ((x.toBits >>> 32 &&& 0x7fffffff) < 0x4006DB6E)).1
         (Erf.erfTail (1.0 / (x.abs * x.abs))
@@ -176,7 +176,7 @@ theorem tail_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.to
 
 /-- One step for `erf x` for every finite `x` with a clear sign bit. -/
 theorem erf_pos (x : Float) (hxf : Finite x.toBits) (hs : Wasm.IEEE64.sign x.toBits = false) :
-    F64SignedRounding.WithinSteps 1 (erf (value x.toBits)) (Erf.erfWith Exp.expTable x).toBits := by
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value x.toBits)) (Erf.erfWith Exp.expTable x).toBits := by
   have hv0 : 0 ≤ value x.toBits := by
     simp only [value, Wasm.IEEE64.scaledValue, hs, Bool.false_eq_true, ↓reduceIte]
     positivity

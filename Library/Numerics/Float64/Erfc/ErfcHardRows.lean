@@ -79,8 +79,8 @@ theorem interior_within (y : ℝ) (cw : UInt64) (Ylo Yhi : ℚ) (e : ℕ) (hlim 
   · exact half_within y cw hlim Ylo Yhi hy e he1 he2 hb hyt hd1 hd2
 
 theorem ser_encl (n : ℕ) (neg : Bool) (q Ylo Yhi : ℚ) (h : SerEncl n neg q Ylo Yhi) :
-    (Ylo : ℝ) ≤ erfc q ∧ erfc q ≤ Yhi := by
-  unfold erfc
+    (Ylo : ℝ) ≤ RealErf.erfc q ∧ RealErf.erfc q ≤ Yhi := by
+  unfold RealErf.erfc
   unfold SerEncl at h
   cases neg
   · rw [if_neg (by decide)] at h
@@ -93,7 +93,7 @@ theorem ser_encl (n : ℕ) (neg : Bool) (q Ylo Yhi : ℚ) (h : SerEncl n neg q Y
   · rw [if_pos rfl] at h
     obtain ⟨hq0, hS, hlo, hhi⟩ := h
     obtain ⟨k1, k2⟩ := erf_encl n (-q) (by linarith) hS
-    have hodd : erf (q : ℝ) = -erf (((-q : ℚ) : ℝ)) := by
+    have hodd : RealErf.erf (q : ℝ) = -RealErf.erf (((-q : ℚ) : ℝ)) := by
       push_cast; rw [erf_neg]; ring
     rw [hodd]
     have c1 : (Ylo : ℝ) ≤ ((1 + (sLo * evalQ (ser n) (-q) - sHi * serRem n (-q)) : ℚ) : ℝ) := by
@@ -107,7 +107,7 @@ theorem ser_encl (n : ℕ) (neg : Bool) (q Ylo Yhi : ℚ) (h : SerEncl n neg q Y
 theorem ser_row (o : UInt64) (k n : ℕ) (neg : Bool) (cw : UInt64) (Ylo Yhi : ℚ) (e : ℕ)
     (hok : HardSerOK o k n neg cw Ylo Yhi e) (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (o + 3 * UInt64.ofNat k) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (o + 3 * UInt64.ofNat k + 1) +
         Erfc.entry Erfc.excTable (o + 3 * UInt64.ofNat k + 2)).toBits := by
   obtain ⟨hw, hs, hi⟩ := hok
@@ -136,7 +136,7 @@ instance (k : ℕ) (cw : UInt64) (p : List ℚ) (a b c s eD : ℚ) (N : ℕ) (lo
 
 theorem asym_encl (p : List ℚ) (a b c s eD : ℚ) (N : ℕ) (los his : List ℚ) (x Ylo Yhi : ℚ)
     (hmodel : ∀ y ∈ Icc (a : ℝ) b, |erfcxN y - eval p (y - c)| ≤ (s : ℝ) + eD * ((b : ℝ) - y))
-    (h : AsymEncl p a b c s eD N los his x Ylo Yhi) : (Ylo : ℝ) ≤ erfc x ∧ erfc x ≤ Yhi := by
+    (h : AsymEncl p a b c s eD N los his x Ylo Yhi) : (Ylo : ℝ) ≤ RealErf.erfc x ∧ RealErf.erfc x ≤ Yhi := by
   obtain ⟨hx0, ha, hb, hch, hlo0, hPD, hlo, hhi⟩ := h
   have hE := exp_chain (-(x ^ 2) / 1024) N los his 10 hch
   have e10 : (2 : ℝ) ^ 10 * (((-(x ^ 2) / 1024 : ℚ)) : ℝ) = -((x : ℝ) ^ 2) := by
@@ -156,7 +156,7 @@ theorem asym_row (k : ℕ) (cw : UInt64) (p : List ℚ) (a b c s eD : ℚ) (N : 
     (hmodel : ∀ y ∈ Icc (a : ℝ) b, |erfcxN y - eval p (y - c)| ≤ (s : ℝ) + eD * ((b : ℝ) - y))
     (hok : HardAsymOK k cw p a b c s eD N los his Ylo Yhi e) (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat k) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat k + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat k + 2)).toBits := by
   obtain ⟨hw, hs, hi⟩ := hok

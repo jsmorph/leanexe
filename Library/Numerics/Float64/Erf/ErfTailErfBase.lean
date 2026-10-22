@@ -17,7 +17,7 @@ open CodeLib.IEEE64 LeanExe.ProofKit PolyBound F64ErrorTrack F64Horner RealErf E
 set_option exponentiation.threshold 4096
 
 /-- `erfc x ≥ 2^-1000` for `1 ≤ x ≤ 26`, from the asymptotic lower bound with two terms. -/
-theorem erfc_lower (x : ℝ) (hx1 : 1 ≤ x) (hx : x ≤ 26) : 1 / 2 ^ 1000 ≤ erfc x := by
+theorem erfc_lower (x : ℝ) (hx1 : 1 ≤ x) (hx : x ≤ 26) : 1 / 2 ^ 1000 ≤ RealErf.erfc x := by
   have hx0 : 0 < x := by linarith
   have h := erfc_asym 2 hx0
   simp only [even_two, Even.neg_pow, one_pow, one_mul, sub_nonneg] at h
@@ -83,8 +83,8 @@ theorem rs_bound (R S : List ℚ) (x : ℝ) (hx : 5 / 4 ≤ x) (hτ : |tailF R S
       rw [asym, asymSum, Finset.sum_range_succ, Finset.sum_range_zero, hc0]
       ring
     rw [ha] at h
-    have h2 : x * erfcx x = x * Real.exp (x ^ 2) * erfc x := by simp [erfcx]; ring
-    have h3 : x * Real.exp (x ^ 2) * erfc x ≤ x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * x⁻¹) :=
+    have h2 : x * erfcx x = x * Real.exp (x ^ 2) * RealErf.erfc x := by simp [erfcx]; ring
+    have h3 : x * Real.exp (x ^ 2) * RealErf.erfc x ≤ x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * x⁻¹) :=
       mul_le_mul_of_nonneg_left h (by positivity)
     have h4 : x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * x⁻¹) = scale / 2 := by
       rw [show x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * x⁻¹) =
@@ -104,9 +104,9 @@ theorem rs_bound (R S : List ℚ) (x : ℝ) (hx : 5 / 4 ≤ x) (hτ : |tailF R S
         hc1]
       ring
     rw [ha] at h
-    have h2 : x * erfcx x = x * Real.exp (x ^ 2) * erfc x := by simp [erfcx]; ring
+    have h2 : x * erfcx x = x * Real.exp (x ^ 2) * RealErf.erfc x := by simp [erfcx]; ring
     have h3 : x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * (x⁻¹ - 1 / 2 * x⁻¹ ^ 3)) ≤
-        x * Real.exp (x ^ 2) * erfc x := mul_le_mul_of_nonneg_left h (by positivity)
+        x * Real.exp (x ^ 2) * RealErf.erfc x := mul_le_mul_of_nonneg_left h (by positivity)
     have h4 : x * Real.exp (x ^ 2) * (scale / 2 * Real.exp (-x ^ 2) * (x⁻¹ - 1 / 2 * x⁻¹ ^ 3)) =
         scale / 2 * (1 - 1 / 2 * (x⁻¹) ^ 2) := by
       have he : Real.exp (x ^ 2) * Real.exp (-x ^ 2) = 1 := by
@@ -188,7 +188,7 @@ theorem tail_erf_word (R S : List ℚ) (RW SW : List UInt64)
         (Wasm.IEEE64.mul (Wasm.IEEE64.sub (zWord X) X) (Wasm.IEEE64.add (zWord X) X))
         (Wasm.IEEE64.div (hornerW RW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X)))
           (hornerW SW (Wasm.IEEE64.div 0x3FF0000000000000 (Wasm.IEEE64.mul X X))))))) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.sub 0x3FF0000000000000 (Wasm.IEEE64.div (Wasm.IEEE64.mul E1 E2) X)) := by
   have hx54 : (5 / 4 : ℝ) ≤ value X := h54.trans hxl
   have hx6 : value X ≤ 6 := hxh.trans h6

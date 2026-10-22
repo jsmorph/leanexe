@@ -130,7 +130,7 @@ theorem series_split (n J m s : ℕ) (hn : 1 ≤ n) (hs : 0 < s)
 
 theorem row_soundI (n J m s : ℕ) (ε : ℚ) (P : List ℚ) (d : ℕ) (hn : 1 ≤ n) (hs : 0 < s)
     (hc : rowCheckI n J m s ε P d = true) (z : ℝ) (hz : |z| ≤ 1 / (s : ℝ)) :
-    |eval P z - erf ((m : ℝ) / s + z)| ≤ (rowBoundI n J m s ε : ℝ) := by
+    |eval P z - RealErf.erf ((m : ℝ) / s + z)| ≤ (rowBoundI n J m s ε : ℝ) := by
   simp only [rowCheckI, Bool.and_eq_true, decide_eq_true_eq] at hc
   obtain ⟨hD', hck⟩ := hc
   have hD : ∀ k < n, k.factorial * (2 * k + 1) ∣ serD n := fun k hk =>
@@ -155,9 +155,9 @@ theorem row_soundI (n J m s : ℕ) (ε : ℚ) (P : List ℚ) (d : ℕ) (hn : 1 �
     unfold serRem; push_cast; positivity
   set L := eval (rowLo n J m s) z
   set S := eval (ser n) ((m : ℝ) / s + z)
-  have e1 : eval P z - erf ((m : ℝ) / s + z) = (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * L) +
+  have e1 : eval P z - RealErf.erf ((m : ℝ) / s + z) = (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * L) +
       ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * L + scale * (L - S) +
-      (scale * S - erf ((m : ℝ) / s + z)) := by ring
+      (scale * S - RealErf.erf ((m : ℝ) / s + z)) := by ring
   rw [e1]
   have k1 : |((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * L| ≤
       ((sHi - sLo) / 2 : ℚ) * (absSum (1 / s) (rowLo n J m s) : ℝ) := by
@@ -165,11 +165,11 @@ theorem row_soundI (n J m s : ℕ) (ε : ℚ) (P : List ℚ) (d : ℕ) (hn : 1 �
   have k2 : |scale * (L - S)| ≤ sHi * (rowTail n J m s : ℝ) := by
     rw [abs_mul, abs_of_pos scale_pos, abs_sub_comm]
     exact mul_le_mul hsh hsplit (abs_nonneg _) (by linarith [scale_pos])
-  have k3 : |scale * S - erf ((m : ℝ) / s + z)| ≤ sHi * (serRem n ((m : ℚ) / s + 1 / s) : ℝ) := by
+  have k3 : |scale * S - RealErf.erf ((m : ℝ) / s + z)| ≤ sHi * (serRem n ((m : ℚ) / s + 1 / s) : ℝ) := by
     rw [abs_sub_comm]
     exact hser.trans (mul_le_mul_of_nonneg_right hsh hrem0)
   have t1 := abs_add_le ((eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * L) +
-    ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * L + scale * (L - S)) (scale * S - erf ((m : ℝ) / s + z))
+    ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * L + scale * (L - S)) (scale * S - RealErf.erf ((m : ℝ) / s + z))
   have t2 := abs_add_le (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * L +
     ((((sLo + sHi) / 2 : ℚ) : ℝ) - scale) * L) (scale * (L - S))
   have t3 := abs_add_le (eval P z - (((sLo + sHi) / 2 : ℚ) : ℝ) * L)

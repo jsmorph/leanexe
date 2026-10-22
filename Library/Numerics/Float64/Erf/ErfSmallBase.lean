@@ -273,7 +273,7 @@ def smallKern : ℚ := (21 / 32) / 2 ^ 55
 theorem erfCoeffs_one : erfCoeffs 1 = [1] := by decide +kernel
 
 /-- `erf x ≥ κ x (1 - x²/3)` for `x ≥ 0`, with `κ = 2/√π`. -/
-theorem erf_lower (x : ℝ) (hx : 0 ≤ x) : scale * (x * (1 - x ^ 2 / 3)) ≤ erf x := by
+theorem erf_lower (x : ℝ) (hx : 0 ≤ x) : scale * (x * (1 - x ^ 2 / 3)) ≤ RealErf.erf x := by
   have h := erf_series 1 x
   rw [erfCoeffs_one] at h
   simp only [eval_cons, eval_nil, mul_zero, add_zero, Rat.cast_one, mul_one] at h
@@ -293,7 +293,7 @@ theorem small_sum (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = true)
         (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X)) (hornerW qqW (Wasm.IEEE64.mul X X)))) ∧
       |value X + value (Wasm.IEEE64.mul X
         (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X)) (hornerW qqW (Wasm.IEEE64.mul X X))))
-        - erf (value X)| ≤
+        - RealErf.erf (value X)| ≤
       value X * (smallErr xhi zlo zhi + smallKern) + multiplicationUnderflowEpsilon := by
   have habs : |value X| = value X := abs_of_pos hx0
   have hc := small_core xlo xhi zlo zhi hok X hX (by rw [habs]; exact hxl) (by rw [habs]; exact hxh)
@@ -306,7 +306,7 @@ theorem small_sum (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = true)
     exact hxh.trans h)
   rw [habs] at hk
   have hk' : |value X * (eval erfPP (value X ^ 2) / eval erfQQ (value X ^ 2)) -
-      (erf (value X) - value X)| ≤ value X * smallKern := by
+      (RealErf.erf (value X) - value X)| ≤ value X * smallKern := by
     rw [abs_sub_comm]
     simp only [smallKern]
     push_cast
@@ -314,12 +314,12 @@ theorem small_sum (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = true)
   have h2 := hc.2
   calc |value X + value (Wasm.IEEE64.mul X
         (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X)) (hornerW qqW (Wasm.IEEE64.mul X X))))
-        - erf (value X)|
+        - RealErf.erf (value X)|
       = |(value (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
           (hornerW qqW (Wasm.IEEE64.mul X X)))) -
           value X * (eval erfPP (value X ^ 2) / eval erfQQ (value X ^ 2))) +
         (value X * (eval erfPP (value X ^ 2) / eval erfQQ (value X ^ 2)) -
-          (erf (value X) - value X))| := by ring_nf
+          (RealErf.erf (value X) - value X))| := by ring_nf
     _ ≤ _ := abs_add_le _ _
     _ ≤ (value X * smallErr xhi zlo zhi + multiplicationUnderflowEpsilon) +
         value X * smallKern := add_le_add h2 hk'
@@ -346,7 +346,7 @@ theorem kappaLo_le : ((kappaLo : ℚ) : ℝ) ≤ scale := by
 theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = true)
     (hrel : smallRelOK xlo xhi zlo zhi = true) (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : (xlo : ℝ) ≤ value X) (hxh : value X ≤ xhi) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X
         (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
           (hornerW qqW (Wasm.IEEE64.mul X X))))) := by
@@ -363,7 +363,7 @@ theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
   -- the lower bound on `erf x`
   have hy := erf_lower x hx0.le
   have hk := kappaLo_le
-  have hylo : (kappaLo : ℝ) * x * (1 - (xhi : ℝ) ^ 2 / 3) ≤ erf x := by
+  have hylo : (kappaLo : ℝ) * x * (1 - (xhi : ℝ) ^ 2 / 3) ≤ RealErf.erf x := by
     have h1 : (kappaLo : ℝ) * x * (1 - (xhi : ℝ) ^ 2 / 3) ≤ scale * (x * (1 - x ^ 2 / 3)) := by
       have h2 : (1 - (xhi : ℝ) ^ 2 / 3) ≤ 1 - x ^ 2 / 3 := by linarith
       have h3 : (0 : ℝ) ≤ kappaLo := by rw [kappaLo_cast]; positivity
@@ -387,8 +387,8 @@ theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
     rw [mul_div_assoc', le_div_iff₀ hxlo0]
     linarith [mul_le_mul_of_nonneg_left hxl he0, mul_comm x (etaQ : ℝ)]
   have herr : |x + value (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
-      (hornerW qqW (Wasm.IEEE64.mul X X)))) - erf x| ≤
-      1 * (63 / 64) * unitRoundoff64 * erf x := by
+      (hornerW qqW (Wasm.IEEE64.mul X X)))) - RealErf.erf x| ≤
+      1 * (63 / 64) * unitRoundoff64 * RealErf.erf x := by
     rw [he] at hsum
     rw [hu]
     have h1 : x * (((smallErr xhi zlo zhi : ℚ) : ℝ) + smallKern + etaQ / xlo) ≤
@@ -396,9 +396,9 @@ theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
       mul_le_mul_of_nonneg_left hcr hx0.le
     have hu0 : (0 : ℝ) ≤ uQ := by rw [← hu]; norm_num [unitRoundoff64]
     have h2 : 63 / 64 * (uQ : ℝ) * ((kappaLo : ℝ) * x * (1 - (xhi : ℝ) ^ 2 / 3)) ≤
-        63 / 64 * uQ * erf x := mul_le_mul_of_nonneg_left hylo (by positivity)
+        63 / 64 * uQ * RealErf.erf x := mul_le_mul_of_nonneg_left hylo (by positivity)
     nlinarith
-  have hyl : (1 : ℝ) / 2 ^ 1021 ≤ erf x := by
+  have hyl : (1 : ℝ) / 2 ^ 1021 ≤ RealErf.erf x := by
     have h1 : ((1 / 2 ^ 1021 : ℚ) : ℝ) ≤ (kappaLo : ℝ) * xlo * (1 - (xhi : ℝ) ^ 2 / 3) := by
       exact_mod_cast hy0
     have h2 : (kappaLo : ℝ) * xlo * (1 - (xhi : ℝ) ^ 2 / 3) ≤
@@ -407,29 +407,29 @@ theorem small_erf_rel (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
       exact mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_left hxl h3) hfac
     push_cast at h1
     linarith
-  have hyt : erf x < (2 : ℝ) ^ 1000 := by
+  have hyt : RealErf.erf x < (2 : ℝ) ^ 1000 := by
     have := erf_lt_one x
     linarith [show (1 : ℝ) < 2 ^ 1000 by norm_num]
   have hu1 : 1 * (63 / 64) * unitRoundoff64 ≤ 1 / 2 := by norm_num [unitRoundoff64]
   have hvpos : 0 < x + value (Wasm.IEEE64.mul X (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
       (hornerW qqW (Wasm.IEEE64.mul X X)))) := by
     have := (abs_le.mp herr).1
-    have hy0' : 0 < erf x := lt_of_lt_of_le (by positivity) hyl
+    have hy0' : 0 < RealErf.erf x := lt_of_lt_of_le (by positivity) hyl
     nlinarith
   have hn := F64NearestSum.add_nearest X _ hX hTf hvpos (by
     have := (abs_le.mp herr).2
     have := erf_lt_one x
-    have h3 : 1 * (63 / 64) * unitRoundoff64 * erf x ≤ 1 / 2 * 1 :=
+    have h3 : 1 * (63 / 64) * unitRoundoff64 * RealErf.erf x ≤ 1 / 2 * 1 :=
       mul_le_mul hu1 this.le (lt_of_lt_of_le (by positivity) hyl).le (by norm_num)
     linarith [show (2 : ℝ) ≤ 2 ^ 1023 by norm_num])
-  exact F64AddNearest.within_nearest_relative 1 le_rfl (by norm_num) (erf x) _ _ hn hyl hyt
+  exact F64AddNearest.within_nearest_relative 1 le_rfl (by norm_num) (RealErf.erf x) _ _ hn hyl hyt
     (by have h := herr; push_cast; linarith)
 
 /-- `erf` within one step on `[xlo, xhi]` for positive arguments whose `erf` lies in `[1/2, 1)`. -/
 theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = true)
     (htop : smallTopOK xlo xhi zlo zhi = true) (X : UInt64) (hX : Finite X) (hx0 : 0 < value X)
     (hxl : (xlo : ℝ) ≤ value X) (hxh : value X ≤ xhi) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul X
         (Wasm.IEEE64.div (hornerW ppW (Wasm.IEEE64.mul X X))
           (hornerW qqW (Wasm.IEEE64.mul X X))))) := by
@@ -448,7 +448,7 @@ theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
     push_cast at h
     nlinarith
   have hE0' : (0 : ℝ) ≤ (smallErr xhi zlo zhi : ℝ) + smallKern := by exact_mod_cast hE0
-  have herr : |x + value T - erf x| ≤ xhi * ((smallErr xhi zlo zhi : ℝ) + smallKern) + etaQ := by
+  have herr : |x + value T - RealErf.erf x| ≤ xhi * ((smallErr xhi zlo zhi : ℝ) + smallKern) + etaQ := by
     have := mul_le_mul_of_nonneg_right hxh hE0'
     linarith
   have hEnn : (0 : ℝ) ≤ xhi * ((smallErr xhi zlo zhi : ℝ) + smallKern) + etaQ :=
@@ -464,7 +464,7 @@ theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
         ((kappaLo * xlo * (1 - xhi ^ 2 / 3) : ℚ) : ℝ) := by exact_mod_cast hbin
     push_cast at h
     exact h
-  have hylo : (kappaLo : ℝ) * xlo * (1 - (xhi : ℝ) ^ 2 / 3) ≤ erf x := by
+  have hylo : (kappaLo : ℝ) * xlo * (1 - (xhi : ℝ) ^ 2 / 3) ≤ RealErf.erf x := by
     have hy := erf_lower x hx0.le
     have hk := kappaLo_le
     have h2 : (1 - (xhi : ℝ) ^ 2 / 3) ≤ 1 - x ^ 2 / 3 := by linarith
@@ -473,7 +473,7 @@ theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
       _ ≤ scale * x * (1 - x ^ 2 / 3) :=
           mul_le_mul_of_nonneg_left h2 (mul_nonneg scale_pos.le hx0.le)
       _ = scale * (x * (1 - x ^ 2 / 3)) := by ring
-      _ ≤ erf x := hy
+      _ ≤ RealErf.erf x := hy
   have hb : value (UInt64.ofNat (1022 * 2 ^ 52)) = 1 / 2 := by
     rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
     norm_num
@@ -483,7 +483,7 @@ theorem small_erf_top (xlo xhi zlo zhi : ℚ) (hok : smallOK xlo xhi zlo zhi = t
   have hvpos : 0 < x + value T := by linarith
   have hn := F64NearestSum.add_nearest X T hX hTf hvpos (by
     linarith [show (2 : ℝ) ≤ 2 ^ 1023 by norm_num])
-  refine F64AddNearest.within_of_nearest 1 le_rfl (erf x) _ _ 1022 (by norm_num) (by norm_num)
+  refine F64AddNearest.within_of_nearest 1 le_rfl (RealErf.erf x) _ _ 1022 (by norm_num) (by norm_num)
     (by rw [hb]; linarith) (by rw [hb]; linarith) ?_ hn ?_
   · have h : (1 : ℝ) < F64PositiveRounding.overflowThreshold := by
       rw [show F64PositiveRounding.overflowThreshold = (2 : ℝ) ^ 1024 - (2 : ℝ) ^ 970 from rfl]

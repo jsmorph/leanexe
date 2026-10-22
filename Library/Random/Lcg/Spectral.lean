@@ -4,7 +4,7 @@ import Mathlib.LinearAlgebra.Matrix.Notation
 import Mathlib.Algebra.Order.BigOperators.Ring.Finset
 import Mathlib.Data.Fintype.Pi
 
-/-! These theorems give the spectral test of the LCG of `Examples/Lcg/Program.lean`: the squared
+/-! These theorems give the spectral test of the LCG of `Library/Random/Lcg/Program.lean`: the squared
 length `ν_t²` of the shortest nonzero vector of `Dual t`, for `t = 2, …, 6`.  Knuth shows that
 `1 / ν_t` is the largest distance between adjacent hyperplanes, over all families of parallel
 hyperplanes that cover the `t`-tuples of successive states, scaled to the unit cube.  These
@@ -14,7 +14,7 @@ squared length of every nonzero `y C` from a certificate: integer matrices `U`, 
 `U B = C` and `B A = δ I`, bounds `b_i` with `(N - 1) ∑_k A_{k i}² < (b_i + 1)² δ²`, and the
 check that every nonzero `z` with `|z_i| ≤ b_i` has `N ≤ |z B|²`.  The certificates take an
 LLL-reduced basis `B` of `Dual t`, the matrix `U`, the adjugate `A` of `B`, and
-`δ = det B = ±2^64`, which `Examples/Lcg/certificates.py` computes, and the kernel checks each of
+`δ = det B = ±2^64`, which `Library/Random/Lcg/certificates.py` computes, and the kernel checks each of
 them, so the theorems do not depend on the script. -/
 
 namespace Library.Random.Lcg
@@ -99,7 +99,7 @@ theorem le_of_certificate {n : Type} [Fintype n] [DecidableEq n] (C U B A : Matr
 /-! ### The values for two to six successive states
 
 The definitions and theorems from here to the end of the file are the output of
-`uv run Examples/Lcg/certificates.py`. -/
+`uv run Library/Random/Lcg/certificates.py`. -/
 
 /-- A reduced basis of `Dual 2`. -/
 def basis2 : Matrix (Fin 2) (Fin 2) ℤ :=

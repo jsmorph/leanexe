@@ -52,7 +52,7 @@ theorem row0 : HardAsymOK 0 0x3F8E97EAF1080BFF Library.Numerics.Float64.Erf.ErfT
 
 theorem within0 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 0) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 0 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 0 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces7.model28 row0 x hx heq
@@ -92,7 +92,7 @@ theorem row1 : HardAsymOK 1 0x3F8D6D259CB81801 Library.Numerics.Float64.Erf.ErfT
 
 theorem within1 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 1) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 1 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 1 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces7.model28 row1 x hx heq
@@ -132,7 +132,7 @@ theorem row2 : HardAsymOK 2 0x3F849BF1937979ED Library.Numerics.Float64.Erf.ErfT
 
 theorem within2 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 2) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 2 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 2 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces7.model28 row2 x hx heq
@@ -172,7 +172,7 @@ theorem row3 : HardAsymOK 3 0x3F688CC1284157F5 Library.Numerics.Float64.Erf.ErfT
 
 theorem within3 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 3) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 3 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 3 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces6.model27 row3 x hx heq
@@ -212,7 +212,7 @@ theorem row4 : HardAsymOK 4 0x3F5B2639C7A46899 Library.Numerics.Float64.Erf.ErfT
 
 theorem within4 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 4) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 4 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 4 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces6.model26 row4 x hx heq
@@ -252,7 +252,7 @@ theorem row5 : HardAsymOK 5 0x3F42DF150139D8EA Library.Numerics.Float64.Erf.ErfT
 
 theorem within5 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 5) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 5 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 5 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces6.model26 row5 x hx heq
@@ -292,7 +292,7 @@ theorem row6 : HardAsymOK 6 0x3F0251DEA1AFE1AD Library.Numerics.Float64.Erf.ErfT
 
 theorem within6 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 6) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 6 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 6 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces5.model22 row6 x hx heq
@@ -332,7 +332,7 @@ theorem row7 : HardAsymOK 7 0x3EF7923EC231992D Library.Numerics.Float64.Erf.ErfT
 
 theorem within7 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 7) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 7 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 7 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces5.model22 row7 x hx heq
@@ -372,7 +372,7 @@ theorem row8 : HardAsymOK 8 0x3EED01A8497B522D Library.Numerics.Float64.Erf.ErfT
 
 theorem within8 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 8) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 8 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 8 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces5.model22 row8 x hx heq
@@ -412,7 +412,7 @@ theorem row9 : HardAsymOK 9 0x3E0834E2899C5506 Library.Numerics.Float64.Erf.ErfT
 
 theorem within9 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 9) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 9 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 9 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces4.model19 row9 x hx heq
@@ -452,7 +452,7 @@ theorem row10 : HardAsymOK 10 0x3CEAF9D1DF8B5E80 Library.Numerics.Float64.Erf.Er
 
 theorem within10 (x : Float) (hx : ff x)
     (heq : (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 10) == x) = true) :
-    F64SignedRounding.WithinSteps 1 (erfc (fv x))
+    F64SignedRounding.WithinSteps 1 (RealErf.erfc (fv x))
       (Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 10 + 1) +
         Erfc.entry Erfc.excTable (0 + 3 * UInt64.ofNat 10 + 2)).toBits :=
   asym_row _ _ _ _ _ _ _ _ _ _ _ _ _ _ Library.Numerics.Float64.Erf.ErfTailPieces4.model16 row10 x hx heq

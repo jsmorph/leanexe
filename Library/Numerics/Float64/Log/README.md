@@ -82,7 +82,7 @@ Two modules serve the Bessel proofs.  `LogNearMain.core_near`, `normal_near`, an
 
 ### Modules
 
-The proof has nine modules in `Verified/Examples/` above the implementation, besides the file module, and it reuses `ExpReductionBounds` for `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The root `Verified` import](../../../../Verified.lean) reaches `LogTheorem` through `Log2Theorem`, and `tests/verified/run.sh` builds `Library.Numerics.Float64.Log.LogTheorem` before it checks the file theorem.
+The proof has nine modules in `Library/Numerics/Float64/Log/` above the implementation, besides the file module, and it reuses `ExpReductionBounds` for `ln 2`.  The table lists them by stage, in dependency order within each stage.  [The library aggregate](../../../../Library.lean) reaches `LogTheorem` through `Log2Theorem`, and `tests/verified/run.sh` builds `Library.Numerics.Float64.Log.LogTheorem` before it checks the file theorem.
 
 | Stage | Modules | Content |
 |---|---|---|

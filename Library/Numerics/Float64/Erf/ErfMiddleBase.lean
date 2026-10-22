@@ -93,7 +93,7 @@ theorem erx_value : value (0x3FEB0AC160000000 : UInt64) = (erx : ℝ) := by
 theorem middle_erf (slo shi : ℚ) (hok : middleOK slo shi = true) (X S : UInt64)
     (hS : Finite S) (hSv : value S = value X - 1) (hsl : (slo : ℝ) ≤ value S)
     (hsh : value S ≤ shi) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add 0x3FEB0AC160000000
         (Wasm.IEEE64.div (hornerW paW S) (hornerW qaW S))) := by
   simp only [middleOK, Bool.and_eq_true, decide_eq_true_eq] at hok
@@ -167,19 +167,19 @@ theorem middle_erf (slo shi : ℚ) (hok : middleOK slo shi = true) (X S : UInt64
     push_cast at h ⊢
     linarith
   have hkern : ((middleKern : ℚ) : ℝ) = (21 / 16) / 2 ^ 58 := by simp [middleKern]
-  have herr : |value 0x3FEB0AC160000000 + value D - erf (value X)| ≤
+  have herr : |value 0x3FEB0AC160000000 + value D - RealErf.erf (value X)| ≤
       ((middleErr slo shi : ℚ) : ℝ) + middleKern := by
     rw [erx_value, hkern]
     have h1 := abs_sub_le ((erx : ℝ) + value D) ((erx : ℝ) + eval erfPA s / eval erfQA s)
-      (erf (value X))
+      (RealErf.erf (value X))
     have h2 : |(erx : ℝ) + value D - ((erx : ℝ) + eval erfPA s / eval erfQA s)| =
         |value D - eval erfPA s / eval erfQA s| := by ring_nf
-    have h3 : |(erx : ℝ) + eval erfPA s / eval erfQA s - erf (value X)| =
-        |erf (value X) - erx - eval erfPA s / eval erfQA s| := by
+    have h3 : |(erx : ℝ) + eval erfPA s / eval erfQA s - RealErf.erf (value X)| =
+        |RealErf.erf (value X) - erx - eval erfPA s / eval erfQA s| := by
       rw [abs_sub_comm]
       ring_nf
     linarith
-  have hylo : 1 / 2 + (((middleErr slo shi : ℚ) : ℝ) + middleKern) ≤ erf (value X) := by
+  have hylo : 1 / 2 + (((middleErr slo shi : ℚ) : ℝ) + middleKern) ≤ RealErf.erf (value X) := by
     have h := (abs_le.mp hk).1
     have h2 := (abs_le.mp hR).1
     rw [hkern] at hbin'
@@ -197,7 +197,7 @@ theorem middle_erf (slo shi : ℚ) (hok : middleOK slo shi = true) (X S : UInt64
   have hb : value (UInt64.ofNat (1022 * 2 ^ 52)) = 1 / 2 := by
     rw [F64PositiveSpacing.boundary_value 1022 (by norm_num) (by norm_num)]
     norm_num
-  refine F64AddNearest.within_of_nearest 1 le_rfl (erf (value X)) _ _ 1022 (by norm_num)
+  refine F64AddNearest.within_of_nearest 1 le_rfl (RealErf.erf (value X)) _ _ 1022 (by norm_num)
     (by norm_num) (by rw [hb]; linarith) (by rw [hb]; linarith) ?_ hn ?_
   · have h : (1 : ℝ) < F64PositiveRounding.overflowThreshold := by
       rw [show F64PositiveRounding.overflowThreshold = (2 : ℝ) ^ 1024 - (2 : ℝ) ^ 970 from rfl]

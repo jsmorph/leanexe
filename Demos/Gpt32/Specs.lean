@@ -58,7 +58,7 @@ def addKernel := kernelOf gpt32.add32.ir [.array, .array]
 def geluKernel := kernelOf gpt32.geluArray32.ir [.array]
 def logitsKernel := kernelOf gpt32.logits32.ir [.array, .array, .word, .word]
 
-/-- The kernel each call of `Examples/Gpt32/HostProgram.lean` runs. -/
+/-- The kernel each call of `Demos/Gpt32/HostProgram.lean` runs. -/
 def KernelName.module : KernelName → Module
   | .embed => embedKernel | .layerNorm => layerNormKernel | .linear => linearKernel
   | .append => appendKernel | .scores => scoresKernel | .headMax => headMaxKernel

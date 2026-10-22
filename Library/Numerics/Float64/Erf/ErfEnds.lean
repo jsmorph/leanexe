@@ -52,7 +52,7 @@ theorem efx_near : 0 ≤ (efxQ : ℝ) - (scale - 1) ∧
   constructor <;> linarith [hk.1, hk.2]
 
 /-- `|erf x - (2/√π) x| ≤ (2/√π) x³/3` for `x ≥ 0`. -/
-theorem erf_linear (x : ℝ) (hx : 0 ≤ x) : |erf x - scale * x| ≤ scale * (x ^ 3 / 3) := by
+theorem erf_linear (x : ℝ) (hx : 0 ≤ x) : |RealErf.erf x - scale * x| ≤ scale * (x ^ 3 / 3) := by
   have h := erf_series 1 x
   rw [erfCoeffs_one] at h
   simp only [eval_cons, eval_nil, mul_zero, add_zero, Rat.cast_one, mul_one] at h
@@ -62,22 +62,22 @@ theorem erf_linear (x : ℝ) (hx : 0 ≤ x) : |erf x - scale * x| ≤ scale * (x
 
 /-- `x + efx x` approximates `erf x` within `(1/8 + 0.115) 2^-53 x` plus the cubic term. -/
 theorem linear_model (x : ℝ) (hx : 0 ≤ x) :
-    |x + (efxQ : ℝ) * x - erf x| ≤ 1120 / 10000 * (1 / 2 ^ 53) * x + scale * (x ^ 3 / 3) := by
+    |x + (efxQ : ℝ) * x - RealErf.erf x| ≤ 1120 / 10000 * (1 / 2 ^ 53) * x + scale * (x ^ 3 / 3) := by
   have h1 := erf_linear x hx
   have h2 := efx_near
-  have heq : x + (efxQ : ℝ) * x - erf x = ((efxQ : ℝ) - (scale - 1)) * x - (erf x - scale * x) := by
+  have heq : x + (efxQ : ℝ) * x - RealErf.erf x = ((efxQ : ℝ) - (scale - 1)) * x - (RealErf.erf x - scale * x) := by
     ring
   rw [heq]
   have h3 : |((efxQ : ℝ) - (scale - 1)) * x| ≤ 1120 / 10000 * (1 / 2 ^ 53) * x := by
     rw [abs_mul, abs_of_nonneg h2.1, abs_of_nonneg hx]
     exact mul_le_mul_of_nonneg_right h2.2 hx
-  calc |((efxQ : ℝ) - (scale - 1)) * x - (erf x - scale * x)|
-      ≤ |((efxQ : ℝ) - (scale - 1)) * x| + |erf x - scale * x| := abs_sub _ _
+  calc |((efxQ : ℝ) - (scale - 1)) * x - (RealErf.erf x - scale * x)|
+      ≤ |((efxQ : ℝ) - (scale - 1)) * x| + |RealErf.erf x - scale * x| := abs_sub _ _
     _ ≤ _ := add_le_add h3 h1
 
 /-- `erf x ≥ (2/√π)_lo x (1 - x²/3)` for `x ≥ 0`. -/
 theorem erf_ge (x : ℝ) (hx : 0 ≤ x) :
-    (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - x ^ 2 / 3) ≤ erf x ∨ 3 < x ^ 2 := by
+    (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - x ^ 2 / 3) ≤ RealErf.erf x ∨ 3 < x ^ 2 := by
   by_cases h3 : x ^ 2 ≤ 3
   · left
     have hy := erf_lower x hx
@@ -87,7 +87,7 @@ theorem erf_ge (x : ℝ) (hx : 0 ≤ x) :
         ≤ scale * x * (1 - x ^ 2 / 3) :=
           mul_le_mul_of_nonneg_right (mul_le_mul_of_nonneg_right hk hx) hf
       _ = scale * (x * (1 - x ^ 2 / 3)) := by ring
-      _ ≤ erf x := hy
+      _ ≤ RealErf.erf x := hy
   · right
     linarith
 
@@ -110,7 +110,7 @@ theorem eight_finite : Finite (0x4020000000000000 : UInt64) := by
 /-- One step for `erf x` on `[2^-1015, 2^-28)`. -/
 theorem erf_tiny (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1015 ≤ value X)
     (hhi : value X ≤ 1 / 2 ^ 28) :
-    F64SignedRounding.WithinSteps 1 (erf (value X))
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X))
       (Wasm.IEEE64.add X (Wasm.IEEE64.mul 0x3FC06EBA8214DB69 X)) := by
   set x := value X with hxdef
   have hx0 : 0 < x := lt_of_lt_of_le (by positivity) hlo
@@ -139,7 +139,7 @@ theorem erf_tiny (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1015 ≤ value X)
     have : x ^ 2 ≤ (1 / 2 ^ 28) ^ 2 := pow_le_pow_left₀ hx0.le hhi 2
     norm_num at this ⊢
     linarith
-  have hylo : (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 56 / 3) ≤ erf x := by
+  have hylo : (333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 56 / 3) ≤ RealErf.erf x := by
     rcases erf_ge x hx0.le with h | h
     · have hf : (1 - 1 / 2 ^ 56 / 3 : ℝ) ≤ 1 - x ^ 2 / 3 := by linarith
       have := mul_le_mul_of_nonneg_left hf (by positivity : (0 : ℝ) ≤
@@ -166,7 +166,7 @@ theorem erf_tiny (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1015 ≤ value X)
       mul_le_mul_of_nonneg_right hlo (by positivity)
     norm_num at this ⊢
     linarith
-  apply F64RelativeSteps.within_steps_relative 1 le_rfl (by norm_num) (erf x) _ hcf
+  apply F64RelativeSteps.within_steps_relative 1 le_rfl (by norm_num) (RealErf.erf x) _ hcf
   · rw [abs_of_pos (lt_of_lt_of_le (by positivity) hylo)]
     have : (17 / 16) / (2 : ℝ) ^ 1022 ≤ (333038747416263463341 / 2 ^ 68 : ℝ) * x *
         (1 - 1 / 2 ^ 56 / 3) := by
@@ -177,16 +177,16 @@ theorem erf_tiny (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1015 ≤ value X)
         norm_num
       linarith
     linarith
-  · have hy0 : 0 < erf x := lt_of_lt_of_le (by positivity) hylo
+  · have hy0 : 0 < RealErf.erf x := lt_of_lt_of_le (by positivity) hylo
     rw [abs_of_pos hy0, hu]
-    have htri : |value (Wasm.IEEE64.add X (Wasm.IEEE64.mul 0x3FC06EBA8214DB69 X)) - erf x| ≤
+    have htri : |value (Wasm.IEEE64.add X (Wasm.IEEE64.mul 0x3FC06EBA8214DB69 X)) - RealErf.erf x| ≤
         |value (Wasm.IEEE64.add X (Wasm.IEEE64.mul 0x3FC06EBA8214DB69 X)) - (x + p)| +
-          |p - (efxQ : ℝ) * x| + |x + (efxQ : ℝ) * x - erf x| := by
+          |p - (efxQ : ℝ) * x| + |x + (efxQ : ℝ) * x - RealErf.erf x| := by
       have h1 := abs_sub_le (value (Wasm.IEEE64.add X (Wasm.IEEE64.mul 0x3FC06EBA8214DB69 X)))
-        (x + p) (erf x)
-      have h2 : |x + p - erf x| ≤ |p - (efxQ : ℝ) * x| + |x + (efxQ : ℝ) * x - erf x| := by
-        have := abs_add_le (p - (efxQ : ℝ) * x) (x + (efxQ : ℝ) * x - erf x)
-        have heq : p - (efxQ : ℝ) * x + (x + (efxQ : ℝ) * x - erf x) = x + p - erf x := by ring
+        (x + p) (RealErf.erf x)
+      have h2 : |x + p - RealErf.erf x| ≤ |p - (efxQ : ℝ) * x| + |x + (efxQ : ℝ) * x - RealErf.erf x| := by
+        have := abs_add_le (p - (efxQ : ℝ) * x) (x + (efxQ : ℝ) * x - RealErf.erf x)
+        have heq : p - (efxQ : ℝ) * x + (x + (efxQ : ℝ) * x - RealErf.erf x) = x + p - RealErf.erf x := by ring
         rw [heq] at this
         exact this
       linarith
@@ -207,17 +207,17 @@ theorem erf_tiny (X : UInt64) (hX : Finite X) (hlo : 1 / 2 ^ 1015 ≤ value X)
       nlinarith
     have h3 : (1 + 3 / 8) * (1 / (2 : ℝ) ^ 53) *
         ((333038747416263463341 / 2 ^ 68 : ℝ) * x * (1 - 1 / 2 ^ 56 / 3)) ≤
-        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * erf x := by
+        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * RealErf.erf x := by
       push_cast
       exact mul_le_mul_of_nonneg_left hylo (by positivity)
-    have hm' : |x + (efxQ : ℝ) * x - erf x| ≤ 1120 / 10000 * (1 / 2 ^ 53) * x +
+    have hm' : |x + (efxQ : ℝ) * x - RealErf.erf x| ≤ 1120 / 10000 * (1 / 2 ^ 53) * x +
         2 * (1 / 2 ^ 56 / 3) * x := by linarith
     have hpe' : |p - (efxQ : ℝ) * x| ≤ 1 / 2 ^ 53 * (efxQ * x) + 1 / 2 ^ 1075 := by
       have : |p - (efxQ : ℝ) * x| = |p - (efxQ : ℝ) * x| := rfl
       linarith
     linarith
 
-theorem erfc_six : erfc 6 ≤ 1 / 2 ^ 54 := by
+theorem erfc_six : RealErf.erfc 6 ≤ 1 / 2 ^ 54 := by
   have h := erfc_asym 1 (x := 6) (by norm_num)
   simp only [pow_one, neg_mul, one_mul, neg_nonneg, sub_nonpos] at h
   have ha : asym 1 6 = scale / 2 * Real.exp (-6 ^ 2) * (6 : ℝ)⁻¹ := by
@@ -242,23 +242,23 @@ theorem erfc_six : erfc 6 ≤ 1 / 2 ^ 54 := by
 
 /-- One step for `erf x` from 6 on, where the code returns the word of 1. -/
 theorem erf_large (X : UInt64) (hx : 6 ≤ value X) :
-    F64SignedRounding.WithinSteps 1 (erf (value X)) 0x3FF0000000000000 := by
+    F64SignedRounding.WithinSteps 1 (RealErf.erf (value X)) 0x3FF0000000000000 := by
   have he := (erfc_strictAnti.antitone hx).trans erfc_six
   have hep := erfc_pos (value X)
-  have hy : erf (value X) = 1 - erfc (value X) := by simp [erfc]
+  have hy : RealErf.erf (value X) = 1 - RealErf.erfc (value X) := by simp [RealErf.erfc]
   apply F64RelativeSteps.within_steps_relative 1 le_rfl (by norm_num) _ _ one_finite
   · rw [hy, abs_of_pos (by linarith [show (1 : ℝ) / 2 ^ 54 < 1 / 2 by norm_num])]
     linarith [show (17 / 16) / (2 : ℝ) ^ 1022 ≤ 1 / 2 by norm_num,
       show (1 : ℝ) / 2 ^ 54 < 1 / 2 by norm_num]
-  · rw [one_value, hy, show (1 : ℝ) - (1 - erfc (value X)) = erfc (value X) by ring,
-      abs_of_pos hep, abs_of_pos (show (0 : ℝ) < 1 - erfc (value X) by
+  · rw [one_value, hy, show (1 : ℝ) - (1 - RealErf.erfc (value X)) = RealErf.erfc (value X) by ring,
+      abs_of_pos hep, abs_of_pos (show (0 : ℝ) < 1 - RealErf.erfc (value X) by
         linarith [show (1 : ℝ) / 2 ^ 54 < 1 / 2 by norm_num])]
     have hu : unitRoundoff64 = 1 / 2 ^ 53 := rfl
     rw [hu]
     have h2 : (1 : ℝ) / 2 ^ 54 ≤ ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * (1 - 1 / 2 ^ 54) := by
       norm_num
     have h3 : ((1 : ℕ) + 3 / 8 : ℝ) * (1 / 2 ^ 53) * (1 - 1 / 2 ^ 54) ≤
-        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * (1 - erfc (value X)) :=
+        ((1 : ℕ) + 3 / 8) * (1 / 2 ^ 53) * (1 - RealErf.erfc (value X)) :=
       mul_le_mul_of_nonneg_left (by linarith) (by positivity)
     linarith
 

@@ -2,7 +2,7 @@
 # requires-python = ">=3.12"
 # dependencies = []
 # ///
-"""Generate data/strconv/print-cases.txt, the cases of Verified/Examples/PrintFloatAccuracy.lean.
+"""Generate data/strconv/print-cases.txt, the cases of tests/TestSupport/Numerics/PrintFloatAccuracy.lean.
 
 Usage: uv run tools/strconv/print_cases.py OUTPUT
 

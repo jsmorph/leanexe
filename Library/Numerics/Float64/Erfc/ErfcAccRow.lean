@@ -173,7 +173,7 @@ theorem acc_row_err (hF : FmaNearest) (tab : Array UInt64) (i n J : ℕ) (ε : �
     (hok : AccRowOK tab i n J ε d T) (x : Float) (hx : ff x) (hlo : (i : ℝ) / 8 ≤ fv x)
     (hhi : fv x < ((i : ℝ) + 1) / 8) :
     ff (Erfc.erfAccurate tab x).1 ∧ ff (Erfc.erfAccurate tab x).2 ∧
-      |fv (Erfc.erfAccurate tab x).1 + fv (Erfc.erfAccurate tab x).2 - erf (fv x)| ≤ T ∧
+      |fv (Erfc.erfAccurate tab x).1 + fv (Erfc.erfAccurate tab x).2 - RealErf.erf (fv x)| ≤ T ∧
       |fv (Erfc.erfAccurate tab x).2| ≤ (accBR (accRowQ tab i) (1 / 16)).t7L := by
   obtain ⟨hi1, hi2, hent, hacc, hn1, hchk, hT⟩ := hok
   obtain ⟨f16, v16, f32, v32, f0625, v0625⟩ := lit_vals8
@@ -280,7 +280,7 @@ theorem acc_row_err (hF : FmaNearest) (tab : Array UInt64) (i n J : ℕ) (ε : �
       fv (accCore tab (27 * (UInt64.ofNat i - 1)) (x - 0.0625 - 0.125 * Erfc.floorF (8.0 * x))).2 -
       eval (accPoly (accRowQ tab i)) (fv (x - 0.0625 - 0.125 * Erfc.floorF (8.0 * x))))
     (eval (accPoly (accRowQ tab i)) (fv (x - 0.0625 - 0.125 * Erfc.floorF (8.0 * x))) -
-      erf (fv x))
+      RealErf.erf (fv x))
   rw [sub_add_sub_cancel] at this
   linarith
 

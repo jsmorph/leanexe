@@ -2,13 +2,13 @@ import Verified.Reflect.Command
 import Library.Random.Xorshift.Jump
 
 /-! The thirty-fourth program of the verified compiler: Marsaglia's xorshift64 of
-`Examples/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols` do not
+`Library/Random/Xorshift/Program.lean`, compiled unchanged.  `step`, `advance`, and `applyCols` do not
 allocate, so the compiler's theorem states that the module computes them without a trap.  `square`,
 `jumpPass`, and `jump` allocate, and `jump_bound` states that the compiler's bound on the growth of
 `top` during `jump` is 36,920 bytes: 568 bytes for each of the 65 blocks that it builds.
-`xorshift_advance` adds the theorems of `Examples/Xorshift/Period.lean` that a nonzero state never
+`xorshift_advance` adds the theorems of `Library/Random/Xorshift/Period.lean` that a nonzero state never
 becomes 0 and that from every nonzero state each nonzero state occurs at exactly one count below the
-period `2^64 - 1`, and `xorshift_jump` the theorem of `Examples/Xorshift/Jump.lean` that `jump`
+period `2^64 - 1`, and `xorshift_jump` the theorem of `Library/Random/Xorshift/Jump.lean` that `jump`
 computes `advance`. -/
 
 namespace Library.Random.Xorshift
@@ -36,10 +36,10 @@ words, the length word, and a block's header of 48 bytes, for each of 65 blocks,
 and one square per pass. -/
 theorem jump_bound (x : UInt64 × UInt64) : compiled.jump.bound x = 36920 := by
   obtain ⟨n, y⟩ := x
-  have hp : ∀ a b, compiled.jumpPass.bound (n, a, b) = blockCost (UInt64.toNat 64) := fun a b => by
+  have hp : ∀ a b, compiled.jumpPass.bound (n, a, b) = Verified.blockCost (UInt64.toNat 64) := fun a b => by
     rw [compiled.jumpPass.bound_eq, compiled.square.bound_eq]
   rw [compiled.jump.bound_eq]
-  simp only [hp, loopCost_const]
+  simp only [hp, Verified.loopCost_const]
   rfl
 
 /-- The module's bytes decode to the module, whose function 7, `jump`, computes `advance` without a
