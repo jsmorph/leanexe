@@ -71,9 +71,17 @@ while IFS=: read -r name theorem file; do
     echo "fail: $file does not check against $out/$name.wasm" >&2
     exit 1
   }
-  permitted=$(grep -c "depends on axioms: \[propext, Classical.choice, Quot.sound\]$" \
-    <<<"$reports" || true)
-  if [ "$permitted" -ne 2 ]; then
+  axiom_counts=$(awk '
+    /depends on axioms: \[/ {
+      report = $0
+      while (report !~ /\]/ && (getline) > 0) report = report " " $0
+      sub(/^.*depends on axioms: /, "", report)
+      gsub(/[[:space:]]+/, " ", report)
+      count++
+      if (report == "[propext, Classical.choice, Quot.sound]") permitted++
+    }
+    END { print count + 0, permitted + 0 }' <<<"$reports")
+  if [ "$axiom_counts" != "2 2" ]; then
     echo "$reports"
     echo "fail: the theorems of $file.lean must report only the three permitted axioms" >&2
     exit 1
