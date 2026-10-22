@@ -2,7 +2,7 @@ import Library.Numerics.Float64.Pow.PowBytes
 import LeanExe.Pipeline.FileBytes
 
 /-! Checked after `tests/verified/run.sh` writes `build/verified/pow.wasm`, with
-`tools/leanrun --timeout 10m lake env lean Verified/Examples/PowFile.lean`: the file holds
+`tools/leanrun --timeout 10m lake env lean Library/Numerics/Float64/Pow/PowFile.lean`: the file holds
 `encode Pow.compiled.module`, so it decodes to the module of `PowBytes.pow_bytes_accuracy`.
 The kernel takes its recursion limit from `maxRecDepth`, and its check of the 11,156-byte literal
 exceeds the default limit, so both theorems raise it. -/

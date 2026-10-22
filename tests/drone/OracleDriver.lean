@@ -5,7 +5,7 @@ implementation's `Examples/Drone/Program.lean` and runs the result natively.  Wi
 joined by `|`.  With `cases`, each line is a call of one of the reference functions in the format of
 `tests/modules/Cases.lean`: `drone|export|result kind|host arguments|the reference result`. -/
 
-open Demos.Drone
+open Examples.Drone
 
 def mix (i : Nat) : Nat := (i * 0x9E3779B97F4A7C15 + 12345) % 2 ^ 64
 
