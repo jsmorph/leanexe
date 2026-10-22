@@ -1,6 +1,6 @@
 # Natural numbers on limbs and exact unrounded scaling: `Uscale`
 
-The module `Uscale` holds the integer routines that the decimal parsers and printers share: natural numbers of any size as arrays of 32-bit limbs in 64-bit words, and Cox's unrounded scaling [1] computed with them exactly.  It exports no function to a host; `ParseFloat` and `PrintFloat` call its routines.  Every routine has a theorem that states its result as a natural number, proved with only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and the verified compiler accepts the module.
+The module `Uscale` holds the integer routines that the decimal parsers and printers share: natural numbers of any size as arrays of 32-bit limbs in 64-bit words, and Cox's unrounded scaling [1] computed with them exactly.  `ParseFloat` and `PrintFloat` include these routines in their modules, and `Uscale` also has a standalone compilation.  Every routine has a theorem that states its result as a natural number, proved with only the axioms `propext`, `Classical.choice`, and `Quot.sound`, and the verified compiler accepts the module.
 
 ## Specification
 

@@ -29,10 +29,11 @@ theorems for both float widths, word division, tail recursion, and call chains.
 
 ### Trusted base
 
-The trusted base is that of the LeanExe compiler: Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [`tools/Emit.lean`](../tools/Emit.lean) performs.  [The LeanExe compiler manual](leanexe-manual.md#trusted-base) describes each part.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [`Verified/Heap.lean`](../Verified/Heap.lean), which states that `top` plus a bound fits within the memory cap, the allocation bound of [`Verified/Bound.lean`](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The compiler, the reflector, and the bound equations are not trusted, since the kernel checks every theorem they produce.
+The trusted base is that of the LeanExe compiler: Lean's kernel with the axioms `propext`, `Classical.choice`, and `Quot.sound`, Talos's semantics, the binary decoder, and the step from a constant to a file that [the module emitter](../tools/Emit.lean) performs.  [The LeanExe compiler manual](leanexe-manual.md#trusted-base) describes each part.  The statements of the verified compiler add definitions of their own: `Heap.Within` in [the runtime facts](../Verified/RuntimeFacts.lean), which states that `top` plus a bound fits within the memory cap, the allocation bound of [the bound definitions](../Verified/Bound.lean), `ImplementsTables` for wrappers, and `initialHeap` and `tableAddr`, which `p.initial` uses.  The kernel checks the reflected equations, bound equations, and compiler proofs.
 
-WGSL dispatch uses the shared [device model](leanexe-manual.md#wgsl-kernels-and-the-browser-pages),
-with strict binary32 arithmetic, race-free dispatch, and error-free execution.
+WGSL dispatch uses the shared [device model](leanexe-manual.md#wgsl-kernels-and-the-browser-pages)
+with strict binary32 arithmetic.  Its theorems prove successful modeled execution and race freedom
+under their buffer, count, and invocation bounds.
 
 ### Outside the proofs
 
@@ -277,8 +278,8 @@ result carries their proofs.  `gpu.dispatch_eq` states that dispatch returns the
 encoded as words, and that the dispatch is race-free.  Its conditions include input arrays and
 an output count below 2²⁹, the count's agreement with its parameter or array, an output buffer
 with the length header and room for every element, and enough invocations to cover the output.
-The theorem uses the existing device model of strict binary32 arithmetic and error-free
-execution.  [The kernel examples](../Verified/Examples/Wgsl.lean) compile ordinary Lean
+The theorem uses the existing device model with strict binary32 arithmetic.
+[The kernel examples](../Verified/Examples/Wgsl.lean) compile ordinary Lean
 definitions with both backends.  [Their native-value proofs](../Verified/Examples/WgslProof.lean)
 combine the generic dispatch theorem with the generated `denote_eq` equations.
 
