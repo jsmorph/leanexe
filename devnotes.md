@@ -34867,3 +34867,36 @@ Counts and indices will use `UInt64`.  The future design needs explicit rules fo
 Section 5 of [the numerical index](index.md#5-pseudorandom-number-generators) now has one row each for the LCG, Park–Miller, xorshift64, and SplitMix64, with the method, proved results, and links to the byte theorems.  The period domains, jump-ahead results, top-bit counts, LCG lattice results, and xorshift allocation bound follow the linked guides and Lean statements.  A separate paragraph describes `unitFloat` and the reusable SplitMix64 proofs.
 
 Two source and prose reviews and `git diff --check` passed.  The documentation checker found no missing local paths or anchors across 185 Markdown files and 3,324 link occurrences.
+
+## 2026-10-22: Proposed source organization
+
+The review at `960bd43d` counted 36 directories and 256 Lean files under `Examples/`, plus 965 Lean files under `Verified/Examples/`.  Both trees mix reusable algorithms, application programs, compiler examples, and test support.  The numerical families account for most of the flat verified-example tree.  The compiler implementation has no direct imports from either tree.  The root `Verified.lean` imports both compiler modules and examples, and the `Verified` build includes the numerical proofs.
+
+The proposed library root is `Numerics/`, with one directory per algorithm family.  Native definitions would import the dialect and the algorithms they use.  Separate compilation and byte-proof modules would provide each compiler's results.  Mathematical specifications and accuracy proofs would stay with their algorithms.
+
+| Proposed destination | Current material |
+|---|---|
+| `Numerics/Random/` | LCG, Park–Miller, xorshift64, SplitMix64, the shared orbit lemmas, and their period, jump, lattice, and compilation proofs. |
+| `Numerics/Float64/` | The elementary and special functions and their implementation, specification, accuracy, and compiled-module proofs under `Verified/Examples/`. |
+| `Numerics/Arithmetic/` | Fused multiply-add, limb arithmetic and unrounded scaling, GCD, and the count of prime factors. |
+| `Numerics/Decimal/` | Decimal parsing and printing and their correctness proofs. |
+| `Numerics/Fourier/` | The DFT, inverse transform, and power spectrum. |
+| `Numerics/Statistics/` | Mean and sum of squares, followed by the statistical work recorded above. |
+| `Demos/` | Euler, GPT, GPT32, Drone, and Clob, with their specifications, proofs, compiler modules, guides, and host code. |
+| `Examples/` and `Verified/Examples/` | Focused compiler examples, including Boolean operations, records, sums, lists, trees, ownership, loops, recursion, tables, and module composition.  Small request-to-proof worked examples retain their requests, specifications, samples, and reviews. |
+| `tests/` | Shared host formatting, accuracy-test entry points, and the reference calculators those tests use. |
+| `data/` | The Euler run outputs now stored beside the source.  The demo guides would link to those records and figures. |
+
+Existing reuse supports the library boundary: [GPT](Examples/Gpt/README.md) imports the [SplitMix64 implementation and proofs](Examples/Prng/README.md), and all three period developments import [the orbit lemmas](Examples/Orbit/README.md).  The small arithmetic programs that demonstrate an expression or allocation form can remain worked examples.  Library promotion would preserve each routine's current specification and proof scope.
+
+Import inspection also found proof dependencies with test-like names.  `LgammaAccPath` imports `LgammaAccTests`, whose theorems interpret floating-point branch conditions over the reals.  `TgammaLogdTab` imports the kernel-checked table bounds in `TgammaLogdCheck`.  These modules belong with the accuracy proofs.  Numerical test programs and their reference calculators have separate roles.
+
+The layout remains a proposal for the user's approval.  The proposed migration order and checks are:
+
+- [ ] Confirm the layout and Lake targets, including separate compiler, numerical-library, example, and demo builds.
+- [ ] Move the random algorithms and shared orbit lemmas first, updating GPT and both compiler paths.
+- [ ] Move numerical families with their proof dependencies, then the five demos, test support, and run records.
+- [ ] Update namespaces, root imports, module registries, file-proof paths, drivers, browser emission, manuals, index links, and the README.  Preserve Wasm export names and output paths and compare emitted bytes with the saved modules.
+- [ ] Run the existing build, execution, numerical, axiom, GPU, and documentation checks for the moved material.  Complete the full check before merging the reorganization.
+
+The review inspected source imports, guides, build targets, module registries, and driver paths.  The journal's local-link and whitespace checks passed.
