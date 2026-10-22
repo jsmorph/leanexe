@@ -34851,3 +34851,19 @@ Source checks found stale descriptions in the internals guide: its type summary 
 The GPU guides now distinguish the strict arithmetic model from the proved results: successful modeled execution and race freedom follow under the buffer, count, and invocation bounds.  The binary32 application also states its shape and token bounds.  The numerical review corrected the active `tgamma` compile command, the standalone `Uscale` compilation, and the shortest-decimal statement's finite nonzero domain.  The parser introduction states its proved results and method.  The proof-data descriptions name rational approximations, checks, and bounds, and the Bessel plan states the mathematical results required by its proposed approach.
 
 The source and prose passes were followed by checks of 185 Markdown files and 3,314 local links and anchors, 590 tables, 111 shell examples, 147 build and program targets, and the encoding-review checksums.  All passed, including shell syntax and `git diff --check`.  The README's existing GCD module passes `wasm-tools validate`, and its displayed Wasmtime call returns `6`.  The changes are confined to Markdown.
+
+## 2026-10-22: Statistics work and the generator index
+
+The user deferred the proposed statistical algorithms until after documentation reorganization.  The current examples include mean, sum of squares, a median of three words, a modulo-bucket histogram, and population variance within GPT layer normalization.  Their proofs establish compiler correctness.  Numerical error bounds remain part of the proposed statistical work.
+
+The proposed order for future work is:
+
+- [ ] Population and sample variance and standard deviation, followed by a count, mean, and squared-deviation accumulator with incremental updates and merging.
+- [ ] Sample quantiles at arbitrary probabilities, starting with the generalized inverse of the empirical CDF, then named interpolation conventions and weighted quantiles.
+- [ ] Covariance and correlation from the moment accumulator, and interquartile range and median absolute deviation from quantiles.
+
+Counts and indices will use `UInt64`.  The future design needs explicit rules for empty samples, NaNs, infinities, probabilities, and weights, together with mathematical specifications and numerical error bounds.  [Pébay's moment-update report](https://www.osti.gov/biblio/1028931) gives incremental and pairwise formulas.  [Hyndman and Fan's quantile paper](https://robjhyndman.com/publications/quantiles/) compares nine sample-quantile definitions.
+
+Section 5 of [the numerical index](index.md#5-pseudorandom-number-generators) now has one row each for the LCG, Park–Miller, xorshift64, and SplitMix64, with the method, proved results, and links to the byte theorems.  The period domains, jump-ahead results, top-bit counts, LCG lattice results, and xorshift allocation bound follow the linked guides and Lean statements.  A separate paragraph describes `unitFloat` and the reusable SplitMix64 proofs.
+
+Two source and prose reviews and `git diff --check` passed.  The documentation checker found no missing local paths or anchors across 185 Markdown files and 3,324 link occurrences.

@@ -86,9 +86,16 @@ For a string of fewer than `2^32` bytes, the parsers' theorems state that the re
 
 ## 5. Pseudorandom number generators
 
-The byte theorems of [the linear congruential generator](Examples/Lcg/README.md) (LCG), [the Park–Miller generator](Examples/ParkMiller/README.md), and [xorshift64](Examples/Xorshift/README.md) combine the verified compiler's result with the generators' theorems on period and orbit.  The LCG and xorshift64 also have compiled jump-ahead functions, proved equal to repeated steps, and theorems that count how often each value of the top bits occurs over a period.  The LCG proofs give hyperplane bounds and spectral-test values for tuples of two to six successive states.  The linked documents state the parameters, domains, and memory conditions.
+Each generator keeps its state in a `UInt64`.  The linked guides state the parameters, valid states, and memory conditions.
 
-[The `Examples/Prng` example](Examples/Prng/README.md) implements SplitMix64, the generator of Steele, Lea, and Flood, in the form of Vigna's reference C code.  It also implements `unitFloat`, which maps a word `x` to the binary64 value `(x >>> 11) / 2^53` in `[0, 1)`.  The theorems `splitMix_implements`, `unitFloat_implements`, and `prng_bytes` state that the compiled module computes the Lean definitions, and [the `splitmix64` entry of the LTG knowledge base](ltg/entries/splitmix64/README.md) lets other modules compile and call both functions.
+| Generator | Method | Proved results | Byte theorems |
+|---|---|---|---|
+| [Linear congruential generator](Examples/Lcg/README.md) (LCG) | `a * x + c` modulo `2^64` | Period `2^64` from every state, with each word occurring once per period.  Jump-ahead equals repeated steps.  Exact top-bit counts, hyperplane bounds, and spectral-test values for tuples of two to six successive states. | [`lcg_advance`](Verified/Examples/Lcg.lean), [`lcg_jump`](Verified/Examples/Lcg.lean) |
+| [Park–Miller](Examples/ParkMiller/README.md) | `16807 * x % (2^31 - 1)` | Period `2^31 - 2` from every state in `[1, 2^31 - 2]`, with each state in the range occurring once per period.  Every seed maps into that range. | [`parkMiller_advance`](Verified/Examples/ParkMiller.lean) |
+| [Xorshift64](Examples/Xorshift/README.md) | Marsaglia's shifts `(13, 7, 17)` | Period `2^64 - 1` from every nonzero state, with each nonzero word occurring once per period.  Jump-ahead equals repeated steps.  Exact top-bit counts and a 36,920-byte bound on heap growth for jump-ahead. | [`xorshift_advance`](Verified/Examples/Xorshift.lean), [`xorshift_jump`](Verified/Examples/Xorshift.lean) |
+| [SplitMix64](Examples/Prng/README.md) | A fixed odd increment followed by xorshift and multiplication rounds, as in Vigna's reference C code | The compiled step computes the Lean definition's new state and output word and preserves the store. | [`prng_bytes`](Examples/Prng/Verify.lean) |
+
+SplitMix64's module also exports `unitFloat`, which maps a word `x` to the binary64 value `(x >>> 11) / 2^53` in `[0, 1)`.  The theorem `prng_bytes` covers both functions.  The reusable proofs `splitMix_pure` and `unitFloat_pure`, described in [the SplitMix64 guide](Examples/Prng/README.md) and [the `splitmix64` entry of the LTG knowledge base](ltg/entries/splitmix64/README.md), let other modules compile and call them.
 
 ## 6. Floating-point folds
 
