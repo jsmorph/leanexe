@@ -75,7 +75,7 @@ theorem conds : Finite (0x0000000000000001 : UInt64) ∧ Finite (0x000667BD620FD
 theorem special_within (hF : FmaNearest) (x : Float) (hx : ff x)
     (heq : (x == Float.ofBits 0x403A8F7BFBD15495) = true) :
     F64SignedRounding.WithinSteps 1 (erfc (fv x))
-      (Library.Numerics.Arithmetic.Fma.Fma.fma (Float.ofBits 0x0000000000000001) (-0.25)
+      (Library.Numerics.Arithmetic.Fma.fma (Float.ofBits 0x0000000000000001) (-0.25)
         (Float.ofBits 0x000667BD620FD95B)).toBits := by
   obtain ⟨f1, fc, fq, fx, v1, vq, d1, d2, d3, d4, d5⟩ := conds
   obtain ⟨af, av⟩ := ofBits_ff _ f1

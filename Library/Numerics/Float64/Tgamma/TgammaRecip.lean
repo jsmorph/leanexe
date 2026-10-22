@@ -25,10 +25,10 @@ theorem one_finite : Finite (1.0 : Float).toBits := by
 /-- **The corrected reciprocal** for `2 ^ -900 ≤ |x| ≤ 1/4`. -/
 theorem recip_corr (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
     (hlo : 1 / 2 ^ 900 ≤ |value x.toBits|) (hhi : |value x.toBits| ≤ 1 / 4) :
-    Finite (1.0 / x).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits ∧
+    Finite (1.0 / x).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits ∧
       |value (1.0 / x).toBits - 1 / value x.toBits| ≤ |1 / value x.toBits| / 2 ^ 52 ∧
-      |value (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits| ≤ |1 / value x.toBits| / 2 ^ 50 ∧
-      |value (1.0 / x).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits -
+      |value (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits| ≤ |1 / value x.toBits| / 2 ^ 50 ∧
+      |value (1.0 / x).toBits + value (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)).toBits -
           1 / value x.toBits| ≤ |1 / value x.toBits| / 2 ^ 100 := by
   set vx := value x.toBits with hvx
   have hx0 : 0 < |vx| := lt_of_lt_of_le (by positivity) hlo
@@ -82,7 +82,7 @@ theorem recip_corr (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
   have hr := fma_approx hF fh (-x) 1.0 hfh.1 hnx.1 one_finite
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 2 ^ 1000)])
   rw [← hS] at hr
-  set r := Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0 with hrdef
+  set r := Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0 with hrdef
   have hre : |value r.toBits - S| ≤ |S| / 2 ^ 53 + 1 / 2 ^ 1075 := hr.2
   -- `corr = r fh`
   have hc0 := fapprox_mul hr (fapprox_self fh hfh.1) (1 / 2 ^ 52) (2 * R) hSb hvfb

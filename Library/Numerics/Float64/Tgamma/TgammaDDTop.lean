@@ -176,7 +176,7 @@ theorem mulDDD_spec_top (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
     linarith [(by norm_num : (2 : ℝ) ^ 1024 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000)]
   have hf := fma_approx hF ch x (-(ch * x)) hch hx hnaf hSb
   rw [hnav, ← sub_eq_add_neg] at hf
-  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))) (vh * vx - va)
+  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))) (vh * vx - va)
       ((H / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 + 1 / 2 ^ 1075) :=
     Approx.mono hf (by gcongr)
   -- `p = cl x`
@@ -200,16 +200,16 @@ theorem mulDDD_spec_top (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
     have : Lw * (1 + 1 / 2 ^ 52) ≤ 2 ^ 1000 * (1 + 1 / 2 ^ 52) :=
       mul_le_mul_of_nonneg_right hLmax (by norm_num)
     linarith [(by norm_num : (2 : ℝ) ^ 1000 * (1 + 1 / 2 ^ 52) + 2 ^ 1024 / 2 ^ 52 + 1 < 2 ^ 1023)])
-  have hdef : mulDDD x ch cl = (ch * x, cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))) := rfl
+  have hdef : mulDDD x ch cl = (ch * x, cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))) := rfl
   rw [hdef]
   refine ⟨ha.1, hlow.1, ?_, ?_, ?_⟩
   · have h := hlow.2
-    rw [show va + value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits - vx * (vh + vl) =
-      value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits - (vl * vx + (vh * vx - va)) by ring]
+    rw [show va + value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits - vx * (vh + vl) =
+      value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits - (vl * vx + (vh * vx - va)) by ring]
     rw [hB] at h
     nlinarith
   · have h := hlow.2
-    have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits)
+    have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits)
       (vl * vx + (vh * vx - va))
     have h3 := abs_add_le (vl * vx) (vh * vx - va)
     have h4 : |vl * vx| ≤ Lw := by rw [abs_mul]; exact hL

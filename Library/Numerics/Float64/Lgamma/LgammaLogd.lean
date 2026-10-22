@@ -26,7 +26,7 @@ theorem asLogd_eq (tab : Array UInt64) (x : Float) :
       let ex := u >>> 52
       let p : UInt64 × Float :=
         if ex == 0 then
-          (u <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 u - 11), -((63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 u + 1011).toFloat))
+          (u <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 u - 11), -((63 - Library.Numerics.Arithmetic.Fma.msb64 u + 1011).toFloat))
         else (u, if ex ≥ 0x3ff then (ex - 0x3ff).toFloat else -((0x3ff - ex).toFloat))
       let m := p.1 &&& 0xFFFFFFFFFFFFF
       let ed := p.2
@@ -51,10 +51,10 @@ theorem asLogd_normal (tab : Array UInt64) (x : Float) (h : (x.toBits >>> 52 == 
 /-- **A subnormal argument**: the reduced mantissa and exponent. -/
 theorem subnormal_parts (x : Float) (hpos : 0 < value x.toBits) (hlt : x.toBits.toNat < 2 ^ 52) :
     ∃ P : ℕ, P < 52 ∧ 2 ^ P ≤ x.toBits.toNat ∧ x.toBits.toNat < 2 ^ (P + 1) ∧
-      ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat =
+      ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat =
         x.toBits.toNat * 2 ^ (52 - P) - 2 ^ 52 ∧
-      Finite (-((63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits + 1011).toFloat)).toBits ∧
-      sv (-((63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits + 1011).toFloat)).toBits = ((P : ℤ) - 1074) * 2 ^ 1074 := by
+      Finite (-((63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits + 1011).toFloat)).toBits ∧
+      sv (-((63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits + 1011).toFloat)).toBits = ((P : ℤ) - 1074) * 2 ^ 1074 := by
   have hne : x.toBits.toNat ≠ 0 := by
     intro h0
     have : value x.toBits = 0 := by
@@ -62,16 +62,16 @@ theorem subnormal_parts (x : Float) (hpos : 0 < value x.toBits) (hlt : x.toBits.
       simp [F64Order.unsignedScaled]
     linarith
   obtain ⟨hp64, hp1, hp2⟩ := Library.Numerics.Arithmetic.Fma.FmaWords.msb64_spec x.toBits hne
-  obtain ⟨P, hP⟩ : ∃ P, (Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits).toNat = P := ⟨_, rfl⟩
+  obtain ⟨P, hP⟩ : ∃ P, (Library.Numerics.Arithmetic.Fma.msb64 x.toBits).toNat = P := ⟨_, rfl⟩
   rw [hP] at hp64 hp1 hp2
   have hP52 : P < 52 := by
     by_contra hc
     have : 2 ^ 52 ≤ 2 ^ P := Nat.pow_le_pow_right (by norm_num) (by omega)
     omega
-  have hk : (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits).toNat = 63 - P := by
+  have hk : (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits).toNat = 63 - P := by
     rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hP]; simp only [UInt64.reduceToNat]; omega), hP]
     simp only [UInt64.reduceToNat]
-  have hs : (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11).toNat = 52 - P := by
+  have hs : (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11).toNat = 52 - P := by
     rw [UInt64.toNat_sub_of_le _ _ (by rw [UInt64.le_iff_toNat_le, hk]; simp only [UInt64.reduceToNat]; omega), hk]
     simp only [UInt64.reduceToNat]
     omega
@@ -88,9 +88,9 @@ theorem subnormal_parts (x : Float) (hpos : 0 < value x.toBits) (hlt : x.toBits.
       show (52 - P) % 64 = 52 - P by omega, Nat.shiftLeft_eq,
       Nat.mod_eq_of_lt (by omega : x.toBits.toNat * 2 ^ (52 - P) < 2 ^ 64)]
     omega
-  · have hn : (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits + 1011).toNat = 1074 - P := by
+  · have hn : (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits + 1011).toNat = 1074 - P := by
       rw [UInt64.toNat_add, hk]; simp only [UInt64.reduceToNat]; omega
-    obtain ⟨hf, hsv⟩ := toFloat_value (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits + 1011) (by rw [hn]; omega)
+    obtain ⟨hf, hsv⟩ := toFloat_value (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits + 1011) (by rw [hn]; omega)
     obtain ⟨hnf, hnsv⟩ := neg_sv _ hf
     refine ⟨hnf, ?_⟩
     rw [hnsv, hsv, hn]
@@ -100,8 +100,8 @@ theorem subnormal_parts (x : Float) (hpos : 0 < value x.toBits) (hlt : x.toBits.
 /-- `logd_core` at a subnormal argument. -/
 theorem subnormal_core (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL : Library.Numerics.Float64.Tgamma.TgammaApprox.LogFact) (x : Float)
     (hpos : 0 < value x.toBits) (hlt : x.toBits.toNat < 2 ^ 52) :
-    let m := (x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF
-    let ed := -((63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits + 1011).toFloat)
+    let m := (x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF
+    let ed := -((63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits + 1011).toFloat)
     let j := jOf Tgamma.logdTable m
     let t := Float.ofBits (m ||| 0x3FF0000000000000)
     let i1 := j >>> 5
@@ -118,7 +118,7 @@ theorem subnormal_core (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest)
   intro m ed j t i1 i2 q
   obtain ⟨P, hP52, hp1, hp2, hm, hedf, hedsv⟩ := subnormal_parts x hpos hlt
   have hm52 : m.toNat < 2 ^ 52 := by
-    show ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat < 2 ^ 52
+    show ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat < 2 ^ 52
     rw [hm]
     have : x.toBits.toNat * 2 ^ (52 - P) < 2 ^ (P + 1) * 2 ^ (52 - P) :=
       Nat.mul_lt_mul_of_pos_right hp2 (by positivity)
@@ -133,7 +133,7 @@ theorem subnormal_core (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest)
       unfold F64Order.unsignedScaled
       rw [ite_eq_left (by omega), Nat.mod_eq_of_lt hlt]
     have hmv : (m.toNat : ℝ) = (x.toBits.toNat : ℝ) * 2 ^ (52 - P) - 2 ^ 52 := by
-      show (((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℝ) = _
+      show (((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℝ) = _
       rw [hm, Nat.cast_sub h1]
       push_cast
       ring

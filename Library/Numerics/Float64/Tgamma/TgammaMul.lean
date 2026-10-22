@@ -53,7 +53,7 @@ theorem mulDD_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh
     linarith [(by norm_num : (2 : ℝ) ^ 900 + 1 / 2 ^ 1075 ≤ 2 ^ 1000)]
   have hf := fma_approx hF ch xh (-(ch * xh)) hch hxh hna.1 hSb
   rw [hnav, ← sub_eq_add_neg] at hf
-  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))) (vch * vxh - va)
+  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))) (vch * vxh - va)
       ((H / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 + 1 / 2 ^ 1075) :=
     Approx.mono hf (by gcongr)
   -- `u1 = ch xl`, `u2 = cl xh`
@@ -83,11 +83,11 @@ theorem mulDD_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh
       nlinarith)
     (by rw [hB2]; nlinarith [(by norm_num : (2 : ℝ) ^ 900 * (1 + 1 / 2 ^ 51) + 2 ^ 900 + 1 < 2 ^ 1023),
       div_le_self hH0 (by norm_num : (1 : ℝ) ≤ 2 ^ 52)])
-  have hdef : mulDD xh xl ch cl = (ch * xh, (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))) := rfl
+  have hdef : mulDD xh xl ch cl = (ch * xh, (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))) := rfl
   rw [hdef]
   have hlowe := hlow.2
   rw [hB1, hB2] at hlowe
-  set low := value ((ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits
+  set low := value ((ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits
   refine ⟨ha.1, hlow.1, ?_, ?_, ?_⟩
   · have hL2' : |vcl * vxl| ≤ L2 := by rw [abs_mul]; exact hL2
     rw [show va + low - (vxh + vxl) * (vch + vcl) =

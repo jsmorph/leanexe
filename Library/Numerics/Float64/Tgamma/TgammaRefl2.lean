@@ -55,16 +55,16 @@ theorem pi_tail (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (lh ll
     (hll : Finite ll.toBits) (hp1 : Finite p1.toBits) (hp2 : Finite p2.toBits)
     (hrh : Finite rh.toBits) (hr : |value rh.toBits * value lh.toBits - value p1.toBits| ≤ 1 / 2 ^ 49)
     (hm : |value ll.toBits * value rh.toBits| ≤ 1 / 2 ^ 33) (hp2v : |value p2.toBits| ≤ 1 / 2 ^ 52) :
-    Finite (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-p1)).toBits ∧
-      |value (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-p1)).toBits -
+    Finite (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-p1)).toBits ∧
+      |value (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-p1)).toBits -
           (value p2.toBits - value ll.toBits * value rh.toBits -
             (value rh.toBits * value lh.toBits - value p1.toBits))| ≤ 1 / 2 ^ 82 ∧
-      |value (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-p1)).toBits| ≤ 1 / 2 ^ 31 := by
+      |value (p2 - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-p1)).toBits| ≤ 1 / 2 ^ 31 := by
   obtain ⟨hnf, hnv⟩ := neg_float p1 hp1
   have hf := fma_approx hF rh lh (-p1) hrh hlh hnf
     (by rw [hnv, ← sub_eq_add_neg]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 49 ≤ 2 ^ 1000)])
   rw [hnv, ← sub_eq_add_neg] at hf
-  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-p1)) (value rh.toBits * value lh.toBits - value p1.toBits)
+  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.fma rh lh (-p1)) (value rh.toBits * value lh.toBits - value p1.toBits)
       (1 / 2 ^ 100) := Approx.mono hf (by
         linarith [(by norm_num : (1 : ℝ) / 2 ^ 49 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 100)])
   have hmA := fapprox_mul (fapprox_self ll hll) (fapprox_self rh hrh) |value ll.toBits|
@@ -209,14 +209,14 @@ theorem pi_div (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (lh ll 
     (hp1a : 31 / 10 ≤ value p1.toBits) (hp1b : value p1.toBits ≤ 7 / 2)
     (hp2v : |value p2.toBits| ≤ 1 / 2 ^ 52) :
     Finite ((1.0 / lh) * p1).toBits ∧
-      Finite ((1.0 / lh) * (p2 - ll * ((1.0 / lh) * p1) - Library.Numerics.Arithmetic.Fma.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits ∧
+      Finite ((1.0 / lh) * (p2 - ll * ((1.0 / lh) * p1) - Library.Numerics.Arithmetic.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits ∧
       |value ((1.0 / lh) * p1).toBits +
           value ((1.0 / lh) * (p2 - ll * ((1.0 / lh) * p1) -
-            Library.Numerics.Arithmetic.Fma.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits -
+            Library.Numerics.Arithmetic.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits -
           (value p1.toBits + value p2.toBits) / (value lh.toBits + value ll.toBits)| ≤
         |(value p1.toBits + value p2.toBits) / (value lh.toBits + value ll.toBits)| / 2 ^ 68 ∧
       |value ((1.0 / lh) * (p2 - ll * ((1.0 / lh) * p1) -
-          Library.Numerics.Arithmetic.Fma.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits| ≤
+          Library.Numerics.Arithmetic.Fma.fma ((1.0 / lh) * p1) lh (-p1))).toBits| ≤
         |value ((1.0 / lh) * p1).toBits| / 2 ^ 32 := by
   have hl0 : 0 < |value lh.toBits| := lt_of_lt_of_le (by positivity) hlo
   obtain ⟨hqf, hrhf, hq, hrh⟩ := pi_head lh p1 hlh hp1 hlo hhi
@@ -252,7 +252,7 @@ theorem pi_div (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (lh ll 
       _ = (4 + 1 / 2 ^ 49) / 2 ^ 36 * (R * |value lh.toBits|) := by ring
       _ ≤ 1 / 2 ^ 33 := by rw [hRl]; norm_num
   obtain ⟨hbf, hbe, hbb⟩ := pi_tail hF lh ll p1 p2 rh hlh hll hp1 hp2 hrhf hr1 hm hp2v
-  generalize p2 - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-p1) = b at hbf hbe hbb ⊢
+  generalize p2 - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-p1) = b at hbf hbe hbb ⊢
   -- `rl = q b`
   have hRle : R ≤ 2 ^ 53 := by
     rw [hR, div_le_iff₀ hl0]

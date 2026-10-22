@@ -46,16 +46,16 @@ theorem asym_recip (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh
     (hxl : Finite xl.toBits) (h4 : 4 ≤ value xh.toBits) (h186 : value xh.toBits ≤ 186)
     (hxlb : |value xl.toBits| ≤ 1 / 2 ^ 44) :
     Finite (1.0 / xh).toBits ∧
-      Finite ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits ∧
+      Finite ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits ∧
       |value (1.0 / xh).toBits - 1 / value xh.toBits| ≤
         1 / value xh.toBits / 2 ^ 53 + 1 / 2 ^ 1075 ∧
       |value (1.0 / xh).toBits - 1 / (value xh.toBits + value xl.toBits)| ≤
         1 / (value xh.toBits + value xl.toBits) * (1 / 2 ^ 46 + 1 / 2 ^ 52) ∧
       |value (1.0 / xh).toBits +
-          value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits -
+          value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits -
           1 / (value xh.toBits + value xl.toBits)| ≤
         1 / (value xh.toBits + value xl.toBits) / 2 ^ 78 ∧
-      |value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits| ≤
+      |value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits| ≤
         1 / (value xh.toBits + value xl.toBits) / 2 ^ 44 := by
   have ha0 : 0 < value xh.toBits := by linarith
   have hk : |value xl.toBits| ≤ |value xh.toBits| / 2 ^ 40 := by
@@ -75,7 +75,7 @@ theorem asym_recip (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh
     rw [one_value] at h
     exact h.trans (le_of_eq (by ring))
   refine ⟨hzf, hlf, hzd, ?_⟩
-  generalize value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits = zl
+  generalize value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits = zl
     at hsum ⊢
   generalize value (1.0 / xh).toBits = zh at hsum hzd ⊢
   generalize value xl.toBits = e at hxlb hk hsum hzd ⊢

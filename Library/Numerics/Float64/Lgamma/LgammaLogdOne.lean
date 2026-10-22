@@ -124,7 +124,7 @@ theorem acc_one (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA :
   generalize hR : Lgamma.logReduce Tgamma.logdTable y = R at hT hRt hRt1 hRt2 hRr hRrv hRrt hRed hRedv hRi1 hRi2 hyv hkv
   obtain ⟨t, r, ed, i1, i2⟩ := R
   dsimp only at hT hRt hRt1 hRt2 hRr hRrv hRrt hRed hRedv hRi1 hRi2 hyv hkv
-  generalize hD : fastTwoSum (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))) = D at hT
+  generalize hD : fastTwoSum (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))) = D at hT
   generalize hP : Lgamma.polyDD H 198 6 D.1 D.2
     (D.1 * (entry H 210 + D.1 * (entry H 212 + D.1 * entry H 214))) = P at hT
   generalize hQ : mulDD D.1 D.2 P.1 P.2 = Q at hT
@@ -230,7 +230,7 @@ theorem acc_one (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA :
     0.0 0.0 hRr hRt z0 z0 z0 z0 (by rw [hρ, hτ, hXdef]; exact hX) (by rw [zv]; norm_num)
     (by rw [zv]; norm_num) (by rw [zv]; norm_num) (by rw [zv]; norm_num)
   obtain ⟨hnf, hnv⟩ := Library.Numerics.Float64.Tgamma.TgammaFloor.neg_float (r * t) hrtf
-  have hfz : value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))).toBits = 0 := by
+  have hfz : value (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))).toBits = 0 := by
     have hsum : value r.toBits * value t.toBits + value (-(r * t)).toBits = 0 := by
       rw [hnv, hrtv, hρ, hτ]; ring
     obtain ⟨-, hnear⟩ := hF r t (-(r * t)) hRr hRt hnf (by rw [hsum]; norm_num)
@@ -238,7 +238,7 @@ theorem acc_one (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA :
     rw [hsum, zv, sub_zero, sub_zero, abs_zero] at h
     exact abs_nonpos_iff.mp h
   have hxv' : value (r * t - 1.0).toBits = X := by rw [hxv, hrtv, hXdef]
-  obtain ⟨hD1f, hD2f, hDs, hD2a, -⟩ := fastTwoSum_spec (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t)))
+  obtain ⟨hD1f, hD2f, hDs, hD2a, -⟩ := fastTwoSum_spec (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t)))
     hxf hlf (by rw [hfz, abs_zero]; exact abs_nonneg _)
     (by rw [hxv']; linarith [(by norm_num : (1 : ℝ) / 2400 < 2 ^ 900)])
   rw [hD] at hD1f hD2f hDs hD2a

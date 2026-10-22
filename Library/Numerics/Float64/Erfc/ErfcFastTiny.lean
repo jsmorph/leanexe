@@ -147,19 +147,19 @@ instance (q : List ℚ) (R : ℚ) (b : TinyB) : Decidable (TinyHyp q R b) := by
 def tinyCore (c0 c1 c2 c3 c4 c5 c6 c7 z : Float) : Float × Float :=
   let (z2h, z2l) := Erfc.aMul z z
   let z4 := z2h * z2h
-  let c9 := Library.Numerics.Arithmetic.Fma.Fma.fma c7 z2h c6
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma c5 z2h c4
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma c9 z4 c5
+  let c9 := Library.Numerics.Arithmetic.Fma.fma c7 z2h c6
+  let c5 := Library.Numerics.Arithmetic.Fma.fma c5 z2h c4
+  let c5 := Library.Numerics.Arithmetic.Fma.fma c9 z4 c5
   let (th, tl) := Erfc.aMul z2h c5
   let (h, l) := Erfc.fastTwoSum c2 th
   let l := l + (tl + c3)
   let hCopy := h
   let (th, tl) := Erfc.aMul z2h h
-  let tl := tl + Library.Numerics.Arithmetic.Fma.Fma.fma z2h l c1
+  let tl := tl + Library.Numerics.Arithmetic.Fma.fma z2h l c1
   let (h, l) := Erfc.fastTwoSum c0 th
-  let l := l + Library.Numerics.Arithmetic.Fma.Fma.fma z2l hCopy tl
+  let l := l + Library.Numerics.Arithmetic.Fma.fma z2l hCopy tl
   let (h, tl) := Erfc.aMul h z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma l z tl)
+  (h, Library.Numerics.Arithmetic.Fma.fma l z tl)
 
 theorem erfFastTiny_eq (z : Float) :
     Erfc.erfFastTiny z = tinyCore (Float.ofBits 0x3FF20DD750429B6D) (Float.ofBits 0x3C71AE3A7862D9C4)

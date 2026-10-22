@@ -138,7 +138,7 @@ theorem sprod_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
       (by linarith : |value x.toBits| * |value x1.toBits| / 2 ^ 53 ≤ 2 / 2 ^ 53)])
   rw [hn1v, ← sub_eq_add_neg] at hf1
-  have hf0e : |value (Library.Numerics.Arithmetic.Fma.Fma.fma x x0 (-(x * x0))).toBits -
+  have hf0e : |value (Library.Numerics.Arithmetic.Fma.fma x x0 (-(x * x0))).toBits -
       (value x.toBits * value x0.toBits - value (x * x0).toBits)| ≤ 1 / 2 ^ 104 := by
     have h := hf0.2
     have : |value x.toBits * value x0.toBits - value (x * x0).toBits| ≤
@@ -147,7 +147,7 @@ theorem sprod_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
     have : |value x.toBits * value x0.toBits - value (x * x0).toBits| / 2 ^ 53 ≤
         (2 / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 := div_le_div_of_nonneg_right this (by norm_num)
     linarith [(by norm_num : (2 / 2 ^ 53 + 1 / 2 ^ 1075 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 104)]
-  have hf1e : |value (Library.Numerics.Arithmetic.Fma.Fma.fma x x1 (-(x * x1))).toBits -
+  have hf1e : |value (Library.Numerics.Arithmetic.Fma.fma x x1 (-(x * x1))).toBits -
       (value x.toBits * value x1.toBits - value (x * x1).toBits)| ≤ 1 / 2 ^ 120 := by
     have h := hf1.2
     have h3 : |value x.toBits * value x1.toBits - value (x * x1).toBits| ≤
@@ -162,9 +162,9 @@ theorem sprod_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
       1 / 2 ^ 120)]
   -- names for the words
   set z0 := x * x0 with hz0d
-  set z0l := Library.Numerics.Arithmetic.Fma.Fma.fma x x0 (-z0) with hz0ld
+  set z0l := Library.Numerics.Arithmetic.Fma.fma x x0 (-z0) with hz0ld
   set z1 := x * x1 with hz1d
-  set f1 := Library.Numerics.Arithmetic.Fma.Fma.fma x x1 (-z1) with hf1d
+  set f1 := Library.Numerics.Arithmetic.Fma.fma x x1 (-z1) with hf1d
   set p2 := x * x2 with hp2d
   set vx := value x.toBits with hvx
   have hz0b : |value z0.toBits| ≤ 3 := by

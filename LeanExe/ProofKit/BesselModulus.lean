@@ -16,7 +16,7 @@ error bound for fdlibm's `j0`, `y0`, `j1`, and `y1`.
 
 namespace LeanExe.ProofKit.BesselModulus
 
-open Real Set Library.Numerics.Float64.Bessel BesselPQ BesselChain PolyBound PolyChecks EntireSeries PolyCalc
+open Real Set Bessel BesselPQ BesselChain PolyBound PolyChecks EntireSeries PolyCalc
 
 theorem modulus_product (x : ℝ) (hx : 0 < x) :
     (2 / (π * x)) ^ 2 ≤ (J0 x ^ 2 + Y0 x ^ 2) * (J1 x ^ 2 + Y1 x ^ 2) := by

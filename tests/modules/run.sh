@@ -10,6 +10,7 @@ if [ "$#" -eq 2 ] && [ "$1" = "--check-bytes" ] && [ -n "$2" ]; then
   cd "$root"
   while IFS=: read -r module constant name; do
     mkdir -p "$scratch/$name"
+    tools/leanrun --timeout 60m lake --log-level error build "$module"
     tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean \
       "$module" "$constant" \
       "$scratch/$name/$name.wasm"
@@ -32,6 +33,7 @@ else
   exit 2
 fi
 host=$root/build/tools/leanexe-wasmtime-host
+tools/leanrun --timeout 30m lake --log-level error build TestSupport
 cases=$(mktemp)
 errors=$(mktemp)
 trap 'rm -f "$cases" "$errors"' EXIT

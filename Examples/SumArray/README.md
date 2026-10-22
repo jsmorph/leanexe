@@ -7,6 +7,8 @@ the bitwise exclusive or.  [The request](request.txt) asks for the three folds o
 length, with scalar results.  The request defines each result as a left fold, so each program is its
 own specification and the example has no `Spec.lean`.
 
+The implementations live in [the word-reduction library](../../Library/Numerics/Reductions/Word/Program.lean).  This example retains the fold-template proofs, compilation modules, and cases.
+
 [The programs](Program.lean) are `xs.foldl (· + ·) 0`, `xs.foldl (· * ·) 1`, and `xs.foldl (· ^^^ ·)
 0`.  The compiler translates each to the fold template: an assignment of the initial value to an
 accumulator, then a loop that loads each element and applies the operation.  [The module

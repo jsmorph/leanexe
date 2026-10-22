@@ -12,6 +12,8 @@ only.  [The module definition](Module.lean) compiles both into one 23,012-byte m
 `euler.wasm`, whose `solve` and `reconstructedSolve` exports run a whole calculation, from the
 initial grid to the final one, in one call.
 
+The solvers import [checked outward rounding](../../Library/Numerics/Bounds/README.md) and [minmod](../../Library/Numerics/Limiters/README.md), including their mathematical proofs, from the library.
+
 ## Theorems about the bytes and the solvers
 
 The solvers use grids of records, a `LeanExe.repeatWhile` loop over time steps whose grids move from

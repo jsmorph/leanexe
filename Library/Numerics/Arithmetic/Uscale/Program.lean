@@ -18,7 +18,7 @@ computed with exact integers, from which a rounding to any format, a floor, or a
 `mulPow10` multiplies by a power of ten.  `UscaleBase`, `UscaleArith`, and `UscaleDiv` state each
 function's value as a natural number. -/
 
-namespace Library.Numerics.Arithmetic.Uscale.Uscale
+namespace Library.Numerics.Arithmetic.Uscale
 
 /-- `a · m + c` for limbs `a` and words `m, c < 2 ^ 32`; one limb longer than `a`. -/
 def mulSmall (a : Array UInt64) (m c : UInt64) : Array UInt64 :=
@@ -90,4 +90,4 @@ def mulPow10 (a : Array UInt64) (k : UInt64) : Array UInt64 :=
 /-- `10 ^ k` as limbs. -/
 def pow10 (k : UInt64) : Array UInt64 := mulPow10 (LeanExe.build 1 fun _ => (1 : UInt64)) k
 
-end Library.Numerics.Arithmetic.Uscale.Uscale
+end Library.Numerics.Arithmetic.Uscale

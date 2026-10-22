@@ -21,8 +21,8 @@ set_option exponentiation.threshold 2200
 /-- The polynomial part of `Erfc.erfcAsymptFast` for the row at offset `o`. -/
 def asymCore (tab : Array UInt64) (o : UInt64) (uh ul : Float) : Float × Float :=
   let zh := Erfc.entry tab (o + 12)
-  let zh := Library.Numerics.Arithmetic.Fma.Fma.fma zh uh (Erfc.entry tab (o + 11))
-  let zh := Library.Numerics.Arithmetic.Fma.Fma.fma zh uh (Erfc.entry tab (o + 10))
+  let zh := Library.Numerics.Arithmetic.Fma.fma zh uh (Erfc.entry tab (o + 11))
+  let zh := Library.Numerics.Arithmetic.Fma.fma zh uh (Erfc.entry tab (o + 10))
   let (h, l) := Erfc.sMul zh uh ul
   let (zh, zl) := Erfc.fastTwoSum (Erfc.entry tab (o + 9)) h
   let zl := zl + l

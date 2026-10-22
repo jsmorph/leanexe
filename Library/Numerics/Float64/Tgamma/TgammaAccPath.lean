@@ -179,7 +179,7 @@ theorem accurate_range_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaN
       (by push_cast; linarith) eoff he3' _ hA1 hΓ p1 p2 hp1 hp2 hpA hp1b hp2b wh wl hwhf hwlf r
       hWe hwlb hwhb hS jm hjmf hjm'
     obtain ⟨f, hfd⟩ : ∃ f, mulDD3 p1 p2 (1.0 / wh)
-      ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)) = f := ⟨_, rfl⟩
+      ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)) = f := ⟨_, rfl⟩
     rw [hfd] at hU ⊢
     obtain ⟨f1, f2⟩ := f
     dsimp only at hU

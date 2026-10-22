@@ -76,9 +76,9 @@ theorem one_sub_wide (x : Float) (hx : Finite x.toBits) (h1 : 1 ≤ value x.toBi
 def prodCode (l0 l1 l2 wh wl : Float) : Float × Float × Float :=
   let l0m := l0 - 1.0
   let l0x := l0m * wh
-  let l0xl := Library.Numerics.Arithmetic.Fma.Fma.fma l0m wh (-l0x)
+  let l0xl := Library.Numerics.Arithmetic.Fma.fma l0m wh (-l0x)
   let l1x := l1 * wh
-  let l1xl := Library.Numerics.Arithmetic.Fma.Fma.fma l1 wh (-l1x)
+  let l1xl := Library.Numerics.Arithmetic.Fma.fma l1 wh (-l1x)
   let l2x := l2 * wh
   let s := sumDD l1x l2x l0xl l1xl
   let s' := sumDD s.1 s.2 (l0m * wl) (l1 * wl)
@@ -154,7 +154,7 @@ theorem prod_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (l0 
           (by norm_num : (0 : ℝ) ≤ 2 ^ 53)]
     linarith [abs_sub_comm (value l0m.toBits * value wh.toBits) (value l0x.toBits)])
   rw [hnx0v, ← sub_eq_add_neg] at hr0
-  set l0xl := Library.Numerics.Arithmetic.Fma.Fma.fma l0m wh (-l0x) with hl0xl
+  set l0xl := Library.Numerics.Arithmetic.Fma.fma l0m wh (-l0x) with hl0xl
   -- `l1x = l1 wh` and its residual
   have hx1 := fapprox_mul (fapprox_self l1 h1f) (fapprox_self wh hwf) (1 / 2 ^ 40) W ha1b hWabs
     (1 / 2 ^ 40 * W) (by simp only [add_zero]; exact le_rfl)
@@ -184,7 +184,7 @@ theorem prod_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (l0 
           (by norm_num : (0 : ℝ) ≤ 2 ^ 53)]
     linarith [abs_sub_comm (value l1.toBits * value wh.toBits) (value l1x.toBits)])
   rw [hnx1v, ← sub_eq_add_neg] at hr1
-  set l1xl := Library.Numerics.Arithmetic.Fma.Fma.fma l1 wh (-l1x) with hl1xl
+  set l1xl := Library.Numerics.Arithmetic.Fma.fma l1 wh (-l1x) with hl1xl
   -- `l2x = l2 wh`
   have hx2 := fapprox_mul (fapprox_self l2 h2f) (fapprox_self wh hwf) (1 / 2 ^ 89) W ha2b hWabs
     (1 / 2 ^ 89 * W) (by simp only [add_zero]; exact le_rfl)

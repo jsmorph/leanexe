@@ -24,23 +24,23 @@ reduced argument `z`. -/
 def core (a0 a1 a2 a3 a4 a5 a6 a7 a8 a9 a10 a11 a12 z : Float) : Float × Float :=
   let z2 := z * z
   let z4 := z2 * z2
-  let c9 := Library.Numerics.Arithmetic.Fma.Fma.fma a12 z a11
-  let c7 := Library.Numerics.Arithmetic.Fma.Fma.fma a10 z a9
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma a8 z a7
+  let c9 := Library.Numerics.Arithmetic.Fma.fma a12 z a11
+  let c7 := Library.Numerics.Arithmetic.Fma.fma a10 z a9
+  let c5 := Library.Numerics.Arithmetic.Fma.fma a8 z a7
   let (c3h, c3l) := Erfc.fastTwoSum a5 (z * a6)
-  let c7 := Library.Numerics.Arithmetic.Fma.Fma.fma c9 z2 c7
+  let c7 := Library.Numerics.Arithmetic.Fma.fma c9 z2 c7
   let (c3h, tl) := Erfc.fastTwoSum c3h (c5 * z2)
   let c3l := c3l + tl
   let (c3h, tl) := Erfc.fastTwoSum c3h (c7 * z4)
   let c3l := c3l + tl
   let (th, tl) := Erfc.aMul z c3h
   let (c2h, c2l) := Erfc.fastTwoSum a4 th
-  let c2l := c2l + Library.Numerics.Arithmetic.Fma.Fma.fma z c3l tl
+  let c2l := c2l + Library.Numerics.Arithmetic.Fma.fma z c3l tl
   let (th, tl) := Erfc.aMul z c2h
   let (h, l) := Erfc.fastTwoSum a2 th
-  let l := l + (tl + Library.Numerics.Arithmetic.Fma.Fma.fma z c2l a3)
+  let l := l + (tl + Library.Numerics.Arithmetic.Fma.fma z c2l a3)
   let (th, tl) := Erfc.aMul z h
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma z l tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma z l tl
   let (h, l) := Erfc.fastTwoSum a0 th
   (h, l + (tl + a1))
 

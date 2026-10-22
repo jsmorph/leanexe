@@ -8,7 +8,7 @@ steps from the start to the top exponent (`search_spec`).
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatPick
-open PrintFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
+open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
 open scoped Classical
 
 set_option exponentiation.threshold 4096

@@ -17,11 +17,23 @@ const modulePath = m => (m.startsWith('TestSupport') ? 'tests/' : '') +
 const imports = new Map();
 const errors = [];
 for (const file of active) {
-  const names = [...fs.readFileSync(file, 'utf8').matchAll(/^import ([\w.]+)/gm)]
+  const source = fs.readFileSync(file, 'utf8');
+  if (/(?<![\w.])\.(Library|Examples|Demos)\./.test(source)) {
+    errors.push(`${file}: qualified anonymous constructor`);
+  }
+  const compiler = file.startsWith('LeanExe/') ||
+    (file.startsWith('Verified/') && !file.startsWith('Verified/Examples/'));
+  if (compiler && /^(?:open|def|abbrev|theorem|namespace) [^\n]*\b(?:Library|Demos|Examples|TestSupport)\./m.test(source)) {
+    errors.push(`${file}: compiler declaration refers to application code`);
+  }
+  const names = [...source.matchAll(/^import ([\w.]+)/gm)]
     .map(m => m[1]).filter(m => internal.test(m));
   imports.set(file, names.map(modulePath));
   for (const name of names) {
     if (!fs.existsSync(modulePath(name))) errors.push(`${file}: missing import ${name}`);
+    if (compiler && /^(Library|Demos|Examples|TestSupport)(\.|$)/.test(name)) {
+      errors.push(`${file}: compiler imports ${name}`);
+    }
     if (file.startsWith('Library/') && /^(Examples|Demos|TestSupport)(\.|$)/.test(name)) {
       errors.push(`${file}: library imports ${name}`);
     }

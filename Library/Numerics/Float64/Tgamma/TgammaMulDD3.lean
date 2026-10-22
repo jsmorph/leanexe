@@ -61,7 +61,7 @@ theorem mulDD3_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
     rw [hnv, ← sub_eq_add_neg]
     linarith [div_le_self hP0.le (by norm_num : (1 : ℝ) ≤ 2 ^ 52)])
   rw [hnv, ← sub_eq_add_neg] at hcl1
-  have hcl1e : |value (Library.Numerics.Arithmetic.Fma.Fma.fma xh yh (-(xh * yh))).toBits - (a * c - value (xh * yh).toBits)| ≤
+  have hcl1e : |value (Library.Numerics.Arithmetic.Fma.fma xh yh (-(xh * yh))).toBits - (a * c - value (xh * yh).toBits)| ≤
       P / 2 ^ 104 := by
     have h := hcl1.2
     have : |a * c - value (xh * yh).toBits| / 2 ^ 53 ≤ P / 2 ^ 52 / 2 ^ 53 :=
@@ -171,7 +171,7 @@ theorem mulDD3_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
         have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 47 ≤ 1) hP0.le
         linarith
       linarith [(by norm_num : (2 : ℝ) ^ 899 < 2 ^ 1023)])
-  set cl3 := Library.Numerics.Arithmetic.Fma.Fma.fma xh yh (-(xh * yh)) + (xl * yl + xh * yl + xl * yh) with hcl3d
+  set cl3 := Library.Numerics.Arithmetic.Fma.fma xh yh (-(xh * yh)) + (xl * yl + xh * yl + xl * yh) with hcl3d
   set ch := xh * yh with hchd
   have hE : |value cl3.toBits - (a * c - value ch.toBits + (b * e + a * e + b * c))| ≤
       P / 2 ^ 98 - P / 2 ^ 120 := by
@@ -310,7 +310,7 @@ theorem mulDD3_wide (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
     rw [hnv, ← sub_eq_add_neg]
     linarith [div_le_self hP0.le (by norm_num : (1 : ℝ) ≤ 2 ^ 52)])
   rw [hnv, ← sub_eq_add_neg] at hcl1
-  have hcl1e : |value (Library.Numerics.Arithmetic.Fma.Fma.fma xh yh (-(xh * yh))).toBits - (a * c - value (xh * yh).toBits)| ≤
+  have hcl1e : |value (Library.Numerics.Arithmetic.Fma.fma xh yh (-(xh * yh))).toBits - (a * c - value (xh * yh).toBits)| ≤
       P / 2 ^ 104 := by
     have h := hcl1.2
     have : |a * c - value (xh * yh).toBits| / 2 ^ 53 ≤ P / 2 ^ 52 / 2 ^ 53 :=
@@ -420,7 +420,7 @@ theorem mulDD3_wide (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
         have := mul_le_mul_of_nonneg_left (by norm_num : (1 : ℝ) / 2 ^ 27 ≤ 1) hP0.le
         linarith
       linarith [(by norm_num : (2 : ℝ) ^ 899 < 2 ^ 1023)])
-  set cl3 := Library.Numerics.Arithmetic.Fma.Fma.fma xh yh (-(xh * yh)) + (xl * yl + xh * yl + xl * yh) with hcl3d
+  set cl3 := Library.Numerics.Arithmetic.Fma.fma xh yh (-(xh * yh)) + (xl * yl + xh * yl + xl * yh) with hcl3d
   set ch := xh * yh with hchd
   have hE : |value cl3.toBits - (a * c - value ch.toBits + (b * e + a * e + b * c))| ≤
       P / 2 ^ 78 - P / 2 ^ 100 := by

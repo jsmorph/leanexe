@@ -31,7 +31,7 @@ theorem epsE_bnd : (bnd epsE (1 / 4)).1 + (bnd epsE (1 / 4)).2 ≤ 1 / 2 ^ 59 :=
 theorem small_sum (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
     (h1 : 1 / 2 ^ 112 ≤ |value x.toBits|) (h2 : |value x.toBits| ≤ 1 / 4) :
     let p := polyDDD smallTable 0 5 x (evalF lE x)
-    let q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
+    let q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
     Finite q.1.toBits ∧ Finite q.2.toBits ∧
       |value q.1.toBits + value q.2.toBits -
           (1 / value x.toBits + TgammaApprox.smallPoly (value x.toBits))| ≤
@@ -86,7 +86,7 @@ theorem small_sum (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x :
     rw [sub_neg_eq_add, abs_neg] at h4
     linarith [(by norm_num : (23 : ℝ) / 25 + 1 / 2 ^ 55 + 2 * (1 / 2 ^ 43) ≤ 1)]
   set fh := (1.0 : Float) / x
-  set cr := Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0 * fh
+  set cr := Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0 * fh
   have hfhb : R / 2 ≤ |value fh.toBits| := by
     have := abs_sub_abs_le_abs_sub (1 / vx) (value fh.toBits)
     rw [abs_sub_comm] at this
@@ -181,7 +181,7 @@ theorem small_gamma (hS : TgammaApprox.SmallFact) (x : ℝ) (hx0 : x ≠ 0) (hx 
 theorem smallPath_eq (dbTab accTab : Array UInt64) (x : Float) :
     TgammaBranches.smallPath dbTab accTab smallTable x =
       (let p := polyDDD smallTable 0 5 x (evalF lE x)
-       let q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
+       let q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
        let eps := q.1 * evalF epsE x
        if (q.1 + (q.2 + eps)) != (q.1 + (q.2 - eps)) then accurate accTab dbTab x
        else q.1 + (q.2 + eps)) := rfl
@@ -209,7 +209,7 @@ theorem smallPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNeares
   set G := Real.Gamma vx with hG
   obtain ⟨hq1f, hq2f, hqe, hq1b, hq2b⟩ := small_sum hF x hx h1 h2
   set p := polyDDD smallTable 0 5 x (evalF lE x)
-  set q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
+  set q := fastSum (1.0 / x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) p.1 p.2
   -- `eps`
   obtain ⟨hf, hfm⟩ := evalF_approx epsE (1 / 4) x hx (by push_cast; exact h2) epsE_ok
   have hfb : |value (evalF epsE x).toBits| ≤ 1 / 2 ^ 59 := by

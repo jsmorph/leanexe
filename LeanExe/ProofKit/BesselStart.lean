@@ -13,7 +13,7 @@ square root of the energy by the enclosures of the four errors.
 
 namespace LeanExe.ProofKit.BesselStart
 
-open Real Library.Numerics.Float64.Bessel BesselPQ BesselConstants EulerGamma PolyBound PolyCalc EntireSeries BesselChain
+open Real Bessel BesselPQ BesselConstants EulerGamma PolyBound PolyCalc EntireSeries BesselChain
   BesselEnergy
 
 /-! The series at `z = 1`. -/

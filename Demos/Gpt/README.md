@@ -11,6 +11,8 @@ token by top-k sampling, with SplitMix64 from [`Prng`](../../Library/Random/Spli
 module definition](Module.lean) compiles 48 functions into the 14,141-byte `gpt.wasm`, which runs
 the GPT-2 124M weights.
 
+Shared vector and matrix operations come from [the binary64 linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  The model-specific approximations, normalization, attention, and sampling remain in the demo.
+
 ## Compiled functions, causality, and cached steps
 
 Every function of the module, from `dot` to `sampleTopK`, has an `Implements` theorem, so the bytes

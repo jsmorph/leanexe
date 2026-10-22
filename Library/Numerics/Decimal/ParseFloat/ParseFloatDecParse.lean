@@ -13,7 +13,7 @@ a dropped digit is nonzero.
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatDecParse
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
   ParseFloatDigits
 
 /-- The decoder's decimal branch: the integer digits, the fraction digits, and the exponent. -/

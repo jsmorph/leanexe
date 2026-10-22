@@ -2,14 +2,15 @@
 
 ## `KeyTree` and three modules
 
-[The program](Program.lean) declares `KeyTree`, a binary tree with a word at each node, and about
-thirty functions on it.  A leaf is the null pointer, and `node l k r` is a record of three slots:
+[The program](Program.lean) uses `KeyTree`, a binary tree with a word at each node, and defines its compiler demonstrations.  A leaf is the null pointer, and `node l k r` is a record of three slots:
 the pointer to `l`, the word `k`, and the pointer to `r`.  The functions compute sizes, sums, and
 heights by non-tail recursion, rewrite keys, insert into a search tree, drop and pick subtrees,
 return pairs, and lend a tree to another function inside a loop.  Three module definitions compile
 them: [`Module.lean`](Module.lean) gives the 3,166-byte `trees.wasm` of functions that read their
 tree, [`Moves.lean`](Moves.lean) the 3,758-byte `treeMoves.wasm` of functions that consume it, and
 [`Frame.lean`](Frame.lean) the 1,686-byte `treeFrame.wasm`, which exists for the depth test only.
+
+The type and shared operations come from [the word-tree library](../../Library/Trees/README.md).  This example adds the operations used to demonstrate ownership, composition, and guarded recursion.
 
 ## Recursion depth, moves, and copies
 

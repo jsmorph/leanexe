@@ -1,7 +1,7 @@
 import Library.Numerics.Arithmetic.Fma.Compiled
 import TestSupport.Numerics.Reference
 
-/-! A native check of `Library.Numerics.Arithmetic.Fma.Fma.fma` against the exact value of `a · b + c`, an integer times a power of
+/-! A native check of `Library.Numerics.Arithmetic.Fma.fma` against the exact value of `a · b + c`, an integer times a power of
 two, rounded to the nearest double by `Reference.toFloat`.  The check requires the same bits as the
 reference, or a quiet NaN where the reference is NaN.  The operands are every triple of 24 special
 values: the zeros, the infinities, a quiet and a signaling NaN, the smallest and largest subnormals,
@@ -95,7 +95,7 @@ def main : IO UInt32 := do
   let args := triples
   let mut unequal := 0
   for (a, b, c) in args do
-    let r := Library.Numerics.Arithmetic.Fma.Fma.fma a b c
+    let r := Library.Numerics.Arithmetic.Fma.fma a b c
     let ref := fmaReference a b c
     let ok := if ref.isNaN then r.isNaN && r.toBits &&& 0x8000000000000 != 0
       else r.toBits == ref.toBits

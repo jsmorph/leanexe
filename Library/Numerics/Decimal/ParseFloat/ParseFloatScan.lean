@@ -12,7 +12,7 @@ sign of the decoded value, and its value is the decoded magnitude saturated at `
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatScan
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound
 
 /-! ### Bytes -/
 

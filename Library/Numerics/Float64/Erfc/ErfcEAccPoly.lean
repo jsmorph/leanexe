@@ -29,49 +29,49 @@ local macro "qcast1 " h:term : tactic =>
 
 /-- The polynomial part of `Erfc.expAccurate`, with the exponent `k` passed through. -/
 def eaccCore (tab : Array UInt64) (k yh yl : Float) : Float × Float × Float :=
-  let h := LeanExe.loop 3 (Erfc.entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.Fma.fma h yh (Erfc.entry tab (26 - j))
+  let h := LeanExe.loop 3 (Erfc.entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.fma h yh (Erfc.entry tab (26 - j))
   let (th, tl) := Erfc.aMul h yh
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma h yl tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma h yl tl
   let (h, l) := Erfc.fastTwoSum (Erfc.entry tab 23) th
   let l := l + tl
   let (h, l) := LeanExe.loop 7 (h, l) fun j s =>
     let (th, tl) := Erfc.aMul s.1 yh
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
     let (h, l) := Erfc.fastTwoSum (Erfc.entry tab (22 - j)) th
     (h, l + tl)
   let (h, l) := LeanExe.loop 8 (h, l) fun j s =>
     let (th, tl) := Erfc.aMul s.1 yh
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
     let (h, l) := Erfc.fastTwoSum (Erfc.entry tab (2 * (7 - j))) th
     (h, l + (tl + Erfc.entry tab (2 * (7 - j) + 1)))
   (h, l, k)
 
 /-- The first loop of `eaccCore`: Horner's rule with `fma` in `yh`. -/
 def pA (tab : Array UInt64) (yh : Float) : Float :=
-  LeanExe.loop 3 (Erfc.entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.Fma.fma h yh (Erfc.entry tab (26 - j))
+  LeanExe.loop 3 (Erfc.entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.fma h yh (Erfc.entry tab (26 - j))
 
 /-- The product of `eaccCore`'s first part by `yh + yl` and the addition of the coefficient 23. -/
 def pB (tab : Array UInt64) (yh yl h : Float) : Float × Float :=
   let (th, tl) := Erfc.aMul h yh
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma h yl tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma h yl tl
   let (h, l) := Erfc.fastTwoSum (Erfc.entry tab 23) th
   (h, l + tl)
 
 /-- A step of the second loop of `eaccCore`. -/
 def bodyC (tab : Array UInt64) (yh yl : Float) (j : UInt64) (s : Float × Float) : Float × Float :=
   let (th, tl) := Erfc.aMul s.1 yh
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
   let (h, l) := Erfc.fastTwoSum (Erfc.entry tab (22 - j)) th
   (h, l + tl)
 
 /-- A step of the third loop of `eaccCore`. -/
 def bodyD (tab : Array UInt64) (yh yl : Float) (j : UInt64) (s : Float × Float) : Float × Float :=
   let (th, tl) := Erfc.aMul s.1 yh
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
   let (h, l) := Erfc.fastTwoSum (Erfc.entry tab (2 * (7 - j))) th
   (h, l + (tl + Erfc.entry tab (2 * (7 - j) + 1)))
 

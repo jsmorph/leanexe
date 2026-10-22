@@ -12,7 +12,7 @@ interval and is `PrintFloatShort.Choice`.
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatChoice
-open PrintFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
+open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
   PrintFloatPick
 
 set_option exponentiation.threshold 4096

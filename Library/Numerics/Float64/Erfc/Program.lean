@@ -41,7 +41,7 @@ each of the intervals `[i/16, (i + 1)/16)` and an odd polynomial below `1/16`.  
 tables `2 ^ (i/64)` and a polynomial.  When the test fails, an accurate path evaluates the same
 forms to about 104 bits with polynomials of higher degree on intervals of width `1/8` and on ten
 intervals of `1/x`, and tables of 68 inputs, and one subnormal result, that even that path cannot
-round supply their results.  Every `__builtin_fma` calls `Library.Numerics.Arithmetic.Fma.Fma.fma`, the correctly rounded fused
+round supply their results.  Every `__builtin_fma` calls `Library.Numerics.Arithmetic.Fma.fma`, the correctly rounded fused
 multiply-add, so the port computes CORE-MATH's results bit for bit.
 
 The port follows the C code operation for operation, with these changes.  A C function that returns
@@ -3511,18 +3511,18 @@ def twoSum (a b : Float) : Float × Float :=
 /-- `a_mul`: `a b` and its error. -/
 def aMul (a b : Float) : Float × Float :=
   let hi := a * b
-  (hi, Library.Numerics.Arithmetic.Fma.Fma.fma a b (-hi))
+  (hi, Library.Numerics.Arithmetic.Fma.fma a b (-hi))
 
 /-- `s_mul`: the double `a` times the double-double `bh + bl`. -/
 def sMul (a bh bl : Float) : Float × Float :=
   let (hi, lo) := aMul a bh
-  (hi, Library.Numerics.Arithmetic.Fma.Fma.fma a bl lo)
+  (hi, Library.Numerics.Arithmetic.Fma.fma a bl lo)
 
 /-- `d_mul`: `(ah + al) (bh + bl)` without the product `al bl`. -/
 def dMul (ah al bh bl : Float) : Float × Float :=
   let (hi, lo) := aMul ah bh
-  let lo := Library.Numerics.Arithmetic.Fma.Fma.fma ah bl lo
-  (hi, Library.Numerics.Arithmetic.Fma.Fma.fma al bh lo)
+  let lo := Library.Numerics.Arithmetic.Fma.fma ah bl lo
+  (hi, Library.Numerics.Arithmetic.Fma.fma al bh lo)
 
 /-- `fast_sum`: `a + (bh + bl)` for `|a| ≥ |bh|`. -/
 def fastSum (a bh bl : Float) : Float × Float :=
@@ -3541,19 +3541,19 @@ def erfFastTiny (z : Float) : Float × Float :=
   let c7 := Float.ofBits 0xBF4BF9F8D2C202E4  -- -0x1.bf9f8d2c202e4p-11
   let (z2h, z2l) := aMul z z
   let z4 := z2h * z2h
-  let c9 := Library.Numerics.Arithmetic.Fma.Fma.fma c7 z2h c6
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma c5 z2h c4
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma c9 z4 c5
+  let c9 := Library.Numerics.Arithmetic.Fma.fma c7 z2h c6
+  let c5 := Library.Numerics.Arithmetic.Fma.fma c5 z2h c4
+  let c5 := Library.Numerics.Arithmetic.Fma.fma c9 z4 c5
   let (th, tl) := aMul z2h c5
   let (h, l) := fastTwoSum c2 th
   let l := l + (tl + c3)
   let hCopy := h
   let (th, tl) := aMul z2h h
-  let tl := tl + Library.Numerics.Arithmetic.Fma.Fma.fma z2h l c1
+  let tl := tl + Library.Numerics.Arithmetic.Fma.fma z2h l c1
   let (h, l) := fastTwoSum c0 th
-  let l := l + Library.Numerics.Arithmetic.Fma.Fma.fma z2l hCopy tl
+  let l := l + Library.Numerics.Arithmetic.Fma.fma z2l hCopy tl
   let (h, tl) := aMul h z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma l z tl)
+  (h, Library.Numerics.Arithmetic.Fma.fma l z tl)
 
 /-- `cr_erf_fast` from `1/16`: `erf z` as `(h, l)` from the polynomial of row `i - 1` of `C` at
 `z - (2 i + 1)/32`, for `i = ⌊16 z⌋`. -/
@@ -3563,23 +3563,23 @@ def erfFastMain (tab : Array UInt64) (z : Float) : Float × Float :=
   let z := (z - 0.03125) - 0.0625 * v
   let z2 := z * z
   let z4 := z2 * z2
-  let c9 := Library.Numerics.Arithmetic.Fma.Fma.fma (entry tab (o + 12)) z (entry tab (o + 11))
-  let c7 := Library.Numerics.Arithmetic.Fma.Fma.fma (entry tab (o + 10)) z (entry tab (o + 9))
-  let c5 := Library.Numerics.Arithmetic.Fma.Fma.fma (entry tab (o + 8)) z (entry tab (o + 7))
+  let c9 := Library.Numerics.Arithmetic.Fma.fma (entry tab (o + 12)) z (entry tab (o + 11))
+  let c7 := Library.Numerics.Arithmetic.Fma.fma (entry tab (o + 10)) z (entry tab (o + 9))
+  let c5 := Library.Numerics.Arithmetic.Fma.fma (entry tab (o + 8)) z (entry tab (o + 7))
   let (c3h, c3l) := fastTwoSum (entry tab (o + 5)) (z * entry tab (o + 6))
-  let c7 := Library.Numerics.Arithmetic.Fma.Fma.fma c9 z2 c7
+  let c7 := Library.Numerics.Arithmetic.Fma.fma c9 z2 c7
   let (c3h, tl) := fastTwoSum c3h (c5 * z2)
   let c3l := c3l + tl
   let (c3h, tl) := fastTwoSum c3h (c7 * z4)
   let c3l := c3l + tl
   let (th, tl) := aMul z c3h
   let (c2h, c2l) := fastTwoSum (entry tab (o + 4)) th
-  let c2l := c2l + Library.Numerics.Arithmetic.Fma.Fma.fma z c3l tl
+  let c2l := c2l + Library.Numerics.Arithmetic.Fma.fma z c3l tl
   let (th, tl) := aMul z c2h
   let (h, l) := fastTwoSum (entry tab (o + 2)) th
-  let l := l + (tl + Library.Numerics.Arithmetic.Fma.Fma.fma z c2l (entry tab (o + 3)))
+  let l := l + (tl + Library.Numerics.Arithmetic.Fma.fma z c2l (entry tab (o + 3)))
   let (th, tl) := aMul z h
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma z l tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma z l tl
   let (h, l) := fastTwoSum (entry tab o) th
   (h, l + (tl + entry tab (o + 1)))
 
@@ -3596,9 +3596,9 @@ def erfFast (tab : Array UInt64) (z : Float) : Float × Float × Float :=
 /-- `h + l` times `z ^ 2`, as `cr_erf_accurate_tiny`'s loops compute it. -/
 def mulZ2 (h l z : Float) : Float × Float :=
   let (th, tl) := aMul h z
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma l z tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma l z tl
   let (h, l) := aMul th z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma tl z l)
+  (h, Library.Numerics.Arithmetic.Fma.fma tl z l)
 
 /-- `cr_erf_accurate_tiny`'s coefficient `p[k]`. -/
 def tinyCoeff (k : UInt64) : Float :=
@@ -3623,7 +3623,7 @@ def tinyCoeff (k : UInt64) : Float :=
 handles degree `19 - 2 k`, the second's degree `11 - 2 k`, and the third's degree `7 - 2 k`. -/
 def erfAccurateTiny (z : Float) : Float × Float :=
   let z2 := z * z
-  let h := LeanExe.loop 4 (tinyCoeff 14) fun k h => Library.Numerics.Arithmetic.Fma.Fma.fma h z2 (tinyCoeff (13 - k))
+  let h := LeanExe.loop 4 (tinyCoeff 14) fun k h => Library.Numerics.Arithmetic.Fma.fma h z2 (tinyCoeff (13 - k))
   let (h, l) := LeanExe.loop 2 (h, (0.0 : Float)) fun k s =>
     let (h, l) := mulZ2 s.1 s.2 z
     let (h, tl) := fastTwoSum (tinyCoeff (9 - k)) h
@@ -3633,7 +3633,7 @@ def erfAccurateTiny (z : Float) : Float × Float :=
     let (h, tl) := fastTwoSum (tinyCoeff (6 - 2 * k)) h
     (h, l + (tinyCoeff (7 - 2 * k) + tl))
   let (h, tl) := aMul h z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma l z tl)
+  (h, Library.Numerics.Arithmetic.Fma.fma l z tl)
 
 /-- `cr_erf_accurate`: `erf z` as `(h, l)` for `2 ^ -61 ≤ z ≤ 0x1.7afb48dc96626p+2`, from the
 polynomial of row `i - 1` of `C2` at `z - (2 i + 1)/16` for `i = ⌊8 z⌋` from `1/8`.  The first
@@ -3645,24 +3645,24 @@ def erfAccurate (tab : Array UInt64) (z : Float) : Float × Float :=
     let v := floorF (8.0 * z)
     let o := 27 * (v.toUInt64 - 1)
     let z := (z - 0.0625) - 0.125 * v
-    let h := LeanExe.loop 7 (entry tab (o + 26)) fun k h => Library.Numerics.Arithmetic.Fma.Fma.fma h z (entry tab (o + 25 - k))
+    let h := LeanExe.loop 7 (entry tab (o + 26)) fun k h => Library.Numerics.Arithmetic.Fma.fma h z (entry tab (o + 25 - k))
     let (h, l) := LeanExe.loop 3 (h, (0.0 : Float)) fun k s =>
       let (th, tl) := aMul s.1 z
-      let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 z tl
+      let tl := Library.Numerics.Arithmetic.Fma.fma s.2 z tl
       let (h, l) := twoSum (entry tab (o + 18 - k)) th
       (h, l + tl)
     LeanExe.loop 8 (h, l) fun k s =>
       let (th, tl) := aMul s.1 z
-      let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 z tl
+      let tl := Library.Numerics.Arithmetic.Fma.fma s.2 z tl
       let (h, l) := twoSum (entry tab (o + 2 * (7 - k))) th
       (h, l + (entry tab (o + 2 * (7 - k) + 1) + tl))
 
 /-- `q_1`: `exp (zh + zl)` as a double-double for `|zh + zl| < 0.000130273`. -/
 def q1 (zh zl : Float) : Float × Float :=
   let z := zh + zl
-  let q := Library.Numerics.Arithmetic.Fma.Fma.fma (Float.ofBits 0x3FA55555558489DC) zh  -- 0x1.55555558489dcp-5
+  let q := Library.Numerics.Arithmetic.Fma.fma (Float.ofBits 0x3FA55555558489DC) zh  -- 0x1.55555558489dcp-5
     (Float.ofBits 0x3FC5555555995D37)  -- 0x1.5555555995d37p-3
-  let q := Library.Numerics.Arithmetic.Fma.Fma.fma q z 0.5
+  let q := Library.Numerics.Arithmetic.Fma.fma q z 0.5
   let (hi, lo) := fastTwoSum 1.0 (q * z)
   let (hi, lo) := dMul zh zl hi lo
   fastSum 1.0 hi lo
@@ -3695,25 +3695,25 @@ def expAccurate (tab : Array UInt64) (xh xl : Float) : Float × Float × Float :
   let log2h := Float.ofBits 0x3FE62E42FEFA39EF  -- 0x1.62e42fefa39efp-1
   let log2l := Float.ofBits 0x3C7ABC9E3B398000  -- 0x1.abc9e3b398p-56
   let log2tiny := Float.ofBits 0x398F97B57A079A19  -- 0x1.f97b57a079a19p-103
-  let yh := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) log2h xh
+  let yh := Library.Numerics.Arithmetic.Fma.fma (-k) log2h xh
   let (th, tl) := twoSum (-k * log2l) xl
   let (yh, yl) := fastTwoSum yh th
-  let yl := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) log2tiny (yl + tl)
-  let h := LeanExe.loop 3 (entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.Fma.fma h yh (entry tab (26 - j))
+  let yl := Library.Numerics.Arithmetic.Fma.fma (-k) log2tiny (yl + tl)
+  let h := LeanExe.loop 3 (entry tab 27) fun j h => Library.Numerics.Arithmetic.Fma.fma h yh (entry tab (26 - j))
   let (th, tl) := aMul h yh
-  let tl := Library.Numerics.Arithmetic.Fma.Fma.fma h yl tl
+  let tl := Library.Numerics.Arithmetic.Fma.fma h yl tl
   let (h, l) := fastTwoSum (entry tab 23) th
   let l := l + tl
   let (h, l) := LeanExe.loop 7 (h, l) fun j s =>
     let (th, tl) := aMul s.1 yh
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
     let (h, l) := fastTwoSum (entry tab (22 - j)) th
     (h, l + tl)
   let (h, l) := LeanExe.loop 8 (h, l) fun j s =>
     let (th, tl) := aMul s.1 yh
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 yl tl
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 yh tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.1 yl tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 yh tl
     let (h, l) := fastTwoSum (entry tab (2 * (7 - j))) th
     (h, l + (tl + entry tab (2 * (7 - j) + 1)))
   (h, l, k)
@@ -3740,13 +3740,13 @@ def erfcAsymptFast (expTab asymTab : Array UInt64) (x : Float) : Float × Float 
     let (uh, ul) := aMul x x
     let (eh, el) := exp1 expTab (-uh) (-ul)
     let yh := 1.0 / x
-    let yl := yh * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) yh 1.0
+    let yl := yh * Library.Numerics.Arithmetic.Fma.fma (-x) yh 1.0
     let o := 13 * asymptIndex yh
     let (uh, ul) := aMul yh yh
-    let ul := Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * yh) yl ul
+    let ul := Library.Numerics.Arithmetic.Fma.fma (2.0 * yh) yl ul
     let zh := entry asymTab (o + 12)
-    let zh := Library.Numerics.Arithmetic.Fma.Fma.fma zh uh (entry asymTab (o + 11))
-    let zh := Library.Numerics.Arithmetic.Fma.Fma.fma zh uh (entry asymTab (o + 10))
+    let zh := Library.Numerics.Arithmetic.Fma.fma zh uh (entry asymTab (o + 11))
+    let zh := Library.Numerics.Arithmetic.Fma.fma zh uh (entry asymTab (o + 10))
     let (h, l) := sMul zh uh ul
     let (zh, zl) := fastTwoSum (entry asymTab (o + 9)) h
     let zl := zl + l
@@ -3810,30 +3810,30 @@ def asymptAccurate (expAccTab tab : Array UInt64) (x : Float) : Float :=
   let (uh, ul) := aMul x x
   let (eh, el, e) := expAccurate expAccTab (-uh) (-ul)
   let yh := 1.0 / x
-  let yl := yh * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) yh 1.0
+  let yl := yh * Library.Numerics.Arithmetic.Fma.fma (-x) yh 1.0
   let i := asymptAccIndex yh
   let o := 30 * i
   let (uh, ul) := aMul yh yh
-  let ul := Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * yh) yl ul
+  let ul := Library.Numerics.Arithmetic.Fma.fma (2.0 * yh) yl ul
   let (zh, zl) := LeanExe.loop (8 + i) (entry tab (o + 20 + i), (0.0 : Float)) fun j s =>
     let (h, l) := aMul s.1 uh
-    let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 ul l
-    let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 uh l
+    let l := Library.Numerics.Arithmetic.Fma.fma s.1 ul l
+    let l := Library.Numerics.Arithmetic.Fma.fma s.2 uh l
     let (zh, zl) := twoSum (entry tab (o + 19 + i - j)) h
     (zh, zl + l)
   let (zh, zl) := LeanExe.loop 6 (zh, zl) fun j s =>
     let (h, l) := aMul s.1 uh
-    let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 ul l
-    let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 uh l
+    let l := Library.Numerics.Arithmetic.Fma.fma s.1 ul l
+    let l := Library.Numerics.Arithmetic.Fma.fma s.2 uh l
     let (zh, zl) := twoSum (entry tab (o + 10 - 2 * j)) h
     (zh, zl + (l + entry tab (o + 11 - 2 * j)))
   let (uh, ul) := aMul zh yh
-  let ul := Library.Numerics.Arithmetic.Fma.Fma.fma zh yl ul
-  let ul := Library.Numerics.Arithmetic.Fma.Fma.fma zl yh ul
+  let ul := Library.Numerics.Arithmetic.Fma.fma zh yl ul
+  let ul := Library.Numerics.Arithmetic.Fma.fma zl yh ul
   let (uh, ul) := fastTwoSum uh ul
   let (h, l) := aMul uh eh
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma uh el l
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma ul eh l
+  let l := Library.Numerics.Arithmetic.Fma.fma uh el l
+  let l := Library.Numerics.Arithmetic.Fma.fma ul eh l
   let res := ldexp (h + l) e
   if res < Float.ofBits 0x0010000000000000 then  -- 0x1p-1022
     let corr := h - ldexp res (-e)
@@ -3845,7 +3845,7 @@ def asymptAccurate (expAccTab tab : Array UInt64) (x : Float) : Float :=
 `asymptAccurate`. -/
 def erfcAsymptAccurate (expAccTab asymAccTab excTab : Array UInt64) (x : Float) : Float :=
   if x == Float.ofBits 0x403A8F7BFBD15495 then  -- 0x1.a8f7bfbd15495p+4
-    Library.Numerics.Arithmetic.Fma.Fma.fma (Float.ofBits 0x0000000000000001) (-0.25)  -- 0x1p-1074
+    Library.Numerics.Arithmetic.Fma.fma (Float.ofBits 0x0000000000000001) (-0.25)  -- 0x1p-1074
       (Float.ofBits 0x000667BD620FD95B)  -- 0x1.99ef5883f656cp-1024
   else hardCase excTab 0 22 x (asymptAccurate expAccTab asymAccTab x)
 
@@ -3884,14 +3884,14 @@ def erfcWith (fastTab accTab expTab asymTab asymAccTab expAccTab excTab : Array 
         if t == 0xFFF0000000000000 then 2.0 else x + x
       else 2.0 - Float.ofBits 0x3C90000000000000  -- 0x1p-54
     else if Float.ofBits 0xBC9C5BF891B4EF6A ≤ x then  -- -0x1.c5bf891b4ef6ap-54
-      Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (Float.ofBits 0x3C90000000000000) 1.0  -- 0x1p-54
+      Library.Numerics.Arithmetic.Fma.fma (-x) (Float.ofBits 0x3C90000000000000) 1.0  -- 0x1p-54
     else erfcMain fastTab accTab expTab asymTab asymAccTab expAccTab excTab x
   else if ax ≥ 0x403B39DC41E48BFD then  -- 0x1.b39dc41e48bfdp+4
     if ax ≥ 0x7FF0000000000000 then
       if ax == 0x7FF0000000000000 then 0.0 else x + x
     else Float.ofBits 0x0000000000000001 * 0.25  -- 0x1p-1074
   else if x ≤ Float.ofBits 0x3C8C5BF891B4EF6A then  -- 0x1.c5bf891b4ef6ap-55
-    Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (Float.ofBits 0x3C90000000000000) 1.0  -- 0x1p-54
+    Library.Numerics.Arithmetic.Fma.fma (-x) (Float.ofBits 0x3C90000000000000) 1.0  -- 0x1p-54
   else erfcMain fastTab accTab expTab asymTab asymAccTab expAccTab excTab x
 
 /-- `erfc x`, CORE-MATH's correctly rounded complementary error function. -/

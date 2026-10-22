@@ -7,7 +7,7 @@ lies in the rounding interval, `k` is the top exponent `J` or `J - 1`, and the d
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatShortest
-open PrintFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
+open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound PrintFloatShort PrintFloatQuot PrintFloatSearch
   PrintFloatPick PrintFloatChoice
 
 set_option exponentiation.threshold 4096

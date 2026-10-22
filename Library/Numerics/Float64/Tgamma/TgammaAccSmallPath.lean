@@ -43,9 +43,9 @@ def tailParts (fh fl fll p1 p2 : Float) : Float × Float :=
 def accSmallVal (x : Float) : Float :=
   let p := polyDDD accurateTable 0 28 x (evalF lAccE x)
   let fh := 1.0 / x
-  let dh := Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0
+  let dh := Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0
   let fl := dh * fh
-  let fll := Library.Numerics.Arithmetic.Fma.Fma.fma fl (-x) dh * fh
+  let fll := Library.Numerics.Arithmetic.Fma.fma fl (-x) dh * fh
   (tailParts fh fl fll p.1 p.2).1 + (tailParts fh fl fll p.1 p.2).2
 
 theorem accurate_small_eq (dbTab : Array UInt64) (x : Float) (h : x.abs < 0.25) :
@@ -118,9 +118,9 @@ theorem acc_small_poly_le (x : Float) (hx : Finite x.toBits) (h2 : |value x.toBi
 /-- The second correction `fll = (fma fl (-x) dh) fh` of the reciprocal. -/
 theorem fll_bound (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x : Float) (hx : Finite x.toBits)
     (hlo : 1 / 2 ^ 900 ≤ |value x.toBits|) (hhi : |value x.toBits| ≤ 1 / 4) :
-    Finite (Library.Numerics.Arithmetic.Fma.Fma.fma (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0) *
+    Finite (Library.Numerics.Arithmetic.Fma.fma (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0) *
       (1.0 / x)).toBits ∧
-    |value (Library.Numerics.Arithmetic.Fma.Fma.fma (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0) *
+    |value (Library.Numerics.Arithmetic.Fma.fma (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0) *
       (1.0 / x)).toBits| ≤ |1 / value x.toBits| / 2 ^ 95 := by
   obtain ⟨hff, hcf, hfe, hcb, hfc⟩ := TgammaRecip.recip_corr hF x hx hlo hhi
   set vx := value x.toBits with hvx
@@ -135,7 +135,7 @@ theorem fll_bound (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x :
       _ ≤ 2 ^ 900 * |vx| := by gcongr
   have hRvx : R * |vx| = 1 := by rw [hRv]; field_simp
   set fh := (1.0 : Float) / x with hfhdef
-  set dh := Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0 with hdhdef
+  set dh := Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0 with hdhdef
   set fl := dh * fh with hfldef
   set vf := value fh.toBits with hvf
   set vl := value fl.toBits with hvl
@@ -185,7 +185,7 @@ theorem fll_bound (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x :
   have hq := fma_approx hF fl (-x) dh hcf hnx.1 hr.1
     (by rw [← hT]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 99 ≤ 2 ^ 1000)])
   rw [← hT] at hq
-  set q := Library.Numerics.Arithmetic.Fma.Fma.fma fl (-x) dh with hqdef
+  set q := Library.Numerics.Arithmetic.Fma.fma fl (-x) dh with hqdef
   have hqb : |value q.toBits| ≤ 1 / 2 ^ 98 := by
     have h := hq.2
     have := abs_sub_abs_le_abs_sub (value q.toBits) T
@@ -540,9 +540,9 @@ theorem accSmall_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
   unfold accSmallVal
   dsimp only
   generalize polyDDD accurateTable 0 28 x (evalF lAccE x) = p at hp1f hp2f hpe hpl ⊢
-  generalize Library.Numerics.Arithmetic.Fma.Fma.fma (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0) *
+  generalize Library.Numerics.Arithmetic.Fma.fma (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x)) (-x) (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0) *
     (1.0 / x) = fll at hllf hllb ⊢
-  generalize Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x) = fl at hcf hcb hfc ⊢
+  generalize Library.Numerics.Arithmetic.Fma.fma (1.0 / x) (-x) 1.0 * (1.0 / x) = fl at hcf hcb hfc ⊢
   generalize (1.0 : Float) / x = fh at hff hfe hfc ⊢
   generalize TgammaApprox.accSmallPoly (value x.toBits) = P at hgS hpe hPb
   generalize Real.Gamma (value x.toBits) = G at hgS hglo hghi ⊢

@@ -2,11 +2,11 @@ import Library.Numerics.Decimal.PrintFloat.Compiled
 import Library.Numerics.Decimal.ParseFloat.Compiled
 import Library.Numerics.Decimal.Shared.StrconvRound
 
-/-! A native check of `Library.Numerics.Decimal.PrintFloat.PrintFloat.print64`, `print64Ecma`, `print32`, and `print32Ecma` on the
+/-! A native check of `Library.Numerics.Decimal.PrintFloat.print64`, `print64Ecma`, `print32`, and `print32Ecma` on the
 cases of `data/strconv/print-cases.txt`, which `tools/strconv/print_cases.py` selects and computes
 by a search over the number of significant digits with exact rationals, and for binary64 checks
 against Python's `repr`.  Each printed string must equal the expected one, and both strings must
-read back through `Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64` (or `parse32`) in the general grammar as the word, with
+read back through `Library.Numerics.Decimal.ParseFloat.parse64` (or `parse32`) in the general grammar as the word, with
 every NaN read as the canonical NaN; a finite word's strings must also be numbers of RFC 8259's
 grammar.  The check exits with an error at the first difference.  Run with
 `lake env lean --run`. -/
@@ -34,24 +34,24 @@ def main : IO Unit := do
     let ecma := wordsOf f[3]!
     let finite := f[2]! != "NaN" && f[2]! != "Infinity" && f[2]! != "-Infinity"
     if bits == "64" then
-      let a := Library.Numerics.Decimal.PrintFloat.PrintFloat.print64 w
-      let b := Library.Numerics.Decimal.PrintFloat.PrintFloat.print64Ecma w
+      let a := Library.Numerics.Decimal.PrintFloat.print64 w
+      let b := Library.Numerics.Decimal.PrintFloat.print64Ecma w
       if a != sci then throw (IO.userError s!"print64 {row}: {render a}")
       if b != ecma then throw (IO.userError s!"print64Ecma {row}: {render b}")
       let want := (true, Library.Numerics.Decimal.Shared.StrconvRound.canon64 w)
-      if Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64 true a != want || Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64 true b != want then
+      if Library.Numerics.Decimal.ParseFloat.parse64 true a != want || Library.Numerics.Decimal.ParseFloat.parse64 true b != want then
         throw (IO.userError s!"parse64 of print64 {row}")
-      if finite && ((Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64 false a).1 != true || (Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64 false b).1 != true) then
+      if finite && ((Library.Numerics.Decimal.ParseFloat.parse64 false a).1 != true || (Library.Numerics.Decimal.ParseFloat.parse64 false b).1 != true) then
         throw (IO.userError s!"RFC 8259 {row}")
     else
-      let a := Library.Numerics.Decimal.PrintFloat.PrintFloat.print32 w
-      let b := Library.Numerics.Decimal.PrintFloat.PrintFloat.print32Ecma w
+      let a := Library.Numerics.Decimal.PrintFloat.print32 w
+      let b := Library.Numerics.Decimal.PrintFloat.print32Ecma w
       if a != sci then throw (IO.userError s!"print32 {row}: {render a}")
       if b != ecma then throw (IO.userError s!"print32Ecma {row}: {render b}")
       let want := (true, (Library.Numerics.Decimal.Shared.StrconvRound.canon32 w.toUInt32).toUInt64)
-      if Library.Numerics.Decimal.ParseFloat.ParseFloat.parse32 true a != want || Library.Numerics.Decimal.ParseFloat.ParseFloat.parse32 true b != want then
+      if Library.Numerics.Decimal.ParseFloat.parse32 true a != want || Library.Numerics.Decimal.ParseFloat.parse32 true b != want then
         throw (IO.userError s!"parse32 of print32 {row}")
-      if finite && ((Library.Numerics.Decimal.ParseFloat.ParseFloat.parse32 false a).1 != true || (Library.Numerics.Decimal.ParseFloat.ParseFloat.parse32 false b).1 != true) then
+      if finite && ((Library.Numerics.Decimal.ParseFloat.parse32 false a).1 != true || (Library.Numerics.Decimal.ParseFloat.parse32 false b).1 != true) then
         throw (IO.userError s!"RFC 8259 {row}")
     count := count + 1
   IO.println s!"{count} cases: the printers equal the expected strings, which read back as the words"

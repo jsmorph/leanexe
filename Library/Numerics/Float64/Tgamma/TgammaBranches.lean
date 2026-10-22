@@ -23,7 +23,7 @@ def tinyPath (x : Float) : Float :=
   else
     let r := 1.0 / x
     if x == 0.0 then r
-    else if Library.Numerics.Arithmetic.Fma.Fma.fma r x (-1.0) == 0.0 then r - 0.5 else r
+    else if Library.Numerics.Arithmetic.Fma.fma r x (-1.0) == 0.0 then r - 0.5 else r
 
 /-- From `2 ^ -112` to `1/4` in magnitude: `1/x` plus a polynomial. -/
 def smallPath (dbTab accTab smallTab : Array UInt64) (x : Float) : Float :=
@@ -42,7 +42,7 @@ def smallPath (dbTab accTab smallTab : Array UInt64) (x : Float) : Float :=
   let c8 := c8 + x4 * c12
   let (ch, cl) := polyDDD smallTab 0 5 x (x * (c0 + x8 * c8))
   let fh := 1.0 / x
-  let (fh, fl) := fastSum fh (Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0 * fh) ch cl
+  let (fh, fl) := fastSum fh (Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0 * fh) ch cl
   let eps := fh * (Float.ofBits 0x3C19D35025BFF857 +  -- 3.5e-19
     (x2 * x4) * Float.ofBits 0x3CF203AF9EE75616)  -- 4e-15
   let ub := fh + (fl + eps)
@@ -84,7 +84,7 @@ def reflPath (dbTab accTab logTab sinTab expTab asymTab : Array UInt64) (x : Flo
   let pil := Float.ofBits 0x3CA1A62633145C07  -- 0x1.1a62633145c07p-53
   let rcp := 1.0 / lh
   let rh := rcp * pih
-  let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-pih))
+  let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-pih))
   let odd := (-fx).toUInt64 &&& 1 == 1
   let rh := if odd then -rh else rh
   let rl := if odd then -rl else rl
@@ -144,7 +144,7 @@ def mainPath (dbTab accTab mainTab : Array UInt64) (x : Float) : Float :=
         (wh, wl, xph, xpl)
     else ((1.0 : Float), (0.0 : Float), x, (0.0 : Float))
   let rh := 1.0 / wh
-  let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
+  let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
   let eps := fh * Float.ofBits 0x3B92E3B40A0E9B4F  -- 1e-21
   let ub := fh + (fl + eps)
   let lb := fh + (fl - eps)

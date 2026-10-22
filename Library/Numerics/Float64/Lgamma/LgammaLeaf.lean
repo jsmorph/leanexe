@@ -100,7 +100,7 @@ theorem leaf_stir_a (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     (hE : E = fastTwoSum (entry Lgamma.mainTable 399)
       (Library.Numerics.Float64.Tgamma.TgammaExpr.evalF LgammaStirSeries.sE ((1.0 / ax) * (1.0 / ax))))
     (hT : T = mulDD E.1 (E.2 + entry Lgamma.mainTable 400) (1.0 / ax)
-      (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax)))
+      (Library.Numerics.Arithmetic.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax)))
     (hR : R = fastSum N.1 N.2 T.1 T.2) :
     LeafSpec (value ax.toBits) (R.1, R.2, R.1.abs * Float.ofBits 0x3BEA90352E248A68) := by
   obtain ⟨hr1, hr2, hR1lo, hR2r, hR1hi, hmain⟩ :=

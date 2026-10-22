@@ -126,7 +126,7 @@ theorem mulDDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
       |value ch.toBits| * |value x.toBits| * (1 - 1 / 2 ^ 53) - 1 / 2 ^ 1075 ≤
         |value (mulDDD x ch cl).1.toBits| := by
   have h1 : (mulDDD x ch cl).1 = ch * x := rfl
-  have h2 : (mulDDD x ch cl).2 = cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x)) := rfl
+  have h2 : (mulDDD x ch cl).2 = cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x)) := rfl
   rw [h1, h2]
   have hP : |value ch.toBits| * |value x.toBits| = |value ch.toBits * value x.toBits| := (abs_mul _ _).symm
   -- `a = ch x`
@@ -161,9 +161,9 @@ theorem mulDDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
     rw [abs_mul] at h2
     simp only [mul_zero, zero_mul, add_zero, zero_add] at h1
     linarith
-  have hfb : |value (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits| ≤ |value (ch * x).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075 := by
+  have hfb : |value (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits| ≤ |value (ch * x).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075 := by
     have h1 := hf.2
-    have h2 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits) (value ch.toBits * value x.toBits - value (ch * x).toBits)
+    have h2 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits) (value ch.toBits * value x.toBits - value (ch * x).toBits)
     have h3 : |value ch.toBits * value x.toBits - value (ch * x).toBits| ≤ |value (ch * x).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) + 2 * (1 / 2 ^ 1075) := by
       rw [abs_sub_comm]; exact hre
     linarith [abs_nonneg (value ch.toBits * value x.toBits - value (ch * x).toBits)]
@@ -171,14 +171,14 @@ theorem mulDDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x 
     have := abs_sub_abs_le_abs_sub (value (ch * x).toBits) (value ch.toBits * value x.toBits)
     rw [← hP] at this ha
     linarith [(by norm_num : (2 : ℝ) ^ 900 + 2 ^ 900 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 901)]
-  have hw := fapprox_add (fapprox_self _ hg0.1) (fapprox_self _ hf.1) (|value (cl * x).toBits| + |value (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits|)
+  have hw := fapprox_add (fapprox_self _ hg0.1) (fapprox_self _ hf.1) (|value (cl * x).toBits| + |value (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits|)
     (by simp only [add_zero]; exact abs_add_le _ _) (by
       linarith [abs_nonneg (value (ch * x).toBits),
         (by norm_num : (2 : ℝ) ^ 900 * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 +
           (2 ^ 901 / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075) < 2 ^ 1023)])
   have h1 := hw.2
-  have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits) (value (cl * x).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits)
-  have h3 := abs_add_le (value (cl * x).toBits) (value (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits)
+  have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits) (value (cl * x).toBits + value (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits)
+  have h3 := abs_add_le (value (cl * x).toBits) (value (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits)
   have hva0 := abs_nonneg (value (ch * x).toBits)
   have hp0 : 0 ≤ |value cl.toBits| * |value x.toBits| := by positivity
   linarith
@@ -193,7 +193,7 @@ theorem mulDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh 
       (|value ch.toBits| * |value xl.toBits| + |value cl.toBits| * |value xh.toBits| +
         |value (mulDD xh xl ch cl).1.toBits| / 2 ^ 53) * (1 + 1 / 2 ^ 50) + 1 / 2 ^ 1070 := by
   have h1 : (mulDD xh xl ch cl).1 = ch * xh := rfl
-  have h2 : (mulDD xh xl ch cl).2 = (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh)) := rfl
+  have h2 : (mulDD xh xl ch cl).2 = (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh)) := rfl
   rw [h1, h2]
   have hP : |value ch.toBits| * |value xh.toBits| = |value ch.toBits * value xh.toBits| := (abs_mul _ _).symm
   have ha0 := fapprox_mul (fapprox_self ch hch) (fapprox_self xh hxh) |value ch.toBits| |value xh.toBits| le_rfl le_rfl
@@ -212,9 +212,9 @@ theorem mulDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh 
     linarith [(by norm_num : (2 : ℝ) ^ 900 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000)]
   have hf := fma_approx hF ch xh (-(ch * xh)) hch hxh hna.1 hSb
   rw [hnav, ← sub_eq_add_neg] at hf
-  have hfb : |value (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits| ≤ |value (ch * xh).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075 := by
+  have hfb : |value (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits| ≤ |value (ch * xh).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075 := by
     have h1 := hf.2
-    have h2 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits) (value ch.toBits * value xh.toBits - value (ch * xh).toBits)
+    have h2 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits) (value ch.toBits * value xh.toBits - value (ch * xh).toBits)
     have h3 : |value ch.toBits * value xh.toBits - value (ch * xh).toBits| ≤ |value (ch * xh).toBits| / 2 ^ 53 * (1 + 1 / 2 ^ 52) + 2 * (1 / 2 ^ 1075) := by
       rw [abs_sub_comm]; exact hre
     linarith [abs_nonneg (value ch.toBits * value xh.toBits - value (ch * xh).toBits)]
@@ -250,15 +250,15 @@ theorem mulDD_low (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh 
     have h3 := abs_add_le (value (ch * xl).toBits) (value (cl * xh).toBits)
     simp only [zero_add] at h1
     linarith [abs_nonneg (value (ch * xl).toBits), abs_nonneg (value (cl * xh).toBits)]
-  have hw := fapprox_add (fapprox_self _ hu.1) (fapprox_self _ hf.1) (|value (ch * xl + cl * xh).toBits| + |value (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits|)
+  have hw := fapprox_add (fapprox_self _ hu.1) (fapprox_self _ hf.1) (|value (ch * xl + cl * xh).toBits| + |value (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits|)
     (by simp only [add_zero]; exact abs_add_le _ _) (by
       linarith [abs_nonneg (value (ch * xh).toBits), abs_nonneg (value (ch * xl).toBits), abs_nonneg (value (cl * xh).toBits),
         (by norm_num : ((2 : ℝ) ^ 800 * (1 + 1 / 2 ^ 53) * 2 + 2 / 2 ^ 1075) * (1 + 1 / 2 ^ 53) +
           (2 ^ 901 / 2 ^ 53 * (1 + 1 / 2 ^ 52) * (1 + 1 / 2 ^ 53) + 4 / 2 ^ 1075) < 2 ^ 1023)])
   have h1 := hw.2
-  have h2 := abs_sub_abs_le_abs_sub (value ((ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits)
-    (value (ch * xl + cl * xh).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits)
-  have h3 := abs_add_le (value (ch * xl + cl * xh).toBits) (value (Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-(ch * xh))).toBits)
+  have h2 := abs_sub_abs_le_abs_sub (value ((ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits)
+    (value (ch * xl + cl * xh).toBits + value (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits)
+  have h3 := abs_add_le (value (ch * xl + cl * xh).toBits) (value (Library.Numerics.Arithmetic.Fma.fma ch xh (-(ch * xh))).toBits)
   have hva0 := abs_nonneg (value (ch * xh).toBits)
   linarith
 

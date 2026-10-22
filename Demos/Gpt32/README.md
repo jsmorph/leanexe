@@ -11,6 +11,8 @@ kernels.  [The host program](HostProgram.lean) is the list of commands that runs
 definition](Module.lean) also compiles the thirteen functions into the 6,384-byte `gpt32.wasm`,
 which the browser page runs on the CPU for comparison.
 
+Vector addition and the biased linear transform come from [the binary32 linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  The demo retains the model-specific kernels and host program.
+
 ## The host theorem and device measurements
 
 `generate_host` states that the host's commands, run from the loaded weights for a prompt and one

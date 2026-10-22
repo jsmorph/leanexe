@@ -18,9 +18,9 @@ set_option exponentiation.threshold 4096
 tables' logarithms, and the kernel's coefficients. -/
 def logTail (r t ed h1 h2 g1 g2 c0 c1 c2 c3 : Float) : Float × Float :=
   let o := r * t
-  let dxl := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)
+  let dxl := Library.Numerics.Arithmetic.Fma.fma r t (-o)
   let dxh := o - 1.0
-  let dx := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)
+  let dx := Library.Numerics.Arithmetic.Fma.fma r t (-1.0)
   let dx2 := dx * dx
   let f := dx2 * ((c0 + dx * c1) + dx2 * (c2 + dx * c3))
   let lt := (h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000
@@ -34,10 +34,10 @@ theorem logTail_eq (r t ed h1 h2 g1 g2 c0 c1 c2 c3 : Float) :
       (((h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000) + (r * t - 1.0),
         (((((h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000) -
           (((h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000) + (r * t - 1.0))) + (r * t - 1.0)) +
-          (((g1 + g2) + Float.ofBits 0x3DB1CF79ABC9E3B4 * ed) + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t)))) +
-        (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) *
-          ((c0 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c1) +
-            (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c3))) := rfl
+          (((g1 + g2) + Float.ofBits 0x3DB1CF79ABC9E3B4 * ed) + Library.Numerics.Arithmetic.Fma.fma r t (-(r * t)))) +
+        (Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) *
+          ((c0 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c1) +
+            (Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c3))) := rfl
 
 theorem ln2l_finite : Finite (Float.ofBits 0x3DB1CF79ABC9E3B4).toBits := by
   rw [F64Bits.toBits_ofBits]; unfold CodeLib.IEEE64.Finite; decide
@@ -101,8 +101,8 @@ theorem logTail_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (
     have := abs_nonneg z1; nlinarith) (by have := abs_nonneg z2; nlinarith) hed hve hE
   generalize hO : r * t = o at *
   generalize hDH : o - 1.0 = dxh at *
-  generalize hDL : Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o) = dxl at *
-  generalize hDX : Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) = dx at *
+  generalize hDL : Library.Numerics.Arithmetic.Fma.fma r t (-o) = dxl at *
+  generalize hDX : Library.Numerics.Arithmetic.Fma.fma r t (-1.0) = dx at *
   generalize hFF : (dx * dx) * ((c0 + dx * c1) + (dx * dx) * (c2 + dx * c3)) = f at *
   generalize hLT : (h1 + h2) + ed * Float.ofBits 0x3FE62E42FEF80000 = lt at *
   -- `lt`

@@ -26,7 +26,7 @@ offset `on.1 + 2` with `on.2` pairs. -/
 def asymW (tab : Array UInt64) (T : Float × Float × Float) (xh xl w1 w2 : Float)
     (on : UInt64 × UInt64) : Float × Float × Float :=
   let zh := 1.0 / xh
-  let zl := (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 - xl * zh) * zh
+  let zl := (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 - xl * zh) * zh
   let L := LgammaAsymLog.corr T.2.1 T.2.2 xh xl
   let P := LgammaAsymProd.prodCode T.1 L.1 L.2 w1 w2
   let S1 := sumDD P.2.1 P.2.2 (entry tab on.1) (entry tab (on.1 + 1))
@@ -509,10 +509,10 @@ theorem asym_gen (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA 
     rw [hRdef, div_le_div_iff₀ (by norm_num) hx0]; linarith
   obtain ⟨g1f, g2f, hge, hg1, hg2⟩ := LgammaAsymSeries.series_gen hF o N P Xq Xh Xl Rm lo hi Lp
     C Cl E Λ K hok hval hlip hE0 hΛ0 hP hN1 hon hXh hXl hX hRm1 hEn hΛn hhi hlo hLp (o' + 2) n' ho2 hn
-    (1.0 / xh) ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)) zf zlf R
+    (1.0 / xh) ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)) zf zlf R
     (1 / (value xh.toBits + value xl.toBits)) hR hRm hz1 hz2 hz3
   set zh := 1.0 / xh with hzhdef
-  set zl := (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 - xl * zh) * zh with hzldef
+  set zl := (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 - xl * zh) * zh with hzldef
   set W := mulDD zh zl zh zl with hWdef
   set F := Lgamma.polyDD Lgamma.asymTable (o' + 2) n' W.1 W.2 0.0 with hFdef
   set G := mulDD zh zl F.1 F.2 with hGdef

@@ -34,8 +34,8 @@ theorem sin_c0 : 2454 / 10 ^ 5 ≤ hiQ 153 0 + loQ 153 0 ∧ hiQ 153 0 + loQ 153
 `2^-108` of `sinAccSin (d²)`, and the bounds that `tail_spec` needs. -/
 theorem kernels (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (d : Float) (hd : Finite d.toBits)
     (hD : |value d.toBits| ≤ 1 / 2) :
-    let P := Lgamma.polyDD Lgamma.sinpiTable 143 5 (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) 0.0
-    let Q := Lgamma.polyDD Lgamma.sinpiTable 153 6 (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) 0.0
+    let P := Lgamma.polyDD Lgamma.sinpiTable 143 5 (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) 0.0
+    let Q := Lgamma.polyDD Lgamma.sinpiTable 153 6 (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) 0.0
     Finite P.1.toBits ∧ Finite P.2.toBits ∧ Finite Q.1.toBits ∧ Finite Q.2.toBits ∧
       |value P.1.toBits + value P.2.toBits - LgammaApprox.sinAccCos (value d.toBits ^ 2)| ≤
         1 / 2 ^ 114 ∧
@@ -47,11 +47,11 @@ theorem kernels (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (d : F
   intro P Q
   obtain ⟨f1, f2, b1, b2, e⟩ := sq_spec hF d hd hD
   obtain ⟨p1, p2, pe, pl⟩ := kern_gen hF 143 5 cC cCl cE cΛ cK cos_ok (pw_nonneg _) 143 5 rfl rfl (by norm_num)
-    (by norm_num) (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) f1 f2 b1 b2
+    (by norm_num) (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) f1 f2 b1 b2
   obtain ⟨q1, q2, qe, ql⟩ := kern_gen hF 153 6 sC sCl sE sΛ sK sin_ok (pw_nonneg _) 153 6 rfl rfl (by norm_num)
-    (by norm_num) (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) f1 f2 b1 b2
-  rw [show Lgamma.polyDD T 143 5 (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) 0.0 = P from rfl] at p1 p2 pe pl
-  rw [show Lgamma.polyDD T 153 6 (d * d) (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))) 0.0 = Q from rfl] at q1 q2 qe ql
+    (by norm_num) (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) f1 f2 b1 b2
+  rw [show Lgamma.polyDD T 143 5 (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) 0.0 = P from rfl] at p1 p2 pe pl
+  rw [show Lgamma.polyDD T 153 6 (d * d) (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))) 0.0 = Q from rfl] at q1 q2 qe ql
   have hcE : cE.getD (5 - 1) 0 = 1 / 2 ^ 115 := by decide +kernel
   have hcΛ : cΛ.getD (5 - 1) 0 = 1 / 2 ^ 61 := by decide +kernel
   have hsE : sE.getD (6 - 1) 0 = 1 / 2 ^ 109 := by decide +kernel
@@ -62,13 +62,13 @@ theorem kernels (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (d : F
   rw [hsΛ] at ql
   push_cast at pe pl qe ql
   -- the point `w = d2h + d2l` and `d²`
-  obtain ⟨w, hw⟩ : ∃ w, w = value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits := ⟨_, rfl⟩
+  obtain ⟨w, hw⟩ : ∃ w, w = value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits := ⟨_, rfl⟩
   rw [← hw] at pe qe e
   have hD2 : value d.toBits ^ 2 ≤ 1 / 4 := by
     rw [← sq_abs]; nlinarith [abs_nonneg (value d.toBits)]
   have hD20 : 0 ≤ value d.toBits ^ 2 := sq_nonneg _
   have hwX : |w| ≤ ((XhQ + XlQ : ℚ) : ℝ) := by
-    have := abs_add_le (value (d * d).toBits) (value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits)
+    have := abs_add_le (value (d * d).toBits) (value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits)
     rw [hw]; push_cast; linarith
   have hwr : |w| ≤ ((1 / 4 + 1 / 2 ^ 52 : ℚ) : ℝ) := by
     have : ((XhQ + XlQ : ℚ) : ℝ) = 1 / 4 + 1 / 2 ^ 53 := by unfold XhQ XlQ; push_cast; ring
@@ -203,18 +203,18 @@ theorem sinAcc_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
       (entry Lgamma.sinpiTable (2 * (64 - (roundEven ((x - 0.5).abs * 128.0)).toUInt64)))
       (entry Lgamma.sinpiTable (2 * (roundEven ((x - 0.5).abs * 128.0)).toUInt64 + 1))
       (entry Lgamma.sinpiTable (2 * (roundEven ((x - 0.5).abs * 128.0)).toUInt64))
-      (Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0).1
-      (Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0).2
-      (Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0).1
-      (Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0).2 := by
+      (Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0).1
+      (Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0).2
+      (Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0).1
+      (Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0).2 := by
     rw [hD0]; rfl
   rw [hky, ix_sub k hk64] at hcode
   rw [hcode]
   rw [← hD0] at hdf hdv
   have hD : |value D0.toBits| ≤ 1 / 2 := by rw [hdv]; exact hdb
   obtain ⟨p1, p2, q1, q2, hPC, hQS, hP1, hP2, hQ1, hQ2⟩ := kernels hF D0 hdf hD
-  generalize Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0 = P at p1 p2 hPC hP1 hP2 ⊢
-  generalize Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.Fma.fma D0 D0 (-(D0 * D0))) 0.0 = Q at q1 q2 hQS hQ1 hQ2 ⊢
+  generalize Lgamma.polyDD Lgamma.sinpiTable 143 5 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0 = P at p1 p2 hPC hP1 hP2 ⊢
+  generalize Lgamma.polyDD Lgamma.sinpiTable 153 6 (D0 * D0) (Library.Numerics.Arithmetic.Fma.fma D0 D0 (-(D0 * D0))) 0.0 = Q at q1 q2 hQS hQ1 hQ2 ⊢
   -- the rows
   have hk' : 64 - k ≤ 64 := by omega
   obtain ⟨fsh, fsl, hsh0, hsh1, hslb, -, hSh1⟩ :=

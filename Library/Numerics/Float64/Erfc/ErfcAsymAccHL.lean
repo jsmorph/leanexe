@@ -44,7 +44,7 @@ def finA (t : Float × Float × Float) : Float :=
 /-- `(uh, ul)`, the double-double `1/x²`. -/
 def uPair (one two x : Float) : Float × Float :=
   ((Erfc.aMul (one / x) (one / x)).1,
-    Library.Numerics.Arithmetic.Fma.Fma.fma (two * (one / x)) ((one / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (one / x) one)
+    Library.Numerics.Arithmetic.Fma.fma (two * (one / x)) ((one / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (one / x) one)
       (Erfc.aMul (one / x) (one / x)).2)
 
 /-- The polynomial of the row of `Tacc` at `U`, after the two loops. -/
@@ -63,9 +63,9 @@ def zA (tab : Array UInt64) (one two x : Float) : Float × Float :=
 /-- The product with `1/x`, renormalized. -/
 def p1A (tab : Array UInt64) (one two x : Float) : Float × Float :=
   Erfc.fastTwoSum (Erfc.dMul (zA tab one two x).1 (zA tab one two x).2 (one / x)
-      ((one / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (one / x) one)).1
+      ((one / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (one / x) one)).1
     (Erfc.dMul (zA tab one two x).1 (zA tab one two x).2 (one / x)
-      ((one / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (one / x) one)).2
+      ((one / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (one / x) one)).2
 
 /-- `exp (-x²)` as `(eh, el, K)` from `exp_accurate`. -/
 def eA (eT : Array UInt64) (x : Float) : Float × Float × Float :=
@@ -377,7 +377,7 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
   -- `1/x` and `1/x²`
   obtain ⟨df, lf, hY, hyl, hy⟩ := recip_pr hF x hx (by linarith) (by linarith)
   obtain ⟨uf, ulf, hU, hUL⟩ := usq_pr hF x hx (by linarith) (by linarith)
-  have pY : Pr (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (1 / fv x) (1 / fv x)
+  have pY : Pr (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (1 / fv x) (1 / fv x)
       (11 / 10 * u * (1 / fv x)) (4 * u * u * (1 / fv x)) :=
     ⟨df, lf, hY.trans (le_of_eq (by ring)), le_of_eq (abs_of_pos (one_div_pos.mpr hX0)),
       hyl.trans (le_of_eq (by ring))⟩
@@ -463,12 +463,12 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
     hchkB
   -- the loops as `zA`, and their value
   have hzA : zA Erfc.asymAccTable 1.0 2.0 x = Nat.fold 6 (fun j _ s => tStepB
-      (Erfc.aMul (1.0 / x) (1.0 / x)).1 (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) *
-        Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2)
+      (Erfc.aMul (1.0 / x) (1.0 / x)).1 (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) *
+        Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2)
       (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 10 - 2 * UInt64.ofNat j))
       (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 11 - 2 * UInt64.ofNat j)) s)
       (Nat.fold (8 + i) (fun j _ s => tStep (Erfc.aMul (1.0 / x) (1.0 / x)).1
-        (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)
+        (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)
           (Erfc.aMul (1.0 / x) (1.0 / x)).2)
         (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 19 + UInt64.ofNat i -
           UInt64.ofNat j)) s)
@@ -480,21 +480,21 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
     rw [hcnt]
   have hval : hornerB (fun j => fv (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 10 -
       2 * UInt64.ofNat j))) (fun j => fv (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 11 -
-      2 * UInt64.ofNat j))) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x))
-      ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2))
+      2 * UInt64.ofNat j))) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x))
+      ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2))
       (hornerA (fun j => fv (Erfc.entry Erfc.asymAccTable (30 * UInt64.ofNat i + 19 +
         UInt64.ofNat i - UInt64.ofNat j))) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 +
-        fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)
+        fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)
           (Erfc.aMul (1.0 / x) (1.0 / x)).2)) (q (20 + i)) (8 + i)) 6 =
-      eval (accZ (taq i) i) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x))
-        ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2)) := by
+      eval (accZ (taq i) i) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x))
+        ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2)) := by
     rw [hornerA_congr _ (fun j => q (19 + i - j)) _ _ (8 + i) (fun j hj => (hcsA j hj).2.2),
       hornerB_congr _ (fun j => q (10 - 2 * j)) _ (fun j => q (11 - 2 * j)) _ _ 6
         (fun j hj => ⟨(hcsB j hj).2.2.2.2.1, (hcsB j hj).2.2.2.2.2⟩),
       loops_val, accZ_eval]
   rw [hval, ← hzA] at lB
-  set U := fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x))
-    ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2) with hUdef
+  set U := fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x))
+    ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2) with hUdef
   set Z := eval (accZ (taq i) i) U with hZdef
   -- the polynomial against `x erfcx x`
   have hG := G_bounds2 (fv x) (by linarith)
@@ -536,9 +536,9 @@ theorem aa_hl (hF : FmaNearest) (x : Float) (hx : ff x)
   have hBx : (B.1 : ℝ) * (1 / fv x) ≤ 4 * (1 / fv x) := mul_le_mul_of_nonneg_right qfM2 hxi0.le
   have hBx0 : 0 ≤ (B.1 : ℝ) * (1 / fv x) := by nlinarith
   have hlh : |fv (Erfc.dMul (zA Erfc.asymAccTable 1.0 2.0 x).1 (zA Erfc.asymAccTable 1.0 2.0 x).2
-      (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)).2| ≤
+      (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)).2| ≤
       |fv (Erfc.dMul (zA Erfc.asymAccTable 1.0 2.0 x).1 (zA Erfc.asymAccTable 1.0 2.0 x).2
-        (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)).1| := by
+        (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)).1| := by
     have c1 : ((1 + 1 / 2 ^ 18) * (1 / 2 ^ 44 + 11 / 10 * u) + 2 * u) * 4 ≤ 1 / 10 := by norm_num
     have c2 : (1 / 2 ^ 90 + 4 * u * u + 1 / 2 ^ 90 * (4 * u * u) + 1 / 2 ^ 44 * (11 / 10 * u) +
         3 * u * (1 / 2 ^ 44 + 11 / 10 * u) + 4 * u * u + 1 / 2 ^ 92) * 4 ≤ 1 / 10 := by norm_num

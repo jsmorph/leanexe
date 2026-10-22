@@ -268,9 +268,9 @@ theorem kern_gen (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (o N 
 /-- **The square of `d`** as `d2h + d2l`, with `d2h = d · d` and `d2l = fma (d, d, -d2h)`. -/
 theorem sq_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (d : Float) (hd : Finite d.toBits)
     (hD : |value d.toBits| ≤ 1 / 2) :
-    Finite (d * d).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits ∧
-      |value (d * d).toBits| ≤ (XhQ : ℝ) ∧ |value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits| ≤ (XlQ : ℝ) ∧
-      |value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits - value d.toBits ^ 2| ≤
+    Finite (d * d).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits ∧
+      |value (d * d).toBits| ≤ (XhQ : ℝ) ∧ |value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits| ≤ (XlQ : ℝ) ∧
+      |value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits - value d.toBits ^ 2| ≤
         value d.toBits ^ 2 / 2 ^ 106 + 1 / 2 ^ 1074 := by
   set v := value d.toBits with hvdef
   have hv2 : |v| * |v| = v ^ 2 := by rw [← abs_mul, abs_mul_self, sq]
@@ -300,13 +300,13 @@ theorem sq_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (d : F
     unfold XhQ; push_cast
     linarith [(by norm_num : (1 : ℝ) / 4 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 54),
       div_le_div_of_nonneg_right hv4 (by norm_num : (0 : ℝ) ≤ 2 ^ 53), abs_sub_comm (value (d * d).toBits) (v ^ 2)]
-  · have := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits) (v ^ 2 - value (d * d).toBits)
+  · have := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits) (v ^ 2 - value (d * d).toBits)
     unfold XlQ; push_cast
     have h4 := div_le_div_of_nonneg_right hv4 (by norm_num : (0 : ℝ) ≤ 2 ^ 53)
     linarith [(by norm_num : ((1 : ℝ) / 4 / 2 ^ 53 + 1 / 2 ^ 1075) * (1 + 1 / 2 ^ 53) + 1 / 2 ^ 1075 ≤
       1 / 2 ^ 54)]
-  · have e : value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits - v ^ 2 =
-        value (Library.Numerics.Arithmetic.Fma.Fma.fma d d (-(d * d))).toBits - (v ^ 2 - value (d * d).toBits) := by ring
+  · have e : value (d * d).toBits + value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits - v ^ 2 =
+        value (Library.Numerics.Arithmetic.Fma.fma d d (-(d * d))).toBits - (v ^ 2 - value (d * d).toBits) := by ring
     rw [e]
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 1075 / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 1074),
       (by ring : (v ^ 2 / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 = v ^ 2 / 2 ^ 106 + 1 / 2 ^ 1075 / 2 ^ 53)]

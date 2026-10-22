@@ -21,12 +21,12 @@ theorem recip_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh x
     (hxl : Finite xl.toBits) (hlo : 1 ≤ value xh.toBits) (hhi : value xh.toBits ≤ 2 ^ 120)
     (hlb : |value xl.toBits| ≤ value xh.toBits / 2 ^ 51) :
     Finite (1.0 / xh).toBits ∧
-      Finite ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits ∧
+      Finite ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits ∧
       |value (1.0 / xh).toBits - 1 / value xh.toBits| ≤ 1 / value xh.toBits / 2 ^ 52 ∧
-      |value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits| ≤
+      |value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits| ≤
         1 / value xh.toBits / 2 ^ 49 ∧
       |value (1.0 / xh).toBits +
-          value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits -
+          value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh)).toBits -
           1 / (value xh.toBits + value xl.toBits)| ≤ 1 / value xh.toBits / 2 ^ 98 := by
   set vx := value xh.toBits with hvx
   set vl := value xl.toBits with hvl
@@ -66,7 +66,7 @@ theorem recip_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (xh x
   have hr := fma_approx hF zh (-xh) 1.0 hzf hnx.1 one_finite
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 2 ^ 1000)])
   rw [← hS] at hr
-  set r := Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 with hrdef
+  set r := Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 with hrdef
   have hre : |value r.toBits - S| ≤ 1 / 2 ^ 105 + 1 / 2 ^ 1075 := by
     have := hr.2
     have : |S| / 2 ^ 53 ≤ 1 / 2 ^ 105 := by

@@ -23,7 +23,7 @@ NaN.  An exact zero sum is `+0` unless both the product and `c` are zeros of neg
 nonzero sum that rounds to zero keeps its sign.  The dialect has no floating-point flags, and the
 function raises none.  `FmaAccuracy.lean` checks the results against the exact value. -/
 
-namespace Library.Numerics.Arithmetic.Fma.Fma
+namespace Library.Numerics.Arithmetic.Fma
 
 /-- The position of the highest set bit of a nonzero word, by binary search. -/
 def msb64 (x : UInt64) : UInt64 :=
@@ -164,4 +164,4 @@ def fmaBits (a b c : UInt64) : UInt64 :=
 def fma (a b c : Float) : Float :=
   Float.ofBits (fmaBits a.toBits b.toBits c.toBits)
 
-end Library.Numerics.Arithmetic.Fma.Fma
+end Library.Numerics.Arithmetic.Fma

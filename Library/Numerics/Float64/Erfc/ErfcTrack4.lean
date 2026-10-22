@@ -19,10 +19,10 @@ local notation "η" => (1 / 2 ^ 1075 : ℝ)
 
 theorem dMul_eq (ah al bh bl : Float) :
     Erfc.dMul ah al bh bl = ((Erfc.aMul ah bh).1,
-      Library.Numerics.Arithmetic.Fma.Fma.fma al bh (Library.Numerics.Arithmetic.Fma.Fma.fma ah bl (Erfc.aMul ah bh).2)) := rfl
+      Library.Numerics.Arithmetic.Fma.fma al bh (Library.Numerics.Arithmetic.Fma.fma ah bl (Erfc.aMul ah bh).2)) := rfl
 
 theorem sMul_eq (a bh bl : Float) :
-    Erfc.sMul a bh bl = ((Erfc.aMul a bh).1, Library.Numerics.Arithmetic.Fma.Fma.fma a bl (Erfc.aMul a bh).2) := rfl
+    Erfc.sMul a bh bl = ((Erfc.aMul a bh).1, Library.Numerics.Arithmetic.Fma.fma a bl (Erfc.aMul a bh).2) := rfl
 
 /-- The product of two double-doubles by `Erfc.dMul`. -/
 theorem pr_dMul (hF : FmaNearest) {ah al bh bl : Float} {A B MA LA eA MB LB eB : ℝ}
@@ -55,14 +55,14 @@ theorem pr_dMul (hF : FmaNearest) {ah al bh bl : Float} {A B MA LA eA MB LB eB :
   have htl : |fv (Erfc.aMul ah bh).2| ≤ Ttl := mtl.trans hTtl
   have hTtl0 : 0 ≤ Ttl := (abs_nonneg _).trans htl
   obtain ⟨w1, werr, wmag⟩ := fma_bound hF ha.1 hb.2.1 m2 hHA' hb.2.2.2.2 htl (by linarith)
-  have hw : |fv (Library.Numerics.Arithmetic.Fma.Fma.fma ah bl (Erfc.aMul ah bh).2)| ≤ F1 := wmag.trans hF1
+  have hw : |fv (Library.Numerics.Arithmetic.Fma.fma ah bl (Erfc.aMul ah bh).2)| ≤ F1 := wmag.trans hF1
   have hF10 : 0 ≤ F1 := (abs_nonneg _).trans hw
   obtain ⟨v1, verr, vmag⟩ := fma_bound hF ha.2.1 hb.1 w1 ha.2.2.2.2 hHB' hw (by linarith)
   refine ⟨m1, v1, ?_, ?_, vmag.trans hL⟩
   · set th := fv (Erfc.aMul ah bh).1
     set tl := fv (Erfc.aMul ah bh).2
-    set f1 := fv (Library.Numerics.Arithmetic.Fma.Fma.fma ah bl (Erfc.aMul ah bh).2)
-    set f2 := fv (Library.Numerics.Arithmetic.Fma.Fma.fma al bh (Library.Numerics.Arithmetic.Fma.Fma.fma ah bl (Erfc.aMul ah bh).2))
+    set f1 := fv (Library.Numerics.Arithmetic.Fma.fma ah bl (Erfc.aMul ah bh).2)
+    set f2 := fv (Library.Numerics.Arithmetic.Fma.fma al bh (Library.Numerics.Arithmetic.Fma.fma ah bl (Erfc.aMul ah bh).2))
     have e1 : th + f2 - A * B = (th + tl - fv ah * fv bh) + (f1 - (fv ah * fv bl + tl)) +
         (f2 - (fv al * fv bh + f1)) - fv al * fv bl +
         ((fv ah + fv al) * (fv bh + fv bl - B) + B * (fv ah + fv al - A)) := by ring
@@ -174,7 +174,7 @@ theorem pr_sMul (hF : FmaNearest) {a bh bl : Float} {va B Ma ea MB LB eB : ℝ}
   refine ⟨m1, w1, ?_, ?_, wmag.trans hL⟩
   · set th := fv (Erfc.aMul a bh).1
     set tl := fv (Erfc.aMul a bh).2
-    set f1 := fv (Library.Numerics.Arithmetic.Fma.Fma.fma a bl (Erfc.aMul a bh).2)
+    set f1 := fv (Library.Numerics.Arithmetic.Fma.fma a bl (Erfc.aMul a bh).2)
     have e1 : th + f1 - va * B = (th + tl - fv a * fv bh) + (f1 - (fv a * fv bl + tl)) +
         (fv a * (fv bh + fv bl - B) + B * (fv a - va)) := by ring
     rw [e1]

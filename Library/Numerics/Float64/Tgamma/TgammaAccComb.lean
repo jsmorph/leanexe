@@ -21,19 +21,19 @@ theorem div_step (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (fh f
     (hfh2 : |value fh.toBits| ≤ 2 ^ 8) (hwlb : |value wl.toBits| ≤ |value wh.toBits| / 2 ^ 50)
     (hwh1 : 1 / 2 ^ 60 ≤ |value wh.toBits|) (hwh2 : |value wh.toBits| ≤ 2 ^ 519) :
     Finite (mulDD3 fh fl (1.0 / wh)
-        ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits ∧
+        ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits ∧
       Finite (mulDD3 fh fl (1.0 / wh)
-        ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits ∧
+        ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits ∧
       |value (mulDD3 fh fl (1.0 / wh)
-          ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits +
+          ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits +
         value (mulDD3 fh fl (1.0 / wh)
-          ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits -
+          ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits -
         (value fh.toBits + value fl.toBits) / (value wh.toBits + value wl.toBits)| ≤
         |(value fh.toBits + value fl.toBits) / (value wh.toBits + value wl.toBits)| / 2 ^ 76 ∧
       |value (mulDD3 fh fl (1.0 / wh)
-          ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits| ≤
+          ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2.toBits| ≤
         |value (mulDD3 fh fl (1.0 / wh)
-          ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits| / 2 ^ 51 := by
+          ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1.toBits| / 2 ^ 51 := by
   obtain ⟨hrf, hcf, hre, hcb, hrb⟩ := TgammaRecipDD.recip_dd hF wh wl hwh hwl
     (hwlb.trans (div_le_div_of_nonneg_left (abs_nonneg _) (by positivity) (by norm_num)))
     (le_trans (by norm_num) hwh1) (hwh2.trans (by norm_num))
@@ -52,7 +52,7 @@ theorem div_step (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (fh f
     nlinarith
   have hDp : 0 < |c + e| := lt_of_lt_of_le (by nlinarith) hD1
   set r := (1.0 : Float) / wh with hrdef
-  set k := (Library.Numerics.Arithmetic.Fma.Fma.fma r (-wh) 1.0 - wl * r) * r with hkdef
+  set k := (Library.Numerics.Arithmetic.Fma.fma r (-wh) 1.0 - wl * r) * r with hkdef
   set R := |1 / (c + e)| with hR
   have hRv : R = 1 / |c + e| := by rw [hR, abs_div, abs_one]
   have hr1 : R * (1 - 1 / 2 ^ 38) ≤ |value r.toBits| := by

@@ -7,7 +7,7 @@ import LeanExe.ProofKit.F64UpperWord
 import LeanExe.ProofKit.F64Sign
 
 /-!
-The double-double operations of `Tgamma`, with error bounds.  `Library.Numerics.Arithmetic.Fma.Fma.fma` enters through the
+The double-double operations of `Tgamma`, with error bounds.  `Library.Numerics.Arithmetic.Fma.fma` enters through the
 hypothesis `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`, which makes its result a nearest double to `a b + c`, within
 `|a b + c|/2^53 + 2^-1075` (`fma_approx`).  `fastTwoSum` is exact by Dekker's theorem
 (`F64TwoSum.fast_two_sum`), and its low part lies within `2^-52` of the high part
@@ -26,7 +26,7 @@ set_option exponentiation.threshold 4096
 theorem fma_approx (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (a b c : Float) (ha : Finite a.toBits)
     (hb : Finite b.toBits) (hc : Finite c.toBits)
     (hS : |value a.toBits * value b.toBits + value c.toBits| ≤ 2 ^ 1000) :
-    FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) (value a.toBits * value b.toBits + value c.toBits)
+    FApprox (Library.Numerics.Arithmetic.Fma.fma a b c) (value a.toBits * value b.toBits + value c.toBits)
       (|value a.toBits * value b.toBits + value c.toBits| / 2 ^ 53 + 1 / 2 ^ 1075) := by
   obtain ⟨hf, hn⟩ := hF a b c ha hb hc (hS.trans (by norm_num))
   exact ⟨hf, F64NearReal.nearest_bound _ _ hS hn⟩
@@ -281,7 +281,7 @@ theorem mulDDD_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
     linarith [(by norm_num : (2 : ℝ) ^ 900 + 1 / 2 ^ 1075 ≤ 2 ^ 1000)]
   have hf := fma_approx hF ch x (-(ch * x)) hch hx hnaf hSb
   rw [hnav, ← sub_eq_add_neg] at hf
-  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))) (vh * vx - va)
+  have hf' : FApprox (Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))) (vh * vx - va)
       ((H / 2 ^ 53 + 1 / 2 ^ 1075) / 2 ^ 53 + 1 / 2 ^ 1075) :=
     Approx.mono hf (by gcongr)
   -- `p = cl x`
@@ -301,16 +301,16 @@ theorem mulDDD_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (x
   have hlow := fapprox_add hp hf' B hBb (by
     rw [hB]; linarith [(by norm_num : (2 : ℝ) ^ 900 + 2 ^ 900 + 1 < 2 ^ 1023),
       div_le_self hH0 (by norm_num : (1 : ℝ) ≤ 2 ^ 52)])
-  have hdef : mulDDD x ch cl = (ch * x, cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))) := rfl
+  have hdef : mulDDD x ch cl = (ch * x, cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))) := rfl
   rw [hdef]
   refine ⟨ha.1, hlow.1, ?_, ?_, ?_⟩
   · have h := hlow.2
-    rw [show va + value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits - vx * (vh + vl) =
-      value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits - (vl * vx + (vh * vx - va)) by ring]
+    rw [show va + value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits - vx * (vh + vl) =
+      value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits - (vl * vx + (vh * vx - va)) by ring]
     rw [hB] at h
     nlinarith
   · have h := hlow.2
-    have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-(ch * x))).toBits)
+    have h2 := abs_sub_abs_le_abs_sub (value (cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-(ch * x))).toBits)
       (vl * vx + (vh * vx - va))
     have h3 := abs_add_le (vl * vx) (vh * vx - va)
     have h4 : |vl * vx| ≤ Lw := by rw [abs_mul]; exact hL

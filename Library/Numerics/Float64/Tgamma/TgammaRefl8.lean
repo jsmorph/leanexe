@@ -36,7 +36,7 @@ theorem refl_gen (dbTab accTab logTab sinTab expTab asymTab : Array UInt64) (x :
        let pil := Float.ofBits 0x3CA1A62633145C07
        let rcp := 1.0 / lh
        let rh := rcp * pih
-       let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-pih))
+       let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-pih))
        let odd := (-fx).toUInt64 &&& 1 == 1
        reflTail dbTab accTab x fx (if odd then -rh else rh) (if odd then -rl else rl) e) := rfl
 

@@ -21,8 +21,8 @@ set_option exponentiation.threshold 2200
 /-- `Erfc.q1` with its constants as arguments. -/
 def q1Core (c4 c3 half one zh zl : Float) : Float × Float :=
   let z := zh + zl
-  let q := Library.Numerics.Arithmetic.Fma.Fma.fma c4 zh c3
-  let q := Library.Numerics.Arithmetic.Fma.Fma.fma q z half
+  let q := Library.Numerics.Arithmetic.Fma.fma c4 zh c3
+  let q := Library.Numerics.Arithmetic.Fma.fma q z half
   let (hi, lo) := Erfc.fastTwoSum one (q * z)
   let (hi, lo) := Erfc.dMul zh zl hi lo
   Erfc.fastSum one hi lo
