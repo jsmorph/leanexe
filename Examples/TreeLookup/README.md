@@ -1,6 +1,6 @@
 # Tree lookup: a search tree of seven nodes
 
-## What it is
+## Request, specification, review, and program
 
 This example is the first run of [the verified-executable
 skill](../../.claude/skills/verified-executable/SKILL.md).
@@ -18,7 +18,7 @@ flag and value change only at the first match, so the program needs no early exi
 two-word array literal, zeroed when the input does not have 15 words.  [The module
 definition](Module.lean) compiles it into a 1,734-byte `treeLookup.wasm` that exports `compute`.
 
-## What it shows
+## The bytes search the tree
 
 | Theorem | Statement |
 |---------|-----------|
@@ -32,7 +32,7 @@ comparisons along each of the eleven paths through the tree.  The `Implements` p
 lookup example's: `Stmt.loop_spec` for the loop and `Stmt.arrayLiteral_spec` for the result.
 [The journal](journal.md) records the run.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/demo-check treeLookup

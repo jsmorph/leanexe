@@ -4,7 +4,7 @@ This report describes the earlier compiler at its recorded source revision.  Its
 
 The report opens with the goal of end-to-end verification for practical applications and the repeated-ridges run.  It describes the drone planner's finite-graph optimum, continuous point-mass safety, and generated-WASM-model execution proof.  Its stand-alone LeanExe section includes the scalar and bounded-loop compiler-correctness results on main.
 
-The drone proof subject is revision `820b3958`.  The LeanExe overview and compiler theorem use main at `8dbb8e8a`.  The report distinguishes the generated drone model from an exact-byte artifact theorem and states the physical and heap assumptions.
+The drone proofs come from [one source revision](https://github.com/jsmorph/leanexe/commit/820b39589a66732ae76e05cde6ee4ffbd08e1e69), and the LeanExe overview and compiler theorem from [another](https://github.com/jsmorph/leanexe/commit/8dbb8e8a70a8b0f54d3899db5b6dac8ce2d62c18).  The report distinguishes the generated drone model from an exact-byte artifact theorem and states the physical and heap assumptions.
 
 - [Accepted marXiv version](main.pdf)
 - [Editorial review](submission-04/review.txt)

@@ -1,6 +1,6 @@
 # Updates: chains of array updates
 
-## What it is
+## Four functions that update arrays
 
 [The program](Program.lean) has four functions that update arrays of words.  `pushTwo` pushes two
 words, `setTwice` sets one element and then another from the old value of the first, and
@@ -8,7 +8,7 @@ words, `setTwice` sets one element and then another from the old value of the fi
 together with `xs` itself, so the push must copy.  [The module definition](Module.lean) compiles the
 four into the 2,714-byte `updates.wasm`.
 
-## What it shows
+## In-place updates and the copy in `pushCopy`
 
 An update of an owned array at its last use writes the array in place, and an update may apply to
 the result of another update, as in `(xs.push a).push b`, so the intermediate array never exists as
@@ -29,7 +29,7 @@ proves the copy with `Stmt.pushBuild_spec`, the rule of the push's build stateme
 compiler manual's section on arrays](../../docs/leanexe-manual.md#arrays) lists the update
 operations and when each one copies.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Updates.Verify

@@ -1,6 +1,6 @@
 # Prng: SplitMix64
 
-## What it is
+## SplitMix64 and a float in `[0, 1)`
 
 [The program](Program.lean) is SplitMix64, the generator of Steele, Lea, and Flood in the form of
 Sebastiano Vigna's reference C code.  `splitMix state` adds the constant `0x9e3779b97f4a7c15` to the
@@ -9,7 +9,7 @@ returning the new state and the word.  `unitFloat x` maps a word to the float `(
 `[0, 1)`, which is exact because the numerator has at most 53 bits.  [The module
 definition](Module.lean) compiles both into the 1,478-byte `prng.wasm`.
 
-## What it shows
+## Theorems that hold in any module
 
 `splitMix` returns a pair, which the compiled function returns as two WebAssembly results.  The two
 `_pure` theorems hold in any module that contains the compiled functions, at any index, so another
@@ -29,7 +29,7 @@ manual](../../docs/leanexe-manual.md#the-implements-family), is the form of `Imp
 scalars that leave the store unchanged.  The proofs step through straight-line statements with
 `Stmt.run_spec`.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Prng.Verify

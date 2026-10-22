@@ -1,13 +1,13 @@
 # Lists: `List UInt64` on the heap
 
-## What it is
+## Three functions on `List UInt64`
 
 [The program](Program.lean) has three functions on Lean's `List UInt64`.  `listSum` folds addition
 over a list, `listRange n` builds the words below `n` in increasing order with a loop that puts one
 cell in front at each step, and `sumRange n` builds `listRange n`, sums it, and releases it.  [The
 module definition](Module.lean) compiles the three into the 1,648-byte `lists.wasm`.
 
-## What it shows
+## Lists as chains of heap records
 
 A list lives on the heap as a chain of records of two slots, the element and the pointer to the
 rest, and the empty list is the null pointer.  `List.foldl` compiles to a loop that follows the tail
@@ -28,7 +28,7 @@ the record layout that the theorems use.  [The LeanExe compiler
 manual](../../docs/leanexe-manual.md#records-and-user-types) describes recursive types and their
 records.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Lists.Verify

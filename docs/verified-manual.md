@@ -2,9 +2,9 @@
 
 This manual describes the verified compiler, the library `Verified`: the Lean dialect that it accepts, the command that compiles a program and the theorems that the command adds, the bounds that make a call free of traps, the tests, and the examples.  [The LeanExe compiler manual](leanexe-manual.md) describes the other compiler, and [the README](../README.md) compares the two.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
 
-## Overview
+## Compiler, theorems, and trusted base
 
-### What the compiler does
+### One theorem for every program
 
 The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  One theorem, `Prog.correctWith` in [`Verified/Correct.lean`](../Verified/Correct.lean), states that the module of every program of the source language, with its tables and wrappers, computes the program's meaning, so no program needs a proof of its own.  `Prog.correct` states the same for a program without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.
 
@@ -12,7 +12,7 @@ The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.le
 with proofs of its translation and local layout.  [The WGSL section](#wgsl-kernels) describes
 that subset and its dispatch theorem.
 
-### What the theorems state
+### The `implements` and `trapFree` theorems
 
 `p.f.implements` states `ImplementsA aborts p.module k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)), where `k` is the index of `f`'s function or entry in the module.  From any heap and store with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent `x`, whose moved blocks lie apart from one another and from the memory that the call reads, a run returns words that represent `f x` and that the caller owns.  The run keeps the allocator invariant and the cap, keeps every region of the caller's heap that lies apart from the moved blocks, and places the result apart from those regions.  When `aborts` is true, a run may instead trap at `unreachable`, which the code does only when an allocation finds no memory, an array would hold `2^29` words or more, or a recursion reaches depth 1,000.  `aborts` is true when the function's result holds arrays, a parameter is owned, the body builds, updates, extends, inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose code takes the call depth, whose result holds arrays, or which owns a parameter.  List construction and matching also enable `aborts`.  The compiler uses this flag conservatively.  A generated `trapFree` theorem excludes a trap under its allocation bound and frames condition.
 
@@ -346,7 +346,7 @@ The bound ignores the reuse of freed blocks and charges every extension of a dyi
 
 `foldCost xs init step charge` in [the fold lemmas](../Verified/Reflect/FoldLemmas.lean) sums each fold step's allocation charge at its element, index, and accumulator.  The generated bound adds the initial expression's charge, a copy of a borrowed initial state when needed, and its potential credit.  A fold whose steps allocate nothing has charge 0.  The bound calculation uses natural arithmetic over the array's word-sized count.  It adds no executable `Nat` counter.
 
-### Recursion
+### Bounds of recursive functions
 
 For a tail loop, the bound equation sums native per-step charges with `Verified.Tail.costAt` over the proof-derived rank plus one.  The charges come from the ordinary expression-bound builder with a continuing call charged at zero.  A loop whose steps allocate nothing has bound 0 without evaluating its rank.  A loop that calls guarded code also has a frames equation expressed by `Verified.Tail.fitsAt`: each iteration checks its callees at the same available depth.  [The tail example](../Verified/Examples/Tail.lean) proves a zero allocation bound and includes a guarded callee.
 

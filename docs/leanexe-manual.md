@@ -2,15 +2,15 @@
 
 This manual describes the LeanExe compiler, `leanexe_compile`: the Lean dialect that it accepts, the commands that compile and run a program, the theorems that a proof establishes and the rules that build them, the tests, and the examples.  Statements about the dialect follow [the compiler's translation rules](../LeanExe/Compiler/Scalar.lean), and the quoted error messages are the compiler's.  [The verified compiler manual](verified-manual.md) describes the repository's other compiler, whose one theorem covers every program it accepts, and [the README](../README.md) compares the two.  [The design document](design.md) gives the design, its decisions, and the open work, and [the development journal](../devnotes.md) explains why each part has its present form.
 
-## Overview
+## Compiler, theorems, and trusted base
 
-### What the compiler does
+### Compilation and per-function proofs
 
 The LeanExe compiler translates Lean functions written in a restricted dialect to WebAssembly.  A proof per compiled function, built from proved rules, establishes that the bytes compute the Lean function.  The compiler runs during elaboration, reads a definition's unfolding equation, and produces a function of a small intermediate language (IR) together with hints for the prover.  `compile` ([`LeanExe/IR/Function.lean`](../LeanExe/IR/Function.lean)) translates a list of IR functions to a `Wasm.Module` of Talos, a WebAssembly interpreter written in Lean, and `Wasm.Encoding.encode` produces the bytes.  A proof per function establishes `Implements`, and `decode_encode` gives the same theorem for the module that the decoder reads back from the bytes.
 
 The compiler is untrusted.  It emits the IR as a Lean definition and the module as `compile` applied to that definition, so a wrong translation makes a proof fail and cannot produce a false theorem.  The project proves the compiler's rules one at a time as lemmas about the compiled code of IR templates, such as `Func.tail_implements` for tail recursion and `Stmt.loop_spec` for `LeanExe.loop`, and a proof that applies a proved rule omits what the rule covers.  Entries of [the LTG knowledge base](../ltg/README.md) describe the proved rules and the methods that apply them, and [the design document's open work](design.md#open-work) lists the rules that have no entry.
 
-### What the theorems state
+### The statement of `Implements`
 
 `Implements m k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)) states that entry `k` of module `m` computes `f`.  From any store that satisfies the allocator invariant `Heap.At`, with argument values that represent an input `x`, consumed blocks that are pairwise disjoint and apart from the memory the call reads, and a memory cap of at most 65,535 pages, every run either traps at `unreachable` or returns values that represent `f x` and that the caller owns.  After a return the allocator invariant holds again and the memory's maximum size is unchanged.  Every region of the heap that lay below `top`, outside the free blocks, and apart from the consumed blocks keeps its bytes, remains such a region, and lies apart from the result, so a caller keeps the arrays and trees it holds across a call.
 
@@ -402,7 +402,7 @@ A Lean file with a `main` runs natively with `tools/leanrun --timeout 10m lake e
 
 ### WGSL kernels and the browser pages
 
-The LeanExe compiler has a GPU path for binary32 kernels.  [`LeanExe/WGSL/`](../LeanExe/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Examples/Gpt32/`](../Examples/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
+[`LeanExe/WGSL/`](../LeanExe/WGSL/) defines a WGSL subset with a printer, a parser proved to invert it, a semantics, and a proved translation of IR builds into kernels, and [`Examples/Gpt32/`](../Examples/Gpt32/) proves GPT-2's binary32 kernels and the host program of a generation step (`generate_host`), under a device model with strict binary32 arithmetic, race-free dispatch, and no dynamic errors.  [`tools/EmitWgsl.lean`](../tools/EmitWgsl.lean) prints a kernel after checking that the parser reads the text back as the kernel, and [`tools/build-webgpu-host.sh`](../tools/build-webgpu-host.sh), after [`tools/download-wgpu-native.sh`](../tools/download-wgpu-native.sh), builds `build/tools/leanexe-webgpu-host`.
 
 `uv run tests/web/serve.py` serves two pages on http://127.0.0.1:8000/.  The kernel page runs the WGSL kernel cases on the browser's WebGPU and compares every word with native Lean's, and the GPT-2 page runs GPT-2 124M in binary32 with its kernels on WebGPU, in `gpt32.wasm`, or on both with their scores compared.  The GPT-2 page needs the weights that `uv run tests/gpt32/generate.py --export` writes, and [the description of the pages](../tests/web/README.md) covers the setup, the controls, and what is proved about the pages.
 
@@ -414,7 +414,7 @@ The LeanExe compiler has a GPU path for binary32 kernels.  [`LeanExe/WGSL/`](../
 |---|---|
 | `Runs aborts env m k store args P` | Every run of entry `k` with enough fuel returns values satisfying `P` or, when `aborts`, traps at `unreachable`.  `ReturnsOrAborts` is `Runs true`. |
 | `TripleA aborts m s scratch P R` | From any store and IR state satisfying `P`, the compiled code of statement `s` ends in a store and state satisfying `R` or, when `aborts`, traps.  `Triple` is `TripleA true`. |
-| `Implements m k f` | The statement of the [overview](#what-the-theorems-state), with a trap allowed. |
+| `Implements m k f` | The statement [above](#the-statement-of-implements), with a trap allowed. |
 | `ImplementsPureA aborts m k f` | For scalar arguments and results: from any store, the call returns the values of `f x` and leaves the store unchanged, or traps when `aborts`.  `ImplementsPure` is the `true` case, and `ImplementsPure.implements` derives `Implements`. |
 | `ImplementsA aborts m k f Pre Post` | `Implements` with the abort flag, a precondition `Pre x heap store`, and a postcondition `Post x heap store heap' final`.  `ImplementsA.implements_of` derives `Implements` from `ImplementsA true` when `Pre` always holds. |
 | `Satisfies m k P Q` | For inputs satisfying `P`, the call traps or returns an owned `y` with `Q x y`.  `Implements.transfer` derives it from `Implements` and `∀ x, P x → Q x (f x)`. |
@@ -477,7 +477,7 @@ theorem gcd_bytes : ∃ bytes, Wasm.Encoding.encode gcd.module = .ok bytes ∧
 
 ### Source-level theorems
 
-A property of the Lean function becomes a property of the bytes through `Implements`: `Implements.transfer` turns a proof of `∀ x, P x → Q x (f x)` into `Satisfies`, and a bytes theorem may conjoin the property directly.  The source theorems are ordinary Lean proofs about the definitions in [`Examples`](../Examples/), with no reference to WebAssembly.  The examples prove the following.
+A property of the Lean function becomes a property of the bytes through `Implements`: `Implements.transfer` turns a proof of `∀ x, P x → Q x (f x)` into `Satisfies`, and a bytes theorem may conjoin the property directly.  The source theorems are ordinary Lean proofs about the definitions in [`Examples`](../Examples/), with no reference to WebAssembly.
 
 | Theorem | Statement |
 |---|---|
@@ -558,7 +558,7 @@ uv run tests/modules/chunks.py
 
 [`tests/modules/chunks.py`](../tests/modules/chunks.py) runs a stream of CLOB commands three ways in host sessions, through `runCommands`, through calls over chunks, and one command at a time, and checks that the books agree.  Whether an insert or an append grows its array depends on the capacity that the allocator gave its block, which differs between sessions, so the script checks that exactly the results and the command arrays stay allocated.  It does the same for `runOut` and `stepCommand`, which also append the best bid after each command to an output array.
 
-### Other comparisons
+### GPT, PRNG, drone, and Euler tests
 
 | Command | Comparison |
 |---|---|
@@ -641,7 +641,7 @@ The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE
 
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
 
-### Procedures
+### Repository rules and iterative development
 
 [The repository instructions](../AGENTS.md) set the procedures that bind agents in this repository: the runner and its limits, the approval boundaries for repository drivers, and the handling of LTG entries.  [The style guide](../CLAUDE.md) sets the style of prose, comments, and commit messages.  Python tools declare their dependencies as PEP 723 metadata and run with `uv run`.
 

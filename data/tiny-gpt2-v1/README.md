@@ -1,7 +1,7 @@
 # Four-byte GPT-2 checkpoint and inference
 
 This record describes a run of the earlier system, made with its compiler and proofs.  Its links to
-source files point to commit `eef07963`, the last commit of that system, and its commands run only
+source files point to the last commit of that system, and its commands run only
 at that commit.  [The LeanExe compiler manual's list of
 examples](../../docs/leanexe-manual.md#worked-examples) describes the current system's GPT-2
 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
@@ -65,8 +65,7 @@ comparisons, with its [execution proof](https://github.com/jsmorph/leanexe/blob/
 
 ## Training record
 
-The corpus is [Tiny Shakespeare from char-rnn](https://github.com/karpathy/char-rnn/blob/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt),
-at revision `6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e`.
+The corpus is [Tiny Shakespeare from char-rnn](https://github.com/karpathy/char-rnn/blob/6f9487a6fe5b420b7ca9afb0d7c078e37c1d1b4e/data/tinyshakespeare/input.txt).
 Its 1,115,394 bytes have SHA-256
 `86c4e6aa9db7c042ec79f339dcb96d42b0075e16b8fc2e86bf0ca57e2dc565ed`.
 Training uses the first 1,003,854 bytes.  Validation uses the remaining

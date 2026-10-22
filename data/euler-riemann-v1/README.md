@@ -1,6 +1,6 @@
 # A four-state Euler Riemann problem
 
-This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
 This calculation evolves the four-quadrant problem from the [Lanyon Euler article](https://lanyon.ai/research/euler-equations/) to time 0.8 on a 192 × 192 grid.  LeanExe compiles the numerical kernels from Lean to WebAssembly.  The final density and pressure fields show the interaction of shocks launched by the initial discontinuities.
 
@@ -53,7 +53,7 @@ Lean checks exact-byte execution and accepted-state safety for all three numeric
 
 The [summary](summary.json) records settings, artifact and source hashes, diagnostics, and data hashes.  [Final cell values](cells.csv), [timestep history](history.csv), and the [compressed raw record](raw.json.gz) include 21 density/pressure snapshots and the complete final conservative state.
 
-The commands in this section use [publication revision 4f0ec1f](https://github.com/jsmorph/leanexe/commit/4f0ec1f161b81a868aac241b248651ca7423bac1), which contains the generators identified by the summary's source hashes.  With the repository's pinned Node 24.13.0, this command replays the saved run and compares all four canonical data files byte for byte:
+The commands in this section use [the publication revision](https://github.com/jsmorph/leanexe/commit/4f0ec1f161b81a868aac241b248651ca7423bac1), which contains the generators identified by the summary's source hashes.  With the repository's pinned Node 24.13.0, this command replays the saved run and compares all four canonical data files byte for byte:
 
 ```sh
 tools/leanrun --timeout 10m node tools/euler-riemann-data.mjs check

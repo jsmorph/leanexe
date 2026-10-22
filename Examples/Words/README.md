@@ -1,13 +1,13 @@
 # Words: a list type declared by the program
 
-## What it is
+## Three functions on `Words`
 
 [The program](Program.lean) declares `Words`, a list of words with the constructors `nil` and
 `cons`, and three functions on it.  `Words.first` returns the first word or 0, `Words.sumAcc` adds
 the words to an accumulator by tail recursion, and `Words.range n` builds the words below `n` with a
 loop.  [The module definition](Module.lean) compiles the three into the 1,648-byte `words.wasm`.
 
-## What it shows
+## Record layout and tail recursion over records
 
 A user recursive type with one constructor without fields and one with fields gets the record layout
 of `List UInt64`: `nil` is the null pointer, and `cons x w` is a record of two slots.  The program
@@ -30,7 +30,7 @@ manual](../../docs/leanexe-manual.md#records-and-user-types) gives the rules for
 Its [section on representations](../../docs/leanexe-manual.md#representations) describes `Encode`
 and `EncodeSlotted`.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Words.Verify

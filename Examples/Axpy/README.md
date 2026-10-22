@@ -1,6 +1,6 @@
 # Axpy: binary64 arithmetic bit for bit
 
-## What it is
+## `a * x + y` with two roundings
 
 [The program](Program.lean) computes `a * x + y` on Lean `Float` values, IEEE 754 binary64, with two
 roundings: one after the product and one after the sum.  The name comes from the BLAS routine
@@ -8,7 +8,7 @@ roundings: one after the product and one after the sum.  The name comes from the
 `axpy` into the 1,370-byte `axpy.wasm`, which exports `axpy` with three `f64` parameters and an
 `f64` result.
 
-## What it shows
+## Lean's bit pattern for every input
 
 The theorem states that the module returns the bit pattern of Lean's result for every input,
 including NaN, the infinities, signed zeros, and subnormal values.  ProofKit proves that Lean's
@@ -28,7 +28,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 describes the binary64 equality proofs and the three places where Lean's and WebAssembly's float
 operations differ.  None of the three occurs in this program.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Axpy.Verify

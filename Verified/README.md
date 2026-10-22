@@ -327,7 +327,7 @@ includes owned growth, rotation, replacement, aliases, and calls between tail an
 proof-named conditionals, destructuring, and borrowed pair and record states.  The native step
 uses the existing field-normalization pass, so the termination proof sees native record fields.
 
-## The theorem
+## Theorem statement, allocation bounds, and tables
 
 [`ArgsCorrect.lean`](ArgsCorrect.lean) proves argument evaluation, release after a call, and
 parameter-potential accounting independently of universal expression correctness.  The generic

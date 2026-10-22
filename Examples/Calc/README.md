@@ -1,6 +1,6 @@
 # Calc: an enumeration and a structure
 
-## What it is
+## A calculator over `Op` and `Calc`
 
 [The program](Program.lean) is a calculator over two user-defined types: the enumeration `Op` of
 four word operations and the structure `Calc` of a value, a step count, and the last operation.
@@ -9,7 +9,7 @@ four word operations and the structure `Calc` of a value, a step count, and the 
 last addition or subtraction.  [The module definition](Module.lean) compiles the six functions into
 the 1,913-byte `calculator.wasm`.
 
-## What it shows
+## Structures in locals and enumerations as words
 
 The compiler keeps a structure in locals, one per field, passes it as several arguments, and returns
 it as several results, so `Calc.step` takes five words and returns three.  An enumeration is the
@@ -30,7 +30,7 @@ manual](../../docs/leanexe-manual.md#records-and-user-types) describes the repre
 types.  Its [section on representations](../../docs/leanexe-manual.md#representations) describes the
 `Flat` class.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Calc.Verify

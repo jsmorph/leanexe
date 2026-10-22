@@ -1,6 +1,6 @@
 # Drone: terrain-following flight plans
 
-## What it is
+## The planning problem
 
 The drone planner computes a flight over up to 64 stations of terrain, 100 units apart, with heights
 from 0 to 1,000,000.  At each station the drone is in one of 45 states, 9 altitudes 25 apart above
@@ -10,7 +10,7 @@ altitude and speed at each station, from rest on the ground at the first station
 ground at the last.  The proofs show that the module's bytes compute the planner and that its
 flights are optimal and safe.
 
-## What it shows
+## Implementation and theorems
 
 [The planner](Program.lean) uses `UInt64` words and counted loops throughout: the square root takes
 17 halvings, a row is a build over the 45 targets of loops over the 45 sources, the forward pass
@@ -30,7 +30,7 @@ concerns the ideal point-mass model of [the drone verification
 report](../../paper/drone-verification-report/README.md).  The allocator state of the total theorem
 is a hypothesis, which no theorem connects to the module's instantiation.
 
-## Running it
+## Building, running, and testing
 
 [`tests/drone/oracle.sh`](../../tests/drone/oracle.sh) ran a reference implementation of the
 planner natively and saved 116 terrains with its output in
