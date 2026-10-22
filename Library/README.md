@@ -61,13 +61,16 @@ arithmetic, default reads from short arrays, and floating-point exceptional case
 ## Builds and tests
 
 ```sh
+tools/source-layout
+tools/check-doc-links.mjs
 tools/leanrun --timeout 30m lake build Library.Native
 tools/leanrun --timeout 30m lake build Library.Sorting.Insertion.Compiled
 tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library
 tests/verified/run.sh
 ```
 
-The first command builds the native definitions.  The full library build includes the numerical
+The static checks cover import boundaries, registry paths, and local documentation links.
+`Library.Native` builds the native definitions.  The full library build includes the numerical
 proofs, whose lgamma root-range proofs use a 10 GiB memory high limit and a 12 GiB maximum.  The
 test driver reads the checked module registries, emits and validates the modules, compares their
 cases with native Lean, and checks numerical file theorems and accuracy tests.  [The full-check

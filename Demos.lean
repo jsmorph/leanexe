@@ -80,8 +80,3 @@ import Demos.Gpt32.Kernels
 import Demos.Gpt32.Module
 import Demos.Gpt32.Proofs
 import Demos.Gpt32.Specs
-import Demos.Gpt.Verified
-import Demos.Gpt32.VerifiedHost
-import Demos.Euler.Verified
-import Demos.Clob.Verified
-import Demos.Drone.Verified

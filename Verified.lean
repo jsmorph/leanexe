@@ -99,3 +99,4 @@ import Verified.Examples.Recursion
 import Verified.Examples.Fields
 import Verified.Examples.Insert
 import Verified.Examples.Tables
+import Demos.Verified
