@@ -1,5 +1,6 @@
 import Library.Numerics.Arithmetic.PrimeFactors.Program
 import Library.Numerics.Arithmetic.PrimeFactors.Spec
+import Mathlib.Tactic.IntervalCases
 
 namespace Library.Numerics.Arithmetic.PrimeFactors
 
