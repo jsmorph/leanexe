@@ -1,35 +1,35 @@
 # Transcendental functions
 
-This document records the numerical work through 2026-10-15.  Commit `04dd39f6` merged it with `verified` into `main`, as [the integration journal](devnotes.md#2026-10-16-integrating-the-two-compilers) records.  [The numerical index](index.md) lists the current algorithms and proved domains.  The track assignments and machine instructions below describe the branch work at that date.  Current build and test commands are in [the verified compiler manual](docs/verified-manual.md).
+This document records the numerical work through 2026-10-15, and [the integration journal](devnotes.md#2026-10-16-integrating-the-two-compilers) describes its integration with the rest of the repository on 2026-10-16.  [The numerical index](index.md) lists the current algorithms and proved domains.  The track assignments below describe the work at that date.  Current build and test commands are in [the verified compiler manual](docs/verified-manual.md).
 
-At the close of the branch work, the primary checkout was `somebody@minideb1:/home/somebody/src/leanexe-transcendentals`, on branch `transcendentals`, based on `verified` at `14c863ff89afdc50755a30aa0bd3cb7914554255`.  The theorems for `exp`, `log`, `sin`, `cos`, `exp2`, `exp10`, `log2`, `log10`, `expm1`, `tanh`, `log1p`, `atan`, `atan2`, `asin`, `acos`, `tan`, `erf`, `sinh`, `cosh`, `sinpi`, `cospi`, `tanpi`, `asinh`, `acosh`, `atanh`, `pow`, `tgamma`, `lgamma`, and CORE-MATH's `erfc` are proved and committed, each for the Lean function and the compiled module.  `transcendentals` also proves `j0`, `j1`, `y0`, and `y1` within their bounds for the Lean functions and the compiled module, `jn` and `yn` for the Lean functions and the compiled module outside the range `2 ≤ |x| < 2^302` with `|n| > |x|/2`, the software fused multiply-add bit for bit, and Lean's `Float.ofScientific` and `Float32.ofScientific` correctly rounded for every input.  The string conversions are proved for the Lean functions and the compiled modules: the parsers `parse64` and `parse32` round every number of their grammars correctly ([the parser document](Verified/Examples/ParseFloat.md)), and the printers `print64`, `print64Ecma`, `print32`, and `print32Ecma` write the shortest, then nearest, then even decimal, which the general parser reads back as the word ([the printer document](Verified/Examples/PrintFloat.md)).  Every function of stages 1 to 8 is ported.  The Bessel turning-point range remains open.  The fifth integration changed the reflector's liveness analysis and the ninth its kernel check of the encoding, and the 44 modules that `tests/verified/run.sh` emitted before those changes stay byte-identical.
+On 2026-10-15, the theorems for `exp`, `log`, `sin`, `cos`, `exp2`, `exp10`, `log2`, `log10`, `expm1`, `tanh`, `log1p`, `atan`, `atan2`, `asin`, `acos`, `tan`, `erf`, `sinh`, `cosh`, `sinpi`, `cospi`, `tanpi`, `asinh`, `acosh`, `atanh`, `pow`, `tgamma`, `lgamma`, and CORE-MATH's `erfc` are proved, each for the Lean function and the compiled module.  The work also proves `j0`, `j1`, `y0`, and `y1` within their bounds for the Lean functions and the compiled module, `jn` and `yn` for the Lean functions and the compiled module outside the range `2 ≤ |x| < 2^302` with `|n| > |x|/2`, the software fused multiply-add bit for bit, and Lean's `Float.ofScientific` and `Float32.ofScientific` correctly rounded for every input.  The string conversions are proved for the Lean functions and the compiled modules: the parsers `parse64` and `parse32` round every number of their grammars correctly ([the parser document](Verified/Examples/ParseFloat.md)), and the printers `print64`, `print64Ecma`, `print32`, and `print32Ecma` write the shortest, then nearest, then even decimal, which the general parser reads back as the word ([the printer document](Verified/Examples/PrintFloat.md)).  Every function of stages 1 to 8 is ported.  The Bessel turning-point range remains open.  Changes to the reflector's liveness analysis and to its kernel check of the encoding left the 44 modules that `tests/verified/run.sh` emitted before them byte-identical.
 
 Opus replaced GPT on 2026-10-09 and completed the full exponential theorem, `ExpTheorem.exp_bytes_accuracy`, which covers every finite binary64 input and the decoded WebAssembly bytes.  The sections below on GPT's failure remain as the record the user requested.  On 2026-10-10 the user directed the work on all the remaining functions and delegated the open decisions, which [the journal](devnotes.md#2026-10-10-plan-for-the-remaining-functions) records with the division of the work.
 
 ## Resuming the work
 
-The user paused the proof work on 2026-10-12 and resumed it the same day with one agent per track.  On 2026-10-13 the user stopped the agents, and the work continues serially in the coordinating session, one track at a time, in the same worktrees and branches.  The dated sections of `devnotes.md` record each track's results.  The integration branch is `transcendentals` in `/home/somebody/src/leanexe-transcendentals` on minideb1, pushed to `github.com/jsmorph/leanexe`.  minideb2's `/home/somebody/src/leanexe-transcendentals-proofs` and debtop1's `/home/somebody/src/lt-debtop` follow it by fast-forward from Git bundles.
+The user paused the proof work on 2026-10-12 and resumed it the same day with one agent per track.  On 2026-10-13 the user stopped the agents, and the work continues in the coordinating session, one track at a time.  The dated sections of `devnotes.md` record each track's results.
 
 ### State of each track
 
-| Track | Machine and worktree | Branch tip | Accepted and not yet merged | Next steps |
-|---|---|---|---|---|
-| `trig` | debtop1, `/home/somebody/src/lt-exp2`, branch `w/trig` from `23f48738` | `2b55a627` | none | `ErfcTheorem.erfc_within_one` proves one step for CORE-MATH's `erfc` at every finite input, and `ErfcBytes.erfc_bytes_accuracy` carries it to the compiled module (tenth integration).  The track has no further assignment. |
-| `log` | minideb1, `/home/somebody/src/lt-log` | `a712bf7c` | none | `BesselJnTheorem.jn_accuracy` and `BesselYnTheorem.yn_accuracy` prove `jn` and `yn` outside `2 ≤ \|x\| < 2^302` with `\|n\| > \|x\|/2`, `yn` with the band near overflow stated as decided (`yn_overflow` from `2^1025` on), in the integration checkout.  `BesselNSpecial` states their exceptional results, and `BesselBytes` their byte theorems.  The feasibility analysis is in `Bessel.md`.  The proof of the turning-point range became a separate project on 2026-10-15. |
-| `arc` | minideb2, `/home/somebody/src/lt-poly` | `8f102eaa` | none | `tgamma` is complete: `TgammaWithin.tgamma_within` for the Lean function, `TgammaBytes.tgamma_bytes_accuracy` for the compiled module (tenth integration), and `TgammaFile` for the file.  The track has no further assignment. |
-| `expm1` | minideb2, `/home/somebody/src/lt-expm1` | `8bd03e12` | none | `LgammaWithin.lgamma_within` proves `lgamma` within one step at every finite input other than the poles, and `LgammaBytes.lgamma_bytes_accuracy` carries it to the compiled module (eleventh integration).  The track has no further assignment. |
-| `exp2` | none | `eb0c038b` | none | `pow` is complete.  The track has no further assignment, and its worktree holds `w/trig`. |
-| `erf` | debtop1, `/home/somebody/src/lt-erf` | `17e819ba` | none | `LgammaFacts.allFacts` proves the thirteen approximation facts of `lgamma`.  The track has no further assignment. |
-| `ports` | minideb1, `/home/somebody/src/leanexe-transcendentals`, branch `w/perfun` | see the journal | none | The kernel check per function is done (journal of 2026-10-14), and the track has no further assignment. |
-| `strconv` | minideb1, `/home/somebody/src/leanexe-transcendentals` | see the journal | none | Stage 4 is complete in the integration checkout: `PrintFloatTheorem` proves the theorems of the printers' specification, and `PrintFloatBytes` and `PrintFloatFile` carry them to the compiled module (journal of 2026-10-15).  The track has no further assignment. |
-| `docs` | minideb1, `/home/somebody/src/lt-docs` | `46f239d5` | none | The work of each track updates its documents with each accepted theorem. |
+| Track | Result |
+|---|---|
+| `trig` | `ErfcTheorem.erfc_within_one` proves one step for CORE-MATH's `erfc` at every finite input, and `ErfcBytes.erfc_bytes_accuracy` carries it to the compiled module.  The track has no further assignment. |
+| `log` | `BesselJnTheorem.jn_accuracy` and `BesselYnTheorem.yn_accuracy` prove `jn` and `yn` outside `2 ≤ \|x\| < 2^302` with `\|n\| > \|x\|/2`, `yn` with the band near overflow stated as decided (`yn_overflow` from `2^1025` on).  `BesselNSpecial` states their exceptional results, and `BesselBytes` their byte theorems.  The feasibility analysis is in `Bessel.md`.  The proof of the turning-point range became a separate project on 2026-10-15. |
+| `arc` | `tgamma` is complete: `TgammaWithin.tgamma_within` for the Lean function, `TgammaBytes.tgamma_bytes_accuracy` for the compiled module, and `TgammaFile` for the file.  The track has no further assignment. |
+| `expm1` | `LgammaWithin.lgamma_within` proves `lgamma` within one step at every finite input other than the poles, and `LgammaBytes.lgamma_bytes_accuracy` carries it to the compiled module.  The track has no further assignment. |
+| `exp2` | `pow` is complete, and the track has no further assignment. |
+| `erf` | `LgammaFacts.allFacts` proves the thirteen approximation facts of `lgamma`.  The track has no further assignment. |
+| `ports` | The kernel check per function is done (journal of 2026-10-14), and the track has no further assignment. |
+| `strconv` | Stage 4 is complete: `PrintFloatTheorem` proves the theorems of the printers' specification, and `PrintFloatBytes` and `PrintFloatFile` carry them to the compiled module (journal of 2026-10-15).  The track has no further assignment. |
+| `docs` | The work of each track updates its documents with each accepted theorem. |
 
 ### Decisions not yet completed
 
 | Item | Decision |
 |---|---|
-| Slow `verified_compile` | The cost is the kernel's evaluation of the code generator in the `decide +kernel` proof that `encode p.module` succeeds: `Expr.code` in `Verified/Compile.lean` keeps the live variables as a chain of closures, so each query re-runs the chain and `Expr.uses` over the rest of the function, at least cubic in the nesting depth of lets.  Decided: compute liveness as data (a `Nat` bitmask per subexpression or an equivalent value), repair the proofs in `Verified/Correct.lean`, and keep fix 1 as a separate commit.  Acceptance: probes at 10 to 40 lets growing about linearly; `lake build Verified` passing; every module that `tests/verified/run.sh` emits byte-identical to the current output; every theorem module building; build times of `Repeat`, `Trig`, `Exp`, and `Log` before and after.  The ported functions are not to be split.  The fifth integration merged the change (`a95ae82b`, `baaadb36`).  The kernel's check that a module encodes then limited `Tgamma`, `Lgamma`, `Bessel`, and the `erfc` module: it evaluates the code generator and the encoder at about 8 to 10 KB per list step.  Decided by the user: a memory option in `tools/leanrun` now, then a check per function.  `tools/leanrun --memory-high SIZE` (`2d2a4940`) sets the limit, and with the repair of the reflector's match equations (`60dc3383`) the four modules compile in 109 to 159 s at 4.5 to 7.1 GB of anonymous memory each, so the integration build uses `--memory-high 8G`.  The check per function (journal of 2026-10-14) bounds each kernel check by one function or one other part of the module: the four modules build at 1.0 to 2.7 GB, and their file theorems check at 0.9 to 1.3 GB, under the runner's default 4 GB. |
-| `erfc` | CORE-MATH's `erfc` with the software fused multiply-add, one step, replacing fdlibm's.  The port is merged and checked, `ErfcTheorem.erfc_within_one` proves the bound for the Lean function, and `ErfcBytes.erfc_bytes_accuracy` proves it for the compiled module.  The `Erf` module exported fdlibm's `erfc` without a theorem until 2026-10-15, when it was removed, and `ErfcNonfinite` states the results of CORE-MATH's `erfc` at the infinities and NaNs. |
+| Slow `verified_compile` | The cost is the kernel's evaluation of the code generator in the `decide +kernel` proof that `encode p.module` succeeds: `Expr.code` in `Verified/Compile.lean` keeps the live variables as a chain of closures, so each query re-runs the chain and `Expr.uses` over the rest of the function, at least cubic in the nesting depth of lets.  Decided: compute liveness as data (a `Nat` bitmask per subexpression or an equivalent value), repair the proofs in `Verified/Correct.lean`, and keep fix 1 as a separate commit.  Acceptance: probes at 10 to 40 lets growing about linearly; `lake build Verified` passing; every module that `tests/verified/run.sh` emits byte-identical to the current output; every theorem module building; build times of `Repeat`, `Trig`, `Exp`, and `Log` before and after.  The ported functions are not to be split.  That change is complete.  The kernel's check that a module encodes then limited `Tgamma`, `Lgamma`, `Bessel`, and the `erfc` module: it evaluates the code generator and the encoder at about 8 to 10 KB per list step.  Decided by the user: a memory option in `tools/leanrun` now, then a check per function.  `tools/leanrun --memory-high SIZE` sets the limit, and with the repair of the reflector's match equations the four modules compile in 109 to 159 s at 4.5 to 7.1 GB of anonymous memory each, so a build of the whole library then used `--memory-high 8G`.  The check per function (journal of 2026-10-14) bounds each kernel check by one function or one other part of the module: the four modules build at 1.0 to 2.7 GB, and their file theorems check at 0.9 to 1.3 GB, under the runner's default 4 GB. |
+| `erfc` | CORE-MATH's `erfc` with the software fused multiply-add, one step, replacing fdlibm's.  The port is compiled and checked, `ErfcTheorem.erfc_within_one` proves the bound for the Lean function, and `ErfcBytes.erfc_bytes_accuracy` proves it for the compiled module.  The `Erf` module exported fdlibm's `erfc` without a theorem until 2026-10-15, when it was removed, and `ErfcNonfinite` states the results of CORE-MATH's `erfc` at the infinities and NaNs. |
 | Bessel unit | `c · 2^-53 · √(J² + Y²)` with `c` set by the proof, and `WithinSteps n` where the modulus form fails near underflow or overflow, as for `y1` below about `2^-54`.  `jn` and `yn` use `a + b \|n\|` in place of `c`, and their accuracy check enforces `4 + \|n\|/3`. |
 | `jn` and `yn` | The form `a + b \|n\|` holds on every path by the analysis of 2026-10-12, but the range `2 ≤ \|x\| < 2^302` with `\|n\| > \|x\|/2` needs an upper bound on `√(J_k² + Y_k²)` through the turning point `k = x`, which no current module gives.  Decided: prove the other ranges now, with that range excluded by an explicit hypothesis and recorded as open, and decide on a turning-point bound after a feasibility analysis.  Near overflow `yn` forms `λ_(n-1) \|Y_(n-1)\|`, which can exceed the largest double while `Y_n(x)` rounds to a finite one, so the port, like fdlibm and glibc, returns `-∞` on part of the band `2^1023 < \|Y_n(x)\| < 2^1025` (for example `n = 171`, `x = 0x1.f324ae2682cfdp+0`).  Decided: state that band as a disjunction, the result is `-∞` or it is finite and within the bound, and record the deviation.  The port stays faithful to fdlibm.  `BesselJnTheorem.jn_accuracy`, `BesselYnTheorem.yn_accuracy`, and `yn_overflow` prove the other ranges with the band as decided.  The feasibility analysis in [the Bessel document](Verified/Examples/Bessel.md#feasibility-of-a-bound-through-the-turning-point) finds the open range provable: Nicholson's integral gives `J_k² + Y_k² ≤ 2/(π √(x² - k²))` for `k < x` and bounds the weights at the turning point, and its proof needs `K₀` and Nicholson's integral, which neither ProofKit nor Mathlib provides.  Decided on 2026-10-15: the proof of that range becomes a separate project, and the theorems keep the range as an explicit hypothesis. |
 | String conversion | The user accepted the fourteen recommendations of the research report of 2026-10-12, which the journal entry of that day lists: exact big-integer `uscale` (Cox, 2026) for both directions, correct rounding for any input length, shortest-then-nearest-then-even output, strings as one byte per word, and a theorem about Lean's `Float.ofScientific`.  The parsers and the printers are complete, with the theorems of their documents proved for the Lean functions and the compiled modules. |
@@ -38,19 +38,13 @@ The user paused the proof work on 2026-10-12 and resumed it the same day with on
 
 The corrections that the documentation review of 2026-10-12 listed in Lean sources were made on 2026-10-15, as [the journal](devnotes.md#2026-10-15-the-corrections-of-the-documentation-review-coordinating-session-minideb1) records.  The module docstrings of the ported functions quote the notices of their source files verbatim, the bounds and statements that the review found wrong in docstrings match the proofs and the code, `AtanTwoNaN.atan2_nan` states the result of `atan2` at a NaN, and the Python scripts in `tools/arc/asin` carry the PEP 723 header.  The function documents describe the corrected sources, and a check of their links and module names found no stale reference.
 
-### How to resume
-
-The rules for the work on each track are in `/home/somebody/src/machines/work/worker-rules.md` on the workstation, and each track's scratch directory is `/home/somebody/src/machines/work/w-<track>`.  Working files stay out of `/tmp` on every machine, and the workstation's `~/src/leanexe` is not touched.  `tools/leanrun` admits one Lean process per machine.  Each build of a proof module has a timeout of at most 20 minutes, and a build at `memory.high` with little CPU is stopped and its module divided.  Equations about Float computations are proved with `simp only` and the `F64Bits` bridge lemmas, never by `rfl` or `decide` that unfolds the IEEE operations.  Each accepted theorem comes with the update of its function's document in the same commit.  Work on a track starts by checking its worktree and logs and merging `transcendentals`, then continues from the next steps above, and the dated sections of each track in `devnotes.md` hold the details.
-
-Integration on minideb1 merges a branch with `build/transcendentals/opus-merge-one.sh COMMIT MESSAGE`, which resolves journal conflicts by union.  It then adds imports to `LeanExe.lean` and `Verified.lean` and the run.sh entry, builds `LeanExe Verified` with `--memory-high 10G`, which the root ranges of `lgamma` need, runs `tests/verified/run.sh` with `LEANRUN_LOCK_TIMEOUT=7200`, commits, and pushes from `/home/somebody/src/machines/leanexe-push/repo` with `gh`'s credentials given to the push command only.  Only minideb1 has `wasm-tools` and the Wasmtime host that `tests/verified/run.sh` needs.  A message to a background agent that is waiting on its own background work can start a second copy of the agent from an old summary, as happened on track `erf` on 2026-10-12, so no agent is messaged in that state.
-
 ## Failure to deliver the requested theorems
 
 The user ended GPT's work on 2026-10-09 after the session consumed their day and left the first full-domain numerical theorem unfinished.  The required result was a proved error bound for every finite binary64 input to the existing exponential, exact exceptional-value results, and composition with the Verified compiler and decoded-byte theorem.  The user approved at most one representable step from nearest-even rounding of the exact real exponential.
 
 ### Work performed and result left behind
 
-The initial instructions covered machine access, public-repository setup, Lean installation, and examples.  I prepared the checkouts, created `transcendentals` from `verified`, built the existing Verified compiler and examples, and ran the baseline implementation checks.  The starting repository already contained `exp`, `log`, `expm1`, `tanh`, `sin`, and `cos`, together with their compiler proofs.  Their implementations and compiler were unchanged during this proof work.
+The initial instructions covered machine access, public-repository setup, Lean installation, and examples.  I set up the repository, built the existing Verified compiler and examples, and ran the baseline implementation checks.  The starting repository already contained `exp`, `log`, `expm1`, `tanh`, `sin`, and `cos`, together with their compiler proofs.  Their implementations and compiler were unchanged during this proof work.
 
 I added a chain of numerical supporting proofs for exponential approximation, constants, table entries, floating-point evaluation, integer selection, reduction, ordinary reconstruction, and rounding references.  The strongest accepted accuracy theorem for the original `Exp.exp` covers finite `abs(x) < 512`.  Supporting reduction results extend through `abs(x) <= 768`.  Special reconstruction bounds stop before final scaling and compensation.  The positive special-path equality identifies the original expression, while its final multiplication's accuracy remains open.
 
@@ -68,24 +62,24 @@ I expanded the proposed function agenda while the first full numerical theorem r
 
 | Failure | Recorded cause and consequence |
 |---|---|
-| Duplicate arithmetic proofs | I wrote order, unsigned-value, positive-finite classification, and adjacent-gap derivations before finding the existing `F64StrictOrder`, `F64OrderComplete`, and `F64Adjacent` results.  I subsequently removed the duplicates and rebuilt the dependent proofs.  See `exp-shared-order-build.log`. |
-| Repeated basic proof-edit errors | Failed runs included wrong addition-inequality orientation, a removed `calc` step, a nonexistent numeral-cast lemma, rational quotients inferred as real expressions, unresolved local definitions, and missing imports.  I repeated the addition-orientation error in reconstruction after encountering it in the coefficient proof.  The journal and approximation, table, integer-selection, and reconstruction logs record these edits and reruns. |
-| Uncontrolled rewrites and automatic arithmetic | Broad rewrites changed unintended expressions or removed moduli in the wrong order.  Automatic arithmetic reached recursion or heartbeat limits.  Targeted identities and explicit inequalities resolved these failures after additional runs.  Examples include `exp-scale-bits-build.log`, `exp-core-range-build.log`, and `exp-adjusted-scale-build.log`. |
-| Incomplete correction of the shared prefix | After changing the quotient to an existential witness, I removed one stale `dsimp[q]` use and missed another.  The next run failed on the second occurrence.  Both failed shared-prefix logs remain saved. |
-| Missed diagnostics | A scale-encoding journal entry missed two helper diagnostics in truncated output.  The following entry corrected the record and the third build accepted the complete module.  See `exp-scale-encoding-build.log`, `exp-scale-encoding-build-2.log`, and `exp-scale-encoding-build-3.log`. |
-| Positive-branch elaboration stalls | Implicit unfolding and equality matching stalled with excessive memory use.  I terminated stalled processes, and two subsequent combined runs reached three-minute timeouts.  Explicit unfolding, proved guard facts, `ite_true`, and the missing Float integer helper resolved the equality after more attempts.  The original log and numbered `exp-special-positive-core-build` logs preserve the failures. |
-| Unprepared minideb2 diagnostic | I attempted to import `Verified.Examples.Exp` in a checkout lacking its compiled object.  The diagnostic failed before checking its proof.  The minideb2 `build/transcendentals/exp-positive-case-diagnostic.log` records the missing `Exp.olean`. |
+| Duplicate arithmetic proofs | I wrote order, unsigned-value, positive-finite classification, and adjacent-gap derivations before finding the existing `F64StrictOrder`, `F64OrderComplete`, and `F64Adjacent` results.  I subsequently removed the duplicates and rebuilt the dependent proofs. |
+| Repeated basic proof-edit errors | Failed runs included wrong addition-inequality orientation, a removed `calc` step, a nonexistent numeral-cast lemma, rational quotients inferred as real expressions, unresolved local definitions, and missing imports.  I repeated the addition-orientation error in reconstruction after encountering it in the coefficient proof.  The journal records these edits and reruns. |
+| Uncontrolled rewrites and automatic arithmetic | Broad rewrites changed unintended expressions or removed moduli in the wrong order.  Automatic arithmetic reached recursion or heartbeat limits.  Targeted identities and explicit inequalities resolved these failures after additional runs. |
+| Incomplete correction of the shared prefix | After changing the quotient to an existential witness, I removed one stale `dsimp[q]` use and missed another.  The next run failed on the second occurrence. |
+| Missed diagnostics | A scale-encoding journal entry missed two helper diagnostics in truncated output.  The following entry corrected the record and the third build accepted the complete module. |
+| Positive-branch elaboration stalls | Implicit unfolding and equality matching stalled with excessive memory use.  I terminated stalled processes, and two subsequent combined runs reached three-minute timeouts.  Explicit unfolding, proved guard facts, `ite_true`, and the missing Float integer helper resolved the equality after more attempts. |
+| Unprepared diagnostic | I attempted to import `Verified.Examples.Exp` in a copy of the repository that lacked its compiled object, `Exp.olean`.  The diagnostic failed before checking its proof. |
 | Incomplete full-range reduction analysis | The exact high-product lemma assumes an integer magnitude at most 189000.  I established reachable bounds for the restricted proof domains, while the remaining finite regions and their required exactness or rounding arguments stayed open. |
 
-The cold baseline build also spent 1684 seconds in the module `Verified.Examples.Repeat`, as recorded in `verified-baseline-build.log`.  The cause of that module's long build remained unidentified.  This timing is an individual module duration.  The records do not provide a complete allocation of the session's elapsed time.
+The cold baseline build also spent 1684 seconds in the module `Verified.Examples.Repeat`.  The cause of that module's long build remained unidentified.  This timing is an individual module duration.  The records do not provide a complete allocation of the session's elapsed time.
 
 ### Use of the machines and progress reporting
 
-Minideb2 contributed accepted exact-arithmetic, shifted-word, rounding-reference, spacing, and tiny-input proofs.  The recent special-path work ran on minideb1.  Minideb2's sources and compiled imports lagged the integrated checkout, and it was idle at the final status check.  The proposed division of positive scaling and negative compensation across the two machines remained a plan.
+The second machine contributed accepted exact-arithmetic, shifted-word, rounding-reference, spacing, and tiny-input proofs.  Its sources and compiled imports lagged the integrated sources, and it was idle at the final status check.  The proposed division of positive scaling and negative compensation across the two machines remained a plan.
 
 Accepted supporting proofs have their stated hypotheses and the permitted axiom reports.  Their existence establishes those statements.  I overstated their value as delivery of the requested work by making bounded results and passing checks the headline while leaving the full-domain theorem open.  The user rejected that assessment and ended the work.
 
-The execution failures came from my proof edits, duplicated derivations, incomplete diagnostic review, and preparation of the secondary checkout.  The delivery failure came from spending the session developing partial branches and supporting results without completing the final theorem.  The resulting source and logs require review by the replacement agent.  Existing records and failed attempts remain preserved.
+The execution failures came from my proof edits, duplicated derivations, incomplete diagnostic review, and preparation of the second machine.  The delivery failure came from spending the session developing partial branches and supporting results without completing the final theorem.  The resulting source and logs require review by the replacement agent.  Existing records and failed attempts remain preserved.
 
 ## Goals and completion
 
@@ -113,7 +107,7 @@ Nonnegative binary64 encodings order zero, subnormals, normal values, and positi
 
 Separate target equalities cover `exp(+0) = exp(-0) = 1`, `exp(+infinity) = +infinity`, `exp(-infinity) = +0`, and canonical NaN output for NaN input.  The byte theorem must connect these statements and the finite-input bound to the exported `exp` entry, including table initialization and the runtime premises.
 
-## Current status
+## Theorems on 2026-10-15
 
 ### Functions
 
@@ -133,7 +127,7 @@ Separate target equalities cover `exp(+0) = exp(-0) = 1`, `exp(+infinity) = +inf
 | `pow` | [Arm, with `Exp.expTable`](Verified/Examples/Pow.lean) | 1 step | Proved: [the byte theorems](Verified/Examples/PowBytes.lean), `pow_bytes_accuracy`, from `PowTheorem.pow_within`, for every pair of finite arguments with a real value of `x^y`, with the exceptional results of C99 Annex F in `PowSpecial` except two cases of signaling NaNs.  `PowZeroSign.pow_zero_sign` gives the sign of a zero result: `-0` exactly when `x` has its sign bit set and `y` is an odd integer. |
 | `sinpi`, `cospi`, `tanpi` | [fdlibm, calling the `Trig` and `Tan` kernels](Verified/Examples/Sinpi.lean) | 1 step | Proved: [the pi-scaled theorems](Verified/Examples/SinpiTheorem.lean), `sinpi_bytes_accuracy`, `cospi_bytes_accuracy`, and `tanpi_bytes_accuracy`, with exact rules for the integers, half-integers, and poles. |
 | `erf` | [fdlibm, calling `Exp.expWith`](Verified/Examples/Erf.lean) | 1 step | Proved: `ErfTheorem.erf_within_one` and `erf_bytes_accuracy`, with `RealErf` defining `erf` and `erfc`. |
-| `erfc` | [CORE-MATH, with the software fused multiply-add](Verified/Examples/Erfc.lean) | 1 step | Proved: `ErfcTheorem.erfc_within_one`, one step for every finite argument, [the byte theorem](Verified/Examples/ErfcBytes.lean), `erfc_bytes_accuracy`, and `ErfcNonfinite` for the infinities and NaNs.  All 223,592 results of the native check equal the reference (`opus-verified-tests-18.log`).  fdlibm's `erfc` reaches four steps at `0x1.527f4fb0d9331p+0`, and a worst-case analysis of its algorithm cannot prove better than seven or eight. |
+| `erfc` | [CORE-MATH, with the software fused multiply-add](Verified/Examples/Erfc.lean) | 1 step | Proved: `ErfcTheorem.erfc_within_one`, one step for every finite argument, [the byte theorem](Verified/Examples/ErfcBytes.lean), `erfc_bytes_accuracy`, and `ErfcNonfinite` for the infinities and NaNs.  All 223,592 results of the native check equal the reference.  fdlibm's `erfc` reaches four steps at `0x1.527f4fb0d9331p+0`, and a worst-case analysis of its algorithm cannot prove better than seven or eight. |
 | `tgamma`, `lgamma` | [CORE-MATH](Verified/Examples/Tgamma.lean), with [the software fused multiply-add](Verified/Examples/Fma.lean), which `FmaTheorem.fma_toBits` proves equal to IEEE 754's fusedMultiplyAdd | 1 step | Ported, compiled, and checked.  `TgammaFacts.allFacts` proves the approximation facts of `TgammaApprox`.  Proved: the exceptional values of both (`TgammaSpecial`, `LgammaSpecial`), the sign of `lgammaR` (`LgammaSign.lgammaR_sign`), `TgammaWithin.tgamma_within`, which states `Tgamma.tgamma` within one step for every finite argument other than the poles, and [the byte theorem of `tgamma`](Verified/Examples/TgammaBytes.lean), `tgamma_bytes_accuracy`.  `LgammaFacts.allFacts` proves the approximation facts of `LgammaApprox`.  `LgammaWithin.lgamma_within` states `Lgamma.lgamma` within one step for every finite argument other than the poles, and [the byte theorem of `lgamma`](Verified/Examples/LgammaBytes.lean), `lgamma_bytes_accuracy`, carries the bound to the compiled module. |
 | `j0`, `j1`, `y0`, `y1`, `jn`, `yn` | [fdlibm](Verified/Examples/Bessel.lean) | `c · 2^-53 · √(J² + Y²)`, with `c` equal to 10, 12, 11, and 12 for `j0`, `j1`, `y0`, and `y1`, one step for `y1` below about `2^-54`, and `a + b \|n\|` for `jn` and `yn`.  The check measures in units of `2^(⌊log₂ M⌋ - 52)`, between `2^-53 M` and `2^-52 M`, and finds 2.6 to 3.3 units for the four functions and up to `4 + \|n\|/3` for `jn` and `yn`, where `yn` of order 20 reaches 8.793. | Proved for the Lean functions: `BesselJ0Theorem.j0_accuracy`, `BesselJ1Theorem.j1_accuracy`, `BesselY0Theorem.y0_accuracy`, and `BesselY1Theorem.y1_positive`.  `BesselJnTheorem.jn_accuracy` proves `jn` within `(23 + 12 \|n\|) · 2^-53 · √(J_n² + Y_n²)` for every finite `x` except on `2 ≤ \|x\| < 2^302` with `\|n\| > \|x\|/2`, where a proof needs a bound on `√(J_k² + Y_k²)` through `k = x`, and `BesselYnTheorem.yn_accuracy` proves `yn` on the same ranges for every finite `x > 0`: the result is finite and within `(250 + 12 \|n\|) · 2^-53 · √(J_n² + Y_n²)`, or it is the infinity of the sign of `Y_n(x)` and `\|Y_n(x)\| > 2^1023`, and `yn_overflow` makes it that infinity from `2^1025` on.  `BesselNSpecial` proves the exceptional results of `jn` and `yn`.  The module compiles, and `BesselBytes` proves the byte theorems of all six functions (`bessel_module_accuracy`).  `BesselFile` states the file theorem. |
 
@@ -154,7 +148,7 @@ The generated compiler theorems establish that the compiled module computes each
 | `abs(a) ≥ 1024`, finite | the products `2^769 · 2^769` and `2^-767 · 2^-767` | `ExpTheorem.saturated_bits` |
 | zeros, infinities, NaN | `1 + x` and the `-∞` test | `ExpTheorem.exp_pos_zero` through `exp_nan` |
 
-The root `Verified` import now reaches the exponential theorem through other numerical proofs, and `LeanExe.lean` imports the shared ProofKit modules.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, the from-source rebuild on minideb2, and the failures along the way.
+The root `Verified` import now reaches the exponential theorem through other numerical proofs, and `LeanExe.lean` imports the shared ProofKit modules.  `tools/leanrun --timeout 30m lake build Verified.Examples.ExpTheorem` builds the final theorem and every module it depends on.  After `tests/verified/run.sh` writes `build/verified/exp.wasm`, `tools/leanrun --timeout 10m lake env lean Verified/Examples/ExpFile.lean` checks the file theorem.  `tests/verified/run.sh` runs both checks after it writes the modules, and it fails unless `exp_file` and `exp_file_decode` report only the three permitted axioms.  The journal records the accepted builds, an independent rebuild from source, and the failures along the way.
 
 ### Limits of the exponential theorem
 
@@ -234,54 +228,7 @@ The current mathematical and float proof dependencies are Mathlib at `85e3a25e00
 
 For Opus review, each completed function should identify its exact theorem statements and domains, implementation revision and configuration, constant and table proofs, reduction and approximation proofs, floating-point rounding proofs, exceptional-value proofs, byte theorem, axiom reports, and accepted build records.  Failed approaches and unresolved assumptions belong in the journal.  Status reports should name the strongest proved statement and its hypotheses.
 
-## Machine instructions
-
-### Access, checkouts, and present use
-
-Both machines are available through Tailscale SSH as `somebody`.  Keep Lean and Lake execution on these machines.
-
-| Machine | Checkout | State and role |
-|---|---|---|
-| `minideb1` | `/home/somebody/src/leanexe-transcendentals` | Primary branch `transcendentals`.  Holds the integrated proof sources, the journal, and the accepted builds. |
-| `minideb2` | `/home/somebody/src/leanexe-transcendentals-proofs` | Secondary checkout of `transcendentals`.  Its earlier state is saved in `/home/somebody/backups/leanexe-transcendentals-proofs-2026-10-09.*`.  It has no `wasm-tools` or Wasmtime host. |
-| `debtop1` | `/home/somebody/src/lt-debtop` | A separate clone of the user's `~/src/leanexe` there, on `transcendentals`, with the build copied from minideb1.  Lean installed on 2026-10-10 with the user's approval.  It has no `wasm-tools` or Wasmtime host. |
-| All three | `/home/somebody/src/leanexe` | The user's checkouts, with their own changes.  Preserve those changes.  On minideb1 and minideb2 the primary and worker checkouts are worktrees of this repository. |
-
-Opus developed the exponential proofs on minideb1 and used minideb2 for synchronized builds and an independent rebuild of the proof modules from source.  Independent jobs can use the two machines at once, with one Lean slot per machine.  Agents work in copies of a machine's checkout under `/home/somebody/src/lt-*`, each on its own branch.
-
-Connect from the controlling workstation:
-
-```sh
-tailscale ssh somebody@minideb1
-```
-
-In that remote shell:
-
-```sh
-cd /home/somebody/src/leanexe-transcendentals
-export PATH="$HOME/.elan/bin:$HOME/.local/bin:$PATH"
-git status --short
-git branch --show-current
-```
-
-For minideb2:
-
-```sh
-tailscale ssh somebody@minideb2
-```
-
-In that remote shell:
-
-```sh
-cd /home/somebody/src/leanexe-transcendentals-proofs
-export PATH="$HOME/.elan/bin:$HOME/.local/bin:$PATH"
-git status --short
-git rev-parse HEAD
-```
-
-Both checkouts pin `leanprover/lean4:v4.34.0-rc2`.  Public-repository access suffices for this work.  Keep account credentials on the controlling workstation.  If SSH access or a required tool fails, ask the user to restore access or install the tool.
-
-### Lean execution and acceptance
+## Lean execution and acceptance
 
 [The repository instructions](AGENTS.md) govern every Lean, Lake, and Lean compiler invocation.  Run through `tools/leanrun`, with an explicit timeout.  The runner takes a machine-wide lock, sets one Lean thread, and enforces these limits:
 
@@ -294,24 +241,16 @@ Both checkouts pin `leanprover/lean4:v4.34.0-rc2`.  Public-repository access suf
 | Scheduling | `nice -n 10`, `ionice -c 3` |
 | Lean threads | `LEAN_NUM_THREADS=1` |
 
-From the selected checkout, a focused numerical proof build has this form:
+From the repository root, a focused numerical proof build has this form:
 
 ```sh
-tools/leanrun --timeout 3m lake build Verified.Examples.ExpSpecialPositiveCore > build/transcendentals/exp-special-positive-core-review.log 2>&1
+tools/leanrun --timeout 3m lake build Verified.Examples.ExpSpecialPositiveCore
 ```
 
-This example names an earlier numerical leaf.  The final target is `Verified.Examples.ExpTheorem`.  Use a fresh log name for each run.  Select the target and timeout for the changed proof and any prerequisite builds.  A timeout without a diagnostic requires a changed proof boundary or a checked reusable lemma before rerunning that target, as `AGENTS.md` specifies.  The runner uses the default resource limits unless an explicit `--memory-high` option selects the documented higher memory limits.  Failure to create or enforce its scope requires stopping and asking the user.
+This example names an earlier numerical leaf.  The final target is `Verified.Examples.ExpTheorem`.  Select the target and timeout for the changed proof and any prerequisite builds.  A timeout without a diagnostic requires a changed proof boundary or a checked reusable lemma before rerunning that target, as `AGENTS.md` specifies.  The runner uses the default resource limits unless an explicit `--memory-high` option selects the documented higher memory limits.  Failure to create or enforce its scope requires stopping and asking the user.
 
-Use `lake build` to rebuild changed imports.  A direct `lake env lean FILE` check reads existing compiled imports, so it requires those imports to have been rebuilt from the current sources.  Minideb2's missing `Exp` object must be built through the runner before a diagnostic imports it.
+Use `lake build` to rebuild changed imports.  A direct `lake env lean FILE` check reads existing compiled imports, so it requires those imports to have been rebuilt from the current sources.  Equations about Float computations are proved with `simp only` and the `F64Bits` bridge lemmas, never by `rfl` or `decide` that unfolds the IEEE operations.
 
 Acceptance requires successful completion of the full selected build, review of its diagnostics, and an axiom report for the accepted declarations.  Review the accepted source and journal after each proof run.  A theorem printed before a later build failure requires a separate successful check before recording acceptance.
 
 Repository test drivers, when an implementation check is needed, run directly as the first command token.  They invoke the runner themselves.  The Verified driver is `tests/verified/run.sh`.  Ordinary tests remain implementation checks.  Theorems determine completion.
-
-### Source transfer and work ownership
-
-Minideb1 is the primary source for integrated work.  Before work on minideb2, copy the assigned source files and their changed dependencies from the primary checkout, compare the sources, and build the required imports there.  Transfer an explicit set of source changes and record it in the journal.  Compiled `.olean` files, build output, and Lake caches remain local to each checkout.
-
-Assign separate files to simultaneous work.  Integrate accepted supporting proofs into minideb1 and recheck the resulting target there.  Preserve uncommitted work on both machines.  Check the working tree before applying changes.  New API, algorithm, dependency, or compiler decisions follow the decisions above.  The user authorized concurrent agents on 2026-10-10.
-
-Logs belong under `build/transcendentals/` on the machine that ran the proof.  The primary [development journal](devnotes.md) should identify the machine, source revision or transferred files, target, accepted theorem statements, failures, and axiom reports.

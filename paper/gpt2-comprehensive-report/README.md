@@ -6,7 +6,7 @@ The 42-page [standalone technical report](main.pdf) covers LeanExe's compilation
 
 The [publication record](publication.json) identifies the accepted version.  The archived PDF equals the submitted and local PDFs.  The [editorial review](submission-01/editorial-review.md) records nine style remarks.
 
-The CPU proof checkpoint is `4360920c3060d1c625b1860229b5116804d177c8`.  The WGSL and browser source checkpoint is `9c7c7898ecae5f636cf1047142c8a68c1936e041`.  The [source identities](evidence/cited-sources.json) identify the cited files.  The [review record](review.md) distinguishes prior checked proofs, recorded runs, supplied images, and document checks.
+The CPU proofs come from [one source revision](https://github.com/jsmorph/leanexe/commit/4360920c3060d1c625b1860229b5116804d177c8), and the WGSL and browser sources from [another](https://github.com/jsmorph/leanexe/commit/9c7c7898ecae5f636cf1047142c8a68c1936e041).  The [source identities](evidence/cited-sources.json) identify the cited files.  The [review record](review.md) distinguishes prior checked proofs, recorded runs, supplied images, and document checks.
 
 The [literature-search record](evidence/literature-search.md) preserves the sources and comparison criteria.  The two original browser images are in `figures`, with their [identities and provenance](evidence/images.json).  The text describes the screenshot observations and the corresponding timing and memory definitions in the browser source.
 

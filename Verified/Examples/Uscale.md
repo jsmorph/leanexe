@@ -23,7 +23,7 @@ A limb of 32 bits keeps every intermediate value of the routines inside one word
 
 ## Implementation
 
-[`Uscale.lean`](Uscale.lean) holds the routines in the verified dialect, written for this project from the description above; no third-party code is ported.  The module compiles with `verified_compile` in about 20 seconds (`build/transcendentals/strconv-uscale-4.log` on minideb2).  `limb` reads an element and gives 0 past the end without reading past it, since native Lean prints a panic with a backtrace for every read past the end: the first native check printed 12,082 of them.  Each loop is `LeanExe.loop` over limbs or bit positions with a state of an array and a word, so every routine allocates its result through the runtime and its byte theorem allows a trap when memory cannot grow.
+[`Uscale.lean`](Uscale.lean) holds the routines in the verified dialect, written for this project from the description above; no third-party code is ported.  The module compiles with `verified_compile` in about 20 seconds.  `limb` reads an element and gives 0 past the end without reading past it, since native Lean prints a panic with a backtrace for every read past the end: the first native check printed 12,082 of them.  Each loop is `LeanExe.loop` over limbs or bit positions with a state of an array and a word, so every routine allocates its result through the runtime and its byte theorem allows a trap when memory cannot grow.
 
 ## Theorems
 
@@ -46,7 +46,7 @@ Every loop invariant states a fact about the value of the first `k` limbs, `val 
 
 ## Tests
 
-[`UscaleCheck.lean`](UscaleCheck.lean) runs the compiled native code of every routine on 400 pseudo-random operands of up to 120 limbs, and `pow10` for every `k` below 400, and compares each result with Lean's `Nat`.  All 4,026 results agree, in 10 seconds (`build/transcendentals/strconv-ucheck-3.log`).
+[`UscaleCheck.lean`](UscaleCheck.lean) runs the compiled native code of every routine on 400 pseudo-random operands of up to 120 limbs, and `pow10` for every `k` below 400, and compares each result with Lean's `Nat`.  All 4,026 results agree, in 10 seconds.
 
 ## Limits
 

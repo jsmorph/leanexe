@@ -1,19 +1,16 @@
 # Increment: each element plus one
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks for each element
-of an array of at most eight words plus one, with wrapping arithmetic, and for the empty array when
-the input is longer.  [The specification](Spec.lean) states that behavior in ordinary Lean, with
-`Array.map`.
-
-[The program](Program.lean) sets the count to the input's size when it is at most eight and to 0
+[The request](request.txt) asks for each element of an array of at most eight words plus one, with
+wrapping arithmetic, and for the empty array when the input is longer.  [The
+specification](Spec.lean) states that behavior in ordinary Lean, with `Array.map`.  [The
+program](Program.lean) sets the count to the input's size when it is at most eight and to 0
 otherwise, and builds that many words, each the input's word plus one.  One build serves both cases,
 because the dialect places builds at the top of a function rather than in a branch.  [The module
 definition](Module.lean) compiles it into a 1,524-byte `increment.wasm` that exports `compute`.
 
-## What it shows
+## The bytes compute the increment, with total execution
 
 | Theorem | Statement |
 |---------|-----------|
@@ -25,7 +22,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 `Quot.sound`.  The proof of `Implements` applies the rule of the build template.  With
 `compute_eq`, `Implements.congr` states it for the specification.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Increment.Verify

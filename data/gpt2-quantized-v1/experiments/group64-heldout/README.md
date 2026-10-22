@@ -1,12 +1,12 @@
 # Group64 held-out evaluation
 
 This record describes a run of the earlier system, made with its compiler and proofs.  Its links to
-source files point to commit `eef07963`, the last commit of that system, and its commands run only
+source files point to the last commit of that system, and its commands run only
 at that commit.  [The LeanExe compiler manual's list of
 examples](../../../../docs/leanexe-manual.md#worked-examples) describes the current system's GPT-2
 programs, `Gpt` in binary64 and `Gpt32` on WGSL.
 
-The [six input prompts](../../heldout-group64.json) were frozen in commit `739f4f4f` before evaluation.  They were selected after the group64 implementation and were not used to tune its arithmetic.  The [completion record](completions.json) retains all token IDs, texts, stopping conditions, memory observations, and binary identities.  The first differing generated token occurs at positions 7, 3, 4, 11, 6, and 1 for narrative, exposition, dialogue, code, numeric prose, and technical explanation respectively.  Both models produce repetitive or incorrect continuations in this sample.
+The [six input prompts](../../heldout-group64.json) were [committed](https://github.com/jsmorph/leanexe/commit/739f4f4fe5ecfa7004ebdb8fd40535501b2b7848) before evaluation.  They were selected after the group64 implementation and were not used to tune its arithmetic.  The [completion record](completions.json) retains all token IDs, texts, stopping conditions, memory observations, and binary identities.  The first differing generated token occurs at positions 7, 3, 4, 11, 6, and 1 for narrative, exposition, dialogue, code, numeric prose, and technical explanation respectively.  Both models produce repetitive or incorrect continuations in this sample.
 
 The [paired-logit record](coverage.json) covers all 73 shared prompt prefixes and all 50,257 logits per prefix.  Greedy winners agree at 58 positions.  The largest raw-logit difference is 18.120101928710938.  The largest per-vector RMS difference is 13.911928369136579.  All outputs are finite.
 

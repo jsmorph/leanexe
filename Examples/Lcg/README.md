@@ -1,6 +1,6 @@
 # Lcg: a linear congruential generator modulo 2^64
 
-## What it is
+## The generator and its constants
 
 [The program](Program.lean) is the linear congruential generator `affine a c x = a * x + c`
 modulo `2^64`, with `step = affine multiplier increment`, `multiplier = 6364136223846793005`, and
@@ -14,7 +14,7 @@ Knuth's MMIX generator.  `rsixfour.c` itself uses the increment `975418645179595
 compiled module](../../Verified/Examples/Lcg.lean) is the verified compiler's module of `affine`,
 `step`, `advance`, `jumpPass`, and `jump`.
 
-## What it shows
+## Period, jump-ahead, lattice structure, and spectral test
 
 Hull and Dobell's theorem, Theorem A of Knuth's Section 3.2.1.2, states that an LCG modulo `m` has
 period `m` if and only if `c` is prime to `m`, `a - 1` is divisible by every prime factor of `m`,
@@ -87,7 +87,7 @@ depend on it.
 The proofs use only the axioms `propext`, `Classical.choice`, and `Quot.sound`.  Finite checks use
 `decide` or `decide +kernel`, which the kernel evaluates without adding an axiom.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Verified.Examples.Lcg Examples.Lcg.Spectral

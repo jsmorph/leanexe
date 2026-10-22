@@ -88,7 +88,7 @@ address takes the controls as parameters, such as
 `?mode=both&power=high-performance&tokens=32&seed=42&run=1`, where `run=1` loads and generates
 without clicks.
 
-## Proofs
+## Theorems and device results
 
 Under its shape, token, loaded-weight, and device assumptions, `generate_host` proves that the
 setup and step commands leave the bits of native `step32` in the score buffers and that every

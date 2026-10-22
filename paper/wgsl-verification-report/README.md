@@ -2,7 +2,7 @@
 
 This report describes the earlier compiler at its recorded source revision.  Its reproduction commands require that revision.  [The current compiler manuals](../../README.md#documentation) describe the merged system.
 
-The [technical report](main.pdf) reviews the `wgsl` branch at `ba9f02ce930243a3d35d4d10df6f9c97850ca1e8`.  It cites [Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly, version 7 manuscript](../gpt2-verification-report/submission-07/main.tex).
+The [technical report](main.pdf) reviews [the `wgsl` branch at a fixed revision](https://github.com/jsmorph/leanexe/commit/ba9f02ce930243a3d35d4d10df6f9c97850ca1e8).  It cites [Exact Execution Verification of Cached GPT-2 in Lean and WebAssembly, version 7 manuscript](../gpt2-verification-report/submission-07/main.tex).
 
 ## Scope
 

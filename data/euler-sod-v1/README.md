@@ -1,6 +1,6 @@
 # Checked Sod shock tube
 
-This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to commit `eef07963`, the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
+This record describes a run of the earlier system, made with its compiler and proofs.  Its links to source files point to the last commit of that system, and its commands run only at that commit.  [The four-state record](../../Examples/Euler/first-order/README.md) and [the reconstructed record](../../Examples/Euler/reconstructed/README.md) describe the current system's Euler solvers and their runs.
 
 The run uses stationary Sod initial data on `[0, 1]`, a discontinuity at 0.5,
 an ideal-gas ratio of 1.4, transmissive boundaries, and first-order Rusanov
@@ -58,5 +58,5 @@ This first publication used Node execution, which conflicts with the repository
 Wasmtime-only runtime policy. Its numerical data is retained unchanged. The
 maintained generator now targets [v2](../euler-sod-v2/README.md), using the pinned
 Wasmtime44 C API, and reproduces every v1 raw result/history/diagnostic exactly.
-The generator source for this historical revision is recorded in commit
-62eb25df663d6dd4bc515e19dadb4eb510b7e2db.
+The generator source for this historical revision is recorded in
+[an earlier commit](https://github.com/jsmorph/leanexe/commit/62eb25df663d6dd4bc515e19dadb4eb510b7e2db).

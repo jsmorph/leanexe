@@ -1,13 +1,13 @@
 # SumCount: an array result
 
-## What it is
+## `#[sum, size]` from a borrowed array
 
 [The program](Program.lean) takes an array of words and returns the two-element array `#[sum,
 size]`, where the sum wraps modulo 2^64.  The input array is borrowed: the caller keeps it, and the
 call only reads it.  The result is a new array that the caller owns and must release.  [The module
 definition](Module.lean) compiles `sumCount` into the 1,485-byte `sumCount.wasm`.
 
-## What it shows
+## Ownership in the postcondition
 
 The body is a fold over the input, a load of its length word, and an array literal of the two
 results, and the proof follows those statements with `Func.implements_heap`.  The theorem's
@@ -26,7 +26,7 @@ manual](../../docs/leanexe-manual.md#representations) describes how an argument 
 represent a Lean value, borrowed or owned.  [The section on
 ownership](../../docs/leanexe-manual.md#ownership) gives the rules for who releases an array.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.SumCount.Verify

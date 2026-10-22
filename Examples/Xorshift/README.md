@@ -1,6 +1,6 @@
 # Xorshift: Marsaglia's xorshift64
 
-## What it is
+## The step and jump-ahead by columns
 
 [The program](Program.lean) is the 64-bit example of Marsaglia's paper "Xorshift RNGs" (2003).
 `step x` applies `x ^^^ (x <<< 13)`, then `x ^^^ (x >>> 7)`, then `x ^^^ (x <<< 17)`, and
@@ -12,7 +12,7 @@ Marsaglia's 275 triples for which the matrix `T` of the step has order `2^64 - 1
 64 × 64 matrices over GF(2).  [The compiled module](../../Verified/Examples/Xorshift.lean) is the
 verified compiler's module of `step`, `advance`, `applyCols`, `square`, `jumpPass`, and `jump`.
 
-## What it shows
+## Bijection, period, jump-ahead, and memory bound
 
 Each of the three xorshifts distributes over xor and is injective, since `d = d <<< a` or
 `d = d >>> a` with `a > 0` forces every bit of `d` to 0, by induction on the bit position.  The step
@@ -54,7 +54,7 @@ bijection of the counts below `2^64 - 1` onto the nonzero words.
 | `xorshift_advance` | The module's bytes decode to the module, whose `advance` export computes `advance` without a trap, `advance n x ≠ 0` for every nonzero `x`, and from every nonzero `x` each nonzero `y` occurs at exactly one count below `2^64 - 1`. |
 | `xorshift_jump` | The module's bytes decode to the module, whose `jump` export computes `advance` without a trap when `top` can rise by 36,920 bytes within the memory's cap, and raises `top` by at most 36,920 bytes. |
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Verified.Examples.Xorshift

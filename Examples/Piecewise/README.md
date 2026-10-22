@@ -1,6 +1,6 @@
 # Piecewise: float comparisons and selection
 
-## What it is
+## A piecewise function of `x`
 
 [The program](Program.lean) is a piecewise function of `x` with the bounds `lo` and `hi`: 0 when `x
 == lo`, `-(lo - x) * 0.5` below `lo`, `|hi - x| + 1.5` at or above `hi`, and `max lo (min x hi)` in
@@ -8,7 +8,7 @@ between.  It exists to exercise the operations it contains: float equality, `<`,
 negation, absolute value, `min`, and `max`.  [The module definition](Module.lean) compiles
 `piecewise` into the 1,479-byte `piecewise.wasm`.
 
-## What it shows
+## Negation, `abs`, `min`, and `max` in Lean and WebAssembly
 
 Three of these operations differ between Lean and WebAssembly.  Lean's negation and `abs` return the
 canonical NaN for a NaN input, where WebAssembly's `f64.neg` changes only the sign bit, and Lean's
@@ -27,7 +27,7 @@ The proofs are in [`Verify.lean`](Verify.lean), and they use only the axioms `pr
 `beq_eq`, which equate Lean's comparisons with IEEE comparisons of the bits.  [The design
 document](../../docs/design.md#floating-point) lists the three differences and their compiled forms.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Piecewise.Verify

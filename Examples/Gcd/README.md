@@ -1,18 +1,15 @@
 # Gcd: Euclid's algorithm
 
-## What it is
+## Request, specification, and program
 
-This example takes a request in English to a specification, a program, and a theorem that the
-module's bytes compute the specification.  [The request](request.txt) asks for the greatest
-common divisor of any two words, by Euclid's remainder loop, with `gcd a 0 = a`.  [The
-specification](Spec.lean) states it with Lean's `Nat.gcd`.
-
+[The request](request.txt) asks for the greatest common divisor of any two words, by Euclid's
+remainder loop, with `gcd a 0 = a`.  [The specification](Spec.lean) states it with Lean's `Nat.gcd`.
 [The program](Program.lean) is tail recursive: `gcd a b` is `a` when `b = 0` and `gcd b (a % b)`
 otherwise, and it terminates because `a % b < b`.  The compiler translates the tail recursion into a
 loop, so a call makes no further calls.  [The module definition](Module.lean) compiles it into a
 1,445-byte `gcd.wasm` that exports `gcd`.
 
-## What it shows
+## The bytes compute `Nat.gcd`
 
 | Theorem | Statement |
 |---------|-----------|
@@ -25,7 +22,7 @@ The theorems are in [the proofs](Verify.lean), and they use only `propext`, `Cla
 by the rule of the tail-recursion template.  `gcd_eq` follows from `Nat.gcd_rec` by induction on the
 second argument.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Gcd.Verify

@@ -62,7 +62,7 @@ for this solver, and whether a run from the four quadrants reaches such a state 
 reconstructed solver](../reconstructed/README.md) uses outward speed bounds and has one.
 Convergence to a weak solution of the continuous Euler equations remains unproved.
 
-## Data
+## Runs and reproduction
 
 | Grid | Runtime | Density range | Pressure range | Data | Export figures |
 |------|--------:|--------------:|---------------:|------|----------------|

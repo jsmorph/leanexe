@@ -1,6 +1,6 @@
 # Binary32: `Float32` in WebAssembly and WGSL
 
-## What it is
+## Eight `Float32` functions and four GPU kernels
 
 [The program](Program.lean) has eight functions on Lean's `Float32`, IEEE 754 binary32: scalar
 `axpy32`, `hypot32`, `ratio32`, and `piecewise32`; the array functions `scale32`, `axpyArray32`, and
@@ -9,7 +9,7 @@ computed from the element's position.  [The module definition](Module.lean) comp
 the 2,738-byte `binary32.wasm`.  [`Wgsl.lean`](Wgsl.lean) translates the compiled IR of `scale32`,
 `axpyArray32`, `matVec32`, and `condMix32` into WGSL compute kernels for a GPU.
 
-## What it shows
+## Binary32 equality and kernel theorems
 
 The WebAssembly theorems use ProofKit's binary32 chain, which proves that Lean's `Float32` addition,
 subtraction, multiplication, division, and square root equal Talos's `IEEE32` functions for all
@@ -34,7 +34,7 @@ manual](../../docs/leanexe-manual.md#wgsl-kernels-and-the-browser-pages) describ
 and [the design document](../../docs/design.md#gpu) states what the device model adds to the trusted
 base.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Binary32.Verify Examples.Binary32.Wgsl

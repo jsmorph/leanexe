@@ -1,6 +1,6 @@
 # Bools: truth values as data
 
-## What it is
+## Thirteen functions on `Bool`
 
 [The program](Program.lean) is thirteen small functions that take, return, or store `Bool` values:
 tests built with `decide`, `==`, and `!=`, the connectives `&&`, `||`, and `!`, a float equality and
@@ -8,7 +8,7 @@ a range test, a selection by `if`, a loop whose state is a `Bool`, and a structu
 field.  A `Bool` is the word of its constructor index, 0 for `false` and 1 for `true`.  [The module
 definition](Module.lean) compiles all thirteen into the 1,798-byte `bools.wasm`.
 
-## What it shows
+## Bitwise connectives and per-function theorems
 
 Each function has its own theorem, and `bools_bytes` states all thirteen for the decoded module.
 `&&`, `||`, and `!` compile to bitwise and, or, and exclusive or with 1 on the 0-or-1 words, with
@@ -28,7 +28,7 @@ operations](../../docs/leanexe-manual.md#words-and-booleans) gives the compiled 
 operation.  `Bool` has a built-in `Flat` instance, `cond b 1 0`, which states how a `Bool` argument
 or result appears to the module.
 
-## Running it
+## Building, running, and testing
 
 ```sh
 tools/leanrun --timeout 60m lake build Examples.Bools.Verify
