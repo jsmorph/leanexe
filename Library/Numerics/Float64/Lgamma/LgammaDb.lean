@@ -282,7 +282,7 @@ theorem db_18 : negPointOk cfgP 0
     (7746831678225306698608331373611171 / 2 ^ 112) 0 = true := by
   decide +kernel
 
-theorem db_fact : ∀ k < 19, |lgamma (dbX k) - dbF k| ≤ 1 / 2 ^ 60 * |(dbF k : ℝ)| := by
+theorem db_fact : ∀ k < 19, |GammaBasic.lgamma (dbX k) - dbF k| ≤ 1 / 2 ^ 60 * |(dbF k : ℝ)| := by
   intro k hk
   interval_cases k
   · have hx : dbX 0 = -((8 : ℕ) : ℚ) - (481903572621051 / 2 ^ 49) := by decide +kernel

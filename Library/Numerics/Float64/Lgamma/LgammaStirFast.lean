@@ -42,17 +42,17 @@ theorem piece_rel (n nb : ℕ) (ly lp ld lyb lpb : LogData) (a b C0 Lq e ε rel 
     (hp : lgammaDiffOk cfgZ ⟨b, nb, log2Lo, log2Hi, lyb, lpb⟩ (.const Lq) e 0 = true)
     (hb2 : (2 : ℝ) ≤ b) (hba : (b : ℝ) = a - cfgF.r) (hε : (ε : ℝ) ≤ rel * (Lq - e))
     (hrel : (0 : ℝ) ≤ rel) (t : ℝ) (ht : |t| ≤ (cfgF.r : ℝ)) :
-    |lgamma (a + t) - fit C0 P (a + t)| ≤ rel * lgamma (a + t) := by
+    |GammaBasic.lgamma (a + t) - fit C0 P (a + t)| ≤ rel * GammaBasic.lgamma (a + t) := by
   have h1 := fit_piece cfgF cfgF_pi ⟨a, n, log2Lo, log2Hi, ly, lp⟩ ld C0 P ε depth hf t ht
   have h2 := lgammaDiffOk_sound cfgZ ⟨b, nb, log2Lo, log2Hi, lyb, lpb⟩ (.const Lq) e 0 cfgZ_pi hp
     (t := 0) (by simp [cfgZ])
   simp only [TaylorModel.Expr.eval, add_zero] at h2
-  have hm : lgamma b ≤ lgamma (a + t) :=
+  have hm : GammaBasic.lgamma b ≤ GammaBasic.lgamma (a + t) :=
     lgamma_mono hb2 (by have := (abs_le.mp ht).1; linarith)
   have h2' := (abs_le.mp h2).1
-  calc |lgamma (a + t) - fit C0 P (a + t)| ≤ ε := h1
+  calc |GammaBasic.lgamma (a + t) - fit C0 P (a + t)| ≤ ε := h1
     _ ≤ rel * (Lq - e) := hε
-    _ ≤ rel * lgamma (a + t) := mul_le_mul_of_nonneg_left (by linarith) hrel
+    _ ≤ rel * GammaBasic.lgamma (a + t) := mul_le_mul_of_nonneg_left (by linarith) hrel
 
 theorem f_0 : lgammaDiffOk cfgF ⟨(300340083687393 / 2 ^ 45), 8, log2Lo, log2Hi,
       ⟨4,
@@ -425,10 +425,10 @@ theorem p_15 : lgammaDiffOk cfgZ ⟨(273003690590207 / 2 ^ 44), 1, log2Lo, log2H
 /-- The fit within `(7 / 10 ^ 20)` of `lgamma`, relative, on the pieces' interval. -/
 theorem cover : ∀ x : ℝ, ((9120899923967 : ℝ) / 2 ^ 40) ≤ x →
     x ≤ ((9120899923967 : ℝ) / 2 ^ 40) + 2 * ((8471286120449 : ℝ) / 2 ^ 45) * 16 →
-    |lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * lgamma x := by
+    |GammaBasic.lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * GammaBasic.lgamma x := by
   refine cover_pieces (K := 16) (by norm_num) (lo := ((9120899923967 : ℝ) / 2 ^ 40))
     (r := ((8471286120449 : ℝ) / 2 ^ 45)) (by norm_num)
-    (fun x => |lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * lgamma x) ?_
+    (fun x => |GammaBasic.lgamma x - fit c0Fast pFast x| ≤ (7 / 10 ^ 20) * GammaBasic.lgamma x) ?_
   intro j hj t ht
   interval_cases j
   · have e : ((9120899923967 : ℝ) / 2 ^ 40) +

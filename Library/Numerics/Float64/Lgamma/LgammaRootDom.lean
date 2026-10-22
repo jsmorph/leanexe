@@ -28,7 +28,7 @@ set_option exponentiation.threshold 4096
 
 /-- The domain of range 0: the argument lies in `[A, B]`. -/
 theorem dom0 : ∀ x : ℝ, ((ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ) < x → x < ((-2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB7400000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB7400000000000 : ℚ) : ℝ) →
     (-((2 : ℕ) : ℝ) - (((9959195835710406687 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((2 : ℕ) : ℝ) - (((7467555474278035609 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB7400000000000 = (93 / 1024) := by decide +kernel
@@ -53,7 +53,7 @@ theorem dom0 : ∀ x : ℝ, ((ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ) < x →
 
 /-- The domain of range 1: the argument lies in `[A, B]`. -/
 theorem dom1 : ∀ x : ℝ, ((-3 : ℚ) : ℝ) < x → x < ((ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1680000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1680000000000 : ℚ) : ℝ) →
     (-((2 : ℕ) : ℝ) - (((7182594465582330641 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((2 : ℕ) : ℝ) - (((12946287394540346601 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB1680000000000 = (557 / 2 ^ 13) := by decide +kernel
@@ -78,7 +78,7 @@ theorem dom1 : ∀ x : ℝ, ((-3 : ℚ) : ℝ) < x → x < ((ratOfWord 0xC004E14
 
 /-- The domain of range 2: the argument lies in `[A, B]`. -/
 theorem dom2 : ∀ x : ℝ, ((-7 / 2 : ℚ) : ℝ) < x → x < ((-3 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB2D40000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB2D40000000000 : ℚ) : ℝ) →
     (-((3 : ℕ) : ℝ) - (((2832248124529656927 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((3 : ℕ) : ℝ) - (((309542334993196613 / 2 ^ 61) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB2D40000000000 = (1205 / 2 ^ 14) := by decide +kernel
@@ -101,7 +101,7 @@ theorem dom2 : ∀ x : ℝ, ((-7 / 2 : ℚ) : ℝ) < x → x < ((-3 : ℚ) : ℝ
 
 /-- The domain of range 3: the argument lies in `[A, B]`. -/
 theorem dom3 : ∀ x : ℝ, ((-4 : ℚ) : ℝ) < x → x < ((-7 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FAEF00000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FAEF00000000000 : ℚ) : ℝ) →
     (-((3 : ℕ) : ℝ) - (((8837500021878364233 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((3 : ℕ) : ℝ) - (((8782586256590532433 / 2 ^ 63) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FAEF00000000000 = (495 / 2 ^ 13) := by decide +kernel
@@ -124,7 +124,7 @@ theorem dom3 : ∀ x : ℝ, ((-4 : ℚ) : ℝ) < x → x < ((-7 / 2 : ℚ) : ℝ
 
 /-- The domain of range 4: the argument lies in `[A, B]`. -/
 theorem dom4 : ∀ x : ℝ, ((-9 / 2 : ℚ) : ℝ) < x → x < ((-4 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC0000000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC0000000000000 : ℚ) : ℝ) →
     (-((4 : ℕ) : ℝ) - (((409563185869273943 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((4 : ℕ) : ℝ) - (((643190715599055509 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC0000000000000 = (1 / 8) := by decide +kernel
@@ -147,7 +147,7 @@ theorem dom4 : ∀ x : ℝ, ((-9 / 2 : ℚ) : ℝ) < x → x < ((-4 : ℚ) : ℝ
 
 /-- The domain of range 5: the argument lies in `[A, B]`. -/
 theorem dom5 : ∀ x : ℝ, ((-5 : ℚ) : ℝ) < x → x < ((-9 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB0800000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB0800000000000 : ℚ) : ℝ) →
     (-((4 : ℕ) : ℝ) - (((18300832368894797875 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((4 : ℕ) : ℝ) - (((2285000372254301329 / 2 ^ 61) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB0800000000000 = (33 / 512) := by decide +kernel
@@ -170,7 +170,7 @@ theorem dom5 : ∀ x : ℝ, ((-5 : ℚ) : ℝ) < x → x < ((-9 / 2 : ℚ) : ℝ
 
 /-- The domain of range 6: the argument lies in `[A, B]`. -/
 theorem dom6 : ∀ x : ℝ, ((-11 / 2 : ℚ) : ℝ) < x → x < ((-5 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1000000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1000000000000 : ℚ) : ℝ) →
     (-((5 : ℕ) : ℝ) - (((40517011728281333 / 2 ^ 62) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((5 : ℕ) : ℝ) - (((141796690668325141 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB1000000000000 = (17 / 256) := by decide +kernel
@@ -193,7 +193,7 @@ theorem dom6 : ∀ x : ℝ, ((-11 / 2 : ℚ) : ℝ) < x → x < ((-5 : ℚ) : �
 
 /-- The domain of range 7: the argument lies in `[A, B]`. -/
 theorem dom7 : ∀ x : ℝ, ((-6 : ℚ) : ℝ) < x → x < ((-11 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1300000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1300000000000 : ℚ) : ℝ) →
     (-((5 : ℕ) : ℝ) - (((18424352052644143055 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((5 : ℕ) : ℝ) - (((4604318681347612333 / 2 ^ 62) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC1300000000000 = (275 / 2048) := by decide +kernel
@@ -216,7 +216,7 @@ theorem dom7 : ∀ x : ℝ, ((-6 : ℚ) : ℝ) < x → x < ((-11 / 2 : ℚ) : �
 
 /-- The domain of range 8: the argument lies in `[A, B]`. -/
 theorem dom8 : ∀ x : ℝ, ((-13 / 2 : ℚ) : ℝ) < x → x < ((-6 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1500000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1500000000000 : ℚ) : ℝ) →
     (-((6 : ℕ) : ℝ) - (((916348977038845 / 2 ^ 59) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((6 : ℕ) : ℝ) - (((22268529823760227 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC1500000000000 = (277 / 2048) := by decide +kernel
@@ -239,7 +239,7 @@ theorem dom8 : ∀ x : ℝ, ((-13 / 2 : ℚ) : ℝ) < x → x < ((-6 : ℚ) : �
 
 /-- The domain of range 9: the argument lies in `[A, B]`. -/
 theorem dom9 : ∀ x : ℝ, ((-7 : ℚ) : ℝ) < x → x < ((-13 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC3400000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC3400000000000 : ℚ) : ℝ) →
     (-((6 : ℕ) : ℝ) - (((9221801716887439699 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((6 : ℕ) : ℝ) - (((2305309401735250467 / 2 ^ 61) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC3400000000000 = (77 / 512) := by decide +kernel
@@ -262,7 +262,7 @@ theorem dom9 : ∀ x : ℝ, ((-7 : ℚ) : ℝ) < x → x < ((-13 / 2 : ℚ) : �
 
 /-- The domain of range 10: the argument lies in `[A, B]`. -/
 theorem dom10 : ∀ x : ℝ, ((-15 / 2 : ℚ) : ℝ) < x → x < ((-7 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1450000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1450000000000 : ℚ) : ℝ) →
     (-((7 : ℕ) : ℝ) - (((2099066151523559 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((7 : ℕ) : ℝ) - (((3188392528188741 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC1450000000000 = (4421 / 2 ^ 15) := by decide +kernel
@@ -285,7 +285,7 @@ theorem dom10 : ∀ x : ℝ, ((-15 / 2 : ℚ) : ℝ) < x → x < ((-7 : ℚ) : �
 
 /-- The domain of range 11: the argument lies in `[A, B]`. -/
 theorem dom11 : ∀ x : ℝ, ((-8 : ℚ) : ℝ) < x → x < ((-15 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
     (-((7 : ℕ) : ℝ) - (((9223182216053851391 / 2 ^ 63) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((7 : ℕ) : ℝ) - (((18446192667662835873 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC76B0000000000 = (5995 / 2 ^ 15) := by decide +kernel
@@ -308,7 +308,7 @@ theorem dom11 : ∀ x : ℝ, ((-8 : ℚ) : ℝ) < x → x < ((-15 / 2 : ℚ) : �
 
 /-- The domain of range 12: the argument lies in `[A, B]`. -/
 theorem dom12 : ∀ x : ℝ, ((-17 / 2 : ℚ) : ℝ) < x → x < ((-8 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76C0000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76C0000000000 : ℚ) : ℝ) →
     (-((8 : ℕ) : ℝ) - (((551352650560865 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((8 : ℕ) : ℝ) - (((47449542330831 / 2 ^ 61) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC76C0000000000 = (1499 / 2 ^ 13) := by decide +kernel
@@ -331,7 +331,7 @@ theorem dom12 : ∀ x : ℝ, ((-17 / 2 : ℚ) : ℝ) < x → x < ((-8 : ℚ) : �
 
 /-- The domain of range 13: the argument lies in `[A, B]`. -/
 theorem dom13 : ∀ x : ℝ, ((-9 : ℚ) : ℝ) < x → x < ((-17 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC9900000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC9900000000000 : ℚ) : ℝ) →
     (-((8 : ℕ) : ℝ) - (((18446702607666622313 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((8 : ℕ) : ℝ) - (((9223340876937742331 / 2 ^ 63) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC9900000000000 = (409 / 2048) := by decide +kernel
@@ -354,7 +354,7 @@ theorem dom13 : ∀ x : ℝ, ((-9 : ℚ) : ℝ) < x → x < ((-17 / 2 : ℚ) : �
 
 /-- The domain of range 14: the argument lies in `[A, B]`. -/
 theorem dom14 : ∀ x : ℝ, ((-19 / 2 : ℚ) : ℝ) < x → x < ((-9 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC9900000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC9900000000000 : ℚ) : ℝ) →
     (-((9 : ℕ) : ℝ) - (((62318885917251 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((9 : ℕ) : ℝ) - (((20732811579489 / 2 ^ 63) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC9900000000000 = (409 / 2048) := by decide +kernel
@@ -377,7 +377,7 @@ theorem dom14 : ∀ x : ℝ, ((-19 / 2 : ℚ) : ℝ) < x → x < ((-9 : ℚ) : �
 
 /-- The domain of range 15: the argument lies in `[A, B]`. -/
 theorem dom15 : ∀ x : ℝ, ((-10 : ℚ) : ℝ) < x → x < ((-19 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
     (-((9 : ℕ) : ℝ) - (((18446739855653097299 / 2 ^ 64) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((9 : ℕ) : ℝ) - (((18446737947362945355 / 2 ^ 64) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC76B0000000000 = (5995 / 2 ^ 15) := by decide +kernel
@@ -400,7 +400,7 @@ theorem dom15 : ∀ x : ℝ, ((-10 : ℚ) : ℝ) < x → x < ((-19 / 2 : ℚ) : 
 
 /-- The domain of range 16: the argument lies in `[A, B]`. -/
 theorem dom16 : ∀ x : ℝ, ((-21 / 2 : ℚ) : ℝ) < x → x < ((-10 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC76B0000000000 : ℚ) : ℝ) →
     (-((10 : ℕ) : ℝ) - (((1531584259107 / 2 ^ 62) : ℚ) : ℝ)) ≤ x ∧ x ≤ (-((10 : ℕ) : ℝ) - (((2109025958881 / 2 ^ 63) : ℚ) : ℝ)) := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC76B0000000000 = (5995 / 2 ^ 15) := by decide +kernel

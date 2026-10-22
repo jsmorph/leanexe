@@ -15,7 +15,7 @@ open Real LeanExe.ProofKit GammaBasic Finset
 
 /-- Past `y0 ≥ 2`, `log Γ` lies above its secant through `y0 - 1` and `y0`. -/
 theorem above_secant (y0 y : ℝ) (h0 : 2 ≤ y0) (hy : y0 ≤ y) :
-    lgamma y0 + Real.log (y0 - 1) * (y - y0) ≤ lgamma y := by
+    GammaBasic.lgamma y0 + Real.log (y0 - 1) * (y - y0) ≤ GammaBasic.lgamma y := by
   rcases hy.lt_or_eq with hlt | heq
   · have hc := convexOn_log_Gamma.secant_mono (a := y0) (x := y0 - 1) (y := y)
       (by rw [Set.mem_Ioi]; linarith) (by rw [Set.mem_Ioi]; linarith)
@@ -28,7 +28,7 @@ theorem above_secant (y0 y : ℝ) (h0 : 2 ≤ y0) (hy : y0 ≤ y) :
     rw [show y0 - 1 - y0 = -1 by ring, hrec] at hc
     have hpos : 0 < y - y0 := by linarith
     rw [le_div_iff₀ hpos] at hc
-    unfold lgamma
+    unfold GammaBasic.lgamma
     have : (Real.log (Gamma (y0 - 1)) - (Real.log (Gamma (y0 - 1)) + Real.log (y0 - 1))) / -1 =
         Real.log (y0 - 1) := by ring
     rw [this] at hc
@@ -36,16 +36,16 @@ theorem above_secant (y0 y : ℝ) (h0 : 2 ≤ y0) (hy : y0 ≤ y) :
   · rw [heq, sub_self, mul_zero, add_zero]
 
 /-- **`log Γ y ≥ y/8` from `15/4`.** -/
-theorem growth_small (y : ℝ) (hy : 15 / 4 ≤ y) : y / 8 ≤ lgamma y := by
+theorem growth_small (y : ℝ) (hy : 15 / 4 ≤ y) : y / 8 ≤ GammaBasic.lgamma y := by
   have hs := above_secant (15 / 4) y (by norm_num) hy
-  have hG : 15 / 32 ≤ lgamma (15 / 4) := by
+  have hG : 15 / 32 ≤ GammaBasic.lgamma (15 / 4) := by
     have hΓ : Gamma (15 / 4) = Gamma (7 / 4) * (77 / 16) := by
       rw [show (15 / 4 : ℝ) = 7 / 4 + ((2 : ℕ) : ℝ) by norm_num,
         gamma_add_nat (notPole_of_neg_one_lt (by norm_num) (by norm_num)) 2]
       norm_num [prod_range_succ]
     have hL := LgammaAccLower.gamma_lower (7 / 4) (by norm_num) (by norm_num)
     have hge : 3 ≤ Gamma (15 / 4) := by rw [hΓ]; linarith
-    unfold lgamma
+    unfold GammaBasic.lgamma
     have := Real.one_sub_inv_le_log_of_pos (by linarith : (0 : ℝ) < Gamma (15 / 4))
     have : (Gamma (15 / 4))⁻¹ ≤ 1 / 3 := by
       rw [inv_le_comm₀ (by linarith) (by norm_num)]
@@ -59,9 +59,9 @@ theorem growth_small (y : ℝ) (hy : 15 / 4 ≤ y) : y / 8 ≤ lgamma y := by
   nlinarith [mul_le_mul_of_nonneg_right hl (by linarith : (0 : ℝ) ≤ y - 15 / 4)]
 
 /-- **`log Γ y ≥ 13 y/10` from `23/2`.** -/
-theorem growth_large (y : ℝ) (hy : 23 / 2 ≤ y) : 13 * y / 10 ≤ lgamma y := by
+theorem growth_large (y : ℝ) (hy : 23 / 2 ≤ y) : 13 * y / 10 ≤ GammaBasic.lgamma y := by
   have hs := above_secant (23 / 2) y (by norm_num) hy
-  have hG : 16 ≤ lgamma (23 / 2) := by
+  have hG : 16 ≤ GammaBasic.lgamma (23 / 2) := by
     have hΓ : Gamma (23 / 2) = Gamma (3 / 2) * ∏ j ∈ range 10, (3 / 2 + (j : ℝ)) := by
       rw [show (23 / 2 : ℝ) = 3 / 2 + ((10 : ℕ) : ℝ) by norm_num]
       exact gamma_add_nat (notPole_of_neg_one_lt (by norm_num) (by norm_num)) 10
@@ -79,7 +79,7 @@ theorem growth_large (y : ℝ) (hy : 23 / 2 ≤ y) : 13 * y / 10 ≤ lgamma y :=
       calc Real.exp 1 ^ 16 ≤ (2.7182818286 : ℝ) ^ 16 :=
             pow_le_pow_left₀ (Real.exp_pos 1).le h1.le 16
         _ ≤ 11800000 := by norm_num
-    unfold lgamma
+    unfold GammaBasic.lgamma
     rw [Real.le_log_iff_exp_le (by linarith)]
     linarith
   have hl : 2 ≤ Real.log (23 / 2 - 1) := by
@@ -94,7 +94,7 @@ theorem growth_large (y : ℝ) (hy : 23 / 2 ≤ y) : 13 * y / 10 ≤ lgamma y :=
 
 /-- **`log Γ y ≤ 2^812` up to `2^802`**: `Γ` increases from 2, and `Γ N = (N - 1)! ≤ N^N` at
 `N = 2^802`. -/
-theorem lgamma_upper (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 2 ^ 802) : lgamma y ≤ 2 ^ 812 := by
+theorem lgamma_upper (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 2 ^ 802) : GammaBasic.lgamma y ≤ 2 ^ 812 := by
   set N : ℕ := 2 ^ 802 with hN
   have hNr : (N : ℝ) = 2 ^ 802 := by rw [hN]; push_cast; rfl
   have hm := Gamma_strictMonoOn_Ici.monotoneOn (show y ∈ Set.Ici 2 by rw [Set.mem_Ici]; exact h1)
@@ -114,7 +114,7 @@ theorem lgamma_upper (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 2 ^ 802) : lgamma y �
     exact_mod_cast h.trans h3
   have hGN : Gamma (N : ℝ) ≤ (N : ℝ) ^ N := by rw [hG]; exact hf
   have hpos : 0 < Gamma y := Gamma_pos_of_pos (by linarith)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   have hl := Real.log_le_log hpos (hm.trans hGN)
   rw [Real.log_pow, hNr, Real.log_pow] at hl
   have h2l := Real.log_two_lt_d9

@@ -31,7 +31,7 @@ theorem asym_large (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
     (hAF : LgammaApprox.AsymFact) (x : Float) (hx : Finite x.toBits)
     (h1 : 21 / 2 ≤ value x.toBits) (h2 : value x.toBits ≤ 2 ^ 800) (xh xl : Float)
     (hT : fastTwoSum x 1.0 = (xh, xl)) :
-    NegLarge (lgamma (1 + value x.toBits)) (1 + value x.toBits)
+    NegLarge (GammaBasic.lgamma (1 + value x.toBits)) (1 + value x.toBits)
       (Lgamma.asLgammaAsymAccurate Tgamma.logdTable H Lgamma.asymTable xh xl) := by
   obtain ⟨fh, fl, hs, hlo, hhi, hlb, hl1, hxh2⟩ :=
     LgammaAccNegAsym.asym_input x hx (by linarith) h2 xh xl hT
@@ -54,7 +54,7 @@ theorem asym_large (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
     linarith
 
 /-- `log Γ y ≤ 111` from 2 to 33: `Γ 33 = 32! ≤ 32^32 = 2^160`. -/
-theorem lgamma_le_111 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 33) : lgamma y ≤ 111 := by
+theorem lgamma_le_111 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 33) : GammaBasic.lgamma y ≤ 111 := by
   have hm := Gamma_strictMonoOn_Ici.monotoneOn (show y ∈ Set.Ici 2 by rw [Set.mem_Ici]; exact h1)
     (show (33 : ℝ) ∈ Set.Ici 2 by rw [Set.mem_Ici]; norm_num) h2
   have h33 : Gamma 33 = (Nat.factorial 32 : ℝ) := by
@@ -63,7 +63,7 @@ theorem lgamma_le_111 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 33) : lgamma y ≤ 11
     have : Nat.factorial 32 ≤ 2 ^ 160 := by decide +kernel
     exact_mod_cast this
   have hpos : 0 < Gamma y := Gamma_pos_of_pos (by linarith)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   have hl := Real.log_le_log hpos (hm.trans (show Gamma 33 ≤ 2 ^ 160 by rw [h33]; exact hf))
   rw [Real.log_pow] at hl
   have := Real.log_two_lt_d9
@@ -79,7 +79,7 @@ theorem large_ready (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     (hCF : LgammaApprox.CancelFact) (sx : Float) (hsx : Finite sx.toBits)
     (hint : ∀ n : ℤ, value sx.toBits ≠ n) (hlo : value sx.toBits ≤ -(21 / 2))
     (hhi : -2 ^ 800 ≤ value sx.toBits) (fh fl fll : Float)
-    (hP : NegLarge (lgamma (1 + |value sx.toBits|)) (1 + |value sx.toBits|) (fh, fl, fll))
+    (hP : NegLarge (GammaBasic.lgamma (1 + |value sx.toBits|)) (1 + |value sx.toBits|) (fh, fl, fll))
     (phi : Float) (hphi : phi = if sx < -0.5 then sx - floorF sx else -sx)
     (sh sl : Float) (hA : Lgamma.asSinpipidAccurate Lgamma.sinpiTable phi = (sh, sl))
     (lh ll lll : Float) (hT : Lgamma.asLogdAccurate Tgamma.logdTable H sh = (lh, ll, lll))
@@ -87,7 +87,7 @@ theorem large_ready (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     (a1 b1 : Float) (hS1 : sumDD fl fll ll2 0.0 = (a1, b1))
     (h2 l2 : Float) (hP2 : twoSum fh lh = (h2, l2))
     (a3 b3 : Float) (hS3 : sumDD a1 b1 l2 0.0 = (a3, b3)) :
-    NormReady (lgamma (value sx.toBits)) sx (-h2, -a3, -b3) := by
+    NormReady (GammaBasic.lgamma (value sx.toBits)) sx (-h2, -a3, -b3) := by
   obtain ⟨f1, f2, f3, hr0, hb, hc, hE, hE33⟩ := hP
   dsimp only at f1 f2 f3 hr0 hb hc hE hE33
   have hneg : value sx.toBits < 0 := by linarith
@@ -97,21 +97,21 @@ theorem large_ready (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     rw [hav]; linarith [(by norm_num : (2 : ℝ) ^ 800 + 1 ≤ 2 ^ 802)]
   have hTy := LgammaAccGrowth.growth_large _ hy1
   have hTu := LgammaAccGrowth.lgamma_upper _ (by linarith) hy2
-  have hcan : lgamma (1 + |value sx.toBits|) ≤ 2 ^ 32 * |lgamma (value sx.toBits)| := by
+  have hcan : GammaBasic.lgamma (1 + |value sx.toBits|) ≤ 2 ^ 32 * |GammaBasic.lgamma (value sx.toBits)| := by
     have h := hCF sx.toBits hsx (by linarith) hint
     rw [show 1 - value sx.toBits = 1 + |value sx.toBits| by rw [hav]; ring,
       abs_of_nonneg (by linarith)] at h
     exact h
   -- the high part of the triple
-  have hfh : value fh.toBits ≤ 2 * lgamma (1 + |value sx.toBits|) + 1 := by
+  have hfh : value fh.toBits ≤ 2 * GammaBasic.lgamma (1 + |value sx.toBits|) + 1 := by
     have k := abs_le.mp hE
     have kb := abs_le.mp hb
     have kc := abs_le.mp hc
-    have : (1 + |value sx.toBits|) / 2 ^ 86 ≤ lgamma (1 + |value sx.toBits|) := by
+    have : (1 + |value sx.toBits|) / 2 ^ 86 ≤ GammaBasic.lgamma (1 + |value sx.toBits|) := by
       have : (1 + |value sx.toBits|) / 2 ^ 86 ≤ 1 + |value sx.toBits| :=
         div_le_self (by linarith) (by norm_num)
       linarith
-    have : lgamma (1 + |value sx.toBits|) / 2 ^ 63 ≤ lgamma (1 + |value sx.toBits|) :=
+    have : GammaBasic.lgamma (1 + |value sx.toBits|) / 2 ^ 63 ≤ GammaBasic.lgamma (1 + |value sx.toBits|) :=
       div_le_self (by linarith) (by norm_num)
     linarith
   have hfhb : |value fh.toBits| ≤ 2 ^ 840 := by
@@ -136,9 +136,9 @@ theorem large_ready (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
       sx hsx hneg hint hq hbig fh fl fll f1 f2 f3 _ _ _ (hE33 h33) hfhb hb hBl hc hBll phi hphi
       sh sl hA lh ll lll hT ll2 hll2 a1 b1 hS1 h2 l2 hP2 a3 b3 hS3
     have hT111 := lgamma_le_111 _ (by linarith) h33.le
-    generalize lgamma (1 + |value sx.toBits|) = T at hTy hTu hcan hfh hT111 herr
+    generalize GammaBasic.lgamma (1 + |value sx.toBits|) = T at hTy hTu hcan hfh hT111 herr
     generalize 1 + |value sx.toBits| = y at hTy hy1 hy2 herr h33
-    generalize lgamma (value sx.toBits) = L at hcan herr ⊢
+    generalize GammaBasic.lgamma (value sx.toBits) = L at hcan herr ⊢
     have hh2' : |value h2.toBits| ≤ 2 * T + 43 := by
       rw [abs_of_pos hr0] at hh2; linarith
     have ha3' : |value a3.toBits| ≤ (2 * T + 1) / 2 ^ 40 + 1 / 2 ^ 39 := by
@@ -248,9 +248,9 @@ theorem large_ready (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (h
     obtain ⟨n1, n2, n3, v1, v2, v3, herr, hh2, ha3, hb3⟩ := LgammaAccRefl.refl_spec hF hS hSA hLA
       sx hsx hneg hint hq hbig fh fl fll f1 f2 f3 _ _ _ hE hfhb hb hBl hc hBll phi hphi
       sh sl hA lh ll lll hT ll2 hll2 a1 b1 hS1 h2 l2 hP2 a3 b3 hS3
-    generalize lgamma (1 + |value sx.toBits|) = T at hTy hTu hcan hfh herr hc2 h69
+    generalize GammaBasic.lgamma (1 + |value sx.toBits|) = T at hTy hTu hcan hfh herr hc2 h69
     generalize 1 + |value sx.toBits| = y at hTy hy1 hy2 herr h33
-    generalize lgamma (value sx.toBits) = L at hcan herr hc2 ⊢
+    generalize GammaBasic.lgamma (value sx.toBits) = L at hcan herr hc2 ⊢
     have hfh0 : 0 ≤ value fh.toBits := hr0.le
     have hh2' : |value h2.toBits| ≤ 3 * T + 43 := by
       rw [abs_of_pos hr0] at hh2; linarith

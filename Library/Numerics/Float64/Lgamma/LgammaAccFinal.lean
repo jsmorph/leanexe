@@ -69,8 +69,8 @@ theorem db_entry (wx wf wd : UInt64) (hff : Wasm.IEEE64.isFinite wf = true)
     (hfd : Wasm.IEEE64.isFinite wd = true)
     (hd : |ratOfWord wd| * 2 ^ 54 ≤ |ratOfWord wf|) (hf1 : 1 / 16 ≤ |ratOfWord wf|)
     (hf2 : |ratOfWord wf| ≤ 16)
-    (hL : |lgamma (value wx) - value wf| ≤ 1 / 2 ^ 60 * |value wf|) :
-    F64SignedRounding.WithinSteps 1 (lgamma (value wx))
+    (hL : |GammaBasic.lgamma (value wx) - value wf| ≤ 1 / 2 ^ 60 * |value wf|) :
+    F64SignedRounding.WithinSteps 1 (GammaBasic.lgamma (value wx))
       (Float.ofBits wf + Float.ofBits wd).toBits := by
   have hbf : (Float.ofBits wf).toBits = wf := Library.Numerics.Float64.Tgamma.TgammaWords.ofBits_bits wf hff
   have hbd : (Float.ofBits wd).toBits = wd := Library.Numerics.Float64.Tgamma.TgammaWords.ofBits_bits wd hfd
@@ -91,7 +91,7 @@ theorem db_entry (wx wf wd : UInt64) (hff : Wasm.IEEE64.isFinite wf = true)
   rw [F64Bits.toBits_add, hbf, hbd]
   set f := value wf with hfdef
   set d := value wd with hddef
-  set L := lgamma (value wx) with hLdef
+  set L := GammaBasic.lgamma (value wx) with hLdef
   have hfL : |f| * (1 - 1 / 2 ^ 60) ≤ |L| := by
     have := abs_sub_abs_le_abs_sub f L
     rw [abs_sub_comm f L] at this
@@ -127,8 +127,8 @@ theorem db_entry (wx wf wd : UInt64) (hff : Wasm.IEEE64.isFinite wf = true)
 /-- The code's final `if` within one step of `log |Γ x|` when the rounded sum `fh + fl` is. -/
 theorem final_of_sum (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) [Decidable c]
     (fh fl : Float)
-    (hsum : F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits)) (fh + fl).toBits) :
-    F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits))
+    (hsum : F64SignedRounding.WithinSteps 1 (GammaBasic.lgamma (value x.toBits)) (fh + fl).toBits) :
+    F64SignedRounding.WithinSteps 1 (GammaBasic.lgamma (value x.toBits))
       (if c then database dbTable x (fh + fl) else fh + fl).toBits := by
   split_ifs
   · rcases database_cases x (fh + fl) with h1 | ⟨k, hk, hck, h1⟩
@@ -157,11 +157,11 @@ theorem final_of_sum (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop
 `log |Γ x|`. -/
 theorem final_step (hDb : DbFact) (x : Float) (hx : Finite x.toBits) (c : Prop) [Decidable c]
     (fh fl : Float) (hfh : Finite fh.toBits) (hfl : Finite fl.toBits)
-    (hL1 : 1 / 2 ^ 1000 ≤ |lgamma (value x.toBits)|) (hL2 : |lgamma (value x.toBits)| ≤ 2 ^ 1020)
+    (hL1 : 1 / 2 ^ 1000 ≤ |GammaBasic.lgamma (value x.toBits)|) (hL2 : |GammaBasic.lgamma (value x.toBits)| ≤ 2 ^ 1020)
     (ρ : ℝ) (hρ0 : 0 ≤ ρ) (hρ : ρ ≤ 1 / (2 ^ 53 + 1))
-    (h : |lgamma (value x.toBits) - (value fh.toBits + value fl.toBits)| ≤
-      ρ * |lgamma (value x.toBits)|) :
-    F64SignedRounding.WithinSteps 1 (lgamma (value x.toBits))
+    (h : |GammaBasic.lgamma (value x.toBits) - (value fh.toBits + value fl.toBits)| ≤
+      ρ * |GammaBasic.lgamma (value x.toBits)|) :
+    F64SignedRounding.WithinSteps 1 (GammaBasic.lgamma (value x.toBits))
       (if c then database dbTable x (fh + fl) else fh + fl).toBits :=
   final_of_sum hDb x hx c fh fl (sum_within fh fl hfh hfl _ hL1 hL2 ρ hρ0 hρ h)
 

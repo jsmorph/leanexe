@@ -176,9 +176,9 @@ theorem l6_2 : rootOk cfgL6 5
   decide +kernel
 
 theorem range6 : ∀ x : ℝ, ((-11 / 2 : ℚ) : ℝ) < x → x < ((-5 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1000000000000 : ℚ) : ℝ) →
-    |lgamma x - (x + rootX0 418) * eval (rootList 418 19 6) (2 ^ 10 * (x + rootX0 418))| ≤
-      1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120 := by
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FB1000000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x - (x + rootX0 418) * eval (rootList 418 19 6) (2 ^ 10 * (x + rootX0 418))| ≤
+      1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120 := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FB1000000000000 = (17 / 256) := by decide +kernel
   rw [hw] at hxc
@@ -201,9 +201,9 @@ theorem range6 : ∀ x : ℝ, ((-11 / 2 : ℚ) : ℝ) < x → x < ((-5 : ℚ) : 
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-7320589489563940186485710896858975398832204165333 : ℝ) / 2 ^ 160))
       (r := ((1 : ℝ) / 2 ^ 13)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 418) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 418) *
           eval (rootList 418 19 6) (2 ^ 10 * (x + rootX0 418))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at hA ⊢; linarith) (by norm_num at h1 ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -234,9 +234,9 @@ theorem range6 : ∀ x : ℝ, ((-11 / 2 : ℚ) : ℝ) < x → x < ((-5 : ℚ) : 
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-7319519052433281248891163328528389847752844259541 : ℝ) / 2 ^ 160))
       (r := ((1 : ℝ) / 2 ^ 13)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 418) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 418) *
           eval (rootList 418 19 6) (2 ^ 10 * (x + rootX0 418))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at h2 ⊢; linarith) (by norm_num at hB ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -438,9 +438,9 @@ theorem l7_2 : rootOk cfgL7 5
   decide +kernel
 
 theorem range7 : ∀ x : ℝ, ((-6 : ℚ) : ℝ) < x → x < ((-11 / 2 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1300000000000 : ℚ) : ℝ) →
-    |lgamma x - (x + rootX0 459) * eval (rootList 459 24 6) (2 ^ 12 * (x + rootX0 459))| ≤
-      1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120 := by
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1300000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x - (x + rootX0 459) * eval (rootList 459 24 6) (2 ^ 12 * (x + rootX0 459))| ≤
+      1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120 := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC1300000000000 = (275 / 2048) := by decide +kernel
   rw [hw] at hxc
@@ -463,9 +463,9 @@ theorem range7 : ∀ x : ℝ, ((-6 : ℚ) : ℝ) < x → x < ((-11 / 2 : ℚ) : 
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-4383621131435527152174315793532711857932949712733 : ℝ) / 2 ^ 159))
       (r := ((1 : ℝ) / 2 ^ 15)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 459) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 459) *
           eval (rootList 459 24 6) (2 ^ 12 * (x + rootX0 459))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at hA ⊢; linarith) (by norm_num at h1 ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -496,9 +496,9 @@ theorem range7 : ∀ x : ℝ, ((-6 : ℚ) : ℝ) < x → x < ((-11 / 2 : ℚ) : 
   · refine cover_pieces (K := 4) (by norm_num)
       (lo := ((-4383487326879265376705231963357232315905971777373 : ℝ) / 2 ^ 159))
       (r := ((1 : ℝ) / 2 ^ 15)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 459) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 459) *
           eval (rootList 459 24 6) (2 ^ 12 * (x + rootX0 459))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at h2 ⊢; linarith) (by norm_num at hB ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -706,9 +706,9 @@ theorem l8_3 : rootOk cfgL8 6
   decide +kernel
 
 theorem range8 : ∀ x : ℝ, ((-13 / 2 : ℚ) : ℝ) < x → x < ((-6 : ℚ) : ℝ) →
-    |lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1500000000000 : ℚ) : ℝ) →
-    |lgamma x - (x + rootX0 510) * eval (rootList 510 24 6) (2 ^ 12 * (x + rootX0 510))| ≤
-      1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120 := by
+    |GammaBasic.lgamma x| ≤ (1 + 1 / 2 ^ 40) * ((ratOfWord 0x3FC1500000000000 : ℚ) : ℝ) →
+    |GammaBasic.lgamma x - (x + rootX0 510) * eval (rootList 510 24 6) (2 ^ 12 * (x + rootX0 510))| ≤
+      1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120 := by
   intro x hx1 hx2 hxc
   have hw : ratOfWord 0x3FC1500000000000 = (277 / 2048) := by decide +kernel
   rw [hw] at hxc
@@ -731,9 +731,9 @@ theorem range8 : ∀ x : ℝ, ((-13 / 2 : ℚ) : ℝ) < x → x < ((-6 : ℚ) : 
   · refine cover_pieces (K := 4) (by norm_num)
       (lo := ((-35085564984420544733452035951691953775621971791107 : ℝ) / 2 ^ 162))
       (r := ((1 : ℝ) / 2 ^ 15)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 510) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 510) *
           eval (rootList 510 24 6) (2 ^ 12 * (x + rootX0 510))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at hA ⊢; linarith) (by norm_num at h1 ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht
@@ -770,9 +770,9 @@ theorem range8 : ∀ x : ℝ, ((-13 / 2 : ℚ) : ℝ) < x → x < ((-6 : ℚ) : 
   · refine cover_pieces (K := 3) (by norm_num)
       (lo := ((-35084137736047274039729100738795755065622052621571 : ℝ) / 2 ^ 162))
       (r := ((1 : ℝ) / 2 ^ 15)) (by norm_num)
-      (fun x => |lgamma x - (x + rootX0 510) *
+      (fun x => |GammaBasic.lgamma x - (x + rootX0 510) *
           eval (rootList 510 24 6) (2 ^ 12 * (x + rootX0 510))| ≤
-          1 / 2 ^ 63 * |lgamma x| + 1 / 2 ^ 120) ?_ x
+          1 / 2 ^ 63 * |GammaBasic.lgamma x| + 1 / 2 ^ 120) ?_ x
       (by norm_num at h2 ⊢; linarith) (by norm_num at hB ⊢; linarith)
     intro j hj t ht
     obtain ⟨ht1, ht2⟩ := abs_le.mp ht

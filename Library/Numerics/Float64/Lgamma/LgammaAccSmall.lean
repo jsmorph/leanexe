@@ -32,12 +32,12 @@ open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFit
       LgammaAccSmallL LgammaAccSmallM LgammaAccSmallN
 
 theorem side_neg : ∀ s : ℝ, ((-1 : ℝ) / 4) ≤ s → s ≤ (0 : ℝ) → ((1 : ℝ) / 2 ^ 75) ≤ |s| →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 71) := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 71) := by
   intro s h1 h2 hτ
   rcases le_or_gt s ((-1 : ℝ) / 2048) with hc | hc
   · refine cover_pieces (K := 8) (by norm_num) (lo := ((-1 : ℝ) / 4)) (r := ((511 : ℝ) / 2 ^ 15))
       (by norm_num)
-          (fun s => |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval accSmallList s| ≤
+          (fun s => |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval accSmallList s| ≤
           ((1 : ℝ) / 2 ^ 71)) ?_ s (by norm_num; linarith) (by norm_num; linarith)
     intro k hk t ht
     interval_cases k
@@ -101,12 +101,12 @@ theorem side_neg : ∀ s : ℝ, ((-1 : ℝ) / 4) ≤ s → s ≤ (0 : ℝ) → (
     exact h
 
 theorem side_pos : ∀ s : ℝ, (0 : ℝ) ≤ s → s ≤ ((1 : ℝ) / 4) → ((1 : ℝ) / 2 ^ 75) ≤ |s| →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 71) := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 71) := by
   intro s h1 h2 hτ
   rcases le_or_gt ((1 : ℝ) / 2048) s with hc | hc
   · refine cover_pieces (K := 8) (by norm_num) (lo := ((1 : ℝ) / 2048)) (r := ((511 : ℝ) / 2 ^ 15))
       (by norm_num)
-          (fun s => |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval accSmallList s| ≤
+          (fun s => |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval accSmallList s| ≤
           ((1 : ℝ) / 2 ^ 71)) ?_ s (by norm_num; linarith) (by norm_num; linarith)
     intro k hk t ht
     interval_cases k
@@ -188,7 +188,7 @@ theorem var_bound : ∀ s : ℝ, |s| ≤ ((1 : ℝ) / 2 ^ 75) → |eval accSmall
 
 /-- The bound on the divided difference over the whole interval, `0` excluded. -/
 theorem dd_bound : ∀ s : ℝ, ((-1 : ℝ) / 4) ≤ s → s ≤ ((1 : ℝ) / 4) → s ≠ 0 →
-    |(lgamma ((1 : ℝ) + s) - lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 70) := by
+    |(GammaBasic.lgamma ((1 : ℝ) + s) - GammaBasic.lgamma (1 : ℝ)) / s - eval accSmallList s| ≤ ((1 : ℝ) / 2 ^ 70) := by
   intro s h1 h2 hs0
   have hτ : (0 : ℝ) < ((1 : ℝ) / 2 ^ 75) := by norm_num
   have h := dd_abs_fact (x0 := (1 : ℝ)) (lo := ((-1 : ℝ) / 4)) (hi := ((1 : ℝ) / 4))
@@ -201,16 +201,16 @@ theorem dd_bound : ∀ s : ℝ, ((-1 : ℝ) / 4) ≤ s → s ≤ ((1 : ℝ) / 4)
 /-- `LgammaApprox.AccPolyFact`'s first clause over `accSmallList`:
 `|lgamma (1 + x) - x P (x)| ≤ 2 ^ -70 |x|` for `|x| ≤ 1/4`. -/
 theorem acc_small : ∀ x : ℝ, |x| ≤ 1 / 4 →
-    |lgamma (1 + x) - x * eval accSmallList x| ≤ 1 / 2 ^ 70 * |x| := by
+    |GammaBasic.lgamma (1 + x) - x * eval accSmallList x| ≤ 1 / 2 ^ 70 * |x| := by
   intro x hx
   rcases eq_or_ne x 0 with h0 | h0
   · subst h0
     simp [lgamma_one]
   have hb := dd_bound x (by linarith [(abs_le.mp hx).1]) (by linarith [(abs_le.mp hx).2]) h0
   rw [lgamma_one, sub_zero] at hb
-  have e : lgamma (1 + x) - x * eval accSmallList x =
-      x * (lgamma (1 + x) / x - eval accSmallList x) := by
-    rw [mul_sub, mul_comm x (lgamma (1 + x) / x), div_mul_cancel₀ _ h0]
+  have e : GammaBasic.lgamma (1 + x) - x * eval accSmallList x =
+      x * (GammaBasic.lgamma (1 + x) / x - eval accSmallList x) := by
+    rw [mul_sub, mul_comm x (GammaBasic.lgamma (1 + x) / x), div_mul_cancel₀ _ h0]
   rw [e, abs_mul, mul_comm]
   exact mul_le_mul_of_nonneg_right hb (abs_nonneg x)
 

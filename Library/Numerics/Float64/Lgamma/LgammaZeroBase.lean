@@ -36,11 +36,11 @@ theorem interval_bound (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k ≤ n) (
     {ca cb cc cd : ℝ}
     (hxa : -(n : ℝ) - 1 < ma / 2 ^ (52 - k)) (hxd : ((mc : ℝ) + 1) / 2 ^ (52 - k) < -n)
     (hbc : ((ma : ℝ) + 1) / 2 ^ (52 - k) ≤ mc / 2 ^ (52 - k))
-    (hfa : ca ≤ lgamma (ma / 2 ^ (52 - k))) (hfb : lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
-    (hfc : lgamma (mc / 2 ^ (52 - k)) ≤ -cc) (hfd : cd ≤ lgamma (((mc : ℝ) + 1) / 2 ^ (52 - k)))
+    (hfa : ca ≤ GammaBasic.lgamma (ma / 2 ^ (52 - k))) (hfb : GammaBasic.lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
+    (hfc : GammaBasic.lgamma (mc / 2 ^ (52 - k)) ≤ -cc) (hfd : cd ≤ GammaBasic.lgamma (((mc : ℝ) + 1) / 2 ^ (52 - k)))
     (hca : 0 ≤ ca) (hcb : 0 ≤ cb) (hcc : 0 ≤ cc) (hcd : 0 ≤ cd)
     (w : UInt64) (hlo : -(n : ℝ) - 1 < value w) (hhi : value w < -n) :
-    min (min ca cb) (min cc cd) ≤ |lgamma (value w)| := by
+    min (min ca cb) (min cc cd) ≤ |GammaBasic.lgamma (value w)| := by
   have hcv := convexOn_lgamma_neg n
   have hpos : (0 : ℝ) < 2 ^ (52 - k) := by positivity
   have habs := abs_ge_of_neg_dist hnk hhi
@@ -63,7 +63,7 @@ theorem interval_bound (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k ≤ n) (
     linarith
   rcases grid_split w hk habs mc with h2 | h2
   · have := convex_mid hcv mxb mxc h1 h2
-    have hneg : lgamma (value w) ≤ -min cb cc := by
+    have hneg : GammaBasic.lgamma (value w) ≤ -min cb cc := by
       refine this.trans (max_le ?_ ?_)
       · linarith [min_le_left cb cc]
       · linarith [min_le_right cb cc]
@@ -80,11 +80,11 @@ theorem interval_bound_right (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k �
     {cb cc cd : ℝ}
     (hxa : (ma : ℝ) / 2 ^ (52 - k) = -(n : ℝ) - 1) (hxd : ((mc : ℝ) + 1) / 2 ^ (52 - k) < -n)
     (hbc : ((ma : ℝ) + 1) / 2 ^ (52 - k) ≤ mc / 2 ^ (52 - k))
-    (hfb : lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
-    (hfc : lgamma (mc / 2 ^ (52 - k)) ≤ -cc) (hfd : cd ≤ lgamma (((mc : ℝ) + 1) / 2 ^ (52 - k)))
+    (hfb : GammaBasic.lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
+    (hfc : GammaBasic.lgamma (mc / 2 ^ (52 - k)) ≤ -cc) (hfd : cd ≤ GammaBasic.lgamma (((mc : ℝ) + 1) / 2 ^ (52 - k)))
     (hcb : 0 ≤ cb) (hcc : 0 ≤ cc) (hcd : 0 ≤ cd)
     (w : UInt64) (hlo : -(n : ℝ) - 1 < value w) (hhi : value w < -n) :
-    min cb (min cc cd) ≤ |lgamma (value w)| := by
+    min cb (min cc cd) ≤ |GammaBasic.lgamma (value w)| := by
   have hcv := convexOn_lgamma_neg n
   have hpos : (0 : ℝ) < 2 ^ (52 - k) := by positivity
   have habs := abs_ge_of_neg_dist hnk hhi
@@ -102,7 +102,7 @@ theorem interval_bound_right (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k �
   · linarith
   rcases grid_split w hk habs mc with h2 | h2
   · have := convex_mid hcv mxb mxc h1 h2
-    have hneg : lgamma (value w) ≤ -min cb cc := by
+    have hneg : GammaBasic.lgamma (value w) ≤ -min cb cc := by
       refine this.trans (max_le ?_ ?_)
       · linarith [min_le_left cb cc]
       · linarith [min_le_right cb cc]
@@ -119,10 +119,10 @@ theorem interval_bound_cut (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k ≤ 
     {ca cb ce : ℝ}
     (hxa : -(n : ℝ) - 1 < ma / 2 ^ (52 - k)) (hxe : xe < -n)
     (hbe : ((ma : ℝ) + 1) / 2 ^ (52 - k) ≤ xe)
-    (hfa : ca ≤ lgamma (ma / 2 ^ (52 - k))) (hfb : lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
-    (hfe : lgamma xe ≤ -ce) (hca : 0 ≤ ca) (hcb : 0 ≤ cb) (hce : 0 ≤ ce)
+    (hfa : ca ≤ GammaBasic.lgamma (ma / 2 ^ (52 - k))) (hfb : GammaBasic.lgamma (((ma : ℝ) + 1) / 2 ^ (52 - k)) ≤ -cb)
+    (hfe : GammaBasic.lgamma xe ≤ -ce) (hca : 0 ≤ ca) (hcb : 0 ≤ cb) (hce : 0 ≤ ce)
     (w : UInt64) (hlo : -(n : ℝ) - 1 < value w) (hhi : value w ≤ xe) :
-    min ca (min cb ce) ≤ |lgamma (value w)| := by
+    min ca (min cb ce) ≤ |GammaBasic.lgamma (value w)| := by
   have hcv := convexOn_lgamma_neg n
   have hpos : (0 : ℝ) < 2 ^ (52 - k) := by positivity
   have habs := abs_ge_of_neg_dist hnk (lt_of_le_of_lt hhi hxe)
@@ -139,7 +139,7 @@ theorem interval_bound_cut (n k : ℕ) (hk : k ≤ 52) (hnk : (2 : ℝ) ^ k ≤ 
     rw [abs_of_nonneg (by linarith)]
     linarith
   · have := convex_mid hcv mxb mxe h1 hhi
-    have hneg : lgamma (value w) ≤ -min cb ce := by
+    have hneg : GammaBasic.lgamma (value w) ≤ -min cb ce := by
       refine this.trans (max_le ?_ ?_)
       · linarith [min_le_left cb ce]
       · linarith [min_le_right cb ce]

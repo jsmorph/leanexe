@@ -124,7 +124,7 @@ theorem log_le_of_le (y : ℝ) (hy0 : 0 < y) (hy : y ≤ 9 / 10) : Real.log y �
 
 /-- **From -2 to -1/4**: `|Γ s| ≥ 3/2`, so `|log |Γ s|| ≥ 1/4`. -/
 theorem lower_neg (s : ℝ) (h1 : -2 < s) (h2 : s ≤ -1 / 4) (hint : ∀ n : ℤ, s ≠ n) :
-    1 / 4 ≤ |lgamma s| := by
+    1 / 4 ≤ |GammaBasic.lgamma s| := by
   have hp : NotPole s := notPole_of_not_int hint
   have hs1 : s ≠ -1 := fun h => hint (-1) (by rw [h]; norm_num)
   have hA : 3 / 2 ≤ |Gamma s| := by
@@ -156,7 +156,7 @@ theorem lower_neg (s : ℝ) (h1 : -2 < s) (h2 : s ≤ -1 / 4) (hint : ∀ n : �
         exact mul_ne_zero (by linarith) (by linarith)
       rw [abs_div, abs_of_pos (by linarith : 0 < Gamma (s + 2)), le_div_iff₀ hP0]
       linarith
-  unfold lgamma
+  unfold GammaBasic.lgamma
   rw [← Real.log_abs]
   have := log_ge_of_ge _ hA
   rw [abs_of_pos (by linarith)]
@@ -164,7 +164,7 @@ theorem lower_neg (s : ℝ) (h1 : -2 < s) (h2 : s ≤ -1 / 4) (hint : ∀ n : �
 
 /-- **The half-integers from -19/2 to -7/2**: `|Γ s| ≤ 2/7`, so `|log |Γ s|| ≥ 1/16`. -/
 theorem lower_half (k : ℕ) (hk3 : 3 ≤ k) (hk9 : k ≤ 9) :
-    1 / 16 ≤ |lgamma (-(k : ℝ) - 1 / 2)| := by
+    1 / 16 ≤ |GammaBasic.lgamma (-(k : ℝ) - 1 / 2)| := by
   set s : ℝ := -(k : ℝ) - 1 / 2 with hsdef
   have hint : ∀ n : ℤ, s ≠ n := by
     intro n h
@@ -192,7 +192,7 @@ theorem lower_half (k : ℕ) (hk3 : 3 ≤ k) (hk9 : k ≤ 9) :
   have hA0 : 0 < |Gamma s| := by
     rw [abs_pos, hG]
     exact div_ne_zero (sqrt_ne_zero'.mpr pi_pos) (shift_prod_ne_zero hp _)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   rw [← Real.log_abs]
   have := log_le_of_le _ hA0 (by linarith)
   rw [abs_of_neg (by linarith)]
@@ -200,7 +200,7 @@ theorem lower_half (k : ℕ) (hk3 : 3 ≤ k) (hk9 : k ≤ 9) :
 
 /-- **At `sxBound`**, the double nearest -2.61: `|Γ| ≤ 0.912`, so `|log |Γ|| ≥ 1/16`. -/
 theorem lower_sxb :
-    1 / 16 ≤ |lgamma ((PolyBound.ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ)| := by
+    1 / 16 ≤ |GammaBasic.lgamma ((PolyBound.ratOfWord 0xC004E147AE147AE1 : ℚ) : ℝ)| := by
   have hw : PolyBound.ratOfWord 0xC004E147AE147AE1 = -5877197513718497 / 2 ^ 51 := by
     decide +kernel
   rw [hw]
@@ -231,14 +231,14 @@ theorem lower_sxb :
   have hA0 : 0 < |Gamma s| := by
     rw [h4, abs_div, abs_of_pos hG0]
     exact div_pos hG0 hP0
-  unfold lgamma
+  unfold GammaBasic.lgamma
   rw [← Real.log_abs]
   have := Real.log_le_sub_one_of_pos hA0
   rw [abs_of_neg (by linarith)]
   linarith
 
 /-- **From 1/4 to 3/4**: `Γ x = Γ (x + 1)/x ≥ 0.8275/0.75`, so `log Γ x ≥ 1/20`. -/
-theorem pos_quarter (x : ℝ) (h1 : 1 / 4 < x) (h2 : x < 3 / 4) : 1 / 20 ≤ |lgamma x| := by
+theorem pos_quarter (x : ℝ) (h1 : 1 / 4 < x) (h2 : x < 3 / 4) : 1 / 20 ≤ |GammaBasic.lgamma x| := by
   have hG := gamma_lower_mid (x + 1) (by linarith) (by linarith)
   have hx : Gamma x = Gamma (x + 1) / x := by
     rw [Gamma_add_one (by linarith)]
@@ -246,13 +246,13 @@ theorem pos_quarter (x : ℝ) (h1 : 1 / 4 < x) (h2 : x < 3 / 4) : 1 / 20 ≤ |lg
   have hA : 11 / 10 ≤ Gamma x := by
     rw [hx, le_div_iff₀ (by linarith)]
     nlinarith
-  unfold lgamma
+  unfold GammaBasic.lgamma
   have := log_ge_of_ge' (Gamma x) hA
   rw [abs_of_pos (by linarith)]
   linarith
 
 /-- **From 5/4 to 7/4**: `Γ ≤ 0.9432` by the chords, so `log Γ x ≤ -1/20`. -/
-theorem pos_mid (x : ℝ) (h1 : 5 / 4 < x) (h2 : x < 7 / 4) : 1 / 20 ≤ |lgamma x| := by
+theorem pos_mid (x : ℝ) (h1 : 5 / 4 < x) (h2 : x < 7 / 4) : 1 / 20 ≤ |GammaBasic.lgamma x| := by
   have hA : Gamma x ≤ 9432 / 10000 := by
     rcases le_or_gt x (3 / 2) with h | h
     · have := gamma_upper x (by linarith) h
@@ -260,14 +260,14 @@ theorem pos_mid (x : ℝ) (h1 : 5 / 4 < x) (h2 : x < 7 / 4) : 1 / 20 ≤ |lgamma
     · have := gamma_upper2 x h.le (by linarith)
       linarith
   have hA0 : 0 < Gamma x := Gamma_pos_of_pos (by linarith)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   have := Real.log_le_sub_one_of_pos hA0
   rw [abs_of_neg (by linarith)]
   linarith
 
 /-- **From 9/4 on**: `log Γ` lies above the line through `3/2` and `2`, of slope at least
 `0.2274`, so `log Γ x ≥ 1/20`. -/
-theorem pos_large (x : ℝ) (h1 : 9 / 4 ≤ x) : 1 / 20 ≤ |lgamma x| := by
+theorem pos_large (x : ℝ) (h1 : 9 / 4 ≤ x) : 1 / 20 ≤ |GammaBasic.lgamma x| := by
   obtain ⟨-, g2⟩ := gamma_three_halves_bounds
   have hl : Real.log (Gamma (3 / 2)) ≤ -(1137 / 10000) := by
     have := Real.log_le_sub_one_of_pos (Gamma_pos_of_pos (by norm_num : (0 : ℝ) < 3 / 2))
@@ -281,8 +281,8 @@ theorem pos_large (x : ℝ) (h1 : 9 / 4 ≤ x) : 1 / 20 ≤ |lgamma x| := by
   rw [le_div_iff₀ hpos] at hs
   have : (Real.log (Gamma (3 / 2)) - 0) / -(1 / 2) * (x - 2) =
       -(2 * Real.log (Gamma (3 / 2)) * (x - 2)) := by ring
-  have hL : 1 / 20 ≤ lgamma x := by
-    unfold lgamma
+  have hL : 1 / 20 ≤ GammaBasic.lgamma x := by
+    unfold GammaBasic.lgamma
     nlinarith [mul_le_mul_of_nonneg_right hl hpos.le]
   rw [abs_of_pos (by linarith)]
   exact hL

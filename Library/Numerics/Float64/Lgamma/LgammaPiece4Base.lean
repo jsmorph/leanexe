@@ -30,8 +30,8 @@ theorem piece_nege (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((134484015972353 : ℝ) / 27021597764222976)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|)
         :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
-      εout * |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_nege _ s0 R τ _ σ _ _ m0 depth cfg_nege_pi h
     (t := t) (by simp only [cfg_nege]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -46,8 +46,8 @@ theorem piece_neg (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_neg ⟨1, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q4) σ εin4 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((134484015972353 : ℝ) / 2 ^ 53)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
-      εout * |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_neg _ s0 R τ _ σ _ _ m0 depth cfg_neg_pi h
     (t := t) (by simp only [cfg_neg]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -62,8 +62,8 @@ theorem piece_negc (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_negc ⟨1, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q4) σ εin4 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
-      εout * |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_negc _ s0 R τ _ σ _ _ m0 depth cfg_negc_pi h
     (t := t) (by simp only [cfg_negc]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -78,8 +78,8 @@ theorem piece_posc (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_posc ⟨1, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q4) σ εin4 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
-      εout * |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_posc _ s0 R τ _ σ _ _ m0 depth cfg_posc_pi h
     (t := t) (by simp only [cfg_posc]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -94,8 +94,8 @@ theorem piece_pose (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_pose ⟨1, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q4) σ εin4 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((26388279066625 : ℝ) / 6755399441055744)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
-      εout * |(lgamma ((1 : ℝ) + (s0 + t)) - lgamma (1 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t) - eval q4 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((1 : ℝ) + (s0 + t)) - GammaBasic.lgamma (1 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_pose _ s0 R τ _ σ _ _ m0 depth cfg_pose_pi h
     (t := t) (by simp only [cfg_pose]; push_cast; exact ht) hτ
   rw [eval_shift] at hb

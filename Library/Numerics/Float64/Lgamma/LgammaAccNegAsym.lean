@@ -42,7 +42,7 @@ theorem asym_input (x : Float) (hx : Finite x.toBits) (h1 : 15 / 4 ≤ value x.t
   linarith
 
 /-- **`log Γ y ≤ 17` from 2 to 23/2**: `Γ (23/2) ≤ 0.8863 · 13427062 < e^17`. -/
-theorem lgamma_le_17 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 23 / 2) : lgamma y ≤ 17 := by
+theorem lgamma_le_17 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 23 / 2) : GammaBasic.lgamma y ≤ 17 := by
   have hm := Gamma_strictMonoOn_Ici.monotoneOn (show y ∈ Set.Ici 2 by rw [Set.mem_Ici]; exact h1)
     (show (23 / 2 : ℝ) ∈ Set.Ici 2 by rw [Set.mem_Ici]; norm_num) h2
   have hΓ : Gamma (23 / 2) = Gamma (3 / 2) * ∏ j ∈ Finset.range 10, (3 / 2 + (j : ℝ)) := by
@@ -63,16 +63,16 @@ theorem lgamma_le_17 (y : ℝ) (h1 : 2 ≤ y) (h2 : y ≤ 23 / 2) : lgamma y ≤
     calc (12000000 : ℝ) ≤ (2.7182818283 : ℝ) ^ 17 := by norm_num
       _ ≤ Real.exp 1 ^ 17 := pow_le_pow_left₀ (by norm_num) h1.le 17
   have hpos : 0 < Gamma y := Gamma_pos_of_pos (by linarith)
-  unfold lgamma
+  unfold GammaBasic.lgamma
   rw [Real.log_le_iff_le_exp hpos]
   linarith
 
 /-- `log Γ y ≥ 0` from 2 on. -/
-theorem lgamma_nonneg (y : ℝ) (h1 : 2 ≤ y) : 0 ≤ lgamma y := by
+theorem lgamma_nonneg (y : ℝ) (h1 : 2 ≤ y) : 0 ≤ GammaBasic.lgamma y := by
   have hm := Gamma_strictMonoOn_Ici.monotoneOn (show (2 : ℝ) ∈ Set.Ici 2 by
     rw [Set.mem_Ici]) (show y ∈ Set.Ici 2 by rw [Set.mem_Ici]; exact h1) h1
   rw [Gamma_two] at hm
-  unfold lgamma
+  unfold GammaBasic.lgamma
   exact Real.log_nonneg hm
 
 set_option maxHeartbeats 4000000 in
@@ -81,7 +81,7 @@ theorem asym_small (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
     (hAF : LgammaApprox.AsymFact) (x : Float) (hx : Finite x.toBits)
     (h1 : 15 / 4 ≤ value x.toBits) (h2 : value x.toBits < 21 / 2) (xh xl : Float)
     (hT : fastTwoSum x 1.0 = (xh, xl)) :
-    NegSmall (lgamma (1 + value x.toBits))
+    NegSmall (GammaBasic.lgamma (1 + value x.toBits))
       (Lgamma.asLgammaAsymAccurate Tgamma.logdTable H Lgamma.asymTable xh xl) := by
   obtain ⟨fh, fl, hs, hlo, hhi, hlb, hl1, hxh2⟩ := asym_input x hx h1
     (by linarith [(by norm_num : (21 / 2 : ℝ) ≤ 2 ^ 800)]) xh xl hT
@@ -95,7 +95,7 @@ theorem asym_small (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL
     at f1 f2 f3 he hr0 hb hc ⊢
   have hT17 := lgamma_le_17 (1 + value x.toBits) (by linarith) (by linarith)
   have hT0 := lgamma_nonneg (1 + value x.toBits) (by linarith)
-  generalize lgamma (1 + value x.toBits) = T at he hT17 hT0 ⊢
+  generalize GammaBasic.lgamma (1 + value x.toBits) = T at he hT17 hT0 ⊢
   set a := value r.1.toBits with ha
   have hE : 1 / 2 ^ 87 * T + (1 + value x.toBits) * (1 / 2 ^ 88 + 1 / 2 ^ 91) ≤
       9 / 2 ^ 61 + 1 / 2 ^ 69 + 1 / 2 ^ 84 := by

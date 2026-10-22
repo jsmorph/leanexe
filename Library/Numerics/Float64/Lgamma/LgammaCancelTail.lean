@@ -71,7 +71,7 @@ theorem abs_sin_ge (x : ℝ) (hd : 1 / 2 ^ 48 ≤ |x - round x|) :
 
 /-- The reflection's cancellation is at most `2 ^ 32` at the non-integer doubles below -17. -/
 theorem cancel_tail (w : UInt64) (hv : value w < -17) (hni : ∀ n : ℤ, value w ≠ n) :
-    |lgamma (1 - value w)| ≤ 2 ^ 32 * |lgamma (value w)| := by
+    |GammaBasic.lgamma (1 - value w)| ≤ 2 ^ 32 * |GammaBasic.lgamma (value w)| := by
   have hp := Real.pi_pos
   have hp4 := Real.pi_le_four
   have h16 : (16 : ℝ) ≤ |value w| := by
@@ -98,9 +98,9 @@ theorem cancel_tail (w : UInt64) (hv : value w < -17) (hni : ∀ n : ℤ, value 
     linarith
   have hr := lgamma_reflect hni
   rw [← Real.log_abs (Real.sin (π * value w))] at hr
-  have hL : lgamma 18 ≤ lgamma (1 - value w) := lgamma_mono (by norm_num) (by linarith)
-  have h18 : lgamma 18 = 48 * Real.log 2 + Real.log (355687428096000 / 281474976710656) := by
-    rw [lgamma, show (18 : ℝ) = (17 : ℕ) + 1 by norm_num, Real.Gamma_nat_eq_factorial,
+  have hL : GammaBasic.lgamma 18 ≤ GammaBasic.lgamma (1 - value w) := lgamma_mono (by norm_num) (by linarith)
+  have h18 : GammaBasic.lgamma 18 = 48 * Real.log 2 + Real.log (355687428096000 / 281474976710656) := by
+    rw [GammaBasic.lgamma, show (18 : ℝ) = (17 : ℕ) + 1 by norm_num, Real.Gamma_nat_eq_factorial,
       show ((Nat.factorial 17 : ℕ) : ℝ) = 2 ^ 48 * (355687428096000 / 281474976710656) by
         norm_num [Nat.factorial],
       Real.log_mul (by positivity) (by positivity), Real.log_pow]
@@ -113,10 +113,10 @@ theorem cancel_tail (w : UInt64) (hv : value w < -17) (hni : ∀ n : ℤ, value 
     have h2 := log_two_hi
     have h3 : (log2Hi : ℝ) < 1 := by norm_num [log2Hi]
     linarith
-  have hneg : lgamma (value w) < 0 := by
+  have hneg : GammaBasic.lgamma (value w) < 0 := by
     push_cast at hlog
     linarith
-  have hnn : 0 ≤ lgamma (1 - value w) := by
+  have hnn : 0 ≤ GammaBasic.lgamma (1 - value w) := by
     have : (0 : ℝ) ≤ 48 * Real.log 2 := by
       have := Real.log_pos (by norm_num : (1 : ℝ) < 2)
       linarith

@@ -29,8 +29,8 @@ theorem piece_nege (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_nege ⟨2, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q10) σ εin10 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((21383210511019 : ℝ) / 2 ^ 51)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
-      εout * |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_nege _ s0 R τ _ σ _ _ m0 depth cfg_nege_pi h
     (t := t) (by simp only [cfg_nege]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -45,8 +45,8 @@ theorem piece_negc (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_negc ⟨2, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q10) σ εin10 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
-      εout * |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_negc _ s0 R τ _ σ _ _ m0 depth cfg_negc_pi h
     (t := t) (by simp only [cfg_negc]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -61,8 +61,8 @@ theorem piece_posc (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
     (h : ddRelOk cfg_posc ⟨2, n, log2Lo, log2Hi, ly⟩ s0 R τ (PolyBound.shift s0 q10) σ εin10 εout
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((1 : ℝ) / 4096)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|) :
-    |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
-      εout * |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_posc _ s0 R τ _ σ _ _ m0 depth cfg_posc_pi h
     (t := t) (by simp only [cfg_posc]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -78,8 +78,8 @@ theorem piece_pos (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((303396489789441 : ℝ) / 11258999068426240)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|)
         :
-    |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
-      εout * |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_pos _ s0 R τ _ σ _ _ m0 depth cfg_pos_pi h
     (t := t) (by simp only [cfg_pos]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
@@ -95,8 +95,8 @@ theorem piece_pose (n : ℕ) (ly : LogData) (s0 R τ σ m0 : ℚ) (depth : ℕ)
       m0 depth = true)
     (t : ℝ) (ht : |t| ≤ ((101132163263147 : ℝ) / 11258999068426240)) (hτ : (τ : ℝ) ≤ |(s0 : ℝ) + t|)
         :
-    |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
-      εout * |(lgamma ((2 : ℝ) + (s0 + t)) - lgamma (2 : ℝ)) / (s0 + t)| := by
+    |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t) - eval q10 (s0 + t)| ≤
+      εout * |(GammaBasic.lgamma ((2 : ℝ) + (s0 + t)) - GammaBasic.lgamma (2 : ℝ)) / (s0 + t)| := by
   have hb := ddRelOk_sound cfg_pose _ s0 R τ _ σ _ _ m0 depth cfg_pose_pi h
     (t := t) (by simp only [cfg_pose]; push_cast; exact ht) hτ
   rw [eval_shift] at hb
