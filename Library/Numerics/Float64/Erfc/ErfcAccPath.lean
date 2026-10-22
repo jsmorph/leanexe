@@ -20,7 +20,7 @@ word within one step (`ErfcHardNeg`, `ErfcHardPos`, `ErfcHardAsym`).
 namespace Library.Numerics.Float64.Erfc.ErfcAccPath
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft2 ErfcOps ErfcTrack ErfcRound ErfcTest ErfcFastPlan
-  ErfcFastAll ErfcFastPath ErfcAccAll ErfcAccPlan ErfcAsymAccHL ErfcAsymAccFin FmaSpec PolyBound
+  ErfcFastAll ErfcFastPath ErfcAccAll ErfcAccPlan ErfcAsymAccHL ErfcAsymAccFin Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
   RealErf
 
 set_option exponentiation.threshold 2200

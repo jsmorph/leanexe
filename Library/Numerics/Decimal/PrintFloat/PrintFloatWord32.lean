@@ -12,8 +12,8 @@ states that the printers read only the low 32 bits of their argument.
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatWord32
 open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvGrid
-  StrconvWords StrconvInterval PrintFloatShort PrintFloatQuot PrintFloatSearch PrintFloatPick
-  PrintFloatShortest PrintFloatLayout ParseFloatTheorem
+  Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvInterval PrintFloatShort PrintFloatQuot PrintFloatSearch PrintFloatPick
+  PrintFloatShortest PrintFloatLayout Library.Numerics.Decimal.ParseFloat.ParseFloatTheorem
 
 set_option exponentiation.threshold 4096
 

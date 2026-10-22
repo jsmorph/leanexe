@@ -18,7 +18,7 @@ import Library.Numerics.Float64.Bessel.BesselSpecial
 
 namespace Library.Numerics.Float64.Bessel.BesselY0Small
 open CodeLib.IEEE64 LeanExe.ProofKit PolyBound F64Approx F64Horner BesselPQEval BesselSmallApprox
-  BesselJ0Large BesselSmallJ0 BesselJ0Small BesselModSmall BesselSmallY0 BesselCombine LogNearAll Real
+  BesselJ0Large BesselSmallJ0 BesselJ0Small BesselModSmall BesselSmallY0 BesselCombine Library.Numerics.Float64.Log.LogNearAll Real
 open LeanExe.ProofKit.Bessel LeanExe.ProofKit.EntireSeries
 
 local notation "𝐮" => unitRoundoff64

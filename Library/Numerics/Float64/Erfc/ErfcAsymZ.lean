@@ -16,7 +16,7 @@ row that the kernel checks, and `z_row` gives a double-double within `2^-67 M` o
 namespace Library.Numerics.Float64.Erfc.ErfcAsymZ
 
 open Real Set CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcAsymPoly ErfcAsymPlan
-  ErfcAsymCert ErfcAccMain FmaSpec PolyBound PolyCalculus RealErf ErfcSeries
+  ErfcAsymCert ErfcAccMain Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound PolyCalculus RealErf ErfcSeries
 
 set_option exponentiation.threshold 2200
 

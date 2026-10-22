@@ -20,7 +20,7 @@ stays below `2 u`.
 namespace Library.Numerics.Float64.Erfc.ErfcAccAll
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcAccMain ErfcAccTiny ErfcSeries
-  ErfcRound ErfcAccRow ErfcAccPlan ErfcFastAll FmaSpec PolyBound PolyCalc RealErf
+  ErfcRound ErfcAccRow ErfcAccPlan ErfcFastAll Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound PolyCalc RealErf
 
 set_option exponentiation.threshold 2200
 

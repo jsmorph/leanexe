@@ -13,7 +13,7 @@ from `Lgamma.accurateTable` at words 68 to 127, within `2 ^ -70` of `log Γ (3/2
 namespace Library.Numerics.Float64.Lgamma.LgammaAccMid
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFits GammaThresholds
-  TgammaFactsBase
+  Library.Numerics.Float64.Tgamma.TgammaFactsBase
 
 /-- The polynomial: 30 double-double coefficients. -/
 def accMidList : List ℚ := ddCoeffs Lgamma.accurateTable 68 30

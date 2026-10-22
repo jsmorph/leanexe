@@ -19,7 +19,7 @@ bounds on each piece.
 namespace Library.Numerics.Float64.Bessel.BesselY1Small
 open CodeLib.IEEE64 LeanExe.ProofKit PolyBound F64Approx F64Horner BesselPQEval BesselSmallApprox
   BesselJ0Large BesselSmallJ0 BesselJ1Small BesselModSmall BesselModSmall1 BesselSmallY0
-  BesselSmallY1 BesselCombine LogNearAll BesselY0Small Real
+  BesselSmallY1 BesselCombine Library.Numerics.Float64.Log.LogNearAll BesselY0Small Real
 open LeanExe.ProofKit.Bessel LeanExe.ProofKit.EntireSeries
 
 local notation "𝐮" => unitRoundoff64

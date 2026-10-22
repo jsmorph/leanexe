@@ -11,7 +11,7 @@ exact and lies from `2 ^ -54` to `1/4`; from `1/2` below `3/4`, `a - 0.5` is exa
 namespace Library.Numerics.Float64.Sinpi.SinpiReflect
 
 open CodeLib.IEEE64 LeanExe.ProofKit SinpiProduct SinpiKernels SinpiTanKernel Library.Numerics.Float64.Tan.TanWith
-  TanBigWords TanTrunc TrigSinCos
+  Library.Numerics.Float64.Tan.TanBigWords Library.Numerics.Float64.Tan.TanTrunc Library.Numerics.Float64.Trig.TrigSinCos
 
 set_option exponentiation.threshold 1200
 

@@ -14,7 +14,7 @@ polynomial of the branch next to an integer, `sin (π z)/π ≈ z + z³ P (z²)`
 namespace Library.Numerics.Float64.Lgamma.LgammaSinpiTables
 
 open Real LeanExe.ProofKit PolyBound TaylorModel TaylorRemainder TaylorCheck RatExpLog
-  GammaThresholds TgammaFactsBase TgammaKernelBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase Library.Numerics.Float64.Tgamma.TgammaKernelBase
 
 /-- `as_sinpipid`'s table `stpi k ≈ sin (k π/128)/π`, as double-doubles. -/
 def stpi (k : ℕ) : ℚ := q Lgamma.sinpiTable (2 * k) + q Lgamma.sinpiTable (2 * k + 1)

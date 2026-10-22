@@ -18,7 +18,7 @@ lemma applies, so that no stage unfolds the whole computation.
 namespace Library.Numerics.Float64.Erfc.ErfcEAccPoly
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcTrack ErfcTrack2 ErfcTrack4 ErfcFastMain ErfcRound
-  ErfcAccMain FmaSpec PolyBound
+  ErfcAccMain Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

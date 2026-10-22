@@ -15,7 +15,7 @@ import Library.Numerics.Float64.Erfc.ErfcCast
 namespace Library.Numerics.Float64.Erfc.ErfcExp1
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft ErfcEft2 ErfcOps ErfcTrack ErfcTrack2 ErfcTrack4 ErfcFastMain
-  ErfcRound ErfcExpBits ErfcExp1Red ErfcExpTab ErfcQ1 FmaSpec PolyBound
+  ErfcRound ErfcExpBits ErfcExp1Red ErfcExpTab ErfcQ1 Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

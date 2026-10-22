@@ -21,7 +21,7 @@ the row `0` is 0 and `y = d ≥ 2^-47`.
 
 namespace Library.Numerics.Float64.Lgamma.LgammaSinAcc
 open CodeLib.IEEE64 LeanExe.ProofKit Library.Numerics.Float64.Tgamma.TgammaSinpidTab Library.Numerics.Float64.Tgamma.TgammaSinpid LgammaSinAccTail
-  LgammaSinAccKern LgammaSinAccRed TgammaPoly TgammaPolyDDD TgammaWords
+  LgammaSinAccKern LgammaSinAccRed Library.Numerics.Float64.Tgamma.TgammaPoly Library.Numerics.Float64.Tgamma.TgammaPolyDDD Library.Numerics.Float64.Tgamma.TgammaWords
 open Library.Numerics.Float64.Tgamma (entry roundEven)
 
 set_option exponentiation.threshold 4096

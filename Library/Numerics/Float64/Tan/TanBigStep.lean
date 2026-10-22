@@ -13,7 +13,7 @@ for even quadrants and of `-1/tan ρ` for odd quadrants when `x + y` approximate
 namespace Library.Numerics.Float64.Tan.TanBigStep
 
 open CodeLib.IEEE64 LeanExe.ProofKit TanWords TanOdd TanEven TanStep TanBigWords TanBigClose
-  TrigKernelWords
+  Library.Numerics.Float64.Trig.TrigKernelWords
 
 local notation "𝐮" => unitRoundoff64
 local notation "η" => multiplicationUnderflowEpsilon

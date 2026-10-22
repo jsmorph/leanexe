@@ -18,7 +18,7 @@ choice of the error bound (`fin`), and `asym_fast_err` bounds `h + l` within `2^
 namespace Library.Numerics.Float64.Erfc.ErfcAsymFast
 
 open Real Set CodeLib.IEEE64 LeanExe.ProofKit ErfcEft2 ErfcOps ErfcTrack ErfcRound ErfcAsymPoly
-  ErfcAsymPlan ErfcAsymZ ErfcAsymIdx ErfcRecip ErfcRel ErfcExp1 FmaSpec PolyBound RealErf
+  ErfcAsymPlan ErfcAsymZ ErfcAsymIdx ErfcRecip ErfcRel ErfcExp1 Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

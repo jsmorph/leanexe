@@ -10,7 +10,7 @@ below two spacings of `[1/2, 1)`; from a quotient of `2 ^ 53` on, `artanh a ≥ 
 
 namespace Library.Numerics.Float64.Asinh.AtanhTheoremLarge
 open CodeLib.IEEE64 LeanExe.ProofKit F64Approx F64RelError F64Near Library.Numerics.Float64.Log1p.Log1pTheoremNear
-  Log1pTheoremConst AsinhTheoremCompose AsinhTheoremMid AtanhTheoremSmall
+  Library.Numerics.Float64.Log1p.Log1pTheoremConst AsinhTheoremCompose AsinhTheoremMid AtanhTheoremSmall
 
 set_option exponentiation.threshold 4096
 

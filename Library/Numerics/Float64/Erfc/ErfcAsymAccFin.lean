@@ -19,7 +19,7 @@ the result lies within `2^-1074` of `erfc x` (`within_of_tiny`).
 namespace Library.Numerics.Float64.Erfc.ErfcAsymAccFin
 
 open CodeLib.IEEE64 LeanExe.ProofKit ErfcEft2 ErfcEft ErfcOps ErfcRound ErfcTest ErfcAsymAccHL
-  F64NearestNonnegative FmaSpec PolyBound
+  F64NearestNonnegative Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound
 
 set_option exponentiation.threshold 2200
 

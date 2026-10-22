@@ -18,7 +18,7 @@ the hypothesis `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest` of the main 
 namespace Library.Numerics.Float64.Erfc.ErfcTheorem
 
 open Real CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcRound ErfcTest ErfcSeries ErfcFastPath
-  ErfcAsymZ ErfcAsymAccFin ErfcMainPath FmaSpec PolyBound PolyCalc RealErf F64NearestNonnegative
+  ErfcAsymZ ErfcAsymAccFin ErfcMainPath Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound PolyCalc RealErf F64NearestNonnegative
 
 set_option exponentiation.threshold 4096
 

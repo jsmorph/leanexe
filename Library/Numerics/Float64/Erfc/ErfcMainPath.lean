@@ -14,7 +14,7 @@ within one step (`ErfcAccPath.acc_within`).
 namespace Library.Numerics.Float64.Erfc.ErfcMainPath
 
 open Real CodeLib.IEEE64 LeanExe.ProofKit ErfcOps ErfcRound ErfcTest ErfcFastPlan ErfcFastAll
-  ErfcFastPath ErfcAsymFast ErfcAsymZ ErfcAccPath FmaSpec PolyBound RealErf
+  ErfcFastPath ErfcAsymFast ErfcAsymZ ErfcAccPath Library.Numerics.Arithmetic.Fma.FmaSpec PolyBound RealErf
 
 set_option exponentiation.threshold 2200
 

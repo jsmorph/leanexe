@@ -13,7 +13,7 @@ kernel check `fitRangeOk` bounds the fit's error (`GammaFitsX.fit_range`), and a
 namespace Library.Numerics.Float64.Lgamma.LgammaStirLarge
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaFits GammaFitsX
-  GammaThresholds TgammaFactsBase LgammaStirFast
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaStirFast
 
 /-- The accurate path's fit from 48 on: the constant and the coefficients. -/
 def c0Asym0 : ℚ := q Lgamma.asymTable 0 + q Lgamma.asymTable 1

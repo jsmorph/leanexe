@@ -14,7 +14,7 @@ kernel runs on the reduction of `|x|`, the quadrant count `N` turns `tan r` or `
 namespace Library.Numerics.Float64.Tan.TanWith
 
 open CodeLib.IEEE64 LeanExe.ProofKit TanWords TanOdd TanEven TanOddStep TanBigWords TanBigStep
-  TanBigClose TrigSinCos TrigReduce
+  TanBigClose Library.Numerics.Float64.Trig.TrigSinCos Library.Numerics.Float64.Trig.TrigReduce
 
 local notation "𝐮" => unitRoundoff64
 

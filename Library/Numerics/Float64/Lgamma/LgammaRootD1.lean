@@ -9,7 +9,7 @@ this module with those of its other two ranges, and its docstring states the met
 namespace Library.Numerics.Float64.Lgamma.LgammaRootD
 
 open Real LeanExe.ProofKit PolyBound TaylorModel GammaBasic GammaModels GammaReflect GammaRoot
-  GammaThresholds TgammaFactsBase LgammaRootBase
+  GammaThresholds Library.Numerics.Float64.Tgamma.TgammaFactsBase LgammaRootBase
 
 /-! ### The range `(-15 / 2, -7)` -/
 

@@ -18,7 +18,7 @@ below `0.68 u`, inside the `63/64 u` of `F64RoundedStep.within_one_add`, since `
 
 namespace Library.Numerics.Float64.Sinh.CoshSmall
 open CodeLib.IEEE64 LeanExe.ProofKit F64NearestNonnegative SinhWords Library.Numerics.Float64.Tanh.Expm1Branches
-  Expm1Theorem
+  Library.Numerics.Float64.Tanh.Expm1Theorem
 
 set_option exponentiation.threshold 4096
 

@@ -11,7 +11,7 @@ code's exponents are biased by `2 ^ 62`.
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatLayout
 open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar PrintFloatDigits
-  ParseFloatScan
+  Library.Numerics.Decimal.ParseFloat.ParseFloatScan
 
 set_option exponentiation.threshold 4096
 
