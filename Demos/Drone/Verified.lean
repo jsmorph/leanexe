@@ -99,7 +99,7 @@ theorem compute_bound (terrain : Array UInt64) : compiled.compute.bound terrain 
           have : c.toNat ≤ 64 := hc64
           simp only [stateCount, UInt64.reduceToNat]
           omega
-        rw [hsz, blockCost_eq]
+        rw [hsz, _root_.Verified.blockCost_eq]
         omega
       · rw [ite_eq_right h]
         exact Nat.zero_le _
@@ -132,14 +132,14 @@ theorem compute_bound (terrain : Array UInt64) : compiled.compute.bound terrain 
     rw [initial_build, LeanExe.IR.build_size]
     rfl
   -- The sum, at most its value for 64 stations, and the first and last rows.
-  have hsum : sumBelow (fun k => if k + 1 < c.toNat then 1080 * (k + 2) + 56 else 0)
+  have hsum : _root_.Verified.sumBelow (fun k => if k + 1 < c.toNat then 1080 * (k + 2) + 56 else 0)
       (UInt64.toNat 64) ≤ 2248848 :=
-    (sumBelow_le fun k _ => by split <;> split <;> omega).trans
-      (show sumBelow (fun k => if k + 1 < 64 then 1080 * (k + 2) + 56 else 0) 64 ≤ 2248848 by
+    (_root_.Verified.sumBelow_le fun k _ => by split <;> split <;> omega).trans
+      (show _root_.Verified.sumBelow (fun k => if k + 1 < 64 then 1080 * (k + 2) + 56 else 0) 64 ≤ 2248848 by
         decide)
   have hout : (2 * c).toNat ≤ 128 := by
     rw [UInt64.toNat_mul]; simp only [UInt64.reduceToNat]; omega
-  simp only [blockCost_eq, stateCount, UInt64.reduceToNat] at hsum ⊢
+  simp only [_root_.Verified.blockCost_eq, stateCount, UInt64.reduceToNat] at hsum ⊢
   omega
 
 /-- The bytes of `compiled.module` decode to the module, whose entry 18 computes `compute` without
