@@ -11,7 +11,7 @@ Programming*, Volume 2, Section 3.3.4, page 108.  The increment is `PCG_DEFAULT_
 O'Neill's PCG library, which pairs it with the same multiplier, and secondary sources call the pair
 Knuth's MMIX generator.  `rsixfour.c` itself uses the increment `9754186451795953191`, and
 `minimalPeriod_affine_iff` gives the full period for any odd increment with this multiplier.  [The
-compiled module](../../Verified/Examples/Lcg.lean) is the verified compiler's module of `affine`,
+compiled module](Verified.lean) is the verified compiler's module of `affine`,
 `step`, `advance`, `jumpPass`, and `jump`.
 
 ## Period, jump-ahead, lattice structure, and spectral test
@@ -100,7 +100,7 @@ build/tools/leanexe-wasmtime-host call build/verified/lcg.wasm advance i64 i64:1
 
 The commands build the proofs, print the certificates of the spectral test, write the module, and
 call `advance 1 0` in the Wasmtime host, with the setup of [the repository
-README](../../README.md#commands).  The call prints
+README](../../../README.md#commands).  The call prints
 1442695040888963407, the increment, which one step adds to the state 0.  After
 `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`,
 [`tests/verified/run.sh`](../../../tests/verified/run.sh) writes every module of the verified compiler

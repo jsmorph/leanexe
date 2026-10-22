@@ -698,7 +698,7 @@ theorem leftChild_node {heap heap' : Heap} {initial final : Store Unit} {p k : U
   exact Heap.Rebuilt.leftChild hHeap hOwned hDisjoint hAt hCaps hRegion
 
 /-- `dropRight` with its tree consumed. -/
-def dropRightMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.dropRight
+def dropRightMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := (KeyTree.dropRight t.val)
 
 theorem dropRight_implements : Implements treeMoves.module 5 dropRightMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 3 treeMoves.dropRight.ir "dropRight" rfl _
@@ -928,7 +928,7 @@ theorem keepIf_implements : Implements treeMoves.module 7 keepIfMoved := by
     · exact ⟨false, start, by simp [Expr.eval, start, State.get, hc], rfl, rfl, hc⟩
 
 /-- `trim` with its tree consumed. -/
-def trimMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.trim
+def trimMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := (KeyTree.trim t.val)
 
 theorem trim_implements : Implements treeMoves.module 8 trimMoved := by
   refine Func.implements_rebuilt treeMoves.funcs 6 treeMoves.trim.ir "trim" rfl _
@@ -1669,7 +1669,7 @@ theorem addAll_implements : Implements treeMoves.module 11 addAllMoved :=
     addAll_rec
 
 /-- `addLeft` with its tree consumed. -/
-def addLeftMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := t.val.addLeft
+def addLeftMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree := (KeyTree.addLeft t.val)
 
 /-- `addLeft` lends its left child to `addRoot`, which consumes the right child.  The left
 child's slot regions lie inside its blocks, which lie apart from the right child's
@@ -2245,7 +2245,7 @@ theorem splitRoot_children {heap heap' : Heap} {initial final : Store Unit} {p k
 /-- `splitRoot` with its tree consumed. -/
 def splitRootMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := t.val.splitRoot
 /-- `rootAndRest` with its tree consumed. -/
-def rootAndRestMoved (t : Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree := t.val.rootAndRest
+def rootAndRestMoved (t : Moved Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree := (KeyTree.rootAndRest t.val)
 
 theorem splitRoot_implements : Implements treeMoves.module 15 splitRootMoved := by
   refine Func.implements_moves treeMoves.funcs 13 treeMoves.splitRoot.ir "splitRoot" rfl _
@@ -2652,7 +2652,7 @@ theorem splitOr_implements : Implements treeMoves.module 17 splitOrMoved := by
       exact ⟨false, start, by simp [Expr.eval, start, State.get, hNonzero], rfl, rfl⟩
 
 /-- `keepOld` with its tree consumed. -/
-def keepOldMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := t.val.keepOld
+def keepOldMoved (t : Moved Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree × Library.Trees.WordTree.KeyTree := (KeyTree.keepOld t.val)
 
 /-- `keepOld` copies its consumed tree, passes the copy to `incr`, which consumes it, and returns
 `incr`'s result and the tree: the copy and `incr` leave the tree's records as they were. -/

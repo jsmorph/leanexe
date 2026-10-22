@@ -114,30 +114,30 @@ def KeyTree.sizeDrop (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 
 
 /-- `sizeDrop`'s size plus one, and its tree: the caller passes the tree component through. -/
 def KeyTree.sizeDropNext (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree :=
-  match t.sizeDrop n with | (s, u) => (s + 1, u)
+  match KeyTree.sizeDrop n t with | (s, u) => (s + 1, u)
 
 /-- `sizeDrop`'s size: the caller drops the tree component, which it releases at the end. -/
 def KeyTree.sizeAfterDrop (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 :=
-  match t.sizeDrop n with | (s, _) => s
+  match KeyTree.sizeDrop n t with | (s, _) => s
 
 /-- `sizeDrop`'s tree, or a leaf when it has fewer than its size plus one nodes: the caller passes
 the tree component to `dropSmall`, which consumes it. -/
 def KeyTree.sizeDropSmall (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : Library.Trees.WordTree.KeyTree :=
-  match t.sizeDrop n with | (s, u) => u.dropSmall (s + 1)
+  match KeyTree.sizeDrop n t with | (s, u) => KeyTree.dropSmall (s + 1) u
 
 /-- `sizeDrop`'s size, by projection: the tree component is released right after the call. -/
-def KeyTree.sizeFirst (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 := (t.sizeDrop n).1
+def KeyTree.sizeFirst (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 := (KeyTree.sizeDrop n t).1
 
 /-- The size of `dropSmall`'s result: the `let` binds the result, lends it to `size`, and
 releases it at the end. -/
 def KeyTree.droppedSize (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 :=
-  let u := t.dropSmall n
+  let u := KeyTree.dropSmall n t
   u.size
 
 /-- `dropSmall`'s result with its size: the `let` binds the result, lends it to `size`, and
 returns it. -/
 def KeyTree.dropWithSize (n : UInt64) (t : Library.Trees.WordTree.KeyTree) : UInt64 × Library.Trees.WordTree.KeyTree :=
-  let u := t.dropSmall n
+  let u := KeyTree.dropSmall n t
   (u.size, u)
 
 /-- The tree with each node's key replaced by the size of its left subtree: each record branch
@@ -180,6 +180,6 @@ def KeyTree.wide : Library.Trees.WordTree.KeyTree → UInt64
     let a14 := k + 14
     let a15 := k + 15
     let a16 := k + 16
-    l.wide + r.wide + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16
+    KeyTree.wide l + KeyTree.wide r + a1 + a2 + a3 + a4 + a5 + a6 + a7 + a8 + a9 + a10 + a11 + a12 + a13 + a14 + a15 + a16
 
 end Examples.Trees

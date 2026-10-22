@@ -25,7 +25,7 @@ def cases : IO Unit := do
     (List.range 30).map fun i => KeyTree.arbitrary (3 * i) (i + 1)
   for tree in trees do
     let n := treeNodes tree
-    let description := tree.describe
+    let description := (KeyTree.describe tree)
     for (name, live) in [("copyTree", 2 * n), ("takeTree", n), ("discardTree", n)] do
       IO.println s!"treecopy|{name}|tree-u64|tree-u64:{description}|{description}|{live}|{2 * n}"
     IO.println s!"treecopy|releaseTree|i64|tree-u64:{description}|0|0|{2 * n}"

@@ -32,29 +32,29 @@ def cases : IO Unit := do
   for tree in trees do
     let n := tree.size.toNat
     let pair := duplicateTree tree
-    IO.println s!"recursivetypes|keepTree|tree-u64|tree-u64:{tree.describe}|{(keepTree tree).describe}|{n}|{n}"
-    IO.println s!"recursivetypes|duplicateTree|list:tree-u64,tree-u64|tree-u64:{tree.describe}|{pair.1.describe} {pair.2.describe}|{2 * n}|{2 * n}"
+    IO.println s!"recursivetypes|keepTree|tree-u64|tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe (keepTree tree))}|{n}|{n}"
+    IO.println s!"recursivetypes|duplicateTree|list:tree-u64,tree-u64|tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe pair.1)} {(KeyTree.describe pair.2)}|{2 * n}|{2 * n}"
     for key in [0, maxU] do
-      IO.println s!"recursivetypes|setKey|tree-u64|{u key} tree-u64:{tree.describe}|{(tree.setKey key).describe}|{n}|{n}"
+      IO.println s!"recursivetypes|setKey|tree-u64|{u key} tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe (tree.setKey key))}|{n}|{n}"
     let child := tree.leftChild
-    IO.println s!"recursivetypes|leftChild|tree-u64|tree-u64:{tree.describe}|{child.describe}|{child.size}|{n}"
+    IO.println s!"recursivetypes|leftChild|tree-u64|tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe child)}|{child.size}|{n}"
     let split := tree.splitRoot
     let live := split.1.size.toNat + split.2.size.toNat
-    IO.println s!"recursivetypes|splitRoot|list:tree-u64,tree-u64|tree-u64:{tree.describe}|{split.1.describe} {split.2.describe}|{live}|{n}"
+    IO.println s!"recursivetypes|splitRoot|list:tree-u64,tree-u64|tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe split.1)} {(KeyTree.describe split.2)}|{live}|{n}"
     for count in [0, 1, 7, 999, 1000, 4096, maxU] do
       let result := followRight count tree
-      IO.println s!"recursivetypes|followRight|tree-u64|{u count} tree-u64:{tree.describe}|{result.describe}|{result.size}|{n}"
+      IO.println s!"recursivetypes|followRight|tree-u64|{u count} tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe result)}|{result.size}|{n}"
     if tree.height < 1000 then
-      IO.println s!"recursivetypes|size|i64|tree-u64:{tree.describe}|{tree.size}|{n}|{n}"
-      IO.println s!"recursivetypes|incr|tree-u64|tree-u64:{tree.describe}|{tree.incr.describe}|{n}|{n}"
+      IO.println s!"recursivetypes|size|i64|tree-u64:{(KeyTree.describe tree)}|{tree.size}|{n}|{n}"
+      IO.println s!"recursivetypes|incr|tree-u64|tree-u64:{(KeyTree.describe tree)}|{(KeyTree.describe tree.incr)}|{n}|{n}"
     else
-      IO.println s!"recursivetypes|size|i64|tree-u64:{tree.describe}|trap"
-      IO.println s!"recursivetypes|incr|tree-u64|tree-u64:{tree.describe}|trap"
+      IO.println s!"recursivetypes|size|i64|tree-u64:{(KeyTree.describe tree)}|trap"
+      IO.println s!"recursivetypes|incr|tree-u64|tree-u64:{(KeyTree.describe tree)}|trap"
   for left in trees.take 8 do
     for right in trees.take 8 do
       for key in [0, maxU] do
         let n := left.size.toNat + right.size.toNat + 1
-        IO.println s!"recursivetypes|nodeTree|tree-u64|tree-u64:{left.describe} {u key} tree-u64:{right.describe}|{(nodeTree left key right).describe}|{n}|{n}"
+        IO.println s!"recursivetypes|nodeTree|tree-u64|tree-u64:{(KeyTree.describe left)} {u key} tree-u64:{(KeyTree.describe right)}|{(KeyTree.describe (nodeTree left key right))}|{n}|{n}"
   for n in ([0, 1, 7, 999, 1000, 4096] : List UInt64) do
     IO.println s!"recursivetypes|range|chain-u64|{u n}|{render (Words.range n).toList}|{n}|{n}"
 

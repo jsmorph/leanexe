@@ -34,7 +34,7 @@ build/tools/leanexe-wasmtime-host call build/gcd/gcd.wasm gcd i64 i64:60 i64:42
 
 The commands build the proofs, write the module, and call it in the Wasmtime host, with the setup of
 [the repository README](../../../../README.md#commands).  The call prints 6.  [The module
-tests](../../tests/modules/run.sh) of [`Cases.lean`](../../../../tests/TestSupport/Modules/Gcd.lean) compare 49 pairs in Wasmtime
+tests](../../../../tests/modules/run.sh) of [`Cases.lean`](../../../../tests/TestSupport/Modules/Gcd.lean) compare 49 pairs in Wasmtime
 against `expected`, including `(0, 0)`, `(1, 2^64 − 1)`, and consecutive Fibonacci numbers.
 
 ## Related examples

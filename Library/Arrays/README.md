@@ -13,5 +13,5 @@ proofs in `Compiled`.
 | [Word operations](Word/Program.lean) | `scaled` multiplies every word by a scalar. |
 
 `removeAll` searches and shifts repeatedly, taking quadratic time.  The compiler examples retain
-their ownership and allocation tests.  [The removal example](../../Examples/RemoveZero/Verify.lean)
-also proves the first-zero prefix property used by its specification.
+their ownership and allocation tests.  [The search proof](Search/Proof.lean)
+proves the first-zero prefix property used by [the removal example](../../Examples/RemoveZero/Verify.lean).
