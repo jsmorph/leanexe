@@ -1,6 +1,6 @@
 # Design
 
-The repository is one Lake package.  `LeanExe` and `Verified` contain the two compilers.  `Library` groups reusable algorithms and their proofs, `Demos` contains applications, `Examples` contains compiler fixtures, and `TestSupport` contains shared cases and reference calculators under `tests/`.  The default targets are `LeanExe`, `Examples`, and `Demos`.  The complete numerical proof build includes `Library`.  [The README](../README.md) gives the layout and commands, the compiler manuals describe each dialect and proof procedure, and [the development journal](../devnotes.md) records the work.
+The repository is one Lake package.  `LeanExe` and `Verified` contain the two compilers.  `Library` groups reusable algorithms and their proofs, `Demos` contains applications, `Examples` contains compiler fixtures, and `TestSupport` contains shared cases and reference calculators under `tests/`.  The default targets are `LeanExe`, `Examples`, and `Demos`.  The `Verified` aggregate imports the verified application compilations through `Demos.Verified`.  The complete numerical proof build includes `Library`.  [The README](../README.md) gives the layout and commands, the compiler manuals describe each dialect and proof procedure, and [the development journal](../devnotes.md) records the work.
 
 ## Goal
 

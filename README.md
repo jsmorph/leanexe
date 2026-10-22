@@ -140,7 +140,8 @@ The call prints `6`.  Every Lean or Lake command uses [the resource-limited runn
 as [the repository instructions](AGENTS.md) require.  A focused verified-compiler build, such as
 `tools/leanrun --timeout 60m lake build Library.Random.Lcg.Verified`, builds that example and its imports.
 
-The default build covers `LeanExe`, `Examples`, and `Demos`.  The complete `Library` build includes
+The default build covers `LeanExe`, `Examples`, and `Demos`.  The `Verified` aggregate also imports
+`Demos.Verified`, which checks the applications with the verified compiler.  The complete `Library` build includes
 the numerical proofs and can take several hours.  Its lgamma root-range proofs use a 10 GiB memory
 high limit and a 12 GiB maximum:
 
