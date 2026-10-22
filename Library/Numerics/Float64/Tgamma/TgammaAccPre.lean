@@ -68,7 +68,7 @@ def stW (x jm : Float) (eoff : UInt64) : Float × Float × UInt64 :=
 def stF (fh fl jm wh wl : Float) : Float × Float :=
   if jm > 0.0 then
     let rh := 1.0 / wh
-    mulDD3 fh fl rh ((Library.Numerics.Arithmetic.Fma.Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
+    mulDD3 fh fl rh ((Library.Numerics.Arithmetic.Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
   else if jm < 0.0 then mulDD3 fh fl wh wl
   else (fh, fl)
 

@@ -36,24 +36,24 @@ theorem kernel_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (r
     (hb2 : |value c2.toBits| ≤ 26 / 100) (hb3 : |value c3.toBits| ≤ 21 / 100) :
     Finite (r * t).toBits ∧ 99 / 100 ≤ value (r * t).toBits ∧
       value (r * t - 1.0).toBits = value (r * t).toBits - 1 ∧
-      Finite (r * t - 1.0).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))).toBits ∧
-      Finite ((Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) *
-        ((c0 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c1) +
-          (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c3))).toBits ∧
-      |value (r * t - 1.0).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))).toBits -
+      Finite (r * t - 1.0).toBits ∧ Finite (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))).toBits ∧
+      Finite ((Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) *
+        ((c0 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c1) +
+          (Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c3))).toBits ∧
+      |value (r * t - 1.0).toBits + value (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))).toBits -
           (value r.toBits * value t.toBits - 1)| ≤ 1 / 2 ^ 104 ∧
       |value (r * t - 1.0).toBits| ≤ 1 / 2400 + 1 / 2 ^ 52 ∧
-      |value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))).toBits| ≤ 1 / 2 ^ 52 ∧
-      |value ((Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) *
-          ((c0 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c1) +
-            (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c3))).toBits -
+      |value (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))).toBits| ≤ 1 / 2 ^ 52 ∧
+      |value ((Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) *
+          ((c0 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c1) +
+            (Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c3))).toBits -
         (value r.toBits * value t.toBits - 1) ^ 2 *
           (value c0.toBits + (value r.toBits * value t.toBits - 1) * (value c1.toBits +
             (value r.toBits * value t.toBits - 1) * (value c2.toBits +
               (value r.toBits * value t.toBits - 1) * value c3.toBits)))| ≤ 1 / 2 ^ 72 ∧
-      |value ((Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) *
-        ((c0 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c1) +
-          (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) * c3))).toBits| ≤
+      |value ((Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) *
+        ((c0 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c1) +
+          (Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) * (c2 + Library.Numerics.Arithmetic.Fma.fma r t (-1.0) * c3))).toBits| ≤
         1 / 2 ^ 23 := by
   set ρ := value r.toBits with hρ
   set τ := value t.toBits with hτ
@@ -93,10 +93,10 @@ theorem kernel_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (r
   have hdx := fma_approx hF r t (-1.0) hr ht (neg_float _ one_finite).1 (by
     rw [(neg_float _ one_finite).2, one_value, ← sub_eq_add_neg]; linarith [hz])
   rw [(neg_float _ one_finite).2, one_value, ← sub_eq_add_neg] at hdx
-  have hdx' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)) Z (1 / 2 ^ 64) := hdx.mono (by
+  have hdx' : FApprox (Library.Numerics.Arithmetic.Fma.fma r t (-1.0)) Z (1 / 2 ^ 64) := hdx.mono (by
     have : |Z| / 2 ^ 53 ≤ (1 / 2400) / 2 ^ 53 := div_le_div_of_nonneg_right hz (by positivity)
     linarith [(by norm_num : (1 / 2400 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 1 / 2 ^ 64)])
-  set dx := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0) with hdxdef
+  set dx := Library.Numerics.Arithmetic.Fma.fma r t (-1.0) with hdxdef
   have hA1 := (fapprox_mul hdx' (fapprox_self c1 hc1) (1 / 2400) (34 / 100) hz hb1 (1 / 7000)
     (by norm_num) (by norm_num)).mono (show _ ≤ (1 / 2 ^ 64 : ℝ) by norm_num)
   have hA2 := (fapprox_add (fapprox_self c0 hc0) hA1 (5002 / 10000) (by
@@ -147,13 +147,13 @@ theorem kernel_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (r
     (1 / 11500000) (by norm_num) (by norm_num)).mono (show _ ≤ (1 / 2 ^ 72 : ℝ) by norm_num)
   refine ⟨ho.1, by linarith, hsub.2, hsub.1, hl.1, hF'.1, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hsub.2]
-    have : value o.toBits - 1 + value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)).toBits - Z =
-        value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)).toBits - (ρ * τ - value o.toBits) := by rw [hZ]; ring
+    have : value o.toBits - 1 + value (Library.Numerics.Arithmetic.Fma.fma r t (-o)).toBits - Z =
+        value (Library.Numerics.Arithmetic.Fma.fma r t (-o)).toBits - (ρ * τ - value o.toBits) := by rw [hZ]; ring
     rw [this]; linarith
   · rw [hsub.2]
     rw [abs_le]; constructor <;> linarith [(by norm_num : (1 + 1 / 2400 : ℝ) / 2 ^ 53 +
       1 / 2 ^ 1075 ≤ 1 / 2 ^ 52)]
-  · have h1 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)).toBits) (ρ * τ - value o.toBits)
+  · have h1 := abs_sub_abs_le_abs_sub (value (Library.Numerics.Arithmetic.Fma.fma r t (-o)).toBits) (ρ * τ - value o.toBits)
     linarith [(by norm_num : (1 + 1 / 2400 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1075 + 1 / 2 ^ 104 ≤
       1 / 2 ^ 52)]
   · have h2 := hF'.2

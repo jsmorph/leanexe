@@ -45,7 +45,7 @@ theorem mainPath_gen (dbTab accTab tab : Array UInt64) (x : Float) :
        let (fh, fl) := polyDDD tab 0 10 d fl
        let (wh, wl, _, _) := wState x i
        let rh := 1.0 / wh
-       let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
+       let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
        let eps := fh * Float.ofBits 0x3B92E3B40A0E9B4F
        let ub := fh + (fl + eps)
        let lb := fh + (fl - eps)
@@ -389,7 +389,7 @@ theorem mainPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
   obtain ⟨hrf, hcf, hre, hcb, hrb⟩ := recip_dd hF wh wl wf1 wf2 hwk'
     (by linarith [(by norm_num : (1 : ℝ) / 2 ^ 600 ≤ 1 / 2 ^ 378 / 2)])
     (by linarith [(by norm_num : (2 : ℝ) * 2 ^ 14 ≤ 2 ^ 600)])
-  generalize (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh) = c
+  generalize (Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh) = c
     at hcf hre hcb ⊢
   generalize 1.0 / wh = rh at hrf hre hcb hrb ⊢
   obtain ⟨D, hD⟩ : ∃ D, D = value wh.toBits + value wl.toBits := ⟨_, rfl⟩

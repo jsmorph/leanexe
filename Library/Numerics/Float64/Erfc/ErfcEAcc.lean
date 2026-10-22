@@ -30,10 +30,10 @@ def eaccRed (tab : Array UInt64) (xh xl : Float) : Float × Float × Float :=
   let log2h := Float.ofBits 0x3FE62E42FEFA39EF
   let log2l := Float.ofBits 0x3C7ABC9E3B398000
   let log2tiny := Float.ofBits 0x398F97B57A079A19
-  let yh := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) log2h xh
+  let yh := Library.Numerics.Arithmetic.Fma.fma (-k) log2h xh
   let (th, tl) := Erfc.twoSum (-k * log2l) xl
   let (yh, yl) := Erfc.fastTwoSum yh th
-  let yl := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) log2tiny (yl + tl)
+  let yl := Library.Numerics.Arithmetic.Fma.fma (-k) log2tiny (yl + tl)
   eaccCore tab k yh yl
 
 theorem expAcc_eq (tab : Array UInt64) (xh xl : Float) :
@@ -42,7 +42,7 @@ theorem expAcc_eq (tab : Array UInt64) (xh xl : Float) :
 /-- A fused multiply-add whose exact result some finite word holds is exact. -/
 theorem fma_exact (hF : FmaNearest) (a b c : Float) (ha : ff a) (hb : ff b) (hc : ff c)
     (h : |fv a * fv b + fv c| ≤ 2 ^ 1021) (hr : Rep (fv a * fv b + fv c)) :
-    ff (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) ∧ fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) = fv a * fv b + fv c := by
+    ff (Library.Numerics.Arithmetic.Fma.fma a b c) ∧ fv (Library.Numerics.Arithmetic.Fma.fma a b c) = fv a * fv b + fv c := by
   obtain ⟨hf, hn⟩ := hF a b c ha hb hc (le_trans h (by norm_num))
   obtain ⟨w, hw, hv⟩ := hr
   have := hn w hw
@@ -78,46 +78,46 @@ theorem eacc_red (hF : FmaNearest) (xh xl : Float) (hxh : ff xh) (hxl : ff xl)
     ∃ K : ℤ, -1072 ≤ K ∧ K ≤ -2 ∧
       ff (Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE)) ∧
       fv (Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE)) = K ∧
-      ff (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+      ff (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
         (Float.ofBits 0x3FE62E42FEFA39EF) xh)
         (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
           Float.ofBits 0x3C7ABC9E3B398000) xl).1).1 ∧
-      ff (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+      ff (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
         (Float.ofBits 0x398F97B57A079A19)
-        ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+        ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x3FE62E42FEFA39EF) xh)
           (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
             Float.ofBits 0x3C7ABC9E3B398000) xl).1).2 +
           (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
             Float.ofBits 0x3C7ABC9E3B398000) xl).2)) ∧
-      |fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+      |fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x3FE62E42FEFA39EF) xh)
           (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
             Float.ofBits 0x3C7ABC9E3B398000) xl).1).1 +
-        fv (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+        fv (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x398F97B57A079A19)
-          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
             (Float.ofBits 0x3FE62E42FEFA39EF) xh)
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).1).2 +
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).2)) -
         (fv xh + fv xl - K * Real.log 2)| ≤ 1 / 2 ^ 80 ∧
-      |fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+      |fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x3FE62E42FEFA39EF) xh)
           (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
             Float.ofBits 0x3C7ABC9E3B398000) xl).1).1 +
-        fv (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+        fv (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x398F97B57A079A19)
-          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
             (Float.ofBits 0x3FE62E42FEFA39EF) xh)
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).1).2 +
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).2))| ≤ 347 / 1000 ∧
-      |fv (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+      |fv (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x398F97B57A079A19)
-          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
             (Float.ofBits 0x3FE62E42FEFA39EF) xh)
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).1).2 +
@@ -216,7 +216,7 @@ theorem eacc_red (hF : FmaNearest) (xh xl : Float) (hxh : ff xh) (hxl : ff xl)
     exact hv0.trans (by norm_num)
   obtain ⟨y0f, y0v⟩ := fma_exact hF (-k) lh xh nkf hf' hxh habs_v rep_v
   rw [nkv] at y0v
-  set yh0 := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) lh xh
+  set yh0 := Library.Numerics.Arithmetic.Fma.fma (-k) lh xh
   have hy0 : |fv yh0| ≤ 3467 / 10000 := by
     rw [y0v, show (-(K : ℝ)) * fv lh + fv xh = fv xh - (K : ℝ) * fv lh by ring]; exact hv0
   -- `t1 = -K log2l`, and `twoSum (t1, xl)`
@@ -277,12 +277,12 @@ theorem eacc_red (hF : FmaNearest) (xh xl : Float) (hxh : ff xh) (hxl : ff xl)
   have hf2 : |fv (-k) * fv lt + fv (yl0 + tl)| ≤ 1 / 2 ^ 49 := (abs_add_le _ _).trans (by
     linarith [show (1072 : ℝ) * (1 / 2 ^ 101) + (1 / 2 ^ 50 + 1 / 2 ^ 102) ≤ 1 / 2 ^ 49 by norm_num])
   obtain ⟨ylf, ylerr⟩ := fma_f hF (-k) lt (yl0 + tl) nkf tf' s1f (hf2.trans (by norm_num))
-  have hylerr : |fv (Library.Numerics.Arithmetic.Fma.Fma.fma (-k) lt (yl0 + tl)) - (fv (-k) * fv lt + fv (yl0 + tl))| ≤
+  have hylerr : |fv (Library.Numerics.Arithmetic.Fma.fma (-k) lt (yl0 + tl)) - (fv (-k) * fv lt + fv (yl0 + tl))| ≤
       1 / 2 ^ 101 := by
     refine ylerr.trans ?_
     have : u * |fv (-k) * fv lt + fv (yl0 + tl)| ≤ u * (1 / 2 ^ 49) := by gcongr
     linarith [show u * (1 / 2 ^ 49) + η ≤ 1 / 2 ^ 101 by norm_num]
-  set yl := Library.Numerics.Arithmetic.Fma.Fma.fma (-k) lt (yl0 + tl)
+  set yl := Library.Numerics.Arithmetic.Fma.fma (-k) lt (yl0 + tl)
   -- the reduced argument
   have hmain : |fv yh + fv yl - (fv xh + fv xl - K * Real.log 2)| ≤ 1 / 2 ^ 80 := by
     have e : fv yh + fv yl - (fv xh + fv xl - K * Real.log 2) =
@@ -417,13 +417,13 @@ theorem expAcc_err (hF : FmaNearest) (xh xl : Float) (hxh : ff xh) (hxl : ff xl)
     (by push_cast; exact hylb) (eaccEnt_of_q _ _ hent)
   have hpe := poly_exp _ 22 (by norm_num) (347 / 1000) (1 / 2 ^ 79) (by norm_num) 0 hchk _
     (by push_cast; exact hYb)
-  set Y := fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+  set Y := fv (Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x3FE62E42FEFA39EF) xh)
           (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
             Float.ofBits 0x3C7ABC9E3B398000) xl).1).1 +
-        fv (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+        fv (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
           (Float.ofBits 0x398F97B57A079A19)
-          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
+          ((Erfc.fastTwoSum (Library.Numerics.Arithmetic.Fma.fma (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE))
             (Float.ofBits 0x3FE62E42FEFA39EF) xh)
             (Erfc.twoSum (-Erfc.roundEven (xh * Float.ofBits 0x3FF71547652B82FE) *
               Float.ofBits 0x3C7ABC9E3B398000) xl).1).2 +

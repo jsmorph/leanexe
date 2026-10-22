@@ -21,7 +21,7 @@ set_option exponentiation.threshold 2200
 /-- `Erfc.erfAccurateTiny` with the coefficient function `cf` as an argument. -/
 def taccCore (cf : UInt64 → Float) (z : Float) : Float × Float :=
   let z2 := z * z
-  let h := LeanExe.loop 4 (cf 14) fun k h => Library.Numerics.Arithmetic.Fma.Fma.fma h z2 (cf (13 - k))
+  let h := LeanExe.loop 4 (cf 14) fun k h => Library.Numerics.Arithmetic.Fma.fma h z2 (cf (13 - k))
   let (h, l) := LeanExe.loop 2 (h, (0.0 : Float)) fun k s =>
     let (h, l) := Erfc.mulZ2 s.1 s.2 z
     let (h, tl) := Erfc.fastTwoSum (cf (9 - k)) h
@@ -31,13 +31,13 @@ def taccCore (cf : UInt64 → Float) (z : Float) : Float × Float :=
     let (h, tl) := Erfc.fastTwoSum (cf (6 - 2 * k)) h
     (h, l + (cf (7 - 2 * k) + tl))
   let (h, tl) := Erfc.aMul h z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma l z tl)
+  (h, Library.Numerics.Arithmetic.Fma.fma l z tl)
 
 theorem erfAccurateTiny_eq (z : Float) : Erfc.erfAccurateTiny z = taccCore Erfc.tinyCoeff z := rfl
 
 /-- The first loop of `taccCore`: Horner's rule in `z²` with `fma`. -/
 def tA (cf : UInt64 → Float) (z : Float) : Float :=
-  LeanExe.loop 4 (cf 14) fun k h => Library.Numerics.Arithmetic.Fma.Fma.fma h (z * z) (cf (13 - k))
+  LeanExe.loop 4 (cf 14) fun k h => Library.Numerics.Arithmetic.Fma.fma h (z * z) (cf (13 - k))
 
 /-- The second loop of `taccCore`. -/
 def tB (cf : UInt64 → Float) (z : Float) (s : Float × Float) : Float × Float :=
@@ -56,7 +56,7 @@ def tC (cf : UInt64 → Float) (z : Float) (s : Float × Float) : Float × Float
 /-- The last product of `taccCore`. -/
 def tD (z : Float) (s : Float × Float) : Float × Float :=
   let (h, tl) := Erfc.aMul s.1 z
-  (h, Library.Numerics.Arithmetic.Fma.Fma.fma s.2 z tl)
+  (h, Library.Numerics.Arithmetic.Fma.fma s.2 z tl)
 
 theorem taccCore_eq (cf : UInt64 → Float) (z : Float) :
     taccCore cf z = tD z (tC cf z (tB cf z (tA cf z, (0.0 : Float)))) := rfl

@@ -12,7 +12,7 @@ digit is nonzero, and the binary exponent of the last kept digit, with the expon
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatHexParse
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
   ParseFloatDigits ParseFloatDecParse
 
 /-- The decoder's hexadecimal branch: the integer digits, the fraction digits, and the binary

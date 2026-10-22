@@ -14,7 +14,7 @@ bits, which guarantees that at least two bits are dropped, so that the flag deci
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatRound
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid
 
 set_option exponentiation.threshold 4096
 

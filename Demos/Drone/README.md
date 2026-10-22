@@ -10,6 +10,8 @@ altitude and speed at each station, from rest on the ground at the first station
 ground at the last.  The proofs show that the module's bytes compute the planner and that its
 flights are optimal and safe.
 
+The bounded ceiling-square-root implementation and proof come from [the arithmetic library](../../Library/Numerics/Arithmetic/CeilSqrt/README.md).
+
 ## Implementation and theorems
 
 [The planner](Program.lean) uses `UInt64` words and counted loops throughout: the square root takes

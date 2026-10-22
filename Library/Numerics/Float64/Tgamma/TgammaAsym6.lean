@@ -22,7 +22,7 @@ theorem asym_gen (logTab tab : Array UInt64) (xh xl : Float) :
     asLgammaAsym logTab tab xh xl =
       (let zh := 1.0 / xh
        let dz := xl * zh
-       let zl := (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 - dz) * zh
+       let zl := (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 - dz) * zh
        let (lh, ll) := asLogd logTab xh
        let (lh, ll) := mulDD (xh - 0.5) xl (lh - 1.0) (ll + dz)
        let (z2h, z2l) := mulDD zh zl zh zl
@@ -98,7 +98,7 @@ theorem asLgammaAsym_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNeare
   generalize mulDD (xh - 0.5) xl (lh - 1.0) (ll + xl * (1.0 / xh)) = P at hPf1 hPf2 hPe hPl hP1 hP2 ⊢
   obtain ⟨Ph, Pl⟩ := P
   dsimp only at hPf1 hPf2 hPe hPl hP1 hP2 ⊢
-  generalize (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh) = zl at hlf hsum hzl ⊢
+  generalize (Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 - xl * (1.0 / xh)) * (1.0 / xh) = zl at hlf hsum hzl ⊢
   -- `Z = 1/X` and the square
   have hX0 : 0 < value xh.toBits + value xl.toBits := by linarith
   have hZ0 : 0 < 1 / (value xh.toBits + value xl.toBits) := one_div_pos.mpr hX0

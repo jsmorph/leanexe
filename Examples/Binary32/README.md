@@ -9,6 +9,8 @@ computed from the element's position.  [The module definition](Module.lean) comp
 the 2,738-byte `binary32.wasm`.  [`Wgsl.lean`](Wgsl.lean) translates the compiled IR of `scale32`,
 `axpyArray32`, `matVec32`, and `condMix32` into WGSL compute kernels for a GPU.
 
+The reusable scaling, AXPY, and matrix-vector definitions come from [the linear-algebra library](../../Library/Numerics/LinearAlgebra/README.md).  This example retains the scalar and conditional kernels and their Wasm and WGSL proofs.
+
 ## Binary32 equality and kernel theorems
 
 The WebAssembly theorems use ProofKit's binary32 chain, which proves that Lean's `Float32` addition,

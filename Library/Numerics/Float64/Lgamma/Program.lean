@@ -23,7 +23,7 @@ the code, where CORE-MATH's comment gives `0x1.006df1bfac84ep+1015`.
 
 The port follows the C code operation for operation, with the changes of `Tgamma` and these.  It
 calls `Tgamma`'s double-double helpers, `roundEven`, `floorF`, and `asSinpid`, and the tables of
-`as_logd`, `Tgamma.logdTable`, which `lgamma.c` repeats.  `__builtin_clzll` is `63 - Library.Numerics.Arithmetic.Fma.Fma.msb64`.
+`as_logd`, `Tgamma.logdTable`, which `lgamma.c` repeats.  `__builtin_clzll` is `63 - Library.Numerics.Arithmetic.Fma.msb64`.
 The global `signgam` is the second result of `lgammaWith`.  C's 32-bit `unsigned` arithmetic of the
 piece index does not overflow for these arguments, so the port computes it in words, and the final
 test of `as_lgamma_accurate`, which keeps the low 32 bits of a 52-bit mask, masks with `0xFFFFFFFF`.
@@ -2084,13 +2084,13 @@ def polyD (tab : Array UInt64) (o n : UInt64) (x : Float) : Float :=
 /-- The reduction of `as_logd` and `as_logd_accurate` for a positive finite `x`, subnormals
 included: `(t, r, e, i1, i2)` with `x = t · 2 ^ e`, `1 ≤ t < 2`, the exponent `e` as a double, and
 `r = r1 i1 · r2 i2` near `1/t`, from the tables of `Tgamma.logdTable`.  A subnormal `x` is
-normalized with the count of its leading zero bits, `63 - Library.Numerics.Arithmetic.Fma.Fma.msb64`. -/
+normalized with the count of its leading zero bits, `63 - Library.Numerics.Arithmetic.Fma.msb64`. -/
 def logReduce (tab : Array UInt64) (x : Float) : Float × Float × Float × UInt64 × UInt64 :=
   let u := x.toBits
   let ex := u >>> 52
   let (u, ed) :=
     if ex == 0 then
-      let k := 63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 u
+      let k := 63 - Library.Numerics.Arithmetic.Fma.msb64 u
       (u <<< (k - 11), -((k + 1011).toFloat))
     else (u, if ex ≥ 0x3ff then (ex - 0x3ff).toFloat else -((0x3ff - ex).toFloat))
   let m := u &&& 0xFFFFFFFFFFFFF
@@ -2105,9 +2105,9 @@ def logReduce (tab : Array UInt64) (x : Float) : Float × Float × Float × UInt
 def asLogd (tab : Array UInt64) (x : Float) : Float × Float :=
   let (t, r, ed, i1, i2) := logReduce tab x
   let o := r * t
-  let dxl := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)
+  let dxl := Library.Numerics.Arithmetic.Fma.fma r t (-o)
   let dxh := o - 1.0
-  let dx := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)
+  let dx := Library.Numerics.Arithmetic.Fma.fma r t (-1.0)
   let dx2 := dx * dx
   let f := dx2 * ((entry tab 260 + dx * entry tab 261) + dx2 * (entry tab 262 + dx * entry tab 263))
   let lt := (entry tab (130 + 2 * i1 + 1) + entry tab (196 + 2 * i2 + 1)) +
@@ -2123,7 +2123,7 @@ def asLogd (tab : Array UInt64) (x : Float) : Float × Float :=
 def asLogdAccurate (tab hTab : Array UInt64) (x : Float) : Float × Float × Float :=
   let (t, r, ed, i1, i2) := logReduce tab x
   let o := r * t
-  let dxl := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)
+  let dxl := Library.Numerics.Arithmetic.Fma.fma r t (-o)
   let dxh := o - 1.0
   let (dxh, dxl) := fastTwoSum dxh dxl
   let fl := dxh * (entry hTab 210 + dxh * (entry hTab 212 + dxh * entry hTab 214))
@@ -2151,7 +2151,7 @@ def asSinpipid (tab : Array UInt64) (x : Float) : Float × Float :=
   if 64 - ky < 2 then
     let z := 0.5 - ax
     let z2 := z * z
-    let z2l := Library.Numerics.Arithmetic.Fma.Fma.fma z z (-z2)
+    let z2l := Library.Numerics.Arithmetic.Fma.fma z z (-z2)
     let fl := z2 * (entry tab 140 + z2 * (entry tab 141 + z2 * entry tab 142))
     let (fh, fl) := fastTwoSum (entry tab 138) fl
     let (fh, fl) := mulDD z2 z2l fh (fl + entry tab 139)
@@ -2172,7 +2172,7 @@ def asSinpipidAccurate (tab : Array UInt64) (x : Float) : Float × Float :=
   let ch := entry tab (2 * ky + 1)
   let cl := entry tab (2 * ky)
   let d2h := d * d
-  let d2l := Library.Numerics.Arithmetic.Fma.Fma.fma d d (-d2h)
+  let d2l := Library.Numerics.Arithmetic.Fma.fma d d (-d2h)
   let (ph, pl) := polyDD tab 143 5 d2h d2l 0.0
   let (qh, ql) := polyDD tab 153 6 d2h d2l 0.0
   let (ph, pl) := mulDDD d ph pl
@@ -2189,18 +2189,18 @@ def asLgammaAsymAccurate (logTab hTab tab : Array UInt64) (xh xl : Float) : Floa
   if xh < Float.ofBits 0x4770000000000000 then  -- 0x1p120
     let zh := 1.0 / xh
     let dz := xl * zh
-    let zl := (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 - dz) * zh
+    let zl := (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 - dz) * zh
     let (l1, l2) :=
       if xl != 0.0 then
-        let (dl1, dl2) := mulDDD xl zh (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 * zh)
+        let (dl1, dl2) := mulDDD xl zh (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 * zh)
         sumDD l1 l2 dl1 (dl2 - dl1 * dl1 / 2.0)
       else (l1, l2)
     let (wh, wl) := if xh.toBits >>> 52 > 0x3ff + 51 then (xh, xl - 0.5) else (xh - 0.5, xl)
     let l0 := l0 - 1.0
     let l0x := l0 * wh
-    let l0xl := Library.Numerics.Arithmetic.Fma.Fma.fma l0 wh (-l0x)
+    let l0xl := Library.Numerics.Arithmetic.Fma.fma l0 wh (-l0x)
     let l1x := l1 * wh
-    let l1xl := Library.Numerics.Arithmetic.Fma.Fma.fma l1 wh (-l1x)
+    let l1xl := Library.Numerics.Arithmetic.Fma.fma l1 wh (-l1x)
     let l2x := l2 * wh
     let (l1x, l2x) := sumDD l1x l2x l0xl l1xl
     let (l1x, l2x) := sumDD l1x l2x (l0 * wl) (l1 * wl)
@@ -2218,9 +2218,9 @@ def asLgammaAsymAccurate (logTab hTab tab : Array UInt64) (xh xl : Float) : Floa
     let wl := xl - 0.5
     let l0 := l0 - 1.0
     let l0x := l0 * xh
-    let l0xl := Library.Numerics.Arithmetic.Fma.Fma.fma l0 xh (-l0x)
+    let l0xl := Library.Numerics.Arithmetic.Fma.fma l0 xh (-l0x)
     let l1x := l1 * xh
-    let l1xl := Library.Numerics.Arithmetic.Fma.Fma.fma l1 xh (-l1x)
+    let l1xl := Library.Numerics.Arithmetic.Fma.fma l1 xh (-l1x)
     let l2x := l2 * xh
     let (l1x, l2x) := sumDD l1x l2x l0xl l1xl
     let (l1x, l2x) := sumDD l1x l2x (l0 * wl) (l1 * wl)
@@ -2520,7 +2520,7 @@ def lgammaWith (logTab hTab sinTab asymTab accTab dbTab tab : Array UInt64) (x :
               let (fh, fl) :=
                 if ax < Float.ofBits 0x4630000000000000 then  -- 0x1p100
                   let zh := 1.0 / ax
-                  let zl := Library.Numerics.Arithmetic.Fma.Fma.fma zh (-ax) 1.0 * zh
+                  let zl := Library.Numerics.Arithmetic.Fma.fma zh (-ax) 1.0 * zh
                   let z2h := zh * zh
                   let z4h := z2h * z2h
                   let q0 := entry tab 401 + z2h * entry tab 402

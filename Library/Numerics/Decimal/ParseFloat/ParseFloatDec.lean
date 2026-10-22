@@ -5,14 +5,14 @@ import Library.Numerics.Arithmetic.Uscale.UscaleDiv
 `ParseFloat.decRound` gives the nearest-even encoding of a positive decimal `V · 10 ^ q`, where
 `V` is the integer `D` of the kept digits, or `D + 1/2` when a dropped digit is nonzero.
 `exact_path` proves the exact branch for any numerator `n` and denominator `d`: the shifts make the
-quotient `⌊n · 2 ^ sn / (d · 2 ^ sd)⌋` a word of `p + 2` or `p + 3` bits, `Library.Numerics.Arithmetic.Uscale.Uscale.scaledQuot_spec`
+quotient `⌊n · 2 ^ sn / (d · 2 ^ sd)⌋` a word of `p + 2` or `p + 3` bits, `Library.Numerics.Arithmetic.Uscale.scaledQuot_spec`
 gives it with the remainder flag, and `ParseFloatRound.roundUnits_spec` rounds it.  `decRound_spec`
 adds the saturations: from `10 ^ emax` on the value lies beyond the overflow threshold, and below
 `10 ^ -emin` it lies below half the least subnormal.
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatDec
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid ParseFloatRound
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid ParseFloatRound
 
 set_option exponentiation.threshold 4096
 

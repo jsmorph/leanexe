@@ -105,7 +105,7 @@ theorem reflPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
     (by rw [hpha]; exact hph3) (abs_le.mpr ⟨by linarith, by linarith⟩)
   generalize 1.0 / ph * Float.ofBits 0x400921FB54442D18 = rh0 at hrhf hrlf hR68 hrl32 hrh49 ⊢
   generalize 1.0 / ph * (Float.ofBits 0x3CA1A62633145C07 - pl * rh0 -
-    Library.Numerics.Arithmetic.Fma.Fma.fma rh0 ph (-Float.ofBits 0x400921FB54442D18)) = rl0 at hrlf hR68 hrl32 ⊢
+    Library.Numerics.Arithmetic.Fma.fma rh0 ph (-Float.ofBits 0x400921FB54442D18)) = rl0 at hrlf hR68 hrl32 ⊢
   -- the real analysis
   obtain ⟨hE1, hG0, hGt, hr1, hr2, hRT, hrhT, hbig, hGs⟩ := refl_core2 (value x.toBits)
     (value lh2.toBits + value ll2.toBits) (value h.toBits) (value l.toBits) (value sh.toBits)

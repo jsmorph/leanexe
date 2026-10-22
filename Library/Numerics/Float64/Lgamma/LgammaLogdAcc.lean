@@ -151,7 +151,7 @@ theorem acc_core (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA 
   generalize hR : Lgamma.logReduce Tgamma.logdTable y = R at hT hRt hRt1 hRt2 hRr hRrv hRrt hRed hRedv hRi1 hRi2 hyv
   obtain ⟨t, r, ed, i1, i2⟩ := R
   dsimp only at hT hRt hRt1 hRt2 hRr hRrv hRrt hRed hRedv hRi1 hRi2 hyv
-  generalize hD : fastTwoSum (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))) = D at hT
+  generalize hD : fastTwoSum (r * t - 1.0) (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))) = D at hT
   generalize hP : Lgamma.polyDD H 198 6 D.1 D.2
     (D.1 * (entry H 210 + D.1 * (entry H 212 + D.1 * entry H 214))) = P at hT
   generalize hQ : mulDD D.1 D.2 P.1 P.2 = Q at hT
@@ -180,7 +180,7 @@ theorem acc_core (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA 
   rw [hD] at hD1f hD2f hDe hD2b
   set Xd := value D.1.toBits + value D.2.toBits with hXddef
   have hXd : |Xd - X| ≤ 1 / 2 ^ 103 := by
-    have := abs_sub_le Xd (value (r * t - 1.0).toBits + value (Library.Numerics.Arithmetic.Fma.Fma.fma r t (-(r * t))).toBits) X
+    have := abs_sub_le Xd (value (r * t - 1.0).toBits + value (Library.Numerics.Arithmetic.Fma.fma r t (-(r * t))).toBits) X
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 / 2 ^ 53 + (1 / 2400 + 1 / 2 ^ 52 + 1 / 2 ^ 52) / 2 ^ 104 +
       1 / 2 ^ 104 ≤ 1 / 2 ^ 103)]
   have hXdb : |Xd| ≤ 1 / 2400 + 1 / 2 ^ 103 := by

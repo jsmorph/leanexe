@@ -46,12 +46,12 @@ theorem up_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hGap 
     F64SignedRounding.WithinSteps 1 (Real.Gamma (value x.toBits))
       (Float.ofBits (finRes
         (mulDD3 p1 p2 (1.0 / wh)
-          ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1
+          ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1
         (adjLow
           (mulDD3 p1 p2 (1.0 / wh)
-            ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1
+            ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).1
           (mulDD3 p1 p2 (1.0 / wh)
-            ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2 jm)
+            ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh))).2 jm)
         (UInt64.ofNat eoff - 500 * UInt64.ofNat r))).toBits := by
   set v := value x.toBits with hvdef
   set Wv := W v r M with hWvdef
@@ -105,7 +105,7 @@ theorem up_case (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hGap 
   obtain ⟨hf1f, hf2f, hfq, hf2r⟩ := TgammaAccComb.div_step hF p1 p2 wh wl hp1 hp2 hwhf hwlf hp2r
     hp1lo (by linarith [(by norm_num : (120 : ℝ) ≤ 2 ^ 8)]) hwlb hwh1 hwh2
   set f := mulDD3 p1 p2 (1.0 / wh)
-    ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)) with hfdef
+    ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)) with hfdef
   have hf2r30 : |value f.2.toBits| ≤ |value f.1.toBits| / 2 ^ 30 :=
     hf2r.trans (div_le_div_of_nonneg_left (abs_nonneg _) (by norm_num) (by norm_num))
   have hPA : |P - A| ≤ 17 / 2 ^ 63 * |A| := by

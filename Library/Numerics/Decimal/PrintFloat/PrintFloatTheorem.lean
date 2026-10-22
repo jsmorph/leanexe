@@ -12,7 +12,7 @@ and `ecmaLayout` (`print64_layout`).  The binary32 theorems take `x : UInt32` wi
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatTheorem
-open PrintFloat Library.Numerics.Decimal.ParseFloat.ParseFloat Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvDecode
+open PrintFloat Library.Numerics.Decimal.ParseFloat Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvDecode
   ParseFloatTheorem PrintFloatShort PrintFloatDigits PrintFloatDerive
 
 set_option exponentiation.threshold 4096

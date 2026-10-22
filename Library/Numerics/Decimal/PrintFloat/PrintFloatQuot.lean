@@ -14,7 +14,7 @@ run, with the even one at a tie (`clamp_spec`).
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatQuot
-open PrintFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.ParseFloat.ParseFloatDec PrintFloatShort
+open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.ParseFloat.ParseFloatDec PrintFloatShort
 
 set_option exponentiation.threshold 4096
 

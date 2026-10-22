@@ -5,7 +5,7 @@ import LeanExe.ProofKit.F64Bits
 /-!
 The operations of `Erfc` on floats with their error bounds, for the proof of `Erfc.erfc`.  `fv x`
 is the value of a float's bits.  Sums and differences err by at most `u` relative, products by
-`u` relative plus `2 ^ -1075`, and `Library.Numerics.Arithmetic.Fma.Fma.fma` by the same under `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`.
+`u` relative plus `2 ^ -1075`, and `Library.Numerics.Arithmetic.Fma.fma` by the same under `Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest`.
 `Erfc.fastTwoSum` and `Erfc.twoSum` are exact, and `Erfc.aMul` errs by at most `2 ^ -106` relative
 plus `2 ^ -1074`.
 -/
@@ -89,10 +89,10 @@ theorem nearest_err (c : UInt64) (t : ℝ) (hn : ∀ v : UInt64, Finite v → |v
     rw [abs_of_nonpos h0] at hwt ⊢
     linarith
 
-/-- The error of `Library.Numerics.Arithmetic.Fma.Fma.fma` under `FmaNearest`. -/
+/-- The error of `Library.Numerics.Arithmetic.Fma.fma` under `FmaNearest`. -/
 theorem fma_f (hF : FmaNearest) (a b c : Float) (ha : ff a) (hb : ff b) (hc : ff c)
     (h : |fv a * fv b + fv c| ≤ 2 ^ 1021) :
-    ff (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) ∧ |fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) - (fv a * fv b + fv c)| ≤
+    ff (Library.Numerics.Arithmetic.Fma.fma a b c) ∧ |fv (Library.Numerics.Arithmetic.Fma.fma a b c) - (fv a * fv b + fv c)| ≤
       u * |fv a * fv b + fv c| + η := by
   obtain ⟨hf, hn⟩ := hF a b c ha hb hc (le_trans h (by norm_num))
   exact ⟨hf, nearest_err _ _ hn (lt_of_le_of_lt h (by norm_num))⟩
@@ -145,8 +145,8 @@ theorem aMul_f (hF : FmaNearest) (a b : Float) (ha : ff a) (hb : ff b)
   obtain ⟨hf2, he2⟩ := fma_f hF a b (-(a * b)) ha hb hnf hs2
   refine ⟨hf1, hf2, he1, ?_⟩
   rw [hnv] at he2
-  have e : fv (a * b) + fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b (-(a * b))) - fv a * fv b =
-      fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b (-(a * b))) - (fv a * fv b + -fv (a * b)) := by ring
+  have e : fv (a * b) + fv (Library.Numerics.Arithmetic.Fma.fma a b (-(a * b))) - fv a * fv b =
+      fv (Library.Numerics.Arithmetic.Fma.fma a b (-(a * b))) - (fv a * fv b + -fv (a * b)) := by ring
   rw [e]
   rw [hnv] at hsmall
   calc _ ≤ u * |fv a * fv b + -fv (a * b)| + η := he2

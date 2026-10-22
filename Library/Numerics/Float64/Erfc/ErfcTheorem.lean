@@ -115,18 +115,18 @@ theorem lt_limit_of_pos (c : Float) (hc : ff c) (hpos : 0 < fv c) : c.toBits.toN
 /-- The fma's result is a nearest word of `a b + c` when that lies in `(1/2, 3/2)`. -/
 theorem nearest_of_fma (hF : FmaNearest) (a b c : Float) (ha : ff a) (hb : ff b) (hc : ff c)
     (hs1 : 1 / 2 < fv a * fv b + fv c) (hs2 : fv a * fv b + fv c < 3 / 2) :
-    Nearest (fv a * fv b + fv c) (Library.Numerics.Arithmetic.Fma.Fma.fma a b c).toBits := by
+    Nearest (fv a * fv b + fv c) (Library.Numerics.Arithmetic.Fma.fma a b c).toBits := by
   obtain ⟨rf, rn⟩ := hF a b c ha hb hc (by
     change |fv a * fv b + fv c| ≤ 2 ^ 1023
     rw [abs_le]; constructor <;> linarith [show (3 / 2 : ℝ) ≤ 2 ^ 1023 by norm_num])
   obtain ⟨of, ov⟩ := one_val
   have h1 := rn _ of
-  change |fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) - (fv a * fv b + fv c)| ≤ |fv 1.0 - (fv a * fv b + fv c)| at h1
+  change |fv (Library.Numerics.Arithmetic.Fma.fma a b c) - (fv a * fv b + fv c)| ≤ |fv 1.0 - (fv a * fv b + fv c)| at h1
   rw [ov] at h1
   have k2 : |1 - (fv a * fv b + fv c)| < fv a * fv b + fv c := by
     rw [abs_lt]; constructor <;> linarith
-  have hpos : 0 < fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) := by
-    linarith [neg_abs_le (fv (Library.Numerics.Arithmetic.Fma.Fma.fma a b c) - (fv a * fv b + fv c))]
+  have hpos : 0 < fv (Library.Numerics.Arithmetic.Fma.fma a b c) := by
+    linarith [neg_abs_le (fv (Library.Numerics.Arithmetic.Fma.fma a b c) - (fv a * fv b + fv c))]
   exact ⟨lt_limit_of_pos _ rf hpos, fun v hv => rn v (finite_of_lt v hv)⟩
 
 /-- One step for a word `w` of value within one spacing of `y`, two spacings into binade `e`. -/

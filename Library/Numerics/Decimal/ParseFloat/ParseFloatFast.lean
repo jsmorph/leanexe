@@ -14,7 +14,7 @@ exact word of `10 ^ t` for `t ≤ 22`, and it is the reference word of `10 ^ t` 
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatFast
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvRational Library.Numerics.Decimal.Shared.StrconvOfScientific
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrid Library.Numerics.Decimal.Shared.StrconvWords Library.Numerics.Decimal.Shared.StrconvRational Library.Numerics.Decimal.Shared.StrconvOfScientific
   LeanExe.ProofKit ParseFloatRound
 
 set_option exponentiation.threshold 4096

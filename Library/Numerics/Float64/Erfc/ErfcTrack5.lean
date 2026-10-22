@@ -107,16 +107,16 @@ theorem pr_renorm {h l : Float} {V M L e : ℝ} (hp : Pr h l V M L e) (hlh : |fv
 /-- The step of the first loop of `erfc_asympt_accurate`'s polynomial. -/
 def tStep (uh ul c : Float) (s : Float × Float) : Float × Float :=
   let (h, l) := Erfc.aMul s.1 uh
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 ul l
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 uh l
+  let l := Library.Numerics.Arithmetic.Fma.fma s.1 ul l
+  let l := Library.Numerics.Arithmetic.Fma.fma s.2 uh l
   let (zh, zl) := Erfc.twoSum c h
   (zh, zl + l)
 
 /-- The step of the second loop, with the double-double coefficient `c + d`. -/
 def tStepB (uh ul c d : Float) (s : Float × Float) : Float × Float :=
   let (h, l) := Erfc.aMul s.1 uh
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.1 ul l
-  let l := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 uh l
+  let l := Library.Numerics.Arithmetic.Fma.fma s.1 ul l
+  let l := Library.Numerics.Arithmetic.Fma.fma s.2 uh l
   let (zh, zl) := Erfc.twoSum c h
   (zh, zl + (l + d))
 

@@ -18,12 +18,12 @@ theorem recip_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (wh w
     (hwl : Finite wl.toBits) (hk : |value wl.toBits| ≤ |value wh.toBits| / 2 ^ 40)
     (hlo : 1 / 2 ^ 600 ≤ |value wh.toBits|) (hhi : |value wh.toBits| ≤ 2 ^ 600) :
     Finite (1.0 / wh).toBits ∧
-      Finite ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits ∧
+      Finite ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits ∧
       |value (1.0 / wh).toBits +
-          value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits -
+          value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits -
           1 / (value wh.toBits + value wl.toBits)| ≤
         |1 / (value wh.toBits + value wl.toBits)| / 2 ^ 78 ∧
-      |value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits| ≤
+      |value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) * (1.0 / wh)).toBits| ≤
         |value (1.0 / wh).toBits| / 2 ^ 38 ∧
       |value (1.0 / wh).toBits| ≤ |1 / (value wh.toBits + value wl.toBits)| * (1 + 1 / 2 ^ 38) := by
   obtain ⟨vh, hvh⟩ : ∃ v, v = value wh.toBits := ⟨_, rfl⟩
@@ -79,7 +79,7 @@ theorem recip_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (wh w
   have ht := fma_approx hF (1.0 / wh) (-wh) 1.0 hr.1 hnf one_finite
     (by rw [← hvr, hnv, one_value]; linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 ≤ 2 ^ 1000)])
   rw [← hvr, hnv, one_value] at ht
-  have ht' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0) (vr * (-vh) + 1) (1 / 2 ^ 104) := by
+  have ht' : FApprox (Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0) (vr * (-vh) + 1) (1 / 2 ^ 104) := by
     refine Approx.mono ht ?_
     have : |vr * (-vh) + 1| / 2 ^ 53 ≤ 1 / 2 ^ 105 := by
       rw [div_le_div_iff₀ (by positivity) (by positivity)]
@@ -106,13 +106,13 @@ theorem recip_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (wh w
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 52 + (1 + 1 / 2 ^ 52) / 2 ^ 40 ≤ 5 / 4 / 2 ^ 40)]
   have hv := fapprox_sub ht' hu (1 / 2 ^ 39) (by linarith [(by norm_num : (5 : ℝ) / 4 / 2 ^ 40 +
       (1 / 2 ^ 104 + 1 / 2 ^ 92) ≤ 1 / 2 ^ 39)]) (by norm_num)
-  have hv' : FApprox (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) (vr * (-vh) + 1 - vl * vr)
+  have hv' : FApprox (Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) (vr * (-vh) + 1 - vl * vr)
       (1 / 2 ^ 90) := Approx.mono hv (by norm_num)
   have hc0 := fapprox_mul hv' (fapprox_self (1.0 / wh) hr.1) (5 / 4 / 2 ^ 40) |vr| hE
     (by rw [← hvr]) ((5 / 4 / 2 ^ 40 + 1 / 2 ^ 90) * |vr|) (by rw [add_zero])
     (by nlinarith [(by norm_num : (5 / 4 / 2 ^ 40 + 1 / 2 ^ 90 : ℝ) * (2 ^ 600 * 2) < 2 ^ 1022)])
   rw [← hvr] at hc0
-  obtain ⟨vc, hvc⟩ : ∃ v, v = value ((Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) *
+  obtain ⟨vc, hvc⟩ : ∃ v, v = value ((Library.Numerics.Arithmetic.Fma.fma (1.0 / wh) (-wh) 1.0 - wl * (1.0 / wh)) *
     (1.0 / wh)).toBits := ⟨_, rfl⟩
   have hce : |vc - (vr * (-vh) + 1 - vl * vr) * vr| ≤ |vr| / 2 ^ 88 := by
     have h := hc0.2

@@ -16,11 +16,11 @@ largest exponent `J` for which a multiple of `10 ^ J` lies in the interval, sear
 exponent above the interval's upper end, and takes the multiple nearest to the value; when that
 multiple has one digit, a one-digit multiple of `10 ^ (J - 1)` can also lie in the interval, and
 the nearer of the two is taken.  Every comparison is an exact quotient with its remainder flag from
-`Library.Numerics.Arithmetic.Uscale.Uscale.scaledQuot`.  The non-finite words print as `NaN`, `Infinity`, and `-Infinity`, and the
+`Library.Numerics.Arithmetic.Uscale.scaledQuot`.  The non-finite words print as `NaN`, `Infinity`, and `-Infinity`, and the
 zeros as `0e0` and `-0e0` (scientific) or `0` and `-0` (ECMAScript). -/
 
-namespace Library.Numerics.Decimal.PrintFloat.PrintFloat
-open Library.Numerics.Arithmetic.Uscale.Uscale
+namespace Library.Numerics.Decimal.PrintFloat
+open Library.Numerics.Arithmetic.Uscale
 
 /-- The limbs of a word below `2 ^ 64`. -/
 def limbsOf (x : UInt64) : Array UInt64 :=
@@ -202,4 +202,4 @@ def print32 (w : UInt64) : Array UInt64 := print32With false w
 /-- The binary32 counterpart of `print64Ecma`. -/
 def print32Ecma (w : UInt64) : Array UInt64 := print32With true w
 
-end Library.Numerics.Decimal.PrintFloat.PrintFloat
+end Library.Numerics.Decimal.PrintFloat

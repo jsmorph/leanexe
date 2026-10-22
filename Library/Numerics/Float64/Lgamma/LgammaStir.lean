@@ -153,7 +153,7 @@ theorem stir_a (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hL : L
     (hN : N = fastSum M.1 M.2 (entry Lgamma.mainTable 397) (entry Lgamma.mainTable 398))
     (hD : D = fastTwoSum (entry Lgamma.mainTable 399) (evalF sE ((1.0 / ax) * (1.0 / ax))))
     (hT : T = mulDD D.1 (D.2 + entry Lgamma.mainTable 400) (1.0 / ax)
-      (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax)))
+      (Library.Numerics.Arithmetic.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax)))
     (hR : R = fastSum N.1 N.2 T.1 T.2) :
     Finite R.1.toBits ∧ Finite R.2.toBits ∧ 8 ≤ value R.1.toBits ∧
       |value R.2.toBits| ≤ value R.1.toBits / 2 ^ 17 ∧ value R.1.toBits ≤ 2 ^ 58 ∧

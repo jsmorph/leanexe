@@ -23,15 +23,15 @@ set_option exponentiation.threshold 2200
 /-- `Erfc.erfAccurate` after the reduction, for the row at offset `o` and the reduced `z`. -/
 def accCore (tab : Array UInt64) (o : UInt64) (z : Float) : Float × Float :=
   let h := LeanExe.loop 7 (Erfc.entry tab (o + 26)) fun k h =>
-    Library.Numerics.Arithmetic.Fma.Fma.fma h z (Erfc.entry tab (o + 25 - k))
+    Library.Numerics.Arithmetic.Fma.fma h z (Erfc.entry tab (o + 25 - k))
   let (h, l) := LeanExe.loop 3 (h, (0.0 : Float)) fun k s =>
     let (th, tl) := Erfc.aMul s.1 z
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 z tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 z tl
     let (h, l) := Erfc.twoSum (Erfc.entry tab (o + 18 - k)) th
     (h, l + tl)
   LeanExe.loop 8 (h, l) fun k s =>
     let (th, tl) := Erfc.aMul s.1 z
-    let tl := Library.Numerics.Arithmetic.Fma.Fma.fma s.2 z tl
+    let tl := Library.Numerics.Arithmetic.Fma.fma s.2 z tl
     let (h, l) := Erfc.twoSum (Erfc.entry tab (o + 2 * (7 - k))) th
     (h, l + (Erfc.entry tab (o + 2 * (7 - k) + 1) + tl))
 

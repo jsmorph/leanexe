@@ -13,7 +13,7 @@ of `L`.
 -/
 
 namespace Library.Numerics.Decimal.ParseFloat.ParseFloatDigits
-open ParseFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
+open ParseFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.Shared.StrconvGrammar Library.Numerics.Decimal.Shared.StrconvDecode ParseFloatRound ParseFloatScan
 
 /-! ### Values of digit lists -/
 

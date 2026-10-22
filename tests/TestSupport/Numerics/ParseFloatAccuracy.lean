@@ -1,7 +1,7 @@
 import Library.Numerics.Decimal.ParseFloat.Compiled
 import Library.Numerics.Decimal.Shared.StrconvDecode
 
-/-! A native check of `Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64` and `parse32` on the cases of
+/-! A native check of `Library.Numerics.Decimal.ParseFloat.parse64` and `parse32` on the cases of
 `data/strconv/parse-cases.txt`, which `tools/strconv/parse_cases.py` selects and computes: lines of
 Nigel Tao's parse-number-fxx-test-data, Paxson's hard inputs, strings next to midpoints with up to
 1,100 digits, and strings for every production and rejection of the grammar.  Each result must
@@ -73,8 +73,8 @@ def main : IO Unit := do
     let w32 := UInt64.ofNat (parseHex f[4]!)
     let bytes := bytesOfHex (f[5]?.getD "")
     let s := words bytes
-    let r64 := Library.Numerics.Decimal.ParseFloat.ParseFloat.parse64 general s
-    let r32 := Library.Numerics.Decimal.ParseFloat.ParseFloat.parse32 general s
+    let r64 := Library.Numerics.Decimal.ParseFloat.parse64 general s
+    let r32 := Library.Numerics.Decimal.ParseFloat.parse32 general s
     let want64 := if ok then (true, w64) else (false, 0)
     let want32 := if ok then (true, w32) else (false, 0)
     if r64 != want64 then

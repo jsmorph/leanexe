@@ -98,7 +98,7 @@ theorem pr_mulF (hF : FmaNearest) {w y a b h l : Float} {V M L e R Y Ma ma Mb : 
     (hov : Ma + Th + R * H + R * L + Mb + Ttl + W1 + T1 + Y * H + W2 ≤ 2 ^ 1000) :
     Pr (Erfc.fastTwoSum a (Erfc.aMul w h).1).1
       ((Erfc.fastTwoSum a (Erfc.aMul w h).1).2 +
-        Library.Numerics.Arithmetic.Fma.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b))
+        Library.Numerics.Arithmetic.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b))
       (fv a + fv b + (fv w + fv y) * V) M' L' e' := by
   have hR0 : 0 ≤ R := (abs_nonneg _).trans hwR
   have hY0 : 0 ≤ Y := (abs_nonneg _).trans hyY
@@ -122,13 +122,13 @@ theorem pr_mulF (hF : FmaNearest) {w y a b h l : Float} {V M L e R Y Ma ma Mb : 
   obtain ⟨f1, f2, fsum, ft⟩ := fts_bound ha m1 hMa hth (hth.trans (hpre.trans hma))
     (by linarith)
   obtain ⟨w1, werr, wmag⟩ := fma_bound hF hw hp.2.1 hb hwR hp.2.2.2.2 hMb (by linarith)
-  have hw1 : |fv (Library.Numerics.Arithmetic.Fma.Fma.fma w l b)| ≤ W1 := wmag.trans hW1
+  have hw1 : |fv (Library.Numerics.Arithmetic.Fma.fma w l b)| ≤ W1 := wmag.trans hW1
   have hW10 : 0 ≤ W1 := (abs_nonneg _).trans hw1
   obtain ⟨t1, terr, tmag⟩ := add_bound m2 w1 htl hw1 (by linarith)
-  have ht1 : |fv ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b)| ≤ T1 := tmag.trans hT1
+  have ht1 : |fv ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b)| ≤ T1 := tmag.trans hT1
   have hT10 : 0 ≤ T1 := (abs_nonneg _).trans ht1
   obtain ⟨w2, w2err, w2mag⟩ := fma_bound hF hy hp.1 t1 hyY hhH ht1 (by linarith)
-  have hw2 : |fv (Library.Numerics.Arithmetic.Fma.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b))| ≤ W2 := w2mag.trans hW2
+  have hw2 : |fv (Library.Numerics.Arithmetic.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b))| ≤ W2 := w2mag.trans hW2
   have hW20 : 0 ≤ W2 := (abs_nonneg _).trans hw2
   have hut : u * (Ma + Th) ≤ Ma + Th := by
     have : u ≤ 1 := by norm_num
@@ -138,11 +138,11 @@ theorem pr_mulF (hF : FmaNearest) {w y a b h l : Float} {V M L e R Y Ma ma Mb : 
   · set th := fv (Erfc.aMul w h).1
     set tl := fv (Erfc.aMul w h).2
     set t := fv (Erfc.fastTwoSum a (Erfc.aMul w h).1).2
-    set f := fv (Library.Numerics.Arithmetic.Fma.Fma.fma w l b)
-    set tt := fv ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b)
-    set g := fv (Library.Numerics.Arithmetic.Fma.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b))
+    set f := fv (Library.Numerics.Arithmetic.Fma.fma w l b)
+    set tt := fv ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b)
+    set g := fv (Library.Numerics.Arithmetic.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b))
     set lo := fv ((Erfc.fastTwoSum a (Erfc.aMul w h).1).2 +
-      Library.Numerics.Arithmetic.Fma.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.Fma.fma w l b))
+      Library.Numerics.Arithmetic.Fma.fma y h ((Erfc.aMul w h).2 + Library.Numerics.Arithmetic.Fma.fma w l b))
     have e1 : fv (Erfc.fastTwoSum a (Erfc.aMul w h).1).1 + lo -
         (fv a + fv b + (fv w + fv y) * V) =
         (th + tl - fv w * fv h) + (f - (fv w * fv l + fv b)) + (tt - (tl + f)) +
@@ -178,7 +178,7 @@ theorem pr_mulG (hF : FmaNearest) {z h l : Float} {V M L e R : ℝ} (hz : ff z) 
     (hM : M * R ≤ M') (hL : (L * R + Ttl) * (1 + u) + η ≤ L')
     (he : R * e + (u * u * (H * R) + 2 * η) + (u * (L * R + Ttl) + η) ≤ e')
     (hov : H * R + L * R + Ttl ≤ 2 ^ 1000) :
-    Pr (Erfc.aMul h z).1 (Library.Numerics.Arithmetic.Fma.Fma.fma l z (Erfc.aMul h z).2) (V * fv z) M' L' e' := by
+    Pr (Erfc.aMul h z).1 (Library.Numerics.Arithmetic.Fma.fma l z (Erfc.aMul h z).2) (V * fv z) M' L' e' := by
   have hR0 : 0 ≤ R := (abs_nonneg _).trans hzR
   have hL0 := hp.L_nonneg
   have he0 := hp.e_nonneg
@@ -193,15 +193,15 @@ theorem pr_mulG (hF : FmaNearest) {z h l : Float} {V M L e R : ℝ} (hz : ff z) 
   have hTtl0 : 0 ≤ Ttl := (abs_nonneg _).trans htl
   obtain ⟨w1, werr, wmag⟩ := fma_bound hF hp.2.1 hz m2 hp.2.2.2.2 hzR htl (by linarith)
   refine ⟨m1, w1, ?_, ?_, wmag.trans hL⟩
-  · have e1 : fv (Erfc.aMul h z).1 + fv (Library.Numerics.Arithmetic.Fma.Fma.fma l z (Erfc.aMul h z).2) - V * fv z =
+  · have e1 : fv (Erfc.aMul h z).1 + fv (Library.Numerics.Arithmetic.Fma.fma l z (Erfc.aMul h z).2) - V * fv z =
         (fv (Erfc.aMul h z).1 + fv (Erfc.aMul h z).2 - fv h * fv z) +
-          (fv (Library.Numerics.Arithmetic.Fma.Fma.fma l z (Erfc.aMul h z).2) - (fv l * fv z + fv (Erfc.aMul h z).2)) +
+          (fv (Library.Numerics.Arithmetic.Fma.fma l z (Erfc.aMul h z).2) - (fv l * fv z + fv (Erfc.aMul h z).2)) +
           fv z * (fv h + fv l - V) := by ring
     rw [e1]
     have hz1 : |fv z * (fv h + fv l - V)| ≤ R * e := by
       rw [abs_mul]; exact mul_le_mul hzR hp.2.2.1 (abs_nonneg _) hR0
     have k1 := abs_add3 (fv (Erfc.aMul h z).1 + fv (Erfc.aMul h z).2 - fv h * fv z)
-      (fv (Library.Numerics.Arithmetic.Fma.Fma.fma l z (Erfc.aMul h z).2) - (fv l * fv z + fv (Erfc.aMul h z).2))
+      (fv (Library.Numerics.Arithmetic.Fma.fma l z (Erfc.aMul h z).2) - (fv l * fv z + fv (Erfc.aMul h z).2))
       (fv z * (fv h + fv l - V))
     linarith
   · rw [abs_mul]

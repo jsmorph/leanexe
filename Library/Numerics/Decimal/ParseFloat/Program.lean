@@ -16,14 +16,14 @@ replaced by half a unit, which keeps the rounding (`StrconvTruncate`).  A decima
 the range of the format saturates.  A short decimal whose digits fit below `2 ^ 53` with a power of
 ten from `10 ^ -22` to `10 ^ 22` takes Clinger's fast path, one binary64 multiplication or
 division of exact values (W. D. Clinger, PLDI 1990).  Every other decimal is rounded exactly:
-`Library.Numerics.Arithmetic.Uscale.Uscale.scaledQuot` gives the quotient of the value in units of the least subnormal, scaled to
+`Library.Numerics.Arithmetic.Uscale.scaledQuot` gives the quotient of the value in units of the least subnormal, scaled to
 `p + 2` or `p + 3` bits, and whether the division leaves a remainder, which is Cox's unrounded form
 (R. Cox, "Floating-Point Printing and Parsing Can Be Simple And Fast", 2026), and `roundUnits`
 rounds it.  A hexadecimal significand keeps 15 significant hexadecimal digits and a sticky flag
 and needs no division.  Signed exponents are carried with the bias `2 ^ 62`. -/
 
-namespace Library.Numerics.Decimal.ParseFloat.ParseFloat
-open Library.Numerics.Arithmetic.Uscale.Uscale
+namespace Library.Numerics.Decimal.ParseFloat
+open Library.Numerics.Arithmetic.Uscale
 
 /-- Whether a word is an ASCII decimal digit. -/
 def isDigitW (b : UInt64) : Bool := b - 0x30 < 10
@@ -215,4 +215,4 @@ def parse32 (general : Bool) (s : Array UInt64) : Bool × UInt64 :=
     if !d.1 then (false, 0)
     else (true, sign ||| decRound 24 255 149 39 46 d.2.1 d.2.2.1 d.2.2.2.1 d.2.2.2.2)
 
-end Library.Numerics.Decimal.ParseFloat.ParseFloat
+end Library.Numerics.Decimal.ParseFloat

@@ -51,13 +51,13 @@ theorem fin_err (c1 c2 c3 : Float) (p : Float × Float) :
 /-- `(zh, zl)`: the polynomial of the row at `U = uh + ul`. -/
 def zPair (aT : Array UInt64) (one two x : Float) : Float × Float :=
   asymCore aT (13 * Erfc.asymptIndex (one / x)) (Erfc.aMul (one / x) (one / x)).1
-    (Library.Numerics.Arithmetic.Fma.Fma.fma (two * (one / x)) ((one / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (one / x) one)
+    (Library.Numerics.Arithmetic.Fma.fma (two * (one / x)) ((one / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (one / x) one)
       (Erfc.aMul (one / x) (one / x)).2)
 
 /-- The product of the polynomial and `1/x`. -/
 def p1Pair (aT : Array UInt64) (one two x : Float) : Float × Float :=
   Erfc.dMul (zPair aT one two x).1 (zPair aT one two x).2 (one / x)
-    ((one / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (one / x) one)
+    ((one / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (one / x) one)
 
 /-- `exp (-x²)` from `exp_1`. -/
 def ePair (eT : Array UInt64) (x : Float) : Float × Float :=
@@ -175,7 +175,7 @@ theorem asym_fast_err (hF : FmaNearest) (x : Float) (hx : ff x)
   -- `1/x` and `1/x²`
   obtain ⟨df, lf, hY, hyl, hy⟩ := recip_pr hF x hx (by linarith) (by linarith)
   obtain ⟨uf, ulf, hU, hUL⟩ := usq_pr hF x hx (by linarith) (by linarith)
-  have pY : Pr (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (1 / fv x) (1 / fv x)
+  have pY : Pr (1.0 / x) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (1 / fv x) (1 / fv x)
       (11 / 10 * u * (1 / fv x)) (4 * u * u * (1 / fv x)) :=
     ⟨df, lf, hY.trans (le_of_eq (by ring)), le_of_eq (abs_of_pos (one_div_pos.mpr hX0)),
       hyl.trans (le_of_eq (by ring))⟩
@@ -267,7 +267,7 @@ theorem asym_fast_err (hF : FmaNearest) (x : Float) (hx : ff x)
   have hMX : M * (1 / fv x) * EX = M * w * Real.exp δ := by
     rw [hEXd, hw]; ring
   set Z := eval (fastZ (tq i)) (fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 +
-      fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)
+      fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)
         (Erfc.aMul (1.0 / x) (1.0 / x)).2)) with hZ
   have hV : Z * (1 / fv x) * EX = Z * w * Real.exp δ := by
     rw [hEXd, hw]; ring

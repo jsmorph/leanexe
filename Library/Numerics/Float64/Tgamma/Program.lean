@@ -14,7 +14,7 @@ path is `1/x` plus a polynomial, from -3 to 4 a polynomial about the nearest `k 
 divided by a product of shifts, above 4 `exp (lgamma x)` from Stirling's series, and below -3 the
 reflection `Γ x = π/(sin (π x) Γ (1 - x))`.  When the test fails, `as_tgamma_accurate` evaluates to
 about 100 bits with polynomials on nine ranges, and a table of 57 inputs that even that path cannot
-round supplies their results.  Every `__builtin_fma` calls `Library.Numerics.Arithmetic.Fma.Fma.fma`, the correctly rounded fused
+round supplies their results.  Every `__builtin_fma` calls `Library.Numerics.Arithmetic.Fma.fma`, the correctly rounded fused
 multiply-add, so the port computes CORE-MATH's results bit for bit.
 
 The port follows the C code operation for operation, with these changes.  A C function that returns
@@ -1682,12 +1682,12 @@ def sumDD (xh xl yh yl : Float) : Float × Float :=
 /-- `muldd`: the product of the double-doubles `xh + xl` and `ch + cl`. -/
 def mulDD (xh xl ch cl : Float) : Float × Float :=
   let a := ch * xh
-  (a, (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.Fma.fma ch xh (-a))
+  (a, (ch * xl + cl * xh) + Library.Numerics.Arithmetic.Fma.fma ch xh (-a))
 
 /-- `muldd3`: the product of the double-doubles `xh + xl` and `yh + yl`, renormalized. -/
 def mulDD3 (xh xl yh yl : Float) : Float × Float :=
   let ch := xh * yh
-  let cl1 := Library.Numerics.Arithmetic.Fma.Fma.fma xh yh (-ch)
+  let cl1 := Library.Numerics.Arithmetic.Fma.fma xh yh (-ch)
   let tl0 := xl * yl
   let tl1 := tl0 + xh * yl
   let cl2 := tl1 + xl * yh
@@ -1697,7 +1697,7 @@ def mulDD3 (xh xl yh yl : Float) : Float × Float :=
 /-- `mulddd`: the product of the double `x` and the double-double `ch + cl`. -/
 def mulDDD (x ch cl : Float) : Float × Float :=
   let a := ch * x
-  (a, cl * x + Library.Numerics.Arithmetic.Fma.Fma.fma ch x (-a))
+  (a, cl * x + Library.Numerics.Arithmetic.Fma.fma ch x (-a))
 
 /-- `polyddd`: the double-double `c 0 + c 1 · x + ⋯ + (c (n - 1) + l) · x ^ (n - 1)` for the
 double-double coefficients `c k`, with the high part at entry `o + 2 k` of `tab` and the low part
@@ -1718,9 +1718,9 @@ def splt (x : Float) : Float × Float :=
 /-- `sprod`: `x · (x0 + x1 + x2)` as the triple `(l0, l1, l2)`. -/
 def sprod (x x0 x1 x2 : Float) : Float × Float × Float :=
   let z0 := x * x0
-  let z0l := Library.Numerics.Arithmetic.Fma.Fma.fma x x0 (-z0)
+  let z0l := Library.Numerics.Arithmetic.Fma.fma x x0 (-z0)
   let z1 := x * x1
-  let z2 := x * x2 + Library.Numerics.Arithmetic.Fma.Fma.fma x x1 (-z1)
+  let z2 := x * x2 + Library.Numerics.Arithmetic.Fma.fma x x1 (-z1)
   let (z0, e) := splt z0
   let (e, z0l) := fastTwoSum e z0l
   let (l1, e) := twoSum e z1
@@ -1785,9 +1785,9 @@ def asLogd (tab : Array UInt64) (x : Float) : Float × Float :=
   let i2 := j &&& 0x1f
   let r := entry tab (64 + i1) * entry tab (97 + i2)
   let o := r * t
-  let dxl := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-o)
+  let dxl := Library.Numerics.Arithmetic.Fma.fma r t (-o)
   let dxh := o - 1.0
-  let dx := Library.Numerics.Arithmetic.Fma.Fma.fma r t (-1.0)
+  let dx := Library.Numerics.Arithmetic.Fma.fma r t (-1.0)
   let dx2 := dx * dx
   let f := dx2 * ((entry tab 260 + dx * entry tab 261) + dx2 * (entry tab 262 + dx * entry tab 263))
   let lt := (entry tab (130 + 2 * i1 + 1) + entry tab (196 + 2 * i2 + 1)) +
@@ -1848,7 +1848,7 @@ double-double. -/
 def asLgammaAsym (logTab tab : Array UInt64) (xh xl : Float) : Float × Float :=
   let zh := 1.0 / xh
   let dz := xl * zh
-  let zl := (Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 - dz) * zh
+  let zl := (Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 - dz) * zh
   let (lh, ll) := asLogd logTab xh
   let (lh, ll) := mulDD (xh - 0.5) xl (lh - 1.0) (ll + dz)
   let (z2h, z2l) := mulDD zh zl zh zl
@@ -1916,9 +1916,9 @@ def accurate (accTab dbTab : Array UInt64) (x : Float) : Float :=
     let c0 := c0 + x4 * c4
     let (ch, cl) := polyDDD accTab 0 28 x (x * c0)
     let fh := 1.0 / x
-    let dh := Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0
+    let dh := Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0
     let fl := dh * fh
-    let fll := Library.Numerics.Arithmetic.Fma.Fma.fma fl (-x) dh * fh
+    let fll := Library.Numerics.Arithmetic.Fma.fma fl (-x) dh * fh
     let (fl, fll) := sumDD fl fll ch cl
     let (fl, fll) := twoSum fl fll
     let (fh, fl) := fastTwoSum fh fl
@@ -1962,7 +1962,7 @@ def accurate (accTab dbTab : Array UInt64) (x : Float) : Float :=
     let (fh, fl) :=
       if jm > 0.0 then
         let rh := 1.0 / wh
-        mulDD3 fh fl rh ((Library.Numerics.Arithmetic.Fma.Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
+        mulDD3 fh fl rh ((Library.Numerics.Arithmetic.Fma.fma rh (-wh) 1.0 - wl * rh) * rh)
       else if jm < 0.0 then mulDD3 fh fl wh wl
       else (fh, fl)
     let p54 := Float.ofBits 0x3C90000000000000  -- 0x1p-54
@@ -2005,7 +2005,7 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
       else
         let r := 1.0 / x
         if x == 0.0 then r
-        else if Library.Numerics.Arithmetic.Fma.Fma.fma r x (-1.0) == 0.0 then r - 0.5 else r
+        else if Library.Numerics.Arithmetic.Fma.fma r x (-1.0) == 0.0 then r - 0.5 else r
     else
       let x2 := x * x
       let x4 := x2 * x2
@@ -2022,7 +2022,7 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
       let c8 := c8 + x4 * c12
       let (ch, cl) := polyDDD smallTab 0 5 x (x * (c0 + x8 * c8))
       let fh := 1.0 / x
-      let (fh, fl) := fastSum fh (Library.Numerics.Arithmetic.Fma.Fma.fma fh (-x) 1.0 * fh) ch cl
+      let (fh, fl) := fastSum fh (Library.Numerics.Arithmetic.Fma.fma fh (-x) 1.0 * fh) ch cl
       let eps := fh * (Float.ofBits 0x3C19D35025BFF857 +  -- 3.5e-19
         (x2 * x4) * Float.ofBits 0x3CF203AF9EE75616)  -- 4e-15
       let ub := fh + (fl + eps)
@@ -2056,7 +2056,7 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
       let pil := Float.ofBits 0x3CA1A62633145C07  -- 0x1.1a62633145c07p-53
       let rcp := 1.0 / lh
       let rh := rcp * pih
-      let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.Fma.fma rh lh (-pih))
+      let rl := rcp * (pil - ll * rh - Library.Numerics.Arithmetic.Fma.fma rh lh (-pih))
       let odd := (-fx).toUInt64 &&& 1 == 1
       let rh := if odd then -rh else rh
       let rl := if odd then -rl else rl
@@ -2112,7 +2112,7 @@ def tgammaWith (dbTab accTab smallTab mainTab logTab sinTab expTab asymTab : Arr
             (wh, wl, xph, xpl)
         else ((1.0 : Float), (0.0 : Float), x, (0.0 : Float))
       let rh := 1.0 / wh
-      let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
+      let (fh, fl) := mulDD rh ((Library.Numerics.Arithmetic.Fma.fma rh (-wh) 1.0 - wl * rh) * rh) fh fl
       let eps := fh * Float.ofBits 0x3B92E3B40A0E9B4F  -- 1e-21
       let ub := fh + (fl + eps)
       let lb := fh + (fl - eps)

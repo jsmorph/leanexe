@@ -21,7 +21,7 @@ theorem logReduce_eq (tab : Array UInt64) (x : Float) :
       let ex := u >>> 52
       let p : UInt64 × Float :=
         if ex == 0 then
-          (u <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 u - 11), -((63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 u + 1011).toFloat))
+          (u <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 u - 11), -((63 - Library.Numerics.Arithmetic.Fma.msb64 u + 1011).toFloat))
         else (u, if ex ≥ 0x3ff then (ex - 0x3ff).toFloat else -((0x3ff - ex).toFloat))
       let m := p.1 &&& 0xFFFFFFFFFFFFF
       let j := jOf tab m
@@ -152,7 +152,7 @@ theorem reduce_spec (x : Float) (hx : Finite x.toBits) (hpos : 0 < value x.toBit
       rw [hexn] at this
       omega
     obtain ⟨P, hP52, hp1, hp2, hm, hedf, hedsv⟩ := LgammaLogd.subnormal_parts x hpos hlt
-    have hm52 : ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat <
+    have hm52 : ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat <
         2 ^ 52 := by
       rw [hm]
       have : x.toBits.toNat * 2 ^ (52 - P) < 2 ^ (P + 1) * 2 ^ (52 - P) :=
@@ -164,22 +164,22 @@ theorem reduce_spec (x : Float) (hx : Finite x.toBits) (hpos : 0 < value x.toBit
         _ ≤ _ := Nat.mul_le_mul_right _ hp1
     obtain ⟨h1, h2, h3, h4, h5, h6, h7, h8, h9⟩ := core _ hm52 _ ((P : ℤ) - 1074) ⟨hedf, hedsv⟩
     refine ⟨(P : ℤ) - 1074, by rw [abs_le]; constructor <;> omega, h1, ?_, ?_, h3, h4, h5, h6,
-      h7, h8, h9, ?_, ⟨2 ^ 52 + ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat,
+      h7, h8, h9, ?_, ⟨2 ^ 52 + ((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat,
         by omega, by rw [h2, eq_div_iff (by positivity)]; push_cast; ring⟩⟩
-    · rw [h2]; have : (0 : ℝ) ≤ (((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&&
+    · rw [h2]; have : (0 : ℝ) ≤ (((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&&
           0xFFFFFFFFFFFFF).toNat : ℝ) / 2 ^ 52 := div_nonneg (Nat.cast_nonneg _) (by norm_num)
       linarith
     · rw [h2]
-      have : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℕ) : ℝ) <
+      have : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℕ) : ℝ) <
           2 ^ 52 := by exact_mod_cast hm52
-      have : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℕ) :
+      have : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat : ℕ) :
           ℝ) / 2 ^ 52 < 1 := by rw [div_lt_one (by positivity)]; exact this
       linarith
     · have hv : value x.toBits = (x.toBits.toNat : ℝ) / 2 ^ 1074 := by
         rw [F64Adjacent.unsigned_word_value _ (by omega)]
         unfold F64Order.unsignedScaled
         rw [ite_eq_left (by omega), Nat.mod_eq_of_lt hlt]
-      have hmv : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat :
+      have hmv : ((((x.toBits <<< (63 - Library.Numerics.Arithmetic.Fma.msb64 x.toBits - 11)) &&& 0xFFFFFFFFFFFFF).toNat :
           ℕ) : ℝ) = (x.toBits.toNat : ℝ) * 2 ^ (52 - P) - 2 ^ 52 := by
         rw [hm, Nat.cast_sub h1']
         push_cast

@@ -12,7 +12,7 @@ digits of `n` for `n ≥ 1` and 1 for 0.  The code's `numDigits` and `digitAt` c
 -/
 
 namespace Library.Numerics.Decimal.PrintFloat.PrintFloatDigits
-open PrintFloat Library.Numerics.Arithmetic.Uscale.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar PrintFloatShort
+open PrintFloat Library.Numerics.Arithmetic.Uscale Library.Numerics.Arithmetic.Uscale.UscaleTheorem Library.Numerics.Decimal.ParseFloat.ParseFloatRound Library.Numerics.Decimal.Shared.StrconvRound Library.Numerics.Decimal.Shared.StrconvGrammar PrintFloatShort
   ParseFloatScan
 
 set_option exponentiation.threshold 4096

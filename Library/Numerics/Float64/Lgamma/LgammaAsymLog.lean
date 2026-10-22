@@ -18,10 +18,10 @@ set_option exponentiation.threshold 4096
 /-- The code's correction of the middle and low parts for `xl`. -/
 def corr (l1 l2 xh xl : Float) : Float × Float :=
   if xl != 0.0 then
-    sumDD l1 l2 (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1
-      ((mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).2 -
-        (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1 *
-          (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1 / 2.0)
+    sumDD l1 l2 (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1
+      ((mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).2 -
+        (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1 *
+          (mulDDD xl (1.0 / xh) (Library.Numerics.Arithmetic.Fma.fma (1.0 / xh) (-xh) 1.0 * (1.0 / xh))).1 / 2.0)
   else (l1, l2)
 
 /-- `log (1 + t)` against `t - t²/2`. -/
@@ -95,7 +95,7 @@ theorem log_dd (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (hLA : 
     (by rw [abs_of_pos hx0]; linarith) (by rw [abs_of_pos hx0]; linarith [(by norm_num : (2 : ℝ) ^ 120 ≤ 2 ^ 170)])
   rw [abs_of_pos (show (0 : ℝ) < 1 / vx by positivity)] at hz1 hc1 hzc
   set zh := 1.0 / xh with hzhdef
-  set c := Library.Numerics.Arithmetic.Fma.Fma.fma zh (-xh) 1.0 * zh with hcdef
+  set c := Library.Numerics.Arithmetic.Fma.fma zh (-xh) 1.0 * zh with hcdef
   have hzb : |value zh.toBits| ≤ R * (1 + 1 / 2 ^ 52) := by
     have := abs_sub_abs_le_abs_sub (value zh.toBits) R
     rw [abs_of_pos hR0] at this

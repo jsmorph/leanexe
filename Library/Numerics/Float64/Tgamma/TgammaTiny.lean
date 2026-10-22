@@ -102,10 +102,10 @@ least subnormal. -/
 theorem fma_zero (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (a b c : Float) (ha : Finite a.toBits)
     (hb : Finite b.toBits) (hc : Finite c.toBits)
     (hS : |value a.toBits * value b.toBits + value c.toBits| ≤ 2 ^ 1023)
-    (h0 : (Library.Numerics.Arithmetic.Fma.Fma.fma a b c == 0.0) = true) :
+    (h0 : (Library.Numerics.Arithmetic.Fma.fma a b c == 0.0) = true) :
     |value a.toBits * value b.toBits + value c.toBits| ≤ 1 / 2 ^ 1075 := by
   obtain ⟨hf, hn⟩ := hF a b c ha hb hc hS
-  have hv0 : value (Library.Numerics.Arithmetic.Fma.Fma.fma a b c).toBits = 0 := (TgammaSpecial.zero_test _ hf).mp h0
+  have hv0 : value (Library.Numerics.Arithmetic.Fma.fma a b c).toBits = 0 := (TgammaSpecial.zero_test _ hf).mp h0
   set S := value a.toBits * value b.toBits + value c.toBits
   have hp : value (1 : UInt64) = 1 / 2 ^ 1074 := by
     rw [TgammaSpecial.lit_value 1 (1 / 2 ^ 1074) (by decide +kernel)]
@@ -188,7 +188,7 @@ theorem tinyPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
     have hdiv : (1.0 / x).toBits = Wasm.IEEE64.infinity (Wasm.IEEE64.sign x.toBits) := by
       rw [F64Bits.toBits_div, div_overflow _ _ one_finite hx one_mag hmx hq, one_sign]
       simp
-    have hres : (if (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / x) x (-1.0) == 0.0) = true then 1.0 / x - 0.5 else 1.0 / x).toBits =
+    have hres : (if (Library.Numerics.Arithmetic.Fma.fma (1.0 / x) x (-1.0) == 0.0) = true then 1.0 / x - 0.5 else 1.0 / x).toBits =
         Wasm.IEEE64.infinity (Wasm.IEEE64.sign x.toBits) := by
       split_ifs
       · rw [F64Bits.toBits_sub, hdiv, sub_inf _ _ half_finite]
@@ -256,7 +256,7 @@ theorem tinyPath_within (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest
     rw [abs_sub_comm] at this
     linarith
   have hu : unitRoundoff64 = 1 / 2 ^ 53 := rfl
-  by_cases hfz : (Library.Numerics.Arithmetic.Fma.Fma.fma r x (-1.0) == 0.0) = true
+  by_cases hfz : (Library.Numerics.Arithmetic.Fma.fma r x (-1.0) == 0.0) = true
   · -- `r x = 1` to within half the least subnormal: the code returns `r - 1/2`
     rw [ite_eq_left hfz]
     have hrb : |vr| ≤ 2 * |1 / vx| := by

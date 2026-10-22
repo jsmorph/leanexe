@@ -7,6 +7,8 @@ over a list, `listRange n` builds the words below `n` in increasing order with a
 cell in front at each step, and `sumRange n` builds `listRange n`, sums it, and releases it.  [The
 module definition](Module.lean) compiles the three into the 1,648-byte `lists.wasm`.
 
+The sum and range implementations come from [the word-list library](../../Library/Lists/README.md).  The example retains the composition that builds and releases a temporary list.
+
 ## Lists as chains of heap records
 
 A list lives on the heap as a chain of records of two slots, the element and the pointer to the

@@ -12,6 +12,8 @@ is none, and `compute` builds the result by copying the words before that index 
 rest down by one.  [The module definition](Module.lean) compiles both functions into a 1,742-byte
 `removeZero.wasm` that exports `firstZero` and `compute`.
 
+The general prefix search and its first-match proof live in [the array-search library](../../Library/Arrays/README.md).  The bounded removal specification and its compilation proof remain here.
+
 ## The bytes remove the first zero
 
 | Theorem | Statement |

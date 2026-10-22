@@ -146,7 +146,7 @@ theorem series_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (a
     (h1 : 33 / 4 ≤ value ax.toBits) (h2 : value ax.toBits ≤ 2 ^ 100) (D T : Float × Float)
     (hD : D = fastTwoSum (entry Lgamma.mainTable 399) (evalF sE ((1.0 / ax) * (1.0 / ax))))
     (hT : T = mulDD D.1 (D.2 + entry Lgamma.mainTable 400) (1.0 / ax)
-      (Library.Numerics.Arithmetic.Fma.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax))) :
+      (Library.Numerics.Arithmetic.Fma.fma (1.0 / ax) (-ax) 1.0 * (1.0 / ax))) :
     Finite T.1.toBits ∧ Finite T.2.toBits ∧
       |value T.1.toBits + value T.2.toBits -
           ((((PolyBound.ratOfWord (wq 399) + PolyBound.ratOfWord (wq 400) : ℚ)) : ℝ) +
@@ -162,7 +162,7 @@ theorem series_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (a
   have hR1 : R ≤ 4 / 33 := by
     rw [hRdef, div_le_div_iff₀ hv0 (by norm_num)]; linarith
   set zh := 1.0 / ax with hzhdef
-  set zl := Library.Numerics.Arithmetic.Fma.Fma.fma zh (-ax) 1.0 * zh with hzldef
+  set zl := Library.Numerics.Arithmetic.Fma.fma zh (-ax) 1.0 * zh with hzldef
   set vz := value zh.toBits with hvzdef
   set vzl := value zl.toBits with hvzldef
   have hzhb : |vz| ≤ R * (1 + 1 / 2 ^ 52) := by

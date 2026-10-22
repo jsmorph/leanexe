@@ -18,7 +18,7 @@ set_option exponentiation.threshold 4096
 /-- The code of the branch. -/
 def nearTail (z c138 c139 c140 c141 c142 : Float) : Float × Float :=
   let z2 := z * z
-  let z2l := Library.Numerics.Arithmetic.Fma.Fma.fma z z (-z2)
+  let z2l := Library.Numerics.Arithmetic.Fma.fma z z (-z2)
   let fl := z2 * (c140 + z2 * (c141 + z2 * c142))
   let A := fastTwoSum c138 fl
   let B := mulDD z2 z2l A.1 (A.2 + c139)
@@ -69,7 +69,7 @@ theorem near_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (z c
     linarith [(by norm_num : (9 / 65536 : ℝ) / 2 ^ 53 + 1 / 2 ^ 1075 ≤ 2 ^ 1000),
       div_le_div_of_nonneg_right hU (by positivity : (0 : ℝ) ≤ 2 ^ 53)])
   rw [hnav, ← hZd, ← sq, ← sub_eq_add_neg] at hfm
-  obtain ⟨vl, hvl⟩ : ∃ v, v = value (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z))).toBits := ⟨_, rfl⟩
+  obtain ⟨vl, hvl⟩ : ∃ v, v = value (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z))).toBits := ⟨_, rfl⟩
   have hel : |vl - (Z ^ 2 - v2)| ≤ |Z ^ 2 - v2| / 2 ^ 53 + 1 / 2 ^ 1075 := by rw [hvl]; exact hfm.2
   have he2' : |Z ^ 2 - v2| ≤ 9 / 65536 / 2 ^ 53 + 1 / 2 ^ 1075 := by
     rw [abs_sub_comm]
@@ -157,7 +157,7 @@ theorem near_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (z c
     have h2 := abs_add_le vA2 (value c139.toBits)
     linarith [(by norm_num : (1 : ℝ) / 2 ^ 51 + 1 / 2 ^ 54 + 1 / 2 ^ 103 ≤ 1 / 2 ^ 49)]
   -- `B = (z2 + z2l) (A.1 + fl')`
-  obtain ⟨hB1f, hB2f, heB, hlB, hhB⟩ := mulDD_spec hF (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨hB1f, hB2f, heB, hlB, hhB⟩ := mulDD_spec hF (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     _ _ hz2.1 hfm.1 hA1f hfl'.1
     (1646 / 1000 * (1374 / 10 ^ 7)) (1646 / 1000 * (1 / 2 ^ 65)) (1 / 2 ^ 49 * (1374 / 10 ^ 7))
     (1 / 2 ^ 49 * (1 / 2 ^ 65))
@@ -167,11 +167,11 @@ theorem near_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (z c
     (by rw [← hvF, ← hvl]; exact mul_le_mul hFb hvlb (abs_nonneg _) (by norm_num))
     (by norm_num) (by norm_num)
   rw [← hv2, ← hvl, ← hvA1, ← hvF] at heB
-  obtain ⟨vB1, hvB1⟩ : ∃ v, v = value (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vB1, hvB1⟩ : ∃ v, v = value (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).1.toBits :=
     ⟨_, rfl⟩
-  obtain ⟨vB2, hvB2⟩ : ∃ v, v = value (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vB2, hvB2⟩ : ∃ v, v = value (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).2.toBits :=
     ⟨_, rfl⟩
@@ -225,17 +225,17 @@ theorem near_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (z c
     (by rw [← hvB2, hZa, mul_comm Z]; exact mul_le_mul_of_nonneg_right hB2b hZ0.le)
     (by nlinarith) (by nlinarith)
   rw [← hZd, ← hvB1, ← hvB2] at heC
-  obtain ⟨vC1, hvC1⟩ : ∃ v, v = value (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vC1, hvC1⟩ : ∃ v, v = value (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).1
-    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).2).1.toBits :=
     ⟨_, rfl⟩
-  obtain ⟨vC2, hvC2⟩ : ∃ v, v = value (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vC2, hvC2⟩ : ∃ v, v = value (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).1
-    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).2).2.toBits :=
     ⟨_, rfl⟩
@@ -255,17 +255,17 @@ theorem near_spec (hF : Library.Numerics.Arithmetic.Fma.FmaSpec.FmaNearest) (z c
     rw [hZa] at this; rw [← hvC1]
     linarith [(by norm_num : (2 * (3 / 256) : ℝ) < 2 ^ 1023)]) hDsum
   rw [← hZd, ← hvC1] at hDsum
-  obtain ⟨vD1, hvD1⟩ : ∃ v, v = value (fastTwoSum z (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vD1, hvD1⟩ : ∃ v, v = value (fastTwoSum z (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).1
-    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).2).1).1.toBits :=
     ⟨_, rfl⟩
-  obtain ⟨vD2, hvD2⟩ : ∃ v, v = value (fastTwoSum z (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+  obtain ⟨vD2, hvD2⟩ : ∃ v, v = value (fastTwoSum z (mulDDD z (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).1
-    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.Fma.fma z z (-(z * z)))
+    (mulDD (z * z) (Library.Numerics.Arithmetic.Fma.fma z z (-(z * z)))
     (fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).1
     ((fastTwoSum c138 (z * z * (c140 + z * z * (c141 + z * z * c142)))).2 + c139)).2).1).2.toBits :=
     ⟨_, rfl⟩

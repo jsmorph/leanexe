@@ -34,10 +34,10 @@ theorem one_two_vals : ff (1.0 : Float) ∧ fv (1.0 : Float) = 1 ∧ ff (2.0 : F
 
 /-- The double-double `1/x` of the asymptotic paths, for `3/2 ≤ x ≤ 32`. -/
 theorem recip_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x) (h2 : fv x ≤ 32) :
-    ff (1.0 / x) ∧ ff ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) ∧
-      |fv (1.0 / x) + fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) - 1 / fv x| ≤
+    ff (1.0 / x) ∧ ff ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) ∧
+      |fv (1.0 / x) + fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) - 1 / fv x| ≤
         4 * u * u / fv x ∧
-      |fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)| ≤ 11 / 10 * u / fv x ∧
+      |fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)| ≤ 11 / 10 * u / fv x ∧
       |fv (1.0 / x) - 1 / fv x| ≤ u / fv x + η := by
   obtain ⟨of, ov, -, -, -⟩ := one_two_vals
   have hx0 : 0 < fv x := by linarith
@@ -85,7 +85,7 @@ theorem recip_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x)
     exact hρb.trans (by norm_num)
   obtain ⟨rf, rerr⟩ := fma_f hF (-x) yh 1.0 nf df of hab
   rw [nv, ov, show -fv x * fv yh + 1 = ρ by rw [hρ]; ring] at rerr
-  set r := Library.Numerics.Arithmetic.Fma.Fma.fma (-x) yh 1.0 with hr
+  set r := Library.Numerics.Arithmetic.Fma.fma (-x) yh 1.0 with hr
   have hrb1 : |fv r| ≤ 2 := by
     have := abs_sub_abs_le_abs_sub (fv r) ρ
     have : u * |ρ| ≤ u * (u + 32 * η) := by gcongr
@@ -153,12 +153,12 @@ theorem recip_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x)
 `Erfc.aMul yh yh` and `ul + 2 yh yl` by one `fma`. -/
 theorem usq_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x) (h2 : fv x ≤ 32) :
     ff (Erfc.aMul (1.0 / x) (1.0 / x)).1 ∧
-      ff (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)
+      ff (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)
         (Erfc.aMul (1.0 / x) (1.0 / x)).2) ∧
-      |fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x))
-        ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2) -
+      |fv (Erfc.aMul (1.0 / x) (1.0 / x)).1 + fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x))
+        ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) (Erfc.aMul (1.0 / x) (1.0 / x)).2) -
           (1 / fv x) ^ 2| ≤ 14 * u * u * (1 / fv x) ^ 2 ∧
-      |fv (Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)
+      |fv (Library.Numerics.Arithmetic.Fma.fma (2.0 * (1.0 / x)) ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)
         (Erfc.aMul (1.0 / x) (1.0 / x)).2)| ≤ 4 * u * (1 / fv x) ^ 2 := by
   obtain ⟨-, -, tf, tv, tm⟩ := one_two_vals
   obtain ⟨df, lf, hY, hyl, hy⟩ := recip_pr hF x hx h1 h2
@@ -167,14 +167,14 @@ theorem usq_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x) (
   have ht0 : 0 < t := by rw [ht]; positivity
   have ht1 : t ≤ 2 / 3 := by rw [ht, div_le_div_iff₀ hx0 (by norm_num)]; linarith
   have ht2 : 1 / 32 ≤ t := by rw [ht, div_le_div_iff₀ (by norm_num) hx0]; linarith
-  have hY' : |fv (1.0 / x) + fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0) - t| ≤ 4 * u * u * t := by
+  have hY' : |fv (1.0 / x) + fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0) - t| ≤ 4 * u * u * t := by
     refine hY.trans (le_of_eq ?_); rw [ht]; ring
-  have hyl' : |fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) (1.0 / x) 1.0)| ≤ 11 / 10 * u * t := by
+  have hyl' : |fv ((1.0 / x) * Library.Numerics.Arithmetic.Fma.fma (-x) (1.0 / x) 1.0)| ≤ 11 / 10 * u * t := by
     refine hyl.trans (le_of_eq ?_); rw [ht]; ring
   have hy' : |fv (1.0 / x) - t| ≤ u * t + η := by
     refine hy.trans (le_of_eq ?_); rw [ht]; ring
   set yh := 1.0 / x with hyh
-  set yl := yh * Library.Numerics.Arithmetic.Fma.Fma.fma (-x) yh 1.0 with hyl
+  set yl := yh * Library.Numerics.Arithmetic.Fma.fma (-x) yh 1.0 with hyl
   have hyb : |fv yh| < 1 := by
     have := abs_sub_abs_le_abs_sub (fv yh) t
     rw [abs_of_pos ht0] at this
@@ -216,7 +216,7 @@ theorem usq_pr (hF : FmaNearest) (x : Float) (hx : ff x) (h1 : 3 / 2 ≤ fv x) (
     linarith [show (5 : ℝ) ≤ 2 ^ 1021 by norm_num]
   obtain ⟨lf2, le2⟩ := fma_f hF (2.0 * yh) yl ul0 tf2 lf a2 hfab
   rw [tv2] at le2
-  set ul := Library.Numerics.Arithmetic.Fma.Fma.fma (2.0 * yh) yl ul0 with hul
+  set ul := Library.Numerics.Arithmetic.Fma.fma (2.0 * yh) yl ul0 with hul
   have hE : η ≤ u * u * (t * t) / 1000 := by
     have : (1 / 32 : ℝ) * (1 / 32) ≤ t * t := mul_le_mul ht2 ht2 (by norm_num) ht0.le
     calc η ≤ u * u * ((1 / 32) * (1 / 32)) / 1000 := by norm_num
