@@ -11,6 +11,9 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Bytes.Literal Verified.Bytes.StaticEnv Verified.BytesBuildCorrect \
   Verified.Wasi.Source Verified.Wasi.HostSpec Verified.Wasi.Scratch \
   Verified.Wasi.WrapperCode LeanExe.Wasi.Prefix
+tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
+  Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms
+tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build Verified.Examples.Bytes
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
