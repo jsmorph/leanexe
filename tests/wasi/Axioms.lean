@@ -6,7 +6,7 @@ import Verified.Bytes.Overlay
 import Verified.Bytes.Copy
 import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
-import LeanExe.Wasi.Semantics
+import LeanExe.Wasi.Prefix
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do
@@ -46,6 +46,13 @@ elab "check_wasi_axioms" : command => do
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,
     ``LeanExe.Wasi.Exec.bind,
+    ``LeanExe.Wasi.Exec.bind_iff,
+    ``LeanExe.Wasi.resumeLoop_bind,
+    ``LeanExe.Wasi.Exec.resumeLoop_iff,
+    ``LeanExe.Wasi.Prefix.complete,
+    ``LeanExe.Wasi.Prefix.exited_eq,
+    ``LeanExe.Wasi.Exec.returned_prefix,
+    ``LeanExe.Wasi.Prefix.bind_after,
     ``LeanExe.Wasi.readSome_overflow,
     ``LeanExe.Wasi.loop_zero,
     ``LeanExe.Wasi.Host.read_zero]
