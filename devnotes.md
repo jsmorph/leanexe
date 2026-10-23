@@ -35117,3 +35117,5 @@ The native vector test agrees with all 129 short and 128 long CAVP messages of e
 - [x] The Monte Carlo checkpoints of the four functions.
 - [ ] The Merkle–Damgård reduction for SHA-512.
 - [ ] The full library build and verified driver with the new module.
+
+The user updated `main` with the completed library layout, which `library-layout` also holds.  The hashing work now continues on `hashing-main`, taken from `main`, with the four hashing commits applied unchanged except for the journal's merge with the two new library-check paragraphs.  The Lean sources under the hashing work are the same as on `hashing`, so the minideb2 worktree's build outputs remain valid.  The `hashing` branch stays at its last commit.
