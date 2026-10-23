@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-Status: proposed design for review.  The user requested WASI Preview 1 over core WebAssembly, stdin reads, stdout and stderr writes, and process exit.  The API uses ordinary Lean `do` notation and follows the compiler's UInt64 convention for executable lengths, counts, and statuses.  Implementation details in this document are proposals.  The library reorganization is merged into `main` at `ba466061`.  This work uses `verified-wasi`, with an isolated checkout on the build host.
+Status: implementation in progress.  The user directed implementation of this reviewed agenda on the build host.  The initial scope is WASI Preview 1 over core WebAssembly, stdin reads, stdout and stderr writes, and process exit.  The API uses ordinary Lean `do` notation and follows the compiler's UInt64 convention for executable lengths, counts, and statuses.  The recommendations in the review table guide implementation.  The library reorganization is merged into `main` at `ba466061`.  This work uses `verified-wasi`, with an isolated checkout on the build host.
 
 ## Scope and sources
 
@@ -277,4 +277,4 @@ The proposed `tests/wasi/run.sh` invokes the repository runner and checks its re
 | Depth accounting | Share the existing guarded-call depth through effectful and pure internal calls. | Independent counters require a combined frame bound to justify their interaction. |
 | Application-ABI table | Add the narrow empty-table encoding profile and export required by the pinned convention. | A three-import profile without that export reduces proof work but departs from the pinned application-ABI convention. |
 
-Implementation follows review of these proposals.  The approved three-operation scope and UInt64-facing API constrain that review.
+The user directed implementation of this agenda after its two reviews.  A change to these recommendations requires a new design discussion.
