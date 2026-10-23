@@ -61,7 +61,7 @@ A successful write returns the host's count, including a short or zero count.  T
 
 `exit code` has terminal source semantics and no continuation.  The explicit conversion is `code mod 2^32`.  A returned command-entry status uses the same conversion.  The formal theorem records the WASI status.  An operating system or shell may expose a narrower process status.
 
-Alternative exit policies are a checked exit-code type or a guest trap on an out-of-range UInt64.  The proposed low-bit rule gives every UInt64 argument defined exit behavior and matches Lean's unsigned narrowing operation.  This choice requires review before implementation.
+The low-bit rule gives every UInt64 argument defined exit behavior and matches Lean's unsigned narrowing operation.
 
 ### Byte operations
 

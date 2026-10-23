@@ -114,6 +114,24 @@ theorem Allocated.rep {heap : Heap} {store : Store Unit} {root : UInt64}
     Rep heap store root bytes.size bytes :=
   ⟨LeanExe.Bytes.size_toNat bytes (by have := h.size_lt; omega), Or.inr h⟩
 
+theorem Rep.frame {heap : Heap} {store store' : Store Unit} {root length : UInt64}
+    {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes)
+    (hBytes : root ≠ 0 → ∀ a, root.toNat - 48 ≤ a →
+      a < root.toNat + capacityAt store root → store'.mem.bytes a = store.mem.bytes a) :
+    Rep heap store' root length bytes := by
+  refine ⟨h.length_eq, ?_⟩
+  rcases h.buffer with h | h
+  · exact Or.inl h
+  · exact Or.inr (h.frame (hBytes h.nonzero))
+
+theorem Rep.null_length {heap : Heap} {store : Store Unit} {length : UInt64}
+    {bytes : LeanExe.Bytes} (h : Rep heap store 0 length bytes) : length = 0 := by
+  rcases h.buffer with hBuffer | hBuffer
+  · apply UInt64.toNat_inj.mp
+    rw [h.length_eq, hBuffer.2]
+    rfl
+  · exact False.elim (hBuffer.nonzero rfl)
+
 theorem Allocated.release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (LeanExe.Runtime.releaseFunction typeIdx))
     (env : HostEnv Unit) {heap : Heap} {store : Store Unit} {root : UInt64}
@@ -121,5 +139,27 @@ theorem Allocated.release_run {m : Module} {typeIdx : Nat} (hImports : m.imports
     TerminatesWith env m 1 store [.i64 root] fun final out =>
       out = [] ∧ final = heap.releaseStore store root :=
   release_leaf_run hImports hFunc env heap store root hHeap h.object h.magic h.count h.childMask
+
+theorem release_null_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (LeanExe.Runtime.releaseFunction typeIdx))
+    (env : HostEnv Unit) (store : Store Unit) :
+    TerminatesWith env m 1 store [.i64 0] fun final out => out = [] ∧ final = store := by
+  refine TerminatesWith.of_wp_entry_for (f := LeanExe.Runtime.releaseFunction typeIdx)
+    (by simpa [hImports] using hFunc) ?_ (by simp [hImports])
+  simp [LeanExe.Runtime.releaseFunction, LeanExe.Runtime.releaseBody, Function.toLocals,
+    Function.numParams, ValueType.zero, wp_simp]
+  refine wp_iff_cons rfl ?_
+  simp [wp_simp]
+
+theorem Rep.release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
+    (hFunc : m.funcs[1]? = some (LeanExe.Runtime.releaseFunction typeIdx))
+    (env : HostEnv Unit) {heap : Heap} {store : Store Unit} {root length : UInt64}
+    {bytes : LeanExe.Bytes} (hHeap : heap.At store) (h : Rep heap store root length bytes) :
+    TerminatesWith env m 1 store [.i64 root] fun final out =>
+      out = [] ∧ final = if root = 0 then store else heap.releaseStore store root := by
+  rcases h.buffer with ⟨rfl, _⟩ | hBuffer
+  · simpa using release_null_run hImports hFunc env store
+  · simpa only [ite_eq_right hBuffer.nonzero] using
+      hBuffer.release_run hImports hFunc env hHeap
 
 end Verified.Bytes
