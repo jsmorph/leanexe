@@ -4,5 +4,7 @@ set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
 
-tools/leanrun --timeout 10m lake build LeanExe.Dialect.Bytes
+tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
+  Verified.Bytes.Basic LeanExe.Wasi.Action
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/Axioms.lean
