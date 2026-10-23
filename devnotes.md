@@ -35084,3 +35084,5 @@ Before publication, inspection found an existing remote `wasi` branch at `efbd25
 The design received a second agent review and two source and prose passes.  The README links the proposal.  Local documentation links and whitespace pass.  Implementation follows review of the recorded proposals, under the user's design-only instruction.
 
 The user chose a new branch for this work.  The Verified design uses `verified-wasi`, based on completed `main`.  The earlier remote `wasi` branch retains its native implementation at `efbd253c`.
+
+The user moved the WASI work to another build host after completion of its library agenda.  The active checkout is a separate checkout, on `verified-wasi` and tracking `origin/verified-wasi`.  The proposal now names that host as its development host.
