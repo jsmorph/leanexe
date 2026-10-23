@@ -62,11 +62,16 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 | An enumeration with a `Flat` instance to a word | One word | An inductive type whose constructors have no fields. |
 | A sum with scalar fields and a `Flat` instance | A word tag and the constructor fields' words | The tag occupies the tuple's first leaf.  Each constructor's fields occur once. |
 | `Array α`, for `α` a word, `Bool`, float, tuple, flat structure, enumeration, or sum | The address of a length word followed by the elements' words | An element of `k` words occupies `k` consecutive words.  An array of tuples may only be a local value, since Lean has no `Represent` instance for it. |
+| `LeanExe.Bytes` | An allocation root and UInt64 logical length | Packed bytes, with owned and borrowed parameters, results, pairs, copying, and release. |
 | A pair that holds arrays, or a structure whose `Flat` tuple holds arrays | Its components' words | A structure of this kind is a record with array fields. |
 | `List UInt64` | Null for `[]`, otherwise a record holding the head word and tail pointer | Construction, matching, identity, duplication, tuples, calls, tail recursion, and folds with scalar state |
 | A recursive type with one empty and one record constructor | Null for the empty constructor, otherwise a fixed-layout record | At most 64 fields, each `UInt64` or a recursive child.  Construction, matching, guarded and tail recursion, identity, duplication, tuples, calls, and loop state. |
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
+
+Byte access, construction, literals, and I/O remain in progress under the
+[WASI design](verified-wasi-design.md).  The current byte examples pass buffers between functions
+and exercise ownership and cleanup.
 
 ### Expressions
 
@@ -158,7 +163,7 @@ A table is a Lean constant of type `Array UInt64`, which the module writes in a 
 |---|---|---|
 | `unsupported term …` | A term that no rule covers: an unlisted helper without `@[inline]`, `for`, or an opaque float function | List the callee before its callers, mark a helper `@[inline]`, use the combinators, or define the float function. |
 | `Array.foldl requires start = 0`, `Array.foldl requires stop = xs.size` | A fold over part of an array | Use a word-counted `LeanExe.loop` for that range. |
-| ``the type … is not UInt64, Bool, Float, Float32, a structure with a `Flat` instance, an array, or a pair`` | A parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
+| ``the type … is not UInt64, Bool, Float, Float32, Bytes, a structure with a `Flat` instance, an array, or a pair`` | A parameter, result, or binding of a type outside the dialect, such as `Nat` | Use the dialect's types, and give a structure a `Flat` instance. |
 | `= and ≠ on … compare bit patterns; use == and !=` | `=` or `≠` on `Float` or `Float32` | Use `==` or `!=`. |
 | ``an index must be `i.toNat` for a word `i` ``, ``a position must be `i.toNat` for a word `i` `` | A read or an update at a position that is not a word's `toNat` | Index with `i.toNat` for `i : UInt64`. |
 | `Lean has no Represent instance for …, so no theorem can be stated for it` | A parameter or result whose type has no instance, such as an array of tuples | Keep such an array local, or use an array of structures with a `Flat` instance. |
@@ -420,6 +425,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Lets`](../Verified/Examples/Lets.lean) | Four `let` bindings, the last of them inside an operand of `+`, with a division in its body. |
 | [`Select`](../Verified/Examples/Select.lean) | `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
+| [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, unused-result cleanup, and swapped results.  [The WASI driver](../tests/wasi/run.sh) checks allocated empty inputs and allocation/free counts. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
 | [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct array methods, `insertIdx!` with its empty result past the end, empty arrays of words, floats, and records, including a record without an `Inhabited` instance, and Boolean equality, decisions, and conditions with record results, record-array results, and operand calls that consume arrays. |
 | [Array folds](../Verified/Examples/Fold.lean) | Words, floats, record elements without an `Inhabited` instance, owned array and pair accumulators, a borrowed initial-state alias, nested folds, calls inside a fold, and the frames condition of a recursive call.  `words_bound` proves the word fold's allocation bound is zero. |

@@ -111,7 +111,7 @@ def Expr.paramChoice {params : List Ty} {result : Ty} (body : Expr S params resu
     List Mode :=
   (List.range params.length).map fun i =>
     match params[i]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _) =>
+    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _) | some Ty.bytes =>
       if body.demands (fun _ => false) true i then .owned else .borrowed
     | _ => .borrowed
 

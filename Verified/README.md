@@ -28,7 +28,8 @@ the definitions before it in the command.  A function's body is a typed expressi
 
 The element types, `Elem`, are 64-bit words, `Bool`s, binary64 and binary32 floats, and tuples of
 element types.  `Ty.elem e` embeds an element type, `Ty.array e` holds an array of elements, and
-`Ty.pair` combines any two value types.  `Ty.tree shape` holds a recursive value with the fixed
+`Ty.pair` combines any two value types.  `Ty.bytes` denotes `LeanExe.Bytes`.
+`Ty.tree shape` holds a recursive value with the fixed
 layout `shape`, and `Ty.treeHeader shape` holds a detached record header during matching and
 reuse.  The reflector represents `List UInt64` and supported user-defined recursive types through
 this tree model.  An expression of type `t` over a context `Γ` that may call functions with
@@ -81,6 +82,14 @@ through `Expr.usesFast`, and `Expr.usesFast_eq` equates it with `Expr.uses`.  A 
 loop's state is owned when its initial value or its body's value is owned, so a borrowed component
 or state is copied.  An array copy allocates through the runtime's `alloc` and writes the length word and
 the elements.
+
+A byte value occupies two i64 words: its allocation root and logical length.  Borrowed bytes
+protect the allocation's header and full capacity.  An owned copy allocates a packed payload
+without an array-length word.  Copying empty bytes returns `(0, 0)` without allocating.  A valid
+incoming empty buffer may have a nonzero root, which cleanup releases.  The
+[byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, and cleanup.
+Byte access, construction, literals, and I/O remain part of the
+[WASI work](../docs/verified-wasi-design.md).
 
 ### Scalar code and control flow
 

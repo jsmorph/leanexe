@@ -7,11 +7,25 @@ import Verified.Bytes.Copy
 import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
 import LeanExe.Wasi.Prefix
+import Verified.Examples.Bytes
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[
+    ``Verified.Prog.correctWith,
+    ``Verified.Ty.Rep.step,
+    ``Verified.wp_copyCode,
+    ``Verified.wp_releaseCode,
+    ``Verified.Examples.Bytes.compiled.bytes,
+    ``Verified.Examples.Bytes.compiled.identity.implements,
+    ``Verified.Examples.Bytes.compiled.duplicate.implements,
+    ``Verified.Examples.Bytes.compiled.choose.implements,
+    ``Verified.Examples.Bytes.compiled.discard.implements,
+    ``Verified.Examples.Bytes.compiled.swap.implements,
+    ``Verified.Examples.Bytes.compiled.firstDuplicate.implements,
+    ``Verified.Examples.Bytes.compiled.secondDuplicate.implements,
+    ``Verified.Examples.Bytes.compiled.swappedFirst.implements,
     ``LeanExe.Bytes.size_toNat,
     ``LeanExe.Bytes.get_build,
     ``LeanExe.Bytes.get_toNat_lt,

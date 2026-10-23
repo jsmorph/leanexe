@@ -16,6 +16,7 @@ theorem Ty.copyScratch_le_tree (t : Ty) : t.copyScratch ≤ treeCopyScratch := b
   induction t with
   | elem e => exact Nat.zero_le _
   | array e => change 3 ≤ 6; decide
+  | bytes => change 2 ≤ 6; decide
   | tree shape => exact le_rfl
   | treeHeader shape => change 1 ≤ 6; decide
   | pair a b ha hb => exact Nat.max_le.mpr ⟨ha, hb⟩
