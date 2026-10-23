@@ -93,6 +93,7 @@ states these proof limits.
 | [The LeanExe compiler manual](docs/leanexe-manual.md) | Dialect, compilation, proof rules, tests, examples, and development practice. |
 | [The verified compiler manual](docs/verified-manual.md) | The verified compiler's dialect, the declarations that `verified_compile` adds, bounds, tests, and examples. |
 | [The verified compiler's internals](Verified/README.md) | Its code scheme, the structure of its proof, and the reflector. |
+| [The verified compiler's WASI proposal](docs/verified-wasi-design.md) | Proposed stdin reads, stdout and stderr writes, and exit, with API, host assumptions, proof obligations, and implementation order. |
 | [The design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [The development journal](devnotes.md) | The record of the work. |
 | [The algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
