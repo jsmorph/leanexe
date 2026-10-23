@@ -19,12 +19,17 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.Source Verified.Wasi.HostSpec Verified.Wasi.Scratch \
   Verified.Wasi.WrapperCode Verified.Wasi.Write Verified.Wasi.ReadCall \
   Verified.Wasi.ReadFrame Verified.Wasi.Runtime Verified.Wasi.RuntimeFrame \
-  Verified.Wasi.ReadFunction Verified.Wasi.Exit LeanExe.Wasi.Prefix
+  Verified.Wasi.ReadFunction Verified.Wasi.CallWrappers Verified.Wasi.WriteHelper \
+  Verified.Wasi.Exit LeanExe.Wasi.Prefix \
+  LeanExe.Wasi.Interpreter LeanExe.Wasi.RelatedExec LeanExe.Wasi.RelatedPrefix \
+  Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
   Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial Verified.Wasi.PurePrefix
 tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/EffectAxioms.lean
+tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
 if "$foundations_only"; then exit 0; fi
