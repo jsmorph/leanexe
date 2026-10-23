@@ -22,3 +22,5 @@ lgamma:Library.Numerics.Float64.Lgamma.LgammaBytes:Library/Numerics/Float64/Lgam
 erfc:Library.Numerics.Float64.Erfc.ErfcBytes:Library/Numerics/Float64/Erfc/ErfcFile.lean
 sha512:Library.Hashing.Sha512.Bytes:Library/Hashing/Sha512/File.lean
 sha256:Library.Hashing.Sha256.Bytes:Library/Hashing/Sha256/File.lean
+hmac_sha256:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File256.lean
+hmac_sha512:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File512.lean

@@ -24,17 +24,6 @@ def _root_.Library.Hashing.Words.Words16.toVec32 (m : Words16) : SHS.SHA256.Impl
     m.w6.toUInt32, m.w7.toUInt32, m.w8.toUInt32, m.w9.toUInt32, m.w10.toUInt32, m.w11.toUInt32,
     m.w12.toUInt32, m.w13.toUInt32, m.w14.toUInt32, m.w15.toUInt32]
 
-/-- Word `k` of a window. -/
-def _root_.Library.Hashing.Words.Words16.get (m : Words16) (k : Nat) : UInt64 :=
-  #[m.w0, m.w1, m.w2, m.w3, m.w4, m.w5, m.w6, m.w7, m.w8, m.w9, m.w10, m.w11, m.w12, m.w13, m.w14,
-    m.w15][k]!
-
-@[simp] theorem get0 (m : Words16) : m.get 0 = m.w0 := rfl
-@[simp] theorem get1 (m : Words16) : m.get 1 = m.w1 := rfl
-@[simp] theorem get9 (m : Words16) : m.get 9 = m.w9 := rfl
-@[simp] theorem get14 (m : Words16) : m.get 14 = m.w14 := rfl
-@[simp] theorem get15 (m : Words16) : m.get 15 = m.w15 := rfl
-
 /-- The specification's schedule after `j` steps, as `Nat.fold`. -/
 def schedulePrefix (M : Vector (BitVec 32) 16) (j : Nat) : Vector (BitVec 32) 64 :=
   Nat.fold j (fun t _ W => specScheduleStep M t W) (Vector.replicate 64 default)

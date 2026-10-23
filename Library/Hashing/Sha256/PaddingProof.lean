@@ -17,24 +17,22 @@ open SHS.Equiv.SHA256.Padding.Layout
 /-- The number of padded blocks of a message of `n` bytes. -/
 def blockCount (n : Nat) : Nat := n / 64 + if n % 64 < 56 then 1 else 2
 
-theorem size_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
-    (n : Nat) : (pre ++ bytes msg n).size = 64 * p + n := by
-  rw [ByteArray.size_append, hpre, bytes_size]
+theorem size_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (data : ByteArray) :
+    (pre ++ data).size = 64 * p + data.size := by
+  rw [ByteArray.size_append, hpre]
 
 theorem zerosCount_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
-    (msg : Array UInt64) (n : Nat) :
-    zerosCount (pre ++ bytes msg n) = zerosCount (bytes msg n) := by
+    (data : ByteArray) : zerosCount (pre ++ data) = zerosCount data := by
   unfold zerosCount
-  rw [size_append pre p hpre, bytes_size, show (64 * p + n) % 64 = n % 64 by omega]
+  rw [size_append pre p hpre, show (64 * p + data.size) % 64 = data.size % 64 by omega]
 
-theorem paddedSize (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
-    (n : Nat) : (implPaddedBytes (pre ++ bytes msg n)).size = 64 * (p + blockCount n) := by
+theorem paddedSize (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (data : ByteArray) :
+    (implPaddedBytes (pre ++ data)).size = 64 * (p + blockCount data.size) := by
   rw [size_implPaddedBytes_eq, zerosCount_append pre p hpre, size_append pre p hpre]
   unfold zerosCount blockCount
-  rw [bytes_size]
-  have hd : n = 64 * (n / 64) + n % 64 := (Nat.div_add_mod n 64).symm
-  have hr : n % 64 < 64 := Nat.mod_lt _ (by decide)
-  by_cases h : n % 64 < 56 <;> simp only [h, ite_true, ite_false] <;> omega
+  have hd : data.size = 64 * (data.size / 64) + data.size % 64 := (Nat.div_add_mod _ 64).symm
+  have hr : data.size % 64 < 64 := Nat.mod_lt _ (by decide)
+  by_cases h : data.size % 64 < 56 <;> simp only [h, ite_true, ite_false] <;> omega
 
 /-- The bit length starts eight bytes before the end of the padded message. -/
 theorem lengthStart (msg : Array UInt64) (n : Nat) :
@@ -74,8 +72,8 @@ theorem paddedByte (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg :
       else if q < 4 * (16 * blockCount n - 2) then 0
       else (lengthBE64 ((64 * p + n).toUInt64 <<< 3)).get! (q - 4 * (16 * blockCount n - 2)) := by
   have hL := lengthStart msg n
-  rw [get!_implPaddedBytes_eq _ _ (by rw [paddedSize pre p hpre]; omega), size_append pre p hpre,
-    zerosCount_append pre p hpre]
+  rw [get!_implPaddedBytes_eq _ _ (by rw [paddedSize pre p hpre, bytes_size]; omega),
+    size_append pre p hpre, bytes_size, zerosCount_append pre p hpre]
   by_cases h : q < n
   · rw [ite_eq_left (by omega), ite_eq_left h,
       SHS.Equiv.ByteArray.get!_append_right _ _ _ (by omega) (by rw [bytes_size]; omega), hpre,

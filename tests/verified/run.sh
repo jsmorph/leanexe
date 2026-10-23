@@ -133,6 +133,9 @@ elif [ "$case_module" = "sha256" ]; then
 elif [ "$case_module" = "sha512" ]; then
   cases_module=TestSupport.Hashing.Sha512CasesMain
   cases_source=tests/TestSupport/Hashing/Sha512CasesMain.lean
+elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
+  cases_module=TestSupport.Hashing.HmacCasesMain
+  cases_source=tests/TestSupport/Hashing/HmacCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

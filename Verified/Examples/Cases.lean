@@ -1,6 +1,7 @@
 import TestSupport.LibraryCases
 import TestSupport.Hashing.Sha256Cases
 import TestSupport.Hashing.Sha512Cases
+import TestSupport.Hashing.HmacCases
 import Verified.Examples.Poly
 import Verified.Examples.Mix
 import Verified.Examples.Lets
@@ -431,6 +432,7 @@ def main : IO Unit := do
   TestSupport.LibraryCases.cases
   TestSupport.Hashing.Sha256Cases.cases
   TestSupport.Hashing.Sha512Cases.cases
+  TestSupport.Hashing.HmacCases.cases
   Verified.Examples.TreeCopy.cases
   Verified.Examples.TreeCore.cases
   Verified.Examples.Lists.cases

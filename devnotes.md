@@ -35092,9 +35092,9 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 
 - [x] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.
 - [x] Port the SHA-2 specification and check it against the CAVP vectors.
-- [ ] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
+- [x] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
 - [x] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
-- [ ] HMAC-SHA-256 and HMAC-SHA-512.
+- [x] HMAC-SHA-256 and HMAC-SHA-512.
 - [ ] SHA-3 and SHAKE.
 - [ ] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
 - [ ] SipHash and xxHash64.
@@ -35157,3 +35157,70 @@ The user approved generalizing the SHA-256 and SHA-512 programs for HMAC, which 
 
 - [x] Generalize SHA-256 and SHA-512 to hash from a prefix of whole blocks.
 - [ ] HMAC-SHA-256 and HMAC-SHA-512: specification, program, proof, module, RFC 4231 vectors, and cases.
+
+## 2026-10-23: HMAC-SHA-256 and HMAC-SHA-512
+
+`Library/Hashing/Hmac/Spec.lean` transcribes §2.3 and Table 1 of [FIPS 198-1](https://csrc.nist.gov/pubs/fips/198-1/final) on the bit strings of the FIPS 180-4 transcription.  `keyBlock` is steps 1 to 3 and `hmac` steps 4 to 9.  The standard counts the block size `B` and the digest length `L` in bytes, and the transcription counts `L` in bits, so the zeros after a hashed key number `8 B - L` bits.  The transcription's SHA-256 and SHA-512 take a proof that the message is below the length limit, so `Spec.sha256` and `Spec.sha512` give zero outside the limit, which the theorems' hypotheses exclude.
+
+The program forms `K_0` as one block of sixteen words.  A key longer than a block is hashed in place by `hashFrom`, and a shorter key is read a word at a time, with the last partial word masked.  The inner hash compresses `K_0 ⊕ ipad` and continues with the message through `hashFrom`, whose length field counts the key block.  The outer hash compresses `K_0 ⊕ opad` and one block that holds the inner digest, `0x80`, and the bit length, 768 or 1,536.  No call allocates.  The reflector names a module's exports and theorems by the last component of each definition's name, and the SHA-256 and SHA-512 programs share names such as `compress` and `hashFrom`, so `Compiled.lean` defines two programs, `compiled256` and `compiled512`, and two modules.  They are 6,502 and 6,299 bytes.
+
+The proof goes through `implHmac256` and `implHmac512`, HMAC built on the copied implementations on byte strings.  `implHmac256_spec` and `implHmac512_spec` equate their digests with the transcription on the bits, using the bit laws of `Bits.lean` and `sha256_correct` and `sha512_correct`.  `hmacSha256_bytes` and `hmacSha512_bytes` equate the program's digest bytes with those of `implHmac256` and `implHmac512`.  The key block is `K_0` word by word, the inner hash value follows from `hashFrom_toVec32` or `hashFrom_toVec` with the prefix `K_0 ⊕ ipad`, and the outer hash value from `foldl_append` with the prefix `K_0 ⊕ opad` and the padded block of the digest.  `Bytes.lean` states the call theorems with one entry lemma for a module, a table, and two borrowed arrays.  `hmacSha256_call`, `hmacSha512_call`, `hmacSha256_module`, `hmacSha512_module`, and the four file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+Two proof steps needed repair.  The generalized `foldl_append` counts the blocks of an arbitrary suffix as `blockCount data.size`, and `simp` cannot rewrite that count in `Nat.fold`, whose function's type depends on it, so `hashFrom_iv` rewrites it with `rw`.  `List.foldl_concat` does not exist in Lean 4.34, and `List.foldl_append` gives the step instead.
+
+The build of the root module `Library` would have failed.  The SHA-256 and SHA-512 compression proofs each defined `Library.Hashing.Words.Words16.get`, and Lean rejects an environment that imports a name twice.  Each family's own build succeeded, the error appeared only where both are imported, and the earlier full library build was stopped before it reached the root.  A probe that imports `Sha256.Bytes` and `Sha512.Bytes` reproduced the error.  `Words16.get` and its lemmas are now defined once in `Words/Proof.lean`, and the SHA-512 window proof splits on the index where it relied on the old definition.
+
+The native test of `HmacVectors.lean` agrees with the seven cases of [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231) §4 for the programs and the transcription, and the programs agree with the transcription on 1,595 pairs of key and message for each function, in 32 seconds.  `tests/verified/run.sh --cases hmac_sha256` and `--cases hmac_sha512` each passed 136 cases, with two retained blocks and no allocation by the call in each.  Both emitted files check against their file theorems.
+
+- [x] HMAC-SHA-256 and HMAC-SHA-512: specification, program, proof, modules, RFC 4231 vectors, and cases.
+- [x] Define `Words16.get` once.
+- [ ] The full library build and verified driver with the new modules.
+
+## 2026-10-23: Regular expressions: plan and decisions
+
+The user asked for a design for regular expressions, starting simple with a compiler and a machine.  A research agent proposed an untrusted compiler that runs at elaboration time and builds a DFA of at most 256 states from Brzozowski derivatives, normalized as in Owens, Reppy, and Turon, [*Regular-expression derivatives re-examined*](https://doi.org/10.1017/S0956796808007090), JFP 19(2), 2009, with a regex label on each state.  The kernel checks a certificate of the DFA with `decide +kernel`, against a checker whose soundness is proved once.  The machine `matchWith T msg n` is a Wasm loop that reads one table entry per byte, with the table packed eight entries per word, and it gets `ImplementsTables false`.  The specification is Mathlib's `RegularExpression UInt8` with `matches'`, reached through a six-constructor `Re` with byte classes, and matching is anchored to the whole input.
+
+The review found that kernel time is the main unknown and must be measured first.  A byte class may be better represented as one `Nat` below `2 ^ 256` than as four words, byte classes may belong in the first step, and a shared call-theorem layer would serve hashing, HMAC, and regexes.  Two of the agent's claims are unverified: a module size limit near 90 KB from the nesting limit of 100,000, and a restriction of the dialect on recursive types.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Location | `Library/Regex` on a branch `regex` taken from `hashing-main` after the HMAC commit | The branch uses the packed-byte modules and the two-array call lemma, and it rebases onto `main` after the hashing work merges. |
+| Byte module | Move `bytes`, `byteAt`, and their lemmas from `Library/Hashing/Words` to a neutral module in a separate commit on `hashing-main` before the branch | Regexes then depend on a byte module rather than on the hashing library.  Only proofs and tests use the definitions, so the emitted modules do not change. |
+| Test reference | Python's `re`, with `re.fullmatch` on byte patterns and `re.DOTALL`, besides Mathlib's `rmatch` | It needs no new dependency, and for patterns without backreferences or lookaround its anchored matches are regular-language membership.  RE2 would be a new dependency. |
+| First step | Three probes on minideb2, before SHA-3 | The probes measure the kernel time of a certificate of about 10, 50, and 200 states, the compile time and size of a table of 256 states by 256 bytes in 8,192 words, and whether the dialect accepts the recursive `Re` type. |
+
+- [ ] Move the packed-byte definitions and lemmas to a neutral module.
+- The probes and the certificate design were dropped for runtime patterns, as the next entry records.
+
+## 2026-10-23: Regular expressions with runtime patterns
+
+The user decided that patterns arrive at run time from the start.  One theorem then covers every pattern: for every pattern and input, the module answers true exactly when the input is in the pattern's language.  The regex compiler and the matcher are Lean functions compiled by the verified compiler, so nothing is evaluated in the kernel for a pattern, no table is a constant of a module, and the certificate, its checker, and the two probes are no longer needed.  The user also asked whether the compiler should gain general tagged recursive types, which a compiler based on derivatives would need for regex trees in Wasm.  A research agent is assessing that extension, and the regex work does not wait for it.
+
+The design uses the position automaton of McNaughton and Yamada (1960) and Glushkov (1961), which needs no new regex terms at run time and fits the dialect as it stands.  Each byte class of the pattern is a position, numbered from the left, and a state is a set of positions held in one `UInt64`.  One loop over a postfix pattern array, with a stack of three words per entry, computes each subpattern's empty-match flag and first and last sets and fills a follow table of 64 words.  A mask of 256 words gives the positions whose class contains each byte, and a table of 8 by 256 words gives the union of follow sets eight bits of the state at a time.  The match loop takes about ten word operations per input byte, and an export borrows the pattern and the input as HMAC borrows its key and message.
+
+The proof has five parts: a specification of regexes and their languages on Mathlib's `Language` or `RegularExpression`, reviewed independently; the decoding of a postfix array to a regex; the stack invariant of the compile pass, which relates it to the recursive definitions of the empty-match flag, first, last, and follow; Glushkov's theorem that the position automaton accepts the regex's language; and the bit-set loop, with lemmas that relate `UInt64` operations to finite sets.  No Lean formalization of Glushkov's theorem is known to the project to reuse.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Patterns | At run time, from the first version | One theorem covers all patterns, with no kernel evaluation per pattern. |
+| Automaton | The position automaton on bit sets | Its compile pass builds no regex terms and its states are words, so it needs no compiler change.  It has no exponential blowup of states. |
+| Input format | A postfix array of opcodes: class with four words of 256 bits, empty, epsilon, concatenation, alternation, star | It needs only a decoder.  Text syntax needs a parser and a specification of the syntax, which come later. |
+| Size | At most 63 positions, one bit being the start state | One word per state.  Multiword sets use arrays and stay in the dialect. |
+| Matching | Anchored to the whole input | Search adds the start state at every step and comes later. |
+| Tagged recursive types | Research continues, not blocking the regex work | Syntax trees and other uses would benefit. |
+
+- [ ] Move the packed-byte definitions and lemmas to a neutral module.
+- [ ] Create the `regex` branch from `hashing-main`.
+- [ ] Write the specification and have it reviewed independently.
+- [ ] Write the program: decoder, compile pass, masks, follow tables, and match loop.
+- [ ] Prove the compile pass, Glushkov's theorem, and the match loop.
+- [ ] Compile the module, test against Python's `re` and Mathlib, and write the call and file theorems.
+- [ ] Later: text syntax, search, more than 63 positions, and a cache of DFA states.
+
+## 2026-10-23: Assessment of tagged recursive types
+
+A research agent read the verified compiler's recursive-type support at the user's request, without running Lean.  Today a recursive type is `Tree shape`, with an empty constructor and one record of at most 64 fields, each a word or a child (`Verified/Tree.lean`), and `recursiveLayout?` accepts only that form (`Verified/Reflect/RecursiveLayout.lean`).  The `Node` heap model, the release runtime, and the field loads and stores are independent of the shape.  Construction, matching, copying, `NodeLayout`, and the reflector's generated conversions and match theorems depend on it.  About 45 declarations split on the type forms, and about 43 mention `treeCase`.
+
+The proposed design generalizes `Tree` in place to several constructors with the tag in slot 0 and one union layout per type, in which unused words are zero and unused children null.  Width and child mask then stay constant per type, so copy, release, header reuse, and the cost formulas keep their statements.  One nullary constructor is null and the others are records that hold only the tag.  A type with one record constructor keeps its untagged encoding, so existing modules keep their bytes.  Mutual types, children of other types, and `Option` are deferred.  The agent estimates 3,000 to 7,000 changed lines, a quarter to half of the original recursive-type phase of 38 commits and about 14,100 added lines, with an uncertainty of a factor of two or more.  The main risks are the elaboration time of generated n-way proofs and edits to the existing tree examples.
+
+For a regex compiler in Wasm built on derivatives, tagged types are not sufficient.  A table of regex labels needs arrays of trees, recursion on long concatenations meets the limit of 1,000 frames, and the allocation bound, which credits no release, could reach about a gigabyte.  These findings support the position automaton, which needs none of them.  The decisions the extension requires (layout, nullary constructors, in-place generalization, generated `Encode` instances, field types other than `UInt64`, and whether `trapFree` is required) wait until the user chooses to start it.
