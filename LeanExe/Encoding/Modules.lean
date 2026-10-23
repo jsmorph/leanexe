@@ -2,8 +2,12 @@ import LeanExe.Encoding.Instructions
 import LeanExe.Encoding.Spec.Modules
 
 deriving instance DecidableEq for Wasm.GcTypeDef
+deriving instance DecidableEq for Wasm.TableDecl
 
 namespace Wasm.Encoding
+
+instance (tables : List Wasm.TableDecl) : Decidable (Spec.TableProfile tables) :=
+  inferInstanceAs (Decidable (tables = [] ∨ tables = [Spec.emptyFunctionTable]))
 
 def signatureIndex (signature : Wasm.FuncType) : (types : List Wasm.FuncType) →
     Except String { index : Nat // types[index]? = some signature }
@@ -45,7 +49,7 @@ def functionBody (func : Wasm.Function) : Result (Spec.Sized Spec.CodeBody) func
 
 def exportEntry : (entry : UInt8 × String × Nat) → Result Spec.Export entry
   | (kind, exportName, index) => do
-      if valid : kind = 0 ∨ kind = 2 ∨ kind = 3 then
+      if valid : kind = 0 ∨ kind = 1 ∨ kind = 2 ∨ kind = 3 then
         let nameBytes ← name exportName
         let indexBytes ← u32 index
         pure ⟨nameBytes.val ++ kind :: indexBytes.val,
@@ -66,13 +70,16 @@ def shape (m : Wasm.Module) : Except String (PLift (Spec.Shape m)) := do
   let start ← require (m.startFunc = none) "module has a start section"
   let gcTypes ← require (m.gcTypes = m.types.map (fun t => { comp := .func t }))
     "GC type metadata disagrees with the function type section"
-  let tables ← requireEmpty "module has tables" m.tables
+  let tables ← require (Spec.TableProfile m.tables)
+    "table declaration is outside the empty function-table profile"
   let elements ← requireEmpty "module has element segments" m.elements
   let importedGlobals ← requireEmpty "module imports globals" m.importedGlobals
   let importedTables ← requireEmpty "module imports tables" m.importedTables
   let importedMemories ← requireEmpty "module imports memories" m.importedMemories
   let importedTags ← requireEmpty "module imports exception tags" m.importedTags
-  let tableExports ← requireEmpty "module exports tables" m.tableExports
+  let tableExports ← require (m.tableExports =
+    if m.tables.isEmpty then [] else [("__indirect_function_table", 0)])
+    "table export is outside the empty function-table profile"
   let tagExports ← requireEmpty "module exports exception tags" m.tagExports
   let tags ← requireEmpty "module has exception tags" m.tags
   pure ⟨{
@@ -101,20 +108,28 @@ def dataSection : (segments : List Wasm.DataSegment) → Result Spec.DataSection
       let encoded ← vector dataSegment (segment :: rest) >>= sectionBytes 11
       pure ⟨encoded.val, .present _ _ (List.cons_ne_nil _ _) encoded.property⟩
 
+def tableSection (tables : List Wasm.TableDecl) : Result Spec.TableSection tables :=
+  if empty : tables = [] then
+    .ok ⟨[], by rw [empty]; exact .empty⟩
+  else if table : tables = [Spec.emptyFunctionTable] then
+    .ok ⟨[4, 4, 1, 0x70, 0, 0], by rw [table]; exact .present⟩
+  else .error "table declaration is outside the empty function-table profile"
+
 def module (m : Wasm.Module) : Result Spec.ModuleBytes m := do
   let fields ← shape m
   let types ← vector functionType m.types >>= sectionBytes 1
   let imports ← vector (importFunction m.types) m.imports >>= sectionBytes 2
   let functions ← vector (functionIndex m.types) m.funcs >>= sectionBytes 3
+  let tables ← tableSection m.tables
   let memories ← vector memory (Spec.memoryDecls m) >>= sectionBytes 5
   let globals ← vector global m.globals >>= sectionBytes 6
   let exports ← vector exportEntry (Spec.exports m) >>= sectionBytes 7
   let codes ← vector functionBody m.funcs >>= sectionBytes 10
   let datas ← dataSection (Spec.dataSegments m)
   pure ⟨[0, 97, 115, 109, 1, 0, 0, 0] ++ types.val ++ imports.val ++ functions.val ++
-    memories.val ++ globals.val ++ exports.val ++ codes.val ++ datas.val,
-    .intro _ _ _ _ _ _ _ _ _ fields.down types.property imports.property functions.property
-      memories.property globals.property exports.property codes.property datas.property⟩
+    tables.val ++ memories.val ++ globals.val ++ exports.val ++ codes.val ++ datas.val,
+    .intro _ _ _ _ _ _ _ _ _ _ fields.down types.property imports.property functions.property
+      tables.property memories.property globals.property exports.property codes.property datas.property⟩
 
 def encode (m : Wasm.Module) : Except String ByteArray :=
   (module m).map fun encoded => ⟨encoded.val.toArray⟩

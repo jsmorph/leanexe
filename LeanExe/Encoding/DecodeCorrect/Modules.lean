@@ -216,6 +216,40 @@ theorem contents_functions {acc : Sections} {payload : List UInt8} {value : List
     return { acc with functions := ← within payload.length (vec (unsigned 32)) }) payload _
   exact Parses.bind_nil (parses_within h) (Parses.pure' _)
 
+theorem parses_emptyFunctionTable :
+    Parses Decoder.emptyFunctionTable [0x70, 0, 0] Spec.emptyFunctionTable := by
+  unfold Decoder.emptyFunctionTable
+  refine Parses.bind_cons (parses_byte 0x70) ?_
+  simp only [ne_eq, not_true_eq_false, ite_false]
+  refine Parses.bind_cons (parses_byte 0) ?_
+  simp only [not_true_eq_false, ite_false]
+  have zero : Unsigned 32 [0] 0 :=
+    .terminal 32 0 (by decide) (by decide) (by decide)
+  refine Parses.bind_nil (parses_unsigned zero 32 (Nat.le_refl _)) ?_
+  simp only [not_true_eq_false, ite_false]
+  exact Parses.pure' _
+
+theorem parses_emptyFunctionTables :
+    Parses tables [1, 0x70, 0, 0] [Spec.emptyFunctionTable] := by
+  have items : Vector
+      (fun bytes table => bytes = [0x70, 0, 0] ∧ table = Spec.emptyFunctionTable)
+      [1, 0x70, 0, 0] [Spec.emptyFunctionTable] :=
+    .intro [1] [0x70, 0, 0] [Spec.emptyFunctionTable]
+      (.terminal 32 1 (by decide) (by decide) (by decide))
+      (.cons [0x70, 0, 0] [] Spec.emptyFunctionTable [] ⟨rfl, rfl⟩ .nil)
+  have parsed := parses_vec
+    (item := Decoder.emptyFunctionTable)
+    (fun _ _ h => by rcases h with ⟨rfl, rfl⟩; exact parses_emptyFunctionTable)
+    (fun _ _ h => by rcases h with ⟨rfl, _⟩; simp) items
+  unfold tables
+  exact Parses.bind_nil parsed (Parses.pure' _)
+
+theorem contents_tables {acc : Sections} {payload : List UInt8} {value : List TableDecl}
+    (h : Parses tables payload value) :
+    Parses (sectionContents 4 payload.length acc) payload { acc with tables := value } := by
+  show Parses (do return { acc with tables := ← within payload.length tables }) payload _
+  exact Parses.bind_nil (parses_within h) (Parses.pure' _)
+
 theorem contents_memory {acc : Sections} {payload : List UInt8} {value : Option MemDecl}
     (h : Parses memories payload value) :
     Parses (sectionContents 5 payload.length acc) payload { acc with memory := value } := by
@@ -278,7 +312,7 @@ theorem section_length {relation : List UInt8 → α → Prop} {id : UInt8} {byt
 
 def expected (m : Wasm.Module) : Sections :=
   { types := m.types, imports := m.imports,
-    functions := m.funcs.map (·.typeIdx.getD 0),
+    functions := m.funcs.map (·.typeIdx.getD 0), tables := m.tables,
     memory := m.memory.map fun decl => { decl with data := [] }, globals := m.globals,
     exports := exports m, codes := m.funcs.map fun f => (f.locals, f.body),
     data := dataSegments m }
@@ -288,31 +322,21 @@ theorem memoryDecls_toList (m : Wasm.Module) :
   unfold memoryDecls
   cases m.memory <;> rfl
 
-theorem sections_run {m : Wasm.Module}
-    {types imports functions memories globals exportBytes codes datas : List UInt8}
-    (typeSection : Section 1 (Vector Spec.FuncType) types m.types)
-    (importSection : Section 2 (Vector (Import m.types)) imports m.imports)
-    (functionSection : Section 3 (Vector (FunctionIndex m.types)) functions m.funcs)
-    (memorySection : Section 5 (Vector Memory) memories (memoryDecls m))
-    (globalSection : Section 6 (Vector Global) globals m.globals)
-    (exportSection : Section 7 (Vector Spec.Export) exportBytes (exports m))
-    (codeSection : Section 10 (Vector (Sized CodeBody)) codes m.funcs)
-    {segments : List DataSegment} (hSegments : dataSegments m = segments)
-    (dataSection : DataSection datas segments)
-    (hLocals : ∀ f ∈ m.funcs, f.locals.length ≤ maxLocals) (fuel : Nat) :
-    StateT.run (sections (fuel + 9) 0 {})
-      (types ++ (imports ++ (functions ++ (memories ++ (globals ++ (exportBytes ++
-        (codes ++ datas))))))) = .ok (expected m, []) := by
-  rw [← memoryDecls_toList] at memorySection
-  match typeSection, importSection, functionSection, memorySection, globalSection,
-      exportSection, codeSection with
+theorem sections_prefix_run
+    {types : List Wasm.FuncType} {imports : List ImportDecl} {funcs : List Function}
+    {typeBytes importBytes functionBytes : List UInt8}
+    (typeSection : Section 1 (Vector Spec.FuncType) typeBytes types)
+    (importSection : Section 2 (Vector (Import types)) importBytes imports)
+    (functionSection : Section 3 (Vector (FunctionIndex types)) functionBytes funcs)
+    (tail : List UInt8) (fuel : Nat) :
+    StateT.run (sections (fuel + 3) 0 {})
+      (typeBytes ++ importBytes ++ functionBytes ++ tail) =
+    StateT.run (sections fuel 3
+      { types := types, imports := imports, functions := funcs.map (·.typeIdx.getD 0) }) tail := by
+  match typeSection, importSection, functionSection with
   | .intro typeSize typePayload _ typeSizeEncoding typeEncoding,
     .intro importSize importPayload _ importSizeEncoding importEncoding,
-    .intro functionSize functionPayload _ functionSizeEncoding functionEncoding,
-    .intro memorySize memoryPayload _ memorySizeEncoding memoryEncoding,
-    .intro globalSize globalPayload _ globalSizeEncoding globalEncoding,
-    .intro exportSize exportPayload _ exportSizeEncoding exportEncoding,
-    .intro codeSize codePayload _ codeSizeEncoding codeEncoding =>
+    .intro functionSize functionPayload _ functionSizeEncoding functionEncoding =>
       have hTypes := parses_vec_map (g := id) (fun _ _ h => parses_funcType h)
         (fun _ _ h => funcType_nonempty h) typeEncoding
       have hImports := parses_vec_map (g := id) (fun _ _ h => parses_importDecl h)
@@ -320,6 +344,45 @@ theorem sections_run {m : Wasm.Module}
       have hFunctions := parses_vec_map (g := fun f => f.typeIdx.getD 0)
         (fun _ _ h => parses_functionIndex h) (fun _ _ h => functionIndex_nonempty h)
         functionEncoding
+      simp only [List.map_id] at hTypes hImports
+      let acc1 : Sections := { types := types }
+      let acc2 : Sections := { acc1 with imports := imports }
+      simp only [List.append_assoc]
+      rw [show fuel + 3 = fuel + 2 + 1 by rfl,
+        sections_step (id := 1) (acc := {}) (by decide) (by decide) (by decide)
+          typeSizeEncoding (contents_types hTypes),
+        sections_step (id := 2) (acc := acc1) (by decide) (by decide) (by decide)
+          importSizeEncoding (contents_imports hImports)]
+      rw [sections_step (id := 3) (acc := acc2) (by decide) (by decide) (by decide)
+        functionSizeEncoding (contents_functions hFunctions)]
+      rfl
+
+theorem sections_run {m : Wasm.Module}
+    {types imports functions tableBytes memories globals exportBytes codes datas : List UInt8}
+    (typeSection : Section 1 (Vector Spec.FuncType) types m.types)
+    (importSection : Section 2 (Vector (Import m.types)) imports m.imports)
+    (functionSection : Section 3 (Vector (FunctionIndex m.types)) functions m.funcs)
+    (tableSection : TableSection tableBytes m.tables)
+    (memorySection : Section 5 (Vector Memory) memories (memoryDecls m))
+    (globalSection : Section 6 (Vector Global) globals m.globals)
+    (exportSection : Section 7 (Vector Spec.Export) exportBytes (exports m))
+    (codeSection : Section 10 (Vector (Sized CodeBody)) codes m.funcs)
+    {segments : List DataSegment} (hSegments : dataSegments m = segments)
+    (dataSection : DataSection datas segments)
+    (hLocals : ∀ f ∈ m.funcs, f.locals.length ≤ maxLocals) (fuel : Nat) :
+    StateT.run (sections (fuel + 10) 0 {})
+      (types ++ imports ++ functions ++ tableBytes ++ memories ++ globals ++ exportBytes ++
+        codes ++ datas) = .ok (expected m, []) := by
+  have hPrefix := sections_prefix_run typeSection importSection functionSection
+    (tableBytes ++ memories ++ globals ++ exportBytes ++ codes ++ datas) (fuel + 7)
+  simp only [List.append_assoc] at hPrefix ⊢
+  rw [hPrefix]
+  rw [← memoryDecls_toList] at memorySection
+  match memorySection, globalSection, exportSection, codeSection with
+  | .intro memorySize memoryPayload _ memorySizeEncoding memoryEncoding,
+    .intro globalSize globalPayload _ globalSizeEncoding globalEncoding,
+    .intro exportSize exportPayload _ exportSizeEncoding exportEncoding,
+    .intro codeSize codePayload _ codeSizeEncoding codeEncoding =>
       have hMemories := parses_memories memoryEncoding
       have hGlobals := parses_vec_map (g := id) (fun _ _ h => parses_global h)
         (fun _ _ h => global_nonempty h) globalEncoding
@@ -327,50 +390,75 @@ theorem sections_run {m : Wasm.Module}
         (fun _ _ h => export_nonempty h) exportEncoding
       have hCodes := parses_vec_map_mem (g := fun f => (f.locals, f.body)) codeEncoding
         (fun _ f hMem h => parses_code h (hLocals f hMem)) (fun _ _ h => sized_nonempty h)
-      simp only [List.map_id] at hTypes hImports hGlobals hExports
-      let acc1 : Sections := { types := m.types }
-      let acc2 : Sections := { acc1 with imports := m.imports }
-      let acc3 : Sections := { acc2 with functions := m.funcs.map (·.typeIdx.getD 0) }
+      simp only [List.map_id] at hGlobals hExports
+      simp only [expected]
+      generalize hTables : m.tables = tableDecls at tableSection ⊢
+      let acc3 : Sections :=
+        { types := m.types, imports := m.imports, functions := m.funcs.map (·.typeIdx.getD 0) }
+      let accT : Sections := { acc3 with tables := tableDecls }
       let acc4 : Sections :=
-        { acc3 with memory := m.memory.map fun decl => { decl with data := [] } }
+        { accT with memory := m.memory.map fun decl => { decl with data := [] } }
       let acc5 : Sections := { acc4 with globals := m.globals }
       let acc6 : Sections := { acc5 with exports := exports m }
       let acc7 : Sections := { acc6 with codes := m.funcs.map fun f => (f.locals, f.body) }
-      rw [show fuel + 9 = fuel + 8 + 1 by rfl,
-        sections_step (id := 1) (acc := {}) (by decide) (by decide) (by decide) typeSizeEncoding
-          (contents_types hTypes),
-        sections_step (id := 2) (acc := acc1) (by decide) (by decide) (by decide)
-          importSizeEncoding (contents_imports hImports),
-        sections_step (id := 3) (acc := acc2) (by decide) (by decide) (by decide)
-          functionSizeEncoding (contents_functions hFunctions),
-        sections_step (id := 5) (acc := acc3) (by decide) (by decide) (by decide)
-          memorySizeEncoding (contents_memory hMemories),
-        sections_step (id := 6) (acc := acc4) (by decide) (by decide) (by decide)
-          globalSizeEncoding (contents_globals hGlobals),
-        sections_step (id := 7) (acc := acc5) (by decide) (by decide) (by decide)
-          exportSizeEncoding (contents_exports hExports)]
-      cases dataSection with
+      let target : Sections := { expected m with tables := tableDecls }
+      have finish (remainingFuel last : Nat) (order : last < 5) :
+          StateT.run (sections (remainingFuel + 6) last accT)
+            (5 :: (memorySize ++ memoryPayload) ++
+              (6 :: (globalSize ++ globalPayload) ++
+                (7 :: (exportSize ++ exportPayload) ++
+                  (10 :: (codeSize ++ codePayload) ++ datas)))) = .ok (target, []) := by
+        rw [show remainingFuel + 6 = remainingFuel + 5 + 1 by rfl,
+          sections_step (id := 5) (last := last) (fuel := remainingFuel + 5) (acc := accT)
+            (by decide) (by decide) (by simpa [sectionOrder] using Nat.not_le.mpr order)
+            memorySizeEncoding (contents_memory hMemories),
+          sections_step (id := 6) (last := sectionOrder 5) (fuel := remainingFuel + 4)
+            (acc := acc4) (by decide) (by decide) (by decide)
+            globalSizeEncoding (contents_globals hGlobals),
+          sections_step (id := 7) (last := sectionOrder 6) (fuel := remainingFuel + 3)
+            (acc := acc5) (by decide) (by decide) (by decide)
+            exportSizeEncoding (contents_exports hExports)]
+        cases dataSection with
+        | empty =>
+            rw [List.append_nil, ← List.append_nil (10 :: (codeSize ++ codePayload)),
+              sections_step (id := 10) (last := sectionOrder 7) (fuel := remainingFuel + 2)
+                (acc := acc6) (by decide) (by decide) (by decide)
+                codeSizeEncoding (contents_codes hCodes),
+              sections_done]
+            simp only [target, expected, hSegments]
+            rfl
+        | present bytes segments _ encoding =>
+            match encoding with
+            | .intro dataSize dataPayload _ dataSizeEncoding dataEncoding =>
+                have hData := parses_vec_map (g := id) (fun _ _ h => parses_dataSegment h)
+                  (fun _ _ h => dataSegment_nonempty h) dataEncoding
+                simp only [List.map_id] at hData
+                rw [sections_step (id := 10) (last := sectionOrder 7) (fuel := remainingFuel + 2)
+                    (acc := acc6) (by decide) (by decide) (by decide)
+                    codeSizeEncoding (contents_codes hCodes),
+                  ← List.append_nil (11 :: (dataSize ++ dataPayload)),
+                  sections_step (id := 11) (last := sectionOrder 10) (fuel := remainingFuel + 1)
+                    (acc := acc7) (by decide) (by decide) (by decide)
+                    dataSizeEncoding (contents_data hData),
+                  sections_done]
+                simp only [target, expected, hSegments]
+                rfl
+      cases tableSection with
       | empty =>
-          rw [List.append_nil, ← List.append_nil (10 :: (codeSize ++ codePayload)),
-            sections_step (id := 10) (acc := acc6) (by decide) (by decide) (by decide)
-              codeSizeEncoding (contents_codes hCodes),
-            sections_done]
-          simp only [expected, hSegments]
-          rfl
-      | present bytes segments _ encoding =>
-          match encoding with
-          | .intro dataSize dataPayload _ dataSizeEncoding dataEncoding =>
-              have hData := parses_vec_map (g := id) (fun _ _ h => parses_dataSegment h)
-                (fun _ _ h => dataSegment_nonempty h) dataEncoding
-              simp only [List.map_id] at hData
-              rw [sections_step (id := 10) (acc := acc6) (by decide) (by decide) (by decide)
-                  codeSizeEncoding (contents_codes hCodes),
-                ← List.append_nil (11 :: (dataSize ++ dataPayload)),
-                sections_step (id := 11) (acc := acc7) (by decide) (by decide) (by decide)
-                  dataSizeEncoding (contents_data hData),
-                sections_done]
-              simp only [expected, hSegments]
-              rfl
+          simp only [List.nil_append]
+          exact finish (fuel + 1) 3 (by decide)
+      | present =>
+          have tableStep := sections_step (id := 4) (last := 3) (fuel := fuel + 6)
+            (acc := acc3) (acc' := { acc3 with tables := [Spec.emptyFunctionTable] })
+            (sizeBytes := [4]) (payload := [1, 0x70, 0, 0])
+            (tail := 5 :: (memorySize ++ memoryPayload) ++
+              (6 :: (globalSize ++ globalPayload) ++
+                (7 :: (exportSize ++ exportPayload) ++
+                  (10 :: (codeSize ++ codePayload) ++ datas))))
+            (by decide) (by decide) (by decide)
+            (Unsigned.terminal 32 4 (by decide) (by decide) (by decide))
+            (contents_tables (acc := acc3) parses_emptyFunctionTables)
+          exact tableStep.trans (finish fuel 4 (by decide))
 
 theorem filterMap_funcs (entries : List Wasm.Export) :
     (entries.map fun e => ((0 : UInt8), e.name, e.funcIdx)).filterMap
@@ -433,43 +521,74 @@ theorem memory_restore (memory : Option MemDecl) :
   | none => rfl
   | some decl => cases decl; simp
 
+theorem filterMap_tableExports (m : Wasm.Module) :
+    (exports m).filterMap (fun (kind, exportName, index) =>
+      if kind = 0x01 then some (exportName, index) else none) = m.tableExports := by
+  simp only [exports, List.filterMap_append, filterMap_pairs_self,
+    filterMap_pairs_funcs 1 (by decide), filterMap_pairs_other 1 3 (by decide),
+    filterMap_pairs_other 1 2 (by decide), List.nil_append]
+
+theorem tableProfile_expected {m : Wasm.Module} (shape : Shape m) :
+    tableProfile (expected m) = true := by
+  simp only [tableProfile, expected, filterMap_tableExports]
+  rcases shape.tables with empty | table
+  · have exports : m.tableExports = [] := by simpa [empty] using shape.tableExports
+    simp [empty, exports]
+  · have exports : m.tableExports = [("__indirect_function_table", 0)] := by
+      simpa [table] using shape.tableExports
+    simp [table, exports]
+
 theorem assemble_expected {m : Wasm.Module} (shape : Shape m) :
     assemble (expected m) m.funcs = m := by
   obtain ⟨hExtra, hData, hStart, hGc, hTables, hElements, hImportedGlobals, hImportedTables,
     hImportedMemories, hImportedTags, hTableExports, hTagExports, hTags⟩ := shape
   cases m
-  dsimp only at hExtra hData hStart hGc hTables hElements hImportedGlobals
-  dsimp only at hImportedTables hImportedMemories hImportedTags hTableExports hTagExports hTags
-  subst hExtra hData hStart hGc hTables hElements hImportedGlobals hImportedTables
-  subst hImportedMemories hImportedTags hTableExports hTagExports hTags
+  dsimp only at hExtra hData hStart hGc hElements hImportedGlobals
+  dsimp only at hImportedTables hImportedMemories hImportedTags hTagExports hTags
+  subst hExtra hData hStart hGc hElements hImportedGlobals hImportedTables
+  subst hImportedMemories hImportedTags hTagExports hTags
   simp only [assemble, expected, exports, dataSegments, memory_restore, List.filterMap_append,
     filterMap_funcs,
     filterMap_funcs_pairs 3 (by decide), filterMap_funcs_pairs 2 (by decide),
+    filterMap_funcs_pairs 1 (by decide),
     filterMap_pairs_self, filterMap_pairs_other 3 2 (by decide),
-    filterMap_pairs_other 2 3 (by decide), filterMap_pairs_funcs 3 (by decide),
-    filterMap_pairs_funcs 2 (by decide), List.append_nil, List.nil_append]
+    filterMap_pairs_other 3 1 (by decide), filterMap_pairs_other 2 3 (by decide),
+    filterMap_pairs_other 2 1 (by decide), filterMap_pairs_other 1 3 (by decide),
+    filterMap_pairs_other 1 2 (by decide), filterMap_pairs_funcs 3 (by decide),
+    filterMap_pairs_funcs 2 (by decide), filterMap_pairs_funcs 1 (by decide),
+    List.append_nil, List.nil_append]
 
 theorem moduleParser_run {bytes : List UInt8} {m : Wasm.Module} (h : ModuleBytes bytes m)
     (hLocals : ∀ f ∈ m.funcs, f.locals.length ≤ maxLocals) :
     StateT.run moduleParser bytes = .ok (m, []) := by
   match h with
-  | .intro m types imports functions memories globals exportBytes codes datas shape typeSection
-      importSection functionSection memorySection globalSection exportSection codeSection
-      dataSection =>
-      have hLength : 9 ≤ (types ++ (imports ++ (functions ++ (memories ++
-          (globals ++ (exportBytes ++ (codes ++ datas))))))).length := by
+  | .intro m types imports functions tableBytes memories globals exportBytes codes datas shape
+      typeSection importSection functionSection tableSection memorySection globalSection
+      exportSection codeSection dataSection =>
+      let payload := types ++ imports ++ functions ++ tableBytes ++ memories ++ globals ++
+        exportBytes ++ codes ++ datas
+      have hLength : 10 ≤ payload.length := by
         have := section_length typeSection
         have := section_length importSection
         have := section_length functionSection
         have := section_length memorySection
         have := section_length globalSection
-        simp only [List.length_append]
+        simp only [payload, List.length_append]
         omega
-      obtain ⟨fuel, hFuel⟩ : ∃ fuel, (types ++ (imports ++ (functions ++ (memories ++
-          (globals ++ (exportBytes ++ (codes ++ datas))))))).length = fuel + 9 :=
-        ⟨_ - 9, (Nat.sub_add_cancel hLength).symm⟩
-      have hSections := sections_run typeSection importSection functionSection memorySection
-        globalSection exportSection codeSection rfl dataSection hLocals fuel
+      obtain ⟨fuel, hFuel⟩ : ∃ fuel, payload.length = fuel + 10 :=
+        ⟨_ - 10, (Nat.sub_add_cancel hLength).symm⟩
+      have hSections := sections_run typeSection importSection functionSection tableSection
+        memorySection globalSection exportSection codeSection rfl dataSection hLocals fuel
+      change StateT.run moduleParser
+        ([0, 97, 115, 109, 1, 0, 0, 0] ++ types ++ imports ++ functions ++ tableBytes ++
+          memories ++ globals ++ exportBytes ++ codes ++ datas) = _
+      have hInput :
+          [0, 97, 115, 109, 1, 0, 0, 0] ++ types ++ imports ++ functions ++ tableBytes ++
+            memories ++ globals ++ exportBytes ++ codes ++ datas =
+          [0, 97, 115, 109] ++ ([1, 0, 0, 0] ++ payload) := by
+        simp only [payload, List.append_assoc]
+        rfl
+      rw [hInput]
       have hIndices : ∀ f ∈ m.funcs, ∃ index, f.typeIdx = some index ∧
           m.types[index]? = some (signature f) := by
         match functionSection with
@@ -477,13 +596,6 @@ theorem moduleParser_run {bytes : List UInt8} {m : Wasm.Module} (h : ModuleBytes
             match encoding with
             | .intro _ _ _ _ items => exact function_indices items
       have hFunctions := parses_functions hIndices
-      simp only [List.append_assoc]
-      rw [show [(0 : UInt8), 97, 115, 109, 1, 0, 0, 0] ++
-          (types ++ (imports ++ (functions ++ (memories ++ (globals ++ (exportBytes ++
-            (codes ++ datas))))))) =
-          [0, 97, 115, 109] ++ ([1, 0, 0, 0] ++
-          (types ++ (imports ++ (functions ++ (memories ++ (globals ++ (exportBytes ++
-            (codes ++ datas)))))))) from rfl]
       unfold moduleParser
       rw [Parses.run_bind (p := take 4) (parses_take [0, 97, 115, 109])]
       rw [ite_eq_right (by decide)]
@@ -494,10 +606,14 @@ theorem moduleParser_run {bytes : List UInt8} {m : Wasm.Module} (h : ModuleBytes
         cases hm : m.memory <;> simp [expected, dataSegments, hm]
       show StateT.run (if ((expected m).memory.isNone && !(expected m).data.isEmpty) = true then
           invalid "unknown memory" else do
-            let funcs ← Decoder.functions (expected m).types (expected m).functions
-              (expected m).codes
-            pure (assemble (expected m) funcs)) ([] ++ []) = Except.ok (m, [])
+            if tableProfile (expected m) then do
+              let funcs ← Decoder.functions (expected m).types (expected m).functions
+                (expected m).codes
+              pure (assemble (expected m) funcs)
+            else unsupported "table declaration or export is outside the empty function-table profile")
+        ([] ++ []) = Except.ok (m, [])
       rw [hMemoryData, ite_eq_right (by decide)]
+      simp only [tableProfile_expected shape, ite_true]
       show StateT.run (Decoder.functions m.types (m.funcs.map (·.typeIdx.getD 0))
         (m.funcs.map fun f => (f.locals, f.body)) >>=
           fun funcs => pure (assemble (expected m) funcs)) ([] ++ []) = Except.ok (m, [])
