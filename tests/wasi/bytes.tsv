@@ -11,3 +11,20 @@ firstDuplicate	bytes	bytes:	_	1	1
 secondDuplicate	bytes	bytes:	_	1	0
 swappedFirst	bytes	bytes:0001 bytes:ff80	ff80	2	1
 swappedFirst	bytes	bytes:0001 bytes:	_	2	1
+emptyBuffer	bytes	_	_	0	0
+readSize	i64	bytes:0001ff80	4	1	0
+readSize	i64	bytes:	0	1	0
+readByte	i64	bytes:0001ff80 i64:0	0	1	0
+readByte	i64	bytes:0001ff80 i64:1	1	1	0
+readByte	i64	bytes:0001ff80 i64:2	255	1	0
+readByte	i64	bytes:0001ff80 i64:3	128	1	0
+readByte	i64	bytes:0001ff80 i64:4	0	1	0
+readByte	i64	bytes:0001ff80 i64:18446744073709551615	0	1	0
+ownedSize	i64	bytes:0001ff80	4	1	1
+ownedSize	i64	bytes:	0	1	1
+ownedByte	i64	bytes:0001ff80 i64:2	255	1	1
+ownedByte	i64	bytes: i64:18446744073709551615	0	1	1
+lastByte	i64	bytes:0001ff80	128	1	1
+lastByte	i64	bytes:	0	1	1
+emptyRead	i64	i64:0	0	0	0
+emptyRead	i64	i64:18446744073709551615	0	0	0

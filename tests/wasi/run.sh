@@ -24,7 +24,7 @@ tab=$(printf '\t')
 count=0
 while IFS="$tab" read -r export_name kind arguments expected allocations releases; do
   if [ "$expected" = _ ]; then expected=; fi
-  set -- $arguments
+  if [ "$arguments" = _ ]; then set --; else set -- $arguments; fi
   observed=$("$host" call-stats "$out/bytes.wasm" "$export_name" "$kind" "$@")
   wanted=$(printf '%s\nstats %s %s' "$expected" "$allocations" "$releases")
   if [ "$observed" != "$wanted" ]; then

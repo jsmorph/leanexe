@@ -21,6 +21,9 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .leSize _ _, _, _, _
   | _, _, .float _, _, _, _ | _, _, .float32 _, _, _, _ => false
   | _, _, .treeNil _, _, _, _ => false
+  | _, _, .bytesEmpty, _, _, _ | _, _, .bytesSize _, _, _, _ => false
+  | _, _, .bytesGet x index, live, _, k =>
+    index.demands (fun j => live j || j == x.index) false k
   | _, _, .treeNode reuse words children, live, _, k =>
     let kept := fun i => live i || optionVarUses reuse i
     (optionVarUses reuse k && !live k) ||

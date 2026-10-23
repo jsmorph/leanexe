@@ -5,6 +5,7 @@ import Verified.Float32Correct
 import Verified.TreeNodeCorrect
 import Verified.TreeCaseCorrect
 import Verified.ListFoldCorrect
+import Verified.Bytes.Get
 
 /-! Correctness of expression code and ordinary function templates. -/
 
@@ -44,6 +45,20 @@ theorem spec_treeNil {Γ : List Ty} (shape : TreeShape) :
     After.refl hAt hVars (by intro i hi; simp [hi]) hRep rfl
       (fun _ _ _ _ _ _ _ _ hb => nomatch hb)
   have hRun := hNext heap store s [.i64 0] hAfter (fun _ => Nat.le_add_right _ _)
+  simpa [Expr.code, Expr.denote] using hRun
+
+theorem spec_bytesEmpty {Γ : List Ty} :
+    ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv (Expr.bytesEmpty (S := S) (Γ := Γ))
+        env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+  have hRep : Ty.bytes.Rep .owned heap store [.i64 0, .i64 0] LeanExe.Bytes.empty :=
+    ⟨0, 0, rfl, Bytes.Rep.empty heap store⟩
+  have hAfter : After env slots (fun i => live i || Expr.bytesEmpty.uses i) live base
+      heap store s .bytes .owned LeanExe.Bytes.empty heap store s [.i64 0, .i64 0] :=
+    After.refl hAt hVars (by intro i hi; simp [hi]) hRep rfl
+      (fun _ _ _ _ _ _ _ _ hb => nomatch hb)
+  have hRun := hNext heap store s [.i64 0, .i64 0] hAfter (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.denote] using hRun
 
 /-- A constant `Bool`. -/
@@ -492,21 +507,21 @@ theorem spec_mk {Γ : List Ty} {a b : Elem} {first : Expr S Γ (.elem a)}
   simpa [List.reverse_append, List.append_assoc] using hv
 
 
-/-- The release of an array variable that a reader reads, when it is owned and dies there,
+/-- The release of a variable that a reader reads, when it is owned and dies there,
 which leaves `top`. -/
 theorem read_release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {live : Nat → Bool} {base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
-    {vals : List Value} {rest : Program} {Q : Assertion Unit} {e : Elem} (x : Var Γ (.array e))
+    {vals : List Value} {rest : Program} {Q : Assertion Unit} {t : Ty} (x : Var Γ t)
     (hVars : Holds env slots (fun k => live k || k == x.index) base heap store s)
     (hAt : heap.At store)
     (hNext : ∀ heap' store', Evolves env slots (fun k => live k || k == x.index) live base heap
       store s heap' store' s → heap'.top = heap.top →
       wp m rest Q store' { s with values := vals } host) :
     wp m ((if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
-        releaseCode (.array e) (slots.getD x.index default).loc else []) ++ rest) Q store
+        releaseCode t (slots.getD x.index default).loc else []) ++ rest) Q store
       { s with values := vals } host := by
   have hCode : (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
-      releaseCode (.array e) (slots.getD x.index default).loc else []) =
+      releaseCode t (slots.getD x.index default).loc else []) =
       (if live x.index = false then [x.index] else []).flatMap (releaseVar Γ slots) := by
     cases live x.index <;> simp [releaseVar, x.getElem?_index]
   rw [hCode]
@@ -520,6 +535,82 @@ theorem read_release (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : Lis
     · simp [h]
   exact ⟨e'.step, e'.frame.values.trans Frame.ofValues,
     e'.holds.agree Frame.ofValues⟩
+
+theorem spec_bytesSize (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .bytes) :
+    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.bytesSize (S := S) x)
+      env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+  obtain ⟨_, _, hold, root, length, rfl, hBytes⟩ := hVars.1 _ x (by simp [Expr.uses])
+  have hLength : s.get ((slots.getD x.index default).loc + 1) = some (.i64 length) := by
+    simpa [Ty.types, slotIndex] using hold 1 (by simp)
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append,
+    wp_localGet_cons, hLength]
+  refine read_release hm x hVars hAt fun heap' store' ev hTop => ?_
+  exact hNext heap' store' s [.i64 length]
+    (After.ofScalar rfl ev.step rfl ev.frame ev.holds (by
+      simp only [Ty.rep_word, Expr.denote, hBytes.size_eq]))
+    fun _ => top_unpaid_le rfl (by rw [hTop]; omega)
+
+theorem spec_bytesGet (hm : Runtime m) {Γ' : List Ty} (x : Var Γ' .bytes)
+    {index : Expr S Γ' .word}
+    (indexSpec : ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv index env slots paid live) :
+    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.bytesGet x index)
+      env slots paid live := by
+  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+    hPlace rest Q hTrap hNext
+  have hWidth := hRoom
+  simp only [Expr.width] at hWidth
+  have hIndexWidth : index.width ≤ max index.width 1 := Nat.le_max_left ..
+  have hScratch : 1 ≤ max index.width 1 := Nat.le_max_right ..
+  simp only [Expr.placeArgs] at hPlace
+  simp only [Expr.code, List.append_assoc, List.cons_append, List.nil_append]
+  have hIn : ∀ k, ((live k || k == x.index) || index.uses k) = true →
+      (live k || (Expr.bytesGet x index).uses k) = true := fun k hk => by
+    simp only [Expr.uses]; exact live_assoc _ _ _ hk
+  have hD : dyingPot store s env slots paid (fun k => (live k || k == x.index) || index.uses k)
+      (fun k => live k || k == x.index) ≤
+        dyingPot store s env slots paid (fun k => live k || (Expr.bytesGet x index).uses k) live :=
+    dyingPot_mono hIn fun k hk => by simp [hk]
+  refine indexSpec env slots paid (fun k => live k || k == x.index) h base heap store s hh hpv
+    (hVars.live_mono hIn) hAt hCap hBase (by omega) hPlace _ _
+    (hTrap.part id id fun _ hw => hw.mono (by dsimp only; simp only [Expr.allocs]; omega))
+    fun heap1 store1 s1 ws1 a1 hTop1 => ?_
+  have hValue := a1.rep
+  simp only [Ty.rep_word] at hValue
+  subst hValue
+  have e1 := a1.toEvolves rfl
+  obtain ⟨hBelow, _, hold, root, length, rfl, hBytes⟩ := e1.holds.1 _ x (by simp)
+  have hRoot : s1.get (slots.getD x.index default).loc = some (.i64 root) := by
+    simpa [Ty.types, slotIndex] using hold 0 (by simp)
+  have hLength : s1.get ((slots.getD x.index default).loc + 1) = some (.i64 length) := by
+    simpa [Ty.types, slotIndex] using hold 1 (by simp)
+  simp only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append]
+  have hLow : ({ s1 with values := s.values } : Locals).params.length ≤ base := by
+    rw [e1.frame.params]; exact hBase
+  have hHigh : base < s1.positions := by rw [e1.frame.positions, hh]; omega
+  refine wp_localSet_local hLow (Locals.lt_total hHigh) ?_
+  let s1a := setLocal { s1 with values := s.values } base (.i64 (index.denote funs env))
+  have hIndex : s1a.get base = some (.i64 (index.denote funs env)) :=
+    Locals.get_setLocal_same hLow (Locals.lt_total hHigh)
+  have hRoot' : s1a.get (slots.getD x.index default).loc = some (.i64 root) := by
+    rw [Locals.get_setLocal_ne hLow (by change _ + 2 ≤ base at hBelow; omega), Locals.get_values]
+    exact hRoot
+  have hLength' : s1a.get ((slots.getD x.index default).loc + 1) = some (.i64 length) := by
+    rw [Locals.get_setLocal_ne hLow (by change _ + 2 ≤ base at hBelow; omega), Locals.get_values]
+    exact hLength
+  have f1 : Frame base s1 s1a := Frame.setValues hLow le_rfl hHigh
+  have hFrame : Frame base s s1a := e1.frame.trans f1
+  have hVars1 := e1.holds.agree f1
+  show wp m _ Q store1 s1a host
+  refine Bytes.wp_get e1.step.at_ hBytes hRoot' hLength' hIndex ?_
+  refine read_release hm x hVars1 e1.step.at_ fun heap2 store2 e2 hTop2 => ?_
+  have e12 := Evolves.trans (hVars.live_mono hIn) ⟨e1.step, hFrame, hVars1⟩ e2
+    (fun k hk => by simp [hk]) fun k hk => by simp [hk]
+  exact hNext heap2 store2 s1a [.i64 ((env.get x).get (index.denote funs env))]
+    ((After.ofScalar (t := .word) (mode := .borrowed) rfl e12.step rfl e12.frame e12.holds
+      rfl).liveIn hIn)
+    fun hd => by rw [hTop2]; exact top_part rfl hD (hTop1 hd)
 
 /-- The size of an array variable: the load of its length word, then the release of the variable
 when it is owned and dies there. -/
@@ -4704,6 +4795,11 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
         exact Or.inl (le_argsAny _ i hd)))
       (bodySpec fun hd => hD (by simp [Expr.depthCalls, hd]))
   | size x => intro _; exact spec_size hm x
+  | bytesEmpty => intro _; exact spec_bytesEmpty
+  | bytesSize x => intro _; exact spec_bytesSize hm x
+  | bytesGet x index indexSpec =>
+    intro hD
+    exact spec_bytesGet hm x (indexSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | leSize x i =>
     intro _
     exact spec_leSize hm x i
