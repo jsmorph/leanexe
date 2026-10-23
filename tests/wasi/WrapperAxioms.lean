@@ -4,6 +4,8 @@ import Verified.Wasi.ReadCall
 import Verified.Wasi.Runtime
 import Verified.Wasi.RuntimeFrame
 import Verified.Wasi.ReadFunction
+import Verified.Wasi.CallWrappers
+import Verified.Wasi.WriteHelper
 import Verified.Wasi.Exit
 
 open Lean Elab Command in
@@ -49,6 +51,13 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.wp_read,
     ``Verified.Wasi.readFunction_run,
     ``Verified.Wasi.readFunction_run_with_budget,
+    ``Verified.Wasi.wp_call_returned_at,
+    ``Verified.Wasi.wp_call_trapped_at,
+    ``Verified.Wasi.wp_read_helper,
+    ``Verified.Wasi.wp_read_helper_with_budget,
+    ``Verified.Wasi.writeFunction_run,
+    ``Verified.Wasi.write_buffer_abi,
+    ``Verified.Wasi.wp_write_helper,
     ``Verified.Wasi.wp_exit,
     ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do
