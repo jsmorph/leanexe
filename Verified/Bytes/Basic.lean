@@ -35,6 +35,17 @@ theorem Allocated.region {heap : Heap} {store : Store Unit} {root : UInt64}
   have := h.object.base
   exact ⟨by have := h.object.below; dsimp; omega, h.object.separate⟩
 
+theorem Allocated.payload_region {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) :
+    heap.Region (root.toNat, bytes.data.size) := by
+  have hBase := h.object.base
+  have hCapacity := h.capacity
+  refine ⟨by have := h.object.below; omega, ?_⟩
+  intro node hNode
+  have hApart := h.object.separate node hNode
+  simp only [LeanExe.Runtime.regionsDisjoint] at hApart ⊢
+  omega
+
 theorem Allocated.size_lt {heap : Heap} {store : Store Unit} {root : UInt64}
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) :
     bytes.data.size < 2 ^ 32 := by
@@ -153,6 +164,21 @@ theorem Rep.null_length {heap : Heap} {store : Store Unit} {length : UInt64}
     rw [h.length_eq, hBuffer.2]
     rfl
   · exact False.elim (hBuffer.nonzero rfl)
+
+theorem Rep.toAt {heap : Heap} {store : Store Unit} {root length : UInt64}
+    {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) (hHeap : heap.At store) :
+    At store.mem root bytes := by
+  rcases h.buffer with ⟨rfl, hEmpty⟩ | hBuffer
+  · exact ⟨by simp [hEmpty], by simp [hEmpty], fun i hi => by omega⟩
+  · exact hBuffer.toAt hHeap
+
+theorem Rep.payload_region {heap : Heap} {store : Store Unit} {root length : UInt64}
+    {bytes : LeanExe.Bytes} (h : Rep heap store root length bytes) :
+    heap.Region (root.toNat, bytes.data.size) := by
+  rcases h.buffer with ⟨rfl, hEmpty⟩ | hBuffer
+  · exact ⟨by simp [hEmpty], fun node _ => by
+      simp [LeanExe.Runtime.regionsDisjoint, hEmpty]⟩
+  · exact hBuffer.payload_region
 
 theorem Allocated.release_run {m : Module} {typeIdx : Nat} (hImports : m.imports = [])
     (hFunc : m.funcs[1]? = some (LeanExe.Runtime.releaseFunction typeIdx))

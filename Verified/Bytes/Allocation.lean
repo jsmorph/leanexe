@@ -1,4 +1,5 @@
 import Verified.Bytes.Represent
+import Verified.Bytes.Cost
 import Verified.RuntimeFacts
 
 namespace Verified.Bytes
@@ -39,9 +40,6 @@ theorem Allocated.toBlock {heap : Heap} {store : Store Unit} {root : UInt64}
     heap.Block store root (store.mem.read64 (root - 32).toUInt32) 1 :=
   ⟨⟨h.magic, h.count, rfl, h.kind, h.width, h.childMask⟩, h.object.base,
     h.object.address, h.object.below.trans hHeap.top, h.object.below, h.object.separate⟩
-
-def allocationCost (count : Nat) : Nat :=
-  if count = 0 then 0 else 48 + 8 * max 1 ((count + 7) / 8)
 
 theorem allocSize_minimum (count : UInt64) : 8 ≤ (allocSize count).toNat := by
   unfold allocSize

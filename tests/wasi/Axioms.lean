@@ -4,6 +4,8 @@ import Verified.Bytes.Get
 import Verified.Bytes.CopyByte
 import Verified.Bytes.Overlay
 import Verified.Bytes.Copy
+import Verified.Bytes.CopyOwned
+import Verified.Bytes.Release
 import LeanExe.Wasi.Semantics
 
 open Lean Elab Command in
@@ -37,6 +39,9 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.overlay_succ,
     ``Verified.Bytes.At.writesRange,
     ``Verified.Bytes.wp_copy,
+    ``Verified.Bytes.wp_copyOwned,
+    ``Verified.Bytes.Rep.release_step,
+    ``Verified.Bytes.wp_release,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,
