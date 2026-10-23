@@ -12,3 +12,4 @@
 /test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/upstream.json text eol=lf
 /test/fixtures/euler-rusanov-c/lanyon/a736aa5f8b17efd225c4692404e2442361d06729/compressible_euler_1d.c -text -whitespace
 /tools/euler-rusanov-c-compare.js text eol=lf
+/data/hashing/** -text -whitespace

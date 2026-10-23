@@ -19,8 +19,9 @@ The compiler's theorem for a module states that the module computes its Lean def
 - [8. Discrete Fourier transform](#8-discrete-fourier-transform)
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
-- [11. Applications](#11-applications)
-- [12. Compiler examples](#12-compiler-examples)
+- [11. Hash functions](#11-hash-functions)
+- [12. Applications](#12-applications)
+- [13. Compiler examples](#13-compiler-examples)
 
 ## 1. Arithmetic
 
@@ -75,7 +76,7 @@ These algorithms use `UInt64` words, counts, and indices, with arithmetic modulo
 | `KeyTree.splitRoot` | [Word trees](Library/Trees/WordTree/Program.lean) | Returns the two children, or two empty trees for an empty input. | [Generated execution proof](Library/Trees/WordTree/Compiled.lean). |
 | `sortInsert` | [Insertion sort](Library/Sorting/README.md) | Inserts each element at the count of smaller elements already accumulated.  The algorithm takes quadratic time. | [Generated execution proof](Library/Sorting/Insertion/Compiled.lean) and [the worked allocation-bound proof](Verified/Examples/Insert.lean).  Sortedness and permutation theorems remain future work. |
 
-`KeyTree` has an empty constructor and nodes containing a word key and two children.  [Its encoding](Library/Trees/WordTree/Encoding.lean) uses null for empty and fixed-layout records for nodes.  [The list-tail cases](Verified/Examples/ListTailCases.lean) and [tree examples](Examples/Trees/README.md) check ownership, copying, header reuse, allocation counts, and the guarded recursion limit.  [The library case registry](tests/verified/library-cases.txt) reuses compiler-fixture cases for the extracted modules, with [supplementary native cases](tests/TestSupport/LibraryCases.lean).  Hashing remains a future library category.
+`KeyTree` has an empty constructor and nodes containing a word key and two children.  [Its encoding](Library/Trees/WordTree/Encoding.lean) uses null for empty and fixed-layout records for nodes.  [The list-tail cases](Verified/Examples/ListTailCases.lean) and [tree examples](Examples/Trees/README.md) check ownership, copying, header reuse, allocation counts, and the guarded recursion limit.  [The library case registry](tests/verified/library-cases.txt) reuses compiler-fixture cases for the extracted modules, with [supplementary native cases](tests/TestSupport/LibraryCases.lean).
 
 ## 3. Pseudorandom number generators
 
@@ -253,7 +254,18 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 
 [The Euler enclosure proofs](Demos/Euler/Enclosure.lean) use the checked operations.  [The reconstruction analysis](Demos/Euler/ReconstructionAccuracy.lean) uses minmod to bound the differences and faces computed from rounded inputs.
 
-## 11. Applications
+## 11. Hash functions
+
+[The hashing guide](Library/Hashing/README.md) describes the arguments: a message of `n` bytes is an `Array UInt64` with eight bytes per word in little-endian order, and a digest is a structure of words in the same packing.  The specification is a literate transcription of FIPS 180-4, copied with its implementation and equivalence proofs from fips-180-4-lean.  Each call theorem states, for messages of fewer than `2^61` bytes, that the export returns without a trap and without allocation the words whose bytes are the transcription's digest of the message, and that the caller's heap keeps its bytes.  [The file theorems](Library/Hashing/Sha512/File.lean) identify the emitted module.
+
+| Algorithm | Implementation | Behavior | Proved results and limits |
+|---|---|---|---|
+| `sha512` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 64-byte digest of FIPS 180-4 §6.4.  The program reads each padded word from the packed message and keeps the message schedule in a window of sixteen words. | [`sha512_call`](Library/Hashing/Sha512/Bytes.lean), from [`sha512_spec`](Library/Hashing/Sha512/Proof.lean). |
+| `sha384` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 48-byte digest of §6.5, from the initial value of §5.3.4. | [`sha384_call`](Library/Hashing/Sha512/Bytes.lean). |
+| `sha512_256` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 32-byte digest of §6.7. | [`sha512_256_call`](Library/Hashing/Sha512/Bytes.lean). |
+| `sha512_224` | [The SHA-512 family](Library/Hashing/Sha512/README.md) | The 28-byte digest of §6.6, in four words whose last four bytes are zero. | [`sha512_224_call`](Library/Hashing/Sha512/Bytes.lean). |
+
+## 12. Applications
 
 Application definitions and proofs live in `Demos`, with shared algorithms imported from `Library`.  The linked guides state the domains, execution premises, and host assumptions.  GPU theorems concern the modeled device and host commands.  Execution tests cover the host processes, file I/O, engines, and device arithmetic described in the guides.
 
@@ -265,7 +277,7 @@ Application definitions and proofs live in `Demos`, with shared algorithms impor
 | Drone planner | [Drone application and proofs](Demos/Drone/README.md) | Uses dynamic programming over station altitudes and speeds to minimize duration, then excess altitude. | [The byte theorems](Demos/Drone/Verify.lean) prove optimality and safety in the ideal point-mass model for valid terrain.  [Total execution](Demos/Drone/Total.lean) uses at most 70 pages under its initial-allocator and cap premises.  [The verified compilation](Demos/Drone/Verified.lean) transports the safety and optimality results and proves trap-free execution under its bounds. |
 | Order book | [Order-book application and proofs](Demos/Clob/README.md) | Inserts and cancels levels, fills market orders, computes depth, and processes three-word commands over word arrays. | [The byte and command-stream theorems](Demos/Clob/Verify.lean) prove the fifteen functions' execution, equivalence when a chunk boundary falls between commands, and equality of the books returned by `runOut` and `runCommands`.  [The verified version](Demos/Clob/Verified.lean) has its own typed definitions and command-stream proofs, using [the shared command lemmas](Demos/Clob/Commands.lean). |
 
-## 12. Compiler examples
+## 13. Compiler examples
 
 These algorithms remain in `Examples` or `Verified/Examples` as demonstrations of language forms, ownership, and proof procedures.  Execution theorems relate compiled programs to their Lean definitions under the compiler's premises.  Word arithmetic wraps modulo `2^64`.  The WGSL dispatch results assume the device model's shape, buffer, and invocation bounds.
 
