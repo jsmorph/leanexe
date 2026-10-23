@@ -6,17 +6,27 @@ export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
 
+foundations_only=false
+case "$#:${1-}" in
+  0:) ;;
+  1:--foundations-only) foundations_only=true ;;
+  *) printf 'Usage: %s [--foundations-only]\n' "$0" >&2; exit 2 ;;
+esac
+
 tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get \
   Verified.Bytes.Literal Verified.Bytes.StaticEnv Verified.BytesBuildCorrect \
   Verified.Wasi.Source Verified.Wasi.HostSpec Verified.Wasi.Scratch \
-  Verified.Wasi.WrapperCode LeanExe.Wasi.Prefix
+  Verified.Wasi.WrapperCode Verified.Wasi.Write Verified.Wasi.ReadCall \
+  Verified.Wasi.ReadFrame Verified.Wasi.Runtime Verified.Wasi.Exit LeanExe.Wasi.Prefix
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms
 tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
+if "$foundations_only"; then exit 0; fi
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build Verified.Examples.Bytes
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
-tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/decoder/TableProfile.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Axioms.lean
 
