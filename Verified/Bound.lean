@@ -1,6 +1,7 @@
 import Verified.Compile
 import Verified.AllocCost
 import Verified.TailRun
+import Verified.Bytes.Cost
 
 /-! The allocation bound: the bytes by which the code of an expression can raise the allocator's
 `top`, as a Lean function of the values of its variables.  An allocation of `b` payload bytes
@@ -21,6 +22,7 @@ def Ty.copyCost : (t : Ty) → t.denote → Nat
   | .elem _, _ => 0
   | .pair a b, v => a.copyCost v.1 + b.copyCost v.2
   | .array e, xs => allocCost ((xs.size * e.width + 1) * 8)
+  | .bytes, value => Bytes.allocationCost value.data.size
   | .tree shape, value => value.nodes * allocCost (8 * shape.fields.length)
   | .treeHeader shape, _ => allocCost (8 * shape.fields.length)
 
@@ -30,7 +32,7 @@ def Ty.credit : (t : Ty) → t.denote → Nat
   | .elem _, _ => 0
   | .pair a b, v => a.credit v.1 + b.credit v.2
   | .array e, xs => 16 * (xs.size * e.width + 1)
-  | .tree _, _ | .treeHeader _, _ => 0
+  | .tree _, _ | .treeHeader _, _ | .bytes, _ => 0
 
 /-- The credits of the arguments that `sel` picks. -/
 def Env.credit (sel : Nat → Bool) : {Γ : List Ty} → Env Γ → Nat

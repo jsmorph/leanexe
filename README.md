@@ -34,8 +34,8 @@ checks the generated proofs.
 The command also generates allocation bounds, their equations in the function's parameters, and
 trap-free theorems.  Eligible scalar functions receive store-preservation theorems for composition
 with other programs.  The dialect uses `UInt64`, `Bool`, `Float`, and `Float32`, with scalar tuples
-and sums, flat arrays, records with array fields, lists, fixed-layout recursive types, and array
-updates in place.
+and sums, flat arrays, packed byte buffers, records with array fields, lists, fixed-layout recursive
+types, and array updates in place.
 [The verified compiler manual](docs/verified-manual.md) states the type restrictions, ownership
 rules, generated declarations, and proof premises.  [The internals guide](Verified/README.md)
 describes the compiler and its universal proof.

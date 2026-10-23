@@ -83,6 +83,7 @@ import Verified.Examples.Pairs
 import Verified.Examples.Loops
 import Verified.Examples.Arrays
 import Verified.Examples.Owned
+import Verified.Examples.Bytes
 import Verified.Examples.Updates
 import Verified.Examples.Grow
 import Verified.Examples.Modes

@@ -2,12 +2,13 @@ import LeanExe.Dialect.Loop
 import LeanExe.Dialect.Build
 import LeanExe.Dialect.InsertErase
 import LeanExe.Dialect.Float32
+import LeanExe.Dialect.Bytes
 import Verified.Tree
 import Verified.TreeFold
 
 /-! The source language of the verified compiler: functions whose body is a typed expression over
 the function's arguments and the values that bindings and loops introduce.  The types are 64-bit
-words, `Bool`s, floats, tuples of these, pairs, arrays, and fixed-layout recursive trees.  An expression of type `t` in a
+words, `Bool`s, floats, tuples of these, pairs, arrays, packed bytes, and fixed-layout recursive trees.  An expression of type `t` in a
 context `Γ` that may call functions
 with the signatures `S` has type `Expr S Γ t`, so every expression is well typed, reads only
 variables in scope, and calls only functions that exist.  Each operation means Lean's operation:
@@ -144,12 +145,12 @@ inductive Elem where
   | prod (first second : Elem)
   deriving Repr, DecidableEq, Inhabited
 
-/-- The types of values: the element types, pairs, which may hold arrays, and arrays of an element
-type. -/
+/-- The types of source values. -/
 inductive Ty where
   | elem (e : Elem)
   | pair (first second : Ty)
   | array (e : Elem)
+  | bytes
   | tree (shape : TreeShape)
   | treeHeader (shape : TreeShape)
   deriving Repr, DecidableEq, Inhabited
@@ -172,6 +173,7 @@ abbrev Ty.denote : Ty → Type
   | .elem e => e.denote
   | .pair a b => a.denote × b.denote
   | .array e => Array e.denote
+  | .bytes => LeanExe.Bytes
   | .tree shape => Tree shape
   | .treeHeader shape => TreeHeader shape
 
@@ -227,6 +229,7 @@ def Path.offset : {e e' : Elem} → Path e e' → Nat
 def Ty.width : Ty → Nat
   | .elem e => e.width
   | .array _ => 1
+  | .bytes => 2
   | .tree _ | .treeHeader _ => 1
   | .pair a b => a.width + b.width
 
@@ -235,6 +238,7 @@ def Ty.scalar : Ty → Bool
   | .elem _ => true
   | .pair a b => a.scalar && b.scalar
   | .array _ => false
+  | .bytes => false
   | .tree _ | .treeHeader _ => false
 
 /-- A variable of type `t` in the context `Γ`, by its distance from the front of `Γ`. -/
@@ -317,9 +321,10 @@ inductive Mode where
   | borrowed | owned
   deriving DecidableEq, Repr, Inhabited
 
-/-- The chosen mode for an array, tree, or tree-header parameter.  Other parameters are borrowed. -/
+/-- The chosen mode for an array, byte, tree, or tree-header parameter.  Other parameters are borrowed. -/
 def Ty.paramMode : Ty → Mode → Mode
   | .array _, m => m
+  | .bytes, m => m
   | .tree _, m | .treeHeader _, m => m
   | _, _ => .borrowed
 
@@ -1016,6 +1021,7 @@ instance Ty.instInhabited : (t : Ty) → Inhabited t.denote
   | .elem e => e.instInhabited
   | .pair a b => ⟨(@default _ (Ty.instInhabited a), @default _ (Ty.instInhabited b))⟩
   | .array _ => ⟨#[]⟩
+  | .bytes => inferInstanceAs (Inhabited LeanExe.Bytes)
   | .tree _ => ⟨.nil⟩
   | .treeHeader _ => ⟨.unit⟩
 

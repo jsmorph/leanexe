@@ -1,0 +1,13 @@
+identity	bytes	bytes:0001ff80	0001ff80	1	0
+identity	bytes	bytes:	_	1	0
+choose	bytes	i64:1 bytes:0001 bytes:ff80	0001	2	1
+choose	bytes	i64:0 bytes:0001 bytes:ff80	ff80	2	1
+choose	bytes	i64:1 bytes: bytes:ff80	_	2	1
+discard	i64	bytes:0001ff80	7	1	1
+discard	i64	bytes:	7	1	1
+firstDuplicate	bytes	bytes:0001ff80	0001ff80	2	1
+secondDuplicate	bytes	bytes:0001ff80	0001ff80	2	1
+firstDuplicate	bytes	bytes:	_	1	1
+secondDuplicate	bytes	bytes:	_	1	0
+swappedFirst	bytes	bytes:0001 bytes:ff80	ff80	2	1
+swappedFirst	bytes	bytes:0001 bytes:	_	2	1

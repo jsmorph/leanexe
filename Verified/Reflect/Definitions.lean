@@ -112,6 +112,7 @@ def tyExpr : Ty → Lean.Expr
   | .float32 => mkConst ``Ty.float32
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
+  | .bytes => mkConst ``Ty.bytes
   | .tree shape => mkApp (mkConst ``Ty.tree) (treeShapeExpr shape)
   | .treeHeader shape => mkApp (mkConst ``Ty.treeHeader) (treeShapeExpr shape)
 
@@ -179,6 +180,7 @@ partial def flatTree (type β inst : Lean.Expr) (ctor : ConstructorVal) :
 partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
   if let some e ← elemOf? type then return ⟨.elem e, none⟩
   let type ← whnfR type
+  if type.isConstOf ``LeanExe.Bytes then return ⟨.bytes, none⟩
   if let (``List, #[el]) := type.getAppFnArgs then
     if (← whnfR el).isConstOf ``UInt64 then
       return ⟨.tree listShape, some (mkConst ``Tree.ofList)⟩
@@ -218,7 +220,7 @@ partial def shapeOf (type : Lean.Expr) : MetaM Shape := do
     let f ← withLocalDeclD `x type fun x => do
       mkLambdaFVars #[x] (sβ.apply (mkApp4 (mkConst ``LeanExe.Pipeline.Flat.flat) type β inst x))
     return ⟨sβ.ty, some f⟩
-  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Float32, a structure with a \
+  throwError "verified_compile: the type {type} is not UInt64, Bool, Float, Float32, Bytes, a structure with a \
     `Flat` instance, an array, or a pair"
 
 def tyOf (type : Lean.Expr) : MetaM Ty := return (← shapeOf type).ty
@@ -1168,7 +1170,7 @@ partial def ValueCost.eq (k : ValueCost) (base : Name) (t : Ty) (v u : Lean.Expr
   let lhs := mkApp2 (mkConst k.fn) (tyExpr t) v
   match t with
   | .elem _ => return (natZero, ← evalEq lhs natZero)
-  | .tree _ | .treeHeader _ => return (lhs, ← mkEqRefl lhs)
+  | .tree _ | .treeHeader _ | .bytes => return (lhs, ← mkEqRefl lhs)
   | .array e =>
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
     let w ← evalNat width
@@ -1688,7 +1690,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           some (toExpr bits), some e, some h]
         return ⟨src, proof, .float32, e, leafBound c ``float32_bound [(`bits, toExpr bits)],
           leafFits c src⟩
-    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ => pure ()
+    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ | .bytes => pure ()
   -- A named constant that holds no array is its value, which the kernel unfolds to it.
   if let .const name lvls := e then
     if let .defnInfo info ← getConstInfo name then
@@ -3469,6 +3471,7 @@ partial def agreeTy (userT : Lean.Expr) (t : Ty) : MetaM (Lean.Expr × Lean.Expr
     let h ← trueByEval (mkApp (mkConst ``Ty.scalar) (tyExpr t))
     return ← agreeScalar userT inst src (mkApp2 (mkConst ``Ty.scalarInst) (tyExpr t) h) φ
   match t, (← whnfR userT).getAppFnArgs with
+  | .bytes, _ => agreeRefl userT inst src
   | .tree _, (``List, #[_]) =>
     agreeAs userT inst src φ (mkConst ``Agree.listTree)
   | .tree _, _ =>
@@ -3499,6 +3502,7 @@ def agreeArg (userT : Lean.Expr) (t : Ty) (m : Mode) : MetaM (Lean.Expr × Lean.
   let src := (mkApp2 (mkConst ``Ty.argTy) (tyExpr t) (modeExpr m),
     mkApp2 (mkConst ``Ty.argInst) (tyExpr t) (modeExpr m))
   match t, m, (← whnfR userT).getAppFnArgs with
+  | .bytes, .owned, (``LeanExe.Pipeline.Moved, #[_]) => agreeRefl userT inst src
   | .tree _, .owned, (``LeanExe.Pipeline.Moved, #[native]) =>
     let proof ← if (← whnfR native).isAppOf ``List then pure (Lean.mkConst ``Agree.movedListTree)
       else do

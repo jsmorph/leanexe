@@ -4,6 +4,7 @@ import Verified.LocalFrame
 import Verified.TreeCopyCode
 import Verified.TreeHeaderCode
 import Verified.TreeFieldsCode
+import Verified.Bytes.Code
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
@@ -30,6 +31,7 @@ def Elem.types : Elem → List ValueType
 def Ty.types : Ty → List ValueType
   | .elem e => e.types
   | .array _ | .tree _ | .treeHeader _ => [.i64]
+  | .bytes => [.i64, .i64]
   | .pair a b => a.types ++ b.types
 
 /-- The instructions that turn a word of type `ty` on top of the stack into the i64 that holds it
@@ -259,21 +261,22 @@ def copyCode (h : Nat) : Ty → Nat → Nat → Program
   | .elem e, src, _ => loadCode h src e.types
   | .pair a b, src, base => copyCode h a src base ++ copyCode h b (src + a.width) base
   | .array _, src, base => copyArrayCode src base
+  | .bytes, src, base => Bytes.copyOwnedCode src (src + 1) base
   | .tree shape, src, base => treeCopyCode shape src base
   | .treeHeader shape, _, base => treeHeaderCopyCode shape base
 
-/-- The instructions that release the arrays of the owned value of type `t` whose words locals
+/-- The instructions that release the allocations of the owned value of type `t` whose words locals
 `src` on hold. -/
 def releaseCode : Ty → Nat → Program
   | .elem _, _ => []
   | .pair a b, src => releaseCode a src ++ releaseCode b (src + a.width)
-  | .array _, src | .tree _, src | .treeHeader _, src => [.localGet src, .call 1]
+  | .array _, src | .tree _, src | .treeHeader _, src | .bytes, src => [.localGet src, .call 1]
 
-/-- The locals that a copy of a value of type `t` uses: three for each array's copy, and none
-for a value without arrays. -/
+/-- The scratch positions needed to copy a value of type `t`. -/
 def Ty.copyScratch : Ty → Nat
   | .elem _ => 0
   | .array _ => 3
+  | .bytes => 2
   | .tree _ => treeCopyScratch
   | .treeHeader _ => 1
   | .pair a b => max a.copyScratch b.copyScratch
