@@ -35066,3 +35066,30 @@ The corrected driver passed with status 0.  It checked all 88 emissions, 22 nume
 The first verified byte comparison found 54 differences in the saved baseline.  The unchanged `byHandModule` isolates the cause: its saved binary has no binary32 local bank, while a fresh emission from the pre-reorganization checkout matches the current binary.  Commit `768446ef` added that bank before the reorganization.  The comparison therefore needs fresh preceding emissions rather than the saved files.  The `d07665fa` checkout has exactly the Lean sources, manifest, and toolchain of the reorganization base `158b77c2`.  The original saved binaries remain intact, and all 73 preceding modules will be rebuilt and emitted from that source for the comparison.
 
 At the user's request, an isolated `wasi` worktree now exists at a separate checkout.  Its source came from the pushed `library-layout` branch through the host's configured Git remote.  The host's existing `main` worktree and its modified journal remain untouched.  The design agent is preparing the scoped WASI proposal while the library checks finish.  The completed `main` revision will be merged into `wasi` before the design is finalized.
+
+## 2026-10-23: Hashing library plan
+
+The user requested a hashing library compiled with the verified compiler, with implementations designed for theorems about the emitted artifacts.  Work proceeds on the `hashing` branch, taken from `library-layout`.  All Lean commands run, reached through SSH, in a separate worktree of the host's checkout.  The local machine runs concurrent sessions and holds one machine-wide Lean slot, so no Lean command runs there.
+
+Each hash's final theorem will state that the emitted file decodes to a module whose export computes the standard's function of the message bytes without a trap.  The Wasm reasoning comes from `Prog.correctWith` through `verified_compile`, and no proof of a hash touches Wasm.  The only proof specific to a function is the Lean equality between its program and a specification.  A file theorem identifies the emitted file, as in the Bessel and decimal families.  The programs follow their specification's structure and depart from it only for representation, with one lemma for each departure.
+
+| Topic | Decision | Reason |
+|---|---|---|
+| Compiler | The verified compiler, unchanged | A review withdrew the proposed rotation and `UInt32` extensions.  A library rotation helper needs the same `BitVec` lemma as a compiled rotation.  Truncation to 32 bits preserves addition, multiplication, the bitwise operations, and small left shifts, so helpers that mask before right shifts give unconditional lemmas without a range invariant.  A native `UInt32` type will be reconsidered after measuring SHA-256 in Wasmtime. |
+| Messages | `Array UInt64` with eight bytes per word in little-endian order, and a byte count `n` | The packing matches Wasm memory and the host's `file-u64` argument, and Keccak, BLAKE2b, SipHash, and xxHash read little-endian words.  Bytes after `n` in the last word must not affect a digest.  Specifications cover whole-byte messages. |
+| Digests | Flat structures of words in the same packing, and arrays only for variable-length output | A borrowed input, scalar loop state, and a scalar result allow `aborts = false`, whose `implements` theorem excludes traps without a memory premise.  Callers of such a hash keep a zero allocation bound. |
+| Allocation | No allocation per block | The allocation bound ignores reuse, so a schedule allocated for each block would make the bound grow with message length. |
+| SHA-2 specification | A port of the `spec/` directory of fips-180-4-lean to Lean 4.34.0-rc2 | Another author wrote it as a literate transcription of FIPS 180-4, and it passes 1,415 CAVP vectors.  It pins Lean 4.29.1 and Mathlib v4.29.1, so it cannot be a Lake dependency.  Its messages are bit lists, and the theorems will convert bytes most significant bit first.  The user accepted its GPL-3.0-or-later license for research use. |
+| SHA-3 specification | A transcription of FIPS 202 at the bit level, with independent review | No standalone Lean specification of the same form was found.  SymCrypt's Aeneas-based specification remains a possible cross-check. |
+| Test vectors | Unmodified CAVP response files under `data/hashing/`, with a NOTICE | Runs need no network and read fixed inputs.  The RFC 4231 HMAC vectors go into a Lean test file. |
+
+- [ ] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.
+- [ ] Port the SHA-2 specification and check it against the CAVP vectors.
+- [ ] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
+- [ ] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
+- [ ] HMAC-SHA-256 and HMAC-SHA-512.
+- [ ] SHA-3 and SHAKE.
+- [ ] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
+- [ ] SipHash and xxHash64.
+
+References: [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final), [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), [the CAVP secure-hashing vectors](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean), [sha2-fv](https://docs.rs/sha2-fv), and [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231).
