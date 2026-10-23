@@ -22,9 +22,9 @@ the properties of the resulting WebAssembly.
 | [Statistics](Numerics/Statistics) | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | Minmod and its real slope and face properties. |
+| [Hashing](Hashing/README.md) | SHA-512, SHA-384, SHA-512/256, and SHA-512/224, with the FIPS 180-4 transcription and equivalence proofs they use. |
 
-Hashing is a future category.  The [algorithm index](../index.md) states the mathematical results
-and domains of the numerical families.
+The [algorithm index](../index.md) states the mathematical results and domains of the families.
 
 ## Modules and imports
 

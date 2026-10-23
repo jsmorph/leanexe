@@ -86,3 +86,4 @@ Library.Numerics.Arithmetic.CeilSqrt.Compiled:Library.Numerics.Arithmetic.CeilSq
 Library.Numerics.Bounds.Compiled:Library.Numerics.Bounds.compiled.module:libbounds
 Library.Numerics.Limiters.Minmod.Compiled:Library.Numerics.Limiters.Minmod.compiled.module:libminmod
 Library.Trees.WordTree.Compiled:Library.Trees.WordTree.compiled.module:libtrees
+Library.Hashing.Sha512.Compiled:Library.Hashing.Sha512.compiled.module:sha512

@@ -1,0 +1,15 @@
+data/hashing/sha2/
+
+These files are unmodified copies of files in the NIST Cryptographic Algorithm
+Validation Program archive of SHA-2 test vectors for byte-oriented messages,
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/shabytetestvectors.zip,
+listed on https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing.
+The archive downloaded on 2026-10-23 has SHA-256
+929ef80b7b3418aca026643f6f248815913b60e01741a44bba9e118067f4c9b8.  NIST
+publications are works of the United States Government.
+
+The copies keep the archive's CRLF line endings.  They are the ShortMsg, LongMsg,
+and Monte response files for SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224,
+and SHA-512/256, and Readme.txt.  The SHA-1 files and the intermediate values of
+the Monte Carlo tests are omitted.  The Monte Carlo procedure is that of the
+SHA Validation System, https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/shs/SHAVS.pdf.
