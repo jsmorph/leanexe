@@ -30,7 +30,7 @@ The verified compiler's integers are `UInt64`, so [the program](Program.lean) ho
 | [`Bytes.lean`](Bytes.lean) | `sha256_call`, `sha224_call`, and `sha256_module`, from the generated `implements` theorems and the equalities of `Proof.lean`. |
 | [`File.lean`](File.lean) | `sha256_file` and `sha256_file_decode`: the emitted file holds the module's encoding and decodes to the module. |
 
-The compression is proved against the specification's round and 64-word schedule, since the copied implementation keeps its schedule in a ring buffer.  `SHS.Equiv.SHA256.compress_correct` then gives equality with `Impl.compress`, because lifting a state to the specification's words is injective.  `sha256_spec` composes the program's equality with the implementation and `SHS.Equiv.SHA256.sha256_correct`.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.
+The compression is proved against the specification's round and 64-word schedule, since the copied implementation keeps its schedule in a ring buffer.  `SHS.Equiv.SHA256.compress_correct` then gives equality with `Impl.compress`, because lifting a state to the specification's words is injective.  `sha256_spec` composes the program's equality with the implementation and `SHS.Equiv.SHA256.sha256_correct`.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  `sha256_bytes_collision` in [the Merkle–Damgård module](../MerkleDamgard.lean) shows that two distinct messages with equal digests give a collision of `SHS.SHA256.compress`.
 
 ## Tests
 
