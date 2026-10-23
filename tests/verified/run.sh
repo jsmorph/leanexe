@@ -127,6 +127,9 @@ elif [ "$case_module" = "listtail" ]; then
 elif [ "$case_module" = "recursivetypes" ]; then
   cases_module=Verified.Examples.RecursiveTypesCasesMain
   cases_source=Verified/Examples/RecursiveTypesCasesMain.lean
+elif [ "$case_module" = "sha512" ]; then
+  cases_module=TestSupport.Hashing.Sha512CasesMain
+  cases_source=tests/TestSupport/Hashing/Sha512CasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)
