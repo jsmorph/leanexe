@@ -63,7 +63,7 @@ inductive Command (pureSigs : List Sig) (effectSigs : List EffectSig) :
   | read (capacity : Expr pureSigs context .word) :
       Command pureSigs effectSigs context (.value (.pair .word .bytes))
   | write (output : Output) (bytes : Var context .bytes) :
-      Command pureSigs effectSigs context (.value (.pair .word .word))
+      Command pureSigs effectSigs context (.value (.elem (.prod .word .word)))
   | exit (code : Expr pureSigs context .word) : Command pureSigs effectSigs context result
   | loop (count : Expr pureSigs context .word) (initial : Expr pureSigs context type)
       (test : Expr pureSigs (type :: .word :: context) .bool)
