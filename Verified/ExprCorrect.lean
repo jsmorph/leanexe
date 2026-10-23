@@ -6,6 +6,7 @@ import Verified.TreeNodeCorrect
 import Verified.TreeCaseCorrect
 import Verified.ListFoldCorrect
 import Verified.Bytes.Get
+import Verified.BytesBuildCorrect
 
 /-! Correctness of expression code and ordinary function templates. -/
 
@@ -4808,6 +4809,10 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
   | build count elem countSpec elemSpec =>
     intro hD
     exact spec_build hm (countSpec fun h => hD (by simp [Expr.depthCalls, h]))
+      (elemSpec fun h => hD (by simp [Expr.depthCalls, h]))
+  | bytesBuild count elem countSpec elemSpec =>
+    intro hD
+    exact spec_bytesBuild hm (countSpec fun h => hD (by simp [Expr.depthCalls, h]))
       (elemSpec fun h => hD (by simp [Expr.depthCalls, h]))
   | set x i v iSpec vSpec =>
     intro hD

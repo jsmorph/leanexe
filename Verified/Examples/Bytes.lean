@@ -45,8 +45,27 @@ def lastByte (bytes : LeanExe.Bytes) : UInt64 :=
 
 def emptyRead (index : UInt64) : UInt64 := LeanExe.Bytes.empty.get index
 
+def buildPattern (count start : UInt64) : LeanExe.Bytes :=
+  LeanExe.Bytes.build count fun i => start + i * 257
+
+def copyByBuild (bytes : LeanExe.Bytes) : LeanExe.Bytes :=
+  LeanExe.Bytes.build bytes.size fun i => bytes.get i
+
+def buildFromOwned (bytes : LeanExe.Bytes) (count : UInt64) : LeanExe.Bytes :=
+  let owned := identity bytes
+  LeanExe.Bytes.build count fun i => owned.get i
+
+def buildFromSize (bytes : LeanExe.Bytes) : LeanExe.Bytes :=
+  let owned := identity bytes
+  LeanExe.Bytes.build owned.size fun i => i
+
+def nestedBuild (count : UInt64) : LeanExe.Bytes :=
+  LeanExe.Bytes.build count fun i =>
+    let owned := LeanExe.Bytes.build 1 fun _ => i + 255
+    owned.get 0
+
 verified_compile compiled := [identity, duplicate, choose, discard, swap, firstDuplicate,
   secondDuplicate, swappedFirst, emptyBuffer, readSize, readByte, ownedSize, ownedByte, lastByte,
-  emptyRead]
+  emptyRead, buildPattern, copyByBuild, buildFromOwned, buildFromSize, nestedBuild]
 
 end Verified.Examples.Bytes

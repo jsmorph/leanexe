@@ -175,7 +175,8 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
     count.grows flags || init.grows flags || cond.grows flags || body.grows flags
   | _, _, .fold _ init body => init.grows flags || body.grows flags
   | _, _, .listFold args body => (argsAny fun i => (args i).grows flags) || body.grows flags
-  | _, _, .build count elem => count.grows flags || elem.grows flags
+  | _, _, .build count elem | _, _, .bytesBuild count elem =>
+    count.grows flags || elem.grows flags
   | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
   | _, _, .treeNode _ words children =>
@@ -472,6 +473,12 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
       sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
         (shift 1 all)
         (.cons (UInt64.ofNat k) env)) n
+  | _, _, .bytesBuild count elem, env =>
+    let all := fun i => live i || elem.uses (i + 1)
+    let n := (count.denote funs env).toNat
+    count.allocs funs flags bounds modes paid all env + Bytes.allocationCost n +
+      sumBelow (fun k => elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+        (shift 1 all) (.cons (UInt64.ofNat k) env)) n
 
 /-- The modes of a function's parameters at entry. -/
 def entryModes (params : List Ty) (modes : List Mode) : List Mode :=
@@ -665,7 +672,7 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
     i.fits funs fits env && v.fits funs fits env
   | _, _, .push _ v, env => v.fits funs fits env
-  | _, _, .build count elem, env =>
+  | _, _, .build count elem, env | _, _, .bytesBuild count elem, env =>
     count.fits funs fits env &&
       allBelow (fun k => elem.fits funs fits (.cons (UInt64.ofNat k) env))
         (count.denote funs env).toNat
@@ -720,7 +727,7 @@ theorem Expr.fits_of_depthCalls (funs : Funs S) (fits : Fits S) {Γ : List Ty} {
     simp only [Expr.fits, Bool.and_eq_true]
     exact ⟨argsAll_true (fun i => ha i (argsAny_eq_false hd.1 i) env),
       ListFold.fitsWith_true _ _ (hb hd.2) _⟩
-  | build count elem hc he =>
+  | build count elem hc he | bytesBuild count elem hc he =>
     intro hd env
     simp only [Expr.depthCalls, Bool.or_eq_false_iff] at hd
     simp only [Expr.fits, hc hd.1, Bool.true_and]

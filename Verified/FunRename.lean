@@ -31,6 +31,7 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .bytesEmpty => .bytesEmpty
   | _, _, .bytesSize x => .bytesSize x
   | _, _, .bytesGet x index => .bytesGet x (index.renameFuns ρ)
+  | _, _, .bytesBuild count elem => .bytesBuild (count.renameFuns ρ) (elem.renameFuns ρ)
   | _, _, .leSize x i => .leSize x i
   | _, _, .get x i => .get x (i.renameFuns ρ)
   | _, _, .build n e => .build (n.renameFuns ρ) (e.renameFuns ρ)

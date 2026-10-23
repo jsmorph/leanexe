@@ -627,6 +627,19 @@ theorem build_bound {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :
   obtain rfl := funext hea
   rfl
 
+theorem bytesBuild_bound {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word}
+    {N : UInt64} {all : Nat → Bool} {NA : Nat} {EA : Nat → Nat}
+    (hall : all = fun i => live i || elem.uses (i + 1))
+    (hn : count.denote funs env = N)
+    (hna : count.allocs funs flags bounds modes paid all env = NA)
+    (hea : ∀ k : Nat, elem.allocs funs flags bounds (.borrowed :: modes) (false :: paid)
+      (shift 1 all) (.cons (UInt64.ofNat k) env) = EA k) :
+    (Expr.bytesBuild count elem).allocs funs flags bounds modes paid live env =
+      NA + Bytes.allocationCost N.toNat + sumBelow EA N.toNat := by
+  subst hall hn hna
+  obtain rfl := funext hea
+  rfl
+
 /-! Array operations. -/
 
 theorem get_bound {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {IA : Nat}

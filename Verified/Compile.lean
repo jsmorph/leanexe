@@ -5,6 +5,7 @@ import Verified.TreeCopyCode
 import Verified.TreeHeaderCode
 import Verified.TreeFieldsCode
 import Verified.Bytes.Code
+import Verified.Bytes.BuildCode
 import LeanExe.Runtime.Defs
 
 /-! The verified compiler: a Lean function from source functions to a WebAssembly module.  The
@@ -439,6 +440,7 @@ def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
         max treeCopyScratch (e.width + max body.width treeCopyScratch))
   | _, _, .get _ i => max i.width 2
   | _, _, .build (e := e) count elem => max count.width (3 + max elem.width (e.width + 1))
+  | _, _, .bytesBuild count elem => max count.width (3 + elem.width)
   | _, _, .set (e := e) _ i v =>
     max i.width (max (1 + v.width) (1 + e.width + copyWidth (.array e)))
   | _, _, .push (e := e) _ v => max v.width (e.width + 7)
@@ -640,6 +642,12 @@ def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
         ((slots.getD x.index default).loc + 1) base ++
       (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
         releaseCode .bytes (slots.getD x.index default).loc else [])
+  | Γ, _, .bytesBuild count elem =>
+    let all := fun i => live i || elem.usesFast (i + 1)
+    count.code h slots base all ++ [.localSet base] ++
+      Bytes.buildCode base (base + 1) (base + 2)
+        (elem.code h (⟨base + 2, .borrowed⟩ :: slots) (base + 3) (shift 1 all)) ++
+      releaseWhere Γ slots (fun i => elem.usesFast (i + 1) && !live i)
   | _, _, .treeNil _ => [.constI64 0]
   | _, _, .treeNode (shape := shape) reuse words children =>
     let modes := slots.map Slot.mode

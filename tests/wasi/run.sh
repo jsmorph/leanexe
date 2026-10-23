@@ -8,10 +8,13 @@ cd "$root"
 
 tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get \
-  Verified.Bytes.LiteralFrame LeanExe.Wasi.Prefix
+  Verified.Bytes.Literal Verified.Bytes.StaticEnv Verified.BytesBuildCorrect \
+  Verified.Wasi.Source Verified.Wasi.HostSpec Verified.Wasi.Scratch \
+  Verified.Wasi.WrapperCode LeanExe.Wasi.Prefix
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build Verified.Examples.Bytes
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
+tools/leanrun --timeout 5m lake env lean tests/decoder/TableProfile.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Axioms.lean
 
 out="$root/build/wasi"
@@ -34,3 +37,19 @@ while IFS="$tab" read -r export_name kind arguments expected allocations release
   count=$((count + 1))
 done <"$root/tests/wasi/bytes.tsv"
 printf 'Byte execution tests passed: %s cases\n' "$count"
+
+count=0
+while IFS="$tab" read -r export_name arguments; do
+  set -- $arguments
+  trap_log="$out/byte-trap-$count.log"
+  if "$host" call "$out/bytes.wasm" "$export_name" bytes "$@" >"$trap_log" 2>&1; then
+    printf 'Expected a trap: %s %s\n' "$export_name" "$arguments" >&2
+    exit 1
+  fi
+  case "$(cat "$trap_log")" in
+    *unreachable*) ;;
+    *) cat "$trap_log" >&2; exit 1 ;;
+  esac
+  count=$((count + 1))
+done <"$root/tests/wasi/byte-traps.tsv"
+printf 'Byte trap tests passed: %s cases\n' "$count"

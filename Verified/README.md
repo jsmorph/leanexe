@@ -89,8 +89,11 @@ without an array-length word.  Copying empty bytes returns `(0, 0)` without allo
 incoming empty buffer may have a nonzero root, which cleanup releases.  The
 [byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup,
 empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and
-index operations release an owned input at its last use.  Construction, literals, and I/O remain part of the
-[WASI work](../docs/verified-wasi-design.md).
+index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
+result and stores each callback's low eight bits.  Its proof carries live captures, callback
+allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
+and counts of at least `2^32` trap before allocating the result.  Literals and I/O remain part of
+the [WASI work](../docs/verified-wasi-design.md).
 
 ### Scalar code and control flow
 

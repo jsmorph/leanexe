@@ -474,7 +474,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact nomatch h1
       · exact Or.inr h1
-  | build _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
+  | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
   | eraseAt _ _ _ | treeNil _ | treeNode _ _ _ | treeCase _ _ _ | bytesEmpty =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
@@ -1215,6 +1215,7 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
   | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesSize _, hp, _, _, _, _, _
   | _, .bytesGet _ _, hp, _, _, _, _, _
+  | _, .bytesBuild _ _, hp, _, _, _, _, _
   | _, .leSize _ _, hp, _, _, _, _, _
   | _, .build _ _, hp, _, _, _, _, _ | _, .set _ _ _, hp, _, _, _, _, _
   | _, .push _ _, hp, _, _, _, _, _ | _, .append _ _, hp, _, _, _, _, _
