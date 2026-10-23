@@ -16,6 +16,13 @@ def be8 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) : UInt64 :=
 /-- Byte `k` of `w`, counting from the least significant. -/
 def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> (8 * k).toUInt64).toUInt8
 
+theorem bytes_size (msg : Array UInt64) (n : Nat) : (bytes msg n).size = n := by
+  simp [bytes, ByteArray.size]
+
+theorem bytes_get! (msg : Array UInt64) (n p : Nat) (hp : p < n) :
+    (bytes msg n).get! p = byteAt msg p := by
+  simp [bytes, ByteArray.get!, hp]
+
 theorem byteAt_eq (ws : Array UInt64) (i k : Nat) (hk : k < 8) :
     byteAt ws (8 * i + k) = byteOf ws[i]! k := by
   unfold byteAt byteOf
@@ -103,5 +110,25 @@ theorem byteOf_low (x : UInt64) (k : Nat) (hk : k < 4) :
   interval_cases k <;>
     simp [byteOf, UInt64.toBitVec_and, UInt64.toBitVec_shiftRight, UInt64.toBitVec_toUInt8] <;>
     interval_cases i <;> simp
+
+/-- `Fin.foldl` over the indices below `n` as `Nat.fold`. -/
+theorem finFoldl_eq_fold {β : Type} (n : Nat) (g : Nat → β → β) (init : β) :
+    Fin.foldl n (fun x (i : Fin n) => g i.val x) init = Nat.fold n (fun i _ x => g i x) init := by
+  induction n with
+  | zero => simp
+  | succ n ih =>
+    rw [Fin.foldl_succ_last, Nat.fold_succ]
+    exact congrArg (g n) ih
+
+theorem base_add (i k : Nat) (h : 16 * i + k < 2 ^ 64) :
+    (UInt64.ofNat i <<< 4) + UInt64.ofNat k = UInt64.ofNat (16 * i + k) := by
+  apply UInt64.toNat_inj.mp
+  rw [UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_ofNat', UInt64.toNat_ofNat',
+    UInt64.toNat_ofNat', show UInt64.toNat 4 % 64 = 4 by decide, Nat.shiftLeft_eq,
+    Nat.mod_eq_of_lt (by omega : i < 2 ^ 64), Nat.mod_eq_of_lt (by omega : k < 2 ^ 64),
+    Nat.mod_eq_of_lt (by omega : i * 2 ^ 4 < 2 ^ 64),
+    Nat.mod_eq_of_lt (by omega : 16 * i + k < 2 ^ 64),
+    Nat.mod_eq_of_lt (by omega : i * 2 ^ 4 + k < 2 ^ 64)]
+  omega
 
 end Library.Hashing.Words

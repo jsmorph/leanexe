@@ -1,12 +1,16 @@
+import Library.Hashing.Sha256.Program
 import Library.Hashing.Sha512.Program
 import Library.Hashing.Sha2.Spec
 
-/-! A native check of the SHA-512 family of `Library.Hashing.Sha512` on the NIST CAVP vectors in
-`data/hashing/sha2/`: every short and long message, and the 100 checkpoints of each Monte Carlo
-test, computed by the procedure of SHAVS §6.4.  The specification `SHS.SHA512` of
-`Library.Hashing.Sha2.Spec` hashes every short and long message as well.  Message bytes are
-packed eight to a word and followed by a word of nonzero bytes, which the digest must ignore.  The
-check exits with an error at the first difference.  Run with `lake env lean --run`. -/
+/-! A native check of SHA-256 and SHA-224 in `Library.Hashing.Sha256` and the SHA-512 family in
+`Library.Hashing.Sha512` on the NIST CAVP vectors in `data/hashing/sha2/`: every short and long
+message, and the 100 checkpoints of each Monte Carlo test, computed by the procedure of SHAVS
+§6.4.  The specifications `SHS.SHA256` and `SHS.SHA512` of `Library.Hashing.Sha2.Spec` hash every
+short and long message as well.  Message bytes are packed eight to a word and followed by a word
+of nonzero bytes, which the digest must ignore.  The check exits with an error at the first
+difference.  Run with `lake env lean --run`; `--only SHA256,SHA224` selects functions by the
+names of their files, `--no-spec` skips the specifications, and `--no-monte` skips the Monte Carlo
+checkpoints. -/
 
 namespace TestSupport.Hashing.Sha2Vectors
 
@@ -53,6 +57,14 @@ structure Algorithm where
   spec : List Bool → Option Nat
 
 def algorithms : List Algorithm := [
+  { file := "SHA256", bytes := 32,
+    program := fun m n => let d := Library.Hashing.Sha256.sha256 m n
+      [d.w0, d.w1, d.w2, d.w3],
+    spec := fun M => if h : M.length < 2 ^ 64 then some (SHS.SHA256.sha256 M h).toNat else none },
+  { file := "SHA224", bytes := 28,
+    program := fun m n => let d := Library.Hashing.Sha256.sha224 m n
+      [d.w0, d.w1, d.w2, d.w3],
+    spec := fun M => if h : M.length < 2 ^ 64 then some (SHS.SHA256.sha224 M h).toNat else none },
   { file := "SHA512", bytes := 64,
     program := fun m n => let d := Library.Hashing.Sha512.sha512 m n
       [d.w0, d.w1, d.w2, d.w3, d.w4, d.w5, d.w6, d.w7],
@@ -134,7 +146,10 @@ def monte (a : Algorithm) : IO Nat := do
 def main (args : List String) : IO Unit := do
   let withSpec := !args.contains "--no-spec"
   let withMonte := !args.contains "--no-monte"
-  for a in algorithms do
+  let only := match args.dropWhile (· != "--only") with
+    | _ :: names :: _ => some (names.splitOn ",")
+    | _ => none
+  for a in algorithms.filter fun a => only.all (·.contains a.file) do
     let short ← messages a "ShortMsg" withSpec
     let long ← messages a "LongMsg" withSpec
     let checkpoints ← if withMonte then monte a else pure 0
