@@ -22,6 +22,10 @@ unfolds the fold until the recursion limit, and so does the closing `rfl` of
 `congr 1`.  `spec_compress_eq_seq` of the two Foldl/Sequential.lean files
 therefore abstracts the fold with `generalize` before applying `hfinal`, and
 `spec_compress_eq_fused` of the two Foldl/Fused.lean files uses
-`congrArg (addH H)` instead of `congr 1`.  The Markdown chapters,
+`congrArg (addH H)` instead of `congr 1`.  In Equiv/SHA256/Compress/Match.lean,
+two `convert` steps whose remaining goals Lean 4.34 no longer closes are `exact`
+steps, a `simp at` that makes no progress and an unused fact that fails the same
+way are removed, and `toSpecState_implCompressFoldl` abstracts the round fold
+with `generalize` before its final case split.  The Markdown chapters,
 the README of equiv/, the logo, and the document-generation support files of
 the upstream directories are omitted.
