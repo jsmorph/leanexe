@@ -11,19 +11,34 @@ def snapshot (store : Store Unit) (root : UInt64) (count : Nat) : LeanExe.Bytes 
 @[simp] theorem snapshot_size (store : Store Unit) (root : UInt64) (count : Nat) :
     (snapshot store root count).data.size = count := Array.size_ofFn
 
-theorem block_snapshot {heap : Heap} {store : Store Unit} {root capacity : UInt64}
+theorem of_block {heap : Heap} {store : Store Unit} {root capacity : UInt64}
     (h : heap.Block store root capacity 1) (hMin : 8 ≤ capacity.toNat)
-    (count : Nat) (hCount : count ≤ capacity.toNat) :
-    Allocated heap store root (snapshot store root count) := by
+    (bytes : LeanExe.Bytes) (hCount : bytes.data.size ≤ capacity.toNat)
+    (hContents : ∀ (i : Nat) (hi : i < bytes.data.size),
+      store.mem.bytes (root.toNat + i) = bytes.data[i]) :
+    Allocated heap store root bytes := by
   obtain ⟨hMagic, hReference, _, hKind, hWidth, hMask⟩ := h.fresh
   refine ⟨⟨h.base, ?_, ?_, ?_⟩, hMagic, hReference, ?_, ?_, hKind, hWidth, hMask, ?_⟩
   · rw [h.capacity_eq]; exact h.address
   · rw [h.capacity_eq]; exact h.below
   · rw [h.capacity_eq]; exact h.separate
   · rw [h.capacity_eq]; exact hMin
-  · rw [h.capacity_eq, snapshot_size]; exact hCount
-  · intro i hi
-    simp only [snapshot, ByteArray.getElem_eq_getElem_data, Array.getElem_ofFn]
+  · rw [h.capacity_eq]; exact hCount
+  · exact hContents
+
+theorem block_snapshot {heap : Heap} {store : Store Unit} {root capacity : UInt64}
+    (h : heap.Block store root capacity 1) (hMin : 8 ≤ capacity.toNat)
+    (count : Nat) (hCount : count ≤ capacity.toNat) :
+    Allocated heap store root (snapshot store root count) :=
+  of_block h hMin _ (by rw [snapshot_size]; exact hCount) (by
+    intro i hi
+    simp only [snapshot, ByteArray.getElem_eq_getElem_data, Array.getElem_ofFn])
+
+theorem Allocated.toBlock {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store) :
+    heap.Block store root (store.mem.read64 (root - 32).toUInt32) 1 :=
+  ⟨⟨h.magic, h.count, rfl, h.kind, h.width, h.childMask⟩, h.object.base,
+    h.object.address, h.object.below.trans hHeap.top, h.object.below, h.object.separate⟩
 
 def allocationCost (count : Nat) : Nat :=
   if count = 0 then 0 else 48 + 8 * max 1 ((count + 7) / 8)

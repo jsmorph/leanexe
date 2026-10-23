@@ -31,13 +31,9 @@ theorem wp_get {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store U
     · have := hNull.2
       omega
     · have hCapacity := hBuffer.capacity
-      have hAddress := hBuffer.object.address
       have hBelow := hBuffer.object.below
       have hTop := hHeap.top
-      have hSum : (root + index).toNat = root.toNat + index.toNat := by
-        rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
-      have h32 : (root + index).toUInt32.toNat = root.toNat + index.toNat := by
-        rw [Memory.toUInt32_toNat, hSum, Nat.mod_eq_of_lt (by omega)]
+      have h32 := hBuffer.index_address index hiNat
       have hMemory : ¬ store.mem.pages * 65536 < (root + index).toUInt32.toNat + 1 := by
         rw [h32]
         omega
