@@ -6,6 +6,7 @@ import Verified.Bytes.Overlay
 import Verified.Bytes.Copy
 import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
+import Verified.Bytes.LiteralFrame
 import LeanExe.Wasi.Prefix
 import Verified.Examples.Bytes
 
@@ -56,6 +57,21 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.wp_copyOwned,
     ``Verified.Bytes.Rep.release_step,
     ``Verified.Bytes.wp_release,
+    ``Verified.Bytes.literalOffset_exists,
+    ``Verified.Bytes.literalOffset_split,
+    ``Verified.Bytes.literalOffset_bound,
+    ``Verified.Bytes.literalOffset_byte,
+    ``Verified.Bytes.LiteralPool.top_ge,
+    ``Verified.Bytes.LiteralPool.top_lt,
+    ``Verified.Bytes.LiteralPool.top_aligned,
+    ``Verified.Bytes.LiteralPool.top_empty,
+    ``Verified.Bytes.LiteralPool.segments_empty,
+    ``Verified.Bytes.LiteralPool.Valid.frame,
+    ``Verified.Bytes.LiteralPool.Valid.literal_bounds,
+    ``Verified.Bytes.LiteralPool.Valid.literal,
+    ``Verified.Bytes.LiteralPool.Static.empty,
+    ``Verified.Bytes.LiteralPool.Static.literal,
+    ``Verified.Bytes.LiteralPool.Static.step,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,

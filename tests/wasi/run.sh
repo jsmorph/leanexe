@@ -7,7 +7,8 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 cd "$root"
 
 tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
-  Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get LeanExe.Wasi.Prefix
+  Verified.Bytes.CopyOwned Verified.Bytes.Release Verified.Bytes.Get \
+  Verified.Bytes.LiteralFrame LeanExe.Wasi.Prefix
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build Verified.Examples.Bytes
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
