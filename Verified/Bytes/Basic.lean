@@ -54,16 +54,21 @@ theorem Rep.size_lt {heap : Heap} {store : Store Unit} {root length : UInt64}
   · simp [h.2]
   · exact h.size_lt
 
-theorem Allocated.read8 {heap : Heap} {store : Store Unit} {root : UInt64}
+theorem Allocated.index_address {heap : Heap} {store : Store Unit} {root : UInt64}
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)
     (hi : index.toNat < bytes.data.size) :
-    store.mem.read8 (root + index).toUInt32 = bytes.data[index.toNat] := by
+    (root + index).toUInt32.toNat = root.toNat + index.toNat := by
   have hFit := h.object.address
   have hCapacity := h.capacity
   have hSum : (root + index).toNat = root.toNat + index.toNat := by
     rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
-  simp only [Mem.read8, Memory.toUInt32_toNat, hSum,
-    Nat.mod_eq_of_lt (by omega : root.toNat + index.toNat < 4294967296)]
+  rw [Memory.toUInt32_toNat, hSum, Nat.mod_eq_of_lt (by omega)]
+
+theorem Allocated.read8 {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)
+    (hi : index.toNat < bytes.data.size) :
+    store.mem.read8 (root + index).toUInt32 = bytes.data[index.toNat] := by
+  rw [Mem.read8, h.index_address index hi]
   exact h.contents _ hi
 
 theorem Allocated.get {heap : Heap} {store : Store Unit} {root : UInt64}

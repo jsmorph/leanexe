@@ -1,6 +1,8 @@
 import Verified.Bytes.Represent
 import Verified.Bytes.Allocation
 import Verified.Bytes.Get
+import Verified.Bytes.CopyByte
+import Verified.Bytes.Overlay
 import LeanExe.Wasi.Semantics
 
 open Lean Elab Command in
@@ -25,6 +27,13 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.allocationCost_ge,
     ``Verified.Bytes.wp_allocate,
     ``Verified.Bytes.wp_get,
+    ``Verified.Bytes.Allocated.write,
+    ``Verified.Bytes.Allocated.write_step,
+    ``Verified.Bytes.wp_store,
+    ``Verified.Bytes.wp_copyByte,
+    ``Verified.Bytes.overlay_zero,
+    ``Verified.Bytes.overlay_all,
+    ``Verified.Bytes.overlay_succ,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,
