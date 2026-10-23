@@ -24,21 +24,10 @@ theorem blocks_toNat (n : UInt64) (hn : n.toNat < 2 ^ 61) :
       Nat.and_two_pow_sub_one_eq_mod]
   unfold blockCount
   by_cases h : n.toNat % 128 < 112
-  · rw [if_pos (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), if_pos h, UInt64.toNat_add, h7]
+  · rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_left h, UInt64.toNat_add, h7]
     simp; omega
-  · rw [if_neg (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), if_neg h, UInt64.toNat_add, h7]
+  · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_right h, UInt64.toNat_add, h7]
     simp; omega
-
-theorem base_add (i k : Nat) (h : 16 * i + k < 2 ^ 64) :
-    (UInt64.ofNat i <<< 4) + UInt64.ofNat k = UInt64.ofNat (16 * i + k) := by
-  apply UInt64.toNat_inj.mp
-  rw [UInt64.toNat_add, UInt64.toNat_shiftLeft, UInt64.toNat_ofNat', UInt64.toNat_ofNat',
-    UInt64.toNat_ofNat', show UInt64.toNat 4 % 64 = 4 by decide, Nat.shiftLeft_eq,
-    Nat.mod_eq_of_lt (by omega : i < 2 ^ 64), Nat.mod_eq_of_lt (by omega : k < 2 ^ 64),
-    Nat.mod_eq_of_lt (by omega : i * 2 ^ 4 < 2 ^ 64),
-    Nat.mod_eq_of_lt (by omega : 16 * i + k < 2 ^ 64),
-    Nat.mod_eq_of_lt (by omega : i * 2 ^ 4 + k < 2 ^ 64)]
-  omega
 
 /-- Block `i` of the program's padded message is block `i` of `implPaddedBlocks`. -/
 theorem loadBlock_toVec (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) (i : Nat)

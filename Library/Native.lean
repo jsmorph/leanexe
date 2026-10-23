@@ -3,6 +3,7 @@ import Library.Arrays.Range.Program
 import Library.Arrays.Repeat.Program
 import Library.Arrays.Search.Program
 import Library.Arrays.Word.Program
+import Library.Hashing.Sha256.Program
 import Library.Hashing.Sha512.Program
 import Library.Hashing.Words.Program
 import Library.Lists.Word.Program

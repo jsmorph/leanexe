@@ -4,6 +4,7 @@ The hash functions take a message of `n` bytes as an `Array UInt64` holding eigh
 
 | Family | Functions | Proved results |
 |---|---|---|
-| [SHA-512](Sha512/README.md) | SHA-512, SHA-384, SHA-512/256, and SHA-512/224 of FIPS 180-4 | For messages of fewer than `2^61` bytes, each export returns without a trap the digest of a Lean transcription of FIPS 180-4, and the emitted file holds the module. |
+| [SHA-256](Sha256/README.md) | SHA-256 and SHA-224 of FIPS 180-4 | For messages of fewer than `2^61` bytes, each export returns without a trap the digest of a Lean transcription of FIPS 180-4, and the emitted file holds the module. |
+| [SHA-512](Sha512/README.md) | SHA-512, SHA-384, SHA-512/256, and SHA-512/224 of FIPS 180-4 | The same, for the four functions of the SHA-512 compression. |
 
-[`Sha2`](Sha2/NOTICE) holds material copied from fips-180-4-lean: the transcription of FIPS 180-4 in `Spec`, an implementation on bytes in `Impl`, and its equivalence proofs in `Equiv`.  The NOTICE gives the source, the license, and the changes made to build under Lean 4.34.  The SHA-512 proofs relate the program to `Impl` and use `Equiv`'s theorems about it.  The NIST test vectors are in [`data/hashing`](../../data/hashing/sha2/NOTICE).
+[`Sha2`](Sha2/NOTICE) holds material copied from fips-180-4-lean: the transcription of FIPS 180-4 in `Spec`, an implementation on bytes in `Impl`, and its equivalence proofs in `Equiv`.  The NOTICE gives the source, the license, and the changes made to build under Lean 4.34.  The SHA-256 and SHA-512 proofs relate their programs to `Impl` and use `Equiv`'s theorems about it.  The NIST test vectors are in [`data/hashing`](../../data/hashing/sha2/NOTICE).

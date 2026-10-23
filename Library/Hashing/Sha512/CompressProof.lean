@@ -1,4 +1,5 @@
 import Library.Hashing.Sha512.Program
+import Library.Hashing.Words.Proof
 import Library.Hashing.Sha2.Equiv.SHA512.Compress.Impl
 
 /-! `compress` equals `SHS.SHA512.Impl.compress`, the compression of FIPS 180-4 §6.4.2 in the
@@ -25,15 +26,6 @@ theorem xor_ones (x : UInt64) : x ^^^ 0xFFFFFFFFFFFFFFFF = ~~~x := by
   have h : (0xFFFFFFFFFFFFFFFF : UInt64).toBitVec = BitVec.allOnes 64 := by decide
   rw [UInt64.toBitVec_xor, UInt64.toBitVec_not, h, BitVec.xor_allOnes]
 
-/-- `Fin.foldl` over the indices below `n` as `Nat.fold`. -/
-theorem finFoldl_eq_fold {β : Type} (n : Nat) (g : Nat → β → β) (init : β) :
-    Fin.foldl n (fun x (i : Fin n) => g i.val x) init = Nat.fold n (fun i _ x => g i x) init := by
-  induction n with
-  | zero => simp
-  | succ n ih =>
-    rw [Fin.foldl_succ_last, Nat.fold_succ]
-    exact congrArg (g n) ih
-
 /-- The schedule after `j` steps, as `Nat.fold`. -/
 def schedulePrefix (b : SHS.SHA512.Impl.Block) (j : Nat) : SHS.SHA512.Impl.Schedule :=
   Nat.fold j (fun t _ w => implScheduleStep b t w) (Vector.replicate 80 0)
@@ -46,7 +38,7 @@ theorem scheduleStep_ne (b : SHS.SHA512.Impl.Block) (t : Nat) (w : SHS.SHA512.Im
     · rw [SHS.Equiv.VecBridge.getElem_bang_eq_getElem _ _ hj',
         SHS.Equiv.VecBridge.getElem_bang_eq_getElem _ _ hj']
       by_cases ht : t < 80
-      · rw [SHS.Equiv.VecBridge.set_bang_eq_set _ _ ht, Vector.getElem_set, if_neg (Ne.symm hj)]
+      · rw [SHS.Equiv.VecBridge.set_bang_eq_set _ _ ht, Vector.getElem_set, ite_eq_right (Ne.symm hj)]
       · rw [SHS.Equiv.VecBridge.set_bang_oob _ _ _ ht]
     · rw [SHS.Equiv.VecBridge.getElem_bang_oob _ _ hj', SHS.Equiv.VecBridge.getElem_bang_oob _ _ hj']
   unfold implScheduleStep
@@ -128,7 +120,7 @@ theorem window (m : Words16) : ∀ t k, k < 16 → t + k < 80 →
     intro k hk _
     rw [Function.iterate_zero_apply, Nat.zero_add, schedule_succ _ _ (by omega)]
     unfold scheduleValue
-    rw [if_pos hk]
+    rw [ite_eq_left hk]
     rfl
   | succ t ih =>
     intro k hk htk
@@ -141,7 +133,7 @@ theorem window (m : Words16) : ∀ t k, k < 16 → t + k < 80 →
       subst hk15
       rw [show t + 1 + 15 = t + 16 by omega, schedule_succ _ _ (by omega)]
       unfold scheduleValue
-      rw [if_neg (by omega)]
+      rw [ite_eq_right (by omega)]
       simp only [show t + 16 - 15 = t + 1 by omega, show t + 16 - 2 = t + 14 by omega,
         show t + 16 - 16 = t by omega, show t + 16 - 7 = t + 9 by omega]
       have h0 := ih 0 (by omega) (by omega)

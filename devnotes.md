@@ -35090,10 +35090,10 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 | SHA-3 specification | A transcription of FIPS 202 at the bit level, with independent review | No standalone Lean specification of the same form was found.  SymCrypt's Aeneas-based specification remains a possible cross-check. |
 | Test vectors | Unmodified CAVP response files under `data/hashing/`, with a NOTICE | Runs need no network and read fixed inputs.  The RFC 4231 HMAC vectors go into a Lean test file. |
 
-- [ ] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.  The 64-bit part is done; the 32-bit helpers come with SHA-256.
+- [x] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.
 - [x] Port the SHA-2 specification and check it against the CAVP vectors.
 - [ ] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
-- [ ] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
+- [x] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
 - [ ] HMAC-SHA-256 and HMAC-SHA-512.
 - [ ] SHA-3 and SHAKE.
 - [ ] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
@@ -35119,3 +35119,22 @@ The native vector test agrees with all 129 short and 128 long CAVP messages of e
 - [ ] The full library build and verified driver with the new module.
 
 The user updated `main` with the completed library layout, which `library-layout` also holds.  The hashing work now continues on `hashing-main`, taken from `main`, with the four hashing commits applied unchanged except for the journal's merge with the two new library-check paragraphs.  The Lean sources under the hashing work are the same as on `hashing`, so the minideb2 worktree's build outputs remain valid.  The `hashing` branch stays at its last commit.
+
+## 2026-10-23: SHA-256 and SHA-224
+
+`SHA256/Compress/Match.lean` now builds under Lean 4.34, so the whole of `Equiv` builds, including `Equiv.AxiomCheck`.  Two `convert` steps left goals that Lean 4.34 no longer closes and are now `exact` steps.  A `simp at` that made no progress and an unused fact that failed the same way are removed.  `toSpecState_implCompressFoldl` abstracts the 64-round fold with `generalize` before its final case split, the same repair as in the SHA-512 proofs, and the NOTICE lists each change.
+
+`Library/Hashing/Sha256` implements SHA-256 and SHA-224 on the verified compiler without extending it.  The program holds each 32-bit word in the low half of a `UInt64` and ignores the high half.  Truncation to 32 bits commutes with addition and the bitwise operations, so only right shifts and rotations clear the high half first, and each sigma function masks its argument once.  The SHA-512 program adds in the copied implementation's order so that its proof can equate the two directly.  The SHA-256 program adds in the order of FIPS 180-4, and its proof works on the specification's 32-bit words.  `compress_spec` shows that `compress` equals `SHS.SHA256.compress` on the low halves.  `compress_correct` and the injectivity of lifting a state to the specification's words then give equality with `Impl.compress`.  The module is 5,156 bytes, and every export has `ImplementsTables false`.
+
+`sha256_spec`, `sha224_spec`, `sha256_call`, `sha224_call`, `sha256_module`, and the two file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.  Lean 4.34 deprecates `if_pos`, `if_neg`, `if_true`, and `if_false` in favor of `ite_eq_left`, `ite_eq_right`, `ite_true`, and `ite_false`, which have the same statements, and the SHA-256 and SHA-512 proofs now use the new names.  The copied upstream proofs keep the old names.
+
+The native vector test agrees with all 65 short and 64 long CAVP messages of each function, for the program and for the transcription, and the program reproduces the 100 Monte Carlo checkpoints of each, in 155 seconds.  `tests/verified/run.sh --cases sha256` passed 145 cases, with one retained block and no allocation by the call in each.  The emitted file checks against both file theorems.
+
+On minideb2's AMD Ryzen 3 PRO 7330U, the Wasmtime host hashes random bytes at 49.6 MiB/s with SHA-256 and 87.5 MiB/s with SHA-512.  Each rate comes from the best of three calls on 257 MiB and on 1 MiB, whose difference removes the fixed cost of compiling the module, and every digest agrees with coreutils.  On the same files `sha256sum` reaches 1,571 MiB/s and `sha512sum` 837 MiB/s.  A SHA-256 round, with its share of loading and schedule, takes 19.2 ns, and a SHA-512 round takes 17.4 ns.  The two compressions have the same structure on 64-bit operations, so the difference of 1.8 ns bounds the cost of holding 32-bit words in 64-bit words at about a tenth of SHA-256's time.  The rest of the gap to `sha512sum`, a factor of about ten, lies elsewhere in the compiled code, and locating it needs a Wasm disassembler, which neither machine has.
+
+- [x] SHA-256 and SHA-224: program, compilation with `aborts = false`, equality proof, file theorem, vectors, and cases.
+- [x] The 32-bit helpers and their truncation lemmas.
+- [x] Measure SHA-256 in Wasmtime.
+- [ ] Decide on a native `UInt32` type in the compiler.
+- [ ] The Merkle–Damgård reduction for SHA-512 and SHA-256.
+- [ ] The full library build and verified driver with the new modules.
