@@ -34956,8 +34956,8 @@ The proposed next steps are:
 - [x] Confirm the library layout and the first set of public APIs.
 - [x] Extract the shared PRNG and orbit code, the mathematically specified arithmetic routines, the checked rounding operations, and scalar minmod with their current proofs.
 - [x] Extract the selected array, list, sorting, reduction, and linear-algebra implementations with explicit specifications and a record of remaining theorem work.  Keep feature-specific compositions and request-specific drivers as examples that import them.
-- [ ] Review tree, selection, sampling, and order-book APIs before promoting their application or fixture types to public library types.
-- [ ] Update compilation targets, imports, generated declarations, tests, manuals, and links.  Compare exports and emitted bytes and run the existing gates for each extraction.
+- [ ] Review the remaining selection, sampling, and order-book APIs before promoting their application or fixture types to public library types.
+- [x] Update compilation targets, imports, generated declarations, tests, manuals, and links.  Compare exports and emitted bytes and run the existing gates for each extraction.
 
 The review changed the journal after source and theorem inspection.  The local-link and whitespace checks passed.
 
@@ -35070,3 +35070,5 @@ At the user's request, an isolated `wasi` worktree now exists at a separate chec
 The fresh preceding-source baseline passed the byte comparison: all 73 modules match the reorganization's emitted bytes, and the 15 added library modules account for the rest of its 88-module registry.  Each preceding module was built and emitted from `d07665fa`, whose Lean sources, manifest, and toolchain match `158b77c2`.  Per-module records and binaries remain under `build/reorg/fresh-baseline/`.  The 54 differences in the older saved files therefore came from stale emissions.  The original saved files and the diagnostic comparison remain preserved.
 
 The original WGSL corpus passed all 474 cases on each of SwiftShader and llvmpipe.  The verified WGSL corpus passed all 233 cases on each driver.  Their cases, shaders, failure files, and summary logs remain under `build/reorg/wgsl-original*` and `build/reorg/wgsl-verified*`.  The verified GPT32 kernel corpus and complete generation checks are the remaining execution gates.
+
+The verified GPT32 kernel corpus passed all 694 cases on each Vulkan driver.  Complete verified GPT32 generation passed all three random models: fifteen generation steps on Wasm and fifteen on each of SwiftShader and llvmpipe, with every score equal bit for bit to native Lean and every greedy token equal.  The logs are `build/reorg/wgsl-verified-gpt32.log` and `build/reorg/gpt32-final.log`.  All required library gates now pass.  The remaining selection, sampling, order-book, and broader statistics proposals are future library work.  The current implementation is ready for the requested merge and push to `main`.
