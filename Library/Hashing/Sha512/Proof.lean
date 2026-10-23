@@ -24,25 +24,33 @@ theorem blocks_toNat (n : UInt64) (hn : n.toNat < 2 ^ 61) :
       Nat.and_two_pow_sub_one_eq_mod]
   unfold blockCount
   by_cases h : n.toNat % 128 < 112
-  · rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_left h, UInt64.toNat_add, h7]
+  · rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_left h,
+      UInt64.toNat_add, h7]
     simp; omega
-  · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_right h, UInt64.toNat_add, h7]
+  · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, h127]; exact h), ite_eq_right h,
+      UInt64.toNat_add, h7]
     simp; omega
 
-/-- Block `i` of the program's padded message is block `i` of `implPaddedBlocks`. -/
-theorem loadBlock_toVec (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) (i : Nat)
-    (hi : i < blockCount n.toNat) :
-    (loadBlock msg n (UInt64.ofNat (16 * blockCount n.toNat - 1)) (UInt64.ofNat i <<< 4)).toVec =
-      SHS.SHA512.Impl.toU64s (paddedBlock (bytes msg n.toNat) i) := by
+/-- Block `i` of the program's padded message after the prefix `pre` of `p` whole blocks is
+block `p + i` of `implPaddedBlocks`. -/
+theorem loadBlock_toVec (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p)
+    (msg : Array UInt64) (n len : UInt64) (hlen : len.toNat = 128 * p + n.toNat)
+    (hl : len.toNat < 2 ^ 61) (i : Nat) (hi : i < blockCount n.toNat) :
+    (loadBlock msg n len (UInt64.ofNat (16 * blockCount n.toNat - 1))
+        (UInt64.ofNat i <<< 4)).toVec =
+      SHS.SHA512.Impl.toU64s (paddedBlock (pre ++ bytes msg n.toNat) (p + i)) := by
   have hN : blockCount n.toNat ≤ n.toNat / 128 + 2 := by unfold blockCount; split <;> omega
   have key : ∀ k (hk : k < 16),
-      paddedWord msg n (UInt64.ofNat (16 * blockCount n.toNat - 1))
+      paddedWord msg n len (UInt64.ofNat (16 * blockCount n.toNat - 1))
           ((UInt64.ofNat i <<< 4) + UInt64.ofNat k) =
-        SHS.SHA512.Impl.beU64 (paddedBlock (bytes msg n.toNat) i) ⟨k, hk⟩ := by
+        SHS.SHA512.Impl.beU64 (paddedBlock (pre ++ bytes msg n.toNat) (p + i)) ⟨k, hk⟩ := by
     intro k hk
-    rw [base_add i k (by omega), paddedWord_eq _ _ hn _ (by omega), beU64_paddedBlock]
-  have key0 : paddedWord msg n (UInt64.ofNat (16 * blockCount n.toNat - 1))
-      (UInt64.ofNat i <<< 4) = SHS.SHA512.Impl.beU64 (paddedBlock (bytes msg n.toNat) i) 0 := by
+    rw [base_add i k (by omega), paddedWord_eq pre p hpre _ _ _ hlen hl _ (by omega),
+      beU64_paddedBlock]
+    exact congrArg _ (by simp only; omega)
+  have key0 : paddedWord msg n len (UInt64.ofNat (16 * blockCount n.toNat - 1))
+      (UInt64.ofNat i <<< 4) =
+        SHS.SHA512.Impl.beU64 (paddedBlock (pre ++ bytes msg n.toNat) (p + i)) 0 := by
     have := key 0 (by decide)
     rwa [show (UInt64.ofNat 0 : UInt64) = 0 from rfl, UInt64.add_zero] at this
   apply Vector.ext
@@ -54,18 +62,21 @@ theorem loadBlock_toVec (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61
   · exact key0
   all_goals exact key _ (by decide)
 
-/-- The program's final hash value is that of the copied implementation. -/
-theorem hashWith_toVec (iv : Words8) (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) :
-    (hashWith roundConstants iv msg n).toVec =
-      implSha512StateRefactored (bytes msg n.toNat) iv.toVec := by
-  unfold hashWith implSha512StateRefactored
-  rw [implPaddedBlocks_foldl, paddedSize, Nat.mul_div_cancel_left _ (by decide : 0 < 128),
-    finFoldl_eq_fold _ (fun i b => SHS.SHA512.Impl.compress b
-      (SHS.SHA512.Impl.toU64s (paddedBlock (bytes msg n.toNat) i)))]
+/-- The hash value that `hashFrom` reaches from `h` is the implementation's after the blocks that
+follow the prefix `pre`. -/
+theorem hashFrom_toVec (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p) (h : Words8)
+    (msg : Array UInt64) (n len : UInt64) (hlen : len.toNat = 128 * p + n.toNat)
+    (hl : len.toNat < 2 ^ 61) :
+    (hashFrom roundConstants h msg n len).toVec =
+      Nat.fold (blockCount n.toNat) (fun i _ b => SHS.SHA512.Impl.compress b
+        (SHS.SHA512.Impl.toU64s (paddedBlock (pre ++ bytes msg n.toNat) (p + i)))) h.toVec := by
+  have hn : n.toNat < 2 ^ 61 := by omega
+  unfold hashFrom
   dsimp only
   rw [LeanExe.loop, blocks_toNat n hn]
-  have hlast : (((n >>> 7) + (if (n &&& 127) < 112 then (1 : UInt64) else 2)) <<< (4 : UInt64)) - 1 =
-      UInt64.ofNat (16 * blockCount n.toNat - 1) := by
+  have hlast :
+      (((n >>> 7) + (if (n &&& 127) < 112 then (1 : UInt64) else 2)) <<< (4 : UInt64)) - 1 =
+        UInt64.ofNat (16 * blockCount n.toNat - 1) := by
     apply UInt64.toNat_inj.mp
     have hb := blocks_toNat n hn
     have hN : blockCount n.toNat ≤ n.toNat / 128 + 2 := by unfold blockCount; split <;> omega
@@ -75,19 +86,72 @@ theorem hashWith_toVec (iv : Words8) (msg : Array UInt64) (n : UInt64) (hn : n.t
     · rw [UInt64.le_iff_toNat_le, UInt64.toNat_shiftLeft, hb]; simp [Nat.shiftLeft_eq]; omega
   rw [hlast]
   have hk : ∀ k, k ≤ blockCount n.toNat →
-      (Nat.fold k (fun i _ h => compress roundConstants h
-          (loadBlock msg n (UInt64.ofNat (16 * blockCount n.toNat - 1))
-            (UInt64.ofNat i <<< 4))) iv).toVec =
+      (Nat.fold k (fun i _ s => compress roundConstants s
+          (loadBlock msg n len (UInt64.ofNat (16 * blockCount n.toNat - 1))
+            (UInt64.ofNat i <<< 4))) h).toVec =
         Nat.fold k (fun i _ b => SHS.SHA512.Impl.compress b
-          (SHS.SHA512.Impl.toU64s (paddedBlock (bytes msg n.toNat) i))) iv.toVec := by
+          (SHS.SHA512.Impl.toU64s (paddedBlock (pre ++ bytes msg n.toNat) (p + i)))) h.toVec := by
     intro k
     induction k with
     | zero => intro _; rfl
     | succ k ih =>
       intro hk
       rw [Nat.fold_succ, Nat.fold_succ, compress_toVec, ih (by omega),
-        loadBlock_toVec _ _ hn _ (by omega)]
+        loadBlock_toVec pre p hpre _ _ _ hlen hl _ (by omega)]
   exact hk _ (Nat.le_refl _)
+
+/-- Block `i` of the whole blocks of `pre`. -/
+def preBlock (pre : ByteArray) (i : Nat) : Vector UInt8 128 :=
+  Vector.ofFn fun (j : Fin 128) => pre.get! (i * 128 + j.val)
+
+theorem paddedBlock_pre (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p)
+    (msg : Array UInt64) (n i : Nat) (hi : i < p) :
+    paddedBlock (pre ++ bytes msg n) i = preBlock pre i := by
+  apply Vector.ext
+  intro j hj
+  simp only [paddedBlock, preBlock, Vector.getElem_ofFn]
+  rw [get!_implPaddedBytes_data _ _ (by rw [ByteArray.size_append]; omega),
+    SHS.Equiv.ByteArray.get!_append_left _ _ _ (by omega)]
+
+theorem fold_split {β : Type} (g : Nat → β → β) (init : β) (p : Nat) : ∀ N,
+    Nat.fold (p + N) (fun i _ b => g i b) init =
+      Nat.fold N (fun i _ b => g (p + i) b) (Nat.fold p (fun i _ b => g i b) init)
+  | 0 => rfl
+  | N + 1 => by rw [← Nat.add_assoc, Nat.fold_succ, Nat.fold_succ, fold_split g init p N]
+
+/-- A fold over the padded blocks of `pre ++ m` is the fold over the blocks of `m` from the fold
+over the `p` blocks of `pre`. -/
+theorem foldl_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 128 * p) (msg : Array UInt64)
+    (n : Nat) {β : Type} (c : β → Vector UInt8 128 → β) (init : β) :
+    (implPaddedBlocks (pre ++ bytes msg n)).foldl c init =
+      Nat.fold (blockCount n) (fun i _ b => c b (paddedBlock (pre ++ bytes msg n) (p + i)))
+        (Nat.fold p (fun i _ b => c b (preBlock pre i)) init) := by
+  have hp : ∀ k, k ≤ p →
+      Nat.fold k (fun i _ b => c b (paddedBlock (pre ++ bytes msg n) i)) init =
+        Nat.fold k (fun i _ b => c b (preBlock pre i)) init := by
+    intro k
+    induction k with
+    | zero => intro _; rw [Nat.fold_zero, Nat.fold_zero]
+    | succ k ih =>
+      intro hk
+      rw [Nat.fold_succ, Nat.fold_succ, ih (by omega),
+        paddedBlock_pre pre p hpre msg n k (by omega)]
+  rw [implPaddedBlocks_foldl, paddedSize pre p hpre,
+    Nat.mul_div_cancel_left _ (by decide : 0 < 128),
+    finFoldl_eq_fold _ (fun i b => c b (paddedBlock (pre ++ bytes msg n) i)),
+    fold_split (fun i b => c b (paddedBlock (pre ++ bytes msg n) i)), hp p (Nat.le_refl _)]
+
+/-- The program's final hash value of a message from the initial value `iv` is the
+implementation's. -/
+theorem hashFrom_iv (iv : Words8) (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) :
+    (hashFrom roundConstants iv msg n n).toVec =
+      implSha512StateRefactored (bytes msg n.toNat) iv.toVec := by
+  have e := foldl_append ByteArray.empty 0 rfl msg n.toNat
+    (fun s b => SHS.SHA512.Impl.compress s (SHS.SHA512.Impl.toU64s b)) iv.toVec
+  simp only [ByteArray.empty_append, Nat.fold_zero] at e
+  unfold implSha512StateRefactored
+  rw [e, hashFrom_toVec ByteArray.empty 0 rfl iv msg n n (by simp) hn]
+  simp only [ByteArray.empty_append]
 
 /-- Byte `i` of digest words whose word `i / 8` is `bswap h[i / 8]`, in the form in which
 `SHS.SHA512.Impl` extracts digest bytes from the hash value `h`. -/
@@ -138,9 +202,9 @@ theorem sha512_bytes (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) :
     (sha512 msg n).bytes = SHS.SHA512.Impl.sha512 (bytes msg n.toNat) := by
   rw [impl_sha512_eq_refactored _ (by rw [bytes_size]; exact hn)]
   unfold implSha512Refactored
-  rw [← iv512_toVec, ← hashWith_toVec _ _ _ hn]
+  rw [← iv512_toVec, ← hashFrom_iv _ _ _ hn]
   unfold sha512 sha512With
-  generalize hashWith roundConstants iv512 msg n = h
+  generalize hashFrom roundConstants iv512 msg n n = h
   apply Vector.ext
   intro i hi
   rw [Words8.bytes, Vector.getElem_ofFn, Vector.getElem_ofFn]
@@ -150,9 +214,9 @@ theorem sha384_bytes (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) :
     (sha384 msg n).bytes = SHS.SHA512.Impl.sha384 (bytes msg n.toNat) := by
   rw [impl_sha384_eq_refactored _ (by rw [bytes_size]; exact hn)]
   unfold implSha384Refactored
-  rw [← iv384_toVec, ← hashWith_toVec _ _ _ hn]
+  rw [← iv384_toVec, ← hashFrom_iv _ _ _ hn]
   unfold sha384 sha384With
-  generalize hashWith roundConstants iv384 msg n = h
+  generalize hashFrom roundConstants iv384 msg n n = h
   apply Vector.ext
   intro i hi
   rw [Words6.bytes, Vector.getElem_ofFn, Vector.getElem_ofFn]
@@ -162,9 +226,9 @@ theorem sha512_256_bytes (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 6
     (sha512_256 msg n).bytes 32 = SHS.SHA512.Impl.sha512_256 (bytes msg n.toNat) := by
   rw [impl_sha512_256_eq_refactored _ (by rw [bytes_size]; exact hn)]
   unfold implSha512_256Refactored
-  rw [← iv512_256_toVec, ← hashWith_toVec _ _ _ hn]
+  rw [← iv512_256_toVec, ← hashFrom_iv _ _ _ hn]
   unfold sha512_256 sha512_256With
-  generalize hashWith roundConstants iv512_256 msg n = h
+  generalize hashFrom roundConstants iv512_256 msg n n = h
   apply Vector.ext
   intro i hi
   rw [Words4.bytes, Vector.getElem_ofFn, Vector.getElem_ofFn]
@@ -174,9 +238,9 @@ theorem sha512_224_bytes (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 6
     (sha512_224 msg n).bytes 28 = SHS.SHA512.Impl.sha512_224 (bytes msg n.toNat) := by
   rw [impl_sha512_224_eq_refactored _ (by rw [bytes_size]; exact hn)]
   unfold implSha512_224Refactored
-  rw [← iv512_224_toVec, ← hashWith_toVec _ _ _ hn]
+  rw [← iv512_224_toVec, ← hashFrom_iv _ _ _ hn]
   unfold sha512_224 sha512_224With
-  generalize hashWith roundConstants iv512_224 msg n = h
+  generalize hashFrom roundConstants iv512_224 msg n n = h
   apply Vector.ext
   intro i hi
   rw [Words4.bytes, Vector.getElem_ofFn, Vector.getElem_ofFn]

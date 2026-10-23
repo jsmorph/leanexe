@@ -35147,3 +35147,12 @@ The proof splits on the message lengths.  Different lengths give different lengt
 - [x] The Merkle–Damgård reduction for SHA-256 and SHA-512, for bit messages and byte strings.
 - [ ] The full library build and verified driver with the new modules, which wait for memory.
 - [ ] HMAC-SHA-256 and HMAC-SHA-512.
+
+## 2026-10-23: Hashing from a prefix
+
+The user approved generalizing the SHA-256 and SHA-512 programs for HMAC, which hashes a key block followed by the message without copying them.  `paddedWord` and `loadBlock` take the byte count `len` of the length field separately from the count `n` of message bytes in `msg`.  `hashFrom` replaces `hashWith`: it starts from a given hash value and hashes the rest of a message whose first `len - n` bytes, a whole number of blocks, gave that value.  The digests call `hashFrom` with the initial value and `len = n`.  The padding lemmas now concern `pre ++ bytes msg n`, where `pre` holds `p` whole blocks, and `foldl_append` splits the implementation's fold over the padded blocks at the prefix.
+
+`foldl_append` is stated for an arbitrary function in place of the compression.  Its first version used `Impl.compress` directly, and an `rfl` and a `rw` on two folds of `Impl.compress` over different blocks unfolded the compression until the heartbeat limit.  The modules grew to 5,209 and 5,645 bytes.  The SHA-256 and SHA-512 cases pass 145 and 405, the file theorems check, and every theorem still depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Generalize SHA-256 and SHA-512 to hash from a prefix of whole blocks.
+- [ ] HMAC-SHA-256 and HMAC-SHA-512: specification, program, proof, module, RFC 4231 vectors, and cases.

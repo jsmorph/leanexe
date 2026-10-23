@@ -7,6 +7,6 @@ namespace Library.Hashing.Sha256
 open Library.Hashing.Words
 
 verified_compile compiled := [bswap, paddedWord, loadBlock, roundStep, advance, compress,
-  hashWith, sha256With, sha224With, sha256, sha224]
+  hashFrom, sha256With, sha224With, sha256, sha224]
 
 end Library.Hashing.Sha256
