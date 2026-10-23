@@ -23,7 +23,8 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.release_runs,
     ``Verified.Wasi.wp_alloc,
     ``Verified.Wasi.wp_release,
-    ``Verified.Wasi.wp_exit]
+    ``Verified.Wasi.wp_exit,
+    ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do

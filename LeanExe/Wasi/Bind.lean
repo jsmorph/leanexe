@@ -82,6 +82,9 @@ theorem Exec.unbind {World : Type} {host : Host World} (action : Action α) :
     | exit hHost =>
       exact ⟨_, _, .exited _, [], .exit hHost, ⟨rfl, rfl, rfl⟩,
         (List.append_nil _).symm⟩
+    | exitTrap hHost =>
+      exact ⟨_, _, .trapped _, [], .exitTrap hHost, ⟨rfl, rfl, rfl⟩,
+        (List.append_nil _).symm⟩
   | loop count state test step continuation _ ih =>
     intro β next world trace outcome final hRun
     cases hRun with

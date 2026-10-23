@@ -36,7 +36,7 @@ The proposed public namespace is `LeanExe.Wasi`.  Native API modules import Lean
 | `readSome (capacity : UInt64) : Action ReadResult` | One stdin read after capacity validation and any required allocation. |
 | `writeStdoutSome (bytes : Bytes) : Action WriteResult` | One stdout write, borrowing `bytes`. |
 | `writeStderrSome (bytes : Bytes) : Action WriteResult` | One stderr write, borrowing `bytes`. |
-| `exit (code : UInt64) : Action α` | Terminate with the low 32 bits of `code` as the WASI exit status. |
+| `exit (code : UInt64) : Action α` | A terminal exit request with the low 32 bits of `code`, producing an accepted exit or a host trap. |
 | `loop (count : UInt64) (init : σ) (test : UInt64 → σ → Bool) (step : UInt64 → σ → Action σ) : Action σ` | At most `count` iterations, carrying a state of an accepted runtime value type. |
 | `ReadResult` | A record with `errno : UInt64` and `bytes : Bytes`. |
 | `WriteResult` | A record with `errno : UInt64` and `count : UInt64`. |
@@ -59,9 +59,7 @@ A successful read returns an owned buffer containing exactly the reported bytes,
 
 A successful write returns the host's count, including a short or zero count.  The count is at most the supplied length.  Empty writes still call `fd_write`, so host errors remain observable.  A write error returns its errno and a count of zero.  That zero is a sentinel: `count` describes transferred bytes only when `errno = 0`.  The input buffer remains borrowed throughout either outcome.  Source code can compare `count` with `Bytes.size bytes` before proceeding.
 
-`exit code` has terminal source semantics and no continuation.  The explicit conversion is `code mod 2^32`.  A returned command-entry status uses the same conversion.  The formal theorem records the WASI status.  An operating system or shell may expose a narrower process status.
-
-The low-bit rule gives every UInt64 argument defined exit behavior and matches Lean's unsigned narrowing operation.
+`exit code` has terminal source semantics and no continuation.  It passes `code mod 2^32` as the `proc_exit` argument.  A returned command-entry status uses the same conversion.  The host may accept that request or fail.  Acceptance produces an exit with the exact narrowed status.  Failure produces a host-trap outcome and preserves prior effects.  The raw status of an accepted exit remains separate from its operating-system process status.  The narrowing rule defines the import argument for every UInt64 input.
 
 ### Byte operations
 
@@ -119,7 +117,7 @@ The memory frame excludes scratch and, for a read, the newly allocated writable 
 
 ### Command meaning
 
-The command semantics relates a source environment and host world to a result, final world, and ordered event trace.  A normal return carries a value.  Exit carries the narrowed status.  A host trap carries its committed world and trap identity.  Bounded-loop execution repeats the body in source order and preserves every earlier event.  A separate prefix relation records completed events, the current world, and a residual command when a guest resource failure interrupts execution.
+The command semantics relates a source environment and host world to a result, final world, and ordered event trace.  A normal return carries a value.  An accepted exit carries the narrowed status.  A host trap, including rejection of an exit request, carries its committed world and trap identity.  Bounded-loop execution repeats the body in source order and preserves every earlier event.  A separate prefix relation records completed events, the current world, and a residual command when a guest resource failure interrupts execution.
 
 Events record host invocations: the operation, selected fd, requested bytes or capacity, returned errno and successful count, and committed transfer.  Pure computation and capacity rejection leave this trace unchanged.  Stdout and stderr events share one ordered trace.  The host world may map them to the same resource.  The model also permits stdin and output descriptors to alias.  Separate byte logs are useful derived observations but do not establish ordering across descriptors or model aliasing alone.
 
@@ -135,9 +133,9 @@ On errno, the model may record a committed prefix for the failed operation.  The
 
 Host-trap outcomes also retain the world committed before the trap.  Frame conditions still protect unrelated guest memory.  Normal-return ownership postconditions apply after a return.  A host trap, resource trap, or exit ends the host's use of that instance.
 
-Talos models host invocation through `HostEnv`, `HostSpec`, and `HostResult`, as pinned by [the dependency manifest](../lake-manifest.json).  `HostResult` has `Return`, `Trap`, and `Throw` outcomes.  The exit model therefore uses a distinguished world field `exited : Option UInt64` and an exact nonreturning `proc_exit` condition: it records the narrowed status and produces the designated exit trap.  Initial worlds have `exited = none`.  Read and write transitions preserve that field.  The exit theorem requires the exit call's designated outcome and recorded status.  An arbitrary trap message or a nonzero guest status cannot establish exit.  The three-operation host specification excludes thrown exceptions.
+Talos models host invocation through `HostEnv`, `HostSpec`, and `HostResult`, as pinned by [the dependency manifest](../lake-manifest.json).  `HostResult` has `Return`, `Trap`, and `Throw` outcomes.  The exit model uses a distinguished world field `exited : Option UInt64`.  Accepted exit records the narrowed status and produces the designated exit trap.  Exit failure produces a host trap and preserves the previous exit field and committed effects.  Initial worlds have `exited = none`.  Read and write transitions preserve that field.  The accepted-exit theorem requires the designated outcome and recorded status.  An arbitrary trap message or a nonzero guest status cannot establish acceptance.  The host specification excludes ordinary return from `proc_exit` and thrown exceptions from all three operations.
 
-This design can use a proof-side exit marker and exact trap identity without changing Talos's outcome type.  A future explicit exit outcome would require a Talos extension and a separate review.  The real Wasmtime exit-status result is related to the modeled exit through the external host assumptions and execution tests.
+This design can use a proof-side exit marker and exact trap identity without changing Talos's outcome type.  A future explicit exit outcome would require a Talos extension and a separate review.  Relating Wasmtime's accepted exits and exit failures to their modeled outcomes remains an external host assumption checked by execution tests.
 
 ## Module construction and compiler proofs
 
@@ -171,7 +169,7 @@ The proof covers the instruction subset emitted by the pure compiler, including 
 
 ### Typed commands and reflection
 
-The effect IR embeds typed pure expressions and has constructors for return, binding, conditionals, first-order effectful calls, bounded loops, the three stream operations, and exit.  Contexts record the types and ownership modes of live values.  Its result descriptor permits ordinary accepted values and erased Unit.  Read and write constructors invoke their transfer imports.  Exit emits the call to `proc_exit` followed by `unreachable`, which permits validation at any result type.  The conforming host produces the designated exit outcome at the call.
+The effect IR embeds typed pure expressions and has constructors for return, binding, conditionals, first-order effectful calls, bounded loops, the three stream operations, and exit.  Contexts record the types and ownership modes of live values.  Its result descriptor permits ordinary accepted values and erased Unit.  Read and write constructors invoke their transfer imports.  Exit emits the call to `proc_exit` followed by `unreachable`, which permits validation at any result type.  The host call terminates with a designated exit or a permitted host trap.
 
 Compilation orders operand evaluation before its effect.  It materializes operation results before evaluating a continuation.  Cleanup uses liveness across both the operation and continuation.  An unused read result is still read and then released.  A borrowed write argument remains live through the syscall.  Branches and loop iterations carry the same ownership and caller-frame obligations as pure code.
 
@@ -185,13 +183,13 @@ The universal compiler theorem is proved by command structure, using the pure tr
 
 On normal return, values have the declared ownership, and retained caller regions keep their contents and separation.  A permitted guest resource trap matches a source prefix and residual command.  It preserves the effects already committed and remains distinct from exit.  Terminal outcomes require the host to discard the instance.
 
-A separate total-execution theorem establishes a return or designated exit when allocation and depth budgets fit, pure callees meet their termination conditions, and every reached host call returns or honors exit.  Returned errnos are ordinary results under this theorem.  Host traps and guest resource traps retain their prefix-safety statement.  Kernel-checked source-correspondence proofs specialize these statements to each reflected definition.
+A separate total-execution theorem establishes a return or designated exit when allocation and depth budgets fit, pure callees meet their termination conditions, every reached read or write call returns, and the host accepts each reached exit request.  Returned errnos are ordinary results under this theorem.  Host traps, including exit rejection, and guest resource traps retain their prefix-safety statement.  Kernel-checked source-correspondence proofs specialize these statements to each reflected definition.
 
 ## Lifecycle, bounds, and execution host
 
 ### Callable and command forms
 
-A callable module exports selected effectful functions, `alloc`, `release`, `memory`, and the existing allocation counters.  Its instance persists across successful calls.  Globals and data segments establish its initial state during instantiation.  The pinned reactor ABI makes `_initialize` optional, and this proposal omits that hook.  Host code provides the three streams before invoking exports, serializes calls, and releases owned returned byte roots.  A returned errno permits another call.  Exit and traps terminate the host's use of the instance.
+A callable module exports selected effectful functions, `alloc`, `release`, `memory`, and the existing allocation counters.  Its instance persists across successful calls.  Globals and data segments establish its initial state during instantiation.  The pinned reactor ABI makes `_initialize` optional, and this proposal omits that hook.  Host code provides the three streams before invoking exports, serializes calls, and releases owned returned byte roots.  A returned errno permits another call.  An accepted exit, a host failure, or a guest trap ends the host's use of the instance.
 
 A command module exports `_start : () → ()` and `memory`.  It calls a selected closed `Action UInt64` entry and sends its returned status to `proc_exit`.  Explicit exit inside that entry follows the same terminal path.  The host invokes `_start` once and discards the instance afterward.  Debug allocation-counter exports belong to the callable test form.  Both forms export an empty `__indirect_function_table` to follow the pinned application ABI.  Source operations in this design use no indirect function pointers.
 
@@ -217,19 +215,11 @@ The host uses the repository's pinned Wasmtime 44.0.0 C API, configured through 
 
 The host configures guest stdin, stdout, and stderr through inheritance or explicit file redirection.  Execution tests redirect guest output to separate capture files and send returned values, allocation counts, exit status, and host diagnostics to control outputs.  This preserves guest bytes for exact comparisons.  Interactive command mode inherits stdio.  After an engine failure, it reports the error on host stderr and returns a failure status.
 
-The command host maps the engine's distinguished WASI exit result to its process status.  Tests retain the raw unsigned 32-bit status separately from the operating system's process status.  Other engine errors remain errors and retain captured guest output for diagnosis.  The host releases or discards each instance according to the lifecycle above.
+The pinned [exit-code type](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx#L605-L606) is `u32`.  The [exit declaration](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx#L426-L432) marks `proc_exit` as nonreturning and leaves nonzero meanings to the environment.  [Wasmtime 44's implementation](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs#L2614-L2625) accepts statuses below 126 and rejects 126 or above as an engine error.  This range concerns the narrowed argument: `2^32 + 7` requests accepted status 7, while `2^32 + 126` requests rejected status 126.
+
+The host identifies accepted exits through [`wasmtime_error_exit_status`](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/c-api/src/error.rs#L52-L62).  Its control output records the accepted unsigned 32-bit status, and its process status uses the low eight bits.  Exit rejection receives the engine-error diagnostic and process status 1, with no accepted exit record.  Captured guest output remains available after either terminal outcome, and the host discards the instance.
 
 Lean's kernel checks the compiler and byte proofs against Talos and the specified host relations.  Wasmtime, the C compiler, OS streams, the native action interpreter, and real host progress remain external assumptions tested by execution.  Standard WASI linking supplies compatibility with the selected ABI.
-
-### Exit acceptance: pending review
-
-This proposal is pending the user's decision.  The existing exit semantics and host requirements above remain the approved design.
-
-The proposed revision keeps standard Wasmtime linking, `exit : UInt64 → Action α`, and the `code mod 2^32` argument to `proc_exit`.  It distinguishes that argument from host acceptance.  An accepted request produces a designated exit with the same unsigned status.  A rejected request produces a terminal host-trap outcome without recording an accepted status.  Both outcomes preserve prior effects and prevent continuation.  The total-execution guarantee would require host acceptance of each reached exit request.  OS status narrowing would apply only to accepted exits.
-
-The pinned [exit-code type](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx#L605-L606) is `u32`.  The [exit declaration](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx#L426-L432) marks `proc_exit` as nonreturning and leaves nonzero meanings to the environment.  [Wasmtime 44's implementation](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs#L2614-L2625) accepts statuses below 126 and rejects 126 or above as an engine error.  That rejection differs from an accepted exit whose OS representation loses high bits.
-
-The pinned [linker shadowing API](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/c-api/include/wasmtime/linker.h#L63-L68) supports replacing `proc_exit` with a C callback.  Accepting every `UInt32` through that callback would establish a different host policy and require embedding-owned state for exit classification.  Stock Wasmtime would continue to reject statuses of 126 or above when running the same binary.
 
 ## Implementation and acceptance
 
@@ -259,10 +249,10 @@ The first write theorem quantifies arbitrary borrowed bytes, initial worlds, and
 | Test or proof group | Cases and acceptance condition |
 |---|---|
 | ABI and decoding | Exact three imports and signatures, correct export/type/function indices, the empty function-table section and export, valid one-iovec layout, zero and maximum-width counts, checked narrowing, round-trip decoding, and a theorem connecting emitted example bytes to the compiled module.  Invalid table types and export indices fail the profile checks. |
-| Host-model execution | Arbitrary short reads/writes, zero progress, positive-capacity EOF, zero-capacity reads, errnos with permitted committed prefixes, exit, and a foreign host trap.  The joint trace preserves stdout/stderr order and permits descriptor aliasing. |
+| Host-model execution | Arbitrary short reads/writes, zero progress, positive-capacity EOF, zero-capacity reads, errnos with permitted committed prefixes, accepted exit, exit rejection, and a foreign host trap.  The joint trace preserves stdout/stderr order and permits descriptor aliasing. |
 | Ownership and memory | Discarded reads, returned reads, read error, EOF, allocated-empty owned and borrowed inputs, retained aliases, branch and loop cleanup, untouched scratch-adjacent bytes, and retained caller regions.  Normal returns leave exactly the expected roots allocated. |
 | Source reflection | Discarded effect results still execute, named actions execute once per sequencing, helper calls, Unit results, conditionals, bounded loops, byte access/build, and rejection of unsupported action escape. |
-| Native execution | Binary input including 0 and 255, stdout and stderr, EOF, missing/failing streams, more than one call per callable instance, command exit zero/nonzero, and the documented exit narrowing.  Native expectations account for the counts the standard host returns. |
+| Native execution | Binary input including 0 and 255, stdout and stderr, EOF, missing/failing streams, and repeated callable calls.  Host fixtures check accepted statuses 0, 7, and 125, rejected requests 126, 256, and `2^32 - 1`, and low-32-bit argument conversion.  Exit rejection preserves prior output, and every terminal outcome prevents later calls.  Native expectations account for the counts the standard host returns. |
 | Proof audit | Universal compiler, wrapper, transport, ownership, initial-store, source-correspondence, and byte-file theorems use only `propext`, `Classical.choice`, and `Quot.sound`. |
 | Existing compiler outputs | The current pure import-free corpus keeps its exact bytes.  The existing execution, allocation, numerical, WGSL, and GPT32 gates pass. |
 
@@ -276,6 +266,7 @@ The proposed `tests/wasi/run.sh` invokes the repository runner and checks its re
 |---|---|---|
 | Zero-capacity read | One zero-length syscall.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
 | Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | A checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
+| Exit acceptance | Standard host linking with accepted-exit and terminal host-failure outcomes.  A guarantee of return or designated exit requires host acceptance of every reached exit request. | A custom callback accepting every UInt32 changes embedding policy and exit classification. |
 | Bytes | A single allocation root plus logical UInt64 length. | A length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |
 | Read result | An errno-and-bytes record, empty on error. | A heap-valued sum requires a broader accepted sum representation. |
 | Host errors | Permit the declared current-operation prefix and preserve prior effects.  Count is valid on success. | An unchanged-world error rule needs a stronger host guarantee. |
