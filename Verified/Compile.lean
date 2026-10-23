@@ -408,6 +408,8 @@ words on the stack, so they share their locals. -/
 def Expr.width : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .word _ | _, _, .bool _ | _, _, .size _ | _, _, .float _ | _, _, .float32 _
   | _, _, .leSize _ _ => 0
+  | _, _, .bytesEmpty | _, _, .bytesSize _ => 0
+  | _, _, .bytesGet _ index => max index.width 1
   | _, _, .var (t := t) _ => t.copyScratch
   | _, _, .bin op left right => max op.scratch (max left.width right.width)
   | _, _, .cmp _ left right | _, _, .and left right | _, _, .or left right
@@ -627,6 +629,17 @@ component from the tuple variable's positions. -/
 def Expr.code (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
     {Γ : List Ty} → {t : Ty} → Expr S Γ t → Program
   | _, _, .word value => [.constI64 value]
+  | _, _, .bytesEmpty => [.constI64 0, .constI64 0]
+  | _, _, .bytesSize x =>
+    [.localGet ((slots.getD x.index default).loc + 1)] ++
+      (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+        releaseCode .bytes (slots.getD x.index default).loc else [])
+  | _, _, .bytesGet x index =>
+    index.code h slots base (fun i => live i || i == x.index) ++ [.localSet base] ++
+      Bytes.getCode (slots.getD x.index default).loc
+        ((slots.getD x.index default).loc + 1) base ++
+      (if (slots.getD x.index default).mode = .owned ∧ live x.index = false then
+        releaseCode .bytes (slots.getD x.index default).loc else [])
   | _, _, .treeNil _ => [.constI64 0]
   | _, _, .treeNode (shape := shape) reuse words children =>
     let modes := slots.map Slot.mode

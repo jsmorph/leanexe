@@ -29,7 +29,24 @@ def swappedFirst (first second : LeanExe.Bytes) : LeanExe.Bytes :=
   let pair := swap first second
   pair.1
 
+def emptyBuffer : LeanExe.Bytes := LeanExe.Bytes.empty
+
+def readSize (bytes : LeanExe.Bytes) : UInt64 := bytes.size
+
+def readByte (bytes : LeanExe.Bytes) (index : UInt64) : UInt64 := bytes.get index
+
+def ownedSize (bytes : LeanExe.Bytes) : UInt64 := (identity bytes).size
+
+def ownedByte (bytes : LeanExe.Bytes) (index : UInt64) : UInt64 := (identity bytes).get index
+
+def lastByte (bytes : LeanExe.Bytes) : UInt64 :=
+  let owned := identity bytes
+  owned.get (owned.size - 1)
+
+def emptyRead (index : UInt64) : UInt64 := LeanExe.Bytes.empty.get index
+
 verified_compile compiled := [identity, duplicate, choose, discard, swap, firstDuplicate,
-  secondDuplicate, swappedFirst]
+  secondDuplicate, swappedFirst, emptyBuffer, readSize, readByte, ownedSize, ownedByte, lastByte,
+  emptyRead]
 
 end Verified.Examples.Bytes

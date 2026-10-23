@@ -176,7 +176,7 @@ def Expr.grows (flags : Flags S) : {Γ : List Ty} → {t : Ty} → Expr S Γ t �
   | _, _, .fold _ init body => init.grows flags || body.grows flags
   | _, _, .listFold args body => (argsAny fun i => (args i).grows flags) || body.grows flags
   | _, _, .build count elem => count.grows flags || elem.grows flags
-  | _, _, .get _ i | _, _, .eraseAt _ i => i.grows flags
+  | _, _, .get _ i | _, _, .eraseAt _ i | _, _, .bytesGet _ i => i.grows flags
   | _, _, .set _ i v => i.grows flags || v.grows flags
   | _, _, .treeNode _ words children =>
     (argsAny fun i => (words i).grows flags) || (argsAny fun i => (children i).grows flags)
@@ -445,6 +445,9 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
           (ListFold.bodyLive e captures))
         (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _ => 0
+  | _, _, .bytesEmpty, _ | _, _, .bytesSize _, _ => 0
+  | _, _, .bytesGet x index, env =>
+    index.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .set x i v, env =>
     i.allocs funs flags bounds modes paid (fun j => live j || j == x.index || v.uses j) env +
@@ -657,6 +660,8 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _
   | _, _, .append _ _, _ => true
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
+  | _, _, .bytesEmpty, _ | _, _, .bytesSize _, _ => true
+  | _, _, .bytesGet _ index, env => index.fits funs fits env
   | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
     i.fits funs fits env && v.fits funs fits env
   | _, _, .push _ v, env => v.fits funs fits env

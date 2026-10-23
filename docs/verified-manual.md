@@ -69,9 +69,9 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 
 `Nat`, `Int`, `String`, `Option`, recursive types outside the listed layout, and arrays of arrays are outside the dialect.  Integers are `UInt64`, so that a program and its module compute the same values, wraparound included.  A read past the end of an array gives Lean's default element, whose flattening must have zero words.  An array stores each Float32 bit pattern in the low 32 bits of an eight-byte word.
 
-Byte access, construction, literals, and I/O remain in progress under the
-[WASI design](verified-wasi-design.md).  The current byte examples pass buffers between functions
-and exercise ownership and cleanup.
+`LeanExe.Bytes.empty` returns an empty buffer.  `bytes.size` returns its UInt64 length, and
+`bytes.get index` returns a byte as a UInt64, or zero when the index is past the end.  Construction,
+literals, and I/O remain in progress under the [WASI design](verified-wasi-design.md).
 
 ### Expressions
 
@@ -92,6 +92,7 @@ and exercise ownership and cleanup.
 | Array folds | `xs.foldl step init`, with the default bounds `start = 0` and `stop = xs.size` |
 | List folds | `xs.foldl step init` over `List UInt64`, with scalar state |
 | Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
+| Packed bytes | `LeanExe.Bytes.empty`, `bytes.size`, `bytes.get index`, with a UInt64 index and result |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 | Lists of words | `[]`, `x :: xs`, and `match xs with \| [] => empty \| x :: ys => node` |
 
@@ -425,7 +426,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Lets`](../Verified/Examples/Lets.lean) | Four `let` bindings, the last of them inside an operand of `+`, with a division in its body. |
 | [`Select`](../Verified/Examples/Select.lean) | `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
-| [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, unused-result cleanup, and swapped results.  [The WASI driver](../tests/wasi/run.sh) checks allocated empty inputs and allocation/free counts. |
+| [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, unused-result cleanup, swapped results, empty buffers, UInt64 lengths, and byte indexing.  [The WASI driver](../tests/wasi/run.sh) checks allocated empty inputs, out-of-bounds reads, and allocation/free counts. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
 | [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct array methods, `insertIdx!` with its empty result past the end, empty arrays of words, floats, and records, including a record without an `Inhabited` instance, and Boolean equality, decisions, and conditions with record results, record-array results, and operand calls that consume arrays. |
 | [Array folds](../Verified/Examples/Fold.lean) | Words, floats, record elements without an `Inhabited` instance, owned array and pair accumulators, a borrowed initial-state alias, nested folds, calls inside a fold, and the frames condition of a recursive call.  `words_bound` proves the word fold's allocation bound is zero. |

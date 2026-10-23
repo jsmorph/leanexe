@@ -377,6 +377,11 @@ theorem get_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : UIn
     (hi : i.denote funs env = I) : (Expr.get x i).denote funs env = (env.get x)[I.toNat]! := by
   subst hi; rfl
 
+theorem bytesGet_eq (x : Var Γ .bytes) {i : Expr S Γ .word} {I : UInt64}
+    (hi : i.denote funs env = I) :
+    (Expr.bytesGet x i).denote funs env = (env.get x).get I := by
+  subst hi; rfl
+
 /-! The array operations on an array of structures, whose source value is the array of the
 elements' flattenings. -/
 

@@ -1648,6 +1648,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.var #[some c.sigs, some c.ctx, some (tyExpr t), some x]
     return ⟨src, ← rflProof c src (← flatValue e), t, e, varBound c x t e, leafFits c src⟩
   if let some r := ← reflectCall? e then return r
+  if e.isConstOf ``LeanExe.Bytes.empty then
+    let src ← mkAppOptM ``Expr.bytesEmpty #[some c.sigs, some c.ctx]
+    return ⟨src, ← rflProof c src e, .bytes, e,
+      leafBound c ``bytesEmpty_bound [], leafFits c src⟩
   if let some r := ← reflectRecursiveConstructor? e then return r
   if let some r := ← reflectSumConstructor? e then return r
   if let some r := ← reflectStruct? e then return r
@@ -2406,6 +2410,33 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ⟨src, ← mkAppM ``build_eq #[rn.proof, hf], .array el, e, bound, fits⟩
     return ⟨src, ← mkAppM ``build_map_eq #[← se.fn α, f, rn.proof, hf], .array el, e,
       bound, fits⟩
+  | ``LeanExe.Bytes.size, #[bytes] =>
+    let bytes ← projReduce bytes
+    unless bytes.isFVar do
+      return ← reflectAs (← withLetDecl `bytes (← inferType bytes) bytes fun value =>
+        mkLetFVars #[value] (mkApp e.getAppFn value)) e
+    let (x, .bytes) ← varOf c bytes
+      | throwError "verified_compile: {bytes} is not a byte variable"
+    let src ← mkAppOptM ``Expr.bytesSize #[some c.sigs, some c.ctx, some x]
+    return ⟨src, ← rflProof c src e, .word, e,
+      leafBound c ``bytesSize_bound [(`x, x)], leafFits c src⟩
+  | ``LeanExe.Bytes.get, #[bytes, index] =>
+    let bytes ← projReduce bytes
+    unless bytes.isFVar do
+      return ← reflectAs (← withLetDecl `bytes (← inferType bytes) bytes fun value =>
+        mkLetFVars #[value] (mkApp2 e.getAppFn value index)) e
+    let (x, .bytes) ← varOf c bytes
+      | throwError "verified_compile: {bytes} is not a byte variable"
+    let ri ← reflect c index
+    let src ← mkAppOptM ``Expr.bytesGet #[some c.sigs, some c.ctx, some x, some ri.src]
+    let bound : BoundBuilder := fun modes paid live => do
+      let bounds := c.tables.table false
+      let app ← LemmaApp.start ``bytesGet_bound
+        (boundArgs c bounds modes paid live ++ [(`x, x), (`i, ri.src)])
+      let _ ← app.child `hi ri.bound
+      boundOf (← app.finish)
+    let fits := formFits c ``bytesGet_fits [(`x, x), (`i, ri.src)] [(`hi, ri)]
+    return ⟨src, ← mkAppM ``bytesGet_eq #[x, ri.proof], .word, e, bound, fits⟩
   | ``Nat.toUInt64, #[n] =>
     let (``Array.size, sizeArgs@#[_, xs]) := n.consumeMData.getAppFnArgs
       | throwError "verified_compile: unsupported term {e}"

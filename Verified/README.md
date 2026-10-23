@@ -87,8 +87,9 @@ A byte value occupies two i64 words: its allocation root and logical length.  Bo
 protect the allocation's header and full capacity.  An owned copy allocates a packed payload
 without an array-length word.  Copying empty bytes returns `(0, 0)` without allocating.  A valid
 incoming empty buffer may have a nonzero root, which cleanup releases.  The
-[byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, and cleanup.
-Byte access, construction, literals, and I/O remain part of the
+[byte examples](Examples/Bytes.lean) cover parameters, results, duplication, branches, cleanup,
+empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns zero.  Length and
+index operations release an owned input at its last use.  Construction, literals, and I/O remain part of the
 [WASI work](../docs/verified-wasi-design.md).
 
 ### Scalar code and control flow

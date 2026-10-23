@@ -37,6 +37,17 @@ theorem float32_bound (bits : UInt32) :
 theorem size_bound {e : Elem} (x : Var Γ (.array e)) :
     (Expr.size x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
 
+theorem bytesEmpty_bound :
+    (Expr.bytesEmpty : Expr S Γ .bytes).allocs funs flags bounds modes paid live env = 0 := rfl
+
+theorem bytesSize_bound (x : Var Γ .bytes) :
+    (Expr.bytesSize x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
+
+theorem bytesGet_bound (x : Var Γ .bytes) {i : Expr S Γ .word} {IA : Nat}
+    (hi : i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env = IA) :
+    (Expr.bytesGet x i).allocs funs flags bounds modes paid live env = IA := by
+  subst hi; rfl
+
 theorem leSize_bound {e : Elem} (x : Var Γ (.array e)) (i : Var Γ .word) :
     (Expr.leSize x i : Expr S Γ .bool).allocs funs flags bounds modes paid live env = 0 := rfl
 

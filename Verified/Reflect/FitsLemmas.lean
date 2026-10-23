@@ -95,6 +95,10 @@ theorem get_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : B
     (hi : i.fits funs fits env = I) : (Expr.get x i).fits funs fits env = I := by
   subst hi; rfl
 
+theorem bytesGet_fits (x : Var Γ .bytes) {i : Expr S Γ .word} {I : Bool}
+    (hi : i.fits funs fits env = I) : (Expr.bytesGet x i).fits funs fits env = I := by
+  subst hi; rfl
+
 theorem eraseAt_fits {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {I : Bool}
     (hi : i.fits funs fits env = I) : (Expr.eraseAt x i).fits funs fits env = I := by
   subst hi; rfl
