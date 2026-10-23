@@ -75,10 +75,11 @@ def iv512_224 : Words8 :=
 
 /-- Word `i` of the padded message of §5.1.2, parsed into big-endian words as in §5.2.2, for the
 `n` bytes of `msg` and the index `last` of the final word.  The message bytes are followed by the
-byte `0x80`, by zero bytes, and by the 128-bit bit length `8 n`, whose high word is `n >>> 61`. -/
-def paddedWord (msg : Array UInt64) (n last i : UInt64) : UInt64 :=
-  if i == last then n <<< 3
-  else if i + 1 == last then n >>> 61
+byte `0x80`, by zero bytes, and by the 128-bit bit length `8 len` of a message of `len` bytes whose
+last `n` bytes are those of `msg`.  The high word of the bit length is `len >>> 61`. -/
+def paddedWord (msg : Array UInt64) (n len last i : UInt64) : UInt64 :=
+  if i == last then len <<< 3
+  else if i + 1 == last then len >>> 61
   else
     let q : UInt64 := n >>> 3
     if i < q then bswap msg[i.toNat]!
@@ -88,15 +89,15 @@ def paddedWord (msg : Array UInt64) (n last i : UInt64) : UInt64 :=
     else 0
 
 /-- The sixteen words of the padded message from word `base`. -/
-def loadBlock (msg : Array UInt64) (n last base : UInt64) : Words16 :=
-  ⟨paddedWord msg n last base, paddedWord msg n last (base + 1),
-    paddedWord msg n last (base + 2), paddedWord msg n last (base + 3),
-    paddedWord msg n last (base + 4), paddedWord msg n last (base + 5),
-    paddedWord msg n last (base + 6), paddedWord msg n last (base + 7),
-    paddedWord msg n last (base + 8), paddedWord msg n last (base + 9),
-    paddedWord msg n last (base + 10), paddedWord msg n last (base + 11),
-    paddedWord msg n last (base + 12), paddedWord msg n last (base + 13),
-    paddedWord msg n last (base + 14), paddedWord msg n last (base + 15)⟩
+def loadBlock (msg : Array UInt64) (n len last base : UInt64) : Words16 :=
+  ⟨paddedWord msg n len last base, paddedWord msg n len last (base + 1),
+    paddedWord msg n len last (base + 2), paddedWord msg n len last (base + 3),
+    paddedWord msg n len last (base + 4), paddedWord msg n len last (base + 5),
+    paddedWord msg n len last (base + 6), paddedWord msg n len last (base + 7),
+    paddedWord msg n len last (base + 8), paddedWord msg n len last (base + 9),
+    paddedWord msg n len last (base + 10), paddedWord msg n len last (base + 11),
+    paddedWord msg n len last (base + 12), paddedWord msg n len last (base + 13),
+    paddedWord msg n len last (base + 14), paddedWord msg n len last (base + 15)⟩
 
 /-- One iteration of §6.4.2 step 3, with the constant `k` and the schedule word `w`.  `w0` to
 `w7` hold the working variables `a` to `h`.  The additions follow the order of
@@ -120,34 +121,36 @@ def compress (k : Array UInt64) (h : Words8) (m : Words16) : Words8 :=
   ⟨h.w0 + s.w0, h.w1 + s.w1, h.w2 + s.w2, h.w3 + s.w3, h.w4 + s.w4, h.w5 + s.w5,
     h.w6 + s.w6, h.w7 + s.w7⟩
 
-/-- The final hash value `H^(N)` of the `n` bytes of `msg` from the initial value `iv`.  The
-padded message has one block more than `n / 128` when its final block has room for the byte
-`0x80` and the 16-byte length, and two more otherwise. -/
-def hashWith (k : Array UInt64) (iv : Words8) (msg : Array UInt64) (n : UInt64) : Words8 :=
+/-- The final hash value of a message of `len` bytes whose last `n` bytes are those of `msg`,
+from the hash value `h` of the blocks before them.  `len - n` is a multiple of 128, and `h` is the
+initial value when `len = n`.  The padded message has one block more than `n / 128` after those
+blocks when its final block has room for the byte `0x80` and the 16-byte length, and two more
+otherwise. -/
+def hashFrom (k : Array UInt64) (h : Words8) (msg : Array UInt64) (n len : UInt64) : Words8 :=
   let blocks : UInt64 := (n >>> 7) + (if (n &&& 127) < 112 then 1 else 2)
   let last : UInt64 := (blocks <<< 4) - 1
-  LeanExe.loop blocks iv fun j h => compress k h (loadBlock msg n last (j <<< 4))
+  LeanExe.loop blocks h fun j s => compress k s (loadBlock msg n len last (j <<< 4))
 
 /-- The SHA-512 digest of §6.4: the 64 bytes of `H_0` to `H_7` in big-endian order. -/
 def sha512With (k : Array UInt64) (msg : Array UInt64) (n : UInt64) : Words8 :=
-  let h := hashWith k iv512 msg n
+  let h := hashFrom k iv512 msg n n
   ⟨bswap h.w0, bswap h.w1, bswap h.w2, bswap h.w3, bswap h.w4, bswap h.w5, bswap h.w6,
     bswap h.w7⟩
 
 /-- The SHA-384 digest of §6.5: the 48 bytes of `H_0` to `H_5`. -/
 def sha384With (k : Array UInt64) (msg : Array UInt64) (n : UInt64) : Words6 :=
-  let h := hashWith k iv384 msg n
+  let h := hashFrom k iv384 msg n n
   ⟨bswap h.w0, bswap h.w1, bswap h.w2, bswap h.w3, bswap h.w4, bswap h.w5⟩
 
 /-- The SHA-512/256 digest of §6.7: the 32 bytes of `H_0` to `H_3`. -/
 def sha512_256With (k : Array UInt64) (msg : Array UInt64) (n : UInt64) : Words4 :=
-  let h := hashWith k iv512_256 msg n
+  let h := hashFrom k iv512_256 msg n n
   ⟨bswap h.w0, bswap h.w1, bswap h.w2, bswap h.w3⟩
 
 /-- The SHA-512/224 digest of §6.6: the 28 bytes of `H_0` to `H_2` and the high half of `H_3`.
 The last four bytes of `w3` are zero. -/
 def sha512_224With (k : Array UInt64) (msg : Array UInt64) (n : UInt64) : Words4 :=
-  let h := hashWith k iv512_224 msg n
+  let h := hashFrom k iv512_224 msg n n
   ⟨bswap h.w0, bswap h.w1, bswap h.w2, bswap h.w3 &&& 0xFFFFFFFF⟩
 
 /-- SHA-512 of the `n` bytes of `msg`. -/

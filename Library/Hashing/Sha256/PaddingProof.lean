@@ -1,11 +1,12 @@
 import Library.Hashing.Sha256.WordProof
 import Library.Hashing.Sha2.Equiv.SHA256.Padding.Layout
 
-/-! `paddedWord` reads the 32-bit words of the padded message: for a message of fewer than `2 ^ 61`
-bytes, the 32-bit word of word `16 j + t` is word `t` of block `j` of `implPaddedBlocks`, the
-padding of FIPS 180-4 §5.1.1 in the copied implementation, which `implPaddedBlocks_lift_eq_parsePad`
-proves equal to the specification's padding and parsing.  A word holds message bytes, the byte
-`0x80` after the last message byte, zero bytes, or one of the two halves of the bit length;
+/-! `paddedWord` reads the 32-bit words of the padded message.  For a message `pre ++ m` of fewer
+than `2 ^ 61` bytes, where `pre` holds `p` whole blocks and `m` is the `n` bytes of `msg`, the
+32-bit word of word `16 j + t` is word `t` of block `p + j` of `implPaddedBlocks`, the padding of
+FIPS 180-4 §5.1.1 in the copied implementation, which `implPaddedBlocks_lift_eq_parsePad` proves
+equal to the specification's padding and parsing.  A word holds message bytes, the byte `0x80`
+after the last message byte, zero bytes, or one of the two halves of the bit length;
 `paddedWord_eq` treats each case. -/
 
 namespace Library.Hashing.Sha256
@@ -16,9 +17,19 @@ open SHS.Equiv.SHA256.Padding.Layout
 /-- The number of padded blocks of a message of `n` bytes. -/
 def blockCount (n : Nat) : Nat := n / 64 + if n % 64 < 56 then 1 else 2
 
-theorem paddedSize (msg : Array UInt64) (n : Nat) :
-    (implPaddedBytes (bytes msg n)).size = 64 * blockCount n := by
-  rw [size_implPaddedBytes_eq, bytes_size]
+theorem size_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
+    (n : Nat) : (pre ++ bytes msg n).size = 64 * p + n := by
+  rw [ByteArray.size_append, hpre, bytes_size]
+
+theorem zerosCount_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
+    (msg : Array UInt64) (n : Nat) :
+    zerosCount (pre ++ bytes msg n) = zerosCount (bytes msg n) := by
+  unfold zerosCount
+  rw [size_append pre p hpre, bytes_size, show (64 * p + n) % 64 = n % 64 by omega]
+
+theorem paddedSize (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
+    (n : Nat) : (implPaddedBytes (pre ++ bytes msg n)).size = 64 * (p + blockCount n) := by
+  rw [size_implPaddedBytes_eq, zerosCount_append pre p hpre, size_append pre p hpre]
   unfold zerosCount blockCount
   rw [bytes_size]
   have hd : n = 64 * (n / 64) + n % 64 := (Nat.div_add_mod n 64).symm
@@ -53,17 +64,31 @@ theorem paddedBE_eq (data : ByteArray) (i : Nat) (f : Nat → UInt8)
   unfold paddedBE
   rw [hk 0 (by decide), hk 1 (by decide), hk 2 (by decide), hk 3 (by decide)]
 
-/-- The padded byte at `p` of a message of `n` bytes. -/
-theorem paddedByte (msg : Array UInt64) (n p : Nat) (hp : p < 64 * blockCount n) :
-    (implPaddedBytes (bytes msg n)).get! p =
-      if p < n then byteAt msg p
-      else if p = n then 0x80
-      else if p < 4 * (16 * blockCount n - 2) then 0
-      else (lengthBE64 (n.toUInt64 <<< 3)).get! (p - 4 * (16 * blockCount n - 2)) := by
-  rw [get!_implPaddedBytes_eq _ _ (by rw [paddedSize]; exact hp), bytes_size, lengthStart]
-  by_cases h : p < n
-  · rw [ite_eq_left h, ite_eq_left h, bytes_get! _ _ _ h]
-  · rw [ite_eq_right h, ite_eq_right h]
+/-- The padded byte at `q` after the prefix `pre` of a message whose last `n` bytes are those of
+`msg`. -/
+theorem paddedByte (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
+    (n q : Nat) (hq : q < 64 * blockCount n) :
+    (implPaddedBytes (pre ++ bytes msg n)).get! (64 * p + q) =
+      if q < n then byteAt msg q
+      else if q = n then 0x80
+      else if q < 4 * (16 * blockCount n - 2) then 0
+      else (lengthBE64 ((64 * p + n).toUInt64 <<< 3)).get! (q - 4 * (16 * blockCount n - 2)) := by
+  have hL := lengthStart msg n
+  rw [get!_implPaddedBytes_eq _ _ (by rw [paddedSize pre p hpre]; omega), size_append pre p hpre,
+    zerosCount_append pre p hpre]
+  by_cases h : q < n
+  · rw [ite_eq_left (by omega), ite_eq_left h,
+      SHS.Equiv.ByteArray.get!_append_right _ _ _ (by omega) (by rw [bytes_size]; omega), hpre,
+      show 64 * p + q - 64 * p = q by omega, bytes_get! _ _ _ h]
+  · rw [ite_eq_right (by omega), ite_eq_right h]
+    by_cases h2 : q = n
+    · rw [ite_eq_left (by omega), ite_eq_left h2]
+    · rw [ite_eq_right (by omega), ite_eq_right h2]
+      by_cases h3 : q < 4 * (16 * blockCount n - 2)
+      · rw [ite_eq_left (by omega), ite_eq_left h3]
+      · rw [ite_eq_right (by omega), ite_eq_right h3,
+          show 64 * p + q - (64 * p + n + 1 + zerosCount (bytes msg n)) =
+            q - 4 * (16 * blockCount n - 2) by omega]
 
 /-- Byte `4 i + k` of a message is byte `4 (i % 2) + k` of word `i / 2`. -/
 theorem byteAt_eq4 (ws : Array UInt64) (i k : Nat) (hk : k < 4) :
@@ -74,13 +99,13 @@ theorem byteAt_eq4 (ws : Array UInt64) (i k : Nat) (hk : k < 4) :
 theorem be4_zero : be4 0 0 0 0 = 0 := by decide
 
 /-- The bytes of the 32-bit word that holds the last message bytes and `0x80`. -/
-theorem markedByte (msg : Array UInt64) (n k : Nat) (hk : k < 4)
-    (hp : 4 * (n / 4) + 3 < 4 * (16 * blockCount n - 2)) :
-    (implPaddedBytes (bytes msg n)).get! (4 * (n / 4) + k) =
+theorem markedByte (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
+    (n k : Nat) (hk : k < 4) (hp : 4 * (n / 4) + 3 < 4 * (16 * blockCount n - 2)) :
+    (implPaddedBytes (pre ++ bytes msg n)).get! (64 * p + (4 * (n / 4) + k)) =
       if k < n % 4 then byteOf msg[n / 4 / 2]! (4 * (n / 4 % 2) + k)
       else if k = n % 4 then 0x80 else 0 := by
   have hn : n = 4 * (n / 4) + n % 4 := (Nat.div_add_mod n 4).symm
-  rw [paddedByte _ _ _ (by omega)]
+  rw [paddedByte pre p hpre _ _ _ (by omega)]
   by_cases h1 : k < n % 4
   · rw [ite_eq_left (by omega), ite_eq_left h1, byteAt_eq4 _ _ _ hk]
   · rw [ite_eq_right (by omega), ite_eq_right h1]
@@ -123,12 +148,17 @@ theorem half_bswap (w : UInt64) (i : Nat) (hi : i < 2 ^ 64) :
   · rw [decide_eq_true h, ite_eq_left rfl, bswap_high, h]
   · rw [decide_eq_false h, ite_eq_right (by decide), bswap_low, show i % 2 = 1 by omega]
 
-/-- The 32-bit word of word `i` of the padded message of the `n < 2 ^ 61` bytes of `msg`, for `i`
-below the number of padded words, is the big-endian word of its four padded bytes. -/
-theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) (i : Nat)
-    (hi : i < 16 * blockCount n.toNat) :
-    (paddedWord msg n (UInt64.ofNat (16 * blockCount n.toNat - 1)) (UInt64.ofNat i)).toUInt32 =
-      paddedBE (bytes msg n.toNat) i := by
+/-- The 32-bit word of word `i` of the padded message whose last `n` bytes are those of `msg`,
+after the prefix `pre` of `p` whole blocks, is the big-endian word of its four padded bytes.  The
+message has `len < 2 ^ 61` bytes, and `i` is below the number of padded words after `pre`. -/
+theorem paddedWord_eq (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
+    (msg : Array UInt64) (n len : UInt64) (hlen : len.toNat = 64 * p + n.toNat)
+    (hl : len.toNat < 2 ^ 61) (i : Nat) (hi : i < 16 * blockCount n.toNat) :
+    (paddedWord msg n len (UInt64.ofNat (16 * blockCount n.toNat - 1)) (UInt64.ofNat i)).toUInt32 =
+      paddedBE (pre ++ bytes msg n.toNat) (16 * p + i) := by
+  have hn : n.toNat < 2 ^ 61 := by omega
+  have hlen' : (64 * p + n.toNat).toUInt64 = len := by rw [← hlen]; exact UInt64.ofNat_toNat
+  have hpos : ∀ k, 4 * (16 * p + i) + k = 64 * p + (4 * i + k) := fun k => by omega
   set N := blockCount n.toNat with hN
   have hN1 : 1 ≤ N := by simp only [hN, blockCount]; split <;> omega
   have hN2 : N ≤ n.toNat / 64 + 2 := by simp only [hN, blockCount]; split <;> omega
@@ -149,13 +179,12 @@ theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) 
     have hb : (UInt64.ofNat i == UInt64.ofNat (16 * N - 1)) = true := by
       rw [beq_iff_eq]; apply UInt64.toNat_inj.mp; rw [hiN, hlast, h1]
     rw [ite_eq_left hb, low32_toUInt32, paddedBE_eq _ _
-      (fun k => ((n.toNat.toUInt64 <<< 3 >>> (((3 - k) * 8 : Nat).toUInt64)) &&& 0xff).toUInt8)
+      (fun k => ((len <<< 3 >>> (((3 - k) * 8 : Nat).toUInt64)) &&& 0xff).toUInt8)
       (fun k hk => by
-        rw [paddedByte _ _ _ (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
-          lengthBE64_get!_eq _ _ (by omega),
-          show 7 - (4 * i + k - 4 * (16 * N - 2)) = 3 - k by omega])]
-    rw [show n.toNat.toUInt64 = n from UInt64.ofNat_toNat]
-    exact (be4_low (n <<< 3)).symm
+        rw [hpos, paddedByte pre p hpre _ _ _ (by omega), ite_eq_right (by omega),
+          ite_eq_right (by omega), ite_eq_right (by omega), lengthBE64_get!_eq _ _ (by omega),
+          hlen', show 7 - (4 * i + k - 4 * (16 * N - 2)) = 3 - k by omega])]
+    exact (be4_low (len <<< 3)).symm
   · have hb : (UInt64.ofNat i == UInt64.ofNat (16 * N - 1)) = false := by
       rw [beq_eq_false_iff_ne]; intro h; apply h1
       have := congrArg UInt64.toNat h; rw [hiN, hlast] at this; exact this
@@ -166,13 +195,12 @@ theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) 
         rw [beq_iff_eq]; apply UInt64.toNat_inj.mp
         rw [UInt64.toNat_add, hiN, hlast, h2]; simp; omega
       rw [ite_eq_left hb2, low32_toUInt32, paddedBE_eq _ _
-        (fun k => ((n.toNat.toUInt64 <<< 3 >>> (((7 - k) * 8 : Nat).toUInt64)) &&& 0xff).toUInt8)
+        (fun k => ((len <<< 3 >>> (((7 - k) * 8 : Nat).toUInt64)) &&& 0xff).toUInt8)
         (fun k hk => by
-          rw [paddedByte _ _ _ (by omega), ite_eq_right (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
-            lengthBE64_get!_eq _ _ (by omega),
-            show 4 * i + k - 4 * (16 * N - 2) = k by omega])]
-      rw [show n.toNat.toUInt64 = n from UInt64.ofNat_toNat]
-      refine Eq.trans ?_ (be4_high (n <<< 3)).symm
+          rw [hpos, paddedByte pre p hpre _ _ _ (by omega), ite_eq_right (by omega),
+            ite_eq_right (by omega), ite_eq_right (by omega), lengthBE64_get!_eq _ _ (by omega),
+            hlen', show 4 * i + k - 4 * (16 * N - 2) = k by omega])]
+      refine Eq.trans ?_ (be4_high (len <<< 3)).symm
       congr 1
       apply UInt64.toNat_inj.mp
       rw [UInt64.toNat_shiftRight, UInt64.toNat_shiftRight, UInt64.toNat_shiftLeft]
@@ -190,7 +218,8 @@ theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) 
         rw [ite_eq_left (by rw [UInt64.lt_iff_toNat_lt, hiN, hq]; exact h3), hhalf,
           half_bswap _ _ (by omega), paddedBE_eq _ _ (fun k => byteOf msg[i / 2]! (4 * (i % 2) + k))
             (fun k hk => by
-              rw [paddedByte _ _ _ (by omega), ite_eq_left (by omega), byteAt_eq4 _ _ _ hk])]
+              rw [hpos, paddedByte pre p hpre _ _ _ (by omega), ite_eq_left (by omega),
+                byteAt_eq4 _ _ _ hk])]
       · rw [ite_eq_right (by rw [UInt64.lt_iff_toNat_lt, hiN, hq]; exact h3)]
         by_cases h4 : i = n.toNat / 4
         · -- The word of the last message bytes and `0x80`.
@@ -199,7 +228,7 @@ theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) 
           rw [ite_eq_left hb4, hhalf, shift_eq, half_bswap _ _ (by omega),
             paddedBE_eq _ _ (fun k => if k < n.toNat % 4 then byteOf msg[i / 2]! (4 * (i % 2) + k)
               else if k = n.toNat % 4 then 0x80 else 0) (fun k hk => by
-                rw [h4, markedByte _ _ _ hk (by omega)])]
+                rw [hpos, h4, markedByte pre p hpre _ _ _ hk (by omega)])]
           have hr8 : n.toNat % 8 = 4 * (i % 2) + n.toNat % 4 := by omega
           have hm : ∀ k, k < 4 →
               byteOf ((msg[i / 2]! &&& (((1 : UInt64) <<< (8 * (n.toNat % 8)).toUInt64) - 1)) |||
@@ -220,8 +249,8 @@ theorem paddedWord_eq (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) 
             rw [beq_eq_false_iff_ne]; intro h; apply h4
             have := congrArg UInt64.toNat h; rw [hiN, hq] at this; exact this
           rw [ite_eq_right (by rw [hb4]; decide), paddedBE_eq _ _ (fun _ => 0) (fun k hk => by
-            rw [paddedByte _ _ _ (by omega), ite_eq_right (by omega), ite_eq_right (by omega),
-              ite_eq_left (by omega)]), be4_zero]
+            rw [hpos, paddedByte pre p hpre _ _ _ (by omega), ite_eq_right (by omega),
+              ite_eq_right (by omega), ite_eq_left (by omega)]), be4_zero]
           rfl
 
 end Library.Hashing.Sha256
