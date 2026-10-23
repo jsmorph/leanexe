@@ -1,4 +1,6 @@
-import Verified.Bytes.Basic
+import Verified.Bytes.Represent
+import Verified.Bytes.Allocation
+import Verified.Bytes.Get
 import LeanExe.Wasi.Semantics
 
 open Lean Elab Command in
@@ -15,6 +17,14 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.Allocated.release_run,
     ``Verified.Bytes.Rep.frame,
     ``Verified.Bytes.Rep.release_run,
+    ``Verified.Bytes.Rep.step,
+    ``Verified.Bytes.represented_length,
+    ``Verified.Bytes.roots_regions,
+    ``Verified.Bytes.block_snapshot,
+    ``Verified.Bytes.allocationCost_eq,
+    ``Verified.Bytes.allocationCost_ge,
+    ``Verified.Bytes.wp_allocate,
+    ``Verified.Bytes.wp_get,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,
