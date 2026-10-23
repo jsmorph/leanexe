@@ -2,6 +2,12 @@ import LeanExe.Encoding.Spec.Instructions
 
 namespace Wasm.Encoding.Spec
 
+def emptyFunctionTable : Wasm.TableDecl :=
+  { min := 0, max := none, elemType := .funcref, is64 := false }
+
+def TableProfile (tables : List Wasm.TableDecl) : Prop :=
+  tables = [] ∨ tables = [emptyFunctionTable]
+
 def signature (func : Wasm.Function) : Wasm.FuncType :=
   { params := func.params, results := func.results }
 
@@ -32,7 +38,7 @@ inductive CodeBody : Bytes → Wasm.Function → Prop
 
 inductive Export : Bytes → (UInt8 × String × Nat) → Prop
   | intro (nameBytes indexBytes : Bytes) (kind : UInt8) (name : String) (index : Nat)
-      (kindValid : kind = 0 ∨ kind = 2 ∨ kind = 3)
+      (kindValid : kind = 0 ∨ kind = 1 ∨ kind = 2 ∨ kind = 3)
       (nameEncoding : Name nameBytes name)
       (indexEncoding : Unsigned 32 indexBytes index) :
       Export (nameBytes ++ kind :: indexBytes) (kind, name, index)
@@ -40,20 +46,22 @@ inductive Export : Bytes → (UInt8 × String × Nat) → Prop
 def exports (m : Wasm.Module) : List (UInt8 × String × Nat) :=
   m.exports.map (fun e => (0, e.name, e.funcIdx)) ++
   m.globalExports.map (fun e => (3, e.1, e.2)) ++
-  m.memoryExports.map (fun e => (2, e.1, e.2))
+  m.memoryExports.map (fun e => (2, e.1, e.2)) ++
+  m.tableExports.map (fun e => (1, e.1, e.2))
 
 structure Shape (m : Wasm.Module) : Prop where
   extraMemories : m.extraMemories = []
   dataWithoutMemory : m.dataWithoutMemory = false
   start : m.startFunc = none
   gcTypes : m.gcTypes = m.types.map (fun type => { comp := .func type })
-  tables : m.tables = []
+  tables : TableProfile m.tables
   elements : m.elements = []
   importedGlobals : m.importedGlobals = []
   importedTables : m.importedTables = []
   importedMemories : m.importedMemories = []
   importedTags : m.importedTags = []
-  tableExports : m.tableExports = []
+  tableExports : m.tableExports =
+    if m.tables.isEmpty then [] else [("__indirect_function_table", 0)]
   tagExports : m.tagExports = []
   tags : m.tags = []
 
@@ -77,19 +85,24 @@ inductive DataSection : Bytes → List Wasm.DataSegment → Prop
   | present (bytes : Bytes) (segments : List Wasm.DataSegment) (nonempty : segments ≠ [])
       (encoding : Section 11 (Vector DataSegment) bytes segments) : DataSection bytes segments
 
+inductive TableSection : Bytes → List Wasm.TableDecl → Prop
+  | empty : TableSection [] []
+  | present : TableSection [4, 4, 1, 0x70, 0, 0] [emptyFunctionTable]
+
 inductive ModuleBytes : Bytes → Wasm.Module → Prop
-  | intro (m : Wasm.Module) (types imports functions memories globals exports codes datas : Bytes)
+  | intro (m : Wasm.Module) (types imports functions tables memories globals exports codes datas : Bytes)
       (shape : Shape m)
       (typeSection : Section 1 (Vector FuncType) types m.types)
       (importSection : Section 2 (Vector (Import m.types)) imports m.imports)
       (functionSection : Section 3 (Vector (FunctionIndex m.types)) functions m.funcs)
+      (tableSection : TableSection tables m.tables)
       (memorySection : Section 5 (Vector Memory) memories (memoryDecls m))
       (globalSection : Section 6 (Vector Global) globals m.globals)
       (exportSection : Section 7 (Vector Export) exports (Spec.exports m))
       (codeSection : Section 10 (Vector (Sized CodeBody)) codes m.funcs)
       (dataSection : DataSection datas (dataSegments m)) :
       ModuleBytes ([0, 97, 115, 109, 1, 0, 0, 0] ++ types ++ imports ++ functions ++
-        memories ++ globals ++ exports ++ codes ++ datas) m
+        tables ++ memories ++ globals ++ exports ++ codes ++ datas) m
 
 end Wasm.Encoding.Spec
 

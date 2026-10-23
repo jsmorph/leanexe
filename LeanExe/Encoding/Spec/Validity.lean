@@ -185,4 +185,14 @@ structure Module (m : Wasm.Module) : Prop where
   memoryExports : ∀ e ∈ m.memoryExports, e.2 = 0 ∧ m.memory.isSome = true
   distinctExports : ((exports m).map (fun e => e.2.1)).Nodup
 
+theorem tableProfile_valid {m : Wasm.Module} (shape : Shape m) :
+    (∀ table ∈ m.tables, table = emptyFunctionTable) ∧
+      ∀ entry ∈ m.tableExports, entry.2 < m.tables.length := by
+  rcases shape.tables with empty | table
+  · have exports : m.tableExports = [] := by simpa [empty] using shape.tableExports
+    simp [empty, exports]
+  · have exports : m.tableExports = [("__indirect_function_table", 0)] := by
+      simpa [table] using shape.tableExports
+    simp [table, exports]
+
 end Wasm.Encoding.Spec.Validity

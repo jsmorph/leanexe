@@ -3,11 +3,12 @@ import Interpreter.Wasm.Syntax
 /-!
 Binary decoder for the subset of WebAssembly that `Wasm.Encoding.encode` produces:
 numeric value types, function types, function imports, one 32-bit memory, integer
-globals with constant initializers, function, memory, and global exports, and the
-instructions listed in `plain`, `index`, and `memory`.  It follows the binary format
+globals with constant initializers, function, memory, and global exports, the
+empty WASI function-table profile, and the instructions listed in `plain`,
+`index`, and `memory`.  It follows the binary format
 of the WebAssembly 3.0 specification
 (https://webassembly.github.io/spec/core/binary/index.html) for that subset and
-accepts every encoding the format allows there: optional and custom sections,
+accepts these permitted forms within the profile: optional and custom sections,
 non-minimal LEB128 integers, grouped locals, and `if` without `else`.
 
 Errors distinguish input the format rejects (`malformed`), well-formed input outside
@@ -167,6 +168,18 @@ def memories : Parser (Option MemDecl) := do
   | [memory] => pure (some memory)
   | _ => unsupported "multiple memories"
 
+def emptyFunctionTable : Parser TableDecl := do
+  if (← byte) ≠ 0x70 then unsupported "table element type"
+  else if (← byte) ≠ 0 then unsupported "table limits"
+  else if (← unsigned 32) ≠ 0 then unsupported "nonempty table"
+  else pure { min := 0, max := none, elemType := .funcref, is64 := false }
+
+def tables : Parser (List TableDecl) := do
+  match ← vec emptyFunctionTable with
+  | [] => pure []
+  | [table] => pure [table]
+  | _ => unsupported "multiple tables"
+
 def constEnd : Parser Unit := do
   if (← byte) ≠ 0x0b then unsupported "global initializer"
 
@@ -211,8 +224,8 @@ def exportEntry : Parser (UInt8 × String × Nat) := do
   let kind ← byte
   let index ← unsigned 32
   match kind with
-  | 0x00 | 0x02 | 0x03 => pure (kind, exportName, index)
-  | 0x01 | 0x04 => unsupported "table or tag export"
+  | 0x00 | 0x01 | 0x02 | 0x03 => pure (kind, exportName, index)
+  | 0x04 => unsupported "tag export"
   | _ => malformed "malformed export kind"
 
 def blockType : Parser (List ValueType) := do
@@ -403,6 +416,7 @@ structure Sections where
   types : List FuncType := []
   imports : List ImportDecl := []
   functions : List Nat := []
+  tables : List TableDecl := []
   memory : Option MemDecl := none
   globals : List GlobalDecl := []
   exports : List (UInt8 × String × Nat) := []
@@ -425,6 +439,7 @@ def sectionContents (id : UInt8) (size : Nat) (acc : Sections) : Parser Sections
   | 1 => return { acc with types := ← within size (vec funcType) }
   | 2 => return { acc with imports := ← within size (vec (importDecl acc.types)) }
   | 3 => return { acc with functions := ← within size (vec (unsigned 32)) }
+  | 4 => return { acc with tables := ← within size tables }
   | 5 => return { acc with memory := ← within size memories }
   | 6 => return { acc with globals := ← within size (vec global) }
   | 7 => return { acc with exports := ← within size (vec exportEntry) }
@@ -473,11 +488,22 @@ def assemble (found : Sections) (funcs : List Function) : Module :=
     globals := found.globals
     imports := found.imports
     types := found.types
+    tables := found.tables
     gcTypes := found.types.map fun type => { comp := .func type }
     globalExports := found.exports.filterMap fun (kind, exportName, index) =>
       if kind = 0x03 then some (exportName, index) else none
     memoryExports := found.exports.filterMap fun (kind, exportName, index) =>
-      if kind = 0x02 then some (exportName, index) else none }
+      if kind = 0x02 then some (exportName, index) else none
+    tableExports := found.exports.filterMap fun (kind, exportName, index) =>
+      if kind = 0x01 then some (exportName, index) else none }
+
+def tableProfile (found : Sections) : Bool :=
+  let exports := found.exports.filterMap fun (kind, exportName, index) =>
+    if kind = 0x01 then some (exportName, index) else none
+  match found.tables with
+  | [] => exports == []
+  | [_] => exports == [("__indirect_function_table", 0)]
+  | _ => false
 
 def moduleParser : Parser Module := do
   let magic ← take 4
@@ -487,8 +513,10 @@ def moduleParser : Parser Module := do
       let available ← remaining
       let found ← sections available 0 {}
       if found.memory.isNone && !found.data.isEmpty then invalid "unknown memory" else do
-        let funcs ← functions found.types found.functions found.codes
-        pure (assemble found funcs)
+        if tableProfile found then do
+          let funcs ← functions found.types found.functions found.codes
+          pure (assemble found funcs)
+        else unsupported "table declaration or export is outside the empty function-table profile"
 
 end Wasm.Encoding.Decoder
 

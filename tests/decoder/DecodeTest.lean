@@ -42,7 +42,8 @@ def binaryView (m : Wasm.Module) : String :=
      m.memory.map (fun d => (d.pagesMin, d.pagesMax)),
      m.globals.map (fun g => (g.init, g.isMut)),
      m.exports.map (fun e => (e.name, e.funcIdx)),
-     m.globalExports, m.memoryExports)
+     m.globalExports, m.memoryExports,
+     m.tables.map (fun t => (t.min, t.max, t.elemType, t.is64)), m.tableExports)
 
 def wasmTools (tool : String) (args : Array String) : IO (Except String String) := do
   let out ← IO.Process.output { cmd := tool, args }

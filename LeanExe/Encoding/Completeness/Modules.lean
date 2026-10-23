@@ -129,12 +129,12 @@ theorem shape_produces (m : Wasm.Module) (ready : Spec.Shape m) :
   simp only [shape, require_produces _ _ ready.dataWithoutMemory,
     require_produces _ _ ready.start, require_produces _ _ ready.gcTypes,
     requireEmpty_produces _ _ ready.extraMemories,
-    requireEmpty_produces _ _ ready.tables, requireEmpty_produces _ _ ready.elements,
+    require_produces _ _ ready.tables, requireEmpty_produces _ _ ready.elements,
     requireEmpty_produces _ _ ready.importedGlobals,
     requireEmpty_produces _ _ ready.importedTables,
     requireEmpty_produces _ _ ready.importedMemories,
     requireEmpty_produces _ _ ready.importedTags,
-    requireEmpty_produces _ _ ready.tableExports,
+    require_produces _ _ ready.tableExports,
     requireEmpty_produces _ _ ready.tagExports, requireEmpty_produces _ _ ready.tags]
   rfl
 
@@ -177,6 +177,13 @@ theorem module_complete (m : Wasm.Module) (ready : Ready m) :
   obtain ⟨functions, hf⟩ := vectorSection_complete 3 (functionIndex m.types)
     (fun f => Size.u32 (f.typeIdx.getD 0)) m.funcs ready.functionCount ready.functionSize
     (fun f member => functionIndex_produces m.types f (ready.functions f member))
+  have htables : ∃ tables, tableSection m.tables = .ok tables := by
+    rcases ready.shape.tables with empty | table
+    · rw [empty]
+      exact ⟨_, rfl⟩
+    · rw [table]
+      exact ⟨_, rfl⟩
+  obtain ⟨tables, htable⟩ := htables
   obtain ⟨memories, hm⟩ := vectorSection_complete 5 memory Size.memory (Spec.memoryDecls m)
     (by cases h : m.memory <;> simp [Spec.memoryDecls, h]) ready.memorySize
     (fun d member => memory_produces d (memoryDecls_form ready d member))
@@ -189,7 +196,7 @@ theorem module_complete (m : Wasm.Module) (ready : Ready m) :
     (fun f member => functionBody_produces m.types f (ready.functions f member))
   obtain ⟨datas, hd⟩ := dataSection_complete (Spec.dataSegments m) ready.dataCount
     ready.dataSize ready.data
-  simp only [module, shape_produces m ready.shape, ht, hi, hf, hm, hg, he, hc, hd]
+  simp only [module, shape_produces m ready.shape, ht, hi, hf, htable, hm, hg, he, hc, hd]
   exact ⟨_, rfl⟩
 
 theorem encode_complete (m : Wasm.Module) (ready : Ready m) :
