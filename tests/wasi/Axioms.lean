@@ -1,5 +1,5 @@
 import Verified.Bytes.Basic
-import LeanExe.Wasi.Action
+import LeanExe.Wasi.Semantics
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do
@@ -13,9 +13,15 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.Allocated.frame,
     ``Verified.Bytes.Allocated.get,
     ``Verified.Bytes.Allocated.release_run,
+    ``Verified.Bytes.Rep.frame,
+    ``Verified.Bytes.Rep.release_run,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
-    ``LeanExe.Wasi.exitStatus_toNat]
+    ``LeanExe.Wasi.exitStatus_toNat,
+    ``LeanExe.Wasi.Exec.bind,
+    ``LeanExe.Wasi.readSome_overflow,
+    ``LeanExe.Wasi.loop_zero,
+    ``LeanExe.Wasi.Host.read_zero]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do
