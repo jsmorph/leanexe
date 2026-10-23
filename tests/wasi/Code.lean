@@ -2,6 +2,7 @@ import Verified.Bytes.Code
 import Verified.Bytes.BuildCode
 import Verified.Bytes.LiteralCode
 import Verified.Wasi.WrapperCode
+import Verified.Wasi.ReadCode
 import LeanExe.Encoding.Instructions
 
 open Verified.Bytes Wasm.Encoding
@@ -20,3 +21,6 @@ def encodable (code : Wasm.Program) : Bool :=
 #guard encodable (Verified.Wasi.writeCode .stdout 0 1 2)
 #guard encodable (Verified.Wasi.writeCode .stderr 0 1 2)
 #guard encodable (Verified.Wasi.exitCode 0)
+#guard encodable (Verified.Wasi.readCallCode 0 1)
+#guard encodable (Verified.Wasi.discardReadCode 0)
+#guard encodable (Verified.Wasi.readCode 0 1 2 3)

@@ -221,6 +221,16 @@ The command host maps the engine's distinguished WASI exit result to its process
 
 Lean's kernel checks the compiler and byte proofs against Talos and the specified host relations.  Wasmtime, the C compiler, OS streams, the native action interpreter, and real host progress remain external assumptions tested by execution.  Standard WASI linking supplies compatibility with the selected ABI.
 
+### Exit acceptance: pending review
+
+This proposal is pending the user's decision.  The existing exit semantics and host requirements above remain the approved design.
+
+The proposed revision keeps standard Wasmtime linking, `exit : UInt64 → Action α`, and the `code mod 2^32` argument to `proc_exit`.  It distinguishes that argument from host acceptance.  An accepted request produces a designated exit with the same unsigned status.  A rejected request produces a terminal host-trap outcome without recording an accepted status.  Both outcomes preserve prior effects and prevent continuation.  The total-execution guarantee would require host acceptance of each reached exit request.  OS status narrowing would apply only to accepted exits.
+
+The pinned [exit-code type](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx#L605-L606) is `u32`.  The [exit declaration](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx#L426-L432) marks `proc_exit` as nonreturning and leaves nonzero meanings to the environment.  [Wasmtime 44's implementation](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/wasi/src/p1.rs#L2614-L2625) accepts statuses below 126 and rejects 126 or above as an engine error.  That rejection differs from an accepted exit whose OS representation loses high bits.
+
+The pinned [linker shadowing API](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/c-api/include/wasmtime/linker.h#L63-L68) supports replacing `proc_exit` with a C callback.  Accepting every `UInt32` through that callback would establish a different host policy and require embedding-owned state for exit classification.  Stock Wasmtime would continue to reject statuses of 126 or above when running the same binary.
+
 ## Implementation and acceptance
 
 The proposed implementation separates native APIs from compiler developments:
