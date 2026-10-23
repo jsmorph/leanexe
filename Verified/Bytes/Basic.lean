@@ -73,11 +73,12 @@ theorem Allocated.get {heap : Heap} {store : Store Unit} {root : UInt64}
   rw [h.read8 index hi]
   simp only [LeanExe.Bytes.get, dite_eq_left hi]
 
-theorem Allocated.frame {heap : Heap} {store store' : Store Unit} {root : UInt64}
+theorem Allocated.frameIn {heap heap' : Heap} {store store' : Store Unit} {root : UInt64}
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes)
     (hBytes : ∀ a, root.toNat - 48 ≤ a → a < root.toNat + capacityAt store root →
-      store'.mem.bytes a = store.mem.bytes a) :
-    Allocated heap store' root bytes := by
+      store'.mem.bytes a = store.mem.bytes a)
+    (hRegion : heap'.Region (block store root)) :
+    Allocated heap' store' root bytes ∧ capacityAt store' root = capacityAt store root := by
   have hBase := h.object.base
   have hFit := h.object.address
   have hRead (offset : UInt64) (hl : 8 ≤ offset.toNat) (hh : offset.toNat ≤ 48) :
@@ -90,9 +91,10 @@ theorem Allocated.frame {heap : Heap} {store store' : Store Unit} {root : UInt64
   have hCapacity : capacityAt store' root = capacityAt store root := by
     unfold capacityAt
     rw [hRead 32 (by decide) (by decide)]
+  refine ⟨?_, hCapacity⟩
   refine ⟨⟨hBase, by rw [hCapacity]; exact hFit,
-      by rw [hCapacity]; exact h.object.below,
-      by rw [hCapacity]; exact h.object.separate⟩,
+      by rw [hCapacity]; have := hRegion.below; simp only [block] at this; omega,
+      by rw [hCapacity]; exact hRegion.separate⟩,
     ?_, ?_, ?_, ?_, ?_, ?_, ?_, ?_⟩
   · rw [hRead 48 (by decide) (by decide)]; exact h.magic
   · rw [hRead 40 (by decide) (by decide)]; exact h.count
@@ -104,6 +106,13 @@ theorem Allocated.frame {heap : Heap} {store store' : Store Unit} {root : UInt64
   · intro i hi
     rw [hBytes _ (by omega) (by have := h.capacity; omega)]
     exact h.contents i hi
+
+theorem Allocated.frame {heap : Heap} {store store' : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes)
+    (hBytes : ∀ a, root.toNat - 48 ≤ a → a < root.toNat + capacityAt store root →
+      store'.mem.bytes a = store.mem.bytes a) :
+    Allocated heap store' root bytes :=
+  (h.frameIn hBytes h.region).1
 
 theorem Rep.empty (heap : Heap) (store : Store Unit) :
     Rep heap store 0 0 LeanExe.Bytes.empty :=
