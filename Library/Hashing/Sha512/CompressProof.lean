@@ -101,15 +101,6 @@ theorem schedule_succ (b : SHS.SHA512.Impl.Block) (t : Nat) (ht : t < 80) :
   unfold schedulePrefix at this h2
   rw [this, h2]
 
-/-- Word `k` of a window. -/
-def _root_.Library.Hashing.Words.Words16.get (m : Words16) (k : Nat) : UInt64 := m.toVec[k]!
-
-@[simp] theorem get0 (m : Words16) : m.get 0 = m.w0 := rfl
-@[simp] theorem get1 (m : Words16) : m.get 1 = m.w1 := rfl
-@[simp] theorem get9 (m : Words16) : m.get 9 = m.w9 := rfl
-@[simp] theorem get14 (m : Words16) : m.get 14 = m.w14 := rfl
-@[simp] theorem get15 (m : Words16) : m.get 15 = m.w15 := rfl
-
 /-- After `t` advances, word `k` of the window is word `t + k` of the schedule of the first
 window. -/
 theorem window (m : Words16) : ∀ t k, k < 16 → t + k < 80 →
@@ -121,7 +112,7 @@ theorem window (m : Words16) : ∀ t k, k < 16 → t + k < 80 →
     rw [Function.iterate_zero_apply, Nat.zero_add, schedule_succ _ _ (by omega)]
     unfold scheduleValue
     rw [ite_eq_left hk]
-    rfl
+    interval_cases k <;> rfl
   | succ t ih =>
     intro k hk htk
     rw [Function.iterate_succ_apply']

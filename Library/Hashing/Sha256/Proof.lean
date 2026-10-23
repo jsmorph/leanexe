@@ -103,8 +103,8 @@ def preBlock (pre : ByteArray) (i : Nat) : Vector UInt8 64 :=
   Vector.ofFn fun (j : Fin 64) => pre.get! (i * 64 + j.val)
 
 theorem paddedBlock_pre (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p)
-    (msg : Array UInt64) (n i : Nat) (hi : i < p) :
-    paddedBlock (pre ++ bytes msg n) i = preBlock pre i := by
+    (data : ByteArray) (i : Nat) (hi : i < p) :
+    paddedBlock (pre ++ data) i = preBlock pre i := by
   apply Vector.ext
   intro j hj
   simp only [paddedBlock, preBlock, Vector.getElem_ofFn]
@@ -117,36 +117,36 @@ theorem fold_split {β : Type} (g : Nat → β → β) (init : β) (p : Nat) : �
   | 0 => rfl
   | N + 1 => by rw [← Nat.add_assoc, Nat.fold_succ, Nat.fold_succ, fold_split g init p N]
 
-/-- A fold over the padded blocks of `pre ++ m` is the fold over the blocks of `m` from the fold
-over the `p` blocks of `pre`. -/
-theorem foldl_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (msg : Array UInt64)
-    (n : Nat) {β : Type} (c : β → Vector UInt8 64 → β) (init : β) :
-    (implPaddedBlocks (pre ++ bytes msg n)).foldl c init =
-      Nat.fold (blockCount n) (fun i _ b => c b (paddedBlock (pre ++ bytes msg n) (p + i)))
+/-- A fold over the padded blocks of `pre ++ data` is the fold over the blocks of `data` from the
+fold over the `p` blocks of `pre`. -/
+theorem foldl_append (pre : ByteArray) (p : Nat) (hpre : pre.size = 64 * p) (data : ByteArray)
+    {β : Type} (c : β → Vector UInt8 64 → β) (init : β) :
+    (implPaddedBlocks (pre ++ data)).foldl c init =
+      Nat.fold (blockCount data.size) (fun i _ b => c b (paddedBlock (pre ++ data) (p + i)))
         (Nat.fold p (fun i _ b => c b (preBlock pre i)) init) := by
   have hp : ∀ k, k ≤ p →
-      Nat.fold k (fun i _ b => c b (paddedBlock (pre ++ bytes msg n) i)) init =
+      Nat.fold k (fun i _ b => c b (paddedBlock (pre ++ data) i)) init =
         Nat.fold k (fun i _ b => c b (preBlock pre i)) init := by
     intro k
     induction k with
     | zero => intro _; rw [Nat.fold_zero, Nat.fold_zero]
     | succ k ih =>
       intro hk
-      rw [Nat.fold_succ, Nat.fold_succ, ih (by omega),
-        paddedBlock_pre pre p hpre msg n k (by omega)]
+      rw [Nat.fold_succ, Nat.fold_succ, ih (by omega), paddedBlock_pre pre p hpre data k (by omega)]
   rw [implPaddedBlocks_foldl, paddedSize pre p hpre,
     Nat.mul_div_cancel_left _ (by decide : 0 < 64),
-    finFoldl_eq_fold _ (fun i b => c b (paddedBlock (pre ++ bytes msg n) i)),
-    fold_split (fun i b => c b (paddedBlock (pre ++ bytes msg n) i)), hp p (Nat.le_refl _)]
+    finFoldl_eq_fold _ (fun i b => c b (paddedBlock (pre ++ data) i)),
+    fold_split (fun i b => c b (paddedBlock (pre ++ data) i)), hp p (Nat.le_refl _)]
 
 /-- The 32-bit words of the program's final hash value of a message from the initial value `iv`
 are the implementation's. -/
 theorem hashFrom_iv (iv : Words8) (msg : Array UInt64) (n : UInt64) (hn : n.toNat < 2 ^ 61) :
     (hashFrom roundConstants iv msg n n).toVec32 =
       implSha256StateRefactored (bytes msg n.toNat) iv.toVec32 := by
-  have e := foldl_append ByteArray.empty 0 rfl msg n.toNat
+  have e := foldl_append ByteArray.empty 0 rfl (bytes msg n.toNat)
     (fun s b => SHS.SHA256.Impl.compress s (SHS.SHA256.Impl.toU32s b)) iv.toVec32
   simp only [ByteArray.empty_append, Nat.fold_zero] at e
+  rw [bytes_size] at e
   unfold implSha256StateRefactored
   rw [e, hashFrom_toVec32 ByteArray.empty 0 rfl iv msg n n (by simp) hn]
   simp only [ByteArray.empty_append]

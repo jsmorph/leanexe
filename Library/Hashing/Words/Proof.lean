@@ -16,6 +16,17 @@ def be8 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) : UInt64 :=
 /-- Byte `k` of `w`, counting from the least significant. -/
 def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> (8 * k).toUInt64).toUInt8
 
+/-- Word `k` of sixteen words. -/
+def Words16.get (m : Words16) (k : Nat) : UInt64 :=
+  #[m.w0, m.w1, m.w2, m.w3, m.w4, m.w5, m.w6, m.w7, m.w8, m.w9, m.w10, m.w11, m.w12, m.w13, m.w14,
+    m.w15][k]!
+
+@[simp] theorem get0 (m : Words16) : m.get 0 = m.w0 := rfl
+@[simp] theorem get1 (m : Words16) : m.get 1 = m.w1 := rfl
+@[simp] theorem get9 (m : Words16) : m.get 9 = m.w9 := rfl
+@[simp] theorem get14 (m : Words16) : m.get 14 = m.w14 := rfl
+@[simp] theorem get15 (m : Words16) : m.get 15 = m.w15 := rfl
+
 theorem bytes_size (msg : Array UInt64) (n : Nat) : (bytes msg n).size = n := by
   simp [bytes, ByteArray.size]
 
@@ -66,6 +77,19 @@ theorem byteOf_marked (w : UInt64) (r k : Nat) (hr : r < 8) (hk : k < 8) :
   intro i hi
   interval_cases r <;> interval_cases k <;>
     simp [byteOf, UInt64.toBitVec_or, UInt64.toBitVec_and, UInt64.toBitVec_shiftLeft,
+      UInt64.toBitVec_shiftRight, UInt64.toBitVec_toUInt8] <;>
+    interval_cases i <;> simp
+
+set_option maxHeartbeats 1600000 in
+/-- The bytes of the word that keeps the first `r` bytes of `w` and clears the others. -/
+theorem byteOf_masked (w : UInt64) (r k : Nat) (hr : r < 8) (hk : k < 8) :
+    byteOf (w &&& (((1 : UInt64) <<< (8 * r).toUInt64) - 1)) k =
+      if k < r then byteOf w k else 0 := by
+  apply UInt8.toBitVec_inj.mp
+  apply BitVec.eq_of_getLsbD_eq
+  intro i hi
+  interval_cases r <;> interval_cases k <;>
+    simp [byteOf, UInt64.toBitVec_and, UInt64.toBitVec_shiftLeft,
       UInt64.toBitVec_shiftRight, UInt64.toBitVec_toUInt8] <;>
     interval_cases i <;> simp
 
