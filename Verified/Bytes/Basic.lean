@@ -1,4 +1,4 @@
-import LeanExe.Dialect.Bytes
+import Verified.Bytes.Memory
 import LeanExe.Pipeline.RuntimeSpec
 
 namespace Verified.Bytes
@@ -58,11 +58,19 @@ theorem Allocated.index_address {heap : Heap} {store : Store Unit} {root : UInt6
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)
     (hi : index.toNat < bytes.data.size) :
     (root + index).toUInt32.toNat = root.toNat + index.toNat := by
-  have hFit := h.object.address
+  apply Verified.Bytes.index_address root index bytes.data.size _ hi
+  have := h.object.address
+  have := h.capacity
+  omega
+
+theorem Allocated.toAt {heap : Heap} {store : Store Unit} {root : UInt64}
+    {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store) :
+    At store.mem root bytes := by
   have hCapacity := h.capacity
-  have hSum : (root + index).toNat = root.toNat + index.toNat := by
-    rw [UInt64.toNat_add, Nat.mod_eq_of_lt (by omega)]
-  rw [Memory.toUInt32_toNat, hSum, Nat.mod_eq_of_lt (by omega)]
+  refine ⟨by have := h.object.address; omega, ?_, h.contents⟩
+  have := h.object.below
+  have := hHeap.top
+  omega
 
 theorem Allocated.read8 {heap : Heap} {store : Store Unit} {root : UInt64}
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (index : UInt64)

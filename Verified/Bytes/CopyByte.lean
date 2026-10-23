@@ -11,7 +11,7 @@ def copyByteCode (source destination index : Nat) : Program :=
 theorem wp_copyByte {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {source destination index : UInt64} {input output : LeanExe.Bytes}
     {sourceSlot destinationSlot indexSlot : Nat} {rest : Program} {Q : Assertion Unit}
-    (hHeap : heap.At store) (hSource : Allocated heap store source input)
+    (hHeap : heap.At store) (hSource : At store.mem source input)
     (hDestination : Allocated heap store destination output)
     (hIndex : index.toNat < input.data.size) (hOutput : index.toNat < output.data.size)
     (hSourceLocal : s.get sourceSlot = some (.i64 source))
@@ -20,9 +20,7 @@ theorem wp_copyByte {m : Module} {host : HostEnv Unit} {heap : Heap} {store : St
     (hNext : wp m rest Q (writeByte store destination index input.data[index.toNat]) s host) :
     wp m (copyByteCode sourceSlot destinationSlot indexSlot ++ rest) Q store s host := by
   have hAddress := hSource.index_address index hIndex
-  have hCapacity := hSource.capacity
-  have hBelow := hSource.object.below
-  have hTop := hHeap.top
+  have hInputMemory := hSource.memory
   have hMemory : ¬ store.mem.pages * 65536 < (source + index).toUInt32.toNat + 1 := by
     rw [hAddress]
     omega
