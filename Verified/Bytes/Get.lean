@@ -1,15 +1,10 @@
 import Verified.Bytes.Basic
+import Verified.Bytes.Code
 import Verified.LocalFrame
 
 namespace Verified.Bytes
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit
-
-def getCode (root length index : Nat) : Program :=
-  [.localGet index, .localGet length, .ltUI64,
-   .iff 0 1
-     [.localGet root, .localGet index, .addI64, .wrapI64, .load8U 0, .extendUI32]
-     [.constI64 0]]
 
 theorem wp_get {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {root length index : UInt64} {bytes : LeanExe.Bytes}

@@ -62,6 +62,21 @@ theorem Allocated.write_range {heap : Heap} {store : Store Unit} {root : UInt64}
     (by rw [h.index_address index hi]; omega)
     (by rw [h.index_address index hi]; omega)
 
+theorem Allocated.capacity_writesRange {heap : Heap} {store store' : Store Unit}
+    {root : UInt64} {bytes : LeanExe.Bytes} {stop : Nat}
+    (h : Allocated heap store root bytes)
+    (hWrites : Memory.WritesRange store store' root.toNat stop) :
+    capacityAt store' root = capacityAt store root := by
+  unfold capacityAt
+  apply congrArg UInt64.toNat
+  apply hWrites.read64
+  left
+  have hBase := h.object.base
+  have hAddress := h.object.address
+  rw [headerAddress_toNat (by simp; omega) (by omega)]
+  simp only [UInt64.reduceToNat]
+  omega
+
 theorem Allocated.write_step {heap : Heap} {store : Store Unit} {root : UInt64}
     {bytes : LeanExe.Bytes} (h : Allocated heap store root bytes) (hHeap : heap.At store)
     (index : UInt64) (hi : index.toNat < bytes.data.size) (value : UInt8) :

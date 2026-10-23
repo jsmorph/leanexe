@@ -1,12 +1,9 @@
 import Verified.Bytes.Write
+import Verified.Bytes.Code
 
 namespace Verified.Bytes
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit
-
-def copyByteCode (source destination index : Nat) : Program :=
-  [.localGet destination, .localGet index, .addI64, .wrapI64,
-   .localGet source, .localGet index, .addI64, .wrapI64, .load8U 0, .store8 0]
 
 theorem wp_copyByte {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {source destination index : UInt64} {input output : LeanExe.Bytes}

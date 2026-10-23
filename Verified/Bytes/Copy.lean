@@ -5,13 +5,6 @@ namespace Verified.Bytes
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit
 
-def copyCode (source destination count index : Nat) : Program :=
-  [.constI64 0, .localSet index,
-   .block 0 0 [.loop 0 0
-     ([.localGet index, .localGet count, .geUI64, .br_if 1] ++
-      copyByteCode source destination index ++
-      [.localGet index, .constI64 1, .addI64, .localSet index, .br 0])]]
-
 theorem wp_copy {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store Unit}
     {s : Locals} {source destination : UInt64} {input output : LeanExe.Bytes}
     {sourceSlot destinationSlot countSlot indexSlot : Nat} {rest : Program} {Q : Assertion Unit}
