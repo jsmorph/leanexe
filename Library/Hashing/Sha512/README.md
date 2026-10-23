@@ -39,7 +39,7 @@ Each export takes the message array and then the byte count `n`.  The theorems r
 | [`Bytes.lean`](Bytes.lean) | The four call theorems and `sha512_module`, from the generated `implements` theorems and the equalities of `Proof.lean`. |
 | [`File.lean`](File.lean) | `sha512_file` and `sha512_file_decode`: the emitted file holds the module's encoding and decodes to the module. |
 
-`sha512_spec` composes the program's equality with the copied implementation and `SHS.Equiv.SHA512.sha512_correct`, which equates that implementation with the transcription.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  The copied proofs, ported to Lean 4.34, are under [`Library/Hashing/Sha2/Equiv`](../Sha2/Equiv/SHA512/Main.lean).
+`sha512_spec` composes the program's equality with the copied implementation and `SHS.Equiv.SHA512.sha512_correct`, which equates that implementation with the transcription.  Every theorem listed above depends only on the axioms `propext`, `Classical.choice`, and `Quot.sound`.  `sha512_bytes_collision` in [the Merkle–Damgård module](../MerkleDamgard.lean) shows that two distinct messages with equal digests give a collision of `SHS.SHA512.compress`.  The copied proofs, ported to Lean 4.34, are under [`Library/Hashing/Sha2/Equiv`](../Sha2/Equiv/SHA512/Main.lean).
 
 ## Tests
 

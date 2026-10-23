@@ -35129,11 +35129,21 @@ The user updated `main` with the completed library layout, which `library-layout
 
 The native vector test agrees with all 65 short and 64 long CAVP messages of each function, for the program and for the transcription, and the program reproduces the 100 Monte Carlo checkpoints of each, in 155 seconds.  `tests/verified/run.sh --cases sha256` passed 145 cases, with one retained block and no allocation by the call in each.  The emitted file checks against both file theorems.
 
-On the build host's AMD Ryzen 3 PRO 7330U, the Wasmtime host hashes random bytes at 49.6 MiB/s with SHA-256 and 87.5 MiB/s with SHA-512.  Each rate comes from the best of three calls on 257 MiB and on 1 MiB, whose difference removes the fixed cost of compiling the module, and every digest agrees with coreutils.  On the same files `sha256sum` reaches 1,571 MiB/s and `sha512sum` 837 MiB/s.  A SHA-256 round, with its share of loading and schedule, takes 19.2 ns, and a SHA-512 round takes 17.4 ns.  The two compressions have the same structure on 64-bit operations, so the difference of 1.8 ns bounds the cost of holding 32-bit words in 64-bit words at about a tenth of SHA-256's time.  The rest of the gap to `sha512sum`, a factor of about ten, lies elsewhere in the compiled code, and locating it needs a Wasm disassembler, which neither machine has.
+On an x86-64 machine, the Wasmtime host hashes random bytes at 49.6 MiB/s with SHA-256 and 87.5 MiB/s with SHA-512.  Each rate comes from the best of three calls on 257 MiB and on 1 MiB, whose difference removes the fixed cost of compiling the module, and every digest agrees with coreutils.  On the same files `sha256sum` reaches 1,571 MiB/s and `sha512sum` 837 MiB/s.  A SHA-256 round, with its share of loading and schedule, takes 19.2 ns, and a SHA-512 round takes 17.4 ns.  The two compressions have the same structure on 64-bit operations, so the difference of 1.8 ns bounds the cost of holding 32-bit words in 64-bit words at about a tenth of SHA-256's time.  The rest of the gap to `sha512sum`, a factor of about ten, lies elsewhere in the compiled code, and locating it needs a Wasm disassembler, which neither machine has.  The user decided from these measurements to keep the compiler without a native `UInt32` type.
 
 - [x] SHA-256 and SHA-224: program, compilation with `aborts = false`, equality proof, file theorem, vectors, and cases.
 - [x] The 32-bit helpers and their truncation lemmas.
 - [x] Measure SHA-256 in Wasmtime.
-- [ ] Decide on a native `UInt32` type in the compiler.
+- [x] Decide on a native `UInt32` type in the compiler.
 - [ ] The Merkle–Damgård reduction for SHA-512 and SHA-256.
 - [ ] The full library build and verified driver with the new modules.
+
+## 2026-10-23: The Merkle–Damgård reduction
+
+`Library/Hashing/MerkleDamgard.lean` proves the reduction of the plan for SHA-256 and SHA-512: two distinct messages with equal digests give two distinct pairs of a hash value and a block on which the compression function of FIPS 180-4 agrees.  The proof is generic in the word width `w` and the compression function, with the padding, parsing, and final hash value defined at width `w`.  At `w = 32` and `w = 64` these definitions unfold to the transcription's `pad`, `parse`, `sha256`, and `sha512`, so `sha256_collision` and `sha512_collision` follow by definitional unfolding, which never reaches the compression.  `sha256_bytes_collision` and `sha512_bytes_collision` restate the reduction for byte strings through the injectivity of `bytesToBitMessage`, and they apply to two calls of an export through the call theorems.  All four theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+The proof splits on the message lengths.  Different lengths give different length fields and therefore different final blocks, so the last compression collides.  Equal lengths give the same number of blocks, and a fold over two lists of one length either meets a collision or runs over equal lists, which makes the padded messages and then the messages equal.  The supporting lemmas cover the number of zero bits that `find?` selects, the injectivity of `Word.fromBits` on lists of `w` bits and of a block on its `16 w` bits, and the injectivity of the length field below `2 ^ (2 w)`.
+
+- [x] The Merkle–Damgård reduction for SHA-256 and SHA-512, for bit messages and byte strings.
+- [ ] The full library build and verified driver with the new modules, which wait for memory.
+- [ ] HMAC-SHA-256 and HMAC-SHA-512.
