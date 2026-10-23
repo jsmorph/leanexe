@@ -145,12 +145,10 @@ theorem MatchAfter_step
       have hkn : k ≠ n := Nat.ne_of_lt hk_lt
       have hold := hring k hk_lt (by omega)
       have hkW : k < W.size := by simp only [hWsize]; omega
-      have hk64 : k < 64 := by simp at hkW; exact hkW
+      have hk64 : k < 64 := hkW
       have hn64 : n < 64 := hn
       have hspec_k : (specScheduleStep (toSpecBlock block₀) n W)[k]! = W[k]! := by
         unfold specScheduleStep
-        have hsize_post : ∀ v : Word, k < (W.set! n v).toArray.size := by
-          intro v; simp; exact hk64
         rw [getElem!_pos _ k hkW]
         split
         · rw [getElem!_pos _ k hk64]
@@ -208,7 +206,7 @@ theorem MatchAfter_iter
     have hk_lt : k < 64 := by omega
     have ih' := ih hk
     simp only [Fin.foldl_succ_last] at *
-    convert MatchAfter_step block _ _ _ _ k hk_lt ih' using 1
+    exact MatchAfter_step block _ _ _ _ k hk_lt ih'
 
 /-- Final cross-side meet: lifting the impl factored fold through
 `toSpecState` yields the spec fused fold (on the lifted block).
@@ -227,10 +225,9 @@ theorem toSpecState_implCompressFoldl
         (block, state)).2[k]'hk).toBitVec =
       ((Fin.foldl 64
           (fun acc (t : Fin 64) => specFusedStep (toSpecBlock block) t.val acc)
-        (Vector.replicate 64 default, initVars (toSpecState state))).2[k]'hk) := by
+        (Vector.replicate 64 default, initVars (state.map UInt32.toBitVec))).2[k]'hk) := by
     intro k hk
-    have := hvars ⟨k, hk⟩
-    convert this using 2
+    exact hvars ⟨k, hk⟩
   -- `Nat`-indexed access at literal `k` against the `Vector.map` form
   -- that `unfold toSpecState` exposes inside the goal.
   have getElem!_lit : ∀ (k : Nat) (h : k < 8),
@@ -246,6 +243,9 @@ theorem toSpecState_implCompressFoldl
   rw [hvars' k hk]
   -- Eight working-variable indices; each side reduces to the same
   -- `state[k] + ⟨fold result⟩[k]` after `simp`, modulo `+`-associativity.
+  generalize (Fin.foldl 64
+      (fun acc (t : Fin 64) => specFusedStep (toSpecBlock block) t.val acc)
+      (Vector.replicate 64 default, initVars (state.map UInt32.toBitVec))).2 = B
   interval_cases k <;> (simp; ac_rfl)
 
 end SHS.Equiv.SHA256.Compress.Match
