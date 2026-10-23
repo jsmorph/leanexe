@@ -8,19 +8,20 @@ theorem TailFunc.function_implements {S : List Sig} (func : TailFunc S)
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
     (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
-    (m : Module) (pos : Nat) (hm : Runtime m)
-    (hFunc : m.funcs[pos]? = some (func.function pos)) {d : UInt64}
-    (hCalls : CallsAt m funs flags bounds fits d) (hDepth : func.depth = false) :
+    (m : Module) (pos : Nat) (hm : Runtime m) {pool : Bytes.LiteralPool}
+    (hFunc : m.funcs[pos]? = some (func.function (pool := pool) pos))
+    (hCovered : func.body.Covered pool) {d : UInt64}
+    (hCalls : CallsAt m funs flags bounds fits d pool) (hDepth : func.depth = false) :
     @ImplementsP _ _ (Env.represent func.params func.modes) (Ty.represent func.result)
       (fun _ => True) (fun _ => true)
       (fun store ws x => Env.argPot store
         (fun i => paidAt (func.paidParams flags) i && paramMode func.params func.modes i == .owned)
         ws x)
       (fun store ws v => if func.paidResult flags then func.result.pot store ws v else 0)
-      func.aborts m pos meaning (func.bound funs flags bounds) := by
-  intro host store heap ws args _ hAt hRep hSep hCap
-  have run := func.function_runs funs flags bounds fits decreases meaning fixed m pos hm hFunc d
-    (fun _ => hCalls) host store heap ws args hAt hRep hSep hCap
+      func.aborts m pos meaning (func.bound funs flags bounds) pool := by
+  intro host store heap ws args _ hAt hInput hRep hSep hCap
+  have run := func.function_runs funs flags bounds fits decreases meaning fixed m pos hm hFunc
+    hCovered d (fun _ => hCalls) host store heap ws args hAt hInput hRep hSep hCap
   simp only [hDepth, Bool.false_eq_true, ↓reduceIte, List.nil_append, Bool.false_and,
     Bool.false_or] at run
   exact run.mono fun final values ⟨heap', at_, rep, caps, regions, top⟩ =>
@@ -30,9 +31,10 @@ theorem TailFunc.function_depth {S : List Sig} (func : TailFunc S)
     (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (decreases : func.Decreases funs) (meaning : Env func.params → func.result.denote)
     (fixed : ∀ state, meaning state = (func.body.denote funs state).elim meaning id)
-    (m : Module) (pos : Nat) (hm : Runtime m)
-    (hFunc : m.funcs[pos]? = some (func.function pos)) (hDepth : func.depth = true) (d : UInt64)
-    (hCalls : d < depthLimit → CallsAt m funs flags bounds fits d)
+    (m : Module) (pos : Nat) (hm : Runtime m) {pool : Bytes.LiteralPool}
+    (hFunc : m.funcs[pos]? = some (func.function (pool := pool) pos))
+    (hCovered : func.body.Covered pool) (hDepth : func.depth = true) (d : UInt64)
+    (hCalls : d < depthLimit → CallsAt m funs flags bounds fits d pool)
     (Fi : Env func.params → Bool) (A : Env func.params → Nat)
     (hFi : ∀ args, Fi args = (decide (d < depthLimit) && func.fits funs fits args))
     (hA : d < depthLimit → ∀ args, A args = func.bound funs flags bounds args) :
@@ -42,8 +44,8 @@ theorem TailFunc.function_depth {S : List Sig} (func : TailFunc S)
         (depthSelOf fun i => paidAt (func.paidParams flags) i &&
           paramMode func.params func.modes i == .owned) ws x)
       (fun store ws v => if func.paidResult flags then func.result.pot store ws v else 0)
-      true m pos (depthMeaning meaning) (fun env => A env.dropDepth) := by
-  intro host store heap vs env hd hAt hRep hSep hCap
+      true m pos (depthMeaning meaning) (fun env => A env.dropDepth) pool := by
+  intro host store heap vs env hd hAt hInput hRep hSep hCap
   cases env with
   | cons depth args =>
     change depth = d at hd
@@ -59,8 +61,18 @@ theorem TailFunc.function_depth {S : List Sig} (func : TailFunc S)
           (.i64 depth :: ws) (.cons (t := .word) depth args)) at hs
       rw [Env.moves_depth, Env.reads_depth] at hs
       exact hs
+    have input : @Bytes.LiteralPool.Input (Env func.params) (Env.represent func.params func.modes)
+        pool heap store ws args := by
+      refine ⟨hInput.1, ?_⟩
+      intro region hRegion
+      have apart := hInput.2 region hRegion
+      change Apart store
+        (Env.moves store (paramMode (.word :: func.params) (.borrowed :: func.modes))
+          (.i64 depth :: ws) (.cons (t := .word) depth args)) region at apart
+      rw [Env.moves_depth] at apart
+      exact apart
     have run := func.function_runs funs flags bounds fits decreases meaning fixed m pos hm hFunc
-      depth (fun h => hCalls (h hDepth)) host store heap ws args hAt rep separate hCap
+      hCovered depth (fun h => hCalls (h hDepth)) host store heap ws args hAt input rep separate hCap
     simp only [hDepth, ↓reduceIte, List.singleton_append, Bool.true_and] at run
     change Runs (!Fi args || (true && !decide (heap.Within store m
       (Env.argPot store (depthSelOf fun i => paidAt (func.paidParams flags) i &&

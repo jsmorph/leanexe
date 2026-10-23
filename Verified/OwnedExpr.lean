@@ -2,6 +2,8 @@ import Verified.ExprSpec
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem _root_.Wasm.TrapOK.allocPart {d d' : Bool} {P P' : Prop}
@@ -15,12 +17,14 @@ theorem CodeSpec.coerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
     {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
     {target : Mode} {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
-    (hm : Runtime m) (spec : CodeSpec m funs flags bounds fits host pv e env slots paid live)
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
     (hTarget : e.mode (slots.map Slot.mode) = .owned → target = .owned)
     {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
     (hh : s.positions = h) (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || e.uses i) base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || e.uses i) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
     (hPlace : e.placeArgs = true) {rest : Program} {Q : Assertion Unit}
     (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
@@ -35,14 +39,14 @@ theorem CodeSpec.coerced {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
         coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env)) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
-    wp m (e.code h slots base live ++
+    wp m (e.code (pool := pool) h slots base live ++
       (coerceCode h t (e.mode (slots.map Slot.mode)) target base ++ rest)) Q store s host := by
   have hBudget : TrapOK (!(e.fits funs fits env) || (true && !decide (heap.Within store m
       (dyingPot store s env slots paid (fun i => live i || e.uses i) live +
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
         coerceCost t (e.mode (slots.map Slot.mode)) target (e.denote funs env))))) Q := by
     simpa only [Bool.true_and] using hTrap
-  refine spec h base heap store s hh hpv hVars hAt hCap hBase
+  refine spec h base heap store s hh hpv hVars hAt hSafe hCap hBase
     (by have := Nat.le_max_left e.width (copyWidth t); omega) hPlace _ _
     (hBudget.part id (fun _ => rfl) (fun _ hw => hw.mono (by omega)))
     fun heap1 store1 s1 ws a1 hTop1 => ?_
@@ -71,11 +75,13 @@ theorem CodeSpec.owned {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
     {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
     {host : HostEnv Unit} {pv : List Value} {e : Expr S Γ t} {env : Env Γ}
     {slots : List Slot} {paid : List Bool} {live : Nat → Bool}
-    (hm : Runtime m) (spec : CodeSpec m funs flags bounds fits host pv e env slots paid live)
+    (hm : Runtime m) (spec : CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live)
     {h base : Nat} {heap : Heap} {store : Store Unit} {s : Locals}
     (hh : s.positions = h) (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || e.uses i) base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || e.uses i) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hBase : s.params.length ≤ base) (hRoom : base + max e.width (copyWidth t) ≤ h)
     (hPlace : e.placeArgs = true) {rest : Program} {Q : Assertion Unit}
     (hTrap : TrapOK (!(e.fits funs fits env) || !decide (heap.Within store m
@@ -90,9 +96,9 @@ theorem CodeSpec.owned {S : List Sig} {Γ : List Ty} {t : Ty} {m : Module}
         e.allocs funs flags bounds (slots.map Slot.mode) paid live env +
         coerceCost t (e.mode (slots.map Slot.mode)) .owned (e.denote funs env)) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) :
-    wp m (e.code h slots base live ++
+    wp m (e.code (pool := pool) h slots base live ++
       (coerceCode h t (e.mode (slots.map Slot.mode)) .owned base ++ rest)) Q store s host :=
-  CodeSpec.coerced (target := .owned) hm spec (fun _ => rfl) hh hpv hVars hAt hCap
+  CodeSpec.coerced (target := .owned) hm spec (fun _ => rfl) hh hpv hVars hAt hSafe hCap
     hBase hRoom hPlace hTrap hNext
 
 end Verified

@@ -4,6 +4,8 @@ import Verified.TreeAssembleCode
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Runtime
 
 theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape}
@@ -16,9 +18,9 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape}
     let args := treeArgs words children
     let kept := fun k => live k || optionVarUses reuse k
     let L := fieldLive args.get kept
-    (Expr.treeNode reuse words children).code h slots base live =
+    (Expr.treeNode reuse words children).code (pool := pool) h slots base live =
       argsCode (fun i : Fin ps.length =>
-        (args.get i).code h slots (base + shape.bindCount) (L (i.val + 1)) ++
+        (args.get i).code (pool := pool) h slots (base + shape.bindCount) (L (i.val + 1)) ++
         coerceCode h (ps.get i) ((args.get i).mode (slots.map Slot.mode)) .owned
           (base + shape.bindCount) ++
         storeCode h (base + 1 + i.val) (ps.get i).types) ++
@@ -34,10 +36,11 @@ theorem treeNode_code_eq {S : List Sig} {Γ : List Ty} {shape : TreeShape}
   have hChildren : ∀ i : Fin shape.children, L (shape.words + i.val + 1) = fun k => kept k ||
       (argsAny fun j => decide (i.val < j.val) && (children j).uses k) :=
     fun i => funext (treeArgs_childLive words children kept i)
-  have hCode := Args.code_prependRepeat .word shape.words words
+  have hCode := Args.code_prependRepeat (pool := pool) .word shape.words words
     (Args.prependRepeat (.tree shape) shape.children children Args.nil)
     h (base + 1) (base + shape.bindCount) slots L
-  have hChildCode := Args.code_prependRepeat (.tree shape) shape.children children Args.nil
+  have hChildCode := Args.code_prependRepeat (pool := pool)
+    (.tree shape) shape.children children Args.nil
     h (base + 1 + shape.words) (base + shape.bindCount) slots
     (fun j => L (shape.words + j))
   simp only [Nat.add_assoc] at hCode hChildCode hChildren

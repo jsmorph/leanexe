@@ -2,6 +2,8 @@ import Verified.ExprSpec
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 section Cases
@@ -12,9 +14,9 @@ variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds :
 /-- A variable: read in place when borrowed, moved where it dies, and copied where it stays
 live. -/
 theorem spec_var (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' tTy) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.var (S := S) x) env
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.var (S := S) x) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom _
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ hCap hBase hRoom _
       rest Q hTrap hNext
   have hx : (fun i => live i || (Expr.var (S := S) x).uses i) x.index = true := by
     simp [Expr.uses]

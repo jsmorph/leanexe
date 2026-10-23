@@ -23,10 +23,12 @@ theorem Ty.copyScratch_le_tree (t : Ty) : t.copyScratch ≤ treeCopyScratch := b
 
 namespace ListFold
 
+variable {pool : Bytes.LiteralPool}
+
 theorem leafCode_self {S : List Sig} {Γ : List Ty} {t : Ty} (body : Expr S Γ t)
     (h : Nat) (slots : List Slot) (base : Nat) (live : Nat → Bool) :
-    leafCode h (fun slots base live => body.code h slots base live) body slots base live =
-      body.code h slots base live := by
+    leafCode h (fun slots base live => body.code (pool := pool) h slots base live) body slots base live =
+      body.code (pool := pool) h slots base live := by
   cases body <;> rfl
 
 theorem leafCode_var {S : List Sig} {Γ : List Ty} {t : Ty}
@@ -36,12 +38,12 @@ theorem leafCode_var {S : List Sig} {Γ : List Ty} {t : Ty}
 
 theorem loopCode_eq {S : List Sig} {e : Elem} {captures : List Ty}
     (body : Expr S (context e captures) (.elem e)) (h stateBase : Nat) :
-    loopCode body h stateBase (fun slots base live => body.code h slots base live) =
+    loopCode body h stateBase (fun slots base live => body.code (pool := pool) h slots base live) =
       let stateSlots := paramSlots (params e captures) [] stateBase
       let resultBase := stateBase + widthSum (params e captures)
       [.block 0 0 [.loop 0 0
         (releaseWhere (params e captures) stateSlots (fun i => !(tailBody body).usesFast i) ++
-          (tailBody body).code [] h stateBase resultBase stateSlots (resultBase + e.width) 1 0)
+          (tailBody body).code (pool := pool) [] h stateBase resultBase stateSlots (resultBase + e.width) 1 0)
         [] []] [] []] := by
   simp only [loopCode, TailBody.code, tailBody, TailBody.codeWith]
   simp only [nextArgs_get, leafCode_self, leafCode_var]

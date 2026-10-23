@@ -1,7 +1,10 @@
 import Verified.TreeCaseEmpty
 import Verified.ReleasedExpr
+import Verified.Bytes.StaticPrefix
 
 namespace Verified
+
+variable {pool : Bytes.LiteralPool}
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
@@ -10,12 +13,12 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
     (x : Var Γ (.tree shape)) (empty : Expr S Γ t) (node : Expr S (shape.context Γ) t)
     (nodeSpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv node env slots paid live)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv node env slots paid live)
     (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
     (words : Fin shape.words → UInt64) (children : Fin shape.children → Tree shape)
     (hValue : env.get x = .node words children) :
-    CodeSpec m funs flags bounds fits host pv (Expr.treeCase x empty node) env slots paid live := by
-  intro h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+    CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty node) env slots paid live := by
+  intro h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
   let e := Expr.treeCase x empty node
   let L0 := fun i => live i || e.uses i
   let L1 := fun i => live i || node.uses (i + shape.bindCount)
@@ -98,7 +101,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
   simp (config := { decide := true }) only [↓reduceIte]
   let nodeCode := releaseWhere (shape.context Γ) boundSlots
     (fun i => decide (i < shape.bindCount) && !node.uses i) ++
-    node.code h boundSlots scratch boundLive ++
+    node.code (pool := pool) h boundSlots scratch boundLive ++
     coerceCode h t (node.mode (boundSlots.map Slot.mode)) target scratch ++ storeCode h base t.types
   let QB : Assertion Unit := fun cont => match cont with
     | .Fallthrough st' s' =>
@@ -118,7 +121,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
       ((treeLoadFields fieldBase (fieldBase + 1) (fieldBase + 1 + shape.words) 0 shape.fields ++
         (if rootMode = .owned then headerStore fieldBase 8 [.constI64 0] else [])) ++ nodeCode))
     hm hh hpv
-    (hVars.mono (by dsimp only [scratch, fieldBase]; omega)) hAt hCap
+    (hVars.mono (by dsimp only [scratch, fieldBase]; omega)) hAt hSafe hCap
     (by dsimp only [scratch, fieldBase]; omega) hRootRoom rfl hEntry
     (hRootBudget.imp (fun _ hi => hi))
     (fun heap1 store1 s1 ws a hTop => by
@@ -152,6 +155,15 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
           (hF3.mono (by dsimp only [fieldBase]; omega))
         obtain ⟨step3, frame3, outer3, fields3, fresh3⟩ := aRoot.openTreeFields
           hOpenFrame (by dsimp only [fieldBase]; omega) hDetach hPrefix hSubset
+        have hCount : (shape.context []).length = shape.bindCount := by
+          simp only [shape.context_length, List.length_nil, Nat.add_zero]
+        have hLength : (shape.slots fieldBase rootMode []).length = (shape.context []).length := by
+          rw [shape.slots_length, hCount]
+        have hSafePrefix := hSafe.bindPrefixStep hVars step3 frame3 outer3 hLength fresh3 hL1
+          (bodyLive := LB) (fun i hi => by simpa [LB, hCount, shift] using hi)
+        rw [← shape.slots_append] at hSafePrefix
+        have hSafeFields := hSafePrefix.ofHEq (shape.context_append Γ)
+          (Env.treeFields_append shape words children env)
         have hh3 := frame3.positions.trans hh
         have hp3 := frame3.params.trans hpv
         have hStack : s3.values = s.values := hStack3
@@ -176,7 +188,7 @@ theorem spec_treeCase_node {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeS
         simp only [List.append_assoc]
         rw [← treeCase_releaseFields node live]
         refine (nodeSpec boundEnv boundSlots boundPaid boundLive).releaseCoerced (Q := QB) hm hTarget hh3 hp3
-          fields3 hDetach.at_ (by rw [step3.cap m]; exact hCap)
+          fields3 hDetach.at_ hSafeFields (by rw [step3.cap m]; exact hCap)
           (by rw [frame3.params]; dsimp only [scratch, fieldBase]; omega)
           hBodyRoom hPlaceN (treeCase_fieldsLive node live)
           (rest := storeCode h base t.types)

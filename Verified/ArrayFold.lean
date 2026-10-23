@@ -134,23 +134,24 @@ theorem Expr.foldExpand_fits (x : Var Γ (.array e)) (init : Expr S Γ t)
     (body : Expr S (.elem e :: t :: .word :: Γ) t) (funs : Funs S) (fits : Fits S) (env : Env Γ) :
     (Expr.foldExpand x init body).fits funs fits env = (Expr.fold x init body).fits funs fits env := rfl
 
-theorem Expr.foldStep_code (x : Var Γ (.array e))
+theorem Expr.foldStep_code {pool : Bytes.LiteralPool} (x : Var Γ (.array e))
     (body : Expr S (.elem e :: t :: .word :: Γ) t) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) :
-    (Expr.foldStep x body).code h slots base live =
+    (Expr.foldStep x body).code (pool := pool) h slots base live =
       getCode (Γ := t :: .word :: Γ) slots (base + e.width)
           (fun i => live i || body.usesFast (i + 1)) (.there (.there x))
           (fun live => Var.code (Γ := t :: .word :: Γ) (t := .word)
             h slots (base + e.width) live (.there .here)) ++
         storeCode h base e.types ++
-        body.code h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live) := by
+        body.code (pool := pool) h (⟨base, .borrowed⟩ :: slots) (base + e.width) (shift 1 live) := by
   simp [Expr.foldStep, Expr.code, Expr.mode, Ty.types, Ty.width, List.append_assoc]
 
-theorem Expr.foldExpand_code (x : Var Γ (.array e)) (init : Expr S Γ t)
+theorem Expr.foldExpand_code {pool : Bytes.LiteralPool}
+    (x : Var Γ (.array e)) (init : Expr S Γ t)
     (body : Expr S (.elem e :: t :: .word :: Γ) t) (h : Nat) (slots : List Slot) (base : Nat)
     (live : Nat → Bool) :
-    (Expr.foldExpand x init body).code h slots base live =
-      (Expr.fold x init body).code h slots base live := by
+    (Expr.foldExpand x init body).code (pool := pool) h slots base live =
+      (Expr.fold x init body).code (pool := pool) h slots base live := by
   simp only [Expr.foldExpand, Expr.code, Expr.foldStep_code, boolWord, Bool.cond_true]
 
 #print axioms array_fold_eq_loop

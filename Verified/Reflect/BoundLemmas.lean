@@ -40,6 +40,10 @@ theorem size_bound {e : Elem} (x : Var Γ (.array e)) :
 theorem bytesEmpty_bound :
     (Expr.bytesEmpty : Expr S Γ .bytes).allocs funs flags bounds modes paid live env = 0 := rfl
 
+theorem bytesLiteral_bound (bytes : List UInt8) :
+    (Expr.bytesLiteral bytes : Expr S Γ .bytes).allocs funs flags bounds modes paid live env =
+      Bytes.allocationCost bytes.length := rfl
+
 theorem bytesSize_bound (x : Var Γ .bytes) :
     (Expr.bytesSize x : Expr S Γ .word).allocs funs flags bounds modes paid live env = 0 := rfl
 

@@ -29,6 +29,7 @@ def Expr.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, _, .listFold args body => .listFold (fun i => (args i).renameFuns ρ) (body.renameFuns ρ)
   | _, _, .size x => .size x
   | _, _, .bytesEmpty => .bytesEmpty
+  | _, _, .bytesLiteral bytes => .bytesLiteral bytes
   | _, _, .bytesSize x => .bytesSize x
   | _, _, .bytesGet x index => .bytesGet x (index.renameFuns ρ)
   | _, _, .bytesBuild count elem => .bytesBuild (count.renameFuns ρ) (elem.renameFuns ρ)

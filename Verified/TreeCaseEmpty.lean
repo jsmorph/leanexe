@@ -3,6 +3,8 @@ import Verified.CoercedRelease
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem spec_treeCase_empty {S : List Sig} {Γ : List Ty} {t : Ty} {shape : TreeShape}
@@ -10,11 +12,11 @@ theorem spec_treeCase_empty {S : List Sig} {Γ : List Ty} {t : Ty} {shape : Tree
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
     (x : Var Γ (.tree shape)) (empty : Expr S Γ t) (node : Expr S (shape.context Γ) t)
     (emptySpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv empty env slots paid live)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv empty env slots paid live)
     (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
     (hNil : env.get x = .nil) :
-    CodeSpec m funs flags bounds fits host pv (Expr.treeCase x empty node) env slots paid live := by
-  intro h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace rest Q hTrap hNext
+    CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeCase x empty node) env slots paid live := by
+  intro h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace rest Q hTrap hNext
   let e := Expr.treeCase x empty node
   let L0 := fun i => live i || e.uses i
   let target := e.mode (slots.map Slot.mode)
@@ -63,7 +65,7 @@ theorem spec_treeCase_empty {S : List Sig} {Γ : List Ty} {t : Ty} {shape : Tree
     simp only [target, e, Expr.mode, Slot.modes_getD]
   rw [← hModeCode]
   refine (emptySpec env slots paid live).releaseCoerced hm hTarget hh hpv
-    (hVars.mono (Nat.le_add_right _ _)) hAt hCap (by omega) hRoomE hPlaceE hEntry
+    (hVars.mono (Nat.le_add_right _ _)) hAt hSafe hCap (by omega) hRoomE hPlaceE hEntry
     (rest := storeCode h base t.types) (hBudget.imp (fun _ hi => hi))
     (fun heap1 store1 s1 ws a hTop => by
       have hh1 := a.frame.positions.trans hh

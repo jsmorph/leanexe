@@ -5,10 +5,10 @@ namespace Verified
 open Wasm LeanExe.Pipeline
 
 theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Module}
-    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (modes : List Mode)
     (body : TailBody S params result params)
-    (bodySpec : TailCodeSpec m funs flags bounds fits host pv modes body)
+    (bodySpec : TailCodeSpec (pool := pool) m funs flags bounds fits host pv modes body)
     (place : body.placeArgs modes (entryModes params modes) = true)
     (pf : List Bool) (rf : Bool)
     (hPaid : rf = true → body.paidResult flags (entryModes params modes) pf = true)
@@ -19,7 +19,9 @@ theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Modu
     (hSep : Separate store (Env.moves store (paramMode params modes) ws env)
       (Env.reads store (paramMode params modes) ws env))
     (hold : LocalsHold s stateBase (params.flatMap Ty.types) ws)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env (paramSlots params modes stateBase) (fun _ => true) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535)
     (hLow : s.params.length ≤ stateBase) (hState : stateBase + widthSum params ≤ resultBase)
     (hResult : resultBase + result.width ≤ base) (hRoom : base + body.width modes ≤ h)
     (Q : Assertion Unit)
@@ -39,7 +41,7 @@ theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Modu
       Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel)) store'
         { s' with values := s.values })) :
     wp m (releaseWhere params (paramSlots params modes stateBase) (fun i => !body.usesFast i) ++
-      body.code modes h stateBase resultBase (paramSlots params modes stateBase) base
+      body.code (pool := pool) modes h stateBase resultBase (paramSlots params modes stateBase) base
         exitLabel nextLabel) Q store s host := by
   have vars0 := Holds.ofEnvRep hRep hSep hold
   have modesEq : (paramSlots params modes stateBase).map Slot.mode = entryModes params modes := by
@@ -60,6 +62,7 @@ theorem tail_step_spec {S : List Sig} {params : List Ty} {result : Ty} {m : Modu
     exact ⟨hi.1.2, by rw [← paramSlots_getD_mode params modes stateBase]; exact hi.2⟩
   refine bodySpec env (paramSlots params modes stateBase) pf pf rf h stateBase resultBase base
     exitLabel nextLabel heap1 store1 s hh hpv (release'.holds.mono (by omega)) release'.step.at_
+    (hSafe.evolves vars0 release' (fun _ _ => rfl))
     (by rw [release'.step.cap m]; exact hCap) hLow hState hResult hRoom
     (by rw [modesEq]; exact place) (by rw [modesEq]; exact hPaid) _
     (hTrap.part (fun hd => hd)

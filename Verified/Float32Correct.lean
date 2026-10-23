@@ -4,6 +4,8 @@ import LeanExe.ProofKit.F32Nearest
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 section Cases
@@ -15,9 +17,9 @@ variable {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S} {bounds :
 /-- A float constant, from its bit pattern. -/
 theorem spec_float32 {Γ : List Ty} (bits : UInt32) :
     ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (Expr.float32 (S := S) (Γ := Γ) bits) env slots
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.float32 (S := S) (Γ := Γ) bits) env slots
           paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
+  intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ _ rest Q _ hNext
   have hNext0 := fun store' s' ws a =>
     hNext heap store' s' ws a (fun _ => Nat.le_add_right _ _)
   simpa [Expr.code, Expr.usesFast_eq, Expr.denote, F32Bits.toBits_ofBits] using
@@ -28,12 +30,12 @@ theorem spec_float32 {Γ : List Ty} (bits : UInt32) :
 
 /-- An operation on floats. -/
 theorem spec_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float32}
-    (leftSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv left env slots paid live)
-    (rightSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv right env
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
         slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.fbin32 op left right) env
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fbin32 op left right) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
   have hWidth := hRoom
@@ -43,7 +45,7 @@ theorem spec_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float3
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv
-      hVars hAt hCap hBase
+      hVars hAt hSafe hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -63,12 +65,12 @@ theorem spec_fbin32 {Γ : List Ty} (op : FBinOp) {left right : Expr S Γ .float3
 
 /-- A comparison of floats. -/
 theorem spec_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float32}
-    (leftSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv left env slots paid live)
-    (rightSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv right env
+    (leftSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv left env slots paid live)
+    (rightSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv right env
         slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.fcmp32 op left right) env
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.fcmp32 op left right) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
   have hWidth := hRoom
@@ -78,7 +80,7 @@ theorem spec_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float3
   simp only [Expr.placeArgs, Bool.and_eq_true] at hPlace
   simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
   refine seq_spec leftSpec rightSpec env slots paid live h base heap store s hh hpv
-      hVars hAt hCap hBase
+      hVars hAt hSafe hCap hBase
     (by omega) (by omega) hPlace.1 hPlace.2 _ _
     hTrap (by flag_tac) (by flag_tac) (by flag_tac) (by flag_tac)
     fun heap2 store2 s2 ws1 ws2 hStep hF hH hR1 hR2 _ _ _ hTop => ?_
@@ -102,10 +104,10 @@ theorem spec_fcmp32 {Γ : List Ty} (op : FCmpOp) {left right : Expr S Γ .float3
 
 /-- An operation on one float.  The negation subtracts from negative zero, pushed first. -/
 theorem spec_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
-    (eSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv e env slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.funary32 op e) env
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.funary32 op e) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
   simp only [Expr.code, Expr.usesFast_eq]
@@ -113,7 +115,7 @@ theorem spec_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
   | neg =>
     simp only [F32UnOp.code, List.cons_append, List.append_assoc, wp_f32Const_cons]
     refine eSpec env slots paid live h base heap store { s with values := .f32 0x80000000 ::
-      s.values } hh hpv (hVars.agree Frame.ofValues) hAt hCap hBase hRoom hPlace _ _
+      s.values } hh hpv (hVars.agree Frame.ofValues) hAt (hSafe.values _) hCap hBase hRoom hPlace _ _
       (by rw [dyingPot_values]; exact hTrap)
       fun heap1 store1 s1 ws a1 hTop => ?_
     have hNext1 := fun store' s' ws a =>
@@ -127,7 +129,7 @@ theorem spec_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
     simpa [Expr.denote, F32UnOp.apply, f32Sub, F32Bits.toBits_neg] using hv
   | sqrt | abs | nearest =>
     simp only [F32UnOp.code, List.append_assoc, List.cons_append, List.nil_append]
-    refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase
+    refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase
         hRoom hPlace _ _
         hTrap
       fun heap1 store1 s1 ws a1 hTop => ?_
@@ -145,14 +147,14 @@ theorem spec_funary32 {Γ : List Ty} (op : F32UnOp) {e : Expr S Γ .float32}
 
 /-- A conversion of a word to a float. -/
 theorem spec_toFloat32 {Γ : List Ty} (op : ToFloat32) {e : Expr S Γ .word}
-    (eSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv e env slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.toFloat32 op e) env
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toFloat32 op e) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
   simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
-  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace _ _
       hTrap
     fun heap1 store1 s1 ws a1 hTop => ?_
   have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part
@@ -171,14 +173,14 @@ theorem spec_toFloat32 {Γ : List Ty} (op : ToFloat32) {e : Expr S Γ .word}
 
 /-- A conversion of a float to a word. -/
 theorem spec_toWord32 {Γ : List Ty} (op : ToWord32) {e : Expr S Γ .float32}
-    (eSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv e env slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.toWord32 op e) env
+    (eSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv e env slots paid live) :
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.toWord32 op e) env
         slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom
       hPlace rest Q hTrap
     hNext
   simp only [Expr.code, Expr.usesFast_eq, List.append_assoc]
-  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace _ _
+  refine eSpec env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace _ _
       hTrap
     fun heap1 store1 s1 ws a1 hTop => ?_
   have hNext1 := fun store' s' ws a => hNext heap1 store' s' ws a fun hf => top_part
