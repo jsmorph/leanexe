@@ -35089,8 +35089,8 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 | SHA-3 specification | A transcription of FIPS 202 at the bit level, with independent review | No standalone Lean specification of the same form was found.  SymCrypt's Aeneas-based specification remains a possible cross-check. |
 | Test vectors | Unmodified CAVP response files under `data/hashing/`, with a NOTICE | Runs need no network and read fixed inputs.  The RFC 4231 HMAC vectors go into a Lean test file. |
 
-- [ ] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.
-- [ ] Port the SHA-2 specification and check it against the CAVP vectors.
+- [ ] Write the byte layer: packing, unpacking, byte swaps, and 32-bit helpers with their truncation lemmas.  The 64-bit part is done; the 32-bit helpers come with SHA-256.
+- [x] Port the SHA-2 specification and check it against the CAVP vectors.
 - [ ] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
 - [ ] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
 - [ ] HMAC-SHA-256 and HMAC-SHA-512.
@@ -35099,3 +35099,20 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 - [ ] SipHash and xxHash64.
 
 References: [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final), [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), [the CAVP secure-hashing vectors](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean), [sha2-fv](https://docs.rs/sha2-fv), and [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231).
+
+## 2026-10-23: The SHA-512 family
+
+The `spec/`, `impl/`, and `equiv/` directories of fips-180-4-lean are copied into `Library/Hashing/Sha2` with a NOTICE and the GPL-3.0 license.  The transcription built unchanged under Lean 4.34 apart from its import paths.  Its two `native_decide` proofs of the SHA-512/t initial values now use `decide +kernel`, which takes 40 seconds.  Three changes were needed in the equivalence proofs.  Lean 4.34 desugars the mutable variables of a `do` block into nested `Prod` pairs instead of `MProd`, so the three tuple types that mirror the desugaring are now `Prod` types.  Two definitional checks unfolded the 80-round fold until the recursion limit: a `show` that restated a `match` on the fold, and the closing `rfl` of `congr 1`.  The proofs now abstract the fold with `generalize` and use `congrArg (addH H)`.  The whole SHA-512 part of `Equiv` builds.  In the SHA-256 part, `SHA256/Compress/Match.lean` still fails with four errors of the same kinds, which the SHA-256 step will repair.
+
+`Library/Hashing/Sha512` implements SHA-512, SHA-384, SHA-512/256, and SHA-512/224.  `paddedWord` reads each word of the padded message from the packed message, and the compression keeps a sixteen-word schedule window.  The additions follow the order of `SHS.SHA512.Impl`.  The first version used the order of FIPS 180-4, and the `ac_rfl` steps that reconciled the two orders timed out on the large terms of the round and schedule expressions.  `verified_compile` gives every export `ImplementsTables false`, so a call cannot trap and needs no memory premise.  The module is 5,588 bytes.
+
+The proof shows that the program's state after each block is the implementation's and that its digest bytes are those of `Impl.sha512`; `sha512_correct` and its companions then give the transcription's digest.  `sha512_call`, `sha384_call`, `sha512_256_call`, `sha512_224_call`, `sha512_module`, and the two file theorems depend only on `propext`, `Classical.choice`, and `Quot.sound`.  Several proof steps had to avoid definitional checks that unfold the 80-round fold or `paddedWord`: `rw` closes its goal with `rfl`, which reached the recursion limit where `simp only` with the same equation did not.  Lean's elaborator gave literals in `(x >>> 8) &&& c ||| (y <<< 8)` the type `Nat`, so the masks in `bswap` are typed bindings.
+
+The native vector test agrees with all 129 short and 128 long CAVP messages of each function, for the program and for the transcription, in 81 seconds.  The program reproduces the 100 Monte Carlo checkpoints of each function, computed by the procedure of SHAVS §6.4, and the whole test takes 347 seconds.  `tests/verified/run.sh --cases sha512` passed 405 cases, with one retained block and no allocation by the call in each.  The emitted file checks against both file theorems.
+
+- [x] Write the byte layer: packing, unpacking, byte swaps, and byte lemmas.
+- [x] Port the SHA-2 specification and check it against the CAVP vectors.
+- [x] SHA-512, SHA-384, and SHA-512/256 (and SHA-512/224): program, compilation with `aborts = false`, equality proof, file theorem, and cases.
+- [x] The Monte Carlo checkpoints of the four functions.
+- [ ] The Merkle–Damgård reduction for SHA-512.
+- [ ] The full library build and verified driver with the new module.
