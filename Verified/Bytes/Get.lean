@@ -1,6 +1,7 @@
 import Verified.Bytes.Basic
 import Verified.Bytes.Code
 import Verified.LocalFrame
+import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
@@ -16,7 +17,8 @@ theorem wp_get {m : Module} {host : HostEnv Unit} {heap : Heap} {store : Store U
     (hNext : wp m rest Q store { s with values := .i64 (bytes.get index) :: s.values } host) :
     wp m (getCode rootSlot lengthSlot indexSlot ++ rest) Q store s host := by
   simp only [getCode, List.cons_append, List.nil_append, wp_localGet_cons,
-    LeanExe.Pipeline.Locals.get_with_values, hIndex, hLength, wp_ltUI64_cons]
+    LeanExe.Pipeline.Locals.get_with_values, hIndex, hLength, wp_ltUI64_cons,
+    wp_iff_control_types]
   refine wp_iff_cons rfl ?_
   by_cases hi : index < length
   · have hiNat : index.toNat < bytes.data.size := by

@@ -8,7 +8,7 @@ def getCode (root length index : Nat) : Program :=
   [.localGet index, .localGet length, .ltUI64,
    .iff 0 1
      [.localGet root, .localGet index, .addI64, .wrapI64, .load8U 0, .extendUI32]
-     [.constI64 0]]
+     [.constI64 0] [] [.i64]]
 
 def copyByteCode (source destination index : Nat) : Program :=
   [.localGet destination, .localGet index, .addI64, .wrapI64,
@@ -23,8 +23,9 @@ def copyCode (source destination count index : Nat) : Program :=
 
 def copyOwnedCode (source length base : Nat) : Program :=
   [.localGet length, .constI64 0, .eqI64,
-   .iff 0 2 [.constI64 0, .constI64 0]
+   .iff 0 1 [.constI64 0]
      ([.localGet length, .call 0, .localSet base] ++
-      copyCode source base length (base + 1) ++ [.localGet base, .localGet length])]
+      copyCode source base length (base + 1) ++ [.localGet base]) [] [.i64],
+   .localGet length]
 
 end Verified.Bytes

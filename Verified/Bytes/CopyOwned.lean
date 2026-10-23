@@ -1,4 +1,5 @@
 import Verified.Bytes.Copy
+import LeanExe.TalosCompat
 
 namespace Verified.Bytes
 
@@ -28,13 +29,14 @@ theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     omega
   have hLength32 : length.toNat ≤ 4294967296 := by omega
   simp only [copyOwnedCode, List.cons_append, List.nil_append, wp_localGet_cons,
-    hLengthLocal, wp_constI64_cons, wp_eqI64_cons]
+    hLengthLocal, wp_constI64_cons, wp_eqI64_cons, wp_iff_control_types]
   refine wp_iff_cons rfl ?_
   by_cases hZero : length = 0
   · subst length
     have hEmpty : input.data.size = 0 := hLength.symm
     have hRep : Rep heap store 0 0 input := ⟨hLength, Or.inl ⟨rfl, hEmpty⟩⟩
-    simpa [wp_simp, regions, allocationCost, hEmpty] using
+    simp only [Locals.get] at hLengthLocal
+    simpa [wp_simp, hLengthLocal, regions, allocationCost, hEmpty] using
       hNext heap store s 0 (by simpa [regions] using Step.refl hHeap (fun _ => True))
         hRep (Frame.refl base s) (by simp [allocationCost, hEmpty])
   · have hPositive : 0 < input.data.size := by
@@ -91,8 +93,9 @@ theorem wp_copyOwned {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap :
     have hRoot2 : s2.get base = some (.i64 root) := by
       rw [hOther base (by omega)]
       exact hRootLocal
-    simp only [wp_localGet_cons, hRoot2, Locals.get_values, hLength2]
+    simp only [Locals.get] at hLength2
+    simp only [wp_localGet_cons, hRoot2, Locals.get_values]
     have hFinal := hNext heap1 store2 s2 root hStep' hRep (hFrame.trans hCopyFrame) hTop
-    simpa [hValues, s1, setLocal, wp_simp] using hFinal
+    simpa [hValues, s1, setLocal, wp_simp, hLength2] using hFinal
 
 end Verified.Bytes
