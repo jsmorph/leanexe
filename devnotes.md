@@ -35087,3 +35087,9 @@ The design received a second agent review and two source and prose passes.  The 
 The user chose a new branch for this work.  The Verified design uses `verified-wasi`, based on completed `main`.  The earlier remote `wasi` branch retains its native implementation at `efbd253c`.
 
 The user moved the WASI work to minideb1 after completion of its library agenda.  The active checkout is `/home/somebody/src/leanexe-wasi`, on `verified-wasi` and tracking `origin/verified-wasi`.  The proposal now names minideb1 as its development host.
+
+## 2026-10-23: Implementing the WASI agenda
+
+The user directed implementation of the reviewed agenda on minideb1.  Its recommendations supply the implementation plan: UInt64-facing bytes and results, a semantic action monad, one-iovec reads and writes, narrowed exit status, bounded effectful loops, shared depth accounting, and import transport for the pure compiler.  The older native WASI branch remains a source reference.  The new API uses the reviewed namespace on this branch.
+
+The native byte module defines packed ByteArray-backed values, UInt64 size and indexing, construction with low-eight-bit narrowing, and checked literals.  The first build found a simplifier loop between ByteArray size rules in the build-index theorem.  Replacing the broad simplification with explicit rewrites accepted that theorem in the next 1.3-second build.  The kernel checks its general count and element function.  The literal tests cover zero, 255, indexing past the end, narrowing, and rejection of 256.  The index theorem reports only the three permitted logical axioms, and the byte-range theorem reports none.  These proofs use the standard array-of-function and UInt conversion lemmas.  Packed-memory ownership and target execution proofs remain required.
