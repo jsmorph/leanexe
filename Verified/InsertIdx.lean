@@ -61,10 +61,11 @@ theorem Expr.leSizeExpand_fits (x : Var Γ (.array e)) (i : Var Γ .word) (funs 
     (fits : Fits S) (env : Env Γ) :
     (Expr.leSizeExpand x i).fits funs fits env = (Expr.leSize x i).fits funs fits env := rfl
 
-theorem Expr.leSizeExpand_code (x : Var Γ (.array e)) (i : Var Γ .word) (h : Nat)
+theorem Expr.leSizeExpand_code {pool : Bytes.LiteralPool}
+    (x : Var Γ (.array e)) (i : Var Γ .word) (h : Nat)
     (slots : List Slot) (base : Nat) (live : Nat → Bool) :
-    (Expr.leSizeExpand (S := S) x i).code h slots base live =
-      (Expr.leSize (S := S) x i).code h slots base live := by
+    (Expr.leSizeExpand (S := S) x i).code (pool := pool) h slots base live =
+      (Expr.leSize (S := S) x i).code (pool := pool) h slots base live := by
   simp [Expr.leSizeExpand, Expr.code, Expr.usesFast_eq, Expr.uses, CmpOp.instr]
 
 #print axioms arrayInsertIdx_eq

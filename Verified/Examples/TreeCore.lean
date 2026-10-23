@@ -85,7 +85,7 @@ def module : Wasm.Module := compile prog
 
 theorem correct : Calls module prog.funs prog.flags
     (prog.boundsAt prog.funs) (prog.fitsAt prog.funs) :=
-  prog.correct_funs rfl
+  prog.correct_funs rfl (by decide +kernel)
 
 theorem duplicate_denote (xs : List UInt64) :
     duplicateExpr.denote .nil (.cons (.ofList xs) .nil) = (.ofList xs, .ofList xs) := by

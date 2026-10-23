@@ -1,4 +1,6 @@
 import Verified.TailSpec
+import Verified.LiteralCodeEq
+import Verified.StaticImplements
 
 /-! The compiler's correctness theorem.  Every function of a compiled program returns the value
 that the program gives it, with the heap and store changed only as `ImplementsA` allows.  The code
@@ -15,21 +17,26 @@ open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 /-- The functions of a program, placed from position 2 of a module without imports, compute
 their meanings `funs` within their bounds, at every depth with the frames it leaves. -/
 theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : prog.Meaning funs)
-    (m : Module) (hm : Runtime m)
-    (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = prog.functions[k]?) :
-    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) := by
+    (m : Module) (hm : Runtime m) {pool : Bytes.LiteralPool}
+    (hFuncs : ∀ k < S.length, m.funcs[2 + k]? = (prog.functions (pool := pool))[k]?)
+    (hCovered : prog.Covered pool) :
+    Calls m funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) pool := by
   have h0 : framesAt (999 + 1) = 0 := rfl
   induction hMeaning with
   | nil => intro g fv; cases fv
   | @cons S' f rest funs' _ ih =>
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') :=
-      ih fun k hk => by
-      rw [hFuncs k (by simp; omega)]
-      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    have hBody : f.body.Covered pool := fun _ hb =>
+      hCovered (List.mem_append_right _ hb)
+    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
+      ih (fun k hk => by
+        rw [hFuncs k (by simp; omega)]
+        simp [Prog.functions, List.getElem?_append_left (by
+          rw [rest.functions_length (pool := pool)]; exact hk)])
+        (fun _ hb => hCovered (List.mem_append_left _ hb))
     have hpos : m.funcs[2 + S'.length]? =
-        some (bodyFunction f.modes f.body f.depth (2 + S'.length)) := by
+        some (bodyFunction f.modes f.body f.depth (2 + S'.length) pool) := by
       rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length, Func.function]
+      simp [Prog.functions, rest.functions_length (pool := pool), Func.function]
     have hrf : f.paidResult rest.flags = true →
         f.body.paid rest.flags (entryModes f.params f.modes) (f.paidParams rest.flags)
           (fun _ => false) = true := fun h => by
@@ -39,21 +46,21 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
     | here =>
       rw [FVar.callIndex_here]
       refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos,
-        bodyFunction_numParams f.modes f.body f.depth _⟩
+        bodyFunction_numParams (pool := pool) f.modes f.body f.depth _⟩
       · have hdep' : f.depth = false := hdep
         rw [hdep'] at hpos
-        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 :=
+        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
           Calls.at (@hRest) 999
         rw [Prog.boundsAt_cons_here]
         simp only [hdep', Bool.false_eq_true, ↓reduceIte]
         exact bodyFunction_implements f.modes f.body f.placeArgs funs' rest.flags
-          (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm hpos hC hdep' f.aborts id
+          (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) _ _ hrf m _ hm hpos hBody hC hdep' f.aborts id
       · have hdep' : f.depth = true := hdep
         rw [hdep'] at hpos
         subst hd'
         refine bodyFunction_depth f.modes f.body f.placeArgs funs' rest.flags
           (rest.boundsAt funs' (framesAt (d' + 1))) (rest.fitsAt funs' (framesAt (d' + 1))) _ _ hrf
-          m _ hm hpos d' (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
+          m _ hm hpos hBody d' (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
         · by_cases hlt : d' < depthLimit
           · rw [framesAt_succ hlt, Prog.fitsAt_cons_here]
             simp only [hdep', ↓reduceIte, hlt, decide_true, Bool.true_and]
@@ -68,29 +75,33 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
       rw [FVar.callIndex_there]
       exact hRest g' d
   | @consTail S' f rest funs' M _ hDecreases hM ih =>
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') :=
-      ih fun k hk => by
-      rw [hFuncs k (by simp; omega)]
-      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
-    have hpos : m.funcs[2 + S'.length]? = some (f.function (2 + S'.length)) := by
+    have hBody : f.body.Covered pool := fun _ hb =>
+      hCovered (List.mem_append_right _ hb)
+    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
+      ih (fun k hk => by
+        rw [hFuncs k (by simp; omega)]
+        simp [Prog.functions, List.getElem?_append_left (by
+          rw [rest.functions_length (pool := pool)]; exact hk)])
+        (fun _ hb => hCovered (List.mem_append_left _ hb))
+    have hpos : m.funcs[2 + S'.length]? = some (f.function (pool := pool) (2 + S'.length)) := by
       rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length]
+      simp [Prog.functions, rest.functions_length (pool := pool)]
     intro g fv d
     cases fv with
     | here =>
       rw [FVar.callIndex_here]
-      refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, f.function_numParams _⟩
+      refine ⟨fun hdep => ?_, fun hdep d' hd' => ?_, _, hpos, f.function_numParams (pool := pool) _⟩
       · have hdep' : f.depth = false := hdep
-        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 :=
+        have hC : CallsAt m funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0) 999 pool :=
           Calls.at (@hRest) 999
         rw [Prog.boundsAt_consTail_here]
         simp only [hdep', Bool.false_eq_true, ↓reduceIte]
         exact f.function_implements funs' rest.flags (rest.boundsAt funs' 0) (rest.fitsAt funs' 0)
-          hDecreases M hM m _ hm hpos hC hdep'
+          hDecreases M hM m _ hm hpos hBody hC hdep'
       · have hdep' : f.depth = true := hdep
         subst hd'
         refine f.function_depth funs' rest.flags (rest.boundsAt funs' (framesAt (d' + 1)))
-          (rest.fitsAt funs' (framesAt (d' + 1))) hDecreases M hM m _ hm hpos hdep' d'
+          (rest.fitsAt funs' (framesAt (d' + 1))) hDecreases M hM m _ hm hpos hBody hdep' d'
           (fun _ => Calls.at (@hRest) d') _ _ (fun args => ?_) (fun hlt args => ?_)
         · by_cases hlt : d' < depthLimit
           · rw [framesAt_succ hlt, Prog.fitsAt_consTail_here]
@@ -106,14 +117,18 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
       rw [FVar.callIndex_there]
       exact hRest g' d
   | @consRec S' f rest funs' M _ hM ih =>
-    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') :=
-      ih fun k hk => by
-      rw [hFuncs k (by simp; omega)]
-      simp [Prog.functions, List.getElem?_append_left (by rw [rest.functions_length]; exact hk)]
+    have hBody : f.body.Covered pool := fun _ hb =>
+      hCovered (List.mem_append_right _ hb)
+    have hRest : Calls m funs' rest.flags (rest.boundsAt funs') (rest.fitsAt funs') pool :=
+      ih (fun k hk => by
+        rw [hFuncs k (by simp; omega)]
+        simp [Prog.functions, List.getElem?_append_left (by
+          rw [rest.functions_length (pool := pool)]; exact hk)])
+        (fun _ hb => hCovered (List.mem_append_left _ hb))
     have hpos : m.funcs[2 + S'.length]? =
-        some (bodyFunction f.modes f.body true (2 + S'.length)) := by
+        some (bodyFunction f.modes f.body true (2 + S'.length) pool) := by
       rw [hFuncs _ (by simp)]
-      simp [Prog.functions, rest.functions_length, RecFunc.function]
+      simp [Prog.functions, rest.functions_length (pool := pool), RecFunc.function]
     have hMeaning : depthMeaning M = depthMeaning (f.body.denote (.cons (g := f.sig) M funs')) := by
       funext env
       cases env with
@@ -134,7 +149,7 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
           (fun store ws v => if f.paidResult rest.flags then f.result.pot store ws v else 0)
           true m (2 + S'.length) (depthMeaning M)
           (fun env => f.boundAt (.cons M funs') rest.flags (rest.boundsAt funs') (framesAt d)
-            env.dropDepth) := by
+            env.dropDepth) pool := by
       intro n
       induction n using Nat.strongRecOn with
       | _ n ih' =>
@@ -145,13 +160,13 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
             (rest.boundsAt funs' (framesAt (d + 1))))
           (.cons (f.fitsAt (.cons M funs') (rest.fitsAt funs') (framesAt (d + 1)))
             (rest.fitsAt funs' (framesAt (d + 1))))
-          _ _ hrf m _ hm hpos d (fun hlt => ?_) _ _ (fun args => ?_) (fun hlt args => ?_)
+          _ _ hrf m _ hm hpos hBody d (fun hlt => ?_) _ _ (fun args => ?_) (fun hlt args => ?_)
         · intro g fv
           cases fv with
           | here =>
             rw [FVar.callIndex_here]
             refine ⟨nofun, fun _ d' hd' => ?_, _, hpos,
-              bodyFunction_numParams f.modes f.body true _⟩
+              bodyFunction_numParams (pool := pool) f.modes f.body true _⟩
             subst hd'
             exact ih' _ (by rw [← hn, framesAt_succ hlt]; omega) (d + 1) rfl
           | there g' =>
@@ -170,7 +185,7 @@ theorem Prog.calls {S : List Sig} (prog : Prog S) (funs : Funs S) (hMeaning : pr
     | here =>
       rw [FVar.callIndex_here]
       exact ⟨nofun, fun _ d' hd' => by subst hd'; exact hAt _ d' rfl, _, hpos,
-        bodyFunction_numParams f.modes f.body true _⟩
+        bodyFunction_numParams (pool := pool) f.modes f.body true _⟩
     | there g' =>
       rw [FVar.callIndex_there]
       exact hRest g' d
@@ -222,11 +237,14 @@ theorem ImplementsB.trapFree {α β : Type} {_ : Represent α} {_ : Represent β
       exact absurd hW hf.2
 
 theorem compileWith_runtime {S : List Sig} (prog : Prog S) (tables : List (Array UInt64))
-    (wrappers : List (Wrapper S tables.length)) : Runtime (compileWith prog tables wrappers) :=
+    (wrappers : List (Wrapper S tables.length))
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables)) :
+    Runtime (compileWith prog tables wrappers pool) :=
   ⟨rfl, rfl, by simp [compileWith], by simp [compileWith]⟩
 
-theorem compile_runtime {S : List Sig} (prog : Prog S) : Runtime (compile prog) :=
-  compileWith_runtime prog [] []
+theorem compile_runtime {S : List Sig} (prog : Prog S)
+    (pool : Bytes.LiteralPool := prog.literalPool 4096) : Runtime (compile prog pool) :=
+  compileWith_runtime prog [] [] pool
 
 /-- The correctness theorem.  For meanings `funs` of a program's functions, every function of the
 program's module, at its call index, computes the function that `funs` gives it, as `FunSpec`
@@ -237,17 +255,46 @@ when it may allocate and `top` cannot rise within the cap by the potential of it
 plus its bound, or, when its code takes the call depth, when a call lacks its frames.  When its
 calls find their frames, `top` after the call, plus the potential of a paid result, is at most
 `top` before it plus that sum. -/
-theorem Prog.correct {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs) :
-    Calls (compile prog) funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) :=
-  prog.calls funs h _ (compile_runtime prog) fun _ hk => compile_funcs prog hk
+theorem Prog.correctStatic {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (pool : Bytes.LiteralPool := prog.literalPool 4096)
+    (hCovered : prog.Covered pool) :
+    Calls (compile prog pool) funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) pool :=
+  prog.calls funs h _ (compile_runtime prog pool)
+    (fun _ hk => compile_funcs prog hk pool) hCovered
+
+theorem Prog.correct {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs)
+    (hNoLiterals : prog.literals = []) :
+    Calls (compile prog) funs prog.flags (prog.boundsAt funs) (prog.fitsAt funs) := by
+  apply prog.calls funs h _ (compile_runtime prog)
+  · intro k hk
+    rw [compile_funcs prog hk]
+    simp only [Prog.literalPool, hNoLiterals, List.eraseDups_nil]
+    exact congrArg (fun fs : List Function => fs[k]?) (prog.functions_empty_pool 4096)
+  · simp [Prog.Covered, hNoLiterals]
 
 /-- The correctness theorem for a program with tables and wrappers. -/
+theorem Prog.correctStaticWith {S : List Sig} (prog : Prog S) (funs : Funs S)
+    (h : prog.Meaning funs) (tables : List (Array UInt64))
+    (wrappers : List (Wrapper S tables.length))
+    (pool : Bytes.LiteralPool := prog.literalPool (tablesEnd tables))
+    (hCovered : prog.Covered pool) :
+    Calls (compileWith prog tables wrappers pool) funs prog.flags (prog.boundsAt funs)
+      (prog.fitsAt funs) pool :=
+  prog.calls funs h _ (compileWith_runtime prog tables wrappers pool)
+    (fun _ hk => compileWith_funcs prog tables wrappers hk pool) hCovered
+
 theorem Prog.correctWith {S : List Sig} (prog : Prog S) (funs : Funs S) (h : prog.Meaning funs)
-    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length)) :
+    (tables : List (Array UInt64)) (wrappers : List (Wrapper S tables.length))
+    (hNoLiterals : prog.literals = []) :
     Calls (compileWith prog tables wrappers) funs prog.flags (prog.boundsAt funs)
-      (prog.fitsAt funs) :=
-  prog.calls funs h _ (compileWith_runtime prog tables wrappers) fun _ hk =>
-    compileWith_funcs prog tables wrappers hk
+      (prog.fitsAt funs) := by
+  apply prog.calls funs h _ (compileWith_runtime prog tables wrappers)
+  · intro k hk
+    rw [compileWith_funcs prog tables wrappers hk]
+    simp only [Prog.literalPool, hNoLiterals, List.eraseDups_nil]
+    exact congrArg (fun fs : List Function => fs[k]?)
+      (prog.functions_empty_pool (tablesEnd tables))
+  · simp [Prog.Covered, hNoLiterals]
 
 /-- The `local.get` of each position from `k`, in order, pushes the words `vs` that they hold. -/
 theorem wp_localGets {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {store : Store Unit}
@@ -271,21 +318,22 @@ theorem wp_localGets {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
 /-- The entry of a function whose code takes the call depth, at position `e`: it calls the code
 at `idx` with depth 0 and its own arguments, and so computes the function's meaning, with a trap
 allowed. -/
-theorem entry_correct {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
+theorem entry_correctStatic {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {pool : Bytes.LiteralPool}
+    (hF : FunSpec m g idx F pf rf A Fi D pool)
     (hd : g.depth = true) (hD : D 0)
     (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
-    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true m e F
+    @ImplementsStatic _ _ (Env.represent g.params g.modes) (Ty.represent g.result) pool true m e F []
       (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
-  intro host store heap ws args hAt _ hRep hSep hCap
+  intro host store heap ws args hAt _ hInput _ hRep hSep hCap
   have hLength : ws.length = widthSum g.params := hRep.length
   have hNum : (entryFunction g.params g.result idx typeIdx).numParams = widthSum g.params := by
     simp only [entryFunction, Function.numParams, flatMap_types_length]
   apply Runs.of_wp_entry_for (f := entryFunction g.params g.result idx typeIdx)
     (by rw [hm.imports, List.length_nil, Nat.sub_zero]; exact he) (hImp := by simp [hm.imports])
   rw [List.take_of_length_le (by rw [hNum, List.length_reverse, hLength]), List.reverse_reverse]
-  have hRun := (FunSpec.runs hF hm host hAt hRep hSep hCap (d := 0) (fun _ => hD) []).of_imp
+  have hRun := (FunSpec.runs hF hm host hAt hInput hRep hSep hCap (d := 0) (fun _ => hD) []).of_imp
     (a' := true) fun _ => rfl
   simp only [hd, ↓reduceIte] at hRun
   simp only [entryFunction, List.append_assoc, List.cons_append, List.nil_append,
@@ -304,6 +352,15 @@ theorem entry_correct {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : N
   rw [List.append_nil, hTake, hDrop, List.append_nil]
   exact ⟨heap', hAt', hOwned, hCaps, hRegions, trivial⟩
 
+theorem entry_correct {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
+    {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D)
+    (hd : g.depth = true) (hD : D 0)
+    (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
+    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true m e F
+      (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
+  (entry_correctStatic hm hF hd hD he).implementsA
+
 /-- The potential of a call's paid owned arguments is at most their credits. -/
 theorem Env.argPot_le_paidCredit {heap : Heap} {store : Store Unit} {g : Sig} {pf : List Bool}
     {ws : List Value} {x : Env g.params} (hRep : Env.Rep g.mode heap store ws x) :
@@ -321,7 +378,8 @@ theorem FunSpec.implementsB {m : Module} {g : Sig} {idx : Nat}
       (fun x => Env.credit (g.paidSel pf) x + A x) := by
   intro host store heap ws x hAt hRep hSep hCap
   have hle := Env.argPot_le_paidCredit (pf := pf) hRep
-  refine ((hF.1 hd host store heap ws x trivial hAt hRep hSep hCap).of_imp fun h => ?_).mono
+  refine ((hF.1 hd host store heap ws x trivial hAt
+      (Bytes.LiteralPool.Input.empty _ _ _ _ _) hRep hSep hCap).of_imp fun h => ?_).mono
     fun final values ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
       ⟨heap', hAt', hOwned, hCaps, hRegions, by have := hTop rfl; simp only at this ⊢; omega⟩
   simp only [Bool.not_true, Bool.false_or, Bool.and_eq_true, Bool.not_eq_true',
@@ -355,17 +413,18 @@ theorem FunSpec.implementsB_unpaid {m : Module} {g : Sig} {idx : Nat}
 without a trap when its calls find their frames, as `Fi` states, and `top` can rise by the credits
 of its paid owned parameters plus its bound `A` within the cap, and it raises `top` by at most that
 sum. -/
-theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
+theorem entry_trapFreeStatic {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
     {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
-    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D)
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} {pool : Bytes.LiteralPool}
+    (hF : FunSpec m g idx F pf rf A Fi D pool)
     (hd : g.depth = true) (hD : D 0)
     (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
-    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false m e F
+    @ImplementsStatic _ _ (Env.represent g.params g.modes) (Ty.represent g.result) pool false m e F []
       (fun x heap store => Fi x = true ∧
         heap.Within store m (Env.credit (g.paidSel pf) x + A x))
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + (Env.credit (g.paidSel pf) x + A x)) := by
-  intro host store heap ws args hAt hPre hRep hSep hCap
+  intro host store heap ws args hAt hPre hInput _ hRep hSep hCap
   have hLength : ws.length = widthSum g.params := hRep.length
   have hNum : (entryFunction g.params g.result idx typeIdx).numParams = widthSum g.params := by
     simp only [entryFunction, Function.numParams, flatMap_types_length]
@@ -380,7 +439,7 @@ theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : 
     have hW : heap.Within store m (Env.argPot store (g.paidSel pf) ws args + A args) :=
       hPre.2.mono (by omega)
     simp [hd, hPre.1, hW]
-  have hRun := FunSpec.runs hF hm host hAt hRep hSep hCap (d := 0) (fun _ => hD) []
+  have hRun := FunSpec.runs hF hm host hAt hInput hRep hSep hCap (d := 0) (fun _ => hD) []
   rw [hFlag] at hRun
   simp only [hd, ↓reduceIte] at hRun
   simp only [entryFunction, List.append_assoc, List.cons_append, List.nil_append,
@@ -399,32 +458,47 @@ theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : 
   rw [List.append_nil, hTake, hDrop, List.append_nil]
   exact ⟨heap', hAt', hOwned, hCaps, hRegions, by have := hTop (by simp [hd, hPre.1]); omega⟩
 
+theorem entry_trapFree {m : Module} (hm : Runtime m) {g : Sig} {idx typeIdx e : Nat}
+    {F : Env g.params → g.result.denote} {pf : List Bool} {rf : Bool} {A : Env g.params → Nat}
+    {Fi : Env g.params → Bool} {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D)
+    (hd : g.depth = true) (hD : D 0)
+    (he : m.funcs[e]? = some (entryFunction g.params g.result idx typeIdx)) :
+    @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false m e F
+      (fun x heap store => Fi x = true ∧
+        heap.Within store m (Env.credit (g.paidSel pf) x + A x))
+      (fun x heap _ heap' _ =>
+        heap'.top.toNat ≤ heap.top.toNat + (Env.credit (g.paidSel pf) x + A x)) :=
+  (entry_trapFreeStatic hm hF hd hD he).implementsA
+
 /-- The correctness theorem for a program without recursion, whose functions' meanings
 `Prog.funs` gives. -/
-theorem Prog.correct_funs {S : List Sig} (prog : Prog S) (h : prog.recFree = true) :
+theorem Prog.correct_funs {S : List Sig} (prog : Prog S) (h : prog.recFree = true)
+    (hNoLiterals : prog.literals = []) :
     Calls (compile prog) prog.funs prog.flags (prog.boundsAt prog.funs) (prog.fitsAt prog.funs) :=
-  prog.correct _ (prog.meaning_funs h)
+  prog.correct _ (prog.meaning_funs h) hNoLiterals
 
 /-- The correctness theorem at the exported entry of a function whose code takes the call depth,
 the `j`-th such function: the entry computes the function that `funs` gives it, and it may trap
 at `unreachable`. -/
 theorem Prog.correct_entry {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) {g : Sig} (f : FVar S g) (hd : g.depth = true) {j : Nat}
-    (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result)) :
+    (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
+    (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true (compile prog)
       (2 + S.length + j) (funs.get f) (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
-  entry_correct (compile_runtime prog) (prog.correct funs h f 0) hd rfl (compile_entries prog hj)
+  entry_correct (compile_runtime prog) (prog.correct funs h hNoLiterals f 0) hd rfl (compile_entries prog hj)
 
 /-- `Prog.correct_entry` for a program with tables and wrappers. -/
 theorem Prog.correct_entryWith {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
-    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result)) :
+    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
+    (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) true
       (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f) (fun _ _ _ => True)
       (fun _ _ _ _ _ => True) :=
   entry_correct (compileWith_runtime prog tables wrappers)
-    (prog.correctWith funs h tables wrappers f 0) hd rfl
+    (prog.correctWith funs h tables wrappers hNoLiterals f 0) hd rfl
     (compileWith_entries prog tables wrappers hj)
 
 /-- `entry_trapFree` at the exported entry of the `j`-th function whose code takes the call depth,
@@ -433,7 +507,8 @@ credits of the function's paid owned parameters. -/
 theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
-    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result)) :
+    {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
+    (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
       (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
       (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
@@ -445,7 +520,7 @@ theorem Prog.entry_trapFreeWith {S : List Sig} (prog : Prog S) (funs : Funs S)
           (Env.credit (g.paidSel (prog.flags.params f)) x +
             (prog.boundsAt funs (framesAt 0)).get f x)) :=
   entry_trapFree (compileWith_runtime prog tables wrappers)
-    (prog.correctWith funs h tables wrappers f 0) hd rfl
+    (prog.correctWith funs h tables wrappers hNoLiterals f 0) hd rfl
     (compileWith_entries prog tables wrappers hj)
 
 /-- `Prog.entry_trapFreeWith` for a function without paid parameters: its bound alone. -/
@@ -453,7 +528,8 @@ theorem Prog.entry_trapFreeWith_unpaid {S : List Sig} (prog : Prog S) (funs : Fu
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {g : Sig} (f : FVar S g) (hd : g.depth = true)
     {j : Nat} (hj : prog.depthFuns[j]? = some (f.callIndex, g.params, g.result))
-    (hpf : ((prog.flags.params f).all fun b => !b) = true) :
+    (hpf : ((prog.flags.params f).all fun b => !b) = true)
+    (hNoLiterals : prog.literals = []) :
     @ImplementsA _ _ (Env.represent g.params g.modes) (Ty.represent g.result) false
       (compileWith prog tables wrappers) (2 + S.length + j) (funs.get f)
       (fun x heap store => (prog.fitsAt funs (framesAt 0)).get f x = true ∧
@@ -461,7 +537,7 @@ theorem Prog.entry_trapFreeWith_unpaid {S : List Sig} (prog : Prog S) (funs : Fu
           ((prog.boundsAt funs (framesAt 0)).get f x))
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + (prog.boundsAt funs (framesAt 0)).get f x) := by
-  have h0 := prog.entry_trapFreeWith funs h tables wrappers f hd hj
+  have h0 := prog.entry_trapFreeWith funs h tables wrappers f hd hj hNoLiterals
   simp only [Env.credit_eq_zero (Sig.paidSel_none hpf), Nat.zero_add] at h0
   exact h0
 
@@ -832,11 +908,13 @@ wrapper's bound within the cap.  Otherwise it raises `top` by at most the bound.
 theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
     {tables : List (Array UInt64)} (w : Wrapper S tables.length) {funs : Funs S}
     {flags : Flags S} {bounds : Nat → Bounds S} {fits : Nat → Fits S}
-    (hCalls : Calls m funs flags bounds fits) {e : Nat}
+    {pool : Bytes.LiteralPool} (hCalls : Calls m funs flags bounds fits pool) {e : Nat}
     (he : m.funcs[e]? = some (wrapperFunction (w.tables.map fun k => tableAddr tables k.val)
       w.params w.result w.depth w.callee.callIndex e))
     (host : HostEnv Unit) {store : Store Unit} {heap : Heap} {ws : List Value}
     {args : Env w.params} (hAt : heap.At store)
+    (hInput : @Bytes.LiteralPool.Input (Env w.params)
+      (Env.represent w.params (w.modes.drop w.tables.length)) pool heap store ws args)
     (hTables : ∀ t ∈ w.tables.map fun k => (tableAddr tables k.val, tables[k]),
       heap.Borrowed store t.1 t.2 ∧
         Apart store (Env.moves store (paramMode w.params (w.modes.drop w.tables.length)) ws args)
@@ -890,7 +968,16 @@ theorem wrapper_runs {m : Module} (hm : Runtime m) {S : List Sig}
     · exact hSep.2 r hr
   have hLength : ws.length = widthSum w.params := hRep.length
   have hle := Env.argPot_le_paidCredit (g := w.sig) (pf := flags.params w.callee) hRep'
-  have hRun := (FunSpec.runs (hCalls w.callee 0) hm host hAt hRep' hSep' hCap (d := 0)
+  have hInput' : @Bytes.LiteralPool.Input
+      (Env (List.replicate w.tables.length (.array .word) ++ w.params))
+      (Env.represent _ w.modes) pool heap store
+      ((w.tables.map fun k : Fin tables.length => Value.i64 (tableAddr tables k.val)) ++ ws)
+      (Env.withTables tables w.tables args) := by
+    refine ⟨hInput.1, fun region hr => ?_⟩
+    change Apart store (Env.moves store _ _ _) region
+    rw [hMoves]
+    exact hInput.2 region hr
+  have hRun := (FunSpec.runs (hCalls w.callee 0) hm host hAt hInput' hRep' hSep' hCap (d := 0)
     (fun _ => rfl) []).of_imp (a' := (w.depth &&
       !(fits (framesAt 0)).get w.callee (Env.withTables tables w.tables args)) ||
       ((w.aborts || w.depth) &&
@@ -963,7 +1050,8 @@ theorem wrapper_correct {m : Module} (hm : Runtime m) {S : List Sig}
       (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
       (fun _ _ _ _ _ => True) :=
   fun host _ _ _ _ hAt _ hTables hRep hSep hCap =>
-    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+    ((wrapper_runs hm w hCalls he host hAt (Bytes.LiteralPool.Input.empty _ _ _ _ _)
+        hTables hRep hSep hCap).of_imp fun h => by
       simp only [Bool.or_eq_true, Bool.and_eq_true] at h ⊢
       rcases h with ⟨h, _⟩ | ⟨h, _⟩
       · exact Or.inr h
@@ -988,7 +1076,8 @@ theorem wrapper_trapFree {m : Module} (hm : Runtime m) {S : List Sig}
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w flags (bounds (framesAt 0)) x) :=
   fun host _ _ _ _ hAt hW hTables hRep hSep hCap =>
-    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+    ((wrapper_runs hm w hCalls he host hAt (Bytes.LiteralPool.Input.empty _ _ _ _ _)
+        hTables hRep hSep hCap).of_imp fun h => by
       simp [hd, hW] at h).mono fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
         ⟨heap', hAt', hOwned, hCaps, hRegions, hTop (by simp [hd])⟩
 
@@ -1008,7 +1097,8 @@ theorem wrapper_noTrap {m : Module} (hm : Runtime m) {S : List Sig}
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w flags (bounds (framesAt 0)) x) :=
   fun host _ _ _ _ hAt _ hTables hRep hSep hCap =>
-    ((wrapper_runs hm w hCalls he host hAt hTables hRep hSep hCap).of_imp fun h => by
+    ((wrapper_runs hm w hCalls he host hAt (Bytes.LiteralPool.Input.empty _ _ _ _ _)
+        hTables hRep hSep hCap).of_imp fun h => by
       simp [ha, hd] at h).mono fun _ _ ⟨heap', hAt', hOwned, hCaps, hRegions, hTop⟩ =>
         ⟨heap', hAt', hOwned, hCaps, hRegions, hTop (by simp [hd])⟩
 
@@ -1016,7 +1106,7 @@ theorem wrapper_noTrap {m : Module} (hm : Runtime m) {S : List Sig}
 theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
-    (hj : wrappers[j]? = some w) :
+    (hj : wrappers[j]? = some w) (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
       (Ty.represent w.result) (w.aborts || w.depth) (compileWith prog tables wrappers)
       (2 + S.length + prog.depthFuns.length + j)
@@ -1024,13 +1114,14 @@ theorem Prog.correct_wrapper {S : List Sig} (prog : Prog S) (funs : Funs S)
       (w.tables.map fun k => (tableAddr tables k.val, tables[k])) (fun _ _ _ => True)
       (fun _ _ _ _ _ => True) :=
   wrapper_correct (compileWith_runtime prog tables wrappers) w
-    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj)
+    (prog.correctWith funs h tables wrappers hNoLiterals) (compileWith_wrappers prog tables wrappers hj)
 
 /-- `wrapper_trapFree` for the `j`-th wrapper of a program with tables. -/
 theorem Prog.wrapper_trapFree {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
-    (hj : wrappers[j]? = some w) (hd : w.depth = false) :
+    (hj : wrappers[j]? = some w) (hd : w.depth = false)
+    (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
       (Ty.represent w.result) false (compileWith prog tables wrappers)
       (2 + S.length + prog.depthFuns.length + j)
@@ -1041,13 +1132,14 @@ theorem Prog.wrapper_trapFree {S : List Sig} (prog : Prog S) (funs : Funs S)
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) x) :=
   Verified.wrapper_trapFree (compileWith_runtime prog tables wrappers) w
-    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj) hd
+    (prog.correctWith funs h tables wrappers hNoLiterals) (compileWith_wrappers prog tables wrappers hj) hd
 
 /-- `wrapper_noTrap` for the `j`-th wrapper of a program with tables. -/
 theorem Prog.wrapper_noTrap {S : List Sig} (prog : Prog S) (funs : Funs S)
     (h : prog.Meaning funs) (tables : List (Array UInt64))
     (wrappers : List (Wrapper S tables.length)) {j : Nat} {w : Wrapper S tables.length}
-    (hj : wrappers[j]? = some w) (ha : w.aborts = false) (hd : w.depth = false) :
+    (hj : wrappers[j]? = some w) (ha : w.aborts = false) (hd : w.depth = false)
+    (hNoLiterals : prog.literals = []) :
     @ImplementsTables _ _ (Env.represent w.params (w.modes.drop w.tables.length))
       (Ty.represent w.result) false (compileWith prog tables wrappers)
       (2 + S.length + prog.depthFuns.length + j)
@@ -1056,7 +1148,7 @@ theorem Prog.wrapper_noTrap {S : List Sig} (prog : Prog S) (funs : Funs S)
       (fun x heap _ heap' _ =>
         heap'.top.toNat ≤ heap.top.toNat + Wrapper.bound tables w prog.flags (prog.boundsAt funs (framesAt 0)) x) :=
   Verified.wrapper_noTrap (compileWith_runtime prog tables wrappers) w
-    (prog.correctWith funs h tables wrappers) (compileWith_wrappers prog tables wrappers hj) ha hd
+    (prog.correctWith funs h tables wrappers hNoLiterals) (compileWith_wrappers prog tables wrappers hj) ha hd
 
 /-- `ImplementsTables` for a Lean function `F` on types whose representations agree with it, as
 `ImplementsA.transfer` states for `ImplementsA`. -/

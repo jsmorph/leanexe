@@ -111,6 +111,7 @@ def Expr.rename : {Γ Δ : List Ty} → {t : Ty} → Renaming Γ Δ → Expr S �
   | _, _, _, ρ, .listFold args body => .listFold (fun i => (args i).rename ρ) body
   | _, _, _, ρ, .size x => .size (ρ x)
   | _, _, _, _, .bytesEmpty => .bytesEmpty
+  | _, _, _, _, .bytesLiteral bytes => .bytesLiteral bytes
   | _, _, _, ρ, .bytesSize x => .bytesSize (ρ x)
   | _, _, _, ρ, .bytesGet x index => .bytesGet (ρ x) (index.rename ρ)
   | _, _, _, ρ, .bytesBuild count elem => .bytesBuild (count.rename ρ) (elem.rename ρ.lift)

@@ -18,8 +18,9 @@ theorem LocalsHold.afterParamCopy {tys : List ValueType} {s s' : Locals}
   rw [Nat.add_sub_cancel_left] at h
   exact h.trans (params k hk)
 
-theorem TailFunc.function_numParams (func : TailFunc S) (typeIdx : Nat) :
-    (func.function typeIdx).numParams = (if func.depth then 1 else 0) + widthSum func.params := by
+theorem TailFunc.function_numParams (func : TailFunc S) (typeIdx : Nat)
+    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) :
+    (func.function typeIdx pool).numParams = (if func.depth then 1 else 0) + widthSum func.params := by
   simp only [TailFunc.function, Function.numParams, codeParams, List.length_append,
     flatMap_types_length]
   cases func.depth <;> simp

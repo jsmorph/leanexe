@@ -2,6 +2,7 @@ import Verified.ArgPot
 import Verified.ArrayFold
 import Verified.InsertIdx
 import LeanExe.ProofKit.F32Bits
+import Verified.Bytes.StaticInput
 
 /-! The expression specification and shared rules for calls, budgets, and operand sequencing. -/
 
@@ -106,9 +107,11 @@ code changes. -/
 def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
     (flags : Flags S) (bounds : Bounds S) (fits : Fits S) (host : HostEnv Unit) (pv : List Value)
     (e : Expr S Γ t)
-    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool) : Prop :=
+    (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool)
+    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   ∀ (h base : Nat) (heap : Heap) (store : Store Unit) (s : Locals), s.positions = h → s.params = pv →
     Holds env slots (fun i => live i || e.uses i) base heap store s → heap.At store →
+    pool.Safe env slots (fun i => live i || e.uses i) heap store s →
     store.memoryCap m 0 ≤ 65535 → s.params.length ≤ base → base + e.width ≤ h →
     e.placeArgs = true →
     ∀ (rest : Program) (Q : Assertion Unit),
@@ -125,7 +128,7 @@ def CodeSpec {S : List Sig} {Γ : List Ty} {t : Ty} (m : Module) (funs : Funs S)
           heap.top.toNat + dyingPot store s env slots paid (fun i => live i || e.uses i) live +
             e.allocs funs flags bounds (slots.map Slot.mode) paid live env) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
-    wp m (e.code h slots base live ++ rest) Q store s host
+    wp m (e.code (pool := pool) h slots base live ++ rest) Q store s host
 
 /-- The allowance of a part of an expression from that of the whole: the part calls a function
 whose code takes the call depth only when the whole does, may allocate only when the whole may,
@@ -200,9 +203,11 @@ only when `fits x` fails, or when `aborts` holds and `top` cannot rise by the ar
 `potOut` is at most `top` before it plus the arguments' potential and `bound x`. -/
 def ImplementsP {α β : Type} [Represent α] [Represent β] (pre : α → Prop) (fits : α → Bool)
     (potIn : Store Unit → List Value → α → Nat) (potOut : Store Unit → List Value → β → Nat)
-    (aborts : Bool) (m : Module) (entry : Nat) (f : α → β) (bound : α → Nat) : Prop :=
+    (aborts : Bool) (m : Module) (entry : Nat) (f : α → β) (bound : α → Nat)
+    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   ∀ (env : HostEnv Unit) (store : Store Unit) (heap : Heap) (params : List Value) (x : α),
-    pre x → heap.At store → Represent.borrowed heap store params x →
+    pre x → heap.At store → pool.Input heap store params x →
+    Represent.borrowed heap store params x →
     Separate store (Represent.moves store params x) (Represent.reads store params x) →
     store.memoryCap m 0 ≤ 65535 →
     Runs (!fits x ||
@@ -224,17 +229,17 @@ from its arguments, within the allocation bound `A`, or, when the code takes the
 each depth that `D` admits, within `A` when its calls find their frames as `Fi` states. -/
 def FunSpec (m : Module) (g : Sig) (idx : Nat) (F : Env g.params → g.result.denote)
     (pf : List Bool) (rf : Bool) (A : Env g.params → Nat) (Fi : Env g.params → Bool)
-    (D : UInt64 → Prop) : Prop :=
+    (D : UInt64 → Prop) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   (g.depth = false →
     @ImplementsP _ _ (Env.represent g.params g.modes) (Ty.represent g.result) (fun _ => True)
       (fun _ => true) (fun store ws x => Env.argPot store (g.paidSel pf) ws x)
-      (fun store ws v => if rf then g.result.pot store ws v else 0) g.aborts m idx F A) ∧
+      (fun store ws v => if rf then g.result.pot store ws v else 0) g.aborts m idx F A pool) ∧
   (g.depth = true → ∀ d, D d →
     @ImplementsP _ _ (Env.represent (.word :: g.params) (.borrowed :: g.modes))
       (Ty.represent g.result) (fun env => env.depthOf = d) (fun env => Fi env.dropDepth)
       (fun store ws x => Env.argPot store (g.depthSel pf) ws x)
       (fun store ws v => if rf then g.result.pot store ws v else 0) true m idx
-      (depthMeaning F) (fun env => A env.dropDepth)) ∧
+      (depthMeaning F) (fun env => A env.dropDepth) pool) ∧
   ∃ fn, m.funcs[idx]? = some fn ∧ fn.numParams = (if g.depth then 1 else 0) + widthSum g.params
 
 /-- The frames available to a function's code at call depth `d`: `depthLimit - d`. -/
@@ -244,23 +249,24 @@ def framesAt (d : UInt64) : Nat := depthLimit.toNat - d.toNat
 `FunSpec` states at every depth `d`, with the flags `flags`, and the bounds `bounds` and frames
 `fits` at the frames available at `d`. -/
 def Calls {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Nat → Bounds S)
-    (fits : Nat → Fits S) : Prop :=
+    (fits : Nat → Fits S) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   ∀ {g : Sig} (f : FVar S g) (d : UInt64), FunSpec m g f.callIndex (funs.get f)
     (flags.params f) (flags.result f) ((bounds (framesAt d)).get f) ((fits (framesAt d)).get f)
-    (fun d' => d' = d)
+    (fun d' => d' = d) pool
 
 /-- The functions that code may call in a frame at call depth `d0`, with the flags `flags`, the
 bounds `bounds`, and the frames `fits` of the callees: those whose code takes the call depth
 compute their meanings at the next depth. -/
 def CallsAt {S : List Sig} (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S)
-    (fits : Fits S) (d0 : UInt64) : Prop :=
+    (fits : Fits S) (d0 : UInt64) (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   ∀ {g : Sig} (f : FVar S g), FunSpec m g f.callIndex (funs.get f) (flags.params f)
-    (flags.result f) (bounds.get f) (fits.get f) (fun d => d = d0 + 1)
+    (flags.result f) (bounds.get f) (fits.get f) (fun d => d = d0 + 1) pool
 
 theorem Calls.at {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
-    {bounds : Nat → Bounds S} {fits : Nat → Fits S} (h : Calls m funs flags bounds fits)
+    {bounds : Nat → Bounds S} {fits : Nat → Fits S} {pool : Bytes.LiteralPool}
+    (h : Calls m funs flags bounds fits pool)
     (d0 : UInt64) :
-    CallsAt m funs flags (bounds (framesAt (d0 + 1))) (fits (framesAt (d0 + 1))) d0 :=
+    CallsAt m funs flags (bounds (framesAt (d0 + 1))) (fits (framesAt (d0 + 1))) d0 pool :=
   fun f => h f (d0 + 1)
 
 /-- The potential of a call's arguments after the call depth is that of the arguments. -/
@@ -284,10 +290,14 @@ function may trap and `top` cannot rise by the potential of the paid arguments p
 when its code takes the depth and a call lacks its frames. -/
 theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.result.denote}
     {pf : List Bool} {rf : Bool} {A : Env g.params → Nat} {Fi : Env g.params → Bool}
-    {D : UInt64 → Prop} (hF : FunSpec m g idx F pf rf A Fi D) (hm : Runtime m)
+    {D : UInt64 → Prop} {pool : Bytes.LiteralPool}
+    (hF : FunSpec m g idx F pf rf A Fi D pool) (hm : Runtime m)
     (host : HostEnv Unit)
     {heap : Heap} {store : Store Unit} {ws : List Value} {args : Env g.params}
-    (hAt : heap.At store) (hRep : Env.Rep g.mode heap store ws args)
+    (hAt : heap.At store)
+    (hInput : @Bytes.LiteralPool.Input (Env g.params) (Env.represent g.params g.modes)
+      pool heap store ws args)
+    (hRep : Env.Rep g.mode heap store ws args)
     (hSep : Separate store (Env.moves store g.mode ws args) (Env.reads store g.mode ws args))
     (hCap : store.memoryCap m 0 ≤ 65535) {d : UInt64} (hd : g.depth = true → D d)
     (rest : List Value) :
@@ -307,7 +317,7 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
             heap.top.toNat + Env.argPot store (g.paidSel pf) ws args + A args) := by
   obtain ⟨hFalse, hTrue, fn, hfn, hnum⟩ := hF
   cases hdep : g.depth
-  · have hRun := (hFalse hdep host store heap ws args trivial hAt hRep hSep hCap).append_args
+  · have hRun := (hFalse hdep host store heap ws args trivial hAt hInput hRep hSep hCap).append_args
       (by simp [hm.imports]) (by simpa [hm.imports] using hfn)
       (by simp [hRep.length, hnum, hdep]) rest
     simp only [Bool.false_and, Bool.false_or, Bool.or_false, Bool.false_eq_true, ↓reduceIte,
@@ -322,6 +332,12 @@ theorem FunSpec.runs {m : Module} {g : Sig} {idx : Nat} {F : Env g.params → g.
       rw [Env.moves_depth, Env.reads_depth]; exact hSep
     have hRun := (hTrue hdep d (hd hdep) host store heap (.i64 d :: ws)
       (.cons (t := .word) d args) rfl hAt
+      ⟨hInput.1, fun r hr => by
+        change Apart store
+          (Env.moves store (paramMode (.word :: g.params) (.borrowed :: g.modes))
+            (.i64 d :: ws) (.cons (t := .word) d args)) r
+        rw [Env.moves_depth]
+        exact hInput.2 r hr⟩
       (Env.rep_depth.mpr ⟨ws, rfl, hRep⟩) hSep' hCap).append_args
       (by simp [hm.imports]) (by simpa [hm.imports] using hfn)
       (by simp [hRep.length, hnum, hdep]; omega) rest
@@ -548,12 +564,17 @@ sum of their bounds, and, when the whole finds its frames, `top` rises by at mos
 variables that die in the whole are those that die in the first part and those that die in the
 second, and the potential of the second's lies in blocks that the first keeps. -/
 theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
-    (lSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv l env slots paid live)
-    (rSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv r env slots paid live)
+    {pool : Bytes.LiteralPool}
+    (lSpec : ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv l env slots paid live pool)
+    (rSpec : ∀ env slots paid live,
+      CodeSpec m funs flags bounds fits host pv r env slots paid live pool)
     (env : Env Γ) (slots : List Slot) (paid : List Bool) (live : Nat → Bool) (h base : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals) (hh : s.positions = h) (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || (l.uses i || r.uses i)) base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || (l.uses i || r.uses i)) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
     (hRoomL : base + l.width ≤ h) (hRoomR : base + r.width ≤ h)
     (hPlaceL : l.placeArgs = true) (hPlaceR : r.placeArgs = true) (rest : Program)
     (Q : Assertion Unit) {d a : Bool}
@@ -585,7 +606,8 @@ theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
         (l.allocs funs flags bounds (slots.map Slot.mode) paid (fun i => live i || r.uses i) env +
           r.allocs funs flags bounds (slots.map Slot.mode) paid live env)) →
       wp m rest Q store2 { s2 with values := ws2.reverse ++ (ws1.reverse ++ s.values) } host) :
-    wp m (l.code h slots base (fun i => live i || r.uses i) ++ (r.code h slots base live ++ rest))
+    wp m (l.code (pool := pool) h slots base (fun i => live i || r.uses i) ++
+      (r.code (pool := pool) h slots base live ++ rest))
       Q store s host := by
   have hIn : ∀ i, (live i || r.uses i || l.uses i) = true →
       (live i || (l.uses i || r.uses i)) = true := fun i h => live_seq _ _ _ h
@@ -607,7 +629,8 @@ theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
     congr 1
     exact dyingPot_congr (fun i => by
       cases live i <;> cases l.uses i <;> cases r.uses i <;> rfl) fun _ => rfl
-  refine lSpec env slots paid _ h base heap store s hh hpv hVarsL hAt hCap hBase hRoomL hPlaceL _ _
+  refine lSpec env slots paid _ h base heap store s hh hpv hVarsL hAt (hSafe.mono hIn)
+    hCap hBase hRoomL hPlaceL _ _
       (hTrap.part hdl hal fun _ hw => hw.mono (by rw [hSplit]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
   have hDr : dyingPot store1 { s1 with values := ws1.reverse ++ s.values } env slots paid
@@ -618,6 +641,7 @@ theorem seq_spec {Γ : List Ty} {t u : Ty} {l : Expr S Γ t} {r : Expr S Γ u}
   refine rSpec env slots paid live h base heap1 store1 { s1 with values := ws1.reverse ++ s.values }
     (a1.frame.positions.trans hh) (a1.frame.params.trans hpv) (a1.holds.agree Frame.ofValues)
     a1.step.at_
+    (((hSafe.mono hIn).after hVarsL a1 (fun i hi => by simp [hi])).1.values _)
     (by rw [a1.step.cap m]; exact hCap)
     (by show s1.params.length ≤ base; rw [a1.frame.params]; exact hBase) hRoomR hPlaceR _ _
     (hTrap.part hdr har fun hd hw => by

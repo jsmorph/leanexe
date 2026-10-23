@@ -447,6 +447,7 @@ def Expr.allocs (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (modes : L
         (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _ => 0
   | _, _, .bytesEmpty, _ | _, _, .bytesSize _, _ => 0
+  | _, _, .bytesLiteral bytes, _ => Bytes.allocationCost bytes.length
   | _, _, .bytesGet x index, env =>
     index.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
   | _, _, .get x i, env => i.allocs funs flags bounds modes paid (fun j => live j || j == x.index) env
@@ -667,7 +668,7 @@ def Expr.fits (funs : Funs S) (fits : Fits S) :
   | _, _, .size _, _ | _, _, .leSize _ _, _ | _, _, .proj _ _, _
   | _, _, .append _ _, _ => true
   | _, _, .get _ i, env | _, _, .eraseAt _ i, env => i.fits funs fits env
-  | _, _, .bytesEmpty, _ | _, _, .bytesSize _, _ => true
+  | _, _, .bytesEmpty, _ | _, _, .bytesLiteral _, _ | _, _, .bytesSize _, _ => true
   | _, _, .bytesGet _ index, env => index.fits funs fits env
   | _, _, .set _ i v, env | _, _, .insertAt _ i v, env =>
     i.fits funs fits env && v.fits funs fits env

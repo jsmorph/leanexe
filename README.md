@@ -25,11 +25,12 @@ compiler to turn an English request into a specification, a program, and a theor
 ### The verified compiler
 
 The library `Verified` defines `compileWith`, a Lean function from a typed source program to a
-module.  `Prog.correctWith` proves that every compiled program computes its source meaning,
-`denote`.  The command `verified_compile p := [f, …]` reflects ordinary Lean definitions into that
-source language and proves that each reflected definition has the same meaning.  The command
-derives `p.f.implements` from those equations and the universal compiler theorem.  Lean's kernel
-checks the generated proofs.
+module.  `Prog.correctStaticWith` proves that compiled code computes its source meaning,
+`denote`, when its static pool covers the program's byte literals.  `Prog.correctWith` specializes
+the theorem to programs with no nonempty byte literals.  The command `verified_compile p := [f, …]`
+reflects ordinary Lean definitions into that source language and proves that each reflected
+definition has the same meaning.  The command derives `p.f.implements` from those equations and
+the universal compiler theorem.  Lean's kernel checks the generated proofs.
 
 The command also generates allocation bounds, their equations in the function's parameters, and
 trap-free theorems.  Eligible scalar functions receive store-preservation theorems for composition
@@ -44,7 +45,7 @@ describes the compiler and its universal proof.
 
 | Topic | LeanExe compiler | Verified compiler |
 |---|---|---|
-| Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctWith` for programs with tables and wrappers, and `Prog.correct` without tables |
+| Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctStaticWith` for programs with tables and wrappers, and `Prog.correctStatic` without tables.  `Prog.correctWith` and `Prog.correct` specialize to programs with no nonempty byte literals. |
 | Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | Total execution | `ImplementsA false` with a proved memory budget | `p.f.trapFree` under generated allocation and depth conditions |
 | `Float32` and WGSL kernels | Binary32 arithmetic and proved WGSL kernels | Binary32 arithmetic and a proved WGSL path for supported word, Boolean, and binary32 array builds |
@@ -71,10 +72,11 @@ proved result, with links to the theorem statements and their domains.
 Lean's kernel checks the proofs using `propext`, `Classical.choice`, and `Quot.sound`.  The
 theorems use Talos's semantics and binary decoder.  Calls require the allocator invariant, a cap
 of at most 65,535 memory pages, representations of their arguments, and separation of consumed heap
-blocks from the caller's retained heap regions.  An `implements` theorem may permit a trap at
-`unreachable`.  The verified compiler's `trapFree` theorem proves a return when its allocation bound
-fits within the memory cap
-and every guarded call stays below depth 1,000.  Wrappers whose callees take no call depth also
+blocks from the caller's retained heap regions.  Programs with nonempty byte literals also require
+the static pool's contents and heap region, separated from blocks consumed by the call.  An
+`implements` theorem may permit a trap at `unreachable`.  The verified compiler's `trapFree`
+theorem proves a return when its allocation bound fits within the memory cap and every guarded
+call stays below depth 1,000.  Wrappers whose callees take no call depth also
 receive that theorem.  The LeanExe compiler has total-execution proofs with memory budgets for the
 Euler solvers, drone planner, and increment example.
 

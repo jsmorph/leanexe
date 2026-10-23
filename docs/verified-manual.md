@@ -6,7 +6,7 @@ This manual describes the verified compiler, the library `Verified`: the Lean di
 
 ### One theorem for every program
 
-The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  One theorem, `Prog.correctWith` in [`Verified/Correct.lean`](../Verified/Correct.lean), states that the module of every program of the source language, with its tables and wrappers, computes the program's meaning, so no program needs a proof of its own.  `Prog.correct` states the same for a program without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.
+The verified compiler is a Lean function, `compileWith` in [`Verified/Compile.lean`](../Verified/Compile.lean), from a typed source language to a module of Talos, the WebAssembly interpreter written in Lean.  [Program correctness with a static pool](../Verified/Correct.lean), `Prog.correctStaticWith`, states that every source program computes its meaning when the supplied static pool covers its literals.  `Prog.correctWith` specializes the theorem to a program with no nonempty byte literals, and `Prog.correct` does so without tables.  The command `verified_compile p := [f, g, …]` reads ordinary Lean definitions, writes each as a source function, and proves with kernel-checked equations that each source function means its definition.  It then states, for each definition `f`, that the module computes `f` with Lean's own types, and that the module's bytes decode to the module.  The reflector that writes the source functions is meta code and is not trusted: a wrong reflection makes an equation fail in the kernel and cannot produce a false theorem.
 
 `Verified.WGSL.compile` also translates supported typed array builds to WGSL and returns a kernel
 with proofs of its translation and local layout.  [The WGSL section](#wgsl-kernels) describes
@@ -14,11 +14,13 @@ that subset and its dispatch theorem.
 
 ### The `implements` and `trapFree` theorems
 
-`p.f.implements` states `ImplementsA aborts p.module k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)), where `k` is the index of `f`'s function or entry in the module.  From any heap and store with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent `x`, whose moved blocks lie apart from one another and from the memory that the call reads, a run returns words that represent `f x` and that the caller owns.  The run keeps the allocator invariant and the cap, keeps every region of the caller's heap that lies apart from the moved blocks, and places the result apart from those regions.  When `aborts` is true, a run may instead trap at `unreachable`, which the code does only when an allocation finds no memory, an array would hold `2^29` words or more, or a recursion reaches depth 1,000.  `aborts` is true when the function's result holds arrays, a parameter is owned, the body builds, updates, extends, inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose code takes the call depth, whose result holds arrays, or which owns a parameter.  List construction and matching also enable `aborts`.  The compiler uses this flag conservatively.  A generated `trapFree` theorem excludes a trap under its allocation bound and frames condition.
+For a program with an empty byte-literal pool, `p.f.implements` states `ImplementsA aborts p.module k f` ([`LeanExe/Pipeline/Implements.lean`](../LeanExe/Pipeline/Implements.lean)), where `k` is the index of `f`'s function or entry in the module.  From any heap and store with the allocator invariant, a memory cap of at most 65,535 pages, and arguments that represent `x`, whose moved blocks lie apart from one another and from the memory that the call reads, a run returns words that represent `f x` and that the caller owns.  The run keeps the allocator invariant and the cap, keeps every region of the caller's heap that lies apart from the moved blocks, and places the result apart from those regions.  When `aborts` is true, a run may instead trap at `unreachable`, which the code does only when an allocation finds no memory, an array would hold `2^29` words or more, a byte builder requests at least `2^32` bytes, or a recursion reaches depth 1,000.  `aborts` is true when the function's result holds arrays, a parameter is owned, the body builds, updates, extends, inserts into, or removes from an array, or the body calls a function whose `aborts` is true, whose code takes the call depth, whose result holds arrays, or which owns a parameter.  Byte construction and literals, and list construction and matching, also enable `aborts`.  The compiler uses this flag conservatively.  A generated `trapFree` theorem excludes a trap under its allocation bound and frames condition.
 
-`p.f.trapFree` states `ImplementsA false` for each source function, and `ImplementsTables false` for a wrapper whose callee takes no call depth: the call returns `f x` without a trap and raises `top` by at most the function's allocation bound.  When `aborts` is true, the theorem requires a store in which `top` can rise by the bound within the memory cap.  For a function whose code takes the call depth, it also requires a frames condition, which states that every call of the run to a function of this kind happens below depth 1,000.  The reflector also states the bound and the frames condition as Lean terms in the function's parameters, so a concrete bound follows by rewriting, as [Bounds](#bounds-and-total-execution) describes.
+With an empty byte-literal pool, `p.f.trapFree` states `ImplementsA false` for each source function, and `ImplementsTables false` for a wrapper whose callee takes no call depth: the call returns `f x` without a trap and raises `top` by at most the function's allocation bound.  When `aborts` is true, the theorem requires a store in which `top` can rise by the bound within the memory cap.  For a function whose code takes the call depth, it also requires a frames condition, which states that every call of the run to a function of this kind happens below depth 1,000.  The reflector also states the bound and the frames condition as Lean terms in the function's parameters, so a concrete bound follows by rewriting, as [Bounds](#bounds-and-total-execution) describes.
 
-For scalar arguments and results, `p.f.pure` states `ImplementsPureA aborts`: every sufficiently
+A program with nonempty byte literals uses [the static call specification](../Verified/StaticImplements.lean), `ImplementsStatic p.literalPool aborts p.module k f tables Pre Post`.  `tables` is empty for a source function and contains the borrowed tables for a wrapper.  The specification adds `p.literalPool.Input heap store words x` as a separate premise on the machine argument words.  [The static input predicate](../Verified/Bytes/StaticInput.lean) requires the pool's bytes and heap region to be present and the blocks consumed by the call, `Represent.moves store words x`, to lie apart from that region.  The argument representation, table, heap-preservation, and result-ownership requirements remain the same.  `p.f.trapFree` uses `ImplementsStatic` with `aborts = false`, requires room for its allocation bound, and adds the frames condition for guarded calls.  Wrappers in these programs also receive this theorem, with the allowance stated by `Wrapper.bound`.  [The static program rules](../Verified/ProgramStatic.lean) state these preconditions and postconditions.
+
+For scalar arguments and results in a program with an empty byte-literal pool, `p.f.pure` states `ImplementsPureA aborts`: every sufficiently
 fueled call returns the Lean result and preserves the whole store, or takes the permitted trap.
 It starts from any store.  The command generates this theorem when its instruction rules prove
 store-independent execution.  Those rules cover scalar arithmetic and conversions, local
@@ -39,7 +41,7 @@ under their buffer, count, and invocation bounds.
 
 The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.
 
-`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
+`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  With a nonempty literal pool, it also proves the pool's static contents and heap region.  A later call must establish separation from its consumed argument blocks.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
 
 ## The dialect
 
@@ -74,8 +76,21 @@ A program is the list of definitions in `verified_compile p := [f₁, …, fₙ]
 `LeanExe.Bytes.build count f` takes a UInt64 count and stores the low eight bits of each UInt64
 callback result.  A zero count skips allocation and the callback.  The code checks the count
 before allocating the result and traps when the count is at least `2^32`.  Memory exhaustion may
-also cause a trap under the allocation bound.  Literals and I/O remain in progress under the
-[WASI design](verified-wasi-design.md).
+also cause a trap under the allocation bound.
+
+`bytes![65, 0, 255]` constructs a `LeanExe.Bytes` literal.  Each numeral must be between 0 and
+255.  Each evaluation of a nonempty literal allocates a fresh owned buffer and copies the bytes
+into it.  `bytes![]` returns `(0, 0)` without allocating.  Literals work inside ordinary, guarded,
+and tail-recursive helpers, loop bodies, and build and fold callbacks.  [The literal examples](../Verified/Examples/Literals.lean)
+cover these positions, repeated literals, conditional selection, and computed byte indices.
+
+The compiler deduplicates nonempty byte lists across the program in `p.literalPool` and stores
+their concatenated raw bytes in a data segment after the constant word-array tables.  The allocator
+starts at the eight-byte-aligned end of this pool.  Deduplication shares the static source bytes.
+Each evaluation still allocates and copies its result.  [The pool definitions](../Verified/Bytes/LiteralPool.lean)
+and [literal-copy correctness](../Verified/Bytes/Literal.lean) give the layout and allocation rules.
+An empty pool preserves the previous module and encoding, as [the empty-pool equality](../Verified/LiteralCodeEq.lean)
+proves.  I/O work is tracked by the [WASI design](verified-wasi-design.md).
 
 ### Expressions
 
@@ -96,7 +111,7 @@ also cause a trap under the allocation bound.  Literals and I/O remain in progre
 | Array folds | `xs.foldl step init`, with the default bounds `start = 0` and `stop = xs.size` |
 | List folds | `xs.foldl step init` over `List UInt64`, with scalar state |
 | Arrays | `#[]`, `xs.size.toUInt64`, `xs[i.toNat]!`, `xs.set! i.toNat v`, `xs.setIfInBounds i.toNat v`, `xs.push v`, `xs ++ ys`, `xs.insertIdx! i.toNat v`, `xs.insertIdxIfInBounds i.toNat v`, `xs.eraseIdxIfInBounds i.toNat`, `LeanExe.insertAt xs i v`, `LeanExe.eraseAt xs i` |
-| Packed bytes | `LeanExe.Bytes.empty`, `bytes.size`, `bytes.get index`, `LeanExe.Bytes.build count f`, with UInt64 counts, indices, and callback results |
+| Packed bytes | `bytes![0, 255]`, `LeanExe.Bytes.empty`, `bytes.size`, `bytes.get index`, `LeanExe.Bytes.build count f`, with UInt64 counts, indices, and callback results |
 | Tuples and structures | `(a, b)`, `.1`, `.2`, constructors, `{ s with … }`, field reads |
 | Lists of words | `[]`, `x :: xs`, and `match xs with \| [] => empty \| x :: ys => node` |
 
@@ -213,18 +228,19 @@ The command adds the program, the module, and every theorem in one step, and the
 |---|---|
 | `p.program`, `p.funs`, `p.meaning` | The source program, the meanings of its functions, and the proof of `Prog.Meaning p.program p.funs`. |
 | `p.tables`, `p.wrappers`, `p.module` | The tables, the wrappers, and the module `compileWith p.program p.tables p.wrappers`. |
-| `p.initial` | The store in which the module starts meets the allocator invariant, caps the memory at 65,535 pages, and holds each table at its address. |
+| `p.literalPool` | Deduplicated nonempty byte literals, starting after the constant word-array tables.  The module uses this pool explicitly. |
+| `p.initial` | The store in which the module starts meets the allocator invariant, caps the memory at 65,535 pages, and holds each table at its address.  A nonempty pool adds its static contents and heap region as a fourth conjunct.  An empty pool keeps the three-part result. |
 | `p.bytes` | `∃ bytes, encode p.module = .ok bytes ∧ decode bytes = .ok p.module ∧` the conjunction of the theorems `p.f.implements`. |
 | `p.sections`, `p.bodies`, `p.data`, `p.encoding` | Literal byte lists for the sections, function bodies, and data, and their assembly into the module's bytes. |
 | `p.func_ok_k`, `p.rest_ok`, `p.data_ok`, `p.codes_ok`, `p.funcs_count`, `p.funcs_length` | Kernel-checked encoding claims for each function, the other sections, and the sizes. |
 | `p.encoded` | `encode p.module = .ok ⟨p.encoding.toArray⟩`, with the bound on each function's locals that `decode_encode` requires. |
 | `p.f.func`, `p.f.denote_eq` | The source function and its body equation.  A tail body's equation describes its return-or-continue step.  A wrapper has no source function, and its equation relates it to its callee at the tables and parameters. |
-| `p.f.implements` | `ImplementsA aborts p.module k f` with Lean's instances for the argument tuple and the result, or `ImplementsTables` for a wrapper. |
-| `p.f.uniform`, `p.f.pure` | For eligible scalar functions: raw execution is independent of the store, and `ImplementsPureA aborts` computes the Lean result while preserving the whole store. |
+| `p.f.implements` | With an empty literal pool, `ImplementsA aborts p.module k f` with Lean's instances, or `ImplementsTables` for a wrapper.  With a nonempty pool, `ImplementsStatic p.literalPool aborts p.module k f tables Pre Post`, including the static input premise. |
+| `p.f.uniform`, `p.f.pure` | For eligible scalar functions in a program with an empty literal pool: raw execution is independent of the store, and `ImplementsPureA aborts` computes the Lean result while preserving the whole store. |
 | `p.f.argsAgree`, `p.f.resultAgree` | Lean's instances represent the arguments and the result as the source's instances represent their flattenings. |
 | `p.f.bound`, `p.f.bound_eq` | The allocation bound in bytes on the argument tuple, and its equation in the parameters.  For a function whose code takes the call depth, the bound takes the number of frames first. |
 | `p.f.cost`, `p.f.cost_eq` | For a function with a paid parameter: the bound without the credits of the paid arguments, and its equation. |
-| `p.f.trapFree` | `ImplementsA false`, or `ImplementsTables false` for a wrapper.  When `aborts` is true, it requires room for the bound and, for a function whose code takes the call depth, the frames condition at 1,000 frames.  A wrapper whose callee takes the call depth has no `bound` and no `trapFree`. |
+| `p.f.trapFree` | With an empty literal pool, `ImplementsA false`, or `ImplementsTables false` for a wrapper whose callee takes no call depth.  It requires room when `aborts` is true and the frames condition for guarded calls.  With a nonempty pool, `ImplementsStatic` with `aborts = false` adds static input, allocation, and guarded-call premises.  Such wrappers receive `trapFree` through `Wrapper.bound`, without a named wrapper `bound` declaration. |
 | `p.f.fits`, `p.f.fits_eq` | For a function whose code takes the call depth: the frames condition, and its equation. |
 | `p.f.meaning`, `p.f.meaning_eq`, `p.f.fixed` | For a recursive definition: its meaning on source environments, the equation of its self-call, and the fixed-point equation. |
 | `p.f.body`, `p.f.step`, `p.f.step_eq`, `p.f.wellFounded`, `p.f.decreases` | For a tail loop: its typed body, native return-or-continue step, their agreement, the well-founded continuing relation, and the source rank's decrease. |
@@ -252,8 +268,11 @@ guarded-recursive, and tail-recursive functions.  The tail rank changes only in 
 Function export names must be unique.  Tables and wrappers remain arguments of `compileWith`.
 
 `Prog.calls_append` reuses the library's execution, allocation, and frames theorems in the
-combined module.  `Prog.correct` applies to the combined meaning proof, including relocated
-functions and new callers.  The scalar proof generator also accepts a composed module.
+combined module.  A shared pool must cover both programs and compile both function lists.
+[Append coverage](../Verified/ProgramLiterals.lean), `Prog.covered_append`, gives the two coverage
+premises.  `Prog.correctStatic` applies to the combined meaning proof.  With no nonempty
+literals, `Prog.correct` supplies the empty-pool specialization.  The scalar proof generator
+also accepts a composed module with an empty pool.
 [The relocation example](../Verified/Examples/Relocation.lean) gives native and whole-store
 theorems for a retained function, a relocated tail loop, and a caller of both libraries.
 
@@ -431,6 +450,7 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Select`](../Verified/Examples/Select.lean) | `Bool` bindings, `if` on a `Bool` and on `<`, `>`, and `≠`, a `Bool` parameter, and a `Bool` result. |
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
 | [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, cleanup, swapped results, empty buffers, UInt64 lengths, byte indexing, and construction with captured buffers and nested builders.  [The WASI driver](../tests/wasi/run.sh) checks empty inputs, out-of-bounds reads, allocation/free counts, and oversized construction. |
+| [Byte literals](../Verified/Examples/Literals.lean) | Static-pool deduplication, fresh owned copies, empty and conditional literals, ordinary and recursive helpers, and literals inside loop, build, fold, and tree-match bodies. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
 | [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct array methods, `insertIdx!` with its empty result past the end, empty arrays of words, floats, and records, including a record without an `Inhabited` instance, and Boolean equality, decisions, and conditions with record results, record-array results, and operand calls that consume arrays. |
 | [Array folds](../Verified/Examples/Fold.lean) | Words, floats, record elements without an `Inhabited` instance, owned array and pair accumulators, a borrowed initial-state alias, nested folds, calls inside a fold, and the frames condition of a recursive call.  `words_bound` proves the word fold's allocation bound is zero. |

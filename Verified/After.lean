@@ -475,7 +475,7 @@ theorem Expr.mode_owned {Γ : List Ty} {t : Ty} (e : Expr S Γ t) :
       · exact nomatch h1
       · exact Or.inr h1
   | build _ _ _ _ | bytesBuild _ _ _ _ | set _ _ _ _ _ | push _ _ _ | append _ _ | insertAt _ _ _ _ _
-  | eraseAt _ _ _ | treeNil _ | treeNode _ _ _ | treeCase _ _ _ | bytesEmpty =>
+  | eraseAt _ _ _ | treeNil _ | treeNode _ _ _ | treeCase _ _ _ | bytesEmpty | bytesLiteral _ =>
     intro _ _; simp [Expr.aborts]
   | _ => intro modes h; simp [Expr.mode] at h
 
@@ -1213,7 +1213,8 @@ theorem place_spec {Γ : List Ty} {env : Env Γ} {slots : List Slot} {L : Nat �
   | _, .letE _ _, hp, _, _, _, _, _ | _, .call _ _, hp, _, _, _, _, _
   | _, .letPair _ _, hp, _, _, _, _, _ | _, .loop _ _ _ _, hp, _, _, _, _, _
   | _, .size _, hp, _, _, _, _, _ | _, .get _ _, hp, _, _, _, _, _
-  | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesSize _, hp, _, _, _, _, _
+  | _, .bytesEmpty, hp, _, _, _, _, _ | _, .bytesLiteral _, hp, _, _, _, _, _
+  | _, .bytesSize _, hp, _, _, _, _, _
   | _, .bytesGet _ _, hp, _, _, _, _, _
   | _, .bytesBuild _ _, hp, _, _, _, _, _
   | _, .leSize _ _, hp, _, _, _, _, _
@@ -1527,8 +1528,9 @@ theorem wp_guardCode {m : Module} {host : HostEnv Unit} {Q : Assertion Unit} {st
       exact hNext fun _ => UInt64.not_le.mp hd
 
 theorem bodyFunction_numParams {S : List Sig} {params : List Ty} {result : Ty}
+    {pool : Bytes.LiteralPool}
     (modes : List Mode) (body : Expr S params result) (depth : Bool) (typeIdx : Nat) :
-    (bodyFunction modes body depth typeIdx).numParams =
+    (bodyFunction modes body depth typeIdx pool).numParams =
       (if depth then 1 else 0) + widthSum params := by
   simp only [bodyFunction, codeParams, Function.numParams, List.length_append,
     flatMap_types_length]

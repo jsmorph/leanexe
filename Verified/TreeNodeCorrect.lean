@@ -4,6 +4,8 @@ import Verified.TreeFinish
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime
 
 theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Module}
@@ -13,13 +15,13 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
     (words : Fin shape.words → Expr S Γ .word)
     (children : Fin shape.children → Expr S Γ (.tree shape))
     (wordSpec : ∀ i env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (words i) env slots paid live)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (words i) env slots paid live)
     (childSpec : ∀ i env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (children i) env slots paid live) :
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (children i) env slots paid live) :
     ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (Expr.treeNode reuse words children)
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.treeNode reuse words children)
         env slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace
     rest Q hTrap hNext
   let e := Expr.treeNode reuse words children
   let ps : List Ty := List.replicate shape.words .word ++
@@ -47,9 +49,9 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
     treeArgs_forall (fun {t} _ (_ : Expr S Γ t) => t.width = 1 ∧ t.types = [.i64]) words children
       (fun _ => ⟨rfl, rfl⟩) (fun _ => ⟨rfl, rfl⟩)
   have hArgsSpec : ∀ i live,
-      CodeSpec m funs flags bounds fits host pv (args.get i) env slots paid live :=
+      CodeSpec (pool := pool) m funs flags bounds fits host pv (args.get i) env slots paid live :=
     treeArgs_forall (fun {t} _ (value : Expr S Γ t) => ∀ live,
-      CodeSpec m funs flags bounds fits host pv value env slots paid live) words children
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) words children
       (fun i => wordSpec i env slots paid) (fun i => childSpec i env slots paid)
   simp only [Expr.placeArgs, Bool.and_eq_true, Bool.not_eq_true'] at hPlace
   have hArgsPlace : ∀ i, (args.get i).placeArgs = true :=
@@ -102,7 +104,7 @@ theorem spec_treeNode {S : List Sig} {Γ : List Ty} {shape : TreeShape} {m : Mod
     (fieldLive_step args.get kept) (fun i => hArgsSpec i (L (i.val + 1))) hArgsPlace hArgsD
     (fieldBase := base + 1) (scratch := base + shape.bindCount) (by omega)
     (by rw [hLen]; simp only [TreeShape.bindCount]; omega) hWidths
-    heap store s hh hpv hBase hVars0 hAt hCap
+    heap store s hh hpv hBase hVars0 hAt (by rw [hIn]; exact hSafe) hCap
     (treeParentCode shape reuse slots base live ++
       (treeStoreFields base (base + 1) (base + 1 + shape.words) 0 shape.fields ++
         (sealRecordCode shape base shape.mask ++ (.localGet base :: rest)))) Q

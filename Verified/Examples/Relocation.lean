@@ -49,7 +49,7 @@ theorem prefix_calls : Calls module seedLibrary.funs seedLibrary.program.flags
     (seedLibrary.program.boundsAt seedLibrary.funs) (seedLibrary.program.fitsAt seedLibrary.funs) :=
   seedLibrary.program.calls_extension program seedLibrary.funs seedLibrary.meaning
     ((ScalarComposition.compiled.program.functions_prefix_append seedLibrary.program).trans
-      (libraryProgram.functions_prefix_cons caller)) [] []
+      (libraryProgram.functions_prefix_cons caller)) [] [] (by decide +kernel)
 
 theorem seed_implements : ImplementsA false module 2 seed
     (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
@@ -57,7 +57,7 @@ theorem seed_implements : ImplementsA false module 2 seed
 
 theorem relocated_calls : Calls module funs program.flags (program.boundsAt funs)
     (program.fitsAt funs) :=
-  program.correct funs meaning
+  program.correct funs meaning (by decide +kernel)
 
 theorem sum_implements : ImplementsA false module 5
     (fun p : UInt64 × UInt64 => ScalarComposition.sum p.1 p.2)

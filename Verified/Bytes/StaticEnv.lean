@@ -107,6 +107,18 @@ theorem evolves {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {slots : List
     (ws := [.i64 0]) rfl e.step rfl e.frame e.holds rfl
   exact (h.after hVars a hLive).1
 
+theorem step {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {live : Nat → Bool} {base : Nat} {heap heap' : Heap}
+    {store store' : Store Unit} {s s' : Locals} {fresh : List (Nat × Nat)}
+    (h : Safe pool env slots live heap store s)
+    (hVars : Holds env slots live base heap store s)
+    (hStep : Step heap store (fun _ => True) heap' store' fresh)
+    (hFrame : Frame base s s') (hHolds : Holds env slots live base heap' store' s') :
+    Safe pool env slots live heap' store' s' :=
+  h.evolves hVars
+    ⟨hStep.mono (fun _ _ => trivial) (fun _ hMem => nomatch hMem), hFrame, hHolds⟩
+    (fun _ hLive => hLive)
+
 theorem bind {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {slots : List Slot}
     {liveIn live bodyLive : Nat → Bool} {base : Nat} {heap heap' : Heap}
     {store store' : Store Unit} {s s1 s2 : Locals} {t : Ty} {mode : Mode}
@@ -120,6 +132,38 @@ theorem bind {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {slots : List Sl
     Safe pool (.cons value env) (⟨base, mode⟩ :: slots) bodyLive heap' store' s2 := by
   obtain ⟨hAfter, hFresh⟩ := h.after hVars a hLive
   exact ((hAfter.frame a.holds hFrame).mono hBody).push hWords a.rep hFresh
+
+theorem bind2 {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {slots : List Slot}
+    {liveIn live bodyLive : Nat → Bool} {base : Nat} {heap heap' : Heap}
+    {store store' : Store Unit} {s s1 s2 : Locals} {first second : Ty} {mode : Mode}
+    {value : (Ty.pair first second).denote} {wf ws : List Value}
+    (h : Safe pool env slots liveIn heap store s)
+    (hVars : Holds env slots liveIn base heap store s)
+    (a : After env slots liveIn live base heap store s (.pair first second) mode value
+      heap' store' s1 (wf ++ ws))
+    (hLive : ∀ i, live i = true → liveIn i = true)
+    (hBody : ∀ i, bodyLive (i + 2) = true → live i = true)
+    (hFrame : Frame base s1 s2)
+    (hFirst : first.Rep mode heap' store' wf value.1)
+    (hSecond : second.Rep mode heap' store' ws value.2)
+    (hWF : LocalsHold s2 base first.types wf)
+    (hWS : LocalsHold s2 (base + first.width) second.types ws) :
+    Safe pool (.cons value.2 (.cons value.1 env))
+      (⟨base + first.width, mode⟩ :: ⟨base, mode⟩ :: slots) bodyLive heap' store' s2 := by
+  obtain ⟨hAfter, hFresh⟩ := h.after hVars a hLive
+  have hParts : ∀ region ∈ pool.regions,
+      (∀ block ∈ mode.fresh store' first wf value.1, regionsDisjoint region block) ∧
+      (∀ block ∈ mode.fresh store' second ws value.2, regionsDisjoint region block) := by
+    intro region hRegion
+    have hBoth := hFresh region hRegion
+    rw [Mode.fresh_pair hFirst.length] at hBoth
+    exact ⟨fun block hb => hBoth block (List.mem_append_left _ hb),
+      fun block hb => hBoth block (List.mem_append_right _ hb)⟩
+  have hTail := (hAfter.frame a.holds hFrame).mono hBody
+  have hFirstSafe : Safe pool (.cons value.1 env) (⟨base, mode⟩ :: slots)
+      (fun i => bodyLive (i + 1)) heap' store' s2 :=
+    hTail.push hWF hFirst (fun region hr => (hParts region hr).1)
+  exact hFirstSafe.push hWS hSecond (fun region hr => (hParts region hr).2)
 
 theorem params {pool : LiteralPool} {Γ : List Ty} {env : Env Γ} {modes : List Mode}
     {heap : Heap} {store : Store Unit} {s : Locals} {words : List Value} {base : Nat}

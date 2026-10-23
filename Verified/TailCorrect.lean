@@ -82,12 +82,14 @@ def tailTrapFlag {S : List Sig} {Γ params : List Ty} {result : Ty}
 def TailCodeSpecAt {S : List Sig} {Γ params : List Ty} {result : Ty}
     (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
-    (body : TailBody S params result Γ) (env : Env Γ) : Prop :=
+    (body : TailBody S params result Γ) (env : Env Γ)
+    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
   ∀ (slots : List Slot) (paid : List Bool) (nextPaid : List Bool) (resultPaid : Bool)
     (h stateBase resultBase base exitLabel nextLabel : Nat)
     (heap : Heap) (store : Store Unit) (s : Locals),
     s.positions = h → s.params = pv →
-    Holds env slots body.uses base heap store s → heap.At store → store.memoryCap m 0 ≤ 65535 →
+    Holds env slots body.uses base heap store s → heap.At store →
+    pool.Safe env slots body.uses heap store s → store.memoryCap m 0 ≤ 65535 →
     s.params.length ≤ stateBase → stateBase + widthSum params ≤ resultBase →
     resultBase + result.width ≤ base → base + body.width targetModes ≤ h →
     body.placeArgs targetModes (slots.map Slot.mode) = true →
@@ -106,23 +108,24 @@ def TailCodeSpecAt {S : List Sig} {Γ params : List Ty} {result : Ty}
             body.allocs funs flags bounds targetModes nextPaid (slots.map Slot.mode) paid env) →
       Q (.Break ((body.denote funs env).elim (fun _ => nextLabel) (fun _ => exitLabel)) store'
         { s' with values := s.values })) →
-    wp m (body.code targetModes h stateBase resultBase slots base exitLabel nextLabel) Q store s host
+    wp m (body.code (pool := pool) targetModes h stateBase resultBase slots base exitLabel nextLabel) Q store s host
 
 def TailCodeSpec {S : List Sig} {Γ params : List Ty} {result : Ty}
     (m : Module) (funs : Funs S) (flags : Flags S) (bounds : Bounds S) (fits : Fits S)
     (host : HostEnv Unit) (pv : List Value) (targetModes : List Mode)
-    (body : TailBody S params result Γ) : Prop :=
-  ∀ env, TailCodeSpecAt m funs flags bounds fits host pv targetModes body env
+    (body : TailBody S params result Γ)
+    (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Prop :=
+  ∀ env, TailCodeSpecAt (pool := pool) m funs flags bounds fits host pv targetModes body env
 
 theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Module}
-    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m) (targetModes : List Mode)
     (value : Expr S Γ result)
     (valueSpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv value env slots paid live) :
-    TailCodeSpec m funs flags bounds fits host pv targetModes (.ret (params := params) value) := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv value env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv targetModes (.ret (params := params) value) := by
   intro env slots paid nextPaid resultPaid h stateBase resultBase base exitLabel nextLabel heap
-    store s hh hpv hVars hAt hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
+    store s hh hpv hVars hAt hSafe hCap hLow hState hResult hRoom hPlace hPaid Q hTrap hNext
   have hWidth : value.width ≤ max value.width (copyWidth result) := Nat.le_max_left ..
   have hCopy : copyWidth result ≤ max value.width (copyWidth result) := Nat.le_max_right ..
   simp only [TailBody.width] at hRoom
@@ -131,7 +134,9 @@ theorem tail_ret_spec {S : List Sig} {Γ params : List Ty} {result : Ty} {m : Mo
   simp only [tailTrapFlag, TailBody.aborts, TailBody.fits, TailBody.allocs, TailBody.uses] at hTrap
   simp only [TailBody.code, TailBody.codeWith, List.append_assoc]
   refine valueSpec env slots paid (fun _ => false) h base heap store s hh hpv
-    (by simpa [TailBody.uses] using hVars) hAt hCap (by omega) (by omega) hPlace _ _
+    (by simpa [TailBody.uses] using hVars) hAt
+    (hSafe.mono fun i hi => by simpa [TailBody.uses] using hi) hCap
+    (by omega) (by omega) hPlace _ _
     (hTrap.part id (fun ha => by
       simp only [Bool.or_eq_true] at ha ⊢
       tauto) fun _ hw => hw.mono (by simp only [Bool.false_or]; omega))

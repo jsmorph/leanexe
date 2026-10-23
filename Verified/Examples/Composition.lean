@@ -42,7 +42,7 @@ theorem base_calls : Calls module CompositionBase.compiled.funs
     (CompositionBase.compiled.program.boundsAt CompositionBase.compiled.funs)
     (CompositionBase.compiled.program.fitsAt CompositionBase.compiled.funs) :=
   CompositionBase.compiled.program.calls_extension program _ CompositionBase.compiled.meaning
-    base_prefix [] []
+    base_prefix [] [] (by decide +kernel)
 
 theorem add_implements : ImplementsA false module 2
     (fun p : UInt64 × UInt64 => CompositionBase.add p.1 p.2)
@@ -57,12 +57,12 @@ theorem wordCaller_implements : ImplementsA false module 4
     (fun p : UInt64 × UInt64 => wordCaller p.1 p.2)
     (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
   exact ImplementsA.lean
-    (((program.correct_funs rfl) (.there .here) 0).implementsB_unpaid rfl rfl).implementsA
+    (((program.correct_funs rfl (by decide +kernel)) (.there .here) 0).implementsB_unpaid rfl rfl).implementsA
 
 theorem floatCaller_implements : ImplementsA false module 5 floatCaller
     (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
   exact ImplementsA.lean
-    (((program.correct_funs rfl) .here 0).implementsB_unpaid rfl rfl).implementsA
+    (((program.correct_funs rfl (by decide +kernel)) .here 0).implementsB_unpaid rfl rfl).implementsA
 
 #print axioms base_calls
 #print axioms add_implements

@@ -8,12 +8,12 @@ namespace Verified.ListFold
 open Wasm
 
 theorem step_spec {S : List Sig} {e : Elem} {captures : List Ty}
-    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S}
+    {m : Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S} {fits : Fits S} {pool : Bytes.LiteralPool}
     {host : HostEnv Unit} {pv : List Value} (hm : Runtime m)
     (body : Expr S (context e captures) (.elem e))
     (bodySpec : ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv body env slots paid live) :
-    TailCodeSpec m funs flags bounds fits host pv [] (tailBody body) := by
+      CodeSpec (pool := pool) m funs flags bounds fits host pv body env slots paid live) :
+    TailCodeSpec (pool := pool) m funs flags bounds fits host pv [] (tailBody body) := by
   apply tail_treeCase_spec hm []
   · exact tail_ret_spec hm [] _ (spec_var hm _)
   · apply tail_let_spec hm [] body _ bodySpec

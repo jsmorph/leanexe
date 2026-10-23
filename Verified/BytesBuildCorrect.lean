@@ -6,19 +6,21 @@ import Verified.Bytes.BuildLoop
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 theorem spec_bytesBuild {S : List Sig} {m : Module} {funs : Funs S} {flags : Flags S}
     {bounds : Bounds S} {fits : Fits S} {host : HostEnv Unit} {pv : List Value}
     (hm : Runtime m) {Γ : List Ty} {count : Expr S Γ .word}
     {elem : Expr S (.word :: Γ) .word}
-    (countSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv count env
+    (countSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv count env
       slots paid live)
-    (elemSpec : ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv elem env
+    (elemSpec : ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv elem env
       slots paid live) :
-    ∀ env slots paid live, CodeSpec m funs flags bounds fits host pv (Expr.bytesBuild count elem)
+    ∀ env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (Expr.bytesBuild count elem)
       env slots paid live := by
-  intro env slots paid live h base heap store s hh hpv hVars hAt hCap hBase hRoom hPlace
+  intro env slots paid live h base heap store s hh hpv hVars hAt hSafe hCap hBase hRoom hPlace
     rest Q hTrap hNext
   have hWidth := hRoom
   simp only [Expr.width] at hWidth
@@ -70,7 +72,7 @@ theorem spec_bytesBuild {S : List Sig} {m : Module} {funs : Funs S} {flags : Fla
         cases live k <;> cases elem.uses (k + 1) <;> simp
   simp only [Expr.code, Expr.usesFast_eq, List.append_assoc, List.cons_append, List.nil_append]
   refine countSpec env slots paid all h base heap store s hh hpv
-    (hVars.live_mono hCountIn) hAt hCap hBase (by omega) hPlace.1 _ _
+    (hVars.live_mono hCountIn) hAt (hSafe.mono hCountIn) hCap hBase (by omega) hPlace.1 _ _
     (hTrap.part (fun hd => by simp only [Bool.not_eq_true'] at hd; simp [Expr.fits, hd])
       (fun _ => by simp [Expr.aborts]) fun _ hw => hw.mono (by rw [hT]; omega))
     fun heap1 store1 s1 ws1 a1 hTopK => ?_
@@ -229,9 +231,18 @@ theorem spec_bytesBuild {S : List Sig} {m : Module} {funs : Funs S} {flags : Fla
     have hVarsE := (Holds.push (t := .word) (v := UInt64.ofNat i) (mode := .borrowed)
       (live' := fun j => shift 1 all j || elem.uses j) (hVarsI.live_mono hLE)
       holdIdx rfl (Holds.Apart.ofScalar rfl)).mono (base' := base + 3) (by simp [Ty.width])
+    have hSafeI := (hSafe.after hVars aI (fun i hi => by
+      simp only [Expr.uses]
+      exact live_build _ _ _ hi)).1
+    have hSafeE : pool.Safe (.cons (UInt64.ofNat i) env)
+        (⟨base + 2, .borrowed⟩ :: slots) (fun j => shift 1 all j || elem.uses j) heapI st si :=
+      (hSafeI.mono hLE).push holdIdx
+        (show Ty.word.Rep .borrowed heapI st [.i64 (UInt64.ofNat i)] (UInt64.ofNat i) from rfl)
+        (by simp [Mode.fresh])
     refine elemSpec _ _ (false :: paid) (shift 1 all) h (base + 3) heapI st
       { si with values := .i32 (root + UInt64.ofNat i).toUInt32 :: si.values } hhi
       (aI.frame.params.trans hpv) (hVarsE.agree Frame.ofValues) hHeapI
+      (hSafeE.values _)
       (by rw [aI.step.cap m]; exact hCap)
       (by show si.params.length ≤ base + 3; rw [aI.frame.params]; omega) (by omega)
       hPlace.2 tail Post

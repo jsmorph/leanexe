@@ -9,17 +9,45 @@ import Verified.Bytes.Release
 import Verified.Bytes.LiteralFrame
 import Verified.Bytes.Literal
 import Verified.Bytes.StaticEnv
+import Verified.Bytes.StaticPrefix
+import Verified.Bytes.StaticInput
 import Verified.BytesBuildCorrect
+import Verified.BytesLiteralCorrect
+import Verified.ProgramStatic
+import Verified.ProgramLiterals
+import Verified.Instantiate
 import Verified.Wasi.HostSpec
 import Verified.Wasi.Scratch
 import LeanExe.Wasi.Prefix
 import Verified.Examples.Bytes
+import Verified.Examples.Literals
 
 open Lean Elab Command in
 elab "check_wasi_axioms" : command => do
   let permitted := #[``propext, ``Classical.choice, ``Quot.sound]
   let theorems := #[
     ``Verified.Prog.correctWith,
+    ``Verified.Prog.correctStaticWith,
+    ``Verified.Expr.code_spec,
+    ``Verified.TailBody.code_spec,
+    ``Verified.spec_bytesLiteral,
+    ``Verified.Prog.covered_literalPool,
+    ``Verified.Expr.literals_rename,
+    ``Verified.Expr.literals_renameFuns,
+    ``Verified.Prog.covered_append,
+    ``Verified.compileWith_eq_empty_of_no_literals,
+    ``Verified.compileWith_empty_pool,
+    ``Verified.literalPool_written,
+    ``Verified.compileWith_initialStaticStore,
+    ``Verified.compileWith_initialStore,
+    ``Verified.ImplementsStatic.implementsA,
+    ``Verified.ImplementsStatic.implementsTables,
+    ``Verified.ImplementsStatic.transferAgree,
+    ``Verified.ImplementsStatic.lean,
+    ``Verified.FunSpec.implementsStaticBounded,
+    ``Verified.FunSpec.trapFreeStatic,
+    ``Verified.Prog.correct_entryStaticWith,
+    ``Verified.Prog.correct_wrapperStatic,
     ``Verified.Ty.Rep.step,
     ``Verified.wp_copyCode,
     ``Verified.wp_releaseCode,
@@ -51,6 +79,38 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Examples.Bytes.compiled.buildFromOwned.implements,
     ``Verified.Examples.Bytes.compiled.buildFromSize.implements,
     ``Verified.Examples.Bytes.compiled.nestedBuild.implements,
+    ``Verified.Examples.Literals.compiled.bytes,
+    ``Verified.Examples.Literals.compiled.initial,
+    ``Verified.Examples.Literals.compiled.constant.implements,
+    ``Verified.Examples.Literals.compiled.empty.implements,
+    ``Verified.Examples.Literals.compiled.repeated.implements,
+    ``Verified.Examples.Literals.compiled.choose.implements,
+    ``Verified.Examples.Literals.compiled.lookup.implements,
+    ``Verified.Examples.Literals.compiled.helper.implements,
+    ``Verified.Examples.Literals.compiled.nestedIndex.implements,
+    ``Verified.Examples.Literals.compiled.byteBuild.implements,
+    ``Verified.Examples.Literals.compiled.arrayBuild.implements,
+    ``Verified.Examples.Literals.compiled.loop.implements,
+    ``Verified.Examples.Literals.compiled.arrayFold.implements,
+    ``Verified.Examples.Literals.compiled.listFold.implements,
+    ``Verified.Examples.Literals.compiled.treeCase.implements,
+    ``Verified.Examples.Literals.compiled.tail.implements,
+    ``Verified.Examples.Literals.compiled.guarded.implements,
+    ``Verified.Examples.Literals.compiled.constant.trapFree,
+    ``Verified.Examples.Literals.compiled.empty.trapFree,
+    ``Verified.Examples.Literals.compiled.repeated.trapFree,
+    ``Verified.Examples.Literals.compiled.choose.trapFree,
+    ``Verified.Examples.Literals.compiled.lookup.trapFree,
+    ``Verified.Examples.Literals.compiled.helper.trapFree,
+    ``Verified.Examples.Literals.compiled.nestedIndex.trapFree,
+    ``Verified.Examples.Literals.compiled.byteBuild.trapFree,
+    ``Verified.Examples.Literals.compiled.arrayBuild.trapFree,
+    ``Verified.Examples.Literals.compiled.loop.trapFree,
+    ``Verified.Examples.Literals.compiled.arrayFold.trapFree,
+    ``Verified.Examples.Literals.compiled.listFold.trapFree,
+    ``Verified.Examples.Literals.compiled.treeCase.trapFree,
+    ``Verified.Examples.Literals.compiled.tail.trapFree,
+    ``Verified.Examples.Literals.compiled.guarded.trapFree,
     ``LeanExe.Bytes.size_toNat,
     ``LeanExe.Bytes.get_build,
     ``LeanExe.Bytes.get_toNat_lt,
@@ -103,7 +163,18 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.LiteralPool.Safe.empty,
     ``Verified.Bytes.LiteralPool.Safe.mono,
     ``Verified.Bytes.LiteralPool.Safe.values,
+    ``Verified.Bytes.LiteralPool.Safe.frame,
+    ``Verified.Bytes.LiteralPool.Safe.push,
+    ``Verified.Bytes.LiteralPool.Safe.pop,
     ``Verified.Bytes.LiteralPool.Safe.after,
+    ``Verified.Bytes.LiteralPool.Safe.evolves,
+    ``Verified.Bytes.LiteralPool.Safe.step,
+    ``Verified.Bytes.LiteralPool.Safe.bind,
+    ``Verified.Bytes.LiteralPool.Safe.bind2,
+    ``Verified.Bytes.LiteralPool.Safe.params,
+    ``Verified.Bytes.LiteralPool.Safe.bindPrefixStep,
+    ``Verified.Bytes.LiteralPool.Input.empty,
+    ``Verified.Bytes.LiteralPool.Input.params,
     ``Verified.Bytes.wp_literal,
     ``Verified.Wasi.exec_observed,
     ``Verified.Wasi.GuestFrame.globals,

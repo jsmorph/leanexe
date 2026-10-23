@@ -408,6 +408,13 @@ def wordLit? (e : Lean.Expr) : MetaM (Option UInt64) := do
   unless (← whnfR α).isConstOf ``UInt64 do return none
   return (natOf (← instantiateMVars n)).map UInt64.ofNat
 
+def bytesLit? (e : Lean.Expr) : MetaM (Option (List UInt8)) := do
+  if e.hasFVar || e.hasLooseBVars then return none
+  unless (← whnfR (← inferType e)).isConstOf ``LeanExe.Bytes do return none
+  let (``LeanExe.Bytes.mk, #[data]) := (← whnfR e).getAppFnArgs | return none
+  let (``ByteArray.mk, #[data]) := (← whnfR data).getAppFnArgs | return none
+  return (← getArrayLitOf? data getUInt8Value?).map Array.toList
+
 /-- The bit pattern of a float literal: a scientific or natural literal, `Float.ofBits` or
 `UInt64.toFloat` of a word literal, or the negation of a float literal.  Lean's model has one
 NaN, so `Float.ofBits` and the negation give the canonical NaN for a NaN.  The kernel checks the
@@ -1404,12 +1411,12 @@ def unBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) (x : Reflecti
   let _ ← app.child `h x.bound
   boundOf (← app.finish)
 
-/-- The builder of a leaf with the lemma `n`, whose bound is `0`. -/
+/-- The builder of a leaf with the allocation-bound equation supplied by `n`. -/
 def leafBound (c : Ctx) (n : Name) (args : List (Name × Lean.Expr)) : BoundBuilder :=
   fun modes paid live => do
     let bounds := c.tables.table false
     let app ← LemmaApp.start n (boundArgs c bounds modes paid live ++ args)
-    return ⟨natZero, ← app.finish⟩
+    boundOf (← app.finish)
 
 /-- The builder of the frames condition of a form by the lemma `n`, with the arguments `args` and
 the hypotheses `parts` on the frames of its parts. -/
@@ -1652,6 +1659,11 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let src ← mkAppOptM ``Expr.bytesEmpty #[some c.sigs, some c.ctx]
     return ⟨src, ← rflProof c src e, .bytes, e,
       leafBound c ``bytesEmpty_bound [], leafFits c src⟩
+  if let some bytes ← bytesLit? e then
+    let literal := toExpr bytes
+    let src ← mkAppOptM ``Expr.bytesLiteral #[some c.sigs, some c.ctx, some literal]
+    return ⟨src, ← rflProof c src e, .bytes, e,
+      leafBound c ``bytesLiteral_bound [(`bytes, literal)], leafFits c src⟩
   if let some r := ← reflectRecursiveConstructor? e then return r
   if let some r := ← reflectSumConstructor? e then return r
   if let some r := ← reflectStruct? e then return r

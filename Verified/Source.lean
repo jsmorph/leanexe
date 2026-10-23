@@ -437,6 +437,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
       (body : Expr S (ListFold.context e captures) (.elem e)) : Expr S Γ (.elem e)
   | size (x : Var Γ (.array e)) : Expr S Γ .word
   | bytesEmpty : Expr S Γ .bytes
+  | bytesLiteral (bytes : List UInt8) : Expr S Γ .bytes
   | bytesSize (x : Var Γ .bytes) : Expr S Γ .word
   | bytesGet (x : Var Γ .bytes) (index : Expr S Γ .word) : Expr S Γ .word
   | bytesBuild (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) .word) : Expr S Γ .bytes
@@ -546,6 +547,7 @@ def Expr.denote (funs : Funs S) :
     ListFold.denoteWith (body.denote funs) (Env.ofFn fun i => (args i).denote funs env)
   | _, _, .size x, env => (env.get x).size.toUInt64
   | _, _, .bytesEmpty, _ => LeanExe.Bytes.empty
+  | _, _, .bytesLiteral bytes, _ => ⟨⟨bytes.toArray⟩⟩
   | _, _, .bytesSize x, env => (env.get x).size
   | _, _, .bytesGet x index, env => (env.get x).get (index.denote funs env)
   | _, _, .bytesBuild count elem, env =>
@@ -610,7 +612,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .fold _ init body => init.aborts || body.aborts
   | _, _, .listFold _ _ => true
   | _, _, .size _ | _, _, .leSize _ _ => false
-  | _, _, .bytesEmpty => true
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ => true
   | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.aborts
   | _, _, .bytesBuild _ _ => true
@@ -642,7 +644,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .fold _ init body => init.depthCalls || body.depthCalls
   | _, _, .listFold args body => (argsAny fun i => (args i).depthCalls) || body.depthCalls
   | _, _, .size _ | _, _, .leSize _ _ => false
-  | _, _, .bytesEmpty | _, _, .bytesSize _ => false
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.depthCalls
   | _, _, .bytesBuild count elem => count.depthCalls || elem.depthCalls
   | _, _, .get _ i => i.depthCalls
@@ -691,7 +693,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
     (i == x.index) || init.uses i || body.uses (i + 3)
   | _, _, .listFold args _, i => argsAny fun j => (args j).uses i
   | _, _, .size x, i => i == x.index
-  | _, _, .bytesEmpty, _ => false
+  | _, _, .bytesEmpty, _ | _, _, .bytesLiteral _, _ => false
   | _, _, .bytesSize x, i => i == x.index
   | _, _, .bytesGet x index, i => i == x.index || index.uses i
   | _, _, .bytesBuild count elem, i => count.uses i || elem.uses (i + 1)
@@ -743,7 +745,7 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
     (1 <<< x.index) ||| init.useMask ||| body.useMask >>> 3
   | _, _, .listFold args _ => argsMask fun i => (args i).useMask
   | _, _, .size x => 1 <<< x.index
-  | _, _, .bytesEmpty => 0
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ => 0
   | _, _, .bytesSize x => 1 <<< x.index
   | _, _, .bytesGet x index => 1 <<< x.index ||| index.useMask
   | _, _, .bytesBuild count elem => count.useMask ||| elem.useMask >>> 1
@@ -785,7 +787,8 @@ theorem Expr.usesFast_eq {Γ : List Ty} {t : Ty} (e : Expr S Γ t) (i : Nat) :
     e.usesFast i = e.uses i := by
   unfold Expr.usesFast
   induction e generalizing i with
-  | word | bool | float | float32 | treeNil | bytesEmpty => simp [Expr.useMask, Expr.uses]
+  | word | bool | float | float32 | treeNil | bytesEmpty | bytesLiteral =>
+    simp [Expr.useMask, Expr.uses]
   | var x | proj x _ | size x | bytesSize x =>
     simp [Expr.useMask, Expr.uses, testBit_one_shiftLeft, -Nat.testBit_shiftLeft]
   | call f args ih =>
@@ -848,7 +851,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
     !(argsAny fun i => !((ListFold.params e captures).get i).scalar && !(args i).isPlace) &&
       !(argsAny fun i => !(args i).placeArgs) && body.placeArgs
   | _, _, .get _ i => i.placeArgs
-  | _, _, .bytesEmpty | _, _, .bytesSize _ => true
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesSize _ => true
   | _, _, .bytesGet _ index => index.placeArgs
   | _, _, .bytesBuild count elem => count.placeArgs && elem.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
@@ -929,7 +932,7 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
   | _, _, .fold _ init body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
   | _, _, .treeNil _ | _, _, .treeNode _ _ _ => .owned
-  | _, _, .bytesEmpty | _, _, .bytesBuild _ _ => .owned
+  | _, _, .bytesEmpty | _, _, .bytesLiteral _ | _, _, .bytesBuild _ _ => .owned
   | _, _, .treeCase (shape := shape) x empty node =>
     (empty.mode modes).join (node.mode (shape.modes (modes.getD x.index .borrowed) modes))
   | _, _, _ => .borrowed

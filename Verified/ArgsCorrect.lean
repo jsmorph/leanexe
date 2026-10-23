@@ -3,6 +3,8 @@ import Verified.VarCorrect
 
 namespace Verified
 
+variable {pool : Bytes.LiteralPool}
+
 open Wasm LeanExe.Pipeline LeanExe.Runtime LeanExe.ProofKit
 
 section
@@ -39,7 +41,9 @@ theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' t
     {store : Store Unit} {s : Locals} {rest : Program} {Q : Assertion Unit} (hh : s.positions = h)
     (hpv : s.params = pv)
     (hVars : Holds env slots (fun i => live i || i == x.index) base heap store s)
-    (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
+    (hAt : heap.At store)
+    (hSafe : pool.Safe env slots (fun i => live i || i == x.index) heap store s)
+    (hCap : store.memoryCap m 0 ≤ 65535) (hBase : s.params.length ≤ base)
     (hRoom : base + copyWidth tTy ≤ h)
     (hTrap : TrapOK (!decide (heap.Within store m
       (x.ownedCost (slots.map Slot.mode) live (env.get x)))) Q)
@@ -56,7 +60,7 @@ theorem spec_ownedVar (hm : Runtime m) {Γ' : List Ty} {tTy : Ty} (x : Var Γ' t
   refine spec_var (S := []) (funs := .nil) (flags := .nil) (bounds := .nil) (fits := .nil) hm x env
       slots [] live h
       base heap store s hh hpv hVars hAt
-    hCap hBase (by simp only [Expr.width]; omega) rfl _ _
+    hSafe hCap hBase (by simp only [Expr.width]; omega) rfl _ _
     (hTrap.narrow fun hw => hw.mono (by
       rw [dyingPot_nil]; simp only [Expr.allocs, Var.ownedCost]; omega))
     fun heap1 store1 s1 ws1 a1 hTop1 => ?_
@@ -91,7 +95,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
     {paid : List Bool} {all kept : Nat → Bool} {h base : Nat} {d a : Bool} :
     {ps : List Ty} → (modes : Nat → Mode) →
     (args : (i : Fin ps.length) → Expr S Γ (ps.get i)) →
-    (∀ i env slots paid live, CodeSpec m funs flags bounds fits host pv (args i) env slots paid live) →
+    (∀ i env slots paid live, CodeSpec (pool := pool) m funs flags bounds fits host pv (args i) env slots paid live) →
     (∀ i k, (args i).uses k = true → all k = true) → (∀ k, kept k = true → all k = true) →
     (∀ i : Fin ps.length, modes i = .owned → (ps.get i).scalar = false) →
     (∀ i, (ps.get i).scalar = false → modes i = .borrowed → (args i).isPlace = true) →
@@ -104,7 +108,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
     (∀ i, ((args i).aborts || modes i == .owned || slots.any (·.mode == .owned)) = true →
       a = true) →
     ∀ (heap : Heap) (store : Store Unit) (s : Locals), s.positions = h → s.params = pv →
-    Holds env slots all base heap store s → heap.At store → store.memoryCap m 0 ≤ 65535 →
+    Holds env slots all base heap store s → heap.At store →
+    pool.Safe env slots all heap store s → store.memoryCap m 0 ≤ 65535 →
     s.params.length ≤ base →
     (∀ i : Fin ps.length,
       base + (if modes i = .owned then copyWidth (ps.get i) else (args i).width) ≤ h) →
@@ -133,17 +138,17 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           argsSum fun i =>
             if sel i = true then (args i).paramPot funs store' s env slots paid kept else 0) →
       wp m rest Q store' { s' with values := ws.reverse ++ s.values } host) →
-    wp m (argsCode (fun i => if (ps.get i).scalar then (args i).code h slots base all
+    wp m (argsCode (fun i => if (ps.get i).scalar then (args i).code (pool := pool) h slots base all
       else if modes i = .owned then (args i).ownedCode h slots base kept
       else (args i).placeCode h slots) ++ rest) Q store s host
-  | [], _, _, _, _, _, _, _, _, _, _, _, heap, store, s, _, _, hVars, hAt, _, _, _, rest, Q, _,
+  | [], _, _, _, _, _, _, _, _, _, _, _, heap, store, s, _, _, hVars, hAt, _, _, _, _, rest, Q, _,
       hNext => by
     simpa [argsCode, Env.ofFn, Env.Rep, Env.moves, Env.reads] using
       hNext heap store s [] [] (Step.refl hAt _) (Frame.refl base s) hVars rfl Separate.nil
         (fun _ _ _ => Apart.nil) (fun _ _ _ h => nomatch h) (fun _ => Nat.le_add_right _ _)
         fun _ _ => Nat.zero_le _
   | p :: ps, modes, args, argsSpec, hUses, hKept, hArray, hPlace, hOwned, hPlaceArgs, hdA, haA,
-      heap, store, s, hh, hpv, hVars, hAt, hCap, hBase, hRoom, rest, Q, hTrap, hNext => by
+      heap, store, s, hh, hpv, hVars, hAt, hSafe, hCap, hBase, hRoom, rest, Q, hTrap, hNext => by
     simp only [argsCode, List.append_assoc]
     have hSum : argsSum (argCost funs flags bounds (slots.map Slot.mode) paid all kept modes args env) =
         argCost funs flags bounds (slots.map Slot.mode) paid all kept modes args env ⟨0, by simp⟩ +
@@ -180,7 +185,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           args ⟨0, by simp⟩ = .var x → kept x.index = false →
           LocalsHold s (slots.getD x.index default).loc ((p :: ps).get ⟨0, by simp⟩).types ws0) →
         wp m (argsCode (fun i : Fin ps.length =>
-            if ((p :: ps).get i.succ).scalar then (args i.succ).code h slots base all
+            if ((p :: ps).get i.succ).scalar then (args i.succ).code (pool := pool) h slots base all
             else if modes i.succ = .owned then (args i.succ).ownedCode h slots base kept
             else (args i.succ).placeCode h slots) ++ rest) Q store1
           { s1 with values := ws0.reverse ++ s.values } host := by
@@ -193,7 +198,8 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
         (fun i => hPlace i.succ) (fun i hmo => ?_) (fun i => hPlaceArgs i.succ)
         (fun i => hdA i.succ) (fun i => haA i.succ) heap1
         store1 { s1 with values := ws0.reverse ++ s.values } (hF1.positions.trans hh)
-        (hF1.params.trans hpv) (hH1.agree Frame.ofValues) hStep1.at_ (by rw [hStep1.cap m]; exact
+        (hF1.params.trans hpv) (hH1.agree Frame.ofValues) hStep1.at_
+        ((hSafe.step hVars hStep1 hF1 hH1).values _) (by rw [hStep1.cap m]; exact
             hCap)
         (by show s1.params.length ≤ base; rw [hF1.params]; exact hBase)
         (fun i => hRoom i.succ) _ _
@@ -438,7 +444,7 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
           all = 0 := dyingPot_eq_zero hSub
       refine argsSpec ⟨0, by simp⟩ env slots paid all h base heap store s hh hpv (hVars.live_mono
           hSub)
-        hAt hCap hBase hRoom0 (hPlaceArgs _) _ _
+        hAt (hSafe.mono hSub) hCap hBase hRoom0 (hPlaceArgs _) _ _
         (hTrap.part (hdA _) (fun h => haA _ (by
             simp only [Bool.or_eq_true] at h ⊢; tauto))
           fun _ hw => hw.mono (by rw [hD0, hSum, hc0]; omega))
@@ -504,7 +510,10 @@ theorem args_spec (hm : Runtime m) {Γ : List Ty} {env : Env Γ} {slots : List S
             simp only [Expr.ownedCost, Var.ownedCost, Var.cost, hkx, hAllX]
           refine spec_ownedVar hm x hh hpv (hVars.live_mono fun i h => by
               simp only [Bool.or_eq_true, beq_iff_eq] at h
-              exact h.elim id fun he => he ▸ hAllX) hAt hCap hBase hRoom0
+              exact h.elim id fun he => he ▸ hAllX) hAt
+            (hSafe.mono fun i h => by
+              simp only [Bool.or_eq_true, beq_iff_eq] at h
+              exact h.elim id fun he => he ▸ hAllX) hCap hBase hRoom0
             (hTrap.alloc (haA ⟨0, by simp⟩ (by simp [hmd])) fun _ hw => hw.mono (by
               rw [hSum, hc0]; exact Nat.le_add_right _ _))
             fun heap1 store1 s1 ws1 a1 hTop1 => ?_

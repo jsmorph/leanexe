@@ -2,6 +2,7 @@ import Verified.Wasi.PureTransportSpecs
 import Verified.Wasi.RelocationForms
 import Verified.Wasi.ModuleTransport
 import Verified.Wasi.ModuleInitial
+import Verified.Wasi.PurePrefix
 
 open Lean Elab Command in
 elab "check_transport_axioms" : command => do
@@ -25,7 +26,10 @@ elab "check_transport_axioms" : command => do
     ``Verified.Wasi.Module.initialStore_eq,
     ``Verified.Wasi.Module.run_pure,
     ``Verified.Wasi.Module.runs_pure,
-    ``Verified.Wasi.Module.terminatesWith_pure]
+    ``Verified.Wasi.Module.terminatesWith_pure,
+    ``Wasm.exec_append_match,
+    ``Wasm.wp_append,
+    ``Verified.Wasi.PureTransport.wp_prefix]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do
