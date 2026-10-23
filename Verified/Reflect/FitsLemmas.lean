@@ -316,6 +316,15 @@ theorem build_fits {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word ::
   obtain rfl := funext hef
   rfl
 
+theorem bytesBuild_fits {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word}
+    {N : UInt64} {NF : Bool} {EF : Nat → Bool}
+    (hn : count.denote funs env = N) (hnf : count.fits funs fits env = NF)
+    (hef : ∀ k : Nat, elem.fits funs fits (.cons (UInt64.ofNat k) env) = EF k) :
+    (Expr.bytesBuild count elem).fits funs fits env = (NF && allBelow EF N.toNat) := by
+  subst hn hnf
+  obtain rfl := funext hef
+  rfl
+
 /-! The frames of a function, and the chain of a program's frames. -/
 
 theorem fits_get_there {g : Sig} (f : Func S) (rest : Prog S)

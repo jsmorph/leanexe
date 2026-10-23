@@ -7,6 +7,11 @@ import Verified.Bytes.Copy
 import Verified.Bytes.CopyOwned
 import Verified.Bytes.Release
 import Verified.Bytes.LiteralFrame
+import Verified.Bytes.Literal
+import Verified.Bytes.StaticEnv
+import Verified.BytesBuildCorrect
+import Verified.Wasi.HostSpec
+import Verified.Wasi.Scratch
 import LeanExe.Wasi.Prefix
 import Verified.Examples.Bytes
 
@@ -21,6 +26,10 @@ elab "check_wasi_axioms" : command => do
     ``Verified.spec_bytesEmpty,
     ``Verified.spec_bytesSize,
     ``Verified.spec_bytesGet,
+    ``Verified.spec_bytesBuild,
+    ``Verified.After.bytes_rep,
+    ``Verified.After.ofValues,
+    ``Verified.After.writeByte,
     ``Verified.Examples.Bytes.compiled.bytes,
     ``Verified.Examples.Bytes.compiled.identity.implements,
     ``Verified.Examples.Bytes.compiled.duplicate.implements,
@@ -37,6 +46,11 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Examples.Bytes.compiled.ownedByte.implements,
     ``Verified.Examples.Bytes.compiled.lastByte.implements,
     ``Verified.Examples.Bytes.compiled.emptyRead.implements,
+    ``Verified.Examples.Bytes.compiled.buildPattern.implements,
+    ``Verified.Examples.Bytes.compiled.copyByBuild.implements,
+    ``Verified.Examples.Bytes.compiled.buildFromOwned.implements,
+    ``Verified.Examples.Bytes.compiled.buildFromSize.implements,
+    ``Verified.Examples.Bytes.compiled.nestedBuild.implements,
     ``LeanExe.Bytes.size_toNat,
     ``LeanExe.Bytes.get_build,
     ``LeanExe.Bytes.get_toNat_lt,
@@ -58,6 +72,10 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.Allocated.write,
     ``Verified.Bytes.Allocated.write_step,
     ``Verified.Bytes.wp_store,
+    ``Verified.Bytes.wp_storeWord,
+    ``Verified.Bytes.wp_buildLoop,
+    ``Verified.Bytes.wp_build_zero,
+    ``Verified.Bytes.wp_build_overflow,
     ``Verified.Bytes.wp_copyByte,
     ``Verified.Bytes.overlay_zero,
     ``Verified.Bytes.overlay_all,
@@ -82,6 +100,27 @@ elab "check_wasi_axioms" : command => do
     ``Verified.Bytes.LiteralPool.Static.empty,
     ``Verified.Bytes.LiteralPool.Static.literal,
     ``Verified.Bytes.LiteralPool.Static.step,
+    ``Verified.Bytes.LiteralPool.Safe.empty,
+    ``Verified.Bytes.LiteralPool.Safe.mono,
+    ``Verified.Bytes.LiteralPool.Safe.values,
+    ``Verified.Bytes.LiteralPool.Safe.after,
+    ``Verified.Bytes.wp_literal,
+    ``Verified.Wasi.exec_observed,
+    ``Verified.Wasi.GuestFrame.globals,
+    ``Verified.Wasi.GuestFrame.memoryCaps,
+    ``Verified.Wasi.ABI.imports_length,
+    ``Verified.Wasi.ABI.types_length,
+    ``Verified.Wasi.hostSpec_read,
+    ``Verified.Wasi.hostSpec_write,
+    ``Verified.Wasi.hostSpec_exit,
+    ``Verified.Wasi.write32_bytes_outside,
+    ``Verified.Wasi.read32_congr,
+    ``Verified.Wasi.read32_write32_disjoint,
+    ``Verified.Wasi.read32_write32,
+    ``Verified.Wasi.write32_range,
+    ``Verified.Wasi.initializeScratch_range,
+    ``Verified.Wasi.initializeScratch_reads,
+    ``Verified.Wasi.wp_metadata,
     ``LeanExe.Wasi.Action.bind_pure,
     ``LeanExe.Wasi.Action.bind_assoc,
     ``LeanExe.Wasi.exitStatus_toNat,

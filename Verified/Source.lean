@@ -439,6 +439,7 @@ inductive Expr (S : List Sig) : List Ty → Ty → Type where
   | bytesEmpty : Expr S Γ .bytes
   | bytesSize (x : Var Γ .bytes) : Expr S Γ .word
   | bytesGet (x : Var Γ .bytes) (index : Expr S Γ .word) : Expr S Γ .word
+  | bytesBuild (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) .word) : Expr S Γ .bytes
   | leSize (x : Var Γ (.array e)) (i : Var Γ .word) : Expr S Γ .bool
   | get (x : Var Γ (.array e)) (i : Expr S Γ .word) : Expr S Γ (.elem e)
   | build (count : Expr S Γ .word) (elem : Expr S (.word :: Γ) (.elem e)) : Expr S Γ (.array e)
@@ -547,6 +548,8 @@ def Expr.denote (funs : Funs S) :
   | _, _, .bytesEmpty, _ => LeanExe.Bytes.empty
   | _, _, .bytesSize x, env => (env.get x).size
   | _, _, .bytesGet x index, env => (env.get x).get (index.denote funs env)
+  | _, _, .bytesBuild count elem, env =>
+    LeanExe.Bytes.build (count.denote funs env) fun i => elem.denote funs (.cons i env)
   | _, _, .leSize x i, env => decide ((env.get i).toNat ≤ (env.get x).size)
   | _, _, .get x i, env => (env.get x)[(i.denote funs env).toNat]!
   | _, _, .build count elem, env =>
@@ -610,6 +613,7 @@ def Expr.aborts : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .bytesEmpty => true
   | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.aborts
+  | _, _, .bytesBuild _ _ => true
   | _, _, .get _ i => i.aborts
   | _, _, .build _ _ | _, _, .set _ _ _ | _, _, .push _ _ | _, _, .append _ _
   | _, _, .insertAt _ _ _ | _, _, .eraseAt _ _ => true
@@ -640,6 +644,7 @@ def Expr.depthCalls : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .size _ | _, _, .leSize _ _ => false
   | _, _, .bytesEmpty | _, _, .bytesSize _ => false
   | _, _, .bytesGet _ index => index.depthCalls
+  | _, _, .bytesBuild count elem => count.depthCalls || elem.depthCalls
   | _, _, .get _ i => i.depthCalls
   | _, _, .build count elem => count.depthCalls || elem.depthCalls
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.depthCalls || v.depthCalls
@@ -689,6 +694,7 @@ def Expr.uses : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat → Bool
   | _, _, .bytesEmpty, _ => false
   | _, _, .bytesSize x, i => i == x.index
   | _, _, .bytesGet x index, i => i == x.index || index.uses i
+  | _, _, .bytesBuild count elem, i => count.uses i || elem.uses (i + 1)
   | _, _, .leSize x k, i => i == k.index || i == x.index
   | _, _, .get x k, i => i == x.index || k.uses i
   | _, _, .build count elem, i => count.uses i || elem.uses (i + 1)
@@ -740,6 +746,7 @@ def Expr.useMask : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Nat
   | _, _, .bytesEmpty => 0
   | _, _, .bytesSize x => 1 <<< x.index
   | _, _, .bytesGet x index => 1 <<< x.index ||| index.useMask
+  | _, _, .bytesBuild count elem => count.useMask ||| elem.useMask >>> 1
   | _, _, .leSize x i => (1 <<< i.index) ||| (1 <<< x.index)
   | _, _, .get x k => 1 <<< x.index ||| k.useMask
   | _, _, .build count elem => count.useMask ||| elem.useMask >>> 1
@@ -843,6 +850,7 @@ def Expr.placeArgs : {Γ : List Ty} → {t : Ty} → Expr S Γ t → Bool
   | _, _, .get _ i => i.placeArgs
   | _, _, .bytesEmpty | _, _, .bytesSize _ => true
   | _, _, .bytesGet _ index => index.placeArgs
+  | _, _, .bytesBuild count elem => count.placeArgs && elem.placeArgs
   | _, _, .build count elem => count.placeArgs && elem.placeArgs
   | _, _, .set _ i v | _, _, .insertAt _ i v => i.placeArgs && v.placeArgs
   | _, _, .eraseAt _ i => i.placeArgs
@@ -921,7 +929,7 @@ def Expr.mode (modes : List Mode) : {Γ : List Ty} → {t : Ty} → Expr S Γ t 
   | _, _, .fold _ init body =>
     (init.mode modes).join (body.mode (.borrowed :: .borrowed :: .borrowed :: modes))
   | _, _, .treeNil _ | _, _, .treeNode _ _ _ => .owned
-  | _, _, .bytesEmpty => .owned
+  | _, _, .bytesEmpty | _, _, .bytesBuild _ _ => .owned
   | _, _, .treeCase (shape := shape) x empty node =>
     (empty.mode modes).join (node.mode (shape.modes (modes.getD x.index .borrowed) modes))
   | _, _, _ => .borrowed

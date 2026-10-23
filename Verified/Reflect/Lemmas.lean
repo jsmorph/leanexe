@@ -347,6 +347,14 @@ theorem build_eq {e : Elem} {count : Expr S Γ .word} {elem : Expr S (.word :: �
   obtain rfl : (fun i => elem.denote funs (.cons i env)) = F := funext hf
   rfl
 
+theorem bytesBuild_eq {count : Expr S Γ .word} {elem : Expr S (.word :: Γ) .word}
+    {N : UInt64} {F : UInt64 → UInt64} (hn : count.denote funs env = N)
+    (hf : ∀ i, elem.denote funs (.cons i env) = F i) :
+    (Expr.bytesBuild count elem).denote funs env = LeanExe.Bytes.build N F := by
+  subst hn
+  obtain rfl : (fun i => elem.denote funs (.cons i env)) = F := funext hf
+  rfl
+
 /-- An update of an array variable, which leaves it unchanged past its end. -/
 theorem set_eq {e : Elem} (x : Var Γ (.array e)) {i : Expr S Γ .word} {v : Expr S Γ (.elem e)}
     {I : UInt64} {V : e.denote} (hi : i.denote funs env = I) (hv : v.denote funs env = V) :

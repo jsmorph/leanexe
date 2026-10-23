@@ -2410,6 +2410,45 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
       return ⟨src, ← mkAppM ``build_eq #[rn.proof, hf], .array el, e, bound, fits⟩
     return ⟨src, ← mkAppM ``build_map_eq #[← se.fn α, f, rn.proof, hf], .array el, e,
       bound, fits⟩
+  | ``LeanExe.Bytes.build, #[n, f] =>
+    let rn ← reflect c n
+    let (fs, hf, ue) ← withLocalDeclD `i (mkConst ``UInt64) fun i => do
+      let env' ← mkAppOptM ``Env.cons #[some c.ctx, some (mkConst ``Ty.word), some i, some c.env]
+      let c' : Ctx := { c with vars := (i, .word) :: c.vars, env := env', ctx := consCtx .word c.ctx }
+      let rf ← reflect c' (f.beta #[i])
+      unless rf.ty == .word do throwError "verified_compile: a byte builder must return UInt64"
+      return (rf.src, ← mkLambdaFVars #[i] rf.proof,
+        (⟨rf, #[i], [← i.fvarId!.getDecl]⟩ : Under))
+    let src ← mkAppM ``Expr.bytesBuild #[rn.src, fs]
+    let bound : BoundBuilder := fun modes paid live => do
+      let bounds := c.tables.table false
+      let app ← LemmaApp.start ``bytesBuild_bound
+        (boundArgs c bounds modes paid live ++ [(`count, rn.src), (`elem, fs)])
+      let some (_, _, allRhs) := (← app.hypType `hall).eq?
+        | throwError "verified_compile: the byte build {e}"
+      app.assign `all allRhs
+      app.assign `hall (← mkEqRefl allRhs)
+      app.assign `hn (← userProof c rn)
+      let _ ← app.child `hna rn.bound
+      let eb ← ue.bound (← mkAppM ``List.cons #[mkConst ``Mode.borrowed, modes])
+        (← mkAppM ``List.cons #[boolConst false, paid]) (← mkAppM ``shift #[mkNatLit 1, allRhs])
+      let (EA, hea) ← withLocalDeclD `k (mkConst ``Nat) fun k => do
+        let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
+        return (← mkLambdaFVars #[k] b.term, ← mkLambdaFVars #[k] b.proof)
+      app.assign `EA EA
+      app.assign `hea hea
+      boundOf (← app.finish)
+    let fits : FitsBuilder := do
+      let app ← LemmaApp.start ``bytesBuild_fits (fitsArgs c ++ [(`count, rn.src), (`elem, fs)])
+      app.assign `hn (← userProof c rn)
+      app.childFits `hnf rn.fits
+      app.childFits `hef do
+        let eb ← ue.fits
+        withLocalDeclD `k (mkConst ``Nat) fun k => do
+          let b ← eb.at #[← mkAppM ``UInt64.ofNat #[k]]
+          return ⟨← mkLambdaFVars #[k] b.term, ← mkLambdaFVars #[k] b.proof⟩
+      fitsOf (← app.finish)
+    return ⟨src, ← mkAppM ``bytesBuild_eq #[rn.proof, hf], .bytes, e, bound, fits⟩
   | ``LeanExe.Bytes.size, #[bytes] =>
     let bytes ← projReduce bytes
     unless bytes.isFVar do
