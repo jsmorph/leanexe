@@ -1,5 +1,7 @@
 import Verified.Wasi.PureTransportSpecs
 import Verified.Wasi.RelocationForms
+import Verified.Wasi.ModuleTransport
+import Verified.Wasi.ModuleInitial
 
 open Lean Elab Command in
 elab "check_transport_axioms" : command => do
@@ -16,7 +18,14 @@ elab "check_transport_axioms" : command => do
     ``Verified.Wasi.PureTransport.entry_keepsWorld,
     ``Verified.Wasi.PureTransport.runs_transport,
     ``Verified.Wasi.PureTransport.terminatesWith_transport,
-    ``Verified.Wasi.PureTransport.entry_trap_world]
+    ``Verified.Wasi.PureTransport.entry_trap_world,
+    ``Verified.Wasi.PureTransport.wp_transport,
+    ``Verified.Wasi.Module.layout,
+    ``Verified.Wasi.Module.shape,
+    ``Verified.Wasi.Module.initialStore_eq,
+    ``Verified.Wasi.Module.run_pure,
+    ``Verified.Wasi.Module.runs_pure,
+    ``Verified.Wasi.Module.terminatesWith_pure]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do

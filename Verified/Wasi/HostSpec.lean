@@ -79,9 +79,11 @@ def exitTrap : String := "wasi proc_exit"
 
 def exitContract (host : Host World) : HostContract (Observed World) :=
   fun before args result => ∀ code : UInt32, args = [.i32 code] →
-    ∃ after, result = .Trap after exitTrap ∧
-      (observedHost host).exit before.host code.toUInt64 after.host ∧
-      GuestFrame before after []
+    match result with
+    | .Trap after message => GuestFrame before after [] ∧
+        ((message = exitTrap ∧ (observedHost host).exit before.host code.toUInt64 after.host) ∨
+          (observedHost host).exitTrap before.host code.toUInt64 message after.host)
+    | .Return _ _ | .Throw _ _ _ => False
 
 def hostSpec (host : Host World) : HostSpec (Observed World) :=
   { contracts := [readContract host, writeContract host, exitContract host] }

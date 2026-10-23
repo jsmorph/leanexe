@@ -70,4 +70,19 @@ theorem entry_trap_world {World : Type} {source target : Module}
   rw [hTrap] at h
   exact h
 
+theorem wp_transport {World : Type} {source target : Module}
+    (layout : Relocation.Layout source target) (profile : Relocation.Profile source)
+    {code : Program} (hForm : Encoding.ProgramForm code)
+    (hClosed : Relocation.programClosed source.funcs.length code = true)
+    {initial : Store Unit} {locals : Locals} {P : Assertion Unit} {Q : Assertion World}
+    {sourceHost : HostEnv Unit} {targetHost : HostEnv World}
+    (world : World) (h : wp source code P initial locals sourceHost)
+    (hPost : ∀ continuation, P continuation → Q (liftContinuation world continuation)) :
+    wp target (Relocation.program code) Q (restore world initial) locals targetHost := by
+  unfold wp at h ⊢
+  obtain ⟨bound, hBound⟩ := h
+  refine ⟨bound, fun fuel hFuel => ?_⟩
+  rw [code_transport layout profile hForm hClosed fuel initial world locals sourceHost targetHost]
+  exact hPost _ (hBound fuel hFuel)
+
 end Verified.Wasi.PureTransport

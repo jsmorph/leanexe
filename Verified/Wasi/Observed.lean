@@ -18,11 +18,15 @@ def observedHost (host : Host World) : Host (Observed World) where
       after.events = before.events ++ [.write output bytes reply]
   exit before code after :=
     host.exit before.world code after.world ∧ after.events = before.events ++ [.exit code]
+  exitTrap before code message after :=
+    host.exitTrap before.world code message after.world ∧
+      after.events = before.events ++ [.exitTrap code message]
   read_bound h := host.read_bound h.1
   write_bound h := host.write_bound h.1
   read_exited h := host.read_exited h.1
   write_exited h := host.write_exited h.1
   exit_recorded h := host.exit_recorded h.1
+  exitTrap_exited h := host.exitTrap_exited h.1
 
 theorem exec_observed {World : Type} {host : Host World} {action : Action α}
     {initial final : Observed World} {trace : List Event} {outcome : Outcome α}
@@ -37,7 +41,7 @@ theorem exec_observed {World : Type} {host : Host World} {action : Action α}
       initial trace outcome final _ =>
       LoopExec host remaining index state test step next initial.world trace outcome final.world ∧
         final.events = initial.events ++ trace)
-    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
+    ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ ?_ h
   · intro α world value
     exact ⟨.pure world.world value, (List.append_nil _).symm⟩
   · intro α capacity next world final trace outcome hCapacity _ ih
@@ -56,6 +60,8 @@ theorem exec_observed {World : Type} {host : Host World} {action : Action α}
     exact ⟨.write_trap hHost.1, hHost.2⟩
   · intro α code world final hHost
     exact ⟨.exit hHost.1, hHost.2⟩
+  · intro α code world final message hHost
+    exact ⟨.exitTrap hHost.1, hHost.2⟩
   · intro σ α count init test step next world final trace outcome _ ih
     exact ⟨.loop ih.1, ih.2⟩
   · intro σ α index state test step next world final trace outcome _ ih

@@ -20,10 +20,12 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.WrapperCode Verified.Wasi.Write Verified.Wasi.ReadCall \
   Verified.Wasi.ReadFrame Verified.Wasi.Runtime Verified.Wasi.Exit LeanExe.Wasi.Prefix
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
-  Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms
+  Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
+  Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial
 tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
 if "$foundations_only"; then exit 0; fi
 tools/leanrun --timeout 30m --log build/wasi/byte-values.log lake build Verified.Examples.Bytes
 tools/leanrun --timeout 5m lake env lean tests/wasi/Bytes.lean
