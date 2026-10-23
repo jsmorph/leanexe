@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-Status: proposed design for review.  The user requested WASI Preview 1 over core WebAssembly, stdin reads, stdout and stderr writes, and process exit.  The API uses ordinary Lean `do` notation and follows the compiler's UInt64 convention for executable lengths, counts, and statuses.  Implementation details in this document are proposals.  The library reorganization is merged into `main` at `ba466061`.  An isolated checkout on minideb2 provides the workspace for this design.
+Status: proposed design for review.  The user requested WASI Preview 1 over core WebAssembly, stdin reads, stdout and stderr writes, and process exit.  The API uses ordinary Lean `do` notation and follows the compiler's UInt64 convention for executable lengths, counts, and statuses.  Implementation details in this document are proposals.  The library reorganization is merged into `main` at `ba466061`.  This work uses `verified-wasi`, with an isolated checkout on minideb2.
 
 ## Scope and sources
 
