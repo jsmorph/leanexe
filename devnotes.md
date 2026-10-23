@@ -35082,3 +35082,5 @@ The [WASI proposal](docs/verified-wasi-design.md) specifies stdin reads, stdout 
 Before publication, inspection found an existing remote `wasi` branch at `efbd253c`.  Its nine commits contain a separate September native WASI implementation outside current `main`.  A read-only review identified direct wrapper and test reuse, along with incompatible BaseIO and UInt32 APIs and the older owner/pointer/length representation.  The proposal records these differences and the public `LeanExe.Wasi.Action` name collision.  The existing branch has not been changed.  Its preservation and the new branch's name await the user's history decision.
 
 The design received a second agent review and two source and prose passes.  The README links the proposal.  Local documentation links and whitespace pass.  Implementation follows review of the recorded proposals, under the user's design-only instruction.
+
+The user chose a new branch for this work.  The Verified design uses `verified-wasi`, based on completed `main`.  The earlier remote `wasi` branch retains its native implementation at `efbd253c`.
