@@ -93,3 +93,4 @@ while IFS="$tab" read -r export_name arguments; do
 done <"$root/tests/wasi/byte-traps.tsv"
 printf 'Byte trap tests passed: %s cases\n' "$count"
 tests/wasi/codegen-run.sh
+tests/wasi/reflection-run.sh
