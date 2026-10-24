@@ -9,15 +9,14 @@ theorem wp_copyTree {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : 
     {value : Node} {rest : Program} {Q : Assertion Unit}
     (hAt : heap.At store) (hCap : store.memoryCap m 0 ≤ 65535)
     (hLayout : NodeLayout shape value) (hSource : NodeBorrowed heap store source value)
-    (hTrap : TrapOK (!decide (heap.Within store m
-      (allocCost (8 * shape.fields.length) * value.records))) Q)
+    (hTrap : TrapOK (!decide (heap.Within store m (nodeCopyCost value))) Q)
     (hSrc : s.get src = some (.i64 source)) (hSrcBase : src < base)
     (hLow : s.params.length ≤ base) (hHigh : base + 6 ≤ s.positions)
     (hNext : ∀ heap' store' s' ptr,
       Step heap store (fun _ => True) heap' store' (Node.blocks store' ptr value) →
       NodeOwned heap' store' ptr value → (Node.blocks store' ptr value).Pairwise regionsDisjoint →
       Frame base s s' →
-      heap'.top.toNat ≤ heap.top.toNat + allocCost (8 * shape.fields.length) * value.records →
+      heap'.top.toNat ≤ heap.top.toNat + nodeCopyCost value →
       wp m rest Q store' { s' with values := .i64 ptr :: s.values } host) :
     wp m (treeCopyCode shape src base ++ rest) Q store s host := by
   let post : Assertion Unit := fun cont => match cont with
@@ -42,7 +41,7 @@ theorem wp_copyTree {m : Module} (hm : Runtime m) {host : HostEnv Unit} {heap : 
     change wp m [.constI64 0] post store s host
     simpa only [wp_constI64_cons, wp_nil, post, List.take_succ_cons, List.take_zero,
       List.cons_append, List.nil_append] using hNext heap store s 0 (Step.refl hAt _) rfl (by simp [Node.blocks])
-        (Frame.refl base s) (by simp [Node.records])
+        (Frame.refl base s) (by simp [nodeCopyCost])
   | record slots =>
     have hNonzero := hSource.1.nonzero
     simp only [treeCopyCode, List.cons_append, List.nil_append, wp_localGet_cons, hSrc,

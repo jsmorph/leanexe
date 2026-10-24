@@ -78,7 +78,7 @@ theorem Ty.pot_of_pointerBlocks {store store' : Store Unit} :
     (t : Ty) → (ws : List Value) → (value : t.denote) →
       (∀ q ∈ t.pointers store ws value, block store' q = block store q) →
       t.pot store' ws value = t.pot store ws value
-  | .elem _, _, _, _ | .tree _, _, _, _ | .treeHeader _, _, _, _ => rfl
+  | .elem _, _, _, _ | .tree _, _, _, _ | .treeHeader _ _, _, _, _ => rfl
   | .pair a b, ws, value, same => by
     simp only [Ty.pot]
     congr 1

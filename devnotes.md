@@ -35293,12 +35293,64 @@ The LeanExe compiler accepts exactly two constructors with one record constructo
 
 - [x] A script that emits every module and compares the bytes with a baseline.
 - [x] Review the design, and revise it from the review.
-- [ ] Write the baseline from `main` on the build host.
-- [ ] Generalize `TreeShape`, `Tree`, `toNode`, and `NodeLayout`.
-- [ ] Generalize the source forms, the code generators, and their proofs.
-- [ ] Generalize the copy loop and its proof.
-- [ ] Generalize the reflector.
-- [ ] Add the host format, the example, and its cases, and update the manual.
+- [x] Write the baseline from `main`.
+- [x] Generalize `TreeShape`, `Tree`, `toNode`, and `NodeLayout`.
+- [x] Generalize the source forms, the code generators, and their proofs.
+- [x] Generalize the copy loop and its proof.
+- [x] Generalize the reflector.
+- [x] Add the host format, the example, and its cases, and update the manual.
+
+## 2026-10-24: Tagged recursive types: the port so far
+
+The port follows the design above, with six choices made while writing the proofs.  `shapeValid` also requires fewer than `2^64` constructors, so that every constructor index fits in the tag word and the tags of distinct record constructors differ.  `treeCopyBegin` stores the width word before the parent link, the source pointer, and the next slot index, so that the code reads the source's tag before any header write.  An untagged shape emits no width store, and its bytes are unchanged.  `RecordStorage` takes a width, and `CopyRecord.Holds` uses the record's own slot count, with a field that for a tagged shape the width word holds it, so the copy invariant needs no record constructor.  The copy budget is `CopyWork.cost`, the sum of `allocCost (8 * w)` over the records that remain, with `nodeCopyCost` and `Tree.copyCost` for a whole tree and `Tree.copyCost_eq` between them.  `NodeLayout` holds for null in every shape, a weaker condition than the design states, since the copy handles null the same way in every shape.  `TreeShape.fieldStart` and `tagStoreCode` moved from `Compile.lean` to `TreeFieldsCode.lean`, so that the assembly proofs can use them.
+
+`TreeSelect.lean` holds what the tag tests share.  `PushesWord` states that code pushes one word and changes nothing else, `chainPick` gives the entry that a chain of tests selects, and `TreeShape.chainPick_tag` shows that a chain over `tagPairs` selects the entry of record constructor `r` when the tested word is `r`'s tag, which needs the bound on the number of constructors.  `NodeBorrowed.tag` and `SlotsOwned.tag` read the tag from slot 0, and `RecordStorage.readSlot_write` shows that header writes leave slot 0 unchanged.
+
+The proofs of the compiler compile with the standard axioms through `TailCode`, including the match proofs, `ExprCorrect`, the list fold, and `TailBody.code_spec`.  `TreeDispatch.lean` proves the chain of tag tests for a match: `RunsBranch` states that a branch's code runs to the postcondition at a label shift, and `wp_dispatchCode` and `RunsTailBranch.dispatchCode` select record constructor `r`'s branch.  The list fold proofs use `listBranch_cell` and `listShape_dispatchCode`, which reduce a list match without unfolding `listCell` in the types of the field families, since a rewrite then no longer finds the family.  A script in the session's scratch directory added the record constructor to shape quantities in each file, and each result was reviewed and corrected by hand.
+
+The reflector builds the branches of a match on a type with `n` record constructors as a chain of `Fin.cases`, typed as a family over `Fin shape.records`, and the empty branch as `absurd` when the shape has no null constructor.  The lemmas of a match, which `RecursiveMatch.lean` generates for each type, take one hypothesis per constructor.  The proof that a hand-written `Encode` instance agrees with the layout rule now uses the induction hypotheses and `rfl`, since the earlier `simp` set did not reduce the field lists of a tagged shape.  The bounds in the generated `fromTree` are proved with `decide` at closed types, since the record in the pattern is a free variable.
+
+The Wasmtime host has a format `records-u64` for any tree of records: `.` for null, and otherwise the width, the mask, and the slots, where a slot whose mask bit is set is a tree.  It checks the magic number, the count, the kind, and that the width is between 1 and 64 with no mask bit at or above it, and it prints the width and mask it reads, so that a case compares them with the `Encode` instance.  `tests/TestSupport/Records.lean` computes that text in native Lean.  The example `Verified/Examples/TaggedTypes.lean` compiles `Term`, with a null constructor and four tagged record constructors, and its cases are in `TaggedTypesCases.lean`.
+
+`verified-18.log` built all 3,927 jobs of `Verified` with no `sorry`, and the 87 targets of the module registry then built in 3,987 jobs.  `tests/verified/emit-modules.sh` found all 88 modules identical to the baseline written from `main`.  `tests/verified/run.sh --cases taggedtypes` passed all 331 cases with their allocation counts, among them an in-place `swap` that allocates nothing beyond the host's records, a `double` that copies once, and an `eval` that returns at depth 999 and traps at depth 1,000.  A pattern below the first constructor level fails with `cannot reduce the recursive match at …`, which the manual's restrictions now list.  `Term.arbitrary` in the cases recurses structurally on a count of levels, since a `match` on a numeral inside well-founded recursion reached Lean's maximum recursion depth.
+
+The profiler's cumulative kernel time, for `main` and for this branch, is 8.6 and 34.4 ms for `TreeCopy`, 532 and 442 ms for `TreeCore`, 28.8 and 29.6 s for `Lists`, 2.57 and 2.57 s for `ListRecursion`, 2.75 and 2.82 s for `ListLoops`, 3.03 and 3.03 s for `ListTail`, and 17.7 and 22.0 s for `RecursiveTypes`.  `TaggedTypes` takes 16.6 s.  In `RecursiveTypes`, 71 kernel checks exceed the profiler's 100 ms threshold, against 56 on `main`, and their sums are 17.2 and 14.3 s.  The profiler does not name the declarations, so the source of the increase is not identified.  The logs are `profile-base-*.log` and `profile-branch-*.log` under `build/tagged/`.
+
+`treeMatcherCases` still does not substitute the discriminant into a reduced alternative.  Reducing the matcher at a constructor applied to field variables binds a variable pattern that names the matched value to that constructor application, which the reflector compiles as a construction, as on `main`.  The design above adds the substitution, which needs a motive that depends on the discriminant, and it is not done.
+
+The user chose to commit the port once the full build and `tests/verified/run.sh` pass, and to add the substitution in the next commit on this branch.  The port's evidence is that every module's bytes equal the baseline, and the substitution can change the bytes of a module that names a matched value, so a separate commit keeps each byte change with its own explanation.  The substitution's proof change, a motive that depends on the matched value in the expression and tail-body paths, is then reviewable alone.
+
+- [x] Commit the port after the full build and `tests/verified/run.sh` pass.
+- [x] Measure the cost of a variable pattern that names a borrowed matched value, with a small example.
+- [ ] Substitute the matched value into the reduced alternatives of `treeMatcherCases`.
+
+The user chose to find the source of the kernel-time increase after the port's commit and before the substitution, so that the measurement covers the port alone.  The whole-file times above do not yet meet the design's criterion, which names the kernel time of the byte theorems.  The method is Lean's `trace.profiler` option, under which `addDecl` records each kernel check above the threshold as a `Kernel` trace node named "typechecking declarations" with the declarations' names (`Lean/AddDecl.lean` in the toolchain's sources), with `Elab.async` off so that the checks run inside their commands.  Each example runs under `lake env lean` in a checkout of `main` and in one of this branch, whose imports `build/timing/kernel-timing.sh` builds first.
+
+- [x] Time each declaration's kernel check in the recursive-type examples, on `main` and on this branch.
+
+The user chose the merge order.  `hashing-main` goes to `main` first, after its open full build and `tests/verified/run.sh`, by a fast-forward of `origin/main` if `main` has not moved, which leaves `regex` on `main` without a rebase.  `tagged-types`, which is not pushed, then rebases onto the new `main` after the substitution, and its final full build, its tests, and a byte comparison against a baseline from the new `main` cover the hashing modules.  The order needs no full build beyond the two already required and rewrites no pushed branch.  Each push to `origin/main` waits for the user's instruction at the time.
+
+- [ ] Run the full build and `tests/verified/run.sh` on `hashing-main` when the build host is free.
+- [ ] Fast-forward `origin/main` to `hashing-main`, on the user's instruction.
+- [ ] Rebase `tagged-types` onto the new `main` after the substitution, and rerun the full build, the tests, and the byte comparison.
+
+The user deferred nested patterns until a program needs them.  The nested `match` form compiles today to the code that nested patterns would produce, and no current or planned program uses them.  When they are added, they follow the substitution, since a fallback alternative that names a child would otherwise rebuild the child in each constructor's copy.
+
+- [ ] Later: nested patterns, by splitting a stuck field by its constructors in `treeMatcherCases`.
+
+The user deferred the reuse of a wider header for a narrower record constructor.  The runtime records each block's capacity and `release` frees by it, and `RecordStorage` bounds the width by the capacity, so the change falls on `treeNode`'s reuse argument, `TreeHeader.Owned`, the construction proof, and the reflector's choice of header.  It saves one allocation and one release per construction that changes a matched record's constructor, and the choice between a wider header and a fresh record affects memory use, which needs its own design.
+
+- [ ] Later: reuse of a wider header for a narrower record constructor.
+
+## 2026-10-24: Softmax and cross-entropy review
+
+The user asked whether the two bugs of Barron, Gnanapragasam, and Tschannen, [*A Fix for Softmax and Cross-Entropy*](https://arxiv.org/abs/2610.31642), arXiv 2610.31642, 2026, affect our GPT implementations.  In Softmax Collapse, the denominator `1 + e^-m` that follows the shift by the largest logit rounds to 1 once the margin `m` exceeds about 16.6 in binary32 or 36.7 in binary64, so the largest entry's log-probability and its gradient `q_t − 1` become 0 while the other gradients stay positive.  In Softmax Cancellation, soft-target cross-entropy forms its gradient `q − p` from two separately rounded softmaxes, which loses precision when student and teacher logits are close and leaves a nonzero gradient when they are equal.  The paper's fixes compute the margin with a log-sum-exp that excludes the largest entry, combined by softplus, and compute `q − p` in log space with `expm1` and `log1p`.
+
+Neither bug applies.  `Demos/Gpt` and `Demos/Gpt32`, with its WGSL kernels, run inference only, and they compute no gradient, loss, log-softmax, or cross-entropy.  Their attention softmaxes compute `exp (x − max) / sum`, which gives each probability within a few rounding errors, and a largest probability of 1.0 when `e^-m` falls below the precision of 1.0 is within one unit in the last place of `1 / (1 + e^-m)`.  The collapse harms only a later subtraction from 1 or a logarithm, and the code has neither.
+
+`sampleFrom` shows the same rounding at the resolution of its random number.  The top token's weight is exactly 1, and when the other kept weights sum to less than `2^-53` the total rounds to 1, so tokens after the top token in vocabulary order are never drawn and a token before it is drawn with probability 0 or `2^-53`.  Their exact probabilities are below `2^-53`, the resolution of the number that `unitFloat` makes from one SplitMix64 step.  The binary32 browser page widens its scores to binary64 and calls the same `sampleTopK`.
+
+The closest computation to the cancellation bug is the KL divergence of the quantized GPT-2 report.  The script that computed it is neither on `main` nor on `gpt2-quantized`, so its arithmetic is unchecked.  Its smallest value is 0.000507 nats, and an estimate of the error of a KL sum from two separate log-softmaxes, the unit roundoff times the entropy, gives about `10^-6` in binary32 and `10^-15` in binary64, below the printed digits.  The GPT theorems prove bit-exact agreement between each module and its Lean source, so a bug of this kind in a source formula would pass into the module unchanged, and training code would need the paper's formulation in the source and an accuracy bound.
 
 ## 2026-10-24: Lean threads on the build machines
 
@@ -35310,3 +35362,25 @@ The user granted standing permission to stop and restart my own Lean, Lake, runn
 
 - [x] Add `--threads` to `tools/leanrun`, with the instructions and the manual.
 - [x] Commit the runner change separately from the port.
+
+## 2026-10-24: Kernel time by declaration
+
+The trace profiler named every kernel check above 10 ms, with one Lean thread on both sides.  Summed over those checks, `main` and this branch take 0.56 and 1.33 s for `TreeCore`, 24.85 and 25.47 s for `Lists`, 2.29 and 2.50 s for `ListRecursion`, 2.51 and 2.54 s for `ListLoops`, 2.74 and 2.97 s for `ListTail`, and 13.72 and 15.04 s for `RecursiveTypes`, while `TreeCopy` has no check above 10 ms.  `TaggedTypes` takes 11.95 s over 103 checks.  The logs are `base-*.log` and `branch-*.log` under `build/timing/`, compared by a script that joins the checks by name.
+
+In `RecursiveTypes` the increase lies in the `func_ok_k._proof_1` theorems, the per-function encoding claims that `decide +kernel` proves by evaluating the code generator, each 20 to 35% slower, and the branch has 14 more checks above the threshold.  The bytes are unchanged, so the added work is the kernel's evaluation of the generalized shape quantities for a shape with one record constructor: `recordIndices` filters the constructor list, `nullIndex` searches it, and the widths, masks, and field starts derive from them.  In `TreeCore` the definitions `foldBuild`, `foldLookup`, and `foldWord` rose from about 0.02 to about 0.2 s, since their types contain quantities such as `listShape.context listCell Γ` that the kernel reduces.  In `TaggedTypes` the largest checks are again `func_ok_k`, up to 1.13 s each.
+
+The increase is at most 10% of the checks above the threshold in every example but `TreeCore`, whose total is about a second.  Making the shape quantities cheaper to reduce, for example by structural recursion over the constructor list or by storing each record constructor's index, width, and mask in the shape, would address both sources.  That change is a separate decision.
+
+## 2026-10-24: The cost of a variable pattern that names the matched value
+
+A scratch module compiled four functions over `Term` with `verified_compile` and printed their source terms, modes, and bound equations (`build/timing/patterns.log`).  `countOr t := match t with | .zero => 7 | s => count s` compiles in each record constructor's copy as a construction of `s` from the fields that reuses the matched header, followed by the call, so its parameter is owned and its theorem takes `Moved Term`.  `countOrDirect`, the same function with `| _ => count t`, has a borrowed parameter and the bound of `count` alone.  `keepOr` (`| s => s`) and `pairOr` (`| s => .add s s`) are owned with or without the substitution: the first rebuilds in place and allocates nothing, and the second copies the rebuilt value as `.add t t` copies `t`.
+
+The cost of the current form is therefore a change of mode: a function that only reads the matched value takes its argument owned, so a caller that keeps the value copies it, and the function releases it.  The substitution removes the rebuild and lets the mode analysis see the read.
+
+## 2026-10-24: Full build and the first full test run
+
+`tools/leanrun --threads 3 --memory-high 9G --timeout 12h lake build Verified Library` completed all 10,404 jobs with exit 0 (`build/tagged/full-03.log`, after two restarts that kept the built modules), with no `sorry` warning and no mention of `sorryAx`, `Lean.ofReduceBool`, or `Lean.trustCompiler`.  The following `tests/verified/run.sh` (`run-03.log`) emitted every module and passed the GPT checks, and then the Euler step failed with "native Lean exited with an error".  `tests/modules/run.sh` runs `lean --run tests/modules/Cases.lean`, which imports the `Examples.*.Cases` modules and `Demos.Clob.Cases` of the default targets, and the checkout had built only `Verified Library`, so Lean stopped on the missing imports.  It printed that error to standard output, which the script writes to a temporary file it deletes, so the log shows no message.
+
+The prerequisite was incomplete in the driver's header and in the verified manual, which named only `lake build Verified Library`.  Both now also name `lake build`, as the LeanExe manual's full check does in its first step.  A chain builds the default targets and reruns the tests in this checkout, and then does the same for `hashing-main`, whose checkout lacked the same modules.
+
+`tools/leanrun --threads 3 lake build` then built the 4,169 jobs of the default targets with no `sorry` warning (`default-01.log`), and `tests/verified/run.sh` passed with exit 0 (`run-04.log`).  It passed 2,733 GPT cases, 3,096 Euler cases, and 226 cases of the shapes module, checked the file theorems of 22 numerical modules against their emitted files with only the three permitted axioms, passed all 30,618 verified cases with their allocation counts, and passed the native accuracy checks.  All 88 modules of the baseline from `main` are byte-identical to the modules that this run emitted, and the 89th is `taggedtypes`.

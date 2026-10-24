@@ -12,7 +12,9 @@
 # checks compare the transcendental functions with references computed with Lean's integers, each
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` first.
+# Run `tools/leanrun --timeout 60m lake build`, whose default targets include the module cases of
+# the Euler check, and `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`
+# first.
 # Usage: tests/verified/run.sh [--cases MODULE]
 set -euo pipefail
 export PATH="$PATH:$HOME/.cargo/bin"
@@ -136,6 +138,9 @@ elif [ "$case_module" = "sha512" ]; then
 elif [ "$case_module" = "hmac_sha256" ] || [ "$case_module" = "hmac_sha512" ]; then
   cases_module=TestSupport.Hashing.HmacCasesMain
   cases_source=tests/TestSupport/Hashing/HmacCasesMain.lean
+elif [ "$case_module" = "taggedtypes" ]; then
+  cases_module=Verified.Examples.TaggedTypesCasesMain
+  cases_source=Verified/Examples/TaggedTypesCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

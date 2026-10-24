@@ -7,10 +7,10 @@ open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 def TreeHeader.setMask (store : Store Unit) (p mask : UInt64) : Store Unit :=
   { store with mem := store.mem.write64 (p - 8).toUInt32 mask }
 
-theorem TreeHeader.attach_spec {shape : TreeShape} {heap : Heap}
+theorem TreeHeader.attach_spec {shape : TreeShape} {r : Fin shape.records} {heap : Heap}
     {store : Store Unit} {p : UInt64} {slots : List Slot}
-    (hHeap : heap.At store) (hHeader : Owned shape heap store p)
-    (hLength : slots.length = shape.fields.length) (hSlots : SlotsOwned heap store p 0 slots)
+    (hHeap : heap.At store) (hHeader : Owned shape r heap store p)
+    (hLength : slots.length = shape.width r) (hSlots : SlotsOwned heap store p 0 slots)
     (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
     let store' := setMask store p (maskOf slots)
     Memory.WritesRange store store' (p.toNat - 8) p.toNat ∧ heap.At store' ∧

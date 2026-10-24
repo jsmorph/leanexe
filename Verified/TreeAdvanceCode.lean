@@ -33,7 +33,6 @@ theorem wp_copyRecordAdvance {m : Module} {host : HostEnv Unit} {heap : Heap}
   have hAddress := h.storage.address
   have hCapacity := h.storage.capacity
   have hBelow := h.storage.below
-  have hLength := h.layout.1
   have hTop := hAt.top
   rw [List.append_assoc, List.append_assoc]
   refine wp_treeSlotStore hPtr hIndex hWord ?_ ?_

@@ -23,13 +23,13 @@ theorem recordWords_owned (heap : Heap) (store : Store Unit) (p : UInt64) (n : N
 def TreeHeader.clearMask (store : Store Unit) (p : UInt64) : Store Unit :=
   { store with mem := store.mem.write64 (p - 8).toUInt32 0 }
 
-theorem TreeHeader.clearMask_spec {shape : TreeShape} {heap : Heap}
+theorem TreeHeader.clearMask_spec {shape : TreeShape} {r : Fin shape.records} {heap : Heap}
     {store : Store Unit} {p : UInt64} {slots : List Slot}
     (hHeap : heap.At store) (h : RecordHeader heap store p slots)
-    (hLength : slots.length = shape.fields.length) :
+    (hLength : slots.length = shape.width r) :
     Memory.WritesRange store (clearMask store p) (p.toNat - 8) p.toNat ∧
       heap.At (clearMask store p) ∧
-      Owned shape heap (clearMask store p) p ∧
+      Owned shape r heap (clearMask store p) p ∧
       capacityAt (clearMask store p) p = capacityAt store p := by
   have hBase := h.base
   have hAddress := h.address
@@ -73,12 +73,12 @@ theorem TreeHeader.clearMask_spec {shape : TreeShape} {heap : Heap}
 
 #print axioms TreeHeader.clearMask_spec
 
-theorem TreeHeader.detach_spec {shape : TreeShape} {heap : Heap}
+theorem TreeHeader.detach_spec {shape : TreeShape} {r : Fin shape.records} {heap : Heap}
     {store : Store Unit} {p : UInt64} {slots : List Slot}
     (hHeap : heap.At store) (hNode : NodeOwned heap store p (.record slots))
-    (hLength : slots.length = shape.fields.length)
+    (hLength : slots.length = shape.width r)
     (hApart : (Node.blocks store p (.record slots)).Pairwise regionsDisjoint) :
-    heap.At (clearMask store p) ∧ Owned shape heap (clearMask store p) p ∧
+    heap.At (clearMask store p) ∧ Owned shape r heap (clearMask store p) p ∧
       SlotsOwned heap (clearMask store p) p 0 slots ∧
       slotsBlocks (clearMask store p) p 0 slots = slotsBlocks store p 0 slots ∧
       (block (clearMask store p) p :: slotsBlocks (clearMask store p) p 0 slots).Pairwise

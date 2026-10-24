@@ -42,11 +42,12 @@ theorem TailBody.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : 
       (Expr.code_spec m funs flags bounds fits host hm hCalls value fun hd =>
         hDepth (by simp [TailBody.depthCalls, hd]))
       (bodySpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
-  | treeCase x empty node emptySpec nodeSpec =>
+  | treeCase x empty nodes emptySpec nodesSpec =>
     intro hDepth
-    exact tail_treeCase_spec hm targetModes x empty node
-      (emptySpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
-      (nodeSpec fun hd => hDepth (by simp [TailBody.depthCalls, hd]))
+    exact tail_treeCase_spec hm targetModes x empty nodes
+      (fun hn => emptySpec hn fun hd => hDepth (by simp [TailBody.depthCalls, hn, hd]))
+      (fun r => nodesSpec r fun hd => hDepth (by
+        simp [TailBody.depthCalls, le_argsAny (fun r => (nodes r).depthCalls) r hd]))
 
 #print axioms TailBody.code_spec
 

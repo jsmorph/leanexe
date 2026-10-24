@@ -95,14 +95,25 @@ def pathExpr : Elem → List Bool → MetaM (Lean.Expr × Elem)
     return (mkApp4 (mkConst ``Path.snd) (elemExpr b) (elemExpr t) (elemExpr a) p, t)
   | _, _ :: _ => throwError "verified_compile: a projection of an element that is not a tuple"
 
-abbrev reflectedTreeShape (fields : List Bool)
-    (valid : decide (fields ≠ [] ∧ fields.length ≤ 64) = true) : TreeShape :=
-  ⟨fields, (of_decide_eq_true valid).1, (of_decide_eq_true valid).2⟩
+abbrev reflectedTreeShape (ctors : List (List Bool)) (valid : shapeValid ctors = true) :
+    TreeShape :=
+  ⟨ctors, valid⟩
+
+/-- Record constructor `i` of a shape, with a proof that the kernel checks by evaluation. -/
+abbrev reflectedRecord (shape : TreeShape) (i : Nat) (valid : decide (i < shape.records) = true) :
+    Fin shape.records :=
+  ⟨i, of_decide_eq_true valid⟩
+
+def trueRefl : Lean.Expr :=
+  mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true)
 
 def treeShapeExpr (shape : TreeShape) : Lean.Expr :=
   if shape = listShape then mkConst ``listShape else
-    mkApp2 (mkConst ``reflectedTreeShape) (toExpr shape.fields)
-      (mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.true))
+    mkApp2 (mkConst ``reflectedTreeShape) (toExpr shape.ctors) trueRefl
+
+def recordExpr (shape : TreeShape) (r : Fin shape.records) : Lean.Expr :=
+  if shape = listShape then mkConst ``listCell else
+    mkApp3 (mkConst ``reflectedRecord) (treeShapeExpr shape) (mkNatLit r.val) trueRefl
 
 def tyExpr : Ty → Lean.Expr
   | .word => mkConst ``Ty.word
@@ -113,7 +124,7 @@ def tyExpr : Ty → Lean.Expr
   | .elem e => mkApp (mkConst ``Ty.elem) (elemExpr e)
   | .array e => mkApp (mkConst ``Ty.array) (elemExpr e)
   | .tree shape => mkApp (mkConst ``Ty.tree) (treeShapeExpr shape)
-  | .treeHeader shape => mkApp (mkConst ``Ty.treeHeader) (treeShapeExpr shape)
+  | .treeHeader shape r => mkApp2 (mkConst ``Ty.treeHeader) (treeShapeExpr shape) (recordExpr shape r)
 
 /-- How a Lean type is flattened into a source type: the source type, and the function `φ` from
 the Lean type to the source type's meaning, `none` for the identity.  A structure with a `Flat`
@@ -491,10 +502,12 @@ def envExpr (vars : List (Lean.Expr × Ty)) : MetaM Lean.Expr :=
   return (← ctxEnvExpr vars).2
 
 def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
-    (types : List (Lean.Expr × Ty)) (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α := do
+    (r : Fin shapeValue.records) (types : List (Lean.Expr × Ty))
+    (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α := do
   let shape := treeShapeExpr shapeValue
-  let ctx ← mkAppM ``TreeShape.context #[shape, c.ctx]
-  let marker ← mkAppOptM ``TreeHeader.unit #[some shape]
+  let record := recordExpr shapeValue r
+  let ctx ← mkAppM ``TreeShape.context #[shape, record, c.ctx]
+  let marker ← mkAppOptM ``TreeHeader.unit #[some shape, some record]
   let decls := types.toArray.mapIdx fun i (type, _) => (Name.mkSimple s!"field{i}", type)
   let rec bindFields (decls : List (Name × Lean.Expr)) (fields : Array Lean.Expr)
       (body : Array Lean.Expr → MetaM α) : MetaM α :=
@@ -508,26 +521,26 @@ def withTreeCaseFields {α : Type} (c : Ctx) (shapeValue : TreeShape)
     let children := values.filter fun (_, ty) => ty == .tree shapeValue
     let wordFn ← mkExpectedTypeHint
       (← finiteFn (mkConst ``UInt64) (words.map (·.1)))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape]))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record]))
         (mkConst ``UInt64))
     let childFn ← mkExpectedTypeHint
       (← finiteFn (mkApp (mkConst ``Tree) shape) (← children.mapM fun (x, _) => flatValue x))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape]))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
         (mkApp (mkConst ``Tree) shape))
-    let env ← mkAppM ``Env.treeFields #[shape, wordFn, childFn, c.env]
+    let env ← mkAppM ``Env.treeFields #[shape, record, wordFn, childFn, c.env]
     let inner := { c with ctx, env, vars :=
-      [(marker, .treeHeader shapeValue)] ++ words ++ children ++ c.vars }
+      [(marker, .treeHeader shapeValue r)] ++ words ++ children ++ c.vars }
     k inner fields
 
 def withListCaseFields {α : Type} (c : Ctx) (xs : Lean.Expr)
     (k : Ctx → Lean.Expr → Lean.Expr → MetaM α) : MetaM α := do
-  withTreeCaseFields c listShape
+  withTreeCaseFields c listShape listCell
     [(mkConst ``UInt64, .word), (← inferType xs, .tree listShape)]
     fun inner fields => k inner fields[0]! fields[1]!
 
 def withRecursiveCaseFields {α : Type} (c : Ctx) (layout : RecursiveLayout)
-    (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α :=
-  withTreeCaseFields c layout.shape (layout.shape.fields.map fun child =>
+    (r : Fin layout.shape.records) (k : Ctx → Array Lean.Expr → MetaM α) : MetaM α :=
+  withTreeCaseFields c layout.shape r ((layout.shape.fields r).map fun child =>
     if child then (mkConst layout.name, .tree layout.shape) else (mkConst ``UInt64, .word)) k
 
 /-- `e` with each projection of a pair `(a, b)` or of a structure's constructor at its head
@@ -1168,7 +1181,7 @@ partial def ValueCost.eq (k : ValueCost) (base : Name) (t : Ty) (v u : Lean.Expr
   let lhs := mkApp2 (mkConst k.fn) (tyExpr t) v
   match t with
   | .elem _ => return (natZero, ← evalEq lhs natZero)
-  | .tree _ | .treeHeader _ => return (lhs, ← mkEqRefl lhs)
+  | .tree _ | .treeHeader _ _ => return (lhs, ← mkEqRefl lhs)
   | .array e =>
     let width := mkApp (mkConst ``Elem.width) (elemExpr e)
     let w ← evalNat width
@@ -1449,6 +1462,52 @@ def varBound (c : Ctx) (x : Lean.Expr) (t : Ty) (u : Lean.Expr) : BoundBuilder :
       [(`hm, ← evalEq mode (modeConst true)), (`hl, ← evalEq isLive (boolConst true)),
         (`hc, hc)])).finish⟩
 
+/-- The type `shape.hasNull = true`. -/
+def hasNullType (shape : TreeShape) : MetaM Lean.Expr :=
+  mkEq (mkApp (mkConst ``TreeShape.hasNull) (treeShapeExpr shape)) (mkConst ``Bool.true)
+
+/-- The proof `rfl` of `shape.hasNull = true`, at that type. -/
+def hasNullProof (shape : TreeShape) : MetaM Lean.Expr := do
+  mkExpectedTypeHint trueRefl (← hasNullType shape)
+
+/-- `fun _ => e`, the empty branch of a match on a shape with a null constructor. -/
+def emptyBranchFn (shape : TreeShape) (e : Lean.Expr) : MetaM Lean.Expr := do
+  withLocalDeclD `h (← hasNullType shape) fun h => mkLambdaFVars #[h] e
+
+/-- The empty branch of a match on a shape without a null constructor, at the type `type`. -/
+def absurdBranchFn (shape : TreeShape) (type : Lean.Expr) : MetaM Lean.Expr := do
+  let ty ← hasNullType shape
+  let falseRefl := mkApp2 (mkConst ``Eq.refl [Level.one]) (mkConst ``Bool) (mkConst ``Bool.false)
+  let notNull ← mkAppOptM ``of_decide_eq_false #[some ty, none, some falseRefl]
+  withLocalDeclD `h ty fun h => do
+    mkLambdaFVars #[h] (← mkAppOptM ``absurd #[some ty, some type, some h, some notNull])
+
+/-- The family of `motive` over `Fin n` whose entry `i` is `branches[i]`, as a chain of
+`Fin.cases`. -/
+partial def finCasesChain (motive : Lean.Expr) : Nat → List Lean.Expr → MetaM Lean.Expr
+  | 0, _ => withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 0)) fun i => do
+    mkLambdaFVars #[i] (← mkAppOptM ``Fin.elim0 #[some (motive.beta #[i]), some i])
+  | k + 1, b :: rest => do
+    let motive' ← withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit k)) fun i => do
+      mkLambdaFVars #[i] (motive.beta #[← mkAppM ``Fin.succ #[i]])
+    let restFn ← finCasesChain motive' k rest
+    mkAppOptM ``Fin.cases #[some (mkNatLit k), some motive, some b, some restFn]
+  | _ + 1, [] => throwError "verified_compile: a match has fewer branches than records"
+
+/-- The family of the record branches `branches` of a match on `shape` in the context `ctx`, whose
+branch in a record's context `Γ` has type `type Γ`. -/
+def recordFamily (shape : TreeShape) (ctx : Lean.Expr) (type : Lean.Expr → Lean.Expr)
+    (branches : List Lean.Expr) : MetaM Lean.Expr := do
+  let shapeE := treeShapeExpr shape
+  let motive ← withLocalDeclD `r (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.records #[shapeE]))
+    fun r => do mkLambdaFVars #[r] (type (← mkAppM ``TreeShape.context #[shapeE, r, ctx]))
+  if shape = listShape then
+    let some b := branches.head? | throwError "verified_compile: a list match has no node branch"
+    return ← mkAppOptM ``listBranch #[some motive, some b]
+  let type ← withLocalDeclD `r (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.records #[shapeE]))
+    fun r => do mkForallFVars #[r] (motive.beta #[r])
+  mkExpectedTypeHint (← finCasesChain motive shape.records branches) type
+
 /-- A reflection under binders: the body's reflection, with its proof abstracted over the
 binders and its bound not, and the binders with their declarations, which a bound restores. -/
 structure Under where
@@ -1688,7 +1747,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
           some (toExpr bits), some e, some h]
         return ⟨src, proof, .float32, e, leafBound c ``float32_bound [(`bits, toExpr bits)],
           leafFits c src⟩
-    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ => pure ()
+    | .elem (.prod _ _) | .pair _ _ | .array _ | .tree _ | .treeHeader _ _ => pure ()
   -- A named constant that holds no array is its value, which the kernel unfolds to it.
   if let .const name lvls := e then
     if let .defnInfo info ← getConstInfo name then
@@ -1927,17 +1986,19 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
   | ``List.nil, #[α] =>
     unless (← whnfR α).isConstOf ``UInt64 do
       throwError "verified_compile: lists require UInt64 elements, in {e}"
+    let h ← hasNullProof listShape
     let src ← mkAppOptM ``Expr.treeNil
-      #[some c.sigs, some c.ctx, some (treeShapeExpr listShape)]
+      #[some c.sigs, some c.ctx, some (treeShapeExpr listShape), some h]
     return ⟨src, ← rflProof c src (← flatValue e), .tree listShape, e,
-      leafBound c ``treeNil_bound [(`shape, treeShapeExpr listShape)], leafFits c src⟩
+      leafBound c ``treeNil_bound [(`shape, treeShapeExpr listShape), (`h, h)],
+      leafFits c src⟩
   | ``List.cons, #[α, a, b] =>
     unless (← whnfR α).isConstOf ``UInt64 do
       throwError "verified_compile: lists require UInt64 elements, in {e}"
     let ra ← reflect c a
     let rb ← reflect c b
-    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader listShape))
-    let reuse ← match c.vars.find? (fun (_, ty) => ty == .treeHeader listShape) with
+    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader listShape listCell))
+    let reuse ← match c.vars.find? (fun (_, ty) => ty == .treeHeader listShape listCell) with
       | none => mkAppOptM ``Option.none #[some header]
       | some (value, _) => do
         let (x, _) ← varOf c value
@@ -1945,7 +2006,7 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
     let family (r : Reflection) : MetaM Lean.Expr :=
       withLocalDeclD `i (mkApp (mkConst ``Fin) (mkNatLit 1)) fun i =>
         mkLambdaFVars #[i] r.src
-    let src ← mkAppM ``Expr.treeNode #[reuse, ← family ra, ← family rb]
+    let src ← mkAppM ``Expr.treeNode #[mkConst ``listCell, reuse, ← family ra, ← family rb]
     let parts := [(`reuse, reuse), (`head, ra.src), (`tail, rb.src)]
     let proof ← (← LemmaApp.start ``listCons_eq
       ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts ++
@@ -2078,9 +2139,10 @@ partial def reflect (c : Ctx) (e : Lean.Expr) : MetaM Reflection := do
         (reflections.map fun r => (r, r.ty)) argList
       app.assign `I (← boundOf hI).term
       app.assign `hI (← boundOf hI).proof
-      let bodyModes := modesExpr (List.replicate (listShape.bindCount + 2 + captured.length) .borrowed)
+      let bodyModes := modesExpr
+        (List.replicate (listShape.bindCount listCell + 2 + captured.length) .borrowed)
       let bodyPaid := listExpr (mkConst ``Bool)
-        (List.replicate (listShape.bindCount + 2 + captured.length) (boolConst false))
+        (List.replicate (listShape.bindCount listCell + 2 + captured.length) (boolConst false))
       let bodyLive := mkApp2 (mkConst ``ListFold.bodyLive) (elemExpr el) captureTypes
       let b ← withExistingLocalDecls u.decls do u.r.bound bodyModes bodyPaid bodyLive
       app.assign `B (← specialize b.term)
@@ -2650,34 +2712,38 @@ where
     let .const ctor _ := e.getAppFn | return none
     let some (.ctorInfo info) := (← getEnv).find? ctor | return none
     let some layout ← recursiveLayout? (mkConst info.induct) | return none
-    let name := e.getAppFn.constName?
-    unless name == some layout.empty || name == some layout.node do return none
     let shape := treeShapeExpr layout.shape
     let ty := Ty.tree layout.shape
-    if name == some layout.empty then
-      let src ← mkAppOptM ``Expr.treeNil #[some c.sigs, some c.ctx, some shape]
+    let some r := layout.record? ctor | do
+      let h ← hasNullProof layout.shape
+      let src ← mkAppOptM ``Expr.treeNil #[some c.sigs, some c.ctx, some shape, some h]
       return some ⟨src, ← rflProof c src (← flatValue e), ty, e,
-        leafBound c ``treeNil_bound [(`shape, shape)], leafFits c src⟩
+        leafBound c ``treeNil_bound [(`shape, shape), (`h, h)], leafFits c src⟩
+    let kinds := layout.shape.fields r
+    let record := recordExpr layout.shape r
     let fields ← e.getAppArgs.toList.mapM (reflect c)
-    unless fields.length == layout.shape.fields.length do
+    unless fields.length == kinds.length do
       throwError "verified_compile: incomplete recursive constructor {e}"
-    let words := (fields.zip layout.shape.fields).filterMap fun (r, child) =>
-      if child then none else some r
-    let children := (fields.zip layout.shape.fields).filterMap fun (r, child) =>
-      if child then some r else none
+    let words := (fields.zip kinds).filterMap fun (field, child) =>
+      if child then none else some field
+    let children := (fields.zip kinds).filterMap fun (field, child) =>
+      if child then some field else none
     let sourceType (t : Ty) := mkApp3 (mkConst ``Expr) c.sigs c.ctx (tyExpr t)
     let wordFn ← mkExpectedTypeHint (← finiteFn (sourceType .word) (words.map (·.src)))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape])) (sourceType .word))
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.words #[shape, record]))
+        (sourceType .word))
     let childFn ← mkExpectedTypeHint (← finiteFn (sourceType ty) (children.map (·.src)))
-      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape])) (sourceType ty))
-    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape))
-    let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape) with
+      (← mkArrow (mkApp (mkConst ``Fin) (← mkAppM ``TreeShape.children #[shape, record]))
+        (sourceType ty))
+    let header := mkApp2 (mkConst ``Var) c.ctx (tyExpr (.treeHeader layout.shape r))
+    let reuse ← match c.vars.find? (fun (_, t) => t == .treeHeader layout.shape r) with
       | none => mkAppOptM ``Option.none #[some header]
       | some (value, _) => do
         let (x, _) ← varOf c value
         mkAppOptM ``Option.some #[some header, some x]
-    let src ← mkAppM ``Expr.treeNode #[reuse, wordFn, childFn]
-    let parts := [(`shape, shape), (`reuse, reuse), (`words, wordFn), (`children, childFn)]
+    let src ← mkAppM ``Expr.treeNode #[record, reuse, wordFn, childFn]
+    let parts := [(`shape, shape), (`r, record), (`reuse, reuse), (`words, wordFn),
+      (`children, childFn)]
     let app ← LemmaApp.start ``treeNode_eq
       ([(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env)] ++ parts)
     let values (rs : List Reflection) : MetaM (List Bound) :=
@@ -2697,13 +2763,13 @@ where
         (boundArgs c (c.tables.table false) modes paid live ++ parts)
       let wb ← finiteFieldBounds app `hw words
       let cb ← finiteFieldBounds app `hc children
-      let kb ← children.zipIdx.mapM fun (r, i) => do
+      let kb ← children.zipIdx.mapM fun (field, i) => do
         let expected ← instantiateForall (← app.hypType `hk) #[← finiteIndex children.length i]
         let some (_, lhs, _) := expected.eq?
           | throwError "verified_compile: recursive child coercion is not an equation"
         let (``coerceCost, #[_, s, M, value]) := lhs.getAppFnArgs
           | throwError "verified_compile: recursive child coercion has an invalid form"
-        let (cost, proof) ← coerceEq c.base ty s M value r.lean
+        let (cost, proof) ← coerceEq c.base ty s M value field.lean
         return (⟨cost, proof⟩ : Bound)
       let _ ← assignFiniteEquation app `W `hw (mkConst ``Nat) wb
       let _ ← assignFiniteEquation app `C `hc (mkConst ``Nat) cb
@@ -2800,38 +2866,36 @@ where
         mkLetFVars #[value] { app with discrs := #[value] }.toExpr) app.toExpr
     unless app.remaining.isEmpty do
       throwError "verified_compile: a list match cannot be applied to further arguments"
-    let (empty, branch, nativeEq) ← match layout with
-      | none => listMatcherCases app
-      | some layout => treeMatcherCases layout app
-    let shapeValue := (layout.map (·.shape)).getD listShape
-    let eqName := (layout.map (·.decl `case_eq)).getD ``listCase_eq
-    let boundName := (layout.map (·.decl `case_bound)).getD ``listCase_bound
-    let fitsName := (layout.map (·.decl `case_fits)).getD ``listCase_fits
+    match layout with
+    | none => reflectListMatch app xs
+    | some layout => reflectRecursiveMatch app xs layout
+  reflectListMatch (app : MatcherApp) (xs : Lean.Expr) : MetaM Reflection := do
+    let (empty, branch, nativeEq) ← listMatcherCases app
     let (x, _) ← varOf c xs
     let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
     let re ← reflect c empty
-    let reflectNode (inner : Ctx) (fields : Array Lean.Expr) : MetaM Under := do
-        let rn ← reflect inner (branch.beta fields)
-        unless rn.ty == re.ty do
-          throwError "verified_compile: recursive branches have different source types"
-        pure ⟨{ rn with proof := ← userProof inner rn }, fields,
-          ← fields.toList.mapM fun field => field.fvarId!.getDecl⟩
-    let ub ← match layout with
-      | none => withListCaseFields c xs fun inner head tail => reflectNode inner #[head, tail]
-      | some layout => withRecursiveCaseFields c layout reflectNode
-    let src ← mkAppM ``Expr.treeCase #[x, re.src, ub.r.src]
+    let ub ← withListCaseFields c xs fun inner head tail => do
+      let rn ← reflect inner (branch.beta #[head, tail])
+      unless rn.ty == re.ty do
+        throwError "verified_compile: list branches have different source types"
+      pure (⟨{ rn with proof := ← userProof inner rn }, #[head, tail],
+        ← [head, tail].mapM fun field => field.fvarId!.getDecl⟩ : Under)
+    let emptyFn ← emptyBranchFn listShape re.src
+    let nodesFn ← recordFamily listShape c.ctx (mkApp3 (mkConst ``Expr) c.sigs · (tyExpr re.ty))
+      [ub.r.src]
+    let src ← mkAppM ``Expr.treeCase #[x, emptyFn, nodesFn]
     let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env),
       (`x, x), (`empty, re.src), (`node, ub.r.src), (`xs, xs), (`value, xs), (`hx, hx)]
     let proof ← withExistingLocalDecls ub.decls do
       let hn ← mkLambdaFVars ub.xs ub.r.proof
-      let rule ← LemmaApp.start eqName (common ++
+      let rule ← LemmaApp.start ``listCase_eq (common ++
         [(`flatten, ← (← shapeOf (← inferType empty)).fn (← inferType empty)),
           (`a, empty), (`b, branch)])
       rule.assign `he (← mkExpectedTypeHint (← userProof c re) (← rule.hypType `he))
       rule.assign `hn (← mkExpectedTypeHint hn (← rule.hypType `hn))
       rule.finish
     let bound : BoundBuilder := fun modes paid live => do
-      let app ← LemmaApp.start boundName
+      let app ← LemmaApp.start ``listCase_bound
         (boundArgs c (c.tables.table false) modes paid live ++ common)
       let some (_, rootCost, _) := (← app.hypType `hc).eq?
         | throwError "verified_compile: malformed list root cost"
@@ -2839,7 +2903,7 @@ where
         | throwError "verified_compile: malformed list root liveness"
       let root ← LemmaApp.start ``varCost_eq
         (boundArgs c (c.tables.table false) modes paid rootLive ++ [(`x, x)])
-      let _ ← root.child `h (varBound c x (.tree shapeValue) xs)
+      let _ ← root.child `h (varBound c x (.tree listShape) xs)
       app.assign `hc (← root.finish)
       let _ ← assignBranch c.base app `he re.ty re
       let nodeBound ← withExistingLocalDecls ub.decls do
@@ -2849,13 +2913,110 @@ where
       app.assign `hn (← mkExpectedTypeHint nodeBound.proof (← app.hypType `hn))
       boundOf (← app.finish)
     let fits : FitsBuilder := do
-      let app ← LemmaApp.start fitsName (fitsArgs c ++ common)
+      let app ← LemmaApp.start ``listCase_fits (fitsArgs c ++ common)
       app.childFits `he re.fits
       let nb ← ub.fits
       app.assign `N nb.term
       app.assign `hn (← mkExpectedTypeHint nb.proof (← app.hypType `hn))
       fitsOf (← app.finish)
     return ⟨src, ← restate proof nativeEq, re.ty, app.toExpr, bound, fits⟩
+  reflectRecursiveMatch (app : MatcherApp) (xs : Lean.Expr) (layout : RecursiveLayout) :
+      MetaM Reflection := do
+    let (branches, nativeEq) ← treeMatcherCases layout app
+    let (x, _) ← varOf c xs
+    let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
+    let ctors := layout.ctors.toArray
+    let mut emptyR : Option Reflection := none
+    let mut unders : Array Under := #[]
+    let mut ty? : Option Ty := none
+    for j in [:ctors.size] do
+      match layout.record? ctors[j]!.1 with
+      | none =>
+        let re ← reflect c branches[j]!
+        if let some ty := ty? then
+          unless re.ty == ty do
+            throwError "verified_compile: recursive branches have different source types"
+        ty? := some re.ty
+        emptyR := some re
+      | some r =>
+        let ub ← withRecursiveCaseFields c layout r fun inner fields => do
+          let rn ← reflect inner (branches[j]!.beta fields)
+          pure (⟨{ rn with proof := ← userProof inner rn }, fields,
+            ← fields.toList.mapM fun field => field.fvarId!.getDecl⟩ : Under)
+        if let some ty := ty? then
+          unless ub.r.ty == ty do
+            throwError "verified_compile: recursive branches have different source types"
+        ty? := some ub.r.ty
+        unders := unders.push ub
+    let some ty := ty? | throwError "verified_compile: a recursive match without branches"
+    let underAt (i : Nat) : MetaM Under := do
+      let some u := unders[i]? | throwError "verified_compile: a record branch is missing"
+      return u
+    let exprType (ctx : Lean.Expr) := mkApp3 (mkConst ``Expr) c.sigs ctx (tyExpr ty)
+    let emptyFn ← match emptyR with
+      | some re => emptyBranchFn layout.shape re.src
+      | none => absurdBranchFn layout.shape (exprType c.ctx)
+    let nodesFn ← recordFamily layout.shape c.ctx exprType (unders.toList.map (·.r.src))
+    let src ← mkAppM ``Expr.treeCase #[x, emptyFn, nodesFn]
+    let decls := unders.toList.flatMap (·.decls)
+    let common := [(`S, c.sigs), (`Γ, c.ctx), (`funs, c.funs), (`env, c.env),
+      (`x, x), (`empty, emptyFn), (`nodes, nodesFn), (`value, xs), (`hx, hx)]
+    let name (base : String) (j : Nat) : Name := Name.mkSimple s!"{base}{j}"
+    -- The position among the record constructors of each constructor that is one.
+    let recordOf (j : Nat) : Option Nat := (layout.record? ctors[j]!.1).map (·.val)
+    let proof ← withExistingLocalDecls decls do
+      let resultType := (← inferType app.toExpr).headBeta
+      let flattenFn ← (← shapeOf resultType).fn resultType
+      let rule ← LemmaApp.start (layout.decl `case_eq) (common ++ [(`flatten, flattenFn)] ++
+        (List.range ctors.size).map fun j => (name "b" j, branches[j]!))
+      for j in [:ctors.size] do
+        match recordOf j, emptyR with
+        | none, some re =>
+          rule.assign (name "h" j) (← mkExpectedTypeHint (← userProof c re)
+            (← rule.hypType (name "h" j)))
+        | some i, _ =>
+          let ub ← underAt i
+          rule.assign (name "h" j) (← mkExpectedTypeHint (← mkLambdaFVars ub.xs ub.r.proof)
+            (← rule.hypType (name "h" j)))
+        | none, none => throwError "verified_compile: a null branch without a reflection"
+      rule.finish
+    let bound : BoundBuilder := fun modes paid live => do
+      let app ← LemmaApp.start (layout.decl `case_bound)
+        (boundArgs c (c.tables.table false) modes paid live ++ common)
+      for j in [:ctors.size] do
+        match recordOf j, emptyR with
+        | none, some re =>
+          let _ ← assignBranch c.base app (name "h" j) re.ty re
+        | some i, _ =>
+          let ub ← underAt i
+          let some (_, rootCost, _) := (← app.hypType (name "hc" j)).eq?
+            | throwError "verified_compile: malformed recursive root cost"
+          let (``Var.cost, #[_, rootLive, _, _, _, _]) := rootCost.getAppFnArgs
+            | throwError "verified_compile: malformed recursive root liveness"
+          let root ← LemmaApp.start ``varCost_eq
+            (boundArgs c (c.tables.table false) modes paid rootLive ++ [(`x, x)])
+          let _ ← root.child `h (varBound c x (.tree layout.shape) xs)
+          app.assign (name "hc" j) (← root.finish)
+          let nodeBound ← withExistingLocalDecls ub.decls do
+            let b ← branchBound c.base (← ub.instantiate (← app.hypType (name "h" j))) ty ub.r
+            pure (⟨← mkLambdaFVars ub.xs b.term, ← mkLambdaFVars ub.xs b.proof⟩ : Bound)
+          app.assign (name "N" j) nodeBound.term
+          app.assign (name "h" j)
+            (← mkExpectedTypeHint nodeBound.proof (← app.hypType (name "h" j)))
+        | none, none => throwError "verified_compile: a null branch without a reflection"
+      boundOf (← app.finish)
+    let fits : FitsBuilder := do
+      let app ← LemmaApp.start (layout.decl `case_fits) (fitsArgs c ++ common)
+      for j in [:ctors.size] do
+        match recordOf j, emptyR with
+        | none, some re => app.childFits (name "h" j) re.fits
+        | some i, _ =>
+          let nb ← (← underAt i).fits
+          app.assign (name "N" j) nb.term
+          app.assign (name "h" j) (← mkExpectedTypeHint nb.proof (← app.hypType (name "h" j)))
+        | none, none => throwError "verified_compile: a null branch without a reflection"
+      fitsOf (← app.finish)
+    return ⟨src, ← restate proof nativeEq, ty, app.toExpr, bound, fits⟩
   reflectDataMatch (app : MatcherApp) (name : Name) : MetaM Reflection := do
     let d := app.discrs[0]!
     unless (← projReduce d).isFVar do

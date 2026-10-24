@@ -4,42 +4,42 @@ namespace Verified
 
 open Wasm LeanExe.Pipeline LeanExe.ProofKit LeanExe.Runtime
 
-structure RecordStorage (shape : TreeShape) (heap : Heap) (store : Store Unit) (p : UInt64) :
+structure RecordStorage (width : Nat) (heap : Heap) (store : Store Unit) (p : UInt64) :
     Prop where
   base : 4096 + 48 ≤ p.toNat
   magic : store.mem.read64 (p - 48).toUInt32 = objectMagic
-  capacity : 8 * shape.fields.length ≤ capacityAt store p
+  capacity : 8 * width ≤ capacityAt store p
   address : p.toNat + capacityAt store p < 4294967296
   below : p.toNat + capacityAt store p ≤ heap.top.toNat
   separate : ∀ node ∈ heap.free, regionsDisjoint node.region (block store p)
 
-theorem RecordStorage.ofHeader {shape : TreeShape} {heap : Heap} {store : Store Unit}
+theorem RecordStorage.ofHeader {width : Nat} {heap : Heap} {store : Store Unit}
     {p : UInt64} {slots : List Slot} (h : RecordHeader heap store p slots)
-    (hLength : slots.length = shape.fields.length) : RecordStorage shape heap store p :=
+    (hLength : slots.length = width) : RecordStorage width heap store p :=
   ⟨h.base, h.magic, by rw [← hLength]; exact h.capacity, h.address, h.below, h.separate⟩
 
-theorem RecordStorage.ofBlock {shape : TreeShape} {heap : Heap} {store : Store Unit}
+theorem RecordStorage.ofBlock {width : Nat} {heap : Heap} {store : Store Unit}
     {p capacity stride : UInt64} (h : heap.Block store p capacity stride)
-    (hRoom : 8 * shape.fields.length ≤ capacity.toNat) : RecordStorage shape heap store p := by
+    (hRoom : 8 * width ≤ capacity.toNat) : RecordStorage width heap store p := by
   have hCapacity := h.capacity_eq
   refine ⟨h.base, h.fresh.1, by rw [hCapacity]; exact hRoom,
     by rw [hCapacity]; exact h.address, by rw [hCapacity]; exact h.below, ?_⟩
   intro node hNode
   simpa only [block, hCapacity] using h.separate node hNode
 
-theorem RecordStorage.region {shape : TreeShape} {heap : Heap} {store : Store Unit}
-    {p : UInt64} (h : RecordStorage shape heap store p) : heap.Region (block store p) := by
+theorem RecordStorage.region {width : Nat} {heap : Heap} {store : Store Unit}
+    {p : UInt64} (h : RecordStorage width heap store p) : heap.Region (block store p) := by
   have := h.base
   have := h.below
   refine ⟨?_, h.separate⟩
   simp only [block]
   omega
 
-theorem RecordStorage.rewrite {shape : TreeShape} {heap heap' : Heap}
-    {store store' : Store Unit} {p : UInt64} (h : RecordStorage shape heap store p)
+theorem RecordStorage.rewrite {width : Nat} {heap heap' : Heap}
+    {store store' : Store Unit} {p : UInt64} (h : RecordStorage width heap store p)
     (hMagic : store'.mem.read64 (p - 48).toUInt32 = store.mem.read64 (p - 48).toUInt32)
     (hCapacity : capacityAt store' p = capacityAt store p)
-    (hRegion : heap'.Region (block store p)) : RecordStorage shape heap' store' p := by
+    (hRegion : heap'.Region (block store p)) : RecordStorage width heap' store' p := by
   have hBase := h.base
   refine ⟨hBase, hMagic.trans h.magic, by rw [hCapacity]; exact h.capacity,
     by rw [hCapacity]; exact h.address, ?_, ?_⟩
@@ -50,13 +50,13 @@ theorem RecordStorage.rewrite {shape : TreeShape} {heap heap' : Heap}
   · rw [block_eq hCapacity]
     exact hRegion.separate
 
-theorem RecordStorage.write {shape : TreeShape} {heap : Heap} {store store' : Store Unit}
-    {p : UInt64} {start stop : Nat} (h : RecordStorage shape heap store p)
+theorem RecordStorage.write {width : Nat} {heap : Heap} {store store' : Store Unit}
+    {p : UInt64} {start stop : Nat} (h : RecordStorage width heap store p)
     (hHeap : heap.At store) (hWrites : Memory.WritesRange store store' start stop)
     (hOrder : start ≤ stop)
     (hLow : p.toNat - 40 ≤ start) (hHigh : stop ≤ p.toNat + capacityAt store p)
     (hCapApart : stop ≤ p.toNat - 32 ∨ p.toNat - 24 ≤ start) :
-    heap.At store' ∧ RecordStorage shape heap store' p ∧
+    heap.At store' ∧ RecordStorage width heap store' p ∧
       capacityAt store' p = capacityAt store p := by
   have hBase := h.base
   have hAddress := h.address
@@ -78,12 +78,12 @@ theorem RecordStorage.write {shape : TreeShape} {heap : Heap} {store store' : St
   simp only [regionsDisjoint, block] at this ⊢
   omega
 
-theorem RecordStorage.frame {shape : TreeShape} {heap heap' : Heap}
-    {store store' : Store Unit} {p : UInt64} (h : RecordStorage shape heap store p)
+theorem RecordStorage.frame {width : Nat} {heap heap' : Heap}
+    {store store' : Store Unit} {p : UInt64} (h : RecordStorage width heap store p)
     (hBytes : ∀ a, p.toNat - 48 ≤ a → a < p.toNat + capacityAt store p →
       store'.mem.bytes a = store.mem.bytes a)
     (hRegion : heap'.Region (block store p)) :
-    RecordStorage shape heap' store' p ∧ capacityAt store' p = capacityAt store p := by
+    RecordStorage width heap' store' p ∧ capacityAt store' p = capacityAt store p := by
   have hBase := h.base
   have hAddress := h.address
   have hCapacity := capacityAt_frame (by omega) (by omega)
@@ -98,11 +98,11 @@ theorem RecordStorage.frame {shape : TreeShape} {heap heap' : Heap}
 def recordHeaderWrite (store : Store Unit) (p back value : UInt64) : Store Unit :=
   { store with mem := store.mem.write64 (p - back).toUInt32 value }
 
-theorem RecordStorage.writeHeader {shape : TreeShape} {heap : Heap} {store : Store Unit}
-    {p back value : UInt64} (h : RecordStorage shape heap store p) (hHeap : heap.At store)
+theorem RecordStorage.writeHeader {width : Nat} {heap : Heap} {store : Store Unit}
+    {p back value : UInt64} (h : RecordStorage width heap store p) (hHeap : heap.At store)
     (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40) :
     heap.At (recordHeaderWrite store p back value) ∧
-      RecordStorage shape heap (recordHeaderWrite store p back value) p ∧
+      RecordStorage width heap (recordHeaderWrite store p back value) p ∧
       capacityAt (recordHeaderWrite store p back value) p = capacityAt store p := by
   have hBase := h.base
   have hAddress := h.address
@@ -115,8 +115,8 @@ theorem RecordStorage.writeHeader {shape : TreeShape} {heap : Heap} {store : Sto
       (by rw [hAddr]) (by rw [hAddr]))
   all_goals omega
 
-theorem RecordStorage.writeHeader_range {shape : TreeShape} {heap : Heap} {store : Store Unit}
-    {p back value : UInt64} (h : RecordStorage shape heap store p)
+theorem RecordStorage.writeHeader_range {width : Nat} {heap : Heap} {store : Store Unit}
+    {p back value : UInt64} (h : RecordStorage width heap store p)
     (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40) :
     Memory.WritesRange store (recordHeaderWrite store p back value) (p.toNat - 40) p.toNat := by
   have hBase := h.base
@@ -126,8 +126,8 @@ theorem RecordStorage.writeHeader_range {shape : TreeShape} {heap : Heap} {store
   have hAddr := headerAddress_toNat (ptr := p) (k := back) (by omega) (by omega)
   exact Memory.WritesRange.write64 _ _ _ _ _ (by rw [hAddr]; omega) (by rw [hAddr]; omega)
 
-theorem RecordStorage.readHeader_write {shape : TreeShape} {heap : Heap} {store : Store Unit}
-    {p back other value : UInt64} (h : RecordStorage shape heap store p)
+theorem RecordStorage.readHeader_write {width : Nat} {heap : Heap} {store : Store Unit}
+    {p back other value : UInt64} (h : RecordStorage width heap store p)
     (hBack : back = 8 ∨ back = 16 ∨ back = 24 ∨ back = 40)
     (hOther : other = 8 ∨ other = 16 ∨ other = 24 ∨ other = 40) (hNe : back ≠ other) :
     (recordHeaderWrite store p back value).mem.read64 (p - other).toUInt32 =
@@ -147,18 +147,19 @@ theorem RecordStorage.readHeader_write {shape : TreeShape} {heap : Heap} {store 
   rcases hBack with rfl | rfl | rfl | rfl <;>
     rcases hOther with rfl | rfl | rfl | rfl <;> simp_all [UInt64.reduceToNat] <;> omega
 
-theorem RecordStorage.record {shape : TreeShape} {heap : Heap} {store : Store Unit}
-    {p : UInt64} {slots : List Slot} (h : RecordStorage shape heap store p)
-    (hLength : slots.length = shape.fields.length)
+theorem RecordStorage.record {width : Nat} {heap : Heap} {store : Store Unit}
+    {p : UInt64} {slots : List Slot} (h : RecordStorage width heap store p)
+    (hLength : slots.length = width)
     (hCount : store.mem.read64 (p - 40).toUInt32 = 1)
     (hKind : store.mem.read64 (p - 24).toUInt32 = 1)
-    (hWidth : store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat shape.fields.length)
+    (hWidth : store.mem.read64 (p - 16).toUInt32 = UInt64.ofNat width)
     (hMask : store.mem.read64 (p - 8).toUInt32 = maskOf slots)
-    (hSlots : SlotsOwned heap store p 0 slots) : NodeOwned heap store p (.record slots) := by
+    (hShort : width ≤ 64) (hSlots : SlotsOwned heap store p 0 slots) :
+    NodeOwned heap store p (.record slots) := by
   refine ⟨⟨h.base, h.magic, hCount, hKind, ?_, hMask, ?_, ?_, h.address, h.below, h.separate⟩,
     hSlots⟩
   · rw [hLength]; exact hWidth
-  · rw [hLength]; exact shape.short
+  · rw [hLength]; exact hShort
   · rw [hLength]; exact h.capacity
 
 #print axioms RecordStorage.write

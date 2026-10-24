@@ -19,10 +19,12 @@ structure CopyRecord.Holds (shape : TreeShape) (heap : Heap) (store : Store Unit
     (parent : UInt64) (record : CopyRecord) : Prop where
   layout : NodeLayout shape (.record record.slots)
   bound : record.next ≤ record.slots.length
-  storage : RecordStorage shape heap store record.pointer
+  storage : RecordStorage record.slots.length heap store record.pointer
   borrowed : NodeBorrowed heap store record.source (.record record.slots)
   parent : store.mem.read64 (record.pointer - 40).toUInt32 = parent
   source : store.mem.read64 (record.pointer - 24).toUInt32 = record.source
+  width : shape.tagged = true →
+    store.mem.read64 (record.pointer - 16).toUInt32 = UInt64.ofNat record.slots.length
   index : store.mem.read64 (record.pointer - 8).toUInt32 = UInt64.ofNat record.next
   filled : SlotsOwned heap store record.pointer 0 (record.slots.take record.next)
 
@@ -43,7 +45,6 @@ theorem CopyRecord.Holds.frame {shape : TreeShape} {heap heap' : Heap}
   have hBase := h.storage.base
   have hRoom := h.storage.capacity
   have hAddress := h.storage.address
-  have hLength := h.layout.1
   have hBound := h.bound
   have hTaken : (record.slots.take record.next).length = record.next :=
     List.length_take_of_le h.bound
@@ -60,6 +61,7 @@ theorem CopyRecord.Holds.frame {shape : TreeShape} {heap heap' : Heap}
   refine ⟨⟨h.layout, h.bound, hStorage, hBorrowed,
     (hRead 40 (by decide) (by decide)).trans h.parent,
     (hRead 24 (by decide) (by decide)).trans h.source,
+    fun ht => (hRead 16 (by decide) (by decide)).trans (h.width ht),
     (hRead 8 (by decide) (by decide)).trans h.index, hPrefix⟩, ?_⟩
   simp only [CopyRecord.blocks, block_eq hCapacity, hBlocks]
 

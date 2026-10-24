@@ -927,10 +927,7 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
       hold, hSrc, hBase, hRoom, hNext => by
     obtain ⟨ptr, rfl, hBorrow⟩ := hRep.borrow
     have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
-    have hCost : allocCost (8 * shape.fields.length) * v.toNode.records =
-        (Ty.tree shape).copyCost v := by
-      rw [Tree.toNode_records]
-      exact Nat.mul_comm _ _
+    have hCost : nodeCopyCost v.toNode = (Ty.tree shape).copyCost v := v.copyCost_eq.symm
     simp only [copyCode]
     refine wp_copyTree hm hAt hCap v.toNode_layout hBorrow (by rw [hCost]; exact hTrap) h0
       (by simp only [Ty.width] at hSrc; omega) hBase
@@ -938,8 +935,8 @@ theorem wp_copyCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     intro heap' store' s' ptr' hStep hOwned hApart hFrame hTop
     rw [hCost] at hTop
     exact hNext heap' store' s' [.i64 ptr'] hStep ⟨ptr', rfl, hOwned, hApart⟩ hFrame hTop
-  | .treeHeader shape, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _, _, _,
-      _, hBase, hRoom, hNext => by
+  | .treeHeader shape r, heap, store, s, h, src, base, mode, ws, v, rest, Q, hAt, hCap, hTrap, _,
+      _, _, _, hBase, hRoom, hNext => by
     simp only [copyCode]
     exact wp_copyTreeHeader hm hAt hCap hTrap hBase hRoom
       (fun heap' store' s' ptr hStep hOwned hFrame hTop =>
@@ -1012,7 +1009,7 @@ theorem wp_releaseCode {m : Module} (hm : Runtime m) {host : HostEnv Unit} :
     simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]
     exact wp_releaseNode hm hAt hOwned hApart fun heap' store' hStep hTop =>
       hNext heap' store' hStep hTop
-  | .treeHeader _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
+  | .treeHeader _ _, heap, store, s, src, ws, v, rest, Q, hAt, hRep, hold, hNext => by
     obtain ⟨ptr, rfl, hOwned⟩ := hRep
     have h0 : s.get src = some (.i64 ptr) := LocalsHold.word hold
     simp only [releaseCode, List.cons_append, List.nil_append, wp_localGet_cons, h0]

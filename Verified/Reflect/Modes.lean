@@ -20,8 +20,8 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
   | _, _, .word _, _, _, _ | _, _, .bool _, _, _, _ | _, _, .size _, _, _, _
   | _, _, .leSize _ _, _, _, _
   | _, _, .float _, _, _, _ | _, _, .float32 _, _, _, _ => false
-  | _, _, .treeNil _, _, _, _ => false
-  | _, _, .treeNode reuse words children, live, _, k =>
+  | _, _, .treeNil _ _, _, _, _ => false
+  | _, _, .treeNode _ reuse words children, live, _, k =>
     let kept := fun i => live i || optionVarUses reuse i
     (optionVarUses reuse k && !live k) ||
       (argsAny fun i => (words i).demands
@@ -30,13 +30,19 @@ def Expr.demands : {Γ : List Ty} → {t : Ty} → Expr S Γ t → (Nat → Bool
       (argsAny fun i => (children i).demands
         (fun j => kept j || (argsAny fun next => decide (i.val < next.val) && (children next).uses j))
         true k)
-  | _, _, .treeCase (shape := shape) x empty node, live, owned, k =>
-    let branch := owned || empty.mode [] == .owned || node.mode [] == .owned
-    let inner := shift shape.bindCount live
-    let fields := node.demands inner branch 0 ||
-      (argsAny fun i : Fin shape.children => node.demands inner branch (1 + shape.words + i.val))
-    (k == x.index && !live k && !node.uses (k + shape.bindCount) && fields) ||
-      empty.demands live branch k || node.demands inner branch (k + shape.bindCount)
+  | _, _, .treeCase (shape := shape) x empty nodes, live, owned, k =>
+    let branch := owned ||
+      (if h : shape.hasNull = true then (empty h).mode [] == .owned else false) ||
+      argsAny fun r => (nodes r).mode [] == .owned
+    let nodeDemands := fun r : Fin shape.records =>
+      let inner := shift (shape.bindCount r) live
+      let fields := (nodes r).demands inner branch 0 ||
+        (argsAny fun i : Fin (shape.children r) =>
+          (nodes r).demands inner branch (1 + shape.words r + i.val))
+      (k == x.index && !live k && !(nodes r).uses (k + shape.bindCount r) && fields) ||
+        (nodes r).demands inner branch (k + shape.bindCount r)
+    (if h : shape.hasNull = true then (empty h).demands live branch k else false) ||
+      argsAny nodeDemands
   | _, _, .bin _ left right, live, _, k | _, _, .cmp _ left right, live, _, k
   | _, _, .and left right, live, _, k | _, _, .or left right, live, _, k
   | _, _, .fbin _ left right, live, _, k | _, _, .fcmp _ left right, live, _, k
@@ -111,7 +117,7 @@ def Expr.paramChoice {params : List Ty} {result : Ty} (body : Expr S params resu
     List Mode :=
   (List.range params.length).map fun i =>
     match params[i]? with
-    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _) =>
+    | some (Ty.array _) | some (Ty.tree _) | some (Ty.treeHeader _ _) =>
       if body.demands (fun _ => false) true i then .owned else .borrowed
     | _ => .borrowed
 

@@ -9,7 +9,8 @@ def TailBody.renameFuns {S T : List Sig} (ρ : FunRenaming S T) :
   | _, .ite cond yes no => .ite (cond.renameFuns ρ) (yes.renameFuns ρ) (no.renameFuns ρ)
   | _, .letE value body => .letE (value.renameFuns ρ) (body.renameFuns ρ)
   | _, .letPair value body => .letPair (value.renameFuns ρ) (body.renameFuns ρ)
-  | _, .treeCase x empty node => .treeCase x (empty.renameFuns ρ) (node.renameFuns ρ)
+  | _, .treeCase x empty nodes =>
+    .treeCase x (fun h => (empty h).renameFuns ρ) (fun r => (nodes r).renameFuns ρ)
 
 theorem TailBody.aborts_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (body : TailBody S params result Γ) : (body.renameFuns ρ).aborts = body.aborts := by
@@ -31,8 +32,11 @@ theorem TailBody.denote_renameFuns {S T : List Sig} (ρ : FunRenaming S T)
     (h : ∀ {g : Sig} (v : FVar S g) env, target.get (ρ v) env = funs.get v env)
     (body : TailBody S params result Γ) (env : Env Γ) :
     (body.renameFuns ρ).denote target env = body.denote funs env := by
-  induction body <;> simp_all [TailBody.renameFuns, TailBody.denote,
-    Expr.denote_renameFuns ρ funs target h]
+  induction body with
+  | treeCase x empty nodes emptyIh nodesIh =>
+    simp only [TailBody.renameFuns, TailBody.denote]
+    split <;> simp_all
+  | _ => simp_all [TailBody.renameFuns, TailBody.denote, Expr.denote_renameFuns ρ funs target h]
 
 def TailFunc.renameFuns {S T : List Sig} (ρ : FunRenaming S T) (f : TailFunc S) : TailFunc T where
   name := f.name

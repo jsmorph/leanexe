@@ -66,18 +66,24 @@ theorem TailBody.allocs_toExpr {S : List Sig} {params Γ : List Ty} {result : Ty
       TailBody.uses_toExpr, Bool.false_or]
     rw [ih]
     simp only [shift_false, Nat.add_assoc]
-  | treeCase x empty node he hn =>
+  | treeCase x empty nodes he hn =>
     simp only [TailBody.toExpr, TailBody.allocs, Expr.allocs, Expr.mode, Expr.denote,
       TailBody.uses_toExpr, Bool.false_or]
     cases env.get x with
-    | nil =>
+    | nil h =>
       simp only [modeAt, shift_false]
-      rw [he]
-      simp only [Nat.add_assoc, coerceCost_join_left]
-    | node words children =>
+      rw [he h]
+      simp only [Nat.add_assoc]
+      congr 1
+      exact (coerceCost_trans _ _ _ _ (fun hm => recordsJoin_init _ _ (by
+        rw [dite_eq_left h]; exact hm))).symm
+    | node r words children =>
       simp only [modeAt, shift_false]
-      rw [hn]
-      simp only [shift_false, Nat.add_assoc, coerceCost_join_right]
+      rw [hn r]
+      simp only [shift_false, Nat.add_assoc]
+      congr 2
+      refine (coerceCost_trans _ _ _ _ fun hm => ?_).symm
+      exact recordsJoin_at _ _ r hm
 
 #print axioms TailBody.fits_toExpr
 #print axioms TailBody.allocs_toExpr

@@ -11,20 +11,20 @@ theorem CopyRecord.Holds.beginRecord {shape : TreeShape} {heap0 heap : Heap}
     (hLayout : NodeLayout shape (.record slots))
     (hSource : NodeBorrowed heap0 initial source (.record slots))
     (hStep : Step heap0 initial (fun _ => True) heap store [block store p])
-    (hRaw : RecordStorage shape heap store p) :
-    let store' := beginRecordStore store p source parent
+    (hRaw : RecordStorage slots.length heap store p) :
+    let store' := beginRecordStore shape.tagged store p source parent slots.length
     CopyRecord.Holds shape heap store' parent ⟨source, p, slots, 0⟩ ∧
       Step heap0 initial (fun _ => True) heap store' [block store' p] := by
-  obtain ⟨hWrites, hAt, hStorage, hCapacity, hParent, hInput, hIndex⟩ :=
-    hRaw.beginRecord hStep.at_ (source := source) (parent := parent)
+  obtain ⟨hWrites, hAt, hStorage, hCapacity, hParent, hInput, hIndex, hWidth⟩ :=
+    hRaw.beginRecord shape.tagged slots.length hStep.at_ (source := source) (parent := parent)
   have hBase := hRaw.base
   have hWrite : Step heap store (fun r => regionsDisjoint r (block store p)) heap
-      (beginRecordStore store p source parent) [] :=
+      (beginRecordStore shape.tagged store p source parent slots.length) [] :=
     Step.ofWritesRange hAt hWrites (by simp only [block]; omega)
       (by simp only [block]; omega)
   have hAll := hStep.writeFresh hWrite (by simp)
   have hBorrowed := (hAll.nodeBorrowed hSource hLayout.slotted).1
-  refine ⟨⟨hLayout, by simp, hStorage, hBorrowed, hParent, hInput, hIndex,
+  refine ⟨⟨hLayout, by simp, hStorage, hBorrowed, hParent, hInput, hWidth, hIndex,
     by simp [SlotsOwned]⟩, ?_⟩
   simpa only [block_eq hCapacity] using hAll
 

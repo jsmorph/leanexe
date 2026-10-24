@@ -28,42 +28,46 @@ theorem paramSlots_repeat (t : Ty) (mode : Mode) (Γ : List Ty) (modes : List Mo
     · congr 1
       omega
 
-theorem TreeShape.context_length (shape : TreeShape) (Γ : List Ty) :
-    (shape.context Γ).length = shape.bindCount + Γ.length := by
+theorem TreeShape.context_length (shape : TreeShape) (r : Fin shape.records) (Γ : List Ty) :
+    (shape.context r Γ).length = shape.bindCount r + Γ.length := by
   simp [TreeShape.context, TreeShape.bindCount, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]
 
-theorem TreeShape.slots_append (shape : TreeShape) (base : Nat) (mode : Mode)
-    (rest : List Slot) : shape.slots base mode rest = shape.slots base mode [] ++ rest := by
+theorem TreeShape.slots_append (shape : TreeShape) (r : Fin shape.records) (base : Nat)
+    (mode : Mode) (rest : List Slot) :
+    shape.slots r base mode rest = shape.slots r base mode [] ++ rest := by
   simp [TreeShape.slots, List.append_assoc]
 
-theorem TreeShape.slots_length (shape : TreeShape) (base : Nat) (mode : Mode) :
-    (shape.slots base mode []).length = shape.bindCount := by
+theorem TreeShape.slots_length (shape : TreeShape) (r : Fin shape.records) (base : Nat)
+    (mode : Mode) :
+    (shape.slots r base mode []).length = shape.bindCount r := by
   simp [TreeShape.slots, TreeShape.bindCount, Nat.add_assoc, Nat.add_comm, Nat.add_left_comm]
 
-theorem TreeShape.paramModes (shape : TreeShape) (mode : Mode) :
-    paramModes (shape.context []) (shape.modes mode []) = shape.modes mode [] := by
+theorem TreeShape.paramModes (shape : TreeShape) (r : Fin shape.records) (mode : Mode) :
+    paramModes (shape.context r []) (shape.modes r mode []) = shape.modes r mode [] := by
   simp only [TreeShape.context, TreeShape.modes, Verified.paramModes, List.headD_cons,
     List.tail_cons, paramModes_repeat, Ty.paramMode]
 
-theorem TreeShape.paramSlots (shape : TreeShape) (mode : Mode) (base : Nat) :
-    paramSlots (shape.context []) (shape.modes mode []) base = shape.slots base mode [] := by
+theorem TreeShape.paramSlots (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
+    (base : Nat) :
+    paramSlots (shape.context r []) (shape.modes r mode []) base = shape.slots r base mode [] := by
   simp only [TreeShape.context, TreeShape.modes, Verified.paramSlots, List.headD_cons,
     List.tail_cons, Ty.width, paramSlots_repeat .word .borrowed _ _ rfl,
     paramSlots_repeat (.tree shape) mode [] [] rfl, Ty.paramMode]
   rfl
 
-theorem TreeShape.slots_modes (shape : TreeShape) (mode : Mode) (base : Nat) :
-    (shape.slots base mode []).map Slot.mode = shape.modes mode [] := by
-  rw [← shape.paramSlots, paramSlots_modes, shape.paramModes]
+theorem TreeShape.slots_modes (shape : TreeShape) (r : Fin shape.records) (mode : Mode)
+    (base : Nat) :
+    (shape.slots r base mode []).map Slot.mode = shape.modes r mode [] := by
+  rw [← shape.paramSlots r, paramSlots_modes, shape.paramModes r]
 
-theorem TreeShape.modes_borrowed (shape : TreeShape) :
-    shape.modes .borrowed [] = List.replicate shape.bindCount .borrowed := by
+theorem TreeShape.modes_borrowed (shape : TreeShape) (r : Fin shape.records) :
+    shape.modes r .borrowed [] = List.replicate (shape.bindCount r) .borrowed := by
   simp only [TreeShape.modes, TreeShape.bindCount, List.replicate_add,
     List.replicate_one, List.nil_append, List.append_nil, List.cons_append]
 
-theorem TreeShape.slots_borrowed (shape : TreeShape) (base i : Nat) :
-    ((shape.slots base .borrowed []).getD i default).mode = .borrowed := by
-  rw [← Slot.modes_getD, shape.slots_modes, shape.modes_borrowed]
+theorem TreeShape.slots_borrowed (shape : TreeShape) (r : Fin shape.records) (base i : Nat) :
+    ((shape.slots r base .borrowed []).getD i default).mode = .borrowed := by
+  rw [← Slot.modes_getD, shape.slots_modes r, shape.modes_borrowed r]
   simp only [List.getD_eq_getElem?_getD, List.getElem?_replicate]
   split <;> rfl
 

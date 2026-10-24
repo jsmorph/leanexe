@@ -184,35 +184,70 @@ partial def reflectTailTreeMatch (t : TailContext) (c : Ctx) (app : MatcherApp)
     return ← (← reflectTailBody t c expanded).restate (← bareEq expanded app.toExpr)
   unless app.remaining.isEmpty do
     throwError "verified_compile: a tail list match cannot be applied to further arguments"
-  let (empty, branch, nativeEq) ← match layout with
-    | none => listMatcherCases app
-    | some layout => treeMatcherCases layout app
   let (x, _) ← varOf c xs
   let hx ← bareEq (← mkAppM ``Env.get #[c.env, x]) (← flatValue xs)
-  let re ← reflectTailBody t c empty
-  let reflectNode (inner : Ctx) (fields : Array Lean.Expr) := do
+  let bodyType (ctx : Lean.Expr) := mkApp4 (mkConst ``TailBody) c.sigs
+    (ctxExpr t.signature.params) (tyExpr t.signature.result) ctx
+  let reflectNode (inner : Ctx) (branch : Lean.Expr) (fields : Array Lean.Expr) := do
     let rn ← reflectTailBody t inner (branch.beta fields)
     return (rn.src, ← mkLambdaFVars fields rn.step,
       ← mkLambdaFVars fields rn.fixed, ← mkLambdaFVars fields rn.proof)
-  let (node, nodeStep, nodeFixed, nodeProof) ← match layout with
-    | none => withListCaseFields c xs fun inner head tail => reflectNode inner #[head, tail]
-    | some layout => withRecursiveCaseFields c layout reflectNode
   let motive := Lean.mkLambda `xs .default (← inferType xs) (← t.sumType)
-  let step ← match layout with
-    | none =>
-      mkAppOptM ``List.casesOn
-        #[some (mkConst ``UInt64), some motive, some xs, some re.step, some nodeStep]
-    | some layout => layout.nativeCases motive xs re.step nodeStep
-  let fixedName := (layout.map (·.decl `tail_case_fixed)).getD ``tail_listCase_fixed
-  let eqName := (layout.map (·.decl `tail_case_eq)).getD ``tail_listCase_eq
-  let fixed ← mkAppM fixedName
-    #[t.meaning, xs, empty, branch, re.step, nodeStep, re.fixed, nodeFixed]
-  let proof ← tailLemma eqName t c
-    [(`φ, t.flattenState), (`ψ, t.flattenResult), (`x, x), (`empty, re.src),
-      (`node, node), (`xs, xs), (`value, xs), (`emptyStep, re.step), (`nodeStep, nodeStep)]
-    [(`hx, hx), (`he, re.proof), (`hn, nodeProof)]
-  let r : TailReflection := ⟨← mkAppM ``TailBody.treeCase #[x, re.src, node], step, fixed, proof⟩
-  r.restate nativeEq
+  match layout with
+  | none =>
+    let (empty, branch, nativeEq) ← listMatcherCases app
+    let re ← reflectTailBody t c empty
+    let (node, nodeStep, nodeFixed, nodeProof) ←
+      withListCaseFields c xs fun inner head tail => reflectNode inner branch #[head, tail]
+    let step ← mkAppOptM ``List.casesOn
+      #[some (mkConst ``UInt64), some motive, some xs, some re.step, some nodeStep]
+    let fixed ← mkAppM ``tail_listCase_fixed
+      #[t.meaning, xs, empty, branch, re.step, nodeStep, re.fixed, nodeFixed]
+    let proof ← tailLemma ``tail_listCase_eq t c
+      [(`φ, t.flattenState), (`ψ, t.flattenResult), (`x, x), (`empty, re.src),
+        (`node, node), (`xs, xs), (`emptyStep, re.step), (`nodeStep, nodeStep)]
+      [(`hx, hx), (`he, re.proof), (`hn, nodeProof)]
+    let src ← mkAppM ``TailBody.treeCase #[x, ← emptyBranchFn listShape re.src,
+      ← recordFamily listShape c.ctx bodyType [node]]
+    let r : TailReflection := ⟨src, step, fixed, proof⟩
+    r.restate nativeEq
+  | some layout =>
+    let (branches, nativeEq) ← treeMatcherCases layout app
+    let mut empty : Option Lean.Expr := none
+    let mut nodes : Array Lean.Expr := #[]
+    let mut steps : Array Lean.Expr := #[]
+    let mut fixeds : Array Lean.Expr := #[]
+    let mut proofs : Array Lean.Expr := #[]
+    for (j, (ctor, _)) in layout.ctors.toArray.zipIdx.map (fun (a, j) => (j, a)) do
+      match layout.record? ctor with
+      | none =>
+        let re ← reflectTailBody t c branches[j]!
+        empty := some re.src
+        steps := steps.push re.step
+        fixeds := fixeds.push re.fixed
+        proofs := proofs.push re.proof
+      | some r =>
+        let (node, step, fixed, proof) ← withRecursiveCaseFields c layout r fun inner fields =>
+          reflectNode inner branches[j]! fields
+        nodes := nodes.push node
+        steps := steps.push step
+        fixeds := fixeds.push fixed
+        proofs := proofs.push proof
+    let emptyFn ← match empty with
+      | some src => emptyBranchFn layout.shape src
+      | none => absurdBranchFn layout.shape (bodyType c.ctx)
+    let nodesFn ← recordFamily layout.shape c.ctx bodyType nodes.toList
+    let step ← layout.nativeCases motive xs steps
+    let fixed ← mkAppM (layout.decl `tail_case_fixed) (#[t.meaning, xs] ++ branches ++ steps ++ fixeds)
+    let name (base : String) (j : Nat) : Name := Name.mkSimple s!"{base}{j}"
+    let proof ← tailLemma (layout.decl `tail_case_eq) t c
+      ([(`φ, t.flattenState), (`ψ, t.flattenResult), (`x, x), (`empty, emptyFn),
+          (`nodes, nodesFn), (`value, xs)] ++
+        (List.range steps.size).map fun j => (name "s" j, steps[j]!))
+      ([(`hx, hx)] ++ (List.range proofs.size).map fun j => (name "h" j, proofs[j]!))
+    let src ← mkAppM ``TailBody.treeCase #[x, emptyFn, nodesFn]
+    let r : TailReflection := ⟨src, step, fixed, proof⟩
+    r.restate nativeEq
 
 partial def reflectTailSplit (t : TailContext) (c : Ctx) (xs : List Lean.Expr)
     (body : Lean.Expr) : MetaM TailReflection := do

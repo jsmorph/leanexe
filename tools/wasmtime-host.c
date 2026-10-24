@@ -394,24 +394,30 @@ static uint64_t alloc_u64_chain(Runtime *runtime, U64List values) {
   return ptr;
 }
 
+/* Copies the comma-separated token at `*text` into `token`, of `size` bytes, and advances
+   `*text` past the token and its comma. */
+static void read_token(const char **text, char *token, size_t size) {
+  const char *start = *text;
+  const char *comma = strchr(start, ',');
+  size_t len = comma == NULL ? strlen(start) : (size_t)(comma - start);
+  *text = comma == NULL ? start + len : comma + 1;
+  if (len == 0 || len >= size) {
+    die("bad tree description");
+  }
+  memcpy(token, start, len);
+  token[len] = 0;
+}
+
 /* Allocates the tree whose preorder description starts at `*text`: `.` for a leaf, and for a
    node its key followed by its left and right subtrees, separated by commas.  A node is a
    record of three slots, the pointer to the left subtree, the key, and the pointer to the
    right subtree, with kind 1, width 3, and mask 5.  Returns the pointer, 0 for a leaf. */
 static uint64_t alloc_u64_tree(Runtime *runtime, const char **text) {
-  const char *start = *text;
-  const char *comma = strchr(start, ',');
-  size_t len = comma == NULL ? strlen(start) : (size_t)(comma - start);
-  *text = comma == NULL ? start + len : comma + 1;
-  if (len == 1 && start[0] == '.') {
+  char token[32];
+  read_token(text, token, sizeof token);
+  if (strcmp(token, ".") == 0) {
     return 0;
   }
-  char token[32];
-  if (len == 0 || len >= sizeof token) {
-    die("bad tree description");
-  }
-  memcpy(token, start, len);
-  token[len] = 0;
   uint64_t key = parse_u64(token);
   uint64_t left = alloc_u64_tree(runtime, text);
   uint64_t right = alloc_u64_tree(runtime, text);
@@ -422,6 +428,47 @@ static uint64_t alloc_u64_tree(Runtime *runtime, const char **text) {
   write_u64_at(runtime, cell, left);
   write_u64_at(runtime, cell + 8, key);
   write_u64_at(runtime, cell + 16, right);
+  return cell;
+}
+
+/* Whether `width` and `mask` describe a record: between 1 and 64 slots, and no mask bit at or
+   above the width. */
+static bool record_header_valid(uint64_t width, uint64_t mask) {
+  return width >= 1 && width <= 64 && (width == 64 || mask >> width == 0);
+}
+
+/* Allocates the tree of records whose preorder description starts at `*text`: `.` for null,
+   and for a record its width, its mask, and its slots, separated by commas, where a slot whose
+   mask bit is set is a tree and any other slot is a word.  Each record has kind 1 and the
+   width and mask of its description.  Returns the pointer, 0 for null. */
+static uint64_t alloc_records(Runtime *runtime, const char **text) {
+  char token[32];
+  read_token(text, token, sizeof token);
+  if (strcmp(token, ".") == 0) {
+    return 0;
+  }
+  uint64_t width = parse_u64(token);
+  read_token(text, token, sizeof token);
+  uint64_t mask = parse_u64(token);
+  if (!record_header_valid(width, mask)) {
+    die("bad record header in tree description");
+  }
+  uint64_t slots[64];
+  for (uint64_t i = 0; i < width; i++) {
+    if ((mask >> i) & 1) {
+      slots[i] = alloc_records(runtime, text);
+    } else {
+      read_token(text, token, sizeof token);
+      slots[i] = parse_u64(token);
+    }
+  }
+  uint64_t cell = call_alloc(runtime, 8 * width);
+  write_u64_at(runtime, cell - 24, 1);
+  write_u64_at(runtime, cell - 16, width);
+  write_u64_at(runtime, cell - 8, mask);
+  for (uint64_t i = 0; i < width; i++) {
+    write_u64_at(runtime, cell + 8 * i, slots[i]);
+  }
   return cell;
 }
 
@@ -476,6 +523,45 @@ static void print_u64_tree_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
 static void print_u64_tree(Runtime *runtime, uint64_t ptr) {
   uint64_t count = 0;
   print_u64_tree_at(runtime, ptr, &count);
+  printf("\n");
+}
+
+/* Prints the tree of records at `ptr` in the preorder description of `alloc_records`, after
+   checking that each record's header holds the magic number, count 1, kind 1, and a valid
+   width and mask.  `count` bounds the records visited. */
+static void print_records_at(Runtime *runtime, uint64_t ptr, uint64_t *count) {
+  if (ptr == 0) {
+    printf(".");
+    return;
+  }
+  size_t memory_len = wasmtime_memory_data_size(runtime->context, &runtime->memory);
+  if (++*count > memory_len / 56) {
+    die("tree result does not end");
+  }
+  if (ptr < 48 || read_u64_at(runtime, ptr - 48) != OBJECT_MAGIC ||
+      read_u64_at(runtime, ptr - 40) != 1 || read_u64_at(runtime, ptr - 24) != 1) {
+    die("tree result has a wrong record header");
+  }
+  uint64_t width = read_u64_at(runtime, ptr - 16);
+  uint64_t mask = read_u64_at(runtime, ptr - 8);
+  if (!record_header_valid(width, mask)) {
+    die("tree result has a wrong record header");
+  }
+  printf("%" PRIu64 ",%" PRIu64, width, mask);
+  for (uint64_t i = 0; i < width; i++) {
+    printf(",");
+    uint64_t slot = read_u64_at(runtime, ptr + 8 * i);
+    if ((mask >> i) & 1) {
+      print_records_at(runtime, slot, count);
+    } else {
+      printf("%" PRIu64, slot);
+    }
+  }
+}
+
+static void print_records(Runtime *runtime, uint64_t ptr) {
+  uint64_t count = 0;
+  print_records_at(runtime, ptr, &count);
   printf("\n");
 }
 
@@ -602,6 +688,17 @@ static bool parse_arg(Runtime *runtime, const char *spec, wasmtime_val_t *out, s
     *out_count = 1;
     return true;
   }
+  if (strncmp(spec, "records-u64:", 12) == 0) {
+    const char *text = spec + 12;
+    uint64_t ptr = alloc_records(runtime, &text);
+    if (*text != 0) {
+      die("bad tree description");
+    }
+    out[0].kind = WASMTIME_I64;
+    out[0].of.i64 = (int64_t)ptr;
+    *out_count = 1;
+    return true;
+  }
   if (strncmp(spec, "chain-u64:", 10) == 0) {
     U64List values = parse_u64_list(spec + 10);
     uint64_t ptr = alloc_u64_chain(runtime, values);
@@ -653,7 +750,8 @@ static size_t result_count_from_kind(const char *kind) {
     return 2;
   }
   if (strcmp(kind, "array-u64") == 0 || strcmp(kind, "chain-u64") == 0 ||
-      strcmp(kind, "tree-u64") == 0 || strncmp(kind, "file-u64:", 9) == 0) {
+      strcmp(kind, "tree-u64") == 0 || strcmp(kind, "records-u64") == 0 ||
+      strncmp(kind, "file-u64:", 9) == 0) {
     return 1;
   }
   if (strncmp(kind, "slots:", 6) == 0) {
@@ -755,6 +853,11 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
           die("tree result requires exported memory");
         }
         print_u64_tree(runtime, (uint64_t)results[i].of.i64);
+      } else if (strcmp(kind, "records-u64") == 0) {
+        if (!runtime->has_memory) {
+          die("tree result requires exported memory");
+        }
+        print_records(runtime, (uint64_t)results[i].of.i64);
       } else {
         die("unknown result kind in list");
       }
@@ -838,6 +941,14 @@ static void call_export(Runtime *runtime, const char *func_name, const char *res
       die("tree result requires exported memory");
     }
     print_u64_tree(runtime, (uint64_t)results[0].of.i64);
+    return;
+  }
+
+  if (strcmp(result_kind, "records-u64") == 0) {
+    if (!runtime->has_memory) {
+      die("tree result requires exported memory");
+    }
+    print_records(runtime, (uint64_t)results[0].of.i64);
     return;
   }
 
@@ -1392,9 +1503,10 @@ static void command_script(Runtime *runtime, int argc, char **argv, bool session
 static void usage(void) {
   fprintf(stderr,
           "usage: wasmtime-host call|call-stats <module.wasm> <function> "
-          "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|file-u64:PATH|slots:N|list:K1,K2,...> "
+          "<i64|f64|f32|bytes|array-u64|chain-u64|tree-u64|records-u64|file-u64:PATH|slots:N|"
+          "list:K1,K2,...> "
           "[i64:N|f64:BITS|f32:BITS|bytes:HEX|bytes-file:PATH|array-u64:N,N|chain-u64:N,N|tree-u64:K,.,.|"
-          "file-u64:PATH ...]\n");
+          "records-u64:W,M,S,...|file-u64:PATH ...]\n");
   exit(1);
 }
 

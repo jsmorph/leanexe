@@ -369,15 +369,16 @@ The form is `call MODULE.wasm FUNCTION RESULT-KIND ARG …`.  The first command 
 | `file-u64:PATH` | An `Array UInt64` read from a file of little-endian words. |
 | `chain-u64:N,N,…` | A `List UInt64` as a chain of records. |
 | `tree-u64:K,L,R` | A tree of the `KeyTree` layout in preorder, with `.` for a leaf, such as `tree-u64:5,3,.,.,.`. |
+| `records-u64:W,M,S,…` | A tree of records in preorder: `.` for null, and otherwise the width, the child mask, and the slots, where a slot whose mask bit is set is a tree, such as `records-u64:3,6,3,2,0,1,7,.` for `Term.add (.lit 7) .zero` of [the tagged example](../Verified/Examples/TaggedTypes.lean). |
 | `bytes:HEX`, `bytes-file:PATH` | A byte object, passed as a pointer and a length. |
 
 | Result kind | Output |
 |---|---|
 | `i64`, `f64`, `f32` | One decimal word, the bit pattern for floats. |
 | `array-u64` | The elements, as `[a, b, …]`. |
-| `chain-u64`, `tree-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header. |
+| `chain-u64`, `tree-u64`, `records-u64` | The list as `[a, b, …]`, or the tree in the preorder form of its argument, after the host checks each record's header.  `records-u64` prints the width and mask that each header holds. |
 | `file-u64:PATH` | The array, written to a file. |
-| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, or `tree-u64`. |
+| `list:K1,K2,…` | Several results, one line each.  Each kind is `i64`, `f64`, `f32`, `array-u64`, `chain-u64`, `tree-u64`, or `records-u64`. |
 | `slots:N` | `N` words on one line. |
 | `bytes` | Two results, a pointer and a length, printed as the bytes in hexadecimal. |
 

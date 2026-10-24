@@ -4,15 +4,17 @@ namespace Verified.Reflect
 
 open Lean Meta
 
-def RecursiveLayout.nativeCases (layout : RecursiveLayout) (motive value empty node : Lean.Expr) :
-    MetaM Lean.Expr := do
-  let info ← getConstInfoInduct layout.name
-  let minors := info.ctors.toArray.map fun name =>
-    some (if name == layout.empty then empty else node)
-  mkAppOptM (layout.name ++ `casesOn) (#[some motive, some value] ++ minors)
+/-- `casesOn` of the type at `value` with the minor premises `minors`, one for each constructor in
+declaration order. -/
+def RecursiveLayout.nativeCases (layout : RecursiveLayout) (motive value : Lean.Expr)
+    (minors : Array Lean.Expr) : MetaM Lean.Expr :=
+  mkAppOptM (layout.name ++ `casesOn) (#[some motive, some value] ++ minors.map some)
 
+/-- The alternatives of a match on a recursive type, one for each constructor in declaration order
+as a function of the constructor's fields, and the proof that `casesOn` with them equals the
+match.  An alternative that covers several constructors appears once for each. -/
 def treeMatcherCases (layout : RecursiveLayout) (app : MatcherApp) :
-    MetaM (Lean.Expr × Lean.Expr × Lean.Expr) := do
+    MetaM (Array Lean.Expr × Lean.Expr) := do
   unless app.discrs.size == 1 && !app.discrInfos.any (·.hName?.isSome) do
     throwError "verified_compile: a recursive match requires one discriminant"
   let d := app.discrs[0]!
@@ -21,32 +23,30 @@ def treeMatcherCases (layout : RecursiveLayout) (app : MatcherApp) :
     | throwError "verified_compile: malformed recursive match motive"
   if resultType.hasLooseBVars then
     throwError "verified_compile: a recursive match cannot have a dependent result type"
-  let ctor ← getConstInfoCtor layout.node
-  let casesOn := layout.nativeCases
   let altTypes ← app.alts.mapM inferType
   let decls := altTypes.mapIdx fun i ty => (Name.mkSimple s!"branch{i}", ty)
   withLocalDeclsDND decls fun hs => do
-    let emptyValue := mkConst layout.empty
-    let .reduced empty ← reduceMatcher? { app with discrs := #[emptyValue], alts := hs }.toExpr
-      | throwError "verified_compile: cannot reduce the empty recursive branch"
-    let branch ← forallBoundedTelescope ctor.type ctor.numFields fun fields _ => do
-      let value := mkAppN (mkConst layout.node) fields
-      let .reduced node ← reduceMatcher? { app with discrs := #[value], alts := hs }.toExpr
-        | throwError "verified_compile: recursive patterns must distinguish both constructors"
-      mkLambdaFVars fields node
+    let byCtor (k : Lean.Expr → Array Lean.Expr → MetaM Lean.Expr) : MetaM (Array Lean.Expr) :=
+      layout.ctors.toArray.mapM fun (ctor, _) => do
+        let info ← getConstInfoCtor ctor
+        forallBoundedTelescope info.type info.numFields fun fields _ =>
+          k (mkAppN (mkConst ctor) fields) fields
+    let branches ← byCtor fun value fields => do
+      let .reduced body ← reduceMatcher? { app with discrs := #[value], alts := hs }.toExpr
+        | throwError "verified_compile: cannot reduce the recursive match at {value}"
+      mkLambdaFVars fields body
     let motive ← withLocalDeclD `value type fun value => mkLambdaFVars #[value] resultType
-    let primitive (value : Lean.Expr) := casesOn motive value empty branch
     let proof ← withLocalDeclD `value type fun value => do
-      let eq ← mkEq (← primitive value) { app with discrs := #[value], alts := hs }.toExpr
+      let eq ← mkEq (← layout.nativeCases motive value branches)
+        { app with discrs := #[value], alts := hs }.toExpr
       let P ← mkLambdaFVars #[value] eq
-      let base ← mkExpectedTypeHint (← mkEqRefl empty) (eq.replaceFVar value emptyValue)
-      let step ← forallBoundedTelescope ctor.type ctor.numFields fun fields _ => do
-        let node := mkAppN (mkConst layout.node) fields
-        mkLambdaFVars fields (← mkExpectedTypeHint (← mkEqRefl (branch.beta fields))
-          (eq.replaceFVar value node))
-      let split ← casesOn P value base step
+      let minors ← (byCtor fun node fields => do
+        let j := layout.ctors.findIdx (·.1 == node.getAppFn.constName!)
+        mkLambdaFVars fields (← mkExpectedTypeHint (← mkEqRefl (branches[j]!.beta fields))
+          (eq.replaceFVar value node)))
+      let split ← layout.nativeCases P value minors
       let general ← mkLambdaFVars (hs.push value) split
       pure (mkAppN general (app.alts.push d))
-    return (empty.replaceFVars hs app.alts, branch.replaceFVars hs app.alts, proof)
+    return (branches.map (·.replaceFVars hs app.alts), proof)
 
 end Verified.Reflect

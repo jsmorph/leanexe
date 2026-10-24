@@ -18,7 +18,7 @@ theorem wp_treeCopyAdvanceInv {m : Module} {host : HostEnv Unit} {heap0 heap : H
     (hNoBlocks : (current.slots[current.next]).valueBlocks store word = [])
     (hWork : CopyWork.Step (current.work parents)
       ({ current with next := current.next + 1 }.work parents))
-    (hAllocates : (current.work parents).allocates = 0)
+    (hCharge : (current.work parents).charge = 0)
     (hNext : ∀ store', CopyInv shape heap0 initial root result limit heap store'
       { current with next := current.next + 1 } parents → wp m rest Q store' s host) :
     wp m (treeSlotAddress (base + 1) (base + 2) ++ [.localGet (base + 4), .store64 0] ++
@@ -27,7 +27,7 @@ theorem wp_treeCopyAdvanceInv {m : Module} {host : HostEnv Unit} {heap0 heap : H
     (by rw [hNoBlocks]; exact nofun) hLocals.current hIndex hWord ?_
   intro store' hCurrent hWrite hBlocks
   rw [hNoBlocks, List.append_nil] at hBlocks
-  exact hNext store' (h.advanceStep hCurrent hWrite hBlocks hWork hAllocates)
+  exact hNext store' (h.advanceStep hCurrent hWrite hBlocks hWork hCharge)
 
 #print axioms wp_treeCopyAdvanceInv
 

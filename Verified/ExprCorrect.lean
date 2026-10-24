@@ -32,15 +32,15 @@ theorem spec_word {Γ : List Ty} (value : UInt64) :
         rw [Ty.regions_scalar .word rfl] at hb; exact nomatch hb)
 
 
-theorem spec_treeNil {Γ : List Ty} (shape : TreeShape) :
+theorem spec_treeNil {Γ : List Ty} (shape : TreeShape) (hn : shape.hasNull = true) :
     ∀ env slots paid live,
-      CodeSpec m funs flags bounds fits host pv (Expr.treeNil (S := S) (Γ := Γ) shape)
+      CodeSpec m funs flags bounds fits host pv (Expr.treeNil (S := S) (Γ := Γ) shape hn)
         env slots paid live := by
   intro env slots paid live h base heap store s hh hpv hVars hAt _ _ _ _ rest Q _ hNext
-  have hRep : (Ty.tree shape).Rep .owned heap store [.i64 0] Tree.nil :=
+  have hRep : (Ty.tree shape).Rep .owned heap store [.i64 0] (Tree.nil hn) :=
     ⟨0, rfl, rfl, List.Pairwise.nil⟩
-  have hAfter : After env slots (fun i => live i || (Expr.treeNil shape).uses i) live base
-      heap store s (.tree shape) .owned .nil heap store s [.i64 0] :=
+  have hAfter : After env slots (fun i => live i || (Expr.treeNil shape hn).uses i) live base
+      heap store s (.tree shape) .owned (.nil hn) heap store s [.i64 0] :=
     After.refl hAt hVars (by intro i hi; simp [hi]) hRep rfl
       (fun _ _ _ _ _ _ _ _ hb => nomatch hb)
   have hRun := hNext heap store s [.i64 0] hAfter (fun _ => Nat.le_add_right _ _)
@@ -4632,8 +4632,8 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
   | word value => intro _; exact spec_word value
   | bool value => intro _; exact spec_bool value
   | var x => intro _; exact spec_var hm x
-  | treeNil shape => intro _; exact spec_treeNil shape
-  | treeNode reuse words children wordSpec childSpec =>
+  | treeNil shape hn => intro _; exact spec_treeNil shape hn
+  | treeNode r reuse words children wordSpec childSpec =>
     intro hD
     exact spec_treeNode hm reuse words children
       (fun i => wordSpec i fun hd => hD (by
@@ -4642,11 +4642,14 @@ theorem Expr.code_spec {S : List Sig} (m : Module) (funs : Funs S) (flags : Flag
       (fun i => childSpec i fun hd => hD (by
         simp only [Expr.depthCalls, Bool.or_eq_true]
         exact Or.inr (le_argsAny _ i hd)))
-  | treeCase x empty node emptySpec nodeSpec =>
+  | treeCase x empty nodes emptySpec nodeSpec =>
     intro hD
-    exact spec_treeCase hm x empty node
-      (emptySpec fun hd => hD (by simp [Expr.depthCalls, hd]))
-      (nodeSpec fun hd => hD (by simp [Expr.depthCalls, hd]))
+    exact spec_treeCase hm x empty nodes
+      (fun hn => emptySpec hn fun hd => hD (by
+        simp only [Expr.depthCalls, dite_eq_left hn, hd, Bool.true_or]))
+      (fun r => nodeSpec r fun hd => hD (by
+        simp only [Expr.depthCalls, Bool.or_eq_true]
+        exact Or.inr (le_argsAny _ r hd)))
   | bin op left right leftSpec rightSpec =>
     intro hD
     exact spec_bin op (leftSpec fun h => hD (by simp [Expr.depthCalls, h]))

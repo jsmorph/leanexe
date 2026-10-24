@@ -46,10 +46,14 @@ theorem Ty.copyCost_of_scalar (t : Ty) (v : t.denote) (h : t.scalar = true) : t.
   | elem e => rfl
   | array e => simp [Ty.scalar] at h
   | tree shape => simp [Ty.scalar] at h
-  | treeHeader shape => simp [Ty.scalar] at h
+  | treeHeader shape r => simp [Ty.scalar] at h
   | pair a b ha hb =>
     simp only [Ty.scalar, Bool.and_eq_true] at h
     simp only [Ty.copyCost, ha v.1 h.1, hb v.2 h.2, Nat.add_zero]
+
+theorem coerceCost_trans (t : Ty) (a b : Mode) (v : t.denote) (h : a = .owned → b = .owned) :
+    coerceCost t a b v + coerceCost t b .owned v = coerceCost t a .owned v := by
+  cases a <;> cases b <;> simp_all [coerceCost]
 
 theorem coerceCost_join_left (t : Ty) (a b : Mode) (v : t.denote) :
     coerceCost t a (a.join b) v + coerceCost t (a.join b) .owned v = coerceCost t a .owned v := by

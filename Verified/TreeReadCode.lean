@@ -14,6 +14,7 @@ theorem wp_treeCopyRead {m : Module} {host : HostEnv Unit} {heap : Heap} {store 
     (hNext : ∀ s', Frame base s s' → s'.get base = s.get base →
       s'.get (base + 1) = some (.i64 record.pointer) →
       s'.get (base + 2) = some (.i64 (UInt64.ofNat record.next)) →
+      s'.get (base + 3) = some (.i64 record.source) →
       s'.get (base + 4) = some (.i64 (store.mem.read64 (slotAddress record.source record.next))) →
       s'.values = s.values → wp m rest Q store s' host) :
     wp m (treeCopyRead base ++ rest) Q store s host := by
@@ -61,6 +62,9 @@ theorem wp_treeCopyRead {m : Module} {host : HostEnv Unit} {heap : Heap} {store 
   · dsimp only [sValue]
     rw [Locals.get_setLocal_ne hLow4Source (by omega)]
     exact hIndexLocal
+  · dsimp only [sValue]
+    rw [Locals.get_setLocal_ne hLow4Source (by omega)]
+    exact hSourceLocal
   · exact Locals.get_setLocal_same hLow4Source hHigh4Source
   · rfl
 
