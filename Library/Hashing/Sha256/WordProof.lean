@@ -10,7 +10,7 @@ word with the first byte most significant, as `SHS.SHA256.Impl.beU32` does. -/
 
 namespace Library.Hashing.Sha256
 
-open Library.Hashing.Words
+open Library.Hashing.Words Library.Bytes
 
 theorem low32_toUInt32 (x : UInt64) : (low32 x).toUInt32 = x.toUInt32 := by
   apply UInt32.toBitVec_inj.mp

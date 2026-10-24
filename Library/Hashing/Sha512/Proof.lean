@@ -11,7 +11,7 @@ of `Impl.sha512`, and then applies `SHS.Equiv.SHA512.sha512_correct` and its com
 
 namespace Library.Hashing.Sha512
 
-open Library.Hashing.Words
+open Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA512 SHS.Equiv.SHA512.Padding.Layout SHS.Equiv.SHA512.Padding.Equiv
   SHS.Equiv.SHA512.Padding.ByteDecoding SHS.Equiv.SHA512.Digest SHS.Equiv.SHA512.Pipeline
 

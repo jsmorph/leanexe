@@ -3,18 +3,17 @@ import Mathlib.Tactic.IntervalCases
 
 /-! Byte-level facts about `bswap` and the words the hash functions assemble.  `be8` assembles eight
 bytes into a word with the first byte most significant, the order of FIPS 180-4 §3.1, and
-`byteOf w k` is byte `k` of `w` counting from the least significant. -/
+`Library.Bytes.byteOf w k` is byte `k` of `w` counting from the least significant. -/
 
 namespace Library.Hashing.Words
+
+open Library.Bytes
 
 /-- Eight bytes as a word, `b0` most significant. -/
 def be8 (b0 b1 b2 b3 b4 b5 b6 b7 : UInt8) : UInt64 :=
   (b0.toUInt64 <<< 56) ||| (b1.toUInt64 <<< 48) ||| (b2.toUInt64 <<< 40) |||
     (b3.toUInt64 <<< 32) ||| (b4.toUInt64 <<< 24) ||| (b5.toUInt64 <<< 16) |||
     (b6.toUInt64 <<< 8) ||| b7.toUInt64
-
-/-- Byte `k` of `w`, counting from the least significant. -/
-def byteOf (w : UInt64) (k : Nat) : UInt8 := (w >>> (8 * k).toUInt64).toUInt8
 
 /-- Word `k` of sixteen words. -/
 def Words16.get (m : Words16) (k : Nat) : UInt64 :=
@@ -26,18 +25,6 @@ def Words16.get (m : Words16) (k : Nat) : UInt64 :=
 @[simp] theorem get9 (m : Words16) : m.get 9 = m.w9 := rfl
 @[simp] theorem get14 (m : Words16) : m.get 14 = m.w14 := rfl
 @[simp] theorem get15 (m : Words16) : m.get 15 = m.w15 := rfl
-
-theorem bytes_size (msg : Array UInt64) (n : Nat) : (bytes msg n).size = n := by
-  simp [bytes, ByteArray.size]
-
-theorem bytes_get! (msg : Array UInt64) (n p : Nat) (hp : p < n) :
-    (bytes msg n).get! p = byteAt msg p := by
-  simp [bytes, ByteArray.get!, hp]
-
-theorem byteAt_eq (ws : Array UInt64) (i k : Nat) (hk : k < 8) :
-    byteAt ws (8 * i + k) = byteOf ws[i]! k := by
-  unfold byteAt byteOf
-  rw [show (8 * i + k) / 8 = i by omega, show (8 * i + k) % 8 = k by omega]
 
 set_option maxHeartbeats 800000 in
 /-- `bswap` reverses the bytes of a word. -/

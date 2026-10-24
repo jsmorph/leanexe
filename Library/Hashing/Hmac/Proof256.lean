@@ -11,7 +11,7 @@ block is the padded block that follows `K_0 ⊕ opad` in the outer message. -/
 
 namespace Library.Hashing.Hmac
 
-open Library.Hashing.Words Library.Hashing.Sha256
+open Library.Hashing.Words Library.Bytes Library.Hashing.Sha256
 open SHS.Equiv.SHA256 SHS.Equiv.SHA256.Padding.Layout SHS.Equiv.SHA256.Padding.Equiv
   SHS.Equiv.SHA256.Padding.ByteDecoding SHS.Equiv.SHA256.Digest SHS.Equiv.SHA256.Pipeline
   SHS.Equiv.ByteArray SHS.Equiv.Bytes
@@ -70,8 +70,8 @@ theorem implHmac256_spec (K M : ByteArray) (hK : K.size < 2 ^ 61) (hM : M.size +
     rw [ByteArray.size_append, size_xorBytes, size_keyBytes256, size_digestBytes]
     decide
   unfold implHmac256 Spec.hmacSha256 Spec.hmac
-  rw [impl_sha256_spec _ hout, bits_append, bits_digestBytes256, impl_sha256_spec _ hin, bits_append,
-    bits_xorBytes, bits_xorBytes, size_keyBytes256, bits_keyBytes256 K hK]
+  rw [impl_sha256_spec _ hout, bits_append, bits_digestBytes256, impl_sha256_spec _ hin,
+    bits_append, bits_xorBytes, bits_xorBytes, size_keyBytes256, bits_keyBytes256 K hK]
   rfl
 
 /-! ## The program -/
@@ -230,8 +230,8 @@ theorem xorBlock_toVec32 (key : Array UInt64) (kn : UInt64) (hk : kn.toNat < 2 ^
   apply Vector.ext
   intro t ht
   have hK := size_keyBytes256 (bytes key kn.toNat)
-  rw [toVec32_get _ t ht, xorBlock_get _ _ t ht, UInt64.toUInt32_xor, keyBlock256_get key kn hk t ht,
-    SHS.SHA256.Impl.toU32s,
+  rw [toVec32_get _ t ht, xorBlock_get _ _ t ht, UInt64.toUInt32_xor,
+    keyBlock256_get key kn hk t ht, SHS.SHA256.Impl.toU32s,
     Vector.getElem_ofFn, beU32_preBlock, beU32_preBlock, get!_xorBytes _ _ _ (by omega),
     get!_xorBytes _ _ _ (by omega), get!_xorBytes _ _ _ (by omega), get!_xorBytes _ _ _ (by omega),
     be4_xor, hc]

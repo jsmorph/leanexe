@@ -11,7 +11,7 @@ after the last message byte, zero bytes, or one of the two halves of the bit len
 
 namespace Library.Hashing.Sha256
 
-open Library.Hashing.Words
+open Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA256.Padding.Layout
 
 /-- The number of padded blocks of a message of `n` bytes. -/

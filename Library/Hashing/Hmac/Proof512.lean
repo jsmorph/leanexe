@@ -10,7 +10,7 @@ blocks of 128 bytes, words of eight bytes, and a digest of 64 bytes. -/
 
 namespace Library.Hashing.Hmac
 
-open Library.Hashing.Words Library.Hashing.Sha512
+open Library.Hashing.Words Library.Bytes Library.Hashing.Sha512
 open SHS.Equiv.SHA512 SHS.Equiv.SHA512.Padding.Layout SHS.Equiv.SHA512.Padding.Equiv
   SHS.Equiv.SHA512.Padding.ByteDecoding SHS.Equiv.SHA512.Digest SHS.Equiv.SHA512.Pipeline
   SHS.Equiv.ByteArray SHS.Equiv.Bytes

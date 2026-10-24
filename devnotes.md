@@ -35189,7 +35189,7 @@ The review found that kernel time is the main unknown and must be measured first
 | Test reference | Python's `re`, with `re.fullmatch` on byte patterns and `re.DOTALL`, besides Mathlib's `rmatch` | It needs no new dependency, and for patterns without backreferences or lookaround its anchored matches are regular-language membership.  RE2 would be a new dependency. |
 | First step | Three probes on minideb2, before SHA-3 | The probes measure the kernel time of a certificate of about 10, 50, and 200 states, the compile time and size of a table of 256 states by 256 bytes in 8,192 words, and whether the dialect accepts the recursive `Re` type. |
 
-- [ ] Move the packed-byte definitions and lemmas to a neutral module.
+- [x] Move the packed-byte definitions and lemmas to a neutral module.
 - The probes and the certificate design were dropped for runtime patterns, as the next entry records.
 
 ## 2026-10-23: Regular expressions with runtime patterns
@@ -35209,7 +35209,7 @@ The proof has five parts: a specification of regexes and their languages on Math
 | Matching | Anchored to the whole input | Search adds the start state at every step and comes later. |
 | Tagged recursive types | Research continues, not blocking the regex work | Syntax trees and other uses would benefit. |
 
-- [ ] Move the packed-byte definitions and lemmas to a neutral module.
+- [x] Move the packed-byte definitions and lemmas to a neutral module.
 - [ ] Create the `regex` branch from `hashing-main`.
 - [ ] Write the specification and have it reviewed independently.
 - [ ] Write the program: decoder, compile pass, masks, follow tables, and match loop.
@@ -35224,3 +35224,27 @@ A research agent read the verified compiler's recursive-type support at the user
 The proposed design generalizes `Tree` in place to several constructors with the tag in slot 0 and one union layout per type, in which unused words are zero and unused children null.  Width and child mask then stay constant per type, so copy, release, header reuse, and the cost formulas keep their statements.  One nullary constructor is null and the others are records that hold only the tag.  A type with one record constructor keeps its untagged encoding, so existing modules keep their bytes.  Mutual types, children of other types, and `Option` are deferred.  The agent estimates 3,000 to 7,000 changed lines, a quarter to half of the original recursive-type phase of 38 commits and about 14,100 added lines, with an uncertainty of a factor of two or more.  The main risks are the elaboration time of generated n-way proofs and edits to the existing tree examples.
 
 For a regex compiler in Wasm built on derivatives, tagged types are not sufficient.  A table of regex labels needs arrays of trees, recursion on long concatenations meets the limit of 1,000 frames, and the allocation bound, which credits no release, could reach about a gigabyte.  These findings support the position automaton, which needs none of them.  The decisions the extension requires (layout, nullary constructors, in-place generalization, generated `Encode` instances, field types other than `UInt64`, and whether `trapFree` is required) wait until the user chooses to start it.
+
+## 2026-10-23: Tagged recursive types: decisions
+
+The user asked for recommendations on the design decisions of the assessment above, with a review before they were put to them.  An independent review of the first draft found that the journal already proposes a layout rule for user types for both compilers (the entry of the LeanExe compiler's recursive-type plan, with its corrections), that the project writes `Encode` instances by hand as trusted text, and that `release` already handles masked slots in arrays, so arrays of trees lack proofs rather than runtime support.  It also found decisions the draft omitted: tag values, a type with no nullary constructor, the fields a branch binds, host formats, and a test of byte identity.  The draft's union layout and generated `Encode` instances were withdrawn.
+
+| Decision | Choice | Reason |
+|---|---|---|
+| Layout | The journal's rule: a record per constructor with that constructor's fields in declaration order, preceded by a tag slot holding the constructor index when more than one constructor is a record | One `Encode` instance serves both compilers, records carry no padding, and types with one record constructor keep their bytes.  The copy loop must look up each record's width and mask from its tag, and its proofs must be generalized. |
+| Constructors without fields | The first in declaration order is null, and each other one is a record of one slot holding its tag | Immediate values would change `release`, which every module contains, and the shared `Node` model.  A type with no such constructor has every value as a record. |
+| Compiler types | Generalize `TreeShape`, `Tree`, and `Ty.tree` in place, with a typed `Tree` whose constructors carry exactly their own fields | One code path.  A padded typed tree would admit invalid tags and break the inverse law of recursive parameters.  About 27 files and the tree examples change. |
+| `Encode` | Written by the user and checked by the reflector, as today | The encoding enters the meaning of every theorem about the type.  A deriving command may come later. |
+| Guarantees | The same as today's recursive types: `implements`, bounds, frames, tail theorems, and `trapFree` where they apply | The bound formula is unchanged.  The node count includes tag-only records, and a branch binds only its constructor's fields. |
+| Scope | `UInt64` fields and children, one-level patterns, and a chain of tests on the null pointer and then the tag | Arrays of trees, children of other recursive types, mutual and nested types, `Option`, and other field types come later. |
+| Host format | One self-describing preorder format for any record tree, with expected text computed from `Encode` in native Lean | One reader and printer serves every type and compares the encoding the theorems use.  The `chain-u64` and `tree-u64` formats stay. |
+
+Acceptance requires every existing module to emit identical bytes and every existing theorem to check.  No tool compares emitted modules across versions, so the work begins with one.  The effort exceeds the assessment's estimate of 3,000 to 7,000 changed lines by the generalization of the copy proofs, which has not been measured.
+
+- [ ] Branch `tagged-types` from `main`, in a worktree on debtop1.
+- [ ] A script that emits every module of `tests/verified/modules.txt` and compares the bytes with a baseline from `main`.
+- [ ] A design note for the generalized `TreeShape` and `Tree` and the reflector's layout check, reviewed before code.
+
+## 2026-10-23: Packed bytes
+
+`byteOf`, `byteAt`, `bytes`, and the lemmas `bytes_size`, `bytes_get!`, and `byteAt_eq` moved from `Library/Hashing/Words` to `Library/Bytes/Packed.lean`, in the namespace `Library.Bytes`, so that the regex library can state its input as the hash functions do without importing them.  `Words/Bytes.lean` keeps the digest views, and the hashing files open `Library.Bytes`.  Only proofs and statements use the moved definitions, and the four hashing modules pass their 145, 405, 136, and 136 cases, with their file theorems checking against the emitted files.  The full library build was stopped at job 9,912 of 10,242 to free minideb2 for these checks, and it resumes later.

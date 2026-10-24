@@ -1,6 +1,6 @@
 # Hashing
 
-The hash functions take a message of `n` bytes as an `Array UInt64` holding eight bytes per word in little-endian order, together with the byte count `n`.  Byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`, the layout of Wasm memory, so a file read as little-endian words is a message.  A digest uses the same packing in a structure of words, so that a call returns its digest as several WebAssembly results and allocates nothing.  [The word module](Words/Program.lean) defines the structures, `bswap`, and the rotation helper, and [the byte module](Words/Bytes.lean) defines the bytes that packed words denote, which the correctness theorems use to state their arguments and results.
+The hash functions take a message of `n` bytes as an `Array UInt64` holding eight bytes per word in little-endian order, together with the byte count `n`.  Byte `i` is bits `8 (i % 8)` to `8 (i % 8) + 7` of word `i / 8`, the layout of Wasm memory, so a file read as little-endian words is a message.  A digest uses the same packing in a structure of words, so that a call returns its digest as several WebAssembly results and allocates nothing.  [The word module](Words/Program.lean) defines the structures, `bswap`, and the rotation helper.  [The packed-byte module](../Bytes/Packed.lean) defines `bytes`, the bytes that packed words denote, which the correctness theorems use to state their arguments, and [the digest module](Words/Bytes.lean) defines the bytes of a digest.
 
 | Family | Functions | Proved results |
 |---|---|---|
