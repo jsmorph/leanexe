@@ -11,7 +11,9 @@ theorem add_pure {m : Module} (hm : Runtime m)
     ImplementsPureA false m 2 (fun p : UInt64 × UInt64 => add p.1 p.2) := by
   have calls : Calls m compiled.funs compiled.program.flags
       (compiled.program.boundsAt compiled.funs) (compiled.program.fitsAt compiled.funs) :=
-    compiled.program.calls_prefix compiled.funs compiled.meaning m hm hPrefix (by decide +kernel)
+    compiled.program.calls_prefix compiled.funs compiled.meaning m hm hPrefix (by
+      have noLiterals : compiled.program.literals = [] := by decide +kernel
+      simp only [Prog.Covered, noLiterals, List.nil_subset])
   have hImpl : ImplementsA false m 2 (fun p : UInt64 × UInt64 => add p.1 p.2)
       (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
     ImplementsA.lean ((calls (.there .here) 0).implementsB_unpaid rfl rfl).implementsA
@@ -34,7 +36,9 @@ theorem scale_pure {m : Module} (hm : Runtime m)
     ImplementsPureA false m 3 scale := by
   have calls : Calls m compiled.funs compiled.program.flags
       (compiled.program.boundsAt compiled.funs) (compiled.program.fitsAt compiled.funs) :=
-    compiled.program.calls_prefix compiled.funs compiled.meaning m hm hPrefix (by decide +kernel)
+    compiled.program.calls_prefix compiled.funs compiled.meaning m hm hPrefix (by
+      have noLiterals : compiled.program.literals = [] := by decide +kernel
+      simp only [Prog.Covered, noLiterals, List.nil_subset])
   have hImpl : ImplementsA false m 3 scale
       (fun _ _ _ => True) (fun _ _ _ _ _ => True) :=
     ImplementsA.lean ((calls .here 0).implementsB_unpaid rfl rfl).implementsA

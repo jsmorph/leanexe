@@ -42,7 +42,9 @@ theorem base_calls : Calls module CompositionBase.compiled.funs
     (CompositionBase.compiled.program.boundsAt CompositionBase.compiled.funs)
     (CompositionBase.compiled.program.fitsAt CompositionBase.compiled.funs) :=
   CompositionBase.compiled.program.calls_extension program _ CompositionBase.compiled.meaning
-    base_prefix [] [] (by decide +kernel)
+    base_prefix [] [] (by
+      have noLiterals : CompositionBase.compiled.program.literals = [] := by decide +kernel
+      simp only [Prog.Covered, noLiterals, List.nil_subset])
 
 theorem add_implements : ImplementsA false module 2
     (fun p : UInt64 × UInt64 => CompositionBase.add p.1 p.2)
