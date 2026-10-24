@@ -47,8 +47,8 @@ and UInt64 counts, lengths, and statuses.  Generated callable-entry and `_start`
 exported execution to the native actions, including ordered effects and committed effects before
 errors or traps.  Total-execution theorems require a typed resource-prefix bound and assumptions
 about reached host operations.  [The WASI manual](docs/wasi.md) defines the API, export forms,
-proof premises, native interpreter, and standard Wasmtime host.  Implementation and acceptance
-testing remain in progress.
+proof premises, native interpreter, and standard Wasmtime host.  The WASI-specific gate passes.
+Repository-wide integration checks are in progress.
 
 ### Comparison
 
