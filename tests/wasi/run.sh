@@ -27,23 +27,42 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.FunctionEntryBudget Verified.Wasi.FunctionRunBudget \
   Verified.Wasi.CommandConditional Verified.Wasi.CommandResultStore \
   Verified.Wasi.FunctionDispatcher Verified.Wasi.CostFunctionLift \
+  Verified.Wasi.CostFunctionPost Verified.Wasi.CostFunctionRun \
+  Verified.Wasi.CostFunctionSpec \
+  Verified.Wasi.NativeResult Verified.Wasi.NativeEntry Verified.Wasi.NativeTotal \
   Verified.Wasi.ConditionalCost Verified.Wasi.CostConditionalSpec \
-  LeanExe.Wasi.Prefix \
+  LeanExe.Wasi.Prefix LeanExe.Wasi.NoTrap LeanExe.Wasi.NoTrapPrefix \
   LeanExe.Wasi.Interpreter LeanExe.Wasi.RelatedExec LeanExe.Wasi.RelatedPrefix \
-  Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions \
+  Verified.Wasi.Program Verified.Wasi.ProgramFacts Verified.Wasi.ProgramCorrect \
+  Verified.Wasi.WrapperDispatch Verified.Wasi.ExitStack Verified.Wasi.WrapperStack \
+  Verified.Wasi.EntryCorrect Verified.Wasi.CommandRun Verified.Wasi.NativeCommand \
+  Verified.Wasi.CommandTotal \
+  Verified.Wasi.ProgramInitial Verified.Wasi.Correct \
+  LeanExe.Encoding.FormCheck Verified.Wasi.SyntaxCheck \
+  Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions \
   Verified.Wasi.ReturnCommand Verified.Wasi.CommandBind Verified.Wasi.CommandValue \
   Verified.Wasi.LoopControl Verified.Wasi.LoopSemantics Verified.Wasi.ReflectCases \
+  Verified.Wasi.LoopAfter Verified.Wasi.LoopCommand Verified.Wasi.LoopPrepare \
+  Verified.Wasi.LoopContext Verified.Wasi.LoopRelease Verified.Wasi.LoopTest \
+  Verified.Wasi.LoopBody Verified.Wasi.LoopFinish Verified.Wasi.LoopInvariant \
+  Verified.Wasi.LoopPrepared Verified.Wasi.CommandLoopSpec \
+  Verified.Wasi.LoopPrepareCode Verified.Wasi.LoopPrepareGuarded Verified.Wasi.LoopTestGuarded \
+  Verified.Wasi.LoopBodyCost Verified.Wasi.LoopFinishCost Verified.Wasi.ResourceLoopHead \
+  Verified.Wasi.LoopCostInvariant Verified.Wasi.LoopCostReady Verified.Wasi.LoopCostAdvance \
+  Verified.Wasi.LoopCostCode Verified.Wasi.LoopPreparedCost Verified.Wasi.CostLoopSpec \
   Verified.Wasi.CallOwnership Verified.Wasi.CallFrame Verified.Wasi.CallHelper \
   Verified.Wasi.ResultRelease Verified.Wasi.CommandLeaves \
   Verified.Wasi.CommandCallSpec Verified.Wasi.CommandBindSpec \
-  Verified.Wasi.CommandConditionalSpec \
+  Verified.Wasi.CommandBindValueSpec Verified.Wasi.CommandConditionalSpec Verified.Wasi.CommandCorrect \
   Verified.Wasi.ResourceCost Verified.Wasi.ResourceLoopCost Verified.Wasi.ResourceExec \
   Verified.Wasi.ResourcePrefix Verified.Wasi.ResourceBudget Verified.Wasi.ResourceLoopBudget \
   Verified.Wasi.ResourceCoverage Verified.Wasi.ResourceNativePrefix \
   Verified.Wasi.ResourceAdvanceCoverage Verified.Wasi.ResourcePrefixCoverage \
   Verified.Wasi.ResourceCompilerCost Verified.Wasi.CostLeavesPure \
+  Verified.Wasi.CallBudget Verified.Wasi.CostCallHelper Verified.Wasi.CostCallSpec \
   Verified.Wasi.CostLeavesRead Verified.Wasi.CostLeavesWrite Verified.Wasi.CostLeavesExit \
-  Verified.Wasi.CostLeaves
+  Verified.Wasi.CostLeaves Verified.Wasi.CostBindUnit Verified.Wasi.CostBindValue \
+  Verified.Wasi.CostTotal Verified.Wasi.CostCommandCorrect
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
   Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial Verified.Wasi.PurePrefix
@@ -52,6 +71,10 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/EffectAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/CommandAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ResourceAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/SyntaxAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/LoopCostAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/CompilerAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/NativeAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
@@ -113,3 +136,4 @@ printf 'Byte trap tests passed: %s cases\n' "$count"
 tests/wasi/codegen-run.sh
 tests/wasi/reflection-run.sh
 tests/wasi/script-host-run.sh
+tests/wasi/host.sh

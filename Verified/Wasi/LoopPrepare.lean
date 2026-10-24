@@ -1,18 +1,8 @@
-import Verified.Wasi.LoopAfter
-import Verified.Wasi.CommandValue
-import Verified.Wasi.Return
+import Verified.Wasi.LoopPrepareGuarded
 
 namespace Verified.Wasi
 
 open Wasm LeanExe.Pipeline LeanExe.Runtime
-
-def loopPrepareCode (h base : Nat) (slots : List Slot) (pool : Bytes.LiteralPool)
-    (count : Expr S context .word) (initial : Expr S context type) (live : Nat → Bool) : Program :=
-  Relocation.program (count.code (pool := pool) h slots base (fun i => live i || initial.uses i)) ++
-    [.localSet base] ++
-    Relocation.program (initial.code (pool := pool) h slots (base + 1) live ++
-      coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) ++
-    storeCode h (base + 2) type.types ++ [.constI64 0, .localSet (base + 1)]
 
 theorem wp_loopPrepare {World : Type} {S : List Sig} {context : List Ty} {type : Ty}
     {source target : Wasm.Module} {funs : Funs S} {flags : Flags S} {bounds : Bounds S}
@@ -66,100 +56,8 @@ theorem wp_loopPrepare {World : Type} {S : List Sig} {context : List Ty} {type :
               coerceCost type (initial.mode (slots.map Slot.mode)) .owned (initial.denote funs env)))) →
       wp target rest Q final finalLocals targetHost) :
     wp target (loopPrepareCode h base slots pool count initial live ++ rest) Q store locals targetHost := by
-  let countLive := fun i => live i || initial.uses i
-  have countSelected : ∀ i, countLive i = true → (countLive i || count.uses i) = true :=
-    fun i selected => by rw [selected]; rfl
-  have liveSelected : ∀ i, live i = true → countLive i = true :=
-    fun i selected => by dsimp only [countLive]; rw [selected]; rfl
-  have countCoerce : coerceCode h .word (count.mode (slots.map Slot.mode)) .owned base = [] := by
-    simp [coerceCode, Ty.scalar]
-  let tail := [.localSet base] ++
-    Relocation.program (initial.code (pool := pool) h slots (base + 1) live ++
-      coerceCode h type (initial.mode (slots.map Slot.mode)) .owned (base + 1)) ++
-    storeCode h (base + 2) type.types ++ [.constI64 0, .localSet (base + 1)] ++ rest
-  suffices execution : wp target
-      (Relocation.program (count.code (pool := pool) h slots base countLive ++
-        coerceCode h .word (count.mode (slots.map Slot.mode)) .owned base) ++ tail)
-      Q store locals targetHost by
-    simpa only [loopPrepareCode, tail, countLive, countCoerce, List.append_nil, List.append_assoc]
-      using execution
-  refine wp_return runtime layout profile countSpec
-    (by simpa only [countCoerce, List.append_nil, countLive] using countForm)
-    (by simpa only [countCoerce, List.append_nil, countLive] using countClosed)
-    positions parameters vars at_ safe cap low countRoom countPlace
-    (fun _ final same => resource final same) ?_
-  intro countHeap countStore countLocals countWords countAfter countWorld countTop
-  have countRep := countAfter.rep
-  simp only [ResultTy.Rep, Ty.rep_word] at countRep
-  subst countWords
-  simp only [tail, List.append_assoc, List.cons_append, List.nil_append,
-    List.reverse_cons, List.reverse_nil]
-  have countLow : countLocals.params.length ≤ base := by rw [countAfter.frame.params]; exact low
-  have countHigh : base < countLocals.positions := by rw [countAfter.frame.positions, positions]; omega
-  refine wp_localSet_local (s := countLocals) (vs := locals.values) countLow
-    (Locals.lt_total countHigh) ?_
-  let countBound := setLocal { countLocals with values := locals.values } base (.i64 (count.denote funs env))
-  have countFrame : Frame base countLocals countBound := Frame.setValues countLow le_rfl countHigh
-  have countAfter' := countAfter.reframe countFrame
-  have countHeld : countBound.get base = some (.i64 (count.denote funs env)) :=
-    Locals.get_setLocal_same countLow (Locals.lt_total countHigh)
-  obtain ⟨countSafe, _⟩ := countAfter'.pool_safe safe vars scratch countSelected poolApart
-  have countVars := countAfter'.holds
-  refine wp_return runtime layout profile initialSpec initialForm initialClosed
-    (countAfter'.frame.positions.trans positions) (countAfter'.frame.params.trans parameters)
-    (countVars.mono (Nat.le_succ base)) countAfter'.step.at_ countSafe
-    (by rw [countAfter'.step.cap source]; exact cap)
-    (by rw [countAfter'.frame.params]; omega) initialRoom initialPlace
-    (fun _ final same => resource final (same.trans countWorld)) ?_
-  intro finalHeap final initialLocals words initialAfter initialWorld initialTop
-  have growth : count.fits funs fits env = true → initial.fits funs fits env = true →
-      finalHeap.top.toNat ≤ heap.top.toNat +
-        (count.allocs funs flags bounds (slots.map Slot.mode) []
-            (fun i => live i || initial.uses i) env +
-          (initial.allocs funs flags bounds (slots.map Slot.mode) [] live env +
-            coerceCost type (initial.mode (slots.map Slot.mode)) .owned (initial.denote funs env))) := by
-    intro countFits initialFits
-    have first := countTop countFits
-    have last := initialTop initialFits
-    have scalar : coerceCost .word (count.mode (slots.map Slot.mode)) .owned
-        (count.denote funs env) = 0 := by simp [coerceCost, Ty.copyCost]
-    simp only [returnCost, dyingPot_nil, Nat.zero_add, scalar, Nat.add_zero, countLive] at first last
-    omega
-  have lowered := initialAfter.lower countVars liveSelected (Nat.le_succ base)
-  have after := After.thenWord vars scratch countAfter' lowered countSelected liveSelected
-  have initialPositions : initialLocals.positions = h := after.frame.positions.trans positions
-  have initialParameters : initialLocals.params = locals.params := after.frame.params
-  have countValue : initialLocals.get base = some (.i64 (count.denote funs env)) :=
-    (initialAfter.frame.below base (by omega)).1.trans countHeld
-  refine wp_storeCode words h (base + 2) type.types initialLocals locals.values
-    initialAfter.rep.typed initialPositions (by rw [initialParameters]; omega)
-    (by rw [Ty.types_length, initialPositions]; exact stateRoom) ?_
-  intro stateLocals stateFrame stateHeld _
-  simp only [wp_constI64_cons]
-  have statePositions : stateLocals.positions = h := stateFrame.positions.trans initialPositions
-  have stateParameters : stateLocals.params = locals.params := stateFrame.params.trans initialParameters
-  have indexLow : stateLocals.params.length ≤ base + 1 := by rw [stateParameters]; omega
-  have indexHigh : base + 1 < stateLocals.positions := by rw [statePositions]; omega
-  refine wp_localSet_local (s := stateLocals) (vs := locals.values) indexLow
-    (Locals.lt_total indexHigh) ?_
-  let finalLocals := setLocal { stateLocals with values := locals.values } (base + 1) (.i64 0)
-  have indexFrame : Frame (base + 1) stateLocals finalLocals :=
-    Frame.setValues indexLow le_rfl indexHigh
-  have finalAfter := after.reframe ((stateFrame.mono (by omega)).trans (indexFrame.mono (by omega)))
-  have finalCount : finalLocals.get base = some (.i64 (count.denote funs env)) := by
-    exact (indexFrame.below base (by omega)).1.trans
-      ((stateFrame.below base (by omega)).1.trans countValue)
-  have finalIndex : finalLocals.get (base + 1) = some (.i64 0) :=
-    Locals.get_setLocal_same indexLow (Locals.lt_total indexHigh)
-  have finalHeld : LocalsHold finalLocals (base + 2) type.types words :=
-    stateHeld.keep (lo := base + 2) indexFrame.positions
-      (fun j hj _ => by
-        dsimp only [finalLocals]
-        refine ⟨?_, ?_, ?_⟩ <;>
-          rw [Locals.get_setLocal_ne (s := { stateLocals with values := locals.values })
-            indexLow (by omega), Locals.get_values]) le_rfl
-      (by rw [initialAfter.rep.length, statePositions]; exact stateRoom)
-  exact next finalHeap final finalLocals words finalAfter (initialWorld.trans countWorld)
-    finalCount finalIndex finalHeld rfl growth
+  exact wp_loopPrepareGuarded runtime layout profile countSpec initialSpec countForm countClosed
+    initialForm initialClosed positions parameters vars at_ safe scratch poolApart cap low
+    countRoom initialRoom stateRoom countPlace initialPlace (fun _ final same => resource final same) next
 
 end Verified.Wasi

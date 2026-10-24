@@ -15,11 +15,12 @@ if [ ! -x "$host" ]; then
   exit 1
 fi
 
-tools/leanrun --timeout 10m --log build/wasi/reflection/build.log lake build Verified.Wasi.ReflectProgramCases
-tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Wasi.ReflectProgramCases \
-  Verified.Wasi.ReflectProgramCases.callable.module "$out/callable.wasm"
-tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Wasi.ReflectProgramCases \
-  Verified.Wasi.ReflectProgramCases.command.module "$out/command.wasm"
+tools/leanrun --timeout 10m --log build/wasi/reflection/build.log lake build Verified.Wasi.ReflectCommandCases
+tools/leanrun --timeout 5m lake env lean tests/wasi/ReflectAxioms.lean
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Wasi.ReflectCommandCases \
+  Verified.Wasi.ReflectCommandCases.callable.module "$out/callable.wasm"
+tools/leanrun --timeout 5m lake env lean --run tools/Emit.lean Verified.Wasi.ReflectCommandCases \
+  Verified.Wasi.ReflectCommandCases.command.module "$out/command.wasm"
 wasm-tools validate "$out/callable.wasm"
 wasm-tools validate "$out/command.wasm"
 

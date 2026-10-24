@@ -2,6 +2,10 @@ import Verified.Wasi.ResourcePrefixCoverage
 import Verified.Wasi.ResourceLoopBudget
 import Verified.Wasi.ResourceCompilerCost
 import Verified.Wasi.CostLeaves
+import Verified.Wasi.CostBindUnit
+import Verified.Wasi.CostBindValue
+import Verified.Wasi.CostTotal
+import LeanExe.Wasi.NoTrapPrefix
 
 open Lean Elab Command in
 elab "check_wasi_resource_axioms" : command => do
@@ -75,7 +79,21 @@ elab "check_wasi_resource_axioms" : command => do
     ``Verified.Wasi.cost_command_ret_spec,
     ``Verified.Wasi.cost_command_read_spec,
     ``Verified.Wasi.cost_command_write_spec,
-    ``Verified.Wasi.cost_command_exit_spec]
+    ``Verified.Wasi.cost_command_exit_spec,
+    ``Verified.Wasi.cost_command_bind_unit_spec,
+    ``Verified.Wasi.cost_command_bind_value_spec,
+    ``Verified.Wasi.CostFunctionResult.return_or_accepted_exit,
+    ``Verified.Wasi.CostEffectSpec.return_or_accepted_exit,
+    ``LeanExe.Wasi.Exec.not_trapped,
+    ``LeanExe.Wasi.Exec.returned_or_exited,
+    ``LeanExe.Wasi.Host.NoTraps.along,
+    ``LeanExe.Wasi.Host.NoTrapsAlong.congr,
+    ``LeanExe.Wasi.Host.NoTrapsAlong.after,
+    ``LeanExe.Wasi.Host.NoTrapsAt.of_bind,
+    ``LeanExe.Wasi.Host.NoTrapsAlong.bind_left,
+    ``LeanExe.Wasi.Host.NoTrapsAlong.bind_right,
+    ``LeanExe.Wasi.Exec.not_trapped_of_prefix,
+    ``LeanExe.Wasi.Exec.returned_or_exited_of_prefix]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do

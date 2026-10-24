@@ -143,14 +143,17 @@ def materializeProgram (base : Name) (program : ProgramReflection)
   let entryType := mkApp (mkConst ``EffectEntry) signatures
   let entries ← selected.mapM fun name => do entryExpr program name
   let entries := listExpr entryType entries
+  addDefinition (base ++ `entries) (mkApp (mkConst ``List [.zero]) entryType) entries
   let mainType := mkApp (mkConst ``EffectMain) signatures
   let main ← match main? with
     | none => pure (mkApp (mkConst ``Option.none [Level.zero]) mainType)
     | some name => do
       let value ← mainExpr program name
       pure (mkApp2 (mkConst ``Option.some [Level.zero]) mainType value)
+  addDefinition (base ++ `mainEntry) (mkApp (mkConst ``Option [.zero]) mainType) main
   let compiled ← mkAppM ``Verified.Wasi.compile
-    #[mkConst (materializedPure.base ++ `module), mkConst (base ++ `program), entries, main,
+    #[mkConst (materializedPure.base ++ `module), mkConst (base ++ `program),
+      mkConst (base ++ `entries), mkConst (base ++ `mainEntry),
       mkConst (base ++ `literalPool)]
   addDefinition (base ++ `module) (mkConst ``Wasm.Module) compiled
   let pureCovered ← mkAppM ``combinedLiteralPool_pure

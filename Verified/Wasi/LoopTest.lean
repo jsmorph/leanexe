@@ -1,5 +1,4 @@
-import Verified.Wasi.LoopContext
-import Verified.Wasi.Return
+import Verified.Wasi.LoopTestGuarded
 
 namespace Verified.Wasi
 
@@ -52,41 +51,7 @@ theorem wp_loopTest {World : Type} {S : List Sig} {context : List Ty} {type : Ty
     wp target (Relocation.program (test.code (pool := pool) h
       (⟨base + 2, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots)
       (base + 2 + type.width) testLive) ++ rest) Q current currentLocals targetHost := by
-  let testSlots : List Slot :=
-    ⟨base + 2, .borrowed⟩ :: ⟨base + 1, .borrowed⟩ :: loopCaptured slots
-  have noCoerce : coerceCode h .bool (test.mode (testSlots.map Slot.mode)) .owned
-      (base + 2 + type.width) = [] := by simp [coerceCode, Ty.scalar]
-  have testVars := loop_test_holds (live := fun i => testLive i || test.uses i)
-    (after.holds.live_mono selected) held after.rep
-    (after.apart.live_mono selected) counter
-  have testSafe := loop_test_safe (env := env) (state := state) (index := index)
-    (slots := slots) (base := base) (live := fun i => testLive i || test.uses i)
-    (locals := currentLocals) static
-  have execution := wp_return (targetHost := targetHost) runtime layout profile spec
-    (by simpa only [noCoerce, List.append_nil, testSlots] using form)
-    (by simpa only [noCoerce, List.append_nil, testSlots] using closed)
-    positions parameters testVars after.step.at_ testSafe cap low room place
-    (rest := rest) (Q := Q) (fun _ final same => resource final same)
-    (fun finalHeap final finalLocals result tested same top => by
-      have resultEq : result =
-          [.i64 (boolWord (test.denote funs (.cons state (.cons (t := .word) index env))))] :=
-        tested.rep
-      subst result
-      have frame : Frame base currentLocals finalLocals := tested.frame.mono (by omega)
-      have retained := after.loopTest scratch (loop_test_step tested) frame
-      have growth : test.fits funs fits (.cons state (.cons (t := .word) index env)) = true →
-          finalHeap.top.toNat ≤ currentHeap.top.toNat +
-            test.allocs funs flags bounds (testSlots.map Slot.mode) [] testLive
-              (.cons state (.cons (t := .word) index env)) := by
-        intro fitsTest
-        have bound := top fitsTest
-        have scalar : coerceCost .bool (test.mode (testSlots.map Slot.mode)) .owned
-            (test.denote funs (.cons state (.cons (t := .word) index env))) = 0 := by
-          simp [coerceCost, Ty.copyCost]
-        dsimp only [testSlots] at scalar ⊢
-        simpa only [returnCost, dyingPot_nil, Nat.zero_add, scalar, Nat.add_zero] using bound
-      simpa only [List.reverse_cons, List.reverse_nil, List.nil_append, List.cons_append] using
-        next finalHeap final finalLocals retained tested.frame same growth)
-  simpa only [noCoerce, List.append_nil, testSlots] using execution
+  exact wp_loopTestGuarded runtime layout profile spec form closed positions parameters after scratch static
+    held counter selected cap low room place (fun _ final same => resource final same) next
 
 end Verified.Wasi

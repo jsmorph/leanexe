@@ -1,5 +1,6 @@
 import Verified.Wasi.FunctionEntry
 import Verified.Wasi.EffectSpec
+import Verified.Wasi.FunctionDispatcher
 
 namespace Verified.Wasi
 
@@ -215,47 +216,8 @@ theorem effectFunction_run {World : Type} {host : Host World} {source target : M
     ∃ bound, ∀ fuel ≥ bound,
       FunctionResult host function.sig action args params heap initial aborts
         (run fuel target (3 + index) initial (.i64 depth :: params).reverse targetHost) := by
-  unfold wp at body
-  obtain ⟨bound, hBound⟩ := body
-  have hImport : target.imports[3 + index]? = none :=
-    List.getElem?_eq_none (by rw [hImports, ABI.imports_length]; omega)
-  have hNum : (function.function source typeIdx pool).numParams = 1 + widthSum function.params := by
-    change (ValueType.i64 :: function.params.flatMap Ty.types).length = 1 + widthSum function.params
-    rw [List.length_cons, flatMap_types_length]
-    omega
-  have hResults : (function.function source typeIdx pool).results.length = function.result.width :=
-    function.result.types_length
-  have hTake : (((Value.i64 depth :: params).reverse).take
-      (function.function source typeIdx pool).numParams).reverse = .i64 depth :: params := by
-    rw [List.take_of_length_le (by
-      rw [List.length_reverse, List.length_cons, length, hNum]
-      omega), List.reverse_reverse]
-  have hDrop : (Value.i64 depth :: params).reverse.drop
-      (function.function source typeIdx pool).numParams = [] :=
-    List.drop_eq_nil_of_le (by
-      rw [List.length_reverse, List.length_cons, length, hNum]
-      omega)
-  refine ⟨bound, fun fuel enough => ?_⟩
-  have post := hBound fuel enough
-  rw [run_eq hImport]
-  simp only [hImports, ABI.imports_length,
-    show 3 + index - 3 = index by omega, hFunction, hTake, hDrop, hResults, List.append_nil]
-  cases executed : exec fuel target initial
-      ((function.function source typeIdx pool).toLocals (.i64 depth :: params))
-      (function.function source typeIdx pool).body targetHost with
-  | Fallthrough final locals => simpa only [FunctionPost, executed, EffectFunc.sig] using post
-  | Trap final message => simpa only [FunctionPost, executed] using post
-  | Break label final locals =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
-  | Return final values =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
-  | Invalid message =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
-  | OutOfFuel =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
-  | ReturnCall entry final values =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
-  | Throwing tag values final locals =>
-      exact False.elim (by simpa only [FunctionPost, executed] using post)
+  refine effectFunction_run_post hImports hFunction length ?_
+  refine wp.conseq (fun continuation proof => ?_) body
+  cases continuation <;> exact proof
 
 end Verified.Wasi

@@ -23,6 +23,18 @@ import Verified.Wasi.CommandResultStore
 import Verified.Wasi.CostConditionalSpec
 import Verified.Wasi.FunctionDispatcher
 import Verified.Wasi.CostFunctionLift
+import Verified.Wasi.CostFunctionPost
+import Verified.Wasi.CostFunctionRun
+import Verified.Wasi.CostFunctionSpec
+import Verified.Wasi.ProgramFacts
+import Verified.Wasi.ProgramCorrect
+import Verified.Wasi.WrapperDispatch
+import Verified.Wasi.ExitStack
+import Verified.Wasi.WrapperStack
+import Verified.Wasi.EntryCorrect
+import Verified.Wasi.CommandRun
+import Verified.Wasi.NativeCommand
+import Verified.Wasi.CommandTotal
 
 open Lean Elab Command in
 elab "check_wrapper_axioms" : command => do
@@ -144,6 +156,41 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.effectFunction_run_post,
     ``Verified.Wasi.CostFunctionResult.there,
     ``Verified.Wasi.CostEffectSpec.there,
+    ``Verified.Wasi.cost_function_post_body,
+    ``Verified.Wasi.cost_function_body_wp,
+    ``Verified.Wasi.cost_effectFunction_run,
+    ``Verified.Wasi.CostEffectSpec.here,
+    ``Verified.Wasi.compile_functionsIn,
+    ``Verified.Wasi.EffectProg.FunctionsIn.tail,
+    ``Verified.Wasi.EffectProg.FunctionsIn.head,
+    ``Verified.Wasi.EffectProg.FunctionsIn.arity,
+    ``Verified.Wasi.compile_layout,
+    ``Verified.Wasi.compile_read,
+    ``Verified.Wasi.compile_stdout,
+    ``Verified.Wasi.compile_stderr,
+    ``Verified.Wasi.compile_effect_arity,
+    ``Verified.Wasi.compiled_pure_calls,
+    ``Verified.Wasi.compile_prefix_facts,
+    ``Verified.Wasi.EffectProg.cost_calls,
+    ``Verified.Wasi.EffectProg.correctCost,
+    ``Verified.Wasi.EffectProg.correctCostWith,
+    ``Verified.Wasi.defined_function_run_post,
+    ``Verified.Wasi.wp_exit_stack,
+    ``Verified.Wasi.wp_wrapper_localGets,
+    ``Verified.Wasi.wp_wrapper_constI64s,
+    ``Verified.Wasi.wp_injected_arguments,
+    ``Verified.Wasi.wp_entry_body,
+    ``Verified.Wasi.compile_entry_export,
+    ``Verified.Wasi.compiled_entry_run,
+    ``Verified.Wasi.start_after_main_trap,
+    ``Verified.Wasi.wp_start_body,
+    ``Verified.Wasi.compile_start_export,
+    ``Verified.Wasi.compiled_start_run,
+    ``Verified.Wasi.EffectMain.related_action,
+    ``Verified.Wasi.compiled_native_start_run,
+    ``Verified.Wasi.bind_exit_not_returned,
+    ``Verified.Wasi.ReturnOrAcceptedExit.command_exit,
+    ``Verified.Wasi.command_run_total,
     ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
