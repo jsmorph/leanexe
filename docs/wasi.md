@@ -10,7 +10,7 @@
 
 | Operation | Type | Behavior |
 |---|---|---|
-| `readSome capacity` | `UInt64 → Action ReadResult` | Makes one stdin read when `capacity < 2^32`. |
+| `readSome capacity` | `UInt64 → Action ReadResult` | Makes one stdin read when `capacity < 2^32`, after any required allocation succeeds. |
 | `writeStdoutSome bytes` | `Bytes → Action WriteResult` | Makes one write to stdout. |
 | `writeStderrSome bytes` | `Bytes → Action WriteResult` | Makes one write to stderr. |
 | `exit code` | `UInt64 → Action α` | Requests terminal exit with `code mod 2^32`. |
