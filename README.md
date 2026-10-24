@@ -47,8 +47,7 @@ and UInt64 counts, lengths, and statuses.  Generated callable-entry and `_start`
 exported execution to the native actions, including ordered effects and committed effects before
 errors or traps.  Total-execution theorems require a typed resource-prefix bound and assumptions
 about reached host operations.  [The WASI manual](docs/wasi.md) defines the API, export forms,
-proof premises, native interpreter, and standard Wasmtime host.  The WASI-specific gate passes.
-Repository-wide integration checks are in progress.
+proof premises, native interpreter, and standard Wasmtime host.
 
 ### Comparison
 
@@ -177,7 +176,8 @@ tests/verified/run.sh
 allocation, and GPU tests.  The test drivers invoke the runner themselves.
 `tests/wasi/run.sh` checks the WASI proofs, reflected modules, byte ownership, and native and
 WebAssembly I/O.  Its `--foundations-only` form runs the proof and semantic foundations without
-the external-engine tests.
+the external-engine tests.  [The WASI development journal](devnotes.md#2026-10-23-implementing-the-wasi-agenda)
+records proof, execution, and integration runs.
 
 The [module driver](tests/modules/run.sh) compares every module of the LeanExe compiler except
 `gpt`, `gpt32`, and `prng` with native Lean on the cases in each example's `Cases.lean`, which
