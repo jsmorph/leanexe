@@ -585,7 +585,7 @@ uv run tests/modules/chunks.py
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
-6. `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
+6. `tools/leanrun --cpus auto --memory-high 10G --timeout 12h lake build Verified Library`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 
 `tests/verified/run.sh --check-bytes DIRECTORY` compares every registered verified module with saved reference files named `DIRECTORY/NAME.wasm`.  It writes fresh emissions to `build/byte-check/verified` and requires the verified modules to have been built.  `tests/modules/run.sh --emit-from CHECKOUT DIRECTORY` builds and emits original-compiler references from a clean checkout, records its commit, and preserves that checkout's source.  The reference checkout must contain the modules named by the checked registry.  These modes support comparisons against a recorded preceding revision.
@@ -628,9 +628,11 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 ## Development practice
 
-### `tools/leanrun` and the single Lean slot
+### `tools/leanrun` and the shared lock
 
-Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS=1`, and takes a machine-wide lock, so the machine runs one Lean process at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope and takes a machine-wide lock.  One external runner invocation owns that lock.  A parallel Lake build may run several child Lean processes within the scope.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+
+The default is one Lean worker and one CPU's capacity.  `--cpus N` sets `LEAN_NUM_THREADS=N` and a CPU quota of N times 100 percent.  `--cpus auto` uses every online CPU.  `LEANRUN_CPUS` supplies the same setting to repository drivers without wrapping them in another runner.  The memory and swap limits apply to the whole job, including every child process.
 
 `--log FILE` writes standard output and standard error to a file and preserves the command’s exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.
 
@@ -641,7 +643,7 @@ tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
 
 After a target reaches its timeout without a diagnostic, [the repository instructions](../AGENTS.md) require dividing it, or adding a reusable lemma that reduces its elaboration, before running it again.  `LEANRUN_LOCAL=1` runs without the cgroup limits and only with the user's explicit authorization.  [`tools/leanrun-dev`](../tools/leanrun-dev) runs Lean on the remote development machine (`sync`, `check`, or a command).
 
-The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB and the CPU quota stays 100%.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
+The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
 
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
 
