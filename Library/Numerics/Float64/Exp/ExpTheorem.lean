@@ -295,10 +295,12 @@ theorem ready_initial :
       Verified.compileWith Exp.compiled.program Exp.compiled.tables Exp.compiled.wrappers := by
     unfold Exp.compiled.module
     exact congrArg
-      (Verified.compileWith Exp.compiled.program Exp.compiled.tables Exp.compiled.wrappers) hPool
+      (fun pool => Verified.compileWith Exp.compiled.program Exp.compiled.tables
+        Exp.compiled.wrappers pool) hPool
   have hAddress : Verified.tableAddr Exp.compiled.tables 0 = 4096 := by
     simp only [Verified.tableAddr, List.take_zero, List.map_nil, List.sum_nil,
       Nat.mul_zero, Nat.add_zero]
+    rfl
   have hTable : Exp.compiled.tables[0] = Exp.expTable := rfl
   have hBorrowed := hBor 0 (by decide)
   rw [hAddress, hTable] at hBorrowed
