@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-Status: implementation and the WASI-specific acceptance gate are complete.  The native API, packed bytes, pure execution transport, universal effect proofs, reflector, and exported-entry theorems are implemented.  The maintained gate checks concrete callable and command validity proofs and their native byte-theorem bundles.  Repository-wide integration checks are in progress.  [The WASI manual](wasi.md) describes the current public API and proof premises.  This document records the reviewed architecture, external sources, acceptance conditions, and decisions.
+This document records the reviewed WASI Preview 1 architecture, external sources, proof boundaries, acceptance conditions, and design decisions.  [The WASI manual](wasi.md) describes the public API and generated declarations.  [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records implementation and test results.
 
 ## Scope and sources
 
@@ -171,7 +171,7 @@ The proof covers an explicit pure instruction profile, including nested control 
 
 The effect IR embeds typed pure expressions and has constructors for return, binding, conditionals, first-order effectful calls, bounded loops, the three stream operations, and exit.  Contexts record the types and ownership modes of live values.  Its result descriptor permits ordinary accepted values and erased Unit.  Read and write constructors invoke their transfer imports.  Exit emits the call to `proc_exit` followed by `unreachable`, which permits validation at any result type.  The host call terminates with a designated exit or a permitted host trap.
 
-Compilation orders operand evaluation before its effect.  It materializes operation results before evaluating a continuation.  Cleanup uses liveness across both the operation and continuation.  An unused read result is still read and then released.  A borrowed write argument remains live through the syscall.  Branches and loop iterations carry the same ownership and caller-frame obligations as pure code.
+Compilation orders operand evaluation before its effect.  It materializes operation results before evaluating a continuation.  Cleanup uses liveness across both the operation and continuation.  An unused read result is still read and then released.  A borrowed write argument remains live through the WASI import call.  Branches and loop iterations carry the same ownership and caller-frame obligations as pure code.
 
 The separate `verified_compile_wasi` command is provided by `import Verified.Wasi`.  `verified_compile_wasi p := [f₁, …, fₙ]` constructs a callable module.  `verified_compile_wasi p (main := main) := [f₁, …, fₙ]` constructs a command module whose selected entry is a closed `Action UInt64`.  The frontend collects pure definitions first, preserving their relative order, then reflects effects in their relative order.  Other listed callees precede callers within each group.  Pure helpers retain their self-recursion rules, while effectful helpers are acyclic.
 
@@ -201,7 +201,7 @@ The current allocator rounds a requested payload up to eight bytes, with a minim
 
 The byte budget includes the allocation header and requested capacity rather than the short read's logical result length.  Cleanup makes released blocks available for reuse.  A memory bound must account for retained capacities throughout branches and loop iterations.
 
-Each wrapper performs at most one host transfer call.  For the initial acyclic effect-call graph and bounded loops, termination follows from finite source control flow, terminating pure callees under their depth conditions, and return of each reached host call.  A blocked host call supplies no return-time guarantee.
+Each primitive read or write wrapper makes at most one WASI import call.  The host may use several operating-system calls to implement one import.  For the acyclic effect-call graph and bounded loops, termination follows from finite source control flow, terminating pure callees under their depth conditions, and return of each reached host call.  A blocked host call supplies no return-time guarantee.
 
 The internal ABI gives every effectful function a hidden depth word and checks it against the existing limit of 1,000.  Calls to effectful helpers and depth-aware pure bodies receive the next depth.  Host-facing wrappers initialize the depth once.  Effectful frames obey the same 32-position limit as guarded pure frames.  The typed resource-prefix condition accounts for the combined call path.  Pure functions whose code takes no depth retain their existing ABI.  Fixed runtime-wrapper frames and real engine stack limits remain part of host validation and execution tests.
 
@@ -244,7 +244,7 @@ The pure typed source and compiler include byte operations and the literal-pool 
 | 4 | Universal one-iovec read and write wrappers with scratch framing. | [Read execution](../Verified/Wasi/ReadFunction.lean) and [write execution](../Verified/Wasi/Write.lean). |
 | 5 | Universal safety and cost-aware compilation for commands, calls, branches, and bounded loops. | [Command safety](../Verified/Wasi/CommandCorrect.lean), [command cost correctness](../Verified/Wasi/CostCommandCorrect.lean), and [program correctness](../Verified/Wasi/Correct.lean). |
 | 6 | Native source correspondence, callable and `_start` execution, modeled initial store, and encoded-module proofs. | [Callable entry](../Verified/Wasi/NativeEntry.lean), [command entry](../Verified/Wasi/NativeCommand.lean), [initial store](../Verified/Wasi/ProgramInitial.lean), and [public frontend](../Verified/Wasi/ReflectCommand.lean). |
-| 7 | Standard Wasmtime embedding and maintained proof and execution gates. | [Native host](../tools/wasmtime-host.c) and [WASI driver](../tests/wasi/run.sh).  Full repository integration remains pending. |
+| 7 | Standard Wasmtime embedding and maintained proof and execution gates. | [Native host](../tools/wasmtime-host.c), [WASI driver](../tests/wasi/run.sh), [verified compiler driver](../tests/verified/run.sh), and [full repository checks](leanexe-manual.md#the-full-check). |
 
 The write theorem quantifies arbitrary borrowed bytes, initial worlds, and satisfying hosts.  It proves the reported prefix on success, the declared error relation, preserved input bytes and caller regions outside scratch, and returned UInt64 status/count.  It includes empty and zero-progress success.  The read theorem quantifies capacity and host replies, proves exact returned bytes and ownership, and proves cleanup on errno and zero-byte success.  Fixed echo executions supplement these theorems.
 
@@ -266,7 +266,7 @@ Scripted host models supply deterministic partial-transfer and failure cases.  N
 
 | Decision | Approved choice | Alternative and consequence |
 |---|---|---|
-| Zero-capacity read | One zero-length syscall.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
+| Zero-capacity read | One `fd_read` import call with a zero-length iovec.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
 | Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | A checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
 | Exit acceptance | Standard host linking with accepted-exit and terminal host-failure outcomes.  A guarantee of return or designated exit requires host acceptance of every reached exit request. | A custom callback accepting every UInt32 changes embedding policy and exit classification. |
 | Bytes | A single allocation root plus logical UInt64 length. | A length-prefixed, one-pointer object changes the existing byte host ABI and access proofs. |

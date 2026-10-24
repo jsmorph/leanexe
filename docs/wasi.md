@@ -10,11 +10,13 @@
 
 | Operation | Type | Behavior |
 |---|---|---|
-| `readSome capacity` | `UInt64 → Action ReadResult` | Makes one stdin read when `capacity < 2^32`, after any required allocation succeeds. |
-| `writeStdoutSome bytes` | `Bytes → Action WriteResult` | Makes one write to stdout. |
-| `writeStderrSome bytes` | `Bytes → Action WriteResult` | Makes one write to stderr. |
+| `readSome capacity` | `UInt64 → Action ReadResult` | Calls `fd_read` once when `capacity < 2^32`, after any required allocation succeeds. |
+| `writeStdoutSome bytes` | `Bytes → Action WriteResult` | Calls `fd_write` once for stdout. |
+| `writeStderrSome bytes` | `Bytes → Action WriteResult` | Calls `fd_write` once for stderr. |
 | `exit code` | `UInt64 → Action α` | Requests terminal exit with `code mod 2^32`. |
 | `loop count init test step` | `UInt64 → σ → (UInt64 → σ → Bool) → (UInt64 → σ → Action σ) → Action σ` | Runs a bounded sequence of effectful steps. |
+
+These call counts describe the compiled guest's WASI import invocations.  A host may use several operating-system calls for one import.  [The native interpreter](#native-interpreter) executes the same action API through its own host adapter.
 
 [The result definitions](../LeanExe/Wasi/Action.lean) give `ReadResult` the fields `errno : UInt64` and `bytes : Bytes`, and `WriteResult` the fields `errno : UInt64` and `count : UInt64`.  Zero errno means success.  A successful read may return fewer bytes than requested, and a successful write may report any count from zero through the offered length.  The operations perform no retries.  Stream hosts report EOF through empty success.  A zero-capacity read still invokes the host once, so its empty result supplies no EOF evidence.  The abstract host relation has no separate EOF state.
 
@@ -218,5 +220,7 @@ tests/wasi/run.sh
 ```
 
 [The WASI driver](../tests/wasi/run.sh) builds the universal proofs and audits their axioms.  The foundations-only mode also runs native interpreter, wrapper-code, and exit-model tests.  The full mode adds emitted-module validation and execution tests for packed bytes, literals, ownership and allocation counts, reflected callable and command modules, and the standard Wasmtime host.  [The public reflection driver](../tests/wasi/reflection-run.sh) tests generated modules against binary stream fixtures and separate control records.  [The host tests](../tests/wasi/host.sh) cover stream routing, accepted and rejected exits, low-32-bit conversion, and terminal lifecycle behavior.
+
+[The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and repository integration runs.
 
 The interface follows the pinned [Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md).

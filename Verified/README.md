@@ -546,8 +546,9 @@ whole-store theorems apply at the combined module's indices, and its
 `import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
 `LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
 The [native API](../LeanExe/Wasi/Action.lean) provides stdin reads, stdout and stderr writes,
-exit, and bounded loops.  Each primitive read or write makes at most one transfer syscall.  Source code handles errnos and
-short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
+exit, and bounded loops.  Each primitive read or write makes at most one WASI import call.
+The host may use several operating-system calls for one import.  Source code handles errnos
+and short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
 pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated declarations.
 
 | Proof stage | Declaration or predicate | Result |
@@ -580,6 +581,7 @@ Each accepted module receives `Spec.Validity.Module`, checked encoding and decod
 entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
 Real engine instantiation, host conformance, file emission, and host progress remain external
 assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and emitted modules.
+The [development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof and execution runs.
 
 ## WGSL kernels
 
