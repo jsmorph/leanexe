@@ -92,8 +92,8 @@ empty values, UInt64 lengths, and indexed reads.  An out-of-bounds read returns 
 index operations release an owned input at its last use.  `Expr.bytesBuild` allocates a packed
 result and stores each callback's low eight bits.  Its proof carries live captures, callback
 allocation bounds, and separation through the loop.  Zero count skips allocation and callbacks,
-and counts of at least `2^32` trap before allocating the result.  I/O work is tracked by the
-[WASI design](../docs/verified-wasi-design.md).
+and counts of at least `2^32` trap before allocating the result.  The [WASI compiler](../docs/wasi.md)
+uses these buffers for stdin, stdout, and stderr.
 
 `bytes![65, 0, 255]` reflects to `Expr.bytesLiteral`.  The macro accepts numerals from 0 through
 255.  Each evaluation of a nonempty literal copies its static source bytes into a fresh owned
@@ -540,6 +540,46 @@ and preservation of the target prefix.  The [relocation example](Examples/Reloca
 reuses two separately reflected libraries and adds a caller of both.  Its native theorems and
 whole-store theorems apply at the combined module's indices, and its
 [cases](Examples/RelocationCases.lean) reuse the scalar corpus after relocation.
+
+## WASI Preview 1
+
+`import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
+`LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
+The [native API](../LeanExe/Wasi/Action.lean) provides stdin reads, stdout and stderr writes,
+exit, and bounded loops.  Each operation makes at most one transfer syscall.  Source code handles errnos and
+short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
+pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated declarations.
+
+| Proof stage | Declaration or predicate | Result |
+|---|---|---|
+| [Pure transport](Wasi/PureTransportSpecs.lean) | `Calls` | Relocated pure code computes the same values and preserves the host world in a module with the three WASI imports. |
+| [Universal command proof](Wasi/CostCommandCorrect.lean) | `Command.cost_code_spec` | Every command constructor preserves ownership and caller regions outside scratch, with source execution or a permitted resource prefix.  Normal results retain their allocation charge, fit predicate, and heap-top bound. |
+| [Universal program proof](Wasi/Correct.lean) | `EffectProg.correctWith` | Pure correctness, effect calls, function entries, and command rules compose for the compiled effect program. |
+| [Native callable entry](Wasi/NativeEntry.lean) | `compiled_native_entry_run` | The actual exported wrapper executes the original Lean action after injecting depth zero and hidden table addresses. |
+| [Native command entry](Wasi/NativeCommand.lean) | `compiled_native_start_run` | `_start` executes the selected closed action, then requests its returned status as an exit. |
+| [Modeled initialization](Wasi/ProgramInitial.lean) | `compileWith_initialStore` | The assembled module establishes the allocator invariant, memory cap, borrowed tables, and static literal pool. |
+
+The [resource model](Wasi/ResourcePrefix.lean) charges allocation and checks pure-call fits along
+source execution prefixes, including a read's full requested capacity before its reply.  A
+generated `total` theorem requires `Heap.Within` and `Resource.CallPrefixBound`, together with
+`Host.NoTrapsAlong` for the native action.  The host condition concerns reached operations,
+including acceptance of reached exits.  Callable totality gives a return or accepted exit.
+[Command totality](Wasi/CommandTotal.lean) gives an accepted exit.  Without those premises,
+refinement retains terminal host failures and resource prefixes with their committed effects.
+
+The [host specification](Wasi/HostSpec.lean) reserves scratch `[0, 16)`.  Input read regions and
+retained caller regions must lie apart from it.  Returned bytes have owned allocation roots,
+and their logical lengths may be smaller than the retained capacity after a short read.
+The [source correspondence](../LeanExe/Wasi/RelatedExec.lean) and
+[prefix correspondence](../LeanExe/Wasi/RelatedPrefix.lean) preserve ordered events and worlds
+through native flattening.
+
+The [public command](Wasi/ReflectCommand.lean) supplies finite profile/readiness proofs and
+constructs a scalar module-typing proof through the [validity proof generator](../LeanExe/Encoding/ValidityProof.lean).
+Each accepted module receives `Spec.Validity.Module`, checked encoding and decoding, and native
+entry refinement in its `bytes` theorem.  These proofs use Talos and the specified host relations.
+Real engine instantiation, host conformance, file emission, and host progress remain external
+assumptions.  The [execution tests](../tests/wasi/run.sh) run Wasmtime, scripted hosts, and emitted modules.
 
 ## WGSL kernels
 

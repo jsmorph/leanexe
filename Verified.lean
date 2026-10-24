@@ -101,3 +101,8 @@ import Verified.Examples.Fields
 import Verified.Examples.Insert
 import Verified.Examples.Tables
 import Demos.Verified
+import Verified.Wasi
+import Verified.Examples.Literals
+import Verified.Examples.WasiDepth
+import Verified.Examples.WasiRetainTotal
+import Verified.Examples.WasiStdio

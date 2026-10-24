@@ -337,3 +337,4 @@ import LeanExe.WGSL.Semantics
 import LeanExe.WGSL.Syntax
 import LeanExe.WGSL.Translate
 import LeanExe.WGSL.TranslateStmt
+import LeanExe.Wasi

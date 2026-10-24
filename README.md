@@ -5,9 +5,9 @@ decoded bytes compute the Lean functions.  The repository contains two compilers
 for each program, and the other has a correctness theorem for every typed source program.
 
 Both compilers target Talos, a WebAssembly interpreter written in Lean, and share the runtime,
-encoder, decoder, and `Implements` family of correctness statements.  Their theorems cover return
-values, ownership of results, and preservation of the caller's heap under the premises described
-[below](#trusted-base).
+encoder, and decoder.  Their pure-function theorems use the `Implements` family of correctness
+statements and cover return values, ownership of results, and preservation of the caller's heap
+under the premises described [below](#trusted-base).
 
 ## The two compilers
 
@@ -41,13 +41,23 @@ types, and array updates in place.
 rules, generated declarations, and proof premises.  [The internals guide](Verified/README.md)
 describes the compiler and its universal proof.
 
+`verified_compile_wasi` compiles `LeanExe.Wasi.Action` definitions with stdin reads, stdout and
+stderr writes, bounded effectful loops, and exit.  The shared native API uses Lean `do` notation
+and UInt64 counts, lengths, and statuses.  Generated callable-entry and `_start` theorems relate
+exported execution to the native actions, including ordered effects and committed effects before
+errors or traps.  Total-execution theorems require a typed resource-prefix bound and assumptions
+about reached host operations.  [The WASI manual](docs/wasi.md) defines the API, export forms,
+proof premises, native interpreter, and standard Wasmtime host.  Implementation and acceptance
+testing remain in progress.
+
 ### Comparison
 
 | Topic | LeanExe compiler | Verified compiler |
 |---|---|---|
 | Correctness proof | A theorem per program, from rule lemmas and hints | `Prog.correctStaticWith` for programs with tables and wrappers, and `Prog.correctStatic` without tables.  `Prog.correctWith` and `Prog.correct` specialize to programs with no nonempty byte literals. |
-| Command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
-| Total execution | `ImplementsA false` with a proved memory budget | `p.f.trapFree` under generated allocation and depth conditions |
+| Pure compilation command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
+| WASI Preview 1 I/O | Application hosts perform I/O around compiled calls. | `verified_compile_wasi` compiles stdin reads, stdout and stderr writes, and exit, with native source-to-export refinement proofs. |
+| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions. |
 | `Float32` and WGSL kernels | Binary32 arithmetic and proved WGSL kernels | Binary32 arithmetic and a proved WGSL path for supported word, Boolean, and binary32 array builds |
 | Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
@@ -80,6 +90,14 @@ call stays below depth 1,000.  Wrappers whose callees take no call depth also
 receive that theorem.  The LeanExe compiler has total-execution proofs with memory budgets for the
 Euler solvers, drone planner, and increment example.
 
+WASI entry theorems additionally assume a satisfying host, valid byte and static-pool
+representations, and separation from the guest scratch region.  They match normal returns,
+accepted exits, and host traps to source executions with the same world and ordered trace.
+Permitted guest resource traps match source prefixes and residual actions.  WASI total execution
+requires allocation room, the typed prefix budget, and `NoTrapsAlong` for the native action.
+The modeled initial-store theorem establishes allocator and static-data invariants.  Real engine
+instantiation, OS streams, and the native stream adapter remain outside the execution proofs.
+
 Floating-point theorems use WebAssembly's deterministic profile.  The Wasmtime host enables NaN
 canonicalization to match it.  WGSL theorems prove kernel results and race freedom in the shared
 device model, which uses strict binary32 arithmetic.  The numerical file theorems connect particular
@@ -95,7 +113,8 @@ states these proof limits.
 | [The LeanExe compiler manual](docs/leanexe-manual.md) | Dialect, compilation, proof rules, tests, examples, and development practice. |
 | [The verified compiler manual](docs/verified-manual.md) | The verified compiler's dialect, the declarations that `verified_compile` adds, bounds, tests, and examples. |
 | [The verified compiler's internals](Verified/README.md) | Its code scheme, the structure of its proof, and the reflector. |
-| [The verified compiler's WASI proposal](docs/verified-wasi-design.md) | Proposed stdin reads, stdout and stderr writes, and exit, with API, host assumptions, proof obligations, and implementation order. |
+| [The WASI manual](docs/wasi.md) | Native action and byte APIs, `verified_compile_wasi`, callable and command exports, execution proofs, host policies, and tests. |
+| [The WASI design](docs/verified-wasi-design.md) | Reviewed architecture, pinned sources, host assumptions, proof boundaries, acceptance work, and design decisions. |
 | [The design document](docs/design.md) | Architecture, decisions, proof scope, tests, and open work. |
 | [The development journal](devnotes.md) | The record of the work. |
 | [The algorithm library](Library/README.md) | Native algorithms, compilation modules, mathematical proofs, and imports. |
@@ -156,6 +175,9 @@ tests/verified/run.sh
 
 [The full-check procedure](docs/leanexe-manual.md#the-full-check) adds the other execution, decoder,
 allocation, and GPU tests.  The test drivers invoke the runner themselves.
+`tests/wasi/run.sh` checks the WASI proofs, reflected modules, byte ownership, and native and
+WebAssembly I/O.  Its `--foundations-only` form runs the proof and semantic foundations without
+the external-engine tests.
 
 The [module driver](tests/modules/run.sh) compares every module of the LeanExe compiler except
 `gpt`, `gpt32`, and `prng` with native Lean on the cases in each example's `Cases.lean`, which

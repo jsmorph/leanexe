@@ -138,6 +138,11 @@ def materializeProgram (base : Name) (program : ProgramReflection)
   addDefinition (base ++ `program)
     (mkApp2 (mkConst ``EffectProg) (pureSignatures program.pure) signatures) program.prog
   addDefinition (base ++ `funs) (mkApp (mkConst ``EffectFuns) signatures) program.funs
+  for reflected in program.out do
+    let (_, index) ← findFunction program reflected.name
+    let callee ← effectVarAt signatures index
+    addDefinition (base ++ Name.mkSimple reflected.name.getString! ++ `callee)
+      (← inferType callee) callee
   addDefinition (base ++ `literalPool) (mkConst ``Bytes.LiteralPool)
     (mkConst (materializedPure.base ++ `literalPool))
   let entryType := mkApp (mkConst ``EffectEntry) signatures
