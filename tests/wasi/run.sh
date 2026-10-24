@@ -22,11 +22,14 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.ReadFunction Verified.Wasi.CallWrappers Verified.Wasi.WriteHelper \
   Verified.Wasi.ScratchContext Verified.Wasi.AfterScratch \
   Verified.Wasi.ReadCommand Verified.Wasi.WriteCommand \
-  Verified.Wasi.Exit LeanExe.Wasi.Prefix \
+  Verified.Wasi.Exit Verified.Wasi.ExitCommand Verified.Wasi.OwnedScratch \
+  Verified.Wasi.FunctionEntry Verified.Wasi.FunctionRun LeanExe.Wasi.Prefix \
   LeanExe.Wasi.Interpreter LeanExe.Wasi.RelatedExec LeanExe.Wasi.RelatedPrefix \
   Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions \
   Verified.Wasi.ReturnCommand Verified.Wasi.CommandBind Verified.Wasi.CommandValue \
-  Verified.Wasi.LoopControl Verified.Wasi.ReflectCases
+  Verified.Wasi.LoopControl Verified.Wasi.LoopSemantics Verified.Wasi.ReflectCases \
+  Verified.Wasi.CallOwnership Verified.Wasi.CallFrame Verified.Wasi.CallHelper \
+  Verified.Wasi.ResultRelease
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
   Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial Verified.Wasi.PurePrefix
@@ -94,3 +97,4 @@ done <"$root/tests/wasi/byte-traps.tsv"
 printf 'Byte trap tests passed: %s cases\n' "$count"
 tests/wasi/codegen-run.sh
 tests/wasi/reflection-run.sh
+tests/wasi/script-host-run.sh

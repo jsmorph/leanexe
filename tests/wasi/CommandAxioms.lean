@@ -2,6 +2,11 @@ import Verified.Wasi.ReturnCommand
 import Verified.Wasi.CommandBind
 import Verified.Wasi.CommandValue
 import Verified.Wasi.LoopControl
+import Verified.Wasi.LoopSemantics
+import Verified.Wasi.CallOwnership
+import Verified.Wasi.CallFrame
+import Verified.Wasi.CallHelper
+import Verified.Wasi.ResultRelease
 
 open Lean Elab Command in
 elab "check_command_axioms" : command => do
@@ -39,7 +44,34 @@ elab "check_command_axioms" : command => do
     ``Verified.Wasi.wp_sequence_value,
     ``Verified.Wasi.loop_increment_toNat,
     ``Verified.Wasi.loop_rank_decreases,
-    ``Verified.Wasi.wp_loopControl]
+    ``Verified.Wasi.wp_loopControl,
+    ``Verified.Wasi.loop_residual_done,
+    ``Verified.Wasi.loop_remaining_succ,
+    ``Verified.Wasi.loop_successor_le,
+    ``Verified.Wasi.loop_residual_unfold,
+    ``Verified.Wasi.LoopProgress.initial,
+    ``Verified.Wasi.LoopProgress.after_return,
+    ``Verified.Wasi.LoopProgress.advance,
+    ``Verified.Wasi.LoopProgress.resource,
+    ``Verified.Wasi.LoopProgress.complete,
+    ``Verified.Wasi.LoopProgress.done,
+    ``Verified.Wasi.LoopProgress.stopped,
+    ``Verified.Wasi.LoopProgress.exited,
+    ``Verified.Wasi.LoopProgress.trapped,
+    ``Verified.arguments_moved,
+    ``Verified.Wasi.EffectSig.callMoves_moved,
+    ``Verified.Wasi.relocate_argsCode,
+    ``Verified.Wasi.wp_arguments,
+    ``Verified.Wasi.EffectSig.placeArgs_facts,
+    ``Verified.Wasi.EffectSig.kept_owned,
+    ``Verified.Wasi.EffectSig.live_kept,
+    ``Verified.Wasi.ArgumentsAfter.ofValues,
+    ``Verified.Wasi.ArgumentsAfter.pool_input,
+    ``Verified.Wasi.ArgumentsAfter.scratch,
+    ``Verified.Wasi.ArgumentsAfter.call,
+    ``Verified.Wasi.wp_call_refinement,
+    ``Verified.Wasi.wp_effect_helper,
+    ``Verified.Wasi.After.release]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do

@@ -11,6 +11,10 @@ import Verified.Wasi.AfterScratch
 import Verified.Wasi.ReadCommand
 import Verified.Wasi.WriteCommand
 import Verified.Wasi.Exit
+import Verified.Wasi.ExitCommand
+import Verified.Wasi.OwnedScratch
+import Verified.Wasi.FunctionEntry
+import Verified.Wasi.FunctionRun
 
 open Lean Elab Command in
 elab "check_wrapper_axioms" : command => do
@@ -91,7 +95,30 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.wp_release_context,
     ``Verified.Wasi.write_after_release,
     ``Verified.Wasi.wp_command_write,
+    ``Verified.Wasi.block_scratch,
+    ``Verified.Wasi.node_blocks_scratch,
+    ``Verified.Wasi.slots_blocks_scratch,
+    ``Verified.Wasi.owned_scratch,
+    ``Verified.Wasi.ResultTy.Rep.scratch,
     ``Verified.Wasi.wp_exit,
+    ``Verified.Wasi.wp_command_exit,
+    ``Verified.Wasi.exec_pure_shape,
+    ``Verified.Wasi.params_holds,
+    ``Verified.Wasi.params_scratch,
+    ``Verified.Wasi.params_get,
+    ``Verified.Wasi.copied_params_hold,
+    ``Verified.Wasi.wp_guard_entry,
+    ``Verified.Wasi.wp_function_parameters,
+    ``Verified.Wasi.wp_parameter_cleanup,
+    ``Verified.Wasi.wp_function_entry,
+    ``Verified.Wasi.ResultTy.Rep.length,
+    ``Verified.Wasi.ResultTy.types_length,
+    ``Verified.Wasi.keep_params,
+    ``Verified.Wasi.function_after_step,
+    ``Verified.Wasi.function_result_after,
+    ``Verified.Wasi.function_post_body,
+    ``Verified.Wasi.function_body_wp,
+    ``Verified.Wasi.effectFunction_run,
     ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
