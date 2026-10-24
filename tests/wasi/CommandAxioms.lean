@@ -11,6 +11,7 @@ import Verified.Wasi.CommandLeaves
 import Verified.Wasi.CommandCallSpec
 import Verified.Wasi.CommandBindSpec
 import Verified.Wasi.CommandConditionalSpec
+import Verified.Wasi.CommandLoopSpec
 
 open Lean Elab Command in
 elab "check_command_axioms" : command => do
@@ -85,7 +86,39 @@ elab "check_command_axioms" : command => do
     ``Verified.Wasi.wp_effect_depth,
     ``Verified.Wasi.command_call_spec,
     ``Verified.Wasi.command_bind_unit_spec,
-    ``Verified.Wasi.command_ite_spec]
+    ``Verified.Wasi.command_ite_spec,
+    ``Verified.Wasi.loopCaptured_getD,
+    ``Verified.Holds.loopBorrow,
+    ``Verified.Holds.Apart.loopBorrow,
+    ``Verified.Holds.ApartFrom.loopBorrow,
+    ``Verified.Wasi.loopCaptured_safe,
+    ``Verified.Wasi.After.reframe,
+    ``Verified.Wasi.After.loopAdvance,
+    ``Verified.Wasi.After.loopTest,
+    ``Verified.Wasi.loop_context_keep,
+    ``Verified.Wasi.loop_context_no_dying,
+    ``Verified.Wasi.loop_body_step,
+    ``Verified.Wasi.CommandResult.loop_body_trap,
+    ``Verified.Wasi.wp_loopPrepare,
+    ``Verified.Wasi.loopCaptured_cons,
+    ``Verified.Wasi.loopCaptured_idempotent,
+    ``Verified.Wasi.loop_index_hold,
+    ``Verified.Wasi.loop_context_holds,
+    ``Verified.Wasi.loop_context_scratch,
+    ``Verified.Wasi.loop_context_safe,
+    ``Verified.Wasi.loop_test_holds,
+    ``Verified.Wasi.loop_test_scratch,
+    ``Verified.Wasi.loop_test_safe,
+    ``Verified.Wasi.loop_test_step,
+    ``Verified.Wasi.wp_loopRelease,
+    ``Verified.Wasi.wp_loopTest,
+    ``Verified.Wasi.wp_loopBody,
+    ``Verified.Wasi.wp_loopFinish,
+    ``Verified.Wasi.loop_held_frame,
+    ``Verified.Wasi.LoopFrame.retest,
+    ``Verified.Wasi.LoopFrame.advance,
+    ``Verified.Wasi.wp_loopPrepared,
+    ``Verified.Wasi.command_loop_spec]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do
