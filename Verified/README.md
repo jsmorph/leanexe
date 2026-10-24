@@ -511,7 +511,8 @@ conditions apply in the larger module.
 Composition of programs with literals uses one pool for both function lists.  The pool must cover the
 original program and its extension.  [Append coverage](ProgramLiterals.lean),
 `Prog.covered_append`, proves that covering the appended program is equivalent to covering both
-parts.
+parts.  `Prog.calls_prefix` and `Prog.calls_extension` take coverage proofs explicitly.  For a
+literal-free program, `prog.literals = []` reduces coverage to `List.nil_subset`.
 
 The [library example](Examples/CompositionBase.lean) compiles word addition and float scaling.
 The [larger module](Examples/Composition.lean) reuses that program, adds typed callers, and

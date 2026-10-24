@@ -35241,7 +35241,10 @@ Compatibility references now have recorded source provenance.  The clean minideb
 - [x] Public compilation, concrete scalar module validity, and generated-byte refinements.
 - [x] Concrete retained-loop prefix budget and total application, plus eight native depth/lifecycle/resource cases.
 - [x] Complete maintained WASI gate after the acceptance-fixture and native-binder corrections: `gate-76.log` passed.
-- [ ] Default and full library builds, both pure byte comparisons, execution/allocation, decoder, LTG, and numerical checks.
+- [x] Default build, original-compiler byte and execution checks, chunked CLOB, CPU application and allocation tests, decoder, and LTG.
+- [ ] Full `Verified Library` build after the shared-proof and composition-example corrections.
+- [ ] Maintained WASI gate after the shared-proof change.
+- [ ] Verified-compiler byte comparison, execution and allocation cases, numerical file proofs, and accuracy checks.
 - [ ] WGSL and complete binary32 GPT checks after the other gates.
 - [ ] Final documentation review, commit, and push.
 
@@ -35272,3 +35275,5 @@ The user granted reusable permission to cancel and restart our own test jobs aft
 Review of the preserved log found four errors in `CompositionPure`, `Composition`, and `Relocation` that the earlier monitoring missed.  The generic composition theorems now take literal coverage, while those examples still try to prove that premise with `decide +kernel`.  Coverage has no decidability instance.  The examples need the constructive coverage argument already used by the pure correctness theorem, derived from their kernel-checked absence of nonempty literals.  Their correction and the full updated build remain required.
 
 The four corrected composition proofs passed the focused workstation build in `composition-focused-92-local.log`, with 3,728 jobs.  Composition built in 2.5 seconds, pure composition in 2.1, and relocation in 11.  All sixteen audited declarations use only the permitted axioms, and the log contains no error or `sorry` dependency.  Each correction proves the finite `literals = []` equality by kernel evaluation, then applies `List.nil_subset` through `Prog.Covered`.  This follows the existing correctness proof without adding a decidability instance or changing a theorem statement.  The test built seven missing project imports and one pinned Batteries library-note module from the independent local source copy.  Build 91 continues on its frozen source.  The corrected examples will join the remote gate after that run ends.
+
+Import review explains why the unchanged mathematical proofs rebuild after the reflector edit.  `TgammaAccRangeC` imports `TgammaFactsBase`, which imports `Tgamma.Compiled` and the reflector.  Lgamma's range checks reach the reflector through both `Lgamma.Compiled` and `TgammaFactsBase`.  Their additional `GammaPi`, `TrigPi`, and `Trig.Compiled` path means that changing only the two fact-base imports would leave a compiler dependency.  The root aggregate has another path through `RootKern`, `RootSpec`, `RootPath`, `RootEval`, `TgammaExpr`, and `TgammaDD`.  Future separation of native mathematics from compiler proofs would need to account for all these paths.  Build 91 has reproduced the four known composition errors on its frozen source and continues checking the other modules before the corrected full gate.
