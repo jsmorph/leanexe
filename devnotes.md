@@ -35244,7 +35244,7 @@ Compatibility references now have recorded source provenance.  The clean library
 - [x] Full `Verified Library` build after the shared-proof and composition-example corrections.
 - [x] Maintained WASI gate after the shared-proof change.
 - [x] Verified-compiler byte comparison against the 88 saved modules.
-- [ ] Verified execution and allocation cases, numerical file proofs, and accuracy checks.
+- [x] Verified execution and allocation cases, numerical file proofs, and accuracy checks.
 - [ ] WGSL and complete binary32 GPT checks after the other gates.
 - [ ] Final documentation review, commit, and push.
 
@@ -35325,3 +35325,5 @@ Within the full verified gate, GPT passed 2,733 comparisons, all eleven allocati
 The native oracle completed with 30,287 records in a 34,782,616-byte case file.  Its 12,270 reads and 55 insertions past the end matched the expected diagnostics.  All 30,287 Wasm comparisons passed with zero failures.  The native accuracy programs are now running.  The gamma check reports 74,373 results and a separate 7,002-result accurate-path group, both with zero results unequal to their references.  The first group has no path label in the log.
 
 Host monitoring in the full verified gate had a 170.950-second gap from 20:33:23.434 to 20:36:14.384 UTC.  Partial captures at 20:33:43 and 20:35:59 retained scope and lineage data, with the latter host read returning status 255.  Saved global full-memory and full-I/O stall counters increased by 21 and 67,614 microseconds across the gap.  These totals cannot recover peaks or attribute stalls to a process.  Observer batch completion and read-handler investigation caused the gap.  The host observer now runs until the known driver exits, without a sample-count boundary, and records read failures as partial observations.  Inspection of saved records proceeds independently of the active observer.
+
+The full verified gate passed with status zero in `verified-full-115.log`.  All 30,287 common cases, 2,733 GPT comparisons, 3,096 Euler comparisons, and 226 shapes comparisons passed with zero failures.  All eleven allocation sessions and the cache-growth bound passed.  The 22 numerical file modules passed all 44 file theorems with the permitted axioms, and all 24 native accuracy programs completed successfully.  The build host remained clean at `511b95be`, with the same Lean, C, and driver sources as the pushed branch.  The GPU worker has been released for its final eight-target preparation, portable artifact staging, and the four maintained local machine drivers.  GPU checks remain last in the integration order.
