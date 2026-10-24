@@ -205,15 +205,15 @@ theorem effectFunction_run {World : Type} {host : Host World} {source target : M
     {function : EffectFunc pureSigs effectSigs} {pool : Bytes.LiteralPool} {index typeIdx : Nat}
     {targetHost : HostEnv (Observed World)} {initial : Store (Observed World)}
     {heap : Heap} {depth : UInt64} {params : List Value} {args : Env function.params}
-    {action : Action function.result.denote}
+    {action : Action function.result.denote} {aborts : Bool}
     (hImports : target.imports = ABI.imports)
     (hFunction : target.funcs[index]? = some (function.function source typeIdx pool))
     (length : params.length = widthSum function.params)
     (body : wp target (function.function source typeIdx pool).body
-      (FunctionPost host function.sig action args params heap initial true) initial
+      (FunctionPost host function.sig action args params heap initial aborts) initial
       ((function.function source typeIdx pool).toLocals (.i64 depth :: params)) targetHost) :
     ∃ bound, ∀ fuel ≥ bound,
-      FunctionResult host function.sig action args params heap initial true
+      FunctionResult host function.sig action args params heap initial aborts
         (run fuel target (3 + index) initial (.i64 depth :: params).reverse targetHost) := by
   unfold wp at body
   obtain ⟨bound, hBound⟩ := body

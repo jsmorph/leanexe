@@ -7,6 +7,10 @@ import Verified.Wasi.CallOwnership
 import Verified.Wasi.CallFrame
 import Verified.Wasi.CallHelper
 import Verified.Wasi.ResultRelease
+import Verified.Wasi.CommandLeaves
+import Verified.Wasi.CommandCallSpec
+import Verified.Wasi.CommandBindSpec
+import Verified.Wasi.CommandConditionalSpec
 
 open Lean Elab Command in
 elab "check_command_axioms" : command => do
@@ -71,7 +75,17 @@ elab "check_command_axioms" : command => do
     ``Verified.Wasi.ArgumentsAfter.call,
     ``Verified.Wasi.wp_call_refinement,
     ``Verified.Wasi.wp_effect_helper,
-    ``Verified.Wasi.After.release]
+    ``Verified.Wasi.After.release,
+    ``Verified.Wasi.command_unit_spec,
+    ``Verified.Wasi.command_ret_spec,
+    ``Verified.Wasi.command_read_spec,
+    ``Verified.Wasi.command_write_spec,
+    ``Verified.Wasi.command_exit_spec,
+    ``Verified.Wasi.wp_call_after_arguments,
+    ``Verified.Wasi.wp_effect_depth,
+    ``Verified.Wasi.command_call_spec,
+    ``Verified.Wasi.command_bind_unit_spec,
+    ``Verified.Wasi.command_ite_spec]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
       unless permitted.contains axiomName do

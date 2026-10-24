@@ -15,6 +15,14 @@ import Verified.Wasi.ExitCommand
 import Verified.Wasi.OwnedScratch
 import Verified.Wasi.FunctionEntry
 import Verified.Wasi.FunctionRun
+import Verified.Wasi.CommandIte
+import Verified.Wasi.CommandConditional
+import Verified.Wasi.FunctionEntryBudget
+import Verified.Wasi.FunctionRunBudget
+import Verified.Wasi.CommandResultStore
+import Verified.Wasi.CostConditionalSpec
+import Verified.Wasi.FunctionDispatcher
+import Verified.Wasi.CostFunctionLift
 
 open Lean Elab Command in
 elab "check_wrapper_axioms" : command => do
@@ -119,6 +127,23 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.function_post_body,
     ``Verified.Wasi.function_body_wp,
     ``Verified.Wasi.effectFunction_run,
+    ``Verified.Wasi.ResultTy.Rep.typed,
+    ``Verified.Wasi.wp_ite_bool,
+    ``Verified.Wasi.wp_store_command_result,
+    ``Verified.Wasi.wp_ite_branch,
+    ``Verified.Wasi.wp_command_ite,
+    ``Verified.Wasi.wp_parameter_cleanup_framed,
+    ``Verified.Wasi.wp_function_entry_framed,
+    ``Verified.Wasi.function_body_wp_with_aborts,
+    ``Verified.Wasi.wp_store_owned_result,
+    ``Verified.Wasi.Resource.PureContext.returnBoolCost_nil,
+    ``Verified.Wasi.Resource.ResourceExec.ite_selected,
+    ``Verified.Wasi.Resource.PrefixBound.ite_selected,
+    ``Verified.Wasi.Resource.PrefixBound.ite_resources,
+    ``Verified.Wasi.cost_command_ite_spec,
+    ``Verified.Wasi.effectFunction_run_post,
+    ``Verified.Wasi.CostFunctionResult.there,
+    ``Verified.Wasi.CostEffectSpec.there,
     ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do
     for axiomName in ← collectAxioms theoremName do
