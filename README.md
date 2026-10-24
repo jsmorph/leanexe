@@ -164,7 +164,10 @@ as [the repository instructions](AGENTS.md) require.  A focused verified-compile
 The default build covers `LeanExe`, `Examples`, and `Demos`.  The `Verified` aggregate also imports
 `Demos.Verified`, which checks the applications with the verified compiler.  The complete `Library` build includes
 the numerical proofs and can take several hours.  Its lgamma root-range proofs use a 10 GiB memory
-high limit and a 12 GiB maximum:
+high limit and a 12 GiB maximum.
+
+For a cold numerical proof cache on minideb1, the [separate one-worker builds](docs/leanexe-manual.md#memory-heavy-numerical-proofs)
+precede the three-worker aggregate.  Each listed target runs in its own invocation.
 
 ```sh
 export LEANRUN_CPUS=auto

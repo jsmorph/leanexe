@@ -585,7 +585,7 @@ uv run tests/modules/chunks.py
 3. [`tests/modules/run.sh`](../tests/modules/run.sh), with the module cases, the release counts, and the depth guard, and `uv run tests/modules/chunks.py`.
 4. [`tests/drone/run.sh`](../tests/drone/run.sh), and [`tests/gpt/run.sh`](../tests/gpt/run.sh) and [`tests/gpt/sessions.sh`](../tests/gpt/sessions.sh) when the GPT module changed.
 5. The LTG check.
-6. `tools/leanrun --cpus auto --threads 3 --memory-high 10G --timeout 12h lake build Verified Library`, with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh), since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
+6. On minideb1, a cold numerical proof cache first needs the [separate one-worker builds](#memory-heavy-numerical-proofs).  Then `tools/leanrun --cpus auto --threads 3 --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and [`tests/verified/run.sh`](../tests/verified/run.sh) must pass, since the verified compiler and its examples import the pipeline, the runtime, the encoding, ProofKit, the dialect's combinators, the shared library algorithms, and application demos.
 7. [`tests/wgsl/run.sh`](../tests/wgsl/run.sh), `tests/wgsl/run.sh --verified`, and `tests/wgsl/run.sh --verified-gpt32` on both Vulkan drivers.  `tests/gpt32/native.sh --verified` also compares complete binary32 generation with native Lean on Wasm and both drivers.
 
 Changes to packed bytes or WASI also require [the maintained WASI driver](../tests/wasi/run.sh) after the build and before the GPU checks.  It checks the byte representations, universal and generated proofs, native actions, emitted modules, and execution hosts, as [the WASI manual](wasi.md#tests) describes.
@@ -647,9 +647,33 @@ After a target reaches its timeout without a diagnostic, [the repository instruc
 
 The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
 
-Some gamma and lgamma range checks need several gibibytes each.  On a host whose memory budget cannot hold them together, individual one-target builds with `--threads 1` precede the parallel aggregate.  The aggregate reuses those accepted results.  [The journal](../devnotes.md#2026-10-24-integration-checks) records the measured modules and resource profiles.  Swap traffic, memory and I/O stalls, and user versus system CPU time distinguish useful parallel work from thrashing.
-
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
+
+### Memory-heavy numerical proofs
+
+Some gamma and lgamma range checks need several gibibytes each.  On minideb1, a cold numerical proof cache uses the following one-worker builds before the three-worker aggregate.  Each target has a separate invocation, which bounds the working set to one heavy proof and its imports.  The aggregate reuses the accepted results.
+
+```sh
+tools/leanrun --cpus auto --threads 1 --memory-high 10G --timeout 12h lake build MODULE
+```
+
+`MODULE` takes each of these values, in order:
+
+1. `Library.Numerics.Float64.Tgamma.TgammaAccRangeC`
+2. `Library.Numerics.Float64.Lgamma.LgammaRootF`
+3. `Library.Numerics.Float64.Lgamma.LgammaRootE`
+4. `Library.Numerics.Float64.Lgamma.LgammaRootD2`
+5. `Library.Numerics.Float64.Lgamma.LgammaRootD1`
+6. `Library.Numerics.Float64.Lgamma.LgammaRootD0`
+7. `Library.Numerics.Float64.Lgamma.LgammaRootC`
+8. `Library.Numerics.Float64.Lgamma.LgammaRootB2`
+9. `Library.Numerics.Float64.Lgamma.LgammaRootB1`
+10. `Library.Numerics.Float64.Lgamma.LgammaRootB0`
+11. `Library.Numerics.Float64.Lgamma.LgammaRootA2`
+12. `Library.Numerics.Float64.Lgamma.LgammaRootA1`
+13. `Library.Numerics.Float64.Lgamma.LgammaRootA0`
+
+The 12-hour limit accommodates cold imports.  The measured leaf checks used 30-minute limits after their common imports had been built.  [The journal](../devnotes.md#2026-10-24-integration-checks) records their results and resource profiles.  Swap traffic, memory and I/O stalls, and user versus system CPU time distinguish useful parallel work from thrashing.
 
 ### Repository rules and iterative development
 
