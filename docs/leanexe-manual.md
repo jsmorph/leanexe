@@ -628,7 +628,7 @@ Compiler fixtures use `Examples/<Name>/`, reusable algorithms use the families i
 
 ### `tools/leanrun` and the single Lean slot
 
-Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS=1`, and takes a machine-wide lock, so the machine runs one Lean process at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
+Every `lean` and `lake` command runs through [`tools/leanrun`](../tools/leanrun), as [the repository instructions](../AGENTS.md) require.  The runner limits memory and CPU through a systemd user scope, sets `LEAN_NUM_THREADS`, and takes a machine-wide lock, so the machine runs one runner command at a time and other sessions wait for the slot.  `--timeout` sets the command's limit and `--lock-timeout` the seconds to wait for the lock, 900 by default.
 
 `--log FILE` writes standard output and standard error to a file and preserves the command’s exit status.  Passing the path as an argument keeps `tools/leanrun` as the first command token, so saved runner permissions cover later targets and logs.
 
@@ -639,7 +639,7 @@ tools/leanrun --timeout 30m --lock-timeout 1200 lake env lean FILE
 
 After a target reaches its timeout without a diagnostic, [the repository instructions](../AGENTS.md) require dividing it, or adding a reusable lemma that reduces its elaboration, before running it again.  `LEANRUN_LOCAL=1` runs without the cgroup limits and only with the user's explicit authorization.  [`tools/leanrun-dev`](../tools/leanrun-dev) runs Lean on the remote development machine (`sync`, `check`, or a command).
 
-The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB and the CPU quota stays 100%.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
+The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  `--threads N`, 1 by default, sets `LEAN_NUM_THREADS=N` and a CPU quota of `N` CPUs.  Lake takes its number of parallel build jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks, so parallel jobs share the scope's memory limit.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
 
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
 

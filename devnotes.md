@@ -35299,3 +35299,14 @@ The LeanExe compiler accepts exactly two constructors with one record constructo
 - [ ] Generalize the copy loop and its proof.
 - [ ] Generalize the reflector.
 - [ ] Add the host format, the example, and its cases, and update the manual.
+
+## 2026-10-24: Lean threads on the build machines
+
+`tools/leanrun` ran every job with `LEAN_NUM_THREADS=1` and a CPU quota of one CPU, so the build host's 8 CPUs sat mostly idle for days, which the user objected to.  The runner now takes `--threads N`, or `LEANRUN_THREADS`, which sets `LEAN_NUM_THREADS=N` and a CPU quota of `N` CPUs, with 1 as the default.  Lake has no `-j` option and takes its number of parallel jobs from `LEAN_NUM_THREADS`, and each Lean process it starts uses the same value for its own tasks.
+
+The first restart of the full build used 8 threads and a 9 GiB memory limit.  The remaining modules were numerical proofs of 1 to 3 GB each, and eight at once held the scope at its memory limit with its 1 GiB of swap full: the kernel stalled its tasks about 87% of the time, most of its CPU time was system time, and the job counter stopped at 10,246 of 10,404.  With 3 threads the stall share is under 1%, about 7 GB of the machine's 11 GB stays available, and the counter advances.  The thread count for a build of the numerical library is bounded by memory, while smaller modules may take more threads.  Three threads also stalled, at 46%, when three lgamma piece modules of 3.3 to 4.3 GB each built at once in the `hashing-main` build, so the rest of that build runs with 2 threads.
+
+The user granted standing permission to stop and restart my own Lean, Lake, runner, and driver processes and the build host when a job needs different settings, with each stop reported afterwards.
+
+- [x] Add `--threads` to `tools/leanrun`, with the instructions and the manual.
+- [x] Commit the runner change separately from the port.

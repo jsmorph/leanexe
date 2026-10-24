@@ -2,8 +2,9 @@
 
 ## Lean Process Limits
 
-- Run every `lean`, `lake`, and Lean compiler command through [`tools/leanrun`](tools/leanrun).  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`.
-- The runner acquires the same machine-wide lock as `../vq/tools/leanrun` and sets `LEAN_NUM_THREADS=1`.  Never bypass the runner or run Lean or Lake processes concurrently on the same host.  The user has authorized concurrent runs on separate hosts, each through its own resource-limited runner.
+- Run every `lean`, `lake`, and Lean compiler command through [`tools/leanrun`](tools/leanrun).  In standard mode the runner enforces `MemoryHigh=4G`, `MemoryMax=6G`, `MemorySwapMax=1G`, `CPUQuota=100%`, `nice -n 10`, and `ionice -c 3`, and it sets `LEAN_NUM_THREADS=1`.
+- The runner acquires the same machine-wide lock as `../vq/tools/leanrun`.  Never bypass the runner.  Lean and Lake processes run concurrently on one host only inside one runner command.  The user has authorized concurrent runs on separate hosts, each through its own resource-limited runner.
+- `--threads N` sets `LEAN_NUM_THREADS=N` and `CPUQuota` to `N` CPUs.  Lake takes its number of parallel jobs from `LEAN_NUM_THREADS`, and each Lean process uses it for its own tasks.  The user has authorized more than one thread.
 - `--memory-high SIZE` selects a memory high limit in whole gibibytes, such as `10G`, and a maximum 2 GiB above it.  The default limits remain 4 GiB high and 6 GiB maximum.  The full numerical proof builds recorded in the journal use `10G` for the lgamma root-range proofs.
 - Add a reasonable `timeout` to diagnostic commands whose runtime is not intrinsically bounded.
 - After a target reaches its timeout without a diagnostic, do not run the unchanged target again.  First divide the proof or module, or add a verified reusable lemma that reduces the elaboration boundary.
