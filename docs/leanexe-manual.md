@@ -645,6 +645,8 @@ After a target reaches its timeout without a diagnostic, [the repository instruc
 
 The default memory limits are 4 GiB high and 6 GiB maximum.  `--memory-high SIZE`, in whole gibibytes such as `10G`, selects the high limit and a maximum 2 GiB above it.  The swap limit stays 1 GiB.  The full numerical proof builds recorded in the journal use `--memory-high 10G` for the lgamma root-range proofs.
 
+Some gamma and lgamma range checks need several gibibytes each.  On a host whose memory budget cannot hold them together, individual one-target builds with `--threads 1` precede the parallel aggregate.  The aggregate reuses those accepted results.  [The journal](../devnotes.md#2026-10-24-integration-checks) records the measured modules and resource profiles.  Swap traffic, memory and I/O stalls, and user versus system CPU time distinguish useful parallel work from thrashing.
+
 `lake env lean FILE` loads the existing build of each import without rebuilding it, so a check of a file whose imports changed must follow `lake build` of those imports.  `lake build` of a target rebuilds its imports from source.  [The journal](../devnotes.md) (D1) records a case in which stale builds of other files with the same module names made such a check use the wrong theorems.
 
 ### Repository rules and iterative development
