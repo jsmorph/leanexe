@@ -35247,3 +35247,55 @@ Acceptance requires every existing module to emit identical bytes and every exis
 ## 2026-10-23: Packed bytes
 
 `byteOf`, `byteAt`, `bytes`, and the lemmas `bytes_size`, `bytes_get!`, and `byteAt_eq` moved from `Library/Hashing/Words` to `Library/Bytes/Packed.lean`, in the namespace `Library.Bytes`, so that the regex library can state its input as the hash functions do without importing them.  `Words/Bytes.lean` keeps the digest views, and the hashing files open `Library.Bytes`.  Only proofs and statements use the moved definitions, and the four hashing modules pass their 145, 405, 136, and 136 cases, with their file theorems checking against the emitted files.  The full library build was stopped at job 9,912 of 10,242 to free the build host for these checks, and it resumes later.
+
+## 2026-10-23: Tagged recursive types: design
+
+The user chose to extend the verified compiler to recursive types with several constructors.  The decisions entry of the same date in the journal of `hashing-main`, which this branch does not contain until the branches merge, records the choices: per-constructor records under the journal's layout rule, the first constructor without fields as null and any other one as a one-slot tag record, an in-place generalization, hand-written `Encode` instances, the guarantees of today's recursive types, a first scope of word and child fields with one-level patterns, and a generic host format.  An independent review of the first version of this note found that abbreviations cannot replace constructors in `cases`, `induction`, and `match`, that headers and contexts must be indexed by record constructor, and that the copy plan omitted the loop bound, the restore, the scratch locals, and the copy budget.  This version incorporates its findings and the user's choice of a typed tree with two constructors.
+
+### Shapes and typed trees
+
+`TreeShape` becomes a list of constructors, each a list of field kinds in declaration order, `false` for a word and `true` for a child.  The null constructor is the first constructor without fields, if there is one, and the record constructors are the others, numbered by `Fin shape.records` in declaration order.  The type is tagged when it has more than one record constructor.  The slots of record constructor `r` are a tag word holding `r`'s constructor index when the type is tagged, followed by `r`'s fields, and `width r` and `mask r` are their length and child mask.  The shape carries three invariants: every record has between 1 and 64 slots, some constructor has no child fields, and some constructor has a child field.  The second gives every type a default value and rejects empty types such as `a (t : T) | b (x : UInt64) (t : T)`.  Today's shapes are two-constructor shapes with one untagged record constructor whose slots are today's fields.
+
+`Tree shape` keeps two constructors: `nil (h : shape.hasNull = true)` and `node (r : Fin shape.records) (words : Fin (shape.words r) → UInt64) (children : Fin (shape.children r) → Tree shape)`.  Proofs of `h` are equal, so every typed tree corresponds to exactly one native value, and the inverse laws that recursive parameters need hold.  Every existing `cases`, `induction`, and `match` keeps its `nil` and `node` alternatives, and the `node` alternative gains `r`.  `Tree.toNode` gives null for `nil` and a record of `r`'s slots for `node`.  About 118 files under `Verified/` use quantities derived from the shape, and about 50 of them contain tree patterns or terms.  Each of them changes, because each derived quantity gains a record-constructor argument.
+
+### Source language
+
+| Form | Today | Generalized |
+|---|---|---|
+| Header type | `Ty.treeHeader shape` | `Ty.treeHeader shape r`, the header of a matched owned record of record constructor `r` |
+| Null construction | `treeNil shape` | `treeNil shape h`, of width 0 and cost 0, compiled to the word 0 |
+| Record construction | `treeNode reuse words children` | `treeNode r reuse words children`, where `reuse` names a header of the same record constructor |
+| Match | `treeCase x empty node` | `treeCase x empty nodes`, with `empty : shape.hasNull = true → Expr S Γ t` and `nodes : (r : Fin shape.records) → Expr S (shape.context r Γ) t` |
+| Node context | `treeHeader :: words ++ children ++ Γ` | `treeHeader shape r :: replicate (words r) word ++ replicate (children r) (tree shape) ++ Γ` |
+| Tail body | `TailBody.treeCase x empty node` | The same two arguments |
+
+The empty branch is a function of the proof that the shape has a null constructor, so a shape without one needs no expression for it.  `Expr.mode` joins the modes of the branches.  `Env.treeFields`, `Renaming.treeFields`, `TreeShape.slots`, `TreeShape.modes`, and the shifts of the paid and live sets take the record constructor.  `Expr` already holds a family of subterms whose types vary by index, the arguments of `call`, and the structural functions over `Expr` treat them through `argsAny` and `argsMask`, so a family of branches fits the same pattern.  Reuse of a wider header for a narrower constructor needs a capacity argument and is left for later.
+
+### Code and bytes
+
+A record construction allocates `8 * width r` bytes or reuses the header, stores the tag when the type is tagged, stores the fields after it, and writes kind 1, `width r`, and `mask r`.  A match tests the pointer for null when the shape has a null constructor, and the null branch stays the `then` arm of that test.  When the type is tagged, the code loads slot 0 through the variable's local, tests the tag against the record constructors in order, and runs the last record constructor's branch untested.  Each branch then performs, as today, its releases, the variable's code, its field loads from the slots after the tag, and, for an owned root, the clearing of the mask word.  A borrowed record guarantees its slots, so slot 0 holds the tag in both modes.  `release` is unchanged, since it reads each record's header.
+
+An untagged shape produces today's bytes under these conditions, which the implementation must keep: the null construction has width 0; a single record constructor gets no tag test; the order of releases, the variable's code, field loads, and the mask store is unchanged; untagged fields start at slot 0; the null branch is the `then` arm whichever constructor is declared first; and the reflector's choice of modes and reuse computes the same values.  `tests/verified/emit-modules.sh` checks the result for every module of `tests/verified/modules.txt`, which lists every emitted module.  Equal bytes say nothing about the proofs, so acceptance also requires the full build, `tests/verified/run.sh` with its file theorems, and a comparison of the kernel time of the byte theorems.
+
+The copy loop keeps its structure and its six scratch locals.  During a copy the destination's header holds the parent link, the source pointer, and the next slot index, and its width word is the one free header word.  For a tagged type, the copy reads the tag from the source's slot 0 before it allocates, selects the width with a chain of tests, and stores it in the destination's width word, which the loop bound then reads.  A slot test selects the mask by a chain of tests on the tag reloaded from the source's slot 0, and the restore takes the tag from the destination's slot 0, because it overwrites the source pointer before it writes the width and mask.  For an untagged type the code is today's, with the single record constructor's constants.
+
+### Proofs
+
+`NodeLayout shape` holds for null when the shape has a null constructor, and for a record whose length and mask are those of some record constructor `r`, whose slot 0 holds `r`'s index when the type is tagged, and whose children satisfy `NodeLayout shape`.  The construction lemmas take the record constructor.  The match proof gains the tag tests, whose nested conditionals shift the labels of each branch's tail code.  The header lemmas, `treeHeaderCopyCode`, and `Ty.copyCost` take `width r`.  `RecordStorage` takes each record's width, and the copy proof replaces one uniform cost times the record count by a budget per record.  The bound of a record construction is `allocCost (8 * width r)`, and the cost of a copy sums `48 + 8 * width r` over the records, tag records included.  `Prog.correctWith` keeps its statement.
+
+### Reflector
+
+`recursiveLayout?` accepts a type without parameters or indices that is neither mutual nor nested, whose fields are `UInt64` or the type, and whose shape meets the invariants.  It builds the shape in declaration order and generates the conversions, the inverse laws, and the proof that the user's `Encode` instance agrees with the layout rule.  A match reduces Lean's matcher at each constructor, as `treeMatcherCases` does today for two, and collects the branches in a typed list like `Args`, since their contexts differ.  A wildcard alternative becomes one branch for each constructor it covers, which duplicates its code, and a nested pattern is rejected.  `treeMatcherCases` does not substitute the discriminant into the reduced alternatives, while `reflectDataMatch` does, and the generalization adds that substitution so that a wildcard branch that names the discriminant reuses its variable.  Each match level costs `bindCount r + 6` of the 32 positions that a depth-taking function may use, which the reflector reports when exceeded.  The special cases for `listShape` stay.
+
+### Other compiler, host, tests, and documents
+
+The LeanExe compiler accepts exactly two constructors with one record constructor and treats a constructor without fields as null, so the layout rule agrees with it on every type it accepts, and it is unchanged.  The Wasmtime host keeps `chain-u64` and `tree-u64` and gains one format for any tree of records: `.` for null, and otherwise the width and mask followed by the slots, with a child slot written as a tree.  It checks each result record's header against them, and native Lean computes the expected text from the value's `Encode` instance.  A new example compiles a type with several constructors, a tag record among them, with construction, matching, recursion, copying, and release, and its cases compare Wasmtime with native Lean.  The manual's type table, its section on recursive types, and its restrictions describe the new form.
+
+- [x] A script that emits every module and compares the bytes with a baseline.
+- [x] Review the design, and revise it from the review.
+- [ ] Write the baseline from `main` on the build host.
+- [ ] Generalize `TreeShape`, `Tree`, `toNode`, and `NodeLayout`.
+- [ ] Generalize the source forms, the code generators, and their proofs.
+- [ ] Generalize the copy loop and its proof.
+- [ ] Generalize the reflector.
+- [ ] Add the host format, the example, and its cases, and update the manual.
