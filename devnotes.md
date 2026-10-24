@@ -35245,8 +35245,8 @@ Compatibility references now have recorded source provenance.  The clean library
 - [x] Maintained WASI gate after the shared-proof change.
 - [x] Verified-compiler byte comparison against the 88 saved modules.
 - [x] Verified execution and allocation cases, numerical file proofs, and accuracy checks.
-- [ ] WGSL and complete binary32 GPT checks after the other gates.
-- [ ] Final documentation review, commit, and push.
+- [x] WGSL and complete binary32 GPT checks after the other gates.
+- [x] Final documentation review, commit, and push.
 
 The complete maintained WASI gate passed in `gate-74.log`, including the concrete validity proofs, fifteen validity audits, thirteen acceptance audits, and all eight new native cases.  An independent source review then found an API error in total-theorem generation: specializing an already native-quantified theorem by the binder name `aborts` also specialized a user parameter of that name.  A UInt64 parameter failed, and a Boolean parameter restricted the generated total theorem to false.  The generator now specializes the generic compiler theorem's resource flag before adding native parameter binders.  Boolean and UInt64 examples check that the generated total theorems quantify their native parameter, and their full byte bundles participate in the axiom audit.  Both examples and the existing public forms passed in `native-binders-75.log`.  A final maintained gate checks this correction before the source checkpoint and broader repository tests.
 
@@ -35333,3 +35333,7 @@ Final documentation review found that the README's three-worker command did not 
 The eight-target GPU preparation passed with 3,800 jobs in `gpu-targets-116.log`.  It completed before the monitor captured its scope, so it has no scope-level resource measurements.  Initial inventory retrieval combined SSH with local redirection, preventing approval reuse and leaving an escalation request pending.  Root interrupted that request.  A direct SSH command generated the inventory remotely, and `rsync` fetched it using the existing reusable prefixes.  The repository instructions now state that transfer procedure.
 
 The portable manifest covers 3,783 modules and 3,685,023,313 bytes across 3,185 project files and 49,600 package files.  Exact-manifest staging transferred 581 project files, representing 150,182,095 file bytes and 141,304,941 literal transfer bytes.  The selected package files already matched.  Native objects, libraries, and LLVM bitcode were excluded, and 8,427,278,336 bytes of disk space remained.  The original WGSL gate passed 474 cases on SwiftShader and 474 on llvmpipe, with zero failures, in `gpu-original-117.log`.  The verified WGSL gate is now running.
+
+Verified WGSL passed 233 cases on each Vulkan driver in `gpu-verified-118.log`, and verified GPT32 kernels passed 694 on each in `gpu-verified-gpt32-119.log`, with zero failures.  Complete verified GPT32 generation matched native Lean bit for bit for 15 steps across three models on each of Wasm, SwiftShader, and llvmpipe: 45 step comparisons with zero failures in `gpu-complete-gpt32-120.log`.  All four final GPU drivers returned status zero after the CPU gates.  No command remains active, and 8,265,904,128 bytes of local disk space remain.
+
+The reviewed WASI agenda and all required repository integration gates are complete.  Final review confirmed that subsequent changes affect documentation and instructions only.  The public WASI API and proof premises, README, algorithm index, cold-cache procedure, and reusable approval guidance were reviewed.  Resource coverage gaps and attribution corrections remain explicit in the journal and preserved raw records.  The branch remains `verified-wasi`.
