@@ -4,7 +4,7 @@ namespace Verified.Wasi
 
 open Wasm LeanExe.Wasi LeanExe.Pipeline LeanExe.Runtime
 
-theorem wp_effect_helper {World : Type} {source target : Wasm.Module} {host : Host World}
+theorem wp_effect_helper {World : Type} {target : Wasm.Module} {host : Host World}
     {signature : EffectSig} {meaning : Env signature.params → Action signature.result.denote}
     {index : Nat} {pool : Bytes.LiteralPool} {targetHost : HostEnv (Observed World)}
     {depth : UInt64} {heap : Heap} {initial : Store (Observed World)} {locals : Locals}

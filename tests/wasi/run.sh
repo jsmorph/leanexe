@@ -23,13 +23,27 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.ScratchContext Verified.Wasi.AfterScratch \
   Verified.Wasi.ReadCommand Verified.Wasi.WriteCommand \
   Verified.Wasi.Exit Verified.Wasi.ExitCommand Verified.Wasi.OwnedScratch \
-  Verified.Wasi.FunctionEntry Verified.Wasi.FunctionRun LeanExe.Wasi.Prefix \
+  Verified.Wasi.FunctionEntry Verified.Wasi.FunctionRun Verified.Wasi.CommandIte \
+  Verified.Wasi.FunctionEntryBudget Verified.Wasi.FunctionRunBudget \
+  Verified.Wasi.CommandConditional Verified.Wasi.CommandResultStore \
+  Verified.Wasi.FunctionDispatcher Verified.Wasi.CostFunctionLift \
+  Verified.Wasi.ConditionalCost Verified.Wasi.CostConditionalSpec \
+  LeanExe.Wasi.Prefix \
   LeanExe.Wasi.Interpreter LeanExe.Wasi.RelatedExec LeanExe.Wasi.RelatedPrefix \
   Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions \
   Verified.Wasi.ReturnCommand Verified.Wasi.CommandBind Verified.Wasi.CommandValue \
   Verified.Wasi.LoopControl Verified.Wasi.LoopSemantics Verified.Wasi.ReflectCases \
   Verified.Wasi.CallOwnership Verified.Wasi.CallFrame Verified.Wasi.CallHelper \
-  Verified.Wasi.ResultRelease
+  Verified.Wasi.ResultRelease Verified.Wasi.CommandLeaves \
+  Verified.Wasi.CommandCallSpec Verified.Wasi.CommandBindSpec \
+  Verified.Wasi.CommandConditionalSpec \
+  Verified.Wasi.ResourceCost Verified.Wasi.ResourceLoopCost Verified.Wasi.ResourceExec \
+  Verified.Wasi.ResourcePrefix Verified.Wasi.ResourceBudget Verified.Wasi.ResourceLoopBudget \
+  Verified.Wasi.ResourceCoverage Verified.Wasi.ResourceNativePrefix \
+  Verified.Wasi.ResourceAdvanceCoverage Verified.Wasi.ResourcePrefixCoverage \
+  Verified.Wasi.ResourceCompilerCost Verified.Wasi.CostLeavesPure \
+  Verified.Wasi.CostLeavesRead Verified.Wasi.CostLeavesWrite Verified.Wasi.CostLeavesExit \
+  Verified.Wasi.CostLeaves
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
   Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial Verified.Wasi.PurePrefix
@@ -37,6 +51,7 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/EffectAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/CommandAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/ResourceAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
