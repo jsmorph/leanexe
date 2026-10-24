@@ -167,8 +167,9 @@ the numerical proofs and can take several hours.  Its lgamma root-range proofs u
 high limit and a 12 GiB maximum:
 
 ```sh
+export LEANRUN_CPUS=auto
 tools/leanrun --timeout 60m lake build
-tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library
+tools/leanrun --cpus auto --memory-high 10G --timeout 12h lake build Verified Library
 tests/verified/run.sh
 ```
 
