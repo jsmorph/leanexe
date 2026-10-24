@@ -13,7 +13,7 @@ of a digest, the bytes of a short key block, and the program's `xorBlock`. -/
 
 namespace Library.Hashing.Hmac
 
-open SHS SHS.Equiv.Bytes SHS.Equiv.FromBits Library.Hashing.Words
+open SHS SHS.Equiv.Bytes SHS.Equiv.FromBits Library.Hashing.Words Library.Bytes
 
 /-- The bits of the bytes of `B`, the most significant bit of each byte first. -/
 def bits (B : ByteArray) : Message := B.data.toList.flatMap byteToBits
@@ -57,7 +57,8 @@ theorem byteToBits_xor (a c : UInt8) :
   simp [byteToBits, UInt8.toNat_xor, Nat.testBit_xor]
 
 theorem bits_xorBytes (K : ByteArray) (c : UInt8) :
-    bits (xorBytes K c) = Spec.xorBits (bits K) (List.replicate K.size (Spec.byteBits c)).flatten := by
+    bits (xorBytes K c) =
+      Spec.xorBits (bits K) (List.replicate K.size (Spec.byteBits c)).flatten := by
   cases K with
   | mk d =>
     show (d.map (· ^^^ c)).toList.flatMap byteToBits =

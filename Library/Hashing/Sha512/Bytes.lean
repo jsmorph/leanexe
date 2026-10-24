@@ -10,7 +10,7 @@ module starts is ready.  `sha512_module` combines the four entries. -/
 
 namespace Library.Hashing.Sha512
 
-open Wasm LeanExe.Pipeline Library.Hashing.Words
+open Wasm LeanExe.Pipeline Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA512.Digest SHS.Equiv.SHA512.Padding.ByteDecoding SHS.Equiv.SHA512.Pipeline
 
 /-- A store from which the module's entries run, with `heap` the allocator's state: the allocator

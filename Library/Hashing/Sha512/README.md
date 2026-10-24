@@ -4,7 +4,7 @@ The module `sha512` computes the four hash functions of FIPS 180-4 [1] that shar
 
 ## Specification
 
-The specification is [`Library/Hashing/Sha2/Spec`](../Sha2/Spec.lean), a literate Lean transcription of FIPS 180-4 by the author of fips-180-4-lean [2], copied with the changes that [the NOTICE](../Sha2/NOTICE) lists.  Its messages are lists of bits, its words are `BitVec 64`, and each definition follows a numbered section of the standard: padding in §5.1.2, parsing in §5.2.2, the initial values in §5.3, and the hash computation in §6.4 to §6.7.  The statements interpret the program's arguments and results through four definitions.  `Words.bytes` and the digest definitions are in [the byte module](../Words/Bytes.lean), and the other two come with the copied proofs.
+The specification is [`Library/Hashing/Sha2/Spec`](../Sha2/Spec.lean), a literate Lean transcription of FIPS 180-4 by the author of fips-180-4-lean [2], copied with the changes that [the NOTICE](../Sha2/NOTICE) lists.  Its messages are lists of bits, its words are `BitVec 64`, and each definition follows a numbered section of the standard: padding in §5.1.2, parsing in §5.2.2, the initial values in §5.3, and the hash computation in §6.4 to §6.7.  The statements interpret the program's arguments and results through four definitions.  `bytes` is in [the packed-byte module](../../Bytes/Packed.lean), the digest definitions are in [the digest module](../Words/Bytes.lean), and the other two come with the copied proofs.
 
 | Definition | Meaning |
 |---|---|

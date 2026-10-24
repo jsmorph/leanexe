@@ -11,7 +11,7 @@ message byte, zero bytes, or the two words of the bit length; `paddedWord_eq` tr
 
 namespace Library.Hashing.Sha512
 
-open Library.Hashing.Words
+open Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA512.Padding.Layout
 
 /-- The number of padded blocks of a message of `n` bytes. -/

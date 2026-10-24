@@ -1,19 +1,13 @@
 import Library.Hashing.Words.Program
+import Library.Bytes.Packed
 
-/-! The bytes that packed words denote.  The correctness theorems of the hash functions state their
-arguments and results through these definitions: `bytes ws n` is the message of `n` bytes held
-in `ws`, and `Words8.bytes` and its companions are the bytes of a digest. -/
+/-! The bytes of a digest.  The correctness theorems of the hash functions state their results
+through `Words8.bytes` and its companions, in the packing of `Library.Bytes`, and their arguments
+through `Library.Bytes.bytes`. -/
 
 namespace Library.Hashing.Words
 
-/-- Byte `i` of words packed eight to a word in little-endian order.  A word past the end of `ws`
-reads as zero, as a read past the end of an array does in the compiled code. -/
-def byteAt (ws : Array UInt64) (i : Nat) : UInt8 :=
-  (ws[i / 8]! >>> (8 * (i % 8)).toUInt64).toUInt8
-
-/-- The first `n` bytes of `ws`. -/
-def bytes (ws : Array UInt64) (n : Nat) : ByteArray :=
-  ⟨(Array.range n).map (byteAt ws)⟩
+open Library.Bytes
 
 /-- The 64 bytes of a digest of eight words. -/
 def Words8.bytes (d : Words8) : Vector UInt8 64 :=

@@ -14,7 +14,7 @@ module starts is ready. -/
 
 namespace Library.Hashing.Hmac
 
-open Wasm LeanExe.Pipeline Library.Hashing.Words
+open Wasm LeanExe.Pipeline Library.Hashing.Words Library.Bytes
 
 /-- A store from which the entry of the module `m` runs, with `heap` the allocator's state: the
 allocator invariant holds, the round constants `T` are a borrowed array at address 4096, and the

@@ -22,6 +22,7 @@ the properties of the resulting WebAssembly.
 | [Statistics](Numerics/Statistics) | Mean and sum of squares. |
 | [Arithmetic bounds](Numerics/Bounds/README.md) | Checked outward-rounded operations and their real bounds. |
 | [Limiters](Numerics/Limiters/README.md) | Minmod and its real slope and face properties. |
+| [Packed bytes](Bytes/Packed.lean) | Byte strings held eight bytes to a word, as the libraries that take byte strings state their arguments. |
 | [Hashing](Hashing/README.md) | SHA-224, SHA-256, SHA-384, SHA-512, SHA-512/224, and SHA-512/256, with the FIPS 180-4 transcription and equivalence proofs they use, and HMAC-SHA-256 and HMAC-SHA-512 with a transcription of FIPS 198-1. |
 
 The [algorithm index](../index.md) states the mathematical results and domains of the families.

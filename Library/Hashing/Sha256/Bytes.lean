@@ -10,7 +10,7 @@ module starts is ready.  `sha256_module` combines the two entries. -/
 
 namespace Library.Hashing.Sha256
 
-open Wasm LeanExe.Pipeline Library.Hashing.Words
+open Wasm LeanExe.Pipeline Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA256.Digest SHS.Equiv.SHA256.Padding.ByteDecoding SHS.Equiv.SHA256.Pipeline
 
 /-- A store from which the module's entries run, with `heap` the allocator's state: the allocator

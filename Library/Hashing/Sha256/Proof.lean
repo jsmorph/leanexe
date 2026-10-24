@@ -10,7 +10,7 @@ state of the copied implementation `SHS.SHA256.Impl`, so that its digest bytes a
 
 namespace Library.Hashing.Sha256
 
-open Library.Hashing.Words
+open Library.Hashing.Words Library.Bytes
 open SHS.Equiv.SHA256 SHS.Equiv.SHA256.Padding.Layout SHS.Equiv.SHA256.Padding.Equiv
   SHS.Equiv.SHA256.Padding.ByteDecoding SHS.Equiv.SHA256.Digest SHS.Equiv.SHA256.Pipeline
 
