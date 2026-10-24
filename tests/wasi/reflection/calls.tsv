@@ -1,0 +1,3 @@
+helper	helper	1	empty.bin	helper.control	empty.bin	empty.bin
+caller	caller	0	zero.bin	caller.control	literal.bin	empty.bin
+arguments	argumentCaller	_	pair.bin	arguments.control	pair.bin	empty.bin
