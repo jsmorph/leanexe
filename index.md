@@ -256,7 +256,7 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 
 ## 11. WASI stream operations
 
-`LeanExe.Wasi` provides native action descriptions and an interpreter.  `verified_compile_wasi` compiles accepted actions to core WebAssembly with three Preview 1 imports.  Its exported-entry proofs preserve the native result or terminal outcome, committed world, and joint ordered trace under the host, representation, ownership, and scratch premises.  Conditional total execution requires a typed resource-prefix bound and assumptions about reached host operations.  [The WASI manual](docs/wasi.md) gives the exact API and proof scope.  Implementation and acceptance testing remain in progress.
+`LeanExe.Wasi` provides native action descriptions and an interpreter.  `verified_compile_wasi` compiles accepted actions to core WebAssembly with three Preview 1 imports.  Its exported-entry proofs preserve the native result or terminal outcome, committed world, and joint ordered trace under the host, representation, ownership, and scratch premises.  Conditional total execution requires a typed resource-prefix bound and assumptions about reached host operations.  [The WASI manual](docs/wasi.md) gives the exact API and proof scope.  The WASI-specific gate passes.  Repository-wide integration checks are in progress.
 
 | Algorithm | Implementation | Behavior | Proved results and limits |
 |---|---|---|---|

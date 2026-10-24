@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-Status: implementation and acceptance testing in progress.  The native API, packed bytes, pure execution transport, universal effect proofs, reflector, and exported-entry theorems are implemented.  Concrete callable and command validity proofs and their native byte-theorem bundles have passed focused tests.  Full repository integration gates remain pending.  [The WASI manual](wasi.md) describes the current public API and proof premises.  This document records the reviewed architecture, external sources, acceptance conditions, and decisions.
+Status: implementation and the WASI-specific acceptance gate are complete.  The native API, packed bytes, pure execution transport, universal effect proofs, reflector, and exported-entry theorems are implemented.  The maintained gate checks concrete callable and command validity proofs and their native byte-theorem bundles.  Repository-wide integration checks are in progress.  [The WASI manual](wasi.md) describes the current public API and proof premises.  This document records the reviewed architecture, external sources, acceptance conditions, and decisions.
 
 ## Scope and sources
 
