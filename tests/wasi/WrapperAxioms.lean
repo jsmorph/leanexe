@@ -6,6 +6,10 @@ import Verified.Wasi.RuntimeFrame
 import Verified.Wasi.ReadFunction
 import Verified.Wasi.CallWrappers
 import Verified.Wasi.WriteHelper
+import Verified.Wasi.ScratchContext
+import Verified.Wasi.AfterScratch
+import Verified.Wasi.ReadCommand
+import Verified.Wasi.WriteCommand
 import Verified.Wasi.Exit
 
 open Lean Elab Command in
@@ -58,6 +62,35 @@ elab "check_wrapper_axioms" : command => do
     ``Verified.Wasi.writeFunction_run,
     ``Verified.Wasi.write_buffer_abi,
     ``Verified.Wasi.wp_write_helper,
+    ``Verified.Wasi.wp_write_helper_at,
+    ``Verified.Holds.ApartFrom.agree,
+    ``Verified.Holds.ApartFrom.transfer,
+    ``Verified.Holds.ApartFrom.push,
+    ``Verified.Holds.ApartFrom.pop,
+    ``Verified.Holds.KeepDying.transfer_kept,
+    ``Verified.Holds.step_scratch,
+    ``Verified.Holds.step_scratch_dying,
+    ``Verified.Wasi.GuestFrame.scratchHolds,
+    ``Verified.Wasi.bytes_scratch,
+    ``Verified.Wasi.After.values,
+    ``Verified.Wasi.After.ofValues,
+    ``Verified.Wasi.After.scratch,
+    ``Verified.Wasi.After.keepDying,
+    ``Verified.Wasi.After.pool_safe,
+    ``Verified.Wasi.After.thenUnit,
+    ``Verified.Wasi.After.thenWord,
+    ``Verified.Wasi.After.bind_value,
+    ``Verified.Wasi.read_result_rep,
+    ``Verified.Wasi.read_result_regions,
+    ``Verified.Wasi.read_after,
+    ``Verified.Wasi.wp_read_command_call,
+    ``Verified.Wasi.wp_command_read,
+    ``Verified.Wasi.wp_command_read_budget,
+    ``Verified.Wasi.write_after,
+    ``Verified.Wasi.wp_write_command_call,
+    ``Verified.Wasi.wp_release_context,
+    ``Verified.Wasi.write_after_release,
+    ``Verified.Wasi.wp_command_write,
     ``Verified.Wasi.wp_exit,
     ``LeanExe.Wasi.Exec.exited_marker]
   for theoremName in theorems do

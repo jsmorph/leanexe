@@ -93,15 +93,15 @@ def program : EffectProg [] signatures :=
       (.cons (bindHelper []) (.cons (helper []) .nil))))))))
 
 def entries : List (EffectEntry signatures) :=
-  [⟨_, .here⟩,
-    ⟨_, .there .here⟩,
-    ⟨_, .there (.there .here)⟩,
-    ⟨_, .there (.there (.there .here))⟩,
-    ⟨_, .there (.there (.there (.there .here)))⟩,
-    ⟨_, .there (.there (.there (.there (.there .here))))⟩,
-    ⟨_, .there (.there (.there (.there (.there (.there .here)))))⟩,
-    ⟨_, .there (.there (.there (.there (.there (.there (.there .here))))))⟩,
-    ⟨_, .there (.there (.there (.there (.there (.there (.there (.there .here)))))))⟩]
+  [{ signature := _, callee := .here },
+    { signature := _, callee := .there .here },
+    { signature := _, callee := .there (.there .here) },
+    { signature := _, callee := .there (.there (.there .here)) },
+    { signature := _, callee := .there (.there (.there (.there .here))) },
+    { signature := _, callee := .there (.there (.there (.there (.there .here)))) },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there .here))))) },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there .here)))))) },
+    { signature := _, callee := .there (.there (.there (.there (.there (.there (.there (.there .here))))))) }]
 
 def pool : Bytes.LiteralPool := ⟨tablesEnd [], program.literals.eraseDups⟩
 
@@ -111,10 +111,14 @@ def callable : Wasm.Module := Verified.Wasi.compile source program entries none 
 
 def returnedCommand : Wasm.Module :=
   Verified.Wasi.compile source program []
-    (some ⟨"writeLiteral", .there (.there (.there (.there (.there (.there .here)))))⟩) pool
+    (some
+      { name := "writeLiteral"
+        tables := []
+        callee := .there (.there (.there (.there (.there (.there .here))))) }) pool
 
 def exitedCommand : Wasm.Module :=
-  Verified.Wasi.compile source program [] (some ⟨"exitMain", .here⟩) pool
+  Verified.Wasi.compile source program []
+    (some { name := "exitMain", tables := [], callee := .here }) pool
 
 theorem covered : program.Covered pool := by
   unfold EffectProg.Covered

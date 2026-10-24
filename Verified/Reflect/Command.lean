@@ -394,6 +394,62 @@ def reflectProgramFunction (base name : Name) (state : ProgramReflection) :
   trace[Verified.reflect] "reflected {name}, {(← getRemainingHeartbeats) / 1000} heartbeats remaining"
   closeReflection { sigs, prog, funs, meaning, out, callees, wraps, tableNames }
 
+structure MaterializedProgram where
+  base : Name
+  pureHasLiterals : Bool
+
+def materializeProgram (base : Name) (state : ProgramReflection)
+    (poolOverride? : Option Lean.Expr := none) : TermElabM MaterializedProgram := do
+  let sigs := state.sigs
+  let prog := state.prog
+  let funs := state.funs
+  let meaning := state.meaning
+  let out := state.out
+  let wraps := state.wraps
+  let tableNames := state.tableNames
+  let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
+  addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
+  addDefinition (base ++ `funs) (mkApp (Lean.mkConst ``Funs) sigsExpr) funs
+  addTheorem (base ++ `meaning)
+    (mkApp3 (Lean.mkConst ``Prog.Meaning) sigsExpr (Lean.mkConst (base ++ `program))
+      (Lean.mkConst (base ++ `funs))) meaning
+  let words := mkApp (Lean.mkConst ``Array [.zero]) (Lean.mkConst ``UInt64)
+  addDefinition (base ++ `tables) (mkApp (Lean.mkConst ``List [.zero]) words)
+    (listExpr words (tableNames.toList.map Lean.mkConst))
+  let T := mkApp2 (Lean.mkConst ``List.length [.zero]) words
+    (Lean.mkConst (base ++ `tables))
+  let mut wexprs : Array Lean.Expr := #[]
+  for (r, callee, idxs) in wraps do
+    let some pos := out.findIdx? (·.name == callee.name)
+      | throwError "verified_compile: the callee {callee.name}"
+    let fvarTy := mkApp2 (Lean.mkConst ``FVar) sigsExpr (sigExpr callee.sig)
+    let fvar ← Term.elabTermEnsuringType (← fvarStx (out.size - 1 - pos)) (some fvarTy)
+    Term.synthesizeSyntheticMVarsNoPostponing
+    let fvar ← instantiateMVars fvar
+    let fins ← idxs.mapM fun i => do
+      mkAppM ``Fin.mk #[mkNatLit i, ← mkDecideProof (← mkLt (mkNatLit i) T)]
+    wexprs := wexprs.push (mkAppN (Lean.mkConst ``Wrapper.mk)
+      #[sigsExpr, T, toExpr r.name.getString!, listExpr (mkApp (Lean.mkConst ``Fin) T) fins,
+        ctxExpr r.params, tyExpr r.result, toExpr callee.sig.aborts,
+        modesExpr callee.sig.modes, toExpr callee.sig.depth, fvar, ← mkEqRefl (toExpr true)])
+  let wrapperTy := mkApp2 (Lean.mkConst ``Wrapper) sigsExpr T
+  addDefinition (base ++ `wrappers) (mkApp (Lean.mkConst ``List [.zero]) wrapperTy)
+    (listExpr wrapperTy wexprs.toList)
+  let pool ← match poolOverride? with
+    | none => mkAppM ``Prog.literalPool #[Lean.mkConst (base ++ `program),
+        ← mkAppM ``tablesEnd #[Lean.mkConst (base ++ `tables)]]
+    | some pool => do
+      let expected ← mkExpectedTypeHint pool (Lean.mkConst ``Bytes.LiteralPool)
+      closedReflectionExpr expected
+  addDefinition (base ++ `literalPool) (Lean.mkConst ``Bytes.LiteralPool) pool
+  addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
+    (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
+      Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers),
+      Lean.mkConst (base ++ `literalPool)])
+  let literals ← mkAppM ``Prog.literals #[prog]
+  let empty := listExpr (mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)) []
+  return { base, pureHasLiterals := !(← isDefEq literals empty) }
+
 syntax (name := verifiedCompile) "verified_compile " ident " := " "[" ident,* "]" : command
 
 /-- `verified_compile p := [f, g, …]` adds the program `p.program` of the listed definitions, in
@@ -414,53 +470,12 @@ def elabVerifiedCompile : CommandElab
     let mut state : ProgramReflection := {}
     for name in names do
       state ← liftTermElabM (reflectProgramFunction base name state)
-    let (reflected, wraps, tableNames, funsVal, hasLiterals) ← liftTermElabM do
-      let sigs := state.sigs
-      let prog := state.prog
-      let funs := state.funs
-      let meaning := state.meaning
-      let out := state.out
-      let wraps := state.wraps
-      let tableNames := state.tableNames
-      let sigsExpr := listExpr (Lean.mkConst ``Sig) (sigs.map sigExpr)
-      addDefinition (base ++ `program) (mkApp (Lean.mkConst ``Prog) sigsExpr) prog
-      addDefinition (base ++ `funs) (mkApp (Lean.mkConst ``Funs) sigsExpr) funs
-      addTheorem (base ++ `meaning)
-        (mkApp3 (Lean.mkConst ``Prog.Meaning) sigsExpr (Lean.mkConst (base ++ `program))
-          (Lean.mkConst (base ++ `funs))) meaning
-      -- The tables, in the order of their first use, and the wrappers.
-      let words := mkApp (Lean.mkConst ``Array [.zero]) (Lean.mkConst ``UInt64)
-      addDefinition (base ++ `tables) (mkApp (Lean.mkConst ``List [.zero]) words)
-        (listExpr words (tableNames.toList.map Lean.mkConst))
-      let T := mkApp2 (Lean.mkConst ``List.length [.zero]) words
-        (Lean.mkConst (base ++ `tables))
-      let mut wexprs : Array Lean.Expr := #[]
-      for (r, callee, idxs) in wraps do
-        let some pos := out.findIdx? (·.name == callee.name)
-          | throwError "verified_compile: the callee {callee.name}"
-        let fvarTy := mkApp2 (Lean.mkConst ``FVar) sigsExpr (sigExpr callee.sig)
-        let fvar ← Term.elabTermEnsuringType (← fvarStx (out.size - 1 - pos)) (some fvarTy)
-        Term.synthesizeSyntheticMVarsNoPostponing
-        let fvar ← instantiateMVars fvar
-        let fins ← idxs.mapM fun i => do
-          mkAppM ``Fin.mk #[mkNatLit i, ← mkDecideProof (← mkLt (mkNatLit i) T)]
-        wexprs := wexprs.push (mkAppN (Lean.mkConst ``Wrapper.mk)
-          #[sigsExpr, T, toExpr r.name.getString!, listExpr (mkApp (Lean.mkConst ``Fin) T) fins,
-            ctxExpr r.params, tyExpr r.result, toExpr callee.sig.aborts,
-            modesExpr callee.sig.modes, toExpr callee.sig.depth, fvar, ← mkEqRefl (toExpr true)])
-      let wrapperTy := mkApp2 (Lean.mkConst ``Wrapper) sigsExpr T
-      addDefinition (base ++ `wrappers) (mkApp (Lean.mkConst ``List [.zero]) wrapperTy)
-        (listExpr wrapperTy wexprs.toList)
-      let pool ← mkAppM ``Prog.literalPool #[Lean.mkConst (base ++ `program),
-        ← mkAppM ``tablesEnd #[Lean.mkConst (base ++ `tables)]]
-      addDefinition (base ++ `literalPool) (Lean.mkConst ``Bytes.LiteralPool) pool
-      addDefinition (base ++ `module) (Lean.mkConst ``Wasm.Module)
-        (mkAppN (Lean.mkConst ``compileWith) #[sigsExpr, Lean.mkConst (base ++ `program),
-          Lean.mkConst (base ++ `tables), Lean.mkConst (base ++ `wrappers),
-          Lean.mkConst (base ++ `literalPool)])
-      let literals ← mkAppM ``Prog.literals #[prog]
-      let empty := listExpr (mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)) []
-      return (out, wraps, tableNames, funs, !(← isDefEq literals empty))
+    let materialized ← liftTermElabM (materializeProgram base state)
+    let reflected := state.out
+    let wraps := state.wraps
+    let tableNames := state.tableNames
+    let funsVal := state.funs
+    let hasLiterals := materialized.pureHasLiterals
     -- The store in which the module starts.
     let initialProof ← if hasLiterals then
         `(Verified.compileWith_initialStaticStore $(mkIdent (base ++ `program))
