@@ -168,9 +168,9 @@ high limit and a 12 GiB maximum:
 
 ```sh
 export LEANRUN_CPUS=auto
-export LEANRUN_THREADS=4
+export LEANRUN_THREADS=3
 tools/leanrun --timeout 60m lake build
-tools/leanrun --cpus auto --threads 4 --memory-high 10G --timeout 12h lake build Verified Library
+tools/leanrun --cpus auto --threads 3 --memory-high 10G --timeout 12h lake build Verified Library
 tests/verified/run.sh
 ```
 
