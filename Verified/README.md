@@ -546,7 +546,7 @@ whole-store theorems apply at the combined module's indices, and its
 `import Verified.Wasi` provides `verified_compile_wasi`.  The command reflects definitions of
 `LeanExe.Wasi.Action` into [typed commands](Wasi/Source.lean), with pure expressions as operands.
 The [native API](../LeanExe/Wasi/Action.lean) provides stdin reads, stdout and stderr writes,
-exit, and bounded loops.  Each operation makes at most one transfer syscall.  Source code handles errnos and
+exit, and bounded loops.  Each primitive read or write makes at most one transfer syscall.  Source code handles errnos and
 short transfers.  Effect helpers form an acyclic graph and share the guarded-call depth with
 pure callees.  [The WASI manual](../docs/wasi.md) states the API and generated declarations.
 
