@@ -49,7 +49,9 @@ theorem prefix_calls : Calls module seedLibrary.funs seedLibrary.program.flags
     (seedLibrary.program.boundsAt seedLibrary.funs) (seedLibrary.program.fitsAt seedLibrary.funs) :=
   seedLibrary.program.calls_extension program seedLibrary.funs seedLibrary.meaning
     ((ScalarComposition.compiled.program.functions_prefix_append seedLibrary.program).trans
-      (libraryProgram.functions_prefix_cons caller)) [] [] (by decide +kernel)
+      (libraryProgram.functions_prefix_cons caller)) [] [] (by
+        have noLiterals : seedLibrary.program.literals = [] := by decide +kernel
+        simp only [Prog.Covered, noLiterals, List.nil_subset])
 
 theorem seed_implements : ImplementsA false module 2 seed
     (fun _ _ _ => True) (fun _ _ _ _ _ => True) := by
