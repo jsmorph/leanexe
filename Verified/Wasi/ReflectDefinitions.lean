@@ -1,5 +1,6 @@
 import Verified.Reflect.Command
 import Verified.Wasi.ReflectLemmas
+import Verified.Wasi.ReflectTables
 
 namespace Verified.Wasi.Reflect
 
@@ -46,12 +47,15 @@ structure Callee where
   name : Name
   signature : EffectSig
   meaning : Name
+  tableNames : List Name := []
 
 structure Ctx where
   pure : Verified.Reflect.Ctx
   sigs : Lean.Expr
   funs : Lean.Expr
   callees : List Callee := []
+  bindings : List PureBinding := []
+  tables : List TableBinding := []
 
 structure Reflection where
   src : Lean.Expr
@@ -85,8 +89,11 @@ def fromEquation (context : Ctx) (shape : ResultShape) (native source equation :
     #[← shape.fn nativeType, ← mkEqSymm equation]
   checkedReflection context shape native source proof
 
-def pureOperand (context : Ctx) (value : Lean.Expr) : MetaM Verified.Reflect.Reflection :=
-  Verified.Reflect.reflect.reflectSplit context.pure (context.pure.vars.map Prod.fst) value
+def pureOperand (context : Ctx) (value : Lean.Expr) : MetaM Verified.Reflect.Reflection := do
+  let (normalized, equation) ← normalizeTables context.bindings context.tables value
+  let reflected ← if normalized.isFVar then Verified.Reflect.reflect context.pure normalized
+    else Verified.Reflect.reflect.reflectSplit context.pure (context.pure.vars.map Prod.fst) normalized
+  return reflected.as (← restate reflected.proof equation) value
 
 def withResultValue {α : Type} (context : Ctx) (shape : ResultShape) (nativeType : Lean.Expr)
     (next : Lean.Expr → Ctx → MetaM α) : MetaM α :=

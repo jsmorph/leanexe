@@ -7,7 +7,7 @@ open Wasm
 def EffectProg.callableExtension (source : Wasm.Module)
     (program : EffectProg pureSigs effectSigs) (entries : List (EffectEntry effectSigs))
     (pool : Bytes.LiteralPool := Bytes.LiteralPool.empty) : Module.Extension :=
-  { types := program.types ++ entries.map (fun entry => entry.signature.entryType)
+  { types := program.types ++ entries.map EffectEntry.type
     funcs := program.functions source pool ++ entries.mapIdx (fun index entry =>
       entry.function source (effectTypeIndex source (effectSigs.length + index)))
     exports := entries.mapIdx fun index entry =>
@@ -145,7 +145,7 @@ theorem compile_body_type (source : Wasm.Module) (program : EffectProg pureSigs 
       (program.callableExtension source entries pool))).types[
         effectTypeIndex source callee.index]? = some signature.type
     rw [Wrappers.next_type]
-    change (program.types ++ entries.map (fun entry => entry.signature.entryType))[
+    change (program.types ++ entries.map EffectEntry.type)[
       callee.index]? = some signature.type
     rw [List.getElem?_append_left (by rw [EffectProg.types_length]; exact callee.index_lt)]
     exact program.types_get callee

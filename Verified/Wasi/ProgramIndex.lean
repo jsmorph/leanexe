@@ -29,23 +29,67 @@ def EffectProg.functions (source : Wasm.Module)
   | _, .cons (effectSigs := effectSigs) function rest =>
     rest.functions source pool ++ [function.function source (effectTypeIndex source effectSigs.length) pool]
 
+inductive HiddenTables : List Ty → List Mode → Type where
+  | nil : HiddenTables params modes
+  | cons (address : UInt64) (rest : HiddenTables params modes) :
+      HiddenTables (.array .word :: params) (.borrowed :: modes)
+
+def HiddenTables.addresses : HiddenTables params modes → List UInt64
+  | .nil => []
+  | .cons address rest => address :: rest.addresses
+
+def HiddenTables.visibleParams : {params : List Ty} → {modes : List Mode} →
+    HiddenTables params modes → List Ty
+  | params, _, .nil => params
+  | _, _, .cons _ rest => rest.visibleParams
+
+def HiddenTables.visibleModes : {params : List Ty} → {modes : List Mode} →
+    HiddenTables params modes → List Mode
+  | _, modes, .nil => modes
+  | _, _, .cons _ rest => rest.visibleModes
+
+theorem HiddenTables.params_eq (tables : HiddenTables params modes) :
+    params = List.replicate tables.addresses.length (.array .word) ++ tables.visibleParams := by
+  induction tables with
+  | nil => rfl
+  | cons address rest ih =>
+    simp only [HiddenTables.addresses, List.length_cons, List.replicate_succ,
+      List.cons_append, HiddenTables.visibleParams, ← ih]
+
+theorem HiddenTables.modes_eq (tables : HiddenTables params modes) :
+    modes = List.replicate tables.addresses.length .borrowed ++ tables.visibleModes := by
+  induction tables with
+  | nil => rfl
+  | cons address rest ih =>
+    simp only [HiddenTables.addresses, List.length_cons, List.replicate_succ,
+      List.cons_append, HiddenTables.visibleModes, ← ih]
+
 structure EffectEntry (effectSigs : List EffectSig) where
   signature : EffectSig
   callee : EffectVar effectSigs signature
+  tables : HiddenTables signature.params signature.modes := .nil
+
+def EffectEntry.type (entry : EffectEntry effectSigs) : FuncType :=
+  { params := entry.tables.visibleParams.flatMap Ty.types
+    results := entry.signature.result.types }
 
 def EffectEntry.function (source : Wasm.Module) (entry : EffectEntry effectSigs)
     (typeIdx : Nat) : Function :=
-  let params := entry.signature.params.flatMap Ty.types
+  let params := entry.tables.visibleParams.flatMap Ty.types
   { params
     locals := []
-    body := [.constI64 0] ++ (List.range params.length).map Instruction.localGet ++
+    body := [.constI64 0] ++ entry.tables.addresses.map Instruction.constI64 ++
+      (List.range params.length).map Instruction.localGet ++
       [.call (Wrappers.effectIndex source entry.callee.index)]
     results := entry.signature.result.types
     typeIdx := some typeIdx }
 
 structure EffectMain (effectSigs : List EffectSig) where
   name : String
-  callee : EffectVar effectSigs ⟨name, [], [], .value .word⟩
+  tables : List UInt64 := []
+  callee : EffectVar effectSigs
+    ⟨name, List.replicate tables.length (.array .word),
+      List.replicate tables.length .borrowed, .value .word⟩
 
 def startType : FuncType := { params := [], results := [] }
 
@@ -53,8 +97,8 @@ def EffectMain.function (source : Wasm.Module) (main : EffectMain effectSigs)
     (typeIdx : Nat) : Function :=
   { params := []
     locals := []
-    body := [.constI64 0, .call (Wrappers.effectIndex source main.callee.index),
-      .wrapI64, .call 2, .unreachable]
+    body := [.constI64 0] ++ main.tables.map Instruction.constI64 ++
+      [.call (Wrappers.effectIndex source main.callee.index), .wrapI64, .call 2, .unreachable]
     results := []
     typeIdx := some typeIdx }
 
@@ -134,7 +178,10 @@ theorem EffectProg.function_signature (program : EffectProg pureSigs effectSigs)
 
 @[simp] theorem EffectEntry.function_signature (source : Wasm.Module)
     (entry : EffectEntry effectSigs) (typeIdx : Nat) :
-    Encoding.Spec.signature (entry.function source typeIdx) = entry.signature.entryType := rfl
+    Encoding.Spec.signature (entry.function source typeIdx) = entry.type := rfl
+
+theorem EffectEntry.type_nil (signature : EffectSig) (callee : EffectVar effectSigs signature) :
+    (EffectEntry.mk signature callee .nil).type = signature.entryType := rfl
 
 @[simp] theorem EffectMain.function_signature (source : Wasm.Module)
     (main : EffectMain effectSigs) (typeIdx : Nat) :

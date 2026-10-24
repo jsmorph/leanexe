@@ -20,15 +20,20 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.WrapperCode Verified.Wasi.Write Verified.Wasi.ReadCall \
   Verified.Wasi.ReadFrame Verified.Wasi.Runtime Verified.Wasi.RuntimeFrame \
   Verified.Wasi.ReadFunction Verified.Wasi.CallWrappers Verified.Wasi.WriteHelper \
+  Verified.Wasi.ScratchContext Verified.Wasi.AfterScratch \
+  Verified.Wasi.ReadCommand Verified.Wasi.WriteCommand \
   Verified.Wasi.Exit LeanExe.Wasi.Prefix \
   LeanExe.Wasi.Interpreter LeanExe.Wasi.RelatedExec LeanExe.Wasi.RelatedPrefix \
-  Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions
+  Verified.Wasi.Program Verified.Wasi.ReflectLemmas Verified.Wasi.ReflectDefinitions \
+  Verified.Wasi.ReturnCommand Verified.Wasi.CommandBind Verified.Wasi.CommandValue \
+  Verified.Wasi.LoopControl Verified.Wasi.ReflectCases
 tools/leanrun --timeout 10m --log build/wasi/transport.log lake build \
   Verified.Wasi.PureTransportSpecs Verified.Wasi.RelocationForms \
   Verified.Wasi.ModuleTransport Verified.Wasi.ModuleInitial Verified.Wasi.PurePrefix
 tools/leanrun --timeout 5m lake env lean tests/wasi/TransportAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/WrapperAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/EffectAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/CommandAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
@@ -87,3 +92,4 @@ while IFS="$tab" read -r export_name arguments; do
   count=$((count + 1))
 done <"$root/tests/wasi/byte-traps.tsv"
 printf 'Byte trap tests passed: %s cases\n' "$count"
+tests/wasi/codegen-run.sh
