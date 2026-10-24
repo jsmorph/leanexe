@@ -35337,3 +35337,15 @@ The portable manifest covers 3,783 modules and 3,685,023,313 bytes across 3,185 
 Verified WGSL passed 233 cases on each Vulkan driver in `gpu-verified-118.log`, and verified GPT32 kernels passed 694 on each in `gpu-verified-gpt32-119.log`, with zero failures.  Complete verified GPT32 generation matched native Lean bit for bit for 15 steps across three models on each of Wasm, SwiftShader, and llvmpipe: 45 step comparisons with zero failures in `gpu-complete-gpt32-120.log`.  All four final GPU drivers returned status zero after the CPU gates.  No command remains active, and 8,265,904,128 bytes of local disk space remain.
 
 The reviewed WASI agenda and all required repository integration gates are complete.  Final review confirmed that subsequent changes affect documentation and instructions only.  The public WASI API and proof premises, README, algorithm index, cold-cache procedure, and reusable approval guidance were reviewed.  Resource coverage gaps and attribution corrections remain explicit in the journal and preserved raw records.  The branch remains `verified-wasi`.
+
+## 2026-10-24: Review the README, index, and supporting guides
+
+The [README](README.md) now distinguishes emitted WebAssembly from Talos's execution semantics, shortens the compiler comparison, states the proof premises, and separates ordinary builds from the full numerical procedure.  The [algorithm index](index.md) distinguishes execution, mathematical, byte, and file theorems.  Source checks corrected the descriptions of binary64 `axpy`, grid construction, and Fourier angle evaluation so that they preserve the definitions' lengths and rounding order.  The tables retain one row per operation and explicit limits on the proved results.
+
+The library guide links to the maintained full-check and cold-cache procedures.  The design guide now includes packed bytes, literal coverage, and WASI's host and resource premises.  Numerical guides link to the current implementation modules.  The log-gamma guide no longer says that completed fact proofs await builds or that the port's corrected comments retain CORE-MATH's incorrect threshold.  Its threshold description links to the exceptional-value proofs.  The FMA guide drops repeated design history and an unmeasured operation-count estimate.
+
+- [x] Review the README and index against definitions, theorem statements, build targets, and maintained drivers.
+- [x] Review supporting guides for stale paths, proof status, duplicated prose, and missing proof premises.
+- [x] Complete a second editorial pass and run the local-link, source-layout, and whitespace checks.
+
+The local-link check passes across 198 Markdown files.  The source-layout check passes for 2,157 Lean files, 48 native programs, and 123 registered modules.  `git diff --check` passes.  These edits affect Markdown only.  No Lean build or execution test was run for this review.
