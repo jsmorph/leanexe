@@ -476,6 +476,16 @@ def elabVerifiedCompile : CommandElab
     let tableNames := state.tableNames
     let funsVal := state.funs
     let hasLiterals := materialized.pureHasLiterals
+    let noLiteralsName := mkPrivateName (← getEnv) (base ++ `noLiterals)
+    unless hasLiterals do
+      liftTermElabM do
+        let literals ← mkAppM ``Prog.literals #[mkConst (base ++ `program)]
+        let empty := listExpr (mkApp (mkConst ``List [.zero]) (mkConst ``UInt8)) []
+        let proposition ← mkEq literals empty
+        let proof ← Term.elabTermEnsuringType (← `(by decide +kernel)) proposition
+        Term.synthesizeSyntheticMVarsNoPostponing
+        addTheorem noLiteralsName proposition (← instantiateMVars proof)
+    let noLiterals := mkIdent noLiteralsName
     -- The store in which the module starts.
     let initialProof ← if hasLiterals then
         `(Verified.compileWith_initialStaticStore $(mkIdent (base ++ `program))
@@ -484,7 +494,7 @@ def elabVerifiedCompile : CommandElab
       else
         `(Verified.compileWith_initialStore $(mkIdent (base ++ `program))
           $(mkIdent (base ++ `tables)) $(mkIdent (base ++ `wrappers))
-          (by decide +kernel) (by decide +kernel))
+          (by decide +kernel) $noLiterals)
     elabCommand (← `(theorem $(mkIdent (target.getId ++ `initial)) : type_of% $initialProof :=
       $initialProof))
     let progId := mkIdent (base ++ `program)
@@ -551,14 +561,14 @@ def elabVerifiedCompile : CommandElab
           entries := entries + 1
           pure (← `(Verified.Prog.correct_entryWith $progId $funsId $meaningId $tablesId
             $wrappersId $fvar rfl (j := $(Lean.quote j)) (by decide +kernel)
-            (by decide +kernel)), 2 + n + j)
+            $noLiterals), 2 + n + j)
         else if r.paid then
           pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB
-            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId (by decide +kernel) $fvar 0)
+            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar 0)
             rfl)), 2 + k)
         else
           pure (← `(Verified.ImplementsB.implementsA (Verified.FunSpec.implementsB_unpaid
-            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId (by decide +kernel) $fvar 0)
+            (Verified.Prog.correctWith $progId $funsId $meaningId $tablesId $wrappersId $noLiterals $fvar 0)
             rfl (by decide +kernel))), 2 + k)
       -- The theorem for the flattened types, carried to Lean's types: each argument is
       -- represented as its flattening is, and the flattening of the result represents it.
@@ -593,11 +603,11 @@ def elabVerifiedCompile : CommandElab
             let frames ← evalNat (mkApp (mkConst ``framesAt) (toExpr (0 : UInt64)))
             let h0 ← Term.elabTerm (← if r.paid then
                 `(Verified.Prog.entry_trapFreeWith $progId $funsId
-                  $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := by decide +kernel) (j := $(Lean.quote (index - 2 - n)))
+                  $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := $noLiterals) (j := $(Lean.quote (index - 2 - n)))
                   (by decide +kernel))
               else
                 `(Verified.Prog.entry_trapFreeWith_unpaid $progId $funsId
-                  $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := by decide +kernel) (j := $(Lean.quote (index - 2 - n)))
+                  $meaningId $tablesId $wrappersId $fvar rfl (hNoLiterals := $noLiterals) (j := $(Lean.quote (index - 2 - n)))
                   (by decide +kernel) (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
             let h0 ← instantiateMVars h0
@@ -625,10 +635,10 @@ def elabVerifiedCompile : CommandElab
           else
             let h0 ← Term.elabTerm (← if r.paid then
                 `(Verified.FunSpec.implementsB (Verified.Prog.correctWith $progId $funsId
-                  $meaningId $tablesId $wrappersId (by decide +kernel) $fvar 0) rfl)
+                  $meaningId $tablesId $wrappersId $noLiterals $fvar 0) rfl)
               else
                 `(Verified.FunSpec.implementsB_unpaid (Verified.Prog.correctWith $progId $funsId
-                  $meaningId $tablesId $wrappersId (by decide +kernel) $fvar 0) rfl (by decide +kernel))) none
+                  $meaningId $tablesId $wrappersId $noLiterals $fvar 0) rfl (by decide +kernel))) none
             Term.synthesizeSyntheticMVarsNoPostponing
             let h0 ← instantiateMVars h0
             let #[_, _, _, _, _, _, _, _, boundFn] := (← inferType h0).getAppArgs
@@ -688,7 +698,7 @@ def elabVerifiedCompile : CommandElab
         j := j + 1
         continue
       let hStx ← `(Verified.Prog.correct_wrapper $progId $funsId $meaningId $tablesId $wrappersId
-        (j := $(Lean.quote j)) rfl (hNoLiterals := by decide +kernel))
+        (j := $(Lean.quote j)) rfl (hNoLiterals := $noLiterals))
       liftTermElabM do
         let h ← Term.elabTerm (← `(Verified.ImplementsTables.lean $hStx)) none
         Term.synthesizeSyntheticMVarsNoPostponing
@@ -714,10 +724,10 @@ def elabVerifiedCompile : CommandElab
         liftTermElabM do
           let h0Stx ← if r.aborts then
               `(Verified.Prog.wrapper_trapFree $progId $funsId $meaningId $tablesId $wrappersId
-                (j := $(Lean.quote j)) rfl rfl (hNoLiterals := by decide +kernel))
+                (j := $(Lean.quote j)) rfl rfl (hNoLiterals := $noLiterals))
             else
               `(Verified.Prog.wrapper_noTrap $progId $funsId $meaningId $tablesId $wrappersId
-                (j := $(Lean.quote j)) rfl rfl rfl (hNoLiterals := by decide +kernel))
+                (j := $(Lean.quote j)) rfl rfl rfl (hNoLiterals := $noLiterals))
           let h0 ← Term.elabTerm h0Stx none
           Term.synthesizeSyntheticMVarsNoPostponing
           let h0 ← instantiateMVars h0
