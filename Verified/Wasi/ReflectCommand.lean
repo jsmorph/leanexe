@@ -1,5 +1,6 @@
 import Verified.Wasi.ReflectProgram
 import Verified.Wasi.ReflectEncoding
+import Verified.Wasi.ReflectValidity
 import Verified.Wasi.SyntaxCheck
 import Verified.Wasi.Correct
 import Verified.Wasi.ProgramInitial
@@ -16,6 +17,14 @@ private def isEffectful (name : Name) : MetaM Bool := do
   forallTelescopeReducing (← getConstInfo name).type fun _ result => do
     return (← whnfR result).isAppOf ``LeanExe.Wasi.Action
 
+private def checkShortNames (names : Array Name) : CommandElabM Unit := do
+  let mut seen : List String := []
+  for name in names do
+    let short := name.getString!
+    if seen.contains short then
+      throwError "verified_compile_wasi: definitions share the generated name {short}"
+    seen := short :: seen
+
 private partial def specializeTheoremAux (lemmaTerm : Lean.Expr)
     (assigned : List (Name × Lean.Expr)) (type : Lean.Expr)
     (arguments retained : Array Lean.Expr) : MetaM Lean.Expr := do
@@ -31,7 +40,7 @@ private partial def specializeTheoremAux (lemmaTerm : Lean.Expr)
           specializeTheoremAux lemmaTerm assigned (body.instantiate1 value)
             (arguments.push value) (retained.push value)
     | _ => mkLambdaFVars retained (mkAppN lemmaTerm arguments)
-def specializeTheorem (name : Name) (assigned : List (Name × Lean.Expr)) : MetaM Lean.Expr := do
+private def specializeTheorem (name : Name) (assigned : List (Name × Lean.Expr)) : MetaM Lean.Expr := do
   let lemmaTerm ← mkConstWithFreshMVarLevels name
   specializeTheoremAux lemmaTerm assigned (← inferType lemmaTerm) #[] #[]
 
@@ -106,20 +115,23 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) : TermElab
     let entry ← entryExpr state reflected.name
     let someEntry ← mkAppM ``Option.some #[entry]
     let info ← getConstInfoDefn reflected.name
-    let proof ← lambdaTelescope info.value fun params _ => do
+    let (proof, total) ← lambdaTelescope info.value fun params _ => do
       let env ← nativeEnvironment reflected params
       let native := mkAppN (mkConst reflected.name) params
       let flatten ← reflected.result.fn reflected.nativeResult
       let related := mkAppN (mkConst reflected.meaning) params
-      let execution ← specializeTheorem ``compiled_native_entry_run
-        [(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
+      let assignments := [(`pureSigs, pureSignatures state.pure), (`effectSigs, state.signatures),
           (`α, reflected.nativeResult), (`source, mkConst (base ++ `pure ++ `module)),
           (`pure, pureContext), (`program, mkConst (base ++ `program)),
           (`entries, mkConst (base ++ `entries)), (`pool, mkConst (base ++ `literalPool)),
           (`index, mkNatLit index), (`entry, entry), (`selected, ← mkEqRefl someEntry),
           (`calls, mkConst (base ++ `calls)), (`args, env), (`native, native),
           (`flatten, flatten), (`related, related)]
-      mkLambdaFVars params execution
+      let execution ← specializeTheorem ``compiled_native_entry_run assignments
+      let resourceSafe ← specializeTheorem ``compiled_native_entry_run
+        ((`aborts, toExpr false) :: assignments)
+      let total ← totalExecutionProof resourceSafe
+      return (← mkLambdaFVars params execution, ← mkLambdaFVars params total)
     let functionBase := base ++ Name.mkSimple reflected.name.getString!
     addTheorem (functionBase ++ `implements) (← inferType proof) proof
     let exportProof ← specializeTheorem ``compile_entry_export
@@ -128,8 +140,6 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) : TermElab
         (`entries, mkConst (base ++ `entries)), (`pool, mkConst (base ++ `literalPool)),
         (`index, mkNatLit index), (`entry, entry), (`selected, ← mkEqRefl someEntry)]
     addTheorem (functionBase ++ `exported) (← inferType exportProof) exportProof
-    let resourceSafe ← specializeTheorem (functionBase ++ `implements) [(`aborts, toExpr false)]
-    let total ← totalExecutionProof resourceSafe
     addTheorem (functionBase ++ `total) (← inferType total) total
 
 private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : Name) :
@@ -150,7 +160,8 @@ private def emitCommandProofs (base : Name) (state : ProgramReflection) (name : 
   addTheorem (base ++ `start) (← inferType execution) execution
   let exported ← specializeTheorem ``compile_start_export assignments
   addTheorem (base ++ `exported) (← inferType exported) exported
-  let resourceSafe ← specializeTheorem (base ++ `start) [(`aborts, toExpr false)]
+  let resourceSafe ← specializeTheorem ``compiled_native_start_run
+    ((`aborts, toExpr false) :: assignments)
   let total ← totalExecutionProof resourceSafe (some native)
   addTheorem (base ++ `total) (← inferType total) total
 
@@ -164,6 +175,15 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
   let classifications ← names.mapM fun name => liftTermElabM (isEffectful name)
   let pureNames := (names.zip classifications).filterMap fun (name, effectful) =>
     if effectful then none else some name
+  let effectNames := (names.zip classifications).filterMap fun (name, effectful) =>
+    if effectful then some name else none
+  checkShortNames pureNames
+  checkShortNames effectNames
+  if main?.isNone then
+    for name in effectNames do
+      if ["alloc", "release", "allocCount", "freeCount", "memory", "__indirect_function_table"].contains
+          name.getString! then
+        throwError "verified_compile_wasi: {name.getString!} is a reserved module export"
   prepareRecursiveTypes pureNames
   let mut pureState : Verified.Reflect.ProgramReflection := {}
   for name in pureNames do
@@ -183,7 +203,13 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
   match mainName? with
   | none => liftTermElabM (emitEntryProofs base state)
   | some name => liftTermElabM (emitCommandProofs base state name)
-  emitEncoding target.getId (base ++ `module)
+  emitValidity target.getId (base ++ `module)
+  let refinements := match mainName? with
+    | none => state.out.flatMap fun reflected =>
+        let functionBase := base ++ Name.mkSimple reflected.name.getString!
+        #[functionBase ++ `implements, functionBase ++ `total]
+    | some _ => #[base ++ `start, base ++ `total]
+  emitEncoding target.getId (base ++ `module) refinements (some (base ++ `validity))
 
 syntax (name := verifiedCompileWasi) "verified_compile_wasi " ident " := " "[" ident,* "]" : command
 syntax (name := verifiedCompileWasiMain)

@@ -1,6 +1,6 @@
 # Verified compiler: WASI Preview 1 design
 
-Status: implementation in progress.  The user directed implementation of this reviewed agenda on the build host.  The initial scope is WASI Preview 1 over core WebAssembly, stdin reads, stdout and stderr writes, and process exit.  The API uses ordinary Lean `do` notation and follows the compiler's UInt64 convention for executable lengths, counts, and statuses.  The recommendations in the review table guide implementation.  The library reorganization is merged into `main` at `ba466061`.  This work uses `verified-wasi`, with an isolated checkout on the build host.
+Status: implementation and acceptance testing in progress.  The native API, packed bytes, pure execution transport, universal effect proofs, reflector, and exported-entry theorems are implemented.  Concrete callable and command validity proofs and their native byte-theorem bundles have passed focused tests.  Full repository integration gates remain pending.  [The WASI manual](wasi.md) describes the current public API and proof premises.  This document records the reviewed architecture, external sources, acceptance conditions, and decisions.
 
 ## Scope and sources
 
@@ -8,30 +8,30 @@ The initial host interface consists of `fd_read`, `fd_write`, and `proc_exit` in
 
 The specification pin is WebAssembly/WASI commit `fae981bae14809d91f9bc2d63852d461f331d161`.  Its [interface definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), [generated reference](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/docs.md), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md) are the external references.  A future specification update requires review of the ABI, host assumptions, and proof statements.
 
-The [current typed source](../Verified/Source.lean) has pure value semantics.  The [compiler](../Verified/Compile.lean) emits an import-free module, and its [runtime predicate](../Verified/RuntimeFacts.lean) requires that layout.  The [correctness theorem](../Verified/Correct.lean) and [representation API](../LeanExe/Pipeline/Implements.lean) use `Store Unit`.  This design adds an effect language and proves its connection to host-dependent execution.
+The [pure typed source](../Verified/Source.lean) has value semantics.  Its [compiler](../Verified/Compile.lean) emits an import-free module, and its [runtime predicate](../Verified/RuntimeFacts.lean) requires that layout.  The [pure correctness theorem](../Verified/Correct.lean) and [representation API](../LeanExe/Pipeline/Implements.lean) use `Store Unit`.  [The effect language](../Verified/Wasi/Source.lean) embeds these pure expressions, and [its compiler theorem](../Verified/Wasi/Correct.lean) connects them to host-dependent execution through import relocation and host-state transport.
 
 ### Earlier implementations
 
 Two earlier branches provide implementation and proof examples:
 
-| Revision | Existing work | Reuse and remaining obligations |
+| Revision | Earlier work | Relation to this implementation |
 |---|---|---|
-| `io` at `6a92d7a09cce3861bc9adc0b64e6b3b164047c2b` | The [byte-I/O proof inventory](https://github.com/jsmorph/leanexe/blob/6a92d7a09cce3861bc9adc0b64e6b3b164047c2b/proofs/byte-io/README.md) covers syscall models, an abstract write protocol, and six concrete echo executions. | Adapt the examples to the current allocator and ownership layout.  Universal execution proofs for the emitted read/write routines remain required. |
-| `wasi` at `efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28` | The [native API](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/Wasi.lean) exposes all 46 Preview 1 functions through opaque BaseIO operations.  Its [manual](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/docs/wasi.md) describes direct native lowering, one-iovec transfers, packed ByteArrays, and 38 execution cases. | Review its wrapper layouts, effect sequencing, cleanup, and test cases against the current runtime.  The [checkpoint](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/task.md) records incomplete full proof gates.  Verified transport, wrapper, and universal effect proofs remain required. |
+| `io` at `6a92d7a09cce3861bc9adc0b64e6b3b164047c2b` | The [byte-I/O proof inventory](https://github.com/jsmorph/leanexe/blob/6a92d7a09cce3861bc9adc0b64e6b3b164047c2b/proofs/byte-io/README.md) covers syscall models, an abstract write protocol, and six concrete echo executions. | The current wrappers have universal execution proofs against the current allocator and ownership layout.  Echo executions remain useful test cases. |
+| `wasi` at `efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28` | The [native API](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/Wasi.lean) exposes all 46 Preview 1 functions through opaque BaseIO operations.  Its [manual](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/docs/wasi.md) describes direct native lowering, one-iovec transfers, packed ByteArrays, and 38 execution cases. | Its wrapper layout and cleanup supplied implementation references.  The [checkpoint](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/task.md) records incomplete full proof gates.  The current implementation supplies separate Verified transport, wrapper, and universal effect proofs. |
 
-The earlier native WASI API uses `Action := BaseIO`, UInt32 descriptors, capacities, counts, errnos, and exit codes, and `Except UInt32 ByteArray` read results.  Its byte representation has owner, pointer, and length values.  This proposal uses a semantic command monad, UInt64-facing operations, explicit result records, and one root plus length.  Both APIs use the proposed name `LeanExe.Wasi.Action`; they cannot coexist unchanged.  The implementation review must settle public API compatibility before importing earlier source.  Its wider operation set remains outside the initial scope.
+The earlier native WASI API uses `Action := BaseIO`, UInt32 descriptors, capacities, counts, errnos, and exit codes, and `Except UInt32 ByteArray` read results.  Its byte representation has owner, pointer, and length values.  The current API uses a semantic action monad, UInt64-facing operations, explicit result records, and one root plus length.  Both APIs use `LeanExe.Wasi.Action`, with different meanings and types.  Importing earlier client code requires an explicit compatibility design.  Its wider operation set remains outside the initial scope.
 
-The earlier [direct wrappers](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/Wasm/Wasi.lean) provide the closest lowering reference: one iovec, errno checks before count reads, cleanup of failed or empty reads, and partial-transfer preservation.  Its emitter imports the full primitive registry and emits command modules.  The proposed three-import layout and callable form require new construction.  Its [effect analysis](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/IR/Effects.lean) identifies effectful code but supplies no trace semantics or compiler correctness theorem.
+The earlier [direct wrappers](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/Wasm/Wasi.lean) provide a lowering reference: one iovec, errno checks before count reads, cleanup of failed or empty reads, and partial-transfer preservation.  Its emitter imports the full primitive registry and emits command modules.  The current [module construction](../Verified/Wasi/Program.lean) adds the three-import layout and callable form.  The earlier [effect analysis](https://github.com/jsmorph/leanexe/blob/efbd253c74c0e4b7dd8d74ea3bb48b12276f3e28/LeanExe/IR/Effects.lean) identifies effectful code but supplies no trace semantics or compiler correctness theorem.
 
 ## Lean API and behavior
 
 ### Actions and results
 
-The proposed public namespace is `LeanExe.Wasi`.  Native API modules import Lean's data types and the required dialect operations.  Their definitions remain independent of either compiler.  The shared byte type is `LeanExe.Bytes`, with its native operations under `LeanExe/Dialect/Bytes.lean`.  Compiler representations and proofs live under `Verified`.
+The public namespace is `LeanExe.Wasi`.  [The native import](../LeanExe/Wasi.lean) supplies actions and their interpreter independently of either compiler.  The shared byte type is `LeanExe.Bytes`, with [its native operations](../LeanExe/Dialect/Bytes.lean).  Compiler representations and proofs live under `Verified`, and [the compiler import](../Verified/Wasi.lean) supplies `verified_compile_wasi`.
 
-`Action α` is a semantic command monad with Lean `pure` and `bind` instances.  The accepted source uses ordinary `do`, named first-order helpers, bindings, conditionals, pure Verified calls, and the bounded loop below.  Effectful helper calls form an acyclic call graph in the proposed initial version.  Pure callees retain their existing recursion and allocation conditions.  These control-flow restrictions are review choices.
+`Action α` is a semantic monad with Lean `pure` and `bind` instances.  The accepted source uses ordinary `do`, named first-order helpers, bindings, conditionals, pure Verified calls, and the bounded loop below.  Effectful helper calls form an acyclic call graph.  Pure callees retain their existing recursion and allocation conditions.  These control-flow restrictions follow the review decisions.
 
-| Proposed declaration | Meaning |
+| Declaration | Meaning |
 |---|---|
 | `readSome (capacity : UInt64) : Action ReadResult` | One stdin read after capacity validation and any required allocation. |
 | `writeStdoutSome (bytes : Bytes) : Action WriteResult` | One stdout write, borrowing `bytes`. |
@@ -43,15 +43,15 @@ The proposed public namespace is `LeanExe.Wasi`.  Native API modules import Lean
 
 Zero errno denotes success.  Error results remain ordinary values: the source decides whether to return, exit, continue, or report an error.  Sequencing an action executes it once even if its result is discarded.  A pure binding such as `let action := readSome n` names a description.  A monadic binding such as `let result ← action` executes it.  Sequencing the same named action twice performs two calls.
 
-Native action descriptions and continuations can be constructed as the native interpreter runs.  Reflection translates accepted definitions into fixed typed code.  It performs no guest I/O.  Compiled runtime values have the compiler's value types, including the proposed byte type and result records.  The host world belongs to the semantics and host state rather than the source program's arguments.
+Native action descriptions and continuations can be constructed as the native interpreter runs.  Reflection translates accepted definitions into fixed typed code.  It performs no guest I/O.  Compiled runtime values have the compiler's value types, including bytes and result records.  The host world belongs to the semantics and host state rather than the source program's arguments.
 
 `loop` is a command-description node.  It starts with index zero and `init`.  Before each iteration it tests the index against `count`, then evaluates the pure `test` on the index and current state.  Reaching the count or a false test returns the current state.  A successful `step` supplies the next state, then the index advances by one.  Exit or a trap terminates that execution.  A zero count executes neither callback.  The callbacks are statically known code reflected with their captured values.  The native interpreter executes the loop, and the compiler emits a structured Wasm loop.  The proof uses natural indices, while the compiled counter stays in UInt64 and reaches `count` without wrapping.
 
-An effectful helper may return `Unit`.  Its result occupies zero Wasm slots, and its unused result binding is erased by a checked equation.  This requires an effect-result representation rule.
+An effectful helper may return `Unit`.  Its result occupies zero Wasm slots, and its unused result binding is erased by a checked equation.  [The result descriptor](../Verified/Wasi/Source.lean) and [result adapters](../Verified/Wasi/Results.lean) cover Unit and accepted value types.
 
 ### Reads, writes, and exit
 
-`readSome` accepts zero capacity.  A zero-capacity request still calls `fd_read` with one zero-length iovec.  Empty success indicates EOF only when the requested capacity was positive.  EOF is an observation of that call.  The model permits a later read to observe additional data if the host's stdin resource permits it.
+`readSome` accepts zero capacity.  A zero-capacity request still calls `fd_read` with one zero-length iovec.  Stream hosts report EOF through empty success, while zero-capacity empty success supplies no EOF evidence.  The abstract host relation has no separate EOF state and permits later reads to observe more data.
 
 A capacity above `2^32 - 1` returns errno `overflow` (61) and empty bytes before allocation or host I/O.  An address-space or allocator failure after a valid capacity follows the existing guest-trap mechanism.  It is distinct from a WASI errno.  The allocation theorem supplies sufficient-memory premises for a trap-free call.
 
@@ -63,33 +63,33 @@ A successful write returns the host's count, including a short or zero count.  T
 
 ### Byte operations
 
-`Bytes` is an abstract immutable value whose Lean meaning is a packed byte sequence.  Its native implementation can wrap `ByteArray`.  Its public operations use UInt64 values, with these initial semantics:
+`Bytes` is an immutable value whose Lean meaning is a packed byte sequence.  Its native implementation wraps `ByteArray`.  Its public operations use UInt64 values:
 
-| Proposed declaration | Meaning |
+| Declaration | Meaning |
 |---|---|
 | `Bytes.empty : Bytes` | The empty sequence. |
 | `Bytes.size (bytes : Bytes) : UInt64` | Its length, exact under the representation's address-space bound. |
 | `Bytes.get (bytes : Bytes) (index : UInt64) : UInt64` | The selected byte, zero-extended, or zero past the end. |
 | `Bytes.build (count : UInt64) (element : UInt64 → UInt64) : Bytes` | A byte sequence whose element at `i` is the low eight bits of `element i`.  The callback obeys the existing first-order build restrictions. |
-| Checked byte-literal syntax | A constant sequence, with each literal checked to lie between 0 and 255 during elaboration. |
+| `bytes![0, 65, 255]` | A constant sequence, with each literal checked to lie between 0 and 255 during elaboration. |
 
-The logical length uses Nat where Lean's byte-sequence definitions require it.  Compiled counters, comparisons, API arguments, and returned lengths use UInt64.  Reflection proves their correspondence under the memory bound.  Byte construction and access get proved rules of their own.  Intermediate UInt8 conversions in those rules do not require a general UInt8 arithmetic dialect.
+The logical length uses Nat where Lean's byte-sequence definitions require it.  Compiled counters, comparisons, API arguments, and returned lengths use UInt64.  Reflection proves their correspondence under the memory bound.  [Byte access](../Verified/Bytes/Get.lean) and [construction](../Verified/BytesBuildCorrect.lean) have universal correctness rules.  Intermediate UInt8 conversions in those rules do not require a general UInt8 arithmetic dialect.
 
-`ReadResult` flattens to an errno word and one byte value.  `WriteResult` is scalar.  These layouts require extending the accepted field representation for `Bytes`; they avoid making arbitrary heap-valued sums a prerequisite.
+`ReadResult` flattens to an errno word and one byte value.  `WriteResult` is scalar.  The accepted field representation includes `Bytes`.  These records supply the operation results without extending sums to arbitrary heap-valued fields.
 
-A nonempty byte literal produces an owned heap value when evaluated.  The compiler may keep its constant bytes in a protected data segment and copy them into that allocation.  Empty literals produce `(0, 0)`.  Repeated evaluations get separate owned roots.  Literal data remains protected across calls, and construction contributes its allocation and copy cost.
+A nonempty byte literal produces an owned heap value when evaluated.  The compiler keeps its constant bytes in a protected data segment and copies them into that allocation.  Empty literals produce `(0, 0)`.  Repeated evaluations get separate owned roots.  Literal data remains protected across calls, and construction contributes its allocation and copy cost.
 
 ## Packed memory and the WASI ABI
 
 ### Byte ownership
 
-A represented byte value has two Wasm values: a UInt64 allocation-root pointer `p` and a UInt64 logical length `n`.  Bytes begin at `p` and occupy consecutive addresses.  A nonzero root has the runtime's 48-byte header, count one, capacity at least `n`, and child mask zero.  Its full allocated region participates in separation and ownership.  Header-kind and auxiliary fields follow the current allocator's initialization unless a later proved byte allocator changes them.
+A represented byte value has two Wasm values: a UInt64 allocation-root pointer `p` and a UInt64 logical length `n`.  Bytes begin at `p` and occupy consecutive addresses.  A nonzero root has the runtime's 48-byte header, count one, capacity at least `max(8, n)`, kind two, width one, and child mask zero.  Its full allocated region participates in separation and ownership.  [The byte representation](../Verified/Bytes/Basic.lean) states these fields and bounds.
 
 New empty results use `(0, 0)`.  Incoming owned and borrowed empty values may also have a valid allocated root of length zero, matching the existing host allocator.  Cleanup tests the root and releases a nonzero owned root once.  Borrowed-byte separation and frame predicates protect the allocation header and capacity even when the logical length is zero.  A byte value exposes its allocation root and length through the representation API, while source code operates on `Bytes`.
 
-Writes borrow their input.  Reads return a fresh owned root on nonempty success.  If an owned value has multiple live source uses, the compiler's mode and lifetime analysis preserves its owner until the last use.  Converting a borrowed byte value to an owned result copies its bytes.  Result construction, branch cleanup, unused results, and effectful helper returns need the same separation and last-use obligations as existing arrays.  Byte-copy and release rules must prove preservation of the caller's retained regions.
+Writes borrow their input.  Reads return a fresh owned root on nonempty success.  If an owned value has multiple live source uses, the compiler's mode and lifetime analysis preserves its owner until the last use.  Converting a borrowed byte value to an owned result copies its bytes.  Result construction, branch cleanup, unused results, and effectful helper returns use the same separation and last-use obligations as existing arrays.  [Owned copying](../Verified/Bytes/CopyOwned.lean) and [release](../Verified/Bytes/Release.lean) prove preservation of the caller's retained regions.
 
-The [current execution host](../tools/wasmtime-host.c) already allocates raw packed bytes and passes byte values as pointer and length.  That code can support tests of this representation.  A Verified byte-representation instance and lifetime theorem remain required.
+The [execution host](../tools/wasmtime-host.c) allocates raw packed bytes and passes byte values as pointer and length.  [The representation instance](../Verified/Bytes/Represent.lean) connects that ABI to owned and borrowed source bytes.  Host execution tests check the external allocator and argument handling.
 
 For positive read capacity, the wrapper allocates the requested byte capacity.  A short read retains the root with the returned logical length.  Unused capacity stays private to the allocation.  Error and zero-byte paths release it.  A zero-capacity read uses `(0, 0)` as its empty writable range and needs no allocation.
 
@@ -105,11 +105,11 @@ All imports use the module name `wasi_snapshot_preview1`.  The core-Wasm signatu
 
 For read and write the arguments are the fixed fd, the iovec pointer, one iovec, and the result-count pointer.  An iovec consists of a 32-bit buffer pointer and 32-bit byte count.  The count result occupies four bytes.  The wrapper zero-extends successful counts and errnos into UInt64 values.  Valid enum results are a host-ABI premise.
 
-The proposed scratch reservation is `[0, 16)`: the iovec at bytes 0 through 7, the count at bytes 8 through 11, and four padding bytes.  The wrapper initializes its metadata and count before calling the host.  Scratch remains below the heap base of 4096.  The table writer and byte literals must preserve this reservation.
+The scratch reservation is `[0, 16)`: the iovec at bytes 0 through 7, the count at bytes 8 through 11, and four padding bytes.  The wrapper initializes its metadata and count before calling the host.  Constant arrays begin at 4096, and byte literals follow them.  The allocator starts after the static data.
 
 The layout preserves the pure program's constant-array addresses and places raw byte-literal data after those arrays.  The initial bump pointer starts beyond all static data, aligned to eight bytes.  The initial-memory proof includes that data and the current page cap.  These arrays occupy linear memory.  The application ABI's function table is a separate Wasm resource.
 
-Before narrowing a nonempty byte range, the proof establishes `p < 2^32`, `n < 2^32`, and `p + n` within the active memory and its cap.  UInt64 arithmetic for those checks cannot wrap.  Empty pointer zero with length zero is a valid range.  Host count results are read only on success and must lie within the requested range.  A defensive count check may trap on a host violation, but the proof uses the stated host condition rather than such a check to justify a conforming run.
+Before narrowing a nonempty byte range, the proof establishes `p < 2^32`, `n < 2^32`, and `p + n` within the active memory and its cap.  The read wrapper checks capacity at runtime.  Heap and representation bounds justify address and write-length narrowing.  Empty pointer zero with length zero is a valid range.  Host count results are read only on success, and the host assumptions bound them by the requested range.
 
 The memory frame excludes scratch and, for a read, the newly allocated writable capacity.  A write frame excludes only scratch.  The host preserves allocator headers, globals, tables, memory caps, and every other guest region.  It returns control without invoking another guest export.  Calls into an instance are serialized.  These conditions make a single scratch reservation sufficient across repeated calls and separate instances.
 
@@ -121,9 +121,9 @@ The command semantics relates a source environment and host world to a result, f
 
 Events record host invocations: the operation, selected fd, requested bytes or capacity, returned errno and successful count, and committed transfer.  Pure computation and capacity rejection leave this trace unchanged.  Stdout and stderr events share one ordered trace.  The host world may map them to the same resource.  The model also permits stdin and output descriptors to alias.  Separate byte logs are useful derived observations but do not establish ordering across descriptors or model aliasing alone.
 
-The abstract world and host-step relations specify the three operations.  A finite scripted world supplies executable examples.  The universal theorem ranges over every host satisfying those relations, with no fixed input string, output length, or transfer partition.
+The abstract world and host-step relations specify the three operations.  [Observed host state](../Verified/Wasi/Observed.lean) adds an append-only joint event journal.  The universal theorem ranges over every satisfying host, with arbitrary input, output length, and permitted transfer partition.  Scripted worlds supply concrete semantic tests.
 
-`Action` has this meaning through its constructors, pure expressions, and composition rules.  A native Lean interpreter may execute actions through a host adapter.  The correctness statement for that adapter is separate.  The older [opaque BaseIO interface](https://github.com/jsmorph/leanexe/blob/6a92d7a09cce3861bc9adc0b64e6b3b164047c2b/LeanExe/ByteIO.lean) supplies no observable meaning from its type alone.  If a later compatibility layer accepts it, an explicit relation must connect its opaque operations and state token to the command world.  Kernel-checkable equations for `pure` and `bind` establish sequencing, while primitive I/O assumptions establish transfers.
+`Action` has this meaning through [its execution relation](../LeanExe/Wasi/Semantics.lean) and [prefix relation](../LeanExe/Wasi/Prefix.lean).  [The native interpreter](../LeanExe/Wasi/Interpreter.lean) executes actions through a stream or supplied adapter.  Adapter conformance to the abstract host assumptions is external to the compiler proof.  The older [opaque BaseIO interface](https://github.com/jsmorph/leanexe/blob/6a92d7a09cce3861bc9adc0b64e6b3b164047c2b/LeanExe/ByteIO.lean) would need an explicit relation connecting its operations and state token to the command world.  Kernel-checked equations for `pure` and `bind` establish sequencing, while host assumptions establish transfers.
 
 ### Success, errors, and traps
 
@@ -133,15 +133,15 @@ On errno, the model may record a committed prefix for the failed operation.  The
 
 Host-trap outcomes also retain the world committed before the trap.  Frame conditions still protect unrelated guest memory.  Normal-return ownership postconditions apply after a return.  A host trap, resource trap, or exit ends the host's use of that instance.
 
-Talos models host invocation through `HostEnv`, `HostSpec`, and `HostResult`, as pinned by [the dependency manifest](../lake-manifest.json).  `HostResult` has `Return`, `Trap`, and `Throw` outcomes.  The exit model uses a distinguished world field `exited : Option UInt64`.  Accepted exit records the narrowed status and produces the designated exit trap.  Exit failure produces a host trap and preserves the previous exit field and committed effects.  Initial worlds have `exited = none`.  Read and write transitions preserve that field.  The accepted-exit theorem requires the designated outcome and recorded status.  An arbitrary trap message or a nonzero guest status cannot establish acceptance.  The host specification excludes ordinary return from `proc_exit` and thrown exceptions from all three operations.
+Talos models host invocation through `HostEnv`, `HostSpec`, and `HostResult`, as pinned by [the dependency manifest](../lake-manifest.json).  `HostResult` has `Return`, `Trap`, and `Throw` outcomes.  The exit model uses a distinguished world field `exited : Option UInt64`.  Accepted exit records the narrowed status and produces the designated exit trap.  Exit failure produces a host trap and preserves the previous exit field and committed effects.  A host beginning a fresh lifecycle supplies a world with `exited = none`.  Read and write transitions preserve that field.  The accepted-exit theorem requires the designated outcome and recorded status.  An arbitrary trap message or a nonzero guest status cannot establish acceptance.  The host specification excludes ordinary return from `proc_exit` and thrown exceptions from all three operations.
 
-This design can use a proof-side exit marker and exact trap identity without changing Talos's outcome type.  A future explicit exit outcome would require a Talos extension and a separate review.  Relating Wasmtime's accepted exits and exit failures to their modeled outcomes remains an external host assumption checked by execution tests.
+The implementation uses a proof-side exit marker and exact trap identity in [the host assumptions](../Verified/Wasi/HostSpec.lean).  A future explicit exit outcome would require a Talos extension and a separate review.  Relating Wasmtime's accepted exits and exit failures to their modeled outcomes remains an external host assumption checked by execution tests.
 
 ## Module construction and compiler proofs
 
 ### Pure code in an importing module
 
-Let the existing pure module contain `N` defined functions, including its allocator, release routine, depth entries, and wrappers.  The WASI module prefixes three imports and preserves those `N` definitions before appending the I/O wrappers and effectful functions.  The proposed placement is:
+Let the existing pure module contain `N` defined functions, including its allocator, release routine, depth entries, and wrappers.  The WASI module prefixes three imports and relocates those `N` definitions before appending the I/O wrappers and effectful functions.  [The layout maps](../Verified/Wasi/Wrappers.lean) give these positions:
 
 | Item | Defined-function position | Absolute function index |
 |---|---|---|
@@ -151,13 +151,13 @@ Let the existing pure module contain `N` defined functions, including its alloca
 | First appended wrapper or effectful function | `N` | `3 + N` |
 | Command `_start`, when requested | Last defined position | Three plus that position |
 
-Function indices and type indices are separate mappings.  The simple initial layout reserves three type entries for the three imports, including duplicate read/write signatures, then relocates old type index `t` to `3 + t`.  Appended definitions receive checked type entries.  All calls, depth entries, wrapper calls, exports, and function-type annotations follow the layout maps.  The module's validity theorem establishes import signatures, call signatures, and export bounds.  The [shared encoder](../LeanExe/Encoding/Modules.lean) and [encoding-domain conditions](../LeanExe/Encoding/Domain.lean) already account for function imports.
+Function indices and type indices are separate mappings.  The layout reserves three type entries for the three imports, including duplicate read/write signatures, then relocates old type index `t` to `3 + t`.  Appended definitions receive type entries.  All calls, depth entries, wrapper calls, exports, and function-type annotations follow the layout maps.  [The validity generator](../Verified/Wasi/ReflectValidity.lean) constructs proofs of import signatures, instruction typing, and export bounds for the concrete module.  [The shared encoder](../LeanExe/Encoding/Modules.lean) and [encoding-domain conditions](../LeanExe/Encoding/Domain.lean) account for function imports.
 
-The encoder and its [module grammar](../LeanExe/Encoding/Spec/Modules.lean) currently require empty table and table-export lists.  The proposed application-ABI table therefore requires an encoding extension.  Its initial profile admits one empty nullable-function-reference table with minimum zero and the export `__indirect_function_table` at table index zero.  It adds the table section and table-export entry to the encoder, decoder, encoding domain, validity conditions, and round-trip proofs.  The existing import-free profile keeps its exact bytes.  Element segments and indirect calls remain outside this extension.
+The encoder and its [module grammar](../LeanExe/Encoding/Spec/Modules.lean) admit one empty nullable-function-reference table with minimum zero and the export `__indirect_function_table` at table index zero.  The table section and table-export entry have encoding, decoding, domain, validity, and round-trip rules.  The empty-table-list case retains the existing encoding scheme, and byte-for-byte preservation of the pure import-free corpus remains an integration gate.  Element segments and indirect calls remain outside this extension.
 
-The current [function renaming](../Verified/FunRelocation.lean) transports typed source functions and meaning.  The [module-composition rules](../Verified/ModuleComposition.lean) retain the import-free runtime layout.  Neither supplies the required target execution transport.  Existing store-map and host-lifting helpers in Talos likewise require an execution theorem before they can transport compiler correctness.
+Existing [function renaming](../Verified/FunRelocation.lean) transports typed source functions and meaning, and the [module-composition rules](../Verified/ModuleComposition.lean) retain the import-free runtime layout.  WASI reuse adds [instruction relocation](../Verified/Wasi/Relocation.lean), [pure execution transport](../Verified/Wasi/PureTransportSpecs.lean), and [module transport](../Verified/Wasi/ModuleTransport.lean).
 
-The proposed reuse route keeps the pure universal theorem and proves a module-level transport.  Its obligations are:
+The transport keeps the pure universal theorem and establishes these properties:
 
 1. Relocated pure code simulates the original code under the layout maps, preserving its data state, represented arguments and results, and resource outcome.  The relation accounts for function identities and any added table resources.
 2. Every reachable pure call targets a relocated definition, including allocator and release calls.  It never reaches the three imports.
@@ -165,7 +165,7 @@ The proposed reuse route keeps the pure universal theorem and proves a module-le
 4. Appended definitions and the empty application-ABI table do not change pure execution.
 5. Heap predicates and representation facts transport through that state relation, including the new byte predicates.
 
-The proof covers the instruction subset emitted by the pure compiler, including nested control flow and every call form it emits.  The first proof stage must establish this transport for allocator calls and a byte-processing function before I/O commands depend on it.  Shared rules expose the host-state and placement parameters that the transport proof requires.
+The proof covers an explicit pure instruction profile, including nested control flow and direct calls.  Profile closure excludes host and indirect calls.  [The relocated runtime rules](../Verified/Wasi/Runtime.lean) reuse allocator and release correctness through this transport.  The effect proof preserves both the host world and its ordered event journal across pure calls.
 
 ### Typed commands and reflection
 
@@ -173,45 +173,45 @@ The effect IR embeds typed pure expressions and has constructors for return, bin
 
 Compilation orders operand evaluation before its effect.  It materializes operation results before evaluating a continuation.  Cleanup uses liveness across both the operation and continuation.  An unused read result is still read and then released.  A borrowed write argument remains live through the syscall.  Branches and loop iterations carry the same ownership and caller-frame obligations as pure code.
 
-The proposed frontend has a separate `verified_compile_wasi` command.  `verified_compile_wasi p := [f₁, …, fₙ]` constructs a callable module.  `verified_compile_wasi p (main := main) := [f₁, …, fₙ]` constructs a command module whose selected entry is a closed `Action UInt64`.  Definitions appear in callee-before-caller order.  The list may contain pure helpers and effectful definitions, with their respective recursion rules.  Pure source and its existing `verified_compile` command retain their current behavior.
+The separate `verified_compile_wasi` command is provided by `import Verified.Wasi`.  `verified_compile_wasi p := [f₁, …, fₙ]` constructs a callable module.  `verified_compile_wasi p (main := main) := [f₁, …, fₙ]` constructs a command module whose selected entry is a closed `Action UInt64`.  The frontend collects pure definitions first, preserving their relative order, then reflects effects in their relative order.  Other listed callees precede callers within each group.  Pure helpers retain their self-recursion rules, while effectful helpers are acyclic.
 
-The generated declarations include the module, its encoded-byte theorem, its initial-state theorem, each effectful definition's source-correspondence proof, and its I/O refinement theorem.  Conditional total-execution theorems use the resource and host premises below.  Resource conditions may quantify permitted reply paths.  The command must identify that obligation before exposing an input-only allocation bound.  These syntax and declaration names are proposals for review.
+The generated declarations include `p.module`, `p.initial`, each effectful function's `.related` and `.callee`, and the encoding and validity proofs.  Callable `.implements` and command `.start` run the exported wrappers, including injected depth and hidden tables.  Their `.exported` theorems identify the module exports.  Conditional `.total` theorems use typed resource-prefix and reached-host premises.  [The manual's declaration table](wasi.md#declarations) gives the exact public names and scope of `p.bytes`.
 
-The reflector translates accepted Lean action definitions into this IR and proves equality of their source execution relations after flattening accepted values.  It recognizes the selected monad's `pure` and `bind`, supported source control flow, and named API operations.  Inline helpers unfold under the existing policy.  Recursive effectful helpers and action values stored in runtime data require later designs.  A failed reflection proof rejects the program.
+The reflector translates accepted Lean action definitions into this IR and proves `Action.Rel` after flattening accepted values.  [Execution transport](../LeanExe/Wasi/RelatedExec.lean) and [prefix transport](../LeanExe/Wasi/RelatedPrefix.lean) connect this relation to observable semantics.  The reflector recognizes the monad's `pure` and `bind`, supported control flow, and named API operations.  Unlisted inline helpers unfold.  Recursive effectful helpers and action values stored in runtime data require later designs.  A failed reflection proof rejects the program.
 
-The universal compiler theorem is proved by command structure, using the pure transport theorem and wrapper execution lemmas.  It quantifies every concrete host satisfying the specification and every pair of related initial states.  Each completed target execution returning a value, exiting, or reporting a permitted host trap has a matching source execution with the same ordered events, final world, and corresponding outcome.  The proof constructs that source path from the host's replies.  Nondeterministic specifications permit several paths.  Each target path must belong to that relation.
+The universal compiler theorem is proved by command structure, using the pure transport theorem and wrapper execution lemmas.  It quantifies every concrete satisfying host and related initial state and supplies a sufficient fuel bound.  Each target execution at or above that bound returning a value, exiting, or reporting a permitted host trap has a matching source execution with the same ordered events, final world, and corresponding outcome.  The proof constructs that source path from the host's replies.  Nondeterministic specifications permit several paths.  Each target path must belong to that relation.
 
 On normal return, values have the declared ownership, and retained caller regions keep their contents and separation.  A permitted guest resource trap matches a source prefix and residual command.  It preserves the effects already committed and remains distinct from exit.  Terminal outcomes require the host to discard the instance.
 
-A separate total-execution theorem establishes a return or designated exit when allocation and depth budgets fit, pure callees meet their termination conditions, every reached read or write call returns, and the host accepts each reached exit request.  Returned errnos are ordinary results under this theorem.  Host traps, including exit rejection, and guest resource traps retain their prefix-safety statement.  Kernel-checked source-correspondence proofs specialize these statements to each reflected definition.
+A separate total-execution theorem establishes a return or designated exit when `Heap.Within` supplies allocation room, `Resource.CallPrefixBound` bounds every typed resource prefix and establishes its size and depth checks, and `host.NoTrapsAlong` excludes reached host traps and exit rejection.  Returned errnos remain ordinary results.  Kernel-checked source-correspondence proofs specialize these statements to each reflected definition.  The general refinement theorem retains committed effects on host or guest resource failure.
 
 ## Lifecycle, bounds, and execution host
 
 ### Callable and command forms
 
-A callable module exports selected effectful functions, `alloc`, `release`, `memory`, and the existing allocation counters.  Its instance persists across successful calls.  Globals and data segments establish its initial state during instantiation.  The pinned reactor ABI makes `_initialize` optional, and this proposal omits that hook.  Host code provides the three streams before invoking exports, serializes calls, and releases owned returned byte roots.  A returned errno permits another call.  An accepted exit, a host failure, or a guest trap ends the host's use of the instance.
+A callable module exports every listed effectful function, `alloc`, `release`, `memory`, and the existing allocation counters.  Its instance persists across successful calls.  The pinned reactor ABI makes `_initialize` optional, and this implementation omits that hook.  Host code provides the three streams before invoking exports, serializes calls, and releases owned returned byte roots.  A returned errno permits another call.  An accepted exit, a host failure, or a guest trap ends the host's use of the instance.
 
 A command module exports `_start : () → ()` and `memory`.  It calls a selected closed `Action UInt64` entry and sends its returned status to `proc_exit`.  Explicit exit inside that entry follows the same terminal path.  The host invokes `_start` once and discards the instance afterward.  Debug allocation-counter exports belong to the callable test form.  Both forms export an empty `__indirect_function_table` to follow the pinned application ABI.  Source operations in this design use no indirect function pointers.
 
-Instantiation still needs a theorem: the relocated module's initial globals, memory, tables, and byte literals establish the allocator invariant and scratch reservation.  [The current initial-store proof](../Verified/Instantiate.lean) provides the import-free starting point.  A modeled initial store is distinct from a proof of real engine instantiation.
+[The initial-store theorem](../Verified/Wasi/ProgramInitial.lean) proves the allocator invariant, memory cap, borrowed constant tables, and static byte pool for the complete modeled module.  It preserves the supplied abstract host world.  Representation, consumed-block separation, and scratch separation remain call premises.  Real engine instantiation and OS-stream configuration remain external to that theorem.
 
 ### Resources and termination
 
 The current allocator rounds a requested payload up to eight bytes, with a minimum of eight, and adds its 48-byte header.  A positive read's fresh-allocation charge is therefore `48 + 8 * max(1, ceil(capacity / 8))`, expressed with proof-side natural arithmetic.  A zero-capacity read and each write allocate no byte buffer.  Reuse can reduce the charge.  Copying, byte construction, pure calls, retained state, and call frames contribute their own proved charges.
 
-The byte budget and ownership potential include the allocation header and full retained capacity after a short read.  Reclamation credits require a proved release.  A memory bound must account for those capacities throughout branches and loop iterations.
+The byte budget includes the allocation header and requested capacity rather than the short read's logical result length.  Cleanup makes released blocks available for reuse.  A memory bound must account for retained capacities throughout branches and loop iterations.
 
 Each wrapper performs at most one host transfer call.  For the initial acyclic effect-call graph and bounded loops, termination follows from finite source control flow, terminating pure callees under their depth conditions, and return of each reached host call.  A blocked host call supplies no return-time guarantee.
 
-The proposed internal ABI gives every effectful function a hidden depth word and checks it against the existing limit of 1,000.  Calls to effectful helpers and depth-aware pure bodies receive the next depth.  Host-facing wrappers initialize the depth once.  Effectful frames obey the same 32-position limit as guarded pure frames.  The proof and generated depth condition account for the combined call path.  Pure functions whose code takes no depth retain their existing ABI.  Fixed runtime-wrapper frames and real engine stack limits remain part of host validation and execution tests.
+The internal ABI gives every effectful function a hidden depth word and checks it against the existing limit of 1,000.  Calls to effectful helpers and depth-aware pure bodies receive the next depth.  Host-facing wrappers initialize the depth once.  Effectful frames obey the same 32-position limit as guarded pure frames.  The typed resource-prefix condition accounts for the combined call path.  Pure functions whose code takes no depth retain their existing ABI.  Fixed runtime-wrapper frames and real engine stack limits remain part of host validation and execution tests.
 
 Pure calls also need the generated binding of constant tables.  An internal call supplies those hidden table arguments and any depth argument to the relocated body, directly or through a proved depth-preserving wrapper.  Its source-correspondence and bound proofs compose the table binding with the body theorem.  Exported wrappers that initialize depth are reserved for host entry.  The mixed-call tests include table-using pure callees under effectful helpers and calls at the combined depth boundary.
 
-The effect theorem records allocation and depth requirements along an execution path.  A caller can prove an upper bound for all permitted replies and use it for total execution.  Read lengths are bounded by their requests, which supports such bounds for byte processing.  Reflection reuses the pure compiler's generated bound equations.  An input-only bound must account for every host-dependent branch and result length.  Bounded loops need an invariant that accounts for retained byte roots and cleanup on every iteration.
+The effect theorem records allocation and depth requirements along an execution path.  A caller proves an upper bound for all permitted resource prefixes and uses it for total execution.  Read lengths are bounded by their requests, which supports such bounds for byte processing.  Pure fragments use the pure compiler's allocation bounds.  The public frontend exposes the typed prefix condition rather than synthesizing an input-only bound for every I/O program.  Such a bound must account for host-dependent branches, result lengths, retained byte roots, and cleanup across loop iterations.
 
 ### Wasmtime integration
 
-The host uses the repository's pinned Wasmtime 44.0.0 C API, configured through `wasi_config_t`, `wasmtime_context_set_wasi`, and `wasmtime_linker_define_wasi`.  It inherits or redirects stdin, stdout, and stderr through the standard WASI configuration.  The [existing download pin](../tools/download-wasmtime.sh), [host build](../tools/build-wasmtime-host.sh), and [canonicalizing engine setup](../tools/wasmtime-host.c) provide the starting points.  The new host path resolves the three imports through that standard linker.
+The host uses the repository's pinned Wasmtime 44.0.0 C API, configured through `wasi_config_t`, `wasmtime_context_set_wasi`, and `wasmtime_linker_define_wasi`.  It inherits or redirects stdin, stdout, and stderr through the standard WASI configuration.  The [download pin](../tools/download-wasmtime.sh), [host build](../tools/build-wasmtime-host.sh), and [canonicalizing engine setup](../tools/wasmtime-host.c) define the tested embedding.  The host resolves the three imports through the standard linker.
 
 The host configures guest stdin, stdout, and stderr through inheritance or explicit file redirection.  Execution tests redirect guest output to separate capture files and send returned values, allocation counts, exit status, and host diagnostics to control outputs.  This preserves guest bytes for exact comparisons.  Interactive command mode inherits stdio.  After an engine failure, it reports the error on host stderr and returns a failure status.
 
@@ -219,50 +219,52 @@ The pinned [exit-code type](https://github.com/WebAssembly/WASI/blob/fae981bae14
 
 The host identifies accepted exits through [`wasmtime_error_exit_status`](https://github.com/bytecodealliance/wasmtime/blob/v44.0.0/crates/c-api/src/error.rs#L52-L62).  Its control output records the accepted unsigned 32-bit status, and its process status uses the low eight bits.  Exit rejection receives the engine-error diagnostic and process status 1, with no accepted exit record.  Captured guest output remains available after either terminal outcome, and the host discards the instance.
 
-Lean's kernel checks the compiler and byte proofs against Talos and the specified host relations.  Wasmtime, the C compiler, OS streams, the native action interpreter, and real host progress remain external assumptions tested by execution.  Standard WASI linking supplies compatibility with the selected ABI.
+The [native stream adapter](../LeanExe/Wasi/Interpreter.lean) reports full count after a successful write and flush and accepts every narrowed exit status as an `Outcome.exited` returned to Lean.  Stream `IO.Error`s propagate.  This policy differs from Wasmtime's status restriction and one-import transfer behavior.
+
+Lean's kernel checks the compiler and byte proofs against Talos and the specified host relations.  Wasmtime, the C compiler, OS streams, native adapter conformance, and real host progress remain external assumptions tested by execution.  Standard WASI linking supplies compatibility with the selected ABI.
 
 ## Implementation and acceptance
 
-The proposed implementation separates native APIs from compiler developments:
+The implementation separates native APIs from compiler developments:
 
-| Proposed location | Responsibility |
+| Location | Responsibility |
 |---|---|
-| `LeanExe/Dialect/Bytes.lean` | Native byte values, UInt64 operations, and literals. |
-| `LeanExe/Wasi/` | Native action descriptions, the three stream APIs, exit, loops, and their observable meaning. |
-| `Verified/Bytes/` | Byte representation, ownership, lowering, and proofs. |
-| `Verified/Wasi/` | Host assumptions, typed command IR, module layout, compiler, wrapper proofs, and reflector support. |
+| [Native bytes](../LeanExe/Dialect/Bytes.lean) | Native byte values, UInt64 operations, and literals. |
+| [Native actions](../LeanExe/Wasi) | The three stream APIs, exit, bounded loops, observable semantics, and native interpreter. |
+| [Byte compilation](../Verified/Bytes) | Byte representation, ownership, lowering, and proofs. |
+| [WASI compilation](../Verified/Wasi) | Host assumptions, typed command IR, module layout, compiler, wrapper proofs, and reflector. |
 
-Existing pure compiler modules receive the byte-type cases and shared transport lemmas they require.  These paths are proposals.
+The pure typed source and compiler include byte operations and the literal-pool context.  An empty pool preserves the previous compilation, and the integration gate compares the old pure outputs byte for byte.
 
-| Order | Work | Required result |
+| Stage | Implemented proof boundary | Source |
 |---|---|---|
-| 1 | Review the API, compatibility with earlier native WASI work, byte layout, host-error relation, exit rule, and pure transport plan. | Recorded decisions and exact theorem statements. |
-| 2 | Packed byte meaning, representation, copy/release rules, access, construction, and literals. | Universal byte-operation proofs and source equations. |
-| 3 | Import/type/function maps, the empty function-table encoding profile, and host-state transport. | Validity and round-trip proofs for the profile, plus relocated allocator and pure byte-processing execution with preserved host world. |
-| 4 | One-iovec wrappers and scratch frame. | `writeSome` for every valid buffer and either output fd, then `readSome` for every capacity and permitted host reply. |
-| 5 | Typed commands, bounds, and compilation. | A universal theorem for sequencing, branching, calls, bounded loops, returns, and exit. |
-| 6 | Reflection, callable modules, `_start`, and initial-store proof. | Source-to-decoded-module theorems for each form. |
-| 7 | Standard Wasmtime host and maintained proof/execution driver. | Checked examples, error cases, allocation results, and the repository gates below. |
+| 1 | Reviewed API, byte layout, host-error relation, exit behavior, and reuse plan. | [Review decisions](#review-decisions). |
+| 2 | Packed bytes, ownership, copying, release, access, construction, and literals. | [Byte representation](../Verified/Bytes/Basic.lean), [byte construction](../Verified/BytesBuildCorrect.lean), and [literal correctness](../Verified/Bytes/Literal.lean). |
+| 3 | Import relocation, host-state preservation, and empty-table encoding and validity. | [Module transport](../Verified/Wasi/ModuleTransport.lean), [module grammar](../LeanExe/Encoding/Spec/Modules.lean), and [validity rules](../LeanExe/Encoding/Spec/Validity.lean). |
+| 4 | Universal one-iovec read and write wrappers with scratch framing. | [Read execution](../Verified/Wasi/ReadFunction.lean) and [write execution](../Verified/Wasi/Write.lean). |
+| 5 | Universal safety and cost-aware compilation for commands, calls, branches, and bounded loops. | [Command safety](../Verified/Wasi/CommandCorrect.lean), [command cost correctness](../Verified/Wasi/CostCommandCorrect.lean), and [program correctness](../Verified/Wasi/Correct.lean). |
+| 6 | Native source correspondence, callable and `_start` execution, modeled initial store, and encoded-module proofs. | [Callable entry](../Verified/Wasi/NativeEntry.lean), [command entry](../Verified/Wasi/NativeCommand.lean), [initial store](../Verified/Wasi/ProgramInitial.lean), and [public frontend](../Verified/Wasi/ReflectCommand.lean). |
+| 7 | Standard Wasmtime embedding and maintained proof and execution gates. | [Native host](../tools/wasmtime-host.c) and [WASI driver](../tests/wasi/run.sh).  Full repository integration remains pending. |
 
-The first write theorem quantifies arbitrary borrowed bytes, initial worlds, and satisfying hosts.  It proves the reported prefix on success, the declared error relation, preserved input bytes and caller heap, and returned UInt64 status/count.  It includes empty and zero-progress success.  The first read theorem quantifies capacity and host replies, proves exact returned bytes and ownership, and proves cleanup on errno and zero-byte success.  Fixed echo executions supplement these theorems.
+The write theorem quantifies arbitrary borrowed bytes, initial worlds, and satisfying hosts.  It proves the reported prefix on success, the declared error relation, preserved input bytes and caller regions outside scratch, and returned UInt64 status/count.  It includes empty and zero-progress success.  The read theorem quantifies capacity and host replies, proves exact returned bytes and ownership, and proves cleanup on errno and zero-byte success.  Fixed echo executions supplement these theorems.
 
 | Test or proof group | Cases and acceptance condition |
 |---|---|
-| ABI and decoding | Exact three imports and signatures, correct export/type/function indices, the empty function-table section and export, valid one-iovec layout, zero and maximum-width counts, checked narrowing, round-trip decoding, and a theorem connecting emitted example bytes to the compiled module.  Invalid table types and export indices fail the profile checks. |
+| ABI and decoding | Exact three imports and signatures, correct export/type/function indices, the empty function-table section and export, valid one-iovec layout, zero and maximum-width counts, justified narrowing, round-trip decoding, and generated-byte theorems connecting the encoding to the compiled module and native refinements.  Invalid table types and export indices fail the profile checks.  File writing remains external to these theorems. |
 | Host-model execution | Arbitrary short reads/writes, zero progress, positive-capacity EOF, zero-capacity reads, errnos with permitted committed prefixes, accepted exit, exit rejection, and a foreign host trap.  The joint trace preserves stdout/stderr order and permits descriptor aliasing. |
 | Ownership and memory | Discarded reads, returned reads, read error, EOF, allocated-empty owned and borrowed inputs, retained aliases, branch and loop cleanup, untouched scratch-adjacent bytes, and retained caller regions.  Normal returns leave exactly the expected roots allocated. |
 | Source reflection | Discarded effect results still execute, named actions execute once per sequencing, helper calls, Unit results, conditionals, bounded loops, byte access/build, and rejection of unsupported action escape. |
 | Native execution | Binary input including 0 and 255, stdout and stderr, EOF, missing/failing streams, and repeated callable calls.  Host fixtures check accepted statuses 0, 7, and 125, rejected requests 126, 256, and `2^32 - 1`, and low-32-bit argument conversion.  Exit rejection preserves prior output, and every terminal outcome prevents later calls.  Native expectations account for the counts the standard host returns. |
-| Proof audit | Universal compiler, wrapper, transport, ownership, initial-store, source-correspondence, and byte-file theorems use only `propext`, `Classical.choice`, and `Quot.sound`. |
-| Existing compiler outputs | The current pure import-free corpus keeps its exact bytes.  The existing execution, allocation, numerical, WGSL, and GPT32 gates pass. |
+| Proof audit | Universal compiler, wrapper, transport, ownership, initial-store, source-correspondence, generated-byte, and validity theorems use only `propext`, `Classical.choice`, and `Quot.sound`. |
+| Existing compiler outputs | Exact bytes for the pure import-free corpus, and successful execution, allocation, numerical, WGSL, and GPT32 integration gates. |
 
 Scripted host models supply deterministic partial-transfer and failure cases.  Native tests exercise standard Wasmtime behavior without assuming that it returns every permitted short-write count.  Test-driver time limits bound blocked tests without adding a guest deadline API.
 
-The proposed `tests/wasi/run.sh` invokes the repository runner and checks its registered examples, native executions, decoding, and theorem axioms.  [The verified test driver](../tests/verified/run.sh) and [full-check procedure](leanexe-manual.md#the-full-check) remain integration gates for shared compiler changes.  All Lean runs obey [the repository limits](../AGENTS.md).
+[The maintained WASI driver](../tests/wasi/run.sh) invokes the repository runner and checks its registered examples, native executions, decoding, and theorem axioms.  [The verified test driver](../tests/verified/run.sh) and [full-check procedure](leanexe-manual.md#the-full-check) remain integration gates for shared compiler changes.  All Lean runs obey [the repository limits](../AGENTS.md).
 
 ### Review decisions
 
-| Decision | Recommendation | Alternative and consequence |
+| Decision | Approved choice | Alternative and consequence |
 |---|---|---|
 | Zero-capacity read | One zero-length syscall.  EOF inference requires positive capacity. | Return `INVAL` before I/O, adding a source validation rule. |
 | Exit UInt64 to WASI u32 | Explicit low-32-bit conversion for direct exit and command return. | A checked exit-code type adds source representation work.  Trapping on overflow adds a guest failure path. |
@@ -278,4 +280,4 @@ The proposed `tests/wasi/run.sh` invokes the repository runner and checks its re
 | Depth accounting | Share the existing guarded-call depth through effectful and pure internal calls. | Independent counters require a combined frame bound to justify their interaction. |
 | Application-ABI table | Add the narrow empty-table encoding profile and export required by the pinned convention. | A three-import profile without that export reduces proof work but departs from the pinned application-ABI convention. |
 
-The user directed implementation of this agenda after its two reviews.  A change to these recommendations requires a new design discussion.
+The user directed implementation of this agenda after its two reviews.  A change to these decisions requires a new design discussion.

@@ -13,21 +13,31 @@
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
 # Run `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` first.
-# Usage: tests/verified/run.sh [--cases MODULE]
+# Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
-export PATH="$PATH:$HOME/.cargo/bin"
+export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
 case_module=""
+reference=""
 if [ "$#" -ne 0 ]; then
-  if [ "$#" -ne 2 ] || [ "$1" != "--cases" ] || [ -z "$2" ]; then
-    echo "usage: tests/verified/run.sh [--cases MODULE]" >&2
+  if [ "$#" -ne 2 ] || [ -z "$2" ]; then
+    echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2
     exit 2
   fi
-  case_module=$2
+  case "$1" in
+    --cases) case_module=$2 ;;
+    --check-bytes) reference=$(cd "$2" && pwd -P) ;;
+    *) echo "usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]" >&2; exit 2 ;;
+  esac
 fi
 root=$(cd "$(dirname "$0")/../.." && pwd)
 host=$root/build/tools/leanexe-wasmtime-host
 out=$root/build/verified
+if [ -n "$reference" ]; then out=$root/build/byte-check/verified; fi
 mkdir -p "$out"
+if [ "$reference" = "$(cd "$out" && pwd -P)" ]; then
+  echo "fail: byte reference and emission directories must differ" >&2
+  exit 2
+fi
 cd "$root"
 emitted=0
 while IFS=: read -r module constant name; do
@@ -38,11 +48,19 @@ while IFS=: read -r module constant name; do
   tools/leanrun --timeout 10m lake env lean --run tools/Emit.lean "$module" "$constant" \
     "$out/$name.wasm"
   wasm-tools validate "$out/$name.wasm"
+  if [ -n "$reference" ]; then
+    cmp "$reference/$name.wasm" "$out/$name.wasm"
+    echo "$name: bytes unchanged"
+  fi
   emitted=$((emitted + 1))
 done <"$root/tests/verified/modules.txt"
 if [ "$emitted" -eq 0 ]; then
   echo "fail: unknown module $case_module" >&2
   exit 2
+fi
+if [ -n "$reference" ]; then
+  echo "verified byte comparison passed: $emitted modules"
+  exit 0
 fi
 if [ -z "$case_module" ] || [ "$case_module" = "gpt" ]; then
   tests/gpt/run.sh "$out/gpt.wasm"

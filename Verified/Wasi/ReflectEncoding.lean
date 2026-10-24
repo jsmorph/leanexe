@@ -1,11 +1,13 @@
 import Verified.Reflect.Definitions
+import LeanExe.Encoding.Correctness
 
 namespace Verified.Wasi.Reflect
 
 open Lean Meta Elab Command Term
 open Verified.Reflect
 
-def emitEncoding (target : Name) (moduleName : Name) : CommandElabM Unit := do
+def emitEncoding (target : Name) (moduleName : Name) (refinements : Array Name := #[])
+    (validity? : Option Name := none) : CommandElabM Unit := do
   let base := (← getCurrNamespace) ++ target
   let moduleId := mkIdent moduleName
   let parts ← match evalModule (← getEnv) (← getOptions) moduleName with
@@ -74,9 +76,28 @@ def emitEncoding (target : Name) (moduleName : Name) : CommandElabM Unit := do
     obtain ⟨success, locals⟩ := $encodedId
     exact Wasm.Encoding.decode_encode $moduleId _ locals success))
   let bytesId := mkIdent (target ++ `bytes)
-  elabCommand (← `(theorem $bytesId :
-      ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
-        Wasm.Encoding.decode bytes = .ok $moduleId := by
-    exact ⟨_, ($encodedId).1, $decodedId⟩))
+  let mut claims ← `(True)
+  let mut proofs ← `(True.intro)
+  for name in refinements.reverse do
+    let declaration := mkIdent name
+    claims ← `((type_of% @$declaration) ∧ $claims)
+    proofs ← `(And.intro @$declaration $proofs)
+  match validity? with
+  | none =>
+    elabCommand (← `(theorem $bytesId :
+        ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
+          Wasm.Encoding.decode bytes = .ok $moduleId ∧ $claims := by
+      exact ⟨_, ($encodedId).1, $decodedId, $proofs⟩))
+  | some validity =>
+    let validityId := mkIdent validity
+    let binaryId := mkIdent (target ++ `validBinary)
+    elabCommand (← `(theorem $binaryId :
+        Wasm.Encoding.ValidBinary ⟨($encodingId).toArray⟩ :=
+      Wasm.Encoding.encode_valid $moduleId _ $validityId ($encodedId).1))
+    elabCommand (← `(theorem $bytesId :
+        ∃ bytes, Wasm.Encoding.encode $moduleId = .ok bytes ∧
+          Wasm.Encoding.decode bytes = .ok $moduleId ∧
+          Wasm.Encoding.ValidBinary bytes ∧ $claims := by
+      exact ⟨_, ($encodedId).1, $decodedId, $binaryId, $proofs⟩))
 
 end Verified.Wasi.Reflect

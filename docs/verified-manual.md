@@ -1,6 +1,6 @@
 # Verified Compiler Manual
 
-This manual describes the verified compiler, the library `Verified`: the Lean dialect that it accepts, the command that compiles a program and the theorems that the command adds, the bounds that make a call free of traps, the tests, and the examples.  [The LeanExe compiler manual](leanexe-manual.md) describes the other compiler, and [the README](../README.md) compares the two.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
+This manual describes the verified compiler's pure dialect, the `verified_compile` command and its generated theorems, allocation and depth bounds, tests, and examples.  [The WASI manual](wasi.md) describes the separate `verified_compile_wasi` command for native Lean actions with stdin, stdout, stderr, and exit.  [The LeanExe compiler manual](leanexe-manual.md) describes the other compiler, and [the README](../README.md) compares the two.  [The verified compiler's internals](../Verified/README.md) describe its code scheme and the structure of its proof, and [the design document](design.md) gives the decisions and the open work.
 
 ## Compiler, theorems, and trusted base
 
@@ -41,7 +41,7 @@ under their buffer, count, and invocation bounds.
 
 The theorems hold in Talos's semantics, which bounds no call depth and grows memory whenever the new page count is within the cap.  Wasmtime ends a deep recursion with a stack-overflow trap, so guarded code traps at depth 1,000, and the reflector limits the frame of every function whose code takes the call depth to 32 positions.  The tests run a frame of 32 positions, 26 of them live across the self-call, at depth 999 on Wasmtime 44 for aarch64.
 
-`p.initial` proves that the store in which the module starts meets the allocator invariant and the cap and holds the tables.  With a nonempty literal pool, it also proves the pool's static contents and heap region.  A later call must establish separation from its consumed argument blocks.  The host executables and the I/O around a call remain outside the proofs.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
+`p.initial` proves that the modeled initial store meets the allocator invariant and the cap and holds the tables.  With a nonempty literal pool, it also proves the pool's static contents and heap region.  A later call must establish separation from its consumed argument blocks.  Real engine instantiation and host executables remain outside the proofs.  WASI compilation proves guest I/O sequencing under explicit host assumptions, as [the WASI proof premises](wasi.md#execution-proofs-and-their-premises) describe.  The floating-point theorems describe the WebAssembly deterministic profile, as the LeanExe compiler's do.  The numerical examples have further theorems about mathematical functions, rounding, and exceptional values, with the domains and bounds listed in [the algorithm index](../index.md) and each function's document.
 
 ## The dialect
 
@@ -90,7 +90,7 @@ starts at the eight-byte-aligned end of this pool.  Deduplication shares the sta
 Each evaluation still allocates and copies its result.  [The pool definitions](../Verified/Bytes/LiteralPool.lean)
 and [literal-copy correctness](../Verified/Bytes/Literal.lean) give the layout and allocation rules.
 An empty pool preserves the previous module and encoding, as [the empty-pool equality](../Verified/LiteralCodeEq.lean)
-proves.  I/O work is tracked by the [WASI design](verified-wasi-design.md).
+proves.  [The WASI manual](wasi.md) describes these bytes in stream actions and the separate I/O compilation command.
 
 ### Expressions
 
@@ -222,7 +222,15 @@ The command adds the program, the module, and every theorem in one step, and the
 
 `set_option trace.Verified.reflect true` reports the reflection and proof-generation stages for each function and the encoding check for each function index.  Reflection entries include the remaining heartbeat budget in the units of `maxHeartbeats`.
 
+### `verified_compile_wasi`
+
+`import Verified.Wasi` provides a separate frontend for `LeanExe.Wasi.Action` definitions.  Its callable form is `verified_compile_wasi p := [pureHelper, actionHelper, action]`.  Adding `(main := main)` selects a closed `Action UInt64`, exports `_start`, and passes main's returned status to `proc_exit`.  The native API uses ordinary `do` notation, UInt64 lengths and counts, packed bytes, bounded loops, and acyclic effectful helpers.  Pure helpers use this manual's dialect and recursion rules.
+
+Generated callable `.implements` and command `.start` theorems execute the exported wrappers with their hidden depth and table arguments.  They relate each sufficiently fueled target execution to a native source execution with the same ordered effects, world, and result, or to a source prefix on a permitted guest resource trap.  Conditional `.total` theorems require allocation room, `Resource.CallPrefixBound` for the typed program, and `host.NoTrapsAlong` the native action.  Host traps and rejected exits remain terminal outcomes of the general refinement theorem.  [The WASI manual](wasi.md) defines the generated declarations, ownership and scratch premises, modeled initial store, and host policies.  Implementation and acceptance testing remain in progress.
+
 ### Generated declarations
+
+These declarations belong to the pure `verified_compile` command.  [The WASI declaration table](wasi.md#declarations) describes `verified_compile_wasi`.
 
 | Declaration | Content |
 |---|---|
@@ -432,7 +440,7 @@ The checks of `Trig`, `Exp`, and `Log` also compare the stored tables with integ
 
 The full library includes the numerical proofs and can take several hours.  The lgamma root-range proofs need `--memory-high 10G`, which sets a 12 GiB memory maximum.  The [compilation example](#compiling-and-running) builds only its selected module and imports at the default limits.
 
-After a change to the verified compiler or its examples, `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh` must pass with no failed case.  A new compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other examples add cases to `Verified/Examples/Cases.lean`.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
+After a change to the verified compiler or its examples, `tools/leanrun --memory-high 10G --timeout 12h lake build Verified Library` must finish with no `sorry` warning, and `tests/verified/run.sh` must pass with no failed case.  A new pure compiler fixture needs an import in [`Verified.lean`](../Verified.lean), an entry in [the module registry](../tests/verified/modules.txt), and checked cases.  Reusable algorithm compilations belong in [`Library.lean`](../Library.lean), and verified application compilations belong in [`Demos/Verified.lean`](../Demos/Verified.lean), which `Verified` imports.  An application port reuses its existing corpus.  Other pure examples add cases to `Verified/Examples/Cases.lean`.  WASI changes also use [the maintained WASI driver](../tests/wasi/run.sh), with its proof and axiom targets, frontend examples, stream fixtures, and host tests.  [The LeanExe compiler manual's full check](leanexe-manual.md#the-full-check) covers the rest of the repository, and [the journal](../devnotes.md) records the counts of each run.
 
 ## Examples
 
@@ -451,6 +459,8 @@ Reusable implementations and their compilations live in [the library](../Library
 | [`Pairs`](../Verified/Examples/Pairs.lean) | Pairs as parameters and results, `.1`, `.2`, and `match` on a pair, a pair inside a pair, calls that pass and return pairs, and patterns that take nested pairs apart on the left and on the right, skip a component, keep a pair whole, take apart a pair built in place, and take apart a triple that holds arrays. |
 | [Packed byte values](../Verified/Examples/Bytes.lean) | Identity, duplication, selection, cleanup, swapped results, empty buffers, UInt64 lengths, byte indexing, and construction with captured buffers and nested builders.  [The WASI driver](../tests/wasi/run.sh) checks empty inputs, out-of-bounds reads, allocation/free counts, and oversized construction. |
 | [Byte literals](../Verified/Examples/Literals.lean) | Static-pool deduplication, fresh owned copies, empty and conditional literals, ordinary and recursive helpers, and literals inside loop, build, fold, and tree-match bodies. |
+| [WASI stdin and stdout](../Verified/Examples/WasiStdio.lean) | The WASI manual's `copySome` and closed main, compiled in callable and command forms.  One read and one write expose errno handling and short-transfer limits. |
+| [WASI reflection](../Verified/Wasi/ReflectCommandCases.lean) | Public source-to-export declarations with hidden tables, literals, owned and borrowed bytes, records, computed call arguments, and command main. |
 | [`Calls`](../Verified/Examples/Calls.lean) | Four definitions in which `sumSq` calls `sq` and `pick` calls the other three, with a call as an argument of a call and a `Bool`-valued call as the test of an `if`. |
 | [Frontend forms](../Verified/Examples/Frontend.lean) | Nested `@[inline]` helpers and `abbrev`s, helper calls in loops and array expressions, listed inline callees, direct array methods, `insertIdx!` with its empty result past the end, empty arrays of words, floats, and records, including a record without an `Inhabited` instance, and Boolean equality, decisions, and conditions with record results, record-array results, and operand calls that consume arrays. |
 | [Array folds](../Verified/Examples/Fold.lean) | Words, floats, record elements without an `Inhabited` instance, owned array and pair accumulators, a borrowed initial-state alias, nested folds, calls inside a fold, and the frames condition of a recursive call.  `words_bound` proves the word fold's allocation bound is zero. |

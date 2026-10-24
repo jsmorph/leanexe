@@ -1,6 +1,6 @@
-# Algorithms and applications
+# Algorithms, I/O, and applications
 
-This index covers the reusable algorithms in [the library](Library/README.md), the applications in [the demos](Demos/README.md), and the algorithms retained as compiler examples.  Library families contain native definitions in `Program`, compilation modules in `Compiled`, `Module`, or `Verified`, and proofs in `Proof`, `Verify`, or named theorem modules.  [The native aggregate](Library/Native.lean) imports the implementations.  The [verified compiler manual](docs/verified-manual.md) and [LeanExe compiler manual](docs/leanexe-manual.md) describe compilation and proof premises.
+This index covers the reusable algorithms in [the library](Library/README.md), the [WASI stream API](docs/wasi.md), the applications in [the demos](Demos/README.md), and the algorithms retained as compiler examples.  Library families contain native definitions in `Program`, compilation modules in `Compiled`, `Module`, or `Verified`, and proofs in `Proof`, `Verify`, or named theorem modules.  [The native aggregate](Library/Native.lean) imports the algorithm implementations.  The [verified compiler manual](docs/verified-manual.md), [WASI manual](docs/wasi.md), and [LeanExe compiler manual](docs/leanexe-manual.md) describe compilation and proof premises.
 
 The compiler's theorem for a module states that the module computes its Lean definition.  A byte theorem states execution or a further property, such as an accuracy bound, for the encoded module.  A file theorem states that an emitted file holds that encoding.  Execution theorems use Talos's semantics of WebAssembly with the deterministic floating-point profile.  They assume the allocator invariant and, for some functions, borrowed tables and bounds on memory and recursion depth.  An `implements` theorem can permit a trap at `unreachable`.  A trap-free theorem proves a return under its allocation and depth conditions.  Each linked guide states its domains, exceptional inputs, and host assumptions.  [The transcendental development record](transcendentals.md) gives the numerical proofs' history.
 
@@ -19,8 +19,9 @@ The compiler's theorem for a module states that the module computes its Lean def
 - [8. Discrete Fourier transform](#8-discrete-fourier-transform)
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
-- [11. Applications](#11-applications)
-- [12. Compiler examples](#12-compiler-examples)
+- [11. WASI stream operations](#11-wasi-stream-operations)
+- [12. Applications](#12-applications)
+- [13. Compiler examples](#13-compiler-examples)
 
 ## 1. Arithmetic
 
@@ -253,7 +254,20 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 
 [The Euler enclosure proofs](Demos/Euler/Enclosure.lean) use the checked operations.  [The reconstruction analysis](Demos/Euler/ReconstructionAccuracy.lean) uses minmod to bound the differences and faces computed from rounded inputs.
 
-## 11. Applications
+## 11. WASI stream operations
+
+`LeanExe.Wasi` provides native action descriptions and an interpreter.  `verified_compile_wasi` compiles accepted actions to core WebAssembly with three Preview 1 imports.  Its exported-entry proofs preserve the native result or terminal outcome, committed world, and joint ordered trace under the host, representation, ownership, and scratch premises.  Conditional total execution requires a typed resource-prefix bound and assumptions about reached host operations.  [The WASI manual](docs/wasi.md) gives the exact API and proof scope.  Implementation and acceptance testing remain in progress.
+
+| Algorithm | Implementation | Behavior | Proved results and limits |
+|---|---|---|---|
+| `readSome` | [Stdin action](LeanExe/Wasi/Action.lean) | Requests at most a UInt64 capacity from stdin.  Valid capacity makes one read, including zero capacity.  Capacity at least `2^32` returns errno 61 without I/O.  Error returns empty bytes. | [Read-wrapper correctness](Verified/Wasi/ReadFunction.lean) proves exact successful bytes, owned results, cleanup after error or empty success, and preserved caller regions outside scratch.  Committed input effects on error remain in the trace and world. |
+| `writeStdoutSome` | [Stdout action](LeanExe/Wasi/Action.lean) | Makes one stdout write.  Success returns the transferred count, possibly short or zero.  Error returns errno and count zero. | [Write-wrapper correctness](Verified/Wasi/Write.lean) proves the source transfer and preservation of borrowed bytes and caller regions outside scratch.  Count zero on error supplies no zero-progress guarantee. |
+| `writeStderrSome` | [Stderr action](LeanExe/Wasi/Action.lean) | Makes one stderr write with the same short-transfer and errno rules. | [Write-wrapper correctness](Verified/Wasi/Write.lean) covers descriptor 2.  A shared event journal preserves order with stdout, including hosts where both refer to the same destination. |
+| `exit` | [Terminal action](LeanExe/Wasi/Action.lean) | Requests exit with the low 32 bits of a UInt64 status.  No continuation executes. | [Exit correctness](Verified/Wasi/Exit.lean) distinguishes accepted exit with its recorded status from rejected exit as a host trap.  Both preserve prior I/O.  [The manual](docs/wasi.md#wasmtime-host) states Wasmtime 44's accepted status range. |
+| `LeanExe.Wasi.loop` | [Bounded effectful loop](LeanExe/Wasi/Action.lean) | Carries state through at most a UInt64 count of effectful steps, with a pure early-stop test and UInt64 index.  Exit or trap terminates the action. | [Loop correctness](Verified/Wasi/CommandLoopSpec.lean) and [cost-aware loop correctness](Verified/Wasi/CostLoopSpec.lean) preserve state, ordered effects, ownership, and resource-prefix bounds. |
+| `Action.runStdio` | [Native stream interpreter](LeanExe/Wasi/Interpreter.lean) | Runs actions against Lean's stdio.  Writes flush and report full count on success.  Exit returns an outcome to Lean.  Stream errors propagate as `IO.Error`. | [Native interpreter cases](tests/wasi/Interpreter.lean) test this adapter policy.  OS-stream behavior and adapter conformance to the formal host assumptions remain outside the compiler theorem. |
+
+## 12. Applications
 
 Application definitions and proofs live in `Demos`, with shared algorithms imported from `Library`.  The linked guides state the domains, execution premises, and host assumptions.  GPU theorems concern the modeled device and host commands.  Execution tests cover the host processes, file I/O, engines, and device arithmetic described in the guides.
 
@@ -265,7 +279,7 @@ Application definitions and proofs live in `Demos`, with shared algorithms impor
 | Drone planner | [Drone application and proofs](Demos/Drone/README.md) | Uses dynamic programming over station altitudes and speeds to minimize duration, then excess altitude. | [The byte theorems](Demos/Drone/Verify.lean) prove optimality and safety in the ideal point-mass model for valid terrain.  [Total execution](Demos/Drone/Total.lean) uses at most 70 pages under its initial-allocator and cap premises.  [The verified compilation](Demos/Drone/Verified.lean) transports the safety and optimality results and proves trap-free execution under its bounds. |
 | Order book | [Order-book application and proofs](Demos/Clob/README.md) | Inserts and cancels levels, fills market orders, computes depth, and processes three-word commands over word arrays. | [The byte and command-stream theorems](Demos/Clob/Verify.lean) prove the fifteen functions' execution, equivalence when a chunk boundary falls between commands, and equality of the books returned by `runOut` and `runCommands`.  [The verified version](Demos/Clob/Verified.lean) has its own typed definitions and command-stream proofs, using [the shared command lemmas](Demos/Clob/Commands.lean). |
 
-## 12. Compiler examples
+## 13. Compiler examples
 
 These algorithms remain in `Examples` or `Verified/Examples` as demonstrations of language forms, ownership, and proof procedures.  Execution theorems relate compiled programs to their Lean definitions under the compiler's premises.  Word arithmetic wraps modulo `2^64`.  The WGSL dispatch results assume the device model's shape, buffer, and invocation bounds.
 
@@ -285,6 +299,7 @@ These algorithms remain in `Examples` or `Verified/Examples` as demonstrations o
 | Byte length | [The packed-byte examples](Verified/Examples/Bytes.lean) | Returns the buffer's length as a UInt64. | `compiled.readSize.implements` and `compiled.ownedSize.implements` prove execution and cleanup of an owned input. |
 | Byte indexing | [The packed-byte examples](Verified/Examples/Bytes.lean) | Returns the indexed byte as a UInt64, or zero past the end. | `compiled.readByte.implements`, `compiled.ownedByte.implements`, and `compiled.bytes`.  [Execution cases](tests/wasi/bytes.tsv) cover 255, empty input, and the maximum UInt64 index. |
 | Byte construction | [The packed-byte examples](Verified/Examples/Bytes.lean) | Builds a packed buffer from the low eight bits of a UInt64 callback at each index. | `compiled.buildPattern.implements`, `compiled.copyByBuild.implements`, `compiled.nestedBuild.implements`, and `compiled.bytes`.  The [construction proof](Verified/BytesBuildCorrect.lean) covers zero count, checked narrowing, allocation, nested callbacks, and capture cleanup. |
+| Byte literals | [The byte-literal examples](Verified/Examples/Literals.lean) | Copies a deduplicated static byte sequence into a fresh owned buffer at each evaluation.  Empty literals allocate nothing. | [Literal-copy correctness](Verified/Bytes/Literal.lean) and the examples' generated execution theorems cover nested pure helpers, callbacks, branches, loops, and guarded recursion under static-pool premises. |
 | Scalar `axpy` | [The binary64 arithmetic example](Examples/Axpy/README.md) | Computes `a * x + y` with separate multiplication and addition. | [`axpy_bytes`](Examples/Axpy/Verify.lean) proves bit-for-bit execution. |
 | `hypot` | [The binary64 compiler examples](Verified/Examples/Floats.lean) | Computes `sqrt (x * x + y * y) / s`. | Generated compiler correctness.  The sum of squares can overflow even when the exact result is finite. |
 | `newtonSqrt` | [The bounded-repeat compiler examples](Verified/Examples/Repeat.lean) | Starts from `a` and applies `x ↦ (x + a/x)/2` while `10^-12 a < \|x² - a\|`, for at most 64 steps. | Generated compiler correctness.  A numerical-error bound remains future work. |

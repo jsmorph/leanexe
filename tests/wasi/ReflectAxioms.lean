@@ -1,4 +1,5 @@
 import Verified.Wasi.ReflectCommandCases
+import Verified.Wasi.ReflectBinderCases
 
 open Lean Elab Command in
 elab "check_wasi_reflection_axioms" : command => do
@@ -7,6 +8,8 @@ elab "check_wasi_reflection_axioms" : command => do
     ``Verified.Wasi.ReflectCommandCases.callable.calls,
     ``Verified.Wasi.ReflectCommandCases.callable.initial,
     ``Verified.Wasi.ReflectCommandCases.callable.bytes,
+    ``Verified.Wasi.ReflectCommandCases.callable.validity,
+    ``Verified.Wasi.ReflectCommandCases.callable.validBinary,
     ``Verified.Wasi.ReflectCommandCases.callable.helper.related,
     ``Verified.Wasi.ReflectCommandCases.callable.helper.implements,
     ``Verified.Wasi.ReflectCommandCases.callable.helper.exported,
@@ -22,6 +25,12 @@ elab "check_wasi_reflection_axioms" : command => do
     ``Verified.Wasi.ReflectCommandCases.command.exported,
     ``Verified.Wasi.ReflectCommandCases.command.total,
     ``Verified.Wasi.ReflectCommandCases.command.bytes]
+  let checked := checked ++ #[
+    ``Verified.Wasi.ReflectCommandCases.command.validity,
+    ``Verified.Wasi.ReflectCommandCases.command.validBinary,
+    ``Verified.Wasi.ReflectBinderCases.compiled.boolInput.total,
+    ``Verified.Wasi.ReflectBinderCases.compiled.wordInput.total,
+    ``Verified.Wasi.ReflectBinderCases.compiled.bytes]
   for declaration in checked do
     for axiomName in ← collectAxioms declaration do
       unless permitted.contains axiomName do

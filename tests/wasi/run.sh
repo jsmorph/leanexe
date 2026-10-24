@@ -29,6 +29,7 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.FunctionDispatcher Verified.Wasi.CostFunctionLift \
   Verified.Wasi.CostFunctionPost Verified.Wasi.CostFunctionRun \
   Verified.Wasi.CostFunctionSpec \
+  LeanExe.Wasi Verified.Wasi \
   Verified.Wasi.NativeResult Verified.Wasi.NativeEntry Verified.Wasi.NativeTotal \
   Verified.Wasi.ConditionalCost Verified.Wasi.CostConditionalSpec \
   LeanExe.Wasi.Prefix LeanExe.Wasi.NoTrap LeanExe.Wasi.NoTrapPrefix \
@@ -75,6 +76,8 @@ tools/leanrun --timeout 5m lake env lean tests/wasi/SyntaxAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/LoopCostAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/CompilerAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/NativeAxioms.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/ReflectionNames.lean
+tools/leanrun --timeout 5m lake env lean tests/wasi/Validity.lean
 tools/leanrun --timeout 5m lake env lean --run tests/wasi/Interpreter.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/Code.lean
 tools/leanrun --timeout 5m lake env lean tests/wasi/ExitModel.lean
@@ -137,3 +140,4 @@ tests/wasi/codegen-run.sh
 tests/wasi/reflection-run.sh
 tests/wasi/script-host-run.sh
 tests/wasi/host.sh
+tests/wasi/acceptance-run.sh
