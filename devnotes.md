@@ -35210,7 +35210,7 @@ The proof has five parts: a specification of regexes and their languages on Math
 
 - [x] Move the packed-byte definitions and lemmas to a neutral module.
 - [ ] Create the `regex` branch from `hashing-main`.
-- [ ] Write the specification and have it reviewed independently.
+- [x] Write the specification and have it reviewed independently.
 - [ ] Write the program: decoder, compile pass, masks, follow tables, and match loop.
 - [ ] Prove the compile pass, Glushkov's theorem, and the match loop.
 - [ ] Compile the module, test against Python's `re` and Mathlib, and write the call and file theorems.
@@ -35408,3 +35408,9 @@ On the build host the rebased branch built `Verified Library` in 10,481 jobs wit
 
 - [x] Full build, default targets, and verified tests of the rebased branch.
 - [x] The 92 modules of `main` identical, and `taggedtypes` the 93rd.
+
+## 2026-10-23: The regex specification
+
+`Library/Regex/Spec.lean` defines `Re`, a regular expression over bytes whose leaf is a set of bytes given as a predicate, and its language with Mathlib's `Language` operations.  `lang_eq_matches'` proves that this language is the one Mathlib's `RegularExpression` gives when each set is the sum of its bytes, and it depends only on `propext` and `Quot.sound`.  `run` and `decode` read the postfix pattern words, `positions` counts the sets, and `answer` is the result the matcher must return: 2 when the pattern does not decode, then 3 when it has more than 63 sets, then 1 or 0 for membership.  Membership is decided by Mathlib's derivative matcher through `lang_eq_matches'`, so `answer` is computable and serves as the tests' oracle.
+
+An independent review found the semantics standard and the decoder consistent with its documentation, and it corrected four statements of the docstring.  It translated decodable patterns to Python's syntax, with `(?!)` for the empty set, `(?:)` for epsilon, an escaped class for a set, `[^\x00-\xff]` for the empty set of bytes, and groups around every operand.  On 3,000 random patterns and all 781 strings of length at most 4 over five bytes, `re.fullmatch` agreed with a separate membership test on all 2,343,000 cases.  Python's parser fails at about 500 nested groups and its backtracking is exponential on some patterns, and Mathlib's `rmatch` does not simplify its derivatives, so the tests use short inputs and bounded nesting.  Because code 2 takes precedence over code 3, the compile pass must keep validating a pattern after its sets exceed 63.
