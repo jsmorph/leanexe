@@ -14,12 +14,14 @@ cache_dir="${LEANRUN_CACHE_HOME:-$repo_root/.lake/cache}"
 local_mode="${LEANRUN_LOCAL:-0}"
 memory_high="${LEANRUN_MEMORY_HIGH:-4G}"
 cpu_count="${LEANRUN_CPUS:-1}"
+thread_count="${LEANRUN_THREADS:-}"
 log_file=""
 
 usage() {
-  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--cpus N|auto] [--log FILE] [--toolchain DIR] <command> [args]" >&2
+  echo "usage: tools/leanrun [--timeout DURATION] [--lock-timeout SECONDS] [--memory-high SIZE] [--cpus N|auto] [--threads N] [--log FILE] [--toolchain DIR] <command> [args]" >&2
   echo "SIZE is the scope's MemoryHigh in whole gibibytes with the suffix G (default 4G), and MemoryMax is 2G more." >&2
   echo "N is a positive CPU count, or auto for all online CPUs (default 1)." >&2
+  echo "Threads default to the resolved CPU count; --threads selects a positive thread count." >&2
   exit 2
 }
 
@@ -43,6 +45,11 @@ while [ "$#" -gt 0 ]; do
     --cpus)
       [ "$#" -ge 2 ] || usage
       cpu_count="$2"
+      shift 2
+      ;;
+    --threads)
+      [ "$#" -ge 2 ] && [ -n "$2" ] || usage
+      thread_count="$2"
       shift 2
       ;;
     --log)
@@ -112,6 +119,14 @@ esac
 cpu_quota_percent="${cpu_count}00"
 cpu_quota_usec="${cpu_count}00000"
 
+thread_count="${thread_count:-$cpu_count}"
+case "$thread_count" in
+  ''|0*|*[!0-9]*)
+    echo "leanrun: --threads/LEANRUN_THREADS must be a positive integer" >&2
+    exit 2
+    ;;
+esac
+
 if [ -z "$run_timeout" ]; then
   echo "leanrun: --timeout must not be empty" >&2
   exit 2
@@ -137,12 +152,13 @@ if [ ! -x "$toolchain/bin/lean" ]; then
 fi
 
 PATH="$toolchain/bin:$PATH"
-LEAN_NUM_THREADS="$cpu_count"
+LEAN_NUM_THREADS="$thread_count"
 LEANRUN_CPUS="$cpu_count"
+LEANRUN_THREADS="$thread_count"
 NO_COLOR=1
 XDG_CACHE_HOME="$cache_dir"
 mkdir -p "$XDG_CACHE_HOME"
-export PATH LEAN_NUM_THREADS LEANRUN_CPUS NO_COLOR XDG_CACHE_HOME
+export PATH LEAN_NUM_THREADS LEANRUN_CPUS LEANRUN_THREADS NO_COLOR XDG_CACHE_HOME
 
 if [ "${LEANRUN_IN_SCOPE:-}" = "1" ]; then
   cgroup_path="$(sed -n 's/^0:://p' /proc/self/cgroup)"
@@ -197,5 +213,5 @@ exec systemd-run --user --scope --quiet --collect \
   -p MemorySwapMax=1G \
   -p CPUQuota="${cpu_quota_percent}%" \
   -p CPUQuotaPeriodSec=100ms \
-  env LEANRUN_IN_SCOPE=1 LEANRUN_MEMORY_HIGH="$memory_high" LEANRUN_CPUS="$cpu_count" nice -n 10 ionice -c 3 \
+  env LEANRUN_IN_SCOPE=1 LEANRUN_MEMORY_HIGH="$memory_high" LEANRUN_CPUS="$cpu_count" LEANRUN_THREADS="$thread_count" nice -n 10 ionice -c 3 \
   timeout "$run_timeout" "$@"

@@ -12,7 +12,7 @@
 # checks compare the transcendental functions with references computed with Lean's integers, each
 # within the bound its docstring states, and tests/TestSupport/Numerics/FourierAccuracy.lean checks that
 # Fourier.dft, inverse, and powerSpectrum behave as their mathematical counterparts.
-# Run `tools/leanrun --cpus auto --memory-high 10G --timeout 12h lake build Verified Library` first.
+# Run `tools/leanrun --cpus auto --threads 4 --memory-high 10G --timeout 12h lake build Verified Library` first.
 # Usage: tests/verified/run.sh [--cases MODULE | --check-bytes DIRECTORY]
 set -euo pipefail
 export PATH="$PATH:$HOME/.local/bin:$HOME/.cargo/bin"
