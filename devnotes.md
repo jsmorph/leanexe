@@ -35502,10 +35502,23 @@ The user rejected the first form of the question, which buried the other three d
 
 - [x] Design the lane program with the user.
 - [x] The program, its compilation, and the `sha3-vectors` check of the program, the Monte Carlo files included.
-- [ ] The equality of the program with the transcription.
+- [x] The equality of the program with the transcription.
 
 ## 2026-10-25: The SHA-3 program
 
-`Library/Hashing/Sha3/Program.lean` came from a script that computed the lanes of ρ and π from the walk of Algorithm 2 and the 24 constants from Algorithm 5's register.  The program agrees with all 4,642 byte-oriented CAVP vectors in a few seconds, among them the 100 checkpoints of each Monte Carlo test, which SHA3VS §6.2.3 and §6.3.3 define and which chain 100,000 hashes per function.  `tests/verified/run.sh --cases sha3` passes 384 cases in Wasmtime, in which a hash call keeps only the host's message and allocates nothing, a SHAKE call keeps the message and its output and allocates nothing else, and `keccakF` allocates nothing.
+`Library/Hashing/Sha3/Program.lean` came from a script that computed the lanes of ρ and π from the walk of Algorithm 2 and the 24 constants from Algorithm 5's register, and `RoundProof.lean` checks both against the transcription.  The program agrees with all 4,642 byte-oriented CAVP vectors in a few seconds, among them the 100 checkpoints of each Monte Carlo test, which SHA3VS §6.2.3 and §6.3.3 define and which chain 100,000 hashes per function.  `tests/verified/run.sh --cases sha3` passes 384 cases in Wasmtime, in which a hash call keeps only the host's message and allocates nothing, a SHAKE call keeps the message and its output and allocates nothing else, and `keccakF` allocates nothing.
 
 Three versions of the round were tried.  The first, one function of 85 bindings, compiled.  The second split it into `@[inline]` helpers for the proof, and `verified_compile` then ran out of heartbeats in `isDefEq` on the unfolded structures.  The third lists the helpers as functions, whose record parameter is borrowed, and since the lanes hold no array no call copies anything; `Compiled` builds in 146 s and the module has 17,332 bytes.  The lanes' `Flat` instance lives in `Encoding.lean`, as the word structures' does, because importing `LeanExe.Pipeline.Implements` into the program made the executable `sha3-vectors` compile 365 modules of the pipeline to native code.
+
+## 2026-10-25: The SHA-3 proofs
+
+The proof has four files, and each checks in under a minute.  `RoundProof.lean` reads the lanes as a state array and proves each step function equal to its step mapping by a case on each of the 25 lanes.  One case takes 1.4 s of `simp`, so the four step lemmas raise `maxHeartbeats` to 1,000,000.  ρ uses a lemma that states Algorithm 2's offsets modulo 64, since the program rotates by 44 where the transcription subtracts 300.  The 24 constants are checked as whole lanes by `decide +kernel`, because the elaborator's `decide` reached its recursion depth from round 10 on.  Rounds 5 and 22 share a constant, as do rounds 6 and 20, so `keccakF_spec` rewrites the rounds from the last inward.
+
+`SpongeProof.lean` proves that §3.1.2 inverts §3.1.3, that `xorBlock` is step 6 of Algorithm 8, and that the absorbing loop leaves the sponge's state.  The padding took a second attempt.  The first stated the padded string's bits with the program's `UInt64` arithmetic, the regions of the string, and pad10*1's length in one proof, and `set` and `simp` rewrote the lengths into forms that no longer matched.  The proof that checks separates three lemmas: `pad101_zeros` gives the zeros of pad10*1 in closed form, `padded_of_regions` equates a message, a suffix, and pad10*1 with any bit function that agrees in three regions, and `bit_padded` gives the program's bit with the arithmetic written as `n = 8 Q + ρ` for `omega`.
+
+`Proof.lean` gives the four hash theorems, whose squeeze takes one pass.  `ShakeProof.lean` reads the squeeze as the first `d` bits of the rate prefixes of the iterated states, proves the invariant of the squeezing loop, and shows that the last word's mask keeps the first `d` bytes and zeroes the rest.  `Bytes.lean` states the six call theorems.  The hash calls need no room in the heap, and a SHAKE call needs room for one block of `⌈d/8⌉` words, which `compiled.shakeWith.bound_eq` gives as the only allocation.  `File.lean` checks the emitted module, and every theorem depends only on `propext`, `Classical.choice`, and `Quot.sound`.
+
+- [x] Call theorems, file theorem, registry entries, README, and the index.
+On the build host the branch built `Verified Library` in 10,500 jobs with no `sorry` and the default targets, and `tests/verified/run.sh` ended with status 0: 32,104 verified cases, `main`'s 31,720 and the 384 of `sha3`, with no failure, and 28 file theorems with the permitted axioms.  The programs then agreed with the 4,642 byte-oriented vectors again.
+
+- [x] Full build, default targets, and the full `tests/verified/run.sh` on the branch.

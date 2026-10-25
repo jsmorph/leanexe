@@ -273,5 +273,6 @@ import Library.Arrays.Search.Proof
 import Library.Hashing.Sha256.Bytes
 import Library.Hashing.Sha512.Bytes
 import Library.Hashing.Hmac.Bytes
+import Library.Hashing.Sha3.Bytes
 import Library.Regex.Bytes
 import Library.Hashing.MerkleDamgard
