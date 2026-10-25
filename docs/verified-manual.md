@@ -117,7 +117,11 @@ type itself.  Its first constructor without fields is null, and each other const
 record constructor.  A type with several record constructors is tagged: slot 0 of each record
 holds its constructor's index in declaration order, and a match tests the tag against the record
 constructors in that order and runs the last one's branch without a test.  A pattern matches one
-constructor level, and a wildcard alternative compiles once for each constructor it covers.  The
+constructor level, and a wildcard alternative compiles once for each constructor it covers.  A
+variable that names the matched value, as in `| s => f s`, compiles in each record constructor's
+copy as that constructor applied to the fields, which reuses the matched header and makes the
+matched variable owned.  A branch that names the matched variable itself, as in `| _ => f t`,
+reads it, and when that variable is owned the match works on a copy.  The
 reflector proves conversions to and from its typed layout, both inverse laws, and preservation of
 its `Encode` instance.  An encoding that disagrees with the layout fails that proof.  Tail matching
 preserves ownership across return and continue steps.

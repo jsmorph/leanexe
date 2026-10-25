@@ -35322,7 +35322,7 @@ The user chose to commit the port once the full build and `tests/verified/run.sh
 
 - [x] Commit the port after the full build and `tests/verified/run.sh` pass.
 - [x] Measure the cost of a variable pattern that names a borrowed matched value, with a small example.
-- [ ] Substitute the matched value into the reduced alternatives of `treeMatcherCases`.
+- [x] Substitute the matched value into the reduced alternatives of `treeMatcherCases`: tried and dropped, as a later entry records.
 
 The user chose to find the source of the kernel-time increase after the port's commit and before the substitution, so that the measurement covers the port alone.  The whole-file times above do not yet meet the design's criterion, which names the kernel time of the byte theorems.  The method is Lean's `trace.profiler` option, under which `addDecl` records each kernel check above the threshold as a `Kernel` trace node named "typechecking declarations" with the declarations' names (`Lean/AddDecl.lean` in the toolchain's sources), with `Elab.async` off so that the checks run inside their commands.  Each example runs under `lake env lean` in a checkout of `main` and in one of this branch, whose imports `build/timing/kernel-timing.sh` builds first.
 
@@ -35384,3 +35384,27 @@ The cost of the current form is therefore a change of mode: a function that only
 The prerequisite was incomplete in the driver's header and in the verified manual, which named only `lake build Verified Library`.  Both now also name `lake build`, as the LeanExe manual's full check does in its first step.  A chain builds the default targets and reruns the tests in this checkout, and then does the same for `hashing-main`, whose checkout lacked the same modules.
 
 `tools/leanrun --threads 3 lake build` then built the 4,169 jobs of the default targets with no `sorry` warning (`default-01.log`), and `tests/verified/run.sh` passed with exit 0 (`run-04.log`).  It passed 2,733 GPT cases, 3,096 Euler cases, and 226 cases of the shapes module, checked the file theorems of 22 numerical modules against their emitted files with only the three permitted axioms, passed all 30,618 verified cases with their allocation counts, and passed the native accuracy checks.  All 88 modules of the baseline from `main` are byte-identical to the modules that this run emitted, and the 89th is `taggedtypes`.
+
+## 2026-10-24: The substitution, tried and dropped
+
+`treeMatcherCases` was changed as in `reflectDataMatch`: at each record constructor it replaced the constructor application among the alternative's arguments by the matched value, under a motive that depends on that value, and kept the construction at the null constructor.  The tagged example built with it, and the scratch module of the entry above showed a trade-off.  `countOr` (`| s => count s`) became borrowed with the bound of `count` alone, while `keepOr` (`| s => s`) paid a copy of the matched value in every record case where it had rebuilt in place, and `pairOr` (`| s => .add s s`) paid two copies where it had paid one.
+
+The cost comes from the match.  `Var.code` copies an owned variable that is live after the load, so a match whose branch still uses the whole matched variable copies it and takes the copy apart.  A fix that removes the copy, a branch that uses the matched variable and none of its fields dispatching on the tag without taking the record apart, changes the match's code generation, modes, bound, and proofs, and depends on whether the slot invariants allow dead borrowed fields to point into an owned record.  The user chose to drop the substitution and keep the copy at the match.  The verified manual describes the two source forms: a variable that names the matched value rebuilds it from the fields, and a branch that names the matched variable reads it, through a copy when the variable is owned.
+
+- [ ] Later: a match whose branch uses the matched variable and none of its fields, without taking the record apart.
+
+## 2026-10-24: Rebase onto main
+
+At the user's instruction, `origin/main` moved by a fast-forward from ba4660613 to f582a2738, the head of `hashing-main` after its full build, default targets, and verified tests passed.  `tagged-types` then moved onto the new `main` with `git rebase`.  Two conflicts arose, both between additions at the same place: the journal's entries after the same day, and the `elif` branches of `tests/verified/run.sh` after `listtail`.  Both resolutions keep each side, with `main`'s journal entries first, and `modules.txt` and `Verified/Examples/Cases.lean` merged without conflict.
+
+The build checkout received the commits as a git bundle and now holds the rebased branch.  The chain there builds `Verified Library`, the default targets, and `tests/verified/run.sh`, and then compares each of the 92 modules that `main` wrote in the hashing checkout with the module of the same name, which must be identical.  The modules from before the rebase moved to `build/verified-prerebase`, so that every compared file comes from this run.
+
+The acceptance rule of the design compares the kernel time of the byte theorems, and the timing above covered only the recursive-type examples.  The same method, with the examples `Fold`, `Tail`, and `Owned`, which use no recursive type, gives 12.18 and 12.33 s over 77 checks for `Fold`, 13.12 and 13.44 s over 113 checks for `Tail`, and 15.34 and 15.50 s over 128 and 129 checks for `Owned`, on `main` and on the branch.  The increases are 1 to 2.5%, and no check changed by more than 0.05 s.  The logs are `base-Fold.log` through `branch-Owned.log` under `build/timing/`.
+
+The user chose to defer the cheaper shape quantities, the structural recursion over the constructor list or the indices, widths, and masks stored in the shape, and to merge with the cost measured above.  `recursiveLayout?` builds every shape, so the change touches only the compiler's internals.
+
+- [ ] Later: shape quantities that the kernel reduces without filtering and searching the constructor list.
+On the build host the rebased branch built `Verified Library` in 10,481 jobs with no `sorry`, the default targets in 4,169 jobs, and `tests/verified/run.sh` ended with status 0.  The Wasmtime host passed 2,733 GPT cases, 3,096 Euler cases, 226 shapes cases, and 31,440 verified cases, which are `main`'s 31,109 and the 331 of `taggedtypes`, with no failure, and the 26 file theorems hold with the permitted axioms.  All 92 modules that `main` wrote are identical, and `taggedtypes` is the 93rd of the 93 written.  The full build replayed most modules, since the checkout had built the hashing library on this branch's compiler on October 23, and it built 7, among them the hashing `Compiled` and `Bytes` modules.  The logs are under `build/tagged-rebase/` in that checkout.
+
+- [x] Full build, default targets, and verified tests of the rebased branch.
+- [x] The 92 modules of `main` identical, and `taggedtypes` the 93rd.
