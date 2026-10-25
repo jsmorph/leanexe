@@ -8,7 +8,10 @@ from 1 in the order of the pattern, and a state of the automaton is a set of pos
 one word, bit `p` for position `p` and bit 0 for the start.  `scan` reads the postfix pattern
 words once.  It keeps, for each expression on its stack, whether it matches the empty string and
 the sets of its first and last positions, and it adds to the follow set of each position the
-positions that may come after it.  `matchWith` then builds the positions of each byte and the
+positions that may come after it.  `scanStep`, `push`, and `combine` are `@[inline]`, so the
+verified compiler unfolds them into the loop of `scan` and updates the state's arrays in place: a
+record parameter of a compiled function is borrowed, and updating its arrays would copy them at
+every word.  `matchWith` then builds the positions of each byte and the
 unions of follow sets eight bits of a state at a time, and it runs the automaton over the input.
 The pattern is the first `pn` words of `pat`, and the input is the first `n` bytes of `msg`,
 packed eight to a word as `Library.Bytes` describes. -/
@@ -42,7 +45,7 @@ def addFollow (follow : Array UInt64) (last next : UInt64) : Array UInt64 :=
     if (last >>> q) &&& 1 == 1 then f.set! q.toNat (f[q.toNat]! ||| next) else f
 
 /-- The stack with the expression `(empty, first, last)` pushed. -/
-def push (s : Scan) (empty first last : UInt64) : Scan :=
+@[inline] def push (s : Scan) (empty first last : UInt64) : Scan :=
   let i := 3 * s.depth
   { s with
     stack := ((s.stack.set! i.toNat empty).set! (i + 1).toNat first).set! (i + 2).toNat last
@@ -50,7 +53,7 @@ def push (s : Scan) (empty first last : UInt64) : Scan :=
 
 /-- The stack with its top two entries `a` and `b` replaced by the entry `(empty, first, last)`,
 and the follow sets of `a`'s last positions extended by `next`. -/
-def combine (s : Scan) (empty first last lastA next : UInt64) : Scan :=
+@[inline] def combine (s : Scan) (empty first last lastA next : UInt64) : Scan :=
   let i := 3 * (s.depth - 2)
   { s with
     stack := ((s.stack.set! i.toNat empty).set! (i + 1).toNat first).set! (i + 2).toNat last
@@ -58,7 +61,7 @@ def combine (s : Scan) (empty first last lastA next : UInt64) : Scan :=
     depth := s.depth - 1 }
 
 /-- One word of the pattern. -/
-def scanStep (s : Scan) (w : UInt64) : Scan :=
+@[inline] def scanStep (s : Scan) (w : UInt64) : Scan :=
   if !s.valid then s
   else if s.skip != 0 then
     let k := 4 - s.skip

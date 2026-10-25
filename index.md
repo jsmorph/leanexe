@@ -20,8 +20,9 @@ The compiler's theorem for a module states that the module computes its Lean def
 - [9. Conversion between decimal strings and binary floating point](#9-conversion-between-decimal-strings-and-binary-floating-point)
 - [10. Outward rounding and limiters](#10-outward-rounding-and-limiters)
 - [11. Hash functions](#11-hash-functions)
-- [12. Applications](#12-applications)
-- [13. Compiler examples](#13-compiler-examples)
+- [12. Regular expressions](#12-regular-expressions)
+- [13. Applications](#13-applications)
+- [14. Compiler examples](#14-compiler-examples)
 
 ## 1. Arithmetic
 
@@ -269,7 +270,15 @@ Parsing a printer's output recovers the input, with a NaN replaced by the canoni
 | `hmacSha256` | [HMAC](Library/Hashing/Hmac/README.md) | The 32-byte MAC of FIPS 198-1 with SHA-256.  The program forms `K_0` as one block, hashes the key block and the message without copying them, and hashes the outer message as two blocks. | [`hmacSha256_call`](Library/Hashing/Hmac/Bytes.lean), from [`hmacSha256_spec`](Library/Hashing/Hmac/Proof256.lean), for keys below `2^61` bytes and messages below `2^61 - 64` bytes. |
 | `hmacSha512` | [HMAC](Library/Hashing/Hmac/README.md) | The 64-byte MAC of FIPS 198-1 with SHA-512, formed in the same way with blocks of 128 bytes. | [`hmacSha512_call`](Library/Hashing/Hmac/Bytes.lean), from [`hmacSha512_spec`](Library/Hashing/Hmac/Proof512.lean), for keys below `2^61` bytes and messages below `2^61 - 128` bytes. |
 
-## 12. Applications
+## 12. Regular expressions
+
+[The regex guide](Library/Regex/README.md) describes the pattern and the input: a regular expression over bytes in postfix order, one word for each operator and five for each set of bytes, and an input of `n` bytes packed eight to a word.  The specification defines the language of an expression with Mathlib's `Language` and proves it equal to the language of Mathlib's `RegularExpression`.  [Glushkov's theorem](Library/Regex/Glushkov.lean) relates the language to the position automaton.  The call theorem states that, for every pattern of `pn` words with `3 pn < 2^64` and every input, the export returns the specification's code without a trap in a heap with room for `24 pn + 21,272` bytes, and [the file theorems](Library/Regex/File.lean) identify the emitted module.
+
+| Algorithm | Implementation | Behavior | Proved results and limits |
+|---|---|---|---|
+| `matchWith` | [Regular expressions](Library/Regex/README.md) | Builds the position automaton of the pattern in one pass over its words, with each state a set of at most 63 positions in one word, and runs it over the input with nine table reads per byte. | [`matchWith_call`](Library/Regex/Bytes.lean), from [`matchWith_eq`](Library/Regex/Proof.lean): 2 for a pattern that does not decode, 3 for one of more than 63 sets, and otherwise 1 or 0 for whether the whole input is in the language. |
+
+## 13. Applications
 
 Application definitions and proofs live in `Demos`, with shared algorithms imported from `Library`.  The linked guides state the domains, execution premises, and host assumptions.  GPU theorems concern the modeled device and host commands.  Execution tests cover the host processes, file I/O, engines, and device arithmetic described in the guides.
 
@@ -281,7 +290,7 @@ Application definitions and proofs live in `Demos`, with shared algorithms impor
 | Drone planner | [Drone application and proofs](Demos/Drone/README.md) | Uses dynamic programming over station altitudes and speeds to minimize duration, then excess altitude. | [The byte theorems](Demos/Drone/Verify.lean) prove optimality and safety in the ideal point-mass model for valid terrain.  [Total execution](Demos/Drone/Total.lean) uses at most 70 pages under its initial-allocator and cap premises.  [The verified compilation](Demos/Drone/Verified.lean) transports the safety and optimality results and proves trap-free execution under its bounds. |
 | Order book | [Order-book application and proofs](Demos/Clob/README.md) | Inserts and cancels levels, fills market orders, computes depth, and processes three-word commands over word arrays. | [The byte and command-stream theorems](Demos/Clob/Verify.lean) prove the fifteen functions' execution, equivalence when a chunk boundary falls between commands, and equality of the books returned by `runOut` and `runCommands`.  [The verified version](Demos/Clob/Verified.lean) has its own typed definitions and command-stream proofs, using [the shared command lemmas](Demos/Clob/Commands.lean). |
 
-## 13. Compiler examples
+## 14. Compiler examples
 
 These algorithms remain in `Examples` or `Verified/Examples` as demonstrations of language forms, ownership, and proof procedures.  Execution theorems relate compiled programs to their Lean definitions under the compiler's premises.  Word arithmetic wraps modulo `2^64`.  The WGSL dispatch results assume the device model's shape, buffer, and invocation bounds.
 
