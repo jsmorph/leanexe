@@ -3,9 +3,19 @@
 #include <unistd.h>
 #include <lean/lean.h>
 
+static lean_obj_res read_error(int error) {
+  if (error == ENOENT) {
+    lean_object *filename = lean_mk_string("<stdin>");
+    lean_object *failure = lean_decode_io_error(error, filename);
+    lean_dec(filename);
+    return lean_io_result_mk_error(failure);
+  }
+  return lean_io_result_mk_error(lean_decode_io_error(error, NULL));
+}
+
 LEAN_EXPORT lean_obj_res leanexe_running_sum_read_stdin(uint64_t requested) {
   if (requested > SIZE_MAX || lean_alloc_sarray_would_overflow(1, (size_t)requested)) {
-    return lean_io_result_mk_error(lean_decode_io_error(ENOMEM, NULL));
+    return read_error(ENOMEM);
   }
   size_t capacity = (size_t)requested;
   lean_object *bytes = lean_alloc_sarray(1, 0, capacity);
@@ -19,7 +29,7 @@ LEAN_EXPORT lean_obj_res leanexe_running_sum_read_stdin(uint64_t requested) {
   if (count < 0) {
     int error = errno;
     lean_dec(bytes);
-    return lean_io_result_mk_error(lean_decode_io_error(error, NULL));
+    return read_error(error);
   }
   lean_sarray_set_size(bytes, (size_t)count);
   return lean_io_result_mk_ok(bytes);
