@@ -43,3 +43,10 @@ root = "Demos.Gpt32.Lines"
 [[lean_exe]]
 name = "euler-native"
 root = "Demos.Euler.Native"
+
+# The check of the FIPS 202 transcription and the SHA-3 programs on the CAVP vectors
+# (tests/TestSupport/Hashing/Sha3Vectors.lean); not a default target.
+[[lean_exe]]
+name = "sha3-vectors"
+srcDir = "tests"
+root = "TestSupport.Hashing.Sha3Vectors"

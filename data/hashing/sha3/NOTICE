@@ -1,0 +1,28 @@
+data/hashing/sha3/
+
+These files are unmodified copies of files in the NIST Cryptographic Algorithm
+Validation Program archives of SHA-3 and SHAKE test vectors, listed on
+https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing.
+NIST publications are works of the United States Government.
+
+The files in this directory are every response file of the archives for
+byte-oriented messages:
+
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bytetestvectors.zip,
+SHA-256 cd07701af2e47f5cc889d642528b4bf11f8b6eb55797c7307a96828ed8d8fc8c, and
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebytetestvectors.zip,
+SHA-256 debfebc3157b3ceea002b84ca38476420389a3bf7e97dc5f53ea4689a16de4c7.
+
+The files in bit/ are the ShortMsg response files of the archives for
+bit-oriented messages:
+
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha-3bittestvectors.zip,
+SHA-256 339454bb4b96e299fefcad403797523f1952462a28d2418c108aea30263643ae, and
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/shakebittestvectors.zip,
+SHA-256 69338cb9cfb1e39b91f54f34bbb82a5d3b0403eb5d77213a669fafed87efebb4.
+
+The archives were downloaded on 2026-10-25, and the copies keep their CRLF line
+endings.  A message of Len bits is the string h2b(Msg, Len) of FIPS 202
+Appendix B.1, and a digest or output is b2h of its bits.  The Monte Carlo and
+variable-output procedures are those of the SHA-3 Validation System,
+https://csrc.nist.gov/CSRC/media/Projects/Cryptographic-Algorithm-Validation-Program/documents/sha3/sha3vs.pdf.
