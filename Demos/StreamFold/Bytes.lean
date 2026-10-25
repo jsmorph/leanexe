@@ -127,4 +127,3 @@ theorem afterWrite_conservation {state : (BufferState Acc)} (safe : Safe state) 
   rw [afterWrite_remaining safe count bound, List.append_assoc, List.take_append_drop]
 
 end Demos.StreamFold
-

@@ -53,6 +53,12 @@ short writes, and proves canonical cumulative integer output and eventual accept
 progress, separate line and prefix-sum size bounds, typed resource budgets at reached calls,
 and final-exit acceptance.
 
+[The floating-point version, `sumfp`](Demos/RunningSumFp/README.md), parses binary64 values and
+prints each sequential binary64 total in scientific notation.  Its proofs compose the existing
+parser and printer theorems with IEEE-754 addition and the WASI process proof.  The total starts
+at positive zero.  Its successful-execution theorem assumes a finite sequence of valid input lines, fewer than
+`2^32` bytes per line, host progress, typed resource budgets, and final-exit acceptance.
+
 ### Comparison
 
 | Topic | LeanExe compiler | Verified compiler |
@@ -98,8 +104,8 @@ Permitted guest resource traps match source prefixes and residual actions.  Gene
 total-execution theorems require allocation room, the typed prefix budget, and `NoTrapsAlong`
 for the native action.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean)
 uses a well-founded progress relation, budgets at finite reached active calls, and final-exit
-acceptance.  Running sum's budget premises remain explicit.  A numeric whole-input memory
-bound has not been proved.  The modeled initial-store theorem establishes allocator and
+acceptance.  Both running-sum applications retain explicit budget premises.  A numeric whole-input
+memory bound remains open.  The modeled initial-store theorem establishes allocator and
 static-data invariants.  Real engine instantiation, OS streams, and the native stream adapter
 require conformance to the modeled behavior, which execution tests check on concrete inputs.
 
@@ -132,7 +138,7 @@ engines, hosts, and file emission.
 | [Shared libraries and LeanExe compiler](LeanExe) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, and shared WGSL translation. |
 | [Verified compiler](Verified) | The typed source language, compiler, universal proof, reflector, WGSL lowering, and compiled examples. |
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
-| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, and running sum, with application proofs and host programs. |
+| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, and integer and binary64 running sums, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | The compiler manuals and design document. |
 | [Proof guidance](ltg) | The LTG knowledge base and its declaration checker. |

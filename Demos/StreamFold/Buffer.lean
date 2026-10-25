@@ -205,4 +205,3 @@ theorem consumeInput_buffer (state : (BufferState Acc)) (history : List Bytes) (
   simpa only [length, taken] using progress
 
 end Demos.StreamFold
-

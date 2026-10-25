@@ -200,4 +200,3 @@ theorem afterWrite_safe {state : BufferState Acc} (safe : Safe state) (count : U
     omega
 
 end Demos.StreamFold
-

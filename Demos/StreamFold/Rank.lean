@@ -129,4 +129,3 @@ theorem rank_afterWrite (unread zeroWrites : Ghost → Nat) {before after : Ghos
       exact Prod.Lex.left _ _ smaller
 
 end Demos.StreamFold
-

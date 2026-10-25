@@ -83,6 +83,8 @@ The [typed process entry](../Verified/Wasi/ProcessCode.lean) composes separately
 
 [Running sum's integer theorem](../Demos/RunningSum/Correct.lean) proves canonical decimal output for every cumulative mathematical sum and eventual accepted exit 0 for finite valid input.  Its [stream-host assumptions](../Demos/RunningSum/StreamHost.lean) require successful I/O, input-prefix consumption, EOF, committed output prefixes, and a decreasing proof-only credit for zero-byte writes.  Independent [input bounds](../Demos/RunningSum/InputBounds.lean) constrain each line's length and each prefix sum's digit count.  `RunResources` supplies allocation room and typed prefix budgets for begin and finite reached active step calls.  `ExitAccepted` supplies the final-exit premise.  The [application guide](../Demos/RunningSum/README.md) states the exact scope.
 
+[The floating-point running sum](../Demos/RunningSumFp/README.md) uses the same stream protocol with a binary64 total starting at positive zero.  Its [arithmetic proof](../Demos/RunningSumFp/ArithmeticProof.lean) uses the existing general float parser, IEEE-754 addition, and shortest scientific printer.  [Its compiled theorem](../Demos/RunningSumFp/Correct.lean) proves the printed sequential totals and accepted exit 0 under a finite sequence of valid input lines, fewer than `2^32` bytes per line, host progress, typed budgets at reached calls, and final-exit acceptance.
+
 ## Compilation and generated declarations
 
 ### Callable and command modules
@@ -241,5 +243,7 @@ tests/wasi/run.sh
 [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and repository integration runs.
 
 [The running-sum driver](../tests/running-sum/run.sh) additionally checks the unbounded process loop, native and Wasm decimal streams, split lines, short and zero-byte writes, committed effects before failures, and interactive output before EOF.
+
+[The floating-point driver](../tests/running-sumfp/run.sh) adds rounding, cancellation, subnormals, overflow, signed zero, infinities, NaNs, and the general parser grammar, through native, Talos, Wasmtime, and interactive stream tests.
 
 The interface follows the pinned [Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md).

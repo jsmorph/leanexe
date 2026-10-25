@@ -177,4 +177,3 @@ theorem StreamFuture.eof_room {state : (BufferState Acc)} {position : StreamPosi
   simp only [StreamFuture.eof_remaining spec future eof, Model.consume_nil]
 
 end Demos.StreamFold
-

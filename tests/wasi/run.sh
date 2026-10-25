@@ -145,3 +145,4 @@ tests/wasi/script-host-run.sh
 tests/wasi/host.sh
 tests/wasi/acceptance-run.sh
 tests/running-sum/run.sh
+tests/running-sumfp/run.sh

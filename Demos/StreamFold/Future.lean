@@ -246,4 +246,3 @@ theorem streamFuture_step {host : Host World} {rep : StreamPosition â†’ World â†
             cases stopped
 
 end Demos.StreamFold
-

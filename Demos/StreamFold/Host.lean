@@ -244,4 +244,3 @@ theorem initial_terminates (spec : KernelSpec kernel) {World Ghost : Type} {host
   process_terminates spec progress ready (Safe.initial seed)
 
 end Demos.StreamFold
-
