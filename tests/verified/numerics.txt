@@ -26,3 +26,4 @@ hmac_sha256:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File256.lean
 hmac_sha512:Library.Hashing.Hmac.Bytes:Library/Hashing/Hmac/File512.lean
 regex:Library.Regex.Bytes:Library/Regex/File.lean
 sha3:Library.Hashing.Sha3.Bytes:Library/Hashing/Sha3/File.lean
+crc:Library.Hashing.Crc.Bytes:Library/Hashing/Crc/File.lean

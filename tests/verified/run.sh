@@ -147,6 +147,9 @@ elif [ "$case_module" = "regex" ]; then
 elif [ "$case_module" = "sha3" ]; then
   cases_module=TestSupport.Hashing.Sha3CasesMain
   cases_source=tests/TestSupport/Hashing/Sha3CasesMain.lean
+elif [ "$case_module" = "crc" ]; then
+  cases_module=TestSupport.Hashing.CrcCasesMain
+  cases_source=tests/TestSupport/Hashing/CrcCasesMain.lean
 fi
 tools/leanrun --timeout 30m lake --log-level error build "$cases_module"
 cases=$(mktemp)

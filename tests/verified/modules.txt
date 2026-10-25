@@ -93,3 +93,4 @@ Library.Hashing.Hmac.Compiled:Library.Hashing.Hmac.compiled256.module:hmac_sha25
 Library.Hashing.Hmac.Compiled:Library.Hashing.Hmac.compiled512.module:hmac_sha512
 Library.Regex.Compiled:Library.Regex.compiled.module:regex
 Library.Hashing.Sha3.Compiled:Library.Hashing.Sha3.compiled.module:sha3
+Library.Hashing.Crc.Compiled:Library.Hashing.Crc.compiled.module:crc

@@ -50,3 +50,10 @@ root = "Demos.Euler.Native"
 name = "sha3-vectors"
 srcDir = "tests"
 root = "TestSupport.Hashing.Sha3Vectors"
+
+# The check of the CRC transcription and the CRC programs on the vectors of data/hashing/crc
+# (tests/TestSupport/Hashing/CrcVectors.lean); not a default target.
+[[lean_exe]]
+name = "crc-vectors"
+srcDir = "tests"
+root = "TestSupport.Hashing.CrcVectors"

@@ -1,0 +1,19 @@
+data/hashing/crc/
+
+vectors.txt holds CRC-32 and CRC-32C test vectors that generate.py wrote on
+2026-10-25.  Each line gives a label, CRC-32 as computed by zlib.crc32 of
+Python 3, CRC-32C as computed by the crc32c hash of the Linux kernel's crypto
+API through an AF_ALG socket, and the message in hexadecimal.  A CRC is written
+as the eight hexadecimal digits of its value, the integer whose bytes from the
+least significant are the four octets of the check sequence.
+
+The message of the label catalogue is the ASCII string 123456789, whose CRC-32
+and CRC-32C are the check values 0xCBF43926 and 0xE3069283 of the CRC catalogue,
+https://reveng.sourceforge.io/crc-catalogue/17plus.htm (CRC-32/ISO-HDLC and
+CRC-32/ISCSI).  The messages of the label rfc3720 are the five examples of
+RFC 3720 Appendix B.4, https://www.rfc-editor.org/rfc/rfc3720, whose CRC-32C
+octets the appendix lists.  generate.py checks zlib and the kernel against these
+published values before it writes the file.  The messages of the label random
+are pseudorandom bytes from Python's random.Random(3720), one message of every
+length from 0 to 256 bytes and of the lengths 511, 512, 513, 1000, 1023, 1024,
+1025, 4095, 4096, and 4097.

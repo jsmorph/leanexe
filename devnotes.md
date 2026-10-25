@@ -35094,8 +35094,8 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 - [x] SHA-512, SHA-384, and SHA-512/256: program, compilation with `aborts = false`, equality proof, file theorem, cases, and the Merkle–Damgård reduction for SHA-512.
 - [x] SHA-256 and SHA-224, with a Wasmtime speed measurement for the `UInt32` decision.
 - [x] HMAC-SHA-256 and HMAC-SHA-512.
-- [ ] SHA-3 and SHAKE.
-- [ ] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
+- [x] SHA-3 and SHAKE.
+- [x] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
 - [ ] SipHash and xxHash64.
 
 References: [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final), [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), [the CAVP secure-hashing vectors](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean), [sha2-fv](https://docs.rs/sha2-fv), and [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231).
@@ -35522,3 +35522,45 @@ The proof has four files, and each checks in under a minute.  `RoundProof.lean` 
 On the build host the branch built `Verified Library` in 10,500 jobs with no `sorry` and the default targets, and `tests/verified/run.sh` ended with status 0: 32,104 verified cases, `main`'s 31,720 and the 384 of `sha3`, with no failure, and 28 file theorems with the permitted axioms.  The programs then agreed with the 4,642 byte-oriented vectors again.
 
 - [x] Full build, default targets, and the full `tests/verified/run.sh` on the branch.
+
+## 2026-10-25: CRC-32 and CRC-32C: plan
+
+The user asked to continue with the hashing plan's next families after SHA-3, on the branch `crc` from `main`.  [ITU-T V.42](https://www.itu.int/rec/T-REC-V.42-200203-I/en) §8.1.1.6.2 defines the 32-bit frame check sequence of CRC-32, the one that gzip ([RFC 1952](https://www.rfc-editor.org/rfc/rfc1952) §8) and PNG use, as the ones complement of the sum of `(x^k L) mod G` and `(x^32 M) mod G`.  Here `L = x^31 + … + 1`, `M` holds the `k` frame bits in transmission order, the least significant bit of each octet first by §8.1.2.2 and §8.1.2.3, and the FCS maps `x^31` to bit 1 of its first octet.  [RFC 3720](https://www.rfc-editor.org/rfc/rfc3720) §12.1 defines CRC-32C by a process with the generator `0x11EDC6F41`: complement the most significant 32 bits of `M`, multiply by `x^32`, divide by `G`, and complement the remainder.  Its Byte Rule numbers bit 0 as the most significant, so its "bit 7 of the lowest numbered byte" is that byte's least significant bit, the same order as V.42's, and Appendix B.4 gives five examples.
+
+| Topic | Decision | Reason |
+|---|---|---|
+| Transcription | Mathlib's `Polynomial (ZMod 2)` and `%ₘ`, as the standards write them, with a computable division on bit strings proved equal to `%ₘ` for the tests | The standards define the CRCs as polynomial remainders, and Mathlib's polynomials cannot be evaluated. |
+| Short messages | CRC-32C by V.42's form with `G = 0x11EDC6F41`, and a lemma that it equals RFC 3720's process for at least 32 bits | RFC 3720's first step has no meaning for fewer than 32 bits.  For `k ≥ 32` complementing the top 32 bits adds `x^(k−32) L` to `M`, which is V.42's form, and V.42's form gives 0 for the empty message, as common CRC-32C code does. |
+| Program | One 256-word table for each CRC, read through a wrapper as SHA-512 reads `K` | One table read per byte, eight times fewer steps than the bitwise method.  The entries check against eight bitwise steps by `decide`, and the module's initial store holds the tables. |
+| Interface | `crc32` and `crc32c` from 0, and `crc32Update` and `crc32cUpdate` that continue from the CRC of earlier bytes | zlib's `crc32(crc, buf, len)` convention, which lets a caller checksum in pieces, with a theorem for concatenation. |
+
+The tests compare the programs and the computable transcription on the examples of RFC 3720 Appendix B.4, the check values of the CRC catalogue for the string `123456789` (`0xCBF43926` and `0xE3069283`), Python's `zlib.crc32` for CRC-32, and the Wasmtime host.
+
+- [x] Transcription, its computable division, the equality lemmas, and an independent review.
+- [x] Programs, tables, compilation, and tests.
+- [x] Equality of the programs with the transcription, call and file theorems, and documentation.
+- [x] Full validation, then commit and fast-forward `main`.
+
+## 2026-10-25: CRC-32 and CRC-32C: results
+
+`Division.lean` defines `lfsr`, the division one bit at a time on strings of 32 bits with the coefficient of `x^31` first, and proves `lfsr_spec`: from the remainder `S` and the bits `M` it gives `(x^k S + x^32 M) mod G`.  `crc32_eq` and `crc32c_eq` follow from `add_modByMonic`, and `rfcProcess_eq` proves RFC 3720's process equal to V.42's form for at least 32 bits.  Mathlib's `ring` cannot use the characteristic, so the identities that need `p + p = 0` use `grind`, which finds `CharP (ZMod 2)[X] 2`.  The computable form gives the catalogue's check values and the five RFC 3720 examples.
+
+An independent review compared `Spec.lean` with V.42 and RFC 3720 and found the six definitions in agreement, with a Python model that follows the Lean definitions and agrees with zlib and a reflected CRC-32C on 300 random messages.  It found two misstatements in comments, which I corrected.  The bit order of RFC 3720 comes from the first step of §12.1, which makes bit 7 of the lowest numbered byte the highest coefficient, and §2.3.3 gives only the byte order and the bit values.  Neither document defines an integer for the sequence: V.42 Figure 7 weights bit 1 of the first octet as `2^31`, which gives the bit reversal of `value`, and `value` is the convention of zlib, whose bytes from the least significant are the four octets.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Program | One module `crc` with both tables, a byte loop with one table read per byte, and `byteStep` inline | The tables are 2 KiB each.  A loop over words with eight byte steps would read memory less often but adds a second loop and its proof. |
+| Update argument | `updateWith` reads the low 32 bits of the CRC argument, and the theorem assumes `crc.toNat = Spec.crc32 A` | Masking gives a defined result for every word, and the hypothesis names the bytes whose CRC continues, which zlib's interface implies. |
+| Proof | `Holds r S` reads a register as 32 bits, `poly_inj` turns the polynomial equation of a byte step into an equation of bit strings, and `decide +kernel` checks each table entry against `lfsr` | The step's proof is two remainders of degree below 32, and the loop then follows `lfsr_append` on lists. |
+| Test vectors | zlib for CRC-32 and the Linux kernel's `crc32c` through an `AF_ALG` socket for CRC-32C, written by `data/hashing/crc/generate.py` with Python's standard library | Both are implementations independent of this code, available without a new dependency.  The script checks both against the catalogue's check values and RFC 3720's examples first. |
+
+The tables sit at 4096 and 6152.  `ready_initial` needs `maxRecDepth 10000` because the second table's address unfolds the size of the first.  [The CRC catalogue](https://reveng.sourceforge.io/crc-catalogue/17plus.htm) lists CRC-32/ISO-HDLC with check `0xcbf43926` and CRC-32/ISCSI with check `0xe3069283`.
+
+| Check | Result |
+|---|---|
+| `crc-vectors` | The transcription and the programs agree on 273 messages, and the updates on six splits of each, in 370 ms. |
+| `tests/verified/run.sh --cases crc` | 270 cases pass. |
+| `Library/Hashing/Crc/File.lean` | `crc_file` and `crc_file_decode` hold for the 5,921-byte module. |
+| Axioms | The call theorems and the file theorems depend on `propext`, `Classical.choice`, and `Quot.sound`. |
+
+On the build host the branch built `Verified Library` in 10,506 jobs with no `sorry` and the default targets, and `crc-vectors` agreed on all 273 messages.  `tests/verified/run.sh` ended with status 0: 32,374 verified cases, `main`'s 32,104 and the 270 of `crc`, with no failure, and 29 file theorems with the permitted axioms.  The 23 committed files other than this journal are identical to the tested ones.
