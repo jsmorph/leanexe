@@ -35442,3 +35442,14 @@ The [main-integration review](docs/wasi-main-integration.md) compares `6efedd0c`
 The build host's observer recorded 374 complete samples from 14:35:18 to 15:50:02 UTC and stopped normally at 15:50:14.  It captured 26 distinct worktree scopes in 28 samples.  Those scopes reported zero swap, memory-high/max/OOM events, and memory stalls.  The largest captured memory peak was 1,601,634,304 bytes during WASI module emission.  The captured `Verified Library` scope peaked at 1,223,544,832 bytes.  No default-build scope was captured.  The last sampled counters for each captured scope total 89.00 seconds of user CPU and 47.65 seconds of system CPU.  They omit missed scopes and work after the last capture.  Host-wide counters increased by two swap-in pages, five swap-out pages, and zero OOM kills.  Host full-memory stalls increased by 76,820 microseconds, with a maximum ten-second average of 0.18 percent.  Available host memory stayed above 9,791,568 KiB.  Host counters include unrelated activity.  Twelve-second sampling provides intermittent scope coverage and cannot establish resource behavior for missed runs.
 
 The final documentation check passed for 200 Markdown files and 4,166 links.  Whitespace and source-layout checks passed.  The remaining work is the separately scoped main integration described in the review.
+
+## 2026-10-25: Floating-point running sum
+
+The user approved `sumfp` with proofs: binary64 parsing, left-to-right cumulative addition, printing, and the WASI stream process.  The total starts at positive zero.  The application reuses `parse64 true`, including its general decimal, hexadecimal, infinity, and NaN grammar, and `print64`'s scientific layout.  The line adapter removes one trailing CR and appends LF to each printed sum.  Blank or malformed lines stop with status 28.  The existing parser's length premise is fewer than `2^32` bytes per line.  The proof will state that bound and the host-progress and resource premises.
+
+- [ ] Implement the binary64 line adapter and connect parsing, addition, and printing to their existing proofs.
+- [ ] Compile the buffered WASI process and prove source correspondence, cumulative output, and conditional termination.
+- [ ] Add native, Talos, Wasmtime, and interactive tests, with maintained axiom audits.
+- [ ] Review the application guide, README, and algorithm index, then complete the relevant build and execution gates.
+
+The arithmetic agent owns the line adapter and its mathematical proof.  The process agent reviews reusable buffering and termination lemmas.  The test agent owns the new application gate, fixtures, native target, and guide.  The root agent owns the process, compilation, combined proof, integration, and journal.  Separate-host Lean runs retain one external resource-limited runner per host.  The build host uses its eight-CPU quota with three workers and an observer for memory, paging, stalls, and CPU counters.  No new dependency is planned.
