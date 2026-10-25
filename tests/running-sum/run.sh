@@ -9,8 +9,10 @@ cd "$root"
 out="$root/build/running-sum"
 host="$root/build/tools/leanexe-wasmtime-host"
 tools/leanrun --timeout 15m --log build/running-sum/build.log lake build \
-  Demos.RunningSum.Proof Verified.Examples.WasiProcess Verified.Wasi.ProcessTermination running-sum-native
+  Demos.RunningSum.Proof Demos.RunningSum.InputBounds \
+  Verified.Examples.WasiProcess Verified.Wasi.ProcessTermination running-sum-native
 tools/leanrun --timeout 5m lake env lean tests/running-sum/Axioms.lean
+tools/leanrun --timeout 5m lake env lean tests/running-sum/MathAxioms.lean
 tools/leanrun --timeout 5m lake env lean tests/running-sum/ProcessAxioms.lean
 tools/leanrun --timeout 5m lake env lean --run tests/running-sum/Arithmetic.lean
 tools/leanrun --timeout 5m lake env lean --run tests/running-sum/Stream.lean

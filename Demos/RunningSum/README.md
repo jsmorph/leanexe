@@ -24,6 +24,11 @@ Each completed line produces output before the next blocking read.
 | Module | Contents |
 |---|---|
 | [Decimal arithmetic](Program.lean) | Parsing, magnitude comparison, signed addition, and decimal rendering. |
+| [Integer specification](Spec.lean) | Positional decimal value, normalization, and executable-length bounds. |
+| [Parser correctness](Parsing.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
+| [Addition correctness](Addition.lean) | Signed integer addition, including cancellation and negative zero. |
+| [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
+| [Mathematical stream model](InputBounds.lean) | Cumulative sums under line and prefix-sum size bounds. |
 | [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
@@ -46,9 +51,12 @@ file-emission assumptions.  Termination requires progress and resource premises.
 [ranked loop rules](../../Verified/Wasi/ProcessTermination.lean) require bounded iteration proofs
 and a decreasing natural-valued rank.  Running sum's execution theorem proves partial correctness.
 
-The arithmetic tests compare results with Lean `Int`, including long carry, borrow, and
-cancellation.  A general mathematical proof relating the digit-array arithmetic to `Int` remains
-open.
+`parse_correct`, `add_correct`, and `render_correct` relate the decimal arithmetic to `Int`.
+`StreamModel.stream_correct_of_inputBounds` proves that the stream model produces the cumulative
+sums.  Its bounds cover each line's length and each mathematical prefix sum's digit count.  The
+theorem permits any finite number of lines.  The connection to the process execution and its
+successful-termination theorem is in progress.  Arithmetic tests include long carry, borrow,
+and cancellation cases.
 
 The native reader returns after one successful `read` call and retries interrupted calls.  OS
 errors propagate through Lean's `IO.Error` API.  This gives the executable short reads on pipes.
