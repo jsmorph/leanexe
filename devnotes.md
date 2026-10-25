@@ -35408,3 +35408,17 @@ Run 42 completed with status zero: 30,287 common verified comparisons, 2,733 GPT
 The build host observer completed 376 samples from 05:55:23 to 07:10:39 UTC, with at most thirteen seconds between recorded timestamps and no partial reads.  It began during run 34.  The samples omit some short scopes and final scope counters.  Later accuracy and decoder samples recorded zero swap and memory stalls.  The captured decoder peak was 241,647,616 bytes.  No captured scope had a maximum-limit or OOM event, and the host OOM counter did not increase.  Host-wide counters include unrelated activity.
 
 All four local machine GPU gates passed with status zero: original WGSL passed 474 cases per Vulkan driver, verified WGSL passed 233, and verified GPT32 kernels passed 694.  Complete GPT32 generation passed all 45 step comparisons across three models on Wasm, SwiftShader, and llvmpipe.  Their builds completed 3,761, 3,763, and 3,789 jobs for the verified WGSL, GPT32 kernel, and complete-generation gates.  Recorded local scope samples had zero swap and memory-limit events.  Those samples provide intermittent coverage, and the fourth gate has no scope sample.  The code tested on both hosts matches commit `20844017`.  Subsequent commits update documentation and resource instructions.  The running-sum integration checklist is complete.
+
+## 2026-10-25: Prove running-sum mathematics and termination
+
+The user approved the mathematical arithmetic proof, cumulative-sum output theorem, termination under successful host operations, progress, and sufficient memory, and a subsequent review for merging into `main`.  The executable retains its `UInt64` representation.  The specification uses `Nat` and `Int`, with explicit length bounds for conversions and additions of executable lengths.
+
+- [ ] Prove parsing, signed addition, and canonical rendering against `Int`.
+- [ ] Prove the source process writes the cumulative sums of accepted lines.
+- [ ] Prove termination for finite valid input under host progress and resource assumptions.
+- [ ] Audit the new theorems, run the maintained tests, and update the proof descriptions.
+- [ ] Review `verified-wasi` for merging into `main`.
+
+The earlier [running-sum proof modules](https://github.com/jsmorph/leanexe/tree/932707267649a1f1fd83b1784e3c24398c5ba995/proofs/talos/lean/Project/RunningSum) provide the digit, scan, rendering, and stream arguments.  The current proof separates those arguments from `UInt64` overflow bounds and buffered short writes.  The arithmetic and parser agents use separate hosts, each with one external resource-limited Lean runner.  The termination agent prepares the process proof while those hosts are occupied.  The build host has a host and scope observer with twelve-second sampling.
+
+The shared specification passed its focused build in `spec-02.log`, with 3,038 jobs.  The first run exposed two missing definition unfoldings in the zero facts.  `Magnitude.lean` then passed 3,039 jobs in `magnitude-02.log`, including the fold-to-positional value equation, digit bounds, raw append, and carry/borrow identities.  Its first run exposed explicit-cast, reverse-index, multiplication-order, and array-push lemma mismatches.  Those corrections preserved the theorem statements and resource limits.  The first remote rendering test found that the new specification's compiled dependency was absent.  Building that dependency and correcting the length-conversion simplification produced passing rendering shape lemmas.  Scan and full rendering proofs continue.
