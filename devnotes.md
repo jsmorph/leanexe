@@ -35349,3 +35349,18 @@ The library guide links to the maintained full-check and cold-cache procedures. 
 - [x] Complete a second editorial pass and run the local-link, source-layout, and whitespace checks.
 
 The local-link check passes across 198 Markdown files.  The source-layout check passes for 2,157 Lean files, 48 native programs, and 123 registered modules.  `git diff --check` passes.  These edits affect Markdown only.  No Lean build or execution test was run for this review.
+
+## 2026-10-24: Port running sum to Verified WASI
+
+The user requested the running-sum port and approved an EOF-driven effectful loop without a preset iteration limit.  The port keeps signed decimal arithmetic of arbitrary magnitude, line buffering across reads, CRLF handling, a final unterminated line, and output before the next line is processed.  Executable digits, lengths, indices, and statuses use `UInt64`.  Successful termination requires finite input, host progress, and sufficient memory.
+
+- [x] Port and compile decimal parsing, signed addition, and rendering.
+- [x] Compare the arithmetic with Lean integers, including long carry, borrow, and cancellation cases.
+- [ ] Complete the native EOF process and tests for split input, short writes, errors, and output order.
+- [ ] Compile the unbounded loop and prove its execution and effect-prefix properties.
+- [ ] Run native and Wasm comparisons, theorem audits, and the maintained WASI gate.
+- [ ] Document the application and its proof premises.
+
+The arithmetic target passed in `build/running-sum/arithmetic-03.log`, with 3,720 jobs and a 15-second compilation of the new module.  The maintained application driver passed 4,022 native cases, including 5,000-digit carry, borrow, and cancellation and 4,000 pairs compared with Lean `Int`.  Earlier attempts found an inferred `Nat` literal, the reserved word `prefix` used as a local name, and a constant array index outside the reflector's required `UInt64.toNat` form.  The corrected source uses explicit word types and indices.
+
+The current WASI weakest-precondition statement proves termination with a fuel bound.  An unbounded process therefore needs a separate termination premise for its outer loop.  Its individual steps can reuse the existing bounded-action compiler and ownership proofs.  The stream implementation separates reading, consuming a chunk through the next newline, and completing an output.  A short write retains its remaining suffix, and a successful zero-byte write leaves it pending.  These process and stream modules remain under testing.
