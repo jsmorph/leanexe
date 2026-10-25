@@ -81,6 +81,11 @@ with the modeled floating-point and host semantics require external execution te
 Commands run from the repository root.  [The host setup](../../docs/leanexe-manual.md#the-wasmtime-host)
 provides the pinned Wasmtime host and its deterministic floating-point profile.
 
+The tested profile on the build host uses `LEANRUN_CPUS=8`, `LEANRUN_THREADS=3`, and
+`LEANRUN_MEMORY_HIGH=10G`, with a 12 GiB maximum.  The initial WASI compilation had a captured
+memory peak of 4.84 GiB.  [The resource instructions](../../AGENTS.md#lean-process-limits)
+describe these settings.
+
 ```sh
 tests/running-sumfp/run.sh
 printf '12\n-5\n20\n' | .lake/build/bin/running-sumfp-native

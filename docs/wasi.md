@@ -246,4 +246,6 @@ tests/wasi/run.sh
 
 [The floating-point driver](../tests/running-sumfp/run.sh) adds rounding, cancellation, subnormals, overflow, signed zero, infinities, NaNs, and the general parser grammar, through native, Talos, Wasmtime, and interactive stream tests.
 
+On the build host, the full WASI and floating-point drivers use `LEANRUN_MEMORY_HIGH=10G`, with the [approved CPU and worker settings](../AGENTS.md#lean-process-limits).  The initial combined parser/printer WASI compilation had a captured memory peak of 4.84 GiB.
+
 The interface follows the pinned [Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md).
