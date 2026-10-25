@@ -94,3 +94,5 @@ Library.Hashing.Hmac.Compiled:Library.Hashing.Hmac.compiled512.module:hmac_sha51
 Library.Regex.Compiled:Library.Regex.compiled.module:regex
 Library.Hashing.Sha3.Compiled:Library.Hashing.Sha3.compiled.module:sha3
 Library.Hashing.Crc.Compiled:Library.Hashing.Crc.compiled.module:crc
+Library.Hashing.SipHash.Compiled:Library.Hashing.SipHash.compiled.module:siphash
+Library.Hashing.XxHash64.Compiled:Library.Hashing.XxHash64.compiled.module:xxhash64

@@ -35096,7 +35096,7 @@ Each hash's final theorem will state that the emitted file decodes to a module w
 - [x] HMAC-SHA-256 and HMAC-SHA-512.
 - [x] SHA-3 and SHAKE.
 - [x] CRC-32 and CRC-32C, with equality to the polynomial remainder over GF(2).
-- [ ] SipHash and xxHash64.
+- [x] SipHash and xxHash64.
 
 References: [FIPS 180-4](https://csrc.nist.gov/pubs/fips/180-4/final), [FIPS 202](https://nvlpubs.nist.gov/nistpubs/FIPS/NIST.FIPS.202.pdf), [the CAVP secure-hashing vectors](https://csrc.nist.gov/projects/cryptographic-algorithm-validation-program/secure-hashing), [fips-180-4-lean](https://github.com/remix7531/fips-180-4-lean), [sha2-fv](https://docs.rs/sha2-fv), and [RFC 4231](https://www.rfc-editor.org/rfc/rfc4231).
 
@@ -35564,3 +35564,29 @@ The tables sit at 4096 and 6152.  `ready_initial` needs `maxRecDepth 10000` beca
 | Axioms | The call theorems and the file theorems depend on `propext`, `Classical.choice`, and `Quot.sound`. |
 
 On the build host the branch built `Verified Library` in 10,506 jobs with no `sorry` and the default targets, and `crc-vectors` agreed on all 273 messages.  `tests/verified/run.sh` ended with status 0: 32,374 verified cases, `main`'s 32,104 and the 270 of `crc`, with no failure, and 29 file theorems with the permitted axioms.  The 23 committed files other than this journal are identical to the tested ones.
+
+## 2026-10-25: SipHash and XXH64
+
+The hashing plan's last item is SipHash and xxHash64, on the branch `siphash` from `main`.  §2 of [the SipHash paper](https://cr.yp.to/siphash/siphash-20120918.pdf) defines SipHash-c-d for every `c` and `d` on 64-bit words, and Appendix A lists the intermediate states of SipHash-2-4 for one message.  [The xxHash specification](https://github.com/Cyan4973/xxHash/blob/dev/doc/xxhash_spec.md), version 0.2.0, defines XXH64 in seven steps.  Both read input as little-endian 64-bit words, which is the library's packing, so each program reads its message words in place.  I made the decisions below by recommendation and review, without asking.
+
+| Question | Decision | Reason |
+|---|---|---|
+| SipHash variants | Transcribe SipHash-c-d for every `c` and `d`, and export SipHash-2-4 and SipHash-1-3 with the 64-bit output | SipHash-2-4 is the paper's proposal and has the reference vectors.  CPython 3.11 hashes `str` and `bytes` with SipHash-1-3 ([What's New](https://docs.python.org/3/whatsnew/3.11.html), bpo-29410).  The 128-bit output appears only in the reference implementation's README. |
+| SipHash key | Two words `k0` and `k1`, the little-endian words of the key's 16 bytes | The key packs as a message does, and the call passes two scalars instead of a second array. |
+| State | Each program uses its transcription's structure of four words, with a `Flat` instance | The proofs compare states by equality, with no conversion. |
+| Rotation | The transcriptions rotate with `BitVec.rotateLeft`, and the programs with two shifts and an OR | The transcriptions do not share the programs' helper.  One lemma for each rotation amount relates them. |
+| XXH64 loops | Both loops of the transcription take 32 or 8 bytes while that many remain, by `if`, `take`, and `drop` with well-founded recursion | The pseudocode states both as such loops, and the common form gives the two loops one proof. |
+| XXH64 tail | The program tests `n mod 8 < 4` for the lane of 4 bytes and reads the single bytes from `n - n mod 4` | Both positions are remainders of `n`, which keeps the proof of the tail to arithmetic on `n`. |
+| Shared lemmas | `Library/Bytes/LittleEndian.lean` holds the lemmas on little-endian values of bytes | SipHash and XXH64 read eight bytes as a word in the same way. |
+| SipHash vectors | `vectors.h` of [the reference implementation](https://github.com/veorq/SipHash), unmodified, Appendix A's intermediate states, and OpenSSL 3's `SIPHASH` MAC for both variants | OpenSSL's parameters `c-rounds` and `d-rounds` select the variant, and `generate.py` checks it against the reference vectors and Appendix A first. |
+| XXH64 vectors | The 8,322 entries of `XSUM_XXH64_testdata` in the xxHash repository's `tests/sanity_test_vectors.h`, extracted with the repository's BSD 2-Clause license | They cover every length to 4,160 bytes with two seeds, and the whole header is 4.5 MB.  No XXH64 tool is installed on these machines. |
+
+An independent review compared both transcriptions with their sources, with Python implementations written from the documents, and found no discrepancy in the definitions.  Its implementations reproduced Appendix A, the 64 reference vectors, and the 8,322 XXH64 vectors.  It found four comments to correct, which I corrected: the lane and accumulator numbering of `stripe`, the right shift of XXH64 that fills with zeros, the display order of step 7, and the reading of a SipHash key of another length.  The paper's PDF does not name INDOCRYPT 2012, which the reference README does, and §2 does not define `+` or `≪`, whose meanings the comment now attributes to the reference code.
+
+The proofs follow the programs' structure.  SipHash's `messageWords_eq` describes the padded string of §2 byte by byte, and XXH64's `stripes_from` and `lanes8_from` proceed by induction on the stripes or lanes that remain.  Byte extraction from a word now has three copies: `natBits_word` in the CRC proof, `input_byte` in the regex proof, and `byte_eq` in the XXH64 proof.  A later change can move one of them to `Library/Bytes/LittleEndian.lean`.
+
+- [x] SipHash transcription, programs, proofs, call and file theorems, vectors, and cases.
+- [x] XXH64 transcription, program, proof, call and file theorems, vectors, and cases.
+- [x] Full validation, then commit and fast-forward `main`.
+
+On the build host the branch built `Verified Library` in 10,519 jobs with no `sorry` and the default targets, and the vector checks agreed: `siphash-vectors` on 331 messages and `xxhash64-vectors` on 8,322.  `tests/verified/run.sh` ended with status 0: 32,806 verified cases, `main`'s 32,374, the 266 of `siphash`, and the 166 of `xxhash64`, with no failure, and 31 file theorems with the permitted axioms.  The review's comment corrections came after that run, and the affected modules then rebuilt, both vector checks agreed again, and the file theorems of both modules held.

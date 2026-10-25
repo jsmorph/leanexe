@@ -1,0 +1,21 @@
+data/hashing/xxhash64/
+
+xxh64.txt holds the XXH64 test vectors of the xxHash repository by Yann
+Collet, https://github.com/Cyan4973/xxHash, from the array
+XSUM_XXH64_testdata of tests/sanity_test_vectors.h on the branch dev at commit
+215108c62f84a9a94d1e821800b29963f544a602, downloaded on 2026-10-25, SHA-256
+e81b5f30744714293c511110b0b6f538516d9432153d8a1cb7dc0d8a73589af7.
+extract.py wrote each entry { len, seed, result } as the line "len seed
+result", with the seed and the result in lowercase hexadecimal; the file is
+otherwise a copy of the entries in their order.  LICENSE is the repository's
+license file, the BSD 2-Clause License, which covers this material.
+
+Each vector hashes the first len bytes of a buffer that tests/sanity_test.c
+of the same commit fills by the generator of its function fillTestBuffer:
+byteGen starts at 2654435761, and byte i is byteGen >> 56, after which byteGen
+is multiplied by 11400714785074694797 modulo 2^64.  The vectors cover every
+length from 0 to 4160 bytes with the seeds 0 and 0x9E3779B1.
+
+The transcription follows doc/xxhash_spec.md of the same commit, "xxHash fast
+digest algorithm", version 0.2.0 (29/06/23), SHA-256
+61c47af338b2feefcc7621700ef6b941bcf9b1dd33899c503f68cb797e7ef333.

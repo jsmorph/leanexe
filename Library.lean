@@ -275,5 +275,7 @@ import Library.Hashing.Sha512.Bytes
 import Library.Hashing.Hmac.Bytes
 import Library.Hashing.Sha3.Bytes
 import Library.Hashing.Crc.Bytes
+import Library.Hashing.SipHash.Bytes
+import Library.Hashing.XxHash64.Bytes
 import Library.Regex.Bytes
 import Library.Hashing.MerkleDamgard

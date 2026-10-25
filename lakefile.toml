@@ -57,3 +57,17 @@ root = "TestSupport.Hashing.Sha3Vectors"
 name = "crc-vectors"
 srcDir = "tests"
 root = "TestSupport.Hashing.CrcVectors"
+
+# The check of the SipHash transcription and programs on the reference and OpenSSL vectors
+# (tests/TestSupport/Hashing/SipHashVectors.lean); not a default target.
+[[lean_exe]]
+name = "siphash-vectors"
+srcDir = "tests"
+root = "TestSupport.Hashing.SipHashVectors"
+
+# The check of the XXH64 transcription and program on the xxHash sanity vectors
+# (tests/TestSupport/Hashing/XxHash64Vectors.lean); not a default target.
+[[lean_exe]]
+name = "xxhash64-vectors"
+srcDir = "tests"
+root = "TestSupport.Hashing.XxHash64Vectors"
