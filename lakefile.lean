@@ -34,3 +34,7 @@ target runningSumRead pkg : System.FilePath := do
 lean_exe «running-sum-native» where
   root := `Demos.RunningSum.Native
   moreLinkObjs := #[`@/runningSumRead]
+
+lean_exe «running-sumfp-native» where
+  root := `Demos.RunningSumFp.Native
+  moreLinkObjs := #[`@/runningSumRead]
