@@ -7,6 +7,7 @@ import Verified.Wasi.ProgramInitial
 import Verified.Wasi.StaticPool
 import Verified.Wasi.NativeTotal
 import Verified.Wasi.CommandTotal
+import Verified.Wasi.Stack
 
 namespace Verified.Wasi.Reflect
 
@@ -61,6 +62,9 @@ private def emitCompilerProofs (target : Name) (base : Name) : CommandElabM Unit
   let apart := mkIdent (target ++ `pool_apart)
   let pureCovered := mkIdent (base ++ `pure_covered)
   let covered := mkIdent (base ++ `effects_covered)
+  let stack := mkIdent (target ++ `stackFits)
+  elabCommand (← `(theorem $stack : Verified.Wasi.StackFits $source $program
+      (Verified.Wasi.entryFrameBytes $source $entries $main) := by decide +kernel))
   elabCommand (← `(theorem $profile : Verified.Wasi.Relocation.Profile $source :=
     Verified.Wasi.Relocation.checkProfile_sound (by decide +kernel)))
   elabCommand (← `(theorem $ready : Verified.Wasi.EffectProg.Ready $source $pool $program :=
@@ -112,6 +116,7 @@ private def emitEntryProofs (base : Name) (state : ProgramReflection) : TermElab
   let pureContext ← mkAppM ``Resource.PureContext.ofProg
     #[mkConst (base ++ `pure ++ `program), mkConst (base ++ `pure ++ `funs)]
   for (reflected, index) in state.out.toList.zipIdx do
+    trace[verified.wasi] "Entry proofs: {reflected.name}"
     let entry ← entryExpr state reflected.name
     let someEntry ← mkAppM ``Option.some #[entry]
     let info ← getConstInfoDefn reflected.name
@@ -187,28 +192,34 @@ private def compileProgram (target : Ident) (sources : Array Ident) (main? : Opt
   prepareRecursiveTypes pureNames
   let mut pureState : Verified.Reflect.ProgramReflection := {}
   for name in pureNames do
+    trace[verified.wasi] "Reflect pure: {name}"
     pureState ← liftTermElabM (Verified.Reflect.reflectProgramFunction (base ++ `pureSources) name pureState)
   let mut state := ProgramReflection.empty pureState
   let mut selected := []
   for (name, effectful) in names.zip classifications do
     if effectful then
+      trace[verified.wasi] "Reflect action: {name}"
       state ← liftTermElabM (reflectProgramFunction base name state)
       selected := selected ++ [name]
   if selected.isEmpty then
     throwError "verified_compile_wasi: the definition list has no Action definition"
   let mainName? ← main?.mapM fun main => liftCoreM <| realizeGlobalConstNoOverloadWithInfo main
   let exports := if mainName?.isSome then [] else selected
+  trace[verified.wasi] "Materialize: {base}"
   discard <| liftTermElabM (materializeProgram base state exports mainName?)
+  trace[verified.wasi] "Compiler proofs: {base}"
   emitCompilerProofs target.getId base
   match mainName? with
   | none => liftTermElabM (emitEntryProofs base state)
   | some name => liftTermElabM (emitCommandProofs base state name)
+  trace[verified.wasi] "Validity: {base}"
   emitValidity target.getId (base ++ `module)
   let refinements := match mainName? with
     | none => state.out.flatMap fun reflected =>
         let functionBase := base ++ Name.mkSimple reflected.name.getString!
         #[functionBase ++ `implements, functionBase ++ `total]
     | some _ => #[base ++ `start, base ++ `total]
+  trace[verified.wasi] "Encoding: {base}"
   emitEncoding target.getId (base ++ `module) refinements (some (base ++ `validity))
 
 syntax (name := verifiedCompileWasi) "verified_compile_wasi " ident " := " "[" ident,* "]" : command

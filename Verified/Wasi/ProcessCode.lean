@@ -18,7 +18,7 @@ structure ProcessEntry (effectSigs : List EffectSig) where
   step : EffectVar effectSigs
     ⟨stepName, [state], [.borrowed], .value (processResultTy state)⟩
 
-def ProcessEntry.result (entry : ProcessEntry effectSigs) : Ty :=
+abbrev ProcessEntry.result (entry : ProcessEntry effectSigs) : Ty :=
   processResultTy entry.state
 
 def ProcessEntry.iteration (source : Wasm.Module) (entry : ProcessEntry effectSigs) : Program :=

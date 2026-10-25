@@ -50,11 +50,6 @@ def reflectDefinition (base name : Name) (context : Ctx) (tables : List StaticTa
         #[some context.pure.sigs, some context.sigs, some (toExpr signature.name),
           some (ctxExpr sourceTypes), some (modesExpr modes),
           some (resultTyExpr signature.result), some source]
-      let positions ← kernelWhnf (← mkAppM ``EffectFunc.positions #[function])
-      let some count := natOf positions
-        | throwError "verified_compile_wasi: cannot evaluate the frame of {name}"
-      if count > depthPositions then
-        throwError "verified_compile_wasi: {name} needs {count} positions, more than {depthPositions}"
       let functionName := base ++ `func
       let meaningName := base ++ `related
       Verified.Reflect.addDefinition functionName (← inferType function) function

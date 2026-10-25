@@ -30,6 +30,9 @@ tools/leanrun --timeout 10m --log build/wasi/foundations.log lake build \
   Verified.Wasi.CostFunctionPost Verified.Wasi.CostFunctionRun \
   Verified.Wasi.CostFunctionSpec \
   LeanExe.Wasi Verified.Wasi \
+  LeanExe.ProofKit.PartialLoop LeanExe.Wasi.Process LeanExe.Wasi.ProcessRelations \
+  LeanExe.Wasi.ProcessRelated Verified.Wasi.ProcessCorrect Verified.Wasi.ProcessNative \
+  Verified.Wasi.ProcessTermination \
   Verified.Wasi.NativeResult Verified.Wasi.NativeEntry Verified.Wasi.NativeTotal \
   Verified.Wasi.ConditionalCost Verified.Wasi.CostConditionalSpec \
   LeanExe.Wasi.Prefix LeanExe.Wasi.NoTrap LeanExe.Wasi.NoTrapPrefix \
@@ -141,3 +144,4 @@ tests/wasi/reflection-run.sh
 tests/wasi/script-host-run.sh
 tests/wasi/host.sh
 tests/wasi/acceptance-run.sh
+tests/running-sum/run.sh

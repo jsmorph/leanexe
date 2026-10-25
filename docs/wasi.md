@@ -73,6 +73,14 @@ An action may return `Unit` or a value accepted by the pure dialect.  Structures
 
 Effectful helper calls are acyclic.  Recursive effectful definitions are rejected.  Pure helpers retain the verified compiler's recursion and tail-loop rules.  General `IO` and `BaseIO` operations, arbitrary monadic recursion, and action values stored in runtime containers are outside the reflected dialect.
 
+### Processes without an iteration bound
+
+`Process σ` contains an initial state and `step : σ → Action (ProcessStep σ)`.  A step returns a `running` flag, a `UInt64` status, and its next state.  False ends the process with that status.  True continues with the returned state.  Exit or host trap terminates the process.  `process.runFrom host state` and `process.runStdio` interpret these steps natively.
+
+The [typed process entry](../Verified/Wasi/ProcessCode.lean) composes separately compiled begin and step functions into a `_start` loop.  Begin returns the initial control flag, status, and owned state.  Step borrows the current state and returns its replacement.  The loop releases the old state after each completed step and carries the new state into the next iteration.  A normally stopped process passes its status to `proc_exit`.  [Running sum](../Demos/RunningSum/README.md) uses this API to read through EOF, retain partial lines, and finish short writes.
+
+[Process correctness](../Verified/Wasi/ProcessCorrect.lean) classifies every target run that completes without exhausting Talos fuel.  The result preserves completed native steps, terminal outcomes, and pending action prefixes after guest resource failure.  [The ranked loop rules](../Verified/Wasi/ProcessTermination.lean) prove eventual classified termination when each iteration has a bounded execution proof and every continuing iteration decreases a natural-valued rank.  A successful stream application also needs host progress and sufficient memory.  In particular, repeated successful zero-byte writes can prevent progress.  Running sum's application theorem proves partial correctness.
+
 ## Compilation and generated declarations
 
 ### Callable and command modules
@@ -98,7 +106,9 @@ The module has exactly three function imports from `wasi_snapshot_preview1`:
 | `fd_write` | `(i32, i32, i32, i32) → i32` | 1: stdout, or 2: stderr. |
 | `proc_exit` | `(i32) → ()` | None. |
 
-[The ABI definitions](../Verified/Wasi/ABI.lean) reserve scratch bytes `[0,16)` for one iovec and transfer count.  The read wrapper checks capacity before narrowing it to 32 bits.  Heap and byte-representation premises prove that pointer and write-length narrowing preserves their values.  The module relocates pure calls and types by three positions, uses the shared allocator and release functions at indices 3 and 4, and passes a hidden depth through internal calls.  Public wrappers initialize depth to zero.  Effectful calls increment it, and guarded pure calls use the same depth.  Guarded calls enforce the depth limit of 1,000, and reflected effectful functions have at most 32 local positions.
+[The ABI definitions](../Verified/Wasi/ABI.lean) reserve scratch bytes `[0,16)` for one iovec and transfer count.  The read wrapper checks capacity before narrowing it to 32 bits.  Heap and byte-representation premises prove that pointer and write-length narrowing preserves their values.  The module relocates pure calls and types by three positions, uses the shared allocator and release functions at indices 3 and 4, and passes a hidden depth through internal calls.  Public wrappers initialize depth to zero.  Effectful calls increment it, and guarded pure calls use the same depth.  Guarded calls enforce the depth limit of 1,000.
+
+Pure functions that take the call depth retain the 32-position frame limit.  Acyclic effectful helpers may use larger frames when `p.stackFits` accepts the estimated whole-call-chain stack use.  [The stack check](../Verified/Wasi/Stack.lean) includes the existing 272,000-byte guarded-call allowance, pure-module frames, the three WASI wrapper frames, effectful helpers' excess over 32 positions, and exported entry frames, within 512 KiB.  It uses the existing estimate of eight bytes per position and sixteen bytes per frame.  The check does not formalize a real engine's native stack layout.  Engine stack behavior remains part of host validation and execution tests.
 
 A callable host configures stdio before invoking an export and may invoke another export after normal return.  Exit and trap terminate the instance's lifecycle.  Command hosts invoke `_start` once.  The modules provide no `_initialize` hook, which the pinned application ABI permits to be absent.
 
@@ -113,6 +123,7 @@ A callable host configures stdio before invoking an export and may invoke anothe
 | `p.literalPool` | Shared raw byte-literal pool. |
 | `p.module` | Complete importing module. |
 | `p.calls` | Universal cost-aware correctness for the compiled effectful callees. |
+| `p.stackFits` | The estimated call-chain stack use fits the compiler's 512 KiB budget. |
 | `p.initial` | Allocator invariant, memory cap, borrowed constant tables, and static bytes in the modeled initial store. |
 | `p.f.implements` | Callable form: execution of the exported wrapper refines the original Lean function applied to its native parameters. |
 | `p.f.exported` | Callable form: the function's name and wrapper index occur in the module's exports. |
@@ -178,6 +189,8 @@ The proofs use Lean's kernel, the project's definitions of source actions and me
 
 `NativeHost.ofStreams` reports errno zero for successful stream reads and full successful count after a write and flush.  It accepts every narrowed exit status.  Stream operations may use several operating-system calls.  An `IO.Error` propagates to the Lean caller, including when a failed stream operation has already changed the outside world.  Explicit `Transfer.trapped` replies instead produce an `Outcome.trapped`.  Invalid host reply lengths or errnos raise an `IO.Error`.  [The native interpreter](../LeanExe/Wasi/Interpreter.lean) defines this adapter policy.
 
+The [running-sum native executable](../Demos/RunningSum/Native.lean) uses a [POSIX fd 0 reader](../Demos/RunningSum/read.c) for short reads on pipes.  The pinned Lean stream reader uses `fread`, which can wait for the requested capacity or EOF.  The descriptor adapter returns after one successful `read`, retries interrupted calls, and propagates other OS errors through Lean's error decoder.  Writes retain the stream adapter's flush policy.
+
 ### Wasmtime host
 
 The [Wasmtime host setup](leanexe-manual.md#the-wasmtime-host) builds `build/tools/leanexe-wasmtime-host` against pinned Wasmtime 44.0.0.  It uses Wasmtime's standard Preview 1 implementation.  From the repository root, the stdio example builds and emits both module forms:
@@ -222,5 +235,7 @@ tests/wasi/run.sh
 [The WASI driver](../tests/wasi/run.sh) builds the universal proofs and audits their axioms.  The foundations-only mode also runs native interpreter, wrapper-code, and exit-model tests.  The full mode adds emitted-module validation and execution tests for packed bytes, literals, ownership and allocation counts, reflected callable and command modules, and the standard Wasmtime host.  [The public reflection driver](../tests/wasi/reflection-run.sh) tests generated modules against binary stream fixtures and separate control records.  [The host tests](../tests/wasi/host.sh) cover stream routing, accepted and rejected exits, low-32-bit conversion, and terminal lifecycle behavior.
 
 [The development journal](../devnotes.md#2026-10-23-implementing-the-wasi-agenda) records proof, execution, and repository integration runs.
+
+[The running-sum driver](../tests/running-sum/run.sh) additionally checks the unbounded process loop, native and Wasm decimal streams, split lines, short and zero-byte writes, committed effects before failures, and interactive output before EOF.
 
 The interface follows the pinned [Preview 1 declarations](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/wasi_snapshot_preview1.witx), [type definitions](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/preview1/witx/typenames.witx), and [application ABI](https://github.com/WebAssembly/WASI/blob/fae981bae14809d91f9bc2d63852d461f331d161/application-abi.md).

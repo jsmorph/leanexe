@@ -46,6 +46,10 @@ Total execution requires a typed resource-prefix bound and assumptions about rea
 operations.  [The WASI manual](docs/wasi.md) defines the API, export forms, proof premises, native
 interpreter, and Wasmtime's exit-acceptance policy.
 
+`LeanExe.Wasi.Process` composes bounded actions through an unbounded outer loop.  The
+[running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF, handles
+short writes, and proves partial correctness of its compiled process and ordered effects.
+
 ### Comparison
 
 | Topic | LeanExe compiler | Verified compiler |

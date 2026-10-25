@@ -1,4 +1,4 @@
-import Demos.RunningSum.Compiled
+import Demos.RunningSum.Proof
 
 open Lean Elab Command in
 elab "check_running_sum_axioms" : command => do
@@ -11,7 +11,21 @@ elab "check_running_sum_axioms" : command => do
     ``Demos.RunningSum.arithmetic.add.implements,
     ``Demos.RunningSum.arithmetic.render.implements,
     ``Demos.RunningSum.arithmetic.initial,
-    ``Demos.RunningSum.arithmetic.bytes]
+    ``Demos.RunningSum.arithmetic.bytes,
+    ``Demos.RunningSum.io.step.related,
+    ``Demos.RunningSum.io.step.implements,
+    ``Demos.RunningSum.io.stackFits,
+    ``Demos.RunningSum.command.validity,
+    ``Demos.RunningSum.command.validBinary,
+    ``Demos.RunningSum.command.bytes,
+    ``Demos.RunningSum.stackFits,
+    ``Demos.RunningSum.calls,
+    ``Demos.RunningSum.step_related,
+    ``Demos.RunningSum.begin_related,
+    ``Demos.RunningSum.initialState,
+    ``Demos.RunningSum.implements,
+    ``Demos.RunningSum.run_initial,
+    ``Demos.RunningSum.bytes]
   for declaration in declarations do
     for axiomName in ← collectAxioms declaration do
       unless permitted.contains axiomName do

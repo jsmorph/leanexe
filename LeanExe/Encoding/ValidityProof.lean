@@ -38,6 +38,33 @@ theorem types_cons {type : ValueType} {types : List ValueType}
   · exact head
   · exact tail value member
 
+theorem program_cons (context : Spec.Validity.Context) (instruction : Wasm.Instruction)
+    (code : Wasm.Program) (inputs middle outputs : List ValueType)
+    (head : Spec.Validity.Instruction context instruction inputs middle)
+    (tail : Spec.Validity.Program context code middle outputs) :
+    Spec.Validity.Program context (instruction :: code) inputs outputs := .cons head tail
+
+theorem function_of_parts (wasmModule : Wasm.Module) (function : Wasm.Function)
+    (context : Spec.Validity.Context) (code : Wasm.Program) (results : List ValueType) (index : Nat)
+    (tag : function.typeIdx = some index)
+    (found : wasmModule.types[index]? = some (Spec.signature function))
+    (locals : Spec.Validity.Types function.locals)
+    (count : function.params.length + function.locals.length < 2 ^ 32)
+    (contextEq : Spec.Validity.functionContext wasmModule function = context)
+    (bodyEq : function.body = code) (resultsEq : function.results = results)
+    (typed : Spec.Validity.Program context code [] results) :
+    Spec.Validity.Function wasmModule function := by
+  refine ⟨⟨index, tag, found⟩, locals, count, ?_⟩
+  rw [contextEq, bodyEq, resultsEq]
+  exact typed
+
+theorem function_of_lookup (wasmModule : Wasm.Module) (index : Nat) (function : Wasm.Function)
+    (selected : wasmModule.funcs[index]! = function)
+    (typed : Spec.Validity.Function wasmModule function) :
+    Spec.Validity.Function wasmModule wasmModule.funcs[index]! := by
+  rw [selected]
+  exact typed
+
 def checkDataSegment (segment : Wasm.DataSegment) : Bool :=
   segment.memIdx == 0 && segment.offset.isSome && segment.offsetExpr.isEmpty
 
@@ -309,25 +336,46 @@ private def instructionType (context instruction : Lean.Expr) (inputs outputs : 
     MetaM Lean.Expr := do
   mkAppM ``Spec.Validity.Instruction #[context, instruction, ← typesExpr inputs, ← typesExpr outputs]
 
+private def closedDecideProof (type : Lean.Expr) : MetaM Lean.Expr := do
+  let type ← instantiateMVars type
+  if type.hasFVar || type.hasMVar then return ← mkDecideProof type
+  let name := Name.num `_private.validityLookup type.hash.toNat
+  if let some declaration := (← getEnv).find? name then
+    if declaration.type == type then return mkConst name
+  let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityLookup else pure name
+  let proof ← mkDecideProof type
+  addDecl (.thmDecl { name, levelParams := [], type, value := proof })
+  return mkConst name
+
 private def lookupProof (context : Lean.Expr) (field : Name) (index : Nat) (value : Lean.Expr) :
     MetaM Lean.Expr := do
-  let values ← mkAppM field #[context]
+  let values ← whnf (← mkAppM field #[context])
   let found ← mkAppM ``GetElem?.getElem? #[values, mkNatLit index]
-  mkDecideProof (← mkEq found (← mkAppM ``Option.some #[value]))
+  closedDecideProof (← mkEq found (← mkAppM ``Option.some #[value]))
 
 private def memoryProof (context : Lean.Expr) : MetaM Lean.Expr := do
-  mkDecideProof (← mkEq (← mkAppM ``Spec.Validity.Context.hasMemory #[context]) (toExpr true))
+  closedDecideProof (← mkEq (← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context]))
+    (toExpr true))
 
 private def labelContext (context : Lean.Expr) (label : List ValueType) : MetaM Lean.Expr := do
   let label ← typesExpr label
-  let labels ← mkAppM ``Spec.Validity.Context.labels #[context]
+  let labels ← whnf (← mkAppM ``Spec.Validity.Context.labels #[context])
   let labels ← mkAppM ``List.cons #[label, labels]
-  mkAppM ``Spec.Validity.Context.mk #[
-    ← mkAppM ``Spec.Validity.Context.functions #[context],
-    ← mkAppM ``Spec.Validity.Context.locals #[context],
-    ← mkAppM ``Spec.Validity.Context.globals #[context], labels,
-    ← mkAppM ``Spec.Validity.Context.results #[context],
-    ← mkAppM ``Spec.Validity.Context.hasMemory #[context]]
+  let value ← mkAppM ``Spec.Validity.Context.mk #[
+    ← whnf (← mkAppM ``Spec.Validity.Context.functions #[context]),
+    ← whnf (← mkAppM ``Spec.Validity.Context.locals #[context]),
+    ← whnf (← mkAppM ``Spec.Validity.Context.globals #[context]), labels,
+    ← whnf (← mkAppM ``Spec.Validity.Context.results #[context]),
+    ← whnf (← mkAppM ``Spec.Validity.Context.hasMemory #[context])]
+  let value ← instantiateMVars value
+  if value.hasFVar || value.hasMVar then return value
+  let name := Name.num `_private.validityContext value.hash.toNat
+  if let some (.defnInfo declaration) := (← getEnv).find? name then
+    if declaration.value == value then return mkConst name
+  let name ← if (← getEnv).contains name then mkFreshUserName `_private.validityContext else pure name
+  addDecl (.defnDecl (mkDefinitionValEx name [] (mkConst ``Spec.Validity.Context) value
+    (.regular 1) .safe [name]))
+  return mkConst name
 
 private def contextConstructor (name : Name) (context : Lean.Expr) (arguments : Array Lean.Expr) :
     MetaM Lean.Expr := do
@@ -397,6 +445,72 @@ private def fromExcept (value : Except String α) : MetaM α :=
   match value with
   | .ok result => pure result
   | .error message => throwError "validity proof: {message}"
+
+private def saveProgramProof (proof : Lean.Expr) : MetaM Lean.Expr := do
+  let proof ← instantiateMVars proof
+  let type ← instantiateMVars (← inferType proof)
+  if proof.hasFVar || proof.hasMVar || type.hasFVar || type.hasMVar then
+    throwError "validity proof: a program segment remains open"
+  let name ← mkFreshUserName `_private.validitySegment
+  addDecl (.thmDecl { name, levelParams := [], type, value := proof })
+  return mkConst name
+
+mutual
+  partial def instructionExpr (instruction : Wasm.Instruction) : MetaM Lean.Expr := do
+    if let some (name, _, _) := unary? instruction then
+      return mkConst (Name.str ``Wasm.Instruction name.getString!)
+    if let some (name, _, _) := binary? instruction then
+      return mkConst (Name.str ``Wasm.Instruction name.getString!)
+    match instruction with
+    | .localGet index => return mkApp (mkConst ``Wasm.Instruction.localGet) (toExpr index)
+    | .localSet index => return mkApp (mkConst ``Wasm.Instruction.localSet) (toExpr index)
+    | .localTee index => return mkApp (mkConst ``Wasm.Instruction.localTee) (toExpr index)
+    | .globalGet index => return mkApp (mkConst ``Wasm.Instruction.globalGet) (toExpr index)
+    | .globalSet index => return mkApp (mkConst ``Wasm.Instruction.globalSet) (toExpr index)
+    | .call index => return mkApp (mkConst ``Wasm.Instruction.call) (toExpr index)
+    | .br index => return mkApp (mkConst ``Wasm.Instruction.br) (toExpr index)
+    | .br_if index => return mkApp (mkConst ``Wasm.Instruction.br_if) (toExpr index)
+    | .const value => return mkApp (mkConst ``Wasm.Instruction.const) (toExpr value)
+    | .constI64 value => return mkApp (mkConst ``Wasm.Instruction.constI64) (toExpr value)
+    | .f32Const value => return mkApp (mkConst ``Wasm.Instruction.f32Const) (toExpr value)
+    | .f64Const value => return mkApp (mkConst ``Wasm.Instruction.f64Const) (toExpr value)
+    | .load32 offset => return mkApp (mkConst ``Wasm.Instruction.load32) (toExpr offset)
+    | .load64 offset => return mkApp (mkConst ``Wasm.Instruction.load64) (toExpr offset)
+    | .load8U offset => return mkApp (mkConst ``Wasm.Instruction.load8U) (toExpr offset)
+    | .store32 offset => return mkApp (mkConst ``Wasm.Instruction.store32) (toExpr offset)
+    | .store64 offset => return mkApp (mkConst ``Wasm.Instruction.store64) (toExpr offset)
+    | .store8 offset => return mkApp (mkConst ``Wasm.Instruction.store8) (toExpr offset)
+    | .nop => return mkConst ``Wasm.Instruction.nop
+    | .drop => return mkConst ``Wasm.Instruction.drop
+    | .ret => return mkConst ``Wasm.Instruction.ret
+    | .unreachable => return mkConst ``Wasm.Instruction.unreachable
+    | .memorySize => return mkConst ``Wasm.Instruction.memorySize
+    | .memoryGrow => return mkConst ``Wasm.Instruction.memoryGrow
+    | .block parameters results body parameterTypes resultTypes =>
+        return mkAppN (mkConst ``Wasm.Instruction.block) #[toExpr parameters, toExpr results,
+          ← programExpr body, ← typesExpr parameterTypes, ← typesExpr resultTypes]
+    | .loop parameters results body parameterTypes resultTypes =>
+        return mkAppN (mkConst ``Wasm.Instruction.loop) #[toExpr parameters, toExpr results,
+          ← programExpr body, ← typesExpr parameterTypes, ← typesExpr resultTypes]
+    | .iff parameters results yes no parameterTypes resultTypes =>
+        return mkAppN (mkConst ``Wasm.Instruction.iff) #[toExpr parameters, toExpr results,
+          ← programExpr yes, ← programExpr no, ← typesExpr parameterTypes, ← typesExpr resultTypes]
+    | _ => throwError "validity proof: unsupported instruction {repr instruction}"
+
+  partial def programExpr (code : Wasm.Program) : MetaM Lean.Expr := do
+    let mut result := mkApp (mkConst ``List.nil [.zero]) (mkConst ``Wasm.Instruction)
+    let mut count := 0
+    for instruction in code.reverse do
+      result := mkApp3 (mkConst ``List.cons [.zero]) (mkConst ``Wasm.Instruction)
+        (← instructionExpr instruction) result
+      count := count + 1
+      if count % 16 == 0 then
+        let name ← mkFreshUserName `_private.validityCode
+        addDecl (.defnDecl (mkDefinitionValEx name [] (mkConst ``Wasm.Program) result
+          (.regular 1) .safe [name]))
+        result := mkConst name
+    return result
+end
 
 /-- Construct a typing derivation for concrete code.  Native values select rules, while the
 kernel checks those rules against `context` and `expression`. -/
@@ -478,8 +592,8 @@ partial def program (contextValue : Spec.Validity.Context) (context : Lean.Expr)
         pure (stackPrefix ++ rule.outputs,
           ← frameProof context head proof stackPrefix rule.inputs rule.outputs)
     let remaining ← program contextValue context rest tail next outputs
-    let proof ← contextConstructor ``Spec.Validity.Program.cons context #[first, remaining]
-    ensureType proof (← mkAppM ``Spec.Validity.Program
-      #[context, expression, ← typesExpr inputs, ← typesExpr outputs])
+    let remaining ← if rest.length % 16 == 0 then saveProgramProof remaining else pure remaining
+    return mkAppN (mkConst ``program_cons) #[context, head, tail,
+      ← typesExpr inputs, ← typesExpr next, ← typesExpr outputs, first, remaining]
 
 end Wasm.Encoding.ValidityProof
