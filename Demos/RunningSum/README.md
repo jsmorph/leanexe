@@ -2,7 +2,8 @@
 
 Running sum reads signed decimal integers from stdin and writes the cumulative total after each
 line.  Decimal magnitude is limited by guest memory and container-size bounds.  Executable
-digits, lengths, indices, counts, and statuses use `UInt64`.
+digits, lengths, indices, counts, and statuses use `UInt64`.  The mathematical `Nat`/`Int`
+values and termination ranks are proof-only.
 
 ## Input and output
 
@@ -28,35 +29,53 @@ Each completed line produces output before the next blocking read.
 | [Parser correctness](Parsing.lean) | Optional sign and CR syntax, acceptance, integer value, and normalization. |
 | [Addition correctness](Addition.lean) | Signed integer addition, including cancellation and negative zero. |
 | [Renderer correctness](Rendering.lean) | Canonical signed decimal encoding from `Nat.digits`, followed by LF. |
-| [Mathematical stream model](InputBounds.lean) | Cumulative sums under line and prefix-sum size bounds. |
+| [Mathematical stream model](StreamModel.lean) and [input bounds](InputBounds.lean) | Cumulative sums under independent line and prefix-sum size bounds. |
 | [Arithmetic compilation](Compiled.lean) | Verified compilation of the six pure arithmetic functions. |
 | [Stream process](Stream.lean) | Buffered input, pending output, error handling, and the EOF process. |
 | [Action compilation](Wasi.lean) | Reflection and source-correspondence proofs for the bounded effectful steps. |
 | [Command module](Module.lean) | The unbounded Wasm loop, stack admission check, binary encoding, and validity proofs. |
-| [Application execution proof](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` refinement, and the byte theorem. |
+| [Process refinement](Proof.lean) | Initial-store invariants, native-process correspondence, `_start` partial refinement, and the byte theorem. |
+| [Stream-host assumptions](StreamHost.lean) and [observed output](StreamObserved.lean) | Input consumption, committed stdout prefixes, EOF, and zero-write progress. |
+| [Integer process correctness](StreamCorrect.lean) | Native process termination and canonical cumulative integer output. |
+| [Compiled termination](TerminationTarget.lean) | Well-founded process progress, typed allocation budgets, and accepted exit. |
+| [Compiled integer correctness](Correct.lean) | Cumulative stdout and eventual accepted exit 0 from the modeled initial store, with an encoded-byte theorem. |
 | [Native executable](Native.lean) | The same process with a [POSIX fd 0 reader](read.c) and flushed Lean output streams. |
 
-`implements` classifies every modeled run that completes without exhausting Talos fuel.  A
-normally stopped native process returns a status, which the compiled command passes to
-`proc_exit`.  The theorem preserves the ordered effects and final world of those steps and the
-accepted or rejected exit request.  A permitted guest resource trap matches a native process
+`parse_correct`, `add_correct`, and `render_correct` relate the decimal arithmetic to `Int`.
+`process_terminates_integer` connects the native process to the mathematical prefix sums.
+`initial_terminates_integer` proves that the compiled command eventually exits with accepted
+status 0 and writes exactly those sums in canonical signed decimal form, each followed by LF.
+It supplies a fuel threshold valid for every larger Talos fuel value.  `integer_bytes` combines
+that theorem with encoding, exact decoding, and binary validity.  Talos represents accepted
+`proc_exit` by the designated exit trap and records status 0 in the final host world.
+
+The theorem starts with an empty event journal and output history and uses these premises:
+
+| Premise | Requirement |
+|---|---|
+| [Valid input](StreamModel.lean) | `StreamModel.ValidInput` decomposes the finite input into decimal lines, with LF boundaries and an optional nonempty final line at EOF. |
+| [Integer sizes](InputBounds.lean) | `InputBounds` requires `line.size + 3 < 2^64` for each line and `integerDigitCount sum + 3 < 2^64` for every mathematical prefix sum.  These conditions bound lines and sums independently of the total input length. |
+| [Host behavior](StreamHost.lean) | `StreamHost` supplies successful reads and writes, consumes input prefixes, reports empty input only at EOF, and commits output prefixes.  Every zero-byte write decreases a proof-only natural-valued credit.  The Talos host also satisfies the WASI specification. |
+| [Allocation and depth](Correct.lean) | `RunResources` supplies `Heap.Within` and a typed `Resource.CallPrefixBound` at begin and every finite reached active step call.  `LocalsHold` ties the represented state to the iteration's local words. |
+| [Final exit](Correct.lean) | `ExitAccepted` excludes rejection of status 0 or 28 at represented host worlds.  The valid-input theorem exits with status 0. |
+
+A numeric whole-input memory bound remains unproved.
+
+`implements` and `run_initial` remain partial refinement theorems.  They classify every modeled
+run that completes without exhausting Talos fuel.  A normally stopped native process returns
+a status, which the compiled command passes to `proc_exit`.  The theorem preserves the ordered
+effects and final world of those steps and the accepted or rejected exit request.  A permitted
+guest resource trap matches a native process
 prefix and residual action.  `run_initial` establishes this result from the modeled initial
 store.  `bytes` combines the execution statement with encoding, exact decoding, and binary
 validity.
 
-These theorems require a host satisfying the WASI specification, the allocator invariant, valid
-static bytes, and a memory cap of at most 65,535 pages.  The loop releases the old owned state
-after each completed step.  [The WASI manual](../../docs/wasi.md) states the host, engine, and
-file-emission assumptions.  Termination requires progress and resource premises.  The generic
-[ranked loop rules](../../Verified/Wasi/ProcessTermination.lean) require bounded iteration proofs
-and a decreasing natural-valued rank.  Running sum's execution theorem proves partial correctness.
-
-`parse_correct`, `add_correct`, and `render_correct` relate the decimal arithmetic to `Int`.
-`StreamModel.stream_correct_of_inputBounds` proves that the stream model produces the cumulative
-sums.  Its bounds cover each line's length and each mathematical prefix sum's digit count.  The
-theorem permits any finite number of lines.  The connection to the process execution and its
-successful-termination theorem is in progress.  Arithmetic tests include long carry, borrow,
-and cancellation cases.
+The compiled refinement requires a host satisfying the WASI specification, the allocator
+invariant, valid static bytes, and a memory cap of at most 65,535 pages.  The loop releases the
+old owned state after each completed step.  [The WASI manual](../../docs/wasi.md) states the host, engine, and
+file-emission assumptions.  The generic
+[total-process theorem](../../Verified/Wasi/ProcessTotalCorrect.lean) uses an application-supplied
+well-founded progress relation, resource budgets at reached calls, and final-exit acceptance.
 
 The native reader returns after one successful `read` call and retries interrupted calls.  OS
 errors propagate through Lean's `IO.Error` API.  This gives the executable short reads on pipes.

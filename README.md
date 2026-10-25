@@ -48,7 +48,10 @@ interpreter, and Wasmtime's exit-acceptance policy.
 
 `LeanExe.Wasi.Process` composes bounded actions through an unbounded outer loop.  The
 [running-sum application](Demos/RunningSum/README.md) reads decimal integers through EOF, handles
-short writes, and proves partial correctness of its compiled process and ordered effects.
+short writes, and proves canonical cumulative integer output and eventual accepted exit 0.
+[Its compiled theorem](Demos/RunningSum/Correct.lean) assumes finite valid input, stream-host
+progress, separate line and prefix-sum size bounds, typed resource budgets at reached calls,
+and final-exit acceptance.
 
 ### Comparison
 
@@ -57,7 +60,7 @@ short writes, and proves partial correctness of its compiled process and ordered
 | Correctness proof | A theorem per program, from rule lemmas and hints | A universal typed-source compiler theorem, combined with generated source-correspondence proofs |
 | Pure compilation command | `leanexe_compile p := [f, …]` | `verified_compile p := [f, …]` |
 | WASI Preview 1 I/O | Application hosts perform I/O around compiled calls. | `verified_compile_wasi` compiles stdin reads, stdout and stderr writes, and exit, with native source-to-export refinement proofs. |
-| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions. |
+| Total execution | `ImplementsA false` with a proved memory budget | Pure `p.f.trapFree` under generated allocation and depth conditions.  WASI `.total` under typed resource-prefix and reached-host conditions.  Processes require application progress proofs and budgets at reached calls. |
 | `Float32` and WGSL kernels | Binary32 arithmetic and proved WGSL kernels | Binary32 arithmetic and a proved WGSL path for supported word, Boolean, and binary32 array builds |
 | Lists and recursive types | `List UInt64` and user recursive types | Lists and fixed-layout recursive types, including matching, guarded recursion, tail loops, copying, release, and header reuse |
 | Sum types | Supported, with fields | Enumerations and sums with scalar fields |
@@ -91,11 +94,14 @@ solvers, drone planner, and increment example.
 WASI entry theorems additionally assume a satisfying host, valid byte and static-pool
 representations, and separation from the guest scratch region.  They match normal returns,
 accepted exits, and host traps to source executions with the same world and ordered trace.
-Permitted guest resource traps match source prefixes and residual actions.  WASI total execution
-requires allocation room, the typed prefix budget, and `NoTrapsAlong` for the native action.
-The modeled initial-store theorem establishes allocator and static-data invariants.  Real engine
-instantiation, OS streams, and the native stream adapter require conformance to the modeled
-behavior, which execution tests check on concrete inputs.
+Permitted guest resource traps match source prefixes and residual actions.  Generated action
+total-execution theorems require allocation room, the typed prefix budget, and `NoTrapsAlong`
+for the native action.  [The total-process theorem](Verified/Wasi/ProcessTotalCorrect.lean)
+uses a well-founded progress relation, budgets at finite reached active calls, and final-exit
+acceptance.  Running sum's budget premises remain explicit.  A numeric whole-input memory
+bound has not been proved.  The modeled initial-store theorem establishes allocator and
+static-data invariants.  Real engine instantiation, OS streams, and the native stream adapter
+require conformance to the modeled behavior, which execution tests check on concrete inputs.
 
 Floating-point theorems use WebAssembly's deterministic profile.  The Wasmtime host enables NaN
 canonicalization to match it.  WGSL theorems prove kernel results and race freedom in the shared
@@ -126,7 +132,7 @@ engines, hosts, and file emission.
 | [Shared libraries and LeanExe compiler](LeanExe) | The dialect, original compiler and IR, runtime, correctness statements, encoding, proof lemmas, and shared WGSL translation. |
 | [Verified compiler](Verified) | The typed source language, compiler, universal proof, reflector, WGSL lowering, and compiled examples. |
 | [Reusable algorithms](Library/README.md) | Implementations, mathematical specifications, accuracy and period proofs, and compiler proofs, grouped by algorithm family. |
-| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, and the order book, with application proofs and host programs. |
+| [Application demos](Demos/README.md) | Euler solvers, GPT-2, the drone planner, the order book, and running sum, with application proofs and host programs. |
 | [Compiler examples](Examples) | Small programs, specifications, proofs, and cases that demonstrate compiler features. |
 | [Manuals and design](docs) | The compiler manuals and design document. |
 | [Proof guidance](ltg) | The LTG knowledge base and its declaration checker. |
