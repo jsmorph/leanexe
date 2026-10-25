@@ -141,8 +141,9 @@ def matchWith (pat : Array UInt64) (pn : UInt64) (msg : Array UInt64) (n : UInt6
   if !(s.valid && s.skip == 0 && s.depth == 1) then 2
   else if 63 < s.count then 3
   else
-    let follow := s.follow.set! 0 s.stack[1]!
-    let accept := s.stack[2]! ||| (if s.stack[0]! == 1 then 1 else 0)
+    let follow := s.follow.set! (0 : UInt64).toNat s.stack[(1 : UInt64).toNat]!
+    let accept := s.stack[(2 : UInt64).toNat]! |||
+      (if s.stack[(0 : UInt64).toNat]! == 1 then 1 else 0)
     if runInput (steps follow) (masks s.sets s.count) msg n &&& accept != 0 then 1 else 0
 
 end Library.Regex
