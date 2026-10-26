@@ -226,9 +226,17 @@ less than `1e-9` to spare.  Samples `θ/1000` apart can miss an interior extremu
 scale of the margin, which the theorem will.  `tests/TestSupport/Slew/CasesMain.lean` with the
 argument `--summary` prints the table's counts and spares.
 
-The generator takes 18 s, and the whole run of `tests/verified/run.sh --cases slew` 74 s.  A plan
-of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the start of the host and
-the compilation of the module.
+`tests/slew/edges.sh`, which `tests/verified/run.sh` runs with the slew cases, compares the
+module's `edgeOk` export with native Lean on 100,000 single-cone edges from [the edge
+generator](../../tests/TestSupport/Slew/Edges.lean), all in one host session.  The edges are
+random rotations, cones that graze a rotation's designed extremum within `1e-8`, stationary
+points at either end with `B` within and beyond `eta`, and relative quaternions with vector
+lengths near 0, near the small-angle threshold, and near 1.  All 100,000 results agree, 34,213 of
+them acceptances, and the session allocates no block beyond its input.
+
+The generator takes 18 s, the edge test 9 s, and the whole run of `tests/verified/run.sh --cases
+slew` 85 s.  A plan of 500 waypoints takes at most 51 ms in the host, of which about 20 ms is the
+start of the host and the compilation of the module.
 
 ## Theorems to prove
 

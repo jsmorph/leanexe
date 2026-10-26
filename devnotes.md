@@ -35673,7 +35673,7 @@ Phase 1:
 - [x] `Arc.lean`: Rodrigues' formula in the `A, B, C` form, the global bound, the interpolation identity, and the endpoint lemma for maxima and, by negation, minima.
 - [x] The error lemmas, in `Rounding`, `Error`, `Axis`, `Normalize`, `Cone`, and `Hypot`: bounds for `s`, `n`, `cos θ`, `sin θ`, `v₀`, `n·u`, `n·v₀`, `f₀`, `A`, `B`, `C`, `f₁`, `f′(θ)`, and `√(A² + B²)`.
 - [x] `Decide.lean` and `Check.lean`: soundness of one cone in both kinds and both branches, of the small-angle branch, of `edgeOk` over all cones by `loop_induction`, and of `attitudeOk`.
-- [ ] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
+- [x] Compare the module's `edgeOk` export with native Lean on 10⁵ generated single-cone edges.
 - [x] No `sorry`, no new axiom, no `bv_decide`, and an axiom check of the soundness theorems.
 
 Later phases: the path structure and the safety theorem, the premise theorem, NaN-freedom, then the motion model and optimality, with the file theorem once the module is stable.
@@ -35712,4 +35712,23 @@ Lean's `max a b` is `if a ≤ b then b else a`, which returns `a` when `b` is a 
 
 `Demos.Slew.Hypot` builds in 12 s and `Demos.Slew.Check` in 4.3 s.  `Demos` builds with `Demos.Slew.Check` imported, `tools/source-layout` reports the same five programs, and the link check passes.  `nlinarith` failed on `(1 + 3·10⁻¹²) · 1.0001 · (2S/0.99999) ≤ 2.0003 S`, and a `ring` step to a constant times `S` replaced it.  `Axis.lean` lost `sqrt_nonneg_of_lt`, which the proof no longer uses, since `s_facts` takes the sign of `s` from `sqrt_cases`.
 
-The comparison of the module's `edgeOk` export with native Lean on 10⁵ single-cone edges has not run.  The safety phase starts from the hypotheses: `validInput`'s `unitV` and `unitQ` tests with `tolNorm` should give the `3·10⁻¹²` bounds after rounding, and `relative` should give `GoodRel` and a bound on the distance between the rotation of `rel`'s real value and `q̄b q̄a*`.
+`tests/slew/edges.sh` runs the last test of Phase 1.  `tests/TestSupport/Slew/Edges.lean` generates 100,000 single-cone edges, and one host session calls the module's `edgeOk` on each, with one input array whose body vector and cone it rewrites between calls.  The classes are random edges (40,000, of which 13,866 accepted), cones that graze a designed extremum anywhere in the rotation within `10⁻⁸` (30,000, 7,447 accepted), stationary points at either end with `B` within and beyond `eta` (15,000, 7,933 accepted), and vector lengths near 0, `sMin`, and 1 (15,000, 4,967 accepted).  Every result agrees with native Lean, and the session's one allocation is its input, which shows that `edgeOk` borrows the array.  The test takes 9 s, so `tests/verified/run.sh --cases slew` runs it, and that run passed in 85 s.
+
+## 2026-10-26: The slew safety theorem: plan
+
+The coordinator asked for the safety theorem for whole plans, starting from the hypotheses of the edge check: `GoodQ` and `ConeGood` from `validInput`, `GoodRel` from `relative`, and a bound on the distance between the rotation of `rel`'s real value and the exact relative rotation.  The statement is item 4 of [the theorem list](#theorems): for an output of status 1, the start and goal are the input's bit for bit, and for each segment `g`, each `φ` in `[0, θ_g]`, each map `R′` that moves every unit vector at most `ρ = 10⁻⁹` from `R(n̄_g, φ) R(q̄_g)`, and each input cone, the cone holds for `ū · R′ b̄`.  Each segment's rotation `R(n̄_g, θ_g) R(q̄_g)` also lies within `ρ` of `R(q̄_{g+1})`.
+
+| Question | Decision | Reason |
+|---|---|---|
+| Rotations | `R(q̄)` is `Quat.rot (Quat.unit q)`, the program's formula on the normalized quaternion, and the proofs pass through the homogeneous form `q v q*`, which equals it for unit `q` | Composition becomes the associativity of the quaternion product, and the distance between two rotations is at most twice the distance between their unit quaternions, by the multiplicativity of the quaternion norm. |
+| Axis and angle | `R(n, φ)` equals the action of `(cos(φ/2), sin(φ/2) n)`, and the axis and angle of `rel`'s real value give `rel` normalized | Differences in axis, angle, and quaternion then reduce to one bound on quaternion distance. |
+| Output angle | Convert `AtanTwoTheorem.atan2_within_two`, two steps from the reference of `arg (w + i s)`, into an absolute error, and relate `2 arg (W + i S)` to `angle W S` | The output angle comes from the library's `atan2`, and the check uses `rel` alone. |
+| Path structure | An invariant of `search` over the finalized nodes: every node with a finite cost other than the start, and every finalized node other than the start, has a finalized parent whose edge `edgeOk` accepted, and the parent chain of a finalized node reaches the start within as many steps as there are finalized nodes | The invariant needs no ghost state, and the count of finalized nodes bounds the chain by `n`, the fuel of `pathLength`. |
+| Large inputs | `validInput`'s norm tests reject a component above 2 in magnitude, which the proof shows from the enclosure lemmas of the rounding of a finite result | `FApprox` needs magnitude bounds on its operands, and `allFinite` bounds the values only by the largest finite double. |
+
+- [ ] `Rotation.lean`: quaternion product, conjugate, and action; the action equals `Quat.rot` for unit quaternions, composes, and moves vectors by at most twice the quaternion distance; Rodrigues' rotation as an action.
+- [ ] `Valid.lean`: `GoodQ` for every node and `ConeGood` for every cone of a validated input.
+- [ ] `Relative.lean`: `GoodRel` for `relative qa qb`, and the distance between `rel` normalized and `±q̄b q̄a*`.
+- [ ] `Search.lean`: the invariant of `search`, `pathLength`, and `pathNode`, and the segments of the output as accepted edges.
+- [ ] `Angle.lean`: the output axis and angle against the axis and angle of `rel`'s real value.
+- [ ] `Safety.lean`: the safety theorem, its axioms, and the documentation.
